@@ -1,0 +1,56 @@
+# Research configuration — historical data download + backtest + performance report.
+# This file must NEVER enable live trading.
+
+market:
+  account_type: USDT_FUTURES   # USDT_FUTURES (USD-M) | COIN_FUTURES (COIN-M)
+  symbol: BTCUSDT              # BTCUSDT (USD-M) | BTCUSD (COIN-M)
+  base_currency: USDT          # USDT (USD-M) | BTC (COIN-M)
+  venue: BINANCE
+  contract_type: PERP
+  oms_type: NETTING            # one-way / netting mode
+  bar_step: 15
+  bar_aggregation: MINUTE
+  price_type: LAST
+  leverage: 3
+
+data:
+  catalog_path: ./catalog
+  environment: TESTNET         # Binance testnet/demo (no real money)
+  lookback_days: 30            # used when start is null
+  start: null                  # optional ISO datetime, e.g. 2026-07-01T00:00:00Z
+  end: null
+
+backtest:
+  start: null
+  end: null
+  starting_balance: "100000 USDT"
+  fee_model: maker_taker       # maker_taker | fixed
+  fixed_fee: "1 USDT"          # only used when fee_model == fixed
+  fill_model: one_tick_slippage  # best_price | one_tick_slippage | probabilistic
+  prob_fill_on_limit: 1.0
+  prob_slippage: 0.5
+  random_seed: 42
+
+strategy:
+  fast_ema_period: 20
+  slow_ema_period: 50
+  trend_ema_period: 200
+  atr_period: 14
+  history_days: 10
+
+strategy_type: ema_atr   # ema_atr | mean_reversion
+
+risk:
+  risk_per_trade: 5
+  max_notional: 300
+  max_daily_loss: 20
+  max_trades_per_day: 4
+  cooldown_bars_after_loss: 4
+  atr_stop_multiple: 2.0
+  allow_short: true
+  close_position_on_stop: true
+
+report:
+  output_dir: ./results
+  include_csv: true
+  include_json: true
