@@ -149,7 +149,13 @@ class BaseFuturesStrategy(Strategy):
             ),
         )
 
-    def _submit_entry(self, side: OrderSide, close: float, atr: float) -> None:
+    def _submit_entry(
+        self,
+        side: OrderSide,
+        close: float,
+        atr: float,
+        stop_multiple: float | None = None,
+    ) -> None:
         side_name = "LONG" if side == OrderSide.BUY else "SHORT"
         self.log.info(
             f"{side_name} signal at {close:.2f} | ATR={atr:.2f}",
@@ -164,6 +170,7 @@ class BaseFuturesStrategy(Strategy):
         raw_quantity = self.risk_limits.position_quantity(
             close=Decimal(str(close)),
             atr=atr,
+            stop_multiple=stop_multiple,
         )
         quantity = self.instrument.make_qty(raw_quantity)
 

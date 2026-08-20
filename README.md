@@ -4,15 +4,16 @@ Quantitative crypto-futures trading bot built on [NautilusTrader](https://nautil
 
 **Standardised assumptions**
 
-- Exchange / product: **Binance USD-M perpetual `BTCUSDT-PERP`**
+- Exchange / product: **Binance USD-M perpetuals** (multi-symbol, default `BTCUSDT`, `ETHUSDT`)
 - Position mode: **one-way / netting** (`oms_type: NETTING`)
 - Environment: **Testnet / Demo** — **no real money** (LIVE is disabled by a hard guard)
 - Strategies (switch with `strategy_type`):
   - `ema_atr` — EMA-ATR trend following (default)
-  - `mean_reversion` — Bollinger + RSI mean-reversion with VHF regime filter
+  - `mean_reversion` — Bollinger + RSI mean-reversion, tight stop + 1.5R take-profit
+  - `regime_switch` — trend in trends, mean-reversion in ranges (VHF-selected)
 
-The USD-M ↔ COIN-M choice is a single config switch: change `market.account_type`
-to `COIN_FUTURES` (and `symbol`/`base_currency` to `BTCUSD`/`BTC`) in the YAML files.
+The USD-M ↔ COIN-M choice is a config switch: change `market.account_type` to
+`COIN_FUTURES` (and set `symbols`/`base_currency` accordingly).
 
 ## Project layout
 
@@ -21,19 +22,23 @@ main.py                      CLI entry point (download / backtest / live)
 strategy_base.py             shared futures-strategy base (risk, orders, daily limits)
 strategy.py                  EMA-ATR trend strategy
 strategy_mean_reversion.py   Bollinger + RSI mean-reversion strategy
+strategy_regime_switch.py    regime-switch strategy (trend / mean-reversion)
 strategy_factory.py          builds the selected strategy from settings
 config/
   settings.py                typed settings dataclasses + YAML loaders
   research.yaml              research config — EMA-ATR (default)
   research_mean_reversion.yaml  research config — mean-reversion
+  research_regime_switch.yaml   research config — regime-switch
   live.yaml                  live config (Testnet/Demo)
 data/
   catalog.py                 ParquetDataCatalog wrapper (BinanceBar-aware)
-  download.py                historical-data download pipeline
+  download.py                historical-data download pipeline (multi-symbol)
 backtest/
-  engine.py                  backtest engine builder (fees + slippage)
+  engine.py                  backtest engine builder (fees + slippage, multi-symbol)
 reports/
-  performance.py             performance summary + CSV/JSON reports
+  performance.py             performance summary + CSV/JSON reports (per symbol)
+research/
+  optimize.py                parameter grid-search optimizer (parallel, multi-symbol)
 risk/
   limits.py                  risk limits + daily risk tracker + position sizing
 ```
@@ -46,50 +51,75 @@ pip install -r requirements.txt
 # 1. Copy and fill in your Binance TESTNET keys (no real money)
 cp .env.example .env
 
-# 2. Download historical bars into ./catalog
+# 2. Download historical bars (all market.symbols) into ./catalog
 python main.py download
 
-# 3. Run a backtest (fees + slippage) and write reports to ./results
+# 3. Run backtests (fees + slippage) and write reports to ./results/<SYMBOL>/
 python main.py backtest
-
-# 3b. Backtest the mean-reversion strategy instead
 python main.py backtest --config config/research_mean_reversion.yaml
+python main.py backtest --config config/research_regime_switch.yaml
 
 # 4. Run live on Testnet in signal-only mode (or set enable_trading: true)
 python main.py live
 ```
 
+## Parameter optimisation
+
+```bash
+# Grid-search strategy parameters, ranked by expectancy (not win rate).
+# Bars are cached per symbol and combos run in parallel across CPU cores.
+python -m research.optimize --config config/research_mean_reversion.yaml --grid quick
+python -m research.optimize --config config/research_regime_switch.yaml --grid quick
+
+# Walk-forward robustness (split the data into N windows)
+python -m research.optimize --config config/research_mean_reversion.yaml --grid quick --folds 3
+
+# Control parallelism / noise floor
+python -m research.optimize ... --workers 2 --min-trades 20 --top 15
+```
+
+Output: `results/optimize/ranking.csv` + `ranking.json`, sorted by
+trade-weighted **expectancy** across symbols/windows, with profit factor and a
+`positive_cells` robustness count. A combo is only useful if it has enough
+trades AND positive expectancy across several symbols/windows — not merely a
+high win rate.
+
 ## Strategies
 
 ### `ema_atr` — EMA-ATR trend following (default)
 
-Trend strategy: enters on a fast/slow EMA crossover filtered by a long-term trend
-EMA, exits on the opposite crossover or an ATR trailing stop. Strong in trends,
-whipsawed in ranges.
+Enters on a fast/slow EMA crossover filtered by a long-term trend EMA, exits on
+the opposite crossover or an ATR trailing stop. Strong in trends, whipsawed in
+ranges.
 
-### `mean_reversion` — Bollinger + RSI with VHF regime filter
+### `mean_reversion` — Bollinger + RSI, tight stop + 1.5R take-profit
 
-Range strategy: enters **long** when price touches the lower Bollinger band and
-RSI is oversold, **short** when it touches the upper band and RSI is overbought,
-but only while the **Vertical Horizontal Filter (VHF)** is below `vhf_max`
-(i.e. the market is ranging, not trending). Exits on a revert to the middle band
-or an ATR stop. Complements `ema_atr` — the two cover both market regimes.
+Enters **long** when price touches the lower Bollinger band and RSI is oversold,
+**short** on the upper band + overbought, only while the **VHF** is below
+`vhf_max` (ranging market). Exits on a tight ATR stop (1R) or a take-profit at
+`take_profit_multiple` x stop distance (reward:risk).
 
-Select the strategy with `strategy_type: ema_atr | mean_reversion` and tune the
-`mean_reversion:` block in `config/research_mean_reversion.yaml`.
+### `regime_switch` — trend in trends, mean-reversion in ranges
+
+Uses **VHF** to pick the active leg each bar: `VHF <= vhf_max` → mean-reversion
+leg (Bollinger + RSI, tight stop + 1.5R TP); otherwise → trend leg (EMA-ATR with
+trailing stop). The leg that opens a position manages its own exit, so a regime
+flip never orphans a position.
 
 ## Configuration
 
-`config/research.yaml` and `config/live.yaml` are intentionally separated so
-backtest/data settings can never leak into a live session (and vice-versa).
+`config/research*.yaml` and `config/live.yaml` are intentionally separated so
+backtest/data settings can never leak into a live session.
 
-- `market` — contract profile (`account_type`, `symbol`, `base_currency`,
-  `oms_type`, `leverage`, bar spec). This is where you switch USD-M ↔ COIN-M.
+- `market.symbols` — list of traded symbols, e.g. `[BTCUSDT, ETHUSDT, SOLUSDT]`.
+- `market` — contract profile (`account_type`, `base_currency`, `oms_type`,
+  `leverage`, bar spec). Switch USD-M ↔ COIN-M here.
 - `risk` — per-trade and daily risk limits (risk-per-trade, max notional, max
   daily loss, max trades/day, cooldown, ATR stop multiple).
-- `strategy` — EMA/ATR periods and history depth (used by `ema_atr`).
-- `mean_reversion` — Bollinger/RSI/VHF parameters (used by `mean_reversion`).
-- `strategy_type` — `ema_atr` (default) or `mean_reversion`.
+- `strategy` — EMA/ATR periods (used by `ema_atr`).
+- `mean_reversion` — Bollinger/RSI/VHF + stop + take-profit (used by `mean_reversion`).
+- `regime_switch` — trend + mean-reversion legs + VHF + stops (used by `regime_switch`).
+- `strategy_type` — `ema_atr` (default) | `mean_reversion` | `regime_switch`.
 - `data` (research) — catalog path, environment, lookback/start/end.
 - `backtest` (research) — starting balance, fee model, fill/slippage model.
 - `report` (research) — output directory and artifact formats.

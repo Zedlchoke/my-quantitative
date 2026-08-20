@@ -10,8 +10,8 @@ Entries (Bollinger + RSI):
   - SHORT when close touches the upper band and RSI is overbought, in a range.
 
 Exits:
-  - revert to the middle band (mean), or
-  - ATR-based protective stop.
+  - ATR-based protective stop (``atr_stop_multiple``, tight ~1R), or
+  - take-profit at ``take_profit_multiple`` x stop distance (reward:risk).
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ from nautilus_trader.indicators import RelativeStrengthIndex
 from nautilus_trader.indicators import VerticalHorizontalFilter
 from nautilus_trader.model.data import Bar
 from nautilus_trader.model.enums import OrderSide
-from nautilus_trader.model.enums import PositionSide
 from nautilus_trader.model.events import PositionClosed
 from nautilus_trader.model.events import PositionOpened
 
@@ -40,6 +39,7 @@ class MeanReversionStrategyConfig(BaseFuturesStrategyConfig, frozen=True):
     rsi_overbought: float = 90.0
     vhf_period: PositiveInt = 28
     vhf_max: float = 0.35  # <= this => ranging regime (mean-reversion active)
+    take_profit_multiple: float = 1.5  # reward:risk target
 
 
 class MeanReversionStrategy(BaseFuturesStrategy):
@@ -50,6 +50,8 @@ class MeanReversionStrategy(BaseFuturesStrategy):
             raise ValueError("RSI levels must satisfy 0 <= oversold < overbought <= 100")
         if config.atr_stop_multiple <= 0:
             raise ValueError("atr_stop_multiple must be positive")
+        if config.take_profit_multiple <= 0:
+            raise ValueError("take_profit_multiple must be positive")
 
         super().__init__(config)
 
@@ -72,21 +74,28 @@ class MeanReversionStrategy(BaseFuturesStrategy):
 
         close = bar.close.as_double()
         atr = self.atr.value
+        stop_distance = atr * self.config.atr_stop_multiple
         in_range = self.vhf.value <= self.config.vhf_max
 
         if self.portfolio.is_net_long(self.config.instrument_id):
-            stop_hit = self.entry_price is not None and close <= self._long_stop(atr)
-            reverted = close >= self.bb.middle
-            if (reverted or stop_hit) and not self._has_active_order():
-                reason = "revert to mean" if reverted else "ATR stop"
-                self._submit_exit(reason, close)
+            stop = (self.entry_price or close) - stop_distance
+            target = (self.entry_price or close) + (
+                stop_distance * self.config.take_profit_multiple
+            )
+            if close >= target and not self._has_active_order():
+                self._submit_exit("take-profit (1.5R)", close)
+            elif close <= stop and not self._has_active_order():
+                self._submit_exit("ATR stop", close)
 
         elif self.portfolio.is_net_short(self.config.instrument_id):
-            stop_hit = self.entry_price is not None and close >= self._short_stop(atr)
-            reverted = close <= self.bb.middle
-            if (reverted or stop_hit) and not self._has_active_order():
-                reason = "revert to mean" if reverted else "ATR stop"
-                self._submit_exit(reason, close)
+            stop = (self.entry_price or close) + stop_distance
+            target = (self.entry_price or close) - (
+                stop_distance * self.config.take_profit_multiple
+            )
+            if close <= target and not self._has_active_order():
+                self._submit_exit("take-profit (1.5R)", close)
+            elif close >= stop and not self._has_active_order():
+                self._submit_exit("ATR stop", close)
 
         elif self._can_open_position() and not self._has_active_order() and in_range:
             if close <= self.bb.lower and self.rsi.value <= self.config.rsi_oversold:
@@ -97,12 +106,6 @@ class MeanReversionStrategy(BaseFuturesStrategy):
                 and self.rsi.value >= self.config.rsi_overbought
             ):
                 self._submit_entry(OrderSide.SELL, close, atr)
-
-    def _long_stop(self, atr: float) -> float:
-        return (self.entry_price or 0.0) - atr * self.config.atr_stop_multiple
-
-    def _short_stop(self, atr: float) -> float:
-        return (self.entry_price or 0.0) + atr * self.config.atr_stop_multiple
 
     def _on_position_opened(self, event: PositionOpened) -> None:
         self.entry_price = float(event.avg_px_open)

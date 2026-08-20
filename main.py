@@ -3,13 +3,14 @@
 Subcommands
 -----------
 download   Download historical bars into the local Parquet catalog.
-backtest   Run a backtest with fee + slippage modelling and write reports.
+backtest   Run backtests with fee + slippage modelling and write reports.
 live       Run the live Binance USD-M perpetual node (Testnet/Demo only).
 
 Examples
 --------
     python main.py download
     python main.py backtest
+    python main.py backtest --config config/research_mean_reversion.yaml
     python main.py live
 """
 
@@ -63,7 +64,9 @@ def _binance_environment(value: str) -> BinanceEnvironment:
 def cmd_download(args: argparse.Namespace) -> int:
     settings = load_research_config(args.config)
     summary = download_historical_data(settings.market, settings.data)
-    print(f"Downloaded {summary['bars_written']} bars for {summary['bar_type']}")
+    print(f"Downloaded data for {len(summary['symbols'])} symbols")
+    for symbol, info in summary["per_symbol"].items():  # type: ignore[union-attr]
+        print(f"  {symbol}: {info['bars_written']} bars")
     print(f"Catalog path: {settings.data.catalog_path}")
     return 0
 
@@ -72,7 +75,7 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     settings = load_research_config(args.config)
     catalog = Catalog(settings.data.catalog_path)
 
-    engine, result = run_backtest(
+    runs = run_backtest(
         settings.market,
         settings.risk,
         settings.strategy,
@@ -80,19 +83,33 @@ def cmd_backtest(args: argparse.Namespace) -> int:
         catalog,
         strategy_type=settings.strategy_type,
         mean_reversion=settings.mean_reversion,
+        regime_switch=settings.regime_switch,
         trader_id=args.trader_id,
     )
-    try:
-        written = performance_report(engine, result, settings.report)
-    finally:
-        engine.dispose()
 
-    print(f"\nReport artifacts: {[str(p) for p in written]}")
+    written_all: list[str] = []
+    for run in runs:
+        print(f"\n===== {run.symbol} =====")
+        try:
+            written = performance_report(
+                run.engine,
+                run.result,
+                settings.report,
+                subdir=run.symbol,
+            )
+            written_all.extend(str(p) for p in written)
+        finally:
+            run.engine.dispose()
+
+    print(f"\nReport artifacts: {written_all}")
     return 0
 
 
 async def _run_live(settings: LiveSettings) -> None:
-    instrument_id = InstrumentId.from_str(settings.market.instrument_id)
+    instrument_ids = [
+        InstrumentId.from_str(settings.market.instrument_id(symbol))
+        for symbol in settings.market.symbols
+    ]
 
     api_key = os.getenv("BINANCE_API_KEY")
     api_secret = os.getenv("BINANCE_API_SECRET")
@@ -107,7 +124,7 @@ async def _run_live(settings: LiveSettings) -> None:
 
     instrument_provider = BinanceInstrumentProviderConfig(
         load_all=False,
-        load_ids=frozenset({instrument_id}),
+        load_ids=frozenset(instrument_ids),
     )
     data_client = BinanceDataClientConfig(
         api_key=api_key,
@@ -126,7 +143,8 @@ async def _run_live(settings: LiveSettings) -> None:
             environment=environment,
             instrument_provider=instrument_provider,
             futures_leverages={
-                BinanceSymbol(settings.market.symbol): settings.market.leverage,
+                BinanceSymbol(symbol): settings.market.leverage
+                for symbol in settings.market.symbols
             },
         )
 
@@ -138,16 +156,20 @@ async def _run_live(settings: LiveSettings) -> None:
         ),
     )
 
-    strategy = build_strategy(
-        settings.market,
-        settings.risk,
-        settings.strategy,
-        strategy_type=settings.strategy_type,
-        mean_reversion=settings.mean_reversion,
-        enable_trading=settings.enable_trading,
-        request_historical_bars=True,
-    )
-    node.trader.add_strategy(strategy)
+    # One strategy instance per symbol.
+    for symbol in settings.market.symbols:
+        strategy = build_strategy(
+            settings.market,
+            settings.risk,
+            settings.strategy,
+            strategy_type=settings.strategy_type,
+            mean_reversion=settings.mean_reversion,
+            regime_switch=settings.regime_switch,
+            enable_trading=settings.enable_trading,
+            request_historical_bars=True,
+            symbol=symbol,
+        )
+        node.trader.add_strategy(strategy)
 
     node.add_data_client_factory(BINANCE, BinanceLiveDataClientFactory)
     if settings.enable_trading:
@@ -159,8 +181,10 @@ async def _run_live(settings: LiveSettings) -> None:
         if settings.enable_trading
         else "SIGNAL-ONLY"
     )
+    symbols = ",".join(settings.market.symbols)
     print(
-        f"Starting NautilusTrader in {mode} mode | {instrument_id} | "
+        f"Starting NautilusTrader in {mode} mode | {symbols} | "
+        f"strategy={settings.strategy_type} | "
         f"leverage={settings.market.leverage}x. Press Ctrl+C to stop.",
     )
 
@@ -193,7 +217,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_down.add_argument("--config", default="config/research.yaml")
     p_down.set_defaults(func=cmd_download)
 
-    p_back = sub.add_parser("backtest", help="Run a backtest with fees/slippage")
+    p_back = sub.add_parser("backtest", help="Run backtests with fees/slippage")
     p_back.add_argument("--config", default="config/research.yaml")
     p_back.add_argument("--trader-id", default="BACKTESTER-001")
     p_back.set_defaults(func=cmd_backtest)
