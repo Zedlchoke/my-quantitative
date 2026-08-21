@@ -1,0 +1,81 @@
+# Research — mean-reversion on ETHUSDT only.
+# Top walk-forward combo (quick grid, 3 folds, 365d): meets_acceptance=true
+#   stop=1.5, TP=2.0, vhf=0.25, adx=20, vol=1.8 → exp +0.188, PF 1.16, 3/3 folds.
+# NOT the global default (live.yaml stays ema_atr). Use for ETH research + OOS checks.
+
+market:
+  account_type: USDT_FUTURES
+  symbols: [ETHUSDT]
+  base_currency: USDT
+  venue: BINANCE
+  contract_type: PERP
+  oms_type: NETTING
+  bar_step: 15
+  bar_aggregation: MINUTE
+  price_type: LAST
+  leverage: 3
+
+data:
+  catalog_path: ./catalog
+  environment: TESTNET
+  lookback_days: 365
+  start: null
+  end: null
+
+backtest:
+  start: null
+  end: null
+  starting_balance: "100000 USDT"
+  fee_model: maker_taker
+  fixed_fee: "1 USDT"
+  fill_model: one_tick_slippage
+  prob_fill_on_limit: 1.0
+  prob_slippage: 0.5
+  random_seed: 42
+
+strategy_type: mean_reversion
+
+strategy:
+  fast_ema_period: 20
+  slow_ema_period: 50
+  trend_ema_period: 200
+  atr_period: 14
+  history_days: 10
+
+mean_reversion:
+  bb_period: 20
+  bb_k: 2.0
+  rsi_period: 2
+  rsi_oversold: 10.0
+  rsi_overbought: 90.0
+  vhf_period: 28
+  vhf_max: 0.25
+  adx_period: 14
+  adx_max: 20.0
+  volume_sma_period: 20
+  volume_max_ratio: 1.8
+  atr_period: 14
+  atr_stop_multiple: 1.5
+  take_profit_multiple: 2.0
+  htf_trend_filter: true
+  htf_ema_period: 200
+  htf_minutes: 60
+  wyckoff_gate: true
+  history_days: 220
+
+risk:
+  risk_per_trade: 5
+  max_notional: 300
+  max_daily_loss: 20
+  max_trades_per_day: 4
+  cooldown_bars_after_loss: 4
+  circuit_breaker_losses: 4
+  circuit_breaker_pause_bars: 96
+  atr_stop_multiple: 1.5
+  allow_short: true
+  close_position_on_stop: true
+
+report:
+  output_dir: ./results
+  include_csv: true
+  include_json: true

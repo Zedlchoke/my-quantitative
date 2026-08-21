@@ -1,0 +1,71 @@
+# Research — volatility breakout ETH-only (markup Wyckoff leg).
+# FIXED params — not grid-searched on ETH. Walk-forward:
+#   python -m research.breakout_wf --folds 3
+
+market:
+  account_type: USDT_FUTURES
+  symbols: [ETHUSDT]
+  base_currency: USDT
+  venue: BINANCE
+  contract_type: PERP
+  oms_type: NETTING
+  bar_step: 15
+  bar_aggregation: MINUTE
+  price_type: LAST
+  leverage: 3
+
+data:
+  catalog_path: ./catalog
+  environment: TESTNET
+  lookback_days: 365
+  start: null
+  end: null
+
+backtest:
+  start: null
+  end: null
+  starting_balance: "100000 USDT"
+  fee_model: maker_taker
+  fixed_fee: "1 USDT"
+  fill_model: one_tick_slippage
+  prob_fill_on_limit: 1.0
+  prob_slippage: 0.5
+  random_seed: 42
+
+strategy_type: breakout
+
+strategy:
+  fast_ema_period: 20
+  slow_ema_period: 50
+  trend_ema_period: 200
+  atr_period: 14
+  history_days: 10
+
+breakout:
+  donchian_period: 20
+  adx_period: 14
+  adx_min: 25.0
+  volume_sma_period: 20
+  volume_min_ratio: 1.3
+  atr_period: 14
+  atr_stop_multiple: 2.0
+  take_profit_multiple: 2.0
+  wyckoff_markup_only: true
+  history_days: 220
+
+risk:
+  risk_per_trade: 5
+  max_notional: 300
+  max_daily_loss: 20
+  max_trades_per_day: 4
+  cooldown_bars_after_loss: 4
+  circuit_breaker_losses: 4
+  circuit_breaker_pause_bars: 96
+  atr_stop_multiple: 2.0
+  allow_short: false
+  close_position_on_stop: true
+
+report:
+  output_dir: ./results
+  include_csv: true
+  include_json: true

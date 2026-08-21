@@ -82,9 +82,12 @@ def write_reports(
     settings: ReportSettings,
     *,
     venue: str = "BINANCE",
+    subdir: str | None = None,
 ) -> list[Path]:
     """Write CSV / JSON report artifacts and return the list of written paths."""
     out_dir = Path(settings.output_dir)
+    if subdir:
+        out_dir = out_dir / subdir
     out_dir.mkdir(parents=True, exist_ok=True)
 
     written: list[Path] = []
@@ -123,7 +126,8 @@ def performance_report(
     settings: ReportSettings,
     *,
     venue: str = "BINANCE",
+    subdir: str | None = None,
 ) -> list[Path]:
     """Print a summary and write report artifacts."""
     print_summary(result)
-    return write_reports(engine, result, settings, venue=venue)
+    return write_reports(engine, result, settings, venue=venue, subdir=subdir)

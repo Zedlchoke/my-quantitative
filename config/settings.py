@@ -1,13 +1,12 @@
 """Typed settings for the crypto-futures trading system.
 
-The system is standardised on **Binance USD-M perpetual BTCUSDT-PERP** in
-**one-way / netting mode**, running on **Testnet / Demo** (no real money).
+The system is standardised on **Binance USD-M perpetuals** in **one-way / netting
+mode**, running on **Testnet / Demo** (no real money).
 
 ``research`` and ``live`` configurations are intentionally split into two YAML
 files so that backtest/data settings can never accidentally leak into a live
-session and vice-versa. The shared ``MarketSettings`` keeps the USD-M vs COIN-M
-choice in one place: switch ``account_type`` to ``COIN_FUTURES`` (and update
-``symbol``/``base_currency`` accordingly) when moving to COIN-M.
+session and vice-versa. ``MarketSettings`` keeps the USD-M vs COIN-M choice and
+the traded symbols in one place.
 """
 
 from __future__ import annotations
@@ -23,11 +22,11 @@ import yaml
 # --------------------------------------------------------------------------- #
 # Market / contract profile
 # --------------------------------------------------------------------------- #
-# Binance account type -> (base currency, default perpetual symbol). Keeping the
-# mapping here means switching USD-M <-> COIN-M is a config-only change.
+# Binance account type -> default perpetual symbols. USD-M uses USDT as the
+# shared base currency; COIN-M is per-symbol margin (BTC for BTCUSD, etc.).
 _ACCOUNT_PROFILES: dict[str, dict[str, str]] = {
-    "USDT_FUTURES": {"base_currency": "USDT", "symbol": "BTCUSDT"},
-    "COIN_FUTURES": {"base_currency": "BTC", "symbol": "BTCUSD"},
+    "USDT_FUTURES": {"base_currency": "USDT", "default_symbol": "BTCUSDT"},
+    "COIN_FUTURES": {"base_currency": "BTC", "default_symbol": "BTCUSD"},
 }
 
 
@@ -37,7 +36,7 @@ class MarketSettings:
 
     venue: str = "BINANCE"
     account_type: str = "USDT_FUTURES"  # USDT_FUTURES | COIN_FUTURES
-    symbol: str = "BTCUSDT"  # BTCUSDT (USD-M) | BTCUSD (COIN-M)
+    symbols: tuple[str, ...] = ("BTCUSDT",)  # e.g. BTCUSDT, ETHUSDT, SOLUSDT
     base_currency: str = "USDT"  # USDT (USD-M) | BTC (COIN-M)
     contract_type: str = "PERP"
     oms_type: str = "NETTING"  # one-way mode (netting, not hedging)
@@ -57,22 +56,20 @@ class MarketSettings:
             )
         values: dict[str, Any] = {
             "account_type": account_type,
-            "symbol": profile["symbol"],
+            "symbols": (profile["default_symbol"],),
             "base_currency": profile["base_currency"],
         }
         values.update(overrides)
         return cls(**values)
 
-    @property
-    def instrument_id(self) -> str:
+    def instrument_id(self, symbol: str) -> str:
         """Nautilus instrument ID, e.g. ``BTCUSDT-PERP.BINANCE``."""
-        return f"{self.symbol}-{self.contract_type}.{self.venue}"
+        return f"{symbol}-{self.contract_type}.{self.venue}"
 
-    @property
-    def bar_type(self) -> str:
+    def bar_type(self, symbol: str) -> str:
         """Standard external bar type, e.g. ``BTCUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL``."""
         return (
-            f"{self.instrument_id}-{self.bar_step}-{self.bar_aggregation}-"
+            f"{self.instrument_id(symbol)}-{self.bar_step}-{self.bar_aggregation}-"
             f"{self.price_type}-EXTERNAL"
         )
 
@@ -92,6 +89,11 @@ class RiskSettings:
     atr_stop_multiple: float = 2.0
     allow_short: bool = True
     close_position_on_stop: bool = True
+    risk_pct_per_trade: float | None = None
+    max_risk_per_trade_usdt: Decimal | None = None
+    max_daily_loss_pct: float | None = None
+    circuit_breaker_losses: int = 0
+    circuit_breaker_pause_bars: int = 96
 
     def validate(self) -> None:
         if self.risk_per_trade <= 0 or self.max_notional <= 0 or self.max_daily_loss <= 0:
@@ -100,6 +102,12 @@ class RiskSettings:
             raise ValueError("max_trades_per_day must be > 0")
         if self.atr_stop_multiple <= 0:
             raise ValueError("atr_stop_multiple must be > 0")
+        if self.risk_pct_per_trade is not None and self.risk_pct_per_trade <= 0:
+            raise ValueError("risk_pct_per_trade must be > 0 when set")
+        if self.max_daily_loss_pct is not None and self.max_daily_loss_pct <= 0:
+            raise ValueError("max_daily_loss_pct must be > 0 when set")
+        if self.circuit_breaker_losses < 0:
+            raise ValueError("circuit_breaker_losses must be >= 0")
 
 
 # --------------------------------------------------------------------------- #
@@ -133,14 +141,109 @@ class MeanReversionSettings:
     rsi_overbought: float = 90.0
     vhf_period: int = 28
     vhf_max: float = 0.35
+    adx_period: int = 14
+    adx_max: float = 25.0
+    volume_sma_period: int = 20
+    volume_max_ratio: float = 1.5
     atr_period: int = 14
+    atr_stop_multiple: float = 1.0  # stop distance frozen at entry
+    take_profit_multiple: float = 1.5  # reward:risk target
+    history_days: int = 10
+    htf_trend_filter: bool = False
+    htf_ema_period: int = 200
+    htf_minutes: int = 60
+    wyckoff_gate: bool = False
+    wyckoff_directional_bias: bool = False
+
+    def validate(self) -> None:
+        if self.wyckoff_directional_bias and not self.wyckoff_gate:
+            raise ValueError("wyckoff_directional_bias requires wyckoff_gate=true")
+        if self.bb_period <= 0 or self.rsi_period <= 0 or self.vhf_period <= 0:
+            raise ValueError("indicator periods must be > 0")
+        if self.adx_period <= 0 or self.volume_sma_period <= 0:
+            raise ValueError("adx_period and volume_sma_period must be > 0")
+        if not 0 <= self.rsi_oversold < self.rsi_overbought <= 100:
+            raise ValueError("RSI levels must satisfy 0 <= oversold < overbought <= 100")
+        if self.atr_stop_multiple <= 0:
+            raise ValueError("atr_stop_multiple must be > 0")
+        if self.take_profit_multiple <= 0:
+            raise ValueError("take_profit_multiple must be > 0")
+        if self.adx_max <= 0 or self.volume_max_ratio <= 0:
+            raise ValueError("adx_max and volume_max_ratio must be > 0")
+
+
+@dataclass(frozen=True)
+class RegimeSwitchSettings:
+    """Regime-switch strategy: trend (EMA-ATR) in trends, mean-reversion in ranges."""
+
+    # Trend leg (EMA-ATR)
+    fast_ema_period: int = 20
+    slow_ema_period: int = 50
+    trend_ema_period: int = 200
+    # Mean-reversion leg (Bollinger + RSI)
+    bb_period: int = 20
+    bb_k: float = 2.0
+    rsi_period: int = 2
+    rsi_oversold: float = 10.0
+    rsi_overbought: float = 90.0
+    # Regime filter (VHF): <= vhf_max => ranging, else trending
+    vhf_period: int = 28
+    vhf_max: float = 0.35
+    adx_period: int = 14
+    adx_max: float = 25.0
+    volume_sma_period: int = 20
+    volume_max_ratio: float = 1.5
+    # Stops / target
+    atr_period: int = 14
+    trend_stop_multiple: float = 2.0
+    mean_reversion_stop_multiple: float = 1.0
+    take_profit_multiple: float = 1.5
     history_days: int = 10
 
     def validate(self) -> None:
+        if not self.fast_ema_period < self.slow_ema_period < self.trend_ema_period:
+            raise ValueError("EMA periods must satisfy fast < slow < trend")
         if self.bb_period <= 0 or self.rsi_period <= 0 or self.vhf_period <= 0:
             raise ValueError("indicator periods must be > 0")
+        if self.adx_period <= 0 or self.volume_sma_period <= 0:
+            raise ValueError("adx_period and volume_sma_period must be > 0")
         if not 0 <= self.rsi_oversold < self.rsi_overbought <= 100:
             raise ValueError("RSI levels must satisfy 0 <= oversold < overbought <= 100")
+        if self.trend_stop_multiple <= 0 or self.mean_reversion_stop_multiple <= 0:
+            raise ValueError("stop multiples must be > 0")
+        if self.take_profit_multiple <= 0:
+            raise ValueError("take_profit_multiple must be > 0")
+        if self.adx_max <= 0 or self.volume_max_ratio <= 0:
+            raise ValueError("adx_max and volume_max_ratio must be > 0")
+
+
+@dataclass(frozen=True)
+class BreakoutSettings:
+    """Volatility breakout (markup-only research leg) — fixed TA thresholds."""
+
+    donchian_period: int = 20
+    adx_period: int = 14
+    adx_min: float = 25.0
+    volume_sma_period: int = 20
+    volume_min_ratio: float = 1.3
+    atr_period: int = 14
+    atr_stop_multiple: float = 2.0
+    take_profit_multiple: float = 2.0
+    wyckoff_markup_only: bool = True
+    history_days: int = 220
+
+    def validate(self) -> None:
+        if self.donchian_period <= 0 or self.adx_period <= 0:
+            raise ValueError("donchian_period and adx_period must be > 0")
+        if self.volume_sma_period <= 0:
+            raise ValueError("volume_sma_period must be > 0")
+        if self.adx_min <= 0 or self.volume_min_ratio <= 0:
+            raise ValueError("adx_min and volume_min_ratio must be > 0")
+        if self.atr_stop_multiple <= 0 or self.take_profit_multiple <= 0:
+            raise ValueError("stop/TP multiples must be > 0")
+
+
+STRATEGY_TYPES = ("ema_atr", "mean_reversion", "regime_switch", "breakout")
 
 
 # --------------------------------------------------------------------------- #
@@ -183,15 +286,27 @@ class ResearchSettings:
     data: DataDownloadSettings
     backtest: BacktestSettings
     report: ReportSettings
-    strategy_type: str = "ema_atr"  # ema_atr | mean_reversion
+    strategy_type: str = "ema_atr"  # ema_atr | mean_reversion | regime_switch | breakout
     mean_reversion: MeanReversionSettings = None  # type: ignore[assignment]
+    regime_switch: RegimeSwitchSettings = None  # type: ignore[assignment]
+    breakout: BreakoutSettings = None  # type: ignore[assignment]
 
     def validate(self) -> None:
         self.risk.validate()
         self.strategy.validate()
-        if self.strategy_type == "mean_reversion" and self.mean_reversion is not None:
+        if self.strategy_type == "mean_reversion":
+            if self.mean_reversion is None:
+                raise ValueError("mean_reversion settings are required")
             self.mean_reversion.validate()
-        elif self.strategy_type not in ("ema_atr", "mean_reversion"):
+        elif self.strategy_type == "regime_switch":
+            if self.regime_switch is None:
+                raise ValueError("regime_switch settings are required")
+            self.regime_switch.validate()
+        elif self.strategy_type == "breakout":
+            if self.breakout is None:
+                raise ValueError("breakout settings are required")
+            self.breakout.validate()
+        elif self.strategy_type not in STRATEGY_TYPES:
             raise ValueError(f"Unknown strategy_type: {self.strategy_type!r}")
         if not (1 <= self.market.leverage <= 125):
             raise ValueError("leverage must be between 1 and 125")
@@ -209,8 +324,10 @@ class LiveSettings:
     market: MarketSettings = None  # type: ignore[assignment]
     risk: RiskSettings = None  # type: ignore[assignment]
     strategy: StrategySettings = None  # type: ignore[assignment]
-    strategy_type: str = "ema_atr"  # ema_atr | mean_reversion
+    strategy_type: str = "ema_atr"  # ema_atr | mean_reversion | regime_switch
     mean_reversion: MeanReversionSettings = None  # type: ignore[assignment]
+    regime_switch: RegimeSwitchSettings = None  # type: ignore[assignment]
+    breakout: BreakoutSettings = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         if self.environment == "LIVE":
@@ -223,9 +340,19 @@ class LiveSettings:
     def validate(self) -> None:
         self.risk.validate()
         self.strategy.validate()
-        if self.strategy_type == "mean_reversion" and self.mean_reversion is not None:
+        if self.strategy_type == "mean_reversion":
+            if self.mean_reversion is None:
+                raise ValueError("mean_reversion settings are required")
             self.mean_reversion.validate()
-        elif self.strategy_type not in ("ema_atr", "mean_reversion"):
+        elif self.strategy_type == "regime_switch":
+            if self.regime_switch is None:
+                raise ValueError("regime_switch settings are required")
+            self.regime_switch.validate()
+        elif self.strategy_type == "breakout":
+            if self.breakout is None:
+                raise ValueError("breakout settings are required")
+            self.breakout.validate()
+        elif self.strategy_type not in STRATEGY_TYPES:
             raise ValueError(f"Unknown strategy_type: {self.strategy_type!r}")
 
 
@@ -245,10 +372,16 @@ def _build_market(data: dict[str, Any]) -> MarketSettings:
             f"Unknown account_type {account_type!r}; "
             f"expected one of {sorted(_ACCOUNT_PROFILES)}",
         )
+
+    raw_symbols = data.get("symbols", [data.get("symbol") or profile["default_symbol"]])
+    if isinstance(raw_symbols, str):
+        raw_symbols = [raw_symbols]
+    symbols = tuple(str(s) for s in raw_symbols)
+
     return MarketSettings(
         venue=data.get("venue", "BINANCE"),
         account_type=account_type,
-        symbol=data.get("symbol") or profile["symbol"],
+        symbols=symbols,
         base_currency=data.get("base_currency") or profile["base_currency"],
         contract_type=data.get("contract_type", "PERP"),
         oms_type=data.get("oms_type", "NETTING"),
@@ -260,6 +393,7 @@ def _build_market(data: dict[str, Any]) -> MarketSettings:
 
 
 def _build_risk(data: dict[str, Any]) -> RiskSettings:
+    max_risk = data.get("max_risk_per_trade_usdt")
     return RiskSettings(
         risk_per_trade=Decimal(str(data.get("risk_per_trade", "5"))),
         max_notional=Decimal(str(data.get("max_notional", "300"))),
@@ -269,6 +403,11 @@ def _build_risk(data: dict[str, Any]) -> RiskSettings:
         atr_stop_multiple=float(data.get("atr_stop_multiple", 2.0)),
         allow_short=bool(data.get("allow_short", True)),
         close_position_on_stop=bool(data.get("close_position_on_stop", True)),
+        risk_pct_per_trade=data.get("risk_pct_per_trade"),
+        max_risk_per_trade_usdt=Decimal(str(max_risk)) if max_risk is not None else None,
+        max_daily_loss_pct=data.get("max_daily_loss_pct"),
+        circuit_breaker_losses=int(data.get("circuit_breaker_losses", 0)),
+        circuit_breaker_pause_bars=int(data.get("circuit_breaker_pause_bars", 96)),
     )
 
 
@@ -291,8 +430,58 @@ def _build_mean_reversion(data: dict[str, Any]) -> MeanReversionSettings:
         rsi_overbought=float(data.get("rsi_overbought", 90.0)),
         vhf_period=int(data.get("vhf_period", 28)),
         vhf_max=float(data.get("vhf_max", 0.35)),
+        adx_period=int(data.get("adx_period", 14)),
+        adx_max=float(data.get("adx_max", 25.0)),
+        volume_sma_period=int(data.get("volume_sma_period", 20)),
+        volume_max_ratio=float(data.get("volume_max_ratio", 1.5)),
         atr_period=int(data.get("atr_period", 14)),
+        atr_stop_multiple=float(data.get("atr_stop_multiple", 1.0)),
+        take_profit_multiple=float(data.get("take_profit_multiple", 1.5)),
         history_days=int(data.get("history_days", 10)),
+        htf_trend_filter=bool(data.get("htf_trend_filter", False)),
+        htf_ema_period=int(data.get("htf_ema_period", 200)),
+        htf_minutes=int(data.get("htf_minutes", 60)),
+        wyckoff_gate=bool(data.get("wyckoff_gate", False)),
+        wyckoff_directional_bias=bool(data.get("wyckoff_directional_bias", False)),
+    )
+
+
+def _build_regime_switch(data: dict[str, Any]) -> RegimeSwitchSettings:
+    return RegimeSwitchSettings(
+        fast_ema_period=int(data.get("fast_ema_period", 20)),
+        slow_ema_period=int(data.get("slow_ema_period", 50)),
+        trend_ema_period=int(data.get("trend_ema_period", 200)),
+        bb_period=int(data.get("bb_period", 20)),
+        bb_k=float(data.get("bb_k", 2.0)),
+        rsi_period=int(data.get("rsi_period", 2)),
+        rsi_oversold=float(data.get("rsi_oversold", 10.0)),
+        rsi_overbought=float(data.get("rsi_overbought", 90.0)),
+        vhf_period=int(data.get("vhf_period", 28)),
+        vhf_max=float(data.get("vhf_max", 0.35)),
+        adx_period=int(data.get("adx_period", 14)),
+        adx_max=float(data.get("adx_max", 25.0)),
+        volume_sma_period=int(data.get("volume_sma_period", 20)),
+        volume_max_ratio=float(data.get("volume_max_ratio", 1.5)),
+        atr_period=int(data.get("atr_period", 14)),
+        trend_stop_multiple=float(data.get("trend_stop_multiple", 2.0)),
+        mean_reversion_stop_multiple=float(data.get("mean_reversion_stop_multiple", 1.0)),
+        take_profit_multiple=float(data.get("take_profit_multiple", 1.5)),
+        history_days=int(data.get("history_days", 10)),
+    )
+
+
+def _build_breakout(data: dict[str, Any]) -> BreakoutSettings:
+    return BreakoutSettings(
+        donchian_period=int(data.get("donchian_period", 20)),
+        adx_period=int(data.get("adx_period", 14)),
+        adx_min=float(data.get("adx_min", 25.0)),
+        volume_sma_period=int(data.get("volume_sma_period", 20)),
+        volume_min_ratio=float(data.get("volume_min_ratio", 1.3)),
+        atr_period=int(data.get("atr_period", 14)),
+        atr_stop_multiple=float(data.get("atr_stop_multiple", 2.0)),
+        take_profit_multiple=float(data.get("take_profit_multiple", 2.0)),
+        wyckoff_markup_only=bool(data.get("wyckoff_markup_only", True)),
+        history_days=int(data.get("history_days", 220)),
     )
 
 
@@ -308,6 +497,8 @@ def load_research_config(path: str | Path) -> ResearchSettings:
         report=ReportSettings(**data.get("report", {})),
         strategy_type=data.get("strategy_type", "ema_atr"),
         mean_reversion=_build_mean_reversion(data.get("mean_reversion", {})),
+        regime_switch=_build_regime_switch(data.get("regime_switch", {})),
+        breakout=_build_breakout(data.get("breakout", {})),
     )
     settings.validate()
     return settings
@@ -326,6 +517,8 @@ def load_live_config(path: str | Path) -> LiveSettings:
         strategy=_build_strategy(data.get("strategy", {})),
         strategy_type=data.get("strategy_type", "ema_atr"),
         mean_reversion=_build_mean_reversion(data.get("mean_reversion", {})),
+        regime_switch=_build_regime_switch(data.get("regime_switch", {})),
+        breakout=_build_breakout(data.get("breakout", {})),
     )
     settings.validate()
     return settings

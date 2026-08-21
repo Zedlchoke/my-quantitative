@@ -1,7 +1,8 @@
-"""Backtest engine builder with fee + slippage modelling."""
+"""Backtest engine builder with fee + slippage modelling and multi-symbol runs."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal
 
 from nautilus_trader.adapters.binance.common.types import BinanceBar
@@ -24,13 +25,24 @@ from nautilus_trader.model.objects import Currency
 from nautilus_trader.model.objects import Money
 
 from config.settings import BacktestSettings
+from config.settings import BreakoutSettings
 from config.settings import MarketSettings
 from config.settings import MeanReversionSettings
+from config.settings import RegimeSwitchSettings
 from config.settings import RiskSettings
 from config.settings import StrategySettings
 from data.catalog import Catalog
 from risk.limits import RiskLimits
 from strategy_factory import build_strategy
+
+
+@dataclass
+class SymbolBacktest:
+    """Result of backtesting one symbol."""
+
+    symbol: str
+    engine: BacktestEngine
+    result: BacktestResult
 
 
 def build_fee_model(settings: BacktestSettings) -> FeeModel:
@@ -57,37 +69,66 @@ def build_fill_model(settings: BacktestSettings):
     raise ValueError(f"Unknown fill_model: {settings.fill_model!r}")
 
 
-def run_backtest(
+def _attach_risk_limits(result: BacktestResult, risk: RiskSettings, leverage: int) -> None:
+    result.risk_limits = RiskLimits(  # type: ignore[attr-defined]
+        risk_per_trade=risk.risk_per_trade,
+        max_notional=risk.max_notional,
+        max_daily_loss=risk.max_daily_loss,
+        max_trades_per_day=risk.max_trades_per_day,
+        cooldown_bars_after_loss=risk.cooldown_bars_after_loss,
+        atr_stop_multiple=risk.atr_stop_multiple,
+        leverage=leverage,
+        risk_pct_per_trade=risk.risk_pct_per_trade,
+        max_risk_per_trade_usdt=risk.max_risk_per_trade_usdt,
+        max_daily_loss_pct=risk.max_daily_loss_pct,
+        circuit_breaker_losses=risk.circuit_breaker_losses,
+        circuit_breaker_pause_bars=risk.circuit_breaker_pause_bars,
+    )
+
+
+def run_backtest_for_symbol(
     market: MarketSettings,
     risk: RiskSettings,
     strategy: StrategySettings,
     backtest: BacktestSettings,
     catalog: Catalog,
     *,
-    strategy_type: str = "ema_atr",
-    mean_reversion: MeanReversionSettings | None = None,
+    symbol: str,
+    strategy_type: str,
+    mean_reversion: MeanReversionSettings | None,
+    regime_switch: RegimeSwitchSettings | None,
+    breakout: BreakoutSettings | None = None,
     trader_id: str = "BACKTESTER-001",
-) -> tuple[BacktestEngine, BacktestResult]:
-    """Run a single backtest and return the (still-open) engine and result."""
-    instrument_id = InstrumentId.from_str(market.instrument_id)
-    bar_type = BarType.from_str(market.bar_type)
+    log_level: str = "INFO",
+    instrument=None,
+    bars: list[BinanceBar] | None = None,
+) -> SymbolBacktest:
+    """Run a single-symbol backtest and return the (still-open) engine + result.
 
-    instrument = catalog.instrument(instrument_id)
+    ``instrument`` / ``bars`` may be supplied to reuse pre-loaded data across many
+    runs (e.g. in a grid search), skipping the catalog read + volume normalisation.
+    """
+    instrument_id = InstrumentId.from_str(market.instrument_id(symbol))
+    bar_type = BarType.from_str(market.bar_type(symbol))
+
     if instrument is None:
-        raise ValueError(
-            f"Instrument {instrument_id} not found in catalog at {catalog.path}. "
-            "Run the download pipeline first.",
-        )
+        instrument = catalog.instrument(instrument_id)
+        if instrument is None:
+            raise ValueError(
+                f"Instrument {instrument_id} not found in catalog at {catalog.path}. "
+                "Run the download pipeline first.",
+            )
 
-    bars: list[BinanceBar] = catalog.bars(bar_type)
-    if not bars:
-        raise ValueError(f"No bars for {bar_type} in catalog at {catalog.path}")
+    if bars is None:
+        bars = catalog.bars(bar_type)
+        if not bars:
+            raise ValueError(f"No bars for {bar_type} in catalog at {catalog.path}")
 
     base_currency = Currency.from_str(market.base_currency)
     engine = BacktestEngine(
         config=BacktestEngineConfig(
-            trader_id=trader_id,
-            logging=LoggingConfig(log_level="INFO", print_config=False),
+            trader_id=f"{trader_id}-{symbol}",
+            logging=LoggingConfig(log_level=log_level, print_config=False),
         ),
     )
 
@@ -112,24 +153,50 @@ def run_backtest(
             strategy,
             strategy_type=strategy_type,
             mean_reversion=mean_reversion,
+            regime_switch=regime_switch,
+            breakout=breakout,
             enable_trading=True,
             request_historical_bars=False,
+            symbol=symbol,
         ),
     )
 
     engine.run(start=backtest.start, end=backtest.end)
     result = engine.get_result()
+    _attach_risk_limits(result, risk, market.leverage)
 
-    # Re-export the strategy's realised risk profile for the report layer.
-    limits = RiskLimits(
-        risk_per_trade=risk.risk_per_trade,
-        max_notional=risk.max_notional,
-        max_daily_loss=risk.max_daily_loss,
-        max_trades_per_day=risk.max_trades_per_day,
-        cooldown_bars_after_loss=risk.cooldown_bars_after_loss,
-        atr_stop_multiple=risk.atr_stop_multiple,
-        leverage=market.leverage,
-    )
-    result.risk_limits = limits  # type: ignore[attr-defined]
+    return SymbolBacktest(symbol=symbol, engine=engine, result=result)
 
-    return engine, result
+
+def run_backtest(
+    market: MarketSettings,
+    risk: RiskSettings,
+    strategy: StrategySettings,
+    backtest: BacktestSettings,
+    catalog: Catalog,
+    *,
+    strategy_type: str = "ema_atr",
+    mean_reversion: MeanReversionSettings | None = None,
+    regime_switch: RegimeSwitchSettings | None = None,
+    breakout: BreakoutSettings | None = None,
+    trader_id: str = "BACKTESTER-001",
+) -> list[SymbolBacktest]:
+    """Run a backtest for every symbol in ``market.symbols``."""
+    runs: list[SymbolBacktest] = []
+    for symbol in market.symbols:
+        runs.append(
+            run_backtest_for_symbol(
+                market,
+                risk,
+                strategy,
+                backtest,
+                catalog,
+                symbol=symbol,
+                strategy_type=strategy_type,
+                mean_reversion=mean_reversion,
+                regime_switch=regime_switch,
+                breakout=breakout,
+                trader_id=trader_id,
+            ),
+        )
+    return runs

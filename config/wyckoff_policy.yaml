@@ -1,0 +1,38 @@
+# Wyckoff phase → strategy + risk policy (HAND-CRAFTED — not optimized on ETH).
+# Used for live risk scaling and research; thresholds live in regime_wyckoff.WyckoffConfig.
+
+phases:
+  accumulation:
+    strategy: mean_reversion
+    bias: long_only
+    risk_pct: 0.75
+    htf_filter: long_relaxed
+    circuit_breaker_losses: 4
+
+  markup:
+    strategy: ema_atr
+    bias: long_only
+    risk_pct: 0.5
+    mean_reversion: off
+    notes: MR shorts lose in uptrends; trend-follow long or flat.
+
+  distribution:
+    strategy: mean_reversion
+    bias: short_only
+    risk_pct: 0.75
+    htf_filter: strict
+
+  markdown:
+    strategy: flat
+    bias: none
+    risk_pct: 0.25
+    mean_reversion: off
+    circuit_breaker_losses: 3
+    circuit_breaker_pause_bars: 192  # 48h
+
+  transition:
+    strategy: mean_reversion
+    bias: both
+    risk_pct: 0.5
+    htf_filter: strict
+    notes: Half size; prefer signal-only until phase clarifies.

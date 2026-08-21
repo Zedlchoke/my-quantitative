@@ -2,7 +2,7 @@
 
 Downloads instrument definitions and external bars from Binance (USD-M/COIN-M
 perpetual, Testnet/Demo by default) into a local ``ParquetDataCatalog`` for later
-backtesting.
+backtesting. Supports multiple symbols in one pass.
 """
 
 from __future__ import annotations
@@ -46,17 +46,19 @@ def download_historical_data(
     data: DataDownloadSettings,
     client_id: str = BINANCE,
 ) -> dict[str, object]:
-    """Download instrument + bars into ``data.catalog_path``.
+    """Download instrument + bars for every symbol in ``market.symbols``.
 
-    Returns a summary dict with the number of bars written.
+    Returns a summary dict with per-symbol bar counts.
     """
-    instrument_id = InstrumentId.from_str(market.instrument_id)
-    bar_type = BarType.from_str(market.bar_type)
+    instrument_ids = [
+        InstrumentId.from_str(market.instrument_id(symbol)) for symbol in market.symbols
+    ]
+    bar_types = [BarType.from_str(market.bar_type(symbol)) for symbol in market.symbols]
     environment = _binance_environment(data.environment)
 
     provider = BinanceInstrumentProviderConfig(
         load_all=False,
-        load_ids=frozenset({instrument_id}),
+        load_ids=frozenset(instrument_ids),
     )
     data_config = BinanceDataClientConfig(
         account_type=_binance_account_type(market.account_type),
@@ -80,7 +82,7 @@ def download_historical_data(
     bclient = next(
         c for c in engine.kernel.data_engine._clients.values() if str(c.id) == client_id
     )
-    bclient._instrument_provider.load_ids([instrument_id])
+    bclient._instrument_provider.load_ids(instrument_ids)
 
     # Register a directly-constructed catalog: `DataCatalogConfig.as_catalog()`
     # percent-encodes spaces in Windows paths and breaks writes.
@@ -98,27 +100,33 @@ def download_historical_data(
     )
 
     cid = ClientId(client_id)
-    node.download_data("request_instrument", instrument_id=instrument_id, client_id=cid)
-    node.download_data(
-        "request_bars",
-        bar_type=bar_type,
-        start=start,
-        end=end,
-        client_id=cid,
-    )
+    for instrument_id, bar_type in zip(instrument_ids, bar_types, strict=True):
+        node.download_data("request_instrument", instrument_id=instrument_id, client_id=cid)
+        try:
+            node.download_data(
+                "request_bars",
+                bar_type=bar_type,
+                start=start,
+                end=end,
+                client_id=cid,
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Re-downloading a symbol that already has bars in the catalog raises
+            # a "non-disjoint intervals" error; treat it as already-cached.
+            if "non-disjoint" in str(exc):
+                print(f"  {instrument_id.symbol}: bars already cached, skipping")
+                continue
+            raise
 
     catalog = ParquetDataCatalog(path=data.catalog_path)
-    bars = catalog.query(
-        data_cls=BinanceBar,
-        identifiers=[str(bar_type)],
-    )
-    instruments = catalog.instruments(instrument_ids=[str(instrument_id)])
+    per_symbol: dict[str, object] = {}
+    for symbol, bar_type in zip(market.symbols, bar_types, strict=True):
+        bars = catalog.query(data_cls=BinanceBar, identifiers=[str(bar_type)])
+        per_symbol[symbol] = {"bars_written": len(bars), "bar_type": str(bar_type)}
 
     return {
-        "instrument_id": str(instrument_id),
-        "bar_type": str(bar_type),
-        "bars_written": len(bars),
-        "instruments_written": len(instruments),
+        "symbols": list(market.symbols),
         "start": str(start),
         "end": str(end),
+        "per_symbol": per_symbol,
     }
