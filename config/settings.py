@@ -12,6 +12,7 @@ the traded symbols in one place.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -110,6 +111,35 @@ class RiskSettings:
             raise ValueError("circuit_breaker_losses must be >= 0")
 
 
+@dataclass(frozen=True)
+class PortfolioRiskSettings:
+    """Account-wide limits shared by every symbol strategy."""
+
+    enabled: bool = False
+    max_gross_notional: Decimal = Decimal("1200")
+    max_portfolio_risk_pct: float = 3.0
+    max_concurrent_positions: int = 4
+    max_positions_per_cluster: int = 2
+    max_daily_loss_pct: float = 2.0
+    circuit_breaker_losses: int = 6
+    clusters: dict[str, str] = field(default_factory=dict)
+    asset_classes: dict[str, str] = field(default_factory=dict)
+
+    def validate(self) -> None:
+        if not self.enabled:
+            return
+        from risk.portfolio import PortfolioRiskLimits
+
+        PortfolioRiskLimits(
+            max_gross_notional=self.max_gross_notional,
+            max_portfolio_risk_pct=self.max_portfolio_risk_pct,
+            max_concurrent_positions=self.max_concurrent_positions,
+            max_positions_per_cluster=self.max_positions_per_cluster,
+            max_daily_loss_pct=self.max_daily_loss_pct,
+            circuit_breaker_losses=self.circuit_breaker_losses,
+        ).validate()
+
+
 # --------------------------------------------------------------------------- #
 # Strategy parameters
 # --------------------------------------------------------------------------- #
@@ -154,6 +184,9 @@ class MeanReversionSettings:
     htf_minutes: int = 60
     wyckoff_gate: bool = False
     wyckoff_directional_bias: bool = False
+    tradfi_session_filter: bool = False
+    tradfi_market_type: str = "EQUITY"
+    tradfi_allowed_sessions: tuple[str, ...] = ("REGULAR",)
 
     def validate(self) -> None:
         if self.wyckoff_directional_bias and not self.wyckoff_gate:
@@ -260,6 +293,7 @@ class DataDownloadSettings:
 
 @dataclass(frozen=True)
 class BacktestSettings:
+    mode: str = "per_symbol"  # per_symbol | portfolio
     start: str | None = None
     end: str | None = None
     starting_balance: str = "100000 USDT"
@@ -269,6 +303,10 @@ class BacktestSettings:
     prob_fill_on_limit: float = 1.0
     prob_slippage: float = 0.0
     random_seed: int | None = 42
+
+    def validate(self) -> None:
+        if self.mode not in {"per_symbol", "portfolio"}:
+            raise ValueError("backtest.mode must be per_symbol or portfolio")
 
 
 @dataclass(frozen=True)
@@ -286,6 +324,7 @@ class ResearchSettings:
     data: DataDownloadSettings
     backtest: BacktestSettings
     report: ReportSettings
+    portfolio_risk: PortfolioRiskSettings = field(default_factory=PortfolioRiskSettings)
     strategy_type: str = "ema_atr"  # ema_atr | mean_reversion | regime_switch | breakout
     mean_reversion: MeanReversionSettings = None  # type: ignore[assignment]
     regime_switch: RegimeSwitchSettings = None  # type: ignore[assignment]
@@ -294,6 +333,8 @@ class ResearchSettings:
     def validate(self) -> None:
         self.risk.validate()
         self.strategy.validate()
+        self.backtest.validate()
+        self.portfolio_risk.validate()
         if self.strategy_type == "mean_reversion":
             if self.mean_reversion is None:
                 raise ValueError("mean_reversion settings are required")
@@ -328,18 +369,20 @@ class LiveSettings:
     mean_reversion: MeanReversionSettings = None  # type: ignore[assignment]
     regime_switch: RegimeSwitchSettings = None  # type: ignore[assignment]
     breakout: BreakoutSettings = None  # type: ignore[assignment]
+    portfolio_risk: PortfolioRiskSettings = field(default_factory=PortfolioRiskSettings)
 
     def __post_init__(self) -> None:
-        if self.environment == "LIVE":
-            # Hard safety guard: the system is standardised on Testnet/Demo.
+        if self.environment == "LIVE" and self.enable_trading:
+            # Public production data is allowed in signal-only mode; execution is not.
             raise ValueError(
-                "LIVE environment is disabled by default (no real money). "
-                "Use TESTNET or DEMO.",
+                "LIVE execution is disabled (no real money). Use LIVE only with "
+                "enable_trading=false, or use TESTNET/DEMO for execution tests.",
             )
 
     def validate(self) -> None:
         self.risk.validate()
         self.strategy.validate()
+        self.portfolio_risk.validate()
         if self.strategy_type == "mean_reversion":
             if self.mean_reversion is None:
                 raise ValueError("mean_reversion settings are required")
@@ -411,6 +454,20 @@ def _build_risk(data: dict[str, Any]) -> RiskSettings:
     )
 
 
+def _build_portfolio_risk(data: dict[str, Any]) -> PortfolioRiskSettings:
+    return PortfolioRiskSettings(
+        enabled=bool(data.get("enabled", False)),
+        max_gross_notional=Decimal(str(data.get("max_gross_notional", "1200"))),
+        max_portfolio_risk_pct=float(data.get("max_portfolio_risk_pct", 3.0)),
+        max_concurrent_positions=int(data.get("max_concurrent_positions", 4)),
+        max_positions_per_cluster=int(data.get("max_positions_per_cluster", 2)),
+        max_daily_loss_pct=float(data.get("max_daily_loss_pct", 2.0)),
+        circuit_breaker_losses=int(data.get("circuit_breaker_losses", 6)),
+        clusters={str(k): str(v) for k, v in data.get("clusters", {}).items()},
+        asset_classes={str(k): str(v) for k, v in data.get("asset_classes", {}).items()},
+    )
+
+
 def _build_strategy(data: dict[str, Any]) -> StrategySettings:
     return StrategySettings(
         fast_ema_period=int(data.get("fast_ema_period", 20)),
@@ -443,6 +500,9 @@ def _build_mean_reversion(data: dict[str, Any]) -> MeanReversionSettings:
         htf_minutes=int(data.get("htf_minutes", 60)),
         wyckoff_gate=bool(data.get("wyckoff_gate", False)),
         wyckoff_directional_bias=bool(data.get("wyckoff_directional_bias", False)),
+        tradfi_session_filter=bool(data.get("tradfi_session_filter", False)),
+        tradfi_market_type=str(data.get("tradfi_market_type", "EQUITY")),
+        tradfi_allowed_sessions=tuple(data.get("tradfi_allowed_sessions", ["REGULAR"])),
     )
 
 
@@ -495,6 +555,7 @@ def load_research_config(path: str | Path) -> ResearchSettings:
         data=DataDownloadSettings(**data.get("data", {})),
         backtest=BacktestSettings(**data.get("backtest", {})),
         report=ReportSettings(**data.get("report", {})),
+        portfolio_risk=_build_portfolio_risk(data.get("portfolio_risk", {})),
         strategy_type=data.get("strategy_type", "ema_atr"),
         mean_reversion=_build_mean_reversion(data.get("mean_reversion", {})),
         regime_switch=_build_regime_switch(data.get("regime_switch", {})),
@@ -519,6 +580,7 @@ def load_live_config(path: str | Path) -> LiveSettings:
         mean_reversion=_build_mean_reversion(data.get("mean_reversion", {})),
         regime_switch=_build_regime_switch(data.get("regime_switch", {})),
         breakout=_build_breakout(data.get("breakout", {})),
+        portfolio_risk=_build_portfolio_risk(data.get("portfolio_risk", {})),
     )
     settings.validate()
     return settings

@@ -33,6 +33,7 @@ from regime import VolumeSMA
 from regime import is_ranging
 from regime_wyckoff import WyckoffDailyTracker
 from regime_wyckoff import WyckoffPhase
+from data.tradfi import TradfiSessionGate
 from regime_wyckoff import wyckoff_allows_entries
 from regime_wyckoff import wyckoff_allows_long
 from regime_wyckoff import wyckoff_allows_short
@@ -59,6 +60,7 @@ class MeanReversionStrategyConfig(BaseFuturesStrategyConfig, frozen=True):
     htf_minutes: PositiveInt = 60
     wyckoff_gate: bool = False
     wyckoff_directional_bias: bool = False
+    tradfi_session_filter: bool = False
 
 
 class MeanReversionStrategy(BaseFuturesStrategy):
@@ -91,12 +93,16 @@ class MeanReversionStrategy(BaseFuturesStrategy):
         )
         self.wyckoff = WyckoffDailyTracker() if config.wyckoff_gate else None
         self._wyckoff_phase = WyckoffPhase.TRANSITION
+        self.tradfi_session_gate: TradfiSessionGate | None = None
 
         self.entry_price: float | None = None
         self.stop_distance: float | None = None
 
     def indicators(self) -> list:
         return [self.bb, self.rsi, self.vhf, self.atr]
+
+    def set_tradfi_session_gate(self, gate: TradfiSessionGate | None) -> None:
+        self.tradfi_session_gate = gate
 
     def on_bar(self, bar: Bar) -> None:
         self._roll_trading_day()
@@ -151,6 +157,9 @@ class MeanReversionStrategy(BaseFuturesStrategy):
                 self._submit_exit("ATR stop", close)
 
         elif self._can_open_position() and not self._has_active_order() and in_range:
+            if self.config.tradfi_session_filter:
+                if self.tradfi_session_gate is None or not self.tradfi_session_gate.allows(bar.ts_event):
+                    return
             risk_scale = 1.0
             allow_long = True
             allow_short = True

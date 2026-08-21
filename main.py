@@ -38,6 +38,7 @@ from nautilus_trader.live.node import TradingNode
 from nautilus_trader.model.identifiers import InstrumentId
 
 from backtest.engine import run_backtest
+from backtest.engine import run_portfolio_backtest
 from config.settings import LiveSettings
 from config.settings import load_live_config
 from config.settings import load_research_config
@@ -75,17 +76,43 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     settings = load_research_config(args.config)
     catalog = Catalog(settings.data.catalog_path)
 
+    common_kwargs = dict(
+        strategy_type=settings.strategy_type,
+        mean_reversion=settings.mean_reversion,
+        regime_switch=settings.regime_switch,
+        breakout=settings.breakout,
+        trader_id=args.trader_id,
+    )
+    if settings.backtest.mode == "portfolio":
+        run = run_portfolio_backtest(
+            settings.market,
+            settings.risk,
+            settings.strategy,
+            settings.backtest,
+            catalog,
+            portfolio_risk=settings.portfolio_risk,
+            **common_kwargs,
+        )
+        print(f"\n===== PORTFOLIO: {','.join(run.symbols)} =====")
+        try:
+            written = performance_report(
+                run.engine,
+                run.result,
+                settings.report,
+                subdir="portfolio",
+            )
+        finally:
+            run.engine.dispose()
+        print(f"\nReport artifacts: {[str(p) for p in written]}")
+        return 0
+
     runs = run_backtest(
         settings.market,
         settings.risk,
         settings.strategy,
         settings.backtest,
         catalog,
-        strategy_type=settings.strategy_type,
-        mean_reversion=settings.mean_reversion,
-        regime_switch=settings.regime_switch,
-        breakout=settings.breakout,
-        trader_id=args.trader_id,
+        **common_kwargs,
     )
 
     written_all: list[str] = []
@@ -157,7 +184,37 @@ async def _run_live(settings: LiveSettings) -> None:
         ),
     )
 
-    # One strategy instance per symbol.
+    tradfi_gate = None
+    if settings.mean_reversion.tradfi_session_filter:
+        from data.tradfi import TradfiSessionGate
+        from data.tradfi import fetch_trading_schedule
+
+        schedule = fetch_trading_schedule()
+        tradfi_gate = TradfiSessionGate.from_payload(
+            schedule,
+            market_type=settings.mean_reversion.tradfi_market_type,
+            allowed_sessions=settings.mean_reversion.tradfi_allowed_sessions,
+        )
+
+    portfolio_manager = None
+    if settings.portfolio_risk.enabled:
+        from risk.portfolio import PortfolioRiskLimits
+        from risk.portfolio import PortfolioRiskManager
+
+        portfolio_manager = PortfolioRiskManager(
+            PortfolioRiskLimits(
+                max_gross_notional=settings.portfolio_risk.max_gross_notional,
+                max_portfolio_risk_pct=settings.portfolio_risk.max_portfolio_risk_pct,
+                max_concurrent_positions=settings.portfolio_risk.max_concurrent_positions,
+                max_positions_per_cluster=settings.portfolio_risk.max_positions_per_cluster,
+                max_daily_loss_pct=settings.portfolio_risk.max_daily_loss_pct,
+                circuit_breaker_losses=settings.portfolio_risk.circuit_breaker_losses,
+            ),
+            clusters=settings.portfolio_risk.clusters,
+            asset_classes=settings.portfolio_risk.asset_classes,
+        )
+
+    # One strategy instance per symbol, sharing the account-wide risk manager.
     for symbol in settings.market.symbols:
         strategy = build_strategy(
             settings.market,
@@ -171,6 +228,9 @@ async def _run_live(settings: LiveSettings) -> None:
             request_historical_bars=True,
             symbol=symbol,
         )
+        strategy.set_portfolio_risk_manager(portfolio_manager)
+        if hasattr(strategy, "set_tradfi_session_gate"):
+            strategy.set_tradfi_session_gate(tradfi_gate)
         node.trader.add_strategy(strategy)
 
     node.add_data_client_factory(BINANCE, BinanceLiveDataClientFactory)

@@ -28,11 +28,14 @@ from config.settings import BacktestSettings
 from config.settings import BreakoutSettings
 from config.settings import MarketSettings
 from config.settings import MeanReversionSettings
+from config.settings import PortfolioRiskSettings
 from config.settings import RegimeSwitchSettings
 from config.settings import RiskSettings
 from config.settings import StrategySettings
 from data.catalog import Catalog
 from risk.limits import RiskLimits
+from risk.portfolio import PortfolioRiskLimits
+from risk.portfolio import PortfolioRiskManager
 from strategy_factory import build_strategy
 
 
@@ -41,6 +44,15 @@ class SymbolBacktest:
     """Result of backtesting one symbol."""
 
     symbol: str
+    engine: BacktestEngine
+    result: BacktestResult
+
+
+@dataclass
+class PortfolioBacktest:
+    """One shared-capital run containing all configured symbols."""
+
+    symbols: tuple[str, ...]
     engine: BacktestEngine
     result: BacktestResult
 
@@ -200,3 +212,98 @@ def run_backtest(
             ),
         )
     return runs
+
+
+def run_portfolio_backtest(
+    market: MarketSettings,
+    risk: RiskSettings,
+    strategy: StrategySettings,
+    backtest: BacktestSettings,
+    catalog: Catalog,
+    *,
+    strategy_type: str = "ema_atr",
+    mean_reversion: MeanReversionSettings | None = None,
+    regime_switch: RegimeSwitchSettings | None = None,
+    breakout: BreakoutSettings | None = None,
+    trader_id: str = "PORTFOLIO-BACKTESTER-001",
+    log_level: str = "INFO",
+    portfolio_risk: PortfolioRiskSettings | None = None,
+) -> PortfolioBacktest:
+    """Backtest all symbols concurrently against one balance and venue account."""
+    base_currency = Currency.from_str(market.base_currency)
+    engine = BacktestEngine(
+        config=BacktestEngineConfig(
+            trader_id=trader_id,
+            logging=LoggingConfig(log_level=log_level, print_config=False),
+        ),
+    )
+
+    instrument_ids = {
+        symbol: InstrumentId.from_str(market.instrument_id(symbol))
+        for symbol in market.symbols
+    }
+    engine.add_venue(
+        venue=Venue(market.venue),
+        oms_type=OmsType.NETTING,
+        account_type=AccountType.MARGIN,
+        base_currency=base_currency,
+        starting_balances=[Money.from_str(backtest.starting_balance)],
+        default_leverage=Decimal("1"),
+        leverages={iid: Decimal(market.leverage) for iid in instrument_ids.values()},
+        fee_model=build_fee_model(backtest),
+        fill_model=build_fill_model(backtest),
+    )
+
+    manager = None
+    if portfolio_risk is not None and portfolio_risk.enabled:
+        manager = PortfolioRiskManager(
+            PortfolioRiskLimits(
+                max_gross_notional=portfolio_risk.max_gross_notional,
+                max_portfolio_risk_pct=portfolio_risk.max_portfolio_risk_pct,
+                max_concurrent_positions=portfolio_risk.max_concurrent_positions,
+                max_positions_per_cluster=portfolio_risk.max_positions_per_cluster,
+                max_daily_loss_pct=portfolio_risk.max_daily_loss_pct,
+                circuit_breaker_losses=portfolio_risk.circuit_breaker_losses,
+            ),
+            clusters=portfolio_risk.clusters,
+            asset_classes=portfolio_risk.asset_classes,
+        )
+
+    all_bars: list[BinanceBar] = []
+    for symbol, instrument_id in instrument_ids.items():
+        instrument = catalog.instrument(instrument_id)
+        if instrument is None:
+            raise ValueError(
+                f"Instrument {instrument_id} not found in catalog at {catalog.path}. "
+                "Run the production public-data download first.",
+            )
+        bar_type = BarType.from_str(market.bar_type(symbol))
+        bars = catalog.bars(bar_type)
+        if not bars:
+            raise ValueError(f"No bars for {bar_type} in catalog at {catalog.path}")
+        engine.add_instrument(instrument)
+        all_bars.extend(bars)
+        built_strategy = build_strategy(
+            market,
+            risk,
+            strategy,
+            strategy_type=strategy_type,
+            mean_reversion=mean_reversion,
+            regime_switch=regime_switch,
+            breakout=breakout,
+            enable_trading=True,
+            request_historical_bars=False,
+            symbol=symbol,
+        )
+        built_strategy.set_portfolio_risk_manager(manager)
+        engine.add_strategy(built_strategy)
+
+    # One globally ordered stream is required for simultaneous positions and
+    # shared cash/margin to be represented correctly.
+    all_bars.sort(key=lambda bar: (bar.ts_event, str(bar.bar_type)))
+    engine.add_data(all_bars)
+    engine.run(start=backtest.start, end=backtest.end)
+    result = engine.get_result()
+    _attach_risk_limits(result, risk, market.leverage)
+    result.portfolio_symbols = tuple(market.symbols)  # type: ignore[attr-defined]
+    return PortfolioBacktest(tuple(market.symbols), engine, result)

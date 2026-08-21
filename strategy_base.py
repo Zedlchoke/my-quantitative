@@ -26,6 +26,7 @@ from nautilus_trader.trading.strategy import Strategy
 
 from risk.limits import DailyRiskTracker
 from risk.limits import RiskLimits
+from risk.portfolio import PortfolioRiskManager
 
 
 class BaseFuturesStrategyConfig(StrategyConfig, frozen=True):
@@ -76,6 +77,18 @@ class BaseFuturesStrategy(Strategy):
             circuit_breaker_pause_bars=int(config.circuit_breaker_pause_bars),
         )
         self.daily = DailyRiskTracker(self.risk_limits)
+        self.portfolio_risk: PortfolioRiskManager | None = None
+
+    def set_portfolio_risk_manager(self, manager: PortfolioRiskManager | None) -> None:
+        """Attach the account-wide coordinator shared by all symbol strategies."""
+        self.portfolio_risk = manager
+
+    def _portfolio_symbol(self) -> str:
+        return str(self.config.instrument_id.symbol).removesuffix("-PERP")
+
+    def _release_portfolio_reservation(self) -> None:
+        if self.portfolio_risk is not None:
+            self.portfolio_risk.release(self._portfolio_symbol())
 
     # -- hooks ---------------------------------------------------------------- #
 
@@ -142,6 +155,8 @@ class BaseFuturesStrategy(Strategy):
 
     def _roll_trading_day(self) -> None:
         self.daily.roll_day(self.clock.utc_now().date())
+        if self.portfolio_risk is not None:
+            self.portfolio_risk.roll_day(self.clock.utc_now().date())
 
     def _account_equity(self) -> Decimal:
         """Return account equity in base currency, or zero if unavailable."""
@@ -213,13 +228,33 @@ class BaseFuturesStrategy(Strategy):
             self.log.error("Order notional is below the instrument minimum")
             return
 
+        if self.portfolio_risk is not None:
+            quantity_decimal = Decimal(str(quantity.as_double()))
+            reserved, reason = self.portfolio_risk.try_reserve(
+                self._portfolio_symbol(),
+                notional=quantity_decimal * Decimal(str(close)),
+                risk_amount=(
+                    quantity_decimal
+                    * Decimal(str(atr))
+                    * Decimal(str(stop_multiple or self.config.atr_stop_multiple))
+                ),
+                equity=self._account_equity(),
+            )
+            if not reserved:
+                self.log.warning(f"Portfolio risk blocked entry: {reason}")
+                return
+
         order = self.order_factory.market(
             instrument_id=self.config.instrument_id,
             order_side=side,
             quantity=quantity,
             time_in_force=TimeInForce.GTC,
         )
-        self.submit_order(order)
+        try:
+            self.submit_order(order)
+        except Exception:
+            self._release_portfolio_reservation()
+            raise
 
     def _submit_exit(self, reason: str, close: float) -> None:
         self.log.warning(f"EXIT signal: {reason} at {close:.2f}")
@@ -243,8 +278,25 @@ class BaseFuturesStrategy(Strategy):
             return
         pnl = event.realized_pnl.as_double()
         self.daily.on_close(pnl)
+        if self.portfolio_risk is not None:
+            self.portfolio_risk.on_close(Decimal(str(pnl)))
+        self._release_portfolio_reservation()
         self._on_position_closed(event)
         self.log.info(
             f"Position closed | PnL={pnl:.2f} | daily PnL={self.daily.realized_pnl:.2f}",
             color=LogColor.GREEN if pnl >= 0 else LogColor.RED,
         )
+
+    def on_order_rejected(self, event) -> None:
+        if event.instrument_id == self.config.instrument_id:
+            self._release_portfolio_reservation()
+
+    def on_order_denied(self, event) -> None:
+        if event.instrument_id == self.config.instrument_id:
+            self._release_portfolio_reservation()
+
+    def on_order_canceled(self, event) -> None:
+        if event.instrument_id == self.config.instrument_id and self.portfolio.is_flat(
+            self.config.instrument_id,
+        ):
+            self._release_portfolio_reservation()

@@ -104,6 +104,7 @@ def build_strategy(
                 htf_minutes=mean_reversion.htf_minutes,
                 wyckoff_gate=mean_reversion.wyckoff_gate,
                 wyckoff_directional_bias=mean_reversion.wyckoff_directional_bias,
+                tradfi_session_filter=mean_reversion.tradfi_session_filter,
                 request_historical_bars=request_historical_bars,
                 **risk_kwargs,
             ),
