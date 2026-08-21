@@ -1,21 +1,21 @@
 """Mean-reversion strategy for ranging crypto markets.
 
 Trades the assumption that price tends to revert to its mean when the market is
-not trending. A **Vertical Horizontal Filter (VHF)** acts as a regime filter: it
-is high in trends and low in ranges, so mean-reversion entries are only taken
-while ``vhf <= vhf_max``.
+not trending. Entries are taken only in a **range regime**: VHF low, ADX low,
+and volume not elevated vs its SMA (VHF alone was not enough — NOTES.md §4.3).
 
 Entries (Bollinger + RSI):
   - LONG  when close touches the lower band and RSI is oversold, in a range.
   - SHORT when close touches the upper band and RSI is overbought, in a range.
 
 Exits:
-  - ATR-based protective stop (``atr_stop_multiple``, tight ~1R), or
-  - take-profit at ``take_profit_multiple`` x stop distance (reward:risk).
+  - ATR stop frozen at entry (``atr_stop_multiple`` × ATR_entry), or
+  - take-profit at ``take_profit_multiple`` × that stop distance.
 """
 
 from __future__ import annotations
 
+from nautilus_trader.common.enums import LogColor
 from nautilus_trader.config import PositiveFloat
 from nautilus_trader.config import PositiveInt
 from nautilus_trader.indicators import AverageTrueRange
@@ -27,6 +27,16 @@ from nautilus_trader.model.enums import OrderSide
 from nautilus_trader.model.events import PositionClosed
 from nautilus_trader.model.events import PositionOpened
 
+from regime import AverageDirectionalIndex
+from regime import HtfTrendTracker
+from regime import VolumeSMA
+from regime import is_ranging
+from regime_wyckoff import WyckoffDailyTracker
+from regime_wyckoff import WyckoffPhase
+from regime_wyckoff import wyckoff_allows_entries
+from regime_wyckoff import wyckoff_allows_long
+from regime_wyckoff import wyckoff_allows_short
+from regime_wyckoff import wyckoff_risk_scale
 from strategy_base import BaseFuturesStrategy
 from strategy_base import BaseFuturesStrategyConfig
 
@@ -38,8 +48,17 @@ class MeanReversionStrategyConfig(BaseFuturesStrategyConfig, frozen=True):
     rsi_oversold: float = 10.0
     rsi_overbought: float = 90.0
     vhf_period: PositiveInt = 28
-    vhf_max: float = 0.35  # <= this => ranging regime (mean-reversion active)
+    vhf_max: float = 0.35  # <= this => ranging (with ADX + volume)
+    adx_period: PositiveInt = 14
+    adx_max: float = 25.0  # <= this => weak trend (range)
+    volume_sma_period: PositiveInt = 20
+    volume_max_ratio: float = 1.5  # skip if volume > ratio × SMA (breakout)
     take_profit_multiple: float = 1.5  # reward:risk target
+    htf_trend_filter: bool = False
+    htf_ema_period: PositiveInt = 200
+    htf_minutes: PositiveInt = 60
+    wyckoff_gate: bool = False
+    wyckoff_directional_bias: bool = False
 
 
 class MeanReversionStrategy(BaseFuturesStrategy):
@@ -59,8 +78,22 @@ class MeanReversionStrategy(BaseFuturesStrategy):
         self.rsi = RelativeStrengthIndex(config.rsi_period)
         self.vhf = VerticalHorizontalFilter(config.vhf_period)
         self.atr = AverageTrueRange(config.atr_period)
+        self.adx = AverageDirectionalIndex(config.adx_period)
+        self.volume_sma = VolumeSMA(config.volume_sma_period)
+        self.htf = (
+            HtfTrendTracker(
+                base_minutes=15,
+                htf_minutes=config.htf_minutes,
+                ema_period=config.htf_ema_period,
+            )
+            if config.htf_trend_filter
+            else None
+        )
+        self.wyckoff = WyckoffDailyTracker() if config.wyckoff_gate else None
+        self._wyckoff_phase = WyckoffPhase.TRANSITION
 
         self.entry_price: float | None = None
+        self.stop_distance: float | None = None
 
     def indicators(self) -> list:
         return [self.bb, self.rsi, self.vhf, self.atr]
@@ -68,14 +101,34 @@ class MeanReversionStrategy(BaseFuturesStrategy):
     def on_bar(self, bar: Bar) -> None:
         self._roll_trading_day()
         self.daily.tick_cooldown()
+        self.adx.update_bar(bar)
+        self.volume_sma.update_bar(bar)
+        if self.htf is not None:
+            self.htf.update(bar.close.as_double())
+        if self.wyckoff is not None:
+            prev = self._wyckoff_phase
+            self._wyckoff_phase = self.wyckoff.update_bar(bar)
+            if self.wyckoff.initialized and prev != self._wyckoff_phase:
+                self.log.info(
+                    f"Wyckoff phase → {self._wyckoff_phase.value}",
+                    color=LogColor.CYAN,
+                )
 
-        if not self.indicators_initialized():
+        if not self.indicators_initialized() or not self.adx.initialized:
             return
 
         close = bar.close.as_double()
         atr = self.atr.value
-        stop_distance = atr * self.config.atr_stop_multiple
-        in_range = self.vhf.value <= self.config.vhf_max
+        stop_distance = self.stop_distance or (atr * self.config.atr_stop_multiple)
+        in_range = is_ranging(
+            vhf=self.vhf.value,
+            vhf_max=self.config.vhf_max,
+            adx=self.adx.value,
+            adx_max=self.config.adx_max,
+            volume=bar.volume.as_double(),
+            volume_sma=self.volume_sma.value,
+            volume_max_ratio=self.config.volume_max_ratio,
+        )
 
         if self.portfolio.is_net_long(self.config.instrument_id):
             stop = (self.entry_price or close) - stop_distance
@@ -83,7 +136,7 @@ class MeanReversionStrategy(BaseFuturesStrategy):
                 stop_distance * self.config.take_profit_multiple
             )
             if close >= target and not self._has_active_order():
-                self._submit_exit("take-profit (1.5R)", close)
+                self._submit_exit("take-profit", close)
             elif close <= stop and not self._has_active_order():
                 self._submit_exit("ATR stop", close)
 
@@ -93,25 +146,55 @@ class MeanReversionStrategy(BaseFuturesStrategy):
                 stop_distance * self.config.take_profit_multiple
             )
             if close <= target and not self._has_active_order():
-                self._submit_exit("take-profit (1.5R)", close)
+                self._submit_exit("take-profit", close)
             elif close >= stop and not self._has_active_order():
                 self._submit_exit("ATR stop", close)
 
         elif self._can_open_position() and not self._has_active_order() and in_range:
-            if close <= self.bb.lower and self.rsi.value <= self.config.rsi_oversold:
-                self._submit_entry(OrderSide.BUY, close, atr)
+            risk_scale = 1.0
+            allow_long = True
+            allow_short = True
+            if self.wyckoff is not None and self.wyckoff.initialized:
+                if not wyckoff_allows_entries(self._wyckoff_phase):
+                    return
+                risk_scale = wyckoff_risk_scale(self._wyckoff_phase)
+                if risk_scale <= 0:
+                    return
+                if self.config.wyckoff_directional_bias:
+                    allow_long = wyckoff_allows_long(self._wyckoff_phase)
+                    allow_short = wyckoff_allows_short(self._wyckoff_phase)
+
+            if (
+                allow_long
+                and close <= self.bb.lower
+                and self.rsi.value <= self.config.rsi_oversold
+            ):
+                if self.htf is None or self.htf.allows_long():
+                    self._submit_entry(OrderSide.BUY, close, atr, risk_scale=risk_scale)
             elif (
-                self.config.allow_short
+                allow_short
+                and self.config.allow_short
                 and close >= self.bb.upper
                 and self.rsi.value >= self.config.rsi_overbought
             ):
-                self._submit_entry(OrderSide.SELL, close, atr)
+                if self.htf is None or self.htf.allows_short():
+                    self._submit_entry(OrderSide.SELL, close, atr, risk_scale=risk_scale)
 
     def _on_position_opened(self, event: PositionOpened) -> None:
         self.entry_price = float(event.avg_px_open)
+        self.stop_distance = self.atr.value * self.config.atr_stop_multiple
 
     def _on_position_closed(self, event: PositionClosed) -> None:
         self.entry_price = None
+        self.stop_distance = None
 
     def _on_reset(self) -> None:
         self.entry_price = None
+        self.stop_distance = None
+        self.adx.reset()
+        self.volume_sma.reset()
+        if self.htf is not None:
+            self.htf.reset()
+        if self.wyckoff is not None:
+            self.wyckoff.reset()
+            self._wyckoff_phase = WyckoffPhase.TRANSITION

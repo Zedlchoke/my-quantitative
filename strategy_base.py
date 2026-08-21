@@ -20,6 +20,7 @@ from nautilus_trader.model.enums import TimeInForce
 from nautilus_trader.model.events import PositionClosed
 from nautilus_trader.model.events import PositionOpened
 from nautilus_trader.model.identifiers import InstrumentId
+from nautilus_trader.model.identifiers import Venue
 from nautilus_trader.model.instruments import Instrument
 from nautilus_trader.trading.strategy import Strategy
 
@@ -39,6 +40,11 @@ class BaseFuturesStrategyConfig(StrategyConfig, frozen=True):
     max_daily_loss_usdt: Decimal = Decimal("20")
     max_trades_per_day: PositiveInt = 4
     cooldown_bars_after_loss: PositiveInt = 4
+    risk_pct_per_trade: float | None = None
+    max_risk_per_trade_usdt: Decimal | None = None
+    max_daily_loss_pct: float | None = None
+    circuit_breaker_losses: PositiveInt = 0
+    circuit_breaker_pause_bars: PositiveInt = 96
     history_days: PositiveInt = 10
     allow_short: bool = True
     enable_trading: bool = False
@@ -63,6 +69,11 @@ class BaseFuturesStrategy(Strategy):
             cooldown_bars_after_loss=config.cooldown_bars_after_loss,
             atr_stop_multiple=config.atr_stop_multiple,
             leverage=1,  # leverage is applied at the venue/client level
+            risk_pct_per_trade=config.risk_pct_per_trade,
+            max_risk_per_trade_usdt=config.max_risk_per_trade_usdt,
+            max_daily_loss_pct=config.max_daily_loss_pct,
+            circuit_breaker_losses=int(config.circuit_breaker_losses),
+            circuit_breaker_pause_bars=int(config.circuit_breaker_pause_bars),
         )
         self.daily = DailyRiskTracker(self.risk_limits)
 
@@ -132,10 +143,20 @@ class BaseFuturesStrategy(Strategy):
     def _roll_trading_day(self) -> None:
         self.daily.roll_day(self.clock.utc_now().date())
 
+    def _account_equity(self) -> Decimal:
+        """Return account equity in base currency, or zero if unavailable."""
+        try:
+            money = self.portfolio.equity(Venue(self.config.instrument_id.venue.value))
+            if money is not None:
+                return Decimal(str(money.as_double()))
+        except (AttributeError, TypeError, ValueError):
+            pass
+        return Decimal("0")
+
     def _can_open_position(self) -> bool:
         if not self.portfolio.is_flat(self.config.instrument_id):
             return False
-        return self.daily.can_open()
+        return self.daily.can_open(self._account_equity())
 
     def _has_active_order(self) -> bool:
         return bool(
@@ -155,10 +176,12 @@ class BaseFuturesStrategy(Strategy):
         close: float,
         atr: float,
         stop_multiple: float | None = None,
+        risk_scale: float = 1.0,
     ) -> None:
         side_name = "LONG" if side == OrderSide.BUY else "SHORT"
+        phase_note = f" | risk_scale={risk_scale:.2f}" if risk_scale != 1.0 else ""
         self.log.info(
-            f"{side_name} signal at {close:.2f} | ATR={atr:.2f}",
+            f"{side_name} signal at {close:.2f} | ATR={atr:.2f}{phase_note}",
             color=LogColor.YELLOW,
         )
         if not self.config.enable_trading:
@@ -171,7 +194,10 @@ class BaseFuturesStrategy(Strategy):
             close=Decimal(str(close)),
             atr=atr,
             stop_multiple=stop_multiple,
+            equity=self._account_equity(),
         )
+        if risk_scale != 1.0:
+            raw_quantity *= Decimal(str(risk_scale))
         quantity = self.instrument.make_qty(raw_quantity)
 
         if quantity.as_double() <= 0:

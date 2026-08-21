@@ -1,8 +1,8 @@
 """Regime-switch strategy: trend-following in trends, mean-reversion in ranges.
 
-A **Vertical Horizontal Filter (VHF)** classifies the current regime:
-  - VHF <= ``vhf_max``  -> ranging   -> Bollinger + RSI mean-reversion leg
-  - VHF  > ``vhf_max``  -> trending  -> EMA-ATR trend leg
+Regime is ranging only when VHF, ADX and volume all agree (NOTES.md §4.3):
+  - ranging   -> Bollinger + RSI mean-reversion leg
+  - otherwise -> EMA-ATR trend leg
 
 Both legs share one netting position and the same risk engine. The leg that
 opens a position also manages its exit, so a position is never "orphaned" by a
@@ -24,6 +24,9 @@ from nautilus_trader.model.enums import PositionSide
 from nautilus_trader.model.events import PositionClosed
 from nautilus_trader.model.events import PositionOpened
 
+from regime import AverageDirectionalIndex
+from regime import VolumeSMA
+from regime import is_ranging
 from strategy_base import BaseFuturesStrategy
 from strategy_base import BaseFuturesStrategyConfig
 
@@ -42,6 +45,10 @@ class RegimeSwitchStrategyConfig(BaseFuturesStrategyConfig, frozen=True):
     # Regime filter (VHF)
     vhf_period: PositiveInt = 28
     vhf_max: float = 0.35
+    adx_period: PositiveInt = 14
+    adx_max: float = 25.0
+    volume_sma_period: PositiveInt = 20
+    volume_max_ratio: float = 1.5
     # Stops / target
     trend_stop_multiple: float = 2.0
     mean_reversion_stop_multiple: float = 1.0
@@ -69,12 +76,15 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
         # Regime filter + stop sizing
         self.vhf = VerticalHorizontalFilter(config.vhf_period)
         self.atr = AverageTrueRange(config.atr_period)
+        self.adx = AverageDirectionalIndex(config.adx_period)
+        self.volume_sma = VolumeSMA(config.volume_sma_period)
 
         self.previous_fast: float | None = None
         self.previous_slow: float | None = None
         self.entry_price: float | None = None
         self.extreme_price: float | None = None
         self.trailing_stop: float | None = None
+        self.stop_distance: float | None = None
         self.mode: str | None = None  # "trend" | "mean_reversion"
 
     def indicators(self) -> list:
@@ -91,8 +101,10 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
     def on_bar(self, bar: Bar) -> None:
         self._roll_trading_day()
         self.daily.tick_cooldown()
+        self.adx.update_bar(bar)
+        self.volume_sma.update_bar(bar)
 
-        if not self.indicators_initialized():
+        if not self.indicators_initialized() or not self.adx.initialized:
             return
 
         close = bar.close.as_double()
@@ -103,12 +115,20 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
 
         crossed_up = self.previous_fast is not None and self.previous_fast <= self.previous_slow and fast > slow
         crossed_down = self.previous_fast is not None and self.previous_fast >= self.previous_slow and fast < slow
-        in_range = self.vhf.value <= self.config.vhf_max
+        in_range = is_ranging(
+            vhf=self.vhf.value,
+            vhf_max=self.config.vhf_max,
+            adx=self.adx.value,
+            adx_max=self.config.adx_max,
+            volume=bar.volume.as_double(),
+            volume_sma=self.volume_sma.value,
+            volume_max_ratio=self.config.volume_max_ratio,
+        )
 
         if self.portfolio.is_net_long(self.config.instrument_id):
-            self._manage_long(bar, close, atr, crossed_down, in_range, trend)
+            self._manage_long(bar, close, atr, crossed_down)
         elif self.portfolio.is_net_short(self.config.instrument_id):
-            self._manage_short(bar, close, atr, crossed_up, in_range, trend)
+            self._manage_short(bar, close, atr, crossed_up)
         elif self._can_open_position() and not self._has_active_order():
             if in_range:
                 self._try_mean_reversion_entry(close, atr)
@@ -166,8 +186,6 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
         close: float,
         atr: float,
         crossed_down: bool,
-        in_range: bool,
-        trend: float,
     ) -> None:
         if self._has_active_order():
             return
@@ -179,12 +197,15 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
                 reason = "ATR stop" if stop_hit else "bearish EMA crossover"
                 self._submit_exit(reason, close)
         else:  # mean_reversion
-            stop = (self.entry_price or close) - atr * self.config.mean_reversion_stop_multiple
+            stop_distance = self.stop_distance or (
+                atr * self.config.mean_reversion_stop_multiple
+            )
+            stop = (self.entry_price or close) - stop_distance
             target = (self.entry_price or close) + (
-                atr * self.config.mean_reversion_stop_multiple * self.config.take_profit_multiple
+                stop_distance * self.config.take_profit_multiple
             )
             if close >= target:
-                self._submit_exit("take-profit (1.5R)", close)
+                self._submit_exit("take-profit", close)
             elif close <= stop:
                 self._submit_exit("ATR stop", close)
 
@@ -194,8 +215,6 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
         close: float,
         atr: float,
         crossed_up: bool,
-        in_range: bool,
-        trend: float,
     ) -> None:
         if self._has_active_order():
             return
@@ -207,12 +226,15 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
                 reason = "ATR stop" if stop_hit else "bullish EMA crossover"
                 self._submit_exit(reason, close)
         else:  # mean_reversion
-            stop = (self.entry_price or close) + atr * self.config.mean_reversion_stop_multiple
+            stop_distance = self.stop_distance or (
+                atr * self.config.mean_reversion_stop_multiple
+            )
+            stop = (self.entry_price or close) + stop_distance
             target = (self.entry_price or close) - (
-                atr * self.config.mean_reversion_stop_multiple * self.config.take_profit_multiple
+                stop_distance * self.config.take_profit_multiple
             )
             if close <= target:
-                self._submit_exit("take-profit (1.5R)", close)
+                self._submit_exit("take-profit", close)
             elif close >= stop:
                 self._submit_exit("ATR stop", close)
 
@@ -244,6 +266,7 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
         self.entry_price = None
         self.extreme_price = None
         self.trailing_stop = None
+        self.stop_distance = None
         self.mode = None
 
     def _on_position_opened(self, event: PositionOpened) -> None:
@@ -258,6 +281,8 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
                 self.trailing_stop = self.entry_price + (
                     self.atr.value * self.config.trend_stop_multiple
                 )
+        else:
+            self.stop_distance = self.atr.value * self.config.mean_reversion_stop_multiple
 
     def _on_position_closed(self, event: PositionClosed) -> None:
         self._clear_position_state()
@@ -266,3 +291,5 @@ class RegimeSwitchStrategy(BaseFuturesStrategy):
         self.previous_fast = None
         self.previous_slow = None
         self._clear_position_state()
+        self.adx.reset()
+        self.volume_sma.reset()

@@ -84,6 +84,7 @@ def cmd_backtest(args: argparse.Namespace) -> int:
         strategy_type=settings.strategy_type,
         mean_reversion=settings.mean_reversion,
         regime_switch=settings.regime_switch,
+        breakout=settings.breakout,
         trader_id=args.trader_id,
     )
 
@@ -165,6 +166,7 @@ async def _run_live(settings: LiveSettings) -> None:
             strategy_type=settings.strategy_type,
             mean_reversion=settings.mean_reversion,
             regime_switch=settings.regime_switch,
+            breakout=settings.breakout,
             enable_trading=settings.enable_trading,
             request_historical_bars=True,
             symbol=symbol,

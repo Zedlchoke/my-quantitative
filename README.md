@@ -4,13 +4,13 @@ Quantitative crypto-futures trading bot built on [NautilusTrader](https://nautil
 
 **Standardised assumptions**
 
-- Exchange / product: **Binance USD-M perpetuals** (multi-symbol, default `BTCUSDT`, `ETHUSDT`)
+- Exchange / product: **Binance USD-M perpetuals** (multi-symbol, right now, `BTCUSDT`, `ETHUSDT`)
 - Position mode: **one-way / netting** (`oms_type: NETTING`)
 - Environment: **Testnet / Demo** — **no real money** (LIVE is disabled by a hard guard)
 - Strategies (switch with `strategy_type`):
-  - `ema_atr` — EMA-ATR trend following (default)
-  - `mean_reversion` — Bollinger + RSI mean-reversion, tight stop + 1.5R take-profit
-  - `regime_switch` — trend in trends, mean-reversion in ranges (VHF-selected)
+  - `ema_atr` — EMA-ATR trend following (default — do not replace until NOTES.md acceptance)
+  - `mean_reversion` — Bollinger + RSI, range filter = VHF + ADX + volume
+  - `regime_switch` — trend in trends, mean-reversion in ranges (same range filter)
 
 The USD-M ↔ COIN-M choice is a config switch: change `market.account_type` to
 `COIN_FUTURES` (and set `symbols`/`base_currency` accordingly).
@@ -39,8 +39,11 @@ reports/
   performance.py             performance summary + CSV/JSON reports (per symbol)
 research/
   optimize.py                parameter grid-search optimizer (parallel, multi-symbol)
+  acceptance.py              NOTES.md walk-forward acceptance criteria
+regime.py                    VHF + ADX + volume range filter
 risk/
   limits.py                  risk limits + daily risk tracker + position sizing
+tests/                       unit tests (risk, regime, acceptance)
 ```
 
 ## Quick start
@@ -61,6 +64,10 @@ python main.py backtest --config config/research_regime_switch.yaml
 
 # 4. Run live on Testnet in signal-only mode (or set enable_trading: true)
 python main.py live
+
+# ETH mean-reversion demo (validated params, conservative risk — see NOTES.md bước 6)
+python -m research.oos_validate --config config/research_mean_reversion_eth.yaml
+python main.py live --config config/live_eth_mean_reversion.yaml
 ```
 
 ## Parameter optimisation
@@ -68,6 +75,8 @@ python main.py live
 ```bash
 # Grid-search strategy parameters, ranked by expectancy (not win rate).
 # Bars are cached per symbol and combos run in parallel across CPU cores.
+# Cell results are written to results/optimize/cells*.jsonl so you can resume.
+python -m research.optimize --config config/research.yaml --grid quick
 python -m research.optimize --config config/research_mean_reversion.yaml --grid quick
 python -m research.optimize --config config/research_regime_switch.yaml --grid quick
 
@@ -79,10 +88,10 @@ python -m research.optimize ... --workers 2 --min-trades 20 --top 15
 ```
 
 Output: `results/optimize/ranking.csv` + `ranking.json`, sorted by
-trade-weighted **expectancy** across symbols/windows, with profit factor and a
-`positive_cells` robustness count. A combo is only useful if it has enough
-trades AND positive expectancy across several symbols/windows — not merely a
-high win rate.
+trade-weighted **expectancy**, with profit factor, Sharpe, max drawdown,
+`positive_folds`, and `meets_acceptance` (NOTES.md §7). A combo is only
+promoted if it has enough trades **and** passes acceptance — not merely a
+high win rate. Default configs stay on `ema_atr` until that happens.
 
 ## Strategies
 
@@ -92,19 +101,18 @@ Enters on a fast/slow EMA crossover filtered by a long-term trend EMA, exits on
 the opposite crossover or an ATR trailing stop. Strong in trends, whipsawed in
 ranges.
 
-### `mean_reversion` — Bollinger + RSI, tight stop + 1.5R take-profit
+### `mean_reversion` — Bollinger + RSI, frozen stop + take-profit
 
 Enters **long** when price touches the lower Bollinger band and RSI is oversold,
-**short** on the upper band + overbought, only while the **VHF** is below
-`vhf_max` (ranging market). Exits on a tight ATR stop (1R) or a take-profit at
-`take_profit_multiple` x stop distance (reward:risk).
+**short** on the upper band + overbought, only in a **range**: VHF ≤ `vhf_max`,
+ADX ≤ `adx_max`, and volume ≤ `volume_max_ratio` × volume SMA. Exits on an ATR
+stop frozen at entry, or a take-profit at `take_profit_multiple` × that stop.
 
 ### `regime_switch` — trend in trends, mean-reversion in ranges
 
-Uses **VHF** to pick the active leg each bar: `VHF <= vhf_max` → mean-reversion
-leg (Bollinger + RSI, tight stop + 1.5R TP); otherwise → trend leg (EMA-ATR with
-trailing stop). The leg that opens a position manages its own exit, so a regime
-flip never orphans a position.
+Uses the same VHF + ADX + volume rule to pick the active leg each bar: range →
+mean-reversion; otherwise → EMA-ATR trend. The leg that opens a position
+manages its own exit, so a regime flip never orphans a position.
 
 ## Configuration
 
@@ -117,8 +125,8 @@ backtest/data settings can never leak into a live session.
 - `risk` — per-trade and daily risk limits (risk-per-trade, max notional, max
   daily loss, max trades/day, cooldown, ATR stop multiple).
 - `strategy` — EMA/ATR periods (used by `ema_atr`).
-- `mean_reversion` — Bollinger/RSI/VHF + stop + take-profit (used by `mean_reversion`).
-- `regime_switch` — trend + mean-reversion legs + VHF + stops (used by `regime_switch`).
+- `mean_reversion` — Bollinger/RSI + VHF/ADX/volume + stop + take-profit.
+- `regime_switch` — trend + mean-reversion legs + the same range filter + stops.
 - `strategy_type` — `ema_atr` (default) | `mean_reversion` | `regime_switch`.
 - `data` (research) — catalog path, environment, lookback/start/end.
 - `backtest` (research) — starting balance, fee model, fill/slippage model.
@@ -155,4 +163,4 @@ backtest report and the live node:
   handles that type directly.
 - On Windows, the download pipeline registers the catalog directly to avoid a
   path-encoding issue with spaces in `DataCatalogConfig`.
-- The API keys in `.env` are **testnet** keys. Never put live keys here.
+- Run unit tests: `python -m unittest discover -s tests`
