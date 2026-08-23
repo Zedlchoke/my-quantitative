@@ -608,6 +608,7 @@ class BaseFuturesStrategy(Strategy):
         if event.instrument_id != self.config.instrument_id:
             return
         self.daily.on_open()
+        self._pending_exit_timing = None  # never leak a previous exit's timing
         record = self._finalize_entry_record(event)
         if record is not None:
             self._open_records[str(event.position_id)] = record
