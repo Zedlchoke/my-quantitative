@@ -1403,3 +1403,39 @@ model, BTC-beta-neutral benchmark · P2: native intrarun funding, DSR/PBO.
 
 Artifacts: `research/wayfinder/evidence/sprint-24h-20260823.md`,
 `results/stage_a/`, `results/matrix/`, `results/registry/experiments.jsonl`.
+
+---
+
+## 20. Sprint V2 — Correctness First (2026-08-24, A1 verdict)
+
+**Verdict: `PIPELINE_PASS_CANDIDATE_FAIL`** — pipeline đo đúng, khóa đúng,
+tái lập độc lập được; 0/98 combo PASS trên corrected semantics.
+
+### Sửa nền tảng (P0 → DONE)
+1. **2 lỗ hổng LIVE guard đã FIX**: env allowlist + case-normalization;
+   YAML boolean strict (reject "false"/"0" string). 2 xfail → 8 hard tests PASS.
+2. **PF vị thế đúng chuẩn** (`Σmax/|Σmin|` sau funding): 14 regression test
+   hand-calculated. PF fold-net cũ thổi phồng giả tạo: volcomp BNB v3
+   23.47 → **1.36** thực tế.
+3. **G0/G1/G2 fail-closed evidence-backed**: thiếu bằng chứng = INCONCLUSIVE,
+   không bao giờ auto-PASS; hash mismatch luôn FAIL.
+4. **Immutable provenance schema v2** ×98 manifests: frozen inputs + actual
+   SHA-256 + argv + git dirty state + lock-before-run invariant.
+5. **ETH data contract resolved**: gap 870min = downloader_failure straddle
+   boundary → trim scored start 2025-08-21T14:30Z (rule pre-declared trước khi
+   xem result); clean intersection 7/7 mã, funding COMPLETE ×7.
+
+### Corrected matrix
+98/98 cells COMPLETED (77 corrected + 21 fundcrowd), 0 error. G3: 0 PASS.
+V1 artifacts unchanged (checksum-verified). Registry append-only: 178 entries.
+
+### H-FUNDCROWD-MR-v2 (family funding_crowding — PIT funding percentile)
+REJECTED: 18/21 exp âm; 3 combo ETH dương (exp +0.49..+0.59, PF vị thế
+1.34–1.40, folds 2/3) nhưng concentration 68–81% → single-fold artifact +
+single-symbol universe artifact, đúng điều kiện bác bỏ đã lock trước run.
+
+### Challenge memo (A4, độc lập)
+Fill tại close bar tín hiệu ±1 tick (xác nhận bằng probe) + indicator gồm
+current bar → execution optimism hệ thống; one-bar-delay là P0 kế tiếp.
+
+Tests: **277 passed / 0 xfail**. Chi tiết: research/wayfinder/evidence/sprint-v2-24h-20260824.md
