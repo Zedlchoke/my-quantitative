@@ -1,0 +1,136 @@
+# H-FUNDCROWD-MR-v2 — final pre-registration (state machine: SPEC_DRAFT)
+# PLAN.md §11 corrected contract. Family renamed funding_crowding (percentile
+# ONLY in signal); OI excluded; exactly 3 declared combinations, HTF fixed ON.
+# Supersedes H-FUNDCROWD-MR-v1 (never scored; family trials to date = 0).
+# Written by A4 BEFORE any scored run. A1 locks after H4/H9/H14 confirmation.
+hypothesis_id: H-FUNDCROWD-MR-v2
+family: funding_crowding
+feature: point_in_time_funding_percentile
+state: SPEC_DRAFT                   # -> SPEC_LOCKED only by A1
+candidate_version: 2
+stage: S0_EXPLORATORY               # nested selection inside S0; not S1/OOS
+owner_agent: A4
+prior_family_trials: 0              # v1 was spec-only; never implemented/scored
+
+thresholds: [70, 75, 80]
+htf_filter: true                    # fixed ON for all combos; NOT tuned
+oi_overlay: false                   # OI explicitly OUT of signal this version
+declared_parameter_combinations: 3
+trial_budget_combinations: 3
+
+economic_mechanism: >
+  Perpetual funding transfers between directional holders are largest when the
+  crowd is one-sided. When the latest settled funding rate sits in the upper
+  tail of its trailing distribution, longs are crowded and pay elevated carry:
+  mean-reversion longs entered into that tail bleed carry while held and face
+  forced-deleveraging air-pockets if price stalls. Gating the frozen reclaim-MR
+  entries by point-in-time funding percentile should remove entries whose
+  expected carry + unwind asymmetry exceeds the reversion edge, while leaving
+  uncrowded-regime reversion untouched. Shorts mirrored at the lower tail.
+expected_counterparty: >
+  Over-leveraged crowded-side perp holders paying/receiving extreme funding who
+  must unwind into adverse moves, plus late mean-reversion chasers entering
+  without any crowding check; we take the other side only when carry terms are
+  neutral-to-favourable.
+holding_horizon: hours-to-days on 15m bars, bounded by reclaim-MR stop/TP.
+expected_regimes:
+  - transition_range_with_elevated_one_sided_funding
+  - accumulation_after_long_liquidation_cluster
+
+entry_exit_rules: >
+  BASE (unchanged, frozen): strategy_reclaim_mr reclaim logic — Bollinger band
+  reclaim + RSI extreme within VHF/ADX/volume range gate and phase gate;
+  stop 1.5xATR, TP 2x; engine daily-loss/cooldown limits unchanged.
+  NEW PRE-REGISTERED GATE: decision_ts = the current signal bar's CLOSE
+  timestamp (bar.ts_event, the moment of decision). percentile =
+  FundingPIT.percentile_asof(decision_ts, window_days=30) — rank of the most
+  recently SETTLED funding rate among settlements already PUBLISHED at or
+  before decision_ts (8h settlement lag respected; no forward-fill beyond the
+  last settled timestamp). LONG blocked when percentile > threshold_p/100;
+  SHORT blocked when percentile <= (100 - threshold_p)/100 (crowded-short
+  zone). If FundingPIT returns None (empty bundle / insufficient history / no
+  settlement asof) BOTH sides are BLOCKED fail-closed and the block is counted
+  (strategy.funding_gate_blocks). HTF filter fixed ON; no other parameter may
+  vary.
+
+invalidating_evidence:
+  # Primary quantitative rule — ANY of these => REJECT this family version:
+  - aggregate after-cost expectancy <= 0 on the S0 chrono-3-fold scored window
+    => REJECT family version
+  - aggregate position PF < 1.10 on the scored window => REJECT family version
+  - positive folds < 2/3 on the scored window (after cost) => REJECT family
+    version
+  # Supporting evidence (same rejection path):
+  - any fold with >=5 trades and PF < 0.80
+  - single fold contributes >50% of total PnL (concentration)
+  - gated variant does NOT beat the ungated frozen reclaim_mr baseline on
+    identical folds (gate adds complexity without edge; baseline stays
+    rejected too)
+  - expectancy non-positive under +50% fee stress or one-bar-delayed-entry
+    stress while baseline stress run is positive
+  # Not a rejection but blocks PASS:
+  - fewer than 20 closed trades total across required universe =>
+    INCONCLUSIVE (never PASS)
+
+warmup_bars: 320
+universe:                            # S0-seven (contracts/README.md)
+  - SOLUSDT
+  - BNBUSDT
+  - XRPUSDT
+  - DOGEUSDT
+  - LINKUSDT
+  - ADAUSDT
+  - ETHUSDT
+
+cost_assumptions: >
+  Maker/taker commission model, one-tick slippage, post-trade funding audit
+  (native engine funding not available; carry enters via audit AND via the
+  gate itself). Survivor gate additionally requires positive expectancy under
+  +50% fee stress and one-bar-delayed-entry stress (PLAN §9 G4): same-bar-close
+  fills are optimistic, so delay stress is mandatory (A4 challenge memo,
+  Finding 1).
+
+split_policy: S0_chrono3fold
+parameter_grid:
+  threshold_p: [70, 75, 80]
+  htf_filter: [true]                 # fixed ON; not tuned
+  oi_overlay: [false]                # OI out of signal this version
+
+data_contract:                       # resolved by A1 (H14 PASS)
+  eth_trimmed_start_utc: "2025-08-21T14:30:00Z"
+  continuous_clean_intersection: ["2025-08-21T14:30:00Z", "2026-08-21T00:00:00Z"]
+  funding_completeness: 7_of_7_symbols_COMPLETE
+
+implementation:
+  status: IMPLEMENTED_PHASE2_A4      # awaiting A1 lock decision after gates
+  base_strategy_type: reclaim_mr
+  base_module: strategy_reclaim_mr.py        # frozen; NOT modified
+  wrapper_module: strategy_funding_crowding_mr.py
+  wrapper_classes:
+    settings: FundingCrowdingMRSettings       # .parameter_grid() -> 3 combos
+    strategy: FundingCrowdingMRStrategy       # ctor(config, funding_pit=None)
+    config: FundingCrowdingMRConfig           # BaseFuturesStrategyConfig subclass
+  strategy_type_key: funding_crowding
+  tests: tests/test_funding_crowding_mr.py   # 16 tests, full suite green
+  funding_feature_dependency:
+    helper: research/funding_pit.py            # A2 owner; API stable, tested
+    injection: >
+      FundingPIT instance injected via constructor arg; default construction
+      lazily from funding_data/scan_2026 using symbol parsed from
+      instrument_id. Stubbed in unit tests; PIT queries use epoch-ms close
+      timestamps of signal bars only.
+
+allowed_outcomes_only:
+  - REJECTED
+  - INCONCLUSIVE
+  - STAGE_A_PASS_EXPLORATORY
+  - LOCK_FOR_FUTURE_S1
+forbidden_labels: [EDGE_CONFIRMED, PRODUCTION_READY, LIVE_READY]
+
+notes_for_lock_reviewer: >
+  Family name is funding_crowding because ONLY the funding percentile enters
+  the signal (PLAN §11 / H18-H22 correction list). Adding OI later requires a
+  new candidate version, OI timestamp/publication-delay evidence, an updated
+  trial budget, and renaming to funding_oi_crowding. Gate boundary asymmetry
+  is intentional per spec text: long uses strict > at threshold_p/100; short
+  uses inclusive <= at (100-threshold_p)/100. Unit tests encode both bounds.
