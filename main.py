@@ -5,6 +5,7 @@ Subcommands
 download   Download historical bars into the local Parquet catalog.
 backtest   Run backtests with fee + slippage modelling and write reports.
 live       Run the live Binance USD-M perpetual node (Testnet/Demo only).
+status     Print a compact markdown status of latest result artifacts.
 
 Examples
 --------
@@ -12,6 +13,7 @@ Examples
     python main.py backtest
     python main.py backtest --config config/research_mean_reversion.yaml
     python main.py live
+    python main.py status
 """
 
 from __future__ import annotations
@@ -47,6 +49,7 @@ from config.settings import STRATEGY_TYPES
 from data.catalog import Catalog
 from data.download import download_historical_data
 from reports.performance import performance_report
+from scripts.status_report import build_status_table
 from strategy_factory import build_strategy
 
 
@@ -286,6 +289,11 @@ def cmd_live(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_status(args: argparse.Namespace) -> int:
+    print(build_status_table(args.results_root, args.snapshots_root))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Crypto-futures trading system (Binance USD-M perpetual).",
@@ -306,6 +314,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_live = sub.add_parser("live", help="Run live trading (Testnet/Demo)")
     p_live.add_argument("--config", default="config/live.yaml")
     p_live.set_defaults(func=cmd_live)
+
+    p_status = sub.add_parser(
+        "status",
+        help="Print compact markdown status of latest result artifacts",
+    )
+    p_status.add_argument("--results-root", default=None)
+    p_status.add_argument("--snapshots-root", default=None)
+    p_status.set_defaults(func=cmd_status)
 
     return parser
 
