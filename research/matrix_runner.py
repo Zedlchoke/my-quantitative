@@ -1191,7 +1191,7 @@ def _positions_rows_in_window(
                 if rec else _opt_str(row, "execution_mode")
             ),
             "slippage_ticks": (
-                _opt_int(rec.get("slippage_ticks"))
+                _opt_int(rec.get("slippage_ticks"), "slippage_ticks")
                 if rec else _opt_int(row, "slippage_ticks")
             ),
             "quantity": qty,
