@@ -149,18 +149,17 @@ def test_manifest_invalid_aborts_cell_before_engine_run(tmp_path, monkeypatch):
     # The real fundcrowd spec's erroneous future stamp was corrected via
     # status.yaml (authoritative git-commit evidence), so simulate an invalid
     # future lock here instead of relying on production data.
+    spec = tmp_path / "candidate_future_lock.yaml"
+    spec.write_text(
+        "hypothesis_id: H-FUNDCROWD-MR-v2\n"
+        "candidate_version: 2\n"
+        "state: SPEC_LOCKED\n"
+        "locked_at_utc: '2099-01-01T00:00:00+00:00'\n"
+        "owner_agent: A4\n",
+        encoding="utf-8",
+    )
     monkeypatch.setattr(
-        mr, "load_hypothesis_identity",
-        lambda strategy_type: {
-            "spec_kind": "hypothesis_candidate",
-            "source_path": "synthetic",
-            "hypothesis_id": "H-FUNDCROWD-MR-v2",
-            "candidate_version": 2,
-            "state": "SPEC_LOCKED",
-            "locked_at_utc": "2099-01-01T00:00:00+00:00",
-            "owner_agent": "A4",
-            "declared_family_trials": 3,
-        },
+        mr, "load_hypothesis_identity", lambda strategy_type: mr.load_hypothesis_identity_from_path(spec)
     )
     ctx = _ctx(tmp_path, strategy_type=mr.FUNDCROWD_STRATEGY_TYPE)
     with pytest.raises(mr.LaunchManifestInvalid) as excinfo:

@@ -270,14 +270,20 @@ def utc_now_iso() -> str:
 
 
 def load_hypothesis_identity(strategy_type: str) -> dict:
-    """Parse the frozen candidate.yaml for a hypothesis-type cell.
+    """Parse the frozen candidate.yaml for a hypothesis-type cell."""
+    return load_hypothesis_identity_from_path(
+        Path(HYPOTHESIS_CONFIG_BY_TYPE[strategy_type])
+    )
+
+
+def load_hypothesis_identity_from_path(source: Path) -> dict:
+    """Parse identity from a candidate spec path (status.yaml authoritative).
 
     Returns the actual identity recorded by A4/A1 BEFORE any scored run:
     hypothesis_id, candidate_version, state, locked_at_utc, owner_agent and
     declared family trial budget. Fail-closed: missing fields raise so the
     cell never runs without a locked candidate.
     """
-    source = Path(HYPOTHESIS_CONFIG_BY_TYPE[strategy_type])
     import yaml
 
     raw = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
