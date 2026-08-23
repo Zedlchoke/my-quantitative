@@ -1457,12 +1457,33 @@ def load_inventory_plans(
             window_end=window_end,
             param_variant=variant,
         )
+        # Verify EVERY frozen field against an independent recomputation so
+        # any config/universe/window drift aborts the run before scoring.
+        recomputed_snapshot = data_snapshot_id(
+            plan.catalog_path, symbol, window_start, window_end
+        )
+        if identity["data_snapshot_id"] != recomputed_snapshot:
+            raise ValueError(
+                f"inventory identity drift for {strategy_type}/{symbol}/{variant}: "
+                f"data snapshot {identity['data_snapshot_id']!r} != "
+                f"recomputed {recomputed_snapshot!r}"
+            )
+        if identity["config_sha256"] != plan.config_sha256:
+            raise ValueError(
+                f"inventory identity drift for {strategy_type}/{symbol}/{variant}: "
+                "config_sha256 differs from current base YAML"
+            )
+        if identity.get("split_policy") not in (None, plan.split_policy):
+            raise ValueError(
+                f"inventory identity drift for {strategy_type}/{symbol}/{variant}: "
+                f"split policy {identity['split_policy']!r} != {plan.split_policy!r}"
+            )
         rebuilt_key = plan.identity_key(
             plan.identity(
                 fee_model=identity["fee_model"],
                 slippage_model=identity["slippage_model"],
                 seed=identity["seed"],
-                snapshot_id=identity["data_snapshot_id"],
+                snapshot_id=recomputed_snapshot,
             )
         )
         if rebuilt_key != entry["identity_key"]:

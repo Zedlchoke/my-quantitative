@@ -35,7 +35,12 @@ def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def finalize_matrix(matrix_dir: str | Path, registry_path: str | Path | None = None) -> dict:
+def finalize_matrix(
+    matrix_dir: str | Path,
+    registry_path: str | Path | None = None,
+    *,
+    stage_a_root: str | Path | None = None,
+) -> dict:
     """Recompute every count for ``matrix_dir``; write reconciliation.json.
 
     Returns the reconciliation payload.  ``all_counts_match`` is True only
@@ -82,12 +87,18 @@ def finalize_matrix(matrix_dir: str | Path, registry_path: str | Path | None = N
         row for row in registry_entries if row.get("matrix_id") in matrix_ids
     ]
 
-    stage_a_root = Path(
-        report.get("stage_a_root") or "results/stage_a_v3"
+    stage_root = Path(
+        stage_a_root
+        or report.get("stage_a_root")
+        or (
+            matrix_path.parents[1] / "stage_a_v3"
+            if (matrix_path.parents[1] / "stage_a_v3").is_dir()
+            else "results/stage_a_v3"
+        )
     )
     stage_a_dirs = 0
-    if stage_a_root.is_dir():
-        for exp_dir in stage_a_root.iterdir():
+    if stage_root.is_dir():
+        for exp_dir in stage_root.iterdir():
             manifest = exp_dir / "launch_manifest.yaml"
             if not manifest.is_file():
                 continue
