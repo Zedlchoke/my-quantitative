@@ -281,13 +281,22 @@ def load_hypothesis_identity(strategy_type: str) -> dict:
     import yaml
 
     raw = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
+    locked_at_utc = str(raw["locked_at_utc"])
+    # Coordinator status sidecar is the authoritative lock evidence when
+    # present (PLAN principle: status/verdict live OUTSIDE the frozen spec).
+    status_path = source.parent / "status.yaml"
+    if status_path.exists():
+        status = yaml.safe_load(status_path.read_text(encoding="utf-8")) or {}
+        corrected = str(status.get("locked_at_utc") or "").strip()
+        if corrected:
+            locked_at_utc = corrected
     identity = {
         "spec_kind": "hypothesis_candidate",
         "source_path": str(source),
         "hypothesis_id": str(raw["hypothesis_id"]),
         "candidate_version": int(raw["candidate_version"]),
         "state": str(raw.get("state", "")),
-        "locked_at_utc": str(raw["locked_at_utc"]),
+        "locked_at_utc": locked_at_utc,
         "owner_agent": str(raw.get("owner_agent") or HYPOTHESIS_OWNER_AGENT),
         "declared_family_trials": int(
             raw.get("trial_budget_combinations")
