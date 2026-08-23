@@ -1097,9 +1097,7 @@ def _positions_rows_in_window(
     fabricates evidence; unmatched rows keep nulls => EVIDENCE_MISSING.
     """
     has_commission = "commissions" in adjusted.columns
-    execution_records: list[dict] | None = None
-    if execution_records_kw is not None:
-        execution_records = list(execution_records_kw)
+    execution_records = list(execution_records or [])
 
     def _col(row: Any, name: str) -> Any:
         return row.get(name) if hasattr(row, "get") else None
