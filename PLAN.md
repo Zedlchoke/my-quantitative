@@ -1,772 +1,772 @@
-# PLAN.md — Sprint V2 24 giờ · 4 AI Agent · Correctness First
+# PLAN.md — Master Sprint V3 → V4 · 48 giờ · Correctness Then Edge Search
 
-> **Dự án:** `my-quantitative` — Quant research cho Binance USD-M perpetuals
-> **Thời lượng:** 24 giờ kể từ khi A1 phát lệnh bắt đầu
-> **Môi trường:** research, signal-only, Testnet/Demo; tuyệt đối không live money
-> **Điểm xuất phát:** Sprint V1 đã chạy 77 strategy–symbol combinations, không có
-> candidate vượt gate; test suite hiện có 201 pass và 2 expected-fail
-> **Mục tiêu Sprint V2:** biến pipeline từ “chạy được” thành “đo đúng, khóa đúng,
-> tái lập được và không tự lừa mình”
+> **Repo:** `my-quantitative`
+> **Phạm vi:** Binance USD-M perpetual research; research/Testnet/Demo only
+> **Thời lượng:** tối đa 48 giờ: V3 H0–H24, V4 H24–H48
+> **Đội hình:** A1, A2, A3, A4
+> **Không được phép:** live-money execution, S1 inspection, post-hoc tuning,
+> ghi đè artifact V1/V2/V3
+> **Transition rule:** V4 chỉ tự động mở khi toàn bộ V3 completion gate PASS;
+> nếu V3 partial/fail thì V4 bị `BLOCKED_BY_V3`, không được implement strategy
 
 ---
 
-## 1. Kết luận chính thức từ Sprint V1
-
-### 1.1. Verdict bắt đầu Sprint V2
+## 1. Starting verdict từ independent audit Sprint V2
 
 ```text
 PIPELINE_PARTIAL_PASS_CANDIDATE_FAIL
 ```
 
-Ý nghĩa:
+### 1.1. Những phần Sprint V2 đã PASS
 
-- Kiến trúc research loop, matrix, registry và lưu negative results đã hoạt động.
-- Kết luận 0/77 candidate được promote nhiều khả năng đúng về phương hướng.
-- Chưa được gọi pipeline là hoàn toàn validated vì canonical PF, G0/G1/G2,
-  provenance, ETH coverage và hai LIVE guard còn vấn đề.
-- Không candidate V1 nào được mang sang paper/live dưới nhãn confirmed edge.
+1. LIVE environment được normalize/allowlist và boolean safety parsing đã được
+   siết chặt cho đường live execution.
+2. Full test suite được xác minh lại: `277 passed`, `0 failed`, `0 xfailed`.
+3. Position-level Profit Factor đã thay fold-net PF và có regression tests.
+4. ETH gap được phân loại; clean S0 intersection được khai báo trước final run.
+5. Matrix index và cell artifacts chứa 98/98 completed cells, không pipeline
+   error.
+6. H-FUNDCROWD-MR-v2 bị reject đúng kỷ luật; không candidate được promote.
+7. V1 artifacts được giữ lại và registry tiếp tục append-only.
 
-### 1.2. Những gì phải giữ nguyên
+### 1.2. Những claim chưa đủ bằng chứng để PASS hoàn toàn
 
-1. Matrix cell độc lập, có thể resume và một cell fail không làm hỏng toàn run.
-2. Registry append-only; không xóa `FAIL`, `INCONCLUSIVE` hay negative evidence.
-3. Metric không tính được phải là `null + reason`, không giả thành `0.0`.
-4. Trial budget được khai báo trước.
-5. Không chạy iteration 2 trên cùng S0 chỉ để cứu candidate vừa thất bại.
-6. Funding, cost và multi-symbol evidence tiếp tục là phần bắt buộc.
+1. `ManifestV2` được tạo bởi evaluator sau khi matrix backtest đã chạy. Do đó
+   `run_started_utc`, `exact_argv`, git commit/dirty state và lock timestamp mô
+   tả evaluation step, chưa chắc mô tả scored backtest launch.
+2. Evaluator tự tạo `parameter_lock_utc` ngay trước evaluation; nó chưa xác minh
+   `locked_at_utc` thật trong candidate spec trước matrix run.
+3. H-FUNDCROWD frozen `config.yaml` và `candidate.yaml` có cùng bytes/hash;
+   manifest ghi sai hypothesis/version/owner (`H-EXISTING-...-v1`, version 1,
+   A2) thay vì candidate H-FUNDCROWD-MR-v2 do A4 sở hữu.
+4. G1 vẫn nhận một số evidence hard-code, gồm
+   `transforms_fit_on_train=True`; universe freeze dựa trên synthetic evaluation
+   timestamp. Đây là assertion, chưa phải runtime proof.
+5. G2 của 98 cells chủ yếu tự so ledger/hash vừa được evaluator tạo với chính
+   artifact nguồn. Chỉ một experiment có independent backtest rerun thực sự.
+6. `report.json` của final matrix khai báo 21 funding-crowding cells trong khi
+   `index.json` và thư mục cells có 98. Aggregate report đã bị last-run overwrite.
+7. Scorecard vẫn coarse/hard-coded: rationale 10, risk 0.5, cost 1.0; chưa triển
+   khai các metric bands chi tiết đã khóa trong Sprint V2 plan.
+8. Bar-close fill optimism đã được chứng minh: signal dùng close của bar `t` và
+   market order có thể fill tại close cùng timestamp. Đây là P0 trước mọi
+   candidate dương trong tương lai.
 
-### 1.3. Sáu lỗi/thiếu sót P0 cần giải quyết
+### 1.3. Ý nghĩa nghiên cứu
 
-1. Aggregate PF đang được suy ra từ net PnL của fold thay vì gross wins/losses
-   ở position level.
-2. G0/G1 có check khai báo hoặc hard-code, chưa phải bằng chứng fail-closed.
-3. G2 chưa được áp dụng cho từng candidate; config-hash mismatch không được gọi
-   là “benign”.
-4. Manifest chứa trường mutable, placeholder hoặc không phải actual SHA-256.
-5. `environment: live` và YAML string `"false"` có thể đi qua safety parsing sai.
-6. ETH có unexplained gaps; boundary intersection chưa chứng minh continuous
-   coverage.
-
----
-
-## 2. Definition of Done sau 24 giờ
-
-Sprint V2 chỉ được coi là thành công khi hoàn thành các mục bắt buộc sau:
-
-1. Hai LIVE guard regression tests chuyển từ `xfail` thành `pass`.
-2. Canonical position-level PF có unit test với dữ liệu tay tính được.
-3. G0/G1/G2 là evidence-backed và fail-closed; không có hard-coded PASS.
-4. Mỗi scored run snapshot immutable config/candidate/data manifest trước khi
-   chạy và lưu actual hashes, commit, dirty state, command, seed, lock time.
-5. ETH được repair hoặc bị loại khỏi scored universe bằng reason code rõ; common
-   clean intersection được tính lại.
-6. 77 V1 cells được re-evaluate hoặc rerun dưới semantic V2; không ghi đè V1.
-7. Registry V2 ghi đủ verdict và reason cho mọi declared cell.
-8. Ít nhất một representative experiment G2 PASS từ immutable manifest.
-9. Báo cáo phân biệt rõ `pipeline verdict` và `candidate verdict`.
-10. Chỉ khi mục 1–8 PASS mới được implement/chạy H-FUNDCROWD exploratory.
-
-Sprint vẫn thành công nếu corrected matrix tiếp tục có 0 candidate PASS.
-
-### Không phải mục tiêu trong 24 giờ
-
-- Không xác nhận production edge.
-- Không triển khai live money.
-- Không đánh giá future S1 ngay sau khi lock.
-- Không thử vô hạn indicator, parameter hoặc symbol-specific tuning.
-- Không bắt buộc phải tạo strategy mới nếu correctness work chưa hoàn thành.
+- Kết luận `0/98 candidate PASS` vẫn hợp lý và được giữ nguyên.
+- Không rerun/tune H-FUNDCROWD-MR-v2 để cứu kết quả trên cùng S0.
+- Không candidate nào đủ điều kiện capture S1.
+- Sprint V3 phải đóng các lỗ hổng evidence/execution trước khi mở hypothesis
+  implementation mới.
 
 ---
 
-## 3. Các nguyên tắc bất di bất dịch
+## 2. Mục tiêu Sprint V3
 
-1. **Correctness trước throughput:** sai metric thì dừng research.
-2. **Hard gate trước score:** điểm cao không thể cứu một gate fail.
-3. **Fail-closed:** thiếu bằng chứng là `NOT_YET_TESTED`, `INCONCLUSIVE` hoặc
-   `FAIL`; không tự động PASS.
-4. **Point-in-time:** không feature, universe, funding/OI join hoặc transform nào
-   được dùng thông tin chưa tồn tại tại decision time.
-5. **Immutable evidence:** không sửa artifact/spec của run cũ; thay đổi tạo
-   version và experiment mới.
-6. **No post-hoc rescue:** không thêm filter/regime sau khi nhìn kết quả để cứu
-   candidate cùng version.
-7. **No silent exclusion:** symbol/fold thiếu dữ liệu vẫn phải xuất hiện trong
-   report với reason code.
-8. **No S0 laundering:** S0 đã xem là development/screening data, không được đổi
-   tên thành untouched OOS.
-9. **Future S1 only:** candidate phải được khóa trước timestamp bắt đầu S1.
-10. **No score shopping:** không thay weights/thresholds sau khi nhìn ranking.
-11. **No trial-budget expansion:** hết budget thì reject/redesign ở sprint sau.
-12. **No cross-market assumption:** crypto perpetual và equity/TradFi perpetual
-    phải dùng universe, calendar, gaps, funding, leverage và risk contract riêng.
-13. **No concurrent file ownership:** một file chỉ có một owner tại một thời điểm.
-14. **No overwrite:** V2 ghi artifact/registry mới, giữ nguyên toàn bộ V1.
+Trong 24 giờ, hoàn thành một pipeline mà:
+
+1. Provenance được capture tại **scored backtest launch**, không phải evaluation.
+2. Candidate thật sự được khóa trước launch và identity trong manifest chính xác.
+3. G1 dựa trên runtime artifacts/tests, không dựa trên boolean hard-code.
+4. G2 phân biệt artifact integrity với independent reproducibility.
+5. Mọi signal-driven market entry có fill timestamp sau signal timestamp theo
+   execution contract mới.
+6. Expectancy-R và initial risk được ghi ở position level.
+7. Scorecard dùng metric bands thật và không override hard gates.
+8. Matrix V3 chạy lại frozen 98-cell inventory dưới execution semantics mới.
+9. Aggregate report/index/registry tự reconcile bằng máy.
+10. Chỉ survivor thật sự mới được stress, rerun và cân nhắc lock cho future S1.
+
+Sprint thành công ngay cả khi V3 vẫn có 0 survivor.
 
 ---
 
-## 4. Research loop chuẩn
+## 3. Definition of Done
+
+Tất cả điều kiện sau phải có machine-readable evidence:
+
+### P0 bắt buộc
+
+- [ ] Runner snapshot inputs trước khi đọc/chạy scored results.
+- [ ] Manifest ghi exact matrix/backtest argv, commit, dirty state và launch time.
+- [ ] `candidate.locked_at_utc < backtest.run_started_utc` được parse và validate.
+- [ ] Runtime config và candidate spec là hai artifact đúng vai trò.
+- [ ] Hypothesis ID, candidate version, owner và declared trials khớp source spec.
+- [ ] G1 không còn unconditional `True` trong production evaluation path.
+- [ ] Execution fixture chứng minh `fill_ts > signal_ts` cho entry market order.
+- [ ] Legacy same-bar mode chỉ được phép với nhãn `DIAGNOSTIC_ONLY`.
+- [ ] G2a artifact integrity và G2b independent rerun là hai verdict riêng.
+- [ ] `report.declared_cells == len(index.cells) == actual cell files`.
+- [ ] Scorecard bands có boundary tests.
+- [ ] Full tests không fail/xfail.
+
+### Rerun và research evidence
+
+- [ ] Frozen V2 98-cell inventory được ánh xạ đầy đủ sang V3.
+- [ ] V3 matrix 98/98 completed hoặc có reason code cho từng cell.
+- [ ] V2 artifacts và registry entries không bị sửa.
+- [ ] V2/V3 comparison giải thích tác động của execution delay.
+- [ ] Mỗi strategy family có ít nhất một deterministic independent rerun sample.
+- [ ] Mọi G3 survivor được independent rerun 100%.
+- [ ] Không candidate fail nào được đưa vào G4/G5.
+- [ ] Không future S1 được đọc.
+
+Nếu một P0 không đạt, final pipeline verdict không được là `PIPELINE_PASS`.
+
+---
+
+## 4. Nguyên tắc bất di bất dịch
+
+1. Correctness trước throughput và strategy count.
+2. Hard gate trước score; score không cứu gate fail.
+3. Thiếu evidence là `INCONCLUSIVE` hoặc `NOT_YET_TESTED`, không PASS.
+4. Không synthetic timestamp để làm đẹp provenance.
+5. Không lấy evaluator time thay backtest launch time.
+6. Không tự so artifact với chính nó rồi gọi là independent rerun.
+7. Không sửa candidate spec sau lock; status/verdict lưu ở file riêng.
+8. Không post-hoc filter, symbol exclusion hoặc parameter expansion.
+9. S0 chỉ là development/screening data.
+10. S1 phải bắt đầu sau candidate lock và không overlap S0.
+11. Không ghi đè V1/V2 artifacts.
+12. Không sửa score bands sau khi xem V3 results.
+13. Không mở strategy mới nếu P0 execution/provenance chưa PASS.
+14. Crypto perpetual và TradFi/equity research universe phải tách biệt.
+15. Không live-money change.
+
+---
+
+## 5. Đội hình và ownership
+
+| Agent | Vai trò | Exclusive ownership |
+|---|---|---|
+| **A1** | Coordinator, Contract Owner, Integrator | `PLAN.md`, contract freeze, merge, final audit/verdict |
+| **A2** | Execution Semantics & Risk Accounting Engineer | backtest execution mode, signal/fill audit, position initial-risk/R |
+| **A3** | Provenance, Gates, Scorecard & Matrix Engineer | runner launch manifest, G1/G2, scorecard, registry/report reconciliation |
+| **A4** | Independent Quant Reviewer & Research Designer | V2/V3 analysis, independent reruns, hypothesis drafts; no gate edits |
+
+### 5.1. Protected files
+
+| File/khu vực | Owner tại một thời điểm |
+|---|---|
+| `backtest/engine.py`, base strategy execution hooks | A2 |
+| `research/matrix_runner.py` | A3; A2 chỉ đề xuất interface patch |
+| `research/sprint_eval.py`, `research/provenance.py` | A3 |
+| `research/protocol/{gates,scorecard,reproduce}.py` | A3 |
+| `contracts/protocol.py` | A1 |
+| `strategy_*.py` | chỉ A2 khi migration execution contract yêu cầu |
+| hypothesis analysis/spec | A4 |
+
+### 5.2. Handoff contract
+
+Mỗi handoff phải gồm:
 
 ```text
-Đọc negative evidence và market structure
-        ↓
-Viết hypothesis có cơ chế kinh tế và điều kiện bác bỏ
-        ↓
-Khóa spec, universe, parameter grid và trial budget
-        ↓
-Snapshot immutable inputs + hashes
-        ↓
-Audit dữ liệu point-in-time và common clean window
-        ↓
-Implement strategy + unit/integration tests
-        ↓
-Tier 0 compatibility smoke
-        ↓
-Stage A chronological walk-forward trên toàn declared matrix
-        ↓
-Canonical costs + funding + execution stress
-        ↓
-G0–G5 hard gates
-        ↓
-Chỉ xếp điểm những candidate đủ điều kiện
-        ↓
-REJECT / INCONCLUSIVE / LOCK_FOR_FUTURE_S1
-        ↓
-Lưu evidence bất biến và reason codes
-        ↓
-Học từ kết quả để viết hypothesis version tiếp theo
+commit_sha:
+files_changed:
+contract_changes:
+commands_run:
+tests_passed/failed/xfailed:
+artifact_paths:
+known_limitations:
 ```
 
-Loop có thể tiếp tục nhiều sprint, nhưng mỗi candidate chỉ được sử dụng future
-S1 đúng theo protocol đã khóa.
-
----
-
-## 5. Đội hình bốn agent
-
-| Agent | Vai trò Sprint V2 | Ownership chính |
-|---|---|---|
-| **A1** | Coordinator, Safety và Contract Owner | plan, config parsing, LIVE guards, interface freeze, merge, final verdict |
-| **A2** | Data Integrity và Coverage Engineer | data audit, ETH gaps, timestamps, funding/OI coverage, clean intersection |
-| **A3** | Metrics, Backtest và Reproducibility Engineer | position metrics, gates, manifests, hashes, matrix V2, G2 rerun |
-| **A4** | Quant Researcher và Independent Reviewer | negative-result analysis, hypothesis, strategy implementation, audit challenge |
-
-### 5.1. Protected ownership
-
-| Khu vực | Owner mặc định |
-|---|---|
-| `PLAN.md`, final report, integration decisions | A1 |
-| `config/settings.py`, LIVE safety tests | A1 |
-| `research/data_audit.py`, coverage artifacts, data contract | A2 |
-| `research/sprint_eval.py`, gates, scorecard, manifest, registry | A3 |
-| `strategy_*`, `research/hypotheses/` | A4 |
-| Shared engine/runner | A1 giao một owner cụ thể trước khi sửa |
-
-### 5.2. Quy tắc phối hợp
-
-- Mỗi agent dùng branch/worktree riêng nếu hệ thống hỗ trợ.
-- Không hai agent sửa cùng file trong cùng checkpoint.
-- Mỗi handoff phải có: commit, files changed, command đã chạy, kết quả test,
-  artifact path và limitation.
-- A4 là người phản biện độc lập cho A3; A3 là người kiểm định độc lập cho A4.
-- A1 không tự hạ gate để kịp deadline.
-- Block quá 45 phút phải báo exact error, command, evidence và phương án hẹp nhất.
-- Sau H20 chỉ bugfix, reproduction, docs và integration; không feature mới.
+Không hai agent sửa cùng protected file trong cùng checkpoint.
 
 ---
 
 ## 6. Lịch thực thi 24 giờ
 
-### H0–H4 — P0 Safety và immutable provenance
+### H0–H2 — Audit freeze và interface contract
 
-#### A1 — Safety
+**A1**
 
-- Chuẩn hóa `environment` bằng enum/case-normalization trước validation.
-- Reject giá trị environment không thuộc allowlist.
-- YAML boolean phải là boolean thật; reject string `"true"`, `"false"`, `"0"`,
-  `"1"` thay vì ép bằng `bool(value)`.
-- Chuyển hai expected-fail regression tests thành PASS.
-- Chạy targeted tests và full test suite.
+- Xác minh clean/dirty worktree và lưu baseline commit.
+- Chạy baseline full tests bằng `.venv/bin/python`.
+- Freeze schemas:
+  - `ExecutionMode`
+  - `RunLaunchManifest`
+  - `LeakageEvidence`
+  - `ArtifactIntegrityResult`
+  - `IndependentReproductionResult`
+  - `PositionRiskStats`
+- Freeze V3 matrix inventory đúng 98 cells từ V2 index.
+- Hash V2 index/cells trước mọi V3 run.
 
-#### A3 — Provenance
+**A2/A3/A4** chỉ audit và đề xuất interface; chưa sửa overlap files.
 
-- Snapshot config và candidate spec vào experiment directory trước run.
-- Tính SHA-256 từ bytes của snapshot thực tế.
-- Ghi actual git commit và dirty-worktree state tại thời điểm launch.
-- Ghi exact argv/command, seed, runner version và dependency versions cần thiết.
-- `parameter_lock_utc` phải sớm hơn scored run start.
-- Candidate research status được lưu riêng, không sửa frozen spec.
-
-#### Gate H4
+#### Gate H2
 
 ```text
-LIVE_GUARDS_PASS
-IMMUTABLE_MANIFEST_TEST_PASS
-NO_MUTABLE_CONFIG_REFERENCE
+BASELINE_TESTS_PASS
+V2_HASH_SNAPSHOT_WRITTEN
+V3_INTERFACES_FROZEN
+OWNERSHIP_NO_OVERLAP
 ```
 
-Nếu gate H4 fail: dừng matrix và hypothesis mới.
+### H2–H7 — Parallel P0 implementation
 
-### H4–H9 — Canonical metrics và evidence-backed gates
+#### A2 — Execution truth
 
-#### A3 — Position-level accounting
-
-- Persist từng closed position hoặc tối thiểu gross winning PnL, gross losing
-  PnL, net PnL và trade count sau commission/funding/slippage.
-- Aggregate PF từ positions, tuyệt đối không aggregate từ fold net PnL.
-- Thêm hand-calculated regression fixtures cho winner-only, loser-only, mixed,
-  no-trade và funding-changing-sign cases.
-- Phân biệt `undefined` với `infinite PF`; không dùng số vô cực để tự động PASS.
-
-#### A2/A3 — G0/G1/G2
-
-- G0 đọc coverage/data manifest thật, không hard-code catalog/metadata PASS.
-- Funding completeness phải kiểm tra toàn scored window.
-- G1 lưu evidence cho split, warmup, transforms, selection, universe freeze và
-  point-in-time joins.
-- G2 so config hash, selected parameters, position digest và canonical PnL.
-- Hash mismatch là `G2_FAIL`, kể cả khi PnL tình cờ giống nhau.
-
-#### Gate H9
+Implement hai explicit modes:
 
 ```text
-POSITION_PF_REGRESSION_PASS
-G0_FAIL_CLOSED_PASS
-G1_EVIDENCE_TEST_PASS
-G2_REPRODUCTION_TEST_PASS
-```
-
-Nếu gate H9 fail: không chạy lại 77 cells.
-
-### H9–H14 — Data repair/decision và corrected V1 matrix
-
-#### A2 — Data contract
-
-- Liệt kê chính xác ETH gaps: start, end, duration, expected bars, actual bars.
-- Phân loại gap: exchange outage, downloader failure, listing boundary hoặc
-  unexplained.
-- Repair từ nguồn canonical nếu có thể và lưu source/checksum.
-- Nếu không repair được, loại ETH khỏi scored matrix hoặc dời scored boundary
-  theo rule được khai báo trước.
-- Báo riêng:
-  - boundary intersection;
-  - continuous clean intersection;
-  - per-symbol gap completeness;
-  - funding completeness.
-
-#### A3 — Matrix V2
-
-- Re-evaluate/rerun toàn bộ 77 declared V1 cells bằng semantic đã sửa.
-- V1 artifact chỉ đọc; V2 có experiment/matrix ID mới.
-- Mỗi cell có một trong các trạng thái:
-  `COMPLETED`, `DATA_INCOMPLETE`, `PIPELINE_ERROR`, `NON_REPRODUCIBLE`.
-- Registry append đủ 77 entries hoặc reason rõ cho cell chưa chạy.
-- Xuất bảng so sánh V1/V2 cho PF, expectancy, gate và verdict.
-
-#### Gate H14
-
-```text
-DATA_CONTRACT_RESOLVED
-MATRIX_COMPLETED_OR_EXPLAINED = 77/77
-V1_ARTIFACTS_UNCHANGED
-```
-
-Nếu matrix chưa hoàn tất do correctness issue, ưu tiên sửa/rerun và bỏ phần
-hypothesis mới của sprint.
-
-### H14–H18 — Execution realism và survivor validation
-
-Chỉ chạy cho candidate vượt corrected G0–G3:
-
-- Baseline fees và funding.
-- +50% fee stress.
-- One-tick và two-tick adverse fill.
-- One-bar delayed entry để loại bar-close fill optimism.
-- Parameter neighborhood theo grid đã pre-register.
-- Drop-one-fold và drop-one-symbol sensitivity.
-- BTC-beta-neutral contextual benchmark khi dữ liệu/implementation hỗ trợ.
-- Shared-capital replay nếu có hơn một survivor.
-
-Không có survivor thì ghi `NO_SURVIVOR`; không nới gate.
-
-### H18–H22 — H-FUNDCROWD exploratory, có điều kiện
-
-Chỉ bắt đầu nếu H4, H9 và H14 đều PASS.
-
-#### Spec correction trước khi lock
-
-- Nếu chỉ dùng funding percentile thì tên family là `funding_crowding`.
-- Chỉ gọi `funding_oi_crowding` khi OI thực sự đi vào signal point-in-time.
-- Threshold `{70, 75, 80}` với HTF fixed ON là **3 combinations**, không phải 4.
-- Ghi rõ counterparty, expected mechanism, holding horizon, invalidation,
-  costs, universe và stop condition.
-- Đây là S0 exploratory/nested selection, không phải S1/OOS.
-
-#### A4 implement; A2/A3 kiểm định
-
-- A4 viết spec trước khi xem kết quả và implement feature lag-safe.
-- A2 xác minh funding publication timestamps và không forward-fill qua tương lai.
-- A3 chạy đúng declared grid, ghi trial count toàn family và chấm gate.
-- Chọn tối đa một candidate để lock; không có candidate thì reject family version.
-
-### H22–H24 — Freeze, S1 capture và final handoff
-
-- Feature freeze tuyệt đối.
-- Nếu có candidate đủ điều kiện: freeze code, config, universe, data boundary,
-  hashes và lock timestamp.
-- Bắt đầu thu thập future S1 sau lock; chưa chấm S1 trong sprint này.
-- A3 independent rerun một representative corrected experiment từ manifest.
-- A4 challenge report: tìm leakage, selection bias và execution optimism còn sót.
-- A1 chạy full tests, kiểm tra artifact completeness và phát final verdict.
-
----
-
-## 7. Experiment manifest bắt buộc
-
-Mọi scored run phải snapshot và lưu tối thiểu:
-
-```yaml
-schema_version: 2
-experiment_id: EXP-YYYYMMDD-NNNN
-matrix_id: MATRIX-YYYYMMDD-NNNN
-hypothesis_id: <family-and-sequence>
-candidate_version: <integer>
-strategy_type: <name>
-owner_agent: <A1-A4>
-validator_agent: <A1-A4>
-
-run_started_utc: <timestamp>
-parameter_lock_utc: <timestamp-before-run>
-git_commit_at_launch: <sha>
-dirty_worktree_at_launch: <true-or-false>
-exact_argv: [<argv-items>]
-random_seed: <integer>
-
-frozen_config_path: <artifact-local-path>
-frozen_config_sha256: <actual-sha256>
-frozen_candidate_path: <artifact-local-path>
-frozen_candidate_sha256: <actual-sha256>
-data_manifest_path: <artifact-local-path>
-data_manifest_sha256: <actual-sha256>
-universe_snapshot_path: <artifact-local-path>
-universe_snapshot_sha256: <actual-sha256>
-
-requested_start_utc: <timestamp>
-requested_end_utc: <timestamp>
-actual_start_utc: <timestamp>
-actual_end_utc: <timestamp>
-continuous_clean_intersection: <boundaries-or-null>
-split_policy: <id>
-warmup_bars: <integer>
-purge_bars: <integer>
-embargo_bars: <integer>
-outer_folds: <integer>
-
-declared_parameter_combinations: <integer>
-executed_parameter_combinations: <integer>
-prior_family_trials: <integer>
-fee_model: <id>
-slippage_model: <id>
-funding_mode: <native-or-audited-post-trade>
-```
-
-Artifact directory phải chứa frozen inputs, raw positions/cells, canonical
-metrics, gate result, diagnostic/final scorecard, log và artifact hashes.
-
----
-
-## 8. Canonical metric contract
-
-### 8.1. Canonical PnL
-
-```text
-canonical_position_pnl
-= realized gross trading PnL
-- commission
-- modeled spread/slippage
-+/- funding cashflows
-- declared latency/session penalties nếu có
-```
-
-Mọi component phải có timestamp, currency và sign convention rõ.
-
-### 8.2. Position-level Profit Factor
-
-```text
-gross_profit = sum(max(position_pnl, 0))
-gross_loss   = abs(sum(min(position_pnl, 0)))
-PF           = gross_profit / gross_loss
+SAME_BAR_CLOSE_DIAGNOSTIC
+NEXT_BAR_EVENT_BASELINE
 ```
 
 Rules:
 
-- Aggregate trực tiếp từ positions thuộc scored set.
-- Không lấy trung bình PF của fold.
-- Không chia tổng positive-fold net PnL cho negative-fold net PnL.
-- Không có lệnh thua: PF là `null/infinite_with_reason`, không tự động PASS khi
-  sample nhỏ.
-- Không có trade: toàn bộ trade metrics là `null + NO_TRADES`.
+- Default scored mode là `NEXT_BAR_EVENT_BASELINE`.
+- Signal tạo tại closed bar `t` chỉ được submit/fill tại event sau `t`.
+- Mỗi order/position lưu `signal_ts`, `submit_ts`, `fill_ts`, `signal_bar_close`,
+  `fill_price`, `execution_mode`.
+- Acceptance invariant: `signal_ts < fill_ts` cho scored entry.
+- Nếu engine chỉ fill tại close bar kế tiếp, ghi đúng semantic đó; không gọi là
+  next-open nếu không phải next-open.
+- Exit timing phải được ghi và stress riêng; không ngầm dùng current close làm
+  attainable exit price.
+- One-tick và two-tick adverse fill phải là cấu hình explicit.
+- Legacy same-bar run luôn có `evidence_class: DIAGNOSTIC_ONLY`.
 
-### 8.3. Metrics bắt buộc
+Thêm micro-fixture với giá dễ tính để chứng minh signal/fill timestamp và price.
 
-- Closed trades, gross profit, gross loss, expectancy USDT và expectancy R.
-- Position PF, win rate, average winner/loser.
-- Net PnL, return, max drawdown và drawdown duration.
-- Exposure, turnover, holding time và funding contribution.
-- Per-fold, per-symbol, per-quarter/regime metrics.
-- Positive-fold ratio, top-fold contribution, top-symbol contribution.
-- Drop-one-fold/symbol sensitivity.
+#### A2 — Position risk/R
+
+Mỗi closed position lưu:
+
+```text
+initial_risk_usdt
+canonical_pnl_after_cost_funding
+r_multiple = canonical_pnl_after_cost_funding / initial_risk_usdt
+```
+
+Rules:
+
+- Initial risk được freeze tại entry từ size, entry và initial stop.
+- `initial_risk_usdt <= 0` trả `null + invalid_initial_risk`.
+- Không dùng realized loss làm denominator.
+- Aggregate expectancy-R là mean của position R trên scored positions.
+- Reconcile canonical PnL với positions ở tolerance `1e-9`.
+
+#### A3 — Launch-time provenance
+
+Di chuyển provenance snapshot vào matrix/backtest runner trước run:
+
+```text
+parse locked candidate
+→ validate locked_at < now
+→ snapshot candidate/runtime config/data/universe
+→ capture git/dirty/exact runner argv/start time
+→ execute backtest
+→ write results
+→ evaluator chỉ đọc frozen manifest
+```
+
+Không cho evaluator tự tạo lock timestamp.
+
+Manifest phải ghi đúng:
+
+- Actual hypothesis ID và version.
+- Actual owner/validator.
+- Full runtime config snapshot.
+- Candidate spec snapshot hoặc explicit existing-strategy spec.
+- Actual declared/executed family trials.
+- Actual runner command và launch commit.
+- Execution mode và slippage mode.
+- Source-to-frozen hashes.
+
+Candidate và runtime config phải là hai logical inputs; không copy cùng source
+cho cả hai chỉ để thỏa schema.
+
+#### A3 — G1/G2/score/report
+
+- Thay hard-coded G1 flags bằng `LeakageEvidence` được runner xuất.
+- Learned transforms: ghi train-fit timestamps/rows.
+- Không có learned transform: `NOT_APPLICABLE` kèm reason, không `True` giả.
+- Warmup: lưu actual warmup/scored boundaries.
+- Universe freeze: so candidate lock, universe hash và launch time thật.
+- Execution leakage: G1 fail nếu scored `fill_ts <= signal_ts`.
+
+Tách G2:
+
+```text
+G2A_ARTIFACT_INTEGRITY
+G2B_INDEPENDENT_REPRODUCIBILITY
+```
+
+- G2a kiểm hashes/schema/reconciliation.
+- G2b phải launch backtest mới từ frozen inputs và so positions/PnL.
+- Không có independent rerun: G2b=`NOT_YET_TESTED`.
+- Promotion G2 PASS yêu cầu cả G2a và G2b PASS.
+
+Matrix report phải aggregate từ index cuối, không overwrite bằng last batch.
+Thêm reconciliation test cho report/index/cells/registry.
+
+Scorecard phải đọc metric thật; xóa constant rationale/risk/cost fractions.
+
+### H7–H9 — Integration checkpoint
+
+Merge order:
+
+1. A1 contracts.
+2. A2 execution/risk primitives.
+3. A3 runner provenance.
+4. A3 gates/score/report.
+5. Strategy migrations nếu cần.
+
+Chạy targeted tests và full tests.
+
+#### Gate H9
+
+```text
+SIGNAL_FILL_ORDERING_PASS
+POSITION_R_REGRESSION_PASS
+LAUNCH_PROVENANCE_PASS
+G1_NO_HARDCODED_PASS
+G2A_G2B_SEPARATION_PASS
+MATRIX_RECONCILIATION_TEST_PASS
+FULL_TESTS_PASS
+```
+
+Fail bất kỳ mục nào: dừng V3 matrix và sửa P0.
+
+### H9–H15 — Frozen 98-cell V3 matrix
+
+**A3 chạy; A2 theo dõi execution evidence; A4 không xem partial results để tune.**
+
+- Input inventory lấy nguyên từ frozen V2 index.
+- Window giữ clean S0 contract đã chốt.
+- Parameters, universe và family trial count không đổi.
+- Execution mode: `NEXT_BAR_EVENT_BASELINE`.
+- Mỗi cell có launch manifest riêng hoặc batch manifest liên kết chính xác tới
+  immutable cell spec.
+- Mỗi cell ghi signal/fill evidence và position R.
+- Không overwrite `results/matrix/v2_stage_a_final` hoặc `results/stage_a_v2`.
+
+Output:
+
+```text
+results/matrix/v3_execution_truth/
+results/stage_a_v3/
+```
+
+#### Gate H15
+
+```text
+INDEX_CELLS = 98
+ACTUAL_CELL_FILES = 98
+REPORT_DECLARED = 98
+COMPLETED_OR_EXPLAINED = 98
+V2_HASHES_UNCHANGED
+NO_SIGNAL_FILL_ORDER_VIOLATION
+```
+
+### H15–H19 — Comparison, reruns và survivor tests
+
+**A4** tạo V2/V3 comparison:
+
+- Trades, expectancy USDT, expectancy R, PF, PnL.
+- Fill-delay impact theo strategy và symbol.
+- Candidate nào đổi dấu hoặc đổi gate.
+- Same-bar optimism magnitude.
+- Concentration theo positive PnL denominator đã khai báo.
+
+**A3/A4 independent reruns:**
+
+- Deterministic sample tối thiểu một cell cho mỗi strategy family.
+- 100% G3 survivors.
+- Rerun từ frozen manifest bằng process/command riêng.
+- So positions digest, canonical PnL, trades và execution timestamps.
+
+Chỉ G3 survivor mới chạy:
+
+- +50% fees.
+- Two-tick adverse fill.
+- Additional one-event delay stress.
+- Parameter neighborhood đã declared từ trước.
+- Drop-one-fold/symbol.
+- Shared-capital replay nếu có nhiều survivor.
+
+Không survivor: ghi `NO_SURVIVOR`, không hạ gate.
+
+### H19–H22 — Research design, không data-mining
+
+**A4** được viết tối đa hai `SPEC_DRAFT`, chưa scored run, dựa trên:
+
+- V1/V2/V3 negative evidence.
+- Cơ chế kinh tế và counterparty cụ thể.
+- Dữ liệu point-in-time thực sự có sẵn.
+- Trial budget tối đa 8 combinations/family.
+- Điều kiện bác bỏ định lượng trước run.
+- Required portfolio/benchmark engine.
+
+Không được:
+
+- Tạo H-FUNDCROWD-MR-v3 bằng cách sửa threshold trên cùng kết quả.
+- Thêm OI nếu coverage/publication contract chưa đủ.
+- Implement cross-sectional strategy trước khi shared-capital ranking/rebalance
+  engine có contract và tests.
+- Chạy draft trên S0 trong Sprint V3 nếu chưa được A1 lock cho sprint sau.
+
+A1/A3 chỉ chọn tối đa một spec để làm frontier Sprint V4. Không bắt buộc chọn.
+
+### H22–H24 — Independent audit và final report
+
+- Feature freeze.
+- A3 verify hashes và matrix reconciliation.
+- A4 challenge audit provenance, leakage, fill semantics và selection process.
+- A1 chạy full tests, kiểm tra git diff/status và artifact immutability.
+- A1 phát pipeline verdict và candidate verdict riêng.
+- Không capture S1 nếu không có locked survivor.
 
 ---
 
-## 9. Hard gates
+## 7. Execution evidence contract
 
-Hard gate có bốn trạng thái:
+Mỗi scored position cần tối thiểu:
 
-```text
-PASS
-FAIL
-INCONCLUSIVE
-NOT_YET_TESTED
+```yaml
+position_id: <stable-id>
+strategy_type: <name>
+symbol: <symbol>
+fold: <id>
+side: <LONG-or-SHORT>
+signal_ts: <utc>
+submit_ts: <utc>
+fill_ts: <utc>
+signal_reference_price: <number>
+fill_price: <number>
+execution_mode: NEXT_BAR_EVENT_BASELINE
+slippage_ticks: <integer>
+quantity: <number>
+initial_stop_price: <number>
+initial_risk_usdt: <number>
+gross_pnl: <number>
+commission: <number>
+slippage_cost: <number>
+funding_pnl: <number>
+canonical_pnl: <number>
+r_multiple: <number-or-null>
 ```
 
-Chỉ `PASS` cho phép đi tiếp. Không dùng boolean mặc định để biến thiếu bằng chứng
-thành PASS.
+Hard invariant:
 
-### G0 — Data integrity
+```text
+signal_ts < submit_ts <= fill_ts
+```
 
-- Không duplicate hoặc unexplained gap trong scored window.
-- Timestamp semantics và publication lag được khai báo.
-- OHLCV, funding và metadata đủ cho toàn scored window.
-- Universe snapshot và continuous clean intersection tồn tại.
-- Mỗi exclusion có reason code trước khi xem strategy result.
+Nếu framework chỉ cho `submit_ts == fill_ts`, vẫn hợp lệ khi cả hai lớn hơn
+`signal_ts` và semantic được ghi rõ.
 
-### G1 — Leakage và research protocol
+---
 
-- Test fold không tham gia parameter/feature/universe selection.
-- Transform chỉ fit trên training segment.
-- Warmup nằm ngoài scored observation set.
-- Purge/embargo phù hợp holding horizon nếu cần.
-- Current-bar signal không được giả định fill cùng close nếu không chứng minh.
-- Config, universe và grid được freeze trước scored run.
+## 8. Launch manifest contract
 
-### G2 — Reproducibility
+```yaml
+schema_version: 3
+experiment_id: <id>
+matrix_id: <id>
+hypothesis_id: <actual-id>
+candidate_version: <actual-version>
+strategy_type: <name>
+owner_agent: <owner>
+validator_agent: <validator>
 
-- Immutable manifest và actual hashes đầy đủ.
-- Independent rerun khớp frozen parameters.
-- Position digest và canonical PnL khớp tolerance đã khai báo.
-- Config/candidate/data hash mismatch là FAIL.
+candidate_locked_at_utc: <from-frozen-spec>
+backtest_run_started_utc: <captured-before-engine-run>
+backtest_run_finished_utc: <captured-after-engine-run>
+git_commit_at_launch: <actual-sha>
+dirty_worktree_at_launch: <bool>
+exact_backtest_argv: [<actual-runner-argv>]
+random_seed: <integer>
 
-### G3 — Stage A edge
+runtime_config_path: frozen/runtime_config.yaml
+runtime_config_sha256: <actual-sha256>
+candidate_spec_path: frozen/candidate.yaml
+candidate_spec_sha256: <actual-sha256>
+data_manifest_path: frozen/data_manifest.json
+data_manifest_sha256: <actual-sha256>
+universe_path: frozen/universe.json
+universe_sha256: <actual-sha256>
+
+execution_mode: NEXT_BAR_EVENT_BASELINE
+slippage_ticks: 1
+fee_model: <id>
+funding_mode: <id>
+split_policy: <id>
+warmup_bars: <integer>
+outer_folds: 3
+declared_family_trials: <integer>
+executed_family_trials: <integer>
+```
+
+Validation fail-closed khi:
+
+- lock không tồn tại hoặc lock không sớm hơn launch;
+- source/frozen hash mismatch;
+- hypothesis identity không khớp candidate;
+- argv là evaluator command thay vì backtest command;
+- execution mode thiếu;
+- actual window/universe không khớp frozen input.
+
+---
+
+## 9. Hard gates V3
+
+### G0 — Data
+
+- Continuous clean OHLCV coverage trong scored window.
+- Funding/metadata đầy đủ hoặc reason code.
+- Timestamp/publication semantics rõ.
+- Universe exclusions pre-registered.
+
+### G1 — Leakage và execution
+
+- Train/test selection isolation.
+- Actual warmup boundaries.
+- Transform fit evidence hoặc explicit not-applicable reason.
+- Universe/candidate khóa trước launch.
+- `signal_ts < fill_ts` cho scored entries.
+- Không current-bar price fill đối với current-bar signal.
+
+### G2a — Artifact integrity
+
+- Manifest/schema/hashes đầy đủ.
+- Position totals reconcile canonical metrics.
+- Report/index/cell counts reconcile.
+
+### G2b — Independent reproducibility
+
+- Backtest process mới chạy từ frozen inputs.
+- Parameters, positions digest, trade count và canonical PnL match tolerance.
+
+### G3 — Stage A
 
 - After-cost/funding expectancy > 0.
-- Position PF ≥ 1.10.
-- Ít nhất 2/3 chronological folds dương.
+- Position PF ≥1.10.
+- Ít nhất 2/3 folds dương.
 - Ít nhất 20 closed trades mỗi required symbol; thiếu là `INCONCLUSIVE`.
-- Không fold có ≥5 trades nhưng PF < 0.80.
-- Không một fold đóng góp >50% positive total PnL.
-- Required symbol âm không được che bằng average toàn universe.
+- Không fold có ≥5 trades nhưng PF <0.80.
+- Không một fold đóng góp >50% positive aggregate PnL.
+- Không dùng average để che required symbol âm.
 
-### G4 — Robustness và execution
+### G4 — Robustness/execution stress
 
-- Baseline và +50% fee stress vẫn có expectancy dương.
-- Two-tick hoặc one-bar-delay stress theo declared execution model vẫn dương.
-- Parameter neighborhood không phải single-point spike.
-- Drop-one-fold/symbol không làm kết luận đổi dấu bất thường.
-- Mọi stress dùng cùng frozen candidate; không retune.
+- +50% fee stress vẫn dương.
+- Two-tick adverse fill vẫn dương.
+- Additional delay stress vẫn dương.
+- Parameter neighborhood không phải spike.
+- Drop-one-fold/symbol không làm đổi kết luận bất thường.
 
 ### G5 — Portfolio
 
-- Shared-capital PnL >0 và position PF ≥1.10.
-- Không vi phạm gross exposure, concurrency, cluster hoặc daily-loss limits.
-- Một symbol không đóng góp quá 40% portfolio PnL/risk.
-- Có contextual benchmark; BTC-beta-neutral khi phù hợp.
+- Shared-capital PnL >0 và PF ≥1.10.
+- Gross/concurrency/cluster/daily-loss limits PASS.
+- Một symbol ≤40% PnL/risk contribution.
+- BTC-beta-neutral context khi implementation phù hợp.
 
-### Future gates — chưa thể PASS trong Sprint V2
-
-- Future S1 untouched evaluation.
-- Tổng sample đủ lớn, ví dụ ≥100 closed trades theo contract được khóa.
-- PF/MDD threshold cho promotion.
-- 6–8 tuần shadow/signal-only stability.
-
-Các mục này phải là `NOT_YET_TESTED`, không được suy ra từ S0.
+Chỉ G0, G1, G2a, G2b, G3, G4, G5 đều PASS mới được cân nhắc lock S1.
 
 ---
 
-## 10. Cách chấm điểm 100 điểm
+## 10. Scorecard V3 — 100 điểm
 
-### 10.1. Luật chấm
+Score chỉ xếp hạng survivor; hard gate luôn có quyền ưu tiên.
 
-1. Candidate fail G0, G1 hoặc G2: `UNRANKED_PROTOCOL_FAIL`.
-2. Candidate fail/inconclusive G3: có thể nhận `diagnostic_score`, nhưng không
-   nằm trong survivor leaderboard.
-3. `final_research_score` chỉ có khi G0–G5 đều PASS.
-4. Missing metric nhận 0 ở component tương ứng và phải có reason code.
-5. Weights và bands được khóa trước run; không đổi sau khi xem kết quả.
-6. Score chỉ xếp hạng survivor, không thay verdict của hard gate.
-
-### 10.2. Bảng điểm chi tiết
-
-#### A. Economic rationale và simplicity — 10 điểm
-
-| Thành phần | Điểm tối đa | Cách chấm |
-|---|---:|---|
-| Cơ chế kinh tế rõ | 3 | 0: không có; 1: mô tả chung; 2: mechanism cụ thể; 3: mechanism + điều kiện tồn tại/biến mất |
-| Counterparty/nguồn edge | 2 | 0: không rõ; 1: giả thuyết; 2: nêu ai trả edge và vì sao |
-| Falsifiable trước run | 2 | 0: hậu nghiệm; 1: có invalidation mơ hồ; 2: điều kiện bác bỏ định lượng |
-| Simplicity/trial discipline | 3 | 0: quá budget; 1: nhiều knobs; 2: bounded grid; 3: ít knobs và trial accounting đầy đủ |
-
-#### B. Data và leakage integrity — 15 điểm
-
-Chỉ chấm khi G0/G1 PASS.
-
-| Thành phần | Điểm tối đa |
+| Component | Điểm |
 |---|---:|
-| Continuous coverage + funding completeness | 4 |
-| Timestamp/publication-lag evidence | 4 |
-| Train/test/warmup/purge correctness | 4 |
-| Frozen point-in-time universe và exclusions | 3 |
+| Economic rationale/simplicity | 10 |
+| Data/leakage integrity | 15 |
+| Chronological edge quality | 25 |
+| Time/symbol/parameter robustness | 15 |
+| Cost/execution realism | 10 |
+| Risk quality | 10 |
+| Portfolio/diversification | 5 |
+| Reproducibility/auditability | 10 |
+| **Tổng** | **100** |
 
-Mỗi mục chỉ nhận toàn điểm khi có artifact/test dẫn chứng; khai báo bằng lời nhận
-0 cho mục đó.
+### 10.1. Chronological edge bands
 
-#### C. Chronological edge quality — 25 điểm
-
-| Metric | Band | Điểm |
+| Metric | Bands | Điểm |
 |---|---|---:|
-| Expectancy R/trade | ≤0 / (0,.03) / [.03,.05) / [.05,.10) / ≥.10 | 0 / 2 / 4 / 6 / 8 |
-| Position PF | <1.10 / 1.10–1.14 / 1.15–1.24 / 1.25–1.49 / ≥1.50 | 0 / 2 / 4 / 6 / 7 |
-| Positive folds | <2/3 / 2/3 / 3/3 | 0 / 3 / 5 |
-| Closed trades | <20 / 20–49 / 50–99 / ≥100 | 0 / 1 / 2 / 3 |
-| Flat after-cost benchmark | không thắng / thắng | 0 / 2 |
+| Expectancy R/trade | ≤0 / (0,.03) / [.03,.05) / [.05,.10) / ≥.10 | 0/2/4/6/8 |
+| Position PF | <1.10 / 1.10–1.14 / 1.15–1.24 / 1.25–1.49 / ≥1.50 | 0/2/4/6/7 |
+| Positive folds | <2/3 / 2/3 / 3/3 | 0/3/5 |
+| Closed trades | <20 / 20–49 / 50–99 / ≥100 | 0/1/2/3 |
+| Flat after-cost benchmark | fail/pass | 0/2 |
 
-Nếu project chưa chuẩn hóa R/trade, component expectancy nhận 0 và report phải
-hiện `MISSING_R_NORMALIZATION`; không thay bằng USDT threshold tùy symbol.
+Các component khác phải dùng metric/evidence subcomponents như contract Sprint V2;
+không được cấp full points chỉ vì một gate boolean PASS.
 
-#### D. Robustness theo time/symbol/parameter — 15 điểm
+### 10.2. Score eligibility
 
-| Thành phần | Điểm tối đa | Cách chấm |
-|---|---:|---|
-| Fold stability | 4 | 0 nếu fail G3; 2 nếu 2/3 dương; 4 nếu 3/3 và không concentration fail |
-| Symbol breadth | 4 | 0 nếu required symbol fail; 2 nếu ≥70% dương; 4 nếu ≥85% dương |
-| Parameter neighborhood | 4 | 0 spike; 2 mixed nhưng median dương; 4 neighborhood ổn định |
-| Drop-one sensitivity | 3 | 0 đổi dấu; 1 mong manh; 3 vẫn dương và verdict giữ nguyên |
-
-#### E. Cost và execution realism — 10 điểm
-
-| Thành phần | Điểm tối đa |
-|---|---:|
-| Baseline commission/slippage/funding đầy đủ | 3 |
-| +50% fee stress vẫn dương | 2 |
-| Two-tick adverse fill vẫn dương | 2 |
-| One-bar delay vẫn dương | 2 |
-| Capacity/turnover limitation được ghi | 1 |
-
-#### F. Risk quality — 10 điểm
-
-| Thành phần | Điểm tối đa |
-|---|---:|
-| MDD nằm trong pre-registered budget | 4 |
-| Drawdown duration/recovery chấp nhận được | 2 |
-| Tail loss và worst-fold không vi phạm limit | 2 |
-| Exposure/leverage không vi phạm limit | 2 |
-
-Risk limits cụ thể phải nằm trong candidate spec trước run; không tạo threshold
-sau khi thấy equity curve.
-
-#### G. Portfolio/diversification — 5 điểm
-
-| Thành phần | Điểm tối đa |
-|---|---:|
-| Shared-capital replay PASS | 2 |
-| Top-symbol contribution ≤40% | 1 |
-| Cluster/concurrency limits PASS | 1 |
-| Benchmark/BTC-beta-neutral context | 1 |
-
-#### H. Reproducibility/auditability — 10 điểm
-
-| Thành phần | Điểm tối đa |
-|---|---:|
-| Immutable inputs + hashes | 3 |
-| Independent position/PnL rerun match | 4 |
-| Exact command/commit/seed/environment | 2 |
-| Append-only registry và reason codes | 1 |
-
-### 10.3. Diễn giải tổng điểm
-
-| Điểm | Ý nghĩa tối đa |
-|---:|---|
-| `<50` | Reject/redesign |
-| `50–59` | Diagnostic only |
-| `60–69` | Exploratory candidate; chưa được lock |
-| `70–79` | Có thể lock cho future S1 nếu mọi G0–G5 PASS |
-| `80–100` | Strong research candidate; vẫn chưa phải confirmed edge |
-
-Một candidate 90 điểm nhưng fail G1 vẫn là `UNRANKED_PROTOCOL_FAIL`.
+- G0/G1/G2a fail: `UNRANKED_PROTOCOL_FAIL`.
+- G2b chưa chạy: score chỉ diagnostic.
+- G3 fail/inconclusive: không vào survivor leaderboard.
+- `final_research_score` chỉ có sau G0–G5 PASS.
+- Missing metric nhận 0 và machine-readable reason.
 
 ---
 
-## 11. H-FUNDCROWD contract cho lần thử tiếp theo
+## 11. Matrix và registry reconciliation
 
-Trước khi `SPEC_LOCKED`, agent phải sửa các điểm sau:
-
-```yaml
-family: funding_crowding
-feature: point_in_time_funding_percentile
-thresholds: [70, 75, 80]
-htf_filter: true
-declared_parameter_combinations: 3
-oi_overlay: false
-stage: S0_EXPLORATORY
-```
-
-Nếu thêm OI:
-
-- Tạo candidate version mới.
-- Chứng minh OI timestamp và publication delay.
-- Không backfill/forward-fill qua thời điểm chưa biết.
-- Cập nhật trial budget trước run.
-
-Output hợp lệ chỉ gồm:
+Finalizer phải tính lại từ filesystem/index, không nhận manual counts:
 
 ```text
-REJECTED
-INCONCLUSIVE
-STAGE_A_PASS_EXPLORATORY
-LOCK_FOR_FUTURE_S1
+declared_cells
+indexed_cells
+actual_cell_files
+completed
+data_incomplete
+pipeline_error
+registry_entries_for_matrix
+stage_a_artifact_dirs
 ```
 
-Không dùng `EDGE_CONFIRMED`, `PRODUCTION_READY` hoặc `LIVE_READY`.
+Tất cả counts phải khớp hoặc final verdict là partial/fail.
 
----
-
-## 12. Future S1 protocol
-
-S1 không phải một file dữ liệu cũ được đổi nhãn. S1 là dữ liệu xuất hiện **sau**
-khi candidate đã được khóa.
-
-Trình tự bắt buộc:
-
-1. Candidate vượt G0–G5 trên development/S0.
-2. Freeze code, parameters, universe, costs, risk limits và hashes.
-3. Ghi `parameter_lock_utc`.
-4. Bắt đầu capture dữ liệu sau timestamp đó.
-5. Không xem/tune theo S1 trong thời gian tích lũy.
-6. Chỉ đánh giá khi đạt observation/trade/time budget pre-registered.
-7. Chấm một lần; fail thì reject version, không sửa rồi dùng lại cùng S1.
-
----
-
-## 13. Required artifacts Sprint V2
+Registry giữ append-only và phân biệt:
 
 ```text
-results/registry/experiments.jsonl
+CELL_RESULT
+ARTIFACT_INTEGRITY_VERIFY
+INDEPENDENT_RERUN_VERIFY
+MATRIX_FINALIZE
+```
 
-results/matrix/<matrix_v2_id>/
+Không ghi verify V3 thiếu `schema`, `matrix_id`, `verified_experiment_id` hoặc
+verification type.
+
+---
+
+## 12. Required artifacts
+
+```text
+results/matrix/v3_execution_truth/
+  frozen_v2_inventory.json
   index.json
-  coverage.json
-  v1_v2_comparison.json
   report.json
+  reconciliation.json
+  v2_v3_comparison.json
+  cells/
 
-results/stage_a/<experiment_v2_id>/
-  manifest.yaml
+results/stage_a_v3/<experiment_id>/
+  launch_manifest.yaml
   frozen/
+    runtime_config.yaml
     candidate.yaml
-    config.yaml
     data_manifest.json
     universe.json
-  positions.parquet-or-jsonl
-  cells.jsonl
+  positions.jsonl
+  execution_evidence.json
   canonical_metrics.json
   gate_result.json
   scorecard.json
   artifact_hashes.json
   run.log
 
-research/hypotheses/<hypothesis_id>/
-  hypothesis.md
-  candidate.yaml
+results/reproduction_v3/<verify_id>/
+  source_experiment.json
+  rerun_manifest.yaml
+  comparison.json
+  run.log
 
-research/wayfinder/evidence/sprint-v2-24h-<date>.md
+research/hypotheses/_analysis_v3/
+  v2_v3_execution_impact.md
+  candidate_funnel.json
+  hypothesis_drafts.md
+  challenge_memo.md
+
+research/wayfinder/evidence/sprint-v3-24h-<date>.md
 ```
 
 ---
 
-## 14. Stop conditions
+## 13. Stop conditions
 
-Dừng research và chuyển sang correctness/reporting khi:
+Dừng matrix/research khi:
 
-- Một trong H4/H9/H14 gate fail.
-- Position-level accounting không reconcile với total canonical PnL.
-- Data coverage/funding không đủ và chưa có pre-registered exclusion rule.
-- Reproduction hash hoặc position digest mismatch.
-- Trial budget đã hết.
-- Có nguy cơ ghi đè V1/user artifacts.
-- CPU/disk budget vượt limit A1 đã đặt.
-- H20 đã tới.
+- Signal/fill ordering test fail.
+- Launch provenance không chứng minh lock-before-run.
+- G1 còn hard-coded PASS trong scored path.
+- G2b tự so cùng artifact/process.
+- Position R hoặc canonical PnL không reconcile.
+- V2 artifacts thay đổi.
+- Trial budget hoặc resource budget bị vượt.
+- Có nguy cơ live execution.
+- H20 đã tới và matrix chưa hoàn tất.
 
-Không tăng budget, đổi score band hoặc hạ hard gate để tạo survivor.
+Không hạ gate hoặc sửa result để hoàn thành sprint.
 
 ---
 
-## 15. Final report bắt buộc
+## 14. Final report format
 
 ```text
-SPRINT V2 VERDICT
+SPRINT V3 VERDICT
 - pipeline_status:
 - candidate_status:
 - blockers:
 
-SAFETY
-- live_guard_tests:
-- typed_boolean_validation:
-- live_money_changes: none
+BASELINE
+- commit:
+- tests:
+- V2_hash_snapshot:
 
-CORRECTNESS
-- position_pf_test:
-- G0_evidence:
-- G1_evidence:
-- G2_reproduction:
+EXECUTION
+- scored_execution_mode:
+- signal_fill_invariant:
+- same_bar_mode_classification:
+- one_tick/two_tick evidence:
 
-DATA
-- universe_declared:
-- universe_eligible:
-- ETH_gap_resolution:
-- continuous_clean_intersection:
-- funding_completeness:
+PROVENANCE
+- snapshot_before_backtest:
+- lock_before_launch:
+- exact_backtest_argv:
+- identity_accuracy:
 
-CORRECTED MATRIX
-- completed/declared:
-- V1_artifacts_unchanged:
-- G0/G1/G2/G3/G4/G5_counts:
-- top_rejection_reasons:
-- V1_V2_metric_changes:
+GATES
+- G0:
+- G1:
+- G2a:
+- G2b:
+- G3:
+- G4:
+- G5:
 
-RESEARCH
-- hypotheses_specified:
-- trials_declared/executed:
-- rejected:
-- inconclusive:
-- exploratory_survivors:
-- locked_for_future_S1:
+MATRIX
+- declared/index/files/completed:
+- registry_reconciliation:
+- V2_unchanged:
+
+V2 VS V3
+- PnL/PF/expectancy-R impact:
+- verdict changes:
+- execution optimism magnitude:
 
 REPRODUCIBILITY
-- manifest_hash:
-- independent_rerun:
-- position_digest_match:
-- canonical_PnL_match:
+- sampled families:
+- survivor reruns:
+- matches/mismatches:
+
+RESEARCH
+- survivors:
+- locked_for_S1:
+- hypothesis drafts only:
+- S1 inspected: no
 
 TESTS
 - passed:
 - failed:
 - xfailed:
 
-NEXT ACTIONS
-- P0:
-- P1:
-- P2:
+NEXT FRONTIER
+- selected ticket/spec:
+- prerequisites:
 ```
 
-Sprint-level verdict hợp lệ:
+Allowed final verdicts:
 
 ```text
 PIPELINE_PASS_CANDIDATE_FAIL
@@ -778,24 +778,555 @@ PIPELINE_FAIL
 
 ---
 
-## 16. Thứ tự ưu tiên sau Sprint V2
+## 15. Completion gate bắt buộc để chuyển V3 → V4
 
-Nếu pipeline PASS nhưng không candidate:
+A1 chỉ được phát lệnh bắt đầu V4 khi **tất cả** điều kiện dưới đây PASS bằng
+machine-readable artifact. Không có quyền waiver để kịp thời gian.
 
-1. Dùng rejection reasons để tạo hypothesis mới, không random indicator search.
-2. Ưu tiên funding crowding đã sửa contract.
-3. Sau đó mới xây portfolio engine cho cross-sectional reversal/momentum.
-4. BTC-beta-neutral residual strategy chỉ chạy khi benchmark/hedge accounting
-   đã chính xác.
-5. Mỗi sprint chỉ mở bounded families và ghi cumulative family trial count.
+### 15.1. V3 correctness gate
 
-Nếu có candidate được lock:
+```text
+V3-C01 baseline_and_final_tests_pass
+V3-C02 no_failed_or_xfailed_tests
+V3-C03 signal_ts_strictly_before_fill_ts_for_all_scored_entries
+V3-C04 same_bar_close_is_diagnostic_only
+V3-C05 position_pnl_and_expectancy_r_reconcile
+V3-C06 launch_manifest_created_before_backtest
+V3-C07 candidate_lock_precedes_real_backtest_launch
+V3-C08 actual_runner_argv_commit_dirty_state_captured
+V3-C09 hypothesis_identity_version_owner_are_exact
+V3-C10 G1_has_no_unconditional_true_in_scored_path
+V3-C11 G2a_and_G2b_are_separate
+V3-C12 one_independent_rerun_per_strategy_family
+V3-C13 all_G3_survivors_independently_rerun
+V3-C14 matrix_report_index_files_registry_reconcile
+V3-C15 V2_artifact_hashes_unchanged
+V3-C16 V3_inventory_completed_or_explained_98_of_98
+V3-C17 scorecard_band_boundary_tests_pass
+V3-C18 no_live_money_change
+V3-C19 S1_not_read
+```
 
-1. Bắt đầu future S1 capture.
-2. Không sửa candidate.
-3. Tiếp tục research family khác trên S0 nhưng cách ly hoàn toàn với S1.
-4. Chờ đủ pre-registered S1 horizon trước khi đánh giá.
+### 15.2. Transition decision
 
-Đích dài hạn là một **research factory trung thực**, không phải một báo cáo có
-equity curve đẹp: tìm ý tưởng, kiểm tra toàn diện, loại edge giả, giữ bằng chứng,
-học từ thất bại và chỉ tin candidate sống sót qua dữ liệu tương lai.
+```text
+if all(V3-C01..V3-C19):
+    transition = V4_AUTHORIZED
+else:
+    transition = BLOCKED_BY_V3
+```
+
+`BLOCKED_BY_V3` là terminal condition của master plan. A1 phải báo exact failed
+criteria và tiếp tục frontier correctness ở sprint sau; không được giao A4 chạy
+hypothesis mới.
+
+### 15.3. Candidate handling khi V3 PASS
+
+- Nếu V3 có survivor: hoàn thành G4/G5/G2b, lock hoặc reject trước V4; S1 capture
+  của survivor phải cách ly hoàn toàn với V4 research.
+- Nếu V3 có 0 survivor: vẫn được mở V4 khi pipeline correctness PASS.
+- Không tune lại H-FUNDCROWD-MR-v2 hoặc bất kỳ V1/V2 candidate nào trên cùng S0.
+
+---
+
+## 16. Sprint V4 objective — bounded cross-sectional edge research
+
+V4 dùng pipeline đã được chứng minh ở V3 để triển khai đúng **một** family mới:
+
+```text
+H-XSECT-MOM-v1 — dollar-neutral cross-sectional momentum
+```
+
+Mục tiêu V4:
+
+1. Xây shared-capital cross-sectional rank/rebalance engine point-in-time.
+2. Test một hypothesis có cơ sở kinh tế, không random indicator search.
+3. Dùng đúng ba lookback candidates và một negative-control experiment.
+4. Walk-forward ở portfolio level, tính fees, slippage và funding.
+5. Đo BTC beta, concentration, turnover và shared-capital drawdown.
+6. Reject, inconclusive hoặc lock tối đa một candidate cho future S1.
+
+V4 không có mục tiêu bắt buộc tìm được PASS.
+
+---
+
+## 17. Research basis và giới hạn ngoại suy
+
+### 17.1. Execution research
+
+NautilusTrader bar execution xử lý OHLC trước khi gọi `on_bar`; order gửi trong
+callback có thể settle ở close cùng timestamp. Framework không cung cấp native
+next-bar-open fill cho bar-only data. Vì repo dùng NautilusTrader `1.230.0`,
+micro-fixture trên installed version là source of truth; documentation chỉ là
+design reference.
+
+### 17.2. Factor research
+
+Nghiên cứu `Common Risk Factors in Cryptocurrency` tìm thấy market, size và
+momentum giải thích cross-sectional crypto returns; nghiên cứu `Risks and
+Returns of Cryptocurrency` cũng ghi nhận crypto time-series momentum.
+
+Đây chỉ là prior cho hypothesis, không phải bằng chứng edge trong repo vì:
+
+- paper universe lớn hơn bảy symbols;
+- paper chủ yếu nghiên cứu spot/coin returns, không phải Binance perps;
+- repo phải chịu funding, leverage, liquidation, fees và execution delay;
+- S0 chỉ khoảng một năm và đã được dùng để research;
+- cross-sectional result có thể phụ thuộc regime hoặc liquidity universe.
+
+Vì vậy V4 dùng trial budget nhỏ, portfolio-neutral construction và future S1
+trước mọi promotion.
+
+### 17.3. Vì sao không chọn family khác ở V4
+
+- Funding-crowding v2 đã bị reject; đổi threshold tiếp là post-hoc tuning.
+- OI local overlay chỉ khoảng 30 ngày, chưa đủ cho S0 walk-forward dài.
+- Directional EMA/MR/regime/breakout families đã thất bại rộng trên V2.
+- Cross-sectional ranking chưa được thử và có khả năng loại bớt common market
+  direction đã làm nhiều single-symbol strategies thất bại.
+
+---
+
+## 18. H-XSECT-MOM-v1 pre-registration contract
+
+A4 viết `candidate.yaml` đúng nội dung dưới đây trước khi code hoặc scored run.
+A1 kiểm tra và khóa spec sau khi V4 data/portfolio interfaces PASS.
+
+```yaml
+hypothesis_id: H-XSECT-MOM-v1
+family: cross_sectional_momentum
+candidate_version: 1
+stage: S0_EXPLORATORY
+owner_agent: A4
+
+universe:
+  traded_symbols:
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+    - DOGEUSDT
+    - LINKUSDT
+    - ADAUSDT
+  benchmark_symbol: BTCUSDT
+  universe_policy: fixed_before_run
+
+bar_interval: 15m
+signal_clock: daily_00_00_utc_close
+rebalance_interval: 24h
+execution_mode: NEXT_BAR_EVENT_BASELINE
+
+signal:
+  type: cumulative_log_return_rank
+  lookback_days: [3, 7, 14]
+  exclude_execution_bar: true
+  long_count: 2
+  short_count: 2
+  tie_break: symbol_ascending
+
+portfolio:
+  gross_target: 1.0
+  net_target: 0.0
+  long_gross: 0.5
+  short_gross: 0.5
+  weighting: equal_within_leg
+  max_abs_weight_per_symbol: 0.25
+  min_eligible_symbols: 7
+  incomplete_cross_section_action: skip_entire_rebalance
+
+trial_budget:
+  scored_candidates: 3
+  negative_controls: 1
+  total_experiments: 4
+
+negative_control:
+  type: reverse_rank
+  lookback_days: 7
+  eligible_for_selection: false
+
+selection_tie_break:
+  - all_hard_gates_pass
+  - highest_median_fold_expectancy_r
+  - lowest_turnover
+  - lowest_max_drawdown
+```
+
+Không được thêm volatility scaling, funding threshold, regime filter, symbol
+weight, extra lookback hoặc rebalance interval trong version 1.
+
+---
+
+## 19. V4 point-in-time data contract
+
+### 19.1. Synchronized panel
+
+- Sử dụng continuous clean S0 intersection được V3 xác nhận.
+- BTCUSDT chỉ làm benchmark/beta context; phải audit coverage độc lập.
+- Mỗi signal timestamp chỉ dùng bars có `ts_init/ts_event <= signal_ts` theo
+  timestamp contract đã test.
+- Daily close được resample deterministically từ completed 15m bars.
+- Rank tại timestamp `t` không được dùng return/fill của event sau `t`.
+- Nếu bất kỳ traded symbol thiếu required lookback tại một rebalance, skip toàn
+  rebalance; không chỉ bỏ symbol thiếu rồi thay đổi cross-section.
+- Universe membership không được thay sau khi xem PnL.
+
+### 19.2. Liquidity và costs
+
+- Chỉ universe đã được freeze; không tái chọn top-volume hậu nghiệm.
+- Commission, one-tick baseline slippage và funding áp ở position/leg level.
+- Rebalance turnover tính từ target-weight delta, không giả đóng/mở miễn phí.
+- Quantity obey instrument precision, min quantity và min notional.
+- Rejected order hoặc insufficient margin phải thành reason code.
+
+### 19.3. BTC beta context
+
+- Tính realized portfolio beta với BTC trên returns cùng timestamp.
+- Window/beta estimator được freeze trước scored run.
+- BTC không được dùng vào selection ngoài metric đã pre-register.
+- Thiếu BTC clean coverage: V4 được chạy diagnostic nhưng không được lock S1.
+
+---
+
+## 20. Shared-capital portfolio engine contract
+
+Engine phải rebalance cả cross-section như một portfolio, không chạy bảy
+single-symbol backtests rồi cộng PnL.
+
+### Required state
+
+```text
+shared_cash
+shared_margin
+gross_exposure
+net_exposure
+target_weights
+actual_weights
+pending_orders
+per_symbol_position
+portfolio_equity
+portfolio_drawdown
+funding_cashflows
+turnover
+```
+
+### Rebalance sequence
+
+```text
+complete signal bar
+→ build synchronized feature vector
+→ rank all seven symbols
+→ compute frozen target weights
+→ risk/margin pre-check whole rebalance
+→ submit reductions before increases
+→ execute only after signal timestamp
+→ record partial/rejected fills
+→ update shared cash/margin/equity
+```
+
+### Required invariants
+
+- Sum target weights approximately zero within `1e-9` before rounding.
+- Gross target ≤1.0.
+- Absolute net realized exposure ≤0.10 after rounding/fills or reason code.
+- Absolute target weight per symbol ≤0.25.
+- No double-counted capital across symbols.
+- Funding charged/credited based on actual held positions at settlement.
+- No lookahead from future cross-sectional membership or fill prices.
+
+---
+
+## 21. V4 agent ownership
+
+| Agent | Vai trò V4 | Exclusive ownership |
+|---|---|---|
+| **A1** | V4 coordinator/contract lock/integrator | spec lock, interfaces, merge, final verdict |
+| **A2** | Synchronized data & shared-capital engine | panel builder, rebalance engine, weights/margin/funding |
+| **A3** | Portfolio metrics, gates, beta & reproduction | portfolio ledger, score, gates, matrix, independent rerun |
+| **A4** | Hypothesis/strategy owner & independent analysis | H-XSECT-MOM spec, rank signal, result/challenge memo |
+
+Protected file ownership tiếp tục áp dụng. A4 không sửa gates; A3 không sửa
+hypothesis after lock.
+
+---
+
+## 22. Lịch Sprint V4 — H24 đến H48
+
+### H24–H26 — Authorization và spec freeze
+
+**A1**
+
+- Đọc `v3_transition.json`; xác minh đủ V3-C01..V3-C19 PASS.
+- Nếu thiếu một mục: ghi `BLOCKED_BY_V3` và dừng.
+- Freeze V4 schemas, universe, three lookbacks và total trial budget 4.
+- Chạy/hash baseline tests và V3 artifacts.
+
+**A4**
+
+- Viết hypothesis, mechanism, counterparty và invalidation trước code.
+- Không xem partial V4 result trước spec lock.
+
+#### Gate H26
+
+```text
+V4_AUTHORIZED
+H_XSECT_MOM_V1_SPEC_LOCKED
+TRIAL_BUDGET_4_LOCKED
+UNIVERSE_AND_SIGNAL_CLOCK_LOCKED
+```
+
+### H26–H32 — Parallel foundation
+
+**A2**
+
+- Implement/test synchronized panel.
+- Implement shared-capital rank/rebalance engine.
+- Implement quantity rounding, reductions-before-increases và exposure checks.
+- Wire funding/fees/slippage at leg level.
+
+**A3**
+
+- Implement portfolio ledger, beta, turnover, MDD và contribution metrics.
+- Extend launch provenance/G1/G2a/G2b to portfolio experiments.
+- Implement portfolio gate fixtures and report reconciliation.
+
+**A4**
+
+- Implement pure point-in-time ranking function and negative control.
+- Unit-test lookbacks, ties, missing bars, rank direction và no-lookahead.
+
+### H32–H35 — Integration checkpoint
+
+Merge order:
+
+1. A1 portfolio contracts.
+2. A2 panel/shared-capital engine.
+3. A4 rank signal.
+4. A3 portfolio metrics/gates/runner.
+
+#### Gate H35
+
+```text
+SYNCHRONIZED_PANEL_PASS
+RANK_NO_LOOKAHEAD_PASS
+SHARED_CAPITAL_INVARIANTS_PASS
+FUNDING_AND_COST_RECONCILIATION_PASS
+PORTFOLIO_PROVENANCE_PASS
+FULL_TESTS_PASS
+```
+
+Fail gate H35: không chạy V4 scored matrix.
+
+### H35–H41 — Stage A portfolio experiments
+
+Chạy đúng bốn experiments:
+
+```text
+XSECT-MOM-3D
+XSECT-MOM-7D
+XSECT-MOM-14D
+XSECT-REVERSE-7D-CONTROL
+```
+
+Rules:
+
+- Ba chronological outer folds.
+- Warmup ngoài scored folds.
+- Shared capital duy nhất cho bảy symbols.
+- Same frozen universe, execution, cost và funding model.
+- Negative control không được chọn dù kết quả tốt.
+- Mỗi experiment ghi complete launch manifest và portfolio ledger.
+- Không rerun với parameter khác khi nhìn result.
+
+### H41–H45 — Gates, stress và selection
+
+Chỉ scored candidate vượt G0–G3 mới chạy:
+
+- +50% fees.
+- Two-tick adverse fill.
+- Additional one-event delay.
+- Drop-one-symbol.
+- Drop-one-fold.
+- Shared-capital risk limits.
+- BTC beta/contribution checks.
+
+Parameter-neighborhood rule:
+
+- Ít nhất hai lookback liền kề trong `{3,7,14}` phải có positive portfolio
+  expectancy sau costs.
+- Chỉ một lookback dương là `PARAMETER_SPIKE_FAIL`.
+
+### H45–H47 — Independent reproduction và lock decision
+
+- Independent rerun 100% candidate đủ G0–G5.
+- So order/position/portfolio digests, PnL, beta, turnover và drawdown.
+- Áp pre-registered tie-break; chọn tối đa một candidate.
+- Lock candidate hoặc reject/inconclusive family.
+- Nếu lock: bắt đầu future S1 capture sau lock; chưa đánh giá S1.
+
+### H47–H48 — Final audit và report
+
+- A4 challenge memo: leakage, universe bias, rebalance/fill optimism, common-beta
+  exposure và concentration.
+- A3 reconcile experiments/artifacts/registry.
+- A1 full tests, hashes, final verdict và next frontier.
+
+---
+
+## 23. V4 hard gates
+
+### XG0 — Data/universe
+
+- Seven-symbol panel và BTC benchmark clean trong declared window.
+- No silent symbol/rebalance exclusion.
+- Funding/metadata complete.
+- Universe frozen trước result.
+
+### XG1 — Point-in-time/leakage
+
+- Feature bars completed before signal.
+- Signal timestamp precedes every fill.
+- Cross-sectional membership/ties deterministic.
+- No execution-bar return in lookback.
+- Warmup/train/test boundaries evidenced.
+
+### XG2a/XG2b — Integrity/reproduction
+
+- Portfolio manifest/hashes/ledger reconcile.
+- Independent rerun matches orders, positions, portfolio PnL and metrics.
+
+### XG3 — Stage A portfolio edge
+
+- Portfolio canonical PnL >0 after commission/slippage/funding.
+- Position-level PF ≥1.10.
+- Portfolio expectancy-R >0.
+- Ít nhất 2/3 folds có PnL và expectancy-R dương.
+- Ít nhất 30 scored rebalances và 100 closed legs; thiếu là `INCONCLUSIVE`.
+- Không fold đóng góp >50% positive aggregate PnL.
+- Không symbol đóng góp >40% positive aggregate PnL.
+
+### XG4 — Robustness/execution
+
+- +50% fee, two-tick và extra-delay stresses vẫn có expectancy-R dương.
+- Ít nhất hai adjacent lookbacks dương.
+- Drop-one-symbol/fold không làm result phụ thuộc một observation duy nhất.
+- Turnover không vượt pre-registered capacity budget.
+
+### XG5 — Shared-capital risk
+
+- Gross exposure ≤1.0.
+- Absolute net exposure ≤0.10.
+- Absolute weight/symbol ≤0.25.
+- Không margin breach hoặc liquidation.
+- Top-symbol contribution ≤40%.
+- Absolute realized BTC beta ≤0.25; lớn hơn là `BETA_EXPOSURE_FAIL`.
+- Maximum drawdown ≤10% cho candidate muốn lock S1.
+
+Chỉ XG0–XG5 và independent rerun đều PASS mới được lock.
+
+---
+
+## 24. V4 score và selection
+
+Giữ scorecard 100 điểm của V3 nhưng portfolio components phải dùng metric thật.
+
+Additional scoring rules:
+
+- Score chỉ tồn tại sau XG0/XG1/XG2a PASS.
+- Final score chỉ tồn tại sau XG0–XG5 và XG2b PASS.
+- Negative control luôn `CONTROL_ONLY`, không có selection rank.
+- Candidate đủ gate cần score ≥70 để được cân nhắc lock.
+- Tie-break duy nhất:
+  1. highest median fold expectancy-R;
+  2. lower turnover;
+  3. lower maximum drawdown.
+
+Không chọn theo highest total PnL đơn thuần.
+
+---
+
+## 25. V4 artifacts
+
+```text
+research/hypotheses/H-XSECT-MOM-v1/
+  hypothesis.md
+  candidate.yaml
+  status.yaml
+
+results/matrix/v4_xsect_mom/
+  index.json
+  report.json
+  reconciliation.json
+  experiments/
+
+results/portfolio_v4/<experiment_id>/
+  launch_manifest.yaml
+  frozen/
+  signal_ranks.parquet-or-jsonl
+  orders.jsonl
+  positions.jsonl
+  portfolio_ledger.parquet-or-jsonl
+  canonical_metrics.json
+  beta_report.json
+  contribution_report.json
+  gate_result.json
+  scorecard.json
+  artifact_hashes.json
+
+results/reproduction_v4/<verify_id>/
+  rerun_manifest.yaml
+  comparison.json
+  run.log
+
+research/wayfinder/evidence/sprint-v4-24h-<date>.md
+```
+
+---
+
+## 26. Master final verdict
+
+Final report phải tách:
+
+```text
+V3_PIPELINE_VERDICT
+V3_TRANSITION = V4_AUTHORIZED | BLOCKED_BY_V3
+
+V4_PIPELINE_VERDICT
+V4_FAMILY_VERDICT = REJECTED | INCONCLUSIVE | LOCK_FOR_FUTURE_S1
+
+S1
+- candidate_locked:
+- capture_started_after_lock:
+- inspected_or_scored: no
+```
+
+Allowed master outcomes:
+
+```text
+V3_FAIL_V4_BLOCKED
+V3_PARTIAL_V4_BLOCKED
+V3_PASS_V4_CANDIDATE_FAIL
+V3_PASS_V4_CANDIDATE_INCONCLUSIVE
+V3_PASS_V4_LOCK_FOR_FUTURE_S1
+```
+
+Mục tiêu dài hạn vẫn là vòng lặp evidence-first:
+
+```text
+hypothesis → spec lock → point-in-time data → realistic execution
+→ shared-capital walk-forward → hard gates → independent rerun
+→ score survivors → future S1 → reject/shadow/promote
+→ learn from immutable evidence → next hypothesis
+```
+
+---
+
+## 27. Research references
+
+- NautilusTrader, `Bar-Based Execution`:
+  <https://nautilustrader.io/docs/nightly/concepts/backtesting/bar-execution/>
+- NautilusTrader, `Backtest Execution Flow`:
+  <https://nautilustrader.io/docs/latest/concepts/backtesting/execution-flow/>
+- Liu, Tsyvinski, Wu, `Common Risk Factors in Cryptocurrency`, NBER Working
+  Paper 25882: <https://www.nber.org/papers/w25882>
+- Liu, Tsyvinski, `Risks and Returns of Cryptocurrency`, Review of Financial
+  Studies: <https://doi.org/10.1093/rfs/hhaa113>
