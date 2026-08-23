@@ -12,13 +12,37 @@
 
 ## Tổng quan đội hình — 5 × OpenCode (ox-alpha)
 
-| # | Agent | Vai trò | Worktree |
-|---|-------|---------|----------|
-| A1 | **OpenCode #1** | Điều phối trưởng + Reviewer cuối | main (không edit code trực tiếp) |
-| A2 | **OpenCode #2** | Data & Forward-test pipeline | wt/data-pipeline |
-| A3 | **OpenCode #3** | Quality & Safety (tests + guards) | wt/quality-safety |
-| A4 | **OpenCode #4** | Research phân tích (không tune) | wt/research-analysis |
-| A5 | **OpenCode #5** | Ops & Reporting (dashboard, tự động hoá) | wt/ops-reporting |
+| # | Agent | Vai trò | Worktree (branch) | Ưu tiên |
+|---|-------|---------|-------------------|---------|
+| A1 | **OpenCode #1** | Điều phối trưởng + Reviewer cuối | main (không edit code trực tiếp) | — |
+| A2 | **OpenCode #2** | Data & Forward-test pipeline | `../my-quantitative-wt/data-pipeline` (`wt/data-pipeline`) | CAO — chạy W2 sớm vì tốn wall-clock |
+| A3 | **OpenCode #3** | Safety guards (thu hẹp: chỉ test guard LIVE) | `../my-quantitative-wt/quality-safety` (`wt/quality-safety`) | THẤP |
+| A4 | **OpenCode #4** | Research phân tích (không tune) | `../my-quantitative-wt/research-analysis` (`wt/research-analysis`) | **CAO NHẤT — nơi ra edge** |
+| A5 | **OpenCode #5** | Ops tối thiểu (`status_report.py`) | `../my-quantitative-wt/ops-reporting` (`wt/ops-reporting`) | THẤP |
+
+## Định nghĩa EDGE (v2 — A1 bổ sung, ràng buộc mọi agent)
+
+Một combo chỉ được gọi là **edge candidate** khi ĐỒNG THỜI thỏa:
+
+1. Expectancy sau funding > 0 và PF > 1.2 trên window 2 năm.
+2. ≥ 4/6 fold dương, VÀ các fold âm tập trung ở ≤ 2 regime/quý xác định được
+   (→ edge có điều kiện, ghi rõ điều kiện gate), hoặc dương đều mọi fold.
+3. PnL > buy-and-hold cùng kỳ, HOẶC có lý do market-neutral rõ ràng
+   (ví dụ: short-only trong markdown phase).
+4. Edge còn tồn tại khi nhân slippage ×1.5 so với config hiện tại
+   (stress test chi phí giao dịch).
+5. Kết quả được A4 ghi trong memo kèm số liệu, KHÔNG cảm tính.
+
+> Deliverable 24h = **watchlist W3**: mã + combo đạt chuẩn trên, kèm rule vào
+> lệnh để forward-test signal-only tuần tới. KHÔNG đụng YAML, KHÔNG live.
+
+### Hạ tầng chung cho worktree (A1 setup sẵn)
+
+- Data dirs lớn bị gitignore → mỗi worktree có **symlink**:
+  `catalog`, `catalog_live_crypto`, `funding_data`, `derivatives_data`, `.env`.
+- Python gọi bằng đường dẫn tuyệt đối:
+  `/Users/hoangminhlong/my-quantitative/.venv/bin/python`.
+- `results/` trong worktree là local; artifact cuối copy về main repo.
 
 ---
 
@@ -59,9 +83,10 @@ artifact JSON; bảng W2 được điền; test overlap pass.
 
 ---
 
-## A3 — OpenCode #2: Quality & Safety
+## A3 — OpenCode #3: Safety guards (scope thu hẹp v2)
 
-**Goal:** Lưới an toàn: test suite xanh + hard guards chống mọi đường dẫn live tiền thật.
+**Goal (v2):** Chỉ 1 việc bắt buộc: hard-guard LIVE tiền thật. Bỏ mục tiêu
+coverage >90% và smoke-test toàn bộ factory — test không tạo edge, làm tối thiểu.
 
 | Giờ | Việc |
 |-----|------|
@@ -76,9 +101,13 @@ bị chặn; full suite xanh; không sửa logic production (chỉ thêm test).
 
 ---
 
-## A4 — OpenCode #3: Research phân tích (read-only params)
+## A4 — OpenCode #4: Research phân tích (read-only params) — **ƯU TIÊN CAO NHẤT**
 
-**Goal:** Hiểu TẠI SAO edge ETH mỏng phụ thuộc giai đoạn — phân tích, tuyệt đối không tune.
+**Goal (v2):** Đây là agent duy nhất trực tiếp tạo ra edge candidate trong 24h.
+Trọng tâm: 4 combo gần đỗ ở §18.1 (NEAR reclaim_mr, BOME trend_pullback, ADA
+markdown_breakdown, SOL reclaim_mr) — câu trả lời phải có là: fold âm có tập
+trung theo regime/quý không? Nếu có → edge có điều kiện; nếu không → noise, bỏ.
+Bổ sung v2: stress test slippage ×1.5 cho combo sống sót.
 
 | Giờ | Việc |
 |-----|------|
@@ -93,9 +122,11 @@ chạy lại được; **zero thay đổi** vào config/*.yaml.
 
 ---
 
-## A5 — OpenCode #4: Ops & Reporting
+## A5 — OpenCode #5: Ops tối thiểu (v2)
 
-**Goal:** Một lệnh nhìn thấy toàn bộ trạng thái: forward-test, scan, TradFi tracker.
+**Goal (v2):** Thu hẹp còn đúng 2 thứ: `scripts/status_report.py` +
+`python main.py status`. Bỏ weekly digest, dọn artifact, cron automation —
+không tạo edge, chỉ làm khi dư thời gian.
 
 | Giờ | H0–H4: viết `scripts/status_report.py` gom tất cả JSON trong results/ → 1 bảng markdown |
 |-----|------|
