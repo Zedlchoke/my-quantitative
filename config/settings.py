@@ -362,6 +362,34 @@ class MarkdownBreakdownSettings:
             raise ValueError("breakdown stop/TP must be > 0")
 
 
+# Sprint V2 safety: strict allowlist for venue environments. Anything else is
+# rejected at load/construction time instead of being treated as non-live.
+ALLOWED_ENVIRONMENTS = frozenset(("TESTNET", "DEMO", "LIVE"))
+
+
+def _require_environment(value: object, field_name: str) -> str:
+    """Normalize case and enforce the environment allowlist (Sprint V2 P0)."""
+    normalized = str(value).strip().upper()
+    if normalized not in ALLOWED_ENVIRONMENTS:
+        raise ValueError(
+            f"{field_name} must be one of {sorted(ALLOWED_ENVIRONMENTS)}, got {value!r}",
+        )
+    return normalized
+
+
+def _require_bool(value: object, field_name: str) -> bool:
+    """Sprint V2 P0 fix (HOLE-2): config booleans must be real booleans.
+
+    Rejects YAML strings like "false"/"true"/"0"/"1" which ``bool()`` would
+    silently coerce to True for non-empty strings.
+    """
+    if isinstance(value, bool):
+        return value
+    raise ValueError(
+        f"{field_name} must be a real boolean (true/false), got {value!r}",
+    )
+
+
 STRATEGY_TYPES = (
     "ema_atr",
     "mean_reversion",
@@ -379,10 +407,14 @@ STRATEGY_TYPES = (
 @dataclass(frozen=True)
 class DataDownloadSettings:
     catalog_path: str = "./catalog"
-    environment: str = "TESTNET"  # BinanceEnvironment: TESTNET | DEMO | LIVE
+    environment: str = "TESTNET"  # allowlist: TESTNET | DEMO | LIVE
     start: str | None = None  # ISO datetime or None
     end: str | None = None  # ISO datetime or None
     lookback_days: int = 30  # used when start is None
+
+    def __post_init__(self) -> None:
+        normalized = _require_environment(self.environment, "data.environment")
+        object.__setattr__(self, "environment", normalized)
 
 
 @dataclass(frozen=True)
@@ -485,6 +517,18 @@ class LiveSettings:
     portfolio_risk: PortfolioRiskSettings = field(default_factory=PortfolioRiskSettings)
 
     def __post_init__(self) -> None:
+        # Sprint V2 P0 fix (HOLE-1): normalize case and enforce an allowlist so
+        # "live"/"Live" hit the same LIVE validation as "LIVE", and unknown
+        # values are rejected instead of silently treated as non-live.
+        normalized = str(self.environment).strip().upper()
+        if normalized not in ALLOWED_ENVIRONMENTS:
+            raise ValueError(
+                f"environment must be one of {sorted(ALLOWED_ENVIRONMENTS)}, "
+                f"got {self.environment!r}",
+            )
+        object.__setattr__(self, "environment", normalized)
+        if not isinstance(self.enable_trading, bool):
+            raise ValueError("enable_trading must be a real boolean")
         if self.environment == "LIVE" and self.enable_trading:
             # Public production data is allowed in signal-only mode; execution is not.
             raise ValueError(
@@ -750,8 +794,8 @@ def load_live_config(path: str | Path) -> LiveSettings:
     """Load a live-trading configuration from YAML."""
     data = _load_mapping(Path(path))
     settings = LiveSettings(
-        environment=data.get("environment", "TESTNET").upper(),
-        enable_trading=bool(data.get("enable_trading", False)),
+        environment=_require_environment(data.get("environment", "TESTNET"), "environment"),
+        enable_trading=_require_bool(data.get("enable_trading", False), "enable_trading"),
         run_seconds=int(data.get("run_seconds", 0)),
         log_level=data.get("log_level", "INFO"),
         market=_build_market(data.get("market", {})),

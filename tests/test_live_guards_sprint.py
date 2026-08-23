@@ -135,22 +135,32 @@ def test_direct_live_settings_default_is_safe():
     assert settings.enable_trading is False
 
 
-# --------------------------- known P0 holes -------------------------------- #
-# Both holes are documented in research/protocol/live_guard_audit.md and are
-# NOT fixed here (production files are outside A3 ownership).  xfail(strict)
-# means: today they fail; the day production fixes them they XPASS and break
-# the suite until these tests are flipped to hard assertions.
+# --------------------------- Sprint V2 P0 fixes ---------------------------- #
+# Both holes documented in research/protocol/live_guard_audit.md are FIXED in
+# Sprint V2 by A1 (config/settings.py): case-normalized environment allowlist
+# and strict typed-boolean parsing. These were strict-xfail markers in V1 and
+# are now hard regression assertions.
 
 
-@pytest.mark.xfail(strict=True, reason="P0 HOLE-1: case-sensitive 'LIVE' compare")
 def test_hole1_lowercase_live_environment_bypasses_guard():
     with pytest.raises(ValueError):
         LiveSettings(environment="live", enable_trading=True)
 
 
-@pytest.mark.xfail(strict=True, reason="P0 HOLE-2: quoted YAML \"false\" is truthy")
+def test_hole1_unknown_environment_is_rejected():
+    with pytest.raises(ValueError):
+        LiveSettings(environment="PROD", enable_trading=False)
+
+
 def test_hole2_quoted_yaml_false_is_truthy(tmp_path):
     config = tmp_path / "live_quoted.yaml"
     config.write_text('environment: TESTNET\nenable_trading: "false"\n')
-    settings = load_live_config(config)
-    assert settings.enable_trading is False
+    with pytest.raises(ValueError):
+        load_live_config(config)
+
+
+def test_hole2_quoted_yaml_true_rejected(tmp_path):
+    config = tmp_path / "live_quoted_true.yaml"
+    config.write_text('environment: TESTNET\nenable_trading: "true"\n')
+    with pytest.raises(ValueError):
+        load_live_config(config)
