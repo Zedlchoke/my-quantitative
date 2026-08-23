@@ -1358,3 +1358,48 @@ Khi đủ gate: chạy đúng pipeline §18.1 (frozen baselines, session gate fa
 ```bash
 python -m research.tradfi_accumulate   # weekly
 ```
+
+---
+
+## 19. Sprint 24h — Quant Research Loop (2026-08-23, A1 verdict)
+
+**Sprint verdict: `PIPELINE_PASS_CANDIDATE_FAIL`** — pipeline end-to-end chạy được,
+tái lập được; 0/77 combo PASS Stage A → hệ thống loại đúng false edge.
+
+### Đã hoàn thành
+- Contracts freeze (`contracts/`): manifest 29 trường, canonical metrics
+  null+reason (hết bug dd=0 mặc định), gates G0–G5 machine-readable,
+  scorecard 100 điểm, budget ≤3 hypotheses/≤2 strategy/≤16 combo/≤2 iterations.
+- Matrix resumable (`research/matrix_runner.py`): Tier0 + Tier1, cell fail
+  cô lập, REUSED theo identity hash.
+- **77/77 cells COMPLETED, 0 PIPELINE_ERROR**: 49 cells (7 frozen strategies ×
+  7 mã S0) + 28 cells (H-VOLCOMP-BRKOUT-v1: squeeze→Donchian breakout, 4 combo).
+- Registry append-only `results/registry/experiments.jsonl`: 79 entries.
+- Reproducibility: rerun markdown_breakdown ADAUSDT khớp tuyệt đối
+  (139 trades, PnL 10.863531 sau funding, digest folds identical) → G2 PASS.
+- LIVE guard: giữ nguyên; audit 13 đường dẫn + 11 test; 2 lỗ hổng P0 documented
+  (chưa fix — ngoài scope).
+
+### Kết quả nghiên cứu (đều sau funding, S0 1 năm, 3 fold chronological)
+- 0/77 PASS Gate Stage A. Không có survivor → không có portfolio/Tier 2.
+- Best existing: markdown_breakdown ADAUSDT exp +0.078 / PF 1.36 / 139 trades
+  nhưng FAIL `fold_concentration_high`; breakout BNBUSDT exp +0.321 nhưng chỉ
+  47 trades và concentration FAIL.
+- H-VOLCOMP-BRKOUT-v1: **REJECTED** — 26/28 exp âm; 2 cells BNB dương nhờ 1 fold
+  duy nhất. Negative result được lưu nguyên vẹn (candidate.yaml state=REJECTED).
+- Iteration 2 không mở: insight từ fold S0 dùng để gate lại chính S0 = in-sample;
+  chờ capture S1 untouched.
+
+### Bài học sprint
+1. `fold_concentration_high` là lý do FAIL phổ biến nhất — xác nhận thiết kế
+   gate chống "một kỳ may" là đúng và cần đọc kỹ trước khi tin bất kỳ exp dương.
+2. Bug metric mặc định 0.0 (drawdown) đã bị test hồi quy chặn — mọi metric thiếu
+   phải là null + reason code.
+3. Silent-skip download (bẫy W1) giờ fail-loud có reason `catalog_not_current`.
+
+### Backlog
+P0: fix 2 LIVE-guard holes · capture S1 · P1: two-tick slippage + delayed-fill
+model, BTC-beta-neutral benchmark · P2: native intrarun funding, DSR/PBO.
+
+Artifacts: `research/wayfinder/evidence/sprint-24h-20260823.md`,
+`results/stage_a/`, `results/matrix/`, `results/registry/experiments.jsonl`.
