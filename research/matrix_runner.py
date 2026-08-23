@@ -1083,19 +1083,23 @@ def _positions_rows_in_window(
     *,
     strategy_type: str = "",
     fold: int | None = None,
+    execution_records: list[dict] | None = None,
 ) -> list[dict]:
     """Closed-position rows with funding-adjusted canonical PnL in window.
 
     One row per closed position whose ``ts_closed`` falls inside the scored
     fold window ``[w_start, w_end]`` (inclusive), sorted by close time.
 
-    Sprint V3: rows carry the agreed A2/A3 execution-evidence key set
-    (signal_ts/submit_ts/fill_ts/execution_mode/initial_risk_usdt/r_multiple
-    ...). Columns A2 has not landed yet are emitted as null -- the runner
-    NEVER fabricates execution evidence; gates treat missing fields as
-    EVIDENCE_MISSING (fail-closed).
+    Sprint V3: execution-evidence keys (signal_ts/submit_ts/fill_ts/
+    initial_risk_usdt/r_multiple/...) come from the strategy-side
+    ``execution_records`` joined per symbol by close order; audit columns are
+    the fallback and stay null when no record matches. The runner NEVER
+    fabricates evidence; unmatched rows keep nulls => EVIDENCE_MISSING.
     """
     has_commission = "commissions" in adjusted.columns
+    execution_records: list[dict] | None = None
+    if execution_records_kw is not None:
+        execution_records = list(execution_records_kw)
 
     def _col(row: Any, name: str) -> Any:
         return row.get(name) if hasattr(row, "get") else None
@@ -1108,8 +1112,21 @@ def _positions_rows_in_window(
         number = _opt_num(_col(row, name))
         return None if number is None else int(number)
 
+    records_by_symbol: dict[str, list[dict]] = {}
+    if execution_records:
+        for rec in execution_records:
+            sym = str(rec.get("symbol") or "")
+            records_by_symbol.setdefault(sym, []).append(rec)
+    for sym_key, recs in records_by_symbol.items():
+        recs.sort(
+            key=lambda r: int(r.get("exit_fill_ts") or r.get("fill_ts") or 0),
+        )
+    queues = {k: list(v) for k, v in records_by_symbol.items()}
+    BAR_NS = 900_000_000_000  # 15m tolerance for record<->audit matching
+    adjusted_sorted = adjusted.sort_values("ts_closed") if "ts_closed" in adjusted.columns else adjusted
+
     rows: list[dict] = []
-    for _, row in adjusted.iterrows():
+    for _, row in adjusted_sorted.iterrows():
         closed = pd.Timestamp(row["ts_closed"])
         if closed.tzinfo is None:
             closed = closed.tz_localize("UTC")
@@ -1123,8 +1140,26 @@ def _positions_rows_in_window(
         instrument_id = str(row.get("instrument_id", ""))
         qty = _quantity_float(row["peak_qty"])
         canonical_pnl = round(after_funding, 10)
-        initial_risk = _opt_num(_col(row, "initial_risk_usdt"))
-        engine_r = _opt_num(_col(row, "r_multiple"))
+        # ---- join strategy-side execution record (closest close time) -----
+        sym_base = instrument_id.split("-")[0] if instrument_id else ""
+        rec: dict | None = None
+        queue = queues.get(sym_base)
+        if queue:
+            closed_ns = int(pd.Timestamp(row["ts_closed"]).value)
+            head = queue[0]
+            head_ts = int(head.get("exit_fill_ts") or head.get("fill_ts") or 0)
+            if abs(closed_ns - head_ts) <= BAR_NS:
+                rec = queue.pop(0)
+        initial_risk = (
+            _opt_num(rec.get("initial_risk_usdt"))
+            if rec
+            else _opt_num(_col(row, "initial_risk_usdt"))
+        )
+        engine_r = (
+            _opt_num(rec.get("r_multiple"))
+            if rec
+            else _opt_num(_col(row, "r_multiple"))
+        )
         r_multiple = (
             engine_r
             if engine_r is not None
@@ -1141,21 +1176,38 @@ def _positions_rows_in_window(
             "symbol": instrument_id.split("-")[0] if instrument_id else "",
             "fold": fold,
             "side": "LONG" if str(row["entry"]).upper() == "BUY" else "SHORT",
-            "signal_ts": _opt_ts(_col(row, "signal_ts")),
-            "submit_ts": _opt_ts(_col(row, "submit_ts")),
-            "fill_ts": _opt_ts(_col(row, "fill_ts")),
-            "signal_reference_price": _opt_num(_col(row, "signal_reference_price")),
-            "fill_price": _opt_num(_col(row, "fill_price")),
-            "execution_mode": _opt_str(row, "execution_mode"),
-            "slippage_ticks": _opt_int(row, "slippage_ticks"),
+            "signal_ts": _opt_ts(rec.get("signal_ts")) if rec else _opt_ts(_col(row, "signal_ts")),
+            "submit_ts": _opt_ts(rec.get("submit_ts")) if rec else _opt_ts(_col(row, "submit_ts")),
+            "fill_ts": _opt_ts(rec.get("fill_ts")) if rec else _opt_ts(_col(row, "fill_ts")),
+            "signal_reference_price": (
+                _opt_num(rec.get("signal_reference_price"))
+                if rec else _opt_num(_col(row, "signal_reference_price"))
+            ),
+            "fill_price": _opt_num(rec.get("fill_price")) if rec else _opt_num(_col(row, "fill_price")),
+            "execution_mode": (
+                _opt_str(rec.get("execution_mode"))
+                if rec else _opt_str(row, "execution_mode")
+            ),
+            "slippage_ticks": (
+                _opt_int(rec.get("slippage_ticks"))
+                if rec else _opt_int(row, "slippage_ticks")
+            ),
             "quantity": qty,
-            "initial_stop_price": _opt_num(_col(row, "initial_stop_price")),
+            "initial_stop_price": (
+                _opt_num(rec.get("initial_stop_price"))
+                if rec else _opt_num(_col(row, "initial_stop_price"))
+            ),
             "initial_risk_usdt": initial_risk,
-            "gross_pnl": _opt_num(_col(row, "gross_pnl")),
+            "gross_pnl": (
+                _opt_num(rec.get("gross_pnl")) if rec else _opt_num(_col(row, "gross_pnl"))
+            ),
             "commission": (
                 _optional_float(row["commissions"]) if has_commission else None
             ),
-            "slippage_cost": _opt_num(_col(row, "slippage_cost")),
+            "slippage_cost": (
+                _opt_num(rec.get("slippage_cost"))
+                if rec else _opt_num(_col(row, "slippage_cost"))
+            ),
             "funding_pnl": round(funding_net, 10),
             "canonical_pnl": canonical_pnl,
             "r_multiple": r_multiple,
@@ -1206,9 +1258,23 @@ def _funding_fold_positions(
     except Exception:  # noqa: BLE001 - missing/partial bundle must not kill the cell
         return unavailable
     adjusted = audit.adjusted_positions
+    # Sprint V3: join strategy-side execution records (signal/fill timestamps,
+    # initial risk/R) with funding-audit rows. The audit table does NOT carry
+    # execution columns; the engine strategy records are their only source.
+    exec_records: list[dict] = []
+    try:
+        for strat in engine.trader.strategies():
+            exec_records.extend(getattr(strat, "execution_records", []) or [])
+    except Exception:  # noqa: BLE001 - evidence join must never kill accounting
+        exec_records = []
     rows = (
         _positions_rows_in_window(
-            adjusted, w_start, w_end, strategy_type=strategy_type, fold=fold
+            adjusted,
+            w_start,
+            w_end,
+            strategy_type=strategy_type,
+            fold=fold,
+            execution_records=exec_records,
         )
         if not adjusted.empty
         else []
