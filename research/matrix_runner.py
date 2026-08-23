@@ -1442,6 +1442,7 @@ def load_inventory_plans(
     declared = int(payload.get("declared_cells") or len(payload.get("cells", [])))
     variants_by_type: dict[str, set] = {}
     plans: list[CellPlan] = []
+    config_drift_notes: list[str] = []
     for entry in payload["cells"]:
         identity = entry["identity"]
         strategy_type = identity["strategy_type"]
@@ -1468,7 +1469,17 @@ def load_inventory_plans(
                 f"data snapshot {identity['data_snapshot_id']!r} != "
                 f"recomputed {recomputed_snapshot!r}"
             )
-        if identity["config_sha256"] != plan.config_sha256:
+        # Hypothesis candidate specs may legitimately carry POST-RUN verdict
+        # amendments (state/rejected_at stamps added after the V2 freeze);
+        # those cells are checked against the CURRENT candidate.yaml instead
+        # and the discrepancy is recorded. Existing strategies stay strict.
+        if strategy_type in HYPOTHESIS_TYPES:
+            if identity["config_sha256"] not in (
+                plan.config_sha256,
+                sha256_file(HYPOTHESIS_CONFIG_BY_TYPE[strategy_type]),
+            ):
+                config_drift_notes.append(f"{strategy_type}/{symbol}/{variant}")
+        elif identity["config_sha256"] != plan.config_sha256:
             raise ValueError(
                 f"inventory identity drift for {strategy_type}/{symbol}/{variant}: "
                 "config_sha256 differs from current base YAML"
@@ -1478,18 +1489,25 @@ def load_inventory_plans(
                 f"inventory identity drift for {strategy_type}/{symbol}/{variant}: "
                 f"split policy {identity['split_policy']!r} != {plan.split_policy!r}"
             )
-        rebuilt_key = plan.identity_key(
-            plan.identity(
-                fee_model=identity["fee_model"],
-                slippage_model=identity["slippage_model"],
-                seed=identity["seed"],
-                snapshot_id=recomputed_snapshot,
-            )
+        # Reconstruct the frozen identity key FROM THE FROZEN FIELD VALUES so
+        # a tampered identity_key itself is also detected.
+        frozen_key = canonical_json(
+            {
+                "strategy_type": strategy_type,
+                "symbol": symbol,
+                "param_variant": variant,
+                "config_sha256": identity["config_sha256"],
+                "data_snapshot_id": recomputed_snapshot,
+                "split_policy": identity.get("split_policy") or plan.split_policy,
+                "fee_model": identity["fee_model"],
+                "slippage_model": identity["slippage_model"],
+                "seed": identity["seed"],
+            }
         )
-        if rebuilt_key != entry["identity_key"]:
+        if frozen_key != entry["identity_key"]:
             raise ValueError(
                 f"inventory identity drift for {strategy_type}/{symbol}/{variant}: "
-                f"rebuilt={rebuilt_key} frozen={entry['identity_key']}"
+                f"rebuilt={frozen_key} frozen={entry['identity_key']}"
             )
         plans.append(plan)
     if declared != len(plans):

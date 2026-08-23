@@ -33,6 +33,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from contracts.protocol import GateId, GateVerdict, require_reason
+
 VOLCOMP_STRATEGY_TYPE = "vol_compression_breakout"
 VOLCOMP_HYPOTHESIS_ID = "H-VOLCOMP-BRKOUT-v1"
 VOLCOMP_HYPOTHESIS_CONFIG = f"research/hypotheses/{VOLCOMP_HYPOTHESIS_ID}/candidate.yaml"
@@ -1094,7 +1096,12 @@ def evaluate_matrix_v3(
         else:
             # No independent rerun yet => NOT_YET_TESTED (diagnostic only).
             g2b_result = IndependentReproductionResult(
-                performed=False, rerun_process_separate=False
+                performed=False,
+                rerun_process_separate=False,
+                parameters_match=None,
+                positions_digest_match=None,
+                trade_count_match=None,
+                canonical_pnl_match=None,
             )
 
         stats = cell.get("positions_stats") or {}
