@@ -15,6 +15,8 @@ from research.data_audit import (
     bar_stats,
     build_coverage,
     classify_symbol,
+    compute_continuous_clean_intersection,
+    funding_completeness_for_window,
     funding_stats,
     instrument_metadata_present,
     load_universe_symbols,
@@ -217,3 +219,169 @@ def test_classify_requires_contract_known_reasons_only():
     )
     for code in reasons:
         assert code in REASON_CODES
+
+
+# --------------------------------------------------------------------------- #
+# Sprint V2: clean-window rule + funding completeness
+# --------------------------------------------------------------------------- #
+DS = pd.Timestamp("2025-08-21T00:00:00Z")
+DE = pd.Timestamp("2026-08-21T00:00:00Z")
+ETH_G1_AFTER = "2025-08-20T23:59:59.999000064+00:00"
+ETH_G1_BEFORE = "2025-08-21T14:29:59.999000064+00:00"
+
+
+def _sym_entry(gaps=None, status="COMPLETED"):
+    return {
+        "status": status,
+        "bars": {"gap_details": gaps or []},
+    }
+
+
+def _coverage(symbols: dict) -> dict:
+    return {"symbols": symbols}
+
+
+def _eth_like_gaps(with_post_window_gaps=True):
+    gaps = [
+        {
+            "after_ts_utc": ETH_G1_AFTER,
+            "before_ts_utc": ETH_G1_BEFORE,
+            "gap_minutes": 870.0,
+        }
+    ]
+    if with_post_window_gaps:
+        gaps += [
+            {
+                "after_ts_utc": "2026-08-21T13:59:59.999000064+00:00",
+                "before_ts_utc": "2026-08-21T15:14:59.999000064+00:00",
+                "gap_minutes": 75.0,
+            },
+            {
+                "after_ts_utc": "2026-08-23T05:44:59.999000064+00:00",
+                "before_ts_utc": "2026-08-23T06:29:59.999000064+00:00",
+                "gap_minutes": 45.0,
+            },
+        ]
+    return gaps
+
+
+def test_clean_window_trims_boundary_gap_and_ignores_post_window_gaps():
+    symbols = {name: _sym_entry() for name in S0_SYMBOLS[:-1]}
+    symbols["ETHUSDT"] = _sym_entry(_eth_like_gaps(), status="DATA_INCOMPLETE")
+    result = compute_continuous_clean_intersection(_coverage(symbols), DS, DE)
+
+    eth = result["per_symbol"]["ETHUSDT"]
+    assert eth["excluded"] is False
+    assert eth["trimmed_start"] is True
+    assert eth["scored_start_utc"] == ETH_G1_BEFORE  # ~14:30Z trim
+    assert eth["scored_end_utc"] == DE.isoformat()
+
+    for name in S0_SYMBOLS[:-1]:
+        entry = result["per_symbol"][name]
+        assert entry["scored_start_utc"] == DS.isoformat()
+        assert entry["scored_end_utc"] == DE.isoformat()
+
+    assert result["universe_scored"] == list(S0_SYMBOLS)
+    inter = result["intersection"]
+    assert inter["start_utc"] == ETH_G1_BEFORE
+    assert inter["end_utc"] == DE.isoformat()
+    assert inter["covers_declared_window"] is False
+
+
+def test_clean_window_excludes_symbol_with_midwindow_gap():
+    mid_gap = {
+        "after_ts_utc": "2026-03-01T10:14:59.999000064+00:00",
+        "before_ts_utc": "2026-03-01T18:14:59.999000064+00:00",
+        "gap_minutes": 480.0,
+    }
+    symbols = {name: _sym_entry() for name in ("SOLUSDT", "ETHUSDT")}
+    symbols["BNBUSDT"] = _sym_entry([mid_gap], status="DATA_INCOMPLETE")
+    result = compute_continuous_clean_intersection(_coverage(symbols), DS, DE)
+
+    bnb = result["per_symbol"]["BNBUSDT"]
+    assert bnb["excluded"] is True
+    assert bnb["exclusion_reason"] == "unexplained_gap"
+    assert bnb["scored_start_utc"] is None and bnb["scored_end_utc"] is None
+    assert result["universe_scored"] == ["SOLUSDT", "ETHUSDT"]
+    assert result["intersection"]["symbol_count"] == 2
+
+
+def test_clean_window_repaired_gap_class_passes_through():
+    mid_gap = {
+        "after_ts_utc": "2026-03-01T10:14:59.999000064+00:00",
+        "before_ts_utc": "2026-03-01T18:14:59.999000064+00:00",
+        "gap_minutes": 480.0,
+        "classification": "exchange_outage_repaired",
+        "repair_segment_sha256": "deadbeef",
+    }
+    symbols = {name: _sym_entry() for name in ("SOLUSDT", "BNBUSDT")}
+    symbols["BNBUSDT"]["bars"]["gap_details"] = [mid_gap]
+    result = compute_continuous_clean_intersection(_coverage(symbols), DS, DE)
+
+    bnb = result["per_symbol"]["BNBUSDT"]
+    assert bnb["excluded"] is False
+    assert bnb["scored_start_utc"] == DS.isoformat()
+    assert result["universe_scored"] == ["SOLUSDT", "BNBUSDT"]
+    assert result["intersection"]["covers_declared_window"] is True
+
+    # Unrepaired exchange_outage is treated as unexplained per the rule.
+    unrepaired = dict(mid_gap, classification="exchange_outage")
+    symbols["BNBUSDT"]["bars"]["gap_details"] = [unrepaired]
+    result2 = compute_continuous_clean_intersection(_coverage(symbols), DS, DE)
+    assert result2["per_symbol"]["BNBUSDT"]["excluded"] is True
+
+
+def test_clean_window_exclude_only_rule_and_validation():
+    symbols = {
+        "A": _sym_entry(_eth_like_gaps()),
+        "B": _sym_entry(),
+    }
+    strict = compute_continuous_clean_intersection(
+        _coverage(symbols), DS, DE, rule="exclude_only"
+    )
+    assert strict["per_symbol"]["A"]["excluded"] is True
+    assert strict["universe_scored"] == ["B"]
+
+    import pytest
+
+    with pytest.raises(ValueError):
+        compute_continuous_clean_intersection(_coverage(symbols), DS, DE, rule="nonsense")
+
+
+def test_funding_completeness_for_window(tmp_path):
+    start = pd.Timestamp("2025-08-21T00:00:00Z")
+    end = pd.Timestamp("2025-09-20T00:00:00Z")  # 30 days -> 90 settlements @8h (+1)
+    day_ms = 86_400_000
+    anchor = int(pd.Timestamp("2025-08-20T00:00:00Z").value // 1e6)
+
+    def write_bundle(symbol, times):
+        d = tmp_path / symbol
+        d.mkdir(parents=True)
+        (d / "funding.json").write_text(json.dumps({
+            "requested_start_ms": anchor,
+            "requested_end_ms": anchor + 400 * day_ms,
+            "rows": [{"fundingTime": t, "fundingRate": "0.0001"} for t in times],
+        }))
+
+    full = [anchor + i * 8 * 3_600_000 for i in range(120)]
+    write_bundle("FULLUSDT", full)
+    stats = funding_completeness_for_window(tmp_path, "FULLUSDT", start, end)
+    assert stats["complete"] is True
+    assert stats["missing_settlements_estimate"] == 0
+    assert stats["observed_settlements"] == 91  # closed-interval grid points
+
+    # contiguous outage: remove 30 consecutive settlements inside the window
+    # (realistic downloader/exchange gap shape; a periodic-drop pattern would
+    # be indistinguishable from a genuine slower settlement cadence)
+    block = {anchor + i * 8 * 3_600_000 for i in range(30, 60)}
+    holed = [t for t in full if t not in block]
+    write_bundle("HOLEUSDT", holed)
+    stats_hole = funding_completeness_for_window(tmp_path, "HOLEUSDT", start, end)
+    assert stats_hole["complete"] is False
+    assert stats_hole["missing_settlements_estimate"] == 30
+    assert stats_hole["observed_settlements"] == 61
+
+    missing_bundle = funding_completeness_for_window(tmp_path, "NOPEUSDT", start, end)
+    assert missing_bundle["complete"] is False
+    assert missing_bundle["bundle_present"] is False
+    assert missing_bundle["missing_settlements_estimate"] == -1
