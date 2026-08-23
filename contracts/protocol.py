@@ -482,3 +482,172 @@ class PositionPnLStats:
     net_pnl: float
     profit_factor: Optional[float]
     pf_reason: Optional[str]
+
+
+# --------------------------- Sprint V3 interfaces --------------------------- #
+
+class ExecutionMode(str, Enum):
+    SAME_BAR_CLOSE_DIAGNOSTIC = "SAME_BAR_CLOSE_DIAGNOSTIC"
+    NEXT_BAR_EVENT_BASELINE = "NEXT_BAR_EVENT_BASELINE"
+
+
+SCORED_EXECUTION_MODE = ExecutionMode.NEXT_BAR_EVENT_BASELINE
+
+
+@dataclass(frozen=True)
+class PositionRiskStats:
+    """Per-position initial-risk/R accounting frozen at entry (V3 section 7)."""
+
+    position_id: str
+    signal_ts: str
+    submit_ts: str
+    fill_ts: str
+    execution_mode: str
+    side: str
+    quantity: float
+    entry_price: float
+    initial_stop_price: Optional[float]
+    initial_risk_usdt: Optional[float]
+    r_multiple: Optional[float]
+
+    def validate(self) -> list[str]:
+        reasons: list[str] = []
+        if self.initial_risk_usdt is not None and self.initial_risk_usdt <= 0:
+            reasons.append(require_reason("invalid_initial_risk"))
+        if self.r_multiple is not None and (
+            self.initial_risk_usdt is None or self.initial_risk_usdt <= 0
+        ):
+            reasons.append(require_reason("invalid_initial_risk"))
+        return reasons
+
+
+@dataclass(frozen=True)
+class RunLaunchManifest:
+    """Sprint V3 launch-time provenance manifest (PLAN section 8, schema v3)."""
+
+    schema_version: int
+    experiment_id: str
+    matrix_id: str
+    hypothesis_id: str
+    candidate_version: int
+    strategy_type: str
+    owner_agent: str
+    validator_agent: str
+    candidate_locked_at_utc: str
+    backtest_run_started_utc: str
+    backtest_run_finished_utc: Optional[str]
+    git_commit_at_launch: str
+    dirty_worktree_at_launch: bool
+    exact_backtest_argv: tuple
+    random_seed: Optional[int]
+    runtime_config_path: str
+    runtime_config_sha256: str
+    candidate_spec_path: str
+    candidate_spec_sha256: str
+    data_manifest_path: str
+    data_manifest_sha256: str
+    universe_path: str
+    universe_sha256: str
+    execution_mode: str
+    slippage_ticks: int
+    fee_model: str
+    funding_mode: str
+    split_policy: str
+    warmup_bars: int
+    outer_folds: int
+    declared_family_trials: int
+    executed_family_trials: int
+
+    def validate(self) -> list:
+        reasons = []
+        required = (
+            "experiment_id", "matrix_id", "hypothesis_id", "strategy_type",
+            "candidate_locked_at_utc", "backtest_run_started_utc",
+            "git_commit_at_launch", "runtime_config_path", "runtime_config_sha256",
+            "candidate_spec_path", "candidate_spec_sha256", "data_manifest_path",
+            "data_manifest_sha256", "universe_path", "universe_sha256",
+            "execution_mode", "fee_model", "funding_mode", "split_policy",
+        )
+        for name in required:
+            value = getattr(self, name)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                reasons.append(require_reason("manifest_missing_field"))
+        if self.execution_mode not in (m.value for m in ExecutionMode):
+            reasons.append(require_reason("execution_mode_invalid"))
+        try:
+            from datetime import datetime
+            lock = datetime.fromisoformat(self.candidate_locked_at_utc)
+            start = datetime.fromisoformat(self.backtest_run_started_utc)
+            if lock >= start:
+                reasons.append(require_reason("lock_not_before_run"))
+        except ValueError:
+            reasons.append(require_reason("manifest_missing_field"))
+        return sorted(set(reasons))
+
+
+@dataclass(frozen=True)
+class LeakageEvidence:
+    """Runner-emitted G1 evidence; gates must NOT hard-code booleans."""
+
+    split_policy_declared: bool
+    warmup_boundaries: dict
+    transform_evidence: dict
+    universe_freeze: dict
+    execution_ordering: dict
+    notes: tuple = ()
+
+    def missing_keys(self) -> list:
+        required = ("split_policy_declared", "warmup_boundaries",
+                    "transform_evidence", "universe_freeze", "execution_ordering")
+        return [k for k in required if getattr(self, k) is None]
+
+
+@dataclass(frozen=True)
+class ArtifactIntegrityResult:
+    """G2a inputs — hashes/schema/reconciliation of existing artifacts."""
+
+    schema_valid: bool
+    hashes_match: bool
+    positions_reconcile: bool
+    report_index_reconcile: bool
+    reasons: tuple = ()
+
+    def verdict(self) -> GateVerdict:
+        ok = self.schema_valid and self.hashes_match and (
+            self.positions_reconcile and self.report_index_reconcile
+        ) and not self.reasons
+        return GateVerdict.PASS if ok else GateVerdict.FAIL
+
+
+@dataclass(frozen=True)
+class IndependentReproductionResult:
+    """G2b inputs — a NEW backtest process launched from frozen inputs."""
+
+    performed: bool
+    rerun_process_separate: bool
+    parameters_match: Optional[bool]
+    positions_digest_match: Optional[bool]
+    trade_count_match: Optional[bool]
+    canonical_pnl_match: Optional[bool]
+    source_experiment_id: Optional[str] = None
+    rerun_experiment_id: Optional[str] = None
+    reasons: tuple = ()
+
+    def verdict(self) -> GateVerdict:
+        if not self.performed or not self.rerun_process_separate:
+            return GateVerdict.NOT_YET_TESTED
+        checks = (self.parameters_match, self.positions_digest_match,
+                  self.trade_count_match, self.canonical_pnl_match)
+        if all(c is True for c in checks) and not self.reasons:
+            return GateVerdict.PASS
+        if any(c is False for c in checks):
+            return GateVerdict.FAIL
+        return GateVerdict.INCONCLUSIVE
+
+
+REASON_CODES.update({
+    "invalid_initial_risk": "initial risk missing/non-positive; R undefined",
+    "execution_mode_invalid": "execution mode missing or unknown",
+    "config_candidate_same_source": "runtime config and candidate spec copied from same source",
+    "signal_fill_ordering_violation": "scored entry fill_ts <= signal_ts",
+})
