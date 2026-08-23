@@ -1,0 +1,69 @@
+# H-VOLCOMP-BRKOUT-v1 — pre-registration (state machine: SPEC_DRAFT)
+# Fields conform to contracts.protocol.HypothesisSpec (+ mandated parameter_grid
+# and split_policy). Frozen before any scored run. Owner: A4.
+hypothesis_id: H-VOLCOMP-BRKOUT-v1
+family: volatility_compression_breakout
+state: SPEC_DRAFT
+candidate_version: 1
+economic_mechanism: >
+  Bollinger band-width squeezes mark consensus/deleveraging; resolution occurs
+  via expansion legs. Long entries on the Donchian-upper close breakout ending
+  a squeeze, confirmed by a volume burst, buy from sellers exhausted during the
+  coil ahead of breakout-chasing flow. Chop is excluded by construction because
+  the entry regime (bandwidth percentile <= 25 over trailing lookback) must be
+  established BEFORE the trigger bar.
+expected_counterparty: >
+  Breakout-chasers entering after confirmation and stop orders resting above the
+  range high provide continuation liquidity against our early entry.
+expected_regimes:
+  - post_consolidation_expansion
+  - markup_onset_after_accumulation_coil
+invalidating_evidence:
+  - after-cost expectancy non-positive at +50% fee stress while baseline positive
+  - positive folds < 2/3 under S0_chrono3fold
+  - aggregate position PF < 1.10 or any fold with >=5 trades and PF < 0.80
+  - edge confined to a single symbol with all others <= 0 (universe artifact)
+entry_exit_rules: >
+  ENTRY (long-only): flat + daily limits OK + range-normalized rank (0..100,
+  0 = tightest edge, tie-robust) of previous closed bar's Bollinger bandwidth
+  within its full trailing squeeze_lookback window <= squeeze_pct_max (25)
+  + close > max(high of previous donchian_period 96 bars) + volume >=
+  volume_min_ratio x SMA20(volume).
+  EXIT: close <= entry - 1.5xATR(at fill) [stop]; close >= entry + 2R
+  (= 2 x stop distance) [take-profit]; close < Bollinger basis [band-middle
+  cross]; plus engine daily-loss/cooldown limits.
+holding_horizon: intraday-to-multiday; bounded by 1.5xATR stop / 2R target /
+  basis-cross exit on 15m bars (typical hours-to-days)
+warmup_bars: 320
+universe:
+  - SOLUSDT
+  - BNBUSDT
+  - XRPUSDT
+  - DOGEUSDT
+  - LINKUSDT
+  - ADAUSDT
+  - ETHUSDT
+cost_assumptions: >
+  Maker/taker commission model, one-tick slippage, funding post-trade audit
+  (no intrabar funding), identical to engine defaults; survivor gate requires
+  positive expectancy under +50% fee stress.
+trial_budget_combinations: 4
+parameter_grid:
+  squeeze_lookback: [96, 192]
+  volume_min_ratio: [1.5, 2.0]
+  fixed_params:
+    bb_period: 20
+    bb_k: 2.0
+    squeeze_pct_max: 25.0
+    donchian_period: 96
+    volume_sma_period: 20
+    atr_period: 14
+    atr_stop_multiple: 1.5
+    take_profit_multiple: 2.0
+split_policy: S0_chrono3fold
+implementation:
+  strategy_type: vol_compression_breakout
+  module: strategy_vol_compression_breakout.py
+  strategy_class: VolCompressionBreakoutStrategy
+  config_class: VolCompressionBreakoutConfig
+  settings_class: VolCompressionBreakoutSettings
