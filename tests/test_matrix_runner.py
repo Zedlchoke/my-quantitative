@@ -120,6 +120,19 @@ def _fake_payload(trades: int = 25) -> dict:
         "total_pnl": 12.5,
         "pnl_after_funding": 9.25,
         "expectancy_after_funding": 0.05,
+        "positions_stats": {
+            "trades": trades,
+            "gross_profit": 10.0,
+            "gross_loss": 0.75,
+            "net_pnl": 9.25,
+            "profit_factor": 13.3333333333,
+            "pf_reason": None,
+        },
+        "positions_digest": "0" * 64,
+        "positions_rows": [
+            {"pnl_after_funding": 9.25 / trades, "exit_ts": f"2026-0{i + 1}-01T00:00:00+00:00"}
+            for i in range(min(trades, 3))
+        ],
         "observations": [],
         "folds": [
             {"fold": i, "trades": trades // 3, "expectancy": 0.01} for i in range(3)
@@ -218,6 +231,28 @@ def test_error_cells_are_retried_on_next_run(tmp_path, monkeypatch):
     state["fail"] = False
     second = mr.run_matrix(**common)
     assert second["completed"] == 1 and second["pipeline_errors"] == 0
+
+
+def test_run_matrix_persists_positions_ledger(tmp_path, monkeypatch):
+    monkeypatch.setattr(mr, "execute_cell", lambda plan: _fake_payload())
+    mr.run_matrix(
+        matrix_id="m_pos",
+        tier=1,
+        strategies=["ema_atr"],
+        symbols=["SOLUSDT"],
+        output_root=tmp_path,
+        folds=3,
+    )
+    ledger = tmp_path / "m_pos" / "cells" / "ema_atr__SOLUSDT__base.positions.jsonl"
+    assert ledger.exists()
+    rows = [json.loads(line) for line in ledger.read_text().splitlines() if line.strip()]
+    assert len(rows) == 3 and all("pnl_after_funding" in row for row in rows)
+    doc = json.loads(
+        (tmp_path / "m_pos" / "cells" / "ema_atr__SOLUSDT__base.json").read_text()
+    )
+    assert "positions_rows" not in doc  # ledger lives beside the cell JSON
+    assert doc["positions_digest"] == "0" * 64
+    assert doc["positions_stats"]["trades"] == 25
 
 
 def test_tier0_plans_use_smoke_window_single_fold_short_warmup():

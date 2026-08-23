@@ -8,6 +8,11 @@ and executes the declared strategy x symbol matrix cell by cell:
   2026-08-21 per contracts/README.md), warmup strictly OUTSIDE the scored
   window (strategy ``history_days`` when available, else a risk-safe 10 days);
 * per-fold post-trade funding audit via ``reports.funding.build_funding_audit``;
+* Sprint V2 canonical accounting (PLAN section 8.2): profit factor and gross
+  win/loss aggregates are computed at POSITION level from funding-adjusted
+  per-position PnL (never from fold net PnL), persisted per cell as
+  ``folds[].positions_stats``, a cell-level ``positions_stats``, a
+  ``positions_digest`` and a sibling ``<cell>.positions.jsonl`` ledger;
 * one JSON artifact per cell containing the frozen ``MatrixCellResult`` fields;
 * resumable: an index file (``index.json``) keyed by the cell identity tuple
   ``(strategy_type, symbol, config_sha256, data_snapshot_id, split_policy,
@@ -84,7 +89,10 @@ from contracts.protocol import (
     CellStatus,
     MatrixCellResult,
     canonical_json,
+    position_pnl_stats,
+    require_reason,
     sha256_file,
+    sha256_text,
 )
 
 # --------------------------------------------------------------------------- #
@@ -330,49 +338,180 @@ def _bars_in_range(all_bars: list, start_ns: int, end_ns: int) -> list:
     return [bar for bar in all_bars if start_ns <= bar.ts_event <= end_ns]
 
 
-def _funding_fold_metrics(engine, funding_path: str | None, w_start, w_end) -> dict:
-    """Post-trade funding audit restricted to positions closed in the fold."""
-    empty = {
+# --------------------------------------------------------------------------- #
+# Position-level canonical accounting (Sprint V2 section 8.2, owner A3)
+# --------------------------------------------------------------------------- #
+def _position_stats_from_pnls(pnls: list[float]) -> dict:
+    """Canonical position-level stats dict (pure; engine-free).
+
+    Wraps ``contracts.protocol.position_pnl_stats`` so tests and callers get a
+    JSON-ready mapping: trades / gross_profit / gross_loss / net_pnl /
+    profit_factor / pf_reason.  PF is ``None`` + reason for no-trade and
+    no-losing-position sets (never infinity, never auto-PASS).
+    """
+    stats = position_pnl_stats([float(pnl) for pnl in pnls])
+    return {
+        "trades": stats.trades,
+        "gross_profit": round(stats.gross_profit, 10),
+        "gross_loss": round(stats.gross_loss, 10),
+        "net_pnl": round(stats.net_pnl, 10),
+        "profit_factor": (
+            None if stats.profit_factor is None else round(stats.profit_factor, 10)
+        ),
+        "pf_reason": stats.pf_reason,
+    }
+
+
+_UNAVAILABLE_STATS = {
+    "trades": None,
+    "gross_profit": None,
+    "gross_loss": None,
+    "net_pnl": None,
+    "profit_factor": None,
+}
+
+
+def _unavailable_stats(reason: str) -> dict:
+    return {**_UNAVAILABLE_STATS, "pf_reason": require_reason(reason)}
+
+
+def _quantity_float(value: object) -> float:
+    """Parse engine quantity/price strings like ``'12.5 USDT'`` -> float."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        raise ValueError("position accounting requires non-null numeric fields")
+    text = str(value).strip()
+    if not text:
+        raise ValueError("position accounting requires non-empty numeric fields")
+    try:
+        return float(text.split()[0])
+    except ValueError as exc:
+        raise ValueError(f"unparsable numeric field {value!r}") from exc
+
+
+def _optional_float(value: object) -> float | None:
+    """Tolerant parse for informational columns (e.g. commissions)."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    text = str(value).strip()
+    if not text or text == "0":
+        return None
+    try:
+        return float(text.split()[0])
+    except ValueError:
+        return None
+
+
+def _positions_rows_in_window(adjusted: "pd.DataFrame", w_start, w_end) -> list[dict]:
+    """Closed-position rows with funding-adjusted canonical PnL in window.
+
+    One row per closed position whose ``ts_closed`` falls inside the scored
+    fold window ``[w_start, w_end]`` (inclusive), sorted by close time.
+    """
+    has_commission = "commissions" in adjusted.columns
+    rows: list[dict] = []
+    for _, row in adjusted.iterrows():
+        closed = pd.Timestamp(row["ts_closed"])
+        if closed.tzinfo is None:
+            closed = closed.tz_localize("UTC")
+        if not (w_start <= closed <= w_end):
+            continue
+        opened = pd.Timestamp(row["ts_opened"])
+        if opened.tzinfo is None:
+            opened = opened.tz_localize("UTC")
+        after_funding = float(row["realized_pnl_after_funding"])
+        funding_net = float(row.get("funding_net", 0.0) or 0.0)
+        rows.append(
+            {
+                "instrument_id": str(row.get("instrument_id", "")),
+                "side": "LONG" if str(row["entry"]).upper() == "BUY" else "SHORT",
+                "qty": _quantity_float(row["peak_qty"]),
+                "entry_ts": opened.isoformat(),
+                "exit_ts": closed.isoformat(),
+                "realized_pnl_gross": round(after_funding - funding_net, 10),
+                "commission": (
+                    _optional_float(row["commissions"]) if has_commission else None
+                ),
+                "funding_net": round(funding_net, 10),
+                "pnl_after_funding": round(after_funding, 10),
+            }
+        )
+    rows.sort(key=lambda item: item["exit_ts"])
+    return rows
+
+
+def _funding_fold_positions(engine, funding_path: str | None, w_start, w_end) -> dict:
+    """Funding-audited position accounting restricted to the fold window.
+
+    Returns the legacy fold-metric block (kept for continuity) plus
+    ``positions_stats`` computed at POSITION level per Sprint V2 section 8.2
+    and the raw closed-position rows for persistence.
+
+    Distinction kept honest: a fold whose engine produced NO closed positions
+    gets ``no_trades`` stats (zeros, PF undefined); only a failing/partial
+    funding bundle marks ``funding_coverage_insufficient``.
+    """
+    unavailable = {
         "funding_available": False,
         "reason_codes": ["funding_coverage_insufficient"],
         "trades_after_funding": 0,
         "pnl_after_funding": 0.0,
         "expectancy_after_funding": None,
         "profit_factor_after_funding": None,
+        "positions_stats": _unavailable_stats("funding_coverage_insufficient"),
+        "positions_rows": [],
     }
     if not funding_path:
-        return empty
+        return unavailable
     try:
         from reports.funding import build_funding_audit
 
         audit = build_funding_audit(engine.trader.generate_positions_report(), funding_path)
     except Exception:  # noqa: BLE001 - missing/partial bundle must not kill the cell
-        return empty
+        return unavailable
     adjusted = audit.adjusted_positions
-    if adjusted.empty:
-        return empty
-    pnls: list[float] = []
-    for _, row in adjusted.iterrows():
-        closed = pd.Timestamp(row["ts_closed"])
-        if closed.tzinfo is None:
-            closed = closed.tz_localize("UTC")
-        if w_start <= closed <= w_end:
-            pnls.append(float(row["realized_pnl_after_funding"]))
-    if not pnls:
-        return empty
-    wins = [pnl for pnl in pnls if pnl > 0]
-    losses = [pnl for pnl in pnls if pnl <= 0]
-    gross_loss = abs(sum(losses))
-    pf = sum(wins) / gross_loss if gross_loss else float("inf")
-    total = sum(pnls)
+    rows = (
+        _positions_rows_in_window(adjusted, w_start, w_end)
+        if not adjusted.empty
+        else []
+    )
+    stats = _position_stats_from_pnls([row["pnl_after_funding"] for row in rows])
+    total = sum((row["pnl_after_funding"] for row in rows), 0.0)
     return {
         "funding_available": True,
         "reason_codes": [],
-        "trades_after_funding": len(pnls),
+        "trades_after_funding": len(rows),
         "pnl_after_funding": round(total, 6),
-        "expectancy_after_funding": round(total / len(pnls), 6),
-        "profit_factor_after_funding": round(pf, 6),
+        "expectancy_after_funding": (
+            round(total / len(rows), 6) if rows else None
+        ),
+        # Continuity note: this is now the POSITION-level PF of the fold
+        # (V2 section 8.2); V1 emitted a fold-net-PF here instead.
+        "profit_factor_after_funding": stats["profit_factor"],
+        "positions_stats": stats,
+        "positions_rows": rows,
     }
+
+
+def _reconcile_positions(folds_payload: list[dict], all_position_rows: list[dict]) -> None:
+    """Stop-condition guard: position accounting must reconcile with folds.
+
+    ``sum(position pnls) == sum(fold nets)`` within relative tolerance 1e-9;
+    a mismatch raises so the caller records PIPELINE_ERROR (PLAN section 14).
+    """
+    position_total = sum((row["pnl_after_funding"] for row in all_position_rows), 0.0)
+    fold_total = sum(
+        (
+            fold["positions_stats"]["net_pnl"]
+            for fold in folds_payload
+            if isinstance(fold["positions_stats"].get("net_pnl"), float)
+        ),
+        0.0,
+    )
+    if abs(position_total - fold_total) > 1e-9 * max(1.0, abs(position_total)):
+        raise RuntimeError(
+            f"positions_reconciliation_failed: positions={position_total!r} "
+            f"folds={fold_total!r}"
+        )
 
 
 def execute_cell(plan: CellPlan) -> dict:
@@ -422,6 +561,7 @@ def execute_cell(plan: CellPlan) -> dict:
 
     folds_payload: list[dict] = []
     reasons: set[str] = set()
+    all_position_rows: list[dict] = []
     for index, (w_start, w_end) in enumerate(windows):
         warm_start = w_start - pd.Timedelta(days=plan.warmup_days)
         bars = _bars_in_range(all_bars, int(warm_start.value), int(w_end.value))
@@ -445,7 +585,7 @@ def execute_cell(plan: CellPlan) -> dict:
             pnl, exp, pf, wr, trades = _metrics_in_window(
                 run.engine, w_start.isoformat(), w_end.isoformat()
             )
-            funding = _funding_fold_metrics(run.engine, plan.funding_path, w_start, w_end)
+            funding = _funding_fold_positions(run.engine, plan.funding_path, w_start, w_end)
         finally:
             run.engine.dispose()
 
@@ -454,6 +594,8 @@ def execute_cell(plan: CellPlan) -> dict:
                 return None
             return round(float(value), 6)
 
+        position_rows = funding.pop("positions_rows")
+        all_position_rows.extend(position_rows)
         folds_payload.append(
             {
                 "fold": index,
@@ -467,11 +609,18 @@ def execute_cell(plan: CellPlan) -> dict:
                 "expectancy": _clean(exp),
                 "profit_factor": _clean(pf),
                 "win_rate": _clean(wr),
+                "positions_stats": funding["positions_stats"],
                 **funding,
             }
         )
         reasons.update(funding.get("reason_codes") or [])
 
+    _reconcile_positions(folds_payload, all_position_rows)
+
+    cell_stats = _position_stats_from_pnls(
+        [row["pnl_after_funding"] for row in all_position_rows]
+    ) if all_position_rows else _position_stats_from_pnls([])
+    positions_digest = sha256_text(canonical_json(all_position_rows))
     total_trades = sum(int(fold["trades"]) for fold in folds_payload)
     positive_folds = sum(1 for fold in folds_payload if (fold["expectancy"] or 0) > 0)
     total_pnl = sum(fold["pnl"] or 0.0 for fold in folds_payload)
@@ -498,9 +647,14 @@ def execute_cell(plan: CellPlan) -> dict:
             "total_pnl": round(total_pnl, 6),
             "pnl_after_funding": round(exp_after_total, 6),
             "expectancy_after_funding": round(exp_after, 6) if exp_after is not None else None,
+            "positions_stats": cell_stats,
+            "positions_digest": positions_digest,
+            "positions_rows": all_position_rows,
             "observations": [],
             "folds": folds_payload,
         }
+    if not all_position_rows:
+        observations.add(require_reason("no_trades"))
     if total_trades < STAGE_A_MIN_TRADES_PER_SYMBOL:
         observations.add("trades_below_min")
     if trades_after_total and exp_after is not None and exp_after <= 0:
@@ -517,6 +671,9 @@ def execute_cell(plan: CellPlan) -> dict:
         "total_pnl": round(total_pnl, 6),
         "pnl_after_funding": round(exp_after_total, 6),
         "expectancy_after_funding": round(exp_after, 6) if exp_after is not None else None,
+        "positions_stats": cell_stats,
+        "positions_digest": positions_digest,
+        "positions_rows": all_position_rows,
         "observations": sorted(observations),
         "folds": folds_payload,
     }
@@ -641,6 +798,14 @@ def run_matrix(
                 split_policy=plan.split_policy,
                 folds_completed=len(payload["folds"]),
             )
+            # Per-cell closed-position ledger (Sprint V2 section 13): one JSON
+            # object per position, funding-adjusted canonical PnL included.
+            position_rows = payload.pop("positions_rows")
+            positions_path = artifact_path.with_name(artifact_path.stem + ".positions.jsonl")
+            positions_path.write_text(
+                "".join(json.dumps(row) + "\n" for row in position_rows),
+                encoding="utf-8",
+            )
             document = {
                 "schema_version": 1,
                 "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -677,6 +842,7 @@ def run_matrix(
                     "status": status.value,
                     "trades": payload["total_trades"],
                     "pnl_after_funding": payload["pnl_after_funding"],
+                    "positions_digest": payload["positions_digest"][:16],
                     "observations": payload["observations"],
                 }
             )
