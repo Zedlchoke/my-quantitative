@@ -146,8 +146,22 @@ def test_manifest_invalid_aborts_cell_before_engine_run(tmp_path, monkeypatch):
     monkeypatch.setattr(
         mr, "execute_cell", lambda plan: calls.append(plan) or (_ for _ in ()).throw(AssertionError("must not run"))
     )
-    # funding_crowding's frozen lock stamp (2026-08-24T03:30Z) is AFTER any
-    # launch time before then -> validate() must fail with lock_not_before_run.
+    # The real fundcrowd spec's erroneous future stamp was corrected via
+    # status.yaml (authoritative git-commit evidence), so simulate an invalid
+    # future lock here instead of relying on production data.
+    monkeypatch.setattr(
+        mr, "load_hypothesis_identity",
+        lambda strategy_type: {
+            "spec_kind": "hypothesis_candidate",
+            "source_path": "synthetic",
+            "hypothesis_id": "H-FUNDCROWD-MR-v2",
+            "candidate_version": 2,
+            "state": "SPEC_LOCKED",
+            "locked_at_utc": "2099-01-01T00:00:00+00:00",
+            "owner_agent": "A4",
+            "declared_family_trials": 3,
+        },
+    )
     ctx = _ctx(tmp_path, strategy_type=mr.FUNDCROWD_STRATEGY_TYPE)
     with pytest.raises(mr.LaunchManifestInvalid) as excinfo:
         mr.execute_cell_scored(_plan(mr.FUNDCROWD_STRATEGY_TYPE, "v0"), ctx)
