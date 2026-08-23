@@ -35,11 +35,112 @@ from config.settings import RegimeSwitchSettings
 from config.settings import RiskSettings
 from config.settings import StrategySettings
 from config.settings import TrendPullbackSettings
+from contracts.protocol import ExecutionMode
+from contracts.protocol import SCORED_EXECUTION_MODE
 from data.catalog import Catalog
 from risk.limits import RiskLimits
 from risk.portfolio import PortfolioRiskLimits
 from risk.portfolio import PortfolioRiskManager
 from strategy_factory import build_strategy
+
+EXECUTION_RECORD_REQUIRED_KEYS: tuple[str, ...] = (
+    "position_id",
+    "strategy_type",
+    "symbol",
+    "fold",
+    "side",
+    "signal_ts",
+    "submit_ts",
+    "fill_ts",
+    "signal_reference_price",
+    "fill_price",
+    "execution_mode",
+    "slippage_ticks",
+    "quantity",
+    "initial_stop_price",
+    "initial_risk_usdt",
+    "gross_pnl",
+    "commission",
+    "slippage_cost",
+    "funding_pnl",
+    "canonical_pnl",
+    "r_multiple",
+)
+
+
+def collect_execution_records(engine) -> tuple[list[dict], list[str]]:
+    """Gather per-position execution records and ordering violations."""
+    records: list[dict] = []
+    violations: list[str] = []
+    for strategy in engine.trader.strategies():
+        records.extend(getattr(strategy, "execution_records", []) or [])
+        violations.extend(getattr(strategy, "execution_violations", []) or [])
+    return records, violations
+
+
+def expectancy_r(records: list[dict]) -> float | None:
+    """Mean of valid ``r_multiple`` values across position records (None-safe)."""
+    values = [
+        float(record["r_multiple"])
+        for record in records
+        if record.get("r_multiple") is not None
+    ]
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def validate_execution_records(
+    records: list[dict],
+    *,
+    scored_mode: str = SCORED_EXECUTION_MODE.value,
+) -> list[str]:
+    """Machine-checkable G1 evidence reasons over collected records.
+
+    Fail-closed on: missing §7 keys, non-positive initial risk without the
+    invalid_initial_risk reason code, and signal/fill ordering violations on
+    scored entries (signal_ts < submit_ts <= fill_ts).
+    """
+    reasons: list[str] = []
+    for record in records:
+        position_id = record.get("position_id", "<unknown>")
+        for key in EXECUTION_RECORD_REQUIRED_KEYS:
+            if key not in record:
+                reasons.append(f"execution_record_missing_key:{key}:{position_id}")
+        if (
+            record.get("execution_mode") == scored_mode
+            and record.get("reason_codes") is not None
+        ):
+            if "invalid_initial_risk" in record["reason_codes"]:
+                reasons.append(f"invalid_initial_risk:{position_id}")
+            signal_ts, submit_ts, fill_ts = (
+                record.get("signal_ts"),
+                record.get("submit_ts"),
+                record.get("fill_ts"),
+            )
+            if (
+                not isinstance(signal_ts, int)
+                or not isinstance(submit_ts, int)
+                or not isinstance(fill_ts, int)
+                or not signal_ts < submit_ts <= fill_ts
+            ):
+                reasons.append(f"signal_fill_ordering_violation:{position_id}")
+        if record.get("evidence_class") == "DIAGNOSTIC_ONLY" and record.get(
+            "execution_mode",
+        ) != ExecutionMode.SAME_BAR_CLOSE_DIAGNOSTIC.value:
+            reasons.append(f"diagnostic_label_misuse:{position_id}")
+    return sorted(set(reasons))
+
+
+def _attach_execution_evidence(engine, result) -> None:
+    """Attach V3 execution-truth artifacts to a BacktestResult."""
+    records, violations = collect_execution_records(engine)
+    result.execution_records = records  # type: ignore[attr-defined]
+    result.execution_violations = violations  # type: ignore[attr-defined]
+    result.expectancy_r = expectancy_r(records)  # type: ignore[attr-defined]
+    result.execution_evidence_reasons = validate_execution_records(  # type: ignore[attr-defined]
+        records,
+    )
 
 
 @dataclass
@@ -137,11 +238,18 @@ def run_backtest_for_symbol(
     log_level: str = "INFO",
     instrument=None,
     bars: list[BinanceBar] | None = None,
+    execution_mode: str = SCORED_EXECUTION_MODE.value,
+    slippage_ticks: int | None = None,
+    fold: str | None = None,
 ) -> SymbolBacktest:
     """Run a single-symbol backtest and return the (still-open) engine + result.
 
     ``instrument`` / ``bars`` may be supplied to reuse pre-loaded data across many
     runs (e.g. in a grid search), skipping the catalog read + volume normalisation.
+
+    V3 execution truth: ``execution_mode`` defaults to NEXT_BAR_EVENT_BASELINE
+    (signal on bar t is submitted on bar t+1 and fills at that bar's close).
+    ``slippage_ticks`` is derived from the fill model unless passed explicitly.
     """
     instrument_id = InstrumentId.from_str(market.instrument_id(symbol))
     bar_type = BarType.from_str(market.bar_type(symbol))
@@ -179,6 +287,9 @@ def run_backtest_for_symbol(
         fill_model=build_fill_model(backtest),
     )
 
+    if slippage_ticks is None:
+        slippage_ticks = 2 if "two_tick" in backtest.fill_model else 1
+
     engine.add_instrument(instrument)
     engine.add_data(bars)
     engine.add_strategy(
@@ -198,12 +309,16 @@ def run_backtest_for_symbol(
             enable_trading=True,
             request_historical_bars=False,
             symbol=symbol,
+            execution_mode=execution_mode,
+            slippage_ticks=slippage_ticks,
+            fold=fold,
         ),
     )
 
     engine.run(start=backtest.start, end=backtest.end)
     result = engine.get_result()
     _attach_risk_limits(result, risk, market.leverage)
+    _attach_execution_evidence(engine, result)
 
     return SymbolBacktest(symbol=symbol, engine=engine, result=result)
 
@@ -224,6 +339,8 @@ def run_backtest(
     markdown_breakdown: MarkdownBreakdownSettings | None = None,
     trader_id: str = "BACKTESTER-001",
     log_level: str = "INFO",
+    execution_mode: str = SCORED_EXECUTION_MODE.value,
+    fold: str | None = None,
 ) -> list[SymbolBacktest]:
     """Run a backtest for every symbol in ``market.symbols``."""
     runs: list[SymbolBacktest] = []
@@ -245,6 +362,8 @@ def run_backtest(
                 markdown_breakdown=markdown_breakdown,
                 trader_id=trader_id,
                 log_level=log_level,
+                execution_mode=execution_mode,
+                fold=fold,
             ),
         )
     return runs
@@ -267,6 +386,8 @@ def run_portfolio_backtest(
     trader_id: str = "PORTFOLIO-BACKTESTER-001",
     log_level: str = "INFO",
     portfolio_risk: PortfolioRiskSettings | None = None,
+    execution_mode: str = SCORED_EXECUTION_MODE.value,
+    fold: str | None = None,
 ) -> PortfolioBacktest:
     """Backtest all symbols concurrently against one balance and venue account."""
     base_currency = Currency.from_str(market.base_currency)
@@ -336,6 +457,9 @@ def run_portfolio_backtest(
             enable_trading=True,
             request_historical_bars=False,
             symbol=symbol,
+            execution_mode=execution_mode,
+            slippage_ticks=2 if "two_tick" in backtest.fill_model else 1,
+            fold=fold,
         )
         built_strategy.set_portfolio_risk_manager(manager)
         engine.add_strategy(built_strategy)
@@ -347,5 +471,6 @@ def run_portfolio_backtest(
     engine.run(start=backtest.start, end=backtest.end)
     result = engine.get_result()
     _attach_risk_limits(result, risk, market.leverage)
+    _attach_execution_evidence(engine, result)
     result.portfolio_symbols = tuple(market.symbols)  # type: ignore[attr-defined]
     return PortfolioBacktest(tuple(market.symbols), engine, result)

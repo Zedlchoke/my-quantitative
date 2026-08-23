@@ -18,6 +18,7 @@ from config.settings import RegimeSwitchSettings
 from config.settings import RiskSettings
 from config.settings import StrategySettings
 from config.settings import TrendPullbackSettings
+from contracts.protocol import SCORED_EXECUTION_MODE
 from strategy import EmaAtrStrategy
 from strategy import EmaAtrStrategyConfig
 from strategy_mean_reversion import MeanReversionStrategy
@@ -69,11 +70,26 @@ def build_strategy(
     enable_trading: bool,
     request_historical_bars: bool,
     symbol: str,
+    execution_mode: str = SCORED_EXECUTION_MODE.value,
+    slippage_ticks: int = 1,
+    fold: str | None = None,
 ):
-    """Build the requested strategy instance for one ``symbol``."""
+    """Build the requested strategy instance for one ``symbol``.
+
+    V3 execution-truth kwargs are threaded onto every config:
+    ``execution_mode`` (default NEXT_BAR_EVENT_BASELINE), ``slippage_ticks``
+    and the scored ``fold`` label.
+    """
     instrument_id = InstrumentId.from_str(market.instrument_id(symbol))
     bar_type = BarType.from_str(market.bar_type(symbol))
     risk_kwargs = _risk_kwargs(risk, enable_trading=enable_trading)
+    # Mechanical V3 migration (A2): execution-truth fields ride the shared
+    # kwarg path so every strategy family receives identical semantics.
+    risk_kwargs.update(
+        execution_mode=execution_mode,
+        slippage_ticks=slippage_ticks,
+        fold=fold,
+    )
 
     if strategy_type == "ema_atr":
         return EmaAtrStrategy(
