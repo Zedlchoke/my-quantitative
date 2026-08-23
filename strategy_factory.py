@@ -64,6 +64,7 @@ def build_strategy(
     reclaim_mr: ReclaimMeanReversionSettings | None = None,
     trend_pullback: TrendPullbackSettings | None = None,
     markdown_breakdown: MarkdownBreakdownSettings | None = None,
+    vol_compression=None,
     enable_trading: bool,
     request_historical_bars: bool,
     symbol: str,
@@ -250,6 +251,26 @@ def build_strategy(
                 phase_gate=markdown_breakdown.phase_gate,
                 request_historical_bars=request_historical_bars,
                 **risk_kwargs,
+            ),
+        )
+
+    if strategy_type == "vol_compression_breakout":
+        if vol_compression is None:
+            raise ValueError(
+                "vol_compression settings are required for "
+                "strategy_type=vol_compression_breakout",
+            )
+        from strategy_vol_compression_breakout import VolCompressionBreakoutStrategy
+
+        # The hypothesis is long-only by construction: drop the shared risk
+        # allow_short so the module can force allow_short=False itself.
+        volcomp_kwargs = {k: v for k, v in risk_kwargs.items() if k != "allow_short"}
+        return VolCompressionBreakoutStrategy(
+            config=vol_compression.to_nautilus_config(
+                instrument_id,
+                bar_type,
+                request_historical_bars=request_historical_bars,
+                **volcomp_kwargs,
             ),
         )
 

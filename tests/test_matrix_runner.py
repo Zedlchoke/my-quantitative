@@ -102,8 +102,9 @@ def test_identity_tuple_is_complete_and_stable(tmp_path):
                                         mr.DECLARED_S0_START, mr.DECLARED_S0_END),
     )
     required = {
-        "strategy_type", "symbol", "config_sha256", "data_snapshot_id",
-        "split_policy", "fee_model", "slippage_model", "seed",
+        "strategy_type", "symbol", "param_variant", "config_sha256",
+        "data_snapshot_id", "split_policy", "fee_model", "slippage_model",
+        "seed",
     }
     assert set(ident_a) == required
     assert plan_a.identity_key(ident_a) == plan_b.identity_key(ident_b)
@@ -154,7 +155,7 @@ def test_rerun_reuses_completed_cells_without_executing(tmp_path, monkeypatch):
     index = json.loads((tmp_path / "m_resume" / "index.json").read_text())
     entries = list(index["cells"].values())
     assert entries[0]["status"] == CellStatus.COMPLETED.value
-    assert (tmp_path / "m_resume" / "cells" / "ema_atr__SOLUSDT.json").exists()
+    assert (tmp_path / "m_resume" / "cells" / "ema_atr__SOLUSDT__base.json").exists()
 
 
 def test_crashing_cell_is_isolated_as_pipeline_error(tmp_path, monkeypatch):
@@ -176,11 +177,11 @@ def test_crashing_cell_is_isolated_as_pipeline_error(tmp_path, monkeypatch):
     assert report["completed"] == 1
     assert report["pipeline_errors"] == 1
     statuses = {row["cell"]: row["status"] for row in report["results"]}
-    assert statuses["cells/ema_atr__BADUSDT.json"] == CellStatus.PIPELINE_ERROR.value
-    assert statuses["cells/ema_atr__GOODUSDT.json"] == CellStatus.COMPLETED.value
+    assert statuses["cells/ema_atr__BADUSDT__base.json"] == CellStatus.PIPELINE_ERROR.value
+    assert statuses["cells/ema_atr__GOODUSDT__base.json"] == CellStatus.COMPLETED.value
 
     bad_artifact = json.loads(
-        (tmp_path / "m_iso" / "cells" / "ema_atr__BADUSDT.json").read_text()
+        (tmp_path / "m_iso" / "cells" / "ema_atr__BADUSDT__base.json").read_text()
     )
     result = bad_artifact["cell_result"]
     assert result["status"] == CellStatus.PIPELINE_ERROR.value

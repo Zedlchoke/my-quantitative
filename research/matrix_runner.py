@@ -115,6 +115,13 @@ STRATEGY_CONFIG_MAP: dict[str, str] = {
 MATRIX_CATALOG_PATH = "./catalog_live_crypto"
 MATRIX_FUNDING_PATH = "funding_data/scan_2026"
 
+# Sprint hypothesis extension (iteration-1): A4's pre-registered strategy.
+# Its provenance config is the frozen candidate.yaml, not a research YAML.
+VOLCOMP_STRATEGY_TYPE = "vol_compression_breakout"
+VOLCOMP_HYPOTHESIS_ID = "H-VOLCOMP-BRKOUT-v1"
+VOLCOMP_HYPOTHESIS_CONFIG = f"research/hypotheses/{VOLCOMP_HYPOTHESIS_ID}/candidate.yaml"
+ALL_STRATEGIES: tuple[str, ...] = INVENTORY + (VOLCOMP_STRATEGY_TYPE,)
+
 # Declared S0 window (contracts/README.md).
 DECLARED_S0_START = pd.Timestamp("2025-08-21T00:00:00Z")
 DECLARED_S0_END = pd.Timestamp("2026-08-21T00:00:00Z")
@@ -143,9 +150,24 @@ def build_cell_settings(
 
     No YAML is modified; all overrides happen through ``dataclasses.replace``.
     """
-    if strategy_type not in INVENTORY:
-        raise ValueError(f"Unknown strategy_type {strategy_type!r}; inventory={INVENTORY}")
+    if strategy_type not in ALL_STRATEGIES:
+        raise ValueError(f"Unknown strategy_type {strategy_type!r}; inventory={ALL_STRATEGIES}")
     from config.settings import load_research_config
+
+    if strategy_type == VOLCOMP_STRATEGY_TYPE:
+        # Hypothesis cell: provenance config = frozen candidate.yaml; base
+        # sections (market/risk/strategy/backtest) come from the altcoin
+        # baseline YAML. strategy_type stays the file's own so validate()
+        # passes; the engine call receives the hypothesis type explicitly.
+        settings = load_research_config(STRATEGY_CONFIG_MAP["reclaim_mr"])
+        updated = dataclasses.replace(
+            settings,
+            market=dataclasses.replace(settings.market, symbols=symbols),
+            data=dataclasses.replace(settings.data, catalog_path=catalog_path),
+            report=dataclasses.replace(settings.report, funding_data_path=funding_path),
+        )
+        updated.validate()
+        return VOLCOMP_HYPOTHESIS_CONFIG, updated
 
     config_path = STRATEGY_CONFIG_MAP[strategy_type]
     settings = load_research_config(config_path)
@@ -164,6 +186,11 @@ def warmup_days_for(settings, strategy_type: str, *, tier0: bool = False) -> int
     """Warmup days outside the scored window (history_days or safe default)."""
     if tier0:
         return TIER0_WARMUP_DAYS
+    if strategy_type == VOLCOMP_STRATEGY_TYPE:
+        from strategy_vol_compression_breakout import VolCompressionBreakoutSettings
+
+        bars = VolCompressionBreakoutSettings().warmup_bars()
+        return max(1, -(-bars // BAR_DAY))
     baseline = getattr(settings, strategy_type, None)
     days = getattr(baseline, "history_days", None)
     if not days or days <= 0:
@@ -198,11 +225,13 @@ class CellPlan:
     split_policy: str
     catalog_path: str
     funding_path: str
+    param_variant: str = "base"
 
     def identity(self, *, fee_model: str, slippage_model: str, seed, snapshot_id: str) -> dict:
         return {
             "strategy_type": self.strategy_type,
             "symbol": self.symbol,
+            "param_variant": self.param_variant,
             "config_sha256": self.config_sha256,
             "data_snapshot_id": snapshot_id,
             "split_policy": self.split_policy,
@@ -233,6 +262,7 @@ def make_plan(
     window_end: pd.Timestamp,
     catalog_path: str = MATRIX_CATALOG_PATH,
     funding_path: str = MATRIX_FUNDING_PATH,
+    param_variant: str = "base",
 ) -> CellPlan:
     config_path, settings = build_cell_settings(
         strategy_type, (symbol,), catalog_path=catalog_path, funding_path=funding_path
@@ -251,6 +281,7 @@ def make_plan(
         split_policy="pending",
         catalog_path=catalog_path,
         funding_path=funding_path,
+        param_variant=param_variant,
     )
     return dataclasses.replace(plan, split_policy=_split_policy_id(plan))
 
@@ -359,6 +390,15 @@ def execute_cell(plan: CellPlan) -> dict:
         catalog_path=plan.catalog_path,
         funding_path=plan.funding_path,
     )
+    extra_kwargs: dict[str, object] = {}
+    if plan.strategy_type == VOLCOMP_STRATEGY_TYPE:
+        from strategy_vol_compression_breakout import VolCompressionBreakoutSettings
+
+        grid = VolCompressionBreakoutSettings.parameter_grid()
+        if plan.param_variant != "base":
+            extra_kwargs["vol_compression"] = grid[int(plan.param_variant[1:])]
+        else:
+            extra_kwargs["vol_compression"] = grid[0]
     catalog = Catalog(settings.data.catalog_path)
     instrument = catalog.instrument(settings.market.instrument_id(plan.symbol))
     if instrument is None:
@@ -395,6 +435,7 @@ def execute_cell(plan: CellPlan) -> dict:
             symbol=plan.symbol,
             strategy_type=plan.strategy_type,
             **_strategy_kwargs(settings),
+            **extra_kwargs,
             trader_id=f"MATRIX-{plan.strategy_type}",
             log_level="OFF",
             instrument=instrument,
@@ -510,28 +551,39 @@ def run_matrix(
 
     plans: list[CellPlan] = []
     for strategy_type in strategies:
+        if strategy_type == VOLCOMP_STRATEGY_TYPE:
+            from strategy_vol_compression_breakout import VolCompressionBreakoutSettings
+
+            variants = tuple(
+                f"v{i}" for i in range(len(VolCompressionBreakoutSettings.parameter_grid()))
+            )
+        else:
+            variants = ("base",)
         for symbol in symbols:
-            if tier == 0:
-                # Smoke: last few days inside the declared window.
-                start = window_end - pd.Timedelta(days=TIER0_SMOKE_DAYS)
-                plan = make_plan(
-                    strategy_type,
-                    symbol,
-                    tier=0,
-                    folds=TIER0_FOLDS,
-                    window_start=start,
-                    window_end=window_end,
-                )
-            else:
-                plan = make_plan(
-                    strategy_type,
-                    symbol,
-                    tier=1,
-                    folds=folds,
-                    window_start=window_start,
-                    window_end=window_end,
-                )
-            plans.append(plan)
+            for variant in variants:
+                if tier == 0:
+                    # Smoke: last few days inside the declared window.
+                    start = window_end - pd.Timedelta(days=TIER0_SMOKE_DAYS)
+                    plan = make_plan(
+                        strategy_type,
+                        symbol,
+                        tier=0,
+                        folds=TIER0_FOLDS,
+                        window_start=start,
+                        window_end=window_end,
+                        param_variant=variant,
+                    )
+                else:
+                    plan = make_plan(
+                        strategy_type,
+                        symbol,
+                        tier=1,
+                        folds=folds,
+                        window_start=window_start,
+                        window_end=window_end,
+                        param_variant=variant,
+                    )
+                plans.append(plan)
     if limit_cells:
         plans = plans[:limit_cells]
 
@@ -560,7 +612,7 @@ def run_matrix(
     completed = 0
     errors = 0
     for plan in plans:
-        artifact_rel = f"cells/{plan.strategy_type}__{plan.symbol}.json"
+        artifact_rel = f"cells/{plan.strategy_type}__{plan.symbol}__{plan.param_variant}.json"
         artifact_path = out_dir / artifact_rel
 
         # Resume check: same identity + existing artifact => REUSED (skip rerun).
@@ -718,9 +770,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit-cells", type=int, default=None)
     args = parser.parse_args(argv)
 
-    unknown = set(args.strategies).difference(INVENTORY)
+    unknown = set(args.strategies).difference(ALL_STRATEGIES)
     if unknown:
-        parser.error(f"unknown strategies {sorted(unknown)}; inventory={INVENTORY}")
+        parser.error(f"unknown strategies {sorted(unknown)}; inventory={ALL_STRATEGIES}")
 
     symbols = args.symbols
     if symbols is None:
