@@ -229,7 +229,8 @@ def test_v2_eval_full_pipeline_pass(env):
     gates = {g["gate"]: g for g in json.loads((exp_dir / "gate_result.json").read_text())}
     assert gates[GateId.G0_DATA.value]["verdict"] == GateVerdict.PASS.value
     assert gates[GateId.G1_LEAKAGE.value]["verdict"] == GateVerdict.PASS.value
-    assert gates[GateId.G2_REPRODUCIBILITY.value]["verdict"] == GateVerdict.PASS.value
+    assert gates["G2A_ARTIFACT_INTEGRITY"]["verdict"] == GateVerdict.PASS.value
+    assert gates["G2B_INDEPENDENT_REPRODUCIBILITY"]["verdict"] == GateVerdict.PASS.value
     assert gates[GateId.G3_STAGE_A.value]["verdict"] == GateVerdict.PASS.value
 
     scorecard = json.loads((exp_dir / "scorecard.json").read_text())

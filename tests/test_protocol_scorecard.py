@@ -11,10 +11,11 @@ from contracts.protocol import (
     ScorecardResult,
     scorecard_max_verdict,
 )
+from research.protocol.gates import ProtocolGateId
 from research.protocol.scorecard import compute_scorecard
 
 
-def _gate(gate: GateId, verdict: GateVerdict) -> GateResult:
+def _gate(gate, verdict: GateVerdict) -> GateResult:
     return GateResult(gate=gate, verdict=verdict)
 
 
@@ -22,7 +23,8 @@ def _all_pass() -> list[GateResult]:
     return [
         _gate(GateId.G0_DATA, GateVerdict.PASS),
         _gate(GateId.G1_LEAKAGE, GateVerdict.PASS),
-        _gate(GateId.G2_REPRODUCIBILITY, GateVerdict.PASS),
+        _gate(ProtocolGateId.G2A_ARTIFACT_INTEGRITY, GateVerdict.PASS),
+        _gate(ProtocolGateId.G2B_INDEPENDENT_REPRODUCIBILITY, GateVerdict.PASS),
         _gate(GateId.G3_STAGE_A, GateVerdict.PASS),
         _gate(GateId.G4_SURVIVOR_ROBUSTNESS, GateVerdict.PASS),
         _gate(GateId.G5_PORTFOLIO, GateVerdict.PASS),
@@ -65,7 +67,8 @@ def test_gate_failures_zero_their_components():
     gates = [
         _gate(GateId.G0_DATA, GateVerdict.FAIL),
         _gate(GateId.G1_LEAKAGE, GateVerdict.PASS),
-        _gate(GateId.G2_REPRODUCIBILITY, GateVerdict.FAIL),
+        _gate(ProtocolGateId.G2A_ARTIFACT_INTEGRITY, GateVerdict.FAIL),
+        _gate(ProtocolGateId.G2B_INDEPENDENT_REPRODUCIBILITY, GateVerdict.FAIL),
         _gate(GateId.G3_STAGE_A, GateVerdict.FAIL),
         _gate(GateId.G4_SURVIVOR_ROBUSTNESS, GateVerdict.NOT_IMPLEMENTED),
         _gate(GateId.G5_PORTFOLIO, GateVerdict.NOT_APPLICABLE),
@@ -86,20 +89,35 @@ def test_gate_failures_zero_their_components():
 
 def test_partial_credit_for_trades_short_and_unrerun():
     gates = [
-        _gate(GateId.G2_REPRODUCIBILITY, GateVerdict.NOT_YET_TESTED),
+        _gate(ProtocolGateId.G2A_ARTIFACT_INTEGRITY, GateVerdict.NOT_APPLICABLE),
+        _gate(
+            ProtocolGateId.G2B_INDEPENDENT_REPRODUCIBILITY,
+            GateVerdict.NOT_YET_TESTED,
+        ),
         _gate(GateId.G3_STAGE_A, GateVerdict.NOT_YET_TESTED),
     ]
     result = compute_scorecard(gates, None, None)
     assert result.components["chronological_edge_quality"] == 13
-    assert result.components["reproducibility_auditability"] == 5
+    # G2b not run => no independent verification evidence => 0 + reason.
+    assert result.components["reproducibility_auditability"] == 0
     assert result.reasons["chronological_edge_quality"] == "trades_below_min"
     assert result.reasons["reproducibility_auditability"] == "rerun_not_performed"
 
 
+def test_half_credit_when_only_one_g2_row_passes():
+    gates = [
+        _gate(ProtocolGateId.G2A_ARTIFACT_INTEGRITY, GateVerdict.PASS),
+        _gate(ProtocolGateId.G2B_INDEPENDENT_REPRODUCIBILITY, GateVerdict.FAIL),
+    ]
+    result = compute_scorecard(gates, None, None)
+    assert result.components["reproducibility_auditability"] == 5
+
+
 def _score(
-    g2: GateVerdict,
-    g3: GateVerdict,
+    g2a: GateVerdict = GateVerdict.NOT_APPLICABLE,
+    g2b: GateVerdict = GateVerdict.NOT_APPLICABLE,
     *,
+    g3: GateVerdict = GateVerdict.NOT_APPLICABLE,
     g5_pass: bool = False,
     g4_pass: bool = False,
     cost: float = 1.0,
@@ -110,7 +128,8 @@ def _score(
     gates = [
         _gate(GateId.G0_DATA, GateVerdict.PASS),
         _gate(GateId.G1_LEAKAGE, GateVerdict.PASS),
-        _gate(GateId.G2_REPRODUCIBILITY, g2),
+        _gate(ProtocolGateId.G2A_ARTIFACT_INTEGRITY, g2a),
+        _gate(ProtocolGateId.G2B_INDEPENDENT_REPRODUCIBILITY, g2b),
         _gate(GateId.G3_STAGE_A, g3),
         _gate(
             GateId.G4_SURVIVOR_ROBUSTNESS,
@@ -128,32 +147,35 @@ def _score(
     )
 
 
+FAIL = GateVerdict.FAIL
+NYET = GateVerdict.NOT_YET_TESTED
+PASS = GateVerdict.PASS
+
+
 @pytest.mark.parametrize(
     ("kwargs", "expected_total", "expected_band"),
     [
         # 15(G0G1)+13(G3 half)+10(econ)+10(cost)+1(risk .1) = 49
-        ({"g2": GateVerdict.FAIL, "g3": GateVerdict.NOT_YET_TESTED, "risk": 0.1},
+        ({"g2a": FAIL, "g2b": FAIL, "g3": NYET, "risk": 0.1},
          49, "REJECT_REDESIGN"),
-        ({"g2": GateVerdict.FAIL, "g3": GateVerdict.NOT_YET_TESTED, "risk": 0.2},
+        ({"g2a": FAIL, "g2b": FAIL, "g3": NYET, "risk": 0.2},
          50, "DIAGNOSTIC_ONLY"),
-        # 15+13(G3 half)+5(G2 half)+5(G5)+10(econ)+10(cost)+1(risk .1) = 59
-        ({"g2": GateVerdict.NOT_YET_TESTED, "g3": GateVerdict.NOT_YET_TESTED,
-          "g5_pass": True, "risk": 0.1},
+        # 15+13(G3 half)+5(G2a pass only)+5(G5)+10(econ)+10(cost)+1(risk .1)=59
+        ({"g2a": PASS, "g2b": NYET, "g3": NYET, "g5_pass": True, "risk": 0.1},
          59, "DIAGNOSTIC_ONLY"),
-        ({"g2": GateVerdict.NOT_YET_TESTED, "g3": GateVerdict.NOT_YET_TESTED,
-          "g5_pass": True, "risk": 0.2},
+        ({"g2a": PASS, "g2b": NYET, "g3": NYET, "g5_pass": True, "risk": 0.2},
          60, "EXPLORATORY_STAGE_A_CANDIDATE"),
         # 15+25(G3 pass)+10(econ)+9(cost .9) = 69
-        ({"g2": GateVerdict.FAIL, "g3": GateVerdict.PASS, "cost": 0.9},
+        ({"g2a": FAIL, "g2b": FAIL, "g3": PASS, "cost": 0.9},
          69, "EXPLORATORY_STAGE_A_CANDIDATE"),
-        ({"g2": GateVerdict.FAIL, "g3": GateVerdict.PASS},
+        ({"g2a": FAIL, "g2b": FAIL, "g3": PASS},
          70, "LOCK_FOR_FUTURE_OOS_IF_G0_G5_PASS"),
-        # 15+25+5(G2 half)+10(econ)+5(G5)+9(cost .9) = 79
-        ({"g2": GateVerdict.NOT_YET_TESTED, "g3": GateVerdict.PASS,
-          "g5_pass": True, "cost": 0.9},
+        # 15+25+5(G2a only)+10(econ)+5(G5)+9(cost .9) = 79
+        ({"g2a": PASS, "g2b": NYET, "g3": PASS, "g5_pass": True, "cost": 0.9},
          79, "LOCK_FOR_FUTURE_OOS_IF_G0_G5_PASS"),
-        # all gates pass, no econ doc: 15+25+15+5(cost .5)+5(risk .5)+5+10 = 80
-        ({"g2": GateVerdict.PASS, "g3": GateVerdict.PASS, "g4_pass": True,
+        # all gates pass, no econ doc: 15+25+10(g2)+15(g4)+5(cost .5)
+        # +5(risk .5)+5(G5) = 80
+        ({"g2a": PASS, "g2b": PASS, "g3": PASS, "g4_pass": True,
           "g5_pass": True, "cost": 0.5, "risk": 0.5, "econ": False},
          80, "STRONG_RESEARCH_CANDIDATE_NOT_CONFIRMED_EDGE"),
     ],

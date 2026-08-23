@@ -19,6 +19,42 @@ DEFAULT_REGISTRY_PATH = DEFAULT_REGISTRY_DIR / "experiments.jsonl"
 
 REQUIRED_ENTRY_FIELDS = ("experiment_id", "verdict")
 
+#: Sprint V3 append-only entry kinds (PLAN section 11). Every entry that
+#: declares a ``kind`` must satisfy the per-kind required-field contract;
+#: verify/finalize entries additionally need the verification identity block.
+ENTRY_KINDS = (
+    "CELL_RESULT",
+    "ARTIFACT_INTEGRITY_VERIFY",
+    "INDEPENDENT_RERUN_VERIFY",
+    "MATRIX_FINALIZE",
+)
+VERIFY_KIND_REQUIRED_FIELDS = (
+    "schema",
+    "matrix_id",
+    "verified_experiment_id",
+    "verification_type",
+)
+CELL_RESULT_REQUIRED_FIELDS = ("schema", "matrix_id")
+
+
+def validate_entry_kind(entry: dict) -> list[str]:
+    """Reason strings for any violated registry-kind contract (empty = OK)."""
+    kind = entry.get("kind")
+    if kind is None:
+        return []
+    if kind not in ENTRY_KINDS:
+        return [f"unknown_registry_kind:{kind}"]
+    required = (
+        CELL_RESULT_REQUIRED_FIELDS
+        if kind == "CELL_RESULT"
+        else VERIFY_KIND_REQUIRED_FIELDS
+    )
+    missing = [
+        field for field in required
+        if entry.get(field) is None or entry.get(field) == ""
+    ]
+    return [f"registry_missing_field:{field}" for field in missing]
+
 
 def _resolve(path: str | Path | None) -> Path:
     return Path(path) if path is not None else DEFAULT_REGISTRY_PATH
@@ -28,12 +64,17 @@ def append(entry: dict, path: str | Path | None = None) -> dict:
     """Append one experiment entry as a single JSON line (create if missing).
 
     The entry is stamped with ``appended_at`` unless the caller supplied one.
-    Raises ``ValueError`` when required fields are missing or values are not
-    JSON-serialisable.  Returns the stored entry.
+    Raises ``ValueError`` when required fields are missing, values are not
+    JSON-serialisable, or a declared entry ``kind`` violates the PLAN
+    section 11 field contract (fail-closed; nothing is written).  Returns
+    the stored entry.
     """
     for field in REQUIRED_ENTRY_FIELDS:
         if field not in entry or entry[field] is None:
             raise ValueError(f"registry entry requires non-null {field!r}")
+    kind_reasons = validate_entry_kind(entry)
+    if kind_reasons:
+        raise ValueError(f"invalid registry entry kind: {kind_reasons}")
     stored = dict(entry)
     stored.setdefault("appended_at", datetime.now(timezone.utc).isoformat())
     line = json.dumps(stored, sort_keys=True, default=str)
