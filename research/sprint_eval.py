@@ -285,6 +285,101 @@ def evaluate_matrix(matrix_dir: str, *, output_root: str = "results/stage_a") ->
 
 
 # --------------------------------------------------------------------------- #
+# Sprint V3 mode (PLAN sections 8-11) -- owner A3
+#
+# The evaluator ONLY READS the runner-written launch manifest; it never
+# creates lock timestamps or fabricates leakage/execution evidence.
+# --------------------------------------------------------------------------- #
+V3_DEFAULT_OUTPUT_ROOT = "results/stage_a_v3"
+
+
+def _leakage_from_artifact(document: dict):
+    """Rehydrate runner-emitted LeakageEvidence from a cell artifact."""
+    from contracts.protocol import LeakageEvidence
+
+    raw = document.get("leakage_evidence")
+    if not isinstance(raw, dict):
+        return None
+    return LeakageEvidence(
+        split_policy_declared=bool(raw.get("split_policy_declared")),
+        warmup_boundaries=raw.get("warmup_boundaries"),
+        transform_evidence=raw.get("transform_evidence"),
+        universe_freeze=raw.get("universe_freeze"),
+        execution_ordering=raw.get("execution_ordering"),
+        notes=tuple(raw.get("notes") or ()),
+    )
+
+
+def _positions_reconcile(positions: list[dict], cell: dict) -> bool:
+    """sum(canonical position PnL) must equal cell net within rel 1e-9."""
+    net = (cell.get("positions_stats") or {}).get("net_pnl")
+    if net is None:
+        net = cell.get("pnl_after_funding") or 0.0
+    total = sum((row.get("pnl_after_funding") or 0.0) for row in positions)
+    scale = max(1.0, abs(float(net)))
+    return abs(total - float(net)) <= 1e-9 * scale
+
+
+def _verify_manifest_hashes(manifest, exp_dir: Path) -> bool:
+    from contracts.protocol import sha256_file
+
+    frozen = exp_dir / "frozen"
+    pairs = (
+        (manifest.runtime_config_sha256, frozen / "runtime_config.yaml"),
+        (manifest.candidate_spec_sha256, frozen / "candidate.yaml"),
+        (manifest.data_manifest_sha256, frozen / "data_manifest.json"),
+        (manifest.universe_sha256, frozen / "universe.json"),
+    )
+    return all(
+        target.is_file() and sha256_file(target) == expected
+        for expected, target in pairs
+    )
+
+
+def _rationale_flags(candidate_path: Path) -> dict[str, bool]:
+    """Hypothesis-doc presence + specificity flags (never constants)."""
+    import yaml
+
+    flags = {
+        "economic_mechanism_specific": False,
+        "expected_counterparty_named": False,
+        "invalidating_evidence_pre_registered": False,
+        "entry_exit_rules_concrete": False,
+    }
+    try:
+        raw = yaml.safe_load(candidate_path.read_text(encoding="utf-8")) or {}
+    except Exception:  # noqa: BLE001 - unreadable spec simply earns no points
+        return flags
+
+    def _specific(value: Any, min_len: int) -> bool:
+        return isinstance(value, str) and len(value.strip()) >= min_len
+
+    invalidating = raw.get("invalidating_evidence")
+    flags["economic_mechanism_specific"] = _specific(
+        raw.get("economic_mechanism"), 80
+    )
+    flags["expected_counterparty_named"] = _specific(
+        raw.get("expected_counterparty"), 40
+    )
+    flags["invalidating_evidence_pre_registered"] = (
+        isinstance(invalidating, list)
+        and len(invalidating) >= 2
+        and all(isinstance(item, str) and len(item.strip()) > 20 for item in invalidating)
+    )
+    flags["entry_exit_rules_concrete"] = _specific(raw.get("entry_exit_rules"), 120)
+    return flags
+
+
+def _top_fold_contribution(cell: dict) -> float | None:
+    folds_stats = [fold.get("positions_stats", {}) for fold in cell.get("folds", [])]
+    funded_nets = [fs.get("net_pnl") or 0.0 for fs in folds_stats]
+    total_net = sum(funded_nets)
+    if total_net > 0 and funded_nets:
+        return max(abs(v) for v in funded_nets) / abs(total_net) * 100.0
+    return None
+
+
+# --------------------------------------------------------------------------- #
 # Sprint V2 mode (PLAN sections 7, 8, 9, 13) -- owner A3
 # --------------------------------------------------------------------------- #
 def _resolve_first_existing(paths: list[str]) -> Path:
@@ -673,7 +768,10 @@ def evaluate_matrix_v2(
                 stage_a=StageAInput(**stage_a),
             )
         )
-        verdict_by_gate = {g.gate: g.verdict for g in gate_results}
+        verdict_by_gate = {
+            (g.gate.value if hasattr(g.gate, "value") else str(g.gate)): g.verdict
+            for g in gate_results
+        }
         (exp_dir / "gate_result.json").write_text(
             json.dumps([g.to_dict() for g in gate_results], indent=2), encoding="utf-8"
         )
@@ -689,8 +787,9 @@ def evaluate_matrix_v2(
         g_all_pass = all(
             verdict_by_gate.get(gate) is GateVerdict.PASS
             for gate in (
-                GateId.G0_DATA, GateId.G1_LEAKAGE,
-                GateId.G2_REPRODUCIBILITY, GateId.G3_STAGE_A,
+                GateId.G0_DATA.value, GateId.G1_LEAKAGE.value,
+                "G2A_ARTIFACT_INTEGRITY", "G2B_INDEPENDENT_REPRODUCIBILITY",
+                GateId.G3_STAGE_A.value,
             )
         )
         (exp_dir / "scorecard.json").write_text(
@@ -708,20 +807,27 @@ def evaluate_matrix_v2(
         )
 
         # Verdict --------------------------------------------------------- #
-        g3_result = verdict_by_gate and next(
-            g for g in gate_results if g.gate is GateId.G3_STAGE_A
-        )
+        def _row_for(gate_value: str):
+            return next(
+                g
+                for g in gate_results
+                if (g.gate.value if hasattr(g.gate, "value") else str(g.gate))
+                == gate_value
+            )
+
+        g3_result = _row_for(GateId.G3_STAGE_A.value)
         g3 = g3_result.verdict
+        protocol_fail_gates = (
+            GateId.G0_DATA.value, GateId.G1_LEAKAGE.value, "G2A_ARTIFACT_INTEGRITY",
+        )
         protocol_fail = any(
-            verdict_by_gate.get(gate) is GateVerdict.FAIL
-            for gate in (GateId.G0_DATA, GateId.G1_LEAKAGE, GateId.G2_REPRODUCIBILITY)
+            verdict_by_gate.get(gate) is GateVerdict.FAIL for gate in protocol_fail_gates
         )
         reasons = list(g3_result.reasons)
-        for gate in (GateId.G0_DATA, GateId.G1_LEAKAGE, GateId.G2_REPRODUCIBILITY):
-            if verdict_by_gate.get(gate) is GateVerdict.FAIL:
-                reasons.extend(
-                    next(g for g in gate_results if g.gate == gate).reasons
-                )
+        for row in gate_results:
+            row_gate = row.gate.value if hasattr(row.gate, "value") else str(row.gate)
+            if row_gate in protocol_fail_gates and row.verdict is GateVerdict.FAIL:
+                reasons.extend(row.reasons)
         if protocol_fail:
             verdict = "UNRANKED_PROTOCOL_FAIL"
             protocol_failures += 1
@@ -755,9 +861,10 @@ def evaluate_matrix_v2(
                 "param_variant": variant,
                 "matrix_id": manifest.matrix_id,
                 "git_commit_at_launch": manifest.git_commit_at_launch,
-                "g0": verdict_by_gate[GateId.G0_DATA].value,
-                "g1": verdict_by_gate[GateId.G1_LEAKAGE].value,
-                "g2": verdict_by_gate[GateId.G2_REPRODUCIBILITY].value,
+                "g0": verdict_by_gate[GateId.G0_DATA.value].value,
+                "g1": verdict_by_gate[GateId.G1_LEAKAGE.value].value,
+                "g2a": verdict_by_gate["G2A_ARTIFACT_INTEGRITY"].value,
+                "g2b": verdict_by_gate["G2B_INDEPENDENT_REPRODUCIBILITY"].value,
                 "g3": g3_result.to_dict(),
                 "reasons": sorted(set(reasons)),
                 "canonical": {
@@ -825,6 +932,456 @@ def recompute_frozen_hashes(exp_dir: Path) -> dict[str, str]:
         "candidate": sha256_file(frozen / "candidate.yaml"),
         "data_manifest": sha256_file(frozen / "data_manifest.json"),
     }
+
+
+def evaluate_matrix_v3(
+    matrix_dir: str,
+    *,
+    output_root: str = V3_DEFAULT_OUTPUT_ROOT,
+    coverage_path: str | None = None,
+    registry_path: str | Path | None = None,
+    finalize: bool = True,
+) -> dict:
+    """Sprint V3 evaluation: read-only provenance + separated G2a/G2b gates.
+
+    Per COMPLETED cell the evaluator reads the runner's launch manifest and
+    emitted LeakageEvidence, evaluates gates G0/G1/G2A/G2B/G3, scores the
+    real-band scorecard, writes gate/scorecard artifacts next to the frozen
+    inputs, and appends one CELL_RESULT registry row per declared cell
+    (including PIPELINE_ERROR cells).  With ``finalize`` the matrix is
+    reconciled from the final index/filesystem (reconciliation.json) and a
+    MATRIX_FINALIZE row is appended.
+    """
+    from contracts.protocol import (
+        ArtifactIntegrityResult,
+        CellStatus,
+        IndependentReproductionResult,
+        require_reason,
+    )
+    from research.matrix_runner import LaunchManifestInvalid, read_launch_manifest
+    from research.protocol.gates import (
+        DataGateInput,
+        GateInputs,
+        RunnerLeakageGateInput,
+        StageAInput,
+        evaluate_gates,
+        g2_promotion_pass,
+    )
+    from research.protocol.registry import append, load_all
+    from research.protocol.reconciliation import (
+        append_matrix_finalize_entry,
+        finalize_matrix,
+    )
+    from research.protocol.scorecard import compute_scorecard_v3, score_eligibility
+
+    matrix_path = Path(matrix_dir)
+    index = json.loads((matrix_path / "index.json").read_text(encoding="utf-8"))
+    report = json.loads((matrix_path / "report.json").read_text(encoding="utf-8"))
+    coverage_file = _coverage_path_or_raise(coverage_path)
+    full_coverage = json.loads(coverage_file.read_text(encoding="utf-8"))
+    output_path = Path(output_root)
+
+    rerun_by_experiment: dict[str, dict] = {}
+    for row in load_all(registry_path):
+        if row.get("kind") == "INDEPENDENT_RERUN_VERIFY" and row.get(
+            "verified_experiment_id"
+        ):
+            rerun_by_experiment.setdefault(row["verified_experiment_id"], row)
+
+    summaries: list[dict] = []
+    protocol_failures = 0
+
+    for key, index_entry in index.get("cells", {}).items():
+        identity_hint = index_entry.get("identity", {})
+        strategy_type = identity_hint.get("strategy_type")
+        symbol = identity_hint.get("symbol")
+        variant = identity_hint.get("param_variant", "base")
+        experiment_id = index_entry.get("experiment_id")
+        status = index_entry.get("status")
+
+        artifact_rel = index_entry.get("artifact_path")
+        artifact = Path(artifact_rel) if artifact_rel else None
+        cell: dict = {}
+        if artifact and artifact.is_file():
+            try:
+                cell = json.loads(artifact.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                cell = {}
+
+        if status != CellStatus.COMPLETED.value:
+            reasons = sorted(
+                set(index_entry.get("reason_codes") or [])
+                | set(cell.get("launch_manifest_reasons") or [])
+            ) or ["cell_failed_exception"]
+            append(
+                {
+                    "experiment_id": experiment_id,
+                    "verdict": status,
+                    "kind": "CELL_RESULT",
+                    "schema": "v3",
+                    "matrix_id": report.get("matrix_id", matrix_path.name),
+                    "hypothesis_id": (cell.get("provenance") or {}).get("hypothesis_id")
+                    or f"H-EXISTING-{strategy_type}-v1",
+                    "strategy_type": strategy_type,
+                    "symbol": symbol,
+                    "param_variant": variant,
+                    "reasons": reasons,
+                },
+                path=registry_path,
+            )
+            summaries.append(
+                {
+                    "experiment_id": experiment_id,
+                    "strategy_type": strategy_type,
+                    "symbol": symbol,
+                    "variant": variant,
+                    "verdict": status,
+                    "reasons": reasons,
+                }
+            )
+            continue
+
+        exp_dir = Path(index_entry.get("stage_a_dir") or (output_path / experiment_id))
+
+        # 1. READ-ONLY provenance: the runner's launch manifest ------------- #
+        try:
+            manifest = read_launch_manifest(exp_dir / "launch_manifest.yaml")
+            manifest_reasons: list[str] = []
+        except (LaunchManifestInvalid, ValueError, FileNotFoundError) as exc:
+            manifest = None
+            manifest_reasons = list(getattr(exc, "reasons", ()) or ()) or [
+                require_reason("manifest_missing_field")
+            ]
+
+        positions = _positions_from_ledger(artifact)
+        scoped = _scoped_coverage_payload(
+            full_coverage,
+            symbol,
+            cell["window_actual"]["start_utc"],
+            cell["window_actual"]["end_utc"],
+        )
+
+        # 2. Gates ------------------------------------------------------------ #
+        g0_input = DataGateInput(coverage_payload=scoped)
+        g1_input = RunnerLeakageGateInput(evidence=_leakage_from_artifact(cell))
+
+        schema_valid = manifest is not None and not manifest_reasons
+        hashes_match = bool(
+            manifest is not None and _verify_manifest_hashes(manifest, exp_dir)
+        )
+        g2a_result = ArtifactIntegrityResult(
+            schema_valid=schema_valid,
+            hashes_match=hashes_match,
+            positions_reconcile=_positions_reconcile(positions, cell),
+            report_index_reconcile=(
+                cell.get("cell_result", {}).get("status") == status
+                and bool(experiment_id)
+            ),
+            reasons=tuple(sorted(set(manifest_reasons))),
+        )
+        rerun_row = rerun_by_experiment.get(experiment_id)
+        if rerun_row:
+            g2b_result = IndependentReproductionResult(
+                performed=True,
+                rerun_process_separate=bool(rerun_row.get("rerun_process_separate", True)),
+                parameters_match=bool(rerun_row.get("parameters_match")),
+                positions_digest_match=bool(rerun_row.get("positions_digest_match")),
+                trade_count_match=bool(rerun_row.get("trade_count_match")),
+                canonical_pnl_match=bool(rerun_row.get("canonical_pnl_match")),
+                source_experiment_id=experiment_id,
+                rerun_experiment_id=rerun_row.get("rerun_experiment_id"),
+            )
+        else:
+            # No independent rerun yet => NOT_YET_TESTED (diagnostic only).
+            g2b_result = IndependentReproductionResult(
+                performed=False, rerun_process_separate=False
+            )
+
+        stats = cell.get("positions_stats") or {}
+        trades_total = stats.get("trades") or 0
+        net_total = stats.get("net_pnl")
+        exp_position = (net_total / trades_total) if trades_total else None
+        fold_rows = []
+        for fold in cell.get("folds", []):
+            fs = fold.get("positions_stats", {})
+            ft = fs.get("trades") or 0
+            fold_rows.append(
+                {
+                    "fold_id": str(fold["fold"]),
+                    "trades": ft,
+                    "pnl_after_cost": fs.get("net_pnl"),
+                    "exp_after_cost": (fs.get("net_pnl") / ft) if ft else None,
+                    "pf_after_cost": fs.get("profit_factor"),
+                }
+            )
+        stage_a = StageAInput(
+            exp_after_cost=exp_position,
+            pf_after_cost=stats.get("profit_factor"),
+            total_trades=trades_total,
+            folds=fold_rows,
+            symbols=[
+                {
+                    "symbol": symbol,
+                    "trades": trades_total,
+                    "pnl_after_cost": net_total,
+                    "exp_after_cost": exp_position,
+                    "pf_after_cost": stats.get("profit_factor"),
+                }
+            ],
+            top_fold_contribution_pct=_top_fold_contribution(cell),
+        )
+
+        gate_results = evaluate_gates(
+            GateInputs(
+                data=g0_input,
+                leakage=g1_input,
+                artifact_integrity=g2a_result,
+                independent_reproduction=g2b_result,
+                stage_a=stage_a,
+            )
+        )
+        verdict_by_gate = {
+            (g.gate.value if hasattr(g.gate, "value") else str(g.gate)): g.verdict
+            for g in gate_results
+        }
+        (exp_dir / "gate_result.json").write_text(
+            json.dumps([g.to_dict() for g in gate_results], indent=2), encoding="utf-8"
+        )
+
+        # 3. Canonical metrics incl. R normalization ------------------------- #
+        r_values = [
+            row.get("r_multiple")
+            for row in positions
+            if isinstance(row.get("r_multiple"), (int, float))
+        ]
+        expectancy_r = (sum(r_values) / len(r_values)) if r_values else None
+        positive_folds = sum(1 for row in fold_rows if (row["pnl_after_cost"] or 0) > 0)
+        canonical_metrics = {
+            "schema_version": 3,
+            "accounting": "position_level_after_funding_v3",
+            "execution_mode": (cell.get("provenance") or {}).get("execution_mode"),
+            "strategy_type": strategy_type,
+            "symbol": symbol,
+            "param_variant": variant,
+            "window_actual": cell.get("window_actual"),
+            "trades": {
+                "value": trades_total,
+                "reason": None if trades_total else require_reason("no_trades"),
+            },
+            "net_canonical_pnl": {
+                "value": round(net_total, 10) if net_total is not None else None,
+                "reason": None if net_total is not None else require_reason("no_trades"),
+            },
+            "expectancy_usdt": {
+                "value": round(exp_position, 10) if exp_position is not None else None,
+                "reason": (
+                    None if exp_position is not None else require_reason("no_trades")
+                ),
+            },
+            "expectancy_r": {
+                "value": round(expectancy_r, 10) if expectancy_r is not None else None,
+                "reason": (
+                    None
+                    if expectancy_r is not None
+                    else require_reason("metric_not_computed")
+                ),
+            },
+            "position_pf": {"value": stats.get("profit_factor"), "reason": stats.get("pf_reason")},
+            "positive_folds": positive_folds,
+            "outer_folds": len(fold_rows),
+            "closed_positions": len(positions),
+            "positions_digest": cell.get("positions_digest"),
+            "observations": cell.get("observations", []),
+        }
+        (exp_dir / "canonical_metrics.json").write_text(
+            json.dumps(canonical_metrics, indent=2), encoding="utf-8"
+        )
+
+        # 4. Real-band scorecard from REAL evidence -------------------------- #
+        candidate_path = exp_dir / "frozen" / "candidate.yaml"
+        cost_flags = {
+            # Survivor stress evidence does not exist until G3 survivors run.
+            "fee_stress_evidence": False,
+            "slippage_stress_evidence": False,
+            "delay_stress_evidence": False,
+            # Post-trade funding audit availability IS evidenced per cell.
+            "funding_audit_evidence": bool(positions)
+            and all(row.get("funding_net") is not None for row in positions),
+        }
+        risk_flags = {
+            "max_drawdown_present": False,
+            "dd_duration_present": False,
+            "r_normalization_present": expectancy_r is not None,
+        }
+        scorecard = compute_scorecard_v3(
+            gate_results,
+            {
+                "expectancy_r": expectancy_r,
+                "position_pf": stats.get("profit_factor"),
+                "positive_folds": positive_folds,
+                "outer_folds": len(fold_rows),
+                "closed_trades": trades_total,
+                "flat_benchmark_pass": None,  # no flat benchmark engine this sprint
+                "rationale_flags": _rationale_flags(candidate_path),
+                "cost_flags": cost_flags,
+                "risk_flags": risk_flags,
+            },
+        )
+        eligibility = score_eligibility(gate_results)
+
+        def _row(gate_value: str):
+            return next(
+                g
+                for g in gate_results
+                if (g.gate.value if hasattr(g.gate, "value") else str(g.gate))
+                == gate_value
+            )
+
+        g2a_row = _row("G2A_ARTIFACT_INTEGRITY")
+        g2b_row = _row("G2B_INDEPENDENT_REPRODUCIBILITY")
+        promotion_pass = g2_promotion_pass(g2a_row, g2b_row)
+        (exp_dir / "scorecard.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 3,
+                    "components": scorecard.components,
+                    "total": scorecard.total,
+                    "max_verdict": scorecard.max_verdict(),
+                    "eligibility": eligibility,
+                    "g2_promotion_pass": promotion_pass,
+                    "note": (
+                        "final_research_score requires G0-G5 PASS; G2b not run "
+                        "=> diagnostic only (PLAN section 10.2)"
+                    ),
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        # 5. Verdict ----------------------------------------------------------- #
+        g3_row = _row(GateId.G3_STAGE_A.value)
+        protocol_fail = any(
+            verdict_by_gate.get(gate) is GateVerdict.FAIL
+            for gate in ("G0_DATA", "G1_LEAKAGE", "G2A_ARTIFACT_INTEGRITY")
+        )
+        reasons = sorted(
+            {
+                code
+                for row in gate_results
+                if row.verdict is GateVerdict.FAIL
+                for code in row.reasons
+            }
+            | set(g3_row.reasons)
+        )
+        if protocol_fail:
+            verdict = "UNRANKED_PROTOCOL_FAIL"
+            protocol_failures += 1
+        elif eligibility["eligibility"] == "DIAGNOSTIC_ONLY":
+            verdict = "DIAGNOSTIC_G2B_NOT_RUN"
+        elif g3_row.verdict is GateVerdict.PASS:
+            verdict = "CANDIDATE_PASS"
+        elif g3_row.verdict in (GateVerdict.INCONCLUSIVE, GateVerdict.NOT_YET_TESTED):
+            verdict = "INCONCLUSIVE"
+        else:
+            verdict = "CANDIDATE_FAIL"
+
+        log_line = (
+            f"{datetime.now(timezone.utc).isoformat()} | {experiment_id} | "
+            f"{strategy_type} | {symbol} | {variant} | {verdict} | "
+            f"g1={verdict_by_gate['G1_LEAKAGE'].value} "
+            f"g2a={verdict_by_gate['G2A_ARTIFACT_INTEGRITY'].value} "
+            f"g2b={verdict_by_gate['G2B_INDEPENDENT_REPRODUCIBILITY'].value} | "
+            f"pf={stats.get('profit_factor')} | trades={trades_total}\n"
+        )
+        (exp_dir / "run.log").write_text(log_line, encoding="utf-8")
+        (exp_dir / "artifact_hashes.json").write_text(
+            json.dumps(_artifact_hashes(exp_dir), indent=2), encoding="utf-8"
+        )
+
+        append(
+            {
+                "experiment_id": experiment_id,
+                "verdict": verdict,
+                "kind": "CELL_RESULT",
+                "schema": "v3",
+                "hypothesis_id": (
+                    manifest.hypothesis_id if manifest else f"H-EXISTING-{strategy_type}-v1"
+                ),
+                "candidate_version": manifest.candidate_version if manifest else None,
+                "owner_agent": manifest.owner_agent if manifest else None,
+                "validator_agent": manifest.validator_agent if manifest else "A3",
+                "strategy_type": strategy_type,
+                "symbol": symbol,
+                "param_variant": variant,
+                "matrix_id": (
+                    manifest.matrix_id if manifest else report.get("matrix_id", matrix_path.name)
+                ),
+                "git_commit_at_launch": (cell.get("provenance") or {}).get("git_commit_at_launch"),
+                "execution_mode": (cell.get("provenance") or {}).get("execution_mode"),
+                "g0": verdict_by_gate["G0_DATA"].value,
+                "g1": verdict_by_gate["G1_LEAKAGE"].value,
+                "g2a": verdict_by_gate["G2A_ARTIFACT_INTEGRITY"].value,
+                "g2b": verdict_by_gate["G2B_INDEPENDENT_REPRODUCIBILITY"].value,
+                "g3": g3_row.to_dict(),
+                "reasons": reasons,
+                "canonical": {
+                    "trades": trades_total,
+                    "net_canonical_pnl": net_total,
+                    "positions_digest": cell.get("positions_digest"),
+                },
+                "pf_position_level": stats.get("profit_factor"),
+                "exp_after_cost": exp_position,
+                "scorecard_total": scorecard.total,
+                "eligibility": eligibility["eligibility"],
+                "artifact_dir": str(exp_dir),
+            },
+            path=registry_path,
+        )
+
+        summaries.append(
+            {
+                "experiment_id": experiment_id,
+                "strategy_type": strategy_type,
+                "symbol": symbol,
+                "variant": variant,
+                "verdict": verdict,
+                "eligibility": eligibility["eligibility"],
+                "reasons": reasons,
+                "g1": verdict_by_gate["G1_LEAKAGE"].value,
+                "g2a": verdict_by_gate["G2A_ARTIFACT_INTEGRITY"].value,
+                "g2b": verdict_by_gate["G2B_INDEPENDENT_REPRODUCIBILITY"].value,
+                "pf_position_level": stats.get("profit_factor"),
+                "exp_after_cost": exp_position,
+                "expectancy_r": canonical_metrics["expectancy_r"]["value"],
+                "trades": trades_total,
+                "net_canonical_pnl": net_total,
+                "scorecard_total": scorecard.total,
+            }
+        )
+
+    reconciliation = finalize_matrix(matrix_path, registry_path) if finalize else None
+    if finalize and not reconciliation["mismatches"]:
+        append_matrix_finalize_entry(matrix_path, reconciliation, registry_path=registry_path)
+
+    summary_payload = {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "matrix_dir": str(matrix_path),
+        "schema": "v3",
+        "evaluated": len(summaries),
+        "pass": sum(1 for s in summaries if s["verdict"] == "CANDIDATE_PASS"),
+        "fail": sum(1 for s in summaries if s["verdict"] == "CANDIDATE_FAIL"),
+        "inconclusive": sum(1 for s in summaries if s["verdict"] == "INCONCLUSIVE"),
+        "protocol_fail": protocol_failures,
+        "diagnostic_g2b_not_run": sum(
+            1 for s in summaries if s["verdict"] == "DIAGNOSTIC_G2B_NOT_RUN"
+        ),
+        "pipeline_error": sum(1 for s in summaries if s["verdict"] == "PIPELINE_ERROR"),
+        "rows": summaries,
+        "reconciliation": reconciliation,
+    }
+    print(json.dumps({k: v for k, v in summary_payload.items() if k != "rows"}, indent=2))
+    return summary_payload
 
 
 def build_v1_v2_comparison(
@@ -910,15 +1467,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--matrix-dir", required=True)
     parser.add_argument("--output-root", default=None)
     parser.add_argument(
-        "--schema", choices=("v1", "v2"), default="v2",
-        help="v2 = Sprint V2 provenance + position-level canonical mode",
+        "--schema", choices=("v1", "v2", "v3"), default="v3",
+        help=(
+            "v3 = Sprint V3 read-only provenance + G2a/G2b separation "
+            "(default); v2 = Sprint V2 provenance mode"
+        ),
     )
+    parser.add_argument("--registry-path", default=None,
+                        help="append-only registry file (default results/registry/experiments.jsonl)")
+    parser.add_argument("--no-finalize", action="store_true",
+                        help="skip matrix reconciliation/finalize (v3 only)")
     parser.add_argument("--coverage-path", default=None,
                         help="data-contract coverage.json used as G0 evidence")
     parser.add_argument("--v1-summary-dir", default=None,
                         help="directory holding V1 sprint_summary_*.json rows")
     args = parser.parse_args(argv)
 
+    if args.schema == "v3":
+        payload = evaluate_matrix_v3(
+            args.matrix_dir,
+            output_root=args.output_root or V3_DEFAULT_OUTPUT_ROOT,
+            coverage_path=args.coverage_path,
+            registry_path=args.registry_path,
+            finalize=not args.no_finalize,
+        )
+        reconciliation = (payload or {}).get("reconciliation") or {}
+        return 0 if not reconciliation.get("mismatches") else 1
     if args.schema == "v2":
         evaluate_matrix_v2(
             args.matrix_dir,

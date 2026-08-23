@@ -1,8 +1,9 @@
-"""Unit tests for the resumable matrix runner (owner: A2).
+"""Unit tests for the resumable matrix runner (owner: A2/A3).
 
 The walk-forward engine path is exercised end-to-end separately via the Tier 0
 CLI self-test (results/matrix artifacts); these tests keep pytest fast and
-network-free by injecting fake cell executors.
+network-free by injecting fake cell executors while running the REAL Sprint V3
+launch-provenance wrapper (frozen snapshots + launch manifest + LeakageEvidence).
 """
 
 from __future__ import annotations
@@ -12,9 +13,25 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import yaml
 
 import research.matrix_runner as mr
+import research.protocol.manifest as manifest_mod
 from contracts.protocol import CellStatus
+
+
+@pytest.fixture(autouse=True)
+def _registry_and_data_contract(tmp_path, monkeypatch):
+    """Redirect registry counter + data-manifest source into tmp_path."""
+    registry_dir = tmp_path / "registry"
+    monkeypatch.setattr(manifest_mod, "DEFAULT_REGISTRY_DIR", registry_dir)
+    contract = tmp_path / "data_contract_v2.json"
+    contract.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    monkeypatch.setattr(mr, "_DATA_MANIFEST_CACHE", None)
+    monkeypatch.setattr(
+        mr, "_data_manifest_source", lambda: contract
+    )
+    return tmp_path
 
 
 def test_config_map_covers_inventory_with_existing_files():
@@ -112,7 +129,7 @@ def test_identity_tuple_is_complete_and_stable(tmp_path):
 
 def _fake_payload(trades: int = 25) -> dict:
     return {
-        "window_actual": {"start_utc": "x", "end_utc": "y"},
+        "window_actual": {"start_utc": "2025-08-21T14:30:00+00:00", "end_utc": "2026-08-21T00:00:00+00:00"},
         "data_bounds": {"first_bar_utc": "a", "last_bar_utc": "b"},
         "snapshot_id": "snap",
         "total_trades": trades,
@@ -130,12 +147,26 @@ def _fake_payload(trades: int = 25) -> dict:
         },
         "positions_digest": "0" * 64,
         "positions_rows": [
-            {"pnl_after_funding": 9.25 / trades, "exit_ts": f"2026-0{i + 1}-01T00:00:00+00:00"}
+            {
+                "pnl_after_funding": 9.25 / trades,
+                "exit_ts": f"2026-0{i + 1}-01T00:00:00+00:00",
+                "signal_ts": None,
+                "fill_ts": None,
+            }
             for i in range(min(trades, 3))
         ],
         "observations": [],
         "folds": [
-            {"fold": i, "trades": trades // 3, "expectancy": 0.01} for i in range(3)
+            {
+                "fold": i,
+                "start_utc": "2025-08-21T14:30:00+00:00",
+                "end_utc": "2026-08-21T00:00:00+00:00",
+                "bars_incl_warmup": 12640,
+                "scored_bars": 11680,
+                "trades": trades // 3,
+                "expectancy": 0.01,
+            }
+            for i in range(3)
         ],
     }
 
@@ -162,7 +193,9 @@ def test_rerun_reuses_completed_cells_without_executing(tmp_path, monkeypatch):
     assert calls == [("ema_atr", "SOLUSDT")]
 
     second = mr.run_matrix(**common)
-    assert second["reused"] == 1 and second["completed"] == 0
+    # Sprint V3 report aggregation: completed counts come from the FINAL
+    # index, so an already-completed cell still counts as completed.
+    assert second["reused"] == 1 and second["completed"] == 1
     assert len(calls) == 1  # executor NOT called again
 
     index = json.loads((tmp_path / "m_resume" / "index.json").read_text())
