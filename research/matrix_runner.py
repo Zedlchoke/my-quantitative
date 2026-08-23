@@ -1115,13 +1115,18 @@ def _positions_rows_in_window(
         for rec in execution_records:
             sym = str(rec.get("symbol") or "")
             records_by_symbol.setdefault(sym, []).append(rec)
-    for sym_key, recs in records_by_symbol.items():
-        recs.sort(
-            key=lambda r: int(r.get("exit_fill_ts") or r.get("fill_ts") or 0),
-        )
-    queues = {k: list(v) for k, v in records_by_symbol.items()}
-    BAR_NS = 900_000_000_000  # 15m tolerance for record<->audit matching
-    adjusted_sorted = adjusted.sort_values("ts_closed") if "ts_closed" in adjusted.columns else adjusted
+    adjusted_sorted = (
+        adjusted.sort_values("ts_closed").reset_index(drop=True)
+        if "ts_closed" in adjusted.columns else adjusted
+    )
+    # Per-symbol FIFO pairing: audit rows and execution records describe the
+    # SAME closed positions in the same close order. Counts must agree;
+    # otherwise the symbol keeps null evidence (fail-closed, never guessed).
+    consumed: dict[str, int] = {}
+    sym_audit_counts: dict[str, int] = {}
+    for _, row0 in adjusted_sorted.iterrows():
+        sb0 = str(row0.get("instrument_id", "")).split("-")[0]
+        sym_audit_counts[sb0] = sym_audit_counts.get(sb0, 0) + 1
 
     rows: list[dict] = []
     for _, row in adjusted_sorted.iterrows():
@@ -1138,16 +1143,15 @@ def _positions_rows_in_window(
         instrument_id = str(row.get("instrument_id", ""))
         qty = _quantity_float(row["peak_qty"])
         canonical_pnl = round(after_funding, 10)
-        # ---- join strategy-side execution record (closest close time) -----
+        # ---- join strategy-side execution record (per-symbol FIFO) --------
         sym_base = instrument_id.split("-")[0] if instrument_id else ""
         rec: dict | None = None
-        queue = queues.get(sym_base)
-        if queue:
-            closed_ns = int(pd.Timestamp(row["ts_closed"]).value)
-            head = queue[0]
-            head_ts = int(head.get("exit_fill_ts") or head.get("fill_ts") or 0)
-            if abs(closed_ns - head_ts) <= BAR_NS:
-                rec = queue.pop(0)
+        recs_sym = records_by_symbol.get(sym_base) or []
+        if len(recs_sym) == sym_audit_counts.get(sym_base, -1):
+            idx = consumed.get(sym_base, 0)
+            if idx < len(recs_sym):
+                rec = recs_sym[idx]
+                consumed[sym_base] = idx + 1
         initial_risk = (
             _opt_num(rec.get("initial_risk_usdt"))
             if rec
@@ -1183,7 +1187,7 @@ def _positions_rows_in_window(
             ),
             "fill_price": _opt_num(rec.get("fill_price")) if rec else _opt_num(_col(row, "fill_price")),
             "execution_mode": (
-                _opt_str(rec.get("execution_mode"))
+                _opt_str(rec.get("execution_mode"), "execution_mode")
                 if rec else _opt_str(row, "execution_mode")
             ),
             "slippage_ticks": (
