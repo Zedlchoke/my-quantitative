@@ -36,6 +36,7 @@ class GateId(str, Enum):
 class GateVerdict(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
+    INCONCLUSIVE = "INCONCLUSIVE"
     NOT_APPLICABLE = "NA"
     NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
     NOT_YET_TESTED = "NOT_YET_TESTED"
@@ -110,6 +111,14 @@ REASON_CODES: dict[str, str] = {
     # pipeline/cells
     "cell_failed_exception": "worker raised; cell isolated, matrix continued",
     "budget_exhausted": "trial budget consumed before cell ran",
+    # Sprint V2
+    "lock_not_before_run": "parameter_lock_utc is not earlier than run start",
+    "no_trades": "zero closed positions in scored set; trade metrics undefined",
+    "no_losing_positions": "gross loss is zero; PF undefined/infinite by construction",
+    "g0_coverage_not_evidenced": "coverage claims lack a real coverage artifact",
+    "g1_evidence_missing": "protocol evidence artifact missing or incomplete",
+    "positions_digest_mismatch": "rerun positions digest differs from original",
+    "funding_publication_lag_violated": "feature used funding not yet published at decision time",
 }
 
 
@@ -367,3 +376,109 @@ def sha256_file(path: str | Path) -> str:
 
 def canonical_json(payload: dict[str, Any]) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+@dataclass(frozen=True)
+class ManifestV2Spec:
+    """Sprint V2 immutable provenance manifest (PLAN.md V2 section 7).
+
+    All *_path fields point at artifact-local frozen copies; all *_sha256
+    fields are actual SHA-256 of the snapshot bytes taken at launch.
+    """
+
+    schema_version: int
+    experiment_id: str
+    matrix_id: str
+    hypothesis_id: str
+    candidate_version: int
+    strategy_type: str
+    owner_agent: str
+    validator_agent: str
+    run_started_utc: str
+    parameter_lock_utc: str
+    git_commit_at_launch: str
+    dirty_worktree_at_launch: bool
+    exact_argv: tuple[str, ...]
+    random_seed: Optional[int]
+    frozen_config_path: str
+    frozen_config_sha256: str
+    frozen_candidate_path: str
+    frozen_candidate_sha256: str
+    data_manifest_path: str
+    data_manifest_sha256: str
+    universe_snapshot_path: str
+    universe_snapshot_sha256: str
+    requested_start_utc: str
+    requested_end_utc: str
+    actual_start_utc: str
+    actual_end_utc: str
+    continuous_clean_intersection: Optional[str]
+    split_policy: str
+    warmup_bars: int
+    purge_bars: int
+    embargo_bars: int
+    outer_folds: int
+    declared_parameter_combinations: int
+    executed_parameter_combinations: int
+    prior_family_trials: int
+    fee_model: str
+    slippage_model: str
+    funding_mode: str
+
+    def validate(self) -> list[str]:
+        reasons: list[str] = []
+        required = (
+            "experiment_id", "matrix_id", "hypothesis_id", "strategy_type",
+            "run_started_utc", "parameter_lock_utc", "git_commit_at_launch",
+            "frozen_config_path", "frozen_config_sha256", "frozen_candidate_path",
+            "frozen_candidate_sha256", "data_manifest_path",
+            "data_manifest_sha256", "universe_snapshot_path",
+            "universe_snapshot_sha256", "split_policy", "fee_model",
+            "slippage_model", "funding_mode",
+        )
+        for name in required:
+            value = getattr(self, name)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                reasons.append(require_reason("manifest_missing_field"))
+        if self.parameter_lock_utc >= self.run_started_utc:
+            reasons.append(require_reason("lock_not_before_run"))
+        return sorted(set(reasons))
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def position_pnl_stats(pnls: list[float]) -> PositionPnLStats:
+    """Canonical position-level accounting (Sprint V2 section 8.2).
+
+    PF = gross_profit / gross_loss computed from position PnLs directly.
+    - no trades        -> PF None + reason 'no_trades'
+    - no losers        -> PF None + reason 'no_losing_positions' (undefined/infinite;
+                          callers must NOT auto-PASS on small samples)
+    """
+    trades = len(pnls)
+    gross_profit = sum(p for p in pnls if p > 0)
+    gross_loss = abs(sum(p for p in pnls if p < 0))
+    net = sum(pnls)
+    if trades == 0:
+        return PositionPnLStats(0, 0.0, 0.0, 0.0, None, require_reason("no_trades"))
+    if gross_loss == 0:
+        return PositionPnLStats(
+            trades, gross_profit, 0.0, net, None,
+            require_reason("no_losing_positions"),
+        )
+    return PositionPnLStats(
+        trades, gross_profit, gross_loss, net, gross_profit / gross_loss, None,
+    )
+
+
+@dataclass(frozen=True)
+class PositionPnLStats:
+    """Position-level canonical accounting (Sprint V2 section 8.2)."""
+
+    trades: int
+    gross_profit: float
+    gross_loss: float
+    net_pnl: float
+    profit_factor: Optional[float]
+    pf_reason: Optional[str]
