@@ -35,11 +35,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import subprocess
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 import yaml
@@ -331,6 +334,254 @@ def build_coverage(
             "all_current": not incomplete,
         },
     }
+
+
+# --------------------------------------------------------------------------- #
+# Sprint V2 data contract: clean-window rule + funding completeness
+# --------------------------------------------------------------------------- #
+RULE_TRIM_OR_EXCLUDE = "trim_or_exclude"
+RULE_EXCLUDE_ONLY = "exclude_only"
+
+# Gap classes that were REPAIRED from a checksummed canonical segment are
+# exempt from the clean-window rule. Everything else (including an
+# exchange_outage that was NOT repairable, per the pre-declared rule) is
+# treated as unexplained for scoring purposes.
+REPAIRED_GAP_CLASSES = frozenset({"exchange_outage_repaired"})
+
+CONTINUOUS_CLEAN_RULE_TEXT = (
+    "RULE: scored window per symbol = "
+    "[max(declared_start, first_bar_ts_after_last_unexplained_gap_that_ends_after_declared_start), "
+    "declared_end]; any UNEXPLAINED gap fully INSIDE a symbol's scored window => symbol EXCLUDED "
+    "from scored universe (DATA_INCOMPLETE cells, reason unexplained_gap); gaps classified "
+    "exchange_outage AND repairable => may be repaired with checksummed segment, else treated as "
+    "unexplained."
+)
+
+DEFAULT_FUNDING_INTERVAL_MS = 8 * 3_600_000  # Binance USD-M standard cadence
+# Published settlement stamps carry +/- a few milliseconds of exchange-side
+# jitter around their nominal clock hour; quantizing to the minute removes it
+# without ever merging genuinely distinct settlements.
+FUNDING_STAMP_QUANTUM_MS = 60_000
+
+
+def _parse_utc_ts(value: str | pd.Timestamp) -> pd.Timestamp:
+    ts = pd.Timestamp(value)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    return ts
+
+
+def _gap_effective_class(detail: dict[str, object]) -> str:
+    """Resolve a gap_detail entry to 'repaired' (exempt) or 'unexplained'."""
+    classification = str(detail.get("classification", "unexplained"))
+    if classification in REPAIRED_GAP_CLASSES:
+        return "repaired"
+    return "unexplained"
+
+
+def compute_continuous_clean_intersection(
+    coverage: dict,
+    declared_start: str | pd.Timestamp,
+    declared_end: str | pd.Timestamp,
+    rule: str = RULE_TRIM_OR_EXCLUDE,
+) -> dict[str, object]:
+    """Apply the pre-declared Sprint-V2 clean-window rule to a coverage doc.
+
+    Emits, per symbol, the continuous clean ("scored") window and the
+    across-universe intersection of those windows. Gaps carrying a repaired
+    classification (``exchange_outage_repaired``) are exempt; every other gap
+    is treated as unexplained. Under ``trim_or_exclude`` a start-straddling
+    gap trims the scored start to the first bar present after it; any
+    unexplained gap fully inside the window excludes the symbol; a gap
+    straddling/spanning the declared end fails closed to exclusion (the rule
+    has no end-trim). ``exclude_only`` excludes on any overlapping unexplained
+    gap without trimming.
+    """
+    if rule not in (RULE_TRIM_OR_EXCLUDE, RULE_EXCLUDE_ONLY):
+        raise ValueError(f"unknown rule: {rule!r}")
+    declared_start = _parse_utc_ts(declared_start)
+    declared_end = _parse_utc_ts(declared_end)
+
+    per_symbol: dict[str, object] = {}
+    included: list[str] = []
+    scored_starts: list[pd.Timestamp] = []
+    scored_ends: list[pd.Timestamp] = []
+
+    for symbol, entry in coverage.get("symbols", {}).items():
+        details: list[dict[str, object]] = list(entry["bars"].get("gap_details", []))  # type: ignore[index]
+        affecting: list[dict[str, object]] = []
+        ignored: list[dict[str, object]] = []
+        trim_candidates: list[pd.Timestamp] = []
+        excluded = False
+        exclusion_reason: str | None = None
+
+        for detail in details:
+            after = _parse_utc_ts(str(detail["after_ts_utc"]))
+            before = _parse_utc_ts(str(detail["before_ts_utc"]))
+            record = {
+                "after_ts_utc": after.isoformat(),
+                "before_ts_utc": before.isoformat(),
+                "gap_minutes": float(detail.get("gap_minutes", (before - after).total_seconds() / 60)),
+                "classification": str(detail.get("classification", "unexplained")),
+                "effective": _gap_effective_class(detail),
+            }
+            if record["effective"] == "repaired":
+                ignored.append(record)
+                continue
+            if before <= declared_start or after >= declared_end:
+                ignored.append({**record, "reason": "outside_declared_window"})
+                continue
+            if rule == RULE_EXCLUDE_ONLY:
+                excluded = True
+                exclusion_reason = "unexplained_gap"
+                affecting.append(record)
+                continue
+            if after < declared_start and before > declared_end:
+                excluded = True
+                exclusion_reason = "unexplained_gap"
+                affecting.append({**record, "resolution": "spans_window_fail_closed"})
+            elif after < declared_start:
+                if before > declared_end:
+                    excluded, exclusion_reason = True, "unexplained_gap"
+                else:
+                    trim_candidates.append(before)
+                    affecting.append({**record, "resolution": "trimmed_start"})
+            elif before <= declared_end:
+                excluded = True
+                exclusion_reason = "unexplained_gap"
+                affecting.append({**record, "resolution": "inside_window"})
+            else:
+                excluded = True
+                exclusion_reason = "unexplained_gap"
+                affecting.append({**record, "resolution": "straddles_end_fail_closed"})
+
+        trimmed_start = bool(trim_candidates)
+        if excluded:
+            scored_start = None
+            scored_end = None
+        else:
+            scored_start = max([declared_start, *trim_candidates])
+            scored_end = declared_end
+            included.append(symbol)
+            scored_starts.append(scored_start)
+            scored_ends.append(scored_end)
+
+        per_symbol[symbol] = {
+            "status": entry.get("status"),
+            "scored_start_utc": scored_start.isoformat() if scored_start is not None else None,
+            "scored_end_utc": scored_end.isoformat() if scored_end is not None else None,
+            "trimmed_start": trimmed_start,
+            "excluded": excluded,
+            "exclusion_reason": exclusion_reason,
+            "affecting_gaps": affecting,
+            "ignored_gaps": ignored,
+        }
+
+    if scored_starts:
+        inter_start = max(scored_starts)
+        inter_end = min(scored_ends)
+        intersection = {
+            "symbols": list(included),
+            "symbol_count": len(included),
+            "start_utc": inter_start.isoformat(),
+            "end_utc": inter_end.isoformat(),
+            "covers_declared_window": bool(inter_start <= declared_start and inter_end >= declared_end),
+            "declared_window_respected": [
+                max(inter_start, declared_start).isoformat(),
+                min(inter_end, declared_end).isoformat(),
+            ],
+            "unexplained_gap_free_by_construction": True,
+        }
+    else:
+        intersection = {
+            "symbols": [],
+            "symbol_count": 0,
+            "start_utc": None,
+            "end_utc": None,
+            "covers_declared_window": False,
+            "declared_window_respected": None,
+            "unexplained_gap_free_by_construction": True,
+        }
+
+    return {
+        "rule_id": rule,
+        "rule_text": CONTINUOUS_CLEAN_RULE_TEXT,
+        "declared_window": {
+            "start_utc": declared_start.isoformat(),
+            "end_utc": declared_end.isoformat(),
+        },
+        "per_symbol": per_symbol,
+        "universe_scored": included,
+        "intersection": intersection,
+    }
+
+
+def funding_completeness_for_window(
+    bundle_dir: str | Path,
+    symbol: str,
+    start: str | pd.Timestamp,
+    end: str | pd.Timestamp,
+) -> dict[str, object]:
+    """Funding-settlement completeness for one symbol over [start, end].
+
+    Follows reports.funding._load_bundle conventions (``<bundle_dir>/<SYMBOL>/
+    funding.json`` with ``rows[].fundingTime`` in ms). Settlement stamps are
+    quantized to the minute to absorb exchange-side millisecond jitter. The
+    expected settlement count uses the MODAL published cadence anchored at the
+    first published settlement (the mode is robust to hole-dominated histories
+    where a median would mistake gaps for a slower cadence). Returns at least
+    ``complete`` and ``missing_settlements_estimate`` (``-1`` sentinel when the
+    bundle is absent/empty so the estimate is unknown).
+    """
+    start_ts = _parse_utc_ts(start)
+    end_ts = _parse_utc_ts(end)
+    base = {
+        "symbol": symbol,
+        "window_start_utc": start_ts.isoformat(),
+        "window_end_utc": end_ts.isoformat(),
+        "bundle_present": False,
+        "settlement_interval_hours": None,
+        "expected_settlements": None,
+        "observed_settlements": 0,
+        "missing_settlements_estimate": -1,
+        "complete": False,
+    }
+    path = Path(bundle_dir) / symbol / "funding.json"
+    if not path.exists():
+        return base
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    times = sorted(int(row["fundingTime"]) for row in payload.get("rows", []))
+    base["bundle_present"] = True
+    if not times:
+        return base
+    quantum = FUNDING_STAMP_QUANTUM_MS
+    times = [(t + quantum // 2) // quantum * quantum for t in times]
+    diffs = np.diff(np.asarray(times, dtype="int64"))
+    if diffs.size:
+        counts = Counter(int(d) for d in diffs)
+        interval_ms = float(counts.most_common(1)[0][0])
+    else:
+        interval_ms = float(DEFAULT_FUNDING_INTERVAL_MS)
+    start_ms, end_ms = int(start_ts.value // 1_000_000), int(end_ts.value // 1_000_000)
+    observed = int(np.searchsorted(times, end_ms, side="right") - np.searchsorted(times, start_ms, side="left"))
+    anchor = times[0]
+    expected = (
+        math.floor((end_ms - anchor) / interval_ms)
+        - math.ceil((start_ms - anchor) / interval_ms)
+        + 1
+    )
+    expected = max(0, int(expected))
+    missing = max(0, expected - observed)
+    base.update(
+        {
+            "settlement_interval_hours": round(interval_ms / 3_600_000, 4),
+            "expected_settlements": expected,
+            "observed_settlements": observed,
+            "missing_settlements_estimate": missing,
+            "complete": bool(missing == 0 and observed > 0),
+        }
+    )
+    return base
 
 
 # --------------------------------------------------------------------------- #
