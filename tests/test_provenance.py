@@ -83,7 +83,7 @@ def test_snapshot_captures_git_argv_and_timestamp_order(inputs, tmp_path):
     assert snapshot["parameter_lock_utc"] < snapshot["run_started_utc"]
     # Artifact-local frozen paths per PLAN section 7.
     assert snapshot["frozen_config_path"] == SNAPSHOT_FILES["frozen_config"]
-    verify_frozen_snapshots(snapshot, tmp_path / "EXP-TEST") == []
+    assert verify_frozen_snapshots(snapshot, tmp_path / "EXP-TEST") == []
 
 
 def test_verify_detects_tampered_frozen_byte(inputs, tmp_path):
@@ -158,10 +158,18 @@ def test_manifest_v2_spec_validates_from_snapshot(inputs, tmp_path):
     assert restored["parameter_lock_utc"] < restored["run_started_utc"]
 
 
-@pytest.mark.parametrize("offset_seconds", [0, -1])
+@pytest.mark.parametrize("offset_seconds", [0, 1])
 def test_lock_not_before_run_is_rejected(inputs, tmp_path, offset_seconds):
     snapshot = _snapshot(tmp_path, inputs)
     run_started = datetime.fromisoformat(snapshot["run_started_utc"])
     bad_lock = (run_started + timedelta(seconds=offset_seconds)).isoformat()
     spec = _spec_fields(snapshot, parameter_lock_utc=bad_lock)
     assert spec.validate() == ["lock_not_before_run"]
+
+
+def test_lock_one_second_before_run_is_accepted(inputs, tmp_path):
+    snapshot = _snapshot(tmp_path, inputs)
+    run_started = datetime.fromisoformat(snapshot["run_started_utc"])
+    good_lock = (run_started - timedelta(seconds=1)).isoformat()
+    spec = _spec_fields(snapshot, parameter_lock_utc=good_lock)
+    assert spec.validate() == []
