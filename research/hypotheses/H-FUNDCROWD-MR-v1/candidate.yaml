@@ -1,0 +1,61 @@
+# H-FUNDCROWD-MR-v1 — pre-registration (state machine: SPEC_DRAFT)
+# Fields conform to contracts.protocol.HypothesisSpec (+ mandated parameter_grid
+# and split_policy). Frozen before any scored run. Owner: A4.
+hypothesis_id: H-FUNDCROWD-MR-v1
+family: funding_oi_crowding
+state: SPEC_DRAFT
+candidate_version: 1
+economic_mechanism: >
+  Mean-reversion longs entered while funding-rate percentile is elevated pay
+  carry to crowded longs and face forced-deleveraging tails; the same reclaim
+  signal taken when funding is NOT crowded captures the reversion without the
+  adverse carry/unwind asymmetry. Short side mirrored: skip shorts when
+  funding percentile <= p30 (crowded shorts receive/pay worst case).
+expected_counterparty: >
+  Over-leveraged directional holders paying/receiving crowded carry who must
+  unwind into adverse moves; late mean-reversion traders entering after the
+  reclaim without a crowding check.
+expected_regimes:
+  - transition_range_with_elevated_open_carry
+  - accumulation_after_long_liquidation
+invalidating_evidence:
+  - after-cost expectancy non-positive at +50% fee stress while baseline positive
+  - positive folds < 2/3 under S0_chrono3fold
+  - gated variant does NOT improve vs ungated baseline on identical folds
+    (gate adds complexity without edge -> reject, keep baseline rejected too)
+  - aggregate position PF < 1.10 or any fold with >=5 trades and PF < 0.80
+entry_exit_rules: >
+  BASE ENTRY/EXIT: strategy_reclaim_mr rules unchanged (Bollinger band reclaim,
+  RSI extreme, range gate VHF/ADX/volume, phase gate; stop 1.5xATR, TP 2x).
+  NEW GATE (pre-registered): compute funding-rate percentile of the last settled
+  rate vs trailing 30d of settlements, point-in-time safe with an 8h settlement
+  lag (only rates already published at decision time are used). SKIP longs when
+  percentile > threshold_p; SKIP shorts when percentile < (100 - threshold_p).
+  HTF filter fixed ON for all combos.
+holding_horizon: hours-to-days on 15m bars, bounded by reclaim-MR stop/TP
+warmup_bars: 320
+universe:
+  - SOLUSDT
+  - BNBUSDT
+  - XRPUSDT
+  - DOGEUSDT
+  - LINKUSDT
+  - ADAUSDT
+  - ETHUSDT
+cost_assumptions: >
+  Maker/taker fees, one-tick slippage, funding post-trade audit (native engine
+  funding not yet available; carry effect enters via audit + via the gate
+  itself); survivor gate requires positive expectancy at +50% fee stress.
+trial_budget_combinations: 4
+parameter_grid:
+  threshold_p: [70, 75, 80]
+  htf_filter: [true]   # fixed ON; not tuned
+split_policy: S0_chrono3fold
+implementation:
+  status: NOT_IMPLEMENTED_IN_SPRINT_ITERATION_1
+  note: >
+    Reuses frozen strategy_reclaim_mr entry logic behind a NEW wrapper module +
+    NEW candidate_version; strategy_reclaim_mr.py itself must not be modified.
+    Funding percentile feature is computable from funding_data/scan_2026
+    bundles (20 symbols x 730d, 8h settlements) - feasible per data audit.
+blocked_on_data: none
