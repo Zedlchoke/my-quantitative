@@ -1,14 +1,14 @@
 # GHI CHÚ DỰ ÁN — my-quantitative
 
 > File này tổng hợp toàn bộ những gì đã làm và kế hoạch sắp tới.
-> **Cập nhật lần cuối:** 2026-03 — MR ETH directional WF 3/3 PASS; kế hoạch forward-test
-> 6–8 tuần + Testnet ghi tại §12.
+> **Cập nhật lần cuối:** 2026-08-21 — Nautilus 1.230.0; universe Binance,
+> transfer test 6 altcoin, shared-capital portfolio và TradFi gate ghi tại §13.
 
 ---
 
 ## 1. Hệ thống là gì
 
-Bot giao dịch định lượng crypto futures trên **NautilusTrader** (v1.231.0).
+Bot giao dịch định lượng futures trên **NautilusTrader 1.230.0** (Python 3.12).
 
 **Giả định chuẩn (đã chuẩn hoá):**
 
@@ -19,7 +19,7 @@ Bot giao dịch định lượng crypto futures trên **NautilusTrader** (v1.231
 | Mã mặc định    | `BTCUSDT-PERP`, `ETHUSDT-PERP` (multi-symbol) |
 | Chế độ vị thế  | **one-way / netting** (`oms_type: NETTING`)   |
 | Môi trường     | **Testnet / Demo — không tiền thật**          |
-| Guard          | `LIVE` bị chặn cứng trong config              |
+| Guard          | LIVE execution bị chặn; LIVE public data signal-only được phép |
 | Khung dữ liệu  | 15 phút (`15-MINUTE-LAST-EXTERNAL`)           |
 
 
@@ -478,11 +478,11 @@ python main.py live --config config/live_eth_mean_reversion.yaml
 ### Cải thiện tiềm năng khác (chưa làm)
 
 - [ ] Chạy trên nhiều core hơn (máy hiện chỉ 2 core).
-- [ ] Thêm Mô hình Tối ưu hóa Vốn & Danh mục.
+- [x] Thêm giới hạn vốn/danh mục dùng chung (gross, risk, cluster, daily halt).
 - [ ] Thêm Mô hình Xử lý Nhiễu & Tương quan.
 - [ ] Thêm Mô hình Dự báo Biến động & Xác suất Rủi ro.
 - [ ] Thêm Mô hình Xác suất Ẩn.
-- [ ] Phân tích nhiều mã, qua cả các mã cổ phiếu chứ không riêng BTC và ETH.
+- [x] Scan universe + transfer test 6 altcoin; scan riêng Binance TradFi (§13).
 - [ ] Phân chia ra nhiều danh mục Bot (Signal / Execution / Risk / Portfolio).
 
 ---
@@ -657,7 +657,7 @@ Tóm tắt: forward-test 6–8 tuần → live signal-only → Testnet size nh�
 ### Unit tests
 
 ```bash
-python -m unittest discover -s tests   # 29 tests pass
+python -m unittest discover -s tests   # 44 tests pass (2026-08-21)
 ```
 
 Coverage: `risk_limits`, `regime`, `acceptance`, `wyckoff` (+ directional bias).
@@ -675,7 +675,8 @@ Coverage: `risk_limits`, `regime`, `acceptance`, `wyckoff` (+ directional bias).
 - **Đóng băng params** — không grid, không đổi stop/TP/vhf/adx/vol.
 - **Một leg mới mỗi chu kỳ** — không code markdown short + ETH/BTC spread cùng lúc.
 - **Forward > backtest** — backtest thêm ít giá trị hơn 6 tuần OOS rolling.
-- **Không live tiền thật** — Testnet/Demo only; `LIVE` vẫn bị chặn cứng.
+- **Không live tiền thật** — Testnet/Demo execution only. `LIVE` chỉ được phép
+  cho public market data khi `enable_trading: false`.
 
 **Config cố định suốt kế hoạch:**
 
@@ -707,15 +708,24 @@ Coverage: `risk_limits`, `regime`, `acceptance`, `wyckoff` (+ directional bias).
 **Mỗi tuần (cùng config, không đổi param):**
 
 ```bash
+# Nghi thức 1 lệnh (khuyến nghị, tự xử lý disjoint tail):
+./scripts/weekly_forward_test.sh
+
+# Hoặc thủ công:
 python main.py download --config config/research_mean_reversion_eth_directional.yaml
 python -m research.oos_validate --config config/research_mean_reversion_eth_directional.yaml --holdout-days 60
 ```
+
+> ⚠️ **Bẫy đã gặp W1 (2026-08-23):** `main.py download` bị skip im lặng khi cửa
+> sổ request overlap catalog hiện có → ETH đứng ở 2026-08-21 dù đã chạy download.
+> Fix: chỉ fetch đoạn sau bar cuối cùng (+16 phút buffer) như script trên.
+> Artifact OOS lưu `results/forward_test/<ngày>.json`.
 
 **Ghi log hàng tuần** (NOTES hoặc bảng riêng):
 
 | Tuần | Ngày chạy | Trades OOS | Exp | PF | PnL | Ghi chú thị trường |
 | ---- | --------- | ---------- | --- | -- | --- | ------------------ |
-| W1 | | | | | | |
+| W1 | 2026-08-23 | 11 | −0.4038 | 0.75 | −4.44 | ETH +45% trong window (bull markup); MR flat đúng directional bias, ít lệnh transition lỗ nhẹ; window dịch +2 ngày so run đầu cùng ngày (13 lệnh, +2.17) — ghi nhận run mới nhất, KHÔNG tune |
 | W2 | | | | | | |
 | … | | | | | | |
 
@@ -866,5 +876,485 @@ chuẩn hoá volume khi load trong `data/catalog.py`.
 
 - API key trong `.env` là **testnet** — không bao giờ đặt key live.
 - `.env`, `catalog/`, `results/` đã được gitignore.
-- Hệ thống **chặn cứng** môi trường `LIVE`.
+- Hệ thống **chặn LIVE execution**. Production public market data chỉ chạy
+  signal-only (`enable_trading: false`).
 
+---
+
+## 13. Research đa mã Binance — triển khai 2026-08-21
+
+### 13.1 Môi trường và compatibility
+
+- Pin chính thức: `nautilus_trader==1.230.0`, Python 3.12.14.
+- Nautilus 1.230 có Rust logger process-global: `log_level: OFF` vẫn init logger
+  nếu không đặt `bypass_logging=true`. Đã sửa `backtest/engine.py` để các
+  walk-forward nhiều engine không panic.
+- Portfolio backtest CLI dùng logging OFF để tránh sinh hàng trăm nghìn dòng log.
+- Tài liệu đối chiếu:
+  - Binance API catalog: https://developers.binance.com/en/docs/catalog
+  - Binance USD-M common definitions: https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/common-definition
+  - Nautilus Binance integration: https://nautilustrader.io/docs/latest/integrations/binance/
+
+### 13.2 Phase A — universe point-in-time ✅
+
+Snapshot lưu cả accepted/rejected để không vô tình chỉ backtest các mã còn sống:
+
+| Universe | Filter | Kết quả |
+| -------- | ------ | ------- |
+| Crypto USD-M | ≥365 ngày, volume ≥50M USDT/24h, ≥10k trades/24h | **49/872** eligible |
+| TradFi USD-M | history gate 0 ngày, volume ≥1M, ≥1k trades | **113/872** eligible |
+
+Artifacts local:
+
+- `research_snapshots/binance_usdm_20260821.json`
+- `research_snapshots/binance_tradfi_20260821.json`
+
+Cohort transfer cố định, chọn trước khi xem kết quả:
+`SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT`.
+
+### 13.3 Phase B — frozen ETH-rule transfer 6 folds ✅ FAIL
+
+Không optimizer, không thay params ETH directional MR. Mỗi mã có **70.079 bar
+15m**, cùng cửa sổ 2024-08-21 → 2026-08-21.
+
+| Symbol | Positive folds | Trades | Expectancy | PF | Screen |
+| ------ | -------------- | ------ | ---------- | -- | ------ |
+| ADAUSDT | 3/6 | 109 | −0.0548 | 0.91 | FAIL |
+| BNBUSDT | 1/6 | 111 | −0.3320 | 0.73 | FAIL |
+| DOGEUSDT | 2/6 | 97 | −0.0621 | 1.08 | FAIL |
+| LINKUSDT | 1/6 | 116 | −0.6986 | 0.69 | FAIL |
+| SOLUSDT | 3/6 | 104 | −0.0552 | 1.01 | FAIL |
+| XRPUSDT | 1/6 | 124 | −0.2042 | 1.07 | FAIL |
+
+Artifact: `results/altcoin_transfer/transfer_wf_20260821.json`.
+
+**Quyết định:** ETH directional MR **không transfer** sang cohort altcoin. Không
+tune riêng từng mã sau khi thấy kết quả vì đó là selection bias.
+
+### 13.4 Phase C — shared-capital portfolio ✅ FAIL
+
+Một account 100.000 USDT, 6 strategy instances, bars sắp theo một global
+timeline, portfolio risk/cluster dùng chung:
+
+| Metric | Kết quả |
+| ------ | ------- |
+| Positions | 608 |
+| PnL | **−105,29 USDT** |
+| Expectancy | **−0,1732** |
+| Profit factor | **0,8460** |
+| Sharpe | **−0,6265** |
+| Win rate | 36,02% |
+
+Artifact: `results/altcoin_transfer/portfolio/summary.json`.
+
+Kết luận portfolio xác nhận failure không chỉ do chia vốn từng mã. Portfolio
+risk giảm concentration, nhưng không thể biến edge âm thành edge dương.
+
+### 13.5 Phase D — derivatives context 30 ngày ✅
+
+Đã tải cho cả 6 mã: 90 funding settlements, 2.880 mark-price bars và 2.880 OI
+points/mã (~720 giờ). Downloader OI đã sửa pagination ngược theo `endTime`;
+trước fix chỉ có 500 điểm (~125 giờ).
+
+| Symbol | Avg funding (bps/settlement) | Funding dương | Mark return | OI value change |
+| ------ | ---------------------------- | ------------- | ----------- | --------------- |
+| ADA | 0,312 | 70,0% | +25,00% | +18,37% |
+| BNB | 0,417 | 72,2% | +19,07% | +22,33% |
+| DOGE | 0,497 | 77,8% | +15,89% | +23,15% |
+| LINK | 0,593 | 88,9% | +32,14% | +75,99% |
+| SOL | 0,303 | 67,8% | +17,60% | +8,17% |
+| XRP | 0,281 | 74,4% | +24,59% | +20,58% |
+
+Đây là snapshot bullish/crowded ngắn hạn, **không phải bằng chứng nhân quả** cho
+failure 2 năm. Funding phải được đưa vào cashflow backtest trước khi dùng để
+promote strategy.
+
+### 13.6 Phase E — Binance TradFi / cổ phiếu ⏳ DATA ACCUMULATION
+
+Binance hiện trả `TRADIFI_PERPETUAL` trong cùng USD-M API. Snapshot ví dụ:
+
+| Symbol | History tại snapshot | Volume 24h | Trades 24h | Quyết định |
+| ------ | -------------------- | ---------- | ---------- | ---------- |
+| SPYUSDT | ~137 ngày | 44,5M | 55k | Chờ dữ liệu |
+| QQQUSDT | ~137 ngày | 121,1M | 160k | Chờ dữ liệu |
+| NVDAUSDT | ~148 ngày | 112,6M | 208k | Chờ dữ liệu |
+| TSLAUSDT | ~205 ngày | 95,5M | 268k | Chờ dữ liệu |
+
+Chưa mã nào đạt history gate 365 ngày, nên **không chạy/publish walk-forward**.
+Trading schedule `/fapi/v1/tradingSchedule` chỉ là cửa sổ rolling quanh hiện tại;
+live gate dùng schedule thật và fail-closed. Historical backtest chưa được phép
+giả lập holiday/early-close bằng lịch tuần đơn giản rồi gọi đó là kết quả chuẩn.
+
+### 13.7 Thứ tự triển khai tiếp theo
+
+1. **Giữ ETH directional MR riêng ETH**, tiếp tục forward-test §12; không mở sang altcoin.
+2. ✅ **Đã tích hợp funding cashflow vào backtest accounting** và rerun ETH + cohort;
+   kết quả chi tiết ở §14. Funding vẫn chưa được dùng làm signal.
+3. **Baseline mới độc lập cho altcoin:** time-series momentum / markdown short,
+   params cố định theo asset class; so với buy-and-hold và flat, không reuse MR.
+4. **TradFi data accumulation:** snapshot universe + trading schedule hàng ngày/tuần;
+   chỉ nghiên cứu SPY/QQQ/NVDA/TSLA khi đủ history hoặc dùng dataset nguồn chính
+   thức khác có lịch phiên/holiday đầy đủ.
+5. Với mọi candidate: single-symbol WF → frozen transfer → shared-capital portfolio
+   → funding/session/slippage stress → signal-only. Fail ở gate nào thì dừng ở đó.
+
+**Trạng thái promote:** không có symbol/strategy mới nào được promote sau research
+2026-08-21. Default global và live execution giữ nguyên.
+
+---
+
+## 14. Funding accounting và rerun — 2026-08-21
+
+### 14.1 Cách tính và audit contract
+
+- Dữ liệu lịch sử lấy theo Binance USD-M funding endpoint, lưu bundle riêng từng
+  symbol cùng `requested_start_ms`, `requested_end_ms` và toàn bộ rows để audit.
+- Một settlement chỉ áp dụng khi `ts_opened <= fundingTime < ts_closed`.
+- Notional tại settlement = `peak_qty × markPrice`. Funding dương: long trả,
+  short nhận; funding âm đảo chiều cashflow.
+- Pipeline fail-closed nếu thiếu bundle, thiếu coverage thời gian, timestamp không
+  hợp lệ, entry không phải `BUY/SELL`, hoặc quantity/mark price không dương.
+- Báo cáo sinh thêm `funding_cashflows.csv`,
+  `positions_funding_adjusted.csv` và block `funding_adjustment` trong `summary.json`.
+
+Tài liệu đối chiếu:
+
+- Nautilus Binance integration: https://nautilustrader.io/docs/latest/integrations/binance/
+- Binance funding-rate history: https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History
+
+### 14.2 Kết quả ETH directional — fresh 365 ngày
+
+Run production-public data mới, 35.039 bar 15m, 39 positions:
+
+| Metric | Trước funding | Sau funding |
+| ------ | ------------- | ------------ |
+| PnL | −5,3549 USDT | **−5,5359 USDT** |
+| Expectancy | −0,1373 | **−0,1419** |
+| Position-PnL PF | 0,8782 | **0,8743** |
+| Win rate | 41,03% | 41,03% |
+
+Funding paid 0,2061, received 0,0251, net **−0,1810 USDT** qua 22 settlements
+trên 16 positions. Artifact:
+`results/funding_eth_directional/ETHUSDT/summary.json`.
+
+Run này là full-window 365 ngày, **không phải** walk-forward 3 folds. Nó không
+xóa kết quả WF lịch sử, nhưng là bằng chứng mới hơn rằng edge hiện tại không đủ
+để promote; forward gate ở §12 vẫn giữ nguyên.
+
+### 14.3 Kết quả cohort altcoin shared-capital
+
+| Metric | Trước funding | Sau funding |
+| ------ | ------------- | ------------ |
+| PnL | −105,2901 USDT | **−110,4007 USDT** |
+| Expectancy | −0,1732 | **−0,1816** |
+| Position-PnL PF | 0,8902 | **0,8851** |
+| Win rate | 36,02% | 36,02% |
+
+Funding paid 5,7355, received 0,6249, net **−5,1106 USDT** qua 308 settlements
+trên 266/608 positions. Cả 6 symbol có coverage đầy đủ. Artifact:
+`results/altcoin_transfer/portfolio/summary.json`.
+
+`stats_returns.Profit Factor` của Nautilus (return series) và
+`funding_adjustment.profit_factor_*` (realized PnL từng position) dùng mẫu số
+khác nhau; chỉ so sánh trước/sau trong cùng họ metric.
+
+### 14.4 Kết luận và giới hạn
+
+Funding làm cả hai kết quả xấu thêm, nhưng không phải nguyên nhân chính: cả ETH
+fresh run và cohort đã âm trước carry cost. Không promote strategy/symbol mới.
+
+Đây là **post-trade accounting**: funding được cộng vào report sau khi engine
+đóng vị thế, chưa debit/credit intrarun equity nên chưa tác động position sizing,
+daily-loss gate hoặc compounding. Trước khi tăng quy mô hoặc nghiên cứu strategy
+nhạy với margin, cần phase tiếp theo dùng funding event native trong engine (hoặc
+cash-account event tương đương) và kiểm tra parity với audit này.
+
+Catalog cũ `./catalog` dùng standard precision không tương thích build high
+precision hiện tại của Nautilus 1.230. Không xóa dữ liệu cũ; config fresh run dùng
+`./catalog_live_crypto` để tránh trộn hai định dạng.
+
+**Bước research kế tiếp:** baseline altcoin độc lập (time-series momentum /
+markdown short), params frozen theo asset class; single-symbol WF trước, sau đó
+frozen transfer và shared-capital theo đúng gate §13.7.
+
+---
+
+## 15. Market behavior hypotheses và strategy theo phase — 2026-08-21
+
+Phần này là **giả thuyết research**, chưa phải tín hiệu giao dịch hay quyết định
+promote. Tôi tách phase Wyckoff khỏi một trục thứ hai là crowding của perpetual:
+giá, thay đổi open interest và funding rate.
+
+### 15.1 Những hành vi đã thấy trong dữ liệu hiện có
+
+1. **ETH có bất đối xứng theo phase.** MR directional tránh được phần lớn lỗi ở
+   markdown, nhưng dữ liệu phase cho thấy MR trong markdown lỗ −13,2 USDT với WR
+   20%; transition có +12,2 nhưng F2 transition trong bear −23,8% chỉ còn edge
+   gần 0. Vì vậy nhãn `transition` không đủ để bật full risk.
+2. **ETH trend phase không đồng nghĩa breakout có edge.** Cả EMA long và
+   Donchian/ADX breakout markup-only đều FAIL trong nghiên cứu cũ. Markup nên
+   được xem là bối cảnh để tìm pullback/retest, không phải lý do tự động mua đuổi.
+3. **ETH MR không transfer sang altcoin.** SOL/ADA là nhóm “ít xấu nhất” (3/6
+   folds dương, PF quanh 1), DOGE/XRP có PF tổng >1 nhưng PnL vẫn âm và fold
+   instability cao. BNB và LINK là failure rõ hơn; không được chọn lại params sau
+   khi đã xem kết quả.
+4. **Snapshot derivatives 30 ngày là bullish/crowded đồng loạt:** funding dương
+   67,8–88,9% số settlement, mark return +15,9% đến +32,1%, OI value tăng +8,2%
+   đến +76,0%. LINK là outlier: funding bình quân 5,93 bps/settlement và OI
+   +76,0%. Đây là bằng chứng crowding/carry trong một cửa sổ bullish, **không** là
+   bằng chứng funding gây ra giá hay giá chắc chắn đảo chiều.
+5. **BTC là beta anchor, không phải ETH clone.** Research cũ cho thấy cùng MR
+   logic âm 2/3 fold trên BTC; BTC nên được dùng làm market-state/hedge feature
+   trước khi xem như một candidate độc lập.
+
+Nghiên cứu bên ngoài cũng ủng hộ việc tách theo liquidity: bằng chứng cross-section
+cho thấy coin kém thanh khoản dễ có short-term reversal, còn nhóm lớn/thanh khoản
+cao có daily momentum; intraday crypto có thể chứa cả momentum và reversal tùy
+liquidity, jump và event. Đây là lý do không dùng một strategy cho toàn bộ universe.
+[Zaremba et al. (2021)](https://doi.org/10.1016/j.irfa.2021.101908),
+[Wen et al. (2022)](https://doi.org/10.1016/j.najef.2022.101733).
+
+### 15.2 Trục crowding cần thêm vào phase
+
+| Giá | OI | Funding | Diễn giải giả thuyết | Hành động nghiên cứu |
+| --- | --- | --- | --- | --- |
+| Tăng | Tăng | Dương | Trend có đòn bẩy/crowding long | Không fade mù; chỉ pullback continuation, giảm size và trừ carry |
+| Tăng | Giảm | Thấp/giảm | Spot-led hoặc short-covering | Có thể giữ trend lâu hơn, nhưng cần xác nhận volume |
+| Giảm | Tăng | Âm | Crowding short/liquidation risk | Không đuổi short; chờ breakdown-retest và stop ngắn |
+| Giảm | Giảm | Bất kỳ | Deleveraging/forced unwind | Flat hoặc size nhỏ sau impulse; tránh MR bắt dao rơi |
+
+Funding/OI phải được lấy theo timestamp và đưa vào accounting trước. Binance công
+bố riêng funding history, open interest, basis, mark price và trading schedule;
+Nautilus ánh xạ funding lịch sử thành `FundingRateUpdate`, nên có thể nâng cấp từ
+post-trade audit hiện tại sang event trong engine sau khi baseline pass.
+[Binance USDⓈ-M market-data API](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data),
+[Nautilus Binance funding data](https://nautilustrader.io/docs/latest/integrations/binance/).
+
+### 15.3 Strategy đề xuất theo Wyckoff phase
+
+| Phase | Strategy candidate | Điều kiện bắt buộc | Risk policy |
+| ----- | ------------------ | ------------------ | ----------- |
+| Accumulation | **Reclaim + MR long**, không blind lower-band | Range ADX thấp, breakdown thất bại, reclaim mid-range; funding không quá đắt | 0,5–0,75R; không short |
+| Markup | **Trend pullback/retest**, chưa dùng breakout hiện tại | 1h/4h trend cùng hướng, pullback giữ EMA, OI không sụp; funding cap | 0,5R; không chase nến mở rộng |
+| Distribution | **MR short sau rejection** hoặc flat | Range ở đỉnh, rejection xác nhận, funding/OI crowding; sample phải đủ | 0,5R; không short chỉ vì giá “cao” |
+| Markdown | **Lower-Donchian breakdown + retest short** | Daily/HTF dưới EMA200, breakdown có volume, retest fail; funding cost stress | 0–0,25R; circuit breaker; không MR long |
+| Transition | **MR half-size hoặc flat** | Chỉ bật khi 20d slope không âm mạnh và volatility không jump | 0,25–0,5R; max holding ngắn |
+
+Điểm cần giữ nguyên: markdown short là candidate mới phải chạy single-symbol WF;
+không được suy ra là có edge chỉ vì MR long thất bại. Tương tự, accumulation và
+distribution có rất ít quan sát ETH nên chưa được gọi là validation.
+
+### 15.4 Mapping theo mã đang research
+
+| Mã/nhóm | Hành vi hiện thấy | Ưu tiên strategy research |
+| ------- | ----------------- | ------------------------- |
+| ETH | Phase gate có ích; markdown là vùng nguy hiểm; fresh 365d run vẫn âm trước funding | Giữ MR directional signal-only; tiếp theo test markdown short độc lập |
+| BTC | Beta anchor; không pass cùng MR ETH | Market-regime filter, trend/pullback riêng; dùng làm hedge feature trước |
+| SOL | Cohort ít xấu nhất cùng ADA; OI 30d chỉ +8,2% | Reclaim/MR và pullback trend, frozen params, chưa promote |
+| ADA | 3/6 folds dương nhưng PF 0,91 | Reclaim + liquidity filter; phải cải thiện sau funding/fee |
+| XRP | PF 1,07 nhưng PnL âm, kết quả phụ thuộc fold | Event/impulse filter hoặc relative-strength test; không dùng PF đơn độc |
+| DOGE | Funding 4,97 bps, OI +23,2%; jump/crowding nhạy | Short-horizon momentum sau breakout xác nhận; tránh giữ khi carry cao |
+| BNB | Frozen MR failure rõ (PF 0,73) | Không trade candidate hiện tại; chỉ test trend/pullback riêng nếu có thesis |
+| LINK | OI +76,0%, funding 5,93 bps, mark +32,1%; crowding outlier | Không fade mù và không chase; chỉ xem xét continuation có OI/basis filter |
+| SPY/QQQ perpetual | Chưa đủ history; hành vi gắn phiên Mỹ, gap và holiday | Session-aware pullback/gap strategy; flat ngoài phiên và kiểm schedule thật |
+| NVDA/TSLA perpetual | Chưa đủ history; single-name/event gap risk cao | Opening-range/event breakout, earnings blackout, slippage stress; chưa backtest |
+
+### 15.5 Thứ tự kiểm chứng
+
+1. Tạo feature snapshot theo từng bar: BTC beta, basis, funding percentile,
+   OI change, mark/index spread, taker imbalance và liquidation proxy.
+2. Implement ba baseline độc lập, params frozen: `reclaim_mr`,
+   `trend_pullback`, `markdown_breakdown`; TradFi có pipeline session riêng.
+3. Mỗi baseline đi qua single-symbol WF → frozen transfer → shared capital →
+   funding/session/slippage stress. Gate tối thiểu: expectancy dương sau chi phí,
+   PF > 1 trong cùng một định nghĩa PnL, không phụ thuộc một fold duy nhất.
+4. Chỉ sau khi một leg pass mới nối vào portfolio; không auto-switch nhiều leg live
+   trong cùng release.
+
+---
+
+## 16. Independent baseline backtest — 2026-08-21
+
+Đã implement ba baseline độc lập, không grid/tune sau khi xem kết quả:
+
+- `reclaim_mr`: chỉ vào sau khi giá reclaim Bollinger band trong range yếu; phase
+  gate cho accumulation/transition long và distribution/transition short.
+- `trend_pullback`: EMA20/50/200 + ADX + volume, vào khi giá reclaim EMA20 trong
+  markup/transition hoặc markdown/transition.
+- `markdown_breakdown`: short-only, lower Donchian + ADX + volume + EMA200 trong
+  Wyckoff markdown.
+
+Code/config:
+
+- `strategy_reclaim_mr.py`, `strategy_trend_pullback.py`,
+  `strategy_markdown_breakdown.py`
+- `research/baseline_wf.py`
+- `config/research_baseline_eth.yaml`
+- `config/research_baseline_altcoin.yaml`
+
+Runner dùng cùng Nautilus 1.230, maker/taker fee, one-tick slippage, risk limits,
+global timeline và funding post-trade accounting như các phase trước. Mỗi cell WF
+là một run độc lập với history warmup; `PASS` bên dưới chỉ là screening per-symbol,
+chưa phải portfolio acceptance.
+
+### 16.1 Walk-forward 3 folds — ETH
+
+| Baseline | Trades | Positive folds sau funding | PnL sau funding | Expectancy sau funding | Screen |
+| -------- | ------ | -------------------------- | --------------- | ---------------------- | ------ |
+| reclaim_mr | 93 | **2/3** | **+5,6694** | **+0,0610** | PASS sơ bộ |
+| trend_pullback | 460 | 0/3 | −136,5700 | −0,2969 | FAIL |
+| markdown_breakdown | 224 | 1/3 | −36,8103 | −0,1643 | FAIL |
+
+Full-window ETH report (35.039 bars): `reclaim_mr` có 92 positions, PnL
+**+4,1123 USDT** sau funding, position-PnL PF 1,0294; đây là tín hiệu yếu, chưa
+đủ thay thế ETH directional MR đang forward-test.
+
+Artifacts:
+
+- `results/baselines/reclaim_mr_eth_wf3.json`
+- `results/baselines/trend_pullback_eth_wf3.json`
+- `results/baselines/markdown_breakdown_eth_wf3.json`
+- `results/baselines/reclaim_mr_eth_full/ETHUSDT/summary.json`
+
+### 16.2 Walk-forward 3 folds — altcoin transfer screen
+
+| Baseline | Symbols đạt 2/3 folds dương | Kết quả đáng chú ý |
+| -------- | --------------------------- | ------------------ |
+| reclaim_mr | **SOL (2/3)** | SOL PnL +6,6810, exp +0,0373; 5 mã còn lại FAIL |
+| trend_pullback | **DOGE (2/3)** | DOGE PnL +18,9337, exp +0,0245; edge rất mỏng |
+| markdown_breakdown | **ADA (2/3)** | ADA PnL +13,6365, exp +0,0392; 5 mã còn lại FAIL |
+
+Mỗi symbol được screening `2/3 folds`; chỉ SOL/DOGE/ADA tương ứng đạt điều kiện
+trong baseline của chúng. Điều đó không có nghĩa toàn cohort pass; không mã nào
+đạt gate transfer toàn cohort.
+
+Artifacts:
+
+- `results/baselines/reclaim_mr_altcoin_wf3.json`
+- `results/baselines/trend_pullback_altcoin_wf3.json`
+- `results/baselines/markdown_breakdown_altcoin_wf3.json`
+
+Mỗi WF cell cũng lưu `buy_hold_pnl_at_max_notional` và `flat_pnl=0`. ETH long
+buy-and-hold cố định 300 USDT trong ba folds là **−150,6625 USDT**, trong khi
+reclaim-MR là +5,6694 sau funding. Với altcoin, tổng long buy-and-hold theo từng
+symbol/fold là **+652,7390 USDT**, nhưng đây là benchmark per-symbol không chia sẻ
+vốn nên không so trực tiếp với portfolio −498,3117; nó chỉ cho biết các baseline
+đã không bắt được một phần lớn drift tăng của cửa sổ này.
+
+### 16.3 Shared-capital portfolio — gate cuối
+
+Một account 100.000 USDT, sáu symbol, cùng global timeline và portfolio-risk:
+
+| Baseline | Positions | PnL trước funding | Funding net | PnL sau funding | Engine PF | Quyết định |
+| -------- | --------- | ----------------- | ----------- | --------------- | --------- | ---------- |
+| reclaim_mr | 976 | −491,8332 | −6,4785 | **−498,3117** | 0,6863 | FAIL |
+| trend_pullback | 3.810 | −878,1052 | −11,7486 | **−889,8537** | 0,7481 | FAIL |
+| markdown_breakdown | 1.414 | −337,3395 | +3,5052 | **−333,8343** | 0,8512 | FAIL |
+
+Các kết quả per-symbol dương của SOL/DOGE/ADA không sống được trong shared
+capital. Do đó không được thêm leg nào vào portfolio/live. Funding chỉ cải thiện
+markdown nhẹ vì short nhận carry trong snapshot này; không biến expectancy âm thành
+dương.
+
+### 16.4 Quyết định research
+
+- **Không tune lại** ba baseline sau khi xem kết quả; làm vậy sẽ biến screening
+  thành selection bias.
+- `reclaim_mr` được giữ như candidate research riêng ETH/SOL, nhưng phải forward
+  test và chạy portfolio nhỏ lại ở một cửa sổ mới trước khi cân nhắc.
+- `trend_pullback` và `markdown_breakdown` bị dừng ở portfolio gate; chưa có quyền
+  live/testnet.
+- ETH directional MR cũ vẫn là leg duy nhất đang forward-test; default global và
+  execution policy không đổi.
+- Bước kế tiếp hợp lý là bổ sung feature crowding (basis, BTC beta, OI change,
+  funding percentile, liquidation proxy) rồi kiểm tra **một** baseline mới trên
+  cửa sổ dữ liệu mới; không mở thêm strategy đồng thời.
+
+Unit tests sau implementation: **54/54 PASS**. `compileall`, 15 YAML cũ + 2 YAML
+baseline, `pip check` và `git diff --check` đều phải giữ sạch trước khi deliver.
+
+---
+
+## 17. Wayfinder research map — 2026-08-22
+
+Đã cài skill `wayfinder` và tạo local decision map tại
+`research/wayfinder/MAP.md`. Map này chỉ lập route research, chưa tự động triển
+khai strategy mới. Frontier hiện tại bắt đầu bằng việc chốt profitability gate,
+data snapshot/split và crowding-funding contract; các quyết định ETH, altcoin,
+TradFi, portfolio và forward-test bị block cho tới khi các ticket nền tảng được
+giải quyết.
+
+---
+
+## 18. Multi-symbol scan matrix + TradFi tracker — 2026-08-23
+
+### 18.1 Scan matrix top-20 crypto — **0/60 PASS**
+
+Pipeline mới: `research/scan_matrix.py` (setup / run / report).
+
+- Universe: top-20 thanh khoản trong snapshot 2026-08-21, lọc `onboard >= 700d`
+  (BTC, ETH, XRP, SOL, ZEC, ONG, DOGE, ENA, BNB, 1000PEPE, BOME, SUI, ADA,
+  LINK, ACE, WLD, BCH, NEAR, AVAX, AAVE).
+- Dữ liệu: 15m ~70k bars/mã (2024-08 → 2026-08) trong `./catalog_live_crypto`;
+  ETH đã backfill đủ 2 năm (fix tz-naive bug tại `data/download.py`).
+- Funding bundles riêng cho scan: `funding_data/scan_2026` (20 mã × 730 ngày).
+- WF: 3 baselines frozen × 20 mã × 6 folds = 360 backtest (~20 phút, 2 workers).
+- Gates: folds dương ≥5/6, exp sau funding > 0, PF > 1.1, PnL > buy-and-hold,
+  **BH-FDR q ≤ 0.10** trên sign-test từng combo (58 combos testable).
+
+**Kết quả: không combo nào qua gate.** Top theo p-value:
+
+| Combo | Folds+ | Exp sau funding | PF | PnL | Buy&Hold | p | q |
+| ----- | ------ | -------------- | -- | --- | -------- | - | - |
+| reclaim_mr NEARUSDT | 4/6 | +0.148 | 1.46 | +26.95 | −152.43 | 0.344 | 1.0 |
+| trend_pullback BOMEUSDT | 4/6 | +0.128 | 3.35 | +99.72 | −51.84 | 0.344 | 1.0 |
+| markdown_breakdown ADAUSDT | 4/6 | +0.039 | 1.14 | +13.64 | +228.03 | 0.344 | 1.0 |
+| reclaim_mr SOLUSDT | 3/6 | +0.037 | 1.18 | +6.68 | −36.33 | 0.656 | 1.0 |
+
+Đọc kỹ kết quả:
+
+1. Ba "PASS sơ bộ" cũ (SOL reclaim, ADA markdown, DOGE pullback ở 3-fold cũ)
+   **không giữ được** trên cửa sổ 2 năm + gate chặt → xác nhận chúng là noise
+   level, đúng cảnh báo multiple-testing.
+2. ETH reclaim_mr **âm** trên window mới (exp −0.15 vs +0.065 run trước) vì fold
+   composition khác (full 2024–2026). Edge ETH mỏng phụ thuộc giai đoạn.
+3. ZEC buy-and-hold +3068 USDT cho thấy benchmark BH quan trọng: nhiều "lãi"
+   nhỏ vẫn thua xa chỉ cần hold.
+4. Không promote gì thêm; default global và ETH directional MR forward-test
+   (§12) giữ nguyên.
+
+Artifacts: `results/scan_matrix/20260823T051806Z/` (`index.json`, `report.json`,
+per-combo JSONs), config `config/research_scan_top20.yaml`.
+
+Quy trình chạy lại khi có data mới:
+
+```bash
+python -m research.scan_matrix setup --top 20          # refresh universe/config
+python main.py download --config config/research_scan_top20.yaml
+python -m research.download_funding <symbols...> --output-dir funding_data/scan_2026
+python -m research.scan_matrix run --config config/research_scan_top20.yaml --folds 6 --workers 2
+python -m research.scan_matrix report --scan-dir results/scan_matrix/<stamp>
+```
+
+### 18.2 TradFi accumulation tracker ✅
+
+`research/tradfi_accumulate.py` — chạy hàng tuần, append vào
+`research_snapshots/tradfi_history.csv` + snapshot JSON per ngày.
+
+Lần đầu (2026-08-23): **71 eligible TradFi perps, 0 sẵn sàng research**
+(gate 365 ngày). Gần nhất:
+
+| Symbol | Còn thiếu | Volume 24h |
+| ------ | --------- | ---------- |
+| XAUUSDT (vàng) | ~110d | $173M |
+| XAGUSDT (bạc) | ~137d | $83M |
+| TSLAUSDT | ~158d | $10M |
+| MSTRUSDT | ~170d | $56M |
+| COINUSDT | ~170d | $13M |
+
+→ Sẵn sàng research cổ phiếu/vàng-bạc trên Binance từ khoảng cuối 2026.
+Khi đủ gate: chạy đúng pipeline §18.1 (frozen baselines, session gate fail-closed).
+
+```bash
+python -m research.tradfi_accumulate   # weekly
+```

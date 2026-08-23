@@ -92,7 +92,9 @@ def validate_transfer(config_path: str, *, folds: int, output: str) -> dict:
                 breakout=settings.breakout,
                 instrument=instrument,
                 bars=bars,
-                log_level="ERROR",
+                # Nautilus 1.230 requires bypassed logging for repeated engines
+                # in one process; ``OFF`` maps to bypass_logging in engine.py.
+                log_level="OFF",
             )
             try:
                 pnl, exp, pf, wr, trades = _metrics_in_window(

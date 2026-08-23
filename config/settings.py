@@ -276,7 +276,101 @@ class BreakoutSettings:
             raise ValueError("stop/TP multiples must be > 0")
 
 
-STRATEGY_TYPES = ("ema_atr", "mean_reversion", "regime_switch", "breakout")
+@dataclass(frozen=True)
+class ReclaimMeanReversionSettings:
+    """Fixed reclaim-MR baseline for weak-trend accumulation/transition ranges."""
+
+    bb_period: int = 20
+    bb_k: float = 2.0
+    rsi_period: int = 2
+    rsi_oversold: float = 15.0
+    rsi_overbought: float = 85.0
+    vhf_period: int = 28
+    vhf_max: float = 0.25
+    adx_period: int = 14
+    adx_max: float = 20.0
+    volume_sma_period: int = 20
+    volume_max_ratio: float = 1.8
+    atr_period: int = 14
+    atr_stop_multiple: float = 1.5
+    take_profit_multiple: float = 2.0
+    history_days: int = 220
+    phase_gate: bool = True
+
+    def validate(self) -> None:
+        if self.bb_period <= 0 or self.rsi_period <= 0 or self.vhf_period <= 0:
+            raise ValueError("reclaim-MR indicator periods must be > 0")
+        if not 0 <= self.rsi_oversold < self.rsi_overbought <= 100:
+            raise ValueError("RSI levels must satisfy 0 <= oversold < overbought <= 100")
+        if self.adx_period <= 0 or self.volume_sma_period <= 0:
+            raise ValueError("reclaim-MR periods must be > 0")
+        if self.vhf_max <= 0 or self.adx_max <= 0 or self.volume_max_ratio <= 0:
+            raise ValueError("reclaim-MR thresholds must be > 0")
+        if self.atr_stop_multiple <= 0 or self.take_profit_multiple <= 0:
+            raise ValueError("reclaim-MR stop/TP must be > 0")
+
+
+@dataclass(frozen=True)
+class TrendPullbackSettings:
+    """Fixed fast-EMA reclaim baseline for directional pullbacks."""
+
+    fast_ema_period: int = 20
+    slow_ema_period: int = 50
+    trend_ema_period: int = 200
+    adx_period: int = 14
+    adx_min: float = 20.0
+    volume_sma_period: int = 20
+    volume_min_ratio: float = 0.8
+    atr_period: int = 14
+    atr_stop_multiple: float = 2.0
+    history_days: int = 220
+    phase_gate: bool = True
+
+    def validate(self) -> None:
+        if not self.fast_ema_period < self.slow_ema_period < self.trend_ema_period:
+            raise ValueError("pullback EMA periods must satisfy fast < slow < trend")
+        if self.adx_period <= 0 or self.volume_sma_period <= 0 or self.atr_period <= 0:
+            raise ValueError("pullback periods must be > 0")
+        if self.adx_min <= 0 or self.volume_min_ratio <= 0 or self.atr_stop_multiple <= 0:
+            raise ValueError("pullback thresholds must be > 0")
+
+
+@dataclass(frozen=True)
+class MarkdownBreakdownSettings:
+    """Fixed short-only lower-Donchian breakdown baseline."""
+
+    donchian_period: int = 20
+    trend_ema_period: int = 200
+    adx_period: int = 14
+    adx_min: float = 20.0
+    volume_sma_period: int = 20
+    volume_min_ratio: float = 1.3
+    atr_period: int = 14
+    atr_stop_multiple: float = 2.0
+    take_profit_multiple: float = 1.5
+    history_days: int = 220
+    phase_gate: bool = True
+
+    def validate(self) -> None:
+        if self.donchian_period <= 0 or self.trend_ema_period <= 0:
+            raise ValueError("breakdown periods must be > 0")
+        if self.adx_period <= 0 or self.volume_sma_period <= 0 or self.atr_period <= 0:
+            raise ValueError("breakdown periods must be > 0")
+        if self.adx_min <= 0 or self.volume_min_ratio <= 0:
+            raise ValueError("breakdown thresholds must be > 0")
+        if self.atr_stop_multiple <= 0 or self.take_profit_multiple <= 0:
+            raise ValueError("breakdown stop/TP must be > 0")
+
+
+STRATEGY_TYPES = (
+    "ema_atr",
+    "mean_reversion",
+    "regime_switch",
+    "breakout",
+    "reclaim_mr",
+    "trend_pullback",
+    "markdown_breakdown",
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -314,6 +408,7 @@ class ReportSettings:
     output_dir: str = "./results"
     include_csv: bool = True
     include_json: bool = True
+    funding_data_path: str | None = None
 
 
 @dataclass(frozen=True)
@@ -329,6 +424,9 @@ class ResearchSettings:
     mean_reversion: MeanReversionSettings = None  # type: ignore[assignment]
     regime_switch: RegimeSwitchSettings = None  # type: ignore[assignment]
     breakout: BreakoutSettings = None  # type: ignore[assignment]
+    reclaim_mr: ReclaimMeanReversionSettings = None  # type: ignore[assignment]
+    trend_pullback: TrendPullbackSettings = None  # type: ignore[assignment]
+    markdown_breakdown: MarkdownBreakdownSettings = None  # type: ignore[assignment]
 
     def validate(self) -> None:
         self.risk.validate()
@@ -347,6 +445,18 @@ class ResearchSettings:
             if self.breakout is None:
                 raise ValueError("breakout settings are required")
             self.breakout.validate()
+        elif self.strategy_type == "reclaim_mr":
+            if self.reclaim_mr is None:
+                raise ValueError("reclaim_mr settings are required")
+            self.reclaim_mr.validate()
+        elif self.strategy_type == "trend_pullback":
+            if self.trend_pullback is None:
+                raise ValueError("trend_pullback settings are required")
+            self.trend_pullback.validate()
+        elif self.strategy_type == "markdown_breakdown":
+            if self.markdown_breakdown is None:
+                raise ValueError("markdown_breakdown settings are required")
+            self.markdown_breakdown.validate()
         elif self.strategy_type not in STRATEGY_TYPES:
             raise ValueError(f"Unknown strategy_type: {self.strategy_type!r}")
         if not (1 <= self.market.leverage <= 125):
@@ -369,6 +479,9 @@ class LiveSettings:
     mean_reversion: MeanReversionSettings = None  # type: ignore[assignment]
     regime_switch: RegimeSwitchSettings = None  # type: ignore[assignment]
     breakout: BreakoutSettings = None  # type: ignore[assignment]
+    reclaim_mr: ReclaimMeanReversionSettings = None  # type: ignore[assignment]
+    trend_pullback: TrendPullbackSettings = None  # type: ignore[assignment]
+    markdown_breakdown: MarkdownBreakdownSettings = None  # type: ignore[assignment]
     portfolio_risk: PortfolioRiskSettings = field(default_factory=PortfolioRiskSettings)
 
     def __post_init__(self) -> None:
@@ -395,6 +508,18 @@ class LiveSettings:
             if self.breakout is None:
                 raise ValueError("breakout settings are required")
             self.breakout.validate()
+        elif self.strategy_type == "reclaim_mr":
+            if self.reclaim_mr is None:
+                raise ValueError("reclaim_mr settings are required")
+            self.reclaim_mr.validate()
+        elif self.strategy_type == "trend_pullback":
+            if self.trend_pullback is None:
+                raise ValueError("trend_pullback settings are required")
+            self.trend_pullback.validate()
+        elif self.strategy_type == "markdown_breakdown":
+            if self.markdown_breakdown is None:
+                raise ValueError("markdown_breakdown settings are required")
+            self.markdown_breakdown.validate()
         elif self.strategy_type not in STRATEGY_TYPES:
             raise ValueError(f"Unknown strategy_type: {self.strategy_type!r}")
 
@@ -545,6 +670,59 @@ def _build_breakout(data: dict[str, Any]) -> BreakoutSettings:
     )
 
 
+def _build_reclaim_mr(data: dict[str, Any]) -> ReclaimMeanReversionSettings:
+    return ReclaimMeanReversionSettings(
+        bb_period=int(data.get("bb_period", 20)),
+        bb_k=float(data.get("bb_k", 2.0)),
+        rsi_period=int(data.get("rsi_period", 2)),
+        rsi_oversold=float(data.get("rsi_oversold", 15.0)),
+        rsi_overbought=float(data.get("rsi_overbought", 85.0)),
+        vhf_period=int(data.get("vhf_period", 28)),
+        vhf_max=float(data.get("vhf_max", 0.25)),
+        adx_period=int(data.get("adx_period", 14)),
+        adx_max=float(data.get("adx_max", 20.0)),
+        volume_sma_period=int(data.get("volume_sma_period", 20)),
+        volume_max_ratio=float(data.get("volume_max_ratio", 1.8)),
+        atr_period=int(data.get("atr_period", 14)),
+        atr_stop_multiple=float(data.get("atr_stop_multiple", 1.5)),
+        take_profit_multiple=float(data.get("take_profit_multiple", 2.0)),
+        history_days=int(data.get("history_days", 220)),
+        phase_gate=bool(data.get("phase_gate", True)),
+    )
+
+
+def _build_trend_pullback(data: dict[str, Any]) -> TrendPullbackSettings:
+    return TrendPullbackSettings(
+        fast_ema_period=int(data.get("fast_ema_period", 20)),
+        slow_ema_period=int(data.get("slow_ema_period", 50)),
+        trend_ema_period=int(data.get("trend_ema_period", 200)),
+        adx_period=int(data.get("adx_period", 14)),
+        adx_min=float(data.get("adx_min", 20.0)),
+        volume_sma_period=int(data.get("volume_sma_period", 20)),
+        volume_min_ratio=float(data.get("volume_min_ratio", 0.8)),
+        atr_period=int(data.get("atr_period", 14)),
+        atr_stop_multiple=float(data.get("atr_stop_multiple", 2.0)),
+        history_days=int(data.get("history_days", 220)),
+        phase_gate=bool(data.get("phase_gate", True)),
+    )
+
+
+def _build_markdown_breakdown(data: dict[str, Any]) -> MarkdownBreakdownSettings:
+    return MarkdownBreakdownSettings(
+        donchian_period=int(data.get("donchian_period", 20)),
+        trend_ema_period=int(data.get("trend_ema_period", 200)),
+        adx_period=int(data.get("adx_period", 14)),
+        adx_min=float(data.get("adx_min", 20.0)),
+        volume_sma_period=int(data.get("volume_sma_period", 20)),
+        volume_min_ratio=float(data.get("volume_min_ratio", 1.3)),
+        atr_period=int(data.get("atr_period", 14)),
+        atr_stop_multiple=float(data.get("atr_stop_multiple", 2.0)),
+        take_profit_multiple=float(data.get("take_profit_multiple", 1.5)),
+        history_days=int(data.get("history_days", 220)),
+        phase_gate=bool(data.get("phase_gate", True)),
+    )
+
+
 def load_research_config(path: str | Path) -> ResearchSettings:
     """Load a research (data + backtest + report) configuration from YAML."""
     data = _load_mapping(Path(path))
@@ -560,6 +738,9 @@ def load_research_config(path: str | Path) -> ResearchSettings:
         mean_reversion=_build_mean_reversion(data.get("mean_reversion", {})),
         regime_switch=_build_regime_switch(data.get("regime_switch", {})),
         breakout=_build_breakout(data.get("breakout", {})),
+        reclaim_mr=_build_reclaim_mr(data.get("reclaim_mr", {})),
+        trend_pullback=_build_trend_pullback(data.get("trend_pullback", {})),
+        markdown_breakdown=_build_markdown_breakdown(data.get("markdown_breakdown", {})),
     )
     settings.validate()
     return settings
@@ -580,6 +761,9 @@ def load_live_config(path: str | Path) -> LiveSettings:
         mean_reversion=_build_mean_reversion(data.get("mean_reversion", {})),
         regime_switch=_build_regime_switch(data.get("regime_switch", {})),
         breakout=_build_breakout(data.get("breakout", {})),
+        reclaim_mr=_build_reclaim_mr(data.get("reclaim_mr", {})),
+        trend_pullback=_build_trend_pullback(data.get("trend_pullback", {})),
+        markdown_breakdown=_build_markdown_breakdown(data.get("markdown_breakdown", {})),
         portfolio_risk=_build_portfolio_risk(data.get("portfolio_risk", {})),
     )
     settings.validate()

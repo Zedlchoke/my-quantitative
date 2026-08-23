@@ -1,0 +1,103 @@
+# Frozen independent baseline research on ETH public Binance data.
+# Override the strategy at CLI with --strategy-type trend_pullback or
+# --strategy-type markdown_breakdown; no parameters are tuned by the runner.
+market:
+  account_type: USDT_FUTURES
+  symbols: [ETHUSDT]
+  base_currency: USDT
+  venue: BINANCE
+  contract_type: PERP
+  oms_type: NETTING
+  bar_step: 15
+  bar_aggregation: MINUTE
+  price_type: LAST
+  leverage: 3
+
+data:
+  catalog_path: ./catalog_live_crypto
+  environment: LIVE
+  lookback_days: 730
+  start: null
+  end: null
+
+backtest:
+  mode: per_symbol
+  start: null
+  end: null
+  starting_balance: "100000 USDT"
+  fee_model: maker_taker
+  fixed_fee: "1 USDT"
+  fill_model: one_tick_slippage
+  prob_fill_on_limit: 1.0
+  prob_slippage: 0.5
+  random_seed: 42
+
+strategy_type: reclaim_mr
+strategy:
+  fast_ema_period: 20
+  slow_ema_period: 50
+  trend_ema_period: 200
+  atr_period: 14
+  history_days: 220
+
+reclaim_mr:
+  bb_period: 20
+  bb_k: 2.0
+  rsi_period: 2
+  rsi_oversold: 15.0
+  rsi_overbought: 85.0
+  vhf_period: 28
+  vhf_max: 0.25
+  adx_period: 14
+  adx_max: 20.0
+  volume_sma_period: 20
+  volume_max_ratio: 1.8
+  atr_period: 14
+  atr_stop_multiple: 1.5
+  take_profit_multiple: 2.0
+  history_days: 220
+  phase_gate: true
+
+trend_pullback:
+  fast_ema_period: 20
+  slow_ema_period: 50
+  trend_ema_period: 200
+  adx_period: 14
+  adx_min: 20.0
+  volume_sma_period: 20
+  volume_min_ratio: 0.8
+  atr_period: 14
+  atr_stop_multiple: 2.0
+  history_days: 220
+  phase_gate: true
+
+markdown_breakdown:
+  donchian_period: 20
+  trend_ema_period: 200
+  adx_period: 14
+  adx_min: 20.0
+  volume_sma_period: 20
+  volume_min_ratio: 1.3
+  atr_period: 14
+  atr_stop_multiple: 2.0
+  take_profit_multiple: 1.5
+  history_days: 220
+  phase_gate: true
+
+risk:
+  risk_per_trade: 5
+  max_notional: 300
+  max_daily_loss: 20
+  max_trades_per_day: 4
+  cooldown_bars_after_loss: 4
+  circuit_breaker_losses: 4
+  circuit_breaker_pause_bars: 96
+  atr_stop_multiple: 1.5
+  allow_short: true
+  close_position_on_stop: true
+
+report:
+  output_dir: ./results/baselines/eth
+  include_csv: true
+  include_json: true
+  funding_data_path: ./funding_data/20240820_20260821

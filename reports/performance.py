@@ -15,6 +15,7 @@ from nautilus_trader.backtest.engine import BacktestResult
 from nautilus_trader.model.identifiers import Venue
 
 from config.settings import ReportSettings
+from reports.funding import build_funding_audit
 
 
 def _fmt(value: object) -> str:
@@ -91,6 +92,10 @@ def write_reports(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     written: list[Path] = []
+    positions = engine.trader.generate_positions_report()
+    funding_audit = None
+    if settings.funding_data_path is not None:
+        funding_audit = build_funding_audit(positions, settings.funding_data_path)
 
     if settings.include_csv:
         account = engine.trader.generate_account_report(venue=Venue(venue))
@@ -105,17 +110,36 @@ def write_reports(
             fills.to_csv(p)
             written.append(p)
 
-        positions = engine.trader.generate_positions_report()
         if not positions.empty:
             p = out_dir / "positions.csv"
             positions.to_csv(p)
             written.append(p)
 
+        if funding_audit is not None:
+            p = out_dir / "positions_funding_adjusted.csv"
+            funding_audit.adjusted_positions.to_csv(p)
+            written.append(p)
+            if not funding_audit.cashflows.empty:
+                p = out_dir / "funding_cashflows.csv"
+                funding_audit.cashflows.to_csv(p, index=False)
+                written.append(p)
+
     if settings.include_json:
         p = out_dir / "summary.json"
+        summary = build_summary(result)
+        if funding_audit is not None:
+            summary["funding_adjustment"] = funding_audit.summary
         with p.open("w", encoding="utf-8") as f:
-            json.dump(build_summary(result), f, indent=2, default=str)
+            json.dump(summary, f, indent=2, default=str)
         written.append(p)
+
+    if funding_audit is not None:
+        funding = funding_audit.summary
+        print("Funding adjustment:")
+        print(f"  Funding net                       : {_fmt(funding['funding_net'])}")
+        print(f"  PnL after funding                 : {_fmt(funding['pnl_after_funding'])}")
+        print(f"  Expectancy after funding          : {_fmt(funding['expectancy_after_funding'])}")
+        print(f"  Profit factor after funding       : {_fmt(funding['profit_factor_after_funding'])}")
 
     return written
 

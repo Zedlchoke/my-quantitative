@@ -41,6 +41,14 @@ def _binance_environment(value: str) -> BinanceEnvironment:
         raise ValueError(f"Invalid Binance environment: {value}") from exc
 
 
+def _utc_timestamp(value) -> pd.Timestamp:
+    """Naive datetimes would break Nautilus' tz-aware range validation."""
+    ts = pd.Timestamp(value)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    return ts.tz_convert("UTC")
+
+
 def download_historical_data(
     market: MarketSettings,
     data: DataDownloadSettings,
@@ -92,9 +100,9 @@ def download_historical_data(
         "catalog_0",
     )
 
-    end = pd.Timestamp(data.end) if data.end else pd.Timestamp.now("UTC")
+    end = _utc_timestamp(data.end) if data.end else pd.Timestamp.now("UTC")
     start = (
-        pd.Timestamp(data.start)
+        _utc_timestamp(data.start)
         if data.start
         else end - pd.Timedelta(days=data.lookback_days)
     )

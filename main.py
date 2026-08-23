@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import dataclasses
 import os
 import sys
 
@@ -42,6 +43,7 @@ from backtest.engine import run_portfolio_backtest
 from config.settings import LiveSettings
 from config.settings import load_live_config
 from config.settings import load_research_config
+from config.settings import STRATEGY_TYPES
 from data.catalog import Catalog
 from data.download import download_historical_data
 from reports.performance import performance_report
@@ -74,6 +76,14 @@ def cmd_download(args: argparse.Namespace) -> int:
 
 def cmd_backtest(args: argparse.Namespace) -> int:
     settings = load_research_config(args.config)
+    if args.strategy_type:
+        settings = dataclasses.replace(settings, strategy_type=args.strategy_type)
+        settings.validate()
+    if args.output_dir:
+        settings = dataclasses.replace(
+            settings,
+            report=dataclasses.replace(settings.report, output_dir=args.output_dir),
+        )
     catalog = Catalog(settings.data.catalog_path)
 
     common_kwargs = dict(
@@ -81,7 +91,11 @@ def cmd_backtest(args: argparse.Namespace) -> int:
         mean_reversion=settings.mean_reversion,
         regime_switch=settings.regime_switch,
         breakout=settings.breakout,
+        reclaim_mr=settings.reclaim_mr,
+        trend_pullback=settings.trend_pullback,
+        markdown_breakdown=settings.markdown_breakdown,
         trader_id=args.trader_id,
+        log_level="OFF",
     )
     if settings.backtest.mode == "portfolio":
         run = run_portfolio_backtest(
@@ -224,6 +238,9 @@ async def _run_live(settings: LiveSettings) -> None:
             mean_reversion=settings.mean_reversion,
             regime_switch=settings.regime_switch,
             breakout=settings.breakout,
+            reclaim_mr=settings.reclaim_mr,
+            trend_pullback=settings.trend_pullback,
+            markdown_breakdown=settings.markdown_breakdown,
             enable_trading=settings.enable_trading,
             request_historical_bars=True,
             symbol=symbol,
@@ -282,6 +299,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_back = sub.add_parser("backtest", help="Run backtests with fees/slippage")
     p_back.add_argument("--config", default="config/research.yaml")
     p_back.add_argument("--trader-id", default="BACKTESTER-001")
+    p_back.add_argument("--strategy-type", choices=STRATEGY_TYPES)
+    p_back.add_argument("--output-dir")
     p_back.set_defaults(func=cmd_backtest)
 
     p_live = sub.add_parser("live", help="Run live trading (Testnet/Demo)")

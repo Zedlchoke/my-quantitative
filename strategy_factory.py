@@ -10,11 +10,14 @@ from nautilus_trader.model.data import BarType
 from nautilus_trader.model.identifiers import InstrumentId
 
 from config.settings import BreakoutSettings
+from config.settings import MarkdownBreakdownSettings
 from config.settings import MarketSettings
 from config.settings import MeanReversionSettings
+from config.settings import ReclaimMeanReversionSettings
 from config.settings import RegimeSwitchSettings
 from config.settings import RiskSettings
 from config.settings import StrategySettings
+from config.settings import TrendPullbackSettings
 from strategy import EmaAtrStrategy
 from strategy import EmaAtrStrategyConfig
 from strategy_mean_reversion import MeanReversionStrategy
@@ -23,6 +26,12 @@ from strategy_breakout import BreakoutStrategy
 from strategy_breakout import BreakoutStrategyConfig
 from strategy_regime_switch import RegimeSwitchStrategy
 from strategy_regime_switch import RegimeSwitchStrategyConfig
+from strategy_markdown_breakdown import MarkdownBreakdownStrategy
+from strategy_markdown_breakdown import MarkdownBreakdownStrategyConfig
+from strategy_reclaim_mr import ReclaimMeanReversionStrategy
+from strategy_reclaim_mr import ReclaimMeanReversionStrategyConfig
+from strategy_trend_pullback import TrendPullbackStrategy
+from strategy_trend_pullback import TrendPullbackStrategyConfig
 
 
 def _risk_kwargs(risk: RiskSettings, *, enable_trading: bool) -> dict:
@@ -52,6 +61,9 @@ def build_strategy(
     mean_reversion: MeanReversionSettings | None,
     regime_switch: RegimeSwitchSettings | None,
     breakout: BreakoutSettings | None = None,
+    reclaim_mr: ReclaimMeanReversionSettings | None = None,
+    trend_pullback: TrendPullbackSettings | None = None,
+    markdown_breakdown: MarkdownBreakdownSettings | None = None,
     enable_trading: bool,
     request_historical_bars: bool,
     symbol: str,
@@ -159,6 +171,83 @@ def build_strategy(
                 take_profit_multiple=breakout.take_profit_multiple,
                 wyckoff_markup_only=breakout.wyckoff_markup_only,
                 history_days=breakout.history_days,
+                request_historical_bars=request_historical_bars,
+                **risk_kwargs,
+            ),
+        )
+
+    if strategy_type == "reclaim_mr":
+        if reclaim_mr is None:
+            raise ValueError("reclaim_mr settings are required for strategy_type=reclaim_mr")
+        return ReclaimMeanReversionStrategy(
+            config=ReclaimMeanReversionStrategyConfig(
+                instrument_id=instrument_id,
+                bar_type=bar_type,
+                bb_period=reclaim_mr.bb_period,
+                bb_k=reclaim_mr.bb_k,
+                rsi_period=reclaim_mr.rsi_period,
+                rsi_oversold=reclaim_mr.rsi_oversold,
+                rsi_overbought=reclaim_mr.rsi_overbought,
+                vhf_period=reclaim_mr.vhf_period,
+                vhf_max=reclaim_mr.vhf_max,
+                adx_period=reclaim_mr.adx_period,
+                adx_max=reclaim_mr.adx_max,
+                volume_sma_period=reclaim_mr.volume_sma_period,
+                volume_max_ratio=reclaim_mr.volume_max_ratio,
+                atr_period=reclaim_mr.atr_period,
+                atr_stop_multiple=reclaim_mr.atr_stop_multiple,
+                take_profit_multiple=reclaim_mr.take_profit_multiple,
+                history_days=reclaim_mr.history_days,
+                phase_gate=reclaim_mr.phase_gate,
+                request_historical_bars=request_historical_bars,
+                **risk_kwargs,
+            ),
+        )
+
+    if strategy_type == "trend_pullback":
+        if trend_pullback is None:
+            raise ValueError("trend_pullback settings are required for strategy_type=trend_pullback")
+        return TrendPullbackStrategy(
+            config=TrendPullbackStrategyConfig(
+                instrument_id=instrument_id,
+                bar_type=bar_type,
+                fast_ema_period=trend_pullback.fast_ema_period,
+                slow_ema_period=trend_pullback.slow_ema_period,
+                trend_ema_period=trend_pullback.trend_ema_period,
+                adx_period=trend_pullback.adx_period,
+                adx_min=trend_pullback.adx_min,
+                volume_sma_period=trend_pullback.volume_sma_period,
+                volume_min_ratio=trend_pullback.volume_min_ratio,
+                atr_period=trend_pullback.atr_period,
+                atr_stop_multiple=trend_pullback.atr_stop_multiple,
+                history_days=trend_pullback.history_days,
+                phase_gate=trend_pullback.phase_gate,
+                request_historical_bars=request_historical_bars,
+                **risk_kwargs,
+            ),
+        )
+
+    if strategy_type == "markdown_breakdown":
+        if markdown_breakdown is None:
+            raise ValueError(
+                "markdown_breakdown settings are required for "
+                "strategy_type=markdown_breakdown",
+            )
+        return MarkdownBreakdownStrategy(
+            config=MarkdownBreakdownStrategyConfig(
+                instrument_id=instrument_id,
+                bar_type=bar_type,
+                donchian_period=markdown_breakdown.donchian_period,
+                trend_ema_period=markdown_breakdown.trend_ema_period,
+                adx_period=markdown_breakdown.adx_period,
+                adx_min=markdown_breakdown.adx_min,
+                volume_sma_period=markdown_breakdown.volume_sma_period,
+                volume_min_ratio=markdown_breakdown.volume_min_ratio,
+                atr_period=markdown_breakdown.atr_period,
+                atr_stop_multiple=markdown_breakdown.atr_stop_multiple,
+                take_profit_multiple=markdown_breakdown.take_profit_multiple,
+                history_days=markdown_breakdown.history_days,
+                phase_gate=markdown_breakdown.phase_gate,
                 request_historical_bars=request_historical_bars,
                 **risk_kwargs,
             ),

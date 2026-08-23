@@ -26,12 +26,15 @@ from nautilus_trader.model.objects import Money
 
 from config.settings import BacktestSettings
 from config.settings import BreakoutSettings
+from config.settings import MarkdownBreakdownSettings
 from config.settings import MarketSettings
 from config.settings import MeanReversionSettings
 from config.settings import PortfolioRiskSettings
+from config.settings import ReclaimMeanReversionSettings
 from config.settings import RegimeSwitchSettings
 from config.settings import RiskSettings
 from config.settings import StrategySettings
+from config.settings import TrendPullbackSettings
 from data.catalog import Catalog
 from risk.limits import RiskLimits
 from risk.portfolio import PortfolioRiskLimits
@@ -81,6 +84,21 @@ def build_fill_model(settings: BacktestSettings):
     raise ValueError(f"Unknown fill_model: {settings.fill_model!r}")
 
 
+def _logging_config(log_level: str) -> LoggingConfig:
+    """Build a logger config which is safe for repeated Nautilus 1.230 runs.
+
+    In 1.230, ``log_level='OFF'`` still initializes the process-global Rust
+    logger.  A second BacktestEngine in the same research process then panics.
+    ``bypass_logging`` is the supported way to prevent that initialization.
+    """
+    disabled = log_level.upper() == "OFF"
+    return LoggingConfig(
+        log_level=log_level,
+        bypass_logging=disabled,
+        print_config=False,
+    )
+
+
 def _attach_risk_limits(result: BacktestResult, risk: RiskSettings, leverage: int) -> None:
     result.risk_limits = RiskLimits(  # type: ignore[attr-defined]
         risk_per_trade=risk.risk_per_trade,
@@ -110,6 +128,9 @@ def run_backtest_for_symbol(
     mean_reversion: MeanReversionSettings | None,
     regime_switch: RegimeSwitchSettings | None,
     breakout: BreakoutSettings | None = None,
+    reclaim_mr: ReclaimMeanReversionSettings | None = None,
+    trend_pullback: TrendPullbackSettings | None = None,
+    markdown_breakdown: MarkdownBreakdownSettings | None = None,
     trader_id: str = "BACKTESTER-001",
     log_level: str = "INFO",
     instrument=None,
@@ -140,7 +161,7 @@ def run_backtest_for_symbol(
     engine = BacktestEngine(
         config=BacktestEngineConfig(
             trader_id=f"{trader_id}-{symbol}",
-            logging=LoggingConfig(log_level=log_level, print_config=False),
+            logging=_logging_config(log_level),
         ),
     )
 
@@ -167,6 +188,9 @@ def run_backtest_for_symbol(
             mean_reversion=mean_reversion,
             regime_switch=regime_switch,
             breakout=breakout,
+            reclaim_mr=reclaim_mr,
+            trend_pullback=trend_pullback,
+            markdown_breakdown=markdown_breakdown,
             enable_trading=True,
             request_historical_bars=False,
             symbol=symbol,
@@ -191,7 +215,11 @@ def run_backtest(
     mean_reversion: MeanReversionSettings | None = None,
     regime_switch: RegimeSwitchSettings | None = None,
     breakout: BreakoutSettings | None = None,
+    reclaim_mr: ReclaimMeanReversionSettings | None = None,
+    trend_pullback: TrendPullbackSettings | None = None,
+    markdown_breakdown: MarkdownBreakdownSettings | None = None,
     trader_id: str = "BACKTESTER-001",
+    log_level: str = "INFO",
 ) -> list[SymbolBacktest]:
     """Run a backtest for every symbol in ``market.symbols``."""
     runs: list[SymbolBacktest] = []
@@ -208,7 +236,11 @@ def run_backtest(
                 mean_reversion=mean_reversion,
                 regime_switch=regime_switch,
                 breakout=breakout,
+                reclaim_mr=reclaim_mr,
+                trend_pullback=trend_pullback,
+                markdown_breakdown=markdown_breakdown,
                 trader_id=trader_id,
+                log_level=log_level,
             ),
         )
     return runs
@@ -225,6 +257,9 @@ def run_portfolio_backtest(
     mean_reversion: MeanReversionSettings | None = None,
     regime_switch: RegimeSwitchSettings | None = None,
     breakout: BreakoutSettings | None = None,
+    reclaim_mr: ReclaimMeanReversionSettings | None = None,
+    trend_pullback: TrendPullbackSettings | None = None,
+    markdown_breakdown: MarkdownBreakdownSettings | None = None,
     trader_id: str = "PORTFOLIO-BACKTESTER-001",
     log_level: str = "INFO",
     portfolio_risk: PortfolioRiskSettings | None = None,
@@ -234,7 +269,7 @@ def run_portfolio_backtest(
     engine = BacktestEngine(
         config=BacktestEngineConfig(
             trader_id=trader_id,
-            logging=LoggingConfig(log_level=log_level, print_config=False),
+            logging=_logging_config(log_level),
         ),
     )
 
@@ -291,6 +326,9 @@ def run_portfolio_backtest(
             mean_reversion=mean_reversion,
             regime_switch=regime_switch,
             breakout=breakout,
+            reclaim_mr=reclaim_mr,
+            trend_pullback=trend_pullback,
+            markdown_breakdown=markdown_breakdown,
             enable_trading=True,
             request_historical_bars=False,
             symbol=symbol,
