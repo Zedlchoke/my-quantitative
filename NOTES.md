@@ -1358,3 +1358,32 @@ Khi đủ gate: chạy đúng pipeline §18.1 (frozen baselines, session gate fa
 ```bash
 python -m research.tradfi_accumulate   # weekly
 ```
+
+---
+
+## 19. Forward test W2 — 2026-08-23
+
+Pipeline đã cứng hoá trước khi chạy (bẫy skip-im-lặng W1, xem §12):
+
+- `scripts/weekly_forward_test.sh` gọi `scripts/forward_lib.py` thay cho python
+  inline — fetch chỉ từ bar cuối + 16 phút (write-interval Binance kéo dài ~9ph
+  sau close; request chồng lấn bị engine bỏ qua im lặng).
+- Script in rõ số bar mới theo symbol (`ETHUSDT: 3 new bars (catalog 70042 -> 70045)`).
+- Fail-loud: 0 bar mới trong khi sàn mới hơn catalog >1h thì exit 1 với thông
+  báo lỗi tường minh (không âm thầm pass như W1). OOS FAIL là *kết quả*, không
+  phải lỗi pipeline — artifact vẫn lưu, script vẫn chạy trọn 1 lệnh (exit 0).
+- Test: `tests/test_forward_pipeline.py` — 17 tests tái hiện cả 2 bẫy
+  (fetch-start phải >= T+16ph; silent-skip phải raise) + wiring không cần network.
+
+Chạy W2 lúc 07:08 UTC 2026-08-23: fetch đuôi rời rạc +16ph sau bar cuối
+(06:00:59 UTC), nhận **3 bar mới** (catalog 70042 → 70045), rồi OOS validate 60d.
+Lần chạy 2 ngay sau đó xác nhận nhánh "already current" cũng sạch (exit 0).
+
+### Bảng log W2
+
+| Tuần | Ngày chạy | Trades OOS | Exp | PF | PnL | Ghi chú thị trường |
+| ---- | --------- | ---------- | --- | -- | --- | ------------------ |
+| W2 | 2026-08-23 | 11 | −0.4038 | 0.7505 | −4.44 | ETH bull markup (+45% trong window, như W1); đuôi mới chỉ +3 bar (~1h) nên window dịch nhẹ so W1 cùng ngày, số lệnh/metrics giữ nguyên — ghi nhận, KHÔNG tune |
+
+Artifact: `results/forward_test/20260823.json` (đã copy về main repo).
+OOS gate: FAIL (exp ≤ 0, PF < 1.0) — tiếp tục forward-test signal-only theo §12.

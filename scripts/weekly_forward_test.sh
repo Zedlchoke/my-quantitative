@@ -4,9 +4,13 @@
 #
 #   ./scripts/weekly_forward_test.sh
 #
-# Steps: fetch only the disjoint bar tail (main.py download would be skipped as
-# non-disjoint once the catalog overlaps), then run the 60d OOS validation and
-# save the artifact. Record the printed row in NOTES.md section 12.
+# Steps: fetch only the disjoint bar tail via scripts/forward_lib.py (fetch
+# starts at last-bar close +16min so Binance write-intervals never overlap and
+# bars are silently skipped like W1), then run the 60d OOS validation and save
+# the artifact. The fetch step FAILS LOUD (exit 1) when 0 new bars land while
+# the exchange is >1h ahead of the catalog. An OOS FAIL is a *result*, not a
+# pipeline error: the artifact is still saved and reported; record it in
+# NOTES.md section 12.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -16,49 +20,27 @@ OUT_DIR="results/forward_test"
 STAMP="$(date -u +%Y%m%d)"
 mkdir -p "$OUT_DIR"
 
-echo "== 1/2 Fetch fresh bars (disjoint tail only) =="
-.venv/bin/python - "$CONFIG" <<'PY'
-import sys
-import dataclasses
-import pandas as pd
-from config.settings import load_research_config
-from data.download import download_historical_data
-from data.catalog import Catalog
+PY="${PYTHON_BIN:-.venv/bin/python}"
+if [ ! -x "$PY" ] && [ -x "/Users/hoangminhlong/my-quantitative/.venv/bin/python" ]; then
+  PY="/Users/hoangminhlong/my-quantitative/.venv/bin/python"
+fi
 
-config_path = sys.argv[1]
-settings = load_research_config(config_path)
-catalog = Catalog(settings.data.catalog_path)
-for symbol in settings.market.symbols:
-    bars = catalog.bars(settings.market.bar_type(symbol))
-    if not bars:
-        print(f"{symbol}: empty catalog, run full download first")
-        continue
-    # Write intervals extend ~9min past the last bar close; stay clear of them.
-    last = pd.Timestamp(bars[-1].ts_event, unit="ns", tz="UTC")
-    start = (last + pd.Timedelta(minutes=16)).tz_convert("UTC")
-    if start >= pd.Timestamp.now("UTC"):
-        print(f"{symbol}: catalog already current through {last:%Y-%m-%d %H:%M} UTC")
-        continue
-    start_str = start.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    market = dataclasses.replace(settings.market, symbols=[symbol])
-    data = dataclasses.replace(settings.data, start=start_str, end=None)
-    print(f"{symbol}: fetching from {start_str}")
-    try:
-        total = download_historical_data(market, data)["per_symbol"][symbol]["bars_written"]
-        print(f"{total} bars total")
-    except Exception as exc:  # noqa: BLE001
-        if "non-disjoint" in str(exc) or "start was > now" in str(exc):
-            print(f"{symbol}: already up to date ({exc.__class__.__name__})")
-        else:
-            raise
-PY
+echo "== 1/2 Fetch fresh bars (disjoint tail only) =="
+"$PY" -m scripts.forward_lib "$CONFIG"
 
 echo ""
 echo "== 2/2 60d OOS validation =="
-.venv/bin/python -m research.oos_validate \
+set +e
+"$PY" -m research.oos_validate \
     --config "$CONFIG" \
     --holdout-days 60 \
     --output "$OUT_DIR/${STAMP}.json"
+OOS_STATUS=$?
+set -e
+if [ "$OOS_STATUS" -ne 0 ]; then
+  echo "NOTE: OOS validation returned FAIL (exit $OOS_STATUS) - this is a result,"
+  echo "not a pipeline error. Artifact saved; log the row in NOTES.md section 12."
+fi
 
 echo ""
 echo "Artifact: $OUT_DIR/${STAMP}.json"
