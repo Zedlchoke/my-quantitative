@@ -65,6 +65,7 @@ def build_strategy(
     trend_pullback: TrendPullbackSettings | None = None,
     markdown_breakdown: MarkdownBreakdownSettings | None = None,
     vol_compression=None,
+    funding_crowding=None,
     enable_trading: bool,
     request_historical_bars: bool,
     symbol: str,
@@ -271,6 +272,25 @@ def build_strategy(
                 bar_type,
                 request_historical_bars=request_historical_bars,
                 **volcomp_kwargs,
+            ),
+        )
+
+    if strategy_type == "funding_crowding":
+        if funding_crowding is None:
+            raise ValueError(
+                "funding_crowding settings are required for "
+                "strategy_type=funding_crowding",
+            )
+        from strategy_funding_crowding_mr import FundingCrowdingMRStrategy
+
+        # Shorts stay allowed: crowded-short side is gated by the same PIT
+        # percentile rule, so keep allow_short from risk_kwargs untouched.
+        return FundingCrowdingMRStrategy(
+            config=funding_crowding.to_nautilus_config(
+                instrument_id,
+                bar_type,
+                request_historical_bars=request_historical_bars,
+                **risk_kwargs,
             ),
         )
 

@@ -128,7 +128,15 @@ MATRIX_FUNDING_PATH = "funding_data/scan_2026"
 VOLCOMP_STRATEGY_TYPE = "vol_compression_breakout"
 VOLCOMP_HYPOTHESIS_ID = "H-VOLCOMP-BRKOUT-v1"
 VOLCOMP_HYPOTHESIS_CONFIG = f"research/hypotheses/{VOLCOMP_HYPOTHESIS_ID}/candidate.yaml"
-ALL_STRATEGIES: tuple[str, ...] = INVENTORY + (VOLCOMP_STRATEGY_TYPE,)
+FUNDCROWD_STRATEGY_TYPE = "funding_crowding"
+FUNDCROWD_HYPOTHESIS_ID = "H-FUNDCROWD-MR-v2"
+FUNDCROWD_HYPOTHESIS_CONFIG = f"research/hypotheses/{FUNDCROWD_HYPOTHESIS_ID}/candidate.yaml"
+ALL_STRATEGIES: tuple[str, ...] = INVENTORY + (VOLCOMP_STRATEGY_TYPE, FUNDCROWD_STRATEGY_TYPE)
+HYPOTHESIS_CONFIG_BY_TYPE = {
+    VOLCOMP_STRATEGY_TYPE: VOLCOMP_HYPOTHESIS_CONFIG,
+    FUNDCROWD_STRATEGY_TYPE: FUNDCROWD_HYPOTHESIS_CONFIG,
+}
+HYPOTHESIS_TYPES: tuple[str, ...] = (VOLCOMP_STRATEGY_TYPE, FUNDCROWD_STRATEGY_TYPE)
 
 # Declared S0 window (contracts/README.md).
 DECLARED_S0_START = pd.Timestamp("2025-08-21T00:00:00Z")
@@ -162,7 +170,7 @@ def build_cell_settings(
         raise ValueError(f"Unknown strategy_type {strategy_type!r}; inventory={ALL_STRATEGIES}")
     from config.settings import load_research_config
 
-    if strategy_type == VOLCOMP_STRATEGY_TYPE:
+    if strategy_type in HYPOTHESIS_TYPES:
         # Hypothesis cell: provenance config = frozen candidate.yaml; base
         # sections (market/risk/strategy/backtest) come from the altcoin
         # baseline YAML. strategy_type stays the file's own so validate()
@@ -175,7 +183,7 @@ def build_cell_settings(
             report=dataclasses.replace(settings.report, funding_data_path=funding_path),
         )
         updated.validate()
-        return VOLCOMP_HYPOTHESIS_CONFIG, updated
+        return HYPOTHESIS_CONFIG_BY_TYPE[strategy_type], updated
 
     config_path = STRATEGY_CONFIG_MAP[strategy_type]
     settings = load_research_config(config_path)
@@ -198,6 +206,11 @@ def warmup_days_for(settings, strategy_type: str, *, tier0: bool = False) -> int
         from strategy_vol_compression_breakout import VolCompressionBreakoutSettings
 
         bars = VolCompressionBreakoutSettings().warmup_bars()
+        return max(1, -(-bars // BAR_DAY))
+    if strategy_type == FUNDCROWD_STRATEGY_TYPE:
+        from strategy_funding_crowding_mr import FundingCrowdingMRSettings
+
+        bars = FundingCrowdingMRSettings().warmup_bars()
         return max(1, -(-bars // BAR_DAY))
     baseline = getattr(settings, strategy_type, None)
     days = getattr(baseline, "history_days", None)
@@ -538,6 +551,14 @@ def execute_cell(plan: CellPlan) -> dict:
             extra_kwargs["vol_compression"] = grid[int(plan.param_variant[1:])]
         else:
             extra_kwargs["vol_compression"] = grid[0]
+    elif plan.strategy_type == FUNDCROWD_STRATEGY_TYPE:
+        from strategy_funding_crowding_mr import FundingCrowdingMRSettings
+
+        grid = FundingCrowdingMRSettings.parameter_grid()
+        if plan.param_variant != "base":
+            extra_kwargs["funding_crowding"] = grid[int(plan.param_variant[1:])]
+        else:
+            extra_kwargs["funding_crowding"] = grid[0]
     catalog = Catalog(settings.data.catalog_path)
     instrument = catalog.instrument(settings.market.instrument_id(plan.symbol))
     if instrument is None:
@@ -708,12 +729,21 @@ def run_matrix(
 
     plans: list[CellPlan] = []
     for strategy_type in strategies:
-        if strategy_type == VOLCOMP_STRATEGY_TYPE:
-            from strategy_vol_compression_breakout import VolCompressionBreakoutSettings
+        if strategy_type in HYPOTHESIS_TYPES:
+            module = {
+                VOLCOMP_STRATEGY_TYPE: "strategy_vol_compression_breakout",
+                FUNDCROWD_STRATEGY_TYPE: "strategy_funding_crowding_mr",
+            }[strategy_type]
+            settings_cls = {
+                VOLCOMP_STRATEGY_TYPE: "VolCompressionBreakoutSettings",
+                FUNDCROWD_STRATEGY_TYPE: "FundingCrowdingMRSettings",
+            }[strategy_type]
+            import importlib
 
-            variants = tuple(
-                f"v{i}" for i in range(len(VolCompressionBreakoutSettings.parameter_grid()))
+            grid_len = len(
+                getattr(importlib.import_module(module), settings_cls).parameter_grid()
             )
+            variants = tuple(f"v{i}" for i in range(grid_len))
         else:
             variants = ("base",)
         for symbol in symbols:
