@@ -388,6 +388,19 @@ def _quantity_float(value: object) -> float:
         raise ValueError(f"unparsable numeric field {value!r}") from exc
 
 
+def _optional_float(value: object) -> float | None:
+    """Tolerant parse for informational columns (e.g. commissions)."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    text = str(value).strip()
+    if not text or text == "0":
+        return None
+    try:
+        return float(text.split()[0])
+    except ValueError:
+        return None
+
+
 def _positions_rows_in_window(adjusted: "pd.DataFrame", w_start, w_end) -> list[dict]:
     """Closed-position rows with funding-adjusted canonical PnL in window.
 
@@ -416,7 +429,7 @@ def _positions_rows_in_window(adjusted: "pd.DataFrame", w_start, w_end) -> list[
                 "exit_ts": closed.isoformat(),
                 "realized_pnl_gross": round(after_funding - funding_net, 10),
                 "commission": (
-                    _quantity_float(row["commissions"]) if has_commission else None
+                    _optional_float(row["commissions"]) if has_commission else None
                 ),
                 "funding_net": round(funding_net, 10),
                 "pnl_after_funding": round(after_funding, 10),
@@ -432,8 +445,12 @@ def _funding_fold_positions(engine, funding_path: str | None, w_start, w_end) ->
     Returns the legacy fold-metric block (kept for continuity) plus
     ``positions_stats`` computed at POSITION level per Sprint V2 section 8.2
     and the raw closed-position rows for persistence.
+
+    Distinction kept honest: a fold whose engine produced NO closed positions
+    gets ``no_trades`` stats (zeros, PF undefined); only a failing/partial
+    funding bundle marks ``funding_coverage_insufficient``.
     """
-    empty = {
+    unavailable = {
         "funding_available": False,
         "reason_codes": ["funding_coverage_insufficient"],
         "trades_after_funding": 0,
@@ -444,19 +461,20 @@ def _funding_fold_positions(engine, funding_path: str | None, w_start, w_end) ->
         "positions_rows": [],
     }
     if not funding_path:
-        return empty
+        return unavailable
     try:
         from reports.funding import build_funding_audit
 
         audit = build_funding_audit(engine.trader.generate_positions_report(), funding_path)
     except Exception:  # noqa: BLE001 - missing/partial bundle must not kill the cell
-        return empty
+        return unavailable
     adjusted = audit.adjusted_positions
-    if adjusted.empty:
-        return empty
-    rows = _positions_rows_in_window(adjusted, w_start, w_end)
-    pnls = [row["pnl_after_funding"] for row in rows]
-    stats = _position_stats_from_pnls(pnls)
+    rows = (
+        _positions_rows_in_window(adjusted, w_start, w_end)
+        if not adjusted.empty
+        else []
+    )
+    stats = _position_stats_from_pnls([row["pnl_after_funding"] for row in rows])
     total = sum((row["pnl_after_funding"] for row in rows), 0.0)
     return {
         "funding_available": True,

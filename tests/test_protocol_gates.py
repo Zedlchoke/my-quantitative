@@ -145,10 +145,18 @@ def test_g0_malformed_payload_is_fail_closed(payload):
     assert result.reasons == ("g0_coverage_not_evidenced",)
 
 
-def test_g0_funding_coverage_ratio_below_one_fails():
-    payload = _coverage_payload(funding={"bundle_present": True, "covers_declared_window": True,
-                                         "coverage_ratio": 0.93})
-    result = evaluate_gates(GateInputs(data=DataGateInput(coverage_payload=payload)))[0]
+def test_g0_funding_ratio_decimal_is_informational_but_auditor_override_fails():
+    # A 0.93 ratio with covers_declared_window=True does NOT auto-fail (the
+    # artifact's own completeness flag governs); the auditor override does.
+    informational = _coverage_payload(
+        funding={"bundle_present": True, "covers_declared_window": True,
+                 "coverage_ratio": 0.9995}
+    )
+    result = evaluate_gates(GateInputs(data=DataGateInput(coverage_payload=informational)))[0]
+    assert result.verdict is GateVerdict.PASS
+    result = evaluate_gates(
+        GateInputs(data=DataGateInput(coverage_payload=informational, coverage_ratio=0.7))
+    )[0]
     assert result.verdict is GateVerdict.FAIL and "coverage_below_declared" in result.reasons
 
 

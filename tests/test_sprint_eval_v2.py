@@ -304,7 +304,7 @@ def test_v1_v2_comparison_written_into_matrix_dir(env):
                         "symbol": "SOLUSDT",
                         "variant": "base",
                         "verdict": "CANDIDATE_FAIL",
-                        "pf_after_cost": 1.007491,
+                        "pf_after_cost": float("inf"),  # V1 fold-net pathology
                         "exp_after_cost": 0.011228,
                         "trades": 379,
                     }
@@ -328,6 +328,7 @@ def test_v1_v2_comparison_written_into_matrix_dir(env):
     assert row["verdict_old"] == "CANDIDATE_FAIL"
     assert row["verdict_new"] == "CANDIDATE_PASS"
     assert row["verdict_changed"] is True
-    expected_d = round((21.0 / 9.0) - 1.007491, 6)
-    assert row["d_pf"] == pytest.approx(expected_d)
-    assert comparison["top_pf_shifts"][0]["d_pf"] == pytest.approx(expected_d)
+    # Non-finite V1 PF is sanitized to null (strict JSON, honest dPF).
+    assert row["pf_old_fold_net"] is None
+    assert row["d_pf"] is None
+    assert comparison["top_pf_shifts"] == []

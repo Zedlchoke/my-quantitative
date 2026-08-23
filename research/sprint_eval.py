@@ -27,6 +27,7 @@ import argparse
 import glob
 import hashlib
 import json
+import math
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -801,7 +802,7 @@ def evaluate_matrix_v2(
         "inconclusive": sum(1 for s in summaries if s["verdict"] == "INCONCLUSIVE"),
         "protocol_fail": protocol_failures,
         "rows": summaries,
-        "v1_v2_comparison": comparison.get("summary") if comparison else None,
+        "v1_v2_comparison": comparison,
     }
     print(json.dumps({k: v for k, v in summary_payload.items() if k != "rows"}, indent=2))
     return summary_payload
@@ -835,9 +836,16 @@ def build_v1_v2_comparison(
         return None
 
     def _num(value: Any) -> float | None:
+        # Non-finite PF (V1 emitted ``Infinity`` when no fold lost money) is
+        # not a number: record it as null so artifacts stay strict JSON and
+        # dPF math stays meaningful.
         if value is None:
             return None
-        return float(value) if value not in ("Infinity", "-Infinity") else None
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return None
+        return numeric if math.isfinite(numeric) else None
 
     rows: list[dict] = []
     matched = 0
