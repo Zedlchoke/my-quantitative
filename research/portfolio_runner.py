@@ -1719,18 +1719,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--rerun-out-dir", default=None)
     parser.add_argument("--finalize-matrix", action="store_true")
     parser.add_argument("--matrix-dir", default=str(MATRIX_ROOT))
+    parser.add_argument("--reproduction-root", default=str(REPRODUCTION_ROOT))
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    global REPRODUCTION_ROOT
     args = build_parser().parse_args(argv)
+    REPRODUCTION_ROOT = Path(args.reproduction_root)
     if args.reproduce:
         return run_reproduce(args)
     if args.rerun_worker:
         assert args.source_exp_dir and args.rerun_out_dir
         return run_rerun_worker(args)
     if args.finalize_matrix:
-        reconciliation = finalize_matrix_v4(args.matrix_dir, args.registry_path)
+        from research.protocol.reconciliation import finalize_matrix
+
+        reconciliation = finalize_matrix(args.matrix_dir, args.registry_path)
         print(json.dumps(reconciliation, indent=2))
         if reconciliation["mismatches"]:
             return 1
