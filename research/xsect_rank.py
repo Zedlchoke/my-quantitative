@@ -81,7 +81,7 @@ def compute_target_weights(
         else []
     )
     total = sum(w for _, w in longs) + sum(w for _, w in shorts)
-    if abs(total) > 1e-9:
+    if long_count and short_count and abs(total) > 1e-9:
         raise ValueError(f"target weights do not sum to zero: {total}")
     for _, w in longs + shorts:
         if abs(abs(w) - abs(weight)) > 1e-12:
