@@ -583,6 +583,14 @@ def evaluate_execution_ordering(position_rows: list[dict]) -> dict:
     violations = 0
     missing_rows = 0
     modes: set[str] = set()
+
+    def _to_ts(value):
+        text = str(value)
+        if text.isdigit():
+            # Raw nanoseconds since epoch (engine ts_event) stored as int/str.
+            return pd.to_datetime(int(text), unit="ns", utc=True)
+        return pd.Timestamp(value)
+
     for row in position_rows:
         sig = row.get("signal_ts")
         fill = row.get("fill_ts")
@@ -594,7 +602,7 @@ def evaluate_execution_ordering(position_rows: list[dict]) -> dict:
         if mode:
             modes.add(str(mode))
         try:
-            if pd.Timestamp(fill) <= pd.Timestamp(sig):
+            if _to_ts(fill) <= _to_ts(sig):
                 violations += 1
         except (TypeError, ValueError):
             missing_rows += 1
