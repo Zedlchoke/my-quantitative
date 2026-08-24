@@ -231,10 +231,12 @@ def test_xg3_positive_folds_require_both_pnl_and_exp_r():
     result = evaluate_xgates({"stage_a": _stage_a(folds=folds, top_fold_contribution=0.45)})[4]
     assert result.verdict is GateVerdict.FAIL
     assert "positive_folds_ratio_low" in result.reasons
-    two_of_three = evaluate_xgates({"stage_a": _stage_a(
-        folds=folds[:2] + ({"fold_id": "f3", "pnl": 65.0, "exp_r": 0.02},),
-    )})[4]
-    # positive agg 130; top fold share exactly 0.50 -> inside limit
+    two_of_three = evaluate_xgates({"stage_a": _stage_a(folds=(
+        {"fold_id": "f1", "pnl": -40.0, "exp_r": 0.06},   # pnl negative
+        {"fold_id": "f2", "pnl": 65.0, "exp_r": 0.05},
+        {"fold_id": "f3", "pnl": 65.0, "exp_r": 0.02},
+    ))})[4]
+    # two positive folds (pnl AND expR > 0); top fold share exactly 0.50
     assert two_of_three.verdict is GateVerdict.PASS
 
 
