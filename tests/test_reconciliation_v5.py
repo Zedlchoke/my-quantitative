@@ -62,6 +62,8 @@ def _build_clean_dir(exp_dir: Path) -> None:
             "position_pf": {"value": 1.42, "reason": None},
         },
     )
+    _write(exp_dir / "cell.json", {"source_trial_experiment_id": "V4-SRC-001"})
+    _write(exp_dir / "scorecard.json", {"total": 0})
     _write(exp_dir / "gate_result.json", {"rows": []})
     _write(exp_dir / "run.log", "2026-08-24 | DIAG-V5 | done\n")
     # Hashes MUST come last (PLAN 31.2 item 9).
