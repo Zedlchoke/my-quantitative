@@ -636,6 +636,7 @@ def run_shared_capital_backtest(
     folds: list[tuple[int, int]] | None = None,
     reset_folds: bool = False,
     risk_mode: str | None = None,
+    extra_delay_events: int = 0,
 ) -> PortfolioRunResult:
     """Run the shared-capital cross-sectional backtest over merged 15m events.
 
@@ -643,6 +644,11 @@ def run_shared_capital_backtest(
     terminal force-liquidation at each fold's last observable bar
     (``TERMINAL_POLICY``), funding charged on the ACTUAL per-symbol settlement
     grid, and optional RISK_MODE_V1 exposure control (``risk_mode``).
+
+    ``extra_delay_events`` (stress): a rebalance whose cutoff falls due at a
+    bar event is executed ``extra_delay_events`` bar-events LATER instead of
+    immediately (signal<fill ordering preserved; pending orders are dropped
+    at segment end so they never leak across folds).
     """
     symbols = sorted(bars_15m)
     for sym in symbols:
@@ -736,6 +742,9 @@ def run_shared_capital_backtest(
     current_seg: int | None = object()  # sentinel: no segment yet
     settle_ptr = {"i": 0}
     last_settlement_applied: dict[str, int] = {}
+    # extra-delay stress: pending rebalance cutoffs waiting N more bar-events
+    delay_queue: list[list] = []  # entries [events_remaining, stamp_ts]
+    delay_stats = {"queued": 0, "released": 0, "dropped_at_segment_end": 0}
 
     def fold_index(ts: int) -> int | None:
         for fid, (start, end) in enumerate(fold_list):
@@ -958,13 +967,43 @@ def run_shared_capital_backtest(
             stamp_ts = settlement_grid[settle_ptr["i"]]
             settle_ptr["i"] += 1
             dues.append((stamp_ts, 0, stamp_ts))
+        # release delayed rebalances FIRST (decrement counts that were
+        # pending from PREVIOUS events), then enqueue fresh cutoffs —
+        # so a cutoff queued at this event waits N subsequent events.
         trading_suppressed = abort_all or (fid is not None and fid in aborted_folds)
+        if delay_queue:
+            if trading_suppressed:
+                suppressed_cutoffs += len(delay_queue)
+                delay_stats["dropped_at_segment_end"] += len(delay_queue)
+                delay_queue.clear()
+            else:
+                released: list[int] = []
+                for entry in delay_queue:
+                    entry[0] -= 1
+                    if entry[0] <= 0:
+                        released.append(entry[1])
+                delay_queue[:] = [e for e in delay_queue if e[0] > 0]
+                delay_stats["released"] += len(released)
+                for c in sorted(released):
+                    dues.append((c, 2, c))
         if not trading_suppressed:
             for c in cutoff_grid.due(ts):
-                dues.append((c, 1, c))
+                if int(extra_delay_events) > 0:
+                    delay_queue.append([int(extra_delay_events), c])
+                    delay_stats["queued"] += 1
+                else:
+                    dues.append((c, 1, c))
         else:
             suppressed_cutoffs += len(cutoff_grid.due(ts))
-        dues.sort()
+        # segment boundary check uses the NEXT timeline ts; drop any still-
+        # pending delayed rebalances so they never leak across folds
+        seg_ends_pending = (idx == len(timeline) - 1) or (
+            fold_index(timeline[idx + 1]) != fid
+        )
+        if seg_ends_pending and delay_queue:
+            suppressed_cutoffs += len(delay_queue)
+            delay_stats["dropped_at_segment_end"] += len(delay_queue)
+            delay_queue.clear()
 
         for _time, priority, stamp_ts in dues:
             if priority == 0:
@@ -1157,6 +1196,8 @@ def run_shared_capital_backtest(
         "terminal_policy": TERMINAL_POLICY,
         "reset_folds": bool(reset_folds),
         "risk_mode": risk_mode,
+        "extra_delay_events": int(extra_delay_events),
+        "extra_delay_stats": dict(delay_stats),
         "exposure_control_rows": len(exposure_rows),
         "accounting_identity_formula": IDENTITY_FORMULA,
     }

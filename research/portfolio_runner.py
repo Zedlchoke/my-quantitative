@@ -300,12 +300,11 @@ def _default_engine_loader() -> dict[str, Callable]:
         fee_multiplier=1.0,
         adverse_ticks=0,
         extra_delay_events=0,
+        exclude_symbols=None,
     ):
-        if extra_delay_events:
-            raise NotImplementedError("extra_delay_events stress not implemented")
         bars_15m = load_bars_15m(
             CATALOG,
-            sorted(s for s in daily_closes),
+            sorted(s for s in daily_closes if s not in set(exclude_symbols or ())),
             _ns_to_iso(window_start_ns - 30 * 86_400_000_000_000),
             _ns_to_iso(window_end_ns),
         )
@@ -316,7 +315,8 @@ def _default_engine_loader() -> dict[str, Callable]:
         tick_size: dict[str, float] = {}
         step_size: dict[str, float] = {}
         min_notional = 5.0
-        for sym in sorted(s for s in daily_closes):
+        excluded = set(exclude_symbols or ())
+        for sym in sorted(s for s in daily_closes if s not in excluded):
             inst = _cat.instrument(f"{sym}-PERP.BINANCE")
             if inst is None:
                 raise ValueError(f"instrument metadata missing for {sym}")
@@ -333,11 +333,14 @@ def _default_engine_loader() -> dict[str, Callable]:
             if entry is None:
                 return {"status": "SKIP_INCOMPLETE",
                         "reason_code": "incomplete_cross_section_skip"}
-            return {
-                "status": "OK",
-                "longs": [list(x) for x in entry.get("longs") or []],
-                "shorts": [list(x) for x in entry.get("shorts") or []],
-            }
+            longs = [list(x) for x in entry.get("longs") or []
+                     if x[0] not in excluded]
+            shorts = [list(x) for x in entry.get("shorts") or []
+                      if x[0] not in excluded]
+            if not longs and not shorts:
+                return {"status": "SKIP_INCOMPLETE",
+                        "reason_code": "dropone_empty_cross_section"}
+            return {"status": "OK", "longs": longs, "shorts": shorts}
 
         result = dict(
             _run_engine(
@@ -351,6 +354,7 @@ def _default_engine_loader() -> dict[str, Callable]:
                 slippage_ticks=1 + int(adverse_ticks),
                 funding_bundles_dir=FUNDING_DIR,
                 folds=[(int(window_start_ns), int(window_end_ns))],
+                extra_delay_events=int(extra_delay_events),
             ).to_dict()
         )
         summary = dict(result.get("summary") or {})
@@ -678,12 +682,25 @@ def build_gate_inputs(
         for fid, pnl in metrics["fold_pnls"].items()
     ]
     stress = dict(stress_results or {})
+
+    def _tri(key: str) -> bool | None:
+        v = stress.get(key)
+        if v is None:
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        if f != f:  # NaN sentinel => not executed
+            return None
+        return bool(f)
+
     robustness = {
         "fee50_exp_r": stress.get("fee50"),
         "twotick_exp_r": stress.get("twotick"),
         "extradelay_exp_r": stress.get("extradelay"),
-        "dropone_symbol_clean": None,  # engine support pending (A2)
-        "dropone_fold_clean": None,    # engine support pending (A2)
+        "dropone_symbol_clean": _tri("dropone_symbol_clean"),
+        "dropone_fold_clean": _tri("dropone_fold_clean"),
         "turnover_budget_exceeded": False,  # pre-registered budget n/a in v1 spec
     }
     risk = {
@@ -1025,6 +1042,49 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
                 break
             _log(f"stress {name}: expectancy_r={stress_results[name]}")
 
+        # V5-C15: drop-one-symbol — re-run with each traded symbol removed in
+        # turn; clean iff NO dropped run flips the expectancy-R sign relative
+        # to the base run.
+        base_exp = execution["metrics"].get("expectancy_r")
+        dropone_symbol_clean: bool | None = None
+        dropone_symbol_detail: dict[str, Any] = {}
+        try:
+            symbol_flips: list[str] = []
+            for sym in identity["traded_symbols"]:
+                r = _stress_expectancy_r(
+                    engine, execution=execution,
+                    traded_symbols=identity["traded_symbols"],
+                    benchmark_symbol=identity["benchmark_symbol"],
+                    window_start=window_start, window_end=window_end,
+                    lookback_days=args.lookback_days, reverse=bool(args.reverse),
+                    folds=args.folds, exclude_symbols=[sym],
+                )
+                dropone_symbol_detail[sym] = r
+                if (base_exp is not None) and (r > 0) != (base_exp > 0):
+                    symbol_flips.append(sym)
+                _log(f"drop-one-symbol {sym}: expectancy_r={r} flip={bool(symbol_flips)}")
+            dropone_symbol_clean = not symbol_flips
+        except (TypeError, NotImplementedError) as exc:
+            _log(f"drop-one-symbol unsupported: {exc}")
+        stress_results["dropone_symbol_clean"] = float(dropone_symbol_clean)
+        stress_results["dropone_symbol_min_exp"] = (
+            min(dropone_symbol_detail.values())
+            if dropone_symbol_detail else float("nan")
+        )
+
+        # drop-one-fold: computed from ALREADY-PRODUCED fold results (no new
+        # engine runs); clean iff no fold removal flips the aggregate sign.
+        fold_pnls: dict[str, float] = dict(execution["metrics"]["fold_pnls"])
+        total_fold_pnl = math_fsum(fold_pnls.values())
+        fold_flips = [
+            fid for fid in fold_pnls
+            if (math_fsum(v for k, v in fold_pnls.items() if k != fid) > 0)
+            != (total_fold_pnl > 0)
+        ]
+        stress_results["dropone_fold_clean"] = float(not fold_flips)
+        if fold_flips:
+            _log(f"drop-one-fold sign flip on folds: {fold_flips}")
+
     # ---- 5. gates + scorecard --------------------------------------------- #
     gate_inputs = build_gate_inputs(
         execution, declared_symbols=identity["traded_symbols"],
@@ -1156,6 +1216,7 @@ def _stress_expectancy_r(
     fee_multiplier: float = 1.0,
     adverse_ticks: int = 0,
     extra_delay_events: int = 0,
+    exclude_symbols: Sequence[str] | None = None,
 ) -> float:
     """Re-run the SAME schedule under a stress cost model; return expectancy-R."""
     stressed = execute_experiment(
@@ -1165,6 +1226,7 @@ def _stress_expectancy_r(
                     fee_multiplier=fee_multiplier,
                     adverse_ticks=adverse_ticks,
                     extra_delay_events=extra_delay_events,
+                    exclude_symbols=exclude_symbols,
                 )},
         traded_symbols=traded_symbols,
         benchmark_symbol=benchmark_symbol,
@@ -1176,11 +1238,14 @@ def _stress_expectancy_r(
 
 
 def _wrap_stress(fn: Callable, *, fee_multiplier: float, adverse_ticks: int,
-                 extra_delay_events: int) -> Callable:
+                 extra_delay_events: int,
+                 exclude_symbols: Sequence[str] | None = None) -> Callable:
     def wrapped(**kwargs):
         kwargs.setdefault("fee_multiplier", fee_multiplier)
         kwargs.setdefault("adverse_ticks", adverse_ticks)
         kwargs.setdefault("extra_delay_events", extra_delay_events)
+        if exclude_symbols:
+            kwargs["exclude_symbols"] = list(exclude_symbols)
         return fn(**kwargs)
     return wrapped
 
