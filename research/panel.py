@@ -80,17 +80,31 @@ def _iso_date(ts_ns: int) -> str:
 # --------------------------------------------------------------------------- #
 # Catalog reading (pyarrow-direct, mirrors research.data_audit conventions)
 # --------------------------------------------------------------------------- #
-def _bar_type(instrument_id: str) -> str:
-    return f"{instrument_id}-15-MINUTE-LAST-EXTERNAL"
+def _bar_type_candidates(instrument_id: str) -> list[str]:
+    """Bar-type directory names to try, most specific first.
+
+    Catalog layout uses full Binance instrument ids
+    (e.g. ``BTCUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL``); a bare symbol is
+    resolved by appending the standard PERP suffix.
+    """
+    base = f"{instrument_id}-15-MINUTE-LAST-EXTERNAL"
+    if "-BINANCE" in instrument_id or "-PERP" in instrument_id:
+        return [base]
+    return [f"{instrument_id}-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL", base]
+
+
+def _bar_type_dir(catalog_path: str | Path, instrument_id: str) -> Path:
+    root = Path(catalog_path) / "data" / "binance_bar"
+    for candidate in _bar_type_candidates(instrument_id):
+        d = root / candidate
+        if d.exists():
+            return d
+    return root / _bar_type_candidates(instrument_id)[-1]
 
 
 def _decode_fixed16(raw: bytes) -> float:
     """Decode nautilus parquet fixed_size_binary(16) scalar to float."""
     return int.from_bytes(raw, "little", signed=True) / _PRICE_SCALE
-
-
-def _bar_type_dir(catalog_path: str | Path, instrument_id: str) -> Path:
-    return Path(catalog_path) / "data" / "binance_bar" / _bar_type(instrument_id)
 
 
 def _read_bars(
