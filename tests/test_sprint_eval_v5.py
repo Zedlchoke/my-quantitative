@@ -79,9 +79,9 @@ def _build_diag_dir(exp_dir: Path, *, n_legs=120) -> dict:
     costs = [{"commission": 8.0, "modeled_slippage": 4.0}]
 
     fold_returns = [
-        [0.004, 0.002, -0.001],
-        [0.001, 0.003],
-        [-0.02, 0.005],
+        [0.002, 0.002],   # +0.40%
+        [0.002, 0.002],   # +0.40% (equal -> top fold share exactly 0.50)
+        [-0.02, 0.005],   # negative fold
     ]
     accounting = {
         "positions_total_pnl": round(sum(r["canonical_pnl"] for r in positions), 10),
@@ -167,7 +167,9 @@ def test_happy_path_diagnostic_eval_measures_everything(tmp_path, monkeypatch):
     # F16: XG1 counted from the actual ledger rows -> clean PASS here
     assert rows["XG1_POINT_IN_TIME"]["verdict"] == GateVerdict.PASS.value
     assert rows["XG2A_ARTIFACT_INTEGRITY"]["verdict"] == GateVerdict.PASS.value
+    assert rows["XG3_STAGE_A_PORTFOLIO"]["verdict"] == GateVerdict.PASS.value
     assert gate_doc["xg2a_evidence"]["measured_before_evaluation"] is True
+    assert payload["pass"] == 1 and payload["protocol_fail"] == 0
 
 
 def test_hashes_finalized_last_and_later_writes_raise(tmp_path, monkeypatch):

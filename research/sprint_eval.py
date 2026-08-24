@@ -1908,7 +1908,7 @@ def evaluate_diagnostic_v5(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--matrix-dir", required=True)
+    parser.add_argument("--matrix-dir", default=None)
     parser.add_argument("--output-root", default=None)
     parser.add_argument(
         "--schema", choices=("v1", "v2", "v3", "v5"), default="v3",
@@ -1937,6 +1937,8 @@ def main(argv: list[str] | None = None) -> int:
             finalize=not args.no_finalize,
         )
         return 0 if payload["protocol_fail"] == 0 else 1
+    if not args.matrix_dir:
+        parser.error("--matrix-dir is required for --schema v1/v2/v3")
     if args.schema == "v3":
         payload = evaluate_matrix_v3(
             args.matrix_dir,
