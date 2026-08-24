@@ -54,11 +54,12 @@ def _stage_a(**overrides):
         pnl=100.0,
         pf=1.20,
         pf_reason=None,
-        expectancy_r=0.05,
+        expectancy_r=0.05,  # deprecated field; V5 gate logic ignores it
+        fold_returns=(0.06, 0.05, 0.04),
         folds=(
-            {"fold_id": "f1", "pnl": 40.0, "exp_r": 0.06},
-            {"fold_id": "f2", "pnl": 35.0, "exp_r": 0.05},
-            {"fold_id": "f3", "pnl": 25.0, "exp_r": 0.04},
+            {"fold_id": "f1", "pnl": 40.0},
+            {"fold_id": "f2", "pnl": 35.0},
+            {"fold_id": "f3", "pnl": 25.0},
         ),
         rebalances_scored=30,
         legs_closed=100,
@@ -214,29 +215,43 @@ def test_xg3_undefined_pf_blocks_pass_with_its_reason():
     assert "no_losing_positions" in result.reasons
 
 
-def test_xg3_expectancy_none_is_inconclusive_negative_is_fail():
-    inc = evaluate_xgates({"stage_a": _stage_a(expectancy_r=None)})[4]
+def test_xg3_missing_fold_returns_inconclusive_median_nonpositive_fails():
+    # V5 (F07): no fake expectancy-R.  Missing measured fold returns are
+    # INCONCLUSIVE (metric_missing) -- never guessed from fold PnL.
+    inc = evaluate_xgates({"stage_a": _stage_a(fold_returns=None)})[4]
     assert inc.verdict is GateVerdict.INCONCLUSIVE
-    assert inc.reasons == ("metric_not_computed",)
-    neg = evaluate_xgates({"stage_a": _stage_a(expectancy_r=-0.01)})[4]
-    assert neg.verdict is GateVerdict.FAIL and "exp_nonpositive" in neg.reasons
+    assert inc.reasons == ("metric_missing",)
+    # A negative MEDIAN fold return is a hard FAIL even with positive total.
+    neg = evaluate_xgates({"stage_a": _stage_a(fold_returns=(0.50, -0.01, -0.02))})[4]
+    assert neg.verdict is GateVerdict.FAIL
+    assert "median_fold_return_nonpositive" in neg.reasons
 
 
-def test_xg3_positive_folds_require_both_pnl_and_exp_r():
+def test_xg3_expectancy_r_field_is_ignored_not_gated():
+    # The deprecated field cannot flip the verdict in either direction.
+    keep = evaluate_xgates({"stage_a": _stage_a(expectancy_r=None)})[4]
+    drop = evaluate_xgates({"stage_a": _stage_a(expectancy_r=-0.99)})[4]
+    baseline = evaluate_xgates({"stage_a": _stage_a()})[4]
+    assert keep.verdict is drop.verdict is baseline.verdict is GateVerdict.PASS
+
+
+def test_xg3_positive_folds_counted_from_pnl_only():
     folds = (
-        {"fold_id": "f1", "pnl": -40.0, "exp_r": 0.06},  # expR positive but pnl negative
-        {"fold_id": "f2", "pnl": 60.0, "exp_r": 0.05},
-        {"fold_id": "f3", "pnl": 80.0, "exp_r": -0.01},
+        {"fold_id": "f1", "pnl": -40.0},
+        {"fold_id": "f2", "pnl": -5.0},
+        {"fold_id": "f3", "pnl": 80.0},
     )
-    result = evaluate_xgates({"stage_a": _stage_a(folds=folds, top_fold_contribution=0.45)})[4]
+    result = evaluate_xgates(
+        {"stage_a": _stage_a(folds=folds, top_fold_contribution=0.45)}
+    )[4]
     assert result.verdict is GateVerdict.FAIL
     assert "positive_folds_ratio_low" in result.reasons
     two_of_three = evaluate_xgates({"stage_a": _stage_a(folds=(
-        {"fold_id": "f1", "pnl": -40.0, "exp_r": 0.06},   # pnl negative
-        {"fold_id": "f2", "pnl": 65.0, "exp_r": 0.05},
-        {"fold_id": "f3", "pnl": 65.0, "exp_r": 0.02},
+        {"fold_id": "f1", "pnl": -40.0},
+        {"fold_id": "f2", "pnl": 65.0},
+        {"fold_id": "f3", "pnl": 65.0},
     ))})[4]
-    # two positive folds (pnl AND expR > 0); top fold share exactly 0.50
+    # two positive folds; top fold share exactly 0.50 -> PASS boundary
     assert two_of_three.verdict is GateVerdict.PASS
 
 
