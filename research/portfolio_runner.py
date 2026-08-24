@@ -858,7 +858,8 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         print(f"ABORT {exc}", file=sys.stderr)
         return 2
 
-    exp_dir = PORTFOLIO_ROOT / args.experiment_id
+    artifact_root = Path(args.output_root) if getattr(args, "output_root", None) else PORTFOLIO_ROOT
+    exp_dir = artifact_root / args.experiment_id
     if exp_dir.exists():  # never overwrite an existing scored artifact set
         print(f"ABORT experiment dir exists (append-only artifacts): {exp_dir}",
               file=sys.stderr)
@@ -1119,7 +1120,9 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
 
     registry_append({
         "experiment_id": args.experiment_id,
-        "kind": "CELL_RESULT",
+        "kind": str(getattr(args, "registry_kind", "CELL_RESULT") or "CELL_RESULT"),
+        **({"source_trial_experiment_id": args.source_trial_experiment_id}
+           if getattr(args, "source_trial_experiment_id", None) else {}),
         "schema": "v4",
         "matrix_id": args.matrix_id,
         "verdict": verdict,
@@ -1541,6 +1544,10 @@ def finalize_matrix_v4(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--experiment-id")
+    parser.add_argument("--output-root", default=None,
+                        help="override artifact root (V5 diagnostic namespace)")
+    parser.add_argument("--registry-kind", default="CELL_RESULT")
+    parser.add_argument("--source-trial-experiment-id", default=None)
     parser.add_argument("--lookback-days", type=int, default=None)
     parser.add_argument("--reverse", action="store_true",
                         help="negative-control reverse-rank experiment")
