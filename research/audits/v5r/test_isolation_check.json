@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "artifact": "test_isolation_check",
+  "created_at_utc": "2026-08-24T10:52:00Z",
+  "claim_under_test": "With the defensive patch applied, a full pytest run writes zero bytes into any baseline-listed immutable path.",
+  "method": "Recompute SHA-256 of all 1474 baseline paths immediately before and immediately after one full test-suite run; diff sets must be identical and contain no new mutations.",
+  "commands": [
+    {
+      "cmd": ".venv/bin/python c1_recheck.py research/audits/v5r/source_hash_recheck_v5r_pretest.json PRE_TEST_BASELINE",
+      "exit_code": 0,
+      "counts": {"MATCH": 1467, "EXPECTED_APPEND_ONLY": 1, "UNEXPECTED_MUTATION": 6, "MISSING": 0}
+    },
+    {
+      "cmd": ".venv/bin/python -m pytest tests/ -q",
+      "start_utc": "2026-08-24T10:47:50Z",
+      "end_utc": "2026-08-24T10:48:00Z",
+      "exit_code": 0,
+      "summary": "557 passed, 16 warnings in 9.38s"
+    },
+    {
+      "cmd": ".venv/bin/python c1_recheck.py research/audits/v5r/source_hash_recheck_v5r_posttest.json POST_TEST_ISOLATION_PROOF",
+      "exit_code": 0,
+      "counts": {"MATCH": 1467, "EXPECTED_APPEND_ONLY": 1, "UNEXPECTED_MUTATION": 6, "MISSING": 0}
+    }
+  ],
+  "diff_set_identical_pre_post": true,
+  "new_mutations_introduced_by_test_run": 0,
+  "verdict": "ISOLATION_PASS_WITH_PATCH",
+  "caveat": "The six pre-existing mutations predate this sprint (historical, pre-patch); they are quarantined, not repaired.",
+  "evidence_files": [
+    "research/audits/v5r/source_hash_recheck_v5r_pretest.json",
+    "research/audits/v5r/source_hash_recheck_v5r_posttest.json",
+    "research/audits/v5r/test_contamination_root_cause.md"
+  ]
+}

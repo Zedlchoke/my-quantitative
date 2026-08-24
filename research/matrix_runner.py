@@ -1619,7 +1619,7 @@ def run_matrix(
     window_end: pd.Timestamp | None = None,
     limit_cells: int | None = None,
     inventory_path: str | Path | None = None,
-    stage_a_root: str | Path = DEFAULT_V3_STAGE_A_ROOT,
+    stage_a_root: str | Path | None = None,
 ) -> dict:
     """Execute (or resume) the declared matrix; returns the run report.
 
@@ -1630,6 +1630,9 @@ def run_matrix(
     FINAL on-disk index (never from last-batch loop counters).
     """
     out_dir = Path(output_root) / matrix_id
+    if stage_a_root is None:
+        # Late-bound so monkeypatching the module default (tests) takes effect.
+        stage_a_root = DEFAULT_V3_STAGE_A_ROOT
     cells_dir = out_dir / "cells"
     cells_dir.mkdir(parents=True, exist_ok=True)
     index_path = out_dir / "index.json"

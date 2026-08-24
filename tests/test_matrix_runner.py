@@ -22,9 +22,17 @@ from contracts.protocol import CellStatus
 
 @pytest.fixture(autouse=True)
 def _registry_and_data_contract(tmp_path, monkeypatch):
-    """Redirect registry counter + data-manifest source into tmp_path."""
+    """Redirect registry counter + data-manifest source into tmp_path.
+
+    Also redirects ``stage_a_root``: without it the launch-provenance wrapper
+    writes real ``launch_manifest.yaml`` / ``execution_evidence.json`` /
+    frozen snapshots into ``results/stage_a_v3`` (immutable V3 provenance
+    zone) on every test run — this is what drifted EXP-20260824-0001/0002
+    hashes vs. ``v3_v4_source_hashes.json`` (V5-C02).
+    """
     registry_dir = tmp_path / "registry"
     monkeypatch.setattr(manifest_mod, "DEFAULT_REGISTRY_DIR", registry_dir)
+    monkeypatch.setattr(mr, "DEFAULT_V3_STAGE_A_ROOT", tmp_path / "stage_a_v3")
     contract = tmp_path / "data_contract_v2.json"
     contract.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
     monkeypatch.setattr(mr, "_DATA_MANIFEST_CACHE", None)
