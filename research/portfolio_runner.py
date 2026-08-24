@@ -309,6 +309,21 @@ def _default_engine_loader() -> dict[str, Callable]:
             _ns_to_iso(window_start_ns - 30 * 86_400_000_000_000),
             _ns_to_iso(window_end_ns),
         )
+        # Instrument precision metadata from the canonical catalog (A1 H35).
+        from data.catalog import Catalog as _Catalog
+
+        _cat = _Catalog(CATALOG)
+        tick_size: dict[str, float] = {}
+        step_size: dict[str, float] = {}
+        min_notional = 5.0
+        for sym in sorted(s for s in daily_closes):
+            inst = _cat.instrument(f"{sym}-PERP.BINANCE")
+            if inst is None:
+                raise ValueError(f"instrument metadata missing for {sym}")
+            tick_size[sym] = float(inst.price_increment.as_double())
+            step_size[sym] = float(inst.size_increment.as_double())
+            if inst.min_notional is not None:
+                min_notional = max(min_notional, float(inst.min_notional.as_double()))
         schedule_by_cutoff = {
             int(entry["rebalance_ts_ns"]): entry for entry in (target_schedule or [])
         }
@@ -329,14 +344,14 @@ def _default_engine_loader() -> dict[str, Callable]:
                 bars_15m=bars_15m,
                 daily_closes=daily_closes,
                 weight_fn=weight_fn,
-                tick_size={},          # engine falls back to instrument-safe defaults
-                step_size={},
-                min_notional=5.0,
+                tick_size=tick_size,
+                step_size=step_size,
+                min_notional=min_notional,
                 fee_taker=0.0005 * float(fee_multiplier),
                 slippage_ticks=1 + int(adverse_ticks),
                 funding_bundles_dir=FUNDING_DIR,
                 folds=[(int(window_start_ns), int(window_end_ns))],
-            )
+            ).to_dict()
         )
         summary = dict(result.get("summary") or {})
         summary["pf_position_level"] = {

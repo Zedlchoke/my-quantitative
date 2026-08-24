@@ -612,14 +612,40 @@ def run_shared_capital_backtest(
                             f"symbol={sym} settlement_ns={stamp_ts}"
                         )
                     table = settlements.get(sym) or {}
-                    if stamp_ts not in table:
-                        raise ValueError(
-                            "missing funding settlement for held leg "
-                            f"(fail-closed): symbol={sym} settlement_ns={stamp_ts} "
-                            f"bundle_dir={funding_bundles_dir!r} "
-                            f"known_settlements={sorted(table)}"
-                        )
-                    rate = table[stamp_ts]
+                    rate = table.get(stamp_ts)
+                    if rate is None:
+                        # Exchange settlement timestamps carry small jitter
+                        # (milliseconds). Snap to the NEAREST known settlement
+                        # within +/- 120s; beyond that, fail closed.
+                        nearest_ts = None
+                        if table:
+                            known = sorted(table)
+                            lo = 0
+                            hi = len(known) - 1
+                            while lo < hi:
+                                mid = (lo + hi) // 2
+                                if known[mid] < stamp_ts:
+                                    lo = mid + 1
+                                else:
+                                    hi = mid
+                            candidates = [known[lo]]
+                            if lo > 0:
+                                candidates.append(known[lo - 1])
+                            nearest_ts = min(
+                                candidates,
+                                key=lambda t: abs(t - stamp_ts),
+                            )
+                        if (
+                            nearest_ts is None
+                            or abs(nearest_ts - stamp_ts) > 120_000_000_000
+                        ):
+                            raise ValueError(
+                                "missing funding settlement for held leg "
+                                f"(fail-closed): symbol={sym} settlement_ns={stamp_ts} "
+                                f"bundle_dir={funding_bundles_dir!r} "
+                                f"known_settlements={sorted(table)}"
+                            )
+                        rate = table[nearest_ts]
                     mark_notional = state["pos"][sym] * mark
                     cashflow = -rate * mark_notional
                     state["cash"] += cashflow
