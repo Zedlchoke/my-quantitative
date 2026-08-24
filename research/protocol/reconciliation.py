@@ -5,7 +5,7 @@ on-disk index -- never from a runner's in-memory loop counters.  This fixes
 the Sprint V2 defect where ``report.json`` was overwritten by the last batch
 and aggregates silently drifted from the real artifact tree.
 
-Counts recomputed:
+Schema version 2 (PLAN section 8-D2) field meanings:
 
 * declared_cells            report.json declaration (runner's plan size)
 * indexed_cells             entries present in the FINAL index.json
@@ -13,26 +13,61 @@ Counts recomputed:
 * completed / pipeline_error / data_incomplete   per index statuses,
   cross-checked against each artifact's own ``cell_result.status``
 * registry_entries_for_matrix   append-only registry lines with this matrix_id
-* stage_a_artifact_dirs     launch-manifest dirs on disk whose matrix_id matches
+* registry_cell_identity_entries  subset whose ``kind`` claims a cell result
+  identity (CELL_RESULT / DIAGNOSTIC_RECALC); these must be UNIQUE per
+  experiment_id -- two rows for one identity are real duplication (FAIL),
+  while verification kinds (INDEPENDENT_RERUN_VERIFY, MATRIX_FINALIZE,
+  ARTIFACT_INTEGRITY_VERIFY) are separate records counted apart
+* registry_verification_entries   remaining verification-kind rows
+* stage_a_artifact_dirs     distinct launch-manifest dirs whose matrix_id
+  matches: union of the resolved stage_a root scan AND every indexed cell's
+  own declared/derived experiment dir, so DIAGNOSTIC_RECALC matrices whose
+  artifacts live under a diagnostic output root are measured at their real
+  location instead of the legacy default root
+* stage_a_dirs_expected     indexed cells that reference an experiment dir
 
-Any mismatch between these counts is recorded and makes the finalization
-verdict PARTIAL/FAIL; the CLI wrapper exits non-zero so pipelines stop.
+Identity/integrity validation added in v2 (each FAIL-level):
+
+* one intended experiment identity per index cell (duplicate ids FAIL);
+* artifact document experiment_id must equal its index entry's;
+* referenced experiment dirs exist and contain a matching launch manifest;
+* stage_a_dirs<referenced_exp_dirs stays a mismatch (never harmless).
+
+The report is derived from the final on-disk index only.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
 from research.protocol.registry import load_all
 
-RECONCILIATION_SCHEMA_VERSION = 1
+RECONCILIATION_SCHEMA_VERSION = 2
+
+#: Registry kinds that claim a CELL result identity (uniqueness-enforced).
+#: Verification/finalize kinds may legitimately reference the same matrix
+#: multiple times and are never treated as cell duplication.
+CELL_IDENTITY_KINDS = frozenset(("CELL_RESULT", "DIAGNOSTIC_RECALC"))
 
 
 def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _manifest_matrix_id(manifest_path: Path) -> str | None:
+    """matrix_id inside a launch manifest, or None when unreadable."""
+    try:
+        import yaml
+
+        data = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+    except Exception:  # noqa: BLE001 - unreadable manifest counts as mismatch evidence below
+        return None
+    value = data.get("matrix_id")
+    return str(value) if value is not None else None
 
 
 def finalize_matrix(
@@ -44,16 +79,22 @@ def finalize_matrix(
     """Recompute every count for ``matrix_dir``; write reconciliation.json.
 
     Returns the reconciliation payload.  ``all_counts_match`` is True only
-    when completed == declared == indexed == actual files and no artifact is
-    inconsistent with its index entry.
+    when completed == declared == indexed == actual files, every indexed cell
+    holds ONE experiment identity with consistent artifact references, and no
+    artifact is inconsistent with its index entry.
     """
     matrix_path = Path(matrix_dir)
     index_path = matrix_path / "index.json"
     report_path = matrix_path / "report.json"
 
+    # FINAL index on disk -- never a runner's last-batch counters.
     report = _load_json(report_path) if report_path.is_file() else {}
     index = _load_json(index_path) if index_path.is_file() else {"cells": {}}
     cells: dict = index.get("cells") or {}
+    matrix_ids = {
+        str(report.get("matrix_id") or matrix_path.name),
+        matrix_path.name,
+    }
 
     # --- filesystem truth --------------------------------------------------- #
     cells_dir = matrix_path / "cells"
@@ -62,30 +103,91 @@ def finalize_matrix(
     status_from_index: dict[str, int] = {}
     artifact_status_mismatches: list[str] = []
     missing_artifacts: list[str] = []
+    fail_mismatches: list[str] = []
+    seen_experiment_ids: dict[str, str] = {}
+    exp_refs: dict[str, Path] = {}
+    dir_style_artifacts = 0
+
     for key, entry in cells.items():
         status = entry.get("status")
         status_from_index[status] = status_from_index.get(status, 0) + 1
+
+        experiment_id = entry.get("experiment_id")
+        if experiment_id:
+            if experiment_id in seen_experiment_ids:
+                fail_mismatches.append(
+                    f"duplicate_experiment_identity:{experiment_id}:"
+                    f"{seen_experiment_ids[experiment_id]}+{key}"
+                )
+            else:
+                seen_experiment_ids[experiment_id] = key
+
         artifact = entry.get("artifact_path")
-        if not artifact or not Path(artifact).is_file():
+        artifact_path = Path(artifact) if artifact else None
+        if artifact_path is None or not (
+            artifact_path.is_file() or artifact_path.is_dir()
+        ):
             missing_artifacts.append(key)
+        elif artifact_path.is_file():
+            try:
+                document = _load_json(artifact_path)
+            except json.JSONDecodeError:
+                artifact_status_mismatches.append(f"{key}:unreadable")
+                document = None
+            if document is not None:
+                doc_status = (document.get("cell_result") or {}).get("status")
+                if doc_status is not None and doc_status != status:
+                    artifact_status_mismatches.append(f"{key}:{doc_status}!={status}")
+                doc_experiment_id = (document.get("cell_result") or {}).get(
+                    "experiment_id"
+                ) or (document.get("provenance") or {}).get("experiment_id")
+                if (
+                    experiment_id
+                    and doc_experiment_id
+                    and str(doc_experiment_id) != str(experiment_id)
+                ):
+                    fail_mismatches.append(
+                        f"artifact_identity_mismatch:{key}:"
+                        f"{doc_experiment_id}!={experiment_id}"
+                    )
+        else:
+            dir_style_artifacts += 1
+
+        # Referenced experiment dir: explicit declaration wins; otherwise a
+        # directory-style artifact path IS the exp dir (DIAGNOSTIC_RECALC
+        # matrices keep launch manifests inside the diagnostic output root).
+        declared_dir = entry.get("stage_a_dir")
+        candidate = Path(declared_dir) if declared_dir else (
+            artifact_path if artifact_path is not None and artifact_path.is_dir() else None
+        )
+        if candidate is None:
             continue
-        try:
-            document = _load_json(Path(artifact))
-        except json.JSONDecodeError:
-            artifact_status_mismatches.append(f"{key}:unreadable")
-            continue
-        doc_status = (document.get("cell_result") or {}).get("status")
-        if doc_status is not None and doc_status != status:
-            artifact_status_mismatches.append(f"{key}:{doc_status}!={status}")
+        exp_refs[key] = candidate
+        manifest = candidate / "launch_manifest.yaml"
+        if not manifest.is_file():
+            fail_mismatches.append(f"stage_a_dir_invalid:{key}:missing_launch_manifest")
+        elif _manifest_matrix_id(manifest) not in matrix_ids:
+            fail_mismatches.append(f"stage_a_dir_invalid:{key}:matrix_id_mismatch")
 
     registry_entries = load_all(registry_path)
-    matrix_ids = {
-        str(report.get("matrix_id") or matrix_path.name),
-        matrix_path.name,
-    }
     registry_rows = [
         row for row in registry_entries if row.get("matrix_id") in matrix_ids
     ]
+    identity_rows = [
+        row for row in registry_rows if row.get("kind") in CELL_IDENTITY_KINDS
+    ]
+    verification_rows = [
+        row for row in registry_rows if row.get("kind") not in CELL_IDENTITY_KINDS
+    ]
+    duplicate_ids = sorted(
+        experiment_id
+        for experiment_id, count in Counter(
+            str(row.get("experiment_id")) for row in identity_rows
+        ).items()
+        if count > 1
+    )
+    for experiment_id in duplicate_ids:
+        fail_mismatches.append(f"registry_duplicate_identity:{experiment_id}")
 
     stage_root = Path(
         stage_a_root
@@ -96,20 +198,16 @@ def finalize_matrix(
             else "results/stage_a_v3"
         )
     )
-    stage_a_dirs = 0
+    stage_dirs: set[Path] = set()
     if stage_root.is_dir():
         for exp_dir in stage_root.iterdir():
             manifest = exp_dir / "launch_manifest.yaml"
-            if not manifest.is_file():
-                continue
-            try:
-                import yaml
-
-                data = yaml.safe_load(manifest.read_text(encoding="utf-8")) or {}
-            except Exception:  # noqa: BLE001 - unreadable manifest counts as mismatch evidence below
-                continue
-            if data.get("matrix_id") in matrix_ids:
-                stage_a_dirs += 1
+            if manifest.is_file() and _manifest_matrix_id(manifest) in matrix_ids:
+                stage_dirs.add(exp_dir.resolve())
+    for key, candidate in exp_refs.items():
+        manifest = candidate / "launch_manifest.yaml"
+        if manifest.is_file() and _manifest_matrix_id(manifest) in matrix_ids:
+            stage_dirs.add(candidate.resolve())
 
     completed = status_from_index.get("COMPLETED", 0)
     pipeline_error = status_from_index.get("PIPELINE_ERROR", 0)
@@ -124,7 +222,10 @@ def finalize_matrix(
         "pipeline_error": pipeline_error,
         "data_incomplete": data_incomplete,
         "registry_entries_for_matrix": len(registry_rows),
-        "stage_a_artifact_dirs": stage_a_dirs,
+        "registry_cell_identity_entries": len(identity_rows),
+        "registry_verification_entries": len(verification_rows),
+        "stage_a_artifact_dirs": len(stage_dirs),
+        "stage_a_dirs_expected": len(exp_refs),
     }
 
     mismatches: list[str] = []
@@ -132,31 +233,26 @@ def finalize_matrix(
         mismatches.append(
             f"indexed_cells({len(cells)})!=declared_cells({declared_cells})"
         )
-    if len(cell_files) != len(cells):
+    file_style_cells = len(cells) - dir_style_artifacts
+    if len(cell_files) != file_style_cells:
         mismatches.append(
-            f"actual_cell_files({len(cell_files)})!=indexed_cells({len(cells)})"
+            f"actual_cell_files({len(cell_files)})!=indexed_cells({file_style_cells})"
         )
     if missing_artifacts:
-        mismatches.append(f"missing_artifacts:{sorted(missing_artifacts)}")
+        fail_mismatches.append(f"missing_artifacts:{sorted(missing_artifacts)}")
+    mismatches.extend(fail_mismatches)
     if artifact_status_mismatches:
         mismatches.append(f"artifact_status_mismatch:{sorted(artifact_status_mismatches)}")
     if completed + pipeline_error + data_incomplete != len(cells):
         mismatches.append("status_counts_do_not_sum_to_indexed_cells")
-    if declared_cells and stage_a_dirs < len(cells):
+    if declared_cells and exp_refs and len(stage_dirs) < len(exp_refs):
         mismatches.append(
-            f"stage_a_artifact_dirs({stage_a_dirs})<indexed_cells({len(cells)})"
+            f"stage_a_artifact_dirs({len(stage_dirs)})<indexed_cells({len(cells)})"
         )
 
-    if mismatches:
-        verdict = (
-            "FAIL"
-            if missing_artifacts or artifact_status_mismatches
-            else "PARTIAL"
-        )
-    elif declared_cells and completed == declared_cells:
-        verdict = "COMPLETE"
-    else:
-        verdict = "PARTIAL"
+    verdict = "FAIL" if fail_mismatches else "PARTIAL"
+    if not mismatches:
+        verdict = "COMPLETE" if (declared_cells and completed == declared_cells) else "PARTIAL"
 
     payload = {
         "schema_version": RECONCILIATION_SCHEMA_VERSION,

@@ -18,6 +18,7 @@ import yaml
 import research.matrix_runner as mr
 import research.protocol.manifest as manifest_mod
 from contracts.protocol import CellStatus
+from research.protocol.registry import append
 
 
 @pytest.fixture(autouse=True)
@@ -330,3 +331,58 @@ def test_data_snapshot_id_tracks_catalog_symbol_window_not_mtime():
     assert a == b
     assert a != c
     assert a != d
+
+
+def test_scored_run_emits_index_provenance_that_reconciles(tmp_path, monkeypatch):
+    """PLAN section 8-D2: the runner's own artifacts must satisfy the matrix
+    reconciliation contract -- per-cell stage_a_dir in the FINAL index, the
+    real stage_a root declared in report.json, and one registry identity row
+    per completed cell."""
+    from research.protocol.reconciliation import finalize_matrix
+
+    monkeypatch.setattr(mr, "execute_cell", lambda plan: _fake_payload())
+    out_dir = tmp_path / "m_d2"
+    report = mr.run_matrix(
+        matrix_id="m_d2",
+        tier=1,
+        strategies=["ema_atr"],
+        symbols=["SOLUSDT"],
+        output_root=tmp_path,
+        folds=3,
+    )
+    assert report["completed"] == 1
+
+    index = json.loads((out_dir / "index.json").read_text())
+    entries = list(index["cells"].values())
+    assert len(entries) == 1
+    entry = entries[0]
+    exp_dir = Path(entry["stage_a_dir"])
+    assert exp_dir.is_dir()
+    manifest = yaml.safe_load(
+        (exp_dir / "launch_manifest.yaml").read_text(encoding="utf-8")
+    )
+    assert manifest["matrix_id"] == "m_d2"
+    assert manifest["experiment_id"] == entry["experiment_id"]
+
+    runner_report = json.loads((out_dir / "report.json").read_text())
+    assert runner_report["stage_a_root"] == str(tmp_path / "stage_a_v3")
+    assert runner_report["indexed_cells"] == 1
+
+    registry = tmp_path / "reg.jsonl"
+    append(
+        {
+            "experiment_id": entry["experiment_id"],
+            "verdict": "COMPLETED",
+            "kind": "CELL_RESULT",
+            "schema": "v3",
+            "matrix_id": "m_d2",
+        },
+        path=registry,
+    )
+    payload = finalize_matrix(out_dir, registry)
+    assert payload["counts"]["indexed_cells"] == 1
+    assert payload["counts"]["completed"] == 1
+    assert payload["counts"]["stage_a_artifact_dirs"] == 1
+    assert payload["counts"]["registry_cell_identity_entries"] == 1
+    assert payload["mismatches"] == []
+    assert payload["final_verdict"] == "COMPLETE"
