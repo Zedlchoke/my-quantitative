@@ -1502,7 +1502,13 @@ def _evaluate_xg4(section: XRobustnessInput | None) -> GateResult:
         fail_reasons.append("limit_violation")
 
     if fail_reasons:
-        return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.FAIL, fail_reasons)
+        # FAIL precedence, but unexecuted checks stay visible as not_tested
+        # so consumers can tell "tested and negative" from "never ran" (F08).
+        return _xg_result(
+            XGateId.XG4_ROBUSTNESS_EXECUTION,
+            GateVerdict.FAIL,
+            (*fail_reasons, *(r for r in pending if r == NOT_TESTED)),
+        )
     if pending:
         return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.INCONCLUSIVE, pending)
     return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.PASS)
