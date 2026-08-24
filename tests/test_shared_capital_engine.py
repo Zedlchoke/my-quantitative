@@ -172,7 +172,12 @@ def test_reductions_execute_before_increases():
     res = run_shared_capital_backtest(
         bars, daily, rank_wf(daily), initial_capital=100_000.0, **ENGINE_KW
     )
-    flip_orders = [o for o in res.orders if o["ts"] == stamp(3, 1)]
+    # V5 terminal policy: end-of-run force-liquidations share the last event;
+    # they are not part of the flip ordering being tested.
+    flip_orders = [
+        o for o in res.orders
+        if o["ts"] == stamp(3, 1) and o["kind"] != "terminal_liquidate"
+    ]
     kinds = [o["kind"] for o in flip_orders]
     assert kinds[0] == "reduce_to_zero" and kinds[1] == "reduce_to_zero"
     assert set(kinds[2:]) == {"flip_open"}
@@ -181,6 +186,8 @@ def test_reductions_execute_before_increases():
     assert max(red_idx) < min(inc_idx)
     # flips execute (no margin rejections) — reductions freed cash first
     assert all(o["rejected_reason"] is None for o in flip_orders)
+    terminal = [o for o in res.orders if o["kind"] == "terminal_liquidate"]
+    assert {o["symbol"] for o in terminal} == {"ETHUSDT", "SOLUSDT"}
 
 
 def test_margin_precheck_credits_reductions_before_buy_outlay():
@@ -253,11 +260,18 @@ def test_skip_keeps_positions_and_records_reason():
     assert target_skip[0]["reason_code"] == "incomplete_cross_section_skip"
     assert target_skip[0]["execution_bar_ts"] == stamp(4, 1)
     before = next(r for r in res.portfolio_ledger if r["ts"] == stamp(3, 95))
-    after = res.portfolio_ledger[-1]
-    assert after["positions"].keys() == before["positions"].keys()
+    # skip event IS the last event; positions persist up to the terminal
+    # liquidation at that same final bar (second-to-last ledger row)
+    assert res.portfolio_ledger[-2]["positions"].keys() == before["positions"].keys()
     for s, q in before["positions"].items():
-        assert after["positions"][s] == pytest.approx(q, abs=1e-9), "skip keeps positions"
-    assert not [o for o in res.orders if o["ts"] == stamp(4, 1)]
+        q_held = res.portfolio_ledger[-2]["positions"][s]
+        assert q_held == pytest.approx(q, abs=1e-9), "skip keeps positions"
+    assert res.portfolio_ledger[-1]["positions"] == {}
+    non_terminal = [
+        o for o in res.orders
+        if o["ts"] == stamp(4, 1) and o["kind"] != "terminal_liquidate"
+    ]
+    assert not non_terminal
 
 
 # --------------------------------------------------------------------------- #
@@ -315,6 +329,9 @@ def test_funding_applied_once_per_settlement_to_held_side_only(tmp_path: Path):
 
 
 def test_missing_funding_row_for_held_leg_fails_closed(tmp_path: Path):
+    """Held leg with a MISSING/UNUSABLE bundle fails closed (V5 per-symbol
+    cadence: a present-but-different-cadence bundle no longer trips the
+    engine — coverage gaps are XG0's funding_coverage domain)."""
     closes = {
         "ETHUSDT": {(0, 95): 100.0, (1, 95): 110.0, (2, 1): 100.50, (2, 33): 101.0},
         "SOLUSDT": {(0, 95): 100.0, (1, 95): 90.0, (2, 1): 99.50, (2, 33): 98.5},
@@ -322,12 +339,30 @@ def test_missing_funding_row_for_held_leg_fails_closed(tmp_path: Path):
     }
     bars, daily = build_world(closes)
     s1_ms = (T0 + 2 * DAY_NS + 8 * 3_600 * 1_000_000_000) // 1_000_000
-    write_funding_bundle(tmp_path, "ETHUSDT", [(s1_ms + 28_800_000, "0.0001")])
+    # only SOL has a bundle; ETH is HELD at the union stamp -> fail closed
     write_funding_bundle(tmp_path, "SOLUSDT", [(s1_ms, "-0.0001")])
     with pytest.raises(ValueError, match="missing funding settlement"):
         run_shared_capital_backtest(
             bars, daily, rank_wf(daily), initial_capital=100_000.0,
             funding_bundles_dir=str(tmp_path),
+            tick_size=ENGINE_KW["tick_size"], step_size=ENGINE_KW["step_size"],
+            min_notional=10.0,
+        )
+
+
+def test_funding_enabled_but_no_settlements_fails_closed(tmp_path: Path):
+    closes = {
+        "ETHUSDT": {(0, 95): 100.0, (1, 95): 110.0, (2, 1): 100.50},
+        "SOLUSDT": {(0, 95): 100.0, (1, 95): 90.0, (2, 1): 99.50},
+        "XRPUSDT": {(0, 95): 100.0, (1, 95): 100.0, (2, 1): 100.0},
+    }
+    bars, daily = build_world(closes)
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    with pytest.raises(ValueError, match="no settlement timestamps"):
+        run_shared_capital_backtest(
+            bars, daily, rank_wf(daily), initial_capital=100_000.0,
+            funding_bundles_dir=str(empty),
             tick_size=ENGINE_KW["tick_size"], step_size=ENGINE_KW["step_size"],
             min_notional=10.0,
         )
@@ -341,34 +376,62 @@ def test_flip_closes_leg_and_opens_reverse():
     res = run_shared_capital_backtest(
         bars, daily, rank_wf(daily), initial_capital=100_000.0, **ENGINE_KW
     )
-    sides = {(leg["symbol"], leg["side"]) for leg in res.closed_legs}
+    regular = [l for l in res.closed_legs if not l["is_terminal"]]
+    sides = {(leg["symbol"], leg["side"]) for leg in regular}
     assert ("ETHUSDT", "LONG") in sides and ("SOLUSDT", "SHORT") in sides
-    eth_leg = next(l for l in res.closed_legs if l["symbol"] == "ETHUSDT")
+    eth_leg = next(l for l in regular if l["symbol"] == "ETHUSDT")
     qty_eth = 248.756
     assert eth_leg["qty"] == pytest.approx(qty_eth, abs=1e-9)
     assert eth_leg["entry_price"] == pytest.approx(100.50)
     assert eth_leg["exit_price"] == pytest.approx(81.0)
     entry_cost = qty_eth * 100.51 * 0.0005 + qty_eth * 0.01
+    # V5: the closing fill's own commissions/slippage are allocated too
+    exit_cost = qty_eth * (81.0 - 0.01) * 0.0005 + qty_eth * 0.01
     gross = qty_eth * (81.0 - 100.50)
     assert eth_leg["gross_pnl"] == pytest.approx(gross, abs=1e-6)
-    assert eth_leg["realized_pnl"] == pytest.approx(gross - entry_cost, abs=1e-6)
+    assert eth_leg["canonical_pnl"] == pytest.approx(
+        gross - entry_cost - exit_cost, abs=1e-6
+    )
+    assert eth_leg["funding_allocated"] == 0.0  # no bundles -> no funding
 
-    sol_leg = next(l for l in res.closed_legs if l["symbol"] == "SOLUSDT")
+    sol_leg = next(l for l in regular if l["symbol"] == "SOLUSDT")
     qty_sol = 251.256
     assert sol_leg["side"] == "SHORT"
     entry_cost_sol = qty_sol * 99.49 * 0.0005 + qty_sol * 0.01
+    exit_cost_sol = qty_sol * (129.0 + 0.01) * 0.0005 + qty_sol * 0.01
     gross_sol = qty_sol * (99.50 - 129.0)
-    assert sol_leg["realized_pnl"] == pytest.approx(gross_sol - entry_cost_sol, abs=1e-6)
+    assert sol_leg["canonical_pnl"] == pytest.approx(
+        gross_sol - entry_cost_sol - exit_cost_sol, abs=1e-6
+    )
 
-    # reverse legs opened at the flip event
-    last = res.portfolio_ledger[-1]
-    assert last["positions"]["ETHUSDT"] < 0, "ETH flipped short"
-    assert last["positions"]["SOLUSDT"] > 0, "SOL flipped long"
+    # reverse legs opened at the flip event, then force-liquidated at the
+    # fold's last observable bar (V5 terminal policy — same event here)
     flip_eth = [o for o in res.orders
-                if o["ts"] == stamp(3, 1) and o["symbol"] == "ETHUSDT"]
+                if o["ts"] == stamp(3, 1) and o["symbol"] == "ETHUSDT"
+                and o["kind"] != "terminal_liquidate"]
     assert [o["kind"] for o in flip_eth] == ["reduce_to_zero", "flip_open"]
     assert flip_eth[0]["side"] == "SELL" and flip_eth[1]["side"] == "SELL"
-    assert res.summary["legs_closed"] == 2
+    assert res.portfolio_ledger[-1]["positions"] == {}, \
+        "terminal policy leaves the book flat at experiment end"
+    # single closed-leg population: 2 regular + 2 terminal legs
+    assert len(res.closed_legs) == 4
+    assert len(res.terminal_positions) == 2
+    assert all(tp["is_terminal"] for tp in res.terminal_positions)
+    term_eth = next(
+        tp for tp in res.terminal_positions if tp["symbol"] == "ETHUSDT"
+    )
+    flip_open_eth = next(
+        o for o in res.orders
+        if o["ts"] == stamp(3, 1) and o["symbol"] == "ETHUSDT"
+        and o["kind"] == "flip_open"
+    )
+    assert term_eth["qty"] == pytest.approx(flip_open_eth["qty"], abs=1e-9)
+    assert term_eth["terminal_ts"] == stamp(3, 1)
+    assert term_eth["entry_ts"] == stamp(3, 1)
+    assert term_eth["entry_price"] == pytest.approx(81.0)
+    assert term_eth["terminal_price"] == pytest.approx(81.0)
+    # adverse tick on the terminal close of the short: bought back ABOVE ref
+    assert term_eth["canonical_pnl"] < term_eth["gross_pnl"]
 
 
 # --------------------------------------------------------------------------- #
@@ -635,10 +698,13 @@ def test_summary_metrics_consistent():
         "pf_reason", "max_drawdown_frac", "max_dd_duration_days",
         "turnover_total_notional", "gross_exposure_max", "net_abs_max",
         "rebalances_scored", "legs_closed",
+        "terminal_positions", "accounting_identity_ok",
     }
     assert s["trades"] == len(res.closed_legs) == s["legs_closed"]
-    gp = sum(l["realized_pnl"] for l in res.closed_legs if l["realized_pnl"] > 0)
-    gl = abs(sum(l["realized_pnl"] for l in res.closed_legs if l["realized_pnl"] < 0))
+    assert s["terminal_positions"] == len(res.terminal_positions)
+    assert s["accounting_identity_ok"] is True
+    gp = sum(l["canonical_pnl"] for l in res.closed_legs if l["canonical_pnl"] > 0)
+    gl = abs(sum(l["canonical_pnl"] for l in res.closed_legs if l["canonical_pnl"] < 0))
     assert s["gross_profit"] == pytest.approx(gp, abs=1e-6)
     assert s["gross_loss"] == pytest.approx(gl, abs=1e-6)
     assert s["profit_factor"] == pytest.approx(gp / gl, rel=1e-9)
