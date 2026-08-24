@@ -261,8 +261,99 @@ def resolve_data_manifest(explicit: str | None) -> Path:
 # engine adapter (A2 panel/shared-capital engine + A4 rank signal)
 # --------------------------------------------------------------------------- #
 def _default_engine_loader() -> dict[str, Callable]:
-    from research.panel import build_daily_panel, run_shared_capital_backtest
-    from research.xsect_rank import compute_target_weights
+    """Adapter: bridge A2's panel/engine API to A3's EngineCall contract.
+
+    Integration handoff recorded by A1 (Sprint V4 H35).
+    """
+    import pandas as pd
+
+    from research.panel import build_btc_benchmark, build_daily_closes, load_bars_15m
+    from research.portfolio_engine import run_shared_capital_backtest as _run_engine
+    from research.xsect_rank import compute_target_weights as _ctw
+
+    CATALOG = "catalog_live_crypto"
+    FUNDING_DIR = "funding_data/scan_2026"
+
+    def _ns_to_iso(ns_value: int) -> str:
+        return (
+            pd.Timestamp(int(ns_value), tz="UTC").isoformat()
+        )
+
+    def build_daily_panel(symbols, window_start_ns, window_end_ns):
+        ws = _ns_to_iso(window_start_ns)
+        we = _ns_to_iso(window_end_ns)
+        traded = [s for s in symbols if s != "BTCUSDT"]
+        daily = build_daily_closes(CATALOG, traded, ws, we)
+        btc = build_btc_benchmark(CATALOG, ws, we)
+        return {
+            "daily_closes": {**daily},
+            "benchmark_daily_closes": list((btc or {}).get("BTCUSDT") or []),
+            "coverage": None,
+        }
+
+    def run_shared_capital_backtest(
+        *,
+        daily_closes,
+        target_schedule,
+        window_start_ns,
+        window_end_ns,
+        fee_multiplier=1.0,
+        adverse_ticks=0,
+        extra_delay_events=0,
+    ):
+        if extra_delay_events:
+            raise NotImplementedError("extra_delay_events stress not implemented")
+        bars_15m = load_bars_15m(
+            CATALOG,
+            sorted(s for s in daily_closes),
+            _ns_to_iso(window_start_ns - 30 * 86_400_000_000_000),
+            _ns_to_iso(window_end_ns),
+        )
+        schedule_by_cutoff = {
+            int(entry["rebalance_ts_ns"]): entry for entry in (target_schedule or [])
+        }
+
+        def weight_fn(cutoff_ns):
+            entry = schedule_by_cutoff.get(int(cutoff_ns))
+            if entry is None:
+                return {"status": "SKIP_INCOMPLETE",
+                        "reason_code": "incomplete_cross_section_skip"}
+            return {
+                "status": "OK",
+                "longs": [list(x) for x in entry.get("longs") or []],
+                "shorts": [list(x) for x in entry.get("shorts") or []],
+            }
+
+        result = dict(
+            _run_engine(
+                bars_15m=bars_15m,
+                daily_closes=daily_closes,
+                weight_fn=weight_fn,
+                tick_size={},          # engine falls back to instrument-safe defaults
+                step_size={},
+                min_notional=5.0,
+                fee_taker=0.0005 * float(fee_multiplier),
+                slippage_ticks=1 + int(adverse_ticks),
+                funding_bundles_dir=FUNDING_DIR,
+                folds=[(int(window_start_ns), int(window_end_ns))],
+            )
+        )
+        summary = dict(result.get("summary") or {})
+        summary["pf_position_level"] = {
+            "trades": summary.get("trades"),
+            "gross_profit": summary.get("gross_profit"),
+            "gross_loss": summary.get("gross_loss"),
+            "profit_factor": summary.get("profit_factor"),
+            "pf_reason": summary.get("pf_reason"),
+        }
+        summary["turnover_total"] = summary.get("turnover_total_notional")
+        summary["expectancy_r"] = None  # MISSING_R_NORMALIZATION (declared V4)
+        result["summary"] = summary
+        return result
+
+    def compute_target_weights(**kwargs):
+        kwargs.pop("min_eligible", None)
+        return _ctw(**kwargs)
 
     return {
         "build_daily_panel": build_daily_panel,
