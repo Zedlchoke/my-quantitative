@@ -1508,6 +1508,10 @@ def _evaluate_xg4(section: XRobustnessInput | None) -> GateResult:
     return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.PASS)
 
 
+#: Public alias (V5 reason-semantics tests target the XG4 row directly).
+evaluate_xg4 = _evaluate_xg4
+
+
 def evaluate_xg5(section: XRiskInput | None) -> tuple[GateResult, dict]:
     """Shared-capital risk gate + lock-condition extras.
 
