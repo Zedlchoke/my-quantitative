@@ -36,6 +36,7 @@ from contracts.protocol import (
     MAX_SINGLE_FOLD_CONTRIBUTION,
     MAX_SYMBOL_CONTRIBUTION,
     PORTFOLIO_MIN_PF,
+    REASON_CODES,
     STAGE_A_MIN_PF,
     STAGE_A_MIN_POSITIVE_FOLD_RATIO,
     STAGE_A_MIN_TRADES_PER_SYMBOL,
@@ -47,6 +48,83 @@ from contracts.protocol import (
     LeakageEvidence,
     require_reason,
 )
+
+
+# --------------------------------------------------------------------------- #
+# Sprint V4 XG gates (PLAN sections 23-24; owner A3).
+#
+# ``XG_GATE_IDS`` / portfolio constraint thresholds are frozen by A1 in
+# ``contracts.protocol``; until that lands this module carries a verbatim
+# PLAN-section-23 fallback and PREFERS the contract constants when present.
+# New reason codes needed by the XG evaluators are registered into the shared
+# contract registry at import time (additive; existing codes untouched).
+# --------------------------------------------------------------------------- #
+XG_REASON_CODES: dict[str, str] = {
+    "sample_below_min": "fewer than 30 scored rebalances or 100 closed legs",
+    "beta_exposure_fail": "abs realized BTC beta > 0.25 (PLAN section 23 XG5)",
+    "parameter_spike_fail": "fewer than two adjacent lookbacks with positive expectancy",
+    "slippage_stress_negative": "two-tick adverse fill stress expectancy-R non-positive",
+    "mdd_lock_blocker": "max drawdown > 10% blocks S1 lock even when XG5 passes",
+    "feature_lookahead_detected": "feature bars were not completed before the signal",
+    "execution_bar_in_lookback": "execution-bar return included in ranking lookback",
+    "membership_nondeterministic": "cross-sectional membership/tie handling nondeterministic",
+}
+REASON_CODES.update(XG_REASON_CODES)
+
+try:  # A1-owned frozen constants win when available.
+    from contracts.protocol import XG_GATE_IDS as _CONTRACT_XG_GATE_IDS  # type: ignore
+except ImportError:  # pragma: no cover - fallback until A1 contracts land
+    _CONTRACT_XG_GATE_IDS = None
+
+
+class XGateId(str, Enum):
+    """Row identifiers emitted by :func:`evaluate_xgates` (V4 layout)."""
+
+    XG0_DATA_UNIVERSE = "XG0_DATA_UNIVERSE"
+    XG1_POINT_IN_TIME = "XG1_POINT_IN_TIME"
+    XG2A_ARTIFACT_INTEGRITY = "XG2A_ARTIFACT_INTEGRITY"
+    XG2B_INDEPENDENT_REPRODUCIBILITY = "XG2B_INDEPENDENT_REPRODUCIBILITY"
+    XG3_STAGE_A_PORTFOLIO = "XG3_STAGE_A_PORTFOLIO"
+    XG4_ROBUSTNESS_EXECUTION = "XG4_ROBUSTNESS_EXECUTION"
+    XG5_SHARED_CAPITAL_RISK = "XG5_SHARED_CAPITAL_RISK"
+
+
+#: Frozen gate-id strings for V4 (contract override or local enum values).
+XG_GATE_IDS_LOCAL: tuple[str, ...] = tuple(g.value for g in XGateId)
+XG_GATE_IDS: tuple[str, ...] = (
+    tuple(_CONTRACT_XG_GATE_IDS) if _CONTRACT_XG_GATE_IDS else XG_GATE_IDS_LOCAL
+)
+
+
+def _portfolio_constraint(name: str, default: float) -> float:
+    """Read an A1-frozen PORTFOLIO_CONSTRAINTS entry when it exists."""
+    try:
+        from contracts.protocol import PORTFOLIO_CONSTRAINTS as _PC  # type: ignore
+    except ImportError:
+        return default
+    value = (_PC or {}).get(name)
+    return float(value) if value is not None else default
+
+
+class PortfolioConstraints:
+    """Verbatim Sprint V4 thresholds (PLAN section 23; contract override wins)."""
+
+    MIN_POSITION_PF = _portfolio_constraint("min_position_pf", PORTFOLIO_MIN_PF)  # 1.10
+    MAX_GROSS_EXPOSURE = _portfolio_constraint("max_gross_exposure", 1.0)
+    MAX_ABS_NET_EXPOSURE = _portfolio_constraint("max_abs_net_exposure", 0.10)
+    MAX_ABS_WEIGHT_PER_SYMBOL = _portfolio_constraint(
+        "max_abs_weight_per_symbol", 0.25
+    )
+    MAX_TOP_FOLD_CONTRIBUTION = _portfolio_constraint(
+        "max_top_fold_contribution", 0.50
+    )  # of positive-aggregate PnL
+    MAX_TOP_SYMBOL_CONTRIBUTION = MAX_SYMBOL_CONTRIBUTION  # 0.40 positive-agg share
+    MIN_SCORED_REBALANCES = int(_portfolio_constraint("min_scored_rebalances", 30))
+    MIN_CLOSED_LEGS = int(_portfolio_constraint("min_closed_legs", 100))
+    MIN_POSITIVE_FOLDS = int(_portfolio_constraint("min_positive_folds", 2))  # of 3
+    MAX_ABS_BTC_BETA = _portfolio_constraint("max_abs_btc_beta", 0.25)
+    MDD_LOCK_LIMIT = _portfolio_constraint("mdd_lock_limit", 0.10)  # lock-condition only
+    OUTER_FOLDS = 3
 
 
 class ProtocolGateId(str, Enum):
@@ -875,4 +953,414 @@ def evaluate_gates(inputs: GateInputs | dict) -> list[GateResult]:
         _evaluate_g3(inputs.stage_a),
         _evaluate_g4(inputs.survivor),
         _evaluate_g5(inputs.portfolio),
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# Sprint V4 XG gate evaluators (PLAN section 23; owner A3).
+# Fail-closed everywhere: missing evidence is INCONCLUSIVE, never PASS.
+# --------------------------------------------------------------------------- #
+
+#: Keys every per-symbol entry of the XG0 panel-coverage payload must carry.
+XG0_TRADED_SYMBOL_KEYS = frozenset(("days_present",))
+#: Optional per-symbol bar-quality counters (when present, zero is required).
+XG0_OPTIONAL_BAR_COUNTERS = ("duplicate_bars", "gap_bars")
+#: Required keys of the XG0 benchmark (BTC) block.
+XG0_BENCHMARK_KEYS = frozenset(("symbol", "days_present", "clean"))
+#: XG1 point-in-time evidence struct keys (PLAN section 23 XG1).
+XG1_EVIDENCE_KEYS = frozenset(
+    (
+        "features_completed_before_signal",
+        "signal_before_every_fill",
+        "membership_tie_deterministic",
+        "execution_bar_excluded",
+        "warmup_boundaries",
+    )
+)
+
+
+@dataclass(frozen=True)
+class XStageAInput:
+    """XG3 inputs: portfolio Stage-A edge metrics (exact PLAN thresholds)."""
+
+    pnl: float | None = None
+    pf: float | None = None
+    pf_reason: str | None = None
+    expectancy_r: float | None = None
+    folds: Sequence[Mapping[str, Any]] | Sequence[object] = ()  # {fold_id,pnl,exp_r}
+    rebalances_scored: int | None = None
+    legs_closed: int | None = None
+    top_fold_contribution: float | None = None  # fraction or percent
+    top_symbol_contribution: float | None = None  # fraction or percent
+
+
+@dataclass(frozen=True)
+class XRobustnessInput:
+    """XG4 inputs; ``None`` means the check was NOT executed (tri-state)."""
+
+    fee50_exp_r: float | None = None
+    twotick_exp_r: float | None = None
+    extradelay_exp_r: float | None = None
+    dropone_symbol_clean: bool | None = None
+    dropone_fold_clean: bool | None = None
+    turnover_budget_exceeded: bool | None = None
+
+
+@dataclass(frozen=True)
+class XRiskInput:
+    """XG5 inputs: shared-capital risk constraints (PLAN section 23)."""
+
+    gross_max: float | None = None
+    net_abs_max: float | None = None
+    max_abs_weight: float | None = None
+    margin_breach_rows: int | None = None
+    top_symbol_contribution: float | None = None  # fraction or percent
+    realized_beta: float | None = None
+    mdd_fraction: float | None = None
+
+
+@dataclass(frozen=True)
+class XGateInputs:
+    """All evaluator sections; a missing section yields NOT_APPLICABLE."""
+
+    coverage: Mapping[str, Any] | None = None
+    declared_symbols: Sequence[str] | None = None
+    pit_evidence: Mapping[str, Any] | None = None
+    artifact_integrity: ArtifactIntegrityResult | None = None
+    independent_reproduction: IndependentReproductionResult | None = None
+    stage_a: XStageAInput | None = None
+    robustness: XRobustnessInput | None = None
+    risk: XRiskInput | None = None
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "XGateInputs":
+        known = set(cls.__dataclass_fields__)
+        kwargs = dict(payload)
+        for key in ("stage_a", "robustness", "risk"):
+            if isinstance(kwargs.get(key), Mapping):
+                sub_cls = {"stage_a": XStageAInput, "robustness": XRobustnessInput,
+                           "risk": XRiskInput}[key]
+                kwargs[key] = sub_cls(**kwargs[key])
+        for key in ("artifact_integrity", "independent_reproduction"):
+            value = kwargs.get(key)
+            if isinstance(value, Mapping):
+                sub_cls = (ArtifactIntegrityResult if key == "artifact_integrity"
+                           else IndependentReproductionResult)
+                kwargs[key] = sub_cls(**value)
+        return cls(**{k: v for k, v in kwargs.items() if k in known})
+
+
+def _xg_result(gate: XGateId, verdict: GateVerdict, reasons: Sequence[str] = ()) -> GateResult:
+    return GateResult(gate, verdict, tuple(dict.fromkeys(reasons)))
+
+
+def _evaluate_xg0(section: XGateInputs) -> GateResult:
+    payload = section.coverage
+    problem: str | None = None
+    if not isinstance(payload, Mapping):
+        problem = "missing"
+    else:
+        symbols = payload.get("traded_symbols")
+        required_days = payload.get("required_days")
+        benchmark = payload.get("benchmark")
+        if not isinstance(symbols, Mapping) or not symbols:
+            problem = "empty_symbols"
+        elif not isinstance(required_days, (int, float)) or required_days <= 0:
+            problem = "required_days"
+        elif not isinstance(benchmark, Mapping) or XG0_BENCHMARK_KEYS.difference(benchmark):
+            problem = "benchmark"
+        else:
+            for symbol, entry in symbols.items():
+                if not isinstance(entry, Mapping) or XG0_TRADED_SYMBOL_KEYS.difference(entry):
+                    problem = f"symbol:{symbol}"
+                    break
+    if problem is not None:
+        return _xg_result(
+            XGateId.XG0_DATA_UNIVERSE,
+            GateVerdict.INCONCLUSIVE,
+            (require_reason("g0_coverage_not_evidenced"),),
+        )
+
+    reasons: list[str] = []
+    required_days_num = float(payload["required_days"])
+    symbols_block: Mapping[str, Any] = payload["traded_symbols"]
+    for symbol, entry in sorted(symbols_block.items()):
+        days = float(entry.get("days_present") or 0)
+        if days < required_days_num:
+            reasons.append("coverage_below_declared")
+        for counter in XG0_OPTIONAL_BAR_COUNTERS:
+            if counter in entry and int(entry[counter] or 0) > 0:
+                reasons.append(
+                    "duplicate_bars" if counter == "duplicate_bars" else "unexplained_gap"
+                )
+    benchmark = payload["benchmark"]
+    if benchmark.get("clean") is not True or float(benchmark.get("days_present") or 0) <= 0:
+        # BTC clean coverage missing => diagnostic-only context (section 19.3).
+        reasons.append("funding_coverage_insufficient")
+    if section.declared_symbols is not None:
+        declared = {str(s) for s in section.declared_symbols}
+        if declared != set(map(str, symbols_block)):
+            reasons.append("coverage_below_declared")
+    verdict = GateVerdict.FAIL if reasons else GateVerdict.PASS
+    return _xg_result(XGateId.XG0_DATA_UNIVERSE, verdict, reasons)
+
+
+def _evaluate_xg1(evidence: Mapping[str, Any] | None) -> GateResult:
+    if not isinstance(evidence, Mapping) or XG1_EVIDENCE_KEYS.difference(evidence) or any(
+        evidence.get(key) is None for key in XG1_EVIDENCE_KEYS
+    ):
+        return _xg_result(
+            XGateId.XG1_POINT_IN_TIME,
+            GateVerdict.INCONCLUSIVE,
+            (require_reason("g1_evidence_missing"),),
+        )
+    warmup = evidence.get("warmup_boundaries")
+    if _missing_subkey(warmup, WARMUP_BOUNDARY_KEYS):
+        return _xg_result(
+            XGateId.XG1_POINT_IN_TIME,
+            GateVerdict.INCONCLUSIVE,
+            (require_reason("g1_evidence_missing"),),
+        )
+    reasons: list[str] = []
+    contradiction_map = {
+        "features_completed_before_signal": "feature_lookahead_detected",
+        "execution_bar_excluded": "execution_bar_in_lookback",
+        "membership_tie_deterministic": "membership_nondeterministic",
+    }
+    for key, code in contradiction_map.items():
+        if evidence.get(key) is False:
+            reasons.append(code)
+    if evidence.get("signal_before_every_fill") is False:
+        reasons.append(require_reason("signal_fill_ordering_violation"))
+    verdict = GateVerdict.FAIL if reasons else GateVerdict.PASS
+    return _xg_result(XGateId.XG1_POINT_IN_TIME, verdict, reasons)
+
+
+def _fold_positive(row: Any) -> bool:
+    pnl = getattr(row, "pnl_after_cost", None)
+    exp_r = getattr(row, "exp_after_cost", None)
+    if pnl is None and hasattr(row, "get"):
+        pnl = row.get("pnl")  # type: ignore[attr-defined]
+        exp_r = row.get("exp_r")  # type: ignore[attr-defined]
+    try:
+        return float(pnl) > 0 and exp_r is not None and float(exp_r) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _evaluate_xg3(section: XStageAInput | None) -> GateResult:
+    if section is None:
+        return _xg_result(XGateId.XG3_STAGE_A_PORTFOLIO, GateVerdict.NOT_APPLICABLE)
+
+    sample_short = (
+        section.rebalances_scored is None
+        or section.legs_closed is None
+        or int(section.rebalances_scored) < PortfolioConstraints.MIN_SCORED_REBALANCES
+        or int(section.legs_closed) < PortfolioConstraints.MIN_CLOSED_LEGS
+    )
+
+    reasons: list[str] = []
+
+    if section.pnl is None or section.expectancy_r is None:
+        return _xg_result(
+            XGateId.XG3_STAGE_A_PORTFOLIO,
+            GateVerdict.INCONCLUSIVE,
+            (require_reason("metric_not_computed"),),
+        )
+
+    if section.pf is None:
+        # Undefined PF (no trades / no losing positions) blocks PASS always.
+        reasons.append(require_reason(section.pf_reason or "no_trades"))
+    elif section.pf < PortfolioConstraints.MIN_POSITION_PF:
+        reasons.append("pf_below_min")
+
+    if section.pnl <= 0:
+        reasons.append("portfolio_pnl_nonpositive")
+    if section.expectancy_r <= 0:
+        reasons.append("exp_nonpositive")
+
+    folds = [row for row in (section.folds or [])]
+    positive_folds = sum(1 for row in folds if _fold_positive(row))
+    if len(folds) >= PortfolioConstraints.OUTER_FOLDS and (
+        positive_folds < PortfolioConstraints.MIN_POSITIVE_FOLDS
+    ):
+        reasons.append("positive_folds_ratio_low")
+
+    contribution = _normalize_fraction(section.top_fold_contribution)
+    if contribution is None and folds:
+        aggregates = {}
+        for row in folds:
+            fold_id = getattr(row, "fold_id", None)
+            pnl = getattr(row, "pnl_after_cost", None)
+            if pnl is None and hasattr(row, "get"):
+                fold_id = row.get("fold_id")  # type: ignore[attr-defined]
+                pnl = row.get("pnl")  # type: ignore[attr-defined]
+            aggregates[str(fold_id)] = float(pnl or 0.0)
+        from research.portfolio_metrics import fold_contribution as _fc
+
+        _top, share = _fc(aggregates)
+        contribution = share
+    if contribution is not None and contribution > PortfolioConstraints.MAX_TOP_FOLD_CONTRIBUTION:
+        reasons.append("fold_concentration_high")
+
+    symbol_share = _normalize_fraction(section.top_symbol_contribution)
+    if symbol_share is not None and symbol_share > PortfolioConstraints.MAX_TOP_SYMBOL_CONTRIBUTION:
+        reasons.append("symbol_contribution_high")
+
+    if reasons:
+        return _xg_result(XGateId.XG3_STAGE_A_PORTFOLIO, GateVerdict.FAIL, reasons)
+    if sample_short:
+        return _xg_result(XGateId.XG3_STAGE_A_PORTFOLIO, GateVerdict.INCONCLUSIVE,
+                          (require_reason("sample_below_min"),))
+    return _xg_result(XGateId.XG3_STAGE_A_PORTFOLIO, GateVerdict.PASS)
+
+
+def evaluate_parameter_spike(
+    lookback_expectancy_positive: Mapping[int, bool | None],
+) -> GateResult:
+    """Adjacent-lookback rule over {3,7,14} (PLAN section 22 H41-H45).
+
+    At least one adjacent pair ``(3,7)`` / ``(7,14)`` must have BOTH members
+    with positive after-cost portfolio expectancy; otherwise the surviving
+    lookback is an isolated spike => FAIL ``parameter_spike_fail``.  Unknown
+    (None / missing) entries make the neighborhood incomplete => INCONCLUSIVE.
+    """
+    values: dict[int, bool | None] = {}
+    for key, value in lookback_expectancy_positive.items():
+        values[int(key)] = None if value is None else bool(value)
+    for lookback in (3, 7, 14):
+        if values.get(lookback) is None:
+            return _xg_result(
+                XGateId.XG4_ROBUSTNESS_EXECUTION,
+                GateVerdict.INCONCLUSIVE,
+                (require_reason("metric_not_computed"),),
+            )
+    adjacent_pairs = ((3, 7), (7, 14))
+    if any(values[a] and values[b] for a, b in adjacent_pairs):
+        return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.PASS)
+    return _xg_result(
+        XGateId.XG4_ROBUSTNESS_EXECUTION,
+        GateVerdict.FAIL,
+        (require_reason("parameter_spike_fail"),),
+    )
+
+
+def _evaluate_xg4(section: XRobustnessInput | None) -> GateResult:
+    if section is None:
+        return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.NOT_APPLICABLE)
+    fail_reasons: list[str] = []
+    pending: list[str] = []
+    stress_rows = (
+        ("fee50_exp_r", "fee_stress_negative"),
+        ("twotick_exp_r", "slippage_stress_negative"),
+        ("extradelay_exp_r", "delay_stress_negative"),
+    )
+    for attr, code in stress_rows:
+        value = getattr(section, attr)
+        if value is None:
+            pending.append(code)
+        elif float(value) <= 0:
+            fail_reasons.append(code)
+    for attr, code in (
+        ("dropone_symbol_clean", "dropone_signflip"),
+        ("dropone_fold_clean", "dropone_signflip"),
+    ):
+        value = getattr(section, attr)
+        if value is None:
+            pending.append(code)
+        elif value is False:
+            fail_reasons.append(code)
+    turnover_flag = section.turnover_budget_exceeded
+    if turnover_flag is None:
+        pending.append("limit_violation")
+    elif turnover_flag is True:
+        fail_reasons.append("limit_violation")
+
+    if fail_reasons:
+        return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.FAIL, fail_reasons)
+    if pending:
+        return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.INCONCLUSIVE, pending)
+    return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.PASS)
+
+
+def evaluate_xg5(section: XRiskInput | None) -> tuple[GateResult, dict]:
+    """Shared-capital risk gate + lock-condition extras.
+
+    Returns ``(gate_result, details)`` where ``details['mdd_lock_blocker']``
+    is True when MDD > 10% (verdict stays PASS with the informational reason
+    ``mdd_lock_blocker`` -- drawdown only blocks S1 LOCK, never the row).
+    Missing core metrics are INCONCLUSIVE (fail-closed).
+    """
+    details: dict[str, object] = {"mdd_lock_blocker": None}
+    if section is None:
+        return _xg_result(XGateId.XG5_SHARED_CAPITAL_RISK, GateVerdict.NOT_APPLICABLE), details
+    core_missing = (
+        section.gross_max is None
+        or section.net_abs_max is None
+        or section.max_abs_weight is None
+        or section.margin_breach_rows is None
+        or section.realized_beta is None
+        or section.mdd_fraction is None
+        or section.top_symbol_contribution is None
+    )
+    if core_missing:
+        return _xg_result(
+            XGateId.XG5_SHARED_CAPITAL_RISK,
+            GateVerdict.INCONCLUSIVE,
+            (require_reason("metric_not_computed"),),
+        ), details
+
+    reasons: list[str] = []
+    if float(section.gross_max) > PortfolioConstraints.MAX_GROSS_EXPOSURE:
+        reasons.append("limit_violation")
+    if abs(float(section.net_abs_max)) > PortfolioConstraints.MAX_ABS_NET_EXPOSURE:
+        reasons.append("limit_violation")
+    if abs(float(section.max_abs_weight)) > PortfolioConstraints.MAX_ABS_WEIGHT_PER_SYMBOL:
+        reasons.append("limit_violation")
+    if int(section.margin_breach_rows or 0) > 0:
+        reasons.append("limit_violation")
+    symbol_share = _normalize_fraction(section.top_symbol_contribution)
+    if symbol_share is not None and symbol_share > PortfolioConstraints.MAX_TOP_SYMBOL_CONTRIBUTION:
+        reasons.append("symbol_contribution_high")
+    beta = float(section.realized_beta)
+    if abs(beta) > PortfolioConstraints.MAX_ABS_BTC_BETA:
+        reasons.append(require_reason("beta_exposure_fail"))
+
+    mdd = float(section.mdd_fraction)
+    if mdd > PortfolioConstraints.MDD_LOCK_LIMIT:
+        details["mdd_lock_blocker"] = True
+        reasons.append(require_reason("mdd_lock_blocker"))  # informational on PASS
+    else:
+        details["mdd_lock_blocker"] = False
+
+    verdict = GateVerdict.FAIL if [
+        r for r in reasons if r != require_reason("mdd_lock_blocker")
+    ] else GateVerdict.PASS
+    return _xg_result(XGateId.XG5_SHARED_CAPITAL_RISK, verdict, reasons), details
+
+
+def evaluate_xgates(inputs: XGateInputs | Mapping[str, Any]) -> list[GateResult]:
+    """Evaluate all seven V4 rows in fixed order: XG0..XG5."""
+    if isinstance(inputs, Mapping):
+        inputs = XGateInputs.from_dict(inputs)
+    xg2a = (
+        _evaluate_g2a(inputs.artifact_integrity)
+        if inputs.artifact_integrity is not None
+        else GateResult(XGateId.XG2A_ARTIFACT_INTEGRITY, GateVerdict.NOT_APPLICABLE)
+    )
+    xg2a = GateResult(XGateId.XG2A_ARTIFACT_INTEGRITY, xg2a.verdict, xg2a.reasons)
+    xg2b = (
+        _evaluate_g2b(inputs.independent_reproduction)
+        if inputs.independent_reproduction is not None
+        else GateResult(XGateId.XG2B_INDEPENDENT_REPRODUCIBILITY, GateVerdict.NOT_YET_TESTED)
+    )
+    xg2b = GateResult(XGateId.XG2B_INDEPENDENT_REPRODUCIBILITY, xg2b.verdict, xg2b.reasons)
+    return [
+        _evaluate_xg0(inputs),
+        _evaluate_xg1(inputs.pit_evidence),
+        xg2a,
+        xg2b,
+        _evaluate_xg3(inputs.stage_a),
+        _evaluate_xg4(inputs.robustness),
+        evaluate_xg5(inputs.risk)[0],
     ]
