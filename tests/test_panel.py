@@ -23,6 +23,20 @@ T0 = 1_755_475_200_000_000_000
 _SCALE = 10 ** 16
 
 
+def write_funding_bundle(root: Path, symbol: str,
+                         rows: list[tuple[int, str]]) -> None:
+    d = root / symbol
+    d.mkdir(parents=True, exist_ok=True)
+    import json
+
+    payload = {
+        "requested_start_ms": 0,
+        "requested_end_ms": 4_000_000_000_000,
+        "rows": [{"fundingTime": ms, "fundingRate": rate} for ms, rate in rows],
+    }
+    (d / "funding.json").write_text(json.dumps(payload))
+
+
 def _enc(value: float) -> bytes:
     return int(round(value * _SCALE)).to_bytes(16, "little", signed=True)
 
@@ -138,15 +152,60 @@ def test_eth_trimmed_start_and_coverage_report(tmp_path: Path):
     symbols = ["BTCUSDT", "ETHUSDT"]
     panel = build_daily_closes(str(tmp_path), symbols, "2025-08-18", "2025-08-21")
     report = coverage_report(panel, "2025-08-18", "2025-08-21")
-    assert report["BTCUSDT"]["days_present"] == 3
-    assert report["BTCUSDT"]["first_day"] == "2025-08-18"
-    assert report["BTCUSDT"]["last_day"] == "2025-08-20"
-    assert report["ETHUSDT"]["days_present"] == 2
-    assert report["ETHUSDT"]["first_day"] == "2025-08-19"
-    assert report["ETHUSDT"]["last_day"] == "2025-08-20"
-    # Empty symbol reports zeros/nulls rather than disappearing.
+    assert set(report) == {
+        "bar_coverage", "benchmark_coverage",
+        "funding_coverage", "metadata_coverage",
+    }
+    assert report["bar_coverage"] == {"BTCUSDT": 3, "ETHUSDT": 2}
+    assert report["benchmark_coverage"] == {"BTCUSDT": 3}
+    assert report["funding_coverage"] == {}  # bundles dir not supplied
+    assert report["metadata_coverage"] == {"BTCUSDT": False, "ETHUSDT": False}
+    # Empty symbol reports zero days rather than disappearing.
     report2 = coverage_report({"ADAUSDT": []}, "2025-08-18", "2025-08-20")
-    assert report2["ADAUSDT"] == {"days_present": 0, "first_day": None, "last_day": None}
+    assert report2["bar_coverage"] == {"ADAUSDT": 0}
+
+
+def test_coverage_blocks_distinct_reason_code_inputs(tmp_path: Path):
+    """F06 prep: benchmark vs funding vs bar vs metadata are separate blocks
+    so XG0 can emit distinct reason codes."""
+    offset = BAR_NS * 95 - 1
+    _write_symbol(tmp_path, "BTCUSDT", _grid_stamps([0], offset), [50000.0])
+    panel = build_daily_closes(str(tmp_path), ["BTCUSDT"], "2025-08-18", "2025-08-21")
+
+    bundle_root = tmp_path / "funding"
+    write_funding_bundle(
+        bundle_root, "BTCUSDT",
+        [(T0 // 1_000_000, "0.0001"), ((T0 + DAY_NS) // 1_000_000, "0.0002")],
+    )
+    report = coverage_report(
+        panel, "2025-08-18", "2025-08-21",
+        funding_bundles_dir=str(bundle_root),
+        metadata_symbols=["BTCUSDT"],
+    )
+    # BTC has one day-0 bar; boundaries C1..C3 each resolve to it ->
+    # days_present counts boundaries with a bar at-or-before (3 here)
+    assert report["bar_coverage"] == {"BTCUSDT": 3}
+    # benchmark context mirrors the same bar coverage
+    assert report["benchmark_coverage"] == {BENCHMARK_SYMBOL: 3}
+    # funding settlements tracked separately (2 settlements, span)
+    fc = report["funding_coverage"]["BTCUSDT"]
+    assert fc["settlements"] == 2
+    assert fc["first"] == "2025-08-18"
+    assert fc["last"] == "2025-08-19"
+    assert report["metadata_coverage"] == {"BTCUSDT": True}
+
+    # missing bundle file -> zero settlements, nulls (fail-closed evidence)
+    empty_root = tmp_path / "no_bundles"
+    empty_root.mkdir()
+    report2 = coverage_report(
+        {"ETHUSDT": []}, "2025-08-18", "2025-08-20",
+        benchmark_symbol=None,
+        funding_bundles_dir=str(empty_root),
+    )
+    assert report2["benchmark_coverage"] == {}
+    assert report2["funding_coverage"]["ETHUSDT"] == {
+        "settlements": 0, "first": None, "last": None,
+    }
 
 
 def test_build_btc_benchmark_shape(tmp_path: Path):

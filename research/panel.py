@@ -12,8 +12,9 @@ Implements the PLAN.md section 19 PIT data contract:
   an earlier day's close, because selection only looks backwards.
 * ``build_btc_benchmark`` is the same construction restricted to BTCUSDT
   (benchmark context only, PLAN.md section 19.3).
-* ``coverage_report`` summarises days_present/first_day/last_day per symbol
-  for XG0 evidence.
+* ``coverage_report`` emits DISTINCT coverage blocks per symbol (bar days,
+  benchmark context days, funding settlements first/last/count, metadata
+  flag) so XG0 can raise distinct reason codes (Sprint V5 finding F06).
 
 No lookahead: bars are read once, filtered to ``[window_start, window_end]``
 by ``ts_event``, and each boundary resolves strictly backwards. Reads are
@@ -208,23 +209,76 @@ def coverage_report(
     panel: dict[str, list[tuple[int, float]]],
     window_start_iso: str,
     window_end_iso: str,
+    *,
+    benchmark_symbol: str | None = BENCHMARK_SYMBOL,
+    funding_bundles_dir: str | Path | None = None,
+    metadata_symbols: list[str] | tuple[str, ...] | set[str] | None = None,
 ) -> dict[str, dict]:
-    """XG0 evidence: days_present / first_day / last_day per symbol.
+    """XG0 evidence with DISTINCT coverage blocks (Sprint V5, finding F06).
 
-    ``first_day``/``last_day`` are the UTC dates of the earliest/latest
-    closing bars contributing a daily close (the economic close days).
+    Returns::
+
+        {
+          "bar_coverage":       {sym: days_present},
+          "benchmark_coverage": {benchmark_symbol: days_present_or_0},
+          "funding_coverage":   {sym: {"settlements": n,
+                                       "first": iso_date_or_None,
+                                       "last":  iso_date_or_None}},
+          "metadata_coverage":  {sym: bool},
+        }
+
+    The split lets XG0 emit distinct reason codes:
+    ``benchmark_coverage_incomplete`` (benchmark block short/zero) vs
+    ``funding_coverage_insufficient`` (funding settlements missing/partial)
+    vs ``coverage_below_declared`` (bar intersection narrower than declared).
+    Benchmark coverage is CONTEXT ONLY and must not be reported as a funding
+    failure. ``metadata_symbols`` lists symbols with usable instrument
+    metadata; anything absent reports False.
     """
     _window_bounds_ns(window_start_iso, window_end_iso)  # validate arguments
-    report: dict[str, dict] = {}
-    for sym in sorted(panel):
-        series = panel[sym] or []
-        if series:
-            first_ts, last_ts = series[0][0], series[-1][0]
-            report[sym] = {
-                "days_present": len(series),
-                "first_day": _iso_date(first_ts),
-                "last_day": _iso_date(last_ts),
+    syms = sorted(panel)
+    bar_coverage: dict[str, int] = {}
+    for sym in syms:
+        bar_coverage[sym] = len(panel[sym] or [])
+
+    benchmark_coverage: dict[str, int] = {}
+    if benchmark_symbol:
+        benchmark_coverage[benchmark_symbol] = bar_coverage.get(benchmark_symbol, 0)
+
+    funding_coverage: dict[str, dict] = {}
+    if funding_bundles_dir is not None:
+        from research.funding_pit import load_funding_bundle
+
+        root = Path(funding_bundles_dir)
+        for sym in syms:
+            path = root / sym / "funding.json"
+            if not path.exists():
+                funding_coverage[sym] = {
+                    "settlements": 0, "first": None, "last": None,
+                }
+                continue
+            payload = load_funding_bundle(root, sym)
+            times_ms = sorted(int(row["fundingTime"]) for row in payload["rows"])
+            funding_coverage[sym] = {
+                "settlements": len(times_ms),
+                "first": (
+                    datetime.fromtimestamp(times_ms[0] / 1000, tz=timezone.utc)
+                    .strftime("%Y-%m-%d")
+                    if times_ms else None
+                ),
+                "last": (
+                    datetime.fromtimestamp(times_ms[-1] / 1000, tz=timezone.utc)
+                    .strftime("%Y-%m-%d")
+                    if times_ms else None
+                ),
             }
-        else:
-            report[sym] = {"days_present": 0, "first_day": None, "last_day": None}
-    return report
+
+    known_meta = set(metadata_symbols or ())
+    metadata_coverage: dict[str, bool] = {sym: sym in known_meta for sym in syms}
+
+    return {
+        "bar_coverage": bar_coverage,
+        "benchmark_coverage": benchmark_coverage,
+        "funding_coverage": funding_coverage,
+        "metadata_coverage": metadata_coverage,
+    }
