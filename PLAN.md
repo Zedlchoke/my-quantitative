@@ -1,894 +1,473 @@
-# PLAN.md — V5 Recovery and Scientific Closure for a Fresh Agent
+# PLAN.md — 12-Hour Sprint V6P → V6 → V7 · Bounded Scientific Research Loop
 
 > **Repository:** `/Users/hoangminhlong/my-quantitative`
-> **Effective date:** 2026-08-24
-> **Team:** six persistent agents coordinated by A1, plus up to two ephemeral
-> frozen-run workers; old worktrees remain read-only
-> **Scope:** close legacy V5 truthfully, recover through a clean V5R lineage when
-> necessary, then execute one bounded V6 family only after a valid transition
-> **Environment:** research/Testnet/Demo only; live-money trading remains disabled
-> **Timebox:** target 24 wall-clock hours using parallel work; evidence gates,
-> not the clock, decide whether the team may advance
+> **Effective from:** current `main` at `2e3bc9c` (2026-08-24)
+> **Target duration:** maximum 12 wall-clock hours of unattended Orca execution
+> **Team:** seven core agents plus bounded frozen-run workers
+> **Scope:** repair and independently validate the portfolio research path, run
+> one pre-registered V6 family, then one pre-registered V7 family only through
+> explicit machine-readable gates; no unbounded strategy search
+> **Environment:** research/Testnet/Demo only; S1 untouched; live money disabled
 
 ---
 
-## 0. Mission for the new agent
+## 0. Executive instruction
 
-Your first job is not to find a profitable strategy. First determine whether
-the research machine is scientifically trustworthy, preserve all existing
-evidence, repair preventable engineering defects, and publish one unambiguous
-V5 or V5R transition verdict. Only then may the team execute the bounded V6
-funding-carry research family defined later in this plan.
+V6 did not run in the prior sprint. Do not skip directly to V7, but V7 is now
+part of this same execution contract and may start automatically after a valid
+V6 terminal transition.
 
-Work as a fresh investigator. Do not inherit claims merely because an older
-agent wrote them in `CONTINUE.md`, a report, a commit message, or a terminal
-log. Recompute every completion claim from current code and current artifacts.
-
-The only valid final outcomes are:
+The completed sprint ended safely at:
 
 ```text
-V5_PASS_V6_AUTHORIZED
-V5_FAIL_V5R_PASS_V6_AUTHORIZED_CLEAN_LINEAGE
-V5_FAIL_V6_BLOCKED
-V5R_INDEPENDENT_AUDIT_BLOCKED
-V6_PIPELINE_FAIL
-V6_CANDIDATE_FAIL
-V6_CANDIDATE_INCONCLUSIVE
-V6_LOCK_ONE_FOR_FUTURE_S1
+LEGACY_V5_VERDICT       = FAIL
+DECLARED_V5R_VERDICT    = FAIL
+MASTER_TRANSITION       = V5_FAIL_V6_BLOCKED
+V6_STATUS               = NOT_RUN
+LOCKED_CANDIDATE        = NONE
+S1_STATUS               = NOT_STARTED
+LIVE_MONEY_STATUS       = UNCHANGED_DISABLED
 ```
 
-`PARTIAL`, “mostly pass”, and “continue anyway” are not transition outcomes.
+That terminal decision was correct. However, a fresh review of code and raw
+artifacts found that the V5R ledger and A6 audit overclaimed several PASS gates.
+The next sprint therefore has three strictly ordered stages:
 
-### 0.1. Orca topology: six core agents plus bounded run workers
+```text
+V6P  SCIENTIFIC PIPELINE REPAIR AND ADVERSARIAL VALIDATION
+V6   ONE BOUNDED FUNDING-CARRY FAMILY, only if V6P PASS
+V7   ONE BOUNDED FUNDING-PRICE-DIVERGENCE FAMILY, only if V6 is terminal
+     and the V7 authorization gate passes
+```
 
-| Agent | Primary ownership | Parallel work | Forbidden role conflict |
+The objective is not to make V5R look better and not to force a profitable V6
+or V7 candidate. The objective is to obtain one research path whose data,
+accounting, risk, walk-forward, gates, reproduction, and audit claims all
+describe what the runtime actually did, then exercise that path through two
+small, pre-registered and scientifically separated hypothesis families.
+
+---
+
+## 1. Verified starting assessment
+
+### 1.1. What the previous sprint did well
+
+1. It preserved the safe transition: V6 was blocked rather than run through two
+   declared V5R failures.
+2. It proved the V3 provenance mutation mechanism and permanently quarantined
+   the compromised experiments without deleting evidence.
+3. Test isolation was fixed; the current full suite was independently rerun for
+   this plan and produced `581 passed, 16 warnings, exit 0`.
+4. Artifact finalization improved: all four V5R hash manifests currently verify
+   with zero mismatches.
+5. Four separate-process reproductions deterministically match the limited
+   fields they compare.
+6. Matrix index references four existing diagnostic directories and reports no
+   missing experiment directory.
+7. No S1 or live-money surface was used.
+
+These accomplishments remain valid. Do not rewrite old verdicts or artifacts.
+
+### 1.2. Why “16/18 V5R PASS” is not accepted as current truth
+
+The following findings were verified directly from current code and artifacts.
+They must be recorded in a new addendum; never edit the immutable V5R ledger.
+
+| ID | Severity | Verified finding | Affected claim |
 |---|---|---|---|
-| **A1 — coordinator/integrator** | master snapshot, contracts, merge queue, trial ledger, transitions, final report | unblock A2–A5; serialize shared-state integration | may not self-sign independent audit |
-| **A2 — provenance/recovery** | test isolation, exact-byte search, immutable baselines, quarantine | root-cause and prevention work | may not redefine a baseline after drift |
-| **A3 — data/PIT** | bar/funding/metadata coverage, settlement cadence, universe/benchmark contract | V5R data proof and V6 funding panel | may not inspect results then change universe |
-| **A4 — execution/accounting** | engine, canonical PnL, terminal handling, costs, exposure controller | V5R engineering and V6 adapter | may not set score thresholds after results |
-| **A5 — metrics/reproduction** | hashes/finalization, reconciliation, gates, DSR/PBO, rerun tooling | artifact audit and independent-process reproduction | may not change locked hypothesis/spec |
-| **A6 — independent scientific auditor** | adversarial protocol, sampling, challenge memos, final attestation | read-only baseline review and post-freeze audit | may not implement or repair code/scored artifacts |
-| **R1/R2 — ephemeral run workers** | execute exact frozen commands into isolated roots | diagnostic, stress, or scored runs after launch authorization | no code/spec edits, no shared-registry writes, no verdict |
+| N01 | **CRITICAL** | `new_lineage_baseline.json` still says `PENDING_A6`; no pre-launch A6 attestation exists, yet R04 claims A6 PASS | R04 and report provenance |
+| N02 | **CRITICAL** | All four launch manifests record `dirty_worktree_at_launch=true`; baseline and contract were committed only after launches, while contract claims a clean tree | R03/R04 |
+| N03 | **HIGH** | The baseline includes a hash of itself that does not equal its current bytes; a self-referential hash is not a valid immutable-root design | R04 |
+| N04 | **CRITICAL** | `execute_experiment` calls the engine once per fold; every fold begins at 100,000, so the outer curve is still reset-fold, not continuous capital | R08, MDD, fold returns |
+| N05 | **CRITICAL** | Runtime adapter does not enable `RISK_MODE_V1`; gross exceeds 1.00 on about 39% of bars, up to 1.2746 | R10 and risk evidence |
+| N06 | **CRITICAL** | Required settlement/accounting artifacts are not written: `funding_cashflows.jsonl`, `accounting_reconciliation.json`, `commission_slippage.json`, `terminal_positions.jsonl`, `exposure_control.jsonl` are absent 4/4 | R09 and audit completeness |
+| N07 | **CRITICAL** | Portfolio runner still passes hand-built XG1 booleans; it never supplies `execution_ledger_rows`, so XG1 PASS is not measured runtime evidence | R11 and scientific audit |
+| N08 | **HIGH** | Default panel adapter returns `coverage=None`; XG0 therefore sees zero days. The failure is an unimplemented coverage adapter, not proof that the frozen funding bundle is incomplete | R06 diagnosis |
+| N09 | **HIGH** | Missing BTC benchmark coverage is mislabeled `funding_coverage_insufficient`; the data manifest independently reports complete funding cadence for all seven traded symbols | R06 reason semantics |
+| N10 | **HIGH** | Stress executor is conditional on base XG3 PASS and uses `expectancy_r`, although this portfolio family explicitly has no R normalization | R12 and future V6 robustness |
+| N11 | **HIGH** | Reproduction compares orders/positions digests plus four metrics, but does not compare funding, costs, equity ledger, terminal rows, accounting, stresses, gates, or final artifact digest | R16 |
+| N12 | **HIGH** | `reconciliation.json` says `registry_append_only_verified=false`, while R15 claims TRUE; `report.json` still declares `stage_a_root=results/portfolio_v4` | R15 |
+| N13 | **HIGH** | A6 audit missed N01–N12 and called gate measurement honest; its independence can remain true, but its scientific completeness verdict cannot authorize future work | R17 |
+| N14 | **MEDIUM** | No explicit purge/embargo fields are frozen in the run contract | future V6 fold isolation |
+| N15 | **MEDIUM** | Transition/audit timestamps and `final_head` fields were not refreshed consistently after audit integration | transition provenance |
 
-All six core agents may work concurrently, but not on the same owned file. A1
-owns the integration queue and resolves overlaps. A6's independence is more
-important than keeping A6 busy with implementation. R1/R2 exist only while a
-frozen run queue exists and terminate after returning artifacts plus checksums.
-Orca may spawn more agents, but an additional persistent coding agent requires
-a new non-overlapping ownership row. Otherwise use extra capacity only for
-ephemeral frozen-run or read-only verification workers.
+### 1.3. Correct interpretation of R06
 
-### 0.2. Worktree and branch policy for the new team
+The current real-data contract contains seven traded symbols and one BTC
+benchmark. BTC is context-only and must not appear in the traded-symbol count.
+The current manifest reports complete funding cadence for the seven traded
+symbols in its measured bundle. The requested V5R run starts at the already
+trimmed common boundary around `2025-08-21T14:30Z`.
 
-1. The old `my-quantitative-wt` locations remain read-only forever in this run.
-2. During Wave 1, A2–A6 perform read-only work against the current checkout.
-3. After A1 validates and commits the bootstrap/test-isolation state, A1 may
-   create **new**, uniquely named worktrees from that exact commit for A2–A6.
-4. Each agent receives an explicit file allowlist and one branch. Never reuse an
-   old agent branch or worktree.
-5. Shared result writers use per-agent/per-run output roots and registry shards.
-   A1 merges/reconciles shards after jobs finish; concurrent processes must not
-   append to the same JSONL/index file.
-6. Start with at most two CPU-heavy backtests concurrently through R1/R2. Add
-   further ephemeral runners only after
-   a measured CPU/RAM/I/O preflight shows no swapping, OOM risk, or throughput
-   regression. Parallel agents do not imply unlimited concurrent runners.
-7. Every handoff includes commit SHA, changed paths, tests, artifact hashes,
-   known limitations, and conflict list.
-
-### 0.3. Parallel 24-hour critical path
+Therefore R06 remains FAIL, but its primary cause is:
 
 ```text
-H00–H01  Wave 1: A1 snapshot; A2 patch review; A3 data audit; A4 engine audit;
-                    A5 artifact audit; A6 independent audit protocol
-H01–H03  Wave 2: A2 test isolation/C02 search; A3 PIT proof; A4 accounting fixes;
-                    A5 hash/reconciliation fixes; A6 independent recheck
-H03      Sync gate: choose exact-recovery path or clean-lineage V5R path
-H03–H06  Wave 3: A2 baseline/quarantine; A3 data; A4 engine; A5 gates;
-                    A6 adversarial fixtures and sample freeze
-H06–H10  Wave 4: R1/R2 diagnostics in isolated roots; A6 frozen sampling
-H10–H12  Wave 5: A5 reproductions; A6 independent audit; A1 transition
-H12      Hard gate: V6 authorized or terminal stop
-H12–H15  Wave 6: V6 spec/data/metrics lock, then implementation
-H15–H19  Wave 7: exactly four V6 experiments with controlled compute concurrency
-H19–H22  Wave 8: stresses, selection adjustment, reproduction, independent audit
-H22–H24  Wave 9: final score, verdict, artifacts, handoff
+RUNTIME_COVERAGE_EVIDENCE_NOT_WIRED_AND_REASON_CODES_CONFLATED
 ```
 
-The schedule is a coordination target, not permission to skip evidence. If a
-hard gate is not complete, dependent work stops even when a later time block
-has begun.
+Do not download data, remove ETH, shrink the window, or change the universe
+until the runtime reads the existing canonical bundle and produces a measured
+coverage report. Only then may a genuine data shortfall be declared.
 
-### 0.4. Initial Orca dispatch briefs
-
-A1 launches A2–A6 at the start of Wave 1 with these bounded briefs:
+### 1.4. Current evidence verdict
 
 ```text
-A2: Read PLAN §§1–7 and 12. Own only provenance/test-isolation/quarantine
-    paths. Prove the contamination cause safely, search for exact bytes, and
-    return evidence plus a scoped patch. Do not touch old artifacts/worktrees.
-
-A3: Read PLAN §§3, 8, 12, 14–15. Own data/PIT/funding coverage and contracts.
-    Verify actual settlement/publication timing and S0 boundaries. Do not code
-    signal or change the universe after results.
-
-A4: Read PLAN §§3, 8–9, 12, 14–15. Own execution/accounting/risk paths. Repair
-    canonical identities, terminal/WFA/cost/exposure behavior with fixtures.
-    Implement V6 signal only after A1 sends the locked transition/spec hash.
-
-A5: Read PLAN §§8–15. Own metrics/hash finalization/reconciliation/gates and
-    reproduction tooling. Remove constant evidence and prove negative fixtures.
-    Do not alter locked strategy or data contracts.
-
-A6: Read the entire PLAN as independent auditor. Stay read-only except your
-    audit protocol, challenge memos, and attestations. Independently recompute
-    baseline/transition claims and reject role conflicts or selected evidence.
+SAFE_TRANSITION_DECISION          = CORRECT
+V5R_ENGINEERING_PROGRESS          = MATERIAL_BUT_INCOMPLETE
+V5R_GATE_LEDGER_ACCURACY          = FAILS_ADVERSARIAL_REVIEW
+A6_INDEPENDENCE                   = PRESERVED
+A6_AUDIT_COMPLETENESS             = INSUFFICIENT_FOR_AUTHORIZATION
+V6_AUTHORIZATION                  = NONE
 ```
 
-Each agent first returns `SCOPE_ACK`, owned file list, read-only observations,
-and conflicts. A1 resolves ownership before authorizing edits. R1/R2 receive
-only an exact command, input hashes, output root, registry shard, resource cap,
-and expected artifact contract.
+No existing V5R result is promoted or re-scored. Reproduction of a defective
+pipeline proves determinism of that pipeline, not scientific correctness.
 
 ---
 
-## 1. Current verified starting state
+## 2. Authority, immutability, and safety
 
-This snapshot is a starting hypothesis. The new agent must verify it before
-making changes.
+Authority order:
 
-### 1.1. Git and tests
+1. current code plus raw machine artifacts recomputed by an independent reader;
+2. this PLAN;
+3. specifications/baselines committed before execution;
+4. Git history and exact command logs;
+5. `CONTINUE.md`, sprint summaries, transition prose, and agent messages.
 
-```text
-branch                         main
-HEAD                           3e1d2d0
-origin/main                    f4288e7
-last full test evidence        557 passed, 16 warnings, 0 failed/xfailed
-test command                   .venv/bin/python -m pytest tests/ -q
-```
+Rules:
 
-Current uncommitted state:
-
-```text
-M  research/matrix_runner.py
-M  tests/test_matrix_runner.py
-?? my-quantitative-wt/
-?? research/audits/v5/final_tests_v5.json
-?? research/audits/v5/source_hash_recheck_v5.json
-```
-
-The two modified Python files form a defensive patch: tests now redirect
-`stage_a_root` into `tmp_path`, preventing test runs from rewriting immutable
-V3 provenance artifacts. This patch is not trusted until reviewed and tested.
-
-### 1.2. Worktrees
-
-There are two worktree-looking locations:
-
-```text
-/Users/hoangminhlong/my-quantitative-wt/       registered Git worktrees
-```
-
-This location belong to previous agents and are **READ-ONLY evidence** for
-this sprint. Never delete, prune, clean, reset, commit inside, or modify them.
-
-Most historical branches are already ancestors of `main`. These four were not
-merged at the time of this snapshot:
-
-```text
-wt/data-pipeline
-wt/ops-reporting
-wt/quality-safety
-wt/research-analysis
-```
-
-Their existence is not permission to merge them. Inventory their commits and
-diffs; cherry-pick only if a separately documented requirement in this plan
-cannot be met by current `main`, the patch is still applicable, and tests prove
-it. Never merge task-brief commits or a whole branch blindly.
-
-### 1.3. Existing V5 evidence
-
-Already present:
-
-```text
-research/audits/v5/baseline_v5.json
-research/audits/v5/v3_v4_findings.json
-research/audits/v5/v3_v4_source_hashes.json
-research/audits/v5/global_trial_ledger.json
-research/audits/v5/final_tests_v5.json                 untracked
-research/audits/v5/source_hash_recheck_v5.json         untracked
-
-results/diagnostic_v5/<four DIAG-V5 experiments>/
-results/matrix/v4_recalc_diagnostic_v5/
-```
-
-Missing or not yet valid:
-
-```text
-results/reproduction_v5/                               missing
-research/audits/v5/challenge_memo_v5.md                missing
-research/audits/v5/scientific_audit_v5.json            missing
-results/matrix/v4_recalc_diagnostic_v5/v5_transition.json  missing
-```
-
-### 1.4. Known blocking evidence
-
-The current source-hash recheck compares 1,474 paths and reports seven changes:
-
-- one expected append-only registry change;
-- six unexpected changes under immutable V3 experiments
-`EXP-20260824-0001` and `EXP-20260824-0002`;
-- the changed files are `execution_evidence.json`, `frozen/candidate.yaml`, and
-`launch_manifest.yaml` in each experiment.
-
-The suspected cause is a test fixture that wrote into the real
-`results/stage_a_v3` default directory. This cause must be proven from code and
-tests; it does not restore the original bytes.
-
-Additional current defects:
-
-- all four diagnostic experiments have `run.log` mismatching
-`artifact_hashes.json`;
-- matrix reconciliation is `PARTIAL` with `stage_a_dirs<indexed`;
-- reconciliation counts eight registry entries for four indexed cells;
-- current diagnostics did not execute the newly committed delay/drop-one
-stresses, so code existence is not evidence of V5-C14/C15;
-- four independent reproductions are absent;
-- an independent scientific audit is absent.
-
-Therefore the starting status is:
-
-```text
-V5_STATUS = NOT_CLOSED
-V6_STATUS = NOT_AUTHORIZED
-S1_STATUS = NOT_STARTED
-LIVE_MONEY_STATUS = UNCHANGED_DISABLED
-```
+1. Existing V1–V5R artifacts and transition files are immutable evidence.
+2. Write corrections only as V6P addenda in a new namespace.
+3. Old `my-quantitative-wt` locations are read-only; do not prune or reuse them.
+4. Use `.venv/bin/python`, never system Python.
+5. Preserve a clean or explicitly frozen Git state; no `git add -A`.
+6. No destructive reset/clean/remove commands.
+7. No S1 read, capture, score, or backfill.
+8. No live order, credential use, or live-mode enablement.
+9. Do not tune the universe/window after seeing strategy results.
+10. Missing evidence is FAIL/BLOCKED/NOT_TESTED, never PASS.
+11. A unit test cannot substitute for required end-to-end evidence.
+12. A deterministic rerun cannot validate a wrong accounting or gate contract.
+13. The final auditor may author audit files only.
+14. V6 begins only from a committed machine-readable `V6P_PASS` transition.
 
 ---
 
-## 2. Authority and evidence order
+## 3. Orca team topology
 
-When sources disagree, use this order:
+Use seven persistent roles. Additional agents are allowed only as bounded run or
+read-only verification workers with no overlapping code ownership.
 
-1. current executable code plus machine-verifiable artifacts;
-2. this `PLAN.md`;
-3. frozen specifications and manifests created before a run;
-4. Git history and scoped diffs;
-5. `CONTINUE.md`, old sprint reports, NOTES, and agent messages.
+| Agent | Ownership | Required outputs | Forbidden |
+|---|---|---|---|
+| **A1 Coordinator** | intake, contracts, merge queue, baselines, transitions, trial ledger, final report | integration ledger and transitions | self-signing audit; editing results to change verdict |
+| **A2 Provenance** | committed pre-run baseline, immutable roots, launch identity, transition timestamps | provenance tests and V6P baseline | post-launch baseline creation; self-hashing artifact |
+| **A3 Data/PIT** | bar/benchmark/funding/metadata coverage, publication-time contract, XG0 payload | measured coverage report | changing universe/window after results |
+| **A4 Engine/Accounting** | one-pass continuous WFA, risk mode, costs/funding/terminal artifacts | golden accounting fixtures and runtime artifacts | metric thresholds or strategy selection |
+| **A5 Gates/Reproduction** | measured XG1/XG2, family metrics, unconditional stresses, reconciliation, full reproduction | gate/repro schemas and negative fixtures | strategy/spec edits |
+| **A6 Hypotheses** | V6/V7 specs and implementations after V6P PASS; V7 scored execution only after V7 authorization | locked V6/V7 hypothesis specs and strategy code | coding before V6P authorization; result-driven spec changes |
+| **A7 Independent auditor** | adversarial audit of V6P and V6 frozen populations | challenge memos and attestations | implementation, gate repair, artifact repair |
+| **R1–R4 workers** | exact frozen commands in isolated output roots | logs, exit code, artifact digest | code/spec edits, shared registry writes, verdict |
 
-`CONTINUE.md` is historical handoff context, not current truth. It contains
-stale instructions, including an already-committed CLI patch, an older test
-count, and work that later code completed. Do not execute its commands without
-revalidating them against this plan.
-
-Claims must be backed by file paths, hashes, exact commands, exit codes, and
-machine-readable results. A boolean written by the same component being tested
-is not independent evidence.
-
----
-
-## 3. Non-negotiable safety and scientific rules
-
-1. Use `.venv/bin/python`; do not use system `python`.
-2. Never read, capture, score, or tune on S1 in this sprint.
-3. Never send a live order or enable live-money paths.
-4. Do not rerun or retune V4 to rescue its rejected candidates.
-5. V4 recalculation may only be labeled `DIAGNOSTIC_RECALC` and must retain a
- link to the source trial.
-6. Never overwrite V1–V4 or existing V5 artifacts. Use a fresh immutable run ID.
-7. Never replace the original source-hash baseline after observing drift.
-8. A regenerated file is not an exact restoration unless its SHA-256 equals the
- frozen expected SHA-256.
-9. Never use `git add -A`; stage an explicit allowlist of reviewed files.
-10. Never use `git reset --hard`, `git clean`, destructive `rm`, `pkill`,
-  `git worktree remove`, or `git worktree prune` in this sprint.
-11. Preserve every pre-existing dirty file and untracked artifact.
-12. Do not push, open a PR, or alter remote state unless the owner explicitly
-  asks for it.
-13. The implementer cannot sign their own independent scientific audit.
-14. Missing evidence is `NOT_TESTED`, `MISSING`, or `BLOCKED`; never translate
-  it into PASS.
-15. No hard gate may be waived by a high score or positive PnL.
+Every coding agent gets a unique new branch/worktree created from the same A1
+bootstrap commit. Shared JSONL/index files have one writer: A1. Workers write
+registry shards which A1 merges deterministically after all writers close.
 
 ---
 
-## 4. Definition of done
+## 4. Adaptive unattended 12-hour schedule
 
-This sprint is complete only when all of the following are true:
+```text
+H00:00–H00:30  A1 freeze/intake; A2–A5 audits; A7 challenge protocol;
+                 A6 drafts V6 and V7 specifications without seeing results
+H00:30–H03:00  A2–A5 repair in parallel; A1 integrates bounded commits
+H03:00–H04:00  full tests; committed V6P baseline; A7 pre-launch attestation
+H04:00–H05:00  V6P sentinels, full reproduction, A7 audit, V6P transition
+H05:00          checkpoint: stop if V6P is not 20/20 PASS
+H05:00–H07:00  V6 four base trials, stresses, reproductions, audit, terminal verdict
+H07:00          checkpoint: compute V7 authorization; no result-driven spec edits
+H07:00–H09:00  V7 four base trials, stresses, reproductions, audit, terminal verdict
+H09:00–H10:15  global ledger reconciliation and cross-family learning memo
+H10:15–H11:15  reserve only for incomplete tests/stresses/reproductions/audits;
+                 never use this reserve for an extra strategy or parameter trial
+H11:15–H12:00  final hashes, reports, CONTINUE handoff, graceful shutdown
+```
 
-1. the initial dirty state and both worktree locations are inventoried;
-2. the test-contamination cause is reproduced safely in a temporary directory;
-3. the defensive test patch is reviewed, regression-tested, and recorded;
-4. V5-C02 is decided using the original baseline, without redefining it;
-5. current diagnostic/matrix/hash/reproduction status is recomputed;
-6. if execution reaches Phase F, A6 either signs PASS/FAIL
- or the lack of auditor is explicitly recorded as a blocker; if an earlier
- hard gate fails, the audit is recorded as `NOT_RUN_DUE_PRIOR_GATE_FAIL`;
-7. `v5_legacy_transition.json` contains all 26 legacy gates and, when needed,
-   `v5r_transition.json` contains every clean-lineage gate;
-8. a human-readable recovery report explains exactly what can and cannot be
- trusted;
-9. V6 starts only through either `V5_PASS_V6_AUTHORIZED` or
-   `V5_FAIL_V5R_PASS_V6_AUTHORIZED_CLEAN_LINEAGE`;
-10. if V6 is authorized, exactly one pre-registered family and four experiments
-    run, then A6 signs or blocks the final verdict;
-11. the final report records engineering, scientific, family, S1, and live-money
-    status without implying a candidate exists when none passed.
-
-Success does not require a profitable candidate. A truthful blocked transition
-or `V6_CANDIDATE_FAIL` is still a successful execution of the scientific plan.
+These are checkpoints, not waivers. If repair work consumes the window, finish
+V6P truthfully and stop; never compress tests/audit to reach V6 or V7. Start at
+most two CPU-heavy jobs concurrently and increase only after CPU/RAM/I/O
+preflight shows no swapping or throughput loss. Section 15 defines the exact
+deadline, retry, resume, and shutdown rules. Twelve hours is a ceiling, not a
+quota: if every required state becomes terminal in 3–4 hours, finalize and stop
+immediately instead of inventing more work to fill the remaining time.
 
 ---
 
-## 5. Phase A — Read-only intake and forensic snapshot (Wave 1, H0–H1)
+## 5. Phase V6P-0 — freeze current truth
 
-### A1. Capture state before edits
-
-Record in `research/audits/v5r/intake_snapshot.json`:
-
-- UTC timestamp;
-- current branch, HEAD, `origin/main`, and ahead/behind status;
-- `git status --short`;
-- SHA-256 of every pre-existing dirty/untracked file in scope;
-- Python, pytest, pandas, numpy, and NautilusTrader versions;
-- worktree path, branch, HEAD, dirty count, and unmerged commits;
-- current V5 artifact inventory and file counts.
-
-Do not include secrets or `.env` content.
-
-### A2. Review, do not overwrite, current dirty changes
-
-Inspect the exact diff of:
+A1 and A7 create:
 
 ```text
-research/matrix_runner.py
-tests/test_matrix_runner.py
+research/audits/v6p/intake_snapshot.json
+research/audits/v6p/v5r_reaudit_addendum.md
+research/audits/v6p/v5r_reaudit_gates.json
 ```
 
-Confirm the late-bound `stage_a_root` behavior is required for monkeypatching
-the default in tests. Confirm every matrix-runner test writes only below
-`tmp_path`. Add a regression assertion that the real immutable root's mtimes and
-hashes do not change during the relevant tests.
+The addendum must:
 
-### A3. Re-run baseline tests
+1. preserve `V5_FAIL_V6_BLOCKED` as the historical safe verdict;
+2. list N01–N15 with code/artifact paths and hashes;
+3. distinguish correct old evidence from overclaimed gates;
+4. never modify V5R gate ledgers, audit, transition, or report;
+5. record the independently rerun current test result;
+6. record that V6 artifacts/hypothesis were absent at intake.
 
-Run:
-
-```bash
-.venv/bin/python -m pytest tests/ -q
-```
-
-Capture start/end time, exit code, full summary, warnings count, failures, and
-xfailed count. The gate requires exit code 0, zero failures, and zero xfails.
-Do not hard-code an expected test count; report the measured count.
-
-### A4. Inventory old unmerged branches
-
-Create `research/audits/v5r/worktree_inventory.json`. For each old worktree,
-record commits and changed paths relative to `main`. Classify each as:
-
-```text
-ALREADY_SUPERSEDED
-POTENTIALLY_RELEVANT_REVIEW_REQUIRED
-OUT_OF_SCOPE
-```
-
-This phase is read-only. No merge/cherry-pick occurs here.
+No repair begins until each owner returns a file allowlist and A1 confirms no
+overlap.
 
 ---
 
-## 6. Phase B — Prove and prevent test contamination (Wave 2, H1–H3)
+## 6. Phase V6P-1 — parallel repair tracks
 
-### B1. Reproduction proof
+### 6.1. A2 — provenance and baseline truth
 
-Use only a temporary test directory and copied/synthetic fixtures. Demonstrate:
+Implement a baseline design that can be proven, not asserted:
 
-1. why the old default argument could bind the real V3 path;
-2. why monkeypatching only the module constant was insufficient;
-3. why late-binding `stage_a_root=None` plus the autouse fixture redirects all
- writes into `tmp_path`;
-4. that the regression test fails against the vulnerable behavior and passes
- against the patch.
+1. Commit all source/spec/contract files before baseline creation.
+2. Require clean `git status --porcelain` before the baseline timestamp.
+3. Hash source/spec/data inputs into an external root manifest. Do not include
+   the baseline file's own hash inside itself.
+4. Commit the baseline and A7 pre-run attestation before any worker launch.
+5. Launch manifest must record the committed baseline hash and clean launch SHA.
+6. Abort execution when `dirty_worktree_at_launch=true` or baseline/attestation
+   is absent.
+7. Separate `created_at`, `audited_at`, `integrated_at`, `audited_head`, and
+   `final_head`; refresh transition content after integration.
+8. Negative tests must catch post-launch baseline creation, self-hash mismatch,
+   dirty launch, timestamp inversion, and transition-head mismatch.
 
-Do not deliberately modify the actual V3 directory to reproduce the bug.
+### 6.2. A3 — real XG0 and funding PIT evidence
 
-### B2. Immutability regression
+Wire `portfolio_runner` to `coverage_report` or a versioned equivalent.
 
-Before and after the focused test set, hash the immutable V3/V4 source set using
-the existing baseline path list. A test run must produce zero new differences.
-
-Write:
+Required payload blocks:
 
 ```text
-research/audits/v5r/test_contamination_root_cause.md
-research/audits/v5r/test_isolation_check.json
+traded_bar_coverage: seven traded symbols only
+benchmark_coverage: BTCUSDT context only
+funding_coverage: actual settlement count/first/last/completeness per traded symbol
+metadata_coverage: tick, step, min-notional identity per traded symbol
+requested_window and effective_common_window
 ```
 
-### B3. Scoped integration
+Rules:
 
-If the patch and tests pass, it may be committed as one scoped preventive fix.
-Stage only the reviewed source/test files and supporting audit evidence. Do not
-stage `my-quantitative-wt/`, shared datasets, old results, or unrelated changes.
+1. Use one canonical funding bundle identity, recommended current
+   `funding_data/scan_2026`, and freeze its path/hash.
+2. Compare coverage to the predeclared requested V6P window before results.
+3. BTC absence from the traded universe is expected, not a coverage failure.
+4. Benchmark failure reason is `benchmark_coverage_incomplete`, never a funding
+   reason.
+5. Funding failure requires measured missing/late settlements from the same
+   runtime bundle, not `coverage=None` or a different config path.
+6. Funding features later use only rows whose publication/settlement timestamp
+   is `<= signal_ts`.
+7. Add negative fixtures for missing BTC, missing traded bars, missing funding,
+   bundle mismatch, metadata missing, and one-symbol partial window.
+8. Do not fetch data unless measured canonical coverage truly fails. Network
+   repair, if later authorized, must be a separate checksummed data task.
 
-This commit prevents recurrence; it does not repair V5-C02.
+### 6.3. A4 — one-pass WFA, canonical accounting, and risk
+
+Redesign the orchestration so all three folds run in one engine invocation or
+carry real ending equity into the next fold without reset.
+
+Required behavior:
+
+1. One chronological timeline with three declared fold intervals.
+2. `reset_folds=false`; F2 starting equity equals F1 ending equity and F3 starts
+   from F2 ending equity within tolerance.
+3. MDD derives from the continuous equity path, never stitched 100k curves.
+4. Pass `risk_mode=RISK_MODE_V1` end-to-end for V6P and future V6.
+5. Enforce gross `<=1.00`, `abs(net)<=0.10`, and declared symbol-weight cap on
+   every completed 15m event after deterministic reduce-only action.
+6. Persist all engine-native outputs:
+
+```text
+portfolio_ledger.jsonl
+orders.jsonl
+positions.jsonl
+funding_cashflows.jsonl
+terminal_positions.jsonl
+exposure_control.jsonl
+accounting_reconciliation.json
+commission_slippage.json
+```
+
+7. Reconcile at fold and experiment level:
+
+```text
+ending_equity - starting_equity
+= closed_price_pnl + terminal_pnl + funding_cashflows
+ - commissions - slippage - rejection_costs
+```
+
+8. Funding allocations in legs must reconcile to settlement-level funding rows.
+9. Terminal rows must reconcile to closed legs and leave a flat final book.
+10. Golden fixtures must catch reset folds, missing settlement rows, inactive
+    risk mode, exposure after trim above cap, and terminal double counting.
+
+### 6.4. A5 — measured gates, family-aware stresses, and full reproduction
+
+1. Delete the scored-path dependency on hand-built XG1 booleans.
+2. Pass real order/execution rows into `evaluate_xg1_measured`; verify counters
+   for missing timestamps and `signal_ts < fill_ts` violations.
+3. XG2a is external-reader hash/schema/accounting/reconciliation evidence after
+   all writers close. XG2b is populated only after separate reproduction.
+4. Supply measured fold returns to XG3. Do not infer return from reset-fold PnL.
+5. Replace portfolio stress `expectancy_r` with family-aware metrics:
+   canonical PnL, PF, funding PnL, fold returns, MDD, and exposure.
+6. Execute fee ×1.5, adverse two ticks, extra one-event delay,
+   drop-one-symbol, and drop-one-fold regardless of base-edge verdict.
+7. Negative base edge remains rejected; stress execution is diagnostic evidence,
+   not rescue logic.
+8. Reconciliation must fail when append-only verification is false, report root
+   is stale, required files are missing, or transition counts disagree.
+9. Full reproduction compares digests and metrics for:
+
+```text
+signals, orders, positions, ledger, funding, terminal, exposure-control,
+accounting, costs, canonical metrics, stresses, gates, scorecard, final hashes
+```
+
+10. Reproduction uses frozen inputs and a separate process/output root; it may
+    not call the source artifact's verdict as its expected truth.
+
+### 6.5. A7 — adversarial protocol before execution
+
+A7 freezes a challenge plan before V6P runs. It must explicitly test N01–N15,
+not only sample correct rows. A7 verifies the committed baseline/attestation
+precedes launch and audits the full population after freeze.
 
 ---
 
-## 7. Phase C — Decide V5-C02 without laundering evidence (Wave 2, H1–H3)
+## 7. Phase V6P-2 — bounded end-to-end validation
 
-### C1. Recompute from the original baseline
-
-Recheck all 1,474 paths in:
+Use fresh immutable IDs and do not overwrite V5R:
 
 ```text
-research/audits/v5/v3_v4_source_hashes.json
+results/validation_v6p/V6P-MOM-7D-BASEFAIL-SENTINEL/
+results/validation_v6p/V6P-REVERSE-7D-FUNDING-SIGN/
+results/validation_v6p/V6P-GOLDEN-SYNTHETIC/
+results/reproduction_v6p/<verify_id>/
+results/matrix/v6p_validation/
 ```
 
-Classify every difference as:
+The MOM sentinel is intentionally expected to fail its edge gate. It proves
+that all stresses execute even when base edge fails. The reverse control proves
+funding-sign/accounting behavior. The synthetic run has hand-computed expected
+orders, funding, costs, risk trims, terminal PnL, and continuous equity.
+
+These are `PIPELINE_VALIDATION`/`DIAGNOSTIC_RECALC`, never scored trials and
+never promotion-eligible.
+
+### 7.1. V6P hard gates — all must PASS
 
 ```text
-EXPECTED_APPEND_ONLY
-UNEXPECTED_MUTATION
-MISSING
-RESTORED_BYTE_IDENTICAL
+V6P-C01 prior_v5_v5r_artifacts_unchanged_and_addendum_complete
+V6P-C02 clean_source_commit_and_external_baseline_root_frozen
+V6P-C03 a7_prelaunch_attestation_committed_before_workers
+V6P-C04 all_launches_clean_and_match_frozen_commit_baseline
+V6P-C05 full_tests_pass_zero_fail_zero_xfail
+V6P-C06 xg0_real_bar_benchmark_funding_metadata_blocks_pass
+V6P-C07 funding_bundle_identity_and_publication_pit_pass
+V6P-C08 xg1_measured_rows_no_boolean_fallback_on_scored_path
+V6P-C09 one_pass_continuous_capital_threefold_identity_pass
+V6P-C10 continuous_equity_mdd_and_fold_returns_valid
+V6P-C11 funding_cost_terminal_accounting_artifacts_complete_reconcile
+V6P-C12 risk_mode_active_every_bar_and_all_caps_hold_after_action
+V6P-C13 all_stresses_and_dropone_execute_despite_base_edge_fail
+V6P-C14 family_aware_stress_metrics_no_fake_expectancy_r
+V6P-C15 artifact_hashes_last_external_reader_clean
+V6P-C16 matrix_report_index_roots_registry_reconcile_complete
+V6P-C17 registry_append_only_verified_true_in_final_artifact
+V6P-C18 full_surface_separate_process_reproductions_match
+V6P-C19 a7_postfreeze_adversarial_audit_pass
+V6P-C20 no_unresolved_high_critical_no_s1_no_live
 ```
 
-The registry may differ only according to its predeclared append-only contract.
-Do not exempt provenance files merely because the mutation came from a test.
-
-### C2. One bounded exact-recovery search
-
-Search read-only sources for the six original byte sequences:
-
-- Git objects and tracked history;
-- both old-worktree locations;
-- existing immutable archives or backups already available locally;
-- artifact stores already configured in the repository, if access is read-only.
-
-An acceptable recovery file must:
-
-1. be traceable to a source that predates the mutation;
-2. match the expected SHA-256 exactly;
-3. preserve the original path and metadata contract;
-4. be restored with before/after evidence and no other artifact changes.
-
-Do not reconstruct values by guessing, rewrite the frozen baseline, or bless the
-new bytes as original.
-
-### C3. Mandatory decision fork
-
-```text
-if all six files are restored byte-identically and the full source recheck passes:
-    continue to Phase D
-else:
-    V5-C02 = FAIL
-    close legacy V5 as V5_FAIL
-    continue to the clean-lineage V5R protocol in Section 12
-```
-
-If V5-C02 fails, the original V5 lineage can never authorize V6 and must remain
-permanently recorded as failed. This plan now has owner authorization to create
-the explicitly separated V5R clean lineage in Section 12. V5R must quarantine
-the compromised evidence and earn its own gates; it must never relabel legacy
-V5 as PASS.
-
----
-
-## 8. Phase D — Repair evidence finalization (Wave 3, H3–H6)
-
-Run this implementation once for either the exact-recovery path or the V5R
-clean-lineage path. It may start after the H3 decision and must write only to
-the selected new namespace.
-
-### D1. Artifact finalization contract
-
-Fix and test the writer lifecycle so:
-
-1. all data files and `run.log` are closed first;
-2. no hashed file is modified afterward;
-3. `artifact_hashes.json` is written last;
-4. the hash manifest is verified by a separate reader/process;
-5. registry/index updates outside the experiment directory are reconciled
- separately;
-6. a second finalization attempt fails closed instead of silently changing an
- immutable artifact.
-
-Required tests must detect a post-hash append to `run.log`.
-
-### D2. Matrix reconciliation contract
-
-Correct the mismatch between diagnostic output roots, indexed cell directories,
-and registry records. The reconciler must validate:
-
-```text
-declared cells == indexed cells == completed cell files
-one intended experiment identity per cell
-all referenced experiment directories exist
-all required artifacts exist
-registry records are unique under the declared identity rule
-report is derived from the final index, not last-batch counters
-```
-
-Do not mark `stage_a_dirs<indexed` as harmless. Either point the reconciler to
-the correct diagnostic root or change the schema to represent that root
-explicitly and test it.
-
-### D3. Measured gates only
-
-Audit XG1 and XG2 code paths. Remove any remaining prebuilt `True` or synthetic
-integrity object that can make a scored gate pass without reading real evidence.
-Use negative fixtures to prove each gate fails when its underlying evidence is
-tampered with.
-
----
-
-## 9. Phase E — Fresh immutable diagnostic run (Wave 4, H6–H10)
-
-Run only after Phase D and either legacy V5-C02 or the V5R pre-run baseline gate
-pass. Do not overwrite the existing `-DIAG-V5` directories. Use a new namespace:
-
-```text
-results/diagnostic_v5r/<fresh_experiment_id>/
-results/matrix/v4_recalc_diagnostic_v5r/
-```
-
-Run exactly the three frozen V4 momentum specs and one reverse control. Each run
-must be a separate process and must be labeled:
-
-```text
-registry_kind = DIAGNOSTIC_RECALC
-source_trial_experiment_id = <original V4 trial>
-trial_count_increment = false
-```
-
-Requirements for all four runs:
-
-- frozen inputs/spec identity captured before launch;
-- no post-hoc parameter edits;
-- no risk-mode change used to rescue V4;
-- canonical accounting identity reconciles at fold and experiment levels;
-- actual funding settlements and cashflows persist;
-- commission, slippage, rejection, and terminal-close effects persist;
-- continuous-capital or mathematically chained WFA is used;
-- fee ×1.5, adverse two-tick, and extra 15m delay stresses execute;
-- drop-one-symbol and drop-one-fold diagnostics execute;
-- XG0–XG5 reasons distinguish PASS, FAIL, NOT_TESTED, and MISSING;
-- final hashes are verified after every writer closes;
-- matrix report/index/registry reconciliation is `PASS` with no mismatch.
-
-Publish an old-versus-new comparison. It may explain changed economics but may
-not revise the original V4 candidate verdict.
-
----
-
-## 10. Phase F — Independent reproduction and audit (Wave 5, H10–H12)
-
-### F1. Four reproductions
-
-A separate process must reproduce all four fresh diagnostics from frozen inputs.
-Write into:
-
-```text
-results/reproduction_v5r/<verify_id>/
-```
-
-Compare at minimum:
-
-- code/spec/data identities;
-- orders, positions, funding rows, and terminal rows;
-- fold and total canonical PnL;
-- PF, MDD, turnover, exposure, beta, and contributions;
-- stress and drop-one results;
-- final gate verdict and artifact digest.
-
-Tolerance must be predeclared. Any unexplained mismatch fails V5-C20.
-
-### F2. Independent scientific audit
-
-The implementation agent freezes code and artifacts, then hands only read access
-to a genuinely separate auditor. The auditor must not have authored the engine,
-gates, diagnostics, or transition decision.
-
-The auditor samples at least:
-
-- 50 orders;
-- 50 positions;
-- 30 funding settlements;
-- every fold boundary;
-- every exposure breach and forced reduction;
-- all four hash manifests and reproduction comparisons.
-
-The sample seed, population hashes, sampled IDs, and findings must be recorded.
-Required outputs:
-
-```text
-research/audits/v5r/challenge_memo_v5r.md
-research/audits/v5r/scientific_audit_v5r.json
-```
-
-If A6 is unavailable or loses independence, record
-`V5R_INDEPENDENT_AUDIT_BLOCKED`; an implementer must not self-sign PASS.
-
----
-
-## 11. Phase G — Legacy V5 gate ledger (H12 checkpoint)
-
-Produce a machine-readable row for every gate below. Each row must contain:
-
-```text
-gate_id
-status = PASS | FAIL | BLOCKED | NOT_TESTED
-measured_value
-threshold_or_contract
-evidence_paths
-evidence_sha256
-verified_by
-verified_at_utc
-reason_code
-```
-
-### 11.1. The 26 non-waivable V5 gates
-
-```text
-V5-C01 current_full_tests_pass_no_xfail
-V5-C02 v3_v4_source_artifacts_hash_unchanged
-V5-C03 global_scored_trial_ledger_complete
-V5-C04 canonical_leg_pnl_field_reconciles
-V5-C05 total_pnl_cost_funding_terminal_identity_reconciles
-V5-C06 terminal_position_policy_frozen_and_evidenced
-V5-C07 continuous_capital_or_chained_return_wfa_valid
-V5-C08 mdd_recomputed_from_valid_equity_path
-V5-C09 symbol_and_fold_contribution_use_canonical_pnl
-V5-C10 funding_cashflows_persist_and_reconcile
-V5-C11 commission_and_slippage_persist_and_reconcile
-V5-C12 xg0_coverage_and_reason_semantics_correct
-V5-C13 actual_funding_settlement_cadence_supported
-V5-C14 fee_twotick_delay_stresses_execute
-V5-C15 dropone_symbol_and_fold_execute
-V5-C16 gross_net_exposure_controller_passes_fixtures
-V5-C17 family_aware_portfolio_metrics_no_fake_r
-V5-C18 missing_not_tested_and_negative_are_distinct
-V5-C19 v4_diagnostic_recalc_four_of_four_complete
-V5-C20 independent_reproduction_four_of_four_match
-V5-C21 matrix_report_index_registry_reconcile
-V5-C22 independent_scientific_audit_pass
-V5-C23 no_live_money_change
-V5-C24 no_s1_read_or_score
-V5-C25 artifact_hashes_verified_after_all_writes
-V5-C26 xg1_xg2_use_measured_evidence_no_true_constants
-```
-
-### 11.2. Starting gate posture — must be recomputed
-
-```text
-V5-C01  provisional PASS evidence exists; rerun after final code state
-V5-C02  current FAIL: six unexpected immutable-file mutations
-V5-C03  evidence exists; completeness still requires verification
-V5-C04–C18  code/tests partly exist; end-to-end evidence not yet sufficient
-V5-C14  current NOT_TESTED in existing diagnostic artifacts
-V5-C15  current NOT_TESTED in existing diagnostic artifacts
-V5-C19  current FAIL: four runs exist but integrity/reconciliation is invalid
-V5-C20  current NOT_TESTED: reproduction directories absent
-V5-C21  current FAIL: reconciliation is PARTIAL
-V5-C22  current NOT_TESTED: independent audit absent
-V5-C23  requires diff and runtime safety verification
-V5-C24  requires filesystem/access audit
-V5-C25  current FAIL: four run.log hash mismatches
-V5-C26  requires adversarial code-path verification
-```
-
-The provisional posture is not a substitute for measured final rows.
-
-### 11.3. Transition logic
+Transition:
 
 ```python
-if all(gate.status == "PASS" for gate in V5_C01_to_C26):
-    legacy_v5_outcome = "V5_PASS"
-elif V5_C22.status == "BLOCKED" and all_other_gates_pass:
-    legacy_v5_outcome = "V5_INDEPENDENT_AUDIT_BLOCKED"
+if all(g.status == "PASS" for g in V6P_C01_to_C20):
+    transition = "V6P_PASS_V6_AUTHORIZED"
 else:
-    legacy_v5_outcome = "V5_FAIL"
+    transition = "V6P_FAIL_V6_BLOCKED"
 ```
 
-Legacy V5 remains immutable after this verdict. If it passes, Section 13 may
-authorize V6 directly. If it fails, execute Section 12 V5R; never edit the
-legacy rows to make the transition easier.
+No waiver. A safe V6P FAIL is a valid terminal sprint outcome.
 
 ---
 
-## 12. V5R clean-lineage recovery when legacy V5 fails
+## 8. V6 hypothesis — lock only after V6P PASS
 
-Run this section only when legacy V5 is permanently closed as FAIL or its
-independent audit is irrecoverably blocked. V5R is a new validation lineage, not
-a waiver and not a retroactive repair of V5.
-
-Execution routing for this branch:
-
-```text
-1. Write/freeze the legacy Section 11 ledger with V5-C02 FAIL or audit BLOCKED.
-2. Execute Sections 12.1–12.2 to quarantine and freeze the new baseline.
-3. Execute the shared engineering/diagnostic/reproduction work in Sections 8–10
-   using only v5r roots and the new baseline.
-4. Return to Sections 12.3–12.4, decide all R01–R18, then evaluate Section 13.
-```
-
-### 12.1. Quarantine without deletion
-
-A1 and A2 create `research/audits/v5r/quarantine_manifest.json` containing:
-
-- every compromised experiment/path and expected/current hash;
-- cause classification and discovery timestamp;
-- `usable_for_scientific_claims=false`;
-- `usable_for_forensic_debugging=true`;
-- downstream reports that referenced the compromised evidence;
-- explicit prohibition on promotion, scoring, baseline reset, or source-trial
-  reuse from the quarantined IDs.
-
-Do not move, edit, or delete the old artifacts. Quarantine is metadata and
-policy, not concealment.
-
-### 12.2. Create a genuinely new pre-run baseline
-
-After the prevention/finalization/reconciliation fixes are reviewed and merged:
-
-1. A1 freezes exact clean commit SHAs and the allowed dirty-state manifest.
-2. A2 hashes all source/spec/data-contract paths **before** any V5R execution.
-3. A3 freezes data coverage, funding cadence, metadata limitations, and S0
-   boundaries; S1 paths remain prohibited.
-4. A4 freezes accounting, execution, costs, terminal, WFA, and risk versions.
-5. A5 freezes metric estimators, gates, hash schema, tolerances, and global
-   trial-ledger snapshot.
-6. A6 independently verifies the baseline timestamp precedes every V5R launch.
-
-Write:
-
-```text
-research/audits/v5r/new_lineage_baseline.json
-research/audits/v5r/new_lineage_contract.md
-```
-
-V5R may reuse frozen, uncompromised V4 candidate specifications only as
-`DIAGNOSTIC_RECALC`. It may not reuse old results as pass evidence and may not
-change the original V4 rejection.
-
-### 12.3. V5R non-waivable gates
-
-```text
-V5R-R01 legacy_v5_verdict_frozen_and_not_rewritten
-V5R-R02 compromised_experiments_quarantined_complete
-V5R-R03 clean_code_identity_and_allowed_dirty_manifest_frozen
-V5R-R04 pre_run_source_spec_data_hash_baseline_verified
-V5R-R05 full_tests_and_real_artifact_write_isolation_pass
-V5R-R06 data_coverage_universe_benchmark_funding_pit_pass
-V5R-R07 canonical_pnl_and_total_equity_identity_reconcile
-V5R-R08 terminal_policy_and_continuous_capital_wfa_valid
-V5R-R09 funding_commission_slippage_rejection_rows_reconcile
-V5R-R10 gross_net_weight_controller_passes_every_bar_fixtures
-V5R-R11 family_metrics_and_reason_semantics_measured_not_constant
-V5R-R12 fee_twotick_delay_dropone_stresses_execute
-V5R-R13 four_fresh_diagnostic_recalcs_complete_without_overwrite
-V5R-R14 artifact_hashes_verify_after_all_writers_close
-V5R-R15 matrix_report_index_registry_reconcile_without_mismatch
-V5R-R16 four_independent_process_reproductions_match
-V5R-R17 a6_independent_scientific_audit_pass
-V5R-R18 no_live_money_change_and_no_s1_access
-```
-
-Every gate uses the row schema from Section 11. Missing evidence fails closed.
-Code/unit tests alone cannot satisfy R06–R16; the fresh end-to-end artifacts
-must also prove them.
-
-### 12.4. V5R output and verdict
-
-Write:
-
-```text
-research/audits/v5r/gate_ledger_v5r.json
-research/audits/v5r/v5r_transition.json
-research/wayfinder/evidence/sprint-v5r-clean-lineage-20260824.md
-```
-
-Valid outcomes:
-
-```text
-V5R_PASS
-V5R_FAIL
-V5R_INDEPENDENT_AUDIT_BLOCKED
-```
-
----
-
-## 13. Unified transition into V6
-
-```python
-legacy_path_ok = all(g.status == "PASS" for g in V5_C01_to_C26)
-clean_path_ok = (
-    legacy_v5_outcome in {"V5_FAIL", "V5_INDEPENDENT_AUDIT_BLOCKED"}
-    and all(g.status == "PASS" for g in V5R_R01_to_R18)
-)
-
-if legacy_path_ok:
-    transition = "V5_PASS_V6_AUTHORIZED"
-elif clean_path_ok:
-    transition = "V5_FAIL_V5R_PASS_V6_AUTHORIZED_CLEAN_LINEAGE"
-else:
-    transition = "V5_FAIL_V6_BLOCKED"
-```
-
-Before V6 begins, A1 publishes the transition artifact and every other agent
-verifies its hash. A6 verifies the transition was computed from measured gate
-rows. No agent may begin V6 signal code, inspect V6 partial PnL, or create a
-scored V6 run before this checkpoint.
-
-When the clean path authorizes V6:
-
-- legacy V5 remains FAIL in every report;
-- quarantined V3 artifacts are never cited as validation evidence;
-- V6 manifests reference the V5R baseline and transition, not legacy V5 PASS;
-- the global scored-trial ledger still includes all legitimate previous trials;
-- V5R diagnostics do not increase the scored-trial count.
-
----
-
-## 14. Sprint V6 — one bounded funding-carry family
-
-### 14.1. Selected hypothesis
+### 8.1. Selected mechanism
 
 ```text
 H-XSECT-FUNDING-CARRY-v1
 ```
 
-The mechanism ranks only funding observations that were already settled and
-published at decision time. Because positive funding means longs pay shorts,
-the strategy goes long the low-funding group and short the high-funding group,
-seeking net funding carry in a market-neutral portfolio.
+Positive funding means longs pay shorts. The hypothesis buys the relatively
+low-funding group and shorts the relatively high-funding group, using only
+funding observations already settled/published by signal time.
 
-This is an economic prior, not an edge claim. Price movement can overwhelm
-funding. Open interest is excluded from v1 if its point-in-time history is not
-complete enough; momentum/regime filters are not added to rescue results.
+This is a prior, not an edge claim. Price loss may overwhelm collected carry.
 
-### 14.2. Pre-registration — lock before signal implementation
+### 8.2. Pre-registration contract
 
 ```yaml
 hypothesis_id: H-XSECT-FUNDING-CARRY-v1
 family: cross_sectional_funding_carry
 stage: S0_EXPLORATORY
-universe: [ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT]
-benchmark: BTCUSDT
+traded_universe: [ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT]
+benchmark_context: BTCUSDT
 signal_clock: daily_00_00_utc
 feature: trailing_mean_of_published_settled_funding_only
 lookback_days: [1, 3, 7]
-long: bottom_2_funding
-short: top_2_funding
+long_rule: bottom_2_funding
+short_rule: top_2_funding
 rebalance: 24h
-split_policy: chronological_3fold_with_24h_purge_embargo
+folds: chronological_3fold
+purge_embargo: 24h
 target_gross: 0.80
 hard_gross_cap: 1.00
 hard_abs_net_cap: 0.10
 max_abs_weight_per_symbol: 0.20
 trial_budget:
-  scored: 3
-  negative_control: 1
+  scored_candidates: 3
+  negative_controls: 1
 negative_control: reverse_funding_rank_3d
 ```
 
-Freeze estimator versions, costs, latency, terminal policy, universe, data
-window, fold boundaries, seed, tie behavior, missing-data policy, and all gates
-in the same pre-run manifest.
+Freeze before signal implementation:
 
-Forbidden after lock:
+- effective S0 common window;
+- data/funding/metadata hashes;
+- folds, purge/embargo, warmup, signal/fill clocks;
+- funding publication convention and missing-settlement policy;
+- cost, latency, terminal, risk, accounting, and metric versions;
+- trial ledger count and DSR estimator;
+- hard gates, scorecard, tie-break, resource limits, seeds/tolerances.
 
-- extra lookback or rebalance interval;
-- per-symbol parameters;
-- momentum, OI, volatility, or regime filters;
-- changing weights, costs, universe, folds, or thresholds;
-- restarting a failed scored run under a new ID without ledgering the launch;
-- choosing a candidate from partial PnL.
+Do not add OI, momentum, volatility, regime filters, per-symbol parameters,
+extra lookbacks, or another rebalance interval in v1.
 
-### 14.3. Exactly four V6 experiments
+---
+
+## 9. V6 execution
+
+### 9.1. Exactly four scored launches
 
 ```text
 XSECT-FUND-CARRY-1D
@@ -897,287 +476,230 @@ XSECT-FUND-CARRY-7D
 XSECT-FUND-REVERSE-3D-CONTROL
 ```
 
-No fifth scored experiment. The reverse control is never promotion-eligible.
-Every attempted scored launch, including an abandoned/crashed launch that saw
-scored data, enters the global trial ledger.
+There is no fifth launch. A crashed/abandoned launch that accessed scored data
+still enters the global scored-trial ledger. Diagnostic stresses and independent
+reproductions link to their source trial but do not increment scored count.
 
-### 14.4. Mechanism-specific invalidation
+### 9.2. Parallel run policy
+
+1. A1 freezes a run queue and registry shard per experiment.
+2. Start two workers; add more only after resource preflight.
+3. Workers run exact commands and cannot edit code/spec.
+4. No agent sees partial PnL for decision-making.
+5. A1 merges shards once, after all writers close.
+6. Hash each experiment last and verify from a separate process.
+7. Hard gates run before score.
+8. A7 receives the entire frozen population, not a selected subset.
+
+### 9.3. Mechanism invalidation
 
 Reject a candidate if any condition holds:
 
-1. total canonical PnL after costs and funding is `<=0`;
-2. net funding cashflow is `<=0` or fewer than 2/3 folds have positive funding;
-3. positive price PnL masks negative funding while the strategy claims carry;
-4. position PF `<1.10`, fewer than 2/3 folds are positive, or median fold
-   return is `<=0`;
-5. there are not two adjacent positive lookbacks;
-6. top fold exceeds 50% or top symbol exceeds 40% of positive PnL;
-7. MDD exceeds 10%, any exposure cap breaches, or `abs(BTC beta)>0.25`;
-8. baseline fails fee/two-tick/delay/drop-one stress;
-9. reverse control beats the best eligible-direction candidate;
-10. DSR probability is `<0.95` after global trial adjustment;
-11. a data, PIT, integrity, reproduction, or audit gate fails/blocks.
+1. after-cost canonical PnL `<=0`;
+2. net funding cashflow `<=0` or fewer than 2/3 folds have positive funding;
+3. price PnL masks negative funding while the strategy claims carry;
+4. PF `<1.10`, fewer than 2/3 positive folds, or median fold return `<=0`;
+5. no adjacent positive lookback pair among 1D/3D/7D;
+6. top fold `>50%` or top symbol `>40%` of positive PnL;
+7. MDD `>10%`, risk cap breach, margin breach, or `abs(BTC beta)>0.25`;
+8. any required stress loses the mechanism or violates a hard risk/data gate;
+9. reverse control beats the best directional candidate;
+10. DSR probability `<0.95` using the complete global trial ledger;
+11. data, PIT, accounting, integrity, reproduction, or audit is not PASS.
 
 ---
 
-## 15. V6 parallel execution, gates, scoring, and learning loop
+## 10. V6 hard gates
 
-### 15.1. Wave 6 — lock and implementation (H12–H15)
+### FG0 — Data/universe
 
-- **A1:** verify transition; freeze global trial count/spec/budget; allocate file
-  ownership and merge order.
-- **A2:** create launch-provenance and immutable input/hash contract.
-- **A3:** verify actual funding settlement/publication timestamps, clean common
-  panel, universe, benchmark, metadata, and purge/embargo boundaries.
-- **A4:** implement the pure funding-rank signal and shared-capital adapter only
-  after spec lock; validate terminal/cost/risk behavior with hand fixtures.
-- **A5:** freeze family metrics, DSR/PBO estimator, hard gates, scorecard,
-  reconciliation, and reproduction tolerances.
-- **A6:** review the locked contract for contradictions and leakage; write no
-  signal/engine/gate code.
+- seven traded symbols complete for the frozen effective window;
+- BTC benchmark separately complete for context;
+- funding settlement/publication coverage complete from the frozen runtime bundle;
+- tick/step/min-notional metadata complete;
+- no silent skip, replacement, or post-result universe/window change.
 
-H15 implementation gate:
+### FG1 — Point-in-time/leakage
 
-```text
-TRANSITION_HASH_VERIFIED
-SPEC_AND_TRIAL_BUDGET_LOCKED
-DATA_AND_FUNDING_PIT_PASS
-CANONICAL_ACCOUNTING_PASS
-SHARED_CAPITAL_RISK_PASS
-COST_AND_TERMINAL_RECONCILIATION_PASS
-FULL_TESTS_PASS_NO_XFAIL
-A6_PRE_RUN_PROTOCOL_REVIEW_COMPLETE
-```
+- every funding input has publication timestamp `<= signal_ts`;
+- feature bars complete before signal;
+- `signal_ts < fill_ts`; execution bar excluded;
+- warmup outside scored folds; explicit 24h purge/embargo evidenced;
+- measured violation/missing counters are zero.
 
-Fail or block any item: stop V6 before scored execution.
+### FG2 — Accounting/integrity/reproduction
 
-### 15.2. Wave 7 — scored execution (H15–H19)
+- continuous-capital accounting reconciles at fold and experiment levels;
+- settlement funding, costs, terminal, and exposure artifacts present;
+- hashes-last external verification clean;
+- full-surface separate-process reproduction matches frozen tolerance;
+- matrix/report/index/registry/transition reconcile and append-only is true.
 
-A1 creates an immutable run queue. R1/R2 execute exact commands in separate
-processes, output roots, logs, and registry shards. A2–A5 monitor only contract
-violations and infrastructure failures; they may not change parameters.
+### FG3 — Base mechanism
 
-Recommended queue:
+- after-cost PnL `>0`, net funding `>0`, position PF `>=1.10`;
+- at least 2/3 folds positive in both PnL and funding;
+- median continuous-capital fold return `>0`;
+- at least 90 scored daily rebalances and 100 closed/terminal legs;
+- top fold `<=50%`, top symbol `<=40%`.
 
-```text
-batch 1: 1D candidate + 3D candidate
-checkpoint: hashes/resources/registry-shard integrity
-batch 2: 7D candidate + reverse 3D control
-```
+### FG4 — Robustness/execution
 
-Adding runner agents is allowed only after resource preflight. Each extra runner
-gets one frozen experiment and zero code-edit authority. A1 merges registry
-shards deterministically after all run processes close.
-
-### 15.3. Wave 8 — gates, stresses, reproduction, audit (H19–H22)
-
-- A5 evaluates hard gates before score.
-- R1/R2 run the frozen fee ×1.5, adverse two-tick, extra-15m-delay,
-  drop-one-symbol, and drop-one-fold jobs for base survivors.
-- If there is no survivor, reproduce at least the best diagnostic and reverse
-  control to validate the pipeline; do not promote either.
-- A5 independently reproduces every base survivor in separate processes and
-  compares orders, positions, funding, costs, equity, metrics, and digests.
-- A6 audits only after code/results freeze, receiving the full population rather
-  than a favorable subset.
-- A1 aggregates machine outputs; A1 cannot override A6 or a hard gate.
-
-### 15.4. V6 hard gates
-
-#### FG0 — Data and universe
-
-- all seven traded symbols plus BTC benchmark satisfy the declared common window;
-- actual funding settlement/publication coverage and cadence are complete;
-- tick/step/min-notional metadata is point-in-time or its frozen limitation
-  fails closed;
-- no silent symbol replacement/skip; universe freezes before results.
-
-#### FG1 — Point-in-time and leakage
-
-- funding feature uses only publication timestamps `<= signal_ts`;
-- all bars used by features/marks completed before signal;
-- `signal_ts < fill_ts`; execution bar is excluded from feature calculation;
-- warmup lies outside scored folds; 24h purge/embargo boundaries are evidenced.
-
-#### FG2a/FG2b — Integrity and reproduction
-
-- canonical accounting, hashes, index/report/registry reconciliation all pass;
-- independent reruns match frozen tolerance for orders, positions, funding,
-  costs, equity, metrics, and digests.
-
-#### FG3 — Base edge
-
-- total after-cost/funding PnL `>0`; net funding cashflow `>0`; PF `>=1.10`;
-- at least 2/3 folds have positive PnL and positive funding; median fold return
-  `>0`;
-- at least 90 scored daily rebalances and 100 canonical closed/terminal legs;
-- top fold `<=50%`; top symbol `<=40%`;
-- daily net Sharpe `>=0.50`; DSR remains the selection-bias gate.
-
-#### FG4 — Robustness
-
-- fee ×1.5, adverse two ticks, and extra 15m delay retain positive PnL and the
-  positive funding mechanism;
+- fee ×1.5, adverse two ticks, and extra 15m delay remain PnL-positive and
+  funding-mechanism-positive;
 - at least two adjacent lookbacks are positive;
-- drop-one-symbol and drop-one-fold diagnostics do not expose a sign-flip
-  dependency inconsistent with the pre-registered rule;
+- drop-one-symbol/drop-one-fold do not reveal prohibited single dependency;
 - turnover/capacity contract passes.
 
-#### FG5 — Shared-capital risk
+### FG5 — Shared-capital risk
 
-- gross `<=1.00`, `abs(net)<=0.10`, `abs(weight/symbol)<=0.20` on every completed
-  bar;
-- no margin breach/liquidation; MDD `<=10%`; `abs(BTC beta)<=0.25`;
-- top-symbol contribution `<=40%`.
+- gross `<=1.00`, `abs(net)<=0.10`, `abs(weight/symbol)<=0.20` after every event;
+- risk mode active and reduce-only actions evidenced;
+- no margin breach/liquidation;
+- MDD `<=10%`, `abs(BTC beta)<=0.25`, top-symbol contribution `<=40%`.
 
-#### FG6 — Multiple testing and independent audit
+### FG6 — Multiple testing
 
-- DSR probability `>=0.95` using the complete global scored-trial ledger;
-- PBO/CSCV reports a value only when preconditions hold, otherwise
-  `NOT_ENOUGH_CONFIGURATIONS` rather than fake PASS;
-- A6 scientific audit PASS with no unresolved HIGH/CRITICAL finding.
+- global scored-trial ledger complete and append-only;
+- DSR probability `>=0.95` using the frozen global trial count/distribution;
+- PBO/CSCV only gives a verdict when prerequisites hold, otherwise explicit
+  `NOT_ENOUGH_CONFIGURATIONS` and zero score contribution.
 
-Every FG0–FG6 gate must PASS before score can make a candidate eligible.
+### FG7 — Independent science
 
-### 15.5. V6 scorecard — 100 points
+- A7 audit PASS after code/result freeze;
+- no unresolved HIGH/CRITICAL finding;
+- trial budget and negative control verified;
+- no S1/live access and no post-lock spec change.
 
-Hard gates precede score. A missing metric scores zero for its component and has
-an explicit reason code. A 100-point candidate with one failed hard gate is
-rejected.
+All FG0–FG7 must PASS for eligibility.
 
-#### A. Data and point-in-time — 15
+---
 
-- 5: seven symbols, BTC, and funding coverage/cadence complete;
-- 5: no lookahead; signal/fill/warmup/fold evidence complete;
-- 5: universe, metadata, manifest, and hashes frozen before run.
+## 11. V6 scorecard — 100 points
 
-#### B. Accounting and cost truth — 15
+Score is considered only after all hard gates PASS. Missing values score zero.
 
-- 5: canonical/fold/terminal/total equity identities reconcile;
-- 5: commission, slippage, and rejection decomposition reconcile;
-- 5: funding cashflows are persisted, PIT-valid, and reconcile by symbol/fold.
+### A. Data and PIT — 15
 
-#### C. Chronological edge — 20
+- 5: traded, benchmark, funding, and metadata coverage complete;
+- 5: signal/fill/publication/warmup/purge evidence complete;
+- 5: input identities and universe/window frozen before implementation/run.
+
+### B. Accounting and costs — 15
+
+- 5: continuous fold/experiment equity identities reconcile;
+- 5: commissions, slippage, rejection, terminal decomposition reconcile;
+- 5: settlement funding persists and reconciles by fold/symbol.
+
+### C. Chronological edge — 20
 
 - 5: after-cost total PnL positive;
 - 5: PF `>=1.20`; 3 for `1.15–<1.20`; 1 for `1.10–<1.15`;
 - 5: 3/3 positive folds; 3 for exactly 2/3;
 - 5: daily Sharpe `>=1.00`; 3 for `0.75–<1.00`; 1 for `0.50–<0.75`.
 
-#### D. Risk and concentration — 15
+### D. Risk/concentration — 15
 
 - 5: MDD `<=6%`; 4 for `>6–8%`; 2 for `>8–10%`;
 - 5: no gross/net/weight/margin violation;
-- 5: top symbol `<=30%` and top fold `<=40%`; 3 when both remain within the
-  hard limits of 40% and 50%.
+- 5: top symbol `<=30%` and top fold `<=40%`; 3 when within hard limits.
 
-#### E. Robustness and execution — 15
+### E. Robustness — 15
 
-- 6: fee/two-tick/extra-delay positive, two points each;
-- 4: drop-one-symbol and drop-one-fold pass, two points each;
-- 3: turnover/capacity contract passes;
-- 2: at least two adjacent lookbacks are positive.
+- 6: fee/two-tick/delay survive, two points each;
+- 4: drop-one-symbol/fold pass, two points each;
+- 3: turnover/capacity pass;
+- 2: adjacent positive lookbacks.
 
-#### F. Multiple testing — 10
+### F. Multiple testing — 10
 
 - 6: DSR `>=0.99`; 4 for `0.975–<0.99`; 2 for `0.95–<0.975`;
-- 2: global scored-trial ledger is complete and append-only;
-- 2: PBO `<=25%` when estimable; zero with
-  `NOT_ENOUGH_CONFIGURATIONS`, without inventing a hard-gate PASS.
+- 2: global ledger complete/append-only;
+- 2: PBO `<=25%` when estimable; otherwise zero.
 
-#### G. Reproduction and audit — 10
+### G. Reproduction/audit — 10
 
-- 5: independent rerun all-match;
-- 3: A6 audit PASS with no unresolved HIGH/CRITICAL finding;
-- 2: matrix/report/index/registry/status artifacts reconcile.
-
-Selection rule:
+- 5: full-surface reproduction all-match;
+- 3: A7 audit PASS with no unresolved HIGH/CRITICAL;
+- 2: all matrix/registry/status/transition artifacts reconcile.
 
 ```text
-eligible = all(FG0..FG6 PASS) and score >= 75
+eligible = all(FG0..FG7 PASS) and score >= 75
 tie_break = highest_DSR_then_lower_MDD_then_lower_turnover
 max_locked_candidates = 1
 ```
 
-### 15.6. Wave 9 — verdict and research-learning loop (H22–H24)
+---
 
-Valid V6 terminal outcomes:
+## 12. Terminal outcomes and learning loop
 
-```text
-V6_PIPELINE_FAIL
-V6_CANDIDATE_FAIL
-V6_CANDIDATE_INCONCLUSIVE
-V6_LOCK_ONE_FOR_FUTURE_S1
-```
-
-After the verdict, A3–A5 classify failures into data, PIT, execution, accounting,
-cost, capacity, risk, statistical-power, selection-bias, or mechanism failure.
-A1 writes those facts into the hypothesis status and next-sprint idea backlog.
-
-This is the learning loop:
+Valid outcomes:
 
 ```text
-frozen idea -> implementation -> multi-symbol WFA/backtest -> hard gates
--> score -> independent challenge -> reject/lock -> failure taxonomy
--> next pre-registered idea in a future sprint
+V6P_FAIL_V6_BLOCKED
+V6P_PASS_V6_PIPELINE_FAIL
+V6P_PASS_V6_CANDIDATE_FAIL
+V6P_PASS_V6_CANDIDATE_INCONCLUSIVE
+V6P_PASS_V6_CANDIDATE_ELIGIBLE_PENDING_V7
+V6P_PASS_V6_LOCK_ONE_FOR_FUTURE_S1
+V6_TERMINAL_V7_NOT_AUTHORIZED
+V6_TERMINAL_V7_SKIPPED_TIME_BUDGET
+V6_TERMINAL_V7_PIPELINE_FAIL
+V6_TERMINAL_V7_CANDIDATE_FAIL
+V6_TERMINAL_V7_CANDIDATE_INCONCLUSIVE
+V6_TERMINAL_V7_LOCK_ONE_FOR_FUTURE_S1
 ```
 
-Do not convert the learning loop into same-window tuning. No fifth V6 experiment
-and no v1.1 rescue run occur in this sprint.
+After V6, classify every failure as data, PIT, execution, accounting, cost,
+capacity, risk, statistical power, multiple testing, or mechanism failure.
+Write the facts into the hypothesis status and next-sprint backlog.
 
-### 15.7. Future S1 rule
+Do not run a v1.1 rescue on the same S0. V7 is a distinct family locked before
+V6 results, not a rescue parameterization. The bounded loop is:
 
-1. Existing S0 is already inspected and is not untouched OOS.
-2. Only after one V6 candidate is locked may the team create a future S1 start
-   timestamp; do not backfill S1.
-3. V6 must not read, score, or tune on S1.
-4. Insufficient future duration/trades is `WAIT_FOR_MORE_DATA`, not early PASS.
-5. Later promotion requires Stage B after-cost PF `>=1.15`, MDD `<=10%`,
-   shared-capital replay, stresses/delayed fills, global-trial adjustment, and
-   6–8 weeks signal-only observation.
-6. No candidate means no fake S1 and no live money.
+```text
+idea -> lock -> implement -> multi-symbol WFA -> stresses -> score -> reproduce
+-> independent audit -> reject/lock -> failure taxonomy -> next locked family
+```
+
+The loop ends after V7. There is no automatic V8, no dynamic parameter search,
+and no new idea selected from partial PnL. A1 may record a future backlog but
+must not execute it in this sprint.
+
+Across V6 and V7, lock at most one candidate total. When V7 is authorized, an
+eligible V6 result stays `ELIGIBLE_PENDING_V7`, not finally locked. If V7 cannot
+run only because of the frozen time/resource budget, A1 may finalize the
+eligible V6 result after all V6 evidence and audit are complete. Create only a
+**future** S1 start timestamp. Do not backfill or inspect S1 in this sprint.
+Later promotion still requires untouched Stage B, PF `>=1.15`, MDD `<=10%`,
+stresses, and 6–8 weeks signal-only shadow.
 
 ---
 
-## 16. Required final artifacts
+## 13. Required artifacts
 
 ```text
-research/audits/v5r/
+research/audits/v6p/
   intake_snapshot.json
-  worktree_inventory.json
-  test_contamination_root_cause.md
-  test_isolation_check.json
-  exact_recovery_search.json
-  source_hash_recheck_v5r.json
-  final_tests_v5r.json
-  gate_ledger_v5r.json
-  quarantine_manifest.json              required when legacy V5 fails
-  new_lineage_baseline.json              required on clean-lineage path
-  new_lineage_contract.md                required on clean-lineage path
-  challenge_memo_v5r.md                  written by A6
-  scientific_audit_v5r.json              PASS/FAIL/BLOCKED
-  v5_legacy_transition.json
-  v5r_transition.json                    required on clean-lineage path
+  v5r_reaudit_addendum.md
+  v5r_reaudit_gates.json
+  baseline_root.json
+  a7_prelaunch_attestation.json
+  final_tests.json
+  gate_ledger_v6p.json
+  challenge_memo_v6p.md
+  scientific_audit_v6p.json
+  v6p_transition.json
 
-results/matrix/v4_recalc_diagnostic_v5r/
-  index.json
-  report.json
-  reconciliation.json
-  old_new_comparison.json
-
-results/diagnostic_v5r/<experiment_id>/
-results/reproduction_v5r/<verify_id>/
+results/validation_v6p/<validation_id>/
+results/reproduction_v6p/<verify_id>/
+results/matrix/v6p_validation/
 
 research/hypotheses/H-XSECT-FUNDING-CARRY-v1/
   hypothesis.md
   candidate.yaml
   status.yaml
-
-results/matrix/v6_xsect_funding_carry/
-  index.json
-  report.json
-  reconciliation.json
-  v6_final_transition.json
 
 results/portfolio_v6/<experiment_id>/
   launch_manifest.yaml
@@ -1185,208 +707,502 @@ results/portfolio_v6/<experiment_id>/
   signals.jsonl
   orders.jsonl
   positions.jsonl
-  terminal_positions.jsonl
-  funding_cashflows.jsonl
   portfolio_ledger.jsonl
+  funding_cashflows.jsonl
+  terminal_positions.jsonl
+  exposure_control.jsonl
   accounting_reconciliation.json
+  commission_slippage.json
   canonical_metrics.json
+  stress_report.json
   beta_report.json
   contribution_report.json
-  stress_report.json
   dsr_pbo_report.json
   gate_result.json
   scorecard.json
   artifact_hashes.json
 
 results/reproduction_v6/<verify_id>/
+results/matrix/v6_xsect_funding_carry/
 research/audits/v6/challenge_memo.md
 research/audits/v6/scientific_audit.json
+research/audits/v6/final_transition.json
 
-research/wayfinder/evidence/sprint-v5r-v6-master-20260824.md
-research/audits/v5r/master_transition.json
-CONTINUE.md                                  rewritten only at final handoff
+research/control/twelve_hour_run/
+  run_contract.json
+  state.json
+  heartbeat.json
+  event_log.jsonl
+  resource_samples.jsonl
+  worker_registry.json
+  shutdown_report.json
+
+research/hypotheses/H-XSECT-FUNDING-PRICE-DIVERGENCE-v1/
+  hypothesis.md
+  candidate.yaml
+  status.yaml
+
+results/portfolio_v7/<experiment_id>/
+  launch_manifest.yaml
+  frozen/
+  signals.jsonl
+  orders.jsonl
+  positions.jsonl
+  portfolio_ledger.jsonl
+  funding_cashflows.jsonl
+  terminal_positions.jsonl
+  exposure_control.jsonl
+  accounting_reconciliation.json
+  commission_slippage.json
+  canonical_metrics.json
+  stress_report.json
+  beta_report.json
+  contribution_report.json
+  dsr_pbo_report.json
+  gate_result.json
+  scorecard.json
+  artifact_hashes.json
+
+results/reproduction_v7/<verify_id>/
+results/matrix/v7_xsect_funding_price_divergence/
+research/audits/v7/v7_authorization.json
+research/audits/v7/challenge_memo.md
+research/audits/v7/scientific_audit.json
+research/audits/v7/final_transition.json
+research/wayfinder/evidence/sprint-v6p-v6-v7-master-20260824.md
+CONTINUE.md
 ```
 
-If neither transition path authorizes V6, all V6 result directories must remain
-absent. The final report must say V6 was intentionally blocked. If V6 runs, all
-artifacts must identify whether authorization came from legacy V5 or clean V5R.
+Results may be gitignored, but final tracked evidence must contain their exact
+paths, counts, hashes, commands, exit codes, and verdicts. Do not claim an
+artifact exists without checking the filesystem.
 
-### `master_transition.json` minimum schema
+---
 
-```json
-{
-  "schema_version": 1,
-  "plan": "V5R_V6_ORCA_20260824",
-  "source_head": "<sha>",
-  "final_head": "<sha-or-dirty-state>",
-  "legacy_v5": {"verdict": "PASS|FAIL|BLOCKED", "gates": []},
-  "v5r": {"verdict": "PASS|FAIL|BLOCKED|NOT_REQUIRED", "gates": []},
-  "v6_authorization_path": "LEGACY_V5|CLEAN_V5R|NONE",
-  "v6": {"verdict": "PIPELINE_FAIL|CANDIDATE_FAIL|CANDIDATE_INCONCLUSIVE|LOCK_ONE_FOR_FUTURE_S1|NOT_RUN", "gates": [], "scorecards": []},
-  "scientific_audit_verdict": "PASS|FAIL|BLOCKED|NOT_RUN",
-  "s1_status": "NOT_STARTED",
-  "live_money_status": "UNCHANGED_DISABLED",
-  "created_at_utc": "<timestamp>"
-}
+## 14. Definition of done
+
+The sprint ends only when:
+
+1. V5R re-audit addendum records N01–N15 without changing old evidence;
+2. all current code changes are scoped, reviewed, tested, and integrated;
+3. V6P has exactly 20 machine-readable gate rows;
+4. A7 independently signs V6P PASS/FAIL/BLOCKED;
+5. V6 starts only from `V6P_PASS_V6_AUTHORIZED`;
+6. if authorized, exactly four V6 scored launches are ledgered;
+7. all V6 gates and scorecards are measured from complete artifacts;
+8. full reproductions and A7 audit are complete or explicitly block promotion;
+9. no S1/live access occurs;
+10. final report separates engineering, scientific audit, family, candidate,
+    S1, and live-money verdicts;
+11. `CONTINUE.md` reflects final current state, not intended work;
+12. V7 starts only from a valid V6 terminal state plus all V7 authorization
+    checks and executes exactly four scored launches at most;
+13. the global scored-trial ledger includes every V6/V7 attempt that saw scored
+    data, including aborted or failed attempts;
+14. the controller reaches a terminal state, leaves no orphan worker, and writes
+    a shutdown report before the 12-hour deadline;
+15. Git status and untracked result locations are explicitly handed off.
+
+Progress is reported as gate counts, not intuition:
+
+```text
+V6P x/20 PASS; V6 authorization PASS/BLOCKED
+V6 FG x/8 PASS per candidate; trials used y/4
+V7 authorization x/12 PASS; V7 FG x/8 PASS per candidate; trials used z/4
+global new scored trials used n/8; wall clock h/12
 ```
 
 ---
 
-## 17. Final report requirements
+## 15. Unattended loop controller and 12-hour safety contract
 
-The master report must begin with a compact verdict block:
+The coordinator must implement or reuse one deterministic supervisor. The
+supervisor controls phase transitions; conversational agent judgment does not.
+Before any mutation it writes `research/control/twelve_hour_run/run_contract.json`
+with the start time, hard deadline, code/data/spec hashes, trial budgets,
+resource limits, exact phase graph, and stop reasons.
+
+### 15.1. Finite-state machine
 
 ```text
-ENGINEERING_VERDICT
-SCIENTIFIC_AUDIT_VERDICT
-V5_COMPLETION_COUNT = x/26
-V5_FAILED_GATES
-V5_BLOCKED_GATES
-V5R_COMPLETION_COUNT = x/18 or NOT_REQUIRED
-V5R_FAILED_GATES
-V6_TRANSITION
-V6_ENGINEERING_VERDICT
+INTAKE
+  -> V6P_REPAIR
+  -> V6P_VALIDATION
+  -> V6P_AUDIT
+  -> V6P_PASS | TERMINAL_V6P_FAIL
+
+V6P_PASS
+  -> V6_SPEC_AND_V7_SPEC_LOCKED
+  -> V6_BASE
+  -> V6_STRESS_REPRO
+  -> V6_AUDIT
+  -> V6_TERMINAL
+
+V6_TERMINAL
+  -> V7_AUTHORIZATION
+  -> V7_BASE | TERMINAL_V7_NOT_AUTHORIZED
+  -> V7_STRESS_REPRO
+  -> V7_AUDIT
+  -> V7_TERMINAL
+  -> FINAL_RECONCILIATION
+  -> SHUTDOWN_COMPLETE
+```
+
+Only A1 writes `state.json`. Every transition includes previous/new state,
+UTC timestamp, Git SHA, required-input hashes, gate artifact, actor, and reason.
+There is no backward transition and no transition whose required gate is
+missing. Every command has an experiment ID, owner, output root, timeout,
+expected artifacts, exit code, and final digest.
+
+### 15.2. Resume and idempotency
+
+1. On restart, read the frozen run contract and state before launching work.
+2. Verify every completed-state artifact and hash; resume the first incomplete
+   state only. Never rerun a valid completed trial.
+3. Use exclusive per-experiment lock files and a worker registry containing
+   exact child PIDs. Never use broad `pkill` or process-name matching.
+4. Output roots are append-only. An incomplete root is marked `ABORTED`; it is
+   never cleaned and reused for another experiment.
+5. If scored data was opened or any score/metric was emitted, the attempt counts
+   in the global trial ledger even when it crashes.
+6. One infrastructure retry is allowed only with a new `-RETRY1` ID and a
+   machine-recorded failure reason. No second retry.
+7. No retry is allowed for negative PnL, a failed gate, or an adverse audit.
+
+### 15.3. Blindness and anti-overfitting
+
+1. Freeze and hash both V6 and V7 specifications after V6P PASS and before the
+   first V6 scored launch.
+2. Workers may not stream PnL to agents. A1 exposes results only after the whole
+   family population is frozen.
+3. V6 results may authorize or block V7 operationally, but may not change V7's
+   universe, features, lookbacks, thresholds, costs, folds, gates, or score.
+4. Maximum new scored attempts for the entire run is eight: four V6 plus four
+   V7. Diagnostics, stresses, and exact reproductions are linked non-scored
+   jobs. No Bayesian/grid/random/LLM-generated parameter expansion is allowed.
+5. Never change the S0 start/end or symbol universe after results appear.
+6. Never interpret repeated use of S0 as untouched OOS evidence.
+
+### 15.4. Resource, heartbeat, and deadline policy
+
+1. Record CPU, available RAM, swap, load, free disk, and active worker count at
+   preflight and every five minutes. Write a heartbeat even when no phase ends.
+2. Default to two heavy workers. Increase to four only when free RAM remains at
+   least 30%, swap growth is zero, disk has at least 20 GiB free, and a measured
+   pilot shows throughput improvement. Reduce concurrency when any condition
+   fails.
+3. Stop launching new jobs if free disk is below 10 GiB, the test suite fails,
+   hashes drift, an orphan/duplicate worker exists, or A7 raises HIGH/CRITICAL.
+4. Each heavy command has a frozen timeout no greater than 90 minutes. On
+   timeout, signal only its recorded child process group with `SIGTERM`, allow
+   30 seconds, then stop that exact group if necessary; record the event.
+5. At T-minus 45 minutes, launch no new base/stress/reproduction job. At
+   T-minus 15 minutes, checkpoint, finalize the current known state, write
+   transition/report artifacts, and stop all owned workers gracefully.
+6. Check `research/control/STOP_AFTER_CURRENT_STEP` before every new command. If
+   present, finish the current atomic write, reconcile, and shut down.
+7. Never wait silently: `heartbeat.json` identifies phase, progress, latest
+   completed command, active exact PIDs, resource status, blocker, and ETA.
+
+Time exhaustion produces a truthful `SKIPPED_TIME_BUDGET` or `INCOMPLETE`; it
+never converts a missing test, reproduction, stress, or audit into PASS.
+Early completion produces `SHUTDOWN_COMPLETE`; unused time never authorizes an
+extra hypothesis, trial, retry, or parameter search.
+
+---
+
+## 16. V7 hypothesis — pre-register before V6 results
+
+### 16.1. Selection rationale and novelty check
+
+```text
+H-XSECT-FUNDING-PRICE-DIVERGENCE-v1
+```
+
+The existing catalog already contains scored/diagnostic pure cross-sectional
+momentum work; `H-VOLCOMP-BRKOUT-v1` and `H-FUNDCROWD-MR-v2` are rejected, and
+`H-XSECT-REVERSAL-v1` is draft-only/data-blocked with zero trials. V7 must not
+rerun or merely rename those exact specifications. This V7 hypothesis asks a
+different, narrower question:
+does a market-neutral portfolio improve when low-funding assets must also show
+relative price strength and high-funding assets must also show relative price
+weakness?
+
+This is an economic prior, not an established edge. It can fail because carry
+and price continuation may not coexist, trading costs may dominate, or the
+signal may be only a repackaged momentum/carry exposure. A catalog novelty
+check must be frozen with the V7 spec; a material duplicate blocks V7.
+
+### 16.2. Frozen V7 contract
+
+```yaml
+hypothesis_id: H-XSECT-FUNDING-PRICE-DIVERGENCE-v1
+family: cross_sectional_funding_price_divergence
+stage: S0_EXPLORATORY
+traded_universe: [ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT]
+benchmark_context: BTCUSDT
+signal_clock: daily_00_00_utc
+funding_feature: trailing_mean_of_published_settled_funding_only
+funding_lookback_days: 3
+price_feature: trailing_close_to_close_return_using_completed_bars_only
+price_lookback_days: [1, 3, 7]
+cross_sectional_score: percentile_rank(price_return) - percentile_rank(funding)
+long_rule: top_2_score
+short_rule: bottom_2_score
+rebalance: 24h
+folds: chronological_3fold
+purge_embargo: 24h
+target_gross: 0.80
+hard_gross_cap: 1.00
+hard_abs_net_cap: 0.10
+max_abs_weight_per_symbol: 0.20
+trial_budget:
+  scored_candidates: 3
+  negative_controls: 1
+negative_control: reverse_score_sides_at_price_lookback_3d
+```
+
+Freeze the same data, accounting, execution, latency, terminal, risk, metric,
+fold, DSR, cost, and artifact contracts as V6. The only candidate dimension is
+the declared price lookback. Do not add an OI, volatility, regime, liquidity,
+trend, symbol-specific, or threshold filter.
+
+### 16.3. Exactly four V7 scored launches
+
+```text
+XSECT-FUND-PRICE-DIV-1D
+XSECT-FUND-PRICE-DIV-3D
+XSECT-FUND-PRICE-DIV-7D
+XSECT-FUND-PRICE-DIV-REVERSE-3D-CONTROL
+```
+
+There is no fifth launch. V7 shares the global multiple-testing ledger with all
+prior scored work, including the four V6 attempts and any scored aborted retry.
+
+---
+
+## 17. V7 authorization, gates, and score
+
+### 17.1. Twelve authorization gates — all must PASS
+
+```text
+V7-A01 v6p_transition_is_exactly_v6p_pass_v6_authorized
+V7-A02 v6_reached_terminal_with_pipeline_data_pit_accounting_integrity_pass
+V7-A03 v7_spec_and_novelty_check_hashed_before_first_v6_scored_launch
+V7-A04 v7_code_matches_spec_and_has_no_post_v6_result_spec_diff
+V7-A05 v6_global_trial_ledger_and_artifact_population_reconcile
+V7-A06 no_unresolved_high_critical_from_v6_audit
+V7-A07 full_tests_pass_on_clean_committed_v7_launch_head
+V7-A08 a7_prelaunch_attestation_committed_before_v7_workers
+V7-A09 fresh_nonoverwriting_output_roots_and_unique_trial_ids
+V7-A10 resource_preflight_pass_and_at_least_180_minutes_remain
+V7-A11 no_s1_no_live_no_window_or_universe_change
+V7-A12 total_new_scored_attempt_budget_can_remain_at_or_below_eight
+```
+
+V6 candidate failure is allowed only when the failure is a measured mechanism,
+cost, robustness, power, or multiple-testing failure on an otherwise valid
+pipeline. Any V6 data/PIT/accounting/integrity/reproduction/audit failure blocks
+V7. If fewer than 180 minutes remain, record
+`V6_TERMINAL_V7_SKIPPED_TIME_BUDGET` and proceed to final reconciliation.
+
+### 17.2. V7 hard gates
+
+Reuse V6 FG0, FG1, FG2, FG4, FG5, FG6, and FG7 without relaxation. Replace only
+FG3 with the following mechanism gate:
+
+```text
+FG3-V7
+- after-cost total PnL > 0;
+- position PF >= 1.10;
+- net funding cashflow > 0 and future price PnL > 0;
+- at least 2/3 folds have positive total PnL;
+- at least 2/3 folds have positive funding contribution;
+- median continuous-capital fold return > 0;
+- at least 90 scored daily rebalances and 100 closed/terminal legs;
+- top fold <= 50% and top symbol <= 40% of positive PnL;
+- at least two adjacent price lookbacks are positive;
+- reverse control does not beat the best directional candidate.
+```
+
+Every required stress must preserve positive total PnL, positive funding, all
+risk limits, and valid accounting. A result dominated by only price momentum or
+only funding carry is recorded as mechanism-inconclusive, never relabeled as a
+new edge.
+
+Use the same 100-point scorecard in Section 11 after all hard gates pass. For V7
+the two robustness points for adjacent lookbacks refer to price lookbacks; the
+chronological edge and accounting sections use total PnL while the mechanism
+memo separately decomposes price and funding. Eligibility remains all eight
+hard gates PASS and score `>=75`.
+
+---
+
+## 18. Cross-family decision and bounded learning
+
+1. A1 freezes all V6/V7 candidates before exposing the family comparison.
+2. A7 audits the full population, including failed and aborted trials.
+3. If neither family has an eligible candidate, lock none.
+4. If only one family has an eligible candidate, it is the sole provisional S1
+   candidate.
+5. If both have eligible candidates, choose one by highest DSR, then lower MDD,
+   then lower turnover. No subjective override and no portfolio combination.
+6. Write a cross-family table with total/price/funding PnL, PF, continuous fold
+   returns, MDD, beta, concentration, stresses, DSR/PBO, score, reproduction,
+   audit, and rejection reason for every trial.
+7. Classify each failure into data, PIT, execution, accounting, cost, capacity,
+   risk, mechanism, robustness, concentration, statistical power, multiple
+   testing, reproduction, or audit.
+8. Agents may use those failure labels to write future hypothesis cards. They
+   may not implement, score, or run them in this sprint.
+9. Stop after the V7 terminal transition. There is no automatic V8.
+
+This is how the loop “learns”: it improves the next written question and the
+pipeline evidence, not the current strategy's parameters after observing PnL.
+
+---
+
+## 19. Final unattended handoff
+
+Before shutdown, A1 must produce one final report that states, separately:
+
+```text
+V6P_VERDICT
+V6_PIPELINE_VERDICT
 V6_FAMILY_VERDICT
-GLOBAL_SCORED_TRIAL_COUNT
-LOCKED_CANDIDATE_OR_NONE
+V6_BEST_CANDIDATE_OR_NONE
+V7_AUTHORIZATION_VERDICT
+V7_PIPELINE_VERDICT
+V7_FAMILY_VERDICT
+V7_BEST_CANDIDATE_OR_NONE
+CROSS_FAMILY_LOCKED_CANDIDATE_OR_NONE
+NEW_SCORED_TRIALS_USED_OUT_OF_8
+GLOBAL_LEDGER_COUNT
 S1_STATUS
 LIVE_MONEY_STATUS
+FINAL_HEAD_AND_WORKTREE_STATUS
+ACTIVE_OWNED_WORKERS
+UNRESOLVED_FINDINGS
+NEXT_SAFE_ACTION
 ```
 
-Then explain:
-
-1. what the new agent found versus what previous handoff claimed;
-2. root cause and blast radius of provenance mutation;
-3. whether exact original bytes were recovered and how this was proven;
-4. what the defensive patch prevents;
-5. why existing V5 diagnostics are or are not trustworthy;
-6. whether fresh diagnostics/reproductions were allowed to run;
-7. every failed or blocked gate, without euphemism;
-8. which transition path, if any, authorized V6;
-9. V6 trial budget, gates, scores, failure taxonomy, and negative-control result;
-10. exact next action for the repository owner.
+The report must distinguish `PASS`, `FAIL`, `BLOCKED`, `NOT_RUN`,
+`INCONCLUSIVE`, and `SKIPPED_TIME_BUDGET`. `CONTINUE.md` must point to the exact
+state, transition, report, hashes, incomplete work, exact safe resume command,
+and confirm whether any owned worker remains. Do not push, open a PR, start S1,
+or enable live execution.
 
 ---
 
-## 18. Suggested execution commands
-
-These commands are starting points, not a script to run blindly:
-
-```bash
-cd /Users/hoangminhlong/my-quantitative
-git status --short
-git log --oneline --decorate -12
-git diff -- research/matrix_runner.py tests/test_matrix_runner.py
-git worktree list --porcelain
-.venv/bin/python -m pytest tests/ -q
-```
-
-Before any commit:
-
-```bash
-git diff --check
-git diff --name-only
-git status --short
-```
-
-Use explicit `git add <reviewed-file>...` only. Never assume `results/` will be
-tracked; verify `.gitignore` and preserve audit evidence at an intentional,
-reviewable path.
-
----
-
-## 19. Agent status-report format
-
-At each major phase boundary, report:
+## 20. Orca implementation prompt
 
 ```text
-PHASE
-STATUS = PASS | FAIL | BLOCKED | IN_PROGRESS
-FILES_CHANGED
-COMMANDS_AND_EXIT_CODES
-EVIDENCE_CREATED
-NEW_FINDINGS
-NEXT_DECISION
-```
+You are A1, coordinator and final integrator for:
+/Users/hoangminhlong/my-quantitative
 
-Do not report a percentage based on intuition. If progress is requested, report
-completed mandatory gates by lineage plus phase status, for example
-`legacy V5 8/26 PASS and FAIL; V5R 11/18 PASS; V6 not authorized`.
+The owner will leave this machine unattended for at most 12 hours. Read PLAN.md
+completely before acting. It is the complete execution contract. Implement its
+finite-state supervisor, deadlines, trial budgets, scientific gates, and
+shutdown handoff exactly. Twelve hours is a maximum, not a requirement: finish
+and shut down as soon as all required terminal artifacts exist. Time pressure
+never waives a gate, and unused time never permits extra trials.
 
----
+CONTINUE.md and sprint-v5r-v6-master-20260824.md are historical handoffs whose
+safe V6-blocked verdict remains valid, but their claim that V5R had only two
+failed gates is not accepted without the V6P re-audit.
 
-## 20. Stop conditions
+Treat all V1–V5R artifacts, transitions, reports, and both old
+my-quantitative-wt locations as read-only. Never rewrite the old V5R ledger or
+audit. Record corrections only under research/audits/v6p.
 
-Stop immediately and document the condition if:
+Use Orca to launch seven bounded roles:
+A1 coordinator/integrator;
+A2 provenance/baseline;
+A3 data/funding PIT and XG0;
+A4 engine/accounting/risk/continuous WFA;
+A5 measured gates/stress/reproduction/reconciliation;
+A6 V6/V7 hypothesis specifications and implementations after V6P authorization;
+V7 scored execution remains inactive until V7 authorization;
+A7 independent scientific auditor.
 
-- a command would modify an old worktree or V1–V4 artifact;
-- exact restoration requires guessing or changing the baseline;
-- S1 or live credentials are required;
-- a result directory would be overwritten;
-- the same scientific role would implement and independently approve its work;
-- a legacy V5 rerun is proposed while V5-C02 remains failed and no V5R
-  quarantine/baseline has been frozen;
-- evidence cannot distinguish a code assertion from a measured fact.
+Use R1–R4 only as frozen-command workers with isolated output roots and registry
+shards. Do not create overlapping coding owners. Start no more than two heavy
+runs until resource preflight passes. A1 alone writes shared state/ledger/index
+files. Every coding role uses a unique branch/worktree from the same bootstrap
+commit and an explicit file allowlist.
 
-The right response to these conditions is a clear blocker, not an improvised
-waiver.
+Begin read-only. Confirm HEAD, worktree state, current tests, V6/V7 absence, raw
+artifacts, hypothesis catalog, and findings N01–N15. A7 must independently
+challenge them. Create a tracked V5R re-audit addendum; do not alter historical
+evidence. Create research/control/twelve_hour_run/run_contract.json and state.json
+before repair work, with an absolute start/deadline and the Section 15 state
+graph. Heartbeat and resource samples are required every five minutes.
 
----
+Run A2–A5 repairs in parallel with explicit file allowlists. Required repairs:
+- committed clean baseline and committed A7 attestation before launch;
+- real bar/benchmark/funding/metadata coverage and correct reason codes;
+- one-pass three-fold continuous capital and continuous MDD;
+- active RISK_MODE_V1 with every-bar caps;
+- complete funding/cost/terminal/exposure/accounting artifacts;
+- measured XG1 with no scored boolean fallback;
+- unconditional family-aware stresses even when base edge fails;
+- reconciliation that fails on append-only false or stale roots;
+- full-surface reproduction, not only orders/positions and four metrics.
 
-## 21. Orca bootstrap prompt
+Use .venv/bin/python. Preserve user work. Never use git add -A, destructive
+reset/clean, S1, live credentials, or live execution.
 
-```text
-You are A1, the coordinator and final integrator for repository
-/Users/hoangminhlong/my-quantitative.
+After integration, run the three V6P validation cases in fresh namespaces and
+evaluate V6P-C01..C20. A7 must verify the committed pre-launch baseline before
+workers and audit the frozen population afterward.
 
-Read PLAN.md completely before acting. PLAN.md is the execution contract.
-CONTINUE.md and old sprint reports are historical context only. Treat both
-/Users/hoangminhlong/my-quantitative-wt and the nested my-quantitative-wt/
-directory as read-only evidence owned by previous agents. Do not modify, clean,
-prune, reset, commit inside, or delete them.
+If any V6P gate is not PASS, write V6P_FAIL_V6_BLOCKED and stop. Do not implement
+or run V6/V7. Reconcile artifacts, update CONTINUE.md, and shut down cleanly.
 
-Use Orca to create six persistent roles:
-- A1 coordinator/integrator;
-- A2 provenance and exact-recovery owner;
-- A3 data/funding point-in-time owner;
-- A4 execution/accounting/risk owner;
-- A5 metrics/reconciliation/reproduction owner;
-- A6 independent scientific auditor.
+Only after committed V6P_PASS_V6_AUTHORIZED may A6 freeze and hash both
+H-XSECT-FUNDING-CARRY-v1 and
+H-XSECT-FUNDING-PRICE-DIVERGENCE-v1. Freeze both specifications and the V7
+catalog-novelty check before the first V6 scored launch. Implement V6 and run
+exactly four scored experiments: 1D, 3D, 7D, and reverse-3D control.
 
-Create R1/R2 only as ephemeral frozen-run workers after a run is authorized.
-You may add more runner/read-only verification agents only after resource and
-write-isolation checks. Do not add overlapping coding owners merely because
-Orca has spare capacity.
+Run hard gates FG0–FG7 before the 100-point score. Execute all stresses and
+full reproductions even when the base edge fails. A7 receives the entire frozen
+V6 population and may write audit files only. Produce a terminal V6 pipeline and
+family verdict; do not tune or rescue V6.
 
-Begin with Wave 1 read-only inspection in parallel. Preserve all existing dirty
-and untracked work. Record current Git state, worktrees, hashes, environment,
-tests, artifacts, and ownership before edits. Use .venv/bin/python. Never use
-git add -A or destructive cleanup. Never touch S1 or enable live money.
+Then evaluate V7-A01..V7-A12. Start V7 only if all 12 PASS, at least 180 minutes
+remain, V6's pipeline/data/PIT/accounting/integrity/reproduction/audit surfaces
+are valid, no HIGH/CRITICAL remains, and the global scored-attempt budget can
+stay <=8. A V6 mechanism/cost/robustness/power failure may proceed; a pipeline
+or audit failure may not.
 
-First close the test-contamination defect and decide legacy V5-C02 from the
-original 1,474-path baseline. Search once for byte-identical originals; never
-guess or reset the baseline. If legacy V5 cannot pass, freeze V5_FAIL, quarantine
-the compromised artifacts without deleting them, and execute the V5R clean-lineage
-protocol. V5R must create its baseline before any run and pass all V5R-R01..R18.
+If authorized, implement the already-hashed V7 specification with no result-
+driven edit. Run exactly four scored experiments: price lookback 1D, 3D, 7D,
+and reverse-3D control, with funding lookback fixed at 3D. Apply the inherited
+hard gates plus FG3-V7, all stresses, full reproduction, DSR/PBO, scoring, and
+A7 audit. No fifth trial, search expansion, changed filter, changed window,
+changed universe, or retry for bad performance.
 
-Do not begin V6 unless the machine-readable transition is exactly either:
-- V5_PASS_V6_AUTHORIZED; or
-- V5_FAIL_V5R_PASS_V6_AUTHORIZED_CLEAN_LINEAGE.
+Across V6 and V7, every attempt that opens scored data or emits a metric enters
+the append-only global ledger. Maximum eight new scored attempts total. Freeze
+each family population before exposing results. If both families produce an
+eligible candidate, select at most one by highest DSR, then lower MDD, then
+lower turnover. Never read/backfill S1 or combine the two portfolios.
 
-If authorized, pre-register H-XSECT-FUNDING-CARRY-v1 before signal implementation.
-Run exactly 1D, 3D, 7D, and reverse-3D control experiments. No fifth trial, no
-post-hoc filters, no parameter rescue, and no use of partial PnL for decisions.
-Run hard gates before scoring. A6 must remain independent and must audit the
-frozen full evidence population.
+Resume idempotently from state.json. Never overwrite completed roots. Use exact
+recorded child PIDs, never broad pkill. Permit at most one infrastructure retry
+under a new RETRY1 ID. At T-minus 45 minutes launch no new job; at T-minus 15
+minutes checkpoint and finalize. Stop early on hash drift, failed tests, disk
+below 10 GiB, duplicate/orphan worker, or unresolved HIGH/CRITICAL. A truthful
+FAIL/BLOCKED/INCONCLUSIVE/SKIPPED_TIME_BUDGET is a valid outcome.
 
-Maintain isolated output roots and registry shards for concurrent workers.
-Integrate only reviewed commits with explicit file allowlists. At every wave
-boundary report gate counts, files, commands/exit codes, artifacts/hashes,
-findings, blockers, and the next transition decision.
+At every phase boundary report: role status, owned files, commits, tests,
+commands/exit codes, artifact paths/hashes, gate counts, resource state,
+findings, blockers, and next transition. A truthful FAIL is valid; never create
+PASS to stay on schedule.
 
-Continue until one terminal outcome in PLAN.md is proven. A truthful FAIL or
-BLOCKED outcome is valid. Never manufacture PASS to continue the schedule.
-Finish by writing all required machine-readable transitions, audit artifacts,
-the master evidence report, and a fresh CONTINUE.md handoff. Do not push or
-change remote state unless the repository owner explicitly asks.
+Finish with all V6P/V6/V7 transitions, audits, full global reconciliation,
+sprint-v6p-v6-v7-master-20260824.md, shutdown_report.json, and a rewritten
+CONTINUE.md that contains the exact safe resume point. Verify no owned worker is
+left running. Do not push, open a PR, start V8, start S1, or change remote state.
 ```
