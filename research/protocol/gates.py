@@ -71,6 +71,57 @@ XG_REASON_CODES: dict[str, str] = {
 }
 REASON_CODES.update(XG_REASON_CODES)
 
+# --------------------------------------------------------------------------- #
+# Sprint V5 reason semantics (PLAN section 31.2 items 6-8; owner A3).
+#
+# F08 fix: ABSENCE of evidence is never a negative result.  A stress check
+# that did NOT execute emits ``not_tested``; a metric that could not be
+# computed emits ``metric_missing``; only an EXECUTED-and-negative stress may
+# emit ``<name>_negative``.  Fail-closed verdicts are unchanged -- we only
+# stop conflating "not tested" with "tested and failed".
+# --------------------------------------------------------------------------- #
+V5_REASON_CODES: dict[str, str] = {
+    "not_tested": "check was not executed; absence of evidence is not a negative result",
+    "metric_missing": "required metric absent from artifact (fail-closed)",
+    "evidence_missing": "measured evidence rows absent from ledger (fail-closed)",
+    "not_applicable_with_reason": "check not applicable to this experiment; explicit reason recorded",
+    "median_fold_return_nonpositive": "median across per-fold returns is non-positive",
+    "artifact_schema_invalid": "experiment artifact missing required schema fields",
+    "artifact_hash_mismatch": "recomputed sha256 differs from artifact_hashes.json listing",
+    "artifact_hashes_stale": "artifact_hashes.json is not the newest file; post-hash write detected",
+    "unlisted_artifact_file": "file present on disk but absent from artifact_hashes.json listing",
+    "missing_artifact": "required artifact file missing from experiment directory",
+    "ledger_missing": "required jsonl ledger missing from experiment directory",
+    "ledger_field_missing": "required field missing from a ledger row (fail-closed)",
+    "accounting_reconcile_fail": "ledger totals diverge from accounting_reconciliation.json beyond 1e-9",
+    "experiment_dir_missing": "experiment directory does not exist on disk",
+}
+REASON_CODES.update(V5_REASON_CODES)
+
+
+class ReasonSemantics(str, Enum):
+    """Enum-like reason codes distinguishing absence from negative results."""
+
+    NOT_TESTED = "not_tested"
+    METRIC_MISSING = "metric_missing"
+
+    @staticmethod
+    def stress_negative(stress_name: str) -> str:
+        """Reason code for an EXECUTED-and-NEGATIVE stress (e.g. ``fee``)."""
+        if not stress_name or not str(stress_name).strip():
+            raise ValueError("stress name required for *_negative reason")
+        return f"{str(stress_name).strip()}_negative"
+
+
+#: Module-level aliases used across gate evaluators.
+NOT_TESTED = ReasonSemantics.NOT_TESTED.value
+METRIC_MISSING = ReasonSemantics.METRIC_MISSING.value
+
+
+def STRESS_NEGATIVE(name: str) -> str:
+    """Executed-negative stress reason ``<name>_negative`` (e.g. fee_stress_negative)."""
+    return ReasonSemantics.stress_negative(name)
+
 try:  # A1-owned frozen constants win when available.
     from contracts.protocol import XG_GATE_IDS as _CONTRACT_XG_GATE_IDS  # type: ignore
 except ImportError:  # pragma: no cover - fallback until A1 contracts land
@@ -800,15 +851,17 @@ def _evaluate_g4(section: SurvivorInput | None) -> GateResult:
         )
     reasons: list[str] = []
     pending: list[str] = []
+    # V5 semantics (F08): an UNEXECUTED stress is "not_tested"; only an
+    # executed-and-negative stress earns its *_negative FAIL reason.
     if section.fee_stress_positive is False:
-        reasons.append("fee_stress_negative")
+        reasons.append(STRESS_NEGATIVE("fee_stress"))
     elif section.fee_stress_positive is None:
-        pending.append("fee_stress_negative")
+        pending.append(NOT_TESTED)
 
     if section.delay_stress_positive is False:
-        reasons.append("delay_stress_negative")
+        reasons.append(STRESS_NEGATIVE("delay_stress"))
     elif section.delay_stress_supported and section.delay_stress_positive is None:
-        pending.append("delay_stress_negative")
+        pending.append(NOT_TESTED)
 
     if section.neighborhood_spike_detected is True:
         reasons.append("neighborhood_spike")
@@ -981,13 +1034,22 @@ XG1_EVIDENCE_KEYS = frozenset(
 
 @dataclass(frozen=True)
 class XStageAInput:
-    """XG3 inputs: portfolio Stage-A edge metrics (exact PLAN thresholds)."""
+    """XG3 inputs: portfolio Stage-A edge metrics.
+
+    Sprint V5 (PLAN 31.4 / F07 fix): the gate uses ONLY measured family
+    metrics -- after-cost total pnl, position PF, MEDIAN FOLD RETURN and the
+    positive-folds ratio.  ``expectancy_r`` is accepted for artifact
+    compatibility but is DEPRECATED and never gated on: a stop-less shared
+    capital portfolio has no R normalization, so any portfolio-level R would
+    be fabricated.
+    """
 
     pnl: float | None = None
     pf: float | None = None
     pf_reason: str | None = None
-    expectancy_r: float | None = None
-    folds: Sequence[Mapping[str, Any]] | Sequence[object] = ()  # {fold_id,pnl,exp_r}
+    expectancy_r: float | None = None  # deprecated; ignored by V5 gate logic
+    fold_returns: Sequence[float] | None = None
+    folds: Sequence[Mapping[str, Any]] | Sequence[object] = ()  # {fold_id,pnl}
     rebalances_scored: int | None = None
     legs_closed: int | None = None
     top_fold_contribution: float | None = None  # fraction or percent
@@ -1021,11 +1083,21 @@ class XRiskInput:
 
 @dataclass(frozen=True)
 class XGateInputs:
-    """All evaluator sections; a missing section yields NOT_APPLICABLE."""
+    """All evaluator sections; a missing section yields NOT_APPLICABLE.
+
+    V5 measured-evidence fields (F16): when ``execution_ledger_rows`` is
+    provided, XG1 is evaluated by COUNTING violations from those artifact
+    rows (:func:`evaluate_xg1_measured`) instead of trusting the legacy
+    ``pit_evidence`` boolean struct.  ``transform_registry`` carries the
+    actual transform fit registry (empty -> not_applicable_with_reason).
+    """
 
     coverage: Mapping[str, Any] | None = None
     declared_symbols: Sequence[str] | None = None
     pit_evidence: Mapping[str, Any] | None = None
+    execution_ledger_rows: Iterable[Mapping[str, Any]] | None = None
+    transform_registry: Mapping[str, Any] | None = None
+    warmup_boundaries: Mapping[str, Any] | None = None
     artifact_integrity: ArtifactIntegrityResult | None = None
     independent_reproduction: IndependentReproductionResult | None = None
     stage_a: XStageAInput | None = None
@@ -1106,6 +1178,12 @@ def _evaluate_xg0(section: XGateInputs) -> GateResult:
 
 
 def _evaluate_xg1(evidence: Mapping[str, Any] | None) -> GateResult:
+    """LEGACY XG1 path (V4 boolean struct; retained for V4 runner compat).
+
+    Sprint V5 scored paths MUST use :func:`evaluate_xg1_measured`, which
+    counts violations from real execution-ledger rows instead of trusting
+    hand-built booleans (F16).
+    """
     if not isinstance(evidence, Mapping) or XG1_EVIDENCE_KEYS.difference(evidence) or any(
         evidence.get(key) is None for key in XG1_EVIDENCE_KEYS
     ):
@@ -1136,19 +1214,150 @@ def _evaluate_xg1(evidence: Mapping[str, Any] | None) -> GateResult:
     return _xg_result(XGateId.XG1_POINT_IN_TIME, verdict, reasons)
 
 
-def _fold_positive(row: Any) -> bool:
+# --------------------------------------------------------------------------- #
+# Sprint V5 MEASURED XG1 (PLAN 31.2 item 8 / F16 fix): evidence is COUNTED
+# from artifact execution-ledger rows -- never accepted as booleans.
+# --------------------------------------------------------------------------- #
+#: Accepted timestamp field names inside an execution ledger row.
+XG1_SIGNAL_TS_KEYS = ("signal_ts", "signal_ts_utc", "signal_ts_ns")
+XG1_FILL_TS_KEYS = ("fill_ts", "fill_ts_utc", "fill_ts_ns")
+
+
+@dataclass(frozen=True)
+class ExecutionEvidenceCounters:
+    """Counts recomputed FROM artifact rows (never runner-declared)."""
+
+    entries: int
+    violations: int
+    missing_ts: int
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "entries": self.entries,
+            "violations": self.violations,
+            "missing_ts": self.missing_ts,
+        }
+
+
+def _first_present(row: Mapping[str, Any], keys: Sequence[str]) -> Any:
+    for key in keys:
+        if key in row and row[key] is not None:
+            return row[key]
+    return None
+
+
+def count_execution_evidence(
+    rows: Iterable[Mapping[str, Any]] | None,
+) -> ExecutionEvidenceCounters:
+    """Count entries/ordering-violations/missing-timestamps from REAL rows.
+
+    A row counts as a violation when ``fill_ts <= signal_ts`` (scored entry
+    filled before or at its signal); a row missing either timestamp counts
+    toward ``missing_ts`` and can never be judged a violation.
+    """
+    entries = violations = missing_ts = 0
+    for row in rows or ():
+        if not isinstance(row, Mapping):
+            raise TypeError(f"execution ledger row must be a mapping: {row!r}")
+        entries += 1
+        signal_ts = _first_present(row, XG1_SIGNAL_TS_KEYS)
+        fill_ts = _first_present(row, XG1_FILL_TS_KEYS)
+        if signal_ts is None or fill_ts is None:
+            missing_ts += 1
+        elif float(fill_ts) <= float(signal_ts):
+            violations += 1
+    return ExecutionEvidenceCounters(
+        entries=entries, violations=violations, missing_ts=missing_ts
+    )
+
+
+def evaluate_xg1_measured(
+    execution_ledger_rows: Iterable[Mapping[str, Any]] | None,
+    *,
+    transform_registry: Mapping[str, Any] | None = None,
+    warmup_boundaries: Mapping[str, Any] | None = None,
+) -> GateResult:
+    """Measured XG1: ordering evidence counted from artifact rows.
+
+    Fail-closed semantics:
+
+    * rows absent/None/empty      -> INCONCLUSIVE ``evidence_missing`` (F16:
+                                     no constant-True PASS without a ledger);
+    * any violation (fill<=signal)-> FAIL ``signal_fill_ordering_violation``;
+    * any missing timestamps      -> INCONCLUSIVE ``g1_evidence_missing``;
+    * otherwise                   -> PASS.
+
+    Transform leakage evidence comes ONLY from the actual transform registry
+    passed by the caller: an empty/absent registry is recorded as
+    ``not_applicable_with_reason`` (a stateless pipeline has nothing to fit)
+    instead of fabricating fit proof.
+    """
+    if execution_ledger_rows is None:
+        return _xg_result(
+            XGateId.XG1_POINT_IN_TIME,
+            GateVerdict.INCONCLUSIVE,
+            (require_reason("evidence_missing"),),
+        )
+    counters = count_execution_evidence(execution_ledger_rows)
+    if counters.entries == 0:
+        return _xg_result(
+            XGateId.XG1_POINT_IN_TIME,
+            GateVerdict.INCONCLUSIVE,
+            (require_reason("evidence_missing"),),
+        )
+    reasons: list[str] = []
+    if counters.violations > 0:
+        reasons.append(require_reason("signal_fill_ordering_violation"))
+    if counters.missing_ts > 0:
+        reasons.append(require_reason("g1_evidence_missing"))
+
+    # Transform leakage evidence ONLY from the actual transform registry.
+    if not isinstance(transform_registry, Mapping) or not transform_registry:
+        reasons.append(require_reason("not_applicable_with_reason"))
+    else:
+        for name, entry in sorted(transform_registry.items()):
+            if not isinstance(entry, Mapping) or (
+                entry.get("status") is None and entry.get("fit_on") is None
+            ):
+                reasons.append(require_reason("g1_evidence_missing"))
+                break
+
+    if _missing_subkey(warmup_boundaries, WARMUP_BOUNDARY_KEYS):
+        reasons.append(require_reason("g1_evidence_missing"))
+
+    if "signal_fill_ordering_violation" in reasons:
+        return _xg_result(XGateId.XG1_POINT_IN_TIME, GateVerdict.FAIL, reasons)
+    if any(code != "not_applicable_with_reason" for code in reasons):
+        return _xg_result(
+            XGateId.XG1_POINT_IN_TIME, GateVerdict.INCONCLUSIVE, reasons
+        )
+    return _xg_result(XGateId.XG1_POINT_IN_TIME, GateVerdict.PASS, tuple(reasons))
+
+
+def _fold_pnl(row: Any) -> float | None:
     pnl = getattr(row, "pnl_after_cost", None)
-    exp_r = getattr(row, "exp_after_cost", None)
     if pnl is None and hasattr(row, "get"):
         pnl = row.get("pnl")  # type: ignore[attr-defined]
-        exp_r = row.get("exp_r")  # type: ignore[attr-defined]
+        if pnl is None:
+            pnl = row.get("pnl_after_cost")  # type: ignore[attr-defined]
     try:
-        return float(pnl) > 0 and exp_r is not None and float(exp_r) > 0
+        return None if pnl is None else float(pnl)
     except (TypeError, ValueError):
-        return False
+        return None
 
 
 def _evaluate_xg3(section: XStageAInput | None) -> GateResult:
+    """Family-aware portfolio gate (V5; PLAN section 31.4, F07 fix).
+
+    Check list -- NO expectancy-R anywhere:
+
+    1. after-cost total pnl > 0;
+    2. position PF >= MIN_POSITION_PF (undefined PF blocks with its reason);
+    3. median fold RETURN > 0 (``fold_returns`` are required measured
+       evidence; absence is INCONCLUSIVE ``metric_missing``, never guessed
+       from fold PnL);
+    4. positive-folds ratio over fold PnL >= 2/3.
+    """
     if section is None:
         return _xg_result(XGateId.XG3_STAGE_A_PORTFOLIO, GateVerdict.NOT_APPLICABLE)
 
@@ -1161,7 +1370,7 @@ def _evaluate_xg3(section: XStageAInput | None) -> GateResult:
 
     reasons: list[str] = []
 
-    if section.pnl is None or section.expectancy_r is None:
+    if section.pnl is None:
         return _xg_result(
             XGateId.XG3_STAGE_A_PORTFOLIO,
             GateVerdict.INCONCLUSIVE,
@@ -1176,19 +1385,37 @@ def _evaluate_xg3(section: XStageAInput | None) -> GateResult:
 
     if section.pnl <= 0:
         reasons.append("portfolio_pnl_nonpositive")
-    if section.expectancy_r <= 0:
-        reasons.append("exp_nonpositive")
+
+    from research.portfolio_metrics import median_fold_return as _median
+
+    median_return = _median(section.fold_returns or ())
+    if median_return is None:
+        # Fold returns are required measured evidence; a FAIL already on the
+        # books keeps precedence, otherwise this is INCONCLUSIVE.
+        if reasons:
+            return _xg_result(
+                XGateId.XG3_STAGE_A_PORTFOLIO, GateVerdict.FAIL, reasons
+            )
+        return _xg_result(
+            XGateId.XG3_STAGE_A_PORTFOLIO,
+            GateVerdict.INCONCLUSIVE,
+            (METRIC_MISSING,),
+        )
+    if median_return <= 0:
+        reasons.append("median_fold_return_nonpositive")
 
     folds = [row for row in (section.folds or [])]
-    positive_folds = sum(1 for row in folds if _fold_positive(row))
-    if len(folds) >= PortfolioConstraints.OUTER_FOLDS and (
+    fold_pnls = [_fold_pnl(row) for row in folds]
+    positive_folds = sum(1 for value in fold_pnls if value is not None and value > 0)
+    measurable_folds = [v for v in fold_pnls if v is not None]
+    if len(measurable_folds) >= PortfolioConstraints.OUTER_FOLDS and (
         positive_folds < PortfolioConstraints.MIN_POSITIVE_FOLDS
     ):
         reasons.append("positive_folds_ratio_low")
 
     contribution = _normalize_fraction(section.top_fold_contribution)
-    if contribution is None and folds:
-        aggregates = {}
+    if contribution is None and measurable_folds:
+        aggregates: dict[str, float] = {}
         for row in folds:
             fold_id = getattr(row, "fold_id", None)
             pnl = getattr(row, "pnl_after_cost", None)
@@ -1250,15 +1477,18 @@ def _evaluate_xg4(section: XRobustnessInput | None) -> GateResult:
         return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.NOT_APPLICABLE)
     fail_reasons: list[str] = []
     pending: list[str] = []
+    # V5 semantics (F08): unexecuted => not_tested; executed-negative only
+    # then earns fee_stress_negative / slippage_stress_negative /
+    # delay_stress_negative.
     stress_rows = (
-        ("fee50_exp_r", "fee_stress_negative"),
-        ("twotick_exp_r", "slippage_stress_negative"),
-        ("extradelay_exp_r", "delay_stress_negative"),
+        ("fee50_exp_r", STRESS_NEGATIVE("fee_stress")),
+        ("twotick_exp_r", STRESS_NEGATIVE("slippage_stress")),
+        ("extradelay_exp_r", STRESS_NEGATIVE("delay_stress")),
     )
     for attr, code in stress_rows:
         value = getattr(section, attr)
         if value is None:
-            pending.append(code)
+            pending.append(NOT_TESTED)
         elif float(value) <= 0:
             fail_reasons.append(code)
     for attr, code in (
@@ -1277,10 +1507,20 @@ def _evaluate_xg4(section: XRobustnessInput | None) -> GateResult:
         fail_reasons.append("limit_violation")
 
     if fail_reasons:
-        return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.FAIL, fail_reasons)
+        # FAIL precedence, but unexecuted checks stay visible as not_tested
+        # so consumers can tell "tested and negative" from "never ran" (F08).
+        return _xg_result(
+            XGateId.XG4_ROBUSTNESS_EXECUTION,
+            GateVerdict.FAIL,
+            (*fail_reasons, *(r for r in pending if r == NOT_TESTED)),
+        )
     if pending:
         return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.INCONCLUSIVE, pending)
     return _xg_result(XGateId.XG4_ROBUSTNESS_EXECUTION, GateVerdict.PASS)
+
+
+#: Public alias (V5 reason-semantics tests target the XG4 row directly).
+evaluate_xg4 = _evaluate_xg4
 
 
 def evaluate_xg5(section: XRiskInput | None) -> tuple[GateResult, dict]:
@@ -1340,9 +1580,22 @@ def evaluate_xg5(section: XRiskInput | None) -> tuple[GateResult, dict]:
 
 
 def evaluate_xgates(inputs: XGateInputs | Mapping[str, Any]) -> list[GateResult]:
-    """Evaluate all seven V4 rows in fixed order: XG0..XG5."""
+    """Evaluate all seven V4 rows in fixed order: XG0..XG5.
+
+    V5: XG1 uses the MEASURED evaluator whenever ``execution_ledger_rows``
+    are supplied; the legacy boolean struct path only runs for callers that
+    have not migrated (and can never PASS a scored promotion on its own).
+    """
     if isinstance(inputs, Mapping):
         inputs = XGateInputs.from_dict(inputs)
+    if inputs.execution_ledger_rows is not None:
+        xg1 = evaluate_xg1_measured(
+            inputs.execution_ledger_rows,
+            transform_registry=inputs.transform_registry,
+            warmup_boundaries=inputs.warmup_boundaries,
+        )
+    else:
+        xg1 = _evaluate_xg1(inputs.pit_evidence)
     xg2a = (
         _evaluate_g2a(inputs.artifact_integrity)
         if inputs.artifact_integrity is not None
@@ -1357,7 +1610,7 @@ def evaluate_xgates(inputs: XGateInputs | Mapping[str, Any]) -> list[GateResult]
     xg2b = GateResult(XGateId.XG2B_INDEPENDENT_REPRODUCIBILITY, xg2b.verdict, xg2b.reasons)
     return [
         _evaluate_xg0(inputs),
-        _evaluate_xg1(inputs.pit_evidence),
+        xg1,
         xg2a,
         xg2b,
         _evaluate_xg3(inputs.stage_a),

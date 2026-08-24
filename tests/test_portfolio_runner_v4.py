@@ -341,8 +341,10 @@ def test_missing_r_normalization_path_documented(workspace, monkeypatch):
         Path("results/portfolio_v4/XSECT-MOM-NOR/gate_result.json").read_text())
     xg3 = next(r for r in gates["gates"]
                if r["gate"] == XGateId.XG3_STAGE_A_PORTFOLIO.value)
+    # V5 (F07): no fake R. The stub engine without R emits no measured fold
+    # returns either, so XG3 stays INCONCLUSIVE via metric_missing.
     assert xg3["verdict"] == GateVerdict.INCONCLUSIVE.value
-    assert "metric_not_computed" in xg3["reasons"]
+    assert "metric_missing" in xg3["reasons"]
 
 
 def test_negative_control_is_control_only(workspace):

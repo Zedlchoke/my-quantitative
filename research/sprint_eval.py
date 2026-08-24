@@ -1469,27 +1469,476 @@ def build_v1_v2_comparison(
     }
 
 
+# --------------------------------------------------------------------------- #
+# Sprint V5 mode (PLAN sections 31.4/31.5, V5-C17/C18/C25/C26) -- owner A3.
+#
+# Evaluates diagnostic-recalculation experiment directories
+# ``results/diagnostic_v5/<id>-DIAG-V5``:
+#
+# * canonical metrics are built WITHOUT fake expectancy-R (F07);
+# * XG1 evidence is COUNTED from execution_ledger.jsonl rows (F16);
+# * XG2a is MEASURED via research.reconciliation.verify_experiment_dir
+#   (F15) -- hashes fresh, every file listed, accounting reconciled 1e-9;
+# * portfolio edge uses family-aware metrics only (daily Sharpe, median fold
+#   return, chained WFA MDD, reconciled contributions);
+# * artifact_hashes.json is written LAST via finalize_artifacts() and a
+#   .hashes_final sentinel makes any later in-process write RAISE.
+#
+# Expected runner-written inputs inside each diagnostic dir:
+#   cell.json                    identity/source trial/folds/universe
+#   execution_ledger.jsonl       {signal_ts, fill_ts} per scored entry
+#   transforms.json              actual transform registry ({} allowed)
+#   positions.jsonl              {symbol, canonical_pnl}
+#   funding_cashflows.jsonl      {funding_net}
+#   costs.jsonl                  {commission, modeled_slippage}
+#   accounting_reconciliation.json  totals for the three ledgers above
+#   fold_returns.json            [[daily returns of fold], ...]
+#   equity_curve.json            optional continuous [[ts, equity], ...]
+# --------------------------------------------------------------------------- #
+V5_DEFAULT_OUTPUT_ROOT = "results/diagnostic_v5"
+V5_DIAGNOSTIC_SUFFIX = "-DIAG-V5"
+#: Canonical reason for a missing measured metric (V5 reason semantics).
+METRIC_MISSING_V5 = "metric_missing"
+
+_FINALIZED_DIRS: set[str] = set()
+
+
+class HashesFinalViolation(RuntimeError):
+    """Raised when a process tries to write after artifact_hashes.json."""
+
+
+def assert_not_finalized(path: str | Path) -> None:
+    """Refuse writes under any directory already finalized in-process."""
+    resolved = Path(path).resolve()
+    for finalized in _FINALIZED_DIRS:
+        if str(resolved) == finalized or finalized in str(resolved):
+            raise HashesFinalViolation(
+                f"write refused: {resolved} is under finalized "
+                f"{finalized} (artifact_hashes.json already written)"
+            )
+
+
+def guarded_write_text(path: str | Path, text: str) -> Path:
+    """The ONLY sanctioned writer inside a diagnostic experiment directory."""
+    target = Path(path)
+    assert_not_finalized(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+    return target
+
+
+def guarded_write_json(path: str | Path, payload: Any) -> Path:
+    import json as _json
+
+    return guarded_write_text(path, _json.dumps(payload, indent=2))
+
+
+def finalize_artifacts(exp_dir: str | Path) -> Path:
+    """Write artifact_hashes.json LAST + .hashes_final sentinel.
+
+    Every writer touching the directory must have closed BEFORE this call.
+    Afterwards any in-process :func:`guarded_write_text` under ``exp_dir``
+    raises :class:`HashesFinalViolation`.
+    """
+    from research.reconciliation import finalize_directory_hashes
+
+    directory = Path(exp_dir)
+    out = finalize_directory_hashes(directory)
+    _FINALIZED_DIRS.add(str(directory.resolve()))
+    return out
+
+
+def _read_jsonl(path: Path) -> list[dict]:
+    if not path.is_file():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rows.append(json.loads(line))
+    return rows
+
+
+def _fold_aggregate_returns(fold_return_series: list[list[float]]) -> list[float]:
+    """Per-fold compounded return ((prod(1+r)) - 1); sign == fold PnL sign."""
+    aggregates = []
+    for series in fold_return_series:
+        growth = 1.0
+        for r in series:
+            growth *= 1.0 + float(r)
+        aggregates.append(growth - 1.0)
+    return aggregates
+
+
+def evaluate_diagnostic_v5(
+    diagnostic_root: str | Path = V5_DEFAULT_OUTPUT_ROOT,
+    *,
+    registry_path: str | Path | None = None,
+    finalize: bool = True,
+) -> dict:
+    """Evaluate every ``*-DIAG-V5`` dir; measured gates + family metrics."""
+    from contracts.protocol import ArtifactIntegrityResult, GateVerdict
+    from research.dsr import dsr_probability, pbo_cscv
+    from research.portfolio_metrics import (
+        CHAINED_MDD_ESTIMATOR,
+        DAILY_SHARPE_ESTIMATOR,
+        MEDIAN_FOLD_RETURN_ESTIMATOR,
+        ContributionMismatch,
+        chain_fold_segments,
+        chained_returns_mdd,
+        daily_sharpe,
+        median_fold_return,
+        per_symbol_contribution,
+    )
+    from research.protocol.gates import (
+        XGateInputs,
+        XGateId,
+        XStageAInput,
+        evaluate_xgates,
+    )
+    from research.protocol.registry import append
+    from research.protocol.scorecard import compute_scorecard_v3
+    from research.reconciliation import verify_experiment_dir
+
+    root = Path(diagnostic_root)
+    summaries: list[dict] = []
+    if not root.is_dir():
+        payload = {
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "diagnostic_root": str(root),
+            "schema": "v5",
+            "evaluated": 0,
+            "rows": [],
+        }
+        print(json.dumps(payload, indent=2))
+        return payload
+
+    for exp_dir in sorted(root.iterdir()):
+        if not exp_dir.is_dir() or not exp_dir.name.endswith(V5_DIAGNOSTIC_SUFFIX):
+            continue
+        cell_path = exp_dir / "cell.json"
+        if not cell_path.is_file():
+            continue
+        cell = json.loads(cell_path.read_text(encoding="utf-8"))
+        source_trial = cell.get("source_trial_experiment_id")
+        universe = [str(s) for s in cell.get("universe") or []]
+        folds_meta = cell.get("folds") or []
+        fold_start_equities = [
+            float(f.get("start_equity", 100_000.0)) for f in folds_meta
+        ]
+
+        ledger_rows = _read_jsonl(exp_dir / "execution_ledger.jsonl")
+        try:
+            transform_registry = json.loads(
+                (exp_dir / "transforms.json").read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError):
+            transform_registry = {}
+        positions = _read_jsonl(exp_dir / "positions.jsonl")
+        funding_rows = _read_jsonl(exp_dir / "funding_cashflows.jsonl")
+        cost_rows = _read_jsonl(exp_dir / "costs.jsonl")
+        fold_return_series = json.loads(
+            (exp_dir / "fold_returns.json").read_text(encoding="utf-8")
+        )
+        accounting_path = exp_dir / "accounting_reconciliation.json"
+        accounting = (
+            json.loads(accounting_path.read_text(encoding="utf-8"))
+            if accounting_path.is_file()
+            else {}
+        )
+
+        integrity_pre = verify_experiment_dir(exp_dir, phase="inputs")
+        from research.reconciliation import base_reason_codes
+
+        # Gate rows need registered reason codes; raw detail is preserved
+        # separately in gate_result.json / the registry entry.
+        integrity_pre_gated = ArtifactIntegrityResult(
+            schema_valid=integrity_pre.schema_valid,
+            hashes_match=integrity_pre.hashes_match,
+            positions_reconcile=integrity_pre.positions_reconcile,
+            report_index_reconcile=integrity_pre.report_index_reconcile,
+            reasons=base_reason_codes(integrity_pre.reasons),
+        )
+
+        reasons_fail: list[str] = []
+        contribution_error: str | None = None
+
+        # --- family-aware canonical metrics (NO fake R) ------------------ #
+        total_pnl = sum(float(row.get("canonical_pnl") or 0.0) for row in positions)
+        wins = sum(float(r["canonical_pnl"]) for r in positions
+                   if float(r.get("canonical_pnl") or 0.0) > 0)
+        losses = abs(sum(float(r["canonical_pnl"]) for r in positions
+                         if float(r.get("canonical_pnl") or 0.0) < 0))
+        position_pf = (None if losses == 0 else round(wins / losses, 10))
+        pf_reason = (
+            "no_trades" if not positions else ("no_losing_positions" if losses == 0 else None)
+        )
+
+        flat_daily_returns = [
+            float(r) for series in fold_return_series for r in series
+        ]
+        sharpe_value, sharpe_reason = daily_sharpe(flat_daily_returns)
+        fold_aggregates = _fold_aggregate_returns(fold_return_series)
+        median_return = median_fold_return(fold_aggregates)
+        chained_mdd = chained_returns_mdd(fold_start_equities, fold_return_series)
+
+        funding_total = math.fsum(float(r.get("funding_net") or 0.0) for r in funding_rows)
+        commission_total = math.fsum(float(r.get("commission") or 0.0) for r in cost_rows)
+        slippage_total = math.fsum(float(r.get("modeled_slippage") or 0.0) for r in cost_rows)
+
+        top_symbol: str | None = None
+        top_share: float | None = None
+        try:
+            shares = per_symbol_contribution(
+                positions,
+                total_pnl=total_pnl,
+                population=universe or None,
+            )
+            if shares:
+                top_symbol = max(sorted(shares), key=lambda k: shares[k])
+                top_share = shares[top_symbol]
+        except ContributionMismatch as exc:
+            contribution_error = str(exc)
+
+        canonical_metrics = {
+            "schema_version": 5,
+            "accounting": "position_level_after_funding_v5",
+            "strategy_type": cell.get("strategy_type"),
+            "symbol": cell.get("symbol"),
+            "window_actual": cell.get("window_actual"),
+            "source_trial_experiment_id": source_trial,
+            "net_canonical_pnl": {"value": round(total_pnl, 10), "reason": None},
+            "trades": {
+                "value": len(positions),
+                "reason": None if positions else require_reason("no_trades"),
+            },
+            "position_pf": {"value": position_pf, "reason": pf_reason},
+            # F07: no stop => no R. Explicit null + reason, never a proxy.
+            "expectancy_r": {"value": None, "reason": "MISSING_R_NORMALIZATION"},
+            "funding_total": round(funding_total, 10),
+            "commission_total": round(commission_total, 10),
+            "modeled_slippage_total": round(slippage_total, 10),
+            "daily_sharpe": {
+                "value": None if sharpe_value is None else round(sharpe_value, 10),
+                "reason": sharpe_reason,
+                "estimator_id": DAILY_SHARPE_ESTIMATOR,
+                "rf": 0.0,
+            },
+            "median_fold_return": {
+                "value": None if median_return is None else round(median_return, 10),
+                "reason": None if median_return is not None else METRIC_MISSING_V5,
+                "estimator_id": MEDIAN_FOLD_RETURN_ESTIMATOR,
+            },
+            "positive_folds": sum(1 for v in fold_aggregates if v > 0),
+            "outer_folds": len(fold_aggregates),
+            "chained_wfa_mdd": {
+                "value": round(chained_mdd, 10),
+                "estimator_id": CHAINED_MDD_ESTIMATOR,
+            },
+            "top_symbol_contribution": {
+                "symbol": top_symbol,
+                "share": None if top_share is None else round(top_share, 10),
+            },
+        }
+
+        # --- measured gates ------------------------------------------------ #
+        stage_a = XStageAInput(
+            pnl=total_pnl if positions else None,
+            pf=position_pf,
+            pf_reason=pf_reason,
+            fold_returns=fold_aggregates or None,
+            folds=[
+                {"fold_id": f"f{k+1}", "pnl": v}
+                for k, v in enumerate(fold_aggregates)
+            ],
+            rebalances_scored=int(cell.get("rebalances_scored") or 0) or None,
+            legs_closed=len(positions),
+            top_symbol_contribution=top_share,
+        )
+        gate_inputs = XGateInputs(
+            coverage=cell.get("coverage"),
+            declared_symbols=cell.get("declared_symbols"),
+            # Always route through the MEASURED XG1 path: an empty/absent
+            # ledger must yield evidence_missing, never the legacy boolean
+            # struct interpretation.
+            execution_ledger_rows=list(ledger_rows),
+            transform_registry=transform_registry or None,
+            warmup_boundaries=(cell.get("warmup_boundaries") or {}),
+            artifact_integrity=integrity_pre_gated,
+            stage_a=stage_a,
+        )
+        gate_results = evaluate_xgates(gate_inputs)
+        verdict_by_gate = {
+            (r.gate.value if hasattr(r.gate, "value") else str(r.gate)): r.verdict
+            for r in gate_results
+        }
+        xg2a_verdict = verdict_by_gate[XGateId.XG2A_ARTIFACT_INTEGRITY.value]
+
+        # Contribution mismatch is an integrity FAIL (F01/F02), not a crash.
+        if contribution_error is not None:
+            xg2a_verdict = GateVerdict.FAIL
+            reasons_fail.append("contribution_mismatch")
+
+        # --- scorecard via G-id translation -------------------------------- #
+        from research.portfolio_runner import map_xg_to_g_scores
+
+        translated = map_xg_to_g_scores(gate_results)
+        sharpe_ok = sharpe_reason is None
+        scorecard = compute_scorecard_v3(
+            translated,
+            {
+                "expectancy_r": None,  # never fake R
+                "position_pf": position_pf,
+                "positive_folds": canonical_metrics["positive_folds"],
+                "outer_folds": canonical_metrics["outer_folds"],
+                "closed_trades": len(positions),
+                "flat_benchmark_pass": None,
+                "rationale_flags": {},
+                "cost_flags": {},
+                "risk_flags": {},
+            },
+        )
+
+        # --- write evaluator outputs (guarded) ------------------------------ #
+        guarded_write_json(exp_dir / "canonical_metrics.json", canonical_metrics)
+        guarded_write_json(
+            exp_dir / "gate_result.json",
+            {
+                "schema": "v5",
+                "xg2a_evidence": {
+                    "measured_before_evaluation": True,
+                    "verdict": integrity_pre.verdict().value,
+                    "reasons": list(integrity_pre.reasons),
+                },
+                "rows": [r.to_dict() for r in gate_results],
+            },
+        )
+        guarded_write_json(
+            exp_dir / "scorecard.json",
+            {
+                "schema_version": 5,
+                "components": scorecard.components,
+                "total": scorecard.total,
+                "max_verdict": scorecard.max_verdict(),
+                "note": "diagnostic recalculation; no fake expectancy-R (PLAN 31.4)",
+            },
+        )
+
+        protocol_fail = (
+            xg2a_verdict is GateVerdict.FAIL
+            or verdict_by_gate.get(XGateId.XG1_POINT_IN_TIME.value) is GateVerdict.FAIL
+            or bool(reasons_fail)
+        )
+        xg3_verdict = verdict_by_gate[XGateId.XG3_STAGE_A_PORTFOLIO.value]
+        if protocol_fail:
+            verdict = "UNRANKED_PROTOCOL_FAIL"
+        elif (
+            xg2a_verdict is GateVerdict.PASS
+            and verdict_by_gate[XGateId.XG1_POINT_IN_TIME.value] is GateVerdict.PASS
+            and xg3_verdict is GateVerdict.PASS
+        ):
+            verdict = "DIAG_RECALC_MATCH_PASS"
+        else:
+            verdict = "INCONCLUSIVE"
+
+        log_line = (
+            f"{datetime.now(timezone.utc).isoformat()} | {exp_dir.name} | DIAG-V5 | "
+            f"{verdict} | xg1={verdict_by_gate[XGateId.XG1_POINT_IN_TIME.value].value} "
+            f"xg2a={xg2a_verdict.value} "
+            f"xg3={verdict_by_gate[XGateId.XG3_STAGE_A_PORTFOLIO.value].value}\n"
+        )
+        guarded_write_text(exp_dir / "run.log", log_line)
+
+        # --- hashes LAST, then post-finalize verification ------------------- #
+        integrity_post = None
+        if finalize:
+            finalize_artifacts(exp_dir)
+            integrity_post = verify_experiment_dir(exp_dir, phase="final")
+            if integrity_post.verdict() is not GateVerdict.PASS:
+                verdict = "UNRANKED_PROTOCOL_FAIL"
+                reasons_fail.extend(integrity_post.reasons)
+
+        entry = {
+            "experiment_id": exp_dir.name,
+            "verdict": verdict,
+            "kind": "DIAGNOSTIC_RECALC",
+            "schema": "v5",
+            "source_trial_experiment_id": source_trial,
+            "verified_experiment_id": exp_dir.name,
+            "verification_type": "V4_DIAGNOSTIC_RECALC",
+            "xg1": verdict_by_gate[XGateId.XG1_POINT_IN_TIME.value].value,
+            "xg2a": xg2a_verdict.value,
+            "xg3": verdict_by_gate[XGateId.XG3_STAGE_A_PORTFOLIO.value].value,
+            "reasons": sorted(set(reasons_fail)),
+            "canonical": {
+                "net_canonical_pnl": total_pnl,
+                "positions_digest_source": cell.get("positions_digest"),
+                "chained_wfa_mdd": chained_mdd,
+                "median_fold_return": median_return,
+                "daily_sharpe": sharpe_value,
+            },
+            "post_finalize_integrity": (
+                None
+                if integrity_post is None
+                else {
+                    "verdict": integrity_post.verdict().value,
+                    "reasons": list(integrity_post.reasons),
+                }
+            ),
+            "scorecard_total": scorecard.total,
+            "artifact_dir": str(exp_dir),
+        }
+        append(entry, path=registry_path)
+        summaries.append(entry)
+
+    payload = {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "diagnostic_root": str(root),
+        "schema": "v5",
+        "evaluated": len(summaries),
+        "protocol_fail": sum(1 for s in summaries if s["verdict"] == "UNRANKED_PROTOCOL_FAIL"),
+        "pass": sum(1 for s in summaries if s["verdict"] == "DIAG_RECALC_MATCH_PASS"),
+        "inconclusive": sum(1 for s in summaries if s["verdict"] == "INCONCLUSIVE"),
+        "dsr_available": dsr_probability.__name__ == "dsr_probability",
+        "pbo_min_configs": pbo_cscv({})["min_configs_required"],
+        "rows": summaries,
+    }
+    print(json.dumps(payload, indent=2))
+    return payload
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--matrix-dir", required=True)
+    parser.add_argument("--matrix-dir", default=None)
     parser.add_argument("--output-root", default=None)
     parser.add_argument(
-        "--schema", choices=("v1", "v2", "v3"), default="v3",
+        "--schema", choices=("v1", "v2", "v3", "v5"), default="v3",
         help=(
             "v3 = Sprint V3 read-only provenance + G2a/G2b separation "
-            "(default); v2 = Sprint V2 provenance mode"
+            "(default); v2 = Sprint V2 provenance mode; "
+            "v5 = diagnostic recalculation dirs (PLAN 31.5)"
         ),
     )
     parser.add_argument("--registry-path", default=None,
                         help="append-only registry file (default results/registry/experiments.jsonl)")
     parser.add_argument("--no-finalize", action="store_true",
-                        help="skip matrix reconciliation/finalize (v3 only)")
+                        help="skip matrix reconciliation/finalize (v3) or hash finalization (v5)")
+    parser.add_argument("--diagnostic-root", default=V5_DEFAULT_OUTPUT_ROOT,
+                        help="directory holding *-DIAG-V5 experiment dirs (v5 only)")
     parser.add_argument("--coverage-path", default=None,
                         help="data-contract coverage.json used as G0 evidence")
     parser.add_argument("--v1-summary-dir", default=None,
                         help="directory holding V1 sprint_summary_*.json rows")
     args = parser.parse_args(argv)
 
+    if args.schema == "v5":
+        payload = evaluate_diagnostic_v5(
+            args.diagnostic_root,
+            registry_path=args.registry_path,
+            finalize=not args.no_finalize,
+        )
+        return 0 if payload["protocol_fail"] == 0 else 1
+    if not args.matrix_dir:
+        parser.error("--matrix-dir is required for --schema v1/v2/v3")
     if args.schema == "v3":
         payload = evaluate_matrix_v3(
             args.matrix_dir,
