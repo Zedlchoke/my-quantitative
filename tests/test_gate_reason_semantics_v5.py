@@ -114,7 +114,11 @@ def test_xg4_all_stresses_absent_emits_not_tested_only():
 
 
 def test_xg4_mixed_executed_and_absent_stresses_split_semantics():
-    section = _robust(fee50_exp_r=-0.01)  # executed-negative; others absent
+    section = _robust(
+        fee50_exp_r=-0.01,      # EXECUTED and negative
+        twotick_exp_r=None,     # never ran
+        extradelay_exp_r=None,  # never ran
+    )
     result = evaluate_xg4(section)
     assert result.verdict is GateVerdict.FAIL
     assert "fee_stress_negative" in result.reasons
