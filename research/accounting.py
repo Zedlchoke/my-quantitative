@@ -91,11 +91,18 @@ def build_accounting_reconciliation(
     scope: str = "experiment",
     fold_id: int | str | None = None,
     terminal_policy: str = TERMINAL_POLICY,
+    capital_reset_injection: float = 0.0,
 ) -> dict:
     """Evaluate the V5 accounting identity for one scope.
 
     Returns a JSON-safe dict; ``identity_ok`` is True iff the residual
     ``(ending - starting) - rhs`` is within the scaled tolerance.
+
+    ``capital_reset_injection`` is reserved for the LEGACY ``reset_folds``
+    diagnostic mode of the portfolio engine: a fold-start 100k restart is an
+    explicit capital injection that the identity must account for
+    (``rhs += injection``). Continuous-capital runs always pass 0.0; any
+    non-zero value is reported verbatim for audit.
     """
     start_e = float(starting_equity)
     end_e = float(ending_equity)
@@ -105,9 +112,10 @@ def build_accounting_reconciliation(
     comm = float(commissions)
     slip = float(slippage)
     rej = float(rejection_costs)
+    inject = float(capital_reset_injection)
 
     equity_delta = end_e - start_e
-    rhs = closed + terminal + funding - comm - slip - rej
+    rhs = closed + terminal + funding - comm - slip - rej + inject
     residual = equity_delta - rhs
     tol = identity_tolerance(start_e, end_e)
     return {
@@ -123,11 +131,18 @@ def build_accounting_reconciliation(
         "funding_cashflows": funding,
         "commissions": comm,
         "slippage": slip,
-        "rejection_costs": rej,
+        "rejection_costs": rejection_costs,
+        "capital_reset_injection": inject,
         "rhs_total": rhs,
         "residual": residual,
         "tolerance": tol,
         "identity_ok": bool(abs(residual) <= tol),
+        "identity_note": (
+            "rhs includes capital_reset_injection "
+            "(legacy reset_folds diagnostic mode)"
+            if inject
+            else ""
+        ),
     }
 
 

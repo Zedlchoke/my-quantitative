@@ -307,6 +307,10 @@ def _apply_fill(
     entry_px = state["avg_entry"][sym]
     entry_ts = state.setdefault("entry_ts", {}).get(sym)
     gross_pnl = dq * side_sign * (ref - entry_px)
+    # V5: the CLOSING fill's own commissions/slippage belong to the leg being
+    # reduced (population coherence: every executed order cost lands in some
+    # leg's canonical_pnl).
+    state["leg_cost"][sym] += fee + slippage_cost
     frac = dq / abs(cur)
     alloc_cost = state["leg_cost"][sym] * frac
     alloc_funding = state.setdefault("leg_funding", {}).get(sym, 0.0) * frac
@@ -545,6 +549,10 @@ def _run_exposure_check(
     den = eq if eq > 0 else 1.0
     gross_cap = float(cfg["hard_gross_cap"])
     net_cap = float(cfg["hard_abs_net_cap"])
+    # Aim marginally INSIDE the cap so post-trim commissions/slippage cannot
+    # leave a borderline breach (deterministic restore). 1e-3 comfortably
+    # dominates the ~1bp cost drag of the trims themselves.
+    aim = 1.0 - 1e-3
 
     def trim_legs(offenders: list[str], excess_notional: float,
                   base_notional: float) -> float:
@@ -570,7 +578,9 @@ def _run_exposure_check(
     gross_frac = gross_val / den
     if gross_frac > gross_cap + SUM_TOL and gross_val > 0:
         offenders = sorted(marks)
-        trimmed = trim_legs(offenders, gross_val - gross_cap * den, gross_val)
+        trimmed = trim_legs(
+            offenders, gross_val - gross_cap * den * aim, gross_val
+        )
         exposure_rows.append(
             {
                 "ts": ts,
@@ -592,7 +602,9 @@ def _run_exposure_check(
             s for s in marks if math.copysign(1.0, state["pos"][s]) == sgn
         )
         base = sum(abs(state["pos"][s]) * marks[s] for s in offenders)
-        trimmed = trim_legs(offenders, abs(net_val) - net_cap * den, base)
+        trimmed = trim_legs(
+            offenders, abs(net_val) - net_cap * den * aim, base
+        )
         exposure_rows.append(
             {
                 "ts": ts,
@@ -719,9 +731,11 @@ def run_shared_capital_backtest(
     # segment (fold / unfolded-period) accounting bookkeeping
     seg_open: dict[int | None, float] = {}
     seg_close: dict[int | None, float] = {}
+    seg_injection: dict[int | None, float] = {}
     seg_order: list[int | None] = []
     current_seg: int | None = object()  # sentinel: no segment yet
     settle_ptr = {"i": 0}
+    last_settlement_applied: dict[str, int] = {}
 
     def fold_index(ts: int) -> int | None:
         for fid, (start, end) in enumerate(fold_list):
@@ -733,6 +747,11 @@ def run_shared_capital_backtest(
         nonlocal current_seg
         current_seg = fid
         seg_order.append(fid)
+        # snapshot the TRUE economic carry-in value BEFORE any reset; a legacy
+        # fold-start restart then shows up as an explicit capital injection
+        # that reconciles the identity across the discontinuity
+        seg_open[fid] = equity_now
+        seg_injection[fid] = 0.0
         if reset_folds and fid is not None:
             # legacy diagnostic mode: fresh 100k at each fold start
             state["cash"] = float(initial_capital)
@@ -746,7 +765,7 @@ def run_shared_capital_backtest(
             dd_state["peak"] = float(initial_capital)
             dd_state["peak_ts"] = None
             dd_state["dd_start"] = None
-            equity_now = float(initial_capital)
+            seg_injection[fid] = float(initial_capital) - equity_now
         seg_open[fid] = equity_now
 
     def apply_funding_stamp(stamp_ts: int, fid: int | None) -> None:
@@ -791,6 +810,15 @@ def run_shared_capital_backtest(
                         f"bundle_dir={funding_bundles_dir!r}"
                     )
                 continue  # not this symbol's settlement time
+            prev_applied = last_settlement_applied.get(sym)
+            if (
+                prev_applied is not None
+                and abs(matched - prev_applied) <= JITTER_SNAP_NS
+            ):
+                # same settlement epoch already booked via a neighbour symbol's
+                # grid stamp (cross-symbol jitter) -> never double-charge
+                continue
+            last_settlement_applied[sym] = matched
             mark_notional = state["pos"][sym] * mark
             cashflow = -rate * mark_notional
             state["cash"] += cashflow
@@ -1048,6 +1076,7 @@ def run_shared_capital_backtest(
             rejection_costs=0.0,
             scope="fold" if seg is not None else "unfolded_period",
             fold_id=seg,
+            capital_reset_injection=seg_injection.get(seg, 0.0),
         )
 
     per_fold = {str(seg): seg_recon(seg) for seg in seg_order}
@@ -1064,11 +1093,15 @@ def run_shared_capital_backtest(
         rejection_costs=0.0,
         scope="experiment",
         fold_id=None,
+        capital_reset_injection=sum(
+            v for k, v in seg_injection.items() if k is not None
+        ),
     )
     accounting_payload = {
         "identity_formula": IDENTITY_FORMULA,
         "terminal_policy": TERMINAL_POLICY,
         "tolerance_scale": 1e-9,
+        "reset_folds": bool(reset_folds),
         "experiment": experiment_recon,
         "per_fold": per_fold,
         "all_ok": bool(

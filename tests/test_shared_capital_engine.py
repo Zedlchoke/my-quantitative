@@ -385,17 +385,24 @@ def test_flip_closes_leg_and_opens_reverse():
     assert eth_leg["entry_price"] == pytest.approx(100.50)
     assert eth_leg["exit_price"] == pytest.approx(81.0)
     entry_cost = qty_eth * 100.51 * 0.0005 + qty_eth * 0.01
+    # V5: the closing fill's own commissions/slippage are allocated too
+    exit_cost = qty_eth * (81.0 - 0.01) * 0.0005 + qty_eth * 0.01
     gross = qty_eth * (81.0 - 100.50)
     assert eth_leg["gross_pnl"] == pytest.approx(gross, abs=1e-6)
-    assert eth_leg["canonical_pnl"] == pytest.approx(gross - entry_cost, abs=1e-6)
+    assert eth_leg["canonical_pnl"] == pytest.approx(
+        gross - entry_cost - exit_cost, abs=1e-6
+    )
     assert eth_leg["funding_allocated"] == 0.0  # no bundles -> no funding
 
     sol_leg = next(l for l in regular if l["symbol"] == "SOLUSDT")
     qty_sol = 251.256
     assert sol_leg["side"] == "SHORT"
     entry_cost_sol = qty_sol * 99.49 * 0.0005 + qty_sol * 0.01
+    exit_cost_sol = qty_sol * (129.0 + 0.01) * 0.0005 + qty_sol * 0.01
     gross_sol = qty_sol * (99.50 - 129.0)
-    assert sol_leg["canonical_pnl"] == pytest.approx(gross_sol - entry_cost_sol, abs=1e-6)
+    assert sol_leg["canonical_pnl"] == pytest.approx(
+        gross_sol - entry_cost_sol - exit_cost_sol, abs=1e-6
+    )
 
     # reverse legs opened at the flip event, then force-liquidated at the
     # fold's last observable bar (V5 terminal policy — same event here)

@@ -74,10 +74,6 @@ def _boundary_of(ts_ns: int) -> int:
     return ((ts_ns + DAY_NS - 1) // DAY_NS) * DAY_NS
 
 
-def _iso_date(ts_ns: int) -> str:
-    return datetime.fromtimestamp(ts_ns // 1_000_000_000, tz=timezone.utc).strftime("%Y-%m-%d")
-
-
 # --------------------------------------------------------------------------- #
 # Catalog reading (pyarrow-direct, mirrors research.data_audit conventions)
 # --------------------------------------------------------------------------- #
