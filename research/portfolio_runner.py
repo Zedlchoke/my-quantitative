@@ -50,6 +50,7 @@ import argparse
 import dataclasses
 import importlib
 import json
+import math
 import os
 import subprocess
 import sys
@@ -674,6 +675,7 @@ def build_gate_inputs(
     warmup_boundaries: Mapping[str, str | None],
     stress_results: Mapping[str, float] | None = None,
     independent_reproduction: IndependentReproductionResult | None = None,
+    artifact_integrity: ArtifactIntegrityResult | None = None,
 ) -> dict[str, Any]:
     metrics = execution["metrics"]
     folds_block = [
@@ -753,10 +755,7 @@ def build_gate_inputs(
         "coverage": coverage_payload,
         "declared_symbols": list(declared_symbols),
         "pit_evidence": pit_evidence,
-        "artifact_integrity": ArtifactIntegrityResult(
-            schema_valid=True, hashes_match=True,
-            positions_reconcile=True, report_index_reconcile=True,
-        ),
+        "artifact_integrity": artifact_integrity,
         "independent_reproduction": independent_reproduction,
         "stage_a": stage_a,
         "robustness": robustness,
@@ -829,18 +828,86 @@ def compute_portfolio_scorecard(gate_rows: Sequence[GateResult]) -> dict[str, An
 # --------------------------------------------------------------------------- #
 # artifact writing
 # --------------------------------------------------------------------------- #
-def write_artifact_hashes(exp_dir: Path, skip: Sequence[str] = ("artifact_hashes.json",)) -> Path:
-    hashes = {}
+_FINALIZED_EXP_DIRS: set[Path] = set()
+
+
+class HashesFinalViolation(RuntimeError):
+    """Raised when a finalized experiment directory is written again."""
+
+
+def _iter_artifact_files(exp_dir: Path, skip: Sequence[str]) -> list[tuple[str, Path]]:
+    files: list[tuple[str, Path]] = []
     for path in sorted(exp_dir.rglob("*")):
         if not path.is_file():
             continue
         rel = path.relative_to(exp_dir).as_posix()
         if rel in skip:
             continue
-        hashes[rel] = sha256_file(path)
+        files.append((rel, path))
+    return files
+
+
+def _serialize_hash_manifest(hashes: Mapping[str, str]) -> str:
+    return json.dumps({"schema_version": 4, "hashes": hashes},
+                      indent=2, sort_keys=True, default=str)
+
+
+def append_run_log(log_path: Path, message: str) -> None:
+    """Append one UTC-stamped line; refuse once the directory is finalized."""
+    if log_path.resolve().parent in _FINALIZED_EXP_DIRS:
+        raise HashesFinalViolation(
+            f"run.log append refused, experiment already finalized: {log_path}")
+    stamp = datetime.now(timezone.utc).isoformat()
+    with log_path.open("a", encoding="utf-8") as handle:
+        handle.write(f"[{stamp}] {message}\n")
+
+
+def write_artifact_hashes(exp_dir: Path, skip: Sequence[str] = ("artifact_hashes.json",)) -> Path:
+    """Hash every regular file under ``exp_dir`` and write the manifest LAST.
+
+    D1 fail-closed contract: all data files and ``run.log`` must be closed
+    before this call; afterwards :func:`append_run_log` refuses appends. If
+    ``artifact_hashes.json`` already exists, this is an idempotent no-op
+    returning the existing path only when the recomputed manifest is
+    byte-identical -- otherwise it raises instead of rewriting.
+    """
+    exp_dir = Path(exp_dir)
+    if not exp_dir.is_dir():
+        raise RunnerError(f"artifact dir missing: {exp_dir}")
+    serialized = _serialize_hash_manifest(
+        {rel: sha256_file(path) for rel, path in _iter_artifact_files(exp_dir, skip)})
     out = exp_dir / "artifact_hashes.json"
-    write_json(out, {"schema_version": 4, "hashes": hashes})
+    if out.is_file() and out.read_text(encoding="utf-8") != serialized:
+        raise HashesFinalViolation(
+            f"artifact_hashes.json already finalized with different content: {out}")
+    if not out.is_file():
+        out.write_text(serialized, encoding="utf-8")
+    _FINALIZED_EXP_DIRS.add(out.parent.resolve())
     return out
+
+
+def verify_artifact_hashes(exp_dir: Path, skip: Sequence[str] = ("artifact_hashes.json",)) -> list[str]:
+    """Separate-reader check (pure read): recompute hashes from disk and
+    return one reason string per mismatched, missing, or unlisted regular
+    file (same skip rules as the writer); empty list means verified."""
+    exp_dir = Path(exp_dir)
+    out = exp_dir / "artifact_hashes.json"
+    if not out.is_file():
+        return [f"{out.name}:missing_manifest"]
+    try:
+        recorded = json.loads(out.read_text(encoding="utf-8"))["hashes"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return [f"{out.name}:unreadable_manifest"]
+    reasons: list[str] = []
+    seen: set[str] = set()
+    for rel, path in _iter_artifact_files(exp_dir, skip):
+        seen.add(rel)
+        if rel not in recorded:
+            reasons.append(f"{rel}:unlisted")
+        elif sha256_file(path) != recorded[rel]:
+            reasons.append(f"{rel}:hash_mismatch")
+    reasons.extend(f"{rel}:missing" for rel in sorted(set(recorded) - seen))
+    return sorted(reasons)
 
 
 def dump_launch_manifest(manifest: RunLaunchManifest, extra: Mapping[str, Any], path: Path) -> None:
@@ -966,9 +1033,7 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     log_path = exp_dir / "run.log"
 
     def _log(message: str) -> None:
-        stamp = datetime.now(timezone.utc).isoformat()
-        with log_path.open("a", encoding="utf-8") as handle:
-            handle.write(f"[{stamp}] {message}\n")
+        append_run_log(log_path, message)
 
     _log(f"launch experiment={args.experiment_id} matrix={args.matrix_id}")
     _log(f"lock evidence source={identity['lock_source']} "
@@ -1171,12 +1236,26 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         **scorecard,
     })
 
-    artifact_hash_path = write_artifact_hashes(exp_dir)
     verify_reasons = verify_frozen_snapshots_local(snapshot, exp_dir)
     if verify_reasons:
         _log(f"WARN frozen snapshot verification issues: {verify_reasons}")
+    # D1 contract: run.log is complete BEFORE any hash computation; a later
+    # _log() here would raise HashesFinalViolation (fail closed).
     _log(f"verdict={verdict} scorecard_total={scorecard['total']} "
-         f"mode={scorecard['score_mode']} hashes={Path(artifact_hash_path.name)}")
+         f"mode={scorecard['score_mode']} hashes=artifact_hashes.json")
+    artifact_hash_path = write_artifact_hashes(exp_dir)
+    integrity_reasons = verify_artifact_hashes(exp_dir)
+    leg_pnl_sum = math.fsum(
+        float(leg.get("pnl", 0.0)) for leg in execution["closed_legs"])
+    total_pnl = float(execution["metrics"]["total_pnl"])
+    legs_count_match = (
+        len(execution["closed_legs"]) == int(execution["metrics"]["legs_closed"]))
+    identity_ok = abs(leg_pnl_sum - total_pnl) <= 1e-6 and legs_count_match
+    canonical_written = json.loads(
+        (exp_dir / "canonical_metrics.json").read_text(encoding="utf-8"))
+    report_index_ok = (
+        canonical_written.get("positions_digest")
+        == rows_digest(execution["closed_legs"]))
 
     registry_append({
         "experiment_id": args.experiment_id,
@@ -1191,6 +1270,12 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         "gate_verdicts": xgate_verdict_map(gate_rows),
         "scorecard_total": scorecard["total"],
         "score_mode": scorecard["score_mode"],
+        "inprocess_integrity": {
+            "manifest_verify_reasons": integrity_reasons,
+            "leg_pnl_identity_ok": identity_ok,
+            "report_index_reconcile_ok": report_index_ok,
+            "authoritative_verdict_source": "external_reader",
+        },
     }, path=args.registry_path)
 
     update_matrix_index(args.matrix_id, args.experiment_id, verdict, exp_dir,
