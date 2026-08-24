@@ -1,4 +1,4 @@
-# PLAN.md — Master Sprint V3 → V4 · 48 giờ · Correctness Then Edge Search
+# PLAN.md — Master Research Program · V3 → V6 · Correctness Then Edge Search
 
 > **Repo:** `my-quantitative`
 > **Phạm vi:** Binance USD-M perpetual research; research/Testnet/Demo only
@@ -8,6 +8,10 @@
 > ghi đè artifact V1/V2/V3
 > **Transition rule:** V4 chỉ tự động mở khi toàn bộ V3 completion gate PASS;
 > nếu V3 partial/fail thì V4 bị `BLOCKED_BY_V3`, không được implement strategy
+>
+> **Current frontier (2026-08-24):** V3/V4 đã chạy xong. Phần 28 trở đi là
+> kế hoạch có hiệu lực cho Sprint V5→V6 và supersede mọi `NEXT ACTIONS` cũ;
+> artifacts/báo cáo V3/V4 vẫn immutable để phục vụ audit.
 
 ---
 
@@ -1330,3 +1334,643 @@ hypothesis → spec lock → point-in-time data → realistic execution
   Paper 25882: <https://www.nber.org/papers/w25882>
 - Liu, Tsyvinski, `Risks and Returns of Cryptocurrency`, Review of Financial
   Studies: <https://doi.org/10.1093/rfs/hhaa113>
+
+---
+
+## 28. Post-sprint audit — verdict thực tế của V3/V4
+
+### 28.1. Verdict được chấp nhận
+
+```text
+V3_ENGINEERING_VERDICT : PIPELINE_PASS_WITH_OPEN_AUDIT_DEBT
+V3_CANDIDATE_VERDICT   : CANDIDATE_FAIL
+V4_ENGINEERING_VERDICT : PIPELINE_PARTIAL_PASS
+V4_FAMILY_VERDICT      : CANDIDATE_FAIL
+S1_STATUS              : NOT_STARTED
+
+CURRENT MASTER VERDICT : V3_PASS_V4_PARTIAL_CANDIDATE_FAIL
+```
+
+Không candidate V3/V4 nào được promote, shadow hoặc đọc S1. Kết luận
+`H-XSECT-MOM-v1 REJECTED` được giữ nguyên; không được dùng các fix V5 để cứu,
+chọn lại hoặc đổi tên candidate V4.
+
+### 28.2. Phần đã làm tốt
+
+1. V3 hoàn thành 98/98 cells, report/index/files reconcile, 17.320 entries có
+   `signal_ts < fill_ts`, và 9/9 family cùng toàn bộ G3 survivors được rerun ở
+   process riêng.
+2. Candidate lock, launch manifest, argv/commit/dirty state và frozen hashes đã
+   tiến bộ rõ rệt so với V1/V2.
+3. V4 giữ đúng trial budget 3 scored + 1 reverse control; universe và spec được
+   khóa trước scored runs.
+4. V4 thật sự dùng shared-capital portfolio engine và đo được gross/net exposure,
+   BTC beta, turnover, folds và MDD.
+5. Current full suite được kiểm tra lại: `474 passed`, `0 failed`, `0 xfailed`.
+6. Đội agent đã không promote một kết quả PnL dương nhưng rủi ro/tính ổn định
+   không đạt. Đây là hành vi research đúng.
+
+### 28.3. Findings bắt buộc sửa trước research mới
+
+| ID | Severity | Finding | Tác động khoa học |
+|---|---|---|---|
+| F01 | **CRITICAL** | Aggregator đọc `canonical_pnl/pnl`, trong khi engine ghi `realized_pnl`; vì vậy `leg_pnls` và contribution theo symbol bị ghi 0 | XG3/XG5 và concentration không đáng tin |
+| F02 | **CRITICAL** | Tính trực tiếp từ `positions.jsonl`: top-positive-symbol share của MOM 3D/7D/14D lần lượt khoảng 49,4%/64,4%/82,6%, nhưng artifacts báo 0% | Cả ba vượt hard limit 40% mà gate không bắt |
+| F03 | **HIGH** | Mỗi fold reset về 100.000 USDT, sau đó equity segments được ghép như một curve; MDD trên curve ghép chưa phải shared-capital walk-forward liên tục | MDD và return path có thể bị méo tại fold boundary |
+| F04 | **HIGH** | Positions còn mở ở cuối mỗi fold; total equity PnL gồm terminal mark/unrealized trong khi position PF/contribution chỉ dùng closed legs | PnL, PF và attribution không cùng một population |
+| F05 | **HIGH** | Funding được engine áp vào state nhưng không có `funding_cashflows.jsonl`/decomposition trong V4 artifact | Không kiểm toán được edge đến từ price hay funding |
+| F06 | **HIGH** | XG0 FAIL vì coverage payload/benchmark mapping không khớp evaluator; reason `funding_coverage_insufficient` đang được dùng cho BTC coverage | Verdict data gate sai semantics |
+| F07 | **HIGH** | Portfolio không có stop/R definition nhưng PLAN yêu cầu expectancy-R; XG3 chắc chắn INCONCLUSIVE ngay từ thiết kế | Gate và hypothesis contract không tương thích |
+| F08 | **HIGH** | Fee/two-tick/delay/drop-one stress chưa chạy; missing values lại hiển thị reason tên `*_negative` | Dễ hiểu nhầm “stress fail” với “stress chưa test” |
+| F09 | **HIGH** | Gross target chỉ enforce lúc rebalance; actual gross drift 1,203–1,275, vượt cap 1,0 | Cả ba scored candidates fail shared-capital risk |
+| F10 | **MEDIUM-HIGH** | Chỉ MOM-7D có independent rerun; không có candidate survivor nên đủ cho sample reproduction, nhưng chưa chứng minh toàn bộ matrix | Pipeline reproduction coverage còn hẹp |
+| F11 | **MEDIUM-HIGH** | Không có `H-XSECT-MOM-v1/status.yaml`, V4 challenge memo độc lập hoặc report đúng path đã khai trong PLAN | Final scientific audit chưa đóng |
+| F12 | **MEDIUM-HIGH** | A1 làm thay scope hypothesis/rank của A4 vì agent outage; final audit lại do A1 ký | Role separation của V4 không còn độc lập |
+| F13 | **MEDIUM** | A4 V3 memo cuối cùng vẫn ghi `BLOCKED_BY_V3` trước khi reruns hoàn tất; không có addendum độc lập xác nhận 19/19 | V3 transition có machine evidence nhưng thiếu fresh reviewer sign-off |
+| F14 | **MEDIUM** | Launch V4 ghi dirty worktree; reproducibility có capture nhưng code identity yếu hơn clean-commit launch | Khó tái dựng binary/code exact nếu diff thất lạc |
+| F15 | **CRITICAL** | Kiểm tra lại 60 hashed files thấy 4/4 `run.log` không khớp `artifact_hashes.json`; runner hash trước rồi append verdict log | XG2a PASS không phản ánh artifact integrity thật |
+| F16 | **CRITICAL** | V4 runner dựng sẵn XG1 booleans và `ArtifactIntegrityResult(...)=True` thay vì đo violation/hash/reconciliation thực tế | Leakage/integrity gates có thể PASS bằng constant |
+
+### 28.4. Cách diễn giải kết quả V4
+
+1. `MOM-7D +9.735 USDT` **không phải edge được xác nhận**. Nó chỉ là một
+   diagnostic hint vì PF 1,028 <1,10; fold F2 âm lớn; top fold share 85,8%;
+   true top-symbol share khoảng 64,4%; MDD 30,7%; gross cap bị vi phạm.
+2. `MOM-7D` tốt hơn reverse control là thông tin về hướng ranking, nhưng một cặp
+   so sánh không đủ để tuyên bố cơ chế có ý nghĩa thống kê.
+3. MOM-3D và MOM-14D âm; do đó rule “hai adjacent lookbacks dương” không đạt.
+4. Exact V4 economics phải được tính lại sau khi sửa accounting, nhưng rerun đó
+   chỉ mang nhãn `DIAGNOSTIC_RECALC`; không có quyền đổi verdict V4.
+5. Dù bỏ qua mọi bug accounting, gross violation, MDD và fold instability đã đủ
+   để reject toàn bộ scored candidates.
+
+---
+
+## 29. Master objective Sprint V5 → V6
+
+Thời lượng tối đa 48 giờ tiếp theo:
+
+```text
+V5 H0–H24  : SCIENTIFIC INTEGRITY CLOSURE
+V6 H24–H48 : ONE BOUNDED NEW FAMILY, only if V5 PASS
+```
+
+Mục tiêu không phải “ép tìm ra strategy thắng”. Mục tiêu là:
+
+1. biến portfolio engine thành một máy đo PnL/risk có thể kiểm toán;
+2. đóng tất cả finding F01–F16 hoặc ghi blocker machine-readable;
+3. chạy lại V4 ở chế độ diagnostic để chứng minh fix, không rescue candidate;
+4. chỉ sau đó thử đúng một mechanism mới với trial budget khóa trước;
+5. reject nhanh nếu evidence không đủ; lock tối đa một candidate cho future S1;
+6. tiếp tục tuyệt đối không giao dịch tiền thật.
+
+---
+
+## 30. Four-agent ownership và scientific independence
+
+| Agent | Vai trò duy nhất | Được sửa | Không được làm |
+|---|---|---|---|
+| **A1** | Coordinator, contract/trial-ledger owner, integrator | PLAN, schemas, locks, transitions, final merge | Không tự ký independent audit; không sửa result để đổi verdict |
+| **A2** | Data + portfolio/execution accounting engineer | panel, engine, terminal liquidation, costs/funding, exposure controller | Không viết hypothesis verdict hoặc score threshold sau khi xem result |
+| **A3** | Metrics/gates/reproduction engineer | canonical metrics, gates, DSR/PBO, rerun worker, reconciliation | Không thay hypothesis/spec sau lock |
+| **A4** | Independent scientific auditor | challenge memo, audit scripts/read-only checks, final attestation | Không implement signal, engine, gates; không sửa scored artifacts |
+
+Nếu một agent outage:
+
+- A1 có thể nhận phần integration thuần kỹ thuật của A2/A3 sau handoff.
+- Không ai được làm thay A4 rồi vẫn gọi kết quả là independent audit.
+- Thiếu A4 thì transition là `INDEPENDENT_AUDIT_BLOCKED`; V6 không được mở.
+- Mọi handoff ghi commit, file scope, tests, known limitations và conflict list.
+
+---
+
+## 31. Sprint V5 — scientific integrity closure
+
+### 31.1. H0–H2 — freeze và baseline
+
+**A1**
+
+1. Hash toàn bộ artifacts V3/V4 hiện tại; snapshot là append-only.
+2. Ghi current commit, dirty state, Python/Nautilus versions và exact test result.
+3. Tạo `research/audits/v5/v3_v4_findings.json` gồm F01–F16.
+4. Tạo global trial ledger: mọi scored run V1–V4 và mọi abandoned scored launch
+   đều phải có trial identity; diagnostic/unit-test runs không trộn vào scored count.
+5. Cấm overwrite `results/portfolio_v4` và `results/matrix/v4_xsect_mom`.
+
+### 31.2. H2–H9 — canonical accounting contract
+
+**A2 + A3, tách ownership**
+
+Required identity cho từng fold và toàn experiment:
+
+```text
+ending_equity - starting_equity
+= closed_price_pnl
++ terminal_unrealized_or_liquidation_pnl
++ funding_cashflows
+- commissions
+- modeled_spread_slippage
+- liquidation_or_rejection_costs
+```
+
+Implementation requirements:
+
+1. Chuẩn field duy nhất: `canonical_pnl`; adapter phải map `realized_pnl` rõ ràng,
+   không fallback im lặng về 0.
+2. Chọn và khóa một terminal policy trước diagnostic rerun:
+   `FORCE_LIQUIDATE_AT_LAST_OBSERVABLE_BAR` là mặc định khuyến nghị. Nếu không
+   liquidate, unrealized PnL phải là artifact riêng và tham gia PF/contribution
+   theo rule đã khai.
+3. Persist `funding_cashflows.jsonl`, commission, slippage, rejected orders và
+   terminal-close rows; tất cả reconcile tới equity trong tolerance `1e-9` scale.
+4. Contribution theo symbol/fold phải dùng cùng canonical population với PnL.
+5. Walk-forward curve phải dùng continuous capital hoặc chain fold returns
+   mathematically; tuyệt đối không ghép raw 100k-reset curves rồi tính MDD.
+6. Mỗi cost/risk metric có estimator/version string và reason code khi missing.
+7. Missing là `NOT_TESTED`/`METRIC_MISSING`, không dùng reason `*_negative`.
+8. XG1 lấy counters/timestamps từ rows thật; XG2a phải hash/schema/reconcile sau
+   khi mọi file writer/logger đã đóng. Không truyền constant `True` vào scored gate.
+9. `artifact_hashes.json` được tạo cuối cùng; không file đã hash nào được append
+   sau đó. Registry/index bên ngoài experiment directory được reconcile riêng.
+
+### 31.3. H9–H14 — data, execution và risk contract
+
+**A2**
+
+1. XG0 đọc trực tiếp clean intersection + actual panel coverage; benchmark BTC có
+   `benchmark_coverage_incomplete`, không giả làm funding failure.
+2. Funding cadence lấy từ actual settlement timestamps theo từng symbol; không
+   hard-code mọi contract luôn 8h.
+3. Persist actual funding rate selected at each settlement và prove rate publication
+   timestamp `<= decision/settlement timestamp`.
+4. Implement cost stresses: fee ×1,5; baseline one tick → adverse two ticks;
+   one additional 15m event delay.
+5. Implement drop-one-symbol và drop-one-fold diagnostics.
+6. Implement risk mode versioned:
+
+```text
+target_gross = 0.80
+hard_gross_cap = 1.00
+hard_abs_net_cap = 0.10
+exposure_check = every_completed_15m_bar
+breach_action = deterministic_reduce_only
+```
+
+Risk mode này chỉ dùng cho engine validation và future V6 spec. Không áp ngược
+để rescue H-XSECT-MOM-v1.
+
+### 31.4. H14–H18 — family-aware metrics và multiple testing
+
+**A3**
+
+1. Không bịa expectancy-R cho portfolio không có stop. Portfolio gate v5 dùng:
+   after-cost daily returns, position PF, median fold return, MDD, turnover,
+   concentration và explicit ex-ante gross risk budget.
+2. Sharpe dùng daily net returns, risk-free 0, estimator version frozen.
+3. DSR dùng global scored-trial count, distribution/variance Sharpe của toàn bộ
+   scored trials, sample length, skewness và kurtosis; không chỉ dùng số
+   candidate còn sống hoặc chỉ truyền một con số trial count.
+4. PBO/CSCV chỉ xuất verdict khi số strategies và partitions đủ điều kiện đã
+   pre-register; nếu không thì `NOT_ENOUGH_CONFIGURATIONS`, không PASS giả.
+5. Unit fixtures phải bắt được:
+   - top-symbol share 64% không thể thành 0%;
+   - reset-fold curve không thể đi qua MDD gate;
+   - terminal open positions không thể biến mất khỏi reconciliation;
+   - funding/fee/slippage thiếu phải fail closed;
+   - missing stress không được ghi thành negative stress.
+
+### 31.5. H18–H21 — immutable V4 diagnostic recalculation
+
+Chạy đúng bốn V4 specs bằng code đã sửa vào namespace mới:
+
+```text
+results/matrix/v4_recalc_diagnostic_v5/
+results/diagnostic_v5/<experiment_id>/
+```
+
+Rules:
+
+1. experiment ids thêm suffix `-DIAG-V5`; registry kind=`DIAGNOSTIC_RECALC`;
+2. trial count không tăng vì không dùng để select, nhưng phải link source trial;
+3. không sửa candidate/status/verdict V4;
+4. compare old/new PnL, PF, MDD, funding, costs, concentration và terminal effects;
+5. rerun tất cả bốn ở separate processes và compare digests;
+6. bất kỳ mismatch chưa giải thích được làm V5 fail.
+
+### 31.6. H21–H24 — independent audit và transition
+
+**A4** chỉ đọc artifacts sau khi A1 tuyên bố code freeze:
+
+1. adversarial audit leakage, accounting identity, fold construction, fill delay,
+   costs, funding PIT, global trials, reason semantics và reproduction;
+2. random sample tối thiểu 50 orders, 50 positions, 30 funding settlements và
+   toàn bộ fold boundaries; sample seed/hash khóa trong manifest;
+3. xác nhận current V3/V4 artifacts không đổi;
+4. viết `challenge_memo_v5.md` và `scientific_audit_v5.json`;
+5. ký một trong: `PASS`, `FAIL`, `INDEPENDENT_AUDIT_BLOCKED`.
+
+---
+
+## 32. V5 completion gate — không waiver
+
+```text
+V5-C01 current_full_tests_pass_no_xfail
+V5-C02 v3_v4_source_artifacts_hash_unchanged
+V5-C03 global_scored_trial_ledger_complete
+V5-C04 canonical_leg_pnl_field_reconciles
+V5-C05 total_pnl_cost_funding_terminal_identity_reconciles
+V5-C06 terminal_position_policy_frozen_and_evidenced
+V5-C07 continuous_capital_or_chained_return_wfa_valid
+V5-C08 mdd_recomputed_from_valid_equity_path
+V5-C09 symbol_and_fold_contribution_use_canonical_pnl
+V5-C10 funding_cashflows_persist_and_reconcile
+V5-C11 commission_and_slippage_persist_and_reconcile
+V5-C12 xg0_coverage_and_reason_semantics_correct
+V5-C13 actual_funding_settlement_cadence_supported
+V5-C14 fee_twotick_delay_stresses_execute
+V5-C15 dropone_symbol_and_fold_execute
+V5-C16 gross_net_exposure_controller_passes_fixtures
+V5-C17 family_aware_portfolio_metrics_no_fake_r
+V5-C18 missing_not_tested_and_negative_are_distinct
+V5-C19 v4_diagnostic_recalc_four_of_four_complete
+V5-C20 independent_reproduction_four_of_four_match
+V5-C21 matrix_report_index_registry_reconcile
+V5-C22 a4_independent_scientific_audit_pass
+V5-C23 no_live_money_change
+V5-C24 no_s1_read_or_score
+V5-C25 artifact_hashes_verified_after_all_writes
+V5-C26 xg1_xg2_use_measured_evidence_no_true_constants
+```
+
+Transition:
+
+```text
+if all(V5-C01..V5-C26):
+    V6_TRANSITION = V6_AUTHORIZED
+else:
+    V6_TRANSITION = BLOCKED_BY_V5
+```
+
+`BLOCKED_BY_V5` là terminal condition. Không được “chạy V6 thử trước”.
+
+---
+
+## 33. Sprint V6 — one bounded new family
+
+### 33.1. Selected frontier
+
+```text
+H-XSECT-FUNDING-CARRY-v1
+```
+
+Đây là mechanism mới: dùng funding đã **settle và publish** để đo crowding/carry
+tương đối giữa symbols; không dùng OI chưa đủ history và không sửa/tune momentum
+V4. Positive funding nghĩa long trả short, nên hypothesis long nhóm funding thấp
+và short nhóm funding cao nhằm thu net funding trong portfolio market-neutral.
+
+Đây chỉ là prior kinh tế. Funding có thể đổi nhanh và price move có thể lớn hơn
+carry; không được coi funding rank tự nó là edge.
+
+### 33.2. Pre-registration draft
+
+A1 tạo spec draft; chỉ được `SPEC_LOCKED` sau V5 PASS và trước signal code/scored
+run. Contract tối thiểu:
+
+```yaml
+hypothesis_id: H-XSECT-FUNDING-CARRY-v1
+family: cross_sectional_funding_carry
+stage: S0_EXPLORATORY
+universe: [ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT]
+benchmark: BTCUSDT
+signal_clock: daily_00_00_utc
+feature: trailing_mean_of_published_settled_funding_only
+lookback_days: [1, 3, 7]
+long: bottom_2_funding
+short: top_2_funding
+rebalance: 24h
+split_policy: chronological_3fold_with_24h_purge_embargo
+target_gross: 0.80
+hard_gross_cap: 1.00
+net_target: 0.00
+max_abs_weight_per_symbol: 0.20
+trial_budget:
+  scored: 3
+  negative_control: 1
+negative_control: reverse_funding_rank_3d
+```
+
+Không thêm momentum, OI, volatility filter, regime filter, per-symbol parameter,
+extra lookback hoặc rebalance interval trong version 1.
+
+### 33.3. Mechanism-specific invalidation
+
+Candidate bị reject nếu một điều sau xảy ra:
+
+1. total canonical PnL sau mọi costs/funding `<=0`;
+2. net funding cashflow `<=0` hoặc dưới 2/3 folds có funding cashflow dương;
+3. price PnL bù cho funding âm rồi strategy vẫn tự nhận là carry;
+4. position PF `<1.10`, dưới 2/3 folds dương hoặc median fold return `<=0`;
+5. chỉ một lookback dương, không có hai adjacent lookbacks dương;
+6. top fold >50% positive aggregate PnL hoặc top symbol >40%;
+7. MDD >10%, gross/net/weight cap bị breach hoặc |BTC beta| >0,25;
+8. baseline không sống qua fee/two-tick/delay/drop-one stresses;
+9. negative control thắng candidate tốt nhất;
+10. DSR probability `<0.95` sau global multiple-trial adjustment;
+11. bất kỳ gate data/PIT/integrity/reproduction/audit FAIL/INCONCLUSIVE.
+
+---
+
+## 34. V6 execution schedule — H24 đến H48
+
+### H24–H27 — spec, data và lock
+
+- A1 xác minh `V6_AUTHORIZED`, freeze global trial count và spec.
+- A2 xác minh actual settlement timestamps, panel/universe và benchmark.
+- A3 freeze metric/DSR estimators, hard gates và score thresholds.
+- A4 chỉ review contract conflict; không code signal.
+
+### H27–H33 — implementation và hand fixtures
+
+- A2 implement funding panel + shared-capital engine adapter.
+- A3 implement family metrics/gates/reproduction.
+- A1 implement pure funding-rank signal hoặc nhận handoff riêng; signal code
+  hoàn thành sau spec lock, không được đổi spec.
+- Full unit/property tests; no scored run.
+
+### H33 gate
+
+```text
+DATA_AND_FUNDING_PIT_PASS
+CANONICAL_ACCOUNTING_PASS
+SHARED_CAPITAL_RISK_PASS
+COST_AND_TERMINAL_RECONCILIATION_PASS
+FULL_TESTS_PASS
+TRIAL_BUDGET_4_LOCKED
+```
+
+Fail bất kỳ mục: dừng V6.
+
+### H33–H39 — four scored experiments
+
+```text
+XSECT-FUND-CARRY-1D
+XSECT-FUND-CARRY-3D
+XSECT-FUND-CARRY-7D
+XSECT-FUND-REVERSE-3D-CONTROL
+```
+
+Không chạy experiment thứ năm. Không sửa universe, weights, costs hoặc lookback
+sau khi thấy partial PnL.
+
+### H39–H44 — gates, stresses và global selection adjustment
+
+- evaluate hard gates trước score;
+- chạy stresses chỉ cho candidate qua base data/integrity/edge gates;
+- DSR dùng toàn global trial ledger;
+- PBO/CSCV chỉ diagnostic nếu đủ cấu hình;
+- negative control không bao giờ eligible.
+
+### H44–H47 — independent reproduction và audit
+
+- A3 rerun 100% base survivors ở separate process;
+- nếu không survivor, rerun ít nhất best diagnostic + control để kiểm tra pipeline;
+- A4 audit sau code/result freeze và không nhận summary chọn lọc từ A1;
+- A4 xác nhận trial budget, PIT, funding identity, terminal handling và no tuning.
+
+### H47–H48 — final verdict
+
+A1 chỉ tổng hợp từ machine artifacts + A4 attestation; không tự đổi gate.
+
+---
+
+## 35. V6 hard gates
+
+### FG0 — Data/universe
+
+- 7/7 traded symbols + BTC benchmark sạch trong declared common window;
+- actual settlement coverage/cadence complete;
+- tick/step/min-notional metadata point-in-time hoặc frozen limitation;
+- không silent skip/replacement; universe freeze trước result.
+
+### FG1 — PIT/leakage
+
+- funding feature chỉ dùng settlements có publication timestamp `<= signal_ts`;
+- bars dùng làm mark/feature completed trước signal;
+- signal trước fill; execution bar không vào feature;
+- warmup nằm ngoài scored folds; purge/embargo 24h giữa folds; toàn bộ boundaries
+  được evidence.
+
+### FG2a/FG2b — Integrity/reproduction
+
+- canonical accounting identity + hashes + registry reconcile;
+- independent rerun match orders, positions, funding, costs, equity, metrics và
+  digests trong tolerance khóa trước.
+
+### FG3 — Base edge
+
+- PnL >0; funding cashflow >0; PF ≥1,10;
+- 2/3 folds PnL dương và 2/3 folds funding dương;
+- median fold return >0;
+- ít nhất 90 scored daily rebalances và 100 canonical terminal/closed legs;
+- top fold ≤50%, top symbol ≤40%;
+- daily net Sharpe ≥0,50 chỉ để đủ sample score; DSR vẫn là selection gate.
+
+### FG4 — Robustness
+
+- fee ×1,5, adverse two ticks, extra 15m delay vẫn PnL/funding mechanism dương;
+- two adjacent lookbacks dương;
+- drop-one-symbol và drop-one-fold không làm sign flip ở mọi trường hợp;
+- turnover/capacity budget không breach.
+
+### FG5 — Shared-capital risk
+
+- gross ≤1,00; |net|≤0,10; |weight/symbol|≤0,20 ở mọi completed bar;
+- không margin breach/liquidation;
+- MDD ≤10%; |BTC beta|≤0,25;
+- top-symbol contribution ≤40%.
+
+### FG6 — Selection bias + audit
+
+- DSR probability ≥0,95 với global trial count;
+- trial ledger complete và append-only;
+- A4 scientific audit PASS;
+- no unresolved HIGH/CRITICAL finding.
+
+Chỉ FG0–FG6 PASS và score ≥75 mới được lock cho future S1.
+
+---
+
+## 36. V6 scorecard — 100 điểm chi tiết
+
+Hard gate luôn đứng trước score. Candidate có 100 điểm nhưng một hard gate FAIL
+vẫn bị reject; metric missing làm component 0 và có reason code.
+
+### A. Data & point-in-time — 15 điểm
+
+- 5: 7 symbols + BTC + funding coverage/cadence complete.
+- 5: không lookahead; signal/fill/warmup/fold evidence đầy đủ.
+- 5: universe, metadata, manifest và hashes freeze trước run.
+
+### B. Accounting & cost truth — 15 điểm
+
+- 5: total/canonical/fold/terminal equity identity reconcile.
+- 5: commission, slippage và rejected-order decomposition reconcile.
+- 5: funding cashflows persisted, PIT-valid và reconcile theo symbol/fold.
+
+### C. Chronological edge — 20 điểm
+
+- 5: after-cost total PnL >0.
+- 5: position PF ≥1,20; 3 điểm nếu 1,15–<1,20; 1 điểm nếu 1,10–<1,15.
+- 5: 3/3 folds dương; 3 điểm nếu đúng 2/3.
+- 5: daily Sharpe ≥1,00; 3 điểm nếu 0,75–<1,00; 1 điểm nếu 0,50–<0,75.
+
+### D. Risk & concentration — 15 điểm
+
+- 5: MDD ≤6%; 4 điểm nếu >6–8%; 2 điểm nếu >8–10%.
+- 5: không gross/net/weight/margin violation.
+- 5: top symbol ≤30% và top fold ≤40%; 3 điểm nếu vẫn trong hard limits
+  symbol ≤40% và fold ≤50%.
+
+### E. Robustness & execution — 15 điểm
+
+- 6: fee/two-tick/extra-delay cùng dương, mỗi stress 2 điểm.
+- 4: drop-one-symbol và drop-one-fold sạch, mỗi nhóm 2 điểm.
+- 3: turnover/capacity budget pass.
+- 2: ít nhất hai adjacent lookbacks dương.
+
+### F. Multiple testing — 10 điểm
+
+- 6: DSR probability ≥0,99; 4 điểm nếu 0,975–<0,99; 2 điểm nếu 0,95–<0,975.
+- 2: global scored-trial ledger complete/append-only.
+- 2: PBO ≤25% nếu estimable; nếu không đủ configs thì 0 điểm và
+  `NOT_ENOUGH_CONFIGURATIONS`, không phạt hard gate riêng.
+
+### G. Reproduction & scientific audit — 10 điểm
+
+- 5: independent rerun all-match.
+- 3: A4 audit PASS và không có unresolved HIGH/CRITICAL finding.
+- 2: matrix/report/index/registry/status artifacts reconcile.
+
+Selection:
+
+```text
+eligible = all(FG0..FG6 PASS) and score >= 75
+tie_break = highest_DSR_then_lower_MDD_then_lower_turnover
+max_locked_candidates = 1
+```
+
+---
+
+## 37. S1 và promotion rule
+
+1. S0 hiện tại đã bị dùng nhiều lần; không gọi bất kỳ đoạn nào trong đó là
+   untouched OOS.
+2. Chỉ sau khi một V6 candidate được khóa mới tạo future S1 start timestamp.
+3. S1 không backfill, không inspect trong V6, không đổi candidate sau capture.
+4. S1 tối thiểu phải đủ duration/trades pre-register; thiếu sample là
+   `WAIT_FOR_MORE_DATA`, không PASS/FAIL sớm.
+5. Promotion vẫn cần Stage B: after-cost PF ≥1,15, MDD ≤10%, shared-capital,
+   stress/delay, DSR/global trials và signal-only observation; không live money.
+6. Nếu V6 không có candidate, không tạo S1 giả. Chuyển sang hypothesis family
+   mới ở sprint sau và tiếp tục thu future research reservoir riêng.
+
+---
+
+## 38. Required V5/V6 artifacts
+
+```text
+research/audits/v5/
+  v3_v4_findings.json
+  challenge_memo_v5.md
+  scientific_audit_v5.json
+
+results/matrix/v4_recalc_diagnostic_v5/
+  index.json
+  report.json
+  reconciliation.json
+  v5_transition.json
+
+results/diagnostic_v5/<experiment_id>/
+  launch_manifest.yaml
+  accounting_reconciliation.json
+  funding_cashflows.jsonl
+  commission_slippage.json
+  terminal_positions.jsonl
+  canonical_metrics.json
+  gate_result.json
+  artifact_hashes.json
+
+research/hypotheses/H-XSECT-FUNDING-CARRY-v1/
+  hypothesis.md
+  candidate.yaml
+  status.yaml
+
+results/matrix/v6_xsect_funding_carry/
+  index.json
+  report.json
+  reconciliation.json
+  final_transition.json
+
+results/portfolio_v6/<experiment_id>/
+  launch_manifest.yaml
+  frozen/
+  signals.jsonl
+  orders.jsonl
+  positions.jsonl
+  terminal_positions.jsonl
+  funding_cashflows.jsonl
+  portfolio_ledger.jsonl
+  accounting_reconciliation.json
+  canonical_metrics.json
+  beta_report.json
+  contribution_report.json
+  dsr_pbo_report.json
+  gate_result.json
+  scorecard.json
+  artifact_hashes.json
+
+results/reproduction_v6/<verify_id>/
+research/audits/v6/challenge_memo.md
+research/audits/v6/scientific_audit.json
+research/wayfinder/evidence/sprint-v5-v6-master-20260824.md
+```
+
+---
+
+## 39. Terminal outcomes
+
+```text
+V5_FAIL_V6_BLOCKED
+V5_PASS_V6_PIPELINE_FAIL
+V5_PASS_V6_CANDIDATE_FAIL
+V5_PASS_V6_CANDIDATE_INCONCLUSIVE
+V5_PASS_V6_LOCK_FOR_FUTURE_S1
+```
+
+Final report phải tách rõ:
+
+```text
+ENGINEERING_VERDICT
+SCIENTIFIC_AUDIT_VERDICT
+FAMILY_VERDICT
+GLOBAL_TRIAL_COUNT
+S1_STATUS
+LIVE_MONEY_STATUS = UNCHANGED_DISABLED
+```
+
+---
+
+## 40. Additional research basis
+
+- Binance, funding payments/direction and variable settlement intervals:
+  <https://academy.binance.com/en/articles/what-are-funding-rates-in-crypto-markets>
+- Binance Developer Documentation, supported official APIs and historical market
+  data: <https://developers.binance.com/en/docs/introduction>
+- Cao, Zhai, Luo, `Anatomy of cryptocurrency perpetual futures returns`:
+  <https://www.research.ed.ac.uk/en/publications/anatomy-of-cryptocurrency-perpetual-futures-returns/>
+- Ackerer, Hugonnier, Jermann, `Fundamentals of Perpetual Futures`:
+  <https://arxiv.org/abs/2212.06888>
+- Bailey, López de Prado, `The Deflated Sharpe Ratio`:
+  <https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551>
+- Bailey, Borwein, López de Prado, Zhu, `The Probability of Backtest
+  Overfitting`: <https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253>
