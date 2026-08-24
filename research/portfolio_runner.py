@@ -1166,12 +1166,12 @@ def run_reproduce(args: argparse.Namespace) -> int:
     rerun_dir.mkdir(parents=True)
 
     # rerun manifest records WHAT will be verified, before the worker runs
+    source_raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
     rerun_manifest = {
         "schema_version": 4,
         "verify_id": verify_id,
         "verification_type": "INDEPENDENT_RERUN",
-        "source_experiment_id": yaml.safe_load(manifest_path.read_text(encoding="utf-8")).get(
-            "experiment_id"),
+        "source_experiment_id": source_raw.get("experiment_id"),
         "source_experiment_dir": str(source_dir),
         "launched_at_utc": datetime.now(timezone.utc).isoformat(),
         "worker_command": [sys.executable, "-m", "research.portfolio_runner",
@@ -1243,6 +1243,7 @@ def run_reproduce(args: argparse.Namespace) -> int:
         "schema_version": 4,
         "verify_id": verify_id,
         "source_experiment_id": rerun_manifest["source_experiment_id"],
+        "matrix_id": source_raw.get("matrix_id"),
         "checks": checks,
         "values": {
             "source": {k: source_core.get(k) for k in
@@ -1262,11 +1263,12 @@ def run_reproduce(args: argparse.Namespace) -> int:
 
 
 def _repro_registry_entry(rerun_manifest: Mapping[str, Any], comparison: Mapping[str, Any]) -> dict:
+    matrix_id = comparison.get("matrix_id") or rerun_manifest.get("matrix_id") or "v4_xsect_mom"
     return {
         "experiment_id": f"RERUN-{rerun_manifest['verify_id']}",
         "kind": "INDEPENDENT_RERUN_VERIFY",
         "schema": "v4",
-        "matrix_id": "v4_xsect_mom",
+        "matrix_id": matrix_id,
         "verified_experiment_id": rerun_manifest["source_experiment_id"],
         "verification_type": "INDEPENDENT_RERUN",
         "verdict": "PASS" if comparison.get("all_match") else "FAIL",
