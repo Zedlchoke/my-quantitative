@@ -1439,3 +1439,21 @@ Fill tại close bar tín hiệu ±1 tick (xác nhận bằng probe) + indicator
 current bar → execution optimism hệ thống; one-bar-delay là P0 kế tiếp.
 
 Tests: **277 passed / 0 xfail**. Chi tiết: research/wayfinder/evidence/sprint-v2-24h-20260824.md
+
+---
+
+## 21. Master Sprint V3→V4 (2026-08-24, A1 final verdict)
+
+**V3: PIPELINE_PASS_CANDIDATE_FAIL · transition V4_AUTHORIZED (19/19) ·
+V4: PIPELINE_PASS_CANDIDATE_FAIL · family REJECTED · S1: not started.**
+
+- V3 đóng toàn bộ P0: execution truth (17,320 entries, 0 vi phạm signal<fill),
+  position R, launch provenance schema v3, G1 evidence-backed, G2a/G2b tách,
+  independent reruns 10/10 PASS, reconciliation COMPLETE.
+- V4 chạy đúng budget H-XSECT-MOM-v1 (3 lookbacks + reverse control): beta-neutral
+  đạt (|β|≤0.04), MOM-7D +9.7k vs control −27.2k → cơ chế có tín hiệu; nhưng
+  XG5 FAIL (gross drift tới 1.275 > 1.0, MDD 24–37%) + XG3 inconclusive → REJECTED.
+- Backlog P0: leg-PnL accounting fix · intraday gross clamp · stress harness.
+
+Chi tiết: research/wayfinder/evidence/sprint-v3-v4-master.md ·
+results/matrix/{v3_execution_truth,v4_xsect_mom} · v3_transition.json.
