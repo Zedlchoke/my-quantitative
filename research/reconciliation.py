@@ -30,13 +30,25 @@ from typing import Any, Mapping
 
 from contracts.protocol import ArtifactIntegrityResult, GateVerdict, sha256_file, sha256_text
 
-#: Files every diagnostic experiment directory must contain.
-REQUIRED_ARTIFACTS: tuple[str, ...] = (
+#: Files every diagnostic experiment directory must contain, by phase.
+#: ``inputs``  -- what the diagnostic RERUNNER must have written;
+#: ``final``   -- everything, checked AFTER the evaluator finalized hashes.
+HASHES_FILENAME = "artifact_hashes.json"
+HASHES_FLAG_FILENAME = ".hashes_final"
+
+INPUT_REQUIRED_ARTIFACTS: tuple[str, ...] = (
+    "cell.json",
+    "accounting_reconciliation.json",
+    "positions.jsonl",
+    "funding_cashflows.jsonl",
+    "costs.jsonl",
+)
+FINAL_REQUIRED_ARTIFACTS: tuple[str, ...] = INPUT_REQUIRED_ARTIFACTS + (
     "canonical_metrics.json",
     "gate_result.json",
+    "scorecard.json",
     "run.log",
-    "accounting_reconciliation.json",
-    "artifact_hashes.json",
+    HASHES_FILENAME,
 )
 
 #: Required top-level fields of canonical_metrics.json.
@@ -59,9 +71,6 @@ LEDGER_SUMS: tuple[tuple[str, str | None, str], ...] = (
 
 ACCOUNTING_TOLERANCE = 1e-9
 
-HASHES_FILENAME = "artifact_hashes.json"
-HASHES_FLAG_FILENAME = ".hashes_final"
-
 
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -75,9 +84,9 @@ def _iter_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def _schema_reasons(exp_dir: Path) -> list[str]:
+def _schema_reasons(exp_dir: Path, required_artifacts: tuple[str, ...]) -> list[str]:
     reasons: list[str] = []
-    for name in REQUIRED_ARTIFACTS:
+    for name in required_artifacts:
         if not (exp_dir / name).is_file():
             reasons.append(f"missing_artifact:{name}")
     metrics_path = exp_dir / "canonical_metrics.json"
@@ -247,6 +256,16 @@ def finalize_directory_hashes(
     return out
 
 
+def base_reason_codes(reasons: tuple[str, ...] | list[str]) -> tuple[str, ...]:
+    """Strip ``code:detail`` suffixes down to registered reason codes.
+
+    Measurement reasons carry file/ledger detail after a colon (e.g.
+    ``artifact_hash_mismatch:positions.jsonl``); contract GateResult rows
+    need the bare registered code.  Deduplicated, order preserved.
+    """
+    return tuple(dict.fromkeys(str(r).split(":", 1)[0] for r in reasons))
+
+
 @dataclass(frozen=True)
 class ExperimentIntegrityDetail:
     """Full measurement detail behind an XG2a verdict (audit trail)."""
@@ -273,15 +292,22 @@ class ExperimentIntegrityDetail:
         )
 
 
-def verify_experiment_dir(exp_dir: str | Path) -> ArtifactIntegrityResult:
+def verify_experiment_dir(
+    exp_dir: str | Path, *, phase: str = "final"
+) -> ArtifactIntegrityResult:
     """Measured XG2a evidence for one experiment directory.
 
     Recomputes schema presence, every sha256 in ``artifact_hashes.json``,
     hash freshness (newest mtime wins) and the accounting reconciliation.
     Returns the contract :class:`ArtifactIntegrityResult`; PASS only when
     every measurement is clean and NO reason was recorded.
+
+    ``phase="inputs"`` verifies only the rerunner-written artifacts (used
+    BEFORE the evaluator adds its own outputs); ``phase="final"`` (default)
+    verifies the complete directory after finalization.
     """
     directory = Path(exp_dir)
+    required = FINAL_REQUIRED_ARTIFACTS if phase == "final" else INPUT_REQUIRED_ARTIFACTS
     if not directory.is_dir():
         result = ArtifactIntegrityResult(
             schema_valid=False,
@@ -292,7 +318,7 @@ def verify_experiment_dir(exp_dir: str | Path) -> ArtifactIntegrityResult:
         )
         return result
 
-    schema_reasons = _schema_reasons(directory)
+    schema_reasons = _schema_reasons(directory, required)
     hash_reasons, hashes_match = _hash_reasons(directory)
     freshness_reasons = _freshness_reasons(directory)
     accounting_reasons = _accounting_reasons(directory)

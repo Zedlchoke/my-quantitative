@@ -27,6 +27,8 @@ ENTRY_KINDS = (
     "ARTIFACT_INTEGRITY_VERIFY",
     "INDEPENDENT_RERUN_VERIFY",
     "MATRIX_FINALIZE",
+    # Sprint V5 (PLAN section 31.5): immutable V4 diagnostic recalculation.
+    "DIAGNOSTIC_RECALC",
 )
 VERIFY_KIND_REQUIRED_FIELDS = (
     "schema",
@@ -35,6 +37,7 @@ VERIFY_KIND_REQUIRED_FIELDS = (
     "verification_type",
 )
 CELL_RESULT_REQUIRED_FIELDS = ("schema", "matrix_id")
+DIAGNOSTIC_RECALC_REQUIRED_FIELDS = ("schema", "source_trial_experiment_id")
 
 
 def validate_entry_kind(entry: dict) -> list[str]:
@@ -47,6 +50,8 @@ def validate_entry_kind(entry: dict) -> list[str]:
     required = (
         CELL_RESULT_REQUIRED_FIELDS
         if kind == "CELL_RESULT"
+        else DIAGNOSTIC_RECALC_REQUIRED_FIELDS
+        if kind == "DIAGNOSTIC_RECALC"
         else VERIFY_KIND_REQUIRED_FIELDS
     )
     missing = [

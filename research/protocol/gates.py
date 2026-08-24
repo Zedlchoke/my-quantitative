@@ -90,6 +90,11 @@ V5_REASON_CODES: dict[str, str] = {
     "artifact_hash_mismatch": "recomputed sha256 differs from artifact_hashes.json listing",
     "artifact_hashes_stale": "artifact_hashes.json is not the newest file; post-hash write detected",
     "unlisted_artifact_file": "file present on disk but absent from artifact_hashes.json listing",
+    "missing_artifact": "required artifact file missing from experiment directory",
+    "ledger_missing": "required jsonl ledger missing from experiment directory",
+    "ledger_field_missing": "required field missing from a ledger row (fail-closed)",
+    "accounting_reconcile_fail": "ledger totals diverge from accounting_reconciliation.json beyond 1e-9",
+    "experiment_dir_missing": "experiment directory does not exist on disk",
 }
 REASON_CODES.update(V5_REASON_CODES)
 
