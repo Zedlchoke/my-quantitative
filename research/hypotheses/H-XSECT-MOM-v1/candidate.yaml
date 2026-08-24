@@ -1,0 +1,73 @@
+# H-XSECT-MOM-v1 — pre-registration (PLAN.md section 18, verbatim block)
+# A1 locks this spec AFTER data/portfolio interfaces PASS (gate H26).
+hypothesis_id: H-XSECT-MOM-v1
+family: cross_sectional_momentum
+candidate_version: 1
+stage: S0_EXPLORATORY
+owner_agent: A4
+validator_agent: A3
+
+universe:
+  traded_symbols:
+    - ETHUSDT
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+    - DOGEUSDT
+    - LINKUSDT
+    - ADAUSDT
+  benchmark_symbol: BTCUSDT
+  universe_policy: fixed_before_run
+
+bar_interval: 15m
+signal_clock: daily_00_00_utc_close
+rebalance_interval: 24h
+execution_mode: NEXT_BAR_EVENT_BASELINE
+
+signal:
+  type: cumulative_log_return_rank
+  lookback_days: [3, 7, 14]
+  exclude_execution_bar: true
+  long_count: 2
+  short_count: 2
+  tie_break: symbol_ascending
+
+portfolio:
+  gross_target: 1.0
+  net_target: 0.0
+  long_gross: 0.5
+  short_gross: 0.5
+  weighting: equal_within_leg
+  max_abs_weight_per_symbol: 0.25
+  min_eligible_symbols: 7
+  incomplete_cross_section_action: skip_entire_rebalance
+
+trial_budget:
+  scored_candidates: 3
+  negative_controls: 1
+  total_experiments: 4
+
+negative_control:
+  type: reverse_rank
+  lookback_days: 7
+  eligible_for_selection: false
+
+selection_tie_break:
+  - all_hard_gates_pass
+  - highest_median_fold_expectancy_r
+  - lowest_turnover
+  - lowest_max_drawdown
+
+# --- Sprint V4 extensions (metadata, not rule changes) ---
+split_policy: S0_chrono3fold_warmup
+cost_assumptions: >-
+  maker/taker fees per instrument tier-0; one-tick adverse slippage per fill;
+  funding post-trade audit on actual held legs at 8h settlements;
+  NEXT_BAR_EVENT_BASELINE execution (fill at next 15m event close).
+invalidation_evidence:
+  - fewer than two adjacent lookbacks with positive expectancy-R (parameter_spike_fail)
+  - realized |BTC beta| > 0.25 (beta_exposure_fail)
+  - single symbol > 40 percent positive-aggregate PnL contribution
+  - any XG0-XG5 hard gate FAIL
+state: SPEC_DRAFT
+locked_at_utc: null

@@ -651,3 +651,36 @@ REASON_CODES.update({
     "config_candidate_same_source": "runtime config and candidate spec copied from same source",
     "signal_fill_ordering_violation": "scored entry fill_ts <= signal_ts",
 })
+
+
+# --------------------------- Sprint V4 interfaces --------------------------- #
+
+XG_GATE_IDS = (
+    "XG0_DATA", "XG1_PIT_LEAKAGE", "XG2A_ARTIFACT_INTEGRITY",
+    "XG2B_INDEPENDENT_REPRODUCIBILITY", "XG3_STAGE_A_PORTFOLIO",
+    "XG4_ROBUSTNESS_EXECUTION", "XG5_SHARED_CAPITAL_RISK",
+)
+
+REASON_CODES.update({
+    "parameter_spike_fail": "only one lookback positive among pre-registered neighbors",
+    "beta_exposure_fail": "absolute realized BTC beta above 0.25",
+    "incomplete_cross_section_skip": "rebalance skipped: missing symbol in cross-section",
+    "margin_breach": "shared-capital margin/limit breach during rebalance",
+    "weight_precision_reject": "order rejected due to quantity/notional precision",
+})
+
+PORTFOLIO_CONSTRAINTS = {
+    "gross_target": 1.0,
+    "net_abs_max": 0.10,
+    "max_abs_weight_per_symbol": 0.25,
+    "long_gross": 0.5,
+    "short_gross": 0.5,
+    "long_count": 2,
+    "short_count": 2,
+    "min_scored_rebalances": 30,
+    "min_closed_legs": 100,
+    "top_fold_contribution_max": 0.50,
+    "top_symbol_contribution_max": 0.40,
+    "abs_btc_beta_max": 0.25,
+    "mdd_max_for_lock": 0.10,
+}
