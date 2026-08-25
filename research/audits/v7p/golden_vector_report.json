@@ -1,0 +1,252 @@
+{
+  "schema_version": "v7p.golden_vector_report.v1",
+  "artifact": "golden_vector_report",
+  "owner_agent": "A6",
+  "coverage": "signal+engine-contract, CLI hop deferred to A3 integration tests",
+  "signal_module": "research.funding_price_divergence.compute_target_weights_funding_price_divergence",
+  "engine_entrypoint": "research.portfolio_engine.run_shared_capital_backtest",
+  "panel": {
+    "symbols": [
+      "AAAUSDT",
+      "BBBUSDT",
+      "CCCUSDT",
+      "DDDUSDT"
+    ],
+    "daily_returns_per_day": {
+      "AAAUSDT": 0.1,
+      "BBBUSDT": 0.05,
+      "CCCUSDT": -0.05,
+      "DDDUSDT": -0.1
+    },
+    "flat_rates": {
+      "AAAUSDT": 0.0001,
+      "BBBUSDT": 0.0002,
+      "CCCUSDT": 0.0003,
+      "DDDUSDT": 0.0004
+    },
+    "cutoffs_utc": [
+      "2024-01-02T00:00Z",
+      "2024-01-03T00:00Z",
+      "2024-01-04T00:00Z"
+    ]
+  },
+  "expected_vs_actual": {
+    "book_per_cutoff": {
+      "expected": {
+        "longs": [
+          [
+            "BBBUSDT",
+            0.2
+          ],
+          [
+            "AAAUSDT",
+            0.2
+          ]
+        ],
+        "shorts": [
+          [
+            "DDDUSDT",
+            -0.2
+          ],
+          [
+            "CCCUSDT",
+            -0.2
+          ]
+        ]
+      },
+      "actual": {
+        "1704153600000": {
+          "longs": [
+            [
+              "BBBUSDT",
+              0.2
+            ],
+            [
+              "AAAUSDT",
+              0.2
+            ]
+          ],
+          "shorts": [
+            [
+              "DDDUSDT",
+              -0.2
+            ],
+            [
+              "CCCUSDT",
+              -0.2
+            ]
+          ]
+        },
+        "1704240000000": {
+          "longs": [
+            [
+              "BBBUSDT",
+              0.2
+            ],
+            [
+              "AAAUSDT",
+              0.2
+            ]
+          ],
+          "shorts": [
+            [
+              "DDDUSDT",
+              -0.2
+            ],
+            [
+              "CCCUSDT",
+              -0.2
+            ]
+          ]
+        },
+        "1704326400000": {
+          "longs": [
+            [
+              "BBBUSDT",
+              0.2
+            ],
+            [
+              "AAAUSDT",
+              0.2
+            ]
+          ],
+          "shorts": [
+            [
+              "DDDUSDT",
+              -0.2
+            ],
+            [
+              "CCCUSDT",
+              -0.2
+            ]
+          ]
+        }
+      },
+      "match": true
+    },
+    "first_rebalance_opens": {
+      "expected": {
+        "AAAUSDT": [
+          "BUY",
+          200.0,
+          100.01
+        ],
+        "BBBUSDT": [
+          "BUY",
+          200.0,
+          100.01
+        ],
+        "CCCUSDT": [
+          "SELL",
+          200.0,
+          99.99
+        ],
+        "DDDUSDT": [
+          "SELL",
+          200.0,
+          99.99
+        ]
+      },
+      "actual": {
+        "AAAUSDT": [
+          "BUY",
+          200.0,
+          100.01
+        ],
+        "BBBUSDT": [
+          "BUY",
+          200.0,
+          100.01
+        ],
+        "CCCUSDT": [
+          "SELL",
+          200.0,
+          99.99
+        ],
+        "DDDUSDT": [
+          "SELL",
+          200.0,
+          99.99
+        ]
+      },
+      "match": true
+    },
+    "equity_checkpoints": {
+      "expected": {
+        "after_opens": 99952.0,
+        "after_funding_1": 99960.0,
+        "after_funding_2": 99968.0,
+        "ending_forward": 99928.0,
+        "ending_reverse": 99880.0
+      },
+      "actual": {
+        "after_opens": 99952.0,
+        "after_funding_1": 99960.0,
+        "after_funding_2": 99968.0,
+        "ending_forward": 99928.0,
+        "ending_reverse": 99880.0
+      },
+      "match": true
+    },
+    "funding_totals_by_symbol_forward": {
+      "expected": {
+        "AAAUSDT": -6.0,
+        "BBBUSDT": -12.0,
+        "CCCUSDT": 18.0,
+        "DDDUSDT": 24.0
+      }
+    }
+  },
+  "accounting": {
+    "identity_ok_experiment": true,
+    "all_ok": true,
+    "residual": 1.4210854715202004e-14,
+    "total_commission": 80.0,
+    "total_slippage": 16.0,
+    "funding_total_forward": 23.999999999999996,
+    "funding_total_reverse": -23.999999999999996,
+    "positions_mirror_reverse": true
+  },
+  "timestamp_boundary_cases_tested": [
+    {
+      "case": "warmup_cutoff_before_enough_history",
+      "detail": "cutoff 2024-01-01T00:00Z -> SKIP_INCOMPLETE (divergence_panel_incomplete); book stays flat",
+      "pass": true
+    },
+    {
+      "case": "future_daily_close_excluded",
+      "detail": "DDDUSDT +400% close at Jan2 12:00 would flip ranking; Jan2 00:00 selection unchanged",
+      "pass": true
+    },
+    {
+      "case": "funding_window_open_inclusive_stale_excluded",
+      "detail": "settlement exactly at window start included; rate 1ms before window start ignored",
+      "pass": true
+    },
+    {
+      "case": "future_settlement_after_cutoff_ignored",
+      "detail": "settlement after decision time never enters trailing mean",
+      "pass": true
+    },
+    {
+      "case": "next_bar_event_baseline_execution",
+      "detail": "fills execute at the first bar event at/after each UTC midnight cutoff; no pre-cutoff fills",
+      "pass": true
+    },
+    {
+      "case": "funding_settlement_exact_match",
+      "detail": "every charged stamp matched its bundle timestamp with zero jitter",
+      "pass": true
+    }
+  ],
+  "determinism": {
+    "forward_run_sha256": "00a3ffcfcdbc8a774ead16c17a9e1f4723ba12783267db03a18bc70999c91b3e",
+    "forward_rerun_sha256": "00a3ffcfcdbc8a774ead16c17a9e1f4723ba12783267db03a18bc70999c91b3e",
+    "two_run_hash_equal": true
+  },
+  "resolved_run_contract_ref": {
+    "path": "research/audits/v7p/resolved_run_contract.json",
+    "contract_sha256": "db17c11e154252f81600251b4af754dd87b2f7093512813135432dfdc7c876da",
+    "launch_sha": "PENDING_INTEGRATION_SHA"
+  }
+}
