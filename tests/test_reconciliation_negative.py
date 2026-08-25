@@ -107,7 +107,8 @@ def test_diagnostic_matrix_with_wrong_declared_root_reconciles(tmp_path, registr
     )
     payload = finalize_matrix(matrix_dir, registry_env)
     counts = payload["counts"]
-    assert payload["schema_version"] == 2
+    # V6P N12 (A5): fail-closed reconciliation bumped the schema v2 -> v3.
+    assert payload["schema_version"] == 3
     assert counts["declared_cells"] == counts["indexed_cells"] == counts["completed"] == 4
     assert counts["stage_a_dirs_expected"] == 4
     assert counts["stage_a_artifact_dirs"] == 4  # found at the REAL diagnostic root

@@ -98,6 +98,22 @@ V5_REASON_CODES: dict[str, str] = {
 }
 REASON_CODES.update(V5_REASON_CODES)
 
+# --------------------------------------------------------------------------- #
+# Sprint V6P reason semantics (PLAN section 6.4 item 2 / finding N09; A5).
+#
+# Benchmark (context-only) incompleteness gets its OWN reason code so it can
+# never be conflated with a funding-settlement shortfall of the TRADED
+# symbols: ``funding_coverage_insufficient`` may only be emitted from
+# measured settlement data of traded symbols, never from a short benchmark.
+# --------------------------------------------------------------------------- #
+V6P_REASON_CODES: dict[str, str] = {
+    "benchmark_coverage_incomplete": (
+        "benchmark context series short/zero (context only; never a "
+        "traded-symbol funding verdict)"
+    ),
+}
+REASON_CODES.update(V6P_REASON_CODES)
+
 
 class ReasonSemantics(str, Enum):
     """Enum-like reason codes distinguishing absence from negative results."""
@@ -516,6 +532,10 @@ def _g0_payload_reasons(payload: Mapping[str, Any]) -> list[str]:
         or entry["funding"].get("covers_declared_window") is not True
         for entry in symbols.values()
     ):
+        # N09: this code is reserved for MEASURED settlement shortfalls of
+        # TRADED symbols (the per-symbol funding blocks above). Benchmark
+        # context gaps must emit benchmark_coverage_incomplete instead
+        # (see _evaluate_xg0) -- never this funding verdict.
         reasons.append("funding_coverage_insufficient")
     # NOTE: per-symbol ``coverage_ratio`` decimals (e.g. 0.9995 from bundle
     # edge rounding) are informational; completeness is asserted by
@@ -1167,8 +1187,11 @@ def _evaluate_xg0(section: XGateInputs) -> GateResult:
                 )
     benchmark = payload["benchmark"]
     if benchmark.get("clean") is not True or float(benchmark.get("days_present") or 0) <= 0:
-        # BTC clean coverage missing => diagnostic-only context (section 19.3).
-        reasons.append("funding_coverage_insufficient")
+        # N09 reason split: BTC is CONTEXT ONLY.  A short/unclean benchmark
+        # block is benchmark_coverage_incomplete -- it must never masquerade
+        # as a traded-symbol funding shortfall (the data manifest reported
+        # complete cadence for all seven traded symbols while this code fired).
+        reasons.append(require_reason("benchmark_coverage_incomplete"))
     if section.declared_symbols is not None:
         declared = {str(s) for s in section.declared_symbols}
         if declared != set(map(str, symbols_block)):
