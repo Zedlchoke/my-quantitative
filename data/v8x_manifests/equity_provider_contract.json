@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "artifact": "v8x_equity_provider_contract",
+  "generated_at_utc": "2026-08-25T23:44:52Z",
+  "agent": "A9-equity-breadth",
+  "branch": "orca/v8-a9-equity-breadth",
+  "head_sha_at_audit": "291a158e0220038ab3a9be66587f76c238e6ddea",
+  "plan_reference": "PLAN.md §10.1, §10.2, gate X08",
+  "mode_a": {
+    "mode_label": "BINANCE_TRADFI_PERP_1Y",
+    "eligible_contracts": 0,
+    "verdict": "NOT_STARTED_DATA_MATURITY",
+    "measurement": {
+      "definition": "Binance USD-M contract with contractType==TRADIFI_PERPETUAL or underlyingType in {EQUITY,KR_EQUITY,HK_EQUITY,CN_EQUITY,PREMARKET,COMMODITY} (data/universe.py TRADFI_UNDERLYING_TYPES) AND >=365 days contract bars AND >=365 days funding on disk",
+      "exchange_metadata_snapshots_checked": [
+        "/Users/hoangminhlong/my-quantitative/research_snapshots/binance_tradfi_20260821.json",
+        "/Users/hoangminhlong/my-quantitative/research_snapshots/binance_tradfi_20260823.json"
+      ],
+      "tradfi_contracts_listed_on_exchange": 170,
+      "equity_like_contracts_listed": 160,
+      "tradfi_onboard_days_ge_365_snapshot_20260821": 0,
+      "tradfi_onboard_days_ge_365_snapshot_20260823": 0,
+      "trading_status_and_onboard_ge_365": 0,
+      "max_tradfi_onboard_days_observed": 254.88,
+      "max_equity_onboard_days_observed": 206.62,
+      "on_disk_instruments_scanned": {
+        "wt_catalog_data": {"instruments": 4, "unique_symbols": 2, "tradfi_hits": 0},
+        "primary_catalog_data": {"instruments": 4, "unique_symbols": 2, "tradfi_hits": 0},
+        "catalog_live_crypto": {"instruments": 40, "unique_symbols": 20, "tradfi_hits": 0},
+        "derivatives_data_20260821": {"symbol_dirs": 7, "tradfi_hits": 0},
+        "funding_scan_2026": {"symbol_dirs": 20, "tradfi_hits": 0},
+        "funding_20240820_20260821": {"symbol_dirs": 7, "tradfi_hits": 0}
+      },
+      "on_disk_tradfi_bar_or_funding_files": 0
+    },
+    "notes": "Exchange lists tradFi perps but the oldest is ~255 onboard days; zero reach the 365-day gate and zero tradFi contract bars or funding files exist in any primary data/catalog dir. Matches PLAN §10.1 expectation of 0."
+  },
+  "mode_b": {
+    "mode_label": "US_EQUITY_SPOT_1Y",
+    "provider_detected": false,
+    "verdict": "PROVIDER_BLOCKED",
+    "credentials_presence_only": {
+      "ALPACA_API_KEY_ID": false,
+      "ALPACA_API_SECRET_KEY": false,
+      "ALPACA_API_SECRET": false,
+      "APCA_API_KEY_ID": false,
+      "APCA_API_SECRET_KEY": false,
+      "APCA_API_SECRET_KEY_present_note": "checked APCA_* alpaca-py aliases too",
+      "any_credential_present": false,
+      "values_printed": false,
+      "dotenv_file_exists_unread_primary_repo": true,
+      "dotenv_file_exists_unread_worktree": true
+    },
+    "packages": {
+      "alpaca-py": {"importable": false, "version": null},
+      "yfinance": {"importable": false, "version": null},
+      "polygon-api-client": {"importable": false, "version": null},
+      "pandas": {"importable": true, "version": "3.0.5"},
+      "numpy": {"importable": true, "version": "2.5.2"},
+      "pyarrow": {"importable": true, "version": "25.0.1"}
+    },
+    "calendar_lib": {
+      "pandas-market-calendars": {"importable": false, "version": null},
+      "exchange-calendars": {"importable": false, "version": null},
+      "available": false
+    },
+    "corporate_actions_source": {
+      "available": false,
+      "alpaca_corporate_actions_endpoint": false,
+      "yfinance_dividends_splits": false,
+      "polygon_corporate_actions": false
+    },
+    "network_calls_made": "none beyond importlib presence checks; no values read or printed",
+    "notes": "No market-data credential in environment, no provider SDK, no exchange calendar library, no corporate-actions source. PLAN §10.1 forbids silent fallback to undeclared sources."
+  },
+  "blockers": [
+    "MODE_A_DATA_MATURITY: 0/170 Binance tradFi perps have >=365d onboard history; max observed 254.88d; no tradFi bars/funding on disk",
+    "MODE_B_PROVIDER: no equity market-data credential in environment (presence-only check)",
+    "MODE_B_PACKAGES: alpaca-py not installed in primary venv",
+    "MODE_B_CALENDAR: neither pandas-market-calendars nor exchange-calendars installed",
+    "MODE_B_CORPORATE_ACTIONS: no corporate-actions source available"
+  ],
+  "decision": "V8X_EQUITY_NOT_STARTED_PROVIDER_BLOCKED",
+  "decision_detail": "Both instrument modes blocked: Mode A lacks data maturity (NOT_STARTED_DATA_MATURITY) and Mode B lacks provider/credential/license (PROVIDER_BLOCKED). Equity cohort must NOT start; crypto V8X cohort may proceed independently per PLAN §11.1. No silent fallback to undeclared sources.",
+  "evidence_digests_sha256": {
+    "binance_tradfi_20260821.json": "cd443a9bba6b63eda26451a5e2b8eec0e77f87e22316341a75ef4db98e07ace0",
+    "binance_tradfi_20260823.json": "36f2a37cdbec13ee9ffc4bf269586dd8e2fcdafddc00ad582c8611d7900ba040",
+    "tradfi_history.csv": "9f2f0e6a98f72df530d6e4194c67bdd459506a7523ed2ba75877492b298aa6ca"
+  }
+}
