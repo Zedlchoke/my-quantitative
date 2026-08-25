@@ -152,6 +152,29 @@ EXIT_DEPENDENCY_MISSING = 4
 EXIT_MANIFEST_INVALID = 5
 EXIT_REPRO_MISMATCH = 6
 
+# B2 (V7): provenance preflight is generation-aware, never silently v6p.
+# funding_price_divergence is a V7-lineage family -> V7P audits;
+# funding_carry keeps its V6/V6P lineage semantics -> V6P audits.
+PROVENANCE_UNDETERMINED_REASON = "provenance_generation_undetermined"
+PROVENANCE_GENERATIONS: dict[str, Path] = {
+    "funding_price_divergence": Path("research/audits/v7p"),
+    "funding_carry": Path("research/audits/v6p"),
+}
+
+
+def _provenance_paths_for(family: str) -> tuple[Path, str] | None:
+    """Map PORTFOLIO_SIGNAL_FAMILY to its provenance audit root.
+
+    Returns ``(base_dir, generation)`` or ``None`` when the family maps to
+    no committed provenance generation; callers MUST abort with
+    ``provenance_generation_undetermined`` instead of falling back (no
+    silent v6p default).
+    """
+    base_dir = PROVENANCE_GENERATIONS.get(family)
+    if base_dir is None:
+        return None
+    return base_dir, family
+
 
 class RunnerError(RuntimeError):
     """Fatal, already-recorded runner failure."""
@@ -2008,8 +2031,19 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
             BASELINE_FILENAME,
             validate_launch_provenance,
         )
-        base_p = Path("research/audits/v6p") / BASELINE_FILENAME
-        att_p = Path("research/audits/v6p") / ATTESTATION_FILENAME
+        family = os.environ.get(SIGNAL_FAMILY_ENV, "").strip()
+        selected = _provenance_paths_for(family)
+        if selected is None:
+            # Fail-closed: no family -> no generation -> no silent v6p
+            # fallback (validator reasons would not even apply here).
+            reasons = [PROVENANCE_UNDETERMINED_REASON]
+            _log(f"ABORT provenance_preflight_failed: {reasons}")
+            print(f"ABORT provenance preflight failed: {reasons}",
+                  file=sys.stderr)
+            return EXIT_DEPENDENCY_MISSING
+        base_dir, generation = selected
+        base_p = base_dir / BASELINE_FILENAME
+        att_p = base_dir / ATTESTATION_FILENAME
         reasons = validate_launch_provenance(
             Path.cwd(),
             baseline_path=base_p,
@@ -2025,9 +2059,12 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
             return EXIT_DEPENDENCY_MISSING
         provenance_block = {
             "baseline_file": str(base_p),
+            "baseline_path": str(base_p),
             "baseline_sha256": sha256_file(base_p),
             "attestation_file": str(att_p),
+            "attestation_path": str(att_p),
             "attestation_sha256": sha256_file(att_p),
+            "generation": generation,
             "preflight": "PASS",
         }
     extra_manifest_fields["provenance"] = provenance_block

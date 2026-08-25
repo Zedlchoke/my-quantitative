@@ -275,3 +275,88 @@ def test_cli_help_default_momentum_smoke():
     assert "--funding-lookback-days" in proc.stdout
     assert "funding_price_divergence" in proc.stdout
     assert "LAST" in proc.stdout  # precedence documented in help
+
+
+# --------------------------------------------------------------------------
+# B2: generation-aware provenance preflight (fail-closed, no silent v6p)
+# --------------------------------------------------------------------------
+
+def test_provenance_paths_divergence_maps_to_v7p():
+    from research.portfolio_runner import _provenance_paths_for
+
+    selected = _provenance_paths_for("funding_price_divergence")
+    assert selected == (Path("research/audits/v7p"),
+                        "funding_price_divergence")
+
+
+def test_provenance_paths_carry_keeps_v6p_lineage():
+    """V6/V6P lineage semantics preserved for the carry family."""
+    from research.portfolio_runner import _provenance_paths_for
+
+    selected = _provenance_paths_for("funding_carry")
+    assert selected == (Path("research/audits/v6p"), "funding_carry")
+
+
+@pytest.mark.parametrize("family", ["", "momentum", "none",
+                                    "funding_price_divergence_x"])
+def test_provenance_paths_unknown_family_is_undetermined(family):
+    """No silent fallback: unmapped families select NOTHING."""
+    from research.portfolio_runner import (
+        PROVENANCE_GENERATIONS,
+        PROVENANCE_UNDETERMINED_REASON,
+        _provenance_paths_for,
+    )
+
+    assert _provenance_paths_for(family) is None
+    # The only mapped generations are exactly the two audited lineages;
+    # anything else must abort via PROVENANCE_UNDETERMINED_REASON.
+    assert set(PROVENANCE_GENERATIONS) == {
+        "funding_price_divergence", "funding_carry"}
+    assert PROVENANCE_UNDETERMINED_REASON == (
+        "provenance_generation_undetermined")
+
+
+def test_committed_v7p_baseline_and_attestation_present():
+    """Integration-style: primary-repo v7p provenance root is intact.
+
+    The divergence generation's launch preflight resolves these exact files;
+    they are committed evidence, so they must exist with an A7 PASS verdict.
+    """
+    from research.provenance_v6p import (
+        ATTESTATION_FILENAME,
+        BASELINE_FILENAME,
+        sha256_file,
+    )
+
+    base_p = REPO_ROOT / "research" / "audits" / "v7p" / BASELINE_FILENAME
+    att_p = REPO_ROOT / "research" / "audits" / "v7p" / ATTESTATION_FILENAME
+    assert base_p.is_file(), f"missing committed V7P baseline: {base_p}"
+    assert att_p.is_file(), f"missing committed V7P attestation: {att_p}"
+    att = json.loads(att_p.read_text(encoding="utf-8"))
+    assert att["verdict"] == "PASS"
+    # Attestation pins the baseline it vouches for (hash-chain integrity).
+    assert att["baseline_sha256"] == sha256_file(base_p)
+
+
+def test_v7p_files_missing_fails_closed_not_fallback(monkeypatch, tmp_path):
+    """Divergence + missing/invalid v7p artifacts => validator reasons ABORT
+    the launch; nothing silently downgrades to the v6p directory."""
+    from research.provenance_v6p import (
+        ATTESTATION_FILENAME,
+        BASELINE_FILENAME,
+        validate_launch_provenance,
+    )
+    from research.portfolio_runner import _provenance_paths_for
+
+    selected = _provenance_paths_for("funding_price_divergence")
+    assert selected is not None
+    base_dir, generation = selected
+    assert base_dir != Path("research/audits/v6p")  # no cross-generation leak
+    base_p = tmp_path / base_dir / BASELINE_FILENAME
+    att_p = tmp_path / base_dir / ATTESTATION_FILENAME
+
+    reasons = validate_launch_provenance(
+        tmp_path, baseline_path=base_p, attestation_path=att_p,
+        launch_head=None, dirty=False, first_launch_started_utc=None,
+    )
+    assert reasons == ["baseline_missing"]
