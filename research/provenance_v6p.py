@@ -224,8 +224,15 @@ def validate_launch_provenance(
 
     if dirty is None:
         exempt = _provenance_exempt(repo)
+        def _covered(line: str) -> bool:
+            path = line[3:] if len(line) > 3 and line[2] == " " else line
+            return (
+                path in exempt
+                or any(path.endswith(e) for e in exempt if not e.endswith("/"))
+                or any(path.startswith(e) for e in exempt if e.endswith("/"))
+            )
         dirty = any(
-            not any(l.endswith(e) for e in exempt)
+            not _covered(l)
             for l in _git(repo, "status", "--porcelain=v1").splitlines() if l
         )
     if dirty:
