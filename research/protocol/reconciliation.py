@@ -71,7 +71,7 @@ RECONCILIATION_SCHEMA_VERSION = 3
 #: Registry kinds that claim a CELL result identity (uniqueness-enforced).
 #: Verification/finalize kinds may legitimately reference the same matrix
 #: multiple times and are never treated as cell duplication.
-CELL_IDENTITY_KINDS = frozenset(("CELL_RESULT", "DIAGNOSTIC_RECALC"))
+CELL_IDENTITY_KINDS = frozenset(("CELL_RESULT", "DIAGNOSTIC_RECALC", "PIPELINE_VALIDATION"))
 
 #: v3 (N12): artifact files every REAL runner experiment directory must
 #: contain. The check applies only once a directory carries any data
