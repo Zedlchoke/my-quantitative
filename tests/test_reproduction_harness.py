@@ -30,8 +30,14 @@ Synthetic mini experiment dirs only -- no real runs, no network:
 * ``artifact_manifest_match`` replays every entry of the SOURCE
   ``artifact_hashes.json`` against the rerun artifacts -- a tampered entry
   fails naming that rel, a missing/unreadable rerun file fails closed, extra
-  unlisted rerun files are ignored, and the rerun side needs NO
+  unlisted rerun files are ignored, SKIP_RERUN rels
+  (``launch_manifest.yaml``/``run.log``, which A3's worker excludes from
+  ``rerun_artifacts`` BY DESIGN) are skipped, and the rerun side needs NO
   ``artifact_hashes.json`` of its own (--reproduce emits none by design);
+* ``rerun_emission_completeness`` re-states the replay's existence half as an
+  explicit boolean: every SOURCE key minus SKIP_RERUN must exist on the
+  rerun side; a tampered frozen/candidate.yaml byte-copy still fails naming
+  that rel;
 * pre-run hygiene: an existing verify dir whose report is ``all_match: true``
   short-circuits untouched, otherwise the whole directory is RENAMED aside
   to ``<verify_id>.FAILED-<UTCcompact>-n`` (bytes preserved, never deleted,
@@ -145,6 +151,11 @@ def _build_exp_dir(root: Path, git_commit: str = GIT_COMMIT) -> Path:
     }
     (exp / "launch_manifest.yaml").write_text(
         yaml.safe_dump(launch, sort_keys=False), encoding="utf-8")
+    # worker console log: SOURCE-manifest-listed but SKIP_RERUN-excluded from
+    # the rerun side by A3's emission contract
+    (exp / "run.log").write_text(
+        "[launch] XSECT-FUND-CARRY-1D\n[worker] deterministic log\n",
+        encoding="utf-8")
 
     hashes = {}
     for path in sorted(exp.rglob("*")):
@@ -270,6 +281,59 @@ def test_artifact_manifest_missing_rerun_file_fails_closed(twin_dirs):
         "missing_rerun_artifact:positions.jsonl")
     # the dedicated digest surface flags the same gap independently
     assert report["checks"]["positions_file_digest_match"] is False
+    # ...and so does the explicit existence-only boolean (non-skipped rel)
+    assert report["checks"]["rerun_emission_completeness"] is False
+    assert report["surfaces"]["rerun_emission_completeness"]["reason"] == (
+        "missing_rerun_artifact:positions.jsonl")
+
+
+def test_artifact_manifest_skips_excluded_by_design_rels(twin_dirs):
+    """A3 emission contract: rerun_artifacts exclude launch_manifest.yaml and
+    run.log BY DESIGN; both are SOURCE-manifest-listed, yet the replay must
+    honor SKIP_RERUN and still match fully."""
+    source, rerun = twin_dirs
+    hashes = json.loads(
+        (source / "artifact_hashes.json").read_text(encoding="utf-8"))["hashes"]
+    # fixture sanity: the SOURCE manifest carries skipped AND non-skipped keys
+    assert set(harness.SKIP_RERUN).issubset(hashes)
+    assert set(hashes) - set(harness.SKIP_RERUN)
+
+    for rel in harness.SKIP_RERUN:
+        (rerun / rel).unlink()  # A3's worker never emits these
+
+    report = _compare(source, rerun)
+    expected_entries = sum(1 for rel in hashes if rel not in harness.SKIP_RERUN)
+    manifest_surface = report["surfaces"]["artifact_manifest_match"]
+    assert report["checks"]["artifact_manifest_match"] is True, manifest_surface
+    assert manifest_surface["skipped"] == ["launch_manifest.yaml", "run.log"]
+    assert manifest_surface["entries"] == expected_entries
+
+    emission = report["surfaces"]["rerun_emission_completeness"]
+    assert report["checks"]["rerun_emission_completeness"] is True, emission
+    assert emission["expected"] == expected_entries
+    assert emission["missing"] == []
+    assert emission["skipped"] == ["launch_manifest.yaml", "run.log"]
+    assert report["all_match"] is True, json.dumps(report["surfaces"], indent=2)
+
+
+def test_tampered_frozen_candidate_copy_fails_naming_rel(twin_dirs):
+    """A byte-tampered frozen/ copy on the rerun side is caught by the
+    SOURCE-manifest replay; SOURCE-side self-consistency stays green."""
+    source, rerun = twin_dirs
+    (rerun / "frozen" / "candidate.yaml").write_text(
+        "hypothesis_id: H-TAMPERED\nfamily: funding_carry\n", encoding="utf-8")
+
+    report = _compare(source, rerun)
+    assert report["checks"]["artifact_manifest_match"] is False
+    assert report["surfaces"]["artifact_manifest_match"]["reason"] == (
+        "artifact_hash_mismatch:frozen/candidate.yaml")
+    assert report["surfaces"]["artifact_manifest_match"]["differing"] == [
+        "frozen/candidate.yaml"]
+    # existence is fine -- only the digest diverges
+    assert report["checks"]["rerun_emission_completeness"] is True
+    # SOURCE-side frozen self-consistency is a separate surface: untouched
+    assert report["checks"]["config_hashes_match"] is True
+    assert report["all_match"] is False
 
 
 def test_artifact_manifest_extra_rerun_files_are_ignored(twin_dirs):
@@ -756,9 +820,9 @@ def test_rerun_manifest_alias_loader_still_resolves(twin_dirs):
 # --------------------------------------------------------------------------- #
 def test_provenance_ignores_rerun_side_provenance_fields(twin_dirs):
     """The rerun side carries NO git_commit/frozen-hash fields and none are
-    expected: strip them entirely and provenance still passes.  The manifest
-    replay independently fails closed on the removed FILE (round-3
-    contract), without ever consulting rerun-side provenance."""
+    expected: strip them entirely and provenance still passes.  The removed
+    launch_manifest.yaml is SKIP_RERUN-excluded from the SOURCE-manifest
+    replay (round-4 contract), so both manifest surfaces stay green."""
     source, rerun = twin_dirs
     (rerun / "launch_manifest.yaml").unlink()
     (rerun.parent / "rerun_manifest.yaml").write_text(
@@ -771,11 +835,13 @@ def test_provenance_ignores_rerun_side_provenance_fields(twin_dirs):
     for surface in ("code_hash_match", "config_hashes_match",
                     "data_hashes_match"):
         assert report["checks"][surface] is True, report["surfaces"][surface]
-    # the removed file is SOURCE-manifest-listed -> named, fail-closed
-    assert report["checks"]["artifact_manifest_match"] is False
-    assert report["surfaces"]["artifact_manifest_match"]["reason"] == (
-        "missing_rerun_artifact:launch_manifest.yaml")
-    assert report["all_match"] is False
+    # the removed file is SKIP_RERUN-excluded from the replay BY DESIGN:
+    # manifest replay + emission completeness stay green, all_match holds
+    assert report["checks"]["artifact_manifest_match"] is True
+    assert report["surfaces"]["artifact_manifest_match"]["skipped"] == [
+        "launch_manifest.yaml", "run.log"]
+    assert report["checks"]["rerun_emission_completeness"] is True
+    assert report["all_match"] is True
 
 
 def test_provenance_is_source_frozen_file_self_consistency(twin_dirs):
