@@ -61,7 +61,8 @@ def create_baseline_root(
     """Freeze the external baseline root. Refuses any undeclared dirtiness."""
     exempt = _provenance_exempt(repo)
     def _nonexempt(line: str) -> bool:
-        path = line[3:] if len(line) > 3 and line[2] == " " else line
+        import re as _re
+        path = _re.sub(r"^[ MARCUD?!]{1,2}\s+", "", line)
         covered = (
             path in exempt
             or any(path.endswith(e) for e in exempt if not e.endswith("/"))
@@ -225,7 +226,8 @@ def validate_launch_provenance(
     if dirty is None:
         exempt = _provenance_exempt(repo)
         def _covered(line: str) -> bool:
-            path = line[3:] if len(line) > 3 and line[2] == " " else line
+            import re as _re
+            path = _re.sub(r"^[ MARCUD?!]{1,2}\s+", "", line)
             return (
                 path in exempt
                 or any(path.endswith(e) for e in exempt if not e.endswith("/"))
