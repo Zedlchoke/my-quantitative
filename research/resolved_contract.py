@@ -38,6 +38,16 @@ Dataset hashes are the verified ``inputs_used`` of the frozen V6 data
 manifest (funding bundle identity per sibling usage in
 ``research.portfolio_runner``); V7 inherits the V6 window/cost/limit
 contract set per PLAN section 16.2.
+
+The ``provenance_contract`` block (B2 item 6) pins the V7P evidence
+chain to its two FROZEN artifact paths plus mandatory enforcement:
+``baseline_path`` = ``research/audits/v7p/baseline_root.json``,
+``attestation_path`` =
+``research/audits/v7p/a7_prelaunch_attestation.json``,
+``enforcement_required`` = ``True``. It is a REQUIRED keyword argument
+(fail-closed like ``limits``): omitting, nulling or drifting any value
+raises :class:`ResolvedContractError`. The block is part of the
+canonical body covered by ``contract_sha256``.
 """
 from __future__ import annotations
 
@@ -84,6 +94,17 @@ EXECUTION_CONTRACT_FROZEN: dict[str, Any] = {
         ["XSECT-FUND-PRICE-DIV-7D", "XSECT-FUND-PRICE-DIV-REV-3D"],
     ],
 }
+# Frozen V7P evidence-chain decision (B2 item 6): the resolved contract is
+# only valid against THIS baseline + THIS prelaunch attestation, and the
+# attestation's gate enforcement is MANDATORY. Paths are repo-relative and
+# exact — no normalization, no alternates.
+PROVENANCE_BASELINE_PATH_FROZEN = "research/audits/v7p/baseline_root.json"
+PROVENANCE_ATTESTATION_PATH_FROZEN = "research/audits/v7p/a7_prelaunch_attestation.json"
+PROVENANCE_CONTRACT_FROZEN: dict[str, Any] = {
+    "baseline_path": PROVENANCE_BASELINE_PATH_FROZEN,
+    "attestation_path": PROVENANCE_ATTESTATION_PATH_FROZEN,
+    "enforcement_required": True,
+}
 
 _LAUNCH_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _FORBIDDEN_LAUNCH_SHA_VALUES = frozenset({LAUNCH_SHA_PLACEHOLDER, "TO_FREEZE"})
@@ -96,6 +117,7 @@ _UNSET = object()
 _COST_KEYS = frozenset({"fee_taker", "slippage_ticks"})
 _LIMIT_KEYS = frozenset({"gross", "net", "symbol_weight"})
 _FOLD_KEYS = frozenset({"fold_id", "start_utc", "end_utc"})
+_PROVENANCE_KEYS = frozenset(PROVENANCE_CONTRACT_FROZEN)
 _HEX_DIGITS = frozenset("0123456789abcdefABCDEF")
 
 
@@ -284,6 +306,37 @@ def _require_frozen_mapping(value: Any, name: str, frozen: Mapping[str, Any]) ->
     return dict(frozen)
 
 
+def _validate_provenance_contract(value: Any) -> dict:
+    """Frozen V7P evidence chain (B2 item 6): exact paths + mandatory enforcement."""
+    row = _require_mapping(value, "provenance_contract")
+    if set(row) != _PROVENANCE_KEYS:
+        raise ResolvedContractError(
+            f"provenance_contract must have exactly keys {sorted(_PROVENANCE_KEYS)} "
+            f"(no implicit defaults/extras), got {sorted(row)}"
+        )
+    baseline = _require_str(row["baseline_path"], "provenance_contract.baseline_path")
+    if baseline != PROVENANCE_BASELINE_PATH_FROZEN:
+        raise ResolvedContractError(
+            f"provenance_contract.baseline_path is a FROZEN V7P decision and must "
+            f"equal {PROVENANCE_BASELINE_PATH_FROZEN!r}, got {baseline!r}"
+        )
+    attestation = _require_str(
+        row["attestation_path"], "provenance_contract.attestation_path"
+    )
+    if attestation != PROVENANCE_ATTESTATION_PATH_FROZEN:
+        raise ResolvedContractError(
+            f"provenance_contract.attestation_path is a FROZEN V7P decision and "
+            f"must equal {PROVENANCE_ATTESTATION_PATH_FROZEN!r}, got {attestation!r}"
+        )
+    enforcement = row["enforcement_required"]
+    if enforcement is not True:
+        raise ResolvedContractError(
+            f"provenance_contract.enforcement_required must be exactly True "
+            f"(V7P prelaunch gate enforcement is mandatory), got {enforcement!r}"
+        )
+    return dict(PROVENANCE_CONTRACT_FROZEN)
+
+
 # --------------------------------------------------------------------------- #
 # Bootstrap provenance
 # --------------------------------------------------------------------------- #
@@ -328,6 +381,7 @@ def build_resolved_contract(
     costs: Mapping[str, Any],
     limits: Mapping[str, Any],
     dataset_hashes: Mapping[str, str],
+    provenance_contract: Mapping[str, Any],
     launch_sha: Any = _UNSET,
     trial_inventory: Sequence[Mapping[str, Any]],
     signal_family: str,
@@ -345,6 +399,8 @@ def build_resolved_contract(
     docstring. ``launch_sha`` is the EXPLICIT final integration commit SHA:
     placeholders (``PENDING_INTEGRATION_SHA``/``TO_FREEZE``) are rejected,
     and the sha must be reachable as a real commit in the repository.
+    ``provenance_contract`` is REQUIRED (fail-closed like ``limits``) and
+    must equal the frozen V7P evidence-chain block exactly.
     Legacy callers passing ``launch_sha_placeholder=...`` now raise
     :class:`ResolvedContractError` (placeholder semantics removed).
     ``repo_root``/``generated_at_utc`` are provenance anchors
@@ -471,6 +527,7 @@ def build_resolved_contract(
     execution = _require_frozen_mapping(
         execution_contract, "execution_contract", EXECUTION_CONTRACT_FROZEN
     )
+    provenance = _validate_provenance_contract(provenance_contract)
 
     commit_hex, commit_subject = discover_bootstrap_commit(root)
     src_sha = _source_sha256(root, commit_hex)
@@ -512,6 +569,7 @@ def build_resolved_contract(
         "costs": {"fee_taker": fee_taker, "slippage_ticks": slippage_ticks},
         "limits": {"gross": gross, "net": net, "symbol_weight": symbol_weight},
         "dataset_hashes": dict(sorted(normalized_hashes.items())),
+        "provenance_contract": provenance,
     }
     canonical = json.dumps(contract, sort_keys=True, separators=(",", ":"))
     contract["contract_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -615,6 +673,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "funding_bundle:ADAUSDT": "492ad0aebee58cf1f567901e11d7223f6d8a168e28f58b6bad9a4936d47aa908",
             "v6p_coverage_audit": "d291564d91f0433318fcbbba5accaa438de2897ede6cd92df0ef48334ac7d84d",
         },
+        provenance_contract=dict(PROVENANCE_CONTRACT_FROZEN),
         launch_sha=launch_sha,
         trial_inventory=[
             {"trial_id": "XSECT-FUND-PRICE-DIV-1D",
