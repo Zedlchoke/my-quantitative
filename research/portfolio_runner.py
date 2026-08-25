@@ -1603,7 +1603,11 @@ def write_artifact_hashes(exp_dir: Path, skip: Sequence[str] = ("artifact_hashes
     return out
 
 
-def verify_artifact_hashes(exp_dir: Path, skip: Sequence[str] = ("artifact_hashes.json",)) -> list[str]:
+def verify_artifact_hashes(
+    exp_dir: Path,
+    skip: Sequence[str] = ("artifact_hashes.json",),
+    extra_skip: Sequence[str] = ("ABORTED.json", "REGISTRATION_REPAIRED.json"),
+) -> list[str]:
     """Separate-reader check (pure read): recompute hashes from disk and
     return one reason string per mismatched, missing, or unlisted regular
     file (same skip rules as the writer); empty list means verified."""
@@ -1617,7 +1621,8 @@ def verify_artifact_hashes(exp_dir: Path, skip: Sequence[str] = ("artifact_hashe
         return [f"{out.name}:unreadable_manifest"]
     reasons: list[str] = []
     seen: set[str] = set()
-    for rel, path in _iter_artifact_files(exp_dir, skip):
+    skip_all = tuple(skip) + tuple(extra_skip)
+    for rel, path in _iter_artifact_files(exp_dir, skip_all):
         seen.add(rel)
         if rel not in recorded:
             reasons.append(f"{rel}:unlisted")
