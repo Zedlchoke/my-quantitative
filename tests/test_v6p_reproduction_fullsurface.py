@@ -26,7 +26,7 @@ import pytest
 import yaml
 
 import research.protocol.registry as registry_mod
-from contracts.protocol import GateVerdict
+from contracts.protocol import GateVerdict, sha256_file
 from research.portfolio_runner import EXIT_REPRO_MISMATCH, main
 from research.protocol.reconciliation import (
     REQUIRED_EXPERIMENT_ARTIFACT_FILES,
@@ -72,6 +72,19 @@ FULL_SURFACE_CHECKS = (
     # legacy numeric components retained for continuity:
     "orders_digest_match", "positions_digest_match", "pnl_match",
     "beta_match", "turnover_match", "mdd_match",
+)
+
+# V7P C15/full-surface contract: <verify>/rerun_artifacts must carry the FULL
+# deterministic artifact set of a primary scored run -- the frozen INPUT files
+# as byte-copies of the source snapshot and the four report artifacts
+# recomputed from the rerun execution. Nondeterministic surfaces
+# (launch_manifest.yaml, run.log) are excluded by downstream skip lists.
+RERUN_FROZEN_INPUT_COPIES = (
+    "config.yaml", "candidate.yaml", "data_manifest.json", "universe.json",
+)
+RERUN_RECOMPUTED_REPORTS = (
+    "beta_report.json", "contribution_report.json",
+    "gate_result.json", "scorecard.json",
 )
 
 
@@ -177,6 +190,35 @@ def test_full_surface_reproduction_matches_component_by_component(workspace):
         detail = comp["components"][component]
         assert detail["match"] is True, component
         assert detail["source_sha256"] == detail["rerun_sha256"]
+
+
+def test_rerun_emits_full_deterministic_artifact_set(workspace):
+    """V7P C15: rerun_artifacts carries the full deterministic artifact set.
+
+    frozen/ inputs are byte-copies of the SOURCE frozen snapshot; the four
+    report artifacts are RECOMPUTED by the worker through the same builder
+    code paths as a primary run and must therefore be byte-identical to the
+    source scored artifacts. launch_manifest.yaml / run.log never appear.
+    """
+    source = _scored(workspace)
+    code = main([
+        "--reproduce", str(source),
+        "--verify-id", "VERIFY-C15-EMISSION",
+        "--registry-path", "results/registry/experiments.jsonl",
+    ])
+    assert code == 0
+    rerun = Path("results/reproduction_v4/VERIFY-C15-EMISSION/rerun_artifacts")
+    for name in RERUN_FROZEN_INPUT_COPIES:
+        copied = rerun / "frozen" / name
+        assert copied.is_file(), name
+        assert sha256_file(copied) == sha256_file(source / "frozen" / name), name
+    for name in RERUN_RECOMPUTED_REPORTS:
+        rebuilt = rerun / name
+        assert rebuilt.is_file(), name
+        assert sha256_file(rebuilt) == sha256_file(source / name), name
+    # Nondeterministic surfaces stay out of the deterministic emission set.
+    assert not (rerun / "launch_manifest.yaml").exists()
+    assert not (rerun / "run.log").exists()
 
 
 def test_byte_flip_in_funding_copy_breaks_component_and_all_match(workspace):

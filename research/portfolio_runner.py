@@ -1700,6 +1700,81 @@ def compute_portfolio_scorecard(gate_rows: Sequence[GateResult]) -> dict[str, An
 
 
 # --------------------------------------------------------------------------- #
+# V7P C15/full-surface contract: shared report builders. The primary scored
+# run and the independent-rerun worker MUST build beta_report.json,
+# contribution_report.json, gate_result.json and scorecard.json through THESE
+# exact code paths so the rerun artifact set is structurally identical to a
+# primary scored run's (pure extraction of the historical inline dicts; no
+# gate/scoring math touched).
+# --------------------------------------------------------------------------- #
+def build_beta_report_doc(metrics: Mapping[str, Any],
+                          benchmark_symbol: str) -> dict[str, Any]:
+    return {
+        "schema_version": 4,
+        "estimator": metrics["beta_estimator"],
+        "beta": {"value": metrics["beta"], "reason": metrics["beta_reason"]},
+        "aligned_daily_returns": metrics["daily_return_count"],
+        "benchmark_symbol": benchmark_symbol,
+        "usage": "measurement only; excluded from selection (PLAN §19.3)",
+        "threshold": PortfolioConstraints.MAX_ABS_BTC_BETA,
+    }
+
+
+def build_contribution_report_doc(metrics: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": 4,
+        "definition": metrics["contribution_definition"],
+        "top_symbol": {"symbol": metrics["top_symbol"],
+                       "share": metrics["top_symbol_share"],
+                       "limit": PortfolioConstraints.MAX_TOP_SYMBOL_CONTRIBUTION},
+        "top_fold": {"fold_id": metrics["top_fold"],
+                     "share": metrics["top_fold_share"],
+                     "limit": PortfolioConstraints.MAX_TOP_FOLD_CONTRIBUTION},
+        "fold_pnls": metrics["fold_pnls"],
+    }
+
+
+def build_gate_result_doc(
+    *,
+    experiment_id: str,
+    matrix_id: str,
+    gate_inputs: Mapping[str, Any],
+    gate_rows: Sequence[GateResult],
+    xg5_details: Mapping[str, Any],
+    spike_row: Mapping[str, Any] | None,
+    verdict: str,
+    is_control: bool,
+) -> dict[str, Any]:
+    return {
+        "schema_version": 4,
+        "experiment_id": experiment_id,
+        "matrix_id": matrix_id,
+        # V6P N07: measured XG1 counters recomputed from the assembled
+        # execution-ledger rows (external-reader recheck support).
+        "xg1_measured_counters": count_execution_evidence(
+            gate_inputs["execution_ledger_rows"]).to_dict(),
+        "gates": [
+            {"gate": row.gate.value if hasattr(row.gate, "value") else str(row.gate),
+             "verdict": row.verdict.value, "reasons": list(row.reasons)}
+            for row in gate_rows
+        ],
+        "xg5_details": xg5_details,
+        "parameter_spike": spike_row,
+        "cell_verdict": verdict,
+        "is_negative_control": is_control,
+    }
+
+
+def build_scorecard_doc(experiment_id: str,
+                        scorecard: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": 4,
+        "experiment_id": experiment_id,
+        **scorecard,
+    }
+
+
+# --------------------------------------------------------------------------- #
 # artifact writing
 # --------------------------------------------------------------------------- #
 _FINALIZED_EXP_DIRS: set[Path] = set()
@@ -2097,50 +2172,25 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     }
     write_json(exp_dir / "canonical_metrics.json", canonical_metrics)
 
-    write_json(exp_dir / "beta_report.json", {
-        "schema_version": 4,
-        "estimator": metrics["beta_estimator"],
-        "beta": {"value": metrics["beta"], "reason": metrics["beta_reason"]},
-        "aligned_daily_returns": metrics["daily_return_count"],
-        "benchmark_symbol": identity["benchmark_symbol"],
-        "usage": "measurement only; excluded from selection (PLAN §19.3)",
-        "threshold": PortfolioConstraints.MAX_ABS_BTC_BETA,
-    })
-    write_json(exp_dir / "contribution_report.json", {
-        "schema_version": 4,
-        "definition": metrics["contribution_definition"],
-        "top_symbol": {"symbol": metrics["top_symbol"],
-                       "share": metrics["top_symbol_share"],
-                       "limit": PortfolioConstraints.MAX_TOP_SYMBOL_CONTRIBUTION},
-        "top_fold": {"fold_id": metrics["top_fold"],
-                     "share": metrics["top_fold_share"],
-                     "limit": PortfolioConstraints.MAX_TOP_FOLD_CONTRIBUTION},
-        "fold_pnls": metrics["fold_pnls"],
-    })
+    # V7P C15/full-surface contract: report artifacts built via the SHARED
+    # builders (same code paths the rerun worker uses).
+    write_json(exp_dir / "beta_report.json",
+               build_beta_report_doc(metrics, identity["benchmark_symbol"]))
+    write_json(exp_dir / "contribution_report.json",
+               build_contribution_report_doc(metrics))
 
-    write_json(exp_dir / "gate_result.json", {
-        "schema_version": 4,
-        "experiment_id": args.experiment_id,
-        "matrix_id": args.matrix_id,
-        # V6P N07: measured XG1 counters recomputed from the assembled
-        # execution-ledger rows (external-reader recheck support).
-        "xg1_measured_counters": count_execution_evidence(
-            gate_inputs["execution_ledger_rows"]).to_dict(),
-        "gates": [
-            {"gate": row.gate.value if hasattr(row.gate, "value") else str(row.gate),
-             "verdict": row.verdict.value, "reasons": list(row.reasons)}
-            for row in gate_rows
-        ],
-        "xg5_details": xg5_details,
-        "parameter_spike": spike_row,
-        "cell_verdict": verdict,
-        "is_negative_control": is_control,
-    })
-    write_json(exp_dir / "scorecard.json", {
-        "schema_version": 4,
-        "experiment_id": args.experiment_id,
-        **scorecard,
-    })
+    write_json(exp_dir / "gate_result.json", build_gate_result_doc(
+        experiment_id=args.experiment_id,
+        matrix_id=args.matrix_id,
+        gate_inputs=gate_inputs,
+        gate_rows=gate_rows,
+        xg5_details=xg5_details,
+        spike_row=spike_row,
+        verdict=verdict,
+        is_control=is_control,
+    ))
+    write_json(exp_dir / "scorecard.json",
+               build_scorecard_doc(args.experiment_id, scorecard))
 
     verify_reasons = verify_frozen_snapshots_local(snapshot, exp_dir)
     if verify_reasons:
@@ -2897,17 +2947,28 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
         base_edge_verdict=base_xg3_verdict,
         funding_lookback_days=int(raw.get("funding_lookback_days") or 3),
     )
-    gate_rows = evaluate_xgates(build_gate_inputs(
+    # V7P C15/full-surface contract: keep the FINAL gate inputs around so
+    # gate_result.json below is recomputed exactly like the scored path.
+    final_gate_inputs = build_gate_inputs(
         execution, declared_symbols=declared_traded,
         required_days=scored_days, warmup_boundaries=warmup_boundaries,
         stress_report=stress_report,
-    ))
+    )
+    gate_rows = evaluate_xgates(final_gate_inputs)
+    _xg5_result, xg5_details = evaluate_xg5(
+        XRiskInput(**final_gate_inputs["risk"])
+        if isinstance(final_gate_inputs["risk"], Mapping)
+        else final_gate_inputs["risk"],
+    )
     scorecard = compute_portfolio_scorecard(gate_rows)
 
     out_dir = Path(args.rerun_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     experiment_id = str(raw.get("experiment_id") or out_dir.parent.name)
     matrix_id = str(raw.get("matrix_id") or "")
+    # Same control rule as run_scored_experiment (reverse flag OR CONTROL id).
+    is_control = bool(raw.get("reverse")) or "CONTROL" in experiment_id.upper()
+    verdict = cell_verdict(is_control=is_control, gate_rows=gate_rows)
     write_jsonl(out_dir / "signal_ranks.jsonl", execution["signal_ranks"])
     if execution.get("signal_diagnostics"):
         write_jsonl(out_dir / "signal_diagnostics.jsonl",
@@ -2935,6 +2996,38 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
         "orders_digest": rows_digest(execution["orders"]),
         "positions_digest": rows_digest(execution["closed_legs"]),
     })
+    # ---- V7P C15/full-surface contract: full deterministic artifact set ----
+    # frozen/ INPUT files are byte-copies of the SOURCE frozen snapshot --
+    # each rel path was hash-verified against the launch manifest above, so
+    # the copies are proven identical inputs (never recomputed).
+    # launch_manifest.yaml and run.log are intentionally NOT emitted into
+    # rerun_artifacts (nondeterministic surfaces; downstream skip list).
+    frozen_out = out_dir / "frozen"
+    frozen_out.mkdir(parents=True, exist_ok=True)
+    for _key, rel in checks:
+        (frozen_out / Path(rel).name).write_bytes(
+            (source_dir / rel).read_bytes())
+    # Recomputed reports through the SAME shared builders as
+    # run_scored_experiment -- never copied from source -- so a successful
+    # rerun's digests must equal the primary scored artifacts byte-for-byte.
+    write_json(out_dir / "beta_report.json",
+               build_beta_report_doc(metrics, benchmark))
+    write_json(out_dir / "contribution_report.json",
+               build_contribution_report_doc(metrics))
+    write_json(out_dir / "gate_result.json", build_gate_result_doc(
+        experiment_id=experiment_id,
+        matrix_id=matrix_id,
+        gate_inputs=final_gate_inputs,
+        gate_rows=gate_rows,
+        xg5_details=xg5_details,
+        # Rerun workers accept no --spike-positives input; scored runs that
+        # used it stay comparable via the upstream verdict-map check.
+        spike_row=None,
+        verdict=verdict,
+        is_control=is_control,
+    ))
+    write_json(out_dir / "scorecard.json",
+               build_scorecard_doc(experiment_id, scorecard))
     write_json(out_dir / "core_result.json", {
         "orders_digest": rows_digest(execution["orders"]),
         "positions_digest": rows_digest(execution["closed_legs"]),
