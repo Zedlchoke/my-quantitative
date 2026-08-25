@@ -2380,7 +2380,9 @@ def update_matrix_index(
         experiments.append(experiment_id)
     report["matrix_id"] = matrix_id
     report["declared_cells"] = 4  # frozen trial budget: 3 lookbacks + 1 control
-    report["stage_a_root"] = str(PORTFOLIO_ROOT)
+    # The stage-a root MUST describe where THIS matrix's experiment dirs live,
+    # not the legacy portfolio_v4 constant (V6P N12-class stale-root defect).
+    report["stage_a_root"] = str(exp_dir.parent)
     write_json(report_path, report)
 
 

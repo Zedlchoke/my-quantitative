@@ -1,75 +1,41 @@
-# CONTINUE.md — Handoff sau Sprint V5R→V6 Orca (2026-08-24)
+# CONTINUE.md — Handoff sau Sprint V6P→V6→V7 (2026-08-25)
 
-> **Viết bởi:** A1 (opencode, Orca coordinator) lúc 2026-08-24 ~12:0x UTC
-> **Kết thúc sprint:** `V5_FAIL_V6_BLOCKED` (terminal, trung thực — xem
-> `research/audits/v5r/master_transition.json`)
-> **Nguyên tắc bất biến:** không sửa verdict legacy; không xoá/quên quarantine;
-> không mở V6 khi chưa có transition hợp lệ; `.venv/bin/python` duy nhất;
-> không S1; không live money; old worktrees read-only vĩnh viễn.
+> **Viết bởi:** A1 (Orca coordinator) lúc shutdown
+> **Terminal outcomes:** `V6P_PASS_V6_AUTHORIZED` → `V6P_PASS_V6_CANDIDATE_FAIL` → `V6_TERMINAL_V7_SKIPPED_TIME_BUDGET`
+> **Nguyên tắc:** không relabel V6; V7 spec đã hash, chưa wire; không S1; không live money; old worktrees read-only.
 
----
+## 1. TRẠNG THÁI (đo được, không phải ý định)
 
-## 1. VERDICT BLOCK (đọc đầu tiên)
+- Primary: `/Users/hoangminhlong/my-quantitative`, branch main, HEAD `fbd2e9d…` + 1 commit shutdown cuối; **chưa push**.
+- Uncommitted có khai báo (exempt): `research/audits/v6p/{baseline_root,a7_prelaunch_attestation}.json` — cặp provenance ghim nhau bằng hash-chain; commit ở đầu sprint mới nếu muốn.
+- Worktrees vai trò: `/Users/hoangminhlong/my-quantitative-v6p-wt/{a2..a7}-*` nhánh `orca/v6p-*` từ bootstrap `b4a9da6`; A7 đã commit audit trên nhánh riêng (đã cherry-pick vào primary).
+- Workers còn sống: **0** (sampler PID 22074 đã SIGTERM theo đúng pid).
+- Scored budget: **4/8 dùng** (4 trial V6); V7 = 0.
 
-```text
-ENGINEERING_VERDICT          = PASS (pipeline integrity đã phục hồi, chứng minh end-to-end)
-SCIENTIFIC_AUDIT_VERDICT     = PASS (A6 độc lập, post-freeze, toàn dân số)
-LEGACY V5                    = FAIL vĩnh viễn (5/26 PASS; C02,C19,C21,C25 FAIL; 17 NOT_TESTED)
-V5R CLEAN LINEAGE            = FAIL (16/18 PASS; R06 data coverage/funding; R12 stress bị skip)
-V6_TRANSITION                = V5_FAIL_V6_BLOCKED  ← terminal, KHÔNG mở V6
-LOCKED_CANDIDATE             = NONE (momentum recalc: 3D −8.2k / 7D +9.5k PF1.048 / 14D −8.2k / control −27.3k)
-S1_STATUS                    = NOT_STARTED
-LIVE_MONEY_STATUS            = UNCHANGED_DISABLED
-```
+## 2. KẾT QUẢ HỌC ĐƯỢC (taxonomy)
 
-## 2. Trạng thái repo khi bàn giao
+| Trial | PnL | PF | Kết luận |
+|---|---|---|---|
+| CARRY-1D | −5.680 | 0.978 | mechanism_failure |
+| CARRY-3D | +2.076 | 1.012 | edge_too_weak (PF<1.10) |
+| CARRY-7D | +20.581 | 1.157 | **top-fold 51.66%>50%** (FG3 concentration fail); MDD thực 8.84% PASS |
+| REVERSE-3D | −20.103 | 0.870 | negative_control như kỳ vọng |
 
-- Branch `main`, HEAD = commit freeze cuối (`git log --oneline -8`; freeze run =
-  `e3d82ad`), tree sạch, **chưa push** (owner chưa yêu cầu).
-- Toàn bộ evidence V5R nằm trong `research/audits/v5r/` (đã commit) và
-  `results/{diagnostic_v5r,reproduction_v5r,matrix/v4_recalc_diagnostic_v5r}/`
-  (gitignored — giữ nguyên, không xoá).
-- Registry: 503 rows, append-only verified TRUE; diagnostics KHÔNG tăng trial count.
-- Old worktrees `/Users/hoangminhlong/my-quantitative-wt/*`: READ-ONLY, 18 thư mục,
-  đã inventory trong `worktree_inventory.json`.
+Pipeline surfaces VALID toàn bộ (XG0/XG1 measured, hashes CLEAN, repro full-surface all-match, matrix COMPLETE, append-only true). A7 audit PASS, 0 HIGH/CRIT.
 
-## 3. Việc đã xong (sự thật đã đo, không phải claim)
+## 3. VIỆC CHƯA LÀM & LÝ DO
 
-1. Test contamination: root cause PROVEN (stale default-arg binding); fix
-   late-bound + fixture redirect; pre/post recheck 1474 paths không đổi.
-2. V5-C02: exact recovery NOT_FOUND (5,726 file + 445 git blob quét hết) → legacy FAIL.
-3. Quarantine EXP-0001/0002 (metadata-only, immutable policy flags).
-4. Phase D engineering: hashes-last finalization fail-closed; external-reader
-   verify (4/4 CLEAN vs legacy 4/4 MISMATCH); reconciler schema v2 → COMPLETE,
-   mismatches=[]; synthetic XG integrity constant REMOVED.
-5. Baseline V5R frozen trước launch, A6 xác minh PASS; 4 diagnostic recalc chạy
-   đúng lệnh đông lạnh; 4 reproduction all_match.
-6. A6 audit post-freeze: 10/10 checks PASS; findings 2 MED (gross>1 semantics;
-   XG0 funding-reason vs data-manifest conflict) + 2 LOW — chi tiết trong
-   `challenge_memo_v5r.md`.
+- **V7 NOT_AUTHORIZED** vì: A04 (chưa wire dispatcher divergence — wire sau khi thấy V6 results sẽ phá blindness), A08 (chưa có attestation cho launch head V7), A10 (<180 phút còn lại). Module `research/funding_price_divergence.py` + 8 tests đã sẵn sàng và KHÔNG đổi sau khi thấy kết quả V6.
+- `dsr_pbo_report`: DSR null trung thực (chuỗi fold n=3 không đủ), PBO = NOT_ENOUGH_CONFIGURATIONS.
 
-## 4. Tại sao V6 bị chặn (không được "thông cảm")
+## 4. SPRINT MỚI CẦN LÀM (theo thứ tự)
 
-- **R06 FAIL**: XG0 đo được `coverage_below_declared` +
-  `funding_coverage_insufficient` trên cả 4 run mới — dữ liệu không đủ so với
-  window khai báo. Đây là điều kiện tiên quyết FG0 của V6.
-- **R12 FAIL**: runner chỉ chạy stress/drop-one khi base edge PASS; plan yêu cầu
-  thực thi vô điều kiện. Phải sửa code trước mọi lineage tương lai.
+1. Wire nhánh dispatcher `funding_price_divergence` vào `_signal_family_dispatch` (pattern y hệt funding_carry) **trước** mọi results — khôi phục tính mù.
+2. Freeze baseline mới (schema v2 đã có mẫu: source_head + coordination_head + manifest hash + spec hashes).
+3. Xin A7 pre-launch attestation trên worktree `a7-independent-audit`.
+4. Chạy đúng 4 trial V7 (price lookback 1D/3D/7D + reverse-3D control, funding lookback cố định 3D) với ngân sách còn lại 4/8.
+5. Áp FG0–FG2, FG3-V7, FG4–FG7; scorecard ≥75 mới eligible; tối đa lock 1 candidate cross-family.
 
-## 5. NEXT ACTIONS cho owner (theo thứ tự)
+## 5. CẤM
 
-1. Sửa data coverage/funding cadence cho khớp window khai báo HOẶC đóng băng
-   window nhỏ hơn trung thực. Không tune universe sau khi xem kết quả.
-2. Sửa `portfolio_runner`: bỏ gating stress phía sau base edge (unconditional).
-3. Quyết định 2 finding MED trong memo (gross_exposure >1 semantics; XG0 reason
-   logic vs manifest).
-4. Nếu muốn thử lại: tạo lineage MỚI (V6-pre validation) theo PLAN §12 — KHÔNG
-   tái sử dụng verdict V5R, không relabel, baseline mới freeze trước launch.
-5. Push/PR: chỉ khi owner yêu cầu rõ ràng.
-
-## 6. Cấm tuyệt đối cho agent kế tiếp
-
-Đọc `PLAN.md` (execution contract hiện hành) + `master_transition.json` trước.
-Không: sửa `gate_ledger_*`/`*_transition.json` đã commit; dùng `git add -A`;
-`reset --hard`/`clean`; chạm `results/stage_a_v3/EXP-0001/0002`; đọc S1; bật
-live money; tạo PASS giả từ missing evidence. FAIL trung thực là kết quả hợp lệ.
+Đọc/S1, live money, `git add -A`, reset/clean, đụng `results/**` cũ như evidence, relabel V6, RETRY2, push khi owner chưa yêu cầu.
