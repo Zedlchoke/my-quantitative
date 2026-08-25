@@ -1751,6 +1751,11 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         extra_manifest_fields["synthetic_panel_path"] = str(
             Path(args.synthetic_panel).resolve())
 
+    log_path = exp_dir / "run.log"
+
+    def _log(message: str) -> None:
+        append_run_log(log_path, message)
+
     # V6P N01/N02/N03: committed-baseline provenance block + fail-closed
     # preflight when enforcement is enabled (real launches set the env).
     provenance_block: dict[str, Any] = {
@@ -1789,11 +1794,6 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
             "preflight": "PASS",
         }
     extra_manifest_fields["provenance"] = provenance_block
-    log_path = exp_dir / "run.log"
-
-    def _log(message: str) -> None:
-        append_run_log(log_path, message)
-
     _log(f"launch experiment={args.experiment_id} matrix={args.matrix_id}")
     _log(f"lock evidence source={identity['lock_source']} "
          f"locked_at={identity['locked_at_utc']}")

@@ -44,6 +44,10 @@ def _provenance_exempt(repo: Path) -> set[str]:
     return {
         str(Path("research/audits/v6p") / BASELINE_FILENAME),
         str(Path("research/audits/v6p") / ATTESTATION_FILENAME),
+        # Coordinator journal/state mutate continuously by design; they carry
+        # no strategy/data authority, so they cannot participate in the
+        # launch-clean guarantee.
+        "research/control/",
     }
 
 
@@ -57,7 +61,13 @@ def create_baseline_root(
     """Freeze the external baseline root. Refuses any undeclared dirtiness."""
     exempt = _provenance_exempt(repo)
     def _nonexempt(line: str) -> bool:
-        return not any(line.endswith(e) for e in exempt)
+        path = line[3:] if len(line) > 3 and line[2] == " " else line
+        covered = (
+            path in exempt
+            or any(path.endswith(e) for e in exempt if not e.endswith("/"))
+            or any(path.startswith(e) for e in exempt if e.endswith("/"))
+        )
+        return not covered
 
     status = [
         l for l in _git(repo, "status", "--porcelain=v1").splitlines()

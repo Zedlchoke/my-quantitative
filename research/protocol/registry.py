@@ -29,6 +29,8 @@ ENTRY_KINDS = (
     "MATRIX_FINALIZE",
     # Sprint V5 (PLAN section 31.5): immutable V4 diagnostic recalculation.
     "DIAGNOSTIC_RECALC",
+    # Sprint V6P (PLAN section 7): non-scored pipeline-validation launches.
+    "PIPELINE_VALIDATION",
 )
 VERIFY_KIND_REQUIRED_FIELDS = (
     "schema",
