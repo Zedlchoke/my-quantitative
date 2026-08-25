@@ -219,6 +219,8 @@ Một file chỉ có một owner tại một thời điểm. Cross-cutting edit 
 
 Nếu còn ít hơn 180 phút trước hard stop mà chưa có prelaunch attestation, không launch V7. Đóng ở `V7P_COMPLETE_V7_NOT_STARTED_TIME_GUARD`.
 
+Trong overnight continuation, hàng `Close` là điểm đóng pha V7: phải dừng/reconcile V7 workers và tạo terminal evidence. Nếu §17 T01–T15 PASS và còn ≥300 phút thì controller chuyển sang V8 thay vì final shutdown; nếu không thì shutdown ngay. Absolute hard stop 12 giờ vẫn giữ nguyên.
+
 ---
 
 ## 5. Pha V7P-0 — đóng sổ V6 và sửa control-plane truth
@@ -602,7 +604,7 @@ Khi dừng: không xóa artifacts; ghi event; terminate owned PID; tạo shutdow
 ## 15. Prompt hoàn chỉnh cho A1 / Orca
 
 ```text
-Bạn là A1 — owner, integrator và controller của sprint V7P → V7 trong repo
+Bạn là A1 — owner, integrator và controller của sprint V7P → V7 → conditional V8 trong repo
 /Users/hoangminhlong/my-quantitative.
 
 Đọc toàn bộ PLAN.md trước khi làm. PLAN.md là execution contract. Không tóm tắt rồi bỏ qua
@@ -632,6 +634,8 @@ MỤC TIÊU
 4. Sau A7 prelaunch PASS, chạy đúng 4 V7 trials, stress/reproduce/score/audit.
 5. Kết thúc bằng một verdict trung thực: V7_LOCKED, V7_REJECT_ALL,
    V7P_COMPLETE_V7_NOT_STARTED hoặc V7_INVALIDATED.
+6. Nếu và chỉ nếu V7 terminal hợp lệ cùng transition T01-T15 PASS, tự động tiếp tục
+   V8 theo §17; không chờ thêm owner input trong unattended run.
 
 TOPOLOGY BẮT BUỘC
 - A1 làm tại root integration repo.
@@ -679,6 +683,12 @@ V7 TRIAL BUDGET — KHÔNG ĐƯỢC THAY
 - Không performance retry. Prelaunch abort chỉ được relaunch khi chưa có scored artifact và A7 xác nhận.
 - Không tạo RETRY2 cho sentinel/candidate cũ.
 
+V8 FREEZE TRƯỚC V7 SCORE
+- Trước scored metric V7 đầu tiên, tạo/freeze H-XSECT-REVERSAL-v2 spec + novelty hashes
+  đúng §17.2. Nếu V7 đã lộ metric trước freeze thì V8_PREREG_WINDOW_MISSED và không V8.
+- Có thể chuẩn bị V8 A2-A6 song song trong isolated worktrees, nhưng cấm đọc V7 result/log/metric,
+  cấm merge V8 vào root và cấm V8 scored launch trước valid V7 terminal.
+
 HARD GATES
 Thực thi đúng FG0-FG7 trong PLAN.md. Đặc biệt:
 - PF >=1.10; MDD <=10%; mọi fold dương.
@@ -697,13 +707,20 @@ CONTROL VÀ BẰNG CHỨNG
 - Mọi artifact ghi schema/source SHA/config/data hashes/parents.
 - Không tuyên bố hoàn tất dựa trên exit code; phải kiểm tra artifact completeness và reconciliation.
 
-KẾT THÚC
+V7 TERMINAL VÀ CONDITIONAL V8
 - Chạy stress, reproduction, DSR/PBO, machine gates và scorecards.
 - Cho A7 audit verdict cuối.
 - Tạo sprint-v7p-v7-master-20260825.md/json, cập nhật CONTINUE.md và Wayfinder MAP.
-- Dừng toàn bộ owned worker/heartbeat, ghi shutdown report, xác minh Git sạch.
-- Báo cáo ngắn gọn: commit, tests, gates, 4 trial metrics, verdict, blockers, artifact paths,
-  PID còn sống và next safe action.
+- Dừng toàn bộ V7 heavy worker/heartbeat, reconcile registry, xác minh V7 terminal state và Git sạch.
+- Ngay sau đó tính machine-readable transition T01-T15 tại §17.3.
+- Nếu V7 là V7_LOCKED hoặc V7_REJECT_ALL, T01-T15 PASS và còn >=300 phút: KHÔNG shutdown
+  toàn bộ controller và KHÔNG chờ owner; tự động tiếp tục V8 theo §17.4-§17.10.
+- Nếu V7_INVALIDATED/INCOMPLETE, bất kỳ T-gate FAIL hoặc còn <300 phút: không V8; tạo
+  V8_NOT_STARTED_* rồi shutdown sạch.
+- Sau V8 terminal hoặc V8_NOT_STARTED: dừng tất cả owned workers/heartbeat, ghi final shutdown
+  report, xác minh PID list rỗng và Git sạch.
+- Báo cáo cuối cùng: commits, tests, V7 gates/metrics/verdict, V8 transition 15/15 hoặc blocker,
+  V8 gates/metrics/verdict nếu đã chạy, artifact paths, PID còn sống và next safe action.
 
 Ưu tiên tính đúng, tính tái lập và bằng chứng khoa học hơn việc tìm strategy có lời.
 REJECT_ALL hợp lệ; false promotion là thất bại nghiêm trọng.

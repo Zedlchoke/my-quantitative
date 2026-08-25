@@ -453,7 +453,7 @@ def test_deterministic_rerun_equality(bundles):
 # The committed artifact embeds launch_sha = PRIMARY HEAD at regeneration
 # (pinned via `git -C <primary> rev-parse HEAD`); FINAL_CODE_SHA b061b55 is
 # contained in its history. Contract launch_sha must equal this pin.
-COMMITTED_LAUNCH_SHA = "63f9476cbd560d2ebca412891196fd1b3a2e4acb"
+COMMITTED_LAUNCH_SHA = "6533ce08d3fe7fd711772c89c59129e9ec8732f4"  # pinned by V7P evidence chain; V8 prereg included
 # Synthetic format-valid shas for UNIT tests only ("f"*40 matches the
 # 40-hex shape but is NOT a real commit object; "g"*40 is not even hex).
 FINAL_LAUNCH_SHA_PLACEHOLDER_FOR_TESTS = "f" * 40
