@@ -7,6 +7,18 @@ defaults on any contract field — a caller that omits, nulls or empties a
 required argument gets :class:`ResolvedContractError` instead of a
 silently defaulted contract.
 
+The ``launch_sha`` is the EXPLICIT final integration commit SHA of the
+launch: placeholder semantics (``PENDING_INTEGRATION_SHA``) are removed
+and forbidden. It must match ``^[0-9a-f]{40}$`` AND be reachable as a
+real commit object in the repository (``git cat-file -e <sha>^{commit}``).
+Legacy callers still passing ``launch_sha_placeholder=...`` fail closed.
+
+The trial inventory / signal family / registry-output / execution
+contracts below are the FROZEN V7 plan set (PLAN section 8.1/8.2): the
+exactly-four trials ``XSECT-FUND-PRICE-DIV-{1D,3D,7D,REV-3D}``, two
+execution waves, one ``CELL_RESULT`` registry root. They must be passed
+explicitly and equal to the freeze — no partial or drifted inventories.
+
 Provenance fields (``schema_version``, ``generated_at_utc``,
 ``source_commit``/``source_sha256``) are derived from the repository
 itself: the bootstrap commit is discovered by walking ``git log`` from
@@ -17,15 +29,23 @@ Regenerate the committed evidence artifact with::
 
     PYTHONPATH=<repo> python -m research.resolved_contract
 
-Every value below is passed explicitly (V7 inherits the V6 data/window/
-cost/limit contract set per PLAN section 16.2; dataset hashes are the
-verified ``inputs_used`` of the frozen V6 data manifest).
+``main()`` resolves ``launch_sha`` as the current HEAD of the primary
+repository (:data:`PRIMARY_REPO_ROOT`) via ``git rev-parse``; pass an
+explicit sha with ``python -m research.resolved_contract --launch-sha <sha>``
+to pin it instead.
+
+Dataset hashes are the verified ``inputs_used`` of the frozen V6 data
+manifest (funding bundle identity per sibling usage in
+``research.portfolio_runner``); V7 inherits the V6 window/cost/limit
+contract set per PLAN section 16.2.
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -33,6 +53,45 @@ from typing import Any, Mapping, Sequence
 SCHEMA_VERSION = "v7p.resolved_run_contract.v1"
 LAUNCH_SHA_PLACEHOLDER = "PENDING_INTEGRATION_SHA"
 CONTRACT_RELPATH = Path("research") / "audits" / "v7p" / "resolved_run_contract.json"
+PRIMARY_REPO_ROOT = Path("/Users/hoangminhlong/my-quantitative")
+
+SIGNAL_FAMILY_FROZEN = "funding_price_divergence"
+FUNDING_LOOKBACK_DAYS_FROZEN = 3
+FROZEN_TRIAL_IDS: tuple[str, ...] = (
+    "XSECT-FUND-PRICE-DIV-1D",
+    "XSECT-FUND-PRICE-DIV-3D",
+    "XSECT-FUND-PRICE-DIV-7D",
+    "XSECT-FUND-PRICE-DIV-REV-3D",
+)
+REV_TRIAL_ID = "XSECT-FUND-PRICE-DIV-REV-3D"
+# PLAN section 8.1 freeze table: id -> price_lookback_days -> direction.
+FROZEN_TRIAL_SPECS: dict[str, dict[str, Any]] = {
+    "XSECT-FUND-PRICE-DIV-1D": {"price_lookback_days": 1, "direction": "normal"},
+    "XSECT-FUND-PRICE-DIV-3D": {"price_lookback_days": 3, "direction": "normal"},
+    "XSECT-FUND-PRICE-DIV-7D": {"price_lookback_days": 7, "direction": "normal"},
+    "XSECT-FUND-PRICE-DIV-REV-3D": {"price_lookback_days": 3, "direction": "reverse"},
+}
+REGISTRY_OUTPUT_CONTRACT_FROZEN: dict[str, str] = {
+    "registry_kind": "CELL_RESULT",
+    "output_root": "results/portfolio_v7",
+    "matrix_id": "v7_xsect_funding_price_divergence",
+    "shard_pattern": "results/registry/shards/v7_<trial_id>.jsonl",
+}
+EXECUTION_CONTRACT_FROZEN: dict[str, Any] = {
+    "max_concurrent_workers": 2,
+    "waves": [
+        ["XSECT-FUND-PRICE-DIV-1D", "XSECT-FUND-PRICE-DIV-3D"],
+        ["XSECT-FUND-PRICE-DIV-7D", "XSECT-FUND-PRICE-DIV-REV-3D"],
+    ],
+}
+
+_LAUNCH_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+_FORBIDDEN_LAUNCH_SHA_VALUES = frozenset({LAUNCH_SHA_PLACEHOLDER, "TO_FREEZE"})
+_TRIAL_KEYS = frozenset({"trial_id", "price_lookback_days", "direction"})
+_PRICE_LOOKBACK_DAYS_ALLOWED = frozenset({1, 3, 7})
+_DIRECTIONS_ALLOWED = frozenset({"normal", "reverse"})
+
+_UNSET = object()
 
 _COST_KEYS = frozenset({"fee_taker", "slippage_ticks"})
 _LIMIT_KEYS = frozenset({"gross", "net", "symbol_weight"})
@@ -91,6 +150,140 @@ def _require_sha256_hex(value: Any, name: str) -> str:
     return value.lower()
 
 
+def _resolve_launch_sha(value: Any, repo_root: Path) -> str:
+    """Explicit final launch commit SHA: format-valid AND a real commit."""
+    if value is None or isinstance(value, bool) or not isinstance(value, str):
+        raise ResolvedContractError(
+            f"launch_sha is REQUIRED (explicit final integration SHA), got {value!r}"
+        )
+    if not value or not value.strip():
+        raise ResolvedContractError("launch_sha must be a non-empty 40-hex sha")
+    if value.strip().upper() in {v.upper() for v in _FORBIDDEN_LAUNCH_SHA_VALUES}:
+        raise ResolvedContractError(
+            f"launch_sha placeholder {value!r} is FORBIDDEN in the final artifact "
+            f"(PLAN C06): pass the explicit final integration commit SHA"
+        )
+    if not _LAUNCH_SHA_RE.match(value):
+        raise ResolvedContractError(
+            f"launch_sha must match ^[0-9a-f]{{40}}$, got {value!r}"
+        )
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "cat-file", "-e", f"{value}^{{commit}}"],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise ResolvedContractError(
+            f"launch_sha_not_a_commit: {value!r} is not reachable as a commit "
+            f"in {repo_root}: {proc.stderr.strip()}"
+        )
+    return value
+
+
+def _validate_trial_inventory(value: Any) -> list[dict]:
+    """Exactly the four frozen trials; reverse only on REV-3D lookback 3."""
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or not value:
+        raise ResolvedContractError(
+            "trial_inventory must be a non-empty sequence of trial mappings"
+        )
+    rows: list[dict] = []
+    seen_ids: set[str] = set()
+    for idx, item in enumerate(value):
+        where = f"trial_inventory[{idx}]"
+        row = _require_mapping(item, where)
+        if set(row) != _TRIAL_KEYS:
+            raise ResolvedContractError(
+                f"{where} must have exactly keys {sorted(_TRIAL_KEYS)}, "
+                f"got {sorted(row)}"
+            )
+        trial_id = _require_str(row["trial_id"], f"{where}.trial_id")
+        if trial_id not in FROZEN_TRIAL_SPECS:
+            raise ResolvedContractError(
+                f"{where}.trial_id {trial_id!r} is not one of the frozen V7 "
+                f"trials {sorted(FROZEN_TRIAL_SPECS)}"
+            )
+        if trial_id in seen_ids:
+            raise ResolvedContractError(f"duplicate trial_id {trial_id!r}")
+        seen_ids.add(trial_id)
+        lookback = row["price_lookback_days"]
+        if isinstance(lookback, bool) or not isinstance(lookback, int):
+            raise ResolvedContractError(
+                f"{where}.price_lookback_days must be an int in "
+                f"{sorted(_PRICE_LOOKBACK_DAYS_ALLOWED)}, got {lookback!r}"
+            )
+        if lookback not in _PRICE_LOOKBACK_DAYS_ALLOWED:
+            raise ResolvedContractError(
+                f"{where}.price_lookback_days must be one of "
+                f"{sorted(_PRICE_LOOKBACK_DAYS_ALLOWED)}, got {lookback!r}"
+            )
+        direction = row["direction"]
+        if direction not in _DIRECTIONS_ALLOWED:
+            raise ResolvedContractError(
+                f"{where}.direction must be 'normal' or 'reverse', got {direction!r}"
+            )
+        frozen = FROZEN_TRIAL_SPECS[trial_id]
+        if lookback != frozen["price_lookback_days"] or direction != frozen["direction"]:
+            raise ResolvedContractError(
+                f"{where} drifts from the frozen spec for {trial_id}: expected "
+                f"{frozen}, got price_lookback_days={lookback}, direction={direction!r}"
+            )
+        if direction == "reverse" and trial_id != REV_TRIAL_ID:
+            raise ResolvedContractError(
+                f"reverse direction only allowed on {REV_TRIAL_ID}, got {trial_id!r}"
+            )
+        if direction == "reverse" and lookback != FUNDING_LOOKBACK_DAYS_FROZEN:
+            raise ResolvedContractError(
+                f"reverse trial {trial_id!r} must use price_lookback_days="
+                f"{FUNDING_LOOKBACK_DAYS_FROZEN}, got {lookback}"
+            )
+        rows.append({"trial_id": trial_id, "price_lookback_days": int(lookback),
+                     "direction": direction})
+    if len(rows) != len(FROZEN_TRIAL_IDS):
+        raise ResolvedContractError(
+            f"trial_inventory must contain exactly {len(FROZEN_TRIAL_IDS)} frozen "
+            f"trials {list(FROZEN_TRIAL_IDS)}, got {len(rows)} entries"
+        )
+    missing = [tid for tid in FROZEN_TRIAL_IDS if tid not in seen_ids]
+    if missing:
+        raise ResolvedContractError(f"trial_inventory is missing frozen trials {missing}")
+    # Canonical freeze order regardless of caller ordering -> stable hash.
+    order = {tid: i for i, tid in enumerate(FROZEN_TRIAL_IDS)}
+    return sorted(rows, key=lambda r: order[r["trial_id"]])
+
+
+def _validate_signal_family(value: Any) -> str:
+    family = _require_str(value, "signal_family")
+    if family != SIGNAL_FAMILY_FROZEN:
+        raise ResolvedContractError(
+            f"signal_family must equal {SIGNAL_FAMILY_FROZEN!r}, got {family!r}"
+        )
+    return family
+
+
+def _validate_funding_lookback_days(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ResolvedContractError(
+            f"funding_lookback_days must be the int {FUNDING_LOOKBACK_DAYS_FROZEN}, "
+            f"got {value!r}"
+        )
+    if value != FUNDING_LOOKBACK_DAYS_FROZEN:
+        raise ResolvedContractError(
+            f"funding_lookback_days must equal {FUNDING_LOOKBACK_DAYS_FROZEN}, "
+            f"got {value}"
+        )
+    return value
+
+
+def _require_frozen_mapping(value: Any, name: str, frozen: Mapping[str, Any]) -> dict:
+    row = _require_mapping(value, name)
+    if dict(row) != dict(frozen):
+        raise ResolvedContractError(
+            f"{name} must exactly equal the frozen contract {dict(frozen)!r}, "
+            f"got {dict(row)!r}"
+        )
+    return dict(frozen)
+
+
 # --------------------------------------------------------------------------- #
 # Bootstrap provenance
 # --------------------------------------------------------------------------- #
@@ -135,16 +328,39 @@ def build_resolved_contract(
     costs: Mapping[str, Any],
     limits: Mapping[str, Any],
     dataset_hashes: Mapping[str, str],
-    launch_sha_placeholder: str,
+    launch_sha: Any = _UNSET,
+    trial_inventory: Sequence[Mapping[str, Any]],
+    signal_family: str,
+    funding_lookback_days: int,
+    registry_output_contract: Mapping[str, Any],
+    execution_contract: Mapping[str, Any],
     repo_root: str | Path | None = None,
     generated_at_utc: str | None = None,
+    launch_sha_placeholder: Any = _UNSET,
+    **_unexpected: Any,
 ) -> dict:
     """Build the ordered resolved-run-contract dict; fail closed on any gap.
 
     Every contract field MUST be passed explicitly and valid — see module
-    docstring. ``repo_root``/``generated_at_utc`` are provenance anchors
+    docstring. ``launch_sha`` is the EXPLICIT final integration commit SHA:
+    placeholders (``PENDING_INTEGRATION_SHA``/``TO_FREEZE``) are rejected,
+    and the sha must be reachable as a real commit in the repository.
+    Legacy callers passing ``launch_sha_placeholder=...`` now raise
+    :class:`ResolvedContractError` (placeholder semantics removed).
+    ``repo_root``/``generated_at_utc`` are provenance anchors
     (repository/clock), not contract fields, and may be overridden in tests.
     """
+    if launch_sha_placeholder is not _UNSET:
+        raise ResolvedContractError(
+            "launch_sha_placeholder was REMOVED (PLAN C06 forbids placeholders "
+            "in the final artifact): pass the explicit final launch_sha instead "
+            f"(got {launch_sha_placeholder!r})"
+        )
+    if _unexpected:
+        raise ResolvedContractError(
+            f"unexpected contract arguments {sorted(_unexpected)} (fail-closed: "
+            "no implicit acceptance of unknown fields)"
+        )
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
 
     start_dt = _parse_utc(window_start, "window_start")
@@ -240,7 +456,21 @@ def build_resolved_contract(
         for key, value in hash_map.items()
     }
 
-    placeholder = _require_str(launch_sha_placeholder, "launch_sha_placeholder")
+    if launch_sha is _UNSET:
+        raise ResolvedContractError(
+            "launch_sha is REQUIRED (explicit final integration commit SHA): "
+            "no value was passed"
+        )
+    resolved_launch_sha = _resolve_launch_sha(launch_sha, root)
+    inventory = _validate_trial_inventory(trial_inventory)
+    family = _validate_signal_family(signal_family)
+    fund_lb = _validate_funding_lookback_days(funding_lookback_days)
+    registry = _require_frozen_mapping(
+        registry_output_contract, "registry_output_contract", REGISTRY_OUTPUT_CONTRACT_FROZEN
+    )
+    execution = _require_frozen_mapping(
+        execution_contract, "execution_contract", EXECUTION_CONTRACT_FROZEN
+    )
 
     commit_hex, commit_subject = discover_bootstrap_commit(root)
     src_sha = _source_sha256(root, commit_hex)
@@ -255,7 +485,12 @@ def build_resolved_contract(
         "source_commit_subject": commit_subject,
         "source_sha256": src_sha,
         "source_sha256_formula": "sha256(git cat-file commit <source_commit>)",
-        "launch_sha": placeholder,
+        "launch_sha": resolved_launch_sha,
+        "trial_inventory": inventory,
+        "signal_family": family,
+        "funding_lookback_days": fund_lb,
+        "registry_output_contract": registry,
+        "execution_contract": execution,
         "window": {
             "start_utc": start_dt.isoformat(),
             "end_utc": end_dt.isoformat(),
@@ -325,7 +560,32 @@ def _equal_chronological_folds(start: datetime, end: datetime, n: int) -> list[d
     ]
 
 
-def main() -> int:
+def resolve_primary_head(primary_root: Path = PRIMARY_REPO_ROOT) -> str:
+    """Full HEAD sha of the primary repository (the integration launch ref)."""
+    proc = subprocess.run(
+        ["git", "-C", str(primary_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise ResolvedContractError(
+            f"git rev-parse HEAD failed in {primary_root}: {proc.stderr.strip()}"
+        )
+    return proc.stdout.strip()
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    launch_sha: str | None = None
+    if "--launch-sha" in args:
+        idx = args.index("--launch-sha")
+        if idx + 1 >= len(args):
+            raise ResolvedContractError("--launch-sha requires a value")
+        launch_sha = args[idx + 1]
+    if launch_sha is None:
+        # The explicit final integration SHA: current primary repository HEAD.
+        launch_sha = resolve_primary_head()
+
     repo_root = Path(__file__).resolve().parents[1]
     window_start = "2025-08-21T14:30:00+00:00"
     window_end = "2026-08-21T00:00:00+00:00"
@@ -355,7 +615,24 @@ def main() -> int:
             "funding_bundle:ADAUSDT": "492ad0aebee58cf1f567901e11d7223f6d8a168e28f58b6bad9a4936d47aa908",
             "v6p_coverage_audit": "d291564d91f0433318fcbbba5accaa438de2897ede6cd92df0ef48334ac7d84d",
         },
-        launch_sha_placeholder=LAUNCH_SHA_PLACEHOLDER,
+        launch_sha=launch_sha,
+        trial_inventory=[
+            {"trial_id": "XSECT-FUND-PRICE-DIV-1D",
+             "price_lookback_days": 1, "direction": "normal"},
+            {"trial_id": "XSECT-FUND-PRICE-DIV-3D",
+             "price_lookback_days": 3, "direction": "normal"},
+            {"trial_id": "XSECT-FUND-PRICE-DIV-7D",
+             "price_lookback_days": 7, "direction": "normal"},
+            {"trial_id": "XSECT-FUND-PRICE-DIV-REV-3D",
+             "price_lookback_days": 3, "direction": "reverse"},
+        ],
+        signal_family=SIGNAL_FAMILY_FROZEN,
+        funding_lookback_days=FUNDING_LOOKBACK_DAYS_FROZEN,
+        registry_output_contract=dict(REGISTRY_OUTPUT_CONTRACT_FROZEN),
+        execution_contract={
+            "max_concurrent_workers": EXECUTION_CONTRACT_FROZEN["max_concurrent_workers"],
+            "waves": [list(w) for w in EXECUTION_CONTRACT_FROZEN["waves"]],
+        },
         repo_root=repo_root,
     )
     target = write_resolved_contract(contract, repo_root / CONTRACT_RELPATH)

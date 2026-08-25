@@ -35,6 +35,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -49,9 +50,16 @@ from research.funding_price_divergence import (  # noqa: E402
 from research.portfolio_engine import run_shared_capital_backtest  # noqa: E402
 from research.resolved_contract import (  # noqa: E402
     CONTRACT_RELPATH,
+    EXECUTION_CONTRACT_FROZEN,
     LAUNCH_SHA_PLACEHOLDER,
+    REGISTRY_OUTPUT_CONTRACT_FROZEN,
     ResolvedContractError,
+    SIGNAL_FAMILY_FROZEN,
+    FUNDING_LOOKBACK_DAYS_FROZEN,
+    FROZEN_TRIAL_IDS,
+    REV_TRIAL_ID,
     build_resolved_contract,
+    discover_bootstrap_commit,
     verify_resolved_contract,
 )
 
@@ -439,24 +447,29 @@ def test_deterministic_rerun_equality(bundles):
 # --------------------------------------------------------------------------- #
 # 5) Resolved run contract artifact conformance (gate C06)
 # --------------------------------------------------------------------------- #
-def test_resolved_run_contract_artifact_conformance():
-    artifact_path = REPO / CONTRACT_RELPATH
-    assert artifact_path.is_file(), "resolved_run_contract.json must be committed"
-    contract = json.loads(artifact_path.read_text(encoding="utf-8"))
-    verify_resolved_contract(contract)
-    assert contract["schema_version"] == "v7p.resolved_run_contract.v1"
-    assert contract["launch_sha"] == LAUNCH_SHA_PLACEHOLDER
-    assert contract["source_commit"].startswith("dd026c0")
-    assert len(contract["source_sha256"]) == 64
-    for field in ("window", "folds", "universe", "costs", "limits", "dataset_hashes"):
-        assert contract[field], field
-    assert contract["universe"]["benchmark"] not in contract["universe"]["traded_symbols"]
-    assert contract["limits"]["gross"] == pytest.approx(0.80)
-    assert contract["costs"]["slippage_ticks"] == 1
+# The committed artifact embeds launch_sha = primary-repo HEAD at regeneration
+# time (A6, 2026-08-25). Primary HEAD advances only by A6's own atomic commit
+# afterwards, so this pinned value stays the parent of the final launch ref.
+COMMITTED_LAUNCH_SHA = "51fadc3a90d7535e88c3ab1fdcc763b739bcb6e4"
+# Synthetic format-valid shas for UNIT tests only ("f"*40 matches the
+# 40-hex shape but is NOT a real commit object; "g"*40 is not even hex).
+FINAL_LAUNCH_SHA_PLACEHOLDER_FOR_TESTS = "f" * 40
+NOT_HEX_SHA = "g" * 40
+REAL_COMMIT_SHA = discover_bootstrap_commit(REPO)[0]
+
+FROZEN_TRIAL_INVENTORY = [
+    {"trial_id": "XSECT-FUND-PRICE-DIV-1D", "price_lookback_days": 1,
+     "direction": "normal"},
+    {"trial_id": "XSECT-FUND-PRICE-DIV-3D", "price_lookback_days": 3,
+     "direction": "normal"},
+    {"trial_id": "XSECT-FUND-PRICE-DIV-7D", "price_lookback_days": 7,
+     "direction": "normal"},
+    {"trial_id": REV_TRIAL_ID, "price_lookback_days": 3, "direction": "reverse"},
+]
 
 
-def test_build_resolved_contract_fail_closed():
-    kwargs = dict(
+def contract_kwargs(**overrides) -> dict:
+    kw = dict(
         window_start="2025-08-21T14:30:00+00:00",
         window_end="2026-08-21T00:00:00+00:00",
         folds=[{"fold_id": "F1", "start_utc": "2025-08-21T14:30:00+00:00",
@@ -466,13 +479,72 @@ def test_build_resolved_contract_fail_closed():
         costs={"fee_taker": 0.0005, "slippage_ticks": 1},
         limits={"gross": 0.80, "net": 0.10, "symbol_weight": 0.20},
         dataset_hashes={"daily_bars": "a" * 64},
-        launch_sha_placeholder=LAUNCH_SHA_PLACEHOLDER,
+        launch_sha=REAL_COMMIT_SHA,
+        trial_inventory=[dict(t) for t in FROZEN_TRIAL_INVENTORY],
+        signal_family=SIGNAL_FAMILY_FROZEN,
+        funding_lookback_days=FUNDING_LOOKBACK_DAYS_FROZEN,
+        registry_output_contract=dict(REGISTRY_OUTPUT_CONTRACT_FROZEN),
+        execution_contract={
+            "max_concurrent_workers": EXECUTION_CONTRACT_FROZEN["max_concurrent_workers"],
+            "waves": [list(w) for w in EXECUTION_CONTRACT_FROZEN["waves"]],
+        },
         repo_root=REPO,
         generated_at_utc="2026-08-25T00:00:00Z",
     )
+    kw.update(overrides)
+    return kw
+
+
+def test_resolved_run_contract_artifact_conformance():
+    artifact_path = REPO / CONTRACT_RELPATH
+    assert artifact_path.is_file(), "resolved_run_contract.json must be committed"
+    contract = json.loads(artifact_path.read_text(encoding="utf-8"))
+    verify_resolved_contract(contract)
+    assert contract["schema_version"] == "v7p.resolved_run_contract.v1"
+    # B2 blocker: NO placeholder in the final artifact; explicit real SHA only.
+    assert contract["launch_sha"] != LAUNCH_SHA_PLACEHOLDER
+    assert contract["launch_sha"] != "TO_FREEZE"
+    assert re.fullmatch(r"[0-9a-f]{40}", contract["launch_sha"])
+    assert contract["launch_sha"] == COMMITTED_LAUNCH_SHA
+    assert contract["source_commit"].startswith("dd026c0")
+    assert len(contract["source_sha256"]) == 64
+    for field in ("window", "folds", "universe", "costs", "limits", "dataset_hashes",
+                  "trial_inventory", "signal_family", "funding_lookback_days",
+                  "registry_output_contract", "execution_contract"):
+        assert contract[field], field
+    # Frozen V7 plan set mirrored exactly.
+    assert contract["signal_family"] == "funding_price_divergence"
+    assert contract["funding_lookback_days"] == 3
+    assert contract["registry_output_contract"] == {
+        "registry_kind": "CELL_RESULT",
+        "output_root": "results/portfolio_v7",
+        "matrix_id": "v7_xsect_funding_price_divergence",
+        "shard_pattern": "results/registry/shards/v7_<trial_id>.jsonl",
+    }
+    assert contract["execution_contract"] == {
+        "max_concurrent_workers": 2,
+        "waves": [["XSECT-FUND-PRICE-DIV-1D", "XSECT-FUND-PRICE-DIV-3D"],
+                  ["XSECT-FUND-PRICE-DIV-7D", "XSECT-FUND-PRICE-DIV-REV-3D"]],
+    }
+    inv = contract["trial_inventory"]
+    assert [t["trial_id"] for t in inv] == list(FROZEN_TRIAL_IDS)
+    assert all(set(t) == {"trial_id", "price_lookback_days", "direction"} for t in inv)
+    assert all(t["direction"] == "reverse" for t in inv if t["trial_id"] == REV_TRIAL_ID)
+    assert all(t["direction"] == "normal" for t in inv if t["trial_id"] != REV_TRIAL_ID)
+    assert {t["trial_id"]: t["price_lookback_days"] for t in inv} == {
+        "XSECT-FUND-PRICE-DIV-1D": 1, "XSECT-FUND-PRICE-DIV-3D": 3,
+        "XSECT-FUND-PRICE-DIV-7D": 7, REV_TRIAL_ID: 3,
+    }
+    assert contract["universe"]["benchmark"] not in contract["universe"]["traded_symbols"]
+    assert contract["limits"]["gross"] == pytest.approx(0.80)
+    assert contract["costs"]["slippage_ticks"] == 1
+
+
+def test_build_resolved_contract_fail_closed():
+    kwargs = contract_kwargs()
     base = build_resolved_contract(**kwargs)
     verify_resolved_contract(base)
-    assert base["launch_sha"] == "PENDING_INTEGRATION_SHA"
+    assert base["launch_sha"] == REAL_COMMIT_SHA
 
     # A wholly absent argument fails closed at the call boundary (TypeError);
     # any present-but-null/invalid argument fails closed via ResolvedContractError.
@@ -490,7 +562,12 @@ def test_build_resolved_contract_fail_closed():
         ("traded_universe", []),
         ("benchmark", ""),
         ("dataset_hashes", {}),
-        ("launch_sha_placeholder", None),
+        ("launch_sha", None),
+        ("trial_inventory", None),
+        ("signal_family", None),
+        ("funding_lookback_days", None),
+        ("registry_output_contract", None),
+        ("execution_contract", None),
     ]:
         bad = dict(kwargs)
         bad[mutate] = broken
@@ -512,6 +589,118 @@ def test_build_resolved_contract_fail_closed():
                      "end_utc": "2026-08-23T00:00:00+00:00"}]  # escapes window
     with pytest.raises(ResolvedContractError):
         build_resolved_contract(**bad)
+
+    bad = dict(kwargs)
+    bad["unknown_contract_field"] = 1  # unknown kwargs never accepted silently
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**bad)
+
+
+# --------------------------------------------------------------------------- #
+# 5b) Launch-sha hardening + frozen V7 inventory negatives (B2/C06)
+# --------------------------------------------------------------------------- #
+def test_launch_sha_placeholder_rejected_everywhere():
+    # Placeholder VALUE passed as the explicit sha -> fail closed.
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(launch_sha=LAUNCH_SHA_PLACEHOLDER))
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(launch_sha="TO_FREEZE"))
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(launch_sha=""))
+    # Legacy keyword REMOVED: old placeholder-style callers now raise
+    # ResolvedContractError (not a silent default).
+    legacy = contract_kwargs()
+    legacy.pop("launch_sha")
+    legacy["launch_sha_placeholder"] = LAUNCH_SHA_PLACEHOLDER
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**legacy)
+
+
+def test_launch_sha_must_be_real_commit_object():
+    # Format-valid ("f"*40 matches ^[0-9a-f]{40}$) but NOT an existing git
+    # object -> launch_sha_not_a_commit.
+    assert re.fullmatch(r"[0-9a-f]{40}", FINAL_LAUNCH_SHA_PLACEHOLDER_FOR_TESTS)
+    with pytest.raises(ResolvedContractError, match="launch_sha_not_a_commit"):
+        build_resolved_contract(
+            **contract_kwargs(launch_sha=FINAL_LAUNCH_SHA_PLACEHOLDER_FOR_TESTS))
+    # Not even hex -> rejected at the format gate.
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(launch_sha=NOT_HEX_SHA))
+
+
+def test_trial_inventory_missing_or_null_rejected():
+    absent = contract_kwargs()
+    absent.pop("trial_inventory")
+    with pytest.raises((TypeError, ResolvedContractError)):
+        build_resolved_contract(**absent)
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(trial_inventory=None))
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(trial_inventory=[]))
+
+
+def test_trial_inventory_wrong_count_and_duplicates_rejected():
+    three = contract_kwargs(
+        trial_inventory=FROZEN_TRIAL_INVENTORY[:3],
+    )
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**three)
+
+    duped = FROZEN_TRIAL_INVENTORY[:3] + [dict(FROZEN_TRIAL_INVENTORY[2])]
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(trial_inventory=duped))
+
+    unknown = [dict(t) for t in FROZEN_TRIAL_INVENTORY[:3]]
+    unknown.append({"trial_id": "XSECT-FUND-PRICE-DIV-9D",
+                    "price_lookback_days": 3, "direction": "normal"})
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(trial_inventory=unknown))
+
+    missing_one = [dict(t) for t in FROZEN_TRIAL_INVENTORY]
+    missing_one[0] = {"trial_id": "XSECT-FUND-PRICE-DIV-3D",
+                      "price_lookback_days": 3, "direction": "normal"}
+    with pytest.raises(ResolvedContractError):  # 1D gone, 3D duplicated
+        build_resolved_contract(**contract_kwargs(trial_inventory=missing_one))
+
+
+def test_reverse_only_on_rev_trial_with_lookback_three():
+    bad = [dict(t) for t in FROZEN_TRIAL_INVENTORY]
+    bad[0]["direction"] = "reverse"  # reverse on non-REV trial
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(trial_inventory=bad))
+
+    bad_lb = [dict(t) for t in FROZEN_TRIAL_INVENTORY]
+    bad_lb[0] = {"trial_id": "XSECT-FUND-PRICE-DIV-1D",
+                 "price_lookback_days": 1, "direction": "reverse"}
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(trial_inventory=bad_lb))
+
+    rev_bad_lookback = [dict(t) for t in FROZEN_TRIAL_INVENTORY]
+    idx = [t["trial_id"] for t in rev_bad_lookback].index(REV_TRIAL_ID)
+    rev_bad_lookback[idx] = {"trial_id": REV_TRIAL_ID,
+                             "price_lookback_days": 7, "direction": "reverse"}
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(trial_inventory=rev_bad_lookback))
+
+    # Happy path sanity: canonical frozen inventory builds and normalizes order.
+    built = build_resolved_contract(**contract_kwargs(
+        trial_inventory=list(reversed(FROZEN_TRIAL_INVENTORY))))
+    assert [t["trial_id"] for t in built["trial_inventory"]] == list(FROZEN_TRIAL_IDS)
+
+
+def test_signal_family_and_frozen_subcontracts_enforced():
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(signal_family="momentum"))
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(funding_lookback_days=7))
+    drifted_registry = dict(REGISTRY_OUTPUT_CONTRACT_FROZEN,
+                            output_root="results/somewhere_else")
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(registry_output_contract=drifted_registry))
+    drifted_exec = {"max_concurrent_workers": 8,
+                    "waves": [list(w) for w in EXECUTION_CONTRACT_FROZEN["waves"]]}
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(execution_contract=drifted_exec))
 
 
 # --------------------------------------------------------------------------- #
@@ -647,7 +836,9 @@ def test_golden_vector_report_artifact(bundles):
             "contract_sha256": json.loads(
                 (REPO / CONTRACT_RELPATH).read_text(encoding="utf-8")
             )["contract_sha256"],
-            "launch_sha": LAUNCH_SHA_PLACEHOLDER,
+            "launch_sha": json.loads(
+                (REPO / CONTRACT_RELPATH).read_text(encoding="utf-8")
+            )["launch_sha"],
         },
     }
 
