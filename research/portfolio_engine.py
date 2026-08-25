@@ -404,6 +404,7 @@ def _execute_rebalance_core(
     closed_legs: list[dict],
     invariant_checks: list[dict],
     terminal_positions: list[dict] | None = None,
+    exposure_rows: list[dict] | None = None,
 ) -> bool:
     """Execute one whole cross-section rebalance. Returns True on margin breach.
 
@@ -435,9 +436,52 @@ def _execute_rebalance_core(
 
     if not (sum_ok and gross_ok and caps_ok):
         emit_invariant(margin_ok=True, identity_ok=True)
-        raise ValueError(
-            f"target-weight invariant breach at cutoff {cutoff}: "
-            f"sum={w_sum!r} gross={gross_w!r} caps_ok={caps_ok}"
+        if not params.get("risk_mode_active"):
+            raise ValueError(
+                f"target-weight invariant breach at cutoff {cutoff}: "
+                f"sum={w_sum!r} gross={gross_w!r} caps_ok={caps_ok}"
+            )
+        # V6P R10/N10: under RISK_MODE_V1 a breached TARGET book is not an
+        # abort condition (drop-one-symbol legitimately produces nonzero
+        # net). Apply the deterministic reduce-only normalization, record
+        # the action, then trade the normalized book; every-bar trimmers
+        # stay authoritative afterwards.
+        w = dict(targets)
+        for s in list(w):
+            if abs(w[s]) > WEIGHT_CAP:
+                w[s] = math.copysign(WEIGHT_CAP, w[s])
+        net_cap = float(RISK_MODE_V1["hard_abs_net_cap"])
+        s_sum = sum(w.values())
+        if abs(s_sum) > net_cap:
+            sgn = 1.0 if s_sum > 0 else -1.0
+            side = [s for s in w if w[s] != 0
+                    and math.copysign(1.0, w[s]) == sgn]
+            side_gross = sum(abs(w[s]) for s in side)
+            excess = abs(s_sum) - net_cap
+            factor = (max(0.0, (side_gross - excess) / side_gross)
+                      if side_gross > 0 else 0.0)
+            for s in side:
+                w[s] *= factor
+            s_sum = sum(w.values())
+        g = sum(abs(v) for v in w.values())
+        if g > GROSS_CAP:
+            scale = GROSS_CAP / g
+            for s in w:
+                w[s] *= scale
+        targets.clear()
+        targets.update(w)
+        (exposure_rows if exposure_rows is not None else invariant_checks).append(
+            {
+                "ts": ts,
+                "fold_id": fold_id,
+                "metric": "target_normalization",
+                "value": w_sum,
+                "cap": net_cap,
+                "action_taken": "reduce_only_trim",
+                "before": {"sum_targets": w_sum, "gross_targets": gross_w},
+                "after": {"sum_targets": sum(targets.values()),
+                          "gross_targets": sum(abs(v) for v in targets.values())},
+            }
         )
 
     desired: dict[str, float] = {}
@@ -682,6 +726,7 @@ def run_shared_capital_backtest(
         "min_notional": float(min_notional),
         "fee_taker": float(fee_taker),
         "slippage_ticks": int(slippage_ticks),
+        "risk_mode_active": risk_cfg is not None,
     }
 
     all_ts: set[int] = set()
@@ -896,6 +941,7 @@ def run_shared_capital_backtest(
             closed_legs=closed_legs,
             invariant_checks=invariant_checks,
             terminal_positions=terminal_positions,
+            exposure_rows=exposure_rows,
         )
         rebalances_scored += 1
         if breached:

@@ -1,0 +1,62 @@
+# H-XSECT-FUNDING-PRICE-DIVERGENCE-v1 — V7 pre-registration contract (A6 blind draft)
+# Fields below are VERBATIM from PLAN.md section 16.2. No parameter invented,
+# no deviation. Drafted BEFORE any V6P validation run exists (PLAN section 4
+# H00 block). Hashed with the novelty check BEFORE the first V6 scored launch
+# (gate V7-A03); runs authorized only if all twelve section 17.1 gates pass.
+hypothesis_id: H-XSECT-FUNDING-PRICE-DIVERGENCE-v1
+family: cross_sectional_funding_price_divergence
+stage: S0_EXPLORATORY
+traded_universe: [ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT]
+benchmark_context: BTCUSDT
+signal_clock: daily_00_00_utc
+funding_feature: trailing_mean_of_published_settled_funding_only
+funding_lookback_days: 3
+price_feature: trailing_close_to_close_return_using_completed_bars_only
+price_lookback_days: [1, 3, 7]
+cross_sectional_score: percentile_rank(price_return) - percentile_rank(funding)
+long_rule: top_2_score
+short_rule: bottom_2_score
+rebalance: 24h
+folds: chronological_3fold
+purge_embargo: 24h
+target_gross: 0.80
+hard_gross_cap: 1.00
+hard_abs_net_cap: 0.10
+max_abs_weight_per_symbol: 0.20
+trial_budget:
+  scored_candidates: 3
+  negative_controls: 1
+negative_control: reverse_score_sides_at_price_lookback_3d
+
+# --- Items frozen later by A1; identical contract set as V6 (PLAN section
+#     16.2 "Freeze the same data, accounting, execution, latency, terminal,
+#     risk, metric, fold, DSR, cost, and artifact contracts as V6"). ---
+effective_window: TO_FREEZE_AT_AUTHORIZATION      # effective S0 common window
+data_hashes: TO_FREEZE_AT_AUTHORIZATION           # data/funding/metadata hashes
+folds_clocks_warmup_contract: TO_FREEZE_AT_AUTHORIZATION   # folds, purge/embargo details, warmup, signal/fill clocks
+funding_publication_convention: TO_FREEZE_AT_AUTHORIZATION # publication convention + missing-settlement policy
+pipeline_versions: TO_FREEZE_AT_AUTHORIZATION     # cost, latency, terminal, risk, accounting, metric versions
+trial_ledger_and_dsr_estimator: TO_FREEZE_AT_AUTHORIZATION # shared global ledger count + DSR estimator
+gates_scorecard_tiebreak_limits_seeds: TO_FREEZE_AT_AUTHORIZATION # hard gates, scorecard, tie-break, resource limits, seeds/tolerances
+novelty_check_memo: research/audits/v6p/v7_catalog_novelty_check.md  # frozen with spec (V7-A03)
+locked_by: none                                   # -> A1 only after V7-A01..A12 all PASS
+locked_at_utc: null
+state: SPEC_DRAFT                                 # -> SPEC_LOCKED only by A1
+owner_agent: A6
+allowed_outcomes_only:
+  - REJECTED
+  - INCONCLUSIVE
+  - STAGE_A_PASS_EXPLORATORY
+  - LOCK_FOR_FUTURE_S1
+forbidden_labels: [EDGE_CONFIRMED, PRODUCTION_READY, LIVE_READY]
+forbidden_post_lock_additions:
+  - open_interest_overlay
+  - volatility_filter
+  - regime_filter
+  - liquidity_filter
+  - trend_filter
+  - symbol_specific_parameters
+  - threshold_filter
+  - extra_lookbacks
+  - alternative_rebalance_interval
+single_candidate_dimension: price_lookback_days   # everything else fixed

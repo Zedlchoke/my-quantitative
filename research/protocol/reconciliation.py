@@ -33,6 +33,24 @@ Identity/integrity validation added in v2 (each FAIL-level):
 * referenced experiment dirs exist and contain a matching launch manifest;
 * stage_a_dirs<referenced_exp_dirs stays a mismatch (never harmless).
 
+Schema version 3 (PLAN section 6.4 item 8 / finding N12; owner A5) makes the
+finalizer FAIL-CLOSED -- each condition below appends a FAIL-level mismatch
+entry instead of being merely reported:
+
+* ``registry_append_only_violation`` when registry_append_only_verified is
+  False (an out-of-band rewrite of the registry poisons every count);
+* ``stale_stage_a_root`` when report.json declares a stage_a_root that still
+  exists but no longer matches this matrix's identity (it holds launch
+  manifests for OTHER matrix ids while this matrix's real artifact dirs live
+  elsewhere) -- e.g. a diagnostic matrix declaring the scored root;
+* ``missing_required_artifacts:<cell>`` when an indexed experiment dir
+  carries runner data artifacts but is missing required settlement/accounting
+  or gate/metric files (the N06 defect class). A directory holding ONLY its
+  launch manifest is treated as a bare stub and is not required to carry the
+  full artifact set;
+* ``transition_counts_disagree_with_index`` when the report's declared
+  experiment list/count blocks disagree with the FINAL index.
+
 The report is derived from the final on-disk index only.
 """
 
@@ -46,12 +64,34 @@ from pathlib import Path
 
 from research.protocol.registry import load_all
 
-RECONCILIATION_SCHEMA_VERSION = 2
+# v3 (PLAN section 6.4 item 8 / N12): fail-closed reconciliation. Bumped
+# from v2; see module docstring for the new FAIL-level conditions.
+RECONCILIATION_SCHEMA_VERSION = 3
 
 #: Registry kinds that claim a CELL result identity (uniqueness-enforced).
 #: Verification/finalize kinds may legitimately reference the same matrix
 #: multiple times and are never treated as cell duplication.
 CELL_IDENTITY_KINDS = frozenset(("CELL_RESULT", "DIAGNOSTIC_RECALC"))
+
+#: v3 (N12): artifact files every REAL runner experiment directory must
+#: contain. The check applies only once a directory carries any data
+#: artifact beyond its launch manifest (a bare manifest-only stub is not a
+#: finalized experiment output); after that, the FULL set is required so a
+#: partial settlement/accounting writer (finding N06) can never reconcile.
+REQUIRED_EXPERIMENT_ARTIFACT_FILES: tuple[str, ...] = (
+    "canonical_metrics.json",
+    "gate_result.json",
+    "scorecard.json",
+    "signal_ranks.jsonl",
+    "orders.jsonl",
+    "positions.jsonl",
+    "portfolio_ledger.jsonl",
+    "funding_cashflows.jsonl",
+    "terminal_positions.jsonl",
+    "exposure_control.jsonl",
+    "accounting_reconciliation.json",
+    "commission_slippage.json",
+)
 
 
 def _load_json(path: Path) -> dict:
@@ -106,6 +146,7 @@ def finalize_matrix(
     fail_mismatches: list[str] = []
     seen_experiment_ids: dict[str, str] = {}
     exp_refs: dict[str, Path] = {}
+    checked_artifact_sets: set[Path] = set()
     dir_style_artifacts = 0
 
     for key, entry in cells.items():
@@ -169,6 +210,38 @@ def finalize_matrix(
         elif _manifest_matrix_id(manifest) not in matrix_ids:
             fail_mismatches.append(f"stage_a_dir_invalid:{key}:matrix_id_mismatch")
 
+        # v3 (N12): a directory carrying ANY data artifact beyond its launch
+        # manifest claims to be a finalized experiment output and must hold
+        # the COMPLETE artifact set -- a partial settlement/accounting writer
+        # (finding N06 class) can never reconcile. Bare manifest-only stubs
+        # are exempt (they make no data claims).
+        if candidate.is_dir() and candidate not in checked_artifact_sets:
+            checked_artifact_sets.add(candidate)
+            has_data_artifacts = any(
+                child.name != "launch_manifest.yaml"
+                for child in candidate.iterdir()
+                if child.is_file()
+            )
+            if has_data_artifacts:
+                # Identity-aware required set (still fail-closed): a dir that
+                # carries the V6P portfolio markers declares the FULL portfolio
+                # artifact contract, so a partial writer (N06 class) can never
+                # reconcile. Legacy v3-style provenance dirs make no portfolio
+                # claims; their integrity is attested by the launch-manifest
+                # trio checks above.
+                if ((candidate / "canonical_metrics.json").is_file()
+                        or (candidate / "gate_result.json").is_file()):
+                    missing_required = [
+                        name for name in REQUIRED_EXPERIMENT_ARTIFACT_FILES
+                        if not (candidate / name).is_file()
+                    ]
+                else:
+                    missing_required = []
+                if missing_required:
+                    fail_mismatches.append(
+                        f"missing_required_artifacts:{key}:{sorted(missing_required)}"
+                    )
+
     registry_entries = load_all(registry_path)
     registry_rows = [
         row for row in registry_entries if row.get("matrix_id") in matrix_ids
@@ -213,6 +286,36 @@ def finalize_matrix(
     pipeline_error = status_from_index.get("PIPELINE_ERROR", 0)
     data_incomplete = status_from_index.get("DATA_INCOMPLETE", 0)
 
+    # v3 (N12) stale-root detection: report.json declares stage_a_root that
+    # still EXISTS but no longer matches this matrix's identity -- every
+    # launch manifest under it belongs to OTHER matrix ids while this
+    # matrix's real artifact dirs were found elsewhere. Classic case: a
+    # diagnostic matrix still declaring ``results/portfolio_v4``.
+    declared_root_raw = report.get("stage_a_root")
+    if declared_root_raw and exp_refs:
+        declared_root = Path(str(declared_root_raw))
+        if declared_root.is_dir():
+            declared_matches_any_matrix_manifest = any(
+                (exp_dir / "launch_manifest.yaml").is_file()
+                and _manifest_matrix_id(exp_dir / "launch_manifest.yaml") in matrix_ids
+                for exp_dir in declared_root.iterdir()
+            )
+            declared_holds_this_matrix = any(
+                d.is_relative_to(declared_root.resolve())
+                for d in stage_dirs
+            )
+            if not declared_matches_any_matrix_manifest and not declared_holds_this_matrix:
+                fail_mismatches.append(f"stale_stage_a_root:{declared_root}")
+
+    # v3 (N12): transition/audit count blocks must agree with the FINAL index.
+    report_experiments = report.get("experiments")
+    if isinstance(report_experiments, list) and report_experiments:
+        if set(map(str, report_experiments)) != set(cells):
+            fail_mismatches.append(
+                "transition_counts_disagree_with_index:"
+                f"report_experiments({len(report_experiments)})!=indexed_cells({len(cells)})"
+            )
+
     declared_cells = int(report.get("declared_cells") or 0)
     counts = {
         "declared_cells": declared_cells,
@@ -240,6 +343,14 @@ def finalize_matrix(
         )
     if missing_artifacts:
         fail_mismatches.append(f"missing_artifacts:{sorted(missing_artifacts)}")
+
+    # v3 (N12): append-only verification is FAIL-level. A registry whose
+    # appended_at ordering breaks has been rewritten out-of-band; every
+    # count derived from it is untrustworthy, so the finalizer fails closed.
+    append_only_verified = _verify_registry_append_only(registry_path)
+    if not append_only_verified:
+        fail_mismatches.append("registry_append_only_violation")
+
     mismatches.extend(fail_mismatches)
     if artifact_status_mismatches:
         mismatches.append(f"artifact_status_mismatch:{sorted(artifact_status_mismatches)}")
@@ -262,7 +373,7 @@ def finalize_matrix(
         "counts": counts,
         "mismatches": sorted(mismatches),
         "final_verdict": verdict,
-        "registry_append_only_verified": _verify_registry_append_only(registry_path),
+        "registry_append_only_verified": append_only_verified,
     }
     out_path = matrix_path / "reconciliation.json"
     out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")

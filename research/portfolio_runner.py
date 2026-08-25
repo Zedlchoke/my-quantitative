@@ -42,18 +42,34 @@ deterministic reproduction drills the environment variable
 ``PORTFOLIO_V4_ENGINE_LOADER`` may point at ``module:factory`` returning a
 dict with callables ``build_daily_panel``, ``compute_target_weights`` and
 ``run_shared_capital_backtest``.
+
+V6P repairs (PLAN section 6.3, owner A4): all folds run in ONE chronological
+engine pass with the three declared fold intervals handed to the engine
+(``folds``), capital carrying across boundaries (F2 start == F1 end);
+``risk_mode=RISK_MODE_V1`` is passed on every engine call; and the
+settlement/accounting artifact set (``funding_cashflows.jsonl``,
+``terminal_positions.jsonl``, ``exposure_control.jsonl``,
+``accounting_reconciliation.json``, ``commission_slippage.json``) is
+persisted per experiment directory. ``--synthetic-panel <spec.json>`` (or
+env ``PORTFOLIO_SYNTHETIC_PANEL``) bypasses the real catalog/funding-bundle
+data path with a deterministic hand-computable panel engine for golden
+validation only.
 """
 
 from __future__ import annotations
 
 import argparse
+import bisect
 import dataclasses
 import importlib
+import inspect
 import json
+import hashlib
 import math
 import os
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -77,12 +93,14 @@ from research.protocol.gates import (
     PortfolioConstraints,
     XGateId,
     XRiskInput,
+    count_execution_evidence,
     evaluate_parameter_spike,
     evaluate_xg5,
     evaluate_xgates,
 )
 from research.provenance import snapshot_experiment_inputs
 from research.protocol.registry import append as registry_append
+from research.accounting import IDENTITY_FORMULA as ACCOUNTING_IDENTITY_FORMULA
 
 V4_SCHEMA_VERSION = 3
 VALIDATOR_AGENT = "A1"
@@ -117,6 +135,10 @@ PNL_MATCH_TOLERANCE = 1e-9
 METRIC_MATCH_TOLERANCE = 1e-9
 
 ENGINE_LOADER_ENV = "PORTFOLIO_V4_ENGINE_LOADER"
+# PLAN section 6.3 item 4: runtime risk adapter, mirrors
+# research.portfolio_engine.RISK_MODE_V1["risk_mode"].
+RISK_MODE_V1 = "RISK_MODE_V1"
+SYNTHETIC_PANEL_ENV = "PORTFOLIO_SYNTHETIC_PANEL"
 
 EXIT_LOCK_MISSING = 3
 EXIT_DEPENDENCY_MISSING = 4
@@ -286,10 +308,54 @@ def _default_engine_loader() -> dict[str, Callable]:
         traded = [s for s in symbols if s != "BTCUSDT"]
         daily = build_daily_closes(CATALOG, traded, ws, we)
         btc = build_btc_benchmark(CATALOG, ws, we)
+        btc_list = list((btc or {}).get("BTCUSDT") or [])
+        panel = {**daily, "BTCUSDT": btc_list}
+        from data.catalog import Catalog as _Catalog
+
+        _cat = _Catalog(CATALOG)
+        meta_syms = [s for s in traded if _cat.instrument(s) is not None]
+
+        # V6P N08: measured coverage evidence -- never None on the real path.
+        from research.panel import coverage_report as _coverage_report
+
+        blocks = _coverage_report(
+            panel, ws, we,
+            benchmark_symbol="BTCUSDT",
+            funding_bundles_dir=FUNDING_DIR,
+            metadata_symbols=meta_syms,
+        )
+        detail: dict[str, dict] = {}
+        day_ns = 86_400_000_000_000
+        for sym in sorted(traded):
+            stamps = sorted(t for t, _ in (daily.get(sym) or []))
+            dupes = len(stamps) - len(set(stamps))
+            gaps = sum(1 for a, b in zip(stamps, stamps[1:]) if b - a > day_ns)
+            detail[sym] = {"days_present": len(stamps),
+                           "duplicate_bars": dupes, "gap_bars": gaps}
+        eff_starts = [detail[s]["days_present"] and (daily[s][0][0])
+                      for s in traded if daily.get(s)]
+        eff_ends = [daily[s][-1][0] for s in traded if daily.get(s)]
+        files_sha = {}
+        for sym in sorted(traded):
+            fpath = Path(FUNDING_DIR) / sym / "funding.json"
+            files_sha[sym] = (hashlib.sha256(fpath.read_bytes()).hexdigest()
+                              if fpath.is_file() else None)
         return {
             "daily_closes": {**daily},
-            "benchmark_daily_closes": list((btc or {}).get("BTCUSDT") or []),
-            "coverage": None,
+            "benchmark_daily_closes": btc_list,
+            "coverage": {
+                "days_per_symbol": {s: len(daily.get(s) or []) for s in traded},
+                "btc_days": len(btc_list),
+                "blocks": blocks,
+                "traded_symbols_detail": detail,
+                "requested_window": [ws, we],
+                "effective_common_window": [
+                    datetime.fromtimestamp(min(eff_starts) / 1e9, tz=timezone.utc).isoformat() if eff_starts else None,
+                    datetime.fromtimestamp(max(eff_ends) / 1e9, tz=timezone.utc).isoformat() if eff_ends else None,
+                ],
+                "funding_bundle_identity": {"path": str(FUNDING_DIR),
+                                            "files_sha256": files_sha},
+            },
         }
 
     def run_shared_capital_backtest(
@@ -302,6 +368,8 @@ def _default_engine_loader() -> dict[str, Callable]:
         adverse_ticks=0,
         extra_delay_events=0,
         exclude_symbols=None,
+        folds=None,
+        risk_mode=None,
     ):
         bars_15m = load_bars_15m(
             CATALOG,
@@ -354,7 +422,10 @@ def _default_engine_loader() -> dict[str, Callable]:
                 fee_taker=0.0005 * float(fee_multiplier),
                 slippage_ticks=1 + int(adverse_ticks),
                 funding_bundles_dir=FUNDING_DIR,
-                folds=[(int(window_start_ns), int(window_end_ns))],
+                # V6P N04: declared fold intervals -> ONE continuous pass.
+                folds=[(int(a), int(b)) for a, b in (
+                    folds or [(int(window_start_ns), int(window_end_ns))])],
+                risk_mode=risk_mode,
                 extra_delay_events=int(extra_delay_events),
             ).to_dict()
         )
@@ -399,6 +470,216 @@ def load_engine() -> dict[str, Callable]:
     return engine
 
 
+# --------------------------------------------------------------------------- #
+# synthetic panel injection (PLAN section 6.3 item 10 golden fixtures; A4)
+# --------------------------------------------------------------------------- #
+def load_synthetic_panel_engine(spec_path: str | Path) -> dict[str, Callable]:
+    """Deterministic synthetic-panel engine (golden validation ONLY).
+
+    Bypasses the real catalog + funding-bundle data path entirely: 15m bars,
+    funding settlements, instrument metadata and target weights all come
+    from a hand-written spec JSON so every order/funding/cost/trim/terminal/
+    equity number is computable by hand. Never use for scored evidence.
+
+    Spec schema (all prices float; ts accepts epoch ns or ISO-8601 UTC)::
+
+        {
+          "traded_symbols": ["SYMAUSDT", "SYMBUSDT"],
+          "benchmark_symbol": "BTCUSDT",
+          "initial_capital": 100000.0,
+          "fee_taker": 0.0005, "slippage_ticks": 1,
+          "tick_size": {"*": 0.01}, "step_size": {"*": 0.001},
+          "min_notional": 5.0,
+          "bars": [{"symbol": "...", "ts": "...", "open": o, "high": h,
+                    "low": l, "close": c, "volume": v?}, ...],
+          "funding": [{"symbol": "...", "funding_time_ms": 123,
+                       "fundingRate": "0.0001"}, ...],   # optional
+          "targets": {"longs": [["SYMAUSDT", 0.25]],
+                      "shorts": [["SYMBUSDT", -0.25]]}
+        }
+
+    """
+    spec = json.loads(Path(spec_path).read_text(encoding="utf-8"))
+    traded = [str(s) for s in (spec.get("traded_symbols") or [])]
+    benchmark = str(spec.get("benchmark_symbol") or BENCHMARK_SYMBOL)
+    if not traded:
+        raise RunnerError("synthetic panel spec needs traded_symbols")
+    initial_capital = float(spec.get("initial_capital") or 100000.0)
+    fee_taker_base = float(spec.get("fee_taker", 0.0005))
+    slippage_ticks_base = int(spec.get("slippage_ticks", 1))
+    day_ns = 86_400_000_000_000
+
+    def _per_symbol_table(name: str, default: float) -> dict[str, float]:
+        raw = spec.get(name) or {"*": default}
+        if not isinstance(raw, Mapping):
+            return {s: float(raw) for s in (*traded, benchmark)}
+        star = float(raw.get("*", default))
+        return {
+            s: float(raw.get(s, star)) for s in (*traded, benchmark)
+        }
+
+    tick_size = _per_symbol_table("tick_size", 0.01)
+    step_size = _per_symbol_table("step_size", 0.001)
+    min_notional = float(spec.get("min_notional", 5.0))
+
+    def _coerce_ts(value: Any) -> int:
+        if isinstance(value, (int, float)):
+            return int(value)
+        return ns(parse_utc(str(value)))
+
+    bars_by_symbol: dict[str, list[tuple[int, float, float, float, float, float]]] = {}
+    for row in spec.get("bars") or []:
+        sym = str(row["symbol"])
+        bars_by_symbol.setdefault(sym, []).append((
+            _coerce_ts(row["ts"]),
+            float(row["open"]), float(row["high"]),
+            float(row["low"]), float(row["close"]),
+            float(row.get("volume", 1.0)),
+        ))
+    for sym in bars_by_symbol:
+        bars_by_symbol[sym].sort(key=lambda b: b[0])
+    if benchmark not in bars_by_symbol:
+        raise RunnerError(f"synthetic panel spec missing {benchmark} bars")
+
+    funding_dir: Path | None = None
+    funding_spec = spec.get("funding") or []
+    if funding_spec:
+        # Materialize engine-native bundles under a throwaway dir so the
+        # REAL engine settlement loader runs unchanged.
+        funding_dir = Path(tempfile.mkdtemp(prefix="synthetic_funding_"))
+        all_ms = [int(r["funding_time_ms"]) for r in funding_spec]
+        start_ms, end_ms = min(all_ms), max(all_ms)
+        by_sym: dict[str, list[dict]] = {}
+        for row in funding_spec:
+            by_sym.setdefault(str(row["symbol"]), []).append({
+                "fundingTime": str(int(row["funding_time_ms"])),
+                "fundingRate": str(row["fundingRate"]),
+            })
+        for sym, rows in by_sym.items():
+            target = funding_dir / sym
+            target.mkdir(parents=True)
+            (target / "funding.json").write_text(json.dumps({
+                "requested_start_ms": start_ms,
+                "requested_end_ms": end_ms,
+                "rows": sorted(rows, key=lambda r: int(r["fundingTime"])),
+            }), encoding="utf-8")
+    elif spec.get("funding_enabled"):
+        raise RunnerError(
+            "synthetic panel funding_enabled=true but no funding rows given")
+
+    targets_raw = spec.get("targets") or {}
+    longs_base = [[str(s), float(w)] for s, w in (targets_raw.get("longs") or [])]
+    shorts_base = [[str(s), float(w)] for s, w in (targets_raw.get("shorts") or [])]
+
+    def build_daily_panel(symbols, window_start_ns, window_end_ns):
+        daily: dict[str, list[tuple[int, float]]] = {}
+        for sym in symbols:
+            per_day: dict[int, float] = {}
+            for bar in bars_by_symbol.get(sym, []):
+                if window_start_ns <= bar[0] <= window_end_ns:
+                    per_day[bar[0] // day_ns] = bar[4]  # last close of UTC day
+            daily[sym] = [(d * day_ns, c) for d, c in sorted(per_day.items())]
+        coverage = {
+            "days_per_symbol": {s: len(v) for s, v in daily.items()},
+            "btc_days": len(daily.get(benchmark, [])),
+        }
+        return {
+            "daily_closes": daily,
+            "coverage": coverage,
+            "benchmark_clean": True,
+            "benchmark_daily_closes": daily.get(benchmark, []),
+        }
+
+    def compute_target_weights(daily_closes, signal_cutoff_ns,
+                               lookback_days, reverse=False):
+        sign = -1.0 if reverse else 1.0
+        longs = [[s, sign * w] for s, w in longs_base]
+        shorts = [[s, sign * w] for s, w in shorts_base]
+        known = set(daily_closes) | set(bars_by_symbol)
+        missing = [s for s, _ in (*longs, *shorts) if s not in known]
+        if missing:
+            return {"status": "SKIP_INCOMPLETE",
+                    "reason_code": "synthetic_symbol_missing",
+                    "longs": [], "shorts": []}
+        return {"status": "OK", "longs": longs, "shorts": shorts}
+
+    def run_shared_capital_backtest(
+        *,
+        daily_closes,
+        target_schedule,
+        window_start_ns,
+        window_end_ns,
+        fee_multiplier=1.0,
+        adverse_ticks=0,
+        extra_delay_events=0,
+        exclude_symbols=None,
+        folds=None,
+        risk_mode=None,
+    ):
+        excluded = set(exclude_symbols or ())
+        from research.portfolio_engine import (
+            run_shared_capital_backtest as _run_engine,
+        )
+
+        schedule_by_cutoff = {
+            int(entry["rebalance_ts_ns"]): entry
+            for entry in (target_schedule or [])
+        }
+
+        def weight_fn(cutoff_ns):
+            entry = schedule_by_cutoff.get(int(cutoff_ns))
+            if entry is None:
+                return {"status": "SKIP_INCOMPLETE",
+                        "reason_code": "incomplete_cross_section_skip"}
+            longs = [list(x) for x in entry.get("longs") or []
+                     if x[0] not in excluded]
+            shorts = [list(x) for x in entry.get("shorts") or []
+                      if x[0] not in excluded]
+            if not longs and not shorts:
+                return {"status": "SKIP_INCOMPLETE",
+                        "reason_code": "dropone_empty_cross_section"}
+            return {"status": "OK", "longs": longs, "shorts": shorts}
+
+        result = dict(_run_engine(
+            bars_15m={s: list(b) for s, b in bars_by_symbol.items()
+                      if s not in excluded and s in set(daily_closes)},
+            daily_closes=daily_closes,
+            weight_fn=weight_fn,
+            tick_size={s: v for s, v in tick_size.items()
+                       if s in set(daily_closes)},
+            step_size={s: v for s, v in step_size.items()
+                       if s in set(daily_closes)},
+            min_notional=min_notional,
+            fee_taker=fee_taker_base * float(fee_multiplier),
+            slippage_ticks=slippage_ticks_base + int(adverse_ticks),
+            funding_bundles_dir=funding_dir,
+            initial_capital=initial_capital,
+            folds=[(int(a), int(b)) for a, b in (
+                folds or [(int(window_start_ns), int(window_end_ns))])],
+            reset_folds=False,
+            risk_mode=risk_mode,
+            extra_delay_events=int(extra_delay_events),
+        ).to_dict())
+        summary = dict(result.get("summary") or {})
+        summary["pf_position_level"] = {
+            "trades": summary.get("trades"),
+            "gross_profit": summary.get("gross_profit"),
+            "gross_loss": summary.get("gross_loss"),
+            "profit_factor": summary.get("profit_factor"),
+            "pf_reason": summary.get("pf_reason"),
+        }
+        summary["turnover_total"] = summary.get("turnover_total_notional")
+        summary["expectancy_r"] = None
+        result["summary"] = summary
+        return result
+
+    return {
+        "build_daily_panel": build_daily_panel,
+        "run_shared_capital_backtest": run_shared_capital_backtest,
+        "compute_target_weights": compute_target_weights,
+    }
+
+
 @dataclass(frozen=True)
 class EngineCall:
     """Centralised engine invocation so integration fixes touch ONE place.
@@ -416,9 +697,13 @@ class EngineCall:
         run_shared_capital_backtest(daily_closes, target_schedule,
                                     window_start_ns, window_end_ns, *,
                                     fee_multiplier=1.0, adverse_ticks=0,
-                                    extra_delay_events=0) -> dict per the
+                                    extra_delay_events=0, folds=None,
+                                    risk_mode=None) -> dict per the
             frozen A3/A2 agreement (portfolio_ledger/orders/closed_legs/
             equity_curve/summary/skipped_rebalances/invariants).
+            V6P: ``folds`` (declared fold intervals) and ``risk_mode``
+            (``RISK_MODE_V1``) are forwarded when the engine supports them;
+            legacy engines without those kwargs are tolerated.
     """
 
     build_daily_panel: Callable
@@ -447,6 +732,100 @@ def _merge_pf(blocks: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "gross_loss": gross_loss, "profit_factor": pf, "pf_reason": reason}
 
 
+# --------------------------------------------------------------------------- #
+# V6P one-pass WFA helpers (PLAN section 6.3 items 1-3; owner A4)
+# --------------------------------------------------------------------------- #
+def _supported_kwargs(fn: Callable, kwargs: Mapping[str, Any]) -> dict[str, Any]:
+    """Drop kwargs the engine callable does not declare (legacy engines)."""
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return dict(kwargs)
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD
+           for p in sig.parameters.values()):
+        return dict(kwargs)
+    return {k: v for k, v in kwargs.items() if k in sig.parameters}
+
+
+def _row_ts(row: Mapping[str, Any]) -> int | None:
+    for key in ("ts", "rebalance_ts_ns", "execution_bar_ts", "terminal_ts"):
+        value = row.get(key)
+        if value is not None:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
+def _fold_tag_for_ts(ts_ns: int | None,
+                     fold_edges_ns: Sequence[tuple[int, int]]) -> str | None:
+    if ts_ns is None:
+        return None
+    for index, (start_ns, end_ns) in enumerate(fold_edges_ns, start=1):
+        if start_ns <= ts_ns <= end_ns:
+            return f"F{index}"
+    return None
+
+
+def _segment_equities(
+    curve: Sequence[tuple[int, float]],
+    fold_edges_ns: Sequence[tuple[int, int]],
+    initial_equity: float | None = None,
+) -> list[dict[str, float]]:
+    """Per-fold start/end equity read off ONE continuous curve (N04).
+
+    Fold 1 starts from the engine-declared ``initial_equity`` (nothing trades
+    before the scored window); every later fold STARTS from the previous
+    fold's ENDING equity by construction, so the carry identity
+    ``F2_start == F1_end`` holds exactly on a single engine pass — stitched
+    100k-reset curves would show full-reset gaps here.
+    """
+    samples = sorted((int(t), float(e)) for t, e in curve)
+    times = [t for t, _ in samples]
+    segments: list[dict[str, float]] = []
+    prev_end: float | None = None
+    for index, (start_ns, end_ns) in enumerate(fold_edges_ns):
+        i = bisect.bisect_right(times, end_ns) - 1
+        end_eq = samples[i][1] if i >= 0 else prev_end
+        j = bisect.bisect_right(times, start_ns) - 1
+        if index == 0:
+            if initial_equity is not None:
+                start_eq: float | None = float(initial_equity)
+            elif j >= 0:
+                start_eq = samples[j][1]
+            else:
+                start_eq = samples[0][1] if samples else (end_eq or 0.0)
+        else:
+            if prev_end is not None:
+                start_eq = prev_end
+            elif j >= 0:
+                start_eq = samples[j][1]
+            else:
+                start_eq = samples[0][1] if samples else (end_eq or 0.0)
+        segments.append({"start_equity": start_eq, "end_equity": end_eq})
+        if end_eq is not None:
+            prev_end = end_eq
+    return segments
+
+
+def _synthesize_commission_slippage(orders: Sequence[Mapping[str, Any]]) -> dict:
+    """Cost totals recomputed from order rows when the engine payload is absent.
+
+    Key names mirror ``research.accounting.build_commission_slippage``.
+    """
+    executed = [o for o in orders if o.get("rejected_reason") is None]
+    rejected = [dict(o) for o in orders if o.get("rejected_reason") is not None]
+    return {
+        "source": "runner_synthesized_from_orders",
+        "executed_orders": len(executed),
+        "rejected_orders": rejected,
+        "total_commission": math_fsum(float(o.get("fee") or 0.0) for o in executed),
+        "total_slippage": math_fsum(
+            float(o.get("slippage_cost") or 0.0) for o in executed),
+    }
+
+
 def execute_experiment(
     *,
     engine: dict[str, Callable],
@@ -458,7 +837,15 @@ def execute_experiment(
     reverse: bool,
     folds: int,
 ) -> dict[str, Any]:
-    """Run all folds; return aggregated rows/metrics (pure orchestration)."""
+    """Run ALL folds in ONE chronological engine pass (V6P N04/N05/N06).
+
+    One target schedule spans every fold interval; the engine receives the
+    declared ``folds`` intervals and ``risk_mode=RISK_MODE_V1`` so capital
+    carries across boundaries, MDD derives from the continuous equity path,
+    and per-bar exposure enforcement stays active. Engines predating the
+    ``folds``/``risk_mode`` kwargs are tolerated: unsupported kwargs are
+    dropped and the degradation is reported in ``metrics["one_pass"]``.
+    """
     call = EngineCall(
         build_daily_panel=engine["build_daily_panel"],
         run_shared_capital_backtest=engine["run_shared_capital_backtest"],
@@ -476,22 +863,18 @@ def execute_experiment(
     daily_closes: dict[str, list[tuple[int, float]]] = panel.get("daily_closes") or {}
     coverage_payload = panel.get("coverage")
 
-    all_orders: list[dict] = []
-    all_legs: list[dict] = []
-    all_ledger: list[dict] = []
+    windows = fold_windows(window_start, window_end, folds)
+    fold_edges_ns = [(ns(a), ns(b)) for a, b in windows]
+    window_start_ns = ns(window_start)
+
     all_ranks: list[dict] = []
     skipped_rows: list[dict] = []
-    invariant_rows: list[dict] = []
-    equity_segments: list[list[tuple[Any, float]]] = []
-    fold_pnls: dict[str, float] = {}
-    fold_exp_rs: dict[str, float | None] = {}
-    summaries: list[dict] = []
+    schedule: list[dict] = []
     max_abs_target_weight = 0.0
 
-    windows = fold_windows(window_start, window_end, folds)
+    # ONE rank loop over ALL folds -> ONE chronological target schedule.
     for index, (fold_start, fold_end) in enumerate(windows, start=1):
         fold_id = f"F{index}"
-        schedule: list[dict] = []
         for stamp in daily_rebalance_stamps(fold_start, fold_end):
             ranking = call.compute_target_weights(
                 daily_closes=daily_closes,
@@ -527,52 +910,93 @@ def execute_experiment(
                 "shorts": shorts,
             })
 
-        result = call.run_shared_capital_backtest(
-            daily_closes=daily_closes,
-            target_schedule=schedule,
-            window_start_ns=ns(fold_start),
-            window_end_ns=ns(fold_end),
-            fee_multiplier=1.0,
-            adverse_ticks=0,
-            extra_delay_events=0,
-        ) or {}
-        fold_ledger = list(result.get("portfolio_ledger") or [])
-        fold_summary = dict(result.get("summary") or {})
-        summaries.append(fold_summary)
-        fold_pnls[fold_id] = float(fold_summary.get("total_pnl") or 0.0)
-        fold_exp_rs[fold_id] = fold_summary.get("expectancy_r")
-        all_ledger.extend({**row, "experiment_fold": fold_id} for row in fold_ledger)
-        all_orders.extend(
-            {**row, "experiment_fold": fold_id} for row in (result.get("orders") or [])
-        )
-        all_legs.extend(
-            {**row, "experiment_fold": fold_id} for row in (result.get("closed_legs") or [])
-        )
-        skipped_rows.extend(result.get("skipped_rebalances") or [])
-        invariant_rows.extend(result.get("invariants") or [])
-        segment = [(ts, float(eq)) for ts, eq in (result.get("equity_curve") or [])]
-        segment.sort(key=lambda row: row[0])
-        equity_segments.append(segment)
+    base_kwargs: dict[str, Any] = {
+        "daily_closes": daily_closes,
+        "target_schedule": schedule,
+        "window_start_ns": window_start_ns,
+        "window_end_ns": ns(window_end),
+        "fee_multiplier": 1.0,
+        "adverse_ticks": 0,
+        "extra_delay_events": 0,
+        # V6P N04/N05: one pass with declared intervals + runtime risk mode.
+        "folds": fold_edges_ns,
+        "risk_mode": RISK_MODE_V1,
+    }
+    import os as _os
+    if _os.environ.get("V6P_DEBUG_SCHEDULE"):
+        print(f"DEBUG schedule_len={len(schedule)} "
+              f"ranks={len(all_ranks)} skipped={len(skipped_rows)} "
+              f"daily_keys={sorted(daily_closes)}", file=sys.stderr)
+    run_kwargs = _supported_kwargs(call.run_shared_capital_backtest, base_kwargs)
+    result = call.run_shared_capital_backtest(**run_kwargs) or {}
 
-    equity_curve: list[tuple[Any, float]] = []
-    seen_ts: set[int] = set()
-    for segment in equity_segments:
-        for ts, eq in segment:
-            key = ts if isinstance(ts, int) else hash(str(ts))
-            if key in seen_ts:
-                continue
-            seen_ts.add(key)
-            equity_curve.append((ts, eq))
-    equity_curve.sort(key=lambda row: row[0] if isinstance(row[0], int) else 0)
+    def _tag(rows) -> list[dict]:
+        return [
+            {**row, "experiment_fold": _fold_tag_for_ts(_row_ts(row), fold_edges_ns)}
+            for row in rows
+        ]
 
-    total_pnl = math_fsum(fold_pnls.values())
+    all_ledger = _tag(result.get("portfolio_ledger") or [])
+    all_orders = _tag(result.get("orders") or [])
+    all_legs = _tag(result.get("closed_legs") or [])
+    skipped_rows.extend(result.get("skipped_rebalances") or [])
+    invariant_rows: list[dict] = list(
+        result.get("invariant_checks") or result.get("invariants") or [])
+
+    meta = dict(result.get("meta") or {})
+    summary = dict(result.get("summary") or {})
+
+    # Continuous equity path: single pass; anchor the engine-declared
+    # initial capital at window start so pre-first-sample PnL and the true
+    # MDD peak are never lost.
+    curve = sorted((int(t), float(e)) for t, e in (result.get("equity_curve") or []))
+    initial_capital = float(
+        meta.get("initial_capital") or (curve[0][1] if curve else 0.0))
+    declared_initial = meta.get("initial_capital")
+    if declared_initial is not None:
+        anchor = (window_start_ns, float(declared_initial))
+        if (not curve or curve[0][0] > window_start_ns
+                or (curve[0][0] == window_start_ns
+                    and curve[0][1] != anchor[1])):
+            curve.append(anchor)
+            curve.sort()
+    segments = _segment_equities(
+        curve, fold_edges_ns,
+        initial_equity=(float(declared_initial)
+                        if declared_initial is not None else None))
+    starting_equity = segments[0]["start_equity"] if segments else initial_capital
+    ending_equity = curve[-1][1] if curve else initial_capital
+
+    fold_pnls: dict[str, float] = {}
+    fold_returns: dict[str, float | None] = {}
+    fold_exp_rs: dict[str, float | None] = {}
+    fold_segments: list[dict] = []
+    carry_gaps: list[float] = []
+    for index, seg in enumerate(segments):
+        fid = f"F{index + 1}"
+        pnl = seg["end_equity"] - seg["start_equity"]
+        ret = (seg["end_equity"] / seg["start_equity"] - 1.0
+               if seg["start_equity"] else None)
+        fold_pnls[fid] = pnl
+        fold_returns[fid] = ret
+        fold_exp_rs[fid] = summary.get("expectancy_r")
+        fold_segments.append({"fold_id": fid, **seg, "pnl": pnl, "return": ret})
+        if index:
+            carry_gaps.append(abs(seg["start_equity"]
+                                  - segments[index - 1]["end_equity"]))
+    carry_scale = max(1.0, abs(starting_equity), abs(ending_equity))
+    carry_max_gap = max(carry_gaps) if carry_gaps else 0.0
+
+    total_pnl = ending_equity - starting_equity
     legs_pnls = [float(leg.get("canonical_pnl", leg.get("pnl", 0.0)) or 0.0) for leg in all_legs]
-    merged_pf = _merge_pf([s.get("pf_position_level") or {} for s in summaries])
-    turnover_total = math_fsum(float(s.get("turnover_total") or 0.0) for s in summaries)
-    rebalances_scored = sum(int(s.get("rebalances_scored") or 0) for s in summaries)
+    merged_pf = _merge_pf([summary.get("pf_position_level") or {}])
+    turnover_total = float(summary.get("turnover_total")
+                           or summary.get("turnover_total_notional") or 0.0)
+    rebalances_scored = int(summary.get("rebalances_scored") or 0)
 
     from research import portfolio_metrics as pm
 
+    equity_curve = curve
     port_returns = pm.daily_returns_from_equity_curve(equity_curve)
     btc_series = (
         panel.get("benchmark_daily_closes")
@@ -592,23 +1016,35 @@ def execute_experiment(
 
     top_symbol, top_symbol_share = pm.top_symbol_contribution(all_legs)
     top_fold, top_fold_share = pm.fold_contribution(fold_pnls)
+    # N04: MDD comes from the CONTINUOUS curve across all folds.
     mdd_fraction, mdd_duration_days = pm.max_drawdown_from_equity(equity_curve)
 
     gross_max = max(
-        [float(s.get("gross_max") or 0.0) for s in summaries]
-        + [abs(float(r.get("gross_exposure", r.get("weight", 0.0)) or 0.0)) for r in all_ledger
-           if r.get("gross_exposure") is not None]
-    ) if all_ledger or summaries else 0.0
+        [float(summary.get("gross_max") or 0.0),
+         float(summary.get("gross_exposure_max") or 0.0)]
+        + [abs(float(r.get("gross_exposure", r.get("weight", 0.0)) or 0.0))
+           for r in all_ledger if r.get("gross_exposure") is not None]
+    ) if all_ledger or summary else 0.0
     net_abs_max = max(
-        [abs(float(s.get("net_abs_max") or 0.0)) for s in summaries]
+        [abs(float(summary.get("net_abs_max") or 0.0))]
         + [abs(float(r.get("net_exposure", 0.0) or 0.0)) for r in all_ledger
            if r.get("net_exposure") is not None]
-    ) if all_ledger or summaries else 0.0
-    margin_breach_rows = sum(
+    ) if all_ledger or summary else 0.0
+    margin_signal_invariants = sum(
         1 for row in invariant_rows
         if str(row.get("check", row.get("type", ""))).lower().find("margin") >= 0
         and row.get("ok") is False
     )
+    margin_signal_rows = sum(
+        1 for row in invariant_rows if row.get("margin_ok") is False
+    )
+    aborted_folds = meta.get("aborted_folds") or []
+    margin_breach_rows = max(
+        margin_signal_invariants, margin_signal_rows, len(aborted_folds))
+
+    exposure_control = list(result.get("exposure_control") or [])
+    commission_slippage = dict(result.get("commission_slippage") or {}) or \
+        _synthesize_commission_slippage(all_orders)
 
     return {
         "panel_coverage": coverage_payload,
@@ -620,10 +1056,36 @@ def execute_experiment(
         "skipped_rebalances": skipped_rows,
         "invariants": invariant_rows,
         "equity_curve": equity_curve,
+        "fold_edges_utc": [
+            {"fold_id": f"F{i}", "start_utc": iso(a), "end_utc": iso(b)}
+            for i, (a, b) in enumerate(windows, start=1)
+        ],
+        "fold_segments": fold_segments,
+        "funding_cashflows": list(result.get("funding_cashflows") or []),
+        "terminal_positions": list(result.get("terminal_positions") or []),
+        "exposure_control": exposure_control,
+        "accounting": dict(result.get("accounting") or {}),
+        "commission_slippage": commission_slippage,
+        "engine_meta": meta,
         "metrics": {
             "total_pnl": total_pnl,
+            "starting_equity": starting_equity,
+            "ending_equity": ending_equity,
             "fold_pnls": fold_pnls,
+            "fold_returns": fold_returns,
+            "fold_return_definition": (
+                "fold_end_equity / fold_start_equity - 1 "
+                "(continuous capital, no reset)"
+            ),
             "fold_exp_rs": fold_exp_rs,
+            "fold_carry_max_gap": carry_max_gap,
+            "fold_carry_ok": bool(carry_max_gap <= 1e-6 * carry_scale),
+            "one_pass": {
+                "single_engine_call": True,
+                "folds_declared": len(fold_edges_ns),
+                "folds_kwarg_supported": "folds" in run_kwargs,
+                "risk_mode_kwarg_supported": "risk_mode" in run_kwargs,
+            },
             "pf_position_level": merged_pf,
             "leg_pnls": legs_pnls,
             "expectancy_r": expectancy_r,
@@ -653,6 +1115,9 @@ def execute_experiment(
             "net_abs_max": net_abs_max,
             "max_abs_target_weight": max_abs_target_weight,
             "margin_breach_rows": margin_breach_rows,
+            "risk_mode_requested": RISK_MODE_V1,
+            "risk_mode_active": bool(meta.get("risk_mode") == RISK_MODE_V1),
+            "exposure_control_rows": len(exposure_control),
             "daily_return_count": len(port_returns),
         },
     }
@@ -665,44 +1130,237 @@ def math_fsum(values) -> float:
 
 
 # --------------------------------------------------------------------------- #
+# V6P accounting artifact (PLAN section 6.3 items 7-9; owner A4)
+# --------------------------------------------------------------------------- #
+def build_v6p_accounting_payload(
+    execution: Mapping[str, Any],
+    *,
+    experiment_id: str,
+    matrix_id: str,
+) -> dict[str, Any]:
+    """Fold+experiment reconciliation payload for ``accounting_reconciliation.json``.
+
+    Layers: (a) engine-native accounting verbatim when present, (b) the
+    canonical identity recomputed runner-side from emitted rows
+    (``ending - starting == closed_price_pnl + terminal_pnl + funding
+    - commissions - slippage - rejection_costs``), (c) funding leg-vs-
+    settlement reconciliation, (d) terminal rows vs closed legs + flat final
+    book, (e) the continuous fold-carry proof.
+    """
+    metrics = execution["metrics"]
+    legs = execution["closed_legs"]
+    orders = execution["orders"]
+    ledger = execution["portfolio_ledger"]
+    funding_rows = execution["funding_cashflows"]
+
+    def _fsum(rows, key: str) -> float:
+        return math_fsum(float(r.get(key) or 0.0) for r in rows)
+
+    executed = [o for o in orders if o.get("rejected_reason") is None]
+    regular_legs = [l for l in legs if not l.get("is_terminal")]
+    terminal_legs = [l for l in legs if l.get("is_terminal")]
+    engine_native_rows = bool(executed and "fee" in executed[0])
+
+    commissions = _fsum(executed, "fee")
+    slippage = _fsum(executed, "slippage_cost")
+    closed_price_pnl = _fsum(regular_legs, "gross_pnl")
+    terminal_pnl = _fsum(terminal_legs, "gross_pnl")
+    funding_total = _fsum(funding_rows, "cashflow")
+    starting_equity = float(metrics["starting_equity"])
+    ending_equity = float(metrics["ending_equity"])
+    equity_delta = ending_equity - starting_equity
+    residual = equity_delta - (
+        closed_price_pnl + terminal_pnl + funding_total
+        - commissions - slippage - 0.0
+    )
+    tol = max(1e-6, 1e-9 * max(1.0, abs(starting_equity), abs(ending_equity)))
+
+    # Funding: settlement-level cashflows must equal leg-level allocations
+    # once every leg has closed (flat final book).
+    symbols = sorted(
+        ({str(r.get("symbol")) for r in funding_rows}
+         | {str(l.get("symbol")) for l in legs})
+        - {"", "None"}
+    ) if (funding_rows or legs) else []
+    funding_per_symbol: dict[str, dict] = {}
+    for sym in symbols:
+        s_total = _fsum([r for r in funding_rows if r.get("symbol") == sym],
+                        "cashflow")
+        l_total = _fsum([l for l in legs if l.get("symbol") == sym],
+                        "funding_allocated")
+        funding_per_symbol[sym] = {
+            "settlements_total": s_total,
+            "legs_allocated_total": l_total,
+            "residual": s_total - l_total,
+            "ok": bool(abs(s_total - l_total) <= tol),
+        }
+    funding_legs_total = _fsum(terminal_legs + regular_legs, "funding_allocated")
+
+    terminal_rows = execution["terminal_positions"]
+    terminal_counts_ok = len(terminal_rows) == len(terminal_legs)
+    terminal_rows_sum = _fsum(terminal_rows, "canonical_pnl")
+    terminal_legs_sum = _fsum(terminal_legs, "canonical_pnl")
+    last_positions = ledger[-1].get("positions") if ledger else None
+    flat_final_book = (last_positions == {}) if last_positions is not None else None
+
+    fold_carry_folds = []
+    edges = {e["fold_id"]: e for e in execution.get("fold_edges_utc") or []}
+    for seg in execution.get("fold_segments") or []:
+        fold_carry_folds.append({
+            "fold_id": seg["fold_id"],
+            **(edges.get(seg["fold_id"]) or {}),
+            "start_equity": seg["start_equity"],
+            "end_equity": seg["end_equity"],
+            "pnl": seg["pnl"],
+            "return": seg["return"],
+        })
+
+    return {
+        "schema_version": 1,
+        "artifact": "accounting_reconciliation",
+        "experiment_id": experiment_id,
+        "matrix_id": matrix_id,
+        "identity_formula": ACCOUNTING_IDENTITY_FORMULA,
+        "risk_mode": {
+            "requested": metrics.get("risk_mode_requested"),
+            "active": metrics.get("risk_mode_active"),
+            "exposure_control_rows": metrics.get("exposure_control_rows"),
+        },
+        "folds_declared": execution.get("fold_edges_utc") or [],
+        "equity": {
+            "starting_equity": starting_equity,
+            "ending_equity": ending_equity,
+            "delta": equity_delta,
+        },
+        "components": {
+            "closed_price_pnl": closed_price_pnl,
+            "terminal_pnl": terminal_pnl,
+            "funding_cashflows": funding_total,
+            "commissions": commissions,
+            "slippage": slippage,
+            "rejection_costs": 0.0,
+        },
+        "experiment_identity": {
+            "source": "runner_recomputed_from_rows",
+            "engine_native_rows": engine_native_rows,
+            "residual": residual,
+            "tolerance": tol,
+            "identity_ok": (bool(abs(residual) <= tol)
+                            if engine_native_rows else None),
+        },
+        "engine_accounting": dict(execution.get("accounting") or {}) or None,
+        "funding_reconciliation": {
+            "settlements_total": funding_total,
+            "legs_allocated_total": funding_legs_total,
+            "residual": funding_total - funding_legs_total,
+            "per_symbol": funding_per_symbol,
+            "all_ok": bool(all(v["ok"] for v in funding_per_symbol.values()))
+            if funding_per_symbol else None,
+        },
+        "terminal_reconciliation": {
+            "terminal_rows": len(terminal_rows),
+            "terminal_closed_legs": len(terminal_legs),
+            "counts_ok": bool(terminal_counts_ok),
+            "rows_canonical_sum": terminal_rows_sum,
+            "legs_canonical_sum": terminal_legs_sum,
+            "sums_ok": bool(abs(terminal_rows_sum - terminal_legs_sum) <= tol),
+            "flat_final_book": flat_final_book,
+        },
+        "fold_carry": {
+            "definition": (
+                "F(i+1).start_equity == F(i).end_equity on ONE continuous "
+                "pass; stitched 100k resets would violate this"
+            ),
+            "max_gap": metrics.get("fold_carry_max_gap"),
+            "carry_ok": metrics.get("fold_carry_ok"),
+            "folds": fold_carry_folds,
+        },
+    }
+
+
+# --------------------------------------------------------------------------- #
 # gates / scorecard assembly
 # --------------------------------------------------------------------------- #
+def assemble_xg1_measured_rows(
+    execution: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Build REAL signal->fill pairs from emitted rows (V6P N07; owner A5).
+
+    One row per engine order (executed OR rejected): ``fill_ts`` is the
+    order's own execution-bar timestamp and ``signal_ts`` is the LATEST
+    runner rank cutoff at or before that bar -- both MEASURED from artifact
+    rows, never hand-built booleans. A row with either timestamp missing is
+    KEPT (it counts toward the fail-closed ``missing_ts`` counter) instead
+    of being dropped or padded.
+    """
+    stamps = sorted({
+        int(row["signal_cutoff_ns"])
+        for row in (execution.get("signal_ranks") or [])
+        if row.get("signal_cutoff_ns") is not None
+    })
+    rows: list[dict[str, Any]] = []
+    for order in execution.get("orders") or []:
+        fill_ts = _row_ts(order)
+        signal_ts: int | None = None
+        if fill_ts is not None and stamps:
+            index = bisect.bisect_right(stamps, int(fill_ts)) - 1
+            if index >= 0:
+                signal_ts = stamps[index]
+        rows.append({
+            "symbol": order.get("symbol"),
+            "kind": order.get("kind"),
+            "side": order.get("side"),
+            "signal_ts": signal_ts,
+            "fill_ts": None if fill_ts is None else int(fill_ts),
+        })
+    return rows
+
+
 def build_gate_inputs(
     execution: dict[str, Any],
     *,
     declared_symbols: Sequence[str],
     required_days: int,
     warmup_boundaries: Mapping[str, str | None],
-    stress_results: Mapping[str, float] | None = None,
+    stress_report: Mapping[str, Any] | None = None,
     independent_reproduction: IndependentReproductionResult | None = None,
     artifact_integrity: ArtifactIntegrityResult | None = None,
+    legacy_boolean_compat: bool = False,
 ) -> dict[str, Any]:
+    """Assemble XG gate inputs from MEASURED runner evidence.
+
+    V6P N07: the scored path supplies REAL execution-ledger rows assembled
+    from ``execution['orders']`` + rank timestamps; XG1 is then evaluated by
+    counting violations (:func:`research.protocol.gates.evaluate_xg1_measured`).
+    The legacy hand-built boolean struct is NOT emitted anymore unless
+    ``legacy_boolean_compat=True`` -- and even then it is flagged
+    ``not_scored_usable`` so it can never back a scored promotion.
+    """
     metrics = execution["metrics"]
     folds_block = [
         {"fold_id": fid, "pnl": pnl,
          "exp_r": metrics["fold_exp_rs"].get(fid)}
         for fid, pnl in metrics["fold_pnls"].items()
     ]
-    stress = dict(stress_results or {})
 
-    def _tri(key: str) -> bool | None:
-        v = stress.get(key)
-        if v is None:
-            return None
-        try:
-            f = float(v)
-        except (TypeError, ValueError):
-            return None
-        if f != f:  # NaN sentinel => not executed
-            return None
-        return bool(f)
+    # Family-aware drop-one evidence from the unconditional stress report
+    # (V6P N10); R-normalized stress fields stay None -- this portfolio
+    # family has NO R normalization (MISSING_R_NORMALIZATION, V5 F07).
+    dropone_symbol_clean: bool | None = None
+    dropone_fold_clean: bool | None = None
+    if isinstance(stress_report, Mapping):
+        flags = derive_dropone_clean_flags(stress_report)
+        dropone_symbol_clean = flags["dropone_symbol_clean"]
+        dropone_fold_clean = flags["dropone_fold_clean"]
 
     robustness = {
-        "fee50_exp_r": stress.get("fee50"),
-        "twotick_exp_r": stress.get("twotick"),
-        "extradelay_exp_r": stress.get("extradelay"),
-        "dropone_symbol_clean": _tri("dropone_symbol_clean"),
-        "dropone_fold_clean": _tri("dropone_fold_clean"),
+        # expectancy-R stress metrics are retired for this family (N10);
+        # family-aware per-variant metrics live in stress_report.json.
+        "fee50_exp_r": None,
+        "twotick_exp_r": None,
+        "extradelay_exp_r": None,
+        "dropone_symbol_clean": dropone_symbol_clean,
+        "dropone_fold_clean": dropone_fold_clean,
         "turnover_budget_exceeded": False,  # pre-registered budget n/a in v1 spec
     }
     risk = {
@@ -725,41 +1383,100 @@ def build_gate_inputs(
         "top_fold_contribution": metrics["top_fold_share"] or None,
         "top_symbol_contribution": metrics["top_symbol_share"] or None,
     }
-    # Runner-emitted point-in-time evidence struct (XG1). The booleans are
-    # backed by the rank/engine contracts (signal cutoffs strictly inside
-    # completed bars; membership ties resolved symbol-ascending); a future
-    # engine violation counter would flip them False.
-    pit_evidence = {
-        "features_completed_before_signal": True,
-        "signal_before_every_fill": True,
-        "membership_tie_deterministic": True,
-        "execution_bar_excluded": True,
-        "warmup_boundaries": dict(warmup_boundaries),
-    }
 
-    coverage_raw = execution.get("panel_coverage") or {}
-    days_per_symbol = dict(coverage_raw.get("days_per_symbol") or {})
-    traded_days = {sym: days_per_symbol.get(sym, 0) for sym in declared_symbols}
-    coverage_payload = {
-        "required_days": required_days,
-        "traded_symbols": {
-            sym: {"days_present": int(days)} for sym, days in traded_days.items()
-        },
-        "benchmark": {
-            "symbol": BENCHMARK_SYMBOL,
-            "days_present": int(coverage_raw.get("btc_days") or 0),
-            "clean": bool(execution.get("benchmark_btc_clean")),
-        },
-    }
-    return {
-        "coverage": coverage_payload,
+    gate_inputs: dict[str, Any] = {
+        "coverage": _coverage_payload_from_execution(
+            execution, declared_symbols=declared_symbols,
+            required_days=required_days,
+        ),
         "declared_symbols": list(declared_symbols),
-        "pit_evidence": pit_evidence,
+        # V6P N07: MEASURED XG1 evidence -- evaluate_xgates routes these
+        # through evaluate_xg1_measured (violation counting), never the
+        # boolean struct. Stateless rank pipeline => empty transform
+        # registry records not_applicable_with_reason honestly.
+        "execution_ledger_rows": assemble_xg1_measured_rows(execution),
+        "transform_registry": {},
+        "warmup_boundaries": dict(warmup_boundaries),
         "artifact_integrity": artifact_integrity,
         "independent_reproduction": independent_reproduction,
         "stage_a": stage_a,
         "robustness": robustness,
         "risk": risk,
+    }
+    if legacy_boolean_compat:
+        # NON-SCORED legacy compatibility ONLY: hand-built booleans kept for
+        # old consumers, explicitly flagged not usable for scored promotion.
+        gate_inputs["pit_evidence"] = {
+            "not_scored_usable": True,
+            "features_completed_before_signal": True,
+            "signal_before_every_fill": True,
+            "membership_tie_deterministic": True,
+            "execution_bar_excluded": True,
+            "warmup_boundaries": dict(warmup_boundaries),
+        }
+    return gate_inputs
+
+
+def _coverage_payload_from_execution(
+    execution: Mapping[str, Any],
+    *,
+    declared_symbols: Sequence[str],
+    required_days: int,
+) -> dict[str, Any]:
+    raw = execution.get("panel_coverage") or {}
+    detail = raw.get("traded_symbols_detail") or {}
+    blocks = raw.get("blocks") or {}
+    fund_blocks = blocks.get("funding_coverage") or {}
+    meta_blocks = blocks.get("metadata_coverage") or {}
+    req_win = raw.get("requested_window") or [None, None]
+    req_start_day = str(req_win[0])[:10] if req_win[0] else None
+    req_end_day = str(req_win[1])[:10] if req_win[1] else None
+    legacy_days = dict(raw.get("days_per_symbol") or {})
+
+    bench_days = int(
+        (blocks.get("benchmark_coverage") or {}).get(BENCHMARK_SYMBOL)
+        or raw.get("btc_days") or 0)
+    bench_floor = max(1, math.ceil(0.98 * required_days))
+    bench_clean = bool(execution.get("benchmark_btc_clean")) and (
+        bench_days >= bench_floor)
+
+    traded: dict[str, Any] = {}
+    for sym in declared_symbols:
+        d = detail.get(sym) or {}
+        f = fund_blocks.get(sym) or {}
+        settlements = int(f.get("settlements") or 0)
+        first, last = f.get("first"), f.get("last")
+        covers = bool(
+            settlements > 0 and first and last and req_start_day and req_end_day
+            and str(first) <= req_start_day and str(last) >= req_end_day)
+        entry: dict[str, Any] = {
+            "days_present": int(d.get("days_present",
+                                      legacy_days.get(sym, 0)) or 0),
+            "funding": {
+                "bundle_present": settlements > 0,
+                "covers_declared_window": covers,
+                "settlements": settlements,
+                "first": first, "last": last,
+            },
+            "instrument_metadata_present": bool(meta_blocks.get(sym)),
+        }
+        if "duplicate_bars" in d:
+            entry["duplicate_bars"] = int(d["duplicate_bars"] or 0)
+        if "gap_bars" in d:
+            entry["gap_bars"] = int(d["gap_bars"] or 0)
+        traded[sym] = entry
+
+    return {
+        "required_days": required_days,
+        "traded_symbols": traded,
+        "benchmark": {
+            "symbol": BENCHMARK_SYMBOL,
+            "days_present": bench_days,
+            "clean": bench_clean,
+        },
+        "requested_window": list(req_win),
+        "effective_common_window": raw.get("effective_common_window"),
+        "funding_bundle_identity": raw.get("funding_bundle_identity"),
     }
 
 
@@ -1030,6 +1747,9 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
             "(seed_unavailable semantics, contracts REASON_CODES)"
         ),
     }
+    if getattr(args, "synthetic_panel", None):
+        extra_manifest_fields["synthetic_panel_path"] = str(
+            Path(args.synthetic_panel).resolve())
     log_path = exp_dir / "run.log"
 
     def _log(message: str) -> None:
@@ -1042,8 +1762,18 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     _log("launch_manifest.yaml written BEFORE engine execution (finish=null)")
 
     # ---- 3. engine -------------------------------------------------------- #
+    synthetic_panel = (
+        getattr(args, "synthetic_panel", None)
+        or os.environ.get(SYNTHETIC_PANEL_ENV, "").strip()
+        or None
+    )
     try:
-        engine = load_engine()
+        if synthetic_panel:
+            engine = load_synthetic_panel_engine(synthetic_panel)
+            _log(f"SYNTHETIC PANEL engine active (golden validation only): "
+                 f"{synthetic_panel}")
+        else:
+            engine = load_engine()
     except RunnerError as exc:
         _log(f"ABORT engine_unavailable: {exc}")
         print(f"ABORT {exc}", file=sys.stderr)
@@ -1068,7 +1798,10 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     manifest = dataclasses.replace(manifest, backtest_run_finished_utc=finished)
     dump_launch_manifest(manifest, extra_manifest_fields, exp_dir / "launch_manifest.yaml")
     _log(f"execution finished={finished} legs={execution['metrics']['legs_closed']}")
-    # ---- 4. stress variants when base edge qualifies ---------------------- #
+    # ---- 4. UNCONDITIONAL family-aware stress suite (V6P N10/C13) --------- #
+    # Runs for EVERY experiment -- regardless of the base XG3 verdict or
+    # reverse-control status. The base verdict is recorded for the report
+    # but NEVER gates execution; a negative base edge stays REJECTED.
     is_control = bool(args.reverse) or "CONTROL" in args.experiment_id.upper()
     warmup_boundaries = {
         "warmup_start": iso(window_start - timedelta(days=warmup_days)),
@@ -1082,80 +1815,28 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         required_days=scored_days,
         warmup_boundaries=warmup_boundaries,
     ))
-    base_xg3_pass = next(
-        row.verdict is GateVerdict.PASS for row in base_rows
-        if row.gate == XGateId.XG3_STAGE_A_PORTFOLIO
+    base_xg3_verdict = next(
+        (row.verdict.value for row in base_rows
+         if row.gate == XGateId.XG3_STAGE_A_PORTFOLIO),
+        None,
     )
-    stress_results: dict[str, float] = {}
-    if base_xg3_pass and not args.reverse:
-        for name, kwargs in (
-            ("fee50", {"fee_multiplier": 1.5}),
-            ("twotick", {"adverse_ticks": 2}),
-            ("extradelay", {"extra_delay_events": 1}),
-        ):
-            try:
-                stress_results[name] = _stress_expectancy_r(
-                    engine, execution=execution,
-                    traded_symbols=identity["traded_symbols"],
-                    benchmark_symbol=identity["benchmark_symbol"],
-                    window_start=window_start, window_end=window_end,
-                    lookback_days=args.lookback_days, reverse=bool(args.reverse),
-                    folds=args.folds, **kwargs,
-                )
-            except TypeError as exc:
-                _log(f"stress {name} unsupported by engine: {exc}")
-                break
-            _log(f"stress {name}: expectancy_r={stress_results[name]}")
-
-        # V5-C15: drop-one-symbol — re-run with each traded symbol removed in
-        # turn; clean iff NO dropped run flips the expectancy-R sign relative
-        # to the base run.
-        base_exp = execution["metrics"].get("expectancy_r")
-        dropone_symbol_clean: bool | None = None
-        dropone_symbol_detail: dict[str, Any] = {}
-        try:
-            symbol_flips: list[str] = []
-            for sym in identity["traded_symbols"]:
-                r = _stress_expectancy_r(
-                    engine, execution=execution,
-                    traded_symbols=identity["traded_symbols"],
-                    benchmark_symbol=identity["benchmark_symbol"],
-                    window_start=window_start, window_end=window_end,
-                    lookback_days=args.lookback_days, reverse=bool(args.reverse),
-                    folds=args.folds, exclude_symbols=[sym],
-                )
-                dropone_symbol_detail[sym] = r
-                if (base_exp is not None) and (r > 0) != (base_exp > 0):
-                    symbol_flips.append(sym)
-                _log(f"drop-one-symbol {sym}: expectancy_r={r} flip={bool(symbol_flips)}")
-            dropone_symbol_clean = not symbol_flips
-        except (TypeError, NotImplementedError) as exc:
-            _log(f"drop-one-symbol unsupported: {exc}")
-        stress_results["dropone_symbol_clean"] = float(dropone_symbol_clean)
-        stress_results["dropone_symbol_min_exp"] = (
-            min(dropone_symbol_detail.values())
-            if dropone_symbol_detail else float("nan")
-        )
-
-        # drop-one-fold: computed from ALREADY-PRODUCED fold results (no new
-        # engine runs); clean iff no fold removal flips the aggregate sign.
-        fold_pnls: dict[str, float] = dict(execution["metrics"]["fold_pnls"])
-        total_fold_pnl = math_fsum(fold_pnls.values())
-        fold_flips = [
-            fid for fid in fold_pnls
-            if (math_fsum(v for k, v in fold_pnls.items() if k != fid) > 0)
-            != (total_fold_pnl > 0)
-        ]
-        stress_results["dropone_fold_clean"] = float(not fold_flips)
-        if fold_flips:
-            _log(f"drop-one-fold sign flip on folds: {fold_flips}")
+    _log(f"base XG3 verdict={base_xg3_verdict} "
+         f"(stress execution is unconditional and diagnostic-only)")
+    stress_report = execute_stress_suite(
+        engine, execution=execution,
+        traded_symbols=identity["traded_symbols"],
+        benchmark_symbol=identity["benchmark_symbol"],
+        window_start=window_start, window_end=window_end,
+        lookback_days=args.lookback_days, reverse=bool(args.reverse),
+        folds=args.folds, base_edge_verdict=base_xg3_verdict, log=_log,
+    )
 
     # ---- 5. gates + scorecard --------------------------------------------- #
     gate_inputs = build_gate_inputs(
         execution, declared_symbols=identity["traded_symbols"],
         required_days=scored_days,
         warmup_boundaries=warmup_boundaries,
-        stress_results=stress_results or None,
+        stress_report=stress_report,
     )
     gate_rows = evaluate_xgates(gate_inputs)
     _xg5_result, xg5_details = evaluate_xg5(
@@ -1184,6 +1865,19 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     write_jsonl(exp_dir / "orders.jsonl", execution["orders"])
     write_jsonl(exp_dir / "positions.jsonl", execution["closed_legs"])
     write_jsonl(exp_dir / "portfolio_ledger.jsonl", execution["portfolio_ledger"])
+    # V6P N06 (PLAN 6.3 item 6): engine-native settlement/accounting set.
+    write_jsonl(exp_dir / "funding_cashflows.jsonl", execution["funding_cashflows"])
+    write_jsonl(exp_dir / "terminal_positions.jsonl", execution["terminal_positions"])
+    write_jsonl(exp_dir / "exposure_control.jsonl", execution["exposure_control"])
+    write_json(exp_dir / "accounting_reconciliation.json",
+               build_v6p_accounting_payload(
+                   execution, experiment_id=args.experiment_id,
+                   matrix_id=args.matrix_id))
+    write_json(exp_dir / "commission_slippage.json",
+               execution["commission_slippage"])
+    # V6P N10: family-aware stress evidence persisted even when the base
+    # edge fails (diagnostic-only; never rescue logic).
+    write_json(exp_dir / "stress_report.json", stress_report)
 
     canonical_metrics = {
         "schema_version": 4,
@@ -1220,6 +1914,10 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         "schema_version": 4,
         "experiment_id": args.experiment_id,
         "matrix_id": args.matrix_id,
+        # V6P N07: measured XG1 counters recomputed from the assembled
+        # execution-ledger rows (external-reader recheck support).
+        "xg1_measured_counters": count_execution_evidence(
+            gate_inputs["execution_ledger_rows"]).to_dict(),
         "gates": [
             {"gate": row.gate.value if hasattr(row.gate, "value") else str(row.gate),
              "verdict": row.verdict.value, "reasons": list(row.reasons)}
@@ -1287,10 +1985,138 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     return 0
 
 
-def _stress_expectancy_r(
+# --------------------------------------------------------------------------- #
+# V6P N10 unconditional family-aware stress suite (PLAN section 6.4; owner A5)
+# --------------------------------------------------------------------------- #
+#: Family-aware stress metric set -- NO expectancy-R anywhere (this
+#: shared-capital portfolio family has no R normalization).
+STRESS_METRIC_KEYS = (
+    "canonical_pnl",
+    "profit_factor",
+    "funding_pnl",
+    "fold_returns",
+    "mdd_continuous",
+    "max_gross_exposure",
+)
+
+
+def _pf_from_legs(legs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    pnl_values = [
+        float(leg.get("canonical_pnl", leg.get("pnl", 0.0)) or 0.0)
+        for leg in legs
+    ]
+    gross_profit = math_fsum(v for v in pnl_values if v > 0)
+    gross_loss = abs(math_fsum(v for v in pnl_values if v < 0))
+    if not pnl_values:
+        return {"profit_factor": None, "pf_reason": "no_trades"}
+    if gross_loss > 0:
+        return {"profit_factor": gross_profit / gross_loss, "pf_reason": None}
+    return {"profit_factor": None, "pf_reason": "no_losing_positions"}
+
+
+def family_metrics(execution: Mapping[str, Any]) -> dict[str, Any]:
+    """Canonical family metrics for one (base or stressed) execution."""
+    metrics = execution["metrics"]
+    pf_block = metrics.get("pf_position_level") or {}
+    return {
+        "canonical_pnl": float(metrics["total_pnl"]),
+        "profit_factor": pf_block.get("profit_factor"),
+        "pf_reason": pf_block.get("pf_reason"),
+        "funding_pnl": math_fsum(
+            float(row.get("cashflow") or 0.0)
+            for row in (execution.get("funding_cashflows") or [])
+        ),
+        "fold_returns": dict(metrics.get("fold_returns") or {}),
+        "mdd_continuous": metrics.get("max_drawdown_fraction"),
+        "max_gross_exposure": metrics.get("gross_max"),
+    }
+
+
+def _drop_one_fold_metrics(
+    execution: Mapping[str, Any], fold_id: str
+) -> dict[str, Any]:
+    """Family metrics recomputed from base rows EXCLUDING one fold's rows.
+
+    Fold membership uses the runner-tagged ``experiment_fold`` on closed
+    legs / funding rows. Path-dependent quantities (continuous MDD, peak
+    gross exposure) are NOT recomputable from a filtered row population and
+    stay honestly null instead of being faked.
+    """
+    legs = [
+        leg for leg in (execution.get("closed_legs") or [])
+        if leg.get("experiment_fold") != fold_id
+    ]
+    funding_rows = [
+        row for row in (execution.get("funding_cashflows") or [])
+        if row.get("experiment_fold", row.get("fold_id")) != fold_id
+    ]
+    fold_returns = {
+        fid: ret for fid, ret in
+        ((execution.get("metrics") or {}).get("fold_returns") or {}).items()
+        if fid != fold_id
+    }
+    removed = [
+        float(leg.get("canonical_pnl", leg.get("pnl", 0.0)) or 0.0)
+        for leg in (execution.get("closed_legs") or [])
+        if leg.get("experiment_fold") == fold_id
+    ]
+    result = dict(_pf_from_legs(legs))
+    result.update({
+        "canonical_pnl": math_fsum(
+            float(leg.get("canonical_pnl", leg.get("pnl", 0.0)) or 0.0)
+            for leg in legs
+        ),
+        "removed_fold_canonical_pnl": math_fsum(removed),
+        "funding_pnl": math_fsum(
+            float(row.get("cashflow") or 0.0) for row in funding_rows
+        ),
+        "fold_returns": fold_returns,
+        "mdd_continuous": None,
+        "mdd_reason": "path_dependent_not_recomputable_after_fold_removal",
+        "max_gross_exposure": None,
+        "exposure_reason": "path_dependent_not_recomputable_after_fold_removal",
+    })
+    return result
+
+
+def derive_dropone_clean_flags(stress_report: Mapping[str, Any]) -> dict[str, bool | None]:
+    """Drop-one cleanliness from CANONICAL PnL sign flips (never expectancy_r).
+
+    ``None`` means the variants never executed (absence of evidence is not a
+    negative result); otherwise clean iff no dropped variant flips the sign
+    of canonical PnL relative to the baseline.
+    """
+    baseline = stress_report.get("baseline") or {}
+    base_pnl = baseline.get("canonical_pnl")
+    variants = stress_report.get("variants") or {}
+
+    def _clean(prefix: str) -> bool | None:
+        names = [name for name in variants if name.startswith(prefix)]
+        if not names or base_pnl is None:
+            return None
+        flips = [
+            name for name in names
+            if isinstance(variants[name], Mapping)
+            and variants[name].get("canonical_pnl") is not None
+            and (float(variants[name]["canonical_pnl"]) > 0)
+            != (float(base_pnl) > 0)
+        ]
+        incomplete = any(
+            not isinstance(variants[name], Mapping)
+            or variants[name].get("canonical_pnl") is None
+            for name in names
+        )
+        return None if incomplete else not flips
+
+    return {
+        "dropone_symbol_clean": _clean("drop_one_symbol:"),
+        "dropone_fold_clean": _clean("drop_one_fold:"),
+    }
+
+
+def run_stressed_execution(
     engine: dict[str, Callable],
     *,
-    execution: dict[str, Any],
     traded_symbols: Sequence[str],
     benchmark_symbol: str,
     window_start: datetime,
@@ -1302,9 +2128,9 @@ def _stress_expectancy_r(
     adverse_ticks: int = 0,
     extra_delay_events: int = 0,
     exclude_symbols: Sequence[str] | None = None,
-) -> float:
-    """Re-run the SAME schedule under a stress cost model; return expectancy-R."""
-    stressed = execute_experiment(
+) -> dict[str, Any]:
+    """Re-run the SAME schedule under a stressed cost/universe model."""
+    return execute_experiment(
         engine={**engine,
                 "run_shared_capital_backtest": _wrap_stress(
                     engine["run_shared_capital_backtest"],
@@ -1318,17 +2144,103 @@ def _stress_expectancy_r(
         window_start=window_start, window_end=window_end,
         lookback_days=lookback_days, reverse=reverse, folds=folds,
     )
-    value = stressed["metrics"]["expectancy_r"]
-    return float(value) if value is not None else float("-inf")
+
+
+def execute_stress_suite(
+    engine: dict[str, Callable],
+    *,
+    execution: dict[str, Any],
+    traded_symbols: Sequence[str],
+    benchmark_symbol: str,
+    window_start: datetime,
+    window_end: datetime,
+    lookback_days: int,
+    reverse: bool,
+    folds: int,
+    base_edge_verdict: str | None = None,
+    log: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Execute EVERY variant family UNCONDITIONALLY (V6P N10; C13/C14).
+
+    Fee x1.5, adverse-two-ticks, extra-one-event-delay, drop-one-symbol
+    (each traded symbol) and drop-one-fold all run regardless of the base
+    XG3 verdict or reverse-control status; each stressed rerun is measured
+    with the family-aware metric set (canonical_pnl, profit_factor,
+    funding_pnl, fold_returns, mdd_continuous, max_gross_exposure) -- never
+    expectancy_r. The report is DIAGNOSTIC evidence: a negative base edge
+    stays REJECTED and stress results can never rescue it.
+    """
+
+    def _log(message: str) -> None:
+        if log is not None:
+            log(message)
+
+    report: dict[str, Any] = {
+        "schema_version": 1,
+        "artifact": "stress_report",
+        "executed_unconditionally": True,
+        "base_edge_verdict": base_edge_verdict,
+        "diagnostic_only": (
+            "stress evidence is diagnostic; a negative base edge remains "
+            "REJECTED regardless of variant outcomes"
+        ),
+        "metric_set": list(STRESS_METRIC_KEYS),
+        "expectancy_r_note": (
+            "MISSING_R_NORMALIZATION: expectancy_r deliberately absent from "
+            "the stress metric set for this portfolio family"
+        ),
+        "baseline": family_metrics(execution),
+        "variants": {},
+    }
+
+    variants: tuple[tuple[str, dict[str, Any]], ...] = (
+        ("fee_x1_5", {"fee_multiplier": 1.5}),
+        ("adverse_two_ticks", {"adverse_ticks": 2}),
+        ("extra_one_event_delay", {"extra_delay_events": 1}),
+    ) + tuple(
+        (f"drop_one_symbol:{sym}", {"exclude_symbols": [sym]})
+        for sym in traded_symbols
+    )
+    for name, kwargs in variants:
+        try:
+            stressed = run_stressed_execution(
+                engine,
+                traded_symbols=traded_symbols,
+                benchmark_symbol=benchmark_symbol,
+                window_start=window_start, window_end=window_end,
+                lookback_days=lookback_days, reverse=reverse, folds=folds,
+                **kwargs,
+            )
+        except (TypeError, ValueError) as exc:
+            # Per-variant degradation: an unsupported stress kwarg records
+            # the failure but never silently cancels the remaining variants.
+            report["variants"][name] = {"executed": False, "error": str(exc)}
+            _log(f"stress {name} FAILED: {exc}")
+            continue
+        entry = {"executed": True, **kwargs}
+        entry.update(family_metrics(stressed))
+        report["variants"][name] = entry
+        _log(f"stress {name}: canonical_pnl={entry['canonical_pnl']}")
+
+    for fold_id in (execution["metrics"].get("fold_pnls") or {}):
+        entry = {"executed": True, "dropped_fold": fold_id}
+        entry.update(_drop_one_fold_metrics(execution, fold_id))
+        report["variants"][f"drop_one_fold:{fold_id}"] = entry
+        _log(f"stress drop_one_fold:{fold_id}: "
+             f"canonical_pnl={entry['canonical_pnl']}")
+    return report
 
 
 def _wrap_stress(fn: Callable, *, fee_multiplier: float, adverse_ticks: int,
                  extra_delay_events: int,
                  exclude_symbols: Sequence[str] | None = None) -> Callable:
     def wrapped(**kwargs):
-        kwargs.setdefault("fee_multiplier", fee_multiplier)
-        kwargs.setdefault("adverse_ticks", adverse_ticks)
-        kwargs.setdefault("extra_delay_events", extra_delay_events)
+        # Stress values OVERRIDE base kwargs unconditionally: execute_experiment
+        # always emits its own fee=1.0/ticks=0/delay=0, so a setdefault here
+        # would silently no-op every cost stress.
+        kwargs["fee_multiplier"] = fee_multiplier
+        kwargs["adverse_ticks"] = adverse_ticks
+        kwargs["extra_delay_events"] = extra_delay_events
         if exclude_symbols:
             kwargs["exclude_symbols"] = list(exclude_symbols)
         return fn(**kwargs)
@@ -1443,6 +2355,8 @@ def run_reproduce(args: argparse.Namespace) -> int:
         yaml.safe_dump(rerun_manifest, sort_keys=False), encoding="utf-8")
 
     env = dict(os.environ)
+    if not env.get(SYNTHETIC_PANEL_ENV) and source_raw.get("synthetic_panel_path"):
+        env[SYNTHETIC_PANEL_ENV] = str(source_raw["synthetic_panel_path"])
     worker = subprocess.run(
         rerun_manifest["worker_command"],
         cwd=str(Path(__file__).resolve().parents[1]),
@@ -1488,8 +2402,25 @@ def run_reproduce(args: argparse.Namespace) -> int:
         return abs(float(a) - float(b)) <= METRIC_MATCH_TOLERANCE * max(
             1.0, abs(float(a)), abs(float(b)))
 
-    beta_match = metric_close("max_drawdown_fraction") and True
-    checks = {
+    # ---- V6P N11 FULL-SURFACE comparison ---------------------------------- #
+    #: (component name, artifact filename) digest pairs -- every scored
+    #: surface must match for ``all_match`` (exact digests; deterministic).
+    COMPONENT_ARTIFACTS: tuple[tuple[str, str], ...] = (
+        ("signals", "signal_ranks.jsonl"),
+        ("orders", "orders.jsonl"),
+        ("positions", "positions.jsonl"),
+        ("ledger", "portfolio_ledger.jsonl"),
+        ("funding_cashflows", "funding_cashflows.jsonl"),
+        ("terminal_positions", "terminal_positions.jsonl"),
+        ("exposure_control", "exposure_control.jsonl"),
+        ("accounting_reconciliation", "accounting_reconciliation.json"),
+        ("commission_slippage", "commission_slippage.json"),
+        ("stress_report", "stress_report.json"),
+        ("canonical_metrics", "canonical_metrics.json"),
+    )
+    rerun_art_dir = rerun_dir / "rerun_artifacts"
+    components: dict[str, dict[str, Any]] = {}
+    checks: dict[str, bool] = {
         "orders_digest_match": orders_match,
         "positions_digest_match": positions_match,
         "pnl_match": pnl_match,
@@ -1497,18 +2428,135 @@ def run_reproduce(args: argparse.Namespace) -> int:
         "turnover_match": metric_close("turnover_total"),
         "mdd_match": metric_close("max_drawdown_fraction"),
     }
+
+    def _sha(path: Path) -> str | None:
+        return sha256_file(path) if path.is_file() else None
+
+    for component, filename in COMPONENT_ARTIFACTS:
+        src_path = source_dir / filename
+        dst_path = rerun_art_dir / filename
+        src_digest, dst_digest = _sha(src_path), _sha(dst_path)
+        if src_digest is None or dst_digest is None:
+            match = False
+            reason = ("missing_source_artifact" if src_digest is None
+                      else "missing_rerun_artifact")
+        else:
+            match = src_digest == dst_digest
+            reason = None if match else "digest_mismatch"
+        checks[f"{component}_match"] = match
+        components[component] = {
+            "filename": filename,
+            "match": match,
+            **({"reason": reason} if reason else {}),
+            "source_sha256": src_digest,
+            "rerun_sha256": dst_digest,
+        }
+
+    # Canonical metric detail: fold returns compared fold-by-fold within the
+    # frozen tolerance (the byte-level digest above must ALSO hold).
+    source_fold_returns = source_core.get("fold_returns") or {}
+    rerun_fold_returns = rerun_core.get("fold_returns") or {}
+
+    def _fold_returns_close() -> bool:
+        if set(map(str, source_fold_returns)) != set(map(str, rerun_fold_returns)):
+            return False
+        return all(metric_close_pair(source_fold_returns[k],
+                                     rerun_fold_returns[str(k)])
+                   for k in source_fold_returns)
+
+    def metric_close_pair(a: Any, b: Any) -> bool:
+        if a is None or b is None:
+            return a == b
+        return abs(float(a) - float(b)) <= METRIC_MATCH_TOLERANCE * max(
+            1.0, abs(float(a)), abs(float(b)))
+
+    checks["fold_returns_match"] = _fold_returns_close()
+    components["fold_returns"] = {"match": checks["fold_returns_match"],
+                                  "source": source_fold_returns,
+                                  "rerun": rerun_fold_returns}
+
+    # Gate verdicts MAP (gate id -> verdict string), not free-text reasons.
+    try:
+        source_gate_doc = json.loads(
+            (source_dir / "gate_result.json").read_text(encoding="utf-8"))
+        source_gate_map = {
+            str(row.get("gate")): str(row.get("verdict"))
+            for row in (source_gate_doc.get("gates") or [])
+        }
+        gate_reason = None
+    except (OSError, ValueError):
+        source_gate_map = {}
+        gate_reason = "missing_or_unreadable_source_gate_result"
+    rerun_gate_map = {
+        str(k): str(v) for k, v in (rerun_core.get("gate_verdicts") or {}).items()
+    }
+    checks["gate_result_verdicts_match"] = (
+        source_gate_map == rerun_gate_map and bool(source_gate_map))
+    components["gate_result_verdicts"] = {
+        "match": checks["gate_result_verdicts_match"],
+        **({"reason": gate_reason} if gate_reason else {}),
+        "source": source_gate_map,
+        "rerun": rerun_gate_map,
+    }
+
+    try:
+        source_scorecard_doc = json.loads(
+            (source_dir / "scorecard.json").read_text(encoding="utf-8"))
+        scorecard_total_source = source_scorecard_doc.get("total")
+        scorecard_reason = None
+    except (OSError, ValueError):
+        scorecard_total_source = None
+        scorecard_reason = "missing_or_unreadable_source_scorecard"
+    scorecard_total_rerun = rerun_core.get("scorecard_total")
+    checks["scorecard_totals_match"] = (
+        scorecard_reason is None
+        and scorecard_total_source == scorecard_total_rerun)
+    components["scorecard_totals"] = {
+        "match": checks["scorecard_totals_match"],
+        **({"reason": scorecard_reason} if scorecard_reason else {}),
+        "source": scorecard_total_source,
+        "rerun": scorecard_total_rerun,
+    }
+
+    # Final hash manifests: the SOURCE manifest must verify clean under an
+    # external reader AND its recorded values must equal the recomputed
+    # digests of every rerun component artifact.
+    source_hash_reasons = verify_artifact_hashes(source_dir)
+    try:
+        source_manifest = json.loads(
+            (source_dir / "artifact_hashes.json").read_text(encoding="utf-8")
+        ).get("hashes") or {}
+    except (OSError, ValueError):
+        source_manifest = {}
+    common_ok = all(
+        source_manifest.get(filename) == _sha(rerun_art_dir / filename)
+        for _component, filename in COMPONENT_ARTIFACTS
+        if (rerun_art_dir / filename).is_file()
+    )
+    checks["artifact_hashes_match"] = (
+        not source_hash_reasons and bool(source_manifest) and common_ok)
+    components["artifact_hashes"] = {
+        "match": checks["artifact_hashes_match"],
+        "source_verify_reasons": source_hash_reasons,
+        "manifest_common_values_match": common_ok,
+    }
+
     all_match = all(checks.values())
     comparison = {
-        "schema_version": 4,
+        "schema_version": 5,
         "verify_id": verify_id,
         "source_experiment_id": rerun_manifest["source_experiment_id"],
         "matrix_id": source_raw.get("matrix_id"),
+        "comparison_surface": "full_v6p_n11",
         "checks": checks,
+        "components": components,
         "values": {
             "source": {k: source_core.get(k) for k in
-                       ("total_pnl", "beta", "turnover_total", "max_drawdown_fraction")},
+                       ("total_pnl", "beta", "turnover_total",
+                        "max_drawdown_fraction")},
             "rerun": {k: rerun_core.get(k) for k in
-                      ("total_pnl", "beta", "turnover_total", "max_drawdown_fraction")},
+                      ("total_pnl", "beta", "turnover_total",
+                       "max_drawdown_fraction")},
         },
         "tolerances": rerun_manifest["tolerances"],
         "rerun_process_separate": True,
@@ -1580,7 +2628,14 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
     benchmark = str((candidate_doc.get("universe") or {}).get("benchmark_symbol", BENCHMARK_SYMBOL))
 
     try:
-        engine = load_engine()
+        synthetic_panel = (
+            os.environ.get(SYNTHETIC_PANEL_ENV, "").strip()
+            or (str(raw.get("synthetic_panel_path")) if raw.get("synthetic_panel_path") else None)
+        )
+        if synthetic_panel:
+            engine = load_synthetic_panel_engine(synthetic_panel)
+        else:
+            engine = load_engine()
     except (RunnerError, ImportError) as exc:
         print(f"ABORT worker engine unavailable: {exc}", file=sys.stderr)
         return EXIT_DEPENDENCY_MISSING
@@ -1595,10 +2650,72 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
         folds=int(manifest.outer_folds or 3),
     )
     metrics = execution["metrics"]
+
+    # V6P N11: the rerun mirrors the FULL scored surface -- same unconditional
+    # stress suite, same gate/scorecard assembly -- so every component is
+    # digest-comparable against the source artifacts.
+    warmup_days = int(raw.get("lookback_days") or 3) + WARMUP_PADDING_DAYS
+    warmup_boundaries = {
+        "warmup_start": iso(window_start - timedelta(days=warmup_days)),
+        "scored_start": iso(window_start),
+        "scored_end": iso(window_end),
+    }
+    scored_days = max(1, int((window_end - window_start).total_seconds() // 86400))
+    declared_traded = [str(s) for s in (traded or UNIVERSE_SYMBOLS_DEFAULT)]
+    base_rows = evaluate_xgates(build_gate_inputs(
+        execution, declared_symbols=declared_traded,
+        required_days=scored_days, warmup_boundaries=warmup_boundaries,
+    ))
+    base_xg3_verdict = next(
+        (row.verdict.value for row in base_rows
+         if row.gate == XGateId.XG3_STAGE_A_PORTFOLIO),
+        None,
+    )
+    stress_report = execute_stress_suite(
+        engine, execution=execution,
+        traded_symbols=declared_traded,
+        benchmark_symbol=benchmark,
+        window_start=window_start, window_end=window_end,
+        lookback_days=int(raw.get("lookback_days") or 3),
+        reverse=bool(raw.get("reverse")),
+        folds=int(manifest.outer_folds or 3),
+        base_edge_verdict=base_xg3_verdict,
+    )
+    gate_rows = evaluate_xgates(build_gate_inputs(
+        execution, declared_symbols=declared_traded,
+        required_days=scored_days, warmup_boundaries=warmup_boundaries,
+        stress_report=stress_report,
+    ))
+    scorecard = compute_portfolio_scorecard(gate_rows)
+
     out_dir = Path(args.rerun_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    experiment_id = str(raw.get("experiment_id") or out_dir.parent.name)
+    matrix_id = str(raw.get("matrix_id") or "")
+    write_jsonl(out_dir / "signal_ranks.jsonl", execution["signal_ranks"])
     write_jsonl(out_dir / "orders.jsonl", execution["orders"])
     write_jsonl(out_dir / "positions.jsonl", execution["closed_legs"])
+    write_jsonl(out_dir / "portfolio_ledger.jsonl", execution["portfolio_ledger"])
+    # V6P N06: same settlement/accounting set as the scored path so A5 can
+    # compare them across reproduction.
+    write_jsonl(out_dir / "funding_cashflows.jsonl", execution["funding_cashflows"])
+    write_jsonl(out_dir / "terminal_positions.jsonl", execution["terminal_positions"])
+    write_jsonl(out_dir / "exposure_control.jsonl", execution["exposure_control"])
+    write_json(out_dir / "accounting_reconciliation.json",
+               build_v6p_accounting_payload(
+                   execution, experiment_id=experiment_id,
+                   matrix_id=matrix_id))
+    write_json(out_dir / "commission_slippage.json",
+               execution["commission_slippage"])
+    write_json(out_dir / "stress_report.json", stress_report)
+    write_json(out_dir / "canonical_metrics.json", {
+        "schema_version": 4,
+        "experiment_id": experiment_id,
+        "matrix_id": matrix_id,
+        **metrics,
+        "orders_digest": rows_digest(execution["orders"]),
+        "positions_digest": rows_digest(execution["closed_legs"]),
+    })
     write_json(out_dir / "core_result.json", {
         "orders_digest": rows_digest(execution["orders"]),
         "positions_digest": rows_digest(execution["closed_legs"]),
@@ -1606,8 +2723,13 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
         "beta": metrics["beta"],
         "turnover_total": metrics["turnover_total"],
         "max_drawdown_fraction": metrics["max_drawdown_fraction"],
+        "fold_returns": metrics["fold_returns"],
+        "fold_pnls": metrics["fold_pnls"],
         "legs_closed": metrics["legs_closed"],
         "rebalances_scored": metrics["rebalances_scored"],
+        # V6P N11 full-surface components:
+        "gate_verdicts": xgate_verdict_map(gate_rows),
+        "scorecard_total": scorecard["total"],
     })
     return 0
 
@@ -1712,6 +2834,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--declared-family-trials", type=int, default=4)
     parser.add_argument("--spike-positives", default=None,
                         help='JSON mapping lookback->bool, e.g. \'{"3": true, "7": null, "14": null}\'')
+    parser.add_argument("--synthetic-panel", default=None, metavar="SPEC_JSON",
+                        help="deterministic synthetic panel spec (golden "
+                             "validation only; bypasses catalog + funding "
+                             f"bundles; env {SYNTHETIC_PANEL_ENV} also honored)")
     parser.add_argument("--reproduce", metavar="SOURCE_EXP_DIR", default=None)
     parser.add_argument("--verify-id", default=None)
     parser.add_argument("--rerun-worker", action="store_true", help=argparse.SUPPRESS)
