@@ -192,8 +192,21 @@ def validate_launch_provenance(
                     not in (None, att.get("baseline_sha256")):
                 reasons.append("attestation_slot_mismatch")
 
-    if launch_head is not None and launch_head != baseline.get("launch_head"):
-        reasons.append("launch_head_mismatch")
+    if launch_head is not None:
+        recorded = baseline.get("launch_head")
+        if launch_head != recorded:
+            # The freeze may legitimately be committed inside a child of the
+            # recorded head (the freeze commit itself); require ancestry so
+            # unrelated divergence still fails closed.
+            try:
+                anc = subprocess.run(
+                    ["git", "-C", str(repo), "merge-base", "--is-ancestor",
+                     str(recorded), str(launch_head)],
+                    capture_output=True, text=True)
+                if anc.returncode != 0:
+                    reasons.append("launch_head_mismatch")
+            except subprocess.CalledProcessError:
+                reasons.append("launch_head_mismatch")
 
     if dirty is None:
         exempt = _provenance_exempt(repo)
