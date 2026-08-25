@@ -1,5 +1,26 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
+
+- **V6P PASS** — engine/data/PIT/accounting validation sprint: 20/20 gates,
+  A7 independent audit PASS (0 unresolved HIGH/CRITICAL), verdict
+  `V6P_PASS_V6_AUTHORIZED`.
+- **V6 REJECTED (family)** — `V6P_PASS_V6_CANDIDATE_FAIL`, 4/4 scored trials
+  consumed, 0 candidates locked. Per-trial: CARRY-1D −5,679.96 PF 0.978
+  mechanism_failure; CARRY-3D +2,076.03 PF 1.0116 edge_too_weak; CARRY-7D
+  +20,580.87 PF 1.157 rejected on top-positive-fold concentration 51.66%>50%
+  (MDD actually 8.84% PASS); REVERSE-3D −20,102.83 failed as designed
+  (negative control). Terminal HEAD at closure `fbd2e9d` (clean tree).
+  Authoritative detail + checksums:
+  [v6-closure-addendum-20260825.md](evidence/v6-closure-addendum-20260825.md).
+- **V7 PENDING** — 0/4 preregistered trials (`XSECT-FUND-PRICE-DIV-1D/3D/7D`
+  normal + `REV-3D` reverse control) run or authorized. Status is strictly
+  NOT_RUN / NOT_AUTHORIZED. Launch requires the V7P decision-surface repair
+  and 18/18 prelaunch gates including A7 attestation (PLAN.md §7). Sprint V7P
+  runs from bootstrap `dd026c0` across worktrees A2–A7.
+- **S1 UNTOUCHED** — holdout never opened, observed, backfilled or analyzed;
+  no paper/live trading; live money UNCHANGED_DISABLED.
+
 ## Destination
 
 Produce a frozen, reproducible multi-asset research specification that is
