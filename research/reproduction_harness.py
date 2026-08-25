@@ -5,7 +5,10 @@ a scored experiment directory against its independent rerun directory across
 the FULL surface required by PLAN section 6.6:
 
 * code hash -- source ``launch_manifest.yaml`` ``git_commit_at_launch`` MUST
-  equal the primary repository's current HEAD (``git rev-parse HEAD``);
+  be an ANCESTOR of the primary repository's current HEAD
+  (``git merge-base --is-ancestor <launch> <HEAD>``), so a rerun executed at
+  a descendant integration commit still verifies while unrelated divergence
+  fails closed;
 * config/data hashes -- SOURCE self-consistency: recomputed SHA-256 of the
   source experiment's own ``frozen/*`` files vs the digests recorded in its
   launch manifest (the rerun-side manifest carries no provenance fields and
@@ -18,7 +21,12 @@ the FULL surface required by PLAN section 6.6:
 * exact fold-PnL map equality;
 * equity curve (reconstructed from the portfolio ledger) length + last-value
   tolerance and STRICT whole-curve digest equality;
-* strict ``artifact_hashes.json`` manifest equality.
+* SOURCE ``artifact_hashes.json`` replay: every ``rel -> sha256`` entry of
+  the source manifest must equal the recomputed SHA-256 of
+  ``<rerun_artifacts>/<rel>``; a rerun-side file missing from that replay
+  fails closed naming the rel, while extra rerun files the manifest does not
+  list (e.g. ``core_result.json``) are ignored -- the ``--reproduce`` worker
+  by design emits no ``artifact_hashes.json`` of its own.
 
 ``all_match`` is true only when every surface matches; every failing surface
 carries a machine-readable reason.  The harness never rewrites evidence and
@@ -140,8 +148,9 @@ _TOLERANCE_RULES: dict[str, str] = {
     ),
     "fold_pnls": "exact map equality (no tolerance)",
     "artifact_manifest": (
-        "artifact_hashes.json 'hashes' maps strictly equal; missing or "
-        "unreadable manifests fail closed"
+        "each SOURCE artifact_hashes.json 'hashes' entry is recomputed "
+        "against the rerun artifacts; extra rerun-side files are ignored; "
+        "missing/unreadable source manifest or rerun artifact fails closed"
     ),
 }
 
@@ -253,6 +262,28 @@ def _resolve_repo_head(primary_repo: str | Path) -> tuple[str | None, str | None
     if not head:
         return None, "git_rev_parse:empty_output"
     return head, None
+
+
+def _commit_is_ancestor(primary_repo: str | Path, commit: str,
+                        head: str) -> tuple[bool | None, str | None]:
+    """Ancestry probe: ``git merge-base --is-ancestor <commit> <head>``.
+
+    Returns ``(True, None)`` when ``commit`` is an ancestor of (or equal to)
+    ``head``, ``(False, None)`` when git answers NO (exit code 1), and
+    ``(None, reason)`` when the probe itself fails (fail-closed).
+    """
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(primary_repo), "merge-base", "--is-ancestor",
+             str(commit), str(head)],
+            capture_output=True, text=True, timeout=60, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, f"git_merge_base:error:{type(exc).__name__}"
+    if completed.returncode == 0:
+        return True, None
+    if completed.returncode == 1:
+        return False, None
+    return None, f"git_merge_base:failed:{completed.returncode}"
 
 
 # --------------------------------------------------------------------------- #
@@ -396,13 +427,18 @@ def compare_trials(source_exp_dir: str | Path,
 
     Provenance is anchored to AUTHORITATIVE sources only (never to the
     rerun-side manifest): ``code_hash_match`` requires the source launch
-    manifest's ``git_commit_at_launch`` to equal the primary repository's
-    current HEAD, and ``config_hashes_match``/``data_hashes_match`` require
-    the source experiment's own frozen files to hash to the digests its
-    launch manifest recorded (self-consistency of the source being
-    reproduced).  ``primary_repo`` (default: cwd) supplies the repository for
-    the HEAD lookup; ``git_head`` overrides resolution entirely (hermetic
-    test seam -- production callers must not pass it).
+    manifest's ``git_commit_at_launch`` to be an ancestor of the primary
+    repository's current HEAD (``git merge-base --is-ancestor``; a rerun at a
+    descendant integration commit verifies, unrelated divergence fails
+    closed), ``config_hashes_match``/``data_hashes_match`` require the source
+    experiment's own frozen files to hash to the digests its launch manifest
+    recorded, and ``artifact_manifest_match`` replays every entry of the
+    SOURCE ``artifact_hashes.json`` against the rerun artifacts (missing
+    rerun files fail closed naming the rel; extra rerun files are ignored).
+    ``primary_repo`` (default: cwd) supplies the repository for the HEAD and
+    ancestry lookups; ``git_head`` overrides HEAD resolution entirely and
+    emulates the ancestry rule by direct equality (hermetic test seam --
+    production callers must not pass it).
     """
     tol = dict(FROZEN_TOLERANCES if tolerances is None else tolerances)
     source_dir = Path(source_exp_dir)
@@ -440,10 +476,13 @@ def compare_trials(source_exp_dir: str | Path,
             "error": missing,
         }
 
-    # -- 1. code hash: source launch commit == primary repo HEAD -------------
+    # -- 1. code hash: source launch commit ancestor of primary repo HEAD ----
     # Authoritative anchor: the SOURCE launch manifest's git_commit_at_launch
-    # must equal the primary repository's CURRENT HEAD.  The rerun-side
-    # manifest carries no provenance fields and none are expected from it.
+    # must be an ANCESTOR of the primary repository's current HEAD
+    # (merge-base --is-ancestor).  A rerun worker executed at a descendant
+    # integration commit therefore verifies, while unrelated divergence still
+    # fails closed.  The rerun-side manifest carries no provenance fields and
+    # none are expected from it.
     source_manifest, _source_manifest_reason = _load_launch_manifest(source_dir)
     source_commit = (source_manifest or {}).get("git_commit_at_launch")
     head_reason: str | None = None
@@ -452,16 +491,28 @@ def compare_trials(source_exp_dir: str | Path,
     else:
         resolved_head, head_reason = _resolve_repo_head(
             Path(primary_repo) if primary_repo is not None else Path.cwd())
+    code_matched = False
     if source_manifest is None or source_commit in (None, ""):
         code_reason = ("launch_manifest.yaml:missing" if source_manifest is None
                        else "git_commit_at_launch:missing_field")
     elif resolved_head is None:
         code_reason = f"git_head_unresolved:{head_reason}"
-    elif str(source_commit) != str(resolved_head):
-        code_reason = "git_commit_at_launch:mismatch_vs_head"
+    elif git_head:
+        # Hermetic test seam: no trustworthy repo is available for a real
+        # merge-base probe, so the caller-vouched head emulates the rule by
+        # direct equality (the degenerate ancestor case).  Production callers
+        # must not pass git_head.
+        code_matched = str(source_commit) == resolved_head
+        code_reason = None if code_matched else "git_commit_at_launch:not_ancestor_of_head"
     else:
-        code_reason = None
-    record("code_hash_match", code_reason is None, reason=code_reason,
+        ancestry, probe_reason = _commit_is_ancestor(
+            Path(primary_repo) if primary_repo is not None else Path.cwd(),
+            str(source_commit), resolved_head)
+        if ancestry is True:
+            code_matched, code_reason = True, None
+        else:
+            code_reason = probe_reason or "git_commit_at_launch:not_ancestor_of_head"
+    record("code_hash_match", code_matched, reason=code_reason,
            source=str(source_commit) if source_commit else None,
            head=str(resolved_head) if resolved_head else None)
 
@@ -630,27 +681,49 @@ def compare_trials(source_exp_dir: str | Path,
         record("equity_curve_digest_match", bool(dig_ok),
                reason=None if dig_ok else "equity_curve_digest:mismatch")
 
-    # -- 9. artifact hash manifest (strict equality) ---------------------------
+    # -- 9. SOURCE artifact manifest replayed against the rerun artifacts -----
+    # The --reproduce worker emits no artifact_hashes.json of its own, so the
+    # SOURCE manifest is authoritative: every listed rel must recompute to
+    # the recorded digest inside the rerun dir; a missing/unreadable rerun
+    # file fails closed naming that rel; extra unlisted rerun files (e.g.
+    # core_result.json) are ignored.
     manifest_src = _read_json(source_dir / "artifact_hashes.json")
-    manifest_rer = _read_json(rerun_dir / "artifact_hashes.json")
-    if not isinstance(manifest_src, Mapping) or "hashes" not in (manifest_src or {}):
+    hashes_src = (manifest_src.get("hashes")
+                  if isinstance(manifest_src, Mapping) else None)
+    if not isinstance(hashes_src, Mapping) or not hashes_src:
         record("artifact_manifest_match", False,
-               reason="source_artifact_hashes:missing_or_unreadable")
-    elif not isinstance(manifest_rer, Mapping) or "hashes" not in (manifest_rer or {}):
-        record("artifact_manifest_match", False,
-               reason="rerun_artifact_hashes:missing_or_unreadable")
+               reason="source_artifact_hashes:missing_or_unreadable",
+               entries=0)
     else:
-        hashes_src = manifest_src["hashes"]
-        hashes_rer = manifest_rer["hashes"]
-        strict = bool(tol.get("artifact_manifest_strict", True))
-        matched = hashes_src == hashes_rer if strict else (
-            set(hashes_src) == set(hashes_rer))
-        differing = sorted(
-            rel for rel in set(hashes_src) | set(hashes_rer)
-            if hashes_src.get(rel) != hashes_rer.get(rel))[:8]
-        record("artifact_manifest_match", bool(matched),
-               reason=None if matched else "artifact_hashes:manifest_inequality",
-               differing=differing)
+        missing: list[str] = []
+        unreadable: list[str] = []
+        mismatched: list[str] = []
+        for rel in sorted(map(str, hashes_src)):
+            target = rerun_dir / rel
+            if not target.is_file():
+                missing.append(rel)
+                continue
+            try:
+                actual = sha256_file(target)
+            except OSError:
+                unreadable.append(rel)
+                continue
+            if actual != str(hashes_src[rel]):
+                mismatched.append(rel)
+        reasons = ([f"missing_rerun_artifact:{rel}" for rel in missing]
+                   + [f"unreadable_rerun_artifact:{rel}" for rel in unreadable]
+                   + [f"artifact_hash_mismatch:{rel}" for rel in mismatched])
+        matched = not reasons
+        shown, reason = reasons[:8], None
+        if reasons:
+            reason = ";".join(shown) + (f";+{len(reasons) - 8}_more"
+                                        if len(reasons) > 8 else "")
+        record("artifact_manifest_match", matched, reason=reason,
+               entries=len(hashes_src),
+               missing=missing[:8], unreadable=unreadable[:8],
+               differing=mismatched[:8],
+               missing_total=len(missing), unreadable_total=len(unreadable),
+               differing_total=len(mismatched))
 
     all_match = all(checks.values())
     return {
@@ -938,7 +1011,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_compare.add_argument("--source", required=True)
     p_compare.add_argument("--rerun", required=True)
     p_compare.add_argument("--primary-repo", default=".",
-                           help="repo whose HEAD anchors code_hash_match")
+                           help="repo whose git history anchors code_hash_match")
     p_run = sub.add_parser("run-one", help="reproduce one trial then compare")
     p_run.add_argument("--primary-repo", default=".")
     p_run.add_argument("--source-rel", required=True)
