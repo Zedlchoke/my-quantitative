@@ -276,3 +276,65 @@ def refresh_transition_heads(doc: dict, *, final_head: str) -> dict:
     doc["final_head"] = final_head
     doc["integrated_at_utc"] = datetime.now(timezone.utc).isoformat()
     return doc
+
+
+def build_v7p_baseline_root(
+    repo: Path,
+    *,
+    integration_head: str,
+    launch_head: str,
+    worktree_manifest_path: Path,
+    resolved_contract_path: Path,
+    spec_paths: dict[str, str],
+    signal_code_paths: dict[str, str],
+    source_roots: list[str],
+    data_bundle_dir: str,
+) -> dict:
+    """Canonical V7P baseline generator (owner-mandated regeneration flow).
+
+    source_files map is recomputed wholesale; every hash field is derived
+    from current bytes. The baseline NEVER embeds its own digest.
+    """
+    files: dict[str, str] = {}
+    self_paths = {
+        str(Path("research/audits/v7p") / BASELINE_FILENAME),
+        str(Path("research/audits/v7p") / ATTESTATION_FILENAME),
+    }
+    for root in source_roots:
+        base = repo / root
+        for path in sorted(base.rglob("*")):
+            rel = str(path.relative_to(repo))
+            if rel in self_paths:
+                continue
+            if (path.is_file() and "__pycache__" not in path.parts
+                    and path.suffix in (".py", ".yaml", ".yml", ".json", ".toml")):
+                files[rel] = sha256_file(path)
+    bundle_files = {
+        str(p.relative_to(repo)): sha256_file(p)
+        for p in sorted((repo / data_bundle_dir).rglob("funding.json"))
+    }
+    bundle_identity = hashlib.sha256(
+        "\n".join(f"{k}:{v}" for k, v in sorted(bundle_files.items())).encode()
+    ).hexdigest()
+    return {
+        "schema_version": 3,
+        "artifact": "v7p_baseline_root",
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "integration_head": integration_head,
+        "launch_head": launch_head,
+        "worktree_manifest_sha256": sha256_file(worktree_manifest_path),
+        "resolved_run_contract_sha256": sha256_file(resolved_contract_path),
+        "spec_hashes": {k: sha256_file(repo / v) for k, v in spec_paths.items()},
+        "signal_code_hashes": {k: sha256_file(repo / v) for k, v in signal_code_paths.items()},
+        "source_files_sha256": files,
+        "data_bundle": {"path": data_bundle_dir,
+                        "files_sha256_count": len(bundle_files),
+                        "identity_sha256": bundle_identity},
+        "attestation": {"file": ATTESTATION_FILENAME,
+                         "baseline_sha256_at_freeze": None},
+        "allowed_uncommitted_at_launch": [
+            f"research/audits/v7p/{BASELINE_FILENAME}",
+            f"research/audits/v7p/{ATTESTATION_FILENAME}",
+            "research/control/",
+        ],
+    }
