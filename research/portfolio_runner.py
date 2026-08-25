@@ -446,11 +446,37 @@ def _default_engine_loader() -> dict[str, Callable]:
         kwargs.pop("min_eligible", None)
         return _ctw(**kwargs)
 
+    def compute_target_weights_dispatch(**kwargs):
+        wrapped = _signal_family_dispatch(compute_target_weights, FUNDING_DIR)
+        return wrapped(**kwargs)
+
     return {
         "build_daily_panel": build_daily_panel,
         "run_shared_capital_backtest": run_shared_capital_backtest,
-        "compute_target_weights": compute_target_weights,
+        "compute_target_weights": compute_target_weights_dispatch,
     }
+
+
+def _signal_family_dispatch(base_fn, funding_bundles_dir):
+    """PORTFOLIO_SIGNAL_FAMILY=funding_carry routes the rank call to the
+    frozen H-XSECT-FUNDING-CARRY-v1 signal; default behavior unchanged."""
+    family = os.environ.get("PORTFOLIO_SIGNAL_FAMILY", "").strip()
+    if family != "funding_carry":
+        return base_fn
+    from research.funding_carry import compute_target_weights_funding_carry as _fcf
+
+    def _dispatch(**kwargs):
+        closes = kwargs.get("daily_closes") or {}
+        traded = sorted(s for s in closes if s != "BTCUSDT")
+        return _fcf(
+            signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
+            lookback_days=int(kwargs.get("lookback_days") or 0),
+            reverse=bool(kwargs.get("reverse")),
+            funding_bundles_dir=funding_bundles_dir,
+            traded_symbols=traded,
+        )
+
+    return _dispatch
 
 
 def load_engine() -> dict[str, Callable]:
@@ -673,10 +699,14 @@ def load_synthetic_panel_engine(spec_path: str | Path) -> dict[str, Callable]:
         result["summary"] = summary
         return result
 
+    def compute_target_weights_dispatch(**kwargs):
+        wrapped = _signal_family_dispatch(compute_target_weights, funding_dir)
+        return wrapped(**kwargs)
+
     return {
         "build_daily_panel": build_daily_panel,
         "run_shared_capital_backtest": run_shared_capital_backtest,
-        "compute_target_weights": compute_target_weights,
+        "compute_target_weights": compute_target_weights_dispatch,
     }
 
 
@@ -2890,12 +2920,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--finalize-matrix", action="store_true")
     parser.add_argument("--matrix-dir", default=str(MATRIX_ROOT))
     parser.add_argument("--reproduction-root", default=str(REPRODUCTION_ROOT))
+    parser.add_argument("--signal-family", choices=["none", "funding_carry"],
+                        default="none")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     global REPRODUCTION_ROOT
     args = build_parser().parse_args(argv)
+    if getattr(args, "signal_family", "none") == "funding_carry":
+        os.environ["PORTFOLIO_SIGNAL_FAMILY"] = "funding_carry"
+    elif "PORTFOLIO_SIGNAL_FAMILY" in os.environ and             getattr(args, "signal_family", "none") == "none":
+        del os.environ["PORTFOLIO_SIGNAL_FAMILY"]
     REPRODUCTION_ROOT = Path(args.reproduction_root)
     if args.reproduce:
         return run_reproduce(args)
