@@ -52,6 +52,9 @@ from research.resolved_contract import (  # noqa: E402
     CONTRACT_RELPATH,
     EXECUTION_CONTRACT_FROZEN,
     LAUNCH_SHA_PLACEHOLDER,
+    PROVENANCE_ATTESTATION_PATH_FROZEN,
+    PROVENANCE_BASELINE_PATH_FROZEN,
+    PROVENANCE_CONTRACT_FROZEN,
     REGISTRY_OUTPUT_CONTRACT_FROZEN,
     ResolvedContractError,
     SIGNAL_FAMILY_FROZEN,
@@ -447,11 +450,10 @@ def test_deterministic_rerun_equality(bundles):
 # --------------------------------------------------------------------------- #
 # 5) Resolved run contract artifact conformance (gate C06)
 # --------------------------------------------------------------------------- #
-# The committed artifact embeds launch_sha = FINAL_CODE_SHA, the commit that
-# contains ALL final production code (A6 hardened generator + A3 dispatcher
-# emission + A5 harness). FINAL_CODE_SHA pinned by V7P evidence commit;
-# contract launch_sha must equal this.
-COMMITTED_LAUNCH_SHA = "b061b5598a891bddf7922055a75a9352b3cab046"
+# The committed artifact embeds launch_sha = PRIMARY HEAD at regeneration
+# (pinned via `git -C <primary> rev-parse HEAD`); FINAL_CODE_SHA b061b55 is
+# contained in its history. Contract launch_sha must equal this pin.
+COMMITTED_LAUNCH_SHA = "63f9476cbd560d2ebca412891196fd1b3a2e4acb"
 # Synthetic format-valid shas for UNIT tests only ("f"*40 matches the
 # 40-hex shape but is NOT a real commit object; "g"*40 is not even hex).
 FINAL_LAUNCH_SHA_PLACEHOLDER_FOR_TESTS = "f" * 40
@@ -480,6 +482,7 @@ def contract_kwargs(**overrides) -> dict:
         costs={"fee_taker": 0.0005, "slippage_ticks": 1},
         limits={"gross": 0.80, "net": 0.10, "symbol_weight": 0.20},
         dataset_hashes={"daily_bars": "a" * 64},
+        provenance_contract=dict(PROVENANCE_CONTRACT_FROZEN),
         launch_sha=REAL_COMMIT_SHA,
         trial_inventory=[dict(t) for t in FROZEN_TRIAL_INVENTORY],
         signal_family=SIGNAL_FAMILY_FROZEN,
@@ -510,9 +513,21 @@ def test_resolved_run_contract_artifact_conformance():
     assert contract["source_commit"].startswith("dd026c0")
     assert len(contract["source_sha256"]) == 64
     for field in ("window", "folds", "universe", "costs", "limits", "dataset_hashes",
+                  "provenance_contract",
                   "trial_inventory", "signal_family", "funding_lookback_days",
                   "registry_output_contract", "execution_contract"):
         assert contract[field], field
+    # B2 item 6: provenance block is FROZEN (exact paths + mandatory
+    # enforcement) and the pinned evidence artifacts exist in-repo.
+    assert contract["provenance_contract"] == {
+        "baseline_path": "research/audits/v7p/baseline_root.json",
+        "attestation_path": "research/audits/v7p/a7_prelaunch_attestation.json",
+        "enforcement_required": True,
+    }
+    assert contract["provenance_contract"] == PROVENANCE_CONTRACT_FROZEN
+    assert contract["provenance_contract"]["enforcement_required"] is True
+    assert (REPO / contract["provenance_contract"]["baseline_path"]).is_file()
+    assert (REPO / contract["provenance_contract"]["attestation_path"]).is_file()
     # Frozen V7 plan set mirrored exactly.
     assert contract["signal_family"] == "funding_price_divergence"
     assert contract["funding_lookback_days"] == 3
@@ -563,6 +578,7 @@ def test_build_resolved_contract_fail_closed():
         ("traded_universe", []),
         ("benchmark", ""),
         ("dataset_hashes", {}),
+        ("provenance_contract", None),
         ("launch_sha", None),
         ("trial_inventory", None),
         ("signal_family", None),
@@ -627,6 +643,67 @@ def test_launch_sha_must_be_real_commit_object():
     # Not even hex -> rejected at the format gate.
     with pytest.raises(ResolvedContractError):
         build_resolved_contract(**contract_kwargs(launch_sha=NOT_HEX_SHA))
+
+
+# --------------------------------------------------------------------------- #
+# 5c) Provenance contract required + frozen (B2 item 6)
+# --------------------------------------------------------------------------- #
+def test_provenance_contract_required_fail_closed():
+    # Wholly absent argument -> fail closed at the call boundary.
+    absent = contract_kwargs()
+    absent.pop("provenance_contract")
+    with pytest.raises((TypeError, ResolvedContractError)):
+        build_resolved_contract(**absent)
+
+    # Present-but-null -> ResolvedContractError (like limits).
+    with pytest.raises(ResolvedContractError):
+        build_resolved_contract(**contract_kwargs(provenance_contract=None))
+
+    # Wrong baseline_path drifts from the FROZEN V7P decision.
+    drifted = dict(PROVENANCE_CONTRACT_FROZEN,
+                   baseline_path="research/audits/v6p/baseline_root.json")
+    with pytest.raises(ResolvedContractError, match="baseline_path"):
+        build_resolved_contract(**contract_kwargs(provenance_contract=drifted))
+    with pytest.raises(ResolvedContractError, match="baseline_path"):
+        build_resolved_contract(**contract_kwargs(
+            provenance_contract=dict(PROVENANCE_CONTRACT_FROZEN,
+                                     baseline_path="")))
+
+    # Wrong attestation_path equally forbidden.
+    drifted_att = dict(PROVENANCE_CONTRACT_FROZEN, attestation_path="nope.json")
+    with pytest.raises(ResolvedContractError, match="attestation_path"):
+        build_resolved_contract(**contract_kwargs(provenance_contract=drifted_att))
+
+    # enforcement_required must be EXACTLY True: False / truthy-int / str all raise.
+    for falsy in (False, 1, "true", None):
+        bad = dict(PROVENANCE_CONTRACT_FROZEN, enforcement_required=falsy)
+        with pytest.raises(ResolvedContractError, match="enforcement_required"):
+            build_resolved_contract(**contract_kwargs(provenance_contract=bad))
+
+    # Extra/missing keys never silently accepted (fail-closed like limits).
+    extra = dict(PROVENANCE_CONTRACT_FROZEN, manifest_path="x.json")
+    with pytest.raises(ResolvedContractError, match="exactly keys"):
+        build_resolved_contract(**contract_kwargs(provenance_contract=extra))
+    partial = {"baseline_path": PROVENANCE_BASELINE_PATH_FROZEN}
+    with pytest.raises(ResolvedContractError, match="exactly keys"):
+        build_resolved_contract(**contract_kwargs(provenance_contract=partial))
+
+    # Happy path: the frozen block builds and lands verbatim in the body.
+    built = build_resolved_contract(
+        **contract_kwargs(provenance_contract=dict(PROVENANCE_CONTRACT_FROZEN)))
+    assert built["provenance_contract"] == PROVENANCE_CONTRACT_FROZEN
+
+
+def test_provenance_contract_covered_by_contract_sha256():
+    # The provenance block is part of the canonical body: tampering with it
+    # in the persisted artifact breaks the self-hash (verify raises).
+    artifact = json.loads((REPO / CONTRACT_RELPATH).read_text(encoding="utf-8"))
+    verify_resolved_contract(artifact)
+    tampered = {k: v for k, v in artifact.items() if k != "contract_sha256"}
+    tampered["provenance_contract"] = dict(
+        tampered["provenance_contract"], enforcement_required=False)
+    with pytest.raises(ResolvedContractError, match="contract_sha256 mismatch"):
+        verify_resolved_contract(tampered)
 
 
 def test_trial_inventory_missing_or_null_rejected():
