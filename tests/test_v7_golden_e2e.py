@@ -447,10 +447,11 @@ def test_deterministic_rerun_equality(bundles):
 # --------------------------------------------------------------------------- #
 # 5) Resolved run contract artifact conformance (gate C06)
 # --------------------------------------------------------------------------- #
-# The committed artifact embeds launch_sha = primary-repo HEAD at regeneration
-# time (A6, 2026-08-25). Primary HEAD advances only by A6's own atomic commit
-# afterwards, so this pinned value stays the parent of the final launch ref.
-COMMITTED_LAUNCH_SHA = "51fadc3a90d7535e88c3ab1fdcc763b739bcb6e4"
+# The committed artifact embeds launch_sha = FINAL_CODE_SHA, the commit that
+# contains ALL final production code (A6 hardened generator + A3 dispatcher
+# emission + A5 harness). FINAL_CODE_SHA pinned by V7P evidence commit;
+# contract launch_sha must equal this.
+COMMITTED_LAUNCH_SHA = "b061b5598a891bddf7922055a75a9352b3cab046"
 # Synthetic format-valid shas for UNIT tests only ("f"*40 matches the
 # 40-hex shape but is NOT a real commit object; "g"*40 is not even hex).
 FINAL_LAUNCH_SHA_PLACEHOLDER_FOR_TESTS = "f" * 40
