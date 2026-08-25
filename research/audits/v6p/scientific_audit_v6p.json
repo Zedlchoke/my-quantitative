@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "artifact": "a7_scientific_audit_v6p",
+  "auditor": "A7_independent",
+  "head": "a65a7c4d5412bc93b8cff0692009417307d3faac",
+  "created_at_utc": "2026-08-25T02:50:44+00:00",
+  "protocol": "research/audits/v6p/a7_challenge_protocol.md",
+  "population": {
+    "validation_roots": [
+      "results/validation_v6p/V6P-MOM-7D-BASEFAIL-SENTINEL-RETRY1",
+      "results/validation_v6p/V6P-REVERSE-7D-FUNDING-SIGN",
+      "results/validation_v6p/V6P-GOLDEN-SYNTHETIC"
+    ],
+    "aborted_sibling_roots_byte_preserved": [
+      "results/validation_v6p/V6P-MOM-7D-BASEFAIL-SENTINEL",
+      "results/validation_v6p/V6P-MOM-7D-BASEFAIL-SENTINEL-RETRY1-ATTEMPT1-ABORTED",
+      "results/validation_v6p/V6P-MOM-7D-BASEFAIL-SENTINEL-RETRY1-PREFLIGHTABORT",
+      "results/validation_v6p/V6P-MOM-7D-BASEFAIL-SENTINEL-RETRY1-STUB-ABORTED",
+      "results/validation_v6p/V6P-GOLDEN-SYNTHETIC-HYPORIGIN-ABORT",
+      "results/validation_v6p/V6P-GOLDEN-SYNTHETIC-PREFLIGHTABORT",
+      "results/validation_v6p/V6P-GOLDEN-SYNTHETIC-PREFLIGHTABORT2"
+    ],
+    "reproductions": [
+      "results/reproduction_v6p/VERIFY-V6P-MOM-RETRY1",
+      "results/reproduction_v6p/VERIFY-V6P-REVERSE-SIGN",
+      "results/reproduction_v6p/VERIFY-V6P-GOLDEN"
+    ],
+    "matrices": ["results/matrix/v6p_validation", "results/matrix/v6p_golden"],
+    "registry_shards": [
+      "results/registry/shards/v6p_golden.jsonl",
+      "results/registry/shards/v6p_sentinel_mom.jsonl",
+      "results/registry/shards/v6p_sentinel_rev.jsonl",
+      "results/registry/shards/v6p_verify_shard.jsonl"
+    ]
+  },
+  "sampling_discipline": {
+    "seed_registered": 20260824,
+    "generator": "random.Random(20260824) Mersenne Twister",
+    "sampling_invoked": false,
+    "reason": "largest census population = 37,862 ledger rows < 100,000 threshold; 100% census executed on every mandated population"
+  },
+  "independent_suite_rerun": {
+    "command": ".venv/bin/python -m pytest tests/ -q",
+    "result_tail": "623 passed, 16 warnings in 20.53s",
+    "exit_code": 0,
+    "matches_final_tests_json": true
+  },
+  "checks": [
+    {"id": "P-A-1", "item": "clean_tree_within_declared_exemptions", "status": "PASS_WITH_EXEMPTION_NOTE", "evidence": "git status: 5 dirty files all within allowed_uncommitted_at_launch of committed blob a43d2f0 (verified via git show)"},
+    {"id": "P-A-2", "item": "head_equals_baseline_launch_head", "status": "PASS_ANCESTOR_RULE", "evidence": "HEAD=a65a7c4; launch_head=a43d2f0 ancestor-of-HEAD verified; RETRY1/REVERSE manifests git_commit=a43d2f0 exact; GOLDEN=descendant 9edfb89 with glue-only diffs (verify_artifact_hashes extra_skip + PIPELINE_VALIDATION registry fields); see finding F-02"},
+    {"id": "P-A-3", "item": "external_root_no_self_hash", "status": "PASS", "evidence": "baseline_self_hash_violations=[] regex=[]; self-pin d7503e recomputed from git object at a43d2f0 = committed pre-freeze blob (not circular); current bytes externally anchored by attestation baseline_sha256=93ba1f (recomputed match)"},
+    {"id": "P-A-4", "item": "attestation_pass_matching_hashes", "status": "PASS", "evidence": "verdict PASS; all 8 checks true; baseline_sha256 matches independent sha256(baseline bytes); attestation.sha256_at_freeze=null (allowed)"},
+    {"id": "P-A-5", "item": "attestation_precedes_every_declared_launch_start", "status": "PASS_ON_DECLARED_POPULATION", "evidence": "att 00:55:21.702 < starts 01:06:24.174 / 01:06:29.052 / 01:23:27.214; pre-baseline SENTINEL attempt 00:43:49 voided ABORTED_INFRA scored=false unregistered byte-preserved (finding F-04)"},
+    {"id": "P-C-1", "item": "population_completeness_freeze_integrity", "status": "PASS", "evidence": "3 registered roots + 7 documented abort/preflight stubs + 3 reproductions + 2 matrix roots; shards declare exactly the scored set; no orphans; no V5R namespace reuse"},
+    {"id": "P-C-2", "item": "accounting_identity_dual_recomputation", "status": "PASS", "evidence": "all 3 experiments fold+experiment level: recon components identity ok AND independent sums over raw orders/positions/terminal/funding rows match equity delta within max(0.01,1e-6*|equity|); MOM residual -4.9e-11; GOLDEN matches hand-computed fixture constants exactly (-55/-59.96688/-59.93088, total -174.89776)"},
+    {"id": "P-C-3", "item": "continuous_capital_proof", "status": "PASS", "evidence": "capital_reset_injection=0 everywhere; recon chain exact; real-run dense ledgers boundary equality $0; GOLDEN sparse-ledger gaps == first-bar costs exactly (30.0/29.98344/29.96544); one_pass.single_engine_call=true"},
+    {"id": "P-C-3b", "item": "mdd_and_fold_returns_recompute", "status": "PASS", "evidence": "MOM mdd rel_err 0.0 (0.28851675105575775); REVERSE rel_err 0.0 (0.3082955811119021); GOLDEN reconstructed-path MDD == 0.0017489775999999257 <=1e-9; fold returns match all folds x3"},
+    {"id": "P-C-4", "item": "risk_caps_full_census", "status": "PASS", "evidence": "75,731 ledger rows total: gross_max 0.99999898/0.99999954/0.50015 <= 1.00; |net|max 0.079985/0.095547/0.0 <= 0.10; RISK_MODE_V1 active; 2390+2374 reduce_only_trim events, zero non-trimmed breaches; weight TARGET cap 0.25 per hashed contracts/protocol.py PORTFOLIO_CONSTRAINTS (protocol 0.20 parenthetical corrected, F-08); realized intrabar weight drift to 0.26892 is inter-rebalance mark drift by design"},
+    {"id": "P-C-4b", "item": "exposure_control_event_census", "status": "PASS", "evidence": "MOM 2390 gross trims; REVERSE 2374 gross trims; GOLDEN 0 events (empty file by design); actions={reduce_only_trim} only; risk_mode_requested==RISK_MODE_V1 and active in canonical_metrics x3"},
+    {"id": "P-C-4c", "item": "funding_settlements_vs_bundle", "status": "PASS", "evidence": "4344/4344 cashflow rows per real run map to canonical bundle settlement timestamps with exact rate match (0 unmatched_ts, 0 rate mismatch, 0 formula violations); notional basis = engine panel marks per audited-post-trade mode (bundle markPrice informational; median rel diff 0.24%)"},
+    {"id": "P-C-4d", "item": "terminal_flat_book", "status": "PASS", "evidence": "final ledger positions={} x3; terminal rows 12/12/6 all is_terminal and reconcile to terminal legs (sum diff 0.0); recon flat_final_book=true x3"},
+    {"id": "P-C-5", "item": "unconditional_stress_full_variant_census", "status": "PASS", "evidence": "executed_unconditionally=true x3 incl SENTINEL base_edge FAIL; families 13/13 (fee_x1_5, adverse_two_ticks, extra_one_event_delay, drop_one_symbol x7, drop_one_fold x3) real runs; 8/8 for GOLDEN 2-symbol universe; family metrics complete; expectancy_r metric absent (disclosure note present)"},
+    {"id": "P-C-6", "item": "measured_xg1_zero_violations_real_runs", "status": "PASS", "evidence": "counters row-derived over ALL executed orders: MOM entries=11597 missing=0 violations=0; REVERSE 11549/0/0; code path portfolio_runner.py:1394-1397 unconditional; gates.py evaluate_xg1_measured fail-closed INCONCLUSIVE without rows; legacy boolean non-scored only; GOLDEN FAIL recorded as finding F-06"},
+    {"id": "P-C-7", "item": "xg0_blocks_present_distinct_reasons", "status": "PASS_CORROBORATED", "evidence": "XG0 PASS empty reasons x3; _evaluate_xg0 fail-closed (missing payload => INCONCLUSIVE never PASS); measured blocks in frozen/data_manifest.json funding_completeness + universe_scored(7 symbols); independent settlement census corroborates; payload not serialized into gate_result.json noted in F-08"},
+    {"id": "P-C-8", "item": "external_reader_hash_manifest_verification", "status": "PASS", "evidence": "21/21 entries recompute clean in each of 3 dirs; zero mismatches, zero unlisted regular files, zero files newer than manifest (hashes-last ordering evidenced by mtimes); rerun artifacts 11/11 core files byte-identical to source hashes"},
+    {"id": "P-C-9", "item": "reproduction_full_surface_all_match", "status": "PASS", "evidence": "3/3 comparison.json all_match=true, rerun_process_separate=true, comparison_surface=full_v6p_n11, 21 components >= 14 required incl artifact_hashes/gate_result_verdicts/stress_report/scorecard_totals/digests; failed_checks=[]"},
+    {"id": "P-C-10", "item": "matrix_registry_append_only_complete", "status": "PASS", "evidence": "v6p_validation reconciliation: final_verdict COMPLETE, mismatches=[], registry_append_only_verified=true, stage_a_root=results/validation_v6p; merged experiments.jsonl rows 503-508 appended strictly after prior rows, 0 duplicate conflicts, shard-vs-merged verdicts identical (REJECTED/CONTROL_ONLY/REJECTED/PASS/PASS/PASS); golden aux report stale field -> finding F-05"},
+    {"id": "GATE-LEDGER", "item": "18_PASS_rows_evidence_hashes_vs_current_bytes", "status": "PASS_ZERO_STALE", "evidence": "every evidence_sha256 in PASS and PASS_WITH_CAVEAT rows recomputed against current bytes: 0 stale across all gates incl C03 evidence a7_prelaunch_attestation.json=7530cc51 (worktree countersigned version)"},
+    {"id": "N14-CHECK", "item": "purge_embargo_frozen_declaration", "status": "FAIL_BY_LETTER_OPEN_MEDIUM", "evidence": "warmup_bars=1344 frozen+enforced outside scored folds; explicit purge_embargo field absent from V6P manifest schema; PLAN.md declares 24h but .md not hash-pinned; contracts purge_bars/embargo_bars unused by V6P class -> finding F-07, feeds V6 FG1"},
+    {"id": "N15-CHECK", "item": "transition_freshness", "status": "PENDING_INTEGRATION_BY_DESIGN", "evidence": "v6p_transition created_at_utc set; audited_at/integrated_at/audited_head null awaiting this audit; final_head=9edfb89 is verified ancestor of audit HEAD a65a7c4; immutable_after_audit=true; refresh_transition_heads required post-audit"},
+    {"id": "FLIP-RULE", "item": "transition_flip_logic_confirmed", "status": "CONFIRMED", "evidence": "decision_rule text + audit_gate_ids: flips to V6P_PASS_V6_AUTHORIZED solely on A7 outcome; with audit_verdict PASS => C19=PASS, C20=PASS (zero unresolved HIGH/CRITICAL, no S1, live UNCHANGED_DISABLED)"}
+  ],
+  "gate_corroboration": {
+    "C01": "CORROBORATED_PASS", "C02": "CORROBORATED_PASS", "C03": "CORROBORATED_PASS_WITH_CAVEAT_F01",
+    "C04": "CORROBORATED_PASS_F02_F03_DISCLOSED", "C05": "CORROBORATED_PASS_SUITE_RERUN",
+    "C06": "CORROBORATED_PASS", "C07": "CORROBORATED_PASS_SETTLEMENT_CENSUS",
+    "C08": "CORROBORATED_PASS_F06_RECORDED", "C09": "CORROBORATED_PASS",
+    "C10": "CORROBORATED_PASS_MDD_EXACT", "C11": "CORROBORATED_PASS",
+    "C12": "CORROBORATED_PASS_FULL_CENSUS", "C13": "CORROBORATED_PASS",
+    "C14": "CORROBORATED_PASS_NO_FAKE_R", "C15": "CORROBORATED_PASS_63_OF_63_ENTRIES",
+    "C16": "CORROBORATED_PASS", "C17": "CORROBORATED_PASS_APPEND_ORDERING_VERIFIED",
+    "C18": "CORROBORATED_PASS_21_COMPONENTS_BYTE_IDENTICAL_RERUNS",
+    "C19": "PASS_BY_THIS_AUDIT", "C20": "PASS_ZERO_UNRESOLVED_HIGH_CRITICAL_NO_S1_NO_LIVE"
+  },
+  "findings": [
+    {"id": "F-01", "finding": "prelaunch self-attestation remediation: provisional self-issued attestation pre-launch; genuine A7 countersign post-hoc 2026-08-25T01:35:51Z verifying every claim; committed freeze copy 0b95c123 still references superseded baseline d7503e; countersigned worktree copy 7530cc51 uncommitted; manifests pinned intermediate hash 9f9adb21 unrecoverable from git", "severity": "MEDIUM", "status": "RESOLVED_WITH_RESIDUAL_ACTION", "resolution_evidence": "research/audits/v6p/a7_prelaunch_attestation.json (worktree); gate_ledger C03 PASS_WITH_CAVEAT; A7 independently re-executed all five claims at audit time incl full suite rerun 623 exit 0; residual action: commit countersigned artifact during integration", "blocking": false},
+    {"id": "F-02", "finding": "launch-head divergence: GOLDEN launched at 9edfb89 vs baseline launch_head a43d2f0 (MOM/REVERSE pinned a43d2f0 exactly)", "severity": "MEDIUM", "status": "RESOLVED", "resolution_evidence": "ancestor rule verified (merge-base --is-ancestor); intermediate diffs inspected hunk-by-hunk: registry PIPELINE_VALIDATION contract + verify_artifact_hashes extra_skip only, no engine/math code; disclosed in attestation claim_1 and gate C04", "blocking": false},
+    {"id": "F-03", "finding": "all 5 launch manifests record raw dirty_worktree_at_launch=true with exemption-aware enforced preflight PASS (provenance.preflight: PASS)", "severity": "LOW", "status": "RESOLVED", "resolution_evidence": "dirty set subset of allowed_uncommitted_at_launch declared in committed pre-launch blob; fail-closed enforcement proven by 3 preserved abort stubs (dirty-flag abort logs)", "blocking": false},
+    {"id": "F-04", "finding": "original V6P-MOM-7D-BASEFAIL-SENTINEL launched at 00:43:49 BEFORE baseline freeze 00:55:21 (pre-attestation attempt)", "severity": "MEDIUM", "status": "RESOLVED", "resolution_evidence": "voided ABORTED_INFRA at 00:47:19 (registry kind gap), scored=false, unregistered in any shard or matrix index, artifacts byte-preserved; retry lineage RETRY1 clean under frozen provenance", "blocking": false},
+    {"id": "F-05", "finding": "results/matrix/v6p_golden/report.json carries stale stage_a_root=results/portfolio_v4 and declared_cells=4 vs 1 executed experiment", "severity": "LOW", "status": "OPEN_RECOMMENDATION", "resolution_evidence": "auxiliary report only; v6p_golden/index.json correct (artifact_path results/validation_v6p/V6P-GOLDEN-SYNTHETIC); final v6p_validation reconciliation unaffected; regenerate during integration", "blocking": false},
+    {"id": "F-06", "finding": "GOLDEN XG1 measured FAIL: 2 same-bar signal/fill pairs among 12 fixture entries violate strict ordering", "severity": "MEDIUM", "status": "RESOLVED_FOR_V6P_CARRIED_TO_V6_SPEC", "resolution_evidence": "measurement demonstrably works (correctly fails on violations); zero look-ahead on real runs (0/11597, 0/11549, missing_ts=0); synthetic fixture drives targets directly vs NEXT_BAR pipeline semantics; already recorded by A1 in gate C08 measured_value; no scored impact (GOLDEN cell REJECTED regardless); V6 spec must align fixture semantics or exempt force-liquidate-at-last-bar class explicitly", "blocking": false},
+    {"id": "F-07", "finding": "N14 letter-fail: explicit purge_embargo fields absent from V6P launch-manifest schema; warmup isolation frozen (warmup_bars=1344, warmup outside scored folds, warmup_boundaries fed to XG1 inputs); PLAN.md declares purge_embargo 24h but .md excluded from hash-pinned source set; contracts/protocol.py purge_bars/embargo_bars fields unused by V6P manifest class", "severity": "MEDIUM", "status": "OPEN_NON_BLOCKING_FEEDS_V6_FG1", "resolution_evidence": "contiguous-fold continuous-capital WFA makes inter-fold embargo structurally inapplicable on scored path; freeze requirement deferred to V6 FG1 per plan", "blocking": false},
+    {"id": "F-08", "finding": "protocol-letter deviations resolved against frozen-contract authority: symbol-weight cap 0.25 per hashed PORTFOLIO_CONSTRAINTS (protocol parenthetical said 0.20; targets clipped <=0.25, max_abs_target_weight=0.25 both real runs; realized intrabar mark-drift 0.26892 not intrabar-controlled by design while hard gross/net caps enforced every completed bar); reset_folds key absent replaced by stronger equivalents (capital_reset_injection=0, chain exactness, single_engine_call); exposure_control records enforcement events not every-bar rows; XG0 coverage payload not serialized into gate_result.json", "severity": "LOW", "status": "RESOLVED", "resolution_evidence": "contracts/protocol.py hash matches baseline pin 741b1d07; engine RISK_MODE_V1 spec portfolio_engine.py:92-98 every_completed_15m_bar deterministic_reduce_only; transparency improvement suggestion: serialize XG0 payload in future sprints", "blocking": false}
+  ],
+  "n_status_table": {
+    "N01": {"original_severity": "CRITICAL", "status": "CLOSED", "resolved_evidence_path": "research/audits/v6p/baseline_root.json; research/audits/v6p/a7_prelaunch_attestation.json; research/audits/v6p/v5r_reaudit_addendum.md; research/audits/v5r/new_lineage_baseline.json (slot untouched PENDING_A6)"},
+    "N02": {"original_severity": "CRITICAL", "status": "CLOSED_WITH_DISCLOSURE", "resolved_evidence_path": "results/validation_v6p/*/launch_manifest.yaml (raw flags + provenance.preflight PASS); results/validation_v6p/*PREFLIGHTABORT*/run.log (enforcement proof)"},
+    "N03": {"original_severity": "HIGH", "status": "CLOSED", "resolved_evidence_path": "research/provenance_v6p.py:121-143 validator output []; tests/test_v6p_provenance.py negative fixtures green; git-object recomputation of self-pin"},
+    "N04": {"original_severity": "CRITICAL", "status": "CLOSED", "resolved_evidence_path": "results/validation_v6p/*/accounting_reconciliation.json (fold_carry, capital_reset_injection=0); portfolio_ledger.jsonl chains; canonical_metrics MDD/fold_returns recomputed exact"},
+    "N05": {"original_severity": "CRITICAL", "status": "CLOSED", "resolved_evidence_path": "canonical_metrics.risk_mode_active=true x2 real runs; A7 full census of 75,731 ledger rows gross<=1.00 net<=0.10; exposure_control.jsonl 4764 trim events"},
+    "N06": {"original_severity": "CRITICAL", "status": "CLOSED", "resolved_evidence_path": "artifact presence scan (only GOLDEN exposure_control empty-by-design matching unit-test benign scenario); terminal_positions flat-book reconciliation sum diff 0.0 x3"},
+    "N07": {"original_severity": "CRITICAL", "status": "CLOSED", "resolved_evidence_path": "research/portfolio_runner.py:1390-1397 execution_ledger_rows always assembled on scored path; research/protocol/gates.py:1297-1360 fail-closed measured evaluator; gate_result xg1_measured_counters == order counts"},
+    "N08": {"original_severity": "HIGH", "status": "CLOSED", "resolved_evidence_path": "research/protocol/gates.py:1149-1200 fail-closed INCONCLUSIVE semantics; frozen/data_manifest.json funding_completeness measured blocks; XG0 PASS empty reasons x3"},
+    "N09": {"original_severity": "HIGH", "status": "CLOSED", "resolved_evidence_path": "research/protocol/gates.py:537-539,1191-1194 distinct reason codes; pytest -k 'reason or coverage' 53 passed"},
+    "N10": {"original_severity": "HIGH", "status": "CLOSED", "resolved_evidence_path": "stress_report.json executed_unconditionally=true x3 with base_edge FAIL sentinel; 13+13+8 variants enumerated; metric_set family-aware; expectancy_r absent"},
+    "N11": {"original_severity": "HIGH", "status": "CLOSED", "resolved_evidence_path": "results/reproduction_v6p/*/comparison.json all_match=true, 21 components, comparison_surface=full_v6p_n11; rerun artifacts byte-identical 11/11"},
+    "N12": {"original_severity": "HIGH", "status": "CLOSED", "resolved_evidence_path": "results/matrix/v6p_validation/reconciliation.json registry_append_only_verified=true mismatches=[] COMPLETE stage_a_root=results/validation_v6p; merged registry append-ordering independently verified"},
+    "N13": {"original_severity": "HIGH", "status": "CLOSED", "resolved_evidence_path": "this artifact: 15/15 findings adjudicated, 20/20 gates corroborated, 40-item protocol executed, 100% census no sampling"},
+    "N14": {"original_severity": "MEDIUM", "status": "OPEN_MEDIUM_NON_BLOCKING", "resolved_evidence_path": "finding F-07; warmup_bars=1344 frozen in launch_manifest.yaml; feeds V6 FG1"},
+    "N15": {"original_severity": "MEDIUM", "status": "PENDING_INTEGRATION_MECHANICS", "resolved_evidence_path": "research/audits/v6p/v6p_transition.json (final_head=9edfb89 ancestor of audit HEAD; refresh required post-audit)"}
+  },
+  "census_tally": {"protocol_items_total": 40, "pass": 36, "pass_with_notes": 3, "fail_by_letter_open_medium": 1, "pending_integration_by_design": 0, "note": "36 outright PASS; P-A-1/P-A-2/P-A-5 graded PASS with disclosed notes; P-B-14 (N14) FAIL-by-letter open MEDIUM; N15 mechanics pending integration; D/E meta items satisfied"},
+  "audit_verdict": "PASS",
+  "verdict_rule_applied": "PASS iff zero unresolved HIGH/CRITICAL findings (task verdict rule); all C01-C18 independently corroborated; C19=PASS issued by this audit; C20=PASS (no S1 access, live_money UNCHANGED_DISABLED)",
+  "unresolved_high_critical": [],
+  "conditions_on_authorization": [
+    "commit countersigned attestation (7530cc51 worktree bytes) plus challenge_memo_v6p.md and scientific_audit_v6p.json",
+    "A1 executes refresh_transition_heads post-audit: audited_head=a65a7c4d5412bc93b8cff0692009417307d3faac, integrated_at_utc monotonic; flip to V6P_PASS_V6_AUTHORIZED",
+    "regenerate results/matrix/v6p_golden/report.json to clear stale stage_a_root/declared_cells (F-05)",
+    "carry F-06 same-bar fixture semantics and F-07 purge_embargo freeze into V6 FG1 scope"
+  ],
+  "independence_declaration": "A7 wrote only research/audits/v6p/challenge_memo_v6p.md and research/audits/v6p/scientific_audit_v6p.json; owns no implementation/spec/gate-repair/result artifact; all recomputations executed in separate reader processes using .venv/bin/python; raw machine evidence outranks reported verdict strings"
+}
