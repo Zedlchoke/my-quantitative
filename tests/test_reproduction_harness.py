@@ -13,7 +13,14 @@ Synthetic mini experiment dirs only -- no real runs, no network:
 * strict row-count / equity-digest surfaces fail closed on dropped rows;
 * ``run_reproduction`` orchestrates the runner subprocess, locates the rerun
   artifacts, compares and writes ``reproduction_report.json`` (subprocess is
-  faked; nothing external executes).
+  faked; nothing external executes);
+* the required signal family is derived from the source
+  ``exact_backtest_argv`` and forwarded as ``PORTFOLIO_SIGNAL_FAMILY`` to the
+  spawned runner (recorded as ``resolved_env_family``);
+* ``rerun_manifest.yaml`` (verify-dir level) is accepted as the rerun-side
+  launch-manifest alias;
+* ``worker_returncode`` is the raw passthrough exit status of the spawned
+  process -- no re-derivation from runner comparison fields.
 """
 
 from __future__ import annotations
@@ -22,6 +29,7 @@ import copy
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -109,6 +117,11 @@ def _build_exp_dir(root: Path) -> Path:
         "experiment_id": "XSECT-FUND-CARRY-1D",
         "git_commit_at_launch": GIT_COMMIT,
         "dirty_worktree_at_launch": False,
+        "exact_backtest_argv": [
+            sys.executable, "-m", "research.portfolio_runner",
+            "--experiment-id", "XSECT-FUND-CARRY-1D",
+            "--signal-family", "funding_carry",
+        ],
         "runtime_config_sha256": harness.sha256_file(exp / "frozen/config.yaml"),
         "candidate_spec_sha256": harness.sha256_file(exp / "frozen/candidate.yaml"),
         "data_manifest_sha256": harness.sha256_file(exp / "frozen/data_manifest.json"),
@@ -329,10 +342,35 @@ def test_v6_family_plan_names_four_trials():
 # 7. run_reproduction orchestration (subprocess faked; no real runs)
 # --------------------------------------------------------------------------- #
 class _FakeCompleted:
-    def __init__(self) -> None:
-        self.returncode = 0
+    def __init__(self, returncode: int = 0) -> None:
+        self.returncode = returncode
         self.stdout = "ok"
         self.stderr = ""
+
+
+def _install_fake_runner(monkeypatch, source: Path, captured: dict,
+                         returncode: int = 0, create_artifacts: bool = True) -> None:
+    """Replace harness.subprocess.run; mirror source into rerun_artifacts."""
+
+    def fake_run(command, cwd=None, env=None, capture_output=None,
+                 text=None, timeout=None, check=False):
+        captured["command"] = list(command)
+        captured["cwd"] = cwd
+        captured["env"] = dict(env or {})
+        if create_artifacts:
+            root = Path(command[command.index("--reproduction-root") + 1])
+            verify_id = command[command.index("--verify-id") + 1]
+            rerun_artifacts = root / verify_id / "rerun_artifacts"
+            rerun_artifacts.mkdir(parents=True, exist_ok=True)
+            for path in source.iterdir():
+                target = rerun_artifacts / path.name
+                if path.is_dir():
+                    shutil.copytree(path, target, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(path, target)
+        return _FakeCompleted(returncode)
+
+    monkeypatch.setattr(harness.subprocess, "run", fake_run)
 
 
 def test_run_reproduction_end_to_end_with_fake_runner(tmp_path, monkeypatch):
@@ -341,25 +379,8 @@ def test_run_reproduction_end_to_end_with_fake_runner(tmp_path, monkeypatch):
     source = _build_exp_dir(repo / source_rel)
 
     captured: dict = {}
-
-    def fake_run(command, cwd=None, env=None, capture_output=None,
-                 text=None, timeout=None, check=False):
-        captured["command"] = list(command)
-        captured["cwd"] = cwd
-        captured["env_extra_ok"] = env.get("ORCA_TEST_MARKER") == "1"
-        root = Path(command[command.index("--reproduction-root") + 1])
-        verify_id = command[command.index("--verify-id") + 1]
-        rerun_artifacts = root / verify_id / "rerun_artifacts"
-        rerun_artifacts.mkdir(parents=True)
-        for path in source.iterdir():
-            target = rerun_artifacts / path.name
-            if path.is_dir():
-                shutil.copytree(path, target)
-            else:
-                shutil.copy2(path, target)
-        return _FakeCompleted()
-
-    monkeypatch.setattr(harness.subprocess, "run", fake_run)
+    _install_fake_runner(monkeypatch, source, captured)
+    monkeypatch.delenv("PORTFOLIO_SIGNAL_FAMILY", raising=False)
 
     report = run_reproduction(
         repo, source_rel, "VERIFY-V6FULL-1D",
@@ -374,16 +395,120 @@ def test_run_reproduction_end_to_end_with_fake_runner(tmp_path, monkeypatch):
     assert command[7] == "--reproduction-root"
     assert Path(command[8]).is_absolute()
     assert captured["cwd"] == str(repo)
-    assert captured["env_extra_ok"] is True
+    assert captured["env"]["ORCA_TEST_MARKER"] == "1"
 
     assert report["all_match"] is True, json.dumps(report.get("surfaces"), indent=2)
     assert report["returncode"] == 0
+    assert report["worker_returncode"] == 0
+    assert "worker_returncode_nonzero" not in report
     expected_report = (repo / "results/reproduction_v7/VERIFY-V6FULL-1D/"
                              "reproduction_report.json")
     assert expected_report.is_file()
     persisted = json.loads(expected_report.read_text(encoding="utf-8"))
     assert persisted["all_match"] is True
     assert report["report_path"] == str(expected_report)
+
+
+def test_run_reproduction_forwards_derived_signal_family(tmp_path, monkeypatch):
+    """Family derived from source exact_backtest_argv reaches the child env."""
+    repo = tmp_path / "repo"
+    source_rel = "results/portfolio_v6/XSECT-FUND-CARRY-1D"
+    source = _build_exp_dir(repo / source_rel)
+    monkeypatch.delenv("PORTFOLIO_SIGNAL_FAMILY", raising=False)
+
+    # direct derivation from the frozen argv
+    assert harness.expected_signal_family_from_source(source) == "funding_carry"
+
+    captured: dict = {}
+    _install_fake_runner(monkeypatch, source, captured)
+
+    report = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+    assert captured["env"]["PORTFOLIO_SIGNAL_FAMILY"] == "funding_carry"
+    assert report["resolved_env_family"] == "funding_carry"
+
+    # explicit pin overrides derivation (and lands in the child env)
+    captured.clear()
+    report = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D",
+                              expected_signal_family="none",
+                              extra_env={"ORCA_X": "1"})
+    assert captured["env"]["PORTFOLIO_SIGNAL_FAMILY"] == "none"
+    assert captured["env"]["ORCA_X"] == "1"
+    assert report["resolved_env_family"] == "none"
+
+    # extra_env merges LAST so a caller override still wins in the env
+    captured.clear()
+    report = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D",
+                              extra_env={"PORTFOLIO_SIGNAL_FAMILY": "none"})
+    assert captured["env"]["PORTFOLIO_SIGNAL_FAMILY"] == "none"
+    assert report["resolved_env_family"] == "funding_carry"
+
+
+def test_run_reproduction_without_family_flags_leaves_env_clean(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    source_rel = "results/portfolio_v6/XSECT-MOM-PLAIN-1D"
+    source = _build_exp_dir(repo / source_rel)
+    launch_path = source / "launch_manifest.yaml"
+    launch_doc = yaml.safe_load(launch_path.read_text(encoding="utf-8"))
+    launch_doc.pop("exact_backtest_argv")
+    launch_path.write_text(yaml.safe_dump(launch_doc, sort_keys=False),
+                           encoding="utf-8")
+
+    assert harness.expected_signal_family_from_source(source) is None
+
+    captured: dict = {}
+    _install_fake_runner(monkeypatch, source, captured)
+    monkeypatch.delenv("PORTFOLIO_SIGNAL_FAMILY", raising=False)
+
+    report = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+    assert "PORTFOLIO_SIGNAL_FAMILY" not in captured["env"]
+    assert report["resolved_env_family"] is None
+
+
+def test_worker_returncode_is_raw_passthrough_from_spawned_process(
+        tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    source_rel = "results/portfolio_v6/XSECT-FUND-CARRY-1D"
+    source = _build_exp_dir(repo / source_rel)
+    monkeypatch.delenv("PORTFOLIO_SIGNAL_FAMILY", raising=False)
+
+    captured: dict = {}
+    _install_fake_runner(monkeypatch, source, captured, returncode=7)
+    report = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+    assert report["worker_returncode"] == 7
+    assert report["returncode"] == 7
+    assert "worker_returncode_nonzero" not in report
+
+    # early-return path (no rerun artifacts) records the same raw code
+    captured.clear()
+    _install_fake_runner(monkeypatch, source, captured, returncode=7,
+                         create_artifacts=False)
+    report_missing = run_reproduction(repo, source_rel, "VERIFY-V6FULL-NONE")
+    assert report_missing["error"] == "rerun_artifacts_not_found"
+    assert report_missing["worker_returncode"] == 7
+    assert "worker_returncode_nonzero" not in report_missing
+
+
+def test_rerun_manifest_alias_resolves_code_config_data_hashes(twin_dirs):
+    """Runner layout: rerun_manifest.yaml sits at <verify>/ level beside
+    rerun_artifacts/ -- compare_trials must resolve it via the alias."""
+    source, rerun = twin_dirs
+    verify_dir = rerun.parent
+    artifacts = verify_dir / "rerun_artifacts"
+    rerun.rename(artifacts)
+    (artifacts / "launch_manifest.yaml").rename(verify_dir / "rerun_manifest.yaml")
+
+    report = compare_trials(source, artifacts)
+    assert report["surfaces"]["code_hash_match"]["match"] is True
+    assert report["checks"]["config_hashes_match"] is True
+    assert report["checks"]["data_hashes_match"] is True
+    assert report["all_match"] is True, json.dumps(report["surfaces"], indent=2)
+
+    # with NO manifest at all the surface fails closed, honestly
+    (verify_dir / "rerun_manifest.yaml").unlink()
+    report_missing = compare_trials(source, artifacts)
+    assert report_missing["checks"]["code_hash_match"] is False
+    assert report_missing["surfaces"]["code_hash_match"]["reason"] == (
+        "launch_manifest.yaml:missing")
 
 
 def test_run_reproduction_reports_missing_rerun_fail_closed(tmp_path, monkeypatch):

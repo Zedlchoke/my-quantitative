@@ -59,6 +59,7 @@ __all__ = [
     "EXIT_REPRO_MISMATCH",
     "V6_FAMILY_DIR",
     "compare_trials",
+    "expected_signal_family_from_source",
     "freeze_tolerances",
     "run_reproduction",
     "v6_family_plan",
@@ -225,14 +226,22 @@ def _metric_number(metrics: Mapping[str, Any], key: str) -> float | None:
 # --------------------------------------------------------------------------- #
 # surface comparisons
 # --------------------------------------------------------------------------- #
-_LAUNCH_MANIFEST_NAMES = ("launch_manifest.yaml",)
+_LAUNCH_MANIFEST_NAMES = ("launch_manifest.yaml", "rerun_manifest.yaml")
+#: research.portfolio_runner writes ``rerun_manifest.yaml`` at the VERIFY-DIR
+#: level (the parent of ``rerun_artifacts/``), never inside the artifacts dir,
+#: so the rerun-side loader probes the parent directory for that alias only.
+_RERUN_MANIFEST_ALIAS = "rerun_manifest.yaml"
 
 
 def _load_launch_manifest(exp_dir: Path) -> tuple[dict[str, Any] | None, str | None]:
     """Parsed launch manifest mapping, or ``(None, reason)`` fail-closed."""
     for name in _LAUNCH_MANIFEST_NAMES:
-        path = exp_dir / name
-        if not path.is_file():
+        if name == _RERUN_MANIFEST_ALIAS:
+            candidates = (exp_dir / name, exp_dir.parent / name)
+        else:
+            candidates = (exp_dir / name,)
+        path = next((candidate for candidate in candidates if candidate.is_file()), None)
+        if path is None:
             continue
         try:
             raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -241,7 +250,33 @@ def _load_launch_manifest(exp_dir: Path) -> tuple[dict[str, Any] | None, str | N
         if not isinstance(raw, Mapping):
             return None, f"{name}:not_a_mapping"
         return dict(raw), None
-    return None, "launch_manifest.yaml:missing"
+    return None, f"{_LAUNCH_MANIFEST_NAMES[0]}:missing"
+
+
+#: argv flags inside ``exact_backtest_argv`` whose value pins the signal
+#: family a faithful rerun MUST execute.
+_SIGNAL_FAMILY_ARGV_FLAGS = ("--signal-family", "--strategy-kind")
+
+
+def expected_signal_family_from_source(source_exp_dir: str | Path) -> str | None:
+    """Signal family the rerun must execute, from the frozen source argv.
+
+    Reads ``exact_backtest_argv`` from the source launch manifest; the token
+    following ``--signal-family``/``--strategy-kind`` pins the family (e.g.
+    ``funding_carry`` for the V6 family trials).  Returns ``None`` when the
+    manifest is missing/unreadable or carries no such flag (default dispatch).
+    """
+    manifest, _reason = _load_launch_manifest(Path(source_exp_dir))
+    argv = (manifest or {}).get("exact_backtest_argv")
+    if not isinstance(argv, (list, tuple)):
+        return None
+    tokens = [str(token) for token in argv]
+    for index, token in enumerate(tokens[:-1]):
+        if token in _SIGNAL_FAMILY_ARGV_FLAGS:
+            value = tokens[index + 1].strip()
+            if value:
+                return value
+    return None
 
 
 _FROZEN_INPUT_HASH_FIELDS: tuple[tuple[str, str], ...] = (
@@ -674,6 +709,7 @@ def run_reproduction(primary_repo: str | Path,
                      source_rel: str,
                      verify_id: str,
                      reproduction_root: str = _DEFAULT_REPRODUCTION_ROOT,
+                     expected_signal_family: str | None = None,
                      extra_env: Mapping[str, str] | None = None,
                      timeout_s: float | None = None) -> dict[str, Any]:
     """Re-run one experiment via ``research.portfolio_runner --reproduce`` and
@@ -681,15 +717,33 @@ def run_reproduction(primary_repo: str | Path,
 
     Launches ``[python, -m, research.portfolio_runner, --reproduce,
     <abs source>, --verify-id, ..., --reproduction-root, ...]`` with
-    ``cwd=primary_repo`` and ``env=os.environ | extra_env``; then locates the
-    rerun artifacts under ``<primary_repo>/<reproduction_root>/<verify_id>/``,
-    runs :func:`compare_trials` and writes ``reproduction_report.json`` into
-    the verify directory.  Returns the merged report (never raises for a
-    mismatch; mismatch is reported via ``all_match: false``).
+    ``cwd=primary_repo``.  The spawned runner inherits
+    ``os.environ | {"PORTFOLIO_SIGNAL_FAMILY": family} | extra_env`` where
+    ``family`` is derived from the SOURCE experiment's frozen
+    ``exact_backtest_argv`` (``--signal-family``/``--strategy-kind``), unless
+    explicitly pinned via ``expected_signal_family``; the resolved value is
+    recorded as ``resolved_env_family`` (``None`` = default dispatch).  This
+    keeps flagless reproduce workers on the source signal family instead of
+    silently rerunning momentum (V6 4/4 loop defect).
+
+    The rerun artifacts under ``<primary_repo>/<reproduction_root>/<verify_id>/``
+    are then located, :func:`compare_trials` runs and
+    ``reproduction_report.json`` is written into the verify directory.
+    ``worker_returncode`` is the raw exit status of the process THIS module
+    spawned, taken directly from its own subprocess result -- it is never
+    re-derived from any runner-written comparison artifact.  Returns the
+    merged report (never raises for a mismatch; mismatch is reported via
+    ``all_match: false``).
     """
     repo = Path(primary_repo)
     command = build_reproduce_command(repo, source_rel, verify_id, reproduction_root)
+    source_probe = Path(source_rel) if Path(source_rel).is_absolute() else (
+        repo / source_rel)
+    if expected_signal_family is None and source_probe.is_dir():
+        expected_signal_family = expected_signal_family_from_source(source_probe)
     env = dict(os.environ)
+    if expected_signal_family:
+        env["PORTFOLIO_SIGNAL_FAMILY"] = str(expected_signal_family)
     if extra_env:
         env.update({str(k): str(v) for k, v in extra_env.items()})
     started_utc = datetime.now(timezone.utc).isoformat()
@@ -697,6 +751,18 @@ def run_reproduction(primary_repo: str | Path,
                                capture_output=True, text=True,
                                timeout=timeout_s, check=False)
     finished_utc = datetime.now(timezone.utc).isoformat()
+
+    def _spawn_fields() -> dict[str, Any]:
+        return {
+            "command": command,
+            "returncode": completed.returncode,
+            "worker_returncode": completed.returncode,
+            "resolved_env_family": expected_signal_family,
+            "started_at_utc": started_utc,
+            "finished_at_utc": finished_utc,
+            "stdout_tail": completed.stdout[-4000:],
+            "stderr_tail": completed.stderr[-4000:],
+        }
 
     verify_dir = (repo / reproduction_root).resolve() / verify_id
     rerun_dir = _locate_rerun_artifacts(verify_dir)
@@ -709,12 +775,7 @@ def run_reproduction(primary_repo: str | Path,
             "verify_id": verify_id,
             "trial_source_rel": str(source_rel),
             "primary_repo": str(repo.resolve()),
-            "command": command,
-            "returncode": completed.returncode,
-            "started_at_utc": started_utc,
-            "finished_at_utc": finished_utc,
-            "stdout_tail": completed.stdout[-4000:],
-            "stderr_tail": completed.stderr[-4000:],
+            **_spawn_fields(),
             "error": ("rerun_artifacts_not_found" if rerun_dir is None
                       else "source_experiment_dir_missing"),
         }
@@ -727,17 +788,10 @@ def run_reproduction(primary_repo: str | Path,
             "verify_id": verify_id,
             "trial_source_rel": str(source_rel),
             "primary_repo": str(repo.resolve()),
-            "command": command,
-            "returncode": completed.returncode,
-            "started_at_utc": started_utc,
-            "finished_at_utc": finished_utc,
             "rerun_experiment_dir": str(rerun_dir),
-            "stdout_tail": completed.stdout[-4000:],
-            "stderr_tail": completed.stderr[-4000:],
+            **_spawn_fields(),
         })
         report.pop("error", None)
-        if completed.returncode != 0 and "worker_failed" not in report:
-            report["worker_returncode_nonzero"] = True
 
     verify_dir.mkdir(parents=True, exist_ok=True)
     out_path = verify_dir / "reproduction_report.json"
