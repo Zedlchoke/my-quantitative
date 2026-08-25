@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "artifact": "v8x_spec_freeze",
+  "created_at_utc": "2026-08-25T23:53:10Z",
+  "author_agent": "A6",
+  "worktree": "../my-quantitative-v8-wt/a6-contract-golden",
+  "branch": "orca/v8-a6-contract-golden",
+  "hypotheses": {
+    "H-XSECT-REVERSAL-BREADTH-CRYPTO-v1": {
+      "candidate_sha256": "a445fab6040ed6e42ea704ebccea0bd54a5e202ca9a7ef27c008f3aeb55cea5a",
+      "hypothesis_sha256": "07f76c50e3bc8ceb98408f2fd36e9c292a312d93788a918f421ca00f658d0dfd",
+      "status_sha256": "b214788e35afc57f1e76f8c58676555eac994c90d4fc22dcf89a1b82228f904e"
+    },
+    "H-XSECT-REVERSAL-BREADTH-EQUITY-v1": {
+      "candidate_sha256": "b8a8d2d9383a2f0c44a35f6e1b2212d7b65f711982452b12ceecb19ddc0c0db9",
+      "hypothesis_sha256": "d63669540575120bfc8217fb797f88f4313e23f3c02cc3553daab5e70e0a637a",
+      "status_sha256": "f8dd54d9016d01216ec866fb42895576aa0979110fd0f1046e82a800b8598012"
+    }
+  },
+  "selection_rules": {
+    "crypto_universe_selection_rule": {
+      "canonical_json_sha256": "46c19e7c35b5e6a3fb93a430232d35c305e698fc237c53b3c1776ad1af2fd4c9",
+      "rule_digest_scope": "universe eligibility + top-10 median-quote-volume ranking + below-min blocker",
+      "applied_by": "A8 performance-blind"
+    },
+    "equity_basket_and_provider_rule": {
+      "canonical_json_sha256": "b1c58a2480c8d2fcb2c84ed924063461365f4e9d10cb43b5608ea293926a0b3d",
+      "rule_digest_scope": "frozen ten-stock basket + SPY benchmark + provider/feed/adjustment freeze list",
+      "applied_by": "A9 performance-blind"
+    },
+    "digest_formula": "sha256(canonical json: sort_keys=True, separators=(',',':')) of the embedded rule structures",
+    "embedded_crypto_rule": {
+      "cohort": "CRYPTO_USDM_1Y_10",
+      "source": "PLAN.md section 9.1",
+      "instrument_universe": {
+        "exchange": "binance_usdm",
+        "instrument": "PERPETUAL",
+        "quote_asset": "USDT",
+        "status_at_cutoff": "valid_trading_status_at_frozen_cutoff"
+      },
+      "eligibility_rules": [
+        "onboardDate <= window_start - 365 days",
+        ">=365 days common 15m bars",
+        "native funding coverage over scored window",
+        "zero unexplained gaps in scored window; PIT metadata/hash complete"
+      ],
+      "ranking_rule": "rank eligible symbols by median daily quote volume in the 30 days strictly before scored window start; take exactly top 10",
+      "record_accepted_and_rejected_universes": true,
+      "min_required_eligible": 10,
+      "below_min_action": "V8X_CRYPTO_NOT_STARTED_DATA_INCOMPLETE"
+    },
+    "embedded_equity_rule": {
+      "cohort": "US_EQUITY_SPOT_1Y_10",
+      "source": "PLAN.md section 10.1 Mode B",
+      "instrument_mode": "US_EQUITY_SPOT_1Y",
+      "frozen_basket": [
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "AMZN",
+        "META",
+        "GOOGL",
+        "TSLA",
+        "AVGO",
+        "JPM",
+        "XOM"
+      ],
+      "benchmark": {
+        "symbol": "SPY",
+        "role": "measurement_only"
+      },
+      "selection_basis": "basket frozen before performance; no PnL-based changes permitted",
+      "provider_contract_must_freeze_before_score": [
+        "provider identity",
+        "feed SIP/IEX",
+        "adjustment mode",
+        "asof timestamp",
+        "calendar version",
+        "data hashes"
+      ],
+      "blocked_if_provider_unavailable": "V8X_EQUITY_NOT_STARTED_PROVIDER_BLOCKED"
+    }
+  },
+  "cost_model_frozen_before_performance": {
+    "crypto": {
+      "fee_rate": 0.0005,
+      "slippage": "one_tick_adverse",
+      "funding": "native",
+      "gross": 0.8,
+      "net": 0.0,
+      "fill": "next_completed_15m_event",
+      "signal_clock": "monday_00_00_utc_completed_bars_only"
+    },
+    "equity": {
+      "fill": "next_valid_regular_session_open",
+      "calendar": "official_us_exchange_regular_session",
+      "funding": "none",
+      "corporate_actions": "dividends_splits_borrow_accounted_separately",
+      "signal_clock": "last_completed_regular_session_close_before_rebalance"
+    },
+    "shared": {
+      "lookbacks_days_equivalent": [
+        3,
+        7,
+        14
+      ],
+      "negative_control": "7D momentum control per cohort",
+      "folds": "chronological_3fold",
+      "purge_embargo_days": 7,
+      "warmup_days_min": 14
+    }
+  },
+  "independence_statement": "These V8X specifications were drafted by A6 WITHOUT reading any V6/V7/V8 performance output: no results/portfolio_v8 artifacts, partial logs, metrics, or verdicts were consulted. Universe rules, lookbacks, cost model, folds and outcome caps are copied verbatim from PLAN.md sections 8-11 and are NOT derived from, tuned against, or selected using any measured PnL/PF/MDD of V6, V7 or V8. V8X is a breadth screen distinct from H-XSECT-REVERSAL-v2; it neither amends nor inherits any V8 core verdict.",
+  "freeze_rule": "must precede first scored V8 core artifact (PLAN section 8); missed => V8X_PREREG_WINDOW_MISSED",
+  "first_v8_scored_artifact_utc": null
+}
