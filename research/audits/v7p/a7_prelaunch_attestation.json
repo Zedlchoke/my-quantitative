@@ -1,59 +1,73 @@
 {
-  "schema_version": 1,
-  "artifact": "a7_prelaunch_attestation_v7p",
+  "schema_version": 2,
+  "artifact": "a7_prelaunch_attestation",
   "auditor": "A7",
   "session": "orca/v7-a7-audit",
-  "attested_integration_sha": "d723589003c83882f22594c1db9222eda5e1a44a",
-  "attested_lineage_note": "remediation commit d723589 directly on top of be705689f8cac903cecbbb96a98fd4141ce51c0f (verified ancestry via primary git log)",
-  "created_at_utc": "2026-08-25T09:37:57Z",
-  "deadline_utc": "2026-08-25T21:37:57Z",
-  "minutes_remaining_at_audit": 720,
-  "minutes_remaining_at_reaudit": 715,
-  "minutes_remaining_rule": "deadline_utc = created_at_utc + 12h; >=180 required (C18): 720 >= 180 OK; re-audit recomputed at 2026-08-25T09:42Z -> 715 >= 180 OK",
-  "checks_summary": {
-    "gates_total": 18,
-    "pass": 18,
-    "fail": 0,
-    "all_18": true,
-    "failing_gates": [],
-    "full_suite": {"passed": 706, "failed": 0, "warnings": 16, "seconds": 33.47},
-    "targeted_suites": {
-      "test_v7_golden_e2e.py::test_resolved_run_contract_artifact_conformance": "1 passed",
-      "tests/test_v7_golden_e2e.py": "9 passed",
-      "tests/test_v7_dispatcher.py": "12 passed",
-      "tests/test_v7_finalizer.py": "15 passed"
-    },
-    "resources": {
-      "disk_free_gib": 66,
-      "vm_stat_pages_free": 4076,
-      "memory_free_percentage": 47,
-      "s1_live_disabled": true,
-      "live_code_path_found": false
-    }
+  "created_at_utc": "2026-08-25T10:59:46Z",
+  "deadline_utc": "2026-08-25T22:59:46Z",
+  "attested_launch_sha": "494a81746023d70c417cc1ab4d358e8c4cd77e48",
+  "attested_lineage_note": "primary HEAD 7ad1802 is a non-code lineage commit whose message pins code-bearing HEAD 494a817; verified ancestry 49e297d -> 494a817 -> 7ad1802 on primary",
+  "baseline_sha256": "2ae688b9106f03538e9d6a98d79a0b9e6ad18c43666e998100df5e014a34d472",
+  "baseline_entry_count": 191,
+  "resolved_run_contract_sha256": "96a4af9827aa6c788722ac271480eb7a55f66a18c4eabb37ab5af5020daf7a9f",
+  "verified_delta": {
+    "changed_entries": 4,
+    "unexplained": 0,
+    "summary": "d723589..494a817 research/+tests/ delta = only 49e297d (control/evidence sync: prior A7 attestation + gate ledger) and 494a817 (provenance_v6p.py v7p exemptions). Baseline delta report (v3 canonical generator, self-excluded) shows 4 changed entries: baseline_root.json + a7_prelaunch_attestation.json removed from own source map (mandated self-exclusion), baseline_delta_report.json added, provenance_v6p.py hash updated by the exemption commit. All explained; zero unexplained."
   },
-  "findings": [
+  "prelaunch_abort_relaunch": "PRELAUNCH_ABORT_RELAUNCH_AUTHORIZED",
+  "inspections": [
     {
-      "severity": "MEDIUM",
-      "detail": "F-1 (blocks C04+C16): integration HEAD be70568 tree is not clean -- research/audits/v7p/golden_vector_report.json modified uncommitted. Committed copy cross-references superseded contract_sha256 db17c11e... while the committed resolved_run_contract.json (regenerated in 22f6e21) has sha256 7f358397..., i.e. HEAD contains an internally inconsistent evidence pair. The working-tree copy is correct and is deterministically rewritten by every full-suite run; integrator failed to recommit it after regenerating the contract. No functional impact: contract conformance and all engine tests pass with either copy present in tree. Fix = one commit at integration HEAD, then re-run C04/C16 checks."
+      "id": "A",
+      "verdict": "PASS",
+      "detail": "git log --oneline d723589..494a817 -- research/ tests/: exactly two commits. 49e297d = control/evidence sync (prior A7 attestation + gate_ledger_v7p.json); 494a817 = provenance validator/generator (research/provenance_v6p.py, +2 lines). No other commits touch research/ or tests/ in range."
     },
     {
-      "severity": "MEDIUM",
-      "detail": "F-2: expected integration composition not fully met -- A7 protocol commit 5e1918e (research/audits/v7p/challenge_memo_v7p.md) is NOT an ancestor of attested HEAD be70568. All role commits a2..a6 are present but as a linear cherry-pick chain (12 commits, single-parent), not merges. Audit protocol memo therefore absent from PRIMARY evidence tree."
+      "id": "B",
+      "verdict": "PASS",
+      "detail": "portfolio_runner.py: ZERO diff d723589..494a817; deterministic-rerun full-emission-set change (80c9bd4, A3 C15) verified ancestor of d723589, so no gate/scoring math change in audited delta. provenance_v6p.py at 494a817: adds research/audits/v7p/{baseline_root,attestation} to _provenance_exempt; build_v7p_baseline_root recomputes source map wholesale and SELF-EXCLUDES baseline/attestation via self_paths skip (research/provenance_v6p.py:299-308); baseline never embeds its own digest."
     },
     {
-      "severity": "LOW",
-      "detail": "F-3: vm_stat pages_free measured very low (4076 pages x16384B ~ 63MiB raw); memory_pressure reports system-wide 47% free so headroom exists (suite ran in 33.59s without pressure). Monitor during 12h V7 run."
+      "id": "C",
+      "verdict": "PASS",
+      "detail": "Resolved contract regenerated by canonical generator (write_resolved_contract path; atomic tmp+replace). tests/test_v7_golden_e2e.py::test_resolved_run_contract_artifact_conformance PASSED from PRIMARY. Self-hash independently recomputed via resolved_contract.verify_resolved_contract over live bytes: OK (contract_sha256=7f358397709f4418fe7cea7a11cbaa47a63d13af680457877231eb41706ff884, computed over canonical JSON of payload minus hash field)."
     },
     {
-      "severity": "INFO",
-      "detail": "F-4: baseline_root.json pins source_head=integration_head=684ecac (launch root per launch_sha semantics) while HEAD has advanced to be70568 via evidence-only commits. Immutability verified regardless: all spec/code hashes recomputed from live files match baseline. Recommend refreshing/confirming baseline root at final launch lock after F-1 remediation."
+      "id": "D",
+      "verdict": "PASS",
+      "detail": "golden_vector_report.json resolved_run_contract_ref.contract_sha256 == live contract field contract_sha256 == 7f358397709f4418fe7cea7a11cbaa47a63d13af680457877231eb41706ff884. Baseline resolved_run_contract_sha256 == sha256 of live contract file bytes == 96a4af9827aa6c788722ac271480eb7a55f66a18c4eabb37ab5af5020daf7a9f (both bindings verified)."
     },
     {
-      "severity": "INFO",
-      "detail": "F-5 REMEDIATION (scoped re-audit C04/C16 at primary HEAD d723589 on be70568 lineage): F-1 RESOLVED by commit d723589 'evidence sync: golden_vector_report regenerated against live resolved contract'. Verified directly: (1) primary tree clean pre-run; (2) committed golden_vector_report.json resolved_run_contract_ref.contract_sha256 == live resolved_run_contract.json contract_sha256 = 7f358397709f4418fe7cea7a11cbaa47a63d13af680457877231eb41706ff884; (3) full suite from PRIMARY .venv/bin/python -m pytest tests/ -q = 706 passed / 0 failed / 16 warnings in 33.47s, post-run git status --porcelain EMPTY (deterministic regeneration, zero residual dirt); (4) baseline_root.json consistent: source_files_sha256 count=189 unchanged, spec_hashes match live H-XSECT-FUNDING-CARRY-v1/candidate.yaml (d9579567...) and H-XSECT-FUNDING-PRICE-DIVERGENCE-v1/candidate.yaml (32a4a660...), novelty memo 6c1a175c... also matches. C04+C16 flipped to PASS => all 18 gates PASS, verdict PASS. Prior MEDIUM/LOW entries retained for traceability; F-2/F-3 remain non-blocking observations."
+      "id": "E",
+      "verdict": "PASS",
+      "detail": "research/control/v7_twelve_hour_run/worktree_manifest.json: six roles assigned with session ids - A2(a2-closure-orca-v7), A3(a3-engine-v7p-20260825), A4(ses_fc89f82a1ffeSuYrXXsAQzCOTq), A5(A5@orca/v7-a5-reproduction@a5-reproduction), A6(a6-conformance-v7p-20260825), A7(ses_fc89edb19ffe5EXPNqn2w19XFw); topology_gate_all_pass=true; launch_sha=49e297d. execution_worktrees rows exist for rr1-rr4 (detached at 49e297d; A1 authorized to repoint to 494a817 after this verdict)."
+    },
+    {
+      "id": "F",
+      "verdict": "PASS",
+      "detail": "Both results/portfolio_v7/*.PRELAUNCHABORT dirs (XSECT-FUND-PRICE-DIV-1D, XSECT-FUND-PRICE-DIV-3D): ABORTED.json status=PRELAUNCH_ABORT_NO_SCORED_ARTIFACT, reason='provenance launch_head key missing in v7p baseline (schema gap, fixed); no engine execution'. Contents: ABORTED.json, run.log, frozen/{candidate.yaml,config.yaml,data_manifest.json,universe.json}. NO canonical_metrics.json / scorecard.json / gate_result.json anywhere in either dir -> zero scored metrics consumed."
+    },
+    {
+      "id": "G",
+      "verdict": "PASS",
+      "detail": "Full suite from PRIMARY (.venv/bin/python -m pytest tests/ -q): 706 passed, 0 failed, 16 warnings, 34.42s. Matches expected ~706+."
+    },
+    {
+      "id": "H",
+      "verdict": "PASS",
+      "detail": "Sprint diff dd026c0..HEAD scanned for binance-order/api-key/secret/credential/live-trade/private-key/passphrase patterns: only match is an audit evidence STRING asserting absence of order-placement/Binance-order/live-switch code paths (A3 evidence text), not executable access code. No S1/live access patterns introduced."
     }
   ],
-  "verdict": "PASS",
-  "blockers": [],
-  "notes": "RE-AUDIT OUTCOME: verdict flipped FAIL->PASS after scoped remediation commit d723589. All functional/engine gates (C01-C15, C18) re-confirmed PASS with direct measured evidence at prior audit; hygiene gates C04/C16 now verified green at remediation HEAD. Zero HIGH/CRITICAL findings outstanding. V7 launch authorized pending standard operational checks."
+  "findings": [
+    {
+      "severity": "INFO",
+      "detail": "worktree_manifest.launch_sha and execution_worktrees rr1-rr4 pinned at 49e297d (pre-remediation head); A1 explicitly authorized to repoint to 494a817 after this verdict. Not a blocker: 49e297d..494a817 touches only provenance_v6p.py exemptions, no strategy/data authority."
+    },
+    {
+      "severity": "INFO",
+      "detail": "Prior stale schema_version:1 attestation overwritten by this document per owner-mandated re-audit scope."
+    }
+  ],
+  "unresolved_high_critical": 0,
+  "verdict": "PASS"
 }
