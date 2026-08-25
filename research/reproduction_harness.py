@@ -22,11 +22,15 @@ the FULL surface required by PLAN section 6.6:
 * equity curve (reconstructed from the portfolio ledger) length + last-value
   tolerance and STRICT whole-curve digest equality;
 * SOURCE ``artifact_hashes.json`` replay: every ``rel -> sha256`` entry of
-  the source manifest must equal the recomputed SHA-256 of
-  ``<rerun_artifacts>/<rel>``; a rerun-side file missing from that replay
-  fails closed naming the rel, while extra rerun files the manifest does not
-  list (e.g. ``core_result.json``) are ignored -- the ``--reproduce`` worker
-  by design emits no ``artifact_hashes.json`` of its own.
+  the source manifest EXCLUDING ``SKIP_RERUN`` rels must equal the recomputed
+  SHA-256 of ``<rerun_artifacts>/<rel>``; a rerun-side file missing from that
+  replay fails closed naming the rel, while extra rerun files the manifest
+  does not list (e.g. ``core_result.json``) are ignored -- the
+  ``--reproduce`` worker by design emits no ``artifact_hashes.json`` of its
+  own and excludes ``launch_manifest.yaml``/``run.log`` from
+  ``rerun_artifacts`` (A3 emission contract).  The pure existence half of the
+  replay is re-stated as an explicit boolean surface,
+  ``rerun_emission_completeness``, for audit readability.
 
 ``all_match`` is true only when every surface matches; every failing surface
 carries a machine-readable reason.  The harness never rewrites evidence and
@@ -78,6 +82,7 @@ __all__ = [
     "FROZEN_TOLERANCES",
     "REPRODUCTION_SCHEMA_VERSION",
     "EXIT_REPRO_MISMATCH",
+    "SKIP_RERUN",
     "V6_FAMILY_DIR",
     "compare_trials",
     "expected_signal_family_from_source",
@@ -148,9 +153,16 @@ _TOLERANCE_RULES: dict[str, str] = {
     ),
     "fold_pnls": "exact map equality (no tolerance)",
     "artifact_manifest": (
-        "each SOURCE artifact_hashes.json 'hashes' entry is recomputed "
-        "against the rerun artifacts; extra rerun-side files are ignored; "
-        "missing/unreadable source manifest or rerun artifact fails closed"
+        "each SOURCE artifact_hashes.json 'hashes' entry EXCLUDING "
+        "SKIP_RERUN rels is recomputed against the rerun artifacts; "
+        "extra rerun-side files are ignored; missing/unreadable source "
+        "manifest or rerun artifact fails closed"
+    ),
+    "rerun_emission_completeness": (
+        "every rel in the SOURCE artifact_hashes.json MINUS SKIP_RERUN "
+        "(launch_manifest.yaml, run.log: excluded from rerun_artifacts by "
+        "design) must exist on the rerun side; explicit existence-only "
+        "re-statement of the replay's missing-file half for audit readability"
     ),
 }
 
@@ -289,6 +301,12 @@ def _commit_is_ancestor(primary_repo: str | Path, commit: str,
 # --------------------------------------------------------------------------- #
 # surface comparisons
 # --------------------------------------------------------------------------- #
+#: rels the ``--reproduce`` worker EXCLUDES from ``rerun_artifacts/`` BY
+#: DESIGN (A3 emission contract): ``launch_manifest.yaml`` is verify-dir
+#: provenance and ``run.log`` is the worker's own console log -- neither is
+#: replayed from the SOURCE artifact_hashes.json against the rerun side.
+SKIP_RERUN: tuple[str, ...] = ("launch_manifest.yaml", "run.log")
+
 _LAUNCH_MANIFEST_NAMES = ("launch_manifest.yaml", "rerun_manifest.yaml")
 #: research.portfolio_runner writes ``rerun_manifest.yaml`` at the VERIFY-DIR
 #: level (the parent of ``rerun_artifacts/``), never inside the artifacts dir,
@@ -433,8 +451,11 @@ def compare_trials(source_exp_dir: str | Path,
     closed), ``config_hashes_match``/``data_hashes_match`` require the source
     experiment's own frozen files to hash to the digests its launch manifest
     recorded, and ``artifact_manifest_match`` replays every entry of the
-    SOURCE ``artifact_hashes.json`` against the rerun artifacts (missing
-    rerun files fail closed naming the rel; extra rerun files are ignored).
+    SOURCE ``artifact_hashes.json`` against the rerun artifacts after dropping
+    the ``SKIP_RERUN`` rels the worker excludes by design (missing non-skipped
+    rerun files fail closed naming the rel; extra rerun files are ignored);
+    ``rerun_emission_completeness`` re-states that existence half as an
+    explicit boolean.
     ``primary_repo`` (default: cwd) supplies the repository for the HEAD and
     ancestry lookups; ``git_head`` overrides HEAD resolution entirely and
     emulates the ancestry rule by direct equality (hermetic test seam --
@@ -682,23 +703,32 @@ def compare_trials(source_exp_dir: str | Path,
                reason=None if dig_ok else "equity_curve_digest:mismatch")
 
     # -- 9. SOURCE artifact manifest replayed against the rerun artifacts -----
-    # The --reproduce worker emits no artifact_hashes.json of its own, so the
-    # SOURCE manifest is authoritative: every listed rel must recompute to
-    # the recorded digest inside the rerun dir; a missing/unreadable rerun
-    # file fails closed naming that rel; extra unlisted rerun files (e.g.
-    # core_result.json) are ignored.
+    # The --reproduce worker emits the FULL deterministic artifact set EXCEPT
+    # the SKIP_RERUN rels (launch_manifest.yaml / run.log are excluded BY
+    # DESIGN) and emits no artifact_hashes.json of its own, so the SOURCE
+    # manifest is authoritative: every NON-skipped listed rel must recompute
+    # to the recorded digest inside the rerun dir; a missing/unreadable
+    # non-skipped rerun file fails closed naming that rel; extra unlisted
+    # rerun files (e.g. core_result.json) are ignored.
+    # rerun_emission_completeness re-states the pure existence half (every
+    # SOURCE key minus SKIP_RERUN present on the rerun side) as an explicit
+    # boolean for audit readability.
     manifest_src = _read_json(source_dir / "artifact_hashes.json")
     hashes_src = (manifest_src.get("hashes")
                   if isinstance(manifest_src, Mapping) else None)
     if not isinstance(hashes_src, Mapping) or not hashes_src:
-        record("artifact_manifest_match", False,
-               reason="source_artifact_hashes:missing_or_unreadable",
-               entries=0)
+        reason = "source_artifact_hashes:missing_or_unreadable"
+        record("rerun_emission_completeness", False, reason=reason,
+               expected=0, missing=[], skipped=[])
+        record("artifact_manifest_match", False, reason=reason, entries=0)
     else:
+        rels_all = sorted(map(str, hashes_src))
+        skipped = [rel for rel in rels_all if rel in SKIP_RERUN]
+        expected = [rel for rel in rels_all if rel not in SKIP_RERUN]
         missing: list[str] = []
         unreadable: list[str] = []
         mismatched: list[str] = []
-        for rel in sorted(map(str, hashes_src)):
+        for rel in expected:
             target = rerun_dir / rel
             if not target.is_file():
                 missing.append(rel)
@@ -710,6 +740,11 @@ def compare_trials(source_exp_dir: str | Path,
                 continue
             if actual != str(hashes_src[rel]):
                 mismatched.append(rel)
+        record("rerun_emission_completeness", not missing,
+               reason=None if not missing else ";".join(
+                   f"missing_rerun_artifact:{rel}" for rel in missing[:8]),
+               expected=len(expected), missing=missing[:8],
+               missing_total=len(missing), skipped=skipped)
         reasons = ([f"missing_rerun_artifact:{rel}" for rel in missing]
                    + [f"unreadable_rerun_artifact:{rel}" for rel in unreadable]
                    + [f"artifact_hash_mismatch:{rel}" for rel in mismatched])
@@ -719,7 +754,7 @@ def compare_trials(source_exp_dir: str | Path,
             reason = ";".join(shown) + (f";+{len(reasons) - 8}_more"
                                         if len(reasons) > 8 else "")
         record("artifact_manifest_match", matched, reason=reason,
-               entries=len(hashes_src),
+               entries=len(expected), skipped=skipped,
                missing=missing[:8], unreadable=unreadable[:8],
                differing=mismatched[:8],
                missing_total=len(missing), unreadable_total=len(unreadable),
@@ -759,6 +794,7 @@ _ALL_SURFACE_NAMES: tuple[str, ...] = (
     "funding_sum_match",
     "equity_curve_shape_match",
     "equity_curve_digest_match",
+    "rerun_emission_completeness",
     "artifact_manifest_match",
 )
 
