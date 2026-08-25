@@ -22,10 +22,16 @@ Synthetic mini experiment dirs only -- no real runs, no network:
 * ``worker_returncode`` is the raw passthrough exit status of the spawned
   process -- no re-derivation from runner comparison fields;
 * provenance surfaces are anchored to AUTHORITATIVE sources only: source
-  ``git_commit_at_launch`` vs the primary repo HEAD (real ``git rev-parse``
-  exercised against a synthetic repo) plus SOURCE-side frozen-file hash
-  self-consistency; the rerun side carries no provenance fields and none
-  are expected from it;
+  ``git_commit_at_launch`` must be an ANCESTOR of the primary repo HEAD
+  (real ``git merge-base --is-ancestor`` exercised against a synthetic repo;
+  a descendant integration head passes, diverged history fails) plus
+  SOURCE-side frozen-file hash self-consistency; the rerun side carries no
+  provenance fields and none are expected from it;
+* ``artifact_manifest_match`` replays every entry of the SOURCE
+  ``artifact_hashes.json`` against the rerun artifacts -- a tampered entry
+  fails naming that rel, a missing/unreadable rerun file fails closed, extra
+  unlisted rerun files are ignored, and the rerun side needs NO
+  ``artifact_hashes.json`` of its own (--reproduce emits none by design);
 * pre-run hygiene: an existing verify dir whose report is ``all_match: true``
   short-circuits untouched, otherwise the whole directory is RENAMED aside
   to ``<verify_id>.FAILED-<UTCcompact>-n`` (bytes preserved, never deleted,
@@ -170,7 +176,8 @@ def _rewrite_metrics(exp: Path, mutate) -> None:
 
 
 def _compare(source: Path, rerun: Path, **kwargs):
-    """compare_trials with the fixture's launch commit as the anchored HEAD."""
+    """compare_trials with the fixture's launch commit as the vouched
+    hermetic HEAD (seam emulates the ancestry rule by equality)."""
     kwargs.setdefault("git_head", GIT_COMMIT)
     return compare_trials(source, rerun, **kwargs)
 
@@ -226,10 +233,76 @@ def test_funding_byte_flip_breaks_match_with_reason(twin_dirs):
     assert report["checks"]["funding_sum_match"] is False
     assert report["surfaces"]["funding_sum_match"]["reason"] == (
         "funding_cashflow_sum:beyond_tolerance")
-    # the two manifests remain mutually equal (both record the pre-flip
-    # digest); the flip is caught by the funding digest surface above
-    assert report["checks"]["artifact_manifest_match"] is True
+    # the source manifest replay also catches the flip: the recorded funding
+    # digest no longer matches the recomputed rerun bytes (names the rel)
+    assert report["checks"]["artifact_manifest_match"] is False
+    assert report["surfaces"]["artifact_manifest_match"]["reason"] == (
+        "artifact_hash_mismatch:funding_cashflows.jsonl")
     assert report["all_match"] is False
+
+
+# --------------------------------------------------------------------------- #
+# 2b. artifact manifest: SOURCE replay semantics (round-3 contract)
+# --------------------------------------------------------------------------- #
+def test_artifact_manifest_tampered_entry_fails_naming_rel(twin_dirs):
+    source, rerun = twin_dirs
+    path = source / "artifact_hashes.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["hashes"]["orders.jsonl"] = "0" * 64  # one tampered entry
+    path.write_text(json.dumps(doc, indent=2, sort_keys=True), encoding="utf-8")
+
+    report = _compare(source, rerun)
+    assert report["checks"]["artifact_manifest_match"] is False
+    assert report["surfaces"]["artifact_manifest_match"]["reason"] == (
+        "artifact_hash_mismatch:orders.jsonl")
+    assert report["surfaces"]["artifact_manifest_match"]["differing"] == [
+        "orders.jsonl"]
+    assert report["all_match"] is False
+
+
+def test_artifact_manifest_missing_rerun_file_fails_closed(twin_dirs):
+    source, rerun = twin_dirs
+    (rerun / "positions.jsonl").unlink()
+
+    report = _compare(source, rerun)
+    assert report["checks"]["artifact_manifest_match"] is False
+    assert report["surfaces"]["artifact_manifest_match"]["reason"] == (
+        "missing_rerun_artifact:positions.jsonl")
+    # the dedicated digest surface flags the same gap independently
+    assert report["checks"]["positions_file_digest_match"] is False
+
+
+def test_artifact_manifest_extra_rerun_files_are_ignored(twin_dirs):
+    """--reproduce emits no artifact_hashes.json and adds worker-only files
+    (core_result.json); neither may break the SOURCE-manifest replay."""
+    source, rerun = twin_dirs
+    (rerun / "artifact_hashes.json").unlink()  # rerun side carries none
+    (rerun / "core_result.json").write_text('{"total_pnl": 1.0}\n',
+                                            encoding="utf-8")
+    (rerun / "comparison.json").write_text('{"all_match": true}\n',
+                                           encoding="utf-8")
+
+    report = _compare(source, rerun)
+    assert report["checks"]["artifact_manifest_match"] is True, (
+        report["surfaces"]["artifact_manifest_match"])
+    assert report["all_match"] is True
+
+
+def test_artifact_manifest_source_missing_or_empty_fails_closed(twin_dirs):
+    source, rerun = twin_dirs
+    (source / "artifact_hashes.json").unlink()
+    report = _compare(source, rerun)
+    assert report["checks"]["artifact_manifest_match"] is False
+    assert report["surfaces"]["artifact_manifest_match"]["reason"] == (
+        "source_artifact_hashes:missing_or_unreadable")
+
+    source, rerun = twin_dirs
+    (source / "artifact_hashes.json").write_text(
+        json.dumps({"schema_version": 4, "hashes": {}}), encoding="utf-8")
+    report_empty = _compare(source, rerun)
+    assert report_empty["checks"]["artifact_manifest_match"] is False
+    assert report_empty["surfaces"]["artifact_manifest_match"]["reason"] == (
+        "source_artifact_hashes:missing_or_unreadable")
 
 
 # --------------------------------------------------------------------------- #
@@ -664,6 +737,11 @@ def test_rerun_manifest_alias_loader_still_resolves(twin_dirs):
     assert manifest["git_commit_at_launch"] == GIT_COMMIT
     assert harness.expected_signal_family_from_source(artifacts) == "funding_carry"
 
+    # replay contract: every SOURCE-listed rel must exist on the rerun side,
+    # so the manifest file is restored before comparing (the verify-dir-level
+    # alias resolution was already proven above at loader level).
+    shutil.copy(verify_dir / "rerun_manifest.yaml",
+                artifacts / "launch_manifest.yaml")
     report = _compare(source, artifacts)
     assert report["all_match"] is True, json.dumps(report["surfaces"], indent=2)
 
@@ -678,7 +756,9 @@ def test_rerun_manifest_alias_loader_still_resolves(twin_dirs):
 # --------------------------------------------------------------------------- #
 def test_provenance_ignores_rerun_side_provenance_fields(twin_dirs):
     """The rerun side carries NO git_commit/frozen-hash fields and none are
-    expected: strip them entirely and provenance still passes."""
+    expected: strip them entirely and provenance still passes.  The manifest
+    replay independently fails closed on the removed FILE (round-3
+    contract), without ever consulting rerun-side provenance."""
     source, rerun = twin_dirs
     (rerun / "launch_manifest.yaml").unlink()
     (rerun.parent / "rerun_manifest.yaml").write_text(
@@ -691,7 +771,11 @@ def test_provenance_ignores_rerun_side_provenance_fields(twin_dirs):
     for surface in ("code_hash_match", "config_hashes_match",
                     "data_hashes_match"):
         assert report["checks"][surface] is True, report["surfaces"][surface]
-    assert report["all_match"] is True
+    # the removed file is SOURCE-manifest-listed -> named, fail-closed
+    assert report["checks"]["artifact_manifest_match"] is False
+    assert report["surfaces"]["artifact_manifest_match"]["reason"] == (
+        "missing_rerun_artifact:launch_manifest.yaml")
+    assert report["all_match"] is False
 
 
 def test_provenance_is_source_frozen_file_self_consistency(twin_dirs):
@@ -730,12 +814,12 @@ def test_provenance_manifest_field_drift_and_missing_fail_closed(twin_dirs):
         "data_manifest_sha256:missing_in_source_manifest")
 
 
-def test_code_hash_requires_launch_commit_equal_repo_head(tmp_path):
+def test_code_hash_requires_launch_commit_ancestor_of_head(tmp_path):
     source, rerun = _build_exp_dir(tmp_path / "s1"), _build_exp_dir(tmp_path / "r1")
     report = compare_trials(source, rerun, git_head="a" * 40)
     assert report["checks"]["code_hash_match"] is False
     assert report["surfaces"]["code_hash_match"]["reason"] == (
-        "git_commit_at_launch:mismatch_vs_head")
+        "git_commit_at_launch:not_ancestor_of_head")
 
     source, rerun = _build_exp_dir(tmp_path / "s2"), _build_exp_dir(tmp_path / "r2")
     launch_path = source / "launch_manifest.yaml"
@@ -768,18 +852,44 @@ def test_code_hash_resolves_real_head_via_git_rev_parse(tmp_path):
     assert report["surfaces"]["code_hash_match"]["head"] == head
     assert report["surfaces"]["code_hash_match"]["source"] == head
 
-    # same repo at a DIFFERENT commit -> honest mismatch
-    subprocess.run(["git", "-C", str(tmp_path / "repo"), "commit",
-                    "--allow-empty", "-q", "-m", "moved on"],
-                   check=True, capture_output=True, text=True)
-    moved = subprocess.run(
-        ["git", "-C", str(tmp_path / "repo"), "rev-parse", "HEAD"],
-        check=True, capture_output=True, text=True).stdout.strip()
+
+def test_code_hash_accepts_descendant_head_and_rejects_diverged(tmp_path):
+    """Round-3 ancestor rule: the rerun worker runs at integration HEAD,
+    which legitimately ADVANCES past the historical launch commit -- the
+    surface must PASS while the launch commit remains an ancestor and FAIL
+    closed once history diverges from it."""
+    repo = tmp_path / "repo"
+    head = _init_git_repo(repo)
+    source = _build_exp_dir(
+        repo / "results/portfolio_v6/XSECT-FUND-CARRY-1D", git_commit=head)
+    rerun = _build_exp_dir(tmp_path / "rerun", git_commit=head)
+
+    def git(*args: str) -> str:
+        proc = subprocess.run(["git", "-C", str(repo), *args],
+                              capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        return proc.stdout
+
+    # descendant integration commit: launch commit is an ANCESTOR -> pass
+    git("commit", "--allow-empty", "-q", "-m", "integration moves on")
+    moved = git("rev-parse", "HEAD").strip()
     assert moved != head
-    report_moved = compare_trials(source, rerun, primary_repo=tmp_path / "repo")
-    assert report_moved["checks"]["code_hash_match"] is False
-    assert report_moved["surfaces"]["code_hash_match"]["reason"] == (
-        "git_commit_at_launch:mismatch_vs_head")
+    report_moved = compare_trials(source, rerun, primary_repo=repo)
+    assert report_moved["checks"]["code_hash_match"] is True, (
+        report_moved["surfaces"]["code_hash_match"])
+    assert report_moved["surfaces"]["code_hash_match"]["source"] == head
+    assert report_moved["surfaces"]["code_hash_match"]["head"] == moved
+
+    # diverged history: an ORPHAN line shares no ancestry with the launch
+    # commit -> fail closed
+    git("checkout", "-q", "--orphan", "diverged-line")
+    git("commit", "--allow-empty", "-q", "-m", "unrelated history")
+    diverged = git("rev-parse", "HEAD").strip()
+    assert diverged not in (head, moved)
+    report_diverged = compare_trials(source, rerun, primary_repo=repo)
+    assert report_diverged["checks"]["code_hash_match"] is False
+    assert report_diverged["surfaces"]["code_hash_match"]["reason"] == (
+        "git_commit_at_launch:not_ancestor_of_head")
 
 
 def test_run_reproduction_reports_missing_rerun_fail_closed(tmp_path, monkeypatch):
