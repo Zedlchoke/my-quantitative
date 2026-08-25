@@ -40,6 +40,9 @@ VERIFY_KIND_REQUIRED_FIELDS = (
 )
 CELL_RESULT_REQUIRED_FIELDS = ("schema", "matrix_id")
 DIAGNOSTIC_RECALC_REQUIRED_FIELDS = ("schema", "source_trial_experiment_id")
+PIPELINE_VALIDATION_REQUIRED_FIELDS = (
+    "schema", "matrix_id", "source_trial_experiment_id",
+)
 
 
 def validate_entry_kind(entry: dict) -> list[str]:
@@ -54,6 +57,8 @@ def validate_entry_kind(entry: dict) -> list[str]:
         if kind == "CELL_RESULT"
         else DIAGNOSTIC_RECALC_REQUIRED_FIELDS
         if kind == "DIAGNOSTIC_RECALC"
+        else PIPELINE_VALIDATION_REQUIRED_FIELDS
+        if kind == "PIPELINE_VALIDATION"
         else VERIFY_KIND_REQUIRED_FIELDS
     )
     missing = [
