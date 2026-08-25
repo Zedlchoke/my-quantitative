@@ -20,13 +20,23 @@ Synthetic mini experiment dirs only -- no real runs, no network:
 * ``rerun_manifest.yaml`` (verify-dir level) is accepted as the rerun-side
   launch-manifest alias;
 * ``worker_returncode`` is the raw passthrough exit status of the spawned
-  process -- no re-derivation from runner comparison fields.
+  process -- no re-derivation from runner comparison fields;
+* provenance surfaces are anchored to AUTHORITATIVE sources only: source
+  ``git_commit_at_launch`` vs the primary repo HEAD (real ``git rev-parse``
+  exercised against a synthetic repo) plus SOURCE-side frozen-file hash
+  self-consistency; the rerun side carries no provenance fields and none
+  are expected from it;
+* pre-run hygiene: an existing verify dir whose report is ``all_match: true``
+  short-circuits untouched, otherwise the whole directory is RENAMED aside
+  to ``<verify_id>.FAILED-<UTCcompact>-n`` (bytes preserved, never deleted,
+  collisions disambiguated) before a fresh run records ``renamed_from``.
 """
 
 from __future__ import annotations
 
 import copy
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -64,7 +74,7 @@ def _ledger_rows(n: int = 4) -> list[dict]:
     ]
 
 
-def _build_exp_dir(root: Path) -> Path:
+def _build_exp_dir(root: Path, git_commit: str = GIT_COMMIT) -> Path:
     """Deterministic full-mirror experiment dir (all compared surfaces)."""
     exp = Path(root)
     (exp / "frozen").mkdir(parents=True)
@@ -115,7 +125,7 @@ def _build_exp_dir(root: Path) -> Path:
     launch = {
         "schema_version": 2,
         "experiment_id": "XSECT-FUND-CARRY-1D",
-        "git_commit_at_launch": GIT_COMMIT,
+        "git_commit_at_launch": git_commit,
         "dirty_worktree_at_launch": False,
         "exact_backtest_argv": [
             sys.executable, "-m", "research.portfolio_runner",
@@ -159,12 +169,39 @@ def _rewrite_metrics(exp: Path, mutate) -> None:
         json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def _compare(source: Path, rerun: Path, **kwargs):
+    """compare_trials with the fixture's launch commit as the anchored HEAD."""
+    kwargs.setdefault("git_head", GIT_COMMIT)
+    return compare_trials(source, rerun, **kwargs)
+
+
+def _init_git_repo(path: Path) -> str:
+    """Real git repo with one empty commit at ``path``; returns HEAD sha."""
+    def git(*args: str) -> str:
+        proc = subprocess.run(["git", "-C", str(path), *args],
+                              capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        return proc.stdout
+    path.mkdir(parents=True, exist_ok=True)
+    git("init", "-q")
+    git("config", "user.email", "a5@example.invalid")
+    git("config", "user.name", "A5 Test")
+    git("commit", "--allow-empty", "-q", "-m", "launch")
+    return git("rev-parse", "HEAD").strip()
+
+
+def _tree_digest(root: Path) -> list[tuple[str, str]]:
+    """Byte-identity snapshot: sorted (relpath, sha256) of every file."""
+    return [(path.relative_to(root).as_posix(), harness.sha256_file(path))
+            for path in sorted(root.rglob("*")) if path.is_file()]
+
+
 # --------------------------------------------------------------------------- #
 # 1. identical twins -> full match
 # --------------------------------------------------------------------------- #
 def test_identical_dirs_all_match(twin_dirs):
     source, rerun = twin_dirs
-    report = compare_trials(source, rerun)
+    report = _compare(source, rerun)
     assert report["all_match"] is True, json.dumps(report["surfaces"], indent=2)
     assert all(report["checks"].values())
     assert set(report["checks"]) == set(harness._ALL_SURFACE_NAMES)
@@ -182,7 +219,7 @@ def test_funding_byte_flip_breaks_match_with_reason(twin_dirs):
     lines[0] = json.dumps(flipped, sort_keys=True)
     funding_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    report = compare_trials(source, rerun)
+    report = _compare(source, rerun)
     assert report["checks"]["funding_digest_match"] is False
     assert report["surfaces"]["funding_digest_match"]["reason"] == (
         "digest_mismatch:funding_cashflows.jsonl")
@@ -205,7 +242,7 @@ def test_metric_drift_beyond_tolerance_fails(twin_dirs):
         metrics["beta"] = metrics["beta"] + 0.01
 
     _rewrite_metrics(rerun, bump_beta)
-    report = compare_trials(source, rerun)
+    report = _compare(source, rerun)
     assert report["checks"]["beta_match"] is False
     assert report["surfaces"]["beta_match"]["reason"] == "beta:beyond_tolerance"
     assert report["all_match"] is False
@@ -213,7 +250,7 @@ def test_metric_drift_beyond_tolerance_fails(twin_dirs):
     # pnl drift beyond the equity-scaled bound too
     source2, rerun2 = twin_dirs
     _rewrite_metrics(rerun2, lambda m: m.update(total_pnl=m["total_pnl"] + 1.0))
-    report2 = compare_trials(source2, rerun2)
+    report2 = _compare(source2, rerun2)
     assert report2["checks"]["pnl_match"] is False
     assert report2["surfaces"]["pnl_match"]["reason"] == (
         "total_pnl:beyond_tolerance")
@@ -222,7 +259,7 @@ def test_metric_drift_beyond_tolerance_fails(twin_dirs):
 def test_subtolerance_drift_still_matches_surface(twin_dirs):
     source, rerun = twin_dirs
     _rewrite_metrics(rerun, lambda m: m.update(beta=m["beta"] + 5e-7))
-    report = compare_trials(source, rerun)
+    report = _compare(source, rerun)
     assert report["checks"]["beta_match"] is True
     # only the (deliberately strict) byte/manifest surfaces may complain here
     assert report["checks"]["fold_pnls_exact_match"] is True
@@ -237,12 +274,12 @@ def test_nested_pf_payload_shape_is_supported(twin_dirs):
             pf_position_level={"profit_factor": m["pf_position_level"],
                                "trades": 1037, "gross_profit": 1.0,
                                "gross_loss": -1.0, "pf_reason": None}))
-    report = compare_trials(source, rerun)
+    report = _compare(source, rerun)
     assert report["checks"]["pf_match"] is True
 
     _rewrite_metrics(rerun, lambda m: m["pf_position_level"].update(
         profit_factor=m["pf_position_level"]["profit_factor"] + 0.01))
-    report2 = compare_trials(source, rerun)
+    report2 = _compare(source, rerun)
     assert report2["checks"]["pf_match"] is False
     assert report2["surfaces"]["pf_match"]["reason"] == "pf_position_level:beyond_tolerance"
 
@@ -251,7 +288,7 @@ def test_fold_pnls_map_must_be_exact(twin_dirs):
     source, rerun = twin_dirs
     _rewrite_metrics(rerun, lambda m: m.update(
         fold_pnls={**m["fold_pnls"], "F2": m["fold_pnls"]["F2"] + 1e-12}))
-    report = compare_trials(source, rerun)
+    report = _compare(source, rerun)
     assert report["checks"]["fold_pnls_exact_match"] is False
     assert report["surfaces"]["fold_pnls_exact_match"]["reason"] == (
         "fold_pnls:map_mismatch")
@@ -267,7 +304,7 @@ def test_dropped_ledger_row_breaks_counts_and_equity_digest(twin_dirs):
     lines = ledger.read_text(encoding="utf-8").splitlines()
     ledger.write_text("\n".join(lines[:-1]) + "\n", encoding="utf-8")
 
-    report = compare_trials(source, rerun)
+    report = _compare(source, rerun)
     assert report["checks"]["row_counts_match"] is False
     assert "row_count_mismatch:portfolio_ledger.jsonl:" in (
         report["surfaces"]["row_counts_match"]["reason"])
@@ -348,12 +385,20 @@ class _FakeCompleted:
         self.stderr = ""
 
 
+_REAL_SUBPROCESS_RUN = subprocess.run
+
+
 def _install_fake_runner(monkeypatch, source: Path, captured: dict,
                          returncode: int = 0, create_artifacts: bool = True) -> None:
-    """Replace harness.subprocess.run; mirror source into rerun_artifacts."""
+    """Replace harness.subprocess.run for RUNNER invocations only; mirror
+    source into rerun_artifacts.  The harness's own ``git rev-parse`` probe
+    passes through to the real subprocess untouched."""
 
     def fake_run(command, cwd=None, env=None, capture_output=None,
                  text=None, timeout=None, check=False):
+        if command and command[0] == "git":
+            return _REAL_SUBPROCESS_RUN(command, capture_output=True,
+                                        text=True, check=False)
         captured["command"] = list(command)
         captured["cwd"] = cwd
         captured["env"] = dict(env or {})
@@ -375,8 +420,9 @@ def _install_fake_runner(monkeypatch, source: Path, captured: dict,
 
 def test_run_reproduction_end_to_end_with_fake_runner(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
+    head = _init_git_repo(repo)
     source_rel = "results/portfolio_v6/XSECT-FUND-CARRY-1D"
-    source = _build_exp_dir(repo / source_rel)
+    source = _build_exp_dir(repo / source_rel, git_commit=head)
 
     captured: dict = {}
     _install_fake_runner(monkeypatch, source, captured)
@@ -398,15 +444,130 @@ def test_run_reproduction_end_to_end_with_fake_runner(tmp_path, monkeypatch):
     assert captured["env"]["ORCA_TEST_MARKER"] == "1"
 
     assert report["all_match"] is True, json.dumps(report.get("surfaces"), indent=2)
+    # code hash anchored via a REAL git rev-parse against the primary repo
+    assert report["surfaces"]["code_hash_match"]["head"] == head
     assert report["returncode"] == 0
     assert report["worker_returncode"] == 0
     assert "worker_returncode_nonzero" not in report
+    assert "renamed_from" not in report  # fresh verify dir: nothing archived
     expected_report = (repo / "results/reproduction_v7/VERIFY-V6FULL-1D/"
                              "reproduction_report.json")
     assert expected_report.is_file()
     persisted = json.loads(expected_report.read_text(encoding="utf-8"))
     assert persisted["all_match"] is True
     assert report["report_path"] == str(expected_report)
+
+
+# --------------------------------------------------------------------------- #
+# 7c. pre-run hygiene: already-verified skip + FAILED archive
+# --------------------------------------------------------------------------- #
+def test_run_reproduction_skips_untouched_when_already_verified(
+        tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    head = _init_git_repo(repo)
+    source_rel = "results/portfolio_v6/XSECT-FUND-CARRY-1D"
+    source = _build_exp_dir(repo / source_rel, git_commit=head)
+
+    captured: dict = {}
+    _install_fake_runner(monkeypatch, source, captured)
+    first = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+    assert first["all_match"] is True
+
+    verify_dir = repo / "results/reproduction_v7/VERIFY-V6FULL-1D"
+    snapshot = _tree_digest(verify_dir)
+    captured.clear()
+    second = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+
+    assert "command" not in captured  # no subprocess spawned at all
+    assert second["all_match"] is True
+    assert _tree_digest(verify_dir) == snapshot  # evidence bytes untouched
+    assert second["report_path"] == str(verify_dir / "reproduction_report.json")
+    assert not any(path.name.startswith("VERIFY-V6FULL-1D.FAILED-")
+                   for path in verify_dir.parent.iterdir())
+
+
+def test_run_reproduction_archives_false_report_then_runs_fresh(
+        tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    head = _init_git_repo(repo)
+    source_rel = "results/portfolio_v6/XSECT-FUND-CARRY-1D"
+    source = _build_exp_dir(repo / source_rel, git_commit=head)
+
+    # attempt 1: broken worker leaves a false-report verify dir behind
+    captured: dict = {}
+    _install_fake_runner(monkeypatch, source, captured, returncode=7,
+                         create_artifacts=False)
+    broken = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+    assert broken["all_match"] is False
+    verify_dir = repo / "results/reproduction_v7/VERIFY-V6FULL-1D"
+    assert verify_dir.is_dir()
+    broken_snapshot = _tree_digest(verify_dir)
+
+    # attempt 2: healthy worker -> stale dir archived BYTES-PRESERVED,
+    # fresh run proceeds, new report records the rename
+    captured.clear()
+    _install_fake_runner(monkeypatch, source, captured)
+    good = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+
+    assert good["all_match"] is True, json.dumps(good.get("surfaces"), indent=2)
+    archive = Path(good["archived_to"])
+    assert re.fullmatch(r"VERIFY-V6FULL-1D\.FAILED-\d{8}T\d{6}-\d+",
+                        archive.name)
+    assert archive.is_dir() and archive != verify_dir
+    assert _tree_digest(archive) == broken_snapshot  # preserved, never deleted
+    assert good["renamed_from"] == str(verify_dir)
+    persisted = json.loads((verify_dir / "reproduction_report.json")
+                           .read_text(encoding="utf-8"))
+    assert persisted["renamed_from"] == str(verify_dir)
+    assert persisted["archived_to"] == str(archive)
+
+
+def test_run_reproduction_archives_unreadable_prior_report(
+        tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    head = _init_git_repo(repo)
+    source_rel = "results/portfolio_v6/XSECT-FUND-CARRY-1D"
+    source = _build_exp_dir(repo / source_rel, git_commit=head)
+
+    verify_dir = repo / "results/reproduction_v7/VERIFY-V6FULL-1D"
+    verify_dir.mkdir(parents=True)
+    (verify_dir / "reproduction_report.json").write_text(
+        "{not valid json", encoding="utf-8")
+    snapshot = _tree_digest(verify_dir)
+
+    captured: dict = {}
+    _install_fake_runner(monkeypatch, source, captured)
+    report = run_reproduction(repo, source_rel, "VERIFY-V6FULL-1D")
+
+    assert report["all_match"] is True
+    archive = Path(report["archived_to"])
+    assert archive != verify_dir
+    assert _tree_digest(archive) == snapshot
+    assert (archive / "reproduction_report.json").read_text(
+        encoding="utf-8") == "{not valid json"
+
+
+def test_archive_preserves_bytes_and_disambiguates_collisions(tmp_path):
+    stale = tmp_path / "VERIFY-V6FULL-1D"
+    stale.mkdir()
+    (stale / "reproduction_report.json").write_text('{"all_match": false}\n',
+                                                    encoding="utf-8")
+    snapshot = _tree_digest(stale)
+
+    renamed_from_a, archived_a = harness._archive_failed_verify_dir(stale)
+    assert renamed_from_a == str(stale)
+    arch_a = Path(archived_a)
+    assert re.fullmatch(r"VERIFY-V6FULL-1D\.FAILED-\d{8}T\d{6}-\d+", arch_a.name)
+    assert not stale.exists()
+    assert _tree_digest(arch_a) == snapshot  # bytes preserved by rename
+
+    # same-second collision: -n counter disambiguates, never overwrites
+    stale.mkdir()
+    _renamed_from_b, archived_b = harness._archive_failed_verify_dir(stale)
+    arch_b = Path(archived_b)
+    assert arch_b != arch_a and arch_b.is_dir()
+    assert list(arch_b.iterdir()) == []  # fresh-empty dir archived as-is
+    assert sorted(tmp_path.glob("VERIFY-V6FULL-1D.FAILED-*")) == [arch_a, arch_b]
 
 
 def test_run_reproduction_forwards_derived_signal_family(tmp_path, monkeypatch):
@@ -488,27 +649,137 @@ def test_worker_returncode_is_raw_passthrough_from_spawned_process(
     assert "worker_returncode_nonzero" not in report_missing
 
 
-def test_rerun_manifest_alias_resolves_code_config_data_hashes(twin_dirs):
-    """Runner layout: rerun_manifest.yaml sits at <verify>/ level beside
-    rerun_artifacts/ -- compare_trials must resolve it via the alias."""
+def test_rerun_manifest_alias_loader_still_resolves(twin_dirs):
+    """Round-1 fix intact: verify-dir-level rerun_manifest.yaml resolves via
+    _load_launch_manifest -- while provenance surfaces no longer consult the
+    rerun side AT ALL (they never carried those fields)."""
     source, rerun = twin_dirs
     verify_dir = rerun.parent
     artifacts = verify_dir / "rerun_artifacts"
     rerun.rename(artifacts)
     (artifacts / "launch_manifest.yaml").rename(verify_dir / "rerun_manifest.yaml")
 
-    report = compare_trials(source, artifacts)
-    assert report["surfaces"]["code_hash_match"]["match"] is True
-    assert report["checks"]["config_hashes_match"] is True
-    assert report["checks"]["data_hashes_match"] is True
+    manifest, reason = harness._load_launch_manifest(artifacts)
+    assert reason is None
+    assert manifest["git_commit_at_launch"] == GIT_COMMIT
+    assert harness.expected_signal_family_from_source(artifacts) == "funding_carry"
+
+    report = _compare(source, artifacts)
     assert report["all_match"] is True, json.dumps(report["surfaces"], indent=2)
 
-    # with NO manifest at all the surface fails closed, honestly
+    # ...and provenance still passes with the alias file deleted outright
     (verify_dir / "rerun_manifest.yaml").unlink()
-    report_missing = compare_trials(source, artifacts)
-    assert report_missing["checks"]["code_hash_match"] is False
+    report_no_alias = _compare(source, artifacts)
+    assert report_no_alias["all_match"] is True
+
+
+# --------------------------------------------------------------------------- #
+# 7b. provenance surfaces anchored to authoritative sources only
+# --------------------------------------------------------------------------- #
+def test_provenance_ignores_rerun_side_provenance_fields(twin_dirs):
+    """The rerun side carries NO git_commit/frozen-hash fields and none are
+    expected: strip them entirely and provenance still passes."""
+    source, rerun = twin_dirs
+    (rerun / "launch_manifest.yaml").unlink()
+    (rerun.parent / "rerun_manifest.yaml").write_text(
+        yaml.safe_dump({"schema_version": 4, "verify_id": "VERIFY-X",
+                        "verification_type": "INDEPENDENT_RERUN",
+                        "tolerances": {"pnl_abs_scale_tol": 1e-6}}),
+        encoding="utf-8")
+
+    report = _compare(source, rerun)
+    for surface in ("code_hash_match", "config_hashes_match",
+                    "data_hashes_match"):
+        assert report["checks"][surface] is True, report["surfaces"][surface]
+    assert report["all_match"] is True
+
+
+def test_provenance_is_source_frozen_file_self_consistency(twin_dirs):
+    """Recomputed sha256 of SOURCE frozen/* must equal its own manifest."""
+    source, rerun = twin_dirs
+    (source / "frozen" / "config.yaml").write_text("run:\n  tampered: true\n",
+                                                   encoding="utf-8")
+    (source / "frozen" / "universe.json").write_text('{"schema_version": 9}\n',
+                                                     encoding="utf-8")
+    report = _compare(source, rerun)
+    assert report["checks"]["config_hashes_match"] is False
+    assert "runtime_config_sha256:self_hash_mismatch" in (
+        report["surfaces"]["config_hashes_match"]["reason"])
+    assert report["checks"]["data_hashes_match"] is False
+    assert "universe_sha256:self_hash_mismatch" in (
+        report["surfaces"]["data_hashes_match"]["reason"])
+    # untouched fields stay green; code hash is a separate surface
+    assert "candidate_spec_sha256" not in (
+        report["surfaces"]["config_hashes_match"]["reason"])
+    assert report["checks"]["code_hash_match"] is True
+
+
+def test_provenance_manifest_field_drift_and_missing_fail_closed(twin_dirs):
+    source, rerun = twin_dirs
+    launch_path = source / "launch_manifest.yaml"
+    doc = yaml.safe_load(launch_path.read_text(encoding="utf-8"))
+    doc["candidate_spec_sha256"] = "0" * 64  # recorded != recomputed
+    del doc["data_manifest_sha256"]          # field absent from manifest
+    launch_path.write_text(yaml.safe_dump(doc, sort_keys=False),
+                           encoding="utf-8")
+
+    report = _compare(source, rerun)
+    assert report["surfaces"]["config_hashes_match"]["reason"] == (
+        "candidate_spec_sha256:self_hash_mismatch")
+    assert report["surfaces"]["data_hashes_match"]["reason"] == (
+        "data_manifest_sha256:missing_in_source_manifest")
+
+
+def test_code_hash_requires_launch_commit_equal_repo_head(tmp_path):
+    source, rerun = _build_exp_dir(tmp_path / "s1"), _build_exp_dir(tmp_path / "r1")
+    report = compare_trials(source, rerun, git_head="a" * 40)
+    assert report["checks"]["code_hash_match"] is False
+    assert report["surfaces"]["code_hash_match"]["reason"] == (
+        "git_commit_at_launch:mismatch_vs_head")
+
+    source, rerun = _build_exp_dir(tmp_path / "s2"), _build_exp_dir(tmp_path / "r2")
+    launch_path = source / "launch_manifest.yaml"
+    doc = yaml.safe_load(launch_path.read_text(encoding="utf-8"))
+    doc.pop("git_commit_at_launch")
+    launch_path.write_text(yaml.safe_dump(doc, sort_keys=False),
+                           encoding="utf-8")
+    report_missing = compare_trials(source, rerun, git_head=GIT_COMMIT)
     assert report_missing["surfaces"]["code_hash_match"]["reason"] == (
-        "launch_manifest.yaml:missing")
+        "git_commit_at_launch:missing_field")
+
+    # unresolvable HEAD (dir outside any repo) fails closed as well
+    source, rerun = _build_exp_dir(tmp_path / "s3"), _build_exp_dir(tmp_path / "r3")
+    report_unresolved = compare_trials(source, rerun,
+                                       primary_repo=tmp_path / "nowhere")
+    assert report_unresolved["checks"]["code_hash_match"] is False
+    assert report_unresolved["surfaces"]["code_hash_match"]["reason"].startswith(
+        "git_head_unresolved:")
+
+
+def test_code_hash_resolves_real_head_via_git_rev_parse(tmp_path):
+    head = _init_git_repo(tmp_path / "repo")
+    source = _build_exp_dir(
+        tmp_path / "repo/results/portfolio_v6/XSECT-FUND-CARRY-1D",
+        git_commit=head)
+    rerun = _build_exp_dir(tmp_path / "rerun", git_commit=head)
+
+    report = compare_trials(source, rerun, primary_repo=tmp_path / "repo")
+    assert report["checks"]["code_hash_match"] is True
+    assert report["surfaces"]["code_hash_match"]["head"] == head
+    assert report["surfaces"]["code_hash_match"]["source"] == head
+
+    # same repo at a DIFFERENT commit -> honest mismatch
+    subprocess.run(["git", "-C", str(tmp_path / "repo"), "commit",
+                    "--allow-empty", "-q", "-m", "moved on"],
+                   check=True, capture_output=True, text=True)
+    moved = subprocess.run(
+        ["git", "-C", str(tmp_path / "repo"), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True).stdout.strip()
+    assert moved != head
+    report_moved = compare_trials(source, rerun, primary_repo=tmp_path / "repo")
+    assert report_moved["checks"]["code_hash_match"] is False
+    assert report_moved["surfaces"]["code_hash_match"]["reason"] == (
+        "git_commit_at_launch:mismatch_vs_head")
 
 
 def test_run_reproduction_reports_missing_rerun_fail_closed(tmp_path, monkeypatch):
@@ -532,10 +803,14 @@ def test_run_reproduction_reports_missing_rerun_fail_closed(tmp_path, monkeypatc
 # --------------------------------------------------------------------------- #
 # 8. CLI surface (compare exit codes; plan output)
 # --------------------------------------------------------------------------- #
-def test_cli_compare_exit_codes_and_plan(capsys, twin_dirs):
-    source, rerun = twin_dirs
-    assert harness.main(["compare", "--source", str(source), "--rerun",
-                         str(rerun)]) == 0
+def test_cli_compare_exit_codes_and_plan(capsys, tmp_path):
+    head = _init_git_repo(tmp_path / "repo")
+    source = _build_exp_dir(tmp_path / "source", git_commit=head)
+    rerun = _build_exp_dir(tmp_path / "rerun", git_commit=head)
+    compare_argv = ["compare", "--source", str(source), "--rerun", str(rerun),
+                    "--primary-repo", str(tmp_path / "repo")]
+
+    assert harness.main(compare_argv) == 0
     compare_out = capsys.readouterr()
     assert json.loads(compare_out.out)["all_match"] is True
 
@@ -549,5 +824,5 @@ def test_cli_compare_exit_codes_and_plan(capsys, twin_dirs):
     ]
 
     _rewrite_metrics(rerun, lambda m: m.update(beta=m["beta"] + 0.5))
-    code = harness.main(["compare", "--source", str(source), "--rerun", str(rerun)])
+    code = harness.main(compare_argv)
     assert code == EXIT_REPRO_MISMATCH

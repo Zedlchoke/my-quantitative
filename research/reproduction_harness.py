@@ -4,8 +4,12 @@ Freezes the comparison tolerances BEFORE any rerun is consulted, then compares
 a scored experiment directory against its independent rerun directory across
 the FULL surface required by PLAN section 6.6:
 
-* config/data/code hashes -- ``launch_manifest.yaml`` ``git_commit_at_launch``
-  (source vs rerun manifest), recomputed ``frozen/*`` SHA-256 pairs;
+* code hash -- source ``launch_manifest.yaml`` ``git_commit_at_launch`` MUST
+  equal the primary repository's current HEAD (``git rev-parse HEAD``);
+* config/data hashes -- SOURCE self-consistency: recomputed SHA-256 of the
+  source experiment's own ``frozen/*`` files vs the digests recorded in its
+  launch manifest (the rerun-side manifest carries no provenance fields and
+  none are expected from it);
 * order/position/ledger/funding/terminal artifact SHA-256 digests plus strict
   row-count equality;
 * funding cashflow digest AND absolute cashflow-sum tolerance;
@@ -22,11 +26,20 @@ never mutates either experiment directory; its only output is the returned
 report dict (and, for :func:`run_reproduction`, ``reproduction_report.json``
 written into the verify directory).
 
+Pre-run hygiene (:func:`run_reproduction`): when the verify directory already
+exists (e.g. from a broken earlier attempt that would make the inner runner
+abort with ``--verify-id`` already exists), the stale directory is inspected:
+an ``all_match: true`` report short-circuits as already-verified, otherwise
+the whole directory is RENAMED (bytes preserved, never deleted) to
+``<verify_id>.FAILED-<UTCcompact>-n`` and a fresh run proceeds; the new
+report records ``renamed_from``/``archived_to``.
+
 CLI (used by A1 at the integration SHA for the V6 4/4 loop)::
 
     python -m research.reproduction_harness plan
     python -m research.reproduction_harness freeze [--path OUT.json]
-    python -m research.reproduction_harness compare --source DIR --rerun DIR
+    python -m research.reproduction_harness compare --source DIR --rerun DIR \
+        [--primary-repo REPO]
     python -m research.reproduction_harness run-one \
         --primary-repo REPO --source-rel results/portfolio_v6/XSECT-FUND-CARRY-1D \
         --verify-id VERIFY-V6FULL-1D [--reproduction-root results/reproduction_v7]
@@ -223,6 +236,25 @@ def _metric_number(metrics: Mapping[str, Any], key: str) -> float | None:
         return None
 
 
+def _resolve_repo_head(primary_repo: str | Path) -> tuple[str | None, str | None]:
+    """Current HEAD of ``primary_repo`` via ``git rev-parse HEAD``.
+
+    Returns ``(head_sha, None)`` on success or ``(None, reason)`` fail-closed.
+    """
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(primary_repo), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=60, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, f"git_rev_parse:error:{type(exc).__name__}"
+    if completed.returncode != 0:
+        return None, "git_rev_parse:failed"
+    head = completed.stdout.strip()
+    if not head:
+        return None, "git_rev_parse:empty_output"
+    return head, None
+
+
 # --------------------------------------------------------------------------- #
 # surface comparisons
 # --------------------------------------------------------------------------- #
@@ -351,7 +383,9 @@ def _pnl_scale(source_metrics: Mapping[str, Any],
 
 def compare_trials(source_exp_dir: str | Path,
                    rerun_exp_dir: str | Path,
-                   tolerances: Mapping[str, Any] | None = None) -> dict[str, Any]:
+                   tolerances: Mapping[str, Any] | None = None,
+                   primary_repo: str | Path | None = None,
+                   git_head: str | None = None) -> dict[str, Any]:
     """Compare a scored experiment dir against its independent rerun dir.
 
     Returns a report dict whose ``checks`` maps each surface name to a boolean
@@ -359,6 +393,16 @@ def compare_trials(source_exp_dir: str | Path,
     EVERY surface matched.  Fail-closed: missing artifacts, unreadable
     manifests and absent metric fields are mismatches with explicit reasons,
     never silent passes.
+
+    Provenance is anchored to AUTHORITATIVE sources only (never to the
+    rerun-side manifest): ``code_hash_match`` requires the source launch
+    manifest's ``git_commit_at_launch`` to equal the primary repository's
+    current HEAD, and ``config_hashes_match``/``data_hashes_match`` require
+    the source experiment's own frozen files to hash to the digests its
+    launch manifest recorded (self-consistency of the source being
+    reproduced).  ``primary_repo`` (default: cwd) supplies the repository for
+    the HEAD lookup; ``git_head`` overrides resolution entirely (hermetic
+    test seam -- production callers must not pass it).
     """
     tol = dict(FROZEN_TOLERANCES if tolerances is None else tolerances)
     source_dir = Path(source_exp_dir)
@@ -396,41 +440,49 @@ def compare_trials(source_exp_dir: str | Path,
             "error": missing,
         }
 
-    # -- 1. code hash (git_commit_at_launch) ---------------------------------
-    source_manifest, source_reason = _load_launch_manifest(source_dir)
-    rerun_manifest, rerun_reason = _load_launch_manifest(rerun_dir)
+    # -- 1. code hash: source launch commit == primary repo HEAD -------------
+    # Authoritative anchor: the SOURCE launch manifest's git_commit_at_launch
+    # must equal the primary repository's CURRENT HEAD.  The rerun-side
+    # manifest carries no provenance fields and none are expected from it.
+    source_manifest, _source_manifest_reason = _load_launch_manifest(source_dir)
     source_commit = (source_manifest or {}).get("git_commit_at_launch")
-    rerun_commit = (rerun_manifest or {}).get("git_commit_at_launch")
-    code_reason = source_reason or rerun_reason
-    if code_reason is None:
-        if source_commit in (None, "") or rerun_commit in (None, ""):
-            code_reason = "git_commit_at_launch:missing_field"
-        elif str(source_commit) != str(rerun_commit):
-            code_reason = "git_commit_at_launch:mismatch"
+    head_reason: str | None = None
+    if git_head:
+        resolved_head, head_reason = str(git_head), None
+    else:
+        resolved_head, head_reason = _resolve_repo_head(
+            Path(primary_repo) if primary_repo is not None else Path.cwd())
+    if source_manifest is None or source_commit in (None, ""):
+        code_reason = ("launch_manifest.yaml:missing" if source_manifest is None
+                       else "git_commit_at_launch:missing_field")
+    elif resolved_head is None:
+        code_reason = f"git_head_unresolved:{head_reason}"
+    elif str(source_commit) != str(resolved_head):
+        code_reason = "git_commit_at_launch:mismatch_vs_head"
+    else:
+        code_reason = None
     record("code_hash_match", code_reason is None, reason=code_reason,
            source=str(source_commit) if source_commit else None,
-           rerun=str(rerun_commit) if rerun_commit else None)
+           head=str(resolved_head) if resolved_head else None)
 
-    # -- 2. config/data hashes (frozen/* recomputed, both directions) --------
+    # -- 2. config/data hashes: SOURCE self-consistency -----------------------
+    # The digests recorded in the source launch manifest must equal the
+    # recomputed SHA-256 of the source experiment's own frozen/* files.
     config_reasons: list[str] = []
     data_reasons: list[str] = []
     for field, rel in _FROZEN_INPUT_HASH_FIELDS:
-        matched, reason = _file_sha_pair(source_dir, rerun_dir, rel)
-        # Self-consistency: each side's frozen bytes must equal the digest its
-        # own launch manifest recorded (tamper detection, fail-closed).
-        for label, exp_dir, manifest in (("source", source_dir, source_manifest),
-                                         ("rerun", rerun_dir, rerun_manifest)):
-            expected = (manifest or {}).get(field)
-            target = exp_dir / rel
-            if expected is None:
-                matched, reason = False, f"{field}:missing_in_{label}_manifest"
-            elif not target.is_file():
-                matched, reason = False, f"{label}:{rel}:missing"
-            elif sha256_file(target) != str(expected):
-                matched, reason = False, f"{label}:{field}:self_hash_mismatch"
+        reason: str | None = None
+        expected = (source_manifest or {}).get(field)
+        target = source_dir / rel
+        if expected is None:
+            reason = f"{field}:missing_in_source_manifest"
+        elif not target.is_file():
+            reason = f"source:{rel}:missing"
+        elif sha256_file(target) != str(expected):
+            reason = f"{field}:self_hash_mismatch"
         bucket = (config_reasons if rel.endswith(("config.yaml", "candidate.yaml"))
                   else data_reasons)
-        if not matched:
+        if reason is not None:
             bucket.append(reason)
     record("config_hashes_match", not config_reasons,
            reason=None if not config_reasons else ";".join(config_reasons))
@@ -705,6 +757,37 @@ def _locate_rerun_artifacts(verify_dir: Path) -> Path | None:
     return None
 
 
+def _archive_failed_verify_dir(verify_dir: Path) -> tuple[str, str]:
+    """Preserve a stale/broken verify dir by RENAMING it aside (never delete).
+
+    Target name: ``<verify_id>.FAILED-<UTCcompact>-n`` with ``n >= 1``
+    disambiguating same-second collisions.  Returns ``(renamed_from,
+    archived_to)`` paths.  Raises :class:`RuntimeError` when the rename fails
+    so a fresh run can never clobber unarchived evidence.
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    n = 1
+    while True:
+        candidate = verify_dir.parent / f"{verify_dir.name}.FAILED-{stamp}-{n}"
+        if not candidate.exists():
+            break
+        n += 1
+    try:
+        verify_dir.rename(candidate)
+    except OSError as exc:
+        raise RuntimeError(
+            f"cannot archive stale verify dir {verify_dir}: {exc}") from exc
+    return str(verify_dir), str(candidate)
+
+
+def _already_verified_report(verify_dir: Path) -> dict[str, Any] | None:
+    """Persisted report proving this verify id already fully matched."""
+    prior = _read_json(verify_dir / "reproduction_report.json")
+    if isinstance(prior, Mapping) and prior.get("all_match") is True:
+        return dict(prior)
+    return None
+
+
 def run_reproduction(primary_repo: str | Path,
                      source_rel: str,
                      verify_id: str,
@@ -729,6 +812,17 @@ def run_reproduction(primary_repo: str | Path,
     The rerun artifacts under ``<primary_repo>/<reproduction_root>/<verify_id>/``
     are then located, :func:`compare_trials` runs and
     ``reproduction_report.json`` is written into the verify directory.
+
+    Pre-run hygiene: if the verify directory already exists (leftover from an
+    earlier BROKEN attempt -- otherwise the inner runner aborts because the
+    ``--verify-id`` dir already exists), its persisted report decides the
+    outcome: ``all_match: true`` short-circuits as ALREADY VERIFIED (the
+    persisted report is returned untouched, no subprocess is spawned);
+    anything else (false/mismatched/unreadable/absent report) is archived via
+    :func:`_archive_failed_verify_dir` and a fresh run proceeds.  The new
+    report then records ``renamed_from`` (original dir) and ``archived_to``
+    (preserved copy location).
+
     ``worker_returncode`` is the raw exit status of the process THIS module
     spawned, taken directly from its own subprocess result -- it is never
     re-derived from any runner-written comparison artifact.  Returns the
@@ -736,6 +830,17 @@ def run_reproduction(primary_repo: str | Path,
     ``all_match: false``).
     """
     repo = Path(primary_repo)
+    verify_dir = (repo / reproduction_root).resolve() / verify_id
+
+    renamed_from: str | None = None
+    archived_to: str | None = None
+    if verify_dir.exists():
+        prior = _already_verified_report(verify_dir)
+        if prior is not None:
+            prior.setdefault("report_path", str(verify_dir / "reproduction_report.json"))
+            return prior
+        renamed_from, archived_to = _archive_failed_verify_dir(verify_dir)
+
     command = build_reproduce_command(repo, source_rel, verify_id, reproduction_root)
     source_probe = Path(source_rel) if Path(source_rel).is_absolute() else (
         repo / source_rel)
@@ -764,7 +869,6 @@ def run_reproduction(primary_repo: str | Path,
             "stderr_tail": completed.stderr[-4000:],
         }
 
-    verify_dir = (repo / reproduction_root).resolve() / verify_id
     rerun_dir = _locate_rerun_artifacts(verify_dir)
     source_abs = Path(source_rel) if Path(source_rel).is_absolute() else (
         repo / source_rel).resolve()
@@ -783,7 +887,7 @@ def run_reproduction(primary_repo: str | Path,
         report["surfaces"] = {}
         report["all_match"] = False
     else:
-        report = compare_trials(source_abs, rerun_dir)
+        report = compare_trials(source_abs, rerun_dir, primary_repo=repo)
         report.update({
             "verify_id": verify_id,
             "trial_source_rel": str(source_rel),
@@ -793,6 +897,9 @@ def run_reproduction(primary_repo: str | Path,
         })
         report.pop("error", None)
 
+    if renamed_from is not None:
+        report["renamed_from"] = renamed_from
+        report["archived_to"] = archived_to
     verify_dir.mkdir(parents=True, exist_ok=True)
     out_path = verify_dir / "reproduction_report.json"
     out_path.write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + "\n",
@@ -830,6 +937,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_compare = sub.add_parser("compare", help="compare two experiment dirs")
     p_compare.add_argument("--source", required=True)
     p_compare.add_argument("--rerun", required=True)
+    p_compare.add_argument("--primary-repo", default=".",
+                           help="repo whose HEAD anchors code_hash_match")
     p_run = sub.add_parser("run-one", help="reproduce one trial then compare")
     p_run.add_argument("--primary-repo", default=".")
     p_run.add_argument("--source-rel", required=True)
@@ -849,7 +958,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(freeze_tolerances(args.path), indent=2, sort_keys=True))
         return 0
     if args.cmd == "compare":
-        report = compare_trials(args.source, args.rerun)
+        report = compare_trials(args.source, args.rerun,
+                                primary_repo=args.primary_repo)
         print(json.dumps(report, indent=2, sort_keys=True, default=str))
         return 0 if report["all_match"] else EXIT_REPRO_MISMATCH
     if args.cmd == "run-one":
