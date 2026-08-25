@@ -40,11 +40,12 @@
     },
     {
       "gate_id": "C04",
-      "status": "FAIL",
-      "measured_value": "git status --porcelain at be70568 = 1 modified file: research/audits/v7p/golden_vector_report.json (committed copy references superseded contract_sha256 db17c11..., working tree references live contract 7f35839...; suite deterministically regenerates it, integrator did not recommit after 22f6e21). No declared exemption. baseline_root.json OK: source_files_sha256 count=189 (>150), spec_hashes x3 + signal_code_hashes x4 present",
+      "status": "PASS",
+      "measured_value": "RE-AUDIT at remediation HEAD d723589 (on be70568 lineage): primary tree clean (git status --porcelain empty). Committed research/audits/v7p/golden_vector_report.json field resolved_run_contract_ref.contract_sha256 = 7f358397709f4418fe7cea7a11cbaa47a63d13af680457877231eb41706ff884 EXACTLY MATCHES live committed resolved_run_contract.json field contract_sha256 = 7f358397709f4418fe7cea7a11cbaa47a63d13af680457877231eb41706ff884; launch_sha placeholder semantics unchanged. baseline_root.json still consistent: source_files_sha256 count=189 unchanged, spec_hashes match two live files (v6_carry d9579567... -> H-XSECT-FUNDING-CARRY-v1/candidate.yaml, v7_divergence 32a4a660... -> H-XSECT-FUNDING-PRICE-DIVERGENCE-v1/candidate.yaml; bonus novelty_memo 6c1a175c... also matches)",
       "evidence_paths": [
         "research/audits/v7p/baseline_root.json",
-        "research/audits/v7p/golden_vector_report.json"
+        "research/audits/v7p/golden_vector_report.json",
+        "research/audits/v7p/resolved_run_contract.json"
       ]
     },
     {
@@ -153,16 +154,16 @@
     },
     {
       "gate_id": "C16",
-      "status": "FAIL",
-      "measured_value": "full suite PASS: 706 passed, 0 failed, 16 warnings, 33.59s via primary venv; git status --porcelain after run = 1 pre-existing modified evidence file (research/audits/v7p/golden_vector_report.json, deterministic suite regeneration of stale-at-HEAD copy); tests created no stray files, but the uncommitted evidence edit violates the second clause of the gate",
+      "status": "PASS",
+      "measured_value": "RE-AUDIT at remediation HEAD d723589: full suite run from PRIMARY via .venv/bin/python -m pytest tests/ -q -> 706 passed, 0 failed, 16 warnings, 33.47s; git status --porcelain after run = EMPTY (0 residual files). Suite regeneration of golden_vector_report.json is now byte-identical to the committed copy -- deterministic regeneration with no residual dirt confirmed",
       "evidence_paths": [
         "research/audits/v7p/golden_vector_report.json"
       ]
     },
     {
       "gate_id": "C17",
-      "status": "FAIL",
-      "measured_value": "compiled findings: 0 HIGH, 0 CRITICAL, 2 MEDIUM (F-1 stale/uncommitted golden_vector_report breaking clean-tree gates C04+C16; F-2 A7 protocol commit 5e1918e absent from integration HEAD), 1 LOW (vm_stat pages_free low but 47% system free), 1 INFO (baseline_root pinned to 684ecac launch root vs HEAD be70568). Per PLAN §7 missing ANY gate => NOT_AUTHORIZED, so attestation verdict FAIL despite zero functional defects",
+      "status": "PASS",
+      "measured_value": "RE-AUDIT: compiled findings 0 HIGH, 0 CRITICAL; prior MEDIUM F-1 (stale golden_vector_report) REMEDIATED by commit d723589 'evidence sync: golden_vector_report regenerated against live resolved contract (A7 C04/C16 remediation)'; MEDIUM F-2 and LOW F-3 remain non-blocking historical observations. With C04+C16 now PASS all 18 gates PASS => attestation verdict PASS",
       "evidence_paths": [
         "PLAN.md"
       ]
@@ -178,14 +179,11 @@
     }
   ],
   "counts": {
-    "pass": 16,
-    "fail": 2,
+    "pass": 18,
+    "fail": 0,
     "total": 18
   },
-  "all_pass": false,
-  "blocking_gates": [
-    "C04",
-    "C16"
-  ],
-  "remediation": "Single root cause F-1: commit the suite-regenerated research/audits/v7p/golden_vector_report.json at integration HEAD (or reset it and rerun the full suite before launch lock). Re-run A7 audit for C04/C16 only."
+  "all_pass": true,
+  "blocking_gates": [],
+  "remediation": "RESOLVED in scoped re-audit at primary HEAD d723589003c83882f22594c1db9222eda5e1a44a (remediation commit 'evidence sync: golden_vector_report regenerated against live resolved contract (A7 C04/C16 remediation)' on top of be70568 lineage): committed golden_vector_report.json resolved_run_contract_ref.contract_sha256 = live resolved_run_contract.json contract_sha256 = 7f358397709f4418fe7cea7a11cbaa47a63d13af680457877231eb41706ff884; full suite 706 passed / 0 failed from PRIMARY with post-run git status --porcelain EMPTY; baseline_root.json source_files count=189 unchanged with spec hashes matching both live candidate.yaml files. Prior audit entry (5a773bb) retained above per-gate for traceability."
 }

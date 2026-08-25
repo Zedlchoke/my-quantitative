@@ -3,17 +3,20 @@
   "artifact": "a7_prelaunch_attestation_v7p",
   "auditor": "A7",
   "session": "orca/v7-a7-audit",
-  "attested_integration_sha": "be705689f8cac903cecbbb96a98fd4141ce51c0f",
+  "attested_integration_sha": "d723589003c83882f22594c1db9222eda5e1a44a",
+  "attested_lineage_note": "remediation commit d723589 directly on top of be705689f8cac903cecbbb96a98fd4141ce51c0f (verified ancestry via primary git log)",
   "created_at_utc": "2026-08-25T09:37:57Z",
   "deadline_utc": "2026-08-25T21:37:57Z",
   "minutes_remaining_at_audit": 720,
-  "minutes_remaining_rule": "deadline_utc = created_at_utc + 12h; >=180 required (C18): 720 >= 180 OK",
+  "minutes_remaining_at_reaudit": 715,
+  "minutes_remaining_rule": "deadline_utc = created_at_utc + 12h; >=180 required (C18): 720 >= 180 OK; re-audit recomputed at 2026-08-25T09:42Z -> 715 >= 180 OK",
   "checks_summary": {
     "gates_total": 18,
-    "pass": 16,
-    "fail": 2,
-    "failing_gates": ["C04", "C16"],
-    "full_suite": {"passed": 706, "failed": 0, "warnings": 16, "seconds": 33.59},
+    "pass": 18,
+    "fail": 0,
+    "all_18": true,
+    "failing_gates": [],
+    "full_suite": {"passed": 706, "failed": 0, "warnings": 16, "seconds": 33.47},
     "targeted_suites": {
       "test_v7_golden_e2e.py::test_resolved_run_contract_artifact_conformance": "1 passed",
       "tests/test_v7_golden_e2e.py": "9 passed",
@@ -44,12 +47,13 @@
     {
       "severity": "INFO",
       "detail": "F-4: baseline_root.json pins source_head=integration_head=684ecac (launch root per launch_sha semantics) while HEAD has advanced to be70568 via evidence-only commits. Immutability verified regardless: all spec/code hashes recomputed from live files match baseline. Recommend refreshing/confirming baseline root at final launch lock after F-1 remediation."
+    },
+    {
+      "severity": "INFO",
+      "detail": "F-5 REMEDIATION (scoped re-audit C04/C16 at primary HEAD d723589 on be70568 lineage): F-1 RESOLVED by commit d723589 'evidence sync: golden_vector_report regenerated against live resolved contract'. Verified directly: (1) primary tree clean pre-run; (2) committed golden_vector_report.json resolved_run_contract_ref.contract_sha256 == live resolved_run_contract.json contract_sha256 = 7f358397709f4418fe7cea7a11cbaa47a63d13af680457877231eb41706ff884; (3) full suite from PRIMARY .venv/bin/python -m pytest tests/ -q = 706 passed / 0 failed / 16 warnings in 33.47s, post-run git status --porcelain EMPTY (deterministic regeneration, zero residual dirt); (4) baseline_root.json consistent: source_files_sha256 count=189 unchanged, spec_hashes match live H-XSECT-FUNDING-CARRY-v1/candidate.yaml (d9579567...) and H-XSECT-FUNDING-PRICE-DIVERGENCE-v1/candidate.yaml (32a4a660...), novelty memo 6c1a175c... also matches. C04+C16 flipped to PASS => all 18 gates PASS, verdict PASS. Prior MEDIUM/LOW entries retained for traceability; F-2/F-3 remain non-blocking observations."
     }
   ],
-  "verdict": "FAIL",
-  "blockers": [
-    "C04 FAIL: integration HEAD tree dirty (1 uncommitted regenerated-evidence file, no declared exemption) -- PLAN §7 admits no partial gate pass",
-    "C16 FAIL: uncommitted evidence edit persists after full suite (same root cause as C04)"
-  ],
-  "notes": "Zero HIGH/CRITICAL findings; all functional/engine gates (C01-C03, C05-C15, C18) PASS with direct measured evidence. Verdict FAIL is strictly procedural per PLAN §7 ('Thiếu một gate: V7_NOT_AUTHORIZED'): two hard hygiene gates fail on one single-commit root cause. A1 may remediate and request a scoped re-audit of C04/C16 only."
+  "verdict": "PASS",
+  "blockers": [],
+  "notes": "RE-AUDIT OUTCOME: verdict flipped FAIL->PASS after scoped remediation commit d723589. All functional/engine gates (C01-C15, C18) re-confirmed PASS with direct measured evidence at prior audit; hygiene gates C04/C16 now verified green at remediation HEAD. Zero HIGH/CRITICAL findings outstanding. V7 launch authorized pending standard operational checks."
 }
