@@ -1,8 +1,8 @@
-# SPRINT V7P → V7 — Decision-Surface Repair & Funding–Price Divergence
+# SPRINT V7P → V7 → conditional V8 — Overnight Research Run
 
 > **Thời lượng tối đa:** 12 giờ treo máy
 >
-> **Mục đích:** hoàn thiện lớp ra quyết định khoa học còn thiếu sau V6, rồi chạy đúng 4 trial V7 đã preregister.
+> **Mục đích:** hoàn thiện lớp ra quyết định khoa học, chạy đúng 4 trial V7 đã preregister, rồi chỉ chuyển sang V8 nếu V7 kết thúc hợp lệ và toàn bộ transition gate PASS.
 >
 > **Trạng thái bắt đầu:** V6P đạt; V6 không có candidate; V7 chưa chạy; S1 chưa được phép mở; live trading bị cấm.
 >
@@ -80,11 +80,12 @@ Phần engine/data/PIT/accounting của V6 có bằng chứng tốt. Phần fina
 7. Reproduce lại đủ bốn trial V6 để chứng minh contract.
 8. A7 audit và authorize riêng trước V7.
 9. Chạy đúng bốn trial V7 preregister, stress, reproduce, score và kết luận.
+10. Preregister V8 trước khi V7 lộ scored metric; chỉ chuẩn bị code trong worktree riêng và chỉ chạy V8 sau valid V7 terminal transition.
 
 ### 1.2 Ngoài scope
 
 - Không mở hoặc quan sát S1.
-- Không thêm strategy family mới.
+- Không thêm strategy family mới trong V7, ngoại trừ V8 preregistration và isolated preparation được mô tả chính xác tại §17; V8 tuyệt đối không được score trước transition gate.
 - Không thêm lookback ngoài `1D`, `3D`, `7D` và reverse control đã freeze.
 - Không tuning threshold, universe, date range, cost, folds hay ranking sau khi thấy kết quả.
 - Không đổi hard gate để cứu candidate.
@@ -484,7 +485,7 @@ Sau outcome này cũng **không chạy S1 trong sprint này**. Chỉ tạo S1 fo
 
 ### Outcome B — `V7_REJECT_ALL`
 
-Không candidate đủ điều kiện. Đây là kết quả hợp lệ. Ghi lesson ledger và không tạo family mới trong cùng sprint.
+Không candidate đủ điều kiện. Đây là kết quả hợp lệ. Ghi lesson ledger; không được dùng kết quả V7 để sửa V8 spec. V8 chỉ có thể tiếp tục theo preregistration đã freeze trước V7 và transition gate §17.
 
 ### Outcome C — `V7P_COMPLETE_V7_NOT_STARTED`
 
@@ -713,3 +714,225 @@ REJECT_ALL hợp lệ; false promotion là thất bại nghiêm trọng.
 ## 16. Mục tiêu nói thật ngắn cho người vận hành
 
 Sprint này không đi tìm thêm thật nhiều “vé số strategy”. Nó sửa cái máy chấm bài để máy không bỏ sót lỗi, sau đó mới cho bốn bài V7 đã niêm phong vào thi. Nếu cả bốn rớt đúng luật, hệ thống vẫn thành công vì đã tránh đưa một strategy yếu ra sử dụng thật.
+
+---
+
+## 17. V8 conditional overnight continuation — Weekly Cross-Sectional Reversal
+
+### 17.1 Mục tiêu và ranh giới khoa học
+
+V8 kiểm tra một family độc lập với V6/V7:
+
+`H-XSECT-REVERSAL-v2 — six-alt weekly cross-sectional reversal`.
+
+Đây không phải rescue, filter hay tuning của funding-price divergence. V8 hỏi một câu khác: sau một giai đoạn tăng/giảm tương đối mạnh, nhóm altcoin thắng và thua có đảo chiều trong tuần kế tiếp hay không?
+
+V8 được phép **preregister và chuẩn bị code** trước hoặc trong lúc V7 chạy, nhưng:
+
+- candidate/spec/novelty hash phải freeze **trước scored artifact V7 đầu tiên**;
+- agent V8 không được đọc `results/portfolio_v7`, V7 partial logs, metrics hay verdict;
+- V8 không được chạy scored trial cho đến khi V7 có terminal outcome hợp lệ;
+- nếu preregistration xảy ra sau khi V7 lộ metric: `V8_PREREG_WINDOW_MISSED`, không chạy V8 trong đêm đó;
+- V8 dùng S0 screening; không được gọi là OOS/S1 hoặc promotion evidence.
+
+Lý do chọn v2: v1 từng bị chặn vì universe gồm ETH chỉ có khoảng một năm dữ liệu. V2 loại ETH **chỉ theo data-availability rule được freeze trước performance**, dùng sáu altcoin có khoảng hai năm dữ liệu sạch. Không được loại thêm symbol dựa trên PnL.
+
+### 17.2 V8 preregistration contract
+
+Trước V7 launch, A6 phải tạo và A7 phải hash/novelty-check:
+
+```text
+research/hypotheses/H-XSECT-REVERSAL-v2/candidate.yaml
+research/hypotheses/H-XSECT-REVERSAL-v2/hypothesis.md
+research/hypotheses/H-XSECT-REVERSAL-v2/status.yaml
+research/audits/v8p/v8_spec_freeze.json
+research/audits/v8p/v8_catalog_novelty_check.md
+```
+
+Frozen rules:
+
+| Field | Contract |
+|---|---|
+| Family | `cross_sectional_weekly_reversal` |
+| Stage | `S0_EXPLORATORY` |
+| Universe | `SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT` |
+| Benchmark context | `BTCUSDT`, measurement only |
+| Data window | common six-alt intersection, target `2024-08-21T14:30Z → 2026-08-21T00:00Z`; canonical audit decides exact completed-bar endpoints |
+| Signal clock | Monday `00:00 UTC`, completed bars only |
+| Formation lookbacks | exactly `3D, 7D, 14D` |
+| Direction | long bottom-2 past-return losers, short top-2 past-return winners |
+| Negative control | long winners / short losers at `7D` |
+| Rebalance/holding | every 7 days; no intraweek discretionary rebalance |
+| Portfolio | gross 0.80, net 0, long gross 0.40, short gross 0.40, max abs symbol weight 0.20 |
+| Eligibility | all six symbols required; incomplete cross-section skips whole rebalance |
+| Execution | next completed 15m event, one-tick adverse slippage, fee 0.0005, native funding accounting |
+| Split | three chronological folds; 7-day purge/embargo at fold boundary; warmup at least 14 days |
+| Trial budget | exactly three normal + one negative control |
+
+Trial inventory:
+
+| ID | Formation | Direction |
+|---|---:|---|
+| `XSECT-WREV-3D` | 3D | reversal |
+| `XSECT-WREV-7D` | 7D | reversal |
+| `XSECT-WREV-14D` | 14D | reversal |
+| `XSECT-WMOM-7D-CONTROL` | 7D | momentum control |
+
+Forbidden after freeze:
+
+- funding/OI/volatility/regime/liquidity filters;
+- changing rebalance weekday or cadence;
+- per-symbol parameters or removal by performance;
+- adding formation lookbacks;
+- changing thresholds, costs, folds, window or universe;
+- using V7 results to change V8 code/spec;
+- calling the six-symbol window “untouched OOS”.
+
+### 17.3 Điều kiện chuyển V7 → V8 — 15/15 bắt buộc
+
+V8 scored launch chỉ được authorize khi tất cả PASS:
+
+| Gate | Điều kiện PASS |
+|---|---|
+| T01 | V7 chạy đúng 4/4 frozen trials; không trial thứ năm |
+| T02 | V7 terminal outcome là `V7_LOCKED` hoặc `V7_REJECT_ALL` |
+| T03 | Không phải `V7_INVALIDATED`, `INCOMPLETE`, `NOT_STARTED` hoặc provenance breach |
+| T04 | V7 stress surface và machine FG0–FG7 hoàn chỉnh cho 4/4 |
+| T05 | Independent V7 reproduction đạt 4/4 |
+| T06 | DSR/PBO/global ledger đã update bằng toàn bộ V6+V7 scored trials, không cherry-pick |
+| T07 | A7 terminal audit V7 PASS, 0 unresolved HIGH/CRITICAL |
+| T08 | V7 worker/heartbeat đã dừng; owned PID list rỗng; state terminal |
+| T09 | V7 evidence/master report/registry reconciliation hoàn chỉnh và Git sạch |
+| T10 | V8 candidate + novelty hashes được freeze trước timestamp scored V7 đầu tiên |
+| T11 | A7 xác nhận V8 distinct; không adaptive rescue/tuning từ V7 |
+| T12 | Six-alt two-year data audit PASS: no unexplained gaps/duplicates, PIT timestamps, metadata and hashes frozen |
+| T13 | V8 engine/golden/PIT/accounting/reproduction harness tests PASS trên clean integration SHA |
+| T14 | V8 prelaunch A7 attestation PASS và baseline/contract/manifest pins match |
+| T15 | Còn ít nhất 300 phút trước overnight hard stop; disk ≥20 GB; RAM safe; S1/live disabled |
+
+Quy tắc outcome:
+
+- `V7_LOCKED` **không** tự động cho V8 chạy; vẫn cần T01–T15.
+- `V7_REJECT_ALL` vẫn được phép chuyển V8 vì đây là terminal scientific result hợp lệ.
+- `V7_INVALIDATED` hoặc bất kỳ integrity blocker nào: dừng toàn bộ, không V8.
+- Nếu thiếu thời gian: `V8_NOT_STARTED_TIME_GUARD`, không launch nửa chừng.
+
+### 17.4 Topology V8 và parallel work
+
+Không tái sử dụng V7 worktree để viết V8. Tạo topology mới từ `V8_BOOTSTRAP_SHA`:
+
+| Role | Worktree | Nhiệm vụ |
+|---|---|---|
+| A1 | root integration | controller, merge, transition authority |
+| A2 | `../my-quantitative-v8-wt/a2-data` | six-alt two-year data/PIT/provenance |
+| A3 | `../my-quantitative-v8-wt/a3-engine` | weekly schedule, reversal dispatcher, artifacts |
+| A4 | `../my-quantitative-v8-wt/a4-finalizer` | V8 gates/score/global-ledger cohort rules |
+| A5 | `../my-quantitative-v8-wt/a5-reproduction` | reproduction/stress/reconciliation |
+| A6 | `../my-quantitative-v8-wt/a6-spec` | preregistration, resolved contract, golden vectors |
+| A7 | `../my-quantitative-v8-wt/a7-audit` | independent prelaunch + terminal audit |
+
+Parallel rule:
+
+- A2–A6 được launch song song với session identity thật và allowed paths tách biệt.
+- A7 không viết production code và chỉ audit integration SHA.
+- Trong khi V7 heavy workers đang chạy, V8 A2–A6 chỉ được chuẩn bị trong isolated worktrees; không đọc V7 result paths và không merge vào root trước V7 terminal.
+- Merge V8 sau valid V7 terminal theo thứ tự `A2 → A3 → A4 → A5 → A6`; targeted tests sau mỗi merge, full suite sau integration.
+- Tối đa hai heavy V8 workers; bốn trials chạy hai wave.
+- Nếu Orca không tạo được agent/worktree thật, đóng `V8_NOT_STARTED_TOPOLOGY_BLOCKED`; không để A1 giả lập tất cả roles.
+
+### 17.5 V8 execution schedule khi còn ≥300 phút
+
+| Relative time | Công việc |
+|---|---|
+| 00:00–00:30 | Transition snapshot, V8 topology/identity gates |
+| 00:30–01:45 | A2–A6 parallel implementation/evidence completion |
+| 01:45–02:30 | Merge, targeted/full tests, resolved contract, clean baseline |
+| 02:30–03:00 | A7 independent V8 prelaunch audit |
+| 03:00–03:30 | Wave 1: `WREV-3D + WREV-7D` |
+| 03:30–04:00 | Wave 2: `WREV-14D + WMOM-7D-CONTROL` |
+| 04:00–04:40 | Stress + reproduction + FG0–FG7 + score |
+| 04:40–05:00 | A7 terminal audit, master report, shutdown |
+
+Thời gian là budget, không phải lý do giảm test. Nếu bất kỳ pha trễ làm remaining time không đủ để audit/close, không launch wave tiếp theo.
+
+### 17.6 V8 hard gates và scoring
+
+Áp dụng FG0–FG7 và scorecard 100 điểm tại §9–§10, với bổ sung:
+
+- all three folds net-positive;
+- PF ≥1.10; MDD ≤10%; net PnL >0 after funding/costs;
+- ít nhất hai adjacent formation lookbacks trong `[3D,7D,14D]` cùng PASS;
+- top positive fold ≤50%; top positive symbol ≤40%;
+- reverse/momentum control không được thắng best reversal candidate;
+- fee ×1.5, adverse +2 ticks, one-event delay vẫn dương;
+- drop-one-symbol, drop-one-fold và rebalance-day shift `+1 day` là preregistered diagnostics;
+- independent reproduction 4/4;
+- weekly signal count và fold breadth đạt minimum được freeze trước run;
+- không lookahead tại completed-bar/weekly boundary.
+
+Statistical contract:
+
+- Global trial ledger/DSR phải đếm toàn bộ trial lịch sử có thể được lựa chọn.
+- Không trộn V8 six-alt/two-year/weekly returns vào V6/V7 PBO cohort nếu timestamps/universe/execution không comparable.
+- PBO unavailable không được bịa hoặc hạ minimum. Khi PBO chưa đủ comparable configurations, V8 tối đa là `STAGE_A_PASS_EXPLORATORY`, chưa được lock cho S1.
+
+### 17.7 V8 terminal outcomes
+
+- `V8_STAGE_A_PASS_EXPLORATORY`: hard gates PASS nhưng còn statistical/forward evidence; không S1/live trong sprint.
+- `V8_LOCK_FOR_FUTURE_S1`: chỉ khi toàn bộ hard/statistical gates gồm valid PBO PASS và A7 ký; chỉ tạo future S1 contract, không đọc S1.
+- `V8_REJECT_ALL`: không candidate đạt; kết quả hợp lệ.
+- `V8_INVALIDATED`: integrity/lookahead/provenance/reproduction failure; cách ly results.
+- `V8_NOT_STARTED_*`: V7 transition, topology, audit, resource hoặc time guard không đạt.
+
+### 17.8 Unattended fail-safe cho cả đêm
+
+- Hard stop tuyệt đối: 12 giờ từ `overnight_started_at_utc`; không tự gia hạn.
+- Heartbeat mỗi 60 giây gồm phase, progress, owned PIDs, last artifact, disk/RAM và deadline.
+- Heartbeat stale >10 phút: controller dừng owned heavy worker, ghi forensic event; không tự retry nếu đã có scored metric.
+- Không performance retry, không tuning, không trial replacement.
+- Pre-engine failure chỉ relaunch khi output được archive, chưa có scored artifact và A7/contract cho phép.
+- Không quá hai heavy workers; agent reasoning/test nhẹ có thể song song.
+- Disk <20 GB, memory pressure nghiêm trọng, hash drift, dirty production tree, target-dir collision hoặc PID không thuộc owner: dừng launch mới.
+- Mỗi wave phải atomic; không đọc partial PnL để đổi wave sau.
+- Dù PASS/FAIL/timeout, cuối đêm phải dừng heartbeat/workers, ghi shutdown report và để next safe action rõ ràng.
+- Không S1, paper trading, live trading, API keys hoặc order placement.
+
+### 17.9 V8 artifact contract
+
+```text
+research/control/v8_overnight_run/
+research/audits/v8p/
+research/audits/v8/
+results/portfolio_v8/
+results/reproduction_v8/
+results/matrix/v8_xsect_weekly_reversal/
+results/registry/shards/v8_*.jsonl
+research/wayfinder/evidence/sprint-v8-master-20260826.{md,json}
+```
+
+Mọi artifact phải có schema, UTC timestamp, V7 parent transition, source/launch SHA, candidate/config/data hashes và parent references.
+
+### 17.10 Lệnh bổ sung cho A1 trước khi chạy xuyên đêm
+
+```text
+PLAN.md nay bao gồm conditional V8. Thay đổi PLAN này phải được commit trước final
+V7 launch baseline; nếu PLAN/production code thay đổi sau attestation thì regenerate
+baseline và A7 re-attest. Không dùng attestation cũ.
+
+Trước scored metric V7 đầu tiên:
+1. Tạo/freeze H-XSECT-REVERSAL-v2 candidate, hypothesis, status và novelty memo đúng §17.2.
+2. Ghi spec hash + frozen_at_utc + current global-trial-ledger count.
+3. A7 xác nhận freeze xảy ra trước V7 first_scored_at_utc.
+4. Chỉ sau đó mới launch V7.
+
+Trong lúc V7 chạy, có thể launch A2–A6 V8 trong worktree riêng để chuẩn bị code/tests,
+nhưng cấm đọc results/portfolio_v7, logs/metrics/verdict và cấm merge V8 vào root.
+
+Sau V7 terminal:
+- Evaluate T01–T15 bằng machine-readable transition_gate.json.
+- Chỉ `V7_LOCKED` hoặc `V7_REJECT_ALL` hợp lệ mới có thể authorize V8.
+- Nếu PASS 15/15 và remaining >=300 phút: merge/audit/freeze V8 rồi chạy đúng 4 trials
+  theo hai wave, tối đa hai heavy workers.
+- Nếu bất kỳ gate FAIL: không V8; tạo V8_NOT_STARTED_* và shutdown sạch.
+- V8 không được dùng để rescue/tune V7 và không được mở S1/live.
+```
