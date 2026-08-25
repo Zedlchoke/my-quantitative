@@ -139,6 +139,13 @@ ENGINE_LOADER_ENV = "PORTFOLIO_V4_ENGINE_LOADER"
 # research.portfolio_engine.RISK_MODE_V1["risk_mode"].
 RISK_MODE_V1 = "RISK_MODE_V1"
 SYNTHETIC_PANEL_ENV = "PORTFOLIO_SYNTHETIC_PANEL"
+# V7P (PLAN section 6.1): signal-family selector env; set equivalently by
+# --signal-family or --strategy-kind (whichever appears LAST wins).
+SIGNAL_FAMILY_ENV = "PORTFOLIO_SIGNAL_FAMILY"
+SIGNAL_FAMILY_CHOICES = ("none", "funding_carry", "funding_price_divergence")
+STRATEGY_KIND_CHOICES = ("momentum", "funding_carry",
+                         "funding_price_divergence")
+DIVERGENCE_DIAGNOSTICS_KEY = "_divergence_diagnostics"
 
 EXIT_LOCK_MISSING = 3
 EXIT_DEPENDENCY_MISSING = 4
@@ -457,24 +464,131 @@ def _default_engine_loader() -> dict[str, Callable]:
     }
 
 
+def _divergence_diagnostics_row(
+    *,
+    signal_cutoff_ns: int,
+    daily_closes: Mapping[str, list[tuple[int, float]]],
+    traded_symbols: Sequence[str],
+    price_lookback_days: int,
+    funding_lookback_days: int,
+    funding_bundles_dir: str | Path,
+    longs: Sequence[Sequence[float]],
+    shorts: Sequence[Sequence[float]],
+) -> dict[str, Any]:
+    """DERIVED per-rebalance diagnostics for H-XSECT-FUNDING-PRICE-DIVERGENCE-v1.
+
+    Recomputed runner-side from the SAME inputs the dispatched signal used
+    (closes <= cutoff; settlements with fundingTime <= cutoff over the
+    trailing ``funding_lookback_days`` window): per-symbol price_return,
+    funding_mean, percentile ranks and score = pct(price) - pct(funding),
+    plus the selection ACTUALLY returned by the signal. Always labeled
+    ``derived_diagnostics=true`` so consumers never mistake it for
+    signal-native output (the signal module is frozen; not touched here).
+    """
+    from research.funding_pit import load_funding_bundle
+    from research.funding_price_divergence import DAY_MS, _percentile_ranks
+
+    cutoff_ns = int(signal_cutoff_ns)
+    cutoff_ms = cutoff_ns // 1_000_000
+    window_start_ms = cutoff_ms - int(funding_lookback_days) * DAY_MS
+
+    symbols = sorted(dict.fromkeys(str(s) for s in traded_symbols))
+    funding_means: dict[str, float] = {}
+    price_returns: dict[str, float] = {}
+    k = int(price_lookback_days)
+    for sym in symbols:
+        payload = load_funding_bundle(funding_bundles_dir, sym)
+        settled = [
+            float(str(row["fundingRate"]))
+            for row in payload.get("rows", [])
+            if window_start_ms <= int(row["fundingTime"]) <= cutoff_ms
+        ]
+        funding_means[sym] = sum(settled) / len(settled)
+        closes = sorted(
+            (int(ts), float(px))
+            for ts, px in (daily_closes or {}).get(sym, [])
+            if int(ts) <= cutoff_ns
+        )
+        price_returns[sym] = closes[-1][1] / closes[-1 - k][1] - 1.0
+
+    price_pct = _percentile_ranks(price_returns)
+    funding_pct = _percentile_ranks(funding_means)
+    scores = {s: price_pct[s] - funding_pct[s] for s in symbols}
+
+    def _r(value: float) -> float:
+        return round(float(value), 12)
+
+    return {
+        "derived_diagnostics": True,
+        "rebalance_ts_utc": iso(datetime.fromtimestamp(
+            cutoff_ns / 1_000_000_000, tz=timezone.utc)),
+        "signal_cutoff_ns": cutoff_ns,
+        "price_lookback_days": int(price_lookback_days),
+        "funding_lookback_days": int(funding_lookback_days),
+        "per_symbol": {
+            s: {
+                "price_return": _r(price_returns[s]),
+                "funding_mean": _r(funding_means[s]),
+                "price_percentile": _r(price_pct[s]),
+                "funding_percentile": _r(funding_pct[s]),
+                "score": _r(scores[s]),
+            }
+            for s in symbols
+        },
+        "selected_longs": [[str(s), float(w)] for s, w in longs],
+        "selected_shorts": [[str(s), float(w)] for s, w in shorts],
+    }
+
+
 def _signal_family_dispatch(base_fn, funding_bundles_dir):
-    """PORTFOLIO_SIGNAL_FAMILY=funding_carry routes the rank call to the
-    frozen H-XSECT-FUNDING-CARRY-v1 signal; default behavior unchanged."""
-    family = os.environ.get("PORTFOLIO_SIGNAL_FAMILY", "").strip()
-    if family != "funding_carry":
+    """PORTFOLIO_SIGNAL_FAMILY routes the rank call to an alternative frozen
+    signal family (``funding_carry`` | ``funding_price_divergence``); the
+    default momentum behavior is returned unchanged."""
+    family = os.environ.get(SIGNAL_FAMILY_ENV, "").strip()
+    if family == "funding_carry":
+        from research.funding_carry import compute_target_weights_funding_carry as _fcf
+    elif family == "funding_price_divergence":
+        from research.funding_price_divergence import (
+            build_divergence_traded,
+            compute_target_weights_funding_price_divergence as _fpd,
+        )
+    else:
         return base_fn
-    from research.funding_carry import compute_target_weights_funding_carry as _fcf
 
     def _dispatch(**kwargs):
         closes = kwargs.get("daily_closes") or {}
-        traded = sorted(s for s in closes if s != "BTCUSDT")
-        return _fcf(
+        traded = sorted(s for s in closes if s != BENCHMARK_SYMBOL)
+        if family == "funding_carry":
+            return _fcf(
+                signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
+                lookback_days=int(kwargs.get("lookback_days") or 0),
+                reverse=bool(kwargs.get("reverse")),
+                funding_bundles_dir=funding_bundles_dir,
+                traded_symbols=traded,
+            )
+        out = _fpd(
             signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
-            lookback_days=int(kwargs.get("lookback_days") or 0),
+            price_lookback_days=int(kwargs.get("lookback_days") or 0),
             reverse=bool(kwargs.get("reverse")),
             funding_bundles_dir=funding_bundles_dir,
-            traded_symbols=traded,
+            daily_closes=closes,
+            traded_symbols=build_divergence_traded(closes),
+            funding_lookback_days=int(kwargs.get("funding_lookback_days", 3)),
         )
+        if str(out.get("status")) == "OK":
+            # Derived diagnostics travel on a private key; execute_experiment
+            # drains them into exp_dir/signal_diagnostics.jsonl.
+            out[DIVERGENCE_DIAGNOSTICS_KEY] = _divergence_diagnostics_row(
+                signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
+                daily_closes=closes,
+                traded_symbols=build_divergence_traded(closes),
+                price_lookback_days=int(kwargs.get("lookback_days") or 0),
+                funding_lookback_days=int(kwargs.get("funding_lookback_days", 3)),
+                funding_bundles_dir=funding_bundles_dir,
+                longs=out.get("longs") or [],
+                shorts=out.get("shorts") or [],
+            )
+        return out
 
     return _dispatch
 
@@ -866,6 +980,7 @@ def execute_experiment(
     lookback_days: int,
     reverse: bool,
     folds: int,
+    funding_lookback_days: int = 3,
 ) -> dict[str, Any]:
     """Run ALL folds in ONE chronological engine pass (V6P N04/N05/N06).
 
@@ -898,6 +1013,7 @@ def execute_experiment(
     window_start_ns = ns(window_start)
 
     all_ranks: list[dict] = []
+    all_signal_diagnostics: list[dict] = []
     skipped_rows: list[dict] = []
     schedule: list[dict] = []
     max_abs_target_weight = 0.0
@@ -906,12 +1022,22 @@ def execute_experiment(
     for index, (fold_start, fold_end) in enumerate(windows, start=1):
         fold_id = f"F{index}"
         for stamp in daily_rebalance_stamps(fold_start, fold_end):
-            ranking = call.compute_target_weights(
-                daily_closes=daily_closes,
-                signal_cutoff_ns=ns(stamp),
-                lookback_days=lookback_days,
-                reverse=reverse,
-            ) or {}
+            rank_kwargs: dict[str, Any] = {
+                "daily_closes": daily_closes,
+                "signal_cutoff_ns": ns(stamp),
+                "lookback_days": lookback_days,
+                "reverse": reverse,
+            }
+            # V7P divergence family ONLY: extra frozen-contract knob routed
+            # through the dispatcher; other families keep their exact call
+            # signature (xsect/carry would reject the unknown kwarg).
+            if (os.environ.get(SIGNAL_FAMILY_ENV, "").strip()
+                    == "funding_price_divergence"):
+                rank_kwargs["funding_lookback_days"] = int(funding_lookback_days)
+            ranking = call.compute_target_weights(**rank_kwargs) or {}
+            diagnostics_row = ranking.pop(DIVERGENCE_DIAGNOSTICS_KEY, None)
+            if diagnostics_row is not None:
+                all_signal_diagnostics.append(diagnostics_row)
             status = str(ranking.get("status") or "SKIP_INCOMPLETE")
             longs = [(str(s), float(w)) for s, w in (ranking.get("longs") or [])]
             shorts = [(str(s), float(w)) for s, w in (ranking.get("shorts") or [])]
@@ -1080,6 +1206,7 @@ def execute_experiment(
         "panel_coverage": coverage_payload,
         "benchmark_btc_clean": bool(panel.get("benchmark_clean", True)),
         "signal_ranks": all_ranks,
+        "signal_diagnostics": all_signal_diagnostics,
         "orders": all_orders,
         "closed_legs": all_legs,
         "portfolio_ledger": all_ledger,
@@ -1867,6 +1994,7 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         lookback_days=args.lookback_days,
         reverse=bool(args.reverse),
         folds=args.folds,
+        funding_lookback_days=int(getattr(args, "funding_lookback_days", 3) or 3),
     )
     finished = datetime.now(timezone.utc).isoformat()
     manifest = dataclasses.replace(manifest, backtest_run_finished_utc=finished)
@@ -1903,6 +2031,7 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         window_start=window_start, window_end=window_end,
         lookback_days=args.lookback_days, reverse=bool(args.reverse),
         folds=args.folds, base_edge_verdict=base_xg3_verdict, log=_log,
+        funding_lookback_days=int(getattr(args, "funding_lookback_days", 3) or 3),
     )
 
     # ---- 5. gates + scorecard --------------------------------------------- #
@@ -1936,6 +2065,11 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     scorecard = compute_portfolio_scorecard(gate_rows)
     # ---- 6. artifacts ------------------------------------------------------ #
     write_jsonl(exp_dir / "signal_ranks.jsonl", execution["signal_ranks"])
+    # V7P: divergence-family per-rebalance derived diagnostics (absent file
+    # == family inactive; keeps non-divergence artifact sets byte-stable).
+    if execution.get("signal_diagnostics"):
+        write_jsonl(exp_dir / "signal_diagnostics.jsonl",
+                    execution["signal_diagnostics"])
     write_jsonl(exp_dir / "orders.jsonl", execution["orders"])
     write_jsonl(exp_dir / "positions.jsonl", execution["closed_legs"])
     write_jsonl(exp_dir / "portfolio_ledger.jsonl", execution["portfolio_ledger"])
@@ -2202,6 +2336,7 @@ def run_stressed_execution(
     adverse_ticks: int = 0,
     extra_delay_events: int = 0,
     exclude_symbols: Sequence[str] | None = None,
+    funding_lookback_days: int = 3,
 ) -> dict[str, Any]:
     """Re-run the SAME schedule under a stressed cost/universe model."""
     return execute_experiment(
@@ -2217,6 +2352,7 @@ def run_stressed_execution(
         benchmark_symbol=benchmark_symbol,
         window_start=window_start, window_end=window_end,
         lookback_days=lookback_days, reverse=reverse, folds=folds,
+        funding_lookback_days=funding_lookback_days,
     )
 
 
@@ -2233,6 +2369,7 @@ def execute_stress_suite(
     folds: int,
     base_edge_verdict: str | None = None,
     log: Callable[[str], None] | None = None,
+    funding_lookback_days: int = 3,
 ) -> dict[str, Any]:
     """Execute EVERY variant family UNCONDITIONALLY (V6P N10; C13/C14).
 
@@ -2283,6 +2420,7 @@ def execute_stress_suite(
                 benchmark_symbol=benchmark_symbol,
                 window_start=window_start, window_end=window_end,
                 lookback_days=lookback_days, reverse=reverse, folds=folds,
+                funding_lookback_days=funding_lookback_days,
                 **kwargs,
             )
         except (TypeError, ValueError) as exc:
@@ -2724,6 +2862,7 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
         lookback_days=int(raw.get("lookback_days") or 3),
         reverse=bool(raw.get("reverse")),
         folds=int(manifest.outer_folds or 3),
+        funding_lookback_days=int(raw.get("funding_lookback_days") or 3),
     )
     metrics = execution["metrics"]
 
@@ -2756,6 +2895,7 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
         reverse=bool(raw.get("reverse")),
         folds=int(manifest.outer_folds or 3),
         base_edge_verdict=base_xg3_verdict,
+        funding_lookback_days=int(raw.get("funding_lookback_days") or 3),
     )
     gate_rows = evaluate_xgates(build_gate_inputs(
         execution, declared_symbols=declared_traded,
@@ -2769,6 +2909,9 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
     experiment_id = str(raw.get("experiment_id") or out_dir.parent.name)
     matrix_id = str(raw.get("matrix_id") or "")
     write_jsonl(out_dir / "signal_ranks.jsonl", execution["signal_ranks"])
+    if execution.get("signal_diagnostics"):
+        write_jsonl(out_dir / "signal_diagnostics.jsonl",
+                    execution["signal_diagnostics"])
     write_jsonl(out_dir / "orders.jsonl", execution["orders"])
     write_jsonl(out_dir / "positions.jsonl", execution["closed_legs"])
     write_jsonl(out_dir / "portfolio_ledger.jsonl", execution["portfolio_ledger"])
@@ -2922,20 +3065,77 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--finalize-matrix", action="store_true")
     parser.add_argument("--matrix-dir", default=str(MATRIX_ROOT))
     parser.add_argument("--reproduction-root", default=str(REPRODUCTION_ROOT))
-    parser.add_argument("--signal-family", choices=["none", "funding_carry"],
-                        default="none")
+    parser.add_argument("--signal-family",
+                        choices=list(SIGNAL_FAMILY_CHOICES), default="none",
+                        help="signal family selector (env "
+                             f"{SIGNAL_FAMILY_ENV}); equivalent to "
+                             "--strategy-kind: when BOTH flags appear, "
+                             "whichever appears LAST on the command line "
+                             "wins and the earlier one is ignored")
+    parser.add_argument("--strategy-kind",
+                        choices=list(STRATEGY_KIND_CHOICES), default=None,
+                        help="single-source alias for --signal-family "
+                             "(momentum unsets the inherited family; "
+                             "funding_* set it); precedence identical: "
+                             "whichever of the two flags appears LAST wins")
+    parser.add_argument("--funding-lookback-days", type=int, default=3,
+                        help="H-XSECT-FUNDING-PRICE-DIVERGENCE-v1 trailing "
+                             "funding window in days (ignored by other "
+                             "families)")
     return parser
+
+
+def _last_flag_index(argv: Sequence[str], flag: str) -> int:
+    """Last index of ``flag`` (``--flag v`` or ``--flag=v`` form) in argv."""
+    last = -1
+    for index, token in enumerate(argv):
+        if token == flag or token.startswith(flag + "="):
+            last = index
+    return last
+
+
+def apply_signal_family_flags(args: argparse.Namespace,
+                              argv: Sequence[str] | None = None) -> None:
+    """Single source of truth for PORTFOLIO_SIGNAL_FAMILY.
+
+    Precedence (mirrored verbatim in both flags' --help): --signal-family
+    and --strategy-kind are equivalent selectors; when BOTH are present the
+    LAST one on the command line wins and the earlier one is ignored. When
+    NEITHER is present any inherited PORTFOLIO_SIGNAL_FAMILY survives
+    untouched so flagless reproduce/rerun workers keep the source family.
+    """
+    argv = list(sys.argv[1:] if argv is None else argv)
+    fam_idx = _last_flag_index(argv, "--signal-family")
+    kind_idx = _last_flag_index(argv, "--strategy-kind")
+    if fam_idx >= 0 and kind_idx >= 0:
+        winner = "signal_family" if fam_idx > kind_idx else "strategy_kind"
+    elif fam_idx >= 0:
+        winner = "signal_family"
+    elif kind_idx >= 0:
+        winner = "strategy_kind"
+    else:
+        return
+    if winner == "signal_family":
+        value = getattr(args, "signal_family", "none")
+        # "none" stays a deliberate no-op: an inherited family MUST survive a
+        # redundant --signal-family none so workers never diverge from the
+        # source run.
+        if value != "none":
+            os.environ[SIGNAL_FAMILY_ENV] = value
+    else:
+        value = getattr(args, "strategy_kind", None)
+        if value is None:
+            return
+        if value == "momentum":
+            os.environ.pop(SIGNAL_FAMILY_ENV, None)
+        else:
+            os.environ[SIGNAL_FAMILY_ENV] = value
 
 
 def main(argv: list[str] | None = None) -> int:
     global REPRODUCTION_ROOT
     args = build_parser().parse_args(argv)
-    if getattr(args, "signal_family", "none") == "funding_carry":
-        os.environ["PORTFOLIO_SIGNAL_FAMILY"] = "funding_carry"
-    # No elif-delete here: an inherited PORTFOLIO_SIGNAL_FAMILY from the
-    # parent environment MUST survive when --signal-family is not passed,
-    # otherwise flagless reproduce/rerun workers silently lose the family
-    # dispatch and diverge from the source run.
+    apply_signal_family_flags(args, argv)
     REPRODUCTION_ROOT = Path(args.reproduction_root)
     if args.reproduce:
         return run_reproduce(args)
