@@ -1750,6 +1750,45 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
     if getattr(args, "synthetic_panel", None):
         extra_manifest_fields["synthetic_panel_path"] = str(
             Path(args.synthetic_panel).resolve())
+
+    # V6P N01/N02/N03: committed-baseline provenance block + fail-closed
+    # preflight when enforcement is enabled (real launches set the env).
+    provenance_block: dict[str, Any] = {
+        "baseline_file": None,
+        "baseline_sha256": None,
+        "attestation_file": None,
+        "attestation_sha256": None,
+        "preflight": "NOT_ENFORCED",
+    }
+    if os.environ.get("V6P_ENFORCE_PROVENANCE") == "1":
+        from research.provenance_v6p import (
+            ATTESTATION_FILENAME,
+            BASELINE_FILENAME,
+            validate_launch_provenance,
+        )
+        base_p = Path("research/audits/v6p") / BASELINE_FILENAME
+        att_p = Path("research/audits/v6p") / ATTESTATION_FILENAME
+        reasons = validate_launch_provenance(
+            Path.cwd(),
+            baseline_path=base_p,
+            attestation_path=att_p,
+            launch_head=snapshot["git_commit_at_launch"],
+            dirty=None,  # validator applies the declared-exemption scan
+            first_launch_started_utc=snapshot["run_started_utc"],
+        )
+        if reasons:
+            _log(f"ABORT provenance_preflight_failed: {reasons}")
+            print(f"ABORT provenance preflight failed: {reasons}",
+                  file=sys.stderr)
+            return EXIT_DEPENDENCY_MISSING
+        provenance_block = {
+            "baseline_file": str(base_p),
+            "baseline_sha256": sha256_file(base_p),
+            "attestation_file": str(att_p),
+            "attestation_sha256": sha256_file(att_p),
+            "preflight": "PASS",
+        }
+    extra_manifest_fields["provenance"] = provenance_block
     log_path = exp_dir / "run.log"
 
     def _log(message: str) -> None:
