@@ -2930,8 +2930,10 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if getattr(args, "signal_family", "none") == "funding_carry":
         os.environ["PORTFOLIO_SIGNAL_FAMILY"] = "funding_carry"
-    elif "PORTFOLIO_SIGNAL_FAMILY" in os.environ and             getattr(args, "signal_family", "none") == "none":
-        del os.environ["PORTFOLIO_SIGNAL_FAMILY"]
+    # No elif-delete here: an inherited PORTFOLIO_SIGNAL_FAMILY from the
+    # parent environment MUST survive when --signal-family is not passed,
+    # otherwise flagless reproduce/rerun workers silently lose the family
+    # dispatch and diverge from the source run.
     REPRODUCTION_ROOT = Path(args.reproduction_root)
     if args.reproduce:
         return run_reproduce(args)
