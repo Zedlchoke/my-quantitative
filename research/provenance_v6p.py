@@ -44,6 +44,8 @@ def _provenance_exempt(repo: Path) -> set[str]:
     return {
         str(Path("research/audits/v6p") / BASELINE_FILENAME),
         str(Path("research/audits/v6p") / ATTESTATION_FILENAME),
+        str(Path("research/audits/v7p") / BASELINE_FILENAME),
+        str(Path("research/audits/v7p") / ATTESTATION_FILENAME),
         # Coordinator journal/state mutate continuously by design; they carry
         # no strategy/data authority, so they cannot participate in the
         # launch-clean guarantee.
