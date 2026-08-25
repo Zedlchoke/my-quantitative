@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,9 +56,12 @@ def create_baseline_root(
 ) -> dict:
     """Freeze the external baseline root. Refuses any undeclared dirtiness."""
     exempt = _provenance_exempt(repo)
+    def _nonexempt(line: str) -> bool:
+        return not any(line.endswith(e) for e in exempt)
+
     status = [
         l for l in _git(repo, "status", "--porcelain=v1").splitlines()
-        if l and l[3:].strip() not in exempt
+        if l and _nonexempt(l)
     ]
     if status:
         raise RuntimeError(f"refusing baseline freeze on dirty tree: {status}")
@@ -211,7 +215,7 @@ def validate_launch_provenance(
     if dirty is None:
         exempt = _provenance_exempt(repo)
         dirty = any(
-            l[3:].strip() not in exempt
+            not any(l.endswith(e) for e in exempt)
             for l in _git(repo, "status", "--porcelain=v1").splitlines() if l
         )
     if dirty:
