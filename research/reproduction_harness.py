@@ -46,16 +46,22 @@ the whole directory is RENAMED (bytes preserved, never deleted) to
 ``<verify_id>.FAILED-<UTCcompact>-n`` and a fresh run proceeds; the new
 report records ``renamed_from``/``archived_to``.
 
-CLI (used by A1 at the integration SHA for the V6 4/4 loop)::
-
-    python -m research.reproduction_harness plan
+    python -m research.reproduction_harness plan [--family {v6,v8}]
     python -m research.reproduction_harness freeze [--path OUT.json]
     python -m research.reproduction_harness compare --source DIR --rerun DIR \
         [--primary-repo REPO]
     python -m research.reproduction_harness run-one \
         --primary-repo REPO --source-rel results/portfolio_v6/XSECT-FUND-CARRY-1D \
         --verify-id VERIFY-V6FULL-1D [--reproduction-root results/reproduction_v7]
-    python -m research.reproduction_harness emit-commands [--primary-repo REPO]
+    python -m research.reproduction_harness emit-commands [--family {v6,v8}] \
+        [--primary-repo REPO] [--reproduction-root ROOT]
+
+The ``v8`` family (PLAN sections 7/13) lists XSECT-WREV-3D/7D/14D +
+XSECT-WMOM-7D-CONTROL under ``results/portfolio_v8`` with
+``VERIFY-V8-*`` verify ids and defaults to ``results/reproduction_v8``;
+the WMOM control trial's frozen argv carries ``--control-momentum``,
+which :func:`run_reproduction` forwards to the worker as
+``PORTFOLIO_CONTROL_MOMENTUM``.
 
 Exit codes: ``0`` match/ok, ``6`` reproduction mismatch, ``2`` abort/usage.
 No network access; no engine imports; pure file/subprocess orchestration.
@@ -79,16 +85,23 @@ import yaml
 from contracts.protocol import sha256_file
 
 __all__ = [
+    "CONTROL_MOMENTUM_ENV",
+    "FORWARDED_ENV_KEYS",
     "FROZEN_TOLERANCES",
     "REPRODUCTION_SCHEMA_VERSION",
     "EXIT_REPRO_MISMATCH",
     "SKIP_RERUN",
     "V6_FAMILY_DIR",
+    "V8_FAMILY_DIR",
+    "V8_REPRODUCTION_ROOT",
     "compare_trials",
+    "expected_control_momentum_from_source",
     "expected_signal_family_from_source",
     "freeze_tolerances",
     "run_reproduction",
     "v6_family_plan",
+    "v8_family_plan",
+    "v8_verify_id_for_trial",
     "verify_id_for_trial",
     "main",
 ]
@@ -357,6 +370,52 @@ def expected_signal_family_from_source(source_exp_dir: str | Path) -> str | None
             value = tokens[index + 1].strip()
             if value:
                 return value
+    return None
+
+
+#: argv flag inside ``exact_backtest_argv`` that marks the source run as a
+#: MOMENTUM-CONTROL trial (V8 ``XSECT-WMOM-7D-CONTROL``): a faithful rerun
+#: worker must inherit the same control dispatch, which the runner reads from
+#: :data:`CONTROL_MOMENTUM_ENV` in its environment.
+_CONTROL_MOMENTUM_ARGV_FLAG = "--control-momentum"
+
+#: Worker-environment key carrying the momentum-control dispatch.
+CONTROL_MOMENTUM_ENV = "PORTFOLIO_CONTROL_MOMENTUM"
+
+#: Environment keys this harness GUARANTEES reach the spawned reproduce
+#: worker.  The worker inherits the FULL parent environment by design (the
+#: V6 audit traced a silent dispatch divergence to an env-deletion side
+#: effect -- commit fe31440 -- so whitelisting/downsizing the child env is
+#: forbidden); these keys are additionally re-copied explicitly and their
+#: resolved values recorded in every report so the guarantee is auditable.
+FORWARDED_ENV_KEYS: tuple[str, ...] = (
+    "PORTFOLIO_SIGNAL_FAMILY",
+    CONTROL_MOMENTUM_ENV,
+)
+
+
+def expected_control_momentum_from_source(
+        source_exp_dir: str | Path) -> str | None:
+    """Momentum-control dispatch the rerun must execute, from frozen argv.
+
+    Reads ``exact_backtest_argv`` from the source launch manifest; a
+    ``--control-momentum`` token pins the WMOM control trial.  A bare flag
+    maps to ``"1"``; ``--control-momentum <value>`` forwards the value
+    verbatim.  Returns ``None`` when the manifest is missing/unreadable or
+    carries no such flag (plain directional trial).
+    """
+    manifest, _reason = _load_launch_manifest(Path(source_exp_dir))
+    argv = (manifest or {}).get("exact_backtest_argv")
+    if not isinstance(argv, (list, tuple)):
+        return None
+    tokens = [str(token) for token in argv]
+    for index, token in enumerate(tokens):
+        if token != _CONTROL_MOMENTUM_ARGV_FLAG:
+            continue
+        nxt = tokens[index + 1] if index + 1 < len(tokens) else ""
+        if nxt and not nxt.startswith("-"):
+            return nxt.strip()
+        return "1"
     return None
 
 
@@ -833,6 +892,49 @@ def verify_id_for_trial(trial_id: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# V8 family plan (PLAN.md section 7 / 13: results/portfolio_v8 + reproduction_v8)
+# --------------------------------------------------------------------------- #
+V8_FAMILY_DIR = "results/portfolio_v8"
+#: Default verify root for the V8 four-trial loop (PLAN.md artifact contract).
+V8_REPRODUCTION_ROOT = "results/reproduction_v8"
+
+_V8_FAMILY_TRIALS: tuple[tuple[str, str], ...] = (
+    ("XSECT-WREV-3D", f"{V8_FAMILY_DIR}/XSECT-WREV-3D"),
+    ("XSECT-WREV-7D", f"{V8_FAMILY_DIR}/XSECT-WREV-7D"),
+    ("XSECT-WREV-14D", f"{V8_FAMILY_DIR}/XSECT-WREV-14D"),
+    ("XSECT-WMOM-7D-CONTROL", f"{V8_FAMILY_DIR}/XSECT-WMOM-7D-CONTROL"),
+)
+
+_V8_VERIFY_SHORT: dict[str, str] = {
+    "XSECT-WREV-3D": "WREV-3D",
+    "XSECT-WREV-7D": "WREV-7D",
+    "XSECT-WREV-14D": "WREV-14D",
+    "XSECT-WMOM-7D-CONTROL": "WMOM-7D-CONTROL",
+}
+
+
+def v8_family_plan() -> list[tuple[str, str]]:
+    """The four V8 family trials: ``(trial_id, source_rel)`` pairs.
+
+    Waves per PLAN section 7 -- Wave 1: XSECT-WREV-3D + XSECT-WREV-7D;
+    Wave 2: XSECT-WREV-14D + XSECT-WMOM-7D-CONTROL (the control trial's
+    source argv carries ``--control-momentum``, forwarded to the rerun
+    worker via :data:`CONTROL_MOMENTUM_ENV`).
+    """
+    return [(trial_id, source_rel) for trial_id, source_rel in _V8_FAMILY_TRIALS]
+
+
+def v8_verify_id_for_trial(trial_id: str) -> str:
+    """Deterministic verify id ``VERIFY-V8-<short>`` for a V8 family trial."""
+    short = _V8_VERIFY_SHORT.get(trial_id)
+    if short is None:
+        short = "".join(
+            ch if ch.isalnum() else "-" for ch in trial_id.removeprefix("XSECT-")
+        )[:32].strip("-")
+    return f"VERIFY-V8-{short}"
+
+
+# --------------------------------------------------------------------------- #
 # subprocess driver
 # --------------------------------------------------------------------------- #
 _DEFAULT_REPRODUCTION_ROOT = "results/reproduction_v7"
@@ -918,6 +1020,15 @@ def run_reproduction(primary_repo: str | Path,
     keeps flagless reproduce workers on the source signal family instead of
     silently rerunning momentum (V6 4/4 loop defect).
 
+    Momentum-control trials (V8 ``XSECT-WMOM-7D-CONTROL``): a
+    ``--control-momentum`` token in the same frozen argv pins
+    :data:`CONTROL_MOMENTUM_ENV` in the worker environment the same way --
+    the derived value overrides any ambient one and is recorded as
+    ``resolved_env_control_momentum``; when the argv carries no such flag,
+    an ambient parent-process value is inherited untouched.  The full parent
+    environment always reaches the child (see :data:`FORWARDED_ENV_KEYS`);
+    ``extra_env`` still merges LAST so caller overrides win.
+
     The rerun artifacts under ``<primary_repo>/<reproduction_root>/<verify_id>/``
     are then located, :func:`compare_trials` runs and
     ``reproduction_report.json`` is written into the verify directory.
@@ -955,9 +1066,18 @@ def run_reproduction(primary_repo: str | Path,
         repo / source_rel)
     if expected_signal_family is None and source_probe.is_dir():
         expected_signal_family = expected_signal_family_from_source(source_probe)
+    derived_control = (expected_control_momentum_from_source(source_probe)
+                       if source_probe.is_dir() else None)
+    # frozen source argv wins over an ambient orchestrator-provided value;
+    # extra_env still merges LAST so a caller override wins in the child env
+    resolved_control_momentum = (derived_control
+                                 or os.environ.get(CONTROL_MOMENTUM_ENV, "").strip()
+                                 or None)
     env = dict(os.environ)
     if expected_signal_family:
         env["PORTFOLIO_SIGNAL_FAMILY"] = str(expected_signal_family)
+    if resolved_control_momentum:
+        env[CONTROL_MOMENTUM_ENV] = str(resolved_control_momentum)
     if extra_env:
         env.update({str(k): str(v) for k, v in extra_env.items()})
     started_utc = datetime.now(timezone.utc).isoformat()
@@ -972,6 +1092,7 @@ def run_reproduction(primary_repo: str | Path,
             "returncode": completed.returncode,
             "worker_returncode": completed.returncode,
             "resolved_env_family": expected_signal_family,
+            "resolved_env_control_momentum": resolved_control_momentum,
             "started_at_utc": started_utc,
             "finished_at_utc": finished_utc,
             "stdout_tail": completed.stdout[-4000:],
@@ -1020,11 +1141,19 @@ def run_reproduction(primary_repo: str | Path,
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
-def _emit_commands(primary_repo: str, reproduction_root: str) -> int:
+_FAMILY_PLANS: dict[str, Any] = {
+    "v6": (v6_family_plan, verify_id_for_trial, _DEFAULT_REPRODUCTION_ROOT),
+    "v8": (v8_family_plan, v8_verify_id_for_trial, V8_REPRODUCTION_ROOT),
+}
+
+
+def _emit_commands(primary_repo: str, reproduction_root: str,
+                   family: str = "v6") -> int:
+    plan_fn, verify_fn = _FAMILY_PLANS[family][:2]
     python = _resolve_python()
     this_pkg = "research.reproduction_harness"
-    for trial_id, source_rel in v6_family_plan():
-        verify_id = verify_id_for_trial(trial_id)
+    for trial_id, source_rel in plan_fn():
+        verify_id = verify_fn(trial_id)
         print(
             f"# {trial_id}\n"
             f'{python} -m {this_pkg} run-one --primary-repo {primary_repo} '
@@ -1040,7 +1169,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="A5 full-family reproduction harness (PLAN 6.6)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("plan", help="print the V6 family trial plan")
+    p_plan = sub.add_parser("plan", help="print the family trial plan")
+    p_plan.add_argument("--family", choices=tuple(_FAMILY_PLANS), default="v6")
     p_freeze = sub.add_parser("freeze", help="emit/write the frozen tolerance doc")
     p_freeze.add_argument("--path", default=None)
     p_compare = sub.add_parser("compare", help="compare two experiment dirs")
@@ -1053,15 +1183,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_run.add_argument("--source-rel", required=True)
     p_run.add_argument("--verify-id", required=True)
     p_run.add_argument("--reproduction-root", default=_DEFAULT_REPRODUCTION_ROOT)
-    p_emit = sub.add_parser("emit-commands", help="print A1's V6 4/4 command loop")
+    p_emit = sub.add_parser("emit-commands",
+                            help="print A1's per-family run-one command loop")
+    p_emit.add_argument("--family", choices=tuple(_FAMILY_PLANS), default="v6")
     p_emit.add_argument("--primary-repo", default=".")
-    p_emit.add_argument("--reproduction-root", default=_DEFAULT_REPRODUCTION_ROOT)
+    p_emit.add_argument("--reproduction-root", default=None,
+                        help="default: results/reproduction_v7 (v6) / "
+                             "results/reproduction_v8 (v8)")
 
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.cmd == "plan":
-        for trial_id, source_rel in v6_family_plan():
-            print(f"{trial_id}\t{source_rel}\t{verify_id_for_trial(trial_id)}")
+        plan_fn, verify_fn, _root = _FAMILY_PLANS[args.family]
+        for trial_id, source_rel in plan_fn():
+            print(f"{trial_id}\t{source_rel}\t{verify_fn(trial_id)}")
         return 0
     if args.cmd == "freeze":
         print(json.dumps(freeze_tolerances(args.path), indent=2, sort_keys=True))
@@ -1077,7 +1212,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True, default=str))
         return 0 if report["all_match"] else EXIT_REPRO_MISMATCH
     if args.cmd == "emit-commands":
-        return _emit_commands(args.primary_repo, args.reproduction_root)
+        reproduction_root = (args.reproduction_root
+                             or _FAMILY_PLANS[args.family][2])
+        return _emit_commands(args.primary_repo, reproduction_root,
+                              family=args.family)
     parser.error(f"unknown command: {args.cmd}")  # pragma: no cover
     return 2  # pragma: no cover
 
