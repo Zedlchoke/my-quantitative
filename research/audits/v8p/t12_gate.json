@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "artifact": "t12_gate",
+  "gate": "T12",
+  "generated_at_utc": "2026-08-26T00:00:45Z",
+  "label": "S0_ALREADY_INSPECTED",
+  "status": "PASS",
+  "required_symbols_missing": [],
+  "common_window": {
+    "start": "2024-08-21T14:44:59.999000064Z",
+    "end": "2026-08-20T23:59:59.999000064Z",
+    "hours": 17505.25,
+    "basis": "MEASURED intersection of required six symbols' bar ranges within target window"
+  },
+  "frozen_gate_rule": {
+    "rule_id": "T12_MATERIALITY_V1",
+    "frozen_before_scoring": true,
+    "text": "T12_MATERIALITY_V1 (frozen before any V8 scoring): a REQUIRED symbol fails the T12 gate iff, within the MEASURED common window, any of: (a) zero 15m bars; (b) zero funding settlements; (c) total unexplained gap time > 24h AND > 0.5% of window duration; (d) duplicate bar timestamps present. Non-required warnings do not flip the gate. Endpoints are measured from data and are NOT trimmed to dodge gaps.",
+    "params": {
+      "unexplained_gap_hours_abs_threshold": 24.0,
+      "unexplained_gap_window_fraction_threshold": 0.005,
+      "condition_logic": "unexplained_gap_hours > 24 AND hours/window_hours > 0.005"
+    }
+  },
+  "failed_symbols": {},
+  "checks": [
+    {
+      "id": "venue_instrument_ids",
+      "status": "pass",
+      "detail": "all audited symbols resolve to <SYM>-PERP.BINANCE USD-M perpetual bar directories"
+    },
+    {
+      "id": "bar_schema_utc_completed_semantics",
+      "status": "pass",
+      "detail": "ts_event = exchange CLOSE stamps, UTC ns; strict monotonic + 15m grid alignment checked per symbol"
+    },
+    {
+      "id": "zero_duplicate_timestamps",
+      "status": "pass",
+      "detail": "duplicate ts_event counted per symbol"
+    },
+    {
+      "id": "ohlc_validity",
+      "status": "pass",
+      "detail": "high>=low, high>=open/close, low<=open/close, volume>=0 per bar"
+    },
+    {
+      "id": "gap_census_complete_honest",
+      "status": "pass",
+      "detail": "every consecutive-pair breach enumerated and classified; default unexplained; no preregistered rule file supplied -> ALL gaps unexplained"
+    },
+    {
+      "id": "no_forward_fill_across_unexplained_gaps",
+      "status": "pass",
+      "detail": "audit reads raw bars only; no price/funding imputation performed anywhere"
+    },
+    {
+      "id": "funding_coverage_common_window",
+      "status": "pass",
+      "detail": "required symbols must have >0 settlements inside measured common window"
+    },
+    {
+      "id": "funding_head_tail_edge_coverage",
+      "status": "pass",
+      "detail": "bundle requested_start begins ~2024-08-23, after the measured common-window start (~41h head shortfall, <0.25% of window); recorded per symbol as head/tail_uncovered_hours; does not flip the frozen materiality rule (settlements>0 throughout)"
+    },
+    {
+      "id": "instrument_metadata_with_effective_ts_limitation",
+      "status": "pass",
+      "detail": "presence via Catalog.instrument(); single-snapshot store -> effective-timestamp limitation recorded per symbol"
+    },
+    {
+      "id": "sha256_sources_and_manifest",
+      "status": "pass",
+      "detail": "21 source files hashed; normalized manifest sha256 recorded"
+    },
+    {
+      "id": "btc_benchmark_excluded_from_ranks_pnl",
+      "status": "pass",
+      "detail": "BTCUSDT audited benchmark-context-only; excluded from universe ranks/weights/PnL statements"
+    },
+    {
+      "id": "data_label_S0_ALREADY_INSPECTED",
+      "status": "pass",
+      "detail": "window overlaps prior S0 inspection activity; NOT untouched OOS"
+    },
+    {
+      "id": "intersection_measured_not_trimmed",
+      "status": "pass",
+      "detail": "endpoints = max(first bars)/min(last bars) over required symbols; no gap-dodging shrink"
+    }
+  ],
+  "target_window": {
+    "start": "2024-08-21T14:30:00Z",
+    "end": "2026-08-21T00:00:00Z"
+  },
+  "benchmark_policy": {
+    "benchmark_symbol": "BTCUSDT",
+    "excluded_from_ranks_weights_pnl": true,
+    "daily_close_points": 728
+  },
+  "artifacts": [
+    "data_audit_v8.json",
+    "data_manifest_v8.json",
+    "gap_census_v8.json",
+    "funding_coverage_v8.json",
+    "t12_gate.json"
+  ],
+  "normalized_manifest_sha256": "f50971f0a9e2198967aef814dabf2f41255a25f7fee76c144eb66c15490c9f0b"
+}
