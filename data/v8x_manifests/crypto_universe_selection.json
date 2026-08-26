@@ -1,8 +1,33 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "agent": "A8-crypto-breadth",
-  "generated_at_utc": "2026-08-25T23:46:22Z",
+  "generated_at_utc": "2026-08-26T00:00:00Z",
   "performance_blind": true,
+  "correction_of": {
+    "prior_commit": "4f1d704eeaa72713a1cd81455f8b24f1d61f6330",
+    "prior_manifest_schema_version": "1.0.0",
+    "violations_fixed": [
+      "V1 ranking window was scored window -> now pre-window only",
+      "V2 BTC included in traded top-10 -> now benchmark measurement-only, excluded before ranking",
+      "V3 daily-granularity gap_day screen tolerated intra-day holes -> now exact 15-minute census over pre-window AND scored window with mandatory cause per gap; unexplained fails",
+      "V4 funding gate rows>=1 -> now held-exposure completeness proof (contiguous legal intervals, boundary coverage from first possible weekly exposure, corroborated interval steps)"
+    ]
+  },
+  "selection_window": {
+    "start_utc": "2025-07-22T00:00:00Z",
+    "end_utc": "2025-08-21T00:00:00Z",
+    "note": "strictly BEFORE the scored window; ranking uses ONLY this window"
+  },
+  "scored_window": {
+    "start_utc": "2025-08-21T00:00:00Z",
+    "end_utc": "2026-08-21T00:00:00Z"
+  },
+  "ranking_rule": "median_daily_quote_volume_pre_window_only",
+  "ranking_metric_detail": "median over distinct pre-window UTC bar-days of the daily sum of the 15m parquet native quote_volume (USDT, Decimal-exact); even-count median = mean of the two central values",
+  "rank_tiebreak": "symbol asc (carried from prior frozen artifact)",
+  "btc_excluded": true,
+  "btc_exclusion_note": "BTCUSDT-PERP.BINANCE (equivalent of PERP.BINANCE.BTC-USDT) is the benchmark, measurement-only; excluded from the ranked/traded universe before ranking",
+  "listing_age_rule": "onboard_date <= scored-window start minus 365d (= 2024-08-21T00:00:00Z); consistent with prior artifact's >=365d preference; no contradicting frozen prereg found",
   "rule_constants": {
     "catalog_root": "/Users/hoangminhlong/my-quantitative/catalog_live_crypto",
     "bar_dir_rel": "data/binance_bar",
@@ -12,578 +37,1991 @@
     "quote_currency_required": "USDT",
     "contract_type_required": "PERPETUAL",
     "bar_spec_suffix": "-15-MINUTE-LAST-EXTERNAL",
-    "window_start_utc": "2025-08-21T00:00:00Z",
-    "window_end_utc": "2026-08-21T00:00:00Z",
-    "window_days": 365,
-    "first_bar_max_utc": "2025-08-21T00:00:00Z",
-    "min_cover_days_in_window": 365,
-    "gap_day_rule": "gap_day = a UTC calendar day containing ZERO bars, lying inside the effective span [max(first_bar_day, 2025-08-21), min(last_bar_day, 2026-08-21)], for which at least one bar-day exists earlier AND at least one exists later in the symbol's full sorted bar-day series ('missing entire day where neighbors exist'). Days with >=1 bar count as covered; intra-day (single-bar / partial-day) gaps are TOLERATED.",
-    "gap_days_max_allowed": 0,
-    "funding_min_rows": 1,
-    "volume_metric_note": "median over distinct bar-days inside the effective window of the daily sum of the 15m bar 'quote_volume' field (USDT). Field is present in the local parquet => metric MEASURABLE locally; NO fabrication and NO bar-count proxy required.",
-    "rank_primary": "median_daily_quote_volume_usdt desc",
-    "rank_tiebreak": "symbol asc",
-    "fallback_rank_rule": "if quote_volume were absent/all-null for a symbol => metric_unavailable => rank by bars_days_in_window desc, then symbol asc (documented fallback)",
-    "top_n": 10
+    "bar_interval_seconds": 900,
+    "top_n": 10,
+    "max_funding_interval_seconds": 28800,
+    "legal_funding_intervals_seconds": [
+      3600,
+      7200,
+      14400,
+      28800
+    ],
+    "funding_jitter_ms": 60000,
+    "first_possible_exposure_utc": "2025-08-21T00:00:00Z"
   },
   "candidates_evaluated": [
     {
       "symbol": "1000PEPEUSDT",
       "instrument_id": "1000PEPEUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2023-05-05T00:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 302541407.99,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 839.0,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "857082216.0668006",
+        "median_daily_quote_volume_usdt": 857082216.07
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 7
     },
     {
       "symbol": "AAVEUSDT",
       "instrument_id": "AAVEUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-10-16T07:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 96145223.56,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 1769.71,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "250657077.0375",
+        "median_daily_quote_volume_usdt": 250657077.04
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "ACEUSDT",
       "instrument_id": "ACEUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2023-12-18T10:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 4636,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T04:00:00Z",
-      "median_daily_quote_volume_usdt": 2572231.89,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 611.58,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "3721429.33553500",
+        "median_daily_quote_volume_usdt": 3721429.34
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 2446,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          3600,
+          7200,
+          14400,
+          28800
+        ],
+        "cadence_mode_minutes": 240,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [
+          {
+            "step_start_utc": "2026-06-24T00:00:00Z",
+            "step_end_utc": "2026-06-24T08:00:00Z",
+            "gap_minutes": 480,
+            "symbols_sharing_identical_step": 4,
+            "cause": "exchange_wide_funding_interval_step",
+            "explained": true
+          }
+        ],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "ADAUSDT",
       "instrument_id": "ADAUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-01-31T08:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-21T14:14:59Z",
-      "last_bar_utc": "2026-08-21T13:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 216382761.61,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 2028.67,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "685861178.04005",
+        "median_daily_quote_volume_usdt": 685861178.04
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 8
     },
     {
       "symbol": "AVAXUSDT",
       "instrument_id": "AVAXUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-09-23T07:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 151501462.64,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 1792.71,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "383849922.2395",
+        "median_daily_quote_volume_usdt": 383849922.24
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "BCHUSDT",
       "instrument_id": "BCHUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2019-12-19T08:55:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 118648882.38,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 2071.63,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "244795497.69046",
+        "median_daily_quote_volume_usdt": 244795497.69
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "BNBUSDT",
       "instrument_id": "BNBUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-02-10T08:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-21T14:14:59Z",
-      "last_bar_utc": "2026-08-21T13:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 397338117.68,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 2018.67,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "685005825.07900",
+        "median_daily_quote_volume_usdt": 685005825.08
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 9
     },
     {
       "symbol": "BOMEUSDT",
       "instrument_id": "BOMEUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2024-03-16T12:30:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 4379,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T04:00:00Z",
-      "median_daily_quote_volume_usdt": 8942278.17,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 522.48,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "33429589.9193140",
+        "median_daily_quote_volume_usdt": 33429589.92
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 2189,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          14400,
+          28800
+        ],
+        "cadence_mode_minutes": 240,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [
+          {
+            "step_start_utc": "2026-06-24T00:00:00Z",
+            "step_end_utc": "2026-06-24T08:00:00Z",
+            "gap_minutes": 480,
+            "symbols_sharing_identical_step": 4,
+            "cause": "exchange_wide_funding_interval_step",
+            "explained": true
+          }
+        ],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "BTCUSDT",
       "instrument_id": "BTCUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2019-09-08T17:55:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 12107829986.06,
-      "metric_unavailable": false,
-      "eligible": true,
-      "reason_if_rejected": null
+      "listing_age_days_at_first_possible_exposure": 2173.25,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "14745568711.89490",
+        "median_daily_quote_volume_usdt": 14745568711.89
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": true,
+      "eligible": false,
+      "reason_if_rejected": [
+        "BTC_BENCHMARK_MEASUREMENT_ONLY_EXCLUDED_BEFORE_RANKING"
+      ]
     },
     {
       "symbol": "DOGEUSDT",
       "instrument_id": "DOGEUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-07-10T09:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-21T14:14:59Z",
-      "last_bar_utc": "2026-08-21T13:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 574147365.18,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 1867.62,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "1846862953.662835",
+        "median_daily_quote_volume_usdt": 1846862953.66
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 4
     },
     {
       "symbol": "ENAUSDT",
       "instrument_id": "ENAUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2024-04-02T12:30:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 4379,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T04:00:00Z",
-      "median_daily_quote_volume_usdt": 131933200.98,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 505.48,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "1159139794.9491500",
+        "median_daily_quote_volume_usdt": 1159139794.95
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 2189,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          14400,
+          28800
+        ],
+        "cadence_mode_minutes": 240,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [
+          {
+            "step_start_utc": "2026-06-24T00:00:00Z",
+            "step_end_utc": "2026-06-24T08:00:00Z",
+            "gap_minutes": 480,
+            "symbols_sharing_identical_step": 4,
+            "cause": "exchange_wide_funding_interval_step",
+            "explained": true
+          }
+        ],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 5
     },
     {
       "symbol": "ETHUSDT",
       "instrument_id": "ETHUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2019-11-27T07:45:00Z",
-      "bars_files": 4,
-      "bars_total_deduped": 70045,
-      "first_bar_utc": "2024-08-23T00:14:59Z",
-      "last_bar_utc": "2026-08-23T06:59:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 10240030728.2,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 2093.68,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "24602646500.99417",
+        "median_daily_quote_volume_usdt": 24602646500.99
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 57,
+        "unexplained_gaps": 0,
+        "gap_runs": [
+          {
+            "start_utc": "2025-08-21T00:00:00Z",
+            "end_utc": "2025-08-21T14:00:00Z",
+            "missing_slots": 57,
+            "cause": "local_capture_boundary_between_sessions",
+            "explained": true,
+            "evidence": {
+              "prev_end": "2025-08-20T23:45:00Z",
+              "next_start": "2025-08-21T14:15:00Z"
+            }
+          }
+        ]
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 1
     },
     {
       "symbol": "LINKUSDT",
       "instrument_id": "LINKUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-01-17T08:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-21T14:14:59Z",
-      "last_bar_utc": "2026-08-21T13:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 144417621.66,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 2042.67,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "563231921.515545",
+        "median_daily_quote_volume_usdt": 563231921.52
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 10
     },
     {
       "symbol": "NEARUSDT",
       "instrument_id": "NEARUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-10-15T08:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 112861800.79,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 1770.67,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "153833019.3555",
+        "median_daily_quote_volume_usdt": 153833019.36
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "ONGUSDT",
       "instrument_id": "ONGUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2023-11-27T13:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 4418,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T04:00:00Z",
-      "median_daily_quote_volume_usdt": 1283733.12,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 632.46,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "2242353.4618700",
+        "median_daily_quote_volume_usdt": 2242353.46
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 2189,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          14400,
+          28800
+        ],
+        "cadence_mode_minutes": 240,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [
+          {
+            "step_start_utc": "2026-06-24T00:00:00Z",
+            "step_end_utc": "2026-06-24T08:00:00Z",
+            "gap_minutes": 480,
+            "symbols_sharing_identical_step": 4,
+            "cause": "exchange_wide_funding_interval_step",
+            "explained": true
+          }
+        ],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "SOLUSDT",
       "instrument_id": "SOLUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-09-14T07:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-21T14:14:59Z",
-      "last_bar_utc": "2026-08-21T13:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 2248115171.52,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 1801.71,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "4183797973.526235",
+        "median_daily_quote_volume_usdt": 4183797973.53
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 2
     },
     {
       "symbol": "SUIUSDT",
       "instrument_id": "SUIUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2023-05-03T00:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 239049000.43,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 841.0,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "918797625.1703700",
+        "median_daily_quote_volume_usdt": 918797625.17
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 6
     },
     {
       "symbol": "WLDUSDT",
       "instrument_id": "WLDUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2023-07-24T12:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 106532907.72,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 758.5,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "145470649.7638000",
+        "median_daily_quote_volume_usdt": 145470649.76
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     },
     {
       "symbol": "XRPUSDT",
       "instrument_id": "XRPUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-01-06T08:20:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-21T14:14:59Z",
-      "last_bar_utc": "2026-08-21T13:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 817013508.96,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 2053.65,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "2535180935.50232",
+        "median_daily_quote_volume_usdt": 2535180935.5
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
-      "reason_if_rejected": null
+      "reason_if_rejected": null,
+      "rank": 3
     },
     {
       "symbol": "ZECUSDT",
       "instrument_id": "ZECUSDT-PERP.BINANCE",
-      "instrument_metadata_present": true,
-      "quote_currency": "USDT",
-      "contract_type": "PERPETUAL",
+      "metadata_sanity": {
+        "present": true,
+        "venue": "BINANCE",
+        "quote_currency": "USDT",
+        "contract_type": "PERPETUAL",
+        "status": "TRADING",
+        "ok": true
+      },
       "onboard_date_utc": "2020-02-05T08:00:00Z",
-      "bars_files": 1,
-      "bars_total_deduped": 70079,
-      "first_bar_utc": "2024-08-23T05:14:59Z",
-      "last_bar_utc": "2026-08-23T04:44:59Z",
-      "bars_days_all_time": 731,
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "gap_days_examples": [],
-      "funding_json_present": true,
-      "funding_rows": 2190,
-      "funding_first_utc": "2024-08-23T08:00:00Z",
-      "funding_last_utc": "2026-08-23T00:00:00Z",
-      "median_daily_quote_volume_usdt": 599035706.66,
-      "metric_unavailable": false,
+      "listing_age_days_at_first_possible_exposure": 2023.67,
+      "listing_age_gate_min_days": 365,
+      "volume": {
+        "days_with_bars_pre_window": 30,
+        "median_daily_quote_volume_usdt_exact": "5594739.75066",
+        "median_daily_quote_volume_usdt": 5594739.75
+      },
+      "census_pre_window": {
+        "window": [
+          "2025-07-22T00:00:00Z",
+          "2025-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 2880,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "census_scored_window": {
+        "window": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "expected_15m_slots": 35040,
+        "gaps_found": 0,
+        "unexplained_gaps": 0,
+        "gap_runs": []
+      },
+      "funding_held_exposure_audit": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "btc_benchmark_measurement_only": false,
       "eligible": true,
       "reason_if_rejected": null
     }
   ],
-  "accepted_top10": [
+  "chosen_top10": [
     {
-      "symbol": "BTCUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 12107829986.06
-    },
-    {
+      "rank": 1,
       "symbol": "ETHUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 10240030728.2
+      "instrument_id": "ETHUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 24602646500.99,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 57,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
     },
     {
+      "rank": 2,
       "symbol": "SOLUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 2248115171.52
+      "instrument_id": "SOLUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 4183797973.53,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
     },
     {
+      "rank": 3,
       "symbol": "XRPUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 817013508.96
+      "instrument_id": "XRPUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 2535180935.5,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    },
+    {
+      "rank": 4,
+      "symbol": "DOGEUSDT",
+      "instrument_id": "DOGEUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 1846862953.66,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    },
+    {
+      "rank": 5,
+      "symbol": "ENAUSDT",
+      "instrument_id": "ENAUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 1159139794.95,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    },
+    {
+      "rank": 6,
+      "symbol": "SUIUSDT",
+      "instrument_id": "SUIUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 918797625.17,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    },
+    {
+      "rank": 7,
+      "symbol": "1000PEPEUSDT",
+      "instrument_id": "1000PEPEUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 857082216.07,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    },
+    {
+      "rank": 8,
+      "symbol": "ADAUSDT",
+      "instrument_id": "ADAUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 685861178.04,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    },
+    {
+      "rank": 9,
+      "symbol": "BNBUSDT",
+      "instrument_id": "BNBUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 685005825.08,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    },
+    {
+      "rank": 10,
+      "symbol": "LINKUSDT",
+      "instrument_id": "LINKUSDT-PERP.BINANCE",
+      "median_daily_quote_volume_pre_window_usdt": 563231921.52,
+      "days_with_bars_pre_window": 30,
+      "census_pre_window_gaps": 0,
+      "census_scored_window_gaps": 0,
+      "census_scored_window_unexplained": 0,
+      "funding_held_exposure_complete": true
+    }
+  ],
+  "not_selected_eligible": [
+    {
+      "symbol": "AVAXUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 383849922.24
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 250657077.04
+    },
+    {
+      "symbol": "BCHUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 244795497.69
+    },
+    {
+      "symbol": "NEARUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 153833019.36
+    },
+    {
+      "symbol": "WLDUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 145470649.76
+    },
+    {
+      "symbol": "BOMEUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 33429589.92
     },
     {
       "symbol": "ZECUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 599035706.66
+      "median_daily_quote_volume_pre_window_usdt": 5594739.75
     },
     {
-      "symbol": "DOGEUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 574147365.18
+      "symbol": "ACEUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 3721429.34
     },
     {
-      "symbol": "BNBUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 397338117.68
-    },
-    {
-      "symbol": "1000PEPEUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 302541407.99
-    },
-    {
-      "symbol": "SUIUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 239049000.43
-    },
-    {
-      "symbol": "ADAUSDT",
-      "bars_days_in_window": 365,
-      "gap_days": 0,
-      "funding_rows": 2190,
-      "median_daily_quote_volume_usdt": 216382761.61
+      "symbol": "ONGUSDT",
+      "median_daily_quote_volume_pre_window_usdt": 2242353.46
     }
   ],
-  "rejected": [],
-  "candidate_count": 20,
-  "eligible_count": 20,
-  "verdict": "V8X_CRYPTO_TOP10_ELIGIBLE",
+  "audits": {
+    "gap_census_15m_summary": {
+      "scope": "exact 15-minute grid census, pre-window AND scored window, every candidate",
+      "total_expected_slots_all_candidates_both_windows": 758400,
+      "total_gaps_found": 57,
+      "total_unexplained_gaps": 0,
+      "classification_rule": "run strictly inside ONE capture session's observed range => unexplained; run bounded before/after/by capture-session edges => explained capture-boundary cause"
+    },
+    "selected_symbols_gap_census": {
+      "ETHUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 57,
+          "unexplained_gaps": 0,
+          "gap_runs": [
+            {
+              "start_utc": "2025-08-21T00:00:00Z",
+              "end_utc": "2025-08-21T14:00:00Z",
+              "missing_slots": 57,
+              "cause": "local_capture_boundary_between_sessions",
+              "explained": true,
+              "evidence": {
+                "prev_end": "2025-08-20T23:45:00Z",
+                "next_start": "2025-08-21T14:15:00Z"
+              }
+            }
+          ]
+        }
+      },
+      "SOLUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "XRPUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "DOGEUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "ENAUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "SUIUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "1000PEPEUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "ADAUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "BNBUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      },
+      "LINKUSDT": {
+        "pre_window": {
+          "window": [
+            "2025-07-22T00:00:00Z",
+            "2025-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 2880,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        },
+        "scored_window": {
+          "window": [
+            "2025-08-21T00:00:00Z",
+            "2026-08-21T00:00:00Z"
+          ],
+          "expected_15m_slots": 35040,
+          "gaps_found": 0,
+          "unexplained_gaps": 0,
+          "gap_runs": []
+        }
+      }
+    },
+    "metadata_sanity_all_ok": true,
+    "funding_held_exposure_coverage": {
+      "ETHUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "SOLUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "XRPUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "DOGEUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "ENAUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 2189,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          14400,
+          28800
+        ],
+        "cadence_mode_minutes": 240,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [
+          {
+            "step_start_utc": "2026-06-24T00:00:00Z",
+            "step_end_utc": "2026-06-24T08:00:00Z",
+            "gap_minutes": 480,
+            "symbols_sharing_identical_step": 4,
+            "cause": "exchange_wide_funding_interval_step",
+            "explained": true
+          }
+        ],
+        "complete": true
+      },
+      "SUIUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "1000PEPEUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "ADAUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "BNBUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      },
+      "LINKUSDT": {
+        "exposure_span_utc": [
+          "2025-08-21T00:00:00Z",
+          "2026-08-21T00:00:00Z"
+        ],
+        "assumption": "weekly Monday rebalance; conservative first-possible-exposure = pre-window end = scored-window start 2025-08-21T00:00Z; coverage required through scored-window end inclusive",
+        "settlements_in_exposure_span": 1095,
+        "min_expected_settlements_if_max_cadence": 1095,
+        "first_settlement_utc": "2025-08-20T16:00:00Z",
+        "last_settlement_utc": "2026-08-21T00:00:00Z",
+        "duplicate_timestamps": 0,
+        "distinct_interval_seconds": [
+          28800
+        ],
+        "cadence_mode_minutes": 480,
+        "gate_sorted_unique_f1": true,
+        "gate_legal_intervals_f2": true,
+        "gate_boundary_coverage_f3": true,
+        "flagged_interval_steps": [],
+        "complete": true
+      }
+    },
+    "eligibility_counts": {
+      "candidates_evaluated": 20,
+      "excluded_btc_benchmark_only": 1,
+      "altcoin_pool": 19,
+      "eligible_altcoins": 19,
+      "rejected_altcoins": [],
+      "selected": 10
+    }
+  },
+  "verdict": "V8X_CRYPTO_TOP10_ELIGIBLE_PREWINDOW_BENCHMARK_EXCLUDED",
   "hashes": {
     "funding_json_sha256": {
       "1000PEPEUSDT": "61b30d82e2ed74b7281e52a88510e33e35d3ba2dd773d94e252a028a5b23e35c",
@@ -608,26 +2046,26 @@
       "ZECUSDT": "00ca26920a6fdd0715a1129e358a3e03876eb74b2649e58b50eefd294016023d"
     },
     "bars_dir_digest_sha256": {
-      "1000PEPEUSDT": "b26843452b629bc6c2cc49b90f079bd795ab2fc2d0492a3278bef6289df11d8e",
-      "AAVEUSDT": "f7d80bf093e450885e5d43beb2a48fe14354372346adaa2256c6bb206fa458ac",
-      "ACEUSDT": "9f1971fb853f0771f21a999892b6a7c44f683dd7f8fbb54017f743dcfbcdfc14",
-      "ADAUSDT": "6bb199ace68bd9974d8d5873772eaa3dc5c43e73445d50f4b9b6ef730365f6e1",
-      "AVAXUSDT": "e74e134a24043abd2a00e3037340e188114a297c6aeb3a1fb188045481138e6b",
-      "BCHUSDT": "518e54c5fc7bec2a9c51f97eeb48bd8cec6413f3819598862f74c0362f232cd6",
-      "BNBUSDT": "f649537be822066feec561534f419d394fa9250fcdb501761a90aa22f1cceb39",
-      "BOMEUSDT": "4d02a24083a02b6874c1d76d0d1596f5bb5cf115ded68df5249af7dd582daf44",
-      "BTCUSDT": "ff0169cd7cb938fd1c16e64842c1f970931e61a8047f0a9ee650313af7be4033",
-      "DOGEUSDT": "72e9a4aa5073859bb2428285b66ff1585162ec36c111830fe4c38c0210541643",
-      "ENAUSDT": "b4d6d9a6fb2645301d9c459d8350f38d0ac9ea739d712fa8eeb9620ffcfd7f8d",
-      "ETHUSDT": "0c2311fe63e1623fa82ab3795304d8869a3b4962c04eede457b1a7fb04fff8c2",
-      "LINKUSDT": "eabeef28d45404cfe85959350f5f88a60283bcd12ff1240447e80209fdcb06c9",
-      "NEARUSDT": "e0865ee1dc5f23f27643d66586f322d4300ddf21f9628f797d4ed0df7c61eb8c",
-      "ONGUSDT": "9d9b222163cbfb26832727a49754e5f322443e869c7c84b8f098c3bec0bf3a81",
-      "SOLUSDT": "5e098c603eeac8d2efaeba66b48b196857ad109e1a5ee63fc43920c9c06d4b61",
-      "SUIUSDT": "64d477c1ff885209f1f7aca8b88542c9cb6969b55a84c75de6824242f566234e",
-      "WLDUSDT": "899a6d66c947546c98fc357c7ee525e4c48f12b06d70026ea3b38857a155e3c3",
-      "XRPUSDT": "7c03cba433332b4dc63d1fb0ae24e8c290cf9093d2f9251e742ec7d5f53d2284",
-      "ZECUSDT": "bbd7adf910c626f2cf1b6e1bd237b726850944215917b4eb0f170730514a32ce"
+      "1000PEPEUSDT": "cbab5662483cbd6fc2eb43c9d6e1409255b9b41b02c5e30e91565fef3f0c0196",
+      "AAVEUSDT": "0a2d0e74da43217bae99888e6726673316bb0452c857143469f000788868a7f4",
+      "ACEUSDT": "05a9dee929d1bab1e10385a29418077282171a4cef9c467833013e42045c29ad",
+      "ADAUSDT": "eb6952c618b5c19f3f693c870496a1424573fd9f65fec9d7a117987dda846ef1",
+      "AVAXUSDT": "8141e079d2d93625bb92592e952ceab1769cede8de8f9d72773bcc4e2c2be608",
+      "BCHUSDT": "57c7e31ca577e7b938c6a6600be17c34c928470e857abc6ae47d0dbf6528d106",
+      "BNBUSDT": "8186e64b7051b8a289ed31b72671318169bd359e61da9be0b314411a7b5864c0",
+      "BOMEUSDT": "52aa489c599c8ed1477e3cea7d58085acefbf8208ff7bbc4a9e3162f10912e91",
+      "BTCUSDT": "ac967c853c6658c620f27874f285daeeac65057c0e8816ccc007af4e464a3ccc",
+      "DOGEUSDT": "2a69de3eb4590359b9fd671e556fcd95e23134959d09fad4b29841832d40bc56",
+      "ENAUSDT": "b38bddee6638333112d9af1a523683a4ac6220831aa81acca17a2da7831763ae",
+      "ETHUSDT": "3a1836d4464d5eec0e0aa651ec55143a752380390ee99c0a35fc272b099a4a34",
+      "LINKUSDT": "1cf2b77862dd7ab57d8ec9aa323b1cc33fe5da9134831ff968c23f754869b54b",
+      "NEARUSDT": "e09957623650d43286e6636e36c8c90575999e62cd61910b44b0a0700c37e593",
+      "ONGUSDT": "7d3cd031c3ba9a0094cd804cb23f01e34e6c12f77276758fd3ef2716ed637d35",
+      "SOLUSDT": "975911492cd981efafcefc1b0938e70774c094951267f87d7d3c4aa67a802f0b",
+      "SUIUSDT": "e7473165c6ffeef576081530e1d392aaf6d42d2f0e3eb0061017217abb48090b",
+      "WLDUSDT": "900d4dc8d14ab777da6ddb6f571ce1d7addc81fe3cb9c646454d657f9d9d9534",
+      "XRPUSDT": "5066d93cd2653818024bb2325080c1d8c2576b80fa71cb7aca54735e32eda148",
+      "ZECUSDT": "b82e53e3fb08f79f08f7fdda0b0f57538f474a7078cb94c7d1664e992efe4f04"
     }
   }
 }
