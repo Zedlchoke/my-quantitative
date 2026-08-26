@@ -9,6 +9,16 @@ Synthetic mini experiment dirs only -- no real runs, no network:
   sub-tolerance drift does NOT);
 * the V6 family plan names exactly the four scored trials with
   ``VERIFY-V6FULL-<short>`` verify ids;
+* the V8 family plan names exactly the four PLAN-section-7 trials under
+  ``results/portfolio_v8`` with ``VERIFY-V8-WREV-*``/``VERIFY-V8-WMOM-*``
+  verify ids and the ``results/reproduction_v8`` default root;
+* a frozen WMOM-control argv carrying ``--signal-family weekly_reversal``
+  plus ``--control-momentum`` derives BOTH dispatches; the control dispatch
+  reaches the spawned worker as ``PORTFOLIO_CONTROL_MOMENTUM`` (derived
+  value wins over ambient, ``extra_env`` still wins last) and is recorded
+  as ``resolved_env_control_momentum``;
+* ``emit-commands --family v8`` prints the four run-one commands verbatim
+  while the default ``v6`` emission stays byte-compatible;
 * frozen tolerance doc is deterministic and carries the contractual values;
 * strict row-count / equity-digest surfaces fail closed on dropped rows;
 * ``run_reproduction`` orchestrates the runner subprocess, locates the rerun
@@ -65,6 +75,8 @@ from research.reproduction_harness import (
     freeze_tolerances,
     run_reproduction,
     v6_family_plan,
+    v8_family_plan,
+    v8_verify_id_for_trial,
     verify_id_for_trial,
 )
 
@@ -510,6 +522,213 @@ def test_v6_family_plan_names_four_trials():
         "VERIFY-V6FULL-7D",
         "VERIFY-V6FULL-REV3D",
     ]
+
+
+# --------------------------------------------------------------------------- #
+# 6b. V8 family plan naming + control-trial argv/env forwarding
+# --------------------------------------------------------------------------- #
+def _set_launch_argv(exp: Path, argv: list) -> None:
+    launch_path = exp / "launch_manifest.yaml"
+    doc = yaml.safe_load(launch_path.read_text(encoding="utf-8"))
+    doc["exact_backtest_argv"] = list(argv)
+    launch_path.write_text(yaml.safe_dump(doc, sort_keys=False),
+                           encoding="utf-8")
+
+
+def test_v8_family_plan_names_four_trials():
+    plan = v8_family_plan()
+    assert [trial_id for trial_id, _ in plan] == [
+        "XSECT-WREV-3D",
+        "XSECT-WREV-7D",
+        "XSECT-WREV-14D",
+        "XSECT-WMOM-7D-CONTROL",
+    ]
+    assert [rel for _, rel in plan] == [
+        "results/portfolio_v8/XSECT-WREV-3D",
+        "results/portfolio_v8/XSECT-WREV-7D",
+        "results/portfolio_v8/XSECT-WREV-14D",
+        "results/portfolio_v8/XSECT-WMOM-7D-CONTROL",
+    ]
+    assert [v8_verify_id_for_trial(trial_id) for trial_id, _ in plan] == [
+        "VERIFY-V8-WREV-3D",
+        "VERIFY-V8-WREV-7D",
+        "VERIFY-V8-WREV-14D",
+        "VERIFY-V8-WMOM-7D-CONTROL",
+    ]
+    assert harness.V8_FAMILY_DIR == "results/portfolio_v8"
+    assert harness.V8_REPRODUCTION_ROOT == "results/reproduction_v8"
+
+
+def test_v8_control_trial_family_and_control_derivation(tmp_path):
+    """Frozen V8 WMOM-control argv pins BOTH the weekly-reversal family and
+    the momentum-control dispatch."""
+    source = _build_exp_dir(tmp_path / "v8ctl")
+    _set_launch_argv(source, [
+        sys.executable, "-m", "research.portfolio_runner",
+        "--experiment-id", "XSECT-WMOM-7D-CONTROL",
+        "--signal-family", "weekly_reversal",
+        "--control-momentum",
+    ])
+    assert harness.expected_signal_family_from_source(source) == "weekly_reversal"
+    assert harness.expected_control_momentum_from_source(source) == "1"
+
+    # valued form forwards the value verbatim
+    valued = _build_exp_dir(tmp_path / "v8ctl-valued")
+    _set_launch_argv(valued, [
+        "-m", "research.portfolio_runner",
+        "--signal-family", "weekly_reversal",
+        "--control-momentum", "fast",
+    ])
+    assert harness.expected_signal_family_from_source(valued) == "weekly_reversal"
+    assert harness.expected_control_momentum_from_source(valued) == "fast"
+
+    # plain directional trial: no control flag -> None
+    plain = _build_exp_dir(tmp_path / "v8wrev")
+    _set_launch_argv(plain, [
+        "--experiment-id", "XSECT-WREV-3D",
+        "--signal-family", "weekly_reversal",
+    ])
+    assert harness.expected_signal_family_from_source(plain) == "weekly_reversal"
+    assert harness.expected_control_momentum_from_source(plain) is None
+
+    # trailing bare flag at argv end still resolves to "1"
+    trailing = _build_exp_dir(tmp_path / "v8trail")
+    _set_launch_argv(trailing, ["--control-momentum"])
+    assert harness.expected_control_momentum_from_source(trailing) == "1"
+
+    # missing manifest fails closed
+    assert harness.expected_control_momentum_from_source(
+        tmp_path / "nope") is None
+
+
+def test_run_reproduction_forwards_derived_control_momentum(
+        tmp_path, monkeypatch):
+    """--control-momentum from source argv reaches the worker env as
+    PORTFOLIO_CONTROL_MOMENTUM and is recorded in the report."""
+    repo = tmp_path / "repo"
+    head = _init_git_repo(repo)
+    source_rel = "results/portfolio_v8/XSECT-WMOM-7D-CONTROL"
+    source = _build_exp_dir(repo / source_rel, git_commit=head)
+    _set_launch_argv(source, [
+        sys.executable, "-m", "research.portfolio_runner",
+        "--experiment-id", "XSECT-WMOM-7D-CONTROL",
+        "--signal-family", "weekly_reversal",
+        "--control-momentum",
+    ])
+    monkeypatch.delenv("PORTFOLIO_SIGNAL_FAMILY", raising=False)
+    monkeypatch.delenv(harness.CONTROL_MOMENTUM_ENV, raising=False)
+
+    assert (harness.expected_signal_family_from_source(source)
+            == "weekly_reversal")
+
+    captured: dict = {}
+    _install_fake_runner(monkeypatch, source, captured)
+
+    report = run_reproduction(repo, source_rel, "VERIFY-V8-WMOM-7D-CONTROL",
+                              reproduction_root=harness.V8_REPRODUCTION_ROOT)
+    assert captured["env"]["PORTFOLIO_SIGNAL_FAMILY"] == "weekly_reversal"
+    assert captured["env"]["PORTFOLIO_CONTROL_MOMENTUM"] == "1"
+    assert report["resolved_env_family"] == "weekly_reversal"
+    assert report["resolved_env_control_momentum"] == "1"
+    assert report["all_match"] is True
+    persisted = json.loads(
+        (repo / "results/reproduction_v8/VERIFY-V8-WMOM-7D-CONTROL/"
+                "reproduction_report.json").read_text(encoding="utf-8"))
+    assert persisted["resolved_env_control_momentum"] == "1"
+
+    # derived value WINS over an ambient orchestrator-provided one
+    monkeypatch.setenv(harness.CONTROL_MOMENTUM_ENV, "ambient")
+    captured.clear()
+    report = run_reproduction(repo, source_rel, "VERIFY-V8-WMOM-DERIVED",
+                              reproduction_root=harness.V8_REPRODUCTION_ROOT)
+    assert report["all_match"] is True  # twin artifacts still compare clean
+    assert captured["env"]["PORTFOLIO_CONTROL_MOMENTUM"] == "1"
+
+    # ambient value inherited untouched when argv carries no control flag...
+    plain_rel = "results/portfolio_v8/XSECT-WREV-3D"
+    plain = _build_exp_dir(repo / plain_rel, git_commit=head)
+    _set_launch_argv(plain, [
+        "--experiment-id", "XSECT-WREV-3D",
+        "--signal-family", "weekly_reversal",
+    ])
+    captured.clear()
+    report = run_reproduction(repo, plain_rel, "VERIFY-V8-WREV-AMBIENT",
+                              reproduction_root=harness.V8_REPRODUCTION_ROOT)
+    assert report["resolved_env_control_momentum"] == "ambient"
+    assert captured["env"]["PORTFOLIO_CONTROL_MOMENTUM"] == "ambient"
+
+    # ...and nothing is set when neither source nor ambient carries it
+    monkeypatch.delenv(harness.CONTROL_MOMENTUM_ENV, raising=False)
+    captured.clear()
+    report = run_reproduction(repo, plain_rel, "VERIFY-V8-WREV-CLEAN",
+                              reproduction_root=harness.V8_REPRODUCTION_ROOT)
+    assert report["resolved_env_control_momentum"] is None
+    assert harness.CONTROL_MOMENTUM_ENV not in captured["env"]
+
+    # extra_env merges LAST: caller override wins in the child env while the
+    # report still records what the harness itself resolved
+    captured.clear()
+    report = run_reproduction(repo, source_rel, "VERIFY-V8-WMOM-OVERRIDE",
+                              reproduction_root=harness.V8_REPRODUCTION_ROOT,
+                              extra_env={harness.CONTROL_MOMENTUM_ENV: "0"})
+    assert captured["env"][harness.CONTROL_MOMENTUM_ENV] == "0"
+    assert report["resolved_env_control_momentum"] == "1"
+
+
+def test_cli_emit_commands_v8_prints_four_run_one_commands(capsys):
+    python = harness._resolve_python()
+
+    assert harness.main(["emit-commands", "--family", "v8"]) == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    expected = []
+    for trial_id, source_rel in v8_family_plan():
+        expected += [
+            f"# {trial_id}",
+            (f"{python} -m research.reproduction_harness run-one "
+             f"--primary-repo . --source-rel {source_rel} "
+             f"--verify-id {v8_verify_id_for_trial(trial_id)} "
+             f"--reproduction-root results/reproduction_v8"),
+        ]
+    assert len(lines) == 8
+    assert lines == expected
+    # every emitted command names the V8 verify root exactly once
+    command_lines = [line for line in lines if not line.startswith("#")]
+    assert all("--reproduction-root results/reproduction_v8" in line
+               for line in command_lines)
+
+    # explicit --reproduction-root overrides the family default
+    assert harness.main(["emit-commands", "--family", "v8",
+                         "--primary-repo", "/repo",
+                         "--reproduction-root", "results/repro_custom"]) == 0
+    custom = [line for line in capsys.readouterr().out.strip().splitlines()
+              if not line.startswith("#")]
+    assert all("--reproduction-root results/repro_custom" in line
+               and "--primary-repo /repo" in line for line in custom)
+
+    # v6 default stays byte-compatible with the pre-V8 loop
+    assert harness.main(["emit-commands"]) == 0
+    v6_lines = [line for line in capsys.readouterr().out.strip().splitlines()
+                if not line.startswith("#")]
+    assert len(v6_lines) == 4
+    assert all("results/reproduction_v7" in line for line in v6_lines)
+
+
+def test_cli_plan_family_v8_rows(capsys):
+    assert harness.main(["plan", "--family", "v8"]) == 0
+    rows = [line.split("\t") for line in capsys.readouterr().out.strip().splitlines()]
+    assert rows == [
+        ["XSECT-WREV-3D", "results/portfolio_v8/XSECT-WREV-3D",
+         "VERIFY-V8-WREV-3D"],
+        ["XSECT-WREV-7D", "results/portfolio_v8/XSECT-WREV-7D",
+         "VERIFY-V8-WREV-7D"],
+        ["XSECT-WREV-14D", "results/portfolio_v8/XSECT-WREV-14D",
+         "VERIFY-V8-WREV-14D"],
+        ["XSECT-WMOM-7D-CONTROL", "results/portfolio_v8/XSECT-WMOM-7D-CONTROL",
+         "VERIFY-V8-WMOM-7D-CONTROL"],
+    ]
+    assert harness.main(["plan"]) == 0
+    v6_rows = capsys.readouterr().out.strip().splitlines()
+    assert len(v6_rows) == 4  # default family unchanged
 
 
 # --------------------------------------------------------------------------- #

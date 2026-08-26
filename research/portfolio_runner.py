@@ -142,10 +142,18 @@ SYNTHETIC_PANEL_ENV = "PORTFOLIO_SYNTHETIC_PANEL"
 # V7P (PLAN section 6.1): signal-family selector env; set equivalently by
 # --signal-family or --strategy-kind (whichever appears LAST wins).
 SIGNAL_FAMILY_ENV = "PORTFOLIO_SIGNAL_FAMILY"
-SIGNAL_FAMILY_CHOICES = ("none", "funding_carry", "funding_price_divergence")
+# V8P T13 (PLAN section 5): weekly Monday-cadence reversal family.
+SIGNAL_FAMILY_CHOICES = ("none", "funding_carry", "funding_price_divergence",
+                         "weekly_reversal")
 STRATEGY_KIND_CHOICES = ("momentum", "funding_carry",
-                         "funding_price_divergence")
+                         "funding_price_divergence", "weekly_reversal")
 DIVERGENCE_DIAGNOSTICS_KEY = "_divergence_diagnostics"
+WEEKLY_DIAGNOSTICS_KEY = "_weekly_diagnostics"
+# V8P T13: WMOM control selector for weekly_reversal (--control-momentum
+# sets it; workers inherit it; it is never deleted once inherited).
+CONTROL_MOMENTUM_ENV = "PORTFOLIO_CONTROL_MOMENTUM"
+WEEKLY_EMBARGO_DAYS = 7  # fold purge/embargo (PLAN section 5.1)
+WEEKLY_MIN_WARMUP_DAYS = 14  # PLAN section 5.1: warmup >= 14 days
 
 EXIT_LOCK_MISSING = 3
 EXIT_DEPENDENCY_MISSING = 4
@@ -159,6 +167,7 @@ PROVENANCE_UNDETERMINED_REASON = "provenance_generation_undetermined"
 PROVENANCE_GENERATIONS: dict[str, Path] = {
     "funding_price_divergence": Path("research/audits/v7p"),
     "funding_carry": Path("research/audits/v6p"),
+    "weekly_reversal": Path("research/audits/v8p"),
 }
 
 
@@ -254,6 +263,36 @@ def daily_rebalance_stamps(
         stamps.append(first_midnight)
         first_midnight += timedelta(days=1)
     return stamps
+
+
+def effective_warmup_days(lookback_days: int) -> int:
+    """Warmup padding with the weekly-family floor applied (PLAN section 5.1).
+
+    Default families keep ``lookback + 7`` days. When the active family is
+    ``weekly_reversal`` the warmup is floored at 14 days so every fold's
+    panel history covers the longest frozen formation lookback.
+    """
+    days = int(lookback_days) + WARMUP_PADDING_DAYS
+    if os.environ.get(SIGNAL_FAMILY_ENV, "").strip() == "weekly_reversal":
+        days = max(days, WEEKLY_MIN_WARMUP_DAYS)
+    return days
+
+
+def _weekly_stamp_filter(window_start: datetime, window_end: datetime) -> list[datetime]:
+    """Weekly cadence stamps for one fold window (weekly_reversal family).
+
+    Replaces ``daily_rebalance_stamps``: Mondays 00:00 UTC only, with the
+    7-day fold PURGE/EMBARGO applied -- rebalances inside the first seven
+    days of a fold are dropped (schedule filter; fold edges themselves stay
+    untouched) so no position or warmup leaks across a fold boundary
+    (PLAN section 5.1). Implemented in research.weekly_reversal and
+    imported here per the T13 wiring contract.
+    """
+    from research.weekly_reversal import weekly_rebalance_stamps
+
+    return weekly_rebalance_stamps(
+        window_start, window_end, embargo_days=WEEKLY_EMBARGO_DAYS
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -563,10 +602,76 @@ def _divergence_diagnostics_row(
     }
 
 
+def _weekly_diagnostics_row(
+    *,
+    signal_cutoff_ns: int,
+    daily_closes: Mapping[str, list[tuple[int, float]]],
+    traded_symbols: Sequence[str],
+    formation_lookback_days: int,
+    control_momentum: bool,
+    result: Mapping[str, Any],
+) -> dict[str, Any]:
+    """DERIVED per-rebalance diagnostics for the weekly_reversal family.
+
+    Recomputed runner-side from the SAME inputs the dispatched signal used
+    (completed closes <= cutoff only): per-symbol formation return, its
+    deterministic ascending rank, the selection ACTUALLY returned and --
+    unlike the divergence family -- also the fail-closed ``skipped_reason``
+    for SKIP_INCOMPLETE rebalances. Always labeled
+    ``derived_diagnostics=true`` so consumers never mistake it for
+    signal-native output.
+    """
+    from research.weekly_reversal import (
+        MIN_PANEL_SYMBOLS,
+        _formation_ranks,
+        formation_return,
+    )
+
+    cutoff_ns = int(signal_cutoff_ns)
+    symbols = sorted(dict.fromkeys(str(s) for s in traded_symbols))
+    formation: dict[str, float] = {}
+    per_symbol: dict[str, dict] = {}
+    for sym in symbols:
+        ret = None
+        if len(symbols) >= MIN_PANEL_SYMBOLS:
+            ret = formation_return(
+                (daily_closes or {}).get(sym),
+                cutoff_ns=cutoff_ns,
+                lookback_days=int(formation_lookback_days),
+            )
+        formation[sym] = ret if ret is not None else 0.0
+        per_symbol[sym] = {
+            "formation_return": None if ret is None else round(float(ret), 12),
+        }
+    complete = all(
+        row["formation_return"] is not None for row in per_symbol.values()
+    )
+    ranks = _formation_ranks(formation) if complete else {}
+    for sym in symbols:
+        per_symbol[sym]["rank"] = ranks.get(sym)
+    status = str(result.get("status") or "SKIP_INCOMPLETE")
+    return {
+        "derived_diagnostics": True,
+        "rebalance_ts_utc": iso(datetime.fromtimestamp(
+            cutoff_ns / 1_000_000_000, tz=timezone.utc)),
+        "signal_cutoff_ns": cutoff_ns,
+        "formation_lookback_days": int(formation_lookback_days),
+        "control_momentum": bool(control_momentum),
+        "per_symbol": per_symbol,
+        "selected_longs": [[str(s), float(w)]
+                           for s, w in (result.get("longs") or [])],
+        "selected_shorts": [[str(s), float(w)]
+                            for s, w in (result.get("shorts") or [])],
+        "skipped_reason": (None if status == "OK"
+                           else str(result.get("reason_code") or status)),
+    }
+
+
 def _signal_family_dispatch(base_fn, funding_bundles_dir):
     """PORTFOLIO_SIGNAL_FAMILY routes the rank call to an alternative frozen
-    signal family (``funding_carry`` | ``funding_price_divergence``); the
-    default momentum behavior is returned unchanged."""
+    signal family (``funding_carry`` | ``funding_price_divergence`` |
+    ``weekly_reversal``); the default momentum behavior is returned
+    unchanged."""
     family = os.environ.get(SIGNAL_FAMILY_ENV, "").strip()
     if family == "funding_carry":
         from research.funding_carry import compute_target_weights_funding_carry as _fcf
@@ -575,8 +680,16 @@ def _signal_family_dispatch(base_fn, funding_bundles_dir):
             build_divergence_traded,
             compute_target_weights_funding_price_divergence as _fpd,
         )
+    elif family == "weekly_reversal":
+        # V8P T13: no funding bundles needed -- daily closes only.
+        from research.weekly_reversal import (
+            compute_target_weights_weekly_reversal as _wr,
+        )
     else:
         return base_fn
+
+    def _control_momentum_active() -> bool:
+        return os.environ.get(CONTROL_MOMENTUM_ENV, "").strip() == "1"
 
     def _dispatch(**kwargs):
         closes = kwargs.get("daily_closes") or {}
@@ -589,6 +702,27 @@ def _signal_family_dispatch(base_fn, funding_bundles_dir):
                 funding_bundles_dir=funding_bundles_dir,
                 traded_symbols=traded,
             )
+        if family == "weekly_reversal":
+            out = _wr(
+                signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
+                formation_lookback_days=int(kwargs.get("lookback_days") or 0),
+                reverse=bool(kwargs.get("reverse")),
+                daily_closes=closes,
+                traded_symbols=traded,
+                control_momentum=_control_momentum_active(),
+            )
+            # Derived diagnostics travel on a private key; execute_experiment
+            # drains them into exp_dir/signal_diagnostics.jsonl. Attached on
+            # SKIP rows too so the skip reason is always auditable.
+            out[WEEKLY_DIAGNOSTICS_KEY] = _weekly_diagnostics_row(
+                signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
+                daily_closes=closes,
+                traded_symbols=traded,
+                formation_lookback_days=int(kwargs.get("lookback_days") or 0),
+                control_momentum=_control_momentum_active(),
+                result=out,
+            )
+            return out
         out = _fpd(
             signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
             price_lookback_days=int(kwargs.get("lookback_days") or 0),
@@ -1019,9 +1153,16 @@ def execute_experiment(
         run_shared_capital_backtest=engine["run_shared_capital_backtest"],
         compute_target_weights=engine["compute_target_weights"],
     )
-    warmup_days = int(lookback_days) + WARMUP_PADDING_DAYS
+    warmup_days = effective_warmup_days(lookback_days)
     panel_start = window_start - timedelta(days=warmup_days)
     symbols = [*traded_symbols, benchmark_symbol]
+
+    # V8P T13: weekly family swaps the daily stamp grid for embargoed
+    # Monday stamps (7-day fold purge/embargo; fold edges themselves are
+    # kept unchanged -- see _weekly_stamp_filter).
+    weekly_family = (
+        os.environ.get(SIGNAL_FAMILY_ENV, "").strip() == "weekly_reversal"
+    )
 
     panel = call.build_daily_panel(
         symbols=symbols,
@@ -1044,7 +1185,11 @@ def execute_experiment(
     # ONE rank loop over ALL folds -> ONE chronological target schedule.
     for index, (fold_start, fold_end) in enumerate(windows, start=1):
         fold_id = f"F{index}"
-        for stamp in daily_rebalance_stamps(fold_start, fold_end):
+        if weekly_family:
+            stamps = _weekly_stamp_filter(fold_start, fold_end)
+        else:
+            stamps = daily_rebalance_stamps(fold_start, fold_end)
+        for stamp in stamps:
             rank_kwargs: dict[str, Any] = {
                 "daily_closes": daily_closes,
                 "signal_cutoff_ns": ns(stamp),
@@ -1059,6 +1204,9 @@ def execute_experiment(
                 rank_kwargs["funding_lookback_days"] = int(funding_lookback_days)
             ranking = call.compute_target_weights(**rank_kwargs) or {}
             diagnostics_row = ranking.pop(DIVERGENCE_DIAGNOSTICS_KEY, None)
+            if diagnostics_row is not None:
+                all_signal_diagnostics.append(diagnostics_row)
+            diagnostics_row = ranking.pop(WEEKLY_DIAGNOSTICS_KEY, None)
             if diagnostics_row is not None:
                 all_signal_diagnostics.append(diagnostics_row)
             status = str(ranking.get("status") or "SKIP_INCOMPLETE")
@@ -1948,7 +2096,7 @@ def run_scored_experiment(args: argparse.Namespace) -> int:
         git_repo=repo_root,
     )
 
-    warmup_days = args.lookback_days + WARMUP_PADDING_DAYS
+    warmup_days = effective_warmup_days(args.lookback_days)
     manifest = RunLaunchManifest(
         schema_version=V4_SCHEMA_VERSION,
         experiment_id=args.experiment_id,
@@ -2956,7 +3104,7 @@ def run_rerun_worker(args: argparse.Namespace) -> int:
     # V6P N11: the rerun mirrors the FULL scored surface -- same unconditional
     # stress suite, same gate/scorecard assembly -- so every component is
     # digest-comparable against the source artifacts.
-    warmup_days = int(raw.get("lookback_days") or 3) + WARMUP_PADDING_DAYS
+    warmup_days = effective_warmup_days(int(raw.get("lookback_days") or 3))
     warmup_boundaries = {
         "warmup_start": iso(window_start - timedelta(days=warmup_days)),
         "scored_start": iso(window_start),
@@ -3212,6 +3360,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="H-XSECT-FUNDING-PRICE-DIVERGENCE-v1 trailing "
                              "funding window in days (ignored by other "
                              "families)")
+    parser.add_argument("--control-momentum", action="store_true",
+                        help="weekly_reversal WMOM control at 7D: long "
+                             "winners / short losers instead of the reversal "
+                             f"default (sets {CONTROL_MOMENTUM_ENV}=1; rerun "
+                             "workers inherit the env; an inherited value is "
+                             "never deleted)")
     return parser
 
 
@@ -3262,10 +3416,18 @@ def apply_signal_family_flags(args: argparse.Namespace,
             os.environ[SIGNAL_FAMILY_ENV] = value
 
 
+def _apply_control_momentum_flag(args: argparse.Namespace) -> None:
+    """Flag -> env so rerun/reproduce workers inherit the control selection;
+    an inherited value is never deleted here."""
+    if getattr(args, "control_momentum", False):
+        os.environ[CONTROL_MOMENTUM_ENV] = "1"
+
+
 def main(argv: list[str] | None = None) -> int:
     global REPRODUCTION_ROOT
     args = build_parser().parse_args(argv)
     apply_signal_family_flags(args, argv)
+    _apply_control_momentum_flag(args)
     REPRODUCTION_ROOT = Path(args.reproduction_root)
     if args.reproduce:
         return run_reproduce(args)

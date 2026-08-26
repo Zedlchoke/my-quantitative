@@ -308,10 +308,10 @@ def test_provenance_paths_unknown_family_is_undetermined(family):
     )
 
     assert _provenance_paths_for(family) is None
-    # The only mapped generations are exactly the two audited lineages;
-    # anything else must abort via PROVENANCE_UNDETERMINED_REASON.
+    # The only mapped generations are exactly the audited lineages (v6p,
+    # v7p, v8p); anything else must abort via PROVENANCE_UNDETERMINED_REASON.
     assert set(PROVENANCE_GENERATIONS) == {
-        "funding_price_divergence", "funding_carry"}
+        "funding_price_divergence", "funding_carry", "weekly_reversal"}
     assert PROVENANCE_UNDETERMINED_REASON == (
         "provenance_generation_undetermined")
 

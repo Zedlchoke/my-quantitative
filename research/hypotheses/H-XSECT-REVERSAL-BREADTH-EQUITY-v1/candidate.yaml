@@ -1,0 +1,130 @@
+# H-XSECT-REVERSAL-BREADTH-EQUITY-v1 — V8X Cohort E pre-registration contract (A6 blind draft).
+# Every field below is VERBATIM from PLAN.md sections 8/10/11 ("V8X Cohort E —
+# 10 stocks co >=1 nam, contract rieng", Mode B US_EQUITY_SPOT_1Y_10) plus the
+# section 11 trial inventory. No parameter invented, no deviation. Drafted
+# BEFORE any scored V8 core artifact exists; this spec must be hash-frozen
+# before the first scored V8 artifact (PLAN section 8). Verdicts/metadata go
+# to status.yaml. Do not edit values after freeze.
+hypothesis_id: H-XSECT-REVERSAL-BREADTH-EQUITY-v1
+cohort: US_EQUITY_SPOT_1Y_10
+instrument_mode: US_EQUITY_SPOT_1Y   # Mode B only; Mode A BINANCE_TRADFI_PERP_1Y expected NOT_STARTED_DATA_MATURITY and is NOT substituted silently
+family: cross_sectional_weekly_reversal_breadth_equity
+stage: S0_EXPLORATORY_BREADTH_SCREEN   # mechanism screen only; never OOS/S1 or promotion evidence
+owner_agent: A6
+data_agent: A9                  # provider/session/corporate-action audit, performance-blind
+validator_agent: A7             # hash + novelty check at freeze
+
+universe:
+  selection_mode: frozen_basket_chosen_before_performance
+  basket:
+    - AAPL
+    - MSFT
+    - NVDA
+    - AMZN
+    - META
+    - GOOGL
+    - TSLA
+    - AVGO
+    - JPM
+    - XOM
+  benchmark_symbol: SPY
+  benchmark_role: measurement_only   # context/overlay only; not traded, not in ranks
+  universe_policy: fixed_before_run_no_pnl_based_changes
+
+provider_contract:
+  preferred_provider: alpaca_official_historical_stock_bars   # or owner-approved equivalent, frozen before score
+  credentials: >
+    read-only market-data credentials from environment ONLY; no secrets
+    written/logged/committed; zero trading permission
+  blocked_if_unavailable: V8X_EQUITY_NOT_STARTED_PROVIDER_BLOCKED   # no silent fallback to undeclared sources
+  must_freeze_before_score:
+    - provider identity
+    - feed (SIP or IEX)
+    - adjustment mode
+    - asof timestamp
+    - calendar version
+    - data hashes
+  dual_view_requirement: >
+    load BOTH raw and corporate-action-adjusted views; reconcile splits,
+    dividends and symbol changes. Signals use the adjusted series per this
+    contract; fills/PnL use raw tradable price with corporate-action
+    cash/position adjustments.
+
+data_window:
+  scope: common_one_year_regular_session_intersection_of_basket
+  window_end_utc_hard_cap: "2026-08-21T00:00Z"
+  endpoint_note: >
+    exact session endpoints decided by the A9 audit against the official
+    exchange calendar; the hard cap above is not self-executing.
+
+signal_clock: last_completed_regular_session_close_before_rebalance   # NOT crypto Monday 00:00 UTC
+calendar: official_us_exchange_regular_session   # holidays/early closes handled fail-closed
+formation_lookbacks_sessions: [15, 25, 50]   # ~3D/7D/14D expressed in trading sessions (5 sessions/week); exactly these three
+direction:
+  long_rule: bottom_2_past_return_losers
+  short_rule: top_2_past_return_winners
+
+negative_control:
+  id: V8X-E-WMOM-7D-CONTROL
+  rule: long_winners_short_losers_at_7D_equivalent
+
+rebalance:
+  cadence: weekly_one_trading_week        # one holding week between rebalances
+  intraweek_discretionary_rebalance: false
+holding_horizon: one trading week
+
+portfolio:
+  gross_target: 0.80
+  net_target: 0.0
+  max_abs_symbol_weight: per_leg_half_of_leg_gross   # bottom-2/top-2 => equal weight legs
+
+eligibility:
+  required_symbols: all_ten              # all ten basket symbols required
+  incomplete_cross_section_action: skip_whole_rebalance
+
+execution:
+  fill_event: next_valid_regular_session_open   # next-open fill; no synthetic crypto clock
+  funding_accounting: none               # equities have NO funding
+  corporate_actions_accounting: required_separately   # dividends, splits accounted explicitly
+  borrow_model: frozen_before_run        # fee/slippage/spread/short-borrow frozen before run
+  borrow_evidence_missing_outcome_cap: MECHANISM_SCREEN_NON_EXECUTABLE
+
+split:
+  folds: chronological_3fold_by_trading_sessions
+  purge_embargo_days: 7                  # >= one holding week at each fold boundary
+  warmup_days_min: 14                    # calendar-day floor (~10 sessions)
+
+trial_budget:
+  normal_trials: 3                       # exactly three normal
+  negative_controls: 1                   # + one negative control
+  total_scored_candidates: 4
+
+trial_inventory:
+  - {id: V8X-E-WREV-3D,          formation: 3D-equivalent,  direction: reversal}
+  - {id: V8X-E-WREV-7D,          formation: 7D-equivalent,  direction: reversal}
+  - {id: V8X-E-WREV-14D,         formation: 14D-equivalent, direction: reversal}
+  - {id: V8X-E-WMOM-7D-CONTROL,  formation: 7D-equivalent,  direction: momentum_control}
+
+forbidden_after_freeze:
+  - swapping the frozen basket for any PnL-informed alternative
+  - using adjusted close as execution price without raw/corporate-action reconciliation
+  - pretending equity bars are Binance perpetual bars (mode mixing)
+  - using V8 core results to pick universe/lookback/cost
+  - adding formation windows beyond the frozen three
+  - changing thresholds, costs, folds, window, cadence or fill rule
+  - pooling this cohort's PBO/scores with crypto or with V8 two-year results
+  - treating ~52 weekly observations/year as promotion/OOS evidence
+
+outcome_caps:
+  best_case: V8X_EQUITY_MECHANISM_PASS_EXPLORATORY
+  missing_borrow_evidence_cap: MECHANISM_SCREEN_NON_EXECUTABLE
+  s1_live_authorization: none            # no V8X outcome self-authorizes S1/live
+
+provenance_constraints:
+  prereg_freeze_deadline: before_first_scored_V8_core_artifact
+  v8x_agent_must_not_read:
+    - results/portfolio_v8
+    - V8 partial logs
+    - V8 metrics
+    - V8 verdicts
+  missed_window_label: V8X_PREREG_WINDOW_MISSED
