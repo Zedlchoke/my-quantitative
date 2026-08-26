@@ -309,9 +309,15 @@ def test_provenance_paths_unknown_family_is_undetermined(family):
 
     assert _provenance_paths_for(family) is None
     # The only mapped generations are exactly the audited lineages (v6p,
-    # v7p, v8p); anything else must abort via PROVENANCE_UNDETERMINED_REASON.
+    # v7p, v8p, and the V9 multi-families' shared v9p root); anything else
+    # must abort via PROVENANCE_UNDETERMINED_REASON.
     assert set(PROVENANCE_GENERATIONS) == {
-        "funding_price_divergence", "funding_carry", "weekly_reversal"}
+        "funding_price_divergence", "funding_carry", "weekly_reversal",
+        "ts_trend", "residual_mr", "vol_shock"}
+    assert all(
+        PROVENANCE_GENERATIONS[f] == Path("research/audits/v9p")
+        for f in ("ts_trend", "residual_mr", "vol_shock")
+    )
     assert PROVENANCE_UNDETERMINED_REASON == (
         "provenance_generation_undetermined")
 

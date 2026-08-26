@@ -1,22 +1,21 @@
-# CONTINUE.md — V8R CLOSED (2026-08-26)
+# CONTINUE.md — V9 CLOSED (2026-08-26)
 
-V8 sprint đã **ĐÓNG HOÀN CHỈNH** với terminal verdict `V8_REJECT_ALL`. Không có việc dang dở bắt buộc.
+V9 multi-family sprint **ĐÓNG**: terminal verdict `V9_REJECT_ALL_MULTI_FAMILY`. A7 terminal PASS, 0 unresolved high/critical. Repro 5/5 all-match. Budget 5/5 đúng freeze (cap 9). F2 residual_mr bị archive NOT_RUN bởi orthogonality gate (0.676>0.50) — không tiêu budget.
 
-## Trạng thái cuối
+## Kết quả chính
 
-- Terminal verdict: **V8_REJECT_ALL** (family summary `results/portfolio_v8/family_summary_v8.json`)
-- A7 terminal audit: PASS (process honest), 0 unresolved high/critical, commit `5323218`
-- 4/4 frozen trials consumed, repro 4/4 all-match, provenance enforced PASS toàn bộ
-- V8X-Crypto: `NOT_STARTED_GATE_BLOCKED` (thiếu budget freeze + contract cohort-10)
-- V8X-Equity: `NOT_STARTED_PROVIDER_BLOCKED` + `SPEC_MAPPING_AMBIGUITY_BLOCKED`
-- Full report: `research/audits/v8p/master_report_v8r.json`
+- TSTREND-L28: PF 1.107, +6,686, MDD 6.1% — gần đạt Stage-A floor nhất nhưng FAIL stress drop-one (ENAUSDT dependency) + FG3 adjacency → REJECTED. Ghi nhận làm đầu vào prereg tương lai, KHÔNG phải cơ sở tuning.
+- TSTREND-L14: PF 1.048, +3,965 — PF<1.10, fold âm.
+- VOLSHK-S15: PF 0.735, −9,258 — fail rộng.
+- Controls: đúng vai trò (TSTREND-CTRL thua nặng; VOLSHK-CTRL lãi nhẹ nhưng breach concentration).
+- Equity: `V8X_EQUITY_NOT_STARTED_PROVIDER_AND_SPEC_BLOCKED`.
 
-## Next safe action (sprint tương lai)
+## Next safe action
 
-1. Owner duyệt merge `orca/v8r-integration` → `main` (local; không push tự động).
-2. Nếu mở V8X-Crypto: freeze riêng trial budget + resolve contract cohort-10 TRƯỚC, rồi mới baseline/A7.
-3. Weekly-reversal family bị REJECT — không tuning để "cứu"; hypothesis mới phải prereg từ đầu.
+1. Owner review merge `orca/v9r-integration` → main.
+2. Sprint mới (nếu có): prereg mechanism mới hoàn toàn; nếu quay lại trend-family phải thiết kế stress-robust-by-construction và prereg từ đầu.
+3. Toàn bộ evidence: `research/audits/v9p/master_report_v9.json`, `research/control/v9_multifamily_run/`.
 
 ## Hard prohibitions (vẫn hiệu lực)
 
-No S1/paper/live/orders · no tuning from PnL · no equity scored run · no `git add -A` · no reset/clean · no rewrite frozen artifacts · no push without owner request.
+No S1/paper/live/orders · no tuning from PnL · no rescue of rejected families · no push without owner request.
