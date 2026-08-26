@@ -1,641 +1,463 @@
-# SPRINT V8P → V8 → conditional V8X — Core Reversal and Breadth Expansion
+# SPRINT V8R — Context Recovery → V8 Core → conditional V8X-Crypto
 
-> **Thời lượng tối đa:** 12 giờ kể từ `sprint_started_at_utc`.
+> **Đối tượng:** một A1 hoàn toàn mới, không có context của phiên agent trước.
 >
-> **Mục tiêu chính:** hoàn tất ba preparation gate còn thiếu `T12 → T13 → T14`, chạy đúng bốn trial V8 đã preregister, kiểm toán và đóng kết quả.
+> **Mục tiêu:** tiếp quản 7 worktree đã hoàn thành phần lớn code, sửa các sai lệch khoa học còn lại, tích hợp có kiểm toán, chạy đúng 4 trial V8 đã đóng băng và chỉ mở V8X-Crypto khi toàn bộ gate hợp lệ.
 >
-> **Mục tiêu phụ có điều kiện:** nếu V8 đóng hợp lệ và còn đủ thời gian, chạy breadth screen riêng trên 10 crypto có ít nhất một năm dữ liệu và, nếu data contract khả dụng, 10 US stocks có ít nhất một năm dữ liệu.
->
-> **Nguyên tắc:** crypto và stocks là hai cohort độc lập. Không gộp session, funding, costs, PnL, DSR, PBO hoặc score giữa hai asset class.
+> **Không phải mục tiêu:** gọi lại 7 agent để làm từ đầu, cứu một strategy bằng tuning, mở S1/live, hoặc chạy equity khi data/spec chưa hợp lệ.
 
 ---
 
-## 0. Executive truth tại điểm bắt đầu
+## 1. Sự thật bàn giao đã được kiểm tra
 
-### 0.1 Trạng thái đã được kiểm chứng
+### 1.1 Root và sprint cũ
 
-- Parent terminal commit: `72eada1` (`V7P→V7 CLOSURE`). Khi triển khai, A1 phải đo lại `git rev-parse HEAD`; không hard-code commit này nếu HEAD đã tiến lên vì PLAN commit.
-- V7P: `18/18 PASS` sau một remediation hợp lệ; A7 re-audit PASS.
-- V7: chạy đúng `4/4` frozen trials; provenance CLEAN; reproduction `4/4 all-match`.
-- V7 terminal: `V7_REJECT_ALL_CANDIDATE`.
-- PF V7: khoảng `0.977 / 0.983 / 1.005 / 0.888`; tất cả dưới hard floor `1.10`.
-- V7 không thất bại vì concentration; top positive fold và top positive symbol đều nằm trong cap.
-- Global V6+V7 scored budget đã dùng đúng `8/8`; không có candidate được lock.
-- Transition V7→V8 mới đạt `10/15`; blocker thực là:
-  - `T12`: chưa có dedicated six-alt two-year data/PIT audit;
-  - `T13`: chưa có weekly reversal dispatcher + golden end-to-end;
-  - `T14`: chưa thể attest trước khi T12/T13 hoàn chỉnh.
-- V8 chưa chạy và chưa thất bại. Trạng thái đúng: `V8_NOT_STARTED_PREP_GATES_T12_T13_T14_FAIL`.
-- V8 core spec `H-XSECT-REVERSAL-v2` đã freeze hợp lệ tại commit `6533ce0`, trước scored V7 artifact đầu tiên. Các file spec đó là read-only.
-- S1 chưa mở. Paper/live trading và order placement vẫn bị cấm.
+- Root repository: `/Users/hoangminhlong/my-quantitative`.
+- Bootstrap HEAD hiện tại: `291a158` — `V8 BOOTSTRAP: sprint contract (V8P→V8→conditional V8X)`.
+- Parent V7 closure: `72eada1`.
+- Root có artifact chưa track: `research/control/v8_run/worktree_manifest.json`.
+  - Không xóa, không overwrite mù và không dùng `git clean`.
+  - Manifest này là bằng chứng topology cũ nhưng đang stale: session ID vẫn `PENDING_ACK`, commit/lifecycle chưa phản ánh output thật.
+- Sprint cũ bắt đầu `2026-08-25T14:45:53Z`, deadline bất biến `2026-08-26T02:45:53Z`.
+- Phiên cũ bị mất context trước integration. Không được đổi timestamp rồi giả vờ cùng một sprint.
+- Chưa có scored artifact V8 hoặc V8X. Vì vậy được phép tạo một lineage phục hồi mới mà không tiêu tốn trial budget.
 
-Nguồn sự thật bắt buộc:
+### 1.2 Output thật từ bảy worktree
+
+| Role | Branch / worktree | Tip đã bàn giao | Trạng thái | Verdict tiếp quản |
+|---|---|---:|---|---|
+| A2 | `orca/v8-a2-core-data` / `../my-quantitative-v8-wt/a2-core-data` | `300391d` | clean | code tốt; T12 chỉ provisional vì funding thiếu đầu window 41.25 giờ chưa chứng minh không chồng held exposure |
+| A3 | `orca/v8-a3-weekly-engine` / `../my-quantitative-v8-wt/a3-weekly-engine` | `b6743aa` | **dirty** | engine merge được; golden chứa absolute pytest temp path nên không deterministic |
+| A4 | `orca/v8-a4-finalizer` / `../my-quantitative-v8-wt/a4-finalizer` | `846ecd5` | clean | sẵn sàng integration |
+| A5 | `orca/v8-a5-reproduction` / `../my-quantitative-v8-wt/a5-reproduction` | `1b388ab` | clean | sẵn sàng integration |
+| A6 | `orca/v8-a6-contract-golden` / `../my-quantitative-v8-wt/a6-contract-golden` | `0857c7b` | clean | template/prereg có ích; contract chưa được resolve ở integration SHA |
+| A7 | `orca/v8-a7-independent-audit` / `../my-quantitative-v8-wt/a7-independent-audit` | `291a158` | clean | chưa audit vì chưa có integration SHA |
+| A8 | `orca/v8-a8-crypto-breadth` / `../my-quantitative-v8-wt/a8-crypto-breadth` | `4f1d704` | clean | **không đạt scientific conformance**, cần follow-up |
+| A9 | `orca/v8-a9-equity-breadth` / `../my-quantitative-v8-wt/a9-equity-breadth` | `d053f0c` | clean | kết luận blocker hợp lệ; equity không được chạy |
+
+Không được tin bảng này một cách mù quáng. A1 phải đo lại `git status --short`, `git rev-parse HEAD`, branch và path của từng worktree trước khi làm.
+
+### 1.3 Kết quả rehearsal integration
+
+Một integration clone tạm đã cherry-pick bảy commit theo thứ tự:
 
 ```text
-CONTINUE.md
-research/control/v7_twelve_hour_run/shutdown_report.json
-research/audits/v7p/a7_terminal_audit.json
-research/audits/v7/scientific_audit.json
-research/audits/v8p/t01_t15_transition.json
-research/wayfinder/evidence/sprint-v7p-v7-master-20260825.{md,json}
-research/hypotheses/H-XSECT-REVERSAL-v2/*
+300391d → b6743aa → 846ecd5 → 1b388ab → 0857c7b → 4f1d704 → d053f0c
 ```
 
-### 0.2 Diễn giải khoa học
+Kết quả đã đo:
 
-V7 là một sprint thành công về phương pháp nhưng family bị loại. Không được dùng PnL/PF V6 hoặc V7 để sửa V8, thêm filter, chọn symbol, đổi lookback hoặc nới hard gate.
+- Không có cherry-pick conflict.
+- Targeted new tests: `146 passed in 13.42s`.
+- Full suite: `835 passed, 16 warnings in 62.73s`.
+- Warnings đã thấy là deprecation của pandas trong `tests/test_execution_truth.py`, không phải test failure.
 
-V8 hỏi một câu độc lập: liệu altcoin thắng/thua tương đối có đảo chiều trong tuần kế tiếp hay không. Sprint mới sửa khả năng chạy và kiểm toán câu hỏi đã niêm phong; không phát minh câu hỏi khác để cứu kết quả cũ.
-
----
-
-## 1. Scope, authority và điều cấm
-
-### 1.1 Trong scope
-
-1. Bootstrap topology mới từ commit sạch và gán agent/worktree thật.
-2. Thực hiện dedicated V8 six-alt two-year data/PIT audit (`T12`).
-3. Implement weekly Monday-00:00 dispatcher, runner path, golden vectors và full-surface tests (`T13`).
-4. Tạo resolved V8 contract, baseline, manifest và A7 prelaunch attestation (`T14`).
-5. Re-evaluate machine-readable `T01–T15`; chỉ launch khi `15/15 PASS`.
-6. Chạy đúng bốn V8 core trials đã freeze, không trial thứ năm.
-7. Chạy stress, independent reproduction, FG0–FG7, scorecard, DSR/PBO honesty và A7 terminal audit.
-8. Preregister V8X trước scored V8 core artifact đầu tiên; data-only preparation được phép trong isolated worktrees.
-9. Sau valid V8 terminal, conditionally chạy hai V8X cohorts độc lập:
-   - `CRYPTO_USDM_1Y_10`;
-   - `US_EQUITY_SPOT_1Y_10`, hoặc đóng blocker nếu stock data contract không khả dụng.
-10. Cập nhật CONTINUE, MAP, registry, master report và shutdown report.
-
-### 1.2 Ngoài scope
-
-- Không mở, backfill, xem hoặc phân tích S1.
-- Không paper/live trading, API đặt lệnh hoặc thay đổi live configuration.
-- Không tuning từ V6/V7/V8 PnL đã thấy.
-- Không sửa `H-XSECT-REVERSAL-v2` candidate/hypothesis/status để thêm symbol.
-- Không gọi dữ liệu US equity spot là Binance perpetual.
-- Không ghép bars underlying stock vào lịch sử Binance TradFi perpetual.
-- Không gộp crypto và stocks thành một portfolio, score hoặc statistical cohort.
-- Không dùng adjusted stock close làm execution price mà không có raw-price/corporate-action reconciliation.
-- Không performance retry, replacement trial hoặc “thêm một lookback để xác nhận”.
-- Không push remote nếu owner chưa yêu cầu.
-
-### 1.3 Bất biến bằng chứng
-
-- Artifact V6/V7 là lịch sử read-only. Correction chỉ được append bằng addendum có parent hash.
-- Frozen V8 hash phải giữ nguyên byte-for-byte.
-- Mọi universe V8X phải được chọn bằng rule freeze trước performance, không loại symbol theo PnL.
-- Một trial đã publish bất kỳ scored metric nào sẽ tiêu thụ budget dù process sau đó lỗi.
-- `EXIT=0` chỉ là pipeline success; không phải strategy PASS.
-- `REJECT_ALL` là terminal hợp lệ. False promotion là failure nghiêm trọng.
+Điều này chỉ chứng minh code ghép được. Nó **không** chứng minh T12/T13/T14 hoặc scientific validity đã PASS.
 
 ---
 
-## 2. Topology bắt buộc — real parallel agents, isolated worktrees
+## 2. Bốn blocker phải sửa trước bất kỳ V8 backtest nào
 
-### 2.1 Nguyên tắc
+### B1 — A3 golden không deterministic
 
-A1 không được tự giả lập toàn bộ vai trò. Worktree chỉ được tính khi có branch, bootstrap SHA, allowed paths, forbidden paths, session identity thật, commit bàn giao và merge verdict.
+`research/audits/v8p/golden_vector_report_v8.json` đang thay đổi chỉ vì absolute pytest temp directory (`pytest-522` thành `pytest-523`).
 
-Tạo topology mới; không tái sử dụng worktree V7 lịch sử:
+PASS khi:
 
-| Role | Worktree đề xuất | Nhiệm vụ chính |
-|---|---|---|
-| A1 | root integration | controller, merge authority, state machine, resource owner |
-| A2 | `../my-quantitative-v8-wt/a2-core-data` | T12 six-alt data/PIT/provenance audit |
-| A3 | `../my-quantitative-v8-wt/a3-weekly-engine` | T13 weekly dispatcher/runner/artifacts |
-| A4 | `../my-quantitative-v8-wt/a4-finalizer` | FG0–FG7, score, ledger, DSR/PBO cohort rules |
-| A5 | `../my-quantitative-v8-wt/a5-reproduction` | independent reproduction, stress, reconciliation |
-| A6 | `../my-quantitative-v8-wt/a6-contract-golden` | resolved contract, golden vectors, V8X preregistration |
-| A7 | `../my-quantitative-v8-wt/a7-independent-audit` | prelaunch + terminal scientific audit; không viết production code |
-| A8 | `../my-quantitative-v8-wt/a8-crypto-breadth` | 10-crypto universe/data audit, không đọc V8 metrics |
-| A9 | `../my-quantitative-v8-wt/a9-equity-breadth` | stock provider/session/corporate-action data contract, không đọc V8 metrics |
+1. Serializer loại bỏ/canonicalize machine-specific absolute temp paths.
+2. Chạy generator hai lần trong hai temp directories khác nhau tạo byte-identical canonical artifact và cùng SHA-256.
+3. Targeted tests và full relevant surface PASS.
+4. Worktree A3 sạch và có follow-up commit mới; không giao file dirty cho A1.
 
-Detached execution worktrees chỉ tạo sau attestation:
+### B2 — T12 funding coverage chưa được chứng minh đúng
+
+A2 tìm thấy funding coverage ngắn hơn price window khoảng 41.25 giờ ở đầu kỳ. Không được dùng ngưỡng materiality tự đặt hoặc chỉ kiểm tra “có funding rows”.
+
+PASS khi có machine-readable proof cho từng symbol:
+
+- xác định first possible fill/held exposure theo warmup + Monday schedule + next-event fill;
+- funding đầy đủ từ first possible held exposure đến final liquidation;
+- không có missing settlement chồng lên thời gian giữ vị thế;
+- nếu có overlap: `T12_FAIL_FUNDING_COVERAGE`, không launch V8;
+- không trim window chỉ để né lỗi, trừ khi frozen contract rõ ràng cho phép và A7 xác nhận.
+
+T12 hiện chỉ là `PROVISIONAL_PENDING_HELD_EXPOSURE_PROOF`, không phải PASS cuối.
+
+### B3 — A8 crypto selection vi phạm frozen rule
+
+A8 phải sửa các lỗi sau:
+
+1. Ranking volume đã dùng cả scored one-year window; frozen rule yêu cầu 30 ngày **strictly before** scored window.
+2. BTC là benchmark measurement-only nhưng A8 đã đưa BTC vào top-10 traded universe.
+3. Gap audit mới thiên về daily; yêu cầu là census 15m exact và zero unexplained gaps.
+4. Funding gate chỉ kiểm tra `>=1 row`; phải kiểm tra đủ toàn khoảng có thể held exposure.
+
+Corrected selection contract:
+
+- selection window: `[2025-07-22T00:00Z, 2025-08-21T00:00Z)` hoặc exact UTC boundaries được resolved contract pin;
+- rank median daily quote volume chỉ trong pre-window đó;
+- BTC bị loại khỏi ranked/traded universe, chỉ giữ làm benchmark;
+- chọn đúng 10 eligible altcoins theo deterministic tie-break đã freeze;
+- 15m gap census, listing age, metadata, funding-held-exposure coverage đều machine-readable;
+- tuyệt đối không đọc V8/V8X PnL để thay symbol.
+
+### B4 — Manifest và identity stale
+
+Manifest hiện chưa chứng minh agent nào thực sự làm commit nào.
+
+PASS khi manifest phục hồi ghi đúng:
+
+- Orca task/session identity thật; nếu không truy xuất được thì ghi `UNKNOWN_NOT_RECOVERABLE`, không bịa ID;
+- worktree path, branch, bootstrap SHA, actual tip, dirty/clean;
+- allowed/forbidden paths, artifacts, tests, handoff verdict;
+- commit nào được merge, superseded hoặc rejected;
+- hash nối tới manifest sprint cũ.
+
+---
+
+## 3. Blocker riêng của equity V8X
+
+### 3.1 Data provider blocker
+
+A9 xác nhận:
+
+- Binance TradFi universe hiện không có đủ 10 mã với ≥365 ngày dữ liệu hợp lệ;
+- external equity mode thiếu provider credentials/SDK, exchange calendar và corporate-action contract.
+
+Verdict bắt buộc:
 
 ```text
-../my-quantitative-v8-exec/rr1
-../my-quantitative-v8-exec/rr2
-../my-quantitative-v8-exec/rr3
-../my-quantitative-v8-exec/rr4
-../my-quantitative-v8x-exec/xr1
-../my-quantitative-v8x-exec/xr2
+V8X_EQUITY_NOT_STARTED_PROVIDER_BLOCKED
 ```
 
-### 2.2 Parallel và merge discipline
+Không download tùy tiện, không giả lập dữ liệu, không dùng stock spot bars như Binance perpetual và không chạy scored equity trial trong sprint này.
 
-- A2–A6 chạy song song trên allowed paths không chồng lấn.
-- A8–A9 chỉ chuẩn bị data/spec trong isolated worktrees trước V8 terminal; cấm đọc `results/portfolio_v8`, partial logs, metrics hoặc verdict.
-- A7 chỉ audit integration SHA và artifacts; không nhận task sửa production.
-- Merge V8 core: `A2 → A3 → A4 → A5 → A6`; targeted test sau từng merge, full suite sau integration.
-- Sau valid V8 terminal mới merge V8X: `A8 → A9 → breadth integration follow-up`; A7 attest riêng.
-- Không dùng `git add -A`, không reset/clean, không overwrite unrelated user changes.
-- Tối đa hai heavy backtest/download workers đồng thời. Agent code/test nhẹ có thể song song nếu RAM/disk an toàn.
+### 3.2 Spec mapping blocker
 
----
+Frozen equity v1 chứa mapping `formation_lookbacks_sessions: [15,25,50]` với mô tả xấp xỉ `3D/7D/14D`. Mapping này không tương đương về mặt thời gian và chưa được owner phê duyệt.
 
-## 3. Lịch 12 giờ và phase boundary
-
-| Thời gian tương đối | Phase | Công việc |
-|---|---|---|
-| 00:00–00:20 | Bootstrap | freeze start/deadline, clean SHA, worktrees, identities, manifest |
-| 00:20–01:50 | V8P parallel | A2 T12; A3 T13; A4/A5/A6 gates/repro/contract; A8/A9 data-only prep |
-| 01:50–02:40 | Integration | merge core theo thứ tự, targeted/full tests, resolved contract |
-| 02:40–03:20 | T14 | baseline, manifest, A7 independent prelaunch audit |
-| 03:20–03:55 | V8 Wave 1 | `XSECT-WREV-3D + XSECT-WREV-7D` |
-| 03:55–04:30 | V8 Wave 2 | `XSECT-WREV-14D + XSECT-WMOM-7D-CONTROL` |
-| 04:30–05:30 | V8 validation | stress, reproduction 4/4, FG0–FG7, score, ledger/statistics |
-| 05:30–06:00 | V8 close | A7 terminal audit, V8 verdict, workers/PIDs reconciled |
-| 06:00–06:30 | V8X gate | merge eligible breadth work, data audits, resolved contracts, A7 attest |
-| 06:30–08:30 | V8X execution | tối đa bốn waves, hai heavy workers |
-| 08:30–09:40 | V8X validation | stress/repro/score riêng từng cohort |
-| 09:40–10:20 | Scientific close | A7 audit, cohort verdicts, master report |
-| 10:20–12:00 | Reserve | remediation kỹ thuật không-performance, final reconciliation, hard shutdown |
-
-Đây là budget, không phải deadline để bỏ test. Nếu remaining time không đủ hoàn tất audit/close, không launch phase hoặc wave tiếp theo. Hard stop tuyệt đối vẫn là 12 giờ.
+- Không sửa frozen v1 in-place.
+- Append audit/addendum đánh dấu `SPEC_MAPPING_AMBIGUITY_BLOCKED`.
+- Một equity v2 chỉ được tạo trong sprint tương lai, trước mọi equity score và sau owner approval.
 
 ---
 
-## 4. V8P Gate T12 — six-alt two-year data audit
+## 4. Topology phục hồi — dùng worktree cũ, chỉ gọi agent cần thiết
 
-### 4.1 Universe read-only
+A1 mới là controller/integration owner. Không gọi lại cả bảy agent.
+
+### 4.1 Wave R0 — read-only recovery
+
+1. Đọc `PLAN.md`, `CONTINUE.md`, old manifest và frozen specs.
+2. Chạy `git worktree list --porcelain` và đo tất cả branch/tip/status.
+3. Xác nhận chưa có `results/portfolio_v8`, registry cell hoặc scored metric V8/V8X.
+4. Ghi old lineage terminal state là:
 
 ```text
-SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT
-BTCUSDT = benchmark measurement-only
+V8_PREP_CONTEXT_HANDOFF_NO_SCORED_ARTIFACT
 ```
 
-Target window: common completed-bar intersection gần `2024-08-21T14:30Z → 2026-08-21T00:00Z`. A2 quyết định exact endpoints bằng dữ liệu, không bằng cách sửa target để né gap.
-
-### 4.2 T12 PASS contract
-
-A2 phải tạo machine-readable audit và chứng minh:
-
-1. Đúng venue/instrument: Binance USD-M perpetual, quote USDT, contract metadata PIT.
-2. 15m bar schema, timezone UTC và completed-bar semantics nhất quán.
-3. Mỗi symbol có coverage ≥730 ngày mục tiêu hoặc exact common intersection hợp lệ theo frozen rule.
-4. Zero duplicate timestamp; monotonic strict; OHLC/volume hợp lệ.
-5. Gaps được census toàn bộ, phân loại explained/unexplained bằng rule freeze trước performance.
-6. Không forward-fill price/funding qua unexplained gap.
-7. Funding settlement coverage đủ toàn window và mapping đúng vị thế đang giữ.
-8. Tick/step size và instrument metadata có effective timestamp hoặc limitation rõ ràng.
-9. Hash SHA-256 cho từng source file, normalized dataset và manifest.
-10. Universe không được thay đổi do PnL; thiếu một required symbol thì `T12_FAIL_DATA_INCOMPLETE`.
-11. BTC benchmark không tham gia ranks/weights/PnL.
-12. Data label là `S0_ALREADY_INSPECTED`, không phải untouched OOS.
-
-Artifacts:
+5. Không đổi old deadline. Tạo control lineage mới:
 
 ```text
-research/audits/v8p/data_audit_v8.json
-research/audits/v8p/data_manifest_v8.json
-research/audits/v8p/gap_census_v8.json
-research/audits/v8p/funding_coverage_v8.json
-research/audits/v8p/t12_gate.json
+research/control/v8_resume_run/
 ```
+
+Nó phải có `parent_manifest_sha256`, `parent_bootstrap_sha`, `resume_started_at_utc`, `hard_deadline_utc`, owner PID/heartbeat và state machine mới.
+
+### 4.2 Wave R1 — ba remediation song song
+
+Chỉ dispatch tối đa ba scoped agents:
+
+| Agent | Worktree | Task | Cấm |
+|---|---|---|---|
+| R-A2 | existing A2 | funding-held-exposure proof, corrected T12 artifacts, follow-up commit | không đổi strategy/spec/window để né gap |
+| R-A3 | existing A3 | deterministic golden, clean dirty file, double-generation proof, follow-up commit | không đổi signal semantics |
+| R-A8 | existing A8 | corrected pre-window ranking, exclude BTC, 15m/funding audit, follow-up commit | không xem scored results; không chọn theo PnL |
+
+A1 đồng thời cập nhật recovery manifest và chuẩn bị integration branch/worktree riêng. Không sửa trực tiếp file thuộc worktree agent đang làm.
+
+### 4.3 Wave R2 — review contract/spec
+
+Sau R1:
+
+- A6 scoped follow-up chỉ khi contract builder cần pin corrected T12/T13/A8 artifacts hoặc cần addendum cho equity blocker.
+- A7 được gọi như independent auditor; A7 không sửa production code.
+- Nếu Orca không thể reattach đúng agent cũ, tạo agent mới nhưng bắt buộc giao đúng existing worktree, branch và phạm vi trên; không tạo duplicate branch.
+
+### 4.4 Resource rule
+
+- Tối đa 3 agent code/audit nhẹ song song trong R1.
+- Tối đa 2 heavy backtest workers cùng lúc.
+- Chỉ một A1 được sở hữu integration, state machine và merge.
+- Không chạy nhiều agent cùng ghi một artifact/path.
 
 ---
 
-## 5. V8P Gate T13 — weekly engine, golden và reproduction surface
+## 5. Integration protocol
 
-### 5.1 Frozen behavior phải implement nguyên văn
+### 5.1 Không tích hợp khi còn dirty
 
-- Signal clock: Monday `00:00 UTC`, chỉ dùng completed bars có timestamp ≤ cutoff.
-- Lookbacks: đúng `3D, 7D, 14D`.
-- Reversal: long bottom-2 losers, short top-2 winners.
-- Control: long winners, short losers tại 7D.
-- Hold/rebalance: bảy ngày, không discretionary intraweek rebalance.
-- Target: gross 0.80, net 0; long 0.40, short 0.40; max abs symbol target 0.20.
-- All-six eligibility; incomplete cross-section skip toàn rebalance.
-- Fill tại next completed 15m event, one-tick adverse, fee 0.0005, native funding.
-- Ba chronological folds; purge/embargo 7 ngày; warmup ≥14 ngày.
+Trước cherry-pick, mỗi source worktree phải có:
 
-### 5.2 Tests bắt buộc
+- clean status;
+- handoff commit;
+- exact test command/result;
+- artifact hashes;
+- declared limitations.
 
-T13 chỉ PASS khi có unit + integration + golden tests chứng minh:
+Nếu A3 vẫn dirty hoặc A2/A8 chưa có follow-up commit thì dừng integration.
 
-1. Monday schedule xử lý đúng UTC, year/month boundary và không tạo duplicate cutoff.
-2. Không dùng bar đang hình thành hoặc future bar trong return rank.
-3. Tie-breaking deterministic và freeze; missing symbol skip toàn rebalance.
-4. Bottom/top legs đúng hướng cho reversal và control.
-5. Signal cutoff và execution event tách rời; delay stress dịch đúng một event.
-6. Fold boundary purge/embargo không leak position hoặc warmup.
-7. Fee, slippage, funding, terminal liquidation và cash/equity identity đúng.
-8. Golden normal/control có expected orders, weights, funding cashflows, ledger digest và metrics.
-9. Runner CLI resolve đúng family, lookback, direction, output, registry và frozen hashes.
-10. Reproduction harness rerun từ frozen artifacts và so ledger/equity/metrics/hash.
-11. Full suite PASS trên `.venv/bin/python`; không claim system Python result.
+### 5.2 Thứ tự cherry-pick
 
-Artifacts:
+Tạo một integration branch/worktree từ `291a158`. Dùng corrected tip thay cho tip cũ nếu agent có follow-up:
 
 ```text
-research/audits/v8p/golden_vector_report_v8.json
-research/audits/v8p/t13_gate.json
-research/audits/v8p/test_report_v8p.json
+A2 corrected tip
+A3 corrected tip
+846ecd5              # A4
+1b388ab              # A5
+0857c7b              # A6, cộng follow-up nếu có
+A8 corrected tip
+d053f0c              # A9
 ```
+
+Sau mỗi cherry-pick:
+
+1. `git status --short`;
+2. targeted tests của commit;
+3. kiểm tra file ngoài allowlist;
+4. ghi merge ledger.
+
+Sau tất cả:
+
+- chạy targeted V8/V8X tests;
+- chạy full suite bằng `.venv/bin/python -m pytest -q`;
+- tree phải sạch;
+- không được coi kết quả rehearsal 835 PASS là thay thế test trên final integration SHA.
+
+Không `git add -A`, không `git reset --hard`, không `git clean`, không force push.
 
 ---
 
-## 6. Gate T14 và V8 launch authorization
+## 6. Resolve contract, baseline và T14
 
-A6 tạo resolved contract mới mà không sửa frozen YAML:
+Tại final code-bearing integration SHA:
+
+1. Generate resolved V8 contract; không còn `PENDING`, `TO_FREEZE`, `None` ở launch-critical field.
+2. Pin chính xác:
+   - launch SHA;
+   - frozen hypothesis/spec hashes;
+   - data manifest và T12 hashes;
+   - deterministic golden hash;
+   - exact four trial IDs/configs/windows/folds;
+   - output roots, registry shards và execution topology.
+3. Generate canonical baseline tự loại trừ các artifact mutable được khai báo.
+4. Tạo detached clean execution worktrees tại đúng launch SHA.
+5. Preflight phải kiểm tra tối thiểu:
+   - T01–T15 = `15/15 PASS`;
+   - T12 held-exposure funding proof PASS;
+   - T13 golden deterministic proof PASS;
+   - baseline/contract/manifest/launch pins khớp;
+   - execution heads sạch và đúng SHA;
+   - no scored V8 artifact trước launch;
+   - no S1/live/order capability.
+6. A7 audit độc lập và phát hành T14 attestation.
+
+Chỉ khi A7 verdict là `PASS` và `V8_LAUNCH_AUTHORIZED` mới chuyển sang V8. A7 không được tự sửa blocker rồi tự attest.
+
+---
+
+## 7. V8 core execution — đúng bốn trial đã freeze
+
+Không thêm, bỏ, đổi lookback, symbol, fee, fill, fold hoặc window sau khi thấy kết quả.
+
+### Wave 1 — tối đa hai workers
 
 ```text
-research/audits/v8p/resolved_run_contract_v8.json
-research/audits/v8p/baseline_root_v8.json
-research/control/v8_run/worktree_manifest.json
-research/control/v8_run/preflight.json
+XSECT-WREV-3D
+XSECT-WREV-7D
 ```
 
-Resolved contract phải pin:
-
-- exact four trial IDs;
-- exact common data window/folds;
-- candidate/config/data/golden hashes;
-- final code-bearing launch SHA;
-- output roots và registry shards duy nhất;
-- costs, risk caps, stress surface và trial budget;
-- prior global ledger count/digest;
-- no S1/live/order capability;
-- owned PID/resource/deadline contract.
-
-A7 phải độc lập xác minh T12/T13, baseline, contract, manifest, clean worktrees và freeze lineage. `T14_PASS` yêu cầu `0 unresolved HIGH/CRITICAL`.
-
-Trước launch, A1 regenerate machine-readable `T01–T15`. Tất cả `15/15 PASS`; không carry-forward boolean cũ mà không remeasure. Thiếu một gate: `V8_NOT_AUTHORIZED`.
-
----
-
-## 7. V8 core execution — đúng bốn trial
-
-| Wave | Trial 1 | Trial 2 |
-|---|---|---|
-| 1 | `XSECT-WREV-3D` | `XSECT-WREV-7D` |
-| 2 | `XSECT-WREV-14D` | `XSECT-WMOM-7D-CONTROL` |
-
-Rules:
-
-- Mỗi trial chạy trong detached worktree tại cùng attested launch SHA.
-- Stagger launch ≥5 giây; tối đa hai workers.
-- Controller không đọc partial PnL để quyết định Wave 2.
-- Wave chỉ hoàn tất khi artifact publish atomic và registry append thành công.
-- Không performance retry. Pre-engine abort chỉ relaunch cùng trial khi zero scored artifact, output cũ archive và A7/contract cho phép.
-- Lỗi sau scored metric tiêu thụ trial; không có replacement.
-
-### 7.1 Stress và diagnostics bắt buộc
-
-Cho mỗi normal trial:
-
-- fee ×1.5;
-- adverse +2 ticks;
-- delay +1 event;
-- drop-one-symbol cho đủ sáu symbols;
-- drop-one-fold cho đủ ba folds;
-- rebalance-day shift `+1 day` theo prereg diagnostics.
-
-Stress cần path-dependent MDD/PF phải là engine rerun. Derived diagnostic không được giả làm full-path stress.
-
-### 7.2 Core hard gates
-
-Áp dụng FG0–FG7 và scorecard 100 điểm hiện có, cộng:
-
-- net PnL >0 after fees/slippage/funding;
-- PF ≥1.10; MDD ≤10%; all three folds net-positive;
-- ít nhất hai adjacent lookbacks trong `[3D,7D,14D]` cùng PASS;
-- top positive fold ≤50%; top positive symbol ≤40%;
-- control không được thắng best reversal candidate;
-- các stress bắt buộc vẫn dương;
-- minimum weekly rebalances/legs được freeze trước score;
-- reproduction `4/4 all-match`;
-- DSR dùng daily returns và toàn global trial ledger;
-- PBO chỉ tính trong comparable cohort. Unavailable phải fail-closed, không bịa.
-
-### 7.3 V8 terminal outcomes
-
-- `V8_STAGE_A_PASS_EXPLORATORY`: core hard gates PASS nhưng chưa đủ forward/statistical evidence.
-- `V8_LOCK_FOR_FUTURE_S1`: chỉ khi mọi hard/statistical gate, valid PBO và A7 đều PASS; chỉ tạo future S1 contract, không mở S1.
-- `V8_REJECT_ALL`: không candidate đạt; terminal hợp lệ.
-- `V8_INVALIDATED`: integrity/lookahead/provenance/reproduction failure; quarantine results.
-- `V8_NOT_STARTED_*`: preparation, topology, audit, resource hoặc time gate fail.
-
----
-
-## 8. V8X preregistration — không sửa V8 core
-
-V8X là breadth screen mới, không phải thêm symbol vào `H-XSECT-REVERSAL-v2`.
-
-A6 phải freeze V8X specs, selection rules và hashes **trước scored V8 core artifact đầu tiên**. Nếu missed: `V8X_PREREG_WINDOW_MISSED`; không chạy V8X trong sprint này.
-
-Artifacts prereg:
+### Wave 2 — chỉ sau Wave 1 process/accounting validation
 
 ```text
-research/hypotheses/H-XSECT-REVERSAL-BREADTH-CRYPTO-v1/*
-research/hypotheses/H-XSECT-REVERSAL-BREADTH-EQUITY-v1/*
-research/audits/v8x/v8x_spec_freeze.json
-research/audits/v8x/v8x_novelty_and_independence.md
+XSECT-WREV-14D
+XSECT-WMOM-7D-CONTROL
 ```
 
-V8X tuyệt đối không được:
+Mỗi trial:
 
-- dùng V8 core result để chọn universe/lookback/cost;
-- gọi một năm là đủ promotion;
-- thay đổi V8 core verdict;
-- gộp two-year/six-alt V8 với one-year/breadth cohort trong PBO nếu không comparable.
+- frozen command từ resolved contract;
+- unique output dir và registry shard;
+- stdout/stderr log, PID, start/end, exit code;
+- provenance enforced;
+- một trial publish scored metric thì budget đã tiêu thụ;
+- technical retry chỉ theo frozen retry contract, không performance retry.
 
----
+Sau bốn trial:
 
-## 9. V8X Cohort C — 10 Binance crypto USD-M có ≥1 năm
+1. artifact/accounting reconciliation;
+2. stress suite;
+3. independent reproduction `4/4 all-match`;
+4. FG0–FG7, score, DSR/PBO honesty;
+5. concentration/fold/symbol checks;
+6. A7 terminal audit;
+7. terminal verdict, kể cả `V8_REJECT_ALL_CANDIDATE`.
 
-### 9.1 Universe selection freeze
-
-Không chọn tay theo chart hoặc PnL. A8 áp dụng deterministic rule:
-
-1. Binance USD-M `PERPETUAL`, quote `USDT`, status hợp lệ tại frozen cutoff.
-2. `onboardDate ≤ window_start - 365 ngày`.
-3. Có ≥365 ngày common 15m bars và native funding coverage.
-4. Zero unexplained gap trong scored window; PIT metadata/hash đầy đủ.
-5. Rank eligible symbols theo median daily quote volume trong 30 ngày **trước** scored window; lấy đúng top 10.
-6. Lưu cả accepted và rejected universe để chống survivorship/cherry-pick.
-7. Nếu dưới 10 symbol đạt: `V8X_CRYPTO_NOT_STARTED_DATA_INCOMPLETE`; không hạ gate.
-
-Target window: common one-year intersection kết thúc không muộn hơn `2026-08-21T00:00Z`; exact endpoints do audit quyết định.
-
-Execution contract crypto:
-
-- 24/7 UTC; Monday 00:00 cutoff; next completed 15m fill;
-- native funding; fee 0.0005; one-tick adverse;
-- long bottom-2 / short top-2; gross 0.80, net 0;
-- 3D/7D/14D reversal + 7D momentum control;
-- three chronological folds, 7-day purge/embargo.
+Không coi PF tốt là đủ nếu provenance/reproduction/gate thất bại.
 
 ---
 
-## 10. V8X Cohort E — 10 stocks có ≥1 năm, contract riêng
+## 8. Điều kiện duy nhất để chuyển V8 → V8X-Crypto
 
-### 10.1 Hai instrument mode không được đánh tráo
+V8X-Crypto chỉ được mở nếu **tất cả** điều sau đúng:
 
-**Mode A — `BINANCE_TRADFI_PERP_1Y`:** chỉ được chạy nếu có đúng 10 stock perpetual thực sự có ≥365 ngày Binance contract bars, funding và historical session coverage. Snapshot repo gần nhất có `0` mã đạt gate; vì vậy mode này dự kiến `NOT_STARTED_DATA_MATURITY` cho đến khi dữ liệu đủ. Không backfill bằng underlying spot.
+1. V8 có terminal audit hợp lệ; không còn worker/PID/artifact dang dở.
+2. V8X prereg/freeze được A7 xác nhận xảy ra trước scored V8 artifact đầu tiên.
+3. Corrected A8 universe audit PASS, BTC benchmark-only và đúng pre-window selection.
+4. Engine/golden/resolved contract thực sự hỗ trợ cohort 10 crypto; selection artifact một mình không đủ.
+5. V8X baseline/preflight/A7 attestation riêng PASS.
+6. Còn ít nhất 300 phút trước resume hard deadline.
+7. V8X có budget riêng được frozen; không mượn budget hoặc parameter từ V8.
 
-**Mode B — `US_EQUITY_SPOT_1Y`:** được phép dùng data provider ngoài Binance nhưng phải mang label riêng. Default frozen basket, chọn trước performance:
+Nếu một điều kiện sai:
 
 ```text
-AAPL, MSFT, NVDA, AMZN, META, GOOGL, TSLA, AVGO, JPM, XOM
-SPY = benchmark measurement-only
+V8X_CRYPTO_NOT_STARTED_GATE_BLOCKED
 ```
 
-Provider contract:
+Không phải sprint failure; đó là shutdown an toàn.
 
-- Preferred: official Alpaca historical stock bars hoặc owner-approved equivalent.
-- Read-only market-data credentials chỉ lấy từ environment; không ghi/log/commit secret và không có trading permission.
-- Nếu provider/credential/license không sẵn sàng: `V8X_EQUITY_NOT_STARTED_PROVIDER_BLOCKED`; không silent fallback sang nguồn không khai báo.
-- Freeze provider, feed (`SIP`/`IEX`), adjustment mode, `asof`, calendar version và hashes trước score.
-- Tải cả raw và corporate-action-adjusted views; reconcile splits/dividends/symbol changes.
-- Signal dùng series đã điều chỉnh đúng contract; fill/PnL dùng raw tradable price với corporate-action cash/position adjustments.
-
-### 10.2 Equity execution contract
-
-- Chỉ regular US session theo official exchange calendar; xử lý holiday/early close fail-closed.
-- Weekly signal dùng last completed regular-session close trước rebalance; fill next valid regular-session open.
-- Không giả crypto Monday 00:00 UTC cho stocks.
-- Fee/slippage/spread và short-borrow model freeze trước run; thiếu point-in-time borrow evidence thì outcome tối đa `MECHANISM_SCREEN_NON_EXECUTABLE`.
-- Không funding; dividends, splits, borrow costs và overnight gaps phải được account riêng.
-- Ba chronological folds theo trading sessions; purge/embargo ít nhất một holding week.
-- Vì chỉ khoảng 52 weekly observations/năm, cohort này chỉ là exploratory breadth screen, không được lock cho S1/live.
+V8X equity luôn NOT_STARTED trong sprint này vì hai blocker ở §3. Crypto và equity không được gộp data, costs, sessions, metrics hoặc verdict.
 
 ---
 
-## 11. V8X trial inventory, waves và statistical separation
+## 9. Deadline và unattended fail-safe
 
-### 11.1 Đúng tám trials
-
-| Wave | Crypto trial | Equity trial |
-|---|---|---|
-| X1 | `V8X-C-WREV-3D` | `V8X-E-WREV-3D` |
-| X2 | `V8X-C-WREV-7D` | `V8X-E-WREV-7D` |
-| X3 | `V8X-C-WREV-14D` | `V8X-E-WREV-14D` |
-| X4 | `V8X-C-WMOM-7D-CONTROL` | `V8X-E-WMOM-7D-CONTROL` |
-
-Nếu equity cohort bị block, crypto có thể chạy một worker/wave sau khi A7 ghi `EQUITY_NOT_STARTED_*`; không được tạo replacement equity trials.
-
-### 11.2 Không gộp kết quả
-
-- Hai initial capitals, ledgers, cost models, calendars và scorecards riêng.
-- DSR counts toàn global search history nhưng estimate riêng theo comparable return cohort.
-- PBO crypto không chứa equities; PBO equities không chứa crypto.
-- Không cộng PnL crypto+equity và gọi là portfolio diversification.
-- Report có side-by-side comparison chỉ để mô tả, không tạo combined PASS.
-
-### 11.3 V8X gates
-
-Mỗi cohort phải riêng biệt đạt:
-
-- data/PIT/session/corporate-action audit PASS;
-- ≥48 scored weekly rebalances toàn window và minimum per fold freeze trước run;
-- PF ≥1.10, MDD ≤10%, net PnL >0 after full asset-class costs;
-- all three folds positive;
-- two adjacent reversal lookbacks PASS;
-- top fold ≤50%, top symbol ≤40%;
-- fee/slippage/delay/drop-one stress không đảo kết luận;
-- control không thắng reversal;
-- independent reproduction 4/4 cho cohort đã chạy;
-- A7 0 unresolved HIGH/CRITICAL.
-
-Vì chỉ một năm dữ liệu, outcome tốt nhất:
-
-- crypto: `V8X_CRYPTO_BREADTH_PASS_EXPLORATORY`;
-- equity: `V8X_EQUITY_MECHANISM_PASS_EXPLORATORY` hoặc `MECHANISM_SCREEN_NON_EXECUTABLE` nếu borrow evidence thiếu.
-
-Không outcome V8X nào tự authorize S1/live.
+- Resume sprint có tối đa 12 giờ tính từ `resume_started_at_utc`; deadline phải freeze trước mutation đầu tiên.
+- Old sprint deadline giữ nguyên trong historical record.
+- Heartbeat ghi phase, owner PID, live child PIDs, last artifact, remaining time và blocker.
+- Nếu remaining <300 phút: không launch V8X.
+- Nếu remaining <120 phút: không launch V8 wave mới; ưu tiên validation/close wave đã chạy.
+- Nếu remaining <45 phút: hard shutdown, terminate owned workers, reconcile artifacts, A7 audit phần đã chạy và ghi terminal state trung thực.
+- Không để shell monitor/sleep loop trở thành “agent đang làm việc”. Mọi worker phải có PID, log và output contract.
+- Không tự động push remote.
 
 ---
 
-## 12. Điều kiện chuyển V8 → V8X — 12/12 bắt buộc
+## 10. Definition of Done
 
-| Gate | PASS condition |
-|---|---|
-| X01 | V8 core chạy đúng 4/4 frozen trials hoặc có valid terminal scientific outcome |
-| X02 | V8 outcome là PASS/LOCK/REJECT_ALL; không INVALIDATED/INCOMPLETE |
-| X03 | V8 stress/reproduction/finalizer/registry hoàn chỉnh |
-| X04 | A7 V8 terminal audit PASS, 0 HIGH/CRITICAL |
-| X05 | V8 workers stopped, PIDs empty, Git sạch, master evidence complete |
-| X06 | V8X specs/selection/cost rules freeze trước first V8 scored timestamp |
-| X07 | A8 crypto ten-symbol audit PASS hoặc machine blocker rõ ràng |
-| X08 | A9 equity provider/session/corporate-action audit PASS hoặc machine blocker rõ ràng |
-| X09 | V8X engine/golden/reproduction tests PASS cho cohort được authorize |
-| X10 | A7 V8X prelaunch attestation pins baseline/contract/manifest/launch SHA |
-| X11 | Global trial ledger snapshot/digest và separate cohort mappings hoàn chỉnh |
-| X12 | Còn ≥300 phút, disk ≥20 GB, RAM safe, max two workers, S1/live disabled |
+### V8R preparation DONE
 
-Ít nhất crypto cohort phải được authorize để gọi `V8X_STARTED`. Equity blocker không được che giấu. Nếu remaining time <300 phút: data/spec artifacts có thể được giữ, nhưng không launch scored V8X.
+- Old lineage đóng `PREP_CONTEXT_HANDOFF`, không sửa deadline.
+- Recovery manifest có identity/tip/status/merge truth.
+- A3 deterministic golden proof PASS và clean commit.
+- T12 held-exposure funding proof PASS.
+- Corrected A8 selection/data audit PASS.
+- Equity blockers được ghi rõ, không scored run.
+- Final integration full suite PASS và tree sạch.
+- T01–T15 = `15/15 PASS`.
+- A7 T14 = `V8_LAUNCH_AUTHORIZED`.
 
----
-
-## 13. Artifact contract
-
-### V8 core
-
-```text
-research/control/v8_run/
-research/audits/v8p/
-research/audits/v8/
-results/portfolio_v8/
-results/reproduction_v8/
-results/matrix/v8_xsect_weekly_reversal/
-results/registry/shards/v8_*.jsonl
-research/wayfinder/evidence/sprint-v8-master-*.{md,json}
-```
-
-### V8X breadth
-
-```text
-research/control/v8x_run/
-research/audits/v8x/
-data/v8x_manifests/
-results/portfolio_v8x/crypto/
-results/portfolio_v8x/equity/
-results/reproduction_v8x/
-results/matrix/v8x_crypto_weekly_reversal/
-results/matrix/v8x_equity_weekly_reversal/
-results/registry/shards/v8x_*.jsonl
-research/wayfinder/evidence/sprint-v8x-master-*.{md,json}
-```
-
-Mọi artifact phải có schema version, UTC timestamps, source/launch SHA, parent hashes, candidate/config/data digests, execution identity và atomic-complete marker.
-
----
-
-## 14. Unattended fail-safe
-
-- Heartbeat mỗi 60 giây: phase, progress, owned PIDs, last artifact, disk/RAM, deadline.
-- Heartbeat stale >10 phút: stop owned heavy workers, forensic event, không tự performance retry.
-- Hard stop tuyệt đối sau 12 giờ; không tự gia hạn.
-- Disk <20 GB, severe memory pressure, hash drift, dirty production tree, target collision hoặc foreign PID: dừng launch mới.
-- Mỗi wave atomic; không đọc partial PnL để sửa wave sau.
-- Network/rate-limit failure trước score có bounded retry theo data contract; không đổi provider im lặng.
-- Failure sau scored metric tiêu thụ budget.
-- Dù PASS/FAIL/timeout: stop heartbeat/workers, PID list rỗng, Git sạch, shutdown report và next safe action.
-- Không S1, paper/live, API order keys hoặc order placement.
-
----
-
-## 15. Definition of Done
-
-### 15.1 V8P complete
-
-- T12, T13, T14 đều PASS bằng machine-readable artifacts.
-- Recomputed T01–T15 = `15/15 PASS` hoặc honest `V8_NOT_AUTHORIZED_*`.
-- Full tests PASS, clean attested launch SHA và A7 0 HIGH/CRITICAL.
-
-### 15.2 V8 complete
+### V8 DONE
 
 - Đúng 4/4 frozen trials, không trial thứ năm.
-- Complete artifacts, stress, reproduction 4/4, FG0–FG7, score, ledger/DSR/PBO truth.
-- A7 terminal audit và một terminal outcome duy nhất.
-- Không false promotion, S1/live vẫn đóng.
+- Stress/reproduction/accounting/FG/score hoàn tất.
+- A7 terminal audit và one terminal verdict.
+- S1/paper/live vẫn disabled.
 
-### 15.3 V8X complete hoặc honest not-started
+### V8X-Crypto DONE hoặc SAFE NOT-STARTED
 
-- V8X prereg freeze đúng deadline.
-- 10-crypto selection/data audit machine-readable.
-- Stock mode/provider được ghi rõ; Binance maturity hoặc external provider limitation không bị che giấu.
-- Cohort được authorize chạy đúng 4 trials; nếu cả hai chạy thì tổng đúng 8.
-- Separate metrics/statistics/reproduction/audits; không combined score.
-- Terminal cohort outcomes hoặc `V8X_*_NOT_STARTED_*` rõ ràng.
-
-### 15.4 Sprint close
-
-- CONTINUE.md và MAP phản ánh đúng terminal truth.
-- Master MD/JSON trỏ tới mọi evidence/hash/commit.
-- Không owned worker/heartbeat còn sống; Git sạch; không push nếu owner chưa yêu cầu.
+- Chỉ chạy nếu §8 đạt toàn bộ.
+- Nếu chạy: contract/baseline/attestation/results/reproduction/audit riêng hoàn chỉnh.
+- Nếu không: blocker machine-readable, không partial scored launch.
+- Equity verdict vẫn là provider/spec blocked, không được giả thành test failure.
 
 ---
 
-## 16. Prompt hoàn chỉnh cho A1 / Orca
+## 11. Prompt hoàn chỉnh cho A1 context mới
+
+Copy nguyên khối dưới đây vào một agent mới:
 
 ```text
-Bạn là A1 — owner/integrator/controller của sprint V8P→V8→conditional V8X.
-Đọc toàn bộ PLAN.md, CONTINUE.md và các source-of-truth §0 trước khi hành động.
-PLAN mới thay thế lịch V7 cũ nhưng KHÔNG cho phép sửa frozen V8 spec.
+Bạn là A1 mới, controller và integration owner của repo
+/Users/hoangminhlong/my-quantitative.
+
+Phiên agent trước đã gọi 7 agent và mất context trước integration. Hãy tiếp quản,
+KHÔNG làm lại từ đầu. Đọc toàn bộ PLAN.md và CONTINUE.md trước khi mutation.
+PLAN.md là execution contract hiện hành; frozen specs và evidence là source of truth.
 
 MỤC TIÊU:
-1. Dùng real parallel Orca agents trong worktrees riêng để hoàn tất T12→T13→T14.
-2. Recompute T01–T15; chỉ khi 15/15 PASS mới chạy đúng V8 quartet.
-3. Stress/reproduce/score/audit và đóng V8 trung thực.
-4. Nếu V8 terminal hợp lệ và X01–X12 PASS, tự động chạy V8X breadth screen:
-   10 crypto ≥1y và 10 stocks ≥1y theo HAI cohort độc lập.
-5. Không chờ owner input giữa các phase khi machine gates PASS; fail closed khi gate fail.
+1) đóng lineage cũ dưới dạng V8_PREP_CONTEXT_HANDOFF_NO_SCORED_ARTIFACT;
+2) tạo lineage V8R mới với start/deadline thật, không kéo dài deadline cũ;
+3) reattach các existing worktree/branch;
+4) sửa đúng ba blocker A2/A3/A8;
+5) integrate các commit đã làm, chạy targeted + full suite;
+6) resolve contract/baseline, cho A7 audit T14;
+7) chỉ khi 15/15 PASS và A7 AUTHORIZED mới chạy đúng 4 V8 trials;
+8) close V8 bằng stress/repro/score/A7 terminal audit;
+9) chỉ chạy V8X-Crypto nếu toàn bộ conditional gate trong PLAN §8 PASS;
+10) không chạy V8X equity trong sprint này.
 
-BOOTSTRAP:
-- Xác minh root Git sạch; commit PLAN này trước khi freeze bootstrap/baseline.
-- Không push.
-- Ghi sprint_started_at_utc và hard_deadline_utc = start + 12h.
-- Tạo topology mới đúng §2 từ clean V8_BOOTSTRAP_SHA; không reuse V7 worktrees.
-- Spawn A2–A9 thành agent/session thật; ghi identity/allowed/forbidden paths.
-- A7 độc lập, không production code.
-- Không quá hai heavy workers.
+SỰ THẬT BAN ĐẦU CẦN ĐO LẠI:
+- root bootstrap dự kiến 291a158;
+- root có untracked research/control/v8_run/worktree_manifest.json: bảo tồn;
+- A2 300391d clean, A3 b6743aa dirty do golden absolute temp path,
+  A4 846ecd5 clean, A5 1b388ab clean, A6 0857c7b clean,
+  A7 chưa audit, A8 4f1d704 cần scientific correction, A9 d053f0c blocked hợp lệ;
+- rehearsal cherry-pick không conflict; targeted 146 PASS, full 835 PASS,
+  nhưng phải test lại trên final integration SHA;
+- chưa có scored V8/V8X artifact.
 
-PARALLEL TASKS:
-- A2: dedicated six-alt two-year T12 audit và data manifests.
-- A3: weekly Monday scheduler, reversal/control dispatcher, CLI/runner/artifacts.
-- A4: FG0–FG7, score, global ledger, honest DSR/PBO cohort handling.
-- A5: reproduction/stress/reconciliation full surface.
-- A6: resolved V8 contract/golden; freeze V8X specs trước first scored V8 metric.
-- A8: performance-blind 10-crypto selection/data audit; không đọc V8 results.
-- A9: stock mode/provider/session/corporate-action audit; không đọc V8 results.
-- A7: audit only after clean integration SHA.
+TOPOLOGY:
+- Dùng lại worktree trong ../my-quantitative-v8-wt/; không tạo 7 worktree trùng.
+- Gọi song song tối đa ba remediation agent:
+  R-A2 existing A2: held-exposure funding coverage proof + T12 follow-up commit;
+  R-A3 existing A3: canonicalize golden, generate hai lần byte-identical,
+       clean tree + follow-up commit;
+  R-A8 existing A8: pre-window 30d volume, exclude BTC from traded top10,
+       exact 15m gaps và held-exposure funding proof + follow-up commit.
+- Nếu không reattach được agent cũ, gọi agent mới vào đúng existing worktree/branch.
+- A6 chỉ follow-up contract/spec nếu integration cần. A7 chỉ audit độc lập.
+- Không cho hai agent ghi cùng path. A1 duy nhất có merge authority.
 
-MERGE V8 CORE:
-- Merge A2→A3→A4→A5→A6; targeted tests sau mỗi merge, full suite cuối.
-- Không sửa research/hypotheses/H-XSECT-REVERSAL-v2 frozen files.
-- Generate resolved contract/baseline/manifest và dispatch A7 T14.
-- Recompute toàn bộ T01–T15; thiếu một gate thì V8_NOT_AUTHORIZED và shutdown/handoff.
+QUY TẮC KHOA HỌC:
+- Không xem/tuning theo PnL cũ hoặc partial PnL.
+- Không đổi frozen V8 hypothesis/spec.
+- Không sửa frozen equity v1; ghi SPEC_MAPPING_AMBIGUITY_BLOCKED.
+- Equity: V8X_EQUITY_NOT_STARTED_PROVIDER_BLOCKED, tuyệt đối không launch.
+- Crypto/stocks tách biệt hoàn toàn.
+- Không S1, paper/live, order placement, push remote.
+- Không git add -A, reset --hard hoặc clean. Bảo tồn user/untracked files.
 
-RUN V8:
-- Wave 1: XSECT-WREV-3D + XSECT-WREV-7D.
-- Wave 2: XSECT-WREV-14D + XSECT-WMOM-7D-CONTROL.
-- Detached worktrees cùng attested SHA, stagger ≥5s, max two workers.
-- Không đọc partial PnL, tuning, replacement trial hoặc performance retry.
-- Chạy full stress, reproduction 4/4, finalizer, registry, A7 terminal audit.
-- REJECT_ALL là kết quả hợp lệ.
+TRÌNH TỰ:
+A. Read-only inventory: git worktree list, HEAD/status/tips, artifact census,
+   xác nhận no scored V8/V8X.
+B. Freeze v8_resume_run start/deadline và recovery manifest nối hash old manifest.
+C. Dispatch R-A2/R-A3/R-A8 song song; ghi identity thật hoặc UNKNOWN_NOT_RECOVERABLE.
+D. Nhận clean follow-up commits và kiểm tra artifacts/tests/hashes.
+E. Tạo integration branch/worktree từ bootstrap; cherry-pick corrected A2, corrected A3,
+   A4 846ecd5, A5 1b388ab, A6 0857c7b (+ follow-up nếu có), corrected A8,
+   A9 d053f0c. Targeted test sau mỗi merge; full pytest cuối.
+F. Resolve V8 contract ở final code SHA; baseline/manifest/detached exec trees/preflight.
+G. A7 audit: chỉ 15/15 PASS + V8_LAUNCH_AUTHORIZED mới launch.
+H. Run V8 Wave 1 (WREV-3D/7D), validate; Wave 2 (WREV-14D/WMOM-7D control),
+   tối đa 2 heavy workers; rồi stress/repro 4/4/FG/score/A7 terminal.
+I. Đánh giá V8X gate. Chỉ chạy Crypto nếu tất cả §8 PASS và còn >=300 phút.
+   Không chạy equity. Nếu gate thiếu, đóng SAFE NOT-STARTED.
+J. Reconcile PIDs, tree, registry, evidence; cập nhật CONTINUE.md và master report.
 
-CONDITIONAL V8X:
-- Chỉ sau valid V8 terminal và X01–X12 machine PASS.
-- V8X prereg phải precede first V8 scored artifact; missed thì không V8X.
-- Không thêm 10+10 symbols vào frozen V8 core.
-- Crypto: deterministic top-10 eligible rule §9, ≥365d bars+funding.
-- Stocks: ưu tiên Binance TradFi chỉ khi đủ 10 contracts ≥365d. Nếu không,
-  US_EQUITY_SPOT mode chỉ chạy khi approved provider/read-only credentials/calendar/
-  corporate actions contract PASS. Không giả underlying spot là Binance perp.
-- Merge breadth work chỉ sau V8 close; A7 attest riêng.
-- Chạy đúng waves X1–X4, tối đa hai workers; cohort blocked không có replacement.
-- Scores, PnL, DSR, PBO và verdicts hoàn toàn tách crypto/equity.
-- One-year breadth chỉ exploratory; không S1/live/promotion.
-
-CONTROL PLANE:
-- Heartbeat 60s; state/event log append-only; owned PID registry.
-- Stale >10m hoặc resource/hash/dirty-tree breach: stop safe, ghi forensic event.
-- Hard stop 12h; không tự gia hạn.
-- Không git add -A, reset/clean, sửa artifact lịch sử hoặc push.
-
-FINAL REPORT:
-- Commits/worktrees/agent identities/merge order.
-- Tests và T12/T13/T14 evidence; T01–T15 verdict.
-- V8 4/4 metrics/gates/stress/repro/statistics/A7 verdict.
-- X01–X12 và V8X cohort data/trials/verdicts hoặc exact not-started blocker.
-- Artifact paths/hashes, global trial counts, S1/live state, remaining PIDs.
-- Stop mọi owned process, để Git sạch và ghi next safe action.
-
-Ưu tiên scientific integrity và reproducibility hơn việc tìm strategy có lời.
-Không được biến một limitation thành PASS bằng lời giải thích thủ công.
+Hãy tự động tiếp tục qua các phase khi gate machine-readable PASS; không hỏi GO lặp lại.
+Chỉ dừng hỏi owner khi cần authority mới, có dữ liệu/provider credential bên ngoài,
+phải sửa frozen scientific contract, hoặc có destructive/unrecoverable conflict.
+Gửi progress ngắn theo phase và báo ngay blocker. Báo cáo cuối phải nêu:
+commit graph, tests, T01-T15, trial budget, V8 verdict, V8X status,
+A7 verdict, active PIDs, dirty files, artifact paths và next safe action.
 ```
 
 ---
 
-## 17. Mục tiêu nói đơn giản cho owner
+## 12. Cách hiểu ngắn gọn
 
-V7 đã làm xong bài kiểm tra và trả lời: “strategy này chưa đủ tốt”. Sprint mới trước tiên sửa ba bộ phận còn thiếu để chiếc máy có thể chấm bài V8. Sau đó máy cho bốn bài V8 vào thi.
-
-Nếu V8 được chấm xong sạch sẽ, máy mới mở thêm hai lớp học thử:
-
-- một lớp gồm 10 crypto;
-- một lớp gồm 10 stocks.
-
-Hai lớp dùng đồng hồ, luật phí và cách tính tiền khác nhau nên không được trộn điểm. Nếu Binance chưa có đủ một năm dữ liệu cho 10 stocks, máy phải nói “chưa đủ dữ liệu”, chứ không được lấy dữ liệu khác rồi giả vờ đó là Binance.
+Các agent trước đã làm xong nhiều “miếng Lego”. A1 mới không đập chúng ra xây lại. A1 kiểm tra ba miếng đang lệch, nhờ đúng ba người sửa, ghép cả bộ, rồi nhờ A7 làm giám khảo. Chỉ khi giám khảo nói chiếc cân đo strategy đã chính xác thì máy mới chạy bốn bài V8. V8X-Crypto là bài thêm nếu còn thời gian và đủ điều kiện; stocks vẫn để sang sprint sau vì chưa có dữ liệu và luật đo đáng tin.
