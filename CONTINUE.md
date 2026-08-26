@@ -1,26 +1,22 @@
-# CONTINUE.md — sau Sprint V7P→V7 (2026-08-25)
+# CONTINUE.md — V8R CLOSED (2026-08-26)
 
-Terminal: **V7_REJECT_ALL_CANDIDATE** · V8: **NOT_STARTED_PREP_GATES_T12_T13_T14_FAIL**
-Budget scored: **8/8 dùng hết** (V6:4 + V7:4). Locked: NONE. S1: NOT_STARTED. Live: DISABLED.
+V8 sprint đã **ĐÓNG HOÀN CHỈNH** với terminal verdict `V8_REJECT_ALL`. Không có việc dang dở bắt buộc.
 
-## Trạng thái
-- HEAD = commit shutdown cuối; tree sạch; CHƯA push.
-- results/portfolio_v7 (4 trial CLEAN hashes), reproduction_v7 4/4 all-match,
-  matrix v7 COMPLETE append-only true.
-- V8 prereg ĐÃ FREEZE an toàn: research/hypotheses/H-XSECT-REVERSAL-v2/* +
-  research/audits/v8p/v8_spec_freeze.json (hash pins trong baseline).
-- Worktrees: ../my-quantitative-v7-wt/{a2..a7} (orca/v7-*) + exec-r1..r4 @b061b55.
+## Trạng thái cuối
 
-## Blocker V8 (đúng §17.3)
-T12 six-alt 2y data audit CHƯA chạy; T13 weekly-reversal engine/golden chưa implement;
-T14 attestation phụ thuộc T13. → V8 bị chặn chuẩn bị, KHÔNG phải vì thiếu thời gian đơn thuần.
+- Terminal verdict: **V8_REJECT_ALL** (family summary `results/portfolio_v8/family_summary_v8.json`)
+- A7 terminal audit: PASS (process honest), 0 unresolved high/critical, commit `5323218`
+- 4/4 frozen trials consumed, repro 4/4 all-match, provenance enforced PASS toàn bộ
+- V8X-Crypto: `NOT_STARTED_GATE_BLOCKED` (thiếu budget freeze + contract cohort-10)
+- V8X-Equity: `NOT_STARTED_PROVIDER_BLOCKED` + `SPEC_MAPPING_AMBIGUITY_BLOCKED`
+- Full report: `research/audits/v8p/master_report_v8r.json`
 
-## Next sprint (thứ tự)
-1. A2: six-alt two-year data/PIT audit (T12).
-2. A3: weekly Monday-00:00 reversal dispatcher + golden e2e (T13) — spec đã freeze, không chỉnh tham số.
-3. A6: resolved contract mới + baseline; A7 attest (T14).
-4. Chạy đúng 4 trial WREV-3D/7D/14D + WMOM-7D-CONTROL với FG §17.6.
-5. Không S1/live; không tuning từ PnL V6/V7; budget V8 riêng theo spec.
+## Next safe action (sprint tương lai)
 
-## Cấm
-S1/paper/live · git add -A · reset/clean · sửa artifact lịch sử · RETRY2 · push khi chưa được yêu cầu.
+1. Owner duyệt merge `orca/v8r-integration` → `main` (local; không push tự động).
+2. Nếu mở V8X-Crypto: freeze riêng trial budget + resolve contract cohort-10 TRƯỚC, rồi mới baseline/A7.
+3. Weekly-reversal family bị REJECT — không tuning để "cứu"; hypothesis mới phải prereg từ đầu.
+
+## Hard prohibitions (vẫn hiệu lực)
+
+No S1/paper/live/orders · no tuning from PnL · no equity scored run · no `git add -A` · no reset/clean · no rewrite frozen artifacts · no push without owner request.

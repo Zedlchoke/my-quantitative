@@ -1,0 +1,102 @@
+# H-XSECT-REVERSAL-v2 — V8 pre-registration contract (A6 blind draft).
+# Every field below is VERBATIM from PLAN.md §17.2 "Frozen rules" table
+# (plus §17.2 trial inventory and forbidden-after-freeze list). No parameter
+# invented, no deviation. Drafted BEFORE any scored V7 artifact exists; this
+# spec must be hash-frozen before the first scored V7 artifact (PLAN §17.1).
+# Verdicts/metadata go to status.yaml. Do not edit values after freeze.
+hypothesis_id: H-XSECT-REVERSAL-v2
+family: cross_sectional_weekly_reversal
+stage: S0_EXPLORATORY          # S0 screening only; never OOS/S1 or promotion evidence
+owner_agent: A6
+validator_agent: A7            # hash + novelty check at freeze
+
+universe:
+  traded_symbols:
+    - SOLUSDT
+    - BNBUSDT
+    - XRPUSDT
+    - DOGEUSDT
+    - LINKUSDT
+    - ADAUSDT
+  benchmark_symbol: BTCUSDT
+  benchmark_role: measurement_only   # context/overlay only; not traded, not in ranks
+  universe_policy: fixed_before_run
+
+data_window:
+  scope: common_six_alt_intersection
+  target_start_utc: "2024-08-21T14:30Z"
+  target_end_utc: "2026-08-21T00:00Z"
+  endpoint_note: >
+    exact completed-bar endpoints decided by canonical audit (gate T12
+    six-alt two-year data audit); target window above is not self-executing.
+
+signal_clock: monday_00_00_utc_completed_bars_only
+formation_lookbacks_days: [3, 7, 14]     # exactly these three; none may be added
+direction:
+  long_rule: bottom_2_past_return_losers
+  short_rule: top_2_past_return_winners
+
+negative_control:
+  id: XSECT-WMOM-7D-CONTROL
+  rule: long_winners_short_losers_at_7D
+
+rebalance:
+  cadence_days: 7                        # every 7 days
+  intraweek_discretionary_rebalance: false
+holding_horizon: 7 days (one full rebalance cycle)
+
+portfolio:
+  gross_target: 0.80
+  net_target: 0.0
+  long_gross: 0.40
+  short_gross: 0.40
+  max_abs_symbol_weight: 0.20
+
+eligibility:
+  required_symbols: all_six              # all six symbols required
+  incomplete_cross_section_action: skip_whole_rebalance
+
+execution:
+  fill_event: next_completed_15m_event
+  slippage: one_tick_adverse
+  fee_rate: 0.0005
+  funding_accounting: native             # native funding accounting on held legs
+
+split:
+  folds: chronological_3fold
+  purge_embargo_days: 7                  # at each fold boundary
+  warmup_days_min: 14                    # warmup at least 14 days
+
+trial_budget:
+  normal_trials: 3                       # exactly three normal
+  negative_controls: 1                   # + one negative control
+  total_scored_candidates: 4
+
+trial_inventory:
+  - {id: XSECT-WREV-3D,         formation: 3D,  direction: reversal}
+  - {id: XSECT-WREV-7D,         formation: 7D,  direction: reversal}
+  - {id: XSECT-WREV-14D,        formation: 14D, direction: reversal}
+  - {id: XSECT-WMOM-7D-CONTROL, formation: 7D,  direction: momentum_control}
+
+forbidden_after_freeze:
+  - funding/OI/volatility/regime/liquidity filters
+  - changing rebalance weekday or cadence
+  - per-symbol parameters or removal by performance
+  - adding formation lookbacks
+  - changing thresholds, costs, folds, window or universe
+  - using V7 results to change V8 code/spec
+  - calling the six-symbol window "untouched OOS"
+
+provenance_constraints:
+  prereg_freeze_deadline: before_first_scored_V7_artifact
+  v8_agent_must_not_read:
+    - results/portfolio_v7
+    - V7 partial logs
+    - V7 metrics
+    - V7 verdicts
+  scored_run_gate: no scored V8 trial until V7 terminal outcome is valid (PLAN §17.3)
+  missed_window_label: V8_PREREG_WINDOW_MISSED
+  eth_removal_basis: >
+    ETH dropped ONLY by data-availability rule frozen before performance
+    (v1 blocker: ETH ~1y of data vs ~2y clean for the six alts). No symbol
+    may be removed based on PnL.
