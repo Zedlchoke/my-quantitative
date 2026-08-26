@@ -1,14 +1,31 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "artifact": "v10_worktree_manifest",
   "bootstrap": "acbc79b",
-  "worktrees": [
-    {"role":"A1","path":".../integration-v10","branch":"orca/v10-integration","allowed":["research/control/v10_hardened_run/**","research/audits/v10/**","CONTINUE.md","PLAN.md"],"forbidden":["results/** production edits by others"]},
-    {"role":"A2","path":".../a2-evidence","branch":"orca/v10-a2-evidence","allowed_globs":["research_snapshots/v9_closed_*/**","research/audits/v10/a2_*","scripts/v9_evidence_archive.py","tests/test_v9_evidence_archive.py"],"forbidden_globs":["research/portfolio_runner.py","research/v9_*.py","results/**"]},
-    {"role":"A3","path":".../a3-runtime","branch":"orca/v10-a3-runtime","allowed_globs":["research/runtime_controller_v10.py","research/status_cli_v10.py","research/resource_governor_v10.py","tests/test_runtime_controller_v10.py","tests/test_resource_governor_v10.py"],"forbidden_globs":["research/portfolio_runner.py","research/reproduction_harness.py","data/**"]},
-    {"role":"A4","path":".../a4-reproduction","branch":"orca/v10-a4-reproduction","allowed_globs":["research/reproduction_stream_v10.py","research/cache_v10.py","tests/test_repro_stream_v10.py","tests/test_cache_v10.py","research/reproduction_harness.py","research/provenance_v6p.py"],"forbidden_globs":["research/v9_*.py","data/**","results/**"]},
-    {"role":"A5..A10, R1/R2", "note": "later waves; branches exist; allowlists frozen at their wave start"}
-  ],
+  "bootstrap_full": "acbc79b12a830aa9de64b1c8213002d23f755d9e",
+  "integration_branch": "orca/v10-integration",
+  "worktree_root": "/Users/hoangminhlong/my-quantitative-v10-wt/",
   "merge_authority": "A1 only",
-  "grandchild_agents": "forbidden unless A1 records delegation"
+  "grandchild_agents": "forbidden unless A1 records delegation",
+  "parallelism": {
+    "max_light_agents_incl_a1": 4,
+    "heavy_workers": "min(2, governor_cap)",
+    "governor_can_lower_to_1": true,
+    "wave_h1_concurrency_used": 4,
+    "note": "no full pytest run concurrent with any heavy backtest; no scored backtest ran during V9H"
+  },
+  "worktrees": [
+    {"role":"A1","path":"/Users/hoangminhlong/my-quantitative-v10-wt/integration-v10","branch":"orca/v10-integration","allowed":["research/control/v10_hardened_run/**","research/audits/v10/a1_*","CONTINUE.md","PLAN.md","research/wayfinder/MAP.md"],"forbidden":["agent-owned production files"],"bootstrap":"acbc79b"},
+    {"role":"A2","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a2-evidence","branch":"orca/v10-evidence","allowed_globs":["research_snapshots/v9_closed_*/**","research/audits/v10/a2_*","scripts/v9_evidence_archive.py","tests/test_v9_evidence_archive.py"],"forbidden_globs":["research/portfolio_runner.py","research/v9_*.py","results/**"],"bootstrap":"acbc79b","commit":"cb14491","clean_tree":true,"tests":"13 passed 1 skipped","integration_merge":"4703125","deliverables":["scripts/v9_evidence_archive.py","research/audits/v10/a2_archive_manifest.json","research/audits/v10/a2_restore_report.json"],"limitations":["bundle cannot prove pre-archive source immutability; exec-tree HEADs pinned at archive time"]},
+    {"role":"A3","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a3-runtime","branch":"orca/v10-a3-runtime","allowed_globs":["research/runtime_controller_v10.py","research/status_cli_v10.py","research/resource_governor_v10.py","tests/test_runtime_controller_v10.py","tests/test_resource_governor_v10.py"],"forbidden_globs":["research/portfolio_runner.py","research/reproduction_harness.py","data/**"],"bootstrap":"acbc79b","commit":"766679b","clean_tree":true,"tests":"21 passed","integration_merge":"8c82133","deliverables":["H01 controller identity/PGID","H02 atomic heartbeat + terminal truth","H03 timeout escalation + retry fields","H05 resource governor"],"limitations":["adopted-worker death fail-closed UNKNOWN_EXTERNAL_KILL","log tail bounded by design"]},
+    {"role":"A4","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a4-reproduction","branch":"orca/v10-a4-reproduction","allowed_globs":["research/reproduction_stream_v10.py","research/cache_v10.py","tests/test_repro_stream_v10.py","tests/test_cache_v10.py","research/reproduction_harness.py","research/provenance_v6p.py"],"forbidden_globs":["research/v9_*.py","data/**","results/**"],"bootstrap":"acbc79b","commit":"4f82a54","clean_tree":true,"tests":"34 passed","edits_to_shared_files":"none","integration_merge":"3240afa","deliverables":["H04 streamed reproduction runner","H06 fail-closed cache merge gate"],"limitations":["setsid()-escaping grandchild inherent pgid limitation","rotation displaces oldest log generations"]},
+    {"role":"A5","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a5-contracts-stats","branch":"orca/v10-contracts-stats","allowed_globs":["research/contract_v10.py","research/stats_v10.py","research/novelty_matrix_v10.py","tests/test_contract_v10.py","tests/test_stats_v10.py","tests/test_novelty_matrix_v10.py"],"forbidden_globs":["research/portfolio_runner.py","research/runtime_controller_v10.py","research/cache_v10.py","data/**","results/**"],"bootstrap":"TBD_H2","allowlist_frozen_at":"wave-H2 dispatch"},
+    {"role":"A6","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a6-data-pit","branch":"orca/v10-data-pit","allowed_globs":["research/data_audit_v10.py","research/pit_hooks_v10.py","tests/test_data_audit_v10.py","tests/test_pit_hooks_v10.py"],"forbidden_globs":["data/** writes","results/**","research/portfolio_runner.py"],"read_only_paths":["data/**"],"bootstrap":"TBD_H2","allowlist_frozen_at":"wave-H2 dispatch"},
+    {"role":"A7","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a7-independent-audit","branch":"orca/v10-independent-audit","allowed_globs":["research/audits/v10/a7_*"],"forbidden_globs":["**/*.py production code","research/** except audits/v10/a7_*","data/**","results/**"],"rule":"never production code","bootstrap":"TBD_audit_wave"},
+    {"role":"A8","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a8-hypothesis-1","branch":"orca/v10-hypothesis-1","allowed_globs":["research/audits/v10/proposals/a8_*","(if selected) research/hyp_a8_*.py + tests/test_hyp_a8_*.py"],"forbidden_globs":["research/portfolio_runner.py","data/** writes","results/**","other agent files"],"bootstrap":"TBD_waveN"},
+    {"role":"A9","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a9-hypothesis-2","branch":"orca/v10-hypothesis-2","allowed_globs":["research/audits/v10/proposals/a9_*","(if selected) research/hyp_a9_*.py + tests/test_hyp_a9_*.py"],"forbidden_globs":["research/portfolio_runner.py","data/** writes","results/**","other agent files"],"bootstrap":"TBD_waveN"},
+    {"role":"A10","path":"/Users/hoangminhlong/my-quantitative-v10-wt/a10-qa","branch":"orca/v10-qa","allowed_globs":["tests/test_fault_injection_v10.py","tests/test_anti_leak_v10.py","research/gate_checks_v10.py","tests/test_gate_checks_v10.py"],"forbidden_globs":["research/portfolio_runner.py","data/** writes","results/**","production modules owned by A3/A4/A5/A6"],"bootstrap":"TBD_H2","allowlist_frozen_at":"wave-H2 dispatch"},
+    {"role":"R1/R2","note":"detached clean execution worktrees created by A1 only at frozen SHA W","bootstrap":"TBD_prelaunch"}
+  ],
+  "preservation_refs": {"tag":"v9-evidence-anchor","at":"425843d","created_by":"A1","bundle_root_copy":"research_snapshots/v9_closed_20260826T123332Z","bundle_hash_verified_at_root": true}
 }
