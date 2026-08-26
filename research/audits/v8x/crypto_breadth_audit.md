@@ -1,101 +1,100 @@
-# V8X Crypto Breadth Audit (Agent A8)
+# V8X Crypto Breadth Audit (Agent A8) — CORRECTED
 
-- Agent session: `5208f2fa-efce-442e-92d0-6be230729d1c`
+- Agent session: R-A8 remediation follow-up
 - Branch/worktree: `orca/v8-a8-crypto-breadth` @ `/Users/hoangminhlong/my-quantitative-v8-wt/a8-crypto-breadth`
 - Date: 2026-08-26
-- Performance-blind: **yes** — `results/portfolio_v7`, `results/portfolio_v8`, and any V7/V8 metrics/verdict files were NOT opened.
-- Manifest: `data/v8x_manifests/crypto_universe_selection.json` (schema_version 1.0.0)
-- **Verdict: `V8X_CRYPTO_TOP10_ELIGIBLE`** — eligible_count = **20/20**, top-10 selected.
+- Corrects: commit `4f1d704` (manifest schema 1.0.0), which violated the frozen selection contract
+- Manifest: `data/v8x_manifests/crypto_universe_selection.json` (**schema_version 2.0.0**)
+- Selection script: `scripts/v8x_crypto_universe_selection.py` (new; fully reproducible, offline, byte-deterministic)
+- Tests: `tests/test_v8x_crypto_universe_selection.py` (15 passed)
+- Performance-blind: **yes** — no `results/**`, PnL, or V7/V8 verdict artifacts accessed.
+- **Verdict: `V8X_CRYPTO_TOP10_ELIGIBLE_PREWINDOW_BENCHMARK_EXCLUDED`** — 19/19 eligible altcoins, top-10 selected, BTC excluded as benchmark-only.
 
-## 1. Data sources (primary repo, read-only)
+## 0. Violations of the prior version — all four fixed
 
-| Source | Path | Layout |
+| # | Prior flaw (commit 4f1d704) | Correction implemented |
 |---|---|---|
-| Catalog | `/Users/hoangminhlong/my-quantitative/catalog_live_crypto` | `data/binance_bar/<SYM>-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/*.parquet` (BinanceBar; columns incl. `ts_event` ns, `quote_volume` string), `data/crypto_perpetual/<SYM>-PERP.BINANCE/*.parquet` (CryptoPerpetual instruments, embedded exchange `info` JSON) |
-| Funding | `/Users/hoangminhlong/my-quantitative/funding_data/scan_2026/<TICKER>/funding.json` | `{schema_version, captured_at, symbol, requested_start_ms, requested_end_ms, rows[{fundingTime, fundingRate, markPrice, rateType}]}` |
+| V1 | Ranked by median daily quote volume over the **scored** window `[2025-08-21, 2026-08-21)` — look-ahead into the evaluation period | Ranking uses **only the pre-window** `[2025-07-22T00:00Z, 2025-08-21T00:00Z)` (`ranking_rule=median_daily_quote_volume_pre_window_only`) |
+| V2 | BTCUSDT was rank #1 **inside the traded top-10** | BTC (`BTCUSDT-PERP.BINANCE`, equivalent of `PERP.BINANCE.BTC-USDT`) is **benchmark measurement-only**: flagged `btc_benchmark_measurement_only=true`, excluded **before ranking**, never traded |
+| V3 | Gap screen at **daily granularity** (`gap_day`); single-bar/partial-day holes explicitly tolerated — could not detect intra-day data loss | **Exact 15-minute grid census** over BOTH windows for every candidate: every expected slot checked, every gap given a machine-readable `cause`; any unexplained gap ⇒ fail |
+| V4 | Funding gate = `funding_rows >= 1` | **Held-exposure completeness proof** per selected symbol across `[first-possible-exposure, scored end]`: sorted/deduped rows, every inter-settlement interval a legal Binance step ≤ 8 h + jitter, boundary coverage from the conservative first possible weekly entry to the scored-window end inclusive, and cross-symbol-corroborated explanation for any sub-8h regime step |
 
-## 2. Rule constants (FROZEN BEFORE SCANNING)
+## 1. Frozen corrected selection contract (as implemented)
 
-The constants below were fixed in the scanner prior to any data access and are
-embedded verbatim in the manifest under `rule_constants`.
+1. **Selection window (pre-window):** `[2025-07-22T00:00Z, 2025-08-21T00:00Z)` — strictly before the scored one-year window `[2025-08-21, 2026-08-21)`. Ranking ONLY within the pre-window.
+2. **Ranking metric:** median daily quote volume (native 15m parquet `quote_volume`, USDT) computed only over distinct pre-window bar-days (Decimal-exact sums; even-count median = mean of central two).
+3. **BTC excluded** from the ranked/traded top-10 entirely; retained in `candidates_evaluated` for transparency with `reason_if_rejected=["BTC_BENCHMARK_MEASUREMENT_ONLY_EXCLUDED_BEFORE_RANKING"]`.
+4. **Tie-break:** primary metric desc, tie-break symbol asc — carried unchanged from the prior frozen artifact (`rank_tiebreak` in schema 1.0.0). No contradicting frozen prereg exists elsewhere (`data/v8x_manifests/` holds only this manifest).
+5. **Listing-age gate:** onboard date ≤ scored-window start − 365 d = `2024-08-21T00:00Z` (age ≥ 365 d at first possible exposure). Consistent with prior artifact's ≥365d preference; stated here per contract since no separate frozen prereg file exists.
+6. **Metadata sanity:** instrument present, venue BINANCE, quote USDT, contractType PERPETUAL, exchange status TRADING.
+7. **Funding assumption (stated explicitly):** weekly Monday rebalance ⇒ a strategy could first hold any symbol at the earliest moment the scored window opens. Conservative **first-possible-exposure = pre-window end = scored-window start `2025-08-21T00:00Z`**; coverage required through scored-window end `2026-08-21T00:00Z` inclusive.
 
-- Window: `[2025-08-21T00:00:00Z, 2026-08-21T00:00:00Z)` = 365 days (`WINDOW_DAYS=365`).
-- Universe filter: venue `BINANCE`, quote `USDT`, contract type `PERPETUAL`, 15-MINUTE-LAST-EXTERNAL bars.
-- Req. 4 gate: `first_bar <= 2025-08-21T00:00:00Z` (`FIRST_BAR_MAX_STR`).
-- Coverage gate: distinct bar-days inside window >= `MIN_COVER_DAYS_IN_WINDOW = 365`.
-- Gap rule (`gap_day`, DAILY granularity): a UTC calendar day with ZERO bars inside the effective span `[max(first_bar_day, 2025-08-21), min(last_bar_day, 2026-08-21)]` for which at least one bar-day exists earlier AND later in the symbol's full sorted bar-day series ("missing entire day where neighbors exist"). Days with >=1 bar count as covered; **single-bar / partial-day gaps are tolerated**. Gate: `gap_days <= GAP_DAYS_MAX_ALLOWED = 0`.
-- Funding gate: `funding.json` present with >= `FUNDING_MIN_ROWS = 1` row.
-- Volume proxy decision: the 15m parquet carries a native `quote_volume` field ⇒ **median daily quote volume IS measurable locally**. Per the no-fabrication instruction, the "median daily bar count × constant" proxy was NOT used and no symbol fell back to `metric_unavailable`.
-- Ranking: primary `median_daily_quote_volume_usdt` desc, tie-break symbol asc. Fallback (frozen, unused): if quote_volume absent/all-null → rank by coverage-days desc then symbol asc.
-- Determinism: overlapping capture files deduped on exact `ts_event`; all sums use Decimal; hashes over file bytes.
+## 2. Exact 15-minute gap census (audit 5a)
 
-## 3. Methodology
+Scope: every candidate × both windows. Expected slots = exact grid `[start, end)` step 900 s on slot-open times (local bars are stamped slot-close − 0.1 ms and mapped to their own slot).
 
-1. Enumerated catalog bar dirs matching `<TICKER>-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL` → 20 candidates.
-2. Per symbol: read instrument parquet (quote/settlement USDT, `contractType=PERPETUAL`, `onboardDate` from embedded exchange info JSON).
-3. Read all 15m bar parquets; deduped on `ts_event`; derived first/last bar, total bars, distinct bar-days (all-time and in-window), daily `quote_volume` sums in-window → median.
-4. Gap screen at DAILY granularity per frozen rule above (zero-bar interior days counted; boundary/trailing uncovered days are not gaps by construction since neighbors must exist).
-5. Funding: row count + min/max `fundingTime` per symbol.
-6. Eligibility gates evaluated in fixed order (metadata → quote/perp → first bar → coverage → gaps → funding). Ranked eligibles by frozen ranking; took top 10.
-7. Hashes: SHA-256 of each `funding.json`; per-symbol bar-dir digest = SHA-256 over sorted `(filename : file-sha256)` lines.
+| Quantity | Value |
+|---|---:|
+| Total expected 15m slots (20 symbols × both windows) | **758,400** |
+| Gaps found | **57** |
+| Unexplained gaps | **0** |
 
-## 4. Accepted top 10 (ranked by median daily quote volume, USDT)
+- Pre-window: **2880/2880 slots present for every candidate — zero gaps anywhere in the ranking window.**
+- Scored window: single finding — **ETHUSDT, one run of 57 consecutive missing slots** `[2025-08-21T00:00Z → 14:15Z opens]`, i.e. bars with close times 00:15–14:30.
+  - `cause = "local_capture_boundary_between_sessions"`, explained. Evidence (machine-readable in manifest): previous session's last bar open `2025-08-20T23:45:00Z`; next capture session's first bar open `2025-08-21T14:15:00Z`. The hole lies strictly BETWEEN two capture sessions' observed ranges — ETHUSDT is the only symbol whose catalog is fragmented across multiple capture files, and the earlier session simply ended before the scored window opened while the next session began 14½ hours later.
+  - Classification rule (frozen, applied uniformly): a run strictly inside ONE capture session's observed range ⇒ `unexplained_hole_inside_single_capture_session` (fail); a run bounded by capture-session edges ⇒ explained boundary cause. No run in the entire dataset falls inside a session.
+  - The prior daily-granularity screen structurally could not see this hole (2025-08-21 still had bars after 14:15 ⇒ counted as "covered"). This is exactly violation V3.
+- Residual honesty note: offline we cannot prove what the exchange printed during the ETHUSDT hole; the cause attribution ("not captured locally between two sessions") is provenance evidence, which is the strongest available without network access, and it is deterministic/reproducible.
 
-| # | Symbol | Median daily quote vol (USDT) | In-window days | Gap days | Funding rows |
-|--:|---|---:|--:|--:|--:|
-| 1 | BTCUSDT | 12,107,829,986.06 | 365 | 0 | 2190 |
-| 2 | ETHUSDT | 10,240,030,728.20 | 365 | 0 | 2190 |
-| 3 | SOLUSDT | 2,248,115,171.52 | 365 | 0 | 2190 |
-| 4 | XRPUSDT | 817,013,508.96 | 365 | 0 | 2190 |
-| 5 | ZECUSDT | 599,035,706.66 | 365 | 0 | 2190 |
-| 6 | DOGEUSDT | 574,147,365.18 | 365 | 0 | 2190 |
-| 7 | BNBUSDT | 397,338,117.68 | 365 | 0 | 2190 |
-| 8 | 1000PEPEUSDT | 302,541,407.99 | 365 | 0 | 2190 |
-| 9 | SUIUSDT | 239,049,000.43 | 365 | 0 | 2190 |
-| 10 | ADAUSDT | 216,382,761.61 | 365 | 0 | 2190 |
+## 3. Listing age & metadata sanity (audits 5b, 5c)
 
-## 5. All candidates evaluated (20; `*` = accepted top 10)
+- All 19 altcoins pass listing age ≥ 365 d at first possible exposure (oldest requirement: onboard ≤ 2024-08-21; latest onboarding among candidates ENAUSDT 2024-04-02 ≈ 506 d).
+- All 20 candidates pass metadata sanity: BINANCE / USDT quote / PERPETUAL / status TRADING (from embedded exchange `info` blobs).
 
-| Sym | Onboard | First bar (UTC) | Last bar (UTC) | Bar-days all-time | In-window | Gaps | Fund rows | Fund first | Fund last | Median daily qvol (USDT) |
-|---|---|---|---|--:|--:|--:|--:|---|---|---:|
-| * BTCUSDT | 2019-09-08 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 12,107,829,986.06 |
-| * ETHUSDT | 2019-11-27 | 2024-08-23T00:14:59Z | 2026-08-23T06:59 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 10,240,030,728.20 |
-| * SOLUSDT | 2020-09-14 | 2024-08-21T14:14:59Z | 2026-08-21T13:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 2,248,115,171.52 |
-| * XRPUSDT | 2020-01-06 | 2024-08-21T14:14:59Z | 2026-08-21T13:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 817,013,508.96 |
-| * ZECUSDT | 2020-02-05 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 599,035,706.66 |
-| * DOGEUSDT | 2020-07-10 | 2024-08-21T14:14:59Z | 2026-08-21T13:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 574,147,365.18 |
-| * BNBUSDT | 2020-02-10 | 2024-08-21T14:14:59Z | 2026-08-21T13:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 397,338,117.68 |
-| * 1000PEPEUSDT | 2023-05-05 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 302,541,407.99 |
-| * SUIUSDT | 2023-05-03 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 239,049,000.43 |
-| * ADAUSDT | 2020-01-31 | 2024-08-21T14:14:59Z | 2026-08-21T13:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 216,382,761.61 |
-| AVAXUSDT | 2020-09-23 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 151,501,462.64 |
-| LINKUSDT | 2020-01-17 | 2024-08-21T14:14:59Z | 2026-08-21T13:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 144,417,621.66 |
-| ENAUSDT | 2024-04-02 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 4379 | 2024-08-23T08:00 | 2026-08-23T04:00 | 131,933,200.98 |
-| NEARUSDT | 2020-10-15 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 112,861,800.79 |
-| BCHUSDT | 2019-12-19 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 118,648,882.38 |
-| AAVEUSDT | 2020-10-16 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 96,145,223.56 |
-| WLDUSDT | 2023-07-24 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 2190 | 2024-08-23T08:00 | 2026-08-23T00:00 | 106,532,907.72 |
-| BOMEUSDT | 2024-03-16 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 4379 | 2024-08-23T08:00 | 2026-08-23T04:00 | 8,942,278.17 |
-| ACEUSDT | 2023-12-18 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 4636 | 2024-08-23T08:00 | 2026-08-23T04:00 | 2,572,231.89 |
-| ONGUSDT | 2023-11-27 | 2024-08-23T05:14:59Z | 2026-08-23T04:44 | 731 | 365 | 0 | 4418 | 2024-08-23T08:00 | 2026-08-23T04:00 | 1,283,733.12 |
+## 4. Funding held-exposure coverage (audit 5d)
 
-## 6. Rejected
+Per selected symbol over `[2025-08-21T00:00Z, 2026-08-21T00:00Z]`:
 
-None. All 20 candidates passed every frozen gate (first-bar ≤ 2025-08-21, ≥365 in-window covered days, 0 unexplained gap days, funding present ≥1 row).
+- The other 9 of 10 selected symbols run a strict 8 h cadence: exactly **1095 settlements in-span** (= 365 d × 3), first settlement ≤ start + 8 h, last settlement = `2026-08-21T00:00Z` (+≤ ms jitter) — complete by construction.
+- ENAUSDT runs a 240-min cadence (2189 in-span settlements) with a **single 480-min step at `2026-06-24T00:00Z`**; the identical step-pair appears at an identical millisecond timestamp in all four sub-8h-cadence candidates (ACE/BOME/ENA/ONG) ⇒ `cause="exchange_wide_funding_interval_step"` (exchange-wide interval-regime change, corroborated n=4). An isolated uncorroborated step would be classified unexplained and FAIL (unit-tested).
+- Zero duplicate timestamps anywhere; all intervals legal Binance steps {1h, 2h, 4h, 8h} ± jitter.
+- **Verdict: COMPLETE for all 10 selected symbols** (`funding_held_exposure_audit.complete=true`, machine-readable).
 
-## 7. Honesty notes — what could / could not be measured locally
+## 5. Eligibility counts (audit 6)
 
-1. **Quote volume is real, not proxied.** The 15m parquet stores a native `quote_volume` field (Binance kline quote-asset volume), so the ranking metric is measured, not fabricated. The frozen bar-count-proxy fallback was never triggered; zero symbols were marked `metric_unavailable`.
-2. **Local capture ≠ exchange truth (no network).** Everything below is asserted only about the local parquet/JSON artifacts. No cross-check against Binance was possible.
-3. **Intra-day sparsity is tolerated by design.** The gap screen is DAILY: a day counts as covered with ≥1 bar, so a day with a single 15m bar would pass. No symbol exhibited this pathology in practice (all show full-year coverage and plausible bar counts ≈ 96/day × 731 d), but the screen itself cannot detect sub-daily holes.
-4. **Median daily volume uses only in-window bar-days**, capped at 2026-08-21T00:00Z even though several catalogs extend to 2026-08-23; first/last calendar days of symbols starting mid-window are included as-is (partial days are not rescaled).
-5. **Overlapping captures deduped on exact `ts_event`.** ETHUSDT's bar dir has 4 fragmented files (capture sessions); dedupe is deterministic, but any bars lost at capture boundaries upstream cannot be detected here.
-6. **Funding provenance unaudited.** Row-count differences (2190 vs 4379–4636 for ACE/BOME/ENA/ONG) reflect differing funding intervals in the source data (8h vs shorter); intervals/rate sanity were not independently verifiable offline. `captured_at`, `requested_start_ms/end_ms` recorded but not re-derived.
-7. **Onboard dates come from the exchange `info` blob embedded in instrument parquets** (e.g., BTCUSDT 2019-09-08); treated as metadata note only — no eligibility weight.
-8. **Performance-blind honored:** no V7/V8 metrics or verdict files accessed; selection depends solely on catalog/funding inputs and the pre-frozen rules.
+| Stage | Count |
+|---|---:|
+| Candidates evaluated (catalog bar dirs) | 20 |
+| Excluded: BTC benchmark measurement-only | 1 |
+| Altcoin pool | 19 |
+| Eligible altcoins | **19 / 19** (0 rejected; rejection reasons recorded per candidate in manifest) |
+| Selected top-10 | 10 |
 
-## 8. Outcome
+## 6. Final chosen top-10 (ranked by PRE-WINDOW median daily quote volume, USDT)
 
-- `eligible_count`: 20
-- `accepted_top10`: BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT, ZECUSDT, DOGEUSDT, BNBUSDT, 1000PEPEUSDT, SUIUSDT, ADAUSDT
-- Manifest includes per-funding-file SHA-256 and per-symbol bar-dir digests for all 20 candidates (reproducibility anchors).
+| Rank | Symbol | Median daily qvol, pre-window (USDT) | Pre-w gaps | Scored gaps (unexplained) | Funding held-exposure |
+|--:|---|---:|--:|--:|--|
+| 1 | ETHUSDT | 24,602,646,500.99 | 0 | 57 (0) | complete |
+| 2 | SOLUSDT | 4,183,797,973.53 | 0 | 0 | complete |
+| 3 | XRPUSDT | 2,535,180,935.50 | 0 | 0 | complete |
+| 4 | DOGEUSDT | 1,846,862,953.66 | 0 | 0 | complete |
+| 5 | ENAUSDT | 1,159,139,794.95 | 0 | 0 | complete |
+| 6 | SUIUSDT | 918,797,625.17 | 0 | 0 | complete |
+| 7 | 1000PEPEUSDT | 857,082,216.07 | 0 | 0 | complete |
+| 8 | ADAUSDT | 685,861,178.04 | 0 | 0 | complete |
+| 9 | BNBUSDT | 685,005,825.08 | 0 | 0 | complete |
+| 10 | LINKUSDT | 563,231,921.52 | 0 | 0 | complete |
+
+**BTCUSDT explicitly EXCLUDED** (benchmark measurement-only; its pre-window median, 14,745,568,711.89 USDT, is recorded measurement-only and did not enter ranking).
+
+Eligible but not selected (pre-window median, USDT): AVAX 383.85M, AAVE 250.66M, BCH 244.80M, NEAR 153.83M, WLD 145.47M, BOME 33.43M, ZEC 5.59M, ACE 3.72M, ONG 2.24M.
+
+## 7. How the correction changes the universe (sanity, performance-blind)
+
+Ranking on the pre-window alone legitimately reshuffles and re-composes the set vs the flawed version: e.g. ZECUSDT drops out entirely (its scored-window volume reflects a later regime: 599M scored vs 5.6M pre-window), ENAUSDT/LINKUSDT enter, and ADA/BNB swap order at ranks 8/9 (685.86M vs 685.01M — decided deterministically by the frozen tie-break-free metric ordering). No scored-window information influenced any decision; the selection is a pure function of pre-window catalog data plus audits.
+
+## 8. Reproducibility
+
+- `scripts/v8x_crypto_universe_selection.py` regenerates the manifest byte-for-byte offline from local data (fixed `generated_at_utc` constant; Decimal-exact arithmetic; sorted iteration everywhere). Verified: two consecutive runs produced identical sha256 `e73c703f5fb4dea7ff0c6c2c6c8c756b12218fa1960bf46c0ebb2509abb56376`.
+- `tests/test_v8x_crypto_universe_selection.py`: 15 tests over slot mapping, census classification, funding completeness gates (incl. dropped-settlement detection and corroboration logic), metric/ranking determinism — all passing.
+- Provenance anchors retained: SHA-256 of each `funding.json` and per-symbol bar-dir digests for all 20 candidates.
