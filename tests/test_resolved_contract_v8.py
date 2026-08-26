@@ -417,8 +417,13 @@ def test_committed_template_artifact_conformance():
     assert all(a <= b for a, b in zip(starts, starts[1:]))
     assert all(f["purge_days"] == 7 and f["embargo_days"] == 7
                for f in template["folds"])
-    # Final artifact MUST NOT exist yet: only freeze_final() may create it.
-    assert not (REPO / CONTRACT_RELPATH).exists()
+    # Pre-freeze stage: final artifact MUST NOT exist yet (only freeze_final()
+    # may create it). Post-sprint stage: the committed FINAL is historical
+    # launch evidence and must self-verify against its embedded contract hash.
+    final_path = REPO / CONTRACT_RELPATH
+    if final_path.exists():
+        frozen_final = json.loads(final_path.read_text(encoding="utf-8"))
+        verify_resolved_contract_v8(frozen_final)
 
 
 def test_template_builder_matches_committed_artifact_body():
