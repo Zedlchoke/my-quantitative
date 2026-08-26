@@ -616,10 +616,14 @@ def test_golden_vector_report_v8_artifact(golden):
         },
         "cli_resolution": {
             "signal_family_flag": "weekly_reversal",
+            # Keys are workspace-relative identifiers (tmp-root basename +
+            # path under it) so the committed artifact never embeds a
+            # machine-specific absolute temp path.
             "artifact_hashes_verify_clean": {
-                str(exp): verify_artifact_hashes(Path(exp)) == []
-                for exp in (str(exp7), str(golden["exp3"]),
-                            str(golden["expc"]))
+                f"{golden['root'].name}/"
+                f"{Path(exp).relative_to(golden['root']).as_posix()}":
+                    verify_artifact_hashes(Path(exp)) == []
+                for exp in (exp7, golden["exp3"], golden["expc"])
             },
             "registry_cell_result_recorded": True,
             "warmup_bars_ge_14_days": int(yaml.safe_load(
@@ -644,7 +648,15 @@ def test_golden_vector_report_v8_artifact(golden):
     assert report["cli_resolution"]["warmup_bars_ge_14_days"] is True
     assert report["reproduction"]["all_match"] is True
 
+    # Canonicalization guard: the committed report must stay free of
+    # machine-specific absolute pytest temp paths so it is byte-stable
+    # across runs in different temp roots.
+    text = json.dumps(report, indent=2, sort_keys=True, default=str)
+    assert str(golden["root"]) not in text
+    assert "pytest-of-" not in text
+    assert "/private/var/" not in text
+    for key in report["cli_resolution"]["artifact_hashes_verify_clean"]:
+        assert not key.startswith("/"), key
+
     GOLDEN_REPORT_RELPATH.parent.mkdir(parents=True, exist_ok=True)
-    GOLDEN_REPORT_RELPATH.write_text(
-        json.dumps(report, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8")
+    GOLDEN_REPORT_RELPATH.write_text(text + "\n", encoding="utf-8")
