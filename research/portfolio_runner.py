@@ -143,17 +143,38 @@ SYNTHETIC_PANEL_ENV = "PORTFOLIO_SYNTHETIC_PANEL"
 # --signal-family or --strategy-kind (whichever appears LAST wins).
 SIGNAL_FAMILY_ENV = "PORTFOLIO_SIGNAL_FAMILY"
 # V8P T13 (PLAN section 5): weekly Monday-cadence reversal family.
+# V9 (sprint V9, owner A3): three multi-family additions -- ts_trend,
+# residual_mr and vol_shock -- routed through the SAME weekly stamp
+# schedule + shared-capital engine path as weekly_reversal.
+V9_SIGNAL_FAMILIES = ("ts_trend", "residual_mr", "vol_shock")
 SIGNAL_FAMILY_CHOICES = ("none", "funding_carry", "funding_price_divergence",
-                         "weekly_reversal")
+                         "weekly_reversal") + V9_SIGNAL_FAMILIES
 STRATEGY_KIND_CHOICES = ("momentum", "funding_carry",
-                         "funding_price_divergence", "weekly_reversal")
+                         "funding_price_divergence",
+                         "weekly_reversal") + V9_SIGNAL_FAMILIES
 DIVERGENCE_DIAGNOSTICS_KEY = "_divergence_diagnostics"
 WEEKLY_DIAGNOSTICS_KEY = "_weekly_diagnostics"
+V9_DIAGNOSTICS_KEY = "_v9_diagnostics"
 # V8P T13: WMOM control selector for weekly_reversal (--control-momentum
 # sets it; workers inherit it; it is never deleted once inherited).
 CONTROL_MOMENTUM_ENV = "PORTFOLIO_CONTROL_MOMENTUM"
 WEEKLY_EMBARGO_DAYS = 7  # fold purge/embargo (PLAN section 5.1)
 WEEKLY_MIN_WARMUP_DAYS = 14  # PLAN section 5.1: warmup >= 14 days
+DAY_NS = 86_400_000_000_000
+# V9 family warmup floors: each new family's longest frozen lookback must
+# be covered by the pre-window panel (mirrors the weekly 14-day floor).
+V9_FAMILY_WARMUP_FLOORS = {
+    "ts_trend": 21,     # L=14 trailing closes + reference-leg margin
+    "residual_mr": 35,  # 30d beta window + 5d residual-momentum tail
+    "vol_shock": 28,    # 20d dollar-volume baseline + ref day + returns
+}
+# V9 negative-control experiment ids (--reverse semantics per family):
+#   XSECT-TSTREND-CTRL  inverted trend sign (long trend losers)
+#   XSECT-RESMR-CTRL    inverted residual z-sign
+#   XSECT-VOLSHK-CTRL   bottom-6-by-shock universe instead of top-6
+V9_MATRIX_ID = "v9_multifamily"
+V9_OUTPUT_ROOT = Path("results/portfolio_v9")
+V9_REGISTRY_SHARD_TEMPLATE = "results/registry/shards/v9_{trial_id}.jsonl"
 
 EXIT_LOCK_MISSING = 3
 EXIT_DEPENDENCY_MISSING = 4
@@ -168,6 +189,7 @@ PROVENANCE_GENERATIONS: dict[str, Path] = {
     "funding_price_divergence": Path("research/audits/v7p"),
     "funding_carry": Path("research/audits/v6p"),
     "weekly_reversal": Path("research/audits/v8p"),
+    **{family: Path("research/audits/v9p") for family in V9_SIGNAL_FAMILIES},
 }
 
 
@@ -266,15 +288,19 @@ def daily_rebalance_stamps(
 
 
 def effective_warmup_days(lookback_days: int) -> int:
-    """Warmup padding with the weekly-family floor applied (PLAN section 5.1).
+    """Warmup padding with family floors applied (PLAN sections 5.1/V9).
 
-    Default families keep ``lookback + 7`` days. When the active family is
-    ``weekly_reversal`` the warmup is floored at 14 days so every fold's
-    panel history covers the longest frozen formation lookback.
+    Default families keep ``lookback + 7`` days. ``weekly_reversal`` is
+    floored at 14 days; each V9 multi-family is floored at its own longest
+    frozen lookback (V9_FAMILY_WARMUP_FLOORS) so every fold's panel
+    history covers the family's data needs.
     """
     days = int(lookback_days) + WARMUP_PADDING_DAYS
-    if os.environ.get(SIGNAL_FAMILY_ENV, "").strip() == "weekly_reversal":
+    family = os.environ.get(SIGNAL_FAMILY_ENV, "").strip()
+    if family == "weekly_reversal":
         days = max(days, WEEKLY_MIN_WARMUP_DAYS)
+    elif family in V9_FAMILY_WARMUP_FLOORS:
+        days = max(days, V9_FAMILY_WARMUP_FLOORS[family])
     return days
 
 
@@ -516,7 +542,10 @@ def _default_engine_loader() -> dict[str, Callable]:
         return _ctw(**kwargs)
 
     def compute_target_weights_dispatch(**kwargs):
-        wrapped = _signal_family_dispatch(compute_target_weights, FUNDING_DIR)
+        wrapped = _signal_family_dispatch(
+            compute_target_weights, FUNDING_DIR,
+            volume_provider=_v9_catalog_volume_provider(CATALOG, _ns_to_iso),
+        )
         return wrapped(**kwargs)
 
     return {
@@ -667,12 +696,111 @@ def _weekly_diagnostics_row(
     }
 
 
-def _signal_family_dispatch(base_fn, funding_bundles_dir):
+def _v9_diagnostics_row(
+    *,
+    family: str,
+    signal_cutoff_ns: int,
+    params: Mapping[str, Any],
+    per_symbol: Mapping[str, Mapping[str, Any]],
+    result: Mapping[str, Any],
+) -> dict[str, Any]:
+    """DERIVED per-rebalance diagnostics row for the V9 multi-families.
+
+    Mirrors the weekly divergence/weekly rows: recomputed runner-side from
+    the SAME inputs the dispatched signal used, always labeled
+    ``derived_diagnostics=true`` and drained into
+    ``exp_dir/signal_diagnostics.jsonl`` by execute_experiment (attached on
+    SKIP rows too so the skip reason is always auditable).
+    """
+    cutoff_ns = int(signal_cutoff_ns)
+    status = str(result.get("status") or "SKIP_INCOMPLETE")
+    return {
+        "derived_diagnostics": True,
+        "family": family,
+        "rebalance_ts_utc": iso(datetime.fromtimestamp(
+            cutoff_ns / 1_000_000_000, tz=timezone.utc)),
+        "signal_cutoff_ns": cutoff_ns,
+        **{str(k): v for k, v in dict(params).items()},
+        "per_symbol": {
+            str(sym): {k: (None if v is None else
+                           (round(float(v), 12) if isinstance(v, (int, float))
+                            else v))
+                       for k, v in dict(row).items()}
+            for sym, row in dict(per_symbol).items()
+        },
+        "selected_longs": [[str(s), float(w)]
+                           for s, w in (result.get("longs") or [])],
+        "selected_shorts": [[str(s), float(w)]
+                            for s, w in (result.get("shorts") or [])],
+        "skipped_reason": (None if status == "OK"
+                           else str(result.get("reason_code") or status)),
+    }
+
+
+def _v9_volume_provider_from_bars(
+    bars_by_symbol: Mapping[str, Sequence[Sequence[float]]],
+) -> Callable[[Sequence[str], int, int], dict[str, list[tuple[int, float]]]]:
+    """Volume provider over in-memory bar tuples (synthetic-panel path)."""
+    from research.v9_vol_shock import aggregate_daily_dollar_volume
+
+    cache: dict[tuple, dict[str, list[tuple[int, float]]]] = {}
+
+    def provider(symbols, start_ns, end_ns):
+        key = (tuple(sorted(set(str(s) for s in symbols))),
+               int(start_ns), int(end_ns))
+        if key not in cache:
+            series: dict[str, list[tuple[int, float]]] = {}
+            for sym in key[0]:
+                bars = [row for row in (bars_by_symbol.get(sym) or [])
+                        if key[1] <= int(row[0]) <= key[2]]
+                series[sym] = aggregate_daily_dollar_volume(bars)
+            cache[key] = series
+        return cache[key]
+
+    return provider
+
+
+def _v9_catalog_volume_provider(
+    catalog_name: str,
+    ns_to_iso: Callable[[int], str],
+) -> Callable[[Sequence[str], int, int], dict[str, list[tuple[int, float]]]]:
+    """PIT-safe volume provider reading the live catalog (real data path)."""
+    from research.panel import load_bars_15m
+    from research.v9_vol_shock import aggregate_daily_dollar_volume
+
+    cache: dict[tuple, dict[str, list[tuple[int, float]]]] = {}
+
+    def provider(symbols, start_ns, end_ns):
+        key = (tuple(sorted(set(str(s) for s in symbols))),
+               int(start_ns), int(end_ns))
+        if key not in cache:
+            bars = load_bars_15m(catalog_name, list(key[0]),
+                                 ns_to_iso(key[1]), ns_to_iso(key[2]))
+            cache[key] = {
+                sym: aggregate_daily_dollar_volume(rows)
+                for sym, rows in bars.items()
+            }
+        return cache[key]
+
+    return provider
+
+
+def _signal_family_dispatch(
+    base_fn,
+    funding_bundles_dir,
+    *,
+    volume_provider: Callable[[Sequence[str], int, int],
+                              dict[str, list[tuple[int, float]]]] | None = None,
+):
     """PORTFOLIO_SIGNAL_FAMILY routes the rank call to an alternative frozen
     signal family (``funding_carry`` | ``funding_price_divergence`` |
-    ``weekly_reversal``); the default momentum behavior is returned
-    unchanged."""
+    ``weekly_reversal`` | V9 ``ts_trend`` / ``residual_mr`` / ``vol_shock``);
+    the default momentum behavior is returned unchanged."""
     family = os.environ.get(SIGNAL_FAMILY_ENV, "").strip()
+    if family and family not in SIGNAL_FAMILY_CHOICES:
+        # Fail-closed: an unknown inherited family must never silently run
+        # as momentum.
+        raise RunnerError(f"unknown PORTFOLIO_SIGNAL_FAMILY: {family!r}")
     if family == "funding_carry":
         from research.funding_carry import compute_target_weights_funding_carry as _fcf
     elif family == "funding_price_divergence":
@@ -685,11 +813,110 @@ def _signal_family_dispatch(base_fn, funding_bundles_dir):
         from research.weekly_reversal import (
             compute_target_weights_weekly_reversal as _wr,
         )
+    elif family == "ts_trend":
+        from research.v9_ts_trend import (
+            compute_targets as _v9_ts,
+            trend_scores as _v9_ts_scores,
+        )
+    elif family == "residual_mr":
+        from research.v9_residual_mr import (
+            compute_targets as _v9_res,
+            residual_z_scores as _v9_res_z,
+        )
+    elif family == "vol_shock":
+        from research.v9_vol_shock import (
+            compute_targets as _v9_vs,
+            shock_ratios as _v9_vs_shock,
+            three_day_returns as _v9_vs_ret,
+        )
     else:
         return base_fn
 
     def _control_momentum_active() -> bool:
         return os.environ.get(CONTROL_MOMENTUM_ENV, "").strip() == "1"
+
+    def _dispatch_v9(**kwargs):
+        closes = kwargs.get("daily_closes") or {}
+        traded = sorted(s for s in closes if s != BENCHMARK_SYMBOL)
+        cutoff_ns = int(kwargs["signal_cutoff_ns"])
+        reverse = bool(kwargs.get("reverse"))
+        if family == "ts_trend":
+            lookback = int(kwargs.get("lookback_days") or 14)
+            out = _v9_ts(
+                daily_closes=closes,
+                signal_cutoff_ns=cutoff_ns,
+                traded_symbols=traded,
+                lookback_days=lookback,
+                reverse=reverse,
+            )
+            scores = _v9_ts_scores(
+                daily_closes=closes,
+                signal_cutoff_ns=cutoff_ns,
+                traded_symbols=traded,
+                lookback_days=lookback,
+            )
+            per_symbol = {sym: {"trailing_return": scores[sym]}
+                          for sym in traded}
+            params = {"lookback_days": lookback}
+        elif family == "residual_mr":
+            out = _v9_res(
+                daily_closes=closes,
+                benchmark_closes=closes.get(BENCHMARK_SYMBOL) or [],
+                signal_cutoff_ns=cutoff_ns,
+                traded_symbols=traded,
+                reverse=reverse,
+            )
+            scores = _v9_res_z(
+                daily_closes=closes,
+                benchmark_closes=closes.get(BENCHMARK_SYMBOL) or [],
+                signal_cutoff_ns=cutoff_ns,
+                traded_symbols=traded,
+            )
+            per_symbol = {
+                sym: {"beta": row["beta"], "z": row["z"],
+                      "n_obs": row["n_obs"]}
+                for sym, row in scores.items()
+            }
+            params = {"beta_window_days": 30, "z_momentum_k": 5}
+        else:
+            volumes: dict[str, list[tuple[int, float]]] = {}
+            if volume_provider is not None and traded:
+                stamps = [int(t) for s in traded
+                          for t, _ in (closes.get(s) or [])]
+                if stamps:
+                    volumes = volume_provider(
+                        traded, min(stamps) - 60 * DAY_NS,
+                        max(stamps))
+            out = _v9_vs(
+                daily_closes=closes,
+                dollar_volume=volumes,
+                signal_cutoff_ns=cutoff_ns,
+                traded_symbols=traded,
+                reverse=reverse,
+            )
+            shocks = _v9_vs_shock(
+                dollar_volume={s: volumes.get(s) or []
+                               for s in traded},
+                signal_cutoff_ns=cutoff_ns,
+            )
+            rets = _v9_vs_ret(
+                daily_closes=closes,
+                signal_cutoff_ns=cutoff_ns,
+            )
+            per_symbol = {
+                sym: {"shock_ratio": shocks.get(sym),
+                      "return_3d": rets.get(sym)}
+                for sym in traded
+            }
+            params = {"shock_threshold": 1.5, "universe_top_n": 6}
+        out[V9_DIAGNOSTICS_KEY] = _v9_diagnostics_row(
+            family=family,
+            signal_cutoff_ns=cutoff_ns,
+            params=params,
+            per_symbol=per_symbol,
+            result=out,
+        )
+        return out
 
     def _dispatch(**kwargs):
         closes = kwargs.get("daily_closes") or {}
@@ -723,6 +950,8 @@ def _signal_family_dispatch(base_fn, funding_bundles_dir):
                 result=out,
             )
             return out
+        if family in V9_SIGNAL_FAMILIES:
+            return _dispatch_v9(**kwargs)
         out = _fpd(
             signal_cutoff_ns=int(kwargs["signal_cutoff_ns"]),
             price_lookback_days=int(kwargs.get("lookback_days") or 0),
@@ -971,7 +1200,10 @@ def load_synthetic_panel_engine(spec_path: str | Path) -> dict[str, Callable]:
         return result
 
     def compute_target_weights_dispatch(**kwargs):
-        wrapped = _signal_family_dispatch(compute_target_weights, funding_dir)
+        wrapped = _signal_family_dispatch(
+            compute_target_weights, funding_dir,
+            volume_provider=_v9_volume_provider_from_bars(bars_by_symbol),
+        )
         return wrapped(**kwargs)
 
     return {
@@ -1153,15 +1385,23 @@ def execute_experiment(
         run_shared_capital_backtest=engine["run_shared_capital_backtest"],
         compute_target_weights=engine["compute_target_weights"],
     )
+    # Fail-closed: an unknown inherited signal family aborts BEFORE any
+    # engine work (never silently degrades to momentum).
+    selected_family = os.environ.get(SIGNAL_FAMILY_ENV, "").strip()
+    if selected_family and selected_family not in SIGNAL_FAMILY_CHOICES:
+        raise RunnerError(
+            f"unknown PORTFOLIO_SIGNAL_FAMILY: {selected_family!r}")
     warmup_days = effective_warmup_days(lookback_days)
     panel_start = window_start - timedelta(days=warmup_days)
     symbols = [*traded_symbols, benchmark_symbol]
 
     # V8P T13: weekly family swaps the daily stamp grid for embargoed
     # Monday stamps (7-day fold purge/embargo; fold edges themselves are
-    # kept unchanged -- see _weekly_stamp_filter).
-    weekly_family = (
-        os.environ.get(SIGNAL_FAMILY_ENV, "").strip() == "weekly_reversal"
+    # kept unchanged -- see _weekly_stamp_filter). V9 sprint: the three
+    # multi-families ride the SAME Monday schedule + engine path.
+    weekly_schedule_family = (
+        selected_family == "weekly_reversal"
+        or selected_family in V9_SIGNAL_FAMILIES
     )
 
     panel = call.build_daily_panel(
@@ -1185,7 +1425,7 @@ def execute_experiment(
     # ONE rank loop over ALL folds -> ONE chronological target schedule.
     for index, (fold_start, fold_end) in enumerate(windows, start=1):
         fold_id = f"F{index}"
-        if weekly_family:
+        if weekly_schedule_family:
             stamps = _weekly_stamp_filter(fold_start, fold_end)
         else:
             stamps = daily_rebalance_stamps(fold_start, fold_end)
@@ -1207,6 +1447,9 @@ def execute_experiment(
             if diagnostics_row is not None:
                 all_signal_diagnostics.append(diagnostics_row)
             diagnostics_row = ranking.pop(WEEKLY_DIAGNOSTICS_KEY, None)
+            if diagnostics_row is not None:
+                all_signal_diagnostics.append(diagnostics_row)
+            diagnostics_row = ranking.pop(V9_DIAGNOSTICS_KEY, None)
             if diagnostics_row is not None:
                 all_signal_diagnostics.append(diagnostics_row)
             status = str(ranking.get("status") or "SKIP_INCOMPLETE")

@@ -48,6 +48,9 @@ def _provenance_exempt(repo: Path) -> set[str]:
         str(Path("research/audits/v7p") / ATTESTATION_FILENAME),
         str(Path("research/audits/v8p") / BASELINE_FILENAME),
         str(Path("research/audits/v8p") / ATTESTATION_FILENAME),
+        # V9 multi-family generation (ts_trend/residual_mr/vol_shock).
+        str(Path("research/audits/v9p") / BASELINE_FILENAME),
+        str(Path("research/audits/v9p") / ATTESTATION_FILENAME),
         # Coordinator journal/state mutate continuously by design; they carry
         # no strategy/data authority, so they cannot participate in the
         # launch-clean guarantee.
