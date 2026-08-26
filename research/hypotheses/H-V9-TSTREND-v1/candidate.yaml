@@ -1,0 +1,41 @@
+# H-V9-TSTREND-v1 - V9 time-series trend candidate spec (A1-frozen, pre-scoring).
+hypothesis_id: H-V9-TSTREND-v1
+family: time_series_trend
+stage: S0_EXPLORATORY
+owner_agent: A1
+mechanism_class: ts_momentum
+economic_mechanism: >
+  Per-symbol persistence of medium-horizon returns: altcoins exhibit
+  multi-week drift as positioning/attention accumulates. Counterparty:
+  discretionary traders fading established trends without risk limits.
+expected_regimes: trending low-noise regimes reward; choppy mean-reverting regimes punish.
+invalidating_regimes: high churn / reversal-dominated tape (as measured in V8).
+signal_clock: monday_00_00_utc_completed_bars_only
+direction_rule: >
+  LONG symbols with trailing return > dead_zone; SHORT if < -dead_zone;
+  FLAT otherwise. Equal-weight sides to gross 0.80 (0.40/side when two-sided).
+universe:
+  traded_symbols: [ETHUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, ENAUSDT, SUIUSDT,
+                   1000PEPEUSDT, ADAUSDT, BNBUSDT, LINKUSDT]
+  benchmark_symbol: BTCUSDT
+  benchmark_role: measurement_only
+  universe_policy: fixed_before_run_no_pnl_changes
+data_window:
+  scope: common_completed_bar_window_from_v9_universe_audit
+parameters_frozen:
+  variants:
+    - {id: XSECT-TSTREND-L14, lookback_days: 14}
+    - {id: XSECT-TSTREND-L28, lookback_days: 28}
+  negative_control: {id: XSECT-TSTREND-CTRL, lookback_days: 14, note: sign-inverted (--reverse)}
+  dead_zone: 0.0
+execution:
+  fill_event: next_completed_15m_event
+  slippage: one_tick_adverse
+  fee_rate: 0.0005
+  funding_accounting: native
+split:
+  folds: chronological_3fold
+  purge_embargo_days: 7
+  warmup_days_min: 21
+allowed_outcomes: [V9_REJECTED_CANDIDATE, STAGE_A_PASS_EXPLORATORY, LOCK_FOR_FUTURE_S1]
+forbidden_labels: [EDGE_CONFIRMED, PRODUCTION_READY, LIVE_READY]
