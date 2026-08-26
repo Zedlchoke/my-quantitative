@@ -1,21 +1,33 @@
-# CONTINUE.md — V9 CLOSED (2026-08-26)
+# CONTINUE.md — START V9H, THEN CONDITIONALLY V10
 
-V9 multi-family sprint **ĐÓNG**: terminal verdict `V9_REJECT_ALL_MULTI_FAMILY`. A7 terminal PASS, 0 unresolved high/critical. Repro 5/5 all-match. Budget 5/5 đúng freeze (cap 9). F2 residual_mr bị archive NOT_RUN bởi orthogonality gate (0.676>0.50) — không tiêu budget.
+## Current authority
 
-## Kết quả chính
+- `main == origin/main == 425843d` when this plan was created.
+- V9 closed: `V9_REJECT_ALL_MULTI_FAMILY`.
+- A7 terminal PASS, zero unresolved HIGH/CRITICAL.
+- Five frozen trials; reproduction 5/5 `all_match`; active workers=0.
+- No candidate locked. S1 untouched; paper/testnet/live disabled.
 
-- TSTREND-L28: PF 1.107, +6,686, MDD 6.1% — gần đạt Stage-A floor nhất nhưng FAIL stress drop-one (ENAUSDT dependency) + FG3 adjacency → REJECTED. Ghi nhận làm đầu vào prereg tương lai, KHÔNG phải cơ sở tuning.
-- TSTREND-L14: PF 1.048, +3,965 — PF<1.10, fold âm.
-- VOLSHK-S15: PF 0.735, −9,258 — fail rộng.
-- Controls: đúng vai trò (TSTREND-CTRL thua nặng; VOLSHK-CTRL lãi nhẹ nhưng breach concentration).
-- Equity: `V8X_EQUITY_NOT_STARTED_PROVIDER_AND_SPEC_BLOCKED`.
+## Preservation warning
 
-## Next safe action
+Do **not** remove V9 execution worktrees. Ignored raw evidence is mainly under:
 
-1. Owner review merge `orca/v9r-integration` → main.
-2. Sprint mới (nếu có): prereg mechanism mới hoàn toàn; nếu quay lại trend-family phải thiết kế stress-robust-by-construction và prereg từ đầu.
-3. Toàn bộ evidence: `research/audits/v9p/master_report_v9.json`, `research/control/v9_multifamily_run/`.
+- `/Users/hoangminhlong/my-quantitative-v9-wt/exec-v9-r1/results/`
+- `/Users/hoangminhlong/my-quantitative-v9-wt/exec-v9-r2/results/`
 
-## Hard prohibitions (vẫn hiệu lực)
+First execute `PLAN.md` Phase 0: content-addressed archive, hash manifest and
+independent restore verification. Cleanup is not authorized.
 
-No S1/paper/live/orders · no tuning from PnL · no rescue of rejected families · no push without owner request.
+## Next action
+
+1. A1 freezes a clean bootstrap and creates the V10 worktree manifest.
+2. Dispatch Wave H1 in separate worktrees.
+3. Preserve V9 and harden controller/reproduction/resource behavior.
+4. Complete V9H gates and obtain independent A7 PASS.
+5. Only then run proposal/novelty selection and conditionally open V10.
+
+## Standing prohibitions
+
+No V9-family rescue or PnL-driven tuning; no score before V9H+A7; no S1; no
+equity score; no paper/testnet/live/order; no push; no worktree deletion without
+separate owner approval.
