@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "artifact": "v9p_p07_no_rescue_check",
+  "created_at_utc": "2026-08-26T03:51:44Z",
+  "role": "A6-support LEDGER+NOVELTY compiler, sprint V9, worktree a6-family3-ledger @ bootstrap 99afc59",
+  "companion_artifacts": [
+    "research/audits/v9p/global_trial_ledger.json",
+    "research/audits/v9p/novelty_assessment_inputs.md"
+  ],
+  "proposed_families": [
+    {
+      "id": "F1_ts_trend",
+      "hypothesis_ref": "PROPOSED-V9-F1-ts_trend (not yet in catalog)",
+      "mechanism_class": "xsec_momentum",
+      "mechanism_class_note": "closest enum: time-series trend continuation; per-symbol sign-of-own-trailing-return, NOT cross-sectional ranking",
+      "description": "Per-symbol time-series trend continuation: direction = sign of own trailing return."
+    },
+    {
+      "id": "F2_residual_mr",
+      "hypothesis_ref": "PROPOSED-V9-F2-residual_mr (not yet in catalog)",
+      "mechanism_class": "other",
+      "mechanism_class_note": "market-neutral relative value: short-horizon mean reversion on BTC-residualized alt returns",
+      "description": "Mean reversion on BTC-residualized alt returns (idiosyncratic relative value)."
+    },
+    {
+      "id": "F3_vol_shock",
+      "hypothesis_ref": "PROPOSED-V9-F3-vol_shock (not yet in catalog)",
+      "mechanism_class": "vol_compression_breakout",
+      "mechanism_class_note": "closest enum: liquidity-conditioned continuation; volume-shock selection variable, no price-range trigger",
+      "description": "Volume-shock-conditioned short-horizon continuation among shocked names (liquidity conditioning)."
+    }
+  ],
+  "forbidden_list": [
+    {
+      "id": "weekly_reversal_V8",
+      "family_ref": "FAM-V8-WEEKLY_XSEC_REVERSAL / H-XSECT-REVERSAL-v2",
+      "sprint_era": "V8R",
+      "terminal_label": "V8_REJECT_ALL_CANDIDATE",
+      "mechanism_class": "xsec_reversal"
+    },
+    {
+      "id": "funding_carry_V6",
+      "family_ref": "FAM-V6-XSECT_FUNDING_CARRY / H-XSECT-FUNDING-CARRY-v1",
+      "sprint_era": "V6",
+      "terminal_label": "V6P_PASS_V6_CANDIDATE_FAIL",
+      "mechanism_class": "funding_carry"
+    },
+    {
+      "id": "funding_crowding_MR",
+      "family_ref": "FAM-V2-FUNDCROWD_MR / H-FUNDCROWD-MR-v2",
+      "sprint_era": "V2/V3",
+      "terminal_label": "V3_SURVIVORS_NOT_LOCKED_FAMILY_REJECTED",
+      "mechanism_class": "mr_funding_crowding"
+    },
+    {
+      "id": "volatility_compression_breakout",
+      "family_ref": "FAM-V1-VOLCOMP_GRID / H-VOLCOMP-BRKOUT-v1",
+      "sprint_era": "V1(+V2 reruns)",
+      "terminal_label": "REJECT_REDESIGN_CANDIDATE_FAIL_ALL",
+      "mechanism_class": "vol_compression_breakout"
+    },
+    {
+      "id": "funding_price_divergence_V7",
+      "family_ref": "FAM-V7-XSECT_FUND_PRICE_DIVERGENCE / H-XSECT-FUNDING-PRICE-DIVERGENCE-v1",
+      "sprint_era": "V7",
+      "terminal_label": "V7_REJECT_ALL_CANDIDATE",
+      "mechanism_class": "funding_divergence"
+    }
+  ],
+  "pairwise_checks": [
+    {
+      "proposed": "F1_ts_trend",
+      "forbidden": "weekly_reversal_V8",
+      "shared_information_source": "trailing own returns (both consume past returns)",
+      "mechanism_difference_statement": "Time-series own-sign continuation vs cross-sectional loser/winner rank reversal: opposite directional bet AND different construction class (no pairing, no relative rank; book may be net-long).",
+      "overlap_risk": "MEDIUM",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": [
+        "spec clause forbidding any cross-sectional rank term",
+        "scoring-time equity-curve correlation report vs archived XSECT-WREV/XSECT-MOM"
+      ]
+    },
+    {
+      "proposed": "F1_ts_trend",
+      "forbidden": "funding_carry_V6",
+      "shared_information_source": "none",
+      "mechanism_difference_statement": "F1 uses only per-symbol trailing price returns; carry ranks purely on trailing settled funding with no price-formation term.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F1_ts_trend",
+      "forbidden": "funding_crowding_MR",
+      "shared_information_source": "none",
+      "mechanism_difference_statement": "Fundcrowd is single-symbol reclaim-MR bar-pattern entries gated by funding-percentile skip rule on 15m bars; F1 is continuous own-return positioning with no funding observable and no pattern trigger.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F1_ts_trend",
+      "forbidden": "volatility_compression_breakout",
+      "shared_information_source": "none beyond both being directional",
+      "mechanism_difference_statement": "VOLCOMP is squeeze->Donchian breakout entry pattern with volume-burst confirmation, single-symbol long-only; F1 has no volatility/volume conditioning and no discrete entry pattern.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F1_ts_trend",
+      "forbidden": "funding_price_divergence_V7",
+      "shared_information_source": "trailing price returns (one of two V7 terms)",
+      "mechanism_difference_statement": "V7 is a two-term percentile spread (price-return percentile MINUS funding percentile) whose long side can buy relative strength; F1 is a single-term own-return sign rule with no funding term and no percentile spread.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F2_residual_mr",
+      "forbidden": "weekly_reversal_V8",
+      "shared_information_source": "short-horizon alt returns (raw for WREV; BTC-residualized for F2)",
+      "mechanism_difference_statement": "Both are short-horizon loser-winner reversion among alts; F2 trades the idiosyncratic BTC-residualized component rather than raw-return ranks. Because BTC dominates common alt variance, residuals can approximate affine transforms of raw short-horizon returns - exactly the region where WREV was falsified (all lookbacks negative PnL).",
+      "overlap_risk": "HIGH",
+      "rescue_verdict": "CONDITIONAL_NOT_A_RESCUE_ONLY_IF_ORTHOGONALITY_GATE_PASSES",
+      "required_safeguards": [
+        "pre-launch orthogonality gate frozen before any scored run: rank correlation between residual-reversal and raw-reversal position sets below frozen threshold on pre-freeze data, else AUTO_ARCHIVE",
+        "horizon justified independently of the dead WREV 3D/7D/14D chain",
+        "explicit economic-mechanism statement (idiosyncratic inventory/liquidity-provider reversion) that raw reversal does not capture",
+        "gate failure => classify as rescue attempt of weekly_reversal_V8 and archive without consuming budget"
+      ]
+    },
+    {
+      "proposed": "F2_residual_mr",
+      "forbidden": "funding_carry_V6",
+      "shared_information_source": "none",
+      "mechanism_difference_statement": "Carry orders on trailing settled funding alone; F2 orders on residualized price reversion. No shared ordering variable.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": ["keep zero funding terms in spec"]
+    },
+    {
+      "proposed": "F2_residual_mr",
+      "forbidden": "funding_crowding_MR",
+      "shared_information_source": "mean-reversion posture only",
+      "mechanism_difference_statement": "Fundcrowd gates individual single-symbol reclaim-MR entries by point-in-time funding percentile; F2 builds market-neutral residual-RV positions from cross-symbol residuals with no funding gate and no bar-pattern entry.",
+      "overlap_risk": "MEDIUM",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": [
+        "no funding observable anywhere in F2 spec",
+        "delta statement vs single-symbol MR lineage (H-EXISTING-mean_reversion-v1)"
+      ]
+    },
+    {
+      "proposed": "F2_residual_mr",
+      "forbidden": "volatility_compression_breakout",
+      "shared_information_source": "none",
+      "mechanism_difference_statement": "VOLCOMP trades upside breakout continuations after price-range compression; F2 trades reversion of idiosyncratic moves - opposite post-move hypothesis, different signal variable.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F2_residual_mr",
+      "forbidden": "funding_price_divergence_V7",
+      "shared_information_source": "alt price returns (V7 additionally uses funding)",
+      "mechanism_difference_statement": "V7 score is a two-term percentile spread mixing price momentum against funding (can long strength); F2 is pure residual mean reversion with no funding term and no percentile spread.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F3_vol_shock",
+      "forbidden": "weekly_reversal_V8",
+      "shared_information_source": "none (volume vs raw-return ranks); direction opposite to reversal",
+      "mechanism_difference_statement": "WREV bets on cross-sectional reversal of raw-return ranks with no volume observable; F3 selects names by volume-shock outliers and bets continuation. Different selection variable, opposite post-move hypothesis.",
+      "overlap_risk": "LOW_MEDIUM",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F3_vol_shock",
+      "forbidden": "funding_carry_V6",
+      "shared_information_source": "none",
+      "mechanism_difference_statement": "Carry is funding-only ordering; F3 is volume-event-conditioned continuation. Disjoint observables.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F3_vol_shock",
+      "forbidden": "funding_crowding_MR",
+      "shared_information_source": "event-gated entries (structural analogy only)",
+      "mechanism_difference_statement": "Fundcrowd's gate is a funding-percentile skip-rule on reclaim entries; F3's gate is a volume-statistic outlier. Different conditioning observable and different trade hypothesis (continuation vs reclaim-MR).",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    },
+    {
+      "proposed": "F3_vol_shock",
+      "forbidden": "volatility_compression_breakout",
+      "shared_information_source": "activity/volume observables + post-event continuation bet",
+      "mechanism_difference_statement": "VOLCOMP triggers on price-range squeeze -> Donchian breakout with volume-burst confirmation, single-symbol long-only; F3 must select names via frozen pure volume-outlier statistic and trade short-horizon continuation (two-sided allowed), with NO squeeze/Donchian/price-range precondition. If implementation collapses to breakout-on-volume it IS the rejected family.",
+      "overlap_risk": "MEDIUM_HIGH",
+      "rescue_verdict": "CONDITIONAL_NOT_A_RESCUE_IF_SHOCK_DEFINITION_IS_PURE_VOLUME_OUTLIER",
+      "required_safeguards": [
+        "shock defined solely by frozen volume z-score/outlier rule; forbid Donchian/squeeze/price-range preconditions in spec bytes",
+        "two-sided continuation permitted (unlike long-only breakout) to keep hypothesis distinct",
+        "scoring-time position-overlap report vs archived VOLCOMP grid entries; collapse => family ruled duplicate"
+      ]
+    },
+    {
+      "proposed": "F3_vol_shock",
+      "forbidden": "funding_price_divergence_V7",
+      "shared_information_source": "none",
+      "mechanism_difference_statement": "V7 mixes price-return and funding percentiles on a daily clock; F3 conditions on volume shocks only. Disjoint signal variables.",
+      "overlap_risk": "LOW",
+      "rescue_verdict": "NOT_A_RESCUE",
+      "required_safeguards": []
+    }
+  ],
+  "additional_context_pairs": [
+    {
+      "proposed": "F1_ts_trend / F3_vol_shock",
+      "forbidden_like_reference": "xsec_momentum_V4 (H-XSECT-MOM-v1, context: V4_REJECTED_PIPELINE_PASS_CANDIDATE_FAIL, not on forbidden list)",
+      "note": "Continuation lineage shared with V4 momentum; V4 died on risk construction (gross drift >1.0 intraperiod, MDD 24-37%, fold concentration), not mechanism absence. Any continuation family must pre-register binding exposure clamps and MDD gates addressing exactly those failure modes."
+    }
+  ],
+  "breadth_prereg_ruling": {
+    "subject": "H-XSECT-REVERSAL-BREADTH-CRYPTO-v1 (and -EQUITY twin)",
+    "recommendation": "ARCHIVE_NOT_RUN",
+    "reasoning": "Same mechanism_class (xsec_reversal), same signal construction and clock as weekly_reversal_V8 which is now terminal-rejected (valid V8 terminal exists: V8_REJECT_ALL_CANDIDATE). Top-10-by-volume universe heavily overlaps the rejected six-alt set; universe/span swap after in-family falsification is rescue-shaped regardless of exploratory ceiling. Exploratory cap removes any promotion payoff that could offset budget spend. Archive preserves prereg integrity (archive != breach); revisit reversal only via a new mechanism-class hypothesis (cf. F2 conditional orthogonality route).",
+    "prereg_integrity": "INTACT_FROZEN_UNRUN (v8x_spec_freeze.json hashes unchanged)"
+  },
+  "summary_counts": {
+    "pairs_total": 15,
+    "not_a_rescue": 11,
+    "conditional": 2,
+    "high_overlap_pairs": 1,
+    "denominator_N_unique_scored_trials": 112
+  }
+}
