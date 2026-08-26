@@ -27,6 +27,20 @@ only and is excluded from ranks, weights and PnL.
 
 Data label: ``S0_ALREADY_INSPECTED`` (this is inspected in-sample data, not
 untouched OOS).
+
+Held-exposure proof (V8 sprint blocker B2): the funding bundle starts
+~41.25h after the measured common-window start, so settlement coverage of
+calendar time alone cannot clear T12. This audit additionally derives, per
+symbol, the EARLIEST contract-compliant HELD-EXPOSURE instant from the frozen
+weekly-engine semantics (PLAN §5.1 / ``candidate.yaml``: Monday 00:00 UTC
+cutoff on completed bars, warmup >= 14 days, formation lookbacks exactly
+{3, 7, 14} days, fill at the NEXT completed 15m event after the cutoff,
+all-six eligibility, native funding accounting, terminal liquidation at the
+scored-window end) and proves funding settlements are COMPLETE from that
+instant through final liquidation. Any missing settlement overlapping
+held-exposure time flips the gate to ``T12_FAIL_FUNDING_COVERAGE``;
+zero overlaps yields ``T12_PASS_HELD_EXPOSURE_PROOF``. Windows/thresholds
+are NOT trimmed to dodge the question.
 """
 
 from __future__ import annotations
@@ -82,6 +96,43 @@ GATE_RULE_TEXT = (
     "timestamps present. Non-required warnings do not flip the gate. "
     "Endpoints are measured from data and are NOT trimmed to dodge gaps."
 )
+
+# --------------------------------------------------------------------------- #
+# Held-exposure proof constants (blocker B2) — frozen weekly-engine semantics
+# --------------------------------------------------------------------------- #
+WARMUP_MIN_DAYS = 14                     # candidate.yaml split.warmup_days_min
+TRIAL_LOOKBACK_DAYS = (3, 7, 14)         # candidate.yaml formation_lookbacks_days
+NS_PER_DAY = 86_400_000_000_000
+FUNDING_SLOT_TOLERANCE_MS = 120_000      # ±2min match tolerance around cadence slots
+VERDICT_HELD_EXPOSURE_PASS = "T12_PASS_HELD_EXPOSURE_PROOF"
+VERDICT_HELD_EXPOSURE_FAIL = "T12_FAIL_FUNDING_COVERAGE"
+STATUS_HELD_EXPOSURE_FAIL = "FAIL_HELD_EXPOSURE_FUNDING_COVERAGE"
+HELD_EXPOSURE_METHOD_TEXT = (
+    "Earliest contract-compliant held exposure per symbol: readiness = "
+    "MEASURED common-window start + max(warmup_min=14d, lookback) days "
+    "(PLAN §5.1 warmup >= 14d binds for all frozen lookbacks 3/7/14D); "
+    "signal cutoff = first Monday 00:00:00Z UTC at/after readiness; first "
+    "possible fill = first COMPLETED 15m bar ts_event strictly AFTER the "
+    "cutoff (signal/execution events separated); held exposure spans from "
+    "that fill to terminal liquidation taken at the scored-window END (the "
+    "widest possible held region — a stricter coverage test than any earlier "
+    "final rebalance). All-six eligibility, purge/embargo and fold structure "
+    "can only DELAY the first fill further, so this bound dominates every "
+    "compliant execution of the frozen engine. Funding completeness is then "
+    "required on [first fill, window end]: every modal-cadence slot anchored "
+    "at the first published settlement must be present within ±2min; ANY "
+    "missing slot inside that span overlaps held exposure -> "
+    "T12_FAIL_FUNDING_COVERAGE. No window/threshold trimming anywhere."
+)
+SCHEDULE_SEMANTICS_SOURCES = [
+    "PLAN.md §5.1 (T13 frozen behavior: Monday 00:00 UTC cutoff, completed bars)",
+    "PLAN.md §5.1 (fill at next completed 15m event; signal/execution split)",
+    "research/hypotheses/H-XSECT-REVERSAL-v2/candidate.yaml "
+    "(formation_lookbacks_days [3,7,14]; split.warmup_days_min 14; "
+    "eligibility all_six; execution funding_accounting native)",
+    "research/weekly_reversal.py NOT PRESENT in worktree at audit time -> "
+    "schedule derived from frozen contract documents above",
+]
 
 
 # --------------------------------------------------------------------------- #
@@ -257,6 +308,21 @@ def intersection_endpoints(
     return max(starts), min(ends)
 
 
+def quantize_settlement_ms(times_ms: list[int]) -> list[int]:
+    quantum = FUNDING_STAMP_QUANTUM_MS
+    return sorted({(int(t) + quantum // 2) // quantum * quantum for t in times_ms})
+
+
+def _modal_settlement_interval_ms(quantized: list[int]) -> float:
+    diffs = [b - a for a, b in zip(quantized, quantized[1:])]
+    if not diffs:
+        return float(DEFAULT_FUNDING_INTERVAL_MS)
+    counts: dict[int, int] = {}
+    for d in diffs:
+        counts[d] = counts.get(d, 0) + 1
+    return float(max(counts.items(), key=lambda kv: kv[1])[0])
+
+
 def funding_stats_for_window(
     payload: dict,
     window_start_ms: int,
@@ -281,16 +347,8 @@ def funding_stats_for_window(
     all_times = sorted(int(row["fundingTime"]) for row in payload.get("rows", []))
     if not all_times:
         return base
-    quantum = FUNDING_STAMP_QUANTUM_MS
-    quantized = [(t + quantum // 2) // quantum * quantum for t in all_times]
-    diffs = [b - a for a, b in zip(quantized, quantized[1:])]
-    if diffs:
-        counts: dict[int, int] = {}
-        for d in diffs:
-            counts[d] = counts.get(d, 0) + 1
-        interval_ms = float(max(counts.items(), key=lambda kv: kv[1])[0])
-    else:
-        interval_ms = float(DEFAULT_FUNDING_INTERVAL_MS)
+    quantized = quantize_settlement_ms(all_times)
+    interval_ms = _modal_settlement_interval_ms(quantized)
     in_window = [t for t in quantized if window_start_ms <= t <= window_end_ms]
     anchor = quantized[0]
 
@@ -358,6 +416,249 @@ def evaluate_materiality(
     if duplicate_timestamps > 0:
         reasons.append("duplicate_timestamps_present")
     return bool(reasons), reasons
+
+
+# --------------------------------------------------------------------------- #
+# Held-exposure proof (blocker B2)
+# --------------------------------------------------------------------------- #
+def next_monday_0000_utc_ns(at_or_after_ns: int) -> int:
+    """First Monday 00:00:00.000000000Z at/after the given ns instant.
+
+    Epoch day 0 (1970-01-01) was a Thursday; Monday-based weekday index is
+    ``(epoch_days + 3) % 7``. Handles month/year boundaries by construction.
+    """
+    epoch_days = int(at_or_after_ns) // NS_PER_DAY
+    offset = (7 - ((epoch_days + 3) % 7)) % 7
+    candidate = (epoch_days + offset) * NS_PER_DAY
+    if candidate < at_or_after_ns:
+        candidate += 7 * NS_PER_DAY
+    return candidate
+
+
+def first_completed_event_after(
+    stamps_sorted: list[int], cutoff_ns: int
+) -> int | None:
+    """First completed-bar ts_event strictly AFTER the signal cutoff."""
+    from bisect import bisect_right
+
+    idx = bisect_right(stamps_sorted, cutoff_ns)
+    return stamps_sorted[idx] if idx < len(stamps_sorted) else None
+
+
+def funding_missing_events_in_span(
+    settlement_times_ms: list[int],
+    span_start_ms: int,
+    span_end_ms: int,
+    cadence_ms: float | None = None,
+    tolerance_ms: int = FUNDING_SLOT_TOLERANCE_MS,
+) -> tuple[list[dict[str, object]], dict[str, object]]:
+    """Enumerate modal-cadence slots in [span_start, span_end] with no stamp.
+
+    Slots are anchored at the FIRST published settlement (same convention as
+    ``expected_cadence_method``). A slot is covered iff some minute-quantized
+    settlement stamp lies within ±tolerance_ms of it. Returns the missing
+    events plus coverage stats; empty input yields a single synthetic missing
+    event covering the whole span (fail-closed).
+    """
+    times = sorted(int(t) for t in settlement_times_ms)
+    if not times:
+        stats: dict[str, object] = {
+            "cadence_hours": None,
+            "slots_expected": 1,
+            "settlements_present": 0,
+            "first_settlement_utc": None,
+            "last_settlement_utc": None,
+        }
+        events = [
+            {
+                "slot_utc": ns_to_iso(span_start_ms * NS_PER_MS),
+                "reason": "funding_bundle_empty",
+                "nearest_settlement_utc": None,
+            }
+        ]
+        return events, stats
+    quantized = quantize_settlement_ms(times)
+    interval = (
+        float(cadence_ms) if cadence_ms is not None and cadence_ms > 0
+        else _modal_settlement_interval_ms(quantized)
+    )
+    anchor = quantized[0]
+    k_lo = 0
+    if anchor < span_start_ms:
+        k_lo = int(-(-(span_start_ms - anchor) // interval))
+    slots: list[int] = []
+    k = k_lo
+    while True:
+        slot = int(round(anchor + k * interval))
+        if slot > span_end_ms:
+            break
+        if slot >= span_start_ms:
+            slots.append(slot)
+        k += 1
+    present = 0
+    missing: list[dict[str, object]] = []
+    for slot in slots:
+        nearest = min(quantized, key=lambda q: abs(q - slot))
+        if abs(nearest - slot) <= tolerance_ms:
+            present += 1
+        else:
+            missing.append(
+                {
+                    "slot_utc": ns_to_iso(slot * NS_PER_MS),
+                    "reason": "no_published_settlement_within_tolerance",
+                    "nearest_settlement_utc": ns_to_iso(nearest * NS_PER_MS),
+                    "deviation_minutes": round(abs(nearest - slot) / 60_000, 3),
+                }
+            )
+    stats = {
+        "cadence_hours": round(interval / 3_600_000, 4),
+        "slots_expected": len(slots),
+        "settlements_present": present,
+        "first_settlement_utc": ns_to_iso(quantized[0] * NS_PER_MS),
+        "last_settlement_utc": ns_to_iso(quantized[-1] * NS_PER_MS),
+    }
+    return missing, stats
+
+
+def evaluate_held_exposure_funding_proof(
+    *,
+    common_start_ns: int,
+    common_end_ns: int,
+    bar_stamps: list[int],
+    settlement_times_ms: list[int],
+    warmup_days: int = WARMUP_MIN_DAYS,
+    lookback_days: tuple[int, ...] = TRIAL_LOOKBACK_DAYS,
+    role: str = "required",
+) -> dict[str, object]:
+    """Machine-readable per-symbol proof that funding gaps never hit HELD time.
+
+    Derives the earliest contract-compliant fill (see
+    ``HELD_EXPOSURE_METHOD_TEXT``), then requires complete funding settlement
+    coverage on [first possible fill, scored-window end]. Verdict is
+    ``T12_PASS_HELD_EXPOSURE_PROOF`` or ``T12_FAIL_FUNDING_COVERAGE``;
+    fail-closed on absent bars or empty bundles.
+    """
+    stamps = sorted(int(s) for s in bar_stamps)
+    proof: dict[str, object] = {
+        "role": role,
+        "traded": role != "benchmark_context_only",
+        "method": HELD_EXPOSURE_METHOD_TEXT,
+        "verdict": VERDICT_HELD_EXPOSURE_FAIL,
+        "reasons": [],
+        "readiness": None,
+        "signal_cutoff_utc": None,
+        "per_trial_first_fill_utc": {},
+        "held_exposure_start_utc": None,
+        "held_exposure_end_utc": ns_to_iso(common_end_ns),
+        "funding_coverage_over_held_span": None,
+        "head_shortfall": None,
+        "margin_hours_funding_precedes_held": None,
+        "overlap_with_held_exposure": {"count": 0, "events": []},
+    }
+    if not stamps:
+        proof["reasons"] = ["bars_absent_no_fill_possible"]
+        return proof
+
+    per_trial: dict[str, str | None] = {}
+    earliest_fill: int | None = None
+    ready_ns = None
+    cutoff_ns = None
+    for lookback in lookback_days:
+        required_history_days = max(warmup_days, lookback)
+        trial_ready = common_start_ns + required_history_days * NS_PER_DAY
+        trial_cutoff = next_monday_0000_utc_ns(trial_ready)
+        trial_fill = first_completed_event_after(stamps, trial_cutoff)
+        per_trial[f"{lookback}D"] = (
+            ns_to_iso(trial_fill) if trial_fill is not None else None
+        )
+        if trial_fill is not None and (earliest_fill is None or trial_fill < earliest_fill):
+            earliest_fill = trial_fill
+        if ready_ns is None or trial_ready < ready_ns:
+            ready_ns, cutoff_ns = trial_ready, trial_cutoff
+    proof["readiness"] = {
+        "required_history_days_max": max(warmup_days, max(lookback_days)),
+        "warmup_min_days": warmup_days,
+        "ready_at_utc": ns_to_iso(ready_ns),  # type: ignore[arg-type]
+    }
+    proof["signal_cutoff_utc"] = ns_to_iso(cutoff_ns)  # type: ignore[arg-type]
+    proof["per_trial_first_fill_utc"] = per_trial
+    if earliest_fill is None:
+        proof["reasons"] = ["no_completed_bar_after_first_viable_cutoff"]
+        return proof
+
+    held_start_ms = earliest_fill // NS_PER_MS
+    held_end_ms = common_end_ns // NS_PER_MS
+    proof["held_exposure_start_utc"] = ns_to_iso(earliest_fill)
+
+    if not settlement_times_ms:
+        proof["reasons"] = ["funding_bundle_empty"]
+        proof["overlap_with_held_exposure"] = {
+            "count": 1,
+            "events": [
+                {"slot_utc": ns_to_iso(earliest_fill), "reason": "funding_bundle_empty"}
+            ],
+        }
+        return proof
+
+    missing_events, cov_stats = funding_missing_events_in_span(
+        settlement_times_ms, held_start_ms, held_end_ms
+    )
+    proof["funding_coverage_over_held_span"] = {
+        **cov_stats,
+        "span_start_utc": ns_to_iso(earliest_fill),
+        "span_end_utc": ns_to_iso(common_end_ns),
+        "missing_slots": len(missing_events),
+        "missing_events_truncated_to_50": missing_events[:50],
+    }
+    quantized = quantize_settlement_ms([int(t) for t in settlement_times_ms])
+    first_settlement_ms = quantized[0]
+    margin_h = (held_start_ms - first_settlement_ms) / 3.6e6
+    proof["margin_hours_funding_precedes_held"] = round(margin_h, 6)
+    head_overlap = (max(common_start_ns // NS_PER_MS, held_start_ms) < min(first_settlement_ms, held_end_ms))
+    proof["head_shortfall"] = {
+        "uncovered_interval_utc": [
+            ns_to_iso(common_start_ns),
+            ns_to_iso(first_settlement_ms * NS_PER_MS),
+        ]
+        if first_settlement_ms * NS_PER_MS > common_start_ns
+        else [],
+        "overlaps_held_exposure": bool(head_overlap),
+    }
+
+    reasons: list[str] = []
+    if missing_events:
+        reasons.append("missing_funding_settlement_inside_held_exposure_span")
+    if head_overlap:
+        reasons.append("funding_head_shortfall_overlaps_held_exposure")
+    proof["reasons"] = reasons
+    proof["overlap_with_held_exposure"] = {
+        "count": len(missing_events) + (1 if head_overlap else 0),
+        "events": missing_events[:50],
+    }
+    proof["verdict"] = (
+        VERDICT_HELD_EXPOSURE_FAIL if reasons else VERDICT_HELD_EXPOSURE_PASS
+    )
+    return proof
+
+
+def summarize_held_exposure_gate(
+    proofs_by_symbol: dict[str, dict],
+    required_symbols: tuple[str, ...],
+) -> tuple[str, str, list[str]]:
+    """Assemble the gate-level verdict from per-symbol proofs.
+
+    Benchmark/context symbols can NEVER flip the gate (they are not traded);
+    any required symbol with ``T12_FAIL_FUNDING_COVERAGE`` flips it. Returns
+    ``(verdict, status, failing_required_symbols)``.
+    """
+    failing = sorted(
+        sym
+        for sym in required_symbols
+        if proofs_by_symbol.get(sym, {}).get("verdict") == VERDICT_HELD_EXPOSURE_FAIL
+    )
+    if failing:
+        return VERDICT_HELD_EXPOSURE_FAIL, STATUS_HELD_EXPOSURE_FAIL, failing
+    return VERDICT_HELD_EXPOSURE_PASS, "PASS", []
 
 
 # --------------------------------------------------------------------------- #
@@ -564,6 +865,7 @@ def run_audit(
     cw_hours = (common_end_req - common_start_req) / 3.6e12
 
     funding_doc_symbols: dict[str, dict[str, object]] = {}
+    funding_payloads: dict[str, dict] = {}
     for symbol in AUDITED_SYMBOLS:
         fpath = Path(funding_dir) / symbol / "funding.json"
         if not fpath.exists():
@@ -576,6 +878,7 @@ def run_audit(
             }
             continue
         payload = load_funding_bundle(funding_dir, symbol)
+        funding_payloads[symbol] = payload
         stats = funding_stats_for_window(payload, cw_start_ms, cw_end_ms)
         stats["settlements_in_common_window"] = stats.pop("settlements_in_window")
         funding_doc_symbols[symbol] = stats
@@ -592,6 +895,53 @@ def run_audit(
                 "tail_uncovered_hours",
             )
         }
+
+    # --- Held-exposure proof (blocker B2): funding completeness vs HELD time ---
+    held_proofs: dict[str, dict] = {}
+    for symbol in AUDITED_SYMBOLS:
+        payload = funding_payloads.get(symbol)
+        settlement_ms = (
+            [int(row["fundingTime"]) for row in payload.get("rows", [])]
+            if payload is not None
+            else []
+        )
+        proof = evaluate_held_exposure_funding_proof(
+            common_start_ns=common_start_req,
+            common_end_ns=common_end_req,
+            bar_stamps=[r[0] for r in bars[symbol]],
+            settlement_times_ms=settlement_ms,
+            role=(
+                "benchmark_context_only" if symbol == BENCHMARK_SYMBOL else "required"
+            ),
+        )
+        held_proofs[symbol] = proof
+        per_symbol[symbol]["held_exposure_proof_summary"] = {
+            "verdict": proof["verdict"],
+            "first_possible_fill_utc": proof["held_exposure_start_utc"],
+            "held_exposure_end_utc": proof["held_exposure_end_utc"],
+            "overlap_count": proof["overlap_with_held_exposure"]["count"],  # type: ignore[index]
+            "reasons": proof["reasons"],
+        }
+        if symbol in funding_doc_symbols:
+            funding_doc_symbols[symbol]["held_exposure_proof"] = {
+                "verdict": proof["verdict"],
+                "signal_cutoff_utc": proof["signal_cutoff_utc"],
+                "held_exposure_start_utc": proof["held_exposure_start_utc"],
+                "held_exposure_end_utc": proof["held_exposure_end_utc"],
+                "margin_hours_funding_precedes_held": proof[
+                    "margin_hours_funding_precedes_held"
+                ],
+                "overlap_with_held_exposure": proof["overlap_with_held_exposure"],
+            }
+
+    required_held_starts = [
+        held_proofs[s]["held_exposure_start_utc"]  # type: ignore[index]
+        for s in REQUIRED_SYMBOLS
+        if held_proofs[s].get("held_exposure_start_utc")  # type: ignore[union-attr]
+    ]
+    held_verdict, held_status, held_failing = summarize_held_exposure_gate(
+        {s: dict(held_proofs[s]) for s in AUDITED_SYMBOLS}, REQUIRED_SYMBOLS
+    )
 
     gate_fails: dict[str, list[str]] = {}
     for symbol in REQUIRED_SYMBOLS:
@@ -631,7 +981,12 @@ def run_audit(
             "PASS_CONTEXT_BENCHMARK_ONLY" if symbol == BENCHMARK_SYMBOL else "PASS",
         )
 
-    status = "FAIL_DATA_INCOMPLETE" if gate_fails else "PASS"
+    if gate_fails:
+        status = "FAIL_DATA_INCOMPLETE"
+    elif held_status != "PASS":
+        status = held_status
+    else:
+        status = "PASS"
     required_missing = sorted(
         s for s, r in gate_fails.items()
         if "bars_absent_in_common_window" in r or "funding_settlements_zero_in_common_window" in r
@@ -718,6 +1073,8 @@ def run_audit(
             "end": ns_to_iso(common_end_req),
         },
         "expected_cadence_method": "modal inter-settlement interval, minute-quantized stamps, anchored at first published settlement",
+        "held_exposure_verdict": held_verdict,
+        "held_exposure_pointer": "t12_gate.json#held_exposure_proof (full per-symbol proof)",
         "per_symbol": funding_doc_symbols,
         "source_hashes": source_hashes,
         "normalized_manifest_sha256": manifest["normalized_manifest_sha256"],
@@ -787,7 +1144,18 @@ def run_audit(
                 "bundle requested_start begins ~2024-08-23, after the measured "
                 "common-window start (~41h head shortfall, <0.25% of window); "
                 "recorded per symbol as head/tail_uncovered_hours; does not flip "
-                "the frozen materiality rule (settlements>0 throughout)"
+                "the frozen materiality rule (settlements>0 throughout); head-"
+                "shortfall vs HELD exposure resolved by the held_exposure_proof block"
+            ),
+        },
+        {
+            "id": "funding_coverage_over_held_exposure",
+            "status": "fail" if held_failing else "pass",
+            "detail": (
+                f"per-symbol proof that no missing funding settlement overlaps "
+                f"HELD exposure time; earliest contract-compliant fill derived "
+                f"from frozen weekly-engine semantics; verdict={held_verdict}; "
+                f"required symbols with overlap={held_failing}"
             ),
         },
         {
@@ -842,6 +1210,23 @@ def run_audit(
             },
         },
         "failed_symbols": gate_fails,
+        "held_exposure_proof": {
+            "schema_addition": "V8 sprint blocker B2 remediation (R-A2); additive to frozen T12_MATERIALITY_V1",
+            "verdict": held_verdict,
+            "status": held_status,
+            "method": HELD_EXPOSURE_METHOD_TEXT,
+            "schedule_semantics_sources": SCHEDULE_SEMANTICS_SOURCES,
+            "required_symbols_with_overlap": held_failing,
+            "first_held_exposure_range_utc": {
+                "earliest": min(required_held_starts) if required_held_starts else None,
+                "latest": max(required_held_starts) if required_held_starts else None,
+            },
+            "per_symbol_total_overlap_counts": {
+                sym: held_proofs[sym]["overlap_with_held_exposure"]["count"]  # type: ignore[index]
+                for sym in AUDITED_SYMBOLS
+            },
+            "per_symbol": held_proofs,
+        },
         "checks": checks,
         "target_window": {"start": target_start_iso, "end": target_end_iso},
         "benchmark_policy": {
@@ -892,6 +1277,8 @@ def run_audit(
         },
         "funding_pointer": "funding_coverage_v8.json",
         "manifest_pointer": "data_manifest_v8.json",
+        "held_exposure_verdict": held_verdict,
+        "held_exposure_pointer": "t12_gate.json#held_exposure_proof",
         "benchmark_policy": gate["benchmark_policy"],
         "daily_close_crosscheck": {
             sym: len(daily_closes.get(sym, [])) for sym in REQUIRED_SYMBOLS
@@ -942,6 +1329,11 @@ def main(argv: list[str] | None = None) -> int:
     master = docs["data_audit_v8.json"]
     print("=" * 68)
     print(f"T12 DATA AUDIT ({AUDIT_LABEL}) -> gate {gate['status']}")
+    print(
+        f"held-exposure proof: {gate['held_exposure_proof']['verdict']} "
+        f"(overlaps on required symbols: "
+        f"{len(gate['held_exposure_proof']['required_symbols_with_overlap'])})"
+    )
     print("=" * 68)
     print(
         f"common window: {gate['common_window']['start']} .. {gate['common_window']['end']}"

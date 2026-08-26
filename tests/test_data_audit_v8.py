@@ -2,24 +2,38 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 
 from research.data_audit_v8 import (
     INTERVAL_NS,
+    NS_PER_DAY,
+    STATUS_HELD_EXPOSURE_FAIL,
+    VERDICT_HELD_EXPOSURE_FAIL,
+    VERDICT_HELD_EXPOSURE_PASS,
+    TRIAL_LOOKBACK_DAYS,
+    WARMUP_MIN_DAYS,
     classify_gaps,
     duplicate_count,
+    evaluate_held_exposure_funding_proof,
     evaluate_materiality,
+    first_completed_event_after,
+    funding_missing_events_in_span,
     funding_stats_for_window,
     gap_census,
     intersection_endpoints,
     monotonic_strict,
+    next_monday_0000_utc_ns,
     ns_to_iso,
     ohlc_violations,
     parse_iso_ns,
+    summarize_held_exposure_gate,
 )
 from research.panel import parse_iso_ns as panel_parse_iso_ns
 
 BASE_NS = panel_parse_iso_ns("2025-01-01T00:00:00Z")
+EIGHT_H_MS = 8 * 3_600_000
 
 
 def _series(count: int, base_ns: int = BASE_NS) -> list[int]:
@@ -284,3 +298,196 @@ def test_ns_to_iso_roundtrip_matches_panel_parser():
     ns = BASE_NS + 123_456_789
     iso = ns_to_iso(ns)
     assert parse_iso_ns(iso) == (ns // 1000) * 1000
+
+
+# --------------------------------------------------------------------------- #
+# Held-exposure proof (blocker B2): Monday schedule + next-event fill
+# --------------------------------------------------------------------------- #
+def _iso_ns(text: str) -> int:
+    return panel_parse_iso_ns(text)
+
+
+def test_next_monday_schedule_semantics_known_instants():
+    # Wed 2025-01-01 -> readiness Wed Jan 15 -> first cutoff Mon Jan 20.
+    assert next_monday_0000_utc_ns(_iso_ns("2025-01-01T00:00:00Z")) == _iso_ns(
+        "2025-01-06T00:00:00Z"
+    )
+    assert next_monday_0000_utc_ns(_iso_ns("2025-01-15T14:44:59.999Z")) == _iso_ns(
+        "2025-01-20T00:00:00Z"
+    )
+    # Exact Monday midnight qualifies at/after semantics.
+    assert next_monday_0000_utc_ns(_iso_ns("2025-01-20T00:00:00Z")) == _iso_ns(
+        "2025-01-20T00:00:00Z"
+    )
+    # Year boundary: Tue 2024-12-31 23:00Z -> Mon 2025-01-06.
+    assert next_monday_0000_utc_ns(_iso_ns("2024-12-31T23:00:00Z")) == _iso_ns(
+        "2025-01-06T00:00:00Z"
+    )
+    # Month boundary: Sat 2025-03-29 -> Mon 2025-03-31.
+    assert next_monday_0000_utc_ns(_iso_ns("2025-03-29T12:00:00Z")) == _iso_ns(
+        "2025-03-31T00:00:00Z"
+    )
+
+
+def test_next_monday_properties_over_full_week():
+    start = _iso_ns("2025-02-08T00:00:00Z")  # a Saturday
+    for hour in range(0, 24 * 8, 5):
+        probe = start + hour * 3_600_000_000_000
+        result = next_monday_0000_utc_ns(probe)
+        dt = datetime.fromtimestamp(result / 1e9, tz=timezone.utc)
+        assert dt.weekday() == 0
+        assert (dt.hour, dt.minute, dt.second) == (0, 0, 0)
+        assert probe <= result < probe + 7 * NS_PER_DAY
+
+
+def test_first_completed_event_after_is_strictly_later():
+    stamps = [BASE_NS + i * INTERVAL_NS for i in range(10)]
+    assert first_completed_event_after(stamps, BASE_NS + 2 * INTERVAL_NS) == stamps[3]
+    between = BASE_NS + 2 * INTERVAL_NS + 1
+    assert first_completed_event_after(stamps, between) == stamps[3]
+    assert first_completed_event_after(stamps, stamps[-1]) is None
+    assert first_completed_event_after([], 0) is None
+
+
+def _held_proof_fixture(
+    *,
+    days: int = 40,
+    settlement_start_offset_h: float | None = 41.25,
+    drop_index: int | None = None,
+):
+    end_ns = BASE_NS + days * NS_PER_DAY
+    stamps = [BASE_NS + i * INTERVAL_NS for i in range(days * 96)]
+    if settlement_start_offset_h is None:
+        settlements_ms = []
+    else:
+        first_ms = (BASE_NS + int(settlement_start_offset_h * 3_600 * 1e9)) // 1_000_000
+        settlements_ms = [
+            first_ms + k * EIGHT_H_MS for k in range((days * 24 * 3_600_000) // EIGHT_H_MS + 1)
+        ]
+        if drop_index is not None:
+            del settlements_ms[drop_index]
+    return BASE_NS, end_ns, stamps, settlements_ms
+
+
+def test_held_exposure_pass_when_shortfall_precedes_first_fill():
+    cstart, cend, stamps, settlements = _held_proof_fixture()
+    proof = evaluate_held_exposure_funding_proof(
+        common_start_ns=cstart,
+        common_end_ns=cend,
+        bar_stamps=stamps,
+        settlement_times_ms=settlements,
+    )
+    # Readiness = start + 14d (Wed) -> cutoff Mon Jan 20 00:00 -> fill 00:15 bar.
+    assert proof["readiness"]["required_history_days_max"] == WARMUP_MIN_DAYS
+    assert parse_iso_ns(proof["signal_cutoff_utc"]) == _iso_ns("2025-01-20T00:00:00Z")
+    assert parse_iso_ns(proof["held_exposure_start_utc"]) == (
+        _iso_ns("2025-01-20T00:00:00Z") + INTERVAL_NS
+    )
+    assert set(proof["per_trial_first_fill_utc"]) == {"3D", "7D", "14D"}
+    cov = proof["funding_coverage_over_held_span"]
+    assert cov["slots_expected"] >= 60 and cov["missing_slots"] == 0
+    assert proof["overlap_with_held_exposure"]["count"] == 0
+    assert proof["head_shortfall"]["overlaps_held_exposure"] is False
+    assert proof["margin_hours_funding_precedes_held"] > 16 * 24
+    assert proof["verdict"] == VERDICT_HELD_EXPOSURE_PASS
+    assert proof["reasons"] == []
+
+
+def test_held_exposure_missing_settlement_inside_held_span_fails():
+    cstart, cend, stamps, settlements = _held_proof_fixture(drop_index=58)
+    dropped_slot = settlements[58] - EIGHT_H_MS  # removed anchor+58 slots
+    proof = evaluate_held_exposure_funding_proof(
+        common_start_ns=cstart,
+        common_end_ns=cend,
+        bar_stamps=stamps,
+        settlement_times_ms=settlements,
+    )
+    assert proof["verdict"] == VERDICT_HELD_EXPOSURE_FAIL
+    assert "missing_funding_settlement_inside_held_exposure_span" in proof["reasons"]
+    assert proof["overlap_with_held_exposure"]["count"] >= 1
+    events = proof["funding_coverage_over_held_span"]["missing_events_truncated_to_50"]
+    assert any(
+        abs(parse_iso_ns(e["slot_utc"]) // 1_000_000 - dropped_slot) <= 60_000 for e in events
+    )
+
+
+def test_held_exposure_head_shortfall_overlapping_held_time_fails():
+    # First settlement only 30d after window start — well AFTER the earliest
+    # possible fill (~16d): the uncovered head overlaps held exposure.
+    cstart, cend, stamps, settlements = _held_proof_fixture(
+        settlement_start_offset_h=30 * 24.0
+    )
+    proof = evaluate_held_exposure_funding_proof(
+        common_start_ns=cstart,
+        common_end_ns=cend,
+        bar_stamps=stamps,
+        settlement_times_ms=settlements,
+    )
+    assert proof["verdict"] == VERDICT_HELD_EXPOSURE_FAIL
+    assert "funding_head_shortfall_overlaps_held_exposure" in proof["reasons"]
+    assert proof["head_shortfall"]["overlaps_held_exposure"] is True
+    assert proof["overlap_with_held_exposure"]["count"] >= 1
+
+
+def test_held_exposure_fail_closed_on_empty_bars_or_bundle():
+    cstart, cend, stamps, settlements = _held_proof_fixture()
+    no_bars = evaluate_held_exposure_funding_proof(
+        common_start_ns=cstart,
+        common_end_ns=cend,
+        bar_stamps=[],
+        settlement_times_ms=settlements,
+    )
+    assert no_bars["verdict"] == VERDICT_HELD_EXPOSURE_FAIL
+    assert no_bars["reasons"] == ["bars_absent_no_fill_possible"]
+
+    no_funding = evaluate_held_exposure_funding_proof(
+        common_start_ns=cstart,
+        common_end_ns=cend,
+        bar_stamps=stamps,
+        settlement_times_ms=[],
+    )
+    assert no_funding["verdict"] == VERDICT_HELD_EXPOSURE_FAIL
+    assert no_funding["reasons"] == ["funding_bundle_empty"]
+    assert no_funding["overlap_with_held_exposure"]["count"] == 1
+
+
+def test_funding_missing_events_in_span_counts_and_localizes():
+    eight_h = EIGHT_H_MS
+    times = [(BASE_NS // 1_000_000) + i * eight_h for i in range(30)]
+    span_start = times[5]
+    span_end = times[25]
+    missing, stats = funding_missing_events_in_span(times, span_start, span_end)
+    assert missing == [] and stats["slots_expected"] == 21
+    assert stats["cadence_hours"] == pytest.approx(8.0)
+
+    broken = times[:12] + times[13:]  # drop the slot at index 12
+    missing2, stats2 = funding_missing_events_in_span(broken, span_start, span_end)
+    assert stats2["settlements_present"] == 20
+    assert len(missing2) == 1
+    assert missing2[0]["nearest_settlement_utc"] is not None
+    assert abs(
+        parse_iso_ns(missing2[0]["slot_utc"]) // 1_000_000 - times[12]
+    ) <= 60_000
+
+    missing_empty, stats_empty = funding_missing_events_in_span([], span_start, span_end)
+    assert len(missing_empty) == 1
+    assert missing_empty[0]["reason"] == "funding_bundle_empty"
+    assert stats_empty["slots_expected"] == 1
+
+
+def test_summarize_held_exposure_gate_benchmark_never_flips():
+    required = ("AAAUSDT", "BBBUSDT")
+    ok = {
+        "AAAUSDT": {"verdict": VERDICT_HELD_EXPOSURE_PASS},
+        "BBBUSDT": {"verdict": VERDICT_HELD_EXPOSURE_PASS},
+        "BTCUSDT": {"verdict": VERDICT_HELD_EXPOSURE_FAIL},  # context-only
+    }
+    verdict, status, failing = summarize_held_exposure_gate(ok, required)
+    assert verdict == VERDICT_HELD_EXPOSURE_PASS and status == "PASS" and failing == []
+
+    bad = dict(ok)
+    bad["BBBUSDT"] = {"verdict": VERDICT_HELD_EXPOSURE_FAIL}
+    verdict2, status2, failing2 = summarize_held_exposure_gate(bad, required)
+    assert verdict2 == VERDICT_HELD_EXPOSURE_FAIL
+    assert status2 == STATUS_HELD_EXPOSURE_FAIL
+    assert failing2 == ["BBBUSDT"]
