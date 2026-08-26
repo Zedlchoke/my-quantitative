@@ -196,19 +196,30 @@ def test_anti_rescue_real_contract_rejects_unfrozen_family() -> None:
             "this suite after merge",
             allow_module_level=False,
         )
-    candidates = [
-        name for name in ("validate_family_admission", "ensure_family_allowed",
-                          "check_family_admission", "validate_family")
-        if hasattr(contract_v10, name)
-    ]
-    if not candidates:
-        pytest.skip("research.contract_v10 present but exposes no known admission validator", allow_module_level=False)
-    validate: Callable[..., Any] = getattr(contract_v10, candidates[0])
-    verdict = validate("A10-NOT-A-FROZEN-FAMILY-XYZ")
-    admitted = getattr(verdict, "admitted", None)
-    if admitted is None and isinstance(verdict, dict):
-        admitted = verdict.get("admitted", verdict.get("ok", False))
-    assert not admitted, "unfrozen family was admitted by contract_v10"
+    # A1 integration adapter: A5's real surface is FamilyAllowlist.validate_family
+    # raising ContractViolation for unknown/archived/unfrozen families (stricter
+    # than the dict-returning stub mirror below).
+    allowlist_cls = getattr(contract_v10, "FamilyAllowlist", None)
+    violation_cls = getattr(contract_v10, "ContractViolation", None)
+    if allowlist_cls is None or violation_cls is None:
+        pytest.skip(
+            "research.contract_v10 present but exposes no known admission validator",
+            allow_module_level=False,
+        )
+    allowlist = allowlist_cls()
+    with pytest.raises(violation_cls):
+        allowlist.validate_family("A10-NOT-A-FROZEN-FAMILY-XYZ")
+    spec_hash = hashlib.sha256(b"a10-integration-adapter").hexdigest()
+    allowlist.register_family(
+        "A10-ADAPTER-FAM", spec_hash=spec_hash, role="candidate", status="frozen"
+    )
+    assert allowlist.validate_family("A10-ADAPTER-FAM")["status"] == "frozen"
+    allowlist.archive_family("A10-ADAPTER-FAM")
+    with pytest.raises(violation_cls) as excinfo:
+        allowlist.validate_family("A10-ADAPTER-FAM")
+    assert "family_not_runnable" in str(excinfo.value), (
+        "archived family must be rejected even though code supports it"
+    )
 
 
 class StubFrozenFamilyContract:
