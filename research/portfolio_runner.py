@@ -167,6 +167,7 @@ PROVENANCE_UNDETERMINED_REASON = "provenance_generation_undetermined"
 PROVENANCE_GENERATIONS: dict[str, Path] = {
     "funding_price_divergence": Path("research/audits/v7p"),
     "funding_carry": Path("research/audits/v6p"),
+    "weekly_reversal": Path("research/audits/v8p"),
 }
 
 
