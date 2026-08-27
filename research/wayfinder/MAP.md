@@ -2,6 +2,21 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **V10P BLOCKED_PRELAUNCH** (synced by A1, 2026-08-27, branch
+  `orca/v10-integration@86b7274`) — generic strategy→research adapter built and
+  accepted (BG1–BG6, G15, F2 adopted-with-proof, G17 one measured authority,
+  H08 12–20), family `A8-V10-M01-AGGRESSOR-ABSORPTION-PANEL` frozen with 0/3
+  scored cells consumed, W2=`d61a483` with detached R1b/R2b and 47/47 verified
+  staged data. A7 prelaunch `NO_GO_BLOCKED_PRELAUNCH`: HIGH
+  `G05_COVERAGE_SHORTFALL` (staged bars end 21.5 h before the preregistered
+  window end; final daily close silently synthesized) + launch-window and
+  measured-cap (final_cap=0) blockers. Entry conditions for the next thread:
+  [CONTINUE.md](../../CONTINUE.md). Detail:
+  `research/control/v10p_run/terminal_closeout_v10p.json`,
+  `research/audits/v10p/a7_prelaunch_v10p.json`.
+- **V9 REJECTED** — `V9_REJECT_ALL_MULTI_FAMILY` (5/5 frozen trials, all
+  reproduced, terminal at `425843d`); V9H hardening
+  `V9H_PASS_V10_AUTHORIZED` (14/14, `3241bd0`). Denominator 117.
 - **V6P PASS** — engine/data/PIT/accounting validation sprint: 20/20 gates,
   A7 independent audit PASS (0 unresolved HIGH/CRITICAL), verdict
   `V6P_PASS_V6_AUTHORIZED`.
