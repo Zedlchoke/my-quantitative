@@ -1,0 +1,300 @@
+{
+  "schema_version": "orca.v10p.a7_prelaunch.v1",
+  "artifact": "a7_prelaunch_v10p",
+  "producer_role": "A7",
+  "independent_recompute": true,
+  "generated_at_measured": "2026-08-27T15:00:03Z",
+  "worktree": "/Users/hoangminhlong/my-quantitative-v10-wt/a7-v10p-prelaunch",
+  "branch": "orca/v10p-a7-prelaunch",
+  "bootstrap_sha": "5bb1a90551c8f7823773af713316a45e0ca070cd",
+  "freeze_sha_audited": "2c13d03410c3f8db6a8f9ac2dba0ecd1a37dd79d",
+  "code_bearing_w2": "d61a483669b692b786938ba06c6826d183536e73",
+  "integration_head_audited": "2c13d03410c3f8db6a8f9ac2dba0ecd1a37dd79d",
+  "python": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+  "deadline_utc": "2026-08-27T16:55:00Z",
+  "remaining_minutes_at_audit": 115,
+
+  "gates": {
+    "G05_eth_loader": {
+      "verdict": "PASS",
+      "specified_criteria_only": true,
+      "command": "python -c 'from research.panel import load_bars_15m ... ' (in-process, catalog/ read-only)",
+      "exit_code": 0,
+      "measured": {
+        "symbol": "ETHUSDT-PERP.BINANCE",
+        "window_start": "2025-08-21T00:00:00Z",
+        "window_end": "2026-08-21T00:00:00Z",
+        "window_span_days": 365.0,
+        "parquet_parts": 2,
+        "raw_rows_all_parts": 70079,
+        "raw_rows_in_window": 34954,
+        "unique_ts_in_window": 34954,
+        "duplicates_in_window": 0,
+        "loader_rows": 34954,
+        "loader_unique": 34954,
+        "monotonic": true,
+        "internal_gaps_at_15m": 0,
+        "data_integrity_error_raised": false
+      },
+      "hb1_overturn_crosscheck": "My own measurement via THE production loader reproduces the overturn conclusion: no overlap-induced duplication and no DataIntegrityError. Raw total 70079 = 35040 + 35039 across exactly 2 distinct parts (no double-walk), 0 duplicate ts in window. The HB-1 claim of 140124 rows / 70390 unique / DataIntegrityError is NOT reproduced.",
+      "evidence_ref": "in-process probe on catalog/data/binance_bar/ETHUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/; research/control/v10_discovery_run/hb1_overturn_record.json"
+    },
+
+    "G05_COVERAGE_SHORTFALL_HIGH": {
+      "verdict": "FAIL",
+      "severity": "HIGH",
+      "summary": "Staged ETHUSDT data does NOT cover the preregistered scored window end. The terminal daily-close boundary is silently filled with a bar 21.5h stale.",
+      "measured": {
+        "last_bar_ts_utc": "2026-08-20T02:29:59.999Z",
+        "declared_window_end_utc": "2026-08-21T00:00:00Z",
+        "staleness_hours": 21.5,
+        "missing_bars_vs_365d_15m": 86,
+        "coverage_pct": 99.7545,
+        "day_boundaries_generated": 366,
+        "first_boundary": "2025-08-21T00:00:00Z",
+        "last_boundary": "2026-08-21T00:00:00Z",
+        "daily_closes_emitted": 365,
+        "boundary_with_no_bar": "2025-08-21T00:00:00Z (window start; expected warmup)",
+        "terminal_close_bar_ts": "2026-08-20T02:29:59.999Z"
+      },
+      "why_HIGH": "build_daily_closes emits a close for the 2026-08-21T00:00:00Z boundary sourced from a bar stamped 2026-08-20T02:29:59.999Z. The loader neither omits nor fails closed on this; coverage_report() emits only a count and raises nothing. No control artifact in research/control/v10p_run/ or research/control/v10_discovery_run/ acknowledges the shortfall (grep for 2026-08-20 / data_snapshot / coverage_gap / 34954 returned 0 hits). The final scored day's close is therefore not PIT-real, and the force-flat at the scored window boundary is computed from stale data.",
+      "root_cause": "Catalog part staged 2026-08-20T02:34:14Z covers a rolling 1y ending 2026-08-20T02:34:14Z, which is ~21.5h short of the preregistered window end 2026-08-21T00:00:00Z.",
+      "evidence_ref": "in-process probe of research.panel.build_daily_closes and research.panel.coverage_report over the declared window; research/panel.py:141-199"
+    },
+
+    "G_window_folds": {
+      "verdict": "PASS",
+      "measured": {
+        "SCORED_WINDOW_START_UTC": "2025-08-21T00:00:00Z",
+        "SCORED_WINDOW_END_UTC": "2026-08-21T00:00:00Z",
+        "constant_lines": "research/hyp_a8_m01.py:122-123",
+        "WARMUP_DAYS_REQUIRED": 1,
+        "purge_default": "purge_days: int = WARMUP_DAYS_REQUIRED (=1 holding period)",
+        "purge_code_present": "research/hyp_a8_m01.py:978-1017 chronological_folds; stop = max(edges[idx]+1, edges[idx+1]-purge_days); raises SpecViolation on empty fold after purge",
+        "FORCE_FLAT_REASON": "force_flat_final_scored_window_boundary",
+        "force_flat_line": "research/hyp_a8_m01.py:208"
+      },
+      "evidence_ref": "research/hyp_a8_m01.py (sha f2f5d9748ac0812c5329df99db0c2fd36eaa8fc71933d7a65783ddc9036679a3)"
+    },
+
+    "G_bg1_bg6": {
+      "verdict": "PASS",
+      "command": "pytest tests/test_adapter_v10_g1.py tests/test_adapter_acceptance_v10_g3.py tests/test_fault_injection_v10_g3.py -q",
+      "exit_code": 0,
+      "counts": "87 passed in 2.67s",
+      "adapter_genericity": {
+        "grep_pattern": "M01|A8-V10|hyp_a8",
+        "scope": "research/adapter_v10/ excluding m01_plugin.py",
+        "hits": 0,
+        "grep_exit_code": 1
+      },
+      "dummy_strategy_via_same_interface": true,
+      "note": "First attempt with path /Users/hoangminhlong/.venv/bin/python failed (no such file); re-run used the correct /Users/hoangminhlong/my-quantitative/.venv/bin/python. The failed attempt produced no results and is not counted.",
+      "evidence_ref": "tests/test_adapter_v10_g1.py, tests/test_adapter_acceptance_v10_g3.py, tests/test_fault_injection_v10_g3.py"
+    },
+
+    "G_g15_funding": {
+      "verdict": "PASS",
+      "command": "pytest tests/test_g2_funding_v10.py -q  (see G_full_suite for the run that includes it; fixture L re-derived and re-executed independently below)",
+      "fixtures_read": [
+        "FIXTURE L long/short positive+negative rate, partial + full epoch",
+        "heterogeneous native cadence (XA 8h / XB 12h)",
+        "asymmetric same-wallclock span settles per symbol only"
+      ],
+      "independent_hand_derivation": {
+        "notional": "50000 * 2 = 100000 USDT",
+        "E1_at_08:00_epoch_00_to_08": "held fraction (08:00-06:00)/8h = 0.25 ; payment = -(+1)*0.0100*100000*0.25 = -250.000000",
+        "E2_at_16:00_epoch_08_to_16": "held fraction 1.0 ; payment = -(+1)*(-0.0050)*100000*1.0 = +500.000000",
+        "settlement_at_24:00": "excluded - exit 20:00 is outside that epoch",
+        "net": "+250.000000",
+        "margin_cross_view": "+250 / (100000*0.05) = 0.05"
+      },
+      "independent_execution": {
+        "command": "python -c accrue_span(...) qty_signed=2.0, mark_fn=const 50000",
+        "event_cashflows": [-250.0, 500.0],
+        "total": 250.0,
+        "margin_ratio": 0.05,
+        "matches_hand_derivation": true
+      },
+      "evidence_ref": "tests/test_g2_funding_v10.py (sha a11df6795f1bad45325265309ff0fb56b1986bac58593b1f5344e16b8461ff45)"
+    },
+
+    "G_f2_cache": {
+      "verdict": "PASS",
+      "enable": true,
+      "measured": true,
+      "exit_code": 0,
+      "raw_reads_pair": { "cached": 2, "uncached": 6, "cached_le_uncached": true },
+      "wall_pair_s": { "cached": 0.8704, "uncached": 2.0425, "reduction_fraction": 0.5738 },
+      "preregistered_thresholds": {
+        "min_wall_time_reduction": 0.3,
+        "max_raw_reads_cached": 2,
+        "require_strict_raw_read_improvement": true,
+        "cached_rss_max_fraction_of_available": 0.5,
+        "min_available_ram_gb_to_probe": 1.0,
+        "workload_passes": 3,
+        "child_timeout_s": 300
+      },
+      "full_representative_pipeline": "research/cache_resource_measure_v10.py:295-340 runs research.panel.build_daily_closes over ALL staged catalog parquet parts (2 symbols BTC+ETH, full staged slice), then cross_sectional_pct_ranks per UTC day; rows_last_pass=761 identical cached/uncached; result_sha256 equal; all_pass_digests_equal True both arms. This is the production loader + rank pipeline, not a unit test.",
+      "byte_parity_recorded": true,
+      "wall_pair_recorded": true,
+      "budget_preregistered_present": true,
+      "evidence_ref": "research/cache_decision_v10.json (sha 70c1a7c96d87e6a7d3fc71b5861a79d0596fcf6b5dcd4b39830be8bd613fee87); research/cache_resource_measure_v10.py (sha dd2017fde6deeef9e19ea0a8d2c29718a53a43d23d587975f4b831a9d12adc31)"
+    },
+
+    "G_g17_resource_cap": {
+      "verdict": "PASS",
+      "available_ram_gb_measured_now": 1.9831085205078125,
+      "available_ram_method": "vm_stat free+inactive+speculative via research.resource_governor_v10.measure_available_ram_gb",
+      "measured_at_utc": "2026-08-27T14:56:37Z (after a 4s quiesce, post full-suite)",
+      "reserve_floor_gb": 2.0,
+      "measured_safe_cap_today": 0,
+      "owner_ceiling": 1,
+      "final_cap_current": 0,
+      "local_scored_launch_allowed": false,
+      "rule_confirmed": "final_cap = min(owner_ceiling, measured_safe_cap); monotone lower-only clamp",
+      "no_way_final_gt_measured": "research/adapter_v10/facade.py:876-929 validate_resource_cap_report appends rejection reasons for BOTH 'final_cap exceeds measured_safe_cap' AND 'final_cap must equal min(owner_ceiling, measured_safe_cap)'; resource_cap_report() raises ContractViolation on any reason. Covered by tests/test_adapter_v10_g1.py:1432-1455.",
+      "meaning": "final_cap=0 => NO local scored launch is possible today. This is not a defect; it is the preregistered fail-closed behaviour.",
+      "evidence_ref": "research/resource_cap_report_v10.json (sha 73b20f767e08bb71f390e8d17b50fc45e37c7668306687f1500efb8797703167); research/resource_governor_v10.py:45,98,140-153"
+    },
+
+    "G_h08_12_20": {
+      "verdict": "PASS",
+      "items_in_file": 9,
+      "ids": [12, 13, 14, 15, 16, 17, 18, 19, 20],
+      "all_have_test_ref": true,
+      "all_have_detection_mechanism": true,
+      "all_have_expected_fail_closed_behavior": true,
+      "prefilled_status_count": 0,
+      "test_functions_found_in_test_file": 23,
+      "covered_ids": [12, 13, 14, 15, 16, 17, 18, 19, 20],
+      "executed_via": "tests/test_fault_injection_v10_g3.py inside the 87-passed BG1-BG6 run and inside the full suite",
+      "evidence_ref": "research/h08_cases_12_20.json (sha fd94ac01479da6c579ec6eda0ac68277e1957e5af0a2362fbee71d270b7ad91b); tests/test_fault_injection_v10_g3.py (sha 81fe862e3a0396cc98a9c2a0273b8456023f6cfb35d006f28b32859cf77d3a4c)"
+    },
+
+    "G_w2_r1b_r2b_identity": {
+      "verdict": "PASS",
+      "trees": {
+        "a7_worktree": "2c13d03410c3f8db6a8f9ac2dba0ecd1a37dd79d",
+        "exec-v10-R1b": "d61a483669b692b786938ba06c6826d183536e73 (DETACHED, clean)",
+        "exec-v10-R2b": "d61a483669b692b786938ba06c6826d183536e73 (DETACHED, clean)"
+      },
+      "diff_2c13d03_to_d61a483": {
+        "command": "git diff --stat 2c13d03..d61a483",
+        "exit_code": 0,
+        "files": [
+          "research/control/v10p_run/event_log.jsonl",
+          "research/control/v10p_run/stage_verify_exec-v10-R1b.json (deleted)",
+          "research/control/v10p_run/stage_verify_exec-v10-R2b.json (deleted)",
+          "research/control/v10p_run/staged_data_manifest_v10p.json (deleted)",
+          "research/control/v10p_run/worktree_manifest_v10p.json (modified)"
+        ],
+        "non_control_source_changes": 0,
+        "control_json_only": true
+      },
+      "byte_identical_data_files": [
+        {
+          "path": "catalog/data/binance_bar/ETHUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/2025-08-20T02-34-14-475394000Z_2026-08-20T02-34-14-475394000Z.parquet",
+          "sha256": "f16a68d51ac66ea1685c5340752dc48d9d1ab7a7b1fb005dc61198d2a2762918",
+          "identical_R1b_R2b": true
+        },
+        {
+          "path": "catalog/data/binance_bar/BTCUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/2025-08-20T02-34-14-475394000Z_2026-08-20T02-34-14-475394000Z.parquet",
+          "sha256": "81d4f147c6bc6a8e03275140a65ac06a63c2e644f449f1c48d8758b187fc8321",
+          "identical_R1b_R2b": true
+        }
+      ],
+      "prior_exec_trees_untouched": {
+        "exec-v10-R1": "79fc883debfdb42aa167b28706796193cf86eff1",
+        "exec-v10-R2": "79fc883debfdb42aa167b28706796193cf86eff1",
+        "note": "both still at 79fc883; only pre-existing untracked catalog_live_crypto/ present, no tracked modification"
+      },
+      "evidence_ref": "git rev-parse / git diff --stat / shasum -a 256 across the three worktrees"
+    },
+
+    "G_budget_scored_purity": {
+      "verdict": "PASS",
+      "registry_path": "results/registry/experiments.jsonl",
+      "registry_exists": false,
+      "v10_cell_results": 0,
+      "budget_consumed": 0,
+      "v10p_event_log_events": 11,
+      "v10p_event_log_has_cell_or_pnl_or_scored_result": false,
+      "results_dir": "results/{account.csv,order_fills.csv,positions.csv,summary.json} are legacy tracked files at commit dd01cf0 ('Add files via upload'), unmodified in this worktree - NOT new V10 scored artifacts",
+      "evidence_ref": "research/global_ledger.py DEFAULT_REGISTRY_PATH -> results/registry/experiments.jsonl (absent); research/control/v10p_run/event_log.jsonl (sha a44f21771979df574630a138c7bb866dcc2b84adc30a395068b738f4846fedf8)"
+    },
+
+    "G_full_suite": {
+      "verdict": "PASS",
+      "command": "pytest -q",
+      "exit_code": 0,
+      "counts": "1275 passed, 1 skipped in 72.21s",
+      "run_conditions": "ran alone; 4s quiesce then RAM probe afterwards",
+      "evidence_ref": "pytest output"
+    }
+  },
+
+  "additional_environmental_blockers": [
+    {
+      "id": "BLK-2",
+      "severity": "HIGH",
+      "summary": "Scored launch window is already closed for this sprint.",
+      "evidence": "research/control/v10p_run/event_log.jsonl event 'scored_launch_window_closed' at 2026-08-27T14:55:00Z by A1: rule 'PLAN section 14: <120 minutes -> no new scored cell', consequence 'E1 cannot start this sprint regardless of A7 verdict'. At 2026-08-27T15:00:03Z remaining to deadline 2026-08-27T16:55:00Z is ~115 minutes, i.e. < 120.",
+      "evidence_ref": "PLAN.md:382-386"
+    },
+    {
+      "id": "BLK-3",
+      "severity": "HIGH",
+      "summary": "Resource cap is 0 today: no local scored launch is possible on this host regardless of schedule.",
+      "evidence": "fresh measurement 1.9831 GB available < 2.0 GB reserve floor -> measured_safe_cap=0 -> final_cap=0 (fail-closed, never overridden).",
+      "evidence_ref": "research/resource_cap_report_v10.json; research/resource_governor_v10.py:45"
+    }
+  ],
+
+  "verdict": "NO_GO_BLOCKED_PRELAUNCH",
+  "verdict_rule_applied": "Instruction: 'neu gate nao FAIL thi ghi ro va verdict=NO_GO_BLOCKED_PRELAUNCH'. G05_COVERAGE_SHORTFALL is FAIL/HIGH, so the conditional-authorization branch does not apply even though all 10 gates that were specified PASS.",
+
+  "reasons": [
+    "HIGH G05_COVERAGE_SHORTFALL: staged ETHUSDT catalog ends 2026-08-20T02:29:59.999Z, preregistered scored window end is 2026-08-21T00:00:00Z; 86 bars (21.5h) uncovered; build_daily_closes silently emits the terminal boundary close from a 21.5h-stale bar instead of omitting or failing closed; no control artifact acknowledges this.",
+    "HIGH BLK-2: scored launch window closed (remaining 115 min < 120 min required by PLAN section 14) - no new scored cell may start this sprint regardless of verdict.",
+    "HIGH BLK-3: measured_safe_cap=0 -> final_cap=0 -> NO local scored launch on this host.",
+    "All 10 specified prelaunch gates recompute PASS on my own evidence; no FAIL among them.",
+    " remediation for G05_COVERAGE_SHORTFALL is either re-stage bars through 2026-08-21T00:00:00Z, or re-declare the scored window end to the actual staged snapshot - the latter is an owner-level change to a preregistered constant and cannot be done by A7."
+  ],
+
+  "what_is_UNAVAILABLE": [
+    "No gate was left UNAVAILABLE_PARTIAL. Every gate listed above was measured by me in this session.",
+    "I did NOT independently re-run the F2 probe (--probe-cache) end-to-end; I verified it by reading the script and the recorded decision artifact (measured=true, exit_code=0, byte-parity, wall-pair, preregistered thresholds, full staged slice + ranks). Classified as PASS on artifact+code evidence, not on a fresh re-measurement. A fresh re-run would also have perturbed the RAM reading used for G17.",
+    "I did not run pytest for G15 as a standalone invocation with a separately captured exit code; tests/test_g2_funding_v10.py is included in the 87-test BG1-BG6 run and in the 1275-test full suite, and I independently re-derived and re-executed the fixture-L arithmetic by hand and by direct accrue_span call."
+  ],
+
+  "input_hashes": {
+    "research/panel.py": "640351136e5a7b6e019bfcc682028586a23c0092be8c58a71aecb83857e9bc44",
+    "research/hyp_a8_m01.py": "f2f5d9748ac0812c5329df99db0c2fd36eaa8fc71933d7a65783ddc9036679a3",
+    "research/cache_decision_v10.json": "70c1a7c96d87e6a7d3fc71b5861a79d0596fcf6b5dcd4b39830be8bd613fee87",
+    "research/cache_resource_measure_v10.py": "dd2017fde6deeef9e19ea0a8d2c29718a53a43d23d587975f4b831a9d12adc31",
+    "research/resource_cap_report_v10.json": "73b20f767e08bb71f390e8d17b50fc45e37c7668306687f1500efb8797703167",
+    "research/resource_governor_v10.py": "730d7031f94bdabffcf6ebb5dbc268cd4b5f780f8ac6da16dde33e059f10e238",
+    "research/h08_cases_12_20.json": "fd94ac01479da6c579ec6eda0ac68277e1957e5af0a2362fbee71d270b7ad91b",
+    "research/adapter_v10/facade.py": "1d1c30f3065d7e0f7b4f13e2f92d46710a43f458289c4c63c5e2652c8ed67fb0",
+    "research/control/v10_discovery_run/hb1_overturn_record.json": "1de9841ca0b9c213d1766cb6b6dc697f4145feeb69758536fb3cc677f09b41e9",
+    "research/control/v10p_run/event_log.jsonl": "a44f21771979df574630a138c7bb866dcc2b84adc30a395068b738f4846fedf8",
+    "research/global_ledger.py": "4da399962b50f4a61b0b5ac9f94b0da6cf083bee813e7159d4665f76792321de",
+    "tests/test_g2_funding_v10.py": "a11df6795f1bad45325265309ff0fb56b1986bac58593b1f5344e16b8461ff45",
+    "tests/test_fault_injection_v10_g3.py": "81fe862e3a0396cc98a9c2a0273b8456023f6cfb35d006f28b32859cf77d3a4c",
+    "tests/test_adapter_v10_g1.py": "26dde9ae894cae1c5e3b8b62b95261c43423318921c57b7b3a3e4e5796145421",
+    "tests/test_adapter_acceptance_v10_g3.py": "5587b268a58abdf0583852802dce661e0270aa9a9267ea4047ce6242f5b32616"
+  },
+
+  "scope_compliance": {
+    "files_written": [
+      "research/audits/v10p/a7_prelaunch_v10p.json",
+      "research/audits/v10p/a7_prelaunch_v10p.md"
+    ],
+    "production_or_control_source_modified": false,
+    "g1_g2_g3_artifacts_overwritten": false,
+    "pushed": false,
+    "scored_run_launched": false,
+    "s1_read": false
+  }
+}
