@@ -1,55 +1,42 @@
-# CONTINUE.md — NEW AGENT HANDOFF FOR V9H-R → V10
+# CONTINUE.md — POST-V9H CLOSEOUT STATE (2026-08-27)
 
-Read `PLAN.md` completely before acting. This is a status pointer, not a
-replacement for the plan.
+Read `PLAN.md` completely. This file records the measured terminal state of the
+V9H recovery sprint and the exact entry conditions for any follow-up wave.
 
-## Current measured state
+## V9H is closed
 
-- Root: `main=e5b0bab`, `origin/main=425843d`; no push authorized.
-- Integration: `/Users/hoangminhlong/my-quantitative-v10-wt/integration-v10`,
-  `orca/v10-integration=b7c39a2`, clean.
-- V9 closed `V9_REJECT_ALL_MULTI_FAMILY`; denominator=117.
-- Archive/restore complete: 356 files, 231,797,462 bytes, bundle hash
-  `b5ce4097e09f8de1f99b67a4bc0dbf4b2390daad78cc594591907b9a60a12b12`.
-- H1/H2 commits are integrated. Do not redo them.
-- A8/A9 not started; V10 scored budget consumed=0.
-- Missing: committed A7 PASS, final H01–H14 ledger, final integrated full-suite
-  and measured resource-cap reports.
-- Previous deadline `2026-08-26T23:51:56Z` expired.
-- Existing A7 tree is dirty in A10's golden report. Preserve it; create a new
-  clean A7-R worktree rather than overwriting it.
+- Verdict: **`V9H_PASS_V10_AUTHORIZED`** — `research/audits/v10/v9h_closeout.{json,md}`
+  carrying A7-R's independent `V9H_PASS_V10_AUTHORIZED_EVIDENCE` verbatim
+  (14/14 checks, 0 unresolved HIGH/CRITICAL) audited at `5c8a979`.
+- Full suite on clean integration: **1078 passed / 1 skipped / exit 0**, run alone.
+- Denominator: **117** historical scored trials; **V10 budget consumed = 0**.
+- Owned workers: zero (controller sweep + advisory ps agree; re-verified by A7).
+- Open remediations (none blocking): F1 owner must enumerate adversarial items
+  12–20; F2 record same-workload cached-vs-uncached wall pair for strict G-H06.
+- Capacity: owner directive `effective_heavy_workers=1` (`e746f9a`) → any future
+  heavy/scored waves run at `min(2, 1) = 1` worker.
 
-## Exact next action
+## Worktree consolidation happened this session
 
-1. Verify all V10 worktree HEADs/tree states and active owned workers.
-2. Freeze a new maximum four-hour `recovery_contract.json`; explicitly preserve
-   the expired deadline and zero V10 budget.
-3. Reconcile actual H2 commits/tests/clean states into both manifests.
-4. Create clean A7-R from `b7c39a2`; leave old dirty A7 untouched.
-5. Produce missing test/resource/gate evidence and run A7-R H01–H14 audit.
-6. Close `V9H_PASS_V10_AUTHORIZED` or
-   `V9H_BLOCKED_V10_NOT_AUTHORIZED`.
-7. Only after PASS, freeze a separate 12-hour V10 contract and dispatch A8/A9
-   proposal agents in parallel. No implementation/backtest before blinded
-   selection.
+68 worktrees removed under explicit owner authorization (never forced); unique
+v6p/v7p/v8p/v9p-adjacent strays preserved on branch
+`orca/preserve-v9-exec-strays@a1fb57d`; ~4.0 GB freed; all 67 branches intact.
+Do not resurrect old sprint trees from assumptions — branches are authoritative.
 
-## Agent rules
+## If V10 proceeds
 
-- A1 alone creates worktrees, merges, freezes and launches.
-- Maximum four light agents including A1; heavy workers =
-  `min(2, frozen_governor_cap)`.
-- Separate worktree and non-overlapping allowlist per role.
-- Each agent returns clean commit, tests, limitations and SHA.
-- Never edit root/main from subagent worktrees or recreate completed A2–A6/A10.
+1. Owner resolves F1/F2 first.
+2. Freeze a separate ≤12 h V10 contract pinned to an authorized SHA from this
+   chain (`a0b44ca` or its closeout-child on `orca/v10-integration`).
+3. Create FRESH proposal worktrees from that SHA only. The stale `acbc79b`
+   bootstraps of a8/a9 remain forbidden for proposals.
+4. Prelaunch gates G01–G20 all-PASS before any scored execution.
+5. Root `main` merge of this branch: deferred — control manifests diverged on
+   both sides and need manual conflict inspection per PLAN §4.2. Run it as its
+   own owner-visible step; nothing is lost locally meanwhile.
 
-## Stop boundaries
+## Still forbidden
 
-No V10 score without V9H+A7 PASS. No rejected-family rescue, S1, equity score,
-paper/testnet/live/order, push or worktree deletion. On permission or deadline
-block, write evidence and stop cleanly instead of bypassing safeguards.
-
-## Required first report
-
-Return actual root/integration SHA, worktree HEADs/states, owned workers,
-old/new deadlines, missing H01–H14 evidence, planned agent wave, and confirmation
-that V10 budget remains 0.
+No rescue/tuning of any V1–V9 family (incl TSTREND-L28), no S1 inspection,
+no equity scored trials, no paper/testnet/live/orders/credentials, no remote
+push, no further worktree deletion without new owner authorization.
