@@ -1,0 +1,115 @@
+{
+  "schema_version": "orca.v10.h08_cases.v1",
+  "artifact": "h08_cases_12_20",
+  "generated_at_utc": "2026-08-27T14:00:02Z",
+  "producer_role": "G3",
+  "authority": {
+    "plan_ref": "PLAN.md section 3.3 'H08 items 12-20 need explicit owner-authorized enumeration' and section 7 'G3 - independent acceptance/fault QA' ('explicit H08 cases 12-20, now authorized by this PLAN')",
+    "gate_ref": "research.gate_checks_v10.evaluate_gate_h08 (H08_ITEM_COUNT=20, statuses PASS|FAIL only, all 20 required)",
+    "bootstrap_sha": "5bb1a90551c8f7823773af713316a45e0ca070cd",
+    "scope_rule": "Items 1-11 are pre-existing evidence and are NOT redefined, renumbered or touched here. This file ONLY enumerates 12-20.",
+    "status_rule": "Each case below carries a PRE-REGISTERED detection mechanism and fail-closed behaviour. Its PASS/FAIL status is measured at A7 re-audit time by executing test_ref (and only then); G3 does not pre-fill PASS for any item.",
+    "categories_allowed": [
+      "adversarial",
+      "data",
+      "runtime",
+      "provenance",
+      "reproduction"
+    ]
+  },
+  "items": [
+    {
+      "id": 12,
+      "name": "duplicate_trial_publication",
+      "category": "provenance",
+      "trigger_description": "The same scored trial (identical experiment identity/content digest) is offered to the append-only trial ledger twice, e.g. an operator rerun, a retried publish after a network hiccup, or a finalizer bug.",
+      "detection_mechanism": "Exactly-once publication gate keyed on trial identity before delegation to research.global_ledger.append_verified; the registry digest identity is the entry content modulo the registry-stamped appended_at. Detection executed by the QA exactly-once oracle in tests/test_fault_injection_v10_g3.py (QAExactlyOncePublisher) and contractually by the adapter publish path.",
+      "expected_fail_closed_behavior": "Second publication attempt raises/refuses with a duplicate reason; no additional row is written; the statistical denominator is unchanged after the rerun; verify_append_only stays True throughout.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_12_duplicate_ledger_write_refused_and_append_only_preserved + ::test_h08_12_publish_after_failure_is_forbidden + ::test_h08_12_recorded_limitation_probe_raw_registry_has_no_unique_constraint; RED-by-design adapter contract: tests/test_adapter_acceptance_v10_g3.py::test_bg6_ledger_idempotency_duplicate_publish_rejected + ::test_bg6_publish_after_prescore_failure_is_forbidden",
+      "recorded_limitation": "research.global_ledger.append_verified enforces append-only monotonicity but has NO unique-experiment-id constraint: the raw registry alone does NOT close this case. The refusal MUST live in the adapter/finalizer publishing layer (BG-6)."
+    },
+    {
+      "id": 13,
+      "name": "missing_native_settlement_in_holding_span",
+      "category": "data",
+      "trigger_description": "A held leg spans a settlement-eligible interval with no published native funding rate (staged funding file short, symbol-specific cadence gap, or a rate published only outside the span).",
+      "detection_mechanism": "Accrual-coverage detector over (start_ns, end_ns] per held span: any held span with zero settlements strictly inside is flagged. Duplicate publication timestamps are rejected structurally by research.pit_hooks_v10.normalize_info_series (DataIntegrityError).",
+      "expected_fail_closed_behavior": "The span is marked UNAVAILABLE_FAIL_CLOSED (never silently accrued as 0.0); with coverage_required the accrual result is unusable for scoring; malformed series raise DataIntegrityError before any cashflow is produced.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_13_missing_settlement_inside_span_marked_unavailable_not_silent_zero + ::test_h08_13_duplicate_settlement_stamp_rejected_fail_closed + ::test_h08_13_out_of_order_series_normalized_ascending_never_resorted_silently; RED-by-design adapter contract: tests/test_adapter_acceptance_v10_g3.py::test_g15_checked_accrual_marks_unavailable_span_fail_closed"
+    },
+    {
+      "id": 14,
+      "name": "stale_artifact_manifest_hash",
+      "category": "provenance",
+      "trigger_description": "An artifact/manifest byte drifts after it was pinned (partial writer crash, truncation, post-hoc edit of a decision payload or input manifest).",
+      "detection_mechanism": "Streaming sha256 (research.cache_v10.sha256_file_chunked) re-check of the pinned digest; chunk size must not change the digest, so any single-byte mutation or truncation is detected.",
+      "expected_fail_closed_behavior": "Pinned digest != recomputed digest; the artifact is treated as tampered/unusable (mismatch raised or reported), never accepted as the pinned evidence.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_14_mutated_artifact_detected_by_chunked_manifest_recheck + ::test_h08_14_chunk_size_does_not_change_digest_streaming_equivalence"
+    },
+    {
+      "id": 15,
+      "name": "post_cutoff_mutation_of_window_or_book_data",
+      "category": "adversarial",
+      "trigger_description": "Book/window data is mutated AFTER the force-flat scored-window boundary (post-cutoff fill price forged, terminal force-flat reason rewritten, extra row appended beyond SCORED_WINDOW_END_UTC).",
+      "detection_mechanism": "Scored-window slice hash re-check: hash the rows with SCORED_WINDOW_START_UTC < decision_ns <= SCORED_WINDOW_END_UTC and re-verify. A mutation dated after the cutoff cannot move the scored-window hash (out-of-window rows are structurally excluded), while any mutation inside the window - including the frozen terminal FORCE_FLAT row - changes the hash and is detected.",
+      "expected_fail_closed_behavior": "Detected divergence refuses the artifact; the terminal row must keep action=FORCE_FLAT, reason=force_flat_final_scored_window_boundary and an empty book; holding spans may never extend past the boundary.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_15_post_cutoff_mutation_cannot_touch_the_scored_window_hash + ::test_h08_15_spans_close_at_the_force_flat_boundary_never_beyond"
+    },
+    {
+      "id": 16,
+      "name": "stale_cache_entry_reuse_across_changed_input_surface",
+      "category": "reproduction",
+      "trigger_description": "A cached scored payload is offered back after ANY key-material component changed (data/catalog hash, symbols, window, bar type, funding model, signal inputs), or a cache object is smuggled across processes into a reproduction run.",
+      "detection_mechanism": "research.cache_v10.make_cache_key hashes the FULL input surface (sorted-key canonical JSON), so any component change yields a different key and the stale entry becomes unreachable; research.cache_v10.ProcessLocalCache refuses pickling/copying so it cannot persist into a fresh reproduction process.",
+      "expected_fail_closed_behavior": "Stale lookup is a recorded MISS returning no value (no silently-reused scored payload); persistence attempts raise TypeError; universe ordering never splits equivalent work (deterministic normalization).",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_16_changed_input_surface_makes_stale_cache_entry_unreachable + ::test_h08_16_process_local_cache_can_never_smuggle_across_processes"
+    },
+    {
+      "id": 17,
+      "name": "over_cap_heavy_worker_launch",
+      "category": "runtime",
+      "trigger_description": "A heavy worker is launched when the effective cap is already reached: effective cap 0 (RAM-derived safe cap 0), a second concurrent acquire under cap 1, or a promotion attempt past the post-PnL cap snapshot.",
+      "detection_mechanism": "research.resource_governor_v10.ResourceGovernorV10.admit_worker(active_count) compares the requested admission against effective_heavy_workers = min(contract_cap, ram_cap_workers) with the two-worker promotion rule and the post-PnL monotone clamp.",
+      "expected_fail_closed_behavior": "OverCapacityError raised for every over-cap admission (including active=0 when the cap is 0: nothing may launch and cap 0 is never overridden to 1); promotion past 1 requires three consecutive safe two-worker probes; promotion after PnL is visible raises PromotionLockedError; invalid freeze parameters raise GovernorError.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_17_effective_cap_zero_rejects_every_worker_admission + ::test_h08_17_cap_one_admits_once_then_rejects_second_concurrent_acquire + ::test_h08_17_two_worker_cap_requires_probe_evidence_and_locks_after_pnl + ::test_h08_17_invalid_freeze_inputs_fail_closed; G17 cap-artifact contract: tests/test_adapter_acceptance_v10_g3.py::test_g17_* (RED by design)"
+    },
+    {
+      "id": 18,
+      "name": "incomplete_stress_matrix_finalization",
+      "category": "runtime",
+      "trigger_description": "A scored run tries to finalize while at least one preregistered stress variant produced no/invalid output (baseline, fee_slippage_x1_5, plus_2_ticks, plus_1_event_delay, drop_one_symbol:<SYMBOL> per cohort member, drop_one_fold:<LABEL> per fold), or an undeclared variant is present.",
+      "detection_mechanism": "Refuse-finalize-if-any-required-variant-missing guard over the required variant-id grammar 'baseline | fee_slippage_x1_5 | plus_2_ticks | plus_1_event_delay | drop_one_symbol:<SYM> | drop_one_fold:<LABEL>', plus a required-result-key check (schema_version, variant_id, schedule_sha256, metrics) and an undeclared-variant check.",
+      "expected_fail_closed_behavior": "Finalization raises naming the missing/malformed/undeclared variant ids; no score, no denominator update and no artifact finalization is produced from a partial matrix.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_18_finalization_refused_when_any_required_variant_missing + ::test_h08_18_required_matrix_expands_drop_one_symbol_and_fold_per_member + ::test_h08_18_apply_stress_filter_enforces_min_eligible_and_known_names; RED-by-design adapter contract: tests/test_adapter_acceptance_v10_g3.py::test_bg4_stress_variant_matrix_must_be_complete + ::test_bg4_finalization_refuses_any_missing_variant"
+    },
+    {
+      "id": 19,
+      "name": "cross_fold_holding_span_leakage",
+      "category": "adversarial",
+      "trigger_description": "A holding span opened inside chronological fold k survives past fold k's terminal boundary (through the purge gap) into fold k+1, or starts outside every fold window.",
+      "detection_mechanism": "Cross-fold leakage detector over research.hyp_a8_m01.chronological_folds windows: the fold whose window contains span.start_ns owns the leg, and the leg may not remain open at/after that fold's close (purge already pushed the boundary one holding period ahead of the next fold).",
+      "expected_fail_closed_behavior": "LeakageDetected raised naming the span and the folds it crosses; fold partitions must themselves be disjoint, chronological and purge-separated, so a detected overlap is a hard failure rather than a re-fold.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_19_span_crossing_fold_purge_boundary_is_detected + ::test_h08_19_chronological_fold_partition_properties_hold"
+    },
+    {
+      "id": 20,
+      "name": "near_identical_result_reproduction_divergence",
+      "category": "reproduction",
+      "trigger_description": "Two supposedly identical result payloads differ by exactly one ULP in a reported float, or by a missing key / sequence-length drift / type change (a rerun that is 'almost' the same).",
+      "detection_mechanism": "Exact-equality reproduction comparator over the full nested payload (path-addressed): floats compared bit-exactly (repr equality, NaN==NaN by canonical convention), plus structural key-set and sequence-length checks.",
+      "expected_fail_closed_behavior": "Any divergence is reported with the JSON path of the fault (e.g. $.metrics.expectancy:float_bit_mismatch); only byte-stable identical payloads compare clean; the strict shared-cache merge gate additionally rejects stale-read budgets even when every other proof is perfect.",
+      "test_ref": "tests/test_fault_injection_v10_g3.py::test_h08_20_single_float_divergence_flagged + ::test_h08_20_identical_results_compare_clean_and_gate_reads_are_real"
+    }
+  ],
+  "pre_registered_status_mapping_for_gate_checks": {
+    "note": "evaluate_gate_h08 requires statuses PASS|FAIL for items 1..20. G3 records NO status here (that would fabricate evidence). Fill this mapping at A7 re-audit time from executed test_ref outcomes.",
+    "items_1_to_11": "PRE_EXISTING_EVIDENCE_NOT_REDEFINED_BY_G3",
+    "items_12_to_20": "PENDING_A7_REAUDIT_EXECUTION"
+  },
+  "execution_evidence_at_generation": {
+    "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_fault_injection_v10_g3.py tests/test_adapter_acceptance_v10_g3.py -q --continue-on-collection-errors",
+    "fault_injection_suite": "33 passed (executed GREEN at generation time)",
+    "adapter_acceptance_suite": "1 collection error: ModuleNotFoundError: No module named 'research.adapter_v10' (RED BY DESIGN)",
+    "note": "Every item above has at least one executable test; 12, 13, 18 additionally have adapter-side RED contracts that must go GREEN at integration."
+  }
+}
