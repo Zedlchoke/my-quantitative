@@ -31,7 +31,7 @@
   ]
  },
  "exit_code": 0,
- "generated_at": "2026-08-27T14:20:18+00:00",
+ "generated_at": "2026-08-27T14:38:36+00:00",
  "genericity_evidence": {
   "grep": "grep -rnE 'M01|A8|BTCUSDT|trial_v10|hyp_a8' research/adapter_v10/*.py (excluding m01_plugin.py) -> no matches",
   "test_guard": "tests/test_adapter_v10_g1.py::test_generic_paths_free_of_family_tokens"
@@ -39,11 +39,12 @@
  "head_sha": "5bb1a90551c8f7823773af713316a45e0ca070cd",
  "head_sha_scope": "branch HEAD the single G1 lane commit sits on (measured before the lane commit). An artifact cannot embed the hash of the commit that carries it; the lane commit SHA is reported to A1 in the G1 return message and every input file is pinned byte-exactly by input_hashes below, which stay valid across cherry-picks.",
  "input_hashes": {
-  "research/adapter_v10/__init__.py": "6c0d3cdabc00a6079de546a3167aa3eb121d1e54ba6d3be305290e133bdd6027",
+  "research/adapter_v10/__init__.py": "498591969f2d94d67974f64b5fa9d3e06b8390f221772326e638f3df41d0d817",
   "research/adapter_v10/base.py": "3b62d200c68d684373fef9d09496b6426a9d1dcdf30c9244f628acf7dbcb3ec8",
   "research/adapter_v10/benchmarks.py": "c2132e61fdd9b40e78062d0b25fd0a7e1ef922d70eab73b771573698e6cf7255",
   "research/adapter_v10/converters.py": "a0a66e4bac51eeab1c608af59d14cd13f29584226abf66a2d8c67eb6439e925d",
   "research/adapter_v10/dummy_strategy.py": "cbe74661bb563fd47e487d84740dcc2185c2cd588c2fe151bbaab069938f15bf",
+  "research/adapter_v10/facade.py": "1d1c30f3065d7e0f7b4f13e2f92d46710a43f458289c4c63c5e2652c8ed67fb0",
   "research/adapter_v10/hashes.py": "3d9423f627f9bfa8675bbdf6c95b7b81d16a3855347bd8b1e6524004c021d3a8",
   "research/adapter_v10/m01_plugin.py": "210079f5a32feac25e42e5ddb12168aafb351e72374f76d370adca3ca985740e",
   "research/adapter_v10/metrics.py": "c754a5ef6a69c999f1e75297589e1eb37d1113b1fe7c6df44206b12b721d6aaf",
@@ -51,7 +52,41 @@
   "research/adapter_v10/publish.py": "7ec7f393bdb27a13c51578c717657d17cc0d8f2ccc021b073e26e529bf327338",
   "research/adapter_v10/runner.py": "f693afc35dc72b0dde3a42c35f9bbd558a11e10f92c47669322de899912c782f",
   "research/adapter_v10/stress.py": "050f6871fe00e123e079dd10e919299042d3af7dc9e71d9a25daf8de1baad3cb",
-  "tests/test_adapter_v10_g1.py": "91948ac1d6d2699ce577439cb03e3d13de0f981e9ade9e8a689213a33587bc30"
+  "tests/test_adapter_v10_g1.py": "26dde9ae894cae1c5e3b8b62b95261c43423318921c57b7b3a3e4e5796145421"
+ },
+ "interface_reconciliation": {
+  "contract_source": [
+   "/Users/hoangminhlong/my-quantitative-v10-wt/v10p-g3-qa/tests/test_adapter_acceptance_v10_g3.py",
+   "/Users/hoangminhlong/my-quantitative-v10-wt/v10p-g3-qa/research/audits/v10/g3_adapter_acceptance.json#frozen_interface_assumptions_for_a1_review"
+  ],
+  "exports_added": [
+   "ADAPTER_INTERFACE_VERSION = 'v10.adapter.interface.v1'",
+   "GenericRunnerV10(strategy=..., config=...) with compute_fold_metrics / convert_target_book / schedule / finalise_schedule_payload / stress_variants / finalize_stress / flat_hard_benchmark / context_benchmark / publish_trial / denominator",
+   "checked_funding_accrual(holdings, settlements, coverage_required=True)",
+   "cache_decision(payload_or_path)",
+   "resource_cap_report(payload_or_path)",
+   "validate_resource_cap_report(payload)"
+  ],
+  "hand_checks_reproduced": {
+   "BG1_folds": "F1 expectancy 0.02/3, PF 3.0, MDD 0.01; F2 expectancy 0.01, PF 2.0, MDD 0.02; pooled PF 0.07/0.03 with compounded-equity drawdown",
+   "BG2_baseline_cost": "0.30*(5bps+1tick @100) + 0.30*(5bps+0.5tick @200) = 3.45e-4; fee x1.5 = 4.95e-4",
+   "F2_cache": "enabled only with raw_reads_pair(cached<=uncached) + positive preregistered budget + true parity/repro proofs; absent/empty/missing-file decisions stay disabled and no env flag (V10_CACHE_ENABLED / ORCA_V10_CACHE_ENABLED) can enable them",
+   "G15_long_short": "ETH long 0.50 x 2 x 1e-4 = -0.0001; SOL short -0.25 x 22 x 2e-5 = +0.00011; XRP long 0.10 x (0.002 + 0.0005) = -0.00025 with (start,end] exclusivity",
+   "G17_cap": "final_cap = min(owner_ceiling, measured_safe_cap) as int; cap 0 = no local scored launch"
+  },
+  "open_items_for_a1": [
+   {
+    "adapter_behaviour": "With a per-symbol series (mapping {symbol: [points]} or points carrying a 'symbol' field) the adapter reproduces G3's numbers EXACTLY. With an unlabelled flat series the adapter accrues the shared series to every held leg (ETH -0.00032, SOL +0.00016, XRP -0.00025) and reports coverage.series_mode='shared_flat_series'; inventing a symbol attribution from an unlabelled series would be fabrication, so it is refused by design.",
+    "adapter_change_needed": "none (both semantics implemented and selected by the input form)",
+    "item": "G15 settlement attribution for an UNLABELLED merged series",
+    "observed": "G3's fixture passes one merged settlement series (ETH 8h cadence + SOL 1h cadence + XRP day-2) and asserts per-instrument totals (ETH -0.0001, SOL +0.00011, XRP -0.00025).",
+    "resolution_options": [
+     "A1/G3 passes the fixture as per-symbol series (one-line fixture change; adapter needs none), or",
+     "A1 freezes the shared-flat-series semantics, in which case G3's ETH/SOL expected totals become -0.00032 / +0.00016."
+    ]
+   }
+  ],
+  "semantic_changes_to_existing_g1_code": "none (additive facade only)"
  },
  "limitations": [
   "No scored V10 cell was run and no real catalog data was read: M01 numbers in the tests are synthetic, so this lane proves the adapter mechanics, not M01 performance.",
@@ -71,20 +106,21 @@
   "BG6: publication is idempotent and exactly-once over research/global_ledger (snapshot/digest/append_verified): first publish +1 denominator, same key refused, pre-score failure appends nothing, violated append-only ledger refuses, rerun never double-counts.",
   "Genericity: no family/arm/trial identifier in any shared module (grep + test guard); strategy enters only via the ResearchStrategy protocol; dummy strategy and the thin M01 plugin pass the same parameterized suite.",
   "No scored V10 metric was created in this lane: every number in the tests comes from synthetic frames.",
-  "Fail-closed paths verified: unavailable valuation marks raise DataUnavailable, duplicate settlement stamps are refused by the shared PIT hook, and settlements outside every held span accrue nothing."
+  "Fail-closed paths verified: unavailable valuation marks raise DataUnavailable, duplicate settlement stamps are refused by the shared PIT hook, and settlements outside every held span accrue nothing.",
+  "Interface reconciliation (commit 2): the frozen QA-contract surface is exported (ADAPTER_INTERFACE_VERSION, GenericRunnerV10, checked_funding_accrual, cache_decision, resource_cap_report, validate_resource_cap_report) as an additive facade over the already-merged G1 modules; no existing semantic changed and all 25 original lane tests still pass."
  ],
  "regression_commands": [
-  "python -m pytest tests/test_adapter_v10_g1.py -q  ->  25 passed",
+  "python -m pytest tests/test_adapter_v10_g1.py -q  ->  35 passed",
   "python -m pytest tests/test_hyp_a8_m01.py tests/test_protocol_registry.py -q  ->  78 passed",
   "python -m pytest tests/test_hyp_a8_m01.py tests/test_protocol_registry.py tests/test_contract_v10.py tests/test_pit_hooks_v10.py -q  ->  106 passed"
  ],
  "schema_version": "v10.audit.g1_adapter_validation.v1",
  "sprint": "V10P-R",
  "test_summary": {
-  "adapter_suite": "25 passed, 0 failed, 0 skipped",
+  "adapter_suite": "35 passed, 0 failed, 0 skipped (25 lane tests + 10 facade tests)",
   "data_touched": "synthetic fixtures only (no catalog parquet, no scored window)",
   "regression_m01_registry_contract_pit": "106 passed, 0 failed",
-  "runtime_seconds": 2.3
+  "runtime_seconds": 3.0
  },
  "verdict": "PASS",
  "worktree": "/Users/hoangminhlong/my-quantitative-v10-wt/v10p-g1-adapter"

@@ -24,7 +24,9 @@ from __future__ import annotations
 
 import json
 import math
+import tempfile
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -81,6 +83,7 @@ from research.adapter_v10.stress import (
 from research.contract_v10 import STRESS_MATRIX_V10
 from research.global_ledger import digest, snapshot
 from research.pit_hooks_v10 import DataIntegrityError
+import research.hyp_a8_m01 as m01_module
 from research.hyp_a8_m01 import M01Bar
 
 DAY_NS = 86_400_000_000_000
@@ -900,3 +903,569 @@ def test_settlements_fail_closed_or_silent_outside_held_spans():
     }
     result = run_strategy(far_past, write_artifact_file=False)
     assert math.fsum(p["funding_cashflow_per_unit"] for p in result["positions"]) == 0.0
+
+
+# --------------------------------------------------------------------------- #
+# Frozen QA-contract facade (A1 interface reconciliation, commit 2)
+# --------------------------------------------------------------------------- #
+from research.adapter_v10 import (  # noqa: E402
+    ADAPTER_INTERFACE_VERSION,
+    GenericRunnerV10,
+    cache_decision,
+    checked_funding_accrual,
+    resource_cap_report,
+    validate_resource_cap_report,
+)
+from research.hyp_a8_m01 import (  # noqa: E402
+    ADVERSE_TICK_SLIP_FLOOR,
+    FORCE_FLAT_REASON as M01_FORCE_FLAT_REASON,
+    FORCE_FLAT_STATUS as M01_FORCE_FLAT_STATUS,
+    HoldingSpan,
+    StressParams,
+)
+from research.pit_hooks_v10 import InfoPoint  # noqa: E402
+from research.cache_v10 import SharedCacheMergeGate  # noqa: E402
+
+
+class _FacadeDummyStrategy:
+    """Smallest generic plugin for the facade (strategy_id/config/schedule_provider)."""
+
+    strategy_id = "DUMMY_FACADE_V10"
+
+    def __init__(self) -> None:
+        self.config = dict(FACADE_CONFIG)
+        self.schedule_provider = "injected_fixture_rows"
+
+
+FACADE_CONFIG: dict = {
+    "cohort": ["AAAUSDT", "BBBUSDT"],
+    "window_start_iso": "2025-09-01T00:00:00Z",
+    "window_end_iso": "2025-09-03T00:00:00Z",
+    "cap": 0.30,
+    "gross": 1.0,
+    "taker_fee_bps": 5.0,
+    "adverse_tick_slip": 1,
+}
+
+
+def _facade_runner() -> GenericRunnerV10:
+    return GenericRunnerV10(strategy=_FacadeDummyStrategy(), config=FACADE_CONFIG)
+
+
+FACADE_FOLD_RETURNS = {"F1": [0.01, 0.02, -0.01], "F2": [-0.02, 0.04]}
+
+
+def _facade_oracle(returns):
+    wins = math.fsum(r for r in returns if r > 0.0)
+    losses = math.fsum(r for r in returns if r <= 0.0)
+    equity, peak, mdd = 1.0, 1.0, 0.0
+    for value in returns:
+        equity *= 1.0 + float(value)
+        peak = max(peak, equity)
+        mdd = max(mdd, 1.0 - equity / peak)
+    return {
+        "expectancy": math.fsum(returns) / len(returns),
+        "profit_factor": wins / abs(losses),
+        "max_drawdown": mdd,
+    }
+
+
+def test_facade_fold_metrics_match_hand_computed_values_and_pool():
+    metrics = _facade_runner().compute_fold_metrics(dict(FACADE_FOLD_RETURNS))
+    entries = {entry["fold_id"]: entry for entry in metrics["folds"]}
+    assert [entry["fold_id"] for entry in metrics["folds"]] == ["F1", "F2"]
+
+    assert entries["F1"]["n_days"] == 3
+    assert entries["F1"]["expectancy"] == pytest.approx(
+        float(Decimal("0.02") / Decimal(3)), rel=1e-12
+    )
+    assert entries["F1"]["profit_factor"] == pytest.approx(3.0, rel=1e-12)
+    assert entries["F1"]["max_drawdown"] == pytest.approx(0.01, rel=1e-6)
+
+    assert entries["F2"]["n_days"] == 2
+    assert entries["F2"]["expectancy"] == pytest.approx(0.01, rel=1e-12)
+    assert entries["F2"]["profit_factor"] == pytest.approx(2.0, rel=1e-12)
+    assert entries["F2"]["max_drawdown"] == pytest.approx(0.02, rel=1e-6)
+
+    pooled = _facade_oracle(FACADE_FOLD_RETURNS["F1"] + FACADE_FOLD_RETURNS["F2"])
+    aggregate = metrics["aggregate"]
+    assert aggregate["expectancy"] == pytest.approx(pooled["expectancy"], rel=1e-12)
+    assert aggregate["profit_factor"] == pytest.approx(
+        float(Decimal("0.07") / Decimal("0.03")), rel=1e-12
+    )
+    assert aggregate["max_drawdown"] == pytest.approx(pooled["max_drawdown"], rel=1e-9)
+
+    twice = _facade_runner().compute_fold_metrics(dict(FACADE_FOLD_RETURNS))
+    assert payload_sha256(metrics) == payload_sha256(twice)
+
+    # a fold with no losing day is flagged undefined, never faked as a number
+    undefined = _facade_runner().compute_fold_metrics({"F1": [0.01, 0.02]})
+    assert undefined["folds"][0]["profit_factor"] is None
+    assert undefined["folds"][0]["profit_factor_is_undefined"] is True
+    with pytest.raises(AdapterError):
+        _facade_runner().compute_fold_metrics({})
+    with pytest.raises(AdapterError):
+        GenericRunnerV10(strategy=object(), config=FACADE_CONFIG)
+
+
+def test_facade_convert_target_book_exact_cost_and_vocabulary():
+    runner = _facade_runner()
+    prices = {"AAAUSDT": 100.0, "BBBUSDT": 200.0}
+    ticks = {"AAAUSDT": 0.01, "BBBUSDT": 0.01}
+    t0 = utc_ns(2025, 9, 2)
+    events = {
+        symbol: m01_module.resolve_fill_event(
+            _facade_bars(symbol, t0), symbol, decision_ns=t0
+        )
+        for symbol in prices
+    }
+
+    payload = runner.convert_target_book(
+        t0, {"AAAUSDT": 0.30, "BBBUSDT": -0.30}, {}, events, tick_sizes=ticks
+    )
+    assert {"decision_ns", "fills", "turnover_one_side", "cost_per_unit_gross",
+            "is_force_flat_boundary"} <= set(payload)
+    assert payload["decision_ns"] == t0
+    assert payload["is_force_flat_boundary"] is False
+    fills = {entry["symbol"]: entry for entry in payload["fills"]}
+    assert set(fills) == set(prices)
+    for symbol, weight in {"AAAUSDT": 0.30, "BBBUSDT": -0.30}.items():
+        entry = fills[symbol]
+        assert entry["status"] == "FILLED_NEXT_EVENT"
+        assert entry["applied"] is True
+        assert entry["event_offset"] == 0
+        assert entry["target_weight"] == pytest.approx(weight, abs=1e-12)
+        assert entry["prior_weight"] == 0.0
+        assert entry["signed_weight_change"] == pytest.approx(weight, abs=1e-12)
+        assert entry["price"] == pytest.approx(prices[symbol], rel=1e-12)
+        assert entry["fill_open_ns"] <= t0 < entry["fill_bar_close_ns"]
+    assert payload["turnover_one_side"] == pytest.approx(0.60, abs=1e-12)
+    assert payload["cost_per_unit_gross"] == pytest.approx(
+        float(Decimal("0.000345")), rel=1e-12
+    )
+    stressed = runner.convert_target_book(
+        t0,
+        {"AAAUSDT": 0.30, "BBBUSDT": -0.30},
+        {},
+        events,
+        tick_sizes=ticks,
+        stress=StressParams(fee_multiplier=1.5),
+    )
+    assert stressed["cost_per_unit_gross"] == pytest.approx(
+        float(Decimal("0.000495")), rel=1e-12
+    )
+    # the stress signature is also readable as a plain mapping
+    as_mapping = runner.convert_target_book(
+        t0,
+        {"AAAUSDT": 0.30, "BBBUSDT": -0.30},
+        {},
+        events,
+        tick_sizes=ticks,
+        stress={"fee_multiplier": 1.5, "tick_slip_ticks": 1},
+    )
+    assert as_mapping["cost_per_unit_gross"] == pytest.approx(
+        float(Decimal("0.000495")), rel=1e-12
+    )
+    # a leg that cannot fill is never silently scored
+    with pytest.raises(AdapterError):
+        runner.convert_target_book(t0, {"AAAUSDT": 0.30}, {}, {}, tick_sizes=ticks)
+
+
+def _facade_bars(symbol: str, decision_ns: int):
+    price = {"AAAUSDT": 100.0, "BBBUSDT": 200.0}[symbol]
+    return [
+        M01Bar(
+            ts_event_ns=decision_ns + 900_000_000_000 - 100_000,
+            ts_init_ns=decision_ns + 900_000_000_000 - 100_000,
+            open=price,
+            high=price * 1.01,
+            low=price * 0.99,
+            close=price * 1.001,
+            volume=1_000.0,
+            quote_volume=1_000.0 * price,
+            count=11,
+            taker_buy_quote_volume=0.55 * 1_000.0 * price,
+        )
+    ]
+
+
+def test_facade_force_flat_and_schedule_terminal_row():
+    runner = _facade_runner()
+    prices = {"AAAUSDT": 100.0, "BBBUSDT": 200.0}
+    ticks = {"AAAUSDT": 0.01, "BBBUSDT": 0.01}
+    t0 = utc_ns(2025, 9, 2)
+    t_end = t0 + DAY_NS
+    events = {
+        symbol: m01_module.resolve_fill_event(
+            _facade_bars(symbol, t_end), symbol, decision_ns=t_end
+        )
+        for symbol in prices
+    }
+    payload = runner.convert_target_book(
+        t_end,
+        {"AAAUSDT": 0.30, "BBBUSDT": -0.30},
+        {"AAAUSDT": 0.30, "BBBUSDT": -0.30},
+        events,
+        tick_sizes=ticks,
+        force_flat_boundary_ns=t_end,
+    )
+    assert payload["is_force_flat_boundary"] is True
+    assert payload["force_flat_reason"] == "force_flat_final_scored_window_boundary"
+    assert all(float(entry["target_weight"]) == 0.0 for entry in payload["fills"])
+    assert sum(abs(float(entry["prior_weight"])) for entry in payload["fills"]) == pytest.approx(0.60, abs=1e-12)
+
+    opening_row = {
+        "action": "OPEN_REBALANCE",
+        "decision_ns": t0,
+        "status": "OK",
+        "weights": [["AAAUSDT", 0.30], ["BBBUSDT", -0.30]],
+        "fills": [
+            {"symbol": "AAAUSDT", "applied": True, "fill_open_ns": t0,
+             "fill_bar_close_ns": t0 + DAY_NS, "price": 100.0,
+             "target_weight": 0.30, "prior_weight": 0.0},
+        ],
+    }
+    schedule = runner.schedule({"rows": [opening_row], "final_boundary_ns": t_end})
+    rows = schedule["rows"]
+    assert rows[-1]["action"] == M01_FORCE_FLAT_STATUS
+    assert rows[-1]["reason_code"] == M01_FORCE_FLAT_REASON
+    assert rows[-1]["weights"] == []
+    assert sum(abs(weight) for _, weight in rows[-1]["weights"]) == 0.0
+    finalised = runner.finalise_schedule_payload(schedule)
+    assert payload_sha256(schedule) == payload_sha256(finalised)
+    json.dumps(finalised)  # artifact payload is JSON-safe without any key added
+    assert set(finalised) == set(schedule)
+    # the mirrored terminal vocabulary never drifts from the frozen module
+    assert M01_FORCE_FLAT_STATUS == "FORCE_FLAT"
+    assert M01_FORCE_FLAT_REASON == "force_flat_final_scored_window_boundary"
+
+
+def test_facade_stress_variants_and_finalize():
+    runner = _facade_runner()
+    cohort = sorted(FACADE_CONFIG["cohort"])
+    fold_labels = ["F1", "F2", "F3"]
+    variants = runner.stress_variants(cohort, fold_labels)
+
+    def family(entry):
+        return str(entry.get("family", entry.get("id"))).split(":")[0]
+
+    def qualifier(entry):
+        return str(entry.get("id", "")).split(":", 1)[1] if ":" in str(entry.get("id", "")) else ""
+
+    grouped: dict = {}
+    for entry in variants:
+        assert "stress" in entry
+        grouped.setdefault(family(entry), []).append(entry)
+    assert set(grouped) == {"baseline", *STRESS_SURFACE_VARIANTS}
+    assert len(grouped["baseline"]) == 1
+    assert len(grouped["fee_slippage_x1_5"]) == 1
+    assert len(grouped["plus_2_ticks"]) == 1
+    assert len(grouped["plus_1_event_delay"]) == 1
+    assert sorted(qualifier(entry) for entry in grouped["drop_one_symbol"]) == cohort
+    for entry in grouped["drop_one_symbol"]:
+        assert list(entry["stress"]["drop_symbols"]) == [qualifier(entry)]
+    assert sorted(qualifier(entry) for entry in grouped["drop_one_fold"]) == fold_labels
+    for entry in grouped["drop_one_fold"]:
+        assert entry["stress"]["dropped_fold_index"] == fold_labels.index(qualifier(entry))
+
+    def params(stress):
+        return {
+            "fee_multiplier": float(stress["fee_multiplier"]),
+            "tick_slip_ticks": int(stress["tick_slip_ticks"]),
+            "event_delay_events": int(stress["event_delay_events"]),
+        }
+
+    assert params(grouped["fee_slippage_x1_5"][0]["stress"])["fee_multiplier"] == pytest.approx(1.5)
+    assert params(grouped["plus_2_ticks"][0]["stress"])["tick_slip_ticks"] == ADVERSE_TICK_SLIP_FLOOR + 2
+    assert params(grouped["plus_1_event_delay"][0]["stress"])["event_delay_events"] == 1
+    baseline = grouped["baseline"][0]["stress"]
+    assert baseline["fee_multiplier"] == pytest.approx(1.0)
+    assert baseline["tick_slip_ticks"] == ADVERSE_TICK_SLIP_FLOOR
+    assert baseline["event_delay_events"] == 0
+
+    required = [entry["id"] for entry in variants]
+    complete = {
+        vid: {"schema_version": "orca.adapter.v10.result.v1", "variant_id": vid,
+              "schedule_sha256": "0" * 64, "metrics": {}}
+        for vid in required
+    }
+    assert runner.finalize_stress(complete, required) == {
+        "finalized": True,
+        "n_variants": len(required),
+        "variant_ids": required,
+        "payload_sha256": runner.finalize_stress(complete, required)["payload_sha256"],
+    }
+    victim = required[-1]
+    with pytest.raises(AdapterError) as missing:
+        runner.finalize_stress({k: v for k, v in complete.items() if k != victim}, required)
+    assert victim in str(missing.value)
+    extra = dict(complete)
+    extra["invented_cell"] = dict(complete[required[0]], variant_id="invented_cell")
+    with pytest.raises(AdapterError):
+        runner.finalize_stress(extra, required)
+
+
+def test_facade_flat_and_context_benchmarks():
+    runner = _facade_runner()
+    flat = runner.flat_hard_benchmark(n_days=7)
+    assert list(flat["daily_unit_gross_return"]) == [0.0] * 7
+    assert flat["total_return"] == 0.0
+    assert flat["expectancy"] == 0.0
+    assert flat["profit_factor_is_undefined"] is True
+    assert flat["benchmark"] == "flat_hard"
+    assert flat["role"] == "hard_gate"
+    with pytest.raises(AdapterError):
+        runner.flat_hard_benchmark(n_days=0)
+
+    pnl = [100.0, -50.0, 200.0, -100.0]
+    gross = [200.0] * 4
+    net = [0.0, 0.0, 200.0, 200.0]
+    btc = [0.01, -0.02, 0.01, -0.02]
+    context = runner.context_benchmark(
+        kind="btc_beta_neutral", daily_pnl=pnl, daily_gross_exposure=gross,
+        daily_net_exposure=net, benchmark_daily_return=btc,
+    )
+    neutral = list(context["daily_unit_gross_return"])
+    assert neutral[0] == pytest.approx(0.5, abs=1e-15)
+    assert neutral[1] == pytest.approx(-0.25, abs=1e-15)
+    assert neutral[2] == pytest.approx(0.99, rel=1e-12)
+    assert neutral[3] == pytest.approx(-0.48, rel=1e-12)
+    assert sum(n * g for n, g in zip(neutral, gross)) == pytest.approx(
+        sum(pnl) - sum(b * w for b, w in zip(btc, net)), rel=1e-12
+    )
+    assert context["role"] == "context_only"
+    hold = runner.context_benchmark(
+        kind="buy_and_hold", daily_pnl=pnl, daily_gross_exposure=gross,
+        daily_net_exposure=net, benchmark_daily_return=btc,
+    )
+    assert list(hold["daily_unit_gross_return"]) == pytest.approx(btc)
+    assert hold["role"] == "context_only"
+    with pytest.raises(AdapterError):
+        runner.context_benchmark(
+            kind="unknown", daily_pnl=pnl, daily_gross_exposure=gross,
+            daily_net_exposure=net, benchmark_daily_return=btc,
+        )
+    with pytest.raises(AdapterError):
+        runner.context_benchmark(
+            kind="btc_beta_neutral", daily_pnl=pnl, daily_gross_exposure=gross[:-1],
+            daily_net_exposure=net, benchmark_daily_return=btc,
+        )
+
+
+def test_facade_publish_denominator_and_prescore_refusal(tmp_path):
+    runner = _facade_runner()
+    ledger = tmp_path / "facade_ledger.jsonl"
+    entry = {
+        "experiment_id": "v10p_dummy_cell",
+        "verdict": "PASS",
+        "matrix_id": "v10p-dummy",
+        "kind": "CELL_RESULT",
+        "schema": "orca.v10.cell.v1",
+        "score_sha256": "b" * 64,
+    }
+    first = runner.publish_trial(entry, ledger_path=ledger)
+    assert first["published"] is True
+    with pytest.raises(AdapterError) as duplicate:
+        runner.publish_trial(dict(entry), ledger_path=ledger)
+    assert "duplicate" in str(duplicate.value).lower()
+    from research.global_ledger import verify_append_only
+
+    assert verify_append_only(ledger) is True
+    assert runner.denominator(ledger_path=ledger) == 1
+    with pytest.raises(AdapterError):
+        runner.publish_trial(dict(entry), ledger_path=ledger)
+    assert runner.denominator(ledger_path=ledger) == 1
+
+    with pytest.raises(AdapterError):
+        runner.publish_trial(
+            {"experiment_id": "v10p_failed_cell", "verdict": "PARTIAL_PRE_SCORE"},
+            ledger_path=ledger,
+        )
+    assert not ledger.exists() or verify_append_only(ledger) is True
+    assert runner.denominator(ledger_path=ledger) == 1
+    with pytest.raises(AdapterError):
+        runner.publish_trial({"experiment_id": "x", "verdict": "PASS"}, ledger_path=ledger)
+
+
+def test_facade_checked_funding_accrual_hand_computed(tmp_path=None):
+    t0 = utc_ns(2026, 1, 1)
+    hour = 3600 * 1_000_000_000
+
+    def settle(hour_index: int, rate: str) -> InfoPoint:
+        return InfoPoint(t0 + hour_index * hour, float(Decimal(rate)))
+
+    holdings = [
+        HoldingSpan("ETHUSDT", 0.50, t0, t0 + 24 * hour),
+        HoldingSpan("SOLUSDT", -0.25, t0, t0 + 24 * hour),
+        HoldingSpan("XRPUSDT", 0.10, t0 + 24 * hour, t0 + 48 * hour),
+    ]
+    per_symbol = {
+        "ETHUSDT": [settle(h, "0.0001") for h in (8, 16)],
+        "SOLUSDT": [settle(h, "0.00002") for h in range(1, 25) if h not in (8, 16)],
+        "XRPUSDT": [settle(30, "0.002"), settle(48, "0.0005")],
+    }
+    report = checked_funding_accrual(holdings, per_symbol)
+    assert report["coverage"]["series_mode"] == "per_symbol"
+    by_symbol: dict = {}
+    for flow in report["cashflows"]:
+        by_symbol.setdefault(flow["symbol"], []).append(flow)
+    eth = math.fsum(f["cashflow_per_unit_capital"] for f in by_symbol["ETHUSDT"])
+    sol = math.fsum(f["cashflow_per_unit_capital"] for f in by_symbol["SOLUSDT"])
+    xrp = math.fsum(f["cashflow_per_unit_capital"] for f in by_symbol["XRPUSDT"])
+    assert eth == pytest.approx(-0.0001, rel=1e-9)
+    assert sol == pytest.approx(0.00011, rel=1e-9)
+    assert xrp == pytest.approx(-0.00025, rel=1e-9)
+    assert report["coverage"]["is_complete"] is True
+    assert report["sign_convention"] == "LONG_PAYS_POSITIVE_RATE"
+    assert report["status"] == "OK"
+
+    # points that carry their own symbol are attributed to that instrument only
+    labelled_points = [
+        {"symbol": sym, "publish_ts_ns": int(point.publish_ts_ns), "value": float(point.value)}
+        for sym, series in per_symbol.items()
+        for point in series
+    ]
+    labelled_report = checked_funding_accrual(holdings, labelled_points)
+    assert labelled_report["coverage"]["series_mode"] == "per_symbol"
+    assert math.fsum(f["cashflow_per_unit_capital"] for f in labelled_report["cashflows"]
+                     if f["symbol"] == "ETHUSDT") == pytest.approx(-0.0001, rel=1e-9)
+    assert math.fsum(f["cashflow_per_unit_capital"] for f in labelled_report["cashflows"]
+                     if f["symbol"] == "SOLUSDT") == pytest.approx(0.00011, rel=1e-9)
+
+    # an UNLABELLED flat series is SHARED by every held leg (never invented):
+    # each instrument accrues on every instant it is held across.
+    flat_series = [point for series in per_symbol.values() for point in series]
+    shared = checked_funding_accrual(holdings, flat_series)
+    assert shared["coverage"]["series_mode"] == "shared_flat_series"
+    eth_shared = math.fsum(f["cashflow_per_unit_capital"] for f in shared["cashflows"]
+                           if f["symbol"] == "ETHUSDT")
+    sol_shared = math.fsum(f["cashflow_per_unit_capital"] for f in shared["cashflows"]
+                           if f["symbol"] == "SOLUSDT")
+    assert eth_shared == pytest.approx(-0.5 * (2 * 0.0001 + 22 * 0.00002), rel=1e-9)
+    assert sol_shared == pytest.approx(0.25 * (2 * 0.0001 + 22 * 0.00002), rel=1e-9)
+
+    uncovered = checked_funding_accrual(
+        [HoldingSpan("SOLUSDT", -0.20, t0, t0 + 24 * hour)],
+        [settle(48, "0.0003")],
+        coverage_required=True,
+    )
+    assert uncovered["coverage"]["is_complete"] is False
+    assert [entry["symbol"] for entry in uncovered["coverage"]["unavailable_spans"]] == ["SOLUSDT"]
+    assert uncovered["status"] == "UNAVAILABLE_FAIL_CLOSED"
+    assert uncovered["cashflows"] == []
+
+    edges = checked_funding_accrual(
+        [HoldingSpan("XRPUSDT", 0.10, t0 + 24 * hour, t0 + 48 * hour)],
+        [
+            settle(0, "0.001"),
+            settle(24, "0.002"),
+            settle(30, "0.002"),
+            settle(48, "0.0005"),
+            settle(60, "0.004"),
+        ],
+    )
+    observed = [(int(f["settle_ts_ns"]), float(f["cashflow_per_unit_capital"]))
+                for f in edges["cashflows"]]
+    assert len(observed) == 2
+    assert observed[0][0] == t0 + 30 * hour
+    assert observed[0][1] == pytest.approx(-0.0002, rel=1e-12)
+    assert observed[1][0] == t0 + 48 * hour
+    assert observed[1][1] == pytest.approx(-0.00005, rel=1e-12)
+    assert all(
+        holdings_edge.start_ns < int(f["settle_ts_ns"]) <= holdings_edge.end_ns
+        for f in edges["cashflows"]
+        for holdings_edge in [HoldingSpan("XRPUSDT", 0.10, t0 + 24 * hour, t0 + 48 * hour)]
+    )
+
+
+def test_facade_cache_decision_gate():
+    complete = {
+        "schema_version": 1,
+        "artifact": "cache_decision_v10",
+        "raw_reads_pair": {"cached": 2, "uncached": 18},
+        "preregistered_budget_max_raw_reads": SharedCacheMergeGate.MAX_RAW_READS_FULL_STRESS,
+        "parity_proof": True,
+        "repro_all_match": True,
+        "wall_time_cached_s": 1.0,
+        "wall_time_uncached_s": 10.0,
+    }
+    decision = cache_decision(complete)
+    assert decision["enabled"] is True
+    assert decision["raw_reads_pair"]["cached"] <= decision["raw_reads_pair"]["uncached"]
+    assert decision["preregistered_budget_max_raw_reads"] > 0
+
+    worse = dict(complete, raw_reads_pair={"cached": 20, "uncached": 18})
+    assert cache_decision(worse)["enabled"] is False
+    no_budget = dict(complete)
+    del no_budget["preregistered_budget_max_raw_reads"]
+    assert cache_decision(no_budget)["enabled"] is False
+    no_pair = dict(complete)
+    del no_pair["raw_reads_pair"]
+    assert cache_decision(no_pair)["enabled"] is False
+    for absent in (None, {}, "", "/nonexistent/cache_decision_v10.json"):
+        decision = cache_decision(absent)
+        assert decision["enabled"] is False
+        assert decision["mode"] in ("DISABLED_DECISION_ABSENT", "DISABLED")
+        assert decision["reasons"]
+    # a written decision file is honoured through the same entry point
+    payload_path = Path(tempfile.mkdtemp()) / "cache_decision_v10.json"
+    payload_path.write_text(json.dumps(complete), encoding="utf-8")
+    assert cache_decision(str(payload_path))["enabled"] is True
+
+
+def test_facade_resource_cap_report_and_validator():
+    def cap_payload(owner: int, measured: int) -> dict:
+        return {
+            "schema_version": 1,
+            "artifact": "resource_cap_report_v10",
+            "owner_ceiling": owner,
+            "measured_safe_cap": measured,
+            "measured_peak_worker_ram_gb": 1.0,
+            "available_ram_gb": 8.0,
+            "reserved_ram_gb": 2.0,
+            "final_cap": min(owner, measured),
+        }
+
+    report = resource_cap_report(cap_payload(1, 3))
+    assert report["final_cap"] == 1
+    assert isinstance(report["final_cap"], int)
+    assert validate_resource_cap_report(cap_payload(1, 3))["is_valid"] is True
+    assert resource_cap_report(cap_payload(4, 2))["final_cap"] == 2
+    zero = resource_cap_report(cap_payload(1, 0))
+    assert zero["final_cap"] == 0
+    assert zero["scored_launch_allowed"] is False
+
+    inflated = cap_payload(1, 0)
+    inflated["final_cap"] = 1
+    validation = validate_resource_cap_report(inflated)
+    assert validation["is_valid"] is False
+    assert any("measured_safe_cap" in reason for reason in validation["reasons"])
+    with pytest.raises(AdapterError):
+        resource_cap_report(inflated)
+
+    missing = cap_payload(1, 2)
+    del missing["measured_safe_cap"]
+    assert validate_resource_cap_report(missing)["is_valid"] is False
+    duplicated = cap_payload(1, 2)
+    duplicated["final_cap"] = [1, 1]
+    assert validate_resource_cap_report(duplicated)["is_valid"] is False
+    float_cap = cap_payload(1, 2)
+    float_cap["final_cap"] = 1.0
+    assert validate_resource_cap_report(float_cap)["is_valid"] is False
+    assert validate_resource_cap_report({})["is_valid"] is False
+    with pytest.raises(AdapterError):
+        resource_cap_report(None)
+    with pytest.raises(AdapterError):
+        resource_cap_report("/nonexistent/resource_cap_report_v10.json")
+
+
+def test_facade_interface_version_declared_and_mirrored_vocabulary():
+    assert isinstance(ADAPTER_INTERFACE_VERSION, str) and ADAPTER_INTERFACE_VERSION
+    assert ADAPTER_INTERFACE_VERSION == "v10.adapter.interface.v1"
+    assert STRESS_SURFACE_VARIANTS == (
+        "fee_slippage_x1_5",
+        "plus_2_ticks",
+        "plus_1_event_delay",
+        "drop_one_symbol",
+        "drop_one_fold",
+    )
