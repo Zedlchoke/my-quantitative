@@ -1,33 +1,55 @@
-# CONTINUE.md — START V9H, THEN CONDITIONALLY V10
+# CONTINUE.md — NEW AGENT HANDOFF FOR V9H-R → V10
 
-## Current authority
+Read `PLAN.md` completely before acting. This is a status pointer, not a
+replacement for the plan.
 
-- `main == origin/main == 425843d` when this plan was created.
-- V9 closed: `V9_REJECT_ALL_MULTI_FAMILY`.
-- A7 terminal PASS, zero unresolved HIGH/CRITICAL.
-- Five frozen trials; reproduction 5/5 `all_match`; active workers=0.
-- No candidate locked. S1 untouched; paper/testnet/live disabled.
+## Current measured state
 
-## Preservation warning
+- Root: `main=e5b0bab`, `origin/main=425843d`; no push authorized.
+- Integration: `/Users/hoangminhlong/my-quantitative-v10-wt/integration-v10`,
+  `orca/v10-integration=b7c39a2`, clean.
+- V9 closed `V9_REJECT_ALL_MULTI_FAMILY`; denominator=117.
+- Archive/restore complete: 356 files, 231,797,462 bytes, bundle hash
+  `b5ce4097e09f8de1f99b67a4bc0dbf4b2390daad78cc594591907b9a60a12b12`.
+- H1/H2 commits are integrated. Do not redo them.
+- A8/A9 not started; V10 scored budget consumed=0.
+- Missing: committed A7 PASS, final H01–H14 ledger, final integrated full-suite
+  and measured resource-cap reports.
+- Previous deadline `2026-08-26T23:51:56Z` expired.
+- Existing A7 tree is dirty in A10's golden report. Preserve it; create a new
+  clean A7-R worktree rather than overwriting it.
 
-Do **not** remove V9 execution worktrees. Ignored raw evidence is mainly under:
+## Exact next action
 
-- `/Users/hoangminhlong/my-quantitative-v9-wt/exec-v9-r1/results/`
-- `/Users/hoangminhlong/my-quantitative-v9-wt/exec-v9-r2/results/`
+1. Verify all V10 worktree HEADs/tree states and active owned workers.
+2. Freeze a new maximum four-hour `recovery_contract.json`; explicitly preserve
+   the expired deadline and zero V10 budget.
+3. Reconcile actual H2 commits/tests/clean states into both manifests.
+4. Create clean A7-R from `b7c39a2`; leave old dirty A7 untouched.
+5. Produce missing test/resource/gate evidence and run A7-R H01–H14 audit.
+6. Close `V9H_PASS_V10_AUTHORIZED` or
+   `V9H_BLOCKED_V10_NOT_AUTHORIZED`.
+7. Only after PASS, freeze a separate 12-hour V10 contract and dispatch A8/A9
+   proposal agents in parallel. No implementation/backtest before blinded
+   selection.
 
-First execute `PLAN.md` Phase 0: content-addressed archive, hash manifest and
-independent restore verification. Cleanup is not authorized.
+## Agent rules
 
-## Next action
+- A1 alone creates worktrees, merges, freezes and launches.
+- Maximum four light agents including A1; heavy workers =
+  `min(2, frozen_governor_cap)`.
+- Separate worktree and non-overlapping allowlist per role.
+- Each agent returns clean commit, tests, limitations and SHA.
+- Never edit root/main from subagent worktrees or recreate completed A2–A6/A10.
 
-1. A1 freezes a clean bootstrap and creates the V10 worktree manifest.
-2. Dispatch Wave H1 in separate worktrees.
-3. Preserve V9 and harden controller/reproduction/resource behavior.
-4. Complete V9H gates and obtain independent A7 PASS.
-5. Only then run proposal/novelty selection and conditionally open V10.
+## Stop boundaries
 
-## Standing prohibitions
+No V10 score without V9H+A7 PASS. No rejected-family rescue, S1, equity score,
+paper/testnet/live/order, push or worktree deletion. On permission or deadline
+block, write evidence and stop cleanly instead of bypassing safeguards.
 
-No V9-family rescue or PnL-driven tuning; no score before V9H+A7; no S1; no
-equity score; no paper/testnet/live/order; no push; no worktree deletion without
-separate owner approval.
+## Required first report
+
+Return actual root/integration SHA, worktree HEADs/states, owned workers,
+old/new deadlines, missing H01–H14 evidence, planned agent wave, and confirmation
+that V10 budget remains 0.
