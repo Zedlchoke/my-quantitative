@@ -1,0 +1,143 @@
+{
+  "artifact": "g2_funding_resource_validation",
+  "blocker_tests": {
+    "tests/test_g2_cache_resource_v10.py": {
+      "counts": {
+        "passed": 20
+      },
+      "exit_code": 0,
+      "output_tail": [
+        "....................                                                     [100%]",
+        "20 passed in 0.60s"
+      ],
+      "summary_line": "20 passed in 0.60s",
+      "wall_time_s": 0.861
+    },
+    "tests/test_g2_funding_v10.py": {
+      "counts": {
+        "passed": 18
+      },
+      "exit_code": 0,
+      "output_tail": [
+        "..................                                                       [100%]",
+        "18 passed in 0.08s"
+      ],
+      "summary_line": "18 passed in 0.08s",
+      "wall_time_s": 0.301
+    }
+  },
+  "blockers": {
+    "BG3": {
+      "blocker": "BG3 staged per-symbol funding -> execution schedule/holding-span accrual",
+      "evidence": {
+        "module": "research/funding_settlements_v10.py",
+        "sign_convention": "LONG_PAYS_POSITIVE_RATE",
+        "tests": "tests/test_g2_funding_v10.py"
+      },
+      "reasons": [
+        "generic loader reuses research.funding_pit.load_funding_bundle layout (no duplicated staging logic)",
+        "settlement cadence taken per symbol from staged stamps; unknown first interval skipped, never imputed (no 8h assumption)",
+        "PIT gate publish_ns <= observed_through_ns enforced before accrual",
+        "accrual restricted to holding span with held_fraction = overlap/native-interval"
+      ],
+      "verdict": "PASS"
+    },
+    "F2": {
+      "blocker": "F2/G-H06 strict full-pipeline cache proof (or disable fail-closed)",
+      "evidence": {
+        "artifact": "research/cache_decision_v10.json",
+        "byte_parity": true,
+        "measured": true,
+        "raw_reads_cached": 2.0,
+        "raw_reads_uncached": 6.0,
+        "workload": {
+          "catalog_path": "catalog",
+          "description": "research.panel.build_daily_closes over ALL staged catalog symbols x frozen window, repeated workload.passes times, then cross-sectional descending pct-rank per UTC day",
+          "how_counted": "count of pyarrow.parquet.read_table invocations made by research.panel._read_bars (one call per symbol-load pass); the shim delegates to the real reader and is restored after the workload",
+          "passes": 3,
+          "rows_last_pass": 761,
+          "symbols": [
+            "BTCUSDT",
+            "ETHUSDT"
+          ],
+          "window_end": "2026-08-21",
+          "window_start": "2025-07-22"
+        }
+      },
+      "reasons": [],
+      "verdict": "PASS"
+    },
+    "G15": {
+      "blocker": "G15 independent numeric funding-accrual reconciliation",
+      "evidence": {
+        "independence": "hard-coded expected literals",
+        "tests": "tests/test_g2_funding_v10.py"
+      },
+      "reasons": [
+        "expected accrual values are hard-coded hand computations of rate * notional * held_fraction",
+        "no internal helper imported to derive expected values (tests derive literals only)",
+        "long and short mirrored fixtures, positive and negative rates, partial and full epochs",
+        "heterogeneous cadence fixture (8h vs 12h) asserts per-symbol settlement boundaries",
+        "PIT bounds: late publication, unknown first interval, entry/exit seams, outside-span exclusion"
+      ],
+      "verdict": "PASS"
+    },
+    "G17": {
+      "blocker": "G17 one authoritative resource cap",
+      "evidence": {
+        "artifact": "research/resource_cap_report_v10.json",
+        "capacity_outcome": "NO_LOCAL_SCORED_LAUNCH (final_cap=0; measured_safe_cap=0 is preserved, never overridden)",
+        "final_cap": 0,
+        "local_scored_launch_allowed": false,
+        "measured_safe_cap": 0
+      },
+      "reasons": [
+        "measured_safe_cap_zero_fail_closed_no_local_scored_launch",
+        "final_cap_frozen=0 (NO local scored launch)"
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "blockers_nonpass_are_fail_closed": true,
+  "bootstrap_sha": "5bb1a90551c8f7823773af713316a45e0ca070cd",
+  "command": [
+    "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+    "cache_resource_measure_v10.py",
+    "--emit-audit"
+  ],
+  "exit_code": 0,
+  "generated_at": "2026-08-27T14:03:09Z",
+  "head_sha": "5bb1a90551c8f7823773af713316a45e0ca070cd",
+  "input_hashes": {
+    "CONTINUE.md": "652a675d51e13f95b07514d83fc5d0564b0f463f627eec30ed15e97b2970f0e6",
+    "PLAN.md": "f80cfc5c57e6deb5dbc675bca895b5cfa51b4f18208e60973c2989c6698ee0f9",
+    "cache_resource_measure_v10.py": "dd2017fde6deeef9e19ea0a8d2c29718a53a43d23d587975f4b831a9d12adc31",
+    "cache_v10.py": "c2a72333a1ca139d6f0ec3a5f625222a088a79ee7eb0ac5120ee0c6786a6c4c2",
+    "catalog:data/binance_bar/BTCUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/2025-08-20T02-34-14-475394000Z_2026-08-20T02-34-14-475394000Z.parquet": "81d4f147c6bc6a8e03275140a65ac06a63c2e644f449f1c48d8758b187fc8321",
+    "catalog:data/binance_bar/BTCUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/2026-07-20T04-54-14-416942000Z_2026-08-19T04-54-14-416942000Z.parquet": "21b2877e32ddd329f39be90e94ee2d1768130ee643e94fbe38882f3883e73757",
+    "catalog:data/binance_bar/ETHUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/2024-08-20T00-00-00-000000000Z_2025-08-20T00-00-00-000000000Z.parquet": "7fa1667f83cd6099af7a724e1839bc01b8b3ce5232502d33d9544b7655d0501a",
+    "catalog:data/binance_bar/ETHUSDT-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/2025-08-20T02-34-14-475394000Z_2026-08-20T02-34-14-475394000Z.parquet": "f16a68d51ac66ea1685c5340752dc48d9d1ab7a7b1fb005dc61198d2a2762918",
+    "funding_pit.py": "36d53eb67409cbd4919b880ed9c16b157989659f1eb3925eeaeeb70a93e072f8",
+    "funding_settlements_v10.py": "d3634210cd9e2bd95fa8a7d5d0e5eca1189a9b18fde3615ece120b0995f23c71",
+    "panel.py": "640351136e5a7b6e019bfcc682028586a23c0092be8c58a71aecb83857e9bc44",
+    "portfolio_engine.py": "b0c0eab04c7ba8d2afcf764afcc8081e13c3884419c946c9d2d9b791fe4180e4",
+    "resource_governor_v10.py": "730d7031f94bdabffcf6ebb5dbc268cd4b5f780f8ac6da16dde33e059f10e238"
+  },
+  "launch_authorization": "NONE: final_cap=0 -> no local scored launch (fail closed)",
+  "limitations": [
+    "F2 measurement reflects THIS host's instantaneous memory pressure; re-run before scored waves",
+    "G17 cap is re-measured value, valid for today only; lower-only monotone rule applies to later reports",
+    "catalog exposes 2 staged symbols (BTCUSDT, ETHUSDT); the representative pipeline loads the entire real staged slice"
+  ],
+  "producer_role": "G2",
+  "reasons": [
+    "overall=PASS",
+    "BG3=PASS",
+    "G15=PASS",
+    "F2=PASS",
+    "G17=PASS"
+  ],
+  "schema_version": "v10p.g2.cache_resource.v1",
+  "scope_note": "BG3/G15 deliver the loader+accrual contract and schedule adapters as a wrap-around module; production wiring into research/portfolio_engine.py is intentionally untouched (outside the G2 allowlist) and stays with the runner integrator (A1/G1).",
+  "verdict": "PASS"
+}
