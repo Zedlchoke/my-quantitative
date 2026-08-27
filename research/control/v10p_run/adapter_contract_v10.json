@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "artifact": "adapter_contract_v10",
+  "producer_role": "A1",
+  "generated_at": "2026-08-27T13:35:00Z",
+  "bootstrap_sha": "5bb1a90551c8f7823773af713316a45e0ca070cd",
+  "integration_branch": "orca/v10-integration",
+  "scope": "audit-only interface freeze for the generic strategy-to-research adapter; prescribes inputs/outputs and reuse proofs, not internal implementation",
+  "family_neutrality_requirements": [
+    "no 'M01', no family id string, no fixed trial id in shared adapter code paths",
+    "cells enter only through configuration/plugin registration",
+    "same adapter must drive a tiny deterministic dummy strategy and the selected family plugin"
+  ],
+  "required_interface_elements": {
+    "strategy_registration": [
+      "strategy identity/config mapping: anchor / neighbor / negative-control via config values only",
+      "immutable schedule provider returning chronological decision instants",
+      "strict-later event fills; no fill at or before decision instant"
+    ],
+    "universe_and_clock": [
+      "explicit universe symbol list from config",
+      "decision clock independent of bar close publication order",
+      "force-flat at scored window boundary (terminal row flat)"
+    ],
+    "folds": [
+      "chronological fold construction shared by all strategies",
+      "purge/embargo boundaries between train-free evaluation folds",
+      "deterministic membership: identical inputs give identical fold ids"
+    ],
+    "targets_to_portfolio": [
+      "daily target book -> fills/portfolio/scoring payload conversion",
+      "per-symbol weight cap enforcement hook",
+      "gross target accounting with stated tolerance"
+    ],
+    "costs_and_funding": [
+      "cost model injected: taker fee floor bps + adverse tick floor + optional stress multipliers",
+      "per-symbol staged funding settlements injected as PIT series",
+      "sign convention LONG_PAYS_POSITIVE_RATE; accrual only inside holding spans; no accrual before settlement publish time",
+      "symbol-native settlement cadence; uniform 8h assumption forbidden"
+    ],
+    "stress": [
+      "named variants minimum set: baseline, fees_x1p5, ticks_plus2, delay_plus1_event, drop_one_symbol(s), drop_one_fold(f)",
+      "each variant emits its own deterministic artifact with unique result root",
+      "incomplete variant matrix forbids finalization"
+    ],
+    "benchmarks_context": [
+      "flat hard benchmark: all-zero PnL series matched to cell timeline",
+      "buy-and-hold context and BTC-neutral context outputs distinct from strategy result"
+    ],
+    "metrics_and_artifacts": [
+      "fold metrics PF/expectancy/MDD realized after costs+ funding returns",
+      "deterministic artifact hashes over canonical serialization",
+      "provenance hashes recorded per emitted artifact"
+    ],
+    "ledger_publication": [
+      "exactly-once append-only trial publication keyed on preregistered trial identity",
+      "no publish when pre-score validation fails; exactly one publish after valid score",
+      "rerun of an already-published trial cannot increment the denominator again",
+      "denominator starts at historical floor 117 plus valid publications"
+    ]
+  },
+  "reuse_proof_requirements": [
+    "dummy deterministic strategy runs end-to-end through the same adapter entry points as the family plugin",
+    "family plugin may wrap existing module functions but must not require editing them",
+    "adapter tests parameterized across both strategies without family-specific branches in adapter code"
+  ],
+  "lane_allowlists": {
+    "G1_orca/v10p-g1-adapter": ["research/adapter_v10/**", "tests/test_adapter_v10_g1.py", "research/audits/v10/g1_adapter_validation.json"],
+    "G2_orca/v10p-g2-funding": ["research/funding_settlements_v10.py", "research/cache_resource_measure_v10.py", "research/resource_cap_report_v10.json", "research/cache_decision_v10.json", "tests/test_g2_funding_v10.py", "tests/test_g2_cache_resource_v10.py", "research/audits/v10/g2_funding_resource_validation.json"],
+    "G3_orca/v10p-g3-qa": ["tests/test_adapter_acceptance_v10_g3.py", "tests/test_fault_injection_v10_g3.py", "research/h08_cases_12_20.json", "research/audits/v10/g3_adapter_acceptance.json"]
+  },
+  "overlap_check": "pairwise file-disjoint allowlists verified by A1 before dispatch",
+  "input_hashes": {
+    "bootstrap_sha": "5bb1a90551c8f7823773af713316a45e0ca070cd",
+    "parent_integration_sha": "832fa6f5c4cf50e7d7e300682d4c801357f5c120",
+    "owner_docs_commit_root": "1fabeff36f1b1ceb69b007fccb9c0fbe8371601b"
+  },
+  "verdict": "FROZEN_FOR_DISPATCH",
+  "reasons": [
+    "contract freezes generic IO surface before lane integration",
+    "lanes are constrained to disjoint write sets",
+    "no scored metric produced under this contract in coding lanes"
+  ]
+}
