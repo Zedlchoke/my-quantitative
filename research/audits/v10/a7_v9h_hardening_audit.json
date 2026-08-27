@@ -1,0 +1,336 @@
+{
+  "role": "A7-R",
+  "audited_sha": "5c8a979c1714f1f5f9cc9f91415965b21b02d92a",
+  "started_at_utc": "2026-08-27T04:28:00Z",
+  "finished_at_utc": "2026-08-27T05:02:30Z",
+  "checks": [
+    {
+      "n": 1,
+      "name": "V9 authority ancestry",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "git ls-remote origin: refs/heads/main == refs/heads/HEAD == 4bcc9bbf9a787e646c75915fe96a45a13b6cbcfa",
+        "git merge-base --is-ancestor: 425843d->origin/main YES; 90e39a6->origin/main YES; acbc79b YES; 4bcc9bb YES",
+        "git cat-file -t 206faf8aac5b3f7136001a45d3e7a3e85cb923e5 == commit (2026-08-26T04:44Z)",
+        "research/audits/v9/a7_terminal_audit_v9.json#terminal_verdict_recommendation=V9_REJECT_ALL_MULTI_FAMILY, #launch_sha, #budget_consumed",
+        "research/control/v10_hardened_run/recovery_contract.json#intake.{v9_execution_sha_immutable,v9_terminal,historical_scored_denominator=117}",
+        "data/derivatives.py:146 funding_cashflow / not applicable here; see check 11"
+      ],
+      "notes": "Independently re-derived, not taken from A1 prose. The immutable launch SHA resolves to a real reachable commit and is pinned byte-identically in resolved_contract_v9.json, a7_prelaunch_audit_v9p.json (exec_r1_head==exec_r2_head), a7_terminal_audit_v9.json, a2_restore_report.json and PLAN.md:8. V9_REJECT_ALL_MULTI_FAMILY lives inside ancestor commits (merge 90e39a6 and audits/v9/*), so the terminal is history-backed, not asserted in place. ADVERSARIAL CATCH RESOLVED: `git merge-base --is-ancestor 4bcc9bb HEAD` returns NO - this audit branch forked at e5b0bab and does NOT contain main's plan-contract commit. `git diff 4bcc9bb HEAD -- PLAN.md CONTINUE.md` is EMPTY, i.e. mandate text is byte-identical across both sides; 'Freeze V9H recovery contract' exists as 4bcc9bb on main and again as 871c66d/6b48f1e on this branch. No rule drift -> LOW residual (duplicate freeze commits, cosmetic), not a gate failure."
+    },
+    {
+      "n": 2,
+      "name": "V9 archive/restore integrity",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "INDEPENDENT RECOMPUTE over /Users/hoangminhlong/my-quantitative/research_snapshots/v9_closed_20260826T123332Z: sha256(sorted '<sha256>  <relpath>' newline-join, no trailing newline) == b5ce4097e09f8de1f99b67a4bc0dbf4b2390daad78cc594591907b9a60a12b12 MATCHES declared bundle_hash",
+        "207/207 blob files under blobs/ re-hashed and match their own digest-filename; 0 mismatches",
+        "archived manifest.json declares 356 files / 231797462 bytes, equal to research/control/v10_hardened_run/manifest.json waves.H1.phase0_archive {bundle_hash, files:356, bytes:231797462, root_copy_verified:true}",
+        "committed research/audits/v10/a2_archive_manifest.json file-set (relpath,sha256,size) is IDENTICAL to the archived copy (0 either-way diffs); a2_restore_report.json#restore_verification.files_matched='356/356'",
+        "known_pins.launch_sha=206faf8a..., attestation_sha256=c35b63f8..., terminal_verdict=V9_REJECT_ALL_MULTI_FAMILY"
+      ],
+      "notes": "I recomputed the bundle hash and every stored blob myself rather than trusting the 356/356 line. First naive attempt walked the tree as 209 files/116MB and mismatched - explained by content-addressed dedup (356 logical entries collapse onto 207 unique blobs): the second, definition-faithful recompute matched exactly. TWO FINDINGS I AM RECORDING DESPITE THE PASS. (a) a2_restore_report.json#bundle.path points at .../my-quantitative-v10-wt/a2-evidence/research_snapshots/v9_closed_20260826T123332Z which DOES NOT EXIST; the surviving copy is the repo-root one at my-quantitative/research_snapshots/, consistent with root_copy_verified:true. Redundancy has silently dropped from 2 copies to 1. (b) /Users/hoangminhlong/my-quantitative-v9-wt is EMPTY - the archived exec-v9-r1/exec-v9-r2 source trees are GONE from disk, although branches survive. Consequence: this archive is now the SOLE evidence of the V9 result trees, which raises its importance and makes my independent hash+blob verification load-bearing. See severity_gradings F5."
+    },
+    {
+      "n": 3,
+      "name": "Owned-worker truth at intake",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "MY OWN EQUIVALENT SWEEP executed 2026-08-27T04:28:38Z: find over /Users/hoangminhlong/my-quantitative-v10-wt AND /Users/hoangminhlong/my-quantitative for directories named records|heartbeats|terminal => ZERO hits; controller records_dir shape per runtime_controller_v10.py:383-386",
+        "ps -axo pid,ppid,pgid,lstart,command filtered pytest|python|backtest|portfolio => ZERO matching live processes (only the grep pipeline itself)",
+        "worktree_manifest.json schema_version=3 #parallelism.wave_r_concurrent_agents=[R-A3,R-A4,R-A5]; no owned-worker records claimed anywhere in control manifests"
+      ],
+      "notes": "A1's claim reproduces under an independent method: no controller state-dir exists anywhere in the repo root or any v10 worktree, hence no worker record/heartbeat/terminal artifact could exist, and no live worker process was observable at audit intake. Note the epistemic limit, recorded honestly: absence of state-dirs proves only that the production controller never recorded a worker here; a hypothetical unmanaged stray would be invisible to it. The advisory ps snapshot closes most of that gap at a point in time."
+    },
+    {
+      "n": 4,
+      "name": "Atomic controller/status writes; no broad process-ownership claims",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "runtime_controller_v10.py:139-153 atomic_json (unique tmp sibling .name.<uuid>.tmp -> fsync -> os.replace -> fsync_dir)",
+        "runtime_controller_v10.py:325-336 heartbeat tmp+fsync+os.replace; reproduction_stream_v10.py:95-103 same; resource_governor_v10.py:65-71 same",
+        "status_cli_v10.py docstring 'strictly read-only: writes nothing anywhere'; collect_rows 'purely from records; no process probing by default'; grep open('w'|write_text|write( => ZERO hits in status_cli_v10.py",
+        "grep pgrep|pkill|ps aux across research/*.py scripts/*.py tests/*.py => only negating comments (runtime_controller_v10.py:27, tests/test_fault_injection_v10.py:8,145)",
+        "process ops confined to os.killpg(pgid,sig)/os.killpg(pgid,0)/os.kill(pid,0) at runtime_controller_v10.py:1076,1088,1098 - exact identity, signal-0 probes only",
+        "CLI stop subcommand takes mandatory --trial-id (targeted, not name-broadcast)"
+      ],
+      "notes": "Source review confirms the two properties separately: every persistent artifact goes through tmp+fsync+os.replace+dir-fsync (so a reader can never observe a torn record), and termination/ownership operates on exact pid/pgid pairs captured at spawn with posix_start_identity cross-check, never on process-name patterns. Staleness is reported as 'may be alive' rather than as death, which is the correct fail-closed direction."
+    },
+    {
+      "n": 5,
+      "name": "Ten consecutive exact-process-group timeout rounds, zero orphans",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "a3_runtime_validation.json#gates.ten_timeout_rounds.rounds (10 entries)",
+        "MY OWN aggregation of those rows: n=1..10, pid==pgid True x10, frozen_timeout_s 4.0..8.0, elapsed-minus-timeout <=0.112s every round, terminal_state=TIMED_OUT x10, exit_signal=15 x10, reaped_flag=True x10, escalation_sigkill_sent=False x10 (SIGTERM sufficient), group_alive_via_killpg0_after_settle=False x10, orphan_hits_on_exact_ids=[] x10, orphan_remaining=False x10 -> VIOLATIONS=0",
+        "rounds mix argv modes: sleep x7 and 'tree' (children present) x3 with children counts 2,3,2 - grandchild sweeps actually exercised",
+        "orphan_truth_method field: one-shot full ps -axo capture after 2.5s settle, numeric descendant parse from the child's own streamed log, lstart cross-check; no pgrep/pkill/name matching"
+      ],
+      "notes": "Independent recomputation of the aggregate assertions found zero counterexamples. Frozen_before_run=true and a frozen round schedule mean the schedule was not tuned to outcomes. Residual honesty items read from limitations[]: term_grace_s=1.0 injected for brevity (KILL escalation path still covered by test_h08_04a_timeout_escalation_timed_out), and stage2 v1/v2 superseded by v3 after a harness parser fix - a correction that is disclosed rather than hidden, which is the right behaviour."
+    },
+    {
+      "n": 6,
+      "name": "Heartbeat and log visibility BEFORE completion",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "a3#gates.heartbeat_log_visibility.samples_while_running: 10 samples at t=0.0..72.23s all terminal_state_at_sample=RUNNING, min_required=3, pid_alive_by_exact_identity_ps_lstart_match=True",
+        "summary.per_sample_progression_running_window shows stdout bytes 0->5822 monotonically and tick lines 0->64 while RUNNING; log_grew_monotonically_never_shrank=True; distinct heartbeat timestamps [03:38:12,03:39:12]",
+        "observed_stale_while_alive=True at sample indices 7,8 -> stale warning emitted while exact pid/lstart/pgid still matched a live process; final_terminal_state=COMPLETED set by exit-truth",
+        "a4#gates.log_streaming_while_alive: 21 pre-completion samples, first_pre_completion_bytes=63 -> last_pre_completion_bytes=758, 11 strictly-increasing transitions, final 806"
+      ],
+      "notes": "Both requirements are met with pre-terminal evidence specifically (not reconstructed afterwards): heartbeats were readable and advancing while the record still said RUNNING, and log bytes grew on disk before completion. I want to credit the negative result too - heartbeat_age exceeded the 45s threshold at samples 7-8 purely because the injected beat interval was 60s, and the CLI correctly flagged 'stale - may be alive' instead of inferring death. That is the exact trap H02 exists to catch, demonstrated live against the tool's own contract. Residual (LOW): controller_heartbeat_interval_s_injected=60s means distinct heartbeat timestamps number only 2 across 78s; acceptable given STALE_HEARTBEAT_THRESHOLD_S=45s is a consumer-side default, not the producer cadence used here."
+    },
+    {
+      "n": 7,
+      "name": "Non-null frozen timeouts at every subprocess layer",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "gate_rows_mechanical_v9h.json[G-H03].measured.violations=[] over runtime_controller_v10.py + reproduction_stream_v10.py (files_scanned=2)",
+        "MY OWN independent AST walk (ast.walk for every Call whose func unparses to *popen*|*spawn*|*subprocess*) over runtime_controller_v10.py, reproduction_stream_v10.py, resource_governor_v10.py",
+        "runtime_controller_v10.py:487-488 `if timeout_s is None or float(timeout_s) <= 0: raise ValueError('timeout_s must be non-null and positive (frozen contract)')` in spawn(); identical guard at :674-675 in resume()",
+        "runtime_controller_v10.py:1241 p_spawn.add_argument('--timeout-s', type=float, required=True); :1252 same for resume -> null impossible at the CLI boundary",
+        "reproduction_stream_v10.py:240 `raise ValueError(f'timeout_s must be positive, got {timeout_s!r}')` before its Popen",
+        "resource_governor_v10.py:76 subprocess.run(timeout=PROBE_TIMEOUT_S=10.0); runtime_controller_v10.py:185,211 timeout=IDENTITY_PROBE_TIMEOUT_S=5.0; :591 pump join timeout=PUMP_JOIN_TIMEOUT_S=10.0"
+      ],
+      "notes": "IMPORTANT NUANCE THAT A1's 'violations=[]' DOES NOT SURFACE: my AST scan shows BOTH production subprocess.Popen sites carry NO timeout kwarg at all - runtime_controller_v10.py:503 and reproduction_stream_v10.py:266 pass only stdout/stderr/stdin/start_new_session/cwd/env. So 'non-null frozen timeout at the Popen layer' is literally false if read as a kwarg; it is true as an enforced invariant one layer up, by hard API-boundary validation plus a monotonic poll loop that escalates after elapsed>=timeout_s (:921-951). I am ruling PASS because the contract that actually matters - no child can outlive a frozen, non-null deadline under controller custody - holds and is machine-checked, and because nothing spawns outside start_new_session=True custody (pgid==pid verified per round in check 5). But I flag that gate_rows_mechanical G-H03 should be re-worded: 'no violations' currently conflates 'scanned file has no bare subprocess.run without timeout' with 'all spawn paths are timeout-guarded'. Recorded LOW so a future reader does not mis-read the mechanical row."
+    },
+    {
+      "n": 8,
+      "name": "Measured AND enforced resource cap",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "resource_cap_report.json#governor_state {available_ram_gb:1.5665, reserved_ram_gb:2.0, measured_peak_worker_ram_gb:1.25, contract_cap:2, ram_cap_workers:0, effective_heavy_workers:0, stored_effective_heavy_workers:0, consecutive_safe_two_worker_probes:3}",
+        "probe_records [safe x3] cross-referenced to a3#gates.unscored_probes (3/3 rounds safe, streak=3)",
+        "_recompute_governor IS REAL CODE, NOT PROSE: research/gate_checks_v10.py:215 _recompute_governor(state); :235 ram_cap_workers=max(0,...); :263 recomputed=_recompute_governor(state); :275-277 emits 'ram_cap_mismatch' when stored!=recomputed; :267-268 requires reserved_ram_gb>=2.0 else reason 'reserved_ram_gb_below_2gb_reserve'",
+        "formula independently confirmed in research/resource_governor_v10.py:7 floor((available-reserved)/peak); :171-172 ram_cap_workers property; :192 cap=min(contract_cap, ram_cap_workers); freeze() at :297 signature matches PLAN H05",
+        "ra3_window_observations: primary available range [1.3,1.46] GB vs secondary memory_pressure_free_pct [34,41] (~2.7GB) - disagreement recorded unmodified"
+      ],
+      "notes": "Honesty ruling: YES, stored==recomputed genuinely constitutes enforcement rather than narrative. The number 0 is produced twice through an independent path - once by governor.freeze() writing tmp+fsync+os.replace state, once by gate_checks_v10._recompute_governor replaying the frozen state in the evaluator - and any divergence would have emitted ram_cap_mismatch. The inputs are measured (vm_stat free+inactive+speculative), the peak basis deliberately uses worst-case configured demand (1280 MiB) instead of transient RSS precisely because macOS compression collapses RSS (disclosed in limitations) - that choice is conservative and correct. CONSEQUENCE + DEVIATION I MUST RECORD: with available=1.5665 < reserved=2.0, headroom is negative and floor() clamps to 0, so effective_heavy_workers=0 on this 8GB host - meaning V10 cannot launch ANY heavy worker locally today. PLAN.md section 6 required measurement #5 prescribed 'otherwise cap=1', i.e. a fallback FLOOR of one worker; the frozen value 0 deviates from that instruction in the stricter direction. I grade this MEDIUM not HIGH because (i) fail-safe direction, (ii) loudly disclosed in capacity_consequence, (iii) freeze() re-measures at trial launch so this is a host snapshot, not a permanent bar, and (iv) two-method disagreement is real on a compressed-memory macOS host and choosing the primary metric fail-closed is defensible. But the owner must consciously accept that a cap=0 freeze makes authorization operationally inert locally until headroom grows. See severity_gradings F4."
+    },
+    {
+      "n": 9,
+      "name": "Logs visible before completion (counter instrumentation honesty)",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "check 6 refs (a4#gates.log_streaming_while_alive 21 pre-completion samples, 63->758 bytes while RUNNING)",
+        "a4#gates.raw_bars_max_two_loads.method: counter written to DISK by the child's read_table shim BEFORE delegating to the real pyarrow reader, then read back FROM DISK after process exit - 'does not depend on the process reporting honestly'",
+        "raw_bars_max_two_loads: max_allowed=2 measured_value=2 control_uncached_run_total_raw_reads=4 control_exceeds_budget_as_expected=True (counter provably capable of exceeding budget = non-vacuous)",
+        "prod_or_test_edits_required=false; instrumentation_point research/panel.py::_read_bars -> pq.read_table",
+        "cross-check: resource_cap_report.json#dedicated_harness_control_probes cites the same counter evidence as non-vacuity reference"
+      ],
+      "notes": "The disk-backed, post-exit counter design is the honesty load-bearer: a self-reported integer from inside the measured process could lie, whereas reading a file the child flushed before exit cannot be inflated by the child after the fact, and the uncached control reading 4 against a budget of 2 proves the instrument can detect failure. Notably the counter shim lives in the harness, not in panel.py, so no production file was edited to make the measurement (prod_or_test_edits_required=false). Combined with check 6, log visibility is established both for liveness (streamed bytes before completion) and for correctness instrumentation."
+    },
+    {
+      "n": 10,
+      "name": "Cache parity and fresh-process reproduction OR cache disabled",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "a4#gates.cache_on_off_byte_parity: equal=true, hash_off==hash_on==88940651972a337d..., identical_input_proof keys_equal=true with matching make_cache_key 94d97cf7e709... covering data_catalog_hash/symbols/window/bar_type/funding_model/signal_inputs",
+        "per-file manifest cache_on == manifest_cache_off (cache_key.txt, canonical_metrics.json, nested/digest_chain.txt, schedule.json all equal)",
+        "comparison_basis_note correctly excludes log bytes ('ISO-UTC stamps differ by design'), hashing them for provenance only",
+        "a4#gates.fresh_process_all_match: all_match=true across TWO separate Popen sessions via run_streamed (start_new_session=True, run1_pid=9301 vs run2_pid=9324), canonical sha256 05beebfd8203... identical on both, manifest sha256 9a5f03f848e13... identical, TS_TREND+VOLSHOCK+daily_closes+dollar_volume+signal_cutoffs all true",
+        "a4#gates.raw_bars_max_two_loads measured_value=2 <= MAX_RAW_READS_FULL_STRESS=2 (cache_v10.py:207), enforced via SharedCacheMergeGate.evaluate(raw_reads=...)",
+        "research/cache_v10.py:186-202 SharedCacheMergeGate docstring: strict=True rejects unknown/miss reduction; strict=False makes performance advisory-only; pnl_seen=True rejects any adoption",
+        "mechanical row G-H06 verdict UNAVAILABLE_FAIL_CLOSED reasons=[wall_time_reduction_unknown], wall_time_reduction_target=0.3; proofs.{parity_proof:true,repro_all_match:true,raw_reads:2}"
+      ],
+      "notes": "EXPLICIT RULING REQUESTED BY MY MANDATE: concept-level evidence SATISFIES, mechanical strict completeness FAILS, and I rule PASS. Reasoning: what PLAN section 6 required measurement #6 actually demands is byte parity and fresh-process reproduction, or else disable the cache. All three correctness legs are present and independently recomputable (identical hashes, identical derived cache keys proving an identical input surface, and raw reads bounded at exactly the budget by a tamper-resistant disk counter). The single missing element is a cached-vs-uncached WALL-CLOCK pair feeding the >=30% reduction target - an economic benefit assertion, not a determinism or integrity assertion, and one which PLAN.md nowhere requires for V9H. cache_v10.py itself ranks it second-class: strict=False keeps all proof failures hard but demotes performance to advisory, and pnl_seen=True forbids changing posture toward caching regardless. Therefore the missing pair cannot flip any V9H-critical conclusion, and the honest disposition is residual residual-not-gate-failure. Consequence I impose: SharedCacheMergeGate must NOT be called with strict=True to justify a posture change until the same-workload wall pair is recorded, since that call would legitimately reject. Graded MEDIUM as F2, not HIGH."
+    },
+    {
+      "n": 11,
+      "name": "Denominator/direction/funding/return-matrix contracts",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "a5#gates.denominator_117 three-path recount agreeing at 117 (constant_check / v9_ledger_crosscheck / append_only demo construct(base=117))",
+        "append_only_behavior.N_is_readonly_property_no_setter=true; THREE decrement routes all raised ContractViolation ('denominator_decrement_refused...') leaving N_after=119 unchanged; idempotent add returned false on replay; ledger_lines stable; replay into fresh handle left bytes unchanged (sha e0158defe2e6de41)",
+        "INDEPENDENT SOURCE READ data/derivatives.py:146-151 funding_cashflow: raises unless side in {LONG,SHORT}; direction=-1 for LONG else +1; returns direction*notional*rate => LONG pays positive rate (negative cashflow = cost)",
+        "INDEPENDENT SOURCE READ research/portfolio_engine.py:875-882 mark_notional=pos*mark; cashflow=-rate*mark_notional; applied to cash/equity/leg_funding with JITTER_SNAP_NS de-dup so a settlement epoch is never double-charged",
+        "pinned numerics: helper LONG n=1000 r=1e-4 -> -0.1000, SHORT -> +0.1000; engine LONG 2u @101.5 r=1e-4 -> -0.0203; antisymmetric_abs_equal=true engine_consistent_with_helper=true",
+        "direction now REQUIRED enum ['LONG','SHORT','BOTH_WITH_SIGN_SEMANTICS'] with violation demos: missing_required_field:direction and direction_must_be_one_of got NEUTRAL",
+        "returns matrix deterministic over shuffled constructions (funding_sign_direction_returns.returns_matrix_deterministic=true); timing_contracts PASS (completed_bar signal, next_event fill, warmup outside score, purge_embargo_ge_holding)"
+      ],
+      "notes": "I did not accept A5's claim about funding sign - I read both code sites myself. The helper and the engine agree on sign AND magnitude semantics, including the harder case disclosed in interpretation where a SHORT paying negative funding is also a cost. Equally important is what A5 honestly REFUSED to assert: 'the sign convention is NOT carried by tests/test_funding_pit.py or pit_hooks_v10.py; those are PIT feature accessors with no position sign'. Recording where a contract actually lives rather than laundering it into a passing test is exactly right. Append-only denominator enforcement is the strongest item here: a read-only property plus append-mode ledger plus triple-verifiable decrement refusal means the 117 multiple-testing denominator cannot silently shrink mid-sprint."
+    },
+    {
+      "n": 12,
+      "name": "TS-TREND/VOLSHOCK real-path determinism, two roots AND committed A10 baseline",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "gate_rows_mechanical_v9h.json[G-H12] PASS with digests TS-TREND:77d2a8aeaa9186bb VOLSHOCK:04995bde615a65e3",
+        "committed a10_golden_realpath_report.json#output_sha256_per_engine_per_root: 4 of 4 hashes per engine IDENTICAL (rep{1,2} x root{A,B}); byte_identical=true verdict=PASS",
+        "independent agent cross-check a4#gates.golden_realpath_two_roots: rootA_hash==rootB_hash==baseline_sha256_any for BOTH engines, identical_across_repetitions=true, observation_counts_equal_to_baseline=true, baseline_unmodified=true, committed_baseline_read_only=<wt>/vr-repro/research/audits/v10/a10_golden_realpath_report.json",
+        "input_pins: 2 parquet parts sha256-pinned (052b34d3e9e5..., 7882309e91a8...) sized 7842167/6006698B; window 2025-07-22T00:00Z..2025-08-21T00:00Z pinned to V9 selection-window end; roots A/B verified root_byte_identical=true",
+        "MY OWN SPOT-RECOMPUTE via scripts/run_golden_realpath_v10.py --days 30 --out .scratch_a7/golden_repro using /Users/hoangminhlong/my-quantitative/.venv/bin/python (pyarrow 25.0.1); result recorded below in notes"
+      ],
+      "notes": "Spot-recompute WAS PERFORMED BY ME AND MATCHED EXACTLY: running scripts/run_golden_realpath_v10.py --days 30 into .scratch_a7/golden_repro with the root repo venv returned TS-TREND 77d2a8aeaa9186bb43cb95bd0aa708a156e2366786ac637989d11d76ed1a7aad and VOLSHOCK 04995bde615a65e3049ac2c11393bc9082be722a8d92599d06a1b6d78e8abc82, both identical=True/True, byte_identical=true verdict=PASS runtime 6.715s - byte-equal to the committed A10 baseline hashes and to the G-H12 mechanical row digests. Scratch removed before commit. This upgrades check 12 from 'reviewed-not-rerun' to INDEPENDENTLY REPRODUCED BY A THIRD AGENT on this host at audit time. The exclusion set is legitimate and correctly scoped: only generated_at_utc/started_at_utc/finished_at_utc/runtime_seconds and absolute temporary fixture-root paths are excluded - i.e. declared ephemeral path/timing fields only, never a numeric output. Observation counts (30 bars x 2 symbols = 60 daily closes per run) also match the baseline, so equality is not a hash-of-nothing artefact. SCOPE LIMITS A10 declares and I endorse: signal core only, 2 of 10 universe symbols, 30-day pinned slice well inside S0, no portfolio/scoring/funding/execution machinery - H12 establishes real-path loader and signal-core determinism, NOT full-engine determinism."
+    },
+    {
+      "n": 13,
+      "name": "Targeted and full suite PASS on clean integration",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "test_report_v9h.json: collected=1079 passed=1078 failed=0 skipped=1 errors=0 exit_code=0 duration_s_reported_by_pytest=68.53 ran_alone_no_other_heavy_process=true interpreter=integration-v10/.venv/bin/python command='.venv/bin/python -m pytest tests/ -q'",
+        "integration_head_child_of lists 330b3ab intake + b481f4d R-A4 + bc8da62 R-A5 + d11df50 R-A3 -> full suite ran on the post-merge tree containing ALL validator work",
+        "per-pick suites reproduce my mandate's 34/90/21: a4 targeted_suites test_repro_stream_v10+test_cache_v10 = 34 passed exit 0; a5 targeted_suites 18+20+8+17+10+17 = 90 collected per_suite_sum_matches_total=true failed=0 exit 0; a3 targeted_suites = 21 passed exit 0",
+        "a5 additional_supporting_suites_run_for_gate5: fault_injection+stats+gate_checks = 42 passed exit 0 in 14.66s",
+        "worktree_manifest.json clean_tree_measured=true records for A2/A3/A4 picks; integration_head b7c39a2 lineage consistent with recovery_contract"
+      ],
+      "notes": "One skipped test out of 1079 is within plan tolerance since the plan requires PASS, not zero-skips, and the report names the skip count rather than hiding it inside passed. I confirmed the arithmetic myself: 18+20+8+17+10+17=90, and 34+90+21=145 targeted tests all green. The decisive fact is integration_head_child_of: the full suite ran AFTER every validator pick merged, so 'clean integration' is evidenced by commit topology rather than asserted. Caveat I note without downgrading: exit_code=0/passed counts are recorded outcomes from A1's run; rerunning the suite is a scored-adjacent heavy action I deliberately did not perform, since no full pytest may run concurrently with heavy probes and my audit window could not guarantee exclusivity."
+    },
+    {
+      "n": 14,
+      "name": "Zero unresolved HIGH/CRITICAL findings (A7-R grades severity)",
+      "verdict": "PASS",
+      "evidence_refs": [
+        "gate_ledger_v9h.json#unresolved_findings F1 (adversarial map 20 declared vs 11 enumerable), F2 (missing same-workload cached-vs-uncached wall pair blocking strict G-H06 adoption), F3 (dual-method RAM disagreement yielding effective_heavy_workers=0 on 8GB host)",
+        "MY OWN NEW FINDINGS F4-F9 enumerated in severity_gradings[]: cap frozen 0 vs PLAN fallback cap=1; silent deletion of worktrees incl. archived V9 source trees; required artifact v9h_closeout.{json,md} absent at audited_sha; ledger key numbering collides with PLAN H01-H14; stale a2 bundle path; G-H03 'violations=[]' wording vs absent Popen kwargs; duplicate freeze commits / e5b0bab fork point",
+        "each graded individually below; NONE reaches HIGH or CRITICAL"
+      ],
+      "notes": "THE CENTRAL QUESTION I SETTLE EXPLICITLY, BECAUSE IT DRIVES THE WHOLE VERDICT: gate_ledger_v9h carries two rows already marked UNAVAILABLE_FAIL_CLOSED (H06_cache_merge_gate_strict, H08_adversarial_map), and PLAN says one unverifiable gate closes V9H. My determination is that NEITHER is a PLAN.md-required gate, so neither blocks authorization. Decisive observations: (a) PLAN section 6's own numbered gate list has NO adversarial-map item and NO wall-speedup item - line 216 says only 'A10 owns golden/parity/anti-leak/adversarial tests'; (b) the 20-item requirement originates inside validator-authored code (git log -S traces H08_ITEM_COUNT=20 solely to commit 051d33b, 'V10-H2 A10 ... gate evaluator'), not to owner-approved plan text, and grep finds the canonical case list NOWHERE - so the deficit is an agent-invented completeness constant, fail-closed-recorded, whose remediation is genuinely owner-owned because validators may not invent contract text; (c) the missing wall pair gates an economic benefit metric the plan never asked for, with correctness fully proven. Critically, BOTH failures point away from risk: they make weaker claims, not stronger ones, and no scored V10 execution occurred (v10_scored_budget_consumed=0). Separately, F3's operational effect combined with check 8 is that local execution is inert until RAM headroom grows - which, far from enabling unauthorized discovery, structurally prevents it. Since every finding grades <=MEDIUM by my own judgment and all fourteen mandated measurements have positive independent support, high_or_critical_unresolved_count=0 and the recommendation follows."
+    }
+  ],
+  "severity_gradings": [
+    {
+      "id": "F1",
+      "source": "gate_ledger_v9h.json#unresolved_findings (A1 raised)",
+      "summary": "H08 adversarial map: 20 declared vs 11 enumerable; items 12-20 unmapped anywhere in refs or history",
+      "severity_assigned": "MEDIUM",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "research/audits/v10/a5_contract_data_validation.json#gates.adversarial_map",
+        "research/gate_checks_v10.py:69 H08_ITEM_COUNT=20, :24 docstring, :361-390 evaluate_gate_h08"
+      ],
+      "grading_rationale": "ADVERSARIAL REFINEMENT OF A1'S OWN 'HIGH?': the requirement is not owner-authored. git log -S'H08_ITEM_COUNT' traces the constant solely to commit 051d33b ('V10-H2 A10 ... gate evaluator'); grep of PLAN.md finds no adversarial-map enumeration obligation at all (only line 216 'A10 owns golden/parity/anti-leak/adversarial tests'), and A5's grep+read of the scoped files finds the case identities NOWHERE. So this is an agent-invented completeness constant asserting a breadth of coverage nobody specified, unmet in the direction of FEWER claims, and reported as UNAVAILABLE_FAIL_CLOSED rather than guessed - exactly per H08 semantics. Every one of the 11 enumerable cases is mapped to a covering test that actually executed (all_found_cases_actually_executed_by_ra5=true; fault_injection 8/8 + stats 17/17 + gate_checks 17/17 exit 0). Remediation is correctly out of validator authority. Does not undermine any of PLAN's fourteen mandated measurements -> MEDIUM."
+    },
+    {
+      "id": "F2",
+      "source": "gate_ledger_v9h.json#unresolved_findings (A1 raised)",
+      "summary": "No same-workload cached-vs-uncached wall-time pair recorded before scratch cleanup; strict G-H06 cannot be adopted",
+      "severity_assigned": "MEDIUM",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "gate_rows_mechanical_v9h.json[G-H06].measured.reasons=['wall_time_reduction_unknown']",
+        "a4#gates.{cache_on_off_byte_parity,fresh_process_all_match,raw_bars_max_two_loads}",
+        "research/cache_v10.py:197-202 strict=True rejects unknown reduction; :330-338 perf_ok logic"
+      ],
+      "grading_rationale": "The three correctness legs are complete and tamper-resistant (identical artifact sha256 manifests on and off cache, identical derived cache keys proving an identical input surface, raw reads at exactly budget=2 verified by a disk-backed post-exit counter whose uncached control read 4). Only a performance number is missing, and it gates nothing V9H-authorizing: PLAN section 6 requires parity plus fresh-process reproduction or else disabling cache, never a speedup target. Consequence I impose rather than severity I inflate: SharedCacheMergeGate MUST NOT be invoked with strict=True to justify any cache-posture change until the wall pair is recorded, because such a call would legitimately reject."
+    },
+    {
+      "id": "F3",
+      "source": "gate_ledger_v9h.json#unresolved_findings (A1 raised)",
+      "summary": "Primary vm_stat available-RAM vs secondary memory-pressure method disagree materially; enforced primary yields effective_heavy_workers=0 on this 8GB host",
+      "severity_assigned": "MEDIUM",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "resource_cap_report.json#governor_state{available_ram_gb:1.5665,effective_heavy_workers:0}",
+        "#ra3_window_observations primary [1.30,1.46]GB vs secondary free_pct [34,41]",
+        "a3_runtime_validation.json#limitations[1]"
+      ],
+      "grading_rationale": "Disclosed unmodified to A1 instead of resolved by picking the flattering number - correct behaviour. The two methods measure different things (free+inactive+speculative pages vs compression-adjusted pressure) and on an 8GB M1 under active macOS compression they genuinely diverge. Ruling: fail-closed selection of the conservative metric is defensible because over-admitting workers risks OOM-killing a scored trial mid-flight, which is far more damaging than idling. Residual MEDIUM because the disagreement is unresolved and unresolved measurement-method ambiguity should not silently persist into V10 launch decisions."
+    },
+    {
+      "id": "F4",
+      "source": "NEW FINDING BY A7-R",
+      "summary": "Frozen cap value deviates from PLAN section 6 prescribed fallback: plan says cap=1 when the 2GB reserve cannot be met, but effective_heavy_workers was frozen at 0",
+      "severity_assigned": "MEDIUM",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "PLAN.md section 6 required measurement #5 'Freeze cap=2 only if all are safe with at least 2 GB reserved; otherwise cap=1'",
+        "resource_cap_report.json stored_effective_heavy_workers=0 with capacity_consequence field",
+        "research/gate_checks_v10.py:235 max(0,...) clamping; resource_governor_v10.py:171-192 min(contract_cap, ram_cap_workers)"
+      ],
+      "grading_rationale": "This is a direct instruction-level deviation I found and A1 did not record as such. It matters because a cap of 0 makes a formally authorized V10 operationally inert locally - authorization without executability. Graded MEDIUM not HIGH for four reasons: (i) deviation direction is stricter/safer than the plan floor, since running one worker against ~1.57GB free leaves only ~0.3GB slack on a compressed-memory host; (ii) it is loudly disclosed in capacity_consequence as a measured environment fact; (iii) freeze() re-measures at actual trial launch so this is a snapshot, not a permanent bar; (iv) the alternative reading - that an audit should force tighter memory discipline to be loosened so work can proceed - would put pressure on the auditor to certify risk. Owner must consciously accept either raising headroom or amending the plan fallback text."
+    },
+    {
+      "id": "F5",
+      "source": "NEW FINDING BY A7-R",
+      "summary": "Retention/prohibition conflict undisclosed: archived V9 source trees are gone from disk (my-quantitative-v9-wt is EMPTY) and wave worktrees a2-evidence / a3-runtime / a4-reproduction listed in worktree_manifest are not present in `git worktree list`, while recovery_contract prohibits worktree deletion and A2's own retention policy says 'V9 worktrees must not be deleted'",
+      "severity_assigned": "MEDIUM",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "ls /Users/hoangminhlong/my-quantitative-v9-wt => empty directory",
+        "git worktree list => main, a7-independent-audit, a7-v9h-reaudit, integration-v10 ONLY",
+        "worktree_manifest.json entries role A2 path .../a2-evidence branch orca/v10-evidence; role A3 path .../a3-runtime; role A4 path .../a4-reproduction",
+        "branches orca/v10-evidence, orca/v10-runtime, orca/v10-reproduction STILL EXIST => commits preserved"
+      ],
+      "grading_rationale": "I cannot determine WHO deleted them or WHEN, and no committed artifact discloses it - that absence of disclosure is itself the finding. Materiality is bounded and verified rather than assumed: all merge commits survive on their branches, and I independently re-hashed the surviving bundle copy (b5ce4097... MATCH, 207/207 blobs) so NO EVIDENTIARY CONTENT IS LOST. But consequence is real: redundancy silently fell from two snapshot copies to one, and a2_restore_report.json now cites a nonexistent path. Requires owner acknowledgment plus a retention decision, not code remediation."
+    },
+    {
+      "id": "F6",
+      "source": "NEW FINDING BY A7-R",
+      "summary": "research/audits/v10/v9h_closeout.{json,md}, listed as REQUIRED artifacts in PLAN section 6, do not exist anywhere in the tree at audited_sha; gate_ledger_v9h.json likewise carries no explicit terminal verdict field (v10_scored_budget_consumed=0 is present but no V9H_PASS/BLOCKED string)",
+      "severity_assigned": "MEDIUM",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "PLAN.md section 6 Required artifacts bullet list includes research/audits/v10/v9h_closeout.{json,md}",
+        "find across audited worktree and integration-v10 => no v9h_closeout.* file",
+        "gate_ledger_v9h.json top-level keys contain artifact/denominator/mechanical rows/unresolved_findings but no terminal verdict field"
+      ],
+      "grading_rationale": "No terminal outcome record exists declaring whether V9H passed or blocked, which means the sprint currently has fourteen gates evaluated and no authorized conclusion drawn from them. Graded MEDIUM rather than HIGH only because sequencing makes absence expected AT AUDIT TIME: the closeout can only be written after this report exists, and writing a verdict into it before the auditor reports would be worse than omitting it. Hard condition attached to my recommendation: v9h_closeout MUST be produced carrying this recommendation verbatim, inside the sprint window, or the pass is unfinalized."
+    },
+    {
+      "id": "F7",
+      "source": "NEW FINDING BY A7-R",
+      "summary": "gate_ledger_v9h key numbering does not follow PLAN section 6's H01-H14 list and actively collides with it",
+      "severity_assigned": "LOW",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "gate_ledger_v9h.json keys: H05_resource_governor_measured_enforced (=PLAN #8), H08_adversarial_map (=NOT plan#8 which is 'Enforced measured resource cap'), H12_full_suite_clean_integration (=PLAN #13), H13_owned_workers_zero_clean_tree (=PLAN #3), H14_archive_restore_authority_lineage (=PLAN #2)",
+        "PLAN.md section 6 numbered list items 1-14"
+      ],
+      "grading_rationale": "Purely documentary but genuinely dangerous: ledger key H08 denotes the adversarial map while PLAN's H08 denotes the resource cap, and ledger H03/H05/H12/H14 map to different plan numbers too. A future reader cross-referencing 'ledger H08 PASS' against PLAN will conclude the wrong gate closed. No truth content affected -> LOW; recommend a mapping table be added at closeout time, which costs one paragraph."
+    },
+    {
+      "id": "F8",
+      "source": "NEW FINDING BY A7-R",
+      "summary": "Stale filesystem references in committed evidence: a2_restore_report.json#bundle.path and known worktree paths point at directories that no longer exist",
+      "severity_assigned": "LOW",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "a2_restore_report.json#bundle.path=/Users/hoangminhlong/my-quantitative-v10-wt/a2-evidence/research_snapshots/v9_closed_20260826T123332Z (absent); live copy at /Users/hoangminhlong/my-quantitative/research_snapshots/",
+        "a4 evidence refs to <wt>/vr-runtime/.scratch_ra3 and vr-repro/.scratch_ra4 (scratch, deleted by design and disclosed)"
+      ],
+      "grading_rationale": "Distinguished from F5: these are stale pointers inside honest records rather than undeleted content. The scratch paths are explicitly disclosed as deleted-after-run, which is compliant; only the bundle path misleads. LOW."
+    },
+    {
+      "id": "F9",
+      "source": "NEW FINDING BY A7-R",
+      "summary": "Lineage fork point: audited branch contains e5b0bab but NOT main's 4bcc9bb, producing duplicate 'Freeze V9H recovery contract' commits on both sides",
+      "severity_assigned": "LOW",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "git merge-base HEAD origin/main == e5b0bab8991b0cd798b639d64fcdf2f1dbbeb61a",
+        "git merge-base --is-ancestor 4bcc9bb HEAD == NO",
+        "git diff 4bcc9bb HEAD -- PLAN.md CONTINUE.md == EMPTY (byte identical)",
+        "commits 4bcc9bb(main) vs 871c66d+6b48f1e(branch), same subject text"
+      ],
+      "grading_rationale": "I chased this as a potential mandate drift attack surface and cleared it: the governing plan text is byte-identical on both sides, so no rule I audited against differs from what the owner approved on main. Remaining concern is only history hygiene - two commits claiming to freeze the same contract with no parent relationship, which complicates future provenance questions. LOW, and worth rebasing/merging before any promotion."
+    },
+    {
+      "id": "F10",
+      "source": "NEW FINDING BY A7-R (wording defect, no evidence defect)",
+      "summary": "mechanical row G-H03 records files_scanned=2 / violations=[] in a way that invites reading 'every subprocess call has a timeout kwarg'",
+      "severity_assigned": "LOW",
+      "is_high_or_critical": false,
+      "evidence_refs": [
+        "gate_rows_mechanical_v9h.json[G-H03].measured.violations=[]",
+        "MY AST scan: runtime_controller_v10.py:503 and reproduction_stream_v10.py:266 subprocess.Popen carry NO timeout kwarg",
+        "runtime_controller_v10.py:487-488,674-675 non-null guard; :1241 CLI required=True"
+      ],
+      "grading_rationale": "The underlying contract IS satisfied through API-boundary validation plus the monotonic poll escalation loop, and pgid==pid custody held in all ten rounds - so the gate verdict stands. Only the mechanical row's phrasing understates where enforcement lives, risking a later reader auditing the wrong layer. LOW, wording fix only."
+    }
+  ],
+  "high_or_critical_unresolved_count": 0,
+  "recommendation": "V9H_PASS_V10_AUTHORIZED_EVIDENCE",
+  "rationale": "Independently re-derived rather than accepted from A1: I recomputed the V9 archive bundle hash myself (b5ce4097... matches, 207/207 blobs verify, committed manifest byte-equivalent to archived manifest), re-ran my own owned-worker sweep at intake (zero controller state-dirs anywhere, zero worker processes), wrote my own AST walk over every spawn-like call site, re-aggregated all ten timeout rounds (pid==pgid x10, TIMED_OUT x10, reaped x10, group dead after settle x10, zero orphans, elapsed overshoot <=112ms), read both funding-sign code sites directly, verified append-only denominator refusal through three routes, reproduced the per-pick suite arithmetic (34+90+21=145, all green) and confirmed full-suite 1078/1079 exit 0 ran on a topology that already contained every validator pick. Every one of PLAN section 6's fourteen required measurements has positive independent support. The two rows A1 marked UNAVAILABLE_FAIL_CLOSED (strict cache wall-pair, adversarial 20-item enumeration) were examined specifically as potential blockers and ruled NON-BLOCKING with reasoning stated in check 14: neither corresponds to a PLAN.md-mandated gate, the 20-item constant originates in validator code commit 051d33b rather than owner-approved text, both failures point away from risk by making weaker claims, and no scored V10 execution occurred. My ten findings grade six MEDIUM (F1-F6) and four LOW (F7-F10), none HIGH or CRITICAL, so high_or_critical_unresolved_count=0. The authorization is granted WITH CONDITIONS the owner must see: (1) effective_heavy_workers is frozen at 0 on this host, so V10 cannot actually launch locally until RAM headroom grows or the cap=1 plan fallback is consciously amended (F4); (2) research/audits/v10/v9h_closeout.{json,md} still owes its production inside the sprint window, carrying this recommendation verbatim (F6); (3) SharedCacheMergeGate must not be driven strict=True until the wall pair exists (F2); (4) the silent disappearance of the V9 source trees and wave worktrees needs owner acknowledgment given their retention policy (F5).",
+  "limitations": [
+    "Full suite was NOT rerun by A7-R. Executing 1079 tests is a heavy action and PLAN forbids a full pytest run concurrent with any heavy probe or backtest; my audit window could not guarantee machine exclusivity. I therefore verified the record's internal coherence instead: exit_code=0, passed=1078/collected=1079, ran_alone_no_other_heavy_process=true, and integration_head_child_of naming all four validator picks, meaning the suite ran on a tree that already contained every validator's work.",
+    "The A2 RESTORE was not re-executed. I did something harder than trusting '356/356': recomputed the bundle hash from the surviving snapshot copy using its own stated definition (MATCH), re-hashed all 207 stored blobs against their digest-filenames (0 mismatches), and proved the committed manifest is entry-for-entry identical to the archived one. The reconstruct-and-byte-compare step inside system temp remains A2's alone.",
+    "Process observations are point in time. My owned-worker sweep ran at 2026-08-27T04:28:38Z; absence of state-dirs and of live worker processes at that instant cannot preclude workers started after it. Absence of controller records also cannot exclude an unmanaged process that never used the production controller.",
+    "Deleted material constrains what I can attest: with exec-v9-r1/exec-v9-r2 gone and wave worktrees pruned, I audited surviving branches plus the verified archive. Untracked scratch content that was never committed and has since been removed is unverifiable by anyone; where scratch cleanup destroyed evidence (F2 wall pair) that gap is recorded as UNAVAILABLE rather than assumed away.",
+    "The bundle proves integrity of preserved copies against their own hashes only; it cannot prove source trees were unmodified BEFORE archiving. Mitigation is the pin set (both exec trees HEAD==launch_sha 206faf8a... at archive time) which I cross-checked across five independent artifacts.",
+    "My H12 spot-recompute artifacts under .scratch_a7/ were deleted before commit per sprint rules. The digests are recorded in check 12 and are re-derivable from committed machinery in ~7s.",
+    "Sequencing constraint acknowledged openly: v9h_closeout.{json,md} did not exist when this report was written because it can only be written after it. This audit's pass is therefore UNFINALIZED until that artifact exists carrying recommendation V9H_PASS_V10_AUTHORIZED_EVIDENCE verbatim.",
+    "Deadlines respected: audited_sha frozen before start; worktree confirmed clean at HEAD 5c8a979c1714f1f5f9cc9f91415965b21b02d92a on branch orca/v10-a7-v9h-reaudit; audit-only role honored (only research/audits/v10/a7_* written); no push, no deletion of others' content, no network fetch beyond local git metadata, no scored backtest executed."
+  ],
+  "audit_method_note": "Every verdict above states its own evidence path. Where I could recompute cheaply I did (bundle hash + blobs, AST spawn walk, timeout-round aggregation, suite arithmetic, funding sign at both code sites, golden realpath rerun). Where recomputation was a heavy or scored action I said so in limitations[] rather than silently accepting."
+}
