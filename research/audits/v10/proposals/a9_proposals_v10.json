@@ -1,0 +1,611 @@
+{
+  "schema_version": 1,
+  "artifact": "a9_proposals_v10",
+  "wave": "N1_blinded_proposals",
+  "agent_role": "A9",
+  "agent_worktree": "/Users/hoangminhlong/my-quantitative-v10-wt/n-a9-proposals",
+  "agent_branch": "orca/v10-n-a9",
+  "base_head_verified": "aec9324c97771c26e840c1c10b73dd56737f8f96",
+  "worktree_clean_at_write": true,
+  "authority": {
+    "plan_section": "PLAN.md section 'N - blinded proposal firewall' (section 8)",
+    "contract_path": "research/control/v10_discovery_run/v10_contract.json",
+    "owner_go_recorded_utc_child": "2026-08-27T04:52Z",
+    "v9h_verdict_required": "V9H_PASS_V10_AUTHORIZED"
+  },
+  "evidence_only_attestation": {
+    "strategy_code_written": false,
+    "backtest_executed": false,
+    "scored_metrics_viewed": false,
+    "results_tree_opened": false,
+    "scoring_or_finalize_artifacts_opened": false,
+    "reproduction_metric_files_opened": false,
+    "a8_artifacts_read_or_listed": false,
+    "writes_outside_own_deliverables": false,
+    "network_used": false
+  },
+  "reading_scope": [
+    "PLAN.md",
+    "research/control/v10_discovery_run/v10_contract.json",
+    "research/control/v10_hardened_run/worktree_manifest.json",
+    "data/v9_manifests/universe_selection_v9.json",
+    "data/v8x_manifests/crypto_universe_selection.json",
+    "research/hypotheses/** (family names + hypothesis headers only)",
+    "'sprint V1.md' / 'sprint V2.md' headings",
+    "research/hypotheses/ANALYSIS_MEMO.md framing sections"
+  ],
+  "proposal_cap_respected": {
+    "proposals_offered": 3,
+    "cap": 3,
+    "note": "A UTC-wall-clock liquidity-carriage premium axis was considered and deliberately not developed beyond a one-line sketch to respect the cap; it is not specified anywhere in this artifact."
+  },
+  "frozen_context": {
+    "universe_symbols_rank_order": [
+      {"rank": 1, "symbol": "ETHUSDT", "instrument_id": "ETHUSDT-PERP.BINANCE"},
+      {"rank": 2, "symbol": "SOLUSDT", "instrument_id": "SOLUSDT-PERP.BINANCE"},
+      {"rank": 3, "symbol": "XRPUSDT", "instrument_id": "XRPUSDT-PERP.BINANCE"},
+      {"rank": 4, "symbol": "DOGEUSDT", "instrument_id": "DOGEUSDT-PERP.BINANCE"},
+      {"rank": 5, "symbol": "ENAUSDT", "instrument_id": "ENAUSDT-PERP.BINANCE"},
+      {"rank": 6, "symbol": "SUIUSDT", "instrument_id": "SUIUSDT-PERP.BINANCE"},
+      {"rank": 7, "symbol": "1000PEPEUSDT", "instrument_id": "1000PEPEUSDT-PERP.BINANCE"},
+      {"rank": 8, "symbol": "ADAUSDT", "instrument_id": "ADAUSDT-PERP.BINANCE"},
+      {"rank": 9, "symbol": "BNBUSDT", "instrument_id": "BNBUSDT-PERP.BINANCE"},
+      {"rank": 10, "symbol": "LINKUSDT", "instrument_id": "LINKUSDT-PERP.BINANCE"}
+    ],
+    "btc_benchmark_input_only_excluded_from_trading": true,
+    "scored_window_contract_utc": ["2025-08-21T00:00:00Z", "2026-08-21T00:00:00Z"],
+    "bar_spec": "-15-MINUTE-LAST-EXTERNAL",
+    "bar_interval_seconds": 900,
+    "completed_bar_slots_per_symbol_scored_window": 35040,
+    "selected_universe_bar_rows_scored_window": 350400,
+    "benchmark_bar_rows_scored_window": 35040,
+    "total_usable_series_rows_scored_window": 385440,
+    "panel_expected_slots_both_windows_all_candidates": 758400,
+    "panel_gaps_found": 57,
+    "panel_unexplained_gaps": 0,
+    "gap_cause_note": "all 57 slots are the ETH capture-boundary run at scored-window start (2025-08-21T00:00Z..14:00Z), before fold 1",
+    "pre_window_slots_per_symbol": 2880,
+    "pre_window_gaps_any_symbol": 0,
+    "warmup_days_available_before_scored_start": 364,
+    "cost_baseline_preregistered": "5bp taker per fill + one adverse tick + native funding, or stricter",
+    "embargo_rule_declared_uniform_non_tunable": "72h (= >=3x longest holding horizon in this proposal set; satisfies PLAN §11 purge/embargo >= holding horizon)"
+  },
+  "uniform_statistics_policy": {
+    "rolling_windows": "trailing, inclusive of signal bar close; no centred or forward windows",
+    "missing_bar_policy": "evaluate lookback on available bars only if available_count >= 70% of nominal, else suppress signal fail-closed with WARMUP_INSUFFICIENT; forward-filling OHLC forbidden",
+    "signal_stamp": "bar_open + 900s (completed-bar close)",
+    "fill_stamp_and_price": "OPEN stamp of first bar strictly after signal stamp; fill price = that bar OPEN (external LAST basis)",
+    "exit_evaluation": "completed bars at/after entry fill only; exit fills at next bar open",
+    "exit_precedence": ["scheduled/time exit", "opposite-sign exit condition", "timeout"],
+    "accounting": "fees+adverse tick per fill against own fill price; native funding accrued at each settlement instant strictly inside [entry_fill_ts, exit_fill_ts), long pays positive funding",
+    "sample_floor_constant_visible_to_a9": false
+  },
+  "constant_source_taxonomy": {
+    "S_scale_free": "threshold as multiple of rolling dispersion of the same observable; multiplier fixed once per cell by mechanism claim",
+    "C_structural": "integer fixed by manifest-recorded market structure or mechanism-native timescale",
+    "D_data_derived_median_mad": "trailing inclusive medians/dispersion scales; no fitted coefficient",
+    "grid_forbidden": true,
+    "on_grid_detected": "implementer must stop and log RESCUE_RISK_GRID; proposal void rather than amended"
+  },
+  "proposals": [
+    {
+      "hypothesis_id": "H-V10N1-A9-FORCEDFLOW-v1",
+      "proposal_slot": "P1",
+      "mechanism_name": "forced_deleveraging_immediacy_provision",
+      "mechanism_class": "event-driven both-sided single-name fade of forced flow",
+      "independent_of_other_a9_proposals": ["H-V10N1-A9-INFSPILL-v1", "H-V10N1-A9-RVRELVAL-v1"],
+      "economic_source": {
+        "statement": "Payment for supplying immediacy into one-sided forced deleveraging: margin-engine liquidations transact regardless of level, pushing price away from levels supported by willing holders.",
+        "counterparty_identity": "leveraged retail/small-fund perpetual holders being force-deleveraged (insolvent longs sold out; mirror: liquidated shorts buying back), acting through a discretion-free clearing/margin engine",
+        "why_they_exist": "retail-accessible high leverage plus a maintenance-margin engine with no discretion on 24/7 markets produces bursty threshold-triggered unwinding; no data assumption beyond ten funded perpetuals with 15-minute liquidity",
+        "predictability_claim": "their motive is solvency, not opinion: pressure stops mechanically once margin deficit is cleared, leaving price displaced from willing-holder levels"
+      },
+      "pit_inputs": {
+        "series": [
+          "open/high/low/close per completed 15m bar, external LAST basis, all ten selected symbols",
+          "qvol = native quote_volume per completed 15m bar (manifest-proven field used for pre-window ranking)"
+        ],
+        "excluded_inputs": ["open interest", "order book", "trade ticks", "stablecoin index", "options", "external calendar", "funding-derived thresholds"],
+        "pit_safety_justification": "every quantity belongs to a bar fully closed before the signal stamp; normalizers trail and are inclusive of the signal bar alone; no centred/forward window; universe membership frozen strictly before the scored window opened"
+      },
+      "causal_sign": {
+        "sign": "fade",
+        "rule": "LONG after capitulation-shaped down bars; SHORT after blow-off-shaped up bars",
+        "justification_chain": [
+          "an involuntary seller must transact regardless of level, pushing price below willing-holder levels",
+          "because he sells until margin is restored, the terminal bar shows abnormal participation AND closes near its low: joint extreme in excursion x close-location x participation, not merely a large negative return",
+          "when the deficit clears, selling stops mechanically and no informational reason remains for further decline while resting bids remain",
+          "conditional expected return over following hours is positive => long; mirrored argument => short after forced-buying blow-offs"
+        ]
+      },
+      "clocks": {
+        "signal_clock": "completed 15-minute bar closes (UTC bar_open+900s)",
+        "fill_clock": "next allowed event = OPEN of next 15-minute bar strictly after signal stamp; exits also completed-bar driven, filled next open"
+      },
+      "holding_horizon": {
+        "value": "16 bars = 4 hours",
+        "native_unit_rationale": "deleveraging flush resolves within hours; spans at most one settlement boundary; cannot silently become a multi-day directional bet"
+      },
+      "construction_recipe": {
+        "definitions": {
+          "r1_i": "ln(close_i / close_{i-1})",
+          "sig_i": "rolling std of r1 over L_sig=96 bars ending i inclusive",
+          "exc_i": "(close_i - open_i) / (sqrt(L_exc) * sig_i), L_exc=4",
+          "rng_i": "high_i - low_i",
+          "clv_i": "((close_i-low_i)-(high_i-close_i))/rng_i in [-1,+1]; 0 if rng_i==0",
+          "qvz_i": "(qvol_i - mean(qvol,L_qv)) / std(qvol,L_qv), L_qv=96 trailing inclusive"
+        },
+        "entry_guards": "require rng_t > 0 and every 96-bar window has >=67 available bars else suppress",
+        "entry_long_capitulation": "exc_t <= -2.0 AND clv_t <= -0.50 AND qvz_t >= 2.0",
+        "entry_short_blowoff": "exc_t >= +2.0 AND clv_t >= +0.50 AND qvz_t >= 2.0",
+        "fill": "next bar OPEN, unit exposure, single leg, no pyramiding",
+        "position_rules": "same-direction retrigger ignored; opposite-direction trigger closes-and-reverses next open",
+        "exit_precedence": [
+          "time target bars_held == 16 -> exit next open",
+          "same triple fires with opposite sign -> exit (and reverse) next open",
+          "timeout identical to rule 1; explicitly no stop-loss and no profit target"
+        ],
+        "accounting": "uniform policy block in this artifact's uniform_statistics_policy"
+      },
+      "regimes": {
+        "edge_concentrates": [
+          "post-leverage-flush mean-reverting churn",
+          "symbols with recent leverage build-up during sharp intraday reversals",
+          "volatile non-trending tape where cascades self-exhaust within hours",
+          "stretches near settlement boundaries with one-sided crowding"
+        ],
+        "edge_should_lose": [
+          "multi-day one-directional insolvency cascades (forced sellers are right)",
+          "news/regulatory breaks where the first high-volume move is informative",
+          "low-leverage grind markets where triggers fire on ordinary churn",
+          "prolonged compression regimes shrinking the 96-bar sigma so 2-sigma bars become ordinary"
+        ]
+      },
+      "falsification_procedure": {
+        "kill_conditions": [
+          "post-cost expectancy <= 0 OR PF < 1.10 OR fewer than 2/3 folds positive OR any populated fold PF < 0.80 OR MDD > 10% OR drop-one-symbol/drop-one-fold sign flip",
+          "stress variants (fee/slippage x1.5, +2 ticks, +1 event delay) give PnL <= 0 or PF < 1.00; '+1 event delay' failing specifically falsifies immediacy provision",
+          "trigger rate below frozen sample floor => INSUFFICIENT_SAMPLE_NO_SCORE; loosening thresholds forbidden",
+          "negative control behaves as a genuine effect (see negative_control.invalidates_if)"
+        ],
+        "explicitly_outside_budget": "the de-participation variant is not run and is not a scored cell"
+      },
+      "negative_control": {
+        "id": "FORCEDFLOW-CTRL",
+        "design": "identical machinery entered WITH the flow: SHORT after capitulation triggers, LONG after blow-off triggers; filters/fills/exits/costs/folds byte-identical otherwise",
+        "prediction_under_causal_story": "control earns near zero or loses; forced-flow footprints identify price-insensitive sellers whose side underperforms",
+        "invalidates_if": "control expectancy >= 0.5 * anchor expectancy OR control PF >= 1.05 => footprints indicate informed directional pressure, causal sign rejected",
+        "promotion_allowed": false
+      },
+      "nearest_historical_families": [
+        "mean_reversion (root strategy family)",
+        "reclaim_mr (root strategy family)",
+        "markdown_breakdown (root strategy family)",
+        "H-VOLCOMP-BRKOUT-v1 / volatility_compression_breakout (REJECTED)",
+        "H-V9-VOLSHOCK-v1",
+        "H-FUNDCROWD-MR-v1",
+        "H-FUNDCROWD-MR-v2 (feature point_in_time_funding_percentile)",
+        "ema_atr (V2 matrix family)",
+        "trend_pullback (V2 matrix family)"
+      ],
+      "structural_delta_claims": {
+        "economic_source": {
+          "material": true,
+          "claim": "mechanical margin-engine deleveraging drives the sign via identity/motive of the marginal transactor, versus behavioural overreaction or volatility-regime transition in nearest families"
+        },
+        "observable_construction": {
+          "material": true,
+          "claim": "joint triple of sigma-normalized open-to-close excursion x intra-bar close location value x quote-volume z-score; CLV appears in no V1-V9 family and none conditions on participation concentration"
+        },
+        "selection_payoff_geometry": {
+          "material": "contested_argued_yes",
+          "claim": "rare symmetrical event scalps, both sides, fixed 4-h horizon, zero reference to price levels/support/resistance or percent-rank-of-prices",
+          "honesty_flag": "event-conditional reversal is payoff-shape similar to reclaim_mr's fade; if A7 rules this dimension immaterial the family fails the four-dimension requirement alone and must be dropped without amendment"
+        },
+        "counterparty_or_regime_prediction": {
+          "material": true,
+          "claim": "predicts counterparty identity (margin engine acting for an insolvent holder) and predicts termination of his pressure when the deficit clears"
+        },
+        "dimensions_claimed_material": 4,
+        "rescue_hygiene": "no MA/price band, no pivot or level, no percent-rank of returns, no lookback shorter than the single 96-bar normalizer, no funding threshold (funding plays no role unlike H-FUNDCROWD-MR-v2), no session/weekday rule, no symbol-specific setting, no stop/target pair"
+      },
+      "sample_feasibility": {
+        "confidence": "medium",
+        "event_rate_per_symbol_per_year_range": [70, 280],
+        "symbol_events_per_year_range": [700, 2800],
+        "events_per_fold_range_approx_121_scored_days": [230, 930],
+        "overlap_clip_ceiling_positions_per_symbol_year": 2190,
+        "binding_constraint": "trigger rarity may undercut the frozen sample floor; disclosed rather than tuned around",
+        "basis_row_counts": "35040 bars/symbol scored window; 350400 universe rows; 2880 pre-window slots/symbol with zero gaps"
+      },
+      "audit_cost_estimate": {
+        "per_run_cell": "1-3 minutes streaming over ~385440 rows",
+        "scored_surface_runs": "3 cells x 5 stress variants = 15 runs plus ~15 clean reproduction runs",
+        "cpu_hours": [0.5, 1.5],
+        "wall_clock_hours_at_heavy_cap_1": [0.5, 1.5]
+      },
+      "anchor_config": {
+        "cell_id": "FORCEDFLOW-ANCHOR",
+        "universe": "all ten selected symbols, equal opportunity, BTC never traded",
+        "L_sig": 96,
+        "L_exc": 4,
+        "L_qv": 96,
+        "exc_threshold_abs": 2.0,
+        "clv_threshold_abs": 0.5,
+        "qvz_threshold_min": 2.0,
+        "hold_max_bars": 16,
+        "L_local_neighbor_only": 2,
+        "stop_loss_target": "none",
+        "embargo_hours": 72,
+        "folds": 3,
+        "non_tunable_constants_declaration": "exc/clv/qvz multiples are scale-free category S; hold_max and window lengths are category C structural integers"
+      },
+      "neighbor_config": {
+        "cell_id": "FORCEDFLOW-NB",
+        "single_structural_change_vs_anchor": "entry additionally requires the participating extreme to coincide with the local price extreme of the burst rather than a continuation leg: low_t == min(low_{t-1}, low_t) for capitulation entries and high_t == max(high_{t-1}, high_t) for blow-off entries (L_local=2)",
+        "theoretical_justification": "the harvested bounce comes from the TERMINAL transaction of forced selling; if the extreme is still rolling forward the cascade was not exhausted",
+        "prediction_if_mechanism_real": "fewer triggers with higher hit rate and higher expectancy per trade than the anchor; failure rejects the exhaustion interpretation even if the anchor passes"
+      }
+    },
+    {
+      "hypothesis_id": "H-V10N1-A9-INFSPILL-v1",
+      "proposal_slot": "P2",
+      "mechanism_name": "benchmark_led_information_spillover_drift",
+      "mechanism_class": "cross-instrument diffusion lag; single-name directional; benchmark input-only, never traded",
+      "independent_of_other_a9_proposals": ["H-V10N1-A9-FORCEDFLOW-v1", "H-V10N1-A9-RVRELVAL-v1"],
+      "economic_source": {
+        "statement": "Aggregate crypto-beta information reprices the deepest instrument first because institutional hedging/arbitrage concentrates there; diffusion into thinner alt books is incomplete within minutes because part of each alt's holder base updates late and multi-leg hedgers complete alt legs after the benchmark leg.",
+        "counterparty_identity": "delayed-repricing altcoin holders (passive allocators, hand-managed books, bots keyed only to alt-local indicators) and second-pass hedgers completing alt legs at reduced urgency",
+        "why_they_exist": "alts carry far larger per-name risk relative to desk capacity and nobody monitors twenty small books as continuously as the flagship book; institutional BTC-perp access coexists with retail alt access",
+        "predictability_claim": "after a completed benchmark shock a fraction of required alt repricing remains unexecuted, producing same-signed drift toward benchmark-implied fair value"
+      },
+      "pit_inputs": {
+        "series": [
+          "BTCUSDT-PERP.BINANCE close series (completed 15m bars) as conditioning observable ONLY: manifest proves census gaps = 0 and ancestor manifest fixes role benchmark_measurement_only_excluded_from_ranking_weights_pnl",
+          "open/close per completed 15m bar for the ten selected symbols (traded legs)",
+          "r1 log-return series and trailing sigma estimators on both sides"
+        ],
+        "btc_usage_compliance": "consistent with PLAN §11 'buy-and-hold/BTC-beta-neutral only context': no BTC leg opened, no BTC PnL scored, BTC neither added to nor removed from the traded universe",
+        "pit_safety_justification": "shock statistic uses benchmark bars closing at or before the signal stamp inclusive; normalization trails identically; decision instant equals completion time of last benchmark bar used, hence knowable then; shared manifest-documented 900s grid means no ordering ambiguity between benchmark and alt completions"
+      },
+      "causal_sign": {
+        "sign": "continuation",
+        "rule": "take the SAME sign as the completed benchmark shock in the alt",
+        "justification_chain": [
+          "a benchmark shock signals changed aggregate beta demand, not single-name sentiment",
+          "transmission requires transactions in each alt book where transaction rates are lower (thinner restbook, wider quotes, slower holder update cycles)",
+          "until those transactions occur the alt understates the new beta level => drift toward fair value => same-signed continuation",
+          "diffusion completes => drift decays => fixed-horizon exit rather than stop/target; the mechanism predicts finite life, not trend"
+        ],
+        "null_hypothesis_acknowledged": "integration completing within one 15-minute bar is the most likely outcome; the cell bounds how much lag survives 15-minute granularity at 5bp cost"
+      },
+      "clocks": {
+        "signal_clock": "completed 15-minute closes, benchmark and alts aligned on the manifest-documented common 900s UTC grid",
+        "fill_clock": "OPEN of the following 15-minute bar strictly after signal stamp; missing fill-instant bar suppresses that symbol's signal fail-closed, never back-filled"
+      },
+      "holding_horizon": {
+        "value": "32 bars = 8 hours",
+        "native_unit_rationale": "diffusion and basket-completion act over hours, so exit is a multiple of the diffusion window rather than a profit target; aligns to the settlement cadence boundary making funding accounting unambiguous"
+      },
+      "construction_recipe": {
+        "benchmark_shock": {
+          "rb_j": "ln(close_B,j / close_B,j-1)",
+          "shockraw_t": "sum(rb_j ; j in [t-L_shk+1..t]), L_shk=6",
+          "sigB_t": "rolling std(shockraw_j ; j=t-L_normB+1..t), L_normB=2880 (30 days)",
+          "mag_t": "abs(shockraw_t)/sigB_t",
+          "dir_t": "sign(shockraw_t)"
+        },
+        "alt_reaction_statistic_neighbor_only": {
+          "ra_j": "ln(close_s,j / close_s,j-1)",
+          "altmove_s_t": "sum(ra_j ; j in [t-L_shk+1..t]) / (rolling_std(ra_j ; j=t-L_sig+1..t) * sqrt(L_shk)), L_sig=96"
+        },
+        "anchor_entry_condition": "mag_t >= 2.0",
+        "neighbor_entry_condition": "mag_t >= 2.0 AND abs(altmove_s,t) <= 1.0",
+        "side": "dir_t (long if shock up, short if down)",
+        "execution": "fill next bar OPEN; hold exactly 32 bars; time exit only; no stop/target; further signals on a live symbol ignored (no stacking); max 10 concurrent equal-notional single-leg exposures; benchmark never traded",
+        "accounting": "uniform policy block, including native funding on held alts across settlements"
+      },
+      "regimes": {
+        "edge_concentrates": [
+          "fast macro/shock weeks with large aggregate moves and elevated cross-sectional correlation",
+          "bursts where the benchmark moved far beyond its recent norm while some alts barely moved",
+          "stressed sessions where alt depth withdraws first and refills later"
+        ],
+        "edge_should_lose": [
+          "integrated quiet regimes where alts track the benchmark bar-for-bar and cost floor dominates",
+          "idiosyncratic alt news cycles that correctly detach an alt from benchmark beta",
+          "strong one-directional regimes where an 8-h hold degenerates into beta and MDD dominates"
+        ]
+      },
+      "falsification_procedure": {
+        "kill_conditions": [
+          "anchor post-cost expectancy <= 0 OR PF < 1.10 OR < 2/3 folds positive OR populated fold PF < 0.80 OR MDD > 10% OR drop-one-symbol dependence",
+          "any stress variant gives PnL <= 0 or PF < 1.00; the '+1 event delay' stress directly proxies diffusion being faster than claimed",
+          "neighbor prediction fails: restricting to not-yet-moved alts must raise expectancy/hit rate, else the diffusion explanation is contradicted even if the anchor passed",
+          "negative control behaves as a genuine effect"
+        ]
+      },
+      "negative_control": {
+        "id": "INFSPILL-CTRL",
+        "design": "stale-shock placebo: identical recipe but the benchmark shock window ends L_stale=192 bars (48h) earlier, i.e. information already fully diffused under any plausible diffusion speed",
+        "prediction_under_causal_story": "placebo expectancy indistinguishable from zero and clearly below anchor",
+        "invalidates_if": "placebo expectancy >= 0.5 * anchor expectancy OR placebo PF >= 1.05 => PnL derives from generic benchmark-alt co-momentum/beta exposure rather than fresh incompletely diffused information; causal sign rejected",
+        "promotion_allowed": false
+      },
+      "nearest_historical_families": [
+        "H-XSECT-MOM-v1 (dollar-neutral cross-sectional momentum)",
+        "H-XSECT-REVERSAL-v1",
+        "H-XSECT-REVERSAL-v2",
+        "H-XSECT-REVERSAL-BREADTH-CRYPTO-v1",
+        "H-V9-TSTREND-v1 (time-series trend)",
+        "trend_pullback (root strategy family)",
+        "breakout (root strategy family)",
+        "H-XSECT-FUNDING-CARRY-v1",
+        "H-XSECT-FUNDING-PRICE-DIVERGENCE-v1"
+      ],
+      "structural_delta_claims": {
+        "economic_source": {
+          "material": true,
+          "claim": "inter-instrument information-transmission latency plus staged multi-leg hedging: edge lives in who reacts first, inherently relational with no single-asset analogue"
+        },
+        "observable_construction": {
+          "material": true,
+          "claim": "benchmark shock magnitude in units of its own 30-day sigma measured on an instrument excluded from trading; no cross-sectional ranking operator exists anywhere in the design"
+        },
+        "selection_payoff_geometry": {
+          "material": true,
+          "claim": "event-gated coincident-clock single-name entries with fixed 8-h decay horizon and benchmark conditioning: timing-triggered, not level- or rank-triggered, versus rebalanced baskets or continuous state machines"
+        },
+        "counterparty_or_regime_prediction": {
+          "material": true,
+          "claim": "names the specific late transactor (delayed allocators, second-pass hedgers) and predicts the duration of their delay (bounded horizon)"
+        },
+        "dimensions_claimed_material": 4,
+        "rescue_hygiene": "not TS momentum (conditions on another instrument's shock, ignores alt's own trend); not XS momentum/reversal (no ranks, no dollar-neutral basket, no formation/rebalance cycle); no funding input; neighbor rewards an alt for NOT having moved, opposite of a breakout filter"
+      },
+      "sample_feasibility": {
+        "confidence": "high",
+        "benchmark_shock_bars_per_year_range": [700, 1400],
+        "symbol_event_opportunities_per_year_range": [7000, 14000],
+        "realized_trades_per_year_estimate": [2000, 6000],
+        "positions_ceiling_per_symbol_year": 1095,
+        "trades_per_fold_range_approx": [650, 2000],
+        "binding_constraint": "none expected; warmup needs 2880 bars << 34944 available pre-window bars; benchmark gaps 0; universe gaps 57 all explained pre-fold",
+        "basis_row_counts": "35040 bars/symbol scored window; 385440 total usable series rows including benchmark"
+      },
+      "audit_cost_estimate": {
+        "per_run_cell": "2-5 minutes vectorized rolling math over ~385440 rows",
+        "scored_surface_runs": "15 stress runs plus ~15 clean reproduction runs",
+        "cpu_hours": [1.0, 2.5],
+        "wall_clock_hours_at_heavy_cap_1": [1.0, 2.5]
+      },
+      "anchor_config": {
+        "cell_id": "INFSPILL-ANCHOR",
+        "universe": "ten selected symbols traded; BTCUSDT-PERP.BINANCE measurement-only",
+        "L_shk": 6,
+        "L_normB": 2880,
+        "L_sig": 96,
+        "shock_multiplier_anchor": 2.0,
+        "alt_move_max_conditional": null,
+        "hold_bars": 32,
+        "stop_loss_target": "none",
+        "embargo_hours": 72,
+        "folds": 3,
+        "non_tunable_constants_declaration": "shock multiplier 2.0 is category S scale-free; L_shk/L_normB/L_sig and hold are category C structural integers tied to diffusion/settlement reasoning"
+      },
+      "neighbor_config": {
+        "cell_id": "INFSPILL-NB",
+        "single_structural_change_vs_anchor": "entry additionally requires abs(altmove_s,t) <= 1.0 (alt had not yet reacted in sigma units)",
+        "theoretical_justification": "mechanism claims unexecuted repricing inventory; restricting entries to alts that have not yet repriced selects exactly that inventory",
+        "prediction_if_mechanism_real": "fewer entries, higher expectancy per trade, higher hit rate; support for the anchor if confirmed, contradiction of the diffusion explanation if it equals or underperforms the anchor",
+        "cells_consumed_with_control": 3
+      }
+    },
+    {
+      "hypothesis_id": "H-V10N1-A9-RVRELVAL-v1",
+      "proposal_slot": "P3",
+      "mechanism_name": "pairwise_relative_value_spread_reversion_to_one_sided_flow",
+      "mechanism_class": "two-leg atomic spread mean-reversion against transient idiosyncratic flow",
+      "independent_of_other_a9_proposals": ["H-V10N1-A9-FORCEDFLOW-v1", "H-V10N1-A9-INFSPILL-v1"],
+      "economic_source": {
+        "statement": "When idiosyncratic one-sided flow pushes exactly one of two highly correlated perpetuals, the shared-factor relationship is unbroken and relativizing balance sheets (delta-arb desks rotating back, funded sellers entering the rich leg) close the ratio divergence, paying whoever provides the other side.",
+        "counterparty_identity": "originators of one-sided single-name flow: allocation/unlock sellers, concentrated-book unwind desks, listing-driven rotators; plus passive makers swept asymmetrically in exactly one instrument",
+        "why_they_exist": "crypto capital is unevenly concentrated and frequently redeployed on schedules (vest calendars, collateral calls, index inclusion) unrelated to relative value between two perpetuals; nothing links one maker's SOL-specific exposure to another's XRP-specific exposure, so one-sided imbalances arise routinely and stay unhedged until arbitrageurs act",
+        "predictability_claim": "deviation created by such flow is closed on an intraday-to-one-day scale; temporary-versus-structural is the crux, which the participation-conditioned neighbor tests directly"
+      },
+      "pit_inputs": {
+        "pair_selection_rule": "two highest pre-window median-quote-volume symbols in the frozen universe => rank 1 ETHUSDT-PERP.BINANCE (leg B quote) and rank 2 SOLUSDT-PERP.BINANCE (leg A base), from selected_symbols.rank; depth measured in a window closing before the scored window opened; both legs show zero pre-window gaps and their only recorded scored-window gap is the explained ETH boundary run sitting before fold 1",
+        "substitution_rule": "NONE: if either leg fails a data gate the correct outcome is a hard data fail for this family, not a different pair",
+        "series": [
+          "ln(close_SOL,t) and ln(close_ETH,t) per completed 15m bar",
+          "quote-volume z-score inputs per §P1 definitions (neighbor condition only)"
+        ],
+        "pit_safety_justification": "pairs chosen from a pre-window manifest; spread statistics trail inclusively; no centred window, no forward fill, no use of either leg's own trend, no funding variable enters the signal"
+      },
+      "causal_sign": {
+        "sign": "convergence",
+        "rule": "short the rich leg / long the cheap leg when the log ratio is abnormally far from centre; close on reversion",
+        "justification_chain": [
+          "unchanged shared factor implies the two prices' equilibrium ratio is locally anchored",
+          "deviation therefore arises from a single-name imbalance",
+          "imbalance-originating flow is finite by nature (discrete allocation decisions exhaust)",
+          "absorption by relativizers restores the ratio => positive expected spread PnL over the convergence window",
+          "payoff comes from the difference, so common-factor risk cancels structurally"
+        ]
+      },
+      "clocks": {
+        "signal_clock": "completed 15-minute closes of BOTH legs on the shared 900s grid; both legs must have completed bars at the signal stamp else suppressed",
+        "fill_clock": "both legs filled atomically at the OPEN of the next 15-minute bar, USD-equal notional at fill, two taker fees + ticks; if either leg's bar is missing NEITHER leg fills (fail-closed atomicity); exits likewise two simultaneous next-open fills"
+      },
+      "holding_horizon": {
+        "value": "max 48 bars = 12 hours, earlier on convergence",
+        "native_unit_rationale": "dislocations created by one-off flow are absorbed intraday; after 12h without convergence the mechanism story is dead and continued holding would be trend-following by inertia; timeout exits at market next open and is a normal exit, not a special loss case"
+      },
+      "construction_recipe": {
+        "rr_t": "ln(close_A,t / close_B,t) with A=SOLUSDT-PERP.BINANCE, B=ETHUSDT-PERP.BINANCE",
+        "mu_t": "rolling_median(rr_j ; j=t-L_w+1..t), L_w=192 (48h), trailing inclusive",
+        "dev_t": "rr_t - mu_t",
+        "sd_t": "rolling_std(dev_j ; j=t-L_w+1..t)",
+        "z_t": "dev_t/sd_t, require sd_t>0",
+        "entry_short_A_long_B": "z_t >= +2.0",
+        "entry_long_A_short_B": "z_t <= -2.0",
+        "exit_convergence": "abs(z_t) <= 0.5",
+        "exit_timeout": "bars_held == 48",
+        "state_machine": "at most ONE spread position globally; live-position signals ignored unless mirror extreme (abs(z_t)>=2.0 opposite side) which closes-and-reverses next open; precedence convergence, mirror reversal, timeout",
+        "notional": "N_A = N_B USD-equal at fill, re-marked, never resized mid-trade",
+        "accounting": "fees/slippage both legs, funding accrual separately per leg over held settlements, spread PnL = leg sum"
+      },
+      "regimes": {
+        "edge_concentrates": [
+          "choppy sideways tape with high pairwise correlation punctuated by episodic single-name flow shocks",
+          "high-volatility de-risking episodes where one leg moves first and others follow",
+          "quiet-regime rotations between similar-cap majors"
+        ],
+        "edge_should_lose": [
+          "structural relative-supply shifts: sustained emission/unlock schedules, protocol-specific drawdowns, delisting or insurance-fund intervention in one leg (correlation collapse, spread trends)",
+          "strong trending regimes where the rich leg keeps getting richer",
+          "hostile funding differentials repeatedly paying against one leg"
+        ]
+      },
+      "falsification_procedure": {
+        "kill_conditions": [
+          "post-cost expectancy <= 0 OR PF < 1.10 OR < 2/3 positive folds OR populated fold PF < 0.80 OR MDD > 10%",
+          "any stress variant degrades to PnL <= 0 or PF < 1.00; two legs double friction (>=20bp round trip) so this family faces a designed handicap versus its siblings; acknowledged, not engineered around",
+          "convergence-speed kill: median holding time approaching the 12h timeout (most exits timeouts) contradicts transient-flow convergence => report MECHANISM_INCONSISTENT regardless of PnL",
+          "neighbor prediction fails: participation-consented entries must show >= anchor hit rate, else faded dislocations were factor moves rather than flow"
+        ],
+        "drop_one_gate_disclosure": "with a two-instrument book the applicable gates are drop-one-fold plus symbol-contribution reporting; dropping either leg destroys the spread by construction"
+      },
+      "negative_control": {
+        "id": "RVRELVAL-CTRL",
+        "design": "synthetic self-twin leg: identical pipeline with leg B replaced by leg A's own price displaced m=96 bars (24h): rr*_t = ln(close_A,t / close_A,t-m); matched statistical texture, no second asset, downstream machinery byte-identical (median/MAD-type scaling, thresholds, timeout, costs, folds, fills)",
+        "prediction_under_causal_story": "control shows no exploitable reversion beyond noise, since someone-transacted-one-name-and-not-the-other cannot operate on a self-twin",
+        "invalidates_if": "control PF >= 1.05 OR control expectancy >= 0.5 * anchor expectancy => anchor 'convergence' is an artefact of normalization/state-machine machinery and the causal sign is rejected",
+        "secondary_diagnostic_not_a_scored_cell": "entering the spread WITH momentum must lose money; profiting there rejects the sign claim outright",
+        "promotion_allowed": false
+      },
+      "nearest_historical_families": [
+        "H-XSECT-REVERSAL-v1",
+        "H-XSECT-REVERSAL-v2",
+        "H-XSECT-REVERSAL-BREADTH-CRYPTO-v1 (rank-basket reversal)",
+        "H-XSECT-MOM-v1 (rank-basket momentum)",
+        "H-XSECT-FUNDING-PRICE-DIVERGENCE-v1 (relative-value flavored via funding vs price)",
+        "mean_reversion (root strategy family)"
+      ],
+      "structural_delta_claims": {
+        "economic_source": {
+          "material": true,
+          "claim": "one-sided idiosyncratic flow in a named pair (allocation/unlock/unwind) absorbed by relativizing balance sheets, a flow-motive account rather than a mood/rank account"
+        },
+        "observable_construction": {
+          "material": true,
+          "claim": "bivariate log-ratio of two named instruments normalized by its own trailing dispersion, executed as an atomic two-leg spread; no cross-sectional ranking operator appears in the design"
+        },
+        "selection_payoff_geometry": {
+          "material": "contested_argued_yes",
+          "claim": "two-leg market-neutral spread capped at one global position with dual exits (convergence/timeout), PnL generated by the difference with common factor cancelled structurally, versus long-bottom-k/short-top-k weekly baskets or single-name MR state machines",
+          "honesty_flag": "revert-to-centre shape resembles root mean_reversion; asserted difference is 1x1 pair anchoring plus dual-leg accounting; if A7 judges dimension 3 immaterial the family fails novelty alone and dies without amendment"
+        },
+        "counterparty_or_regime_prediction": {
+          "material": true,
+          "claim": "specific counterparty (unlock/unwind/rotation flow in exactly one leg) plus predicted relief SPEED (median time-to-convergence)"
+        },
+        "dimensions_claimed_material": 4,
+        "rescue_hygiene": "no percentile rank of returns, no weekly rebalance, no bottom-k/top-k quota, no funding input, no price level bands, no third leg, no pair substitution permitted even on failure"
+      },
+      "sample_feasibility": {
+        "confidence": "medium_high",
+        "raw_indicator_trigger_rate_fraction_of_bars_range": [0.02, 0.05],
+        "spread_entries_per_year_estimate": [300, 900],
+        "entries_per_fold_estimate": [100, 300],
+        "both_directions_traded": true,
+        "binding_constraint": "trade count headroom; principal concern is flooring out on trades, not data availability",
+        "basis_row_counts": "192-bar window vs 34944 pre-window bars per leg; 35040 scored bars per leg; both legs gap-free in scored territory apart from the explained pre-fold boundary run"
+      },
+      "audit_cost_estimate": {
+        "per_run_cell": "< 1 minute for a synchronized ~70k-row pair stream",
+        "scored_surface_runs": "15 stress runs plus 15 clean reproduction runs",
+        "cpu_hours": [0.3, 0.8],
+        "wall_clock_hours_at_heavy_cap_1": [0.5, 1.0]
+      },
+      "anchor_config": {
+        "cell_id": "RVRELVAL-ANCHOR",
+        "leg_A": "SOLUSDT-PERP.BINANCE",
+        "leg_B": "ETHUSDT-PERP.BINANCE",
+        "L_w": 192,
+        "z_entry_abs": 2.0,
+        "z_exit_abs": 0.5,
+        "timeout_bars": 48,
+        "max_concurrent_spread_positions": 1,
+        "participation_confirmation": false,
+        "embargo_hours": 72,
+        "folds": 3,
+        "non_tunable_constants_declaration": "z multiples are category S scale-free; L_w and timeout are category C structural integers tied to dislocation-convergence reasoning; pair choice is manifest-ranked, never chosen by results"
+      },
+      "neighbor_config": {
+        "cell_id": "RVRELVAL-NB",
+        "single_structural_change_vs_anchor": "additionally require dislocation-in-one-leg participation: qvz (per §P1 definition, L_qv=96) of the wider-moving leg over the last 6 bars >= +1.0 while the other leg's qvz < +1.0",
+        "theoretical_justification": "abnormal participation confined to one leg evidences flow rather than a correlated factor repricing, selecting convergent episodes",
+        "prediction_if_mechanism_real": "fewer entries with higher hit rate; direct test of WHO the counterparty is; failure rejects the flow attribution"
+      }
+    }
+  ],
+  "cross_family_independence_matrix": {
+    "conditioning_variable": ["own-bar participation/extreme trio", "benchmark shock magnitude", "bivariate log-ratio deviation"],
+    "legs": [1, 1, 2],
+    "trigger_type": ["joint-extreme event", "magnitude-gated event", "threshold crossing"],
+    "holding_horizon": ["4h", "8h", "<=12h"],
+    "needs_cross_sectional_info": [false, true, true],
+    "funding_sensitivity": ["incidental", "incidental", "material"],
+    "common_mode_beta_exposure": ["low", "medium", "~zero"],
+    "shared_observable_between_any_pair": false
+  },
+  "recommendation_order_without_performance_knowledge": [
+    "H-V10N1-A9-INFSPILL-v1 (feasibility + novelty cleanliness)",
+    "H-V10N1-A9-RVRELVAL-v1 (geometric distinctness; nothing two-leg exists in the inventory)",
+    "H-V10N1-A9-FORCEDFLOW-v1 (counterparty realism; accepting contested dimension 3 and thinner sample)"
+  ],
+  "budget_arithmetic_if_two_selected": {
+    "cells": 6,
+    "runs_scoring_plus_stress": 30,
+    "runs_clean_reproduction": 30,
+    "run_minutes_each": [1, 4],
+    "cpu_hours_total": [1.0, 3.5],
+    "wall_clock_hours_serialized_cap_1": [2.0, 4.0],
+    "fits_12h_clock_with_prelaunch_and_terminal_audit_margin": true
+  },
+  "unavailable_fail_closed_items": [
+    "numeric sample floor constant not visible to A9 (PLAN §12 names the gate but no value exists in permitted documents); all feasibility figures are absolute counts, never floor-relative; FORCEDFLOW and RVRELVAL genuinely risk undercutting it",
+    "per-alt funding settlement row counts absent from readable manifests (byte sizes only); sizing relies on BTC's audited completeness proof (1095 settlements, cadence mode 480 min) plus the selection rule's blanket held-exposure funding proof; A6 should confirm per-symbol cadence rather than inherit the assumption",
+    "open-interest / liquidation-feed data unavailable: FORCEDFLOW deliberately designed without OI, and no proposal may be implemented by fetching new data",
+    "fold-boundary divisibility of the 365-day window into 3 folds plus 72h embargo strips is an A5 freeze item; per-fold counts assume ~121 scored days and are approximate",
+    "maker fee / rebate structure unknown; all costing assumes the preregistered taker-plus-adverse-tick baseline and no proposal depends on maker fills",
+    "A5 scoring/statistics internals unread by design: specs therefore define explicitly every quantity they depend on rather than referencing library behaviour"
+  ],
+  "non_rescue_attestation": {
+    "families_declared_off_limits": [
+      "H-VOLCOMP-BRKOUT-v1",
+      "H-FUNDCROWD-MR-v1",
+      "H-FUNDCROWD-MR-v2",
+      "H-XSECT-REVERSAL-v1",
+      "H-XSECT-REVERSAL-v2",
+      "H-XSECT-REVERSAL-BREADTH-CRYPTO-v1",
+      "H-XSECT-REVERSAL-BREADTH-EQUITY-v1",
+      "H-XSECT-MOM-v1",
+      "H-XSECT-FUNDING-CARRY-v1",
+      "H-XSECT-FUNDING-PRICE-DIVERGENCE-v1",
+      "H-V9-TSTREND-v1",
+      "H-V9-VOLSHOCK-v1",
+      "ema_atr",
+      "mean_reversion",
+      "regime_switch",
+      "trend_pullback",
+      "breakout",
+      "reclaim_mr",
+      "markdown_breakdown",
+      "vol_compression_breakout"
+    ],
+    "no_lookback_threshold_cadence_symbol_cap_direction_or_filter_inherited": true,
+    "post_failure_outcome_restriction": "only PLAN §12/§13 verdicts; no retuning, no substitute symbol, no replacement cell once metrics visible; controls never promoted"
+  }
+}
