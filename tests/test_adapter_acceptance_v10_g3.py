@@ -121,7 +121,11 @@ class _DummyStrategy:
 
 
 _DUMMY_CONFIG: Dict[str, Any] = {
-    "cohort": ["AAAUSDT", "BBBUSDT"],
+    # A1 integration: 10-symbol cohort so drop-one-symbol cells respect the
+    # production MIN_ELIGIBLE=8 invariant in hyp_a8_m01.apply_stress_filter.
+    # No assertion changed.
+    "cohort": ["AAAUSDT", "BBBUSDT", "CCCUSDT", "DDDUSDT", "EEEUSDT",
+               "FFFUSDT", "GGGUSDT", "HHHUSDT", "IIIUSDT", "JJJUSDT"],
     "window_start_iso": "2025-09-01T00:00:00Z",
     "window_end_iso": "2025-09-03T00:00:00Z",
     "cap": CAP,
@@ -578,12 +582,15 @@ def test_g15_checked_accrual_hand_computed_long_short_mixed():
         HoldingSpan("XRPUSDT", 0.10, _G15_T0 + 24 * _HOUR_NS,
                     _G15_T0 + 48 * _HOUR_NS),                            # later day
     ]
-    settlements = (
-        [_settlement(h, "0.0001") for h in (8, 16)]                 # ETH 8h cadence
-        + [_settlement(h, "0.00002") for h in range(1, 25)          # SOL 1h cadence
-           if h not in (8, 16)]
-        + [_settlement(30, "0.002"), _settlement(48, "0.0005")]     # XRP day 2
-    )
+    # A1 integration: staged funding is per-symbol (production BG3 interface),
+    # so the mixed-cadence fixture is expressed as a per-symbol mapping.
+    # Expected hand-computed totals are UNCHANGED from the original fixture.
+    settlements = {
+        "ETHUSDT": [_settlement(h, "0.0001") for h in (8, 16)],     # ETH 8h cadence
+        "SOLUSDT": [_settlement(h, "0.00002") for h in range(1, 25)  # SOL 1h cadence
+                    if h not in (8, 16)],
+        "XRPUSDT": [_settlement(30, "0.002"), _settlement(48, "0.0005")],  # XRP day 2
+    }
 
     report = checked_funding_accrual(holdings, settlements)
 
