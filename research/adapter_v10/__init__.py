@@ -11,7 +11,10 @@ Public surface (family-neutral):
 * :mod:`.publish`   -- BG6 idempotent exactly-once ledger publication;
 * :mod:`.runner`    -- orchestration + deterministic artifacts;
 * :mod:`.m01_plugin`/  -- the two plugins proving reuse
-* :mod:`.dummy_strategy`.
+* :mod:`.dummy_strategy`;
+* :mod:`.facade`    -- frozen QA-contract surface (``ADAPTER_INTERFACE_VERSION``,
+  ``GenericRunnerV10``, ``checked_funding_accrual``, ``cache_decision``,
+  ``resource_cap_report``, ``validate_resource_cap_report``).
 """
 
 from __future__ import annotations
@@ -44,6 +47,17 @@ from research.adapter_v10.protocol import (
     StressSpec,
     TargetBook,
 )
+from research.adapter_v10.facade import (
+    ADAPTER_INTERFACE_VERSION,
+    FORCE_FLAT_REASON as FACADE_FORCE_FLAT_REASON,
+    FORCE_FLAT_STATUS as FACADE_FORCE_FLAT_STATUS,
+    GenericRunnerV10,
+    cache_decision,
+    checked_funding_accrual,
+    denominator as facade_denominator,
+    resource_cap_report,
+    validate_resource_cap_report,
+)
 from research.adapter_v10.publish import (
     evaluate_pre_score_gate,
     publish_trial,
@@ -59,6 +73,7 @@ from research.adapter_v10.stress import (
 )
 
 __all__ = [
+    "ADAPTER_INTERFACE_VERSION",
     "BASELINE_NAME",
     "AdapterError",
     "ContractViolation",
@@ -66,6 +81,7 @@ __all__ = [
     "FillRecord",
     "FillStatusVocabulary",
     "FoldSpec",
+    "GenericRunnerV10",
     "GenericStrategyBase",
     "ImmutableSchedule",
     "PositionSpan",
@@ -78,6 +94,8 @@ __all__ = [
     "atomic_write_json",
     "build_portfolio_payload",
     "build_stress_spec",
+    "cache_decision",
+    "checked_funding_accrual",
     "canonical_text",
     "evaluate_pre_score_gate",
     "file_sha256",
@@ -85,10 +103,12 @@ __all__ = [
     "normalise_target_book",
     "payload_sha256",
     "publish_trial",
+    "resource_cap_report",
     "run_full_stress_matrix",
     "run_strategy",
     "stress_matrix_cells",
     "summarise_books",
     "trial_denominator",
     "trial_key",
+    "validate_resource_cap_report",
 ]
