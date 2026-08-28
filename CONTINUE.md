@@ -64,3 +64,12 @@ R0 plan; then continue without repeated GO.
   `research/control/v10r_run/r1_freeze_W3.json`.
 - Old host's `exec-v10-R1c`/`R2c` are machine-local: recreate detached at W3 on
   the new host per `worktree_manifest_v10r.json`; do NOT carry stale trees.
+
+## Owner amendment — 2026-08-28 (ceiling)
+
+Heavy-worker ceiling raised to **3**, scoped ONLY to: R4 reproduction
+processes, V11 cross-family chains (within-family serial preserved), V11
+reproduction waves. **R3 M01 cells stay serial ceiling=1.** G17 floor
+`min(ceiling, measured_safe_cap)` unchanged; measured 0 still = no launch.
+See `research/control/v10r_run/owner_amendment_ceiling_v10r.json`; A7 audits
+against this amended contract.
