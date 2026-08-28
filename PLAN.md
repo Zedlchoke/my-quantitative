@@ -1,435 +1,234 @@
-# V10P-R → V10 EXECUTION — GENERIC ADAPTER, RE-AUDIT, THEN SCORE
+# V10R → V11 EXECUTION — DATA REMEDIATION (OPTION A), M01 SCORED, SECOND DISCOVERY
 
 > **Fresh-context owner plan. Read completely before acting.**
 >
-> Measured at `2026-08-27T11:06:20Z`:
+> Owner directives recorded 2026-08-28:
 >
-> - root/main = origin/main = `4bcc9bb`;
-> - authoritative integration = `orca/v10-integration@832fa6f`, clean;
-> - V9H = `V9H_PASS_V10_AUTHORIZED`;
-> - selected family = `A8-V10-M01-AGGRESSOR-ABSORPTION-PANEL`;
-> - V10 scored budget consumed = **0**;
-> - current prelaunch verdict = `NO_GO_SCORED_WAVES`;
-> - current V10 deadline = `2026-08-27T16:55:00Z`, no auto-extension.
+> - **Option A** — re-stage data to cover the preregistered window end
+>   `2026-08-21T00:00:00Z`; the window itself does NOT move.
+> - **Clock: 24 hours** from go-live; no auto-extension.
+> - **Second discovery wave: 2 families — 6 cells.** Together with M01 this
+>   supersedes the V10 contract ceiling of 2 families/6 cells: the new
+>   authorized maximum is **3 families / 9 scored cells total**, and the
+>   multiple-testing cost is accepted (denominator grows accordingly; DSR/PBO
+>   must count every scored cell).
 >
-> Continue from `832fa6f`. Do not redo V9H, proposal generation, novelty
-> scoring, family selection or M01 signal implementation.
+> Measured terminal state inherited from sprint V10P-R (full record:
+> `research/control/v10p_run/terminal_closeout_v10p.json`, integration
+> `orca/v10-integration@86b7274`): terminal `V10_BLOCKED_PRELAUNCH`, budget
+> **0/9 consumed**, denominator **117**, historical denominator floor holds.
 
 ## 1. Mission
 
-Build the missing **reusable strategy-to-research adapter**, clear every V10
-prelaunch blocker, freeze a new execution SHA, obtain independent A7 approval,
-then run exactly the three preregistered M01 cells through walk-forward, stress,
-reproduction and terminal scoring.
+1. **R** — Remediate the single HIGH blocker (`G05_COVERAGE_SHORTFALL`),
+   re-freeze, pass a fresh independent A7 prelaunch audit, then run M01's
+   three preregistered scored cells through the already-built adapter
+   pipeline, reproduce them, and close the M01 family honestly.
+2. **V11** — Immediately after M01's backtest completes, run one more
+   discovery sprint of the same discipline as V10's (blinded proposals →
+   novelty → rescue challenge → selection freeze → 3 cells per family),
+   carrying forward the lessons of V1–V9 and V10P, selecting **2 new
+   families**, and closing each honestly.
 
-The adapter is the primary engineering deliverable. It must accept future
-strategy modules without rewriting walk-forward, costs, funding, stress,
-metrics, benchmarks, ledger or reproduction logic.
+Scientific success is honest evidence. `REJECT_ALL`, `BLOCKED_PRELAUNCH`,
+`INCOMPLETE_NOT_PROMOTABLE` remain valid outcomes at every stage. A profitable
+but contaminated or unreproduced cell is not success.
 
-Scientific success is honest evidence. `REJECT_ALL`, `BLOCKED_PRELAUNCH` and
-`INCOMPLETE_NOT_PROMOTABLE` are valid outcomes. A profitable but contaminated
-or unreproduced cell is not success.
+## 2. Completed authority — do not repeat
 
-## 2. Completed authority: do not repeat
+Everything below is built, tested and frozen. Do not rebuild, do not redesign:
 
-### 2.1 V9/V9H
+- **Generic adapter** `research/adapter_v10/` (contract:
+  `research/control/v10p_run/adapter_contract_v10.json`): BG1–BG6 closed,
+  dummy + M01 plugin reuse proven, exactly-once publish, 52-test acceptance +
+  fault matrix. Blockers G15 (funding reconciliation), F2 (cache adopted on
+  strict full-pipeline proof), G17 (one measured authority
+  `final_cap=min(owner_ceiling=1, measured_safe_cap)`), H08 cases 12–20 are
+  closed with evidence.
+- **Fresh execution trees** `exec-v10-R1b`/`exec-v10-R2b` detached at
+  `W2=d61a483`, staged data verified 47/47 manifest entries, byte-identical,
+  read-only. Old `W=79fc883` + `exec-v10-R1/R2` are historical, never score
+  from them.
+- **M01** module, C1 field verification, signals/PIT tests; family
+  `A8-V10-M01-AGGRESSOR-ABSORPTION-PANEL`; 3 preregistered cells: anchor,
+  30-day-dispersion neighbor, C2 price-placebo. Window
+  `2025-08-21T00:00:00Z→2026-08-21T00:00:00Z`, 3 chronological folds,
+  strict-later fills, 5bp taker floor + adverse tick floor + native funding.
+- **Data note**: `catalog/` extras and `funding_data/scan_2026/` are NOT
+  git-tracked; fresh worktrees must copy them from root or old exec trees and
+  re-verify against `research/control/v10_discovery_run/stage_manifest_R1.csv`.
+- V9 closed `V9_REJECT_ALL_MULTI_FAMILY`; V9H
+  `V9H_PASS_V10_AUTHORIZED`; V10P A7 recompute passed all gates except the
+  one remediated in §3.
 
-- V9 closed `V9_REJECT_ALL_MULTI_FAMILY`.
-- Historical multiple-testing denominator before V10 = **117**.
-- V9 archive/restore and 5/5 reproduction are verified.
-- V9H A7 audit passed 14/14, zero unresolved HIGH/CRITICAL.
-- V9H full suite: 1,078 passed, 1 skipped.
-- Runtime controller, timeout/heartbeat, resource governor, streaming repro,
-  cache gate, scientific contract, PIT hooks and adversarial framework exist.
+## 3. The blocker this plan remediates
 
-### 2.2 V10 discovery and implementation
+`G05_COVERAGE_SHORTFALL` (HIGH, V10P A7): staged bars end
+`2026-08-20T02:29:59.999Z` — 86 bars / 21.5 h before the preregistered window
+end. Worse: `build_daily_closes` **silently synthesizes** the final daily
+close from a 21.5 h-old bar instead of failing closed, and `coverage_report()`
+reports counts without raising. Owner chose **Option A**: fetch the missing
+data; the window stays frozen.
 
-- Six blinded proposals and one S0 hypothesis-generation lane completed.
-- Novelty matrix and independent rescue challenge completed.
-- Exactly one family selected and frozen:
-  `A8-V10-M01-AGGRESSOR-ABSORPTION-PANEL`.
-- Budget planned: anchor + neighbor + negative control = **3 cells**; no grids
-  and no replacement slot after metrics become visible.
-- M01 module, C1 field verification and signal/PIT tests exist.
-- Frozen M01 mechanism:
-  - daily ten-symbol cross-sectional aggressor-flow reversal;
-  - dollar-neutral unit-gross weights, per-symbol cap 0.30;
-  - minimum 8 eligible names;
-  - strict-later-event fills and one-day horizon;
-  - 5 bp taker floor, one adverse tick floor, native funding;
-  - anchor, 30-day dispersion neighbor and C2 price-placebo control.
-- Old staging/execution freeze `W=79fc883` exists, but is obsolete after
-  prelaunch feedback. Never score from it.
+## 4. Phase R0 — data remediation (Option A)
 
-## 3. Current blocker truth
+1. Use the repo's existing download/ingest infrastructure (`data/download.py`,
+   `research/download_derivatives.py`, `research/download_funding.py` — read
+   them first; do not invent a new pipeline) to extend staged 15-minute bars
+   for the full staged symbol set through `2026-08-21T00:00:00Z` **plus the
+   warmup margin the M01 prewindow requires** (`2025-07-22` onwards is already
+   covered; only the tail is missing).
+2. Verify funding staged data (`funding_data/scan_2026/`) covers through the
+   window end with the same freshness; if short, extend it by the same
+   method. Fail-closed if any symbol cannot be completed.
+3. Fix the silent-synthesis defect: `build_daily_closes` and
+   `coverage_report` must **raise** (`DataUnavailable`-class) when the last
+   covered bar is older than the boundary being emitted. Add a regression
+   test that pins exactly the V10P failure mode (a stale tail must never
+   produce a boundary close).
+4. Rebuild stage manifests (CSV sha256+size+path, same format), stage into
+   two NEW detached trees, byte-verify R↔R identical, read-only.
+5. Do NOT touch `W2`/`exec-v10-R1b`/`exec-v10-R2b` or any historical tree.
 
-The A7 prelaunch artifact at `df919ca` returned `NO_GO_SCORED_WAVES` with budget
-still zero.
+## 5. Phase R1 — new freeze W3
 
-### 3.1 G05 follow-up
+Only after R0 verifies clean:
 
-- The original ETH duplicate claim HB-1 was overturned at `832fa6f` by direct
-  production-loader measurement: four parts, 70,045 unique rows, no duplicate
-  exception.
-- Window/fold authority was pinned at `4c61880` to module constants.
-- These are remediation evidence, not self-authorization. A new A7 audit must
-  re-evaluate G05 on the final frozen SHA.
+1. Full test suite, run alone, on the integration tree: expected ≥1275
+   passed, plus the new regression tests.
+2. Freeze `W3` = final code-bearing SHA. Create detached `exec-v10-R1c` and
+   `exec-v10-R2c` exactly at W3; stage data read-only; verify byte-identity.
+3. Record all hashes (code, data, funding, spec, adapter, cost, stress,
+   benchmark, cache, resource, ledger) in a new worktree manifest under
+   `research/control/v10r_run/`.
 
-### 3.2 Missing generic runner glue
+## 6. Phase R2 — A7 prelaunch re-audit (fresh, on W3)
 
-- BG-1: schedule → fold-level expectancy/PF/MDD.
-- BG-2: daily target books → portfolio/fill/scoring payload.
-- BG-3: staged per-symbol funding settlements → holding-span accrual.
-- BG-4: baseline and full stress-matrix execution driver.
-- BG-5: flat hard benchmark plus buy-and-hold/BTC-neutral context.
-- BG-6: publish scored cell → append-only trial ledger exactly once.
+A new independent A7 agent recomputes, never reads old verdicts: ETH/loader
+coverage at the NEW window tail (the previously failing point, explicitly),
+window/folds pins, BG1–BG6, G15, F2 (fresh probe or explicit
+UNAVAILABLE_FAIL_CLOSED), G17 (fresh measured cap), H08 12–20, W3/R1c/R2c
+identity, budget purity (0 consumed, no scored metrics), full suite, zero
+unresolved HIGH/CRITICAL.
 
-### 3.3 Other blockers
+Launch gates (ALL required before any scored cell):
 
-- G15: independent numeric funding-accrual reconciliation is missing.
-- F2/G-H06: strict full-pipeline cache proof is missing; the probe measured
-  `raw_reads=18>2`. Cache must pass on the real pipeline or remain disabled.
-- G17: resource artifacts disagree between formula cap=0 and owner ceiling=1.
-  One authoritative safe cap must be frozen.
-- H08 items 12–20 need explicit owner-authorized enumeration for unambiguous
-  future audits.
-- All old stage manifests, R1/R2 pins and prior A7 prelaunch conclusions become
-  stale after adapter remediation.
+- A7 verdict `V10_LAUNCH_AUTHORIZED` (or explicitly scoped M01 equivalent);
+- fresh resource probe allowing ≥1 heavy worker (`measured_safe_cap ≥ 1`);
+- ≥120 minutes remaining on the clock;
+- budget still 0/9, ledger clean.
 
-Current state:
+## 7. Phase R3 — M01: exactly three scored cells (serial, heavy=1)
 
-```text
-V10_PRELAUNCH_REMEDIATION_ACTIVE
-SCORED_GO=false
-BUDGET_CONSUMED=0
-```
+1. Anchor; 2. 30-day-dispersion neighbor; 3. C2 price-placebo control.
 
-## 4. Hard boundaries
+Per cell: verify preflight pins → 3 chronological folds with warmup outside
+score → costs + native funding → baseline + fee×1.5 / +2 ticks / +1 event
+delay / drop-one-symbol / drop-one-fold stress → deterministic artifacts
+(metrics, trades, holdings, cashflows, fold reports, benchmark/context,
+provenance, terminal row) → publish trial + denominator exactly once, only
+after a valid score. Never inspect one cell to modify another. Technical
+abort before any scored metric does not consume the slot (forensic proof
+required); once a score is published the slot is consumed, no replacement.
 
-- A1 alone creates worktrees, integrates, freezes, launches and closes.
-- No subagent edits root/main, integration directly or another worktree.
-- No new hypothesis/proposal agent. No replacement family and no M01 tuning.
-- No remote push, destructive reset, worktree deletion, credentials, S1,
-  equity score, paper/testnet/live, orders or leverage changes.
-- Current crypto data is S0 screening, not untouched OOS.
-- No PnL/PF/drawdown inspection before the new prelaunch A7 PASS.
+## 8. Phase R4 — reproduction and M01 terminal science
+
+Reproduce all three cells from clean `exec-v10-R2c` fresh processes; require
+`all_match` on artifacts/trades/metrics/hashes. Denominator = 117 + valid
+publications. DSR/PBO if valid, else `UNAVAILABLE_FAIL_CLOSED` with zero
+credit. Apply the frozen Stage-A hard gates (after-cost expectancy >0,
+PF≥1.10, ≥2/3 folds positive, no populated fold PF<0.80, positive-fold
+contribution ≤50%, MDD≤10%, symbol contribution ≤40%, trade floor, no
+drop-one dependency, stressed PnL>0 and PF≥1.00, neighbor supports anchor,
+C2 demonstrates incremental flow information, reproduction all-match, zero
+unresolved HIGH/CRITICAL). Outcomes limited to: family REJECT /
+`STAGE_A_SURVIVOR_LOCKED_FOR_FUTURE_S1` (locked only; S1 is never opened) /
+BLOCKED / INCOMPLETE. Record the family's lessons into the V11 lessons
+register before touching the next wave.
+
+## 9. Phase V11 — second discovery wave (2 families, 6 cells)
+
+Same discipline as V10's discovery, sharpened by the lessons register
+(§11):
+
+1. **Blinded proposals** — independent agents each propose mechanisms from
+   the S0-screened window; blind to each other and to M01's scored results'
+   PnL (mechanism-level lessons only).
+2. **Novelty matrix + independent rescue-risk challenge** of all candidates
+   (including M01-family-adjacent ideas, which must show material deltas).
+3. **Selection freeze** — exactly **2 families**; each with anchor +
+   predeclared neighbor + negative control (3 cells each). Tie-break by
+   hypothesis id. After selection: no grids, no replacement slots.
+4. **Implementation through the existing adapter** (the V10P deliverable —
+   new strategies must plug in, not fork the pipeline). C1-style field
+   verification per family before any scored run.
+5. **Prelaunch audit per freeze** (fresh A7, same gate set, fresh resource
+   probe).
+6. **3 serial scored cells per family** + R2c-style reproduction `all_match`
+   + per-family terminal verdict under the same hard gates.
+
+If the 24 h clock runs out mid-wave: close the wave
+`V11_INCOMPLETE_NOT_PROMOTABLE`; never improvise scoring glue to fit the
+clock.
+
+## 10. Hard boundaries (unchanged unless owner speaks again)
+
+- No hypothesis tuning or rescue on observed PnL of any scored cell; no
+  peeking across cells; no replacement slots.
+- Old W/R1/R2/R1b/R2b trees are historical; never score from them; never
+  delete them.
+- No S1; no equity scored runs; no paper/testnet/live; no real orders; no
+  credentials; no destructive reset.
+- Remote push only on explicit owner instruction (standing owner grant
+  2026-08-28 for repo sync is noted; each bulk push still announced).
 - Missing evidence is `UNAVAILABLE_FAIL_CLOSED`, never inferred PASS.
-- Do not bypass filesystem permission controls. Record exact denial and stop if
-  a required worktree cannot be accessed.
-
-## 5. Resource and agent rules
-
-- Maximum light concurrency: **A1 + 3 subagents**.
-- Scored heavy workers: maximum **1**, further reduced to 0 if the final measured
-  safe cap is 0.
-- Treat owner directive `1` as a ceiling, never a floor that overrides unsafe
-  measured RAM.
-- Full pytest runs alone, never with a heavy probe/backtest.
-- No grandchildren unless A1 first records path, branch, task and allowlist.
-- Every subagent returns one narrow clean commit, changed-file list, test
-  commands/results, limitations and SHA.
-- A1 cherry-picks sequentially and runs targeted tests after every pick.
-- Never auto-resolve a conflict affecting clocks, fills, costs, funding,
-  holdings, folds, metrics, stress, benchmark or ledger semantics.
-
-## 6. P0 — fresh-context intake and interface freeze
-
-Workspace authority:
-
-`/Users/hoangminhlong/my-quantitative-v10-wt/integration-v10`
-
-A1 first:
-
-1. Measure current UTC, integration HEAD/status, worktrees and controller-owned
-   workers.
-2. Confirm V10 deadline and budget=0 from `v10_contract.json`.
-3. Read only the compact authority set initially:
-   - `research/audits/v10/prelaunch_g_check.json`;
-   - `research/control/v10_discovery_run/hb1_overturn_record.json`;
-   - `v10_contract.json`, `selection_freeze.json`,
-     `spec_clarification_freeze.json`;
-   - `research/hyp_a8_m01.py`;
-   - recent 25 integration commits.
-4. Do not broad-scan V1–V9/results unless a named assertion requires it.
-5. Create and commit an audit-only adapter contract before dispatch. It freezes
-   generic inputs/outputs without prescribing internal implementation.
-
-The generic adapter contract must require:
-
-- strategy identity/config and immutable schedule provider;
-- universe, decision clock, fills and holding spans;
-- chronological folds, purge/embargo and force-flat boundary;
-- per-symbol settlements and funding sign;
-- costs and named stress variants;
-- baseline/context providers;
-- deterministic artifacts, fold/portfolio metrics and hashes;
-- trial publication idempotency and denominator update;
-- no family-specific ID/path logic in shared adapter code.
-
-Prove reuse with both an M01 plugin and a tiny deterministic dummy strategy.
-
-## 7. P1 — three parallel worktree lanes
-
-After the interface contract is frozen, create three clean worktrees from the
-same integration SHA and record exact non-overlapping allowlists.
-
-### G1 — generic runner/finalizer adapter
-
-Suggested path/branch:
-
-- `v10p-g1-adapter` / `orca/v10p-g1-adapter`
-
-Owns BG-1, BG-2, BG-4, BG-5 and BG-6.
-
-Deliverables:
-
-- generic adapter/runner module;
-- fold metric engine for realized after-cost/funding returns;
-- daily target-to-fill/portfolio conversion;
-- baseline + every frozen stress variant;
-- flat benchmark and context-only buy-and-hold/BTC-neutral outputs;
-- append-only exactly-once trial publication;
-- dummy-strategy and M01 integration tests;
-- `research/audits/v10/g1_adapter_validation.json`.
-
-Acceptance:
-
-- no `M01`, family ID or fixed trial ID in generic paths;
-- anchor/neighbor/control enter only through configuration/plugin interface;
-- unique result/shard/log roots;
-- deterministic fold membership and output hashes;
-- no publish on pre-score failure; exactly one publish after valid score;
-- rerun cannot double-count denominator.
-
-### G2 — funding, cache and resource authority
-
-Suggested path/branch:
-
-- `v10p-g2-funding` / `orca/v10p-g2-funding`
-
-Owns BG-3, G15, F2/G-H06 and G17.
-
-Deliverables:
-
-- generic staged per-symbol funding loader with heterogeneous settlement times;
-- PIT-safe settlement injection into holdings;
-- independent hand-computed long/short funding fixtures;
-- full-pipeline cache on/off proof, or explicit cache-disabled decision;
-- reconciled resource-cap artifact with one effective value;
-- `research/audits/v10/g2_funding_resource_validation.json`.
-
-Acceptance:
-
-- long pays positive rate, short receives it, weighted by held book fraction;
-- no settlement before publish time and no accrual outside the holding span;
-- symbol-native cadence, never assumed uniform 8h;
-- cached/uncached semantic artifacts byte-identical;
-- cache adoption only if strict gate passes including raw-read budget; otherwise
-  disable cache without blocking correctness;
-- final cap = `min(owner_ceiling=1, measured_safe_cap)`; cap=0 means no local
-  scored launch, not an override.
-
-### G3 — independent acceptance/fault QA
-
-Suggested path/branch:
-
-- `v10p-g3-qa` / `orca/v10p-g3-qa`
-
-Writes tests/audit artifacts only; no production implementation.
-
-Owns:
-
-- executable acceptance tests for BG-1–BG-6, G15, F2 and G17;
-- explicit H08 cases 12–20, now authorized by this PLAN;
-- dummy strategy proving shared adapter reuse;
-- failure tests: missing settlement, duplicated publish, cross-fold holding,
-  post-cutoff mutation, stale cache, over-cap launch and incomplete artifacts;
-- `research/audits/v10/g3_adapter_acceptance.json`.
-
-G3 may initially commit fail-first tests against the frozen interface. It must
-not weaken assertions merely to accept G1/G2 output.
-
-## 8. P2 — integration and evidence closure
-
-A1 waits for all three lanes, then:
-
-1. Reject dirty/out-of-allowlist commits.
-2. Review G3 tests against the frozen interface.
-3. Integrate G1, run G1 + existing M01 targeted tests.
-4. Integrate G2, run funding/cache/resource + M01 targeted tests.
-5. Integrate G3, run the combined acceptance matrix.
-6. Resolve only real interface mismatches; never relax a scientific gate.
-7. Run full suite once, alone.
-8. Generate atomically:
-   - `adapter_contract_v10.json`;
-   - `adapter_validation_v10.json`;
-   - `funding_validation_v10.json`;
-   - `cache_decision_v10.json`;
-   - `resource_cap_v10.json`;
-   - `prelaunch_remediation_ledger_v10.json`.
-9. Confirm integration clean and budget still 0.
-
-If any blocker cannot close before the time boundary, issue
-`V10_INCOMPLETE_NOT_PROMOTABLE`; do not improvise scoring glue.
-
-## 9. P3 — new freeze, staging and detached execution trees
-
-Only after P2 PASS:
-
-1. Freeze final code SHA `W2`.
-2. Freeze exact three trial IDs and commands: anchor, neighbor, C2 price-placebo
-   control. Do not add the defective day-mean diagnostic as a scored cell.
-3. Freeze window/folds from module authority:
-   `2025-08-21T00:00:00Z` to `2026-08-21T00:00:00Z`.
-4. Freeze all data, funding, spec, adapter, cost, stress, benchmark, cache,
-   resource and ledger hashes.
-5. Preserve old `exec-v10-R1/R2` and old stage manifests as historical failed
-   prelaunch evidence; do not overwrite or delete them.
-6. Create new detached clean execution worktrees, suggested
-   `exec-v10-R1b` and `exec-v10-R2b`, exactly at `W2`.
-7. Stage data read-only with byte manifests and verify identical R1b/R2b hashes.
-8. No unregistered dedup/normalization transform. Production loader behavior is
-   the data-path authority.
-
-## 10. P4 — independent A7 prelaunch re-audit
-
-Create a fresh A7 worktree from the clean post-freeze audit base. A7 writes only
-new `a7_*` audit artifacts and edits no production/control source.
-
-A7 must recompute G01–G20, including:
-
-- HB-1 overturn through the production loader;
-- pinned window/folds;
-- generic adapter dummy + M01 proof;
-- BG-1–BG-6 closure;
-- independent numeric funding reconciliation;
-- cache adopted only on strict PASS or explicitly disabled;
-- one authoritative resource cap;
-- all H08 cases;
-- full suite and golden determinism;
-- W2/data/spec/manifest/R1b/R2b pins;
-- budget=0 and no scored artifacts;
-- zero unresolved HIGH/CRITICAL.
-
-Only an explicit `V10_LAUNCH_AUTHORIZED` permits scoring. Any FAIL or
-`UNAVAILABLE_FAIL_CLOSED` yields `V10_BLOCKED_PRELAUNCH`.
-
-## 11. E1 — exactly three scored cells
-
-Run serially because heavy ceiling is 1:
-
-1. M01 anchor;
-2. M01 30-day-dispersion neighbor;
-3. M01 C2 price-contrarian placebo control.
-
-For each cell:
-
-- verify preflight pins before launch;
-- run three chronological folds with warmup outside score;
-- apply costs and native funding;
-- run baseline, fee/slippage ×1.5, +2 ticks, +1 event delay,
-  drop-one-symbol and drop-one-fold;
-- emit deterministic metrics, trades, holdings, cashflows, fold reports,
-  benchmark/context, stress, provenance and terminal row;
-- publish trial/denominator exactly once only after valid score;
-- never inspect one cell to modify the remaining cells.
-
-Technical retry: at most one, only with forensic proof of zero scored metric.
-Once any scored metric is published, that slot is consumed even if later work
-fails. No replacement cell.
-
-## 12. E2 — reproduction and terminal science
-
-- Reproduce all three cells from clean R2b/fresh processes.
-- Require artifact/trade/metric/hash `all_match` for every cell.
-- Build return matrix and denominator starting at 117 plus valid publications.
-- Produce DSR/PBO if valid; otherwise `UNAVAILABLE_FAIL_CLOSED` with zero credit.
-- Run family summary, challenge memo and independent A7 terminal audit.
-
-Stage-A requires every hard gate:
-
-- after-cost expectancy >0 and PF≥1.10;
-- at least 2/3 folds positive; no populated fold PF<0.80;
-- positive-PnL fold contribution ≤50%; MDD≤10%;
-- symbol contribution/risk ≤40%;
-- frozen sample/trade floor;
-- no drop-one-symbol/fold dependency;
-- stressed PnL>0 and PF≥1.00;
-- neighbor supports anchor;
-- C2 control demonstrates incremental flow information;
-- reproduction all-match;
-- zero unresolved HIGH/CRITICAL.
-
-Score ranks only complete hard-gate passers: validity 20, after-cost return 20,
-fold/regime stability 20, stress/concentration 25, statistics 15. Score cannot
-rescue a failure and controls cannot be promoted.
-
-## 13. Terminal outcomes
-
-Exactly one:
-
-- `V10_BLOCKED_PRELAUNCH`;
-- `V10_INCOMPLETE_NOT_PROMOTABLE`;
-- `V10_REJECT_ALL`;
-- `V10_STAGE_A_SURVIVOR_LOCKED_FOR_FUTURE_S1`.
-
-Never label `EDGE_CONFIRMED`, `PRODUCTION_READY`, `PAPER_READY`,
-`TESTNET_READY` or `LIVE_READY`. A survivor is only locked for a later strictly
-non-overlapping S1/Stage-B plan; V10 may not inspect S1.
-
-## 14. Deadline and unattended fail-safe
-
-Frozen deadline: `2026-08-27T16:55:00Z`; do not extend automatically.
-
-- At intake, calculate remaining time from current UTC.
-- If already expired: reconcile and close `V10_INCOMPLETE_NOT_PROMOTABLE`.
-- With <120 minutes: launch no new scored cell.
-- With <45 minutes: stop exact controller-owned process groups, reconcile and
-  close honestly.
-- Do not skip tests/A7 to fit the clock.
-- Do not wait indefinitely for permission. Record `PERMISSION_BLOCKED` with the
-  exact path/action and stop before scoring.
-
-## 15. Token/context discipline
-
-- Start a fresh thread in the integration worktree.
-- Do not paste or reread entire V1–V9 reports.
-- Search by exact blocker/file/symbol before opening large evidence.
-- Agents receive only the adapter contract, owned blockers, allowlist and
-  relevant test/source paths.
-- Each subagent response is capped to: verdict, commit, files, tests,
-  limitations and next dependency.
-- After each wave, A1 writes a compact machine-readable checkpoint instead of
-  replaying conversation history.
-- Do not spawn more research agents after selection freeze.
-
-## 16. Definition of Done
-
-- Generic adapter passes dummy-strategy and M01 integration tests.
-- BG-1–BG-6, G15, F2 and G17 have explicit PASS/disabled/fail-closed outcomes.
-- H08 matrix is explicit and complete.
-- Full suite passes on clean integration.
-- W2 and R1b/R2b hashes are frozen and identical.
-- A7 prelaunch verdict is explicit.
-- If authorized: exactly 3/3 cells executed, stressed and reproduced.
-- Honest denominator and terminal family verdict exist.
-- Master report `.json` + `.md`, challenge memo and A7 terminal audit exist.
-- Integration clean; controller-owned workers=0.
-- `PLAN.md`, `CONTINUE.md` and Wayfinder map are synchronized.
-
-## 17. Mandatory A1 checkpoints
-
-Report concisely at:
-
-1. intake/time/budget;
-2. adapter interface freeze and three-agent dispatch;
-3. G1/G2/G3 commits and targeted tests;
-4. full-suite/remediation ledger;
-5. W2/R1b/R2b pins;
-6. A7 prelaunch verdict;
-7. each scored/reproduction cell;
-8. terminal budget, metrics, workers, tree and artifacts.
-
-A1 continues automatically through safe local non-destructive steps and does
-not ask repeated GO. It stops only at a gate/deadline/permission failure or a
-boundary requiring push, deletion, credentials, S1 or live/order authority.
+- Heavy scored workers: max 1, `final_cap=min(owner_ceiling=1,
+  measured_safe_cap)`; full pytest runs alone; light agents ≤3 + A1.
+
+## 11. Lessons register (must be applied, not relearned)
+
+From V1–V9: multiple-testing honesty (every scored attempt enters the
+denominator); concentration gates (top-fold/symbol) are what killed V6/V9
+survivors, so stress + drop-one must run on every cell; negative controls are
+mandatory, not decoration.
+
+From V10P (new): (a) data coverage must be **fail-closed at the window tail**
+— silent synthesis is the defect class that cost this sprint; (b) run the
+resource probe **before** freezing the launch decision and respect
+`final_cap=0`; (c) compute the `<120 min` launch-window arithmetic at intake,
+not at launch time; (d) test fixtures must obey production invariants
+(MIN_ELIGIBLE, per-symbol funding attribution) — align fixtures, never
+weaken assertions; (e) exactly-once publication belongs in the adapter, not
+the ledger; (f) cache adoption requires a preregistered raw-read budget on
+the full pipeline or stays disabled; (g) one resource authority only, frozen
+and monotone.
+
+## 12. Deadline
+
+24 hours from go-live (recorded in `research/control/v10r_run/heartbeat.json`
+at start). Thresholds: <120 min → start no new scored cell; <45 min → stop
+owned process groups, reconcile, close honestly. Do not skip tests/A7 to fit
+the clock. Do not extend automatically.
+
+## 13. Definition of Done
+
+- R0–R2 complete with fresh A7 verdict explicit.
+- If authorized: M01 3/3 cells executed, stressed, reproduced `all_match`,
+  family verdict honest.
+- V11: 2 families selected and frozen, implemented through the adapter,
+  prelaunch-audited, cells executed/reproduced/verdicted — or an honest
+  `V11_INCOMPLETE_NOT_PROMOTABLE` at the clock boundary.
+- Denominator and budget accounting exact (each scored cell counted once).
+- Master reports `.json`+`.md`, challenge memo, A7 audits per freeze.
+- Integration clean; controller-owned workers 0; `PLAN.md`,
+  `CONTINUE.md`, Wayfinder synchronized.
+
+## 14. Mandatory checkpoints
+
+1. go-live: clock + measured state; 2. R0 data verification; 3. W3/R1c/R2c
+pins; 4. A7 R-verdict; 5. each M01 cell; 6. M01 terminal; 7. V11 selection
+freeze; 8. each V11 family close; 9. final budget/denominator/workers report.
+
+A1 continues through safe local non-destructive steps without repeated GO and
+stops only at gate/deadline/permission failures or boundaries needing
+push/deletion/S1/live authority.

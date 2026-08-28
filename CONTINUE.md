@@ -1,41 +1,46 @@
-# CONTINUE.md — V10 PRELAUNCH REMEDIATION
+# CONTINUE.md — V10R → V11 ENTRY STATE
 
 Read `PLAN.md` completely. It is the fresh-context authority.
 
-## Measured state
+## Measured entry state
 
-- Integration workspace:
-  `/Users/hoangminhlong/my-quantitative-v10-wt/integration-v10`
-- Integration HEAD: `orca/v10-integration@832fa6f`, clean when measured.
-- V9H PASS; M01 selected and implemented.
-- Prelaunch: `NO_GO_SCORED_WAVES`.
-- V10 budget consumed: 0/3 planned cells.
-- Old W=`79fc883` and old R1/R2 are stale; preserve, never score from them.
-- Deadline: `2026-08-27T16:55:00Z`, no auto-extension.
+- Prior sprint V10P-R closed `V10_BLOCKED_PRELAUNCH` with budget 0/3
+  consumed (now 0/9 under the owner amendment) and denominator 117.
+- Full record: `research/control/v10p_run/terminal_closeout_v10p.json`;
+  integration `orca/v10-integration@86b7274`, clean, pushed to GitHub.
+- The reusable adapter pipeline (BG1–BG6, G15, F2, G17, H08 12–20) is built,
+  accepted (52-test matrix) and frozen at `W2=d61a483` with detached
+  `exec-v10-R1b`/`exec-v10-R2b`. Do not rebuild any of it.
+- Single remaining HIGH: `G05_COVERAGE_SHORTFALL` — staged bars end 21.5 h
+  before the preregistered window end `2026-08-21T00:00:00Z`; the daily-close
+  builder silently synthesizes the stale tail instead of failing closed.
+- Owner directives (2026-08-28): **Option A** (fetch the missing data, window
+  unchanged), **24 h clock**, second wave = **2 families / 6 cells**
+  (authorized ceiling now 3 families / 9 cells total).
 
 ## Immediate critical path
 
-1. Freeze a family-neutral adapter interface.
-2. Create three worktrees from current clean integration.
-3. Dispatch concurrently:
-   - G1: BG-1/BG-2/BG-4/BG-5/BG-6 generic runner/finalizer;
-   - G2: BG-3/G15/F2/G17 funding/cache/resource;
-   - G3: acceptance/fault tests and H08 cases 12–20.
-4. Integrate sequentially; targeted tests after each; full suite alone.
-5. Freeze W2; create fresh detached R1b/R2b and stage/hash data.
-6. Run fresh independent A7 G01–G20 audit.
-7. Only `V10_LAUNCH_AUTHORIZED` permits the 3 serial scored cells.
-8. Reproduce 3/3, score and close honestly.
+1. Go-live: record the 24 h deadline in
+   `research/control/v10r_run/heartbeat.json`.
+2. R0: extend staged bars (and funding if short) through the window end using
+   existing download infra; make `build_daily_closes`/coverage fail-closed
+   with a regression test pinning the V10P defect; re-stage + byte-verify.
+3. R1: freeze W3; detached `exec-v10-R1c`/`exec-v10-R2c`; full suite alone.
+4. R2: fresh A7 prelaunch audit on W3; launch only on authorized verdict +
+   fresh resource probe ≥1 heavy worker + ≥120 min left.
+5. R3/R4: M01 anchor → neighbor → C2, serial; reproduce 3/3 from R2c; family
+   terminal science; write lessons into the register.
+6. V11: blinded proposals → novelty + rescue → freeze 2 families → implement
+   through the adapter → prelaunch audit → 3 cells each → reproduce → close.
 
 ## Boundaries
 
-- A1 + at most 3 light agents; heavy maximum 1 and may fall to 0.
-- No new hypothesis, M01 tuning, PnL inspection, push, deletion, S1, equity,
-  paper/testnet/live or orders.
-- If deadline expired, close incomplete; never extend automatically.
-- If <120 minutes, start no new scored cell.
+Unchanged from PLAN §10. Honest evidence first: REJECT_ALL, BLOCKED,
+INCOMPLETE are valid outcomes; no tuning on observed PnL; no S1, equity
+scored runs, paper/testnet/live, orders; historical trees preserved; push
+only on owner instruction.
 
 ## First fresh-thread report
 
-Return current UTC, HEAD/status, time left, budget=0 confirmation, exact three
-worktrees/allowlists and remaining blockers; then continue without repeated GO.
+Return measured UTC, deadline remaining, integration HEAD, budget, and the
+R0 plan; then continue without repeated GO.
