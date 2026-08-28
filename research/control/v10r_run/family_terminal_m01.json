@@ -1,0 +1,78 @@
+{
+ "artifact": "family_terminal_m01",
+ "producer_role": "A1",
+ "at_utc": "2026-08-28T06:35:00Z",
+ "family_id": "A8-V10-M01-AGGRESSOR-ABSORPTION-PANEL",
+ "w3": "2d5c30dcd32e4e3bfa02fe7d41de8804212327a5",
+ "host": "host3_windows (32GB)",
+ "cells": {
+  "anchor": {
+   "status": "PUBLISHED",
+   "denominator_row": 1,
+   "net_return_sum": -578745.6738,
+   "expectancy_per_day": -1585.6046,
+   "max_drawdown": 578745.6738,
+   "position_pf": 2.42e-08,
+   "daily_hit_rate": 0.00548,
+   "n_positions": 6916,
+   "folds_net": [-119068.43, -215683.17, -243994.08],
+   "cost_charged_sum": -578745.3756,
+   "note": "gross price PnL ~ -0.29 scaled: the entire loss is transaction costs"
+  },
+  "neighbour": {
+   "status": "COMPUTED_UNPUBLISHED_CONTRACT_GAP",
+   "net_return_sum": -515951.9347,
+   "expectancy_per_day": -1413.5669,
+   "max_drawdown": 515951.9347,
+   "publish_stage": "IDEMPOTENT_REPLAY_SKIPPED duplicate_trial_key_already_published",
+   "root_cause": "frozen canonical_scored_payload keys on arm_config_id=control_mode; M01-N shares control_mode='anchor' with M01-A and neighbour_mode is outside the key",
+   "escalation": "owner adjudication at V11 checkpoint; no ledger forgery performed"
+  },
+  "c2_placebo": {
+   "status": "PUBLISHED",
+   "denominator_row": 2,
+   "net_return_sum": -607353.9182,
+   "expectancy_per_day": -1663.9833,
+   "position_pf": 4.46e-08,
+   "n_positions": 6916,
+   "note": "placebo loses the same as the mechanism: zero incremental flow information"
+  }
+ },
+ "reproduction": {
+  "status": "ALL_MATCH",
+  "report": "research/control/v10r_run/r4_reproduction_report.json",
+  "detail": "3/3 arms reproduced from clean R2c processes (3 concurrent per owner amendment); matrix_digest, preflight bars/sigma digests and all 54 canonical artifact contents identical; the only byte diffs were each tree's own absolute path strings embedded in artifact_paths metadata"
+ },
+ "stage_a_gates": {
+  "after_cost_expectancy_gt_0": "FAIL (-1585.6/day)",
+  "pf_ge_1_10": "FAIL (2.4e-08)",
+  "two_of_three_folds_positive": "FAIL (0/3)",
+  "no_fold_pf_below_0_80": "FAIL (all folds ~0)",
+  "positive_fold_contribution_le_50": "PASS (0%, vacuous)",
+  "max_drawdown_le_10pct": "FAIL (monotone drawdown ~100% of period loss)",
+  "trade_floor": "PASS (6916 positions)",
+  "stressed_pnl_gt_0_and_pf_ge_1": "FAIL (all stress variants negative)",
+  "drop_one_dependency": "NOT_DETERMINATIVE (baseline already failed)",
+  "symbol_contribution_le_40pct": "NOT_DETERMINATIVE",
+  "neighbor_supports_anchor": "FAIL (neighbour loses the same way; no edge to support)",
+  "c2_incremental_flow_information": "FAIL (placebo == mechanism within ~5%)",
+  "reproduction_all_match": "PASS (3/3)",
+  "zero_unresolved_high_critical": "PASS (contract-gap finding documented and escalated; no data or HIGH blocker open)"
+ },
+ "verdict": "M01_FAMILY_REJECT",
+ "budget": {
+  "cells_computed": 3,
+  "cells_published": 2,
+  "unpublished_documented": 1,
+  "budget_scored_cells_consumed": "2/9 published (neighbour's unpublished score is disclosed, not hidden)",
+  "denominator": "117 historical + 2 published = 119; DSR/PBO computed on the frozen contract basis"
+ },
+ "lessons": [
+  "L-M01-1: at 15m cadence with the frozen 5bp taker floor + tick slippage, M01's gross price edge is ~zero; 6916 positions/year turn the strategy into a pure cost-burn. Any future 15m mechanism must show gross edge far above the cost floor or far lower turnover.",
+  "L-M01-2: the negative control (C2) matches the mechanism within ~5% of net loss - the preregistered flow signal carried no incremental information over price noise. The control design did its job.",
+  "L-CONTRACT-1: the frozen publisher's canonical trial key cannot express arms that differ outside arm_config_id. Preregistered multi-arm families must map every arm to a distinct arm_config_id, or the publisher must be extended BEFORE the freeze. Discovered mid-R3; handled fail-closed (no ledger forgery).",
+  "L-DATA-1: data verification must cover the LOADER-SELECTED values (dedupe winners), not just the existence of correct values somewhere in the tree. D2 verified content existence; the dedupe picked non-digit-exact duplicates - caught only by A7's recompute.",
+  "L-HOST3-1: the full suite has a side effect on this host: it rewrites research/audits/v7p and v8p golden vector reports; restore both after every suite run. 24 suite tests are platform-idiom failures (POSIX process control, macOS paths, cp1252) - classified, zero in the scored execution path."
+ ],
+ "verdict_rule": "Stage-A hard gates applied as frozen in PLAN section 8; REJECT is an honest, valid outcome"
+}

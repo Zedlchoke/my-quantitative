@@ -101,3 +101,18 @@ against this amended contract.
 - R3 data-feed pin: bars fed to M01Plugin use the panel dedupe rule
   (lexically-last part wins); `hyp_a8_m01.read_bars_15m`'s strict duplicate
   rejection is recorded as inapplicable to the inherited overlap layout.
+
+## R3/R4 terminal — 2026-08-28 (A1) — M01_FAMILY_REJECT
+
+Anchor published (denom 1): net −578,745.7 scaled, expectancy −1,585.6/day,
+PF 2.4e-08, 0/3 folds positive, loss ≈ 100% costs (gross ≈ 0). Neighbour
+computed, same profile (−515,951.9) but UNPUBLISHED — frozen publisher's
+trial key cannot express M01-N (arm_config_id=control_mode collision with
+M01-A; neighbour_mode outside the key). Fail-closed, escalated to owner.
+C2 placebo published (denom 2): −607,353.9 ≈ anchor → zero incremental flow
+information. R4 reproduction from R2c: ALL_MATCH 3/3 (3 concurrent per owner
+amendment; only each tree's own absolute paths differ). Stage-A: family
+**REJECT**. Budget 2/9 published (+1 unpublished documented); denominator
+117+2=119. Full detail: `research/control/v10r_run/family_terminal_m01.json`.
+Owner directives standing: announce results (ELI5) → push → WAIT for owner
+response before starting V11.

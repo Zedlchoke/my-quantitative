@@ -27,6 +27,29 @@ def sha(path: Path) -> str:
     return h.hexdigest()
 
 
+def content_sha(path: Path, tree_root: Path) -> str:
+    """Hash an artifact with absolute tree-root path embeds normalised away.
+
+    The frozen artifacts embed their own absolute result paths (e.g.
+    artifact_paths.result_root), which necessarily differ between the R1c and
+    R2c trees; every scientific field is identical. Path strings rooted at the
+    tree are replaced with <TREE> before hashing.
+    """
+
+    def norm(obj):
+        if isinstance(obj, dict):
+            return {k: norm(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [norm(v) for v in obj]
+        if isinstance(obj, str):
+            return obj.replace(str(tree_root), "<TREE>").replace(str(tree_root).replace("\\", "/"), "<TREE>")
+        return obj
+
+    payload = norm(json.loads(path.read_text()))
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def collect(root: Path) -> dict:
     out = {}
     for arm in ARMS:
@@ -46,7 +69,9 @@ def collect(root: Path) -> dict:
                 json.loads(pf.read_text()).get("prewindow_sigma_sha256") if pf.exists() else None
             )
             arts = sorted((d / "matrix").rglob("*.json"))
-            entry["artifact_files"] = {str(p.relative_to(d)): sha(p) for p in arts}
+            entry["artifact_files"] = {
+                str(p.relative_to(d)): content_sha(p, root) for p in arts
+            }
         out[arm] = entry
     return out
 
