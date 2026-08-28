@@ -131,6 +131,10 @@ def main() -> int:
 
     cfg = yaml.safe_load((exec_root / "config/research_scan_top20.yaml").read_text())
     symbols = list(cfg["market"]["symbols"])
+    tick_pin = json.loads(
+        (REPO / "research/control/v10r_run/tick_sizes_v10r_host3.json").read_text()
+    )
+    tick_sizes = tick_pin["tick_sizes"]
 
     start_ns, end_ns = _window_bounds_ns(SCORED_WINDOW_START_UTC, SCORED_WINDOW_END_UTC)
     pre_start_ns = start_ns - 30 * 86400 * 10**9
@@ -161,6 +165,8 @@ def main() -> int:
         "(host3_full_window_8field_report.json)",
         "prewindow_sigma_sha256": None if sigma_table is None else sigma_table["sha256"],
         "prewindow_sigma_i": None if sigma_table is None else sigma_table["sigma_i"],
+        "tick_sizes_pin_sha256": tick_pin["sha256"],
+        "tick_sizes": tick_sizes,
     }
     out_dir = exec_root / args.out_root / args.arm
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -178,6 +184,7 @@ def main() -> int:
         control_mode=spec["control_mode"],
         neighbour_mode=spec["neighbour_mode"],
         prewindow_sigma=sigma_map,
+        tick_sizes=tick_sizes,
         settle_points_by_symbol=load_settlements(exec_root / args.funding_root, symbols),
         context_only_symbols=(BENCHMARK_SYMBOL_EXCLUDED,),
     )
