@@ -44,7 +44,9 @@ def dedupe_bars(catalog: Path, symbols, start_ns: int, end_ns: int):
     import pyarrow.parquet as pq
 
     sys.path.insert(0, str(DEFAULT_EXEC))
-    from research.hyp_a8_m01 import M01Bar, _decode_fixed16, _bar_type_dir  # noqa: E402
+    from research.hyp_a8_m01 import (  # noqa: E402
+        M01Bar, _bar_type_dir, _decode_fixed16, _finite_decimal,
+    )
 
     bars: dict[str, list] = {}
     for sym in symbols:
@@ -67,8 +69,10 @@ def dedupe_bars(catalog: Path, symbols, start_ns: int, end_ns: int):
                     low=_decode_fixed16(cols["low"][i]),
                     close=_decode_fixed16(cols["close"][i]),
                     volume=_decode_fixed16(cols["volume"][i]),
-                    quote_volume=cols["quote_volume"][i],
-                    taker_buy_quote_volume=cols["taker_buy_quote_volume"][i],
+                    quote_volume=_finite_decimal(cols["quote_volume"][i]),
+                    taker_buy_quote_volume=_finite_decimal(
+                        cols["taker_buy_quote_volume"][i]
+                    ),
                     count=int(cols["count"][i]),
                 )
         bars[sym] = [by_ts[ts] for ts in sorted(by_ts)]
@@ -108,6 +112,8 @@ def main() -> int:
     ap.add_argument("--out-root", default="results/v10r_r3")
     ap.add_argument("--ledger", default=None, help="global ledger path for BG6 publication")
     ap.add_argument("--publish", action="store_true")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="stop after the preflight pin (no metrics computed)")
     args = ap.parse_args()
 
     exec_root = Path(args.exec_root)
@@ -160,6 +166,9 @@ def main() -> int:
     (out_dir / "preflight.json").write_text(json.dumps(preflight, indent=1))
     print("PREFLIGHT bars:", preflight["bars_per_symbol"])
     print("PREFLIGHT series_sha256:", preflight["bars_series_sha256"])
+    if args.dry_run:
+        print("DRY-RUN: stopping after preflight (no metrics computed)")
+        return 0
 
     plugin = M01Plugin(
         bars_by_symbol=bars,
