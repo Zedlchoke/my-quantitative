@@ -8,8 +8,21 @@ Implements the PLAN.md section 19 PIT data contract:
   day boundary: for each midnight ``C`` in the window the emitted point is
   ``(ts_event, close)`` of the LAST bar whose ``ts_event <= C``. A boundary
   with no bar at-or-before it emits nothing ("days only when a bar exists by
-  cutoff"). This is the PIT guarantee: a bar arriving later can never change
-  an earlier day's close, because selection only looks backwards.
+  cutoff" -- warmup semantics). This is the PIT guarantee: a bar arriving
+  later can never change an earlier day's close, because selection only looks
+  backwards.
+* ``DataUnavailable`` is raised instead of silently publishing a close whose
+  sourcing bar is stale: a boundary (every boundary, not only the terminal
+  one) whose newest bar at-or-before it is older than ``C - BAR_INTERVAL_NS``
+  has missed the 15m bar that closes the interval, so the "daily close" would
+  actually be an older bar re-labelled as the day's close. Companion fix to
+  Sprint V10R Option A for V10P prelaunch gate ``G05_COVERAGE_SHORTFALL_HIGH``
+  (staged ETHUSDT bars ended 2026-08-20T02:29:59.999Z against a
+  2026-08-21T00:00:00Z window end: 86 bars / 21.5h short, and
+  ``build_daily_closes`` still emitted a terminal close from that bar).
+  Fail-closed, defined HERE -- ``research.hyp_a8_m01`` imports this module and
+  ``research.adapter_v10`` transitively imports M01, so this file must not
+  import from ``research.adapter_v10`` (circular-import hazard).
 * ``build_btc_benchmark`` is the same construction restricted to BTCUSDT
   (benchmark context only, PLAN.md section 19.3).
 * ``coverage_report`` emits DISTINCT coverage blocks per symbol (bar days,
@@ -32,8 +45,26 @@ import pyarrow.parquet as pq
 
 DAY_NS = 86_400_000_000_000
 BENCHMARK_SYMBOL = "BTCUSDT"
+#: Catalog bar cadence: 15-minute bars whose ``ts_event`` is the exchange
+#: CLOSE stamp. A boundary ``C`` is fully covered iff its newest bar
+#: at-or-before it closes inside ``(C - BAR_INTERVAL_NS, C]``.
+BAR_INTERVAL_NS = 900_000_000_000
 _PRICE_SCALE = 10 ** 16  # nautilus parquet fixed-scalar encoding (verified)
 _BAR_COLUMNS = ("ts_event", "open", "high", "low", "close", "volume")
+
+
+class DataUnavailable(RuntimeError):
+    """Bar data cannot support a point-in-time close: fail closed, never guess.
+
+    Raised by :func:`build_daily_closes` (and therefore
+    :func:`build_btc_benchmark`) when a day boundary's newest bar is more than
+    one 15-minute interval old, and by :func:`coverage_report` when a
+    symbol's terminal close is older than ``window_end - BAR_INTERVAL_NS``.
+    Both conditions mean the requested close would be sourced from a bar that
+    is not the last bar of its interval -- a silent coverage shortfall
+    (V10P ``G05_COVERAGE_SHORTFALL_HIGH``). Callers must treat this as a hard
+    data failure for that window, not a partial result.
+    """
 
 
 # --------------------------------------------------------------------------- #
@@ -72,6 +103,42 @@ def _day_boundaries(start_ns: int, end_ns: int) -> list[int]:
 def _boundary_of(ts_ns: int) -> int:
     """The UTC midnight boundary this closing bar feeds (next midnight)."""
     return ((ts_ns + DAY_NS - 1) // DAY_NS) * DAY_NS
+
+
+def iso_utc(ns: int) -> str:
+    """Render epoch nanoseconds as a millisecond ISO-8601 UTC stamp.
+
+    Millisecond precision mirrors the catalog's ``...T02:29:59.999Z`` bar
+    close stamps; exact integer arithmetic (no float round-trip).
+    """
+    seconds, rem = divmod(int(ns), 1_000_000_000)
+    dt = datetime.fromtimestamp(seconds, tz=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S") + f".{rem // 1_000_000:03d}Z"
+
+
+def staleness_bars(bar_ts_ns: int, reference_ns: int) -> int:
+    """Whole 15m intervals missing between a sourcing bar and ``reference_ns``.
+
+    ``0`` when the bar closes inside ``(reference_ns - BAR_INTERVAL_NS,
+    reference_ns]`` -- i.e. it IS the last bar of the interval it feeds.
+    ``1`` means exactly one bar is missing, ``86`` means the V10P terminal
+    shortfall. Exact integer arithmetic on the half-open interval so a bar
+    stamped exactly ``reference_ns - BAR_INTERVAL_NS`` counts as stale.
+    """
+    return max(0, (int(reference_ns) - int(bar_ts_ns)) // BAR_INTERVAL_NS)
+
+
+def _stale_source_error(
+    symbol: str, reference: str, bar_ts_ns: int, stale: int
+) -> DataUnavailable:
+    """Build the fail-closed error for a stale sourcing bar."""
+    return DataUnavailable(
+        f"{symbol}: close for {reference} cannot be sourced fresh -- newest "
+        f"bar at-or-before it is {iso_utc(bar_ts_ns)}, "
+        f"{stale} bar(s) ({stale * 0.25:.2f}h) stale against a "
+        f"{BAR_INTERVAL_NS // 1_000_000_000 // 60}-minute bar cadence "
+        f"(tolerance: 1 bar interval); refusing to emit a stale PIT close"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -157,11 +224,22 @@ def build_daily_closes(
     window_start_iso: str,
     window_end_iso: str,
 ) -> dict[str, list[tuple[int, float]]]:
-    """Resample completed 15m bars to daily closes (PIT-safe).
+    """Resample completed 15m bars to daily closes (PIT-safe, fail-closed).
 
     For each UTC midnight boundary ``C`` in the window, emit the
     ``(ts_event, close)`` of the last bar with ``ts_event <= C``; boundaries
-    with no earlier bar emit nothing. Deterministic and backward-looking.
+    with no earlier bar emit nothing (warmup). Because ``ts_event`` is the
+    bar CLOSE stamp, that bar is only the day's close if it falls inside
+    ``(C - BAR_INTERVAL_NS, C]``; if the newest bar at-or-before ``C`` is
+    older than that, the 15m bar that closes the day is missing and
+    :class:`DataUnavailable` is raised -- naming the symbol, the boundary
+    ISO, the stale bar ISO and the staleness in bars and hours -- rather
+    than re-labelling an older bar as the day's close. The rule applies to
+    EVERY boundary, not only the terminal one (a mid-window hole is the same
+    defect as a short tail). Deterministic and backward-looking otherwise:
+    selection still looks strictly backwards, so a later bar can never
+    change an earlier day's close, and the raise fires on the first stale
+    boundary in ascending order.
     """
     start_ns, end_ns = _window_bounds_ns(window_start_iso, window_end_iso)
     boundaries = _day_boundaries(start_ns, end_ns)
@@ -172,8 +250,17 @@ def build_daily_closes(
         series: list[tuple[int, float]] = []
         for cutoff in boundaries:
             idx = _last_index_at_or_before(stamps, cutoff)
-            if idx is not None:
-                series.append((stamps[idx], bars[idx][4]))
+            if idx is None:
+                # No bar at-or-before this boundary: warmup, emit nothing.
+                # NOT a staleness failure -- there is nothing to be stale.
+                continue
+            bar_ts = stamps[idx]
+            stale = staleness_bars(bar_ts, cutoff)
+            if stale:
+                raise _stale_source_error(
+                    sym, iso_utc(cutoff), bar_ts, stale
+                )
+            series.append((bar_ts, bars[idx][4]))
         panel[sym] = series
     return panel
 
@@ -221,7 +308,25 @@ def coverage_report(
                                        "first": iso_date_or_None,
                                        "last":  iso_date_or_None}},
           "metadata_coverage":  {sym: bool},
+          "freshness":          {sym: {"last_close_bar_ts": iso_or_None,
+                                       "staleness_bars": int_or_None,
+                                       "fresh": bool}},
         }
+
+    ``freshness`` is measured evidence (V10R Option A companion fix): each
+    panel close carries the ``ts_event`` of the bar it was sourced from, so
+    the report can state how far that bar trails ``window_end``. A symbol
+    with no closes reports ``None``/``None``/``False`` rather than
+    disappearing. ``fresh`` is False whenever the last sourcing bar is not
+    the last bar of the terminal interval.
+
+    Fail-closed: :class:`DataUnavailable` is raised when any symbol WITH a
+    non-empty series has its last close's sourcing bar older than
+    ``window_end - BAR_INTERVAL_NS`` (the terminal bar of the window is
+    stale, i.e. the tail coverage shortfall that V10P gate
+    ``G05_COVERAGE_SHORTFALL_HIGH`` caught). Symbols with an empty series
+    are exempt: they already report zero days and must keep doing so
+    (warmup/partial-universe semantics) rather than aborting the report.
 
     The split lets XG0 emit distinct reason codes:
     ``benchmark_coverage_incomplete`` (benchmark block short/zero) vs
@@ -231,11 +336,20 @@ def coverage_report(
     failure. ``metadata_symbols`` lists symbols with usable instrument
     metadata; anything absent reports False.
     """
-    _window_bounds_ns(window_start_iso, window_end_iso)  # validate arguments
+    start_ns, end_ns = _window_bounds_ns(window_start_iso, window_end_iso)
     syms = sorted(panel)
     bar_coverage: dict[str, int] = {}
+    freshness_limit_ns = end_ns - BAR_INTERVAL_NS
     for sym in syms:
-        bar_coverage[sym] = len(panel[sym] or [])
+        series = panel[sym] or []
+        bar_coverage[sym] = len(series)
+        if series:
+            last_ts = int(series[-1][0])
+            stale = staleness_bars(last_ts, end_ns)
+            if last_ts <= freshness_limit_ns:
+                raise _stale_source_error(
+                    sym, f"window_end {window_end_iso}", last_ts, stale
+                )
 
     benchmark_coverage: dict[str, int] = {}
     if benchmark_symbol:
@@ -272,9 +386,28 @@ def coverage_report(
     known_meta = set(metadata_symbols or ())
     metadata_coverage: dict[str, bool] = {sym: sym in known_meta for sym in syms}
 
+    freshness: dict[str, dict] = {}
+    for sym in syms:
+        series = panel[sym] or []
+        if not series:
+            freshness[sym] = {
+                "last_close_bar_ts": None,
+                "staleness_bars": None,
+                "fresh": False,
+            }
+            continue
+        last_ts = int(series[-1][0])
+        stale = staleness_bars(last_ts, end_ns)
+        freshness[sym] = {
+            "last_close_bar_ts": iso_utc(last_ts),
+            "staleness_bars": stale,
+            "fresh": stale == 0,
+        }
+
     return {
         "bar_coverage": bar_coverage,
         "benchmark_coverage": benchmark_coverage,
         "funding_coverage": funding_coverage,
         "metadata_coverage": metadata_coverage,
+        "freshness": freshness,
     }

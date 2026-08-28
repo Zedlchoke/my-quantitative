@@ -1,0 +1,129 @@
+{
+  "lane": "D1",
+  "sprint": "V10R",
+  "task": "Option A companion fix: fail-closed data coverage at the window boundary",
+  "at_utc": "2026-08-28T00:30:41Z",
+  "worktree": "/Users/hoangminhlong/my-quantitative-v10-wt/v10r-d1-datafix",
+  "branch": "orca/v10r-d1-datafix",
+  "base_head": "d19dc6f21be4d68ce7a8fe78d8bec5adfa0d6b90",
+  "defect": {
+    "id": "G05_COVERAGE_SHORTFALL_HIGH",
+    "evidence": "research/audits/v10p/a7_prelaunch_v10p.json",
+    "summary": "Staged ETHUSDT 15m bars ended 2026-08-20T02:29:59.999Z against a preregistered window ending 2026-08-21T00:00:00Z (86 bars / 21.5h short). research/panel.py build_daily_closes silently emitted a terminal daily close sourced from that stale bar, and coverage_report only counted it and raised nothing -- so a coverage shortfall propagated into the panel as if it were data.",
+    "root_cause": "Boundary resolution selected the last bar with ts_event <= C without checking that the bar is the LAST bar of the interval it feeds. With ts_event = bar CLOSE stamp, a daily close for boundary C is only legitimate if its sourcing bar falls in (C - 15m, C]."
+  },
+  "rule_implemented": {
+    "staleness_tolerance_bars": 1,
+    "statement": "For a boundary/reference R, the sourcing bar must satisfy R - 15m < bar_ts <= R. Equivalently staleness_bars = (R - bar_ts) // 900_000_000_000 ns must be 0; >= 1 is a failure.",
+    "applies_to": [
+      "build_daily_closes: EVERY day boundary in the window, not only the terminal one",
+      "coverage_report: every symbol WITH a non-empty series, against window_end"
+    ],
+    "exempt": "A boundary with NO bar at-or-before it still emits nothing (warmup semantics preserved exactly, and never raises); a symbol with an empty series still reports 0 days and is exempt from the stale-tail raise.",
+    "direction": "backward-looking only: selection still resolves strictly backwards, so a later bar can never change an earlier day's close (PIT guarantee unchanged); the raise fires on the first stale boundary in ascending symbol/boundary order (deterministic)."
+  },
+  "exception": {
+    "class": "DataUnavailable",
+    "module": "research.panel",
+    "base": "RuntimeError",
+    "message_fields": [
+      "symbol",
+      "reference (boundary ISO, or 'window_end <ISO>')",
+      "stale sourcing bar ISO",
+      "staleness in bars and hours"
+    ],
+    "circular_import_note": "Defined locally in research/panel.py. No import from research.adapter_v10: research/hyp_a8_m01 imports research.panel and research/adapter_v10/__init__ transitively imports M01, so a back-import would be circular."
+  },
+  "api_changes": {
+    "build_daily_closes": "raises DataUnavailable on a stale sourcing bar at any boundary; docstring updated",
+    "build_btc_benchmark": "inherits the fix unchanged (same code path)",
+    "coverage_report": "raises DataUnavailable when a non-empty series' last close is older than window_end - 15m; NEW report key 'freshness' = {sym: {last_close_bar_ts: iso|None, staleness_bars: int|None, fresh: bool}}. All four pre-existing keys and their semantics unchanged.",
+    "load_bars_15m": "unchanged (raw engine input, not boundary-resolved)"
+  },
+  "new_helpers": {
+    "BAR_INTERVAL_NS": "900_000_000_000 (15m cadence constant)",
+    "staleness_bars": "whole 15m intervals missing between a sourcing bar and a reference, exact integer arithmetic",
+    "iso_utc": "epoch ns -> millisecond ISO-8601 UTC string, exact (no float round-trip)",
+    "_stale_source_error": "builds the fail-closed DataUnavailable"
+  },
+  "tests": {
+    "file": "tests/test_panel_v10r.py",
+    "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_panel_v10r.py tests/test_panel.py -q",
+    "new_test_ids": [
+      "tests/test_panel_v10r.py::test_v10p_defect_build_daily_closes_raises",
+      "tests/test_panel_v10r.py::test_v10p_defect_coverage_report_raises",
+      "tests/test_panel_v10r.py::test_full_coverage_tail_emits_terminal_close",
+      "tests/test_panel_v10r.py::test_warmup_boundary_with_no_earlier_bar_emits_nothing",
+      "tests/test_panel_v10r.py::test_mid_window_gap_raises_on_that_interior_boundary",
+      "tests/test_panel_v10r.py::test_one_bar_short_of_full_coverage_is_already_stale",
+      "tests/test_panel_v10r.py::test_build_btc_benchmark_inherits_fail_closed",
+      "tests/test_panel_v10r.py::test_coverage_report_freshness_block_and_legacy_keys"
+    ],
+    "new_file_result": "8 passed",
+    "combined_result": "7 failed, 10 passed in 0.95s",
+    "pytest_tail": [
+      "FAILED tests/test_panel.py::test_daily_close_is_last_bar_at_or_before_boundary",
+      "FAILED tests/test_panel.py::test_pit_guarantee_later_bar_never_changes_earlier_day",
+      "FAILED tests/test_panel.py::test_boundary_with_no_bar_by_cutoff_is_absent - r...",
+      "FAILED tests/test_panel.py::test_eth_trimmed_start_and_coverage_report - rese...",
+      "FAILED tests/test_panel.py::test_coverage_blocks_distinct_reason_code_inputs",
+      "FAILED tests/test_panel.py::test_build_btc_benchmark_shape - research.panel.D...",
+      "FAILED tests/test_panel.py::test_panel_determinism_across_part_layouts - rese...",
+      "7 failed, 10 passed in 0.95s"
+    ]
+  },
+  "blockers": [
+    {
+      "severity": "expected",
+      "where": "tests/test_panel.py (OUTSIDE D1 allowlist, not edited)",
+      "failing_test_ids": [
+        "tests/test_panel.py::test_daily_close_is_last_bar_at_or_before_boundary",
+        "tests/test_panel.py::test_pit_guarantee_later_bar_never_changes_earlier_day",
+        "tests/test_panel.py::test_boundary_with_no_bar_by_cutoff_is_absent",
+        "tests/test_panel.py::test_eth_trimmed_start_and_coverage_report",
+        "tests/test_panel.py::test_coverage_blocks_distinct_reason_code_inputs",
+        "tests/test_panel.py::test_build_btc_benchmark_shape",
+        "tests/test_panel.py::test_panel_determinism_across_part_layouts"
+      ],
+      "cause": "Every fixture writes exactly ONE bar per day at the 23:44:59.999Z slot (offset BAR_NS*95 - 1), i.e. 1 of 96 bars per day. Each boundary's newest bar at-or-before it is therefore 1 interval old and the new invariant correctly refuses it: DataUnavailable '... newest bar at-or-before it is 2025-08-18T23:44:59.999Z, 1 bar(s) (0.25h) stale ...'. The fixtures violate the production 15m-cadence invariant the fix enforces.",
+      "remedy_for_owner": "Regenerate those fixtures with a full 96-bar day grid (terminal slot closing at 23:59:59.999Z); tests/test_panel_v10r.py::write_bars/grid is the reference fixture. Two of them (test_eth_trimmed_start_and_coverage_report, test_coverage_blocks_distinct_reason_code_inputs) additionally assert set(report) == {4 keys} and will also need the new 'freshness' key added to that expectation.",
+      "passing_from_same_file": [
+        "tests/test_panel.py::test_load_bars_15m_decodes_prices",
+        "tests/test_panel.py::test_window_validation"
+      ]
+    }
+  ],
+  "verified_not_affected": {
+    "note": "Indirect production callers of build_daily_closes were spot-checked (read-only) so the blocker list is complete; full-suite sweep remains A1's job.",
+    "results": [
+      "tests/test_g2_cache_resource_v10.py: 20 passed",
+      "tests/test_data_audit_v8.py: 28 passed"
+    ]
+  },
+  "files_changed": [
+    {
+      "path": "research/panel.py",
+      "blob_sha": "318b4f4922369b74d34324c32ad3378bcf236e51",
+      "change": "DataUnavailable + BAR_INTERVAL_NS + staleness_bars/iso_utc/_stale_source_error helpers; staleness guard in build_daily_closes; stale-tail guard + 'freshness' block in coverage_report"
+    },
+    {
+      "path": "tests/test_panel_v10r.py",
+      "blob_sha": "0834acbf9c639ed01d689645e26c7493a1d65b30",
+      "change": "new: 8 fail-closed regression pins on production-shaped 15m/PIT fixtures"
+    },
+    {
+      "path": "research/control/v10r_run/d1_failclosed_report.json",
+      "blob_sha": "self-referential: see git object of the committed path",
+      "change": "new: this artifact"
+    },
+    {
+      "path": "research/control/v10r_run/event_log.jsonl",
+      "blob_sha": "269c5c507147490824cd4a547ff3a92e649d8f18",
+      "change": "new: one 'd1_fix_complete' JSONL event line (by D1, 2026-08-28T00:31:52Z)"
+    }
+  ],
+  "out_of_scope_untouched": [
+    "tests/test_panel.py (outside allowlist)",
+    "research/portfolio_runner.py, research/data_audit_v8.py, research/cache_resource_measure_v10.py, scripts/run_golden_realpath_v10.py (callers, unchanged -- they now fail closed on short tails by design)"
+  ]
+}
