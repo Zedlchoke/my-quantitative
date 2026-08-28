@@ -123,8 +123,8 @@ def main() -> int:
     from research.adapter_v10.runner import run_full_stress_matrix  # noqa: E402
     from research.adapter_v10.publish import publish_trial, trial_denominator  # noqa: E402
     from research.hyp_a8_m01 import (  # noqa: E402
-        SCORED_WINDOW_START_UTC, SCORED_WINDOW_END_UTC, prewindow_sigma_table,
-        _window_bounds_ns,
+        BENCHMARK_SYMBOL_EXCLUDED, SCORED_WINDOW_START_UTC, SCORED_WINDOW_END_UTC,
+        prewindow_sigma_table, _window_bounds_ns,
     )
 
     import yaml  # noqa: E402
@@ -179,6 +179,7 @@ def main() -> int:
         neighbour_mode=spec["neighbour_mode"],
         prewindow_sigma=sigma_map,
         settle_points_by_symbol=load_settlements(exec_root / args.funding_root, symbols),
+        context_only_symbols=(BENCHMARK_SYMBOL_EXCLUDED,),
     )
     matrix = run_full_stress_matrix(plugin, out_root=str(out_dir / "matrix"))
     (out_dir / "matrix_summary.json").write_text(json.dumps(
