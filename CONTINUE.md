@@ -44,3 +44,23 @@ only on owner instruction.
 
 Return measured UTC, deadline remaining, integration HEAD, budget, and the
 R0 plan; then continue without repeated GO.
+
+## Host handoff — 2026-08-28T00:56Z (A1, mid-sprint, machine move to 16GB host)
+
+- R0 DONE: D1 fail-closed coverage (`78d77e1`) + D2 restage verify (`1a66e90`)
+  merged; D2 premise correction: staged tree already covers window end
+  (filename-range artifact caused the V10P stale-tail reading); BTC/ETH
+  duplicate-parts flag routed to R2 A7 recompute. Fixtures aligned per lesson
+  (d) (`c968b5c`).
+- R1 DONE: full suite alone **1283 passed / 1 skipped / 0 failed**;
+  **W3 = `2d5c30dcd32e4e3bfa02fe7d41de8804212327a5`** (code-identity vs suite
+  SHA verified); exec `R1c`/`R2c` detached at W3, staged read-only,
+  byte-identical 50/50, manifests 27+20 all_match.
+- Budget 0/9, denominator 117, deadline **2026-08-29T00:05:50Z** absolute.
+- NEXT (on the 16GB host): clone `orca/v10-integration` at W3, migration bundle
+  `/Users/hoangminhlong/v10r_migration_bundle/` (README inside) → R2 fresh A7 +
+  fresh `--probe-resource` (gate `measured_safe_cap ≥ 1`) → R3 3 M01 cells
+  serial → R4 reproduce → V11 wave. Open questions for A7 are listed in
+  `research/control/v10r_run/r1_freeze_W3.json`.
+- Old host's `exec-v10-R1c`/`R2c` are machine-local: recreate detached at W3 on
+  the new host per `worktree_manifest_v10r.json`; do NOT carry stale trees.
