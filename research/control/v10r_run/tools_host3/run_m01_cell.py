@@ -19,6 +19,7 @@ recorded in the preflight artifact of every cell.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import json
 import sys
@@ -185,8 +186,16 @@ def main() -> int:
     baseline_name = next(n for n in matrix["runs"] if "baseline" in n.lower())
     baseline_run = matrix["runs"][baseline_name]
     metrics = baseline_run.get("portfolio_metrics") or {}
+    import math as _math
+
+    def _finite(x) -> bool:
+        return isinstance(x, (int, float)) and _math.isfinite(x)
+
     scored_metrics = {
-        "score_valid": bool(baseline_run.get("scored", False)) or bool(metrics),
+        "score_valid": all(
+            _finite(metrics.get(k))
+            for k in ("net_return_sum", "expectancy_per_day", "max_drawdown")
+        ),
         "net_return_sum": metrics.get("net_return_sum"),
         "expectancy_per_day": metrics.get("expectancy_per_day"),
         "max_drawdown": metrics.get("max_drawdown"),
@@ -199,7 +208,7 @@ def main() -> int:
         return 0
     result = publish_trial(
         identity=plugin.identity(),
-        stress_signature=plugin.baseline_stress().__dict__,
+        stress_signature=dataclasses.asdict(plugin.baseline_stress()),
         scored_metrics=scored_metrics,
         payload_digests=baseline_run.get("hashes", {}),
         experiment_digest=matrix["matrix_digest"],
