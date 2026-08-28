@@ -138,7 +138,10 @@ def main() -> int:
 
     start_ns, end_ns = _window_bounds_ns(SCORED_WINDOW_START_UTC, SCORED_WINDOW_END_UTC)
     pre_start_ns = start_ns - 30 * 86400 * 10**9
-    bars = dedupe_bars(exec_root / args.catalog, symbols, pre_start_ns, end_ns)
+    # the plugin's _covering_bar needs the bar SPANNING the terminal boundary
+    # (open 2026-08-21T00:00Z) for final valuation; the schedule itself stays
+    # inside the scored window — feed carries exactly one extra 15m block
+    bars = dedupe_bars(exec_root / args.catalog, symbols, pre_start_ns, end_ns + 900 * 10**9)
 
     spec = ARM_SPECS[args.arm]
     sigma_table = None
@@ -167,6 +170,9 @@ def main() -> int:
         "prewindow_sigma_i": None if sigma_table is None else sigma_table["sigma_i"],
         "tick_sizes_pin_sha256": tick_pin["sha256"],
         "tick_sizes": tick_sizes,
+        "feed_note": "bars clipped to [prewindow_start, window_end + 1 block]: the "
+        "boundary-spanning bar is required by _covering_bar for terminal "
+        "valuation; scored schedule/folds remain inside the window",
     }
     out_dir = exec_root / args.out_root / args.arm
     out_dir.mkdir(parents=True, exist_ok=True)
