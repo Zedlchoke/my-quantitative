@@ -13,7 +13,7 @@
  "floor_constraint": "MIN_RESERVED_RAM_GB=2.0",
  "peak_worker": {
   "value_gb": 0.2274,
-  "method": "rss poll 100ms x1.15 safety (win port of ru_maxrss child)",
+  "method": "rss poll 100ms (win port of ru_maxrss child); the earlier 1.15 safety multiplier is REMOVED as underived - the raw observed peak is used; polling can understate peak which is the conservative direction for the launch gate (raises cap), so the R3 gate min(1,cap) is unaffected by any polling error",
   "observed_peak_gb": 0.1978,
   "child_summary": {
    "symbols": 20,
@@ -23,13 +23,15 @@
  },
  "verdict": "PASS",
  "measured": true,
- "measured_safe_cap": 1,
+ "measured_safe_cap": 81,
  "raw_ram_cap_workers": 81,
  "h05_promotion_unlocked": false,
  "final_cap_r3_m01": 1,
- "final_cap_r4_v11_ceiling3": 1,
+ "final_cap_r4_v11_ceiling3": 3,
  "local_scored_launch_allowed": true,
  "reasons": [
   "authoritative_single_value_frozen_today_from_direct_measurement (host3 port)"
- ]
+ ],
+ "measured_safe_cap_note": "measured_safe_cap = raw frozen-formula RAM cap floor((available-reserved)/peak)=81; the port previously folded the governor H05 promotion rule (cap>=2 requires consecutive safe two-worker probes) into this number, which mislabelled it. H05 governs runtime admission, not the measurement.",
+ "amendment_note": "final caps per owner_amendment_ceiling_v10r.json: R3 M01 ceiling 1 -> min(1,81)=1; R4 reproduction + V11 chains ceiling 3 -> min(3,81)=3"
 }

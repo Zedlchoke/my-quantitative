@@ -73,3 +73,31 @@ reproduction waves. **R3 M01 cells stay serial ceiling=1.** G17 floor
 `min(ceiling, measured_safe_cap)` unchanged; measured 0 still = no launch.
 See `research/control/v10r_run/owner_amendment_ceiling_v10r.json`; A7 audits
 against this amended contract.
+
+## Host-3 bootstrap + R2 remediation — 2026-08-28 (A1)
+
+- Host 3 = Windows 11, 31.86 GB RAM measured. Migration bundle ABSENT →
+  staging rebuilt by re-fetch (Option A); composition after the A7-remediation
+  pass: 24 digit-exact bar parts + 20 funding + 3 instrument defs. EVERY
+  resolved value verified digit-exact vs live fapi on all 9 consumed fields
+  over prewindow+window (`host3_full_window_8field_report.json`, 20/20 PASS).
+- A7 first verdict `V10_BLOCKED_PRELAUNCH` (B1 non-digit-exact dedupe picks on
+  BTC/ETH, B2 POSIX-bound suite, B3 manifest provenance, B4 G17 port labels,
+  B6 suite side-effect) → remediated: non-digit-exact parts excluded from
+  staging, exec trees re-staged + byte-verified 47/47 (`stage_verify_v10r_
+  R1c_R2c_host3.json` v2), worktrees re-smudged to blob bytes (core.autocrlf
+  false), `resource` import shim for collection, G17 port artifact corrected
+  (`measured_safe_cap=81`; R3 final=1, R4/V11 final=3 per amendment), golden
+  vector file restored after each suite run.
+- Suite on host 3 (R1c, alone): **1259 passed / 16 failed / 8 errors / 2
+  skipped** vs freeze-time macOS 1283/0/1 (same blobs). Residue clusters in
+  V9-era process-control/fault-injection and audit-tooling tests
+  (POSIX process-group/signal semantics, path idioms) — the adapter/M01/panel/
+  publish execution path for R3 is fully green. Re-audit by A7 pending.
+- Known host-3 deviations for every audit: PEPE/BOME volume fixed-point scale
+  1e8 (loader reads live*1e-8 vs *1e-7 elsewhere) — verified NOT material to
+  M01 (scale-free within-symbol ratio); float64-to-int64 quantization ~1e-16
+  on 6 residual rows eliminated by the Decimal-exact rewrite.
+- R3 data-feed pin: bars fed to M01Plugin use the panel dedupe rule
+  (lexically-last part wins); `hyp_a8_m01.read_bars_15m`'s strict duplicate
+  rejection is recorded as inapplicable to the inherited overlap layout.

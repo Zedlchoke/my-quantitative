@@ -18,6 +18,7 @@ from __future__ import annotations
 import glob
 import json
 import shutil
+from decimal import Decimal
 import sys
 import time
 from datetime import datetime, timezone
@@ -84,7 +85,7 @@ def main() -> int:
         ex = next(s for s in info["symbols"] if s["symbol"] == sym)
         pp, sp = ex["pricePrecision"], ex["quantityPrecision"]
         rows = klines(sym)
-        max_vol = max(float(k[5]) for k in rows)
+        max_vol = max(Decimal(k[5]) for k in rows)
         # uint64 caps at ~1.84e19; prices fit at 1e9, the largest volumes of
         # these two symbols do not, so BOTH columns use a per-symbol scale:
         # prices stay 1e9, volumes 1e8 (uniform within symbol -> all
@@ -94,14 +95,16 @@ def main() -> int:
         overflow_note = f"volume scale {VSCALE} (max_vol {max_vol})"
         print(f"[scale] {sym}: {overflow_note}", flush=True)
 
-        def fixed(value: float, scale: int = SCALE) -> bytes:
-            return int(round(value * scale)).to_bytes(8, "little", signed=False)
+        def fixed_str(dec_string: str, scale: int) -> bytes:
+            # exact decimal scaling from the API string; float loses integer
+            # precision above 2**53 (full-window verify finding)
+            return int(Decimal(dec_string) * scale).to_bytes(8, "little", signed=False)
 
-        o = pa.array([fixed(float(k[1])) for k in rows], type=bin_type)
-        h = pa.array([fixed(float(k[2])) for k in rows], type=bin_type)
-        l = pa.array([fixed(float(k[3])) for k in rows], type=bin_type)
-        c = pa.array([fixed(float(k[4])) for k in rows], type=bin_type)
-        v = pa.array([fixed(float(k[5]), VSCALE) for k in rows], type=bin_type)
+        o = pa.array([fixed_str(k[1], SCALE) for k in rows], type=bin_type)
+        h = pa.array([fixed_str(k[2], SCALE) for k in rows], type=bin_type)
+        l = pa.array([fixed_str(k[3], SCALE) for k in rows], type=bin_type)
+        c = pa.array([fixed_str(k[4], SCALE) for k in rows], type=bin_type)
+        v = pa.array([fixed_str(k[5], VSCALE) for k in rows], type=bin_type)
         qv = pa.array([k[7] for k in rows], type=ref_schema.field("quote_volume").type)
         cnt = pa.array([int(k[8]) for k in rows], type=ref_schema.field("count").type)
         tb = pa.array([k[9] for k in rows], type=ref_schema.field("taker_buy_base_volume").type)
@@ -151,7 +154,7 @@ def main() -> int:
         }
         print(f"[rewritten] {sym}: n={len(rows)} schema_eq={schema_equal}", flush=True)
     (REPO / "research/control/v10r_run/host3_rewrite_two_symbols_report.json").write_text(
-        json.dumps(report, indent=1)
+        json.dumps(report, indent=1, default=str)
     )
     ok = all(v["schema_equals_engine"] for v in report["symbols"].values())
     print("SUMMARY:", "OK" if ok else "FAIL")
