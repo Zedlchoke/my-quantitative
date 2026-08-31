@@ -172,6 +172,102 @@ A1 creates every worktree from an explicit 40-character bootstrap SHA, verifies
 HEAD/branch/clean status and records it in
 `research/control/stocks_run/worktree_manifest.json` before dispatch.
 
+### 5.1 A1 Stocks integration-worktree bootstrap
+
+The root checkout
+`/Users/hoangminhlong/my-quantitative` is the owner/bootstrap checkout, not A1's
+working directory. A1 Stocks MUST run only in:
+
+```text
+path:   /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration
+branch: orca/stocks-integration
+```
+
+Before creating A1, the owner/controller freezes `STOCKS_OWNER_SHA` as a full
+40-character commit SHA containing the approved PLAN files. The root checkout
+must be on the expected owner branch and `git status --porcelain=v1` must be
+empty. Uncommitted PLAN edits are not a bootstrap SHA.
+
+Fresh creation uses this exact pattern:
+
+```bash
+git -C /Users/hoangminhlong/my-quantitative rev-parse HEAD
+git -C /Users/hoangminhlong/my-quantitative branch --show-current
+git -C /Users/hoangminhlong/my-quantitative status --porcelain=v1
+git -C /Users/hoangminhlong/my-quantitative worktree list --porcelain
+git -C /Users/hoangminhlong/my-quantitative worktree add \
+  -b orca/stocks-integration \
+  /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration \
+  STOCKS_OWNER_SHA
+```
+
+`STOCKS_OWNER_SHA` is a document placeholder. Replace it with the measured full
+SHA; never pass the literal name to Git. If the path or branch already exists,
+do not rerun `worktree add`, delete it, reset it or force-create a branch.
+Inspect it instead:
+
+```bash
+git -C /Users/hoangminhlong/my-quantitative worktree list --porcelain
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration rev-parse HEAD
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration branch --show-current
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration status --porcelain=v1
+```
+
+Resume only if path, branch, expected ancestry and manifest identity agree. A
+dirty tree, missing path, unexpected branch or unexplained SHA is
+`STOCKS_A1_WORKTREE_IDENTITY_MISMATCH`; stop before writing and report it.
+
+The A1 launch prompt MUST include:
+
+```text
+ROLE: A1 Stocks controller and sole integration authority
+WORKTREE: /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration
+BRANCH: orca/stocks-integration
+OWNER_SHA: <full 40-character STOCKS_OWNER_SHA>
+READ FIRST: PLAN_stocks.md, PLAN.md, NOTES.md, research/wayfinder/MAP.md
+ROOT CHECKOUT: read-only after bootstrap; never implement from root/main
+AUTHORITY: create lane worktrees, manifests, freezes and gate records
+FORBIDDEN: edit forex/V11 ledgers, run scored S1, merge main, push, delete/reset
+FIRST ACTION: print pwd, HEAD, branch and porcelain status; stop on mismatch
+```
+
+The controller launches the A1 agent with the absolute integration path as its
+`cwd`; opening a PLAN in the root IDE does not change that `cwd`. Never launch
+A1 Stocks and A1 Forex into the same worktree or tell either agent to choose a
+worktree for itself.
+
+### 5.2 A1 creation of Stocks lane worktrees
+
+A1 first commits the intake manifest on `orca/stocks-integration` and freezes a
+full `STOCKS_WAVE_SHA`. Every lane in that wave branches from that exact SHA,
+not from moving `main` and not automatically from `STOCKS_OWNER_SHA`. Example
+for M0:
+
+```bash
+git -C /Users/hoangminhlong/my-quantitative worktree add \
+  -b orca/stocks-m0-common \
+  /Users/hoangminhlong/my-quantitative/.worktrees/stocks/m0-common \
+  STOCKS_WAVE_SHA
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/stocks/m0-common rev-parse HEAD
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/stocks/m0-common branch --show-current
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/stocks/m0-common status --porcelain=v1
+```
+
+Again, replace `STOCKS_WAVE_SHA` with the measured full SHA. Required output is
+that SHA, branch `orca/stocks-m0-common` and an empty status. A1 writes those
+values plus allowed/forbidden globs, tests, deliverables and merge order into
+`worktree_manifest.json`, commits the manifest on integration, and only then
+dispatches A2. Apply the same pattern to every path/branch in Section 5.
+
+Only A1 cherry-picks lane commits, one at a time, in the declared order. It
+runs targeted tests after every pick. Subagents never merge, rebase, amend,
+push, edit central ledgers or reuse a completed lane for unrelated work.
+
+When Stocks and Forex A1 run on the same host, the resource limit is
+machine-wide: do not interpret each PLAN's `A1 + 3` as permission for eight
+simultaneous agents. Full pytest and heavy scoring remain exclusive according
+to the fresh host resource probe.
+
 ## 6. Phase M0 — extract the reusable multi-asset core
 
 A2 replaces crypto-only names in new interfaces without changing historical

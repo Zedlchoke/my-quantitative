@@ -169,6 +169,108 @@ A1 creates and verifies paths/branch/full SHA/clean status before dispatch and
 records non-overlapping allowlists in
 `research/control/forex_run/worktree_manifest.json`.
 
+### 5.1 A1 Forex integration-worktree bootstrap
+
+The root checkout
+`/Users/hoangminhlong/my-quantitative` is the owner/bootstrap checkout, not A1's
+working directory. A1 Forex MUST run only in:
+
+```text
+path:   /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration
+branch: orca/forex-integration
+```
+
+Before creating A1, the owner/controller freezes `FOREX_OWNER_SHA` as a full
+40-character commit SHA containing the approved PLAN files. The root checkout
+must be on the expected owner branch and `git status --porcelain=v1` must be
+empty. Uncommitted PLAN edits are not an authorized bootstrap.
+
+Fresh creation uses:
+
+```bash
+git -C /Users/hoangminhlong/my-quantitative rev-parse HEAD
+git -C /Users/hoangminhlong/my-quantitative branch --show-current
+git -C /Users/hoangminhlong/my-quantitative status --porcelain=v1
+git -C /Users/hoangminhlong/my-quantitative worktree list --porcelain
+git -C /Users/hoangminhlong/my-quantitative worktree add \
+  -b orca/forex-integration \
+  /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration \
+  FOREX_OWNER_SHA
+```
+
+`FOREX_OWNER_SHA` is a placeholder and MUST be replaced by the measured full
+SHA. Never pass the literal placeholder to Git. If the path or branch already
+exists, do not rerun creation, force, delete or reset it. Inspect it:
+
+```bash
+git -C /Users/hoangminhlong/my-quantitative worktree list --porcelain
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration rev-parse HEAD
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration branch --show-current
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration status --porcelain=v1
+```
+
+Resume only if path, branch, expected ancestry and recorded manifest agree. A
+dirty tree, missing path, unexpected branch or unexplained SHA is
+`FOREX_A1_WORKTREE_IDENTITY_MISMATCH`; stop before writing.
+
+The A1 launch prompt MUST contain:
+
+```text
+ROLE: A1 Forex controller and sole integration authority
+WORKTREE: /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration
+BRANCH: orca/forex-integration
+OWNER_SHA: <full 40-character FOREX_OWNER_SHA>
+SHARED_CORE_SHA: <full MULTIASSET_CORE_SHA, or BLOCKED_PENDING_CORE>
+READ FIRST: PLAN_forex.md, PLAN_stocks.md, PLAN.md, NOTES.md
+ROOT CHECKOUT: read-only after bootstrap; never implement from root/main
+AUTHORITY: create forex lane worktrees, manifests, freezes and gate records
+FORBIDDEN: implement a competing common core, edit stocks/V11 ledgers,
+           run scored S1, merge main, push, delete or reset
+FIRST ACTION: print pwd, HEAD, branch and porcelain status; stop on mismatch
+```
+
+Launch the A1 agent with the absolute integration path as `cwd`. An IDE tab or
+terminal opened at repo root does not authorize A1 to work there. Never launch
+A1 Forex and another A1 into the same worktree.
+
+If `MULTIASSET_CORE_SHA` is not frozen, A1 records
+`BLOCKED_PENDING_CORE`. It may perform read-only intake/provider checks, but it
+must not dispatch A2 to create a competing `research/assets/common/**`. Once
+the owner-authorized core SHA is available, A1 integrates that exact commit,
+runs F0 compatibility and records the resulting full `FOREX_F0_SHA` before F1.
+
+### 5.2 A1 creation of Forex lane worktrees
+
+For each wave, A1 commits the controlling manifest on integration and freezes
+a full `FOREX_WAVE_SHA`. Every lane in that wave starts from that SHA, not from
+moving `main`, the Stocks integration tip or an uncommitted shared-core tree.
+Example for the F1 data lane:
+
+```bash
+git -C /Users/hoangminhlong/my-quantitative worktree add \
+  -b orca/forex-f1-data \
+  /Users/hoangminhlong/my-quantitative/.worktrees/forex/f1-data \
+  FOREX_WAVE_SHA
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex/f1-data rev-parse HEAD
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex/f1-data branch --show-current
+git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex/f1-data status --porcelain=v1
+```
+
+Replace `FOREX_WAVE_SHA` with the measured full SHA. Required output is that
+SHA, branch `orca/forex-f1-data` and empty status. A1 records identity,
+allowed/forbidden globs, tests, deliverables and merge order in
+`worktree_manifest.json`, commits it, then dispatches the lane. Apply the same
+pattern to every listed Forex worktree.
+
+Only A1 cherry-picks one lane commit at a time and tests after each pick.
+Subagents never merge, rebase, amend, push, edit central ledgers or reuse a
+completed worktree for a different task.
+
+When Stocks and Forex share one host, concurrency is machine-wide. Two A1
+controllers may remain active, but light-agent, full-pytest and heavy-worker
+caps are divided across the host based on a fresh resource probe; they are not
+doubled merely because two PLAN files each state a cap.
+
 ## 6. Phase F0 — common-core compatibility
 
 Consume the frozen `MULTIASSET_CORE_SHA` and prove:

@@ -1,8 +1,8 @@
 # GHI CHÚ DỰ ÁN — my-quantitative
 
 > File này tổng hợp toàn bộ những gì đã làm và kế hoạch sắp tới.
-> **Cập nhật lần cuối:** 2026-08-21 — Nautilus 1.230.0; universe Binance,
-> transfer test 6 altcoin, shared-capital portfolio và TradFi gate ghi tại §13.
+> **Cập nhật lần cuối:** 2026-08-31 — chính sách model/effort cho agents ghi tại
+> §22; các snapshot research lịch sử vẫn giữ nguyên ngày và verdict gốc.
 
 ---
 
@@ -1457,3 +1457,89 @@ V4: PIPELINE_PASS_CANDIDATE_FAIL · family REJECTED · S1: not started.**
 
 Chi tiết: research/wayfinder/evidence/sprint-v3-v4-master.md ·
 results/matrix/{v3_execution_truth,v4_xsect_mom} · v3_transition.json.
+
+---
+
+## 22. Chính sách model/effort cho research agents — 2026-08-31
+
+Quyết định vận hành khi dùng **GLM-5.3 Flash** cho `PLAN.md`,
+`PLAN_stocks.md` và `PLAN_forex.md`:
+
+| Agent/công việc | Effort mặc định | Lý do |
+|---|---|---|
+| A1 Crypto/Stocks/Forex | `high` | phải giữ đúng SHA, worktree, ownership, merge order, gate và trial accounting |
+| A2 shared core/compatibility | `high` | lỗi interface có thể làm nhiễm cả ba asset class |
+| A3 data/PIT/provider | `medium`; nâng `high` khi sửa PIT lineage | phần thường có thể tách nhỏ, nhưng timestamp/universe cần suy luận kỹ |
+| A4 calendar/session/corporate actions | `high` cho correctness; `medium` cho glue code | DST, holiday và event clock dễ tạo look-ahead âm thầm |
+| A5 accounting/execution/rollover | `high` | sai dấu, conversion hoặc cashflow làm sai toàn bộ PnL |
+| A6/A8 family implementation | `medium`; dùng `high` nếu integration phức tạp | spec đã freeze nên phần lớn là implementation có phạm vi rõ |
+| A7 independent audit | `high` | cần đối chiếu độc lập, tìm hidden assumption và chặn false PASS |
+| Lệnh cơ học: status, checksum, manifest, test runner | `low` hoặc `medium` | không cần tiêu tốn reasoning cao nếu contract đã rõ |
+
+### 22.1 Quy tắc sử dụng
+
+1. Ba A1 mặc định dùng `high`; không giảm xuống `medium` chỉ để chạy nhanh khi
+   đang bootstrap, merge, freeze, authorize scoring hoặc terminalize.
+2. Không đặt mọi agent ở `high`. Lane cơ học và implementation cô lập bắt đầu
+   ở `medium`; chỉ nâng khi có lỗi khó hoặc rủi ro correctness cụ thể.
+3. `xhigh`/`max`, nếu UI/provider có hỗ trợ, chỉ dùng cho incident khó, conflict
+   lineage, accounting mismatch hoặc terminal audit có giá trị cao. Không dùng
+   làm mặc định vì latency/chi phí lớn và chưa có bằng chứng repo này được lợi.
+4. Effort không thay thế gate. Output từ model mạnh hơn vẫn phải qua targeted
+   tests, full suite, clean-tree check, reproduction và A7 audit.
+5. Giới hạn concurrency là theo **toàn máy**. Hai PLAN cùng ghi `A1 + 3` không
+   có nghĩa Stocks và Forex được chạy tám agent trên cùng host.
+
+### 22.2 Metadata A1 phải ghi khi dispatch
+
+Mỗi record trong `worktree_manifest.json` bổ sung:
+
+```text
+model_requested
+provider
+reasoning_effort_requested
+reasoning_effort_effective_or_unverified
+worktree_path
+branch
+bootstrap_sha
+```
+
+GLM-5.3 Flash là model bên thứ ba. Không mặc định rằng nút `effort` của client
+được provider thực thi giống model OpenAI. Nếu không đọc được effective config
+hoặc provider không công bố mapping, ghi
+`reasoning_effort_effective_or_unverified=UNVERIFIED_PROVIDER_MAPPING`.
+
+Đây là **quyết định điều phối agent**, không phải kết quả research và không thay
+đổi verdict cũ, denominator, Stage-A gate, S1 isolation hay quyền live/paper.
+
+---
+
+## 23. Claude Code project toolkit — 2026-08-31
+
+Đã thêm bộ điều phối nằm trong repo:
+
+- `CLAUDE.md`: contract luôn được nạp, giữ worktree/A1/A7/S0-S1/trial/gate rules;
+- `.claude/agents/`: `a1-controller`, `implementation-agent`, `a7-auditor`;
+- `.claude/skills/`: 8 workflow cho intake, worktree, tests, gate evidence,
+  PIT data, trial freeze, reproduction/reconciliation và handoff;
+- `.claude/settings.json` + `hooks/policy_guard.py`: chặn một tập lệnh phá huỷ
+  hẹp như hard reset, forced clean/push, worktree removal và recursive forced
+  delete; lệnh bình thường vẫn đi qua permission flow của Claude Code;
+- `.claude/scripts/validate_claude_setup.py`: validator offline cho toàn bộ setup.
+
+Validation hiện tại của toolkit: **PASS**. Tám SKILL đều qua validator của
+`skill-creator`; hook smoke test cho lệnh thường exit 0 và `git reset --hard`
+exit 2; gate-runner smoke test đúng khi từ chối PASS vì owner tree đang dirty.
+Đây chỉ là test của toolkit, không phải research gate và không cho phép launch.
+
+Trước lần dùng đầu:
+
+```bash
+.venv/bin/python .claude/scripts/validate_claude_setup.py
+```
+
+Sau đó phải commit các PLAN/toolkit được owner duyệt, làm root sạch, freeze full
+40-character owner SHA, tạo/verify đúng integration worktree theo PLAN rồi mới
+chạy `claude --agent a1-controller --effort high` từ worktree đó. Không chạy A1
+Stocks hoặc Forex trực tiếp trong root checkout. Restart Claude Code một lần nếu
+session cũ chưa nhận ra các thư mục agent/skill mới.

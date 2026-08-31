@@ -46,6 +46,68 @@ risk/
 tests/                       unit tests (risk, regime, acceptance)
 ```
 
+## Research-agent plans and model effort
+
+The governed research roadmaps are:
+
+- `PLAN.md` — V11 crypto-perpetual research;
+- `PLAN_stocks.md` — US cash-equity/ETF research;
+- `PLAN_forex.md` — G10 spot-FX research.
+
+When **GLM-5.3 Flash** is used for these agents, the project default is:
+
+| Role/task | Reasoning effort |
+|---|---|
+| A1 controller, worktrees, integration and gates | `high` |
+| A7 independent prelaunch/terminal audit | `high` |
+| Shared core, PIT/accounting/rollover correctness | `high` |
+| Normal isolated implementation lane | `medium` |
+| Mechanical manifest/test/status checks | `low` or `medium` |
+| `xhigh`/`max`, if the provider exposes it | incident analysis or difficult terminal audit only |
+
+Do not set every agent to `high`: use it where reasoning errors can corrupt
+lineage, accounting or authorization. A1 records the requested model and effort
+in the worktree manifest. Because GLM is a third-party model, the provider's
+actual mapping of `effort` must be measured; an unsupported or unverified
+mapping is reported explicitly, never assumed.
+
+Worktree and machine-wide concurrency rules remain authoritative in the three
+PLAN files. Model effort does not relax scientific gates, ownership, trial
+budgets, S1 isolation or the prohibition on unapproved live/paper execution.
+
+### Claude Code project toolkit
+
+The repository includes eight project skills, three bounded agents and a
+destructive-command guard under `.claude/`. `CLAUDE.md` is the always-on
+operating contract.
+
+Validate the setup:
+
+```bash
+.venv/bin/python .claude/scripts/validate_claude_setup.py
+```
+
+Start a controller only from its already verified integration worktree:
+
+```bash
+cd /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration
+claude --agent a1-controller --effort high
+
+cd /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration
+claude --agent a1-controller --effort high
+```
+
+Use `implementation-agent` at `medium` in a manifest-assigned lane and
+`a7-auditor` at `high` in the assigned audit worktree. Inside Claude Code, the
+workflow skills are available as `/repo-intake`, `/worktree-dispatch`,
+`/test-router`, `/gate-evidence`, `/pit-data-audit`, `/trial-freeze`,
+`/reproduce-reconcile`, and `/agent-handoff`.
+
+Do not launch either A1 until the owner checkout is clean and its PLAN-approved
+full bootstrap SHA has been frozen. If a running Claude Code session does not
+show newly added agents/skills, restart it once so the new project directories
+are discovered.
+
 ## Quick start
 
 ```bash
