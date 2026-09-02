@@ -1,0 +1,125 @@
+{
+  "schema": "stocks_s2_proposal_v1",
+  "lane": "A5",
+  "sprint": "S2",
+  "family_id": "A5-S2-F2-EXDATE-TAX-CLIENTELE-CAPTURE",
+  "file_stem": "a5_family2",
+  "proposal_author_lane": "A5 accounting/borrow/execution",
+  "outcome_blind_declaration": {
+    "scored_pnl_computed": false,
+    "reads_other_lanes": false,
+    "note": "No scored-window PnL, PF, Sharpe or ranking was computed or read. Cost-drag numbers below are analytic consequences of the declared frozen cost models and published magnitudes, not candidate returns."
+  },
+  "retrieval_note": "All literature cited from MODEL_INTERNAL_UNVERIFIED memory (no network in this sprint). Authors/years/journals stated only where confident; no DOIs and no verbatim quotes are asserted. Where the post-2003 US evidence is thin in memory, that gap is stated rather than papered over with a citation.",
+  "mechanism": {
+    "economic_mechanism": "Because the marginal sellers into cum-dividend dates are taxable investors for whom dividends carry a tax penalty relative to capital gains, the ex-date price drop is systematically smaller than the dividend for payers whose dividends are penalized (Elton & Gruber 1970 clientele theory; Kalay 1982 bounds; Michaely 1991 tax-reform evidence). A buyer with a low effective tax penalty who holds through the ex-date mechanically earns capture = dividend - price drop = (1 - r) * div per share, where r is the drop ratio. The distortion is an equilibrium transfer from taxable sellers to tax-advantaged holders, concentrated in non-qualified / ordinary-income / high-yield payers (REITs are the clean ordinary-income case) and weakest where dividends are qualified and small (r -> 1). The A5 lens is the point: on adjusted (total-return) series this entire effect is invisible-by-construction, and on naive hedged backtests built from TR series the hedge leg's ex-date liability silently vanishes. The factory's explicit raw-price fills plus DividendEvent buckets (cash_dividends for the long, short_dividend_liability for any hedge short) are what make the accounting honest: capture is booked as an explicit cash receipt on a raw-price identity, and the hedge's liability is a named identity term that must be paid.",
+    "expected_counterparty": "Primary: taxable individuals and institutions who sell cum-dividend to avoid the tax penalty (the clientele documented by Elton & Gruber 1970 and Michaely 1991). Secondary: ex-date liquidity providers / dealers who absorb the pre-ex-date supply and are willing to hold through the ex-date because their effective tax penalty (or mark-to-market treatment) is low. For the hedged variant: the lending desk that supplies the sector-ETF short.",
+    "direction": "long payers through ex-date (event-driven), optionally hedged by a sector-ETF short whose own dividend liability is explicitly booked"
+  },
+  "pit_fields": [
+    {
+      "field": "declared cash dividend per share with PIT ex-date and declaration timestamp",
+      "authority": "corporate-actions master (A4 lane); dividend must be DECLARED before the formation signal to enter the event calendar",
+      "status": "AVAILABLE_IN_SYNTHETIC_FIXTURE_NOW (DividendEvent fixture); real UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "DividendEvent.ex_date_utc / dividend_per_share -> ledger cash_dividends"
+    },
+    {
+      "field": "dividend tax character at payment: qualified vs ordinary-income; REIT/ordinary classification",
+      "authority": "security master classification + provider tax-character metadata",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT (fixture may carry a declared boolean; real PIT tax character requires entitlement)",
+      "factory_binding": "universe filter and neighbour/control bucketing only; no ledger object needed"
+    },
+    {
+      "field": "regular-session price, bid/ask quotes at entry/exit events, halted flag, session_open flag",
+      "authority": "US equities OHLCV + NBBO quotes provider",
+      "status": "AVAILABLE_IN_SYNTHETIC_FIXTURE_NOW; real UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "EquityExecutionModel.attempt_fill fail-closed inputs; raw-price fills only"
+    },
+    {
+      "field": "ADV and participation context",
+      "authority": "OHLCV provider",
+      "status": "AVAILABLE_IN_SYNTHETIC_FIXTURE_NOW; real UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "ImpactModel sqrt impact + hard participation cap"
+    },
+    {
+      "field": "ETF borrow locate + PIT rate for the optional hedge short",
+      "authority": "prime-broker / securities-finance feed",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "BorrowLocate gate; absent/unavailable locate => declared fallback to the unhedged long-only variant, never a free short"
+    },
+    {
+      "field": "earnings report timestamps (PIT, B/A classified)",
+      "authority": "earnings calendar provider",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "event exclusion when ex-date window coincides with the earnings print (confound control)"
+    },
+    {
+      "field": "splits with ex/effective timestamps",
+      "authority": "corporate-actions master (A4 lane)",
+      "status": "AVAILABLE_IN_SYNTHETIC_FIXTURE_NOW; real UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "events with a split inside the holding window are excluded (clean identity)"
+    }
+  ],
+  "universe_neutralization_benchmark": {
+    "universe": "US-listed common stocks and REITs (and, if needed for liquidity, dividend-paying ETFs are NOT used for the long leg - the long leg is single-name) paying discrete declared cash dividends with ex-date yield above a declared floor; events, not names, are the unit; membership evaluated PIT at each event's formation",
+    "neutralization": "no sector netting (the mechanism is not sectoral); the declared neutralization context is dividend-event matching: anchor and control are compared only on events matched by declaration month and yield bucket, and dollar exposure per event is fixed at a constant notional so the family cannot drift into a market-beta bet",
+    "benchmark": [
+      "flat (absolute capture per event)",
+      "SPY total return",
+      "declared factor-neutral context: event-matched placebo (the negative-control arm IS the matched context: same clock, same cost model, same dollar notional, on payers where tax theory predicts r ~ 1)"
+    ]
+  },
+  "clocks": {
+    "formation_clock": "event-driven on the PIT declared-ex-date calendar: signal at the regular-session close 5 sessions before the ex-date (T-5), using only dividends declared before that signal (no announcement leakage)",
+    "holding_clock": "hold from the entry event through the ex-date (the dividend receipt books at the ex-date event) until the exit event at the regular-session close of T+1; if the exit event is non-executable (halt/closed), hold to the next executable event - fail closed, never priced off a stale print; flat positions book nothing on the ex-date (factory-native)",
+    "execution_clock": "entry fill at the FIRST EXECUTABLE regular-session event strictly after the T-5 close (one-event delay); exit at the executable T+1 close event; every order passes attempt_fill with HALTED -> SESSION_CLOSED -> MISSING_QUOTE -> MISSING_ADV -> PARTICIPATION_CAP fail-closed order; entry NO_FILL on a halted name means the event is skipped entirely (capture is only harvested when the full round trip executes - a one-legged event is not counted)",
+    "factory_expressibility": "fully expressible today: DividendEvent booking, attempt_fill, one-event delay, last_executable_event terminal policy"
+  },
+  "turnover_capacity": {
+    "expected_turnover": "one full round trip per event; with the quarterly dividend calendar of a broad payer universe the family is event-dense but never holds more than one event window per name, so annualized two-sided turnover of deployed notional is of order 50-150 round trips per year-slot; this is a fast, event-concentrated family - the cost identity, not the signal, is its binding constraint",
+    "cost_drag_reasoning": "Per event the frozen model charges: commission (order 0.3-1 bps per leg), half-spread on both legs (liquid large-cap payers: quotes of order 1-5 bps half-spread; declared conservative proxy 5-15 bps), slippage (declared bps), sqrt impact at <= 2 percent participation - all-in round trip of order 4-20 bps depending on the name's liquidity tier. Gross capture = (1 - r) * ex-date yield: with honestly uncertain post-2003 drop ratios r in [0.6, 0.95] (Kalay 1982 bounds; the 2003 qualified-dividend regime compresses r toward 1 and the evidence in memory is thin - stated, not cited), a 0.5%-of-price quarterly event captures roughly 2.5-20 bps, which the liquid-name friction can fully consume at the high-r end; a 1.0-1.5%-of-price ordinary-income REIT event at r near the low end captures roughly 25-75 bps, comfortably above friction, while at r near 0.95 it collapses below friction. The family therefore lives or dies on (a) targeting the high-penalty tail and (b) the honest spread/impact ledger; a naive engine that books the dividend into an adjusted series, or books the hedge leg's carry as zero, manufactures capture out of the accounting itself.",
+    "capacity": "per-event capacity is a small percent of pre-ex-date ADV (buying pressure into the ex-date moves the drop ratio itself); the payer universe is typically liquid, so event capacity of order 0.1-2 percent of ADV per name; strategy-wide capacity is the sum over concurrent events, realistically order 10-100M USD, and self-limits because competing capture buyers compress r toward 1"
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "anchor",
+      "definition": "long through ex-date on declared non-qualified / ordinary-income / highest-yield-quintile payers, fixed notional per event, honest dividend receipt on the raw-price ledger; optional declared variant: sector-ETF short hedge whose borrow fee and ex-date dividend liability are explicitly booked",
+      "cell_count": 1
+    },
+    "neighbour": {
+      "arm_id": "neighbour",
+      "definition": "same mechanism restricted to REITs - the clean ordinary-income payer class with the largest predicted tax penalty. Justified: Elton-Gruber clientele theory predicts the drop shortfall scales with the holder's tax penalty, so the mechanism's strongest form lives exactly there; Green & Rydqvist (1999, JFE) show the analogous sign flip where the clientele's coupon tax penalty exceeds the capital-gains rate",
+      "cell_count": 1
+    },
+    "negative_control": {
+      "arm_id": "negative_control",
+      "definition": "identical clock, cost model and dollar notional applied to qualified-dividend, lowest-yield-quintile payers, where tax theory predicts r ~ 1 and capture ~ 0, so the honest ledger should show a spread at or below the round-trip friction. A capture of anchor-like magnitude there falsifies the tax-clientele mechanism (it would be a generic yield/price-pressure artifact rather than the ex-date tax transfer)",
+      "cell_count": 1
+    },
+    "total_cells": 3
+  },
+  "corporate_action_earnings_borrow_dividend": {
+    "corporate_actions": "the dividend itself is the corporate action and is booked from the PIT DividendEvent record at the ex-date; events with a split inside the holding window are excluded so the identity stays clean; special/one-off dividends are allowed only if declared before T-5 and are flagged as their own bucket in the audit notes",
+    "earnings": "events whose [T-1, T+1] window contains the name's PIT earnings timestamp are excluded entirely (the ex-date drop and the earnings surprise are confounded); without the entitlement the family runs on the fixture and this exclusion is enforced only against fixture timestamps",
+    "borrow": "the anchor core is LONG-ONLY and needs no locate; the declared hedged variant shorts a sector ETF and inherits the full locate discipline: PIT BorrowLocate per hedge, unavailable or missing locate falls back to the unhedged variant (fail closed, never a free short), daily fee accrual at rate*days/360",
+    "dividend": "the long leg's receipt is booked into cash_dividends at the ex-date; the hedge ETF short books its own ex-date payouts into short_dividend_liability (explicitly, on the ETF's own ex-dates, not assumed away); a flat position books nothing - there is no phantom receipt for names not held through the ex-date",
+    "borrow_aware_feasibility_duty": "hedge feasibility is declared up front: the hedged variant is used only when the ETF locate is available at a GC-level PIT rate whose expected cost over the 6-7 session window (order 3-10 bps of hedge notional) is below the expected diversification benefit; otherwise the unhedged variant runs and event-matched benchmarking absorbs the beta"
+  },
+  "falsification_rule": "Falsify the family if ANY of: (i) anchor's net per-event capture (dividend receipt minus raw-price round trip minus all four cost buckets minus hedge borrow/liability when hedged) is not positive across S0 event folds; (ii) the negative-control arm (qualified low-yield) shows capture of anchor-like magnitude (mechanism not causal - generic yield artifact); (iii) the REIT neighbour does not rank at or above the anchor (tax-penalty ordering violated); (iv) capture appears only when the dividend is credited without the raw ex-date price drop being paid (an accounting artifact: on the honest raw-price ledger that configuration is impossible, so this condition is checked as a construction assertion in goldens, not as a scored outcome). Preregistered before any scored cell exists.",
+  "external_validity_caveats": [
+    "the post-2003 qualified-dividend regime mechanically compresses the drop shortfall; the surviving distortion is concentrated in ordinary-income/high-yield payers and may be smaller than the pre-2003 literature's magnitudes - the honest prior is thin",
+    "an alternative microstructure explanation for drop ratios below 1 exists (bid-ask bounce / round-lot effects; Frank & Jagannathan 1998, JFE, Hong Kong no-tax evidence); the design mitigates this by requiring fills at executable quotes rather than closes, but it cannot be excluded ex ante - this is precisely why the control arm is mandatory",
+    "dividend capture is a crowded dealer trade; r endogeneity (capture buyers compress the differential) bounds capacity and can erase the edge in high-yield episodes",
+    "tax-law changes are structural breaks; any scored result is regime-conditional",
+    "REIT ex-day behavior has its own microstructure idiosyncrasies (low price levels, lot-size effects); the neighbour could fail for reasons unrelated to the tax clientele"
+  ],
+  "max_trial_count": 3,
+  "eligibility": {
+    "not_an_indicator_grid": "one mechanism (ex-date tax-clientele transfer), three theory-linked arms, no lookback/threshold grid; the yield floor is a universe-definition parameter fixed in the spec, not a searched threshold",
+    "not_a_crypto_rescue": "distinct from M01 aggressor-flow absorption, funding-carry and weekly reversal on ALL four axes: observable (PIT declared-dividend/ex-date calendar and tax character, not funding rates or flow), counterparty (taxable cum-date sellers and ex-date dealers, not crypto perp counterparties), clock (event-driven multi-day holds keyed to ex-dates, not intraday/weekly reversal), causal control (qualified low-yield placebo removing the tax-penalty channel)"
+  },
+  "data_readiness": {
+    "synthetic_fixture_factory": "IMPLEMENTABLE NOW: DividendEvent fixtures, quotes/halt flags, ADV, split exclusion and locate records are first-class factory inputs",
+    "real_data": "BLOCKED pending owner-authorized entitlement (PIT declared dividends + tax character, earnings calendar, ETF borrow); no purchase is authorized by this proposal"
+  }
+}
