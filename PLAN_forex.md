@@ -176,9 +176,20 @@ The root checkout
 working directory. A1 Forex MUST run only in:
 
 ```text
-path:   /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration
+path:   /Users/hoangminhlong/my-quantitative
 branch: forex
 ```
+
+Sprint override (owner-authorized 2026-09-02, recorded in
+`research/control/forex_run/worktree_manifest.json`): branch `forex` replaces
+only the `orca/forex-integration` name, and because `forex` is singly checked
+out at the top level, the A1 integration seat for this sprint IS the top-level
+checkout shown above. `.worktrees/forex/integration` is not created and the
+fresh-creation example below is retained only as pre-override history. The old
+external worktrees on `orca/forex-integration` and `orca/forex-integration-2`
+are untouched historical worktrees. All subordinate Forex lane branches
+(`orca/forex-f*-*`) are unchanged and are still created under
+`.worktrees/forex/**` from frozen wave SHAs.
 
 Before creating A1, the owner/controller freezes `FOREX_OWNER_SHA` as a full
 40-character commit SHA containing the approved PLAN files. The root checkout
