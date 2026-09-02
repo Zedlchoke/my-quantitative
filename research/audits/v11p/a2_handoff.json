@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "role": "A2",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/v11/p1-a2-publication",
+  "branch": "orca/v11p-a2-publication",
+  "bootstrap_sha": "0a96bf215ee8a30433fddf005c99887fcc00a43a",
+  "commit_sha": null,
+  "clean": true,
+  "allowed_globs": [
+    "research/adapter_v10/publish.py",
+    "research/adapter_v10/protocol.py",
+    "research/v11/publication_identity.py",
+    "research/v11/__init__.py",
+    "tests/test_v11p_a2_*.py",
+    "research/audits/v11p/a2_*"
+  ],
+  "changed_files": [
+    "research/adapter_v10/publish.py",
+    "research/adapter_v10/protocol.py",
+    "research/v11/__init__.py",
+    "research/v11/publication_identity.py",
+    "tests/test_v11p_a2_publication.py",
+    "research/audits/v11p/a2_evidence.json",
+    "research/audits/v11p/a2_handoff.json"
+  ],
+  "deliverables": [
+    "D1: versioned trial identity v2 (research/v11/publication_identity.py) with explicit arm_id and canonical arm_config_digest covering every score-affecting arm field (full config mapping included; window stamps deliberately excluded as cell fields); digest definition itself versioned via ARM_CONFIG_DIGEST_SCHEMA",
+    "D2: anchor/neighbour/causal-control produce distinct v2 keys; exact replay of each reproduces the same key with zero additional publication (exactly-once now also holds under in-process concurrent publishers via a process-local RLock)",
+    "D3: historical v1 keys remain readable byte-for-byte (legacy_v1_payload pins the frozen key set and refuses drift); no historical ledger byte rewritten (proved by prefix test); public_payload untouched so legacy artifact views are stable",
+    "D4: M01 neighbour reconciled append-only via the preferred option -- a provenance-linked, kind-less trial-observation amendment ACCEPTED BY the ledger schema (validate_entry_kind passes), carrying the documented M01-N values verbatim, marked COMPUTED_UNPUBLISHED_CONTRACT_GAP / rescore_forbidden, deduped by terminal-artifact sha256; result: published=119, observed=120 via denominator_view",
+    "D5: tests prove compute-once increments the observed denominator even when publication is refused while a true idempotent replay moves neither counter; v1-collision regression pin of the documented M01 defect; fault tests for missing arm id, digest drift, duplicate replay and concurrent append all pass"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_v11p_a2_publication.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "17 passed, 0 failed, 0 skipped"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_adapter_v10_g1.py tests/test_protocol_contracts.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "48 passed (targeted regression sanity over the two edited modules; full pytest suite left for A1 integration per lane brief)"
+    }
+  ],
+  "assumptions": [
+    "commit_sha is intentionally null inside the committed handoff (a file cannot contain its own commit's SHA); it is the single commit on orca/v11p-a2-publication, reported in the A2 return message",
+    "publish_trial(arm_id='') is the API default meaning 'no explicit argument' and falls back to a DECLARED identity.arm_id; missing-arm fail-closed means no declared arm anywhere",
+    "cross-process concurrent writers to ONE ledger file stay outside the exactly-once guarantee (factory policy: one writer per worktree); in-process thread concurrency is covered and exact",
+    "the real global registry was never written by this lane; the 119/120 reconciliation is proven on a synthetic ledger seeded to mirror the frozen M01 state, with the amendment entry produced from the real terminal artifact bytes"
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/audits/v11p/a2_evidence.json",
+    "research/control/v10r_run/family_terminal_m01.json (read-only provenance source, unmodified)"
+  ],
+  "next_action_for_a1": "Cherry-pick this branch FIRST per PLAN section 7 'P1 integration order', then run the publication/ledger targeted tests (tests/test_v11p_a2_publication.py, tests/test_adapter_v10_g1.py) before cherry-picking A3; the only integration-sensitive change outside research/v11/ is the process-local exactly-once lock and versioned key resolution in research/adapter_v10/publish.py plus the optional declared arm_id field in StrategyIdentity (public_payload unchanged, so historical artifact hashes are unaffected)."
+}
