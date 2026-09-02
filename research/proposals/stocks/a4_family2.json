@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "proposal_id": "A4_F2_OVI_DECOMP_V1",
+  "hypothesis_id": "A4_F2_OVI_DECOMP_V1",
+  "family_id": "A4_F2_OVI_DECOMP_V1",
+  "title": "Defensive overnight-capture sleeve: close-to-open exposure on a defensive book, with the intraday leg as causal control (overnight-vs-intraday return decomposition)",
+  "lane": "S2/A4 (calendar/session/corporate-actions perspective)",
+  "branch": "orca/stocks-s2-prop-a4",
+  "bootstrap_sha": "3a00fd7653dd5ff51ca4b9be51b494638bbb6df9",
+  "created_date": "2026-09-02",
+  "outcome_blind_attestation": "Proposal written before any scored window exists. No candidate returns, PF, Sharpe or rankings were computed, and no other proposal lane's files were read. Literature expectations are qualitative priors only.",
+  "priority_space": "PLAN_stocks.md section 9: defensive overnight/intraday decomposition",
+  "economic_mechanism": {
+    "statement": "US equity expected returns are earned at different times of the session: documented US evidence shows the average equity premium accrues disproportionately to holding overnight (regular-session close to next regular-session open), while the average intraday (open-to-close) return is near zero or negative for the broad market. The mechanism generating this localization is institutional infrequent rebalancing: investors who trade occasionally accumulate/distribute around session-boundary auctions, transferring overnight exposure to whoever holds through the close and concentrating intraday price pressure on those who trade during sessions. The family holds a defensive (low-beta) long book only overnight - entered at the closing auction, exited at the next opening auction - capturing the overnight component while refusing the intraday component of the same names.",
+    "counterparty": "Intraday-horizon traders and flow-driven institutions whose rebalancing pressure is concentrated in session-boundary auctions (the infrequent-rebalancing cohorts of Bogousslavsky 2016); also investors structurally averse to holding overnight-gap risk who demand to be compensated for it. We are the overnight-exposure provider on the other side of their intraday-flat preference.",
+    "why_the_edge_exists": "The overnight/intraday split is not priced like a single daily return: French-Roll (1986) show variance and information processing are concentrated in sessions; Lou-Polk-Skouras (2019) show premia localize into overnight vs intraday components by ownership/strategy clienteles. Compensating holders for overnight gap risk, with buying pressure concentrated at the close, produces a persistent positive overnight average that naive daily-close bars average together with a negative intraday average.",
+    "literature": [
+      {
+        "citation": "French, K. and R. Roll (1986), 'Stock Return Variances: The Arrival of Information and the Reaction of Traders', Journal of Financial Economics 17(1).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Return variance and price discovery concentrate in trading hours; non-trading intervals (overnight, weekends, holidays) are structurally distinct return states."
+      },
+      {
+        "citation": "Lou, D., C. Polk and S. Skouras (2019), 'A Tug of War: Overnight Versus Intraday Expected Returns', Journal of Financial Economics 134(1).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "US equities' expected returns decompose into overnight and intraday components with opposite signs on average; the overnight component is positive for broad/defensive/quality-like books while intraday is negative on average."
+      },
+      {
+        "citation": "Bogousslavsky, V. (2016), 'Infrequent Rebalancing, Return Autocorrelation, and Seasonality', Journal of Finance 71(6).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Infrequently rebalancing institutions concentrate order flow near session boundaries, generating overnight-momentum/intraday-reversal patterns - the mechanism behind overnight localization."
+      },
+      {
+        "citation": "Aboody, D., O. Even-Tov, R. Lehavy and B. Trueman (2018), 'Overnight Returns and Firm-Specific Investor Sentiment', Journal of Financial Economics 127(2).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Overnight-vs-intraday asymmetry varies cross-sectionally with clientele/sentiment; grounds the ownership-conditioned neighbour."
+      }
+    ]
+  },
+  "pit_fields": [
+    {
+      "field": "session_calendar_table (holidays, early closes 13:00 ET, special closures, DST-correct UTC bounds)",
+      "authority": "US_EQUITY_REGULAR_V1 frozen table (A4); pinned reference NYSE hours/calendar page per PLAN section 2",
+      "status": "AVAILABLE_IN_FACTORY (synthetic-golden baseline; 2027-2030 rule-derived entries flagged NEEDS_PROVIDER_VERIFICATION)"
+    },
+    {
+      "field": "regular_session_open_and_close_prices (opening-auction and closing-auction prints or first/last regular-session prints)",
+      "authority": "Owner-authorized provider of daily OHLC with regular-session bounds (PLAN section 2 preferred order: Databento when entitled)",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "note": "The decomposition is only meaningful on prints at the session bounds; consolidated closes contaminated by after-hours prints silently fake the overnight return."
+    },
+    {
+      "field": "pit_beta_inputs (252-session rolling beta vs SPY on TOTAL_RETURN path, from PIT prices)",
+      "authority": "PIT price history via A3/loader; SPY as benchmark series",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT for real prices; schema in synthetic fixture"
+    },
+    {
+      "field": "pit_institutional_ownership (13F holdings snapshots with filing/period PIT lags)",
+      "authority": "SEC 13F filings via owner-authorized vendor",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "note": "Needed for the neighbour arm only; 45-day filing lag handled as PIT with explicit availability dates."
+    },
+    {
+      "field": "corporate actions (splits, cash dividends with ex/effective timestamps)",
+      "authority": "A4 CorporateActionEngine records; provider CA file when entitled",
+      "status": "factory contract now; real records UNAVAILABLE_PENDING_ENTITLEMENT"
+    },
+    {
+      "field": "halt/no-print intervals",
+      "authority": "Provider halt feed as declared HaltInterval",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT; factory supports declared halts with fail-closed gap classification"
+    }
+  ],
+  "universe_neutralization_benchmark": {
+    "universe": "PIT-accepted liquid US common stocks/ETFs from A3 (>= 30 eligible names per decision), filtered to the low-beta defensive subset defined below.",
+    "neutralization": "Defensive context: long-only book equal/sector-capped weighted across the bottom-beta tercile (252-session rolling beta vs SPY, PIT), with sector caps so the book is not a single-sector bond-proxy. No short leg in the anchor/control (the mechanism is an exposure-selection sleeve, not a cross-sectional ranking bet).",
+    "benchmark": "Flat (cash) and SPY total return; declared factor-neutral context: market-beta-matched overnight exposure (book beta reported against SPY so the sleeve is interpretable as a partial-market-exposure overlay), sector-capped."
+  },
+  "clocks": {
+    "formation_clock": "Calendar-anchored (no signal event): the book is re-derived each session from the previous close's PIT beta tercile membership; formation decisions are computed from data strictly before the entry instant.",
+    "holding_clock": "Overnight interval only: buy at session_bounds(day).end_utc (closing auction; 13:00 ET on early closes), hold the overnight gap, sell at next_session(day).start_utc (opening auction). The interval spans weekends, holidays and the 13:00 early-close boundaries exactly as the frozen table declares; the pre-holiday overnight (e.g., the ~41h Thanksgiving eve interval) is a structurally longer overnight state, not a missing bar.",
+    "execution_clock": "Double-auction execution: closing auction entry, next opening auction exit. Gaps between are classified by classify_gap as GAP_OK_WITH_REASON (outside regular sessions; the gap IS the return). A name halted through the exit open (declared HaltInterval) is carried to the first halt-free open - no synthetic fill ever; an unexplained in-session gap fails closed and stops the book for that name.",
+    "calendar_expressibility": "Fully session-calendar native: session_bounds, next_session, early_close_cutoff_utc; baseline scoring keeps pre/post phases disabled - the overnight return is the close-to-open gap between regular sessions, NOT a pre/post-market strategy. The calendar manifest digest is part of the trial identity."
+  },
+  "turnover_capacity": {
+    "expected_turnover": "Literature-informed prior, not a computed result: full-notional daily round trip at session boundaries (100% one-sided turnover per session day, ~250 round trips/year), the highest-turnover shape of any family in this sprint; capacity therefore hinges on auction liquidity of the defensive mega-cap subset.",
+    "expected_capacity": "Low eight figures USD at <= 5% of closing/opening auction volume in low-beta large caps; auction participation beyond that moves the close against the book, directly consuming the overnight premium.",
+    "cost_sensitivity_declared": "This family lives or dies on double-auction costs: the S6 x1.5 commission/spread stress and the declared auction-cost proxy are gates by construction; the proposal accepts the risk that auction costs make it infeasible - that is an honest null, not a hidden grid."
+  },
+  "arms": [
+    {
+      "arm_id": "A4_F2_OVI_DECOMP_V1:ANCHOR",
+      "name": "anchor_overnight_lowbeta",
+      "definition": "Long defensive book (bottom-beta tercile, sector-capped, PIT) bought at the closing auction, sold at the next opening auction, every session day including early closes and holiday-spanning intervals.",
+      "role": "Captures the documented positive overnight component of the same names' returns."
+    },
+    {
+      "arm_id": "A4_F2_OVI_DECOMP_V1:NEIGHBOUR",
+      "name": "neighbour_overnight_high_own",
+      "definition": "Identical overnight clock, but the book is selected by high PIT institutional ownership (13F, with filing-lag availability dates) instead of low beta.",
+      "role": "Theoretically justified neighbour: Lou-Polk-Skouras (2019) attribute overnight localization to ownership clienteles - the mechanism's state variable - so the same clock applied to the ownership-selected book should also capture the overnight premium. Supports the anchor if the mechanism is clientele-driven overnight compensation rather than low-beta per se."
+    },
+    {
+      "arm_id": "A4_F2_OVI_DECOMP_V1:CONTROL",
+      "name": "control_intraday_lowbeta",
+      "definition": "The identical anchor book, but held intraday only: bought at the opening auction, sold at the same session's closing auction, flat overnight.",
+      "role": "Causal negative control: same names, same formation, same trading frequency, only the holding interval differs. The mechanism predicts the overnight premium vanishes here (US evidence: average intraday component ~zero or negative), so a materially weaker/destructive control isolates the overnight interval - the calendar's close-to-open gap - as the causal carrier. If intraday matches overnight, the family is falsified: the edge would be plain market beta."
+    }
+  ],
+  "corporate_action_earnings_borrow_dividend_treatment": {
+    "corporate_actions": "Splits/cash dividends applied exactly once at ex/effective timestamps (default: ex-date open). When the exit open coincides with an ex-date, the position held through the prior close is entitled: the engine accrues cash_to_position at the ex/effective moment and the raw-vs-total-return reconciliation must close at that boundary. Signals/beta on the TOTAL_RETURN path; auction fills on the RAW path.",
+    "earnings": "No earnings conditioning: names are held regardless of their announcement calendar, which is what makes this family's information set disjoint from A4 Family 1 (PEAD). Earnings-day overnight gaps are simply part of the overnight return stream.",
+    "borrow": "No short legs in any arm; borrow treatment is 'not required', declared explicitly so the SD4 borrow gates trivially but honestly (no free-borrow assumptions anywhere).",
+    "dividends": "Long legs receive cash dividends; the dividend yield lands in the overnight leg whenever ex-dates follow holds, and the SPY total-return benchmark keeps dividend treatment symmetric."
+  },
+  "falsification_rule": {
+    "pre_registered": "Family survives only if (a) anchor: after-cost expectancy > 0 and position PF >= 1.10 with >= 2/3 chronological folds positive and no fold PF < 0.80 (PLAN section 13); (b) neighbour supports anchor (positive overnight premium, same sign); (c) intraday-only control destroys or materially weakens the effect (intraday expectancy <= overnight expectancy by an economically declared margin; intraday expectancy <= 0 is the mechanism's point prediction); (d) drop-one-symbol/sector/fold survival and the S6 auction-cost stress hold. If the control matches the anchor, the family is rejected: it was market beta wearing a calendar costume.",
+    "external_validity_caveats": [
+      "The positive-average overnight component is strongest in US large caps in recent decades and is regime-dependent; prior decades and other markets differ, so a null on S0 is a legitimate outcome.",
+      "Double-auction costs are the dominant feasibility risk; small changes in the declared auction-cost proxy can flip net expectancy (cost-gate honesty is declared up front).",
+      "Open/close print quality decides the decomposition: consolidated fields contaminated by after-hours prints silently fake or destroy the overnight return; provider print-at-bounds verification is mandatory before real scoring.",
+      "Early closes and holiday-spanning overnights are structurally different intervals; the frozen 2027-2030 calendar entries are rule-derived pending provider verification.",
+      "Beta and ownership inputs are PIT-lagged estimators; estimation-window drift changes the book and therefore the trial identity."
+    ]
+  },
+  "max_trials": 3,
+  "novelty_defense": {
+    "vs_rejected_crypto_families": "Not a rescue of weekly reversal: the observable is the session-decomposed close-to-open return capture (not a weekly reversal score), the counterparty is auction-concentrated infrequent rebalancers/intraday-flat investors, the clock is daily double-auction on the NYSE session calendar with early-close and holiday-spanning intervals (no weekly calendar anywhere), and the causal control is the intraday-only leg of the same book (not a shuffled or inverted reversal signal). Not M01 aggressor-flow absorption (no order-flow imbalance observable, no L2/microstructure inputs) and not funding-carry (no funding cashflows; US cash equities only).",
+    "vs_A4_family1_PEAD": "Different observable (return decomposition vs accounting surprise), different conditioning (pure calendar clock vs event-anchored timestamps), different counterparty, different control (intraday leg vs sign-flipped surprise), disjoint information sets (no earnings data used).",
+    "lens_note": "The edge lives exactly where naive session handling silently fakes or destroys the effect: daily-bar pipelines average the overnight and intraday components into one close-to-close return; DST-correct UTC bounds, 13:00 early closes, holiday-spanning gaps and halt fail-closed semantics are the difference between measuring and inventing this premium."
+  },
+  "data_readiness": {
+    "synthetic_fixture": "Implementable now against the synthetic-fixture factory: US_EQUITY_REGULAR_V1 bounds/early closes, CorporateActionEngine ex-date accrual and reconciliation, fixture prices with expected overnight-positive/intraday-flat-sign and control-destruction goldens.",
+    "real_data": "BLOCKED pending owner-authorized entitlement: session-bound prints (open/close auction or first/last regular-session prints), PIT beta inputs, 13F ownership snapshots and halt feeds are UNAVAILABLE_PENDING_ENTITLEMENT; scored real research closes STOCKS_BLOCKED_DATA_AUTHORITY until then (PLAN section 0)."
+  }
+}
