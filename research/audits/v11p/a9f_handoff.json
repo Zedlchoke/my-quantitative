@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "role": "D2-A9-F",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/v11/d2-a9-feasibility",
+  "branch": "orca/v11d-a9-feasibility",
+  "bootstrap_sha": "903ed49529de5ee56ece7dc9fe896da32804a4f8",
+  "commit_sha": null,
+  "clean": true,
+  "allowed_globs": [
+    "research/audits/v11p/a9f_*"
+  ],
+  "changed_files": [
+    "research/audits/v11p/a9f_feasibility_audit.json",
+    "research/audits/v11p/a9f_feasibility_audit.md",
+    "research/audits/v11p/a9f_handoff.json",
+    "research/audits/v11p/a9f_scratch/assemble.py",
+    "research/audits/v11p/a9f_scratch/compute_raw.json",
+    "research/audits/v11p/a9f_scratch/coverage_raw.json",
+    "research/audits/v11p/a9f_scratch/inspect_schema.py",
+    "research/audits/v11p/a9f_scratch/run_compute.py",
+    "research/audits/v11p/a9f_scratch/run_coverage.py",
+    "research/audits/v11p/a9f_scratch/run_schedules.py",
+    "research/audits/v11p/a9f_scratch/schedules_raw.json"
+  ],
+  "deliverables": [
+    "research/audits/v11p/a9f_feasibility_audit.json",
+    "research/audits/v11p/a9f_feasibility_audit.md",
+    "research/audits/v11p/a9f_handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/audits/v11p/a9f_scratch/run_coverage.py research/audits/v11p/a9f_scratch/coverage_raw.json",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "20 bar symbols, 20 instrument defs, 20/20 funding (scan_2026), 0 OI parquets in 43-file schema census"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/audits/v11p/a9f_scratch/run_schedules.py research/audits/v11p/a9f_scratch/schedules_raw.json",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "frozen A3 gate runs: 4 PASS (a5_prop1, a8_prop1, both seeds), 3 UNAVAILABLE_FAIL_CLOSED on OI absence with floor-passing counterfactuals, 2 breadth-blocked (a6 lane), 4 documented counterfactual runs"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/audits/v11p/a9f_scratch/run_compute.py research/audits/v11p/a9f_scratch/compute_raw.json",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "representative feature generation ~2.2s total, peak RSS ~137MB on 8GiB host; OI feature UNAVAILABLE (no data)"
+    }
+  ],
+  "assumptions": [
+    "Candidate frozen scored window 2025-08-22T00:00Z..2026-08-21T00:00Z (365d; end anchored to task statement 'data through 2026-08-21'; no window yet declared in run_contract.json)",
+    "Weekly decisions Monday 00:00Z (A5/A8/seeds); monthly = 28d cycle at 00:05Z (A6 declared convention); terminal FORCED_FLAT appended and excluded from the discretionary count by the frozen gate",
+    "Target books are deterministic price-independent schedule proxies (bucket structure per spec), not scored results; fill prices are real staged 15m closes used as cost inputs only",
+    "DV tradability floor = trailing-28d median daily dollar volume strictly above cross-sectional PIT median (9 of 20 symbols eligible at every decision)",
+    "PIT listing from instrument-info onboardDate (staged bar firsts are snapshot-coverage starts, not listing dates)",
+    "Funding cadence from funding_data/scan_2026 (20/20 symbols); 20240820_20260821 dir is a 7-symbol earlier partial capture"
+  ],
+  "blockers": [
+    "OI_POSITIONING group (a5_prop2, a6_prop2, a8_prop2) UNAVAILABLE: zero OI snapshot coverage in the staged snapshot; staging new OI data requires owner scope (fetching forbidden for this auditor)",
+    "V11-A6-ILLIQUIDITY-PREMIUM FAIL: its own fail-closed min-6-names-per-leg rule unsatisfiable (9 eligible symbols < 18) at every decision date",
+    "HIGH breadth flag (not a floor fail): weekly quintile families trade 1 name per leg on this universe; Stage-A concentration gates are the binding downstream risk"
+  ],
+  "evidence_paths": [
+    "research/audits/v11p/a9f_feasibility_audit.json",
+    "research/audits/v11p/a9f_feasibility_audit.md",
+    "research/audits/v11p/a9f_scratch/coverage_raw.json",
+    "research/audits/v11p/a9f_scratch/schedules_raw.json",
+    "research/audits/v11p/a9f_scratch/compute_raw.json"
+  ],
+  "next_action_for_a1": "D3 selection: ILLIQUIDITY_PREMIUM canonical candidate a8_prop1 (runner-up a5_prop1, equal feasibility), both seeds PASS. OI_POSITIONING is data-blocked end-to-end (zero OI coverage) - either close the group or stage PIT OI snapshots under owner scope before Phase I; a6_prop1 remains breadth-FAIL regardless. Verify HEAD on orca/v11d-a9-feasibility equals the commit containing this handoff (self-referential sha left null per template default)."
+}
