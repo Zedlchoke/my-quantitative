@@ -1,0 +1,131 @@
+{
+  "schema": "stocks_s2_proposal_v1",
+  "lane": "A5",
+  "sprint": "S2",
+  "family_id": "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM",
+  "file_stem": "a5_family1",
+  "proposal_author_lane": "A5 accounting/borrow/execution",
+  "outcome_blind_declaration": {
+    "scored_pnl_computed": false,
+    "reads_other_lanes": false,
+    "note": "No scored-window PnL, PF, Sharpe or ranking was computed or read. Cost-drag numbers below are analytic consequences of the declared frozen cost models and published magnitudes, not candidate returns."
+  },
+  "retrieval_note": "All literature cited from MODEL_INTERNAL_UNVERIFIED memory (no network in this sprint). Authors/years/journals stated only where confident; no DOIs and no verbatim quotes are asserted.",
+  "mechanism": {
+    "economic_mechanism": "Names whose securities-lending supply is scarce relative to short demand (high point-in-time borrow fee, high lending utilization) carry a short-sale-constraint overpricing: optimists set the marginal price while constrained short sellers cannot arbitrage it away, so expected forward returns of the constrained tail are abnormally low. The harvestable object is the sector-neutral long-short spread: short the lending-constrained tail where the locate is actually available at a PIT rate, fund with lending-supply-rich (general-collateral, high-lendable-float) names in the same sector/size bucket. The family's edge and its feasibility live in the SAME data: the fee that ranks the names is the fee the ledger charges, and the dividend that accrues to the long leg is a liability on the short leg. Naive engines that book shorts at zero borrow and ignore short dividend liability inflate this spread by roughly the full fee plus dividend yield of the short notional; the honest identity turns most published 'anomaly' gross spread into the documented, much smaller shorting premium.",
+    "expected_counterparty": "Primary: securities-lending desks (beneficial owners / prime brokers) who are paid the borrow fee our short leg pays, and who can recall the stock (recall risk is theirs to trigger). Secondary: sentiment-driven retail longs in the constrained names who provide the overpricing (Miller 1977 divergence-of-opinion mechanism; Stambaugh-Yu-Yuan 2012 sentiment evidence). Tertiary: institutions with large lendable supply in the long-leg names earning lending income against us.",
+    "direction": "short lending-constrained / long lending-rich, dollar-neutral within sector"
+  },
+  "pit_fields": [
+    {
+      "field": "borrow_locate.available + borrow_locate.annual_rate (PIT, daily, per symbol)",
+      "authority": "prime-broker / beneficial-owner securities-finance feed (e.g. aggregated lending platform data)",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "research/assets/stocks/accounting.BorrowLocate; SharedCapitalReplay.submit_intent locate gate; accrue via compute_borrow_fee (360-day basis)"
+    },
+    {
+      "field": "lending utilization = loans outstanding / lendable supply (PIT, daily)",
+      "authority": "same securities-finance feed",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "ranking input only; no factory object needed"
+    },
+    {
+      "field": "biweekly short interest (PIT)",
+      "authority": "FINRA consolidated short interest",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "optional corroborating observable (neighbour-robustness only, not required for the 3 cells)"
+    },
+    {
+      "field": "price, bid/ask quotes, ADV, halted flag, session_open flag (regular session)",
+      "authority": "US equities OHLCV + NBBO quotes provider",
+      "status": "AVAILABLE_IN_SYNTHETIC_FIXTURE_NOW; real UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "EquityExecutionModel.attempt_fill fail-closed inputs; SpreadPolicy quotes-or-proxy"
+    },
+    {
+      "field": "PIT sector (GICS) and size bucket, listing/delisting dates",
+      "authority": "security master (A3 lane)",
+      "status": "AVAILABLE_IN_SYNTHETIC_FIXTURE_NOW; real UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "universe membership at formation; sector neutralization"
+    },
+    {
+      "field": "split/dividend corporate actions with ex/effective timestamps (PIT)",
+      "authority": "corporate-actions master (A4 lane)",
+      "status": "AVAILABLE_IN_SYNTHETIC_FIXTURE_NOW; real UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "DividendEvent -> short_dividend_liability / cash_dividends; split-adjusted position continuity"
+    },
+    {
+      "field": "earnings report timestamps, PIT, before/after-market classified",
+      "authority": "earnings calendar provider (A4/A3 lane)",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "formation-time exclusion of same-day entry into an earnings print; no backfilled dates"
+    },
+    {
+      "field": "borrow recall events (forced-return notices)",
+      "authority": "prime-broker feed",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "factory_binding": "declared fail-closed behavior: without recall data, shorts are NOT force-closed mid-hold; the daily locate re-check blocks NEW opens only. Recorded as an external-validity caveat, not silently assumed away."
+    }
+  ],
+  "universe_neutralization_benchmark": {
+    "universe": "PIT population of US-listed common stocks with price >= 5 USD, sufficient ADV, primary US listing; membership decided only at each formation from data known at that time; delisted names retained to their last valid event",
+    "neutralization": "dollar-neutral long/short within PIT sector bucket, further matched into size buckets so the spread is not a sector/size tilt; no current-membership backfill",
+    "benchmark": [
+      "flat (absolute spread)",
+      "SPY total return",
+      "declared factor-neutral context: sector + size bucket neutral long/short (the portfolio IS its own factor context; beta spread reported descriptively, not optimized away)"
+    ]
+  },
+  "clocks": {
+    "formation_clock": "month-end regular-session close event: rank universe by PIT borrow-fee percentile (anchor) within sector/size bucket; long tail and short constrained tail selected from data as of that close",
+    "holding_clock": "hold until the next month-end signal (approx. 21 regular sessions); borrow fee accrued daily at rate*days/360 while short is held; daily PIT locate re-check gates new opens only (fail-closed: missing/unavailable locate -> rejection record, zero cost, never a free fill)",
+    "execution_clock": "entry fills at the FIRST EXECUTABLE regular-session event strictly AFTER the formation close (one-event delay via next_executable_event_index); exits at the executable event following the next signal; every order passes attempt_fill whose HALTED -> SESSION_CLOSED -> MISSING_QUOTE -> MISSING_ADV -> PARTICIPATION_CAP order fails closed, so a halted or unquoted name is skipped (rejection evidence) and never priced off a stale print; terminal valuation on the last observable executable event",
+    "factory_expressibility": "fully expressible today: SharedCapitalReplay.submit_intent (locate gate), IdentityLedger.accrue_borrow_fee / apply_dividend, EquityExecutionModel.attempt_fill, one-event delay helpers"
+  },
+  "turnover_capacity": {
+    "expected_turnover": "one full two-sided rebalance per month with realistic leg overlap rho ~ 0.6-0.8 gives two-sided turnover of roughly 2*(1-rho)*12 ~ 500-1000 percent of per-leg notional per year; this is a slow family by construction",
+    "cost_drag_reasoning": "Per-side per-rebalance friction with the frozen model: commission (per-share schedule, order of 0.3-1 bps at 50-100 USD prices), half-spread (quotes when entitled; else the declared conservative proxy of order 10-25 bps for the deliberately illiquid constrained short names vs 3-10 bps for the liquid long names), slippage (declared bps), sqrt-impact at participation <= 2 percent of ADV with hard cap (orders above cap do not fill). The DOMINANT drag is carry on the short leg: average PIT fee of special names of order 3-10 percent per annum (D'Avolio 2002 fee distribution) over near-full-year exposure gives ~3-10 percent/yr on short notional, plus short dividend liability of order 1-2 percent/yr on short notional. The honest bar is therefore: gross sector-neutral spread must exceed roughly 5-12 percent/yr on short notional plus trading friction. Published overpricing spreads of order 5-15 percent/yr gross (Nagel 2005; Stambaugh-Yu-Yuan 2012) shrink to the documented shorting-premium residue (Drechsler & Drechsler, working paper) once this is paid. A zero-borrow backtest of the identical ranking is expected to 'earn' several points per year more than the honest ledger; that delta is the family's own falsification diagnostic, not its edge.",
+    "capacity": "bounded by the short leg: constrained names are by definition low-lendable and typically mid/small cap; participation cap forces entry over multiple days, so realistic capacity is low single-digit percent of the short-leg ADV, order 10-100M USD strategy-wide depending on the constrained tail's liquidity; capacity shrinks further whenever specialness is concentrated (regressions to GC in calm regimes)"
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "anchor",
+      "definition": "sector/size-neutral long lending-rich vs short lending-constrained tail ranked by PIT borrow-fee percentile, locate-gated, honest borrow + short-dividend-liability accounting",
+      "cell_count": 1
+    },
+    "neighbour": {
+      "arm_id": "neighbour",
+      "definition": "identical portfolio construction with the ranking observable replaced by PIT lending utilization (loans/lendable) instead of fee. Justified: fee and utilization are the price and quantity of the same lending market (D'Avolio 2002; Geczy, Musto & Reed 2002), so the mechanism predicts the same sign; disagreement between them would mean the edge is a fee-data artifact, not lending scarcity",
+      "cell_count": 1
+    },
+    "negative_control": {
+      "arm_id": "negative_control",
+      "definition": "identical selection machinery, universe, sector/size buckets and clocks, but executed entirely among general-collateral names (top lending-supply tercile, GC-level fees), where the short-sale-constraint cause is absent; the same fee-rank placebo ordering within that bucket is traded. The mechanism predicts a spread indistinguishable from zero after costs; a full-magnitude spread there falsifies the lending-constraint mechanism (it would be an unidentified liquidity/beta artifact of the ranking machinery)",
+      "cell_count": 1
+    },
+    "total_cells": 3
+  },
+  "corporate_action_earnings_borrow_dividend": {
+    "corporate_actions": "splits applied at PIT ex/effective events with position continuity; names with a split inside the entry window are deferred one formation to keep the entry identity clean; terminal valuation only on executable events",
+    "earnings": "entry is skipped for a name whose PIT earnings timestamp falls on the entry session (rejection evidence, zero cost); positions otherwise held through earnings deliberately (the overpricing unwind is documented to occur over weeks, so avoiding all earnings would gut the mechanism)",
+    "borrow": "locate per name per formation (PIT), re-checked daily; unavailable or missing locate REJECTS the short with a zero-cost rejection record and no fill (factory behavior, never overridden); fee accrues daily while held at rate*days/360; recall events are UNAVAILABLE_PENDING_ENTITLEMENT and declared as an explicit caveat rather than silently modeled",
+    "dividend": "long leg receives cash dividends at ex-date into cash_dividends; short leg pays the SAME kind of event into short_dividend_liability; no total-return series is used for fills or for the short leg's carry, so the liability cannot hide inside an adjustment factor",
+    "borrow_aware_feasibility_duty": "the strategy's feasibility conditional is explicit: a constrained name is traded ONLY if locate is available at a PIT rate whose expected fee over the holding period does not exceed the name's expected overpricing contribution; names failing this are dropped at formation, so the ledger never books a short whose carry the mechanism cannot afford"
+  },
+  "falsification_rule": "Falsify the family if ANY of: (i) anchor's honest sector-neutral spread (net of borrow fee, short dividend liability, all four execution-cost buckets and rejections) is not positive in S0 folds; (ii) the negative-control arm's spread is not materially weaker than the anchor's (mechanism not causal); (iii) neighbour (utilization-ranked) disagrees in sign with anchor (fee-data artifact); (iv) an accounting-only counterfactual shows the anchor's gross spread is smaller than its short-leg carry drag, i.e. the published edge exists only under zero-borrow accounting. All four conditions are preregistered here before any scored cell exists.",
+  "external_validity_caveats": [
+    "lending data entitlement is the binding dependency: without PIT fee/utilization the family is untestable on real data (synthetic fixture only)",
+    "securities-finance snapshots are prone to backfill/survivorship; the PIT ingest discipline of the A3/A4 lanes is load-bearing",
+    "recall/forced-cover episodes (2008, 2021 meme-style squeezes) can erase months of fee premium in days; recall data is not modeled in this proposal",
+    "the shorting premium is crowding-sensitive; published magnitudes predate modern ETF shorting and modern lending intermediation",
+    "post-2003 and post-RegSHO regime changes are structural breaks; a single-regime result does not license extrapolation"
+  ],
+  "max_trial_count": 3,
+  "eligibility": {
+    "not_an_indicator_grid": "one mechanism (lending scarcity), three theory-linked arms, no lookback/threshold grid",
+    "not_a_crypto_rescue": "distinct from M01 aggressor-flow absorption, funding-carry and weekly reversal on ALL four axes: observable (PIT securities-lending fee/utilization, not perp funding or flow absorption), counterparty (securities-lending desks + sentiment longs, not crypto perp counterparties), clock (monthly formation with month-long holds, not intraday/weekly reversal), causal control (GC-placebo arm destroys the constraint channel; none of the banned families had a lending-supply control)"
+  },
+  "data_readiness": {
+    "synthetic_fixture_factory": "IMPLEMENTABLE NOW: locate/fee records, dividends, quotes, halts and ADV are first-class synthetic-fixture inputs of the existing factory",
+    "real_data": "BLOCKED pending owner-authorized entitlement (securities-finance feed, FINRA short interest, PIT earnings calendar); no purchase is authorized by this proposal"
+  }
+}
