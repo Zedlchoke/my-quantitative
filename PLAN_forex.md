@@ -177,7 +177,7 @@ working directory. A1 Forex MUST run only in:
 
 ```text
 path:   /Users/hoangminhlong/my-quantitative/.worktrees/forex/integration
-branch: orca/forex-integration
+branch: forex
 ```
 
 Before creating A1, the owner/controller freezes `FOREX_OWNER_SHA` as a full
