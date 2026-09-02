@@ -38,7 +38,106 @@
     "heads_measured": ["2cba2c9", "2cba2c9"],
     "policy": "DO_NOT_USE_MODIFY_RESET_DELETE per owner dispatch; left untouched"
   },
-  "lanes": [],
+  "lanes": [
+    {
+      "role": "A3 — provider, instruments, quote loader and data audit",
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex/f1-data",
+      "branch": "orca/forex-f1-data",
+      "bootstrap_sha": "31cf30dd6e4afbe3d33cc9959f97f6a6f39d0500",
+      "allowed_globs": [
+        "research/assets/forex/__init__.py",
+        "research/assets/forex/provider.py",
+        "research/assets/forex/instruments.py",
+        "research/assets/forex/loader.py",
+        "research/assets/forex/data_audit.py",
+        "tests/assets/forex/__init__.py",
+        "tests/assets/forex/test_quote_data.py",
+        "tests/assets/forex/test_instruments.py"
+      ],
+      "forbidden_globs": ["PLAN*.md", "NOTES.md", "CLAUDE.md", "CONTINUE.md", "research/assets/common/**", "research/control/**", "research/audits/**", "results/**", "tests/assets/common/**", "research/assets/forex/{calendar,sessions,conversion,rollover,accounting,execution,portfolio,reproduce}.py", "tests/assets/forex/{conftest.py,test_sessions_dst.py,test_conversion.py,test_rollover.py,test_accounting.py,test_execution.py}"],
+      "expected_deliverables": [
+        "provider identity/entitlement surface with UNAVAILABLE_FAIL_CLOSED when no provider is authorized (DIAGNOSTIC_ONLY midpoint never promotable)",
+        "frozen G10 instrument metadata (base/quote, pip/tick, size increment, JPY convention) for the 7 initial pairs",
+        "loader for normalized bid/ask bars/quotes: UTC event+ingest timestamps, explicit mid derivation only, no weekend synthesis, stale/crossed/negative-spread fail-closed",
+        "data audit against the common SessionCalendar interface (dependency-injected; TEST_ONLY synthetic calendar fixture, NOT A4's module)",
+        "accepted/rejected pairs evidence at every decision"
+      ],
+      "targeted_test_command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex/test_quote_data.py tests/assets/forex/test_instruments.py -q",
+      "test_result": "PENDING",
+      "status": "DISPATCHED",
+      "merge_order": 1,
+      "delegation_allowed": false,
+      "model_requested": "GLM-5.3-Flash",
+      "provider": "ZCode Agent tool (general-purpose subagent)",
+      "reasoning_effort_requested": "medium",
+      "reasoning_effort_effective_or_unverified": "UNVERIFIED_PROVIDER_MAPPING",
+      "commit_sha": null
+    },
+    {
+      "role": "A4 — sessions, holidays, DST and macro clocks",
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex/f1-calendar",
+      "branch": "orca/forex-f1-calendar",
+      "bootstrap_sha": "31cf30dd6e4afbe3d33cc9959f97f6a6f39d0500",
+      "allowed_globs": [
+        "research/assets/forex/calendar.py",
+        "research/assets/forex/sessions.py",
+        "tests/assets/forex/test_sessions_dst.py"
+      ],
+      "forbidden_globs": ["PLAN*.md", "NOTES.md", "CLAUDE.md", "CONTINUE.md", "research/assets/common/**", "research/control/**", "research/audits/**", "results/**", "tests/assets/common/**", "research/assets/forex/__init__.py", "tests/assets/forex/__init__.py", "research/assets/forex/{provider,instruments,loader,data_audit,conversion,rollover,accounting,execution}.py", "tests/assets/forex/{conftest.py,test_quote_data.py,test_instruments.py,test_conversion.py,test_rollover.py,test_accounting.py,test_execution.py}"],
+      "expected_deliverables": [
+        "implementation of the common SessionCalendar interface for 24/5 FX (provider-convention weekly open/close, Sunday/Monday configurable)",
+        "Sydney/Tokyo/London/New_York session labels from named zones via zoneinfo (never fixed UTC offsets)",
+        "weekend closure and New York 17:00 ET rollover boundary; shortened/illiquid session marking",
+        "holiday table injected as an explicit SYNTHETIC_TEST_ONLY authority (real holiday authority remains BLOCKED; no claim of authoritative holidays)",
+        "PIT macro-event timestamp interface with no post-release backfill",
+        "goldens covering US and EU DST transition weeks and the Friday-close/Sunday-open gap"
+      ],
+      "targeted_test_command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex/test_sessions_dst.py -q",
+      "test_result": "PENDING",
+      "status": "DISPATCHED",
+      "merge_order": 2,
+      "delegation_allowed": false,
+      "model_requested": "GLM-5.3-Flash",
+      "provider": "ZCode Agent tool (general-purpose subagent)",
+      "reasoning_effort_requested": "high (DST/rollover-clock correctness)",
+      "reasoning_effort_effective_or_unverified": "UNVERIFIED_PROVIDER_MAPPING",
+      "commit_sha": null
+    },
+    {
+      "role": "A5 — conversion, rollover, accounting and execution",
+      "path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex/f1-accounting",
+      "branch": "orca/forex-f1-accounting",
+      "bootstrap_sha": "31cf30dd6e4afbe3d33cc9959f97f6a6f39d0500",
+      "allowed_globs": [
+        "research/assets/forex/conversion.py",
+        "research/assets/forex/rollover.py",
+        "research/assets/forex/accounting.py",
+        "research/assets/forex/execution.py",
+        "tests/assets/forex/test_conversion.py",
+        "tests/assets/forex/test_rollover.py",
+        "tests/assets/forex/test_accounting.py",
+        "tests/assets/forex/test_execution.py"
+      ],
+      "forbidden_globs": ["PLAN*.md", "NOTES.md", "CLAUDE.md", "CONTINUE.md", "research/assets/common/**", "research/control/**", "research/audits/**", "results/**", "tests/assets/common/**", "research/assets/forex/__init__.py", "tests/assets/forex/__init__.py", "research/assets/forex/{provider,instruments,loader,data_audit,calendar,sessions}.py", "tests/assets/forex/{conftest.py,test_quote_data.py,test_instruments.py,test_sessions_dst.py}"],
+      "expected_deliverables": [
+        "timestamp-aligned USD conversion graph over the 7 pairs with inverse-pair handling; fail-closed on missing path",
+        "executable-side fills (buy@ask, sell@bid; terminal close on executable quote) implementing the common ExecutionCostModel; variable per-pair/session spread; stale/crossed fail-closed",
+        "rollover implementing common FxRolloverCarry: long/short asymmetry, triple-roll (Wednesday) and holiday adjustments; swap schedule is an explicit SYNTHETIC_TEST_ONLY input (no broker schedule claimed); crypto funding never substituted",
+        "canonical USD accounting identity (PLAN_forex.md 7) with hand-computed goldens incl. JPY pip convention, inverse pair, long+short, costs and rollover cashflows",
+        "margin/exposure reported by underlying currency; unavailable conversion/rollover fails closed"
+      ],
+      "targeted_test_command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex/test_conversion.py tests/assets/forex/test_rollover.py tests/assets/forex/test_accounting.py tests/assets/forex/test_execution.py -q",
+      "test_result": "PENDING",
+      "status": "DISPATCHED",
+      "merge_order": 3,
+      "delegation_allowed": false,
+      "model_requested": "GLM-5.3-Flash",
+      "provider": "ZCode Agent tool (general-purpose subagent)",
+      "reasoning_effort_requested": "high (sign/conversion/cashflow correctness)",
+      "reasoning_effort_effective_or_unverified": "UNVERIFIED_PROVIDER_MAPPING",
+      "commit_sha": null
+    }
+  ],
   "lane_record_contract": "Each future lane record adds NOTES.md Section 22.2 fields: model_requested, provider, reasoning_effort_requested, reasoning_effort_effective_or_unverified, worktree_path, branch, bootstrap_sha; plus allowed_globs, forbidden_globs, expected_deliverables, commit_sha, targeted_test_command, test_result, status, merge_order, delegation_allowed.",
   "agent_slots": {
     "logical_total": 8,
