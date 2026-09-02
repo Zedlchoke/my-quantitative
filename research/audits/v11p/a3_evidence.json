@@ -1,0 +1,143 @@
+{
+  "generated_utc": "2026-09-02T13:51:21Z",
+  "producer_role": "A3",
+  "lane": "P1-A3 schedule-only cost feasibility gate",
+  "branch": "orca/v11p-a3-costgate",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/v11/p1-a3-costgate",
+  "bootstrap_sha": "0a96bf215ee8a30433fddf005c99887fcc00a43a",
+  "schema_version": "v11.cost_feasibility.a3.v1",
+  "inputs": [
+    "schedule decision instants (UTC epoch ns)",
+    "target books per decision instant, kind-tagged DISCRETIONARY vs FORCED_FLAT",
+    "strict-later fill prices (cost inputs only)",
+    "per-symbol funding settlement cadence",
+    "declared CostModel (taker fee bps, adverse tick floor, tick sizes)",
+    "proposed-signal availability per decision instant"
+  ],
+  "hard_constraint": {
+    "rule": "the gate must not compute or expose scored outcome series of any candidate",
+    "enforcement": "outcome_blind_attestation block in every payload; test_no_report_key_contains_a_scored_outcome_token walks every emitted key",
+    "emits": "counts, durations, traded-notional fractions and cost drags only"
+  },
+  "fail_closed": {
+    "rule": "missing inputs -> metric UNAVAILABLE -> verdict UNAVAILABLE_FAIL_CLOSED; never an inferred PASS",
+    "structural": "missing decision book / unknown kind / non-finite weight / non-monotonic instants raise ContractViolation"
+  },
+  "floors_frozen": [
+    {
+      "floor_id": "max_discretionary_decisions_per_365d",
+      "comparator": "lte",
+      "frozen_threshold": 60.0,
+      "definition": "scheduled discretionary rebalance decisions normalised to a 365-day equivalent window must not exceed 60"
+    },
+    {
+      "floor_id": "min_median_intended_holding_days",
+      "comparator": "gte",
+      "frozen_threshold": 3.0,
+      "definition": "median completed intended holding span (calendar days, from target-book occupancy) must be at least 3"
+    },
+    {
+      "floor_id": "max_base_cost_drag_frac_of_gross",
+      "comparator": "lte",
+      "frozen_threshold": 0.08,
+      "definition": "annualised transition cost at the declared cost floor, divided by average gross capital, must not exceed 0.08"
+    },
+    {
+      "floor_id": "max_stressed_cost_drag_frac_of_gross",
+      "comparator": "lte",
+      "frozen_threshold": 0.12,
+      "definition": "annualised transition cost under fee x1.5 and +2 adverse ticks, divided by average gross capital, must not exceed 0.12"
+    },
+    {
+      "floor_id": "max_symbol_turnover_share",
+      "comparator": "lte",
+      "frozen_threshold": 0.25,
+      "definition": "no single symbol may contribute more than 25% of total one-way turnover (sum of absolute target deltas)"
+    }
+  ],
+  "stress_definition": {
+    "baseline": "declared CostModel floors (fee x1.0, ticks = adverse_tick_slip_floor)",
+    "stressed": "fee x1.5 PLUS +2 adverse ticks on the declared floor",
+    "source": "cost arithmetic reused verbatim from research/adapter_v10/base.py::GenericStrategyBase.rebalance_cost_between (no forked cost math)"
+  },
+  "metric_definitions": {
+    "window_days": "scheduled window length in calendar days (last decision instant minus first, normalised by one day)",
+    "discretionary_decision_count": "scheduled discretionary rebalance decisions (risk/terminal forced-flat actions counted separately)",
+    "forced_flat_decision_count": "risk/terminal forced-flat actions, reported separately from discretionary decisions and excluded from the per-365d floor",
+    "decisions_per_365d": "discretionary decisions normalised to a 365-day equivalent: n_discretionary * 365 / window_days",
+    "one_way_turnover_discretionary": "one-way turnover (sum of absolute target deltas, capital-weight units) across transitions into discretionary books, including the initial entry from flat",
+    "one_way_turnover_forced_flat": "one-way turnover across transitions into forced-flat books, reported separately from discretionary turnover",
+    "one_way_turnover_total": "total one-way turnover: discretionary plus forced-flat transitions",
+    "per_symbol_turnover_share": "per-symbol share of total one-way turnover",
+    "max_symbol_turnover_share": "largest single-symbol share of total one-way turnover",
+    "max_symbol_turnover_share_symbol": "symbol holding the largest turnover share",
+    "average_gross_capital": "mean target-book gross capital (sum of absolute weights) over all scheduled decision instants",
+    "annualised_base_cost_drag_frac_of_gross_total_cost": "total transition cost over the window under stress 'baseline' (capital-weight units, adapter cost arithmetic)",
+    "annualised_base_cost_drag_frac_of_gross": "annualised base cost drag as a fraction of average gross capital, using the declared cost floors via the adapter cost function",
+    "annualised_stressed_cost_drag_frac_of_gross_total_cost": "total transition cost over the window under stress 'stress_fee_x1_5_plus_2_ticks' (capital-weight units, adapter cost arithmetic)",
+    "annualised_stressed_cost_drag_frac_of_gross": "annualised cost drag as a fraction of average gross capital under the frozen fee x1.5 / +2-tick stressed cell, via the adapter cost function",
+    "completed_holding_span_count": "intended holding spans closed by the schedule (symbol weight is zero again at a scheduled decision)",
+    "censored_open_span_count": "intended holding spans still open at the last scheduled instant; excluded from duration statistics and never silently closed",
+    "median_intended_holding_days": "median completed intended holding span in calendar days",
+    "max_intended_holding_days": "maximum completed intended holding span in calendar days",
+    "funding_events_while_held_total": "count of native settlement events falling inside intended holding spans (cadence only; no rate is applied)",
+    "funding_events_per_365d": "funding events while held normalised to a 365-day equivalent",
+    "signal_availability_fraction": "fraction of scheduled decision instants where the proposed signal was available",
+    "signal_missing_instant_count": "count of scheduled instants where the proposed signal was unavailable",
+    "signal_missing_instants": "scheduled instants where the proposed signal was unavailable"
+  },
+  "worked_example": {
+    "schedule": "53 weekly instants over 364 days, five equal 0.2 legs, terminal force-flat",
+    "verdict": "PASS",
+    "schedule_sha256": "fb6d723dddf5e40f6becd4f0a501bb4daed91b7be66d881f5f0cd8481294dec0",
+    "floors": [
+      {
+        "floor_id": "max_discretionary_decisions_per_365d",
+        "metric_key": "decisions_per_365d",
+        "comparator": "lte",
+        "frozen_threshold": 60.0,
+        "observed": 52.142857143,
+        "status": "PASS"
+      },
+      {
+        "floor_id": "min_median_intended_holding_days",
+        "metric_key": "median_intended_holding_days",
+        "comparator": "gte",
+        "frozen_threshold": 3.0,
+        "observed": 364.0,
+        "status": "PASS"
+      },
+      {
+        "floor_id": "max_base_cost_drag_frac_of_gross",
+        "metric_key": "annualised_base_cost_drag_frac_of_gross",
+        "comparator": "lte",
+        "frozen_threshold": 0.08,
+        "observed": 0.001226437,
+        "status": "PASS"
+      },
+      {
+        "floor_id": "max_stressed_cost_drag_frac_of_gross",
+        "metric_key": "annualised_stressed_cost_drag_frac_of_gross",
+        "comparator": "lte",
+        "frozen_threshold": 0.12,
+        "observed": 0.002146265,
+        "status": "PASS"
+      },
+      {
+        "floor_id": "max_symbol_turnover_share",
+        "metric_key": "max_symbol_turnover_share",
+        "comparator": "lte",
+        "frozen_threshold": 0.25,
+        "observed": 0.2,
+        "status": "PASS"
+      }
+    ]
+  },
+  "tests": {
+    "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_v11p_a3_costgate.py",
+    "passed": 32,
+    "failed": 0,
+    "exit_code": 0,
+    "tracked_mutation_after_tests": "none (git status --porcelain shows only new lane files)"
+  }
+}
