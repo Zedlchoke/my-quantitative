@@ -1,0 +1,159 @@
+{
+  "schema_version": "v11p.a4.evidence.v1",
+  "generated_utc": "2026-09-02T13:48:10.341608+00:00",
+  "producer_role": "A4",
+  "lane": "P1-A4 exact-arm dry-run and platform-safe QA",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/v11/p1-a4-preflight",
+  "branch": "orca/v11p-a4-preflight",
+  "bootstrap_sha": "0a96bf215ee8a30433fddf005c99887fcc00a43a",
+  "scored_metric_produced_or_persisted": false,
+  "real_pnl": false,
+  "network": false,
+  "dry_run_stage_checklist": [
+    {
+      "stage": "load",
+      "pass": true
+    },
+    {
+      "stage": "identity_distinctness",
+      "pass": true
+    },
+    {
+      "stage": "signal_shape",
+      "pass": true
+    },
+    {
+      "stage": "schedule",
+      "pass": true
+    },
+    {
+      "stage": "fills",
+      "pass": true
+    },
+    {
+      "stage": "costs_funding_shape",
+      "pass": true
+    },
+    {
+      "stage": "dummy_metrics",
+      "pass": true
+    },
+    {
+      "stage": "temporary_ledger",
+      "pass": true
+    }
+  ],
+  "dry_run_ok": true,
+  "dry_run_findings": [],
+  "identity_distinctness": {
+    "provider": "default_identity_provider",
+    "distinct": true,
+    "replay_stable": {
+      "anchor": true,
+      "neighbour": true,
+      "causal_control": true
+    },
+    "pairwise_collisions": [],
+    "control_vs_anchor_differing_identity_fields": [
+      "arm_config_id",
+      "strategy_id"
+    ],
+    "note": "default provider = adapter trial_key(canonical_scored_payload(...)) at bootstrap 0a96bf2; no new identity scheme implemented (A2 owns it; A1 wires it)"
+  },
+  "temporary_ledger_semantics": {
+    "per_arm": {
+      "anchor": {
+        "published": true,
+        "dummy_metrics_sha256": "ba7c73dd6358db6bd3a4b489843b1d74e75e1397c8df31172ad067b36c5d8194",
+        "publish_stage": "PUBLISHED",
+        "publish_delta": 1,
+        "replay_stage": "IDEMPOTENT_REPLAY_SKIPPED",
+        "replay_delta": 0
+      },
+      "causal_control": {
+        "published": true,
+        "dummy_metrics_sha256": "1b17dbaa188cf1645977e99a31676a1bd6a88af3ec39a6b317ced3058a09eede",
+        "publish_stage": "PUBLISHED",
+        "publish_delta": 1,
+        "replay_stage": "IDEMPOTENT_REPLAY_SKIPPED",
+        "replay_delta": 0
+      },
+      "neighbour": {
+        "published": true,
+        "dummy_metrics_sha256": "577a74a37ad9ca944970f4c78552dfad7adcdd938330cb7e852221d7d3f41d67",
+        "publish_stage": "PUBLISHED",
+        "publish_delta": 1,
+        "replay_stage": "IDEMPOTENT_REPLAY_SKIPPED",
+        "replay_delta": 0
+      }
+    },
+    "rule": "first publish +1; one replay per arm +0; collision refused fail-closed with ledger bytes unchanged",
+    "ledger_namespace": "dryrun_*.jsonl under system temp only; real registry path and results/registry trees refused (require_temporary_ledger)"
+  },
+  "detection_findings_catalog": {
+    "MISSING_TICK_SIZE": "per-symbol positive tick-size coverage (bundle + adapter ContractViolation path)",
+    "MISSING_BENCHMARK_DECLARATION": "context-only benchmark legs must be declared",
+    "MISSING_TERMINAL_VALUATION_BAR": "finite positive marks at the final force-flat boundary",
+    "MISSING_FUNDING_BUNDLE": "per-symbol native settlement series must exist",
+    "STALE_MANIFEST": "manifest payload_sha256 must match the payload digest; missing manifest/fields is stale",
+    "NON_FINITE_PAYLOAD": "any non-finite float in the payload blocks publication",
+    "all_blocking": true,
+    "tests_exercising_each_code": "tests/test_v11p_a4_dryrun.py::test_detection_fails_closed_on_each_declared_hole and siblings"
+  },
+  "platform_defect_notes": [
+    {
+      "file": "tests/test_v7_golden_e2e.py",
+      "line": 931,
+      "defect": "test writes the TRACKED golden report research/audits/v7p/golden_vector_report.json in place; a regenerated report under a different platform serialization/path convention silently mutates tracked bytes (recorded as blocker B6 by the v10r host3 A7 verdict)",
+      "proposed_minimal_fix": "write the regenerated report to tmp_path and assert byte/content equality against the tracked file instead of overwriting it"
+    },
+    {
+      "file": "tests/test_weekly_golden_e2e.py",
+      "line": 662,
+      "defect": "same class: test mkdir+writes the tracked research/audits/v8p/golden_vector_report_v8.json in place",
+      "proposed_minimal_fix": "same tmp_path write + compare-against-tracked pattern"
+    },
+    {
+      "file": "research/cache_resource_measure_v10.py",
+      "line": 57,
+      "defect": "top-level POSIX-only 'import resource' breaks pytest COLLECTION of tests/test_g2_cache_resource_v10.py on Windows (ModuleNotFoundError aborts the whole suite)",
+      "proposed_minimal_fix": "move 'import resource' into the measurement functions that need it and raise a typed DataUnavailable on unsupported platforms"
+    },
+    {
+      "file": "research/data_audit_v10.py",
+      "line": 633,
+      "defect": "os.open(dir, os.O_RDONLY) + os.fsync(dir_fd) is POSIX-only semantics; raises PermissionError/OSError on Windows",
+      "proposed_minimal_fix": "guard the dir-fd fsync behind sys.platform != 'win32' (fsync of the file alone already covers durability on Windows)"
+    },
+    {
+      "file": "tests/test_resource_governor_v10.py",
+      "line": 143,
+      "defect": "none - cited as the ALLOWED pattern: explicit platform scoping via skipif(sys.platform != 'darwin') with a reason, not a blanket skip",
+      "proposed_minimal_fix": "use this explicit-scoping pattern for the POSIX process-group tests (tests/test_runtime_controller_v10.py:282, tests/test_fault_injection_v10.py:170) instead of leaving them to fail on non-POSIX hosts"
+    }
+  ],
+  "test_summary": {
+    "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_v11p_a4_dryrun.py",
+    "passed": 35,
+    "failed": 0,
+    "errors": 0,
+    "git_status_porcelain_after_tests_note": "only this lane's new untracked files (research/v11/, tests/test_v11p_a4_dryrun.py, research/audits/v11p/) - no tracked file mutated",
+    "also_ran_sanities": [
+      "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_adapter_v10_g1.py -> 35 passed",
+      "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_protocol_registry.py -> 6 passed"
+    ]
+  },
+  "deliverable_map": {
+    "1_no_real_pnl_traversal": "research/v11/exact_arm_dryrun.py::run_exact_arm_dryrun (synthetic data through research.adapter_v10.runner.run_strategy, write_artifact_file=False)",
+    "2_identity_distinctness": "injectable identity_provider; default = publish.trial_key(canonical_scored_payload(...)) at bootstrap; prove_arm_identity_distinctness fails closed pre-freeze",
+    "3_fail_closed_detection": "detect_fail_closed_findings over build_preflight_bundle",
+    "4_temporary_ledger": "exercise_temporary_ledger_semantics + require_temporary_ledger guard",
+    "5_platform_safe_tests": "tests write only tmp_path; tracked golden reports never rewritten; defects recorded above with file:line; no blanket skip introduced"
+  },
+  "assumptions": [
+    "dry-run ledgers are namespaced dryrun_*.jsonl under the system temp tree; anything else is refused",
+    "arm distinctness at bootstrap rests on identity fields only (arm_config_id/strategy_id), since A2's arm_id/arm_config_digest scheme is not merged yet",
+    "no platform test was edited in place (forbidden); defects recorded here for A1 instead"
+  ],
+  "blockers": []
+}
