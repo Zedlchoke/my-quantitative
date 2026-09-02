@@ -1,0 +1,58 @@
+{
+  "schema": "forex_data_manifest_v1",
+  "measured_at_utc": "2026-09-02T12:41:52Z",
+  "producer": "A1_FOREX_CONTROLLER",
+  "integration_sha": "b8876ef8e0f7dd235d66f5cae5bfd8fd9034147f",
+  "phase": "INTAKE_READ_ONLY",
+  "provider": {
+    "frozen_provider": null,
+    "status": "NOT_SELECTED",
+    "rule": "PLAN_forex.md Section 2: freeze one provider before inspecting candidate PnL; one feed is never labeled the global FX market.",
+    "candidates_measured": {
+      "institutional_bid_ask_provider": "requires owner authorization; none supplied",
+      "interactive_brokers": "adapter import OK (nautilus_trader 1.230.0, adapters.interactive_brokers + pyo3); credentials/entitlement ABSENT; pacing limits undocumented in repo",
+      "owner_supplied_normalized_parquet": "none supplied",
+      "midpoint_only_public_data": "would be DIAGNOSTIC_ONLY, never promotable; none loaded"
+    },
+    "framework_capability": {
+      "nautilus_trader_version": "1.230.0",
+      "currency_pair_instrument": "present",
+      "price_type_bid_ask": "present (distinct BID/ASK; no silent mid substitution in the type system)"
+    }
+  },
+  "entitlement": {
+    "status": "UNAVAILABLE_FAIL_CLOSED",
+    "evidence": ["no .env at repo root", "no provider credential or entitlement config tracked", "no owner authorization artifact for any paid provider"],
+    "rule": "Missing entitlement evidence is BLOCKED/NOT_RUN, never PASS."
+  },
+  "quote_bid_ask_coverage": {
+    "status": "NOT_AVAILABLE",
+    "pairs_expected": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD"],
+    "pairs_with_any_data": 0,
+    "hours_bid_ask_history_meeting_8y_floor": 0,
+    "catalogs_inspected": ["catalog/", "catalog_live_crypto/"],
+    "catalog_content_class": "crypto USD-M perpetual bars/funding only; no FX quotes",
+    "s0_s1_split": "NOT_DERIVABLE (no coverage); S1 remains sealed regardless"
+  },
+  "calendar_session_dst": {
+    "status": "BLOCKED_NO_AUTHORITY",
+    "authoritative_holiday_dst_sources_frozen": [],
+    "note": "Sydney/Tokyo/London/New York session model and named-zone DST transitions require an authority that does not yet exist in the repo; engineering goldens may be synthetic, but no session gate may be reported PASS."
+  },
+  "rollover_swap": {
+    "status": "BLOCKED_NO_AUTHORITY",
+    "provider_swap_schedule_present": false,
+    "triple_roll_handling": "UNSPECIFIED (no data)",
+    "rule": "Crypto funding assumptions must never substitute for FX rollover; carry families stay blocked."
+  },
+  "account_currency_conversion": {
+    "base_account_currency": "USD (declared by PLAN_forex.md Section 1 scope)",
+    "conversion_graph_status": "UNBUILT",
+    "conversion_authority": "ABSENT",
+    "rule": "No USD metric may be reported until the timestamp-aligned conversion graph has an authority and FX3 passes."
+  },
+  "published_denominator": 0,
+  "observed_denominator": 0,
+  "budget": "0/6",
+  "verdict": "FOREX_BLOCKED_DATA_OR_ROLLOVER_AUTHORITY (pre-scoring); scoring closed until authoritative bid/ask + rollover evidence exists"
+}
