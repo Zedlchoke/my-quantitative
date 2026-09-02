@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "proposal_id": "A4_F1_PEAD_TS_V1",
+  "hypothesis_id": "A4_F1_PEAD_TS_V1",
+  "family_id": "A4_F1_PEAD_TS_V1",
+  "title": "Timestamp-safe post-earnings-announcement drift (BTO/AMC classified, sector-neutral SUE long/short)",
+  "lane": "S2/A4 (calendar/session/corporate-actions perspective)",
+  "branch": "orca/stocks-s2-prop-a4",
+  "bootstrap_sha": "3a00fd7653dd5ff51ca4b9be51b494638bbb6df9",
+  "created_date": "2026-09-02",
+  "outcome_blind_attestation": "Proposal written before any scored window exists. No candidate returns, PF, Sharpe or rankings were computed, and no other proposal lane's files were read. Literature expectations are qualitative priors only.",
+  "priority_space": "PLAN_stocks.md section 9: post-earnings drift with timestamp-safe surprise data",
+  "economic_mechanism": {
+    "statement": "Quarterly earnings news diffuses slowly into prices because attention-constrained investors underreact to the content of the announcement relative to expectations; prices then drift in the direction of the standardized unexpected earnings (SUE) for roughly one to three months after the release. The family is long high-SUE and short low-SUE names inside each sector, harvesting the drift.",
+    "counterparty": "Attention-constrained investors (discretionary retail and institutions anchored to stale expectations) who trade the news late; plus arbitrageurs who limit participation because the announcement risk premium must be held for weeks. We take the opposite side during the diffusion window.",
+    "why_the_edge_exists": "Limited attention and investor conservatism produce underreaction to earnings content, not to the event calendar itself; the drift persists because the relevant cohorts (individual investors, per Bartov-Radhakrishnan-Krinsky 2000) are slow to incorporate news.",
+    "literature": [
+      {
+        "citation": "Ball, R. and P. Brown (1968), 'An Empirical Evaluation of Accounting Income Numbers', Journal of Accounting Research 6(2).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Origin of the post-earnings drift observation on US equities."
+      },
+      {
+        "citation": "Bernard, V. and J. Thomas (1989), 'Post-Earnings-Announcement Drift: Delayed Price Response or Risk Premium?', Journal of Accounting Research 27 (Supplement).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Drift persists roughly 60 trading days after announcement; SUE-sorted portfolios earn increasing returns in SUE quintiles."
+      },
+      {
+        "citation": "Bernard, V. and J. Thomas (1990), 'Evidence That Stock Prices Do Not Fully Reflect the Implications of Current Earnings for Future Earnings', Journal of Accounting Research 28(2).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Underreaction to the implications of current earnings for future earnings; mechanism-level evidence."
+      },
+      {
+        "citation": "Livnat, J. and R. Mendenhall (2006), 'Comparing the Post-Earnings Announcement Drift for Surprises Calculated from Analyst and Time Series Forecasts', Journal of Accounting Research 44(1).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Drift exists for both analyst-consensus-based and time-series-based SUE; revenue surprises also drift. Grounds the neighbour arm."
+      },
+      {
+        "citation": "Bartov, E., S. Radhakrishnan and I. Krinsky (2000), 'Investor Sophistication and Patterns in Stock Returns after Earnings Announcements', The Accounting Review 75(1).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Drift concentrated where individual investors dominate; identifies the counterparty."
+      },
+      {
+        "citation": "Hong, H. and J. Stein (1999), 'A Unified Theory of Underreaction, Momentum Trading, and Overreaction in Asset Markets', Journal of Finance 54(6); Barberis, N., A. Shleifer and R. Vishny (1998), 'A Model of Investor Sentiment', Journal of Financial Economics 49(3).",
+        "retrieval": "MODEL_INTERNAL_UNVERIFIED",
+        "claim_used": "Theoretical underreaction mechanisms (gradual information diffusion; conservatism)."
+      }
+    ]
+  },
+  "pit_fields": [
+    {
+      "field": "earnings_release_timestamp_utc",
+      "authority": "Owner-authorized PIT provider (planned: IBES/Refinitiv or equivalent report-date file; PLAN section 2 preferred-provider order)",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "note": "Must be tz-aware actual first-release timestamps. No date-only substitutes: a date-only field silently mis-times AMC releases by one session and is the exact failure this lane's classify_earnings_timestamp exists to prevent."
+    },
+    {
+      "field": "earnings_timing_classification",
+      "authority": "research.assets.stocks.corporate_actions.classify_earnings_timestamp against US_EQUITY_REGULAR_V1 (A4 frozen table)",
+      "status": "AVAILABLE_IN_FACTORY",
+      "note": "BTO (< session open of the ET date), AMC (>= session close), UNKNOWN fails closed with a reason (in-session or non-session ET date). UNKNOWN events are excluded, never reclassified."
+    },
+    {
+      "field": "actual_quarterly_eps_pit (restatement-aware, first-reported)",
+      "authority": "Owner-authorized PIT fundamentals provider",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT"
+    },
+    {
+      "field": "consensus_eps_estimate_pit (last snapshot strictly before release) and estimate_revision_date",
+      "authority": "IBES/Refinitiv-class PIT consensus history",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "note": "Fallback if never entitled: seasonal-random-walk SUE from PIT actuals (Bernard-Thomas 1987-style); declared as a distinct arm config at freeze time, never swapped after inspection."
+    },
+    {
+      "field": "actual_quarterly_revenue_pit and consensus_revenue_estimate_pit",
+      "authority": "Same PIT providers as EPS fields",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT",
+      "note": "Needed for the neighbour arm only."
+    },
+    {
+      "field": "sector_classification_pit (GICS at decision date, no backfilled membership)",
+      "authority": "A3 security master PIT sector history",
+      "status": "UNAVAILABLE_PENDING_ENTITLEMENT"
+    },
+    {
+      "field": "universe_acceptance_rows_at_each_decision",
+      "authority": "A3 accepted/rejected universe rows at each rebalance; no current-index-membership backfill",
+      "status": "AVAILABLE_IN_FACTORY_CONTRACT (synthetic fixture); UNAVAILABLE_PENDING_ENTITLEMENT for real data"
+    },
+    {
+      "field": "session calendar table (holidays, early closes, special closures) and halt intervals",
+      "authority": "US_EQUITY_REGULAR_V1 frozen table (A4); HaltInterval declarations from provider halt feeds when real",
+      "status": "AVAILABLE_IN_FACTORY (synthetic-golden baseline; 2027-2030 entries rule-derived per NEEDS_PROVIDER_VERIFICATION)"
+    }
+  ],
+  "universe_neutralization_benchmark": {
+    "universe": "PIT-accepted liquid common stocks/ETFs from A3 at each formation date (PLAN section 7 A3 floors: >= 30 eligible names per decision, >= 8y history; delisted names retained through final valid event).",
+    "neutralization": "Sector-neutral: within each PIT GICS sector, long top SUE quintile, short bottom SUE quintile, dollar-neutral legs; sector weights capped equal so no sector bet dominates.",
+    "benchmark": "Flat (cash) plus SPY total return as declared external benchmark; the declared factor-neutral context is sector-neutral long/short (documented here as the comparison set for scoring later)."
+  },
+  "clocks": {
+    "formation_clock": "Event-anchored: at each earnings release with a classified timing, compute SUE from PIT snapshots; cohort eligibility is decided at the first regular-session open strictly after the release instant. BTO releases enter that same date's session (news is public before the 09:30 ET open, session_bounds from the calendar). AMC releases enter next_session(date) open. UNKNOWN-timing releases are excluded with a reason (fail closed).",
+    "holding_clock": "60 regular sessions from formation (Bernard-Thomas horizon), implemented as 12 weekly cohorts so the aggregate book is rebalanced weekly by replacing the expired cohort; every session boundary taken from session_bounds/next_session, early closes (13:00 ET) are valid entry/exit session ends and never silently extended to 16:00.",
+    "execution_clock": "Entries/exits at the regular-session opening auction of the formation/exit session (first executable point of the session). If a name is halted at the formation open (declared HaltInterval), the name skips to the first session whose opening auction is not covered by a declared halt; unexplained gaps fail closed via classify_gap and no synthetic fill is ever authorized.",
+    "calendar_expressibility": "All clocks reduce to session_bounds(day), next_session(after), phase-disabled baseline (pre/post disabled per assert_baseline_scoring_phases) and early_close_cutoff_utc. No weekly or synthetic calendar is used; the calendar manifest digest is part of the trial identity."
+  },
+  "turnover_capacity": {
+    "expected_turnover": "Literature-informed prior, not a computed result: with roughly a quarter of the liquid universe announcing per quarter with classified surprises and 60-session holds in weekly cohorts, expected one-sided book turnover is of order 6-10x per year.",
+    "expected_capacity": "Mid eight figures USD notional at <= 5% ADV participation in the quintile tails, dominated by small-cap tail ADV; announcement-cohort clustering concentrates execution on post-announcement days where liquidity is typically above average.",
+    "cost_sensitivity_declared": "Auction/limit cross per side plus borrow on the short leg must clear the S6 stress (x1.5 commission and spread) for any survivor; drift is a known thin-margin family after costs."
+  },
+  "arms": [
+    {
+      "arm_id": "A4_F1_PEAD_TS_V1:ANCHOR",
+      "name": "anchor_eps_sue_ls",
+      "definition": "Sector-neutral long top-quintile / short bottom-quintile EPS SUE (PIT consensus; frozen fallback = seasonal-random-walk SUE) formed at the timestamp-safe next open, held 60 sessions in weekly cohorts.",
+      "role": "The drift mechanism as documented in the literature."
+    },
+    {
+      "arm_id": "A4_F1_PEAD_TS_V1:NEIGHBOUR",
+      "name": "neighbour_revenue_sue_ls",
+      "definition": "Identical pipeline, universe, clocks and neutralization, but the surprise is the revenue SUE (actual vs PIT consensus revenue).",
+      "role": "Theoretically justified neighbour: revenue surprises carry the same underreaction content (Livnat-Mendenhall 2006) because they are the volume counterpart of the same earnings information set; supports the anchor if the mechanism (news-content diffusion), not the EPS accounting construct, is what drifts."
+    },
+    {
+      "arm_id": "A4_F1_PEAD_TS_V1:CONTROL",
+      "name": "control_sign_flipped_sue_ls",
+      "definition": "Identical pipeline, cohorts, clocks, holdings and costs, but the SUE sign is flipped (long bottom quintile, short top quintile).",
+      "role": "Causal negative control: it keeps the entire event calendar, portfolio construction and cost structure and removes only the news-content direction. Underreaction predicts the drift disappears or inverts; if the anchor's edge survives sign-flipping, the edge is not news content and the family is falsified."
+    }
+  ],
+  "corporate_action_earnings_borrow_dividend_treatment": {
+    "corporate_actions": "All splits/cash dividends applied exactly once at ex/effective timestamps by the A4 CorporateActionEngine; signals computed on the declared TOTAL_RETURN research path, fills on the RAW path; raw-vs-total-return reconciliation records required at every action boundary touched by a holding (SD2/SD5-style goldens).",
+    "earnings_during_holding": "A new release for a held name replaces its SUE at the next cohort boundary (no intra-cohort churn); the name's own announcement-day trading is never used for formation fills (formation open is strictly after the classified release instant).",
+    "borrow": "Short legs require PIT locate availability and borrow rate at formation (A5 contract); unavailable borrow rejects the short leg, never fills it for free (PLAN section 7 A5). Short dividend liability accrues to shorts on ex-dates.",
+    "dividends": "Long legs receive cash dividends (cash_to_position at ex/effective moment); dividend yield recorded per ReconciliationRecord; benchmark comparison uses SPY total return so dividend treatment is symmetric."
+  },
+  "falsification_rule": {
+    "pre_registered": "Family survives only if (a) anchor: after-cost expectancy > 0, position PF >= 1.10, >= 2/3 chronological folds positive, no fold PF < 0.80 (PLAN section 13 gates); (b) SUE-quintile monotonicity declared as a diagnostic, not a gate; (c) neighbour supports anchor (same sign, economically similar magnitude); (d) sign-flipped control destroys or materially weakens the anchor effect; (e) drop-one-symbol/sector/fold survival. Failure of (d) while (a) passes means the edge is calendar/event exposure rather than news content and the family is rejected as mechanism-mistitled.",
+    "external_validity_caveats": [
+      "Drift is documented mostly on 1970-2005 US data and is known to weaken post-publication (McLean and Pontiff 2016, Journal of Finance 71(1); retrieval MODEL_INTERNAL_UNVERIFIED); a null result is a legitimate outcome.",
+      "Consensus-data PIT quality is the single largest data risk: misaligned estimate snapshots can manufacture or destroy the surprise; any snapshot drift is a new trial identity.",
+      "Costs and borrow consume a large fraction of gross drift, especially in the low-liquidity quintile tail.",
+      "Cohort clustering makes returns lumpy around macro announcement seasons (Jan/Apr/Jul/Oct).",
+      "Results depend on the frozen calendar table; 2027-2030 rule-derived entries require provider verification before any sealed-window scoring reaches them."
+    ]
+  },
+  "max_trials": 3,
+  "novelty_defense": {
+    "vs_rejected_crypto_families": "Not a rescue of M01 aggressor-flow absorption (observable is accounting surprise vs expectations, not order-flow imbalance), not funding-carry (no funding cashflows, no perpetual contract), not weekly reversal (no reversal signal, no weekly-calendar clock; the weekly cadence here is only a cohort aggregation of event-anchored 60-session holds). Observable, counterparty, clock and causal control are all different from each listed family.",
+    "vs_other_S2_lanes": "Depends on earnings-timestamp PIT classification, which is the A4 lane's owned capability (classify_earnings_timestamp); a lane without that machinery cannot express the formation clock without silently mis-timing AMC names."
+  },
+  "data_readiness": {
+    "synthetic_fixture": "Implementable now against the synthetic-fixture factory: US_EQUITY_REGULAR_V1 calendar, CorporateActionEngine (classify_earnings_timestamp, price_path, reconciliation) and fixture SUE/universe rows with expected-sign and control-destruction goldens.",
+    "real_data": "BLOCKED pending owner-authorized entitlement: PIT earnings timestamps, PIT consensus estimates, PIT fundamentals, PIT sector history and halt feeds are all UNAVAILABLE_PENDING_ENTITLEMENT. Scored research on real data closes STOCKS_BLOCKED_DATA_AUTHORITY until then (PLAN section 0)."
+  }
+}
