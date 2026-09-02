@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "role": "A4",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/v11/p1-a4-preflight",
+  "branch": "orca/v11p-a4-preflight",
+  "bootstrap_sha": "0a96bf215ee8a30433fddf005c99887fcc00a43a",
+  "commit_sha": null,
+  "clean": true,
+  "allowed_globs": [
+    "research/v11/exact_arm_dryrun.py",
+    "research/v11/__init__.py",
+    "tests/test_v11p_a4_*.py",
+    "tests/fixtures/v11p_a4_*/**",
+    "research/audits/v11p/a4_*"
+  ],
+  "changed_files": [
+    "research/v11/__init__.py",
+    "research/v11/exact_arm_dryrun.py",
+    "tests/test_v11p_a4_dryrun.py",
+    "research/audits/v11p/a4_evidence.json",
+    "research/audits/v11p/a4_handoff.json"
+  ],
+  "deliverables": [
+    "research/v11/exact_arm_dryrun.py::run_exact_arm_dryrun -- no-real-PnL traversal load -> identity distinctness -> signal shape -> schedule -> fills -> costs/funding shape -> dummy finite metrics -> temporary-ledger publication, on synthetic data through research.adapter_v10.runner.run_strategy (write_artifact_file=False; scored=False everywhere)",
+    "identity distinctness proof: injectable identity_provider whose default is the adapter's CURRENT trial-key function at bootstrap (publish.trial_key over canonical_scored_payload); anchor/neighbour/causal_control keys proven pairwise distinct and replay-stable BEFORE any freeze; no new identity scheme implemented (A2 owns it, A1 wires it)",
+    "fail-closed detection: detect_fail_closed_findings covers MISSING_TICK_SIZE, MISSING_BENCHMARK_DECLARATION, MISSING_TERMINAL_VALUATION_BAR, MISSING_FUNDING_BUNDLE, STALE_MANIFEST (manifest payload_sha256 vs payload digest), NON_FINITE_PAYLOAD; any blocking finding refuses that arm's publication",
+    "temporary-ledger semantics: first publish +1, one replay per arm +0 (IDEMPOTENT_REPLAY_SKIPPED), collision with different content under the same trial key refused with ledger bytes unchanged; require_temporary_ledger refuses None, the real registry path, any results/registry tree, and non-dryrun_*.jsonl names (system temp tree only)",
+    "platform-safe QA: tests write only tmp_path; tracked golden reports never rewritten; platform defects recorded in a4_evidence.json with exact file:line and minimal fixes (tests/test_v7_golden_e2e.py:931, tests/test_weekly_golden_e2e.py:662, research/cache_resource_measure_v10.py:57, research/data_audit_v10.py:633; explicit-scoping pattern cited from tests/test_resource_governor_v10.py:143); no existing platform test edited, no blanket skip, no scored-path assertion weakened"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_v11p_a4_dryrun.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "35 passed, 0 failed, 0 errors; afterwards git status --porcelain shows only this lane's new files (no tracked mutation)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_adapter_v10_g1.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "35 passed (untouched adapter suite unaffected)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_protocol_registry.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "6 passed"
+    }
+  ],
+  "assumptions": [
+    "commit_sha is null at artifact-write time (exactly-one-commit rule); the single commit is branch HEAD of orca/v11p-a4-preflight at handoff",
+    "dry-run ledgers are namespaced dryrun_*.jsonl under the system temp tree; anything else is refused fail closed",
+    "arm distinctness at bootstrap rests on declared identity fields only (arm_config_id / strategy_id), since A2's arm_id + arm_config_digest scheme is not merged yet; the provider seam is where A1 wires A2's scheme",
+    "no fixtures directory was needed (arms are deterministic synthetic plugins built in code)"
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/audits/v11p/a4_evidence.json"
+  ],
+  "next_action_for_a1": "Cherry-pick this branch fourth (after A2 then A3), run tests/test_v11p_a4_dryrun.py plus the publication/ledger and cost-gate suites, then wire lane A2's arm-aware identity scheme into run_exact_arm_dryrun(identity_provider=...) at integration; the platform-defect notes in a4_evidence.json (file:line + minimal fixes) are ready for the minimal platform-test correction pass with an explicit allowlist."
+}
