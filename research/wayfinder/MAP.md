@@ -2,6 +2,16 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS SPRINT TERMINAL** (synced by A1, 2026-09-02, branch
+  `stocks@4521cf6`) — verdict `STOCKS_BLOCKED_DATA_AUTHORITY`: M0 multi-asset
+  core frozen (`MULTIASSET_CORE_SHA=8310366`, M0_PASS 78/78), S1 correctness
+  lanes integrated (SD0–SD6 PASS, full stock suite 209 passed), six
+  outcome-blind proposals audited by A7 (6/6 ELIGIBLE, zero HIGH/CRITICAL),
+  selection frozen to `EQ_S2_A3_F1_PIT_RECON_FLOW` +
+  `A5-S2-F1-LENDING-CONSTRAINT-PREMIUM` (budget 0/6, counters 0/0). Scored
+  research blocked: no PIT provider entitlement. Detail:
+  `research/control/stocks_run/terminal_report.json`.
+
 - **V10P BLOCKED_PRELAUNCH** (synced by A1, 2026-08-27, branch
   `orca/v10-integration@86b7274`) — generic strategy→research adapter built and
   accepted (BG1–BG6, G15, F2 adopted-with-proof, G17 one measured authority,
