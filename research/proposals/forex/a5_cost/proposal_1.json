@@ -1,0 +1,99 @@
+{
+  "proposal_id": "FX2-A5-P1",
+  "lane": "A5 — cost/rollover/accounting perspective (F2 outcome-blind proposal lane)",
+  "mechanism_name": "Point-in-time rate-differential carry with dollar-neutral construction, volatility targeting, and explicit financing/cost accounting",
+  "economic_mechanism": "Uncovered interest parity (UIP) fails empirically: high-yield currencies do not depreciate against low-yield currencies by the full interest differential, so a long-high-yield/short-low-yield basket earns a positive average excess return that the literature interprets as compensation for crash risk rather than an arbitrage (Fama 1984; Lustig, Roussanov & Verdelhan 2011; Brunnermeier, Nagel & Pedersen 2008). The tradeable object is the deviation of future spot moves from the rate differential. FINANCING ECONOMICS ARE THE MECHANISM, NOT A DEDUCTION: per pair i, per holding period, expected economic surplus = rate-differential accrual (r_i - r_USD) * dt + E[spot return] - dealer rollover/swap spread (with long/short asymmetry and Wednesday triple-roll) - bid/ask spread - commission. The mechanism is viable only if accrual net of the retail financing wedge and transaction drag is positive; the wedge between the interbank deposit differential embedded in swap points and the broker's charged swap schedule is itself an economic variable of this proposal. Because crash episodes are exactly when funding currencies appreciate violently (Brunnermeier-Nagel-Pedersen 2008), the proposal treats cost drag and crash exposure as the two first-order objects; vol targeting is applied to make the net-of-financing surplus measurable per unit of risk rather than to manufacture Sharpe.",
+  "expected_counterparty": "Leveraged carry investors (hedge funds, levered retail FX accounts) who crowd into high-yield currencies and unwind in risk-off episodes, implicitly selling crash insurance; corporate and real-money hedgers who persistently sell high-yield currency forward for flow reasons; central-bank and reserve-manager flow at the extremes of the rate cycle. We are on the other side of their hedging/unwinding pressure and are paid a premium for absorbing it.",
+  "signal_fields_and_publication_clock": "Signal field: point-in-time (PIT) 3-month interbank/term deposit rate for each of USD, EUR, GBP, JPY, AUD, CAD, CHF, NZD, each stamped with its own fix timestamp and provider revision history. Signal = diff_i = r_i(3M, PIT as of t) - r_USD(3M, PIT as of t). Publication clock: a rate fix stamped at time t becomes usable only at t + lag, with lag fixed in advance (default: next common trading hour after both legs' fixing is stamped, never the same bar). No end-of-sample rate table may ever be applied to an earlier date (this is the prohibited shortcut 'carry computed from today's rate applied historically'). Realized-vol estimate for targeting uses only returns observed strictly before formation. AVAILABILITY HONESTY: the repo currently has NO PIT central-bank/interbank rate source; this field is UNAVAILABLE and the proposal is feasibility-blocked without owner-authorized data.",
+  "formation_holding_rebalance": "Formation: once per week at the first common trading hour of the week (first hour at which all seven pairs have fresh executable quotes, respecting per-currency holiday calendars). Ranking: sort the six non-USD currencies by PIT diff_i; long the top half (3 currencies) against USD, short the bottom half (3) against USD, equal-risk-weighted using PIT realized vol. Holding: one week. Rebalance: weekly with a hysteresis band (a position is retained rather than traded if it stays within one rank of the cut) to bound turnover. Vol targeting: portfolio annualized target 8%, exposure scaled by PIT EWMA vol with a declared halflife, capped leverage. Terminal close each week at executable bid (to sell longs) / ask (to buy shorts), never midpoint.",
+  "pair_universe_and_neutralization": "The seven initial frozen pairs: EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD (all USD legs). Neutralization: dollar-neutral construction - long leg (top yielders vs USD) and short leg (bottom yielders vs USD) sized so aggregate USD exposure nets to zero; residual per-currency exposure capped per PLAN section on shared-capital currency exposure caps. Crosses are out of initial scope (PLAN section 1), so no direct high-vs-low cross is traded in the anchor; all relative-value exposure is created through the USD sleeve while reported by underlying currency, not only by pair (A5 accounting requirement).",
+  "expected_spread_rollover_turnover": "Turnover: at most 2 sides per sleeve per week (12 pair-sides/week upper bound; hysteresis typically reduces it). Expected spread cost: variable by pair and session, measured from provider bid/ask at actual execution hours (0.5-2.5 pips typical for majors at liquid hours, wider around rollover) - a global constant pip is not used. Expected rollover: the dominant financing term; charged with long/short asymmetry per the broker swap schedule, with Wednesday triple-roll (3-day charge over the weekend) explicitly modeled, plus holiday-shifted rolls. NET-VIABILITY CONDITION (declared in advance): weekly rate accrual on the differential must exceed weekly spread + commission + expected rollover wedge for the mechanism to clear costs; the anchor is scored only on this net-of-everything basis against the A5 canonical USD identity. ROLLOVER/SWAP SCHEDULE AUTHORITY IS UNAVAILABLE in the repo, so every rollover number in any future implementation must come from an owner-authorized broker/provider schedule or the family fails closed.",
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "FX2-A5-P1-ANCHOR: weekly dollar-neutral high-minus-low carry factor (HML-FX) on the seven pairs, ranked by PIT 3M rate differential, equal-risk weights, 8% vol target, weekly holding with hysteresis, scored net of measured bid/ask, commission and authorized rollover schedule.",
+      "why_it_validates": "If the UIP-deviation risk premium is present and larger than financing wedge + drag, the anchor earns positive net drift with the documented negative-skew crash profile; this is exactly the Fama (1984) / Lustig-Roussanov-Verdelhan (2011) object restricted to G10-vs-USD."
+    },
+    "neighbour": {
+      "definition": "FX2-A5-P1-NEIGHBOUR: identical construction but ranking on the PIT 1-month interbank rate differential instead of 3M.",
+      "why_it_validates": "Theoretically justified cousin: both tenors measure the same currency risk-premium ordering; if the mechanism is the rate-differential premium, 1M and 3M orderings should be highly rank-correlated and both anchors positive, with differences attributable to financing tenor and policy-cycle sensitivity. If only the 3M version earns returns and the 1M version does not, the mechanism is not simply the differential and the term structure must be explained before promotion."
+    },
+    "negative_control": {
+      "definition": "Two causal controls, both preregistered: (a) SIGN-FLIP - the identical portfolio with the sign of the differential reversed at every formation (long lowest-yield, short highest-yield); (b) RANK-SCRAMBLE - at each formation the differentials are permuted across the six non-USD currencies with a fixed seeded RNG, destroying the currency-rate pairing while preserving the marginal distribution of the signal.",
+      "why_it_destroys": "(a) If returns are compensation for bearing the UIP deviation, reversed carry pays away the accrual and holds the crash exposure on the wrong side; it must destroy (reverse) net performance. An anchor indistinguishable from the sign-flip would prove the mechanism is not the rate differential. (b) Rank-scrambling severs the only causal channel (currency identity linked to its own rate) while keeping turnover, exposure mechanics and cost profile identical; it must return approximately zero net of costs. A surviving scrambled-control return would indicate an artifact (stale-rate leak, cost model error, session artifact) rather than the mechanism."
+    }
+  },
+  "expected_regimes_and_falsification": "Expected regimes: (i) positive drift in low-volatility, rate-hike-cyclical, risk-on regimes when funding currencies are stable; (ii) violent negative-skew episodes in risk-off regimes (2008-type, 2020-03-type, JPY-unwind-type) where funding currencies appreciate sharply - the Brunnermeier-Nagel-Pedersen crash channel; (iii) compressed-differential regimes (near-zero policy rates, e.g. mid-2010s) where the premium is small and cost drag dominates - the mechanism should appear dead there, and if it appears profitable only through cost-model optimism that is evidence against it. Vol targeting should cut crash drawdowns but cannot remove them. FALSIFICATION (any one is sufficient to close the family): (a) anchor net-of-all-costs return <= 0 over S0; (b) sign-flip control not destroyed; (c) rank-scramble control earns non-zero net return of the anchor's magnitude; (d) reconstructed PnL is materially sensitive to using non-PIT rates (proving the signal was rate-timing artifact); (e) performance exists only under midpoint scoring or a global constant spread, i.e. only when execution realism is removed.",
+  "macro_session_external_validity_risks": "1) Benchmark transition risk: the 3M/1M interbank fixings (LIBOR-era) were discontinued and replaced by term SOFR/SONIA/TONA/ESTR-type rates; PIT continuity across the transition must be handled with declared vintages or the sample splits. 2) Rate-source revisions and backfilled histories are a silent look-ahead channel; only stamped vintage histories are acceptable. 3) Crash clustering makes Sharpe an unstable summary; drawdown and skew gates matter more. 4) Weekend gap and Monday-holiday conventions shift weekly formation; per-currency holidays (SYNTHETIC_TEST_ONLY tables today) can mis-time formation. 5) New York 17:00 rollover boundary moves with DST in UTC terms; formation hour relative to the roll changes the charged financing and the executable spread. 6) Zero/negative-rate regimes compress differentials and can flip the sign of swap points. 7) Provider scope: one dealer feed is not 'the global FX market'; results are conditional on the frozen provider's venue/dealer scope.",
+  "exact_trial_count": 4,
+  "exact_trial_enumeration": [
+    "FX2-A5-P1-ANCHOR (3M PIT differential HML-FX, net of full costs)",
+    "FX2-A5-P1-NEIGHBOUR (1M PIT differential HML-FX, net of full costs)",
+    "FX2-A5-P1-CONTROL-SIGNFLIP (sign-reversed anchor)",
+    "FX2-A5-P1-CONTROL-SCRAMBLE (fixed-seed rank-permuted anchor)"
+  ],
+  "no_post_score_replacement": "Exactly these four arms. No arm may be added, re-parameterized, re-windowed or replaced after any scored ledger is observed. A failed family closes and stays closed.",
+  "required_pit_fields_with_availability": [
+    {
+      "field": "1h bid/ask quote history for the 7 initial pairs, >= 8 years",
+      "source": "owner-authorized institutional quote provider (frozen before any scoring)",
+      "availability": "UNAVAILABLE - 0 of 7 pairs; no provider entitlement; fails closed"
+    },
+    {
+      "field": "PIT 3M and 1M interbank/term deposit rates for USD, EUR, GBP, JPY, AUD, CAD, CHF, NZD with fix timestamps and revision/vintage history",
+      "source": "central-bank / market-data vendor PIT rate vintages (owner-authorized)",
+      "availability": "UNAVAILABLE - no PIT rate source exists in the repo; this proposal is feasibility-blocked until the owner authorizes one"
+    },
+    {
+      "field": "broker/provider rollover-swap point schedule (long and short, per pair, with Wednesday triple-roll and holiday adjustments)",
+      "source": "frozen broker/provider swap schedule documentation",
+      "availability": "UNAVAILABLE - no broker/provider swap points in the repo; carry mechanisms fail closed without it"
+    },
+    {
+      "field": "holiday tables for all 8 currency jurisdictions",
+      "source": "authoritative per-currency holiday authority",
+      "availability": "SYNTHETIC_TEST_ONLY - no authoritative source in the repo; must not be used for promotable evidence"
+    },
+    {
+      "field": "session/DST clocks and New York rollover boundary",
+      "source": "zoneinfo named timezones + A4 correctness contracts",
+      "availability": "IMPLEMENTED - zoneinfo DST is real and contracts are tested; session wall-time labels are SYNTHETIC_TEST_ONLY defaults"
+    },
+    {
+      "field": "explicit interest and conversion-graph accounting for the canonical USD identity",
+      "source": "A5 accounting/conversion modules",
+      "availability": "IMPLEMENTED as correctness contracts; historical accounting requires the quote and rate data above, which are UNAVAILABLE"
+    }
+  ],
+  "feasibility_statement": "This proposal is feasibility-blocked at selection as it stands: PIT rate vintages, real bid/ask history and a swap-schedule authority are all UNAVAILABLE. It proceeds only if the owner explicitly authorizes those data sources; it never claims or implies the data exists.",
+  "literature_sources": [
+    {
+      "title": "Forward and Spot Exchange Rates",
+      "authors": "Eugene F. Fama",
+      "year": 1984,
+      "venue": "Journal of Monetary Economics 14(3), 319-338",
+      "id": "DOI:10.1016/0304-3932(84)90029-7 (journal citation verified via JSTOR/NBER citations; DOI not independently opened this session)",
+      "retrieval_utc": "2026-09-02T23:45Z",
+      "claim_used": "Slope coefficients in regressions of spot changes on the forward premium are below the UIP value, establishing the forward-premium puzzle that motivates rate-differential risk premia in FX."
+    },
+    {
+      "title": "Common Risk Factors in Currency Markets",
+      "authors": "Hanno Lustig, Nikolai Roussanov, Adrien Verdelhan",
+      "year": 2011,
+      "venue": "Review of Financial Studies 24(11), 3731-3777",
+      "id": "https://academic.oup.com/rfs/article/24/11/3731/1589752 ; NBER WP 14082",
+      "retrieval_utc": "2026-09-02T23:47Z",
+      "claim_used": "High interest-rate currencies load on a 'slope' (HML-FX carry) factor; carry portfolios' excess returns are compensation for global risk borne in bad times, supporting a dollar-neutral sorted construction and its crash-risk interpretation."
+    },
+    {
+      "title": "Carry Trades and Currency Crashes",
+      "authors": "Markus K. Brunnermeier, Stefan Nagel, Lasse H. Pedersen",
+      "year": 2008,
+      "venue": "NBER Macroeconomics Annual 2008, Vol 23, 313-348",
+      "id": "DOI:10.3386/w14473 ; https://www.nber.org/papers/w14473",
+      "retrieval_utc": "2026-09-02T23:49Z",
+      "claim_used": "Carry trade returns exhibit sudden crashes when funding currencies appreciate in stressed states, linked to speculator funding constraints and unwinds - the negative-skew regime expectation and crash-risk counterparty in this proposal."
+    }
+  ],
+  "prohibited_shortcut_check": "None apply. (1) No RSI/EMA parameter grids and no indicator tuning; the signal is a PIT rate differential. (2) No volume is used at all, so no single-provider volume is treated as global FX volume. (3) Carry is NOT computed from today's rate applied historically: the mechanism definitionally requires PIT rate vintages with fix timestamps, which are declared UNAVAILABLE; no historical rate table in the repo may be substituted. (4) No session filter exists in this proposal, so none can be selected after seeing profitable hours. (5) No midpoint backtest will be labeled executable: scoring requires executable bid/ask sides and an authorized rollover schedule, and mid-only results are DIAGNOSTIC_ONLY and never promotable.",
+  "ancestry_statement": "This is a first-cycle F2 outcome-blind proposal, not a rescue: no forex family has previously been scored in this repo, there is no prior rejected forex carry family to re-litigate, and this lane has read no other proposal lane's output and no scored ledger. The idea is economically adjacent to the crypto perpetual-funding families (both are financing-premium spaces) but is not a port or rescue of any of them: the instrument (G10 spot vs USD), the signal source (PIT interbank/term-rate vintages, not exchange funding rates), the financing schedule (broker swap points with triple-roll, not 8-hour funding settlements), the calendar (24/5 with DST and holidays) and the cost structure (dealer spread wedge on swap points) are all FX-native and new to this repo."
+}
