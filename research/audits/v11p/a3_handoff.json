@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "role": "A3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/v11/p1-a3-costgate",
+  "branch": "orca/v11p-a3-costgate",
+  "bootstrap_sha": "0a96bf215ee8a30433fddf005c99887fcc00a43a",
+  "commit_sha": null,
+  "clean": true,
+  "allowed_globs": [
+    "research/v11/cost_feasibility.py",
+    "research/v11/__init__.py",
+    "tests/test_v11p_a3_*.py",
+    "research/audits/v11p/a3_*"
+  ],
+  "changed_files": [
+    "research/v11/__init__.py",
+    "research/v11/cost_feasibility.py",
+    "tests/test_v11p_a3_costgate.py",
+    "research/audits/v11p/a3_evidence.json",
+    "research/audits/v11p/a3_handoff.json"
+  ],
+  "deliverables": [
+    "research/v11/cost_feasibility.py: schedule-only gate computing decision count per 365-day equivalent, one-way turnover from actual target deltas, base and stressed (fee x1.5 / +2 ticks) cost drag via the reused adapter cost function, median/max intended holding duration, per-symbol turnover contribution, funding-event count while held, and proposed-signal availability/missingness",
+    "Frozen pre-score floors enforced as explicit PASS/FAIL/UNAVAILABLE flags: <=60 discretionary decisions per 365d, median intended holding >=3 calendar days, base drag <=8% of average gross capital, stressed drag <=12%, no symbol >25% of total turnover; risk/terminal forced-flat actions counted separately",
+    "Fail-closed: missing fill prices, settlement cadence or signal availability -> metric UNAVAILABLE and verdict UNAVAILABLE_FAIL_CLOSED; missing decision books raise ContractViolation; never an inferred PASS",
+    "Outcome blindness: gate emits no scored capital path; every payload carries outcome_blind_attestation and tests walk all emitted keys for outcome tokens",
+    "tests/test_v11p_a3_costgate.py: 32 tests proving each metric, one pass and one fail boundary per floor, missing-input fail-closed behaviour, adapter cost-math reuse, determinism and the no-outcome-field proof"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_v11p_a3_costgate.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "32 passed, 0 failed; git status --porcelain unchanged (only new lane files)"
+    }
+  ],
+  "assumptions": [
+    "Stressed cell combines fee x1.5 AND +2 ticks in one spec (PLAN section 7 A3 wording 'fee x1.5/+2-tick stressed'), unlike the V10 matrix where they are separate cells",
+    "One-way turnover defined as the sum of absolute target deltas (capital-weight units) across transitions, including the initial entry from flat",
+    "Cost drag is annualised as total transition cost / (window_days/365) and expressed as a fraction of average gross capital (mean of per-instant sum|w|, including forced-flat zero books)",
+    "Intended holding spans come from target-book occupancy; spans still open at the last scheduled instant are censored, excluded from duration statistics and never silently closed",
+    "Funding metric counts settlement events inside holding spans (cadence only; no rate is applied), so no capital path is representable",
+    "commit_sha is null by construction: the handoff sits inside the single lane commit, so A1 reads the sha via git rev-parse orca/v11p-a3-costgate"
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/audits/v11p/a3_evidence.json",
+    "research/audits/v11p/a3_handoff.json"
+  ],
+  "next_action_for_a1": "After A2 cherry-pick, cherry-pick this lane's single commit onto the integration branch, run the same pytest command, then diff the tree before/after tests (tracked mutation = FAIL). Gate verdicts from this module are pre-score feasibility only; they consume no scored inputs and never gate on outcome."
+}
