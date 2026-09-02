@@ -1,0 +1,47 @@
+{
+ "schema": "v11_seed_brief_v1",
+ "generated_utc": "2026-09-02T14:42:11Z",
+ "producer_role": "A1",
+ "family_id": "V11-SEED-DEFENSIVE-RESIDUAL-RISK",
+ "owner_brief": "mandatory audit input per PLAN 8.1(1)",
+ "literature": [
+  "S1"
+ ],
+ "mechanism": "low BTC-residualised risk priced positively (low-vol/downside anomaly transferred to perpetuals, beta-aware)",
+ "feature_contract": {
+  "bars": "completed 15m base bars only",
+  "aggregate": "daily UTC close",
+  "residualisation": "rolling 90d daily beta vs BTC; residual r_i - beta_i*r_BTC",
+  "risk_measure_anchor": "28d annualised volatility of residual dailies",
+  "risk_measure_neighbour": "56d residual volatility (adjacent formation)",
+  "pit_lag": "features from completed bars; one declared execution lag after availability"
+ },
+ "arms": {
+  "anchor": {
+   "name": "DEF-RESVOL-28D-W",
+   "book": "low-minus-high residual-vol bucket book",
+   "formation_days": 28,
+   "holding_days": 7
+  },
+  "neighbour": {
+   "name": "DEF-RESVOL-56D-W",
+   "book": "same mechanism, adjacent formation 56d / weekly hold",
+   "formation_days": 56,
+   "holding_days": 7
+  },
+  "causal_negative_control": {
+   "name": "DEF-RESVOL-28D-W-INV",
+   "book": "sign-inverted anchor (high-minus-low)",
+   "falsification": "any positive after-cost spread on the inverted book destroys the mechanism claim"
+  }
+ },
+ "expected_sign": "anchor net spread > 0; inverted control <= 0",
+ "cost_treatment": "generic adapter taker fees + slippage + native funding while held",
+ "risks": [
+  "spot->perp transfer",
+  "funding drag on short leg",
+  "crowding post-publication",
+  "tail regime dependence"
+ ],
+ "forbidden": "no V11 scored-window returns/PnL/ranking computed at L0"
+}

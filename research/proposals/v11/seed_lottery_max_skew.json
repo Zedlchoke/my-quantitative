@@ -1,0 +1,48 @@
+{
+ "schema": "v11_seed_brief_v1",
+ "generated_utc": "2026-09-02T14:42:11Z",
+ "producer_role": "A1",
+ "family_id": "V11-SEED-LOTTERY-MAX-SKEW",
+ "owner_brief": "mandatory audit input per PLAN 8.1(2)",
+ "literature": [
+  "S2",
+  "S3"
+ ],
+ "mechanism": "lottery-like demand overprices high-MAX/high-skew coins (negative cross-sectional MAX/skew premium transferred to perpetuals, BTC-residualised)",
+ "feature_contract": {
+  "bars": "completed 15m base bars only",
+  "aggregate": "daily UTC close",
+  "residualisation": "rolling 90d daily beta vs BTC",
+  "max_feature": "max daily residual return over trailing 7d",
+  "skew_feature": "30d rolling skew of residual dailies (neighbour)",
+  "pit_lag": "features from completed bars; one declared execution lag after availability"
+ },
+ "arms": {
+  "anchor": {
+   "name": "LOT-RESMAX-7D-W",
+   "book": "low-minus-high residual-MAX book",
+   "formation_days": 7,
+   "holding_days": 7
+  },
+  "neighbour": {
+   "name": "LOT-RESSKEW-30D-W",
+   "book": "low-minus-high residual idiosyncratic skew",
+   "formation_days": 30,
+   "holding_days": 7
+  },
+  "causal_negative_control": {
+   "name": "LOT-RESMAX-7D-W-INV",
+   "book": "sign-inverted anchor (high-minus-low MAX)",
+   "falsification": "any positive after-cost spread on the inverted book destroys the mechanism claim"
+  }
+ },
+ "expected_sign": "anchor net spread > 0; inverted control <= 0",
+ "cost_treatment": "generic adapter taker fees + slippage + native funding while held",
+ "risks": [
+  "spot->perp transfer",
+  "short-leg funding on crowded longs",
+  "tail sensitivity / fold concentration",
+  "regime decay after publication"
+ ],
+ "forbidden": "no V11 scored-window returns/PnL/ranking computed at L0"
+}
