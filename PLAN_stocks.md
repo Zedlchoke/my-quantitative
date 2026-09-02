@@ -152,10 +152,19 @@ Wave S7: A1 + A7             # terminal audit
 
 ## 5. Worktrees and branches
 
+> **Owner-approved amendment (2026-09-02):** for this sprint only, the top-level
+> A1 integration branch is `stocks`, replacing `orca/stocks-integration` above.
+> All subordinate lane branches keep their `orca/stocks-*` names. Measured at
+> bootstrap: branch `stocks` already existed at the frozen
+> `STOCKS_OWNER_SHA=b8876ef8e0f7dd235d66f5cae5bfd8fd9034147f` with no worktree
+> attached; A1 attached it with `git worktree add <path> stocks` instead of
+> force-creating a branch. Recorded in
+> `research/control/stocks_run/intake.json`.
+
 All paths stay inside the repo permission boundary:
 
 ```text
-.worktrees/stocks/integration       orca/stocks-integration
+.worktrees/stocks/integration       stocks
 .worktrees/stocks/m0-common         orca/stocks-m0-common
 .worktrees/stocks/s1-data           orca/stocks-s1-data
 .worktrees/stocks/s1-calendar       orca/stocks-s1-calendar
@@ -180,7 +189,7 @@ working directory. A1 Stocks MUST run only in:
 
 ```text
 path:   /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration
-branch: orca/stocks-integration
+branch: stocks
 ```
 
 Before creating A1, the owner/controller freezes `STOCKS_OWNER_SHA` as a full
@@ -196,7 +205,7 @@ git -C /Users/hoangminhlong/my-quantitative branch --show-current
 git -C /Users/hoangminhlong/my-quantitative status --porcelain=v1
 git -C /Users/hoangminhlong/my-quantitative worktree list --porcelain
 git -C /Users/hoangminhlong/my-quantitative worktree add \
-  -b orca/stocks-integration \
+  -b stocks \
   /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration \
   STOCKS_OWNER_SHA
 ```
@@ -222,7 +231,7 @@ The A1 launch prompt MUST include:
 ```text
 ROLE: A1 Stocks controller and sole integration authority
 WORKTREE: /Users/hoangminhlong/my-quantitative/.worktrees/stocks/integration
-BRANCH: orca/stocks-integration
+BRANCH: stocks
 OWNER_SHA: <full 40-character STOCKS_OWNER_SHA>
 READ FIRST: PLAN_stocks.md, PLAN.md, NOTES.md, research/wayfinder/MAP.md
 ROOT CHECKOUT: read-only after bootstrap; never implement from root/main
@@ -238,7 +247,7 @@ worktree for itself.
 
 ### 5.2 A1 creation of Stocks lane worktrees
 
-A1 first commits the intake manifest on `orca/stocks-integration` and freezes a
+A1 first commits the intake manifest on `stocks` and freezes a
 full `STOCKS_WAVE_SHA`. Every lane in that wave branches from that exact SHA,
 not from moving `main` and not automatically from `STOCKS_OWNER_SHA`. Example
 for M0:
