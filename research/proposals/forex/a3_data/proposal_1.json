@@ -1,0 +1,130 @@
+{
+  "proposal_id": "FX2-A3-P1",
+  "lane": "a3_data",
+  "mechanism_name": "Session-boundary liquidity-cycle premium (DST-correct New York rollover window)",
+  "economic_mechanism": "Dealer liquidity provision in spot FX is cyclically withdrawn at deterministic clock boundaries of the 24/5 session: the New York 17:00 ET rollover/dealer day-end, session opens/closes across Asia, Europe and North America. Interbank evidence shows quote arrivals and bid-ask spreads vary systematically with these market opens and closes (Bollerslev & Domowitz 1993) and that intraday FX volatility carries a large deterministic clock-hour periodic component (Andersen & Bollerslev 1997); algorithmic/electronic participation is also strongly concentrated in specific clock hours (Chaboud, Chiquoine, Hjalmarsson & Vega 2014). Hypothesis: returns earned over the rollover-boundary clock window differ persistently from returns earned over ordinary clock windows, as compensation for transacting at the hour of maximal liquidity withdrawal. The tradeable arm holds the pair across the DST-correct 17:00 ET boundary, with direction set ONLY by the trailing same-window drift of prior rollover windows (same-clock history, never full-day history) and volatility targeted from window-only variance. This is a clock-anchored liquidity-cycle hypothesis, not a directional price view: the only 'parameter' is the boundary itself, fixed ex ante by dealer convention.",
+  "expected_counterparty": "Liquidity demanders who transact at the rollover boundary at the day's widest quotes: funds rebalancing at the dealer day-end, hedgers and retail-flow rolling positions at the swap-point reset, and dealers flattening inventory before the cut. The strategy stands as the small liquidity provider taking the opposite side of boundary-forced flow.",
+  "signal_fields_and_publication_clock": {
+    "signal_fields": [
+      "historical bid/ask quotes (<=1-minute bars or ticks) for the anchor/neighbour pair, used for window returns AND window spread levels",
+      "session/DST clock: America/New_York via zoneinfo (real DST), defining the 17:00 ET boundary instant year-round",
+      "trailing same-window drift: mean of the prior 126 rollover-window 1h returns, most recent 5 windows excluded from the mean as a staleness/contamination purge (fixed ex ante)"
+    ],
+    "publication_clock": "Quotes are instantaneous states sampled from a continuous dealer feed; no delayed publication. Formation order is evaluated at the close of the 15-minute bar ending 16:45 America/New_York each business day; only quotes timestamped strictly before that instant may enter the signal. Wall-clock session labels (fixed UTC offsets) are prohibited for window placement; SYNTHETIC_TEST_ONLY label defaults must never drive fills or windows.",
+    "staleness_guard": "if the newest quote at formation is older than 60 seconds, the arm abstains for that day (data-quality gate from the A3 lane)."
+  },
+  "formation_holding_rebalance": {
+    "formation": "daily, business days only, at 16:45 ET bar close (zoneinfo-correct)",
+    "holding": "60 minutes: enter at 16:45 ET bar close, exit at 17:45 ET bar close (the boundary window straddling the 17:00 ET rollover widening)",
+    "rebalance": "none within the window; positions are flat outside the window by construction",
+    "position_sizing": "volatility-targeted at 10% annualized using window-only variance of the trailing 126 windows; direction = sign of trailing same-window mean; zero position if |mean| below its own trailing interquartile band (deadband fixed ex ante)"
+  },
+  "pair_universe_and_neutralization": "Frozen G10-USD candidates EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD (PLAN section 1). Scoreable arms are EURUSD (anchor) and GBPUSD (neighbour) only. The arm is single-pair and holds no deliberate USD book: exposure is flat outside the daily 60-minute window, and the strategy's USD exposure is bounded by the window position itself, within the plan's currency exposure caps. Cross-pair neutralization is deliberately NOT applied: the hypothesis is per-pair clock compensation, not cross-sectional ranking.",
+  "expected_spread_rollover_turnover": {
+    "expected_spread": "adverse by design: both legs execute inside/adjacent to the documented daily spread-widening window, so realized cost per round trip is expected above the pair's 24h average spread; the premium must clear this cost after execution-model bid/ask fills. Midpoint-only measurement is DIAGNOSTIC_ONLY and can never support an executable claim (PLAN section 2).",
+    "expected_rollover": "each daily round trip straddles the 17:00 ET cut and is expected to accrue one swap/rollover event per day; accrual requires an authoritative historical swap schedule, which is UNAVAILABLE in the repo, so rollover attribution is feasibility-blocking until authorized",
+    "expected_turnover": "1 round trip per pair per business day, approximately 260 round trips per pair per year; for the two scoreable arms approximately 520 round trips per year combined"
+  },
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "EURUSD: the DST-correct rollover-window volatility-targeted same-window-drift arm",
+      "why_it_validates": "EURUSD is the deepest, tightest-quoted pair on any dealer panel; if a clock-anchored liquidity-cycle premium exists anywhere it should be measurable there with the least measurement noise from quote data"
+    },
+    "neighbour": {
+      "definition": "GBPUSD: identical rule, identical window, no re-tuning",
+      "why_it_validates": "GBPUSD shares the same dealer panel structure, the same 17:00 ET dealer day-end and near-identical session-cycle participation; the mechanism predicts the same-signed premium with attenuated magnitude and its own noise. Neighbour confirmation supports a dealer-clock mechanism rather than a pair-idiosyncratic artifact."
+    },
+    "negative_control": {
+      "definition": "two causal destructions, both fixed ex ante: (C1) window shift: identical rule with the 60-minute window shifted +6 hours into the mid-session liquidity plateau (no documented boundary event); (C2) DST-naive clock: identical rule with the window placed by a fixed UTC-5 offset year-round instead of America/New_York zoneinfo, so the window drifts one hour off the true rollover during EDT months",
+      "why_it_destroys": "If the premium is compensation tied to the boundary event, C1 (no boundary) must eliminate it and C2 must attenuate it exactly in EDT months. If the effect survives arbitrary window placement or DST-naive labels, the mechanism is falsified: any remaining effect would be generic intraday drift, not session-boundary compensation."
+    }
+  },
+  "expected_regimes_and_falsification": {
+    "expected_regimes": "Premium expected to be concentrated in liquidity-scarcity regimes (elevated volatility, stress episodes such as 2008 and 2020) consistent with priced FX liquidity risk, and near zero in calm regimes; boundary spread widening expected to deepen in stress, raising the bar the premium must clear.",
+    "falsification": [
+      "premium statistically indistinguishable in the +6h control window",
+      "premium survives DST-naive wall-clock placement with no EDT-month attenuation",
+      "premium absent after schedule-only bid/ask cost accounting at realized window spreads",
+      "premium appears only in midpoint (DIAGNOSTIC_ONLY) measurement and vanishes with executable fills",
+      "premium uniform across stress and calm regimes (no liquidity-risk link)"
+    ]
+  },
+  "macro_session_external_validity_risks": [
+    "rollover conventions are dealer-specific (cut at 16:59 vs 17:00, swap crediting instants differ); findings are scoped to the frozen provider's panel and must not be labeled 'the global FX market' (FX is decentralized: BIS Triennial 2022)",
+    "local dealer participation differs by pair (AUDUSD/NZDUSD Asia sessions); a uniform NY-cut window may have different economic content per pair",
+    "fixed clock hours coincide with scheduled macro releases on other hours; window placement at 17:00 ET is fixed ex ante and must never be re-selected after observing returns near NFP/FOMC hours",
+    "holiday-thinned sessions (late December) distort the window; repo holiday tables are SYNTHETIC_TEST_ONLY, so holiday robustness cannot be authoritatively assessed today",
+    "secular microstructure change (algorithmic share, spread compression) may time-vary the premium; trailing same-window estimation adapts but regime breaks remain a risk"
+  ],
+  "exact_trial_count": 2,
+  "exact_trial_count_note": "Exactly 2 scoreable arms (anchor EURUSD, neighbour GBPUSD). Controls C1/C2 and any midpoint diagnostic are non-scoreable falsification diagnostics. No post-score arm replacement permitted.",
+  "required_pit_fields_with_availability": [
+    {
+      "field": "historical bid/ask quotes (tick or <=1m) for EURUSD and GBPUSD",
+      "source": "owner-authorized institutional quote provider (PLAN section 2, candidate 1) or owner-supplied normalized Parquet with provider documentation",
+      "availability": "UNAVAILABLE: 0 of 7 pairs have real FX bid/ask history; no provider entitlement; fail-closed. This proposal is feasibility-blocked until the owner authorizes data."
+    },
+    {
+      "field": "rollover/swap schedule (historical, per pair, per value date)",
+      "source": "provider financing documentation (PLAN section 2 official references)",
+      "availability": "UNAVAILABLE: no rollover/swap schedule authority in repo. Rollover attribution for the boundary-straddling position is blocked until authorized."
+    },
+    {
+      "field": "holiday tables for session day-count and thin-session exclusion",
+      "source": "authoritative holiday sources for each currency (PLAN section 2)",
+      "availability": "SYNTHETIC_TEST_ONLY: no authoritative source in repo; holiday effects may only be described, not gated on, in evidence."
+    },
+    {
+      "field": "session/DST clocks (America/New_York rollover instant)",
+      "source": "repo session correctness contracts; zoneinfo DST data",
+      "availability": "AVAILABLE: correctness contracts implemented and zoneinfo DST is real; however session wall-time labels are SYNTHETIC_TEST_ONLY defaults and are prohibited for window placement (this prohibition is the C2 negative control)."
+    },
+    {
+      "field": "PIT macro vintages (rates, CPI, event releases)",
+      "source": "none required by this proposal",
+      "availability": "UNAVAILABLE in repo, but not a dependency: the thesis deliberately uses quote/clock information only."
+    }
+  ],
+  "literature_sources": [
+    {
+      "title": "Intraday Periodicity and Volatility Persistence in Financial Markets",
+      "authors": "Torben G. Andersen; Tim Bollerslev",
+      "year": 1997,
+      "doi_or_url": "https://www.sciencedirect.com/science/article/pii/S0927539897000042 ; https://ideas.repec.org/a/eee/empfin/v4y1997i2-3p115-158.html",
+      "retrieval_utc": "2026-09-02T23:50:00Z",
+      "claim_used": "Foreign exchange return volatility contains a large deterministic intraday periodic component tied to the 24-hour trading cycle, and this periodicity dominates short-horizon return dynamics. Journal of Empirical Finance 4(2-3), 115-158."
+    },
+    {
+      "title": "Trading Patterns and Prices in the Interbank Foreign Exchange Market",
+      "authors": "Tim Bollerslev; Ian Domowitz",
+      "year": 1993,
+      "doi_or_url": "https://doi.org/10.1111/j.1540-6261.1993.tb04760.x",
+      "retrieval_utc": "2026-09-02T23:50:00Z",
+      "claim_used": "Quote arrivals and bid-ask spreads in interbank FX vary systematically with the opening and closing of Asia, Europe and North America markets across the 24-hour day. Journal of Finance 48(4)."
+    },
+    {
+      "title": "Rise of the Machines: Algorithmic Trading in the Foreign Exchange Market",
+      "authors": "Alain P. Chaboud; Benjamin Chiquoine; Erik Hjalmarsson; Clara Vega",
+      "year": 2014,
+      "doi_or_url": "https://doi.org/10.1111/jofi.12186",
+      "retrieval_utc": "2026-09-02T23:50:00Z",
+      "claim_used": "FX trading activity and algorithmic participation vary strongly across the 24-hour clock, concentrated in specific (London/New York overlap) hours. Journal of Finance 69(5), 2045-2084."
+    },
+    {
+      "title": "BIS Triennial Central Bank Survey of foreign exchange and OTC derivatives markets in 2022",
+      "authors": "Bank for International Settlements",
+      "year": 2022,
+      "doi_or_url": "https://www.bis.org/statistics/rpfx22.htm",
+      "retrieval_utc": "2026-09-02T23:50:00Z",
+      "claim_used": "OTC FX trading averaged USD 7.5 trillion per day in April 2022 (net-net, all instruments) in a decentralized dealer market: a single provider feed is a dealer panel, not the global market."
+    }
+  ],
+  "prohibited_shortcut_check": {
+    "rsi_ema_grids_without_mechanism": "NOT APPLICABLE: no price-indicator parameters exist; the only anchor is the dealer-convention boundary instant, fixed ex ante from market structure, and no parameter grid is searched.",
+    "single_provider_volume_as_global_volume": "NOT APPLICABLE: no volume field is used anywhere; quotes are treated strictly as one dealer panel's prices/spreads per PLAN section 2.",
+    "carry_from_todays_rate_applied_historically": "NOT APPLICABLE: no interest rates or swap rates enter the signal; rollover accruals, if attributed at all, must come from an authoritative historical schedule (currently UNAVAILABLE and declared blocking).",
+    "session_filters_selected_after_seeing_profitable_hours": "NOT APPLICABLE: the 16:45-17:45 ET window is fixed by dealer convention before any return observation; the +6h and DST-naive controls are pre-registered precisely to catch any post-hoc window selection.",
+    "midpoint_backtests_labeled_executable": "NOT APPLICABLE: all executable claims require bid/ask fills at realized window spreads; midpoint measurement is DIAGNOSTIC_ONLY per PLAN section 2."
+  },
+  "ancestry_statement": "This is a new, first-time FX proposal from the A3 data lane. The repo's previously researched families are crypto funding/momentum mechanisms (funding-carry, funding-PIT, funding-price-divergence, v9 residual-MR/trend/vol-shock); no FX family has previously been proposed, scored or rejected in this repository, so there is nothing to rescue. The mechanism is not a re-labeled carry, trend or session-filter idea: its thesis is clock-anchored liquidity-provision compensation, pre-registered with destruction controls, and it matches PLAN_forex.md section 9 priority space 'session/overnight risk premium with correct DST clocks'."
+}
