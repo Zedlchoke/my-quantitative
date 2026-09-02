@@ -1,0 +1,73 @@
+{
+ "schema": "v11_a8_proposal_v1",
+ "producer_role": "D1-A8",
+ "generated_utc": "2026-09-02T15:20:00Z",
+ "bootstrap_sha": "0684914b7bf64a5b9b8eeaa82529a2d11a8a251d",
+ "family_id": "A8-V11-OILEVER-DELEV",
+ "outcome_blind": true,
+ "hypothesis": "coins whose open interest per unit of traded dollar volume grew fastest over the trailing 28d subsequently underperform low/flat-OI-growth coins on a beta-neutral weekly Binance USD-M perpetual book, after adapter costs and native funding (deleveraging/liquidation-friction premium)",
+ "literature": ["P5", "P6", "P7", "P8", "P9"],
+ "literature_honesty_note": "no peer-reviewed paper directly prices the cross-section of crypto open-interest growth; the claim is a novel transfer resting on a verified mechanism-friction chain (P5, P6), one time-series positioning-predictability prior (P7), perp mechanics (P8) and a mandatory OI data-quality constraint (P9). Higher external-validity risk than a direct-pricing transfer, declared per packet rule 1.",
+ "mechanism": "rapid OI build-up per unit volume marks newly over-levered books that (i) transiently overprice the coin and (ii) raise the probability of mechanically amplified forced selling (deleveraging cascade, endogenous-buildup type); shorting that fragility and longing the un-levered alternative earns the deleveraging premium; counterparty is over-leveraged late directional retail",
+ "feature_contract": {
+  "bars": "completed 15m base bars only (close, quote volume)",
+  "oi": "per-symbol open-interest snapshots from the frozen staged snapshot, last publish-timestamp strictly inside each completed UTC day",
+  "aggregate": "daily UTC close, daily dollar volume, daily last-OI",
+  "anchor_feature": "OILEV_FLOW_28D = log change over 28d of OI_i/daily_dollar_volume_i (leverage build-up flow, volume-normalised)",
+  "neighbour_feature": "OILEV_STOCK = trailing 56d mean of OI_i/daily_dollar_volume_i (standing leverage intensity level)",
+  "contamination_diagnostic": "declared pre-score: rank correlation of OILEV_FLOW_28D vs trailing 28d price return (momentum-smuggling check)",
+  "residualisation": "rolling 90d daily beta vs BTC applied to book weights (beta-neutral)",
+  "pit_lag": "features from completed bars and timestamped OI snapshots only; 24h declared execution lag; weekly decision instant",
+  "funding_role": "cost line only, never a signal input (keeps family outside funding-carry/crowding adjacency by construction)",
+  "oi_data_quality_gate": "P9 fail-closed plausibility gate per symbol: non-negative OI, no >50% level gaps in window, no unexplained >10x level jumps; failures mark the feature UNAVAILABLE for the instant (never inferred)"
+ },
+ "arms": {
+  "anchor": {"name": "OILEV-FLOW-28D-W", "book": "long lowest-OI-growth quintile minus short highest-OI-growth quintile, equal weight, dollar-neutral, beta-neutral", "formation_days": 28, "holding_days": 7},
+  "neighbour": {"name": "OILEV-STOCK-56D-W", "book": "same book on the leverage-stock level feature", "formation_days": 28, "stock_window_days": 56, "holding_days": 7},
+  "causal_negative_control": {
+   "name": "OILEV-FLOW-28D-W-INV",
+   "book": "sign-inverted anchor (long most newly-levered minus short least)",
+   "falsification": "any positive after-cost spread on the inverted book destroys the mechanism claim (it would imply OI build-up predicts continuation, not deleveraging drag)"
+  }
+ },
+ "schedule": {
+  "decision_instants": "weekly, Monday 00:00 UTC",
+  "decisions_per_365d": 52,
+  "median_intended_holding_days": 7,
+  "turnover_rationale": "OI is a slow stock variable; 28d trailing feature on a weekly clock with persistent bucket membership; A3 verifies all floors on schedule artifacts before scoring"
+ },
+ "expected_sign": "anchor net spread > 0; neighbour same sign, weaker; inverted control <= 0",
+ "falsification_conditions": [
+  "inverted control positive after costs",
+  "anchor net spread negative or ~0 (cross-sectional transfer fails)",
+  "neighbour sign opposite to anchor (differencing artefact)",
+  "anchor edge fully explained by momentum contamination diagnostic with failed A7-N orthogonality",
+  "A3 floors fail (base drag > 8%/yr, stressed > 12%/yr, holding < 3d, decisions > 60/365d, symbol turnover share > 25%)",
+  "OI coverage/plausibility too thin (UNAVAILABLE_FAIL_CLOSED, never traded through)"
+ ],
+ "cost_treatment": "adapter taker fee + adverse-tick slippage floor per side via GenericStrategyBase.rebalance_cost_between; stressed cell fee x1.5 + 2 ticks; native 8h funding accrual via checked_funding_accrual; short high-OI leg typically receives funding - funding attribution reported separately so the tailwind cannot masquerade as mechanism edge",
+ "risks": [
+  "OI misquoting at major venues (P9): binding data-quality risk, mitigated only by the fail-closed gate",
+  "exogenous-shock cascades (P6: 2 of 7 events) are NOT predicted by positioning - part of the honest null",
+  "novel transfer with no direct cross-sectional pricing prior (higher external-validity risk, disclosed)",
+  "momentum contamination (mitigated by declared pre-score diagnostic + A7-N rho gate)",
+  "funding tailwind on the short leg could be misattributed (separate attribution disclosure)",
+  "spot-universe literature absent entirely; priors are BTC time-series - universe transfer risk"
+ ],
+ "ancestry": {
+  "forbidden_inventory_clean": true,
+  "forbidden_families": ["weekly_reversal_V8", "funding_carry_V6", "funding_crowding_MR", "volatility_compression_breakout", "funding_price_divergence_V7", "A8-V10-M01-aggressor-absorption", "trend/momentum", "residual mean-reversion", "volume-shock continuation"],
+  "adjacency_arguments": {
+   "funding_crowding": "forbidden crowding family is funding-rate-based; here funding is never a feature and the mechanism is margin/liquidation friction (exists at zero funding); different observable, mechanism, counterparty",
+   "M01": "M01 absorbed 15m aggressor flow at 6916 positions/fold; this is a weekly OI positioning book - different observable class, cadence 3 orders of magnitude lower, different mechanism",
+   "reserved_seeds": "neither seed uses OI or any positioning observable; feature spaces disjoint; A7-N rho binding"
+  },
+  "within_lane_orthogonality": "vs A8-V11-ILLIQ-AMIHUD: shared dollar-volume deflator only; mechanisms disjoint (liquidity-provision compensation vs deleveraging fragility); feature rank correlation reported at implementation"
+ },
+ "data_readiness": {
+  "required_fields": ["completed 15m bars", "per-symbol OI snapshots (frozen staged snapshot)", "funding settlements (cost accounting only)", "BTC bars (beta input)"],
+  "new_external_data": false,
+  "implementation_estimate_days": 3.0
+ },
+ "not_a_rescue": "no rejected family used open interest, so no re-tuned threshold can reproduce this mechanism; M01's cost-burn failure mode is structurally avoided (52 decisions/yr, stock feature, pre-score cost gate); funding-crowding rescue route closed by excluding funding from the signal; momentum relabelling exposed by the declared contamination diagnostic, the sign-inverted control and A7-N"
+}

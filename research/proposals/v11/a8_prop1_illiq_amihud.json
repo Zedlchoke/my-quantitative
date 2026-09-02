@@ -1,0 +1,68 @@
+{
+ "schema": "v11_a8_proposal_v1",
+ "producer_role": "D1-A8",
+ "generated_utc": "2026-09-02T15:10:00Z",
+ "bootstrap_sha": "0684914b7bf64a5b9b8eeaa82529a2d11a8a251d",
+ "family_id": "A8-V11-ILLIQ-AMIHUD",
+ "outcome_blind": true,
+ "hypothesis": "coins with higher trailing Amihud price impact per dollar volume earn higher subsequent cross-sectional returns on Binance USD-M perpetuals, beta-neutral, weekly-or-slower, after adapter costs and native funding",
+ "literature": ["P1", "P2", "P3", "P4"],
+ "mechanism": "compensation for liquidity provision: high price-impact coins carry inventory/immediacy risk that liquidity PROVIDERS are paid to bear; counterparty is price-insensitive flow and the convenience crowd clustered in liquid majors",
+ "feature_contract": {
+  "bars": "completed 15m base bars only (close + quote/dollar volume)",
+  "aggregate": "daily UTC return and daily dollar volume",
+  "anchor_feature": "AMIHUD_28D = mean over trailing 28d of daily_|r_i|/daily_dollar_volume_i, log-1p, cross-sectional rank",
+  "neighbour_feature": "same measure, 56d formation window",
+  "orthogonalisation_diagnostic": "Amihud re-ranked within trailing 30d median dollar-volume terciles (size proxy); raw-vs-orthogonalised spread comparison declared pre-score",
+  "residualisation": "rolling 90d daily beta vs BTC applied to book weights (beta-aware)",
+  "pit_lag": "features from completed bars; 24h declared execution lag; weekly decision instant after freeze",
+  "funding_role": "cost line only, never a signal input",
+  "oi_mark_role": "not used"
+ },
+ "arms": {
+  "anchor": {"name": "ILLIQ-AMIHUD-28D-W", "book": "long most-illiquid quintile minus short most-liquid quintile, equal weight, dollar-neutral, beta-neutral", "formation_days": 28, "holding_days": 7},
+  "neighbour": {"name": "ILLIQ-AMIHUD-56D-W", "book": "same book, 56d formation", "formation_days": 56, "holding_days": 7},
+  "causal_negative_control": {
+   "name": "ILLIQ-AMIHUD-28D-W-INV",
+   "book": "sign-inverted anchor (long most-liquid minus short most-illiquid)",
+   "falsification": "any positive after-cost spread on the inverted book destroys the mechanism claim"
+  }
+ },
+ "schedule": {
+  "decision_instants": "weekly, Monday 00:00 UTC",
+  "decisions_per_365d": 52,
+  "median_intended_holding_days": 7,
+  "turnover_rationale": "slow 28d characteristic, persistent bucket membership, two bucket legs; A3 gate verifies floors on schedule artifacts before any scoring"
+ },
+ "expected_sign": "anchor net spread > 0; inverted control <= 0",
+ "falsification_conditions": [
+  "inverted control positive after costs",
+  "anchor net spread negative (perp transfer fails)",
+  "anchor positive raw but ~0 after size-orthogonalisation (size effect relabelled)",
+  "A3 floors fail (base drag > 8%/yr, stressed > 12%/yr, holding < 3d, decisions > 60/365d, symbol turnover share > 25%)",
+  "fold/symbol concentration gates fail"
+ ],
+ "cost_treatment": "adapter taker fee + adverse-tick slippage floor per side, reused verbatim from GenericStrategyBase.rebalance_cost_between; stressed cell fee x1.5 + 2 ticks; native funding accrual via checked_funding_accrual over held spans",
+ "risks": [
+  "generic tick-slippage floor understates true impact on the illiquid long leg (stressed cell is the pre-score margin)",
+  "size confound (mitigated by declared pre-score orthogonalisation diagnostic)",
+  "spot-sample-to-perp transfer must be re-earned (funding, native shorting, basis)",
+  "publication crowding after 2025 preprint",
+  "listing/survivorship handled fail-closed by staged snapshot coverage rules"
+ ],
+ "ancestry": {
+  "forbidden_inventory_clean": true,
+  "forbidden_families": ["weekly_reversal_V8", "funding_carry_V6", "funding_crowding_MR", "volatility_compression_breakout", "funding_price_divergence_V7", "A8-V10-M01-aggressor-absorption", "trend/momentum", "residual mean-reversion", "volume-shock continuation"],
+  "reserved_seed_proximity": {
+   "V11-SEED-DEFENSIVE-RESIDUAL-RISK": "expected NEGATIVE book overlap (illiquid tail is high-residual-vol; this book is long it); no shared observable (no return-risk measure)",
+   "V11-SEED-LOTTERY-MAX-SKEW": "no shared observable (no MAX/skew/return-shape input); orthogonality verified by A7-N rho"
+  },
+  "volume_usage_disclaimer": "dollar volume is a deflator inside a slow 28d impact LEVEL, not a shock-continuation signal; opposite mechanism and 1/500th the decision frequency of the forbidden volume-shock family"
+ },
+ "data_readiness": {
+  "required_fields": ["completed 15m bars (close, quote volume) per USD-M symbol in frozen staged snapshot"],
+  "new_external_data": false,
+  "implementation_estimate_days": 2.5
+ },
+ "not_a_rescue": "changes observable class (price impact per dollar volume), cadence (52 decisions/yr vs 6916 positions/fold) and mechanism (liquidity-provision compensation vs flow absorption/continuation); no rejected family is a special case; no rejected threshold re-tuned"
+}
