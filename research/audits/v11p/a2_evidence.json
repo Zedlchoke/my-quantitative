@@ -1,0 +1,100 @@
+{
+  "generated_utc": "2026-09-02T14:29:23Z",
+  "producer_role": "A2",
+  "lane": "V11P A2 -- publication identity and denominator reconciliation",
+  "bootstrap_sha": "0a96bf215ee8a30433fddf005c99887fcc00a43a",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/v11/p1-a2-publication",
+  "branch": "orca/v11p-a2-publication",
+  "defect": {
+    "summary": "The frozen V10 canonical_scored_payload keyed the trial key on arm_config_id (control_mode) alone; StrategyIdentity.config was entirely outside the key. M01-N (neighbour) shared control_mode='anchor' with M01-A while neighbour_mode lived only in config, so both arms collapsed onto one trial_key_sha256 and the computed neighbour was refused with duplicate_trial_key_already_published -- scored but never published.",
+    "documented_in": "research/control/v10r_run/family_terminal_m01.json (lesson L-CONTRACT-1, cells.neighbour)",
+    "documented_effect": "3 cells computed, 2 published, 1 computed-unpublished; ledger denominator 119, scientifically observed 120 (PLAN section 0).",
+    "regression_pin": "tests/test_v11p_a2_publication.py::test_v1_keying_collides_arms_v2_keying_distinguishes_them proves three arm identities sharing arm_config_id collapse to ONE v1 key and produce THREE distinct v2 keys."
+  },
+  "identity_v2_spec": {
+    "module": "research/v11/publication_identity.py",
+    "schema_version": "v11.adapter.trial_publication.v2",
+    "identity_version_token": "v2",
+    "fields_added_to_key_payload": [
+      "identity_version (= 'v2')",
+      "arm_id (explicit, mandatory under v2; argument or StrategyIdentity.arm_id)",
+      "arm_config_digest (sha256 over the versioned canonical arm payload)"
+    ],
+    "arm_config_digest_inputs": [
+      "schema (v11.arm_config_digest.v1 -- the digest definition itself is versioned)",
+      "strategy_id",
+      "family_id",
+      "arm_config_id",
+      "arm_id",
+      "direction",
+      "funding_sign_convention",
+      "benchmark_symbols_excluded (ordered list)",
+      "config (the ENTIRE identity.config mapping, canonicalised verbatim)"
+    ],
+    "deliberately_excluded_from_digest": "window_start_iso/window_end_iso -- cell fields, already inside the full trial key, so the digest stays comparable across cells.",
+    "fail_closed_rules": [
+      "v2 without a resolvable non-empty arm_id raises ContractViolation",
+      "a whitespace-only arm_id argument raises ContractViolation",
+      "identity.arm_id padded with whitespace raises ContractViolation at construction",
+      "identity_version='v1' with an arm raises ContractViolation (v1 key space is frozen for historical rows)",
+      "unknown identity_version raises ContractViolation (no silent fallback)"
+    ],
+    "backward_compatibility": "Omitting the arm reproduces the frozen v1 payload/key byte-for-byte (legacy_v1_payload pins the v1 key set and refuses shape drift). No historical ledger byte is rewritten; the historical row stays first and byte-identical in the append-only file (proved by test).",
+    "concurrency": "All check-then-append critical sections (publish_trial, record_trial_observation) run under one process-local RLock, so exactly-once holds for racing in-process publishers (proved by two concurrent-append tests). Cross-process writers to one ledger file remain outside this guarantee per factory concurrency policy (PLAN section 5.2: one writer per worktree)."
+  },
+  "reconciliation_decision": {
+    "option_chosen": "preferred option 1: explicit provenance-linked historical observation/amendment ACCEPTED BY the ledger schema",
+    "mechanism": "Append-only kind-less row (schema=v11.trial_observation.v1, verdict=TRIAL_OBSERVATION_AMENDMENT) built by m01_neighbour_amendment_entry from research/control/v10r_run/family_terminal_m01.json. research/protocol/registry.validate_entry_kind accepts kind-less rows; global_ledger.append_verified accepts them (non-null experiment_id + verdict). The row can therefore never be counted by published_cell_rows (kind CELL_RESULT) while denominator_split counts it toward the observed denominator.",
+    "reason": "The ledger schema demonstrably accepts provenance-linked observations, so the fallback (freezing observed_denominator=120 as a first-class consumer field) was unnecessary; the amendment keeps the evidence IN the ledger with byte-exact provenance (terminal artifact sha256) instead of only in a constant.",
+    "provenance_guarantees": [
+      "M01-N metric values (net_return_sum=-515951.9347, expectancy_per_day=-1413.5669, max_drawdown=515951.9347) are copied verbatim from the documented terminal artifact and pin-checked against frozen constants; a drifted artifact is refused, never re-scored",
+      "status COMPUTED_UNPUBLISHED_CONTRACT_GAP, publish_stage and root_cause are carried verbatim; rescore_forbidden=true",
+      "dedupe key embeds the terminal artifact sha256, so re-running reconciliation is a no-op",
+      "supersede rule: an observation whose observed_trial_key_sha256 later appears as a published row no longer counts toward observed_unpublished, so a trial is counted exactly once overall"
+    ],
+    "resulting_denominators": {
+      "published": 119,
+      "observed_unpublished": 1,
+      "observed_total": 120,
+      "constants": "M01_FROZEN_PUBLISHED_DENOMINATOR=119, M01_FROZEN_OBSERVED_DENOMINATOR=120 (research/v11/publication_identity.py); statistical consumers read denominator_view(ledger)"
+    },
+    "historical_bytes_untouched": "The real registry was never written by this lane; tests prove historical rows survive byte-for-byte as a prefix when v2 rows are appended after them."
+  },
+  "changed_files": [
+    "research/adapter_v10/protocol.py (minimal identity edit: optional declared arm_id field + whitespace guard; public_payload untouched so historical artifact views are stable)",
+    "research/adapter_v10/publish.py (versioned key resolution, observe_unpublished accounting, record_trial_observation, denominator_view, process-local exactly-once lock)",
+    "research/v11/__init__.py (new package docstring)",
+    "research/v11/publication_identity.py (new: v2 identity + digest, v1 readability pins, trial observations, M01 amendment, denominator split)",
+    "tests/test_v11p_a2_publication.py (new)",
+    "research/audits/v11p/a2_evidence.json (this file)",
+    "research/audits/v11p/a2_handoff.json"
+  ],
+  "test_summary": {
+    "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_v11p_a2_publication.py",
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "regression_sanity": {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q tests/test_adapter_v10_g1.py tests/test_protocol_contracts.py",
+      "passed": 48,
+      "failed": 0,
+      "note": "targeted regression check over the two edited modules; full pytest suite intentionally NOT run by this lane (A1 runs it at integration)"
+    },
+    "post_test_tree_state": "no tracked file mutated by any test run (synthetic ledgers under tmp_path only)"
+  },
+  "deliverable_map": {
+    "D1_arm_id_and_digest": "research/v11/publication_identity.py::canonical_scored_payload_v2/arm_config_digest; tests: test_every_score_affecting_arm_field_moves_the_digest, test_digest_drift_yields_distinct_keys_and_separate_publications",
+    "D2_distinct_keys_exact_replay": "tests: test_v1_keying_collides_arms_v2_keying_distinguishes_them, test_publishing_all_three_arms_under_v2_is_exactly_once, test_true_idempotent_replay_moves_neither_counter",
+    "D3_historical_readability": "legacy_v1_payload/legacy_v1_key + tests: test_legacy_v1_payload_shape_is_pinned, test_historical_v1_ledger_bytes_are_never_rewritten, test_arm_declaration_does_not_alter_the_historical_public_payload",
+    "D4_M01_reconciliation": "m01_neighbour_amendment_entry + tests: test_m01_amendment_matches_documented_provenance, test_m01_reconciliation_is_append_only_119_published_120_observed, test_frozen_m01_constants_match_the_terminal_artifact, test_compute_once_counts_observed_even_when_publication_refused, test_observation_superseded_when_the_trial_later_publishes",
+    "D5_migration_fault_tests": "collision: test_v1_keying_collides_arms_v2_keying_distinguishes_them; missing arm id: test_v2_refuses_missing_blank_or_padded_arm_ids; digest drift: test_digest_drift_yields_distinct_keys_and_separate_publications; duplicate replay: test_publishing_all_three_arms_under_v2_is_exactly_once; concurrent append: test_concurrent_publish_of_one_trial_appends_exactly_once, test_concurrent_distinct_arms_append_without_corruption"
+  },
+  "assumptions": [
+    "The interrupted first attempt left publish.py calling an undefined record_trial_observation; this lane completed it (plus the exactly-once lock and denominator_view) and kept the rest of the partial design after critical review.",
+    "publish_trial(arm_id='') is the API default meaning 'no explicit argument', so it falls back to a DECLARED identity.arm_id by design; the fail-closed missing-arm case is no declared arm anywhere.",
+    "Cross-process concurrent writers to one ledger file remain out of scope (factory concurrency policy assigns one writer per worktree); in-process thread concurrency is now exactly-once.",
+    "The real global registry was never written; the 119/120 reconciliation is proven on a synthetic ledger seeded to mirror the frozen M01 state, and the amendment entry itself is produced from the real terminal artifact's bytes."
+  ],
+  "blockers": []
+}

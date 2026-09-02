@@ -90,6 +90,12 @@ class StrategyIdentity:
     #: Optional cohort hint used ONLY at publication time for matrix-id naming.
     matrix_cohort_hint: str = ""
     config: Mapping[str, Any] = field(default_factory=dict)
+    #: Explicit arm identifier (V11P lane A2).  Empty for legacy V10 identities;
+    #: v2 publication keys refuse to key a trial without one (fail closed).
+    #: The canonical score-affecting arm digest lives in
+    #: :mod:`research.v11.publication_identity` so this frozen contract only
+    #: carries the declaration.
+    arm_id: str = ""
 
     def __post_init__(self) -> None:
         for name in (
@@ -104,6 +110,8 @@ class StrategyIdentity:
                 raise ContractViolation(f"identity.{name} must be non-empty")
         if not isinstance(self.config, Mapping):
             raise ContractViolation("identity.config must be a mapping")
+        if str(self.arm_id) != str(self.arm_id).strip():
+            raise ContractViolation("identity.arm_id must not be padded with whitespace")
 
     def public_payload(self) -> dict[str, Any]:
         """Hashable, JSON-safe view used inside deterministic artifacts."""
