@@ -1,0 +1,57 @@
+{
+  "gate_id": "F0_PASS",
+  "measured_at_utc": "2026-09-02T13:40:00Z",
+  "owner": "A1_FOREX_CONTROLLER (executed); A7 independent verification pending later wave",
+  "integration_sha": "2a6342a85f8c9428145bcbd952e8f1ef2abfdb54",
+  "MULTIASSET_CORE_SHA": "83103666fea21a569d04bef2239ec0bda7784beb",
+  "STOCKS_M0_EVIDENCE_SHA": "a04b8d1b90a3cc079ddf6a726eea9cff86a0a9df",
+  "merge_commit_parents": {
+    "forex_side": "239309a (topology reconciliation)",
+    "consumed_core": "83103666fea21a569d04bef2239ec0bda7784beb",
+    "merge_method": "git merge --no-ff; no manual file copy; no reimplementation"
+  },
+  "command": ".venv/bin/python -m pytest tests/assets/common tests/test_protocol_contracts.py tests/test_protocol_metrics.py -q",
+  "exit_code": 0,
+  "status": "PASS",
+  "test_counts": { "passed": 78, "failed": 0, "errors": 0, "skipped": 0, "wall_seconds": 3.33 },
+  "expected": "shared identities remain asset-safe; crypto/stocks fixtures remain readable; 78 passed; stderr empty; zero tracked mutation",
+  "observed": "78 passed in 3.33s; stderr 0 bytes; independently reproduces STOCKS M0 evidence claim at the forex merge HEAD",
+  "auxiliary_commands": [
+    { "command": ".venv/bin/python -m compileall research/assets/common", "exit_code": 0 },
+    { "command": "git diff --check", "exit_code": 0 }
+  ],
+  "pre_gate": { "head": "2a6342a85f8c9428145bcbd952e8f1ef2abfdb54", "porcelain": "empty (clean)", "diff_check_exit": 0 },
+  "post_gate": { "porcelain": "?? research/control/forex_run/gates/ (declared evidence artifacts only)", "tracked_mutations": "none (git diff and git diff --cached both empty)" },
+  "stdout_log": "research/control/forex_run/gates/logs/F0_PASS.stdout.log",
+  "stderr_log": "research/control/forex_run/gates/logs/F0_PASS.stderr.log",
+  "input_digests": {
+    "research/assets/common/__init__.py": "8105f8e7b02985259c30a078ea25adf37663051dfdd36e6498e703bd81092d6e",
+    "research/assets/common/calendar.py": "d55b04e117da99c61ed901400c06d9e7986a860e0d9afdc6ff1e28b8bafb64c4",
+    "research/assets/common/carrying_cost.py": "260cf086d1dcb59b7dfd46fb66fb0770a7b0bedb5861cf392e35455076df4bf5",
+    "research/assets/common/contracts.py": "f51a935df54d48a4020224e39e11efd6ac05113110fc19d3d52fd3bdf26c3f0c",
+    "research/assets/common/crypto_compat.py": "9287ba8d5762f1af8c44a0063704d491581702df4006d50b0599f33496f47d55",
+    "research/assets/common/execution_cost.py": "c3628406c5f03d3fe542efaa4b25edbaae93582fc4118d04df243f83565c1e18",
+    "research/assets/common/instrument.py": "09d80cdb8631010271ef0ff20006c5bb40c2c60279acf7ce9a22d1aba5dfb7ff",
+    "research/assets/common/ledger_policy.py": "ac24dc7e78097b11d53de64065e3b31ba37c348c2710f8b02137dc8ad6b2b54f",
+    "research/assets/common/trial_identity.py": "3f83c9710f6053a9d3bea21d5b9d4d7982b7f18b37784ee940b969cd970e4ea3"
+  },
+  "input_digest_cross_check": "all eight module digests identical to input_digests in research/control/stocks_run/gates/M0_PASS.json at a04b8d1 (byte-identical core consumption)",
+  "output_digests": {
+    "gates/logs/F0_PASS.stdout.log": "8d2798eeb77ff7a53ef71c04c8e6e66282b439168226f1967239facf8f26e4df",
+    "gates/logs/F0_PASS.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "compatibility_verifications": [
+    { "item": "crypto manifests remain readable and unchanged", "evidence": "tests/assets/common/test_crypto_compat.py roundtrip PASS; git diff empty post-run; historical crypto files untouched by merge (pure addition)" },
+    { "item": "stocks fields do not become mandatory Forex fields", "evidence": "contracts.AssetExperimentContract carries provider_id/calendar_version/borrow fields as Optional[None]; forex may omit them" },
+    { "item": "carrying-cost interface accepts FX rollover without calling it funding", "evidence": "carrying_cost.FxRolloverCarry is a distinct model from CryptoFundingCarry; CashflowLine.kind vocabulary separates rollover kinds from funding kinds" },
+    { "item": "execution-cost interface supports side-specific bid/ask fills", "evidence": "execution_cost.ExecutionCostEstimate.side restricted to BUY|SELL; estimate() takes side parameter" },
+    { "item": "trial identity contains asset_class and cannot collide across asset classes", "evidence": "trial_identity.ArmIdentity requires asset_class, payload namespaces by asset_class, assert_no_collision/assert_cross_asset_class_separation enforced and tested" },
+    { "item": "forex published and observed denominators remain separate", "evidence": "ledger_policy routes ledgers per asset_class root (forex -> results/registry/forex/) with one read-only global index; forex counters tracked in forex_run control files only" },
+    { "item": "test execution does not mutate tracked historical artifacts", "evidence": "git diff and git diff --cached empty post-run; tests/assets/common/test_no_runtime_writes.py enforces at runtime" }
+  ],
+  "blockers": [],
+  "corrective_action": null,
+  "auditor": "A1 (self-executed gate); A7 independent audit NOT yet performed",
+  "auditor_verdict": "PASS_PENDING_A7",
+  "notes": "A7 has NOT approved stocks M0 or forex F0; no representation of A7 approval is made. Provider entitlement and real FX data remain UNAVAILABLE_FAIL_CLOSED."
+}
