@@ -1,0 +1,17 @@
+{
+ "artifact": "hb1_overturn_record",
+ "by": "A1",
+ "at_utc_child": "2026-08-27T09:55Z",
+ "claim_under_test": {
+   "source": "research/audits/v10/prelaunch_g_check.json gate G05 FAIL HB-1",
+   "asserted": "ETHUSDT staged tree has 6 overlapping parts, 140124 rows vs 70390 unique close stamps, DataIntegrityError raised on any load"
+ },
+ "measurements_taken": [
+  {"method": "direct pyarrow scan of ROOT master parts sorted lexicographically", "result": {"parts": 4, "rows_per_part": [34848, 35039, 155, 3], "rows_raw": 70045, "unique_ts_init": 70045, "duplicates_removed": 0}},
+  {"method": "REAL production loader research.panel._read_bars invoked exactly per its call sites (catalog root + instrument_id + ns range)", "result": {"clean_layout": "LOADED rows=70045", "with_catalog_live_crypto_symlink_alias_present": "LOADED rows=70045", "DataIntegrityError_raised": false}}
+ ],
+ "conclusion": "HB-1 is OVERTURNED as an auditor probe artifact: 140124 == 70062x2 matches double-walking each file through both catalog/ and catalog_live_crypto->catalog paths when globs recurse through symlinks manually; the engine's own loader handles alias+parts correctly",
+ "auditor_count_discrepancies_noted": ["claimed 6 parts vs measured 4 at root master", "claimed unique 70390 vs measured 70045"],
+ "disposition": {"G05": "HB-1 component cleared; window/fold pin component was separately satisfied by commit 4c61880", "staging_policy_change": "NONE — preregistered dedup stays unreferenced; canonical ETH artifact retained under job tmp UNUSED so no unregistered transform enters provenance"},
+ "lesson_recorded": "future audits must exercise THE loader for load-path claims instead of hand-globbed file walks"
+}

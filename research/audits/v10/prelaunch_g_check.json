@@ -1,0 +1,193 @@
+{
+ "artifact": "v10_prelaunch_g01_g20_audit",
+ "author_role": "A7-PRELAUNCH independent auditor (V10)",
+ "written_at_utc": "2026-08-27T10:25Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative-v10-wt/integration-v10",
+ "branch": "orca/v10-integration",
+ "head_sha_verified": "df919ca2b580bbf3ad7cace584f45a6ecc54cbc2",
+ "integration_clean": true,
+ "exec_tree_W_sha": "79fc883debfdb42aa167b28706796193cf86eff1",
+ "verdict": "NO_GO_SCORED_WAVES",
+ "summary_counts": {"pass": 15, "pass_with_finding": 4, "fail": 1, "unavailable_fail_closed_partial": 1, "blocked_runner_glue_items": 6},
+ "blocking_failures": [
+  "G05a ETHUSDT staged data fails read_bars_15m duplicate-close-stamp fail-closed invariant (49.8% redundant rows)",
+  "G05b scored window/fold boundaries never pinned: staging_plan.json status still DRAFT_FOR_PRELAUNCH_PIN and its candidate window start contradicts the frozen module constant"
+ ],
+ "hard_blocker_detail": {
+  "id": "HB-1_ETHUSDT_duplicate_close_stamps",
+  "evidence_refs": ["research/hyp_a8_m01.py#read_bars_15m raises DataIntegrityError", "duplicate census + direct loader run this audit (scratch deleted before commit)"],
+  "measured": {
+   "ETHUSDT_staged_parts": 6,
+   "rows_total": 140124,
+   "unique_close_stamps": 70390,
+   "duplicate_extra_rows": 69734,
+   "dup_fraction_of_rows": 0.4976,
+   "BTCUSDT_benchmark_excluded": {"parts": 3, "rows_total": 107997, "unique": 70079, "extra_dup_rows": 37918},
+   "other_18_symbols": {"parts": 1, "duplicate_stamps": 0}
+  },
+  "loader_outcome": {
+   "ETHUSDT": "FAIL DataIntegrityError: duplicate close stamp 1724372099999000064",
+   "cohort_load_ok": "9 of 10 frozen symbols",
+   "per_symbol_probe_window": "2024-08-23T00:00:00Z..2026-08-21T00:00:00Z"
+  },
+  "why_i1_c1_missed_it": "i1_c1_field_verification scanned per-file field statistics at root master and never exercised read_bars_15m's dedup invariant across overlapping ETHUSDT partition parts. Its VERIFIED verdict on taker_buy_quote_volume/quote_volume/count is true per-field but not evidence that the loader can read the symbol.",
+  "disposition": "FAIL_CLOSED behaving exactly as designed. Remediation is a DATA-STAGING change: collapse overlapping partitions into one canonical part per symbol, then re-freeze stage manifest SHAs and re-detach R1/R2 at a new W. Audit-only role forbids me performing it.",
+  "note": "Because stage_manifest_R{1,2}.csv SHA-pins the duplicated parts byte-for-byte into BOTH exec trees, fixing this forces a new W commit plus fresh detached worktrees."
+ },
+ "window_fold_pin_finding": {
+  "module_constants": {
+   "SCORED_WINDOW_START_UTC": "2025-08-21T00:00:00Z",
+   "SCORED_WINDOW_END_UTC": "2026-08-21T00:00:00Z",
+   "PREWINDOW_START_UTC": "2025-07-22T00:00:00Z",
+   "WARMUP_DAYS_REQUIRED": 1,
+   "purge_default": "= WARMUP_DAYS_REQUIRED = 1 day",
+   "SIGNAL_INSTANTS_PER_YEAR": 365,
+   "PREWINDOW_SLOTS": 2880
+  },
+  "staging_plan_says": {
+   "status": "DRAFT_FOR_PRELAUNCH_PIN",
+   "scored_window_candidate": "[2025-08-23T00:00:00Z .. 2026-08-21T00:00:00Z] approx 364d pending exact overlay/bar boundary verification at pin time",
+   "warmup_source": "trailing data from 2024-08-23 (~364d) strictly outside scoring",
+   "fold_scheme": "3 chronological folds approx 121 scored days each + 72h embargo strips"
+  },
+  "contradictions": [
+   "window start 2025-08-23 (plan candidate) vs 2025-08-21 (frozen module constant asserted by len(decision_days)==365 and SIGNAL_INSTANTS_PER_YEAR=365)",
+   "warmup '~364d trailing from 2024-08-23' vs code warmup of 1 pre-window day plus a 30-day neighbour PREWINDOW_SLOTS=2880",
+   "embargo '72h strips' vs code purge_days default WARMUP_DAYS_REQUIRED=1 day; 72h appears in no constant"
+  ],
+  "data_coverage_measured_this_audit": {
+   "census_row_total": 1509543,
+   "parquet_parts": 27,
+   "grand_min": "2024-08-20T00:14:59.999Z",
+   "grand_max": "2026-08-23T06:59:59.999Z",
+   "earliest_per_symbol": "2024-08-21T14:14 for ADAUSDT,BNBUSDT,DOGEUSDT,LINKUSDT,SOLUSDT,XRPUSDT; 2024-08-23T05:14 for the rest",
+   "latest_per_symbol": "2026-08-21T13:44 for ADAUSDT,BNBUSDT,DOGEUSDT,LINKUSDT,SOLUSDT,XRPUSDT; 2026-08-23T04:44 for the rest",
+   "row_budget_check": "96 x 730 expected days = 70080 vs observed 70079 for single-part symbols => one bar short per symbol, unreconciled"
+  },
+  "end_of_data_risk": "With END=2026-08-21T00:00Z and AMB-01 strict-later-event force-flat fill, six cohort symbols have only ~55 remaining bars past D_n and ZERO margin beyond 2026-08-21T13:44. Any embargo or purge strip placed after the final scored boundary is unsatisfiable on this dataset.",
+  "required_before_scoring": "A1 must commit one pinned window+fold+embargo epoch spec into research/control/v10_discovery_run/, reconcile the one-missing-bar-per-symbol census, and flip staging_plan.status out of DRAFT."
+ },
+ "gates": {
+  "G01_v9_ancestry": {"verdict": "PASS", "evidence": "research/control/v10_hardened_run/manifest.json lineage='V9H->V10', bootstrap_sha=acbc79b, parent_v9_terminal='425843d / V9_REJECT_ALL_MULTI_FAMILY / A7 PASS 0 unresolved'"},
+  "G02_archive_restore": {"verdict": "PASS", "evidence": "research/audits/v10/a2_archive_manifest.json bundle_hash=b5ce4097e09f8de1f99b67a4bc0dbf4b2390daad78cc594591907b9a60a12b12 total_files=356 total_bytes=231797462; manifest.json waves.H1.phase0_archive carries IDENTICAL bundle_hash/files/bytes with root_copy_verified=true; research/audits/v10/a2_restore_report.json verdict=PASS"},
+  "G03_v9h_authorization": {"verdict": "PASS", "evidence": "research/audits/v10/v9h_closeout.json verdict=V9H_PASS_V10_AUTHORIZED; v10_contract.authorized_base.v9h_verdict matches"},
+  "G04_clean_trees_zero_workers": {"verdict": "PASS_WITH_ADVISORY", "evidence": "integration-v10 git status --porcelain EMPTY; ps auxww sweep zero processes matching 'exec-v10-R1'/'exec-v10-R2'/'integration-v10', zero backtest/scoring/multiprocessing workers among 406 procs", "advisory": "Both detached exec trees carry ONE untracked item each: catalog_live_crypto -> catalog symlink created 07 Aug 27. Clean-of-tracked-diffs so G19 holds, but this residual staging pointer aliases two names onto one dataset root and should be documented or removed at next re-stage."},
+  "G05_universe_window_hash_freeze": {
+   "verdict": "FAIL",
+   "sub_verdicts": {"hash_freeze": "PASS", "universe_freeze": "PASS", "window_fold_pin": "FAIL", "data_integrity": "FAIL"},
+   "evidence_hash": "RECOMPUTED sha256 MYSELF over ALL 47 manifest rows x BOTH trees rather than 3 samples: 47/47 hash+size verified per tree, 0 missing files, 0 mismatches; stage_manifest_R1.csv == stage_manifest_R2.csv byte-identical (sha256 155753285a7aea74e64372ae3ea4d923710f31635cfc6840cf47d2abcaa341dc); independent pyarrow bar censuses of R1 and R2 also identical at 1509543 rows / 27 parquet parts",
+   "failure_refs": ["hard_blocker_detail.HB-1", "window_fold_pin_finding"]
+  },
+  "G06_pit_coverage": {"verdict": "PASS", "evidence": "tests/test_pit_hooks_v10.py and tests/test_hyp_a8_m01.py PIT group green in this audit's own run; assert_signal_pit invoked inside every feature build per i1_spec_trace section 2"},
+  "G07_denominator_117": {"verdict": "PASS", "evidence": "research/contract_v10.py BASE_DENOMINATOR_V10=117; MultipleTestingDenominator append-only JSONL with immutable registration ('registration is immutable') and decrement refused ('denominator_decrement_refused'); corroborated independently by recovery_contract.json, manifest.json denominator_scored_trials=117 and gate_ledger H09 three-recount note"},
+  "G08_proposal_firewall": {"verdict": "PASS", "evidence": "selection_freeze.json inputs pin blinded proposal_pool_sha=a1528dc and e0_null_context; eligibility_matrix_final records veto_reason and a5n scores per proposal instead of post-hoc rewrites"},
+  "G09_novelty": {"verdict": "PASS", "evidence": "A8-M01 a5n_total=81.0>=75 and a5n_novelty=31.0>=28 with a7n_verdict GENUINELY_NEW 4/4 CONCUR_CONDITIONAL; four ineligible proposals each carry explicit below_threshold or objecting reasons"},
+  "G10_no_rescue": {"verdict": "PASS", "evidence": "A8-M03 explicitly ineligible as 're-parameterization of archived v9_residual_mr convicted by f2 orthogonality gate rho=0.676'; A9-RVRELVAL ineligible on hard data fail (SOLUSDT absent); a7n_rescue_challenge_v10.{json,md} consulted; notes forbid rescoring FORCEDFLOW/INFSPILL"},
+  "G11_families_le_2": {"verdict": "PASS", "evidence": "selected_families length 1 <= budget.families_max 2"},
+  "G12_budget_exactly_3": {"verdict": "PASS", "evidence": "budget_state_after_freeze {scored_cells_planned:3, max_total:6, consumed_now:0}; composition anchor/neighbour/negative-control matches PLAN section 9"},
+  "G13_complete_specs": {
+   "verdict": "PASS_WITH_FINDINGS",
+   "evidence": "research/audits/v10/i1_spec_trace.md traces every spec sentence to a module symbol plus named test including verbatim C2/A7-N quote constants",
+   "findings": [
+    "AMB-03 declared approximation still awaits harness confirmation - accrual uses -weight*rate on unit-gross capital because mark/OI overlays are UNAVAILABLE. Directly bears on G15 semantics.",
+    "AMB-06 force-flat tail closes accrual at decision_ns+one bar instead of leaving it unbounded - confirmed present near derive_holding_spans and still marked 'needs harness confirmation'.",
+    "AMB-01 was OPEN in the trace ('owner action needed') but IS resolved by spec_clarification_freeze AMB-01_fill_clock strict-later-event. Good.",
+    "AMB-02/AMB-04 resolutions reviewed against mechanism semantics: they are DISAMBIGUATION ONLY. AMB-02 demotes the arithmetically broken day-mean arm to diagnostic and promotes the C2 price-placebo arm to the gated control, which STRENGTHENS the control per selection_freeze C2 rather than weakening it. AMB-04 fixes median-of-range split as diagnostic-only with a both-strata credit rule. Neither touches the anchor causal sign (-z(A)), CAP 0.30, GROSS_TARGET 1.0, MIN_ELIGIBLE 8 or the cost basis. ACCEPTED.",
+    "AMB-05/06 are recorded caveats only, no semantic mutation."
+   ]
+  },
+  "G14_lookahead_warmup_purge": {"verdict": "PASS", "evidence": "142 tests passed across pit_hooks/funding_pit/resource_governor/cache/anti_leak/runtime_controller/hyp_a8_m01 in 12.68s including test_signal_hash_invariant_to_post_cutoff_perturbation and its deliberate negative guardrail test_perturbing_the_decision_blocks_own_last_bar_does_move_the_signal; assert_signal_pit enforces ts_event_ns<=decision_ns on every contributing bar", "finding": "chronological_folds purge_days default = WARMUP_DAYS_REQUIRED = 1 day = exactly the holding horizon. This meets the PLAN section 11 '>=' minimum with zero slack, and does NOT match the staging_plan's 72h embargo narrative." },
+  "G15_cost_funding_direction_accounting": {
+   "verdict": "UNAVAILABLE_PARTIAL_FAIL_CLOSED",
+   "cost_basis_by_inspection": "PASS. TAKER_FEE_FEE_FLOOR_BPS=5.0 / ADVERSE_TICK_SLIP_FLOOR=1 enforced as floors via contract_v10 cost_floor_policy ('taker_fee_bps >= 5.0 and adverse_ticks_slippage >= 1 are floors') with below-floor refusal paths; StressParams fee_multiplier/event_delay_events/tick_slip_ticks map onto contract_v10.STRESS_MATRIX_V10 names.",
+   "numeric_duty_AMB_03": "NOT SATISFIED. I attempted the required boundary-weighted book-fraction accrual reconciliation over injected settlements: XRPUSDT publish_ts_ns=1757232000000000000 value 0.0001, ADAUSDT publish_ts_ns=1757160000000000000 value 0.0002, then derive_holding_spans followed by funding_cashflows(holdings, settlements). RESULT holding_spans=[] cashflows=[]. My minimal fixture row shape produced no recognised leg so NO number was obtained. Recorded fail-closed rather than inventing a figure. The module's own unit test test_funding_hook_integration_hand_computed_single_settlement DID pass in my run, but that is the implementer's test, not independent confirmation.",
+   "blocking_dependency": "This duty cannot be discharged until HB-1 clears anyway, since a real schedule build is needed to derive real holding spans."
+  },
+  "G16_golden_twice": {
+   "verdict": "PASS",
+   "existing_records": "TS-TREND/VOLSHOCK golden determinism records stand from prior waves",
+   "new_M01_golden_determinism_check": {
+    "build_A_sha256": "5263824f565b6df9b3752cf6b8d84679a37037a3894cefb0fd3c02c980e189cb",
+    "build_B_sha256": "5263824f565b6df9b3752cf6b8d84679a37037a3894cefb0fd3c02c980e189cb",
+    "identical": true,
+    "method": "two independent in-process build_rebalance_schedule builds over an identical synthetic pinned input with reversed dict insertion order",
+    "scope": "synthetic probe, seconds, no backtest"
+   }
+  },
+  "G17_governor_timeouts_retry": {
+   "verdict": "PASS_WITH_FINDING",
+   "evidence": "runtime_controller_v10 raises ValueError('timeout_s must be non-null and positive (frozen contract)') on both spawn and resume paths (~lines 487 and 674) and CLI marks --timeout-s required; identity-based resume supported. resource_cap_report.json records owner_authority_event directive effective_heavy_workers=1 issued by project owner at 2026-08-27T04:25Z superseding the conservative formula outcome.",
+   "finding_RESOURCE_CAP_DISAGREEMENT": {
+    "resource_cap_report_governor_state_effective_heavy_workers": 0,
+    "resource_cap_report_stored_effective_heavy_workers": 0,
+    "formula_derived_ram_cap_workers": 0,
+    "ram_basis": "available_ram_gb=1.5665 < reserved_ram_gb=2.0",
+    "v10_contract_parallelism": "min(2, owner_directive_cap=1) => 1",
+    "manifest_json_parallelism": "min(2, frozen_governor_cap) with governor_can_lower_to_1=true",
+    "issue": "THREE artifacts state three different resolutions and resource_cap_report stores 0 while recording the superseding owner-directive text. The directive is authoritative, but the stored field was never reconciled. Pin ONE value in the frozen contract before launch or a scored wave may attempt to launch with 0 heavy workers."
+   }
+  },
+  "G18_provenance_pins": {"verdict": "PASS_WITH_FINDING", "evidence": "W=79fc883debfdb42aa167b28706796193cf86eff1 verified on both detached trees; stage manifest sha256 155753285a7aea74e64372ae3ea4d923710f31635cfc6840cf47d2abcaa341dc identical in both; commit chain in v9h_closeout.lineage.commit_chain_wave_R; selection_freeze pins a5n@4ec34bf / a7n@14b1b45 / proposals@a1528dc / integrated spec@77400df", "finding": "The pin set predates any HB-1 remediation. Re-staging invalidates stage manifest SHAs and therefore part of this set, so the whole provenance block must be re-frozen at a NEW W with fresh R1/R2."},
+  "G19_exec_trees_detached_at_W_clean": {"verdict": "PASS", "evidence": "both ../exec-v10-R1 and ../exec-v10-R2 at 79fc883debfdb42aa167b28706796193cf86eff1 DETACHED HEAD; git status --porcelain returns only '?? catalog_live_crypto' in each; ZERO tracked modifications; staged datasets hash-verified byte-identical"},
+  "G20_a7_verdict_zero_high_critical": {"verdict": "PASS", "evidence": "v9h_closeout.a7_verdict_summary {checks_passed:14, checks_total:14, high_or_critical_unresolved:0}; a7_recommendation_carried_verbatim V9H_PASS_V10_AUTHORIZED_EVIDENCE"}
+ },
+ "test_battery_this_audit": {
+  "command": "pytest tests/test_pit_hooks_v10.py tests/test_hyp_a8_m01.py tests/test_runtime_controller_v10.py tests/test_funding_pit.py tests/test_resource_governor_v10.py tests/test_cache_v10.py tests/test_anti_leak_v10.py -q",
+  "passed": 142, "failed": 0, "duration_s": 12.68
+ },
+ "f2_wall_pair_closure_attempt": {
+  "status": "PARTIAL_CLOSURE_AT_PROBE_SCALE",
+  "prior_state": "v10_contract.open_remediations_carried listed F2 wall-pair strict G-H06 completion as outstanding",
+  "machinery": "research/cache_v10.SharedCacheMergeGate + ProcessLocalCache + make_cache_key",
+  "bars_source": "STAGED ../exec-v10-R1, every file hash-verified this audit; READ-ONLY access, both exec trees left clean-of-tracked-diffs",
+  "cohort_caveat": "ETHUSDT excluded by force because its staged partitions violate the module duplicate-close-stamp invariant (HB-1), so this pair covers 9 of 10 cohort symbols",
+  "workload": "load_block_universe(read_bars_15m over staged 15m parquet) + build_rebalance_schedule, 4-day window, REPS=2, cache ON vs cache OFF same workload",
+  "wall_time_cached_s": 2.173741,
+  "wall_time_uncached_s": 4.596836,
+  "wall_time_reduction_measured": 0.527122,
+  "parity_hashes_cached_on": ["5eb755b087eed48921b817159856b724ed352f15e4e6441ba5e045632ea2df58"],
+  "parity_hashes_cached_off": ["5eb755b087eed48921b817159856b724ed352f15e4e6441ba5e045632ea2df58"],
+  "parity_equal": true,
+  "raw_reads_uncached_path": 18,
+  "cache_stats": {"cache_mode": "process_local", "entries": 1, "hits": 2, "misses": 0},
+  "mechanical_gate_row_strict": {
+   "schema_version": 1,
+   "artifact": "shared_cache_merge_gate_decision",
+   "adopted": false,
+   "advisory_only": false,
+   "strict": true,
+   "pnl_seen": false,
+   "reasons": ["raw_reads_budget_exceeded:18>2"],
+   "advisory_notes": [],
+   "proofs": {"parity_proof": true, "repro_all_match": true, "raw_reads": 18, "raw_reads_budget_max": 2},
+   "metrics": {"wall_time_reduction": 0.5271223511128088, "wall_time_reduction_target": 0.3, "max_raw_reads_full_stress": 2},
+   "generated_at_utc": "2026-08-27T09:27:08.484434+00:00"
+  },
+  "interpretation": "All proofs held: parity_proof TRUE, repro_all_match TRUE, cached and uncached artifact hashes equal, cache strictly process-local. Wall-time reduction 52.7% exceeds the 0.30 target. The row is nevertheless adopted=false because raw_reads=18 exceeded MAX_RAW_READS_FULL_STRESS=2. That is correct behaviour for a probe whose scale, one per-symbol full-history parquet scan per repetition, resembles nothing like the full-stress pipeline whose budget the gate models.",
+  "what_would_actually_close_F2": "Rerun the instrumented pair over the REAL full-stress pipeline with raw-read counting de-duplicated by the cache layer so measured raw_reads<=2. My probe measures loader-cache benefit, not full-pipeline raw-read amortisation. Do NOT read adopted=false here as rejecting shared caching in principle."
+ },
+ "runner_glue_gaps_BLOCKED": {
+  "summary": "i1_spec_trace declares 'Runner adoption surface (no adapters needed)' and documents compute_targets returning {'status','longs','shorts','weights','diagnostics','n_eligible','carried_forward','signals'} plus build_rebalance_schedule returning rows/fills/turnover_one_side/book_diagnostics/signal_sha256/features_sha256/holding_spans/schedule_sha256. No glue to the scoring or finalizer pipeline exists anywhere I could find. Listed as BLOCKED items, deliberately not improvised:",
+  "blocked_items": [
+   {"id": "BG-1_schedule_to_fold_metrics_adapter", "detail": "Nothing maps build_rebalance_schedule rows[] plus chronological_folds() membership into fold-level expectancy/PF/MDD. PLAN section 12 needs per-fold PF and at least 2/3 positive folds. No such function exists.", "owner": "statistics/finalizer"},
+   {"id": "BG-2_weekly_payload_vs_daily_cadence", "detail": "compute_targets emits the V9-compatible [[symbol, weight]] WEEKLY payload shape while M01 decision days are daily UTC midnights. Signature NAMES match downstream convention but no adapter converts emit_targets books into what stats_v10/finalizer actually consume.", "owner": "stats/finalizer"},
+   {"id": "BG-3_funding_settlement_injection_point", "detail": "funding_cashflows requires caller-supplied normalized settlements (spec section 2.5 mark/OI overlays absent). Nothing reads funding_data/scan_2026/<SYMBOL> from the staged tree and hands settlements to the schedule builder. selection_freeze C3 calls this stage-owner territory but no artifact performs it.", "owner": "stage owner"},
+   {"id": "BG-4_stress_matrix_execution_driver", "detail": "contract_v10.STRESS_MATRIX_V10 names exist and StressParams fields map 1:1, but no runner iterates baseline + fee/slip x1.5 + +2 ticks + 1 event delay + drop-one-symbol + drop-one-fold producing unique shard/output/log dirs per worker as PLAN section 11 requires.", "owner": "runner owner"},
+   {"id": "BG-5_flat_hard_benchmark_harness", "detail": "PLAN section 11 demands a flat hard benchmark with buy-and-hold/BTC-beta-neutral as context only. hyp_a8_m01 never reads BTCUSDT (BENCHMARK_SYMBOL_EXCLUDED) by design, so nothing produces the beta-neutral CONTEXT series.", "owner": "baseline owner"},
+   {"id": "BG-6_ledger_tick_on_publish", "detail": "MultipleTestingDenominator is append-only and available, but no scoring entrypoint registers a trial id at publish time so the denominator increments exactly once per consumed cell.", "owner": "finalizer owner"}
+  ]
+ },
+ "scored_go_decision": {
+  "GO": false,
+  "reason": "Two hard failures concentrated under G05 (HB-1 ETHUSDT data integrity; window/fold never pinned with contradictory candidates across control artifacts), one UNAVAILABLE_PARTIAL_FAIL_CLOSED gate (G15 numeric accrual duty unmet), a three-way resource-cap disagreement under G17, and six BLOCKED runner-glue items. Per PLAN section 10 ANY failure means V10_BLOCKED_PRELAUNCH and no score.",
+  "budget_consumed_at_audit": 0,
+  "freeze_discipline_note": "Credit where due: zero cells were burned discovering this, exec trees were pristine at W, and every hash froze correctly. The failures are pre-score gate catches working as intended."
+ },
+ "audit_scope_attestation": {
+  "production_code_edits": 0,
+  "control_manifest_edits": 0,
+  "scored_backtests_run": 0,
+  "writes_outside_deliverable_and_scratch": 0,
+  "heavy_operations": "read-only parquet scans of already-hash-verified staged files plus synthetic fixture probes only"
+ }
+}

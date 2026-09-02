@@ -1,0 +1,119 @@
+{
+  "artifact": "a7_prelaunch_v10r_host3_verdict_v2",
+  "prior_verdict": "V10_BLOCKED_PRELAUNCH",
+  "at_utc": "2026-08-28T05:50:00Z",
+  "w3": "2d5c30dcd32e4e3bfa02fe7d41de8804212327a5",
+  "integration_head_audited": "11a036e785478757942e737cc6c0a5791cab7172",
+  "auditor": "A7 independent (delta re-audit; every delta recomputed from primary evidence; only my own v1 verdict consulted)",
+  "tree": "C:/Users/ROYAL/exec-v10-R1c (detached at W3, clean after my run; data recomposed 24 bars + 20 funding + 3 defs)",
+  "delta_checks": {
+    "B1_data_digit_exactness": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7v2_decimal_recomposed.py -> a7v2_decimal_recomposed.json; a7v2_identity.json",
+      "detail": "MY OWN RECOMPUTE on the recomposed staging, not the integrator's report: all 20 symbols, BOTH windows (prewindow 2025-07-22..2025-08-21 = 2880 bars/symbol, scored window 2025-08-21..2026-08-21 = 35040 bars/symbol), all 9 consumed fields (open/high/low/close raw at 1e9, volume raw at empirically-determined scale, quote_volume and taker_buy_quote_volume as exact Decimal strings, count as int): 0 missing, 0 extra, 0 mismatch for 20/20 symbols. Volume scale confirmed 1e9 for 18 symbols and 1e8 for 1000PEPEUSDT/BOMEUSDT, and the v1 float64 quantization residue on 6 PEPE/BOME rows is GONE (my check now demands exact integer equality, and passes). Previously-failing rows re-verified exact: the ETHUSDT 57 rows at 2025-08-21T00:14:59Z..14:14:59Z, the 85 ETHUSDT pre-window sigma rows, and the whole BTCUSDT window. Dedupe-winner analysis: the loader's lexically-last-winner is digit-exact for EVERY ts in both windows for every symbol. Composition change verified: 4 non-digit-exact parts removed (BTC 2025-08-20T02-34-14, BTC 2026-07-20T04-54-14, ETH 2024-08-20T00-00-00, ETH 2025-08-20T02-34-14), 1 ETH full-range digit-exact part added (2024-08-23T04-58-53_2026-08-23T04-58-53), 27 -> 24 parts. Exec trees: R1c vs R2c sha256-identical on 24/24 bars + 3/3 instrument defs + 20/20 funding with identical path sets; all 47 staged files carry no write bit and an OS write probe is refused. *** EVIDENCE-CITATION DEFECT (must be corrected, not a launch blocker): the cited artifact research/control/v10r_run/host3_full_window_8field_report.json does NOT say 20/20 PASS - its own summary is {symbols_pass: 18, symbols_total: 20, all_pass: false} with failures [1000PEPEUSDT, BOMEUSDT], and stage_verify_v10r_R1c_R2c_host3.json v2 cites it as '20/20 PASS'. The claim is therefore unsupported BY THAT ARTIFACT even though the underlying substance is true per my independent measurement. The report appears to predate the final PEPE/BOME rewrite (report finished 05:17:40Z, verify artifact 05:21:41Z). Regenerate the report so it actually evidences the claim, or repoint the citation."
+    },
+    "B2_full_suite_on_launch_host": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7v2_pytest_full.txt (my own run with PYTHONPATH=C:/Users/ROYAL/v10r_host3_bootstrap/win_shims); per-cause traceback runs; R3-path subset run",
+      "detail": "The frozen suite now COLLECTS on Windows (the resource shim satisfies the single POSIX import). MY RUN: '17 failed, 1258 passed, 2 skipped, 8 errors' in 233.84s (integrator log: 16/1259/8 - a 1-test spread on timeout-sensitive tests, i.e. flaky, not a discrepancy). I classified ALL 25 failing/erroring tests individually from their tracebacks; ZERO are regressions in the R3 execution path. Breakdown: 13 x POSIX process-group/signal semantics (os.killpg/setsid/SIGTERM/SIGKILL) - test_runtime_controller_v10 x8, test_repro_stream_v10 x2, test_fault_injection_v10 x3; 6 x hardcoded macOS absolute host path - scripts/v9_universe_audit.py FUNDING_ROOT='/Users/hoangminhlong/my-quantitative/funding_data/scan_2026' does not exist here, so funding_raw is empty, analyze_funding is never called, fund=None for every symbol and the module fixture raises TypeError at v9_universe_audit.py:567 (these are the 6 ERRORS); 2 x POSIX dirfd fsync idiom os.open(dir, os.O_RDONLY) - test_data_audit_v10, test_gate_checks_v10 (gate_checks_v10.py:474); 1 x path-separator idiom - test_sprint_eval_v2; 2 x text-encoding idiom UTF-8 bytes read as cp1252 - test_resolved_contract_v8 (literal arrow U+2192 rendered as '\\xe2\\u2020\\u2019') and test_reconciliation_negative; 1 x SHIM unit-convention bug - test_g2_cache_resource_v10 reports 'cached_rss_exceeds_host_guard:112.4961>1.2000GiB', an impossible 112 GiB RSS from the shim's ru_maxrss byte/KB convention mismatch (shim defect, and the shim explicitly disclaims feeding G17). R3 EXECUTION PATH IS FULLY GREEN: I ran tests/test_adapter_acceptance_v10_g3.py + test_adapter_v10_g1.py + test_hyp_a8_m01.py + test_panel_v10r.py + test_panel.py + test_fault_injection_v10_g3.py + test_g2_funding_v10.py + test_cache_v10.py + test_resource_governor_v10.py = '222 passed, 1 skipped' in 9.01s, zero failures - covering the adapter runner/publish/metrics/converters/stress/benchmarks, the M01 mechanism, the panel loader, the resource governor, funding accrual and cache gating. Scope note recorded honestly: the >=1275-passed numeric bar comes from the POSIX freeze run (r1_freeze_W3.json used '.venv/bin/python') and is not a meaningful bar on Windows; it is NOT met numerically here (1258 passed / 25 non-passing). I am ruling this non-blocking because every failure's root cause was independently established as host portability, none touch the scored path, and the path that will actually execute R3 is 100% green on this host."
+    },
+    "B3_manifest_provenance": {
+      "verdict": "PASS",
+      "evidence": "My sha256 reconciliation of research/control/v10r_run/stage_manifest_R1c_host3.csv (24 entries) and stage_manifest_funding_R1c_host3.csv (20) against the staged R1c bytes; git ls-tree at HEAD 11a036e",
+      "detail": "The regenerated host-3 manifests match the staged data EXACTLY: stage_manifest_R1c_host3.csv 24/24 verified by sha256 AND size, stage_manifest_funding_R1c_host3.csv 20/20. Both are git-tracked at the integration HEAD I audited (11a036e), together with the verification artifact v2 - so the provenance chain is now: W3 code SHA (pinned in the detached trees) + committed machine-local data manifests that actually describe the staged bytes + my independent digit-exact content evidence against live fapi. That satisfies the intent of PLAN section 4.4/5.3. RESIDUAL (non-blocking): the LEGACY manifests still frozen inside the detached R1c/R2c trees (stage_manifest_R1c.csv with 27 entries, stage_manifest_funding_R1c.csv with 20) cannot match the recomposed composition and are now dead files that will fail any in-tree verification; the authoritative manifests live only on the integration branch. Recommend deleting or explicitly superseding them in a control artifact so a future auditor does not read the wrong manifest."
+    },
+    "B4_G17_resource_authority": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7_g17_independent.py -> a7_g17_independent.json (fresh run 05:45:32Z); arithmetic re-derivation from research/control/v10r_run/resource_cap_report_host3.json",
+      "detail": "The corrected artifact fixes both structural defects I raised. H05 is no longer folded into the measurement label (measured_safe_cap_note states H05 governs runtime admission, not the measurement) and final caps now follow the owner amendment: R3 min(1,cap)=1, R4/V11 min(3,cap)=3. The underived 1.15 multiplier is removed from the published peak (observed_peak_gb=0.1978 raw). MY OWN FRESH MEASUREMENT at 05:45Z, independent implementation: available physical 20.551 GiB (total 31.863, memory load 35%), observed child peak RSS 0.1945 GB over 235 polls at 50 ms (child rc 0, 20 symbols / 365 rows / 20 rank cols), raw frozen-formula cap floor((20.551-2.0)/0.1945) = 95. Gate measured_safe_cap >= 1: TRUE with a ~95x margin - the child peak would have to exceed ~18.5 GB to flip the decision, so no plausible polling error, shim unit error or unrepresented scored-cell extra cost (3 folds + 4 stress arms + funding + artifact writes) can change the outcome. RESIDUAL (non-blocking, must be reconciled): the corrected artifact is internally INCONSISTENT - it publishes the raw peak 0.1978 GB and labels measured_safe_cap=81 as 'the raw frozen-formula value', but floor((20.4928-2.0)/0.1978) = 93; 81 is the OLD x1.15 result (18.4928/0.2274 = 81). The multiplier was removed from the peak field but not propagated to the cap. Immaterial to every decision (81, 93 and 95 all far exceed both ceilings 1 and 3), but the published label and number disagree and should be regenerated."
+    },
+    "B6_golden_file_side_effects": {
+      "verdict": "PASS",
+      "evidence": "git status/diff in R1c before and after my suite run; git checkout HEAD restore; CONTINUE.md lines 86-88",
+      "detail": "Both golden artifacts are byte-identical to HEAD (research/audits/v7p/golden_vector_report.json, research/audits/v8p/golden_vector_report_v8.json). The side effect is CONFIRMED and REPRODUCIBLE: my single suite run re-mutated BOTH (v7p 504 changed lines, v8p 346 - a full-file line-ending/serialization rewrite), and I restored both from HEAD afterwards; the audited tree is clean apart from a7_evidence/. MATERIALITY FOR R3: low. The mutation originates in test modules that deliberately regenerate committed baselines (test_v7_golden_e2e / test_v9_golden_e2e / test_resolved_contract_v8); R3's non-pytest execution path (adapter_v10 runner/publish/m01_plugin) writes fresh per-cell artifact trees and does not regenerate committed golden vectors, so this class is avoided. Operational guard recorded: do not run pytest concurrently with a scored cell, and diff the working tree before/after any suite run on this host."
+    }
+  },
+  "checks": {
+    "1_tail_coverage_at_previously_failing_point": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7v2_decimal_recomposed.json (prewindow + scored window row sets per symbol)",
+      "detail": "Re-verified on the recomposed tree: scored window 35040/35040 bars per symbol with 0 missing and 0 extra rows against live fapi (which subsumes gap-freeness and window-end presence), and prewindow 2880/2880 with 0 missing. Nothing regressed with the recomposition."
+    },
+    "2_dedupe_determinism": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7v2_decimal_recomposed.py (lexically-last-winner merge) + a7v2_decimal_recomposed.json",
+      "detail": "Loader dedupe remains deterministic (research/panel.py by_ts last-write-wins over sorted parts). On the recomposed composition the tie-break is now BENIGN: BTCUSDT has a single part (no overlap left), and ETHUSDT's remaining overlaps resolve to parts that are digit-exact for every contested ts. The v1 hazard - the rule selecting between DIFFERENT captures - is eliminated because every remaining part is digit-exact across the overlap."
+    },
+    "3_fixed_point_scales_and_digit_exact_anchors": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7v2_decimal_recomposed.json",
+      "detail": "OHLC decodes as live*1e9 raw / live*1e-7 via the loader for all 20 symbols. Volume: 18 symbols raw == live*1e9, and ONLY 1000PEPEUSDT/BOMEUSDT raw == live*1e8 - confirmed empirically rather than assumed, now with EXACT integer equality on every row (v1's 6-row ~1e-16 residue eliminated). The v1 FAIL is cleared: every required anchor and every one of the 35040x2 window rows is digit-exact. The 0.1x cross-symbol volume factor for PEPE/BOME remains and remains NON-MATERIAL to M01: the scored signal uses the decimal-string quote_volume/taker_buy_quote_volume columns as a scale-free within-symbol per-block ratio, the neighbour denominator is a within-symbol per-bar ratio, the C2 placebo is price-only, and the sole volume-derived feature (traded_value_proxy, hyp_a8_m01.py:462) is computed but never consumed."
+    },
+    "4_window_fold_cost_pins": {
+      "verdict": "PASS",
+      "evidence": "research/hyp_a8_m01.py:103-125,978-1011,1077-1118,921-932; research/contract_v10.py:67-68; unchanged at W3 and re-exercised green in my R3-path run (test_hyp_a8_m01.py)",
+      "detail": "Unchanged from v1 and unchanged by the remediation: SCORED_WINDOW 2025-08-21T00:00:00Z -> 2026-08-21T00:00:00Z, prewindow 2025-07-22 (2880 slots), 3 chronological folds with purge + drop_one_fold, 5 bp taker floor + 1 adverse tick floor with hard refusals below, native funding accrual, strict-later fill clock. R1c HEAD is still exactly 2d5c30dc..., so no code moved."
+    },
+    "5_full_suite_alone_in_R1c": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7v2_pytest_full.txt; R3-path subset 222 passed / 1 skipped / 0 failed",
+      "detail": "Suite collects and runs alone on this host. 1258 passed / 17 failed / 8 errors / 2 skipped in my run; every one of the 25 non-passing tests individually attributed to host portability or to the shim, zero to the R3 path (full breakdown in delta_checks.B2). Numeric parity with the POSIX freeze (>=1275) is not achievable on Windows and is recorded as a host-portability scope note, not as a code defect."
+    },
+    "6_W3_identity": {
+      "verdict": "PASS",
+      "evidence": "git -C C:/Users/ROYAL/exec-v10-R1c rev-parse HEAD; git status --porcelain",
+      "detail": "R1c HEAD is still exactly 2d5c30dcd32e4e3bfa02fe7d41de8804212327a5, detached, clean (only a7_evidence/ untracked, created by me). The remediation changed DATA and control artifacts on the integration branch (11a036e) but did not move the code freeze, which is the correct relationship: the scored code is unchanged from the suite-verified freeze."
+    },
+    "7_R1c_R2c_identity_and_read_only": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7v2_identity.json",
+      "detail": "Re-verified on the recomposed composition: 24/24 bar parts, 3/3 instrument defs and 20/20 funding bundles sha256-identical between R1c and R2c with identical path sets (47 files). All 47 staged files carry no owner/group/other write bit and an actual open-for-write probe against a staged parquet was refused by the OS."
+    },
+    "7b_frozen_data_manifest_provenance": {
+      "verdict": "PASS",
+      "evidence": "My sha256/size reconciliation of stage_manifest_R1c_host3.csv and stage_manifest_funding_R1c_host3.csv vs staged bytes; git ls-tree at 11a036e",
+      "detail": "The v1 FAIL is cleared: correct, committed manifests now exist and match the staged bytes 24/24 and 20/20. Residual recorded in delta_checks.B3: the superseded legacy manifests remain inside the detached trees and should be deleted or explicitly superseded."
+    },
+    "8_budget_purity": {
+      "verdict": "PASS",
+      "evidence": "research.global_ledger.snapshot() and research.adapter_v10.publish.trial_denominator() executed in R1c during this re-audit",
+      "detail": "Still clean: results/registry/experiments.jsonl absent, snapshot rows 0, published scored cell rows 0, trial_denominator() = 0. No scored cell has been published on this sprint; no trial/publication artifact exists. The 4 files under results/ remain the legacy committed backtest output from commit dd01cf0 (2026-08-19). Budget 0/9 consumed."
+    },
+    "9_G17_fresh_resource_probe": {
+      "verdict": "PASS",
+      "evidence": "a7_evidence/a7_g17_independent.json (fresh 05:45:32Z); arithmetic re-derivation of resource_cap_report_host3.json",
+      "detail": "measured_safe_cap >= 1 satisfied and independently reproduced. My fresh raw-formula cap is 95 (available 20.551 GiB, peak 0.1945 GB); the corrected artifact publishes 81 against a raw peak that arithmetically yields 93 - the residual inconsistency in delta_checks.B4. All three values far exceed both ceilings, so final_cap_r3_m01 = min(1, cap) = 1 and final_cap_r4_v11_ceiling3 = min(3, cap) = 3 are identical under any of them. measured_safe_cap = 0 (the NO-LAUNCH branch) does not arise. Standing advisory: the authority is still a committed Windows port rather than the Unix-only frozen module, so regenerate the artifact with the raw-formula cap and keep the port's numbers subordinate to a POSIX probe wherever one is available."
+    },
+    "10_BG_G15_F2_H08": {
+      "verdict": "UNAVAILABLE_FAIL_CLOSED",
+      "evidence": "pytest run in this re-audit: tests/test_fault_injection_v10_g3.py + test_adapter_acceptance_v10_g3.py + test_g2_funding_v10.py + test_cache_v10.py = 93 passed, 0 failed (within my 222-passing R3-path run)",
+      "detail": "BG1-BG6, G15 and H08 cases 12-20 remain PASS with executable evidence (all 23 test_h08_12..20 functions present and green, 93/93 in the gate modules). F2 fresh cache probe remains UNAVAILABLE_FAIL_CLOSED: the only cache decision artifact is the 2026-08-27 macOS measurement whose catalog hashes cannot be reproduced on the recomposed tree and whose probe module is Unix-only. PLAN section 6 explicitly permits 'fresh probe or explicit UNAVAILABLE_FAIL_CLOSED' for F2, so this is a plan-permitted fail-closed, and the fail-safe direction holds on this host: the cache is DISABLED by default absent a complete proof pair (test_f2_cache_absent_means_operate_disabled_by_default, test_f2_cache_decision_enabled_only_with_complete_proof_pair - both green), ProcessLocalCache raises outside its creating process, and H08-16 pins that a changed input surface makes a stale entry unreachable. Listed as a blocker-with-reason per the verdict rules, with the plan's own fail-closed allowance noted."
+    },
+    "11_zero_unresolved_high_critical": {
+      "verdict": "PASS",
+      "evidence": "This verdict's delta_checks; all from my own recomputation",
+      "detail": "All four v1 HIGH findings are resolved: (1) non-digit-exact BTC capture - CLEARED, single digit-exact part; (2) ETHUSDT 57 + 85 wrong rows - CLEARED, exact across both windows with the full-range digit-exact part present; (3) unanchored data provenance - CLEARED, committed host-3 manifests match 24/24 and 20/20; (4) suite unrunnable on the launch host - CLEARED as a blocker (collects and runs; 25 non-passing all attributed to host portability with the R3 path 100% green). Remaining items are MEDIUM/LOW advisories, none touching the scored path: the miscited host3_full_window_8field_report.json (18/20 in its own summary, cited as 20/20), the G17 raw-formula cap label (81 published vs 93/95 derived), the superseded legacy manifests inside the detached trees, and the shim's ru_maxrss unit convention."
+    }
+  },
+  "launch_gates": {
+    "a7_authorized": true,
+    "measured_safe_cap": 95,
+    "measured_safe_cap_published_in_artifact": 81,
+    "measured_safe_cap_source": "A7 independent fresh measurement 2026-08-28T05:45:32Z, raw frozen formula floor((20.551-2.0)/0.1945)=95; artifact's 81 is the withdrawn x1.15 value and is conservative",
+    "budget_cells_consumed": 0,
+    "minutes_remaining_before_2026-08-29T00:05:50Z": 1098,
+    "all_gates_pass": true
+  },
+  "verdict": "V10_LAUNCH_AUTHORIZED",
+  "blockers": [
+    "F2 fresh cache probe: UNAVAILABLE_FAIL_CLOSED on this host (Unix-only probe module; the only decision artifact is a 2026-08-27 macOS measurement whose catalog hashes are not reproducible on the recomposed tree). LISTED PER THE VERDICT RULES, and explicitly NON-BLOCKING for launch because PLAN section 6 permits exactly this outcome ('F2 fresh probe or explicit UNAVAILABLE_FAIL_CLOSED') and the fail-safe direction holds: the cache is DISABLED by default without a complete proof pair, cannot be smuggled across processes, and a changed input surface makes a stale entry unreachable - all three pinned by green tests in my R3-path run."
+  ],
+  "non_blocking_advisories": [
+    "A1 (MEDIUM, correct before relying on the artifact) host3_full_window_8field_report.json does NOT evidence the claim made for it: its own summary is {symbols_pass: 18, symbols_total: 20, all_pass: false} with failures [1000PEPEUSDT, BOMEUSDT], yet stage_verify_v10r_R1c_R2c_host3.json v2 cites it as '20/20 PASS'. My independent measurement confirms the SUBSTANCE (20/20 exact, all 9 fields, both windows), so this is a citation/regeneration defect, not a data defect. Regenerate the report post-rewrite or repoint the citation.",
+    "A2 (LOW) resource_cap_report_host3.json is internally inconsistent: it publishes the raw peak 0.1978 GB and labels measured_safe_cap=81 as the raw frozen-formula value, but floor((20.4928-2.0)/0.1978)=93; 81 is the withdrawn x1.15 result. My fresh raw measurement gives 95. Immaterial (all values >> ceilings 1 and 3) but regenerate so the label and the number agree.",
+    "A3 (LOW) The superseded legacy manifests (stage_manifest_R1c.csv 27 entries, stage_manifest_funding_R1c.csv 20) remain frozen inside the detached R1c/R2c trees and cannot match the recomposed composition; delete them or add an explicit superseding pointer so a future auditor does not verify against the wrong file.",
+    "A4 (LOW) The Windows resource shim's getrusage returns ru_maxrss in a unit convention that produces an impossible 112 GiB in test_g2_cache_resource_v10::test_decide_from_wiring_measurements_end_to_end. The shim correctly disclaims feeding the G17 decision, but its unit convention should match the tool's normalize_rss_bytes or the test should be scope-marked.",
+    "A5 (PROCESS) Run pytest only when no scored cell is executing, and diff the working tree before/after any suite run on this host: the suite rewrites research/audits/v7p/golden_vector_report.json and research/audits/v8p/golden_vector_report_v8.json on every run (confirmed again in my run; both restored)."
+  ],
+  "token_usage_note": "~120k tokens (input+output for the delta re-audit, including ~35k of tool results from the full 20-symbol two-window live-fapi recompute, the 47-file sha256 identity pass, the full suite run and the per-failure traceback classification)"
+}

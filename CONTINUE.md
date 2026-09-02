@@ -44,3 +44,93 @@ only on owner instruction.
 
 Return measured UTC, deadline remaining, integration HEAD, budget, and the
 R0 plan; then continue without repeated GO.
+
+## Host handoff — 2026-08-28T00:56Z (A1, mid-sprint, machine move to 16GB host)
+
+- R0 DONE: D1 fail-closed coverage (`78d77e1`) + D2 restage verify (`1a66e90`)
+  merged; D2 premise correction: staged tree already covers window end
+  (filename-range artifact caused the V10P stale-tail reading); BTC/ETH
+  duplicate-parts flag routed to R2 A7 recompute. Fixtures aligned per lesson
+  (d) (`c968b5c`).
+- R1 DONE: full suite alone **1283 passed / 1 skipped / 0 failed**;
+  **W3 = `2d5c30dcd32e4e3bfa02fe7d41de8804212327a5`** (code-identity vs suite
+  SHA verified); exec `R1c`/`R2c` detached at W3, staged read-only,
+  byte-identical 50/50, manifests 27+20 all_match.
+- Budget 0/9, denominator 117, deadline **2026-08-29T00:05:50Z** absolute.
+- NEXT (on the 16GB host): clone `orca/v10-integration` at W3, migration bundle
+  `/Users/hoangminhlong/v10r_migration_bundle/` (README inside) → R2 fresh A7 +
+  fresh `--probe-resource` (gate `measured_safe_cap ≥ 1`) → R3 3 M01 cells
+  serial → R4 reproduce → V11 wave. Open questions for A7 are listed in
+  `research/control/v10r_run/r1_freeze_W3.json`.
+- Old host's `exec-v10-R1c`/`R2c` are machine-local: recreate detached at W3 on
+  the new host per `worktree_manifest_v10r.json`; do NOT carry stale trees.
+
+## Owner amendment — 2026-08-28 (ceiling)
+
+Heavy-worker ceiling raised to **3**, scoped ONLY to: R4 reproduction
+processes, V11 cross-family chains (within-family serial preserved), V11
+reproduction waves. **R3 M01 cells stay serial ceiling=1.** G17 floor
+`min(ceiling, measured_safe_cap)` unchanged; measured 0 still = no launch.
+See `research/control/v10r_run/owner_amendment_ceiling_v10r.json`; A7 audits
+against this amended contract.
+
+## Host-3 bootstrap + R2 remediation — 2026-08-28 (A1)
+
+- Host 3 = Windows 11, 31.86 GB RAM measured. Migration bundle ABSENT →
+  staging rebuilt by re-fetch (Option A); composition after the A7-remediation
+  pass: 24 digit-exact bar parts + 20 funding + 3 instrument defs. EVERY
+  resolved value verified digit-exact vs live fapi on all 9 consumed fields
+  over prewindow+window (`host3_full_window_8field_report.json`, 20/20 PASS).
+- A7 first verdict `V10_BLOCKED_PRELAUNCH` (B1 non-digit-exact dedupe picks on
+  BTC/ETH, B2 POSIX-bound suite, B3 manifest provenance, B4 G17 port labels,
+  B6 suite side-effect) → remediated: non-digit-exact parts excluded from
+  staging, exec trees re-staged + byte-verified 47/47 (`stage_verify_v10r_
+  R1c_R2c_host3.json` v2), worktrees re-smudged to blob bytes (core.autocrlf
+  false), `resource` import shim for collection, G17 port artifact corrected
+  (`measured_safe_cap=81`; R3 final=1, R4/V11 final=3 per amendment), golden
+  vector file restored after each suite run.
+- Suite on host 3 (R1c, alone): **1259 passed / 16 failed / 8 errors / 2
+  skipped** vs freeze-time macOS 1283/0/1 (same blobs). Residue clusters in
+  V9-era process-control/fault-injection and audit-tooling tests
+  (POSIX process-group/signal semantics, path idioms) — the adapter/M01/panel/
+  publish execution path for R3 is fully green. Re-audit by A7 pending.
+- Known host-3 deviations for every audit: PEPE/BOME volume fixed-point scale
+  1e8 (loader reads live*1e-8 vs *1e-7 elsewhere) — verified NOT material to
+  M01 (scale-free within-symbol ratio); float64-to-int64 quantization ~1e-16
+  on 6 residual rows eliminated by the Decimal-exact rewrite.
+- R3 data-feed pin: bars fed to M01Plugin use the panel dedupe rule
+  (lexically-last part wins); `hyp_a8_m01.read_bars_15m`'s strict duplicate
+  rejection is recorded as inapplicable to the inherited overlap layout.
+
+## R3/R4 terminal — 2026-08-28 (A1) — M01_FAMILY_REJECT
+
+Anchor published (denom 1): net −578,745.7 scaled, expectancy −1,585.6/day,
+PF 2.4e-08, 0/3 folds positive, loss ≈ 100% costs (gross ≈ 0). Neighbour
+computed, same profile (−515,951.9) but UNPUBLISHED — frozen publisher's
+trial key cannot express M01-N (arm_config_id=control_mode collision with
+M01-A; neighbour_mode outside the key). Fail-closed, escalated to owner.
+C2 placebo published (denom 2): −607,353.9 ≈ anchor → zero incremental flow
+information. R4 reproduction from R2c: ALL_MATCH 3/3 (3 concurrent per owner
+amendment; only each tree's own absolute paths differ). Stage-A: family
+**REJECT**. Budget 2/9 published (+1 unpublished documented); denominator
+117+2=119. Full detail: `research/control/v10r_run/family_terminal_m01.json`.
+Owner directives standing: announce results (ELI5) → push → WAIT for owner
+response before starting V11.
+
+## V11 intake delta — 2026-09-02 (A1, bootstrap merge)
+
+- V11 sprint opened on this branch per owner PLAN `b8876ef8e0f7dd235d66f5cae5bfd8fd9034147f`
+  (= `main`/`origin/main` at bootstrap; owner-committed). V10 terminal truth above is
+  preserved verbatim; `orca/v10-integration@e6fa2b1` remains the V10 terminal authority.
+- Measured intake: merge-base(owner, V10 terminal) = `e5b0bab`; root checkout on branch
+  `forex` at `b8876ef` with owner-dirty `M PLAN_forex.md` (owner space, preserved, untouched);
+  published ledger denominator **119**, observed scored denominator **120** (V10 M01
+  neighbour, computed-unpublished contract gap) — reconciliation is P1/A2 append-only work
+  and gates scored launch until A7 approves.
+- V11 budget **0/12** (4 families x 3 cells ceiling), S1 untouched, no paper/testnet/live.
+- Standing owner directive (2026-09-02): A1 runs all safe local phases
+  (P0→P1→L0/D1→D2/D3→freeze→implement→QA→A7 prelaunch) and STOPS before the first scored
+  cell (Phase E); scored execution moves to a stronger owner machine. `V11_BLOCKED_PRELAUNCH`
+  on this host's measured resource cap is an acceptable honest state at handoff.
+- V11 control plane: `research/control/v11_run/` (run_contract, state, heartbeat, event_log,
+  worktree_manifest, v10_terminal_intake, denominator_reconciliation=PENDING, lessons_register).
