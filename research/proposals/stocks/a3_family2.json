@@ -1,0 +1,111 @@
+{
+  "schema": "stocks_s2_family_proposal",
+  "version": 1,
+  "family_id": "EQ_S2_A3_F2_LISTING_AGE",
+  "title": "Listing-age overpricing of young listings with delisting-bias-safe construction (new-issues / young-share underperformance)",
+  "proposer_lane": "A3 (data / security master / point-in-time universe)",
+  "branch": "orca/stocks-s2-prop-a3",
+  "outcome_blind_attestation": {
+    "computed_scored_pnl": false,
+    "read_other_proposal_lanes": false,
+    "note": "Proposal declares mechanisms, fields, clocks and falsification rules only. No scored-window returns, PF, Sharpe or ranking was computed anywhere in this sprint lane."
+  },
+  "lens": "Data/PIT: the anchor signal is literally the PIT listed_date on the security master (age = decision_date - listed_date); the effect is only definable with PIT listing/delisting identity, and it is precisely the family where survivorship and delisting bias (Shumway 1997; Shumway & Warther 1999) silently fake or destroy the measured edge. Naive proxies (first available bar in survivorship-prone databases, ticker-inception dates) fake it.",
+  "required_fields": {
+    "1_economic_mechanism_and_counterparty": {
+      "mechanism": "Recently listed common stocks concentrate optimistic, disagreement-prone ownership against binding short-sale constraints and a thin, partly locked float. Initial prices therefore embed over-optimism that unwinds as the float unlocks, attention fades and disagreement resolves: young listings underperform seasoned sector peers over the first year of life. This is the divergence-of-opinion pricing result under short-sale constraints (Miller 1977) instantiated in the new-issues sample (Ritter 1991; Loughran & Ritter 1995), reinforced by lottery-type demand concentrated in young low-price shares (Kumar 2009) and documented in its extreme episode in the young internet-share market (Ofek & Richardson 2003).",
+      "expected_counterparty": "Constrained optimists: lottery-preference and attention-driven retail flow plus momentum chasers buying young listings; on the supply side, insiders and underwriters distributing a thin float into that demand (lockup expiries add supply exactly as the mechanism predicts).",
+      "why_the_edge_persists": "Arbitraging the short side is genuinely expensive: young names are frequently unborrowable or borrow at penalty fees (equity-loan evidence: Nagel 2005), spreads are wide, and ownership is concentrated in sellers with lockup schedules. The buyers are not price-elastic and their beliefs survive because limits to arbitrage are structural, not incidental."
+    },
+    "2_pit_fields_and_source_authority": {
+      "factory_expressible_today_synthetic": [
+        "listed_date, delisted_date, last_valid_event, primary_exchange, effective-dated ticker_history -- SecurityMaster; the anchor signal is listed_age = decision_date - listed_date",
+        "history_days on EligibilityInput inside build_rebalance_snapshot (age rules are expressible as eligibility/selection logic today)",
+        "delisting-retention validator evaluate_delisting_retention: delisted observations retained through the final valid event",
+        "ACCEPTED/REJECTED rebalance snapshot rows with mandatory reasons and canonical digest",
+        "daily OHLCV with ts_exchange/ts_ingest via BarLoader; next-open/next-close events via the US equity session calendar",
+        "one-event entry delay helpers (A5 execution): signal at close t, entry at open t+1"
+      ],
+      "unavailable_pending_entitlement": [
+        "AUTHORITATIVE PIT security master with true IPO/list dates, exchange/primary-listing identity and full ticker history -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "delist reason and compensation codes (performance vs merger delisting) required for Shumway-style delisting-return treatment -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "PIT sector (GICS as-of) assignments for sector-neutral matching -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "PIT borrow availability and fee for every short leg (young names frequently unborrowable; A5 gate) -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "lockup-expiry / follow-on-offering event records (attribution context only, not signals) -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        ">= 8y real daily history across the eligible population including delisted names through final valid event -- UNAVAILABLE_PENDING_ENTITLEMENT"
+      ],
+      "source_authority_policy": "Per research/assets/stocks/provider.py: NO_ENTITLEMENT_FAIL_CLOSED is the default; authority requires a verified EntitlementRecord covering REQUIRED_LICENSE_SCOPE (PIT_SECURITY_MASTER, DELISTINGS, CORPORATE_ACTIONS, HISTORY_WITH_ADJUSTMENTS). Free-convenience endpoints are DIAGNOSTIC_ONLY and can never satisfy authority; in particular a free 'first bar seen' proxy for list date is exactly the failure mode this family forbids.",
+      "data_readiness": "Implementable against the synthetic-fixture factory NOW (SecurityMaster with listed/delisted dates, age-eligible snapshots, synthetic bars and delisting prints). Real-data readiness BLOCKED pending owner-authorized entitlement (NO_ENTITLEMENT_FAIL_CLOSED)."
+    },
+    "3_universe_neutralization_benchmark": {
+      "universe": "US-listed common stocks. Eligibility via rebalance snapshots with the PLAN floors: >= 30 eligible liquid names per decision (median-dollar-volume and history floors), ACCEPTED and REJECTED rows both retained with reasons, delisted names retained through final valid event. Young names that fail the liquidity floor are REJECTED with reason like any other name; the family never overrides a floor to keep a young name.",
+      "neutralization": "Sector-neutral dollar-neutral cross-sectional book formed monthly: within each PIT sector bucket (as-of formation), equal-weight long seasoned names (listed_age >= 5 years) against short young names (listed_age <= 12 months), with sector-level dollar neutrality and zero net dollar exposure. Names without a borrowable young peer in-sector are dropped with a recorded reason and the book re-normalizes.",
+      "benchmark": "Flat (absolute) plus SPY total return, evaluated inside a declared sector-neutral, dollar-neutral context per PLAN §10."
+    },
+    "4_formation_holding_execution_clocks": {
+      "formation": "Monthly, on the first regular session close of each calendar month (declared schedule on the US equity session calendar; never a manufactured calendar). All signal inputs are PIT as of that close: listed_date, prior closes, sector as-of, borrow as-of.",
+      "entry": "Next regular-session OPEN after formation close (next-open event; one-event entry delay is inherent; no fill on halt / closed session / missing quote).",
+      "holding": "One month; the book rolls at the next formation's entry (exit at the subsequent next-open).",
+      "execution_events": "Next-open entries and exits as primary; VWAP-style execution across the session is expressible via loader intraday bars and becomes the fill path when the intraday entitlement and the >= 3y intraday floor are satisfied.",
+      "grid_prohibition": "Exactly ONE young-age band (<= 12 months) and ONE seasoned threshold (>= 5 years) are declared ex ante from the mechanism (overpricing unwinds as float unlocks within the first year; seasoned comparators need multi-year history). No age grid, no lookback grid, no threshold sweep anywhere in this family."
+    },
+    "5_turnover_and_capacity": {
+      "expected_turnover_order_of_magnitude": "Monthly full roll => each position turns ~12x per year round-trip; two-sided book turnover order ~24 round trips/year of one-side notional (roughly 2400% annualized one-side).",
+      "capacity_reasoning": "Bounded by young-name liquidity: young listings have small ADV and wide spreads; the A5 square-root impact model with hard order-size caps at declared ADV participation binds early, and spreads of tens of bps consume the expected drift. Requiring >= 30 eligible names while keeping each young-leg order a small fraction of its ADV and paying the borrow fee implies order-of-magnitude capacity in the low tens of millions USD. The seasoned long leg is liquid; the young short leg is the binding constraint (frequently rejected for unavailable borrow).",
+      "cost_feasibility_gate": "Schedule-only turnover and cost feasibility (PLAN §10) must be demonstrated before scoring; borrow x2 and borrow-unavailable stresses are mandatory (PLAN §12)."
+    },
+    "6_arms": {
+      "anchor": {
+        "arm_id": "EQ_S2_A3_F2_ANCHOR",
+        "definition": "Monthly sector-neutral dollar-neutral book: short young (listed_age <= 12 months at formation, per PIT listed_date) vs long seasoned (listed_age >= 5 years) in-sector peers; next-open entry; one-month holding; borrow-gated shorts; delisting-safe accounting."
+      },
+      "neighbour": {
+        "arm_id": "EQ_S2_A3_F2_NEIGH_CONSTRAINT_GRADIENT",
+        "justification": "The mechanism (overpricing proportional to short-sale constraints) makes an ex-ante cross-sectional prediction inside the young sample: the drift must concentrate where the constraint binds hardest (PIT-measured borrow scarcity/fee; Nagel 2005; Ofek & Richardson 2003). If the anchor is the mechanism, the neighbour must support it.",
+        "definition": "Same sector-neutral book and clocks, but the young short leg is restricted to names with an available PIT borrow quote at a fee above a declared floor (constraints demonstrably binding), and the seasoned long leg matches that sector mix. An available-borrow-young cohort comparison is reported as attribution; the scored arm is the single constrained-short book."
+      },
+      "negative_control": {
+        "arm_id": "EQ_S2_A3_F2_CTRL_AGED_ENTRY",
+        "justification": "Severs 'youngness' while keeping the same securities, the same sector book, the same clocks and the same accounting: the short leg's entry clock is delayed until each name's listed_age exceeds the seasoned threshold (the identical cohort re-entered only after it is no longer young; long leg unchanged, matched to that aged cohort's sectors). Directly expressible today via EligibilityInput.history_days.",
+        "expected_if_mechanism_real": "The control's short-leg edge must be destroyed (after-cost drift ~ 0 once the age threshold is passed). If the drift persists in the control, the effect is a persistent small/unprofitable-growth characteristic confound rather than listing-age overpricing, and the family is FALSIFIED."
+      }
+    },
+    "7_corporate_action_earnings_borrow_dividend_treatment": {
+      "corporate_actions": "Splits and cash dividends applied exactly once at ex/effective timestamps (A4 engine); declared RAW fill path vs TOTAL_RETURN research path with reconciliation; a young name that delists inside the holding window is exited at its final valid event with Shumway-style delisting-return treatment (performance delists carry their negative return; merger delists exit at the deal print) -- retention of these prints is what the evaluate_delisting_retention gate enforces.",
+      "earnings": "The first post-IPO earnings cycles are part of the mechanism's resolution period; positions are held through earnings. PIT earnings timestamps classified BTO/AMC with fail-closed UNKNOWN (A4) are used for attribution only, never for entry/exit or lookahead.",
+      "borrow": "Every short requires locate plus a PIT borrow fee (A5); unavailable borrow => the short is REJECTED with reason, never filled for free; short coverage ratio reported per rebalance. Young names are frequently unborrowable -- the family accepts reduced short coverage and re-normalizes rather than simulating free shorts.",
+      "dividends": "Cash dividend receipt on the seasoned long leg and short dividend liability on the young short leg per the A5 identity (young names rarely pay; specials are passed through and reconciled)."
+    },
+    "8_falsification_and_external_validity": {
+      "falsification_rule": "Family dies if ANY of: (a) the aged-entry control retains materially the anchor's after-cost edge (characteristic confound, not listing age); (b) the neighbour fails to concentrate the drift where constraints bind; (c) the edge exists ONLY when delisted names are dropped or their final prints truncated -- i.e. the honest delisting-retained construction shows no edge while a survivorship-only variant does (the family is then declared a data artifact, the exact fake the PIT floors exist to catch); (d) the edge vanishes under x1.5 costs, impact at declared ADV caps, or borrow x2/unavailable stress; (e) any Stage-A gate (PLAN §13) fails.",
+      "external_validity_caveats": "The effect is episode-concentrated and time-varying (documented especially around 1999-2000; new-issue vintage quality varies by cycle), so results must be reported by cohort vintage and sub-period, never pooled. Listing technology has changed (direct listings, spin-offs, de-SPAC structures) and alters float/lockup structure -- the 'listed_date' identity must come from the PIT security master per structure, and structures outside the declared common-stock IPO class are out of scope. Borrow economics are the binding limit and are only honestly measurable with PIT equity-loan data; with proxy-borrow costs the family must be declared borrow-infeasible rather than run on free shorts."
+    },
+    "9_max_trial_count": {
+      "max_computed_cells": 3,
+      "cells": ["EQ_S2_A3_F2_ANCHOR", "EQ_S2_A3_F2_NEIGH_CONSTRAINT_GRADIENT", "EQ_S2_A3_F2_CTRL_AGED_ENTRY"]
+    }
+  },
+  "ineligibility_attestation": {
+    "not_an_indicator_grid": "The age bands are single ex-ante mechanism constants (float-unlock horizon ~1y; seasoned comparator >= 5y), never swept; one monthly clock; one neutralization. No lookback/indicator/threshold grid exists in any arm.",
+    "not_a_crypto_family_rescue": {
+      "vs_M01_aggressor_flow_absorption": "Different observable (PIT listed_age from the security master vs order-book aggressor imbalance), different counterparty (constrained optimists / float distributors vs momentum aggressors), different clock (monthly next-open cross-sectional roll vs intraday absorption), different causal control (aged-entry cohort clock shift vs crypto control).",
+      "vs_funding_carry": "No funding-rate or carry observable anywhere; the short-side fee is a cost/borrow constraint, not a signal.",
+      "vs_weekly_reversal": "Monthly cross-sectional age-conditioned book, not a periodic reversal; the young short leg is not a 'reversal' trade on past returns."
+    }
+  },
+  "literature": {
+    "retrieval_marking": "MODEL_INTERNAL_UNVERIFIED: claims and attributions come from internal knowledge of published literature; network verification unavailable. No DOIs and no direct quotes are asserted. Exact volume/page details deliberately omitted.",
+    "citations": [
+      "Miller, E. (1977). Risk, Uncertainty, and Divergence of Opinion. Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Ritter, J. (1991). The Long-Run Performance of Initial Public Offerings. Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Loughran, T. and Ritter, J. (1995). The New Issues Puzzle. Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Shumway, T. (1997). The Delisting Bias in CRSP Data. Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Shumway, T. and Warther, V. (1999). The Delisting Bias in CRSP's Nasdaq Data. Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Nagel, S. (2005). Short Sales: Institutional Investors and the Equity Loan Market. Journal of Financial Economics. UNVERIFIED(bibliographic detail)",
+      "Ofek, E. and Richardson, M. (2003). DotCom Mania: The Rise and Fall of Internet Stock Prices. Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Kumar, A. (2009). Who Gambles in the Stock Market? Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Hong, H. and Stein, J. (2007). Disagreement and the Stock Market. Journal of Economic Perspectives. UNVERIFIED(bibliographic detail)",
+      "Field, L. and Hanka, G. (2001). The Expiration of IPO Share Lockups. Journal of Finance. UNVERIFIED(bibliographic detail)"
+    ]
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "schema": "stocks_s2_family_proposal",
+  "version": 1,
+  "family_id": "EQ_S2_A3_F1_PIT_RECON_FLOW",
+  "title": "PIT index-reconstitution forced-flow drift (membership-reconstitution space)",
+  "proposer_lane": "A3 (data / security master / point-in-time universe)",
+  "branch": "orca/stocks-s2-prop-a3",
+  "outcome_blind_attestation": {
+    "computed_scored_pnl": false,
+    "read_other_proposal_lanes": false,
+    "note": "Proposal declares mechanisms, fields, clocks and falsification rules only. No scored-window returns, PF, Sharpe or ranking was computed anywhere in this sprint lane."
+  },
+  "lens": "Data/PIT: the edge is only measurable with effective-dated index membership (no current-membership backfill), PIT announcement/effective timestamps, and delisting-retained history. Naive backfilled membership data cannot even express the mechanism.",
+  "required_fields": {
+    "1_economic_mechanism_and_counterparty": {
+      "mechanism": "When a major cap-weighted benchmark announces an addition or deletion with a future effective date, funds that track the benchmark MUST trade the change at/near the effective close to avoid tracking error. This demand is mandate-driven and price-inelastic, producing a measurable price-pressure episode around the effective date (demand curves slope down). Announcements are public and timestamped strictly before the effective date, so the forced-flow event is point-in-time predictable even though index membership itself is not backfillable.",
+      "expected_counterparty": "Index-tracking funds and benchmark-constrained active managers who must transact at the effective rebalance regardless of price. They persist structurally because their objective is tracking error minimisation against a benchmarked mandate, not expected profit; every year produces new adds/deletes and the passive complex keeps growing, so the counterparty does not disappear.",
+      "why_the_edge_persists": "The other side of the trade cannot refuse to trade and cannot time-trade (mandate forbids it); arbitrage capital that pre-trades the announcement (recon front-running) competes the effect down but does not eliminate the forced flow itself. Residual drift should concentrate where tracked AUM per forced dollar traded is largest."
+    },
+    "2_pit_fields_and_source_authority": {
+      "factory_expressible_today_synthetic": [
+        "security_id (stable), ticker_as_of(security_id, as_of) -- SecurityMaster effective-dated ticker history",
+        "membership rows (security_id, universe_id, effective_from, effective_to) via MembershipTable; ONLY members_as_of reads exist (structural ban on current-membership backfill)",
+        "announcement/effective event stream via BarLoader event rows (ts_exchange, ts_ingest, allow_duplicate_timestamps=True), ts_ingest >= ts_exchange enforced",
+        "daily OHLCV bars with exchange+ingest timestamps, checksum-verified, gap-fail-closed (BarLoader)",
+        "ACCEPTED/REJECTED rebalance snapshot rows with mandatory reasons and canonical digest (build_rebalance_snapshot)"
+      ],
+      "unavailable_pending_entitlement": [
+        "AUTHORITATIVE PIT index announcement records: {universe_id, security_id, event_type in INDEX_ADD_ANNOUNCED|INDEX_DELETE_ANNOUNCED, announce_ts (exchange), announce_ts (ingest), effective_ts} from the index provider's maintenance history (e.g. S&P DJI / FTSE Russell announcement archives) -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "AUTHORITATIVE effective-dated index membership history (not backfilled) for the major benchmark and for the control index -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "per-index tracking-AUM / benchmarked-assets estimates, annual, PIT (to rank flow intensity) -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "PIT sector (GICS as-of) assignments -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "PIT borrow availability and fee for every short leg (A5 gate) -- UNAVAILABLE_PENDING_ENTITLEMENT",
+        "real daily history >= 8y across the eligible population with delistings retained (PLAN §7 floors) -- UNAVAILABLE_PENDING_ENTITLEMENT"
+      ],
+      "source_authority_policy": "Per research/assets/stocks/provider.py: every adapter defaults to NO_ENTITLEMENT_FAIL_CLOSED; authority requires a verified EntitlementRecord covering REQUIRED_LICENSE_SCOPE = (PIT_SECURITY_MASTER, DELISTINGS, CORPORATE_ACTIONS, HISTORY_WITH_ADJUSTMENTS) on an authority-capable source class. Free-convenience data is DIAGNOSTIC_ONLY and can never satisfy authority, including for announcement timestamps.",
+      "data_readiness": "Implementable against the synthetic-fixture factory NOW (membership rows, announcement events, synthetic bars). Real-data readiness BLOCKED pending owner-authorized entitlement (NO_ENTITLEMENT_FAIL_CLOSED)."
+    },
+    "3_universe_neutralization_benchmark": {
+      "universe": "US-listed common stocks (ETFs excluded from the signal book; ETFs may serve only as benchmark instruments). Eligibility via rebalance snapshots: history and median-dollar-volume rule with ACCEPTED and REJECTED rows both retained with reasons; >= 30 eligible liquid names per decision (S0 floor). Delisted members retained through their final valid event (evaluate_delisting_retention).",
+      "neutralization": "Sector-neutral dollar-neutral book: long announced additions, short announced deletions, matched within PIT sector buckets (sector as-of formation date); sector-level dollar neutrality enforced and zero net dollar exposure overall. No symbol above the Stage-A concentration cap.",
+      "benchmark": "Flat (absolute) plus SPY total return, evaluated inside a declared sector-neutral, dollar-neutral context (no index beta claim is made; the benchmark pair is the PLAN-mandated minimum set)."
+    },
+    "4_formation_holding_execution_clocks": {
+      "decision_rule": "Event-driven per announcement. A decision may use an announcement only at the first regular-session close strictly after the announcement's ts_ingest (PIT discipline; a signal may execute only on a LATER observable event -- one-event entry delay, per A5 execution helpers).",
+      "formation": "At the close S0 of the first regular session with start > announce_ts_ingest (next-close formation).",
+      "entry": "Next regular-session close after formation (declared close-event fill; no fill on halt / closed session / missing quote).",
+      "holding": "From entry close through the regular-session close 20 sessions after the membership change's effective date (fixed ex ante constant, not tuned; documented pressure windows in the literature are of this order).",
+      "execution_events": "Declared session-close events (calendar session_bounds; early closes honoured). VWAP-style intraday execution over the entry/exit session is expressible via loader intraday bars and becomes the fill path if/when the intraday entitlement and the >= 3y intraday floor are satisfied.",
+      "overlap_policy": "Overlapping event books aggregate; per-name weight caps; no re-entry into the same (security_id, announcement) pair."
+    },
+    "5_turnover_and_capacity": {
+      "expected_turnover_order_of_magnitude": "Each announcement generates one round trip per name with ~25-session holding => each name turns ~8-10x per year while held. Aggregated at book level: major-index maintenance typically yields order 10-40 announced changes/year plus a large annual reconstitution event; effective book turnover order 4-10x/year of average one-side notional.",
+      "capacity_reasoning": "Capacity is bounded by (a) square-root impact with a hard order-size cap at a declared fraction of ADV (orders above the cap DO NOT fill) and (b) event concentration: a single annual reconstitution must execute through closing-auction liquidity, so per-name order size must stay a small fraction of that name's effective-date volume. Order-of-magnitude capacity: tens of millions to low hundreds of millions USD strategy AUM; deletions (often deteriorating names with wide spreads) bind first.",
+      "cost_feasibility_gate": "Schedule-only turnover and cost feasibility must be demonstrated (PLAN §10) before scoring; family dies if edge does not survive commission x1.5, spread x1.5 and impact at declared ADV participation caps."
+    },
+    "6_arms": {
+      "anchor": {
+        "arm_id": "EQ_S2_A3_F1_ANCHOR",
+        "definition": "Long announced additions / short announced deletions of the primary benchmark; sector-neutral dollar-neutral; formation next-close after announcement ingest; entry next close; exit effective+20 sessions; borrow-gated shorts."
+      },
+      "neighbour": {
+        "arm_id": "EQ_S2_A3_F1_NEIGH_RULE_BASED_RECON",
+        "justification": "Same forced-flow mechanism, different identification: rule-based (non-discretionary) reconstitution of a threshold-split benchmark family (Russell-style float-cap assignment boundary). Names are added/deleted purely by rule, isolating forced benchmark flow from committee discretion; regression-discontinuity evidence attributes price effects around this recon to inclusion itself (Chang, Hong & Liskovich 2015, JFE). If the mechanism is real, the neighbour must support the anchor.",
+        "definition": "Same clocks, neutralization and gates as the anchor, applied to the rule-based recon event set of the threshold-split benchmark complex."
+      },
+      "negative_control": {
+        "arm_id": "EQ_S2_A3_F1_CTRL_NOFLOW_INDEX",
+        "justification": "Severs the causal link (forced inelastic flow) while keeping the observable, clock and neutralization identical: apply the identical formation/holding/execution schedule to membership changes of a matched index in the same vendor family that has economically negligible tracking assets (no investable tracking products, near-zero benchmarked AUM).",
+        "expected_if_mechanism_real": "The control arm's after-cost edge must be destroyed (indistinguishable from zero after costs). If the control shows materially the same drift as the anchor, the anchor's edge is a characteristic confound (e.g. adds are high-momentum small caps that drift anyway) and the family is FALSIFIED."
+      }
+    },
+    "7_corporate_action_earnings_borrow_dividend_treatment": {
+      "corporate_actions": "Splits and cash dividends applied exactly once at ex/effective timestamps (A4 engine); declared RAW fill path vs TOTAL_RETURN research path with reconciliation; delisted names retained through final valid event, and a deletion position exited at its delisting event rather than silently dropped.",
+      "earnings": "Earnings events inside the holding window are NOT signals; positions are held through them. PIT earnings timestamps classified BTO/AMC with fail-closed UNKNOWN (A4) used only for audit/attribution, never for re-entry or lookahead.",
+      "borrow": "Every short requires locate plus a PIT borrow rate (A5); unavailable borrow => the short is REJECTED (never filled for free), recorded as a REJECTED row with reason, book re-normalizes; coverage ratio reported per event. Deletions frequently have deteriorating borrow -- the family accepts reduced short coverage.",
+      "dividends": "Cash dividend receipt on longs and short dividend liability on shorts per the A5 accounting identity; special dividends passed through and reconciled."
+    },
+    "8_falsification_and_external_validity": {
+      "falsification_rule": "Family dies if ANY of: (a) negative control arm retains materially the anchor's after-cost edge (confound, not forced flow); (b) neighbour contradicts the anchor; (c) edge vanishes under one-event entry delay, x1.5 costs, impact at declared ADV caps, or borrow x2/unavailable stress; (d) the edge exists only when computed with backfilled current membership rather than members_as_of effective rows (data artifact); (e) any Stage-A gate fails (PLAN §13).",
+      "external_validity_caveats": "Documented regime dependence: inclusion effects have decayed as the passive complex grew and reconstitution trading became industrialised (anticipation documented already in the 1990s); announcement-to-effective windows changed historically by era, so window constants must be declared per announcement-era from PIT records, never assumed uniform; results must be reported by sub-period and by flow intensity (tracked AUM) buckets. Russell-style neighbour identification depends on band/rank assignment rules that themselves changed over time -- each era needs its own PIT rule record."
+    },
+    "9_max_trial_count": {
+      "max_computed_cells": 3,
+      "cells": ["EQ_S2_A3_F1_ANCHOR", "EQ_S2_A3_F1_NEIGH_RULE_BASED_RECON", "EQ_S2_A3_F1_CTRL_NOFLOW_INDEX"]
+    }
+  },
+  "ineligibility_attestation": {
+    "not_an_indicator_grid": "No lookback/threshold grid: one announcement event type, one declared window constant set, one neutralization; nothing is tuned to outcomes.",
+    "not_a_crypto_family_rescue": {
+      "vs_M01_aggressor_flow_absorption": "Different observable (PIT effective-dated membership + scheduled announcements vs order-book aggressor imbalance), different counterparty (mandate-forced index funds vs momentum aggressors), different clock (multi-week announcement->effective schedule vs intraday absorption), different causal control (no-tracking-AUM index vs crypto control).",
+      "vs_funding_carry": "No funding-rate observable or carry term anywhere.",
+      "vs_weekly_reversal": "Event-driven low-frequency book around scheduled reconstitutions, not a periodic reversal clock."
+    }
+  },
+  "literature": {
+    "retrieval_marking": "MODEL_INTERNAL_UNVERIFIED: claims and attributions come from internal knowledge of published literature; network verification unavailable. No DOIs and no direct quotes are asserted. Exact volume/page details deliberately omitted.",
+    "citations": [
+      "Shleifer, A. (1986). Do Demand Curves for Stocks Slope Down? Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Harris, L. and Gurel, E. (1986). Price and Volume Effects Associated with Changes in the S&P 500 List. Journal of Finance. UNVERIFIED(bibliographic detail)",
+      "Beneish, M. and Whaley, R. (1996). An Anatomy of the 'S&P Game': The Effects of Changing the Rules. Journal of Finance. UNVERIFIED(year/journal detail)",
+      "Wurgler, J. and Zhuravskaya, E. (2002). Does Arbitrage Flatten Demand Curves for Stocks? Journal of Economic Perspectives. UNVERIFIED(bibliographic detail)",
+      "Greenwood, R. (2005). Short- and Long-Term Demand Curves for Stocks: Theory and Evidence on the Dynamics of Arbitrage. Journal of Financial Economics. UNVERIFIED(bibliographic detail)",
+      "Barberis, N., Shleifer, A. and Wurgler, J. (2005). Comovement. Journal of Financial Economics. UNVERIFIED(bibliographic detail)",
+      "Chang, Y.-C., Hong, H. and Liskovich, I. (2015). Regression Discontinuity and the Price Effects of Stock Index Inclusion. Journal of Financial Economics. UNVERIFIED(bibliographic detail)",
+      "Baker, M., Bradley, B. and Wurgler, J. (2011). Benchmarks as Limits to Arbitrage: Understanding the Low-Beta Anomaly. Financial Analysts Journal. UNVERIFIED(bibliographic detail)"
+    ]
+  }
+}
