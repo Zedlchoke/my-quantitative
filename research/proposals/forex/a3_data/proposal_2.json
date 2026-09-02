@@ -1,0 +1,132 @@
+{
+  "proposal_id": "FX2-A3-P2",
+  "lane": "a3_data",
+  "mechanism_name": "Cross-sectional relative-spread scarcity signal (quote-dynamics liquidity imbalance)",
+  "economic_mechanism": "Dealer intermediation capacity in FX is currency-specific and balance-sheet constrained. Quoted bid-ask spreads vary systematically with dealer quoting conditions (Bessembinder 1994) and FX liquidity measured from quoted spreads exhibits strong cross-pair commonality plus priced pair-specific variation (Mancini, Ranaldo & Wrampelmeyer 2013). Hypothesis: when a pair's spread rises relative to (i) its own trailing norm and (ii) the contemporaneous cross-pair panel median, dealers are rationing intermediation in that currency leg; the scarce currency subsequently earns a positive premium as compensation for bearing its inventory risk, while the abundant currency underperforms. The information is in the quote dynamics, not the price: subtracting the contemporaneous cross-pair median spreads z-score removes the common dealer-wide liquidity shock (documented commonality), leaving a pair-specific scarcity state. The tradeable arm is dollar-neutral: long the panel-scarce currency leg, short the panel-abundant one, formed after the London/New York overlap with quotes strictly pre-timestamped. The claim is deliberately scoped to the frozen provider's panel: a spread state is that dealer panel's intermediation condition, never 'global FX volume'.",
+  "expected_counterparty": "Balance-sheet-constrained dealer intermediaries who widen quotes when rationing a scarce currency, and the flow that pays the widened spread (leveraged funds pushing inventory, corporate hedging flow); they are compensated immediately via the widened quote but are not compensated subsequently, while the strategy earns the subsequent inventory-risk premium for standing on the provider side.",
+  "signal_fields_and_publication_clock": {
+    "signal_fields": [
+      "bid/ask quote panel for the 7 frozen G10-USD pairs; pair spread s_i,t = (ask - bid) / mid at each 1-minute timestamp",
+      "pair-normalized spread z-score: z_i,t = (s_i,t - median of s_i over trailing 63 business days of same-clock-hour quotes) / MAD_i,t (same-clock-hour conditioning, DST-correct, so session periodicity documented by Bollerslev & Domowitz 1993 does not contaminate the norm)",
+      "panel-relative scarcity state: q_i,t = z_i,t - median_j(z_j,t) across the 7 pairs at the same timestamp (removes the common liquidity shock)",
+      "quote-age field for the staleness gate (data-quality lane requirement)"
+    ],
+    "publication_clock": "Quote spreads are instantaneous observable states: publication lag is zero, but staleness is not. Formation timestamp is the daily 17:00 America/New_York rollover (zoneinfo-correct). Only quotes timestamped strictly before formation may enter; if any panel pair's newest quote at formation is older than 60 seconds, that pair is excluded from the panel median for the day and the arm abstains on it (fail-closed data-quality gate). No future quotes, no same-timestamp closing prices: the price used to compute the trade only enters after the formation instant.",
+    "prohibited_information": "no volume field, no order-flow field, no macro vintage, no rate field enters the signal (macro vintages are UNAVAILABLE and deliberately not a dependency)."
+  },
+  "formation_holding_rebalance": {
+    "formation": "daily at the 17:00 ET rollover instant (America/New_York, zoneinfo-correct), business days only",
+    "holding": "72 hours per position, executed as 3 equal staggered tranches initiated on consecutive days, so one third of the book turns over per day",
+    "rebalance": "daily staggered rebalance of the expiring tranche only; no intra-day re-formation",
+    "position_sizing": "signal-quantile sizing: long the currency leg of the pair with the panel-worst relative-spread percentile, short the panel-best, dollar-neutral, volatility-scaled to 8% annualized from trailing 63-day realized variance of the spread-signal portfolio proxy; no ranking grid searched - the 1-vs-7 extreme quantile construction is fixed ex ante"
+  },
+  "pair_universe_and_neutralization": "Frozen G10-USD candidates EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD (PLAN section 1); all 7 pairs form the panel because the scarcity state is defined relative to the panel median. Scoreable arms: EURUSD (anchor) and GBPUSD (neighbour) evaluated within the same panel rule. Neutralization: dollar-neutral by construction (long scarce leg vs short abundant leg through the USD pairs); residual USD net exposure capped at the plan's currency exposure caps; no crosses required (avoids the point-in-time cross-coverage gate of PLAN section 1).",
+  "expected_spread_rollover_turnover": {
+    "expected_spread": "adverse by construction: entries occur after spreads have already widened, so entry cost is above the pair's unconditional average; the hypothesis requires the subsequent 72h premium to exceed this elevated entry spread under bid/ask execution modeling. Midpoint evaluation is DIAGNOSTIC_ONLY (PLAN section 2).",
+    "expected_rollover": "72h holds accrue approximately 3 rollover events per tranche leg per day-cycle; attribution requires an authoritative historical swap schedule, which is UNAVAILABLE in the repo, so rollover accounting is feasibility-blocking until authorized",
+    "expected_turnover": "one third of the book per business day, approximately 85 full-book turns per year across the 7-pair panel"
+  },
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "EURUSD evaluated inside the 7-pair panel rule: relative-spread scarcity state at formation mapped to subsequent 72h compensation",
+      "why_it_validates": "EURUSD has the deepest, most reliable quotes on any dealer panel, minimizing measurement error in the spread state itself; if currency-scarcity pricing exists it should be cleanest there"
+    },
+    "neighbour": {
+      "definition": "GBPUSD evaluated inside the same panel rule with no re-tuning",
+      "why_it_validates": "GBPUSD shares the same dealer panel, the same 17:00 ET clock and near-identical interbank quoting structure; the mechanism predicts same-signed, attenuated behavior. Agreement between anchor and neighbour supports a dealer-panel mechanism rather than a pair-idiosyncratic quoting artifact."
+    },
+    "negative_control": {
+      "definition": "temporal-shift placebo: replace each pair's spread history with the same series shifted by +180 calendar days before computing the signal (the shift preserves each pair's unconditional spread distribution, its intraday periodicity and its autocorrelation envelope, while destroying the timestamp alignment between the spread state and the subsequent returns used for evaluation)",
+      "why_it_destroys": "If the premium is genuine quote-state information, the +180-day-shifted state must have no predictive alignment and the cross-sectional premium must collapse to noise. A surviving premium under the placebo would demonstrate that the effect comes from slow price trends that correlate with spread level rather than from spread timing - destroying the mechanism and flagging look-ahead/price-led contamination. As a secondary gate, the pre-window lead-lag check required by A7 must show the spread state leads (not merely co-moves with) subsequent returns."
+    }
+  },
+  "expected_regimes_and_falsification": {
+    "expected_regimes": "Signal expected strongest in funding/liquidity stress episodes (2008, 2020, CHF discontinuity of January 2015) when dealer balance-sheet rationing is binding and FX liquidity risk is priced (Mancini, Ranaldo & Wrampelmeyer 2013 document liquidity drying up and being priced exactly then); near-zero in calm, competitively quoted regimes.",
+    "falsification": [
+      "premium survives the +180-day temporal-shift placebo",
+      "premium not monotone in the relative-spread percentile (no dose-response in scarcity)",
+      "premium uniform across stress and calm regimes (no liquidity-risk link)",
+      "spread state does not lead subsequent returns in the pre-window lead-lag check (co-movement only, i.e. spread is an echo of price, not information)",
+      "premium exists only in midpoint measurement and disappears under bid/ask execution accounting"
+    ]
+  },
+  "macro_session_external_validity_risks": [
+    "provider scope: the spread panel is one dealer's quoting behavior; a liquidity state on that panel is not a claim about global FX liquidity, and the provider must be frozen before any candidate PnL inspection (PLAN section 2)",
+    "secular spread compression from electronic competition shifts level regimes; the trailing 63-day same-hour normalization mitigates but does not eliminate provider-contract or technology changes mid-sample",
+    "formation instant is DST-correct 17:00 ET; mis-specified clocks (SYNTHETIC_TEST_ONLY wall-time labels) would silently shift formation across session boundaries in EDT months",
+    "holiday-thinned days degrade the panel median; holiday tables are SYNTHETIC_TEST_ONLY so thin-day treatment cannot be authoritatively gated today",
+    "scheduled macro releases cluster at fixed clock hours near formation (e.g. 14:00/14:15 ET FOMC days); no event exclusion may be tuned after observing returns; PIT event vintages are UNAVAILABLE, so event-day robustness is declared untestable rather than assumed benign",
+    "CHF-type discontinuities can gap through stops; discontinuity handling must be declared in the freeze, not adapted after results"
+  ],
+  "exact_trial_count": 2,
+  "exact_trial_count_note": "Exactly 2 scoreable arms (anchor EURUSD, neighbour GBPUSD inside the same panel rule). The +180-day temporal-shift placebo and lead-lag gates are non-scoreable falsification diagnostics. No post-score arm replacement permitted.",
+  "required_pit_fields_with_availability": [
+    {
+      "field": "historical bid/ask quote panel (tick or <=1m) for all 7 G10-USD pairs, aligned timestamps",
+      "source": "owner-authorized institutional quote provider (PLAN section 2, candidate 1) or owner-supplied normalized Parquet with provider documentation",
+      "availability": "UNAVAILABLE: 0 of 7 pairs have real FX bid/ask history; no provider entitlement; fail-closed. This proposal is feasibility-blocked until the owner authorizes data."
+    },
+    {
+      "field": "rollover/swap schedule (historical, per pair, per value date) for 72h hold accounting",
+      "source": "provider financing documentation (PLAN section 2)",
+      "availability": "UNAVAILABLE: no rollover/swap schedule authority in repo. Blocking for multi-day hold accounting until authorized."
+    },
+    {
+      "field": "holiday tables for panel day-count and thin-session handling",
+      "source": "authoritative holiday sources per currency (PLAN section 2)",
+      "availability": "SYNTHETIC_TEST_ONLY: no authoritative source; thin-day effects may be described but not gated on."
+    },
+    {
+      "field": "session/DST clocks (America/New_York formation instant, same-clock-hour conditioning)",
+      "source": "repo session correctness contracts; zoneinfo DST data",
+      "availability": "AVAILABLE: correctness contracts implemented, zoneinfo DST real; wall-time labels are SYNTHETIC_TEST_ONLY defaults and prohibited for formation placement."
+    },
+    {
+      "field": "PIT macro vintages (rates, CPI, event releases)",
+      "source": "none required by this proposal",
+      "availability": "UNAVAILABLE in repo, but not a dependency: the thesis is quote-state-only by design; event-day robustness is consequently declared untestable (see risks), not assumed benign."
+    }
+  ],
+  "literature_sources": [
+    {
+      "title": "Liquidity in the Foreign Exchange Market: Measurement, Commonality, and Risk Premiums",
+      "authors": "Loriano Mancini; Angelo Ranaldo; Jan Wrampelmeyer",
+      "year": 2013,
+      "doi_or_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1447869 ; https://ideas.repec.org/p/snb/snbwpa/2010-03.html ; published in Journal of Finance 68(5), 1805-1841 (DOI of published version not independently verified in this search session)",
+      "retrieval_utc": "2026-09-02T23:45:00Z",
+      "claim_used": "FX liquidity measured from quoted bid-ask spreads shows strong commonality across exchange rates, and FX liquidity risk is priced in risk premiums; liquidity dries up in stress. (Verified via SSRN abstract page, SNB working paper 2010-03 page, and JF 68(5) 1805-1841 citation confirmed in search results.)"
+    },
+    {
+      "title": "Bid-Ask Spreads in the Interbank Foreign Exchange Markets",
+      "authors": "Hendrik Bessembinder",
+      "year": 1994,
+      "doi_or_url": "https://www.sciencedirect.com/science/article/pii/0304405X94900361 ; https://ideas.repec.org/a/eee/jfinec/v35y1994i3p317-348.html",
+      "retrieval_utc": "2026-09-02T23:50:00Z",
+      "claim_used": "Quotations and bid-ask spreads in the wholesale interbank FX market vary systematically, documenting spread variation as evidence of dealer quoting and inventory conditions. Journal of Financial Economics 35(3), 317-348."
+    },
+    {
+      "title": "Trading Patterns and Prices in the Interbank Foreign Exchange Market",
+      "authors": "Tim Bollerslev; Ian Domowitz",
+      "year": 1993,
+      "doi_or_url": "https://doi.org/10.1111/j.1540-6261.1993.tb04760.x",
+      "retrieval_utc": "2026-09-02T23:50:00Z",
+      "claim_used": "Bid-ask spreads exhibit deterministic intraday periodicity tied to global session opens/closes, motivating the same-clock-hour spread normalization in the signal."
+    },
+    {
+      "title": "BIS Triennial Central Bank Survey of foreign exchange and OTC derivatives markets in 2022",
+      "authors": "Bank for International Settlements",
+      "year": 2022,
+      "doi_or_url": "https://www.bis.org/statistics/rpfx22.htm",
+      "retrieval_utc": "2026-09-02T23:45:00Z",
+      "claim_used": "FX is a decentralized dealer market (USD 7.5 trillion/day April 2022, net-net): a spread panel is one provider's intermediation state and must not be presented as global market liquidity or volume."
+    }
+  ],
+  "prohibited_shortcut_check": {
+    "rsi_ema_grids_without_mechanism": "NOT APPLICABLE: the signal contains no price-indicator parameters and no grid is searched; the 63-day trailing window, 1-vs-7 extreme quantile and 72h hold are fixed ex ante from the inventory-risk mechanism.",
+    "single_provider_volume_as_global_volume": "NOT APPLICABLE and explicitly inverted: no volume field is used; the spread panel is treated strictly as one dealer panel's quoting state, scoped claims only (PLAN section 2 provider freeze).",
+    "carry_from_todays_rate_applied_historically": "NOT APPLICABLE: no interest-rate or swap-rate input exists in the signal; if implemented, rollover accruals must come from an authoritative historical schedule (declared UNAVAILABLE/blocking).",
+    "session_filters_selected_after_seeing_profitable_hours": "NOT APPLICABLE: the 17:00 ET formation instant and same-clock-hour conditioning are fixed ex ante from dealer convention; no profitable-hour search occurs, and the +180-day placebo would expose any implicit timing selection.",
+    "midpoint_backtests_labeled_executable": "NOT APPLICABLE: the spread state uses bid/ask by construction; executable performance claims require bid/ask fills and realized entry spreads; any midpoint-only study is DIAGNOSTIC_ONLY per PLAN section 2."
+  },
+  "ancestry_statement": "This is a new, first-time FX proposal from the A3 data lane. Previously researched families in this repository are crypto funding/momentum mechanisms (funding-carry, funding-PIT, funding-price-divergence, v9 residual-MR/trend/vol-shock); no FX family has previously been proposed, scored or rejected here, so this is not a rescue or re-labeling of any rejected idea. It is also not a disguised carry or trend family: its information set is the quote panel's relative-spread state only, its cross-sectional construction follows the documented commonality-plus-priced-liquidity structure of the FX microstructure literature, and it operates in PLAN_forex.md section 9 territory of quote-dynamics information central to the A3 data/provider lane."
+}
