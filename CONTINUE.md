@@ -134,3 +134,47 @@ response before starting V11.
   on this host's measured resource cap is an acceptable honest state at handoff.
 - V11 control plane: `research/control/v11_run/` (run_contract, state, heartbeat, event_log,
   worktree_manifest, v10_terminal_intake, denominator_reconciliation=PENDING, lessons_register).
+
+## V11 deadline close — 2026-09-02T23:5xZ (A1) — V11_INCOMPLETE_NOT_PROMOTABLE
+
+Clock expired before selection freeze; closed honestly per PLAN 4.1. Budget
+**0/12** (zero scored cells, zero scored artifacts, S1 untouched, no push, no
+main merge). Branch `orca/v11-integration` carries the full sprint state.
+
+### Done (all committed on this branch)
+1. Bootstrap `0a96bf2` = owner plan `b8876ef` x V10 terminal `e6fa2b1` merge
+   (PLAN.md=V11 owner; CONTINUE.md=V10 truth+delta); 54/54 targeted PASS.
+2. P1 `V11P_REPAIR_SHA 7566ca2`: A2 identity v2 + M01 append-only
+   reconciliation (119 published / 120 observed, mechanism implemented,
+   A7-approval still required before any scored launch); A3 schedule-only
+   cost gate (frozen floors); A4 exact-arm dry-run. Full suite **1367
+   passed / 1 skipped, tree clean** (gate V11P_FULL_SUITE).
+3. L0 `0684914`: literature packet (Pyo&Jang 2026 FRL; Grobys 2021 JIFMIM;
+   Ozdamar 2021 FinInnovation; Binance docs) + 2 seed briefs, hashed.
+4. D1: 6 outcome-blind proposals (A5 `e7f6f7f`, A6 `9a340c1`, A8 `d9e16c0`)
+   — three independent lanes converged on 2 mechanism groups:
+   ILLIQUIDITY_PREMIUM and OI_POSITIONING. Pool manifest `903ed49`.
+5. D2-A9-F `bc4bd4c`: staged snapshot has **NO OI series (0/20 symbols)** ->
+   OI group UNAVAILABLE fail-closed; seeds DEF/LOT schedule-PASS; ILLIQ PASS
+   (canonical `a8_prop1`; a5_prop1 runner-up; a6_prop1 breadth FAIL: only 9
+   symbols above DV median -> quintile = 1 name/leg, HIGH flag).
+6. A1 prewindow rho evidence (`research/control/v11_run/
+   a1_prewindow_rho_evidence.json`): DEF vs LOT **0.565 FAIL(<0.35)** — the
+   two owner seeds cannot be co-frozen; LOT vs ILLIQ 0.310 PASS; DEF vs
+   ILLIQ 0.482 FAIL; all vs rejected ancestors PASS (<0.50).
+
+### NOT done / next thread (stronger machine welcome)
+1. **OI staging is owner-AUTHORIZED but NOT executed** — see
+   `research/control/v11_run/owner_amendment_oil_staging.json`
+   (data.binance.vision daily metrics, 2025-07-01..2026-08-21, 20 symbols,
+   /oi_data/ untracked; openInterestHist API cannot serve history).
+2. **A7-N novelty audit incomplete** (two subagent timeouts; uncommitted
+   partials on `orca/v11d-a7-novelty`). Then D3 freeze with the evidence:
+   expected dispositions — LOT seed eligible, DEF seed orthogonality-blocked
+   (BLOCKED_PRE_SCORE) pending A7-N, ILLIQ eligible, OI pending staging
+   re-audit. If OI passes: freeze 1 seed + 2 discovered, budget 9 cells.
+   If not: `V11_BLOCKED_SELECTION_INSUFFICIENT` per PLAN 10 (no threshold
+   changes).
+3. Then I -> Q -> A7 prelaunch -> scored cells ONLY on the owner's stronger
+   machine (this 8GB host measured_safe_cap=0). Deadline handling per the
+   fresh thread's own go-live; the expired clock must NOT be extended.
