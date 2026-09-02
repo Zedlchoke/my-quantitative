@@ -1,0 +1,103 @@
+{
+ "schema": "v11_a6_proposal_v1",
+ "producer_role": "A6",
+ "generated_utc": "2026-09-02T14:56:31Z",
+ "bootstrap_sha": "0684914b7bf64a5b9b8eeaa82529a2d11a8a251d",
+ "outcome_blind_attestation": "frozen after literature search (a6_search_log.json) and before any candidate return/PnL/PF/Sharpe/ranking existed or was read; V11 budget 0/12",
+ "family_id": "V11-A6-ILLIQUIDITY-PREMIUM",
+ "family_name": "Cross-sectional illiquidity premium on crypto perpetuals",
+ "mechanism": "thin-book coins pay a premium to impatient liquidity demanders; holding illiquid names for weeks is compensated (Amihud 2002 price-impact channel transferred to perps, BTC-residualised)",
+ "expected_counterparty": "impatient liquidity demanders in thin order books (retail chasers, forced deleveragers, headline-driven flow)",
+ "literature": [
+  {
+   "source_id": "P1-S1",
+   "citation": "Amihud (2002), Journal of Financial Markets 5(1), 31-56",
+   "doi": "10.1016/S1386-4181(01)00024-6",
+   "claim_used": "Amihud illiquidity ratio is priced cross-sectionally; high-illiquidity assets earn higher expected returns"
+  },
+  {
+   "source_id": "P1-S2",
+   "citation": "Liu, Tsyvinski, Wu (2022), Journal of Finance 77(2), 1133-1177",
+   "doi": "10.1111/jofi.13119",
+   "claim_used": "crypto cross-section: size premium partly captures an illiquidity premium; Amihud measure admissible in crypto (paper's momentum factor NOT used)"
+  },
+  {
+   "source_id": "P1-S3",
+   "citation": "Wei (2018), Economics Letters 168, 21-24",
+   "doi": "10.1016/j.econlet.2018.04.003",
+   "claim_used": "crypto return predictability concentrates in less liquid names"
+  },
+  {
+   "source_id": "P1-S4",
+   "citation": "Pastor, Stambaugh (2003), Journal of Political Economy 111(3), 642-685",
+   "doi": "10.1086/374184",
+   "claim_used": "liquidity RISK (sensitivity to aggregate liquidity shocks) is a priced channel distinct from the illiquidity LEVEL (neighbour arm)"
+  },
+  {
+   "source_id": "P1-S5",
+   "citation": "Binance USD-M market data docs (= frozen packet source S4)",
+   "doi": null,
+   "claim_used": "completed 15m kline semantics incl. quote volume for daily aggregation"
+  }
+ ],
+ "feature_contract": {
+  "bars": "completed 15m base bars only (close, quote volume)",
+  "aggregate": "daily UTC close-to-close residual returns + daily dollar volume",
+  "residualisation": "rolling 90d daily beta vs BTC (frozen packet rule); feature numerator |r_i - beta_i*r_BTC|",
+  "anchor_feature": "ILLIQ_i = trailing 28d mean of |residual daily return| / dollar volume (1e-6 scale), cross-sectionally rank-normalised",
+  "neighbour_feature": "90d sensitivity of daily residual returns to aggregate market illiquidity innovation (universe-median Amihud change)",
+  "pit_lag": "features strictly from completed bars; decision 00:05 UTC at each 28d cycle start; ONE declared execution lag (fill at first completed 15m bar after decision); coverage gaps fail closed"
+ },
+ "arms": {
+  "anchor": {
+   "name": "ILQ-AMIHUD-28D-M",
+   "book": "long top / short bottom tercile of BTC-residualised 28d Amihud illiquidity, equal weight, gross 1.0 (0.5/0.5)",
+   "formation_days": 28,
+   "holding_days": 28
+  },
+  "neighbour": {
+   "name": "ILQ-LIQBETA-90D-M",
+   "book": "long high / short low liquidity-risk beta (Pastor-Stambaugh channel), 90d window, monthly",
+   "formation_days": 90,
+   "holding_days": 28
+  },
+  "causal_negative_control": {
+   "name": "ILQ-AMIHUD-28D-M-INV",
+   "book": "sign-inverted anchor (long liquid / short illiquid)",
+   "falsification": "any positive after-cost spread on the inverted book destroys the mechanism claim"
+  }
+ },
+ "schedule": {
+  "decisions_per_365d": 13,
+  "median_intended_holding_days": 28,
+  "no_trade_band": "half-bucket rank band suppresses churn",
+  "floors": "13/365d <= 60; 28d >= 3d; estimated base drag 1-2%/yr <= 8%; stressed 2-3%/yr <= 12%; per-symbol turnover share target well under 25%, verified by A3 gate pre-score"
+ },
+ "universe_and_benchmark": {
+  "universe": "Binance USD-M staged snapshot; >=90d bar history; declared median daily dollar-volume tradability floor; BTC/ETH retained; fail-closed eligibility",
+  "benchmark_role": "BTC = residualisation context only; family benchmark = equal-weight universe; claim is the cross-sectional spread, beta-neutral by construction"
+ },
+ "risk_neutralisation": [
+  "BTC-beta neutral legs via rolling 90d beta",
+  "per-symbol weight cap",
+  "BTC-residualised sort key (no market-beta tilt)",
+  "minimum 6 names per leg, else decision fails closed"
+ ],
+ "expected_sign": "anchor net spread > 0; neighbour net spread > 0; inverted control <= 0",
+ "falsification_condition": "positive after-cost spread on ILQ-AMIHUD-28D-M-INV, or non-positive after-cost anchor spread; published returns are priors only",
+ "cost_treatment": "adapter taker fees + adverse-tick slippage per side (frozen arithmetic), native funding charged while held (LONG_PAYS_POSITIVE_RATE, ~84 settlements per 28d holding); funding never a signal input; A3 schedule-only cost gate before any scoring",
+ "ancestry_and_orthogonality": {
+  "v1_v10_families": "no liquidity-sorted ancestor known; nearest known rejected family M01 (aggressor-flow absorption) shares no signal, horizon or book; no banned mechanism is liquidity-sorted",
+  "reserved_seeds": "DEF-RESIDUAL-RISK sorts residual volatility; LOTTERY-MAX-SKEW sorts residual MAX/skew; this family sorts price-impact-per-volume",
+  "orthogonality_argument": "sort key is a volume-normalised impact LEVEL, not a return moment; Stage-A A7-N gate must confirm low book-weight rho vs both seed books; within-volatility-bucket illiquidity-spread diagnostic (diagnostic only, no new arm) guards against repackaged low-vol",
+  "disclosed_overlap_risk": "illiquid coins skew high-vol and high-MAX"
+ },
+ "data_readiness_and_estimate": {
+  "data": "completed 15m bars incl. quote volume already staged; no new external data; coverage diagnostics fail-closed first (lesson L-V10P-COVERAGE)",
+  "implementation_estimate": "plugin on GenericStrategyBase; new code = daily aggregator, residual beta, Amihud feature, bucket book builder; 1-2 working days + A3 gate run"
+ },
+ "not_a_rescue": {
+  "vs_m01": "opposite turnover regime (13 decisions/yr vs thousands of positions) and different signal family (liquidity level, not order-flow absorption)",
+  "vs_banned": "not funding carry (funding never in signal); not volume-shock continuation (volume only as slow denominator, no event logic); not reversal/weekly reversal (no price mean-reversion signal); not a lookback/threshold variant of the reserved seeds (different sort key and counterparty)"
+ }
+}

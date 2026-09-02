@@ -1,0 +1,99 @@
+{
+ "schema": "v11_a6_proposal_v1",
+ "producer_role": "A6",
+ "generated_utc": "2026-09-02T14:56:31Z",
+ "bootstrap_sha": "0684914b7bf64a5b9b8eeaa82529a2d11a8a251d",
+ "outcome_blind_attestation": "frozen after literature search (a6_search_log.json) and before any candidate return/PnL/PF/Sharpe/ranking existed or was read; V11 budget 0/12",
+ "family_id": "V11-A6-POSITIONING-SATURATION",
+ "family_name": "Open-interest positioning-saturation (hedging-pressure analog) on crypto perpetuals",
+ "mechanism": "futures risk premia accrue to the side opposite prevailing positioning pressure (de Roon-Nijman-Veld hedging-pressure channel); perp OI growth in excess of the contemporaneous price move marks fresh leveraged demand, and crowded coins underperform while deleveraged coins outperform",
+ "expected_counterparty": "over-leveraged directional speculators who must de-risk into thin books, paying price impact and (typically net-long) funding",
+ "literature": [
+  {
+   "source_id": "P2-S1",
+   "citation": "de Roon, Nijman, Veld (2000), Journal of Finance 55(3), 1437-1456",
+   "doi": "10.1111/0022-1082.00253",
+   "claim_used": "futures risk premia depend on own-market and cross-market hedging pressure (mechanism source)"
+  },
+  {
+   "source_id": "P2-S2",
+   "citation": "Dunbar, Owusu-Amoako (2023), Finance Research Letters 55(B), art. 104009",
+   "doi": "10.1016/j.frl.2023.104009",
+   "claim_used": "hedging factor from futures positioning significantly predicts crypto returns (CFTC positioning version; perp-OI proxy must re-earn it)"
+  },
+  {
+   "source_id": "P2-S3",
+   "citation": "Schmeling, Schrimpf, Todorov (2026), Management Science",
+   "doi": "10.1287/mnsc.2024.05069",
+   "claim_used": "market-structure evidence only: perps deliver leveraged exposure with little capital; speculative OI large and dynamic. Its carry mechanism is banned and NOT used"
+  },
+  {
+   "source_id": "P2-S4",
+   "citation": "Binance USD-M market data docs (= frozen packet source S4)",
+   "doi": null,
+   "claim_used": "OI snapshot endpoint semantics, completed 15m klines, funding settlement cadence"
+  }
+ ],
+ "feature_contract": {
+  "bars": "completed 15m base bars -> daily UTC closes (coin + BTC) for orthogonalisation and residualisation only",
+  "oi": "per-symbol OI snapshots from staged snapshot at published timestamps; declared staleness lag: latest snapshot published >=24h before decision",
+  "anchor_feature": "OIGRTH_i = 28d delta-log(OI) z-score; SAT_i = cross-sectional regression residual of OIGRTH on trailing 28d coin return at decision T (PIT-safe, sign-free removal of price component)",
+  "neighbour_feature": "OI LEVEL percentile of own trailing 90d history (stock-of-positions saturation)",
+  "excluded_fields": "funding rate and traded volume never enter any signal field (anti-carry, anti-volume-shock guards)",
+  "pit_lag": "decision 00:05 UTC at each 28d cycle start; ONE declared execution lag (fill at first completed 15m bar after decision); OI coverage gaps fail closed, no synthesis"
+ },
+ "arms": {
+  "anchor": {
+   "name": "POS-OIGRTH-28D-M",
+   "book": "long bottom tercile / short top tercile of return-orthogonalised 28d OI growth (SAT), equal weight, gross 1.0 (0.5/0.5)",
+   "formation_days": 28,
+   "holding_days": 28
+  },
+  "neighbour": {
+   "name": "POS-OILEVEL-90D-M",
+   "book": "long low / short high OI percentile of own 90d history (stock vs flow of the same latent hedging-pressure state, per de Roon et al.)",
+   "formation_days": 90,
+   "holding_days": 28
+  },
+  "causal_negative_control": {
+   "name": "POS-OIGRTH-28D-M-INV",
+   "book": "sign-inverted anchor (long crowded / short deleveraged)",
+   "falsification": "any positive after-cost spread on the inverted book destroys the crowding mechanism claim (would imply continuation, not positioning-premium)"
+  }
+ },
+ "schedule": {
+  "decisions_per_365d": 13,
+  "median_intended_holding_days": 28,
+  "no_trade_band": "half-bucket rank band suppresses churn",
+  "floors": "13/365d <= 60; 28d >= 3d; estimated base drag 1-2%/yr <= 8%; stressed 2-3%/yr <= 12%; per-symbol turnover share target well under 25%, verified by A3 gate pre-score"
+ },
+ "universe_and_benchmark": {
+  "universe": "Binance USD-M staged snapshot; >=90d bar history AND >=60d OI coverage at declared cadence; declared median daily dollar-volume tradability floor; BTC/ETH retained; fail-closed eligibility",
+  "benchmark_role": "BTC = residualisation/market context (rolling 90d beta, frozen packet rule); family benchmark = equal-weight universe; claim is the positioning-conditioned spread, beta-neutral by construction"
+ },
+ "risk_neutralisation": [
+  "BTC-beta neutral legs via rolling 90d beta",
+  "per-symbol weight cap",
+  "trailing-return component explicitly orthogonalised out of the sort key (no momentum tilt by construction)",
+  "minimum 6 names per leg, else decision fails closed"
+ ],
+ "expected_sign": "anchor net spread > 0 (low minus high orthogonalised OI growth, after costs and funding); neighbour net spread > 0; inverted control <= 0",
+ "falsification_condition": "positive after-cost spread on POS-OIGRTH-28D-M-INV, or non-positive after-cost anchor spread; published returns are priors only",
+ "cost_treatment": "adapter taker fees + adverse-tick slippage per side (frozen arithmetic), native funding charged while held (LONG_PAYS_POSITIVE_RATE, ~84 settlements per 28d holding); disclosed tailwind: crowded-long coins often carry positive funding so the short leg may receive funding (part of counterparty cost, never a signal); A3 schedule-only cost gate before any scoring",
+ "ancestry_and_orthogonality": {
+  "v1_v10_families": "no OI-sorted ancestor known; M01 (aggressor-flow absorption) shares no input (trade-side flow vs stock of open positions), horizon or schedule",
+  "vs_banned": "not trend/momentum (trailing return sign-free orthogonalised OUT; expected sign anti-crowding); not reversal/residual mean-reversion (no price mean-reversion signal, return only a removed control); not funding carry (funding never in signal); not volume-shock continuation (volume never enters; OI is a stock, sign opposite to continuation); not weekly reversal",
+  "reserved_seeds": "DEF-RESIDUAL-RISK and LOTTERY-MAX-SKEW sort return moments (residual vol, MAX/skew); this family sorts a positioning quantity",
+  "orthogonality_argument": "SAT residual conditions on the return path; Stage-A A7-N gate must confirm low book-weight rho vs both seed books; within-volatility-bucket spread diagnostic (diagnostic only, no new arm) guards against repackaged low-vol or anti-lottery",
+  "disclosed_overlap_risk": "OI surges co-occur with high-vol, high-MAX episodes"
+ },
+ "data_readiness_and_estimate": {
+  "data": "OI snapshots + completed 15m bars in frozen staged snapshot; no new external data",
+  "open_readiness_risk": "depth/cadence of staged OI history over the scored window must be validated with coverage diagnostics ONLY (fail-closed per lesson L-V10P-COVERAGE) before implementation; if too shallow for 28d/90d features the family fails closed rather than being re-cut post-hoc",
+  "implementation_estimate": "plugin on GenericStrategyBase; new code = OI snapshot loader, delta-log-OI feature, cross-sectional orthogonalisation, bucket book builder; 2-3 working days incl. coverage validation + A3 gate run"
+ },
+ "not_a_rescue": {
+  "vs_m01": "no shared input, horizon or schedule; opposite cost regime (13 decisions/yr, floors verified pre-score)",
+  "vs_banned": "not a funding-carry rescue (no funding signal, no carry harvest); not a crowding rescue of any rejected book (open interest belongs to no prior repo family known to this lane; crowding here is the mechanism itself, priced via the de Roon et al. channel, not a patch for a dead signal); not volume-shock continuation; not reversal at any horizon; not a re-cut lookback/threshold of the reserved seeds (different sort key, data type and counterparty)"
+ }
+}
