@@ -1,0 +1,231 @@
+{
+ "schema": "v12d_a9f_feasibility_audit_v1",
+ "producer_role": "A9-F",
+ "generated_utc": "2026-09-03T00:00:00Z",
+ "audit_scope": "independent data/schedule feasibility audit of the six V12 blind proposals; schedule-only (counts, spans, weight algebra, transition-cost bounds). NO returns, PnL, PF, Sharpe, performance ranking or backtest was computed.",
+ "worktree": {
+  "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v12/d2-a9f-feasibility",
+  "branch": "orca/v12d-a9f-feasibility",
+  "head_at_audit_start": "9c176797ec23352b96047d5c41108da7ff13fe8b",
+  "identity_gate": "PASS (pwd/HEAD/branch/porcelain all match after bootstrap)",
+  "bootstrap_note": "the specified worktree did not exist at audit start; A9-F created it deterministically via `git worktree add -b orca/v12d-a9f-feasibility <path> 9c176797ec23352b96047d5c41108da7ff13fe8b` and then re-ran the identity gate (HEAD == bootstrap SHA, branch as specified, porcelain empty). No other branch was touched."
+ },
+ "data_roots": {
+  "bars": "/Users/hoangminhlong/my-quantitative/catalog_live_crypto/data/binance_bar",
+  "funding_primary": "/Users/hoangminhlong/my-quantitative/funding_data/scan_2026",
+  "oi": "/Users/hoangminhlong/my-quantitative/oi_data/consolidated",
+  "read_only": true,
+  "nothing_copied_or_committed_from_roots": true
+ },
+ "s0_window": {"start": "2025-08-22T00:00:00Z", "end": "2026-08-21T00:00:00Z", "required_symbols": 20, "tradeable_minus_btc": 19},
+ "decision_grid": {
+  "first_weekly_stamp": "2025-08-25T00:00:00Z",
+  "weekly_stamps": 52,
+  "last_weekly_stamp": "2026-08-17T00:00:00Z",
+  "weekly_decisions_per_365d_normalized": 53.17,
+  "monthly_every_4th_monday_stamps": 13,
+  "monthly_decisions_per_365d_normalized": 14.12,
+  "note": "normalization uses the 357d span between first and last stamp, matching cost_feasibility.decisions_per_365d semantics; all stamps are scheduled discretionary decisions including carried-forward/no-action stamps"
+ },
+ "task1_pit_field_availability": {
+  "bars": {
+   "symbols_present": 20,
+   "columns_verified_by_load": ["open", "high", "low", "close", "volume", "quote_volume", "count", "taker_buy_base_volume", "taker_buy_quote_volume", "ts_event", "ts_init"],
+   "quote_volume_present_all": true,
+   "trade_count_present_all": true,
+   "ts_event_range_all_symbols": "2024-08-21/23 .. 2026-08-21/23 (per-symbol; covers S0 plus >= 364d of pre-window warmup history)",
+   "s0_missing_slots_per_symbol": 0,
+   "close_decode_scale": "close column is a Nautilus raw fixed-point i128 equal to price x 1e16 for every symbol/file; cross-validated per file against the bar's own taker_buy_quote_volume / taker_buy_base_volume ratio (median rel err ~1e-3). Scoring lanes must decode with this scale, not the file price_precision metadata.",
+   "eth_gap": {
+    "symbol": "ETHUSDT",
+    "single_gap_run": "57 missing 15m slots between 2025-08-21T00:00:00Z and 2025-08-21T14:30:00Z",
+    "effect": "ETHUSDT fails full-coverage eligibility at the first stamp (and for any trailing window that overlaps the gap: 28d windows through 2025-09-15 stamp, 56d through 2025-10-13, 90d through 2025-11-17); breadth impact 19->18 names, far above the 9-name floor"
+   }
+  },
+  "funding": {
+   "primary_bundle": "scan_2026",
+   "fields": ["symbol", "fundingTime", "fundingRate", "markPrice", "rateType"],
+   "settlements_in_s0_window_per_symbol": "~2189 (8h cadence) to ~4377+ (4h cadence symbols)",
+   "cadence_clusters": {"BTCUSDT": "8h homogeneous", "BOMEUSDT/ENAUSDT": "4h with one 8h spacing", "ACEUSDT": "1h + 2h + 8h phases", "ONGUSDT": "1h + 4h + 8h phases"},
+   "max_internal_settlement_gap_hours_all_symbols": 8.0,
+   "pit_conclusion": "no settlement spacing exceeds 8h for any symbol in the S0 window, so the frozen PIT span rule (settlement inside [ts_opened, ts_closed], no hole > 8h) is serviceable for all 20 symbols; the data_contract hole counter flags ACE/ONG (2097/2182 'holes') purely as cadence-change suspects, not lost settlements"
+  },
+  "oi": {
+   "files_present": 20,
+   "used_by_any_of_six_proposals": false,
+   "note": "all six proposals explicitly declare OI never read; deep OI verification out of scope per audit task 1"
+  },
+  "instrument_metadata": {
+   "present_all": true,
+   "tick_size_range": "1e-7 (1000PEPEUSDT, BOMEUSDT) .. 1e-2 (AAVEUSDT, BCHUSDT, BNBUSDT, ETHUSDT)",
+   "taker_fee_all_symbols": 0.0005,
+   "tick_price_ratio_at_stamp_fills_max": {"NEARUSDT": 6.25e-4, "ADAUSDT": 5.73e-4, "WLDUSDT": 2.81e-4},
+   "note": "one adverse tick is worth at most ~6bp of price across the universe at stamp fill prices; the 5bp taker fee floor in metadata matches the declared tier-0 floor"
+  }
+ },
+ "task2_warmup_feasibility": {
+  "method": "loader-selected: for every weekly Monday 00:00Z stamp in S0, count missing completed 15m slots in the exact trailing 28d/56d/90d windows; cross-checked with data_contract.warmup_report",
+  "per_symbol_results": "research/audits/v12d/a9f_scratch/a9f_stampgrid_warmup.json",
+  "first_stamp_status": {
+   "2025-08-25T00:00:00Z": "18 of 19 tradeable names have a fully covered 90d block (all but ETHUSDT); 28d/56d coverage identical exclusion set",
+   "fail_closed_precondition_10_of_19": "PASS for A5-P1, A5-P2 (both declare >=10 of 19 required)"
+  },
+  "all_52_stamps": {
+   "90d_full_coverage": {"19_symbols": 39, "18_symbols": 13},
+   "summary": "only the 13 stamps whose trailing 90d window overlaps the single ETH gap lose one name; every other symbol covers every horizon at every stamp",
+   "folds": "52 weekly stamps support 3 chronological folds with purge >= max holding (4 instants for 28d BAB, 8 for RVX) with >= 2 surviving instants per fold; 13 monthly OSCOMP stamps support 3 folds with 1-stamp purge"
+  },
+  "a8_p2_weekly_ticket_warmup": "12 weekly ticket observations required from the trailing 90d: available at every stamp for 18-19 names (pre-window history extends 364d before S0 start)"
+ },
+ "task3_breadth_at_stamps": {
+  "method": "features computed PIT at each declared stamp from completed bars; books constructed per each proposal's own declared rules (extreme-4 legs, beta-neutral leg rescale, 0.30 uniform shrink); weekly grid for A5/A8, every-4th-Monday grid for OSCOMP, threshold pairs for RVX",
+  "quintile_families": {
+   "eligible_names_min_max": "18-19 (floor >= 9 PASS at every stamp for every proposal)",
+   "leg_size_min": 4,
+   "max_abs_weight_observed": {"V12-A5-P1-BAB-LOWBETA": 0.2909, "A8-P1-BAB-PERP": 0.2909, "V12-A5-P2-MIX-ORDERSIZE": 0.210069, "A8-P2-TICKET-MIX-CONTRARIAN": 0.153174, "H-A6-OSCOMP": 0.30},
+   "cap_violations": 0,
+   "gross_mean": {"BAB books": 1.3901, "A5-P2": 1.0432, "A8-P2": 0.9794, "OSCOMP": 1.9823},
+   "note_on_bab_gross": "the beta-neutral leg rescale (m = mean(beta_short)/mean(beta_long)) inflates book gross to ~1.39x unit for the BAB books; the declared uniform 0.30 shrink keeps max|w| <= 0.30 (observed 0.2909). No frozen floor bounds gross, so this is a leverage property to disclose, not a feasibility failure."
+  },
+  "rvx_pairs": {
+   "eligible_names_gate_9": "PASS (18-19 at every stamp)",
+   "pairs_computable_56d_coverage": ">= 7 of 8 pairs at every stamp (min 7; ETH/SOL blocked only while the ETH gap is inside its 56d window)",
+   "pairs_threshold_activatable_EG10_and_hedge_band": {"stamps_with_>=1": 34, "stamps_with_>=2": 18, "max_concurrent": 5, "distinct_pairs_ever_activatable": 8},
+   "falsification_condition_c_check": "PASS: 8 of 8 pre-registered pairs are activatable at some stamp (condition kills the family only if < 2 ever activatable)",
+   "signal_availability_interpretation": "data availability (both legs' 56d complete + test computable) is 100% of stamps for >= 7 pairs; threshold dormancy (|z| < 2) is a no-trade state, not unavailability",
+   "max_abs_weight_observed": 0.25
+  },
+  "a5p2_data_quality_gate": "share of 15m bars with trade count > 0 is 1.0 at all sampled stamps in both 30d and 60d sub-windows; the >= 0.8 gate never excluded any name beyond the ETH coverage exclusion (min eligible 18)"
+ },
+ "task4_schedule_cost_turnover": {
+  "method": "declared rules simulated on real features across all stamps -> one-way transition deltas (sum |w_new - w_prev|, weight units, no prices/returns) -> priced with the frozen adapter arithmetic (taker 5bp per side + 1 adverse tick baseline; fee x1.5 + 3 ticks stressed) at 00:15Z bar-close fill prices; annualized over the first-to-last stamp span, divided by realized mean gross. Two variants reported: the declared hysteresis and a NO-HYSTERESIS conservative upper bound (re-form extreme legs every stamp). Terminal force-flat turnover NOT included (adds <= 1.4 units once for BAB books; conclusions unchanged).",
+  "raw_outputs": "research/audits/v12d/a9f_scratch/a9f_books.json",
+  "floors": {"max_decisions_per_365d": 60, "min_median_holding_days": 3, "max_base_drag": 0.08, "max_stressed_drag": 0.12, "max_symbol_share": 0.25},
+  "per_proposal": {
+   "V12-A5-P1-BAB-LOWBETA": {
+    "decisions_per_365d": 53.17,
+    "median_intended_holding_days": 77.0,
+    "turnover_units_per_365d": {"hysteresis": 7.56, "no_hysteresis_conservative": 18.61},
+    "base_drag_frac_gross": {"hysteresis": 0.00354, "conservative": 0.0087},
+    "stressed_drag_frac_gross": {"hysteresis": 0.00654, "conservative": 0.01606},
+    "max_symbol_turnover_share": {"hysteresis": 0.1307, "conservative": 0.1654}
+   },
+   "V12-A5-P2-MIX-ORDERSIZE": {
+    "decisions_per_365d": 53.17,
+    "median_intended_holding_days": 28.0,
+    "turnover_units_per_365d": {"hysteresis": 23.87, "no_hysteresis_conservative": 27.12},
+    "base_drag_frac_gross": {"hysteresis": 0.01534, "conservative": 0.01748},
+    "stressed_drag_frac_gross": {"hysteresis": 0.02887, "conservative": 0.03294},
+    "max_symbol_turnover_share": {"hysteresis": 0.0974, "conservative": 0.109}
+   },
+   "H-A6-OSCOMP": {
+    "decisions_per_365d": 14.12,
+    "median_intended_holding_days": 56.0,
+    "turnover_units_per_365d": 10.11,
+    "base_drag_frac_gross": 0.00347,
+    "stressed_drag_frac_gross": 0.00657,
+    "max_symbol_turnover_share": 0.1766,
+    "note": "proposal's own 12.5% share bound compares a 0.5-unit single-symbol flip against the 4.0-unit worst-case stamp turnover; against ACTUAL turnover the conservative share is 17.7% (DOGE) -- floor 25% still PASS"
+   },
+   "H-A6-RVX": {
+    "decisions_per_365d": 53.17,
+    "median_intended_holding_days": 56.0,
+    "turnover_units": 4.8,
+    "turnover_units_per_365d": 4.91,
+    "base_drag_frac_gross": 0.0102,
+    "stressed_drag_frac_gross": 0.01907,
+    "max_symbol_turnover_share": 0.1042,
+    "gross_mean": 0.3192,
+    "note": "mean gross 0.32 because 0-2 pairs are typically concurrent (entries need |z|>=2 at a weekly stamp); drag divides by realized gross, hence the slightly higher ratio vs turnover alone"
+   },
+   "A8-P1-BAB-PERP": {
+    "decisions_per_365d": 53.17,
+    "median_intended_holding_days": 77.0,
+    "turnover_units_per_365d": {"hysteresis": 7.56, "no_hysteresis_conservative": 18.61},
+    "base_drag_frac_gross": {"hysteresis": 0.00354, "conservative": 0.0087},
+    "stressed_drag_frac_gross": {"hysteresis": 0.00654, "conservative": 0.01606},
+    "max_symbol_turnover_share": {"hysteresis": 0.1307, "conservative": 0.1654},
+    "note": "A8-P1's extra churn guards (max 2 swaps/leg/stamp, 1-stamp re-entry rest, <=6 exits/symbol/365d) were NOT simulated; they only reduce the reported conservative bound"
+   },
+   "A8-P2-TICKET-MIX-CONTRARIAN": {
+    "decisions_per_365d": 53.17,
+    "median_intended_holding_days": 14.0,
+    "turnover_units_per_365d": {"hysteresis": 33.26, "no_hysteresis_conservative": 45.47},
+    "base_drag_frac_gross": {"hysteresis": 0.02303, "conservative": 0.03146},
+    "stressed_drag_frac_gross": {"hysteresis": 0.04363, "conservative": 0.05957},
+    "max_symbol_turnover_share": {"hysteresis": 0.0766, "conservative": 0.1146}
+   }
+  },
+  "floor_verdicts": {
+   "decisions_per_365d_lte_60": "PASS all six",
+   "median_intended_holding_days_gte_3": "PASS all six (weekly clock makes every completed span a multiple of 7d)",
+   "base_drag_lte_0.08": "PASS all six (worst observed 0.0315 conservative, A8-P2)",
+   "stressed_drag_lte_0.12": "PASS all six (worst observed 0.0596 conservative, A8-P2)",
+   "max_symbol_turnover_share_lte_0.25": "PASS all six (worst observed 0.177 conservative, OSCOMP)"
+  }
+ },
+ "task5_adapter_compatibility": {
+  "verdict": "ALL SIX EXPRESSIBLE with the existing research/adapter_v10 interfaces; no new adapter capability required",
+  "mapping": {
+   "stamps": "ImmutableSchedule (strictly increasing Monday 00:00Z epoch ns; OSCOMP uses a every-4th-Monday subset)",
+   "books": "TargetBook(weights mapping, carried_forward, reason_code) covers quintile books, the OSCOMP 4-vs-4 book, and RVX threshold pairs; beta-neutral leg rescale and the 0.30 shrink happen inside the deterministic target-book constructor before the stamp is emitted",
+   "fills": "FillRecord FILLED_NEXT_EVENT with fill at the 00:15Z bar close matches the declared one-lag execution; StressSpec.event_delay_events=1 yields the strictly-later stressed fill",
+   "funding": "SettlementPoint per symbol + LONG_PAYS_POSITIVE_RATE; mixed 8h/4h/1h cadences consumed natively; validate_funding_span_coverage at the 8h max interval passes for all 20 symbols",
+   "stress": "StressSpec(fee_multiplier, tick_slip_ticks, event_delay_events, drop_symbols, dropped_fold_index) covers the exact frozen surface (x1.5, +2 ticks, +1 event, drop-one-symbol re-derivation via universe(stress), drop-one-fold)",
+   "costs": "GenericStrategyBase.rebalance_cost_between reused verbatim (verified line-by-line); per-symbol tick sizes flow through CostModel.default_tick_sizes",
+   "gate": "research/v11/cost_feasibility.evaluate_schedule_cost_feasibility consumes exactly the artifacts these schedules produce (instants, decisions, fill-price cost inputs, settlement cadences, signal availability)"
+  },
+  "caveats": [
+   "H-A6-RVX needs an Engle-Granger/ADF implementation: neither statsmodels nor scipy is installed in the project venv. A pure-numpy ADF (delta-e on e_lag + const + 1 lag; MacKinnon EG 10% critical value ~ -3.05 for 2 variables) was used for this audit and is sufficient for scoring if frozen; otherwise a dependency must be added BEFORE scoring.",
+   "H-A6-OSCOMP's declared dollar-neutrality clause ('gross_long = gross_short = G, G in [1.0, 2.0]') contradicts its own beta-neutral split equation and would breach the 0.25/0.30 cap for G > 1.2; the cap-feasible subrange is side-gross <= 1.2 (legs <= 0.30). Observed books at side-gross 1.0 satisfy everything with the clamp binding at 0.30 on some stamps."
+  ]
+ },
+ "task6_resource_estimate": {
+  "measured": "the full audit feature pass (20 symbols x ~35k bars, per-stamp 28/56/90d coverage grids, 90d betas at 52 stamps, 30/60d and weekly-ticket aggregates, 8 EG tests x 52 stamps, book construction and cost pricing for six families) runs in ~6s wall, peak RSS well under 1GB",
+  "estimate": "production feature generation + weekly/monthly stamp books for all six families on the S0 window: minutes of compute, < 2GB RAM on an 8GB M1; repeated stress cells multiply only cheap schedule arithmetic. No resource risk; full backtest out of scope."
+ },
+ "findings": [
+  {"id": "F1", "severity": "LOW", "proposals": ["V12-A5-P1-BAB-LOWBETA", "V12-A5-P2-MIX-ORDERSIZE", "H-A6-OSCOMP", "A8-P1-BAB-PERP", "A8-P2-TICKET-MIX-CONTRARIAN", "H-A6-RVX"], "finding": "ETHUSDT has a single 57-slot bar gap on 2025-08-21 (00:00-14:30Z), making it ineligible at early stamps for any window overlapping the gap (worst case: 13 of 52 stamps for the 90d beta). Breadth stays 18 of 19; every >= 10-of-19 fail-closed precondition passes."},
+  {"id": "F2", "severity": "MEDIUM", "proposals": ["H-A6-OSCOMP"], "finding": "Internal inconsistency: the declared equal-side gross band G in [1.0, 2.0] contradicts the beta-neutral split equation and the claimed |w| <= 0.25 construction (side gross 1.0 already gives 0.25 legs; G > 1.2 breaches the 0.30 cap without clamping). Resolvable by fixing side-gross <= 1.2 with the declared clamp; observed books at side-gross 1.0 are fully feasible (max|w| exactly 0.30 on clamped stamps). Scoring lane must implement the cap-clamped variant."},
+  {"id": "F3", "severity": "LOW", "proposals": ["H-A6-OSCOMP"], "finding": "The declared 12.5% max symbol turnover share bound uses the 4.0-unit worst-case stamp turnover as denominator while the numerator comes from typical stamps; the measured conservative share is 17.7% (DOGE). The 25% floor still passes; the declared bound reasoning is invalid and should not be relied on."},
+  {"id": "F4", "severity": "MEDIUM", "proposals": ["H-A6-RVX"], "finding": "No statsmodels/scipy in the venv: the Engle-Granger/ADF activation gate must be implemented in numpy (audit used delta-on-lag ADF with the MacKinnon EG 10% critical value -3.05 approximation) or a dependency added, BEFORE scoring. Critical values and lag choice must be frozen by the scoring lane."},
+  {"id": "F5", "severity": "LOW", "proposals": ["H-A6-RVX"], "finding": "Threshold activation is sparse: >= 1 pair activatable at 34/52 stamps, >= 2 at 18/52; mean gross 0.32 of unit. This matches the declared threshold-pairs shape (waives the >= 4-per-leg floor by its declared shape) but the family's realized book is often 0-2 pairs; concentration is inherent to the declared design."},
+  {"id": "F6", "severity": "LOW", "proposals": ["V12-A5-P1-BAB-LOWBETA", "A8-P1-BAB-PERP"], "finding": "Beta-neutral leg rescale inflates book gross to ~1.39x unit (long-leg betas lower than short-leg betas). The declared 0.30 uniform shrink holds max|w| <= 0.30 (observed 0.2909). No frozen floor bounds gross; disclose as a leverage property."},
+  {"id": "F7", "severity": "INFO", "proposals": ["ALL"], "finding": "Bar close columns decode as raw_i128 / 1e16, NOT price_increment-derived precision. The file-level price_precision metadata does not give the scale. All consumers (scoring lanes) must use the 1e16 scale, cross-validated here against per-bar taker quote/base ratios for every symbol/file."},
+  {"id": "F8", "severity": "INFO", "proposals": ["ALL"], "finding": "Funding cadence changes (ACE 1h/2h/8h, ONG 1h/4h/8h phases) make data_contract's hole counter report 2097/2182 cosmetic 'holes'; the true max settlement spacing is 8.0h for every symbol, so the frozen PIT span rule is never violated."},
+  {"id": "F9", "severity": "INFO", "proposals": ["A5-P1", "A5-P2"], "finding": "A8-P1/P2's explicit churn guards (max 2 swaps/leg/stamp, re-entry rest, <= 6 exits/symbol/365d) were not simulated; the reported conservative no-hysteresis bounds already pass every floor without them."}
+ ],
+ "verdicts": {
+  "V12-A5-P1-BAB-LOWBETA": {
+   "verdict": "PASS",
+   "decisive_reason": "90d warmup satisfied for 18/19 names at the first stamp; breadth 18-19 (legs 4/4) at every stamp; max|w| 0.2909; drag 0.35%/0.65% (1.0%/1.7% conservative) vs 8%/12% floors; no floor breached under the no-hysteresis conservative bound."
+  },
+  "V12-A5-P2-MIX-ORDERSIZE": {
+   "verdict": "PASS",
+   "decisive_reason": "quote_volume + trade-count columns verified for all 19 names (fail-closed precondition met); trades>0 gate passes 100%; breadth 18-19; drag 1.5%/2.9% (1.7%/3.3% conservative); all floors pass."
+  },
+  "H-A6-OSCOMP": {
+   "verdict": "PASS",
+   "decisive_reason": "13 monthly decisions/365d = 14.1; breadth 18-19 with 4/4 legs; 28d formation fully covered at every stamp except ETH's 4 early stamps; drag 0.35%/0.66%; symbol share 17.7% < 25%. F2 (G-band inconsistency) is construction-clarity, not data impossibility."
+  },
+  "H-A6-RVX": {
+   "verdict": "PASS",
+   "decisive_reason": "56d pair coverage computable for >= 7 of 8 pairs at every stamp; all 8 pairs ever threshold-activatable (falsification condition (c) passes); turnover 4.9 units/yr, drag 1.0%/1.9%; max|w| 0.25; symbol share 10.4%. F4 (EG implementation) must be resolved before scoring but is implementable in numpy today."
+  },
+  "A8-P1-BAB-PERP": {
+   "verdict": "PASS",
+   "decisive_reason": "identical feasible skeleton to A5-P1 on real data (53.17 dec/365d, breadth 18-19, median holding 77d, drag 0.35%/0.65% conservative 0.87%/1.6%, symbol share <= 16.5%); its additional churn guards only tighten the reported bounds."
+  },
+  "A8-P2-TICKET-MIX-CONTRARIAN": {
+   "verdict": "PASS",
+   "decisive_reason": "highest-turnover of the six (33.3/yr hysteresis, 45.5/yr conservative) yet drag 2.3%/4.4% conservative 3.1%/6.0% stays inside the 8%/12% floors; breadth 18-19; median holding 14d; symbol share <= 11.5%."
+  }
+ },
+ "blind_lane_note": "per proposal declarations, every scored floor check remains the scoring lanes' schedule-only gate (research/v11/cost_feasibility.py) on the emitted books; this audit's numbers are independent verifier estimates under the same frozen arithmetic, not a substitute verdict.",
+ "artifacts": {
+  "inventory": "research/audits/v12d/a9f_scratch/a9f_inventory.json",
+  "stampgrid_warmup": "research/audits/v12d/a9f_scratch/a9f_stampgrid_warmup.json",
+  "books_and_costs": "research/audits/v12d/a9f_scratch/a9f_books.json",
+  "scripts": ["research/audits/v12d/a9f_scratch/a9f_inventory.py", "research/audits/v12d/a9f_scratch/a9f_books.py"]
+ }
+}
