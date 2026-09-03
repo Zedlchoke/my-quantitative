@@ -2,6 +2,26 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **V11 TERMINAL + V11R METADATA RECONCILED** (synced by A1, 2026-09-03,
+  branch `orca/v11r-integration` from V11 terminal
+  `orca/v11-integration@df18f53`) — sprint verdict `V11_REJECT_ALL`; A7
+  terminal audit wave-1 10/10 PASS + wave-2 **APPROVED, 0 FAIL**;
+  reproduction **ALL_MATCH 33/33** matrix cells (LOT 3×5, ILLIQ 3×6); budget
+  6/9 eligible cells published (LOT 3, ILLIQ 3; DEF 3 unused, OILEV 3 blocked
+  pre-score); logical denominators **125 published / 128 observed** (physical
+  historical-ledger merge deferred per `canonical_ledger_amendment.json`);
+  S1 SEALED_UNTOUCHED; owned workers 0; no paper/testnet/live. Families: LOT
+  `V11_FAMILY_REJECT` (7 gates; inverted control positive = falsification
+  evidence), ILLIQ `V11_FAMILY_REJECT` (12/13 gates; sole failure
+  positive-fold concentration 0.7055 > 0.50 — designated pre-registered
+  re-test candidate), OILEV `V11_FAMILY_BLOCKED_PRE_SCORE` (52/52 stamps
+  |weight|=0.5 > frozen cap 0.30; zero scored metrics). Terminal evidence:
+  `research/control/v11_run/terminal_report_v11.json`;
+  `research/audits/v11p/a7_terminal/`. **Next safe action:** V12 per
+  `PLAN_crypto.md` — control plane from `V11R_TERMINAL_SHA`, target ILLIQ
+  replication (3 arms) + cap-compatible OILEV-V2 (3 arms) + one blind family
+  (3 arms), max 9 scored cells; V12 scored execution requires an explicit
+  owner `GO V12 SCORED EXECUTION`.
 - **V10P BLOCKED_PRELAUNCH** (synced by A1, 2026-08-27, branch
   `orca/v10-integration@86b7274`) — generic strategy→research adapter built and
   accepted (BG1–BG6, G15, F2 adopted-with-proof, G17 one measured authority,

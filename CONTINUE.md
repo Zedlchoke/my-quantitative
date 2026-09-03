@@ -203,3 +203,28 @@ concurrent per fresh probe; every computed cell counts in the observed
 denominator (120 + n) even if publication fails; A1 sole publisher; no
 pytest while a scored worker runs; then R: reproduce all computed cells from
 repro-v11-1 equivalent, terminal A7 audit, family verdicts per PLAN 15.
+
+## V11 terminal + V11R reconciliation — 2026-09-03 (A1)
+
+V11 closed terminal at `orca/v11-integration@df18f53` (pushed): sprint verdict
+**V11_REJECT_ALL**, A7 terminal audit wave-1 10/10 PASS + wave-2 **APPROVED,
+0 FAIL**, reproduction **ALL_MATCH 33/33** (LOT 3×5, ILLIQ 3×6), budget 6/9
+eligible cells published (LOT REJECT 7 gates; ILLIQ REJECT on sole gate
+positive-fold concentration 0.7055 > 0.50; OILEV BLOCKED pre-score 52/52 cap
+breach; DEF seed blocked pre-score, 3 slots unused). Logical denominators
+**125 published / 128 observed**; S1 SEALED_UNTOUCHED; owned workers 0; no
+paper/testnet/live; push COMPLETE, no main merge, no history rewrite.
+
+V11R metadata-only reconciliation (PLAN_crypto.md §5) applied on branch
+`orca/v11r-integration`: state/heartbeat/terminal_report stale terminal
+claims corrected (P0_IN_PROGRESS verdict, ILLIQ-computing, archive-wait,
+old remote tip a335e385, pending-push, obsolete next actions), MAP.md and
+this file updated, one append-only event row added. No scientific byte
+changed — immutable artifact hashes pinned in
+`research/control/v11_run/v11r_reconciliation_intake.json` and asserted by
+`tests/test_v11_terminal_metadata.py`. Independent A7 metadata audit pending;
+`V11R_TERMINAL_SHA` freezes only after `V11R_METADATA_RECONCILED`.
+
+**Next safe action:** V12 control plane per `PLAN_crypto.md` from
+`V11R_TERMINAL_SHA` (125/128, budget 0/9); V12 scored execution requires an
+explicit owner `GO V12 SCORED EXECUTION`.
