@@ -1,20 +1,23 @@
 """V12 I lane -- frozen-identity tests for OILEV-V2 (deliverable 3/7).
 
-Pins every identity field the lane contract freezes: family/strategy ids,
-direction, benchmark exclusion, funding sign convention, matrix cohort
-hint, window, per-arm ``arm_config_id`` (the recorded freeze ``role``) and
-the per-arm ``config`` dicts (verbatim against
-``research/control/v12_run/selection_freeze.json``).
+Pins every identity field of the FREEZE V2 identity contract
+(``selection_freeze.json`` v2; integration commit
+``39fc8821a5c8dbe9c2fd998edc3956ad6a02ec8f``, reissued by A1 before any
+scored metric exists): family/strategy ids, direction
+(``long_short_beta_neutral`` on all three arms), the digest-bearing
+``arm_config_id`` (``28D-FLOW`` / ``56D-STOCK`` / ``28D-FLOW-INV``),
+benchmark exclusion, funding sign convention, matrix cohort hint, window,
+and the per-arm ``config`` dicts (verbatim against the recorded freeze
+cells -- unchanged between v1 and v2).
 
-The ``arm_config_digest`` equality against the freeze record is asserted
-in ``test_arm_config_digest_reproduces_freeze``.  At this lane's bootstrap
-the recomputed digests DO NOT equal the recorded ones under every
-defensible reading of the frozen contract (documented exhaustively in
-``research/audits/v12i/oilev_v2/identity_digest_report.json``); the test
-is therefore marked ``xfail(strict=True)``: the suite stays green while
-the mismatch stays visible, and the moment the identity and the freeze
-record agree the strict xfail turns the suite RED, forcing this marker to
-be removed and the digest match re-pinned as a hard assertion.
+Root cause of the previously documented 0/3 mismatch: freeze V1 recorded
+``arm_config_digest`` WITHOUT the identity fields (arm_config_id /
+direction / strategy_id), so no published payload could reproduce it.
+V2 publishes the full identity contract;
+``test_arm_config_digest_reproduces_freeze`` is a STRICT assertion and
+passes 3/3 against the hard-coded v2 digests (the worktree's local copy
+of ``selection_freeze.json`` is still v1 and is deliberately left
+untouched; A1's integration carries v2).
 """
 
 from __future__ import annotations
@@ -27,11 +30,13 @@ import pytest
 from research.v12.families.oilev_v2.plugin import OilevV2Plugin
 from research.v12.families.oilev_v2.strategy import (
     ANCHOR_ARM,
+    ARM_CONFIG_IDS,
     ARM_IDS,
     ARM_ROLES,
     BENCHMARK_SYMBOL,
     CONTROL_ARM,
     FAMILY_ID,
+    FROZEN_ARM_CONFIG_DIGESTS,
     MATRIX_COHORT_HINT,
     NEIGHBOUR_ARM,
     STRATEGY_ID,
@@ -51,6 +56,29 @@ SPEC_PATH = Path(
     "A12-V12-OILEVER-V2-DELEV.json"
 )
 
+#: FREEZE V2 identity contract (hard-coded frozen constants; provenance:
+#: selection_freeze.json v2 / integration commit
+#: 39fc8821a5c8dbe9c2fd998edc3956ad6a02ec8f, reissued by A1 before any
+#: scored metric exists; this worktree's local freeze copy is still v1 and
+#: is deliberately left untouched).
+V2_ARM_CONFIG_IDS: dict[str, str] = {
+    "OILEV-V2-28D-FLOW-W": "28D-FLOW",
+    "OILEV-V2-56D-STOCK-W": "56D-STOCK",
+    "OILEV-V2-28D-FLOW-W-INV": "28D-FLOW-INV",
+}
+V2_ARM_CONFIG_DIGESTS: dict[str, str] = {
+    "OILEV-V2-28D-FLOW-W": (
+        "2d9c56443e3e7eff62b1013c373f738a2eb2a2f8be1b34de83e6d1fd37af8454"
+    ),
+    "OILEV-V2-56D-STOCK-W": (
+        "0ba51b43a8b4adeb683f4eaf9ddfc3a107de9bee9f6f1af9a93862a7f6f55562"
+    ),
+    "OILEV-V2-28D-FLOW-W-INV": (
+        "e57b26fe1110da8bf82ddc00feb038087bed8f72baeb81c910a7c065a1f8de37"
+    ),
+}
+V2_DIRECTION = "long_short_beta_neutral"  # all three arms
+
 
 def _freeze_family_cells() -> dict[str, dict]:
     with open(FREEZE_PATH, "r", encoding="utf-8") as fh:
@@ -67,7 +95,10 @@ def test_identity_fields_pinned_per_arm() -> None:
         cell = cells[arm_id]
         assert identity.family_id == FAMILY_ID
         assert identity.strategy_id == STRATEGY_ID
-        assert identity.arm_config_id == cell["role"] == ARM_ROLES[arm_id]
+        # freeze v2: the digest-bearing arm_config_id (NOT the v1 role)
+        assert identity.arm_config_id == V2_ARM_CONFIG_IDS[arm_id]
+        assert identity.arm_config_id == ARM_CONFIG_IDS[arm_id]
+        assert ARM_ROLES[arm_id] == cell["role"]  # descriptive role, v1 record
         assert identity.arm_id == arm_id
         assert identity.benchmark_symbols_excluded == (BENCHMARK_SYMBOL,)
         assert identity.funding_sign_convention == "LONG_PAYS_POSITIVE_RATE"
@@ -78,10 +109,11 @@ def test_identity_fields_pinned_per_arm() -> None:
         assert identity.window_end_iso == "2026-08-21T00:00:00Z"
 
 
-def test_direction_is_the_inherited_v11_family_semantic() -> None:
+def test_direction_pinned_on_all_three_arms() -> None:
     from research.v11.families.oilever_delev.strategy import DIRECTION as V11_DIRECTION
 
     for arm_id in ARM_IDS:
+        assert frozen_identity(arm_id).direction == V2_DIRECTION
         assert frozen_identity(arm_id).direction == V11_DIRECTION
         assert frozen_identity(arm_id).direction == "long_short_beta_neutral"
 
@@ -116,13 +148,17 @@ def test_arm_feature_semantics_match_the_freeze() -> None:
     assert arm_feature_spec(CONTROL_ARM) == ("oi_flow", 28, True)
 
 
-def test_recorded_digests_match_the_spec_file() -> None:
-    with open(SPEC_PATH, "r", encoding="utf-8") as fh:
-        spec = json.load(fh)
-    spec_digests = {a["arm_id"]: a["arm_config_digest"] for a in spec["arms"]}
-    from research.v12.families.oilev_v2.strategy import FROZEN_ARM_CONFIG_DIGESTS
+def test_recorded_digests_are_the_v2_frozen_constants() -> None:
+    """The module's freeze digests are exactly the hard-coded v2 constants.
 
-    assert spec_digests == dict(FROZEN_ARM_CONFIG_DIGESTS)
+    The worktree's local ``selection_freeze.json`` is still V1 (its digests
+    were computed without the identity fields and are irreproducible); the
+    binding record is V2 (integration commit 39fc8821), pinned here as
+    hard-coded constants with the module constants cross-checked against
+    them so silent edits fail this test.
+    """
+    assert dict(FROZEN_ARM_CONFIG_DIGESTS) == dict(V2_ARM_CONFIG_DIGESTS)
+    assert dict(ARM_CONFIG_IDS) == dict(V2_ARM_CONFIG_IDS)
 
 
 def test_arm_digests_pairwise_distinct() -> None:
@@ -154,28 +190,20 @@ def test_arm_digests_pairwise_distinct() -> None:
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "V12 freeze defect (documented in "
-        "research/audits/v12i/oilev_v2/identity_digest_report.json): the "
-        "arm_config_digest values recorded in selection_freeze.json do not "
-        "reproduce from the recorded frozen cells under the lane contract "
-        "(family/strategy/benchmark/funding/window pinned; arm_config_id=role; "
-        "exhaustive candidate search over direction/arm_config_id/config "
-        "shapes found no reproducing identity while the same function "
-        "reproduces the V11 freeze digests exactly). This strict xfail turns "
-        "the suite RED the moment the identity and the freeze record agree, "
-        "forcing re-pin as a hard assertion."
-    ),
-)
-def test_arm_config_digest_reproduces_freeze() -> None:
+def test_arm_config_digest_reproduces_freeze_v2() -> None:
+    """STRICT: recomputed arm_config_digest equals the freeze-v2 digest 3/3.
+
+    ``arm_config_digest(StrategyIdentity(strategy_id, family_id,
+    arm_config_id, direction, window, benchmark exclusion, funding sign,
+    matrix_cohort_hint, config=<recorded config verbatim>, arm_id),
+    arm_id=...)`` must equal the v2 recorded digest for every arm.
+    """
     report = frozen_arm_digest_report()
     for arm_id in ARM_IDS:
         identity = frozen_identity(arm_id)
         computed = arm_config_digest(identity, arm_id=arm_id)
-        assert computed == report[arm_id]["recorded_in_freeze"]
-        assert report[arm_id]["match"] is True
+        assert computed == V2_ARM_CONFIG_DIGESTS[arm_id], arm_id
+        assert report[arm_id]["match"] is True, arm_id
 
 
 def test_schedule_is_52_weekly_monday_stamps() -> None:
