@@ -1,0 +1,141 @@
+{
+  "schema": "v12_blind_proposal_v1",
+  "lane": "A8",
+  "hypothesis_id": "A8-P2-TICKET-MIX-CONTRARIAN",
+  "mechanism_family": "participation-mix microstructure (ticket-size mix as uninformed-retail-flow proxy), cross-sectional contrarian",
+  "one_line_mechanism": "Weekly, beta-neutral long/short book shorting the USD-M perps whose average trade ticket shrank most relative to their own trailing norm (retail influx) and longing those whose ticket mix thickened, harvesting the underperformance that follows uninformed small-ticket participation.",
+  "outcome_blind_attestation": "Proposer computed no returns, PnL, PF, Sharpe, ranking or backtest; all numeric statements below are schedule arithmetic (counts, spans, weight algebra) or frozen-contract constants.",
+  "primary_source_claim": {
+    "claim": "Small trades proxy uninformed retail investors; heavy small-trade buying predicts negative subsequent stock returns over horizon weeks-to-months, because retail order flow is price-insensitive, contrarian-chasing, and systematically mistimed.",
+    "source": {
+      "title": "Small Trades and the Cross-Section of Stock Returns",
+      "authors": "Soeren Hvidkjaer",
+      "year": 2008,
+      "venue": "Review of Financial Studies 21(3), 1123-1151 (venue verified 2026-09-03; earlier working-paper citations listing JFQA are superseded)",
+      "doi": "10.1093/rfs/hhn049",
+      "retrieved": "2026-09-03, publisher/SSRN pages resolved via search; verified citation"
+    },
+    "exact_claim_used": "small-trade order imbalance (uninformed retail participation) is followed by economically large negative abnormal returns; the small-trade leg of the trade-size cross-section carries predictive content that the large-trade leg does not",
+    "crypto_perpetual_transfer_caveats": [
+      "DIRECTION IS NOT OBSERVED: Binance 15m bars aggregate (volume, quote volume, trade count) with no buy/sell split, so the equity literature's signed small-trade IMBALANCE is unavailable. The mechanism is therefore tested on the ticket-SIZE MIX level (average USD ticket = quote volume / trade count, normalised by the symbol's own trailing norm) as a directional-less proxy for retail presence. This is a strictly weaker identification than Hvidkjaer's and is stated as such; the falsification condition demands the level proxy still beat its sign-flipped control, otherwise the family dies.",
+      "Ticket-size buckets in the equity literature are share-count buckets per print; the crypto proxy is a bar-level average over all prints, which blurs the small/medium/large decomposition. Cross-sectional ranks are therefore taken on the WITHIN-SYMBOL normalised ratio (current weekly ticket / trailing 90d median of weekly tickets) so per-symbol price level, lot-size conventions and venue minimum-notional mechanics difference out; raw cross-exchange ticket LEVELS are never compared.",
+      "Retail participation in crypto is documented to be large and behaviourally distinct (Kogan, Kogan, Makarov, Marinova & Szydlowski 2023, 'Are Cryptos Different? Evidence from Retail Trading', NBER WP 31317 - working paper, used as a transfer caveat only, not as an anchor claim): retail crypto flow is adoption-narrative driven, which supports mistiming, but the paper does not test ticket-mix predictability in perps.",
+      "Derivatives-specific wrapper: on perpetuals the same ticket flow maps to leveraged positioning rather than cash-market holdings; liquidation mechanics can compress or invert the sign at extremes. The weekly horizon and hysteresis bands deliberately avoid holding through the most extreme leverage events; the drop-one-symbol and sign-flip controls bound this risk.",
+      "Min-notional and lot-size regimens changed on Binance over time; the within-symbol normalisation uses only trailing data (PIT), so regime changes appear as slow shifts, not lookahead."
+    ]
+  },
+  "economic_counterparty": {
+    "who": "Uninformed retail ticket flow: small-notional market and near-market orders chasing alt moves on perp venues, whose aggregate arrival shifts a symbol's traded-ticket distribution toward small prints.",
+    "why_they_lose": "Price-insensitive, narrative-chasing flow systematically arrives after the move it chases; it supplies liquidity to better-informed participants and leaves the symbol overpriced at the point of maximal retail influx, followed by weeks of underperformance (the Hvidkjaer channel).",
+    "expected_sign": "SHORT the bottom-quintile ticket-mix names (ticket shrank relative to own norm = retail influx), LONG the top-quintile names (ticket thickened = institutional-tilted participation); positive spread for this book net of the frozen cost stack."
+  },
+  "pit_fields_and_availability": {
+    "fields": [
+      {
+        "field": "completed 15m bars: quote-volume and trade-count aggregates",
+        "usage": "weekly ticket mix: sum(quote volume) / sum(trade count) over bars with close boundary in the half-open week (T-7d, T]; then within-symbol normalisation by the trailing 90d median of the same weekly quantity (approx 12-13 weekly observations, all strictly PIT)",
+        "pit_rule": "a bar is usable iff its ts_event (close boundary) <= stamp T per data_contract completed-bar definition; gaps are failures, never back-filled"
+      },
+      {
+        "field": "completed 15m bars (close) incl. BTCUSDT",
+        "usage": "90d trailing BTC beta used ONLY as the risk-neutralisation constraint (identical estimator to A8-P1), not as signal",
+        "pit_rule": "only bars with close boundary <= T enter the estimator"
+      },
+      {
+        "field": "instrument metadata (tick size, fee fields)",
+        "usage": "cost model declaration only",
+        "pit_rule": "static instrument config"
+      }
+    ],
+    "signal_estimator": "ticket_norm_i(T) = [sum_qv_i(week) / sum_trades_i(week)] / median over trailing 12 weekly values; quintile ranks cross-sectionally over eligible names at each stamp",
+    "availability_clock": "signal available AT T = Monday 00:00:00Z; the week (T-7d, T] is fully closed at T; warmup: 90d completed bars for the beta constraint (matches data_contract beta_90d) plus 12 weekly ticket observations from the same window",
+    "execution_lag": "one declared lag: targets emitted at T filled at the first strict-later event after T; stress adds +1 event delay",
+    "first_decision_stamp": "first Monday 00:00:00Z strictly after window start 2025-08-22T00:00:00Z"
+  },
+  "universe": {
+    "tradable": "the 19 staged Binance USD-M perpetuals excluding BTCUSDT (context-only)",
+    "context": "BTCUSDT used solely in the beta risk constraint",
+    "eligibility_per_stamp": "fully covered trailing 90d completed-bar window AND >= 12 weekly ticket observations; if fewer than 9 symbols are eligible the book carries forward unchanged (carried_forward=true, zero turnover at that stamp)"
+  },
+  "formation_schedule": {
+    "clock": "weekly, Monday 00:00:00Z",
+    "signal_windows": {"weekly_ticket_week": 7, "within_symbol_norm_median_weeks": 12},
+    "refresh": "ticket-mix ranks recomputed at every stamp",
+    "bucketing": "quintile ranks of ticket_norm over eligible names; long leg = top quintile (4 names), short leg = bottom quintile (4 names)"
+  },
+  "holding_and_rebalance": {
+    "holding_rule": "hysteresis: a long-leg name exits only when its ticket_norm rank leaves the top two quintiles; a short-leg name exits only when its rank leaves the bottom two quintiles; entry requires the extreme quintile",
+    "churn_guards": [
+      "max 2 replacements per leg per stamp",
+      "no re-entry within 1 stamp of exit",
+      "hard cap: at most 6 exits per symbol per 365d"
+    ],
+    "rebalance_schedule": "weekly stamps only, for leg membership changes or the beta-neutralisation rescale; no intra-week drift correction",
+    "forced_flat": "terminal force-flat at the final scored-window boundary (counted separately from discretionary decisions)"
+  },
+  "target_book": {
+    "shape": "long/short extreme-quintile ticket-mix book (long/short quintile book over the 20-symbol universe, BTC context-only)",
+    "construction": [
+      "equal weights 1/4 per name within each leg",
+      "leg scales c_long, c_short chosen so c_long * mean(beta_long) - c_short * mean(beta_short) = 0 (BTC-beta neutral by leg rescaling; beta is a risk constraint here, never the signal)",
+      "final clamp w -> w * min(1, 0.30 / max|w|), a pure shrink inside the deterministic target-book constructor BEFORE the stamp is emitted; never a post-score renormalisation"
+    ],
+    "weight_cap_by_construction": "4 names per leg at equal weights <= 0.25 before the clamp; max|weight| <= 0.30 at every stamp by construction",
+    "beta_neutralisation": "sum(w * beta) = 0 at every stamp via the leg-scale ratio; residual net beta is a measurable pipeline output",
+    "expected_turnover": {
+      "decisions_per_365d": 52,
+      "median_intended_holding_days_floor": "every completed span is a multiple of 7d (weekly clock); floor >= 3d holds by construction",
+      "churn_expectation": "ticket-mix ranks drift at weekly-to-monthly scale; hysteresis + churn guards keep replacements to ~0-2 legs per stamp",
+      "floor_verification": "decisions/365d, median holding, cost drag and per-symbol turnover share measured by the schedule-only feasibility gate; churn guards designed so no single symbol can plausibly exceed 25% of turnover"
+    }
+  },
+  "controls": {
+    "anchor": "A8-P2-TICKET-MIX-CONTRARIAN: contrarian ticket-mix spread as specified (short retail-influx / long ticket-thickening)",
+    "neighbour": "informed-participation neighbour: same bar aggregates, transform changed from LEVEL to 4-week TREND of ticket_norm; long the names whose ticket mix is thickening fastest (informed/medium-ticket accumulation), short the fastest-shrinking",
+    "neighbour_justification": "Barclay & Warner (1993), 'Stealth trading and volatility: Which trades move prices?', Journal of Financial Economics 34(3), 281-305, DOI 10.1016/0304-405X(93)90029-B: informed traders camouflage in medium-size trades, so shifts in the ticket-size distribution toward medium/large prints reveal informed accumulation; the trend of the mix is the theoretically adjacent read-out of the same participation channel that the anchor's level captures in cross-section",
+    "causal_negative_control": "sign-flipped arm on the identical data pipeline: LONG the bottom-quintile ticket-mix names (retail influx) and SHORT the top quintile, same cost stack. If retail influx carries equal or greater positive predictive content, the uninformed-flow channel is destroyed and the family rejected",
+    "secondary_placebo": "shuffled-ticket placebo: ticket_norm labels permuted across symbols within each stamp (book shape, leg sizes and cost stack preserved); any spread surviving shuffling is mechanical, not informational",
+    "scored_cells_budget": "anchor + neighbour + sign-flip control = 3 scored cells for this family (<= max 3/family floor)"
+  },
+  "cost_treatment": {
+    "fees": "plugin CostModel at the repo's frozen taker-fee floor (tier-0), charged per side on changed notional via the adapter's rebalance_cost_between",
+    "slippage": "adverse one-tick slip at each instrument's own tick size (declared 1e-7..1e-2)",
+    "funding": "native settlements accrue while held under LONG_PAYS_POSITIVE_RATE, only settlements with ts in (ts_opened, ts_closed]; mixed 8h/4h/1h cadences honoured per symbol; funding is a cost, never a signal input",
+    "stress": "preregistered cells: baseline, fee_slippage_x1_5, plus_2_ticks, plus_1_event_delay, drop_one_symbol, drop_one_fold (as supported by the family folds contract); under drop-one-symbol the constructor re-derives leg weights from surviving names and re-applies the 0.30 clamp",
+    "base_cost_drag_expectation": "~0-2 of 8 legs change per weekly stamp; changed notional per stamp small relative to gross; 8%/yr base and 12%/yr stressed drag floors enforced ex ante by the schedule-only feasibility gate"
+  },
+  "falsification_condition": {
+    "primary": "REJECT the family if, after the frozen cost stack, the sign-flipped causal control (long retail-influx / short ticket-thickening) matches or beats the anchor, or if the shuffled-ticket placebo is indistinguishable from the anchor: either outcome means the ticket-mix label carries no uninformed-flow content.",
+    "secondary": "REJECT if the drop-one-symbol stress cell overturns the anchor's sign (single-name or single-listing-event dependence of the mix), if eligible names < 9 at more than 20% of stamps, or if any frozen schedule floor fails at the feasibility gate.",
+    "no_rescue_clause": "a FAIL is terminal for the family in this sprint: no re-bucketing of ticket sizes, no normalisation-window retune, no fee reduction, no winning-symbol selection may follow."
+  },
+  "ancestry_map_vs_v1_v11": [
+    {"forbidden_id": "V10-M01-AGGRESSOR-ABSORPTION", "relation": "none", "distinction": "aggressor absorption requires taker buy/sell direction panels; this proposal uses only direction-less aggregates (quote volume, trade count) — no order-side variable exists in the pipeline"},
+    {"forbidden_id": "V11-ILLIQ-AMIHUD", "relation": "distinct variable, distinct mechanism", "distinction": "Amihud illiquidity = |return| / dollar-volume: a PRICE-IMPACT ratio (price term in the numerator). Ticket mix = dollar-volume / trade count: a PARTICIPATION-GRANULARITY ratio with NO price term. The two can fully decorrelate (high-volume many-small-trade names are liquid yet retail-heavy). No |r|, no price input of any kind enters the signal; this is not a parameter, window or transformation rescue of the Amihud identity"},
+    {"forbidden_id": "V1-VOLCOMP", "relation": "none", "distinction": "volume-shock continuation conditions on volume MAGNITUDE shocks and predicts continuation; this proposal conditions on the volume/trades MIX (no magnitude shock trigger) and predicts the CONTRARIAN direction"},
+    {"forbidden_id": "V11-LOTTERY-MAX-SKEW", "relation": "none", "distinction": "no return-distribution shape statistic (max, skew, vol) anywhere; the signal never touches returns"},
+    {"forbidden_id": "V4-XSECT-MOM", "relation": "none", "distinction": "no past-return ranking at any horizon; the sorting variable is a microstructure mix"},
+    {"forbidden_id": "WEEKLY-REVERSAL / MR-RESCUE", "relation": "none", "distinction": "ordinary reversal sorts on past returns; this book never reads a return — a symbol can be shorted here without having risen, purely on its participation mix"},
+    {"forbidden_id": "V11-OILEVER-DELEV", "relation": "none", "distinction": "open interest is never read"},
+    {"forbidden_id": "V6/V1-CARRY-FUNDING", "relation": "none", "distinction": "funding never enters the signal; accrued passively as a cost only"},
+    {"forbidden_id": "DATA-GATED", "relation": "none", "distinction": "uses only frozen in-contract bar fields (quote volume, trade count, close); no external or purchased data"}
+  ],
+  "why_not_a_rescue": {
+    "not_lot_inversion": "no idiosyncratic skew/MAX/volatility statistic is computed; the signal never touches the return series. The mechanism is participation-mix mispricing, not lottery-demand inversion.",
+    "not_illiq_rescue": "the Amihud identity is |return|/dollar-volume (price impact). The ticket ratio is dollar-volume/trade count (participation granularity) with no price term; it is a different physical quantity measuring WHO trades rather than HOW MUCH price moves per dollar, and the reserved-family replication identity is nowhere parameterised, inverted or transformed here.",
+    "not_oilev_rescue": "zero open-interest fields; no deleveraging or OI-change term.",
+    "not_funding_rescue": "funding is passive cost only.",
+    "not_a_renamed_baseline": "no V1-V11 class in the inventory sorts cross-sectionally on traded-ticket granularity; volume-shock continuation, aggressor absorption and Amihud each require a variable (volume magnitude shock, order direction, price impact) that is absent from this pipeline by construction."
+  },
+  "data_fields_used": ["completed 15m bars: quote-volume, trade count (signal)", "completed 15m bars: close (beta risk constraint only)", "instrument tick sizes / fee fields"],
+  "data_fields_deliberately_unused": ["funding rates as signal", "open interest", "raw volume magnitude as signal", "return-based statistics as signal"],
+  "decision_clock": "weekly, Monday 00:00:00Z",
+  "window": {"start": "2025-08-22T00:00:00Z", "end": "2026-08-21T00:00:00Z"},
+  "frozen_floor_compliance_schedule_arithmetic": {
+    "decisions_per_365d": "52 <= 60 PASS (force-flat counted separately)",
+    "median_intended_holding_days": ">= 7d by weekly clock >= 3d floor PASS",
+    "max_abs_weight": "<= 0.25 before clamp, <= 0.30 by construction PASS",
+    "base_and_stressed_cost_drag": "enforced ex ante by the schedule-only feasibility gate on emitted books; churn guards keep changed notional per stamp small",
+    "max_symbol_turnover_share": "verified by gate; churn guards (max 2 swaps/leg/stamp, re-entry rest, <=6 exits/symbol/365d) designed to keep any single symbol well under 25%"
+  }
+}
