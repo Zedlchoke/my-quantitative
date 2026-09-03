@@ -177,16 +177,24 @@ class TestFamily1Integration(unittest.TestCase):
         self.assertGreater(json.dumps(tier2["trades"][0]), "")
 
     def test_family2_through_runner_has_digest(self):
-        import datetime as dt
-        rows, price = [], 1.0800
-        base = dt.datetime(2024, 3, 4)
-        for day in range(5):
+        # regression for A7 W1 B1: family2 run digest key is sha256.
+        # 40-day fixture: 38 quiet days (~20+ rollover closes warm-up), then a
+        # +150-pip 4-bar NY extension day -> |z| >= 1 fade fires deterministically.
+        import datetime as dt, math
+        rows = []
+        base = dt.datetime(2024, 1, 8)  # Monday
+        c_prev = None
+        for day in range(40):
+            day_level = 1.1000 + 0.003 * math.sin(day * 1.7)  # deterministic day walk
             for h in range(24):
-                ts = base + dt.timedelta(days=day, hours=h); price += 0.0002
+                ts = base + dt.timedelta(days=day, hours=h)
+                p = day_level + 0.0003 * math.sin(h * 0.9)
+                if day == 38 and 13 <= h < 17:  # anchor-window extension ~2-3 sigma
+                    p += 0.0015 * (h - 12)
+                o = round(p - 0.00015, 6); c = round(p + 0.00015, 6)
                 rows.append({"datetime": ts.strftime("%Y-%m-%d %H:%M:%S"),
-                             "open": f"{price-0.0002:.5f}", "high": f"{price+0.0001:.5f}",
-                             "low": f"{price-0.0003:.5f}", "close": f"{price:.5f}"})
-        # regression for A7 W1 B1: family2 run digest key is sha256
+                             "open": f"{o:.6f}", "high": f"{max(o,c)+0.00015:.6f}",
+                             "low": f"{min(o,c)-0.00015:.6f}", "close": f"{c:.6f}"})
         cell = R.run_family_cell(family2, "family2", {"EUR/USD": rows}, "anchor", 1.0)
         rec = R.assemble_cell_record(cell, "family2", "anchor", 1.0)
         self.assertGreater(rec["book"]["trades"], 0)  # B1 regression: family2 cells compute
