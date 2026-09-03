@@ -1,0 +1,452 @@
+{
+ "schema": "v11_a7n_novelty_audit_v2",
+ "generated_utc": "2026-09-03T00:00:00Z",
+ "producer_role": "D2-A7-N",
+ "bootstrap_sha": "903ed49529de5ee56ece7dc9fe896da32804a4f8",
+ "branch": "orca/v11d-a7-novelty",
+ "wave_sha": "4d03d60 (pool_manifest.json wave_sha field)",
+ "scope": "novelty + anti-rescue audit of 2 owner seeds and 6 outcome-blind proposals; audit-only, no proposal edits; no scored-window computation",
+ "retry_provenance": "RETRY 3. Retry-1 and retry-2 timed out. Retry-2 left uncommitted partials including a scratch rho computation on prewindow 2026-02-22..2026-08-21, which is INSIDE the candidate scored window (scored start 2025-08-22 per A1 evidence) -> quarantined under a7n_scratch/invalid_wrong_window/ and not cited anywhere in this audit. This retry audits A1's precomputed evidence (research/control/v11_run/a1_prewindow_rho_evidence.json, read from the integration worktree because it is not yet present in this worktree's control dir) instead of recomputing the rho matrix.",
+ "outcome_blindness_attestation": "This audit computed no V11 scored-window candidate returns, PnL, PF, Sharpe or ranking. The only computations were a desk audit of A1's prewindow rho evidence plus at most 2 prewindow single-stamp spot checks.",
+ "data_provenance": {
+  "bars": "read-only references to staged snapshot (2024-08-23..2026-08-23) as described in scratch/staged data; no new downloads",
+  "funding": "not used as signal anywhere; cost-line only in all 8 families (verified in feature contracts)",
+  "open_interest": "staged OI per amendment V11-AMEND-OI-STAGING-20260902 (data.binance.vision daily metrics substitution, disclosed); download in progress at audit time -> OI re-audit pending; all OI-group verdicts here are CONDITIONAL",
+  "prewindow": "2024-11-01..2025-08-21 frozen (A1 evidence, = A9-F prewindow; strictly before scored start 2025-08-21+1d)",
+  "conventions": "rolling 90d daily beta vs BTC; residual r_i - beta_i*r_BTC; Monday 00:00Z stamps; min 8 names/stamp",
+  "scratch": "research/audits/v11p/a7n_scratch/ (spot-check outputs only; retry-2 artifacts quarantined in invalid_wrong_window/)"
+ },
+ "task1_literature_identity": {
+  "verdict": "PASS_WITH_OBJECTIONS",
+  "method": "desk verification of packet source identity against auditor training knowledge; no web retrieval (knowledge-horizon honest disclosure); checked title/authors/year/venue/DOI plausibility, claim-to-test mapping, spot-to-perp caveats",
+  "packet_sources": [
+   {
+    "id": "S1",
+    "identity": "Pyo & Jang (2026), Finance Research Letters vol 97 art 109851, DOI 10.1016/j.frl.2026.109851",
+    "auditor_check": "BEYOND_KNOWLEDGE_HORIZON: 2026 FRL publication cannot be confirmed or denied from auditor training knowledge. Format is internally consistent (Elsevier FRL PII S1544612326..., art number range plausible). Packet marks identity_verified:true without a verifiable independent trail.",
+    "claim_fidelity": "claim stated as spot, risk-adjusted, recent sample - appropriately hedged; NOT treated as profitability proof",
+    "caveats": "spot-to-perp caveat present; residualisation-to-BTC is an AUDIT-DISCLOSED extension not studied by the source (see objections)"
+   },
+   {
+    "id": "S2",
+    "identity": "Grobys (2021), JIFMIM vol 71 art 101289, DOI 10.1016/j.intfin.2021.101289",
+    "auditor_check": "CONFIRMED_TO_KNOWLEDGE: single-author Klaus Grobys paper on lottery-like demand/speculation in crypto exists in this venue/year; DOI prefix consistent with JIFMIM 2021 numbering",
+    "claim_fidelity": "low-MAX outperforms high-MAX claim matches known content; the '~1.5%/week quintile spread' magnitude is NOT independently verifiable from memory - treat as directional prior only",
+    "caveats": "spot sample predates 2021 (caveat present); funding/short-side feasibility caveat present"
+   },
+   {
+    "id": "S3",
+    "identity": "'Lottery-like preferences and the MAX effect in the cryptocurrency market', Financial Innovation (2021) 7:79, DOI 10.1186/s40854-021-00291-9, authors 'M. Ozdamar et al.'",
+    "auditor_check": "PARTIALLY_CONFIRMED: a Financial Innovation 2021 MAX-effect crypto paper exists at this DOI/venue to auditor knowledge; first-author name not fully confirmable from memory",
+    "claim_fidelity": "MAX negatively priced claim consistent; 'reported spread 3.03% vs 1.99%' is AMBIGUOUS PHRASING - two numbers where one spread is implied (reads as extreme-decile mean returns, not a spread); requires re-wording before any use",
+    "caveats": "same spot caveats; fold-concentration caveat added (tail sensitivity) - good"
+   },
+   {
+    "id": "S4",
+    "identity": "Binance USD-M Futures official market-data documentation (developers.binance.com)",
+    "auditor_check": "OFFICIAL_VENUE_DOC: acceptable primary source for bar/funding/OI/mark semantics per PLAN 8.1",
+    "claim_fidelity": "semantics-only claim; no profitability claim",
+    "caveats": "correctly notes frozen repo staging is the only admissible data source"
+   }
+  ],
+  "proposal_sources_verified": "all six proposals cite primary literature (Amihud 2002 JFM DOI 10.1016/S1386-4181(01)00024-6 confirmed; Liu-Tsyvinski-Wu 2022 JOF 10.1111/jofi.13119 confirmed; Pastor-Stambaugh 2003 JPE confirmed; Bessembinder 1992, de Roon-Nijman-Veld 2000 JOF, Roll 1984, Lou-Shu confound, Liu-Wu? BMRT21 low-frequency liquidity proxies, Wei 2018 Econ Letters, Dunbar & Owusu-Amoako 2023 FRL 104009 hedging factor crypto - all plausible to auditor knowledge; a6p2 cites Schmeling-Schrimpf-Todorov (2026) Management Science DOI 10.1287/mnsc.2024.05069 as market-structure-only with carry explicitly banned - beyond-horizon, correctly used as mechanism colour not pricing evidence; a8p2 carries an explicit literature-honesty note that no peer-reviewed paper directly prices cross-sectional crypto OI growth - HONEST and correct)",
+  "claim_mapping_overreach": [
+   {
+    "severity": "MEDIUM",
+    "finding": "S1 identity asserted as identity_verified:true but publication is beyond auditor verification horizon; packet provides no retrieval evidence beyond timestamp + URL. Recommend D3 treat S1 as 'plausible, unverified' and not let DEF's literature leg rest on it alone (mechanism also rests on the general low-risk anomaly literature)."
+   },
+   {
+    "severity": "LOW",
+    "finding": "S3 'spread 3.03% vs 1.99%' ambiguous two-number phrasing; S2 '~1.5%/week' magnitude unverifiable. Directional claims fine; magnitudes must not seed any threshold."
+   },
+   {
+    "severity": "LOW",
+    "finding": "BTC-residualisation of DEF/LOT is an adaptation beyond what the cited spot papers tested (they use raw/market-adjusted returns). Packet maps it under PIT transformation rather than flagging it as a deviation; disclosed here as an extension the scored window must re-earn."
+   }
+  ],
+  "spot_to_perp_caveats": "PRESENT for S1-S3 (spot evidence, funding/shorting/basis differences must be re-earned); present per-family in all 8 briefs' risk lists; acceptable per PLAN 8.1"
+ },
+ "task2_novelty_map": {
+  "rejected_forbidden_inventory": [
+   "trend/momentum",
+   "reversal/residual mean-reversion",
+   "funding carry/crowding rescue",
+   "volume-shock continuation",
+   "weekly reversal (V8)",
+   "M01 aggressor-flow absorption (V10 terminal REJECT, incl. no fee/threshold/universe/maker rescue)",
+   "volatility_compression_breakout (V-family per A8 ancestry list)",
+   "funding_price_divergence (V7 per A8 ancestry list)"
+  ],
+  "hidden_rescue_definition": "hidden parameter rescue = same rejected signal observable (or a monotone transform of it) with new lookback/threshold/universe/cadence such that the scored book replicates the rejected book's cross-sectional ordering to |rho|>=0.50 on prewindow stamps",
+  "entries": [
+   {
+    "family": "V11-SEED-DEFENSIVE-RESIDUAL-RISK",
+    "classification": "genuinely_new",
+    "basis": "sorts 28d residual volatility (return-risk moment); no banned family sorts risk moments; M01 flow, V8 reversal, V6 carry all different observables",
+    "rescue_risk": "none from inventory; co-freeze risk with LOT handled in task4"
+   },
+   {
+    "family": "V11-SEED-LOTTERY-MAX-SKEW",
+    "classification": "genuinely_new_with_margin_flag",
+    "basis": "sorts 7d residual MAX / 30d residual skew (lottery-demand pricing); not a reversal family (claim is about overpricing of lottery demand), but the 7d residual MAX feature is materially rank-correlated with the weekly-reversal proxy (A1 pooled rho -0.4642, |.|<0.50 PASS but close) -> cannot be a silent re-skin of weekly reversal, but part of its spread may be reversal-exposure; requires pre-score reversal-exposure diagnostic",
+    "rescue_risk": "weekly-reversal adjacency flagged (objection OBJ-03); not a hidden rescue on the evidence"
+   },
+   {
+    "family": "V11-A5-ILLIQ-PREMIUM (a5_prop1)",
+    "classification": "genuinely_new",
+    "basis": "Amihud |r|/dollar-volume level sort (15m-bar computed); no rejected family sorts a liquidity level; predeclared Lou-Shu reversal-absorption rejection rule handles the classic Amihud-reversal confound; volume appears only as a slow denominator, no shock event logic",
+    "rescue_risk": "reversal confound pre-diagnosed; A1 ILLIQ|REV7 pooled 0.0826 PASS"
+   },
+   {
+    "family": "V11-A5-OI-HEDGEPRESSURE (a5_prop2)",
+    "classification": "genuinely_new_CONDITIONAL",
+    "basis": "OI delta/mean-OI (positioning stock change); no V1-V10 family used open interest; funding excluded from signal by construction (anti-carry guard); bet is AGAINST OI build-up (anti-continuation)",
+    "rescue_risk": "funding-crowding adjacency closed by construction; hedging-pressure proxy substitutes venue total OI for CFTC long/short splits (disclosed substitution, DOA23 re-earn requirement)"
+   },
+   {
+    "family": "V11-A6-ILLIQUIDITY-PREMIUM (a6_prop1)",
+    "classification": "genuinely_new",
+    "basis": "residualised Amihud level sort, monthly cadence; same mechanism class as a5p1/a8p1 (convergence, task5), not a new mechanism",
+    "rescue_risk": "same as a5p1; ALSO feasibility-breadth FAIL per A9-F (established) - eligibility dies on breadth regardless of novelty"
+   },
+   {
+    "family": "V11-A6-POSITIONING-SATURATION (a6_prop2)",
+    "classification": "genuinely_new_CONDITIONAL",
+    "basis": "OI-growth z-score with SIGN-FREE orthogonalisation of trailing 28d return out of the feature (strongest anti-momentum guard in the pool) + OI-level percentile neighbour; funding and volume excluded from signal fields",
+    "rescue_risk": "momentum-smuggling actively removed by construction; funding-carry adjacency closed"
+   },
+   {
+    "family": "A8-V11-ILLIQ-AMIHUD (a8_prop1)",
+    "classification": "genuinely_new",
+    "basis": "daily Amihud 28d/56d quintile sort with predeclared size-orthogonalisation diagnostic (within-volume-tercile re-ranking) to expose a relabelled size effect; explicit forbidden-inventory mapping in ancestry block",
+    "rescue_risk": "size-relabel risk pre-diagnosed; reversal and momentum proxies PASS in A1 gate A"
+   },
+   {
+    "family": "A8-V11-OILEVER-DELEV (a8_prop2)",
+    "classification": "genuinely_new_CONDITIONAL",
+    "basis": "log-delta of OI per dollar-volume (leverage build-up flow) - a positioning-quantity observable no rejected family used; volume normalisation is a deflator only; explicit momentum-contamination diagnostic predeclared; literature-honesty note correctly declares novel-transfer status",
+    "rescue_risk": "closest to momentum of all six (OI growth correlates with price runs) - A1-style rho vs MOM proxy NOT available for OI features (staging pending) -> condition the eligibility on the OI re-audit computing it"
+   }
+  ],
+  "conclusion": "No hidden parameter rescue found. No proposal re-tunes a rejected observable. Three convergence pairs exist (task5) but convergence across outcome-blind lanes is not rescue. ILLIQ and OI mechanism classes are genuinely distinct from the entire V1-V10 inventory; LOT carries a flagged-but-passing weekly-reversal margin; OI-group verdicts are conditional on the pending staging re-audit."
+ },
+ "task3_negative_controls": {
+  "summary": "All 8 families (2 seeds + 6 proposals) use a sign-inverted anchor book as the causal negative control. Per PLAN 8.1 the requirement is 'sign-destroying OR mechanism-destroying'; sign-flip satisfies the letter. Audit finding: a sign-flip is a WEAK control - it destroys the sign claim but not the mechanism class (it cannot distinguish an illiquidity premium from any slow persistent characteristic earning a spread), and when scored on the same decision instants the inverted book's spread is the negative of the anchor's by construction, so its falsification content comes only from independent cell scoring (separate costs/folds). This is a shared quality objection (OBJ-06), not a blocker.",
+  "per_proposal": [
+   {
+    "family": "SEED-DEF",
+    "control": "DEF-RESVOL-28D-W-INV",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "no",
+    "adapter_implementable": "yes - same pipeline, control_mode sign flip (single digest per L-V10-M01-KEY lesson)",
+    "verdict": "PASS (plan-letter)"
+   },
+   {
+    "family": "SEED-LOT",
+    "control": "LOT-RESMAX-7D-W-INV",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "no",
+    "adapter_implementable": "yes",
+    "verdict": "PASS (plan-letter) + reversal-exposure diagnostic recommended"
+   },
+   {
+    "family": "a5_prop1",
+    "control": "ILLIQ-AMIHUD-28D-W-INV + falsification set incl. Lou-Shu reversal absorption and Roll-neighbour consistency",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "partially - the reversal-absorption falsifier IS mechanism-destroying if it fires",
+    "adapter_implementable": "yes (diagnostic is rank-regression on lagged reversal exposure)",
+    "verdict": "PASS - strongest control set in the ILLIQ group"
+   },
+   {
+    "family": "a5_prop2",
+    "control": "OI-HP-28D-W-INV + OI-only feature contract + price-direction interaction falsifier + OI-cadence fail-closed",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "partially - price-direction-interaction falsifier is mechanism-destroying",
+    "adapter_implementable": "yes; OI cadence gate contingent on staging",
+    "verdict": "PASS (plan-letter), conditional on OI re-audit"
+   },
+   {
+    "family": "a6_prop1",
+    "control": "ILQ-AMIHUD-28D-M-INV",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "no",
+    "adapter_implementable": "yes",
+    "verdict": "PASS (plan-letter); moot on breadth FAIL"
+   },
+   {
+    "family": "a6_prop2",
+    "control": "POS-OIGRTH-28D-M-INV + sign-free return-orthogonalisation (SAT)",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "partially - SAT orthogonalisation removes the momentum channel by construction",
+    "adapter_implementable": "yes; OI cadence gate contingent on staging",
+    "verdict": "PASS (plan-letter), conditional on OI re-audit"
+   },
+   {
+    "family": "a8_prop1",
+    "control": "ILLIQ-AMIHUD-28D-W-INV + size-orthogonalisation falsifier ('positive raw but ~0 after size-orth = size relabelled')",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "partially - size-orth falsifier is mechanism-destroying",
+    "adapter_implementable": "yes",
+    "verdict": "PASS"
+   },
+   {
+    "family": "a8_prop2",
+    "control": "OILEV-FLOW-28D-W-INV + momentum-contamination diagnostic + neighbour sign-consistency",
+    "destroys_sign": "yes",
+    "destroys_mechanism": "partially - contamination diagnostic is mechanism-destroying if it fires",
+    "adapter_implementable": "yes; OI plausibility gate fail-closed",
+    "verdict": "PASS (plan-letter), conditional on OI re-audit"
+   }
+  ],
+  "verdict": "PASS_WITH_OBJECTIONS"
+ },
+ "task4_rho_diagnostics": {
+  "verdict": "EVIDENCE_VALID_AND_BINDING - verdicts corroborated; two minor discrepancies disclosed (stamp-count delta; one spot rho 0.0023 above reported absmax, within rank sensitivity)",
+  "evidence_file": "research/control/v11_run/a1_prewindow_rho_evidence.json (schema a1_prewindow_rho_evidence_v1, producer A1, generated 2026-09-02T18:19:12Z; read from integration worktree - not yet copied into this worktree's control dir)",
+  "frozen_method_note_check": "PRESENT and matches contracts: 28d annualised residual vol (DEF), 7d residual MAX (LOT), 28d Amihud |r|/dv (ILLIQ, = a8_prop1 canonical feature), trailing 28d log return (MOM proxy), negative 7d residual return (REV7 proxy). Prewindow 2024-11-01..2025-08-21 frozen = A9-F prewindow, strictly before scored start 2025-08-22. Monday 00:00Z stamps, min 8 names. Universe = the 20 staged symbols.",
+  "stamp_count_check": {
+   "reported": {
+    "DEF_pairs": 26,
+    "LOT_or_REV7_pairs": 29,
+    "ILLIQ|MOM28": 38
+   },
+   "auditor_independent": {
+    "mondays_in_prewindow": 42,
+    "DEF_eligible_stamps_with_90d_beta+28d_and_min8_names": 38,
+    "first": "2024-12-02"
+   },
+   "discrepancy": "A1 reports 26 DEF-pair stamps vs auditor's 38 under a looser completeness rule (>0 bars/day); A1 likely applies stricter bar-completeness and partner-feature name-intersection. Direction of error cannot flip any verdict (more stamps -> tighter estimate; all gate decisions have margin except LOT|REV7 which was NOT recomputed).",
+   "severity": "LOW"
+  },
+  "gate_a_vs_rejected_ancestors": {
+   "threshold": "abs(rho) < 0.50 (PLAN 9)",
+   "results": {
+    "DEF|MOM28": -0.0056,
+    "DEF|REV7": 0.045,
+    "LOT|MOM28": 0.1224,
+    "LOT|REV7": -0.4642,
+    "ILLIQ|MOM28": -0.1839,
+    "ILLIQ|REV7": 0.0826,
+    "MOM|REV7": -0.2652
+   },
+   "verdict": "ALL PASS",
+   "flag": "LOT|REV7 = -0.4642 is 0.0358 from the gate -> weekly-reversal adjacency margin (OBJ-03); rho_absmax 0.8256 shows stamp-level overlap can reach extreme values"
+  },
+  "gate_b_frozen_set_pairwise": {
+   "threshold": "abs(rho) < 0.35 (PLAN 9: every pair among the four frozen families on common eligible prewindow stamps)",
+   "results": {
+    "DEF|LOT": 0.5654,
+    "DEF|ILLIQ": 0.4815,
+    "LOT|ILLIQ": 0.3098
+   },
+   "verdict": "DEF|LOT FAIL; DEF|ILLIQ FAIL; LOT|ILLIQ PASS",
+   "robustness": "verdicts unchanged if rho_mean used instead of rho_pooled (0.5834 / 0.5438 / 0.3313) - robust to pooling choice"
+  },
+  "threshold_labeling_defect": "A1 stamps within_required=0.5 on ALL pairs including seed-seed pairs; PLAN 9 requires 0.35 for frozen-set pairwise. Under A1's label, DEF|ILLIQ (0.4815) would wrongly PASS. Verdicts here recomputed with the correct 0.35 (OBJ-05, MEDIUM). No outcome change for DEF (blocked by DEF|LOT either way).",
+  "spot_check": {
+   "rule": "max 2 stamps, <=60s each (retry instruction); decoder reused from staged-data conventions, NOT from quarantined retry-2 rho results",
+   "stamps": [
+    "2025-05-05",
+    "2025-07-07"
+   ],
+   "results": {
+    "2025-05-05": {
+     "DEF|LOT": 0.8421,
+     "DEF|ILLIQ": 0.7474,
+     "LOT|ILLIQ": 0.6474,
+     "names": 19
+    },
+    "2025-07-07": {
+     "DEF|LOT": 0.1333,
+     "DEF|ILLIQ": 0.486,
+     "LOT|ILLIQ": 0.3193,
+     "names": 19
+    }
+   },
+   "assessment": "5/6 spot values inside A1's reported [mean..absmax] envelope with correct signs. LOT|ILLIQ 2025-05-05 = 0.6474 exceeds A1's rho_absmax 0.6451 by 0.0023 - within one-rank sensitivity at n=19..20 and differing dollar-volume definitions (quote-volume vs base*close); not evidence of methodological error. A1's magnitudes and signs CORROBORATED.",
+   "artifact": "research/audits/v11p/a7n_scratch/a7n_spotcheck_2stamp.json"
+  },
+  "methodological_caveats_honest_disclosure": [
+   "Rejected ancestors are PROXIES (generic 28d momentum, 7d residual reversal), not the actual V1-V10 rejected signal configs; proxy validity rests on those families being simple return-sort families.",
+   "NO funding-carry/crowding proxy pair exists in the evidence at all -> Gate A coverage gap for the funding-carry banned family (OBJ-04). Structural substitute: every proposal and seed excludes funding from signal fields by contract (verified in all 8 feature contracts).",
+   "Pooled Spearman across stamps mixes cross-sectional and time-persistence information; rho_mean also reported; verdicts identical under both.",
+   "rho_absmax up to 0.92 (DEF|LOT) shows single-stamp rank overlap can be extreme; pooled/mean statistics smooth this - per-stamp dispersion should accompany any future near-boundary call.",
+   "names_per_stamp reported as constant 20 (universe size) rather than the observed per-stamp minimum -> field ambiguity; min-8 rule not directly evidenced (LOW)."
+  ],
+  "implied_dispositions": [
+   "SEED DEF: BLOCKED_PRE_SCORE (orthogonality) - pairwise rho FAIL vs BOTH other frozen candidates (0.5654 vs LOT, 0.4815 vs ILLIQ, threshold 0.35). Per PLAN 10: record BLOCKED_PRE_SCORE, leave its 3 scored slots unused, no third discovered replacement. Audit finds the evidence methodologically sound (spot-corroborated); no basis to dispute.",
+   "SEED LOT: eligible - novelty PASS (with reversal-margin objection), Gate A PASS (LOT|REV7 flagged), pairwise vs ILLIQ PASS (0.3098 < 0.35).",
+   "ILLIQ group: eligible (novelty PASS; a8_prop1 or a5_prop1, both A9-F schedule PASS; a6_prop1 breadth FAIL). Canonical choice belongs to D3 rubric; audit notes a8_prop1 has the deepest self-declared ancestry/falsification set.",
+   "OI group: PENDING - novelty conditional PASS; entire group waits for the OI staging re-audit (amendment V11-AMEND-OI-STAGING-20260902). Re-audit MUST add an OI-feature vs momentum-proxy rho (missing today because OI features could not be computed pre-staging)."
+  ],
+  "verdict_format": "per PLAN 9: abs(rho)<0.50 vs rejected ancestors; abs(rho)<0.35 pairwise among frozen families"
+ },
+ "task5_convergence_map": {
+  "ILLIQUIDITY_PREMIUM": {
+   "members": [
+    "a5_prop1",
+    "a6_prop1",
+    "a8_prop1"
+   ],
+   "shared_mechanism": "Amihud-style price-impact level sort, weekly-or-slower, BTC-beta-aware",
+   "differentiae": {
+    "a5_prop1": "15m-bar |r|/dollar-vol, weekly quintiles, Roll(1984) spread neighbour, Lou-Shu reversal-absorption falsifier",
+    "a6_prop1": "residualised daily Amihud, monthly terciles (13 decisions/yr), liquidity-BETA neighbour (Pastor-Stambaugh risk channel)",
+    "a8_prop1": "daily Amihud log-1p, weekly quintiles, 56d neighbour, size-orthogonalisation diagnostic"
+   },
+   "canonical_evidence_note": "A9-F schedule feasibility (established facts): a8_prop1 canonical PASS, a5_prop1 PASS, a6_prop1 breadth FAIL. Novelty audit does not select; both feasible members are genuine duplicates of one mechanism and D3 must pick exactly one (lexicographic tie-break = A8-V11-ILLIQ-AMIHUD if scores tie).",
+   "group_verdict": "NOVEL_MECHANISM - one slot may be filled from this group"
+  },
+  "OI_POSITIONING": {
+   "members": [
+    "a5_prop2",
+    "a6_prop2",
+    "a8_prop2"
+   ],
+   "shared_mechanism": "open-interest positioning/leverage build-up priced negatively (de Roon hedging-pressure channel transferred via venue OI)",
+   "differentiae": {
+    "a5_prop2": "dOI/mean-OI weekly terciles, activity-scaled neighbour",
+    "a6_prop2": "OI-growth z-score with sign-free return-orthogonalisation, monthly, OI-level percentile neighbour",
+    "a8_prop2": "log-delta OI/dollar-volume weekly quintiles, OI/dollar-vol stock neighbour, plausibility gates"
+   },
+   "canonical_evidence_note": "no feasibility verdict yet (staging download in progress); a6_prop2 has the strongest contamination control by construction; a8_prop2 is the most momentum-exposed variant and MUST get an OI-vs-MOM rho in the re-audit",
+   "group_verdict": "NOVEL_MECHANISM_CONDITIONAL - entire group pending staging re-audit (amendment V11-AMEND-OI-STAGING-20260902)"
+  },
+  "seeds": {
+   "DEF_vs_LOT": "same frozen set - pairwise rho FAIL (task4) -> cannot both freeze; NOT a novelty failure, an orthogonality failure",
+   "DEF_vs_ILLIQ": "pairwise rho FAIL at 0.35 threshold",
+   "LOT_vs_ILLIQ": "pairwise PASS (0.3098)"
+  },
+  "cross_group": "ILLIQ vs OI groups sort disjoint observables (liquidity level vs position stock); no duplication between groups; seeds sort return moments - four distinct mechanism classes total, matching the four-family design"
+ },
+ "task6_objections": [
+  {
+   "id": "OBJ-01",
+   "severity": "HIGH",
+   "target": "V11-SEED-DEFENSIVE-RESIDUAL-RISK",
+   "objection": "Fails frozen-set pairwise orthogonality vs both remaining candidates (DEF|LOT pooled 0.5654, DEF|ILLIQ pooled 0.4815; PLAN 9 threshold 0.35). Cannot join any four-family freeze; D3 must record BLOCKED_PRE_SCORE and leave 3 scored slots unused. Spot-check corroborates A1's evidence; audit does not dispute the numbers.",
+   "disposition_required": "D3 action, not repairable by re-spec without owner re-seed"
+  },
+  {
+   "id": "OBJ-02",
+   "severity": "MEDIUM",
+   "target": "ILLIQ group weekly quintile arms (a5_prop1, a8_prop1); OI group weekly quintile arms (a8_prop2)",
+   "objection": "With ~9 eligible symbols post-feasibility, a quintile book is ~1-2 names per leg - de-facto pair trades; Stage-A symbol-turnover-share (>25%) and fold/symbol concentration gates are likely to bind, and single-name idiosyncrasy can flip the spread sign. A9-F schedule PASS stands, but D3 should treat quintile arms as concentration-fragile and prefer the arm's own buffer bands/weight caps at freeze; escalate to HIGH if eligible universe <8 at any formation.",
+   "evidence": "A9-F established facts (a8_prop1 PASS, a5_prop1 PASS, a6_prop1 breadth FAIL); universe floors in proposals are PIT medians, name count not guaranteed"
+  },
+  {
+   "id": "OBJ-03",
+   "severity": "MEDIUM",
+   "target": "V11-SEED-LOTTERY-MAX-SKEW",
+   "objection": "LOT|REV7 pooled rho -0.4642 passes the 0.50 gate by only 0.0358, with rho_absmax 0.8256 (single stamps near +/-0.83). The 7d residual MAX feature is materially reversal-exposed; a different stamp sample could plausibly cross 0.50. Requires a pre-score per-fold reversal-exposure diagnostic (book-weight rho vs lagged 7d residual return) attached to the LOT freeze spec; if the anchor spread vanishes after reversal-exposure orthogonalisation, the mechanism claim is a weekly-reversal relabel.",
+   "disposition_required": "add diagnostic to freeze spec; no re-freeze of thresholds"
+  },
+  {
+   "id": "OBJ-04",
+   "severity": "MEDIUM",
+   "target": "A1 evidence / Gate A coverage",
+   "objection": "No funding-carry/crowding ancestor proxy exists in the rho evidence, so the banned funding-carry family is never orthogonality-tested. Structural substitute accepted: funding is excluded from every signal field by contract in all 8 families (verified). Residual risk: OI-growth features can correlate with funding-crowding states indirectly; the OI re-audit should add FUND-CARRY-proxy and OI-vs-MOM rho pairs when staged data allows."
+  },
+  {
+   "id": "OBJ-05",
+   "severity": "MEDIUM",
+   "target": "A1 evidence file quality",
+   "objection": "within_required=0.5 is stamped on ALL pairs, contradicting PLAN 9's 0.35 frozen-set threshold; applied literally, DEF|ILLIQ (0.4815) would wrongly PASS Gate B. Correct-threshold recomputation done in this audit; no final outcome change (DEF blocked by DEF|LOT under either label). Also names_per_stamp reported as constant 20 (universe size), not the observed minimum, so the min-8 rule is not directly evidenced. A1 should correct the evidence file labels before selection_freeze."
+  },
+  {
+   "id": "OBJ-06",
+   "severity": "MEDIUM",
+   "target": "all 8 families",
+   "objection": "Every causal negative control is a sign-inverted anchor (sign-destroying only). On shared decision instants the inverted book's spread is the negative of the anchor's by construction; its falsification content comes solely from independent cell scoring (separate folds/costs). PLAN 8.1 accepts sign-destroying controls, so this PASSES the letter, but mechanism-level falsification is weak: none of the controls can distinguish the claimed premium from 'any slow persistent characteristic earns a spread'. The stronger mechanism-destroying falsifiers that do exist (a5p1 reversal-absorption, a8p1 size-orthogonalisation, a6p2 return-orthogonalisation, a8p2 momentum-contamination) are diagnostics, not scored cells. Recommendation: score at least the mechanism-diagnostic alongside the INV control where the adapter allows, without adding arms."
+  },
+  {
+   "id": "OBJ-07",
+   "severity": "MEDIUM",
+   "target": "OI group (a5_prop2, a6_prop2, a8_prop2)",
+   "objection": "Entire group is conditional on amendment V11-AMEND-OI-STAGING-20260902 staging (data.binance.vision daily metrics SUBSTITUTED for venue API OI endpoints, disclosed). Until the OI re-audit verifies cadence (>=1 snapshot/day per a5p2/a6p2 contracts), staleness handling, level plausibility (a8p2 gates), and PIT semantics of the substituted source, these families are UNAVAILABLE_FAIL_CLOSED by their own contracts. Hedging-pressure proxies also substitute venue TOTAL OI for CFTC long/short splits (DOA23 re-earn requirement) - transfer risk properly disclosed, still unresolved."
+  },
+  {
+   "id": "OBJ-08",
+   "severity": "LOW",
+   "target": "literature packet S1",
+   "objection": "2026 FRL publication beyond auditor knowledge horizon; identity_verified:true asserted without independent verification trail. D3 should treat S1 as plausible-unverified; DEF's literature leg does not solely rest on it (defensive low-risk anomaly literature generally)."
+  },
+  {
+   "id": "OBJ-09",
+   "severity": "LOW",
+   "target": "literature packet S2/S3 numerics",
+   "objection": "S2 '~1.5%/week' quintile spread and S3 '3.03% vs 1.99%' magnitudes not independently verifiable; S3 phrasing ambiguous (two numbers where one spread is implied). Magnitudes must never seed thresholds; directional claims only."
+  },
+  {
+   "id": "OBJ-10",
+   "severity": "LOW",
+   "target": "seed briefs DEF/LOT",
+   "objection": "BTC-residualisation (90d rolling beta) is an adaptation beyond what the cited spot papers tested; correctly part of the PIT mapping but should be understood as an extension the scored window must re-earn, not a paper finding."
+  },
+  {
+   "id": "OBJ-11",
+   "severity": "LOW",
+   "target": "audit record hygiene",
+   "objection": "Retry-2 partials computed rho on 2026-02-22..2026-08-21 (INSIDE the candidate scored window) - contaminated and quarantined under a7n_scratch/invalid_wrong_window/ with README; not cited anywhere. Recorded so D3/A7 prelaunch auditors do not resurrect those numbers."
+  },
+  {
+   "id": "OBJ-12",
+   "severity": "MEDIUM",
+   "target": "a6_prop1 (V11-A6-ILLIQUIDITY-PREMIUM)",
+   "objection": "Breadth FAIL (A9-F established) - ineligible regardless of novelty. Additionally its monthly cadence (13 decisions/yr) is the minority design within a converged trio; no action needed beyond exclusion."
+  }
+ ],
+ "per_family_verdicts": {
+  "V11-SEED-DEFENSIVE-RESIDUAL-RISK": {
+   "novelty": "genuinely_new",
+   "negative_control": "PASS (plan-letter)",
+   "orthogonality": "FAIL (OBJ-01)",
+   "final": "BLOCKED_PRE_SCORE",
+   "reason": "pairwise rho vs LOT 0.5654 and vs ILLIQ 0.4815 both >= 0.35; PLAN 10 rule applies; 3 scored slots left unused, no replacement"
+  },
+  "V11-SEED-LOTTERY-MAX-SKEW": {
+   "novelty": "genuinely_new (weekly-reversal margin flagged, OBJ-03)",
+   "negative_control": "PASS (plan-letter)",
+   "orthogonality": "PASS (LOT|ILLIQ 0.3098; vs rejected proxies all <0.50, REV7 close)",
+   "final": "ELIGIBLE (attach reversal-exposure diagnostic at freeze)"
+  },
+  "ILLIQUIDITY_PREMIUM group (A5-P1, A6-P1, A8-P1)": {
+   "novelty": "genuinely_new (one mechanism, three variants)",
+   "negative_control": "PASS (a5p1/a8p1 carry mechanism-destroying diagnostics)",
+   "convergence": "3 duplicates -> exactly one may be selected",
+   "final": "ELIGIBLE for the group: a8_prop1 (A9-F PASS, canonical candidate) or a5_prop1 (A9-F PASS); a6_prop1 INELIGIBLE (breadth FAIL). Choose per D3 rubric; lexicographic tie-break would pick a8_prop1. Concentration objection OBJ-02 attaches."
+  },
+  "OI_POSITIONING group (A5-P2, A6-P2, A8-P2)": {
+   "novelty": "genuinely_new CONDITIONAL",
+   "negative_control": "PASS (plan-letter) + strongest construction guards (a6p2 sign-free return-orthogonalisation)",
+   "convergence": "3 duplicates -> exactly one may be selected",
+   "final": "PENDING staging re-audit (OBJ-07); if re-audit passes cadence/plausibility/PIT and adds OI-vs-momentum rho, group is eligible with OBJ-02 attached"
+  }
+ },
+ "launch_readiness": {
+  "rule": "D3 needs: 2 owner seeds + 2 discovered families, each with anchor/neighbour/causal control, no unresolved HIGH/CRITICAL",
+  "unresolved_HIGH": 1,
+  "unresolved_CRITICAL": 0,
+  "verdict": "CONDITIONAL_PROCEED",
+  "binding_evidence_for_D3": [
+   "DEF -> BLOCKED_PRE_SCORE (orthogonality); 3 scored slots unused; budget becomes at most 9/12 cells (3 LOT + 6 discovered).",
+   "LOT -> eligible; freeze spec must attach the OBJ-03 reversal-exposure diagnostic.",
+   "Discovered slot 1 -> ILLIQ group (a8_prop1 or a5_prop1; a6_prop1 excluded on breadth).",
+   "Discovered slot 2 -> OI group ONLY IF the staging re-audit passes (OBJ-07) and adds OI-vs-momentum/carry rho pairs. If OI fails re-audit, only one discovered family is eligible -> V11_BLOCKED_SELECTION_INSUFFICIENT per PLAN 10 (do NOT lower thresholds, do NOT substitute).",
+   "A1 evidence file must be copied into this worktree's control dir (or referenced by hash in selection_freeze) with the OBJ-05 threshold-label corrected before freeze.",
+   "Quintile arms carry OBJ-02 concentration fragility; prefer arms with buffer bands/weight caps and predeclare Stage-A concentration escalation."
+  ],
+  "scored_cells_implication": "4-family target unreachable as-is: max frozen = LOT + 2 discovered = 3 families / 9 cells unless owner re-seeds a DEF replacement (owner's prerogative; NOT an audit recommendation to lower thresholds)"
+ },
+ "assumptions": [
+  "A1 evidence file read from .worktrees/v11/integration/research/control/v11_run/a1_prewindow_rho_evidence.json because it is not present in this worktree's control dir at audit time; content hash-quoted verbatim in task4",
+  "scored window start 2025-08-22 taken from A1 evidence prewindow note (= A9-F convention)",
+  "established facts binding: A9-F feasibility PASS/FAIL lines for seeds/ILLIQ; OI staging amendment authorized; deadline relief granted; scored cells on stronger owner machine",
+  "knowledge-horizon: auditor training knowledge used for literature identity; no web verification performed; S1 (2026) and SSTS (2026) flagged accordingly"
+ ],
+ "blockers": [
+  "OI staging download + OI-family re-audit not complete -> OI group verdict PENDING (external blocker, owner-authorized amendment in flight)",
+  "A1 evidence file absent from this worktree's control dir (read from integration worktree); selection_freeze must pin it by hash",
+  "DEF co-freeze impossible without owner re-seed or owner-accepted BLOCKED_PRE_SCORE outcome (thresholds may not be lowered per PLAN 10)"
+ ]
+}
