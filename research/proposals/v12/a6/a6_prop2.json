@@ -1,0 +1,139 @@
+{
+  "schema": "v12_blind_proposal_v1",
+  "lane": "a6",
+  "proposal_id": "A6-P2-RVX",
+  "hypothesis_id": "H-A6-RVX",
+  "generated_utc": "2026-09-03T12:50:00Z",
+  "outcome_blind_attestation": "no returns, PnL, PF, Sharpe, ranking, backtest or scored metric was computed at any point in this lane; all quantities below are schedule counts, construction rules or worst-case turnover bounds in weight-units",
+  "mechanism_family": {
+    "family_id": "RVX",
+    "name": "cointegration error-correction relative value (threshold pairs stat-arb)",
+    "is_new_family": true,
+    "distinct_from_lane_partner": "A6-P1-OSCOMP (order-size composition) — different signal statistic (two-name log-price spread residual vs sign-agnostic trade-count composition), different counterparty (flow-imbalanced substitute repricing vs attention-driven retail pressure decay), different book shape (weekly threshold pairs vs monthly quintile book)"
+  },
+  "primary_source_claim": {
+    "claim": "Economic substitutes that are cointegrated share a stationary long-run relation (error-correction representation); a relative-value rule that trades divergence of the spread beyond a threshold and exits on convergence has historically earned spreads robust to conservative execution assumptions, in equities and, with Engle-Granger-type gates and OU-calibrated lookbacks, in cryptocurrency markets.",
+    "sources": [
+      {
+        "id": "S4",
+        "citation": "Engle, R.F., Granger, C.W.J. (1987). Co-Integration and Error Correction: Representation, Estimation, and Testing. Econometrica 55(2), 251-276.",
+        "doi": "10.2307/1913236",
+        "stable_url": "https://www.jstor.org/stable/1913236",
+        "verified": "DOI resolves (302 -> JSTOR) 2026-09-03",
+        "claim_used": "cointegration implies an error-correction representation: deviations from the estimated long-run relation are stationary and tend to revert — the theoretical basis for trading the spread residual"
+      },
+      {
+        "id": "S5",
+        "citation": "Gatev, E., Goetzmann, W.N., Rouwenhorst, K.G. (2006). Pairs Trading: Performance of a Relative-Value Arbitration Rule. Review of Financial Studies 19(3), 797-827.",
+        "doi": "10.1093/rfs/hhj020",
+        "stable_url": "https://academic.oup.com/rfs/article/19/3/797/1591724",
+        "verified": "DOI/publisher URL verified 2026-09-03 (lane log W8)",
+        "claim_used": "a pre-formed pairs rule with threshold divergence entry and convergence exit, formed on prior economic grounds (not in-sample performance), earned spreads robust to conservative execution"
+      },
+      {
+        "id": "S6",
+        "citation": "Avellaneda, M., Lee, J.-H. (2010). Statistical arbitrage in the US equities market. Quantitative Finance 10(7), 761-782.",
+        "doi": "10.1080/14697680903124632",
+        "stable_url": "https://www.tandfonline.com/doi/abs/10.1080/14697680903124632",
+        "verified": "DOI resolves (302 -> Taylor & Francis) 2026-09-03",
+        "claim_used": "spread mean reversion is calibrated as an Ornstein-Uhlenbeck process; entry thresholds and holding horizons should be tied to estimated reversion dynamics"
+      },
+      {
+        "id": "S7",
+        "citation": "Tadi, M., Kortchmeski, I. (2021). Evaluation of Dynamic Cointegration-Based Pairs Trading Strategy in the Cryptocurrency Market. arXiv:2109.10662; also Studies in Economics and Finance.",
+        "stable_url": "https://arxiv.org/abs/2109.10662",
+        "verified": "arXiv abstract fetched 2026-09-03 (lane log W10)",
+        "claim_used": "Engle-Granger-type cointegration gates are applicable to crypto pairs; the OU half-life of the spread informs the lookback window; realistic execution (signal-to-fill delay) materially changes outcomes"
+      }
+    ],
+    "crypto_perpetual_transfer_caveats": [
+      "Crypto cointegration is weaker and less persistent than equity cointegration: project-specific news (unlocks, outages, regulatory action) breaks relations. Mitigations: pairs are pre-registered on sector-substitute grounds, the activation gate (trailing Engle-Granger test) is re-run at every stamp, the relation is re-estimated every stamp, and max holding is 8 weeks.",
+      "Perpetual funding accrues natively on both legs at mixed 8h/4h/1h cadences and can rival the convergence payoff. Mitigation: funding is charged natively as a cost in every cell and NEVER enters the signal — this is explicitly not a funding-selection family.",
+      "In crash regimes cross-correlations jump toward 1 and a leg can collapse idiosyncratically so convergence fails exactly when it matters. Mitigation (partial, acknowledged tail risk): dollar+beta-neutral legs capped at 0.25, hedge-ratio sanity bound, 8-week max holding, weekly stamp re-evaluation; no intraweek stop is possible under the weekly clock and this residual risk is declared, not engineered away.",
+      "24/7 markets with weekly decision stamps accept stamp-gap exposure; the weekly clock is a frozen packet constraint and positions are kept small by construction."
+    ]
+  },
+  "economic_mechanism": {
+    "counterparty": "Flow-imbalanced traders: attention or news hitting one substitute leg (one L1, one meme name, one payments asset) while its pre-registered substitutes do not move; the RV desk fading the dislocation is compensated at convergence, with the flow trader paying for immediacy and single-name exposure.",
+    "expected_sign": "Convergence: long the cheap leg, short the rich leg of an activated pair; the spread z-score reverts toward its estimated equilibrium, so the book earns the error-correction term while the pair relation holds.",
+    "why_persistent_in_perps": "Crypto sector clusters are real substitutes with high substitution flow, but retail-driven one-legged attention shocks are frequent; the premium for providing immediate two-legged liquidity on a weekly clock persists because the frozen low-turnover design deliberately leaves the fast convergence margin to faster players and harvests only the slow reversion component."
+  },
+  "pit_specification": {
+    "signal_fields": [
+      "daily log prices built from completed 15m bars (last close per UTC day) strictly before the stamp",
+      "trailing 56d Engle-Granger regression (OLS hedge ratio + residual ADF statistic) recomputed per stamp",
+      "rolling 90d daily BTC betas for leg sizing (no BTC leg held)"
+    ],
+    "pit_rule": "all estimates use observations with timestamps strictly before the decision stamp (completed bars; no partial tail, no synthesized gaps, per the frozen loader rules); open interest and funding are never signal inputs",
+    "availability_clock": "pair activatable at Monday 00:00:00Z stamp T iff both legs have complete daily closes for (T-56d, T] and the trailing Engle-Granger residual ADF rejects a unit root at the 10% level with |hedge ratio| in [0.25, 4]; otherwise the pair is dormant for that stamp",
+    "execution_lag": "one declared lag: fills at the first strictly-later completed 15m event after the stamp (FILLED_NEXT_EVENT); baseline delay 0, stress +1 event (the execution-realism caveat of S7 is why the lag is frozen in the schedule)"
+  },
+  "universe_and_schedule": {
+    "universe": "the 19 tradeable names (REQUIRED_SYMBOLS minus BTCUSDT); BTCUSDT is benchmark-context-only and never held; pre-registered candidate pairs (same-sector economic substitutes, formed on prior grounds, not performance): (ETH,SOL), (SOL,SUI), (AVAX,NEAR), (ADA,AVAX), (AAVE,LINK), (DOGE,1000PEPE), (1000PEPE,BOME), (XRP,BCH) — all symbols suffixed USDT",
+    "eligibility_rule": ">=9 eligible names required at every stamp (19 available; newest listing precedes the window); fewer than 9 -> fail-closed carry/flat",
+    "decision_clock": "every Monday 00:00:00Z, weekly; no intraweek actions ever",
+    "formation": "trailing 56d daily log prices for the anchor arm; neighbour arm uses max(28d, ceil(2 x estimated OU half-life of the spread))",
+    "holding": "state-dependent: from entry stamp until the exit condition first holds at a stamp — |z| <= 0.5, or 8 weeks after entry (max holding, exit at that stamp); one state change per pair per 2 consecutive stamps (cooldown)",
+    "rebalance_schedule": "52 weekly stamps per 365d (<= 60 floor); entries only when |z| >= 2.0 at a stamp for an activatable pair with capacity"
+  },
+  "book_construction": {
+    "shape": "threshold pairs book: up to 3 concurrently active pre-registered pairs; each symbol appears in at most one active pair (construction rule, prevents stacking)",
+    "weight_cap_by_construction": "per-pair leg weights are at most +/-0.25 (single-active-pair case: +/-0.20), so every |weight| <= 0.25 <= 0.30 at every stamp by construction",
+    "pair_sizing": "within a pair the leg split satisfies w_A = -(beta_B/beta_B-normalized) sizing such that the beta-weighted net exposure of the two legs is zero (rolling 90d BTC betas, PIT), then normalized to the leg cap",
+    "beta_neutralisation": "portfolio BTC beta is zero by construction at every stamp (sum of beta-weighted leg exposures = 0 per pair); BTC is never held",
+    "eligible_names_min": 9,
+    "expected_turnover": {
+      "decisions_per_365d": 52,
+      "median_intended_holding_days_min_by_construction": 7,
+      "cooldown_rule": "at most one state change (entry or exit) per pair per 2 consecutive stamps; at most 3 active pairs; worst case <= 78 one-way weight-units per year",
+      "max_symbol_turnover_share_bound": "each leg move is a fixed 0.25 (or 0.20) unit; with the 3-pair concurrency cap and the construction rule that a lone active pair runs 0.20 legs, any single symbol's share of one-way turnover is <= 20% <= 25% floor by construction",
+      "base_cost_drag_bound": "78 weight-units/yr worst case x (declared taker rate + 1 adverse tick) stays under the 8%/yr floor at tier-0 floors; expected cadence is far lower because entries require |z| >= 2.0 at a weekly stamp for an activatable pair",
+      "stressed_cost_drag_bound": "same bound x (fee x1.5 + 3 adverse ticks) under the 12%/yr floor; a gate FAIL defers the family, never renegotiates a floor"
+    }
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "RVX-ANCHOR-FIXED56",
+      "definition": "56d formation, |z| >= 2.0 entry, |z| <= 0.5 exit or 8-week max holding, 2-week cooldown, up to 3 active pre-registered pairs",
+      "scored": true
+    },
+    "neighbour": {
+      "arm_id": "RVX-NEIGHBOUR-OUHALF",
+      "definition": "identical rule except the formation window is max(28d, ceil(2 x estimated OU half-life of the spread)) recomputed per stamp",
+      "theoretical_justification": "Avellaneda-Lee (2010) calibrate spread reversion as an OU process and Tadi-Kortchmeski (2021) derive the crypto lookback window from the OU half-life: a sampling window should be a multiple of the estimated half-life for the equilibrium estimate to be stable — the same mechanism sampled at its theory-matched horizon",
+      "scored": true
+    },
+    "causal_negative_control": {
+      "arm_id": "RVX-RANDOMPAIR-CONTROL",
+      "definition": "anchor rule applied to a fixed-seed (20260903) per-stamp random permutation of the pair->symbol assignment across the 19 names (no cluster structure, no pre-registered substitutes), preserving thresholds, book shape, gross, beta-neutralisation and the turnover schedule",
+      "type": "mechanism-destroying",
+      "falsifies_mechanism_if": "the randomized-pairing arm matches the anchor under the scored protocol — then the cointegration/substitute structure carries no information and the family is dead (a single-name-reversal renamer could not survive this control, which is precisely the point)",
+      "scored": true,
+      "non_scored_diagnostics": "sign-flipped (fade the wrong way) arm permitted as a diagnostic only; consumes no scored cell"
+    }
+  },
+  "costs_and_stress": {
+    "fees": "declared adapter CostModel floors (tier-0 taker per side, 1 adverse tick floor); arithmetic reused verbatim from GenericStrategyBase.rebalance_cost_between",
+    "slippage": "one-tick adverse baseline per side",
+    "funding": "native settlements on BOTH legs while held (LONG_PAYS_POSITIVE_RATE), applied only inside holding spans, mixed 8h/4h/1h cadences consumed natively per symbol (official Binance fundingTime documentation); funding NEVER enters signal, activation or sizing — the family is explicitly not a funding-carry rescue even though spread carry is a real cost/risk",
+    "stress_cells": "frozen surface fee x1.5 / +2 ticks / +1 event delay; family supports the generic six-cell surface (weekly clock has no fold-contract refusal)"
+  },
+  "falsification_condition": "The mechanism is FALSIFIED if any of: (a) the randomized-pairing control matches the anchor under the scored protocol (mechanism carries no information); (b) post-entry spread convergence is indistinguishable from pre-entry drift under a preregistered block-bootstrap sign test at entry stamps; (c) fewer than 2 of the 8 pre-registered pairs are ever activatable across served stamps (no substitution structure in this universe); (d) signal availability < 0.95 of served stamps; (e) any frozen feasibility floor FAILs or is UNAVAILABLE. Scoring is the pipeline's job; this lane computes no outcomes.",
+  "ancestry_map": {
+    "reference": "research/control/v12_run/forbidden_family_inventory.json (mechanism-level classes only; no scored metrics read)",
+    "WEEKLY-REVERSAL / MR-RESCUE": "DECLARED ADJACENCY, argued distinct: the rejected class is single-name reversal on own past returns; this family's statistic is a two-name cointegration residual with NO own-return term, holding is state-dependent (threshold + max-holding + cooldown) rather than horizon-fixed, and the preregistered mechanism-destroying control (pair randomization) preserves whatever single-name reversal exposure exists while destroying the relative-value structure — the two mechanisms are separable by construction. This lane flags the adjacency transparently for A7-N adjudication and offers NO fallback parameterization if adjudicated a rescue",
+    "V4-XSECT-MOM": "no lineage: no trend or past-return statistic anywhere (the signal is a stationary-relation residual)",
+    "V6/V1-CARRY-FUNDING": "no lineage: funding never enters signal/activation/sizing; charged as cost only",
+    "V11-LOTTERY-MAX-SKEW": "no lineage: no MAX/skew/return-shape statistic",
+    "V11-ILLIQ-AMIHUD (reserved)": "no lineage: no volume or |return|-impact statistic of any kind",
+    "V11-OILEVER-DELEV (reserved)": "no lineage: open interest never read; no cap change or post-score renormalization sought",
+    "V10-M01-AGGRESSOR-ABSORPTION": "no lineage: no order-flow or signed imbalance input",
+    "V1-VOLCOMP / volume-shock": "no lineage: no compression, breakout or volume-shock statistic",
+    "DATA-GATED": "clean: only staged native fields (bars/prices, settlements, tick sizes) are consumed"
+  },
+  "why_not_a_rescue": "This is neither a LOT inversion nor an ILLIQ/OILEV parameter rescue: the family computes no lottery/return-shape statistic, no Amihud-type ratio, and never touches open interest; it seeks no cap raise and no post-score renormalization. Its only adjacency — mean reversion — is at the cross-sectional two-name spread level with an estimated error-correction relation, a mechanism class absent from the forbidden inventory as such, and it is accompanied by a mechanism-destroying control that specifically separates it from any renamed single-name reversal. If A7-N adjudicates it inside the MR-RESCUE class, the family is rejected; no rescue parameterization is offered.",
+  "scored_cells": 3,
+  "scored_cell_ids": ["RVX-ANCHOR-FIXED56", "RVX-NEIGHBOUR-OUHALF", "RVX-RANDOMPAIR-CONTROL"],
+  "cell_budget_note": "3 of 3 per-family cells; 6 of 9 sprint cells across both A6 families",
+  "isolation_attestation": "built solely from the blind packet, allowed interface files, the forbidden inventory and public primary literature; no scored artifact, terminal report, other lane, audit or reserved brief was read"
+}

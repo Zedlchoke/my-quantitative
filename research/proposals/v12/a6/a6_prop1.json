@@ -1,0 +1,131 @@
+{
+  "schema": "v12_blind_proposal_v1",
+  "lane": "a6",
+  "proposal_id": "A6-P1-OSCOMP",
+  "hypothesis_id": "H-A6-OSCOMP",
+  "generated_utc": "2026-09-03T12:45:00Z",
+  "outcome_blind_attestation": "no returns, PnL, PF, Sharpe, ranking, backtest or scored metric was computed at any point in this lane; all quantities below are schedule counts, construction rules or worst-case turnover bounds in weight-units",
+  "mechanism_family": {
+    "family_id": "OSCOMP",
+    "name": "order-size composition (average-notional-per-trade ticket mix)",
+    "is_new_family": true,
+    "distinct_from_lane_partner": "A6-P2-RVX (cointegration error-correction relative value) — different signal statistic (sign-agnostic trade-count composition vs two-name price-level spread), different economic mechanism (attention-driven retail pressure decay vs convergence of substitutes), different book shape (quintile book vs threshold pairs book)"
+  },
+  "primary_source_claim": {
+    "claim": "Periods of intense attention-induced retail buying are followed by negative abnormal returns over the following days-to-weeks; retail flow is standardly identified by small trade size, and aggressive (market-order-type) retail flow produces temporary price pressure that subsequently reverses.",
+    "sources": [
+      {
+        "id": "S1",
+        "citation": "Barber, B.M., Huang, X., Odean, T., Schwarz, C. (2022). Attention-Induced Trading and Returns: Evidence from Robinhood Users. Journal of Finance 77(6), 3141-3190.",
+        "doi": "10.1111/jofi.13183",
+        "stable_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3715077",
+        "verified": "DOI resolves (302 -> Wiley); SSRN abstract verified via search 2026-09-03",
+        "claim_used": "attention-induced retail buying -> negative subsequent abnormal returns"
+      },
+      {
+        "id": "S2",
+        "citation": "Kelley, E.K., Tetlock, P.C. (2013). How Wise Are Crowds? Insights from Retail Orders and Stock Returns. Journal of Finance 68(3), 1229-1265.",
+        "doi": "10.1111/jofi.12028",
+        "stable_url": "https://onlinelibrary.wiley.com/doi/abs/10.1111/jofi.12028",
+        "verified": "publisher URL verified via search 2026-09-03",
+        "claim_used": "order-size/type classification of retail flow; aggressive retail orders create temporary price pressure that reverses (supports average-notional-per-trade as the retail-mix statistic and the expected sign)"
+      },
+      {
+        "id": "S3",
+        "citation": "Ozdamar, M. et al. (2022). Retail vs institutional investor attention in the cryptocurrency market. Journal of International Financial Markets, Institutions and Money 81.",
+        "stable_url": "https://ideas.repec.org/a/eee/intfin/v81y2022ics1042443122001469.html",
+        "verified": "RePEc listing 2026-09-03",
+        "claim_used": "retail vs institutional investor attention have distinct, separable return and liquidity effects in cryptocurrency markets (crypto transferability)"
+      }
+    ],
+    "crypto_perpetual_transfer_caveats": [
+      "Attention co-moves POSITIVELY with contemporaneous crypto returns (Smales 2021, SSRN abstract_id=3889923, verified 2026-09-03); the equity result is a lagged/cross-sectional one, so the lagged transfer is exactly what the preregistered falsification condition tests, not an assumption.",
+      "Average notional per trade is a flow-composition proxy, not a signed-flow measure: algo parent-order slicing and fee-tier size clustering blur the retail/institution boundary on a futures venue; only cross-sectional RANKS are used (scale-free), never raw dollar levels.",
+      "Exchange-reported trade counts can be inflated on unregulated venues (Cong, Li, Tang, Yang 2023, Management Science 69(11), 6427-6454, DOI 10.1287/mnsc.2021.02709, verified 2026-09-03). Mitigation: statistics computed only from native Binance USD-M kline fields (count, quote volume documented in official Binance API docs), single venue, no cross-exchange pooling.",
+      "Perpetual funding accrues while held on both sides (native settlements, mixed 8h/4h/1h cadences); it is charged as a cost and never enters the signal, so any funding-driven selection bias is absent by construction but funding drag is borne by the book."
+    ]
+  },
+  "economic_mechanism": {
+    "counterparty": "Attention-driven retail participants buying in small notional tickets into salient moves (the other side); liquidity providers and slower institutional/executing flow absorbing that pressure and being compensated as the attention premium decays.",
+    "expected_sign": "Cross-sectionally, symbols whose recent flow is dominated by small tickets (low average notional per trade) UNDERPERFORM symbols whose recent flow is dominated by large tickets (high average notional per trade) over the following ~4 weeks. Book is long high-average-ticket names, short low-average-ticket names, dollar- and BTC-beta-neutral.",
+    "why_persistent_in_perps": "24/7 retail access, zero-commission apps and perp leverage concentrate attention-driven small-ticket flow in crypto; the institutional share of ticket volume is structurally higher in the largest names, and neither flow source arbitrages the composition premium away quickly because the pressure decays rather than reverses sharply."
+  },
+  "pit_specification": {
+    "signal_fields": [
+      "15m completed bars: quote_volume (sum over formation window)",
+      "15m completed bars: trade count (sum over formation window); native kline field 'Number of trades' per official Binance API documentation",
+      "daily closes built from completed 15m bars for the 90d trailing BTC-beta estimate"
+    ],
+    "pit_rule": "features computed ONLY from bars with close time strictly before the decision stamp (ts_event <= stamp), per the frozen loader's completed-bar and no-partial-tail rules; last completed OI row is NOT used (open interest is deliberately unused in this family)",
+    "availability_clock": "signal available at Monday 00:00:00Z stamp T iff every 15m slot in (T-28d, T] is a completed bar for all candidate symbols AND 90d of daily closes exists for beta estimation (data_contract warmup semantics); a stamp with any missing slot for a candidate is served only by the names with full coverage, subject to the >=9-name rule",
+    "execution_lag": "one declared lag: target book transmitted at stamp T, filled at the first strictly-later completed 15m bar event (adapter FILLED_NEXT_EVENT convention); baseline event_delay = 0, stressed = +1 event"
+  },
+  "universe_and_schedule": {
+    "universe": "the 19 tradeable names of REQUIRED_SYMBOLS minus BTCUSDT (1000PEPE, AAVE, ACE, ADA, AVAX, BCH, BNB, BOME, DOGE, ENA, ETH, LINK, NEAR, ONG, SOL, SUI, WLD, XRP, ZEC); BTCUSDT is benchmark-context-only and never held",
+    "eligibility_rule": "a symbol is eligible at stamp T iff its formation window is fully covered by completed bars; the book is formed only if >=9 names are eligible, else the book is carried/flat fail-closed",
+    "decision_clock": "every 4th Monday 00:00:00Z (monthly cadence on the weekly grid); first stamp = first Monday at or after window start whose 28d formation and 90d beta windows are fully served",
+    "formation": "trailing 28 days of completed 15m bars ending strictly before the stamp",
+    "holding": "positions held until the next formation stamp (28 calendar days); names that keep their quintile membership roll over without a trade",
+    "rebalance_schedule": "13 discretionary decisions per 365d (<= 60 floor); one-way turnover bounded below in book_construction.expected_turnover"
+  },
+  "book_construction": {
+    "shape": "long/short quintile book: rank the eligible names by the signal; top 4 -> long legs, bottom 4 -> short legs; ties broken by lexicographic symbol id",
+    "weight_cap_by_construction": "per-leg weight is a side-gross divided by 4 with side-gross <= 1.0, so every |weight| <= 0.25 <= 0.30 at every stamp by construction, independent of outcomes",
+    "dollar_neutrality": "target gross_long = gross_short = G, G in [1.0, 2.0]",
+    "beta_neutralisation": "90d trailing OLS betas of daily symbol returns on BTC daily returns (PIT, no BTC leg held); the side-gross split (G_long, G_short) within [1.0, 2.0] is chosen so G_long * mean(beta_long) = G_short * mean(beta_short), making portfolio BTC beta zero by construction; if infeasible inside the band, both sides halve to [0.5, 0.5] (legs 0.125) — cap still holds by construction",
+    "eligible_names_min": 9,
+    "expected_turnover": {
+      "decisions_per_365d": 13,
+      "median_intended_holding_days_min_by_construction": 28,
+      "worst_case_one_way_turnover_weight_units_per_year": 52,
+      "max_symbol_turnover_share_bound": "a single symbol can move at most 0.5 weight-units at any one stamp (full side flip) against a worst-case 4.0-unit stamp turnover, i.e. <= 12.5% <= 25% floor, by construction",
+      "base_cost_drag_bound": "52 weight-units/yr x (declared CostModel taker rate per side + 1 adverse tick) — with tier-0 taker 5bp and sub-bp typical tick slippage on these liquid perps the bound sits well under the 8%/yr floor; exact verification is the A3 schedule gate's job on the realized schedule",
+      "stressed_cost_drag_bound": "same turnover x (fee x1.5 + 3 adverse ticks) — remains under the 12%/yr floor at the declared floors; fail-closed response to any gate FAIL is family deferral, never floor renegotiation"
+    }
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "OSCOMP-ANCHOR-LEVEL",
+      "definition": "sort on trailing-28d average notional per trade (sum quote_volume / sum trade count), cross-sectional ranks; long top quintile, short bottom quintile",
+      "scored": true
+    },
+    "neighbour": {
+      "arm_id": "OSCOMP-NEIGHBOUR-DLEVEL",
+      "definition": "same construction, sorted on the trailing-28d CHANGE in average notional per trade (current 28d window vs prior 28d window); long rising-ticket names, short falling-ticket names",
+      "theoretical_justification": "Barber et al. (2022) attention buying is episodic, not a permanent state: an attention episode manifests as ticket-size compression (small-ticket share rising) while the level statistic is still stale; the first-difference moment of the SAME composition variable is the theoretically matched event detector — same mechanism family, different moment",
+      "scored": true
+    },
+    "causal_negative_control": {
+      "arm_id": "OSCOMP-SIGNFLIP-CONTROL",
+      "definition": "anchor construction with the book sign flipped: long low-average-ticket, short high-average-ticket",
+      "type": "sign-destroying",
+      "falsifies_mechanism_if": "the sign-flipped arm performs comparably to the anchor under the scored protocol (the attention-decay mechanism implies a specific sign; a sign-agnostic result kills the composition mechanism)",
+      "scored": true,
+      "non_scored_diagnostics": "fixed-seed (20260903) symbol->rank permutation placebo (mechanism-destroying, preserves book shape/gross/turnover) is permitted as a diagnostic only and consumes no scored cell"
+    }
+  },
+  "costs_and_stress": {
+    "fees": "declared adapter CostModel floors: tier-0 taker per side, adverse_tick_slip_floor = 1 tick; cost arithmetic reused verbatim from GenericStrategyBase.rebalance_cost_between",
+    "slippage": "one-tick adverse baseline on the traded notional per side",
+    "funding": "native settlements while held, LONG_PAYS_POSITIVE_RATE, applied only when settlement ts is inside [ts_opened, ts_closed] per the frozen loader rule; mixed 8h/4h/1h cadences consumed natively per symbol; funding is NEVER a signal or sizing input",
+    "stress_cells": "frozen surface: fee x1.5, +2 adverse ticks, +1 event delay; family supports the full generic six-cell surface (no fold-contract refusal expected; drop_one_symbol drops the largest-|weight| held leg per L-V11-7)"
+  },
+  "falsification_condition": "The mechanism is FALSIFIED if any of: (a) under the scored protocol the anchor arm fails to separate from the sign-flipped control in the preregistered direction; (b) the neighbour arm contradicts the anchor in sign with comparable magnitude (composition moment mismatch); (c) signal availability fraction across served stamps < 0.95; (d) any frozen feasibility floor reports FAIL or UNAVAILABLE at the schedule-only gate. Scoring is performed by the pipeline, not by this lane; this lane computes no outcomes.",
+  "ancestry_map": {
+    "reference": "research/control/v12_run/forbidden_family_inventory.json (mechanism-level classes only; no scored metrics read)",
+    "V10-M01-AGGRESSOR-ABSORPTION": "no lineage: trade counts are sign-agnostic; no order-sign, taker-split, imbalance or absorption statistic exists in the signal",
+    "V11-LOTTERY-MAX-SKEW": "no lineage: no MAX, skewness or any return-shape statistic is computed; the signal uses zero return inputs",
+    "V11-ILLIQ-AMIHUD (reserved)": "no lineage, declared adjacency check: the statistic is dollar_volume / trade_count (ticket size, a retail-flow classifier per Kelley-Tetlock 2013); Amihud is |return| / dollar_volume (price impact per dollar). No functional form is shared and the mechanism expectation (attention overpricing decay) is not an illiquidity-premium claim",
+    "V11-OILEVER-DELEV (reserved)": "no lineage: open interest is never read by this family",
+    "V4-XSECT-MOM": "no lineage: no past-return term anywhere in the signal",
+    "V6/V1-CARRY-FUNDING": "no lineage: funding never enters signal or sizing; charged only as a held cost",
+    "V1-VOLCOMP / volume-shock continuation": "no lineage: the neighbour uses the first difference of ticket size (a composition change), not a volume-level shock, and no continuation claim is attached to volume",
+    "WEEKLY-REVERSAL / MR-RESCUE": "no lineage: no own-past-return signal at any horizon; expected sign is a flow-composition premium decay, not return reversal as a statistic",
+    "DATA-GATED": "clean: only staged native fields (quote_volume, trade count, bars, settlements, tick sizes) are consumed"
+  },
+  "why_not_a_rescue": "This is neither a LOT inversion nor an ILLIQ/OILEV parameter rescue: the signal statistic (sum of quote volume over sum of trade counts) lives in a parameter space disjoint from LOT/MAX/skew (return-shape statistics), from Amihud (|return|-conditioned volume), and from open interest entirely. No sign flip, lookback retune, cap change, fee change or renaming of any forbidden family generates this signal; conversely the family's own sign-flipped control is the preregistered test of its specific claimed direction. The mechanism-level expectation (attention-driven small-ticket pressure decays) comes from the retail-flow literature, not from any liquidity-premium or lottery-demand literature.",
+  "scored_cells": 3,
+  "scored_cell_ids": ["OSCOMP-ANCHOR-LEVEL", "OSCOMP-NEIGHBOUR-DLEVEL", "OSCOMP-SIGNFLIP-CONTROL"],
+  "cell_budget_note": "3 of 3 per-family cells; 6 of 9 sprint cells across both A6 families",
+  "isolation_attestation": "built solely from the blind packet, allowed interface files, the forbidden inventory and public primary literature; no scored artifact, terminal report, other lane, audit or reserved brief was read"
+}
