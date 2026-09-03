@@ -1,0 +1,126 @@
+{
+  "schema": "stocks_free_v3/blind_input_packet@1",
+  "frozen_at_utc": "2026-09-03T12:00:00Z",
+  "producer_role": "A1",
+  "blinding": "This packet deliberately excludes: any V2 arm PnL/return table, any per-ETF performance ranking, any winning-period diagnostics, any scored ranking. It contains only mechanism-level lessons, contracts and constraints.",
+  "market_and_data": {
+    "asset_class": "US_ETF_CASH (long/cash only; no short leg without separate PIT borrow authority)",
+    "cohort": ["SPY", "XLK", "XLE", "XLF", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE"],
+    "available_fields": [
+      "daily raw OHLCV per ETF (provider daily bar, regular session)",
+      "daily volume",
+      "official split factors (per issuer/agent records)",
+      "official cash-distribution records (per issuer/agent records)",
+      "issuer total-return reconstruction inputs (raw + distributions + splits)",
+      "US-equity regular-session trading calendar (US_EQUITY_REGULAR_V1)"
+    ],
+    "forbidden_fields": [
+      "earnings dates or surprise data",
+      "analyst estimates/revisions",
+      "borrow availability or short interest",
+      "intraday quotes/spreads/bid-ask",
+      "fundamentals (AUM, expense ratio beyond static knowledge, holdings)",
+      "institutional flow (13F etc.)",
+      "options/futures data"
+    ],
+    "provider_terms": "existing Twelve Data Basic USD 0 account only; no new accounts, no paid data, no network fetch during the cycle; raw payloads never committed"
+  },
+  "windows_and_folds": {
+    "warmup": {"start": "2018-01-02", "end": "2018-04-03", "sessions": 63},
+    "S0": {"start": "2018-04-04", "end": "2025-07-31", "role": "screening window, NOT untouched OOS"},
+    "folds": [
+      {"fold_id": "S0_FOLD_1", "start": "2018-04-04", "end": "2020-09-09", "scored_end": "2020-09-01", "purge_sessions": 5},
+      {"fold_id": "S0_FOLD_2", "start": "2020-09-10", "end": "2023-02-16", "scored_end": "2023-02-09", "purge_sessions": 5},
+      {"fold_id": "S0_FOLD_3", "start": "2023-02-17", "end": "2025-07-31", "scored_end": "2025-07-24", "purge_sessions": 5}
+    ],
+    "S1": {"start": "2025-08-01", "end": "2026-07-31", "status": "SEALED_UNTOUCHED - never read for proposal choice, tuning, scoring or diagnostics"},
+    "pit_clock": "features use completed sessions only; a signal computed from data through session T is executable at the NEXT session's event; no same-session look-ahead"
+  },
+  "constraints": {
+    "books": "deterministic long/cash target weights; explicit CASH leg allowed and handled canonically (CASH never counted in tradable-leg turnover)",
+    "base_costs": "10 bps per side (2 spread + 3 slippage + 2 ops buffer + 3 execution allowance) on ETF turnover",
+    "stress_costs": "2x base = 20 bps per side",
+    "turnover_feasibility_ceiling": "6.0x two-way per year, measured schedule-only before scoring",
+    "capacity": "daily ETF cohort, no capacity claim beyond schedule feasibility; no leverage; gross exposure <= 1.0",
+    "corporate_actions": "distributions reinvest via issuer-TR path for accounting; fills at raw prices; splits via official factors"
+  },
+  "benchmark_and_alpha_contract": {
+    "benchmarks_frozen_before_scoring": [
+      "flat (0.0 return) as the hard benchmark",
+      "SPY total return",
+      "equal-weight sector ETF total return (10 sector ETFs, SPY excluded)",
+      "risk-matched SPY context scaled EX ANTE by the arm's frozen gross/vol rule"
+    ],
+    "incremental_mechanism_alpha": "defined separately from raw PnL: after-cost strategy return minus the risk-matched SPY benchmark return per fold; a family cannot pass merely because long equity beta rose; anchor must show positive risk-matched excess in >=2/3 folds and positive incremental mechanism alpha",
+    "beta_falsification": "every family must include a causal negative control able to separate the mechanism from market/sector beta; a control that reproduces the anchor falsifies the mechanism"
+  },
+  "stage_a_gates_preregistered": [
+    "after-cost expectancy > 0",
+    "position profit factor >= 1.10",
+    "at least 2/3 folds positive expectancy",
+    "no populated fold PF < 0.80",
+    "max drawdown <= 15% per fold maximum",
+    "per-arm largest positive-fold share <= 50% (per-arm positive fold contribution / same arm's total positive fold contribution)",
+    "no single ETF contributes > 35% of positive PnL/risk",
+    "sufficient decisions/positions for the family's frozen clock across all folds",
+    "stress PnL > 0 and stress PF >= 1.00 at 2x costs",
+    "realised turnover and capacity inside the frozen schedule gate",
+    "anchor risk-matched excess over SPY positive in >= 2/3 folds",
+    "anchor incremental mechanism alpha positive",
+    "neighbour supports the anchor mechanism direction",
+    "control shows opposite incremental-alpha sign OR absolute control alpha < 50% of absolute anchor alpha",
+    "drop-one-largest-held-ETF survival; drop-one-fold survival",
+    "exact independent reproduction",
+    "zero unresolved HIGH/CRITICAL audit objections"
+  ],
+  "budget": {
+    "max_families": 2,
+    "arms_per_family": 3,
+    "max_scored_base_cells": 6,
+    "historical_denominator": "6 prior Stocks observations; statistical claims need >=6 historical plus all computed V3 results or stay UNAVAILABLE_FAIL_CLOSED",
+    "note": "stress/drop-one diagnostics belong to their frozen base arm and create no extra trials"
+  },
+  "prior_mechanism_lessons": [
+    "in this 11-ETF cohort/window, market and sector beta explained nearly all of a top-ranked momentum anchor's return: the preregistered bottom-ranked control reproduced the anchor's expectancy almost exactly, falsifying the ranking mechanism",
+    "a trend/defensive rotation failed drawdown and drop-one robustness gates; its 'concentration unavailable' evidence was later proven a bookkeeping artifact, which changed the label but not the rejection",
+    "raw percentage PnL is not evidence: both prior families earned positive PnL while carrying no incremental edge over beta",
+    "fold-positive-share numbers must come from ONE consistent per-arm definition or they are unreproducible",
+    "sidecar accounting must equal canonical harness valuation; CASH is not a tradable leg; costs are charged exactly once",
+    "issuer distributions and provider adjust=all conflicted on five 2025-12-05 2:1 splits; issuer-TR reconstruction is the accounting authority"
+  ],
+  "forbidden_ancestry": {
+    "mechanism_families_closed": [
+      "cross-sectional relative momentum over sector ETFs (any lookback, any top-K, any subset)",
+      "time-series trend / SMA / EMA / vol-targeted defensive rotation (any variant)",
+      "rescue of any selected-ETF subset chosen after observing outcomes",
+      "any strategy whose expected profit is simply long SPY/sector beta",
+      "earnings, fundamentals, borrow, institutional-flow or quote-spread mechanisms without current PIT data",
+      "daily-indicator grids without a distinct economic mechanism",
+      "anything requiring new accounts, paid data or network fetch"
+    ],
+    "note": "the full family inventory with reasons is in research/control/stocks_free_v3_run/forbidden_family_inventory.json ( Stocks and prior crypto ancestry for novelty only)"
+  },
+  "proposal_requirements": [
+    "primary-source claim (citable academic/issuer/exchange documentation) and the ETF-market mechanism",
+    "expected counterparty and a falsifiable expected sign",
+    "required fields and their PIT availability",
+    "universe, formation, holding, decision and execution clocks",
+    "long/cash target construction and cash semantics",
+    "turnover, capacity, cost and distribution/split handling",
+    "expected behaviour against all four benchmarks",
+    "anchor + theoretically justified neighbour + causal negative control (distinct identities)",
+    "incremental mechanism test that distinguishes alpha from equity beta",
+    "drop-one-ETF and drop-one-fold expectations",
+    "exact falsification rule and implementation estimate",
+    "ancestry comparison showing it is not a rescue of a closed family"
+  ],
+  "priority_search_spaces_not_mandatory": [
+    "month-end/quarter-end institutional rebalancing seasonality",
+    "overnight-gap versus intraday-return decomposition",
+    "idiosyncratic sector-shock reversal with market return removed before ranking",
+    "sector dispersion/breadth state transitions",
+    "volume/liquidity seasonality from daily OHLCV",
+    "volatility-event recovery with predeclared event and holding clocks"
+  ],
+  "hard_rule": "proposal agents compute NO returns, PnL, profit factor, Sharpe, rankings or correlations on the scored S0 window; proposals are documents only"
+}
