@@ -1,0 +1,49 @@
+Z1 A3 download log (official SSGA SPY files) — captured 2026-09-03, no
+account, no credentials, no payment; plain curl with a browser UA.
+
+# probes
+curl -sS -o spy_page.html -w "HTTP %{http_code} final_url=%{url_effective}\n" -L \
+  -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36" \
+  "https://www.ssga.com/us/en/intermediary/etfs/spdr-sp-500-etf-trust-spy"
+-> HTTP 200 final_url=https://www.ssga.com/us/en/intermediary/etfs/state-street-spdr-sp-500-etf-trust-spy
+   (page reached via 301 from the spdr-sp-500-etf-trust-spy slug)
+
+xlsx links found on the official fund page:
+  /library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx
+  /library-content/products/fund-data/etfs/us/navhist-us-en-spy.xlsx          <- NAV history
+  /library-content/products/fund-data/etfs/us/pdhist-us-en-spy.xlsx           <- Premium/Discount (NOT distributions)
+  /library-content/products/fund-data/etfs/us/spdr-product-data-us-en.xlsx
+
+distribution history located via the fund page's dividend section ->
+  https://www.ssga.com/us/en/intermediary/resources/documents/etf-dividend-distributions
+  which links: /library-content/products/fund-data/etfs/us/spdr-etf-historical-distributions.xlsx
+
+# downloads (pull 1, 2026-09-03T03:52-04:08Z)
+curl -sS -o navhist-us-en-spy.xlsx -w "... HTTP %{http_code} bytes=%{size_download}\n" -L -A "$UA" \
+  "https://www.ssga.com/library-content/products/fund-data/etfs/us/navhist-us-en-spy.xlsx"
+-> HTTP 200 bytes=276544 application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+curl -sS -o spdr-etf-historical-distributions.xlsx ... -L -A "$UA" \
+  "https://www.ssga.com/library-content/products/fund-data/etfs/us/spdr-etf-historical-distributions.xlsx"
+-> HTTP 200 bytes=575400 application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+also fetched (disambiguation evidence only):
+  pdhist-us-en-spy.xlsx -> HTTP 200 bytes=30074 (Premium/Discount history, NOT distributions)
+
+# sha256 pull 1 (2026-09-03T03:53Z / 04:07Z)
+5e055d2239eb72ec3c6f193aa17d21f43d50083c7d32471561f249c31fa1fcbc  navhist-us-en-spy.xlsx
+1b952f87ca60ece4080b446d6c3b580f640d893ed33641797a2dd22dd61beca9  spdr-etf-historical-distributions.xlsx
+0b1e518d8dd93875fbb7f99290da628cc0f39ad71aa80b1ff85a6091588e0c7b  pdhist-us-en-spy.xlsx
+
+# two-pull determinism (pull 2, 2026-09-03T04:28:13Z)
+5e055d2239eb72ec3c6f193aa17d21f43d50083c7d32471561f249c31fa1fcbc  pull2-navhist-us-en-spy.xlsx
+1b952f87ca60ece4080b446d6c3b580f640d893ed33641797a2dd22dd61beca9  pull2-spdr-etf-historical-distributions.xlsx
+-> IDENTICAL sha256 on both pulls
+
+# failed guesses recorded (all 404, no silent substitution)
+disthst / disthist / distribution(s) / divhst / divhist / dist / pdhst -us-en-spy.xlsx -> 404
+https://www.ssga.com/us/en/intermediary/library-content/products/fund-detail/etf/us/en/spy.xlsx -> 404
+https://www.ssga.com/bin/v1/ssmp/fund/detail?... -> 404 ; fundfinder -> 400
+
+# raw files staged OUTSIDE Git at
+/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v1/staging-cohort/
