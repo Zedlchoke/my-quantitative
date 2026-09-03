@@ -1,0 +1,617 @@
+{
+  "schema": "forex_f2_a7_novelty_audit_v1",
+  "measured_at_utc": "2026-09-03T00:25:38Z",
+  "auditor": "A7",
+  "role_scope": "Independent novelty and feasibility audit of the frozen F2 forex proposal pool. Audit artifact only: no proposal repairs, no production-code edits, no family selection, no ranking, no scored anything. Verdicts are evidence for a later selection freeze, not the selection itself.",
+  "bootstrap_sha": "4b9ee91ef6c38af1cce6b0a6c68d52a27bb38c7e",
+  "branch": "orca/forex-f3-a7-audit",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex/f3-a7-audit",
+  "bootstrap_verification": {
+    "head_matches_bootstrap_sha": true,
+    "branch_matches": true,
+    "git_status_porcelain_empty": true
+  },
+  "input_integrity": {
+    "pool_file": "research/control/forex_run/f2_proposal_pool.json",
+    "pool_wave_sha": "aba863ebc057e2e74299b0bf2618661300cf8d47",
+    "pool_wave_sha_is_ancestor_of_audit_head": true,
+    "proposal_sha256_recomputed_and_matched": [
+      "FX2-A3-P1",
+      "FX2-A3-P2",
+      "FX2-A4-P1",
+      "FX2-A4-P2",
+      "FX2-A5-P1",
+      "FX2-A5-P2"
+    ],
+    "digest_mismatches": []
+  },
+  "audit_input_limitations": [
+    "results/registry/experiments.jsonl does not exist at bootstrap SHA 4b9ee91 (checked by find across the worktree); the crypto-family history was instead taken from NOTES.md sections 19-21 and research/wayfinder/MAP.md, both present at the bootstrap SHA. Family names and mechanisms only; PnL values in that evidence were not used.",
+    "WebSearch was used sparingly (3 searches total) to spot-check the single most load-bearing, least-canonical source for A4-P1, A4-P2 and A5-P2; all other literature entries were graded on internal bibliographic consistency (venue/year/author/claim patterns) without search.",
+    "Clock-arithmetic objections (OBJ-A5P2-01, OBJ-A4P1-01, OBJ-A4P2-01) were verified programmatically with zoneinfo tzdb (Europe/London, America/New_York, Asia/Tokyo; 2025-2026 rules). This is calendar arithmetic on preregistered window definitions, not candidate-return computation."
+  ],
+  "proposals": [
+    {
+      "proposal_id": "FX2-A3-P1",
+      "lane": "a3_data",
+      "path": "research/proposals/forex/a3_data/proposal_1.json",
+      "sha256": "79173b1eb66bfb6219f7e121410088357caf0865a7ef80ef2071bc33c6ca5123",
+      "mechanism_name": "Session-boundary liquidity-cycle premium (DST-correct New York rollover window)",
+      "contract_completeness": {
+        "complete": true,
+        "checked_fields": {
+          "economic_mechanism": "PRESENT_NON_EMPTY",
+          "expected_counterparty": "PRESENT_NON_EMPTY",
+          "signal_fields_and_publication_clock": "PRESENT_NON_EMPTY",
+          "formation_holding_rebalance": "PRESENT_NON_EMPTY",
+          "pair_universe_and_neutralization": "PRESENT_NON_EMPTY",
+          "expected_spread_rollover_turnover": "PRESENT_NON_EMPTY",
+          "anchor_neighbour_negative_control": "PRESENT_NON_EMPTY",
+          "expected_regimes_and_falsification": "PRESENT_NON_EMPTY",
+          "macro_session_external_validity_risks": "PRESENT_NON_EMPTY",
+          "exact_trial_count": "PRESENT (2) with no-post-score-replacement note"
+        },
+        "missing_fields": []
+      },
+      "prohibited_shortcut_scan": {
+        "rsi_ema_grids_without_mechanism": "CLEAN (no indicator parameters; single ex-ante dealer-convention boundary)",
+        "single_provider_volume_as_global": "CLEAN (no volume field used; feed scoped to one dealer panel)",
+        "carry_from_todays_rate_historically": "CLEAN (no rate input; rollover requires authoritative schedule, declared UNAVAILABLE)",
+        "session_filters_from_profitable_hours": "CLEAN (window fixed ex ante from dealer convention; +6h and DST-naive controls pre-registered)",
+        "midpoint_labeled_executable": "CLEAN (executable claims require bid/ask fills; midpoint DIAGNOSTIC_ONLY)"
+      },
+      "data_availability_honesty": {
+        "honest": true,
+        "mismatches": [],
+        "notes": [
+          "bid/ask graded UNAVAILABLE 0/7 (matches data_manifest quote_bid_ask_coverage)",
+          "rollover/swap authority graded UNAVAILABLE blocking (matches rollover_manifest BLOCKED_NO_BROKER_SCHEDULE)",
+          "holiday tables graded SYNTHETIC_TEST_ONLY (matches session_calendar_manifest authority_status)",
+          "zoneinfo DST graded AVAILABLE (sessions.py and tests/assets/forex/test_sessions_dst.py exist at bootstrap)",
+          "PIT macro vintages declared not a dependency (consistent with thesis)"
+        ]
+      },
+      "source_authority": {
+        "unverified_load_bearing_claims": [],
+        "fabrication_pattern_detected": false,
+        "notes": "All four sources are canonical and bibliographically consistent (Andersen-Bollerslev 1997 JEmpFin 4(2-3) 115-158; Bollerslev-Domowitz 1993 JF 48(4); Chaboud-Chiquoine-Hjalmarsson-Vega 2014 JF 69(5) 2045-2084; BIS Triennial 2022). No search needed; no unverified load-bearing claim found."
+      },
+      "outcome_blind": true,
+      "mechanism_coherence": {
+        "negative_control_destroys_mechanism": true,
+        "notes": "C1 (+6h shift) verified to land in the deep Asia pre-open lull (18:45-19:45 UTC; 03:45 JST), genuinely event-free as claimed. C2 (DST-naive fixed UTC-5 placement) predictably attenuates the boundary alignment exactly in EDT months - a proper destruction test. Neighbour (GBPUSD, identical rule) is an adjacent design, not a second anchor.",
+        "falsification_falsifiable_in_practice": true
+      },
+      "verdict": "CONDITIONAL_ON_OWNER_DATA",
+      "worst_objection_severity": "LOW",
+      "objections": [
+        {
+          "id": "OBJ-A3P1-01",
+          "severity": "LOW",
+          "area": "counterparty_framing",
+          "statement": "The counterparty narrative says the arm 'stands as the small liquidity provider' opposite boundary-forced flow, but the execution model enters/exits with marketable fills at bar close and therefore PAYS the widened window spread as a liquidity taker. The testable claim (window drift premium net of the widest daily spreads) remains coherent; only the provider framing is overstated.",
+          "evidence": "proposal_1.json economic_mechanism and expected_counterparty vs formation_holding_rebalance (enter 16:45 / exit 17:45 bar close with bid/ask fills)"
+        },
+        {
+          "id": "OBJ-A3P1-02",
+          "severity": "LOW",
+          "area": "data_granularity",
+          "statement": "Requires tick or <=1-minute quotes; the repo floor and PLAN section 1 default is a 1h base event clock (1m/2m HFT is out of scope, which this is not, but the data entitlement is finer than the stated floor). Must be named explicitly in the owner data authorization.",
+          "evidence": "signal_fields[0]; PLAN_forex.md section 1; data_manifest (no FX data at any granularity)"
+        }
+      ],
+      "owner_data_required_for_selection": [
+        "tick or <=1-minute bid/ask history for EURUSD and GBPUSD (>= 8 years preferred), owner-authorized provider or documented Parquet",
+        "authoritative historical rollover/swap schedule for the boundary-straddling daily round trips",
+        "authoritative per-currency holiday tables (for thin-session description; currently SYNTHETIC_TEST_ONLY)"
+      ]
+    },
+    {
+      "proposal_id": "FX2-A3-P2",
+      "lane": "a3_data",
+      "path": "research/proposals/forex/a3_data/proposal_2.json",
+      "sha256": "5066f0a914775d898ab7d37fcccf0009dfb200af1876e642b98d23da953dd911",
+      "mechanism_name": "Cross-sectional relative-spread scarcity signal (quote-dynamics liquidity imbalance)",
+      "contract_completeness": {
+        "complete": true,
+        "checked_fields": {
+          "economic_mechanism": "PRESENT_NON_EMPTY",
+          "expected_counterparty": "PRESENT_NON_EMPTY",
+          "signal_fields_and_publication_clock": "PRESENT_NON_EMPTY (incl. prohibited_information declaration)",
+          "formation_holding_rebalance": "PRESENT_NON_EMPTY",
+          "pair_universe_and_neutralization": "PRESENT_NON_EMPTY",
+          "expected_spread_rollover_turnover": "PRESENT_NON_EMPTY",
+          "anchor_neighbour_negative_control": "PRESENT_NON_EMPTY",
+          "expected_regimes_and_falsification": "PRESENT_NON_EMPTY",
+          "macro_session_external_validity_risks": "PRESENT_NON_EMPTY",
+          "exact_trial_count": "PRESENT (2) with no-post-score-replacement note"
+        },
+        "missing_fields": []
+      },
+      "prohibited_shortcut_scan": {
+        "rsi_ema_grids_without_mechanism": "CLEAN (63-day window, 1-vs-7 quantile and 72h hold fixed ex ante from mechanism)",
+        "single_provider_volume_as_global": "CLEAN and explicitly inverted (no volume; panel scoped to one dealer)",
+        "carry_from_todays_rate_historically": "CLEAN (no rate input)",
+        "session_filters_from_profitable_hours": "CLEAN (17:00 ET formation and same-clock-hour conditioning fixed ex ante; +180d placebo exposes timing selection)",
+        "midpoint_labeled_executable": "CLEAN (spread state uses bid/ask by construction)"
+      },
+      "data_availability_honesty": {
+        "honest": true,
+        "mismatches": [],
+        "notes": [
+          "7-pair aligned bid/ask panel graded UNAVAILABLE 0/7 (matches data_manifest)",
+          "rollover graded UNAVAILABLE blocking for 72h accounting (matches rollover_manifest)",
+          "holidays SYNTHETIC_TEST_ONLY; zoneinfo AVAILABLE; PIT macro declared not a dependency with event-day robustness declared untestable rather than benign"
+        ]
+      },
+      "source_authority": {
+        "unverified_load_bearing_claims": [],
+        "fabrication_pattern_detected": false,
+        "notes": "Mancini-Ranaldo-Wrampelmeyer 2013 (JF 68(5) 1805-1841) is correctly cited and bibliographically consistent with known records; the proposal honestly self-flags that the published-version DOI string was not independently verified in its session. Bessembinder 1994 (JFE 35(3) 317-348), Bollerslev-Domowitz 1993 and BIS 2022 are canonical and consistent. The load-bearing claim (FX spread liquidity commonality + priced liquidity risk) rests on a verified, canonical literature."
+      },
+      "outcome_blind": true,
+      "mechanism_coherence": {
+        "negative_control_destroys_mechanism": true,
+        "notes": "The +180-day temporal-shift placebo genuinely destroys timestamp alignment between the spread state and evaluation returns, and the proposal treats placebo survival as falsification (price-led contamination), so it is a true destruction control. Caveat recorded as OBJ-A3P2-01: the control errs conservative (can only force false rejection, never false acceptance), because a persistent cross-sectional scarcity ordering survives the shift.",
+        "falsification_falsifiable_in_practice": true
+      },
+      "verdict": "CONDITIONAL_ON_OWNER_DATA",
+      "worst_objection_severity": "LOW",
+      "objections": [
+        {
+          "id": "OBJ-A3P2-01",
+          "severity": "LOW",
+          "area": "control_power",
+          "statement": "The +180-day shift preserves each pair's persistent cross-sectional spread ordering, so if the genuine mechanism has a slow-moving relative-spread component the placebo will retain much of the signal and force a false destruction. The error direction is conservative (no false acceptance), but the freeze should expect the placebo to be a biased-toward-rejection gate, not a neutral one.",
+          "evidence": "negative_control.definition (shift preserves unconditional distribution, periodicity, autocorrelation envelope); signal defined on relative (panel-median-subtracted) spread z-scores"
+        },
+        {
+          "id": "OBJ-A3P2-02",
+          "severity": "LOW",
+          "area": "data_granularity",
+          "statement": "Requires 1-minute aligned bid/ask for all 7 pairs - finer than the 1h repo floor; must be named in the owner authorization.",
+          "evidence": "signal_fields[0]; data_manifest quote_bid_ask_coverage 0/7"
+        }
+      ],
+      "owner_data_required_for_selection": [
+        "aligned 1-minute (or tick) bid/ask panel for all 7 G10-USD pairs, owner-authorized",
+        "authoritative historical rollover/swap schedule for 72h hold accounting",
+        "authoritative per-currency holiday tables"
+      ]
+    },
+    {
+      "proposal_id": "FX2-A4-P1",
+      "lane": "a4_calendar",
+      "path": "research/proposals/forex/a4_calendar/proposal_1.json",
+      "sha256": "457077675e2431bd5d9bda8231a0258c298a208f03e9a6a17a76177e7d4cc832",
+      "mechanism_name": "DST desynchronization of the London-New York overlap: a session-clock liquidity-provision premium",
+      "contract_completeness": {
+        "complete": true,
+        "checked_fields": {
+          "economic_mechanism": "PRESENT_NON_EMPTY",
+          "expected_counterparty": "PRESENT_NON_EMPTY",
+          "signal_fields_and_publication_clock": "PRESENT_NON_EMPTY (incl. prohibited_clock_check)",
+          "formation_holding_rebalance": "PRESENT_NON_EMPTY",
+          "pair_universe_and_neutralization": "PRESENT_NON_EMPTY (object with universe + two declared neutralization methods)",
+          "expected_spread_rollover_turnover": "PRESENT_NON_EMPTY",
+          "anchor_neighbour_negative_control": "PRESENT_NON_EMPTY",
+          "expected_regimes_and_falsification": "PRESENT_NON_EMPTY (incl. no_post_score_replacement)",
+          "macro_session_external_validity_risks": "PRESENT_NON_EMPTY",
+          "exact_trial_count": "PRESENT (3 primary scored trials, enumerated, no_post_score_replacement=true)"
+        },
+        "missing_fields": []
+      },
+      "prohibited_shortcut_scan": {
+        "rsi_ema_grids_without_mechanism": "CLEAN (single preregistered window/label; no grid authorized)",
+        "single_provider_volume_as_global": "CLEAN (volume never used)",
+        "carry_from_todays_rate_historically": "CLEAN (no rates; no swap accrual by construction)",
+        "session_filters_from_profitable_hours": "CLEAN (D labels and window from IANA tzdb rules, preregistered)",
+        "midpoint_labeled_executable": "CLEAN (side-specific bid/ask required; midpoint diagnostics-only)"
+      },
+      "data_availability_honesty": {
+        "honest": true,
+        "mismatches": [],
+        "notes": [
+          "1h bid/ask 8y graded UNAVAILABLE 0/7 fail-closed (matches data_manifest)",
+          "tzdb graded AVAILABLE and is correctly identified as the only load-bearing field that exists today (verified: research/assets/forex/sessions.py, tests/assets/forex/test_sessions_dst.py)",
+          "provider session convention graded UNAVAILABLE pending freeze; holidays SYNTHETIC_TEST_ONLY",
+          "'rollover not required' claim verified TRUE by construction: the [08:00,12:00] America/New_York window can never contain the 17:00 America/New_York boundary"
+        ]
+      },
+      "source_authority": {
+        "unverified_load_bearing_claims": [],
+        "fabrication_pattern_detected": false,
+        "notes": "Ranaldo 2009 spot-checked by search and VERIFIED exactly as cited (Journal of Banking and Finance 33, 2199-2206; SNB WP 2007-03; ZORA record matches). Kamstra-Kramer-Levi 2000 AER 90(4) 1005-1011 and Andersen-Bollerslev-Diebold-Vega 2003 AER 93(1) 38-62 are canonical and consistent; the DST-anomaly source is explicitly demoted to motivation-only with contested replications declared. BIS 2022 turnover shares consistent with the published survey."
+      },
+      "outcome_blind": true,
+      "mechanism_coherence": {
+        "negative_control_destroys_mechanism": true,
+        "notes": "The mislabeled-clock placebo is deterministic and fully specified ex ante (true D-state of every placebo day is known at freeze) - directionally a valid destruction design, but its power is degraded in the March gap (OBJ-A4P1-02). Neighbour (identical basket/window on synchronized adjacent weeks) is a justified adjacent design isolating the desync variable.",
+        "falsification_falsifiable_in_practice": true
+      },
+      "verdict": "CONDITIONAL_ON_OWNER_DATA",
+      "worst_objection_severity": "MEDIUM",
+      "objections": [
+        {
+          "id": "OBJ-A4P1-01",
+          "severity": "MEDIUM",
+          "area": "signal_field_arithmetic",
+          "statement": "The preregistered signal gloss claims 'spring gap gives D=+4h, autumn gap gives D=+6h' for D = tz_offset(Europe/London) - tz_offset(America/New_York). Programmatic tzdb check over 2025-2026: D takes only +4h (28 days/year across both gaps) and +5h (all other days); D=+6h NEVER occurs for this zone pair. The desync DETECTOR (D != +5h) remains valid and the day-sets are unaffected, but a factual claim inside the preregistered signal definition is arithmetically wrong and must be restated from tzdb at freeze.",
+          "evidence": "signal_fields[0] in proposal_1.json vs zoneinfo computation (Europe/London vs America/New_York, daily 2025-2026: D=+4h on 56 days, D=+5h on 674 days, D=+6h on 0 days)"
+        },
+        {
+          "id": "OBJ-A4P1-02",
+          "severity": "MEDIUM",
+          "area": "control_power",
+          "statement": "The +/-1-week label-shift placebo is contaminated in the March gap: the gap lasts ~2-3 weeks, so a placebo day-set shifted by one week still contains a majority of genuinely desynchronized days, making the March placebo partially active exactly where the mechanism predicts the strongest effect. The destruction criterion ('anchor-like performance in any placebo arm') can therefore be ambiguous in March; the autumn placebo (~1-week gap) is cleaner. Freeze should expect the placebo verdict to lean on the autumn gap or re-specify placebo day-sets BEFORE any outcome cell is computed (a freeze-time act, not an A7 repair).",
+          "evidence": "negative_control.definition (label shifted one week each direction) vs expected formation frequency 'roughly 10 trading days around the March gap' (gap ~2-3 weeks per tzdb switch rules)"
+        }
+      ],
+      "owner_data_required_for_selection": [
+        "1h bid/ask history >= 8 years for all 7 pairs with UTC event/ingest timestamps, owner-authorized provider",
+        "provider-documented session wall-time convention to reconcile the preregistered [08:00,12:00] America/New_York window at freeze",
+        "authoritative per-currency holiday tables for holiday-week exclusions (currently SYNTHETIC_TEST_ONLY)"
+      ]
+    },
+    {
+      "proposal_id": "FX2-A4-P2",
+      "lane": "a4_calendar",
+      "path": "research/proposals/forex/a4_calendar/proposal_2.json",
+      "sha256": "075b3713aaeb63fab4ff4e4a40c0f765bd1107f344c99e65feab96cffa5e873b",
+      "mechanism_name": "Pre-release liquidity-withdrawal premium: scheduled-macro-release timing in USD pairs, anchored on the New York rollover clock",
+      "contract_completeness": {
+        "complete": true,
+        "checked_fields": {
+          "economic_mechanism": "PRESENT_NON_EMPTY",
+          "expected_counterparty": "PRESENT_NON_EMPTY",
+          "signal_fields_and_publication_clock": "PRESENT_NON_EMPTY (incl. prohibited_clock_check)",
+          "formation_holding_rebalance": "PRESENT_NON_EMPTY",
+          "pair_universe_and_neutralization": "PRESENT_NON_EMPTY (incl. preregistered currency-neutral decomposition arm)",
+          "expected_spread_rollover_turnover": "PRESENT_NON_EMPTY",
+          "anchor_neighbour_negative_control": "PRESENT_NON_EMPTY",
+          "expected_regimes_and_falsification": "PRESENT_NON_EMPTY (incl. no_post_score_replacement)",
+          "macro_session_external_validity_risks": "PRESENT_NON_EMPTY (leads with the hard data blocker)",
+          "exact_trial_count": "PRESENT (3 primary scored trials, enumerated, no_post_score_replacement=true)"
+        },
+        "missing_fields": []
+      },
+      "prohibited_shortcut_scan": {
+        "rsi_ema_grids_without_mechanism": "CLEAN (single preregistered configuration; no offset/duration grid authorized)",
+        "single_provider_volume_as_global": "CLEAN (spread read as feed-scoped diagnostic/cost, never a global quantity)",
+        "carry_from_todays_rate_historically": "CLEAN (no rate input; rollover treated as a measured cost requiring an authoritative schedule, absence declared a blocker)",
+        "session_filters_from_profitable_hours": "CLEAN (windows from official agency calendars, preregistered)",
+        "midpoint_labeled_executable": "CLEAN (side-specific fills required; fails closed without bid/ask)"
+      },
+      "data_availability_honesty": {
+        "honest": true,
+        "mismatches": [],
+        "notes": [
+          "Release timestamps correctly graded UNAVAILABLE in repo and treated as the primary blocker; the distinction drawn (timestamps are public deterministic calendar facts; macro vintages/printed values remain unavailable AND unused) is honest and consistent with data_manifest (which contains no release-calendar authority)",
+          "1h bid/ask graded UNAVAILABLE 0/7; rollover/swap schedule graded UNAVAILABLE and correctly elevated to a hard requirement because windows cross the 17:00 boundary; holidays SYNTHETIC_TEST_ONLY; zoneinfo AVAILABLE"
+        ]
+      },
+      "source_authority": {
+        "unverified_load_bearing_claims": [],
+        "fabrication_pattern_detected": false,
+        "notes": "Antolin-Diaz, Cenedese, Han, Sarno (2023) spot-checked by search and VERIFIED exactly as cited (SSRN 4565111; MIT Sloan WP 7313-23; R&R at Review of Financial Studies). Lucca-Moench 2015 (JF 70(1) 329-371) is canonical; the proposal honestly self-flags the exact DOI string as UNVERIFIED while confirming existence and bibliographic location - acceptable, and the claim is used as cross-asset motivation, not as an FX result. Andersen-Bollerslev-Diebold-Vega 2003 AER 93(1) 38-62 and BIS 2022 are canonical and consistent."
+      },
+      "outcome_blind": true,
+      "mechanism_coherence": {
+        "negative_control_destroys_mechanism": true,
+        "notes": "The T+65min post-release placebo holds identical risk on identical days after the event is resolved, so scheduled-event inventory compensation cannot operate there - a valid destruction control (grounded in the Andersen et al. price-discovery window). The matched non-release-day neighbour cleanly separates the claim from generic overnight/rollover drift.",
+        "falsification_falsifiable_in_practice": true
+      },
+      "verdict": "CONDITIONAL_ON_OWNER_DATA",
+      "worst_objection_severity": "LOW",
+      "objections": [
+        {
+          "id": "OBJ-A4P2-01",
+          "severity": "LOW",
+          "area": "cost_accounting_arithmetic",
+          "statement": "The proposal states FOMC windows 'cross two' 17:00 boundaries and 08:30 windows 'exactly one'. Programmatic check (e.g. release Wed 2026-03-18 14:00 NY): formation = Tue 17:00, exit Wed 13:55, duration 20.9h, and exactly ONE 17:00 boundary instant is touched (the entry). FOMC and 08:30 windows each hold through exactly one boundary. The error OVERSTATES FOMC rollover cost (conservative direction) but the cost identity must be restated at freeze.",
+          "evidence": "formation_holding_rebalance and expected_rollover in proposal_2.json vs zoneinfo boundary walk"
+        },
+        {
+          "id": "OBJ-A4P2-02",
+          "severity": "LOW",
+          "area": "historical_gloss",
+          "statement": "'FOMC statement time moved to 14:00 with the 2011 presser-cycle conventions' conflates two dates: press conferences began April 2011; the statement time moved to 14:00 ET in January 2013. The declared mitigation (record per-event official time from the agency calendar) fully covers this, so severity is LOW.",
+          "evidence": "signal_fields_and_publication_clock.publication_clock in proposal_2.json"
+        }
+      ],
+      "owner_data_required_for_selection": [
+        "owner-authorized PIT ingest of official scheduled release timestamps (BLS NFP/CPI schedules, Board of Governors FOMC calendar) with per-event official wall time in force",
+        "1h bid/ask history >= 8 years for all 7 pairs, owner-authorized provider",
+        "authoritative rollover/swap schedule with long/short asymmetry, triple-roll and holiday adjustments (hard requirement: windows cross the 17:00 boundary)"
+      ]
+    },
+    {
+      "proposal_id": "FX2-A5-P1",
+      "lane": "a5_cost",
+      "path": "research/proposals/forex/a5_cost/proposal_1.json",
+      "sha256": "999ea86819eb8afb24cdba7b207d282b082242a0754d662323158f0a73d0c04e",
+      "mechanism_name": "Point-in-time rate-differential carry with dollar-neutral construction, volatility targeting, and explicit financing/cost accounting",
+      "contract_completeness": {
+        "complete": true,
+        "checked_fields": {
+          "economic_mechanism": "PRESENT_NON_EMPTY (financing economics declared as the mechanism, not a deduction)",
+          "expected_counterparty": "PRESENT_NON_EMPTY",
+          "signal_fields_and_publication_clock": "PRESENT_NON_EMPTY (string form; includes PIT requirement, fix-timestamp lag rule, and availability honesty)",
+          "formation_holding_rebalance": "PRESENT_NON_EMPTY",
+          "pair_universe_and_neutralization": "PRESENT_NON_EMPTY",
+          "expected_spread_rollover_turnover": "PRESENT_NON_EMPTY (incl. declared net-viability condition)",
+          "anchor_neighbour_negative_control": "PRESENT_NON_EMPTY",
+          "expected_regimes_and_falsification": "PRESENT_NON_EMPTY",
+          "macro_session_external_validity_risks": "PRESENT_NON_EMPTY (7 numbered risks incl. benchmark transition)",
+          "exact_trial_count": "PRESENT (4, enumerated arm-by-arm, with no_post_score_replacement statement)"
+        },
+        "missing_fields": []
+      },
+      "prohibited_shortcut_scan": {
+        "rsi_ema_grids_without_mechanism": "CLEAN (no indicator tuning; hysteresis band bounds turnover without a searched grid)",
+        "single_provider_volume_as_global": "CLEAN (no volume used)",
+        "carry_from_todays_rate_historically": "CLEAN - explicitly and correctly handled: the mechanism definitionally requires PIT rate vintages, declared UNAVAILABLE, and no non-PIT table may be substituted; falsification criterion (d) tests sensitivity to non-PIT rates",
+        "session_filters_from_profitable_hours": "CLEAN (no session filter exists)",
+        "midpoint_labeled_executable": "CLEAN (terminal close at executable bid/ask; mid-only is DIAGNOSTIC_ONLY and a falsification trigger)"
+      },
+      "data_availability_honesty": {
+        "honest": true,
+        "mismatches": [],
+        "notes": [
+          "PIT 3M/1M rate vintages graded UNAVAILABLE - correct; data_manifest contains no rate authority",
+          "bid/ask graded UNAVAILABLE 0/7; swap schedule graded UNAVAILABLE fail-closed (matches rollover_manifest)",
+          "holidays SYNTHETIC_TEST_ONLY; zoneinfo/A4 contracts IMPLEMENTED (verified on disk)",
+          "conversion-graph accounting graded IMPLEMENTED-as-contracts but historical accounting blocked on data - matches conversion_manifest (UNBUILT authority, fail-closed list)"
+        ]
+      },
+      "source_authority": {
+        "unverified_load_bearing_claims": [],
+        "fabrication_pattern_detected": false,
+        "notes": "Fama 1984 (JME 14(3) 319-338), Lustig-Roussanov-Verdelhan 2011 (RFS 24(11) 3731-3777) and Brunnermeier-Nagel-Pedersen 2008 (NBER Macroeconomics Annual 23, 313-348; NBER w14473) are canonical and bibliographically consistent as cited. No search needed; no unverified load-bearing claim."
+      },
+      "outcome_blind": true,
+      "mechanism_coherence": {
+        "negative_control_destroys_mechanism": true,
+        "notes": "Both controls are genuinely destructive: sign-flip reverses the accrual and puts crash exposure on the wrong side; rank-scramble severs the currency-rate pairing while preserving turnover/exposure/cost profile and must return ~zero net of costs. Neighbour (1M vs 3M tenor) is a justified cousin measuring the same risk-premium ordering, not a second anchor.",
+        "falsification_falsifiable_in_practice": true
+      },
+      "verdict": "CONDITIONAL_ON_OWNER_DATA",
+      "worst_objection_severity": "LOW",
+      "objections": [
+        {
+          "id": "OBJ-A5P1-01",
+          "severity": "LOW",
+          "area": "named_data_continuity",
+          "statement": "A continuous PIT 3M and 1M interbank/term series for 8 currency jurisdictions across the 8+ year sample must span the LIBOR -> risk-free-rate (SOFR/SONIA/ESTR/TONA-type) transition with declared vintages or declared sample splits. The proposal declares this risk (risk #1) but the owner authorization must explicitly name the transition handling, because a single authoritative tenor-continuous vintage series may not exist.",
+          "evidence": "macro_session_external_validity_risks item 1; required_pit_fields_with_availability entry 2"
+        },
+        {
+          "id": "OBJ-A5P1-02",
+          "severity": "LOW",
+          "area": "unpinned_parameter",
+          "statement": "The vol-targeting EWMA halflife is 'a declared halflife' but no numeric value is pinned in the JSON. Not a searched grid, but it must be a fixed number in the freeze before any outcome cell.",
+          "evidence": "formation_holding_rebalance: 'exposure scaled by PIT EWMA vol with a declared halflife, capped leverage'"
+        }
+      ],
+      "owner_data_required_for_selection": [
+        "owner-authorized PIT 3M and 1M rate vintages for USD, EUR, GBP, JPY, AUD, CAD, CHF, NZD with fix timestamps and revision history, including explicit LIBOR-transition handling",
+        "1h bid/ask history >= 8 years for all 7 pairs",
+        "authoritative broker/provider rollover-swap schedule (long/short, triple-roll, holiday rolls) - carry fails closed without it per PLAN section 9"
+      ],
+      "ancestry_attention": "MEDIUM-visibility: mechanism shape (financing-premium accrual, dollar-neutral factor, sign-flip control, crash-skew expectation) is adjacent to the REJECTED crypto V6 CARRY family (CARRY-1D/3D/7D, MAP.md) and to the funding-carry space generally. The adjacency is openly declared in ancestry_statement, the asset class/signal source/financing schedule are FX-native, and PLAN section 9 explicitly sanctions this priority space with authoritative rollover inputs. Not a hidden rescue; the selection freeze should record the distinction."
+    },
+    {
+      "proposal_id": "FX2-A5-P2",
+      "lane": "a5_cost",
+      "path": "research/proposals/forex/a5_cost/proposal_2.json",
+      "sha256": "377f264a18cf803db7c73ac7dca3a2529279b73c280b12400be2f2a3a1f9b97f",
+      "mechanism_name": "Fixing-and-rollover window risk premium: preregistered financing-hour USD exposure on DST-correct clocks",
+      "contract_completeness": {
+        "complete": true,
+        "checked_fields": {
+          "economic_mechanism": "PRESENT_NON_EMPTY",
+          "expected_counterparty": "PRESENT_NON_EMPTY",
+          "signal_fields_and_publication_clock": "PRESENT_NON_EMPTY (string form; includes availability honesty)",
+          "formation_holding_rebalance": "PRESENT_NON_EMPTY",
+          "pair_universe_and_neutralization": "PRESENT_NON_EMPTY",
+          "expected_spread_rollover_turnover": "PRESENT_NON_EMPTY",
+          "anchor_neighbour_negative_control": "PRESENT_NON_EMPTY - but the negative control is INVALID as specified (see OBJ-A5P2-01)",
+          "expected_regimes_and_falsification": "PRESENT_NON_EMPTY",
+          "macro_session_external_validity_risks": "PRESENT_NON_EMPTY (6 numbered risks)",
+          "exact_trial_count": "PRESENT (4, enumerated, with no_post_score_replacement statement)"
+        },
+        "missing_fields": [],
+        "note": "All declaration FIELDS are present and non-empty; the INELIGIBLE verdict rests on the invalidity of the required causal-negative-control element, not on a missing field."
+      },
+      "prohibited_shortcut_scan": {
+        "rsi_ema_grids_without_mechanism": "CLEAN (deterministic calendar membership)",
+        "single_provider_volume_as_global": "CLEAN (no volume data used; fixing-volume claim lives in cited literature)",
+        "carry_from_todays_rate_historically": "CLEAN (no interest rates anywhere)",
+        "session_filters_from_profitable_hours": "CLEAN (windows and placebo offset fixed from documented fixing times/mechanism reasoning before any PnL; direction preregistered from the documented pressure sign, which the verified Krohn-Mueller-Whelan result - USD appreciates into fixings - supports)",
+        "midpoint_labeled_executable": "CLEAN (executable ask/bid sides required; mid-only DIAGNOSTIC_ONLY)"
+      },
+      "data_availability_honesty": {
+        "honest": true,
+        "mismatches": [],
+        "notes": [
+          "bid/ask UNAVAILABLE 0/7; PIT fixing-convention history UNAVAILABLE (no such source in repo); swap schedule UNAVAILABLE and correctly scoped to variant B only; holidays SYNTHETIC_TEST_ONLY; finer-than-1h data honestly declared UNAVAILABLE and out of scope with no intrabar claims",
+          "zoneinfo IMPLEMENTED (verified on disk)"
+        ]
+      },
+      "source_authority": {
+        "unverified_load_bearing_claims": [],
+        "fabrication_pattern_detected": false,
+        "notes": "The single load-bearing source, Krohn-Mueller-Whelan 'Foreign Exchange Fixings and Returns Around the Clock', was spot-checked by search and VERIFIED exactly as cited (Journal of Finance 79(1), 541-578, 2024; DOI 10.1111/jofi.13306; SSRN 3521370). The paper's documented stylized fact - the USD appreciates in the run-up to FX fixings and depreciates thereafter - directly supports the preregistered USD-long-into-fixing direction. Andersen-Bollerslev 1997 is canonical. Cornett et al. 1995 (JFE) is honestly self-flagged as partially verified (lead author only) and is non-load-bearing background."
+      },
+      "outcome_blind": true,
+      "mechanism_coherence": {
+        "negative_control_destroys_mechanism": false,
+        "notes": "The preregistered +6h placebo does NOT remove the hypothesized cause class. See OBJ-A5P2-01 (HIGH). The anchor/neighbour structure itself (WM/R fixing vs Tokyo fixing, USD-long, verified literature sign) is sound.",
+        "falsification_falsifiable_in_practice": false,
+        "note": "Falsification criterion (b) ('placebo premium >= anchor premium') is coupled to the broken placebo and can fire when the fixing mechanism is true, so the falsification rule as a set is not reliably decidable."
+      },
+      "verdict": "INELIGIBLE",
+      "worst_objection_severity": "HIGH",
+      "objections": [
+        {
+          "id": "OBJ-A5P2-01",
+          "severity": "HIGH",
+          "area": "negative_control_validity",
+          "statement": "The preregistered placebo shifts the anchor window (1h bar containing 16:00 Europe/London) by +6h, landing on the 1h bar containing 22:00 Europe/London, and claims this is 'a time with no benchmark fixing and no rollover event'. Verified with zoneinfo: 22:00 London = 17:00 New York on 241 of 261 weekdays in 2025 (~92%), i.e. the placebo bar IS the New York 17:00 rollover bar - the single largest documented daily spread-widening/financing event, and precisely the event of this proposal's own variant B; on the remaining ~20 DST-gap days it is the hour immediately after the roll. The parenthetical arithmetic in the proposal ('...17:00 New York + 6h off-roll') is internally inconsistent, and under the only consistent reading the stated premise is false. Consequently the control does not destroy the mechanism; it swaps the fixing event for the rollover event, so 'placebo premium comparable to anchor demonstrates generic time-of-day drift' is an invalid interpretation, and falsification criterion (b) can fire (closing a genuine fixing premium) whenever a roll-hour premium exists. A required PLAN section 9 element (causal negative control) is invalid as specified. A7 does not repair proposals; as frozen, the objection is unresolvable, hence INELIGIBLE. A corrected fixing-window proposal would have to arrive as a new cycle input.",
+          "evidence": "anchor_neighbour_negative_control.negative_control in proposal_2.json vs zoneinfo computation: 22:00 Europe/London expressed in America/New_York = 17:00 on 241 weekdays, 18:00 on 20 weekdays (2025); rollover_manifest rollover_boundary '17:00 America/New_York'"
+        },
+        {
+          "id": "OBJ-A5P2-02",
+          "severity": "LOW",
+          "area": "naming_scope",
+          "statement": "The mechanism name advertises 'financing-hour USD exposure', but the primary scored anchor is the WM/R FIXING window (variant A, no roll); the financing-hour object is variant B, which is feasibility-blocked on swap-schedule authority. Naming should match the scored object at freeze.",
+          "evidence": "mechanism_name vs exact_trial_enumeration and required_pit_fields entry 3"
+        },
+        {
+          "id": "OBJ-A5P2-03",
+          "severity": "LOW",
+          "area": "data_granularity",
+          "statement": "The 1h base event clock is coarse relative to the ~30-minute fixing microstructure; the proposal honestly declares finer data out of scope with no intrabar claims. Results on 1h bars bound the mechanism only.",
+          "evidence": "macro_session_external_validity_risks item 6; required_pit_fields entry 6"
+        }
+      ],
+      "owner_data_required_for_selection": [
+        "Not reachable at selection in this cycle: the HIGH objection is a specification defect, not a data gap. Even with owner-authorized bid/ask, fixing-convention history and swap schedules, the placebo must be re-specified in a NEW proposal before the negative-control requirement can be met."
+      ]
+    }
+  ],
+  "similarity_matrix_6x6": {
+    "method": "Pairwise qualitative comparison on mechanism, signal fields, publication/formation clock, and universe. Grades: LOW (disjoint mechanism and information set), MEDIUM (shared family shape, data or clock neighborhood but distinct causal variables), HIGH (effectively the same mechanism). 15 unordered pairs.",
+    "effectively_same_mechanism_pairs": [],
+    "pairs": [
+      {"a": "FX2-A3-P1", "b": "FX2-A3-P2", "grade": "MEDIUM", "justification": "Same quote-panel data type and 17:00-ET clock neighborhood; distinct information sets (own-window return drift vs cross-pair relative-spread state) and distinct holding structures (60-min single-pair vs 72h staggered dollar-neutral)."},
+      {"a": "FX2-A3-P1", "b": "FX2-A4-P1", "grade": "MEDIUM", "justification": "Both are session-clock window-holding liquidity premia in the same PLAN priority space; distinct windows (16:45-17:45 ET roll boundary vs 08:00-12:00 NY overlap), distinct day-sets (all business days vs ~2-3 DST-gap weeks), distinct causal variables (dealer day-end event vs tzdb desync state)."},
+      {"a": "FX2-A3-P1", "b": "FX2-A4-P2", "grade": "LOW", "justification": "Different windows and day-sets (daily roll boundary vs ~32 preregistered release events); mechanisms disjoint (boundary liquidity cycle vs scheduled-event risk transfer)."},
+      {"a": "FX2-A3-P1", "b": "FX2-A5-P1", "grade": "LOW", "justification": "Clock-window premium vs PIT rate-differential carry; disjoint signal fields and mechanisms."},
+      {"a": "FX2-A3-P1", "b": "FX2-A5-P2", "grade": "MEDIUM", "justification": "Both daily clock-event families around documented dealer events. Primary anchors are distinct (roll-straddle 16:45-17:45 ET vs WM/R fixing bar 11:00-12:00 ET), but A5-P2's blocked variant B would hold the same 17:00-ET roll bar as A3-P1's anchor - a latent overlap if variant B is ever activated."},
+      {"a": "FX2-A3-P2", "b": "FX2-A4-P1", "grade": "LOW", "justification": "Spread-panel cross-section vs pure tzdb calendar label; disjoint signal sources."},
+      {"a": "FX2-A3-P2", "b": "FX2-A4-P2", "grade": "LOW", "justification": "Quote-state cross-section vs agency release calendar; disjoint."},
+      {"a": "FX2-A3-P2", "b": "FX2-A5-P1", "grade": "MEDIUM", "justification": "Both are dollar-neutral cross-sectional constructions over the same 7-pair panel with comparable horizons; information sets disjoint (relative quoted spread vs PIT rate differential) and mechanisms distinct (inventory scarcity vs UIP-deviation premium)."},
+      {"a": "FX2-A3-P2", "b": "FX2-A5-P2", "grade": "LOW", "justification": "Cross-sectional spread state vs single-factor deterministic fixing-window schedule; disjoint."},
+      {"a": "FX2-A4-P1", "b": "FX2-A4-P2", "grade": "MEDIUM", "justification": "Same family shape: deterministic calendar-window basket holding with identical 3-trial structure and universe. Distinct exogenous drivers (tzdb desync labels vs agency release calendars) and barely-overlapping windows (08:00-12:00 NY vs prior-17:00-to-08:25)."},
+      {"a": "FX2-A4-P1", "b": "FX2-A5-P1", "grade": "LOW", "justification": "Calendar-window premium vs rate carry; disjoint."},
+      {"a": "FX2-A4-P1", "b": "FX2-A5-P2", "grade": "LOW", "justification": "DST-gap day-set vs daily fixing-window schedule; distinct drivers and windows."},
+      {"a": "FX2-A4-P2", "b": "FX2-A5-P2", "grade": "LOW", "justification": "Both deterministic calendar windows, but different clocks (release calendar vs fixing calendar), different direction sources, no shared arm structure."},
+      {"a": "FX2-A4-P2", "b": "FX2-A5-P1", "grade": "LOW", "justification": "Event-window timing (explicitly not rate-based) vs carry; disjoint."},
+      {"a": "FX2-A5-P1", "b": "FX2-A5-P2", "grade": "LOW", "justification": "Carry vs fixing-window exposure; A5-P2 uses no rates by design and states the spaces are separate."}
+    ]
+  },
+  "ancestry_map": {
+    "historical_evidence_basis": "NOTES.md sections 19-21 and research/wayfinder/MAP.md at bootstrap SHA (results/registry/experiments.jsonl absent at this SHA).",
+    "prior_crypto_families": {
+      "V6 CARRY-1D/3D/7D + REVERSE-3D (crypto funding carry)": "REJECTED (V6P_PASS_V6_CANDIDATE_FAIL; mechanism_failure / edge_too_weak / fold-concentration)",
+      "H-XSECT-MOM-v1 (cross-sectional momentum, 3 lookbacks + reverse control)": "REJECTED (V4)",
+      "H-VOLCOMP-BRKOUT-v1 (vol-compression breakout)": "REJECTED",
+      "H-FUNDCROWD-MR-v2 (PIT funding percentile crowding MR)": "REJECTED",
+      "V9 multi-family (5 frozen trials incl. residual-MR/trend/vol-shock shapes)": "REJECTED (V9_REJECT_ALL_MULTI_FAMILY)",
+      "V7 XSECT-FUND-PRICE-DIV-1D/3D/7D + REV-3D (funding-price divergence)": "PENDING/NOT_RUN (never rejected)",
+      "V10 A8-V10-M01-AGGRESSOR-ABSORPTION-PANEL": "BLOCKED_PRELAUNCH (0/3 scored)"
+    },
+    "mapping": [
+      {"proposal_id": "FX2-A3-P1", "adjacent_families": [], "rescue_flag": false, "severity": "NONE", "note": "No 24/7 crypto analog: a dealer day-end/rollover boundary does not exist in perpetual markets. Mechanism is FX-native; ancestry_statement is accurate."},
+      {"proposal_id": "FX2-A3-P2", "adjacent_families": ["H-XSECT-MOM-v1 (REJECTED)", "V7 XSECT-FUND-PRICE-DIV (PENDING)"], "rescue_flag": false, "severity": "LOW", "note": "Shared shape only: dollar-neutral cross-sectional sort on a state variable. The state (panel-relative quoted spread) and asset class differ from momentum and funding-price divergence; adjacency is consistent with the declared ancestry."},
+      {"proposal_id": "FX2-A4-P1", "adjacent_families": [], "rescue_flag": false, "severity": "NONE", "note": "No crypto analog (no DST in 24/7 markets)."},
+      {"proposal_id": "FX2-A4-P2", "adjacent_families": [], "rescue_flag": false, "severity": "NONE", "note": "No crypto analog (no scheduled macro-release common clock)."},
+      {"proposal_id": "FX2-A5-P1", "adjacent_families": ["V6 CARRY (REJECTED)", "funding-carry space"], "rescue_flag": false, "severity": "MEDIUM", "note": "Closest mechanism-shape adjacency in the pool: financing-premium accrual, dollar-neutral factor, sign-flip control, crash-skew expectation - the same shape as the rejected crypto V6 CARRY family. Openly declared in ancestry_statement, FX-native in instrument/signal/financing schedule, and within PLAN section 9 priority space ('rate-differential/carry only with authoritative rollover inputs'). Not a hidden rescue; the freeze should record the shape distinction explicitly."},
+      {"proposal_id": "FX2-A5-P2", "adjacent_families": [], "rescue_flag": false, "severity": "LOW", "note": "Generic clock-based exposure is a shared idea only; 24/7 crypto has no fixing institutions or 24/5 session structure. Declared in ancestry_statement."}
+    ],
+    "hidden_rescues_found": 0
+  },
+  "lane_isolation": {
+    "method": "git log --first-parent on each F2 proposal branch; diff of lane tip vs shared base aba863ebc057e2e74299b0bf2618661300cf8d47.",
+    "findings": [
+      {
+        "branch": "orca/forex-f2-a3-proposals",
+        "tip": "331af4af1c8878b2ef9c4993cd7d20274b2fb475",
+        "matches_pool_lane_commit": true,
+        "single_lane_commit_on_shared_base": true,
+        "files_touched": [
+          "research/proposals/forex/a3_data/proposal_1.json",
+          "research/proposals/forex/a3_data/proposal_1.md",
+          "research/proposals/forex/a3_data/proposal_2.json",
+          "research/proposals/forex/a3_data/proposal_2.md"
+        ],
+        "touched_only_own_directory": true
+      },
+      {
+        "branch": "orca/forex-f2-a4-proposals",
+        "tip": "44cbefe57ce9d19fcbdc86ae008f1257b399b33b",
+        "matches_pool_lane_commit": true,
+        "single_lane_commit_on_shared_base": true,
+        "files_touched": [
+          "research/proposals/forex/a4_calendar/proposal_1.json",
+          "research/proposals/forex/a4_calendar/proposal_1.md",
+          "research/proposals/forex/a4_calendar/proposal_2.json",
+          "research/proposals/forex/a4_calendar/proposal_2.md"
+        ],
+        "touched_only_own_directory": true
+      },
+      {
+        "branch": "orca/forex-f2-a5-proposals",
+        "tip": "7a1d6f1f4fb2fc605d2d56013027e686e4f6b4d3",
+        "matches_pool_lane_commit": true,
+        "single_lane_commit_on_shared_base": true,
+        "files_touched": [
+          "research/proposals/forex/a5_cost/proposal_1.json",
+          "research/proposals/forex/a5_cost/proposal_1.md",
+          "research/proposals/forex/a5_cost/proposal_2.json",
+          "research/proposals/forex/a5_cost/proposal_2.md"
+        ],
+        "touched_only_own_directory": true
+      }
+    ],
+    "verdict": "PASS - no cross-lane writes; each lane tip matches f2_proposal_pool.json lane_commits; no lane touched another lane's directory, control files, or production code."
+  },
+  "outcome_blindness_check": {
+    "all_six_free_of_computed_returns_pnl_backtests": true,
+    "notes": "All numeric content in the proposals is literature/BIS fact or preregistration arithmetic (trial counts, event counts, turnover bounds). A5-P1's '0.5-2.5 pips typical' is a literature-based cost prior, not a computed result. The .md narratives state 'no returns, no PnL, no backtest computed' and no contradiction was found. exact_trial_count stated in all six (2/2/3/3/4/4) with no-post-score-replacement declarations."
+  },
+  "summary": {
+    "proposals_audited": 6,
+    "verdict_counts": {
+      "ELIGIBLE": 0,
+      "CONDITIONAL_ON_OWNER_DATA": 5,
+      "INELIGIBLE": 1
+    },
+    "verdicts": {
+      "FX2-A3-P1": "CONDITIONAL_ON_OWNER_DATA",
+      "FX2-A3-P2": "CONDITIONAL_ON_OWNER_DATA",
+      "FX2-A4-P1": "CONDITIONAL_ON_OWNER_DATA",
+      "FX2-A4-P2": "CONDITIONAL_ON_OWNER_DATA",
+      "FX2-A5-P1": "CONDITIONAL_ON_OWNER_DATA",
+      "FX2-A5-P2": "INELIGIBLE"
+    },
+    "worst_objection_severity": {
+      "FX2-A3-P1": "LOW",
+      "FX2-A3-P2": "LOW",
+      "FX2-A4-P1": "MEDIUM",
+      "FX2-A4-P2": "LOW",
+      "FX2-A5-P1": "LOW",
+      "FX2-A5-P2": "HIGH"
+    },
+    "objection_counts_by_severity": {"NONE": 0, "LOW": 9, "MEDIUM": 3, "HIGH": 1, "CRITICAL": 0},
+    "contract_completeness": "6/6 complete (all PLAN section 9 fields present and non-empty)",
+    "data_availability_honesty": "6/6 honest - every availability grading matches the measured facts in data_manifest/session_calendar_manifest/rollover_manifest; no claim implies unavailable data exists",
+    "prohibited_shortcuts": "0 violations across all five shortcut categories",
+    "fabricated_citations": "0 detected; 3 sources independently verified by search (Ranaldo 2009; Antolin-Diaz et al. 2023; Krohn-Mueller-Whelan 2024), remainder consistent at bibliographic level; proposals honestly self-flag their own unverified DOI strings",
+    "outcome_blindness": "PASS 6/6",
+    "lane_isolation": "PASS 3/3",
+    "similarity": "0 HIGH pairs; 0 effectively-same-mechanism pairs; 4 MEDIUM pairs; 11 LOW pairs"
+  },
+  "blockers": [
+    "Zero ELIGIBLE proposals: all five surviving proposals are blocked on owner data authorization (real bid/ask history 0/7 pairs; rollover/swap schedule authority; PIT rate vintages for FX2-A5-P1; official release-timestamp ingest for FX2-A4-P2; authoritative holiday tables; provider session convention). Per PLAN section 9, with fewer than two eligible families the selection closes FOREX_BLOCKED_SELECTION_INSUFFICIENT unless the owner authorizes the named data before the freeze.",
+    "FX2-A5-P2 is INELIGIBLE as specified (OBJ-A5P2-01 HIGH): the preregistered +6h placebo lands on the New York 17:00 rollover bar on ~92% of days, invalidating the required causal negative control. A7 does not repair proposals; a corrected fixing-window design must arrive as a new proposal in a future cycle.",
+    "results/registry/experiments.jsonl is absent at bootstrap SHA 4b9ee91; ancestry mapping relied on NOTES.md and research/wayfinder/MAP.md (both present at the bootstrap SHA)."
+  ],
+  "assumptions": [
+    "Proposal JSON files are authoritative; the .md narratives were checked for consistency and none contradicts its JSON.",
+    "WebSearch spot-checks were limited to three sources total (the single most load-bearing, least-canonical source for FX2-A4-P1, FX2-A4-P2, FX2-A5-P2); remaining literature entries were graded on bibliographic consistency without search, per the sparing-use instruction.",
+    "Clock-arithmetic objections use zoneinfo tzdb rules (2025-2026); future tzdb policy changes (e.g. DST abolition) are already declared as external-validity risks inside the affected proposals.",
+    "Severity grades and verdicts are audit evidence only; this artifact performs no family selection, ranking, scoring, or repair."
+  ]
+}
