@@ -1,0 +1,100 @@
+{
+  "proposal_id": "FXFV1-A5-P1",
+  "lane": "FOREX-FREE-V1/F4-A5 (cross-pair relative movement / intraday risk-premium perspective)",
+  "mechanism_name": "EUR-core intraday lead-lag propagation (London-NY overlap), two-leg USD-neutral",
+  "mechanism_group": "cross_pair_relative_movement",
+  "economic_mechanism": "The USD factor is discovered first in EUR/USD, the single most liquid FX venue (Mancini, Ranaldo & Wrampelmeyer 2013: EUR/USD is the most liquid exchange rate; BIS Triennial 2022: EUR/USD ~1/4 of global turnover vs GBP/USD ~1/10, and the USD is the dominant vehicle currency, so cross-rate price discovery concentrates in the deepest USD pair). Periphery USD pairs (GBP/USD, AUD/USD) are quoted and traded off the core: dealers re-hedge EUR exposure and real-money flow works periphery orders over tens of minutes, so when a material USD-factor move builds inside the London-NY overlap (08:00-12:00 ET, the deepest liquidity window), the periphery pair only partially adjusts by window end. The unadjusted residual is a transient intraday relative risk premium that decays over the following hours. We capture it currency-neutrally: after a material EUR/USD window move, long the lagging periphery pair against a short EUR/USD leg of equal USD notional (approximating a short EUR/GBP or short EUR/AUD forward built only from authorized pairs), i.e. we buy the pair that has not yet caught up to the USD move already priced in the core. The lead-lag direction is fixed ex ante by market-structure logic (deep core leads thin periphery); it is NOT scan-selected. Lead-lag structure in FX intraday data is documented (Basnarkov et al. 2019, arXiv:1906.10388), but the specific EUR->GBP 1-hour-scale direction is UNVERIFIED in prior literature - which is exactly why the proposal ships with a pre-registered reversed-direction causal negative control.",
+  "expected_counterparty": "(a) Dealers and market makers who quote GBP/USD and AUD/USD off stale EUR-core information and re-hedge their EUR books with a lag; (b) slower real-money and corporate flow that works periphery-pair orders over tens of minutes rather than crossing the spread at once. We supply immediate relative-value liquidity in the periphery leg and are compensated if core-first price discovery is real; they are compensated by the spread if periphery prices are already efficient (in which case the mechanism is dead and the negative control will say so).",
+  "signal_fields_and_publication_clock": "Fields: Twelve Data H1 CLOSE prices only, for EUR/USD (lead) and GBP/USD or AUD/USD (follower). No high/low/open in the signal, no bid/ask, no volume, no rate data. Bar clock: each H1 bar is labeled by its UTC open timestamp t and covers [t, t+1h); it is COMPLETE and publishable only at t+1h. The signal is evaluated at the decision instant = close instant of the signal bar (bar closing 12:00 America/New_York local wall time on the trade date). All information used (window closes + trailing 20-day window volatility) is strictly available at that instant; nothing intrabar, nothing look-ahead. DST handling: local wall-clock labels are resolved through zoneinfo America/New_York on the trade date, so '08:00-12:00 ET' is DST-correct by construction.",
+  "entry_exit_and_rollover_flat_rule": "One trade per trade-date maximum, skipped days allowed. SIGNAL: r_eur = log close(bar closing 12:00 ET) - log close(bar closing 08:00 ET), the four overlap bars. z = r_eur / sd20, where sd20 = sample std of the same 4-bar window return over the PRIOR 20 trade-dates (causal; if fewer than 20 prior trade-dates available, skip). TRADE if |z| >= 1.0 (frozen materiality filter, not tuned). DIRECTION: sign(r_eur) determines both legs - EUR/USD up (USD weak): SHORT EUR/USD + LONG follower; EUR/USD down (USD strong): LONG EUR/USD + SHORT follower. ENTRY: next-allowed-bar execution - fill at the CLOSE price of the next completed H1 bar after the signal bar (the bar closing 13:00 ET). NO-RUNWAY SKIP RULE: if the entry bar would be the last strictly-before-rollover bar of the day (or later), the trade is skipped, never chased. EXIT: close price of the bar closing 16:00 ET - the LAST completed H1 bar STRICTLY BEFORE the 17:00 America/New_York rollover. FLAT RULE: zero exposure at every NY rollover instant and at the Friday 16:00 ET weekly close (last Friday action bar closes 15:00 ET); no overnight or weekend positions ever, therefore no financing/rollover accrual of any kind.",
+  "execution_model": "Next-allowed-bar execution at H1 close granularity: decision at close of bar t, fill at the close of bar t+1 (one completed bar after the signal is publishable). Fills assumed at a single conservative proxy price (mid/last, since the contract has no bid/ask); the entire spread+slippage burden is carried by the frozen cost matrix, not by pretending mid fills. No intrabar stops, no limit orders, no partial fills; position is opened/closed at bar-close prices only. Equal USD notional on both legs (each leg 50% of book notional). The proxy price path is treated as pessimistic: any real fill could only be at bid/ask around it, which the frozen spread proxy already covers.",
+  "frozen_cost_stress_matrix": {
+    "cost_basis": "Proxy half-spread+slippage per side, frozen a priori BEFORE any return computation: EUR/USD 0.9 pip, GBP/USD 1.3 pips, AUD/USD 1.3 pips per side (round trip = 2x per side). Pip = 0.0001 for all three pairs. Converted to basis points of leg notional at FROZEN round reference rates (constants, not sampled from data): EUR/USD 1.10, GBP/USD 1.30, AUD/USD 0.65. Reference-rate sensitivity is second-order (bp/pip varies +/-10% over the 2020-2026 range) and is absorbed by the x1.5/x2 stress.",
+    "round_trip_bp_per_leg": {"EURUSD": 1.6364, "GBPUSD": 2.0, "AUDUSD": 4.0},
+    "both_legs_rule": "Cross-pair mechanism: BOTH legs are paid on entry AND exit. Book cost per round trip = average of the two leg RT bps (equal 50/50 USD-notional legs), expressed in bp of book notional.",
+    "matrix_bp_of_book": {
+      "anchor_EUR_to_GBP": {"x1": 1.8182, "x1.5": 2.7273, "x2": 3.6364},
+      "neighbour_EUR_to_AUD": {"x1": 2.8182, "x1.5": 4.2273, "x2": 5.6364},
+      "negative_control_GBP_to_EUR": {"x1": 1.8182, "x1.5": 2.7273, "x2": 3.6364}
+    },
+    "one_event_delay_stress": "Entry fill delayed one further completed bar: 13:00 ET close -> 14:00 ET close; exit unchanged (16:00 ET bar close). Holding window shrinks by one hour; cost matrix unchanged. A configuration survives only under the delay stress at the x1.5 cost tier or better.",
+    "frozen_declaration": "These numbers were fixed before any return, PnL, or backtest of this mechanism was computed anywhere in this lane."
+  },
+  "pair_universe": {
+    "signal_lead": "EUR/USD",
+    "tradeable_followers": ["GBP/USD", "AUD/USD"],
+    "universe_scope": "Authorized contract pairs only: EUR/USD, GBP/USD, AUD/USD, NZD/USD, USD/JPY, USD/CHF, USD/CAD. This proposal uses only EUR/USD (lead), GBP/USD (anchor follower), AUD/USD (neighbour follower). No synthetic crosses are traded; the EUR-vs-follower relative view is built from two authorized USD pairs."
+  },
+  "currency_neutralization": "Two legs of equal-and-opposite USD notional (one EUR/USD, one follower) => net USD delta ~ 0 at entry; the position is a relative value bet EUR-vs-follower (economic equivalent of a short EUR/GBP or EUR/AUD cross built exclusively from authorized pairs). Residual USD drift within the holding window (both legs move against the USD factor) is part of the risk, not neutralized further. PnL is measured and reported in USD. No leverage on top of 1x book notional; anchor and neighbour never held simultaneously.",
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "EUR/USD (lead) -> GBP/USD (follower): the mechanism exactly as specified, traded as short-EUR/long-GBP (or mirror) after an |z|>=1.0 overlap-window EUR/USD move.",
+      "why_it_validates": "GBP/USD is the a-priori most economically linked follower: same trading session, same European risk block, second-most-liquid periphery pair, highest documented return spillover with EUR/USD among the authorized pairs. If core-first price discovery is real, this is where the transient relative premium should be largest and most reliable."
+    },
+    "neighbour": {
+      "definition": "EUR/USD (lead) -> AUD/USD (follower): identical rule, AUD/USD substituted as follower.",
+      "why_it_validates": "Pre-registered a priori by market structure, not selected by results: AUD is the next periphery candidate with the least commodity idiosyncrasy (NZD is more idiosyncratically commodity/land-linked; CAD is oil-specific; JPY and CHF are funding currencies driven by risk appetite rather than the EUR-core flow channel). The same USD-factor propagation channel, if real, must show a WEAKER but positive trace in AUD/USD. A mechanism that works only on the anchor and nowhere else, or only on AUD and not GBP, is indistinguishable from data mining."
+    },
+    "negative_control": {
+      "definition": "Reversed direction: GBP/USD (lead) -> EUR/USD (follower). Identical window, z-filter and execution, but the GBP/USD overlap-window move drives a LONG EUR/USD + SHORT GBP/USD two-leg book (buy the supposed follower EUR, sell the supposed leader GBP).",
+      "why_it_destroys": "EUR/USD is the price-discovery venue; there is no market-structure reason for EUR to follow GBP at this horizon. If the reversed book earns an edge comparable to the anchor, the observed pattern is generic intraday continuation (or an artifact of the filter/costs), NOT core-to-periphery propagation - the interpretation, and with it the candidate, is destroyed. The anchor must beat this control on the pre-registered statistic to survive."
+    }
+  },
+  "falsification_rule": "Pre-registered, evaluated once on the full 2020-01-29..2026-09-02 sample, no re-specification allowed. Statistics computed NET of the frozen cost matrix. KILL the candidate if ANY of: (F1) anchor sign-agreement hit rate - fraction of trades where the follower leg's 13:00->16:00 ET move matches the signal sign - is <= 0.50, or its two-sided sign-test p-value vs 0.5 is >= 0.05; (F2) anchor net mean trade return at the x1.5 cost tier <= negative-control GROSS mean trade return (edge no better than the causally backwards book); (F3) cost fragility - the anchor is unprofitable already at the x1.5 tier, or profitable at x1 but not at x2 (non-monotone survival implies the edge lives inside the cost uncertainty); (F4) delay fragility - the anchor is unprofitable under the one-event-delay stress at the x1.5 tier. SURVIVE as a research candidate only if F1-F4 all pass for the anchor; the neighbour is then graded (must be directionally positive but is allowed to be weaker); the negative control is required to be flat-to-negative. All outcomes, including kills, are reported.",
+  "expected_regimes": [
+    "Works (if the mechanism is real): flow-driven, normal-volatility weeks where the USD factor is discovered in the core and periphery re-quotes lag; high EUR/USD share of USD-pair variance regimes.",
+    "Degrades: top-tier macro event days (NFP, CPI, FOMC, central-bank divergence) where periphery pairs re-price simultaneously or even lead; calendar is NOT filtered for these ex ante - the falsification statistics must survive them untreated.",
+    "Fails: commodity-shock regimes (AUD neighbour: idiosyncratic ore/energy news dominates the USD factor), liquidity-spiral episodes (2020-03 style), and any regime where GBP/AUD idiosyncratic news dominates the 3-hour holding window."
+  ],
+  "dst_session_clock_spec": "All session boundaries computed in America/New_York wall time via zoneinfo on the trade date (never fixed UTC offsets): EST weeks UTC-5, EDT weeks UTC-4; US spring-forward 2026-03-08 07:00Z and fall-back 2026-11-01 06:00Z shift every ET-labeled boundary by one hour in UTC, matching repo goldens in tests/assets/forex/test_sessions_dst.py. Frozen trading week: open Sunday 21:00 ET, close Friday 16:00 ET. Daily NY rollover 17:00 ET (22:00Z in EST, 21:00Z in EDT) always falls on an H1 close boundary; per the data contract the position is FLAT at the last completed H1 bar whose close instant is STRICTLY BEFORE each rollover instant - i.e. the bar covering 16:00-17:00 ET is never held (conservative: avoids the fixing-adjacent bar). Friday: additionally flat at the last completed bar strictly before the 16:00 ET weekly close (last action bar closes 15:00 ET). Signal bar (12:00 ET close), entry bar (13:00 ET close) and exit bar (16:00 ET close) are all ET wall-clock labels resolved per-date through zoneinfo, so the mechanism self-adjusts across the four US/EU DST transition configurations each year.",
+  "exact_trial_count": {
+    "mechanism_configurations": 3,
+    "enumeration": "anchor EUR->GBP (1) + neighbour EUR->AUD (1) + reversed-direction negative control GBP->EUR (1).",
+    "frozen_hyperparameters": "window 08:00-12:00 ET overlap (4 bars), z threshold 1.0, scaling window 20 prior trade-dates, entry next completed bar, exit 16:00 ET bar: each fixed at exactly ONE value; no grid, no scan, no outcome tuning anywhere.",
+    "not_counted_as_trials": "the x{1,1.5,2} cost tiers and the one-event delay are accounting stresses applied to the same 3 configurations, not additional configurations.",
+    "lane_total_trials_both_proposals": 6
+  },
+  "data_fields_used": "Twelve Data H1 OHLC bars for EUR/USD, GBP/USD, AUD/USD; of each bar only the CLOSE is read by the signal/execution logic (open/high/low deliberately unused to minimize assumption surface); bar UTC open timestamps used for calendar alignment; 2020-01-29..2026-09-02 range only. Explicitly NOT used: bid/ask, tick data, any volume field (centralized FX volume is never admissible), interest rates, rollover/financing or swap data, macro event calendars.",
+  "forbidden_assumptions_check": {
+    "no_bid_ask_data_assumed": true,
+    "no_volume_assumed": true,
+    "no_financing_or_rollover_rates_assumed": true,
+    "no_overnight_positions": true,
+    "no_lookahead": "all scaling (sd20) causal; fills only at close of a bar completed strictly after the signal bar's information is publishable",
+    "no_intrabar_fills_or_stops": true,
+    "no_grid_search_or_outcome_tuning": "single frozen value per hyperparameter; negative control and delay/cost stresses pre-registered",
+    "proxy_costs_not_claimed_live": "frozen conservative constants used as stress, frozen before any returns; not a claim about live spreads",
+    "no_ohlc_high_low_in_signals": true,
+    "label": "RESEARCH_CANDIDATE_NOT_LIVE_READY"
+  },
+  "literature_sources": [
+    {
+      "title": "Liquidity in the Foreign Exchange Market: Measurement, Commonality, and Risk Premiums",
+      "authors": "Loriano Mancini, Angelo Ranaldo, Jan Wrampelmeyer",
+      "year": 2013,
+      "url": "https://onlinelibrary.wiley.com/doi/10.1111/jofi.12053",
+      "claim": "EUR/USD is the most liquid exchange rate; strong commonality in FX liquidity - grounds the 'deep core leads thin periphery' price-discovery hierarchy.",
+      "retrieval_utc": "2026-09-03T08:22:25Z",
+      "verified": true
+    },
+    {
+      "title": "BIS Triennial Central Bank Survey, OTC foreign exchange turnover (USD vehicle-currency dominance; EUR/USD most-traded pair)",
+      "authors": "Bank for International Settlements",
+      "year": 2022,
+      "url": "https://www.bis.org/publ/qtrpdf/r_qt2212f.htm",
+      "claim": "USD is on one side of the large majority of FX trades and is the dominant vehicle currency; EUR/USD is the most traded pair (~1/4 of turnover) vs GBP/USD (~1/10). Approximate shares; exact digits UNVERIFIED at retrieval.",
+      "retrieval_utc": "2026-09-03T08:22:25Z",
+      "verified": "PARTIAL - vehicle-currency and ranking confirmed; precise percentage digits UNVERIFIED"
+    },
+    {
+      "title": "Lead-lag Relationships in Foreign Exchange Markets",
+      "authors": "Igor Basnarkov, Viktor Stojkoski, et al.",
+      "year": 2019,
+      "url": "https://arxiv.org/abs/1906.10388",
+      "claim": "Measurable lead-lag structure exists among FX pairs at intraday horizons. Existence of FX lead-lag structure confirmed at abstract level; the specific EUR/USD-leads-GBP/USD direction at 1-4 hour horizons is UNVERIFIED in this source - hence the pre-registered reversed-direction control.",
+      "retrieval_utc": "2026-09-03T08:22:25Z",
+      "verified": "PARTIAL - existence claim verified; directional claim UNVERIFIED"
+    }
+  ],
+  "label": "RESEARCH_CANDIDATE_NOT_LIVE_READY"
+}
