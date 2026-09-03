@@ -2,6 +2,24 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS-FREE-V3 TERMINAL** (synced by A1, 2026-09-03, branch
+  `orca/stocks-free-v3-integration`) — verdict
+  `STOCKS_FREE_V3_REJECT_ALL` (terminal A7
+  `STOCKS_FREE_V3_REJECT_ALL_CONFIRMED`, commit `ad897c8`): two blind-
+  selected families × 3 frozen arms scored on reused S0 at
+  `STOCKS_FREE_V3_W1=586f9fe`; budget 6/6, V3 observed=published=6,
+  reproduction 6/6 EXACT_MATCH. `SFV3-A5-IDIO-SHOCK-REVERSAL` REJECT
+  (anchor −20.6% pnl, PF 0.43, alpha −0.25 — neither idio-crash nor
+  idio-overshoot reverts net of costs). `SFV3-A6-TOM-SETTLE` REJECT
+  (anchor +38.5% raw pnl / PF 1.62 BUT incremental alpha −0.13 vs
+  risk-matched SPY and the mid-month placebo control fails falsification:
+  the raw PnL is scaled sector beta, not a calendar premium; PLAN §16 bars
+  raw PnL from overriding failed beta gates). Zero survivors; nothing
+  locked for S1; S1 sealed; statistical denominator now 12. Terminal A7
+  incident A7T-B1 (ledger wrapper digests) remediated append-only and
+  re-verified. Detail:
+  `research/control/stocks_free_v3_run/terminal_report.json`.
+
 - **STOCKS-FREE-V2 TERMINAL — V2R RECONCILED** (synced by A1, 2026-09-03,
   branch `orca/stocks-free-v2-integration`, reconciliation branch
   `orca/stocks-free-v2r-integration`) — effective verdict
