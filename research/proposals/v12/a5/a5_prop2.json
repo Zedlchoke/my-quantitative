@@ -1,0 +1,135 @@
+{
+  "schema": "v12_blind_proposal_v1",
+  "lane": "a5",
+  "hypothesis_id": "V12-A5-P2-MIX-ORDERSIZE",
+  "family_id": "V12-A5-F2-PARTICIPANT-MIX-ORDERSIZE",
+  "created_utc": "2026-09-03T12:45:00Z",
+  "packet_schema": "v12_d0_freeze_v1",
+  "outcome_blind_attestation": {
+    "returns_pnl_pf_sharpe_rankings_backtests_computed": false,
+    "note": "This document declares construction rules and PIT discipline only. Every frozen-floor check is deferred to the schedule-only cost-feasibility gate by the scoring lanes."
+  },
+  "primary_source_claim": {
+    "sources": [
+      {
+        "id": "S7",
+        "citation": "Hvidkjaer, S. (2008), 'Small Trades and the Cross-Section of Stock Returns', Review of Financial Studies 21(3), 1123-1151.",
+        "doi_or_url": "10.1093/rfs/hhn049",
+        "verified_via": "CrossRef bibliographic search, retrieval 2026-09-03T12:22:23Z (initially recalled with a wrong DOI and wrong venue; corrected by verification)",
+        "claim_used": "Small-trade (retail-like) buy pressure is followed by significant subsequent underperformance while large-trade pressure is not: order-size composition identifies a participant mix whose demand overprices."
+      },
+      {
+        "id": "S8",
+        "citation": "Kelley, E.K. and Tetlock, P.C. (2013), 'How Wise Are Crowds? Insights from Retail Orders and Stock Returns', Journal of Finance 68(3), 1229-1265.",
+        "doi_or_url": "10.1111/jofi.12028",
+        "verified_via": "CrossRef REST API, retrieval 2026-09-03T12:28:18Z",
+        "claim_used": "Order-size-based classification separates retail from institutional flow and retail order imbalance carries predictive content: order size is a valid observable proxy for participant mix when client-level data are unavailable."
+      },
+      {
+        "id": "S9",
+        "citation": "Natashekara, K. and Sampath, A. (2024), 'Informed trading and cryptocurrencies. New evidence using tick-by-tick data', Finance Research Letters 61, 104909.",
+        "doi_or_url": "10.1016/j.frl.2023.104909",
+        "verified_via": "CrossRef + Semantic Scholar identity check, retrieval 2026-09-03T12:29:01Z (abstract not retrievable; ScienceDirect 403)",
+        "claim_used": "Trade-size-based informed-vs-retail classification has been applied to cryptocurrency markets (identity-level support only; no empirical sign imported from this source)."
+      },
+      {
+        "id": "S10",
+        "citation": "Kim, C. and Hansen, P.R. (2026), 'The Quarter-Hour Effect: Periodic Algorithmic Trading and Return Predictability in Cryptocurrency Futures', arXiv:2607.09426.",
+        "doi_or_url": "https://arxiv.org/abs/2607.09426",
+        "verified_via": "arXiv export API, retrieval 2026-09-03T12:33Z",
+        "claim_used": "CAVEAT ONLY: on Binance perpetuals, algorithmic bursts at one-minute/five-minute/quarter-hour marks distort volume and trade-size statistics ('trade-size roundness declines sharply' during bursts); their intraday order-imbalance predictability claim is explicitly NOT used (forbidden-class adjacency, wrong horizon)."
+      }
+    ],
+    "crypto_perpetual_transfer_caveats": [
+      "A bar-level average trade size (quote-volume / trade count) is a coarse mix proxy: whale order splitting and API-driven sub-second execution make large participants look 'small' and retail look larger; the statistic is a noisy composition signal, not a client census.",
+      "Exchange-side changes (minimum order notional adjustments, VIP fee tiers, lot-size rule changes) mechanically reshape the trade-size distribution over time; the formation statistic is therefore a WITHIN-SYMBOL ratio (recent 30d vs its own prior baseline inside the same 90d window), so any venue-wide mechanical shift largely cancels in the ratio.",
+      "Wash or low-quality volume can distort trade counts; the universe is the staged set of Binance USD-M majors which mitigates but does not eliminate this; the data-quality eligibility gate (share of bars with trades > 0) bounds degenerate estimates.",
+      "Kim & Hansen (2026) quarter-hour algorithmic bursts contaminate short samples of bars; multi-week bar-level aggregation plus the mechanism-destroying placebo control bound this contamination's influence.",
+      "The equity evidence (S7) is about signed small-trade pressure; the crypto-perp construct is UNSIGNED average trade size because bar data carry no aggressor flags. The sign claim therefore rests on the composition channel (who is accumulating), and the mechanism-destroying placebo is the primary guard that the driver is mix rather than volume or flow intensity."
+    ]
+  },
+  "economic_counterparty": {
+    "description": "The counterparty is the retail cohort that splits orders into small clips and accumulates during speculative episodes (mechanically visible as falling average trade size at rising trade counts), taking inventory off larger participants; the opposite side is the larger-clip cohort whose growing footprint (rising average trade size) reflects institutional accumulation.",
+    "expected_sign": "Long the quintile with the RISING average trade size ratio (institutional footprint growing), short the quintile with the FALLING ratio (retail-like share growing): positive expected unit-gross spread for the anchor; per S7 the retail-heavy side is predicted to underperform."
+  },
+  "pit_fields": {
+    "fields_used": [
+      "15m completed bars: quote_volume and trades (count) columns of the 19 non-BTC symbols",
+      "15m completed bar closes of BTCUSDT ONLY for the beta-neutralisation risk primitive (never a position)",
+      "instrument tick sizes (cost arithmetic only)"
+    ],
+    "fields_explicitly_not_used": ["funding rates (cost pass-through only)", "open interest (reserved family)", "signed aggressor flow (unavailable in bar schema and adjacent to a forbidden class)"],
+    "availability_clock": "Identical to prop 1: Monday 00:00:00Z stamps strictly after 2025-08-22T00:00:00Z; formation inputs are completed bars with ts_event at-or-before the stamp; the full 90-day trailing daily-equivalent block must be covered (binding warmup shared with the beta risk primitive).",
+    "formation_statistic_definition": "Per symbol: recent mean per-bar average trade size qv/trades over the trailing 30 days (days -30..0 before the stamp) divided by the baseline mean over days -90..-30 of the same window; computed only over bars with trades > 0; a data-quality gate requires >= 80% of bars in both sub-windows to have trades > 0.",
+    "execution_lag": "One declared lag: fill at the first completed 15m bar strictly after the stamp (00:15Z close), strict-later FILLED_NEXT_EVENT."
+  },
+  "schedule": {
+    "universe": "19 tradeable names = REQUIRED_SYMBOLS minus BTCUSDT; BTCUSDT context-only.",
+    "eligibility_per_stamp": [
+      "90-day trailing block fully covered by completed 15m bars",
+      "data-quality gate: >= 80% of 15m bars with trades > 0 in BOTH the recent 30d and baseline 60d sub-windows",
+      "at least 9 names eligible overall; if fewer, prior book carried forward unchanged (no-action discretionary stamp)"
+    ],
+    "formation": "Quintile ranks on the order-size ratio (recent 30d mean of per-bar quote-volume/trade-count divided by the prior 60d baseline mean), over eligible names.",
+    "holding": "Intended holding 28 days; two-stamp hysteresis in both directions; 28-day per-symbol re-entry cooldown (identical turnover guards to prop 1).",
+    "rebalance": "Weekly Monday 00:00:00Z discretionary rebalance subject to hysteresis; terminal FORCE_FLAT at the frozen boundary; 52 discretionary decisions per 365d by construction.",
+    "risk_force_flat": "No extra risk-trigger decisions scheduled; any forced-flat counted separately by the gate."
+  },
+  "target_book": {
+    "shape": "long/short quintile book (BTC context-only): long leg = top order-size-ratio quintile, short leg = bottom quintile.",
+    "weight_rule": "Identical primitive to prop 1: w_i = +/- min(0.30, 0.5/n_leg), leg gross 0.5, beta-tilt followed by whole-book uniform shrink c = min(1, 0.30 / max_i |w_i|); cap holds at every stamp by construction with no post-score renormalisation.",
+    "beta_neutralisation": "Book BTC-beta neutralised with the same leg-scaling primitive and trailing 90d betas as prop 1; here neutralisation is a pure risk primitive because the signal has no beta content.",
+    "expected_turnover": "The 30d-vs-60d ratio is slow-moving; hysteresis + 28d intended holding + 28d re-entry cooldown bound leg churn and per-symbol turnover share (construction-level guards; magnitudes verified by the schedule gate, asserted nowhere in this lane). Median intended holding 28d (floor 3d); 52 decisions/365d (floor 60).",
+    "floors_compliance_by_construction": {
+      "max_discretionary_decisions_per_365d": "52 by schedule construction",
+      "min_median_holding_days": "28d intended holding; hysteresis only lengthens",
+      "weight_cap_abs_0_30": "by construction via the weight rule",
+      "symbol_turnover_share_le_25pct": "guarded by hysteresis + cooldown + >= 8 leg slots sharing turnover; gate-verifiable",
+      "cost_drag": "few bounded leg-slot swaps; left to the schedule gate"
+    }
+  },
+  "controls": {
+    "anchor": "Weekly order-size-ratio quintile book as specified.",
+    "justified_neighbour": "Small-trade-share neighbour: formation statistic = share of trailing 30d bars whose per-bar average trade size sits in the symbol's own bottom quartile (computed over the same 90d window), long lowest share / short highest share. Theoretical justification: S7's construction sorts trades into size buckets, so a bucket-share estimator is the theory-mandated alternative estimator of the same latent participant-mix variable - a different statistic from the mean-ratio anchor, not a parameterization of it.",
+    "causal_negative_control": "Trade-count-permuted placebo: recompute the anchor's formation statistic after permuting each symbol's 15m trade counts within its own 90d formation window (marginal trade-count, quote-volume and return paths preserved; the temporal participant-mix signal destroyed), then trade the identical book skeleton. Mechanism-destroying: if the placebo book tracks the anchor, the true driver is volume/count level (volume-shock or illiquidity adjacency) and the mix family is falsified."
+  },
+  "cost_treatment": {
+    "fees": "Declared repo tier-0 taker fee floor via the plugin CostModel; all transitions priced by the adapter's rebalance_cost_between.",
+    "slippage": "Declared adverse-tick floor with per-symbol tick sizes from instrument metadata.",
+    "funding": "Native per-symbol settlements accrue while held under LONG_PAYS_POSITIVE_RATE with PIT settlement_ts within [ts_opened, ts_closed]; mixed cadences honoured; funding never enters formation.",
+    "stress": "Frozen cells on the plugin's own floors: fee x1.5, +2 ticks, +1 event delay; drop-one-symbol / drop-one-fold per the derived family matrix."
+  },
+  "falsification_condition": [
+    "Anchor fails its pre-registered gate vs the flat hard benchmark under the baseline stress cell AND the trade-count-permuted placebo does not fail it: the destroyed-mechanism book performs no worse than the anchor; the mix mechanism is not the driver; family falsified.",
+    "Placebo equivalence: anchor and placebo books' eligible-name overlap and turnover profiles are similar AND their gate outcomes are indistinguishable; the temporal composition channel carries no content; family falsified.",
+    "Volume-shock adjacency probe: if the anchor's leg changes coincide with 15m quote-volume spikes (i.e., the ratio moves only around volume bursts, consistent with Kim & Hansen-style algorithmic bursts), the statistic is a volume-shock proxy; family withdrawn.",
+    "Sign failure relative to S7: if the retail-heavy (falling avg trade size) side outperforms the institutional side (anchor sign inverted) rather than merely failing the gate, the transfer of the composition sign to crypto perps fails; family falsified rather than re-signed post hoc."
+  ],
+  "ancestry_map": [
+    {"forbidden_class_id": "V11-ILLIQ-AMIHUD", "relation": "distinct", "distinction": "No |return|/dollar-volume or other price-impact statistic; the signal is an unsigned order-size composition ratio. Boundary guard: the trade-count-permuted placebo collapses the anchor onto a volume/count-level object precisely when mix is NOT the driver, so an illiquidity-like driver is detected and rejected rather than smuggled in."},
+    {"forbidden_class_id": "V1-VOLCOMP", "relation": "distinct", "distinction": "No volatility-compression breakout and no volume-shock continuation: no shock or spike conditioning, no continuation bet; the statistic is a 30d-vs-60d within-symbol mean ratio, and a dedicated volume-shock adjacency probe is a falsification condition."},
+    {"forbidden_class_id": "V10-M01-AGGRESSOR-ABSORPTION", "relation": "distinct", "distinction": "No signed flow, no aggressor flags, no price-impact-vs-flow conditioning; bar schema carries no such fields and the mechanism is composition, not absorption."},
+    {"forbidden_class_id": "V11-LOTTERY-MAX-SKEW", "relation": "distinct", "distinction": "No return-distribution statistic (MAX/skew/idio-vol); the counterparty theory is participant composition, not lottery demand."},
+    {"forbidden_class_id": "V4-XSECT-MOM", "relation": "distinct", "distinction": "No past-return ranking; returns enter nothing in formation."},
+    {"forbidden_class_id": "WEEKLY-REVERSAL / MR-RESCUE", "relation": "distinct", "distinction": "No past-return ranking in either direction; the predicted underperformance of the retail-heavy leg is a composition effect, and the sign failure condition forbids post-hoc re-signing."},
+    {"forbidden_class_id": "V6/V1-CARRY-FUNDING", "relation": "distinct", "distinction": "No funding input; funding is cost pass-through only."},
+    {"forbidden_class_id": "V11-OILEVER-DELEV", "relation": "distinct", "distinction": "No open-interest input; 0.30 cap respected by construction with no post-score renormalisation."},
+    {"forbidden_class_id": "DATA-GATED", "relation": "distinct", "distinction": "Uses only staged 15m bar columns (quote_volume, trades, close) already declared in the packet schema; no external or purchased data."}
+  ],
+  "why_not_rescue": "Not a LOT inversion: no lottery-demand statistic is computed or inverted; average trade size is an order-flow composition measure, unrelated to return-shape lottery proxies. Not an ILLIQ/OILEV parameter rescue: no price-impact or open-interest construction is retuned; the 30d/60d formation windows are derived from the data contract's single frozen 90d warmup (no lookback freedom beyond that freeze); fees are the declared floors (no fee reduction); no winning-symbol selection (full eligible universe mechanically binned); no post-score renormalisation. It is also not a renamed rejected baseline: the signal contains no past returns, no volume shocks, no funding, and no OI, which are the substance of the rejected classes.",
+  "scored_cells": [
+    {"cell": "anchor", "arm": "order-size ratio quintile L/S, 30d vs 60d within 90d", "count": 1},
+    {"cell": "neighbour", "arm": "small-trade-share L/S (bottom-quartile bar share), 30d", "count": 1},
+    {"cell": "causal_negative_control", "arm": "trade-count-permuted placebo book", "count": 1}
+  ],
+  "scored_cells_total": 3,
+  "data_dependencies": [
+    "15m bars carrying quote_volume and a trades (count) column for all 19 non-BTC symbols over the 90d warmup before every stamp",
+    "15m closes for BTCUSDT over the same warmup (beta-neutralisation primitive only)",
+    "instrument tick sizes and fee fields from crypto_perpetual metadata"
+  ],
+  "fail_closed_preconditions": [
+    "If the staged bars lack the trades (count) column for any required symbol, this proposal is withdrawn rather than re-derived from a substitute statistic (no silent re-parameterisation).",
+    "If the 90d warmup is not satisfiable from local history for >= 10 of 19 names at the first stamp, the family is not launched."
+  ]
+}
