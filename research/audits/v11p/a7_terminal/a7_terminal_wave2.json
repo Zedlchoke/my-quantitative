@@ -1,0 +1,154 @@
+{
+  "schema": "a7_terminal_wave2_audit_v1",
+  "auditor": "A7-TERMINAL",
+  "generated_utc": "2026-09-03T06:55:00Z",
+  "worktree_head": "062dfcb253280bb91e32ad0ec8c860bf2e4abe9a (detached, on a348122)",
+  "integration_head_audited": "85c14a77719beec5d16789c7dabdf02300173ce3",
+  "method": "independent recompute from raw artifacts; producer evaluator not imported (stage_a_verdict.py read only to pin the frozen fold-share DEFINITION, arithmetic redone by A7)",
+  "final_terminal_audit_verdict": "APPROVED",
+  "confirmed_sprint_verdict": "V11_REJECT_ALL",
+  "items": [
+    {
+      "id": "W2-0",
+      "name": "lineage_and_scope",
+      "verdict": "PASS",
+      "command": "git rev-parse 85c14a7; git merge-base --is-ancestor a348122 85c14a7; git merge-base --is-ancestor 4160eec 85c14a7; git diff --name-only 4160eec..85c14a7",
+      "evidence": {
+        "a348122_ancestor_of_85c14a7": true,
+        "wave1_merge_4160eec_ancestor_of_85c14a7": true,
+        "integration_changes_since_wave1": [
+          "research/control/v11_run/family_verdict_illiq.json (new)",
+          "research/control/v11_run/reproduction_report_illiq.json (new)",
+          "research/control/v11_run/event_log.jsonl (+1 line: PHASE_R_COMPLETE_ALL_MATCH 6 arms / 33 cells)"
+        ],
+        "research_v11_or_adapter_v10_code_changed_since_wave1": false
+      }
+    },
+    {
+      "id": "W2-1",
+      "name": "illiq_stage_a_gates_independent_recompute",
+      "verdict": "PASS",
+      "command": "python research/audits/v11p/a7_terminal/scripts/a7w2_item_illiq_gates.py (own arithmetic over exec-tree ILLIQ artifacts: positions + daily ledgers + fold_metrics; 3 arms x 6 cells)",
+      "evidence": {
+        "anchor_confirmed": {
+          "net_return_sum_daily": 0.581969254868,
+          "position_pf": 1.3548410108404612,
+          "expectancy_claimed_0.01119171644_equals_daily_basis": "0.581969254868/52 = 0.01119171644 (exact)",
+          "expectancy_positions_basis_mine": 0.011259355309,
+          "expectancy_note": "positions carry allocated cost only; full charged cost lives in the daily ledger (same benign basis difference as LOT in wave 1); claimed value is the full-cost basis and is internally consistent",
+          "max_drawdown": 0.091821657373,
+          "n_positions": 336,
+          "n_days": 52,
+          "daily_hit_rate": "24/52 = 0.461538461538",
+          "folds": {"F0": {"net_foldmetrics": 0.117290303827, "pf": 1.259939661186},
+                    "F1": {"net_foldmetrics": 0.054101471270, "pf": 1.083106967971},
+                    "F2": {"net_foldmetrics": 0.410577479771, "pf": 1.780898618984}},
+          "all_3_folds_positive": true,
+          "folds_pf_below_080": [],
+          "stress_cells": {
+            "fee_slippage_x1_5": {"net": 0.577302994019, "pf": 1.352587526506},
+            "plus_2_ticks": {"net": 0.578418525247, "pf": 1.353058936619},
+            "plus_1_event_delay": {"net": 0.602899211791, "pf": 1.365651731892}
+          },
+          "drop_one_fold_net": 0.464678951041
+        },
+        "neighbour_confirmed": {"net": 0.666536688576, "pf": 1.389629128029, "mdd": 0.090711270959},
+        "control_confirmed": {"net": -0.604185027886, "pf": 0.732227392091, "mdd": 0.657684378818},
+        "concentration_gate": {
+          "my_largest_positive_fold_share_foldmetrics_basis": 0.7054968562972035,
+          "rounded_4dp": 0.7055,
+          "claimed": 0.7055,
+          "CONFIRMED": true,
+          "my_positions_basis_share": 0.7022573519976983,
+          "positions_basis_note": "fold nets from position sums differ from fold_metrics by the cost-allocation basis; on EITHER basis the share exceeds 0.50 and the gate fails",
+          "exceeds_050_on_both_bases": true,
+          "fold_shares": {"F0": 0.201540378372, "F1": 0.092962765331, "F2": 0.705496856297}
+        },
+        "symbol_share": {"mine": 0.2980766278679782, "symbol": "BOMEUSDT", "claimed": 0.2981},
+        "my_failed_gates": ["no_positive_fold_gt_50pct_of_positive_pnl"],
+        "producer_failed_gates": ["no_positive_fold_gt_50pct_of_positive_pnl"],
+        "gate_sets_identical": true,
+        "verdict_confirmed": "V11_FAMILY_REJECT",
+        "raw_output": "w2_illiq_raw_output.json"
+      }
+    },
+    {
+      "id": "W2-2",
+      "name": "illiq_drop_one_symbol_vacuous_caveat",
+      "verdict": "PASS_WITH_DISCLOSED_CAVEAT",
+      "command": "manual comparison of drop_one_symbol vs baseline artifacts (stress config, held symbols, positions)",
+      "evidence": {
+        "finding": "ILLIQ drop_one_symbol drops 1000PEPEUSDT, which is in the 19-symbol universe but held ZERO positions in the anchor AND neighbour baselines; the cell reproduces the baseline exactly (336 positions, net 0.581969254868 identical for the anchor; 352/0.666536688576 for the neighbour)",
+        "classification": "evidence-quality caveat, NOT an arithmetic error; the producer's own gate detail records the identical nets transparently",
+        "impact": "the drop_one_symbol survival PASS carries no falsification information for ILLIQ; it does not change any outcome because ILLIQ is REJECTED on the frozen concentration gate regardless, and LOT (the other REJECT) had a non-vacuous drop cell",
+        "recommendation_for_lessons": "future drop-one-symbol cells should drop a HELD symbol (e.g. the largest-|weight| one) to be informative"
+      }
+    },
+    {
+      "id": "W2-3",
+      "name": "reproduction_spot_checks",
+      "verdict": "PASS",
+      "command": "python research/audits/v11p/a7_terminal/scripts/a7w2_item_repro_spots.py (A7's own payload sha256: artifact minus hashes/artifacts, frozen <TREE_ROOT> normalisation, canonical JSON; both trees)",
+      "evidence": {
+        "cells": [
+          "LOT/LOT-RESSKEW-30D-W/baseline (claimed d779854c3425c66f...)",
+          "LOT/LOT-RESSKEW-30D-W/drop_one_symbol (claimed 169e5db56eb34b7c...)",
+          "ILLIQ/ILLIQ-AMIHUD-56D-W/baseline (claimed 274718e2d1083206...)",
+          "ILLIQ/ILLIQ-AMIHUD-56D-W/plus_2_ticks (claimed 2ae5173fea5f8085...)",
+          "ILLIQ/ILLIQ-AMIHUD-56D-W/drop_one_fold (claimed c9e751f66a98081c...)"
+        ],
+        "a7_payload_equal_exec_repro": "5/5",
+        "claimed_sha_equal_and_match_reports": "5/5 (matches reproduction_report_lot.json and reproduction_report_illiq.json)",
+        "claim_33_of_33": "producer reports LOT 3x5 + ILLIQ 3x6 = 33/33 ALL_MATCH; A7 independently verified 5 of 33 this wave plus 5 LOT cells in wave 1 (10/33 independently verified, 0 mismatches)"
+      }
+    },
+    {
+      "id": "W2-4",
+      "name": "final_ledger_and_denominator",
+      "verdict": "PASS",
+      "command": "python research/audits/v11p/a7_terminal/scripts/a7w2_item_ledger.py",
+      "evidence": {
+        "verify_append_only": true,
+        "canonical_rows": 6,
+        "all_rows": "CELL_RESULT v2: LOT anchor/neighbour/control + ILLIQ anchor/neighbour/control",
+        "trial_keys_unique": true,
+        "trial_keys_recomputed_match": "6/6",
+        "arm_digests_tie_to_selection_freeze": "6/6",
+        "shard_lot": 3,
+        "shard_illiq": 3,
+        "cross_shard_key_collision": "none",
+        "shard_union_equals_canonical": true,
+        "denominator_split": {"published": 6, "observed_unpublished": 0, "observed_total": 6},
+        "quarantine_still_excluded": "2 defective zero-position OILEV CELL_RESULT rows remain outside the canonical ledger and all shards",
+        "budget_final": "6 eligible computed cells (LOT 3 + ILLIQ 3) <= 9 eligible <= 12 plan max; OILEV 0/3 slots (blocked pre-score, no rescue); DEF 3 slots unused; +2 disclosed PIPELINE_ERROR computations quarantined and never in the canonical ledger",
+        "raw_output": "w2_ledger_raw_output.json"
+      }
+    },
+    {
+      "id": "W2-5",
+      "name": "sprint_verdict_and_amendment",
+      "verdict": "PASS",
+      "command": "PLAN section 15 outcome-space evaluation against the three resolved family outcomes; canonical_ledger_amendment.json re-read (byte-unchanged since wave 1: absent from git diff 4160eec..85c14a7)",
+      "evidence": {
+        "family_outcomes": {
+          "V11-SEED-LOTTERY-MAX-SKEW": "V11_FAMILY_REJECT (wave 1: 7 failed gates, control-positive falsification)",
+          "A8-V11-ILLIQ-AMIHUD": "V11_FAMILY_REJECT (wave 2: single frozen gate no_positive_fold_gt_50pct_of_positive_pnl, share 0.7055 > 0.50; 12/13 PASS is still a REJECT under the frozen all-gates contract)",
+          "A8-V11-OILEVER-DELEV": "V11_FAMILY_BLOCKED (pre-score, 52/52 frozen-cap breach, no rescue; allowed family outcome per PLAN 15)"
+        },
+        "sprint_outcome_space_check": {
+          "V11_REJECT_ALL": "APPLICABLE - all eligible families resolved, zero V11_STAGE_A_SURVIVOR",
+          "V11_ONE_OR_MORE_STAGE_A_SURVIVORS_LOCKED_FOR_FUTURE_S1": "inapplicable (no survivor)",
+          "V11_BLOCKED_PRELAUNCH": "inapplicable (prelaunch passed; launch authorized and executed)",
+          "V11_INCOMPLETE_NOT_PROMOTABLE": "inapplicable (Phase E and R complete: 6/6 eligible cells computed, published, reproduced; blocked families closed fail-closed)"
+        },
+        "confirmed_sprint_verdict": "V11_REJECT_ALL",
+        "multiple_testing_note": "with V11_REJECT_ALL nothing is promoted; any DSR/PBO statement must still use the observed denominator (120 + 6 computed V11 cells, +2 disclosed PIPELINE_ERROR) or remain UNAVAILABLE_FAIL_CLOSED with zero credit",
+        "amendment_status": "canonical_ledger_amendment.json byte-unchanged since wave 1; historical 119-merge remains DEFERRED UNAVAILABLE_FAIL_CLOSED with exactly-once cross-check required before any merge - fail-closed honest",
+        "heartbeat_note": "heartbeat.json at 85c14a7 still shows the in-flight state (ILLIQ executing, sprint_verdict placeholder V11_INCOMPLETE_NOT_PROMOTABLE); it predates ILLIQ completion and does not alter any recomputed outcome; A1 should close it with the final state when declaring the sprint verdict"
+      }
+    }
+  ],
+  "fails": [],
+  "final_terminal_audit_verdict": "APPROVED",
+  "confirmed_sprint_verdict": "V11_REJECT_ALL"
+}
