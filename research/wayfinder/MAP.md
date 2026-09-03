@@ -2,6 +2,14 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS-FREE-V1 TERMINAL** (synced by A1, 2026-09-03, branch
+  `orca/stocks-free-v1-integration`) — verdict
+  `STOCKS_FREE_V1_BLOCKED_FREE_DATA_AUTHORITY` (A7 CONFIRM_BLOCKED): zero-cost
+  no-account ETF daily-OHLCV stack impossible — stooq anti-bot wall, SSGA
+  embedded license adverse, issuers publish close/NAV only; budget 0/6,
+  counters 0/0, old paid-data families untouched. Detail:
+  `research/control/stocks_free_v1_run/terminal_report.json`.
+
 - **STOCKS SPRINT TERMINAL AT S3** (synced by A1, 2026-09-02, branch
   `stocks@4521cf6`) — verdict `STOCKS_BLOCKED_DATA_AUTHORITY`: M0 multi-asset
   core frozen (`MULTIASSET_CORE_SHA=8310366`, M0_PASS 78/78), S1 correctness
