@@ -1,0 +1,164 @@
+{
+  "schema": "stocks_free_v1/audit/z2_a7_independent_probes@1",
+  "producer_role": "A7 (Z2 independent data-authority audit)",
+  "worktree": ".worktrees/stocks-free-v1/z2-a7-data @ 5cf5577dd6a6214612a43eae78e15c2c67b57d2e",
+  "probes_measured_at_utc": "2026-09-03",
+  "boundary_compliance": "all probes account-free, purchase-free, credentials-free; no anti-bot bypass attempted; no terms accepted; transient bodies in /tmp not committed (digests + short excerpts only), consistent with PLAN 2 raw-outside-Git",
+  "probes": [
+    {
+      "claim_audited": "stooq.com anti-bot PoW wall denies non-browser clients; terms URLs 404",
+      "probe": "curl 8.7.1 (curl UA) GET of CSV export endpoint, homepage, and two terms URL candidates",
+      "results": [
+        {
+          "url": "https://stooq.com/q/d/l/?s=spy.us&d1=20240102&d2=20240110&i=d",
+          "http": 200,
+          "bytes": 796,
+          "content_type": "text/html",
+          "finding": "JavaScript SHA-256 proof-of-work challenge visible in body (difficulty d=4, '0000' prefix loop, noscript 'This site requires JavaScript to verify your browser'); no CSV served",
+          "note": "796 bytes matches A2 recorded challenge size; body digest varies per request due to embedded nonce"
+        },
+        {
+          "url": "https://stooq.com/",
+          "http": 200,
+          "bytes": 796,
+          "finding": "same PoW challenge for homepage"
+        },
+        {
+          "url": "https://stooq.com/page/?s=terms",
+          "http": 404,
+          "bytes": 271,
+          "sha256": "03fa6d7ffcac125ba680b7558912f278abec5a5685a4fee3c26a023b32354115",
+          "finding": "fabricated generic 404; digest BYTE-IDENTICAL to A2 manifest raw/stooq/* 404 bodies"
+        },
+        {
+          "url": "https://stooq.com/doc/terms/?c=en",
+          "http": 404,
+          "bytes": 271,
+          "sha256": "03fa6d7ffcac125ba680b7558912f278abec5a5685a4fee3c26a023b32354115",
+          "finding": "same fabricated 404 body"
+        }
+      ],
+      "verdict": "CONFIRMED"
+    },
+    {
+      "claim_audited": "SSGA terms-of-use URLs serve JS SPA shells / redirect landings with no terms text to non-browser clients",
+      "probe": "curl with browser UA, tag-stripped visible-text measurement of two terms URL candidates; JS-rendering fetch (web reader) as adverse test",
+      "results": [
+        {
+          "url": "https://www.ssga.com/us/en/intermediary/terms-of-use",
+          "http": 200,
+          "bytes": 133072,
+          "final_url": "https://www.ssga.com/us/en/intermediary",
+          "sha256": "ec71ca1dd063f73dfcbdd8678df495189b7a41b5bd7ddf17de0291e558bd3b91",
+          "visible_text_chars": 12822,
+          "terms_word_occurrences": 0,
+          "finding": "generic intermediary landing shell; BYTE-IDENTICAL to A2 manifest probe_ssga_tou_a.html / ssga_legal_landing.html / ssga_terms_of_use_intermediary.html"
+        },
+        {
+          "url": "https://www.ssga.com/legal/terms-of-use",
+          "http": 200,
+          "bytes": 47211,
+          "final_url": "https://www.ssga.com/choose-your-location?origin=legal/terms-of-use",
+          "sha256": "c06412295da384ad0751e7e3ba35be39659c77a35616e745c243361c48d49ab1",
+          "visible_text_chars": 960,
+          "terms_word_occurrences": 0,
+          "finding": "choose-your-location redirect shell; BYTE-IDENTICAL to A2 manifest probe_ssga_tou_b.html / ssga_terms_of_use.html"
+        },
+        {
+          "url": "https://www.ssga.com/us/en/intermediary/terms-of-use (JS-rendering fetch)",
+          "finding": "even a JavaScript-rendering fetcher receives the HOMEPAGE (canonical https://www.ssga.com/us/en, template homepage-template) at this URL; the terms page content does not exist at the URL even with full JS. The only license-adjacent text obtainable anywhere is the homepage/footer disclosure: 'The whole or any part of this work may not be reproduced, copied or transmitted or any of its contents disclosed to third parties without SSGA's express written consent.' The SAME sentence is embedded in the footer of every downloaded SSGA workbook, including the staged navhist-us-en-spy.xlsx and spdr-etf-historical-distributions.xlsx."
+        }
+      ],
+      "verdict": "CONFIRMED_AND_STRENGTHENED",
+      "adverse_finding": "The A2 claim 'no terms text obtainable' is incomplete: operative license text IS capturable by non-browser clients - embedded in the downloaded workbooks themselves - and it is ADVERSE: it forbids reproduction/copying/transmission without express written consent, i.e. it points AGAINST the local-storage and derived-research permissions FD0 item 3 requires. SSGA cannot ground FD0 even under the most favorable reading."
+    },
+    {
+      "claim_audited": "SSGA XLSX files remain freely downloadable without account",
+      "probe": "fresh same-day curl re-download of navhist-us-en-spy.xlsx and spdr-etf-historical-distributions.xlsx",
+      "results": [
+        {
+          "url": "https://www.ssga.com/us/en/intermediary/library-content/products/fund-data/etfs/us/navhist-us-en-spy.xlsx",
+          "http": 200,
+          "bytes": 276544,
+          "sha256": "5e055d2239eb72ec3c6f193aa17d21f43d50083c7d32471561f249c31fa1fcbc",
+          "matches_lane_manifest": true
+        },
+        {
+          "url": "https://www.ssga.com/us/en/intermediary/library-content/products/fund-data/etfs/us/spdr-etf-historical-distributions.xlsx",
+          "http": 200,
+          "bytes": 575400,
+          "sha256": "1b952f87ca60ece4080b446d6c3b580f640d893ed33641797a2dd22dd61beca9",
+          "matches_lane_manifest": true
+        }
+      ],
+      "verdict": "CONFIRMED (cross-lane two-pull determinism: A2 pull, A3 pull, A7 pull all byte-identical)"
+    },
+    {
+      "claim_audited": "missed-source sweep: iShares (BlackRock) issuer price-history downloads as a possible overlooked zero-account OFFICIAL source",
+      "probe": "curl GET of the public IVV price-history ajax export endpoint and a terms-page candidate",
+      "results": [
+        {
+          "url": "https://www.ishares.com/us/products/239726/ishares-core-sp-500-etf/1467271812596.ajax?fileType=xls&fileName=IVV_price_history&dataType=fund",
+          "http": 200,
+          "bytes": 2228609,
+          "content_type": "application/vnd.ms-excel;charset=UTF-8",
+          "sha256": "ff3de7d191c6ddfc4e92b6f2269896265b015ce7f6d9912006bd780e493acf43",
+          "finding": "body is HTML DOCTYPE markup (Akamai-style bot interstitial served with a fake Excel content-type); NOT a valid XLSX/zip; no data served to non-browser clients"
+        },
+        {
+          "url": "https://www.ishares.com/us/resources/knowledge-center/investing-basics/terms-and-conditions",
+          "http": 404,
+          "bytes": 152126,
+          "finding": "SPA 404 shell"
+        }
+      ],
+      "verdict": "EVALUATED_INSUFFICIENT: bot-walled for non-browser clients (same class as stooq); additionally iShares price-history files are close-level NAV/market-price tables (no OHLC, no volume), so FD2 as frozen could not pass even if download succeeded"
+    },
+    {
+      "claim_audited": "missed-source sweep: Invesco issuer pages",
+      "probe": "curl GET of QQQ product-detail page",
+      "results": [
+        {
+          "url": "https://www.invesco.com/us/financial-products/etfs/product-detail?audienceType=Investor&ticker=QQQ",
+          "http": 406,
+          "bytes": 0,
+          "finding": "HTTP 406 Not Acceptable to non-browser client - bot-walled; downloads are JS-gated"
+        }
+      ],
+      "verdict": "EVALUATED_INSUFFICIENT (bot-walled; issuer files are close-level NAV/price anyway)"
+    },
+    {
+      "claim_audited": "missed-source sweep: Nasdaq public quote/historical API (api.nasdaq.com) as a no-account OHLCV candidate",
+      "probe": "curl GET of SPY ETF historical endpoint with browser headers",
+      "results": [
+        {
+          "url": "https://api.nasdaq.com/api/quote/SPY/historical?assetclass=etf&fromdate=2024-01-02&todate=2024-01-10&limit=10",
+          "http": 200,
+          "bytes": 179,
+          "sha256": "2c84798321065121888a7d57a5b466de8e7f5fcb78ba691dae5e40bf6c49d365",
+          "finding": "JSON envelope returned with totalRecords=0 and rows=null (no historical rows served without browser session state); Nasdaq website terms additionally prohibit data extraction/scraping by automated means"
+        }
+      ],
+      "verdict": "EVALUATED_INSUFFICIENT (no data served; license adverse)"
+    },
+    {
+      "claim_audited": "missed-source sweep: FRED SP500 index series as a price-history candidate",
+      "probe": "curl GET of fredgraph.csv?id=SP500 and the series page",
+      "results": [
+        {
+          "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=SP500",
+          "http": 200,
+          "bytes": 48891,
+          "sha256": "4d128cf409752146c30984af5319138fc14e7ce5ba69505c1b79c087c3078cd0",
+          "finding": "served without account: daily CLOSE only, 2016-09-06..2026-09-02 (rolling 10-year window - head rolls off daily, so fixed historical windows are not stably reproducible); index level, not ETF cohort market price; no OHLC components, no volume, no distributions"
+        },
+        {
+          "url": "https://fred.stlouisfed.org/series/SP500",
+          "finding": "series page shows 'Source: S&P Dow Jones Indices LLC' with required citation; no Public Domain marking observed (unlike DFF)"
+        }
+      ],
+      "verdict": "EVALUATED_INSUFFICIENT for cohort OHLCV (close-only rolling window, license marking weaker than DFF)"
+    }
+  ],
+  "sweep_summary": "Additional classes considered without dedicated probes because they are excluded by classification: Vanguard price-history downloads are login-gated (account boundary); other ETF issuers (Alpha Architect, First Trust, etc.) publish at most close-level NAV/market-price/distribution files, never OHLCV, and the large ones are bot-walled like iShares/Invesco/SSGA-website; SEC/EDGAR contains no daily market OHLCV; exchange publications (NYSE/Cboe DataShop) are account- or fee-gated; commercial APIs with free tiers (Massive/Polygon, Alpha Vantage, Tiingo, Finnhub, TwelveData, EODHD) all require account+API key = EXCLUDED_ACCOUNT_REQUIRED; unofficial mirrors (Kaggle/GitHub datasets) are not OFFICIAL sources under PLAN 4.1 item 1. No credible boundary-compliant path to FD0 was found."
+}
