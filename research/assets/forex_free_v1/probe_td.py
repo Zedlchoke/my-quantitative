@@ -54,23 +54,51 @@ def td_get(symbol, interval, sd, ed, tz="UTC"):
     if interval != "1day":
         q["timezone"] = tz
     url = "https://api.twelvedata.com/time_series?" + urllib.parse.urlencode(q)
+    last_err = None
     for attempt in range(4):
         try:
             with urllib.request.urlopen(url, timeout=60) as r:
                 body = r.read()
             _last[0] = time.time()
+            if not body:
+                last_err = "EMPTY_BODY"
+                time.sleep(20); continue
             j = json.loads(body)
             if j.get("status") == "error":
                 msg = j.get("message", "")
-                if ("limit" in msg.lower() or r"429" in msg) and attempt < 3:
+                if ("limit" in msg.lower() or "run out" in msg.lower() or "credits" in msg.lower()) and attempt < 3:
                     time.sleep(65); continue
                 return body, j, "PROVIDER_ERROR: " + msg
             return body, j, None
+        except urllib.error.HTTPError as e:
+            _last[0] = time.time()
+            body = e.read() or b""
+            try:
+                j = json.loads(body)
+                last_err = "HTTP_%d: %s" % (e.code, j.get("message", body[:200]))
+                if e.code == 429 and attempt < 3:
+                    time.sleep(65); continue
+                return body, j if isinstance(j, dict) else None, last_err
+            except Exception:
+                last_err = "HTTP_%d: %s" % (e.code, body[:200])
+                if attempt == 3:
+                    return body, None, last_err
+                time.sleep(20)
         except Exception as e:  # network hiccup
             _last[0] = time.time()
+            last_err = "FETCH_ERROR: %s" % e
             if attempt == 3:
-                return b"", None, "FETCH_ERROR: %s" % e
+                return b"", None, last_err
             time.sleep(20)
+    return b"", None, last_err
+
+def load_json_or_none(path):
+    try:
+        if os.path.getsize(path) == 0:
+            return None
+        return json.loads(open(path).read())
+    except Exception:
+        return None
 
 def compare(a_bytes, a, b_bytes, b):
     rec = {"sha256_a": hashlib.sha256(a_bytes).hexdigest(),
@@ -138,21 +166,32 @@ def main():
             agg = {"pair": pair, "interval": interval, "windows": [], "total_rows": 0}
             rows_all = []
             for sd, ed in wins:
+                fas = {p: os.path.join(RAW, f"{tag}_{interval}_{sd}_{p}.json") for p in ("a", "b")}
+                a_j, b_j = load_json_or_none(fas["a"]), load_json_or_none(fas["b"])
                 for pull in ("a", "b"):
+                    if load_json_or_none(fas[pull]) is not None:
+                        continue  # resumable: valid pull already stored
                     body, j, err = td_get(pair, interval, sd, ed)
-                    fp = os.path.join(RAW, f"{tag}_{interval}_{sd}_{pull}.json")
-                    with open(fp, "wb") as f:
+                    with open(fas[pull], "wb") as f:
                         f.write(body)
                     manifest["requests"].append({"pair": pair, "interval": interval, "start": sd,
                                                  "end": ed, "pull": pull, "http_or_provider_error": err,
                                                  "sha256": hashlib.sha256(body).hexdigest()})
-                a_j = json.loads(open(os.path.join(RAW, f"{tag}_{interval}_{sd}_a.json")).read())
-                b_j = json.loads(open(os.path.join(RAW, f"{tag}_{interval}_{sd}_b.json")).read())
-                a_b = open(os.path.join(RAW, f"{tag}_{interval}_{sd}_a.json"), "rb").read()
-                b_b = open(os.path.join(RAW, f"{tag}_{interval}_{sd}_b.json"), "rb").read()
+                a_j, b_j = load_json_or_none(fas["a"]), load_json_or_none(fas["b"])
+                a_b = open(fas["a"], "rb").read()
+                b_b = open(fas["b"], "rb").read()
                 cmp_rec = compare(a_b, a_j, b_b, b_j)
-                ok = cmp_rec.get("content_identical") is True
+                if a_j is None and b_j is None:
+                    err_msg = next((r["http_or_provider_error"] for r in reversed(manifest["requests"])
+                                    if r["pair"] == pair and r["interval"] == interval and r["start"] == sd
+                                    and r["http_or_provider_error"]), "UNKNOWN")
+                    agg["windows"].append({"start": sd, "end": ed, "rows": 0, "deterministic": False,
+                                           "PULL_ERROR": err_msg, "compare": cmp_rec, "truncated_5000": False,
+                                           "error": err_msg})
+                    print(f"{pair} {interval} {sd}->{ed}: PULL_ERROR {err_msg}", flush=True)
+                    continue
                 rows = (a_j.get("values") if isinstance(a_j, dict) else None) or []
+                ok = cmp_rec.get("content_identical") is True
                 agg["windows"].append({"start": sd, "end": ed, "rows": len(rows),
                                        "deterministic": ok, "compare": cmp_rec,
                                        "truncated_5000": len(rows) == 5000,
