@@ -1,0 +1,131 @@
+{
+  "schema": "v12_blind_proposal_v1",
+  "lane": "a5",
+  "hypothesis_id": "V12-A5-P1-BAB-LOWBETA",
+  "family_id": "V12-A5-F1-LEVERAGE-CONSTRAINT-BETA",
+  "created_utc": "2026-09-03T12:45:00Z",
+  "packet_schema": "v12_d0_freeze_v1",
+  "outcome_blind_attestation": {
+    "returns_pnl_pf_sharpe_rankings_backtests_computed": false,
+    "note": "This document declares construction rules and PIT discipline only. Every frozen-floor check (decisions/365d, median holding, cost drag, symbol turnover share, weight cap) is deferred to the schedule-only cost-feasibility gate by the scoring lanes."
+  },
+  "primary_source_claim": {
+    "sources": [
+      {
+        "id": "S1",
+        "citation": "Frazzini, A. and Pedersen, L.H. (2014), 'Betting against beta', Journal of Financial Economics 111(1), 1-25.",
+        "doi_or_url": "10.1016/j.jfineco.2013.10.005",
+        "verified_via": "CrossRef REST API, retrieval 2026-09-03T12:20-12:22Z",
+        "claim_used": "Leverage-constrained investors tilt toward high-beta assets, bidding down those assets' risk-adjusted returns; a factor long low-beta / short high-beta earns positive risk-adjusted returns across asset classes."
+      },
+      {
+        "id": "S2",
+        "citation": "Asness, C., Frazzini, A., Gormsen, N.J. and Pedersen, L.H. (2020), 'Betting against correlation: Testing theories of the low-risk effect', Journal of Financial Economics 135(3), 629-652.",
+        "doi_or_url": "10.1016/j.jfineco.2019.07.003",
+        "verified_via": "CrossRef REST API, retrieval 2026-09-03T12:31:48Z",
+        "claim_used": "The low-risk effect decomposes into a correlation channel and a volatility channel, with the correlation channel the theoretically distinguishing component; the short side of the effect concentrates in assets most correlated with the market in bad states."
+      },
+      {
+        "id": "S4",
+        "citation": "Seabe, P.L., Moutsinga, C.R.B. and Pindza, E. (2024), 'Optimizing Cryptocurrency Returns: A Quantitative Study on Factor-Based Investing', Mathematics 12(9), 1351.",
+        "doi_or_url": "10.3390/math12091351",
+        "verified_via": "CrossRef REST API, retrieval 2026-09-03T12:31:05Z",
+        "claim_used": "BAB-type / low-risk factor construction is a feasible, transplanted methodology in the cryptocurrency cross-section (transfer evidence only; no sign imported)."
+      },
+      {
+        "id": "S5",
+        "citation": "Pyo, S. and Jang, H. (2026), 'Revisiting the low-volatility anomaly in cryptocurrency markets', Finance Research Letters.",
+        "doi_or_url": "10.1016/j.frl.2026.109851",
+        "verified_via": "CrossRef REST API, retrieval 2026-09-03T12:25:43Z",
+        "claim_used": "The low-risk / low-volatility anomaly is documented and re-confirmed in cryptocurrency markets (transfer evidence that the underlying pricing friction is present in crypto)."
+      }
+    ],
+    "crypto_perpetual_transfer_caveats": [
+      "Perpetual leverage is cheap and granular, so the equity friction 'cannot lever low-beta' is weaker on Binance USD-M: retail can lever a low-beta alt directly instead of tilting high-beta. The mechanism may therefore be muted rather than amplified; the sign prediction is unchanged but the magnitude expectation is lower.",
+      "Beta is estimated against BTCUSDT, which is a benchmark leg and not the full crypto market; low estimated beta can reflect stale or coverage-degraded prices rather than defensive character. Mitigation: eligibility requires a fully covered 90-day daily block and a minimum number of valid paired daily observations, so a name cannot enter on a degenerate beta estimate.",
+      "High-beta alts frequently coincide with positive funding (longs pay). The anchor deliberately uses no funding input, but realized funding accrual is a by-product of holding shorts in such names; a carry-confound probe is therefore written into the falsification conditions rather than left implicit.",
+      "A single 12-month scored window contains at most a few independent 90-day beta regimes; beta-rank stability across regime shifts is a genuine estimation risk and is partially absorbed by the two-stamp hysteresis.",
+      "Published BAB premia are implementation-sensitive (Novy-Marx & Velikov 2018, working paper, caveat only); no magnitude claim is pre-registered, only a sign and a mechanism identity."
+    ]
+  },
+  "economic_counterparty": {
+    "description": "The counterparty selling the anchor's edge is the leverage-constrained or convexity-seeking cohort of perpetual traders (retail and risk-limit-constrained desks) who overweight high-beta alts to maximize dollar-convexity, together with mandate-constrained investors who cannot lever low-beta names and so bid them less aggressively. Their demand raises high-beta prices relative to beta-scaled fundamentals and depresses low-beta demand.",
+    "expected_sign": "Long the lowest-BTC-beta quintile and short the highest-BTC-beta quintile of the 19 non-BTC universe, beta-neutralized: positive expected unit-gross spread for the anchor relative to the flat hard gate. The sign-flipped book is predicted NOT to earn this spread."
+  },
+  "pit_fields": {
+    "fields_used": [
+      "15m completed bars (close) of all 20 required symbols, aggregated to daily closes for beta estimation; BTCUSDT used ONLY as the benchmark leg of the beta regression, never as a position",
+      "instrument tick sizes from instrument metadata (cost arithmetic only)"
+    ],
+    "fields_explicitly_not_used": ["funding rates (cost pass-through only, never signal)", "open interest (reserved family)", "quote-volume / trade counts (prop-2 signal, not used here)"],
+    "availability_clock": "Decision stamps: every Monday 00:00:00Z strictly after window start 2025-08-22T00:00:00Z (first stamp 2025-08-25). All formation inputs are completed bars with ts_event strictly at-or-before the stamp; the 90-day trailing daily block must be fully covered per data_contract.warmup semantics.",
+    "execution_lag": "One declared lag: fills at the first completed 15m bar strictly after the stamp (bar 00:00-00:15Z, fill recorded at its 00:15Z close), matching the adapter's strict-later FILLED_NEXT_EVENT vocabulary."
+  },
+  "schedule": {
+    "universe": "19 tradeable names = REQUIRED_SYMBOLS minus BTCUSDT; BTCUSDT is benchmark_context_symbols only and never appears in any book.",
+    "eligibility_per_stamp": [
+      "90-day trailing daily block fully covered by completed 15m bars (data_contract warmup semantics, checkable from pre-window history)",
+      "at least 60 valid paired daily observations for the name and BTCUSDT inside the block",
+      "at least 9 names eligible overall; if fewer, the prior book is carried forward unchanged and the stamp is recorded as a no-action discretionary decision"
+    ],
+    "formation": "OLS beta of daily log returns vs BTCUSDT daily log returns over the trailing 90-day daily block ending at the stamp; quintile ranks over eligible names.",
+    "holding": "Intended holding 28 days (4 weekly stamps). Two-stamp hysteresis: a held name leaves its leg only after its rank leaves the quintile band at two consecutive stamps; a new name enters only after two consecutive in-band stamps. 28-day per-symbol re-entry cooldown.",
+    "rebalance": "Weekly Monday 00:00:00Z discretionary rebalance into the target book (subject to hysteresis); mandatory terminal FORCE_FLAT at the frozen window boundary per the adapter contract. Total discretionary decisions by construction: 52 per 365d.",
+    "risk_force_flat": "No extra risk-trigger decisions are scheduled; any forced-flat beyond the terminal boundary would be counted separately as FORCED_FLAT by the feasibility gate."
+  },
+  "target_book": {
+    "shape": "long/short quintile book over the 20-symbol universe (BTC context-only): long leg = lowest-beta quintile, short leg = highest-beta quintile.",
+    "weight_rule": "Equal within leg: raw leg weights w_i = +/- min(0.30, 0.5/n_leg) with leg gross 0.5 each (unit-gross book). max|weight| <= 0.30 for every n_leg >= 2 BY CONSTRUCTION; if a leg has a single member its weight is clipped at 0.30 and leg gross shrinks accordingly; any beta-neutralisation tilt is followed by a whole-book uniform shrink c = min(1, 0.30 / max_i |w_i|) so the cap holds at every stamp without post-score renormalisation.",
+    "beta_neutralisation": "Long-leg gross scaled by m = mean(beta_short leg members) / mean(beta_long leg members) so the book's beta-weighted sum vs BTCUSDT is zero using the same 90d betas; the book then carries net dollar exposure but zero BTC beta. BTCUSDT itself is never held.",
+    "expected_turnover": "Qualitative by construction: 90-day beta ranks move slowly; hysteresis plus 28-day intended holding means most stamps replace zero or one leg slot. Median intended holding 28d (floor >= 3d) and per-symbol turnover-share guard (one entry/exit cycle max per 28d, turnover shared across >= 8 leg slots, floor <= 25% per symbol) are construction properties to be verified by the schedule-only gate. No turnover or cost number is computed in this lane.",
+    "floors_compliance_by_construction": {
+      "max_discretionary_decisions_per_365d": "52 by schedule construction (floor 60)",
+      "min_median_holding_days": "28d intended holding (floor 3d); hysteresis only lengthens spans",
+      "weight_cap_abs_0_30": "enforced by the weight_rule at every stamp by construction",
+      "symbol_turnover_share_le_25pct": "guarded by hysteresis + 28d re-entry cooldown; gate-verifiable",
+      "cost_drag": "few leg-slot swaps at bounded deltas; magnitude left to the schedule gate, asserted nowhere in this lane"
+    }
+  },
+  "controls": {
+    "anchor": "Weekly 90d-BTC-beta quintile book as specified (long lowest / short highest, beta-neutralized).",
+    "justified_neighbour": "Betting-against-correlation (BAC) neighbour: same book skeleton with formation statistic = trailing 90-day downside correlation of daily returns to BTCUSDT (correlation computed on BTC-down days), long lowest / short highest, same neutralisation and hysteresis. Theoretical justification: S2 (Asness et al. 2020) shows the low-risk effect's distinguishing channel is correlation with the market in bad states, so this neighbour is a theory-mandated alternative estimator of the same leverage-constraint pricing mechanism, not a parameterization of the anchor.",
+    "causal_negative_control": "Sign-flipped anchor: long highest-beta / short lowest-beta with identical construction otherwise. Sign-destroying: leverage-constraint pricing (S1) predicts the flipped book should NOT earn the anchor's spread; if it performs equivalently, the driver is not beta pricing and the family is falsified."
+  },
+  "cost_treatment": {
+    "fees": "Plugin CostModel declares the repo's frozen tier-0 taker fee floor; no maker-rebate assumption; every transition priced by the adapter's rebalance_cost_between (fee per side + adverse ticks).",
+    "slippage": "Adverse tick slippage at the declared floor using per-symbol tick sizes from instrument metadata (schema range 1e-7..1e-2).",
+    "funding": "Native settlements accrue while held with the repo convention LONG_PAYS_POSITIVE_RATE and the PIT rule settlement_ts within [ts_opened, ts_closed]; mixed 8h/4h/1h cadences honoured per symbol; funding is never a formation input.",
+    "stress": "Frozen cells applied to the plugin's own cost floors: fee x1.5, +2 adverse ticks, +1 event delay; drop-one-symbol and drop-one-fold cells per the derived family stress matrix. The +1 event delay interacts with the declared one-lag execution as a strictly later fill event."
+  },
+  "falsification_condition": [
+    "Anchor fails its pre-registered gate vs the flat hard benchmark under the baseline stress cell, AND the sign-flipped control passes the same gate: the observed sign is opposite to or independent of the leverage-constraint prediction; family falsified.",
+    "Sign-flip ambiguity: anchor and sign-flipped control both beat the flat gate by similar magnitudes - the spread is not driven by the beta mechanism; family falsified.",
+    "Carry-confound probe: if the anchor's earnings concentrate in stamps whose short legs coincide with positive funding (i.e., the spread disappears once legs whose funding sign contradicts the BAB story are excluded), the mechanism is funding carry, not beta pricing; family falsified as a disguised carry rescue.",
+    "Momentum-confound probe: if the cross-sectional rank correlation between the 90d beta ranks and trailing 90d returns is persistently extreme (beta ranks are effectively momentum ranks), the anchor is no longer mechanism-distinct from V4-XSECT-MOM and is withdrawn regardless of gate outcomes."
+  ],
+  "ancestry_map": [
+    {"forbidden_class_id": "V4-XSECT-MOM", "relation": "distinct", "distinction": "Formation statistic is a second-moment regression coefficient vs BTC (systematic risk), not past returns; no return ranking enters the book."},
+    {"forbidden_class_id": "V6/V1-CARRY-FUNDING", "relation": "distinct", "distinction": "No funding input at formation; funding is cost pass-through only; a dedicated carry-confound probe is a falsification condition."},
+    {"forbidden_class_id": "V11-LOTTERY-MAX-SKEW", "relation": "distinct", "distinction": "No MAX, idiosyncratic skew, or idiosyncratic-volatility statistic anywhere; beta is a co-movement (systematic) statistic with a different counterparty theory (leverage constraints vs lottery demand)."},
+    {"forbidden_class_id": "V11-ILLIQ-AMIHUD", "relation": "distinct", "distinction": "No |return|/dollar-volume impact statistic; the beta estimation uses prices only."},
+    {"forbidden_class_id": "V11-OILEVER-DELEV", "relation": "distinct", "distinction": "No open-interest input of any kind; the 0.30 cap is respected without post-score renormalisation."},
+    {"forbidden_class_id": "V10-M01-AGGRESSOR-ABSORPTION", "relation": "distinct", "distinction": "No signed aggressor flow, no order-book or trade-flag data, no absorption conditioning."},
+    {"forbidden_class_id": "V1-VOLCOMP", "relation": "distinct", "distinction": "No volatility-compression or breakout conditioning; the book is level-of-beta selected, not vol-regime timed."},
+    {"forbidden_class_id": "WEEKLY-REVERSAL / MR-RESCUE", "relation": "distinct", "distinction": "No past-return ranking in either direction; the sign-flip control makes any hidden reversal content testable."},
+    {"forbidden_class_id": "DATA-GATED", "relation": "distinct", "distinction": "Constructible entirely from the frozen schema (15m bars + instrument metadata); BTCUSDT is already staged as the benchmark leg."}
+  ],
+  "why_not_rescue": "Not a LOT inversion: no lottery-demand statistic (MAX/skew/idio-vol) is computed, inverted, or retuned; the mechanism's counterparty (leverage-constrained demand for high beta) is unrelated to lottery demand. Not an ILLIQ/OILEV parameter rescue: no price-impact or open-interest input is used, the 90-day window is the data contract's frozen warmup horizon rather than a retuned rejected lookback, fees are the declared tier-0 floors (no fee reduction is assumed), no winning-symbol selection occurs (the full eligible universe is mechanically binned), and no post-score renormalisation is performed anywhere.",
+  "scored_cells": [
+    {"cell": "anchor", "arm": "beta quintile L/S, 90d, beta-neutral", "count": 1},
+    {"cell": "neighbour", "arm": "downside-correlation L/S (BAC), 90d", "count": 1},
+    {"cell": "causal_negative_control", "arm": "sign-flipped anchor", "count": 1}
+  ],
+  "scored_cells_total": 3,
+  "data_dependencies": [
+    "15m bars with close prices for all 20 symbols covering the 90d warmup before every stamp (declared warmup satisfiability checkable via data_contract.warmup_report from pre-window history)",
+    "instrument tick sizes and fee fields from crypto_perpetual metadata"
+  ],
+  "fail_closed_preconditions": [
+    "If the 90d warmup is not satisfiable from local history for >= 10 of 19 names at the first stamp, the family is not launched (UNAVAILABLE_FAIL_CLOSED posture)."
+  ]
+}
