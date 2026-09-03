@@ -178,3 +178,28 @@ main merge). Branch `orca/v11-integration` carries the full sprint state.
 3. Then I -> Q -> A7 prelaunch -> scored cells ONLY on the owner's stronger
    machine (this 8GB host measured_safe_cap=0). Deadline handling per the
    fresh thread's own go-live; the expired clock must NOT be extended.
+
+## V11 prelaunch terminal — 2026-09-03 (A1) — V11_LAUNCH_AUTHORIZED, awaiting strong host
+
+A7 prelaunch audit (`862934ab`, independently recomputed): 13/13 PASS,
+0 unresolved HIGH/CRITICAL. W11 = `befbd20`; exec/repro detached trees
+`.worktrees/v11/{exec,repro}-v11-1` staged byte-identical (91 files,
+`staged_manifest_w11.json`). Full suites: V11P 1367/1, Q **1421 passed /
+1 skipped**, both tree-clean. Budget **0/9 eligible** (0/12 plan; DEF seed
+BLOCKED_PRE_SCORE, 3 slots unused). Zero scored cells; S1 untouched; no push;
+no main merge.
+
+### Strong-host launch conditions (A7 SC1–SC6)
+SC1 fresh probe measured_safe_cap>=1 on the launch host; SC2 byte-identical
+re-staging with hash-equal exec/repro manifests; SC3 launch-time manifest
+hash check + W11 tree identity; SC4 verify the 9 cells against the frozen
+arm_config_digests (selection_freeze.json), first-publish + replay-zero;
+SC5 Stage-A concentration gates bind (OILEV 1-name/leg risk), controls
+published, stress cells run; SC6 budget 9 cells max, DEF stays blocked.
+
+### Phase E execution order (on the strong machine, A1 authority)
+Per family serial: anchor -> neighbour -> causal control; up to 3 families
+concurrent per fresh probe; every computed cell counts in the observed
+denominator (120 + n) even if publication fails; A1 sole publisher; no
+pytest while a scored worker runs; then R: reproduce all computed cells from
+repro-v11-1 equivalent, terminal A7 audit, family verdicts per PLAN 15.
