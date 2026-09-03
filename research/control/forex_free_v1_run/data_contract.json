@@ -1,0 +1,30 @@
+{
+  "schema": "forex_free_v1_data_contract_v1",
+  "measured_at_utc": "2026-09-03T02:55:00Z",
+  "producer": "A1_FOREX_CONTROLLER",
+  "cycle_id": "FOREX-FREE-V1",
+  "availability_classes": {
+    "D1": "D1_AUTHORIZED",
+    "H4": "UNAVAILABLE_FAIL_CLOSED",
+    "H1": "UNAVAILABLE_FAIL_CLOSED",
+    "historical_bid_ask": "UNAVAILABLE_FAIL_CLOSED (not offered by Twelve Data; executable spread reconstruction NOT claimed)",
+    "historical_rollover_financing": "UNAVAILABLE_FAIL_CLOSED (no authorized source; all positions must close before NY rollover until a real financing source passes)"
+  },
+  "gate_results": {
+    "D1": {"license": "PASS", "storage": "PASS", "coverage": "2018-09-03 -> 2026-09-01 = 2913 days (~7.995y; nominal 8y target met by request; provider first bar 2018-09-03, 2-day shortfall recorded)", "rows_per_pair": "2178-2229", "schema": "PASS (OHLC complete)", "determinism": "PASS (100% windows content-identical, double pulls)", "calendar": "PASS_WITH_RESERVATION (30-74 weekday gaps/pair = holidays; 61 Sat + 34 Sun bars per pair observed, 10 flat — weekend-bar semantics must be classified before any weekend-sensitive family)", "ecb_crosscheck": "PASS (median 16.5-22.6 bps, p95 <= 89 bps, max <= 356 bps across all 7 pairs; timing/basis only)"},
+    "H4": {"coverage": "2020-01-29/30 -> 2026-09-01 = 6.59y < 8y floor -> FAIL", "determinism": "PASS", "weekend_bars": "475 weekend bars in 2y EUR/USD sample, 1 flat — unresolved"},
+    "H1": {"coverage": "2020-01-29/30 -> 2026-09-02 = 6.59y < 8y floor -> FAIL", "determinism": "PASS", "open_item": "two windows (2025-10-14->2026-07-01) hit outputsize 5000 for all 7 pairs; repair re-split collided with original filenames (same start date key) — must refetch with start_END names before ANY intraday use"}
+  },
+  "cost_policy_preregistered_for_F4": {
+    "no_bid_ask": "Twelve Data provides mid/last-style OHLC only; NO executable spread reconstruction is claimed",
+    "stress_matrix": "fixed cost-stress matrix must be frozen in F4 BEFORE any returns: candidate axes = fixed spread proxy in bps x {1, 1.5, 2}, fixed commission, one-event execution delay; selection of the exact matrix is part of the proposal/freeze contract",
+    "promotion_ceiling": "all results remain RESEARCH_CANDIDATE_NOT_LIVE_READY; live readiness requires a future real bid/ask and financing audit"
+  },
+  "f2_open_items": [
+    "classify weekend D1 bars (Sat/Sun) before authorizing any weekend-sensitive mechanism",
+    "refetch truncated 1h windows with collision-free names (only if H1 is ever re-authorized)",
+    "TD D1 weekend bars and H1 24/7-hour-grid semantics documented in weekend_flat_audit_eurusd.json"
+  ],
+  "verdict": "D1_AUTHORIZED (single timeframe); H4/H1/bid-ask/rollover UNAVAILABLE_FAIL_CLOSED; F4 PROPOSALS GO on D1 only",
+  "evidence": ["data_probe/coverage_summary.json", "data_probe/ecb_crosscheck.json", "data_probe/request_manifest.json", "data_probe/audit_*.json", "data_probe/weekend_flat_audit_eurusd.json", "data_probe/repair_pass.json"]
+}
