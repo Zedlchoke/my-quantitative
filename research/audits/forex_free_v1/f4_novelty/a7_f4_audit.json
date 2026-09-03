@@ -1,0 +1,336 @@
+{
+  "schema": "forex_free_v1_a7_f4_novelty_audit_v1",
+  "measured_at_utc": "2026-09-03T08:53:54Z",
+  "auditor": "A7",
+  "role_scope": "independent audit ONLY: rubric R1-R9 verdicts, rollover/DST verification, cost honesty, session correctness, causal-control validity, hidden-rescue check, 6x6 orthogonality, outcome-blindness, trial-count sanity. No proposal repair, no family selection, no returns computed.",
+  "cycle": "FOREX-FREE-V1",
+  "phase": "F5 (audit of F4 proposal lanes)",
+  "bootstrap_sha": "858f6802c6d03a455552dd7ba0355a612f55aaed",
+  "branch": "orca/forex-free-v1-f5-a7-audit",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/.worktrees/forex-free-v1/f5-a7-audit",
+  "bootstrap_verification": {
+    "head_matches_bootstrap": true,
+    "head_sha": "858f6802c6d03a455552dd7ba0355a612f55aaed",
+    "branch_matches": true,
+    "working_tree_clean_at_audit_start": true
+  },
+  "inputs": {
+    "new_proposals_json_authoritative": [
+      "research/proposals/forex_free_v1/a3_lane/proposal_1.json",
+      "research/proposals/forex_free_v1/a3_lane/proposal_2.json",
+      "research/proposals/forex_free_v1/a4_lane/proposal_1.json",
+      "research/proposals/forex_free_v1/a4_lane/proposal_2.json",
+      "research/proposals/forex_free_v1/a5_lane/proposal_1.json",
+      "research/proposals/forex_free_v1/a5_lane/proposal_2.json"
+    ],
+    "frozen_rubric": "research/control/forex_free_v1_run/worktree_manifest.json::selection_rubric_frozen_before_audit (applied verbatim, not modified; frozen_at_utc 2026-09-03T09:30:00Z declared before any audit)",
+    "data_contract": "research/control/forex_free_v1_run/data_contract.json (v2 amended, 6.5y H1 floor, H1_RESEARCH_AUTHORIZED, bid/ask + financing UNAVAILABLE_FAIL_CLOSED)",
+    "old_cycle_read_only": [
+      "research/proposals/forex/a3_data/proposal_1.json (FX2-A3-P1)",
+      "research/proposals/forex/a3_data/proposal_2.json (FX2-A3-P2)",
+      "research/proposals/forex/a4_calendar/proposal_1.json (FX2-A4-P1)",
+      "research/proposals/forex/a4_calendar/proposal_2.json (FX2-A4-P2)",
+      "research/proposals/forex/a5_cost/proposal_1.json (FX2-A5-P1)",
+      "research/proposals/forex/a5_cost/proposal_2.json (FX2-A5-P2)",
+      "research/audits/forex/f2_novelty/a7_f2_novelty_audit.json"
+    ],
+    "repo_ground_truth_for_dst": [
+      "research/assets/forex/sessions.py (DEFAULT_FX_WEEK_CONVENTION: Sun 21:00 NY open, Fri 16:00 NY close, 17:00 NY rollover; named-zone arithmetic)",
+      "tests/assets/forex/test_sessions_dst.py (goldens: rollover 22:00Z EST / 21:00Z EDT; Fri close 21:00Z EST / 20:00Z EDT; Sun open 02:00Z EST / 01:00Z EDT)"
+    ],
+    "independent_dst_verification": "A7 re-derived all cited instants with zoneinfo (America/New_York, Europe/London, Asia/Tokyo) across all four annual US/UK DST configurations of 2026; measurements recorded per proposal below."
+  },
+  "rubric_applied": {
+    "R1": "contract-complete JSON (all required fields non-empty)",
+    "R2": "concrete flatten-before-NY-rollover rule: exit at a completed bar strictly before 17:00 NY, no overnight bar held",
+    "R3": "numeric frozen cost matrix declared before returns, incl. x1.5 and x2 stress and a one-event delay",
+    "R4": "causal negative control would destroy the mechanism if the mechanism is real",
+    "R5": "uses only H1 OHLC of the 7 authorized pairs (no bid/ask, no volume, no financing, no volume-as-global)",
+    "R6": "no grid: single frozen parameter set per variant",
+    "R7": "DST-correct session clock spec (named zone arithmetic, not fixed offsets)",
+    "R8": "A7: not a hidden rescue of the six frozen old forex proposals",
+    "R9": "A7: data-feasible on 6.59y H1 x 7 pairs"
+  },
+  "proposals": [
+    {
+      "proposal_id": "FXFV1-A3-P1",
+      "path": "research/proposals/forex_free_v1/a3_lane/proposal_1.json",
+      "mechanism_name": "London-Open Session Continuation: 3-bar post-open momentum",
+      "rubric": {
+        "R1": {"verdict": "PASS", "evidence": "all required sections present and non-empty (mechanism, counterparty, signal clock, entry/exit/rollover rule, cost matrix, universe, 3 arms, falsification, DST spec, trial count, data fields, forbidden checks, label)"},
+        "R2": {"verdict": "PASS", "evidence": "flatten = close of last completed H1 bar with end STRICTLY BEFORE 17:00 America/New_York. Measured: bar ends 21:00Z (EST, rollover 22:00Z) and 20:00Z (EDT, rollover 21:00Z) = 16:00 NY wall clock year-round; rule stated in named-zone terms so it survives both DST configs. No position spans a rollover or the weekend (Friday flatten = frozen 16:00 NY weekly-close bar)."},
+        "R3": {"verdict": "PASS", "evidence": "numeric matrix frozen: 1.5 bps/side base, S2 x1.5 = 2.25, S3 x2 = 3.0 + one-event entry delay; applied to every fill (entry+exit = 3.0 bps round trip); declared before returns; explicit not-a-live-spread-basis statement."},
+        "R4": {"verdict": "PASS", "evidence": "sign-flipped anchor (anti-momentum) with identical timing/fills/flatten/costs: if continuation is real, flipping the sign must destroy the edge; kill F1a (control >= anchor on >=4/7 pairs) is a valid destruction test of the causal claim."},
+        "R5": {"verdict": "PASS", "evidence": "H1 OHLC + UTC timestamps of the 7 authorized pairs only; signal uses closes+timestamps; no bid/ask, no volume, no financing; volume and bid/ask explicitly disclaimed."},
+        "R6": {"verdict": "PASS", "evidence": "single frozen momentum window (3 bars), two a-priori anchors, sign-flip control; exact_trial_count 21 = 3 arms x 7 pairs; 'no configuration outside this document may be scored'."},
+        "R7": {"verdict": "PASS", "evidence": "all instants in named IANA zones via zoneinfo; whole-hour bar-boundary alignment asserted with fail-closed; no fixed UTC offsets; DST behavior independently verified by A7 (see dst_measurements)."},
+        "R8": {"verdict": "PASS", "evidence": "no overlap with any of the six old mechanisms (see rescue_check); traded object, signal and exposure window all differ from FX2-A3-P1 (the nearest thematic neighbor)."},
+        "R9": {"verdict": "PASS", "evidence": "needs only canonical H1 bars in London/NY hours (contract: bars exist at every UTC hour); no warm-up; ~5 trade-days/week x 7 pairs x 6.59y is data-feasible."}
+      },
+      "rollover_avoidance": {
+        "verdict": "CONCRETE_AND_DST_SAFE",
+        "exit_bar": "completed bar ending 16:00 America/New_York wall clock (21:00Z EST / 20:00Z EDT), strictly before 17:00 NY rollover (22:00Z / 21:00Z) in both configurations; rule expressed in named-zone arithmetic so it self-adjusts"
+      },
+      "dst_measurements": [
+        "verified: London open 08:00 Europe/London always on an H1 bar boundary (offset +0/+1 whole hours)",
+        "verified: entry fill 12:00 London, flatten bar-end 16:00 NY; gap to rollover exactly 1h in EST and EDT",
+        "MEASURED CORRECTION: claimed 'holding window uniformly 9 completed bars' holds only in aligned weeks (9 bars on 2026-02-10 GMT+EST, 2026-06-09 BST+EDT, 2026-11-10); in the 2-3 UK/US desync weeks per year the window is 8 bars (measured 2026-03-10 EDT+GMT: 12:00Z -> 20:00Z; 2026-10-27 GMT+EDT: 12:00Z -> 20:00Z). Operative rule remains correct and rollover-safe; only the ancillary uniformity claim is inaccurate.",
+        "verified: Friday flatten bar (ends 16:00 NY) coincides exactly with the frozen weekly close; Sunday-open mapping contains no London/NY signal"
+      ],
+      "cost_honesty": {"numeric_matrix": true, "x1_5_and_x2": true, "one_event_delay": true, "both_legs_applicable": "single-pair book; both sides (entry+exit) costed", "live_spread_claim": "none; proxy explicitly declared a stress input"},
+      "causal_control_validity": {"verdict": "VALID", "reasoning": "sign-flipped mirror with everything else identical; a real continuation edge is destroyed by construction under the flip; stale-quote/microstructure artifact would survive the flip, which is exactly what F1a detects"},
+      "objections": [
+        {"id": "OBJ-A3P1-1", "severity": "LOW", "text": "Ancillary claim 'holding window uniformly 9 completed bars' is false during the ~2-3 UK/US DST-desync weeks per year (measured 8 bars). The operative named-zone rule is unaffected; F1d (EDT/EST sign-flip diagnostic) already guards residual clock artifacts. No repair required for eligibility; correct the constant if quoted in F8 implementation notes."}
+      ],
+      "outcome_blindness": "PASS - only no-backtest declarations; no returns, statistics or performance language anywhere (JSON and MD)",
+      "exact_trial_count": {"declared": 21, "expected": "3 arms x 7 pairs = 21", "verdict": "SANITY_OK"},
+      "verdict": "ELIGIBLE"
+    },
+    {
+      "proposal_id": "FXFV1-A3-P2",
+      "path": "research/proposals/forex_free_v1/a3_lane/proposal_2.json",
+      "mechanism_name": "Late-NY Fade of the Volatility-Standardized Intraday Extension",
+      "rubric": {
+        "R1": {"verdict": "PASS", "evidence": "all required sections present and non-empty, including frozen constants (gate 1.0, window 4 NY bars, sigma lookback 20 trading days)"},
+        "R2": {"verdict": "PASS", "evidence": "identical flatten rule to A3-P1 (last completed bar with end strictly before 17:00 NY = bar ending 16:00 NY wall clock, EST and EDT); holding window 13:00->16:00 NY is 3 bars in both DST configs because both instants are NY wall clock; Friday flatten coincides with the weekly close"},
+        "R3": {"verdict": "PASS", "evidence": "same frozen numeric matrix as A3-P1 (1.5/2.25/3.0 bps per side, S3 adds one-event entry delay); declared before returns"},
+        "R4": {"verdict": "PASS", "evidence": "sign-flipped continuation control on identical gated days: if transient-pressure reversion is real, buying the extension must destroy the edge; F2a catches momentum-days masquerading as pressure-reversion"},
+        "R5": {"verdict": "PASS", "evidence": "H1 OHLC + timestamps only; volatility scale is return-based (rollover-to-rollover closes), not volume-based; no bid/ask/financing"},
+        "R6": {"verdict": "PASS", "evidence": "gate exactly 1.0, window exactly 4 bars, sigma exactly 20 days, anchors exactly NY/Tokyo; 21 = 3 arms x 7 pairs; 'no other gate level, lookback, signal window or session anchor may be scored'"},
+        "R7": {"verdict": "PASS", "evidence": "zoneinfo named zones for NY and Tokyo anchors; Tokyo 09:00 Asia/Tokyo is whole-hour (no Japan DST) so always on a bar boundary; sigma series shares the strategy's exact rollover clock; no fixed offsets"},
+        "R8": {"verdict": "PASS", "evidence": "narratively adjacent to old FX2-A3-P1 (rollover-window premium) because it mentions dealer inventory 'ahead of the 17:00 rollover', but the traded object is the opposite: flat strictly before every rollover vs the old mechanism holding ACROSS the boundary; signal (same-day 4-bar NY extension z-score) differs from old same-window trailing drift. Not a rescue (see rescue_check)."},
+        "R9": {"verdict": "PASS", "evidence": "20-trading-day warm-up (~2020-02-26), then |z|>=1.0 gating yields sufficient pair-days over 6.59y; all required bar types exist in the canonical series on valid days"}
+      },
+      "rollover_avoidance": {
+        "verdict": "CONCRETE_AND_DST_SAFE",
+        "exit_bar": "completed bar ending 16:00 America/New_York wall clock, strictly before the rollover in EST and EDT alike; 3-bar hold (13:00->16:00 NY) is DST-invariant"
+      },
+      "dst_measurements": [
+        "verified: NY anchor 08:00 America/New_York whole-hour in EST/EDT; p0/p4 chain 08:00->12:00 NY correct",
+        "MEASURED: Tokyo neighbour Monday p0 bar (ends 09:00 JST = 00:00Z) precedes the Sunday-21:00-NY weekly open (Mon 01:00Z EDT / 02:00Z EST) in BOTH configurations, so Monday Tokyo-neighbour signals reference an out-of-calendar bar; the proposal does not document this structural Monday no-trade and relies on the fail-closed missing-bar rule",
+        "verified: 4th Tokyo bar (opens 12:00 JST = 03:00Z) is in-calendar on Mondays in both configs, so only p0 is affected"
+      ],
+      "cost_honesty": {"numeric_matrix": true, "x1_5_and_x2": true, "one_event_delay": true, "both_legs_applicable": "single-pair book; both sides costed", "live_spread_claim": "none"},
+      "causal_control_validity": {"verdict": "VALID", "reasoning": "sign-flip on the same gated trade set is the exact destruction test for a reversion claim; the Tokyo liquidity-gradient neighbour (F2c) additionally discriminates the pressure mechanism from a late-session data artifact"},
+      "objections": [
+        {"id": "OBJ-A3P2-1", "severity": "LOW", "text": "Tokyo-open neighbour: Monday p0 reference bar is always out-of-calendar (measured) and the structural Monday no-trade is undocumented; safety depends on the implementation treating non-canonical bars as 'missing' under the fail-closed rule. Behavior is conservative as specified, but F8 must gate p0/p4/fill/flatten bars by the frozen calendar explicitly."}
+      ],
+      "outcome_blindness": "PASS - no returns anywhere; warm-up date is calendar arithmetic, not data inspection",
+      "exact_trial_count": {"declared": 21, "expected": "3 arms x 7 pairs = 21", "verdict": "SANITY_OK"},
+      "verdict": "ELIGIBLE"
+    },
+    {
+      "proposal_id": "FXFV1-A4-P1",
+      "path": "research/proposals/forex_free_v1/a4_lane/proposal_1.json",
+      "mechanism_name": "Tokyo-morning range contraction -> London-morning expansion breakout",
+      "rubric": {
+        "R1": {"verdict": "PASS", "evidence": "all required sections present and non-empty; per-pair numeric cost matrix; explicit not-used field list"},
+        "R2": {"verdict": "PASS", "evidence": "mandatory flatten = fill at the OPEN of the bar stamped 15:00 America/New_York (bar completes 16:00 NY). Measured gap to rollover: exactly 2.0h in EST (20:00Z vs 22:00Z) and EDT (19:00Z vs 21:00Z). One-event-delayed exits collapse into the 15:00 NY fill, so the delay cannot breach the invariant. No overnight bar held; Friday 15:00 NY bar is the week's last canonical bar (opens 15:00 < 16:00 close, half-open window)."},
+        "R3": {"verdict": "PASS", "evidence": "numeric per-pair matrix x1/x1.5/x2.0 for all 7 pairs plus delay variants (no_delay, one_bar_delay) and per-arm-per-pair stress cell count (6); frozen before returns; proxy explicitly 'never a live-spread claim'"},
+        "R4": {"verdict": "PASS_WITH_OBJECTION", "evidence": "the session-timing control (same breakout rule executed in the [18:00,21:00) NY window, holding signal and range constant) is the right causal design: if London-open timing is the mechanism, equal-or-better expectancy in the quiet window destroys the claim (K2). VALIDITY CAVEAT (OBJ-A4P1-1, MEDIUM): the control's exit under its own flat invariant is not spelled out (see objections)."},
+        "R5": {"verdict": "PASS", "evidence": "H1 OHLC of the 7 authorized pairs; explicit not-used list covers bid/ask, volume, financing, D1/H4, other providers"},
+        "R6": {"verdict": "PASS", "evidence": "zero free anchor parameters; exactly one preregistered neighbour ([08:00,16:00) JST range); 'any additional window would be a grid'; 21 fixed cells"},
+        "R7": {"verdict": "PASS", "evidence": "all boundaries via zoneinfo named zones; 'fixed 00:00-06:00 UTC' for Tokyo is a derived consequence of Asia/Tokyo having no DST, not a fixed-offset assumption; transition-day claim verified (US transitions 02:00 local Sunday 2026-03-08/2026-11-01; UK transitions 01:00Z Sunday 2026-03-29/2026-10-25 - all outside Mon-Fri windows)"},
+        "R8": {"verdict": "PASS", "evidence": "Tokyo-range/London-breakout object matches none of the six old mechanisms (old a4 lane traded DST-desync membership and pre-release windows; no range construction anywhere in the old cycle)"},
+        "R9": {"verdict": "PASS", "evidence": "Monday exclusion is a measured calendar fact (4-5 canonical Tokyo range bars on Mondays < 6 required); ~4 valid days/week x 6.59y supports the stated 300-900 trades/pair design bound"}
+      },
+      "rollover_avoidance": {
+        "verdict": "CONCRETE_AND_DST_SAFE",
+        "exit_bar": "fill at 15:00 NY bar open; the bar completes 16:00 NY, strictly before 17:00 NY rollover by exactly 2h in EST and EDT (measured); delayed exits collapse into this fill by frozen rule"
+      },
+      "dst_measurements": [
+        "verified: Tokyo range window [09:00,15:00) JST = 00:00-06:00Z year-round (no Japan DST)",
+        "verified: Monday range contains only 5 canonical bars in EDT weeks (stamps 10-14 JST) and 4 in EST weeks (11-14) -> every Monday structurally INVALID, exactly as the proposal states ('Mon 09:00-10:00 JST precedes the Sun 21:00 NY open' - measured true in both configs)",
+        "verified: flatten gap 2.0h before rollover in EST and EDT",
+        "verified: Fri 18:00-21:00 NY stamps are out-of-calendar (weekly close Fri 16:00 NY), so the negative-control window yields no Friday entries"
+      ],
+      "cost_honesty": {"numeric_matrix": true, "x1_5_and_x2": true, "one_event_delay": true, "both_legs_applicable": "single-pair book; one round-trip charge per completed trade", "live_spread_claim": "none; 'UNVERIFIED practitioner levels, frozen for stress only' is honest"},
+      "causal_control_validity": {
+        "verdict": "VALID_DESIGN_WITH_SPEC_GAP",
+        "reasoning": "moving only the execution hour while holding signal, range, execution machinery and flatten constant is a clean timing-isolation control; the kill threshold (K2: anchor must beat control on >=5/7 pairs) would genuinely destroy the session-timing story",
+        "gap": "control entries fill at 19:00-21:00 NY bar opens, violating the letter of the proposal's own invariant 'no fill may execute at a bar open at or after 15:00 America/New_York'; the only consistent reading is exit at the NEXT day's 15:00 NY flatten, which crosses no 17:00 NY rollover instant (entry Mon-Thu evening is inside the NEXT trading day) and never spans a weekend (no Friday entries possible) - but that exit rule and the trading-day accounting are not written down"
+      },
+      "objections": [
+        {"id": "OBJ-A4P1-1", "severity": "MEDIUM", "text": "Negative-control arm internally inconsistent with the letter of the rollover_flat_invariant: entries restricted to [18:00,21:00) NY necessarily fill at bar opens at/after 15:00 NY, which the invariant forbids, and the mandatory 15:00-NY flatten is unreachable same-day. The unique consistent reading (control exit = next occurrence of the 15:00 NY flatten; crosses no rollover instant; no weekend exposure since Friday control entries are out-of-calendar) preserves every contract-level invariant and the causal logic, but F8 must freeze this reading explicitly before any return exists."},
+        {"id": "OBJ-A4P1-2", "severity": "LOW", "text": "'Deep Asian quiet window' label for [18:00,21:00) NY is imprecise: in EST weeks 18:00 NY = 08:00 JST (Tokyo open hour), not the Andersen-Bollerslev trough; the contrast is weaker than labeled but the control design (move only the session hour) remains valid."},
+        {"id": "OBJ-A4P1-3", "severity": "LOW", "text": "Data-gap exit path ('first available later bar') can in principle reach the next weekly open (weekend crossing) when an exit bar is missing; the proposal already requires this to be logged as a breach and reconciled by A7, never silent - acceptable fail-conservative exception, flagged for F8 implementation."},
+        {"id": "OBJ-A4P1-4", "severity": "LOW", "text": "publication_clock claims 'the decision instant is always strictly before the fill instant', but the fill (open of the bar stamped B+1h) occurs at the SAME instant the signal bar B completes; equal-instant fill at the next bar open is the standard, non-look-ahead convention, so only the self-description is imprecise."}
+      ],
+      "outcome_blindness": "PASS - no returns; trade-count bounds (300-900/pair) are declared design bounds, not results",
+      "exact_trial_count": {"declared": 21, "expected": "3 arms x 7 pairs = 21 evaluation cells", "verdict": "SANITY_OK"},
+      "verdict": "ELIGIBLE"
+    },
+    {
+      "proposal_id": "FXFV1-A4-P2",
+      "path": "research/proposals/forex_free_v1/a4_lane/proposal_2.json",
+      "mechanism_name": "London-morning -> NY-overlap intraday continuation (threshold-free session momentum)",
+      "rubric": {
+        "R1": {"verdict": "PASS", "evidence": "all required sections present and non-empty"},
+        "R2": {"verdict": "PASS", "evidence": "single mandatory exit: fill at the open of the bar stamped 15:00 America/New_York, completion 16:00 NY, measured exactly 2h strictly before the 17:00 NY rollover in EST and EDT; no fill at/after 15:00 NY; Friday 15:00 NY bar is the last of the week; no rollover or weekend exposure"},
+        "R3": {"verdict": "PASS", "evidence": "identical frozen per-pair numeric matrix as A4-P1 (x1/x1.5/x2.0 + one-bar delay on every execution, delayed flatten collapses into the 15:00 NY fill); cost survival preregistered as the primary gate for a near-daily threshold-free trade - honest"},
+        "R4": {"verdict": "PASS", "evidence": "Tokyo-midday control holds rule, threshold (none), execution and exit constant and moves only the signal session: if threshold-free continuation is equally strong in the documented activity trough, the session-timing mechanism is destroyed (V2 requires anchor > control on >=5/7 pairs). Mondays structurally invalid for the control - measured and documented."},
+        "R5": {"verdict": "PASS", "evidence": "H1 closes + UTC timestamps of authorized pairs; explicit not-used list (bid/ask, volume, financing, D1/H4, cross-asset)"},
+        "R6": {"verdict": "PASS", "evidence": "threshold-free anchor (zero free parameters by construction), exactly one preregistered neighbour (5-bar window), 21 fixed cells, 'no filter added, no window change' after any return"},
+        "R7": {"verdict": "PASS", "evidence": "London-keyed signal, NY-keyed flatten, Tokyo-keyed control, all zoneinfo; the ~2-3 desync weeks are explicitly acknowledged ('entry drifts by one hour against NY, which zoneinfo handles exactly') - verified: 12:00 London maps to 07:00 ET aligned weeks, 08:00 ET in both desync directions; cutoff/flatten remain NY-correct throughout"},
+        "R8": {"verdict": "PASS", "evidence": "signal is the London-morning return sign; no conditioning on DST-desync weeks (old FX2-A4-P1's tradeable variable), no macro-calendar gating (old FX2-A4-P2's). Different mechanism, signal and universe handling from all six old proposals (see rescue_check)"},
+        "R9": {"verdict": "PASS", "evidence": "requires 5 canonical London-stamped bars on Mon-Fri (always present: London 07:00-12:00 follows the Sunday open in every configuration - verified); ~1 trade/day/pair is data-feasible"}
+      },
+      "rollover_avoidance": {
+        "verdict": "CONCRETE_AND_DST_SAFE",
+        "exit_bar": "15:00 NY bar open fill (bar completes 16:00 NY), strictly before every 17:00 NY rollover in both DST configs (measured 2.0h gap)"
+      },
+      "dst_measurements": [
+        "verified: signal bars stamped 07-11 London always canonical Mon-Fri (whole-hour London offset; window starts after the Sunday weekly open)",
+        "verified: Tokyo control bars stamped 08-12 JST: Monday stamps 08,09 (EDT) / 08,09,10 (EST) fall before the weekly open -> Monday control trades structurally invalid, exactly as documented ('Mon 08:00 JST precedes the Sunday 21:00 NY weekly open')",
+        "verified: desync-week entry drift 07:00<->08:00 ET is handled by per-bar zoneinfo labeling; entry always maps to a NY time strictly before 15:00 NY so no discards are generated",
+        "MEASURED MINOR: decision instant (completion of the 11:00-London bar) EQUALS the fill instant (open of the 12:00-London bar); 'decision instant always strictly before the fill instant' is imprecise (equal, not strictly before); no look-ahead is possible since the fill price is the first price at/after publication"
+      ],
+      "cost_honesty": {"numeric_matrix": true, "x1_5_and_x2": true, "one_event_delay": true, "both_legs_applicable": "single-pair book; round-trip charge per trade", "live_spread_claim": "none"},
+      "causal_control_validity": {"verdict": "VALID", "reasoning": "the control isolates the session channel exactly (same rule, no threshold, same exit); the trough-placement is documented via Andersen-Bollerslev and measured correct (Tokyo 09-13 JST = Asian midday trough); a generic-daily-momentum artifact would fail V2 as designed"},
+      "objections": [
+        {"id": "OBJ-A4P2-1", "severity": "LOW", "text": "Self-description 'decision instant always strictly before the fill instant' is imprecise: they are equal (signal publishes at the completion instant of the 11:00-London bar and the fill is the open of the 12:00-London bar at that same instant). The execution convention itself is standard and conservative; no repair needed beyond wording."}
+      ],
+      "outcome_blindness": "PASS - no returns; ~1300 trades/pair is a design bound, not a result",
+      "exact_trial_count": {"declared": 21, "expected": "3 arms x 7 pairs = 21 evaluation cells", "verdict": "SANITY_OK"},
+      "verdict": "ELIGIBLE"
+    },
+    {
+      "proposal_id": "FXFV1-A5-P1",
+      "path": "research/proposals/forex_free_v1/a5_lane/proposal_1.json",
+      "mechanism_name": "EUR-core intraday lead-lag propagation, two-leg USD-neutral",
+      "rubric": {
+        "R1": {"verdict": "PASS", "evidence": "all required sections present and non-empty including currency_neutralization and lane trial total"},
+        "R2": {"verdict": "PASS", "evidence": "exit at the close of the bar closing 16:00 ET = last completed bar strictly before the 17:00 NY rollover (measured: 21:00Z EST / 20:00Z EDT, strictly before 22:00Z/21:00Z); no-runway skip rule prevents late entries; Friday override exits at the bar closing 15:00 ET (the bar closing exactly AT the 16:00 weekly close is not 'strictly before' it) - internally consistent; the 16:00-17:00 ET bar is never held; no rollover/weekend exposure"},
+        "R3": {"verdict": "PASS", "evidence": "numeric frozen matrix per arm with x1/x1.5/x2 tiers AND one-event delay stress; BOTH legs costed on entry AND exit for the two-leg books (book RT = mean of leg RTs: verified (1.6364+2.0)/2 = 1.8182 EUR-GBP, (1.6364+4.0)/2 = 2.8182 EUR-AUD); leg bps arithmetic verified from frozen pip specs and round reference rates (0.9pip/1.10 = 1.6364bp; 1.3pip/1.30 = 2.0bp; 1.3pip/0.65 = 4.0bp); explicitly 'not a claim about live spreads'"},
+        "R4": {"verdict": "PASS", "evidence": "reversed-direction control (GBP leads, EUR follows): if core->periphery propagation is real there is no market-structure reason for the backwards book to earn the edge; F2 (anchor net at x1.5 <= control GROSS) kills even on a coarse comparison - deliberately conservative and correctly destroys the propagation interpretation"},
+        "R5": {"verdict": "PASS", "evidence": "H1 closes of authorized pairs only; relative view built from two authorized USD pairs, no synthetic crosses; no bid/ask/volume/rates"},
+        "R6": {"verdict": "PASS", "evidence": "every hyperparameter (window 08:00-12:00 ET, z 1.0, sd20, entry/exit bars) at exactly one frozen value; 3 mechanism configurations; cost/delay tiers declared 'accounting stresses ... not additional configurations'"},
+        "R7": {"verdict": "PASS", "evidence": "all ET labels resolved per-date via zoneinfo; rollover 22:00Z EST / 21:00Z EDT and transitions 2026-03-08 07:00Z / 2026-11-01 06:00Z match both the repo goldens and A7's independent zoneinfo computation; 'never fixed UTC offsets'"},
+        "R8": {"verdict": "PASS", "evidence": "intraday lead-lag relative book matches none of the six old mechanisms (old a5 lane: financing carry and fixing-window exposure; old a3/a4: spread panel, rollover window, DST desync, pre-release). Exit deliberately avoids the fixing-adjacent 16:00-17:00 ET bar rather than harvesting it"},
+        "R9": {"verdict": "PASS", "evidence": "20-prior-trade-date warm-up then z-gating on EUR/USD window returns yields ample trades over 6.59y; all needed bars exist on valid days; feasibility independent of profitability"}
+      },
+      "rollover_avoidance": {
+        "verdict": "CONCRETE_AND_DST_SAFE",
+        "exit_bar": "close of the bar closing 16:00 ET, strictly before the rollover in both DST configs (measured); Friday exits at the 15:00 ET close; delayed entry (14:00 ET close) leaves a 1-2 bar hold and still exits strictly before the rollover"
+      },
+      "dst_measurements": [
+        "verified: signal (12:00 ET close), entry (13:00 ET close), exit (16:00 ET close) all resolve to whole-hour UTC in EST and EDT",
+        "verified: transition instants quoted (2026-03-08 07:00Z, 2026-11-01 06:00Z) match zoneinfo truth and repo goldens",
+        "verified: Monday signal window 08:00-12:00 ET always inside the trading week; Friday override consistent with 'strictly before the weekly close'"
+      ],
+      "cost_honesty": {"numeric_matrix": true, "x1_5_and_x2": true, "one_event_delay": true, "both_legs_applicable": "YES - both legs costed on entry and exit, arithmetic verified", "live_spread_claim": "none; proxy declared pessimistic"},
+      "causal_control_validity": {"verdict": "VALID", "reasoning": "reversing the leader/follower direction while holding window, filter, execution and costs constant is the canonical destruction test for a price-discovery-direction claim; the pre-registered honest acknowledgement that the EUR->GBP direction is UNVERIFIED in prior literature is exactly what the control tests"},
+      "objections": [
+        {"id": "OBJ-A5P1-1", "severity": "LOW", "text": "F2 compares the anchor's NET mean at x1.5 against the control's GROSS mean: an intentional, disclosed conservatism (mixed basis), not an error; recorded so F8 implements it exactly as frozen rather than 'fixing' it."}
+      ],
+      "outcome_blindness": "PASS - no returns; frozen_declaration explicit",
+      "exact_trial_count": {"declared": 3, "expected": "3 mechanism configurations (EUR->GBP, EUR->AUD, GBP->EUR); each is a fixed pair-set arm, so 3 (not 21) is the coherent count; cost/delay tiers are accounting stresses", "verdict": "SANITY_OK"},
+      "verdict": "ELIGIBLE"
+    },
+    {
+      "proposal_id": "FXFV1-A5-P2",
+      "path": "research/proposals/forex_free_v1/a5_lane/proposal_2.json",
+      "mechanism_name": "NY-morning USD-factor intraday momentum, flat before rollover",
+      "rubric": {
+        "R1": {"verdict": "PASS", "evidence": "all required sections present and non-empty including currency_neutralization (declared NOT neutral, with bounded-exposure discipline) and placebo control"},
+        "R2": {"verdict": "PASS", "evidence": "exit at the close of the bar closing 16:00 ET (last completed bar strictly before 17:00 NY rollover; measured strictly-before in EST and EDT); entry 14:00 ET close with no-runway skip; Friday exits at the 15:00 ET close; the 16:00-17:00 ET fixing-adjacent bar never held; two-bar hold is the shortest honest expression and remains strictly pre-rollover under the delay stress (15:00->16:00 ET)"},
+        "R3": {"verdict": "PASS", "evidence": "numeric matrix x1/x1.5/x2 (EURUSD 1.6364/2.4545/3.2727 bp; USDJPY 2.0/3.0/4.0 bp; arithmetic verified from frozen pip specs and round reference rates) + one-event delay; single-leg book so the both-legs rule does not bind; the x2-implies-both-legs-survival argument is disclosed as an argument, not a computation (see OBJ-A5P2-2)"},
+        "R4": {"verdict": "PASS", "evidence": "previous-trade-date placebo on the same windows/execution: causally valid information, no look-ahead; if the edge is multi-day momentum mislabeled as intraday premium, the placebo matches the anchor and F2 kills - a correct destruction test of the intraday-persistence interpretation"},
+        "R5": {"verdict": "PASS", "evidence": "H1 closes of EUR/USD and USD/JPY only (both authorized); USD factor proxied by the pair itself, no cross-asset data; no bid/ask/volume/rates"},
+        "R6": {"verdict": "PASS", "evidence": "single frozen value per hyperparameter (window 09:00-13:00 ET, z 1.0, sd20, 14:00 entry, 16:00 exit); 3 configurations; deliberate exclusions of other pairs declared ex ante to avoid pair scanning"},
+        "R7": {"verdict": "PASS", "evidence": "ET labels via zoneinfo per date; quoted goldens (rollover 22:00Z EST / 21:00Z EDT; weekly close 21:00Z EST / 20:00Z EDT) match tests/assets/forex/test_sessions_dst.py and A7's independent computation; no fixed offsets"},
+        "R8": {"verdict": "PASS", "evidence": "single-pair directional intraday momentum with zero financing, zero calendar gating and pre-rollover flattening matches none of the six old mechanisms (financing carry, fixing/rollover-window exposure, spread panel, rollover window, DST desync, pre-release windows all absent)"},
+        "R9": {"verdict": "PASS", "evidence": "20-prior-trade-date warm-up; z-gated days over 6.59y on two deep pairs; feasibility unaffected by the (honestly disclosed) small gross move of the 2-bar window"}
+      },
+      "rollover_avoidance": {
+        "verdict": "CONCRETE_AND_DST_SAFE",
+        "exit_bar": "close of the bar closing 16:00 ET, strictly before the rollover in both configs (measured); delay stress keeps the exit fixed and shrinks the hold to one bar"
+      },
+      "dst_measurements": [
+        "verified: 09:00/13:00/14:00/16:00 ET labels resolve to whole-hour UTC in EST and EDT",
+        "verified: Monday signal window 09:00-13:00 ET inside the trading week; Friday last action bar closes 15:00 ET (bar closing exactly AT the 16:00 weekly close is not strictly before it) - exit override consistent",
+        "MEASURED MINOR: under the one-event delay on FRIDAYS the delayed entry (15:00 ET close) coincides with the Friday exit bar close, a degenerate zero-hold cost-only round trip; the no-runway skip rule as written references the standard entry bar and does not explicitly cover the delayed Friday entry"
+      ],
+      "cost_honesty": {"numeric_matrix": true, "x1_5_and_x2": true, "one_event_delay": true, "both_legs_applicable": "single-leg mechanism, rule not triggered; x2 double-conservatism argued but not computed (disclosed)", "live_spread_claim": "none"},
+      "causal_control_validity": {"verdict": "VALID", "reasoning": "the placebo replaces same-session information with prior-day information while holding everything else constant - the cleanest test that the premium is intraday-session-specific rather than slow drift; no look-ahead is introduced"},
+      "objections": [
+        {"id": "OBJ-A5P2-1", "severity": "LOW", "text": "Friday + one-event-delay cell is degenerate (delayed entry at 15:00 ET close = Friday exit bar close -> zero-hold, cost-only round trip); the no-runway skip rule does not state whether the DELAYED Friday entry is skipped. One sentence of F8 specification needed; no outcome impact either way, but it must be frozen before returns."},
+        {"id": "OBJ-A5P2-2", "severity": "LOW", "text": "The claim that x2 'deliberately exceeds any plausible two-leg both-sides charge' is an assertion, not a computed bound; acceptable because the mechanism is single-leg and the matrix is disclosed, but F8 must not cite it as a derivation."}
+      ],
+      "outcome_blindness": "PASS - no returns anywhere in JSON or MD",
+      "exact_trial_count": {"declared": 3, "expected": "3 configurations (EUR/USD anchor, USD/JPY neighbour, prior-day placebo); coherent", "verdict": "SANITY_OK"},
+      "verdict": "ELIGIBLE"
+    }
+  ],
+  "similarity_matrix_6x6": {
+    "ordering": ["FXFV1-A3-P1", "FXFV1-A3-P2", "FXFV1-A4-P1", "FXFV1-A4-P2", "FXFV1-A5-P1", "FXFV1-A5-P2"],
+    "dimensions": ["mechanism (economic story + direction family)", "signal (variable + window)", "clock (entry/exit instants)", "universe (pairs)"],
+    "grading_rule": "HIGH = near-identical traded object and timing (expected high |PnL correlation|); MEDIUM = same direction family AND materially overlapping holding clock on shared pairs (or identical clock + same trigger variable with opposite sign); LOW = at most one shared dimension",
+    "matrix": {
+      "FXFV1-A3-P1":  {"FXFV1-A3-P1": null,  "FXFV1-A3-P2": "LOW",    "FXFV1-A4-P1": "MEDIUM", "FXFV1-A4-P2": "HIGH",   "FXFV1-A5-P1": "MEDIUM", "FXFV1-A5-P2": "MEDIUM"},
+      "FXFV1-A3-P2":  {"FXFV1-A3-P1": "LOW", "FXFV1-A3-P2": null,     "FXFV1-A4-P1": "LOW",    "FXFV1-A4-P2": "LOW",    "FXFV1-A5-P1": "MEDIUM", "FXFV1-A5-P2": "MEDIUM"},
+      "FXFV1-A4-P1":  {"FXFV1-A3-P1": "MEDIUM", "FXFV1-A3-P2": "LOW", "FXFV1-A4-P1": null,     "FXFV1-A4-P2": "MEDIUM", "FXFV1-A5-P1": "LOW",    "FXFV1-A5-P2": "LOW"},
+      "FXFV1-A4-P2":  {"FXFV1-A3-P1": "HIGH", "FXFV1-A3-P2": "LOW",    "FXFV1-A4-P1": "MEDIUM", "FXFV1-A4-P2": null,     "FXFV1-A5-P1": "MEDIUM", "FXFV1-A5-P2": "MEDIUM"},
+      "FXFV1-A5-P1":  {"FXFV1-A3-P1": "MEDIUM", "FXFV1-A3-P2": "MEDIUM", "FXFV1-A4-P1": "LOW", "FXFV1-A4-P2": "MEDIUM", "FXFV1-A5-P1": null,     "FXFV1-A5-P2": "MEDIUM"},
+      "FXFV1-A5-P2":  {"FXFV1-A3-P1": "MEDIUM", "FXFV1-A3-P2": "MEDIUM", "FXFV1-A4-P1": "LOW", "FXFV1-A4-P2": "MEDIUM", "FXFV1-A5-P1": "MEDIUM", "FXFV1-A5-P2": null}
+    },
+    "rationale_for_key_cells": {
+      "FXFV1-A3-P1 vs FXFV1-A4-P2 (HIGH)": "same mechanism family (post-London-open intraday momentum, both citing Gao-Han-Li-Zhou 2018); signal windows differ by ONE bar (3 vs 4 London-morning bars, both anchored at the 07:00-London-stamp close); both fill at the SAME instant and price (12:00 London); exits differ by one hour (bar closing 16:00 NY vs 15:00-NY-bar-open fill); identical 7-pair universe. These are near-duplicate trades on almost every day. Flagged for the selector: if both rank at the top, they should be treated as one candidate cluster, not two independent families.",
+      "FXFV1-A3-P2 vs FXFV1-A5-P1 (MEDIUM)": "identical trigger variable on EUR/USD (08:00-12:00 ET window move, z-gated with 20-day scale) and IDENTICAL execution clock (entry 13:00 ET close, exit 16:00 ET close), but OPPOSITE direction on the EUR leg (fade vs continuation) and different object (7-pair single fade vs 2-leg USD-neutral relative book). Strongly negative expected PnL correlation on shared trigger days: not redundant, but not independent - they are near mirror tests of the same events.",
+      "FXFV1-A3-P2 vs FXFV1-A5-P2 (MEDIUM)": "overlapping z-gated NY-morning windows (08-12 vs 09-13 ET), opposite sign on shared pairs, same 16:00 ET exit, entries 1h apart.",
+      "All A5-lane internal and cross-lane MEDIUMs": "shared late-NY exit clock and/or continuation family with overlapping NY-afternoon holding; distinct objects (relative two-leg vs directional single-pair vs session-momentum)."
+    },
+    "summary": {"HIGH_pairs": 1, "MEDIUM_pairs": 9, "LOW_pairs": 5, "redundancy_cluster": ["FXFV1-A3-P1", "FXFV1-A4-P2"]}
+  },
+  "rescue_check": {
+    "old_proposals_reviewed": [
+      {"id": "FX2-A3-P1", "mechanism": "Session-boundary liquidity-cycle premium: holds ACROSS the DST-correct 17:00 ET rollover, direction from trailing same-window drift"},
+      {"id": "FX2-A3-P2", "mechanism": "Cross-sectional relative-spread scarcity: quote-spread panel z-scores, dollar-neutral currency legs"},
+      {"id": "FX2-A4-P1", "mechanism": "DST-desynchronization premium of the London-NY overlap: conditions the trade on UK/US DST-desync weeks"},
+      {"id": "FX2-A4-P2", "mechanism": "Pre-release liquidity-withdrawal premium: holds USD basket only in preregistered pre-macro-release windows"},
+      {"id": "FX2-A5-P1", "mechanism": "Point-in-time rate-differential carry: financing accrual is the mechanism, with swap wedge accounting"},
+      {"id": "FX2-A5-P2", "mechanism": "Fixing-and-rollover window risk premium: holds exposure through benchmark fixings (Tokyo 09:55, ECB 14:15, WM/R 16:00 London) and the financing hour"}
+    ],
+    "comparisons": [
+      {"old": "FX2-A3-P1", "nearest_new": "FXFV1-A3-P2", "verdict": "NOT_A_RESCUE", "reasoning": "All six new proposals are flat strictly before every rollover instant - exposure at the boundary is identically zero, the exact opposite of the old tradeable object (holding across the boundary). A3-P2's rollover-adjacent narrative sentence does not change the traded object; its signal is the same-day 4-bar NY extension z-score, not same-window trailing drift, and it earns nothing from the rollover itself."},
+      {"old": "FX2-A3-P2", "nearest_new": "FXFV1-A5-P1", "verdict": "NOT_A_RESCUE", "reasoning": "The old mechanism's information is quote-spread dynamics (forbidden data this cycle). No new proposal uses any spread/quote input; A5-P1's relative book is built from prices of two authorized pairs with a lead-lag story, not a scarcity premium."},
+      {"old": "FX2-A4-P1", "nearest_new": "FXFV1-A4-P2", "verdict": "NOT_A_RESCUE", "reasoning": "The old tradeable variable is membership in UK/US DST-desync weeks. No new proposal conditions any signal, filter, gate or arm on DST phase; A4-P2 mentions desync solely as a labeling fact handled by zoneinfo and verifies robustness across desync weeks instead of harvesting them."},
+      {"old": "FX2-A4-P2", "nearest_new": "FXFV1-A4-P2", "verdict": "NOT_A_RESCUE", "reasoning": "The old mechanism holds only preregistered pre-release windows. The new A4-P2 holds every valid day, keeps 08:30 NY releases INSIDE the holding window as a favoring regime, references no macro calendar, and A5-P1 explicitly refuses calendar filtering. Opposite exposure selection."},
+      {"old": "FX2-A5-P1", "nearest_new": "none", "verdict": "NOT_A_RESCUE", "reasoning": "Financing accrual is the old mechanism's core; this cycle's contract declares financing UNAVAILABLE_FAIL_CLOSED and every new proposal is flat before the rollover with zero financing assumption. Structurally incompatible, not recycled."},
+      {"old": "FX2-A5-P2", "nearest_new": "FXFV1-A3-P2 / FXFV1-A5-P1", "verdict": "NOT_A_RESCUE", "reasoning": "The old mechanism holds exposure THROUGH fixing instants and the financing hour. No new proposal references any fixing instant; A5-P1/A5-P2 explicitly never hold the 16:00-17:00 ET fixing-adjacent bar, and 16:00 London falls inside A3-P1/A4-P2 holding windows only incidentally with direction from session momentum, not fixing-flow models. The old FX2-A5-P2 was already INELIGIBLE in the frozen F2 audit; nothing of it reappears."}
+    ],
+    "overall": "R8 PASS for all six new proposals - no recycled mechanism detected",
+    "note": "The old cycle's frozen F2 audit verdicts (five CONDITIONAL_ON_OWNER_DATA, one INELIGIBLE) were read for context only; no old-proposal content is reused in any new proposal."
+  },
+  "outcome_blindness_check": {
+    "method": "full read of all six JSONs plus grep sweep of JSON+MD for return/performance vocabulary (sharpe, backtest results, annualized, win rate, profit factor, CAGR, mean/average return figures, % per trade)",
+    "result": "PASS for all six: every hit is a no-backtest declaration or a frozen-before-returns statement; the only quantitative forward statements are trade-count design bounds (A4 lane: 300-900 and ~1300 trades/pair), a calendar-arithmetic warm-up date (A3-P2), and cost constants - none are outcomes",
+    "computed_returns_found": false
+  },
+  "trial_count_sanity": {
+    "FXFV1-A3-P1": {"declared": 21, "verdict": "OK - 3 arms x 7 pairs"},
+    "FXFV1-A3-P2": {"declared": 21, "verdict": "OK - 3 arms x 7 pairs"},
+    "FXFV1-A4-P1": {"declared": 21, "verdict": "OK - 7+7+7 evaluation cells = 3 arms x 7 pairs"},
+    "FXFV1-A4-P2": {"declared": 21, "verdict": "OK - 7+7+7 evaluation cells = 3 arms x 7 pairs"},
+    "FXFV1-A5-P1": {"declared": 3, "verdict": "OK - 3 fixed pair-set configurations (cost/delay tiers are accounting stresses, coherently excluded)"},
+    "FXFV1-A5-P2": {"declared": 3, "verdict": "OK - 3 fixed configurations; lane total 6 across both A5 proposals, coherent"}
+  },
+  "summary": {
+    "eligible": ["FXFV1-A3-P1", "FXFV1-A3-P2", "FXFV1-A4-P1", "FXFV1-A4-P2", "FXFV1-A5-P1", "FXFV1-A5-P2"],
+    "ineligible": [],
+    "rubric_fails_any": {},
+    "worst_objection_severity_overall": "MEDIUM (OBJ-A4P1-1, negative-control arm spec gap; does not reach HIGH/CRITICAL and does not fail R1-R7)",
+    "hidden_rescue_found": false,
+    "orthogonality_headline": "one HIGH pair (FXFV1-A3-P1 vs FXFV1-A4-P2, near-duplicate London-morning momentum trades differing by one signal bar and a one-hour-earlier exit); 9 MEDIUM, 5 LOW",
+    "note_to_selector": "The frozen selection rule (rubric count, then lexicographic tie-break) contains no orthogonality cap; the HIGH pair is reported for the selector's awareness. All six proposals pass R1-R9 as measured, so the rubric count is 9/9 for each and the tie-break will bind - A7 expresses no preference."
+  },
+  "blockers": [],
+  "assumptions": [
+    "JSON is authoritative over MD (spot-checked; MDs consistent with JSONs on all load-bearing claims).",
+    "Canonical H1 series exclude out-of-calendar bars per the amended data contract; therefore pre-weekly-open bar references (A3-P2 Tokyo neighbour Monday p0, A4-P2 Tokyo control Mondays, A4-P1 Tokyo range Mondays) are 'missing' under fail-closed rules.",
+    "Bar timestamps are bar-OPEN instants per the proposals' shared convention, consistent with the contract's completed-bar PIT guarantees.",
+    "DST/session claims were verified against research/assets/forex/sessions.py, tests/assets/forex/test_sessions_dst.py goldens, and independent zoneinfo recomputation across all four 2026 US/UK configurations - not against raw provider data.",
+    "The A4-lane negative-control exit ambiguity (OBJ-A4P1-1) is graded on the design's validity with the unique consistent reading identified, since the frozen selection rule disqualifies only on rubric FAIL (R1-R7), HIGH/CRITICAL objections, or hidden rescue - none of which is met.",
+    "Data feasibility (R9) is judged on bar availability and warm-up requirements per the amended 6.5y contract, not on any computed strategy statistic (none exist)."
+  ]
+}
