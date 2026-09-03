@@ -1,0 +1,124 @@
+{
+  "schema": "stocks_free_v3_run/i_a8_handoff@1",
+  "role": "A8",
+  "family_id": "SFV3-A5-IDIO-SHOCK-REVERSAL",
+  "freeze_source": {
+    "selection_freeze": "research/control/stocks_free_v3_run/selection_freeze.json (families[0])",
+    "proposal": "research/proposals/stocks_free_v3/a5_family_idio_shock_reversal.md",
+    "adjudication_applied": "ADJ-1-EXEC-CLOCK (fills at the canonical session CLOSE: decision at close of completed session t, entry fill at close of t+1, exit fill at close of entry+hold; same-close switch allowed when both orders were decided at earlier closes)"
+  },
+  "worktree": {
+    "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v3/i-a8-family-1",
+    "branch": "orca/stocks-free-v3-i-a8-family-1",
+    "head_at_start": "e2d7241151966b863233cc3bab4ad8593f457a87",
+    "head_verified": true
+  },
+  "deliverables": {
+    "module_files": [
+      "research/stocks_free_v3/family_idio_shock/__init__.py",
+      "research/stocks_free_v3/family_idio_shock/features.py",
+      "research/stocks_free_v3/family_idio_shock/arms.py",
+      "research/stocks_free_v3/family_idio_shock/schedule.py",
+      "research/stocks_free_v3/family_idio_shock/dryrun.py"
+    ],
+    "test_files": [
+      "tests/stocks_free_v3/family_idio_shock/__init__.py",
+      "tests/stocks_free_v3/family_idio_shock/conftest.py",
+      "tests/stocks_free_v3/family_idio_shock/test_features.py",
+      "tests/stocks_free_v3/family_idio_shock/test_arms.py",
+      "tests/stocks_free_v3/family_idio_shock/test_schedule.py",
+      "tests/stocks_free_v3/family_idio_shock/test_dryrun.py"
+    ],
+    "pit_features": "rolling-60-session OLS beta of issuer-TR(r_i) on issuer-TR(SPY), window [t-59..t] inclusive; residuals r_i - beta*r_SPY; sigma = population std (ddof=0); z = today's residual / sigma; completed-session PIT only",
+    "state_machine": "deterministic: trigger (A1/N1 z<=-3.0 smallest z; C1 z>=+3.0 largest z; exact tie -> alphabetically first symbol), rolling episode budget 5 new entries per 252 sessions counted by entry session, concurrency 1 with the ADJ-1 same-close switch, chronological episodes; emits the canonical target-weight schedule (entry_type/fill_date/targets with explicit CASH/cash_weight/turnover_one_way) consumed unchanged by research/assets/stocks/factory.py value_book and the V2 harness",
+    "arm_config_heads": "three stable heads A1/N1/C1 with sha256 digests over the canonical JSON of the complete frozen payload (universe, trigger, thresholds, holds, gross/cash, budget, concurrency, beta estimator, clocks incl. ADJ-1, verbatim vol_scaling_rule)",
+    "schedule_only_feasibility": "entries/yr, gross exposure check, one-way/two-way turnover annualized by n_sessions/252 against the 6.0x/yr ceiling; NO PnL/expectancy/PF/Sharpe/MDD computed anywhere",
+    "double_generation_equality": "direct loop vs. regenerated-from-cached-features produce byte-identical canonical JSON record lists and equal schedule digests (pinned by test for all three arms)",
+    "synthetic_fixtures": "hand-derived closed forms: SPY period-4 cycle (+a,-a,0,0) with all 10 frozen sector ETFs as perfect 2x fits; single shock -> beta exactly 2, sigma = S*sqrt(59)/60, z = -60/sqrt(59) = -7.8138; two equal shocks in one window -> sigma = S*sqrt(29)/30, z = -30/sqrt(29) = -5.5707; tests assert which session triggers, which arm holds what, turnover and fill dates - never scored PnL",
+    "dry_run": "python -m research.stocks_free_v3.family_idio_shock.dryrun [--arm A1|N1|C1|ALL] [--staging DIR] [--publish-to-temp-ledger]: full schedule build + canonical factory.value_book accounting + GatedTrialLedger publication gate in a TEMP ledger that is deleted afterwards; default NO-PUBLISH mode evaluates the gate without publishing; the payload exposes only schedule/accounting facts (asserted by a recursive scored-field scan)"
+  },
+  "arm_config_digests": {
+    "SFV3-A5-IDIO-SHOCK-REVERSAL-A1": "c4c38f87c4b2cee68d88a9f949b4c2ed064b550a92e89d49d13a5b9a77e5f64c",
+    "SFV3-A5-IDIO-SHOCK-REVERSAL-N1": "a8265f8c1572cf39b0ccf7683737c0ee9979a723d424af91451374923144cc2f",
+    "SFV3-A5-IDIO-SHOCK-REVERSAL-C1": "5a07f804fbccadf98065e3084c662f8f9eabb2e52f9b68a5fd729a6e6fef1617"
+  },
+  "test_evidence": {
+    "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+    "family_suite": "pytest tests/stocks_free_v3/family_idio_shock -q -> 42 passed",
+    "full_v3_suite": "pytest tests/stocks_free_v3 -q -> 224 passed (no failures, no unexpected skips; the real-staged-data tests RAN because the staging directory is present)",
+    "compileall": "python -m compileall -q research/stocks_free_v3 -> OK",
+    "git_diff_check": "clean",
+    "real_data_tests_ran": true
+  },
+  "schedule_feasibility_real_s0": {
+    "data": "REAL staged snapshot, read-only, S0 window 2018-04-04..2025-07-31, 1842 sessions, via research.stocks_free_v3.isolation.SealedSnapshotReader; distributions truncated to pre-S1 dates before use; split factors never apply inside S0 (pinned effective date 2025-12-05 > last read date)",
+    "S0_sessions": 1842,
+    "S0_years": 7.309523809523809,
+    "A1": {
+      "n_triggers_observed": 68,
+      "n_entries_committed": 31,
+      "entries_per_year": 4.241042345276873,
+      "n_same_close_switches": 2,
+      "n_budget_rejections": 26,
+      "n_concurrency_blocks": 11,
+      "n_fill_records": 60,
+      "n_window_end_flats": 0,
+      "max_gross_observed": 0.5,
+      "gross_within_limit": true,
+      "turnover_one_way_total": 31.0,
+      "turnover_two_way_per_year": 4.241042345276873,
+      "within_turnover_ceiling_6_0x": true,
+      "schedule_digest": "46389943f23a589a4c8b807de472599ef9ed00d69b5f133ee8e9d73814d699b1"
+    },
+    "N1": {
+      "n_triggers_observed": 68,
+      "n_entries_committed": 30,
+      "entries_per_year": 4.1042345276872965,
+      "n_same_close_switches": 0,
+      "n_budget_rejections": 19,
+      "n_concurrency_blocks": 19,
+      "n_fill_records": 60,
+      "n_window_end_flats": 0,
+      "max_gross_observed": 0.5,
+      "gross_within_limit": true,
+      "turnover_one_way_total": 30.0,
+      "turnover_two_way_per_year": 4.1042345276872965,
+      "within_turnover_ceiling_6_0x": true,
+      "schedule_digest": "7da3ee09e15f5b05362b52b4e0d34db822de318601408e7e7a5c04a914c835f0"
+    },
+    "C1": {
+      "n_triggers_observed": 57,
+      "n_entries_committed": 29,
+      "entries_per_year": 3.96742671009772,
+      "n_same_close_switches": 0,
+      "n_budget_rejections": 17,
+      "n_concurrency_blocks": 11,
+      "n_fill_records": 58,
+      "n_window_end_flats": 0,
+      "max_gross_observed": 0.5,
+      "gross_within_limit": true,
+      "turnover_one_way_total": 29.0,
+      "turnover_two_way_per_year": 3.96742671009772,
+      "within_turnover_ceiling_6_0x": true,
+      "schedule_digest": "b053efd7d1def97e3bbddd5adeee2ff7e3bf33e7e3997006e6de252fc01abd23"
+    },
+    "canonical_valuation_accounting_reconciles": "factory.assert_reconciles passed for all three arms on real S0 data (attribution identity + cost-charged-once; bookkeeping only)"
+  },
+  "data_rule_compliance": {
+    "s1_read": false,
+    "s1_note": "all real reads go through SealedSnapshotReader with S0WindowPolicy (2018-04-04..2025-07-31); tests assert no returned date >= 2025-08-01 and that an S1-bounded request raises S1SealError",
+    "scored_metrics_computed_on_real_data": false,
+    "scored_metrics_persisted": false,
+    "dry_run_payload_scope": "schedule counters, turnover/cost accounting facts, gate counters only; recursive key scan asserts no pnl/expectancy/profit_factor/sharpe/drawdown/equity_curve field anywhere",
+    "raw_payloads_in_git": false,
+    "temp_ledger_deleted": true
+  },
+  "documented_edge_interpretations": [
+    "sigma == 0 -> z undefined -> session never eligible to trigger (the frozen quantity residual/sigma does not exist there; applied identically to all arms)",
+    "a trigger on the final session cannot fill (no t+1 session exists) and is dropped; a committed episode whose exit fill session does not exist inside the window is closed by a terminal FORCE_FLAT at the last session (bookkeeping truncation; the hold rule is never altered)",
+    "when an exit and a new entry land on the SAME fill session they merge into ONE canonical record with the final targets and NET ETF-leg turnover (identical to the single fill factory.value_book charges; different-symbol switch = both legs 1.0, same-symbol re-entry = 0.0)"
+  ],
+  "deviations_from_freeze": [],
+  "not_run": [],
+  "notes": "The scoring lane consumes build_arm_schedule / build_arm_schedule_from_features and factory.value_book unchanged; incremental mechanism alpha (risk-matched SPY via benchmarks.build_risk_matched_spy) is intentionally NOT built here - it is the scorer's path, and the freeze's constant-scale vol rule is recorded verbatim in the arm configs (target_daily_vol null, min_gross == max_gross) without inventing a numeric target vol."
+}
