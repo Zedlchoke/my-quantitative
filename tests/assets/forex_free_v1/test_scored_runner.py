@@ -45,10 +45,11 @@ class TestExtraction(unittest.TestCase):
 
 class TestMetrics(unittest.TestCase):
     def trades_pnls(self):
-        # 9 trades, hand-built to pass every gate: folds +65/+40/+36 USD
-        # (fold0 = 44.5% of positive pnl <= 50%), pairs balanced
-        # (EUR 38.0% / GBP 26.3% / JPY 35.7% <= 40%), MDD = 5 USD <= 12% notional
-        rets = [0.003, 0.002, 0.0015, 0.002, -0.0005, 0.0025, 0.0016, -0.0004, 0.0025]
+        # 9 trades, hand-built to pass every gate (A7 W1 B2): positives
+        # EUR 50 / GBP 45 / JPY 56 of 151 -> 33.1/29.8/37.1% <= 40%;
+        # folds +70/+40/+32 (fold0 46.4% <= 50%); fold PFs 9.0 >= 0.80;
+        # MDD = 5 USD <= 12% notional
+        rets = [0.003, 0.002, 0.002, 0.002, -0.0005, 0.0025, 0.0016, -0.0004, 0.002]
         pairs = ["EUR/USD", "GBP/USD", "EUR/USD", "USD/JPY", "GBP/USD",
                  "GBP/USD", "USD/JPY", "EUR/USD", "USD/JPY"]
         out = []
@@ -66,7 +67,7 @@ class TestMetrics(unittest.TestCase):
         self.assertTrue(folds[0]["positive"])   # (30+20+15)=65
         self.assertTrue(folds[1]["positive"])   # (20-5+25)=+40, PF 45/5
         self.assertTrue(folds[2]["positive"])   # (16-4+25)=+37 -> 16-4+25? see rets
-        self.assertAlmostEqual(folds[0]["total_pnl"], 65.0, places=9)
+        self.assertAlmostEqual(folds[0]["total_pnl"], 70.0, places=9)
         self.assertAlmostEqual(folds[1]["profit_factor"], 45.0 / 5.0, places=9)
 
     def test_mdd_hand_computed(self):
@@ -98,7 +99,9 @@ class TestGates(unittest.TestCase):
     def test_gate_requires_expectancy(self):
         rec = self.passing_record()
         ok, reason = R.stage_a_gates(rec)
-        self.assertTrue((ok, reason))  # expectancy 142/9, PF 171/9, folds 3/3, conc balanced
+        # strict: a (False, reason) tuple is truthy — A7 W1 delta finding B2
+        self.assertTrue(ok, reason)
+        self.assertEqual(reason, "PASS")
         bad = json.loads(json.dumps(rec))
         bad["book"]["expectancy"] = -1.0
         ok, reason = R.stage_a_gates(bad)
@@ -172,6 +175,22 @@ class TestFamily1Integration(unittest.TestCase):
         self.assertGreater(rec1["book"]["trades"], 0)  # n_trades > 0 before publication
         tier2 = R.run_family_cell(family1, "family1", by_pair, "anchor", 2.0)
         self.assertGreater(json.dumps(tier2["trades"][0]), "")
+
+    def test_family2_through_runner_has_digest(self):
+        import datetime as dt
+        rows, price = [], 1.0800
+        base = dt.datetime(2024, 3, 4)
+        for day in range(5):
+            for h in range(24):
+                ts = base + dt.timedelta(days=day, hours=h); price += 0.0002
+                rows.append({"datetime": ts.strftime("%Y-%m-%d %H:%M:%S"),
+                             "open": f"{price-0.0002:.5f}", "high": f"{price+0.0001:.5f}",
+                             "low": f"{price-0.0003:.5f}", "close": f"{price:.5f}"})
+        # regression for A7 W1 B1: family2 run digest key is sha256
+        cell = R.run_family_cell(family2, "family2", {"EUR/USD": rows}, "anchor", 1.0)
+        rec = R.assemble_cell_record(cell, "family2", "anchor", 1.0)
+        self.assertGreater(rec["book"]["trades"], 0)  # B1 regression: family2 cells compute
+        self.assertTrue(cell["module_scoring_authorized_fields"])
 
     def test_runner_source_has_no_credential_or_s1_access(self):
         src = open(R.__file__).read()

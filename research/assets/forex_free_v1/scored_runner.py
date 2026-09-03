@@ -51,15 +51,20 @@ def run_family_cell(module, family, canonical_rows_by_pair, arm_id, cost_tier):
     record; increments nothing and publishes nothing."""
     spec = FAMILY_ADAPTERS[family]
     trades = []
+    module_scoring_authorized = []
     for pair in sorted(canonical_rows_by_pair):
         bars = getattr(module, spec["load_bars"])(spec["rows"](canonical_rows_by_pair[pair]))
         run = getattr(module, spec["run_arm"])(bars, arm_id, cost_tier, pair=pair)
-        if not run.get("run_digest"):
+        # family1 exposes run_digest; family2 exposes sha256 (A7 W1 delta B1)
+        digest = run.get("run_digest") or run.get("sha256")
+        if not digest:
             raise ValueError(f"RUN_MISSING_DIGEST: {family} {pair} {arm_id}")
+        module_scoring_authorized.append(run.get("scoring_authorized"))
         trades.extend(extract_trades(family, pair, run))
     trades.sort(key=lambda t: (t["exit_ts"], t["pair"]))
     record = {"family": family, "arm_id": arm_id, "cost_tier": cost_tier,
-              "pairs": sorted(canonical_rows_by_pair), "trades": trades}
+              "pairs": sorted(canonical_rows_by_pair), "trades": trades,
+              "module_scoring_authorized_fields": module_scoring_authorized}
     record["digest"] = hashlib.sha256(json.dumps(
         {k: v for k, v in record.items()}, sort_keys=True).encode()).hexdigest()
     return record
