@@ -1,0 +1,68 @@
+{
+  "schema": "stocks_free_v3_run/scoring_contract@1",
+  "frozen_at_utc": "2026-09-03T15:50:00Z",
+  "producer_role": "A1",
+  "authority": "owner GO STOCKS V3 SCORED EXECUTION (2026-09-03T15:40:00Z); PLAN_stocks.md sections 15-18; prelaunch verdict STOCKS_FREE_V3_S0_LAUNCH_AUTHORIZED",
+  "clock": {"start_utc": "2026-09-03T15:40:00Z", "deadline_utc": "2026-09-04T03:40:00Z", "rules": "serial cells, heavy cap 1, no pytest while a scored worker runs; do not start a cell with <120 min remaining; safe-stop with <45 min"},
+  "execution_order": [
+    "SFV3-A5-IDIO-SHOCK-REVERSAL-A1",
+    "SFV3-A5-IDIO-SHOCK-REVERSAL-N1",
+    "SFV3-A5-IDIO-SHOCK-REVERSAL-C1",
+    "SFV3-A6-TOM-SETTLE-A",
+    "SFV3-A6-TOM-SETTLE-N",
+    "SFV3-A6-TOM-SETTLE-C"
+  ],
+  "w1": "586f9febe29ae6ba0b176c8c9a9b1b4645f3bca4",
+  "cell_protocol": [
+    "verify W1 head + staged-data pins in the execution tree",
+    "load S0 via SealedSnapshotReader (actual loaders); compute issuer-TR via frozen benchmarks module",
+    "build the PIT schedule via the registry (frozen arm config)",
+    "value_book at base 10 bps/side; assert_reconciles must hold",
+    "stress rerun at 20 bps/side; drop-one-ETF rerun via excluded_symbol=select_drop_one_symbol(contribution)",
+    "folds measured on scored windows; incremental alpha vs risk-matched SPY per fold",
+    "canonical immutable artifact written by the run; sha256 pinned",
+    "A1: ledger.compute_recorded once (observed +1 exactly), publish artifact bytes once, replay zero-delta",
+    "counters/heartbeat checkpoint after every cell"
+  ],
+  "folds_scored_windows": [
+    {"fold_id": "S0_FOLD_1", "start": "2018-04-04", "end": "2020-09-01"},
+    {"fold_id": "S0_FOLD_2", "start": "2020-09-10", "end": "2023-02-09"},
+    {"fold_id": "S0_FOLD_3", "start": "2023-02-17", "end": "2025-07-24"}
+  ],
+  "metric_definitions": {
+    "fold_strategy_return": "equity_curve(last session <= fold_end) / equity_curve(last session <= fold_start) - 1; fold 1 denominator is the curve at the fold-1 start session",
+    "fold_expectancy": "sum(period pnl of fills inside fold window) / n_periods",
+    "position_pf": "sum(positive period pnl) / |sum(negative period pnl)| over ALL base periods; null when no losses",
+    "fold_mdd": "max peak-to-trough drawdown of the equity curve segment inside the fold window",
+    "etf_positive_share": "max_s max(contrib_s,0) / sum_s max(contrib_s,0)",
+    "fold_concentration": "factory fold_concentration over the three fold pnl totals, per-arm",
+    "drop_one_etf": "value_book rerun with excluded_symbol=select_drop_one_symbol(base symbol_contribution); survival = after-drop expectancy > 0",
+    "drop_one_fold": "min over folds of expectancy computed with that fold's periods removed; survival = min > 0",
+    "incremental_alpha": "compute_fold_alpha per fold vs build_risk_matched_spy with the arm's frozen rule; overall alpha = sum of fold alphas"
+  },
+  "stage_a_gate_thresholds": {
+    "expectancy_gt": 0.0,
+    "position_pf_ge": 1.10,
+    "folds_positive_ge": 2,
+    "min_populated_fold_pf_ge": 0.80,
+    "max_fold_mdd_le": 0.15,
+    "fold_positive_share_le": 0.50,
+    "etf_positive_share_le": 0.35,
+    "stress_pnl_gt": 0.0,
+    "stress_pf_ge": 1.0,
+    "turnover_two_way_per_year_le": 6.0,
+    "risk_matched_excess_positive_folds_ge": 2,
+    "anchor_overall_alpha_gt": 0.0,
+    "control_alpha_abs_ratio_lt": 0.5,
+    "min_periods_per_fold": 5
+  },
+  "volatile_normalization_rule_frozen_before_scoring": "when comparing execution-tree artifacts to reproduction-tree artifacts, delete exactly these top-level keys from both sides before byte comparison: ['run_utc']; every other byte must be identical",
+  "budget_and_counters_at_start": {"budget": "0/6", "v3_observed": 0, "v3_published": 0, "historical_stocks": "6/6", "s1": "SEALED_UNTOUCHED"},
+  "publication": {
+    "ledger": "research/control/stocks_free_v3_run/ledger.json (GatedTrialLedger)",
+    "artifact_dir": "research/audits/stocks_free_v3/scored_cells/",
+    "key": "arm_id",
+    "observed": "compute_recorded exactly once per cell BEFORE publication, even if publication then fails",
+    "immutability": "published artifact bytes are never modified; sha256 recorded in the ledger entry"
+  }
+}
