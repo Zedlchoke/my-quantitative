@@ -222,6 +222,23 @@ def build_arm_schedule(arm_id: str, inputs: ArmInputs):
     return _build(binding.config, list(inputs.sessions))
 
 
+def schedule_entries(arm_id: str, inputs: ArmInputs) -> list[dict]:
+    """Factory-shaped schedule entries for the publication gate (no PnL)."""
+    binding = build_registry()[arm_id]
+    if binding.family_id == "SFV3-A5-IDIO-SHOCK-REVERSAL":
+        sched = build_arm_schedule(arm_id, inputs)
+        records = sched.records if hasattr(sched, "records") else sched.entries
+        return [dict(r) for r in records]
+    from research.stocks_free_v3.family_tom_settle.dryrun import (
+        schedule_book_entries,
+    )
+    from research.stocks_free_v3.family_tom_settle.schedule import (
+        build_schedule as _build,
+    )
+    return [dict(e) for e in schedule_book_entries(
+        _build(binding.config, list(inputs.sessions)))]
+
+
 def run_arm_dry_run(arm_id: str, inputs: ArmInputs, *,
                     ledger_dir: str | None = None,
                     publish_to_temp_ledger: bool = False,
@@ -244,7 +261,9 @@ def run_arm_dry_run(arm_id: str, inputs: ArmInputs, *,
         from research.stocks_free_v3.family_tom_settle.dryrun import (
             run_exact_arm_dry_run,
         )
-        ledger = GatedTrialLedger(path=ledger_dir)
+        # in-memory fresh temporary ledger; the Phase-Q publication battery
+        # separately proves on-disk first-publication/replay idempotence.
+        ledger = GatedTrialLedger(path=None)
         report = run_exact_arm_dry_run(
             binding.config, list(inputs.sessions), inputs.raw_close,
             inputs.distributions, inputs.split_factors,
