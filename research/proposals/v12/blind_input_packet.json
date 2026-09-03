@@ -1,0 +1,75 @@
+{
+ "schema": "v12_d0_freeze_v1",
+ "generated_utc": "2026-09-03T13:05:00Z",
+ "producer_role": "A1",
+ "v12p_repair_sha": "14dde2da02c32a3107d529e737eb91906f4f7d38",
+ "artifact": "blind_input_packet",
+ "isolation_contract": {
+  "may_read": [
+   "this packet",
+   "research/v12/data_contract.py + research/v12/load_validation.py (data schema/windows)",
+   "research/adapter_v10/protocol.py, base.py, facade.py, benchmarks.py, stress.py (adapter interfaces)",
+   "research/v11/cost_feasibility.py (schedule-only feasibility interfaces)",
+   "research/control/v12_run/forbidden_family_inventory.json",
+   "public literature + official venue/API documentation (record query, retrieval UTC, accepted/rejected sources + reasons)"
+  ],
+  "must_not_read": [
+   "any V11 family metrics, verdicts beyond mechanism-level forbidden inventory, scored artifacts, terminal reports",
+   "other lanes' proposals",
+   "research/control/v11_run/* except the forbidden inventory",
+   "anything under S1",
+   "research/audits/*"
+  ],
+  "prohibited_computations": "no returns, PnL, PF, Sharpe, candidate ranking, backtests, or data queries beyond schema/coverage"
+ },
+ "task": "propose exactly TWO genuinely new low-turnover mechanisms for crypto USD-M perpetuals (JSON+MD under your own prefix research/proposals/v12/<lane>/)",
+ "data_schema": {
+  "universe": "20 Binance USD-M perpetual symbols (BTCUSDT context benchmark only, excluded from books)",
+  "window": {
+   "start": "2025-08-22T00:00:00Z",
+   "end": "2026-08-21T00:00:00Z"
+  },
+  "fields": [
+   "15m completed bars (open/high/low/close/volume/quote-volume/trades)",
+   "funding settlements with fundingTime (mixed 8h/4h/1h cadences on some symbols)",
+   "daily open-interest (sum_open_interest, daily 2025-07-01..2026-08-21)",
+   "mark price available via bars contract; instrument tick sizes 1e-7..1e-2"
+  ],
+  "pit_rules": "features from completed bars + last completed OI row strictly before the decision stamp; one declared execution lag after availability",
+  "decision_clock": "weekly-or-slower; Monday 00:00:00Z convention"
+ },
+ "costs_and_floors": {
+  "fees": "generic adapter maker/taker, tier-0",
+  "slippage": "one-tick model",
+  "funding": "native while held",
+  "stress": "fee x1.5, +2 ticks, +1 event delay",
+  "frozen_floors": {
+   "max_discretionary_decisions_per_365d": 60,
+   "min_median_holding_days": 3,
+   "max_annualised_base_cost_drag_of_gross": 0.08,
+   "max_annualised_stressed_cost_drag_of_gross": 0.12,
+   "max_symbol_share_of_turnover": 0.25,
+   "weight_cap_abs": 0.3
+  }
+ },
+ "constraints": {
+  "max_scored_cells_per_family": 3,
+  "sprint_max_scored_cells": 9,
+  "observed_denominator": 128,
+  "book_rule": "target books must satisfy max |weight| <= 0.30 at every decision stamp by construction",
+  "controls": "every family = anchor + theoretically justified neighbour + causal negative control (sign-destroying or mechanism-destroying)"
+ },
+ "ineligible_mechanism_classes": "see research/control/v12_run/forbidden_family_inventory.json (LOT/MAX/skew inversion or variants; Amihud/illiquidity variants \u2014 reserved for replication; OI-deleveraging variants \u2014 reserved for OILEV-V2; aggressor absorption; funding-carry rescues; ordinary momentum; ordinary reversal; volume-shock continuation; renamed rejected baselines; anything needing unavailable/purchased data)",
+ "required_proposal_fields": [
+  "primary-source claim + crypto-perpetual transfer caveats",
+  "economic counterparty + expected sign",
+  "PIT fields + availability clock",
+  "universe, formation, holding, rebalance schedule",
+  "target book + beta/risk neutralisation + expected turnover",
+  "anchor + justified neighbour + causal negative control",
+  "fees/slippage/funding/stress treatment",
+  "falsification condition",
+  "ancestry map against V1-V11 (mechanism-level)",
+  "why it is neither LOT inversion nor ILLIQ/OILEV parameter rescue"
+ ]
+}
