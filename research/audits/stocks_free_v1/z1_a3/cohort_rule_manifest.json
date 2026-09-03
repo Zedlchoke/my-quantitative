@@ -1,0 +1,62 @@
+{
+  "schema": "stocks_free_v1/audit/z1_a3_cohort_rule_manifest@1",
+  "producer_role": "A3",
+  "rule_id": "STOCKS_FREE_V1_COHORT_RULE_V1",
+  "cohort_digest_schema": "stocks_free_v1/cohort_digest@1",
+  "frozen_before_any_return_exists": true,
+  "checks": {
+    "C1": {
+      "code": "IDENTIFIER_EVIDENCE",
+      "requirement": "stable-identifier evidence: evidence mapping with ticker == candidate symbol, non-empty listing exchange, non-empty issuer/vendor record"
+    },
+    "C2": {
+      "code": "INCEPTION_BEFORE_WARMED_S0_START",
+      "requirement": "fund inception strictly before the S0 start pushed back by warmup_sessions regular sessions of US_EQUITY_REGULAR_V1; unknown inception or out-of-table computation fails closed"
+    },
+    "C3": {
+      "code": "RAW_BARS_INCOMPLETE / RAW_BARS_INVALID",
+      "requirement": "exactly one sane raw OHLCV bar per regular session over the declared common window; duplicates, non-session bars and insane bars rejected; gaps are returns, never fabricated bars"
+    },
+    "C4": {
+      "code": "TR_INPUTS_INCOMPLETE",
+      "requirement": "a positive daily total-return index point for every regular session of the common window"
+    },
+    "C5": {
+      "code": "DOLLAR_VOLUME_FLOOR",
+      "requirement": "median daily dollar volume (raw close x raw volume) over the common window >= the predeclared floor"
+    },
+    "C6": {
+      "code": "NO_UNRESOLVED_EVENTS",
+      "requirement": "zero unresolved ticker-change / liquidation / split / distribution event records"
+    },
+    "C7": {
+      "code": "NEXT_SESSION_EXECUTABLE",
+      "requirement": "every window session resolves a next regular session with a positive raw executable close (final session: calendar resolution only); fills never happen on the signal close"
+    }
+  },
+  "parameters": {
+    "dollar_volume_floor_usd": 10000000.0,
+    "warmup_sessions": 63,
+    "note": "predeclared; changing them after scoring starts is a scientific-threshold change (PLAN 2)"
+  },
+  "candidate_seed_list_documentation_only": [
+    {"symbol": "SPY", "role": "BROAD_US_EQUITY_BENCHMARK"},
+    {"symbol": "XLK", "role": "SECTOR_TECHNOLOGY"},
+    {"symbol": "XLE", "role": "SECTOR_ENERGY"},
+    {"symbol": "XLF", "role": "SECTOR_FINANCIALS"},
+    {"symbol": "XLV", "role": "SECTOR_HEALTH_CARE"},
+    {"symbol": "XLI", "role": "SECTOR_INDUSTRIALS"},
+    {"symbol": "XLP", "role": "SECTOR_CONSUMER_STAPLES"},
+    {"symbol": "XLY", "role": "SECTOR_CONSUMER_DISCRETIONARY"},
+    {"symbol": "XLU", "role": "SECTOR_UTILITIES"},
+    {"symbol": "XLB", "role": "SECTOR_MATERIALS"},
+    {"symbol": "XLRE", "role": "SECTOR_REAL_ESTATE"},
+    {"symbol": "XLC", "role": "SECTOR_COMMUNICATION_SERVICES"},
+    {"symbol": "TLT", "role": "DEFENSIVE_TREASURY"},
+    {"symbol": "GLD", "role": "DEFENSIVE_GOLD"}
+  ],
+  "eligibility_decided_by": "the frozen RULE only; observed returns play no part; seed-list membership is not acceptance",
+  "current_survivor_limitation": "COHORT LIMITATION (PLAN_stocks_free.md 3.1): the candidate seed list is a current-survivor list of long-lived US-listed ETFs. The frozen cohort is NOT survivorship-free: ETFs delisted before the evaluation window were never candidates. All inference is limited to the actual frozen ETF cohort; results may not be generalized to delisted ETFs, to the historical US stock market, or to all US equities.",
+  "loader_contract": "research/stocks_free_v1/cohort.py CohortDataSource (typing.Protocol): identifier_evidence / inception_date / raw_bars / tr_index / unresolved_events; the A2 lane adapter implements it at integration",
+  "real_census_status": "NOT_RUN_IN_THIS_LANE: this lane has no access to the A2 data lane; the real ACCEPTED/REJECTED census over the seed list is produced at integration once the A2 loader is joined. Synthetic goldens for every check pass in tests/stocks_free_v1/test_cohort_rule.py."
+}

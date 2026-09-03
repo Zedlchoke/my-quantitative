@@ -1,0 +1,36 @@
+{
+  "schema": "stocks_free_v1/audit/z1_a3_partition_spec@1",
+  "producer_role": "A3",
+  "rule_id": "STOCKS_FREE_V1_S0_S1_PARTITION_V1",
+  "authority": "PLAN_stocks_free.md 4.2",
+  "coverage_is_input": "freeze_partition(coverage_start, coverage_end, ...) NEVER fabricates dates; the authoritative freeze runs at integration once A2's accepted coverage is known. Nothing in this file freezes a real partition.",
+  "rule": {
+    "s1": "the most recent 12 COMPLETE calendar months of the coverage, non-overlapping with S0, SEALED; a month is complete only if its month-end is <= coverage_end",
+    "s1_blocked": "if 12 complete months do not fit, freeze_partition raises PartitionError('S1_CANNOT_BE_FORMED') and the cycle closes STOCKS_FREE_V1_BLOCKED_S1_ISOLATION (PLAN 4.2)",
+    "warmup": "the first 63 regular sessions of the coverage; warmup may NOT contribute scored trades",
+    "s0": "every post-warmup session strictly before s1_start; at least 6 complete calendar years 'where possible' - a shortfall is RECORDED in s0_complete_years / s0_minimum_years_met / warnings, never silently accepted",
+    "folds": "3 contiguous chronological folds of the S0 sessions (first folds get the remainder)",
+    "purge": "each fold's scored region ends 5 regular sessions (DEFAULT_PURGE_SESSIONS) before the fold end (force-flat boundary); no scored position may cross a fold boundary or into S1; the last fold's scored_end is strictly before s1_start",
+    "digest": "sha256 over canonical JSON of schema, rule id, coverage/warmup/s0/s1 boundaries, folds, purge, warmup, s0_complete_years"
+  },
+  "access_isolation": {
+    "mechanism": "SealedPathFilter / build_research_allowlist in research/stocks_free_v1/partition.py",
+    "enforcement": "path-filter only: any path under a sealed root, or embedding a date inside [s1_start, s1_end] (ISO or compact form), raises SealedWindowError; write modes are always rejected for research processes",
+    "staging_vs_research": "staging layers may hash the complete delivery; research processes get the data root minus S1 (PLAN 4.2)"
+  },
+  "worked_example_NOT_AUTHORITATIVE": {
+    "warning": "EXAMPLE ONLY, computed from the staged SSGA coverage merely to show the rule fires; the real freeze uses A2's accepted coverage at integration",
+    "input_coverage": ["2014-01-02", "2025-12-31"],
+    "warmup": ["2014-01-02", "2014-04-02"],
+    "s0": ["2014-04-03", "2024-12-31"],
+    "s0_complete_years": 10,
+    "s1": ["2025-01-01", "2025-12-31"],
+    "folds": [
+      {"fold_id": "S0_FOLD_1", "start": "2014-04-03", "end": "2017-10-30", "scored_end": "2017-10-23", "purge_sessions": 5},
+      {"fold_id": "S0_FOLD_2", "start": "2017-10-31", "end": "2021-06-02", "scored_end": "2021-05-25", "purge_sessions": 5},
+      {"fold_id": "S0_FOLD_3", "start": "2021-06-03", "end": "2024-12-31", "scored_end": "2024-12-23", "purge_sessions": 5}
+    ],
+    "partition_digest_sha256_prefix": "2373c7aea61fccc5"
+  },
+  "tests": "tests/stocks_free_v1/test_partition.py: golden layout, mid-month coverage, blocked S1, force-flat purge arithmetic, digest stability/sensitivity, S1 sealing raises SealedWindowError, read-only enforcement"
+}
