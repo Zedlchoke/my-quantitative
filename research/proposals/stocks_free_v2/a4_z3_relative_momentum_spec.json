@@ -1,0 +1,205 @@
+{
+  "arms": [
+    {
+      "arm_id": "ARM_A4_ANCHOR_MOM121_EQW_TOP3",
+      "definition": "Classic 12-1 cross-sectional momentum among the 10 sector ETFs: rank by mom_i(t) descending, hold top 3 equal-weight, gross 1.0, monthly clock, next-session raw fills, 7 bps one-way.",
+      "literature": "Jegadeesh & Titman (1993, Journal of Finance): 3-12 month cross-sectional winner persistence in US equities; Moskowitz & Grinblatt (1999, Journal of Finance), 'Do Industries Explain Momentum?': industry/sector momentum absorbs much of individual momentum, sector winner portfolios earn momentum premia; Carhart (1997, Journal of Finance): UMD factor = 12-month return skipping the most recent month; Asness, Moskowitz & Pedersen (2013, Journal of Finance), 'Value and Momentum Everywhere': momentum across asset classes including index/sector-level instruments; O'Neal (2000, Financial Analysts Journal): sector-fund momentum with monthly rebalancing. Exact tables/wording: MODEL_INTERNAL_UNVERIFIED.",
+      "role": "ANCHOR (literature-backed)",
+      "why_this_anchor": "12-1 monthly top-3 is the single most replicated construction of the cross-sectional momentum family and is directly portable to a 10-name liquid sector cross-section"
+    },
+    {
+      "arm_id": "ARM_A4_NEIGHBOR_VOLADJ_MOM121_INVVOL_TOP3",
+      "definition": "Risk-adjusted momentum: rank by mra_i(t) = mom_i(t)/sigma_i(t) descending, hold top 3 with inverse-vol weights w_i proportional to 1/sigma_i(t) capped at 35%, gross 1.0; identical clock, cohort, execution, costs.",
+      "literature": "Barroso & Santa-Clara (2015, Journal of Financial Economics), 'Momentum has its moments': scaling momentum exposure by inverse realized variance eliminates crashes and roughly doubles Sharpe in their sample; Daniel & Moskowitz (2016, Journal of Financial Economics), 'Momentum crashes': conditional volatility of winners predicts crash episodes, motivating vol-managed momentum. Exact wording: MODEL_INTERNAL_UNVERIFIED.",
+      "mechanism_lever": "risk normalization, not selection horizon. Same lookback family, genuinely different lever: (a) the score divides by formation-window realized vol, and (b) weights are inverse-vol, so the book takes less risk in high-vol states. This targets the documented momentum-crash channel rather than the return-persistence channel.",
+      "role": "NEIGHBOUR (theoretically justified, different mechanism lever)",
+      "support_prediction": "if the momentum mechanism is real and crash-risk is its main failure mode, the neighbour should pass the same primary gates as the anchor (PLAN \u00a714: neighbour supports the anchor); neighbour failure while the anchor passes blocks the robustness reading without rejecting the anchor"
+    },
+    {
+      "arm_id": "ARM_A4_NEGCTRL_BOTTOM3_EQW_MOM121",
+      "confound_control": "the control shares the anchor's long-only market exposure, so the operative comparison is anchor vs control (paired by identical construction), not control vs flat alone; Grundy & Martin (2001, Review of Financial Studies) support that momentum profits are not explained by static factor exposures (MODEL_INTERNAL_UNVERIFIED)",
+      "definition": "IDENTICAL clock, cohort, 12-1 TR score, top-3-count, equal-weight, caps, execution, delay, costs \u2014 with the ranking sign REVERSED: hold the BOTTOM 3 sectors by mom_i(t).",
+      "destruction_property": "if positive cross-sectional serial persistence (the claimed mechanism) is real, selecting past losers must destroy it: the control is predicted to fail Stage-A primary gates (after-cost expectancy <= 0 or PF < 1.10) and to lose to the anchor",
+      "expected_sign_fixture": "mechanical (outcome-free) check required in Z5/Z6: at every decision the selected legs' prior 12-1 TR must exceed the unselected legs' for the anchor and invert for the control",
+      "falsification_rule": "if the control PASSES both primary gates (after-cost expectancy > 0 AND position-level PF >= 1.10), OR matches/beats the anchor's after-cost expectancy in >= 2 of 3 folds, the claimed relative-momentum mechanism is FALSIFIED: any anchor result is attributable to construction artifacts (long-equity beta drift, sector premia unrelated to persistence, cost asymmetries) and the family is rejected regardless of anchor performance",
+      "role": "CAUSAL NEGATIVE CONTROL"
+    }
+  ],
+  "benchmark": {
+    "context_benchmark": "SPY total return built by the same TR architecture (raw closes x issuer split factors + official issuer distributions); reported as context only",
+    "hard_benchmark": "flat (0% after cost) for all Stage-A gates; SPY TR never replaces the flat hard benchmark",
+    "spy_tr_limitation": "0.39% cumulative divergence vs SSGA NAV-TR over 8.6y recorded in DA2 with a priori tolerances (yearly abs 2.5%, cumulative abs 5%, event yield 0.15pp)"
+  },
+  "bootstrap": {
+    "bootstrap_sha256_short": "b345de4",
+    "branch": "orca/stocks-free-v2-z3-momentum",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v2/z3-momentum",
+    "worktree_identity_verified": true
+  },
+  "clock": {
+    "decision_frequency": "MONTHLY (frozen; weekly rejected a priori because the 12-1 mechanism is documented at monthly horizons and weekly clocks import short-horizon reversal/microstructure contamination while tripling turnover)",
+    "decision_rule": "evaluate on the completed daily bar of the LAST regular session (US_EQUITY_REGULAR_V1 calendar) of each calendar month M",
+    "execution_rule": "orders fill at the immediately following regular session (first session of month M+1), one-event delay, raw executable price",
+    "holding": "from fill until the next monthly rebalance fill, or until a force-flat event, whichever is first"
+  },
+  "cohort": {
+    "accepted_cohort_11": [
+      "SPY",
+      "XLK",
+      "XLE",
+      "XLF",
+      "XLV",
+      "XLI",
+      "XLP",
+      "XLY",
+      "XLU",
+      "XLB",
+      "XLRE"
+    ],
+    "cash": "explicit asset, weight fills any residual, yield 0 per run contract unless a FRED-verified cash-rate series passes PIT/license gates in a later cycle amendment",
+    "cohort_limitation": "current-survivor SPDR seed list; inference restricted to the frozen cohort; no generalization to delisted ETFs or all US equities",
+    "eligible_universe": "the 11 accepted ETFs + explicit cash",
+    "rankable_cross_section_10": [
+      "XLK",
+      "XLE",
+      "XLF",
+      "XLV",
+      "XLI",
+      "XLP",
+      "XLY",
+      "XLU",
+      "XLB",
+      "XLRE"
+    ],
+    "spy_role": "BENCHMARK_ONLY (census role BROAD_US_EQUITY_BENCHMARK). SPY is never ranked, never held. Rationale: mixing the broad index into a sector cross-section double-counts market beta and blurs the sector-rotation mechanism being tested."
+  },
+  "contract_refs": {
+    "cohort_census": {
+      "cohort_digest": "c9d4e88a33c53448120e79138057bcb0d100abecc1d33fbec92bd3d9c541bc96",
+      "path": "research/control/stocks_free_v2_run/cohort_census.json",
+      "rule_id": "STOCKS_FREE_V1_COHORT_RULE_V1"
+    },
+    "da2_evidence": "research/audits/stocks_free_v2/da2/da2_evidence.json (da2_verdict PASS_WITH_RECORDED_LIMITATIONS; SPY TR vs SSGA NAV-TR cumulative divergence 0.39% over 8.6y, tolerances declared a priori)",
+    "partition": {
+      "path": "research/control/stocks_free_v2_run/partition.json",
+      "rule_id": "STOCKS_FREE_V1_S0_S1_PARTITION_V1",
+      "s0": [
+        "2018-04-04",
+        "2025-07-31"
+      ],
+      "s1": [
+        "2025-08-01",
+        "2026-07-31"
+      ],
+      "s1_handling": "SEALED. This spec references S1 existence only for force-flat boundary handling; no S1 date enters any decision, hold, feature or evaluation schedule defined here.",
+      "warmup": [
+        "2018-01-02",
+        "2018-04-03"
+      ]
+    },
+    "plan": "PLAN_stocks_free.md \u00a73 (cohort/clock/portfolio), \u00a710 (Z3 requirements), \u00a714 (Stage-A gates)",
+    "run_contract": "research/control/stocks_free_v2_run/run_contract.json",
+    "split_factors": "research/control/stocks_free_v2_run/split_factors.json (amended FD2 formula)"
+  },
+  "costs_and_delay": {
+    "base_case_cost": "7 bps one-way per ETF clip, decomposed as: spread 2 bps + slippage 3 bps + conservative commission/ops buffer 2 bps",
+    "borrow": "not applicable (long-only)",
+    "cash_yield": "0",
+    "delay": "one-event delay mandatory (decision session t close -> fill session t+1); no exception",
+    "rationale": "SPDR sector ETFs are top-tier liquidity (census median daily dollar volume $197M..$30B); 2-3 bps effective spreads are the documented regime for these products (MODEL_INTERNAL_UNVERIFIED, used conservatively). Commission levels are NOT claimed from evidence; the 2 bps buffer avoids a free-trading assumption.",
+    "stress_cost": "12 bps one-way (double spread+slippage, same buffer) declared for Z6 schedule feasibility stress; stress result does not tune the base case"
+  },
+  "evidence_count": {
+    "adequacy_gate": "PLAN \u00a714 'adequate independent weekly/monthly decisions' is declared satisfied iff realized counted decisions meet the minima above; fewer => arm UNCOUNTED, not rescued",
+    "expected_calendar_slots_s0": {
+      "derivation": "calendar-derived count of valid month-end decisions 2019-01..2025-06 inside scored fold regions; arithmetic on the frozen partition, no outcome computation",
+      "fold1": 20,
+      "fold2": 28,
+      "fold3": 29,
+      "total": 77
+    },
+    "independence": "monthly non-overlapping hold windows: each decision's holding period does not overlap another's",
+    "minimum_independent_decisions_per_fold": 15,
+    "minimum_independent_decisions_total": 60
+  },
+  "family_id": "A4_XSEC_ETF_RELATIVE_MOMENTUM",
+  "feature_definitions": {
+    "data_readiness_rule": "a decision at t is VALID for ETF i only if the full 253-session TR window [t-252, t] exists in accepted coverage; an ETF failing readiness is excluded from ranking that decision (deterministic; not expected to occur in S0 for the 10 sectors)",
+    "momentum_score_raw": "mom_i(t) = P^TR_i(t-21) / P^TR_i(t-252) - 1, computed on the TR index at decision session t; session counts on the actual regular-session calendar (252 ~ 12 months formation, 21 ~ 1-month skip of the most recent month)",
+    "risk_adjusted_score": "mra_i(t) = mom_i(t) / sigma_i(t)",
+    "skip_rationale": "12-1 (12-month formation skipping the most recent month) is the canonical Carhart/Jegadeesh-Titman horizon; the skip avoids the documented short-horizon reversal (Lehmann 1990; Jegadeesh 1990)",
+    "ties": "deterministic tie-break: ascending symbol; no randomization",
+    "volatility_score": "sigma_i(t) = sample standard deviation of daily log TR returns over sessions [t-252, t-21] (the same formation window, 231 daily observations), annualization deliberately omitted (scale-free within a cross-section)",
+    "warmup_extension_disclosure": "vendor coverage starts 2018-01-02, so the first VALID decision (full 253-session window) is the January 2019 month-end (2019-01-31, filled 2019-02-01). Monthly slots 2018-04 through 2018-12 are UNSCORED warmup-extension and contribute no trades. No truncated-lookback fallback is permitted."
+  },
+  "frozen_at_utc": "2026-09-03T06:37:55Z",
+  "lane": "Z3-A4-momentum (outcome-blind family specification)",
+  "no_tuning": {
+    "declaration": "NO TUNING. No returns, PnL, PF, Sharpe or ranking of these arms was computed during specification; no scored artifact exists or may be created in this lane; S1 was never referenced beyond the force-flat boundary rule; the A5 (z3-trend) lane's work and files were never opened; no branch switching occurred.",
+    "parameter_provenance": "every numeric constant above traces to literature convention (12-1, top-3, monthly), a frozen plan constraint (35% cap, gross <= 1.0, 5-session purge, force-flat), or a declared conservative cost buffer (7/12 bps)"
+  },
+  "not_a_lookback_grid": {
+    "declaration": "each arm is ONE frozen configuration: one lookback pair (252/21), one vol window (identical formation window), one rank count (3), one weighting scheme, one clock (monthly), one cost base (7 bps). No alternative lookback, skip, rank count, cap or frequency was scored, compared or optimized; all values were fixed a priori from literature conventions before any candidate was run. Changing any value after any scored computation voids the arm.",
+    "why_monthly": "12-1 cross-sectional momentum is documented and typically implemented at monthly rebalancing; weekly would multiply decisions but import short-horizon reversal contamination and ~3-4x turnover, deviating from the anchor's documented mechanism",
+    "why_top3": "10-name cross-section: top-3 balances concentration (33.3% per name, under the 35% cap) against diversification; 12-1 scores are the only ranking input"
+  },
+  "portfolio_construction": {
+    "anchor_and_control_weighting": "equal weight across the 3 selected ETFs (33.3333% each), residual 0% to cash",
+    "book": "long-only selected ETFs + cash; gross exposure <= 1.0; no shorts, no leverage",
+    "buffers": "NONE. Pure top-3 / bottom-3 by rank each month, no rank buffer, no hysteresis. Rationale: the negative control must share identical construction with the anchor except the ranking sign; buffers would break that symmetry.",
+    "neighbour_weighting": "deterministic inverse-volatility: w_i proportional to 1/sigma_i(t) over the 3 selected ETFs, per-ETF cap 35% (capped then renormalized to gross 1.0), residual to cash",
+    "partial_holdings": "if fewer than 3 ETFs are rankable at t (not expected in S0), hold the rankable ones at equal (or inverse-vol) weight and put the residual in cash",
+    "per_etf_weight_cap": "35% of gross for all arms (equal-weight top-3 is 33.33% by construction; inverse-vol is capped)",
+    "target_books": "deterministic function of (features at t, frozen rules); double-generation equality required in Z5/Z6 tests"
+  },
+  "schema": "stocks_free_v2/proposal/a4_family_spec@1",
+  "signal_and_series_semantics": {
+    "fill_series": "raw (unadjusted) executable prices, never the signal close; total-return series used for features is strictly separated from raw fill prices",
+    "lookahead_control": "one-event delay mandatory: decision at session t close, execution strictly at session t+1; no same-bar fill",
+    "signal_input": "daily completed bars only; features computed at the decision timestamp use exclusively data completed before it",
+    "tr_series": "per-ETF total-return index P^TR_i built by the amended FD2 formula: raw closes x issuer-confirmed split factors + official issuer distributions (SPDR workbook). The five 2:1 issuer splits effective 2025-12-05 lie inside sealed S1; S0 is unaffected; formula frozen for the entire coverage."
+  },
+  "stage_a_gate_refs": "PLAN \u00a714 applies per arm: after-cost expectancy > 0; PF >= 1.10; >= 2/3 folds positive; no populated fold PF < 0.80; MDD <= 15%; fold/ETF positive-PnL concentration caps; drop-one-ETF and drop-one-fold survival; stressed PnL > 0 and stressed PF >= 1.00; neighbour supports anchor; control does not reproduce the mechanism; turnover/capacity feasible; SPY TR reported as context; exact independent reproduction; zero unresolved HIGH/CRITICAL; DSR/PBO full-denominator or UNAVAILABLE_FAIL_CLOSED",
+  "status": "FROZEN_OUTCOME_BLIND_NO_SCORED_ARTIFACT",
+  "turnover_and_capacity": {
+    "capacity_reasoning": "smallest cohort member XLRE median daily dollar volume ~$197M (census); even a 33.3% weight on a $1M book is a ~$333K clip \u2248 0.17% of that median ADV, far under a conservative 1% participation ceiling; capacity is not binding below roughly $50M book at <=1% participation; realized participation is measured at Z6 from the trade schedule, never assumed here",
+    "concentration_limits": "per-ETF weight <= 35% for all arms; Stage-A gate 'no ETF contributes more than 35% of positive PnL/risk' applies as measured at Z7+; equal-weight top-3 bounds risk sharing by construction, inverse-vol only diversifies further",
+    "expected_turnover": "PRIOR expectation, not computed: anchor/control ~1.5-3.5x gross one-way per year (about 1-2 of 3 holdings change per month without buffers); neighbour moderately higher due to inverse-vol reweighting with unchanged selection; Z6 must verify the realized schedule-only turnover stays <= 6.0x gross one-way per year at base-case cost",
+    "fold_concentration_gate": "no fold contributes more than 50% of positive PnL (applies as measured)"
+  },
+  "warmup_folds_terminal": {
+    "force_flat_events": [
+      "S0_FOLD_1 scored_end 2020-09-01 close",
+      "S0_FOLD_2 scored_end 2023-02-09 close",
+      "S0_FOLD_3 scored_end 2025-07-24 close",
+      "S0 terminal 2025-07-31 close"
+    ],
+    "purge": "5 purge sessions at every fold boundary per the frozen partition; force-flat makes the purge gaps unpopulated by positions",
+    "s0_folds": [
+      {
+        "end": "2020-09-09",
+        "fold_id": "S0_FOLD_1",
+        "purge_sessions": 5,
+        "scored_end": "2020-09-01",
+        "start": "2018-04-04"
+      },
+      {
+        "end": "2023-02-16",
+        "fold_id": "S0_FOLD_2",
+        "purge_sessions": 5,
+        "scored_end": "2023-02-09",
+        "start": "2020-09-10"
+      },
+      {
+        "end": "2025-07-31",
+        "fold_id": "S0_FOLD_3",
+        "purge_sessions": 5,
+        "scored_end": "2025-07-24",
+        "start": "2023-02-17"
+      }
+    ],
+    "s1": "book flat across the S0/S1 boundary; S1 never scored under this spec",
+    "terminal_close_handling": "the book is forced flat at each force-flat event's close using raw prices; the resulting exit is a costed one-way trade; the book starts each fold flat; the first decision inside a fold's scored region is its first valid month-end; a decision whose natural holding would cross a force-flat event is closed early at that event (e.g., the 2025-06-30 decision fills 2025-07-01 and is flattened 2025-07-24)",
+    "warmup": "2018-01-02..2018-04-03 (63 sessions) plus the data-readiness warmup extension through 2019-01-31 (see feature_definitions); warmup contributes no scored trades"
+  }
+}
