@@ -1,0 +1,124 @@
+{
+  "schema": "stocks_free_v3/i_a9_handoff@1",
+  "generated_at_utc": "2026-09-03T14:33:01Z",
+  "generated_at_utc_note": "timestamp frozen at handoff authoring; see event_log for exact commit time",
+  "lane": "A9",
+  "family_id": "SFV3-A6-TOM-SETTLE",
+  "implementer": "A9",
+  "worktree": ".worktrees/stocks-free-v3/i-a9-family-2",
+  "branch": "orca/stocks-free-v3-i-a9-family-2",
+  "base_commit": "e2d7241151966b863233cc3bab4ad8593f457a87",
+  "base_commit_note": "verified == STOCKS_FREE_V3_SELECTION_SHA expectation before any write",
+  "sources": {
+    "freeze": "research/control/stocks_free_v3_run/selection_freeze.json families[1]",
+    "mechanism_proposal": "research/proposals/stocks_free_v3/a6_family_SFV3-A6-TOM-SETTLE.md"
+  },
+  "what_was_built": {
+    "module": "research/stocks_free_v3/family_tom_settle/",
+    "files": [
+      "research/stocks_free_v3/family_tom_settle/__init__.py",
+      "research/stocks_free_v3/family_tom_settle/config.py",
+      "research/stocks_free_v3/family_tom_settle/schedule.py",
+      "research/stocks_free_v3/family_tom_settle/dryrun.py"
+    ],
+    "tests": [
+      "tests/stocks_free_v3/family_tom_settle/__init__.py",
+      "tests/stocks_free_v3/family_tom_settle/conftest.py",
+      "tests/stocks_free_v3/family_tom_settle/_staging.py",
+      "tests/stocks_free_v3/family_tom_settle/test_month_ordinals.py",
+      "tests/stocks_free_v3/family_tom_settle/test_config_digests.py",
+      "tests/stocks_free_v3/family_tom_settle/test_schedule_golden.py",
+      "tests/stocks_free_v3/family_tom_settle/test_double_generation.py",
+      "tests/stocks_free_v3/family_tom_settle/test_feasibility.py",
+      "tests/stocks_free_v3/family_tom_settle/test_dry_run_synthetic.py",
+      "tests/stocks_free_v3/family_tom_settle/test_dry_run_real.py"
+    ],
+    "deliverables": {
+      "1a_month_ordinals": "regular-session month ordinals on a sorted ISO session calendar (SessionOrdinal: month key, 1-based ordinal, month length); holiday-thinned months need no special cases; fail-closed on empty/unsorted/duplicate/non-ISO input and on any month with < 8 sessions (MIN_MONTH_SESSIONS; real US months are 19-23)",
+      "1b_window_membership_and_target_emission": "WindowRule per arm (frozen shapes only); build_schedule (session walk) and build_schedule_from_windows (window blocks) both emit ScheduledFill(fill_session, decision_session, book, establishment, targets with EXPLICIT CASH residual leg, turnover_one_way); two frozen books TOM gross 0.50 / BASE gross 0.30, 11 equal legs at gross/11; CASH never a tradable leg",
+      "1c_config_heads_and_digests": "three stable ArmConfig heads A/N/C; digest = sha256 over canonical_json(payload) containing family id, arm id/key/role, window rule, books, cash semantics, clock, expected transitions/turnover, risk-matched rule payload, costs, calendar id",
+      "1d_schedule_only_feasibility": "schedule_feasibility reports transitions/yr, one-way turnover sum per complete calendar year, gross envelope, turnover-ceiling verdict and anchor/control disjointness evidence WITHOUT computing any PnL (payload carries no pnl/equity/pf/sharpe/mdd/alpha keys, pinned by test)",
+      "2_double_generation": "build_schedule and build_schedule_from_windows agree BYTE-IDENTICALLY (canonical JSON, schedule digest) on hand months, padded synthetic years, thinned multi-year calendars, and boundary slices; also verified on the real S0 calendar",
+      "3_hand_computed_fixtures": "synthetic Jan+Feb 2021 (19 sessions each, MLK 01-18 and Presidents Day 02-15 removed): every window session and every fill hand-computed and asserted exactly for arms A/N/C, including the establishment fill semantics and the coverage ending inside an anchor window (no exit fill, no compensation trade)",
+      "4_exact_arm_dry_run": "run_exact_arm_dry_run: double-generation schedule build + canonical factory.value_book accounting (assert_reconciles: attribution identity 1e-12, cost charged exactly once) + GatedTrialLedger publication gate (compute recorded, first publication, idempotent replay zero-delta, zero-result refusal) on a TEMPORARY caller-owned ledger; on real staged data it ran schedule + valuation only into a temp ledger that is deleted after the test"
+    }
+  },
+  "arm_config_digests": {
+    "SFV3-A6-TOM-SETTLE-A": "e8e5b5c0f1b44360b36790bf3a7a04358ba1c7943f3824c534da07ed4513ee6f",
+    "SFV3-A6-TOM-SETTLE-N": "e0afac4ab7c615319e2a6943380eaea4a38efb3cd4255fe0630442bc93c7a5f4",
+    "SFV3-A6-TOM-SETTLE-C": "f57b5580d2699a84c3ed9afbc888c7abea6f70d8ef4602a95f59660691e1bd58"
+  },
+  "digest_pinning": "the three digests above are pinned as literals in tests/stocks_free_v3/family_tom_settle/test_config_digests.py (PINNED_DIGESTS); any change to a frozen constant breaks the test",
+  "schedule_only_feasibility_real": {
+    "data": "NONE (calendar-only arithmetic over the frozen US_EQUITY_REGULAR_V1 sessions inside S0; no prices touched)",
+    "coverage": ["2018-04-04", "2025-07-31"],
+    "s0_sessions": 1842,
+    "months_checked_for_disjointness": 88,
+    "months_skipped": 0,
+    "real_month_length_range": [19, 23],
+    "arms": {
+      "A": {
+        "arm_id": "SFV3-A6-TOM-SETTLE-A",
+        "schedule_digest": "7018cc2d715237649e647f85d030b19f12eec517acb534a9cbf08658696e5a73",
+        "fills": 177,
+        "transitions": 176,
+        "window_sessions": 440,
+        "complete_years": [2019, 2020, 2021, 2022, 2023, 2024],
+        "transitions_per_complete_year": 24,
+        "turnover_two_way_per_year": 4.8,
+        "gross_envelope": [0.3, 0.5]
+      },
+      "N": {
+        "arm_id": "SFV3-A6-TOM-SETTLE-N",
+        "schedule_digest": "246675369250c7551867bcf9a1c49c73eb7bc125f19e7b17571e022b67662c55",
+        "fills": 176,
+        "transitions": 175,
+        "window_sessions": 264,
+        "complete_years": [2019, 2020, 2021, 2022, 2023, 2024],
+        "transitions_per_complete_year": 24,
+        "turnover_two_way_per_year": 4.8,
+        "gross_envelope": [0.3, 0.5]
+      },
+      "C": {
+        "arm_id": "SFV3-A6-TOM-SETTLE-C",
+        "schedule_digest": "064b206b6d8e3d46c2bdf4470040d54006567f2ede6c1559c10b3e4da99c6f46",
+        "fills": 177,
+        "transitions": 176,
+        "window_sessions": 440,
+        "complete_years": [2019, 2020, 2021, 2022, 2023, 2024],
+        "transitions_per_complete_year": 24,
+        "turnover_two_way_per_year": 4.8,
+        "gross_envelope": [0.3, 0.5]
+      }
+    },
+    "turnover_ceiling_two_way_per_year": 6.0,
+    "all_arms_within_gate": true,
+    "anchor_control_disjoint": true,
+    "anchor_control_disjoint_note": "mathematically guaranteed for month length >= 15 (control ordinal 12 < anchor tail start n-2); every S0 month has 19-23 sessions so all 88 months qualify and none were skipped"
+  },
+  "real_data_dry_run": {
+    "staging_root": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v2/z8-exec-1/.staging (READ-ONLY, outside git)",
+    "window": "S0 only; dry-run valuation coverage 2018-12-03..2019-12-31 (271 sessions, one padded complete calendar year)",
+    "inputs": {
+      "raw_closes": "11 pinned <SYM>_none_p1.json files, sha256-verified then S0-truncated via SealedSnapshotReader(S1Seal, S0WindowPolicy)",
+      "distributions": "pinned SPDR issuer workbook (sha256 == ISSUER_DISTRIBUTION_RECORDS_SHA256 verified before parsing), 11 cohort symbols, ex-dates truncated to S0",
+      "split_factors": "the five pinned 2025-12-05 2:1 events (committed constants in authority.py; no S1 data read)"
+    },
+    "ledger": "GatedTrialLedger under pytest tmp_path; saved, asserted to exist, deleted, asserted gone",
+    "boundary_transitions_padded_2019": {"A": 26, "N": 25, "C": 26},
+    "in_year_2019": {"transitions": 24, "entries": 12, "exits": 12, "one_way_turnover_sum": 4.8},
+    "accounting": "attribution identity reconciled (<=1e-12) and cost charged exactly once on every dry run; hand-computed zero-return cost chain matches canonical value_book exactly"
+  },
+  "test_evidence": {
+    "family_suite": "79 passed, 3 skipped (the only skips are 3 intentional short-slice params below the frozen 8-session month minimum), 1.8s",
+    "full_v3_suite": "python -m pytest tests/stocks_free_v3 -q -> 261 passed, 3 skipped, 5.5s",
+    "compileall": "python -m compileall -q research/stocks_free_v3 -> OK",
+    "git_diff_check": "clean"
+  },
+  "no_scored_metric_statement": "NO scored metric was computed or persisted anywhere in this lane: no PnL, expectancy, PF, Sharpe, MDD or alpha table over S0 or any other window, on synthetic or real data. value_book valuation numbers on the real dry run were consumed internally by the reconciliation assert only and are structurally absent from every returned payload, artifact, ledger entry and audit file (pinned by payload-walking tests). The dry-run publication artifacts carry schedule facts and digests only.",
+  "s1_isolation_statement": "NO S1 date was read: every read goes through SealedSnapshotReader with the frozen S1Seal (path-level and date-level denial) and S0WindowPolicy; the valuation window ends 2019-12-31; S0 raw closes and distributions are truncated at 2025-07-31 and asserted so by test; split factors are committed constants, not reads.",
+  "deviations": [],
+  "deviations_note": "none. Two documented interpretation choices, both strictly inside the frozen text: (i) the establishment fill at the first coverage session is bookkeeping and is excluded from the 24 transitions/yr and from turnover rates; (ii) a mid-month control window is the intersection of ordinals 8-12 with the month's sessions (never triggers on real months, 19-23 sessions).",
+  "not_run": [],
+  "not_run_note": "no NOT_RUN items: the staged snapshot was present, so the real-data schedule-only feasibility and exact-arm dry runs executed and passed."
+}
