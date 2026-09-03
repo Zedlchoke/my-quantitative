@@ -1,0 +1,136 @@
+{
+  "schema": "v12_blind_proposal_v1",
+  "lane": "A8",
+  "hypothesis_id": "A8-P1-BAB-PERP",
+  "mechanism_family": "cross-sectional systematic-beta mispricing (leverage-constraint premia), perpetual-futures adaptation",
+  "one_line_mechanism": "Weekly, beta-neutral long/short book long the lowest-BTC-beta quintile and short the highest-BTC-beta quintile of 19 USD-M perpetuals, harvesting the leverage-constraint beta premium documented by Frazzini-Pedersen (2014).",
+  "outcome_blind_attestation": "Proposer computed no returns, PnL, PF, Sharpe, ranking or backtest; all numeric statements below are schedule arithmetic (counts, spans, weight algebra) or frozen-contract constants.",
+  "primary_source_claim": {
+    "claim": "In markets with leverage and margin constraints, investors seeking to amplify returns overweight high-beta assets, which depresses their risk-adjusted returns; a factor long leveraged low-beta assets and short high-beta assets earns significant positive risk-adjusted returns, and this holds across asset classes including futures markets.",
+    "source": {
+      "title": "Betting Against Beta",
+      "authors": "Andrea Frazzini; Lasse Heje Pedersen",
+      "year": 2014,
+      "venue": "Journal of Financial Economics 111(1), 1-25",
+      "doi": "10.1016/j.jfineco.2013.10.005",
+      "retrieved": "2026-09-03, publisher page (ScienceDirect) resolved via search; verified citation"
+    },
+    "exact_claim_used": "leverage-constrained demand concentrates in high-beta assets -> high-beta assets have low risk-adjusted returns; BAB factor (long low-beta, short high-beta, beta-neutral) is positive across asset classes including futures",
+    "crypto_perpetual_transfer_caveats": [
+      "Embedded-leverage intensity is far higher in USD-M perpetuals (tiered leverage up to ~100x+ on alt contracts, retail-dominant flow) than in the equity/futures samples of FP2014; the constraint channel should be STRONGER, but the empirical transfer is contested: the crypto factor literature (Liu, Tsyvinski & Wu 2022, Journal of Finance 77(2), 1133-1177; DOI 10.1111/jofi.13121, DOI resolved by publisher pattern, flagged inferred) documents market/size/momentum as the priced crypto factors and some crypto samples report a positive risk-return relation. The proposal therefore pre-registers the sign-flip arm as the causal control and treats a control 'win' as falsification rather than tuning around it.",
+      "Beta in this universe is measured against BTCUSDT as the market leg; BTC itself is context-only and unhedgeable inside the book, so neutralisation must be achieved by leg rescaling rather than a BTC futures hedge residual. Any residual net beta is a design output to be measured by the schedule pipeline, not assumed zero.",
+      "Funding is accounted natively while held; the short high-beta leg may incidentally collect positive funding. This is NOT part of the claim: the mechanism's sign must survive with funding accounted passively, and the sign-flipped control faces the same funding profile.",
+      "Beta estimation noise on 15m-to-daily aggregated returns (fat tails, heteroskedasticity) biases OLS betas; the design responds with a long 90d window, weekly refresh, hysteresis bands, and quintile (rank) rather than cardinal sorting, so noise degrades bucket stability, not weights.",
+      "With 19 tradable names, extreme quintiles are 4-name buckets; single-name idiosyncrasy per bucket is high, which is why the drop-one-symbol stress cell is declared mandatory for this family."
+    ]
+  },
+  "economic_counterparty": {
+    "who": "Perp traders who use high-beta alt contracts as their leverage vehicle: leverage-constrained or leverage-seeking accounts (retail-dominant tiered-leverage users) who overweight high-beta names to amplify returns, plus attention-driven allocation into high-beta alts during risk-on phases.",
+    "why_they_lose": "By demanding high-beta exposure without regard to its price, they bid high-beta perp prices up relative to low-risk alternatives, accepting lower risk-adjusted returns; unconstrained accounts can be on the other side.",
+    "expected_sign": "Long leg (lowest BTC-beta quintile) outperforms short leg (highest BTC-beta quintile) on a beta-neutral spread, net of the frozen cost stack; i.e. positive spread for LONG low-beta / SHORT high-beta."
+  },
+  "pit_fields_and_availability": {
+    "fields": [
+      {
+        "field": "completed 15m bars (close) for each of the 19 tradable symbols and BTCUSDT",
+        "usage": "daily-close return series (daily close = last completed bar close strictly before each UTC day boundary) over a trailing 90d window",
+        "pit_rule": "only bars with ts_event (close boundary) strictly before the decision stamp T enter the estimator; gap handling per load_validation (gaps are failures, never back-filled)"
+      },
+      {
+        "field": "instrument metadata (tick size, fee fields)",
+        "usage": "cost model declaration only",
+        "pit_rule": "static instrument config; no lookahead risk"
+      }
+    ],
+    "signal_estimator": "beta_i = Cov(r_i, r_BTC) / Var(r_BTC) on the 90 trailing daily returns, OLS, per symbol; ranks recomputed at every stamp",
+    "availability_clock": "signal available AT T = Monday 00:00:00Z (all inputs are completed bars with close boundary < T); warmup 90d matches data_contract warmup_days_required.binding_max, satisfiable from pre-window history",
+    "execution_lag": "one declared lag: targets emitted at T are filled at the first strict-later event after T (adapter FillRecord semantics); stress adds +1 event delay",
+    "first_decision_stamp": "first Monday 00:00:00Z strictly after window start 2025-08-22T00:00:00Z (data_contract ceil_to_monday convention)"
+  },
+  "universe": {
+    "tradable": "the 19 staged Binance USD-M perpetuals excluding BTCUSDT (BTCUSDT is benchmark context only, benchmark_symbols_excluded)",
+    "context": "BTCUSDT used solely as the beta market leg and for benchmark-context outputs",
+    "eligibility_per_stamp": "symbol has a fully covered trailing 90d completed-bar window (no gaps); if fewer than 9 symbols are eligible at a stamp the book is carried forward unchanged (carried_forward=true, zero turnover at that stamp)"
+  },
+  "formation_schedule": {
+    "clock": "weekly, Monday 00:00:00Z",
+    "beta_window_days": 90,
+    "refresh": "beta ranks recomputed at every stamp from the trailing 90d window",
+    "bucketing": "quintile ranks of beta over eligible names; long leg = lowest-beta quintile (4 names), short leg = highest-beta quintile (4 names)"
+  },
+  "holding_and_rebalance": {
+    "holding_rule": "hysteresis: a long-leg name is exited only when its beta rank rises out of the bottom two quintiles; a short-leg name is exited only when its rank falls out of the top two quintiles; entry requires being in the extreme quintile",
+    "churn_guards": [
+      "max 2 replacements per leg per stamp",
+      "no re-entry within 1 stamp of exit",
+      "hard cap: at most 6 exits per symbol per 365d"
+    ],
+    "rebalance_schedule": "rebalance executed only at weekly stamps and only for leg membership changes or the beta-neutralisation rescale; weights are NOT drift-corrected intra-week",
+    "forced_flat": "terminal force-flat at the final scored-window boundary (counted separately from discretionary decisions, per cost_feasibility KIND_FORCED_FLAT)"
+  },
+  "target_book": {
+    "shape": "long/short extreme-quintile book (long/short quintile book over the 20-symbol universe, BTC context-only)",
+    "construction": [
+      "equal weights 1/4 per name within each leg",
+      "leg scales c_long, c_short chosen so c_long * mean(beta_long) - c_short * mean(beta_short) = 0 (BTC-beta neutral by leg rescaling; no BTC hedge leg exists)",
+      "final clamp w -> w * min(1, 0.30 / max|w|), a pure shrink applied inside the deterministic target-book constructor BEFORE the stamp is emitted; never a post-score renormalisation"
+    ],
+    "weight_cap_by_construction": "4 names per leg at equal weights <= 0.25, before the clamp; max|weight| <= 0.30 at every stamp by construction",
+    "beta_neutralisation": "sum(w * beta) = 0 at every stamp via leg-scale ratio c_long/c_short = mean(beta_short)/mean(beta_long); residual beta is a measurable design output of the pipeline, not an assumption",
+    "expected_turnover": {
+      "decisions_per_365d": 52,
+      "median_intended_holding_days_floor": "every completed span is a multiple of 7d (weekly clock) and hysteresis keeps median spans at multiples of weeks; floor >= 3d holds by construction",
+      "churn_expectation": "90d covariance ranks drift slowly; hysteresis + churn guards keep replacements to ~0-2 legs per stamp",
+      "floor_verification": "decisions/365d, median holding, cost drag and per-symbol turnover share are measured by the schedule-only cost-feasibility gate on the emitted books; the churn guards exist so no single symbol can plausibly exceed 25% of turnover"
+    }
+  },
+  "controls": {
+    "anchor": "A8-P1-BAB-PERP: beta-quintile BAB-perp book as specified",
+    "neighbour": "downside-beta neighbour: same pipeline with beta_i replaced by downside beta (covariance restricted to BTC-down days over the same 90d window); long lowest downside-beta quintile, short highest",
+    "neighbour_justification": "Ang, Chen & Xing (2006), 'Downside Risk', Review of Financial Studies 19(4), 1191-1239, DOI 10.1093/rfs/hhj035: systematic downside covariance carries a distinct premium; the same leverage-constraint logic that misprices beta concentrates in crash-covariant names, so the downside-beta sort is the theoretically adjacent sibling, not a free extra hypothesis",
+    "causal_negative_control": "sign-flipped arm on the identical data pipeline: long the HIGHEST-beta quintile and short the lowest, same cost stack. Frazzini-Pedersen's mechanism fixes the sign of the beta premium; if the sign-flipped arm matches or beats the anchor after costs, the beta-mispricing mechanism is destroyed and the family rejected",
+    "secondary_placebo": "permuted-beta placebo: beta labels shuffled across symbols within each stamp (book shape, leg sizes and cost stack preserved); destroys the covariance-to-portfolio mapping while keeping all mechanical book properties",
+    "scored_cells_budget": "anchor + neighbour + sign-flip control = 3 scored cells for this family (<= max 3/family floor)"
+  },
+  "cost_treatment": {
+    "fees": "plugin CostModel at the repo's frozen taker-fee floor (tier-0), charged per side via the adapter's rebalance_cost_between; only changed notional is charged",
+    "slippage": "adverse one-tick slip at the instrument's own tick size (declared 1e-7..1e-2 across the universe)",
+    "funding": "native settlements accrue while held under LONG_PAYS_POSITIVE_RATE, only settlements with ts in (ts_opened, ts_closed]; mixed 8h/4h/1h cadences honoured per symbol from native fundingTime records; funding is a cost, never a signal input",
+    "stress": "preregistered cells: baseline, fee_slippage_x1_5, plus_2_ticks, plus_1_event_delay, drop_one_symbol, drop_one_fold (as supported by the family folds contract); under drop-one-symbol the constructor re-derives leg weights from surviving names and re-applies the 0.30 clamp",
+    "base_cost_drag_expectation": "with ~0-2 of 8 legs changing per weekly stamp, changed notional per stamp is small relative to gross; the 8%/yr base and 12%/yr stressed drag floors are enforced by the schedule-only feasibility gate before any scoring"
+  },
+  "falsification_condition": {
+    "primary": "REJECT the family if, after the frozen cost stack, the sign-flipped causal control (long high-beta / short low-beta) matches or beats the anchor, or if the permuted-beta placebo is statistically indistinguishable from the anchor: either outcome means the covariance label, not the leverage-constraint mechanism, is doing the work.",
+    "secondary": "REJECT if eligible names < 9 at more than 20% of stamps (signal not implementable as specified), or if the drop-one-symbol stress cell overturns the anchor's sign (single-name dependence), or if the family fails any frozen schedule floor at the feasibility gate.",
+    "no_rescue_clause": "a FAIL is terminal for the family in this sprint: no lookback retune, no fee reduction, no bucket-width change, no winning-symbol re-selection may be proposed afterwards; that is exactly the LOT failure pattern the inventory forbids."
+  },
+  "ancestry_map_vs_v1_v11": [
+    {"forbidden_id": "V10-M01-AGGRESSOR-ABSORPTION", "relation": "none", "distinction": "no order-flow, aggressor or taker-direction data is used; signal is a covariance of bar closes"},
+    {"forbidden_id": "V11-LOTTERY-MAX-SKEW", "relation": "distinct variable, distinct mechanism", "distinction": "LOT/MAX/skew target IDIOSYNCRATIC distribution shape (max returns, skewness); this family sorts on SYSTEMATIC covariance with BTC (a second-moment co-movement estimate). No return-level or skewness statistic enters the signal. Beta ranks and MAX/skew ranks are different estimators on different moments; this proposal is not an inversion, retune, fee cut or renamed selection of the LOT family"},
+    {"forbidden_id": "V11-ILLIQ-AMIHUD", "relation": "none", "distinction": "no volume or price-impact ratio enters the signal"},
+    {"forbidden_id": "V11-OILEVER-DELEV", "relation": "none", "distinction": "zero open-interest fields used; no OI change is computed"},
+    {"forbidden_id": "V4-XSECT-MOM", "relation": "none", "distinction": "no past-return ranking of any horizon; sorting variable is a covariance, orthogonal in construction to return momentum"},
+    {"forbidden_id": "V6/V1-CARRY-FUNDING", "relation": "none", "distinction": "funding is accrued passively as a cost and never conditions the signal or the book; short-leg funding receipts are incidental and identical in profile for the sign-flipped control"},
+    {"forbidden_id": "V1-VOLCOMP", "relation": "none", "distinction": "no volatility-compression or volume-shock conditioning; the covariance window is long and level-based, not a breakout trigger"},
+    {"forbidden_id": "WEEKLY-REVERSAL / MR-RESCUE", "relation": "none", "distinction": "no past-return reversal signal of any sign or horizon"},
+    {"forbidden_id": "DATA-GATED", "relation": "none", "distinction": "uses only frozen in-contract fields (completed 15m bars, instrument metadata); no external or purchased data"}
+  ],
+  "why_not_a_rescue": {
+    "not_lot_inversion": "LOT inverts idiosyncratic skew/MAX (return-distribution shape). This mechanism prices systematic beta via a leverage-constraint channel; the sorting variable is a co-moment with BTC, computed on a 90d window, with no idiosyncratic shape statistic anywhere in the pipeline. Different variable class, different economic channel, different primary source.",
+    "not_illiq_rescue": "no Amihud-style or liquidity ratio is computed or conditioned on; volume fields are not used at all in this proposal.",
+    "not_oilev_rescue": "open interest is not read; there is no deleveraging, OI-change or OI-level term.",
+    "not_funding_rescue": "funding never enters the signal; the book does not harvest funding as carry.",
+    "not_a_renamed_baseline": "no V1-V11 class in the inventory sorts cross-sectionally on trailing systematic beta; FP2014's factor is absent from the documented crypto factor set (market/size/momentum), so this is not a re-run of a scored or rejected cell."
+  },
+  "data_fields_used": ["completed 15m bars (close)", "instrument tick sizes / fee fields"],
+  "data_fields_deliberately_unused": ["funding rates as signal", "open interest", "volume as signal"],
+  "decision_clock": "weekly, Monday 00:00:00Z",
+  "window": {"start": "2025-08-22T00:00:00Z", "end": "2026-08-21T00:00:00Z"},
+  "frozen_floor_compliance_schedule_arithmetic": {
+    "decisions_per_365d": "52 <= 60 PASS (force-flat counted separately)",
+    "median_intended_holding_days": ">= 7d by weekly clock >= 3d floor PASS",
+    "max_abs_weight": "<= 0.25 before clamp, <= 0.30 by construction PASS",
+    "base_and_stressed_cost_drag": "enforced ex ante by the schedule-only feasibility gate on emitted books; churn guards sized so changed notional per stamp stays small",
+    "max_symbol_turnover_share": "verified by gate; churn guards (max 2 swaps/leg/stamp, re-entry rest, <=6 exits/symbol/365d) designed to keep any single symbol well under 25%"
+  }
+}
