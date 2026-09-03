@@ -1,0 +1,166 @@
+{
+  "schema": "stocks_free_v3_run/selection_freeze@1",
+  "frozen_at_utc": "2026-09-03T12:55:00Z",
+  "producer_role": "A1",
+  "authority": "PLAN_stocks.md section 12 frozen selection rubric",
+  "pins": {
+    "proposal_pool_sha": "9a9f5fd5b78e124ff7fd73dcf56557f2ea2b101c",
+    "blind_packet_sha": "5d5efde283a22589fa5d41d94f8ce9d334cc951b",
+    "p1_sha": "e97153ac2c0ad450439ce501765511fe31fa2a4a",
+    "a7_audit_commit": "cdde933d824c84d1fc2a4ab52b1895adfce6eb3b",
+    "a7_pool_verdict": "POOL_VALID_WITH_OBJECTIONS",
+    "a7_high_critical_unresolved": 0
+  },
+  "selection_rubric_application": {
+    "novelty_rescue_veto": "no family selected is in the forbidden inventory; the three in-pool idiosyncratic-shock-reversal proposals form ONE mechanism cluster - at most one selectable (selecting two would spend the whole budget on one hypothesis); A7 ranks SFV3-A5-IDIO-SHOCK-REVERSAL strongest (sigma-standardized scale-free trigger vs regime-fragile fixed thresholds; sharpest sign-inverted control; structural turnover budget)",
+    "free_data_readiness": "both selected families use only daily raw OHLCV, official splits/distributions, and the frozen calendar",
+    "schedule_cost_capacity": "A5-IDIO <= 5.0x two-way/yr structural budget; TOM-SETTLE exactly 4.80x two-way/yr; both inside the 6.0x ceiling",
+    "control_separates_from_beta": "A5-IDIO sign-inverted control (opposite trigger, opposite predicted alpha sign); TOM mid-month placebo (identical gross schedule, no settlement clock)",
+    "event_sufficiency": "TOM ~24-29 windows per fold; A5-IDIO ~11-13 episodes per fold under the rolling 5/252 budget, fold-1 concentration predeclared with drop-one-fold death rule",
+    "implementation_risk": "TOM LOW (pure calendar, close-fill native); A5-IDIO MEDIUM resolved by the execution-clock adjudication below",
+    "primary_source_trace": "TOM: Ogden 1990 JF, Lakonishok-Smidt 1988 RFS, LSTV 1991 AER; A5-IDIO: Lehmann 1990 QJE, Jegadeesh 1990 JF, Lo-MacKinlay 1990 RFS, Nagel 2012 RFS, Cheng-Madhavan 2009",
+    "tie_break": "not required - two distinct winning families"
+  },
+  "adjudications": [
+    {
+      "id": "ADJ-1-EXEC-CLOCK",
+      "family": "SFV3-A5-IDIO-SHOCK-REVERSAL",
+      "objection": "A7 MEDIUM: proposal declares entry/exit at the regular-session OPEN of t+1, but the canonical V3 factory fill event is the session CLOSE (factory.value_book)",
+      "resolution": "executable spec frozen to the canonical fill event: signal computed from completed session t (PIT), fills at the CLOSE of session t+1; anchor/control hold 5 sessions close-to-close (exit fill at close of entry+5), neighbour 10; same-close switch allowed when both orders were decided at prior closes. Applied symmetrically to all three arms before any scoring; turnover/cost arithmetic unchanged (same legs, same notional); multi-session reversion mechanism unchanged",
+      "status": "RESOLVED_AT_SELECTION_FREEZE"
+    },
+    {
+      "id": "ADJ-2-IDIO-CLUSTER",
+      "family": "in-pool",
+      "objection": "three proposals (A4-IDIO-SHOCK-REVERSAL, A5-IDIO-SHOCK-REVERSAL, A6-IDIO-SHOCK-REV) are one mechanism cluster",
+      "resolution": "exactly one selected (SFV3-A5-IDIO-SHOCK-REVERSAL); the other two remain frozen proposal documents, never scored, and their IDs are added to the within-cycle non-selectable list",
+      "status": "RESOLVED_AT_SELECTION_FREEZE"
+    },
+    {
+      "id": "ADJ-3-A6IDIO-TURNOVER",
+      "family": "SFV3-A6-IDIO-SHOCK-REV (not selected)",
+      "objection": "A7 MEDIUM: no structural turnover governor",
+      "resolution": "moot - family not selected; recorded as lessons for future cycles",
+      "status": "RECORDED"
+    }
+  ],
+  "families": [
+    {
+      "family_id": "SFV3-A5-IDIO-SHOCK-REVERSAL",
+      "source_proposal": "research/proposals/stocks_free_v3/a5_family_idio_shock_reversal.md",
+      "implementer": "A8",
+      "worktree": ".worktrees/stocks-free-v3/i-a8-family-1",
+      "branch": "orca/stocks-free-v3-i-a8-family-1",
+      "allowed_globs": ["research/stocks_free_v3/family_idio_shock/**", "tests/stocks_free_v3/family_idio_shock/**", "research/audits/stocks_free_v3/i_a8_*"],
+      "universe": "10 sector ETFs XLK XLE XLF XLV XLI XLP XLY XLU XLB XLRE (SPY = factor/benchmark only, never traded)",
+      "signal": "z_i(t) = (r_i,t - beta_i(t)*r_SPY,t)/sigma_i(t); beta = trailing-60-session OLS slope on issuer-TR returns incl. t; epsilon ddof=0; completed-session PIT only",
+      "arms": [
+        {
+          "arm_id": "SFV3-A5-IDIO-SHOCK-REVERSAL-A1",
+          "role": "anchor",
+          "trigger": "z <= -3.0; select smallest z; tie -> alphabetically first symbol",
+          "hold_sessions": 5,
+          "gross": 0.5,
+          "cash_weight": 0.5,
+          "episode_budget": "max 5 new entries per rolling 252 sessions, concurrency 1, chronological",
+          "vol_scaling_rule": {"lookback_sessions": 63, "target_daily_vol": null, "min_gross": 0.025, "max_gross": 0.025, "note": "constant scale = arm's expected average gross (5x5x0.5/252=0.0248)"}
+        },
+        {
+          "arm_id": "SFV3-A5-IDIO-SHOCK-REVERSAL-N1",
+          "role": "neighbour",
+          "trigger": "identical to A1",
+          "hold_sessions": 10,
+          "gross": 0.5,
+          "cash_weight": 0.5,
+          "episode_budget": "identical 5/252, concurrency 1",
+          "vol_scaling_rule": {"lookback_sessions": 63, "target_daily_vol": null, "min_gross": 0.05, "max_gross": 0.05},
+          "theory": "liquidity-provision compensation accrues over days-to-weeks (Nagel/Lehmann); guards K=5 knife-edge"
+        },
+        {
+          "arm_id": "SFV3-A5-IDIO-SHOCK-REVERSAL-C1",
+          "role": "causal_negative_control",
+          "trigger": "z >= +3.0; select largest z; otherwise identical to A1",
+          "hold_sessions": 5,
+          "gross": 0.5,
+          "cash_weight": 0.5,
+          "episode_budget": "identical 5/252, concurrency 1",
+          "vol_scaling_rule": {"lookback_sessions": 63, "target_daily_vol": null, "min_gross": 0.025, "max_gross": 0.025},
+          "predicted_alpha_sign": "non-positive; positive-or->=50% control alpha falsifies the mechanism (sign-agnostic drift, not reversion)"
+        }
+      ],
+      "clocks": "decision at close of completed session t; fills at close of session t+1 (ADJ-1); same-close switch PIT-clean",
+      "falsification_rules": [
+        "anchor incremental alpha <= 0 overall or positive in < 2/3 folds",
+        "control alpha > 0 or |control alpha| >= 0.5*|anchor alpha|",
+        "neighbour alpha strictly opposite sign to anchor",
+        "anchor after-cost expectancy <= 0 or stress PF < 1.00 at 20 bps/side",
+        "realized two-way turnover > 6.0x/yr or any budget/concurrency breach",
+        "any preregistered Stage-A gate failure"
+      ]
+    },
+    {
+      "family_id": "SFV3-A6-TOM-SETTLE",
+      "source_proposal": "research/proposals/stocks_free_v3/a6_family_SFV3-A6-TOM-SETTLE.md",
+      "implementer": "A9",
+      "worktree": ".worktrees/stocks-free-v3/i-a9-family-2",
+      "branch": "orca/stocks-free-v3-i-a9-family-2",
+      "allowed_globs": ["research/stocks_free_v3/family_tom_settle/**", "tests/stocks_free_v3/family_tom_settle/**", "research/audits/stocks_free_v3/i_a9_*"],
+      "universe": "all 11 cohort ETFs as one equal-weight basket; SPY traded here (basket member)",
+      "signal": "calendar only: regular-session month ordinals; no estimation, no price-derived state",
+      "books": {"tom_book": "11 ETFs at 0.50/11 each, gross 0.50", "base_book": "11 ETFs at 0.30/11 each, gross 0.30", "cash": "residual to 1.0, never a tradable leg"},
+      "arms": [
+        {
+          "arm_id": "SFV3-A6-TOM-SETTLE-A",
+          "role": "anchor",
+          "window": "last 3 regular sessions of month M + first 2 of M+1",
+          "vol_scaling_rule": {"lookback_sessions": 63, "target_daily_vol": 0.005, "min_gross": 0.3, "max_gross": 0.5}
+        },
+        {
+          "arm_id": "SFV3-A6-TOM-SETTLE-N",
+          "role": "neighbour",
+          "window": "first 3 regular sessions of month M only (month-start settlement channel)",
+          "vol_scaling_rule": {"lookback_sessions": 63, "target_daily_vol": 0.005, "min_gross": 0.3, "max_gross": 0.5},
+          "theory": "Ogden's settlement channel isolated; support = same sign as anchor in >= 2/3 folds; if neighbour alpha < 50% of anchor's, premium is month-END-dominated (window dressing) - predeclared attribution"
+        },
+        {
+          "arm_id": "SFV3-A6-TOM-SETTLE-C",
+          "role": "causal_negative_control",
+          "window": "regular-session ordinals 8-12 of each month (mid-month, disjoint from anchor window for all month lengths)",
+          "vol_scaling_rule": {"lookback_sessions": 63, "target_daily_vol": 0.005, "min_gross": 0.3, "max_gross": 0.5},
+          "predicted_alpha_sign": "~0; same-sign control with |alpha| >= 50% of anchor's falsifies (schedule earns the same 'premium' with no clock)"
+        }
+      ],
+      "clocks": "decision at close of completed session T for the fill at close of T+1 (canonical close-fill); 24 transitions/yr; windows straddling fold/purge boundaries lose those scored sessions, no compensation trades",
+      "falsification_rules": [
+        "anchor incremental alpha <= 0 or positive in < 2/3 folds",
+        "control same-sign as anchor AND |control alpha| >= 0.5*|anchor alpha|",
+        "neighbour alpha opposite-signed to anchor in >= 2/3 folds",
+        "stress PnL <= 0 or stress PF < 1.00 at 20 bps/side",
+        "schedule turnover > 6.0 two-way/yr or max fold MDD > 15% or any fold PF < 0.80 or drop-one failures",
+        "zero-decision fold"
+      ]
+    }
+  ],
+  "shared_contract": {
+    "fills": "raw prices at the canonical close-fill event; no same-day return on new weights",
+    "signals": "issuer-TR path (raw + official distributions + official splits); distributions never create synthetic shocks",
+    "accounting": "canonical research/assets/stocks/factory.py; CASH never in tradable-leg turnover; costs charged exactly once; attribution reconciles at 1e-12",
+    "costs": {"base_bps_per_side": 10, "stress_bps_per_side": 20},
+    "turnover_ceiling": "6.0x two-way per year, schedule-only",
+    "benchmarks": ["FLAT_HARD", "SPY_TOTAL_RETURN", "EQUAL_WEIGHT_SECTOR_TOTAL_RETURN", "RISK_MATCHED_SPY_CONTEXT (arm's frozen rule, ex-ante)"],
+    "incremental_alpha": "after-cost strategy return minus risk-matched SPY per fold; require_beta_isolation=True for pass eligibility; raw PnL/PF never pass-eligible alone",
+    "stage_a_gates": "as frozen in the blind packet (expectancy>0, PF>=1.10, >=2/3 folds positive, no fold PF<0.80, MDD<=15%, per-arm positive-fold share<=50%, no ETF>35% positive PnL, stress PnL>0 & PF>=1.00, turnover inside gate, risk-matched excess >=2/3 folds, incremental alpha>0, neighbour support, control falsification, drop-one-ETF & drop-one-fold survival, exact reproduction, zero unresolved HIGH/CRITICAL)",
+    "stress_and_dropone": "stress = full arm at 2x costs; drop-one-ETF = per factory.select_drop_one_symbol (largest realized absolute-weight contribution, lexicographic tie-break); drop-one-fold = remove each fold and require surviving gates"
+  },
+  "data_and_window_hashes": {
+    "cohort_digest": "c9d4e88a33c53448120e79138057bcb0d100abecc1d33fbec92bd3d9c541bc96",
+    "partition_digest": "9b4ad7993f943edb1f4a995184eb85083879168f9f86eb1720b2a66623ef17c7",
+    "calendar_digest": "028a7b21c9e306c7399467309d18e3ed696181682ca01f1e3170c21bdceb69ab",
+    "staged_manifest_sha256": "62ac324d7e683961b0d88f85153e4a072d09fe0a6745a54687b9e3b219d8f658",
+    "issuer_distributions_sha256": "1b952f87ca60ece4080b446d6c3b580f640d893ed33641797a2dd22dd61beca9",
+    "windows": {"warmup": "2018-01-02..2018-04-03", "s0_folds": [["2018-04-04", "2020-09-01"], ["2020-09-10", "2023-02-09"], ["2023-02-17", "2025-07-24"]], "purge_sessions": 5, "s1": "SEALED_UNTOUCHED"}
+  },
+  "budget_and_counters": {"v3_budget": "0/6", "v3_observed": 0, "v3_published": 0, "historical_stocks_denominator": 6, "cells_per_family": 3, "family_order_after_go": ["SFV3-A5-IDIO-SHOCK-REVERSAL", "SFV3-A6-TOM-SETTLE"], "arm_order_within_family": ["anchor", "neighbour", "control"]},
+  "post_freeze_rule": "after the first scored metric: no freeze amendment, no substitute arm, no threshold change, no window reshape, no ETF substitution (PLAN section 12)",
+  "non_selected_pool": ["SFV3-A4-IDIO-SHOCK-REVERSAL (within-cycle cluster duplicate - see ADJ-2)", "SFV3-A4-QEND-FLOW-REBAL", "SFV3-A5-MKT-SHOCK-DIFFUSION", "SFV3-A6-IDIO-SHOCK-REV (within-cycle cluster duplicate; A7 turnover objection recorded)"]
+}
