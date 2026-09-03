@@ -1,0 +1,65 @@
+{
+  "lane": "P1/A2 measurement-repair (STOCKS-FREE-V3)",
+  "plan_section": "PLAN_stocks.md section 9 A2",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v3/p1-a2-factory",
+  "branch": "orca/stocks-free-v3-p1-a2-factory",
+  "base_head": "a29bc070b72fc72d324fd529224a19152b41711b",
+  "canonical_module": "research/assets/stocks/factory.py",
+  "repaired_defects": [
+    {
+      "id": "a",
+      "defect": "V2 sidecar turnover union set(targets)|set(weights)-{\"CASH\"} binds as set(targets)|(set(weights)-{\"CASH\"}); explicit CASH leg in A5-style targets counted as a tradable leg",
+      "repair": "single canonical etf_leg_turnover excluding CASH everywhere"
+    },
+    {
+      "id": "b",
+      "defect": "V2 sidecar total_cost += cost executed twice; equity deducted once, accumulator doubled",
+      "repair": "equity deduction, accumulation and per-fill record all happen exactly once; assert_reconciles fails closed on any mismatch (regression-tested)"
+    }
+  ],
+  "frozen_semantics": {
+    "turnover": "sum(|targets[s]-previous[s]| over (targets|previous)-{CASH})",
+    "cost": "equity * etf_turnover * (cost_bps + adverse_bps) / 1e4, charged once, accumulated once, recorded once per fill",
+    "attribution": "contrib[s] += equity_before_growth * w_s * r_s; CASH never contributes; identity fsum(contrib) - total_cost = total_pnl within ATTRIBUTION_TOLERANCE=1e-12 (measured <= ~2.5e-16)",
+    "fold_concentration": "share_f = max(pnl_f,0) / sum_f' max(pnl_f',0) over the SAME arm only; no family pool, no neighbour substitution, no mixed denominator; no positive folds => shares all 0.0",
+    "drop_one": "argmin over held ETFs of (-|realized contribution|, symbol); rejects CASH, non-held (zero weight) and zero-contribution targets",
+    "publication_gate": "publish_result refuses n_fill_events==0 or n_held_positions==0 (PUBLICATION_REFUSED_ZERO_RESULT); observed recorded before publication even when refused; replay zero-delta; counters inherited from V2 TrialLedger unchanged"
+  },
+  "harness_v2_untouched": true,
+  "v2_artifacts_touched": false,
+  "new_v2_trials": 0,
+  "deliberate_fail_closed_divergences_from_harness": [
+    "explicit CASH in targets must agree with cash_weight (else ValueError); honored when cash_weight absent (harness silently zeroed it)",
+    "excluded_symbol on a book with explicit CASH: cash = residual of remaining ETF legs"
+  ],
+  "tests": {
+    "tests/stocks_free_v3": {"passed": 46, "failed": 0},
+    "tests/stocks_free_v2": {"passed": 123, "failed": 0},
+    "tests/assets/stocks": {"passed": 233, "failed": 0},
+    "compileall_research_assets_stocks+stocks_free_v2": "ok",
+    "git_diff_check": "clean",
+    "tree_after_tests": "clean (no tracked-file mutation)"
+  },
+  "files_added": [
+    "research/assets/stocks/factory.py",
+    "tests/stocks_free_v3/__init__.py",
+    "tests/stocks_free_v3/test_factory_valuation.py",
+    "tests/stocks_free_v3/test_factory_attribution_reconcile.py",
+    "tests/stocks_free_v3/test_fold_concentration.py",
+    "tests/stocks_free_v3/test_drop_one.py",
+    "tests/stocks_free_v3/test_publication_gate.py",
+    "tests/stocks_free_v3/test_v2_diagnostic_replay.py",
+    "research/audits/stocks_free_v3/p1_a2_handoff.md",
+    "research/audits/stocks_free_v3/p1_a2_handoff.json"
+  ],
+  "v2_diagnostic_replay": {
+    "fixture": "synthetic A5-style book (explicit CASH leg), cost 50 bps",
+    "canonical_residual": "~1e-16 (<= 1e-12 frozen)",
+    "replica_residual": -0.01346443,
+    "replica_residual_meaning": "deducted costs 0.01346443 - accumulated 0.02692886 (double-add isolated by the identity)",
+    "first_fill_turnover_ratio_buggy_over_canonical": 2.0,
+    "detected": true
+  },
+  "deviations": [],
+  "blockers": []
+}
