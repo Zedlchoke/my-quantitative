@@ -219,7 +219,7 @@ def main() -> int:
     ap.add_argument("--family", choices=sorted(FAMILY_SPEC), required=True)
     ap.add_argument("--arm", required=True)
     ap.add_argument("--exec-root", required=True)
-    ap.add_argument("--ledger", required=True, help="per-family shard ledger path")
+    ap.add_argument("--ledger", default=None, help="per-family shard ledger path (required with --publish)")
     ap.add_argument("--out-root", default=None)
     ap.add_argument("--publish", action="store_true")
     ap.add_argument("--preflight-only", action="store_true")
@@ -404,8 +404,11 @@ def main() -> int:
     print("BASELINE", json.dumps(scored_metrics, default=str))
 
     if not args.publish:
-        print("PUBLISH: skipped (--publish not set); observed counter NOT incremented (dry form)")
+        print("PUBLISH: skipped (reproduction re-execution; no ledger writes, no counter changes)")
         return 0
+    if not args.ledger:
+        print("FAIL-CLOSED: --publish requires --ledger")
+        return 2
 
     result = publish_trial(
         identity=identity,
