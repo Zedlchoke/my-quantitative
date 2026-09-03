@@ -1,0 +1,60 @@
+{
+  "schema": "stocks_free_v2_proposal/a5_family_manifest@1",
+  "family_id": "A5-SFV2-TREND-DEFENSIVE",
+  "family_name": "Time-series ETF trend with volatility-aware defensive allocation",
+  "producer_lane": "Z3/A5",
+  "created_at_utc": "2026-09-03T00:00:00Z",
+  "base_commit": "b345de411440b8db2f87a2ee61803f1d4aacc378",
+  "branch": "orca/stocks-free-v2-z3-trend",
+  "plan_digest": "d3458d858f0c39371361819541189e8e6b2ef4e310bde94edf40bf92919f7318",
+  "cohort_digest": "c9d4e88a33c53448120e79138057bcb0d100abecc1d33fbec92bd3d9c541bc96",
+  "partition_sha256": "9b4ad7993f943edb1f4a995184eb85083879168f9f86eb1720b2a66623ef17c7",
+  "split_factors_sha256": "f666565124155bd26ecec8de9b88864b58f85831f404ccac48bcbb8cc135fc9b",
+  "outcome_blind_declaration": {
+    "scored_artifact_exists": false,
+    "candidate_returns_computed": false,
+    "reads_A4_z3_momentum_lane": false,
+    "note": "This manifest and its three arm specs are preregistered definitions only. No returns, PnL, PF, Sharpe, ranking or backtest of any arm has been computed or read by the Z3/A5 lane. Budget remains 0/6 until Z8."
+  },
+  "arm_count": 3,
+  "arms": [
+    {
+      "arm_id": "A5-SFV2-ARM1-TSM12-VOLTARGET",
+      "arm_role": "ANCHOR_LITERATURE_BACKED",
+      "file": "a5_arm1_tsm12_ivol.json",
+      "sha256": "6c301db551c8e5faa68bb923411137c28581d5aa9816984d076e3cbf603cfc57",
+      "one_line": "Per-ETF 12-month (252-session) time-series momentum sign gate on TR chains; eligible ETFs equal-weighted with 35% cap; portfolio gross scaled by deterministic 10% annualized vol target vs 63-session realized vol; residual to CASH; MONTHLY clock."
+    },
+    {
+      "arm_id": "A5-SFV2-ARM2-SMA200-WEEKLY",
+      "arm_role": "NEIGHBOUR_THEORETICALLY_JUSTIFIED",
+      "file": "a5_arm2_sma200_weekly.json",
+      "sha256": "8c65c0d7ea7582b70df0c216c42b202f5ca23788a06945ec2e9676837e69c4c1",
+      "one_line": "Per-ETF 200-session SMA trend filter (TR close above its 200-session mean); identical vol-target defensive mapping and caps; WEEKLY clock. Lever changed: trend estimator form (plus its natural weekly sampling)."
+    },
+    {
+      "arm_id": "A5-SFV2-ARM3-TSM12-INVERTED-CONTROL",
+      "arm_role": "CAUSAL_NEGATIVE_CONTROL",
+      "file": "a5_arm3_tsm12_inverted_control.json",
+      "sha256": "5f3d93ba85241d22bde44978efa0bc98d3c5fbdb9cbee6f2d8881d313db39527",
+      "one_line": "Exact sign inversion of the anchor: eligible iff 12-month TR return is NEGATIVE; every other parameter identical. Destroys the trend-selection mechanism while holding the vol lever constant."
+    }
+  ],
+  "family_falsification_rule": "FALSIFIED iff the causal control A5-SFV2-ARM3-TSM12-INVERTED-CONTROL achieves fold-level risk-adjusted evidence (Z8 frozen scorer: excess vs flat 0% benchmark, realized-vol-normalized, per S0 fold) >= anchor A5-SFV2-ARM1-TSM12-VOLTARGET in >= 2 of 3 S0 folds. On falsification all positive family claims are void and the family's slots stay unused. If the control voids itself on evidence minimums or invariant failures, the mechanism is UNTESTED (not established, not supported).",
+  "shared_invariants": [
+    "long-only ETFs plus cash; gross <= 1.0 always; no shorting; no leverage",
+    "single-ETF weight <= 0.35 always; post-scoring no ETF > 35% of positive PnL (Z8 validity condition)",
+    "signals on TR chains (amended FD2: raw closes x issuer-confirmed split factors + SSGA distribution records); fills on RAW closes next session (one-event delay mandatory)",
+    "cash yields 0; no commission claims; 10 bps/side conservative spread+slippage",
+    "defensiveness is CASH only (TLT/GLD excluded pre-census)",
+    "S1 2025-08-01..2026-07-31 SEALED: existence only, never read by this family",
+    "no-tuning: every constant preregistered from literature convention or plan constraints; no grid; no post-freeze revision"
+  ],
+  "decision_clocks_frozen": {
+    "A5-SFV2-ARM1-TSM12-VOLTARGET": "MONTHLY",
+    "A5-SFV2-ARM2-SMA200-WEEKLY": "WEEKLY",
+    "A5-SFV2-ARM3-TSM12-INVERTED-CONTROL": "MONTHLY"
+  },
+  "turnover_expectation_family": "Anchor/control 2.0x-4.0x two-way annual; neighbour 3.0x-6.0x. Preregistered expectations from rule structure (MODEL_INTERNAL_UNVERIFIED); realized turnover measured only by Z5/Z6 schedule-only feasibility, never computed in this lane.",
+  "scope_note": "A5 family occupies its three slots independently of A4. If this family is blocked at any audit, its three slots stay unused and are not reassigned (PLAN section 10)."
+}

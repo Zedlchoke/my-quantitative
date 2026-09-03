@@ -1,0 +1,127 @@
+{
+  "schema": "stocks_free_v2_proposal/a5_arm@1",
+  "family_id": "A5-SFV2-TREND-DEFENSIVE",
+  "arm_id": "A5-SFV2-ARM3-TSM12-INVERTED-CONTROL",
+  "arm_role": "CAUSAL_NEGATIVE_CONTROL",
+  "producer_lane": "Z3/A5 (time-series trend + volatility-aware defensive allocation)",
+  "created_at_utc": "2026-09-03T00:00:00Z",
+  "base_commit": "b345de411440b8db2f87a2ee61803f1d4aacc378",
+  "branch": "orca/stocks-free-v2-z3-trend",
+  "outcome_blind_declaration": {
+    "scored_artifact_exists": false,
+    "candidate_returns_pnl_pf_sharpe_ranking_computed": false,
+    "reads_A4_z3_momentum_lane": false,
+    "note": "Definitions only; no scored artifact exists or may be created here. This control is NOT expected to perform well; declaring its expected failure direction is mechanism falsification, not an outcome computation."
+  },
+  "frozen_inputs": {
+    "plan": "PLAN_stocks_free.md sections 3 and 10",
+    "plan_sha256": "d3458d858f0c39371361819541189e8e6b2ef4e310bde94edf40bf92919f7318",
+    "cohort_census_sha256": "4f9cab6af48126955a92e4d5d9ef12954a59a59a8250175a4c2d31cdc65a3a0f",
+    "partition_sha256": "9b4ad7993f943edb1f4a995184eb85083879168f9f86eb1720b2a66623ef17c7",
+    "run_contract_sha256": "65410307ca4e8b25fa31d74f1ebad0562097f32d251f5316bd007c0f435735d8",
+    "split_factors_sha256": "f666565124155bd26ecec8de9b88864b58f85831f404ccac48bcbb8cc135fc9b",
+    "da2_evidence_sha256": "014e73682fa45d60332dcdac6f07b2807d51556cfff192baa6cd35bea172a1da",
+    "cohort_digest": "c9d4e88a33c53448120e79138057bcb0d100abecc1d33fbec92bd3d9c541bc96"
+  },
+  "mechanism_under_test": "TIME_SERIES_TREND_SELECTION. The family's causal claim is that buying ETFs whose own trailing trend is UP (and de-risking by realized vol) beats the flat benchmark because the trend sign carries forward-looking information. This control destroys that mechanism while holding every other lever constant.",
+  "control_mutation": {
+    "relative_to": "A5-SFV2-ARM1-TSM12-VOLTARGET",
+    "mutation": "Eligibility sign INVERTED: ETF i is ELIGIBLE at decision t iff m_i(t) < 0 (12-month TR-chain return NEGATIVE). The anchor buys trend-UP ETFs; this control buys trend-DOWN ETFs.",
+    "everything_else": "IDENTICAL to the anchor: same 11-ETF cohort, same 252-session lookback and zero threshold, same 63-session realized-vol estimator, same 10% vol target and g(t) mapping, same 35% cap and equal weighting with cash residual, same monthly clock, same costs (10 bps/side), same one-event delay, same ramp-in, folds, purge, force-flat terminal rule, same evidence minimums and concentration limits.",
+    "tie_break": "m_i(t) == 0 exactly -> INELIGIBLE (same as anchor).",
+    "why_this_mutation": "Inverting the sign inverts the information direction of the primary feature while preserving the portfolio-construction machinery, so any scored difference isolates the trend-selection lever. The vol lever is deliberately held constant so the control tests the FAMILY's primary mechanism (trend sign), not the secondary one (vol mapping); per PLAN section 10 exactly one control is registered this cycle."
+  },
+  "cohort_usage": {
+    "investable_symbols": ["SPY", "XLK", "XLE", "XLF", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE"],
+    "justification": "Identical to anchor. The control must see the same opportunity set or it would not isolate the mutation."
+  },
+  "data_semantics": {
+    "signal_series": "TR chain per amended FD2 formula (split_factors.json amended_fd2_formula): raw closes x issuer-confirmed split factors (XLK/XLE/XLY/XLU/XLB factor 2.0 eff 2025-12-05) + official issuer (SSGA/SPDR) distribution records.",
+    "fill_series": "RAW executable closes, next regular session, one-event delay mandatory.",
+    "split_handling": "Identical to anchor; factor-adjusted TR chain; notional-based targets."
+  },
+  "feature_definition": {
+    "type": "TIME_SERIES_MOMENTUM_SIGN_12M_INVERTED",
+    "lookback_sessions": 252,
+    "skip_sessions": 0,
+    "formula": "m_i(t) = TR_i(t) / TR_i(t-252) - 1",
+    "eligibility_rule": "ELIGIBLE iff m_i(t) < 0 (INVERTED relative to anchor's m_i(t) > 0)",
+    "not_a_grid": "Single frozen inverted configuration; no grid."
+  },
+  "volatility_estimator": {
+    "type": "REALIZED_VOL_SIMPLE_RETURN_STD",
+    "window_sessions": 63,
+    "ddof": 1,
+    "annualization": "sqrt(252)",
+    "formula": "identical to anchor: sigma_arena(t) = sqrt( mean over ELIGIBLE i of sigma_i(t)^2 )"
+  },
+  "defensive_allocation_mapping": {
+    "type": "DETERMINISTIC_VOL_TARGET_TO_CASH",
+    "target_vol_annual": 0.10,
+    "gross_scalar": "g(t) = min(1.0, 0.10 / sigma_arena(t)); g = 1.0 if sigma_arena <= 0",
+    "base_weights": "w_i(t) = min(0.35, 1/|E|) over the INVERTED eligible set; residual to CASH",
+    "final_weights": "ETF weight = g(t) * w_i(t); CASH weight = 1 - g(t) * sum_i w_i(t)",
+    "edge_cases": {
+      "eligible_set_empty": "possible by construction iff all 11 ETFs have m >= 0 (broad uptrend); book = 100% cash",
+      "gross_invariant": "gross <= 1.0 always; single-ETF weight <= 0.35 always; long-only; no shorting; no leverage"
+    }
+  },
+  "decision_clock": {
+    "frequency": "MONTHLY",
+    "rule": "Identical to anchor: last completed regular session of each calendar month; fill next regular session, raw close, one-event delay."
+  },
+  "warmup_ramp_in": {
+    "official_warmup_sessions": 63,
+    "feature_requirement_sessions": 252,
+    "rule": "Identical to anchor: decisions allowed only once every cohort member has >= 252 completed TR sessions from 2018-01-02; 100% cash before."
+  },
+  "partition_handling": {
+    "warmup": "2018-01-02..2018-04-03: no scored trades.",
+    "folds": [
+      {"fold_id": "S0_FOLD_1", "scored_window": "2018-04-04..2020-09-01"},
+      {"fold_id": "S0_FOLD_2", "scored_window": "2020-09-10..2023-02-09"},
+      {"fold_id": "S0_FOLD_3", "scored_window": "2023-02-17..2025-07-24"}
+    ],
+    "purge_sessions": 5,
+    "terminal_rule": "Identical to anchor: force-flat at each fold's scored_end close; no executions in purge.",
+    "s1": "2025-08-01..2026-07-31 SEALED, existence only."
+  },
+  "benchmark": {
+    "hard_benchmark": "FLAT 0% (cash at zero rate).",
+    "context_benchmark": "SPY TR chain (amended architecture), diagnostic only.",
+    "fairness": "Identical machinery and costs to anchor; only the sign differs."
+  },
+  "costs_and_delay": {
+    "spread_slippage_bps_per_side": 10,
+    "delay": "one-event delay mandatory",
+    "commissions": "no commission claims",
+    "cash_rate": 0
+  },
+  "turnover_expectation": {
+    "expected_two_way_annual": "2.0x - 4.0x (same structural range as anchor; inverted states share the same persistence). Preregistered expectation, not computed."
+  },
+  "capacity_reasoning": {
+    "scope": "Identical to anchor: personal research-scale book; no capacity claim beyond research scale."
+  },
+  "concentration_limits": {
+    "per_etf_gross_cap": 0.35,
+    "positive_pnl_attribution_cap": 0.35,
+    "rule": "Same validity condition as anchor (Z8-checked)."
+  },
+  "minimum_evidence_count": {
+    "scored_monthly_decision_events_per_fold_min": 18,
+    "scored_monthly_decision_events_total_s0_min": 70,
+    "note": "Same as anchor. NOTE: the inverted eligible set is empty whenever all 11 ETFs are in uptrend simultaneously; such months are valid 100%-cash decision events and COUNT toward evidence."
+  },
+  "expected_sign_and_falsification": {
+    "expected_direction_predeclared": "Materially BELOW the anchor on fold-level risk-adjusted evidence vs the flat benchmark, and expected near or below zero. This expected failure is the point of the control.",
+    "falsifying_result": "If the control's fold-level risk-adjusted evidence (Z8 frozen scorer primary statistic: excess vs flat 0% benchmark, realized-vol-normalized, per S0 fold) is >= the anchor's in >= 2 of 3 folds, the time-series trend-selection mechanism is FALSIFIED for this family: all positive family claims are void, the family's verdict becomes mechanism-falsified, and the family's slots stay unused (no reassignment this cycle).",
+    "secondary_void_condition": "If the control fails its own evidence minimums or invariant tests (leverage/cap/lookahead), the control is void as a causal test and the family's mechanism claim is UNTESTED (treated as not established, not as supported).",
+    "implementation_fixtures": "Control-destruction fixture REQUIRED (PLAN section 11): sign flip must change the eligible set on hand-computed vectors; expected-failure direction fixture; no-lookahead fixture; terminal-close golden."
+  },
+  "no_tuning_declaration": "The control is a pure sign mutation of the anchor with zero free parameters. No parameter was selected by comparing candidate outcomes. No grid exists. No revision after freeze. S1 never read.",
+  "literature": [
+    {"cite": "Moskowitz, Ooi, Pedersen (2012), 'Time Series Momentum', Journal of Financial Economics 104(2)", "use": "sign convention whose inversion this control tests", "status": "MODEL_INTERNAL_UNVERIFIED"}
+  ],
+  "digest_note": "The sha256 of this exact file is recorded in a5_family_manifest.json after writing; the manifest is the digest authority."
+}

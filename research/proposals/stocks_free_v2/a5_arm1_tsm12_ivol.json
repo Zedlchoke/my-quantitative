@@ -1,0 +1,142 @@
+{
+  "schema": "stocks_free_v2_proposal/a5_arm@1",
+  "family_id": "A5-SFV2-TREND-DEFENSIVE",
+  "arm_id": "A5-SFV2-ARM1-TSM12-VOLTARGET",
+  "arm_role": "ANCHOR_LITERATURE_BACKED",
+  "producer_lane": "Z3/A5 (time-series trend + volatility-aware defensive allocation)",
+  "created_at_utc": "2026-09-03T00:00:00Z",
+  "base_commit": "b345de411440b8db2f87a2ee61803f1d4aacc378",
+  "branch": "orca/stocks-free-v2-z3-trend",
+  "outcome_blind_declaration": {
+    "scored_artifact_exists": false,
+    "candidate_returns_pnl_pf_sharpe_ranking_computed": false,
+    "reads_A4_z3_momentum_lane": false,
+    "note": "This file freezes definitions only. No returns, PnL, PF, Sharpe, ranking or backtest of this strategy has been computed by the Z3/A5 lane, and none may be created here. Turnover and evidence counts below are preregistered EXPECTATIONS derived from rule structure and the frozen calendar, not computed results."
+  },
+  "frozen_inputs": {
+    "plan": "PLAN_stocks_free.md sections 3 and 10",
+    "plan_sha256": "d3458d858f0c39371361819541189e8e6b2ef4e310bde94edf40bf92919f7318",
+    "cohort_census_sha256": "4f9cab6af48126955a92e4d5d9ef12954a59a59a8250175a4c2d31cdc65a3a0f",
+    "partition_sha256": "9b4ad7993f943edb1f4a995184eb85083879168f9f86eb1720b2a66623ef17c7",
+    "run_contract_sha256": "65410307ca4e8b25fa31d74f1ebad0562097f32d251f5316bd007c0f435735d8",
+    "split_factors_sha256": "f666565124155bd26ecec8de9b88864b58f85831f404ccac48bcbb8cc135fc9b",
+    "da2_evidence_sha256": "014e73682fa45d60332dcdac6f07b2807d51556cfff192baa6cd35bea172a1da",
+    "cohort_digest": "c9d4e88a33c53448120e79138057bcb0d100abecc1d33fbec92bd3d9c541bc96"
+  },
+  "cohort_usage": {
+    "investable_symbols": ["SPY", "XLK", "XLE", "XLF", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE"],
+    "all_cohort_members_traded_identically": true,
+    "spy_is_also_benchmark": true,
+    "justification": "All 11 accepted ETFs are investable members under one identical rule (no special-casing). SPY is included because index-level time-series momentum is the core asset of the TSMOM literature (Moskowitz, Ooi and Pedersen 2012) and it is the most liquid instrument in the cohort. The 10 SPDR sectors are included because (a) a SPY-only book would place 100% of positive PnL in one ETF, violating the preregistered <=35% positive-PnL concentration limit, and (b) sector/index trend timing evidence exists in the tactical-asset-allocation literature (Faber 2007 and updates).",
+    "declared_limitations": [
+      "The 10 sectors plus SPY are highly overlapping exposures; equal weighting them is a fixed breadth choice, NOT a diversification claim. Sector-overlap fraction is a reported exposure diagnostic.",
+      "The cohort is a current-survivor list (cohort_census.json limitation); all inference is limited to the frozen ETF cohort.",
+      "TLT and GLD were excluded pre-census (issuer event verification unavailable), so defensiveness is CASH only; no bond or gold ETF appears in any arm."
+    ]
+  },
+  "data_semantics": {
+    "signal_series": "TR chain per amended FD2 formula (split_factors.json amended_fd2_formula): raw closes x issuer-confirmed split factors (XLK/XLE/XLY/XLU/XLB factor 2.0 eff 2025-12-05) + official issuer (SSGA/SPDR) distribution records; cross-checked against TD adjust=all which is smooth through the split.",
+    "fill_series": "RAW executable closes, next regular session after the decision (one-event delay mandatory); never the signal close.",
+    "split_handling": "The 2:1 sector splits eff 2025-12-05 sit inside SEALED S1; S0 is unaffected. TR chain is factor-adjusted so signals crossing 2025-12-05 see no artificial discontinuity; targets are NOTIONAL-based so raw price halving changes share counts only, never weights.",
+    "return_definition_for_features": "daily simple TR-chain returns r = TR(d)/TR(d-1) - 1; completed sessions only."
+  },
+  "feature_definition": {
+    "type": "TIME_SERIES_MOMENTUM_SIGN_12M",
+    "lookback_sessions": 252,
+    "skip_sessions": 0,
+    "formula": "m_i(t) = TR_i(t) / TR_i(t-252) - 1, on completed TR-chain sessions through decision date t",
+    "eligibility_rule": "ETF i is ELIGIBLE at decision t iff m_i(t) > 0; else INELIGIBLE (cash-bound).",
+    "tie_break": "m_i(t) == 0 exactly -> INELIGIBLE (declared; measure-zero on real data).",
+    "not_a_grid": "Single frozen configuration: 252-session lookback, no skip, sign threshold at zero. There is NO parameter grid anywhere in this family.",
+    "skip_justification": "A 1-month skip (12-1 convention) exists to kill short-term reversal in CROSS-SECTIONAL momentum; time-series momentum at monthly frequency has no cross-sectional leader to skip, so the canonical TSMOM form uses the trailing 12-month return directly (Moskowitz, Ooi and Pedersen 2012). Declared a priori, not tuned."
+  },
+  "volatility_estimator": {
+    "type": "REALIZED_VOL_SIMPLE_RETURN_STD",
+    "window_sessions": 63,
+    "ddof": 1,
+    "annualization": "sqrt(252)",
+    "formula": "sigma_i(t) = std(ddof=1) of the last 63 completed daily simple TR returns of ETF i; sigma_arena(t) = sqrt( mean over ELIGIBLE i of sigma_i(t)^2 )",
+    "declared_simplification": "Equal-weight average of per-ETF variances ignores cross-correlation. The 11 ETFs are highly correlated, so mean variance approximates portfolio variance; this keeps the estimator fully deterministic with no covariance estimation. Declared a priori, not tuned."
+  },
+  "defensive_allocation_mapping": {
+    "type": "DETERMINISTIC_VOL_TARGET_TO_CASH",
+    "target_vol_annual": 0.10,
+    "gross_scalar": "g(t) = min(1.0, 0.10 / sigma_arena(t)) when sigma_arena(t) > 0; g(t) = 1.0 if sigma_arena(t) <= 0 (declared deterministic tie-break)",
+    "base_weights": "w_i(t) = min(0.35, 1/|E|) for eligible i, E = eligible set at t; w = 0 for ineligible i",
+    "final_weights": "ETF weight = g(t) * w_i(t); CASH weight = 1 - g(t) * sum_i w_i(t)",
+    "edge_cases": {
+      "eligible_set_empty": "book = 100% cash",
+      "eligible_set_size_1_or_2": "35% cap binds; uncapped residual goes to CASH (never redistributed to other ETFs)",
+      "gross_invariant": "gross exposure <= 1.0 always; single-ETF weight <= 0.35 always; long-only; no shorting; no leverage"
+    }
+  },
+  "decision_clock": {
+    "frequency": "MONTHLY",
+    "rule": "Decision evaluated once per calendar month at the close of the month's last completed regular session (US_EQUITY_REGULAR_V1 calendar).",
+    "fill": "Next regular session, raw close semantics, one-event delay.",
+    "lifecycle": "Full rebalance to target book at every decision event; no intra-month trading."
+  },
+  "warmup_ramp_in": {
+    "official_warmup_sessions": 63,
+    "feature_requirement_sessions": 252,
+    "rule": "A decision event is ALLOWED at date t only if EVERY cohort member has >= 252 completed TR sessions from coverage_start (2018-01-02) through t. Before the first allowed event the book is 100% cash and NO trades occur. Exact first eligible decision date is derived from the frozen calendar by the implementation; it is expected in the region of 2019-01.",
+    "rationale": "The partition's official warmup (63 sessions) is shorter than the feature lookback. Data coverage may not be extended backward and bars may not be fabricated, so the deficit is handled by an explicit unscored cash ramp-in inside S0 fold 1. Declared a priori; evidence minimums below account for it."
+  },
+  "partition_handling": {
+    "warmup": "2018-01-02..2018-04-03 (63 sessions): no scored trades, features may use it only as completed history.",
+    "folds": [
+      {"fold_id": "S0_FOLD_1", "scored_window": "2018-04-04..2020-09-01", "note": "ramp-in cash period until first allowed decision is inside this fold and unscored"},
+      {"fold_id": "S0_FOLD_2", "scored_window": "2020-09-10..2023-02-09"},
+      {"fold_id": "S0_FOLD_3", "scored_window": "2023-02-17..2025-07-24"}
+    ],
+    "purge_sessions": 5,
+    "terminal_rule": "A decision executes fills only on sessions <= its fold's scored_end. At each fold's scored_end close the book is FORCE-FLAT (100% cash); no executions occur during the 5-session purge; the next fold starts flat with its own first decision.",
+    "s1": "2025-08-01..2026-07-31 SEALED, existence only. No arm logic references S1 returns; the 2025-12-05 split event is inside S1 and is handled by the frozen TR-chain semantics above."
+  },
+  "benchmark": {
+    "hard_benchmark": "FLAT 0% (cash at zero rate). Primary directional evidence for every arm is excess performance vs this flat benchmark under the Z8 frozen scorer.",
+    "context_benchmark": "SPY TR chain (amended architecture), reported as context and exposure diagnostic (beta/exposure attribution), not as the pass/fail gate.",
+    "fairness": "All three arms share clock, costs, delay and cap structure. SPY TR is used as a benchmark series only; no arm treats SPY differently as an investable."
+  },
+  "costs_and_delay": {
+    "spread_slippage_bps_per_side": 10,
+    "basis": "Conservative all-in spread+slippage declared a priori; sector SPDR spreads are wider than SPY's and 10 bps/side bounds them from above at research scale. MODEL_INTERNAL_UNVERIFIED for current spread levels.",
+    "delay": "one-event (next-session) delay mandatory; fills on RAW prices",
+    "commissions": "no commission claims",
+    "cash_rate": 0
+  },
+  "turnover_expectation": {
+    "expected_two_way_annual": "2.0x - 4.0x",
+    "basis": "Monthly clock with sticky binary 12-month states: eligibility flips are persistent, so most monthly events are weight-maintenance trades, not full switches. This is a preregistered EXPECTATION from rule structure (MODEL_INTERNAL_UNVERIFIED), NOT a computed result. Realized turnover is measured only by Z5/Z6 schedule-only feasibility.",
+    "event_cost_context": "At 10 bps/side, a 3x two-way year implies ~0.6%/yr cost drag upper bound; declared as context, not computed evidence."
+  },
+  "capacity_reasoning": {
+    "cohort_min_median_dollar_volume_usd": 196872580,
+    "cohort_min_symbol": "XLRE",
+    "scope": "Personal research-scale book (declared scope <= $10M notional). Even at 6x annual two-way turnover, worst-case daily participation is orders of magnitude below 0.1% of the least liquid cohort member's median dollar volume.",
+    "claim_limit": "No capacity claim beyond research scale."
+  },
+  "concentration_limits": {
+    "per_etf_gross_cap": 0.35,
+    "positive_pnl_attribution_cap": 0.35,
+    "rule": "Post-scoring validity condition (checked by Z8): no single ETF may contribute more than 35% of the arm's positive PnL across S0. Violation voids the arm; slots are not reassigned."
+  },
+  "minimum_evidence_count": {
+    "scored_monthly_decision_events_per_fold_min": 18,
+    "scored_monthly_decision_events_total_s0_min": 70,
+    "note": "Counts are of decision events whose fills and force-flat liquidation both land inside the fold's scored window. Exact counts derive from the frozen calendar at implementation; the declared minimums leave headroom for the fold-1 ramp-in. An arm below minimum is VOID; its slot stays unused (PLAN section 10)."
+  },
+  "expected_sign_and_falsification": {
+    "expected_direction": "Risk-adjusted S0 evidence above the flat 0% benchmark, driven by trend-positive selection plus vol-aware de-risking (lower exposure in high-vol regimes).",
+    "falsification": "Family-level rule in the manifest: the causal control A5-SFV2-ARM3-TSM12-INVERTED-CONTROL must be dominated by this anchor. If the control's fold-level risk-adjusted evidence is >= the anchor's in >= 2 of 3 folds, the trend-selection mechanism is falsified and all positive family claims are void.",
+    "implementation_fixtures": "Expected-sign fixture (positive-momentum state produces nonzero ETF exposure), control-destruction fixture (sign flip changes the eligible set), no-lookahead fixture (decision t uses only sessions <= t), terminal-close golden."
+  },
+  "no_tuning_declaration": "Every constant in this file (252-session lookback, zero skip, zero threshold, 63-session vol window, 10% vol target, 35% cap, monthly clock, 10 bps/side) was preregistered at spec time from literature convention or from the plan's frozen constraints. No parameter was selected by comparing candidate outcomes on any window. No grid exists. No parameter will be revised after freeze. S1 was never read and cannot influence this spec.",
+  "literature": [
+    {"cite": "Moskowitz, Ooi, Pedersen (2012), 'Time Series Momentum', Journal of Financial Economics 104(2)", "use": "12-month TSMOM lookback; index-level absolute momentum", "status": "MODEL_INTERNAL_UNVERIFIED"},
+    {"cite": "Barroso, Santa-Clara (2015), 'Momentum has its moments', Journal of Financial Economics 116(1)", "use": "realized-vol scaling of momentum exposure", "status": "MODEL_INTERNAL_UNVERIFIED"},
+    {"cite": "Daniel, Moskowitz (2016), 'Momentum crashes', Journal of Financial Economics 122(2)", "use": "vol-managed momentum reduces crash exposure", "status": "MODEL_INTERNAL_UNVERIFIED"},
+    {"cite": "Moreira, Muir (2017), 'Volatility-Managed Portfolios', Journal of Finance 72(4)", "use": "cutting exposure when realized vol is high", "status": "MODEL_INTERNAL_UNVERIFIED"}
+  ],
+  "digest_note": "The sha256 of this exact file is recorded in a5_family_manifest.json after writing; the manifest is the digest authority."
+}

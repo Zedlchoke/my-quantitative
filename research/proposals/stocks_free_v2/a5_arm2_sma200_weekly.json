@@ -1,0 +1,143 @@
+{
+  "schema": "stocks_free_v2_proposal/a5_arm@1",
+  "family_id": "A5-SFV2-TREND-DEFENSIVE",
+  "arm_id": "A5-SFV2-ARM2-SMA200-WEEKLY",
+  "arm_role": "NEIGHBOUR_THEORETICALLY_JUSTIFIED",
+  "producer_lane": "Z3/A5 (time-series trend + volatility-aware defensive allocation)",
+  "created_at_utc": "2026-09-03T00:00:00Z",
+  "base_commit": "b345de411440b8db2f87a2ee61803f1d4aacc378",
+  "branch": "orca/stocks-free-v2-z3-trend",
+  "outcome_blind_declaration": {
+    "scored_artifact_exists": false,
+    "candidate_returns_pnl_pf_sharpe_ranking_computed": false,
+    "reads_A4_z3_momentum_lane": false,
+    "note": "Definitions only; no scored artifact exists or may be created here. Turnover and event counts are preregistered expectations, not computed results."
+  },
+  "frozen_inputs": {
+    "plan": "PLAN_stocks_free.md sections 3 and 10",
+    "plan_sha256": "d3458d858f0c39371361819541189e8e6b2ef4e310bde94edf40bf92919f7318",
+    "cohort_census_sha256": "4f9cab6af48126955a92e4d5d9ef12954a59a59a8250175a4c2d31cdc65a3a0f",
+    "partition_sha256": "9b4ad7993f943edb1f4a995184eb85083879168f9f86eb1720b2a66623ef17c7",
+    "run_contract_sha256": "65410307ca4e8b25fa31d74f1ebad0562097f32d251f5316bd007c0f435735d8",
+    "split_factors_sha256": "f666565124155bd26ecec8de9b88864b58f85831f404ccac48bcbb8cc135fc9b",
+    "da2_evidence_sha256": "014e73682fa45d60332dcdac6f07b2807d51556cfff192baa6cd35bea172a1da",
+    "cohort_digest": "c9d4e88a33c53448120e79138057bcb0d100abecc1d33fbec92bd3d9c541bc96"
+  },
+  "relationship_to_anchor": {
+    "primary_lever_changed": "TREND ESTIMATOR FORM: binary price-vs-moving-average distance replaces the 12-month return sign. The estimator is a smoothed level comparison (state variable with memory in the level), whereas the anchor's momentum is a point-to-point return; the two disagree precisely when the path between t-252 and t is non-monotonic.",
+    "secondary_change_declared": "Clock is WEEKLY (anchor: MONTHLY). Declared together because the MA rule's information decays at the level-update rate; weekly sampling is the standard clock for the SMA timing rule in the tactical-allocation literature. Both changes are preregistered as ONE neighbour configuration; no other parameter differs from the anchor.",
+    "defensive_mapping_identical_to_anchor": true
+  },
+  "cohort_usage": {
+    "investable_symbols": ["SPY", "XLK", "XLE", "XLF", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE"],
+    "justification": "Identical to anchor arm (see a5_arm1_tsm12_ivol.json cohort_usage). All 11 members, one identical rule, no special-casing.",
+    "declared_limitations": [
+      "Sector overlap with SPY declared; equal weighting is breadth, not a diversification claim.",
+      "Current-survivor cohort limitation applies.",
+      "Defensiveness is CASH only (TLT/GLD excluded pre-census)."
+    ]
+  },
+  "data_semantics": {
+    "signal_series": "TR chain per amended FD2 formula (split_factors.json amended_fd2_formula): raw closes x issuer-confirmed split factors (XLK/XLE/XLY/XLU/XLB factor 2.0 eff 2025-12-05) + official issuer (SSGA/SPDR) distribution records.",
+    "fill_series": "RAW executable closes, next regular session after the decision (one-event delay mandatory).",
+    "split_handling": "2025-12-05 sector splits sit inside SEALED S1; factor-adjusted TR chain keeps signals continuous; notional-based targets keep weights invariant to the raw price halving.",
+    "return_definition_for_features": "daily simple TR-chain returns; completed sessions only."
+  },
+  "feature_definition": {
+    "type": "PRICE_VS_SMA200_TREND_FILTER",
+    "window_sessions": 200,
+    "formula": "sma_i(t) = (1/200) * sum of TR_i over the last 200 completed TR-chain sessions inclusive of t; ETF i is ELIGIBLE at decision t iff TR_i(t) > sma_i(t)",
+    "tie_break": "TR_i(t) == sma_i(t) exactly -> INELIGIBLE (declared; measure-zero on real data).",
+    "not_a_grid": "Single frozen configuration: 200-session SMA (~10 calendar months), price-above-only threshold. There is NO parameter grid anywhere in this family.",
+    "justification": "The 10-month moving-average filter is the canonical trend-timing rule of the tactical asset allocation literature (Faber 2007 and subsequent updates; rule lineage commonly attributed to Gartley 1935 and Donchian; data-snooping critique by Zakamulin 2017 motivates freezing the single canonical configuration rather than searching). Status for all: MODEL_INTERNAL_UNVERIFIED."
+  },
+  "volatility_estimator": {
+    "type": "REALIZED_VOL_SIMPLE_RETURN_STD",
+    "window_sessions": 63,
+    "ddof": 1,
+    "annualization": "sqrt(252)",
+    "formula": "sigma_i(t) = std(ddof=1) of the last 63 completed daily simple TR returns of ETF i; sigma_arena(t) = sqrt( mean over ELIGIBLE i of sigma_i(t)^2 )",
+    "declared_simplification": "Identical to anchor: equal-weight variance average, no covariance estimation, declared a priori."
+  },
+  "defensive_allocation_mapping": {
+    "type": "DETERMINISTIC_VOL_TARGET_TO_CASH",
+    "target_vol_annual": 0.10,
+    "gross_scalar": "g(t) = min(1.0, 0.10 / sigma_arena(t)) when sigma_arena(t) > 0; g(t) = 1.0 if sigma_arena(t) <= 0",
+    "base_weights": "w_i(t) = min(0.35, 1/|E|) for eligible i; residual to CASH, never redistributed",
+    "final_weights": "ETF weight = g(t) * w_i(t); CASH weight = 1 - g(t) * sum_i w_i(t)",
+    "edge_cases": {
+      "eligible_set_empty": "book = 100% cash",
+      "eligible_set_size_1_or_2": "35% cap binds; residual to cash",
+      "gross_invariant": "gross <= 1.0 always; single-ETF weight <= 0.35 always; long-only; no shorting; no leverage"
+    }
+  },
+  "decision_clock": {
+    "frequency": "WEEKLY",
+    "rule": "Decision evaluated once per ISO week at the close of that week's last completed regular session (US_EQUITY_REGULAR_V1 calendar).",
+    "fill": "Next regular session, raw close semantics, one-event delay.",
+    "lifecycle": "Full rebalance to target book at every weekly decision event; no intra-week trading."
+  },
+  "warmup_ramp_in": {
+    "official_warmup_sessions": 63,
+    "feature_requirement_sessions": 200,
+    "rule": "A decision event is ALLOWED at date t only if EVERY cohort member has >= 200 completed TR sessions from coverage_start (2018-01-02) through t. Before the first allowed event the book is 100% cash and NO trades occur. First eligible decision expected in the region of 2018-10.",
+    "rationale": "Same as anchor: official warmup is shorter than the feature lookback; the deficit is an explicit unscored cash ramp-in inside S0 fold 1, accounted for in evidence minimums."
+  },
+  "partition_handling": {
+    "warmup": "2018-01-02..2018-04-03: no scored trades.",
+    "folds": [
+      {"fold_id": "S0_FOLD_1", "scored_window": "2018-04-04..2020-09-01", "note": "ramp-in cash period inside this fold is unscored"},
+      {"fold_id": "S0_FOLD_2", "scored_window": "2020-09-10..2023-02-09"},
+      {"fold_id": "S0_FOLD_3", "scored_window": "2023-02-17..2025-07-24"}
+    ],
+    "purge_sessions": 5,
+    "terminal_rule": "Fills only on sessions <= the fold's scored_end; force-flat at scored_end close; no executions during purge; next fold starts flat.",
+    "s1": "2025-08-01..2026-07-31 SEALED, existence only; split handled by frozen TR-chain semantics."
+  },
+  "benchmark": {
+    "hard_benchmark": "FLAT 0% (cash at zero rate); primary directional evidence.",
+    "context_benchmark": "SPY TR chain (amended architecture), context and exposure diagnostic only.",
+    "fairness": "Identical costs, delay, caps and vol mapping to the other arms."
+  },
+  "costs_and_delay": {
+    "spread_slippage_bps_per_side": 10,
+    "basis": "Conservative all-in spread+slippage declared a priori. MODEL_INTERNAL_UNVERIFIED for current spread levels.",
+    "delay": "one-event (next-session) delay mandatory; fills on RAW prices",
+    "commissions": "no commission claims",
+    "cash_rate": 0
+  },
+  "turnover_expectation": {
+    "expected_two_way_annual": "3.0x - 6.0x",
+    "basis": "Weekly clock raises event frequency ~4.3x vs monthly, but the 200-SMA state is very sticky (level memory), so most weekly events are zero- or small-trade maintenance. Preregistered expectation from rule structure (MODEL_INTERNAL_UNVERIFIED), NOT a computed result; measured only by Z5/Z6 schedule-only feasibility.",
+    "event_cost_context": "At 10 bps/side, a 4.5x two-way year implies ~0.9%/yr cost drag upper bound; context only."
+  },
+  "capacity_reasoning": {
+    "cohort_min_median_dollar_volume_usd": 196872580,
+    "cohort_min_symbol": "XLRE",
+    "scope": "Personal research-scale book (declared scope <= $10M notional); participation far below 0.1% of the least liquid member's median dollar volume.",
+    "claim_limit": "No capacity claim beyond research scale."
+  },
+  "concentration_limits": {
+    "per_etf_gross_cap": 0.35,
+    "positive_pnl_attribution_cap": 0.35,
+    "rule": "Post-scoring validity condition (Z8): no single ETF > 35% of positive PnL across S0; violation voids the arm; slot not reassigned."
+  },
+  "minimum_evidence_count": {
+    "scored_weekly_decision_events_per_fold_min": 95,
+    "scored_weekly_decision_events_total_s0_min": 340,
+    "note": "Approximate event capacity: ~130/129/129 weekly events in folds 1/2/3, minus the fold-1 ramp-in (~28 weeks). Minimums leave headroom. Exact counts derive from the frozen calendar at implementation; below minimum the arm is VOID; slot unused."
+  },
+  "expected_sign_and_falsification": {
+    "expected_direction": "Risk-adjusted S0 evidence above flat 0%, mechanism-consistent with the anchor through the same vol-target defensive mapping.",
+    "falsification": "The neighbour is not itself a control; the family-level falsification rule (manifest) is anchored on the causal control arm. If the neighbour's evidence diverges in SIGN from the anchor while the control test passes, the two trend estimators are declared non-equivalent and the family reports the estimator lever as decisive (diagnostic statement, no re-tuning).",
+    "implementation_fixtures": "Expected-sign fixture, no-lookahead fixture, weekly-calendar golden, terminal-close golden."
+  },
+  "no_tuning_declaration": "Every constant (200-session SMA, price-above threshold, 63-session vol window, 10% vol target, 35% cap, weekly clock, 10 bps/side) was preregistered from literature convention or the plan's frozen constraints. No parameter was selected by comparing candidate outcomes. No grid exists. No revision after freeze. S1 never read.",
+  "literature": [
+    {"cite": "Faber (2007), 'A Quantitative Approach to Tactical Asset Allocation' (SSRN working paper; later updates republished)", "use": "10-month SMA trend filter, sector and index timing", "status": "MODEL_INTERNAL_UNVERIFIED"},
+    {"cite": "Zakamulin (2017), work on data-snooping in moving-average trading rules", "use": "motivates freezing one canonical MA configuration instead of searching", "status": "MODEL_INTERNAL_UNVERIFIED"},
+    {"cite": "Moreira, Muir (2017), 'Volatility-Managed Portfolios', Journal of Finance 72(4)", "use": "vol-target defensive mapping", "status": "MODEL_INTERNAL_UNVERIFIED"},
+    {"cite": "Barroso, Santa-Clara (2015), 'Momentum has its moments', Journal of Financial Economics 116(1)", "use": "realized-vol scaling precedent", "status": "MODEL_INTERNAL_UNVERIFIED"}
+  ],
+  "digest_note": "The sha256 of this exact file is recorded in a5_family_manifest.json after writing; the manifest is the digest authority."
+}
