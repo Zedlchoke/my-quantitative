@@ -1,0 +1,66 @@
+{
+  "schema": "stocks_free_v2_a7/audit_report@1",
+  "role": "A7 Z2 independent data-authority auditor",
+  "audited_at_utc": "2026-09-03T00:00:00Z",
+  "worktree_identity": {
+    "bootstrap_sha_verified": "7113d8d8a50ac518ff5a7323335984e865b4c085",
+    "branch": "orca/stocks-free-v2-z2-a7",
+    "status_at_start": "clean"
+  },
+  "method": "All numbers recomputed from raw staged files (staging-td/snapshot2010, staging-cohort workbooks) with an independent stdlib parser (research/audits/stocks_free_v2/z2_a7/recompute_a7.py; machine output recompute_result.json). Rule modules imported ONLY for frozen semantics (calendar, partition freeze, digest canonicalization), never for computed numbers. No Twelve Data API call, no .env read, no purchase.",
+  "verdict": "DATA_AUTHORIZATION_DENIED_S1_SPLIT_FACTOR_PROVENANCE_UNRECORDED",
+
+  "claims": {
+    "staged_file_integrity": "CONFIRMED: all 38 snapshot_manifest.json files re-hashed and matched exactly; SSGA distributions workbook sha256 1b952f87ca60ece4080b446d6c3b580f640d893ed33641797a2dd22dd61beca9 matches recorded prefix 1b952f87ca60ece4; DA2 probe payloads (SPY_none_p1, SPY_adj_p1) match recorded sha256 prefixes cec9c8642e292129 / 0479c2d253cc6e23; two-pull byte-identity (p1==p2) verified by identical hashes.",
+    "spy_total_return": "CONFIRMED: exact reproduction of gate numbers over DA2 window 2018-01-02..2026-08-28: td_price 2.862485, td_adjusted 3.258905, SSGA NAV-TR 3.2628, abs divergence 0.003895 (0.39% << 5% tol). Independent issuer-recon over frozen window 2018-01-02..2026-08-27 (2175 sessions): price growth 2.868996 (+186.9%), issuer-recon TR 3.270323 vs NAV-TR 3.270844 -> 0.052% cumulative divergence; 34/34 issuer distribution events in window present.",
+    "xlk_td_double_count": "CONFIRMED: on XLK, TD adjust=all implied adjustment steps vs issuer records give ratio implied/issuer = 1.985-1.987 (~2x) on 62 quarterly ex-dates 2010..2026 (e.g. 2010-03-19: TD-implied $0.145274 vs issuer $0.0731; 2011-06-17: $0.194916 vs $0.09823). 3 steps at ~1x, 14 sub-cent rounding artifacts, 1 split step. Diagnosis stands: TD-adjusted series is not authority.",
+    "reconstructed_uses_issuer_amounts": "CONFIRMED: issuer-amount reconstruction reproduces SSGA NAV-TR (0.052% cumulative over frozen window; 0.0101% over DA2 window). No repo code references the *_all_p1* adjusted snapshots; TR builder parses the sha256-recorded issuer workbook only.",
+    "census_spotcheck_spy": "CONFIRMED: first bar 2010-01-04 < warmed S0 start 2018-01-02 (recomputed as exactly 63 sessions before S0 start 2018-04-04); 2175/2175 window sessions covered by sane raw bars, 0 duplicates/missing/insane; TR points complete; median daily dollar volume 30,343,718,158 USD >= 10,000,000 floor (equals census value to the dollar); 0 next-session executability failures.",
+    "xlc_rejection": "CONFIRMED: first bar 2018-06-19 (not before warmed start 2018-01-02); 116 missing sessions (first: 2018-01-02/03/04); 115 next-session failures; median dollar volume 318,141,826 USD (matches census). Reasons match cohort_census.json exactly.",
+    "cohort_digest": "CONFIRMED: canonical digest recomputed = c9d4e88a33c53448120e79138057bcb0d100abecc1d33fbec92bd3d9c541bc96 (matches control).",
+    "partition_and_sealing": "CONFIRMED: from vendor coverage 2018-01-02..2026-08-27 (not month-end -> last complete month 2026-07): warmup 2018-01-02..2018-04-03 (63 sessions), S0 2018-04-04..2025-07-31 (6 complete calendar years 2019-2024, minimum met), S1 2025-08-01..2026-07-31 (12 complete months), 3 folds scored_end purge 5 (2020-09-01 / 2023-02-09 / 2025-07-24) - all equal partition.json. SealedPathFilter denies S1-root paths and embedded S1 dates incl. both boundary dates 2025-08-01 / 2026-07-31; allows S0-dated paths.",
+    "test_batteries": "CONFIRMED: pytest tests/stocks_free_v1 -q -> 109 passed, 1 skipped (SSGA staging-path test fails closed NOT_RUN); pytest tests/assets/common tests/assets/stocks -q -> 290 passed. Both equal gate-recorded counts.",
+    "s1_leakage": "NONE FOUND: no stocks S1 return values in any tracked artifact; S1 appears only as boundary metadata (partition.json, partition_spec, tests). Catalog Binance parquets and legacy results/account.csv are pre-existing out-of-scope crypto artifacts (PLAN section 2 append-only).",
+    "survivorship_disclosure": "PRESENT: cohort_census.json limitation field + cohort.py CURRENT_SURVIVOR_LIMITATION + PLAN 3.1.",
+    "license_conditions": "RECORDED: TD storage-within-subscription + 30-day post-termination deletion in da1_authority.json, snapshot_manifest.json license_note, da2 limitations; redistribution forbidden + raw-outside-git in run_contract.json owner_decision; .env confirmed gitignored (never read).",
+    "td_defect_containment": "PARTIALLY CONFIRMED with one exception (see objection O1): dividend double-count cannot contaminate scoring (no code reads adjusted snapshots; authority is raw closes + issuer distributions). However raw closes + issuer distributions ALONE are provably insufficient across issuer-confirmed stock splits - see O1."
+  },
+
+  "objections": [
+    {
+      "id": "O1",
+      "severity": "HIGH",
+      "status": "UNRESOLVED",
+      "title": "Issuer-confirmed 2:1 splits on XLK/XLE/XLY/XLU/XLB effective 2025-12-05 are unrecorded; recorded TR authority formula is wrong across that date",
+      "evidence": "Independent step scan of adj/raw close ratios finds exactly one 2.0x adjustment step per fund, all at 2025-12-05, with raw closes halving (XLK 291.07->146.60, XLE 92.22->45.92, XLY 238.14->119.73, XLU 87.42->43.30, XLB 88.47->44.09). Verified REAL via public issuer press release: State Street Investment Management announced 2-for-1 share splits for five Select Sector SPDR ETFs (record date 2025-12-02, payable after close 2025-12-04, effective 2025-12-05) - https://investors.statestreet.com/investor-news-events/press-releases/news-details/2025/State-Street-Investment-Management-Announces-Share-Splits-for-Five-Select-Sector-SPDR-ETFs/default.aspx . These are exactly the five funds flagged for the TD dividend double-count. No control artifact, gate text, or factor record mentions any split; the SSGA distributions workbook has no split rows (distributions-only schema); TD /splits is 403 on Basic (recorded in DA2). The frozen authority formula 'TR = raw closes chained with OFFICIAL SSGA issuer distributions' (FD2) is therefore arithmetically wrong for 5 of 11 cohort funds across 2025-12-05: an issuer-amount-only reconstruction silently halves TR there (reconciliation.py TR_CONVENTION itself requires split factors 'added as a separate factor record before use' - no such record exists).",
+      "containment_verified": "NO contamination of anything computed to date: 2025-12-05 lies inside sealed S1 (2025-08-01..2026-07-31) and strictly after S0 end 2025-07-31 / scored_end 2025-07-24; warmup+S0 contain zero split events (full-scan); SPY benchmark has no split (34/34 events are distributions); census checks are per-session and split-agnostic; S1 never read by research processes.",
+      "why_HIGH": "The cycle is REQUIRED to score sealed S1 at Z8. Without a recorded split-factor provenance, S1 total return for 5/11 funds (and any future snapshot refresh spanning 2025-12-05) would be silently ~halved for these funds - a dormant data-authority defect, not a documentation nicety. PLAN 4.1(7) requires distributions, splits and adjustment-factor provenance recorded; PLAN 9 launches proposals only with zero unresolved HIGH objections."
+    },
+    {
+      "id": "O2",
+      "severity": "LOW",
+      "status": "OPEN",
+      "title": "FD2 double-count cardinality understated",
+      "evidence": "FD2 records 'TD adjust=all double-counts 28-32 quarterly distributions on XLK/XLE/XLY/XLU/XLB'; my independent XLK-only count over the 2010..2026 snapshot is 62 ~2x steps (16y x 4 quarters). Diagnosis and fund set confirmed; recorded cardinality is ambiguous/understated. Documentation precision only.",
+      "required_action": "A1 may restate the count when re-issuing FD2 (per-fund counts over a stated span)."
+    },
+    {
+      "id": "O3",
+      "severity": "INFO",
+      "status": "OPEN",
+      "title": "Census 'inception' is first-staged-bar date, not true fund inception",
+      "evidence": "SPY recorded inception 2010-01-04 = first bar of the 2010 snapshot (true inception 1993-01-22). Conservative and decision-neutral (true inception is earlier; XLC's 2018-06-19 first bar matches its real launch). Future waves should label the field 'first_staged_bar' or back it with issuer inception evidence."
+    }
+  ],
+
+  "required_corrective_actions_before_reauthorization": [
+    "A1 (not A7): record issuer-confirmed split factors in control (split_factor=2.0 for XLK/XLE/XLY/XLU/XLB effective 2025-12-05, provenance = State Street press release URL + access date; note TD raw closes already reflect the split), amend the FD2 authority formula to 'raw closes + issuer distributions + issuer-confirmed split factors', re-run the FD2/FD6 reconciliation battery, and re-request A7 confirmation.",
+    "A1: when S1 unseal criteria are later frozen, make reading the split-factor record a hard precondition for any S1 scoring input build."
+  ],
+
+  "owner_notes": [
+    "Everything else stands: hashes, SPY TR reconciliation (reproduced to the 4th decimal), XLK double-count diagnosis, census decisions (11 accept / XLC reject / TLT+GLD pre-census exclusion), partition dates, SealedPathFilter behavior, cohort digest, test counts, survivorship disclosure, license records, S1 isolation.",
+    "The denial is a single-record control fix; no data re-fetch is needed and the staged snapshot is sound (TD raw closes correctly reflect the real splits).",
+    "Authorization was evaluated against PLAN 9 ('zero HIGH/CRITICAL objections'); O1 is the sole blocker."
+  ]
+}
