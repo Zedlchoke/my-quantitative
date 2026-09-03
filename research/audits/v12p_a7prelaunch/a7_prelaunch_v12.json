@@ -1,0 +1,96 @@
+{
+ "schema": "v12_a7_prelaunch_audit_v1",
+ "auditor_role": "A7-PRELAUNCH",
+ "generated_utc": "2026-09-03T17:55:00Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v12/a7-prelaunch",
+ "branch": "orca/v12-a7-prelaunch",
+ "audited_head_sha": "367a4eb5c3ba243ab2864589b047586ea5ef2ba1",
+ "verdict": "V12_S0_LAUNCH_AUTHORIZED",
+ "verdict_conditions": [
+  "EXECUTION-HOST RESOURCE GATE: before the scoring clock starts, a fresh RAM probe on the OWNER'S EXECUTION HOST must measure measured_safe_cap >= 1 using the frozen formula min(3, floor((free_gb-1.5)/2.0)) with the PLAN_crypto 4.2 host cap. This 8GB prelaunch/audit host measures cap=0 (fresh probe 2026-09-03: 0.05GB free; freeze-time probe 0.06GB free) and MUST NOT run scored execution.",
+  "STAGING ON EXECUTION HOST: 12-hour scoring clock starts ONLY after (a) this authorization and (b) equal-twin staging on the execution host re-verified (90/90 files hash-exact vs research/audits/v12p/a3_staging_manifest.json; staged manifest sha256 f855ad9c778f7a8695d6416b1c912efd7ddc353bf70935669504016cbf3c3c40; exec/repro detached at W12 f0799cae6fc47846937cf1a370719314696ee990, porcelain clean).",
+  "CLOCK RULES (run_contract): no new cell with <120 min remaining; <45 min stop workers safely and close incomplete.",
+  "OWNER GO: 'V12 SCORED EXECUTION' owner instruction required per run_contract boundary; scored execution remains forbidden in the prelaunch session."
+ ],
+ "method": "recompute-from-raw-bytes; producer claims re-derived independently; no production code read-as-trusted, none repaired",
+ "python": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+ "import_order_contract_respected": "research.adapter_v10 imported before research.v11.publication_identity in every audit recompute",
+ "items": {
+  "1_ancestry": {
+   "status": "PASS",
+   "detail": "git merge-base --is-ancestor: V11R_TERMINAL_SHA 142f50cbd37ec84786dc781d0f99757ebd3f566f is ancestor of HEAD; pushed V11 terminal df18f53dba30291065f9be157cae04bdcf15bf50 is ancestor of HEAD. All 24 V12-segment commits (8bfbae5..367a4eb) single-parent linear; zero merge commits after V11R terminal; no main merge in the V12 segment. Branch reflog: 2 entries, only a no-op 'reset: moving to HEAD'; no rebase/amend/filter/force/history-rewrite events."
+  },
+  "2_denominator_authority": {
+   "status": "PASS",
+   "detail": "Recomputed sha256 of all 11 tracked terminal summaries vs denominator_authority.json: 11/11 match, 0 mismatch. Logical totals consistent: v11 terminal_report_v11.json logical_published_total=125 logical_observed_total=120+6+2 => 128; v12 state.json 125/128; heartbeat.json 125/128. statistical_consumer_rule recorded (observed >= 128 for every statistical consumer). Portable ledger package transfer_manifest.json recomputed: experiments_v12.jsonl pinned at empty-seed sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (0 bytes, 0 rows); file absent on this host (gitignored, results/ ignored). NO scored V12 artifact anywhere in the tree: CELL_RESULT/OBSERVATION row payloads exist only in historical V5-V11 audit records and the V12 schema definition; v12 event_log.jsonl contains only control-plane events (7 rows, no publication)."
+  },
+  "3_selection_arm_digests": {
+   "status": "PASS",
+   "detail": "All 6 arm_config_digests independently recomputed via research.v11.publication_identity.arm_config_digest from StrategyIdentity built from selection_freeze.json frozen_cells fields (strategy_id/family_id/arm_config_id/direction/window/config verbatim) with the plugins' frozen funding sign LONG_PAYS_POSITIVE_RATE and benchmark exclusion BTCUSDT. 6/6 equal the freeze record AND 6/6 equal the modules' FROZEN_ARM_CONFIG_DIGESTS (research/v12/families/{oilev_v2,bab_lowbeta}/strategy.py). Digests: OILEV-V2-28D-FLOW-W=2d9c5644..., OILEV-V2-56D-STOCK-W=0ba51b43..., OILEV-V2-28D-FLOW-W-INV=e57b26fe..., BAB-90D-W=7a233cf4..., BAB-DOWNCORR-90D-W=c1c2ed26..., BAB-90D-W-INV=fabeb43a.... ILLIQ replication arms NOT frozen: only the 6 eligible arms exist in the two family plugins; 3 ILLIQ slots unused; no ILLIQ implementation file exists anywhere under research/v12/."
+  },
+  "4_data_window_fold_warmup_pit": {
+   "status": "PASS",
+   "detail": "S0 2025-08-22..2026-08-21 (365d) authorized only for OILEV-V2 (V11 OILEV blocked pre-score, scored_metrics_computed=0, per family_blocked_oilev.json) and the blind BAB family; S0R 2024-08-22..2025-08-21 (365d) for ILLIQ replication: S0R end 2025-08-21 is one day before V11 scored window start 2025-08-22 => non-overlap verified arithmetically. research/audits/v12p/a3_illiq_window_verdict.json honestly records verdict=V12_ILLIQ_REPLICATION_BLOCKED_DATA with concrete evidence (14/20 symbols missing window-head bars, warmup unsatisfiable at window head, 13/20 symbols missing funding head), overlaps_v11_scored_window=false, slots_left_unused=3, window_substitution forbidden and none applied. PIT spot-checks in family code: completed 15m bars only (bab daily blocks by CLOSE stamp; 'close_ns > decision: break' — future data never touched); OI anchor strictly before stamp with staleness <= 48h; benchmark leg refused from tradeable universe; CLOSE_DECODE pinned 'raw i128 / 1e16 (A9-F F7)'; folds F0/F1/F2 partition 2025-08-22..2026-08-21 with 1-day purge; first stamp 2025-08-25 warmup satisfiable from PRE-WINDOW data."
+  },
+  "5_oilev_v2_feasibility_52": {
+   "status": "PASS",
+   "detail": "Independent re-run of the A4 validator chain (research.v12.families.oilev_v2.audits.evidence_feasibility_52 -> build_target_records -> research.v12.feasibility.validate_stamp_schedule) from raw OI parquet data on this host: all 3 arms PASS 52/52 stamps, n_fail=0, failing_stamps empty, n_eligible_min=19 >= 9 (min_eligible=9), max_abs_weight_observed=0.125 <= 0.30, uniform_scale_triggered=False (4+4 equal legs 1/8 by construction; scale never needed). legs_per_side=4 validator: exactly 4+4 legs on every stamp (LEG_COUNT_MISMATCH never fired). A4 open item 'funding events while held' CLOSED by the V12 I lane: research/audits/v12i/oilev_v2/funding_events_while_held.json — funding_status=OK, events_while_held_total=6612, per-symbol settlement loads recorded."
+  },
+  "6_blind_family_novelty_outcome_isolation": {
+   "status": "PASS",
+   "detail": "A7-N audit (research/audits/v12d/a7n_novelty_audit.json, bootstrap 9c17679, commit f1d0677 per freeze evidence ref): V12-A5-P1-BAB-LOWBETA verdict ELIGIBLE (GENUINE, NOT_A_RESCUE, |rho| <= 0.20 vs all rejected/reserved ancestors; only LOW objection). H-A6-OSCOMP INELIGIBLE with recorded HIGH objection (anchor rank is the sign-INVERTED reserved ILLIQ rank, |rho| 0.81 in-window / 0.87 prewindow, 94-100% of stamps >= 0.70). A8-P1-BAB-PERP INELIGIBLE with recorded HIGH objections (fabricated DOI; duplicate of A5-P1, |rho|=1.0 at 52/52 stamps). Dedup merge map applied in selection rubric: BAB mechanism counts once, A5-P1 the eligible representative; participant-mix mechanism merged (A8-P2 loses to A5-P2, MEDIUM recorded); H-A6-RVX eliminated at rubric step 5 (implementation risk). Outcome isolation verified: all six proposal JSONs + blind packet contain NO V11 scored metrics — every metric-like token (pnl/sharpe/etc.) occurs only inside outcome-blind attestations/prohibitions; every float-like number is a DOI/page-range/year. Lane logs (a5/a8) show literature-first discipline with per-query retrieval stamps, CrossRef/arXiv DOI verification (one DOI mismatch caught and rejected), and read-set isolation attestations."
+  },
+  "7_dummy_dry_run": {
+   "status": "PASS",
+   "detail": "Independently re-ran research.v12.families.oilev_v2.audits.run_exact_arm_dummy_dryrun(ledger_path='research/audits/v12p_a7prelaunch/a7_scratch/dryrun_a7_prelaunch.jsonl') into the audit's own temp ledger (fail-closed dryrun_ naming guard verified first). Per arm (3/3 arms): zero-position DUMMY payload REFUSED (OBSERVATION row, reason REFUSED_ZERO_POSITIONS), held-position DUMMY PUBLISHED exactly once (CELL_RESULT, fee_x1_5), exact replay IDEMPOTENT_REPLAY_SKIPPED. Ledger ends with exactly 6 rows (3 CELL_RESULT + 3 OBSERVATION), trial_keys unique (6/6), metric kind DUMMY_DRYRUN_METRICS, report flags scored=False real_pnl=False. Full second invocation left the scratch ledger byte-identical (2627 bytes). Real V12 ledger results/registry/experiments_v12.jsonl still absent (empty-seed pinned) after all dry-runs."
+  },
+  "8_publication_guard_drop_one_stress": {
+   "status": "PASS",
+   "detail": "tests/test_v12p_a2_publication.py + tests/test_v12i_bab_feasibility.py: 21 passed (zero-position refusal, observed-once refusal, replay idempotence, family-contract cell guard, bab drop-one artifact verdict PASS/survived). Independent drop-one rule exercise (research.adapter_v10.stress.select_drop_one_symbol): selects the HELD max-|weight| symbol (DOGEUSDT 0.30 from a 8-name held book), ties -> lexicographically smallest (AAAUSDT), unheld symbol never selected, zero-held book refused (ContractViolation), out-of-cohort weight refused. Lane drop-one evidence on real stamps: research/audits/v12i/oilev_v2/drop_one_diagnostic.json all_match=true (3 stamps incl. window head and tail; unheld_never_selected, zero_held_book_refused). Per-family cell matrices derived from the frozen folds contracts (L-V11-1): oilev FOLD_WINDOWS F0/F1/F2 + PURGE_DAYS=1 pinned in strategy.py; stress cells fee x1.5 / +2 ticks / +1 event delay via StressSpec (dry-run exercised fee_x1_5 end-to-end)."
+  },
+  "9_pin_chain": {
+   "status": "PASS",
+   "detail": "W12 authority = f0799cae6fc47846937cf1a370719314696ee990 (w12_freeze.json v2; freeze-time v1 copy inside the trees is historical — V11 W11 pattern). Detached worktrees verified: exec-v12-1 and repro-v12-1 both HEAD == f0799cae6fc47846937cf1a370719314696ee990, both detached (symbolic-ref empty), both porcelain 0. staged_data/: 90 data files per tree (91st file is staged_manifest_.json). Recomputed sha256(staged_manifest_.json) = f855ad9c778f7a8695d6416b1c912efd7ddc353bf70935669504016cbf3c3c40 == claim, byte-identical exec==repro. Manifest entries verified against actual file bytes 90/90 in BOTH trees; sha256 sets identical to research/audits/v12p/a3_staging_manifest.json (90/90). Permissions: 0 writable staged files across both trees (read-only)."
+  },
+  "10_tests_tree": {
+   "status": "PASS",
+   "detail": "Targeted matrix (test_v11_terminal_metadata, test_v12p_a2_publication, test_v12p_a3_data, test_v12p_a4_feasibility, test_v12i_oilev_v2_identity, test_v12i_bab_identity): 119 passed. FULL SUITE ALONE (.venv/bin/python -m pytest tests -q): 1601 passed, 1 skipped (documented slow V9 archive smoke, manual-only), 272s; second full-suite run 1601 passed + 1 skipped (stability). Tree unchanged after: git status --porcelain shows only research/audits/v12p_a7prelaunch/ (this audit's own directory)."
+  },
+  "11_resources_boundaries": {
+   "status": "PASS_WITH_LAUNCH_CONDITION",
+   "detail": "Fresh RAM probe (vm_stat, 16KB pages): free = 4536 pages = 0.05GB on this 8GB host; under the frozen formula min(3, floor((free_gb-1.5)/2.0)) with PLAN 4.2 host cap => measured_safe_cap = 0, matching the freeze-time probe (0.06GB free, cap=0, q_phase_checks G8). Scored execution therefore CANNOT run on this host; per PLAN_crypto sections 6/14 it is planned for the owner's stronger execution host with the clock starting only after authorization AND staging there — recorded as an explicit launch condition. Boundaries verified: budget 0/9 (state, heartbeat, selection freeze, w12_freeze, Q gates); denominators 125/128; S1 SEALED_UNTOUCHED (never listed/opened/hashed — auditor did not touch S1 material); owned_workers 0 (state + heartbeat); zero raw hits for api_key/credential/testnet/place-order tokens across research/control/v12_run, research/v12, research/audits/v12{p,d,i,q}, research/proposals/v12; scored_cells_exist=0; run_contract allowed_terminal_outcomes and hard boundaries intact; PLAN_crypto.md sections 0-13 and 16-19 present as authority."
+  }
+ },
+ "fail_conditions_checked": {
+  "digest_mismatch": false,
+  "unresolved_HIGH_or_CRITICAL": false,
+  "scored_artifact_exists": false,
+  "s1_or_deployment_exposure": false,
+  "pin_chain_break": false,
+  "test_failures": false,
+  "staging_mismatch": false
+ },
+ "objections": [
+  {
+   "id": "A7P-RES-1",
+   "severity": "LAUNCH_CONDITION",
+   "status": "RESOLVED_BY_CONDITION",
+   "note": "This 8GB host measures measured_safe_cap=0 (fresh probe 0.05GB free). Not a defect: scored execution is designated for the owner's stronger execution host (PLAN sections 6/14). Authorization carries the recorded condition measured_safe_cap >= 1 on the execution host before the clock starts. Would become BLOCKING if scored execution were attempted on a cap=0 host."
+  },
+  {
+   "id": "A7N-OSCOMP-1",
+   "severity": "HIGH",
+   "status": "RESOLVED (proposal excluded)",
+   "note": "Inverted reserved-ILLIQ rank collision; H-A6-OSCOMP INELIGIBLE and absent from the frozen set; 3 ILLIQ slots unused. No action required."
+  },
+  {
+   "id": "A7N-BABPERP-1",
+   "severity": "HIGH",
+   "status": "RESOLVED (proposal excluded)",
+   "note": "Fabricated DOI + mechanism duplicate of A5-P1; A8-P1-BAB-PERP INELIGIBLE; merge map applied with A5-P1 as representative. No action required."
+  }
+ ],
+ "scratch": {
+  "dummy_dryrun_ledger": "research/audits/v12p_a7prelaunch/a7_scratch/dryrun_a7_prelaunch.jsonl"
+ }
+}
