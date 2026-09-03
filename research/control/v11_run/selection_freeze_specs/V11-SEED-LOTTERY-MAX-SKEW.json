@@ -1,0 +1,59 @@
+{
+ "family_id": "V11-SEED-LOTTERY-MAX-SKEW",
+ "disposition": "ELIGIBLE_FROZEN",
+ "source": "owner seed brief + L0 packet S2,S3",
+ "arms": {
+  "LOT-RESMAX-7D-W": {
+   "role": "anchor",
+   "feature": "7d max daily BTC-residualised return (90d rolling beta)",
+   "book": "low-minus-high residual-MAX quintiles",
+   "formation_days": 7,
+   "holding_days": 7
+  },
+  "LOT-RESSKEW-30D-W": {
+   "role": "neighbour",
+   "feature": "30d rolling skew of residual dailies",
+   "book": "low-minus-high residual-skew quintiles",
+   "formation_days": 30,
+   "holding_days": 7
+  },
+  "LOT-RESMAX-7D-W-INV": {
+   "role": "causal_negative_control",
+   "feature": "same as anchor",
+   "book": "sign-inverted (high-minus-low)",
+   "falsification": "positive after-cost spread on inverted book destroys mechanism"
+  }
+ },
+ "flags": [
+  "A7-N OBJ: REV7 margin -0.4642 -> attach reversal-exposure diagnostic per stamp (diagnostic only)"
+ ],
+ "common": {
+  "window": {
+   "start": "2025-08-22T00:00:00Z",
+   "end": "2026-08-21T00:00:00Z"
+  },
+  "folds": [
+   {
+    "id": "F0",
+    "start": "2025-08-22",
+    "end": "2025-12-21"
+   },
+   {
+    "id": "F1",
+    "start": "2025-12-22",
+    "end": "2026-04-21"
+   },
+   {
+    "id": "F2",
+    "start": "2026-04-22",
+    "end": "2026-08-21"
+   }
+  ],
+  "fold_policy": "chronological, force-flat at fold boundaries, warmup from prewindow staged data only",
+  "decision_clock": "Mondays 00:00:00Z; features from completed 15m bars + last COMPLETED OI 5m row strictly before stamp; one declared execution lag after availability",
+  "universe": "20 staged binance_bar symbols; PIT eligibility by listing + DV filter; quintile buckets as specced",
+  "benchmark": "flat hard benchmark + BTC-beta-neutral alpha context; beta hedge via frozen 90d daily beta",
+  "costs": "generic adapter fees/slippage; native funding while held; stress = fee x1.5, +2 ticks, +1 event delay",
+  "data": "staged snapshot catalog_live_crypto + funding_data/scan_2026 + oi_data/consolidated (all read-only)"
+ }
+}
