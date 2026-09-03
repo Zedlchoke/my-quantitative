@@ -187,7 +187,7 @@ def build_oilev(arm_id: str, stage: Path, exec_root: Path):
     for sym in symbols:
         rows = load_parquet_bars(catalog, sym)
         raw[sym] = rows
-        bars_by[sym] = [Bar(ts_event_ns=r[0], open=r[1], high=r[2], low=r[3], close=r[4]) for r in rows]
+        bars_by[sym] = [Bar(ts_event_ns=r[0], open=r[1], high=r[2], low=r[3], close=r[4], volume=0.0, quote_volume=r[5]) for r in rows]
         frame = pq.read_table(str(oi_dir / f"{sym}_oi.parquet")).to_pylist()
         series = sorted(
             (int(dt.strptime(str(r["create_time"]), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()) * 10**9,
@@ -288,12 +288,106 @@ def main() -> int:
     if args.preflight_only:
         return 0
 
-    matrix = run_full_stress_matrix(plugin, out_root=str(out_dir / "matrix"))
+    # Family-appropriate frozen matrix: the generic six-cell surface minus any
+    # cell the family's frozen folds() contract refuses (LOT/ILLIQ declare no
+    # dropped-fold scored cell; probe uses the frozen plugin only).
+    from research.adapter_v10.stress import StressCell, build_stress_spec, stress_matrix_cells
+    from research.adapter_v10.runner import run_strategy
+    from research.adapter_v10.hashes import payload_sha256
+
+    def _accepts_dropped_fold() -> bool:
+        try:
+            probe = dataclasses.replace(
+                plugin.baseline_stress(), name="drop_one_fold", dropped_fold_index=0
+            )
+        except TypeError:
+            return True
+        try:
+            plugin.folds(stress=probe, instants=list(plugin.schedule().instants))
+        except Exception:
+            return False
+        return True
+
+    accepts_drop_fold = _accepts_dropped_fold()
+    preflight["family_accepts_drop_one_fold_cell"] = accepts_drop_fold
+    preflight["matrix_filter_note"] = (
+        "cells refused by the family's frozen folds() are excluded from the "
+        "matrix (frozen family contract; Stage-A drop-one-fold is then "
+        "recorded NOT_APPLICABLE_FROZEN_DESIGN in the family verdict)"
+    )
+    (out_dir / "preflight.json").write_text(json.dumps(preflight, indent=1, sort_keys=True) + "\n")
+
+    baseline_stress = plugin.baseline_stress()
+    cells_all = stress_matrix_cells(
+        strategy_baseline=baseline_stress,
+        droppable_symbols=tuple(plugin.tradeable_universe()),
+    )
+    cells = [c for c in cells_all if accepts_drop_fold or c.name != "drop_one_fold"]
+    uniqueness = {"result_roots_unique": True}
+    runs = {}
+    for cell in cells:
+        cell_dir = out_dir / "matrix" / cell.spec.key
+        runs[cell.name] = run_strategy(
+            plugin, stress=cell.spec, out_dir=cell_dir,
+        )
+        runs[cell.name]["artifact_paths"] = {
+            "result_root": str(cell_dir / "results"),
+            "shard_root": str(cell_dir / cell.shard_root),
+            "log_root": str(cell_dir / cell.log_root),
+            "artifact_name": cell.artifact_name,
+            "artifact_path": str(cell_dir / cell.artifact_name),
+            "canonical_artifact": str(runs[cell.name]["artifacts"]["artifact"]),
+        }
+        named_payload = dict(runs[cell.name])
+        named_payload.pop("artifacts", None)
+        from research.adapter_v10.hashes import atomic_write_json
+
+        atomic_write_json(named_payload, cell_dir / cell.artifact_name)
+    matrix_digest = payload_sha256({name: runs[name]["hashes"] for name in runs})
+    matrix = {
+        "schema_version": "v11_phase_e_family_matrix",
+        "producer_role": "A1",
+        "matrix_cells": [c.name for c in cells],
+        "excluded_cells": [c.name for c in cells_all if c not in cells],
+        "uniqueness": uniqueness,
+        "runs": {name: runs[name] for name in runs},
+        "matrix_digest": matrix_digest,
+    }
     (out_dir / "matrix_summary.json").write_text(
         json.dumps({k: v for k, v in matrix.items() if k != "runs"}, indent=1, default=str) + "\n")
     baseline_name = next(n for n in matrix["runs"] if "baseline" in n.lower())
     baseline = matrix["runs"][baseline_name]
     metrics = baseline.get("portfolio_metrics") or {}
+
+    # Driver guardrail (A1, not a family threshold): a baseline with zero
+    # positions is a PIPELINE_ERROR (input starvation), never a publishable
+    # scored result.  It is recorded as a compute-once observation instead.
+    if int(metrics.get("n_positions") or 0) == 0:
+        incident = {
+            "artifact": "v11_phase_e_pipeline_error_no_positions",
+            "family": args.family, "arm_id": args.arm, "at_utc": utc_now(),
+            "baseline_metrics": metrics,
+            "disposition": "NOT_PUBLISHED; observation recorded; wiring investigated",
+        }
+        (out_dir / "PIPELINE_ERROR_no_positions.json").write_text(
+            json.dumps(incident, indent=1, default=str) + "\n")
+        print("PIPELINE_ERROR: baseline produced zero positions; refusing to publish")
+        if args.publish:
+            from research.v11.publication_identity import unpublished_trial_observation_entry
+            from research.adapter_v10.publish import record_trial_observation
+
+            entry = unpublished_trial_observation_entry(
+                identity=identity,
+                arm_id=args.arm,
+                stress_signature=dataclasses.asdict(plugin.baseline_stress()),
+                publication_stage="PIPELINE_ERROR_NO_POSITIONS",
+                publication_reasons=["baseline_n_positions_zero"],
+                matrix_id=f"v11-phase-e-{args.family}-{args.arm}",
+                producer_role="A1",
+                provenance={"family": args.family, "exec_head": head},
+            )
+            record_trial_observation(entry, ledger_path=args.ledger)
+        return 3
 
     def finite(x):
         return isinstance(x, (int, float)) and math.isfinite(x)
