@@ -2,6 +2,16 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS-FREE-V2 TERMINAL** (synced by A1, 2026-09-03, branch
+  `orca/stocks-free-v2-integration`) — verdict `STOCKS_FREE_V1_REJECT_ALL`
+  (terminal A7 confirmed): Twelve Data Basic USD 0 authorized by owner;
+  11-ETF SPDR cohort; six scored S0 cells (budget 6/6, observed=published=6),
+  reproduction 6/6 EXACT_MATCH. A4 momentum-family REJECT (control reproduced
+  the mechanism: bottom-3 expectancy 96.5% of top-3 — sector beta dominates;
+  MDD 30.4% fail). A5 trend/defensive REJECT (MDD 23.2%, drop-one-ETF
+  negative, fold-share fail; concentration passes at 25%). Zero survivors;
+  S1 sealed. Detail: `research/control/stocks_free_v2_run/terminal_report.json`.
+
 - **STOCKS-FREE-V1 TERMINAL** (synced by A1, 2026-09-03, branch
   `orca/stocks-free-v1-integration`) — verdict
   `STOCKS_FREE_V1_BLOCKED_FREE_DATA_AUTHORITY` (A7 CONFIRM_BLOCKED): zero-cost
