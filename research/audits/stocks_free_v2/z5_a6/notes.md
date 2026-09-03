@@ -97,3 +97,27 @@ under `spec_recorded_calendar_slots_s0` for transparency.
    6.0x ceiling. No cost is applied anywhere in this lane (schedule-only).
 6. **Zero-sigma symbols** are excluded from the neighbour's mra ranking
    (fail-closed; undefined score); not expected in real data.
+
+## Repair (Z6 integration feedback, convergent capped normalization)
+
+Z6 integration hit a fail-closed raise from `normalize_capped` on real
+staged inverse-vol inputs: the original per-pass loop recomputed the
+"over-cap" set from current weights each pass and redistributed free mass
+from raw across ALL uncapped names, including names pinned in earlier
+passes — with concentrated 1/sigma inputs (shares ~{0.5, 0.3, 0.2} at cap
+0.35) two names took turns exceeding the cap and the loop exhausted its
+iteration budget (oscillation, never converged).
+
+Fix: standard water-filling — a once-pinned name is frozen at the cap
+forever (the pinned set only grows); each pass pins every unpinned name
+whose proportional share exceeds the cap, redistributes `1 - pinned_mass`
+among never-pinned names proportionally to raw, and iterates to the fixed
+point; fail-closed if pinned mass exceeds 1.0 or the exact-sum check
+fails. Fixed points are unique and order-independent. All pre-existing
+hand cases are behavior-identical; regression tests pin the reported
+inputs. One deviation from the integration request's literal example: the
+quoted single-pass expectation `{0.5, 0.3, 0.2} -> {0.35, 0.39, 0.26}`
+contains a 0.39 weight that would breach the frozen constraint
+"per-ETF weight cap 35% of gross for all arms"; under the mandated
+convergent algorithm the second name pins at the cap and the fixed point
+is `{0.35, 0.35, 0.30}` for both requested regression inputs.

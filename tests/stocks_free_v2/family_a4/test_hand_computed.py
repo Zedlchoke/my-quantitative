@@ -211,6 +211,51 @@ class TestNormalizeCappedUnit:
         assert out["B"] == pytest.approx(0.325, abs=1e-12)
         assert out["C"] == pytest.approx(0.35, abs=1e-12)
 
+    def test_regression_oscillation_shares_half_three_tenths_two_tenths(self):
+        # Z6 integration repair regression: concentrated inverse-vol shares
+        # {0.5, 0.3, 0.2} at cap 0.35 made the previous per-pass recomputed
+        # capping loop oscillate forever (fail-closed raise on real data).
+        # Water-filling: pin A (0.5 > 0.35); redistribute 0.65 to B/C
+        # proportional to raw -> B = 0.65*0.6 = 0.39 > 0.35 -> pin B too;
+        # the never-capped C takes the remaining 1 - 0.70 = 0.30.
+        # NOTE: the single-pass result {0.35, 0.39, 0.26} quoted in the
+        # integration request would breach the frozen per-ETF cap
+        # ("per-ETF weight cap 35% of gross for all arms"); the convergent
+        # fixed point pins B at the cap instead.
+        out = normalize_capped({"A": 0.5, "B": 0.3, "C": 0.2}, 0.35)
+        assert out["A"] == pytest.approx(0.35, abs=1e-12)
+        assert out["B"] == pytest.approx(0.35, abs=1e-12)
+        assert out["C"] == pytest.approx(0.30, abs=1e-12)
+        assert all(w <= 0.35 + 1e-12 for w in out.values())
+
+    def test_regression_oscillation_shares_six_three_one(self):
+        # stronger requested case: shares {0.6, 0.3, 0.1} at cap 0.35.
+        # pin A (0.6); free B = 0.65*0.75 = 0.4875 > 0.35 -> pin B;
+        # C = 1 - 0.70 = 0.30. Converges in two pinning passes.
+        out = normalize_capped({"A": 0.6, "B": 0.3, "C": 0.1}, 0.35)
+        assert out["A"] == pytest.approx(0.35, abs=1e-12)
+        assert out["B"] == pytest.approx(0.35, abs=1e-12)
+        assert out["C"] == pytest.approx(0.30, abs=1e-12)
+
+    def test_regression_oscillation_two_breaches_then_repair(self):
+        # the exact shape that oscillated in the old per-pass loop:
+        # shares {0.5, 0.45, 0.05}: pass 1 pins A, pass 2 pushes B to the
+        # free mass (0.585) and the old loop then re-pinned B while
+        # UNPINNING A -> infinite ping-pong. Water-filling freezes A.
+        out = normalize_capped({"A": 0.5, "B": 0.45, "C": 0.05}, 0.35)
+        assert out["A"] == pytest.approx(0.35, abs=1e-12)
+        assert out["B"] == pytest.approx(0.35, abs=1e-12)
+        assert out["C"] == pytest.approx(0.30, abs=1e-12)
+
+    def test_pinned_mass_above_gross_fails_closed(self):
+        # with cap*names < 1.0 pinning every breaching name cannot reach
+        # gross 1.0 (all four shares exceed 0.20 here): the exact-sum check
+        # must fail closed instead of returning an uncapped book
+        import pytest as _pytest
+
+        with _pytest.raises(ValueError):
+            normalize_capped({"A": 10.0, "B": 9.0, "C": 8.0, "D": 7.0}, 0.20)
+
     def test_uniform_case(self):
         out = normalize_capped({"A": 1.0, "B": 1.0, "C": 1.0}, 0.35)
         for value in out.values():

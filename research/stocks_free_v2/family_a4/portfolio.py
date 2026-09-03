@@ -47,12 +47,19 @@ def _round(value: float) -> float:
 def normalize_capped(
     raw: Mapping[str, float], cap: float, max_iterations: int = 64
 ) -> dict[str, float]:
-    """Cap-and-renormalize raw positive weights to sum 1.0, cap enforced.
+    """Convergent capped normalization (water-filling) to sum 1.0.
 
-    Deterministic iterative redistribution: names above the cap are pinned
-    at the cap, the remaining mass is redistributed proportionally to their
-    raw weights among the uncapped names, repeated until the cap holds
-    everywhere.  Fails closed instead of guessing on non-convergence.
+    Standard algorithm: names whose proportional share exceeds ``cap`` are
+    pinned at the cap and FROZEN there for all later passes (membership in
+    the pinned set only grows); the remaining mass ``1 - pinned`` is
+    redistributed among the never-pinned names proportionally to their raw
+    weights; iterate until no unpinned name exceeds the cap.  Fails closed
+    if the pinned mass alone would exceed 1.0 or if the iteration budget
+    is exhausted (never guesses, never oscillates: a once-pinned name can
+    never receive redistributed mass again).
+
+    Deterministic and order-independent (symbols processed in sorted
+    order; the pinned set is accumulated, so the fixed point is unique).
     """
     if not raw:
         return {}
@@ -61,25 +68,29 @@ def normalize_capped(
         raise ValueError("raw weights must be strictly positive")
     total = sum(raw[s] for s in symbols)
     weights = {s: raw[s] / total for s in symbols}
+    pinned: set[str] = set()
     for _ in range(max_iterations):
-        over = [s for s in symbols if weights[s] > cap + EPS]
+        over = [
+            s for s in symbols if s not in pinned and weights[s] > cap + EPS
+        ]
         if not over:
             break
-        fixed_mass = sum(cap for _ in over)
-        free = [s for s in symbols if s not in set(over)]
-        free_mass = 1.0 - fixed_mass
-        if free:
-            free_raw_total = sum(raw[s] for s in free)
-            for s in over:
-                weights[s] = cap
-            for s in free:
-                weights[s] = free_mass * raw[s] / free_raw_total
-        else:
-            # Every name is at/above the cap: pin all and stop (only
-            # possible when len(symbols) * cap >= 1.0).
-            for s in over:
-                weights[s] = cap
-            break
+        pinned.update(over)
+        pinned_mass = cap * len(pinned)
+        if pinned_mass > 1.0 + 1e-12:
+            raise ValueError(
+                "cap too small: pinned mass "
+                f"{pinned_mass} exceeds 1.0 with {len(pinned)} pinned names; "
+                "fail closed"
+            )
+        for s in pinned:
+            weights[s] = cap
+        free = [s for s in symbols if s not in pinned]
+        if not free:
+            break  # everything pinned: exact-sum check below fails closed
+        free_raw_total = sum(raw[s] for s in free)
+        for s in free:
+            weights[s] = (1.0 - pinned_mass) * raw[s] / free_raw_total
     else:
         raise ValueError("cap renormalization did not converge; fail closed")
     excess = sum(weights.values()) - 1.0
