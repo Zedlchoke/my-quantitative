@@ -104,9 +104,20 @@ def trial_key(payload: Mapping[str, Any]) -> str:
 
 def evaluate_pre_score_gate(
     scored_metrics: Optional[Mapping[str, Any]], *,
-    required_fields: Sequence[str] = REQUIRED_SCORED_FIELDS
+    required_fields: Sequence[str] = REQUIRED_SCORED_FIELDS,
+    position_evidence: bool = False
 ) -> tuple[bool, list[str]]:
-    """Fail-closed pre-score gate (no fabricated metrics allowed)."""
+    """Fail-closed pre-score gate (no fabricated metrics allowed).
+
+    With ``position_evidence=True`` the gate additionally delegates to
+    :func:`research.v12.accounting.validate_position_evidence` (V12P lane A2,
+    repairs L-V11-4): publication then requires ``n_positions > 0`` and at
+    least one valid decision/fill record, refused with the stable reason
+    codes ``REFUSED_ZERO_POSITIONS`` / ``REFUSED_NO_VALID_DECISION_FILL``.
+    The default (``False``) preserves the historical V10/V11 behavior for
+    existing callers; V12 drivers get the guard by default through the V12
+    accounting helper.
+    """
     if not isinstance(scored_metrics, Mapping):
         return False, ["pre_score_missing_metrics_payload"]
     reasons: list[str] = []
@@ -120,6 +131,12 @@ def evaluate_pre_score_gate(
             reasons.append(f"pre_score_field_non_finite:{field}")
         elif not isinstance(value, (int, float)):
             reasons.append(f"pre_score_field_not_numeric:{field}")
+    if position_evidence:
+        from research.v12.accounting import validate_position_evidence
+
+        evidence_ok, evidence_reasons = validate_position_evidence(scored_metrics)
+        if not evidence_ok:
+            reasons.extend(evidence_reasons)
     return (not reasons), reasons
 
 
@@ -306,6 +323,7 @@ def publish_trial(
     arm_id: str = "",
     identity_version: Optional[str] = None,
     observe_unpublished: bool = False,
+    require_position_evidence: bool = False,
 ) -> dict[str, Any]:
     """Exactly-once publication of one scored cell (see module docstring).
 
@@ -315,6 +333,10 @@ def publish_trial(
     identity; with ``observe_unpublished=True`` a post-gate publication
     refusal also records an append-only trial observation (compute-once
     accounting) without ever touching the published denominator.
+    With ``require_position_evidence=True`` the pre-score gate additionally
+    demands ``n_positions > 0`` and at least one valid decision/fill record
+    (V12P A2, repairs L-V11-4); the default preserves historical behavior --
+    V12 drivers use the always-guarded V12 helper instead.
     """
     payload, version, effective_arm = _resolve_key_payload(
         identity=identity,
@@ -323,7 +345,9 @@ def publish_trial(
         identity_version=identity_version,
     )
     key_hex = trial_key(payload)
-    gate_ok, gate_reasons = evaluate_pre_score_gate(scored_metrics)
+    gate_ok, gate_reasons = evaluate_pre_score_gate(
+        scored_metrics, position_evidence=require_position_evidence
+    )
     record: dict[str, Any] = {
         "trial_key_sha256": key_hex,
         "identity_version": version,

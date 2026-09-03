@@ -1,0 +1,113 @@
+{
+  "schema": "v12p_a2_audit_v1",
+  "lane": "A2 -- publication and ledger hardening (PLAN_crypto.md section 7-A2)",
+  "worktree": ".worktrees/crypto/v12/p1-a2-ledger",
+  "branch": "orca/v12p-a2-ledger",
+  "bootstrap_sha": "8bfbae5073d0d2079a18863d060084cc929ba7a4",
+  "generated_utc": "2026-09-03",
+  "producer_role": "A2",
+  "scope_guard": "factory repairs only; no PnL computed; no family strategy code touched; research/control/v12_run/* opened READ-ONLY",
+  "deliverables": [
+    {
+      "id": 1,
+      "deliverable": "Zero-position publication guard",
+      "verdict": "DONE",
+      "repairs": "L-V11-4 (launch-1: score_valid=true over all-zero finite metrics published a zero-position baseline)",
+      "implementation": [
+        "research/v12/accounting.py validate_position_evidence: refuses n_positions<=0 (REFUSED_ZERO_POSITIONS) and missing/absent evidence (REFUSED_POSITION_COUNT_ABSENT / REFUSED_POSITION_COUNT_INVALID); requires >=1 valid decision/fill record (positive n_decisions/n_fills counter, or a decisions/fills sequence entry carrying instrument + timestamp) else REFUSED_NO_VALID_DECISION_FILL",
+        "research/adapter_v10/publish.py evaluate_pre_score_gate(position_evidence=True) delegates to the V12 validator; publish_trial(require_position_evidence=True) plumbs it, refusing at PRESCORE_BLOCKED before any append",
+        "research/v12/accounting.py publish_v12_cell: the always-guarded V12 entry point (documented calling convention for V12 drivers); legacy default behavior preserved so historical semantics only get stronger, never weaker"
+      ]
+    },
+    {
+      "id": 2,
+      "deliverable": "Refused computations are accounting events (observed exactly once, never publishable)",
+      "verdict": "DONE",
+      "implementation": [
+        "every publish_v12_cell refusal appends exactly one OBSERVATION row per the frozen schema.json row_schemas (row_type/trial_key/reason/observed_utc/producer_head_sha/note='compute-once observation; never publishable')",
+        "trial_key is unique across ALL rows (enforced on read AND append); an OBSERVATION row permanently owns its trial_key, so a refused trial can never publish later under the same key",
+        "v12_denominator_view exposes the honest split {published, observed, observed_total}"
+      ]
+    },
+    {
+      "id": 3,
+      "deliverable": "Exact replay idempotence (same trial_key incl. arm_config_digest)",
+      "verdict": "DONE",
+      "implementation": [
+        "v12_trial_key covers strategy/family/arm_id/arm_config_digest/cell/window and EXCLUDES the outcome, so replay of a refused or published trial resolves to the same key",
+        "append_v12_row refuses a duplicate trial_key with no write; publish_v12_cell returns stage=IDEMPOTENT_REPLAY with zero counter deltas and byte-identical ledger"
+      ]
+    },
+    {
+      "id": 4,
+      "deliverable": "Publication-side family-contract cell guard (L-V11-1 generic superset)",
+      "verdict": "DONE",
+      "implementation": [
+        "freeze_family_cell_contract / validate_family_contract_cells / enforce_family_contract_cells in research/v12/accounting.py; any computed cell outside the frozen per-family list raises ContractViolation with reason code REFUSED_CELL_OUTSIDE_FAMILY_CONTRACT",
+        "publish_v12_cell(family_contract_cells=...) refuses a superset cell, records it as an OBSERVATION (computed => observed once) and never publishes it",
+        "calling convention documented in the module docstring; stress.py cell derivation untouched (owned by lane A4)"
+      ]
+    },
+    {
+      "id": 5,
+      "deliverable": "Portable ledger transfer + regeneration",
+      "verdict": "DONE",
+      "implementation": [
+        "research/v12/ledger_transfer.py verify_transfer_manifest: recomputes sha256/bytes/jsonl-rows per declared file under root; fail-closed reason codes TRANSFER_MANIFEST_{FILE_MISSING,SHA256_MISMATCH,BYTES_MISMATCH,ROWS_MISMATCH,PATH_ESCAPE,SCHEMA_MISMATCH,EMPTY_SEED_MISMATCH}",
+        "regenerate_transfer_manifest: rebuilds a manifest from a ledger path (root-relative) for host migration; write_transfer_manifest: atomic tmp+fsync+rename, refuses silent overwrite",
+        "tracked frozen package pinned read-only: empty_ledger_sha256 == sha256(b''), verification against a host lacking the ledger FAILS CLOSED"
+      ]
+    },
+    {
+      "id": 6,
+      "deliverable": "Dedicated tests (all under tmp_path; no tracked file mutated)",
+      "verdict": "DONE",
+      "test_file": "tests/test_v12p_a2_publication.py",
+      "areas": [
+        "zero-position refusal + missing/invalid evidence fail-closed + legacy-path opt-in scoping",
+        "refusal observed exactly once, never publishable, replay adds no row",
+        "replay idempotence (published side; bytes pinned)",
+        "family-contract superset refusal + enforcer reason code",
+        "transfer manifest pass/fail (tamper, missing, rows drift, path escape, schema)",
+        "concurrent writers: 6 distinct trials + 8 racing writers of one trial => serialized, unique keys, exactly once",
+        "host migration: manifest regenerated + verified on new host, stale-manifest adoption fails closed",
+        "frozen schema.json row_schemas pinned; historical V11 v1 keys remain readable, historical bytes never rewritten"
+      ]
+    }
+  ],
+  "required_commands": [
+    {
+      "command": ".venv/bin/python -m pytest tests/test_v12p_a2_publication.py tests/test_v11p_a2_publication.py -q",
+      "result": "30 passed (13 V12P A2 + 17 V11P A2), 0 failed"
+    },
+    {
+      "command": ".venv/bin/python -m compileall research/v12 research/adapter_v10",
+      "result": "OK"
+    },
+    {
+      "command": "git diff --check",
+      "result": "clean"
+    },
+    {
+      "command": "extra regression insurance (A1 owns the full suite): pytest tests/test_adapter_v10_g1.py tests/test_acceptance.py tests/test_adapter_acceptance_v10_g3.py tests/test_fault_injection_v10.py -q",
+      "result": "65 passed, 0 failed"
+    }
+  ],
+  "changed_files": [
+    "research/adapter_v10/publish.py (modified: +27/-3, opt-in position-evidence gate only)",
+    "research/v11/publication_identity.py (UNTOUCHED -- no identity change required)",
+    "research/v12/__init__.py (new)",
+    "research/v12/accounting.py (new)",
+    "research/v12/ledger_transfer.py (new)",
+    "tests/test_v12p_a2_publication.py (new)",
+    "research/audits/v12p/a2_publication_hardening.json (new, this file)",
+    "research/audits/v12p/a2_publication_hardening.md (new)"
+  ],
+  "assumptions": [
+    "The V12 publication path is publish_v12_cell (research/v12/accounting.py); it always enforces the zero-position guard. The legacy publish_trial/evaluate_pre_score_gate default behavior is preserved (V11 suites must keep passing; semantics only get stronger, never weaker) with the guard available via require_position_evidence/position_evidence=True.",
+    "The V12 ledger package row formats follow research/control/v12_run/ledger_package/schema.json literally (row_type/trial_key/...), which differs from the historical global-ledger row format; both ledgers coexist and historical keys/bytes are never rewritten.",
+    "The family-contract cell list is supplied by the V12 driver (derived per family by lane A4's derivation); this lane validates publication against whatever frozen list is passed.",
+    "producer_head_sha defaults to git rev-parse HEAD with the honest fallback token UNAVAILABLE_GIT_HEAD (never fabricated)."
+  ],
+  "blockers": []
+}
