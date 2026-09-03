@@ -1,7 +1,8 @@
-"""V12 implementation-lane family packages.
+"""V12 family plugins (Phase I lanes, integrated by A1).
 
-One subpackage per frozen V12 family (``research/control/v12_run/
-selection_freeze.json``).  Each package wires its frozen identity, feature
-definitions, book and adapter plugin; none of them computes a scored metric
-on real data (synthetic fixtures and schedule-only diagnostics only).
+* :mod:`research.v12.families.oilev_v2` -- A12-V12-OILEVER-V2-DELEV (frozen). [IMPL-OILEV]
+* :mod:`research.v12.families.bab_lowbeta` -- A12-V12-BAB-LOWBETA (frozen). [IMPL-BAB]
+
+Union docfile resolution of the two lanes' package docfiles; pure packaging,
+no logic added at integration. No family here computes PnL by itself.
 """
