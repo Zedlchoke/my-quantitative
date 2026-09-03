@@ -1,0 +1,308 @@
+{
+  "schema": "stocks_run/data_authority_requirements@1",
+  "generated_at_utc": "2026-09-03T00:30:32Z",
+  "producer_role": "A1",
+  "sprint_verdict": "STOCKS_BLOCKED_DATA_AUTHORITY",
+  "purpose": "provider-neutral statement of exactly what a future PIT provider must supply and prove before any scored stocks research may run. No provider is recommended, evaluated or endorsed here.",
+  "consumers": {
+    "EQ_S2_A3_F1_PIT_RECON_FLOW": "index maintenance events, PIT membership, survivorship-safe universe",
+    "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM": "borrow availability/fee/utilization, honest CA and accounting inputs",
+    "factory_shared": "security master, identifiers, CA, prices, benchmark, calendar, checksums, license"
+  },
+  "rules": [
+    "missing evidence is UNAVAILABLE_FAIL_CLOSED, never inferred PASS",
+    "no purchase, account creation, credential request or unapproved download is authorized by this packet",
+    "a provider earns PASS only through the evidence column, evaluated in provider_evaluation_template.json and accepted via ingestion_acceptance_checklist.md"
+  ],
+  "requirements": [
+    {
+      "id": "R01",
+      "area": "point-in-time security master",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "every attribute effective-dated; queries strictly as-of decision timestamp; no current-state backfill",
+      "minimum_coverage": "full US common-stock + ETF universe for >= 8 calendar years before S0 end",
+      "rejection_condition": "any as-of query returning current attributes; missing effective_from; unknown attribute provenance",
+      "evidence_needed_for_PASS": "as-of replay spot-checks vs independent records; provider attestation of PIT maintenance",
+      "synthetic_fixture_exists": "yes (A3 SecurityMaster/MembershipTable goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R02",
+      "area": "historical universe/index membership with effective timestamps",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "EQ_S2_A3_F1_PIT_RECON_FLOW"
+      ],
+      "pit_clock": "membership rows effective-dated; announcements and effective dates distinct events",
+      "minimum_coverage": ">= 8y of membership history for the benchmark index(es) used by F1, incl. every add/delete event",
+      "rejection_condition": "membership reconstructed from current index composition; missing add/delete events; backfilled starts",
+      "evidence_needed_for_PASS": "event-level reconciliation vs published reconstitution archives on a sample of >= 5 years",
+      "synthetic_fixture_exists": "yes (A3 MembershipTable goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R03",
+      "area": "ticker and identifier changes",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "effective-dated ticker/id map; resolution strictly as-of",
+      "minimum_coverage": "full ticker-change history for all covered securities",
+      "rejection_condition": "retired ticker resolving after change; new ticker resolving before; orphaned identifiers",
+      "evidence_needed_for_PASS": "ticker-history table with effective ranges + reconciliation samples",
+      "synthetic_fixture_exists": "yes (A3 ticker-history goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R04",
+      "area": "listings and delistings",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "listing/delisting dates effective-dated; delisted rows retained through last valid event",
+      "minimum_coverage": "all listings/delistings incl. bankruptcies/mergers for covered universe across full history",
+      "rejection_condition": "delisted securities dropped from history (survivorship); missing delist reason/effective date",
+      "evidence_needed_for_PASS": "delisting census vs independent death records; retained-bars check to final valid event",
+      "synthetic_fixture_exists": "yes (A3 delisting-retention goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R05",
+      "area": "splits, dividends and other corporate actions",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "ex/effective timestamps explicit; declared timestamps distinct from ex-dates",
+      "minimum_coverage": "complete CA history (splits, cash dividends, special dividends, spin-offs, rights) for covered universe",
+      "rejection_condition": "actions applied at pay date instead of ex-date; missing actions; ambiguous adjustment factors",
+      "evidence_needed_for_PASS": "action ledger with ex/effective timestamps + golden spot-checks vs exchange announcements",
+      "synthetic_fixture_exists": "yes (A4 corporate_actions goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R06",
+      "area": "announcement timestamp versus effective timestamp",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "EQ_S2_A3_F1_PIT_RECON_FLOW"
+      ],
+      "pit_clock": "announce_ts and effective_ts both exchange-timezone-aware, both with ingest timestamps",
+      "minimum_coverage": ">= 8y of index maintenance events for F1 benchmark(s): every add/delete announced before effective",
+      "rejection_condition": "announcement not distinguishable from effective; unversioned event stream; no ingest stamps",
+      "evidence_needed_for_PASS": "provider maintenance-event archive with both timestamps + sample audit vs public announcements",
+      "synthetic_fixture_exists": "no",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R07",
+      "area": "survivorship-bias controls",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "EQ_S2_A3_F1_PIT_RECON_FLOW"
+      ],
+      "pit_clock": "universe snapshots contain accepted AND rejected/delisted members at each historical decision",
+      "minimum_coverage": ">= 8y of point-in-time snapshots retained",
+      "rejection_condition": "snapshots rebuilt from survivors; rejected rows missing",
+      "evidence_needed_for_PASS": "snapshot diff vs frozen intake snapshots; rejected-row census",
+      "synthetic_fixture_exists": "yes (A3 rebalance-snapshot goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R08",
+      "area": "adjusted and unadjusted prices",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "raw prices for fills; adjusted series declared with exact adjustment policy + factor provenance",
+      "minimum_coverage": "full history both representations for covered universe",
+      "rejection_condition": "adjustment policy implicit/undeclared; adjusted series used for fills or raw for total-return signals without declared transform",
+      "evidence_needed_for_PASS": "round-trip reconciliation raw -> adjusted -> raw with frozen factors",
+      "synthetic_fixture_exists": "partial (A4 raw-vs-total-return reconciliation goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R09",
+      "area": "volume and executable price fields",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "exchange timestamps per print/bar; bid/ask or trade prints with executable semantics",
+      "minimum_coverage": "daily OHLCV >= 8y; intraday/quotes where an arm's execution clock requires (>= 3y if scored)",
+      "rejection_condition": "non-executable synthetic mid quotes without provenance; volume fields missing or unit-ambiguous",
+      "evidence_needed_for_PASS": "schema with executable-price semantics + venue documentation",
+      "synthetic_fixture_exists": "yes (A5 quote/execution goldens for semantics; real data absent)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R10",
+      "area": "SPY total-return benchmark inputs",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)"
+      ],
+      "pit_clock": "benchmark series with dividends; PIT-consistent, no future restatement in scored window",
+      "minimum_coverage": "SPY total-return + price index + dividend history covering full S0 window",
+      "rejection_condition": "benchmark missing dividends; silently revised series",
+      "evidence_needed_for_PASS": "benchmark manifest with checksums + policy note on restatements",
+      "synthetic_fixture_exists": "no",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R11",
+      "area": "borrow availability (locate)",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "availability effective-dated at decision timestamp; missing availability fails closed (short rejected)",
+      "minimum_coverage": "daily availability for covered universe across S0",
+      "rejection_condition": "free-borrow default; availability backfilled from current state",
+      "evidence_needed_for_PASS": "locate log samples reconciling vs provider feed",
+      "synthetic_fixture_exists": "yes (A5 BorrowLocate fail-closed goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R12",
+      "area": "borrow fee/rate and utilization",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "fee/rate and utilization effective-dated daily; basis (360) declared; recalls policy documented",
+      "minimum_coverage": "daily fee + utilization across S0 for covered universe",
+      "rejection_condition": "fee applied with wrong accrual basis; utilization derived from non-PIT snapshot; recalls undocumented",
+      "evidence_needed_for_PASS": "fee/utilization history + basis/recall documentation + golden spot-checks",
+      "synthetic_fixture_exists": "yes (A5 borrow-fee accrual goldens for semantics; real data absent)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R13",
+      "area": "timestamps, timezone and exchange calendar conventions",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "exchange-timezone-aware stamps; session convention documented against official NYSE/Nasdaq calendar",
+      "minimum_coverage": "all delivered series; reconciliation vs US_EQUITY_REGULAR_V1 for >= 10y incl. half-days",
+      "rejection_condition": "naive timestamps; sessions contradicting the frozen calendar without declared reason",
+      "evidence_needed_for_PASS": "calendar reconciliation report vs frozen US_EQUITY_REGULAR_V1 (digest 028a7b21...) plus NEEDS_PROVIDER_VERIFICATION closure",
+      "synthetic_fixture_exists": "yes (A4 calendar goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R14",
+      "area": "revision/vintage behavior",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "restatement policy explicit; scored windows pinned to a frozen snapshot/vintage",
+      "minimum_coverage": "provider documents revision policy; snapshot immutability demonstrated",
+      "rejection_condition": "silent restatements; no vintage identifiers",
+      "evidence_needed_for_PASS": "written revision policy + immutable-snapshot hashes",
+      "synthetic_fixture_exists": "no",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R15",
+      "area": "API/export format",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "deterministic export; schema documented and versioned",
+      "minimum_coverage": "format loadable by the as-built loader (parquet/csv) with declared schema version",
+      "rejection_condition": "undocumented schema changes; non-deterministic exports",
+      "evidence_needed_for_PASS": "schema doc + deterministic-export test on two pulls",
+      "synthetic_fixture_exists": "yes (loader schema goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R16",
+      "area": "history floor and coverage",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "S0 floor: >= 8y daily across common eligible population; >= 30 eligible liquid names per decision; >= 3y intraday if intraday fills scored",
+      "minimum_coverage": "full covered universe across S0 window",
+      "rejection_condition": "floors unmet on loader-resolved values (not file presence)",
+      "evidence_needed_for_PASS": "coverage census computed by the as-built loader/audit",
+      "synthetic_fixture_exists": "yes (A3 floor validators)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R17",
+      "area": "checksum and immutable snapshot procedure",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "sha256 per delivered file; manifest verified before load; snapshots append-only",
+      "minimum_coverage": "every delivery",
+      "rejection_condition": "any file failing checksum; mutable delivery locations",
+      "evidence_needed_for_PASS": "checksum manifest + loader verification PASS (as-built)",
+      "synthetic_fixture_exists": "yes (A3 checksum-manifest goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R18",
+      "area": "license, storage, research-use and redistribution permissions",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "n/a (legal) \u2014 must be established before ingestion",
+      "minimum_coverage": "written terms covering research use, storage location, retention, redistribution limits",
+      "rejection_condition": "terms permit redistribution of licensed raw payloads into Git; research use unclear",
+      "evidence_needed_for_PASS": "license text reviewed by owner; storage plan keeping payloads outside Git",
+      "synthetic_fixture_exists": "no",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "id": "R19",
+      "area": "missing-data and correction policy",
+      "required_or_optional": "required",
+      "consuming_family_or_component": [
+        "factory_shared (A3 data / A4 calendar+CA / A5 accounting-execution)",
+        "EQ_S2_A3_F1_PIT_RECON_FLOW",
+        "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM"
+      ],
+      "pit_clock": "gaps/corrections declared; loader fail-closed beyond declared tolerance",
+      "minimum_coverage": "gap census + correction log for delivered history",
+      "rejection_condition": "silent gap-filling; undisclosed corrections inside pinned windows",
+      "evidence_needed_for_PASS": "written policy + gap census reconciling vs as-built audit",
+      "synthetic_fixture_exists": "partial (A3/A4 gap classification goldens)",
+      "status": "UNAVAILABLE_FAIL_CLOSED"
+    }
+  ],
+  "all_statuses": "UNAVAILABLE_FAIL_CLOSED"
+}
