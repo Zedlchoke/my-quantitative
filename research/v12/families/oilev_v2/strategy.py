@@ -96,8 +96,10 @@ WINDOW_END_ISO = "2026-08-21T00:00:00Z"
 
 FUNDING_SIGN_CONVENTION = "LONG_PAYS_POSITIVE_RATE"
 
-#: Arm id -> frozen role (``arm_config_id``), exactly as recorded in
-#: ``selection_freeze.json`` ``frozen_cells`` (``role`` field).
+#: Arm id -> frozen role, exactly as recorded in the v1
+#: ``selection_freeze.json`` ``frozen_cells`` (``role`` field).  The role is
+#: descriptive metadata; the DIGEST-BEARING arm_config_id is
+#: :data:`ARM_CONFIG_IDS` (freeze v2).
 ARM_ROLES: dict[str, str] = {
     "OILEV-V2-28D-FLOW-W": "anchor",
     "OILEV-V2-56D-STOCK-W": "neighbour",
@@ -108,13 +110,29 @@ ANCHOR_ARM = "OILEV-V2-28D-FLOW-W"
 NEIGHBOUR_ARM = "OILEV-V2-56D-STOCK-W"
 CONTROL_ARM = "OILEV-V2-28D-FLOW-W-INV"
 
-#: The ``arm_config_digest`` values RECORDED in selection_freeze.json
-#: (binding freeze record).  ``frozen_arm_digest_report`` compares them to
-#: the digests recomputed from this module's identities.
+#: Arm id -> digest-bearing ``arm_config_id`` -- the FREEZE V2 identity
+#: contract (selection_freeze.json v2; integration commit
+#: ``39fc8821a5c8dbe9c2fd998edc3956ad6a02ec8f``), reissued by A1 before any
+#: scored metric exists.  The v1 freeze recorded digests WITHOUT the
+#: identity fields (arm_config_id / direction / strategy_id), which made the
+#: v1 digests irreproducible from any published payload (0/3, documented in
+#: ``research/audits/v12i/oilev_v2/identity_digest_report.json``); v2
+#: publishes the full contract and reproduces 3/3.
+ARM_CONFIG_IDS: dict[str, str] = {
+    "OILEV-V2-28D-FLOW-W": "28D-FLOW",
+    "OILEV-V2-56D-STOCK-W": "56D-STOCK",
+    "OILEV-V2-28D-FLOW-W-INV": "28D-FLOW-INV",
+}
+
+#: The ``arm_config_digest`` values RECORDED in selection_freeze.json V2
+#: (binding freeze record; provenance: selection_freeze.json v2 /
+#: integration commit ``39fc8821a5c8dbe9c2fd998edc3956ad6a02ec8f``).
+#: ``frozen_arm_digest_report`` compares them to the digests recomputed
+#: from this module's identities; the test pins the equality strictly.
 FROZEN_ARM_CONFIG_DIGESTS: dict[str, str] = {
-    ANCHOR_ARM: "04982abb77932aeaa1f7a337c7970e8ba97f72afcbf867f84b85faeb9bd0ca3b",
-    NEIGHBOUR_ARM: "05b9fb40e187dd8af12688ef95d7c4efb68271314d83a1f60089904d64ee463e",
-    CONTROL_ARM: "4e04a01a4111c4d6961cf604efe73ec06edda0b5cff6c65f08b9dfeadf7cfb8b",
+    ANCHOR_ARM: "2d9c56443e3e7eff62b1013c373f738a2eb2a2f8be1b34de83e6d1fd37af8454",
+    NEIGHBOUR_ARM: "0ba51b43a8b4adeb683f4eaf9ddfc3a107de9bee9f6f1af9a93862a7f6f55562",
+    CONTROL_ARM: "e57b26fe1110da8bf82ddc00feb038087bed8f72baeb81c910a7c065a1f8de37",
 }
 
 #: Frozen per-arm feature/book mapping (spec ``arms.config``, verbatim
@@ -215,14 +233,19 @@ def frozen_arm_config(arm_id: str) -> dict:
 
 
 def frozen_identity(arm_id: str) -> StrategyIdentity:
-    """The frozen V12 identity of one arm (digest equality is test-pinned)."""
+    """The frozen V12 identity of one arm (digest equality is test-pinned).
+
+    ``arm_config_id`` comes from the FREEZE V2 identity contract
+    (:data:`ARM_CONFIG_IDS`); direction is the inherited V11 family
+    semantic for all three arms.
+    """
     arm_id = str(arm_id)
-    if arm_id not in ARM_ROLES:
+    if arm_id not in ARM_CONFIG_IDS:
         raise ContractViolation(f"unknown arm_id {arm_id!r}; expected {ARM_IDS}")
     return StrategyIdentity(
         strategy_id=STRATEGY_ID,
         family_id=FAMILY_ID,
-        arm_config_id=ARM_ROLES[arm_id],
+        arm_config_id=ARM_CONFIG_IDS[arm_id],
         direction=DIRECTION,
         window_start_iso=WINDOW_START_ISO,
         window_end_iso=WINDOW_END_ISO,
@@ -416,6 +439,7 @@ def window_end_ns() -> int:
 __all__ = [
     "ADVERSE_TICK_SLIP_FLOOR",
     "ANCHOR_ARM",
+    "ARM_CONFIG_IDS",
     "ARM_IDS",
     "ARM_ROLES",
     "Bar",

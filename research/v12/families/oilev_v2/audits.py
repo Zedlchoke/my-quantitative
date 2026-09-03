@@ -67,6 +67,7 @@ from research.v12.data_contract import (
 from research.v12.families.oilev_v2.plugin import OilevV2Plugin
 from research.v12.families.oilev_v2.strategy import (
     ANCHOR_ARM,
+    ARM_CONFIG_IDS,
     ARM_IDS,
     BENCHMARK_SYMBOL,
     CAP_MAX,
@@ -392,6 +393,8 @@ def evidence_identity() -> dict[str, Any]:
             "arm_id_declared": identity.arm_id,
             "recorded_config": frozen_arm_config(arm_id),
         }
+    report = frozen_arm_digest_report()
+    all_match = all(entry["match"] for entry in report.values())
     return {
         "schema": AUDITS_SCHEMA,
         "artifact": "identity",
@@ -401,8 +404,38 @@ def evidence_identity() -> dict[str, Any]:
             "StrategyIdentity(...), arm_id=...)"
         ),
         "arms": arms,
-        "digest_report": frozen_arm_digest_report(),
+        "digest_report": report,
         "recorded_digests": dict(FROZEN_ARM_CONFIG_DIGESTS),
+        "v2_addendum": {
+            "freeze_version": "v2",
+            "provenance": (
+                "selection_freeze.json v2 / integration commit "
+                "39fc8821a5c8dbe9c2fd998edc3956ad6a02ec8f (reissued by A1 "
+                "before any scored metric exists)"
+            ),
+            "v1_root_cause": (
+                "the v1 selection freeze recorded arm_config_digest WITHOUT "
+                "the identity fields (arm_config_id, direction, "
+                "strategy_id), so the v1 digests were irreproducible from "
+                "any published payload; this lane's exhaustive candidate "
+                "search (>50k identities over every defensible reading of "
+                "the v1 record) found 0/3 reproductions while the same "
+                "function reproduced the V11 freeze digests exactly -- the "
+                "report was the decisive evidence for the v2 reissue"
+            ),
+            "v2_identity_fields": {
+                "strategy_id": "hyp_a12_v12_oilever_v2_delev",
+                "family_id": "A12-V12-OILEVER-V2-DELEV",
+                "direction": "long_short_beta_neutral (all three arms)",
+                "arm_config_id_by_arm": dict(ARM_CONFIG_IDS),
+                "benchmark_symbols_excluded": ["BTCUSDT"],
+                "funding_sign_convention": "LONG_PAYS_POSITIVE_RATE",
+                "matrix_cohort_hint": "v12",
+                "window": [WINDOW_START_ISO, WINDOW_END_ISO],
+            },
+            "v2_reproduction": f"{sum(1 for e in report.values() if e['match'])}/3",
+            "v2_all_match": bool(all_match),
+        },
     }
 
 
