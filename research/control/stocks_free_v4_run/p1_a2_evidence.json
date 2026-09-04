@@ -1,0 +1,83 @@
+{
+  "schema": "stocks_free_v4_run/p1_a2_evidence@1",
+  "producer_role": "A2",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4-P1 publication/accounting regression",
+  "timestamp_utc": "2026-09-04T01:59:26Z",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v4/p0-a2-factory",
+  "branch": "orca/stocks-free-v4-p0-a2-factory",
+  "pytest_command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/stocks/test_v4_p1_factory_regression.py -q",
+  "pytest_exit_code": 0,
+  "pytest_summary": "16 passed in 1.07s",
+  "test_file": "tests/assets/stocks/test_v4_p1_factory_regression.py",
+  "method": "hand-computed synthetic fixtures; expected numbers written literally in the test, never derived from production code; production modules NOT modified; invariant 8 encoded as a test-local single-writer guard (production ledgers carry no locking primitive)",
+  "invariants": [
+    {
+      "id": 1,
+      "invariant": "CASH is not a symbol (never in symbols, weights, turnover or held-position/concentration paths)",
+      "status": "PASS",
+      "hand_computed_expected": "turnover(before {AAA:0.5,CASH:0.5} -> after {AAA:0.25,CASH:0.25,BBB:0.5}) = |0.25-0.5|+|0.5-0| = 0.75 (naive CASH-inclusive would be 1.00); normalize_entry_targets -> symbols {AAA,BBB}, cash 0.25; A5-book symbol_contribution keys == {AAA}; all-cash book n_held_positions = 0; drop-one refuses CASH",
+      "observed": "0.75; {AAA,BBB}/0.25; {AAA}; 0; ValueError 'CASH is not a tradable leg'",
+      "test_ids": ["test_p1_01a_cash_never_counts_in_turnover", "test_p1_01b_cash_leg_must_agree_or_is_honored_fail_closed", "test_p1_01c_cash_excluded_from_symbols_and_held_positions", "test_p1_01d_drop_one_refuses_cash_as_a_leg"]
+    },
+    {
+      "id": 2,
+      "invariant": "Cost charged exactly once per fill (no sidecar double-charge)",
+      "status": "PASS",
+      "hand_computed_expected": "factory path: cost = 1.0*1.0*100/1e4 = 0.01 charged once -> equity 0.99/1.089/1.1979, total_cost 0.01, fill_costs [(D1,1.0,0.01)], residual 0 (double-charge signature 0.98 absent). Ledger path: cash = 1000-2*10-2 = 978.0 exactly; equity at fill 998.0 = 1000-2.0; cost buckets 1.0/0.5/0.25/0.25 sum 2.0 (each single); terminal mark 11 -> equity 1000.0, terminal_pnl 2.0, residual exactly 0",
+      "observed": "0.99/1.089/1.1979 (rel 1e-12); total_cost == 0.01; 978.0; 998.0; buckets 1.0/0.5/0.25/0.25; 1000.0; residual 0.0; assert_reconciles and assert_closed both pass",
+      "test_ids": ["test_p1_02a_factory_path_charges_cost_once_per_fill", "test_p1_02b_ledger_path_charges_cost_once_per_fill", "test_p1_02c_fill_cost_formula_hand_value"]
+    },
+    {
+      "id": 3,
+      "invariant": "Turnover convention: ONE named convention, sum(|delta weight|) over tradable (non-CASH) legs",
+      "status": "PASS",
+      "hand_computed_expected": "before {AAA:0.5,BBB:0.25,CASH:0.25} -> after {AAA:0.25,BBB:0.5}: 0.25+0.25 = 0.50; unchanged book = 0.0; liquidation {AAA:1.0}->{CASH:1.0} = 1.0 (ETF leg charged once, not 2.0); convention owned by the single named function etf_leg_turnover keyed on CASH_SYMBOL=='CASH'",
+      "observed": "0.5; 0.0; 1.0; etf_leg_turnover.__name__ == 'etf_leg_turnover'; CASH_SYMBOL == 'CASH'",
+      "test_ids": ["test_p1_03_turnover_is_sum_of_abs_delta_weights_single_convention"]
+    },
+    {
+      "id": 4,
+      "invariant": "Canonical artifact digest hashes exact artifact bytes (sorted keys, compact separators)",
+      "status": "PASS",
+      "hand_computed_expected": "canonical_json({b:2,a:1}) == '{\"a\":1,\"b\":2}'; sha256 of those exact bytes = 43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777 (precomputed independently); bytes on disk hash identically; changing a:1->a:2 gives 4c7aa83d...; wrapper {artifact:...} hashes 2908614c... and must NOT equal the artifact digest",
+      "observed": "ledger-recorded artifact_digest == 43258cff...; sha256_file(canonical bytes on disk) == 43258cff...; changed-value digest == 4c7aa83d... != artifact digest; wrapper digest == 2908614c... != 43258cff...",
+      "test_ids": ["test_p1_04a_canonical_json_is_sorted_compact_exact_bytes", "test_p1_04b_digest_equals_sha256_of_exact_disk_bytes"]
+    },
+    {
+      "id": 5,
+      "invariant": "Append-only correction does not alter counters",
+      "status": "PASS",
+      "hand_computed_expected": "after 1 compute + 1 publish: observed=1, published=1, entries=3; appending 2 correction/repin entries leaves observed=1, published=1, published_keys intact, original 3 entries unchanged as a prefix, total entries 5; save/reload round-trip keeps (1,1,5)",
+      "observed": "observed=1, published=1 before and after; prefix equal; 5 entries; reloaded ledger observed=1, published=1, entries=5",
+      "test_ids": ["test_p1_05_correction_append_keeps_counters_frozen"]
+    },
+    {
+      "id": 6,
+      "invariant": "Observed increments once when a score exists; replays increment neither counter",
+      "status": "PASS",
+      "hand_computed_expected": "compute_recorded once -> observed=1; first publish_result -> True, published=1, observed stays 1; two identical replays -> False, False; observed stays 1, published stays 1; exactly 2 REPLAY_ZERO_DELTA events appended",
+      "observed": "True; observed=1/published=1 after both replays; 2 REPLAY_ZERO_DELTA events",
+      "test_ids": ["test_p1_06_observed_once_and_replays_are_zero_delta"]
+    },
+    {
+      "id": 7,
+      "invariant": "Zero-position and out-of-contract cells are refused",
+      "status": "PASS",
+      "hand_computed_expected": "n_held_positions=0 -> refused with reasons [ZERO_HELD_POSITIONS], key unpublished, observed keeps its single increment (=1), refusal recorded append-only; n_fill_events=0 -> [ZERO_FILL_EVENTS]; non-int counts raise ValueError; out-of-contract cell (wrong arm id ARM_EVIL, wrong universe U2, held security not an effective member, membership before effective_from) all raise CellContractError; production replay refuses unknown/duplicate arms",
+      "observed": "both refusals with exact reason lists, keys unpublished, observed=1; all five out-of-contract variants raised as expected",
+      "test_ids": ["test_p1_07a_zero_position_publication_is_refused", "test_p1_07b_out_of_contract_cells_are_refused"]
+    },
+    {
+      "id": 8,
+      "invariant": "Simultaneous appends serialize (A1 single-writer contract)",
+      "status": "PASS",
+      "hand_computed_expected": "two in-process emulations on one ledger guard can never share a serial slot: W1 claims slot 1, W2 must get slot 2 (never 1), a writer re-claiming is refused (None); two threads released by one barrier claim exactly the distinct slot set {1,2}",
+      "observed": "W1->1, W2->2, W1 re-claim -> None, holders {W1:1, W2:2}; concurrent threads claimed exactly {1,2}, pairwise distinct, no errors",
+      "test_ids": ["test_p1_08a_same_serial_slot_cannot_be_claimed_twice", "test_p1_08b_concurrent_claims_serialize_to_distinct_slots"],
+      "note": "production TrialLedger/GatedTrialLedger have no locking primitive; the frozen A1 single-writer contract is encoded and proven by the test-local _SerialSlotLedger guard (flock + atomic state replace), per the regression/contract-proof mandate"
+    }
+  ],
+  "summary": "P1 all PASS",
+  "head": null
+}
