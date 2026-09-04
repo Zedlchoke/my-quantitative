@@ -1,0 +1,100 @@
+{
+  "schema": "stocks_free_v4_run/proposal@1",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4-D1",
+  "worktree": ".worktrees/stocks-free-v4/d1-a6-proposals",
+  "branch": "orca/stocks-free-v4-d1-a6-proposals",
+  "wave_sha": "5022f265912e0dd398b79441023c263bc4c61b24",
+  "hypothesis_id": "SFV4-A6-H2",
+  "agent": "A6",
+  "domain": "overnight-vs-intraday return decomposition as a cross-sectional regime/risk-pricing state variable (price/risk-state usage only)",
+  "title": "Overnight price-discovery state: beta-neutral long low overnight-variance-share sector ETFs versus high overnight-variance-share sector ETFs",
+  "mechanism": {
+    "causal_economic": "Daily returns decompose into an overnight session (prior close to open) and an intraday session (open to close) that are populated by different investor clientele: institutional, flow-constrained investors transact predominantly intraday, while overnight prices are set by thinner, infrequently-rebalancing holders and by dealers without competitive auction liquidity (Lou-Polk-Skouras 2019 tug-of-war clientele model; Cliff-Cooper-Gulen 2008; Bogousslavsky 2016 infrequent-rebalancing model). WHERE a sector's variance arrives is therefore a state of its price discovery, not a direction bet: when a large share of trailing return variance accrues overnight, price discovery has migrated into the thin session where liquidity provision is impaired and transitory price impact is largest. We preregister the dislocation reading: sectors in a high overnight-variance-share state carry lower forward beta-adjusted relative returns over the following weeks, because overnight-session pricing reflects non-competitive liquidity provision and structural flow rather than compensated fundamental risk; the clientele structures that generate overnight/intraday return differences are persistent (Lou-Polk-Skouras show overnight and intraday expected returns differ systematically and persistently across assets), so the state, not an event, is what is priced.",
+    "after_cost_rationale": "The overnight/intraday wedge documented in the literature is large at the asset level (Cliff-Cooper-Gulen and Lou-Polk-Skouras document that the bulk of the US equity premium accrues overnight, an effect of several percent per year), so even a small cross-sectional transmission of that wedge to sector-ETF relative pricing should exceed the expected cost drag of ~25-80 bps/year at base costs. The hypothesis is deliberately pitched as a transmission test: if the wedge does not transmit cross-sectionally at ETF granularity, the after-cost expectancy will be indistinguishable from zero and the arm fails - which is informative precisely because the cost bar is low.",
+    "falsifiable_prediction": "Sign: NEGATIVE cross-sectional relation between the trailing 63-session overnight variance share S_i and forward beta-adjusted relative returns. Operationally: the anchor book (long the 3 lowest-S sector ETFs, short the 3 highest-S, SPY-beta-neutralized, 42-session holding) must show (i) after-cost expectancy > 0, (ii) positive incremental alpha versus its declared zero SPY-context risk-match overall and in >= 2 of 3 folds, and (iii) the close-to-close-volatility-sorted control must NOT reproduce the result. If instead the compensation reading is correct (high-dislocation sectors earn higher forward premia), the anchor loses money and is rejected; both outcomes decide the sign question.",
+    "distinctness": "Not a descendant of any forbidden family: (1) NOT idiosyncratic shock/crash/overshoot reversal (SFV3-A6-IDIO-SHOCK-REVERSAL) and NOT 'fade the gap': the ranking key is built ONLY from squared session returns, so it is sign-blind and shock-size-blind by construction - it contains no return level, no gap size, no gap direction, and no event-conditioned countertrade; the arm never takes a position because some shock happened and expects it to unwind, it holds a persistent cross-sectional state tilt for 42 sessions with a beta hedge. Distance from the reversal family is structural (sign-blind key), not procedural. (2) NOT ordinary cross-sectional momentum: a squared-return statistic cannot rank past winners (direction is erased), so the arm is neither momentum nor its inversion. (3) NOT trend/vol-target defense (A5-SFV2): gross exposure is a frozen constant, there is no SMA/trend filter, and no scaling of exposure by volatility ever occurs; the arm is a fixed-shape relative-value book. (4) NOT calendar (SFV3-A6-TOM-SETTLE): every session's decomposition enters the statistic identically; no date is selected and no return claim attaches to specific calendar dates - the overnight/intraday split is a market-structure decomposition, not a seasonality. (5) NOT a quote-spread mechanism: it uses no spread estimate or proxy, only the directly observed open/close geometry of adjusted daily OHLC. This is the 'overnight-gap ... decomposition as a regime/risk-pricing signal' direction explicitly contemplated for this domain, used as a risk state with no reversal trade."
+  },
+  "primary_sources": [
+    "Lou, D., Polk, C. and Skouras, S. (2019), 'A Tug of War: Overnight versus Intraday Expected Returns', Journal of Financial Economics 134(2), 349-373 - overnight and intraday expected returns differ persistently across assets due to investor clientele segmentation.",
+    "Cliff, M., Cooper, M. and Gulen, H. (2008), 'Return Differences between Trading and Non-trading Hours: Like Night and Day', Virginia Tech working paper - the classic decomposition showing US equity premia accrue predominantly outside trading hours.",
+    "Bogousslavsky, V. (2016), 'Infrequent Rebalancing, Return Autocorrelation, and Seasonality', Journal of Finance 71(6), 2927-2978 - infrequently rebalancing institutions generate systematic, persistent overnight versus intraday return patterns."
+  ],
+  "authorized_pit_inputs": {
+    "cohort": "SPY,XLB,XLC,XLE,XLF,XLI,XLK,XLP,XLRE,XLU,XLV,XLY (frozen cohort, digest 02c0fa979cec2b214a99af07f05108546fa523dee31ea5fb6b1049c06f21b6e1)",
+    "fields_used": [
+      "{SYM}_all_p1.json fields: open and close (split+dividend ADJUSTED) for the 11 sector ETFs - overnight return r_on(t) = adj_open(t)/adj_close(t-1) - 1 and intraday return r_intra(t) = adj_close(t)/adj_open(t) - 1; the adjusted path is used so distribution drops never contaminate the overnight leg (declared ex ante; returns and features both on the only authorized return path)",
+      "{SYM}_all_p1.json field: close (adjusted) - close-to-close daily returns for the 252-session beta hedge and the negative-control variance statistic",
+      "SPY_all_p1.json fields: close (adjusted) - hedge instrument and risk-matched SPY benchmark context per p2_a3_benchmark_contract.json"
+    ],
+    "fields_not_used": "volume, raw _none series (not needed here), distribution records, split factors, and all unavailable-field classes (fundamentals, earnings, borrow, short interest, holdings, flows, options, intraday bars)",
+    "windows": "S0 screening window 2018-04-04..2025-07-31; warmup <= 252 sessions before the first scored session taken from the 2076-session pre-S0 runway (2010-01-04..2018-04-03); no session after 2025-07-31 is read or scored",
+    "availability_rule": "XLC enters the eligible ranking set only once it has >= 252 sessions of history (from ~2019-06); before that the rank set is the eligible members present - a fixed availability rule declared ex ante, not a selection choice"
+  },
+  "universe_and_schedule": {
+    "universe": "the 11 sector ETFs of the frozen cohort (cohort minus SPY); SPY is used only as hedge instrument and benchmark context, never ranked",
+    "warmup_sessions": "252 (beta window) with a 63-session decomposition window nested inside it; first decision uses sessions 2017-04-05..2018-04-04",
+    "decision_clock": "at the close (PIT) of every 42nd SPY-calendar session within S0, first decision at the first S0 session 2018-04-04; only information through that close is used",
+    "holding_period": "42 sessions per decision; weights held unchanged between decisions; book forced flat at every fold boundary per baseline invariants",
+    "fill_clock": "next allowed session after the decision close, open-adjacent close-to-close execution per baseline invariants ADJ-1-EXEC-CLOCK; no same-session fill",
+    "folds": "S0_FOLD_1 (2018-04-04..2020-09-01), S0_FOLD_2 (2020-09-10..2023-02-09), S0_FOLD_3 (2023-02-17..2025-07-24) per baseline_invariants.json"
+  },
+  "anchor": {
+    "name": "ONSHARE63-BN-L3S3-42",
+    "rule": "At each decision session d: (1) for every eligible sector ETF i (>= 252 sessions of history through d), compute over the last 63 available sessions t the overnight variance V_on,i(d) = sum of r_on,i(t)^2 and intraday variance V_intra,i(d) = sum of r_intra,i(t)^2 on the ADJUSTED path, and the overnight variance share S_i(d) = V_on,i(d) / (V_on,i(d) + V_intra,i(d)); if the denominator is below 1e-12 the sector is not eligible at that decision (frozen rule, no substitution); (2) rank eligible sectors ASCENDING by S_i(d); (3) long the 3 lowest at +1/6 weight each, short the 3 highest at -1/6 weight each; (4) estimate beta_i(d) by OLS of sector i adjusted close-to-close daily returns on SPY adjusted close-to-close daily returns over the last 252 sessions through d, and set the hedge leg w_SPY(d) = -sum_i(w_i * beta_i), truncated to [-0.25, +0.25]; (5) residual weight to CASH; frozen gross cap 1.25; long/short books accounted separately per baseline invariants; no other rule exists.",
+    "exactness": "single statistic (overnight variance share), single window (63), single holding (42), single beta window (252), single basket size (3+3), single weight (1/6), single truncation ([-0.25,+0.25]) - no parameter menu, no grid, no best-of"
+  },
+  "neighbour": {
+    "name": "ONSHARE21-BN-L3S3-42",
+    "rule": "Identical to the anchor in every fixed choice except the state window: S_i computed over the last 21 sessions instead of 63 (same statistic, same eligibility, same baskets, same hedge, same 42-session grid). If the mechanism is a persistent price-discovery state, the faster state estimate should show the same sign with noisier ranks; agreement between the two windows demonstrates the premium attaches to the overnight-discovery state rather than to one sampling frequency.",
+    "role": "mechanism support required by stage-A gates (neighbour_mechanism_support)"
+  },
+  "causal_negative_control": {
+    "name": "CCVAR63-BN-L3S3-42 (close-to-close variance-level control)",
+    "rule": "Identical surface form: same 42-session grid, same 3+3 baskets at +/-1/6, same 252-session beta hedge, same accounting - but the ranking key is the trailing 63-session total close-to-close daily variance of sector i (sum of r_c,i(t)^2 on the adjusted path), long the 3 lowest / short the 3 highest. This control deliberately shares the 'long-low-risk-stat / short-high-risk-stat' form and isolates whether any edge comes from the OVERNIGHT DECOMPOSITION or merely from the LEVEL of volatility (which is SFV4-A6-H1's mechanism class, not H2's).",
+    "must_not_carry_mechanism_if_story_true": "If the causal story is true - that the cross-sectional pricing information lives in WHERE variance arrives (overnight versus intraday) rather than in HOW MUCH variance there is - then a book sorted on the undifferentiated variance level must not reproduce the anchor's premium.",
+    "preregistered_falsification_rule": "The anchor is REJECTED if the control's incremental alpha satisfies |alpha_control| >= 0.5 * |alpha_anchor| (control_alpha_abs_ratio gate, baseline invariants), or if control expectancy > 0 with per-position PF >= 1.0. Then the overnight/intraday decomposition carries no incremental pricing information beyond the volatility level, H2's causal story is falsified for this universe, and any surviving volatility-level premium belongs to H1's mechanism class, not H2's."
+  },
+  "factor_alpha_test": {
+    "primary": "incremental alpha per p2_a3_benchmark_contract.json: incremental_alpha(arm, window) = R_arm(window) - R_spy_context(window), evaluated per fold AND overall on S0; the arm's frozen ex-ante risk-match declaration is ZERO SPY-context multiple, because the construction zeroes net SPY beta by rule via the hedge leg (declared before any return is computed; realized arm volatility or realized beta is never substituted post hoc); a pass requires positive incremental alpha overall and in >= 2 folds per stage-A gates",
+    "sector_neutralization": "the optional equal-weight sector factor (EW_SECTOR_TOTAL_RETURN per the benchmark contract) is reported as a secondary residual diagnostic: regress arm daily returns on [SPY context, EW-sector context]; the residual mean must be positive per fold. Caveat declared ex ante: the legs ARE members of the EW-sector factor, so the SPY risk-match is the primary identifying test and the EW-sector residual is diagnostic only",
+    "fail_closed": "raw PnL, long-equity beta, or sector beta is never accepted as alpha; FLAT_HARD_BENCHMARK (0% floor) also applies per contract"
+  },
+  "costs_and_turnover": {
+    "costs": "10 bps per side per fill (base), 20 bps per side (stress rerun), charged exactly once per fill per P1-A2 invariant; benchmark paths uncosted per contract",
+    "expected_turnover": "rebalances: 6 per year (42-session grid). Overnight-variance shares are persistent (variance states cluster), so expected membership churn is ~1-2 of 6 basket legs per rebalance: expected |delta_weight| per rebalance ~0.4-0.8 including hedge-leg drift, giving ~2.0-4.0 two-way turnover per year annualized",
+    "why_inside_ceiling": "expected 2.0-4.0 two-way/year is below the 6.0 ceiling with margin; the theoretical worst case (all 6 legs reconstituted every rebalance, ~12-13 two-way/year) would itself evidence that overnight-share states carry no stable information and would fail the turnover gate by design - accepted as part of the falsification structure rather than loosening the schedule",
+    "cost_drag": "~25-80 bps/year at base, ~50-160 bps/year at stress; the literature-scale overnight wedge (several percent per year at asset level) dominates this only if it truly transmits to sector-ETF relative pricing, which is exactly what the test decides"
+  },
+  "sample_size_floor": {
+    "decisions_per_fold": "~14-15 decisions per fold (1842 S0 sessions / 42-session grid, truncated at fold boundaries); each fold >= 5 floor satisfied",
+    "decisions_total": "~43-44 scored decision periods overall; >= 30 floor satisfied",
+    "positions_per_decision": "6 sector legs + 1 SPY hedge leg + CASH residual; >= 1 non-CASH leg invariant always satisfied"
+  },
+  "drop_one_design": {
+    "expected_concentration": "no single leg exceeds 1/6 (~16.7%) of gross, under the 0.35 per-symbol positive-share gate; the book is a portfolio order statistic over 11 names, so any single sector's contribution to expectancy is expected to be well under 25%; a deliberate residual risk is that one historically dislocated sector (e.g. an energy shock) could dominate fold 1 - the drop-one-fold gate is what detects that",
+    "drop_one_etf": "rerun the full value book excluding the max-contribution symbol (10 eligible sectors; long-3/short-3 and hedge unchanged); survival = after-drop expectancy > 0; the premium must be a property of the cross-sectional state ordering, not of one name's dislocation episode",
+    "drop_one_fold": "min over folds of expectancy with that fold removed; survival = min > 0; the three folds span structurally different overnight-stress regimes (2018-2020 Volmageddon/COVID, 2020-2023 inflation/rate shock, 2023-2025 AI-concentration rally), so a genuine price-discovery state premium must not depend on a single stress episode"
+  },
+  "failure_interpretation": "A reject means the overnight/intraday return decomposition is not a priced cross-sectional state at sector-ETF granularity over 63/21-session windows and 42-session horizons after costs: the clientele wedge documented at single-stock and strategy level by Lou-Polk-Skouras and Bogousslavsky does not transmit to sector-ETF relative risk pricing, or its cross-sectional sign at this granularity is the compensation (opposite) sign, in which case the preregistered anchor loses and the direction question is answered negatively. If the close-to-close control fires while the anchor does not, the conclusion is sharper: the only volatility-family premium in this universe is the variance LEVEL effect (H1's class), and decomposition-shape signals are dead for this universe - descendants of the ON-share skeleton should then be treated by A7-N as a rejected family.",
+  "source_to_test_map": [
+    "1. Lou-Polk-Skouras (2019): overnight and intraday sessions carry different, persistent expected-return structures due to clientele segmentation -> implement the session decomposition r_on(t) = adj_open(t)/adj_close(t-1) - 1 and r_intra(t) = adj_close(t)/adj_open(t) - 1 on the adjusted path (anchor step 1).",
+    "2. Cliff-Cooper-Gulen (2008) / Bogousslavsky (2016): the overnight session is where thin, infrequently-rebalancing holders set prices -> summarize WHERE variance arrives with the sign-blind overnight variance share S_i = V_on/(V_on+V_intra) over 63 sessions (anchor step 1), the state variable.",
+    "3. Preregistered dislocation reading: high overnight-share state implies impaired price discovery and lower forward beta-adjusted relative returns -> long low-S / short high-S 3+3 baskets at +/-1/6 (anchor steps 2-3).",
+    "4. The claim must be market-direction-free -> SPY beta neutralization with a 252-session OLS hedge leg (anchor step 4) and declared zero SPY-context in the incremental-alpha test.",
+    "5. The claim must be decomposition-specific, not a variance-level effect -> preregistered close-to-close variance control with the 0.5 alpha-ratio falsification rule (causal_negative_control), plus the 21-session state-window neighbour (neighbour).",
+    "6. The wedge must survive costs -> frozen 10 bps/side base and 20 bps stress on ~2-4 two-way/year turnover (costs_and_turnover), incremental alpha vs risk-matched SPY per the frozen benchmark contract (factor_alpha_test)."
+  ],
+  "implementation_estimate": {
+    "engineer_days": 4,
+    "risk_notes": "(1) adjusted open availability: the test needs adj_open from the _all path; if any file lacks an open field, the deterministic fallback is adj_open(t) = raw_open(t) * [adj_close(t)/raw_close(t)] computed from the same hash-pinned snapshot - declared now, before any return is computed. (2) the 1e-12 denominator guard is a frozen eligibility rule, not a parameter. (3) XLC availability handled by the declared fixed rule; beta window overlaps S0 start via the 2076-session pre-S0 runway. (4) reuses the same V4 accounting skeleton as SFV4-A6-H1 (long/short books, CASH residual, cost-once, turnover convention, concentration gates); largest engineering risk is the adjusted-open reconstruction if needed, adding roughly half a day."
+  },
+  "outcome_blind_attestation": "I did not read per-arm V2/V3 outcomes; this proposal was written before any V4 scoring | agent: A6",
+  "head_pin": {
+    "wave_sha": "5022f265912e0dd398b79441023c263bc4c61b24",
+    "wave_sha_note": "V4_PROPOSAL_WAVE_SHA: HEAD of the integration branch when the D1 proposal wave was cut",
+    "proposals_commit_sha": "b00d89dfe80f8071ae7f26718d835a66f01b6800",
+    "proposals_commit_note": "sha of the 'V4-D1 A6: two blind proposals (gap/range/shape domain)' commit containing the original proposal text",
+    "pin_commit_note": "this file's final state is committed by the follow-up 'V4-D1 A6: wave sha pin' commit, which is the A6 final HEAD"
+  }
+}
