@@ -1,0 +1,85 @@
+{
+  "schema": "forex_free_v2_lane_report_v1",
+  "lane": "d1-a6-proposals",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/d1-a6-proposals",
+  "branch": "orca/forex-free-v2-a6-proposals",
+  "base_sha": "9e7e89c253caee2d7ec2681bbfe9e375da84c0d5",
+  "base_verified": "HEAD at lane start equaled base_sha (git rev-parse); merge-base(HEAD, base) == base",
+  "cycle": "FOREX-FREE-V2",
+  "phase": "F2-D1",
+  "written_at_utc": "2026-09-04",
+  "files": [
+    "research/proposals/forex_free_v2/a6_lane/proposal_1.json",
+    "research/proposals/forex_free_v2/a6_lane/proposal_2.json",
+    "research/proposals/forex_free_v2/a6_lane/search_log.md",
+    "research/proposals/forex_free_v2/a6_lane/lane_report_a6.json"
+  ],
+  "proposal_count": 2,
+  "mechanism_class": "volatility/liquidity state transitions visible in H1 OHLCV",
+  "mechanism_summaries": [
+    {
+      "proposal_id": "FXFV2-A6-P1",
+      "subclass": "compression->expansion state transition (H1 range/vol estimator state)",
+      "state_variable": "24-bar true-range sum vs median of 10 prior non-overlapping 24-bar blocks (realized-vol compression, median split)",
+      "entry_logic": "first-of-day H1 close beyond the 48-bar high/low channel while compressed -> continuation of the breach side at next H1 open; single exit at 16:00 America/New_York bar open on entry UTC day",
+      "control": "identical 48-bar breakout with the compression-state gate deleted (removes exactly the state-conditioning)",
+      "neighbour": "compression gauged by prior NY trading day's range vs its 10-day median (one presumption changed)",
+      "literature": "Osler 2003 JF 58(5); Engle 1982 Econometrica 50(4)",
+      "expected_frequency_rt_per_pair_per_week": 1.8
+    },
+    {
+      "proposal_id": "FXFV2-A6-P2",
+      "subclass": "session-liquidity turnover transition (thin-Asian -> liquid-European state)",
+      "state_variable": "same-day Asian-window (UTC 00-06) high-low range vs trailing 15-day median (thinness) + first turnover burst (TR > 1.5x same-day Asian median TR, UTC 06-10 window)",
+      "entry_logic": "on first burst while thin -> reversion opposite the Asian-drift sign (00-06 UTC close minus open) at next H1 open; single exit at 16:00 America/New_York bar open on entry UTC day",
+      "control": "identical burst-reversion with the thin-state gate deleted (removes exactly the state-conditioning)",
+      "neighbour": "thinness gauged by Asian true-range sum instead of high-low range (one presumption changed)",
+      "literature": "Andersen & Bollerslev 1998 JF 53(1); Bollerslev & Domowitz 1993 JF 48(4)",
+      "expected_frequency_rt_per_pair_per_week": 1.7
+    }
+  ],
+  "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+  "design_discipline": {
+    "no_parameter_grid": true,
+    "one_frozen_parameter_set_per_arm": true,
+    "arms_per_proposal": ["anchor", "neighbour (moves TOGETHER)", "control (placebo deleting only the state gate; must NOT reproduce the mechanism)"],
+    "state_conditional_not_clock_directional": "no wall clock keys any trade direction in either proposal; the only NY reference is the universal forced-flat clock",
+    "forbidden_inventory_checked": "London-open continuation, NY-open nearby-clock continuation, late-NY standardized-extension fade, London-to-NY momentum duplicate, sign inversion, session relabeling, threshold/lookback rescue, lower fees -- none applies; differentiation arguments are frozen inside each proposal and in search_log.md section 5"
+  },
+  "firewall_attestation": {
+    "forbidden_reads": "NONE",
+    "not_opened": [
+      "research/control/forex_free_v1_run/ (any file)",
+      "research/assets/forex_free_v1/family1.py",
+      "research/assets/forex_free_v1/family2.py",
+      "research/assets/forex_free_v1/scored_runner.py",
+      "research/assets/forex_free_v1/exec_driver.py",
+      "research/assets/forex_free_v1/probe_td.py",
+      "research/assets/forex_free_v1/completion_pass.py",
+      "research/assets/forex_free_v1/repair_pass.py",
+      "research/proposals/ (any pre-existing file, any cycle)",
+      "tests/assets/forex_free_v1/",
+      "PLAN_forex.md"
+    ],
+    "git_history": "no git log / git show / git diff; only rev-parse, merge-base, branch --show-current, status for lane bookkeeping",
+    "allowlist_read": [
+      "PLAN_forex_v2.md",
+      "research/control/forex_free_v2_run/run_contract.json",
+      "research/control/forex_free_v2_run/frequency_contract.json",
+      "research/control/forex_free_v2_run/data_manifest.json",
+      "research/control/forex_free_v2_run/forbidden_family_inventory.json",
+      "research/assets/forex/sessions.py",
+      "research/assets/forex/calendar.py",
+      "research/assets/forex_free_v1/td_loader.py (bar JSON schema only)"
+    ]
+  },
+  "outcome_blind_attestation": {
+    "v1_outcomes_read": false,
+    "backtest_run": false,
+    "pnl_computed": false,
+    "real_data_loaded": false,
+    "data_raw_read": false,
+    "note": "all frequency/sample figures are analytic schedule-level estimates; proposals are schedule-level designs only"
+  },
+  "commit_message": "FOREX-FREE-V2 F2-D1 (A6): two outcome-blind vol/liquidity-state proposals (no V1 outcomes read; no backtest run)"
+}

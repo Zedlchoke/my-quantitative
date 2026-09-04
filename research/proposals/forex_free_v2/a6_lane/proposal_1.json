@@ -1,0 +1,174 @@
+{
+  "schema": "forex_free_v2_proposal_v1",
+  "proposal_id": "FXFV2-A6-P1",
+  "lane": "d1-a6-proposals",
+  "cycle": "FOREX-FREE-V2",
+  "written_at_utc": "2026-09-04",
+  "mechanism_class": "volatility/liquidity state transitions visible in H1 OHLCV",
+  "mechanism_subclass": "compression->expansion state transition measured by H1 range/volatility estimators (time-series realized-volatility state; no session clock anywhere in state or trigger)",
+
+  "economic_mechanism": "H1 FX volatility clusters: multi-hour stretches of compressed true ranges alternate with expansion bursts (Engle 1982 grounds the persistence/predictability of the volatility STATE from past observations). During a compression stretch, resting protective orders accumulate just beyond the boundaries of the compressed range; Osler (2003) documents that stop-loss and take-profit orders cluster at level-like prices in the interbank FX market and that their triggered execution is self-reinforcing. The first H1 close outside the compressed channel mechanically triggers those resting orders and the resulting cascade pushes price further in the breach direction over the following hours. The tradeable object is the STATE TRANSITION compression->expansion, not the sign of any prior move: the signal exists only when the trailing 24-bar true-range sum is below its own trailing block median at the moment the channel is breached. Direction is determined exclusively by WHICH side of the compressed range breaks, at breach time, in any hour of the week.",
+
+  "causal_prediction": "Conditional on the compressed state (S24 below its 10-block trailing median), an H1 close beyond the 48-bar high/low channel predicts positive drift in the breach direction from the next bar open until the 16:00 America/New_York forced flat, with mean gross move large enough to exceed the 3 bps round-trip base cost (2 x 1.5 bps per side). Falsifiable consequences frozen ex ante: (i) the anchor arm shows positive after-cost expectancy; (ii) the identical breakout WITHOUT the compressed-state gate (control arm) does NOT show comparable expectancy -- if the control reproduces the anchor, the edge is unconditional breakout continuation, not a volatility-state transition, and the proposal is rejected; (iii) the neighbour arm (compression gauged by the prior NY trading day's realized range instead of intraday TR-sum blocks) moves TOGETHER with the anchor (same verdict sign, similar fold pattern); a neighbour/anchor divergence means the state-measurement presumption is fragile and the family is not promotable.",
+
+  "primary_literature_trace": [
+    {
+      "source": "Osler, Carol L. (2003), 'Currency Orders and Exchange Rate Dynamics: An Explanation for the Predictive Success of Technical Analysis', Journal of Finance 58(5), pp. 1791-1916",
+      "claim": "Resting stop-loss and take-profit orders cluster at level-like prices in interbank FX, and the triggered execution of these clustered orders produces self-reinforcing, directionally predictable price movement when the levels are breached -- a microstructure basis for range-break continuation after compressed ranges fill with resting orders."
+    },
+    {
+      "source": "Engle, Robert F. (1982), 'Autoregressive Conditional Heteroscedasticity with Estimates of the Variance of United Kingdom Inflation', Econometrica 50(4), pp. 987-1007",
+      "claim": "Conditional volatility is serially dependent (volatility clusters), so the current low- or high-volatility state is predictable from past observations -- grounding the use of a trailing realized-range state variable as a PIT-observable proxy for the compression state (it predicts the volatility, not the direction, of the near future)."
+    }
+  ],
+
+  "h1_observables": {
+    "input_note": "H1 bars only (bar-open timestamps on the hourly grid). The canonical bar schema (research/assets/forex_free_v1/td_loader.py) is {datetime, open, high, low, close}; there is NO volume field, so every observable below is OHLC-derived. D1 is never used.",
+    "definitions": {
+      "true_range_t": "TR_t = max(high_t - low_t, |high_t - close_{t-1}|, |low_t - close_{t-1}|)",
+      "S24_t": "sum of TR over the 24 most recent completed H1 bars, bars t-23..t inclusive (24h realized-range state)",
+      "baseline_B_t": "median of the 10 non-overlapping prior 24-bar TR-sum blocks: {S24 evaluated at bar ends t-24, t-48, ..., t-240} (each block is disjoint from the current one, so the baseline is uncontaminated by the current state)",
+      "compression_state_t": "TRUE iff S24_t < baseline_B_t (median split of block sums; one natural threshold, no free percentile parameter)",
+      "channel_hi_t": "max(high) over bars t-47..t-1 (48-bar channel excluding the decision bar)",
+      "channel_lo_t": "min(low) over bars t-47..t-1",
+      "trigger_long_t": "close_t > channel_hi_t",
+      "trigger_short_t": "close_t < channel_lo_t",
+      "direction_t": "+1 if trigger_long_t, -1 if trigger_short_t (mutually exclusive on one bar)"
+    },
+    "fail_closed": "If any bar required by S24_t, baseline_B_t, channel_hi_t/lo_t, or the TR_{t-1} reference is missing from the snapshot, the decision is NO_TRADE for that bar. Missing bars are never filled forward (data_manifest missing_bar_rule)."
+  },
+
+  "pit_timing": {
+    "decision": "All state and trigger inputs come from completed H1 bars with bar-open time <= decision bar t's open; bar t's own close/high/low are known only when bar t completes (at t+1's open instant).",
+    "entry": "Entry order fills at the OPEN of bar t+1, the next allowed H1 bar after the decision bar completes (one-event lag, no lookahead).",
+    "no_lookahead_mutation_check": "Implementation must include the standard mutation test: shifting any decision-bar input by one bar must change the schedule (proves bar t data is not used before t+1)."
+  },
+
+  "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+
+  "usd_factor_neutral_construction": null,
+  "usd_drift_falsification": {
+    "construction": "null -- the anchor is a single-pair directional schedule, not a hedged construction; USD drift must instead be falsified.",
+    "falsification_procedure_frozen": [
+      "Per arm and per fold, classify every entry by its USD leg: +1 if the entry is long USD (buying USD/JPY, USD/CHF, USD/CAD or selling EUR/USD, GBP/USD, AUD/USD, NZD/USD), -1 if short USD.",
+      "Diagnostic D1 (imbalance): if in any fold |share(long-USD entries) - 0.5| > 0.15, the schedule is flagged USD-directional and the USD-drift explanation is NOT rejected -> family fails.",
+      "Diagnostic D2 (coherence): compute the time series of cross-sectional mean USD-leg sign across pairs with entries at the same decision timestamp; if the full-sample |mean| > 0.25, flag USD-directional -> family fails.",
+      "Diagnostic D3 (conditional expectancy): split anchor trades by USD-leg sign and report expectancy per group; if one group carries all of the positive expectancy and the other is negative with the split stable across folds, the edge is consistent with USD drift rather than the state mechanism -> family fails."
+    ]
+  },
+
+  "clocks": {
+    "warmup_bars": 320,
+    "warmup_note": "320 completed H1 bars cover the deepest lookback (24 state bars + 240 baseline bars + 48 channel bars + 1 TR reference bar = 313) with margin; fold 1 scoring starts after warmup consumes 2020-01-30..2020-02-20 of coverage.",
+    "decision_bar": "H1 bar t (bar-open timestamp) is a decision bar iff compression_state_t AND (trigger_long_t OR trigger_short_t); per pair per UTC day only the FIRST qualifying decision bar is considered; if its entry is infeasible (missing bar, forced-flat infeasibility, or a cap), the pair-day is NO_TRADE -- no second decision is promoted.",
+    "entry": "Open of bar t+1 (next allowed H1 bar). Entry must satisfy: bar t+1 exists in the snapshot; the open instant of bar t+1 is strictly earlier than the open instant of the 16:00 America/New_York bar of bar t+1's UTC calendar day (else the forced flat would be in the past -> NO_TRADE); the 1-entry/pair/UTC-day cap and 3-RT/pair/ISO-week cap are unmet.",
+    "exit_rule": "No stops, no targets, no time-exit other than the forced flat: the single position opened at entry is closed at the OPEN of the 16:00 America/New_York bar on the entry UTC day.",
+    "forced_flat": "exit at 16:00 America/New_York bar open on entry UTC day",
+    "dst_note": "The 16:00 America/New_York instant is computed per day via the IANA zone (20:00Z in EDT, 21:00Z in EST); no fixed UTC offset is used anywhere.",
+    "tier2_delay_note": "Under cost tier 2.0 the entry fill is delayed one event (bar t+2 open); if the delayed fill instant is not strictly earlier than that day's 16:00 NY bar open, the trade becomes NO_TRADE under tier 2.0."
+  },
+
+  "schedule_caps": {
+    "max_entries_per_pair_per_utc_day": 1,
+    "max_round_trips_per_pair_per_week": 3,
+    "week_definition": "ISO week (UTC) of the entry bar's open timestamp",
+    "cap_enforcement": "Frozen schedule rule evaluated at signal time; a blocked signal is NO_TRADE, never deferred to a later bar."
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV2-A6-P1-ANCHOR",
+      "spec": "Exactly the h1_observables + clocks + schedule_caps above: compression_state_t (S24_t < baseline_B_t) AND first-of-day channel breach (close beyond 48-bar high/low channel excluding the decision bar) -> direction = breach side -> entry at next H1 open -> single exit at the 16:00 New York bar open on entry day. One frozen parameter set: {state_block_bars: 24, baseline_blocks: 10, channel_bars: 48}. No stops, no targets, no thresholds beyond the frozen set.",
+      "expected_behavior": "Positive after-cost expectancy if the compression->expansion transition carries the edge."
+    },
+    "neighbour": {
+      "arm_id": "FXFV2-A6-P1-NEIGHBOUR",
+      "one_presumption_changed": "The compression state is gauged by the PRIOR NY trading day's realized range instead of intraday 24-bar TR-sum blocks: R_{d-1} = max(high) - min(low) over all H1 bars assigned to NY-rollover trading day d-1 (trading_day_of semantics of research/assets/forex/sessions.py, all of whose bars must exist else NO_TRADE); state = R_{d-1} < median(R over the 10 prior NY trading days, all present else NO_TRADE).",
+      "everything_else": "48-bar channel trigger, first-of-day dedup, entry/exit clocks, caps, cost, folds are byte-identical to the anchor.",
+      "expected_behavior": "Moves TOGETHER with the anchor (same verdict sign, similar fold pattern) because both gauge the same compression presumption; a divergence (opposite verdict) falsifies the robustness of the state measurement."
+    },
+    "control": {
+      "arm_id": "FXFV2-A6-P1-CONTROL",
+      "placebo_design": "Identical to the anchor in every respect EXCEPT the compression-state gate is deleted: every first-of-day 48-bar channel breach fires (subject to the same caps and clocks). This removes exactly the state-conditioning and nothing else; any unconditional breakout-continuation edge remains in the control.",
+      "expected_behavior": "Should NOT reproduce the anchor's mechanism: if control expectancy is >= 0.5 x anchor expectancy, or control PF >= 1.10 with the same sign, the edge is unconditional continuation (forbidden-family-adjacent generic breakout), not a volatility-state transition, and the proposal is rejected.",
+      "frequency_note": "The raw control signal rate is higher than the anchor's; the frozen caps bind more often. That truncation (first qualifying signals of each day/week) is part of the frozen placebo schedule and is identical in structure to the anchor's cap handling."
+    }
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tiers": [1.0, 1.5, 2.0],
+    "notional_usd_unit": 10000,
+    "tier_2_extra": "one-event delay on fills (see clocks.tier2_delay_note)",
+    "break_even_diagnostic": {
+      "definition": "Per scored cell: BE = mean over trades of |gross per-trade move| expressed in bps of entry price, divided by 2 (two sides per round trip); this is the per-side cost at which mean net expectancy equals zero.",
+      "reporting": "Every cell reports BE, the multiple BE / 1.5, and net expectancy at each frozen tier.",
+      "frozen_interpretation": "A cell with BE < 1.5 bps is structurally unprofitable at base cost and cannot pass Stage-A regardless of any other gate; BE is computed from the frozen schedule only, with no parameter adjustment permitted."
+    }
+  },
+
+  "expected_frequency": {
+    "trades_per_pair_per_week": 1.8,
+    "analytic_basis": "Compression state holds ~50% of hours (median split of block sums). A close beyond the prior 48-bar extreme occurs on roughly 4-6% of hours per side, and consecutive breach hours after one expansion collapse into a single trade via the first-of-day dedup, giving roughly 0.5-0.7 qualifying decisions per pair-day; holidays and missing bars reduce this further to an analytic estimate of ~1.8 executed round trips per pair per week.",
+    "cap_compliance": "Estimate obeys max 1 entry/pair/UTC-day by the first-of-day dedup rule and stays under the 3 RT/pair/week cap (the cap remains a frozen backstop that binds in expansion-heavy weeks).",
+    "full_sample_order_of_magnitude": "7 pairs x ~330 weeks x ~1.8 ≈ 4100 round trips family-wide (schedule estimate only; no data was loaded)."
+  },
+
+  "folds_plan": {
+    "n_folds": 3,
+    "assignment": "Chronological by entry-bar open timestamp (UTC); fold 1 effective start after the 320-bar warmup consumed from 2020-01-30.",
+    "boundaries_utc": ["2020-02-20T00:00Z to 2022-02-01T00:00Z", "2022-02-01T00:00Z to 2024-04-01T00:00Z", "2024-04-01T00:00Z to 2026-09-02T00:00Z (end of coverage)"],
+    "evaluation_rule": "Each fold's schedule is computed with warmup drawn only from strictly earlier bars; only trades whose ENTRY bar falls inside the fold are scored in it. Every observable is a strictly backward-looking function of completed bars, so no purge leakage is structurally possible; the boundary rule (decision bar before the boundary, entry bar after) assigns the trade wholly to the entry fold.",
+    "gate_hook": "At least 2/3 populated folds positive and no populated fold PF < 0.80 are Stage-A gates recorded per fold; the plan freezes only the split and assignment, never the outcomes."
+  },
+
+  "concentration_plan": {
+    "schedule_level_checks": "Per arm: per-pair trade counts, per-pair sign counts (long/short), and per-pair fold spread are reported.",
+    "frozen_limit": "No single pair may exceed 30% of an arm's full-sample trade count (uniform expectation is 14.3% across 7 pairs); any breach fails the concentration gate. Currency-leg concentration (share of entries long USD vs short USD) is reported and feeds the usd_drift_falsification diagnostics.",
+    "rationale": "All 7 pairs run one identical frozen rule, so a concentration breach indicates a data artifact or an unintended pair-specific mechanism, both disqualifying."
+  },
+
+  "drop_one_pair_plan": {
+    "procedure": "For each of the 7 pairs, recompute all three arms' full schedules with that pair excluded.",
+    "frozen_pass_rule": "The anchor retains positive after-cost expectancy in at least 6 of 7 exclusions, with at least 2/3 positive populated folds in each retained case; if removing any single pair flips the anchor's expectancy non-positive, the mechanism is pair-dependent and the family is rejected (the offending pair is recorded).",
+    "neighbour_and_control": "Recomputed identically for the same exclusions to preserve the arm comparison."
+  },
+
+  "minimum_decisions": {
+    "value": 20000,
+    "definition": "State-qualified decision-bar evaluations (bars where compression_state held and the trigger was evaluated), summed over all 7 pairs, full sample. Analytic expectation is ~121k, so the minimum is a degenerate-sample guard, not a target."
+  },
+
+  "minimum_trades_per_cell": {
+    "full_sample": 500,
+    "per_populated_fold": 100,
+    "note": "Per arm-cell (anchor, neighbour, control each separately). A cell below these floors is NOT_RUN-grade insufficient sample and cannot be promoted."
+  },
+
+  "failure_interpretation": [
+    "Anchor expectancy <= 0 after base cost: the compression->expansion transition does not clear the frozen cost at the H1 schedule level on this snapshot. Valid REJECT of this family; no sign inversion, no lower cost, no threshold/lookback rescue, no pair selection, no session relabeling.",
+    "Anchor positive but control reproduces the mechanism (control expectancy >= 0.5 x anchor, or control PF >= 1.10 with positive sign): the edge is unconditional breakout continuation, not a state transition. REJECT -- such an edge is adjacent to the forbidden London-open continuation family and is ineligible regardless of sign.",
+    "Anchor and neighbour diverge (opposite verdict signs or contradictory fold patterns): the compression-state measurement presumption is fragile; the mechanism is unstable and NOT promotable even if the anchor alone is positive.",
+    "Realised schedule frequency violates the preregistered caps on the real snapshot: INELIGIBLE per the frequency contract.",
+    "Concentration or drop-one-pair failure: the edge is a pair-specific or data artifact; REJECT.",
+    "USD-drift diagnostics D1-D3 flag the schedule: the anchor is explained by USD-wide drift rather than the state transition; REJECT of the neutrality claim and of the family."
+  ],
+
+  "forbidden_family_differentiation": {
+    "vs_london_open_continuation": "No session clock, no session label, and no open-of-session measurement appears anywhere in the state, trigger, direction, entry, or exit. The trigger is a 48-bar channel breach evaluable in any hour; the conditioning is a realized-volatility state, not a clock.",
+    "vs_ny_open_nearby_clock_continuation": "Same as above: no NY-open term exists in the spec; the only NY reference is the universal forced-flat clock required of every V2 position.",
+    "vs_late_ny_standardized_extension_fade": "This proposal never fades; it continues a breach, and only in a compressed state, at any hour.",
+    "vs_near_duplicate_london_to_ny_momentum": "No cross-session momentum measurement (no London-to-NY move) is computed; the only momentum-like quantity is a 48-bar channel breach after a measured compression state.",
+    "no_sign_inversion": "Neither the anchor nor any arm inverts a rejected V1 family; the control's role is to REMOVE the state-conditioning, not to flip a sign."
+  },
+
+  "d1_context_usage": "none -- D1 never enters any observable; the scored input is H1 OHLC only",
+
+  "no_parameter_grid": true,
+
+  "outcome_blind_attestation": {
+    "statement": "This proposal was written outcome-blind. I read only the allowlisted V2 control plane (run_contract.json, frequency_contract.json, data_manifest.json, forbidden_family_inventory.json), PLAN_forex_v2.md, research/assets/forex/sessions.py, research/assets/forex/calendar.py, and the bar JSON schema in research/assets/forex_free_v1/td_loader.py. I did NOT open research/control/forex_free_v1_run/, any V1 family/runner/exec/probe module, anything under research/proposals/, tests/assets/forex_free_v1/, or PLAN_forex.md. I ran no git log/show/diff and read no V1 per-cell result, PnL table, or scored digest beyond the mechanism names in the forbidden inventory.",
+    "no_backtest": "No backtest, PnL computation, or real-data load was performed; data_raw/ was never read. All frequency and sample figures are analytic schedule-level estimates.",
+    "no_tuning": "The single frozen parameter sets were fixed a priori from round, prespecified values (24-bar state blocks, 10 baseline blocks, 48-bar channel; day-range/10-day median neighbour) with no search over alternatives."
+  }
+}
