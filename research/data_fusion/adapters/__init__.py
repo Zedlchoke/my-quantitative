@@ -1,13 +1,10 @@
 """Source adapters for the first wave of free candidates.
 
-``base.py`` is the A1-owned shared foundation: lane engineers (A2 stocks,
-A3 macro, A4 forex) implement their own adapter modules against it and may
-not modify it.  Adapter module imports are re-exported here by A1 at
-integration time.
-
-Every adapter here is DISCOVERY_ONLY.  A passing adapter proves nothing
-about authority; see ``research.data_fusion.authority`` and the owner-run
-source registry.
+``base.py`` is the A1-owned shared foundation; lane implementations were
+authored by A2 (sec, finra), A3 (ecb, bis, fred) and A4 (truefx) in their
+own worktrees and integrated here by A1.  Nothing in this package raises a
+source's authority: every adapter is DISCOVERY_ONLY and authority stays
+with ``research.data_fusion.authority`` and the owner-run registry.
 """
 
 from .base import (
@@ -25,19 +22,31 @@ from .base import (
     date_only_evidence,
     timings_from_evidence,
 )
+from .bis import BisAdapter
+from .ecb import EcbAdapter
+from .finra import FinraAdapter
+from .fred import FredAdapter
+from .sec import SecAdapter
+from .truefx import TruefxAdapter
 
 __all__ = [
     "AdapterError",
     "AdapterNote",
     "AdapterOutput",
     "AvailabilityBasis",
+    "BisAdapter",
+    "EcbAdapter",
+    "FinraAdapter",
+    "FredAdapter",
     "RawCacheStore",
     "RawResponse",
     "RateLimitPolicy",
     "ReleaseEvidence",
     "RequestSpec",
+    "SecAdapter",
     "SourceAdapter",
     "Timings",
+    "TruefxAdapter",
     "date_only_evidence",
     "timings_from_evidence",
 ]
