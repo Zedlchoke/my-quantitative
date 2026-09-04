@@ -1,0 +1,42 @@
+{
+ "schema": "v13_gate_v1",
+ "artifact": "P0_FUSION_ADOPTION",
+ "generated_utc": "2026-09-04T07:19:47Z",
+ "producer_role": "A1",
+ "verdict": "PASS",
+ "source": {
+  "frozen_core_sha": "c6a0576ef98dd4392e90805c8ba33821da62eabc",
+  "method": "compatibility cherry-pick of the 10 frozen data-fusion commits + PLAN_data_fusion.md (047c685), zero conflicts",
+  "lane_branch": "orca/v13-p0-a2-fusion",
+  "lane_head": "c6fa9de112385dfdb1b97aae4b66fe38cd312183",
+  "integration_after_ff": "c6fa9de112385dfdb1b97aae4b66fe38cd312183",
+  "cherry_pick_map": [
+   ["047c685", "1df5ec4"], ["276e320", "a2acca0"], ["b6753a5", "5cdb4b1"], ["70838be", "a676d23"],
+   ["ce0037b", "a446024"], ["2b7b07b", "657fec7"], ["7787c78", "eb3649e"], ["561185f", "0246a10"],
+   ["8cd4aa7", "683abe3"], ["b02df77", "2e52496"], ["c6a0576e", "8b4d718"]
+   ],
+  "a2_compat_commit": "c6fa9de112385dfdb1b97aae4b66fe38cd312183 (research/data_fusion/crypto_compat.py + tests/data_fusion/test_crypto_compat.py only)"
+ },
+ "gates": [
+  {"gate": "cherry_pick_conflict_free", "result": "PASS", "evidence": "11/11 applied cleanly, no abort"},
+  {"gate": "scope_fusion_only", "result": "PASS", "evidence": "git diff --name-only ada8f21..HEAD outside PLAN_data_fusion.md|research/data_fusion|tests/data_fusion|research/control/data_fusion_v1_run -> empty (grep exit 1)"},
+  {"gate": "v12_frozen_bytes_untouched", "result": "PASS", "evidence": "git diff ada8f21..HEAD -- research/control/v12_run research/audits results data -> 0 lines"},
+  {"gate": "fusion_suite_inside_crypto_tree", "result": "PASS", "command": ".venv/bin/python -m pytest tests/data_fusion -q", "exit": 0, "observed": "227 passed (204 frozen + 23 new compat)", "rerun_by_A1": true},
+  {"gate": "crypto_compat_pin_suite", "result": "PASS", "command": ".venv/bin/python -m pytest tests/data_fusion/test_crypto_compat.py -q", "exit": 0, "observed": "23 passed; includes decision-time pin: select_asof at T never returns available_time_utc > T"},
+  {"gate": "protocol_contracts", "result": "PASS", "command": ".venv/bin/python -m pytest tests/test_protocol_*.py -q (9 files)", "exit": 0, "observed": "163 passed"},
+  {"gate": "compileall_touched", "result": "PASS", "command": ".venv/bin/python -m compileall -q research/data_fusion tests/data_fusion", "exit": 0},
+  {"gate": "git_diff_check", "result": "PASS", "exit": 0},
+  {"gate": "tree_clean_after_lane", "result": "PASS", "evidence": "git status --porcelain=v1 empty"}
+ ],
+ "p0_plan_requirements": {
+  "schema_pit_identity_compile_and_tests": "PASS (fusion suite 227 green in crypto tree)",
+  "authorized_datasets_mapped_with_true_availability": "PASS (bars=close time, funding=settlement stamp, OI=snapshot stamp, mark=snapshot stamp; kline rows stamped at CLOSE; retrieval never substitutes availability; unknown types refused fail-closed)",
+  "pin_regression_test": "PASS",
+  "no_v12_artifact_change": "PASS"
+ },
+ "a7_awareness_notes": [
+  "naive create_time stamps in consolidated OI parquets are refused fail-closed rather than assumed UTC; eligibility requires an explicit stamp-normalization decision (documented in crypto_compat.py docstring)",
+  "committer identity auto-configured by git on lane commits (environmental; no amend performed)"
+ ],
+ "adoption_failure_clause": "NOT INVOKED (adoption succeeded; no owner downgrade needed)"
+}
