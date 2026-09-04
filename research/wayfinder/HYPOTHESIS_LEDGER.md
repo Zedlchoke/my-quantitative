@@ -14,11 +14,12 @@
   it, or any parameter/top-K/universe/relaxed-gate variant of it, is rescue
   and ineligible without a new owner plan preregistering a materially new
   mechanism (measured decorrelation vs the rejected ancestor, not prose).
-- Cumulative scored denominators (post-V13/FXV3 close, 2026-09-05): crypto
-  137 published / 140 observed logical; stocks 18/18; forex 18/18. S1 untouched
-  everywhere. **Program total: 173 published cells, and the FIRST survivor:
-  FXFV3-A6-P1 (vol-gated policy-rate carry, Forex V3 family2), locked for a
-  future owner-approved S1 plan.**
+- Cumulative scored denominators (post-V13/V5/FXV3 close, 2026-09-05): crypto
+  137 published / 140 observed logical; stocks 21/21; forex 18/18. S1
+  untouched everywhere. **Program total: 176 published cells, and the FIRST
+  survivor (provisional): FXFV3-A6-P1 vol-gated policy-rate carry, downgraded
+  to PROVISIONAL_STAGE_A_SURVIVOR_PENDING_PIT_AUTHORITY pending
+  PLAN_forex_v3r.md remediation.**
 - **No strategy has ever been promoted.** Every governed scored cycle closed
   REJECT_ALL / CANDIDATE_FAIL / BLOCKED. The near-misses below are the most
   information-dense rows in this ledger.
@@ -71,7 +72,7 @@
 | V4 (TERMINAL 2026-09-04, REJECT_ALL 6/6 published, repro 6/6 EXACT_MATCH; A7T pending) | SFV4-A5-H1 PARTICIPATION-SHIFT | Gervais-2001/Lo-Wang 21d-vs-252d dollar-volume shock ratio; quarterly long top-3 / short bottom-3; stale-rank negative control | REJECT — **anchor −17.62% (PF 0.606, 1/3 folds, MDD 18.5%, incremental alpha −0.791 all folds); stale-rank control earned +14.91% raw PnL (PF 1.668) but its own alpha is −0.470 and concentration fails: the return belongs to the sector-exposure form, not the fresh-vs-stale mechanism**. |
 | V4 | SFV4-A4-H1 SEMIVARIANCE-SHARE | Downside/total-variance shape, market-neutral, kappa fallback ex ante | REJECT — **anchor −28.08% (0/3 folds, MDD 32.1%); vol-LEVEL control earned +53.14% (PF 2.582) but MDD 34.1% + concentration fail: the shape axis was negative-information, all signal sits in plain vol-level sorting** (third appearance of the vol-level shadow effect; not Stage-A eligible, not rescuable). |
 | V4 (not selected) | A4-H2 vol-of-vol; A5-H2 abnormal-volume; A6-H1 Garman-Klass; A6-H2 overnight-share | — | All blocked by **measured** control self-subsuming / rank-identity with own control (ρ 0.78–0.83) — the exact V2/V3 failure mode, now caught pre-selection. |
-| V5 (TERMINAL 2026-09-05, REJECT_ALL pending A7T — 3/6 cells; only 1 of 6 proposals selectable) | SFV5-A6-H2 CROSS-SECTOR-COUPLING | Cross-sector coupling conditioning | REJECT — anchor PnL −1.35%, PF 1.054, 1/3 folds, MDD 18.1% > 15%, stress −4.2%, drop-one dead; **nominal-price placebo outperformed the anchor on the identifying metric (alpha 0.0252 vs 0.0077)** — falsification fires (7th instance of the cluster). 3 slots unused forever. |
+| V5 (CLOSED 2026-09-05, REJECT_ALL **A7T CONFIRMED** — 3/6 cells; only 1 of 6 proposals selectable) | SFV5-A6-H2 CROSS-SECTOR-COUPLING | Cross-sector coupling conditioning | REJECT — anchor PnL −1.35%, PF 1.054, 1/3 folds, MDD 18.1% > 15%, stress −4.2%, drop-one dead; **nominal-price placebo outperformed the anchor on the identifying metric (alpha 0.0252 vs 0.0077, ratio 3.27)** — falsification fires (7th instance of the cluster). Repro 3/3 EXACT_MATCH. 3 slots unused forever. |
 | V5 (selection outcome — carry-forward data lesson) | 4 SEC-conditioned proposals | PIT fundamentals conditioning | **ALL INFEASIBLE: SEC single-vintage coverage collapse** (F1) — the V5 core bet was unfundable with staged data; SEC lane needs data-authority rebuild before any fundamentals-conditioned stocks cycle. A5-H2 vol-level confirmatory INELIGIBLE by measured front-door gate (ρ 0.319 > 0.20 — Section 1.1 worked as designed). Denominator stocks 21. |
 
 ## D. FOREX — G10 spot, 7 free-data pairs
