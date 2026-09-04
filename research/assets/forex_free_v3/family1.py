@@ -20,6 +20,17 @@ Arms (frozen, one parameter set each, no grids):
 * ``control`` (``causal_negative_control``) -- macro-direction-only:
   ``sign(g)`` with no price trend anywhere (preregistered non-reproduction
   rule is the runner's CONTROL_REPRODUCES_MECHANISM gate).
+* ``benchmark_treatment`` (V3-I, finding H1) -- the frozen benchmark of
+  ``baseline_invariants.json v3_benchmark_treatment`` / proposal
+  ``arms.incremental_benchmark`` (arm_id ``FXFV3-A5-P1-bench``),
+  implemented VERBATIM: unconditional daily momentum, LONG base when
+  ``m > 0``, SHORT when ``m < 0``, FLAT when ``m == 0``; identical holding
+  law (exit on ``sign(m)`` flip), clock, fills, universe, warmup, costs and
+  financing formula.  ZERO macro reads enter the state (the frozen
+  financing accrual still reads vintages through the reader, as every arm
+  does); the runner books this arm inside the scored anchor cell and
+  computes the frozen incremental alpha from it.  It is never a scored
+  cell of its own.
 
 Frozen mechanics (spec, clocks section): decisions are evaluated on completed
 daily bars, each the H1 snapshot bar whose OPEN instant maps to 16:00
@@ -92,11 +103,13 @@ PAIR_AREAS = {
 }
 
 ARMS = ("anchor", "neighbour", "causal_negative_control")
+BENCHMARK_ARM = "benchmark_treatment"  # required by the runner, never a scored cell
 ARM_ALIASES = {"control": "causal_negative_control"}
 ARM_IDS = {
     "anchor": "FXFV3-A5-P1-anchor",
     "neighbour": "FXFV3-A5-P1-neigh",
     "causal_negative_control": "FXFV3-A5-P1-ctrl",
+    "benchmark_treatment": "FXFV3-A5-P1-bench",  # proposal arms.incremental_benchmark
 }
 
 MOMENTUM_BARS = 21          # m = c_t / c_(t-21) - 1
@@ -233,14 +246,19 @@ def pair_state_series(pair: str, daily: list, reader, arm: str) -> list:
     * anchor:   go long when m>0 and g>0, short when m<0 and g<0, else flat.
     * neighbour: same but the macro leg is sign(d(t) - median(d[t-251..t])).
     * control:  long when g>0, short when g<0, flat when g==0 (no m anywhere).
+    * benchmark_treatment: LONG when m>0, SHORT when m<0, FLAT when m==0;
+      NO macro read anywhere (the reader is never consulted; it may be
+      ``None`` for this arm).
     """
     if arm not in ARM_IDS:
         raise ValueError(f"unknown arm {arm!r}")
     base_area, quote_area = PAIR_AREAS[pair]
     n = len(daily)
+    benchmark = arm == BENCHMARK_ARM
     differentials: list = [None] * n
-    for i in range(n):
-        differentials[i] = _asof_differential(reader, base_area, quote_area, daily[i][0])
+    if not benchmark:  # zero macro reads on the benchmark treatment
+        for i in range(n):
+            differentials[i] = _asof_differential(reader, base_area, quote_area, daily[i][0])
     states = []
     for i in range(n):
         ts, _o, c = daily[i]
@@ -262,7 +280,17 @@ def pair_state_series(pair: str, daily: list, reader, arm: str) -> list:
             macro = level_gap
         else:
             macro = g
-        if macro is None or (arm != "causal_negative_control" and m is None):
+        if benchmark:
+            # Unconditional momentum: sign(m) alone, no macro leg anywhere.
+            if m is None:
+                gate, state = "void", None
+            elif m > 0:
+                gate, state = "long", 1
+            elif m < 0:
+                gate, state = "short", -1
+            else:
+                gate, state = "flat", 0
+        elif macro is None or (arm != "causal_negative_control" and m is None):
             gate, state = "void", None
         elif macro > 0 and (arm == "causal_negative_control" or m > 0):
             gate, state = "long", 1
@@ -430,7 +458,8 @@ def financing_adjustment_usd(pair: str, decision: dict, reader) -> float:
 def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None) -> dict:
     """Runner contract entry point (see module docstring).  ``arm`` is one of
     ``anchor`` / ``neighbour`` / ``causal_negative_control`` (shorthand
-    ``control`` accepted).  ``freeze_token`` is accepted and ignored."""
+    ``control`` accepted) or the runner-required ``benchmark_treatment``.
+    ``freeze_token`` is accepted and ignored."""
     arm = ARM_ALIASES.get(arm, arm)
     if arm not in ARM_IDS:
         raise ValueError(f"unknown arm {arm!r}; expected one of {sorted(ARM_IDS)}")
@@ -506,5 +535,13 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None) -> dict
         "skipped_decisions": skipped_decisions,
         "skipped_exits": skipped_exits,
     }
+    if arm == BENCHMARK_ARM:
+        meta["benchmark_treatment_note"] = (
+            "the frozen v3_benchmark_treatment: unconditional 21-daily-bar "
+            "momentum (LONG when m>0, SHORT when m<0, FLAT when m==0), "
+            "identical clock/fills/holds/warmup/costs, ZERO macro reads in "
+            "the state; financing still accrues per the frozen formula. "
+            "Booked by the runner inside the scored anchor cell for the "
+            "incremental-alpha gate.")
     return {"decisions": all_decisions, "financing_events": financing_events,
             "meta": meta}

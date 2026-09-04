@@ -9,7 +9,8 @@ research/assets/forex_free_v3/scored_runner.py (module docstring)::
     run_arm(arm, data_paths, macro_reader, freeze_token=None)
         -> {"decisions": [...], "financing_events": [...], "meta": {...}}
 
-Arms (exactly three, per the spec):
+Arms (three frozen scored arms per the spec, plus the runner-required
+  benchmark treatment):
   "anchor"                  LOW-vol state holds the as-of policy-rate
                             differential direction (+1 long base / -1 short
                             base); HIGH unwinds to flat; a direction flip
@@ -26,6 +27,19 @@ Arms (exactly three, per the spec):
                             frozen pair order).  Deterministic by
                             construction: the rotation is a fixed constant,
                             never runtime randomness.
+  "benchmark_treatment" (V3-I, finding H1): the frozen benchmark of
+                            baseline_invariants.json v3_benchmark_treatment /
+                            proposal incremental_test_vs_frozen_benchmark
+                            (bench_schedule_id ``FXFV3-A6-P1-bench``),
+                            implemented VERBATIM: the anchor law with the
+                            as-of differential read at T-270d (a +270-calendar-day
+                            availability lag, frozen ex ante) so fresh
+                            policy-rate information is removed while the
+                            trading law, vol gate, schedule shape, clock/
+                            event structure and costs are unchanged.  The
+                            runner books it inside the scored anchor cell
+                            for the incremental-alpha gate; it is never a
+                            scored cell of its own.
 
 Frozen law (proposal pit_observables / arms, implemented here verbatim):
 
@@ -103,6 +117,8 @@ __all__ = [
     "ny_day_validity",
     "state_is_low",
     "derangement_sham_legs",
+    "BENCHMARK_LAG_DAYS",
+    "BENCHMARK_ARM",
 ]
 
 PROPOSAL_ID = "FXFV3-A6-P1"
@@ -124,6 +140,12 @@ PAIR_AREAS = {
     "USD/CAD": ("US", "CA"),
 }
 DERANGEMENT_ROTATION = 2  # frozen: sham legs = pair_order[(i+2) mod 7]
+# Frozen benchmark-treatment lag (proposal incremental_test_vs_frozen_benchmark):
+# the direction differential is read at T-270d -- a round constant fixed ex
+# ante (longer than any 2020-2026 central-bank pause in the window); never
+# tuned, never data-chosen.
+BENCHMARK_LAG_DAYS = 270
+BENCHMARK_ARM = "benchmark_treatment"
 
 # Frozen family constants (proposal single_frozen_parameter_set).
 STATE_BLOCK_NY_DAYS = 20
@@ -152,9 +174,12 @@ _ARM_IDS = {
     "neighbour": "neighbour",
     "control": "causal_negative_control",
     "causal_negative_control": "causal_negative_control",
+    "benchmark_treatment": "bench",
 }
 _ARM_SHORT = {"anchor": "AN", "neighbour": "NE",
-              "causal_negative_control": "CT"}
+              "causal_negative_control": "CT", "bench": "BN"}
+_META_ARM = {"anchor": "anchor", "neighbour": "neigh",
+             "causal_negative_control": "ctrl", "bench": "bench"}
 
 
 BLOCKED_DATA = "BLOCKED_DATA"
@@ -565,7 +590,7 @@ def _schedule_pair(series: PairSeries, arm: str, direction_of):
 def _decisions_of(series: PairSeries, trips: list, arm: str) -> list:
     stamp = series.stamps
     out = []
-    short = _ARM_SHORT[_ARM_IDS[arm]]
+    short = _ARM_SHORT[arm]  # ``arm`` is the internal arm id (run_arm maps it)
     for tr in trips:
         di, ei, xi = tr["decision_i"], tr["entry_i"], tr["exit_i"]
         out.append({
@@ -623,7 +648,8 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None):
     arm_id = _ARM_IDS.get(arm)
     if arm_id is None:
         raise ValueError(f"family2 arm must be one of "
-                         f"'anchor'/'neighbour'/'control'/'causal_negative_control', "
+                         f"'anchor'/'neighbour'/'control'/"
+                         f"'causal_negative_control'/'benchmark_treatment', "
                          f"got {arm!r}")
     if not isinstance(data_paths, dict) or not isinstance(data_paths.get("h1_dir"), str):
         raise DataBlocked("data_paths is missing the 'h1_dir' H1 snapshot directory")
@@ -631,6 +657,7 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None):
         raise DataBlocked("run_arm requires an availability-gated macro_reader")
 
     use_sham = arm_id == "causal_negative_control"
+    use_lag = arm_id == "bench"  # frozen +270d as-of lag (benchmark treatment)
     decisions: list = []
     financing_events: list = []
     skipped: list = []
@@ -644,8 +671,11 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None):
         else:
             base_area, quote_area = PAIR_AREAS[pair]
 
-        def direction_of(i, _s=series, _b=base_area, _q=quote_area):
-            return _sign_or_none(macro_reader.differential(_b, _q, _s.stamps[i]))
+        def direction_of(i, _s=series, _b=base_area, _q=quote_area, _lag=use_lag):
+            t = _s.stamps[i]
+            if _lag:
+                t = t - timedelta(days=BENCHMARK_LAG_DAYS)
+            return _sign_or_none(macro_reader.differential(_b, _q, t))
 
         trips, pair_skipped, counts = _schedule_pair(series, arm_id, direction_of)
         skipped.extend(pair_skipped)
@@ -673,9 +703,7 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None):
         "decision_clock": "daily",
         "proposal_id": PROPOSAL_ID,
         "pair_universe": list(PAIR_UNIVERSE),
-        "arm_id": f"{PROPOSAL_ID}-"
-                  + {"anchor": "anchor", "neighbour": "neigh",
-                     "causal_negative_control": "ctrl"}[arm_id],
+        "arm_id": f"{PROPOSAL_ID}-" + _META_ARM[arm_id],
         "decision_bar_convention": "completed H1 bar whose America/New_York wall "
                                    "time is 16:00, Mon-Fri only (20:00Z EDT / "
                                    "21:00Z EST via zoneinfo); fill at the OPEN of "
@@ -728,11 +756,21 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None):
         "skipped_counts": _sorted_counts(skipped),
         "schedule_totals": schedule_totals,
         "usd_index_daily_returns": None,
-        "usd_index_note": "deferred to scoring integration: the frozen D1 "
-                          "equal-weight USD-index daily-return formula is "
-                          "supplying-side metadata; the runner owns the "
-                          "correlation statistic and its frozen gate",
+        "usd_index_note": "superseded (V3-I, finding H2): the runner computes "
+                          "the frozen D1 equal-weight USD index INSIDE itself "
+                          "from the authorized H1 snapshot; this meta key is "
+                          "carried as None and never consulted",
     }
+    if arm_id == "bench":
+        meta["benchmark_treatment"] = {
+            "lag_days": BENCHMARK_LAG_DAYS,
+            "definition": "the anchor law with the as-of differential read at "
+                          "T-270d (+270-calendar-day availability lag, frozen "
+                          "ex ante): fresh policy-rate information removed, "
+                          "trading law / vol gate / schedule shape / clock "
+                          "structure / costs unchanged",
+            "bench_schedule_id": f"{PROPOSAL_ID}-bench",
+        }
     return {"decisions": decisions, "financing_events": financing_events,
             "meta": meta}
 

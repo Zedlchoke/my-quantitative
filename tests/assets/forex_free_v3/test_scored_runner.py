@@ -45,18 +45,70 @@ FIXTURE_FINANCING = [
     {"decision_id": "d2", "financing_adjustment_usd": 1.0, "formula": "V3_FROZEN_POLICY_RATE_CARRY"},
     {"decision_id": "d3", "financing_adjustment_usd": -0.5, "formula": "V3_FROZEN_POLICY_RATE_CARRY"},
 ]
+# The family's frozen benchmark treatment book (required in scored mode):
+# one EUR/USD round trip, financing-adjusted expectancy 451.5454545455+2.0.
+BENCH_DECISIONS = [
+    _dec("b1", "EUR/USD", 1, "2021-06-09T20:00:00+00:00",
+         "2021-06-10T20:00:00+00:00", 1.10, "2021-06-11T20:00:00+00:00", 1.15),
+]
+BENCH_FINANCING = [
+    {"decision_id": "b1", "financing_adjustment_usd": 2.0,
+     "formula": "V3_FROZEN_POLICY_RATE_CARRY"},
+]
 
 
 class DummyFamily:
-    ARMS = ("anchor", "neighbour", "control")
+    ARMS = ("anchor", "neighbour", "control", "benchmark_treatment")
 
     def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+        if arm == "benchmark_treatment":
+            return {"decisions": copy.deepcopy(BENCH_DECISIONS),
+                    "financing_events": copy.deepcopy(BENCH_FINANCING),
+                    "meta": {"decision_clock": "daily",
+                             "proposal_id": "DUMMY-BENCH"}}
         return {"decisions": copy.deepcopy(FIXTURE_DECISIONS),
                 "financing_events": copy.deepcopy(FIXTURE_FINANCING),
                 "meta": {"proposal_id": "DUMMY", "decision_clock": "daily",
                          "pair_universe": list(R.PAIRS),
                          "usd_index_daily_returns": {},
                          "fill_delay_events": {}}}
+
+
+class NoBenchmarkFamily(DummyFamily):
+    """A family that has NOT implemented the required benchmark arm."""
+
+    def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+        if arm == "benchmark_treatment":
+            raise ValueError("unknown arm 'benchmark_treatment'")
+        return super().run_arm(arm, data_paths, macro_reader, freeze_token)
+
+
+def _h1_file(tmp, pair, rows):
+    """Canonical td_loader-schema H1 window file; rows are
+    (utc 'YYYY-MM-DD HH:MM:SS', open, high, low, close)."""
+    tag = pair.replace("/", "")
+    payload = {"meta": {"symbol": pair, "interval": "1h"},
+               "values": [{"datetime": ts, "open": o, "high": h,
+                           "low": lo, "close": c} for ts, o, h, lo, c in rows]}
+    with open(os.path.join(tmp, f"{tag}_1h_fix.json"), "w", encoding="utf-8") as handle:
+        json.dump(payload, handle)
+    return os.path.join(tmp, f"{tag}_1h_fix.json")
+
+
+def _scored_price_dir():
+    """Minimal 2-pair H1 snapshot covering the fixture trades' instants
+    (EDT weeks: 16:00 New York == 20:00Z).  Index days stay far below the
+    60-day floor, so the USD diagnostic is recorded but cannot fail."""
+    tmp = tempfile.mkdtemp(prefix="runner_prices_")
+    _h1_file(tmp, "EUR/USD", [
+        ("2021-06-09 20:00:00", 1.100, 1.101, 1.099, 1.1005),
+        ("2021-06-10 20:00:00", 1.100, 1.101, 1.099, 1.1010),
+        ("2022-04-27 20:00:00", 1.080, 1.081, 1.079, 1.0805),
+        ("2022-04-28 20:00:00", 1.080, 1.081, 1.079, 1.0810)])
+    _h1_file(tmp, "USD/JPY", [
+        ("2024-08-06 20:00:00", 150.0, 150.1, 149.9, 150.05),
+        ("2024-08-07 20:00:00", 150.0, 150.1, 149.9, 150.10)])
+    return tmp
 
 
 class SlowFamily:
@@ -287,7 +339,7 @@ def test_stage_a_mdd_concentration_share_stress_dropout_usd():
     assert not ok and "STRESS_TIER_1.5_FAIL" in reasons
     drop = {p: (1.0 if i < 4 else -0.1) for i, p in enumerate(R.PAIRS)}  # 4/7 survive
     ok, reasons = R.stage_a_gates(_rec(0.5, 1.2, _good_folds(), drop=drop))
-    assert not ok and "DROP_ONE_PAIR_SURVIVAL_INSUFFICIENT" in reasons
+    assert not ok and "DROPOUT_SURVIVAL_INSUFFICIENT" in reasons
     ok, reasons = R.stage_a_gates(_rec(0.5, 1.2, _good_folds(), usd={"corr": 0.31, "n_days": 300, "evaluated": True}))
     assert not ok and "USD_DRIFT_EXPLAINS_ANCHOR" in reasons
     ok, _ = R.stage_a_gates(_rec(0.5, 1.2, _good_folds(), usd={"corr": None, "n_days": 10, "evaluated": False}))
@@ -457,7 +509,8 @@ def test_dummy_family_end_to_end_dry_run():
 
 
 def test_dummy_family_end_to_end_scored_mode_flags():
-    rec = R.compute_cell("family1", "anchor", {}, freeze_token=_scores_token(),
+    rec = R.compute_cell("family1", "anchor", {"price_h1_dir": _scored_price_dir()},
+                         freeze_token=_scores_token(),
                          macro_reader=PolicyRateReader({}))
     assert rec["dry_run"] is False and rec["real_pnl"] is True and rec["scored"] is True
     # hand-computed dual-book sums over the three fixture trades (IEEE reprs):
@@ -468,9 +521,30 @@ def test_dummy_family_end_to_end_scored_mode_flags():
     assert rec["price_only_pnl_usd"] == pytest.approx(194.8720538721, abs=1e-9)
     assert rec["financing_adjustment_usd"] == pytest.approx(2.5, abs=1e-9)
     assert rec["financing_adjusted_pnl_usd"] == pytest.approx(197.3720538721, abs=1e-9)
+    # V3-I H1: the scored anchor ALWAYS carries the runner-computed
+    # incremental alpha = anchor expectancy 197.3720538721/3 - benchmark
+    # expectancy 453.5454545455 (the b1 book) = -387.7547699215 -> the gate
+    # fires and the record is still returned.
+    assert rec["incremental_alpha"] == pytest.approx(-387.7547699215, abs=1e-9)
+    assert rec["benchmark_treatment"]["n_decisions"] == 1
+    assert rec["benchmark_treatment"]["expectancy"] == pytest.approx(453.5454545455, abs=1e-9)
     # the small fixture fails the floor gate but every gate evaluated
     ok, reasons = R.stage_a_gates(rec)
-    assert not ok and "DECISION_FLOOR_NOT_MET" in reasons
+    assert not ok
+    assert "DECISION_FLOOR_NOT_MET" in reasons
+    assert "INCREMENTAL_ALPHA_NOT_POSITIVE" in reasons
+    # V3-I H2: the USD index was built runner-side from the snapshot dir
+    assert rec["usd_index_source"] == "price_h1_dir" and rec["usd_index_pairs"] == 2
+    assert rec["usd_drift_diag"]["evaluated"] is False  # < 60 common days
+    # V3-I M1: the dropout scenarios are recorded; pair part matches the
+    # drop-one dict, all eight (7 pairs + best fold) survive this book
+    assert len(rec["dropout_scenarios"]) == 8
+    assert {s["scenario"].split(":", 1)[1] for s in rec["dropout_scenarios"]
+            if s["scenario"].startswith("drop_pair:")} == set(R.PAIRS)
+    for s in rec["dropout_scenarios"]:
+        if s["scenario"].startswith("drop_pair:"):
+            assert s["expectancy"] == rec["drop_one_expectancy"][s["scenario"].split(":", 1)[1]]
+        assert s["survived"] is True
     # F1-fixed stress rows present and distinct, delay stress carried unblended
     assert {"tier1.0", "tier1.5", "tier2.0"} <= set(rec["stress"])
     assert (rec["stress"]["tier1.0"]["total_pnl"]
@@ -482,7 +556,8 @@ def test_dummy_family_end_to_end_scored_mode_flags():
 
 
 def test_dual_book_presence_and_immutability_in_cell_record():
-    rec = R.compute_cell("family1", "anchor", {}, freeze_token=_scores_token(),
+    rec = R.compute_cell("family1", "anchor", {"price_h1_dir": _scored_price_dir()},
+                         freeze_token=_scores_token(),
                          macro_reader=PolicyRateReader({}))
     # both immutable columns present as SEPARATE keys
     assert "price_only_pnl_usd" in rec and "financing_adjusted_pnl_usd" in rec
@@ -564,3 +639,234 @@ def test_publish_serializes_parallel_writers():
         lines = open(led, "rb").read().strip().split(b"\n")
         digests = {accounting.sha256_hex(line) for line in lines}
         assert len(lines) == 8 and len(digests) == 8
+
+
+# ===================== V3-I remediation (findings H1/H2/H3/M1) =====================
+
+# ---------- H2: the USD index is built INSIDE the runner (hand golden) ----------
+def test_usd_index_hand_computed_two_pair_fixture():
+    with tempfile.TemporaryDirectory() as tmp:
+        _h1_file(tmp, "EUR/USD", [
+            ("2021-06-09 20:00:00", 1.100, 1.1001, 1.0999, 1.10),
+            ("2021-06-10 20:00:00", 1.200, 1.2001, 1.1999, 1.21)])
+        _h1_file(tmp, "USD/JPY", [
+            ("2021-06-09 20:00:00", 100.0, 100.1, 99.9, 100.0),
+            ("2021-06-10 20:00:00", 101.0, 101.1, 100.9, 101.0),
+            ("2021-06-11 20:00:00", 102.0, 102.1, 101.9, 102.0),   # Friday
+            ("2021-06-12 20:00:00", 103.0, 103.1, 102.9, 103.0),   # Saturday: ignored
+            ("2021-06-11 19:00:00", 55.0, 55.1, 54.9, 55.0),       # 15:00-NY: ignored
+            ("2021-06-14 20:00:00", 103.0, 103.1, 102.9, 103.02)])  # Monday
+        # Hand-computed (XXX/USD contributes -r, USD/XXX +r, equal-weight mean):
+        #   2021-06-10: EUR/USD -(1.21/1.10-1) = -0.10; JPY +(101/100-1) = +0.01
+        #   2021-06-11: JPY only, 102/101-1 = 0.00990099009901 (weekend-partial day)
+        #   2021-06-14: Fri->Mon is ONE daily step: JPY 103.02/102-1 = 0.01
+        index = R.usd_index_daily_returns(tmp)
+        assert set(index) == {"2021-06-10", "2021-06-11", "2021-06-14"}
+        assert index["2021-06-10"] == pytest.approx((-0.10 + 0.01) / 2, abs=1e-12)
+        assert index["2021-06-11"] == pytest.approx(102.0 / 101.0 - 1.0, abs=1e-12)
+        assert index["2021-06-14"] == pytest.approx(103.02 / 102.0 - 1.0, abs=1e-12)
+        # an explicit pair subset pins the equal-weight-over-present-pairs rule
+        only_eur = R.usd_index_daily_returns(tmp, pairs=("EUR/USD",))
+        assert only_eur == {"2021-06-10": pytest.approx(-(1.21 / 1.10 - 1.0), abs=1e-12)}
+        # source resolution: explicit override > price_h1_dir > h1_dir
+        idx, key, n_pairs = R.usd_index_from_data_paths({"h1_dir": tmp})
+        assert key == "h1_dir" and n_pairs == 2 and idx == index
+        _idx2, key2, _n2 = R.usd_index_from_data_paths(
+            {"price_h1_dir": tmp, "h1_dir": os.path.join(tmp, "elsewhere")})
+        assert key2 == "price_h1_dir"
+        _idx3, key3, _n3 = R.usd_index_from_data_paths(
+            {"usd_index_h1_dir": tmp, "price_h1_dir": os.path.join(tmp, "nope")})
+        assert key3 == "usd_index_h1_dir"
+        assert R.usd_index_from_data_paths({}) == (None, None, 0)
+        # a present but empty/broken source fails closed
+        empty = tempfile.mkdtemp(prefix="runner_empty_prices_")
+        with pytest.raises(RuntimeError, match="BLOCKED_DATA"):
+            R.usd_index_daily_returns(empty)
+        with pytest.raises(RuntimeError, match="BLOCKED_DATA"):
+            R.usd_index_daily_returns(os.path.join(tmp, "missing-dir"))
+
+
+def test_scored_run_without_price_source_fails_closed():
+    # A scored run with booked trades but no H1 source cannot evaluate the
+    # frozen USD-drift gate: USD_INDEX_SOURCE_MISSING (fail closed, V3-I H2).
+    with pytest.raises(R.DecisionRuleError, match="USD_INDEX_SOURCE_MISSING"):
+        R.compute_cell("family1", "anchor", {}, freeze_token=_scores_token(),
+                       macro_reader=PolicyRateReader({}))
+    # ...while the dry-run of the same cell stays a placeholder record.
+    rec = R.compute_cell("family1", "anchor", {}, freeze_token=None,
+                         macro_reader=PolicyRateReader({}))
+    assert rec["dry_run"] is True and rec["usd_index_source"] is None
+
+
+# ---------- H3: dry-run records leak NO booked monetary metric ----------
+def test_dry_run_record_hygiene_zeroes_every_monetary_field():
+    rec = R.compute_cell("family1", "anchor", {}, freeze_token=None,
+                         macro_reader=PolicyRateReader({}))
+    # top-level booked columns
+    for key in ("gross_price_pnl_usd", "price_only_pnl_usd",
+                "financing_adjustment_usd", "financing_adjusted_pnl_usd"):
+        assert rec[key] == 0.0, key
+    # book metrics: money zeroed / pf None, trade COUNTS kept
+    zeroed = {"trades": 3, "total_pnl": 0.0, "expectancy": 0.0,
+              "pf": None, "gross_positive": 0.0}
+    assert rec["base"] == zeroed and rec["base_price_only"] == zeroed
+    for fold in rec["folds"]:
+        assert fold["total_pnl"] == 0.0 and fold["expectancy"] == 0.0
+        assert fold["gross_positive"] == 0.0 and fold["pf"] is None
+    assert [f["trades"] for f in rec["folds"]] == [2, 0, 1]
+    assert [f["populated"] for f in rec["folds"]] == [False, False, False]
+    # the stress sub-record (booked from REAL specs internally) is zeroed at
+    # every tier -- the exact H3 leak the auditor measured on W3
+    assert set(rec["stress"]) == {"tier1.0", "tier1.5", "tier2.0"}
+    for tier, st in rec["stress"].items():
+        assert st["total_pnl"] == 0.0 and st["expectancy"] == 0.0
+        assert st["gross_positive"] == 0.0 and st["pf"] is None
+        assert st["cost_component_delta_vs_base_usd"] == 0.0
+        assert st["trades"] == 3
+        assert st["stress_rows_distinct_certified"] is True
+    # remaining monetary/diagnostic fields
+    assert rec["break_even_cost_bps"] is None
+    assert rec["mdd_usd"] == 0.0
+    assert rec["fold_positive_share"] == 0.0
+    assert rec["pair_concentration"] == {}
+    assert rec["drop_one_expectancy"] == {p: 0.0 for p in R.PAIRS}
+    assert all(s["expectancy"] is None and s["survived"] is None
+               for s in rec["dropout_scenarios"])
+    assert len(rec["dropout_scenarios"]) == 8
+    assert rec["incremental_alpha"] is None and rec["benchmark_treatment"] is None
+    assert rec["usd_drift_diag"] == {"corr": None, "n_days": 3, "evaluated": False}
+    # counts and mode flags survive untouched
+    assert rec["n_decisions"] == 3 and rec["n_trades_kept"] == 3
+    assert rec["weekend_gate_dropped"] == 0 and rec["purged_trades"] == 0
+    assert rec["delay_stress"] == {"carried_unblended": True, "n_delayed_trades": 0}
+    assert rec["folds_declared"] == list(R.FOLD_BOUNDARIES)
+    assert rec["scored"] is False and rec["real_pnl"] is False
+    assert rec["dry_run"] is True and rec["published"] is False
+
+
+# ---------- H1: the incremental alpha is always computed when scored ----------
+class PositiveAlphaFamily(DummyFamily):
+    """Benchmark book = one LOSING round trip: gross 10000*(1.05/1.10-1)
+    = -454.5454545455, price-only -457.5454545455, financing 0.0."""
+
+    def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+        out = super().run_arm(arm, data_paths, macro_reader, freeze_token)
+        if arm == "benchmark_treatment":
+            out = copy.deepcopy(out)
+            out["decisions"][0]["exit_price"] = 1.05
+            out["financing_events"][0]["financing_adjustment_usd"] = 0.0
+        return out
+
+
+def test_scored_anchor_incremental_alpha_gate_fires_and_passes():
+    # negative alpha: the gate FAILS but the record is still returned
+    rec = R.compute_cell("family1", "anchor", {"price_h1_dir": _scored_price_dir()},
+                         freeze_token=_scores_token(),
+                         macro_reader=PolicyRateReader({}))
+    assert rec["incremental_alpha"] == pytest.approx(-387.7547699215, abs=1e-9)
+    ok, reasons = R.stage_a_gates(rec)
+    assert not ok and "INCREMENTAL_ALPHA_NOT_POSITIVE" in reasons
+    # positive alpha: anchor expectancy 65.790684624 - (-457.5454545455)
+    # = 523.3361391695 > 0 -> the incremental gate does not fire
+    R.FAMILIES["family1"] = PositiveAlphaFamily()
+    try:
+        rec2 = R.compute_cell("family1", "anchor",
+                              {"price_h1_dir": _scored_price_dir()},
+                              freeze_token=_scores_token(),
+                              macro_reader=PolicyRateReader({}))
+    finally:
+        R.FAMILIES["family1"] = DummyFamily()
+    assert rec2["incremental_alpha"] == pytest.approx(523.3361391695, abs=1e-9)
+    assert rec2["benchmark_treatment"]["expectancy"] == pytest.approx(-457.5454545455, abs=1e-9)
+    ok2, reasons2 = R.stage_a_gates(rec2)
+    assert "INCREMENTAL_ALPHA_NOT_POSITIVE" not in reasons2
+
+
+def test_scored_anchor_requires_benchmark_treatment_arm():
+    # enforcement: a family WITHOUT the benchmark arm cannot produce a
+    # scored anchor cell (its unknown-arm refusal propagates, fail closed)
+    R.FAMILIES["family1"] = NoBenchmarkFamily()
+    try:
+        with pytest.raises(ValueError, match="benchmark_treatment"):
+            R.compute_cell("family1", "anchor", {"price_h1_dir": _scored_price_dir()},
+                           freeze_token=_scores_token(),
+                           macro_reader=PolicyRateReader({}))
+        # the dry-run of the same family never calls the benchmark arm
+        rec = R.compute_cell("family1", "anchor", {}, freeze_token=None,
+                             macro_reader=PolicyRateReader({}))
+        assert rec["dry_run"] is True and rec["incremental_alpha"] is None
+    finally:
+        R.FAMILIES["family1"] = DummyFamily()
+    # ...and the benchmark treatment is never a scored cell of its own
+    with pytest.raises(ValueError, match="BENCHMARK_TREATMENT_IS_NOT_A_SCORED_CELL"):
+        R.compute_cell("family1", R.BENCHMARK_ARM, {}, freeze_token=None,
+                       macro_reader=PolicyRateReader({}))
+
+
+# ---------- M1: dropout survival incl. the drop-one-BEST-fold scenario ----------
+def test_dropout_scenarios_hand_built():
+    # hand-built book spanning every fold boundary (folds 0, 1, 2):
+    # pnls 100, 50 (fold 0); 200 (fold 1); -80, 30 (fold 2); full exp 60
+    trades = [
+        {"pair": "EUR/USD", "_fold": 0}, {"pair": "GBP/USD", "_fold": 0},
+        {"pair": "USD/JPY", "_fold": 1}, {"pair": "EUR/USD", "_fold": 2},
+        {"pair": "AUD/USD", "_fold": 2}]
+    pnls = [100.0, 50.0, 200.0, -80.0, 30.0]
+    folds = [{"fold": 0, "trades": 2, "expectancy": 75.0},
+             {"fold": 1, "trades": 1, "expectancy": 200.0},
+             {"fold": 2, "trades": 2, "expectancy": -25.0}]
+    s = R.dropout_scenarios(trades, pnls, folds)
+    assert [x["scenario"] for x in s] == \
+        [f"drop_pair:{p}" for p in R.PAIRS] + ["drop_best_fold:1"]
+    # hand-computed reduced-book expectancies:
+    expected = {
+        "drop_pair:EUR/USD": (50.0 + 200.0 + 30.0) / 3,          # 93.3333333333
+        "drop_pair:GBP/USD": (100.0 + 200.0 - 80.0 + 30.0) / 4,  # 62.5
+        "drop_pair:AUD/USD": (100.0 + 50.0 + 200.0 - 80.0) / 4,  # 67.5
+        "drop_pair:NZD/USD": 60.0,
+        "drop_pair:USD/JPY": (100.0 + 50.0 - 80.0 + 30.0) / 4,   # 25.0
+        "drop_pair:USD/CHF": 60.0, "drop_pair:USD/CAD": 60.0,
+        "drop_best_fold:1": (100.0 + 50.0 - 80.0 + 30.0) / 4,    # 25.0
+    }
+    assert len(s) == 8
+    for x in s:
+        assert x["expectancy"] == pytest.approx(expected[x["scenario"]], abs=1e-9)
+        assert x["survived"] is True
+    # a fold-concentrated book: dropping the BEST fold flips the sign
+    trades2 = [{"pair": "EUR/USD", "_fold": 0}, {"pair": "GBP/USD", "_fold": 0},
+               {"pair": "USD/JPY", "_fold": 1}, {"pair": "EUR/USD", "_fold": 2}]
+    pnls2 = [-200.0, -100.0, 10.0, 5.0]
+    folds2 = [{"fold": 0, "trades": 2, "expectancy": -150.0},
+              {"fold": 1, "trades": 1, "expectancy": 10.0},
+              {"fold": 2, "trades": 1, "expectancy": 5.0}]
+    s2 = R.dropout_scenarios(trades2, pnls2, folds2)
+    assert s2[-1]["scenario"] == "drop_best_fold:1"
+    assert s2[-1]["expectancy"] == pytest.approx((-200.0 - 100.0 + 5.0) / 3, abs=1e-9)
+    assert s2[-1]["survived"] is False
+    assert all(not x["survived"] for x in s2)   # 0/7
+    # an unevaluable fold scenario (no fold holds trades) fails closed
+    s3 = R.dropout_scenarios([], [], [{"fold": 0, "trades": 0, "expectancy": 0.0}] * 3)
+    assert s3[-1] == {"scenario": "drop_best_fold:none",
+                      "expectancy": None, "survived": False}
+
+
+def test_stage_a_dropout_survival_gate_over_scenarios():
+    rec = _rec(0.5, 1.2, _good_folds())
+    rec["dropout_scenarios"] = (
+        [{"scenario": f"drop_pair:{p}", "expectancy": 1.0, "survived": True}
+         for p in R.PAIRS]
+        + [{"scenario": "drop_best_fold:0", "expectancy": 0.5, "survived": True}])
+    ok, _ = R.stage_a_gates(rec)
+    assert ok                                   # 8/8
+    rec["dropout_scenarios"][7]["survived"] = False   # 7/8 still passes
+    ok, _ = R.stage_a_gates(rec)
+    assert ok
+    rec["dropout_scenarios"][6]["survived"] = False   # 6/8 still passes
+    ok, _ = R.stage_a_gates(rec)
+    assert ok
+    rec["dropout_scenarios"][5]["survived"] = False   # exactly 5/8 passes
+    ok, reasons = R.stage_a_gates(rec)
+    assert ok
+    rec["dropout_scenarios"][4]["survived"] = False   # 4/8 fails
+    ok, reasons = R.stage_a_gates(rec)
+    assert not ok and "DROPOUT_SURVIVAL_INSUFFICIENT" in reasons

@@ -592,3 +592,84 @@ def test_real_snapshot_schedule_only():
         assert date(2020, 4, 15) <= first_evaluable <= date(2020, 5, 15)
         counts["first_evaluable_bar_utc"] = first_evaluable.isoformat()
         counts["eurusd_daily_bars"] = len(daily)
+
+
+# ------------------------- 10. benchmark_treatment arm (V3-I finding H1)
+def _v_benchmark_closes(n):
+    """Down (bars 0..39) / up (40..79) / down (80..) closes: the 21-bar
+    momentum m flips -1 -> +1 exactly at bar 50 and +1 -> -1 at bar 90."""
+    out = []
+    for i in range(n):
+        if i <= 39:
+            c = 1.30 - 0.001 * i
+        elif i <= 79:
+            c = 1.261 + 0.001 * (i - 39)
+        else:
+            c = 1.301 - 0.001 * (i - 79)
+        out.append(float(f"{c:.5f}"))
+    return out
+
+
+def _benchmark_fixture(tmp):
+    days = _weekdays(date(2020, 1, 30), date(2020, 7, 31))[:100]
+    closes = _v_benchmark_closes(len(days))
+    opens = [float(f"{c - 0.0002:.5f}") for c in closes]
+    _write_windows(tmp, "EUR/USD", _h1_bars_from_daily(days, opens, closes))
+    _write_aux(tmp, 0.001, len(days), days[0])
+    reader = _write_vintages(tmp, {
+        "US": [(0.25, "2020-01-01", "2020-01-01T23:59:59Z")],
+        "EMU": [(-0.50, "2020-01-01", "2020-01-01T23:59:59Z")],
+        **_aux_vintage_rows()})
+    data_paths = {"price_h1_dir": str(tmp),
+                  "macro_vintages": {a: os.path.join(tmp, f"{a}.json")
+                                     for a in ("US", "EMU", *_AUX_AREA_VALUES)}}
+    return data_paths, reader, days
+
+
+def test_benchmark_treatment_is_unconditional_momentum_zero_macro():
+    with tempfile.TemporaryDirectory() as tmp:
+        data_paths, reader, days = _benchmark_fixture(tmp)
+        daily = F.daily_decision_bars(F.load_pair_h1_bars("EUR/USD", str(tmp)))
+        assert len(daily) == 100
+        # the state is sign(m) ALONE: m flips -1 -> +1 at bar 50 and back at
+        # bar 90 (hand-computed: c_50/c_29 = 1.272/1.271 > 1, c_49/c_28 =
+        # 1.271/1.272 < 1, c_90/c_69 = 1.290/1.291 < 1)
+        states = F.pair_state_series("EUR/USD", daily, None,
+                                     "benchmark_treatment")
+        assert states[20]["state"] is None and states[20]["m"] is None  # void
+        assert states[21]["state"] == -1 and states[49]["state"] == -1
+        assert states[50]["state"] == 1 and states[89]["state"] == 1
+        assert states[90]["state"] == -1
+        # ZERO macro reads: the reader is never consulted for the state
+        assert states[63]["d"] is None and states[63]["g"] is None
+        with pytest.raises(AttributeError):
+            F.pair_state_series("EUR/USD", daily, None, "anchor")
+        # run: exactly two round trips (short reversal long), aux pairs flat
+        out = F.run_arm("benchmark_treatment", data_paths, reader)
+        runner_validate(out)
+        assert out["meta"]["arm_id"] == "FXFV3-A5-P1-bench"
+        assert all(d["decision_id"].startswith("FXFV3-A5-P1-bench|")
+                   for d in out["decisions"])
+        assert {d["pair"] for d in out["decisions"]} == {"EUR/USD"}
+        short_rt, long_rt = out["decisions"]
+        assert short_rt["side"] == -1 and long_rt["side"] == 1
+        # bar 21 (Fri 2020-02-28, EST 21:00Z) fills at bar 22 (Mon 21:00Z)
+        assert short_rt["decision_ts"] == "2020-02-28T21:00:00+00:00"
+        assert short_rt["entry_bar_ts"] == "2020-03-02T21:00:00+00:00"
+        # the m flip at bar 50 exits the short and reverses at the SAME fill
+        assert short_rt["exit_bar_ts"] == "2020-04-10T20:00:00+00:00"
+        assert long_rt["decision_ts"] == "2020-04-09T20:00:00+00:00"   # EDT
+        assert long_rt["entry_bar_ts"] == short_rt["exit_bar_ts"]
+        assert long_rt["exit_bar_ts"] == "2020-06-05T20:00:00+00:00"   # bar 91
+        # financing still accrues per the frozen formula (d = -0.0075):
+        # short: -1*10000*(-0.0075*39)/365 = +8.0136986301 over the 39
+        # day-starts 2020-03-03..2020-04-10; long: 56 day-starts -> -11.5068493151
+        got = {ev["decision_id"]: ev["financing_adjustment_usd"]
+               for ev in out["financing_events"]}
+        assert got[short_rt["decision_id"]] == pytest.approx(8.0136986301, abs=5e-10)
+        assert got[long_rt["decision_id"]] == pytest.approx(-11.5068493151, abs=5e-10)
+        # contrast on the SAME data: the anchor's macro gate (g == 0 forever
+        # on the constant differential) keeps it entirely flat
+        anchor = F.run_arm("anchor", data_paths, reader)
+        assert anchor["decisions"] == []
+        assert out["decisions"] != anchor["decisions"]
