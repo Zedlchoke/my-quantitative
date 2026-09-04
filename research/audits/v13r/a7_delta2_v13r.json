@@ -1,0 +1,122 @@
+{
+  "schema": "v13r_a7_delta2_audit_v1",
+  "artifact": "a7_delta2_v13r",
+  "producer_role": "A7",
+  "cycle": "CRYPTO-V13",
+  "audit_kind": "independent DELTA-2 audit of the LIQEPIS fold-boundary remediation before the LIQEPIS chain retry, with OITD published-cell carryover revalidation (V12R2 precedent)",
+  "audited_at_utc": "2026-09-04T17:45:00Z",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v13/r-a7-delta2",
+  "branch": "orca/v13-r-a7-delta2",
+  "audit_base_head": "ecfaff5919cc1e0818f0ea41d28f3bdf630246f2",
+  "w1r_sha": "bcb28536c7af7140372120f2bd9896b76be00c42",
+  "w1r2_sha": "d0726645fd97ea6e5ae67e405e8720844d71338c",
+  "delta_lane_commit": "f2aef59 (orca/v13-r-liqepis-delta; same subject, integrated as d072664)",
+  "verdict": "V13R2_LAUNCH_AUTHORIZED",
+  "unresolved_high_critical": 0,
+  "independence": "recomputed-and-verified; audit artifacts only, no repair; no push, no merge; main untouched",
+  "items": {
+    "1_delta_scope": {
+      "result": "PASS",
+      "diff_stat_bcb2853_d072664": {
+        "science_surface": ["research/v13/families/liqepis/plugin.py (the ONLY science-surface path in the range)"],
+        "test_surface": ["tests/test_v13r_liqepis_delta.py (new, 607 lines)"],
+        "control_plane_records": [
+          "research/audits/v13r/a7_delta_v13r.json (prior A7 delta audit artifact)",
+          "research/audits/v13r/a7_delta_v13r.md",
+          "research/control/v13_run/TECHABORT_liqepis_chain_attempt1.json (forensic)",
+          "research/control/v13_run/event_log.jsonl (+2)",
+          "research/control/v13_run/state.json (+6/-4)",
+          "research/control/v13_run/w13r_freeze.json (new)"
+        ],
+        "science_surface_beyond_liqepis_plugin": "NONE - git diff bcb2853..d072664 -- research/v13/ shows exactly one path (families/liqepis/plugin.py); families/oitd/** and research/adapter_v10/** empty diffs"
+      },
+      "hunk_by_hunk_plugin_review": {
+        "docstring": "FOLD-BOUNDARY TRAVERSAL documentation only",
+        "imports": "additive read-only imports of frozen helpers: attribution_buckets (adapter metrics), FAMILY_ID/STATUS_OK/fold_end_ns/iso_utc (unchanged frozen strategy module)",
+        "new_constant": "REASON_FOLD_TERMINAL_FORCE_FLAT (additive reason-code label)",
+        "new_helper": "fold_terminal_force_flat_stamps(): derived ONLY from the frozen stamp_calendar + effective_schedule + fold_assignments + the frozen runner attribution (attribution_buckets roll-forward); no new parameters; pins to exactly F0's 2025-12-15T00:00:00Z on the frozen calendar",
+        "behavior_change": "targets_at dispatches fold-terminal stamps to _fold_terminal_force_flat; EVERY OTHER effective stamp answers compute_targets_at byte-identically (only int(instant_ns) hoisted to a local); fail-closed paths ADDED (ContractViolation on missing bars / missing executable close fill / fill at-or-after fold end), NONE removed",
+        "frozen_constants_changed": "NONE - no identity/parameter/schedule/cost/fold-constant touched; w13_freeze.json not in the diff; digest-bearing frozen_identity inputs all unchanged"
+      }
+    },
+    "2_digests": {
+      "result": "PASS",
+      "recomputed": "6/6 via research.v11.publication_identity.arm_config_digest(frozen_identity(arm)) in the audit worktree at W1R2: OITD-28D 9f121f3e..., OITD-56D 620ef97b..., CTL-FLOW-ONLY e3b02064..., LIQEPIS-28D d7af1b24..., LIQEPIS-56D 60280408..., LIQEPIS-SIGN-INV 49ca153a...",
+      "equality": "computed == module-recorded == w13_freeze.json arm_config_digests, all 6",
+      "pairwise_unique": "PASS (6/6 distinct)",
+      "cross_check": "driver preflight at the exec tree (d0726645) independently recomputed n_match 6/6 against w13_freeze.json"
+    },
+    "3_oitd_cells_validity": {
+      "result": "PASS",
+      "science_surface_immutability": "git diff bcb2853..d072664 -- research/v13/families/oitd/ and -- research/adapter_v10/ are BOTH empty (byte-identical); therefore the 3 published OITD rows remain valid under W1R2 (BAB-under-W12R precedent: science surface unchanged => published results carry)",
+      "shard_ledger": {
+        "path": "results/v13_phase_e/ledger_oitd.jsonl (exec tree)",
+        "sha256": "4fa9f3516b36d640265eb98e73168b9b48f2cb919ccb5fc5c7f56ded83fef2b6",
+        "rows": 3,
+        "rows_detail": "OITD-28D / OITD-56D / CTL-FLOW-ONLY, all row_type CELL_RESULT, producer_head_sha bcb2853, baseline cells, published 2026-09-04T16:47:10Z, arm_config_digests equal the frozen OITD triple",
+        "consistency": "cell_summary.json per cell matches (baseline_result_sha256 equal to ledger result_sha256; input_snapshot_sha256 f855ad9c)"
+      }
+    },
+    "4_tests": {
+      "result": "PASS",
+      "runner": "/Users/hoangminhlong/.venv/bin/python -m pytest, audit worktree at W1R2 (+ control-plane freeze commit ecfaff5; d072664..ecfaff5 touches ONLY event_log.jsonl and w13r_freeze.json)",
+      "suites": {
+        "test_v13r_liqepis_delta.py": "10 collected, passed",
+        "liqepis_family (evidence+goldens+pit)": "39 collected, passed",
+        "oitd_family (6 test modules; world file fixture-only 0 tests)": "77 collected (9+16+17+11+15+9), passed",
+        "test_v13r_driver.py": "35 collected, passed",
+        "tests/data_fusion": "227 collected, passed",
+        "test_v13p_accounting_regression.py": "7 collected, passed"
+      },
+      "observed_runs": "52 passed in 55.48s (delta+driver+accounting); 116 passed in 30.62s (liqepis+oitd); 227 passed in 0.71s (fusion); zero failures, zero modifications to frozen suites"
+    },
+    "5_fix_merit": {
+      "result": "PASS",
+      "oitd_fold_terminal_precedent": "OITD's frozen 1-day trailing purge strips EXACTLY the fold-terminal stamps (2025-12-15, 2026-04-20, 2026-08-17) so no OITD book can OPEN at a fold-terminal stamp - proven structurally by test_oitd_boundary_handling_is_provably_in_fold. LIQEPIS retains 2025-12-15 as an effective decision stamp (only 2026-04-20 sits in its purge zone), so the same invariant is restored family-appropriately: the flat transition itself is the boundary action, status OK (the frozen runner refuses FORCE_FLAT at an OPEN instant, runner.py:373, and force-flattens the final schedule instant itself)",
+      "runner_boundary_accounting_match": "runner._account_boundaries settles live legs into ClosedPosition records at EVERY boundary (roll-forward model); a zero-leg flat target is a LIQUIDATING transition - closing fills are demanded for the union of proposal and current holdings, realized positions carry exit fill prices, liquidation cost attaches pro-rata to the legs being closed, and positions attribute to the boundary instant's fold (F0). F1's first boundary provably opens from an empty prior book",
+      "cannot_silently_drop_legs": {
+        "fail_closed_schedule_time": "_fold_terminal_force_flat raises ContractViolation BEFORE the flat book is offered if any universe symbol lacks bars, lacks an executable close fill, or its fill lands at/after the owning fold's end (test_fold_terminal_flat_fails_closed_when_a_fill_cannot_land_in_fold blanks BOMEUSDT bars across the fold end and proves the refusal). Even a hypothetical bad flat would be caught by the runner (fills not all applied -> OPEN_SKIPPED carry -> cross-fold check refuses)",
+        "realisation_not_deletion": "test_bomeusdt_scenario_now_realises_the_fold_terminal_flat pins the flat book (status OK, zero legs, carried_forward False, n_flat_close_fills_executable == |universe|) while DEC_08/DEC_22 keep the frozen 12-leg books. test_fold_boundary_sweep_all_arms_all_cells_real_snapshot walks the REAL staged snapshot through the runner boundary machinery for 3 arms x 6 cells and asserts: at each fold-terminal flat boundary prior weights are NON-EMPTY (real held legs exist to be liquidated - 'assert target == {} and prior'), action OPEN_REBALANCE with applied fills, latest fill_bar_close_ns STRICTLY before fold_end_ns, F1 opens from empty prior, and the weights-only mirror of the frozen cross-fold invariant ends with an empty tail",
+        "sweep_totals": "18 cells, 15 fold-terminal flats (5 cells x 3 arms keep F0; in drop_one_fold F0 is fully carried so the flat stamp is answered but never acted on), 18 final force-flats - all in-fold"
+      },
+      "derivation_honesty": "fold_terminal_force_flat_stamps() is calendar-derived (test pins it to exactly F0-terminal); zero new parameters; digests unchanged (item 2)"
+    },
+    "6_twins": {
+      "result": "PASS",
+      "heads": "e-exec-1 and r-reproduce BOTH detached at d0726645fd97ea6e5ae67e405e8720844d71338c, porcelain 0 (re-checked after preflights: still 0)",
+      "canonical_ledgers": "results/registry/experiments_v13.jsonl sha256 e3b0c442... (pinned empty seed, 0 bytes) in BOTH trees",
+      "staging": "staged_data/staged_manifest_.json sha256 f855ad9c... == frozen equal-twin digest in BOTH trees, 90 entries each; 4 files spot-verified against research/audits/v12p/a3_staging_manifest.json authority hashes across both trees (8/8 OK); the driver verifier performs the full 90/90 in preflight",
+      "preflight_only_in_place": {
+        "liqepis": "run_v13_cell --family liqepis --arm LIQEPIS-28D --expect-head d0726645... --preflight-only from the exec tree: exit 0, exec_head d0726645, digest_matches_freeze true, staged 90/90",
+        "oitd": "same for --family oitd --arm OITD-28D: exit 0, exec_head d0726645, digest_matches_freeze true, staged 90/90",
+        "no_new_artifacts": "results/ file listing 76 before == 76 after both preflights (diff empty); results/ is gitignored; exec tree porcelain stays 0",
+        "disclosure": "the mandated preflight-only rerun refreshes the gitignored evidence artifact results/v13_phase_e/liqepis/LIQEPIS-28D/preflight.json in place (at_utc 17:56:34Z = this audit's run); preflight-only writes its own evidence file by design, contains NO scored metric, and re-proves the same PASS facts (6/6 digests, 90/90 staged, code_sha256 d0726645)"
+      }
+    },
+    "7_boundaries": {
+      "result": "PASS",
+      "budget": "3/9 consumed: 3 published OITD CELL_RESULT rows (16:47:10Z, producer head bcb2853) in the family shard ledger; remaining planned cells = 3 (LIQEPIS-28D, LIQEPIS-56D, LIQEPIS-SIGN-INV); 3 ILLIQ slots unused per the scored plan",
+      "zero_liqepis_metrics": "results/v13_phase_e/liqepis/ contains ONLY preflight.json (no baseline_metrics / cell_summary / matrix); ledger_liqepis.jsonl does not exist; zero LIQEPIS scored metrics exist",
+      "s1": "SEALED_UNTOUCHED (state.json; no S1 path listed/opened/hashed; no S1 access per run_contract)",
+      "workers": "0 owned heavy workers (ps: no pytest/run_v13_cell processes; state owned_workers 0)",
+      "main": "untouched by this audit: main repo on branch main at 50e0207 (owner next-cycle Forex plan, 11:44Z, pre-scoring), only pre-existing untracked .v2c/ tool state; this audit wrote only inside its worktree",
+      "clock": "scoring clock started 2026-09-04T16:05:00Z (event_log seq 17); audit at ~17:45-17:56Z => ~1h50m elapsed, well within the 12h window"
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "title": "state.json budget/counters stale relative to the 3 published OITD cells",
+      "detail": "state.json (updated_utc 14:40Z) still shows budget 0/9 and counters v13_published/v13_observed 0 although 3 OITD cells were published at 16:47Z; the authoritative records (shard ledger sha256 4fa9f351..., per-cell summaries, TECHABORT forensic pin) are correct and mutually consistent. No budget-overrun risk: the scored plan caps total V13 cells at 6 of 9.",
+      "resolution": "non-blocking; recommend A1 reconcile state.json counters at the next control-plane update or terminal report"
+    },
+    {
+      "id": "F2",
+      "severity": "OBSERVATION",
+      "title": "preflight-only rerun refreshes the gitignored preflight evidence artifact in place",
+      "detail": "The audit-mandated --preflight-only runs (both families, exec tree in place) rewrote results/v13_phase_e/liqepis/LIQEPIS-28D/preflight.json (at_utc 17:56:34Z) and created results/v13_phase_e/oitd/OITD-28D/preflight.json-equivalent evidence via the same mechanism; file count unchanged (76 before/after), no scored metric, exec tree porcelain 0. By-design preflight evidence behavior, disclosed for the record."
+    }
+  ],
+  "verdict_rationale": "All 7 verification items PASS; 0 unresolved HIGH/CRITICAL; the delta is a minimal, fail-closed, digest-neutral remediation that restores the frozen force-flat-in-fold invariant (OITD fold-terminal precedent, runner boundary accounting honored, legs proven realised in-fold rather than dropped); the 3 published OITD cells remain valid under W1R2 because their entire science surface is byte-identical between bcb2853 and d072664."
+}
