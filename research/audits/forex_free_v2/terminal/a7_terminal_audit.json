@@ -1,0 +1,155 @@
+{
+  "schema": "forex_free_v2_terminal_audit_v1",
+  "audit_id": "A7-TERMINAL-FOREX-FREE-V2",
+  "cycle_id": "FOREX-FREE-V2",
+  "role": "independent terminal auditor (audit-only; no repairs)",
+  "measured_utc": "2026-09-04T11:17:33Z",
+  "audited_head": "a86e3f794a025e327b670c2c5fecc5e9abfd3431",
+  "audited_head_label": "tip of orca/forex-free-v2-integration == base of orca/forex-free-v2-a7-terminal",
+  "base_of_cycle": "bee64beaf2637ea51216cffc6be6393d545bf474",
+  "w2_claimed": "a68764d8f1501b27d07840de6a8fce11ec8eaa5b",
+  "twins": {
+    "e-exec-1": {"head": "a68764d8f1501b27d07840de6a8fce11ec8eaa5b", "detached": true, "tracked_dirty": 0},
+    "r-reproduce": {"head": "a68764d8f1501b27d07840de6a8fce11ec8eaa5b", "detached": true, "tracked_dirty": 0}
+  },
+  "checks": {
+    "C1_pin_chain": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse HEAD in e-exec-1 and r-reproduce both == a68764d8f1501b27d07840de6a8fce11ec8eaa5b (== w2_freeze FOREX_FREE_V2_W2)",
+        "w2_freeze.json byte-identical across e-exec-1 / r-reproduce / r-a7-terminal(integration) copies",
+        "All 30 hash checks (9 code_hashes + 6 spec_hashes x 2 twins) match the actual twin blobs: 0 mismatch",
+        "staged_data_manifest.json: 174 entries per twin (file_count_per_tree=174); independent re-hash replay 174/174 PASS in e-exec-1 and 174/174 PASS in r-reproduce; 0 mismatch, 0 missing; manifest.W2 == W2",
+        "Twins tracked-clean: git status --porcelain shows 7 (e-exec-1) / 5 (r-reproduce) lines, ALL untracked (??) run artifacts; 0 tracked modifications"
+      ]
+    },
+    "C2_ledger": {
+      "status": "PASS",
+      "evidence": [
+        "committed research/control/forex_free_v2_run/scored_ledger_published.jsonl has exactly 6 rows",
+        "Every ledger line is exactly canonical_json_bytes(row) (json.dumps sort_keys, separators(',',':'), ensure_ascii=False, UTF-8) -- verified byte-for-byte for all 6",
+        "Every row digest recomputed independently (strip 'digest' -> canonical_json_bytes -> sha256) equals the stored digest: 6/6; 6 unique digests",
+        "cell_ids exactly equal the six authorized in w2_launch_verdict.json cells_authorized (set equality, order family1 anchor->neighbour->control then family2)",
+        "event_log.jsonl: 15 events; SIX_CELLS_SCORED appears exactly once and is the LAST event (idx 14); 0 events after it; no per-digest publish events exist (once-only is enforced structurally by the digest-presence check under flock in publish_cell)",
+        "ledger sha256 = 1be279ef18d6baa21fbaf6e331be1be168f0629f6dc71aa8c8c33c02a707c906 equals reproduction_report.ledger_sha256_exec AND .ledger_sha256_repro AND sha256(e-exec-1 local ledger) AND sha256(r-reproduce local ledger); the three ledger files are byte-identical",
+        "reproduction_report verdict REPRODUCTION_ALL_MATCH, all_digests_match=true, 6/6 cells digest/trades/pnl/gates match"
+      ]
+    },
+    "C3_gates_metrics": {
+      "status": "PASS",
+      "evidence": [
+        "expectancy identity: round(base.total_pnl/base.trades,10) == base.expectancy for 6/6 rows",
+        "stage_a_gates re-implemented from the twin runner source and recomputed from each row's own fields: returns gates=False and reproduces stored gate_reasons EXACTLY (list equality) for 6/6 rows; EXPECTANCY_NONPOSITIVE present in all 6",
+        "MDD: 5907.82 / 7384.53 / 10629.30 / 12285.38 / 14979.79 / 16090.51 -- all > 2500 as claimed (MDD_ABOVE_FROZEN_CEILING in all gate_reasons)",
+        "break_even_cost_bps: -0.401994 / -0.648631 / -0.823919 / -0.046273 / -0.208606 / -0.017178 -- all <= 1.5; all NEGATIVE, i.e. gross edge is negative before ANY cost",
+        "frozen constants: all 17 w2_freeze.frozen_gates items cross-checked against twin scored_runner.py source constants (14 numeric + purge_days + folds + session-gate semantics): 0 mismatches",
+        "stress expectancy deltas vs base: tier1.5 == 0.0 exactly x6; tier2.0 = -0.069623/-0.045373/+1.756364/+0.230039/+0.346886/-0.055919 -- all stress expectancies remain NEGATIVE and every stress gate still FAILS (recomputed). See finding F1/F2: stress tiers were booked at tier-1.0 costs (tier1.5 is a byte-identical copy of base; tier2.0 measures the frozen one-event delay at base costs)."
+      ]
+    },
+    "C4_reconciliation": {
+      "status": "PASS",
+      "evidence": [
+        "runner identity sched_trades = trades + weekend_gate_dropped + purged_trades reconciles EXACTLY against pre-outcome (pre-W2, outcome-blind) A9-F/prelaunch recorded schedule counts: family1 anchor 1541+151+16=1708 == prelaunch 'full 1708'; family2 anchor 3830+100+123=4053 == prelaunch 'anchor trades 4053'",
+        "NOTE: ledger 'decisions' is go/no-go decision points incl. void entries (2767 family1 / 11765 family2, arm-invariant), NOT a schedule trade count -- reconciliation therefore done against the prelaunch schedule counts above",
+        "rows byte-identical across e-exec-1 / r-reproduce / committed ledger (row dicts compare equal)",
+        "state.json scored_cells_summary matches the ledger for all 6 cells (trades exact; expectancy/pf within rounding)",
+        "replay_summary.json: mode=scored, scored=true, real_pnl=true; the 6 scored cells all published_now=0 ([0,0,0,0,0,0]); the 2 MECHANISM_SANITY entries carry no published_now field (not publishable cells); replay_summary in the committed tree is byte-identical to e-exec-1's",
+        "execution_summary.json: 6 scored cells, published_now=[1,1,1,1,1,1], mode=scored -- one publication per cell on first pass"
+      ]
+    },
+    "C5_direction_control": {
+      "status": "PASS",
+      "evidence": [
+        "family1: anchor -3.8039879501, neighbour -4.2972621345, control -4.6478382642 -> control < anchor (coherent control, no rescue) TRUE",
+        "family2: anchor -3.0925464708, neighbour -3.4172118362, control -3.0343559326 -> |control-anchor| = 0.0582 <= 0.5 (placebo parity => mechanism not distinct) TRUE",
+        "neighbours both negative (do not support anchor): family1 -4.2973 < 0, family2 -3.4172 < 0 TRUE (NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR fired for both families)",
+        "USD |corr| all six: 0.021349 / 0.047307 / 0.038394 / 0.017855 / 0.068819 / 0.072288 -- max 0.0723 <= 0.30 TRUE (event_log '|corr| <= 0.072' matches at rounding; n_days 799..1535, evaluated=true x6)",
+        "recorded characterizations in state.json/event_log/SIX_CELLS_SCORED match the ledger numbers exactly"
+      ]
+    },
+    "C6_denominator_v1": {
+      "status": "PASS",
+      "evidence": [
+        "research/control/forex_free_v1_run/scored_ledger_published.jsonl: exactly 6 rows; sha256 066db4337e31139d7c9dc08703b1afb4f5b54a9a394c8273864fdc92677eecd7",
+        "git show bee64be:<same path> sha256 is identical (066db433...eecd7) -- V1 ledger unmodified by the V2 cycle",
+        "git diff --stat bee64be..a86e3f7 -- research/control/forex_free_v1_run/ is EMPTY",
+        "V2 adds exactly 6 rows (its own ledger); state.json denominators {published:6, observed:6, historical_forex_denominator:12} == V1 6 + V2 6 as claimed"
+      ]
+    },
+    "C7_boundaries": {
+      "status": "PASS",
+      "evidence": [
+        "git diff --name-only bee64be..a86e3f7: 60 paths, distributed research/control(21) research/proposals(12) tests/assets(9) research/assets(8) research/audits(6) PLAN files(2) dry-run reports(2); 0 hits for research/control/forex_run/ or any S1-named path (case-insensitive)",
+        "no data_raw path in the diff; git ls-files | grep data_raw is EMPTY repo-wide (data_raw untracked/gitignored)",
+        "credentials: 0 hits for api_key/secret/passphrase/bearer in research/assets/forex_free_v2/ and research/control/forex_free_v2_run/; the only 'token' references are AUTHORIZATION_TOKEN = 'GO FOREX V2 SCORED EXECUTION' (W2-gating phrase, explicitly allowed)",
+        "git log --merges bee64be..a86e3f7: EMPTY (no merge commits in the cycle)",
+        "main untouched: main tip b6d9790; a86e3f7 is NOT an ancestor of main; none of the cycle commits (git rev-list bee64be..a86e3f7) is reachable from main",
+        "origin refs: 0 refs matching *forex-free-v2* under refs/remotes",
+        "workers: ps scan for scored_runner/exec_driver/forex_free processes = 0",
+        "tree cleanliness: integration worktree porcelain 0 lines; r-a7-terminal porcelain 0 lines (pre-commit audit state)"
+      ]
+    },
+    "C8_verdict_label": {
+      "status": "PASS",
+      "evidence": [
+        "6/6 published cells FAIL Stage-A with EXPECTANCY_NONPOSITIVE (independently recomputed); 0 survivors",
+        "evidence complete AND committed at a86e3f7: ledger + event log + exec/replay/reproduction reports all in tree; replay zero-delta; reproduction ALL_MATCH byte-identical -> BLOCKED/INCOMPLETE not applicable",
+        "no cell passes any profitability gate (all expectancies negative, break-even bps negative) -> no survivor label applicable; selection_freeze super-family merge caveat moot with zero survivors",
+        "strongest allowed terminal label is therefore FOREX_FREE_V2_REJECT_ALL -- CONFIRMED"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "title": "Stress-tier cost multipliers were never applied to booked PnL (tier1.5 stress is a duplicate of base; tier2.0 measures delay-only at base costs)",
+      "detail": "The frozen cost authority (w2_freeze cost_authority; accounting.bps_cost) specifies 1.5 bps/side x tiers {1.0,1.5,2.0} (1.50/2.25/3.00 USD per side on the 10k USD-unit). Neither family1.py nor family2.py trade dicts carry a 'cost_tier' field (verified in source: trade dicts contain trade_id/pair/side/notional_usd/entry_price/entry_ts/decision_ts/exit_price/exit_ts/exit_reason only), and scored_runner.book_trades books with cost_tier=tr.get('cost_tier', 1.0). Numeric proof from the ledger itself: implied per-side cost = exactly 1.500 bps in the base group AND the tier1.5 group of all 6 rows (e.g. family1:anchor base costs 4622.9999 USD = 1541 x 3.00 USD); tier1.5 metrics are byte-identical to base in all 6 cells. Consequently the ledger's stress.tier1.5 rows are exact copies of base, and stress.tier2.0 rows measure the frozen one-event fill delay at tier-1.0 costs, not the 3.0 bps/side cost stress.",
+      "verdict_impact": "NONE. All 6 cells fail EXPECTANCY_NONPOSITIVE at base; break_even_cost_bps is negative for all 6 (gross edge negative before any cost), so any higher cost tier makes expectancy strictly worse and no gate can flip to PASS. REJECT_ALL is robust a fortiori under the frozen cost authority. Recomputed gate_reasons match stored exactly."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "title": "family1:control tier2.0 stress expectancy delta +1.7564 vs base (delay re-timing), outside a 'small tier delta' expectation",
+      "detail": "base -4.6478 -> tier2.0 -2.8915 (same 2268 trades; the frozen one-event delay shifted exits favorably). Still deeply negative; stress gate still FAIL (total_pnl -6557.86 < 0, pf 0.7439 < 1.00). A consequence of F1's delay-vs-cost stress semantics; recorded for transparency. No gate effect.",
+      "verdict_impact": "NONE"
+    },
+    {
+      "id": "F3",
+      "severity": "LOW",
+      "title": "Self-reported UTC stamps in terminal control artifacts lead machine-verifiable UTC by ~1 hour",
+      "detail": "state.json/heartbeat.json/event_log SIX_CELLS_SCORED self-stamp 2026-09-04T12:15:00Z and reproduction_report 12:10:00Z, while the containing commit a86e3f7 is authored 2026-09-04T11:06:03Z (+07 = 11:06:03Z UTC) and the audit machine clock reads 11:17:33Z UTC. Either the machine clock is ~1h slow or the stamps are future-dated; unresolvable internally. All substantive evidence (hashes, digests, byte-identity) is timestamp-independent and verified directly against bytes.",
+      "verdict_impact": "NONE"
+    },
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "title": "Ledger rows carry static 'published': false",
+      "detail": "compute_cell assembles the record with published=False pre-publication and the publisher writes the digest-addressed line without flipping the flag. Publication is evidenced by five independent signals: presence in the content-addressed ledger, 6 unique digests, event_log SIX_CELLS_SCORED (published=6), execution_summary published_now=1 x6, replay published_now=0 x6. Cosmetic labeling only.",
+      "verdict_impact": "NONE"
+    },
+    {
+      "id": "F5",
+      "severity": "INFO",
+      "title": "Event-log narrative says twins staged '173 files/tree'; operative staged manifest carries 174",
+      "detail": "event_log F2_Q_W2_TWINS_CREATED facts say '173 files/tree (156 snapshot + 17 control/spec)' while staged_data_manifest.json (the operative, digest-bearing artifact) has file_count_per_tree=174 and 174 entries, replayed 174/174 in both twins by this audit. Manifest is authoritative; narrative count stale.",
+      "verdict_impact": "NONE"
+    },
+    {
+      "id": "F6",
+      "severity": "INFO",
+      "title": "'decisions' is decision points (incl. void), not schedule trade count",
+      "detail": "Per family1/family2 module docs and lane reports, 'decisions' counts go/no-go evaluation slots (arm-invariant: 2767 family1, 11765 family2). Future reconciliations should use schedule trade counts from the outcome-blind A9-F/prelaunch records as done in C4.",
+      "verdict_impact": "NONE"
+    }
+  ],
+  "ledger_sha256_v2": "1be279ef18d6baa21fbaf6e331be1be168f0629f6dc71aa8c8c33c02a707c906",
+  "ledger_sha256_v1": "066db4337e31139d7c9dc08703b1afb4f5b54a9a394c8273864fdc92677eecd7",
+  "findings_high": 0,
+  "findings_critical": 0,
+  "findings_medium": 1,
+  "findings_low": 3,
+  "findings_info": 2,
+  "verdict": "FOREX_FREE_V2_TERMINAL_AUDIT_PASS; terminal label FOREX_FREE_V2_REJECT_ALL CONFIRMED (C1..C8 all PASS; findings none verdict-changing)",
+  "attestation": "audit-only; no repairs. Every number in this audit was independently recomputed from file bytes (ledger rows re-digested, gates re-implemented from runner source, staged data re-hashed, ledgers re-hashed and cross-compared); no scoring was run; no file outside this audit lane was modified."
+}
