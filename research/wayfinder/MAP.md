@@ -128,3 +128,15 @@ promise.
 - [Define the TradFi perpetual research contract](tickets/tradfi-research-contract.md) — blocked by the future holdout.
 - [Set shared-capital and portfolio promotion rules](tickets/portfolio-promotion-gate.md) — blocked by candidate decisions.
 - [Approve the controlled forward-test handoff](tickets/forward-test-handoff.md) — blocked by portfolio and execution decisions.
+
+## V13 terminal (2026-09-04)
+
+V13 closed **V13_REJECT_ALL** (A7: V13_TERMINAL_APPROVED_0_FAIL).
+Branch `orca/v13-integration`, W1 c0d0673, W1R2 d0726645. 6/6 cells published,
+6/6 reproduced ALL_MATCH, budget 6/9 (ILLIQ slots unused). OILEV-successor
+OILEV... both selected families REJECT: OITD anchor -0.2854 (PF 0.879, MDD 30.5%),
+LIQEPIS anchor -25.33 (driver tick-size parameterization defect, adjudicated
+verdict-invariant; price-only -0.31). Data Fusion V1 core adopted byte-identical
+(c6a0576e) with decision-time availability pin. Denominators now 137 published /
+140 observed logical. No S1 candidate locked. S1 SEALED_UNTOUCHED, workers 0.
+Terminal report: research/control/v13_run/terminal_report_v13.json.
