@@ -1,0 +1,159 @@
+{
+ "schema": "v13_proposal_a8_v1",
+ "hypothesis_id": "A13-V13-A8-OITD",
+ "name": "Open-Interest-to-Turnover Unwind Duration (cross-sectional positioning structure)",
+ "lane": "a8",
+ "cycle": "CRYPTO-V13",
+ "phase": "D1",
+ "conditioning_space": "positioning/liquidity information (mission Q2): OI stock relative to turnover flow (exit-capacity/duration structure)",
+ "human_readable_twin": "research/proposals/v13/a8/OITD.md",
+
+ "item1_mechanism": {
+  "one_paragraph": "The aggregate position book of a Binance USD-M perpetual is a standing inventory that must eventually be transferred between traders. OITD measures how large that standing inventory is relative to the market's capacity to absorb its exit: D_s = notional_open_interest_s / avg_daily_dollar_turnover_s(28d) — days of typical turnover needed to unwind standing open interest (notional OI = 7-stamp trailing mean of daily OI snapshots x latest available mark price). Economic counterparty: the crowded sticky-inventory holder (slow, conviction-driven capital facing a capacity-constrained exit) versus faster arbitrage capital that can absorb the unwind. Why the edge exists: when standing inventory is large relative to daily flow, the marginal holder's exit takes many days of normal volume and is exposed to anticipatory/spiral dynamics (Brunnermeier & Pedersen 2009; Shleifer & Vishny 1997), while the accumulation already paid the good entry prices; the futures hedging-pressure literature (Bessembinder 1992; de Roon, Nijman & Veld 2000) establishes that structural positioning pressure is priced beyond beta, and OITD is the crypto-perpetual-measurable structural proxy (no COT-style hedger labels exist). Expected sign: LOW-duration symbols outperform HIGH-duration symbols over the following week; long the lowest-D tercile, short the highest-D tercile.",
+  "signal_inputs": ["open_interest level (7-stamp mean)", "mark price (notional conversion)", "dollar turnover level (28d/56d mean)"],
+  "signal_exclusions": ["no OI differencing or direction", "no past-return term", "no funding term (cost only)"]
+ },
+
+ "item2_falsifiable_prediction": {
+  "passes_when": "anchor after-cost expectancy > 0 AND position PF >= 1.10 AND >= 2/3 chronological folds positive; excess over BTC buy-and-hold AND over BTC-beta context positive in >= 2/3 folds; causal control fails at least one of the anchor's three gates",
+  "falsified_if_any_of": [
+   "anchor fails any of the three gates (duration-crowding premium absent or sign-wrong after costs)",
+   "anchor passes but CTL-FLOW-ONLY also passes all three (edge is a pure turnover-level effect; OI stock redundant)",
+   "BTC-beta-context excess non-positive in >= 2 folds (beta repackaging)",
+   "56d neighbour contradicts anchor sign or is unstable across folds (horizon-fragile statistic)",
+   "largest fold-positive PnL share > 50% (single-regime artifact)",
+   "A7-N |rho| > 0.20 vs frozen OILEV-V2 anchor OR its inverted control (voluntary novelty commitment)"
+  ],
+  "no_rescue_rule": "no parameter retune, sign flip, cap change, universe carve-out or threshold relaxation may rescue any failure mode"
+ },
+
+ "item3_literature": {
+  "pass_note": "web literature pass completed 2026-09-04T10:55Z..11:16Z, BEFORE mechanism finalization; no candidate return was ever computed",
+  "queries": [
+   {"q": "Bessembinder 1992 hedging pressure risk premiums futures markets open interest", "retrieval_utc": "2026-09-04T11:01Z", "verdict": "ACCEPT", "reason": "primary: Bessembinder (1992) RFS 5(4) 637-667; de Roon, Nijman & Veld (2000) JF — positioning/hedging pressure priced in futures beyond beta"},
+   {"q": "cryptocurrency perpetual futures open interest predict returns crowding study", "retrieval_utc": "2026-09-04T11:02Z", "verdict": "ACCEPT (caveat)", "reason": "Giagkiozis (2024) Ledger — OI systematically misquoted on some exchanges; motivates fail-closed OI eligibility; rejected non-primary marketing/educational pages"},
+   {"q": "Brunnermeier Pedersen Market Liquidity and Funding Liquidity RFS 2009", "retrieval_utc": "2026-09-04T11:05Z", "verdict": "ACCEPT", "reason": "RFS 22(6) 2201-2238 — liquidity spirals, destabilizing margins; supports exit-capacity/crowded-exit channel; crisis-era caveat"},
+   {"q": "turnover ratio share turnover expected stock returns Datar Naik Radcliffe liquidity", "retrieval_utc": "2026-09-04T11:04Z", "verdict": "ACCEPT (confound warning)", "reason": "JFM 1(2) 203-219 — negative turnover-return relation in equities; exactly the turnover-level confound armed against by CTL-FLOW-ONLY"},
+   {"q": "Binance USDT-M futures open interest history API statistics interval 1d official documentation", "retrieval_utc": "2026-09-04T11:07Z", "verdict": "ACCEPT", "reason": "official Binance USD\u24c8-M docs: openInterestHist 1d period, sumOpenInterest field matches staged shape; availability = snapshot stamp"},
+   {"q": "bitcoin futures open interest decline deleveraging liquidation cascade price impact research", "retrieval_utc": "2026-09-04T11:11Z", "verdict": "ACCEPT (boundary caveat)", "reason": "liquidation-cascade literature studies OI dynamics/forced deleveraging; OITD uses OI level structure only (no differencing, no direction) — different construct; OI-flow sign region is falsified-family territory not entered"},
+   {"q": "Nagel 2012 evaporating liquidity returns to liquidity provision short-term reversal", "retrieval_utc": "2026-09-04T11:09Z", "verdict": "ACCEPT (caveat)", "reason": "RFS 25(7) 2005-2053 — reversal returns proxy liquidity provision; OITD has no past-return term and is not a reversal implementation"},
+   {"q": "Admati Pfleiderer 1988 theory of intraday patterns volume price variability trading clustering", "retrieval_utc": "2026-09-04T11:14Z", "verdict": "ACCEPT", "reason": "RFS 1(1) 3-53 — endogenous participation clustering; supports turnover shape as economically meaningful (companion TCH family)"}
+  ],
+  "primary_claims_used": [
+   "structural positioning pressure is priced in futures markets beyond beta (L1)",
+   "positions whose exit requires many days of normal volume are exposed to anticipatory/spiral dynamics (L3)",
+   "OI data quality varies across venues; fail-closed handling required (L2, L5)"
+  ],
+  "transfer_caveats": [
+   "hedging-pressure premia were measured with CFTC hedger labels; Binance perps have no trader classification, so OITD is a structural proxy and the sign/oracle strength may differ",
+   "equity low-turnover premium (DNR) may exist independently of OI; the causal control arms the family against that reading",
+   "OI snapshots can be misquoted; design reads only owner-staged OI with native snapshot stamps, uses a 7-stamp mean, refuses symbols with insufficient history",
+   "24/7 instant-margin trading has no session structure; 'days of turnover to unwind' is an abstract capacity unit",
+   "one 52-week window may be regime-specific; fold and drop-one gates are the preregistered guard"
+  ]
+ },
+
+ "item4_pit_observable": {
+  "authority": "fusion-record availability semantics: decision at T reads only records with available_time_utc <= T; retrieval time never substitutes (research/data_fusion/crypto_compat.py, pit.py)",
+  "records": [
+   {"record": "crypto_bars.close / crypto_bars.volume (15m)", "available_time_utc": "bar close time (ts_event boundary)", "use": "daily dollar turnover = sum(close x volume) per UTC day; 90d daily closes for beta context"},
+   {"record": "crypto_open_interest.open_interest (daily snapshots)", "available_time_utc": "OI snapshot stamp (timestamp/create_time)", "use": "7-stamp trailing mean numerator, unit BASE"},
+   {"record": "crypto_mark_price.mark_price", "available_time_utc": "mark kline close / snapshot stamp", "use": "notional conversion of OI to USDT"},
+   {"record": "crypto_funding.funding_rate", "available_time_utc": "funding settlement stamp", "use": "COST ONLY while held; never read by any signal, ranking or eligibility rule"}
+  ],
+  "derived": {
+   "OI7_s(T)": "mean of the latest 7 daily OI records with stamp <= T (stamps within trailing 10 days; fewer than 7 -> symbol ineligible, fail-closed, no back-fill)",
+   "MK_s(T)": "latest mark record with stamp <= T (within trailing 24h; else ineligible)",
+   "TO_s(T,W)": "sum over completed 15m bars with close stamp in (T-W, T] of close x volume, divided by W_days (anchor W=28d, neighbour W=56d); every UTC day fully covered by completed bars; gaps are failures, never filled",
+   "D_s(T)": "OI7_s(T) * MK_s(T) / TO_s(T, 28d) — days of average turnover to unwind standing notional OI"
+  }
+ },
+
+ "item5_universe_warmup_clock_schedule": {
+  "universe": "19 tradeable symbols = frozen REQUIRED_SYMBOLS (research/v12/data_contract.py) minus BTCUSDT; BTCUSDT benchmark/context only, never ranked or held",
+  "window": "blind-S0 screen 2025-08-22T00:00:00Z..2026-08-21T00:00:00Z; warmup from authorized window (from 2024-08-20)",
+  "warmup": {"beta_context": "90d completed bars (binding max, frozen beta_90d convention)", "anchor_turnover": "28d", "neighbour_turnover": "56d", "oi": "7 daily stamps"},
+  "decision_clock": "weekly, Monday 00:00:00Z; 52 discretionary decisions/365d (<= 60 floor); first stamp 2025-08-25T00:00:00Z, last 2026-08-17T00:00:00Z; fold-terminal force-flats counted separately (frozen A3 vocabulary)",
+  "folds": "F0/F1/F2 chronological with 1-day purge, imported unchanged from the frozen V12 fold contract (v13_p_freeze); force-flat at fold boundaries",
+  "execution_lag_declared_one": "orders released T + 15 minutes; fill reference = OPEN price of the first completed 15m bar whose slot-open instant >= T + 15m (the 00:15Z bar; open instant coincides with order release, no look-ahead); stress +1 event delay shifts fill to the next 15m bar's open",
+  "book_construction": "rank eligible symbols by D ascending; long lowest-D tercile (6), short highest-D tercile (6), middle 7 buffer; enter on tercile entry, exit only when rank crosses beyond the median (hysteresis buffer); equal weights w = min(0.5/n_side, 0.30); n_side < 2 -> side budget to cash; side membership < 4 -> skip that stamp's rebalance, hold previous book (fail-closed); gross <= 1.0; intended holding spans >= 7d by construction"
+ },
+
+ "item6_arms": {
+  "anchor": {"id": "OITD-28D", "signal": "D_s with 28d turnover denominator; long lowest-D tercile, short highest-D tercile", "justification": "the mechanism as stated"},
+  "neighbour": {"id": "OITD-56D", "signal": "identical construction with 56d turnover denominator", "justification": "same mechanism, different justified parameter: a single burst week shifts a 28d denominator by ~25% but a 56d one by ~12%, halving estimator sensitivity; 56d warmup inside authorized window"},
+  "causal_negative_control": {"id": "CTL-FLOW-ONLY", "signal": "rank on 28d mean daily dollar turnover ALONE, DESCENDING (long highest-turnover tercile, short lowest-turnover tercile); OI numerator removed (constant across symbols)", "justification": "flow-level shadow of the anchor's mechanical exposure: for fixed OI, low D == high turnover; the control retains the turnover-level exposure and deletes the OI stock the mechanism claims is doing the work"},
+  "preregistered_control_rule": "IF anchor OITD-28D passes {after-cost expectancy > 0, position PF >= 1.10, >= 2/3 folds positive}, THEN CTL-FLOW-ONLY must fail at least one of those three gates; if CTL-FLOW-ONLY also passes all three, the edge is a pure turnover-level (flow) effect, the OI stock is redundant, and A13-V13-A8-OITD is FALSIFIED as a distinct positioning-structure mechanism",
+  "control_discipline": "control uses no funding signal; identical clock, costs, folds and gates as the anchor"
+ },
+
+ "item7_incremental_test": {
+  "excess_buy_and_hold": "per fold f: arm_net_f - BTC_buy_and_hold_f (BTCUSDT perp, same fold window, identical force-flat convention)",
+  "excess_btc_beta_context": "per fold f: arm_net_f - beta_p * BTC_f; beta_p = trailing 90d daily regression beta of the arm's mark-to-market daily returns vs BTCUSDT daily returns (daily closes from completed 15m bars), estimated PIT at the fold's first decision stamp, held fixed over the fold",
+  "gate": "Stage-A unrelaxed: both excess series positive in >= 2/3 folds; failure of either in >= 2 folds falsifies the family's Q2 claim"
+ },
+
+ "item8_costs_floors_concentration_dropone": {
+  "base_costs": "frozen adapter arithmetic (GenericStrategyBase.rebalance_cost_between): taker fee bps per side + adverse tick slippage floor (tick size from instrument metadata); native funding settlements accrue exactly once per settlement inside [ts_opened, ts_closed] at the symbol's own cadence (8h/4h/1h mixed) — COST ONLY",
+  "stress_costs": "frozen cell: fee x1.5, +2 adverse ticks, +1 event delay",
+  "cost_floors": {"base_drag": "<= 8%/yr of average gross", "stressed_drag": "<= 12%/yr", "feasibility_gate": "schedule-only gate (research/v11/cost_feasibility.py) must PASS before any scoring"},
+  "activity_floors": {"decisions_per_365d": "52 (<= 60)", "median_intended_holding_days": ">= 3 (>= 7 by construction)", "decisions_per_fold": ">= 15", "side_membership": ">= 4 at >= 95% of stamps", "signal_availability": ">= 95% of stamps", "minimum_activity": "arms with < 30 completed decisions refused at publication"},
+  "concentration": "|w| <= 0.30 at every stamp by construction; gross <= 1.0; largest-symbol positive-PnL share <= 0.70 is a Stage-A outcome gate; no symbol > 25% of one-way turnover (feasibility floor)",
+  "drop_one": "at every decision stamp drop the HELD symbol with maximum |weight| (tie-break ascending symbol name); remaining weights unchanged — no post-score renormalization; full schedule rerun; non-vacuous iff the dropped book differs from the anchor book at >= 50% of stamps with the dropped symbol held; drop-one may not flip any family verdict to PASS; reported per Stage-A gate"
+ },
+
+ "item9_failure_interpretation": [
+  "anchor fails expectancy/PF: unwind-duration premium absent or sign-wrong after costs in this universe/window -> family falsified; no rescue, no horizon/parameter search",
+  "anchor passes, CTL-FLOW-ONLY passes too: edge is a generic turnover-level effect; OI stock adds nothing -> falsified as a positioning-structure mechanism",
+  "anchor passes, neighbour contradicts: duration statistic horizon-fragile -> not a robust mechanism; falsified",
+  "beta-context excess non-positive in >= 2 folds: BTC-beta repackaging -> not incremental; falsified for Q2",
+  "largest fold-positive share > 50%: single-regime artifact; not generalizable; falsified",
+  "feasibility floors FAIL: schedule redesign allowed pre-score only; if unachievable without weakening a frozen floor -> withdraw",
+  "drop-one vacuous: max-|w| symbol not actually held -> arm invalid, rerun refused",
+  "A7-N |rho| > 0.20 vs frozen OILEV-V2 anchor or its inverted control: INELIGIBLE under the voluntarily adopted novelty bound",
+  "signal availability < 95%: data insufficiency -> selection/BLOCKED refusal, NOT a mechanism verdict"
+ ],
+
+ "item10_source_to_test_map": [
+  {"input_field": "crypto_bars.close (15m)", "test_use": "daily dollar turnover denominator (28d anchor / 56d neighbour / 28d control); daily closes for 90d beta context and fold benchmark series"},
+  {"input_field": "crypto_bars.volume (15m)", "test_use": "turnover products close x volume"},
+  {"input_field": "crypto_open_interest.open_interest (daily snapshots)", "test_use": "7-stamp trailing-mean numerator of D_s (anchor + neighbour); >= 7 stamps eligibility rule"},
+  {"input_field": "crypto_mark_price.mark_price", "test_use": "notional conversion OI7 x MK of the numerator to USDT"},
+  {"input_field": "crypto_funding.funding_rate (settlements)", "test_use": "COST ONLY, accrued once per settlement while held; excluded from every signal, rank and eligibility rule"},
+  {"input_field": "instrument tick size (price_increment)", "test_use": "adverse-tick slippage in base costs and the +2-tick stress"},
+  {"input_field": "BTCUSDT bars", "test_use": "benchmark/context only (buy-and-hold and beta leg); never ranked, never held"}
+ ],
+
+ "item11_ancestry_map": {
+  "V12-OILEV-V2 / V11-OILEVER-DELEV": "OILEV conditions on OI change (deleveraging flow direction); OITD conditions on an OI level relative to a turnover level — no differencing, no OI sign, no OI horizon; a sign flip/horizon tweak/carve-out of OILEV is undefined for a stock/flow ratio with no direction term; different null (exit-capacity crowding vs deleveraging flow); voluntarily adopts A7-N |rho| <= 0.20 vs the frozen OILEV-V2 anchor AND its inverted control — exceeding it makes the proposal ineligible and withdrawn",
+  "V6/V1-CARRY-FUNDING": "funding never appears in any signal, ranking or eligibility rule; enters only as a native settlement cost while held",
+  "V4-XSECT-MOM / V8R-XSECT-REVERSAL / WEEKLY-REVERSAL-MR-RESCUE": "no past-return term exists anywhere in the signal; ranking is return-free by construction",
+  "V1-VOLCOMP / V9-TS-TREND-dollar-volume-shock": "no breakout/continuation rule, no volume-growth or shock term; denominator is a trailing mean level, not a spike/growth detector",
+  "V11-LOTTERY-MAX-SKEW": "no LOT/MAX/idiosyncratic-skew feature",
+  "V11-ILLIQ-AMIHUD / V12-ILLIQ-REPLICATION": "no |r|/dollar-volume impact measure anywhere; the turnover term is a capacity scale, not a price-impact estimate; the Amihud replication brief is not re-opened",
+  "V10-M01-AGGRESSOR-ABSORPTION": "no aggressor/taker-flow panel; bars carry no aggressor side and none is constructed",
+  "V12-BAB-LOWBETA": "no beta-sorted anchor; beta appears only as benchmark context",
+  "DATA-GATED": "uses only the four authorized fields + instrument tick size; no new source, key, signup or download"
+ },
+
+ "item12_shadow_region_determination": {
+  "determination": "NOT a shadow-region entry",
+  "reasoning": "the mechanism is stated in its own words (exit-capacity crowding of standing inventory), never as 'the inverted anchor'; its conditioning construct (OI stock / turnover flow level) and sign region (long short-duration) are novel — none of the three measured shadow observations (inverted OI-flow +0.758; V11 LOT inversion; stocks-program vol-level sorting) involves a stock/flow duration ranking; OITD is not an inversion, rescue or renaming of any listed family (item 11); no front-door disclosure of a previously observed identical sign is claimed because no such observation exists for this construct",
+  "voluntary_disciplines": [
+   "full A7-N novelty bound: |rho| > 0.20 vs the frozen OILEV-V2 anchor OR its inverted control on the common window -> INELIGIBLE and withdrawn",
+   "own causal negative control (CTL-FLOW-ONLY) separates the mechanism from the turnover-level confound; the incremental gate separates it from beta; funding is cost-only by construction, separating it from funding carry",
+   "Stage-A gates apply with no relaxation",
+   "if A7-N or A9-F nonetheless classifies this family as shadow-region, it is preregistered CONFIRMATORY and that status is recorded in the verdict and denominator, all gates unrelaxed"
+  ]
+ },
+
+ "item13_outcome_blind_attestation": {
+  "lane": "a8",
+  "proposal": "A13-V13-A8-OITD",
+  "statement": "I wrote this mechanism and its falsification conditions before computing any return, metric or ranking, and without access to any scored artifact or outcome file.",
+  "utc": "2026-09-04T11:16:00Z",
+  "agent": "a8"
+ },
+
+ "family_note": "ONE family (OITD); if selected at D1 consumes 3 scored cells (anchor, neighbour, control) of the 6-cell sprint ceiling across the <= 2-family selection; exactly three arms, no post-hoc fourth arm"
+}
