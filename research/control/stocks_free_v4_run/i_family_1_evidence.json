@@ -1,0 +1,138 @@
+{
+  "schema": "stocks_free_v4_run/i_family_1_evidence@1",
+  "producer_role": "A8",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4-I implementation lane, family 1",
+  "timestamp_utc": "2026-09-04T05:05:00Z",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v4/i-family-1",
+  "branch": "orca/stocks-free-v4-i-family-1",
+  "family": {
+    "family_id": "SFV4-A5-H1-PARTICIPATION-SHIFT",
+    "hypothesis_id": "SFV4-A5-H1",
+    "proposal_file": "research/control/stocks_free_v4_run/proposals/a5_h1.json",
+    "selection_freeze": "research/control/stocks_free_v4_run/selection_freeze.json (selected_families[0])",
+    "baseline_invariants": "research/control/stocks_free_v4_run/baseline_invariants.json",
+    "module": "research/stocks_free_v4/family_participation/ (config.py, features.py, schedule.py)",
+    "test_file": "tests/assets/stocks/test_v4_family_participation.py",
+    "arms": ["SFV4-A5-H1-A (anchor)", "SFV4-A5-H1-N (neighbour)", "SFV4-A5-H1-C (causal_negative_control)"]
+  },
+  "hard_rule_attestation": "all real-data runs schedule-only; zero scored metrics produced; no scored PnL and no backtest of returns on real data anywhere in this lane; the only return/factor helpers (ew_sector_factor, risk_matched_context, factory.value_book) run exclusively on synthetic fixtures",
+  "dummy_flags": {
+    "scored": false,
+    "real_pnl": false,
+    "statement": "all real-data runs schedule-only; zero scored metrics produced",
+    "dummy_ledger_scope": "evidence item 12 runs against a temp ledger path only; the canonical ledger research/control/stocks_free_v4_run/event_log.jsonl was left byte-identical (size+mtime asserted unchanged)"
+  },
+  "pytest_command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/stocks/test_v4_family_participation.py -q",
+  "pytest_exit_code": 0,
+  "pytest_summary": "13 passed in 1.05s (12 evidence items + 1 supporting config-head test)",
+  "evidence_items": [
+    {
+      "id": 1,
+      "item": "Hand-computed feature and target golden",
+      "status": "PASS",
+      "test_ids": ["test_e01_golden_feature_and_targets_hand_computed"],
+      "hand_computed": "constant DV 100000 over 400 sessions x 8 symbols => every 21d-vs-252d shock == 1.0 exactly; all-tie ranking is ticker-alphabetical [SA..SH]; longs SA,SB,SC at +1/6, shorts SF,SG,SH at -1/6, CASH 1.0. Perturbed (SG x2, SA x0.5 on t-20..t): shocks SG=2.0/SA=0.5 exact; ranked [SG,SB,SC,SD,SE,SF,SH,SA]; longs SG,SB,SC; shorts SF,SH,SA. Neighbour arm on same fixture: SG shock = 4/3 (63-session numerator), window membership is the only arm difference"
+    },
+    {
+      "id": 2,
+      "item": "PIT / completed-session and no-lookahead mutation tests",
+      "status": "PASS",
+      "test_ids": ["test_e02_pit_no_lookahead_mutations"],
+      "observed": "mutating future sessions (t+1, t+5) and an outside-window session (t-260) leaves shocks/ranks/targets identical; truncated-at-t series gives the identical decision; pre-warmup decisions, future-reaching window specs, and missing warmup data all fail closed (FeatureError)"
+    },
+    {
+      "id": 3,
+      "item": "Next-allowed-session fill",
+      "status": "PASS",
+      "test_ids": ["test_e03_next_allowed_session_fill"],
+      "observed": "on a gapped synthetic calendar every fill == master_calendar[decision_index + 1], never the same session; the 2018-04-04 decision fills 2018-04-10 across a 5-day hole; no fill lands inside the gap; zero voided ticks"
+    },
+    {
+      "id": 4,
+      "item": "Deterministic double generation (byte-identical)",
+      "status": "PASS",
+      "test_ids": ["test_e04_deterministic_double_generation", "test_e00_frozen_config_head"],
+      "observed": "all three arms built twice via two independent paths (sequential walk vs fold-blockwise) produce byte-identical canonical JSON and equal sha256 schedule digests; config digests stable across calls; frozen head rejects reshaped windows, wrong arm ids and benchmark-as-leg"
+    },
+    {
+      "id": 5,
+      "item": "Split/dividend/raw/TR correctness",
+      "status": "PASS",
+      "test_ids": ["test_e05_split_dividend_raw_tr_correctness"],
+      "documented_series": "DV = _none raw close x _none raw volume (same series, as-traded pair): a 2:1 split halves raw close and doubles raw volume on the effective date so DV stays 100000 and the shock stays 1.0 exactly; the forbidden adjusted-close-x-raw-volume pairing jumps 50000->100000 at the split and distorts the shock to hand value 41/21. _all adjusted close is reserved for leg/benchmark total returns only; _all volume is never read; dividend-only events never touch the raw pair. Series choice pinned verbatim in the frozen config payload (DV_SOURCE/RETURN_SOURCE/BENCHMARK_SOURCE)"
+    },
+    {
+      "id": 6,
+      "item": "Factor calculation and scale invariance",
+      "status": "PASS",
+      "test_ids": ["test_e06_factor_and_scale_invariance"],
+      "observed": "EW sector factor == mean of sector returns (hand value (0.02-0.01)/8); frozen risk-match scale 0.5 applied ex ante to synthetic SPY returns (0.01 -> 0.005); scaling all closes x10 or all volumes x10 leaves ranks and target books EXACTLY equal and shocks equal within 1e-9"
+    },
+    {
+      "id": 7,
+      "item": "Control cannot accidentally equal the anchor",
+      "status": "PASS",
+      "test_ids": ["test_e07_control_differs_from_anchor"],
+      "observed": "synthetic: a spike confined to the stale window t-83..t-63 gives anchor SE shock 0.55 (hand: 231/420, the spike pollutes the anchor denominator) vs control 10.0 exact; ranked lists and 3v3 books differ. Real schedule dates: identical decision DATE lists (same anchored clock) but differing arm records (role, window membership 20/0/251/21 vs 83/63/251/84, config digest); real-data rank values intentionally NOT computed (schedule-only rule)"
+    },
+    {
+      "id": 8,
+      "item": "Cap/gross/net/cash invariants",
+      "status": "PASS",
+      "test_ids": ["test_e08_gross_net_cash_invariants"],
+      "observed": "9 synthetic decision books across all arms: exactly 6 non-CASH legs, 3 long + 3 short; gross = fsum|w| <= 1.0+1e-9 (6 x 1/6); leg net |sum| <= 1e-12; CASH absorbs the residual so the book reconciles to equity 1.0; CASH never a symbol and CASH deltas invisible to the frozen turnover (full flip = hand 2.0, CASH-leg move adds nothing)"
+    },
+    {
+      "id": 9,
+      "item": "Cost-once and turnover convention",
+      "status": "PASS",
+      "test_ids": ["test_e09_cost_once_and_turnover_convention"],
+      "hand_computed": "6-leg book: D1 build turnover 1.0 -> cost 0.001; D2 full flip turnover 2.0 -> cost 0.997x2x10bps = 0.001998; exactly one fill_costs entry per fill; total_cost == fsum(per-fill); factory assert_reconciles passes (attribution identity + no double-add); constant prices => total_pnl == -(costs)"
+    },
+    {
+      "id": 10,
+      "item": "Schedule-only feasibility on the REAL snapshot",
+      "status": "PASS",
+      "test_ids": ["test_e10_real_schedule_only_feasibility"],
+      "observed": "master SPY calendar (4188 sessions, 2010-01-04..2026-08-27) from the read-only staging snapshot; anchored clock anchor_index=2076 (2018-04-04), decisions at +63k; per-fold decision counts exactly 10/10/10 = 30 total; zero voided ticks; all decisions on-calendar with next-allowed-session fills inside their fold spans; force-flat at every fold end (2020-09-01, 2023-02-09, 2025-07-24); 252-session warmup present for the eligible rank set at every decision; XLC availability rule deterministic: rank set 10 for k=0..4, 11 from k=5 (2019-07-05) onward; double generation on the real calendar byte-identical; all 12 structural checks PASS for each arm",
+      "artifact": "research/control/stocks_free_v4_run/i_family_1_schedule_check.json (dates and counts ONLY; no returns, no PnL, no real feature values; banned-token scan enforced in-test)"
+    },
+    {
+      "id": 11,
+      "item": "Meaningful held-max-weight drop-one",
+      "status": "PASS",
+      "test_ids": ["test_e11_drop_one_max_contribution_leg"],
+      "observed": "canonical select_drop_one_symbol on a synthetic contribution path picks SG (max |contribution|, trending leg); rebuild_targets_excluding re-ranks the remaining sectors from scratch under the identical rule: 4th-ranked SD is promoted into the long side, SG absent, book still 3v3 -- materially different; fail-closed on dropping a non-eligible symbol or CASH"
+    },
+    {
+      "id": 12,
+      "item": "Dummy publication/refusal/replay (temp ledger only)",
+      "status": "PASS",
+      "test_ids": ["test_e12_dummy_publication_refusal_replay"],
+      "observed": "GatedTrialLedger on a tmp_path ledger: compute_recorded increments observed exactly once (1); DUMMY artifact (scored=false, real_pnl=false) published with gate counts {n_fill_events:1, n_held_positions:6}; two replays zero-delta (observed=1, published=1); zero-position result refused ([ZERO_FILL_EVENTS, ZERO_HELD_POSITIONS], key unpublished, observed=2); save/reload round-trip preserves counters; canonical ledger stat-identical before/after"
+    }
+  ],
+  "schedule_check_summary": {
+    "artifact": "research/control/stocks_free_v4_run/i_family_1_schedule_check.json",
+    "schema": "stocks_free_v4_run/i_family_1_schedule_check@1",
+    "feasibility": "SCHEDULE_ONLY_NO_PNL_NO_REAL_FEATURE_VALUES",
+    "master_calendar": {"sessions_total": 4188, "first": "2010-01-04", "last": "2026-08-27", "anchor_session": "2018-04-04", "anchor_index": 2076},
+    "decisions_total": 30,
+    "fold_decision_counts": {"S0_FOLD_1": 10, "S0_FOLD_2": 10, "S0_FOLD_3": 10},
+    "voided_ticks": 0,
+    "first_decisions": {"S0_FOLD_1": "2018-04-04", "S0_FOLD_2": "2020-10-02", "S0_FOLD_3": "2023-04-05"},
+    "last_decisions": {"S0_FOLD_1": "2020-07-06", "S0_FOLD_2": "2023-01-04", "S0_FOLD_3": "2025-07-11"},
+    "force_flats": ["2020-09-01", "2023-02-09", "2025-07-24"],
+    "xlc_rule": "rank set 10 sectors for k=0..4; 11 sectors from k=5 (2019-07-05) onward; deterministic from the snapshot calendar, not performance-based",
+    "clock_note": "byte-exact anchored clock per selection_freeze.json (A9-F pin): decisions at master indexes anchor(2018-04-04)+63k. Under this pin the first decisions of folds 2/3 land at 2020-10-02 and 2023-04-05 (the anchored ticks inside those folds), not at the fold start sessions 2020-09-10/2023-02-17 named in the proposal's per-fold wording; fold decision counts remain 10/10/10 = 30 exactly as the proposal expects, meeting the frozen floors (>=5 per fold, >=30 total) with zero slack",
+    "all_checks_pass": true
+  },
+  "deviations_from_frozen_proposal": [
+    "NONE in mechanism. One documented interpretation: the selection freeze's byte-exact anchor clock (A9-F: decisions at index multiples of 63 from 2018-04-04) supersedes the proposal's per-fold 'offsets 0,63,...' wording; under the frozen pin, fold 2/3 first decisions are the anchored ticks 2020-10-02/2023-04-05 and the first ~16/~33 sessions of folds 2/3 run flat after the fold-boundary force-flat. Decision counts remain exactly the proposal's 10/10/10 = 30."
+  ],
+  "blockers": [],
+  "head": "44781dd7c913e5bebba2504f57da57db3903c09c",
+  "head_note": "measured HEAD of the 'V4-I family-1 A8: participation-shift family module + tests (12 evidence items)' commit; this evidence file (with the schedule-check artifact) is a separate follow-up commit per the A2/A3 head-pin precedent -- the final HEAD sha of that follow-up commit is reported by A8 to the controller",
+  "summary": "A8 family-1 all 12 evidence items PASS; pytest exit 0 (13 passed); real-schedule feasibility 10/10/10=30 decisions, schedule-only, zero scored metrics"
+}
