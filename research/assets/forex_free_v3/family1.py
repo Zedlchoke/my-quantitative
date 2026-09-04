@@ -521,6 +521,15 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None) -> dict
         "arm_id": ARM_IDS[arm],
         "pair_universe": list(PAIRS),
         "warmup_daily_bars": DRIFT_BARS,
+        # Incremental-alpha definition declared to the runner (V3-I finding
+        # D1): the A5 proposal's FROZEN gate is the per-pair-day normalized
+        # difference over the identical post-warmup schedule window
+        # (a5_lane/proposal_1.json incremental_test.operationalization;
+        # scored_runner.ALPHA_PER_PAIR_DAY_NORMALIZED).  The runner divides
+        # the anchor and benchmark financing-adjusted sums by the pair-day
+        # count of the window starting after this module's frozen warmup
+        # (warmup_daily_bars above).
+        "alpha_definition": "a5_per_pair_day_normalized_v1",
         "momentum_window_daily_bars": MOMENTUM_BARS,
         "neighbour_median_window_daily_bars": NEIGHBOUR_MEDIAN_BARS,
         "notional_usd_unit": NOTIONAL_USD,

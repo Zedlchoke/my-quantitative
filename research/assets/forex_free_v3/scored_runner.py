@@ -80,7 +80,13 @@ Return payload:
                       ``fill_delay_events`` ({decision_id: delayed-fill
                       count} for the frozen one-event-delay stress, carried
                       UNBLENDED), ``incremental_alpha`` (pass-through for
-                      non-anchor arms only).
+                      non-anchor arms only), ``alpha_definition``
+                      (REQUIRED for a scored anchor: which frozen
+                      incremental-alpha operationalization the runner
+                      applies -- unknown/missing fails closed) and
+                      ``warmup_daily_bars`` (REQUIRED for the
+                      per-pair-day-normalized definition: the family's
+                      frozen warmup prefix excluded from the alpha window).
 
 V3-I runner-owned statistics (family meta is NOT consulted):
 
@@ -91,12 +97,18 @@ V3-I runner-owned statistics (family meta is NOT consulted):
   frozen ``usd_corr_abs_ceiling`` gate.  ``meta.usd_index_daily_returns``
   is ignored.  A SCORED run with booked trades but no price source fails
   closed (USD_INDEX_SOURCE_MISSING); a dry-run never leaks the statistic.
-* incremental alpha (finding H1): for a SCORED anchor cell the runner
+* incremental alpha (findings H1 + D1): for a SCORED anchor cell the runner
   books the family's ``benchmark_treatment`` arm through the SAME cost
-  kernel (dual book) and records
-  ``incremental_alpha = anchor financing-adjusted expectancy -
-  benchmark expectancy``; the value is ALWAYS present on a scored anchor
-  record.  Dry-run records carry ``None`` (no outcome may leak).
+  kernel (dual book) and computes ``incremental_alpha`` per the
+  family-declared ``meta.alpha_definition``:
+  ``a5_per_pair_day_normalized_v1`` -- the A5 proposal's frozen per-pair-day
+  normalized difference over the identical post-warmup schedule window --
+  or ``per_trade_expectancy_difference_v1`` -- the A6 proposal's
+  financing-adjusted expectancy difference (family2's frozen gate).  An
+  unknown or undeclared definition fails closed.  The per-trade expectancy
+  difference is always reported alongside as the proposals' diagnostic.
+  The value is ALWAYS present on a scored anchor record.  Dry-run records
+  carry ``None`` (no outcome may leak).
 
 Runner-side enforcement (fail closed, codes on ``DecisionRuleError``):
 DECISION_CLOCK_VIOLATION (decision/fill instants not 16:00-NY daily bars),
@@ -144,9 +156,19 @@ MDD_CEILING_USD = 2500.0
 MAX_POS_FOLD_SHARE = 0.50
 MAX_PAIR_POS_SHARE = 0.40
 STRESS_MIN_PF = 1.00
-DROPOUT_SURVIVAL_MIN = 5        # frozen minimum; the scenario suite is the 7
-                                # drop-one-PAIR exclusions PLUS 1
-                                # drop-one-BEST-fold (V3-I finding M1)
+# Dropout suite (V3-I finding M1): 7 drop-one-PAIR exclusions + 1
+# drop-one-BEST-fold.  Survival floor BINDING at 6 of the 8 scenarios per
+# a7_prelaunch_v3_delta.json finding M1-DEV: 6-of-8 must hold before any
+# scored run (it restores the inherited dropout_survival_min_of_7 = 5 gate's
+# <= 2 tolerated scenario failures that the 5-of-8 denominator deviation
+# weakened).
+DROPOUT_SCENARIOS = 8
+DROPOUT_MIN_SURVIVAL = 6
+# Family-declared incremental-alpha definitions (V3-I finding D1): the scored
+# anchor's alpha is computed per the family's meta ``alpha_definition``; any
+# other value (or none) fails closed (ALPHA_DEFINITION_UNKNOWN).
+ALPHA_PER_PAIR_DAY_NORMALIZED = "a5_per_pair_day_normalized_v1"
+ALPHA_EXPECTANCY_DIFFERENCE = "per_trade_expectancy_difference_v1"
 NEIGHBOUR_MIN_EXPECTANCY = 0.0
 CONTROL_REJECT_PF = 1.10
 USD_CORR_CEILING = 0.30         # |corr(daily pnl, USD-index daily return)|
@@ -400,8 +422,9 @@ def dropout_scenarios(scored, pnls_fin, folds):
     A scenario survives iff the reduced book's financing-adjusted expectancy
     is > 0.  Returns the per-scenario record list; an unevaluable fold
     scenario (no fold holds trades) is recorded as NOT survived (fail
-    closed).  The frozen gate counts survivals against the UNCHANGED
-    DROPOUT_SURVIVAL_MIN (= 5)."""
+    closed).  The frozen gate counts survivals against the BINDING
+    DROPOUT_MIN_SURVIVAL (= 6) over the DROPOUT_SCENARIOS (= 8) suite
+    (a7_prelaunch_v3_delta.json finding M1-DEV)."""
     scenarios = []
     for excl in PAIRS:
         sub = [p for t, p in zip(scored, pnls_fin) if t["pair"] != excl]
@@ -621,6 +644,61 @@ def usd_drift_corr(trades, usd_index_daily_returns):
     return {"corr": round(r, 6), "n_days": len(xs), "evaluated": True}
 
 
+# ---------- incremental alpha window (V3-I, finding D1) ----------
+def _price_source_dir(data_paths):
+    """The authorized H1 snapshot directory (same resolution order as
+    :func:`usd_index_from_data_paths`), or None when none is present."""
+    if not isinstance(data_paths, dict):
+        return None
+    for key in ("usd_index_h1_dir", "price_h1_dir", "h1_dir"):
+        source = data_paths.get(key)
+        if isinstance(source, str) and source:
+            return source
+    return None
+
+
+def post_warmup_pair_days(price_dir, warmup_daily_bars, pairs=PAIRS):
+    """Pair-day count N of the identical post-warmup schedule window: per
+    pair, the daily 16:00-NY decision bars of the SAME authorized snapshot
+    the families consume, EXCLUDING the family's frozen warmup prefix (the
+    first ``warmup_daily_bars`` bars); N sums those window day counts over
+    the frozen universe pairs.  This is the normalization basis of the A5
+    frozen incremental alpha (``incremental_test.operationalization``:
+    "... both normalized per pair-day of the identical post-warmup schedule
+    window ...") -- the SAME N divides the anchor and the benchmark sums, so
+    the comparison stays exposure-fair (the anchor trades a subset of the
+    benchmark's active days).
+
+    Fail closed: a missing/undeclared warmup raises
+    ALPHA_WARMUP_NOT_DECLARED, a missing price source raises
+    ALPHA_PRICE_SOURCE_MISSING, and a window with no pair-day raises
+    ALPHA_WINDOW_EMPTY."""
+    if isinstance(warmup_daily_bars, bool) \
+            or not isinstance(warmup_daily_bars, int) or warmup_daily_bars <= 0:
+        raise DecisionRuleError(
+            "ALPHA_WARMUP_NOT_DECLARED",
+            "the per-pair-day normalized alpha requires the family meta "
+            f"'warmup_daily_bars' (positive int), got {warmup_daily_bars!r}")
+    if not isinstance(price_dir, str) or not price_dir:
+        raise DecisionRuleError(
+            "ALPHA_PRICE_SOURCE_MISSING",
+            "the per-pair-day normalized alpha requires an H1 snapshot "
+            "source (usd_index_h1_dir / price_h1_dir / h1_dir) to count the "
+            "post-warmup schedule window's pair-days")
+    total = 0
+    for pair in pairs:
+        bars = load_daily_16ny_closes(price_dir, pair)
+        total += max(0, len(bars) - warmup_daily_bars)
+    if total <= 0:
+        raise DecisionRuleError(
+            "ALPHA_WINDOW_EMPTY",
+            f"the post-warmup schedule window holds no pair-day (no pair "
+            f"has more than {warmup_daily_bars} daily bars under "
+            f"{price_dir!r}); the per-pair-day normalized alpha cannot be "
+            "computed")
+    return total
+
+
 # ---------- booking (V3 kernel: dual book + F1-fixed stress) ----------
 def _spec_of(decision):
     return accounting.TradeSpec(
@@ -739,7 +817,20 @@ def compute_cell(family_id, arm, data_paths, freeze_token=None,
     # Non-anchor scored cells carry the meta pass-through (normally None).
     benchmark = None
     alpha = meta.get("incremental_alpha")
+    alpha_definition = meta.get("alpha_definition")
     if not dry_run and arm == "anchor":
+        # V3-I finding D1: a scored anchor's incremental alpha is computed
+        # per the family-DECLARED frozen definition; anything else fails
+        # closed before the benchmark arm is even invoked.
+        if alpha_definition not in (ALPHA_PER_PAIR_DAY_NORMALIZED,
+                                    ALPHA_EXPECTANCY_DIFFERENCE):
+            raise DecisionRuleError(
+                "ALPHA_DEFINITION_UNKNOWN",
+                f"scored anchor declares alpha_definition {alpha_definition!r}; "
+                f"expected {ALPHA_PER_PAIR_DAY_NORMALIZED!r} (A5 frozen "
+                "per-pair-day normalized difference) or "
+                f"{ALPHA_EXPECTANCY_DIFFERENCE!r} (A6 per-trade expectancy "
+                "difference)")
         bench_out = call_family_arm(fam, BENCHMARK_ARM, data_paths,
                                     macro_reader, freeze_token, timeout_minutes)
         bench_meta = bench_out.get("meta") or {}
@@ -761,12 +852,41 @@ def compute_cell(family_id, arm, data_paths, freeze_token=None,
                 "frozen incremental-alpha value could not be computed")
         bench_expectancy = round(
             math.fsum(t["_pnl"] for t in bench_scored) / len(bench_scored), 10)
+        anchor_expectancy = book_metrics(pnls_fin)["expectancy"]
+        # The per-trade expectancy difference is the proposals' DIAGNOSTIC:
+        # reported alongside on every scored anchor (A5
+        # incremental_test.operationalization demotes it to a diagnostic;
+        # for family2 it IS the frozen gate).
+        per_trade_expectancy_difference = round(
+            math.fsum([anchor_expectancy, -bench_expectancy]), 10)
+        if alpha_definition == ALPHA_PER_PAIR_DAY_NORMALIZED:
+            # A5 proposal_1.json incremental_test.operationalization,
+            # transcribed VERBATIM: "overall incremental alpha := (full-sample
+            # sum of the anchor's after-cost financing-adjusted per-pair-day
+            # PnL) - (same for the benchmark), both normalized per pair-day of
+            # the identical post-warmup schedule window, with identical
+            # notional units per active position.  Gate: > 0."
+            # (sumA/N) - (sumB/N) == (sumA - sumB)/N over the SAME N: every
+            # trade's financing-adjusted PnL lands on exactly one pair-day of
+            # its own pair's schedule, so each full-sample per-pair-day sum
+            # equals its book's financing-adjusted sum, and the identical
+            # window's pair-day count N divides BOTH books (exposure-fair:
+            # the anchor trades a subset of the benchmark's active days).
+            pair_days = post_warmup_pair_days(
+                _price_source_dir(data_paths), meta.get("warmup_daily_bars"))
+            alpha = round((math.fsum(t["_pnl"] for t in scored)
+                           - math.fsum(t["_pnl"] for t in bench_scored))
+                          / pair_days, 10)
+        else:
+            # A6 proposal (family2), unchanged: "anchor financing-adjusted
+            # expectancy minus benchmark financing-adjusted expectancy".
+            alpha = per_trade_expectancy_difference
         benchmark = {"n_decisions": len(bench_dec), "n_trades_kept": len(bench_kept),
                      "financing_formula": bench_formula,
                      "expectancy": bench_expectancy,
+                     "per_trade_expectancy_difference_diagnostic":
+                         per_trade_expectancy_difference,
                      "proposal_id": bench_meta.get("proposal_id")}
-        alpha = round(math.fsum([book_metrics(pnls_fin)["expectancy"],
-                                 -bench_expectancy]), 10)
     extra = {
         "cell_id": f"{family_id}:{arm}:tier1.0",
         "family_id": family_id, "arm": arm,
@@ -795,6 +915,7 @@ def compute_cell(family_id, arm, data_paths, freeze_token=None,
         "delay_stress": {"carried_unblended": True,
                          "n_delayed_trades": len(delay_events)},
         "incremental_alpha": alpha,
+        "incremental_alpha_definition": alpha_definition,
         "benchmark_treatment": benchmark,
     }
     record = accounting.build_scored_record(
@@ -844,9 +965,11 @@ def stage_a_gates(rec):
         st = rec["stress"].get(f"tier{tier}")
         if st and not (st["total_pnl"] > 0 and (st["pf"] is None or st["pf"] >= STRESS_MIN_PF)):
             g.append(f"STRESS_TIER_{tier}_FAIL")
-    # Frozen dropout survival over the scenario suite (V3-I M1): the 7
+    # Frozen dropout survival over the scenario suite (V3-I M1: the 7
     # drop-one-pair exclusions + 1 drop-one-BEST-fold; survival = reduced-book
-    # expectancy > 0; the cell needs >= DROPOUT_SURVIVAL_MIN survivals.
+    # expectancy > 0).  Floor BINDING at 6 of the 8 scenarios per
+    # a7_prelaunch_v3_delta.json finding M1-DEV (restores the inherited
+    # dropout_survival_min_of_7 = 5 gate's <= 2 tolerated failures).
     scenarios = rec.get("dropout_scenarios")
     if not scenarios:
         # Hand-built/legacy records: derive the pair scenarios from the
@@ -856,8 +979,8 @@ def stage_a_gates(rec):
                       "survived": bool(v > 0)}
                      for p, v in (rec.get("drop_one_expectancy") or {}).items()]
     surv = sum(1 for s in scenarios if s["survived"])
-    if surv < DROPOUT_SURVIVAL_MIN:
-        g.append("DROPOUT_SURVIVAL_INSUFFICIENT")
+    if surv < DROPOUT_MIN_SURVIVAL:
+        g.append("DROPOUT_SURVIVAL_BELOW_6_OF_8")
     diag = rec["usd_drift_diag"]
     if diag["evaluated"] and abs(diag["corr"]) > USD_CORR_CEILING:
         g.append("USD_DRIFT_EXPLAINS_ANCHOR")

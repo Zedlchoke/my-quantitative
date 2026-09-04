@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "role": "A_IMPL_D1_ALPHA_FIX_I_FOREX_FREE_V3",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-d1-alpha-fix",
+  "branch": "orca/forex-free-v3-i-d1-alpha-fix",
+  "bootstrap_sha": "11fa6873870a0cdf6c2cc7dff0334b5fbf475998",
+  "commit_sha": null,
+  "measured_at_utc": "2026-09-04T20:29:27Z",
+  "stamp_source": "machine_date_u",
+  "clean": true,
+  "clean_note": "clean=true describes the state AFTER this lane's single clean commit; A1 verifies with git status --porcelain=v1 (must be empty) and git diff --check HEAD^ HEAD (must be clean).",
+  "remediates": "A7 delta audit research/audits/forex_free_v3/prelaunch/a7_prelaunch_v3_delta.json finding D1 (HIGH, launch blocker: family1 incremental-alpha Stage-A gate evaluated on the per-trade expectancy difference the binding A5 proposal froze OUT of the gate) and the M1-DEV condition (dropout survival floor 6-of-8 must BIND before any scored run). I1 is settled control-plane-side: the fold-drop scenario REMAINS the single best-fold drop per A1's recorded disposition -- no code change, the dropout suite stays 8 scenarios. Outcome-blind: NO scored PnL was computed or read; all fixtures synthetic; no network, no data_raw reads.",
+  "allowed_globs": [
+    "research/assets/forex_free_v3/**",
+    "tests/assets/forex_free_v3/**",
+    "research/control/forex_free_v3_run/handoffs/i_d1_alpha_fix.json"
+  ],
+  "changed_files": [
+    "research/assets/forex_free_v3/scored_runner.py",
+    "research/assets/forex_free_v3/family1.py",
+    "research/assets/forex_free_v3/family2.py",
+    "tests/assets/forex_free_v3/test_scored_runner.py",
+    "research/control/forex_free_v3_run/handoffs/i_d1_alpha_fix.json"
+  ],
+  "per_finding_fixes": {
+    "D1_family1_alpha_operationalization": "The runner now dispatches the scored anchor's incremental alpha on a family-declared meta 'alpha_definition'; an unknown or undeclared definition fails closed (ALPHA_DEFINITION_UNKNOWN, raised BEFORE the benchmark arm is invoked). family1.py declares 'a5_per_pair_day_normalized_v1' (scored_runner.ALPHA_PER_PAIR_DAY_NORMALIZED): the A5 proposal's frozen per-pair-day normalized difference, transcribed VERBATIM from a5_lane/proposal_1.json incremental_test.operationalization (quote in alpha_definitions_as_implemented below) -- (sum_anchor - sum_benchmark)/N where the sums are the full-sample financing-adjusted book sums ((sumA/N)-(sumB/N) == (sumA-sumB)/N over the SAME N; every trade's financing-adjusted PnL lands on exactly one pair-day of its own pair's schedule) and N = post_warmup_pair_days() is the pair-day count of the IDENTICAL post-warmup schedule window: per pair, the authorized snapshot's daily 16:00-NY decision bars minus the family's frozen warmup prefix (meta warmup_daily_bars = 63), summed over the frozen universe pairs -- the SAME N divides both books, so the comparison stays exposure-fair. family2.py declares 'per_trade_expectancy_difference_v1' (scored_runner.ALPHA_EXPECTANCY_DIFFERENCE): its own frozen gate (anchor financing-adjusted expectancy minus benchmark financing-adjusted expectancy) UNCHANGED. The per-trade expectancy difference is now reported alongside on EVERY scored anchor as the A5 proposal's diagnostic (benchmark_treatment.per_trade_expectancy_difference_diagnostic); the record echoes the definition used (incremental_alpha_definition). Fail-closed additions: ALPHA_WARMUP_NOT_DECLARED (per-pair-day definition without an int warmup_daily_bars > 0), ALPHA_PRICE_SOURCE_MISSING (no H1 source to count the window), ALPHA_WINDOW_EMPTY (no pair-day in the window). The gate itself (INCREMENTAL_ALPHA_NOT_POSITIVE on incremental_alpha <= 0 when scored) is UNCHANGED; dry-run still leaves incremental_alpha/benchmark_treatment = None (the definition label is config, not outcome, and survives like financing_formula).",
+    "M1_DEV_dropout_floor": "The dropout survival floor is now BINDING at 6 of the 8 scenarios: runner constants DROPOUT_SCENARIOS = 8 (7 drop-one-PAIR exclusions + 1 drop-one-BEST-fold, the V3-I M1 suite) and DROPOUT_MIN_SURVIVAL = 6, with the a7_prelaunch_v3_delta.json M1-DEV reference in the constant comment (6-of-8 restores the inherited dropout_survival_min_of_7 = 5 gate's <= 2 tolerated scenario failures). The gate reason is renamed DROPOUT_SURVIVAL_INSUFFICIENT -> DROPOUT_SURVIVAL_BELOW_6_OF_8. Survival semantics unchanged: a scenario survives iff the reduced book's financing-adjusted expectancy > 0; an unevaluable fold scenario fails closed.",
+    "I1_fold_drop_coverage": "SETTLED control-plane-side per the lane instruction: the fold scenario remains the single drop-one-BEST-fold (already recorded by A1); no code change, the suite stays 8 scenarios. Recorded here so the A7 delta auditor sees the disposition."
+  },
+  "alpha_definitions_as_implemented": {
+    "a5_per_pair_day_normalized_v1": "family1 (FXFV3-A5-P1). Proposal field VERBATIM: research/proposals/forex_free_v3/a5_lane/proposal_1.json incremental_test.operationalization = 'overall incremental alpha := (full-sample sum of the anchor's after-cost financing-adjusted per-pair-day PnL) - (same for the benchmark), both normalized per pair-day of the identical post-warmup schedule window, with identical notional units per active position. Gate: > 0. The per-trade expectancy difference (anchor - benchmark) is reported alongside as a diagnostic, not the gate.' Implemented in scored_runner.compute_cell exactly as: round((fsum(anchor scored financing-adjusted pnls) - fsum(benchmark scored financing-adjusted pnls)) / post_warmup_pair_days(price_source, meta.warmup_daily_bars), 10); the identical-notional condition holds because both books book through the same kernel at the same frozen 10000 USD-unit notional; the identical window is the snapshot's daily 16:00-NY decision calendar after the anchor's 63-bar warmup (the deeper of the two warmups, so it is the common post-warmup window for anchor and benchmark alike).",
+    "per_trade_expectancy_difference_v1": "family2 (FXFV3-A6-P1). The a6 proposal's frozen gate: anchor financing-adjusted expectancy minus benchmark financing-adjusted expectancy -- byte-equivalent to the formula implemented before this lane; reported unchanged, with the same value now also carried as the diagnostic field on every scored anchor."
+  },
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-d1-alpha-fix && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3 -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "95 passed, 2 skipped in 43.03s (baseline before this lane: 89 passed, 2 skipped; +6 new tests). The full repo suite was NOT run per lane rules. New coverage: hand-computed per-pair-day normalized-difference golden on a 2-pair x 5-daily-bar synthetic fixture (anchor 1 trade 6.0909090909 vs benchmark 3 winners 8.8787878789 over N = 6 identical-window pair-days -> alpha -0.4646464647 NEGATIVE while the per-trade diagnostic is +3.1313131313 POSITIVE -- the exact sign divergence the A5 normalization freezes the gate on; the gate follows the frozen value); the mirror positive case (losing benchmark -> alpha +6.5303030303, gate does not fire); post_warmup_pair_days window counting (6 / 2 / 3 pair-day cases plus the three fail-closed codes); ALPHA_DEFINITION_UNKNOWN for an unknown AND an undeclared definition (raised before the benchmark arm call; dry-run unaffected); ALPHA_WARMUP_NOT_DECLARED / ALPHA_WINDOW_EMPTY cell paths; family declaration strings pinned against the runner constants. Updated: the dropout gate boundary test now binds 6-of-8 (5/8 fails with DROPOUT_SURVIVAL_BELOW_6_OF_8) and pins DROPOUT_SCENARIOS == 8 / DROPOUT_MIN_SURVIVAL == 6; the DummyFamily fixture declares the expectancy-difference definition so the pre-existing hand-computed expectancy-difference literals (-387.7547699215 / +523.3361391695) still pin that path."
+    }
+  ],
+  "freeze_impact": "The w3_freeze.json code_hashes for scored_runner.py, family1.py and family2.py are INVALIDATED by this delta (macro_reader.py, accounting.py, macro_fetch.py, exec_driver.py untouched). A RE-FREEZE of all seven code_hashes and an A7 delta re-audit of D1 + M1-DEV closure are REQUIRED before S0 can return AUTHORIZED. Scored-anchor records now carry incremental_alpha_definition and benchmark_treatment.per_trade_expectancy_difference_diagnostic (both digest-covered extras); dry-run records additionally carry incremental_alpha_definition (a config label, like financing_formula -- no outcome leak).",
+  "assumptions": [
+    "commit_sha is null BY DESIGN: this lane commits exactly once and the handoff file is inside that commit; A1 records the SHA with git log -1 --format=%H (subject starts with 'FOREX-FREE-V3 I-D1-ALPHA-FIX:').",
+    "The identical post-warmup schedule window is read from the SAME authorized H1 snapshot the families/USD index consume (source-key order usd_index_h1_dir > price_h1_dir > h1_dir); on the real snapshot every universe pair shares the weekday calendar, so per-pair warmup exclusion reproduces the common window.",
+    "No scored PnL exists anywhere; every fixture is synthetic and hand-computed. No network, no data_raw reads, no proposals/ writes, no full-repo pytest.",
+    "exec_driver.py is UNTOUCHED; the dispatch lives entirely in compute_cell's scored-anchor branch."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/assets/forex_free_v3/scored_runner.py",
+    "research/assets/forex_free_v3/family1.py",
+    "research/assets/forex_free_v3/family2.py",
+    "tests/assets/forex_free_v3/test_scored_runner.py",
+    "research/audits/forex_free_v3/prelaunch/a7_prelaunch_v3_delta.json",
+    "research/proposals/forex_free_v3/a5_lane/proposal_1.json",
+    "research/control/forex_free_v3_run/baseline_invariants.json"
+  ],
+  "next_action_for_a1": "Verify: (1) git log -1 --format='%H %s' -> one commit on orca/forex-free-v3-i-d1-alpha-fix, subject starting 'FOREX-FREE-V3 I-D1-ALPHA-FIX:'; (2) git status --porcelain=v1 empty; (3) git diff --check HEAD^ HEAD clean; (4) re-run the targeted pytest command expecting exit 0 / 95 passed, 2 skipped. Then schedule the re-freeze lane (all seven code_hashes change) and the A7 delta re-audit of D1 + M1-DEV closure before any S0 release."
+}
