@@ -1,0 +1,61 @@
+{
+  "schema": "stocks_free_v4_run/benchmark_contract@1",
+  "created_at_utc": "2026-09-04T01:53:49Z",
+  "producer_role": "A3",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4-P2 free-data authority replay",
+  "status": "FROZEN",
+  "authority": "frozen by A3 (PIT data/cohort/benchmark authority) before any V4 returns are computed; consumes cohort_digest and calendar census from p2_a3_data_manifest.json",
+  "data_binding": {
+    "data_manifest": "research/control/stocks_free_v4_run/p2_a3_data_manifest.json",
+    "snapshot_manifest_sha256": "62ac324d7e683961b0d88f85153e4a072d09fe0a6745a54687b9e3b219d8f658",
+    "cohort_digest": "02c0fa979cec2b214a99af07f05108546fa523dee31ea5fb6b1049c06f21b6e1",
+    "cohort_symbols": ["SPY", "XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY"],
+    "return_input": "the _all (split+dividend adjusted) series only; _none raw series is never a benchmark or alpha input",
+    "calendar": "SPY session calendar (4188 sessions 2010-01-04..2026-08-27); evaluation restricted to S0 sessions 2018-04-04..2025-07-31 (1842 sessions); max scored date <= 2025-07-31",
+    "s1_discipline": "rows after 2025-07-31 (270 sessions/symbol) are data history and remain S1-sealed: no benchmark or alpha computation reads them in V4"
+  },
+  "benchmarks": [
+    {
+      "id": "SPY_TOTAL_RETURN",
+      "name": "SPY total return",
+      "definition": "r_bench(t) = adj_close_SPY(t) / adj_close_SPY(t-1) - 1, day-over-day on the SPY calendar using SPY_all_p1.json adjusted closes",
+      "source": "SPY_all_p1.json (adjusted path, authorized per data manifest); corroborated by distributions.json (SPY: 135 distribution records, 131 inside S0), spdr-etf-historical-distributions.xlsx (sha-pinned in MANIFEST issuer_evidence, match) and navhist-us-en-spy.xlsx",
+      "role": "market context denominator for incremental alpha; risk-matching reference"
+    },
+    {
+      "id": "EW_SECTOR_TOTAL_RETURN",
+      "name": "equal-weight sector ETF total return",
+      "definition": "equal-weight mean of the 11 sector-ETF daily total returns r_s(t) = adj_close_s(t)/adj_close_s(t-1) - 1 computed from each {SYM}_all_p1.json on SPY-calendar sessions; per-session equal-weight rebalancing convention is frozen here (daily rebalanced equal weight)",
+      "membership": "the 11 sector ETFs of the frozen cohort (XLB, XLC, XLE, XLF, XLI, XLK, XLP, XLRE, XLU, XLV, XLY); each symbol contributes only on sessions where its adjusted series exists; XLC contributes from 2018-06-19 (inception)",
+      "role": "sector cohort context; a sector-anchored arm must clear this, not merely SPY beta"
+    },
+    {
+      "id": "FLAT_HARD_BENCHMARK",
+      "name": "flat hard benchmark",
+      "definition": "r_flat(t) = 0 for every session; cumulative return of 0 over any evaluation window",
+      "role": "fail-closed absolute floor: any arm or fold with total return <= 0 fails this benchmark regardless of SPY or sector context"
+    }
+  ],
+  "incremental_alpha_definition": {
+    "statement": "incremental_alpha(arm, window) := R_anchor_arm(window) - R_spy_context(window), where R_spy_context is the SPY total-return context scaled EX ANTE by the arm's FROZEN gross-exposure/volatility-target rule (the arm's declared, frozen gross/vol scaling applied to the SPY context path), never the realized arm gross re-applied after the fact",
+    "windows": "evaluated per S0 fold (S0_FOLD_1, S0_FOLD_2, S0_FOLD_3 per partition_folds.json) AND overall across S0; a pass requires the gate on both per-fold and overall views per the run contract",
+    "risk_matching": "the scaling is the arm's ex-ante frozen gross/vol rule (e.g., vol-target multiple of SPY exposure); realized arm volatility must not be substituted post hoc",
+    "not_alpha": [
+      "raw PnL is NOT alpha",
+      "SPY/sector beta delivered by long sector-ETF exposure is NOT alpha; it is removed by the risk-matched SPY context subtraction",
+      "positive raw PnL never overrides failed incremental-alpha, control, or hard-benchmark gates"
+    ],
+    "gates_fail_closed": true
+  },
+  "evaluation_rules": {
+    "benchmark_computation_timing": "benchmarks computed only when a V4 worker is authorized to compute returns; this contract freezes definitions, sources, and conventions in advance",
+    "determinism": "any benchmark series must be reproducible byte-for-byte from the hash-pinned snapshot (manifest sha256 62ac324d...d8f658) and this contract",
+    "no_substitution": "benchmark definitions, membership, rebalancing convention, and the incremental-alpha definition may not be changed after any arm return is observed; changes require a new frozen contract version and reset of affected comparisons",
+    "cost_symmetry": "arm returns used in incremental alpha carry the run's cost convention; benchmark paths are gross (uncosted) by definition as market context"
+  },
+  "head_pin": {
+    "evidence_commit_sha": null,
+    "note": "pinned in the follow-up 'V4-P2 A3: head pin' commit"
+  }
+}
