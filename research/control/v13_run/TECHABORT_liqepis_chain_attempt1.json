@@ -1,0 +1,23 @@
+{
+ "schema": "v13r_techabort_forensic_v1",
+ "generated_utc": "2026-09-04T16:55:00Z",
+ "producer_role": "A1",
+ "artifact": "TECHABORT_liqepis_chain_attempt1",
+ "event": "LIQEPIS family chain attempt 1 at W1R bcb28536c7af7140372120f2bd9896b76be00c42: LIQEPIS-28D (anchor) invocation crashed with ContractViolation 'cross-fold holding for BOMEUSDT: established in fold 0/F0 but closed in fold 1/F1 (1765757700000000000->1766362500000000000); purge/embargo must cover the holding horizon' during baseline computation, BEFORE any scored metric existed.",
+ "timeline_utc": {
+  "crash": "2026-09-04T16:49:00Z (4.9s wall, no BASELINE record emitted)",
+  "preflight_only_rerun": "2026-09-04T16:51:02Z preflight PASS exit 0 (digests 6/6 match freeze; staged 90/90)"
+ },
+ "proof_no_scored_metric_existed": {
+  "no_baseline_artifact": "results/v13_phase_e/liqepis/LIQEPIS-28D/ contains ONLY preflight.json (no baseline_metrics/cell_summary/matrix)",
+  "ledger_absent": "results/v13_phase_e/ledger_liqepis.jsonl does not exist (zero rows ever)",
+  "oitd_ledger_untouched": "ledger_oitd.jsonl sha256 4fa9f3516b36d640265eb98e73168b9b48f2cb919ccb5fc5c7f56ded83fef2b6 (3 published rows from the completed OITD chain, unchanged)"
+ },
+ "root_cause_analysis": "LIQEPIS fill scheduling at fold boundaries: establishment/closing fills that slide past a fold boundary (e.g. a boundary-adjacent fill landing at the purged Monday 2025-12-15T04:15Z slot instead of inside F0) create cross-fold holdings; the frozen cross-fold holding check correctly refuses. The frozen invariant 'force-flat fold boundaries' (v13_p_freeze.json inherited conventions) requires boundary flats to complete within the fold. Machinery defect in fill/boundary interplay; NOT an identity/parameter change.",
+ "budget_effect": "ZERO budget consumed (no scored metric existed; TECHABORT per PLAN_crypto_v13 section 11)",
+ "remediation_plan": {
+  "lane": "orca/v13-r-liqepis-delta (V12R2 precedent)",
+  "scope": "minimal LIQEPIS plugin/fill-scheduling fix restoring the frozen force-flat-in-fold invariant; science surface empty (no identity/param/schedule/cost byte changes); digests must stay UNCHANGED",
+  "gates": ["LIQEPIS suite 39 green + new boundary evidence", "driver tests updated pins green", "3/3 LIQEPIS arm digests UNCHANGED vs w13_freeze.json", "schedule-only scored traversal completes for all 3 LIQEPIS arms", "A7 delta audit #2 before chain retry"]
+ }
+}
