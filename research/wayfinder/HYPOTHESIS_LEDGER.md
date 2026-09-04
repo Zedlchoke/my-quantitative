@@ -14,8 +14,8 @@
   it, or any parameter/top-K/universe/relaxed-gate variant of it, is rescue
   and ineligible without a new owner plan preregistering a materially new
   mechanism (measured decorrelation vs the rejected ancestor, not prose).
-- Cumulative scored denominators (pre-V12/V4/FXV2): crypto 125 published /
-  128 observed logical; stocks 12/12; forex 6/6. S1 untouched everywhere.
+- Cumulative scored denominators (post-V12/V4, 2026-09-04): crypto 131 published /
+  134 observed logical; stocks 18/18; forex 6/6. S1 untouched everywhere.
 - **No strategy has ever been promoted.** Every governed scored cycle closed
   REJECT_ALL / CANDIDATE_FAIL / BLOCKED. The near-misses below are the most
   information-dense rows in this ledger.
@@ -35,8 +35,8 @@
 | V11 | LOT — residual-MAX 7d, weekly | Max residual load vs benchmark | REJECT — **anchor lost (PF 0.72, MDD 79%) while sign-inverted control WON (PF 1.34)**: preregistered falsification condition triggered. |
 | V11 | ILLIQ-AMIHUD — 28d formation, weekly | Amihud illiquidity premium | REJECT — **the closest any family has come: 12/13 gates, positive expectancy, PF 1.355, 3/3 folds positive, MDD 9.2%, stress-surviving**; failed the single frozen concentration gate at exactly 0.7055. V12 replication attempt → BLOCKED_DATA (window unavailable; 3 slots unused). |
 | V11 | OILEV — OI-leverage weekly quintiles | Open-interest deleveraging | BLOCKED pre-score — weekly quintile books on 9-name DV universe produce 0.5–1.0 leg weights, incompatible with frozen 0.30 adapter cap. |
-| V12 (0/9, staged, awaiting owner GO) | OILEV-V2 | PIT OI flow/stock deleveraging-crowding; features inherited unchanged from v11 `oilever_delev` (anchor 28d OI flow / neighbour 56d) | ELIGIBLE_FROZEN — 3 cells. |
-| V12 | V12-A5-P1-BAB-LOWBETA | Frazzini–Pedersen betting-against-beta; counterparty = leverage-constrained/convexity-seeking perp traders | ELIGIBLE_FROZEN — 3 cells. |
+| V12 (CLOSED 2026-09-04, V12_REJECT_ALL, A7 terminal APPROVED 0 FAIL) | OILEV-V2 (28D-FLOW anchor / 56D-STOCK neighbour / INV control) | PIT OI flow/stock deleveraging-crowding | REJECT — **anchor −0.821 (PF 0.717, MDD 82%) and neighbour −0.845; sign-inverted control +0.758 (PF 1.360, MDD 17%, 2/3 folds, stress-positive): the frozen mechanism's sign is wrong on this window** (same falsification mode as V11 LOT). Attempt-1 crashed pre-metric → TECHABORT zero-budget, driver-only fix W12R2=ce52e3e. |
+| V12 | BAB-LOWBETA (90d-beta anchor / DOWNCORR neighbour / INV control) | Frazzini–Pedersen betting-against-beta on perps | REJECT — anchor −0.0199 (**PF 0.992: dead after taker costs + funding**), neighbour −0.087, inverted control +0.0013 outperforms anchor. 6/6 cells published + reproduced ALL_MATCH; denominators 131/134. |
 | V12 | ILLIQ replication | See V11 row | BLOCKED_DATA — 3 slots unused, not reassigned. |
 | V12 (not selected) | A5-P2 MIX-ORDERSIZE; A6-RVX; A6-OSCOMP | Order-size mix; realized-vol EG/ADF pairs; overnight compression | P2/RVX eligible-but-loses-rubric; **OSCOMP INELIGIBLE: anchor rank = sign-inverted reserved ILLIQ rank (ρ 0.81–0.87) — a relabelled ancestor.** |
 
@@ -63,8 +63,8 @@
 | V2 | A5-SFV2-TREND-DEFENSIVE | TSM12 + vol-target, SMA200-weekly defensive rotation | INCOMPLETE_NOT_PROMOTABLE — MDD 23.22% > 15%, fold-positive-share 60.7% > 50%, ETF-share attribution UNAVAILABLE_FAIL_CLOSED (CASH double-count bug, later fixed). |
 | V3 | SFV3-A5-IDIO-SHOCK-REVERSAL | Idiosyncratic shock reversal | REJECT — anchor expectancy −0.00296 ≤ 0. |
 | V3 | SFV3-A6-TOM-SETTLE | Turn-of-month settlement | REJECT — failed preregistered hard gates (turnover convention adjudicated post-scoring; no verdict changed). |
-| V4 (0/6, prelaunch AUTHORIZED, awaiting owner GO) | SFV4-A5-H1 PARTICIPATION-SHIFT | Gervais-2001/Lo-Wang 21d-vs-252d dollar-volume shock ratio; quarterly long top-3 / short bottom-3; stale-rank negative control | Selected (ELIGIBLE/LOW — volume axis orthogonal ρ 0.29, control non-collinear). |
-| V4 | SFV4-A4-H1 SEMIVARIANCE-SHARE | Downside/total-variance shape, market-neutral; kappa fallback frozen ex ante (flat 1.0 → 252-session OLS) | Selected (ELIGIBLE/MEDIUM, shape axis ρ −0.02 vs vol level). |
+| V4 (TERMINAL 2026-09-04, REJECT_ALL 6/6 published, repro 6/6 EXACT_MATCH; A7T pending) | SFV4-A5-H1 PARTICIPATION-SHIFT | Gervais-2001/Lo-Wang 21d-vs-252d dollar-volume shock ratio; quarterly long top-3 / short bottom-3; stale-rank negative control | REJECT — **anchor −17.62% (PF 0.606, 1/3 folds, MDD 18.5%, incremental alpha −0.791 all folds); stale-rank control earned +14.91% raw PnL (PF 1.668) but its own alpha is −0.470 and concentration fails: the return belongs to the sector-exposure form, not the fresh-vs-stale mechanism**. |
+| V4 | SFV4-A4-H1 SEMIVARIANCE-SHARE | Downside/total-variance shape, market-neutral, kappa fallback ex ante | REJECT — **anchor −28.08% (0/3 folds, MDD 32.1%); vol-LEVEL control earned +53.14% (PF 2.582) but MDD 34.1% + concentration fail: the shape axis was negative-information, all signal sits in plain vol-level sorting** (third appearance of the vol-level shadow effect; not Stage-A eligible, not rescuable). |
 | V4 (not selected) | A4-H2 vol-of-vol; A5-H2 abnormal-volume; A6-H1 Garman-Klass; A6-H2 overnight-share | — | All blocked by **measured** control self-subsuming / rank-identity with own control (ρ 0.78–0.83) — the exact V2/V3 failure mode, now caught pre-selection. |
 
 ## D. FOREX — G10 spot, 7 free-data pairs
@@ -92,6 +92,23 @@
    that long-beta can masquerade as mechanism in this cohort.
 5. **LOT (crypto V11)** — inverted family: control won where anchor lost.
    Chasing the inversion would be rescue; recorded, not pursued.
+
+## E.2 The falsification-by-control cluster (2026-09-04, V11→V12→V4)
+
+Five of the last eight scored families were killed not by weak anchor PnL
+alone but by **their own controls outperforming them**: V11 LOT (inverted
+control PF 1.34), V12 OILEV-V2 (inverted control +0.758 vs anchor −0.821),
+V12 BAB (inverted control ≈0 vs negative anchor), Stocks V4 participation
+(stale-rank control +14.9% raw vs anchor −17.6%), Stocks V4 semivariance
+(vol-level control +53.1% vs anchor −28.1%). This is the control apparatus
+working exactly as designed: it proves the frozen mechanism identity/sign is
+wrong, not merely unprofitable. Three "shadow effects" are now *measured
+phenomena* — inverted-OI-flow, plain vol-level sorting, sector-exposure form —
+each with raw PnL but each failing alpha/concentration/MDD gates. They are
+NOT tradable findings and NOT rescuable descendants; a future cycle may
+propose them as brand-new preregistered families with their own falsification
+controls and measured decorrelation vs these ancestors, through a new owner
+plan — never as a sign-flip of a rejected cell.
 
 ## F. What the cumulative evidence says (as of 2026-09-04)
 
