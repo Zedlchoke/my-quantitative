@@ -1,0 +1,335 @@
+{
+  "schema": "stocks_free_v4_run/d2_a7_novelty_audit@1",
+  "producer_role": "A7-N",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4-D2 novelty / anti-rescue audit of six blind proposals",
+  "created_at_utc": "2026-09-04T02:41:31Z",
+  "worktree": ".worktrees/stocks-free-v4/d2-a7-novelty",
+  "branch": "orca/stocks-free-v4-d2-a7-novelty",
+  "base_head_at_audit_start": "2ffb71bbd33264c504082cae7bbe049bbd382426",
+  "inputs": {
+    "forbidden_packet": "research/control/stocks_free_v4_run/forbidden_family_inventory.json",
+    "forbidden_packet_blob": "b4720e79260980a2ff86b844bbdaad85be46ad1f",
+    "proposals_read": {
+      "a4_h1": "research/control/stocks_free_v4_run/proposals/a4_h1.json",
+      "a4_h2": "research/control/stocks_free_v4_run/proposals/a4_h2.json",
+      "a5_h1": "research/control/stocks_free_v4_run/proposals/a5_h1.json",
+      "a5_h2": "research/control/stocks_free_v4_run/proposals/a5_h2.json",
+      "a6_h1": "research/control/stocks_free_v4_run/proposals/a6_h1.json",
+      "a6_h2": "research/control/stocks_free_v4_run/proposals/a6_h2.json"
+    },
+    "proposal_blobs": {
+      "a4_h1": "5ba630c8cdcdb5a5eb62dd9cc9e6b35bb482c005",
+      "a4_h2": "381ff58dd17a8016d7ed854f1f45ff4ba2be8b4c",
+      "a5_h1": "162d381f40a2efd03ae4e2a5f4679afe0c85a181",
+      "a5_h2": "0b1edb559ee89c339652908bd1b22d49e966ce80",
+      "a6_h1": "8a0ac13ec39950d850601903e9ad4c5b52520172",
+      "a6_h2": "56d26e0d1f560a29b45c4546deba0649eef5b35d"
+    },
+    "measurement_script": "research/control/stocks_free_v4_run/d2_a7_novelty_measure.py",
+    "measurement_script_blob": "655d0edfbe3929bfcd9517f070f32b1a5b876221",
+    "staged_snapshot": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v2/z8-exec-1/.staging",
+    "python": "/Users/hoangminhlong/my-quantitative/.venv/bin/python"
+  },
+  "measurement_protocol": {
+    "scope": "feature-space only: ranking-signal cross-sections at sample decision dates; NO PnL, NO backtest, NO arm scoring; read-only on the staged snapshot",
+    "sample_dates": [
+      "2018-04-04", "2018-10-02", "2019-04-04", "2019-10-03", "2020-04-03",
+      "2020-10-02", "2021-04-06", "2021-10-04", "2022-04-04", "2022-10-04",
+      "2023-04-05", "2023-10-05", "2024-04-08", "2024-10-07", "2025-04-09"
+    ],
+    "sample_date_rule": "every 126th SPY session inside S0 (2018-04-04..2025-07-31), PIT trailing windows only; 10 names before XLC 252-session eligibility, 11 after",
+    "reference_rankings": {
+      "REF-MOM": "plain 12-1 cross-sectional momentum: adj close(t-21)/adj close(t-252) - 1 (family-a proxy, long = past winner)",
+      "REF-VOL": "plain close-to-close realized volatility: RMS daily adj return over trailing 252 sessions (vol-level reference)"
+    },
+    "long_direction_scores": {
+      "a4_h1": "+semivariance share S126 (long high downside share, per anchor)",
+      "a4_h2": "-vol-of-vol (long low vov, per anchor)",
+      "a5_h1": "+participation shock 21/231 (long high shock, per anchor)",
+      "a5_h2": "+shock if follow21 <= per-date median else -shock (long unconfirmed/high-shock, short confirmed/high-shock, per anchor)",
+      "a6_h1": "-Garman-Klass variance 63 (long low range-vol, per anchor)",
+      "a6_h2": "-overnight variance share 63 (long low on-share, per anchor)"
+    },
+    "flag_rule": "per controller instruction: |Spearman rho| >= 0.9 vs a forbidden reference ranking on sampled dates -> HIGH flag",
+    "statistics": "per-date Spearman on the 10-11 name cross-section, plus pooled Spearman over all date x sector observations; descriptive, no inference claimed at n=10-11"
+  },
+  "reference_entanglement": {
+    "REFVOL_vs_REFMOM_mean_rho": 0.012,
+    "note": "the two forbidden references are near-orthogonal across sample dates in this universe (sign flips with regime: +0.60..+0.81 in 2018/2021 up-legs, -0.35..-0.62 in 2020/2022 stress), so measured correlations against each reference are interpretable separately"
+  },
+  "hypotheses": {
+    "a4_h1": {
+      "hypothesis_id": "SFV4-A4-H1",
+      "title": "semivariance-share (downside/total second moment, 126s) cross-sectional spread on 11 sector ETFs, long high-S / short low-S, hysteresis book, 21s clock",
+      "forbidden_family_descent": {
+        "a_sector_momentum_and_inversions": "OUTSIDE, with partial co-movement: long-high-S tends to hold recent losers in trending regimes; measured",
+        "b_trend_sma200_vol_target": "OUTSIDE - sign-blind squared-return state, market-neutral fixed-gross book, no SMA/trend/vol-target input anywhere",
+        "c_idio_shock_reversal": "OUTSIDE - persistent 126-session state with hysteresis, no event-conditioned fade; explicitly disclaimed in source_to_test_map item 3",
+        "d_calendars": "OUTSIDE - session-count 21s clock, no date claim",
+        "e_rescue_tweak": "OUTSIDE - new mechanism and state variable; not an inversion/fee/subset/lookback tweak of any dead family"
+      },
+      "measured_evidence": {
+        "score_vs_REFMOM": { "mean_rho": -0.462, "min_rho": -0.927, "max_rho": 0.445, "pooled_rho": -0.395, "n_dates_abs_ge_0.9": 1, "n_dates_abs_ge_0.8": 4, "worst_date": "2019-10-03: -0.927" },
+        "score_vs_REFVOL": { "mean_rho": -0.02, "min_rho": -0.645, "max_rho": 0.473, "pooled_rho": -0.109, "n_dates_abs_ge_0.9": 0 },
+        "long_basket_consecutive_jaccard_mean": 0.207,
+        "interpretation": "shape axis is measured orthogonal to the vol level (rho ~ 0), so the level-sort control is informative; the momentum-inversion co-movement is real but crosses 0.9 on 1/15 dates only; long-basket Jaccard 0.21 across 6-month steps shows ranks churn - not a static sector bet"
+      },
+      "trend_reducibility": "NONE - score is built from squared returns and a sign indicator, invariant to the direction of past returns; no rule path reduces it to a long/short trend condition",
+      "control_meaningfulness": "STRONG - variance-LEVEL control shares full surface form (same book/clock/fills) but measured ranking correlation with the anchor score is ~0 (mean rho -0.02), so it plausibly does not carry the shape mechanism; preregistered falsification rule is concrete and numeric (|ctrl incremental alpha| < 0.5 x anchor alpha AND ctrl expectancy <= 0, frozen gate control_alpha_abs_ratio_lt = 0.5)",
+      "parameter_menu": "NONE - single fixed rule (126s window, 21s clock, 4/4 bands <=4/>=8, 0.25 weights); one preregistered 63s neighbour; explicit no-alternatives clause",
+      "novelty_vs_crypto_ancestry": "NOVEL - no entry in crypto_ancestry_for_novelty_only resembles a semivariance-share/skewness cross-sectional spread",
+      "result_level_hazards": "LOW - book is net ~0 by construction (4x+0.25 / 4x-0.25); kappa_t clip(beta_hat,0,2) risk-match and [SPY, EW_SECTOR] OLS intercept both preregistered; fail-closed stated; 8/11 legs held keeps concentration low; incremental-alpha test is identifiable",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "id": "A4H1-F1-momentum-inversion-co-movement",
+          "evidence": "rho(score, 12-1 momentum) mean -0.462 over 15 dates, 4/15 dates |rho| >= 0.8, worst -0.927 (2019-10-03)",
+          "implication": "in trending regimes the long-high-S basket overlaps a bottom-momentum (inverted family-a) book; below the 0.9 HIGH bar on the sample as a whole, so not a renamed inversion, but the mechanism test must not be read as fully orthogonal to the dead momentum axis"
+        }
+      ],
+      "verdict": "ELIGIBLE",
+      "max_severity": "MEDIUM",
+      "one_line": "Genuinely new shape-vs-level mechanism with an orthogonal, informative control; MEDIUM flag for partial inverted-momentum co-movement (mean rho -0.46, 1/15 dates >= 0.9)."
+    },
+    "a4_h2": {
+      "hypothesis_id": "SFV4-A4-H2",
+      "title": "volatility-of-volatility (stdev of 12x21s block vols, 252s) cross-sectional spread, long low-vov / short high-vov, market-neutral hysteresis book",
+      "forbidden_family_descent": {
+        "a_sector_momentum_and_inversions": "OUTSIDE - measured rho vs 12-1 momentum mean -0.064 (clean)",
+        "b_trend_sma200_vol_target": "OUTSIDE structurally (no targeting, no trend filter, market-neutral spread) but see HIGH identification finding: the ranking axis is measured near-identical to the inverted vol-LEVEL ranking, the raw material of the vol-managed/defensive family",
+        "c_idio_shock_reversal": "OUTSIDE - persistent state, no event conditioning",
+        "d_calendars": "OUTSIDE - session-count clock",
+        "e_rescue_tweak": "OUTSIDE - new state variable, not a tweak of a dead family"
+      },
+      "measured_evidence": {
+        "score_vs_REFVOL": { "mean_rho": -0.792, "min_rho": -0.927, "max_rho": -0.609, "pooled_rho": -0.778, "n_dates_abs_ge_0.9": 4, "n_dates_abs_ge_0.8": 8, "per_date_all_negative": true },
+        "score_vs_REFMOM": { "mean_rho": -0.064, "pooled_rho": 0.108, "n_dates_abs_ge_0.9": 0 },
+        "long_basket_consecutive_jaccard_mean": 0.543,
+        "interpretation": "on every one of the 15 sampled dates the long-low-vov book is a long-low-vol-LEVEL book (all per-date rhos negative, mean -0.79); the long basket is semi-static (Jaccard 0.54, defensives persist)"
+      },
+      "trend_reducibility": "NONE - sign-blind second-moment statistic; no directional persistence encoded",
+      "control_meaningfulness": "WEAK-BY-COLLINEARITY - the preregistered realized-vol LEVEL control is the right control in form and its numeric rule is concrete (|ctrl alpha| < 0.5 x anchor alpha AND ctrl expectancy <= 0), but the measured 0.79-0.93 rank identity between anchor score and control variable means the control structurally subsumes the anchor: expected outcome is control firing and anchor self-rejection even if a small vov-specific effect exists; identification of 'uncertainty about risk' from 'risk level' is weak at 11-name scale",
+      "parameter_menu": "NONE - single fixed rule (12x21 blocks, 252s, 3/3 bands <=3/>=9, 0.20 weights); one preregistered 6x21/126s neighbour",
+      "novelty_vs_crypto_ancestry": "NOVEL with note - name-adjacent to H-VOLCOMP-BRKOUT-v1 (vol-compression breakout) but vov dispersion-of-the-risk-path is a different statistic and trade; informational only",
+      "result_level_hazards": "LOW - gross 1.2 net ~0 book, kappa risk-match + sector OLS preregistered; identifiable",
+      "findings": [
+        {
+          "severity": "HIGH",
+          "id": "A4H2-F1-control-collinearity",
+          "evidence": "rho(-vov, realized vol 252) mean -0.792, range -0.609..-0.927, 8/15 dates |rho| >= 0.8, 4/15 >= 0.9, all 15 negative",
+          "implication": "the anchor's claimed novelty axis is not separable from the vol level in this cross-section; the preregistered 0.5-ratio control gate will very likely fire, i.e. the design is expected to self-reject; selection committee should carry a strong prior against survival, but this is identification weakness, not forbidden descent"
+        },
+        {
+          "severity": "MEDIUM",
+          "id": "A4H2-F2-static-tilt",
+          "evidence": "long-basket consecutive Jaccard 0.543 (semi-static defensive long side)",
+          "implication": "residual static sector-ordering exposure of the kind that let the V2 A4 family's controls reproduce via sector beta; the preregistered [SPY, EW_SECTOR] intercept mitigates"
+        }
+      ],
+      "verdict": "ELIGIBLE",
+      "max_severity": "HIGH",
+      "one_line": "Not a forbidden descent and anti-rescue-safe, but measured 0.79-0.93 rank identity between the vov anchor and the inverted vol-level control means the causal control structurally subsumes the anchor - expect self-rejection."
+    },
+    "a5_h1": {
+      "hypothesis_id": "SFV4-A5-H1",
+      "title": "dollar-volume participation shock (21s mean / 231s prior mean, raw path) cross-sectional spread, long top-3 / short bottom-3 shock, quarterly 63s cadence",
+      "forbidden_family_descent": {
+        "a_sector_momentum_and_inversions": "OUTSIDE - measured rho vs 12-1 momentum mean +0.394, max 0.745, 0/15 dates >= 0.8; volume-chases-winners flavor only",
+        "b_trend_sma200_vol_target": "OUTSIDE - ranking contains no price-return term (verified: score vs realized vol rho mean -0.03); dollar-neutral fixed-gross book",
+        "c_idio_shock_reversal": "OUTSIDE - long high-participation continuation claim, no shock fade",
+        "d_calendars": "OUTSIDE - session-count 63s cadence; no turn-of-month/settlement/mid-month dependence anywhere in the rule",
+        "e_rescue_tweak": "OUTSIDE - the dead SFV3-A6 family was calendar concentration; this is a participation-state mechanism with no date claim"
+      },
+      "measured_evidence": {
+        "score_vs_REFMOM": { "mean_rho": 0.394, "min_rho": 0.018, "max_rho": 0.745, "pooled_rho": 0.216, "n_dates_abs_ge_0.8": 0 },
+        "score_vs_REFVOL": { "mean_rho": -0.034, "pooled_rho": 0.127, "n_dates_abs_ge_0.9": 0 },
+        "anchor_vs_stale_control_rho_mean": 0.289,
+        "long_basket_consecutive_jaccard_mean": 0.264,
+        "interpretation": "participation-shock ranks are only moderately momentum-adjacent and uncorrelated with vol level; the one-quarter-stale control is measured non-collinear with the anchor (rho 0.29), so the causal control discriminates rather than mirrors"
+      },
+      "trend_reducibility": "NONE - ranking feature is a pure volume ratio (raw close x volume); no price level, return, sign or trend term enters the rule; the mechanism predicts continuation but the rule cannot be reduced to a trend condition",
+      "control_meaningfulness": "STRONG - stale-participation control shares full surface form but shifts the feature one holding period; measured rank correlation anchor-vs-stale 0.289 means it plausibly lacks the contemporaneous-shock ingredient; preregistered numeric rule present (refute if ctrl expectancy > 0 AND |ctrl alpha| >= 0.5 x anchor alpha)",
+      "parameter_menu": "NONE - single fixed rule (21/231 windows, 63s cadence, 3v3 at 1/6, alphabetical ties); one preregistered 63s-numerator neighbour; adverse-turnover outcome preregistered as a falsification surface, not a tuning target",
+      "novelty_vs_crypto_ancestry": "NOVEL - Gervais-class volume-shock premium at sector-ETF granularity; no crypto ancestor covers it; informational adjacency to flow families only",
+      "result_level_hazards": "LOW - 3v3 dollar-neutral gross 1.0 net 0.0; frozen ex-ante risk-match scale 0.5 declared; SPY + EW-sector OLS with explicit 'materially nonzero realized beta is a design-failure flag'; raw PnL never accepted as alpha; feature uses raw _none path so split-contamination of DV is avoided within S0 (declared splits are post-S0)",
+      "findings": [
+        {
+          "severity": "LOW",
+          "id": "A5H1-F1-momentum-adjacency",
+          "evidence": "rho(shock, 12-1 momentum) mean +0.394, max +0.745 (2019-04-04), 0/15 >= 0.8",
+          "implication": "in high-volume episodes the long side leans toward past winners; well below the flag bar and mechanically expected (volume chases performance)"
+        },
+        {
+          "severity": "LOW",
+          "id": "A5H1-F2-thin-sample",
+          "evidence": "30 decision slots across S0 with zero slack (proposal's own statement); PF computed over 30 decision PnLs",
+          "implication": "power, not novelty; noted for A9-F/selection"
+        }
+      ],
+      "verdict": "ELIGIBLE",
+      "max_severity": "LOW",
+      "one_line": "Cleanest of the six: volume-only axis measured near-orthogonal to both forbidden references, and the stale-rank control is measured non-collinear (rho 0.29) so it genuinely discriminates."
+    },
+    "a5_h2": {
+      "hypothesis_id": "SFV4-A5-H2",
+      "title": "participation-quality interaction: long top-shock/unconfirmed (small |21s move|), short top-shock/confirmed (large |21s move|), quarterly dollar-neutral book",
+      "forbidden_family_descent": {
+        "a_sector_momentum_and_inversions": "OUTSIDE as a signed-momentum inversion - the follow-through axis is |return| magnitude, sign-blind; measured: quietness axis vs signed 21s momentum rho mean 0.053; anchor score vs 12-1 momentum mean +0.266; short basket overlaps top-3 momentum sectors by 1.07/3 legs on average",
+        "b_trend_sma200_vol_target": "OUTSIDE - no trend filter, fixed gross",
+        "c_idio_shock_reversal": "ADJACENT, MEDIUM - the short leg fades large recent price moves among high-participation sectors: a volume-conditioned magnitude-fade, structurally adjacent to the overshoot-fade axis of the dead SFV3-A5 family, but it is a persistent cross-sectional tilt, not an event-conditioned shock countertrade, and it is long-biased within its own event (absorption) rather than short-the-shock",
+        "d_calendars": "OUTSIDE - session-count cadence",
+        "e_rescue_tweak": "OUTSIDE - new interaction mechanism"
+      },
+      "measured_evidence": {
+        "anchor_vs_quiet_control_rho": { "mean": 0.775, "min": 0.6, "max": 0.891, "n_dates_ge_0.8": 6, "per_date_all_positive": true, "per_date": { "2018-04-04": 0.6, "2018-10-02": 0.855, "2019-04-04": 0.867, "2019-10-03": 0.891, "2020-04-03": 0.845, "2020-10-02": 0.8, "2021-04-06": 0.773, "2021-10-04": 0.718, "2022-04-04": 0.891, "2022-10-04": 0.764, "2023-04-05": 0.782, "2023-10-05": 0.691, "2024-04-08": 0.645, "2024-10-07": 0.773, "2025-04-09": 0.736 } },
+        "anchor_score_vs_REFMOM": { "mean_rho": 0.266, "pooled_rho": 0.201, "n_dates_abs_ge_0.8": 0 },
+        "quietness_axis_vs_signed_mom21_rho_mean": 0.053,
+        "short_basket_vs_top3_mom21_overlap": { "mean_legs_of_3": 1.067, "dates_with_2plus": 5, "dates_with_0": 5 },
+        "interpretation": "the anchor is 0.60-0.89 rank-identical to its own price-only quietness control on every sampled date: the volume screen is a minority axis, so the preregistered control will very likely reproduce the anchor and fire the 0.5-ratio gate; signed-momentum descent is excluded by measurement"
+      },
+      "trend_reducibility": "NONE as a directional trend rule (uses |return| magnitude and a volume ratio); PARTIAL collapse risk to the quietness book if the shock ranking is weakly informative across sectors - measured collapse is substantial (rho 0.775)",
+      "control_meaningfulness": "GOOD-IN-PRINCIPLE, expected-to-fire - the price-only quietness control is exactly the right anti-rescue device (it catches a price-shock artifact and the proposal preregisters rejection if it reproduces), the rule is numeric (ctrl expectancy > 0 AND |ctrl alpha| >= 0.5 x anchor alpha); but measured anchor-control rank identity 0.775 means the control subsumes most of the anchor's composition, so the design has little room to pass for the claimed interaction reason",
+      "parameter_menu": "NONE - single fixed rule (21s shock windows, 21s follow, deterministic median split with tie to unconfirmed, deterministic n-versus-n completion); one preregistered 42s-follow neighbour",
+      "novelty_vs_crypto_ancestry": "NOVEL with note - absorption/crowding narrative is informationally adjacent to H-FUNDCROWD-MR-v2 and the V10 M01 aggressor-absorption panel, but those used funding/order-flow data absent here; daily-OHLCV interaction is a different object",
+      "result_level_hazards": "LOW - 3v3 (or n-v-n) dollar-neutral, frozen 0.5 risk-match scale, SPY + EW-sector OLS, nonzero-beta design-failure flag, no-volume mutation test required for the control - identifiable",
+      "findings": [
+        {
+          "severity": "HIGH",
+          "id": "A5H2-F1-control-subsumption",
+          "evidence": "anchor-vs-quietness-control rank rho mean 0.775 (range 0.60-0.891, positive on all 15 dates, 6/15 >= 0.8)",
+          "implication": "volume conditioning is a minority axis of the book; the preregistered control is expected to reproduce the anchor and fire the gate - the design is anti-rescue-safe but has weak identification of the claimed interaction; carry a strong prior against survival"
+        },
+        {
+          "severity": "MEDIUM",
+          "id": "A5H2-F2-overshoot-fade-adjacency",
+          "evidence": "short leg = top-shock/confirmed = large |21s move| among high-participation sectors; overlap with top-3 signed-momentum sectors 1.07/3 legs average, 2+ legs on 5/15 dates (per-date overlap counts: 2018-04:1, 2018-10:3, 2019-04:2, 2019-10:1, 2020-04:0, 2020-10:0, 2021-04:2, 2021-10:0, 2022-04:3, 2022-10:0, 2023-04:1, 2023-10:0, 2024-04:1, 2024-10:2, 2025-04:0)",
+          "implication": "in trending windows the short side approximates fading recent movers, the neighborhood of the dead overshoot-reversal family; sign-blind |return| construction and volume conditioning keep it outside, but a pass must be attributed to the interaction, not to the fade axis"
+        }
+      ],
+      "verdict": "ELIGIBLE",
+      "max_severity": "HIGH",
+      "one_line": "Not a signed-momentum or shock-reversal rename (measured), but the anchor is 0.78 rank-identical to its own quietness control - the volume interaction is a minority axis and the preregistered control is expected to fire."
+    },
+    "a6_h1": {
+      "hypothesis_id": "SFV4-A6-H1",
+      "title": "Garman-Klass 63s range-variance cross-sectional spread, long 3 lowest / short 3 highest, SPY-beta-hedged (252s OLS, hedge truncated +/-0.25), 42s cadence",
+      "forbidden_family_descent": {
+        "a_sector_momentum_and_inversions": "OUTSIDE - measured rho vs 12-1 momentum mean +0.045, 0/15 dates >= 0.8; sign-blind range statistic",
+        "b_trend_sma200_vol_target": "OUTSIDE as a rule (no trend filter, frozen gross, never de-risks) - but the ranking variable is a VOLATILITY LEVEL, the raw material of the vol-managed family; see HIGH redundancy finding",
+        "c_idio_shock_reversal": "OUTSIDE - persistent state, no event conditioning, 42s holding of a cross-sectional tilt",
+        "d_calendars": "OUTSIDE - 42s session-count grid",
+        "e_rescue_tweak": "OUTSIDE - no dead family used a cross-sectional vol-level spread; this is a new (to the program) pricing question, not a tweak"
+      },
+      "measured_evidence": {
+        "score_vs_REFVOL252": { "mean_rho": -0.826, "min_rho": -1.0, "max_rho": -0.491, "pooled_rho": -0.673, "n_dates_abs_ge_0.9": 7, "n_dates_abs_ge_0.8": 9, "worst_dates": "2022-04-04: -1.000, 2022-10-04: -0.991, 2025-04-09: -0.964" },
+        "score_vs_same_window_cc63_variance": { "mean_rho": 0.858, "min_rho": 0.661, "note": "identity with SFV4-A6-H2's preregistered close-to-close variance CONTROL ranking" },
+        "score_vs_REFMOM": { "mean_rho": 0.045, "pooled_rho": 0.215, "n_dates_abs_ge_0.9": 0 },
+        "long_basket_consecutive_jaccard_mean": 0.693,
+        "interpretation": "the GK ranking IS a vol-level ranking: 0.83 mean rank correlation with plain 252s realized vol, crossing 0.9 on 7/15 sampled dates (including a perfect -1.000), and 0.86 identical to the same-window close-to-close variance ranking that H2 preregisters as its negative control; the claimed 5-7.4x estimator efficiency contributes no visible ranking information; long basket is near-static (Jaccard 0.69) - a standing long-defensive/short-cyclical tilt, the exact static-sector-ordering surface on which the V2 A4 family's controls reproduced via sector beta"
+      },
+      "trend_reducibility": "NONE - range-variance is sign-blind; gross is a frozen constant and the arm never scales exposure; no SMA/trend path",
+      "control_meaningfulness": "WEAK - the alphabetical-ticker control shares surface form but is inert by construction: it can detect surface-form-only alpha yet cannot discriminate the claimed mechanism (range estimator) from the obvious rival (plain vol level), because measured GK ranks and CC-vol ranks are 0.86-identical; there is NO preregistered control that isolates the estimator from the vol level; preregistered numeric rule exists (|alpha_ctrl| >= 0.5 x |alpha_anchor| or ctrl expectancy > 0 with PF >= 1.0) but it tests book shape, not mechanism",
+      "parameter_menu": "NONE - single estimator, single 63s window, single 42s holding, single 252s beta window, 3+3 at 1/6, hedge truncation [-0.25,+0.25]; one preregistered Parkinson neighbour - which, given the measured GK/CC redundancy, is an estimator-swap within an already-redundant family",
+      "novelty_vs_crypto_ancestry": "NOVEL as a pricing question (BAB/low-vol cross-sectional premium on sector ETFs is new to the stocks program) but the OPERATIONALIZATION is redundant: the measured ranking is the plain vol-level ranking, so the test reduces to a plain low-vol-minus-high-vol sector spread",
+      "result_level_hazards": "LOW-to-MEDIUM - beta hedge truncated at +/-0.25 with measured typical need ~0.25-0.30 leaves residual net beta up to ~0.05-0.10, which works AGAINST a long-defensive book in the S0 bull sample (fail-safe direction); declared ZERO SPY-context multiple keeps the incremental-alpha test identifiable; EW-sector residual honestly demoted to diagnostic; the real exposure hazard is static sector-ordering risk (Jaccard 0.69), not hidden beta",
+      "findings": [
+        {
+          "severity": "HIGH",
+          "id": "A6H1-F1-vol-level-redundancy",
+          "evidence": "rho(-GK63, realized vol 252) mean -0.826, 7/15 dates |rho| >= 0.9 (min -1.000 at 2022-04-04); rho(-GK63, -CC63) mean 0.858",
+          "implication": "triggered by the controller's >= 0.9 measurement rule against the realized-vol reference: the estimator-efficiency novelty is not visible in ranking space and the arm is operationally a plain close-to-close low-vol/high-vol sector spread; eligibility is retained because a cross-sectional vol-level spread is not an entry in (nor a rename/inversion of) the forbidden families, but the proposal's central causal novelty claim is contradicted by measurement"
+        },
+        {
+          "severity": "HIGH",
+          "id": "A6H1-F2-selection-contamination-with-A6H2",
+          "evidence": "A6-H1 anchor ranking vs A6-H2 preregistered control ranking: mean rho 0.858 (min 0.661)",
+          "implication": "H1's anchor and H2's control are the same book family; if H1 passes, H2's 0.5-ratio control gate fires almost mechanically (and H2's failure would then be attributable to H1's premium, not to H2's mechanism); A1 must not score or select these as independent evidence - at most one of the pair can carry identification"
+        },
+        {
+          "severity": "MEDIUM",
+          "id": "A6H1-F3-static-sector-tilt",
+          "evidence": "long-basket consecutive Jaccard 0.693; defensive sectors persistently lowest range-vol",
+          "implication": "the book approximates a standing long-defensive/short-growth bet - the surface on which V2's momentum anchor was shown to be sector-beta; drop-one-ETF will not remove a persistent ordering, only fold gates can"
+        },
+        {
+          "severity": "MEDIUM",
+          "id": "A6H1-F4-no-estimator-discriminating-control",
+          "evidence": "causal_negative_control is alphabetical-ticker order; no GK-vs-CC-vol control exists in the design",
+          "implication": "even a pass could not attribute the premium to range-based efficiency rather than to the plain vol level; the neighbour (Parkinson) partially covers estimator family but is same-axis, not a rival-mechanism control"
+        }
+      ],
+      "verdict": "ELIGIBLE",
+      "max_severity": "HIGH",
+      "one_line": "Measured HIGH: GK ranks are 0.83-1.00 the plain realized-vol ranks (>= 0.9 on 7/15 dates) and 0.86 identical to A6-H2's preregistered control - estimator novelty is contradicted by measurement and the pair is selection-contaminated; not a forbidden descent, so eligible with heavy discount."
+    },
+    "a6_h2": {
+      "hypothesis_id": "SFV4-A6-H2",
+      "title": "overnight variance share (V_on/(V_on+V_intra), 63s, adjusted path) cross-sectional spread, long 3 lowest / short 3 highest, SPY-beta-hedged, 42s cadence",
+      "forbidden_family_descent": {
+        "a_sector_momentum_and_inversions": "OUTSIDE - measured rho vs 12-1 momentum mean -0.095 with sign flips across regimes; squared-return sign-blind statistic",
+        "b_trend_sma200_vol_target": "OUTSIDE - frozen gross, no trend filter, no targeting; partial vol-level overlap is measured and disclosed below",
+        "c_idio_shock_reversal": "OUTSIDE - explicitly not a gap-fade: no gap size, direction or event conditioning enters the key; persistent state held 42s with a beta hedge; the 'fade the gap' resemblance is disclaimed and the disclaimer is verified by construction",
+        "d_calendars": "OUTSIDE - the overnight/intraday split is a market-structure decomposition applied identically to every session, not a date-selection or settlement-window claim; no return attaches to specific dates",
+        "e_rescue_tweak": "OUTSIDE - new decomposition, not a tweak of any dead family"
+      },
+      "measured_evidence": {
+        "score_vs_REFVOL252": { "mean_rho": -0.548, "min_rho": -0.867, "max_rho": -0.109, "pooled_rho": -0.444, "n_dates_abs_ge_0.9": 0, "n_dates_abs_ge_0.8": 2 },
+        "score_vs_own_cc63_control": { "mean_rho": 0.566 },
+        "score_vs_REFMOM": { "mean_rho": -0.095, "pooled_rho": -0.059, "n_dates_abs_ge_0.9": 0 },
+        "interpretation": "overnight-share is a genuinely distinct axis from both references (never crosses 0.9 vs either), while remaining moderately correlated with the vol level (mean -0.55) and with its own CC-variance control (0.57) - enough overlap that the control is informative but not pre-determined"
+      },
+      "trend_reducibility": "NONE - squared overnight/intraday returns only; no direction, no SMA, no exposure scaling",
+      "control_meaningfulness": "GOOD - close-to-close variance-level control shares the exact surface form (long-low-risk-stat/short-high-risk-stat) but plausibly lacks the WHERE-variance-arrives mechanism; measured rank overlap 0.566 means it correlates without subsuming; preregistered numeric rule concrete (reject if |alpha_ctrl| >= 0.5 x |alpha_anchor| or ctrl expectancy > 0 with PF >= 1.0); the design also preregisters the informative joint outcome (control fires + anchor fails => variance-level premium belongs to H1's class)",
+      "parameter_menu": "NONE - single statistic, 63s window, 42s holding, 252s beta, 3+3 at 1/6, hedge [-0.25,+0.25], 1e-12 denominator guard declared frozen; one preregistered 21s-window neighbour",
+      "novelty_vs_crypto_ancestry": "NOVEL - the Lou-Polk-Skouras clientele decomposition has no entry in the crypto ancestry list; informational adjacency to overnight-accrual carry flavor only",
+      "result_level_hazards": "LOW - same hedge-truncation residual as H1 (fail-safe direction), zero SPY-context multiple, EW-sector residual honestly demoted; adjusted-open fallback declared ex ante; identifiable",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "id": "A6H2-F1-partial-vol-level-overlap",
+          "evidence": "rho(-onshare63, realized vol 252) mean -0.548 (2/15 dates >= 0.8, 0/15 >= 0.9); rho vs own CC63 control 0.566",
+          "implication": "a fifth or so of the ranking axis is vol level; the preregistered control covers this confound with a numeric gate, so the residual identification risk is bounded and disclosed"
+        },
+        {
+          "severity": "MEDIUM",
+          "id": "A6H2-F2-pair-contamination",
+          "evidence": "its preregistered control is 0.858 rank-identical to A6-H1's anchor",
+          "implication": "if A6-H1 is also selected/scored, H2's control gate outcome is entangled with H1's result; score and interpret the pair jointly, never as independent confirmations"
+        }
+      ],
+      "verdict": "ELIGIBLE",
+      "max_severity": "MEDIUM",
+      "one_line": "Genuinely new decomposition axis (never crosses 0.9 vs either forbidden reference), honest and numeric control; MEDIUM flags for partial vol-level overlap and pair-contamination with A6-H1's anchor."
+    }
+  },
+  "overall_summary": {
+    "verdicts": {
+      "SFV4-A4-H1": "ELIGIBLE / MEDIUM",
+      "SFV4-A4-H2": "ELIGIBLE / HIGH",
+      "SFV4-A5-H1": "ELIGIBLE / LOW",
+      "SFV4-A5-H2": "ELIGIBLE / HIGH",
+      "SFV4-A6-H1": "ELIGIBLE / HIGH",
+      "SFV4-A6-H2": "ELIGIBLE / MEDIUM"
+    },
+    "ineligible_count": 0,
+    "ineligible_reason": "no proposal is inside a forbidden entry or a renamed/inverted descendant of one: none ranks on sector relative strength or 12-1 momentum (measured: all |rho| vs REF-MOM <= 0.75 mean, none >= 0.9 except single-date excursions), none encodes a time-series trend/SMA/vol-target rule, none is an event-conditioned shock fade, none uses a calendar, and none is an inversion/fee/subset/lookback tweak of a dead family",
+    "high_severity_pattern": "the dominant measured risk is not descent but CONTROL IDENTITY: on this 11-name cross-section, A4-H2's vov anchor is 0.79 rank-identical to its vol-level control, A5-H2's anchor is 0.78 rank-identical to its quietness control, and A6-H1's GK anchor is 0.86 rank-identical to A6-H2's variance-level control. After two cycles in which controls reproduced the mechanisms, the measured prediction is that A4-H2, A5-H2 and (via the pair entanglement) A6-H1 will again be rejected BY THEIR OWN CONTROLS; A6-H1 additionally has no estimator-discriminating control, so its novelty claim cannot be isolated even by a pass",
+    "strongest_candidates_by_novelty": [
+      "SFV4-A5-H1 (volume-only axis, measured near-orthogonal to both forbidden references, non-collinear stale control)",
+      "SFV4-A6-H2 (overnight-share axis, never crosses 0.9 vs either reference, informative control)",
+      "SFV4-A4-H1 (shape-vs-level axis measured orthogonal to vol level; medium momentum-inversion co-movement to watch)"
+    ],
+    "notes_for_a1_selection": [
+      "Treat SFV4-A6-H1 and SFV4-A6-H2 as ONE entangled pair: H1's anchor is H2's control family (rho 0.858); at most one carries identification, and a joint pass/fail pattern must be interpreted jointly, not as two independent tests.",
+      "A4-H2 and A5-H2 should be carried only if A1 accepts high prior probability of control-gate self-rejection; their passing would require the minority orthogonal axis (21-22% of rank content) to carry more than twice the alpha of the shared axis.",
+      "No proposal has a net-long unhedged book; all six preregister ex-ante risk-match rules and sector-factor steps, so the incremental-alpha test is identifiable in all six; residual hedge-truncation beta in A6 arms is small and fail-safe in direction.",
+      "No parameter menus, grids or best-of structures found in any proposal; each has exactly one preregistered neighbour, which is contract-compliant mechanism support, not a menu.",
+      "The 0.9-momentum flag is crossed on isolated dates only by A4-H1 (1/15) and A4-H2's vov (0/15); no proposal's ranking is a wholesale momentum rename by measurement."
+    ],
+    "historical_denominator_note": "this audit computes no scored PnL and increments no counters; findings are feature-space measurements on the staged snapshot only"
+  },
+  "attestation": "A7-N read only the six proposal files, the forbidden packet, run contract, baseline invariants and the staged snapshot; computed feature-space statistics only (no PnL, no backtest, no arm scoring, no S1 access); made no edits to any proposal file; verdicts are eligibility judgements on forbidden-family descent and anti-rescue structure, with severities conveying measured identification risk for the selection freeze.",
+  "audit_producer": "A7-N",
+  "timestamp_utc": "2026-09-04T02:41:31Z"
+}
