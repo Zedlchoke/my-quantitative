@@ -24,7 +24,11 @@ import sys
 
 from research.data_fusion.adapters.base import RawResponse, RequestSpec
 from research.data_fusion.adapters.sec import SecAdapter
-from research.assets.stocks.sec_sanitize import SANITIZER_VERSION, sanitize_companyfacts
+from research.assets.stocks.sec_sanitize import (
+    SANITIZER_VERSION,
+    chunk_companyfacts,
+    sanitize_companyfacts,
+)
 
 REPO = Path(__file__).resolve().parents[3]
 STAGE = REPO / ".staging_sec"
@@ -64,50 +68,54 @@ def main() -> int:
             if cik not in sector_of:
                 continue
             raw_bytes = path.read_bytes()
+            file_sha = sha256(raw_bytes).hexdigest()
             payload = json.loads(raw_bytes)
             sanitized, stats = sanitize_companyfacts(payload)
             request = RequestSpec(
                 source_id="SEC_EDGAR",
                 url=f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json",
             )
-            response = RawResponse(
-                request_id=request.request_id(),
-                url=request.full_url(),
-                status=200,
-                reason="OK",
-                headers=(("content-type", "application/json"),),
-                body=json.dumps(sanitized, sort_keys=True).encode("utf-8"),
-                retrieved_time_utc=RETRIEVED,
-            )
-            output = adapter.parse_company_facts(response)
-            for record in output.records:
-                out.write(json.dumps({
-                    "source_id": record.source_id,
-                    "dataset_id": record.dataset_id,
-                    "entity_id": record.entity_id,
-                    "sector": sector_of[cik],
-                    "field": record.field,
-                    "value": record.value,
-                    "unit": record.unit,
-                    "event_time_utc": record.event_time_utc.isoformat(),
-                    "available_time_utc": record.available_time_utc.isoformat(),
-                    "effective_time_utc": record.effective_time_utc.isoformat() if record.effective_time_utc else None,
-                    "vintage_time_utc": record.vintage_time_utc.isoformat(),
-                    "retrieved_time_utc": record.retrieved_time_utc.isoformat(),
-                    "raw_path": f".staging_sec/{path.name}",
-                    "file_raw_sha256": sha256(raw_bytes).hexdigest(),
-                    "raw_sha256": record.raw_sha256,
-                    "license_id": record.license_id,
-                    "entitlement_id": record.entitlement_id,
-                    "normalizer_version": f"{SANITIZER_VERSION}+{record.normalizer_version}",
-                }, ensure_ascii=False) + "\n")
-                n_records += 1
+            for _chunk_tag, chunk_body in chunk_companyfacts(sanitized):
+                response = RawResponse(
+                    request_id=request.request_id(),
+                    url=request.full_url(),
+                    status=200,
+                    reason="OK",
+                    headers=(("content-type", "application/json"),),
+                    body=chunk_body,
+                    retrieved_time_utc=RETRIEVED,
+                )
+                output = adapter.parse_company_facts(response)
+                file_records = 0
+                for record in output.records:
+                    out.write(json.dumps({
+                        "source_id": record.source_id,
+                        "dataset_id": record.dataset_id,
+                        "entity_id": record.entity_id,
+                        "sector": sector_of[cik],
+                        "field": record.field,
+                        "value": record.value,
+                        "unit": record.unit,
+                        "event_time_utc": record.event_time_utc.isoformat(),
+                        "available_time_utc": record.available_time_utc.isoformat(),
+                        "effective_time_utc": record.effective_time_utc.isoformat() if record.effective_time_utc else None,
+                        "vintage_time_utc": record.vintage_time_utc.isoformat(),
+                        "retrieved_time_utc": record.retrieved_time_utc.isoformat(),
+                        "raw_path": f".staging_sec/{path.name}",
+                        "file_raw_sha256": file_sha,
+                        "raw_sha256": record.raw_sha256,
+                        "license_id": record.license_id,
+                        "entitlement_id": record.entitlement_id,
+                        "normalizer_version": f"{SANITIZER_VERSION}+{record.normalizer_version}",
+                    }, ensure_ascii=False) + "\n")
+                    n_records += 1
+                    file_records += 1
             file_reports.append({
                 "cik": cik,
                 "sector": sector_of[cik],
-                "records": len(output.records),
+                "records": file_records,
                 "sanitizer": stats.as_dict(),
-                "file_raw_sha256": sha256(raw_bytes).hexdigest(),
+                "file_raw_sha256": file_sha,
             })
 
     # coverage census: per sector x field, availability span vs S0

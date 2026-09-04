@@ -165,3 +165,40 @@ def sanitize_companyfacts(payload: dict[str, Any]) -> tuple[dict[str, Any], Sani
 
 
 __all__ = ["SANITIZER_VERSION", "SanitizeStats", "sanitize_companyfacts"]
+
+
+import json
+
+
+def chunk_companyfacts(
+    sanitized: dict[str, Any],
+) -> list[tuple[str, bytes]]:
+    """Split a sanitized companyfacts payload into per-tag chunk bodies.
+
+    The frozen adapter re-hashes its response body once per emitted fact
+    record (``RawResponse.sha256_hex`` inside ``_instant_fact_record``), so
+    parsing one multi-megabyte payload costs body_size x n_records of hashing
+    (~40 GB per large filer).  The frozen core stays byte-identical; this V5
+    shim instead feeds it one small body per (taxonomy, tag) pair.
+
+    Semantics are preserved exactly: the adapter's duplicate-fact key is
+    (taxonomy, tag, unit, accn, end, filed) and therefore never spans chunks;
+    every chunk keeps the file's cik so the CIK cross-check still binds.
+    Record ``raw_sha256`` names the chunk body it was parsed from; callers
+    pin the original file separately (``file_raw_sha256``).
+    """
+    cik = sanitized["cik"]
+    facts = sanitized.get("facts") or {}
+    chunks: list[tuple[str, bytes]] = []
+    for taxonomy in sorted(facts):
+        tags = facts[taxonomy]
+        if not isinstance(tags, dict):
+            continue
+        for tag in sorted(tags):
+            payload = {"cik": cik, "facts": {taxonomy: {tag: tags[tag]}}}
+            chunks.append((
+                f"{taxonomy}:{tag}",
+                json.dumps(payload, sort_keys=True).encode("utf-8"),
+            ))
+    return chunks
+

@@ -18,6 +18,7 @@ from research.data_fusion.adapters.base import RawResponse, RequestSpec, Adapter
 from research.data_fusion.adapters.sec import SecAdapter
 from research.assets.stocks.sec_sanitize import (
     SANITIZER_VERSION,
+    chunk_companyfacts,
     sanitize_companyfacts,
 )
 
@@ -176,3 +177,49 @@ def test_filed_before_end_dropped_not_fatal() -> None:
     assert len(output.records) == 1
     assert stats.dropped_filed_before_end == 1
     assert output.records[0].value == 5100.0
+
+
+def test_chunking_preserves_records_semantically() -> None:
+    payload = _payload(**{
+        "us-gaap": {"Assets": {"units": {"USD": [
+            _instant(5000.0),
+            {**_instant(5100.0), "accn": "0000000001-24-000003",
+             "filed": "2024-04-15", "fp": "Q1", "form": "10-Q/A"},
+        ]}}},
+        "dei": {"EntityCommonStockSharesOutstanding": {"units": {"shares": [
+            {"end": "2023-12-31", "val": 1000, "accn": "0000000001-24-000001",
+             "fy": 2024, "fp": "Q1", "form": "8-K", "filed": "2024-01-03"},
+        ]}}},
+    })
+    sanitized, stats = sanitize_companyfacts(payload)
+    chunks = chunk_companyfacts(sanitized)
+    assert len(chunks) == 2
+    adapter = SecAdapter()
+    chunk_records = []
+    for _tag, body in chunks:
+        request = RequestSpec(
+            source_id="SEC_EDGAR",
+            url="https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json",
+        )
+        response = RawResponse(
+            request_id=request.request_id(), url=request.full_url(), status=200,
+            reason="OK", headers=(("content-type", "application/json"),),
+            body=body, retrieved_time_utc=RETRIEVED,
+        )
+        chunk_records.extend(adapter.parse_company_facts(response).records)
+    whole_body = json.dumps(sanitized, sort_keys=True).encode()
+    request = RequestSpec(
+        source_id="SEC_EDGAR",
+        url="https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json",
+    )
+    whole = adapter.parse_company_facts(RawResponse(
+        request_id=request.request_id(), url=request.full_url(), status=200,
+        reason="OK", headers=(("content-type", "application/json"),),
+        body=whole_body, retrieved_time_utc=RETRIEVED,
+    )).records
+    strip = lambda rs: sorted(
+        (r.field, r.value, r.unit, r.event_time_utc.isoformat(),
+         r.available_time_utc.isoformat()) for r in rs
+    )
+    assert strip(chunk_records) == strip(whole)
+    assert stats.total_dropped() == 0
