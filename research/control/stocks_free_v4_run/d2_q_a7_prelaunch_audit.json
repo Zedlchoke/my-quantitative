@@ -1,0 +1,362 @@
+{
+  "schema": "stocks_free_v4_run/a7_prelaunch_audit@1",
+  "producer_role": "A7",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4-Q",
+  "role": "independent prelaunch auditor (AUDIT ONLY — no repairs performed)",
+  "audited_at_utc": "2026-09-04T04:03:43Z",
+  "lane": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v4/q-a7-prelaunch",
+    "branch": "orca/stocks-free-v4-q-a7-prelaunch",
+    "audit_base_head": "dfa099aa6246883a9e650aeebcf9ee49ec1d8e31",
+    "w1_under_audit": "dfa099aa6246883a9e650aeebcf9ee49ec1d8e31"
+  },
+  "method": "entire chain recomputed by measurement; control-file self-claims not trusted without independent re-verification",
+  "sections": [
+    {
+      "id": "S1",
+      "name": "V4-R RECONCILIATION",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "prior terminal branch sha",
+          "command": "git -C /Users/hoangminhlong/my-quantitative rev-parse orca/stocks-free-v3-integration",
+          "observed": "4a9457ab5682b2db1d0a188a51f4715f431c3fe3",
+          "expected": "4a9457ab5682b2db1d0a188a51f4715f431c3fe3",
+          "pass": true
+        },
+        {
+          "name": "A7T ancestry",
+          "command": "git merge-base --is-ancestor 6993383 4a9457ab5682b2db1d0a188a51f4715f431c3fe3",
+          "observed": "ANCESTOR: YES (6993383 = 'V3 Z9 A7T: terminal audit - STOCKS_FREE_V3_REJECT_ALL_CONFIRMED')",
+          "pass": true
+        },
+        {
+          "name": "V3 W1 recorded and exists",
+          "command": "read research/control/stocks_free_v3_run/{state.json,terminal_report.json} in .worktrees/stocks-free-v3/integration; git rev-parse 586f9fe...",
+          "observed": "state.json W1 = 586f9febe29ae6ba0b176c8c9a9b1b4645f3bca4; terminal_report cycle.w1 identical; object exists in repo",
+          "pass": true
+        },
+        {
+          "name": "historical denominator 12 observed / 12 published",
+          "command": "read V3 state.json counters + historical_boundary.json + terminal_report.json budget_and_counters",
+          "observed": "historical_stocks_observed=6, historical_stocks_published=6, v3_observed=6, v3_published=6; terminal_report statistical_denominator=12; historical_boundary V2 observed/published 6/6 with V2_reproduction 6/6 EXACT_MATCH",
+          "pass": true
+        },
+        {
+          "name": "V3 control-file internal consistency",
+          "command": "cross-check state.json / historical_boundary.json / terminal_report.json",
+          "observed": "phase TERMINAL, verdict STOCKS_FREE_V3_REJECT_ALL consistent across state.json and terminal_report; terminal_a7_commit ad897c8a445132d85adc4b92d79dd6d76b4a2784 equals branch head of orca/stocks-free-v3-r-a7-terminal (ad897c8)",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "name": "V4-P GATES",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "P1 factory regression suite (own worktree)",
+          "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/stocks/test_v4_p1_factory_regression.py -q",
+          "observed": "16 passed in 0.87s",
+          "pass": true
+        },
+        {
+          "name": "frozen contract statuses",
+          "command": "json.load p2_a3_data_manifest.json / p2_a3_benchmark_contract.json",
+          "observed": "p2_a3_data_manifest.json status=FROZEN (schema stocks_free_v4_run/data_manifest@1); p2_a3_benchmark_contract.json status=FROZEN (schema stocks_free_v4_run/benchmark_contract@1)",
+          "pass": true
+        },
+        {
+          "name": "staged snapshot MANIFEST sha256",
+          "command": "shasum -a 256 /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v2/z8-exec-1/.staging/MANIFEST.json",
+          "observed": "62ac324d7e683961b0d88f85153e4a072d09fe0a6745a54687b9e3b219d8f658",
+          "expected": "62ac324d7e683961b0d88f85153e4a072d09fe0a6745a54687b9e3b219d8f658",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S3",
+      "name": "V4-D1 PROPOSAL WAVE IDENTITY",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "pairwise merge-bases equal wave sha",
+          "command": "git merge-base for pairs (d1-a4,d1-a5), (d1-a4,d1-a6), (d1-a5,d1-a6)",
+          "observed": "all three = 5022f265912e0dd398b79441023c263bc4c61b24",
+          "expected": "5022f265912e0dd398b79441023c263bc4c61b24",
+          "pass": true
+        },
+        {
+          "name": "six outcome-blind proposal files",
+          "command": "ls research/control/stocks_free_v4_run/proposals/; grep -c outcome_blind_attestation <file>",
+          "observed": "a4_h1.json, a4_h2.json, a5_h1.json, a5_h2.json, a6_h1.json, a6_h2.json present; outcome_blind_attestation found in 6/6 files",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S4",
+      "name": "V4-D2 AUDITS AND SELECTION FREEZE",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "novelty audit verdicts",
+          "command": "walk d2_a7_novelty_audit.json verdicts; grep -c INELIGIBLE",
+          "observed": "a4_h1..a6_h2 all ELIGIBLE (6/6); 'INELIGIBLE' occurrences: 0",
+          "pass": true
+        },
+        {
+          "name": "feasibility audit verdicts",
+          "command": "walk d2_a9_feasibility_audit.json per_hypothesis verdicts; grep -c INELIGIBLE",
+          "observed": "6/6 FEASIBLE or FEASIBLE_WITH_CONDITIONS (3 FEASIBLE_WITH_CONDITIONS, 2 FEASIBLE, plus per_hypothesis[2]=FEASIBLE); 'INELIGIBLE' occurrences: 0",
+          "pass": true
+        },
+        {
+          "name": "selection = exactly 2 families x 3 arms",
+          "command": "read selection_freeze.json selected_families + budget",
+          "observed": "SFV4-A5-H1-PARTICIPATION-SHIFT arms {SFV4-A5-H1-A anchor, SFV4-A5-H1-N neighbour, SFV4-A5-H1-C causal_negative_control}; SFV4-A4-H1-SEMIVARIANCE-SHARE arms {SFV4-A4-H1-A, SFV4-A4-H1-N, SFV4-A4-H1-C}; budget planned_scored_cells=6, families=2, arms_per_family=3",
+          "pass": true
+        },
+        {
+          "name": "kappa fallback recorded EX ANTE",
+          "command": "read selection_freeze.json conditions",
+          "observed": "'KAPPA FALLBACK FROZEN EX ANTE (A9-F C1, frozen before any V4 return is observed): kappa_t = 1.0 flat for scored sessions until 252 scored sessions accumulate, thereafter trailing-252 OLS of arm on SPY; no in-sample refit of the fallback'",
+          "pass": true
+        },
+        {
+          "name": "clock anchoring recorded EX ANTE",
+          "command": "read selection_freeze.json conditions",
+          "observed": "participation: '63-session clock anchored to S0 start 2018-04-04, decisions at index multiples of 63 from anchor'; semivar: 'clock anchoring pinned byte-exact: 21-session clock anchored to S0 start 2018-04-04'",
+          "pass": true
+        },
+        {
+          "name": "not-selected list has no reassignment",
+          "command": "read selection_freeze.json not_selected_no_reassignment",
+          "observed": "[SFV4-A4-H2, SFV4-A5-H2, SFV4-A6-H1, SFV4-A6-H2] — exactly the four unselected hypotheses, no reassignment field or successor mapping",
+          "pass": true
+        },
+        {
+          "name": "freeze references match actual audit lane heads",
+          "command": "compare selection_freeze a7_novelty_audit_head / a9_feasibility_audit_head to branch heads",
+          "observed": "158239e9... == orca/stocks-free-v4-d2-a7-novelty head (158239e); bb5c3eee... == orca/stocks-free-v4-d2-a9-feasibility head (bb5c3ee)",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "name": "V4-I IMPLEMENTATION",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "family test suite 1 (participation)",
+          "command": "pytest tests/assets/stocks/test_v4_family_participation.py -q",
+          "observed": "13 passed in 1.92s",
+          "pass": true
+        },
+        {
+          "name": "family test suite 2 (semivar)",
+          "command": "pytest tests/assets/stocks/test_v4_family_semivar.py -q",
+          "observed": "35 passed in 12.06s",
+          "pass": true
+        },
+        {
+          "name": "family modules exist",
+          "command": "ls research/stocks_free_v4/family_participation/ research/stocks_free_v4/family_semivar/",
+          "observed": "family_participation: __init__.py config.py features.py schedule.py; family_semivar: __init__.py config.py schedule.py signals.py",
+          "pass": true
+        },
+        {
+          "name": "PIT no-lookahead tests spot-check",
+          "command": "grep PIT test names in both test files",
+          "observed": "participation: test_e02_pit_no_lookahead_mutations (line 258); semivar: class Test02PitNoLookahead with test_02a_window_is_exact_trailing_completed, test_02b_future_mutation_cannot_change_past_targets, test_02c_mutation_inside_window_is_visible; bonus test_06c_kappa_fallback_below_252_scored_sessions covers the frozen kappa fallback",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S6",
+      "name": "V4-Q QA EVIDENCE",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "dummy dry-run evidence",
+          "command": "read q_dummy_dryrun_evidence.json",
+          "observed": "overall=PASS; dummy_publication observed=6 published=6; replay_all_zero_delta=true; six_arms digests pairwise distinct across {A4-H1-A/N/C, A5-H1-A/N/C} with digests_unique=true; scored=false; real_pnl=false; temp ledger path only; refusal_path key remains unpublished; budget used 0 / planned 6; scored_artifact_files_in_control=[]",
+          "pass": true
+        },
+        {
+          "name": "resource probe",
+          "command": "read q_resource_probe.json",
+          "observed": "heavy_cap=1; workers_active=0; cpu_logical=8, ram_gb=8, disk_free_gb=55; rules: full pytest ran alone / no pytest beside any worker / scored arms serial under owner GO only",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S7",
+      "name": "W1 AND EXECUTION/REPRODUCTION TWINS",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "twins detached at exact W1",
+          "command": "git -C <twin> rev-parse HEAD; git -C <twin> status",
+          "observed": "e-exec-1 HEAD = dfa099aa6246883a9e650aeebcf9ee49ec1d8e31 'Not currently on any branch'; r-reproduce HEAD = dfa099aa6246883a9e650aeebcf9ee49ec1d8e31 'Not currently on any branch' (clean)",
+          "pass": true
+        },
+        {
+          "name": "twin staging MANIFEST sha256",
+          "command": "shasum -a 256 <twin>/.staging/MANIFEST.json",
+          "observed": "both twins = 62ac324d7e683961b0d88f85153e4a072d09fe0a6745a54687b9e3b219d8f658 (== authorized value)",
+          "pass": true
+        },
+        {
+          "name": "twin byte-identity beyond MANIFEST",
+          "command": "sha256 every file in both .staging/ trees and compare",
+          "observed": "51/51 staged files identical between twins (incl. cell_runner.py, all 45 *_p1/_p2 panel files, distributions.json, partition_folds.json, split_factors.json, both xlsx, fetch_log.json, common_coverage.json, 6 V2-era cell artifacts)",
+          "pass": true
+        },
+        {
+          "name": "exec twin ledger empty",
+          "command": "cat e-exec-1/research/control/stocks_free_v4_run/execution_ledger.json",
+          "observed": "observed=0, published=0, published_keys=[], entries=[]; note 'V4 empty ledger authority; only A1 may append under owner GO'; untracked files in exec twin limited to execution_ledger.json + counters_checkpoint.json",
+          "pass": true
+        },
+        {
+          "name": "exec twin counters checkpoint",
+          "command": "cat e-exec-1/research/control/stocks_free_v4_run/counters_checkpoint.json",
+          "observed": "budget used=0 planned=6; v4_observed=0 v4_published=0; historical_stocks_observed=12 historical_stocks_published=12; s1=SEALED_UNTOUCHED; workers=0",
+          "pass": true
+        },
+        {
+          "name": "W1 labeling note",
+          "command": "git log/diff 203f685..dfa099a; git show a4baeab",
+          "observed": "state.json/w1_freeze.json inside the W1 snapshot label w1=203f685 (code-bearing); freeze tip dfa099a adds only control metadata; integration branch commit a4baeab subsequently canonicalized W1 = dfa099a ('freeze-artifact-inclusive') recording 203f685 as superseded — twins and this audit lane were created at dfa099a. Metadata-only, no code delta (freeze commit touches event_log/heartbeat/state/w1_freeze only).",
+          "severity": "NONE",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S8",
+      "name": "SAFETY INVARIANTS",
+      "result": "PASS_WITH_LOW_FINDING",
+      "severity": "LOW",
+      "checks": [
+        {
+          "name": "no scored-metrics claims",
+          "command": "grep -rn '\"scored\"\\s*:\\s*true' and 'real_pnl.*true' over both control trees (q-a7 worktree + integration worktree)",
+          "observed": "0 matches in both trees; q_dummy_dryrun_evidence.json carries scored=false and real_pnl=false; scored_artifact_files_in_control=[]",
+          "pass": true
+        },
+        {
+          "name": "S1 SEALED_UNTOUCHED everywhere",
+          "command": "grep -rl SEALED_UNTOUCHED control tree + twins",
+          "observed": "present in state.json, w1_freeze.json, event_log.jsonl, and both twins' counters_checkpoint.json",
+          "pass": true
+        },
+        {
+          "name": "no push occurred",
+          "command": "git for-each-ref --format='%(refname:short) upstream=%(upstream:short)' refs/heads | grep stocks-free-v4",
+          "observed": "11/11 stocks-free-v4 branches have empty upstream (no origin tracking)",
+          "pass": true
+        },
+        {
+          "name": "no V4 merge into main",
+          "command": "git merge-base --is-ancestor <each V4 branch> main for all 11 branches; git show --stat 047c685",
+          "observed": "0/11 V4 branch heads are ancestors of main. FINDING S8-F1: main has moved from the expected 1a8b53d to 047c685 ('Add free multi-source data fusion plan'), a single-owner-commit adding PLAN_data_fusion.md (395 lines, unrelated to V4); 1a8b53d remains an ancestor of main and no V4 lineage is merged. Benign owner-side doc commit; only expected-pin drift.",
+          "severity": "LOW",
+          "pass": true
+        },
+        {
+          "name": "integration branch relationship",
+          "command": "git merge-base 2bcfa82 dfa099a; git diff --stat dfa099a 2bcfa82",
+          "observed": "merge-base = dfa099a, i.e. integration branch is a strict descendant (+2 metadata commits: a4baeab W1 canonicalization, 2bcfa82 worktree manifest); tree delta touches only event_log.jsonl, state.json, w1_freeze.json, worktree_manifest.json — no code",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S9",
+      "name": "WORKERS",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "no compute workers running",
+          "command": "ps aux | grep -iE \"pytest|backtest|scoring\" | grep -v grep",
+          "observed": "no matches",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "S10",
+      "name": "KNOWN PRE-EXISTING ITEM (CONTINUE.md VERDICT-LINEAGE REPAIR)",
+      "result": "PASS",
+      "severity": "NONE",
+      "checks": [
+        {
+          "name": "compatibility test at audit HEAD",
+          "command": "pytest tests/stocks_free_v2/test_terminal_metadata.py -q (at dfa099a)",
+          "observed": "13 passed in 0.06s, including test_map_and_continue_agree",
+          "pass": true
+        },
+        {
+          "name": "failure confirmed pre-existing at base",
+          "command": "in .worktrees/stocks-free-v3/integration (HEAD verified == 4a9457ab...): PYTHONDONTWRITEBYTECODE=1 pytest tests/stocks_free_v2/test_terminal_metadata.py -q -p no:cacheprovider",
+          "observed": "1 failed (test_map_and_continue_agree — AssertionError: 'STOCKS_FREE_V1_REJECT_ALL' in CONTINUE.md), 12 passed; worktree left clean (post-run git status empty)",
+          "pass": true
+        },
+        {
+          "name": "repair classification",
+          "command": "git log 4a9457a..dfa099a -- CONTINUE.md; git show 203f685 -- CONTINUE.md",
+          "observed": "single V4-chain commit touching CONTINUE.md is 203f685; diff is purely additive documentation (V4 plan pointer + 'Verdict lineage' section). Every value stated in the repair cross-checks against independently measured records: V2 effective verdict STOCKS_FREE_V1_REJECT_ALL and canonical W1 106378230abecbaefff4248eeb373794f1b73038 (== historical_boundary.json), V3 W1 586f9fe (== state.json/terminal_report), denominator 12 observed / 12 published, V4 budget 0/6, 'no scored V4 PnL exists', S1 SEALED_UNTOUCHED. No verdict, counter, ledger or artifact mutation attributable to the repair; the later freeze commit dfa099a touches only control metadata. CLASSIFIED: metadata-only, severity NONE.",
+          "pass": true
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "S8-F1",
+      "title": "main moved past the expected pin 1a8b53d to 047c685",
+      "severity": "LOW",
+      "detail": "main resolves to 047c685 'Add free multi-source data fusion plan' (adds PLAN_data_fusion.md, 395 lines, single owner doc commit dated 2026-09-04). 1a8b53d is still an ancestor of main; 0/11 stocks-free-v4 branch heads are ancestors of main; no V4 content reached main. No push (all V4 branches lack upstreams). Residual risk: none for V4 isolation; the launch-bar check 'main still at 1a8b53d' is technically stale.",
+      "resolved": false,
+      "blocking": false
+    },
+    {
+      "id": "S7-N1",
+      "title": "W1 label canonicalized after freeze",
+      "severity": "NONE",
+      "detail": "Inside the W1 snapshot, state.json/w1_freeze.json record w1=203f685; integration commit a4baeab canonicalized W1 to the freeze tip dfa099a ('freeze-artifact-inclusive') with 203f685 recorded as superseded. Twins were already created at dfa099a. Metadata-only; measured twins match the canonical W1 exactly.",
+      "resolved": true,
+      "blocking": false
+    },
+    {
+      "id": "S2-N1",
+      "title": "full-suite claim not independently re-run",
+      "severity": "NONE",
+      "detail": "w1_freeze.json claims 'full pytest 1807 passed, 4 skipped, 0 failed (ran alone)'. Per the audit mandate this audit re-measured the P1 regression suite (16 passed) and both family suites (13 + 35 passed); the full suite was not re-executed. Mandated subsets pass; QA evidence is internally consistent; recorded claim left as A1's.",
+      "resolved": false,
+      "blocking": false
+    }
+  ],
+  "unresolved_high_critical_count": 0,
+  "verdict": "STOCKS_FREE_V4_S0_LAUNCH_AUTHORIZED",
+  "authorization_note": "Zero unresolved HIGH/CRITICAL findings. Authorization authorizes the W1 freeze state only; it does NOT start scoring. HARD STOP before the first scored cell remains in force: scored execution requires the explicit owner instruction 'GO STOCKS V4 SCORED EXECUTION'. S1 SEALED_UNTOUCHED; deployment NO_PAPER_NO_LIVE_NO_ORDERS; heavy cap 1; budget 0/6; ledger empty.",
+  "audit_commit_sha": null,
+  "head_pin_note": "audit_commit_sha is filled by the follow-up pin commit; the pin commit itself is the A7 final HEAD.",
+  "pin_commit_subject": "V4-Q A7: audit head pin"
+}
