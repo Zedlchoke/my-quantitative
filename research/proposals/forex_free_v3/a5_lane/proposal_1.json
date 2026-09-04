@@ -1,0 +1,223 @@
+{
+  "schema": "forex_free_v3_proposal_v1",
+  "proposal_id": "FXFV3-A5-P1",
+  "hypothesis_id": "FXFV3-A5-P1",
+  "lane": "A5",
+  "cycle": "FOREX-FREE-V3",
+  "title": "Policy-divergence-gated daily trend (PIT vintage semantics)",
+  "mechanism_class": "macro_conditioned_trend_gating",
+  "macro_conditioned": true,
+  "conditioning_series": [
+    {
+      "source_id": "BIS_CBPOL",
+      "series_family": "BIS Data API WS_CBPOL central-bank policy rates, rate areas: US, euro area, GB, JP, CH, CA, AU, NZ (exact series identifiers resolved once at implementation from the adopted bis.py adapter convention; no new source)",
+      "v3_disposition": "AUTHORIZED_FOR_V3_RESEARCH",
+      "usage": "signal conditioning (policy-differential drift gate) AND financing term per the frozen v3 financing formula",
+      "pit_rule": "a row is eligible at decision instant T only when available_time_utc <= T; a decision at T NEVER reads a row whose available_time_utc > T (P0 regression-pinned); effective_date semantics per BIS_EFFECTIVE_DATE_SEMANTICS; date-only release evidence yields the end-of-UTC-day upper bound (BIS_AVAILABILITY_NOT_EXACT), so a rate change becomes signal-eligible at the first daily decision strictly after its availability stamp day; missing evidence fails closed (MISSING_AVAILABLE_TIME_EVIDENCE)"
+    }
+  ],
+  "ecb_sdmx_exr_used": false,
+  "ecb_sdmx_exr_used_note": "ECB SDMX EXR rows are not used: this proposal needs policy rates, which BIS WS_CBPOL provides for all eight rate areas; EXR is referenced as an adopted auxiliary source only in the data authority and is not part of this hypothesis. The BIS-only conditioning satisfies the lane macro quota on its own.",
+
+  "economic_mechanism": "Daily time-series trend in liquid G10 pairs is one of the few FX regularities documented out-of-sample (Menkhoff et al. 2012), but its payoff is regime-dependent rather than unconditional. Monetary policy divergence - one rate area tightening while another holds or eases - shifts the distribution of subsequent exchange-rate moves toward continuation in the trend direction implied by the rate path: policy-signalling makes the tightening currency's path steeper, and capital reallocation into higher-policy-rate areas is gradual rather than instantaneous (Molodtsova and Papell show Taylor-rule/policy-rate fundamentals carry out-of-sample FX predictive content at short horizons; Clarida, Davis and Pedersen document regime structure in rate-differential-conditioned FX returns). The proposed mechanism is therefore an INTERACTION, not a standalone signal: a daily momentum book whose entries require the point-in-time policy-differential drift (as-of, availability-gated BIS WS_CBPOL vintages) to AGREE with the price trend. Rossi (2013) is carried as the honest counterweight: most FX fundamentals fail out-of-sample, so the claim under test is deliberately narrow - the macro gate must add after-cost information over an identical ungated momentum book, not that macro direction alone predicts FX.",
+
+  "falsifiable_prediction": "On daily decisions where the 63-day policy-differential drift g and the 21-day price trend m share a strict sign (m != 0, g != 0, sign(m) == sign(g)), entering at the next 16:00-NY bar open in the trend direction and holding while the state persists yields: after-cost financing-adjusted expectancy > 0, PF >= 1.10, >= 2/3 chronological folds positive, positive stress books with tier multipliers actually applied, AND strictly higher full-sample per-pair-day after-cost financing-adjusted PnL than the identical momentum book without the macro gate (overall incremental alpha > 0). The prediction is falsified - family rejected regardless of anchor raw PnL - if any of: (a) incremental alpha <= 0 vs the ungated benchmark; (b) the macro-direction-only control reproduces the anchor edge under its preregistered rule (control expectancy > 0 AND control PF >= 1.10); (c) the price-only book inverts the anchor expectancy sign (financing manufactures the edge); (d) the neighbour diverges from the anchor while the control behaves (knife-edge presumption).",
+
+  "primary_literature_trace": [
+    {
+      "authors": "Tanya Molodtsova, David H. Papell",
+      "venue": "Out-of-Sample Exchange Rate Predictability with Taylor Rule Fundamentals, Journal of International Economics 77(2), 167-180",
+      "year": 2009,
+      "claim": "Taylor-rule fundamentals built from short-term policy rates yield out-of-sample exchange-rate predictability at short horizons for a majority of currency pairs - policy-rate information carries exchange-rate content beyond price history. Honest scope: evidence is statistical predictability of returns, not after-cost tradability."
+    },
+    {
+      "authors": "Lukas Menkhoff, Lucio Sarno, Maik Schmeling, Andreas Schrimpf",
+      "venue": "Currency Momentum Strategies, Journal of Financial Economics 106(3), 660-684",
+      "year": 2012,
+      "claim": "Currency momentum is profitable at 1-12 month horizons across developed FX and its payoff is state-dependent; supports the daily trend base mechanism and the premise that gating trend by a state variable is the economically meaningful question."
+    },
+    {
+      "authors": "Richard C. Clarida, Josh Davis, Niels Pedersen",
+      "venue": "Currency Carry Trade Regimes: Beyond the Fama Regression, Journal of Financial Econometrics 7(1), 1-33",
+      "year": 2009,
+      "claim": "Rate-differential-conditioned FX returns exhibit regime structure: the distribution of currency returns differs across policy-differential states. Supports regime conditioning on policy differentials; makes no claim that any specific gated book is profitable."
+    },
+    {
+      "authors": "Barbara Rossi",
+      "venue": "Exchange Rate Predictability, Journal of Economic Literature 51(4), 1063-1119",
+      "year": 2013,
+      "claim": "Honest counterweight: exchange-rate predictability is fragile, most economic fundamentals fail out-of-sample tests, and apparent predictability rarely survives real-time and transaction-cost scrutiny. This proposal is designed to be falsified by its own incremental test."
+    }
+  ],
+
+  "pit_observables": {
+    "note": "All scored quantities are computed from (i) completed H1 snapshot bars (td_loader schema: datetime/open/high/low/close; no volume, no bid/ask) and (ii) adopted BIS WS_CBPOL vintage rows. No other input enters any scored quantity.",
+    "price_daily_bar": "The daily decision bar is the completed H1 bar whose open instant maps to 16:00 America/New_York local wall time (20:00Z in EDT weeks, 21:00Z in EST weeks; named-zone conversion via zoneinfo per the A3 calendar authority; never fixed UTC offsets). Close-to-close changes of consecutive daily bars define daily returns. The inherited session entry gate (Sun 21:00 -> Fri 16:00 America/New_York) bounds the trading week; the Friday 16:00-NY bar is the last decision bar of the week.",
+    "price_momentum_m": "m_p(t) = close_t / close_(t-21) - 1 over the 21 most recent daily bars ending at decision bar t. If any of the 21 bars is missing => state NOT evaluated that day (NO_DECISION_VOID, fail-closed).",
+    "macro_asof_read": "r_a(T) = the most recent BIS WS_CBPOL observation for rate area a with available_time_utc <= T, where T is the decision bar's close instant. BINDING: a decision at T never reads a row whose available_time_utc > T (P0 regression-pinned in tests/data_fusion/test_forex_v3_p0_adoption.py). Observations are dated vintages (append-only); no row is ever mutated or backfilled.",
+    "availability_lag_consequence": "Because date-only release evidence yields the end-of-UTC-day availability upper bound and decisions occur at 20:00Z/21:00Z, a policy change becomes signal-eligible at the first daily decision strictly after its availability stamp day. This is the conservative direction; it is disclosed, not tuned.",
+    "differential_d": "Pair p trades base currency b against quote currency q per frozen market convention (EUR/USD: b=EUR; GBP/USD: b=GBP; AUD/USD: b=AUD; NZD/USD: b=NZD; USD/JPY: b=USD; USD/CHF: b=USD; USD/CAD: b=USD). d_p(t) = r_b(T_t) - r_q(T_t), rates as annualized decimals (4.25 percent = 0.0425).",
+    "differential_drift_g": "g_p(t) = d_p(t) - d_p(t-63), where d_p(t-63) is the as-of differential read at THAT past decision instant (vintage-consistent back-history; never today's rates projected backward). If fewer than 63 prior daily decision bars exist post-warmup => state NOT evaluated (fail-closed).",
+    "warmup_macro_coverage_dependency": "BIS WS_CBPOL historical depth/warmup sufficiency on the live-retrieved snapshot is NOT_PROVEN_ON_LIVE_FETCH per data_authority_v3.json; this proposal conditions only if the P3 freeze / Q data-hash gate proves coverage for all eight rate areas over the full window. Failure of that gate blocks this proposal (BLOCKED_DATA_OR_SELECTION), it never silently falls back to price-only."
+  },
+
+  "universe": {
+    "pairs": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "justification": "All 7 pairs. The mechanism (policy divergence gating the trend of each pair's own rate areas) is defined for every pair in the frozen universe and is not a priori pair-specific; ex-ante exclusion would be unjustified selection. Pair heterogeneity is handled ex post by the frozen concentration gates and the drop-one-pair plan.",
+    "notional_usd_unit": 10000
+  },
+
+  "clocks": {
+    "decision_clock_class": "DAILY (daily-or-slower hard precondition satisfied; no intraday decision anywhere)",
+    "warmup_daily_bars": 63,
+    "warmup_argument": "The deepest trailing requirement is the 63-day differential drift g (the 21-day momentum m nests inside it). 63 daily bars from the 2020-01-30 snapshot start => the schedule activates at the first decision bar on or after approximately 2020-05-01; F1 statistics therefore begin there. Macro history for the as-of window exists per the adopted series (subject to the declared live-coverage gate).",
+    "decision_event": "At the close of each daily bar t (16:00-NY completion), evaluate the arm's frozen rule with all inputs as-of that close instant.",
+    "entry_fill": "OPEN of the next EXISTING 16:00-NY bar after the decision bar (one-event lag, inherited). A Friday-close decision fills at the following Monday 16:00-NY bar open; this is disclosed and is not a gap exploit. Missing fill bar => signal voided, NO_TRADE, fail-closed, never fill-forward.",
+    "holding_exit_rule": "Daily re-evaluation: hold while the arm's state persists; when the state ceases (for the anchor: m or g changes sign or g == 0), exit at the OPEN of the next existing 16:00-NY bar. No profit target, no time stop; positions may cross weekends and holidays, accruing calendar-day financing per the frozen formula (disclosed).",
+    "forced_flat": "Fold boundaries force-flat (inherited): any open position is closed at the open of the last existing 16:00-NY bar before the boundary date; affected trades enter the purge accounting.",
+    "missing_bar_rule": "Any daily bar required by state, decision, entry or exit evaluation that is missing => NO_TRADE (or earliest-available scheduled exit for forced-flat only), never silent fill-forward."
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV3-A5-P1-anchor",
+      "spec": "LONG base/short quote when m > 0 AND g > 0; SHORT base/long quote when m < 0 AND g < 0; FLAT otherwise (including m == 0 or g == 0). Enter next existing 16:00-NY bar open; hold while the same state persists; exit next bar open when m or g changes sign or g == 0.",
+      "single_frozen_parameter_set": {
+        "momentum_window_daily_bars": 21,
+        "drift_window_daily_bars": 63,
+        "activation_floor": "strict inequality with 0 (no threshold parameter)",
+        "exit": "state flip as specified",
+        "forced_flat": "fold boundaries"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV3-A5-P1-neigh",
+      "one_presumption_away": "Holds the mechanism concept 'policy-congruent trend' fixed and moves ONE presumption: policy divergence measured as a LEVEL (differential vs its own trailing median) instead of a CHANGE (63-day drift). If the mechanism is real the neighbour should move together with the anchor; divergence between them indicts the anchor as knife-edge.",
+      "spec": "Identical to anchor in clock, fills, exit law, costs and governor EXCEPT the macro gate is sign(d_p(t) - median(d_p over the 252 most recent daily as-of reads)); the gate is supportive-long when that difference > 0, supportive-short when < 0, flat when == 0; combined with m exactly as the anchor.",
+      "single_frozen_parameter_set": {
+        "momentum_window_daily_bars": 21,
+        "differential_median_window_daily_bars": 252,
+        "activation_floor": "strict inequality with 0",
+        "exit": "state flip as specified",
+        "forced_flat": "fold boundaries"
+      }
+    },
+    "control": {
+      "arm_id": "FXFV3-A5-P1-ctrl",
+      "role": "Causal negative control: removes the price-trend ingredient and keeps ONLY the macro direction, at identical clock, fills, exit law, universe, warmup and costs. Tests whether the claimed interaction is real or whether macro direction alone carries the book.",
+      "spec": "LONG base/short quote when g > 0; SHORT base/long quote when g < 0; FLAT when g == 0; hold while sign(g) persists; exit next bar open when g flips sign or becomes 0. No m anywhere.",
+      "preregistered_non_reproduction_rule": "The control REPRODUCES the anchor's edge - and the family FAILS its control gate regardless of anchor performance - if the control's full-sample after-cost financing-adjusted expectancy > 0 AND its PF >= 1.10 (inherited control_reject_pf). A nonpositive or weak control (expectancy <= 0 or PF < 1.10) is a PASS for this gate.",
+      "single_frozen_parameter_set": {
+        "drift_window_daily_bars": 63,
+        "activation_floor": "strict inequality with 0",
+        "exit": "sign(g) flip as specified",
+        "forced_flat": "fold boundaries"
+      }
+    },
+    "incremental_benchmark": {
+      "role": "The frozen V3 benchmark treatment: the SAME mechanism with macro conditioning removed, at identical decision clock, fills, universe, warmup and costs. Computed inside the anchor cell's scoring run as an unscored reference book (digest-covered diagnostic); it does NOT consume a scored-cell slot (budget remains 3 arms per family).",
+      "arm_id": "FXFV3-A5-P1-bench",
+      "spec": "Unconditional daily momentum book: LONG base/short quote when m > 0, SHORT when m < 0, FLAT when m == 0; identical holding law (exit on sign(m) flip), fills, costs, governor. No macro input anywhere."
+    }
+  },
+
+  "incremental_test": {
+    "frozen_benchmark_treatment": "identical momentum mechanism without macro conditioning (FXFV3-A5-P1-bench)",
+    "operationalization": "overall incremental alpha := (full-sample sum of the anchor's after-cost financing-adjusted per-pair-day PnL) - (same for the benchmark), both normalized per pair-day of the identical post-warmup schedule window, with identical notional units per active position. Gate: > 0. The per-trade expectancy difference (anchor - benchmark) is reported alongside as a diagnostic, not the gate.",
+    "rationale": "Per-pair-day normalization is exposure-fair: the anchor trades a subset of the benchmark's days, so the gate asks whether, on the same capital envelope, the macro gate adds value - exactly the frozen benchmark question.",
+    "dual_book": "anchor, neighbour, control and benchmark each book BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns (v3 dual-book mandate)."
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "charging": "once per side on notional, at entry and at exit",
+    "tiers": [1.0, 1.5, 2.0],
+    "tier_bps_per_side": { "1.0": 1.5, "1.5": 2.25, "2.0": 3.0 },
+    "f1_fixed_stress_application": "F1-FIXED: tier multipliers are applied to BOOKED stress PnL through the P1 kernel book_stress (research/assets/forex_free_v3/accounting.py, commit 3c6fc11); the base / tier1.5 / tier2.0 rows must be pairwise distinct whenever trades are non-empty.",
+    "delay_stress": "frozen one-event delay (every fill shifted one additional daily bar, schedule recomputed) carried as a SEPARATE stress component, never blended into the cost tiers (lesson V3-L2).",
+    "notional_usd_unit": 10000,
+    "break_even_diagnostic": "break_even_bps_per_side = mean gross per-trade return in bps / 2 (round trip = 2 sides), anchor arm, full-sample and per fold, reported next to tier results. Interpretation frozen in advance: the stress gate is plausibly attainable only if break-even exceeds 3.0 bps/side; diagnostic only, never a fee rescue.",
+    "no_cost_exemption": "no pair, fold or regime ever receives lower assumed costs (blanket clause respected)"
+  },
+
+  "financing_disclosure": {
+    "formula": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days / 365, accrued per calendar day at that day's day-start as-of differential (availability-gated); sign = +1 for long base/short quote, -1 for short base/long quote; rates in annualized decimals; weekends and holidays accrue calendar days.",
+    "carry_adjacent": "YES - positions are held multi-day and the direction rule is rate-aware, so this proposal is carry-adjacent and uses the frozen policy-rate-differential financing authority exactly as frozen.",
+    "disclosed_approximation": "policy rates are unsecured official rates, NOT swap/OIS-implied or broker rollover financing; the proposal's economics do not depend on financing precision beyond policy-rate differentials (historical rollover financing remains UNAVAILABLE_FAIL_CLOSED and is not assumed).",
+    "financing_gate": "the financing term must not manufacture the edge: the price-only book must not invert the sign of the anchor's after-cost expectancy; if it does, the family is rejected (PLAN_forex_v3.md section 12)."
+  },
+
+  "expected_turnover_and_sample_floor": {
+    "definition_of_decision": "A decision = one daily bar after warmup on which the arm's frozen schedule completed a go/no-go evaluation (go or no-go); void fills count as decisions without trades. All four books evaluate every post-warmup daily bar.",
+    "expected_decisions_per_arm": "approx. 1360 per pair full-sample (approx. 2020-05-01..2026-09-02), approx. 9500 across the panel; the frozen floor of >= 40 decisions per arm is met by more than an order of magnitude.",
+    "expected_trades": {
+      "anchor": "state-agreement episodes recur at roughly 1-3 per pair-month inside macro-active windows; long policy-freeze windows (both legs' rates unchanged across the trailing 63 days, g == 0, e.g. documented 2020-2021 freeze periods in public policy history) enforce flat spells. Band: 8-30 round trips / pair / year, ~60-200 per pair full-sample, ~450-1400 across the panel.",
+      "control": "sign(g) persists longer than sign(m): 3-10 round trips / pair / year, ~25-65 per pair full-sample.",
+      "benchmark": "sign(m) flips more often: 25-60 round trips / pair / year, ~160-390 per pair full-sample.",
+      "band_caveat": "all counts are schedule-level design estimates from public policy-change cadence and frozen constants; never optimized; audited at implementation on the real snapshot (schedule-only)."
+    },
+    "sample_floor": {
+      "min_decisions_per_arm_full_sample": 40,
+      "fold_population": "inherited fold_populated_min_trades 30 applies to populated-fold statistics; F1 (2020-03-01..2022-05-01, effectively 2020-05-01 onward) is the thinnest fold for the anchor because warmup activation and macro-freeze windows thin it; schedule estimate ~150-450 anchor trades panel-wide in F1. An arm/fold below the inherited floor is INDETERMINATE, not negative evidence.",
+      "feasibility_headroom": "21-day-horizon FX moves are of order 30-200 bps gross per trade at schedule level against the 3-6 bps round-trip cost band, so the expected turnover can plausibly clear its own cost band; verified at A9 feasibility with frozen-cost turnover arithmetic."
+    }
+  },
+
+  "folds_plan": {
+    "scheme": "3 chronological folds over the frozen boundary set 2020-03-01 / 2022-05-01 / 2024-07-01 / 2026-09-02.",
+    "folds": [
+      { "fold": "F1", "start_utc_date": "2020-03-01", "end_utc_date": "2022-05-01" },
+      { "fold": "F2", "start_utc_date": "2022-05-01", "end_utc_date": "2024-07-01" },
+      { "fold": "F3", "start_utc_date": "2024-07-01", "end_utc_date": "2026-09-02" }
+    ],
+    "purge": "any trade whose entry OR exit instant falls within 14 calendar days either side of an internal fold boundary (2022-04-17..2022-05-15 and 2024-06-17..2024-07-15 UTC) is excluded from that fold's statistics and counted in purge_excluded; force-flat executes at boundaries regardless, and the affected trades enter the same purge accounting.",
+    "stage_a_note": "scoring requires after-cost anchor expectancy > 0 (financing-adjusted, price-only also reported), PF >= 1.10, >= 2/3 folds positive, MDD within the frozen USD ceiling, concentration ceilings, stress PnL > 0 with tier multipliers applied, meaningful drop-one, USD-drift diagnostic within the frozen bound, incremental alpha > 0, neighbour support, control non-reproduction, financing gate, reproduction ALL_MATCH (PLAN_forex_v3.md section 12, frozen by reference)."
+  },
+
+  "concentration_plan": {
+    "pair_concentration_gate": "no single pair > 40% of gross positive trade PnL full-sample (inherited max_pair_positive_share 0.4); largest fold-positive share <= 50% (inherited max_positive_fold_share 0.5); account/cash is not a pair.",
+    "direction_check": "longs and shorts must each be >= 25% of anchor trades full-sample; the mechanism is direction-symmetric and a one-sided schedule indicates a broken implementation, not an edge.",
+    "weekday_coverage_check": "every weekday Mon-Fri must appear among decision days; absent weekdays indicate a clock/DST defect."
+  },
+
+  "drop_one_plan": {
+    "drop_one_pair": {
+      "procedure": "recompute the anchor full-sample schedule 7 times, each time excluding exactly one pair.",
+      "gate": "anchor after-cost financing-adjusted expectancy sign unchanged (positive) AND PF >= 1.00 in at least 5 of the 7 recomputes (inherited dropout_survival_min_of_7).",
+      "interpretation": "failure means the edge is a single-pair artifact (one currency area's policy episode), not a cross-pair mechanism."
+    },
+    "drop_one_fold": {
+      "procedure": "recompute the anchor full-sample schedule 3 times, each time excluding exactly one fold.",
+      "gate": "anchor after-cost financing-adjusted expectancy remains > 0 in all 3 recomputes.",
+      "interpretation": "a book whose expectancy flips sign when any single fold is removed is fold-concentrated and fails."
+    }
+  },
+
+  "failure_interpretation": "(a) Anchor expectancy <= 0: policy-divergence-gated daily trend has no after-cost edge at the frozen 1.5-3.0 bps/side authority; the family is dead; a correct REJECT_ALL is a complete outcome. (b) Anchor positive but incremental alpha <= 0 vs the ungated benchmark: the macro gate adds nothing over plain momentum; family rejected - positive raw PnL never overrides a failed incremental alpha. (c) Control fires its preregistered rule: macro direction alone carries the book and the claimed interaction is mislabelled; family rejected via the control gate. (d) Neighbour diverges from the anchor while the control behaves: the anchor is presumed threshold-fragile on the divergence measurement; supporting-arm expectation failed. (e) Price-only book inverts the anchor expectancy sign: the financing term manufactures the edge; rejected. (f) F1 starvation below inherited population floors: cell INDETERMINATE (recorded as such, never silently promoted or demoted).",
+
+  "source_to_test_map": [
+    { "ingredient": "BIS WS_CBPOL PIT eligibility (available_time_utc <= T; never later)", "test": "tests/data_fusion/test_forex_v3_p0_adoption.py (adopted, existing P0 regressions)" },
+    { "ingredient": "as-of differential, vintage-consistent 63-day back-history, availability-lag behaviour at decision instants", "test": "implementation-lane hand-computed golden fixture + mutation test (disable availability gate => regressions fail); new test, owned by the implementation lane" },
+    { "ingredient": "DST-aware daily 16:00-NY decision bar identification", "test": "existing research/assets/forex/calendar.py + sessions.py suites (A3 calendar authority) plus implementation golden across the 2025 US spring-forward/fall-back and US/EU desync weeks" },
+    { "ingredient": "one-event-lag fills, next-existing-bar fill after Friday, missing-bar fail-closed", "test": "implementation golden + no-fill-forward mutation test" },
+    { "ingredient": "cost once per side; F1-fixed tier multipliers on booked stress PnL; delay stress kept separate", "test": "P1 kernel tests on research/assets/forex_free_v3/accounting.py @ 3c6fc11 (existing) + implementation assert that base/tier1.5/tier2.0 rows are pairwise distinct" },
+    { "ingredient": "financing accrual per frozen formula including weekend calendar days", "test": "implementation golden vs hand-computed values on a synthetic 2-week window" },
+    { "ingredient": "purge windows, force-flat, drop-one pair/fold mechanics", "test": "implementation tests with synthetic schedules" },
+    { "ingredient": "data authorization and coverage", "authority": "research/control/forex_free_v3_run/data_authority_v3.json: BIS_CBPOL AUTHORIZED_FOR_V3_RESEARCH; live warmup coverage NOT_PROVEN_ON_LIVE_FETCH, resolved at the P3 freeze / Q data-hash gate; failure blocks this proposal" }
+  ],
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm: 21 and 63 daily bars (anchor), 252 (neighbour median), 63 (control), strict-inequality activation at 0, 10000 USD notional, the frozen clocks/fills/costs. No grids, menus, ranges or tuning anywhere; the neighbour and control are distinct frozen specs, not points on the anchor's knob; the benchmark is a fixed treatment, not a variant to select.",
+
+  "novelty_self_check": {
+    "vs_V1_family1_session_open_momentum_continuation": "Different clock (daily 16:00-NY completion vs intraday session-open bars), different object (each pair's own multi-day trend gated by PIT policy vintages vs unconditional continuation from a session open), no session-open price, no session window, no intraday bar enters any decision. The shared word 'momentum' denotes a different horizon and a different conditioning structure; this is not a re-clock of that family because that family's mechanism is session-open order-flow continuation, which appears nowhere here.",
+    "vs_V1_family2_late_NY_standardized_extension_fade": "Opposite direction of use (trend-following entries vs extension fading), different observable (daily close-to-close momentum + policy-differential drift vs standardized intraday session extension), no session geometry at all. Not a sign inversion: inverting that family would mean fading daily trend here, which the anchor does not do.",
+    "vs_V2_family1_Tokyo_compression_to_London_expansion": "No compression state, no session range, no expansion trigger, no intraday window; the anchor's state variable is a policy-differential drift, an exogenous macro vintage series, not a price-range statistic.",
+    "vs_V2_family2_London_AM_break_with_retest_hold": "No level breach, no retest-hold state machine, no session extremes; entries are state-persistence rules on daily closes.",
+    "vs_naive_carry": "The anchor's direction is trend-congruent, not differential-level-congruent; the pure differential-direction rule is isolated in the causal control, and the financing term is disclosed separately with the price-only book gate. The proposal does not harvest the differential; it gates trend with its drift.",
+    "rescue_operations": "no sign inversion of any forbidden row, no reduced cost assumptions, no pair cherry-picking, no session relabeling, no re-clocking of an intraday family to daily, no re-grading of V1/V2 results under a new label."
+  },
+
+  "outcome_blind_attestation": "I (A5) read no outcome data of any kind: no V1/V2 per-cell PnL tables, ledgers, family modules, test fixtures under tests/assets/forex_free_v1/ or forex_free_v2/, no PLAN_forex.md or PLAN_forex_v2.md, and no V3 scored artifact (none exists). My only V1/V2 knowledge is the mechanism names and summary evidence quoted in the binding forbidden_family_inventory.json and PLAN_forex_v3.md. I loaded no market data (no data_raw reads, no snapshot reads), fetched nothing, computed no backtest, PnL or schedule simulation; every count in this proposal is a schedule-level design estimate from frozen constants and public policy-change cadence, and every gate value is inherited frozen authority. This proposal was written before any V3 scoring existed and is signed outcome-blind: lane A5, cycle FOREX-FREE-V3, 2026-09-04.",
+  "written_before_scoring_utc": "2026-09-04T13:57:11Z"
+}
