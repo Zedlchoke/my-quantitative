@@ -1,0 +1,179 @@
+{
+  "schema": "stocks_free_v4_run/i_family_2_evidence@1",
+  "producer_role": "A9",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4_I family implementation (family 2)",
+  "timestamp_utc": "2026-09-04T03:35:18Z",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v4/i-family-2",
+  "branch": "orca/stocks-free-v4-i-family-2",
+  "family_id": "SFV4-A4-H1-SEMIVARIANCE-SHARE",
+  "hypothesis_id": "SFV4-A4-H1",
+  "proposal_file": "research/control/stocks_free_v4_run/proposals/a4_h1.json",
+  "selection_freeze": "research/control/stocks_free_v4_run/selection_freeze.json (selected_families[1])",
+  "baseline_invariants": "research/control/stocks_free_v4_run/baseline_invariants.json",
+  "module_tree": [
+    "research/stocks_free_v4/family_semivar/__init__.py",
+    "research/stocks_free_v4/family_semivar/config.py",
+    "research/stocks_free_v4/family_semivar/signals.py",
+    "research/stocks_free_v4/family_semivar/schedule.py"
+  ],
+  "arms_implemented": {
+    "SFV4-A4-H1-A": "anchor: rank 11 sector ETFs by semivariance share DS/SS over trailing 126 sessions; 4/4 hysteresis book (+0.25 legs, entry rank<=4, exit rank>=8, buffer 5-7 retains incumbents, gross <= 2.0, net ~ 0, CASH residual never a symbol); 21-session decision clock ANCHORED byte-exact to S0 start 2018-04-04; static weights between decisions; fills next allowed session",
+    "SFV4-A4-H1-N": "neighbour: identical mechanism, state window 63 sessions (the proposal's single fixed shorter window)",
+    "SFV4-A4-H1-C": "causal negative control: identical book form, sectors ranked by total-variance LEVEL SS descending; preregistered falsification per proposal (refuted if control expectancy > 0 or |control alpha| >= 0.5 x anchor alpha)"
+  },
+  "frozen_ex_ante_conditions_implemented": {
+    "kappa_fallback": "kappa_t = 1.0 flat for scored sessions until 252 scored sessions accumulate; thereafter trailing-252 OLS slope of arm return on SPY return clipped to [0.0, 2.0]; no in-sample refit of the fallback; implemented as the pure function research.stocks_free_v4.family_semivar.signals.kappa_frozen (testable on synthetic series, tests 06c/06d/06f)",
+    "clock_anchoring": "global session-count clock anchored to 2018-04-04 (index 2076 of the runway-inclusive SPY calendar); decisions at index multiples of 21 from the anchor, restricted to fold windows; automaton re-seeds at the first tick of each fold; force-flat at fold boundaries",
+    "early_fold1_net_exposure": "9 ticks net +0.25 anchor / 15 ticks 5 legs neighbour are frozen EXPECTED behavior; NOT fixed. The anchor's 9-tick stretch is structurally reproduced from dates/counts in the schedule-only check (exactly 9 fold-1 ticks where XLC is unavailable -> 10 eligible sectors -> 4 long / 3 short -> net +0.25); the neighbour's 15-tick stretch arises from hysteresis migration under the real return path and is verifiable only at scoring time (returns are not computed in this lane)"
+  },
+  "pytest_command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/stocks/test_v4_family_semivar.py -q",
+  "pytest_exit_code": 0,
+  "pytest_summary": "35 passed in 10.94s (12 evidence items, 35 test cases; real-data class skipped cleanly if the staged snapshot is absent)",
+  "test_file": "tests/assets/stocks/test_v4_family_semivar.py",
+  "schedule_check_artifact": "research/control/stocks_free_v4_run/i_family_2_schedule_check.json",
+  "schedule_summary": {
+    "discipline": "SCHEDULE_ONLY on real data: real SPY calendar dates and per-symbol session dates from the sha256-pinned read-only staged snapshot; zero returns, zero features, zero PnL computed; every read S0-bounded (no date >= 2025-08-01 read or retained)",
+    "calendar": "SPY_all_p1.json dates 2010-01-04..2025-07-31 (runway 2076 pre-S0 sessions + 1842 S0 sessions)",
+    "clock": "21-session global clock anchored 2018-04-04 (calendar index 2076)",
+    "decisions_per_fold": { "S0_FOLD_1": 29, "S0_FOLD_2": 29, "S0_FOLD_3": 29 },
+    "decisions_total_per_arm": 87,
+    "first_fills": { "S0_FOLD_1": "2018-04-05", "S0_FOLD_2": "2020-10-05", "S0_FOLD_3": "2023-03-08" },
+    "xlc_availability_rule": "XLC (inception 2018-06-19; 126th session 2018-12-17, 63rd 2018-09-17) is excluded from ranks until it holds a full state window of history; anchor full universe from 2019-01-03 (9 fold-1 thin ticks, net +0.25 expected behavior); neighbour full universe from 2018-10-02",
+    "warmup": "every eligible symbol holds its full 126/63-session trailing history at every tick (verified from dates only)",
+    "force_flat": "fold-end sessions 2020-09-01 / 2023-02-09 / 2025-07-24 carry the force-flat boundary; no decision or fill crosses a fold boundary; min decisions/fold floor 5 and total floor 30 cleared (29/29/29)"
+  },
+  "items": [
+    {
+      "id": 1,
+      "item": "Hand-computed feature golden (semivariance-share ranking over a trailing window and resulting hysteresis target weights, hand-computed in comments)",
+      "status": "PASS",
+      "test_ids": [
+        "Test01FeatureGolden::test_01a_semivariance_share_hand_golden",
+        "Test01FeatureGolden::test_01b_rank_ties_lex_golden",
+        "Test01FeatureGolden::test_01c_seed_book_and_targets_golden",
+        "Test01FeatureGolden::test_01d_hysteresis_step_golden",
+        "Test01FeatureGolden::test_01e_frozen_constants_pinned"
+      ],
+      "observed": "S([0.01,-0.02,0.03,-0.04]) = 20e-4/30e-4 = 2/3; 126-window golden S = 24/144 = 1/6; hand windows give rank order XLC,XLK,XLP,XLV,XLRE,XLB,XLF,XLU,XLE,XLI,XLY (ties lexicographic); seed LONG {XLC,XLK,XLP,XLV} SHORT {XLU,XLE,XLI,XLY} weights +-0.25, CASH 1.0, gross 2.0; hysteresis step (XLV 4->8 exits to FLAT at short capacity, XLU retained in buffer, XLB 6->4 enters) reproduced exactly"
+    },
+    {
+      "id": 2,
+      "item": "PIT / no-lookahead mutation tests (future mutations cannot change past targets; trailing window excludes decision-session future)",
+      "status": "PASS",
+      "test_ids": [
+        "Test02PitNoLookahead::test_02a_window_is_exact_trailing_completed",
+        "Test02PitNoLookahead::test_02b_future_mutation_cannot_change_past_targets",
+        "Test02PitNoLookahead::test_02c_mutation_inside_window_is_visible"
+      ],
+      "observed": "windows equal the exact panel slice [t-125, t] (126 completed returns ending at t); zeroing-in a +0.5 shock at sessions t+1..t+59 leaves the first decision's window and fill payload byte-identical; the same-magnitude shock inside the window moves the mutated symbol to rank 1 (mutation sensitivity proven)"
+    },
+    {
+      "id": 3,
+      "item": "Next-allowed-session fill: decision t fills t+1 (next trading day), never same session",
+      "status": "PASS",
+      "test_ids": ["Test03NextSessionFill::test_03a_fills_are_next_session_never_same"],
+      "observed": "for all three arms, every decision fill lands exactly at next_session(t), never the same session, never crossing a fold boundary; first S0 decision 2018-04-04 fills 2018-04-05"
+    },
+    {
+      "id": 4,
+      "item": "Deterministic double generation (schedule built twice, byte-identical)",
+      "status": "PASS",
+      "test_ids": [
+        "Test04DoubleGeneration::test_04a_two_paths_byte_identical_all_arms",
+        "Test04DoubleGeneration::test_04b_rebuild_is_byte_stable",
+        "Test04DoubleGeneration::test_04c_periodic_panel_single_generation_across_arms"
+      ],
+      "observed": "global session walk vs fold-sliced construction produce byte-identical canonical JSON (equal sha256 schedule digests) for arms A/N/C on arithmetic and 21-periodic panels; independent regeneration reproduces the same digest"
+    },
+    {
+      "id": 5,
+      "item": "Split/dividend/TR correctness: adjusted closes for all return computations; synthetic 2:1 split must not change the feature path",
+      "status": "PASS",
+      "test_ids": [
+        "Test05SplitAdjusted::test_05a_adjusted_path_reproduces_economic_returns_exactly",
+        "Test05SplitAdjusted::test_05b_synthetic_2_for_1_split_does_not_move_the_feature",
+        "Test05SplitAdjusted::test_05c_full_split_panel_gives_identical_schedule"
+      ],
+      "observed": "the adjusted path reproduces the economic return series EXACTLY (factor 2 is a power of two); a mid-history 2:1 split leaves the semivariance-share feature, the level statistic and the whole arm-A schedule digest byte-identical, while the raw path injects a ~-50% fake return and provably moves the feature"
+    },
+    {
+      "id": 6,
+      "item": "Factor and kappa scale invariance: EW sector factor, kappa frozen fallback (< 252 sessions) and trailing-252 OLS (>= 252), 10x price scaling leaves decisions invariant",
+      "status": "PASS",
+      "test_ids": [
+        "Test06ScaleAndKappa::test_06a_feature_scale_invariance",
+        "Test06ScaleAndKappa::test_06b_decisions_invariant_under_10x_prices",
+        "Test06ScaleAndKappa::test_06c_kappa_fallback_below_252_scored_sessions",
+        "Test06ScaleAndKappa::test_06d_kappa_ols_at_252_and_clip",
+        "Test06ScaleAndKappa::test_06e_ew_sector_factor_golden",
+        "Test06ScaleAndKappa::test_06f_kappa_scales_with_arm_not_with_price_level"
+      ],
+      "observed": "semivariance share invariant to 10x/0.1x/1000x return scaling (level scales by c^2); all arms' decisions (sessions, fill kinds, target weights) invariant under 10x prices; kappa = 1.0 flat at 0/10/251 scored sessions even for a perfect 3.0x relationship; at 252 sessions OLS slope 0.5 for arm = 0.5xSPY, trailing-window-only (0.5 seen before a regime change to 2.0x, 2.0 after), clip band [0,2] exercised (3.0x -> 2.0, -1.0x -> 0.0); misaligned or zero-variance inputs fail closed; EW sector factor = plain mean of available sector returns (golden -0.005)"
+    },
+    {
+      "id": 7,
+      "item": "Control != anchor: total-variance-LEVEL sort produces different rankings/targets than semivariance-share (shape axis vs level axis) and different decision lists on real schedule dates",
+      "status": "PASS",
+      "test_ids": [
+        "Test07ControlNotAnchor::test_07a_control_ranking_differs_golden",
+        "Test07ControlNotAnchor::test_07b_control_differs_from_anchor_synthetic_run",
+        "Test07ControlNotAnchor::test_07c_different_decision_lists_on_real_schedule_dates"
+      ],
+      "observed": "hand golden: share order XLC,XLK,XLP,XLV,... vs level order XLRE,XLE,XLC,XLU,... -> different seed books; synthetic full runs share the clock but diverge in books; on the REAL anchored decision sessions (2018-04-04 seed) with synthetic histories the two arms' canonical schedules and book lists differ (no real return computed)"
+    },
+    {
+      "id": 8,
+      "item": "Cap/gross/net/cash invariants: gross <= 2.0, net ~ 0, CASH absorbs residual and is excluded from turnover/concentration",
+      "status": "PASS",
+      "test_ids": [
+        "Test08BookInvariants::test_08a_gross_net_cash_on_every_fill_all_arms",
+        "Test08BookInvariants::test_08b_cash_excluded_from_turnover",
+        "Test08BookInvariants::test_08c_thin_short_side_net_quarter_is_expected_behavior"
+      ],
+      "observed": "every synthetic fill across A/N/C: gross <= 2.0, |net| <= 1.0, CASH == 1 - net, legs exactly +-0.25; hand turnover {AAA:.5,CASH:.5}->{AAA:.25,BBB:.5} = 0.75 (CASH-inclusive 1.00 forbidden); 10-eligible seed gives 4 long / 3 short, net +0.25, CASH 0.75, gross 1.75 (the frozen expected-behavior mechanism); < 8 eligible fails closed"
+    },
+    {
+      "id": 9,
+      "item": "Cost-once and turnover convention: 10 bps once per fill; turnover equals hand sum(|delta_w|); hysteresis keeps turnover low",
+      "status": "PASS",
+      "test_ids": [
+        "Test09CostOnceTurnover::test_09a_turnover_equals_hand_abs_delta",
+        "Test09CostOnceTurnover::test_09b_hysteresis_keeps_turnover_low_under_stable_ranking",
+        "Test09CostOnceTurnover::test_09c_cost_charged_exactly_once_per_fill"
+      ],
+      "observed": "every scheduled fill's one-way turnover equals the hand sum of |delta w| over non-CASH legs (force-flat liquidates exactly 2.0); under a stable (21-periodic) ranking the hysteresis emits ZERO rebalance fills - 3 seeds + 3 force-flats across 90 ticks; canonical factory path charges 0.001 at the first fill and 0.00054945 at the second exactly once (equity path 1.0 -> 0.999 -> 1.0989 -> 1.09835055, attribution residual 0)"
+    },
+    {
+      "id": 10,
+      "item": "Schedule-only feasibility on the REAL snapshot (real SPY calendar, anchored 21-session clock, 29/29/29 = 87 decisions, warmup 126 available, XLC availability rule documented, force-flat boundaries)",
+      "status": "PASS",
+      "test_ids": [
+        "Test10RealScheduleOnly::test_10a_real_anchored_clock_and_counts",
+        "Test10RealScheduleOnly::test_10b_real_warmup_and_xlc_availability",
+        "Test10RealScheduleOnly::test_10c_real_force_flat_and_fold_discipline"
+      ],
+      "observed": "anchor index 2076; decisions 29/29/29 = 87 per arm (floors 5/fold and 30 total cleared); fold-1 first decision 2018-04-04 fills 2018-04-05; every fill is the next allowed session inside its fold; exactly 9 fold-1 anchor ticks hold only 10 eligible sectors (XLC unavailable until 2019-01-03 for the 126 window; neighbour full from 2018-10-02); every eligible symbol holds its full window at every tick; force-flat at fold ends 2020-09-01/2023-02-09/2025-07-24; artifact i_family_2_schedule_check.json carries dates and counts ONLY"
+    },
+    {
+      "id": 11,
+      "item": "Meaningful held-max-weight drop-one: dropping the max |contribution| leg changes the book materially and the code path runs",
+      "status": "PASS",
+      "test_ids": ["Test11DropOne::test_11a_drop_max_contribution_changes_book"],
+      "observed": "canonical factory valuation on synthetic prices attributes contributions {AAA: +0.044955, BBB: 0.0}; select_drop_one_symbol picks AAA (max |contribution|, held, lexicographic tie-break); the excluded rerun yields materially different PnL and book; dropping the corresponding leg from the family universe re-seeds a different 4/4 book (short side thinned to 3 legs) with different targets; attribution residual 0"
+    },
+    {
+      "id": 12,
+      "item": "Dummy publication/refusal/replay: DUMMY artifact with scored=false, real_pnl=false on a TEMP ledger path only; observed increments once; replay zero-delta; refusal on zero positions; canonical ledger untouched",
+      "status": "PASS",
+      "test_ids": ["Test12LedgerDiscipline::test_12a_dummy_publish_replay_refuse_temp_path_only"],
+      "observed": "GatedTrialLedger on pytest tmp_path: observed 1 after compute_recorded; first publish True; replay False (zero-delta); publish with n_fill_events=0/n_held_positions=0 refused with reasons [ZERO_FILL_EVENTS, ZERO_HELD_POSITIONS] and key unpublished while the compute stays recorded (observed 2); saved ledger bytes verify all events; event_log.jsonl byte-hash unchanged across the test"
+    }
+  ],
+  "all_real_data_runs_schedule_only": true,
+  "scored_metrics_statement": "all real-data runs schedule-only; zero scored metrics produced (no real return, feature, PnL, expectancy, PF, Sharpe or MDD computed from the staged snapshot anywhere in this lane; every real read is dates-only, sha256-pin-verified, S0-bounded)",
+  "deviations_from_frozen_proposal": "none. Frozen arm rules, bands (<=4/>=8 with 5-7 buffer), 0.25 weights, gross cap 2.0, 126/63 windows, 21-session clock anchored 2018-04-04, next-session fills, fold force-flat, XLC availability rule, kappa fallback (1.0 until 252 scored sessions, then trailing-252 OLS clipped [0,2], no in-sample refit), control falsification gate 0.5, and the early fold-1 net-exposure stretches (recorded as expected behavior, never fixed) are implemented exactly as frozen in selection_freeze.json, proposals/a4_h1.json and baseline_invariants.json.",
+  "blockers": "none",
+  "commit_1_head": "45b9fcb3878393d6933992c889652a5c1bc2a2d7",
+  "commit_1_note": "sha of 'V4-I family-2 A9: semivariance-share family module + tests (12 evidence items, kappa fallback frozen ex ante)'"
+}
