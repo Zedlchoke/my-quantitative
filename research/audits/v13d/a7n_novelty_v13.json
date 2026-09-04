@@ -1,0 +1,1089 @@
+{
+ "schema": "v13d_a7n_novelty_audit_v1",
+ "auditor": "A7-N",
+ "cycle": "CRYPTO-V13",
+ "phase": "D2 (independent novelty / anti-rescue audit)",
+ "artifact": "a7n_novelty_v13",
+ "generated_utc": "2026-09-04T11:48:02Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v13/d2-a7n-novelty",
+ "head_sha": "d0be53380964fff6cb33564ceab0fe826cf2a1bd",
+ "branch": "orca/v13-d2-a7n-novelty",
+ "independence": "A7-N wrote audit artifacts only; no proposal, family code, or data was modified; no S1 access; no returns/PnL/portfolio/backtest computation of any kind",
+ "scope": {
+  "forbidden_classes_checked": [
+   "V10-M01-AGGRESSOR-ABSORPTION",
+   "V11-LOTTERY-MAX-SKEW",
+   "V11-ILLIQ-AMIHUD",
+   "V11-OILEVER-DELEV",
+   "V4-XSECT-MOM",
+   "V6/V1-CARRY-FUNDING",
+   "V1-VOLCOMP",
+   "V8R-XSECT-REVERSAL",
+   "V9-TS-TREND",
+   "WEEKLY-REVERSAL / MR-RESCUE",
+   "V12-OILEV-V2",
+   "V12-BAB-LOWBETA",
+   "V12-ILLIQ-REPLICATION",
+   "DATA-GATED"
+  ],
+  "source": "research/control/v13_run/forbidden_family_inventory.json (13 forbidden classes + DATA-GATED boundary) and run_contract.json shadow_region_rule (binding)",
+  "universe_note": "task text says 20-symbol universe; the common measurable universe is the 19 tradable symbols (20 REQUIRED_SYMBOLS minus BTCUSDT): the frozen OILEV-V2 anchor refuses BTCUSDT by construction (ContractViolation in frozen code) and every proposal excludes BTCUSDT as benchmark-only, so 19 symbols is the maximal COMMON window"
+ },
+ "proposals": {
+  "EXITCAP": {
+   "hypothesis_id": "A13-V13-A5-EXITCAP",
+   "lane": "a5",
+   "files": [
+    "research/proposals/v13/a5/EXITCAP.json",
+    "research/proposals/v13/a5/EXITCAP.md"
+   ],
+   "anchor_signal": {
+    "id": "EXITCAP-28D",
+    "faithful_signal_only_implementation": "U = OI(latest snapshot<=T, <=48h, >0) x mark(snapshot-paired, <=24h) / mean daily $-turnover over trailing 28d (days with missing 15m slots excluded; >10% missing refuses)"
+   },
+   "attestation": {
+    "md_block_present": true,
+    "md_line": 250,
+    "json_item13_present": true,
+    "utc": "2026-09-04T11:19:42Z",
+    "agent": "a5",
+    "verdict": "PRESENT"
+   },
+   "inventory_map_verdict": "CLEAN",
+   "inventory_map": [
+    {
+     "class": "V10-M01-AGGRESSOR-ABSORPTION",
+     "verdict": "CLEAN",
+     "reason": "no aggressor/taker-flow input in any signal; anchors use only bar close x volume aggregates, OI levels and mark levels; bars carry no aggressor side and none is constructed"
+    },
+    {
+     "class": "V11-LOTTERY-MAX-SKEW",
+     "verdict": "CLEAN",
+     "reason": "no return-distribution moment (MAX/skew/LOT) in the anchor signal; realized volatility appears ONLY inside a6/a8 causal control arms which are preregistered never-promotable"
+    },
+    {
+     "class": "V11-ILLIQ-AMIHUD",
+     "verdict": "CLEAN",
+     "reason": "no |return|/dollar-volume price-impact ratio anywhere; no attempt to reopen the frozen Amihud identity"
+    },
+    {
+     "class": "V11-OILEVER-DELEV",
+     "verdict": "CLEAN",
+     "reason": "OI enters as a LEVEL (stock) only - no differencing, no OI-change/deleveraging flow term anywhere (verified in this audit's independent signal-only implementation); a stock/flow ratio is not a parameter rescue of the 28d log-OI-growth flow"
+    },
+    {
+     "class": "V4-XSECT-MOM",
+     "verdict": "CLEAN",
+     "reason": "no past-return term at any horizon in any anchor signal (verified signal-only)"
+    },
+    {
+     "class": "V6/V1-CARRY-FUNDING",
+     "verdict": "CLEAN",
+     "reason": "funding never enters any signal, ranking or eligibility rule (cost only by construction in all six proposals)"
+    },
+    {
+     "class": "V1-VOLCOMP",
+     "verdict": "CLEAN",
+     "reason": "no volatility-compression or breakout/continuation rule; volume enters as within-window dispersion SHAPE (scale-invariant Herfindahl) or as a LEVEL mean denominator - no threshold crossing, no shock-event trigger, no continuation premise (boundary note: the turnover-shape proposals are the nearest neighbours of the V9 dollar-volume class; the discriminating features are scale-invariance, absence of an event trigger, and a shape/structure rather than spike-continuation claim)"
+    },
+    {
+     "class": "V8R-XSECT-REVERSAL",
+     "verdict": "CLEAN",
+     "reason": "signal is return-free by construction; no cross-sectional reversal variant"
+    },
+    {
+     "class": "V9-TS-TREND",
+     "verdict": "CLEAN",
+     "reason": "no trend/return term; TCH additionally preregisters a reversal-in-disguise falsifier"
+    },
+    {
+     "class": "WEEKLY-REVERSAL / MR-RESCUE",
+     "verdict": "CLEAN",
+     "reason": "no past-return term; no renamed rejected baseline detected"
+    },
+    {
+     "class": "V12-OILEV-V2",
+     "verdict": "CLEAN",
+     "reason": "none of the six implements the frozen OILEV-V2 signal (28d log OI-growth oi_flow) in any form - no OI differencing exists in any anchor; independently verified numerically: measured |rho| <= 0.147 <= 0.20 vs the frozen anchor AND its inverted control on the full common window (52/52 stamps); no sign flip, horizon tweak, cap raise, universe carve-out, threshold relaxation or renaming present"
+    },
+    {
+     "class": "V12-BAB-LOWBETA",
+     "verdict": "CLEAN",
+     "reason": "no beta-sorted book; beta appears only as identical context adjustment; vol-level sorts sit only in never-promotable control seats (a6 LIQPRO VOLREG, a8 TCH CTL-VOLLEVEL)"
+    },
+    {
+     "class": "V12-ILLIQ-REPLICATION",
+     "verdict": "CLEAN",
+     "reason": "frozen V12 ILLIQ replication brief not reopened; no window substitution"
+    },
+    {
+     "class": "DATA-GATED",
+     "verdict": "CLEAN",
+     "reason": "only authorized datasets used (binance_bar 15m bars, funding_data/scan_2026 settlements+marks, oi_data/consolidated daily OI); no external data or purchase"
+    }
+   ],
+   "self_declared_shadow_region": "outside (pre-staged front door if reclassified)",
+   "rho_measurement": {
+    "method": "weekly cross-sectional Spearman rank correlation per Monday stamp on common eligible symbols (>= 9 breadth), averaged over the common window (primary); pooled within-stamp rank correlation reported as robustness; NO returns, NO PnL computed",
+    "frozen_reference": "research/v12/families/oilev_v2/strategy.py signal_scores_at, arm OILEV-V2-28D-FLOW-W (oi_flow, 28d log OI growth), imported read-only; inverted control = arm OILEV-V2-28D-FLOW-W-INV (sign-inverted end-to-end); sanity rho(anchor, inverted) = -1.000000 on all 988 pairs",
+    "common_window": "52/52 Monday stamps 2025-08-25..2026-08-17; common symbols per stamp 19..19 of 19",
+    "vs_frozen_oilev_v2_anchor": {
+     "mean_per_stamp_spearman": 0.096289,
+     "pooled_within_stamp_rank_rho": 0.096289,
+     "median": 0.132456,
+     "min_stamp": -0.442105,
+     "max_stamp": 0.578947,
+     "per_fold_mean": {
+      "F0": {
+       "mean_rho": 0.085036,
+       "n_stamps": 17
+      },
+      "F1": {
+       "mean_rho": 0.149415,
+       "n_stamps": 18
+      },
+      "F2": {
+       "mean_rho": 0.05129,
+       "n_stamps": 17
+      }
+     },
+     "max_abs_per_stamp": 0.578947,
+     "n_stamps_used": 52
+    },
+    "vs_frozen_inverted_control": {
+     "mean_per_stamp_spearman": -0.096289,
+     "pooled_within_stamp_rank_rho": -0.096289,
+     "n_stamps_used": 52
+    },
+    "threshold": "|rho| <= 0.20 vs BOTH the frozen anchor and its inverted control",
+    "gate_pass": true
+   },
+   "duplicate_flags": [
+    "NEAR-DUPLICATE of OITD (rho +0.9746, same book)",
+    "INVERSE-BOOK DUPLICATE with CAPVEL (rho -0.9145)"
+   ],
+   "novelty_verdict": "ELIGIBLE",
+   "selector_note": "eligibility per the binding rho rule is PASS; duplicate flags constrain SELECTION, not eligibility - see pairwise matrix"
+  },
+  "LIQEPIS": {
+   "hypothesis_id": "A13-V13-A5-LIQEPIS",
+   "lane": "a5",
+   "files": [
+    "research/proposals/v13/a5/LIQEPIS.json",
+    "research/proposals/v13/a5/LIQEPIS.md"
+   ],
+   "anchor_signal": {
+    "id": "LIQEPIS-28D",
+    "faithful_signal_only_implementation": "H = Herfindahl of per-slot dollar-volume shares (close x volume) over the trailing 2688 contiguous completed 15m slots; any missing slot refuses (fail-closed)"
+   },
+   "attestation": {
+    "md_block_present": true,
+    "md_line": 250,
+    "json_item13_present": true,
+    "utc": "2026-09-04T11:19:42Z",
+    "agent": "a5",
+    "verdict": "PRESENT"
+   },
+   "inventory_map_verdict": "CLEAN",
+   "inventory_map": [
+    {
+     "class": "V10-M01-AGGRESSOR-ABSORPTION",
+     "verdict": "CLEAN",
+     "reason": "no aggressor/taker-flow input in any signal; anchors use only bar close x volume aggregates, OI levels and mark levels; bars carry no aggressor side and none is constructed"
+    },
+    {
+     "class": "V11-LOTTERY-MAX-SKEW",
+     "verdict": "CLEAN",
+     "reason": "no return-distribution moment (MAX/skew/LOT) in the anchor signal; realized volatility appears ONLY inside a6/a8 causal control arms which are preregistered never-promotable"
+    },
+    {
+     "class": "V11-ILLIQ-AMIHUD",
+     "verdict": "CLEAN",
+     "reason": "no |return|/dollar-volume price-impact ratio anywhere; no attempt to reopen the frozen Amihud identity"
+    },
+    {
+     "class": "V11-OILEVER-DELEV",
+     "verdict": "CLEAN",
+     "reason": "zero OI records in the anchor signal (verified in this audit's independent signal-only implementation): cannot be an OI-deleveraging variant by construction"
+    },
+    {
+     "class": "V4-XSECT-MOM",
+     "verdict": "CLEAN",
+     "reason": "no past-return term at any horizon in any anchor signal (verified signal-only)"
+    },
+    {
+     "class": "V6/V1-CARRY-FUNDING",
+     "verdict": "CLEAN",
+     "reason": "funding never enters any signal, ranking or eligibility rule (cost only by construction in all six proposals)"
+    },
+    {
+     "class": "V1-VOLCOMP",
+     "verdict": "CLEAN",
+     "reason": "no volatility-compression or breakout/continuation rule; volume enters as within-window dispersion SHAPE (scale-invariant Herfindahl) or as a LEVEL mean denominator - no threshold crossing, no shock-event trigger, no continuation premise (boundary note: the turnover-shape proposals are the nearest neighbours of the V9 dollar-volume class; the discriminating features are scale-invariance, absence of an event trigger, and a shape/structure rather than spike-continuation claim)"
+    },
+    {
+     "class": "V8R-XSECT-REVERSAL",
+     "verdict": "CLEAN",
+     "reason": "signal is return-free by construction; no cross-sectional reversal variant"
+    },
+    {
+     "class": "V9-TS-TREND",
+     "verdict": "CLEAN",
+     "reason": "no trend/return term; TCH additionally preregisters a reversal-in-disguise falsifier"
+    },
+    {
+     "class": "WEEKLY-REVERSAL / MR-RESCUE",
+     "verdict": "CLEAN",
+     "reason": "no past-return term; no renamed rejected baseline detected"
+    },
+    {
+     "class": "V12-OILEV-V2",
+     "verdict": "CLEAN",
+     "reason": "none of the six implements the frozen OILEV-V2 signal (28d log OI-growth oi_flow) in any form - no OI differencing exists in any anchor; independently verified numerically: measured |rho| <= 0.147 <= 0.20 vs the frozen anchor AND its inverted control on the full common window (52/52 stamps); no sign flip, horizon tweak, cap raise, universe carve-out, threshold relaxation or renaming present"
+    },
+    {
+     "class": "V12-BAB-LOWBETA",
+     "verdict": "CLEAN",
+     "reason": "no beta-sorted book; beta appears only as identical context adjustment; vol-level sorts sit only in never-promotable control seats (a6 LIQPRO VOLREG, a8 TCH CTL-VOLLEVEL)"
+    },
+    {
+     "class": "V12-ILLIQ-REPLICATION",
+     "verdict": "CLEAN",
+     "reason": "frozen V12 ILLIQ replication brief not reopened; no window substitution"
+    },
+    {
+     "class": "DATA-GATED",
+     "verdict": "CLEAN",
+     "reason": "only authorized datasets used (binance_bar 15m bars, funding_data/scan_2026 settlements+marks, oi_data/consolidated daily OI); no external data or purchase"
+    }
+   ],
+   "self_declared_shadow_region": "outside (pre-staged front door if reclassified)",
+   "rho_measurement": {
+    "method": "weekly cross-sectional Spearman rank correlation per Monday stamp on common eligible symbols (>= 9 breadth), averaged over the common window (primary); pooled within-stamp rank correlation reported as robustness; NO returns, NO PnL computed",
+    "frozen_reference": "research/v12/families/oilev_v2/strategy.py signal_scores_at, arm OILEV-V2-28D-FLOW-W (oi_flow, 28d log OI growth), imported read-only; inverted control = arm OILEV-V2-28D-FLOW-W-INV (sign-inverted end-to-end); sanity rho(anchor, inverted) = -1.000000 on all 988 pairs",
+    "common_window": "52/52 Monday stamps 2025-08-25..2026-08-17; common symbols per stamp 18..19 of 19",
+    "vs_frozen_oilev_v2_anchor": {
+     "mean_per_stamp_spearman": 0.144471,
+     "pooled_within_stamp_rank_rho": 0.144013,
+     "median": 0.127193,
+     "min_stamp": -0.45614,
+     "max_stamp": 0.685965,
+     "per_fold_mean": {
+      "F0": {
+       "mean_rho": 0.032726,
+       "n_stamps": 17
+      },
+      "F1": {
+       "mean_rho": 0.193665,
+       "n_stamps": 18
+      },
+      "F2": {
+       "mean_rho": 0.204128,
+       "n_stamps": 17
+      }
+     },
+     "max_abs_per_stamp": 0.685965,
+     "n_stamps_used": 52
+    },
+    "vs_frozen_inverted_control": {
+     "mean_per_stamp_spearman": -0.144471,
+     "pooled_within_stamp_rank_rho": -0.142874,
+     "n_stamps_used": 52
+    },
+    "threshold": "|rho| <= 0.20 vs BOTH the frozen anchor and its inverted control",
+    "gate_pass": true
+   },
+   "duplicate_flags": [
+    "EXACT signal duplicate of LIQPRO (rho +1.0000; opposite book)",
+    "SAME-FAMILY coarser variant of TCH (rho +0.6490, same book direction)"
+   ],
+   "novelty_verdict": "ELIGIBLE",
+   "selector_note": "eligibility per the binding rho rule is PASS; duplicate flags constrain SELECTION, not eligibility - see pairwise matrix"
+  },
+  "CAPVEL": {
+   "hypothesis_id": "A13-V13-A6-CAPVEL",
+   "lane": "a6",
+   "files": [
+    "research/proposals/v13/a6/CAPVEL.json",
+    "research/proposals/v13/a6/CAPVEL.md"
+   ],
+   "anchor_signal": {
+    "id": "CAPVEL-28D",
+    "faithful_signal_only_implementation": "book_turnover = mean daily traded BASE volume (28d, all 28 days complete) / mean daily OI level (snapshots in (T-28d, T], >= 26 required); OI never differenced"
+   },
+   "attestation": {
+    "md_block_present": true,
+    "md_line": 263,
+    "json_item13_present": true,
+    "utc": "2026-09-04T11:17:21Z",
+    "agent": "A6",
+    "verdict": "PRESENT"
+   },
+   "inventory_map_verdict": "CLEAN",
+   "inventory_map": [
+    {
+     "class": "V10-M01-AGGRESSOR-ABSORPTION",
+     "verdict": "CLEAN",
+     "reason": "no aggressor/taker-flow input in any signal; anchors use only bar close x volume aggregates, OI levels and mark levels; bars carry no aggressor side and none is constructed"
+    },
+    {
+     "class": "V11-LOTTERY-MAX-SKEW",
+     "verdict": "CLEAN",
+     "reason": "no return-distribution moment (MAX/skew/LOT) in the anchor signal; realized volatility appears ONLY inside a6/a8 causal control arms which are preregistered never-promotable"
+    },
+    {
+     "class": "V11-ILLIQ-AMIHUD",
+     "verdict": "CLEAN",
+     "reason": "no |return|/dollar-volume price-impact ratio anywhere; no attempt to reopen the frozen Amihud identity"
+    },
+    {
+     "class": "V11-OILEVER-DELEV",
+     "verdict": "CLEAN",
+     "reason": "OI enters as a LEVEL (stock) only - no differencing, no OI-change/deleveraging flow term anywhere (verified in this audit's independent signal-only implementation); a stock/flow ratio is not a parameter rescue of the 28d log-OI-growth flow"
+    },
+    {
+     "class": "V4-XSECT-MOM",
+     "verdict": "CLEAN",
+     "reason": "no past-return term at any horizon in any anchor signal (verified signal-only)"
+    },
+    {
+     "class": "V6/V1-CARRY-FUNDING",
+     "verdict": "CLEAN",
+     "reason": "funding never enters any signal, ranking or eligibility rule (cost only by construction in all six proposals)"
+    },
+    {
+     "class": "V1-VOLCOMP",
+     "verdict": "CLEAN",
+     "reason": "no volatility-compression or breakout/continuation rule; volume enters as within-window dispersion SHAPE (scale-invariant Herfindahl) or as a LEVEL mean denominator - no threshold crossing, no shock-event trigger, no continuation premise (boundary note: the turnover-shape proposals are the nearest neighbours of the V9 dollar-volume class; the discriminating features are scale-invariance, absence of an event trigger, and a shape/structure rather than spike-continuation claim)"
+    },
+    {
+     "class": "V8R-XSECT-REVERSAL",
+     "verdict": "CLEAN",
+     "reason": "signal is return-free by construction; no cross-sectional reversal variant"
+    },
+    {
+     "class": "V9-TS-TREND",
+     "verdict": "CLEAN",
+     "reason": "no trend/return term; TCH additionally preregisters a reversal-in-disguise falsifier"
+    },
+    {
+     "class": "WEEKLY-REVERSAL / MR-RESCUE",
+     "verdict": "CLEAN",
+     "reason": "no past-return term; no renamed rejected baseline detected"
+    },
+    {
+     "class": "V12-OILEV-V2",
+     "verdict": "CLEAN",
+     "reason": "none of the six implements the frozen OILEV-V2 signal (28d log OI-growth oi_flow) in any form - no OI differencing exists in any anchor; independently verified numerically: measured |rho| <= 0.147 <= 0.20 vs the frozen anchor AND its inverted control on the full common window (52/52 stamps); no sign flip, horizon tweak, cap raise, universe carve-out, threshold relaxation or renaming present"
+    },
+    {
+     "class": "V12-BAB-LOWBETA",
+     "verdict": "CLEAN",
+     "reason": "no beta-sorted book; beta appears only as identical context adjustment; vol-level sorts sit only in never-promotable control seats (a6 LIQPRO VOLREG, a8 TCH CTL-VOLLEVEL)"
+    },
+    {
+     "class": "V12-ILLIQ-REPLICATION",
+     "verdict": "CLEAN",
+     "reason": "frozen V12 ILLIQ replication brief not reopened; no window substitution"
+    },
+    {
+     "class": "DATA-GATED",
+     "verdict": "CLEAN",
+     "reason": "only authorized datasets used (binance_bar 15m bars, funding_data/scan_2026 settlements+marks, oi_data/consolidated daily OI); no external data or purchase"
+    }
+   ],
+   "self_declared_shadow_region": "not entered (exploratory; gate carried voluntarily)",
+   "rho_measurement": {
+    "method": "weekly cross-sectional Spearman rank correlation per Monday stamp on common eligible symbols (>= 9 breadth), averaged over the common window (primary); pooled within-stamp rank correlation reported as robustness; NO returns, NO PnL computed",
+    "frozen_reference": "research/v12/families/oilev_v2/strategy.py signal_scores_at, arm OILEV-V2-28D-FLOW-W (oi_flow, 28d log OI growth), imported read-only; inverted control = arm OILEV-V2-28D-FLOW-W-INV (sign-inverted end-to-end); sanity rho(anchor, inverted) = -1.000000 on all 988 pairs",
+    "common_window": "52/52 Monday stamps 2025-08-25..2026-08-17; common symbols per stamp 18..19 of 19",
+    "vs_frozen_oilev_v2_anchor": {
+     "mean_per_stamp_spearman": 0.108581,
+     "pooled_within_stamp_rank_rho": 0.10932,
+     "median": 0.139474,
+     "min_stamp": -0.298246,
+     "max_stamp": 0.650877,
+     "per_fold_mean": {
+      "F0": {
+       "mean_rho": 0.145031,
+       "n_stamps": 17
+      },
+      "F1": {
+       "mean_rho": 0.01306,
+       "n_stamps": 18
+      },
+      "F2": {
+       "mean_rho": 0.173271,
+       "n_stamps": 17
+      }
+     },
+     "max_abs_per_stamp": 0.650877,
+     "n_stamps_used": 52
+    },
+    "vs_frozen_inverted_control": {
+     "mean_per_stamp_spearman": -0.108581,
+     "pooled_within_stamp_rank_rho": -0.108182,
+     "n_stamps_used": 52
+    },
+    "threshold": "|rho| <= 0.20 vs BOTH the frozen anchor and its inverted control",
+    "gate_pass": true
+   },
+   "duplicate_flags": [
+    "INVERSE-BOOK DUPLICATE of EXITCAP (rho -0.9145) and OITD (rho -0.9371)"
+   ],
+   "novelty_verdict": "ELIGIBLE",
+   "selector_note": "eligibility per the binding rho rule is PASS; duplicate flags constrain SELECTION, not eligibility - see pairwise matrix"
+  },
+  "LIQPRO": {
+   "hypothesis_id": "A13-V13-A6-LIQPRO",
+   "lane": "a6",
+   "files": [
+    "research/proposals/v13/a6/LIQPRO.json",
+    "research/proposals/v13/a6/LIQPRO.md"
+   ],
+   "anchor_signal": {
+    "id": "LIQPRO-28D",
+    "faithful_signal_only_implementation": "HHI_norm = n_slots x sum p_i^2 over trailing 28d of 15m slots, p_i = per-slot dollar-volume share (identical ranking variable to LIQEPIS H by exact monotone transform x2688); long HIGH concentration"
+   },
+   "attestation": {
+    "md_block_present": true,
+    "md_line": 267,
+    "json_item13_present": true,
+    "utc": "2026-09-04T11:17:21Z",
+    "agent": "A6",
+    "verdict": "PRESENT"
+   },
+   "inventory_map_verdict": "CLEAN",
+   "inventory_map": [
+    {
+     "class": "V10-M01-AGGRESSOR-ABSORPTION",
+     "verdict": "CLEAN",
+     "reason": "no aggressor/taker-flow input in any signal; anchors use only bar close x volume aggregates, OI levels and mark levels; bars carry no aggressor side and none is constructed"
+    },
+    {
+     "class": "V11-LOTTERY-MAX-SKEW",
+     "verdict": "CLEAN",
+     "reason": "no return-distribution moment (MAX/skew/LOT) in the anchor signal; realized volatility appears ONLY inside a6/a8 causal control arms which are preregistered never-promotable"
+    },
+    {
+     "class": "V11-ILLIQ-AMIHUD",
+     "verdict": "CLEAN",
+     "reason": "no |return|/dollar-volume price-impact ratio anywhere; no attempt to reopen the frozen Amihud identity"
+    },
+    {
+     "class": "V11-OILEVER-DELEV",
+     "verdict": "CLEAN",
+     "reason": "zero OI records in the anchor signal (verified in this audit's independent signal-only implementation): cannot be an OI-deleveraging variant by construction"
+    },
+    {
+     "class": "V4-XSECT-MOM",
+     "verdict": "CLEAN",
+     "reason": "no past-return term at any horizon in any anchor signal (verified signal-only)"
+    },
+    {
+     "class": "V6/V1-CARRY-FUNDING",
+     "verdict": "CLEAN",
+     "reason": "funding never enters any signal, ranking or eligibility rule (cost only by construction in all six proposals)"
+    },
+    {
+     "class": "V1-VOLCOMP",
+     "verdict": "CLEAN",
+     "reason": "no volatility-compression or breakout/continuation rule; volume enters as within-window dispersion SHAPE (scale-invariant Herfindahl) or as a LEVEL mean denominator - no threshold crossing, no shock-event trigger, no continuation premise (boundary note: the turnover-shape proposals are the nearest neighbours of the V9 dollar-volume class; the discriminating features are scale-invariance, absence of an event trigger, and a shape/structure rather than spike-continuation claim)"
+    },
+    {
+     "class": "V8R-XSECT-REVERSAL",
+     "verdict": "CLEAN",
+     "reason": "signal is return-free by construction; no cross-sectional reversal variant"
+    },
+    {
+     "class": "V9-TS-TREND",
+     "verdict": "CLEAN",
+     "reason": "no trend/return term; TCH additionally preregisters a reversal-in-disguise falsifier"
+    },
+    {
+     "class": "WEEKLY-REVERSAL / MR-RESCUE",
+     "verdict": "CLEAN",
+     "reason": "no past-return term; no renamed rejected baseline detected"
+    },
+    {
+     "class": "V12-OILEV-V2",
+     "verdict": "CLEAN",
+     "reason": "none of the six implements the frozen OILEV-V2 signal (28d log OI-growth oi_flow) in any form - no OI differencing exists in any anchor; independently verified numerically: measured |rho| <= 0.147 <= 0.20 vs the frozen anchor AND its inverted control on the full common window (52/52 stamps); no sign flip, horizon tweak, cap raise, universe carve-out, threshold relaxation or renaming present"
+    },
+    {
+     "class": "V12-BAB-LOWBETA",
+     "verdict": "CLEAN",
+     "reason": "no beta-sorted book; beta appears only as identical context adjustment; vol-level sorts sit only in never-promotable control seats (a6 LIQPRO VOLREG, a8 TCH CTL-VOLLEVEL)"
+    },
+    {
+     "class": "V12-ILLIQ-REPLICATION",
+     "verdict": "CLEAN",
+     "reason": "frozen V12 ILLIQ replication brief not reopened; no window substitution"
+    },
+    {
+     "class": "DATA-GATED",
+     "verdict": "CLEAN",
+     "reason": "only authorized datasets used (binance_bar 15m bars, funding_data/scan_2026 settlements+marks, oi_data/consolidated daily OI); no external data or purchase"
+    }
+   ],
+   "self_declared_shadow_region": "not entered (exploratory; vol-level rival placed in never-promotable control seat; gate carried voluntarily)",
+   "rho_measurement": {
+    "method": "weekly cross-sectional Spearman rank correlation per Monday stamp on common eligible symbols (>= 9 breadth), averaged over the common window (primary); pooled within-stamp rank correlation reported as robustness; NO returns, NO PnL computed",
+    "frozen_reference": "research/v12/families/oilev_v2/strategy.py signal_scores_at, arm OILEV-V2-28D-FLOW-W (oi_flow, 28d log OI growth), imported read-only; inverted control = arm OILEV-V2-28D-FLOW-W-INV (sign-inverted end-to-end); sanity rho(anchor, inverted) = -1.000000 on all 988 pairs",
+    "common_window": "52/52 Monday stamps 2025-08-25..2026-08-17; common symbols per stamp 18..19 of 19",
+    "vs_frozen_oilev_v2_anchor": {
+     "mean_per_stamp_spearman": 0.144471,
+     "pooled_within_stamp_rank_rho": 0.144013,
+     "median": 0.127193,
+     "min_stamp": -0.45614,
+     "max_stamp": 0.685965,
+     "per_fold_mean": {
+      "F0": {
+       "mean_rho": 0.032726,
+       "n_stamps": 17
+      },
+      "F1": {
+       "mean_rho": 0.193665,
+       "n_stamps": 18
+      },
+      "F2": {
+       "mean_rho": 0.204128,
+       "n_stamps": 17
+      }
+     },
+     "max_abs_per_stamp": 0.685965,
+     "n_stamps_used": 52
+    },
+    "vs_frozen_inverted_control": {
+     "mean_per_stamp_spearman": -0.144471,
+     "pooled_within_stamp_rank_rho": -0.142874,
+     "n_stamps_used": 52
+    },
+    "threshold": "|rho| <= 0.20 vs BOTH the frozen anchor and its inverted control",
+    "gate_pass": true
+   },
+   "duplicate_flags": [
+    "EXACT signal duplicate of LIQEPIS (rho +1.0000; opposite book)",
+    "SAME-FAMILY variant of TCH (signal rho +0.6490; opposite book)"
+   ],
+   "novelty_verdict": "ELIGIBLE",
+   "selector_note": "eligibility per the binding rho rule is PASS; duplicate flags constrain SELECTION, not eligibility - see pairwise matrix"
+  },
+  "OITD": {
+   "hypothesis_id": "A13-V13-A8-OITD",
+   "lane": "a8",
+   "files": [
+    "research/proposals/v13/a8/OITD.json",
+    "research/proposals/v13/a8/OITD.md"
+   ],
+   "anchor_signal": {
+    "id": "OITD-28D",
+    "faithful_signal_only_implementation": "D = OI7 x MK / TO: OI7 = mean of latest 7 daily OI stamps <=T (all within trailing 10d, >=7 required, level only); MK = latest mark <=T within 24h; TO = mean daily $-turnover over 28 fully-covered UTC days"
+   },
+   "attestation": {
+    "md_block_present": true,
+    "md_line": 312,
+    "json_item13_present": true,
+    "utc": "2026-09-04T11:16:00Z",
+    "agent": "a8",
+    "verdict": "PRESENT"
+   },
+   "inventory_map_verdict": "CLEAN",
+   "inventory_map": [
+    {
+     "class": "V10-M01-AGGRESSOR-ABSORPTION",
+     "verdict": "CLEAN",
+     "reason": "no aggressor/taker-flow input in any signal; anchors use only bar close x volume aggregates, OI levels and mark levels; bars carry no aggressor side and none is constructed"
+    },
+    {
+     "class": "V11-LOTTERY-MAX-SKEW",
+     "verdict": "CLEAN",
+     "reason": "no return-distribution moment (MAX/skew/LOT) in the anchor signal; realized volatility appears ONLY inside a6/a8 causal control arms which are preregistered never-promotable"
+    },
+    {
+     "class": "V11-ILLIQ-AMIHUD",
+     "verdict": "CLEAN",
+     "reason": "no |return|/dollar-volume price-impact ratio anywhere; no attempt to reopen the frozen Amihud identity"
+    },
+    {
+     "class": "V11-OILEVER-DELEV",
+     "verdict": "CLEAN",
+     "reason": "OI enters as a LEVEL (stock) only - no differencing, no OI-change/deleveraging flow term anywhere (verified in this audit's independent signal-only implementation); a stock/flow ratio is not a parameter rescue of the 28d log-OI-growth flow"
+    },
+    {
+     "class": "V4-XSECT-MOM",
+     "verdict": "CLEAN",
+     "reason": "no past-return term at any horizon in any anchor signal (verified signal-only)"
+    },
+    {
+     "class": "V6/V1-CARRY-FUNDING",
+     "verdict": "CLEAN",
+     "reason": "funding never enters any signal, ranking or eligibility rule (cost only by construction in all six proposals)"
+    },
+    {
+     "class": "V1-VOLCOMP",
+     "verdict": "CLEAN",
+     "reason": "no volatility-compression or breakout/continuation rule; volume enters as within-window dispersion SHAPE (scale-invariant Herfindahl) or as a LEVEL mean denominator - no threshold crossing, no shock-event trigger, no continuation premise (boundary note: the turnover-shape proposals are the nearest neighbours of the V9 dollar-volume class; the discriminating features are scale-invariance, absence of an event trigger, and a shape/structure rather than spike-continuation claim)"
+    },
+    {
+     "class": "V8R-XSECT-REVERSAL",
+     "verdict": "CLEAN",
+     "reason": "signal is return-free by construction; no cross-sectional reversal variant"
+    },
+    {
+     "class": "V9-TS-TREND",
+     "verdict": "CLEAN",
+     "reason": "no trend/return term; TCH additionally preregisters a reversal-in-disguise falsifier"
+    },
+    {
+     "class": "WEEKLY-REVERSAL / MR-RESCUE",
+     "verdict": "CLEAN",
+     "reason": "no past-return term; no renamed rejected baseline detected"
+    },
+    {
+     "class": "V12-OILEV-V2",
+     "verdict": "CLEAN",
+     "reason": "none of the six implements the frozen OILEV-V2 signal (28d log OI-growth oi_flow) in any form - no OI differencing exists in any anchor; independently verified numerically: measured |rho| <= 0.147 <= 0.20 vs the frozen anchor AND its inverted control on the full common window (52/52 stamps); no sign flip, horizon tweak, cap raise, universe carve-out, threshold relaxation or renaming present"
+    },
+    {
+     "class": "V12-BAB-LOWBETA",
+     "verdict": "CLEAN",
+     "reason": "no beta-sorted book; beta appears only as identical context adjustment; vol-level sorts sit only in never-promotable control seats (a6 LIQPRO VOLREG, a8 TCH CTL-VOLLEVEL)"
+    },
+    {
+     "class": "V12-ILLIQ-REPLICATION",
+     "verdict": "CLEAN",
+     "reason": "frozen V12 ILLIQ replication brief not reopened; no window substitution"
+    },
+    {
+     "class": "DATA-GATED",
+     "verdict": "CLEAN",
+     "reason": "only authorized datasets used (binance_bar 15m bars, funding_data/scan_2026 settlements+marks, oi_data/consolidated daily OI); no external data or purchase"
+    }
+   ],
+   "self_declared_shadow_region": "not entered (confirmatory if reclassified; gate adopted as binding falsifier)",
+   "rho_measurement": {
+    "method": "weekly cross-sectional Spearman rank correlation per Monday stamp on common eligible symbols (>= 9 breadth), averaged over the common window (primary); pooled within-stamp rank correlation reported as robustness; NO returns, NO PnL computed",
+    "frozen_reference": "research/v12/families/oilev_v2/strategy.py signal_scores_at, arm OILEV-V2-28D-FLOW-W (oi_flow, 28d log OI growth), imported read-only; inverted control = arm OILEV-V2-28D-FLOW-W-INV (sign-inverted end-to-end); sanity rho(anchor, inverted) = -1.000000 on all 988 pairs",
+    "common_window": "52/52 Monday stamps 2025-08-25..2026-08-17; common symbols per stamp 18..19 of 19",
+    "vs_frozen_oilev_v2_anchor": {
+     "mean_per_stamp_spearman": 0.052757,
+     "pooled_within_stamp_rank_rho": 0.052557,
+     "median": 0.048246,
+     "min_stamp": -0.463158,
+     "max_stamp": 0.480702,
+     "per_fold_mean": {
+      "F0": {
+       "mean_rho": 0.055181,
+       "n_stamps": 17
+      },
+      "F1": {
+       "mean_rho": 0.108382,
+       "n_stamps": 18
+      },
+      "F2": {
+       "mean_rho": -0.008566,
+       "n_stamps": 17
+      }
+     },
+     "max_abs_per_stamp": 0.480702,
+     "n_stamps_used": 52
+    },
+    "vs_frozen_inverted_control": {
+     "mean_per_stamp_spearman": -0.052757,
+     "pooled_within_stamp_rank_rho": -0.051419,
+     "n_stamps_used": 52
+    },
+    "threshold": "|rho| <= 0.20 vs BOTH the frozen anchor and its inverted control",
+    "gate_pass": true
+   },
+   "duplicate_flags": [
+    "NEAR-DUPLICATE of EXITCAP (rho +0.9746, same book)",
+    "INVERSE-BOOK DUPLICATE with CAPVEL (rho -0.9371)"
+   ],
+   "novelty_verdict": "ELIGIBLE",
+   "selector_note": "eligibility per the binding rho rule is PASS; duplicate flags constrain SELECTION, not eligibility - see pairwise matrix"
+  },
+  "TCH": {
+   "hypothesis_id": "A13-V13-A8-TCH",
+   "lane": "a8",
+   "files": [
+    "research/proposals/v13/a8/TCH.json",
+    "research/proposals/v13/a8/TCH.md"
+   ],
+   "anchor_signal": {
+    "id": "TCH-28D",
+    "faithful_signal_only_implementation": "H = Herfindahl of the 28 daily dollar-turnover shares (UTC days, each fully covered by completed 15m bars, fail-closed); long LOW concentration"
+   },
+   "attestation": {
+    "md_block_present": true,
+    "md_line": 317,
+    "json_item13_present": true,
+    "utc": "2026-09-04T11:16:00Z",
+    "agent": "a8",
+    "verdict": "PRESENT"
+   },
+   "inventory_map_verdict": "CLEAN",
+   "inventory_map": [
+    {
+     "class": "V10-M01-AGGRESSOR-ABSORPTION",
+     "verdict": "CLEAN",
+     "reason": "no aggressor/taker-flow input in any signal; anchors use only bar close x volume aggregates, OI levels and mark levels; bars carry no aggressor side and none is constructed"
+    },
+    {
+     "class": "V11-LOTTERY-MAX-SKEW",
+     "verdict": "CLEAN",
+     "reason": "no return-distribution moment (MAX/skew/LOT) in the anchor signal; realized volatility appears ONLY inside a6/a8 causal control arms which are preregistered never-promotable"
+    },
+    {
+     "class": "V11-ILLIQ-AMIHUD",
+     "verdict": "CLEAN",
+     "reason": "no |return|/dollar-volume price-impact ratio anywhere; no attempt to reopen the frozen Amihud identity"
+    },
+    {
+     "class": "V11-OILEVER-DELEV",
+     "verdict": "CLEAN",
+     "reason": "zero OI records in the anchor signal (verified in this audit's independent signal-only implementation): cannot be an OI-deleveraging variant by construction"
+    },
+    {
+     "class": "V4-XSECT-MOM",
+     "verdict": "CLEAN",
+     "reason": "no past-return term at any horizon in any anchor signal (verified signal-only)"
+    },
+    {
+     "class": "V6/V1-CARRY-FUNDING",
+     "verdict": "CLEAN",
+     "reason": "funding never enters any signal, ranking or eligibility rule (cost only by construction in all six proposals)"
+    },
+    {
+     "class": "V1-VOLCOMP",
+     "verdict": "CLEAN",
+     "reason": "no volatility-compression or breakout/continuation rule; volume enters as within-window dispersion SHAPE (scale-invariant Herfindahl) or as a LEVEL mean denominator - no threshold crossing, no shock-event trigger, no continuation premise (boundary note: the turnover-shape proposals are the nearest neighbours of the V9 dollar-volume class; the discriminating features are scale-invariance, absence of an event trigger, and a shape/structure rather than spike-continuation claim)"
+    },
+    {
+     "class": "V8R-XSECT-REVERSAL",
+     "verdict": "CLEAN",
+     "reason": "signal is return-free by construction; no cross-sectional reversal variant"
+    },
+    {
+     "class": "V9-TS-TREND",
+     "verdict": "CLEAN",
+     "reason": "no trend/return term; TCH additionally preregisters a reversal-in-disguise falsifier"
+    },
+    {
+     "class": "WEEKLY-REVERSAL / MR-RESCUE",
+     "verdict": "CLEAN",
+     "reason": "no past-return term; no renamed rejected baseline detected"
+    },
+    {
+     "class": "V12-OILEV-V2",
+     "verdict": "CLEAN",
+     "reason": "none of the six implements the frozen OILEV-V2 signal (28d log OI-growth oi_flow) in any form - no OI differencing exists in any anchor; independently verified numerically: measured |rho| <= 0.147 <= 0.20 vs the frozen anchor AND its inverted control on the full common window (52/52 stamps); no sign flip, horizon tweak, cap raise, universe carve-out, threshold relaxation or renaming present"
+    },
+    {
+     "class": "V12-BAB-LOWBETA",
+     "verdict": "CLEAN",
+     "reason": "no beta-sorted book; beta appears only as identical context adjustment; vol-level sorts sit only in never-promotable control seats (a6 LIQPRO VOLREG, a8 TCH CTL-VOLLEVEL)"
+    },
+    {
+     "class": "V12-ILLIQ-REPLICATION",
+     "verdict": "CLEAN",
+     "reason": "frozen V12 ILLIQ replication brief not reopened; no window substitution"
+    },
+    {
+     "class": "DATA-GATED",
+     "verdict": "CLEAN",
+     "reason": "only authorized datasets used (binance_bar 15m bars, funding_data/scan_2026 settlements+marks, oi_data/consolidated daily OI); no external data or purchase"
+    }
+   ],
+   "self_declared_shadow_region": "not entered (confirmatory if reclassified; vol-level rival in never-promotable control seat; gate adopted as binding falsifier)",
+   "rho_measurement": {
+    "method": "weekly cross-sectional Spearman rank correlation per Monday stamp on common eligible symbols (>= 9 breadth), averaged over the common window (primary); pooled within-stamp rank correlation reported as robustness; NO returns, NO PnL computed",
+    "frozen_reference": "research/v12/families/oilev_v2/strategy.py signal_scores_at, arm OILEV-V2-28D-FLOW-W (oi_flow, 28d log OI growth), imported read-only; inverted control = arm OILEV-V2-28D-FLOW-W-INV (sign-inverted end-to-end); sanity rho(anchor, inverted) = -1.000000 on all 988 pairs",
+    "common_window": "52/52 Monday stamps 2025-08-25..2026-08-17; common symbols per stamp 18..19 of 19",
+    "vs_frozen_oilev_v2_anchor": {
+     "mean_per_stamp_spearman": 0.146674,
+     "pooled_within_stamp_rank_rho": 0.144934,
+     "median": 0.182456,
+     "min_stamp": -0.349123,
+     "max_stamp": 0.719298,
+     "per_fold_mean": {
+      "F0": {
+       "mean_rho": 0.14545,
+       "n_stamps": 17
+      },
+      "F1": {
+       "mean_rho": 0.191618,
+       "n_stamps": 18
+      },
+      "F2": {
+       "mean_rho": 0.10031,
+       "n_stamps": 17
+      }
+     },
+     "max_abs_per_stamp": 0.719298,
+     "n_stamps_used": 52
+    },
+    "vs_frozen_inverted_control": {
+     "mean_per_stamp_spearman": -0.146674,
+     "pooled_within_stamp_rank_rho": -0.143795,
+     "n_stamps_used": 52
+    },
+    "threshold": "|rho| <= 0.20 vs BOTH the frozen anchor and its inverted control",
+    "gate_pass": true
+   },
+   "duplicate_flags": [
+    "SAME-FAMILY variant of LIQEPIS (rho +0.6490, same book direction) and LIQPRO (signal rho +0.6490, opposite book)"
+   ],
+   "novelty_verdict": "ELIGIBLE",
+   "selector_note": "eligibility per the binding rho rule is PASS; duplicate flags constrain SELECTION, not eligibility - see pairwise matrix"
+  }
+ },
+ "pairwise_similarity_matrix": {
+  "measure": "mean per-stamp Spearman rho between the two anchor signals' weekly cross-sectional rank series (values), 52/52 stamps each; book direction resolved from each JSON's long/short mapping",
+  "pairs": [
+   {
+    "pair": [
+     "EXITCAP",
+     "OITD"
+    ],
+    "mean_rho": 0.974621,
+    "pooled_rho": 0.974586,
+    "min_stamp": 0.861404,
+    "max_stamp": 1.0,
+    "judgment": "NEAR-DUPLICATE",
+    "reason": "same construct (OI-notional / 28d dollar-turnover capacity ratio), same long-low book, rho +0.9746 (per-stamp range +0.861..+1.000); differences are smoothing only: single OI snapshot x snapshot-paired mark vs 7-stamp OI mean x latest mark, and 10%-missing turnover tolerance vs strict all-28-days"
+   },
+   {
+    "pair": [
+     "LIQEPIS",
+     "LIQPRO"
+    ],
+    "mean_rho": 1.0,
+    "pooled_rho": 1.0,
+    "min_stamp": 1.0,
+    "max_stamp": 1.0,
+    "judgment": "EXACT-DUPLICATE (signal variable identical; books exactly opposite)",
+    "reason": "rho of signal values +1.0000 on all 52 stamps: HHI_norm = 2688 x H is an exact monotone transform - identical slot-level dollar-volume Herfindahl over trailing 2688 slots; LIQEPIS longs LOW concentration, LIQPRO longs HIGH concentration, i.e. the same variable with opposite signed exposure"
+   },
+   {
+    "pair": [
+     "CAPVEL",
+     "EXITCAP"
+    ],
+    "mean_rho": -0.914543,
+    "pooled_rho": -0.913137,
+    "min_stamp": -0.984211,
+    "max_stamp": -0.705263,
+    "judgment": "INVERSE-BOOK DUPLICATE",
+    "reason": "rho -0.9145: same underlying stock/flow variable (volume/OI is the approximate reciprocal of OI$/turnover$); CAPVEL's long-low-churn book is the opposite book of EXITCAP's long-low-unwind-days book"
+   },
+   {
+    "pair": [
+     "CAPVEL",
+     "OITD"
+    ],
+    "mean_rho": -0.937082,
+    "pooled_rho": -0.93589,
+    "min_stamp": -0.987719,
+    "max_stamp": -0.787719,
+    "judgment": "INVERSE-BOOK DUPLICATE",
+    "reason": "rho -0.9371: same variable cluster as above; opposite signed book"
+   },
+   {
+    "pair": [
+     "LIQEPIS",
+     "TCH"
+    ],
+    "mean_rho": 0.648974,
+    "pooled_rho": 0.647071,
+    "min_stamp": 0.175439,
+    "max_stamp": 0.914035,
+    "judgment": "SAME-FAMILY VARIANT (same book direction)",
+    "reason": "rho +0.6490: both long LOW temporal concentration of turnover; differ in aggregation granularity (15m slots vs UTC days) - same mechanism family, different parameterisation"
+   },
+   {
+    "pair": [
+     "LIQPRO",
+     "TCH"
+    ],
+    "mean_rho": 0.648974,
+    "pooled_rho": 0.647071,
+    "min_stamp": 0.175439,
+    "max_stamp": 0.914035,
+    "judgment": "SAME-FAMILY VARIANT (opposite book direction)",
+    "reason": "signal-value rho +0.6490; LIQPRO longs HIGH concentration while TCH longs LOW, so the books disagree while the underlying variable family is shared"
+   },
+   {
+    "pair": [
+     "CAPVEL",
+     "TCH"
+    ],
+    "mean_rho": 0.233724,
+    "pooled_rho": 0.234377,
+    "min_stamp": -0.257895,
+    "max_stamp": 0.701754,
+    "judgment": "DISTINCT (weak overlap)",
+    "reason": "rho +0.2337 - largest of the 'distinct' pairs; both long low-activity names so not fully independent, but below any duplicate band"
+   },
+   {
+    "pair": [
+     "EXITCAP",
+     "LIQEPIS"
+    ],
+    "mean_rho": 0.121684,
+    "pooled_rho": 0.123681,
+    "min_stamp": -0.422085,
+    "max_stamp": 0.564912,
+    "judgment": "DISTINCT",
+    "reason": "rho +0.1217"
+   },
+   {
+    "pair": [
+     "EXITCAP",
+     "LIQPRO"
+    ],
+    "mean_rho": 0.121684,
+    "pooled_rho": 0.123681,
+    "min_stamp": -0.422085,
+    "max_stamp": 0.564912,
+    "judgment": "DISTINCT",
+    "reason": "rho +0.1217"
+   },
+   {
+    "pair": [
+     "EXITCAP",
+     "TCH"
+    ],
+    "mean_rho": -0.195916,
+    "pooled_rho": -0.19551,
+    "min_stamp": -0.626316,
+    "max_stamp": 0.475439,
+    "judgment": "DISTINCT",
+    "reason": "rho -0.1959"
+   },
+   {
+    "pair": [
+     "LIQEPIS",
+     "CAPVEL"
+    ],
+    "mean_rho": -0.092891,
+    "pooled_rho": -0.093479,
+    "min_stamp": -0.624561,
+    "max_stamp": 0.521053,
+    "judgment": "DISTINCT",
+    "reason": "rho -0.0929"
+   },
+   {
+    "pair": [
+     "LIQEPIS",
+     "OITD"
+    ],
+    "mean_rho": 0.099409,
+    "pooled_rho": 0.100997,
+    "min_stamp": -0.436533,
+    "max_stamp": 0.67193,
+    "judgment": "DISTINCT",
+    "reason": "rho +0.0994"
+   },
+   {
+    "pair": [
+     "LIQPRO",
+     "CAPVEL"
+    ],
+    "mean_rho": -0.092891,
+    "pooled_rho": -0.093479,
+    "min_stamp": -0.624561,
+    "max_stamp": 0.521053,
+    "judgment": "DISTINCT",
+    "reason": "rho -0.0929"
+   },
+   {
+    "pair": [
+     "LIQPRO",
+     "OITD"
+    ],
+    "mean_rho": 0.099409,
+    "pooled_rho": 0.100997,
+    "min_stamp": -0.436533,
+    "max_stamp": 0.67193,
+    "judgment": "DISTINCT",
+    "reason": "rho +0.0994"
+   },
+   {
+    "pair": [
+     "OITD",
+     "TCH"
+    ],
+    "mean_rho": -0.206694,
+    "pooled_rho": -0.206835,
+    "min_stamp": -0.628483,
+    "max_stamp": 0.484211,
+    "judgment": "DISTINCT",
+    "reason": "rho -0.2067"
+   }
+  ],
+  "mechanism_clusters": {
+   "A_positioning_capacity_OI_stock_vs_turnover_flow": {
+    "members": {
+     "EXITCAP": "long low U (OI$/turnover$)",
+     "OITD": "long low D (same book as EXITCAP, rho +0.9746)",
+     "CAPVEL": "long low turnover/OI - opposite book on the same variable (rho -0.91..-0.94 vs EXITCAP/OITD)"
+    },
+    "variable": "open-interest stock relative to turnover flow (positioning capacity / churn)"
+   },
+   "B_turnover_temporal_concentration": {
+    "members": {
+     "LIQEPIS": "long low slot-level Herfindahl (smooth)",
+     "LIQPRO": "long high slot-level Herfindahl (bursty) - identical variable, opposite book",
+     "TCH": "long low daily-granularity Herfindahl - same family as LIQEPIS book direction (rho +0.6490)"
+    },
+    "variable": "temporal concentration shape of dollar turnover (15m-slot or daily Herfindahl)"
+   }
+  },
+  "selector_conclusion": "the six proposals reduce to exactly TWO distinct signal variables (clusters A and B; cross-cluster |rho| 0.09..0.23). Within cluster A: EXITCAP and OITD are the same book (rho +0.97) and CAPVEL is the opposite book on the same variable. Within cluster B: LIQEPIS and LIQPRO are the identical variable with opposite books (rho +1.00 on values) and TCH is the same family at coarser granularity. With a sprint ceiling of 6 scored cells across at most 2 families, at most ONE proposal per cluster should be selected; treating the six as six independent mechanisms would double-count."
+ },
+ "overall": {
+  "EXITCAP": "ELIGIBLE - inventory CLEAN (all 13 classes), rho gate PASS (+0.0963 / -0.0963); flagged NEAR-DUPLICATE of OITD",
+  "LIQEPIS": "ELIGIBLE - inventory CLEAN, rho gate PASS (+0.1445 / -0.1445); flagged EXACT signal duplicate of LIQPRO (opposite book)",
+  "CAPVEL": "ELIGIBLE - inventory CLEAN, rho gate PASS (+0.1086 / -0.1086); flagged INVERSE-BOOK duplicate of EXITCAP/OITD cluster",
+  "LIQPRO": "ELIGIBLE - inventory CLEAN, rho gate PASS (+0.1445 / -0.1445); flagged EXACT signal duplicate of LIQEPIS (opposite book)",
+  "OITD": "ELIGIBLE - inventory CLEAN, rho gate PASS (+0.0528 / -0.0528); flagged NEAR-DUPLICATE of EXITCAP",
+  "TCH": "ELIGIBLE - inventory CLEAN, rho gate PASS (+0.1467 / -0.1467); flagged SAME-FAMILY variant of LIQEPIS/LIQPRO"
+ },
+ "caveats": [
+  "mark price for EXITCAP/OITD notional conversion was proxied by the markPrice recorded at funding-settlement stamps in funding_data/scan_2026 (mark observations available at their settlement stamp); signals are insensitive to this choice at rank level",
+  "ETHUSDT was refused at the first 4 stamps (2025-08-25..2025-09-15) by the fail-closed complete-formation-window rule of LIQEPIS/LIQPRO/CAPVEL/OITD/TCH (bar-ingest gap of ~14h on 2025-08-21 between ingest windows); EXITCAP's 10%-missing tolerance admits it; frozen anchor had 19/19 eligible at every stamp",
+  "per-fold means are disclosed: LIQEPIS/LIQPRO F2 fold mean rho = +0.2041 marginally exceeds 0.20 within that single fold; the binding statistic per the packet/contract is the common-window correlation (mean over all 52 stamps), on which every proposal passes; individual Mondays reach |rho| up to 0.72",
+  "LIQPRO's refusal count prints 0 in the run summary because its refusal is recorded at the shared computation point of the identical LIQEPIS variable; signal coverage of LIQEPIS and LIQPRO is identical by construction (n=52 stamps both)",
+  "CAPVEL denominator interpreted as daily OI snapshots in (T-28d, T] with >= 26 required, per item5 of its JSON",
+  "this audit judges mechanisms from the signal definitions in the JSONs, re-implemented signal-only; the proposals' own ancestry-map claims were verified against those implementations, not taken on trust"
+ ],
+ "data_access_log": {
+  "mode": "read-only",
+  "authorized_data_read": {
+   "bars": "/Users/hoangminhlong/my-quantitative/catalog_live_crypto/data/binance_bar/<SYM>-PERP.BINANCE-15-MINUTE-LAST-EXTERNAL/*.parquet for the 19 tradable symbols (Nautilus parquet; close and volume decoded raw i128/1e16 per research/panel.py and the frozen A9-F F7 convention; ts_event forward-snapped to the 15m close boundary per research/v12/families/oilev_v2/audits.py)",
+   "funding_and_marks": "/Users/hoangminhlong/my-quantitative/funding_data/scan_2026/<SYM>/funding.json for the 19 tradable symbols (settlement stamps, fundingRate unused - signals carry no funding term - markPrice used only as EXITCAP/OITD notional-conversion mark)",
+   "open_interest": "/Users/hoangminhlong/my-quantitative/oi_data/consolidated/<SYM>_oi.parquet for the 19 tradable symbols (loaded via the frozen research.v12.families.oilev_v2.audits.load_oi_by_symbol)"
+  },
+  "code_read_or_imported": [
+   "research/proposals/v13/blind_input_packet.md",
+   "research/control/v13_run/forbidden_family_inventory.json",
+   "research/control/v13_run/run_contract.json (shadow_region_rule)",
+   "research/proposals/v13/a5/{EXITCAP,LIQEPIS}.{json,md}",
+   "research/proposals/v13/a6/{CAPVEL,LIQPRO}.{json,md}",
+   "research/proposals/v13/a8/{OITD,TCH}.{json,md}",
+   "research/v12/families/oilev_v2/strategy.py (imported read-only; signal_scores_at for the frozen anchor)",
+   "research/v12/families/oilev_v2/audits.py (read-only OI loader + bar decode conventions)",
+   "research/v11/families/oilever_delev/strategy.py (oi_flow_growth semantics, inherited unchanged by the frozen V12 module)",
+   "research/v12/data_contract.py (REQUIRED_SYMBOLS, authorized dataset roots)",
+   "research/panel.py (fixed16 /1e16 decode + last-write-wins dedupe convention)"
+  ],
+  "not_accessed": [
+   "research/control/v12_run/* (not read; inventory carried byte-identical in the V13 file)",
+   "S1 (never accessed)",
+   "any per-arm outcome or scored artifact",
+   "other lanes' working files beyond the six proposals"
+  ]
+ }
+}
