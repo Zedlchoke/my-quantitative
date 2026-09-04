@@ -1,0 +1,175 @@
+{
+  "schema": "forex_free_v2_proposal_v1",
+  "proposal_id": "FXFV2-A4-P2",
+  "lane": "A4",
+  "cycle": "FOREX-FREE-V2",
+  "title": "London-morning range expansion into the London afternoon, confirmed by retest-hold",
+  "mechanism_class": "conditional_session_range_expansion",
+
+  "economic_mechanism": "When price breaches the London-morning (08:00-12:00 Europe/London) session extreme, stop orders resting beyond that level fill mechanically and accelerate price in the break direction (Osler stop-cluster evidence); limit-order liquidity then migrates to the broken pole, which becomes the new reference level (broken resistance becomes support). A subsequent retest that TOUCHES the broken level and CLOSES back beyond it is direct evidence of absorption at the new pole - a genuine level migration - whereas a push whose close falls back inside the pre-break range is a liquidity vacuum spike with no migrated support. The conditionality state is therefore the market's REACTION to the break (retest-hold vs close-back-inside), not a pre-existing volatility condition: this proposal carries no compression or range-width filter at all.",
+
+  "causal_prediction": "Conditional on a retest-hold (touch of the broken London-AM extreme followed by a close beyond it), continuation in the break direction until end-of-day is positive after cost at 1.5 bps/side. The complement state - the break is followed by a close back inside the pre-break range (failed retest) - should NOT show the same continuation; trading the original break direction on void days (control) is expected to be non-positive. If the anchor's edge appears equally on retest-hold days and void days, the retest state is not the operative filter and the mechanism is falsified; if the anchor is positive while the control is not, the state separation is doing the causal work.",
+
+  "primary_literature_trace": [
+    {
+      "authors": "Carol L. Osler",
+      "venue": "Currency Orders and Exchange Rate Dynamics: An Explanation for the Predictive Success of Technical Analysis, Journal of Finance 58(5), 1791-1819",
+      "year": 2003,
+      "claim": "Using dealer customer-order data, shows that stop-loss orders cluster just beyond recent exchange-rate extremes (and round numbers), so a breach of a session extreme mechanically accelerates price in the break direction until the cluster is exhausted, and that this order geography underlies the predictive success of support/resistance analysis."
+    },
+    {
+      "authors": "William Brock, Josef Lakonishok, Blake LeBaron",
+      "venue": "Simple Technical Trading Rules and the Stochastic Properties of Stock Returns, Journal of Finance 47(5), 1731-1764",
+      "year": 1992,
+      "claim": "Finds that trading-range break rules (price crossing the recent high/low band) carry predictive content for subsequent returns in a long DJIA sample (1897-1986) - the canonical evidence that level breaches carry information rather than noise."
+    }
+  ],
+
+  "h1_observables": {
+    "note": "Free H1 snapshot bars carry datetime/open/high/low/close only (td_loader.py schema); NO volume field exists and none is used. All quantities are exact OHLC-derived, computed on completed H1 bars only.",
+    "london_am_range_D": "L_H = max(high_b), L_L = min(low_b) over the 4 H1 bars whose bar-open UTC instant maps to Europe/London-local wall time in [08:00, 12:00) on London-local date D. A range is VALID only if all 4 bars exist; any missing bar => NO_TRADE day (fail-closed).",
+    "initial_break": "First completed H1 bar with London-local bar-open wall time in [12:00, 17:00) on date D whose high > L_H (upside; side = UP, level L_B = L_H) or low < L_L (downside; side = DOWN, level L_B = L_L). Both sides in one completed bar => side = sign(close - (L_H+L_L)/2), exact tie => no trade. The break bar's far extreme E_B = its high (UP) or low (DOWN).",
+    "retest_hold_state": "On a later completed bar b (London-local open in [12:00, 19:00)), UP case: low(b) <= L_B AND close(b) > L_B (touch-and-hold beyond the broken level); DOWN case: high(b) >= L_B AND close(b) < L_B. The first such bar is the DECISION bar.",
+    "void_state": "UP case: a completed bar (before any retest-hold) whose close < L_H (back inside the pre-break range); DOWN case: close > L_L. The first such bar is the control arm's DECISION bar and voids the day for the anchor and neighbour arms.",
+    "unresolved": "If neither retest-hold nor void occurs by the end of the resolution window, the day resolves as NO_RESOLUTION (no trade; counted as a decision for schedule auditing).",
+    "invalidation": "long: completed-bar close < L_H (back inside the pre-break range); short: close > L_L.",
+    "state_provenance": "Session wall times are the sessions.py module conventional defaults (SYNTHETIC_TEST_ONLY provenance); implementation maps bar-open instants via named-zone conversion (zoneinfo), never fixed UTC offsets; A3 owns reconciliation to authorized provider session semantics. All windows are half-open, DST-safe."
+  },
+
+  "pit_timing": "All inputs to a decision are H1 bars completed at or before the decision bar's close instant; L_H/L_L are fixed at the 12:00 London completion of the morning range, before the trigger window opens. The decision bar is the retest-hold (anchor/neighbour) or void (control) bar; ENTRY is at the OPEN of the next allowed H1 bar after the decision bar completes (one-event lag; entry bar-open must have London-local wall time < 20:00). Invalidation exits are one-event lagged: a completed close triggers the exit at the NEXT H1 open. No D1, no bid/ask, no calendar events enter scored quantities. Missing entry bar => signal voided, NO_TRADE, fail-closed, never fill-forward.",
+
+  "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+  "pair_universe_justification": "All 7 pairs. The mechanism (stop-cluster acceleration at session extremes plus limit-cluster migration to the broken pole) is generic liquid-G10 microstructure, not pair-specific; no ex-ante exclusion is justified. Pair heterogeneity is handled by the frozen concentration gates and the drop-one-pair plan.",
+
+  "usd_factor_neutral_construction": null,
+  "usd_neutrality_justification": "No USD neutrality is claimed: the trade is the pair's own directional level expansion and USD drift is part of the traded move. The Stage-A USD/common-factor gate is N/A here. A descriptive (non-gated) diagnostic is scheduled: per-trade direction vs the cross-sectional mean USD-leg move reported at scoring for transparency.",
+
+  "clocks": {
+    "warmup_bars": 48,
+    "warmup_argument": "The retest state is same-day only: no trailing distribution is required. 48 H1 bars (2 days) exist solely to establish bar continuity and weekend classification before the schedule activates.",
+    "decision_bar": "anchor/neighbour: the first completed retest-hold bar (London-local open in [12:00, 19:00)); control: the first completed void bar in the same window. All windows derived from Europe/London named-zone conversions on London-local date D.",
+    "entry": "OPEN of the next allowed H1 bar after the decision bar completes; the entry bar-open must have London-local wall time < 20:00 (latest practical entry ~14:00-15:00 America/New_York, leaving >= 1 hour to forced flat in both DST regimes). One entry per pair per UTC day maximum: the day's first initial-break state machine is the only one; once the day resolves (retest-hold / void / no-resolution), no further entries that UTC day.",
+    "exit_rule": "Earlier of: (a) invalidation: exit at the next H1 open after the first completed bar AT or AFTER the entry bar whose close satisfies the invalidation rule (long: close < L_H; short: close > L_L); (b) forced flat (below). No profit target.",
+    "forced_flat": "exit at 16:00 America/New_York bar open on entry UTC day (20:00Z EDT / 21:00Z EST, strictly before the 17:00 NY rollover). If that bar does not exist (e.g. Friday weekly close at 16:00 NY), exit at the OPEN of the immediately preceding existing H1 bar, recorded as early_forced_flat; no position ever crosses the rollover boundary.",
+    "missing_bar_rule": "Any required bar missing => NO_TRADE (or earliest-available scheduled exit for forced-flat only), never silent fill-forward."
+  },
+
+  "trade_budget_governor": {
+    "max_entries_per_pair_per_utc_day": 1,
+    "max_round_trips_per_pair_per_utc_week": 3,
+    "utc_week_definition": "[Monday 00:00Z, next Monday 00:00Z)",
+    "cap_enforcement": "Deterministic and PIT-safe: signals exceeding either cap are dropped (not deferred). The daily cap is structural (one state machine per pair per day); the weekly cap is a rolling counter over the frozen UTC week."
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV2-A4-P2-anchor",
+      "spec": "Initial break of the London-AM range during [12:00,17:00) Europe/London; enter next H1 open in the break direction ONLY after the retest-hold state fires (touch of L_B plus close beyond it, within the [12:00,19:00) resolution window); exit on close-back-inside invalidation or forced flat; governor as frozen.",
+      "single_frozen_parameter_set": {
+        "london_am_range_window_local": "08:00-12:00 Europe/London",
+        "trigger_window_local": "12:00-17:00 Europe/London",
+        "resolution_window_local": "12:00-19:00 Europe/London",
+        "retest_level": "L_B (broken London-AM extreme)",
+        "entry_deadline_local": "entry bar-open < 20:00 Europe/London",
+        "invalidation": "close back inside London-AM range",
+        "forced_flat_local": "16:00 America/New_York bar open, entry UTC day"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV2-A4-P2-neigh",
+      "one_presumption_away": "Replaces the presumption of WHICH level represents the migrated order pole: the initial-break bar's far extreme E_B instead of the range extreme L_B. Both readings encode 'absorption at the breakout pole'; if the level-migration mechanism is real the neighbour should move TOGETHER with the anchor; divergence would indicate the edge depends on the exact structural extreme rather than the pole concept.",
+      "spec": "Identical to anchor in every frozen constant EXCEPT the retest is evaluated against E_B: UP case retest-hold = low(b) <= E_B AND close(b) > E_B; DOWN mirror. Void state, windows, exits, governor unchanged.",
+      "single_frozen_parameter_set": {
+        "london_am_range_window_local": "08:00-12:00 Europe/London",
+        "trigger_window_local": "12:00-17:00 Europe/London",
+        "resolution_window_local": "12:00-19:00 Europe/London",
+        "retest_level": "E_B (initial-break bar's far extreme)",
+        "entry_deadline_local": "entry bar-open < 20:00 Europe/London",
+        "invalidation": "close back inside London-AM range",
+        "forced_flat_local": "16:00 America/New_York bar open, entry UTC day"
+      }
+    },
+    "control": {
+      "arm_id": "FXFV2-A4-P2-ctrl",
+      "role": "Complement-state causal control: identical trigger and state machine, but it trades the VOID event (failed retest) in the original break direction. It removes exactly the proposed ingredient - the retest-hold state - while holding the day, the break, the session, and the clock identical.",
+      "spec": "Identical to anchor through initial-break detection. On the first void bar (UP: close < L_H; DOWN: close > L_L) within the [12:00,19:00) resolution window, the void bar is the decision bar; enter at the next H1 open (bar-open < 20:00 London) in the ORIGINAL break direction. Exit: earlier of (a) invalidation: completed-bar close beyond the OPPOSITE range extreme (UP entry: close < L_L; DOWN entry: close > L_H) => exit next H1 open, or (b) forced flat 16:00 America/New_York bar open on entry UTC day. Governor identical.",
+      "expected_behavior": "Should NOT reproduce the anchor's expectancy: the causal claim is precisely that break-direction continuation accrues to retest-hold days, not to failed-retest days. If the control matches the anchor, the retest state is not the operative mechanism and the anchor fails its control gate. (An unconditional-break-at-first-touch control was deliberately rejected: it embeds a rival unconditional breakout mechanism - see search_log.md.)",
+      "single_frozen_parameter_set": {
+        "london_am_range_window_local": "08:00-12:00 Europe/London",
+        "trigger_window_local": "12:00-17:00 Europe/London",
+        "resolution_window_local": "12:00-19:00 Europe/London",
+        "entry_event": "first void bar (close back inside pre-break range)",
+        "entry_direction": "original break direction",
+        "entry_deadline_local": "entry bar-open < 20:00 Europe/London",
+        "invalidation": "close beyond the opposite range extreme",
+        "forced_flat_local": "16:00 America/New_York bar open, entry UTC day"
+      }
+    }
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tiers": [1.0, 1.5, 2.0],
+    "tier_2_rule": "3.0 bps per side AND every fill (entry and exit) delayed by one additional event (next allowed H1 open), recomputing the schedule.",
+    "notional_usd_unit": 10000,
+    "break_even_diagnostic": "break_even_bps_per_side = mean_gross_trade_return_bps / 2, where mean_gross_trade_return_bps is the anchor arm's mean per-trade gross return in bps of the 10000 USD-unit notional (costs excluded; round trip = 2 sides). Computed full-sample and per fold, anchor arm only, reported next to the tier results. Interpretation frozen in advance: the stress gate can only be plausibly attainable if break_even exceeds 3.0 bps/side; diagnostic only, never a fee rescue."
+  },
+
+  "expected_frequency": {
+    "trades_per_pair_per_week_estimate": 1.0,
+    "band": "0.7 - 1.3",
+    "analytic_schedule_argument": "Trading days per pair per week ~ 5. Schedule-level expectation that the London-AM range is first breached during the [12:00,17:00) London window (rather than earlier in the London afternoon gap or not at all): ~ 0.35-0.45. Given an initial break, expectation that a retest-hold (or void) resolves within the resolution window: ~ 0.6-0.8, of which the anchor takes only the retest-hold subset (~ 0.45-0.60 of resolved days; pullbacks to the pole are common after stop-driven pushes). Product: 5 * ~0.40 * ~0.50 ~ 1.0 anchor RT per pair per week. Caps: <= 1 entry/pair/UTC-day structural; <= 3 RT/pair/week governor (expected slack ~ 3x).",
+    "full_sample_schedule_estimate": "~ 340 trades/pair over ~6.59y; ~ 2400 across 7 pairs (anchor). Control frequency is similar (conditioned on the same break days, complement state).",
+    "contract_compliance": "Both preregistered caps satisfied by construction plus deterministic governor; realised frequency audited at implementation on the real snapshot (schedule-only)."
+  },
+
+  "folds_plan": {
+    "scheme": "3 chronological folds over the decision span 2020-03-01 .. 2026-09-02 (UTC dates; 48-bar warmup excluded).",
+    "folds": [
+      { "fold": "F1", "start_utc_date": "2020-03-01", "end_utc_date": "2022-05-01" },
+      { "fold": "F2", "start_utc_date": "2022-05-02", "end_utc_date": "2024-07-01" },
+      { "fold": "F3", "start_utc_date": "2024-07-02", "end_utc_date": "2026-09-02" }
+    ],
+    "purge": "Any trade whose entry OR exit instant falls within 14 calendar days either side of an internal fold boundary (2022-04-17..2022-05-15 and 2024-06-17..2024-07-15 UTC) is excluded from that fold's statistics and counted in purge_excluded; ~10 trading days of embargo per side.",
+    "stage_a_note": "Scoring requires >= 2/3 folds positive after-cost expectancy and no populated fold PF < 0.80 (PLAN_forex_v2.md section 12 gates; frozen here by reference)."
+  },
+
+  "concentration_plan": {
+    "pair_concentration_gate": "No single pair > 40% of gross positive trade PnL full-sample; no single pair > 50% within any populated fold. Account/cash currency is not a pair and is excluded from concentration.",
+    "direction_check": "Longs and shorts must each be >= 25% of trades full-sample; the mechanism is direction-agnostic and a one-sided schedule indicates a broken implementation, not an edge.",
+    "session_coverage_check": "Every UTC weekday (Mon-Fri) must appear among decision days; absent weekdays indicate a clock/DST defect."
+  },
+
+  "drop_one_pair_plan": {
+    "procedure": "Recompute the anchor full-sample schedule 7 times, each time excluding exactly one pair.",
+    "gate": "Anchor after-cost expectancy sign unchanged (positive) and PF >= 1.00 in at least 6 of 7 drop-one recomputes.",
+    "interpretation": "Failure means the edge is a single-pair artifact, not a cross-pair level-migration mechanism."
+  },
+
+  "minimum_decisions": {
+    "definition": "A decision = one UTC day on which the arm's state machine reached a resolution (retest-hold, void, or NO_RESOLUTION) following an initial break. Voided entries (missing entry bar) count as decisions without trades.",
+    "per_pair_per_fold_minimum": 150,
+    "per_pair_full_sample_minimum": 500
+  },
+
+  "minimum_trades_per_cell": {
+    "per_fold_aggregate_minimum": 400,
+    "full_sample_aggregate_minimum": 1800,
+    "note": "Aggregate across the 7-pair universe; a cell below these counts is INDETERMINATE, not negative evidence."
+  },
+
+  "failure_interpretation": "A negative anchor means retest-hold-confirmed London-morning range expansion has no after-cost edge on free H1 data at the frozen 1.5-3.0 bps/side cost authority; the confirmation-filter variant of the session-range family is falsified and no generality is lost (a correct REJECT_ALL is a complete outcome). If the anchor is positive but the void-day control shows comparable expectancy, the retest state is not the operative filter and the proposal fails its control gate regardless of the anchor's sign. If the neighbour diverges from the anchor, the pole-level presumption is fragile and the supporting-arm expectation fails. If the control is MORE negative than a negative anchor, direction coherence is recorded but never rescues.",
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm (the three frozen windows, the retest pole, the entry deadline, the invalidation law). No grids, menus, ranges, or tuning anywhere; the neighbour is a distinct single frozen spec, not a second point on a knob.",
+
+  "novelty_self_check": {
+    "vs_family1_london_open_continuation": "No session-open price, open-direction, or unconditional continuation anywhere: entries require a measured range breach PLUS a same-day reaction state (retest-hold), and the pre-break range, not the open, defines every level.",
+    "vs_family2_late_ny_fade": "Different session anchor (London morning/afternoon, not late NY), opposite mechanism family (expansion confirmation, not extension fade), no standardized-extension observable, no fade direction.",
+    "vs_known_duplicate_london_to_ny_momentum": "The anchor does not carry London direction into New York: the trigger window and resolution close inside the London afternoon (entries no later than <20:00 London), and entry requires the retest-hold reaction state rather than session-to-session momentum.",
+    "rescue_operations": "No sign inversion, no reduced costs, no pair cherry-picking, no session relabeling of a rejected family."
+  },
+
+  "outcome_blind_attestation": "I (A4) read no V1 outcomes of any kind: no files under research/control/forex_free_v1_run/, no V1 family modules, no V1 per-cell PnL tables, tests/assets/forex_free_v1/, PLAN_forex.md, or git history. My only V1 knowledge is the mechanism names and summary evidence quoted in the allowlisted forbidden_family_inventory.json and PLAN_forex_v2.md. I loaded no market data (no data_raw reads) and computed no backtest, PnL, or schedule simulation; every number in this proposal is a schedule-level design estimate or a frozen design constant. This proposal was written before any V2 scoring existed.",
+  "written_before_scoring_utc": "2026-09-04"
+}

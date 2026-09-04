@@ -1,0 +1,174 @@
+{
+  "schema": "forex_free_v2_proposal_v1",
+  "proposal_id": "FXFV2-A4-P1",
+  "lane": "A4",
+  "cycle": "FOREX-FREE-V2",
+  "title": "Tokyo-range compression, conditional expansion into the London morning",
+  "mechanism_class": "conditional_session_range_expansion",
+
+  "economic_mechanism": "During the Asian lull, dealer inventories flatten and resting customer orders (stops just beyond, limits just inside the overnight extremes) accumulate within a narrow Tokyo-session band. Volatility in spot FX is strongly positively autocorrelated and follows a deterministic intraday periodicity: an Asian activity trough is followed by a European activity surge (Andersen-Bollerslev intraday periodicity; volatility clustering). When the overnight Tokyo range is unusually COMPRESSED relative to its own trailing distribution, the same London-morning order flow moves price further per unit of flow because near-touch liquidity is thin, and the first breach of the overnight extreme mechanically triggers the resting stop cluster beyond it (Osler order-level evidence). The proposed mechanism is therefore NOT open-direction continuation: it monetizes the release of a measured compression state through a measured prior-session range, conditional on that state being present.",
+
+  "causal_prediction": "On Tokyo-session days whose range falls in the compression state (range < 0.75 x trailing-20-session median), the first completed London-morning H1 bar that breaches the Tokyo range high (or low) is followed by directional continuation in the breach direction through the European morning and NY overlap, with positive after-cost expectancy at 1.5 bps/side and materially larger continuation than the same breach evaluated at the Tokyo range MIDPOINT on the same state days (control). If compression is removed from the world (non-compression days), the conditional edge should shrink toward zero; if levels at the extremes are not the operative ingredient (control matches anchor), the proposed mechanism is falsified regardless of the anchor sign.",
+
+  "primary_literature_trace": [
+    {
+      "authors": "Toby Crabel",
+      "venue": "Day Trading with Short Term Price Patterns and Opening Range Breakout, Traders Press (book)",
+      "year": 1990,
+      "claim": "Documents that breakout systems applied to the session opening range earn their backtested edge primarily when the opening range is narrow relative to its recent distribution: profitability is conditional on measured range compression, not on unconditional continuation."
+    },
+    {
+      "authors": "Carol L. Osler",
+      "venue": "Support for Resistance: Technical Analysis and Intraday Exchange Rates, Federal Reserve Bank of New York Economic Policy Review, Vol. 6, No. 2",
+      "year": 2000,
+      "claim": "Shows that intraday support and resistance levels in USD/DEM had measurable predictive success, consistent with clusters of customer orders resting at recognizable price levels such as session extremes."
+    }
+  ],
+
+  "h1_observables": {
+    "note": "Free H1 snapshot bars carry datetime/open/high/low/close only (td_loader.py schema); NO volume field exists and none is used. All quantities are exact OHLC-derived, computed on completed H1 bars only.",
+    "tokyo_range_D": "max(high_b - low_b contributions: max(high_b) - min(low_b)) over the 9 H1 bars whose bar-open UTC instant lies in [09:00, 18:00) Asia/Tokyo on Tokyo-local civil date D (the sessions.py TOKYO_SESSION convention; equals [00:00, 09:00) UTC because JST has no DST). A session is VALID only if all 9 bars exist; any missing bar => state NOT evaluated for that day (NO_TRADE, fail-closed).",
+    "median20_D": "median of tokyo_range over the 20 most recent VALID Tokyo sessions strictly before D, all within the trailing 30 calendar days. If fewer than 20 valid sessions are available in that window => state NOT evaluated (NO_TRADE, fail-closed).",
+    "compression_state": "1{ tokyo_range_D < 0.75 * median20_D } (anchor arm).",
+    "T_H": "max(high_b) over the Tokyo-session bars of date D; T_L = min(low_b) over the same bars; M = (T_H + T_L) / 2 (midpoint used only by the control arm).",
+    "break_test": "upside break: bar high > T_H (strict); downside break: bar low < T_L (strict); both in one completed bar => direction = sign(close - M), exact tie => no trade.",
+    "invalidation": "long: completed-bar close < T_H (back inside the pre-break range); short: close > T_L.",
+    "state_provenance": "session wall times are the sessions.py module conventional defaults (SYNTHETIC_TEST_ONLY provenance); implementation must map bar-open instants via named-zone conversion (zoneinfo), never fixed UTC offsets, and A3 owns the reconciliation to authorized provider session semantics."
+  },
+
+  "pit_timing": "All inputs to a decision are H1 bars completed at or before the decision bar's close instant. The decision bar is the first completed London-morning bar breaching the range; its inputs (Tokyo range, trailing median, T_H/T_L) are strictly earlier completed bars. ENTRY is at the OPEN of the next allowed H1 bar after the decision bar completes (one-event lag; no same-bar entry; no intrabar fills). Invalidation exits are also one-event lagged: a completed bar's close triggers an exit at the NEXT H1 open. No D1 data, no bid/ask, no calendar events enter any scored quantity. Missing next bar => signal voided, NO_TRADE, fail-closed, never fill-forward.",
+
+  "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+  "pair_universe_justification": "All 7 pairs. The mechanism (order clusters resting beyond session extremes released by a liquidity surge into a compressed range) is generic to liquid G10 pairs and is not a priori pair-specific; excluding any pair ex ante would be unjustified selection. Pair heterogeneity is handled ex post by the frozen concentration gates and drop-one-pair plan, not by ex-ante subsetting.",
+
+  "usd_factor_neutral_construction": null,
+  "usd_neutrality_justification": "No USD neutrality is claimed: the traded move is the pair's own directional expansion and USD drift is part of the signal, not a nuisance factor. The Stage-A gate on rejecting a USD/common-factor explanation is therefore N/A for this proposal. A descriptive (non-gated) diagnostic is scheduled: per-trade direction vs the cross-sectional mean USD-leg move will be reported at scoring for transparency.",
+
+  "clocks": {
+    "warmup_bars": 600,
+    "warmup_argument": "600 H1 bars (~25 days) exceeds the 21 valid Tokyo sessions (20 trailing + current) needed for the state, with buffer for weekend gaps and holidays.",
+    "decision_bar": "First completed H1 bar with Europe/London-local bar-open wall time in [08:00, 12:00) on London-local date D (the sessions.py LONDON_SESSION open hour onward; 4 hourly bars) whose break_test fires. Both anchor windows (Tokyo session, London morning) are computed for the same UTC calendar date D; named-zone conversion handles BST/GMT.",
+    "entry": "OPEN of the next allowed H1 bar after the decision bar completes (one-event lag). One entry per pair per UTC day maximum by construction: only the day's FIRST qualifying break can produce a decision, and after the day's evaluation no further entries that UTC day.",
+    "exit_rule": "Earlier of: (a) invalidation: exit at the next H1 open after the first completed bar AT or AFTER the entry bar whose close satisfies the invalidation rule (long: close < T_H; short: close > T_L); (b) forced flat (below). No profit target; the expansion is allowed to run within the day.",
+    "forced_flat": "exit at 16:00 America/New_York bar open on entry UTC day (the H1 bar whose open instant equals 16:00 America/New_York local; 20:00Z EDT / 21:00Z EST, strictly before the 17:00 NY rollover). If that bar does not exist (e.g. Friday weekly close at 16:00 NY), exit at the OPEN of the immediately preceding existing H1 bar, recorded as early_forced_flat; no position ever crosses the rollover boundary.",
+    "missing_bar_rule": "Any bar required by the state, decision, entry or exit evaluation that is missing => NO_TRADE (or earliest-available scheduled exit for forced-flat only), never silent fill-forward."
+  },
+
+  "trade_budget_governor": {
+    "max_entries_per_pair_per_utc_day": 1,
+    "max_round_trips_per_pair_per_utc_week": 3,
+    "utc_week_definition": "[Monday 00:00Z, next Monday 00:00Z)",
+    "cap_enforcement": "Deterministic and PIT-safe: signals that would exceed either cap are dropped (not deferred). The daily cap is structural (one decision day per Tokyo session); the weekly cap is enforced by a rolling counter over the frozen UTC week."
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV2-A4-P1-anchor",
+      "spec": "Compression state (tokyo_range_D < 0.75 * median20_D) AND first London-morning [08:00,12:00) Europe/London breach of T_H/T_L; enter next H1 open in breach direction; exit on close-back-inside invalidation or forced flat; governor as frozen.",
+      "single_frozen_parameter_set": {
+        "tokyo_session_wall": "09:00-18:00 Asia/Tokyo",
+        "london_morning_window_local": "08:00-12:00 Europe/London",
+        "trailing_median_sessions": 20,
+        "trailing_window_calendar_days": 30,
+        "compression_ratio": 0.75,
+        "invalidation": "close back inside Tokyo range",
+        "forced_flat_local": "16:00 America/New_York bar open, entry UTC day"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV2-A4-P1-neigh",
+      "one_presumption_away": "Replaces the compression measurement presumption (ratio-to-median) with a scale-free rank rule; the state concept 'today's Tokyo range is in the bottom of its recent distribution' is held fixed, so the neighbour should move TOGETHER with the anchor if the mechanism is real, and diverge only if the anchor sits on a knife-edge ratio.",
+      "spec": "Identical to anchor in every frozen constant EXCEPT compression_state := 1{ tokyo_range_D < Q20 } where Q20 is the 5th-smallest of the trailing 20 valid Tokyo-session ranges (bottom-quartile order statistic, no interpolation).",
+      "single_frozen_parameter_set": {
+        "tokyo_session_wall": "09:00-18:00 Asia/Tokyo",
+        "london_morning_window_local": "08:00-12:00 Europe/London",
+        "trailing_rank_sessions": 20,
+        "bottom_quartile_order_statistic": 5,
+        "trailing_window_calendar_days": 30,
+        "invalidation": "close back inside Tokyo range",
+        "forced_flat_local": "16:00 America/New_York bar open, entry UTC day"
+      }
+    },
+    "control": {
+      "arm_id": "FXFV2-A4-P1-ctrl",
+      "role": "Placebo/causal control: removes the proposed ingredient (resting order clusters AT the range extremes) while holding session, state, windows, exits and governor identical.",
+      "spec": "Identical to anchor (same compression state, same London-morning window, same entry/exit law) EXCEPT the trigger and invalidation levels are the Tokyo range MIDPOINT M: upside trigger high > M (long), downside trigger low < M (short), both-in-one-bar => sign(close - M), exact tie => no trade; invalidation long: close < M, short: close > M. The retest-style acceleration attributed to stop/limit clusters at the extremes has no reason to exist at the center of the range; the control should NOT reproduce the anchor's edge. Expected control frequency is HIGHER (M is crossed earlier and more often); the weekly governor cap binds more often and keeps it inside the contract.",
+      "single_frozen_parameter_set": {
+        "tokyo_session_wall": "09:00-18:00 Asia/Tokyo",
+        "london_morning_window_local": "08:00-12:00 Europe/London",
+        "trailing_median_sessions": 20,
+        "trailing_window_calendar_days": 30,
+        "compression_ratio": 0.75,
+        "trigger_level": "Tokyo range midpoint M",
+        "invalidation": "close back across M",
+        "forced_flat_local": "16:00 America/New_York bar open, entry UTC day"
+      }
+    }
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tiers": [1.0, 1.5, 2.0],
+    "tier_2_rule": "3.0 bps per side AND every fill (entry and exit) delayed by one additional event (next allowed H1 open), recomputing the schedule.",
+    "notional_usd_unit": 10000,
+    "break_even_diagnostic": "break_even_bps_per_side = mean_gross_trade_return_bps / 2, where mean_gross_trade_return_bps is the anchor arm's mean per-trade gross return in bps of the 10000 USD-unit notional (costs excluded; round trip = 2 sides). Computed full-sample and per fold, anchor arm only, and reported next to the tier results. Interpretation frozen in advance: the stress gate can only be plausibly attainable if break_even exceeds 3.0 bps/side; this is a diagnostic, never a fee rescue."
+  },
+
+  "expected_frequency": {
+    "trades_per_pair_per_week_estimate": 1.3,
+    "band": "1.0 - 1.6",
+    "analytic_schedule_argument": "Trading days per pair per week ~ 5 (24/5 week less holidays). Compression state incidence: the ratio threshold 0.75 x trailing-20-median sits in the lower tail of the right-skewed Tokyo range distribution; schedule-level expectation ~ 0.25-0.35 of valid days (audited at implementation; never optimized). Given a compressed (small) overnight range, the probability that at least one of the 4 London-morning bars breaches an extreme is high, ~ 0.85-0.95. Product: 5 * ~0.30 * ~0.90 ~ 1.35 round trips per pair per week. Caps: <= 1 entry/pair/UTC-day holds by construction; <= 3 RT/pair/week is enforced by the governor and is not expected to bind.",
+    "full_sample_schedule_estimate": "~ 440 trades/pair over the ~6.5y post-warmup span; ~ 3100 across 7 pairs.",
+    "contract_compliance": "Both preregistered caps satisfied by construction plus deterministic governor; realised frequency audited at implementation on the real snapshot (schedule-only)."
+  },
+
+  "folds_plan": {
+    "scheme": "3 chronological folds over the decision span 2020-03-01 .. 2026-09-02 (UTC dates; warmup excluded).",
+    "folds": [
+      { "fold": "F1", "start_utc_date": "2020-03-01", "end_utc_date": "2022-05-01" },
+      { "fold": "F2", "start_utc_date": "2022-05-02", "end_utc_date": "2024-07-01" },
+      { "fold": "F3", "start_utc_date": "2024-07-02", "end_utc_date": "2026-09-02" }
+    ],
+    "purge": "Any trade whose entry OR exit instant falls within 14 calendar days either side of an internal fold boundary (2022-04-17..2022-05-15 and 2024-06-17..2024-07-15 UTC) is excluded from that fold's statistics and counted in purge_excluded; ~10 trading days of embargo per side.",
+    "stage_a_note": "Scoring requires >= 2/3 folds positive after-cost expectancy and no populated fold PF < 0.80 (PLAN_forex_v2.md section 12 gates; frozen here by reference)."
+  },
+
+  "concentration_plan": {
+    "pair_concentration_gate": "No single pair > 40% of gross positive trade PnL full-sample; no single pair > 50% within any populated fold. Account/cash currency is not a pair and is excluded from concentration.",
+    "direction_check": "Longs and shorts must each be >= 25% of trades full-sample; the mechanism is direction-agnostic and a one-sided schedule indicates a broken implementation, not an edge.",
+    "session_coverage_check": "Every UTC weekday (Mon-Fri) must appear among decision days; absent weekdays indicate a clock/DST defect."
+  },
+
+  "drop_one_pair_plan": {
+    "procedure": "Recompute the anchor full-sample schedule 7 times, each time excluding exactly one pair.",
+    "gate": "Anchor after-cost expectancy sign unchanged (positive) and PF >= 1.00 in at least 6 of 7 drop-one recomputes.",
+    "interpretation": "Failure means the edge is a single-pair artifact (e.g. one currency's idiosyncratic episode), not a cross-pair session-range mechanism."
+  },
+
+  "minimum_decisions": {
+    "definition": "A decision = one state-valid UTC day on which the arm's frozen schedule completed a first-break trigger evaluation (go or no-go). Void entries (missing entry bar) count as decisions without trades.",
+    "per_pair_per_fold_minimum": 80,
+    "per_pair_full_sample_minimum": 300
+  },
+
+  "minimum_trades_per_cell": {
+    "per_fold_aggregate_minimum": 400,
+    "full_sample_aggregate_minimum": 1200,
+    "note": "Aggregate across the 7-pair universe; a cell below these counts is INDETERMINATE, not negative evidence."
+  },
+
+  "failure_interpretation": "A negative anchor means compression-conditional overnight-to-London range expansion has no after-cost edge on free H1 data at the frozen 1.5-3.0 bps/side cost authority, and the conditional-session-range family it represents loses no generality from this specific failure (a correct REJECT_ALL is a complete outcome). If the anchor is nonpositive but the control (midpoint placebo) is MORE negative, direction coherence is recorded but never rescues. If the anchor is positive but the control reproduces the anchor's edge, the mechanism is NOT validated: the level placement at the extremes is not the operative ingredient and the proposal fails its control gate. If the neighbour diverges from the anchor while the control behaves, the anchor is presumed threshold-fragile and fails the supporting-arm expectation.",
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm (0.75, 20 sessions, 30 days, the frozen windows and clocks). No grids, menus, ranges, or tuning anywhere; the neighbour is a distinct single frozen spec, not a second point on the anchor's knob.",
+
+  "novelty_self_check": {
+    "vs_family1_london_open_continuation": "No use of any session-open price, open-direction, or unconditional continuation. The trigger is a level breach of a measured PRIOR-session (Tokyo) range, gated by a measured compression state; entries occur on at most ~30% of days versus family1's unconditional daily cadence.",
+    "vs_family2_late_ny_fade": "Different session anchor (Tokyo->London morning, not late NY), opposite mechanism family (expansion/breakout, not extension fade), no standardized-extension observable.",
+    "vs_known_duplicate_london_to_ny_momentum": "No open-to-open momentum carry between sessions.",
+    "rescue_operations": "No sign inversion, no reduced costs, no pair cherry-picking, no session relabeling of a rejected family."
+  },
+
+  "outcome_blind_attestation": "I (A4) read no V1 outcomes of any kind: no files under research/control/forex_free_v1_run/, no V1 family modules, no V1 per-cell PnL tables, tests/assets/forex_free_v1/, PLAN_forex.md, or git history. My only V1 knowledge is the mechanism names and summary evidence quoted in the allowlisted forbidden_family_inventory.json and PLAN_forex_v2.md. I loaded no market data (no data_raw reads) and computed no backtest, PnL, or schedule simulation; every number in this proposal is a schedule-level design estimate or a frozen design constant. This proposal was written before any V2 scoring existed.",
+  "written_before_scoring_utc": "2026-09-04"
+}
