@@ -1,0 +1,147 @@
+{
+  "schema": "v13r_a7_delta_audit_v1",
+  "artifact": "a7_delta_v13r",
+  "producer_role": "A7",
+  "cycle": "CRYPTO-V13",
+  "audit_kind": "independent DELTA audit before the first scored cell (V12R precedent)",
+  "audited_at_utc": "2026-09-04",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v13/r-a7-delta",
+  "branch": "orca/v13-r-a7-delta",
+  "audit_base_head": "4c217b0321d1c3cc5b266457e03d7f75295b2548",
+  "w1_sha": "c0d06730596f7305a9e93b6ac5404a23877c10e2",
+  "w1r_sha": "bcb28536c7af7140372120f2bd9896b76be00c42",
+  "verdict": "V13R_LAUNCH_AUTHORIZED",
+  "unresolved_high_critical": 0,
+  "independence": "recomputed-and-verified; audit artifacts only, no repair; no push, no merge; main untouched",
+  "items": {
+    "1_delta_scope": {
+      "result": "PASS",
+      "diff_stat_c0d0673_bcb2853": {
+        "delta_files": [
+          "research/control/v13_run/tools/run_v13_cell.py (0253754, driver-only)",
+          "tests/test_v13r_driver.py (0253754 driver tests + bcb2853 pin updates)",
+          "research/v13/families/oitd/plugin.py (bcb2853, the only science-surface path in the range)"
+        ],
+        "control_plane_records": [
+          "research/control/v13_run/event_log.jsonl",
+          "research/control/v13_run/heartbeat.json",
+          "research/control/v13_run/state.json",
+          "research/control/v13_run/w13_freeze.json",
+          "research/control/v13_run/worktree_manifest.json"
+        ],
+        "pre_sanctioned_audit_plane_records": [
+          "research/audits/v13d/a7n_novelty_v13.json",
+          "research/audits/v13d/a7n_novelty_v13.md",
+          "research/audits/v13d/a9f_feasibility_v13.json",
+          "research/audits/v13d/a9f_feasibility_v13.md"
+        ],
+        "note": "the four v13d files are the D2 audit artifacts cherry-picked at f73cb7b (V13 Q closeout, disclosed in the audit authorization context: 'metadata-only, W1 c0d0673 unchanged'); audit-plane records, not science surface; range is non-linear because Q-phase control-plane commits (8b65ea8, 6a6f8f9, 1e11cd9, 5037ea8, f73cb7b, b11e763) sit between the science freeze c0d0673 and the deltas"
+      },
+      "hunk_by_hunk_plugin_review": {
+        "docstring": "traversal semantics documentation only",
+        "imports": "additive read-only imports FAMILY_ID, STATUS_OK from the unchanged frozen strategy module",
+        "new_constant": "REASON_CARRIED_FLAT_START (additive reason code)",
+        "new_helper": "_carried_flat_start_payload: zero legs, status OK, carried_forward=true",
+        "behavior_change": "blanket ContractViolation at non-retained stamps replaced by: retained stamp -> frozen chained book (unchanged); on-schedule non-retained stamp -> byte-equal prior retained book, or flat start when none precedes; OFF-schedule stamp -> still refuses fail-closed",
+        "frozen_constants_changed": "NONE - no identity/parameter/schedule/cost/signal constant touched; research/v13/families/oitd/strategy.py and research/v13/families/liqepis/** byte-unchanged since c0d0673 (verified by git diff)"
+      },
+      "v12_pattern_comparison": {
+        "runner_contract": "research/adapter_v10/runner.py::_collect_books queries targets_at at EVERY non-final schedule instant; _resolve_boundaries marks fold-unclaimed instants ACTION_PURGE_GAP_CARRY (target=prior_weights) and treats carried_forward books as ACTION_CARRY (target=prior); PURGE_GAP_ENTRY_FORBIDDEN guard refuses any purge-gap target != prior",
+        "v12_oilev_v2": "plugin answers every mandatory query by recomputing (dead book at purged stamps, discarded by the runner)",
+        "v13_oitd_delta": "chained hysteresis cannot compute off-chain; returns the byte-equal prior retained book (or explicit flat start) - semantically inert to the runner, strictly stronger than V12 (no signal computed at purged stamps)",
+        "equivalence": "plugin decision_instants() == runner declared_members (same post-purge folds, same dropped-fold logic), so every non-retained queried instant is exactly a runner gap instant"
+      }
+    },
+    "2_digests": {
+      "result": "PASS",
+      "recomputed_from_frozen_identity": {
+        "oitd": "3/3 recomputed via research.v11.publication_identity.arm_config_digest(frozen_identity(arm)) == pinned FROZEN_ARM_CONFIG_DIGESTS, and frozen_arm_digest_report() all-match",
+        "liqepis": "3/3 recomputed via frozen_arm_digest_report() all-match"
+      },
+      "values": {
+        "OITD-28D": "9f121f3e1f425b1c17f8b2f8bba55cff7e4de0138e4c79f7896dea23c2a4640c",
+        "OITD-56D": "620ef97b72ca305cfcab39b81219c251bb445e965ba706c6241c5b8dbbbda413",
+        "CTL-FLOW-ONLY": "e3b02064955acdf3c6c35e22a1355300a5e7655739b95929faa3a299ee7357b2",
+        "LIQEPIS-28D": "d7af1b24b2e50555fd5994db79cd0975f5c72eef6c6091e0197654730e40faa6",
+        "LIQEPIS-56D": "6028040889c20fcd72a6a53d3582269d322a8f43e524f3c1fcb0fae0342f9999",
+        "LIQEPIS-SIGN-INV": "49ca153a3d320584620e5d1525716b484b359b8c6290d3c0612888675a8ab140"
+      },
+      "pairwise_unique": "6/6",
+      "w13_freeze_equality": "6/6 exact string equality + key-set equality",
+      "w13r_freeze_equality": "w13r_freeze.json restates only the 3 OITD 8-char prefixes under digest_impact 'NONE - 3/3 recomputed UNCHANGED'; prefixes corroborated; drift impossible because both digest input modules are byte-unchanged since c0d0673",
+      "finding": "F-1 LOW (documentation compactness, non-blocking; see findings)"
+    },
+    "3_tests": {
+      "result": "PASS",
+      "recomputed": [
+        {"suite": "tests/test_v13r_driver.py", "expected": 35, "observed": 35, "command": ".venv/bin/python -m pytest tests/test_v13r_driver.py -q"},
+        {"suite": "tests/test_v13i_oitd_*.py (6 files)", "expected": 77, "observed": 77},
+        {"suite": "tests/test_v13i_liqepis_*.py", "expected": 39, "observed": 39},
+        {"suite": "tests/data_fusion", "expected": 227, "observed": 227},
+        {"suite": "tests/test_v13p_accounting_regression.py", "expected": 7, "observed": 7}
+      ],
+      "frozen_oitd_tests_unmodified": "git diff c0d0673..bcb2853 -- 'tests/test_v13i_oitd_*' is EMPTY (0 bytes); no other test file appears in the range diff",
+      "driver_test_pin_updates_in_bcb2853": "pure pin upgrades: conflict-pins replaced by traversal-completes pins; NEW fail-closed pins added (off_schedule_stamp_still_refuses, final_purged_monday_carries_when_queried, purged_mondays_carry_byte_equal_prior_decision, drop_one_fold_f0_stamps_carry, mutation_at_purged_stamp_leaves_carried_book_unchanged, mutation_at_decision_stamp_moves_the_book, fail_closed_still_fires_at_decision_stamps, main_traversal_pin_now_passes_and_compute_runs); no guard weakened"
+    },
+    "4_driver_structure": {
+      "result": "PASS",
+      "preflight_fail_closed_before_any_metric": "arm-frozen check -> --publish head pin (before data load) -> staged 90/90 per-file sha256 vs research/audits/v12p/a3_staging_manifest.json with manifest == f855ad9c778f7a8695d6416b1c912efd7ddc353bf70935669504016cbf3c3c40 -> ALL-SIX arm digest equality vs w13_freeze.json -> plugin load -> frozen runner-traversal pin (all 6 cells incl. drop_one_fold); every failure exits 2 BEFORE compute_cell; preflight.json records no_scored_metric_yet=true",
+      "publication": "only via frozen research.v12.accounting.publish_v12_cell; gated on --publish (requires --ledger and --expect-head); per-family shard ledger under the --ledger path; canonical results/registry/experiments_v13.jsonl never a write target (docstring-pinned as empty W1 seed); published/idempotent-replay -> 0, otherwise 4",
+      "exit_codes": {"0": "ok/preflight-only/published/idempotent-replay/repro-match", "1": "crash (exception wrapper)", "2": "fail-closed preflight (no metric)", "4": "honest refusal recorded (cell budget consumed)", "6": "reproduction mismatch"},
+      "repro_mode": "--publish forbidden with --repro (validate_args) so the ledger branch is unreachable; --repro writes only cell artifacts (preflight/baseline_metrics/matrix_summary/repro_report.json) to its own out-root, never any ledger; requires --compare-with; returns 0/6",
+      "no_network_no_s1": "imports are stdlib only (argparse/hashlib/json/math/os/subprocess/sys/time/datetime/pathlib/typing); subprocess used solely for local 'git rev-parse HEAD'; no urllib/requests/socket/http; S1 appears only in the no-access docstring line",
+      "live_fire_drills": [
+        {"drill": "preflight-only OITD-28D vs e-exec-1 staged_data", "exit": 0, "evidence": "PREFLIGHT staged_files_verified=90 manifest=f855ad9c digest_matches_freeze=true; traversal pin ok, cells_probed=[baseline, fee_slippage_x1_5, plus_2_ticks, plus_1_event_delay, drop_one_symbol, drop_one_fold]"},
+        {"drill": "preflight-only LIQEPIS-28D vs e-exec-1 staged_data", "exit": 0, "evidence": "PREFLIGHT 90/90 f855ad9c digest match"},
+        {"drill": "negative: --expect-staged-manifest 000...0", "exit": 2, "evidence": "FAIL-CLOSED staged manifest sha256 mismatch, no data loaded, no metric computed"}
+      ]
+    },
+    "5_twins": {
+      "result": "PASS",
+      "e-exec-1": {"head": "bcb28536c7af7140372120f2bd9896b76be00c42", "detached": true, "porcelain_lines": 0, "staged": "90/90 OK vs a3 authority, staged_manifest_.json == f855ad9c778f7a8695d6416b1c912efd7ddc353bf70935669504016cbf3c3c40", "staged_writable_files": 0, "experiments_v13_jsonl_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (empty seed)"},
+      "r-reproduce": {"head": "bcb28536c7af7140372120f2bd9896b76be00c42", "detached": true, "porcelain_lines": 0, "staged": "90/90 OK, manifest == f855ad9c (driver verifier recomputed)", "staged_writable_files": 0, "experiments_v13_jsonl_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (empty seed)"},
+      "results_seeds": "both twins' results/ trees contain exactly the same 5 seed files (account.csv, order_fills.csv, positions.csv, registry/experiments_v13.jsonl, summary.json) with byte-identical sha256 across twins; results/ gitignored (porcelain 0)"
+    },
+    "6_boundaries": {
+      "result": "PASS",
+      "budget": "0/9 (state.json computed_published=0 eligible=9; w13_freeze.json; w13r_freeze.json)",
+      "scored_metric_artifacts": "no results/v13_phase_e directory exists under ANY v13 worktree (find -type d -name v13_phase_e over .worktrees/crypto/v13: empty); twin results trees = empty seeds only",
+      "s1": "SEALED_UNTOUCHED in state.json and w13/w13r; delta files reference S1 only in no-access/seal guards",
+      "workers": "owned_workers=0 in state.json; w13r e0_probe workers=0 measured_safe_cap=1; no live run_v13_cell/v13 pytest process on host at audit time",
+      "main_untouched": "audit writes only to orca/v13-r-a7-delta; no push, no merge; main tip 50e0207 (owner's next-cycle Forex V3 plan) pre-existing and not authored by this audit; V13 lineage (201 commits incl. bcb2853) intentionally not on main"
+    },
+    "7_science_merit_of_carry_semantic": {
+      "result": "PASS (consistent with the frozen proposal; no information created at purged stamps)",
+      "proposal_semantics": "research/proposals/v13/a8/OITD.json: F0/F1/F2 chronological with 1-day purge imported unchanged from the frozen V12 fold contract; force-flat at fold boundaries; hysteresis book (enter on tercile entry, exit only beyond median); fold-terminal force-flats counted separately",
+      "consistency": "purged stamps are NON-decisions by the proposal's own purge semantics; the book held at such a stamp is by construction the inherited fold-interior book. The delta makes targets_at answer the mandatory frozen-runner query with exactly that inherited book (byte-equal) instead of refusing - it changes no decision, adds no signal, and the runner's own gap accounting (PURGE_GAP_CARRY target=prior, PURGE_GAP_ENTRY_FORBIDDEN) is the binding semantics and is unchanged",
+      "fold_purity": "positions still open only at retained stamps with fully applied fills inside a fold, and the runner refuses any purge-gap target != prior; force-flat final boundary unchanged (runner refuses FORCE_FLAT at open instants; plugin returns OK with carried book)",
+      "f0_flat_start": "at a dropped fold's F0 stamps there is no prior retained decision; the plugin returns the explicit flat start (zero legs, status OK, REASON_CARRIED_FLAT_START); the runner at those gap instants carries current={} so prior==target and no position can be created out of nothing; even hypothetically off-gap, ACTION_CARRY sets target=prior (never the proposal)",
+      "no_signal_at_purged_stamps": "verified structurally (compute_targets_at is invoked only over retained stamps in the replay loop; the carry branch returns cached/prior state) and by the new bidirectional mutation tests (mutation at a purged stamp leaves the carried book unchanged; mutation at a decision stamp moves the book)",
+      "fail_closed_preserved": "availability/eligibility refusals at retained decision stamps unchanged; off-schedule stamps still raise ContractViolation"
+    }
+  },
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "LOW",
+      "title": "w13r_freeze.json does not restate the full 6-digest table",
+      "detail": "w13r_freeze.json carries only the three OITD 8-char prefixes under digest_impact 'NONE'; the LIQEPIS digests are not restated. The canonical full table lives in w13_freeze.json and was verified 6/6 exact by this audit; drift is impossible because both digest input modules are byte-unchanged since c0d0673. Documentation-compactness note for the control plane, not a verification failure.",
+      "condition": "none required; optional: future freeze records may restate the full table"
+    },
+    {
+      "id": "F-2",
+      "severity": "INFO",
+      "title": "heartbeat.json stale relative to state.json/event_log",
+      "detail": "heartbeat.json still shows phase V13_PRELAUNCH_AWAITING_OWNER_GO and integration_head 1e11cd9 (heartbeat_utc 15:05Z) while state.json and event_log are current (Phase E authorized, owner GO 14:40Z, V13R_FREEZE 15:30Z); event-log stamps are non-monotonic relative to append order. Cosmetic control-plane hygiene; state.json is authoritative and internally consistent (budget 0/9, SEALED_UNTOUCHED, workers 0).",
+      "condition": "none required"
+    },
+    {
+      "id": "F-3",
+      "severity": "INFO",
+      "title": "owner GO recorded as Vietnamese paraphrase with form disclosure",
+      "detail": "state.json owner_go records the verbatim paraphrase referencing 'A7 V13_S0_LAUNCH_AUTHORIZED' with an explicit form_note; the binding precondition (A7 V13_S0_LAUNCH_AUTHORIZED, 10/10 PASS) was in fact issued. Phase E release accepted as owner authority per audit mandate; not a delta-scope defect.",
+      "condition": "none required"
+    }
+  ],
+  "verdict_basis": "all seven audit items PASS on independent recomputation; zero unresolved HIGH/CRITICAL findings"
+}
