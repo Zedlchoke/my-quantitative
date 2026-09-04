@@ -1,76 +1,47 @@
-# CONTINUE.md — STOCKS-FREE-V3 TERMINAL (REJECT_ALL) ENTRY STATE
+# CONTINUE.md — STOCKS-FREE-V5 TERMINAL (REJECT_ALL) ENTRY STATE
 
-Read `PLAN_stocks.md` completely. It is the fresh-context Stocks authority.
-The active cycle plan is `PLAN_stocks_v4.md` (STOCKS-FREE-V4, blind
-mechanism discovery after two reject-all cycles); `PLAN_stocks.md` remains
-the historical V2/V2R/V3 authority and is not rewritten.
+Read `PLAN_stocks_v5.md` completely. It is the fresh-context Stocks
+authority for any next stocks cycle; `PLAN_stocks.md` (V2/V2R/V3) and
+`PLAN_stocks_v4.md` are closed historical authorities and are not rewritten.
 
 ## Verdict lineage (must agree with `research/wayfinder/MAP.md`)
 
-- V2 effective verdict: `STOCKS_FREE_V1_REJECT_ALL` (terminal A7 confirmed;
-  canonical `STOCKS_FREE_W1 = 106378230abecbaefff4248eeb373794f1b73038`).
-- V3 terminal verdict: `STOCKS_FREE_V3_REJECT_ALL` (A7T
-  `STOCKS_FREE_V3_REJECT_ALL_CONFIRMED`; W1 `586f9fe`); statistical
-  denominator 12 observed / 12 published.
-- V4 (in progress): reconciliation, factory/data gates, blind proposals,
-  selection freeze, implementation and prelaunch per `PLAN_stocks_v4.md`;
-  budget 0/6; no scored V4 PnL exists; S1 SEALED_UNTOUCHED.
+- V2 effective verdict: `STOCKS_FREE_V1_REJECT_ALL` (W1
+  `1063782`), V3: `STOCKS_FREE_V3_REJECT_ALL` (W1 `586f9fe`),
+  V4: `STOCKS_FREE_V4_REJECT_ALL` (A7T CONFIRMED, W1 `dfa099a`).
+- V5 terminal verdict: `STOCKS_FREE_V5_REJECT_ALL` (A7T
+  `STOCKS_FREE_V5_REJECT_ALL_CONFIRMED`, audit head `bc5827e`;
+  `STOCKS_FREE_V5_W1 = 0ecca232caf6cee21a84d78579681e336b616388`);
+  statistical denominator 21 observed / 21 published (V2 6 + V3 6 + V4 6
+  + V5 3). S1 SEALED_UNTOUCHED. No paper/live/orders. Workers zero.
 
-## Measured entry state
+## What V5 established
 
-- **STOCKS-FREE-V3 is TERMINAL: `STOCKS_FREE_V3_REJECT_ALL`**, confirmed by
-  independent terminal A7 (`STOCKS_FREE_V3_REJECT_ALL_CONFIRMED`, commit
-  `ad897c8`, re-audit head `3251554`). Both preregistered families ran all
-  three scored arms from `STOCKS_FREE_V3_W1 = 586f9fe` after an explicit
-  owner GO; budget 6/6; V3 observed = published = 6; reproduction 6/6
-  EXACT_MATCH from the detached r-reproduce twin.
-- `SFV3-A5-IDIO-SHOCK-REVERSAL` — FAMILY_REJECT. The anchor lost 20.6% of
-  equity (PF 0.43, alpha −0.25): market-adjusted idiosyncratic crash and
-  overshoot episodes both fail to revert profitably after costs in this
-  11-ETF cohort/window.
-- `SFV3-A6-TOM-SETTLE` — FAMILY_REJECT. The anchor earned +38.5% raw PnL
-  (PF 1.62, 3/3 folds, stress pass) but **negative incremental alpha
-  (−0.13) vs risk-matched SPY and a failing placebo control** (mid-month
-  window alpha −0.24): the raw PnL is scaled sector beta through a bullish
-  window, not a turn-of-month premium. Per PLAN §16, raw PnL cannot
-  override failed beta/control gates.
-- Statistical denominator: 6 historical Stocks + 6 V3 trials = 12. Zero
-  Stage-A survivors; nothing is locked for S1; nothing is promotable.
-- S1 `2025-08-01..2026-07-31` remains SEALED_UNTOUCHED (max scored date
-  2025-07-31). No paper, testnet, live or order authority exists.
-  Workers zero. Integration tree clean. Nothing pushed; main untouched.
-- Incident on record: terminal A7 found the ledger's publication digests
-  pinned a wrapper, not the artifact bytes (A7T-B1 HIGH); A1 remedied
-  append-only (six `ARTIFACT_DIGEST_REPINNED` entries), and A7T's re-audit
-  proved the prior rows byte-identical before signing. Earlier incidents
-  ADJ-1..ADJ-5 are recorded in `selection_freeze.json` /
-  `family_verdicts.json`.
-- Authoritative detail: `research/control/stocks_free_v3_run/terminal_report.json`;
-  audit: `research/audits/stocks_free_v3/z9_a7_terminal_AUDIT_REPORT.md`.
+- Data Fusion V1 core adopted into the stocks tree pre-freeze
+  (c6a0576 byte-identical); canonical PIT bridge
+  `research/assets/stocks/pit_conditioning.py` (owner adjudication after a
+  two-controller concurrency incident — see event_log
+  V5_CONCURRENCY_INCIDENT_RECORDED / V5_OWNER_ADJUDICATION; lesson L8:
+  one cycle = one A1 thread).
+- SEC EDGAR conditioning authority built and audited (410-filer panel,
+  3.82M instant records, A1-A8 PIT audit PASS); FRED/ALFRED + FINRA +
+  Alpha Vantage remain BLOCKED pending owner key/signup decisions.
+- F1 root cause (unremediated by design): the bridge's single-vintage
+  semantics collapse per-tick sector coverage — all four SEC-conditioned
+  proposals died pre-selection. A vintage-age-bounded aggregation variant
+  is a candidate preregistration for a FUTURE owner plan.
+- Section 1.1 shadow front door is now MEASURED CLOSED for vol-level
+  re-entry as preregistered (shape-gate rho 0.319 > 0.20).
+- SFV5-A6-H2-CROSS-SECTOR-COUPLING: FAMILY_REJECT — anchor fails 10/15
+  Stage-A gates; the nominal-price placebo control outperforms the anchor
+  on the identifying metric (preregistered falsification fires).
 
-## What a future stocks cycle inherits
+## Entry conditions for the next thread
 
-1. Forbidden ancestry now also covers `SFV3-A5-IDIO-SHOCK-REVERSAL` and
-   `SFV3-A6-TOM-SETTLE` (plus the non-selected pool and within-cycle
-   cluster rule — see `forbidden_family_inventory.json`).
-2. Mechanism lessons: (a) sector-beta drift dominates every simple
-   long/cash ETF book here — an arm without positive risk-matched excess
-   is dead regardless of raw PnL; (b) idiosyncratic daily shock reversal
-   does not survive 10 bps/side on this cohort; (c) calendar-window
-   premiums must beat the placebo window, not just zero.
-3. Reusable, proven infrastructure (do not rebuild): canonical accounting
-   `research/assets/stocks/factory.py`, sealed S0 readers
-   (`research/stocks_free_v3/isolation.py`), frozen benchmarks +
-   incremental-alpha contract, six-arm registry, staged equal-twin
-   execution/reproduction pattern, gated publication ledger (with the
-   wrapper-digest lesson: pin artifact bytes directly).
-4. Any new cycle starts from a fresh owner plan; do not reopen scored V3
-   cells, do not rescue either family, do not open S1.
-
-## Boundaries
-
-Unchanged: honest evidence first — REJECT_ALL, BLOCKED, INCOMPLETE are
-valid outcomes; no tuning after observing a fold; no S1 access; no
-paper/live; historical trees preserved; no push, main merge, worktree
-deletion or history rewrite without explicit owner instruction; missing
-evidence is `NOT_RUN`/`UNAVAILABLE_FAIL_CLOSED`, never inferred PASS.
+1. Read `PLAN_stocks_v5.md` (closed authority for V5) and the cumulative
+   forbidden inventory `research/control/stocks_free_v5_run/forbidden_family_inventory.json`.
+2. Append V5 families to `research/wayfinder/HYPOTHESIS_LEDGER.md` at the
+   start of the next cycle (Lead Engineer index).
+3. Any new cycle needs a fresh owner plan (V6 or a Data-Fusion remediation
+   plan preregistering vintage-age-bounded aggregation before any scoring).
+4. Heavy cap 1 on the 8 GB host; full pytest runs alone.

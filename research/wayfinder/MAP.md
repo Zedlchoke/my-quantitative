@@ -2,6 +2,25 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS-FREE-V5 TERMINAL** (synced by A1, 2026-09-04, branch
+  `orca/stocks-free-v5-integration`) — verdict
+  `STOCKS_FREE_V5_REJECT_ALL` (terminal A7
+  `STOCKS_FREE_V5_REJECT_ALL_CONFIRMED`, audit head `bc5827e`): Data Fusion
+  V1 core adopted pre-freeze (c6a0576 byte-identical; pit_conditioning.py
+  canonical bridge per owner adjudication after a two-controller concurrency
+  incident). Six outcome-blind proposals (4 PIT-conditioned): A7-N eligible
+  1/6; A9-F killed all four SEC-conditioned proposals pre-selection (F1
+  single-vintage coverage collapse — future-plan candidate, unremediated);
+  the Section 1.1 vol-level confirmatory was measured-ineligible (shape gate
+  0.319 > 0.20). Selected family SFV5-A6-H2-CROSS-SECTOR-COUPLING × 3 arms
+  scored at `STOCKS_FREE_V5_W1=0ecca232` (driver be0e4fa4): anchor fails
+  10/15 Stage-A gates and the nominal-price placebo outperforms the anchor
+  on the identifying metric (alpha 0.0252 vs 0.0077) — preregistered
+  falsification fires. Budget 3/6 (3 slots unused forever), V5
+  observed=published=3, reproduction 3/3 EXACT_MATCH, denominator 21.
+  Detail: `research/control/stocks_free_v5_run/terminal_report.json`,
+  `research/audits/stocks_free_v5/r_a7_terminal_audit.json`.
+
 - **STOCKS-FREE-V3 TERMINAL** (synced by A1, 2026-09-03, branch
   `orca/stocks-free-v3-integration`) — verdict
   `STOCKS_FREE_V3_REJECT_ALL` (terminal A7
