@@ -91,5 +91,5 @@ Both families **STOCKS_FREE_V4_FAMILY_REJECT** in `family_verdicts.json` and `te
 
 ## Commits in this lane
 
-1. `V4 A7T: terminal audit` — adds this report and `r_a7_terminal_audit.json`
+1. `V4 A7T: terminal audit` — adds this report and `r_a7_terminal_audit.json` (HEAD `b61fa817842a83d8ac528e809aad3ffcb75892de`)
 2. `V4 A7T: audit head pin` — pins the audit commit sha into the JSON (`audit_head_pin`)
