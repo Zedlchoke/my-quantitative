@@ -228,3 +228,37 @@ changed — immutable artifact hashes pinned in
 **Next safe action:** V12 control plane per `PLAN_crypto.md` from
 `V11R_TERMINAL_SHA` (125/128, budget 0/9); V12 scored execution requires an
 explicit owner `GO V12 SCORED EXECUTION`.
+
+## V12 strong-host E0 blocked — 2026-09-04 (A1)
+
+Owner issued `GO V12 SCORED EXECUTION`; strong-host E0 ran on the Windows
+execution host (`ROYAL`) at integration tip `474d811` (W12 `f0799cae`
+verified present and ancestral; exec/repro trees created detached at W12,
+clean, nothing staged). E0 verdict **FAIL, zero scored cells, budget 0/9**,
+clock never started. Two independent blockers:
+
+1. `V12_E0_STAGING_ARCHIVE_ABSENT` — `v12-staging-W12-f0799cae.tar.gz`
+   (expected sha256 `dc760859...ed8`) is not on this host (Downloads,
+   profile, D:, recycle, GitHub all checked). 83/90 staged files exist
+   locally byte-exact vs `a3_staging_manifest.json`; the 7
+   `funding_20240820_20260821` S0R funding bundles are absent, so the
+   equal-twin 90/90 re-verification (A7 launch condition 1) cannot pass.
+   Partial staging was deliberately NOT written.
+2. `V12_BLOCKED_EXECUTION_DRIVER_ABSENT` — W12 contains no complete scored
+   execution entrypoint for the V12 families. The only cell drivers in W12
+   are the V10R M01 and V11 drivers, both hardwired to their own cycles;
+   the V12 plugins declare "never scores" and the audit modules are
+   NO-PnL evidence-only. Per strong-host runbook §5: no ad-hoc post-freeze
+   scorer; a driver requires a new code freeze + independent A7 delta audit.
+
+Passed gates measured on this host: resource probe `measured_safe_cap=3`;
+6/6 arm digests recomputed from W12 code match `selection_freeze.json` v2;
+portable empty-ledger package verified and seeded (`e3b0c442`).
+Denominators 125/128, S1 SEALED_UNTOUCHED, workers 0, no deployment, no push,
+no main merge. Evidence:
+`research/control/v12_run/stronghost_e0_royal_20260904.json`.
+
+**Next safe action:** owner re-transfers the staging archive (verify
+`dc760859...`) AND authorizes a V12 driver lane (implement the scored-cell
+driver from the frozen V10R/V11 pattern, integrate, freeze `W12R`, independent
+A7 delta audit) before any scored cell.
