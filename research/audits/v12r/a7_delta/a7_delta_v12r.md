@@ -26,3 +26,23 @@
 **A7_DELTA_VERDICT: V12R_LAUNCH_AUTHORIZED**
 
 All 9 audit items PASS with zero unresolved findings. Scored cells remain forbidden until A1 executes under the W12R freeze with the exactly-once `publish_v12_cell` gate; any digest, staging, isolation or ledger invariant change invalidates this verdict.
+
+---
+
+# Delta Re-audit — W12R2 (follow-up after OILEV TECHABORT)
+
+Trigger: the OILEV family chain attempt-1 crashed at W12R (`ccfd33e`) with `TypeError: can only concatenate str (not bytes) to str` in the driver's `_series_digest` Mapping branch — BEFORE the preflight artifact and BEFORE any scored metric existed (TECHABORT forensic: `research/control/v12_run/TECHABORT_oilev_chain_attempt1.json`, main repo). A1 froze **W12R2 = `ce52e3e2e817806c984b3e2cdda9daace17440f7`** (driver-only fix, lane `8e0a877`) + one regression test. All evidence re-verified independently (main repo read-only; full detail in the `delta_reaudit` section of `a7_delta_v12r.json`).
+
+| # | Item | Result | Key measured evidence |
+|---|------|--------|------------------------|
+| 1 | W12R1→W12R2 diff | PASS | Code changes are EXACTLY `run_v12_cell.py` (+3/-1) and `tests/test_v12r_driver.py` (+14); other changes are control metadata/gates/`w12r_freeze.json` and this audit's own integrated outputs; science surface (`research/v12/**`, `research/adapter_v10/**`, `research/v11/families/**`, `research/v11/publication_identity.py`, `contracts/**`, `selection_freeze.json`, `ledger_package/**`) has an EMPTY diff |
+| 2 | `_series_digest` fix | PASS | Single hunk: `.encode()` moved outside the `f"{sym}|" + "\|".join(...)` concatenation; Bar-like branch untouched; symbols and row fields still iterated sorted (key-order-independent, deterministic); adds `test_series_digest_mapping_branch_regression` |
+| 3 | TECHABORT vs exec tree | PASS | Exec tree still at `ccfd33e`, clean; `results/v12r_phase_e` contains ONLY `bab_lowbeta/` + `ledger_bab_lowbeta.jsonl`; `ledger_oilev_v2.jsonl` ABSENT, `oilev_v2/` dir ABSENT (preflight never written); BAB ledger = exactly **3 CELL_RESULT rows** (BAB-90D-W, BAB-DOWNCORR-90D-W, BAB-90D-W-INV, all producer head `ccfd33e`, validated by the frozen `read_v12_ledger`: 3 published / 0 observed); canonical registry still empty (`e3b0c442…`, 0 bytes) |
+| 4 | Driver tests at W12R2 | PASS | Main-repo working tree lane files identical to `ce52e3e` (verified by empty diff); `python -m pytest tests/test_v12r_driver.py -q` → **15 passed** (exit 0), main repo git status still clean (cache provider disabled to keep the read-only tree byte-clean) |
+
+Notes: the 3 BAB rows were published at producer head `ccfd33e` (W12R1) before the OILEV defect was hit; science bytes are identical `ccfd33e..ce52e3e`, so those rows remain valid under W12R2. Zero budget was consumed by the TECHABORT (no scored metric ever existed for OILEV).
+
+## Delta verdict
+
+**A7_DELTA2_VERDICT: V12R2_LAUNCH_AUTHORIZED**
+

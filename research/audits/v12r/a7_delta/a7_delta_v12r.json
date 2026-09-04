@@ -185,5 +185,81 @@
     }
   },
   "unresolved_findings": [],
-  "verdict": "V12R_LAUNCH_AUTHORIZED"
+  "verdict": "V12R_LAUNCH_AUTHORIZED",
+  "delta_reaudit": {
+    "schema": "v12r_a7_delta2_reaudit_v1",
+    "trigger": "OILEV family chain attempt-1 TECHABORT at W12R (driver preflight _series_digest str+bytes TypeError, crashed BEFORE any scored metric); A1 froze W12R2 = ce52e3e2e817806c984b3e2cdda9daace17440f7 (driver-only fix, lane 8e0a8779f2c2e06781ccfcecd1551846d8371a7a) + regression test",
+    "main_repo_read_only": "C:\\Users\\ROYAL\\my-quantitative (branch orca/v12-integration, HEAD 1e334007e9122be23fb5b4af10dc274bd9b1a9c2 = ce52e3e + TECHABORT/w12r_freeze metadata only)",
+    "items": [
+      {
+        "item": 1,
+        "title": "W12R1->W12R2 DIFF: SCIENCE BYTES UNTOUCHED",
+        "status": "PASS",
+        "commands": [
+          "git diff --name-status ccfd33e..ce52e3e  (exit 0)",
+          "git diff --name-status ccfd33e..ce52e3e -- research/v12/ research/adapter_v10/ research/v11/families/ research/v11/publication_identity.py contracts/ research/control/v12_run/selection_freeze.json research/control/v12_run/ledger_package/  (exit 0, EMPTY output)"
+        ],
+        "measured": {
+          "code_changes": "EXACTLY two: M research/control/v12_run/tools_stronghost/run_v12_cell.py (+3/-1) and M tests/test_v12r_driver.py (+14); lane 8e0a877 (parent 5a5d8ce) has the identical two-file stat; ce52e3e parent = e017d3f",
+          "other_changes": "A: a7_delta_v12r.json/.md (this audit's own outputs, integrated by A1), gates/*.json+log (4), stronghost_e0_v12r_20260904.json, stronghost_v12r_staging_and_a7_plan.md, w12r_freeze.json; M: event_log.jsonl, heartbeat.json, state.json, worktree_manifest.json",
+          "science_surface": "EMPTY diff for research/v12/**, research/adapter_v10/**, research/v11/families/**, research/v11/publication_identity.py, contracts/**, selection_freeze.json, ledger_package/**"
+        }
+      },
+      {
+        "item": 2,
+        "title": "_series_digest FIX IS MINIMAL AND SEMANTICS-PRESERVING",
+        "status": "PASS",
+        "commands": [
+          "git diff ccfd33e..ce52e3e -- research/control/v12_run/tools_stronghost/run_v12_cell.py  (single hunk at lines 233-241)",
+          "git show ce52e3e:research/control/v12_run/tools_stronghost/run_v12_cell.py | sed -n '229,244p'"
+        ],
+        "measured": {
+          "fix": "Mapping branch only: digest.update(f\"{sym}|\" + \"|\".join(...).encode()) -> digest.update((f\"{sym}|\" + \"|\".join(...)).encode()) -- .encode() moved OUTSIDE the concatenation; fixes TypeError 'can only concatenate str (not bytes) to str'",
+          "semantics": "unchanged and deterministic: symbols iterated via sorted(rows_by_symbol), row fields via sorted(row); the Bar-like (else) branch is untouched",
+          "no_other_driver_change": "the driver diff contains exactly this one hunk",
+          "regression_test": "tests/test_v12r_driver.py adds test_series_digest_mapping_branch_regression (dict-row digest ok, key-order-independent, content-sensitive)"
+        }
+      },
+      {
+        "item": 3,
+        "title": "TECHABORT CLAIMS vs EXEC TREE",
+        "status": "PASS",
+        "commands": [
+          "read research/control/v12_run/TECHABORT_oilev_chain_attempt1.json (main repo)",
+          "ls exec-v12r-1/results/v12r_phase_e  -> exactly [bab_lowbeta, ledger_bab_lowbeta.jsonl]",
+          "existence checks: oilev_v2/ ABSENT, ledger_oilev_v2.jsonl ABSENT, ledger_bab_lowbeta.jsonl PRESENT",
+          "python: sha256(experiments_v12.jsonl) == e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (size 0)",
+          "python: frozen read_v12_ledger + v12_denominator_view on ledger_bab_lowbeta.jsonl",
+          "git -C exec-v12r-1 rev-parse HEAD / status --porcelain  (ccfd33e..., clean)"
+        ],
+        "measured": {
+          "exec_head": "ccfd33e3ed302de642e1ebdecb8adb6830dba887 (crash run was at W12R1; tree unchanged, clean)",
+          "ledger_oilev_v2_jsonl": "ABSENT (no OILEV row ever written)",
+          "oilev_v2_dir": "ABSENT (preflight artifact never written -- crash was pre-preflight, pre-metric)",
+          "ledger_bab_lowbeta_jsonl": "exactly 3 rows, all CELL_RESULT (BAB-90D-W, BAB-DOWNCORR-90D-W, BAB-90D-W-INV; family A12-V12-BAB-LOWBETA), all producer_head_sha ccfd33e3ed30..., 3 unique trial_keys; frozen reader validates schema; denominator view {published: 3, observed: 0}",
+          "canonical_registry": "experiments_v12.jsonl 0 bytes, sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (unchanged empty)"
+        }
+      },
+      {
+        "item": 4,
+        "title": "DRIVER TESTS AT W12R2",
+        "status": "PASS",
+        "commands": [
+          "git diff ce52e3e --stat -- tests/test_v12r_driver.py research/control/v12_run/tools_stronghost/run_v12_cell.py  (EMPTY: main working tree lane files identical to W12R2 freeze)",
+          "cd C:/Users/ROYAL/my-quantitative && PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/test_v12r_driver.py -q -p no:cacheprovider  (exit 0: '15 passed in 18.80s'; -p no:cacheprovider used so the read-only main repo stays byte-clean; git status after: 0 lines)"
+        ],
+        "measured": {
+          "test_count": "15 passed (14 prior + 1 new TECHABORT regression test)",
+          "main_repo_untouched": "git status --porcelain still 0 lines after the run"
+        }
+      }
+    ],
+    "notes": [
+      "BAB 3/3 CELL_RESULT rows were published at producer_head ccfd33e (W12R1) before the OILEV defect was hit; science bytes are identical ccfd33e..ce52e3e, so those rows remain valid under W12R2.",
+      "No scored metric existed for OILEV at any point (no preflight artifact, no ledger row, no cell dir); TECHABORT consumed zero budget.",
+      "My audit worktree remains detached at ccfd33e with only research/audits/v12r/ untracked (my own outputs)."
+    ],
+    "unresolved_findings": [],
+    "verdict": "V12R2_LAUNCH_AUTHORIZED"
+  }
 }
