@@ -21,9 +21,18 @@ expose exactly one entry point::
     def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token: str | None)
         -> {"decisions": [...], "financing_events": [...], "meta": {...}}
 
-``arm``            one of the family's three frozen arms: "anchor",
+``arm``            one of the family's three frozen SCORED arms: "anchor",
                    "neighbour", "causal_negative_control" (the driver also
-                   accepts the shorthand "control").
+                   accepts the shorthand "control") -- plus the REQUIRED
+                   "benchmark_treatment" arm (V3-I, finding H1): the frozen
+                   benchmark treatment of baseline_invariants.json
+                   ``v3_benchmark_treatment`` -- the SAME mechanism with macro
+                   conditioning removed, at identical decision clock, fills,
+                   universe, warmup and costs, emitting decisions AND financing
+                   events exactly like a scored arm.  The runner calls it
+                   whenever a SCORED anchor cell is computed and refuses a cell
+                   that cannot supply it (fail closed); it is never a scored
+                   cell itself (``compute_cell`` refuses it as an ``arm``).
 ``data_paths``     opaque mapping passed through from the driver; the only
                    key the runner itself understands is ``macro_vintages``
                    (see :mod:`research.assets.forex_free_v3.macro_reader`).
@@ -68,12 +77,26 @@ Return payload:
 ``meta``              dict with REQUIRED key ``decision_clock`` == "daily"
                       (any other declared clock is refused: CLOCK_UNSUPPORTED)
                       and OPTIONAL keys: ``proposal_id``, ``pair_universe``,
-                      ``usd_index_daily_returns`` ({YYYY-MM-DD: equal-weight
-                      USD-index daily return} for the frozen D1 diagnostic),
                       ``fill_delay_events`` ({decision_id: delayed-fill
                       count} for the frozen one-event-delay stress, carried
-                      UNBLENDED), ``incremental_alpha`` (float vs the frozen
-                      benchmark treatment).
+                      UNBLENDED), ``incremental_alpha`` (pass-through for
+                      non-anchor arms only).
+
+V3-I runner-owned statistics (family meta is NOT consulted):
+
+* USD index (finding H2): the frozen D1 equal-weight USD-leg return index
+  is computed INSIDE the runner from the authorized 7-pair H1 snapshot
+  (``data_paths`` "usd_index_h1_dir", else "price_h1_dir", else "h1_dir");
+  per scored arm the correlation of daily arm PnL vs the index feeds the
+  frozen ``usd_corr_abs_ceiling`` gate.  ``meta.usd_index_daily_returns``
+  is ignored.  A SCORED run with booked trades but no price source fails
+  closed (USD_INDEX_SOURCE_MISSING); a dry-run never leaks the statistic.
+* incremental alpha (finding H1): for a SCORED anchor cell the runner
+  books the family's ``benchmark_treatment`` arm through the SAME cost
+  kernel (dual book) and records
+  ``incremental_alpha = anchor financing-adjusted expectancy -
+  benchmark expectancy``; the value is ALWAYS present on a scored anchor
+  record.  Dry-run records carry ``None`` (no outcome may leak).
 
 Runner-side enforcement (fail closed, codes on ``DecisionRuleError``):
 DECISION_CLOCK_VIOLATION (decision/fill instants not 16:00-NY daily bars),
@@ -83,7 +106,9 @@ MISSING_FINANCING_EVENT / FINANCING_EVENT_UNMATCHED / MISSING_FINANCING_FORMULA
 / FINANCING_FORMULA_INCONSISTENT, DUPLICATE_DECISION_ID, CLOCK_UNSUPPORTED.
 Weekend entries are dropped fail-closed by the inherited session gate.
 """
+import json
 import math
+import os
 import threading
 from datetime import datetime, timedelta, timezone
 
@@ -98,6 +123,10 @@ PAIRS = ("EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD",
          "USD/JPY", "USD/CHF", "USD/CAD")
 NOTIONAL = 10000
 ARMS = ("anchor", "neighbour", "control")
+BENCHMARK_ARM = "benchmark_treatment"  # required family arm, never a scored cell
+# USD-leg sign of the frozen D1 index: XXX/USD contributes -pair return,
+# USD/XXX contributes +pair return.
+USD_LEG_SIGN = {p: (-1.0 if p.endswith("/USD") else 1.0) for p in PAIRS}
 BASE_TIER = 1.0
 STRESS_TIERS = (1.5, 2.0)          # booked stress tiers (kernel ladder adds base 1.0)
 FOLD_BOUNDARIES = ("2020-03-01T00:00:00+00:00", "2022-05-01T00:00:00+00:00",
@@ -115,7 +144,9 @@ MDD_CEILING_USD = 2500.0
 MAX_POS_FOLD_SHARE = 0.50
 MAX_PAIR_POS_SHARE = 0.40
 STRESS_MIN_PF = 1.00
-DROPOUT_SURVIVAL_MIN = 5        # of 7 single-pair exclusions
+DROPOUT_SURVIVAL_MIN = 5        # frozen minimum; the scenario suite is the 7
+                                # drop-one-PAIR exclusions PLUS 1
+                                # drop-one-BEST-fold (V3-I finding M1)
 NEIGHBOUR_MIN_EXPECTANCY = 0.0
 CONTROL_REJECT_PF = 1.10
 USD_CORR_CEILING = 0.30         # |corr(daily pnl, USD-index daily return)|
@@ -359,11 +390,214 @@ def fold_positive_share(folds):
     return round(max(f["gross_positive"] for f in folds) / gp, 6)
 
 
+def dropout_scenarios(scored, pnls_fin, folds):
+    """Frozen dropout suite (V3-I finding M1): the SEVEN drop-one-PAIR
+    exclusions (one per frozen universe pair, the inherited suite) PLUS ONE
+    drop-one-BEST-fold exclusion (the fold with the highest expectancy among
+    folds holding trades; its trades are removed and the after-cost
+    expectancy of the reduced book recomputed) -- eight scenarios in total.
+
+    A scenario survives iff the reduced book's financing-adjusted expectancy
+    is > 0.  Returns the per-scenario record list; an unevaluable fold
+    scenario (no fold holds trades) is recorded as NOT survived (fail
+    closed).  The frozen gate counts survivals against the UNCHANGED
+    DROPOUT_SURVIVAL_MIN (= 5)."""
+    scenarios = []
+    for excl in PAIRS:
+        sub = [p for t, p in zip(scored, pnls_fin) if t["pair"] != excl]
+        exp = round(sum(sub) / len(sub), 10) if sub else 0.0
+        scenarios.append({"scenario": f"drop_pair:{excl}",
+                          "expectancy": exp, "survived": bool(exp > 0)})
+    candidates = [f for f in folds if f["trades"] > 0]
+    if candidates:
+        best = max(candidates, key=lambda f: (f["expectancy"], -f["fold"]))
+        sub = [p for t, p in zip(scored, pnls_fin) if t["_fold"] != best["fold"]]
+        exp = round(sum(sub) / len(sub), 10) if sub else 0.0
+        scenarios.append({"scenario": f"drop_best_fold:{best['fold']}",
+                          "expectancy": exp, "survived": bool(exp > 0)})
+    else:
+        scenarios.append({"scenario": "drop_best_fold:none",
+                          "expectancy": None, "survived": False})
+    return scenarios
+
+
+# ---------- dry-run hygiene (V3-I, finding H3) ----------
+_MONETARY_BOOK_KEYS = ("gross_price_pnl_usd", "price_only_pnl_usd",
+                       "financing_adjustment_usd", "financing_adjusted_pnl_usd")
+
+
+def _zero_metrics(metrics):
+    """Placeholder metrics: every monetary field zeroed/None, counts kept."""
+    out = dict(metrics)
+    for key in ("total_pnl", "expectancy", "gross_positive"):
+        if key in out:
+            out[key] = 0.0
+    if "pf" in out:
+        out["pf"] = None
+    if "cost_component_delta_vs_base_usd" in out:
+        out["cost_component_delta_vs_base_usd"] = 0.0
+    return out
+
+
+def dry_run_sanitized(record):
+    """V3-I H3 hygiene, applied to EVERY dummy dry-run record AFTER internal
+    computation: zero/placeholder EVERY booked monetary metric so no outcome
+    information can leave this module (the module contract and the driver's
+    'Reveals no outcome' both demand it).  Counts (n_decisions,
+    n_trades_kept, weekend_gate_dropped, purged_trades, folds_declared,
+    per-metrics trades, delay_stress counts) and the scored/real_pnl/
+    published=false flags survive untouched."""
+    for key in _MONETARY_BOOK_KEYS:
+        record[key] = 0.0
+    for key in ("base", "base_price_only"):
+        record[key] = _zero_metrics(record[key])
+    record["folds"] = [_zero_metrics(f) for f in record["folds"]]
+    record["stress"] = {tier: _zero_metrics(m)
+                        for tier, m in record["stress"].items()}
+    record["break_even_cost_bps"] = None
+    record["mdd_usd"] = 0.0
+    record["fold_positive_share"] = 0.0
+    record["pair_concentration"] = {}
+    record["drop_one_expectancy"] = {p: 0.0 for p in record["drop_one_expectancy"]}
+    record["dropout_scenarios"] = [
+        {"scenario": s["scenario"], "expectancy": None, "survived": None}
+        for s in record["dropout_scenarios"]]
+    record["incremental_alpha"] = None
+    record["benchmark_treatment"] = None
+    record["usd_drift_diag"] = {"corr": None,
+                                "n_days": record["usd_drift_diag"]["n_days"],
+                                "evaluated": False}
+    record["dry_run"] = True
+    record["real_pnl"] = False
+    return record
+
+
+# ---------- USD index (V3-I, finding H2: computed INSIDE the runner) ----------
+def load_daily_16ny_closes(price_dir, pair):
+    """Ascending ``[(utc datetime, close)]`` of a pair's 16:00-NY weekday H1
+    bars from the canonical snapshot files (``{TAG}_1h_*.json`` under
+    ``price_dir``; td_loader schema datetime/open/high/low/close).
+
+    Error-status provider windows are skipped; duplicate bar stamps dedupe on
+    first sighting; non-positive/non-finite closes fail closed
+    (``BLOCKED_DATA``).  Read-only view of the SAME authorized snapshot the
+    families consume -- never a new data authority.  A missing directory
+    fails closed; a pair with no snapshot files contributes nothing (the
+    equal-weight mean runs over the pairs present)."""
+    tag = pair.replace("/", "")
+    if not os.path.isdir(price_dir):
+        raise RuntimeError(
+            f"BLOCKED_DATA: USD-index H1 directory not found for {pair}: {price_dir!r}")
+    names = sorted(f for f in os.listdir(price_dir)
+                   if f.startswith(f"{tag}_1h_") and f.endswith(".json"))
+    if not names:
+        return []  # pair absent from this snapshot: no contribution
+    from zoneinfo import ZoneInfo
+    ny = ZoneInfo("America/New_York")
+    rows = []
+    seen = set()
+    for name in names:
+        with open(os.path.join(price_dir, name), "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if isinstance(payload, dict) and payload.get("status") == "error":
+            continue  # provider no-coverage window
+        values = payload.get("values") if isinstance(payload, dict) else None
+        if not isinstance(values, list):
+            raise RuntimeError(f"BLOCKED_DATA: malformed H1 window {name!r}")
+        for row in values:
+            raw = (row or {}).get("datetime")
+            close = (row or {}).get("close")
+            try:
+                ts = datetime.strptime(str(raw), "%Y-%m-%d %H:%M:%S") \
+                    if "-" in str(raw) and "T" not in str(raw) \
+                    else datetime.fromisoformat(str(raw))
+                ts = ts.replace(tzinfo=timezone.utc)  # snapshot stamps are UTC wall time
+                close = float(close)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    f"BLOCKED_DATA: malformed bar in {name!r}: {exc}") from exc
+            if ts in seen:
+                continue
+            if not (math.isfinite(close) and close > 0):
+                raise RuntimeError(
+                    f"BLOCKED_DATA: non-positive/non-finite close in {name!r}")
+            seen.add(ts)
+            local = ts.astimezone(ny)
+            if local.hour == 16 and local.minute == 0 and local.weekday() < 5:
+                rows.append((ts, close))
+    rows.sort(key=lambda b: b[0])
+    return rows
+
+
+def usd_index_daily_returns(price_dir, pairs=PAIRS):
+    """Frozen D1 equal-weight USD-leg return index, built from the authorized
+    H1 snapshot ONLY (V3-I finding H2 -- the family-supplied meta series is
+    no longer consulted).
+
+    Daily step = 16:00-NY bar -> next EXISTING 16:00-NY bar (a Fri->Mon step
+    spans the weekend as one daily step).  ``XXX/USD`` contributes the
+    NEGATIVE pair return, ``USD/XXX`` the positive pair return; the index
+    value of a day is the equal-weight mean of the contributing pairs'
+    signed returns, keyed by the UTC date of the later bar of the step.
+    On a partial snapshot the mean runs over the pairs present (tests pin
+    the 2-pair case); on the authorized snapshot that is the full 7-pair
+    universe.  A source with NO usable pair raises (fail closed)."""
+    per_pair = _usd_index_pair_steps(price_dir, pairs)
+    if not per_pair:
+        raise RuntimeError(
+            f"BLOCKED_DATA: USD index has no usable pair under {price_dir!r}")
+    days = sorted({d for steps in per_pair.values() for d in steps})
+    return {d: math.fsum(s[d] for s in per_pair.values() if d in s)
+            / sum(1 for s in per_pair.values() if d in s) for d in days}
+
+
+def _usd_index_pair_steps(price_dir, pairs):
+    """Per-pair signed daily-return steps {pair: {day: signed return}} for
+    the pairs present in the snapshot (absent pairs contribute nothing)."""
+    per_pair = {}
+    for pair in pairs:
+        bars = load_daily_16ny_closes(price_dir, pair)
+        if not bars:
+            continue
+        steps = {}
+        for (t0, c0), (t1, c1) in zip(bars, bars[1:]):
+            steps[str(t1.date())] = USD_LEG_SIGN[pair] * (c1 / c0 - 1.0)
+        per_pair[pair] = steps
+    return per_pair
+
+
+def usd_index_from_data_paths(data_paths):
+    """Locate the snapshot directory in ``data_paths`` and build the index.
+
+    Understood keys, in order: ``usd_index_h1_dir`` (explicit override),
+    ``price_h1_dir`` (family1), ``h1_dir`` (family2).  Returns
+    ``(index, source_key, n_pairs_used)``; ``(None, None, 0)`` when
+    data_paths carries no price source at all (a SCORED run with booked
+    trades then fails closed in :func:`compute_cell`).  A PRESENT but
+    broken source raises (fail closed) -- a malformed snapshot can never
+    silently disable the gate."""
+    if not isinstance(data_paths, dict):
+        return None, None, 0
+    for key in ("usd_index_h1_dir", "price_h1_dir", "h1_dir"):
+        source = data_paths.get(key)
+        if isinstance(source, str) and source:
+            per_pair = _usd_index_pair_steps(source, PAIRS)
+            if not per_pair:
+                raise RuntimeError(
+                    f"BLOCKED_DATA: USD index has no usable pair under {source!r}")
+            days = sorted({d for steps in per_pair.values() for d in steps})
+            index = {d: math.fsum(s[d] for s in per_pair.values() if d in s)
+                     / sum(1 for s in per_pair.values() if d in s) for d in days}
+            return index, key, len(per_pair)
+    return None, None, 0
+
+
 def usd_drift_corr(trades, usd_index_daily_returns):
     """Frozen inherited D1 diagnostic: Pearson corr between daily aggregate
     trade pnl and the equal-weight USD-index daily return (frozen D1 formula,
-    supplied by the family as meta.usd_index_daily_returns).  Evaluates only
-    over >= USD_DIAG_MIN_DAYS days with trades; otherwise it cannot fail."""
+    computed INSIDE the runner from the authorized snapshot -- V3-I finding
+    H2).  Evaluates only over >= USD_DIAG_MIN_DAYS days with trades;
+    otherwise it cannot fail."""
     daily = {}
     for t in trades:
         day = str(t["entry_bar_ts"])[:10]
@@ -443,7 +677,15 @@ def compute_cell(family_id, arm, data_paths, freeze_token=None,
     cell record (gates evaluated separately by :func:`stage_a_gates`).
 
     ``freeze_token is None`` => DUMMY DRY-RUN (scored=false, real_pnl=false,
-    book columns are 0.0 placeholders, publication refused)."""
+    every booked monetary metric is a 0.0/None placeholder per
+    :func:`dry_run_sanitized`, publication refused).  A SCORED anchor cell
+    additionally books the family's ``benchmark_treatment`` arm through the
+    same kernel and records ``incremental_alpha`` (V3-I finding H1); the
+    USD index is built runner-side from the snapshot (finding H2)."""
+    if arm == BENCHMARK_ARM:
+        raise ValueError(
+            "BENCHMARK_TREATMENT_IS_NOT_A_SCORED_CELL: the benchmark treatment "
+            "is booked inside its anchor cell, never as a cell of its own")
     fam = FAMILIES[family_id]  # KeyError for an unregistered family: fail closed
     dry_run = freeze_token is None
     if macro_reader is None:
@@ -470,18 +712,61 @@ def compute_cell(family_id, arm, data_paths, freeze_token=None,
     mdd = mdd_of([p for _, p in sorted(zip(scored, pnls_fin),
                                        key=lambda sp: sp[0]["exit_bar_ts"])])
     pop = [f for f in folds if f["populated"]]
-    drop_one = {}
-    for excl in PAIRS:
-        sub = [p for t, p in zip(scored, pnls_fin) if t["pair"] != excl]
-        drop_one[excl] = round(sum(sub) / len(sub), 10) if sub else 0.0
+    scenarios = dropout_scenarios(scored, pnls_fin, folds)
+    drop_one = {s["scenario"].split(":", 1)[1]: s["expectancy"]
+                for s in scenarios if s["scenario"].startswith("drop_pair:")}
+    # USD index: runner-built from the authorized snapshot (V3-I H2); the
+    # family-supplied meta series is never consulted.
+    usd_index, usd_source, usd_pairs = ((None, None, 0) if dry_run
+                                        else usd_index_from_data_paths(data_paths))
+    if usd_index is None and scored and not dry_run:
+        raise DecisionRuleError(
+            "USD_INDEX_SOURCE_MISSING",
+            "scored run carries booked trades but data_paths supplies no H1 "
+            "price source (usd_index_h1_dir / price_h1_dir / h1_dir); the "
+            "frozen USD-drift gate cannot be evaluated fail-open")
     usd = usd_drift_corr([dict(t, _pnl=p) for t, p in zip(scored, pnls_fin)],
-                         meta.get("usd_index_daily_returns") or {})
+                         usd_index or {})
     if scored:
         stress = stress_book(specs, {t["decision_id"] for t in scored},
                              fill_delay_events=meta.get("fill_delay_events"))
     else:
         stress = {}
     delay_events = meta.get("fill_delay_events") or {}
+    # Incremental alpha (V3-I H1): on a SCORED anchor cell the runner books
+    # the family's benchmark_treatment arm through the SAME kernel and the
+    # value is ALWAYS present; dry-run leaves None (no outcome may leak).
+    # Non-anchor scored cells carry the meta pass-through (normally None).
+    benchmark = None
+    alpha = meta.get("incremental_alpha")
+    if not dry_run and arm == "anchor":
+        bench_out = call_family_arm(fam, BENCHMARK_ARM, data_paths,
+                                    macro_reader, freeze_token, timeout_minutes)
+        bench_meta = bench_out.get("meta") or {}
+        if bench_meta.get("decision_clock", "daily") != "daily":
+            raise DecisionRuleError("CLOCK_UNSUPPORTED",
+                                    "benchmark_treatment declared a non-daily clock")
+        bench_dec, bench_adj, bench_formula = validate_decisions(
+            bench_out.get("decisions"), bench_out.get("financing_events"))
+        bench_kept, _bench_dropped = apply_session_gate(bench_dec)
+        bench_booked, _bench_specs, _bench_dual = book_trades(
+            bench_kept, bench_adj, dry_run=False)
+        for t in bench_booked:
+            t["_fold"] = fold_of(t["entry_bar_ts"])
+        bench_scored = [t for t in bench_booked if t["_fold"] is not None]
+        if not bench_scored:
+            raise DecisionRuleError(
+                "BENCHMARK_BOOK_EMPTY",
+                "benchmark_treatment produced no fold-assigned trades; the "
+                "frozen incremental-alpha value could not be computed")
+        bench_expectancy = round(
+            math.fsum(t["_pnl"] for t in bench_scored) / len(bench_scored), 10)
+        benchmark = {"n_decisions": len(bench_dec), "n_trades_kept": len(bench_kept),
+                     "financing_formula": bench_formula,
+                     "expectancy": bench_expectancy,
+                     "proposal_id": bench_meta.get("proposal_id")}
+        alpha = round(math.fsum([book_metrics(pnls_fin)["expectancy"],
+                                 -bench_expectancy]), 10)
     extra = {
         "cell_id": f"{family_id}:{arm}:tier1.0",
         "family_id": family_id, "arm": arm,
@@ -500,23 +785,23 @@ def compute_cell(family_id, arm, data_paths, freeze_token=None,
         "fold_positive_share": fold_positive_share(folds),
         "pair_concentration": conc,
         "drop_one_expectancy": drop_one,
+        "dropout_scenarios": scenarios,
         "break_even_cost_bps": accounting.break_even_bps(
             [t["_gross_move_pnl"] for t in scored]) if scored else None,
         "usd_drift_diag": usd,
+        "usd_index_source": usd_source,
+        "usd_index_pairs": usd_pairs,
         "stress": stress,
         "delay_stress": {"carried_unblended": True,
                          "n_delayed_trades": len(delay_events)},
-        "incremental_alpha": meta.get("incremental_alpha"),
+        "incremental_alpha": alpha,
+        "benchmark_treatment": benchmark,
     }
     record = accounting.build_scored_record(
         dual, record_id=extra["cell_id"], cost_tier=BASE_TIER, extra=extra)
-    # Dry-run placeholders: no scored metric may leave this module.
+    # Dry-run placeholders: no scored metric may leave this module (V3-I H3).
     if dry_run:
-        for key in ("gross_price_pnl_usd", "price_only_pnl_usd",
-                    "financing_adjustment_usd", "financing_adjusted_pnl_usd"):
-            record[key] = 0.0
-        record["dry_run"] = True
-        record["real_pnl"] = False
+        record = dry_run_sanitized(record)
     return record
 
 
@@ -559,9 +844,20 @@ def stage_a_gates(rec):
         st = rec["stress"].get(f"tier{tier}")
         if st and not (st["total_pnl"] > 0 and (st["pf"] is None or st["pf"] >= STRESS_MIN_PF)):
             g.append(f"STRESS_TIER_{tier}_FAIL")
-    surv = sum(1 for v in rec["drop_one_expectancy"].values() if v > 0)
+    # Frozen dropout survival over the scenario suite (V3-I M1): the 7
+    # drop-one-pair exclusions + 1 drop-one-BEST-fold; survival = reduced-book
+    # expectancy > 0; the cell needs >= DROPOUT_SURVIVAL_MIN survivals.
+    scenarios = rec.get("dropout_scenarios")
+    if not scenarios:
+        # Hand-built/legacy records: derive the pair scenarios from the
+        # drop-one dict (the fold scenario is then absent, not silently
+        # credited as survived).
+        scenarios = [{"scenario": f"drop_pair:{p}", "expectancy": v,
+                      "survived": bool(v > 0)}
+                     for p, v in (rec.get("drop_one_expectancy") or {}).items()]
+    surv = sum(1 for s in scenarios if s["survived"])
     if surv < DROPOUT_SURVIVAL_MIN:
-        g.append("DROP_ONE_PAIR_SURVIVAL_INSUFFICIENT")
+        g.append("DROPOUT_SURVIVAL_INSUFFICIENT")
     diag = rec["usd_drift_diag"]
     if diag["evaluated"] and abs(diag["corr"]) > USD_CORR_CEILING:
         g.append("USD_DRIFT_EXPLAINS_ANCHOR")

@@ -576,3 +576,55 @@ def test_real_snapshot_schedule_only_replay():
         first = info["first_schedule_decision"][:10]
         assert "2020-12-02" <= first <= "2020-12-20", (pair, first)
         assert info["schedule_decision_days"] >= 1000
+
+
+# ---------------------------------------------- benchmark treatment (V3-I H1)
+def test_benchmark_treatment_270d_lag_removes_fresh_information(churn_env):
+    # constant vintages: the lag is invisible -> the benchmark IS the anchor
+    # law (identical schedule and sides); only ids, arm_id and the lag meta
+    # distinguish it
+    out_a = F.run_arm("anchor", {"h1_dir": churn_env["h1_dir"]}, churn_env["reader"])
+    out_b = F.run_arm("benchmark_treatment", {"h1_dir": churn_env["h1_dir"]},
+                      churn_env["reader"])
+    assert F.BENCHMARK_ARM == "benchmark_treatment" and F.BENCHMARK_LAG_DAYS == 270
+    assert out_b["meta"]["arm_id"] == "FXFV3-A6-P1-bench"
+    assert out_b["meta"]["benchmark_treatment"]["lag_days"] == 270
+    assert all("-BN-" in d["decision_id"] for d in out_b["decisions"])
+    sides_a = {(d["pair"], d["decision_ts"]): d["side"] for d in out_a["decisions"]}
+    sides_b = {(d["pair"], d["decision_ts"]): d["side"] for d in out_b["decisions"]}
+    assert sides_a and sides_a == sides_b
+    _trades, _adj, formula = R.validate_decisions(out_b["decisions"],
+                                                  out_b["financing_events"])
+    assert formula == F.FINANCING_FORMULA_ID
+
+    # fresh-information removal: the US rate drops 5.25 -> 1.00 effective
+    # 2025-06-02 (owner-captured 20:00Z that day).  The anchor's 2025-06-13
+    # decisions read the NEW rate; the benchmark reads T-270d (2024-09-16),
+    # i.e. the OLD one, so the (X,US)-driven sides flip while the vol gate
+    # (price history only) keeps the schedule shape identical.
+    tmp2 = tempfile.mkdtemp(prefix="family2_bench_")
+    specs = {a: [(v, "2024-01-01T00:00:00Z", "2024-01-01T20:00:00Z")]
+             for a, v in RATES.items()}
+    specs["US"].append((1.00, "2025-06-02T00:00:00Z", "2025-06-02T20:00:00Z"))
+    reader2 = reader_from(tmp2, specs)
+    out_a2 = F.run_arm("anchor", {"h1_dir": churn_env["h1_dir"]}, reader2)
+    out_b2 = F.run_arm("benchmark_treatment", {"h1_dir": churn_env["h1_dir"]},
+                       reader2)
+    sa = {(d["pair"], d["decision_ts"]): d["side"] for d in out_a2["decisions"]}
+    sb = {(d["pair"], d["decision_ts"]): d["side"] for d in out_b2["decisions"]}
+    # USD/CHF's own differential is exactly zero under the OLD read (5.25-5.25):
+    # the anchor trades it post-change; the benchmark (NO_EVAL at T-270d,
+    # never a side-0 decision) cannot
+    assert ("USD/CHF", "2025-06-13T20:00:00+00:00") in sa
+    assert ("USD/CHF", "2025-06-13T20:00:00+00:00") not in sb
+    # GBP/USD flips: anchor reads 5.00-1.00 = +4.00 -> +1; benchmark reads
+    # the lagged vintage 5.00-5.25 = -0.25 -> -1
+    key = ("GBP/USD", "2025-06-13T20:00:00+00:00")
+    assert sa[key] == 1 and sb[key] == -1
+    # EUR/USD and AUD/USD flip the same way; USD/CAD flips sign the other
+    # direction; USD/JPY and NZD/USD keep their sign (differential stays
+    # positive under both reads) -> exactly 4 shared-key side flips
+    differing = {k for k in sa if k in sb and sa[k] != sb[k]}
+    assert {k[0] for k in differing} == {"EUR/USD", "GBP/USD", "AUD/USD",
+                                         "USD/CAD"}
+    assert all(k[1] == "2025-06-13T20:00:00+00:00" for k in differing)
