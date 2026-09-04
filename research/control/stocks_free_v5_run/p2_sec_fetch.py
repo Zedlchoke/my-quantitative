@@ -16,6 +16,10 @@ Discipline: ~7.5 requests/s (< SEC fair-access 10/s), honest UA, resumable
 
 from __future__ import annotations
 
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[3]))
+
 import gzip
 import io
 import json
@@ -137,12 +141,16 @@ SIC_EXCEPTIONS: dict[int, str] = {
 SIC_EXCEPTIONS.pop(100)  # not a real SIC; guard
 
 
-def sic_to_sector(sic: int | None) -> str | None:
-    if not sic:
+def sic_to_sector(sic: int | str | None) -> str | None:
+    if sic is None or sic == "" or sic == "N/A" or sic == 0:
         return None
-    if sic in SIC_EXCEPTIONS:
-        return SIC_EXCEPTIONS[sic]
-    return SIC_DEFAULT.get(sic // 100)
+    try:
+        sic_int = int(str(sic).strip())
+    except ValueError:
+        return None
+    if sic_int in SIC_EXCEPTIONS:
+        return SIC_EXCEPTIONS[sic_int]
+    return SIC_DEFAULT.get(sic_int // 100)
 
 
 def http_get(url: str) -> tuple[int, bytes]:

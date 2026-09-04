@@ -1,0 +1,59 @@
+{
+ "schema": "stocks_free_v5_run/p2_source_authority@1",
+ "recorded_at_utc": "2026-09-04T10:55:00Z",
+ "producer_role": "A3 (A1-controlled lane)",
+ "authority_rule": "per PLAN_stocks_v5.md section 2/15: SEC Company Facts / Submissions are the named adoptable keyless dataset; FRED/ALFRED, FINRA and Alpha Vantage are candidates requiring an owner key/signup decision; no signup, no key, no download outside the authorized set; a fusion source is never authorized by registration, parser tests or HTTP 200",
+ "dispositions": {
+  "SEC_EDGAR": {
+   "status": "AUTHORIZED_INTERNAL_RESEARCH",
+   "datasets": ["companyfacts (instant facts with filed-date clocks)", "submissions (SIC, forms, filing dates for panel construction)"],
+   "authorization_basis": "named adoptable dataset in the owner plan; keyless; US-government-produced public data; fair-access policy honored (<=10 req/s, declared User-Agent)",
+   "terms_captured": true,
+   "internal_research_allowed": true,
+   "local_storage_allowed": true,
+   "redistribution": "not asserted; raw files stay uncommitted (.staging_sec/ gitignored, hash-pinned)",
+   "entitlement_active": true,
+   "deterministic_retrieval": "fixed CIK URLs; two-pull equality tested at adapter level; fetch log hashes every response",
+   "historical_available_time": "filed dates -> end-of-UTC-day conservative upper bounds; acceptanceDateTime never used as dissemination proof (frozen adapter note)",
+   "raw_hashes_recorded": "fetch_log.jsonl sha256 per response + file_raw_sha256 in pit_records",
+   "account_or_key_required": false,
+   "residual_risks": [
+    "date-only filed stamps overstate intraday availability by at most one session; the conditioning-lag rule (+1 session) absorbs this",
+    "current-registry panel survivorship tilt (documented in panel.json; constant across all arms)",
+    "instant-facts-only normalization in the frozen adapter V1 (duration facts skipped); V5 conditioning is instant-fact based"
+   ]
+  },
+  "FRED_ALFRED": {
+   "status": "CANDIDATE_NOT_AUTHORIZED",
+   "blocker": "ACCOUNT_OR_KEY_NOT_AUTHORIZED - API key requires an owner signup decision (cycle instruction 2); adapter is fixture-tested only",
+   "v5_use": "BLOCKED; no vintage macro conditioning in V5; recorded, not worked around"
+  },
+  "FINRA_SHORT_SALE": {
+   "status": "CANDIDATE_NOT_AUTHORIZED",
+   "blocker": "feed entitlement/signup requires an owner decision; forbidden_fields (short_interest, borrow_fee, utilization) enforce fail-closed inference guard",
+   "v5_use": "BLOCKED"
+  },
+  "ALPHA_VANTAGE": {
+   "status": "CANDIDATE_NOT_AUTHORIZED",
+   "blocker": "key required AND not among the plan's named adoptable datasets",
+   "v5_use": "BLOCKED"
+  },
+  "ECB_SDMX": {
+   "status": "OUT_OF_V5_SCOPE",
+   "note": "keyless macro adapter present in the adopted frozen code; NOT named in PLAN_stocks_v5 section 2 adoptable datasets; using it would need a plan amendment"
+  },
+  "BIS_CBPOL": {
+   "status": "OUT_OF_V5_SCOPE",
+   "note": "same as ECB_SDMX"
+  },
+  "ETF_SNAPSHOT_PROVIDER_UNNAMED": {
+   "status": "AUTHORIZED_BY_HASH_PINNED_REPLAY",
+   "note": "license fields ABSENT in the snapshot (recorded, not fabricated); use bounded by prior-cycle authorization of the exact bytes; V5-P2a replay verified 37/37 byte-identical to the frozen MANIFEST"
+  }
+ },
+ "conditioning_eligibility": {
+  "pit_conditioned_proposals_may_use": "SEC_EDGAR only",
+  "price_volume_only_proposals_may_use": "the authorized 12-ETF snapshot fields within the non-forbidden space",
+  "fail_closed_rule": "any arm reading a CANDIDATE/OUT_OF_SCOPE source fails closed at the data gate"
+ }
+}

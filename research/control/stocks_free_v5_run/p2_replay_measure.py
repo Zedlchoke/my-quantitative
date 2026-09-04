@@ -11,6 +11,10 @@ Run:  .venv/bin/python research/control/stocks_free_v5_run/p2_replay_measure.py
 
 from __future__ import annotations
 
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[3]))
+
 from datetime import date
 from hashlib import sha256
 import json
