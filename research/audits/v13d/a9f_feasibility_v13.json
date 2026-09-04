@@ -1,0 +1,214 @@
+{
+ "schema": "v13d_a9f_feasibility_v1",
+ "artifact": "a9f_feasibility_v13",
+ "producer_role": "A9-F",
+ "cycle": "CRYPTO-V13",
+ "phase": "D2",
+ "generated_utc": "2026-09-04T11:54:06Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v13/d2-a9f-feasibility",
+ "branch": "orca/v13-d2-a9f-feasibility",
+ "head_at_audit": "d0be533",
+ "scope": "SCHEDULE-ONLY feasibility per proposal: data identifiability, schedule feasibility, cost/turnover arithmetic, cap/construction feasibility, control identifiability, sample floors, host resources. NO PnL, returns, backtests or scored series were computed; all data access read-only.",
+ "method": {
+  "pnl_computed": false,
+  "data_written_to_authorized_roots": false,
+  "arithmetic_sources": [
+   "research/v11/cost_feasibility.py (frozen floors + gate metric definitions; transition-cost drag uses the V10 adapter arithmetic: taker_fee_bps*1e-4*mult per side + ticks*tick_size/price)",
+   "frozen cost schedule constants in use across the factory: TAKER_FEE_FLOOR_BPS=5.0, ADVERSE_TICK_SLIP_FLOOR=1 (research/v12/families/*/strategy.py, research/v11/families/illiq_amihud/strategy.py); stress = fee x1.5 + 3 ticks total",
+   "frozen fold contract: research/control/v12_run/selection_freeze.json folds field (F0 2025-08-22..2025-12-21, F1 2025-12-22..2026-04-21, F2 2026-04-22..2026-08-21, 1-day purge), identical to P2 gate s0_folds",
+   "research/v12/data_contract.py (REQUIRED_SYMBOLS, data roots, slot-census and warmup helpers; used read-only)",
+   "research/data_fusion/crypto_compat.py (availability semantics: bars at close, funding at settlement stamp, OI at snapshot stamp, mark at snapshot stamp)"
+  ],
+  "measured_inputs": [
+   "per-symbol reference marks read ONLY as cost inputs from the markPrice field of funding settlement rows (same cost-input concept as the V11 gate fill_prices; no return series formed)",
+   "tick sizes from crypto_perpetual instrument metadata; price_increment positive for 20/20"
+  ]
+ },
+ "window_and_schedule_measurements": {
+  "authorized_window": "2024-08-20..2026-08-21",
+  "blind_s0_window": "2025-08-22..2026-08-21",
+  "decision_clock": "weekly Monday 00:00:00Z",
+  "monday_stamps_in_s0_window": 52,
+  "stamps_lost_to_purge": ["2026-04-20T00:00:00Z (Monday inside F1 1-day purge zone [2026-04-20,2026-04-21))"],
+  "discretionary_decisions_scheduled": 51,
+  "decisions_per_365d_gate_normalized": 52.15,
+  "fold_decisions": {"F0": 17, "F1": 17, "F2": 17},
+  "first_stamp": "2025-08-25T00:00:00Z",
+  "last_stamp": "2026-08-17T00:00:00Z",
+  "frozen_floors": {"max_discretionary_per_365d": 60, "min_median_holding_days": 3, "base_drag_frac_gross_lte": 0.08, "stressed_drag_frac_gross_lte": 0.12, "max_symbol_turnover_share_lte": 0.25}
+ },
+ "data_coverage_measurements": {
+  "bars_15m": {
+   "symbols": 20,
+   "missing_slots_blind_s0_window": 0,
+   "missing_slots_90d_warmup_before_first_stamp": 0,
+   "missing_slots_56d_and_28d_warmup": 0,
+   "head_gap_vs_outer_window": "~2-3 days for all 20 symbols (first bar 2024-08-23T05:15Z or 2024-08-21T14:15Z; frozen V12 ILLIQ head-gap finding, outside blind-S0 and outside all warmup needs)",
+   "evidence": "P2_DATA_AUTHORITY_REPLAY window_coverage.bars: authorized_window_missing_slots=0 for 20/20; slot census recomputed by A9-F from ts_event columns"
+  },
+  "funding": {
+   "primary_bundle": "funding_data/scan_2026 (20/20 symbols present; P2 hashes OK)",
+   "settlements_in_blind_s0_window_per_symbol": 1092,
+   "max_internal_gap_s0_hours": 8.0,
+   "cadence": "16/20 symbols homogeneous 8h; ACEUSDT (1h x342 + 4h), BOMEUSDT (4h), ENAUSDT (4h), ONGUSDT (1h x52 + 4h) mixed/finer",
+   "markprice_field": "present on every funding row for all 20 symbols (mark observations staged at settlement stamps; no dedicated mark-price root exists, per P2 note)"
+  },
+  "open_interest": {
+   "root": "oi_data/consolidated (20/20 parquet, P2 hashes OK)",
+   "granularity": "one daily snapshot per symbol at ~23:55Z (day-end 5m observation); available at Monday 00:00Z stamps",
+   "coverage": "2025-07-01..2026-08-20/21, 417 days present, 0 internal gap days, 0 missing days in blind-S0 window, for ALL 20 symbols",
+   "note": "OI history does NOT exist before 2025-07-01; all proposal OI warmup needs are satisfied (see per-proposal items)"
+  },
+  "mark_price": {
+   "staged_as": "markPrice field of funding settlement rows (funding cadence granularity, max 8h staleness)",
+   "pairing_satisfiability": "OI snapshot ~23:55Z pairs with same-day 16:00Z (8h) or finer settlement mark, well inside the declared 24h tolerances of EXITCAP/OITD"
+  },
+  "instrument_metadata": {"present": "20/20", "tick_sizes_positive": 20}
+ },
+ "cost_arithmetic": {
+  "constants": {"taker_fee_bps_per_side": 5.0, "adverse_ticks_base": 1, "stress": "fee x1.5 (+3 ticks total)", "stamps_per_year": 51, "annualization": "x365/357 (gate window normalization)"},
+  "tick_over_price_measured": {"mean_19_tradables": 1.366e-4, "median": 9.34e-5, "max": "5.76e-4 (NEARUSDT)"},
+  "table_base_and_stressed_drag_frac_of_gross": [
+   {"churn_one_way_per_stamp": 2.0, "label": "adversarial ceiling (entire book replaced every week; sum|dw|<=2xgross is never-exceedable)", "base_avg_tick_pct": 6.64, "stressed_avg_tick_pct": 12.09},
+   {"churn_one_way_per_stamp": 1.0, "label": "high churn", "base_avg_tick_pct": 3.32, "stressed_avg_tick_pct": 6.05},
+   {"churn_one_way_per_stamp": 0.6, "label": "typical tercile/quintile weekly rebalance", "base_avg_tick_pct": 1.99, "stressed_avg_tick_pct": 3.63},
+   {"churn_one_way_per_stamp": 0.3, "label": "low churn", "base_avg_tick_pct": 1.0, "stressed_avg_tick_pct": 1.81},
+   {"churn_one_way_per_stamp": 0.2, "label": "hysteresis book (a8)", "base_avg_tick_pct": 0.66, "stressed_avg_tick_pct": 1.21}
+  ],
+  "funding_events_cadence_only": {"settlements_per_symbol_per_7d_at_8h": 21, "book_12_slots_per_week": 252, "book_5_slots_per_week": 105, "note": "frozen gate precedent: funding enters the floor arithmetic as settlement EVENT counts only (no rate multiplied, no capital path); rates applied once at score time on held spans"},
+  "verdict": "base <=8%/yr holds for ALL six proposals even at the never-exceedable churn ceiling (6.64% <= 8%). stressed <=12% holds at all plausible churn levels (<=6.05% at 1.0 one-way/stamp; <=3.6% typical); it is marginally exceeded (12.09%) ONLY at the adversarial ceiling of full-book replacement every week for 51 weeks at average tick rates (up to ~24.8% if all churn were concentrated in the two highest tick/price names). The realized schedule is fail-closed gated at score time by research/v11/cost_feasibility.py before any scoring, so the margin risk is detectable, never silent."
+ },
+ "host_resources": {
+  "measured_utc": "2026-09-04T11:50Z",
+  "cpu": "Apple M1, 8 cores (hw.ncpu=8)",
+  "ram_total_bytes": 8589934592,
+  "ram_free_pct": 50,
+  "ram_free_gb_approx": 4.0,
+  "swap": "total 7168 MB, used 5551.56 MB, free 1616.44 MB (elevated memory pressure on host)",
+  "disk": {"volume": "/System/Volumes/Data", "size_gb": 228, "available_gb": 48, "used_pct": 75},
+  "authorized_data_footprint": {"binance_bar_15m": "129 MB", "oi_consolidated": "160 KB", "note": "in-memory per-family working set (rolling 90d windows over 19 symbols) is far below 1 GB"},
+  "stronghost_e0_formula": "measured_safe_cap = min(3, floor((free_gb - 1.5)/2.0))",
+  "measured_safe_cap": 1,
+  "implication": "cap 1 => serialized single scored cell at a time (consistent with serial-arm execution plan and the P1 single-writer-per-ledger policy); 12-hour clock and <120min/<45min rules apply; swap pressure warrants modest per-process memory and no parallel cells"
+ },
+ "proposals": [
+  {
+   "hypothesis_id": "A13-V13-A5-EXITCAP",
+   "files": ["research/proposals/v13/a5/EXITCAP.md", "research/proposals/v13/a5/EXITCAP.json"],
+   "items": {
+    "1_data_identifiability": {"verdict": "FEASIBLE", "evidence": "Needs OI (latest snapshot <=T within 48h): 20/20 daily OI 2025-07-01..2026-08-21, 0 gap days, stamps ~23:55Z so available at Monday 00:00Z. Mark pairing within 24h: satisfiable (funding-row marks <=8h stale). 28d/56d daily turnover from 15m bars: 0 missing slots in blind-S0 window and warmup; control's frozen 90d pre-window 2025-05-24..2025-08-22 covered by bars (complete from 2024-08-23). Funding and tick metadata complete. Warmup binding 90d (beta) satisfiable before first stamp 2025-08-25."},
+    "2_schedule_feasibility": {"verdict": "FEASIBLE", "evidence": "Weekly Monday clock: 52.15 decisions/365d gate-normalized <= 60. Median intended holding 7d >= 3d. Fold decisions 17/17/17 all >= proposal's own 15 floor, non-degenerate. Execution lag (fill at close of first completed 15m bar strictly after T = 00:15Z bar close, record available exactly at fill instant) is CONSISTENT with fusion availability semantics; stress +1 event delay -> 00:30Z close, also consistent."},
+    "3_cost_turnover_arithmetic": {"verdict": "FEASIBLE", "evidence": "Full-rebalance 12-name equal-weight book: one-way churn ceiling 2.0/stamp => base 6.64% <= 8% even at ceiling; stressed 12.09% ONLY at the adversarial ceiling, 6.05% at high churn (1.0), ~3.6% typical. Claimed <=8%/<=12% arithmetically plausible; binding check is the frozen realized-schedule gate at score time."},
+    "4_cap_construction": {"verdict": "FEASIBLE", "evidence": "6/side at 1/12: max |w| = 0.0833 <= 0.30, gross = 1.0 by construction. Expected per-symbol turnover share 1/12 = 8.3% <= 25% with wide margin. Drop-one selects a held max-|w| symbol (all tied at 1/12); tie-break 'symbol id ascending' is declared a priori for the book but NOT restated in the drop-one rule, and 'renormalize the remaining side to 5 symbols per side (1/10)' is ambiguous (drop one symbol total vs one per side). Identifiable and implementable once the tie-break/renormalization sentence is pinned; recorded as spec gap, not an infeasibility."},
+    "5_control_identifiability": {"verdict": "FEASIBLE", "evidence": "STATIC-SCALE placebo: testable (frozen pre-screen 90d median turnover denominator), distinct from the anchor (zero capacity dynamics after freeze), and would detect the stated confound class (edge persisting without capacity updating => placebo passes => family rejected). NOTE: its ranking is OI_now / frozen_capacity_i, i.e. capacity-relative with a frozen denominator, NOT literal raw OI-notional scale as the proposal's attribution sentence claims; the detection logic still works but the attribution label is imprecise and should be read as 'frozen-capacity normalization'."},
+    "6_sample_floor": {"verdict": "FEASIBLE", "evidence": "Frozen floors met: 52.15/365d <= 60; 17/17/17 per fold >= 15; books always-invested so zero-position refusal not triggered. DEVIATION (must be corrected in W1 docs, not a redesign): the proposal's own floor '>= 52 weekly decisions per arm in the screen window' is NOT met - the schedule yields 51 discretionary stamps because Monday 2026-04-20 falls inside the F1 1-day purge zone; 52 Mondays exist but one is purged. Section 5's '52 discretionary decisions/365d' is likewise nominal."}
+   },
+   "overall": "FEASIBLE (schedule-only)",
+   "implementation_risk": "MED",
+   "implementation_risk_reason": "4-dataset PIT join (bars + daily OI + funding-row marks + funding cost) with OI x mark pairing and fail-closed staleness rules; stamp conventions verified present on disk"
+  },
+  {
+   "hypothesis_id": "A13-V13-A5-LIQEPIS",
+   "files": ["research/proposals/v13/a5/LIQEPIS.md", "research/proposals/v13/a5/LIQEPIS.json"],
+   "items": {
+    "1_data_identifiability": {"verdict": "FEASIBLE", "evidence": "Bars-only signal: 2688/5376 completed-slot formation windows require EVERY slot present; measured 0 missing 15m slots in the blind-S0 window AND in the 90d/56d/28d warmup regions before the first stamp, for all 20 symbols. Fail-closed one-missing-slot refusal will therefore not fire at any stamp given this snapshot (any future data change fail-closes safely). Funding and tick metadata complete; OI/mark declared unused."},
+    "2_schedule_feasibility": {"verdict": "FEASIBLE", "evidence": "Identical clock/folds to EXITCAP: 52.15/365d <= 60; holding 7d >= 3d; folds 17/17/17 >= 15. Execution lag close-fill at 00:15Z consistent with availability semantics (record available exactly at fill instant); stress 00:30Z consistent."},
+    "3_cost_turnover_arithmetic": {"verdict": "FEASIBLE", "evidence": "Same full-rebalance tercile schedule as EXITCAP: base <= 6.64% at never-exceedable ceiling, ~2% typical; stressed <= 12.09% only at the adversarial ceiling, ~3.6% typical. Claimed floors arithmetically plausible."},
+    "4_cap_construction": {"verdict": "FEASIBLE", "evidence": "6/side at 1/12: |w| <= 0.30, gross 1.0 by construction; expected per-symbol turnover share 8.3% <= 25%. Drop-one selects a held max-|w| symbol (all tied 1/12); tie-break declared a priori for the book but not restated in the drop-one rule; same 'renormalize to 5 symbols per side (1/10)' ambiguity as EXITCAP. Spec gap recorded."},
+    "5_control_identifiability": {"verdict": "FEASIBLE", "evidence": "SIGN-INV control: identical construction with inverted ordering; testable, distinct, and detects a generic tilt/ordering artifact (if the inverted book also passes the incremental gate the directional claim is falsified). Same pattern as the frozen OILEV-V2 inverted control; rule is preregistered and the control is never promotable."},
+    "6_sample_floor": {"verdict": "FEASIBLE", "evidence": "Same as EXITCAP: frozen floors met (52.15/365d; 17/17/17; non-zero positions). DEVIATION: self-declared '>= 52 weekly decisions per arm in the screen window' unmet at 51 (one Monday purged). Documentation correction needed."}
+   },
+   "overall": "FEASIBLE (schedule-only)",
+   "implementation_risk": "LOW",
+   "implementation_risk_reason": "bars-only signal with a completeness census already verified clean; simplest join of the six"
+  },
+  {
+   "hypothesis_id": "A13-V13-A6-CAPVEL",
+   "files": ["research/proposals/v13/a6/CAPVEL.md", "research/proposals/v13/a6/CAPVEL.json"],
+   "items": {
+    "1_data_identifiability": {"verdict": "FEASIBLE", "evidence": "Needs 15m volume/close (complete: 0 missing slots), daily OI counts >= 26 (28d anchor) / >= 52 (56d neighbour): measured at first stamp 2025-08-25 min over symbols = 28 and 55 (OI exists from 2025-07-01; margins +2/+3 at stamp 1, full coverage from stamp 2). Mark used only for cost marks (present on all funding rows); funding/ticks complete; 90d beta warmup satisfiable from bars."},
+    "2_schedule_feasibility": {"verdict": "FEASIBLE", "evidence": "Weekly Monday 00:00Z, 52.15/365d <= 60; holding 7d >= 3d; folds 17/17/17 >= 15; force-flat only at fold boundaries; eligibility renormalization (N<4 scales gross) is schedule-consistent. Execution lag close-fill at 00:15Z consistent with fusion availability semantics; stress 00:30Z consistent."},
+    "3_cost_turnover_arithmetic": {"verdict": "FEASIBLE", "evidence": "Full-rebalance 5-name quintile, one-way churn ceiling 2.0/stamp: base 6.64% <= 8% even at ceiling; stressed 6.05% at high churn (1.0), ~3.6% typical, 12.09% only at the adversarial ceiling. Claimed floors plausible; realized-schedule gate binds at score time."},
+    "4_cap_construction": {"verdict": "FEASIBLE", "evidence": "5 held at 0.20: max |w| = 0.20 <= 0.30, gross 1.0 by construction; N<4 renormalization preserves the cap. Expected per-symbol turnover share = 1/5 = 20% <= 25% by symmetry, but with only a 5pp margin and NO structural bound if churn concentrates in one slot - correctly framed by the proposal itself as 'detected by the frozen feasibility floor, never relaxed'. Drop-one: 'the single HELD symbol with MAXIMUM |weight|' - all held weights tie at 0.20, so a tie-break is required and not declared (ascending symbol id is the natural a priori rule); identifiable with that pin."},
+    "5_control_identifiability": {"verdict": "FEASIBLE", "evidence": "VOLLEVEL-28D (log 28d mean daily dollar volume, long lowest 5): testable, distinct (OI denominator removed), and directly detects the size/liquidity-level rival - if the anchor edge is volume-level, the control reproduces (expectancy > 0 AND fold-excess sign match in >= 2/3) and the proposal is ineligible. Preregistered reproduction rule is precise."},
+    "6_sample_floor": {"verdict": "FEASIBLE", "evidence": "Frozen floors met (52.15/365d; 17/17/17; minimum-activity). Nominal '52 scheduled stamps/yr' is 51 effective (one Monday purged); the proposal treats 52 as a rate not a hard minimum, so no floor is breached - nominal arithmetic should be corrected in W1 docs."}
+   },
+   "overall": "FEASIBLE (schedule-only)",
+   "implementation_risk": "MED",
+   "implementation_risk_reason": "OI+bars join with count-based per-stamp eligibility and renormalization; OI daily history verified but starts 2025-07-01 (thin +2/+3 count margins at stamp 1)"
+  },
+  {
+   "hypothesis_id": "A13-V13-A6-LIQPRO",
+   "files": ["research/proposals/v13/a6/LIQPRO.md", "research/proposals/v13/a6/LIQPRO.json"],
+   "items": {
+    "1_data_identifiability": {"verdict": "FEASIBLE", "evidence": "Bars-only signal (HHI_norm over 28d/56d of 15m slots; same-slot close deflator available at bar close - availability-consistent by construction). 0 missing slots in blind-S0 window and warmup regions for all 20 symbols; OI declared unused; funding/ticks complete."},
+    "2_schedule_feasibility": {"verdict": "FEASIBLE", "evidence": "Identical clock/folds: 52.15/365d <= 60; holding 7d >= 3d; folds 17/17/17. Close-fill lag at 00:15Z consistent with availability semantics."},
+    "3_cost_turnover_arithmetic": {"verdict": "FEASIBLE", "evidence": "Same quintile schedule as CAPVEL: base <= 6.64% at ceiling, ~2% typical; stressed <= 6.05% at high churn, ~3.6% typical, 12.09% only at adversarial ceiling. Floors plausible."},
+    "4_cap_construction": {"verdict": "FEASIBLE", "evidence": "5 at 0.20: |w| <= 0.30, gross 1.0; expected per-symbol turnover share 20% <= 25% with the same 5pp margin caveat as CAPVEL (detected by the frozen floor at score time). Drop-one identical wording; tie-break pin required (not declared)."},
+    "5_control_identifiability": {"verdict": "FEASIBLE", "evidence": "VOLREG-28D (28d realized vol of daily log returns, long highest 5): testable, distinct, and detects the vol-level rival (the documented vol-level sorting shadow observation) - reproduction kills the proposal. Realized vol appears ONLY in the control seat; anchor signals remain return-free, so the forbidden-family boundary is respected by construction."},
+    "6_sample_floor": {"verdict": "FEASIBLE", "evidence": "Same as CAPVEL: frozen floors met; 51 effective stamps vs nominal 52 (documentation correction)."}
+   },
+   "overall": "FEASIBLE (schedule-only)",
+   "implementation_risk": "LOW",
+   "implementation_risk_reason": "bars-only HHI + realized-vol control; no cross-dataset joins"
+  },
+  {
+   "hypothesis_id": "A13-V13-A8-OITD",
+   "files": ["research/proposals/v13/a8/OITD.md", "research/proposals/v13/a8/OITD.json"],
+   "items": {
+    "1_data_identifiability": {"verdict": "FEASIBLE", "evidence": "OI7 = mean of latest 7 daily OI stamps <= T within trailing 10d: measured satisfiable for 20/20 at the first stamp (OI 2025-07-01 onward, 0 gap days). MK within 24h: funding-row marks <= 8h stale. 28d/56d daily turnover windows require fully covered UTC days: 0 missing slots. 90d beta warmup satisfiable. Every declared warmup fits before the first decision 2025-08-25."},
+    "2_schedule_feasibility": {"verdict": "FEASIBLE", "evidence": "Weekly clock 52.15/365d <= 60; hysteresis book keeps intended spans >= 7d >= 3d; folds 17/17/17 >= the proposal's 15 floor and 51 >= its 30-decision publication floor. CAVEAT (recorded, must be pinned in W1): the declared lag fills at the OPEN of the 00:15Z bar while the order releases at 00:15Z - economically realizable (transaction at the then-current price, no decision-time look-ahead), but that bar's fusion record becomes available only at 00:30Z, so a strict availability-gated reader cannot supply the fill reference at 00:15Z. Implementation needs an explicit slot-open transaction-reference convention outside the record-availability rule. The a5/a6 close-fill convention avoids this entirely."},
+    "3_cost_turnover_arithmetic": {"verdict": "FEASIBLE", "evidence": "Hysteresis (exit only on rank crossing beyond median) structurally lowers churn: at 0.2-0.5 one-way/stamp the drag is base 0.66-1.66% / stressed 1.21-3.03%; even the never-exceedable 2.0 ceiling gives base 6.64% <= 8%. Stressed <= 12% holds with the widest margin of the six under plausible churn. The proposal's own claim ('the hysteresis book exists precisely to keep membership churn inside these floors') is arithmetically supported."},
+    "4_cap_construction": {"verdict": "FEASIBLE", "evidence": "w = min(0.5/n_side, 0.30): 0.0833 at n_side=6, 0.125 at n_side=4, <= 0.30 always; gross <= 1.0; n_side<2 keeps budget in cash; side membership < 4 skips rebalance fail-closed. Expected per-symbol turnover share ~1/12 <= 25%. Drop-one: 'HELD symbol with maximum |weight| (tie-break: ascending symbol name)' - fully declared, selects a held max-|w| symbol, non-vacuousness quantified (>= 50% of stamps with the dropped symbol held). Best-specified drop-one of the six."},
+    "5_control_identifiability": {"verdict": "FEASIBLE", "evidence": "CTL-FLOW-ONLY (28d mean daily dollar turnover, long highest tercile; OI numerator removed): testable, distinct, and directly detects the turnover-level (DNR) confound - for fixed OI, low D == high turnover, so the control retains the anchor's flow exposure and deletes the OI stock; preregistered rule (control must fail >= 1 of the anchor's three gates) is precise and the control is never promotable."},
+    "6_sample_floor": {"verdict": "FEASIBLE", "evidence": "Frozen floors met: 52.15/365d <= 60; 17/17/17 >= 15 per fold; 51 >= 30 completed decisions; per-side membership >= 4 at >= 95% of stamps is a score-time check (untestable schedule-only, flagged for W1 verification). Nominal '52 weekly decisions on the screen window' is 51 effective (one Monday purged) - documentation correction."}
+   },
+   "overall": "FEASIBLE (schedule-only)",
+   "implementation_risk": "MED",
+   "implementation_risk_reason": "OI 7-stamp + mark pairing + bar turnover join and hysteresis book state; plus the slot-open fill-reference convention that departs from strict record-availability reads (declared by the proposal, needs an explicit engine carve-out)"
+  },
+  {
+   "hypothesis_id": "A13-V13-A8-TCH",
+   "files": ["research/proposals/v13/a8/TCH.md", "research/proposals/v13/a8/TCH.json"],
+   "items": {
+    "1_data_identifiability": {"verdict": "FEASIBLE", "evidence": "Bars-only: daily turnover shares over trailing 28d/56d requiring fully covered days - 0 missing slots measured; 90d beta warmup satisfiable; OI and mark declared read-zero (verified consistent with availability semantics since no records are read). Funding/ticks complete."},
+    "2_schedule_feasibility": {"verdict": "FEASIBLE", "evidence": "Weekly clock 52.15/365d <= 60; hysteresis spans >= 7d >= 3d; folds 17/17/17. CAVEAT: same slot-open fill reference at 00:15Z as OITD (record available 00:30Z) - needs the same explicit engine convention; economically realizable, no decision-time look-ahead."},
+    "3_cost_turnover_arithmetic": {"verdict": "FEASIBLE", "evidence": "Hysteresis churn 0.2-0.5/stamp => base 0.66-1.66% / stressed 1.21-3.03%; never-exceedable ceiling base 6.64% <= 8%. Claimed floors hold with margin."},
+    "4_cap_construction": {"verdict": "FEASIBLE", "evidence": "Same hysteresis construction as OITD: |w| <= 0.30, gross <= 1.0 by construction; expected per-symbol turnover share ~1/12 <= 25%; drop-one fully declared with ascending-symbol tie-break, non-vacuousness quantified."},
+    "5_control_identifiability": {"verdict": "FEASIBLE", "evidence": "CTL-VOLLEVEL (28d realized vol ascending, long lowest tercile): testable, distinct, and detects the vol-level shadow (low-H mechanically co-moves with low vol, so if vol-level drives the edge the control reproduces and the proposal is falsified). Realized vol confined to the control seat; anchor signal contains no returns."},
+    "6_sample_floor": {"verdict": "FEASIBLE", "evidence": "Frozen floors met (52.15/365d; 17/17/17; 51 >= 30). 'per-side membership >= 4 at >= 95% of stamps' and 'signal availability >= 95%' are score-time checks. Nominal 52 vs measured 51 stamps - documentation correction."}
+   },
+   "overall": "FEASIBLE (schedule-only)",
+   "implementation_risk": "LOW",
+   "implementation_risk_reason": "bars-only daily Herfindahl + realized-vol control with hysteresis book state; simplest data join of the six alongside LIQEPIS/LIQPRO"
+  }
+ ],
+ "caveats_register": [
+  "OFF-BY-ONE STAMPS: the blind-S0 window contains 52 Mondays, but Monday 2026-04-20T00:00Z lies inside the frozen F1 1-day purge zone [2026-04-20,2026-04-21), so the schedule yields 51 discretionary decisions (F0=17, F1=17, F2=17). All frozen floors pass; the proposals' self-declared '>= 52 decisions in the screen window' (a5) and nominal '52' counts (a6, a8) should be corrected to 51 in W1 documentation. This is a documentation correction, not a redesign.",
+  "A8 FILL-REFERENCE SEMANTICS: OITD/TCH fill at the open of the 00:15Z bar at order release T+15m; the bar record becomes available at 00:30Z. Economically realizable and free of decision-time look-ahead, but it requires an explicit slot-open transaction-reference convention in the W1 engine; strict record-availability reads (the a5/a6 close-fill convention) avoid the issue.",
+  "STRESSED-COST MARGIN AT THE ADVERSARIAL CEILING: stressed drag <= 12% holds at all plausible churn (<= 6.05% at 1.0 one-way/stamp); the mathematical ceiling (full-book replacement every week, c=2.0) gives 12.09% at average tick rates - a corner that would itself fail the frozen realized-schedule gate at score time. For the hysteresis books (a8) the margin is wide; for the full-rebalance books (a5/a6) the score-time gate is the binding protection.",
+  "QUINTILE TURNOVER-SHARE MARGIN (a6): equal-weight 5-name books have an expected per-symbol turnover share of 20% vs the 25% floor - by symmetry only; churn concentration in one slot could breach, detected (never relaxed) by the frozen gate, as CAPVEL itself states.",
+  "MARK-PRICE GRANULARITY: no dedicated mark-price root exists; mark observations are the markPrice field of funding settlement rows (<= 8h staleness). EXITCAP's and OITD's declared 24h pairing tolerances are satisfiable at every stamp; consumers must document that mark stamps coincide with settlement stamps.",
+  "OI HISTORY STARTS 2025-07-01: all OI warmups are satisfiable (EXITCAP latest-snapshot; CAPVEL >= 26/>= 52 counts with +2/+3 margin at stamp 1; OITD 7-in-10d), but any post-hoc extension of OI lookbacks beyond ~54d before 2025-08-25 would be infeasible without new data (which would require an owner data-authority decision).",
+  "EXITCAP/LIQEPIS DROP-ONE WORDING: the drop symbol tie-break (ascending symbol id) is declared for the book but not restated in the drop-one rule, and 'renormalize the remaining side to 5 symbols per side (1/10)' is ambiguous (one symbol dropped total vs one per side). Pin both sentences before W1. CAPVEL/LIQPRO drop-one also needs an explicit tie-break (all held weights tie at 0.20). OITD/TCH drop-one is fully declared.",
+  "EXITCAP CONTROL ATTRIBUTION LABEL: the STATIC-SCALE placebo ranks OI_now / frozen_capacity_i (frozen per-symbol denominator), not literal raw OI scale; the detection logic is sound but the 'raw positioning scale' attribution sentence should be read as 'frozen-capacity normalization'.",
+  "SCORE-TIME-ONLY CHECKS: 'per-side membership >= 4 at >= 95% of stamps' (a8), 'signal availability >= 95%' (a8), and the Stage-A concentration gates depend on the realized signal/book and are NOT verifiable schedule-only; they are deferred to the W1 cost_feasibility gate and Stage-A, per design."
+ ],
+ "verdict_summary": {
+  "A13-V13-A5-EXITCAP": "FEASIBLE (schedule-only)",
+  "A13-V13-A5-LIQEPIS": "FEASIBLE (schedule-only)",
+  "A13-V13-A6-CAPVEL": "FEASIBLE (schedule-only)",
+  "A13-V13-A6-LIQPRO": "FEASIBLE (schedule-only)",
+  "A13-V13-A8-OITD": "FEASIBLE (schedule-only)",
+  "A13-V13-A8-TCH": "FEASIBLE (schedule-only)",
+  "infeasible_count": 0,
+  "note": "All six pass every schedule-only feasibility item on the real snapshot. Caveats above are documentation/engineering pins, none of which weakens a frozen floor or requires proposal redesign."
+ },
+ "attestation": {
+  "no_pnl_computed": true,
+  "no_returns_or_backtests": true,
+  "read_only_data_access": true,
+  "no_s1_access": true,
+  "no_modification_of_audited_artifacts": true
+ }
+}
