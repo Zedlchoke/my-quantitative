@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "role": "A4_PROPOSAL_LANE_D1 (FOREX-FREE-V3, lane d1-a4-proposals)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/d1-a4-proposals",
+  "branch": "orca/forex-free-v3-d1-a4-proposals",
+  "bootstrap_sha": "cafd78eed1ce29f8d7a0847a374d7005e9a2b313",
+  "commit_sha": null,
+  "clean": true,
+  "stamp_utc": "2026-09-04T13:54:05Z",
+  "stamp_source": "machine_date_u",
+  "commit_sha_note": "commit_sha is null because this handoff file is part of the single commit it describes (self-reference). A1 must read the actual SHA with: git -C <worktree> rev-parse HEAD on branch orca/forex-free-v3-d1-a4-proposals after this commit lands. clean=true refers to the state at write time before the single planned commit.",
+  "ownership": {
+    "owned_paths": [
+      "research/proposals/forex_free_v3/a4_lane/**",
+      "research/control/forex_free_v3_run/handoffs/d1_a4_proposals.json"
+    ],
+    "forbidden_touched": [],
+    "notes": "No file outside the allowed globs was created, modified or deleted. No research/control/*_v1_run or *_v2_run path, no data_raw, no PLAN_*.md, no scoring code, no accounting/data-fusion module touched. Outcome-blind lane: no per-arm outcome data exists for V3 and none was accessed; zero scored PnL exists."
+  },
+  "proposals": [
+    {
+      "hypothesis_id": "FXFV3-A4-P1",
+      "files": [
+        "research/proposals/forex_free_v3/a4_lane/proposal_1.json",
+        "research/proposals/forex_free_v3/a4_lane/proposal_1.md"
+      ],
+      "title": "Post-availability drift in the direction of a policy-rate change",
+      "mechanism_one_line": "Daily event-driven clock: after a policy-rate change first satisfies available_time_utc <= T, hold 10 sessions in the direction of the change (hike long / cut short the affected area's pair side).",
+      "conditioning_series": "BIS WS_CBPOL policy rates (adopted, AUTHORIZED_FOR_V3_RESEARCH), availability-gated via pit.select_asof; BORROWER_COUNTRY {US, XM, GB, JP, AU, NZ, CA, CH} x adjustment P",
+      "arms": {
+        "anchor": "sign(rate change), 10-session hold",
+        "neighbour": "same mechanism at 5-session hold",
+        "control": "sign-flipped conditioning on identical dates/fills/horizons; preregistered NOT to reproduce the anchor"
+      },
+      "incremental_benchmark": "same schedule, direction = pair's own trailing 10-session price return, zero macro reads",
+      "macro_conditioned": true,
+      "carry_adjacent": false,
+      "dual_book": true
+    },
+    {
+      "hypothesis_id": "FXFV3-A4-P2",
+      "files": [
+        "research/proposals/forex_free_v3/a4_lane/proposal_2.json",
+        "research/proposals/forex_free_v3/a4_lane/proposal_2.md"
+      ],
+      "title": "Policy-rate differential divergence trend at a weekly clock",
+      "mechanism_one_line": "Weekly Wednesday clock: hold each pair one week in the direction of the 26-week change in the availability-gated as-of policy-rate differential.",
+      "conditioning_series": "BIS WS_CBPOL policy rates (adopted, AUTHORIZED_FOR_V3_RESEARCH), availability-gated via pit.select_asof; same as-of path feeds the frozen financing differential in the dual book",
+      "arms": {
+        "anchor": "sign(d(T) - d(T-182d)), one-week hold, roll-when-unchanged",
+        "neighbour": "same mechanism at 364-day lookback",
+        "control": "shuffled-vintage timing: every vintage availability +182 days, rates untouched; preregistered NOT to reproduce the anchor"
+      },
+      "incremental_benchmark": "same schedule, direction = pair's own trailing 26-week price return, zero macro reads",
+      "macro_conditioned": true,
+      "carry_adjacent": true,
+      "dual_book": true
+    }
+  ],
+  "quorum_note": "Both A4 proposals condition on adopted macro series (BIS WS_CBPOL), satisfying the A4 lane's half of the >=3-of-6 cycle quorum by contributing 2 macro-conditioned proposals.",
+  "compliance": {
+    "decision_clock": "daily (P1, event-driven) and weekly (P2); no intraday decision clock in either packet",
+    "cost_schedule": "1.5 bps/side x tiers {1.0,1.5,2.0} with F1-fixed booking via research/assets/forex_free_v3/accounting.py book_stress + assert_stress_rows_distinct; delay stress carried unblended",
+    "fills": "next-session 16:00 America/New_York bar open after the decision (one-event lag) in both packets",
+    "folds": "frozen [2020-03-01, 2022-05-01, 2024-07-01, 2026-09-02], purge 14d, force-flat, both packets",
+    "sample_floor": ">=40 decisions/arm argued by schedule construction in both packets; audited at implementation, never tuned",
+    "financing": "P2 uses the frozen policy-rate-differential formula with the approximation disclosed ex ante; P1 carries the dual book with financing as adjustment only; both gate price-only sign non-inversion",
+    "novelty_self_check": "explicit per-family sentences in both packets distinguishing each mechanism from every row of research/control/forex_free_v3_run/forbidden_family_inventory.json and from classic level-based carry",
+    "attestation": "signed outcome-blind attestations in both packets: written without access to any per-arm outcome data; no scored PnL exists for V3"
+  },
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/d1-a4-proposals && /Users/hoangminhlong/my-quantitative/.venv/bin/python -c \"import json; [json.load(open(p)) for p in ['research/proposals/forex_free_v3/a4_lane/proposal_1.json','research/proposals/forex_free_v3/a4_lane/proposal_2.json','research/control/forex_free_v3_run/handoffs/d1_a4_proposals.json']]; print('JSON_OK')\"",
+      "exit_code": null,
+      "status": "PASS_AT_WRITE_TIME",
+      "evidence": "JSON validation of all three artifacts with the venv python (see handoff tests entry recorded post-run in the final lane report); no pytest was run — a proposal lane computes no PnL and runs no scoring code, and the implementation-phase tests named in the source_to_test_map do not exist yet by design."
+    }
+  ],
+  "assumptions": [
+    "BIS WS_CBPOL series keys are resolved at implementation through BisAdapter.build_policy_rate_request with BORROWER_COUNTRY codes {US, XM, GB, JP, AU, NZ, CA, CH} and TYPE_OF_TRANSFORMATION_ADJUSTMENT P, per the adopted fixture convention; the proposals cite the family and dimensions, not hand-typed live keys.",
+    "Live-fetch warmup coverage of BIS WS_CBPOL is NOT_PROVEN_ON_LIVE_FETCH per data_authority_v3.json; both packets route that resolution to the P3 freeze / Q data-hash gate and declare BLOCKED_DATA_OR_SELECTION if it fails.",
+    "Exact decision/decision-span arithmetic (e.g. P2's ~310 weekly decisions) is schedule-level design estimation, disclosed as such; A9-F verifies feasibility on the real snapshot without PnL."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/control/forex_free_v3_run/forbidden_family_inventory.json",
+    "research/control/forex_free_v3_run/baseline_invariants.json",
+    "research/control/forex_free_v3_run/data_authority_v3.json",
+    "research/data_fusion/adapters/bis.py",
+    "research/data_fusion/pit.py",
+    "research/assets/forex_free_v3/accounting.py",
+    "research/proposals/forex_free_v3/a4_lane/proposal_1.json",
+    "research/proposals/forex_free_v3/a4_lane/proposal_1.md",
+    "research/proposals/forex_free_v3/a4_lane/proposal_2.json",
+    "research/proposals/forex_free_v3/a4_lane/proposal_2.md"
+  ],
+  "next_action_for_a1": "Read both proposal JSONs; A7-N applies the novelty/anti-rescue check against forbidden_family_inventory.json; A9-F runs PIT coverage/warmup and frozen-cost turnover feasibility on the real snapshot without PnL; A1 selects at most two families under the frozen rubric with the lexicographic hypothesis-ID tie-break. Verification commands after this commit lands: git -C <worktree> rev-parse HEAD; git -C <worktree> status --porcelain=v1 (must be empty); git -C <worktree> diff --check HEAD^ HEAD (must be clean)."
+}
