@@ -14,9 +14,11 @@
   it, or any parameter/top-K/universe/relaxed-gate variant of it, is rescue
   and ineligible without a new owner plan preregistering a materially new
   mechanism (measured decorrelation vs the rejected ancestor, not prose).
-- Cumulative scored denominators (post-FXV2 close, 2026-09-04): crypto 131 published /
-  134 observed logical; stocks 18/18; forex 12/12. S1 untouched everywhere.
-  **Program total: 161 published cells, zero promotions.**
+- Cumulative scored denominators (post-V13/FXV3 close, 2026-09-05): crypto
+  137 published / 140 observed logical; stocks 18/18; forex 18/18. S1 untouched
+  everywhere. **Program total: 173 published cells, and the FIRST survivor:
+  FXFV3-A6-P1 (vol-gated policy-rate carry, Forex V3 family2), locked for a
+  future owner-approved S1 plan.**
 - **No strategy has ever been promoted.** Every governed scored cycle closed
   REJECT_ALL / CANDIDATE_FAIL / BLOCKED. The near-misses below are the most
   information-dense rows in this ledger.
@@ -40,6 +42,8 @@
 | V12 | BAB-LOWBETA (90d-beta anchor / DOWNCORR neighbour / INV control) | Frazzini–Pedersen betting-against-beta on perps | REJECT — anchor −0.0199 (**PF 0.992: dead after taker costs + funding**), neighbour −0.087, inverted control +0.0013 outperforms anchor. 6/6 cells published + reproduced ALL_MATCH; denominators 131/134. |
 | V12 | ILLIQ replication | See V11 row | BLOCKED_DATA — 3 slots unused, not reassigned. |
 | V12 (not selected) | A5-P2 MIX-ORDERSIZE; A6-RVX; A6-OSCOMP | Order-size mix; realized-vol EG/ADF pairs; overnight compression | P2/RVX eligible-but-loses-rubric; **OSCOMP INELIGIBLE: anchor rank = sign-inverted reserved ILLIQ rank (ρ 0.81–0.87) — a relabelled ancestor.** |
+| V13 (CLOSED 2026-09-05, V13_REJECT_ALL, A7 terminal APPROVED 0 FAIL) | A13-V13-A8-OITD | OI term-structure days (28D anchor / 56D neighbour / sign-inv control) | REJECT — anchor −0.285 net (PF 0.879, MDD 30.5%), funding −0.007; mechanical reject; control worse than anchor so no falsification shadow. |
+| V13 | A13-V13-A5-LIQEPIS | Liquidity-episode conditioning | REJECT — **price-only PnL already negative (−0.31)** so verdict-invariant, BUT terminal recorded a cost anomaly: cost_charged 25.03 over 600 positions ≈ 3–4 orders above the frozen per-fill schedule (suspected per-stamp accrual = cost-once violation). Mandatory fix before any future cost-sensitive cycle. Denominators 137/140; Data Fusion core adopted byte-identical — the PIT framework is now proven live in a scored cycle. |
 
 ## B. CRYPTO — pre-factory sprints (NOTES.md, 2026-08-21→24, semi-governed)
 
@@ -76,6 +80,8 @@
 | Free-V1 | FXFV1-A3-P1 London-open session continuation | London-open momentum, NY-open neighbour, sign-flipped control | REJECT — anchor expectancy −2.35/trade, PF 0.849, all 3 folds negative, 11,459 trades, 7 pairs. |
 | Free-V1 | FXFV1-A3-P2 Late-NY fade | Fade of standardized intraday extension into late NY | REJECT — FOREX_FREE_V1_REJECT_ALL, 6/6, reproduced. |
 | Free-V2 (CLOSED 2026-09-04, REJECT_ALL 6/6, repro byte-identical, A7 terminal PASS) | FXFV2-A4-P1 Tokyo-range compression → London-morning expansion | Session-range breakout; 1,541 trades anchor | REJECT — **all three arms FAIL EXPECTANCY_NONPOSITIVE (anchor −3.804/trade, PF 0.593; neighbour worse; control worse still)**: coherence exists (anchor > control) but no edge; break-even −0.40 bps → the gross pre-cost edge was already negative, costs only deepen it. |
+| Free-V3 (CLOSED 2026-09-05 — **FIRST STAGE-A SURVIVOR OF THE PROGRAM**) | FXFV3-A6-P1 family2 | **Realized-vol regime-gated policy-rate-differential carry** (LOW-vol holds as-of BIS WS_CBPOL differential direction, HIGH unwinds; daily 16:00-NY clock; dual-book financing) | **SURVIVOR — anchor financing-adj. expectancy +23.92, price-only +5.53 (financing does NOT manufacture the edge), PF 1.331, 113 trades, MDD $1,830, incremental alpha +12.32, break-even 4.26 bps, drop-one 8/8, all 3 stress tiers positive, USD corr −0.116; neighbour supports (+18.61, PF 1.385, 289 trades); placebo control −7.22 fails as designed; reproduction ALL_MATCH byte-identical; A7 terminal C1..C8 PASS. LOCKED for a future owner-approved S1 plan — S1 still sealed.** |
+| Free-V3 | FXFV3-A5-P1 family1 | (see cycle artifacts) | REJECT — all three arms FAIL EXPECTANCY_NONPOSITIVE (anchor −4.59 / neighbour −9.35 / control −33.30). Forex denominators 18/18. |
 | Free-V2 | FXFV2-A4-P2 London-AM range break + retest-hold | Breakout confirmed by retest; 3,830 trades anchor | REJECT — anchor −3.093/trade PF 0.720; **control ≈ anchor (placebo reproduces the behaviour → mechanism not specific)**; break-even −0.05 bps; USD-drift ruled out (|corr| ≤ 0.072). Carry-forward lesson: MEDIUM F1 — stress-tier cost multipliers never applied to booked PnL; mandatory fix before any future cost-sensitive cycle. |
 
 ## E. Near-misses — the most informative rows (read before proposing anything)
