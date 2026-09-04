@@ -1,0 +1,145 @@
+{
+  "schema": "stocks_free_v5_run/p0_a2_fusion_evidence@1",
+  "producer_role": "A2",
+  "phase": "V5-P0 data-fusion adoption + V5-P1 verification",
+  "branch": "orca/stocks-free-v5-p0-a2-fusion",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v5/p0-a2-fusion",
+  "network_used": false,
+  "pnl_computed": false,
+
+  "cherry_pick": {
+    "command": "git cherry-pick 276e320^..a276421",
+    "conflicts": 0,
+    "mapping": [
+      {"upstream": "276e320", "result": "cc43c32", "subject": "Data Fusion DF1 offline common core"},
+      {"upstream": "b6753a5", "result": "b91ec45", "subject": "Data Fusion DF2 first-wave source adapters with offline fixtures"},
+      {"upstream": "70838be", "result": "61cf39e", "subject": "Data Fusion control plane with measured gate results"},
+      {"upstream": "ce0037b", "result": "e80ef08", "subject": "Data Fusion DF2 shared base layer; lane-owned paths cleared for A2/A3/A4 lanes"},
+      {"upstream": "2b7b07b", "result": "7e9a1cb", "subject": "Data Fusion lane worktree manifest (A2/A3/A4 spawned)"},
+      {"upstream": "7787c78", "result": "8f064a2", "subject": "A2 stocks: SEC EDGAR + FINRA short-sale adapters with offline fixture tests"},
+      {"upstream": "561185f", "result": "491b841", "subject": "A3 macro lane: fail-closed ECB SDMX, BIS WS_CBPOL and key-gated FRED/ALFRED adapters with offline fixtures"},
+      {"upstream": "8cd4aa7", "result": "34bed39", "subject": "A4 TrueFX monthly tick archive adapter"},
+      {"upstream": "b02df77", "result": "6c7d4c4", "subject": "A1 integration: re-export first-wave adapters from lane implementations"},
+      {"upstream": "c6a0576", "result": "064d322", "subject": "Data Fusion C4 integration gate records and lane merge status"},
+      {"upstream": "a276421", "result": "7436812", "subject": "Data Fusion V1 freeze record: A7 authorized, MULTISOURCE_DATA_CORE_SHA pinned"}
+    ],
+    "range_length": 11
+  },
+
+  "core_content_equality": {
+    "MULTISOURCE_DATA_CORE_SHA": "c6a0576ef98dd4392e90805c8ba33821da62eabc",
+    "sha_preserved": true,
+    "proof": {
+      "command_vs_fusion_branch": "git diff --stat orca/data-fusion-v1-integration HEAD -- research/data_fusion tests/data_fusion",
+      "output_bytes": 0,
+      "verdict_vs_fusion_branch": "EMPTY (byte-identical)",
+      "command_vs_core_sha": "git diff --stat c6a0576 HEAD -- research/data_fusion tests/data_fusion",
+      "output_bytes": 0,
+      "verdict_vs_core_sha": "EMPTY (byte-identical to frozen core tree)"
+    },
+    "freeze_record": "research/control/data_fusion_v1_run/freeze.json carries MULTISOURCE_DATA_CORE_SHA=c6a0576ef98dd4392e90805c8ba33821da62eabc"
+  },
+
+  "test_suites": [
+    {
+      "command": ".venv/bin/python -m pytest tests/data_fusion -q",
+      "exit_code": 0,
+      "passed": 204,
+      "failed": 0,
+      "note": "frozen suite as cherry-picked, before V5 harness was added"
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/assets/stocks -q",
+      "exit_code": 0,
+      "passed": 297,
+      "failed": 0,
+      "note": "inherited V4-P1 stocks regression, unchanged"
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/test_protocol_contracts.py tests/test_protocol_metrics.py -q",
+      "exit_code": 0,
+      "passed": 21,
+      "failed": 0
+    },
+    {
+      "command": ".venv/bin/python -m compileall research/data_fusion research/assets/stocks",
+      "exit_code": 0
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/data_fusion/test_v5_stocks_compatibility.py -q",
+      "exit_code": 0,
+      "passed": 8,
+      "failed": 0,
+      "note": "V5-P0 stocks-compatibility harness (new)"
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/data_fusion -q",
+      "exit_code": 0,
+      "passed": 212,
+      "failed": 0,
+      "note": "full fusion suite re-run with V5 harness included"
+    },
+    {
+      "command": ".venv/bin/python -m compileall research/data_fusion",
+      "exit_code": 0,
+      "note": "re-run after stocks_compat.py was added"
+    }
+  ],
+
+  "pit_regression_pin": {
+    "test_ids": [
+      "tests/data_fusion/test_v5_stocks_compatibility.py::test_pit_pin_asof_reader_excludes_every_future_availability_row",
+      "tests/data_fusion/test_v5_stocks_compatibility.py::test_pit_pin_survives_input_order_and_idempotent_reappend"
+    ],
+    "rule": "a reader querying as-of T excludes every row with available_time_utc > T",
+    "method": "daily decision sweep across the revision window on a hand-built fusion table with availability stamps 2024-01-05 / 2024-01-10 / 2024-02-01; per decision T the selected row is asserted inside the visible set (available_time_utc <= T) and equal to the latest visible vintage; boundary assertions pin nothing-visible, first-revision, second-revision, hidden-Feb-row, and the <= semantics exactly at the availability stamp",
+    "result": "PASS",
+    "binding": true
+  },
+
+  "sector_aggregation_determinism": {
+    "module": "research/data_fusion/stocks_compat.py",
+    "function": "sector_mean_asof / sector_mean_asof_bytes",
+    "test_ids": [
+      "tests/data_fusion/test_v5_stocks_compatibility.py::test_sector_aggregation_is_byte_deterministic_across_calls_and_orders",
+      "tests/data_fusion/test_v5_stocks_compatibility.py::test_sector_aggregation_is_survivorship_aware_at_each_asof",
+      "tests/data_fusion/test_v5_stocks_compatibility.py::test_sector_aggregation_reports_unmapped_filers_explicitly",
+      "tests/data_fusion/test_v5_stocks_compatibility.py::test_sector_aggregation_over_real_sec_fixture_rows"
+    ],
+    "deterministic": true,
+    "determinism_proof": "canonical_json_bytes output byte-identical across two independent calls and across reversed/rotated input record orders (sorted entity traversal fixes float summation order; sorted sector keys)",
+    "survivorship_aware": true,
+    "survivorship_proof": "the filer set at each as-of is derived from availability evidence at that instant (empty cohort before first availability; B joins only at its 2024-02-01 stamp; A contributes its latest eligible vintage, not a modern value) — no fixed modern membership list",
+    "filer_universe_created": false,
+    "filer_universe_note": "aggregation mechanics only; universe construction remains P2/A3 authority work"
+  },
+
+  "source_mapping": {
+    "sec_row_mapping": {
+      "fixtures": ["tests/data_fusion/adapters/fixtures/sec_companyfacts.json", "tests/data_fusion/adapters/fixtures/sec_submissions.json"],
+      "result": "PASS",
+      "detail": "3 instant company facts + 2 submission records map onto research/data_fusion/models.py NormalizedRecord without error; availability stamped end-of-UTC-day of the FILING date (2024-01-08 / 2024-04-15), never retrieval time (2026-01-01); duration fact skipped; acceptanceDateTime seeds event time only"
+    },
+    "fred_vintage_mapping": {
+      "fixtures": ["tests/data_fusion/adapters/fixtures/fred_alfred_obs.json", "tests/data_fusion/adapters/fixtures/fred_vintagedates.json"],
+      "result": "PASS",
+      "detail": "append-only revisions of 2023-12-01 (vintages 2024-01-12=272.712, 2024-02-09=272.690); decision at 2024-01-15 selects only the Jan vintage; availability = end of vintage UTC day; '.' maps to explicit null"
+    }
+  },
+
+  "v4_drift_proof": {
+    "target": "research/control/stocks_free_v4_run (this worktree)",
+    "method": "sha256 of every file (sorted paths), then sha256 of that listing",
+    "digest_before_cherry_pick": "68975c60b2e2a19be628a95711c5f8992666d3a6bf0467b015b5c40322ca2fb4",
+    "digest_after_cherry_pick": "68975c60b2e2a19be628a95711c5f8992666d3a6bf0467b015b5c40322ca2fb4",
+    "file_count": 39,
+    "match": true,
+    "v4_drift": "NONE",
+    "edited_paths_note": "no commits in this lane touch research/assets/stocks/** or research/control/stocks_free_v4_run/**"
+  },
+
+  "head_pin": {
+    "commit_before_evidence": "7436812503a98e8760c5c6ba71cc82a68dae7562",
+    "note": "evidence file added in the next commit; commit_before_evidence pins the cherry-picked fusion tip"
+  }
+}
