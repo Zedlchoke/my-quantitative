@@ -1,6 +1,20 @@
 # CONTINUE.md — STOCKS-FREE-V3 TERMINAL (REJECT_ALL) ENTRY STATE
 
 Read `PLAN_stocks.md` completely. It is the fresh-context Stocks authority.
+The active cycle plan is `PLAN_stocks_v4.md` (STOCKS-FREE-V4, blind
+mechanism discovery after two reject-all cycles); `PLAN_stocks.md` remains
+the historical V2/V2R/V3 authority and is not rewritten.
+
+## Verdict lineage (must agree with `research/wayfinder/MAP.md`)
+
+- V2 effective verdict: `STOCKS_FREE_V1_REJECT_ALL` (terminal A7 confirmed;
+  canonical `STOCKS_FREE_W1 = 106378230abecbaefff4248eeb373794f1b73038`).
+- V3 terminal verdict: `STOCKS_FREE_V3_REJECT_ALL` (A7T
+  `STOCKS_FREE_V3_REJECT_ALL_CONFIRMED`; W1 `586f9fe`); statistical
+  denominator 12 observed / 12 published.
+- V4 (in progress): reconciliation, factory/data gates, blind proposals,
+  selection freeze, implementation and prelaunch per `PLAN_stocks_v4.md`;
+  budget 0/6; no scored V4 PnL exists; S1 SEALED_UNTOUCHED.
 
 ## Measured entry state
 
