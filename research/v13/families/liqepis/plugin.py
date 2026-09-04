@@ -36,6 +36,26 @@ Frozen adapter surface:
   LONG_PAYS_POSITIVE_RATE accrual (a settlement accrues on a holding span
   iff its timestamp lies inside the span per the adapter's frozen rule
   ``start < ts <= end``).
+
+FOLD-BOUNDARY TRAVERSAL (V13R TECHABORT delta, OITD-precedent): the frozen
+fold calendar retains each fold's LAST effective stamp (only 2026-04-20
+sits inside the 1-day calendar purge zone), so a NEW book opened at a
+fold-terminal stamp whose next schedule boundary belongs to the NEXT fold
+(F0's 2025-12-15 -> F1's 2025-12-22) could never close inside its own
+fold -- exactly the cross-fold holding the frozen runner refuses
+(``research.adapter_v10.runner`` ContractViolation; forensic artifact
+``TECHABORT_liqepis_chain_attempt1``: BOMEUSDT established F0
+2025-12-15, closed F1 2025-12-22).  Restored frozen convention ("the flat
+transition itself is the boundary action", the OITD fold-terminal
+precedent; this family's own ``force_flat_span_end``
+force-flat-at-fold-end clamp): at a fold-terminal force-flat stamp the
+plugin returns the FLAT book (status OK, zero legs -- the frozen runner
+refuses a ``FORCE_FLAT`` status at an OPEN instant) so the fold realises
+flat at its last executable decision slot, after failing closed unless
+EVERY symbol's close-fill executes strictly inside the owning fold.
+Identity, parameters, schedule bytes, cost floors, fold constants and the
+books of every other effective stamp are untouched;
+``compute_targets_at`` answers unchanged everywhere else.
 """
 
 from __future__ import annotations
@@ -43,6 +63,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional, Sequence
 
 from research.adapter_v10.base import GenericStrategyBase
+from research.adapter_v10.metrics import attribution_buckets
 from research.adapter_v10.protocol import (
     ContractViolation,
     CostModel,
@@ -65,12 +86,16 @@ from research.v13.families.liqepis.strategy import (
     BENCHMARK_SYMBOL,
     CAP_MAX,
     DECISION_CLOCK,
+    FAMILY_ID,
     MIN_ELIGIBLE,
     PURGE_DAYS,
+    STATUS_OK,
     FusionBarSeries,
     compute_targets_at,
     effective_schedule,
     fold_assignments,
+    fold_end_ns,
+    iso_utc,
     next_allowed_close_fill,
     stamp_calendar,
 )
@@ -93,6 +118,13 @@ DECLARED_EXECUTION_LAG = (
 #: event delay over the baseline; V12-inherited convention).
 STRESS_CELL_NAME = "fee_x1_5_plus2ticks_plus1delay"
 
+#: Reason code of the FOLD-TERMINAL FORCE-FLAT book: at a fold's last
+#: effective decision stamp whose NEXT schedule boundary belongs to another
+#: fold, the boundary action IS the flat transition (status stays ``OK``:
+#: the frozen runner refuses a ``FORCE_FLAT`` status at an OPEN instant and
+#: force-flattens the final schedule instant itself).
+REASON_FOLD_TERMINAL_FORCE_FLAT = "FOLD_TERMINAL_FORCE_FLAT"
+
 
 def family_stress_cell(baseline: StressSpec) -> StressSpec:
     """The family's frozen stress cell over a plugin's baseline spec."""
@@ -102,6 +134,46 @@ def family_stress_cell(baseline: StressSpec) -> StressSpec:
         tick_slip_ticks=int(baseline.tick_slip_ticks) + 2,
         event_delay_events=int(baseline.event_delay_events) + 1,
     )
+
+
+def fold_terminal_force_flat_stamps() -> tuple[int, ...]:
+    """Effective stamps that must carry the fold-terminal force-flat.
+
+    Derived ONLY from the frozen fold calendar + frozen weekly schedule (no
+    new parameters): a stamp ``S`` qualifies iff ``S`` is an effective
+    (non-purged, non-final) schedule stamp and the NEXT calendar instant
+    attributes -- under the FROZEN runner attribution
+    (``research.adapter_v10.metrics.attribution_buckets`` roll-forward: a
+    purged gap stamp trails into the fold it follows) -- to a DIFFERENT fold
+    than ``S``.  A book opened at such an ``S`` would necessarily be closed
+    at a boundary outside its own fold, which the frozen cross-fold holding
+    check refuses (TECHABORT_liqepis_chain_attempt1).  On the frozen
+    calendar this is exactly F0's fold-terminal stamp 2025-12-15T00:00:00Z:
+    F1's fold-terminal stamp 2026-04-13 is followed by the purged
+    2026-04-20 (attributed back into F1, so a book opened there closes
+    in-fold) and F2's fold-terminal stamp 2026-08-17 is the schedule-final
+    force-flat edge the runner flattens itself.
+    """
+    calendar = [int(v) for v in stamp_calendar()]
+    effective = set(effective_schedule(calendar)[0])
+    fold_specs = [
+        FoldSpec(
+            index=int(index),
+            label=str(label),
+            instants=tuple(int(v) for v in members),
+            purge_days=int(PURGE_DAYS),
+        )
+        for index, label, members, _purged in fold_assignments(calendar)
+    ]
+    owner = attribution_buckets(fold_specs, calendar)
+    out: list[int] = []
+    for position, stamp in enumerate(calendar[:-1]):
+        if stamp not in effective:
+            continue
+        nxt = int(calendar[position + 1])
+        if int(owner[nxt].index) != int(owner[stamp].index):
+            out.append(stamp)
+    return tuple(out)
 
 
 class LiqepisPlugin(GenericStrategyBase):
@@ -241,15 +313,95 @@ class LiqepisPlugin(GenericStrategyBase):
     def targets_at(
         self, instant_ns: int, *, universe: Sequence[str], stress: StressSpec
     ) -> dict[str, Any]:
-        """Frozen target book (EligibilityShortfall fail-closed on breadth)."""
+        """Frozen target book (EligibilityShortfall fail-closed on breadth).
+
+        At a fold-terminal force-flat stamp (see
+        :func:`fold_terminal_force_flat_stamps`) the boundary action IS the
+        flat transition: the FLAT book is returned (after the fail-closed
+        in-fold executability check) so every holding of the fold closes at
+        this boundary, inside its owning fold.  Every other effective stamp
+        answers :func:`compute_targets_at` unchanged.
+        """
+        stamp = int(instant_ns)
+        if stamp in set(fold_terminal_force_flat_stamps()):
+            return self._fold_terminal_force_flat(
+                stamp, universe=universe, stress=stress
+            )
         del stress  # the frozen signal/book carries no stress parameters
         return compute_targets_at(
             self._arm_id,
             bars_by_symbol=self._bars,
-            stamp_ns=int(instant_ns),
+            stamp_ns=stamp,
             universe=universe,
             gross=self._gross,
         )
+
+    def _fold_terminal_force_flat(
+        self,
+        stamp_ns: int,
+        *,
+        universe: Sequence[str],
+        stress: StressSpec,
+    ) -> dict[str, Any]:
+        """The fold-terminal force-flat book, fail-closed on executability.
+
+        Fail-closed, at schedule time, BEFORE the flat book is offered: every
+        universe symbol must have an executable close-fill at this stamp
+        under the cell's event delay, landing STRICTLY BEFORE the owning
+        fold's end boundary.  A missing fill or a fill at/after the fold end
+        would leave the flat (or the holdings it liquidates) straddling the
+        boundary -- refused, never guessed around.
+        """
+        stamp = int(stamp_ns)
+        end = int(fold_end_ns(stamp))
+        delay = int(stress.event_delay_events)
+        executable: dict[str, int] = {}
+        for sym in sorted({str(s) for s in universe}):
+            series = self._bars.get(sym)
+            if series is None:
+                raise ContractViolation(
+                    f"fold-terminal force-flat at {iso_utc(stamp)}: no bars "
+                    f"injected for {sym} (fail-closed)"
+                )
+            event = next_allowed_close_fill(
+                series, sym, decision_ns=stamp, event_delay_events=delay
+            )
+            if event is None:
+                raise ContractViolation(
+                    f"fold-terminal force-flat at {iso_utc(stamp)} has no "
+                    f"executable close fill for {sym}; the fold could not "
+                    "realise flat inside its own boundary (fail-closed)"
+                )
+            if int(event.fill_ns) >= end:
+                raise ContractViolation(
+                    f"fold-terminal force-flat at {iso_utc(stamp)}: close "
+                    f"fill for {sym} lands {iso_utc(int(event.fill_ns))}, "
+                    f"at/after the owning fold's end {iso_utc(end)}; the "
+                    "force-flat cannot execute inside the fold (fail-closed)"
+                )
+            executable[sym] = int(event.fill_ns)
+        return {
+            "schema": "v13i.liqepis.targets.v1",
+            "family_id": FAMILY_ID,
+            "arm_id": str(self._arm_id),
+            "status": STATUS_OK,
+            "weights": [],
+            "longs": [],
+            "shorts": [],
+            "middle": [],
+            "carried_forward": False,
+            "reason_code": REASON_FOLD_TERMINAL_FORCE_FLAT,
+            "decision_ns": stamp,
+            "diagnostics": {
+                "stamp_ns": stamp,
+                "stamp_iso": iso_utc(stamp),
+                "fold_terminal_force_flat": True,
+                "fold_end_ns": end,
+                "n_flat_close_fills_executable": len(executable),
+                "flat_close_fill_lands_before_fold_end": True,
+                "reason_code": REASON_FOLD_TERMINAL_FORCE_FLAT,
+            },
+        }
 
     def fills_at(
         self, instant_ns: int, *, symbols: Sequence[str], stress: StressSpec
@@ -327,6 +479,8 @@ __all__ = [
     "DECLARED_EXECUTION_LAG",
     "LiqepisPlugin",
     "PLUGIN_SCHEMA",
+    "REASON_FOLD_TERMINAL_FORCE_FLAT",
     "STRESS_CELL_NAME",
     "family_stress_cell",
+    "fold_terminal_force_flat_stamps",
 ]
