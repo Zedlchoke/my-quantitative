@@ -1,0 +1,187 @@
+{
+  "schema": "forex_free_v3_proposal_v1",
+  "proposal_id": "FXFV3-A6-P2",
+  "hypothesis_id": "FXFV3-A6-P2",
+  "lane": "A6",
+  "cycle": "FOREX-FREE-V3",
+  "title": "Cross-pair information diffusion at the daily clock: leave-one-out basket lead-lag",
+  "mechanism_class": "cross_pair_lead_lag_daily_grain",
+  "macro_conditioned": false,
+  "conditioning_series": "macro-free (authorized H1 price snapshot only)",
+
+  "economic_mechanism": "Currency pairs share a common G10 factor, and information that moves that factor - flow imbalance, macro reinterpretation, risk-premium shifts - is incorporated into related pairs with a measurable LAG rather than instantaneously: returns exhibit positive cross-autocorrelation and a lead-lag structure, with slow capital reallocation and investor inattention producing predictable next-period moves in the lagging assets (Lo & MacKinlay 1990: positive cross-autocorrelations across securities, not own-asset overreaction; Hou 2007: slow diffusion of information across related assets is a leading cause of the lead-lag effect). The proposed mechanism trades exactly the diffusion channel at the daily decision clock: for each pair i, the leave-one-out mean of the OTHER six pairs' most recent completed daily returns is the common-factor lead, and pair i is held in the lead's direction for one frozen multi-day horizon. The tradeable object is the CROSS-pair lag structure - not the pair's own past return (time-series momentum), not a same-period dispersion spread, and not any price-structure break.",
+
+  "causal_prediction": "A pair's next multi-day move is positively predicted by the leave-one-out mean of the other six pairs' just-completed daily return, with positive after-cost expectancy at 1.5 bps/side. Falsifiable consequences frozen ex ante: (i) the anchor passes the inherited Stage-A gates; (ii) the placebo-schedule benchmark (identical law, lead read with a two-decision lag - stale diffusion information) does NOT match the anchor: incremental alpha > 0 is required, so the FRESH one-day diffusion, not generic drift, must carry the value; (iii) the self-lag causal control (identical law, direction from the pair's OWN previous-day return) must NOT reproduce the edge under the preregistered rule - if the pair's own past return predicts as well as the cross-pair lead, the cross-pair diffusion ingredient is not operative and the family fails regardless of the anchor's sign. Disclosed risk accepted ex ante: the daily-grain cadence is cost-heavy (3 bps round trip at base); if the gross diffusion edge is below break-even the family dies to costs, and break-even bps will attribute the reject.",
+
+  "primary_literature_trace": [
+    {
+      "authors": "Andrew W. Lo, A. Craig MacKinlay",
+      "venue": "When Are Contrarian Profits Due to Stock Market Overreaction?, Review of Financial Studies 3(2), 175-205",
+      "year": 1990,
+      "claim": "Security returns exhibit significantly positive cross-autocorrelations: returns of large stocks lead returns of smaller stocks, and this cross-lead structure alone can generate predictable profits, distinct from own-asset overreaction.",
+      "metadata_status": "VERIFIED_METADATA via web search 2026-09-04 (RFS 3(2) 175-205; academic.oup.com/rfs/article/3/2/175/1595488)"
+    },
+    {
+      "authors": "Kewei Hou",
+      "venue": "Industry Information Diffusion and the Lead-Lag Effect in Stock Returns, Review of Financial Studies 20(4), 1113-1138",
+      "year": 2007,
+      "claim": "Slow diffusion of information across related assets is a leading cause of the lead-lag effect: returns on informed assets predict subsequent returns on lagging related assets, consistent with gradual information flow rather than pure time-varying risk.",
+      "metadata_status": "VERIFIED_METADATA via web search 2026-09-04 (RFS 20(4) 1113-1138)"
+    },
+    {
+      "authors": "Harrison Hong, Walter Torous, Ivo Valkanov",
+      "venue": "Do Industries Lead the Stock Market? Gradual Diffusion of Information and Cross-Asset Return Predictability",
+      "year": 2007,
+      "claim": "Cross-asset return predictability arises from gradual information diffusion: industry returns predict aggregate market returns with a lag.",
+      "metadata_status": "PARTIALLY_VERIFIED: title confirmed verbatim in the related-literature listing of the Hou (2007) search result; venue/year recalled as Journal of Financial Economics 2007 and NOT independently re-verified (search rate-limited). Supporting citation only.",
+      "fx_transfer_note": "Both verified papers are equity-market results. The transfer of cross-asset lead-lag diffusion to daily-grain G10 FX pairs is the hypothesis under test and is flagged UNVERIFIED_TRANSFER, honestly."
+    }
+  ],
+
+  "pit_observables": {
+    "note": "Scored input is the authorized Twelve-Data-derived H1 research series only (7 pairs, completed-bar PIT, snapshot 2020-01-30..2026-09-02). No D1 data, no bid/ask, no macro series, no calendar events. All observables are exact OHLC-derived.",
+    "decision_instant_T": "The completion instant of the daily 16:00 America/New_York flat bar (20:00Z EDT / 21:00Z EST via zoneinfo, never fixed offsets). One decision per pair per NY trading day; session entry gate inherited (Sun 21:00 -> Fri 16:00 NY; first weekly decision is Monday's 16:00-NY bar).",
+    "daily_close_P_i_T": "Close of pair i's 16:00-NY flat bar at decision T. All 7 pairs' closes must exist; any missing bar => the affected pair-day is NO_EVAL (fail-closed), never fill-forward.",
+    "daily_return_r_i_T": "ln(P_i(T) / P_i(T_prev)) between consecutive completed 16:00-NY closes (weekend gap = one return over Friday->Monday).",
+    "lead_i_T": "Mean of r_j(T) over the 6 pairs j != i (leave-one-out: the pair's own return is excluded so the self ingredient lives only in the control arm).",
+    "direction_i_T": "sign(lead_i(T)); +1 = long pair i / short USD-side per quote convention; exact zero => NO_EVAL (measure-zero).",
+    "warmup": "One completed prior NY-day per pair (warmup_bars: 50 H1 bars with buffer); first decisions occur in the first full week of the snapshot.",
+    "fail_closed": "Any missing bar in the 7-pair decision set, the lead computation, the entry bar or the exit bar => NO_EVAL / voided signal / earliest-scheduled exit only."
+  },
+
+  "universe_warmup_clock_fills": {
+    "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "pair_universe_justification": "Frozen 7-pair V3 universe, all pairs: the mechanism is inherently cross-sectional over the whole set, and leave-one-out symmetry gives every pair the identical follower role. Ex-ante subsetting is forbidden and would break the leave-one-out construction; heterogeneity is handled ex post by concentration gates and drop-one.",
+    "snapshot": "2020-01-30 .. 2026-09-02 (frozen H1 snapshot)",
+    "decision_clock": "Daily: one decision per pair per NY trading day at the completed 16:00-NY flat bar (daily-or-slower rule satisfied; no intraday decision anywhere).",
+    "entry_fills": "Next-session fill: the open of the next 16:00-NY bar after the decision bar completes (one-event lag; no same-bar fills).",
+    "holding_and_exit": "Anchor holds exactly 5 daily periods: exit at the open of the 16:00-NY bar 5 NY-trading-days after the entry day (Fri entry exits at the next Friday's 16:00-NY bar; weekends collapse into one return). No profit target, no time stop other than the frozen horizon; one position per pair; while holding, decisions are evaluated but no re-entry occurs. Force-flat at fold boundaries (inherited).",
+    "missing_bar_rule": "Fail-closed NO_TRADE / earliest-scheduled exit; never silent fill-forward."
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV3-A6-P2-anchor",
+      "spec": "At each decision T: if flat, enter direction_i = sign(leave-one-out 6-pair mean daily return) at the next 16:00-NY bar open; hold 5 daily periods; exit at the frozen horizon; no re-entry while holding.",
+      "single_frozen_parameter_set": {
+        "lead_definition": "leave-one-out mean of the other 6 pairs' last completed daily log returns",
+        "holding_periods_ny_days": 5,
+        "entry_lag": "one 16:00-NY bar"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV3-A6-P2-neigh",
+      "one_presumption_away": "Replaces only the diffusion-horizon presumption (5 daily periods) with a shorter 2-day horizon, holding the lead construction, clocks, fills, costs and governor identical. If diffusion is real, the neighbour moves TOGETHER with the anchor (same verdict sign, similar fold pattern); divergence means the horizon presumption is knife-edge and the family is not promotable.",
+      "spec": "Identical to anchor EXCEPT holding_periods_ny_days := 2.",
+      "single_frozen_parameter_set": {
+        "lead_definition": "identical to anchor",
+        "holding_periods_ny_days": 2,
+        "entry_lag": "one 16:00-NY bar"
+      }
+    },
+    "control": {
+      "arm_id": "FXFV3-A6-P2-ctrl",
+      "role": "Causal negative control: destroys exactly the CROSS-pair ingredient (the diffusion lead) while holding the daily clock, holding law, costs and governor identical. Direction is taken from the pair's OWN previous completed daily return (lag-1 self signal) instead of the other six pairs' mean.",
+      "spec": "Identical to anchor EXCEPT direction_i := sign(r_i(T)) (own lag-1 daily return). All else byte-identical.",
+      "preregistered_non_reproduction_rule": "The control REPRODUCES (and the family FAILS its control gate regardless of anchor sign) if control expectancy > 0 AND control PF >= 1.10 (inherited control_reject_pf), OR control expectancy >= 0.5 x anchor expectancy. A firing self-lag control means the anchor is generic short-horizon time-series momentum, not cross-pair diffusion; positive raw control PnL never overrides a firing control."
+    }
+  },
+
+  "incremental_test_vs_frozen_benchmark": {
+    "benchmark_definition": "Per baseline_invariants.json v3_benchmark_treatment, macro-free case: the SAME mechanism under the PLACEBO CONTROL SCHEDULE, at identical decision clock, fills, universe, warmup and costs. Concretely: the anchor law with the leave-one-out lead read at T-2 NY-days (two-decision-stale lead). The schedule shape, event count, cadence and costs are structurally identical; the fresh one-day diffusion information is destroyed.",
+    "why_distinct_from_the_control": "The placebo benchmark keeps the CROSS-pair construction but destroys its freshness (tests WHEN the information is used); the causal control keeps freshness but swaps cross-pair for self (tests WHETHER the cross-pair ingredient matters). Both must behave as preregistered for the family to stand.",
+    "gate": "overall incremental alpha > 0: anchor expectancy minus placebo-benchmark expectancy. Positive raw anchor PnL never overrides a failed incremental alpha. The benchmark schedule is an auxiliary treatment inside the anchor cell, not a fourth scored arm.",
+    "bench_schedule_id": "FXFV3-A6-P2-bench"
+  },
+
+  "dual_book_and_financing": {
+    "mandate": "Mandatory dual book per baseline_invariants.json v3_dual_book: every scored cell books BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns, all arms - even though this proposal is macro-free and its direction never reads a rate.",
+    "financing_formula_frozen_verbatim": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days/365, accrued per calendar day at the day-start as-of differential; sign=+1 for long base/short quote, -1 for short base/long quote",
+    "asof_accrual_semantics": "Each calendar day's accrual reads adopted BIS WS_CBPOL vintages gated on available_time_utc <= that day's 16:00-NY decision instant (never effective-date-alone). The macro series enters ONLY the financing column, never the direction.",
+    "disclosed_approximation": "Policy rates are unsecured official rates, NOT swap/OIS-implied rollover; disclosed ex ante per PLAN_forex_v3.md section 2. No financing precision beyond policy-rate differentials is assumed.",
+    "financing_gate": "The price-only book must not invert the sign of the anchor's expectancy (the financing term must not manufacture the edge). For this price-only-mechanism family the price-only book is the primary object and the financing book is the mandated co-reported treatment."
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tier_ladder_frozen": { "1.0": 1.5, "1.5": 2.25, "2.0": 3.0 },
+    "f1_fixed_application": "F1-FIXED per baseline_invariants.json v3_cost_schedule: tier multipliers applied to BOOKED stress PnL via the P1 kernel (research/assets/forex_free_v3/accounting.py book_stress); base / tier-1.5 / tier-2.0 rows pairwise distinct when trades non-empty.",
+    "delay_stress": "Frozen one-event delay (entry and exit shifted one additional 16:00-NY bar) as a SEPARATE stress component, never blended into cost tiers (lesson V3-L2).",
+    "notional_usd_unit": 10000,
+    "break_even_diagnostic": "break_even_bps_per_side = mean gross per-trade return (bps of the 10000 USD unit, both books) / 2, full-sample and per fold, anchor arm. Frozen interpretation: the 5-day horizon needs ~3 bps gross per round trip (~0.6 bps/day) to clear base cost; if break-even bps < tier bps the cell is structurally unprofitable at that tier. Diagnostic, never a fee rescue."
+  },
+
+  "governor": {
+    "max_positions_per_pair": 1,
+    "max_entries_per_pair_per_ny_day": 1,
+    "enforcement": "Deterministic and PIT-safe; blocked signals are NO_TRADE, never deferred. Holding implies no new entry until exit."
+  },
+
+  "expected_turnover": {
+    "decisions_per_pair_estimate": "~1,600 NY-day decisions per pair (~11,000 aggregate); >= 40 decisions per arm satisfied by two orders of magnitude.",
+    "trades_per_pair_per_year_estimate": 40,
+    "band": "33 - 45",
+    "analytic_schedule_argument": "Position cycle: entry the NY-day after a decision, 5-period hold, immediate re-entry at the next post-exit decision => ~1 round trip per ~6 NY trading days => ~40 RT/pair-year over ~250 NY-days. Band accounts for holidays, NO_EVAL days and purge windows.",
+    "full_sample_schedule_estimate": "~250-290 RT per pair; ~1,750-2,000 across 7 pairs (schedule estimate only; no data loaded).",
+    "sample_floors": {
+      "min_decisions_per_arm": 40,
+      "full_sample_aggregate_min_trades_anchor": 900,
+      "per_populated_fold_min_trades": 250,
+      "populated_rule": "fold populated iff >= 30 trades (inherited fold_populated_min_trades); a cell below floors is INDETERMINATE, not negative evidence"
+    },
+    "turnover_feasibility_note": "Disclosed ex ante: at ~1,900 round trips the family pays ~5,700 bps aggregate base cost and needs a gross diffusion edge above ~3 bps per 5-day trade (~0.6 bps/day). Documented cross-autocorrelation edges at this horizon are small, so cost-dominance is a live possibility; A9-F's break-even headroom check and the mandatory break-even bps reporting decide honestly."
+  },
+
+  "folds_plan": {
+    "folds_frozen": ["2020-03-01", "2022-05-01", "2024-07-01", "2026-09-02"],
+    "scheme": "3 chronological folds over the decision span: F1 2020-03-01..2022-05-01, F2 2022-05-01..2024-07-01, F3 2024-07-01..2026-09-02 (UTC dates; warmup excluded). Purge 14 calendar days either side of internal boundaries (2022-04-17..2022-05-15, 2024-06-17..2024-07-15): trades whose entry OR exit instant falls inside a purge window are excluded from that fold's statistics and counted in purge_excluded. Stage-A requires >= 2/3 populated folds positive.",
+    "stage_a_note": "All inherited V2 frozen gates apply unchanged (min_expectancy_gt 0, min_pf 1.1, mdd ceiling 2500 USD, max_positive_fold_share 0.5, max_pair_positive_share 0.4, stress_min_pf 1.0, dropout_survival_min_of_7 5, usd_corr_abs_ceiling 0.3, usd_diag_min_days 60)."
+  },
+
+  "concentration_plan": {
+    "pair_concentration_gate": "No single pair > 40% of gross positive trade PnL full-sample; no single pair > 50% within any populated fold (inherited ceilings). Leave-one-out symmetry makes any breach a data artifact or unintended pair-specific mechanism.",
+    "direction_check": "Long and short trades must each be >= 25% of anchor trades full-sample (design-coherence check inherited from V2 concentration practice).",
+    "usd_drift_disclosure": "The leave-one-out lead is a common-factor signal: follower directions are frequently same-signed, so the book can load on the USD factor. The inherited USD-drift diagnostic applies unchanged (|corr(daily PnL, USD-wide move)| <= 0.3 over >= 60 days): if the diffusion edge is actually USD-wide drift, the diagnostic FAILS the family and the reject stands. This is disclosed ex ante and is not tuned around."
+  },
+
+  "drop_one_pair_plan": {
+    "procedure": "Recompute the full anchor schedule (and neighbour/control/bench identically) 7 times, each excluding exactly one pair; the leave-one-out lead of the remaining pairs is recomputed on the reduced 6-pair set.",
+    "gate": "Anchor expectancy stays positive and PF >= 1.00 in at least 5 of 7 drop-one recomputes (inherited dropout_survival_min_of_7).",
+    "interpretation": "Failure means the diffusion edge is carried by one pair's idiosyncratic episode, not a cross-pair structure. Drop-one is non-vacuous by construction (dropping a pair changes both the traded set and every lead)."
+  },
+
+  "minimum_decisions": {
+    "definition": "A decision = one pair-NY-day on which the arm's frozen schedule completed a lead evaluation (go or no-go). NO_EVAL days count as decisions without trades.",
+    "per_arm_full_sample_minimum": 40,
+    "expected": "~1,600 per pair; ~11,000 aggregate"
+  },
+
+  "failure_interpretation": "Negative anchor expectancy after base cost: one-day cross-pair diffusion has no after-cost edge at the frozen cost authority at this cadence - a complete, publishable reject with break-even bps attributing cost-dominance vs absence of gross edge; no sign inversion, no threshold/horizon rescue, no pair subset, no lower cost. Anchor positive but control fires under the preregistered rule: the pair's own past return predicts as well as the cross-pair lead, the edge is generic short-horizon time-series momentum, and the cross-pair diffusion claim is falsified. Anchor positive but incremental alpha <= 0 vs the two-decision-stale placebo: the edge is schedule drift, not fresh diffusion information; not promotable. Neighbour diverges from anchor: the horizon presumption is knife-edge; not promotable. USD-drift diagnostic flags the book: the edge is the USD common factor itself, not diffusion between pairs; reject. Drop-one or concentration failure: single-pair artifact; reject. Realised turnover outside the preregistered band: INELIGIBLE per the frequency contract.",
+
+  "source_to_test_map": [
+    { "source_claim": "positive cross-autocorrelation / large-leads-small (Lo-MacKinlay 1990; Hou 2007)", "observable": "lead_i leave-one-out mean", "planned_test": "hand-computed lead golden fixture on synthetic daily closes (6-pair mean, own return excluded, sign boundary => NO_EVAL)" },
+    { "source_claim": "H1->daily 16:00-NY close mapping", "observable": "daily_close_P_i_T", "planned_test": "DST-aware 16:00-NY bar goldens (20:00Z/21:00Z) reusing the P2-reverified calendar module; missing-bar fail-closed mutation test" },
+    { "source_claim": "cross (not self) ingredient is operative", "observable": "FXFV3-A6-P2-ctrl self-lag direction", "planned_test": "control-cannot-equal-anchor test (directions differ on >= 1 decision per pair); preregistered non-reproduction rule applied at scoring" },
+    { "source_claim": "freshness of the diffusion information", "observable": "FXFV3-A6-P2-bench lag-2 placebo schedule", "planned_test": "benchmark identity test (identical law except lead offset); incremental alpha recomputation from runner source at A7" },
+    { "source_claim": "dual-book separation (financing cannot manufacture the edge)", "observable": "price_only_pnl_usd vs financing_adjusted_pnl_usd", "planned_test": "P1 kernel separation tests + price-only sign-inversion refusal test; financing accrual as-of-vintage goldens" },
+    { "source_claim": "F1-fixed stress application", "observable": "book_stress rows", "planned_test": "tier 1.5 / 2.0 pairwise-distinct fixture (inherited P1 remediation regression); separate delay-stress component test" },
+    { "source_claim": "drop-one meaningfulness", "observable": "7 drop-one schedules (reduced-set leads)", "planned_test": "non-vacuity assertion (each drop-one schedule differs from full)" },
+    { "source_claim": "PIT no-lookahead", "observable": "decision inputs strictly completed at T", "planned_test": "mutation test: shifting any lead input one decision later must change the schedule" }
+  ],
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm (leave-one-out lead, horizons 5/2 days, lag-2 placebo). No grids, menus or tuning anywhere; the neighbour is a distinct single frozen spec, not a second point on the anchor's knob.",
+
+  "novelty_self_check": {
+    "vs_V1_family1_london_open_momentum_continuation": "No session-open price, no session label, no intraday clock anywhere: the only clock is the frozen daily 16:00-NY decision bar, and direction comes from the other pairs' completed daily returns, never from a session-structure measurement.",
+    "vs_V1_family2_late_NY_standardized_extension_fade": "No fade and no standardized-extension observable exist; the anchor CONTINUES a cross-pair common-factor move at a one-day lag; no late-session window is used in state, trigger, entry or exit.",
+    "vs_V2_family1_tokyo_compression_london_expansion": "No session range, no compression state, no expansion/breach trigger; the mechanism needs no range or channel at all - only completed daily closes across pairs.",
+    "vs_V2_family2_london_AM_break_retest_hold": "No range break and no retest-hold confirmation anywhere; entry is a cross-sectional mean-sign rule at the daily bar, structurally unrelated to intraday range mechanics.",
+    "re_clock_check": "This is not a re-clock of any forbidden row: none of the four rows is a cross-pair lead-lag construction, so no daily-grain relabeling of them occurs; the mechanism (leave-one-out common-factor diffusion) is new relative to the inventory.",
+    "blanket_clauses": "No sign inversion of a rejected family; no reduced costs; no pair cherry-picking (leave-one-out over all 7 pairs); no result-aware reuse of V1/V2 packets (fresh blind packet, new hypothesis_id, independent design).",
+    "vs_V2_sibling_mechanisms_honest_extra": "vs FXFV2-A5-P1/P2 (same-day cross-sectional dispersion RV: extreme-vs-extreme and outlier-basket reversal within a session): this proposal is NEXT-period CONTINUATION of a leave-one-out common-factor mean across NY-days - different grain (daily vs intraday session), different direction (continuation vs dispersion convergence), different construction (mean sign vs spread baskets). vs FXFV2-A6-P1 (H1 compression-gated 48-bar channel breach): no channel, no compression gate, no intraday bar. vs FXFV2-A6-P2 (session liquidity seasonal): no session-hour observable of any kind. Honest adjacency note: a firing self-lag control would mean the edge is time-series momentum, which is exactly what the preregistered control rule is built to catch and reject."
+  },
+
+  "outcome_blind_attestation": "I (A6 lane, FOREX-FREE-V3) attest this proposal is outcome-blind. I read: PLAN_forex_v3.md; research/control/forex_free_v3_run/{forbidden_family_inventory.json, baseline_invariants.json, data_authority_v3.json, run_contract.json}; the read-only V2 format reference research/proposals/forex_free_v2/a4_lane/proposal_1.json; my own lane's V2 predecessor packets (forex_free_v2 a5/a6 lane proposal JSONs) solely for novelty differentiation; the V1 a4 proposal .md for document format; and the p0_a2_fusion.json handoff for handoff format. I read NO V1/V2 outcome artifacts: no ledgers, no per-cell PnL, no terminal reports, no verdict files, no tests/assets outcome fixtures, no research/control/forex_free_v1_run/ or forex_free_v2_run/ files. I loaded no market data (no data_raw reads), fetched no data, computed no backtest, PnL or schedule simulation; every number here is a schedule-level design estimate or frozen design constant. Literature metadata was checked by web search only (no outcomes searchable there). This packet was written before any V3 scoring exists and before any V3 scored data freeze.",
+  "written_before_scoring_utc": "2026-09-04T13:59:00Z"
+}
