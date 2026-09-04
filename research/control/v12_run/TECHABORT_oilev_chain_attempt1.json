@@ -1,0 +1,30 @@
+{
+ "schema": "v12r_techabort_forensic_v1",
+ "generated_utc": "2026-09-04T04:23:23Z",
+ "producer_role": "A1",
+ "artifact": "TECHABORT_oilev_chain_attempt1",
+ "event": "OILEV-V2 family chain attempt 1 at W12R ccfd33e3ed302de642e1ebdecb8adb6830dba887: all three arm invocations crashed with exit 1 (CRASH: TypeError: can only concatenate str (not bytes) to str) during driver-side input digesting, BEFORE the preflight artifact was written and BEFORE any scored metric existed.",
+ "timeline_utc": {
+  "OILEV-V2-28D-FLOW-W": "start 04:16:58Z exit=1 04:17:01Z",
+  "OILEV-V2-56D-STOCK-W": "start 04:17:01Z exit=1 04:17:05Z",
+  "OILEV-V2-28D-FLOW-W-INV": "start 04:17:05Z exit=1 04:17:08Z",
+  "diagnostic_reproductions": "two additional --preflight-only invocations reproduced the same crash (no new artifacts)"
+ },
+ "root_cause": "driver helper research/control/v12_run/tools_stronghost/run_v12_cell.py _series_digest Mapping branch concatenated str + bytes (f-string + '|'.join(...).encode()) at line 236; OILEV settlements are dict rows (Mapping branch); BAB settlements are SettlementPoint objects (object branch, unaffected). The frozen loaders had already succeeded; the crash is confined to the preflight evidence digest.",
+ "proof_no_scored_metric_existed": {
+  "ledger_oilev_v2_absent": "results/v12r_phase_e/ledger_oilev_v2.jsonl does not exist in exec-v12r-1",
+  "bab_ledger_untouched_by_crash": "ledger_bab_lowbeta.jsonl contains only the 3 published BAB rows",
+  "no_oilev_artifacts": "results/v12r_phase_e/oilev_v2/ absent (preflight never written)",
+  "canonical_registry": "results/registry/experiments_v12.jsonl unchanged (empty, e3b0c442)"
+ },
+ "budget_effect": "ZERO budget consumed (no scored metric existed; TECHABORT per PLAN_crypto 14)",
+ "fix": {
+  "lane_commit": "8e0a877",
+  "change": "encode() applied after string concatenation (parenthesised); regression test test_series_digest_mapping_branch_regression added (15/15 driver tests PASS)",
+  "w12r2": "ce52e3e2e817806c984b3e2cdda9daace17440f7",
+  "science_bytes": "unchanged (diff ccfd33e..ce52e3e touches only the driver file, its test, and control-plane metadata/audit evidence)"
+ },
+ "bab_cells_published_under_w12r": {
+  "note": "BAB-90D-W, BAB-DOWNCORR-90D-W, BAB-90D-W-INV published at producer_head ccfd33e3... before the defect was hit; their rows/summaries remain valid under W12R (science bytes identical in W12R2); reproduction comparisons run on deterministic adapter bundles unaffected by the driver fix."
+ }
+}
