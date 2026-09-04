@@ -702,6 +702,12 @@ def run_arm(arm: str, data_paths: dict, macro_reader, freeze_token=None):
     meta = {
         "decision_clock": "daily",
         "proposal_id": PROPOSAL_ID,
+        # Incremental-alpha definition declared to the runner (V3-I finding
+        # D1): this family's frozen gate IS the financing-adjusted
+        # expectancy difference (a6_lane/proposal_1.json
+        # incremental_test_vs_frozen_benchmark; scored_runner
+        # ALPHA_EXPECTANCY_DIFFERENCE) -- unchanged by the D1 remediation.
+        "alpha_definition": "per_trade_expectancy_difference_v1",
         "pair_universe": list(PAIR_UNIVERSE),
         "arm_id": f"{PROPOSAL_ID}-" + _META_ARM[arm_id],
         "decision_bar_convention": "completed H1 bar whose America/New_York wall "

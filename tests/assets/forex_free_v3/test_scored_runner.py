@@ -70,6 +70,7 @@ class DummyFamily:
                 "financing_events": copy.deepcopy(FIXTURE_FINANCING),
                 "meta": {"proposal_id": "DUMMY", "decision_clock": "daily",
                          "pair_universe": list(R.PAIRS),
+                         "alpha_definition": R.ALPHA_EXPECTANCY_DIFFERENCE,
                          "usd_index_daily_returns": {},
                          "fill_delay_events": {}}}
 
@@ -339,7 +340,7 @@ def test_stage_a_mdd_concentration_share_stress_dropout_usd():
     assert not ok and "STRESS_TIER_1.5_FAIL" in reasons
     drop = {p: (1.0 if i < 4 else -0.1) for i, p in enumerate(R.PAIRS)}  # 4/7 survive
     ok, reasons = R.stage_a_gates(_rec(0.5, 1.2, _good_folds(), drop=drop))
-    assert not ok and "DROPOUT_SURVIVAL_INSUFFICIENT" in reasons
+    assert not ok and "DROPOUT_SURVIVAL_BELOW_6_OF_8" in reasons
     ok, reasons = R.stage_a_gates(_rec(0.5, 1.2, _good_folds(), usd={"corr": 0.31, "n_days": 300, "evaluated": True}))
     assert not ok and "USD_DRIFT_EXPLAINS_ANCHOR" in reasons
     ok, _ = R.stage_a_gates(_rec(0.5, 1.2, _good_folds(), usd={"corr": None, "n_days": 10, "evaluated": False}))
@@ -851,6 +852,9 @@ def test_dropout_scenarios_hand_built():
 
 
 def test_stage_a_dropout_survival_gate_over_scenarios():
+    # M1-DEV binding floor (a7_prelaunch_v3_delta.json): 6 of the
+    # DROPOUT_SCENARIOS = 8 suite must survive.
+    assert R.DROPOUT_SCENARIOS == 8 and R.DROPOUT_MIN_SURVIVAL == 6
     rec = _rec(0.5, 1.2, _good_folds())
     rec["dropout_scenarios"] = (
         [{"scenario": f"drop_pair:{p}", "expectancy": 1.0, "survived": True}
@@ -861,12 +865,226 @@ def test_stage_a_dropout_survival_gate_over_scenarios():
     rec["dropout_scenarios"][7]["survived"] = False   # 7/8 still passes
     ok, _ = R.stage_a_gates(rec)
     assert ok
-    rec["dropout_scenarios"][6]["survived"] = False   # 6/8 still passes
-    ok, _ = R.stage_a_gates(rec)
-    assert ok
-    rec["dropout_scenarios"][5]["survived"] = False   # exactly 5/8 passes
+    rec["dropout_scenarios"][6]["survived"] = False   # exactly 6/8 passes
     ok, reasons = R.stage_a_gates(rec)
     assert ok
-    rec["dropout_scenarios"][4]["survived"] = False   # 4/8 fails
+    rec["dropout_scenarios"][5]["survived"] = False   # 5/8 FAILS (binding floor)
     ok, reasons = R.stage_a_gates(rec)
-    assert not ok and "DROPOUT_SURVIVAL_INSUFFICIENT" in reasons
+    assert not ok and "DROPOUT_SURVIVAL_BELOW_6_OF_8" in reasons
+
+
+# ---------- D1: the incremental alpha follows the family-DECLARED definition ----------
+def _pairday_price_dir():
+    """Synthetic 2-pair x 5-daily-bar snapshot, 2021-06-07..11 (EDT:
+    20:00Z == 16:00 New York).  With the fixture warmup of 2 bars the
+    identical post-warmup schedule window holds (5-2) + (5-2) = 6 pair-days."""
+    tmp = tempfile.mkdtemp(prefix="runner_pairday_prices_")
+    days = ("07", "08", "09", "10", "11")
+    eur = [(f"2021-06-{d} 20:00:00", 1.10, 1.101, 1.099, 1.1005) for d in days]
+    jpy = [(f"2021-06-{d} 20:00:00", 150.0, 150.1, 149.9, 150.05) for d in days]
+    _h1_file(tmp, "EUR/USD", eur)
+    _h1_file(tmp, "USD/JPY", jpy)
+    return tmp
+
+
+_PAIRDAY_FIN = [{"decision_id": did, "financing_adjustment_usd": 0.0,
+                 "formula": "V3_FROZEN_POLICY_RATE_CARRY"}
+                for did in ("pa1", "pb1", "pb2", "pb3")]
+# Anchor: ONE round trip (entry Thu, exit Fri).  Benchmark: THREE small
+# winners.  Hand-computed booked financing-adjusted PnL at tier 1.0
+# (gross = 10000*(exit/entry-1); round-trip cost 3.0 USD; financing 0.0):
+#   pa1 EUR/USD L 1.10 -> 1.101  : 6.0909090909
+#   pb1 EUR/USD L 1.10 -> 1.1005 : 1.5454545455
+#   pb2 USD/JPY S 150.0 -> 149.9 : 3.6666666667
+#   pb3 EUR/USD L 1.20 -> 1.2008 : 3.6666666667
+PAIRDAY_ANCHOR = [_dec("pa1", "EUR/USD", 1, "2021-06-09T20:00:00+00:00",
+                       "2021-06-10T20:00:00+00:00", 1.10,
+                       "2021-06-11T20:00:00+00:00", 1.101)]
+PAIRDAY_BENCH = [
+    _dec("pb1", "EUR/USD", 1, "2021-06-08T20:00:00+00:00",
+         "2021-06-09T20:00:00+00:00", 1.10, "2021-06-10T20:00:00+00:00", 1.1005),
+    _dec("pb2", "USD/JPY", -1, "2021-06-09T20:00:00+00:00",
+         "2021-06-10T20:00:00+00:00", 150.0, "2021-06-11T20:00:00+00:00", 149.9),
+    _dec("pb3", "EUR/USD", 1, "2021-06-08T20:00:00+00:00",
+         "2021-06-09T20:00:00+00:00", 1.20, "2021-06-11T20:00:00+00:00", 1.2008),
+]
+
+
+class PairDayAlphaFamily:
+    """Declares the A5 per-pair-day normalized definition (V3-I D1) with
+    warmup_daily_bars = 2.  The anchor's single trade BEATS the benchmark
+    per trade (+3.1313131313 expectancy difference) yet LOSES per pair-day
+    over the identical window (-0.4646464647): the exact sign divergence the
+    A5 per-pair-day normalization froze the gate on (exposure fairness)."""
+
+    def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+        meta = {"decision_clock": "daily", "proposal_id": "PAIRDAY",
+                "alpha_definition": R.ALPHA_PER_PAIR_DAY_NORMALIZED,
+                "warmup_daily_bars": 2}
+        if arm == "benchmark_treatment":
+            return {"decisions": copy.deepcopy(PAIRDAY_BENCH),
+                    "financing_events": copy.deepcopy(_PAIRDAY_FIN[1:]),
+                    "meta": dict(meta, proposal_id="PAIRDAY-BENCH")}
+        return {"decisions": copy.deepcopy(PAIRDAY_ANCHOR),
+                "financing_events": copy.deepcopy(_PAIRDAY_FIN[:1]),
+                "meta": meta}
+
+
+class LosingBenchPairDayFamily(PairDayAlphaFamily):
+    """Same anchor; the benchmark books three LOSERS so the frozen
+    per-pair-day alpha is positive and the gate does not fire."""
+
+    def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+        out = super().run_arm(arm, data_paths, macro_reader, freeze_token)
+        if arm == "benchmark_treatment":
+            out = copy.deepcopy(out)
+            out["decisions"][0]["exit_price"] = 1.099    # pb1: -12.0909090909
+            out["decisions"][1]["exit_price"] = 150.1    # pb2: -9.6666666667
+            out["decisions"][2]["exit_price"] = 1.199    # pb3: -11.3333333333
+        return out
+
+
+def test_post_warmup_pair_days_counts_window():
+    d = _pairday_price_dir()
+    assert R.post_warmup_pair_days(d, 2) == 6            # (5-2) + (5-2)
+    assert R.post_warmup_pair_days(d, 4) == 2            # (5-4) + (5-4)
+    assert R.post_warmup_pair_days(d, 2, pairs=("EUR/USD",)) == 3
+    with pytest.raises(R.DecisionRuleError, match="ALPHA_WARMUP_NOT_DECLARED"):
+        R.post_warmup_pair_days(d, "2")
+    with pytest.raises(R.DecisionRuleError, match="ALPHA_PRICE_SOURCE_MISSING"):
+        R.post_warmup_pair_days(None, 2)
+    with pytest.raises(R.DecisionRuleError, match="ALPHA_WINDOW_EMPTY"):
+        R.post_warmup_pair_days(d, 5)                    # (5-5)+(5-5) = 0
+
+
+def test_pair_day_normalized_alpha_golden_gate_fires():
+    R.FAMILIES["family1"] = PairDayAlphaFamily()
+    try:
+        rec = R.compute_cell("family1", "anchor",
+                             {"price_h1_dir": _pairday_price_dir()},
+                             freeze_token=_scores_token(),
+                             macro_reader=PolicyRateReader({}))
+    finally:
+        R.FAMILIES["family1"] = DummyFamily()
+    # Hand-computed golden (A5 incremental_test.operationalization):
+    #   anchor sum 6.0909090909 - benchmark sum 8.8787878789
+    #   = -2.787878788 over N = 6 identical-window pair-days
+    #   -> alpha = -0.4646464647  (NEGATIVE)
+    assert rec["incremental_alpha_definition"] == R.ALPHA_PER_PAIR_DAY_NORMALIZED
+    assert rec["incremental_alpha"] == pytest.approx(-0.4646464647, abs=1e-9)
+    # The per-trade expectancy difference is reported alongside as the
+    # proposal's DIAGNOSTIC -- and it disagrees IN SIGN with the frozen gate:
+    # 6.0909090909 - 2.9595959596 = +3.1313131313.
+    assert rec["benchmark_treatment"]["expectancy"] == pytest.approx(2.9595959596, abs=1e-9)
+    assert (rec["benchmark_treatment"]["per_trade_expectancy_difference_diagnostic"]
+            == pytest.approx(3.1313131313, abs=1e-9))
+    # The gate follows the FROZEN per-pair-day value, not the diagnostic.
+    ok, reasons = R.stage_a_gates(rec)
+    assert not ok and "INCREMENTAL_ALPHA_NOT_POSITIVE" in reasons
+
+
+def test_pair_day_normalized_alpha_positive_gate_passes():
+    R.FAMILIES["family1"] = LosingBenchPairDayFamily()
+    try:
+        rec = R.compute_cell("family1", "anchor",
+                             {"price_h1_dir": _pairday_price_dir()},
+                             freeze_token=_scores_token(),
+                             macro_reader=PolicyRateReader({}))
+    finally:
+        R.FAMILIES["family1"] = DummyFamily()
+    # (6.0909090909 - (-33.0909090909)) / 6 = +6.5303030303 -> frozen gate
+    # does not fire; diagnostic 6.0909090909 - (-11.0303030303) = +17.1212121212.
+    assert rec["incremental_alpha"] == pytest.approx(6.5303030303, abs=1e-9)
+    assert (rec["benchmark_treatment"]["per_trade_expectancy_difference_diagnostic"]
+            == pytest.approx(17.1212121212, abs=1e-9))
+    ok, reasons = R.stage_a_gates(rec)
+    assert "INCREMENTAL_ALPHA_NOT_POSITIVE" not in reasons
+
+
+class UnknownAlphaDefinitionFamily(DummyFamily):
+    """Declares an alpha_definition the runner does not know."""
+
+    def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+        out = super().run_arm(arm, data_paths, macro_reader, freeze_token)
+        out["meta"] = dict(out["meta"], alpha_definition="momentum_is_alpha_v9")
+        return out
+
+
+class UndeclaredAlphaFamily(DummyFamily):
+    """Declares NO alpha_definition at all."""
+
+    def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+        out = super().run_arm(arm, data_paths, macro_reader, freeze_token)
+        meta = dict(out["meta"])
+        meta.pop("alpha_definition", None)
+        out["meta"] = meta
+        return out
+
+
+def test_unknown_or_undeclared_alpha_definition_fails_closed():
+    for fam in (UnknownAlphaDefinitionFamily(), UndeclaredAlphaFamily()):
+        R.FAMILIES["family1"] = fam
+        try:
+            with pytest.raises(R.DecisionRuleError, match="ALPHA_DEFINITION_UNKNOWN"):
+                R.compute_cell("family1", "anchor",
+                               {"price_h1_dir": _scored_price_dir()},
+                               freeze_token=_scores_token(),
+                               macro_reader=PolicyRateReader({}))
+        finally:
+            R.FAMILIES["family1"] = DummyFamily()
+    # Dry-run never dispatches on the definition (no benchmark arm call).
+    rec = R.compute_cell("family1", "anchor", {}, freeze_token=None,
+                         macro_reader=PolicyRateReader({}))
+    assert rec["dry_run"] is True and rec["incremental_alpha"] is None
+
+
+def test_pair_day_window_fail_closed_paths():
+    class NoWarmup(PairDayAlphaFamily):
+        def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+            out = super().run_arm(arm, data_paths, macro_reader, freeze_token)
+            meta = dict(out["meta"])
+            meta.pop("warmup_daily_bars", None)
+            out["meta"] = meta
+            return out
+
+    class EmptyWindow(PairDayAlphaFamily):
+        def run_arm(self, arm, data_paths, macro_reader, freeze_token):
+            out = super().run_arm(arm, data_paths, macro_reader, freeze_token)
+            out["meta"] = dict(out["meta"], warmup_daily_bars=100)  # > 5 bars/pair
+            return out
+
+    R.FAMILIES["family1"] = NoWarmup()
+    try:
+        with pytest.raises(R.DecisionRuleError, match="ALPHA_WARMUP_NOT_DECLARED"):
+            R.compute_cell("family1", "anchor",
+                           {"price_h1_dir": _pairday_price_dir()},
+                           freeze_token=_scores_token(),
+                           macro_reader=PolicyRateReader({}))
+    finally:
+        R.FAMILIES["family1"] = DummyFamily()
+    R.FAMILIES["family1"] = EmptyWindow()
+    try:
+        with pytest.raises(R.DecisionRuleError, match="ALPHA_WINDOW_EMPTY"):
+            R.compute_cell("family1", "anchor",
+                           {"price_h1_dir": _pairday_price_dir()},
+                           freeze_token=_scores_token(),
+                           macro_reader=PolicyRateReader({}))
+    finally:
+        R.FAMILIES["family1"] = DummyFamily()
+
+
+def test_family_declarations_match_runner_constants():
+    # The declared strings must equal the runner's dispatch constants
+    # (guards silent drift between family meta and runner).
+    import research.assets.forex_free_v3.family1 as f1
+    import research.assets.forex_free_v3.family2 as f2
+    assert f1.PROPOSAL_ID == "FXFV3-A5-P1"
+    assert R.ALPHA_PER_PAIR_DAY_NORMALIZED == "a5_per_pair_day_normalized_v1"
+    assert R.ALPHA_EXPECTANCY_DIFFERENCE == "per_trade_expectancy_difference_v1"
+    # family1 declares the A5 definition with its 63-bar warmup; family2 the
+    # A6 expectancy difference.
+    import inspect
+    src1 = inspect.getsource(f1.run_arm)
+    src2 = inspect.getsource(f2.run_arm)
+    assert '"alpha_definition": "a5_per_pair_day_normalized_v1"' in src1
+    assert '"alpha_definition": "per_trade_expectancy_difference_v1"' in src2
