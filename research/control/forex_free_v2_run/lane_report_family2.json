@@ -1,0 +1,273 @@
+{
+  "schema": "forex_free_v2_lane_report_family2_v1",
+  "cycle": "FOREX-FREE-V2",
+  "lane": "A9 implementation (family2)",
+  "produced_utc": "2026-09-04",
+  "branch": "orca/forex-free-v2-i-family-2",
+  "base_sha": "26e247d",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/i-family-2",
+  "family_id": "family2",
+  "proposal_id": "FXFV2-A4-P2",
+  "proposal_title": "London-AM range break confirmed by retest-hold",
+  "spec_verification": {
+    "authoritative_spec": "research/proposals/forex_free_v2/a4_lane/proposal_2.json",
+    "expected_sha256": "93e940a9da932719dfe97ff76977abfc82c7b4ea663bc70c62d90a54fd4f56cd",
+    "observed_sha256": "93e940a9da932719dfe97ff76977abfc82c7b4ea663bc70c62d90a54fd4f56cd",
+    "verified": true,
+    "selection_contract": "research/control/forex_free_v2_run/selection_freeze.json (family2 entry: FXFV2-A4-P2, arms anchor/neighbour/control)",
+    "frequency_contract": "research/control/forex_free_v2_run/frequency_contract.json"
+  },
+  "files": [
+    "research/assets/forex_free_v2/family2.py",
+    "tests/assets/forex_free_v2/goldens_family2.py",
+    "tests/assets/forex_free_v2/test_family2.py",
+    "research/control/forex_free_v2_run/lane_report_family2.json"
+  ],
+  "module_api": {
+    "FAMILY_ID": "family2",
+    "PROPOSAL_ID": "FXFV2-A4-P2",
+    "ARMS": [
+      "anchor",
+      "neighbour",
+      "control"
+    ],
+    "entry_point": "compute_arm_schedule(arm, canonical_rows_by_pair, cost_tier=1.0, data=None)",
+    "returns": [
+      "family_id",
+      "proposal_id",
+      "arm",
+      "cost_tier",
+      "trades",
+      "decisions",
+      "no_trade_days",
+      "schedule_digest",
+      "warmup_first_evaluable_date",
+      "early_forced_flat_count",
+      "pairs"
+    ],
+    "trade_fields": [
+      "trade_id",
+      "pair",
+      "side(+1/-1)",
+      "notional_usd(10000)",
+      "entry_price",
+      "entry_ts",
+      "decision_ts",
+      "exit_price",
+      "exit_ts",
+      "exit_reason(invalidation|forced_flat)"
+    ],
+    "pnl_fields": "NONE (the scored runner books every trade through the accounting kernel)",
+    "trade_id_format": "family2|{arm}|{pair}|{entry_ts UTC}"
+  },
+  "reuse": [
+    "research/assets/forex_free_v1/td_loader.py (load_pair_h1) for the schedule-only audit",
+    "research/assets/forex_free_v2/data_authority.py (last_flat_bar_index, flat_bar_instant_utc, parse_stamp, MissingBarNoTradeError)",
+    "research/assets/forex_free_v2/accounting.py (bps_cost convention, canonical_json_bytes/sha256_hex, COST_TIERS, FROZEN_NOTIONAL_USD_UNIT, AtomicJsonlPublisher)",
+    "research/assets/forex/sessions.py local_wall_to_utc + zoneinfo Europe/London and America/New_York"
+  ],
+  "evidence_tests": {
+    "command": "/Users/hoangminhlong/.venv/bin/python -m pytest tests/assets/forex_free_v2/test_family2.py -q",
+    "result": "36 passed",
+    "groups": [
+      "1 hand-computed state-machine goldens (range/break/retest-hold/void/control complement/neighbour E_B/both-sides sign rule/tie)",
+      "2 end-to-end golden UP+DOWN trades with exact prices/times, booked through accounting.PositionBook (exact pnl/cost literals)",
+      "3 PIT/one-event-lag + mutation (post-entry bars cannot alter a forced-flat schedule; invalidation-bar mutation moves only the exit, never the entry)",
+      "4 DST 2025-03-09, 2025-11-02 (US), 2025-03-30, 2025-10-26 (EU): London windows and 16:00-NY flat at correct UTC (20:00Z EDT / 21:00Z EST), evidenced on the regime-carrying Mondays",
+      "5 forced flat + absent 16:00-NY bar (early-forced-flat fallback and the unresolvable NO_TRADE case)",
+      "6 missing-bar fail-closed (invalid day, no fill-forward, no rescue by later bars)",
+      "7 determinism (identical schedule_digest twice; digest = sha256 of canonical JSON record)",
+      "8 governor caps incl. binding weekly case (3 RT then skip-never-queue; next week trades)",
+      "9 drop-one-pair independence",
+      "10 distinct anchor/neighbour/control digests on an all-three-fire fixture",
+      "11 dummy publication refusal (no authorization => refuse; scored=false => refuse real publish; zero-byte dummy dry-run only)",
+      "12 REAL-SNAPSHOT schedule-only frequency audit (NO PnL): 7 pairs x 3 arms tier 1.0"
+    ]
+  },
+  "real_snapshot_frequency_audit": {
+    "pnl_computed": false,
+    "counts_only": true,
+    "snapshot": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw/forex_free_v1 (READ-ONLY)",
+    "loader": "research.assets.forex_free_v1.td_loader.load_pair_h1",
+    "cost_tier": 1.0,
+    "bars_per_pair": {
+      "AUD/USD": 42749,
+      "EUR/USD": 42658,
+      "GBP/USD": 42729,
+      "NZD/USD": 42775,
+      "USD/CAD": 42732,
+      "USD/CHF": 42635,
+      "USD/JPY": 42646
+    },
+    "arms": {
+      "anchor": {
+        "binding_pair_weeks": 572,
+        "decisions": 11765,
+        "early_forced_flat_count": 69,
+        "first_entry": "2020-01-31T14:00:00Z",
+        "last_entry": "2026-08-31T13:00:00Z",
+        "longs": 2052,
+        "max_entries_pair_day": 1,
+        "max_rt_pair_week": 3,
+        "no_trade_days": {
+          "MISSING_ENTRY_BAR": 8,
+          "MISSING_EXIT_BAR": 11,
+          "MISSING_FLAT_BAR": 22,
+          "MISSING_RANGE_BAR": 1831,
+          "NO_BREAK": 657,
+          "NO_RESOLUTION": 1439,
+          "VOID": 6071,
+          "WEEKLY_CAP": 161
+        },
+        "pairs_trading": 7,
+        "populated_pair_weeks": 2124,
+        "rt_per_pair_per_week": 1.6853,
+        "schedule_digest": "0bc57e0099f5a973193142fa4a5175613899bb7087002ec03eb84a6fe7f10939",
+        "shorts": 2001,
+        "span_weeks": 343.57,
+        "trades": 4053,
+        "warmup_first_evaluable_date": "2020-01-31"
+      },
+      "neighbour": {
+        "binding_pair_weeks": 734,
+        "decisions": 11765,
+        "early_forced_flat_count": 81,
+        "first_entry": "2020-01-31T14:00:00Z",
+        "last_entry": "2026-09-01T17:00:00Z",
+        "longs": 2289,
+        "max_entries_pair_day": 1,
+        "max_rt_pair_week": 3,
+        "no_trade_days": {
+          "MISSING_ENTRY_BAR": 11,
+          "MISSING_EXIT_BAR": 9,
+          "MISSING_FLAT_BAR": 31,
+          "MISSING_RANGE_BAR": 1831,
+          "NO_BREAK": 657,
+          "NO_RESOLUTION": 1124,
+          "VOID": 5845,
+          "WEEKLY_CAP": 256
+        },
+        "pairs_trading": 7,
+        "populated_pair_weeks": 2209,
+        "rt_per_pair_per_week": 1.8657,
+        "schedule_digest": "a49508ad88675a1a693d3138a088c2cd743bb009ea6bbe3f9d5b3d6b9f735977",
+        "shorts": 2200,
+        "span_weeks": 343.73,
+        "trades": 4489,
+        "warmup_first_evaluable_date": "2020-01-31"
+      },
+      "control": {
+        "binding_pair_weeks": 1151,
+        "decisions": 11765,
+        "early_forced_flat_count": 130,
+        "first_entry": "2020-02-03T14:00:00Z",
+        "last_entry": "2026-09-01T15:00:00Z",
+        "longs": 2698,
+        "max_entries_pair_day": 1,
+        "max_rt_pair_week": 3,
+        "no_trade_days": {
+          "MISSING_ENTRY_BAR": 18,
+          "MISSING_EXIT_BAR": 10,
+          "MISSING_FLAT_BAR": 17,
+          "MISSING_RANGE_BAR": 1831,
+          "NO_BREAK": 657,
+          "NO_RESOLUTION": 1439,
+          "RETEST_HOLD_FIRST": 4255,
+          "WEEKLY_CAP": 627
+        },
+        "pairs_trading": 7,
+        "populated_pair_weeks": 2319,
+        "rt_per_pair_per_week": 2.2467,
+        "schedule_digest": "2117699853be2c7c507985d0c82f3511e0d4f90dccee533c76f89c7f9f56b795",
+        "shorts": 2701,
+        "span_weeks": 343.29,
+        "trades": 5399,
+        "warmup_first_evaluable_date": "2020-01-31"
+      }
+    },
+    "per_pair_decisions_anchor": {
+      "AUD/USD": 1681,
+      "EUR/USD": 1659,
+      "GBP/USD": 1662,
+      "NZD/USD": 1699,
+      "USD/CAD": 1740,
+      "USD/CHF": 1664,
+      "USD/JPY": 1660
+    },
+    "caps_observed": {
+      "max_entries_per_pair_per_utc_day": 1,
+      "max_rt_per_pair_per_week": 3,
+      "week_definition": "[Monday 00:00Z, next Monday 00:00Z) per proposal utc_week_definition"
+    },
+    "proposal_minimums": {
+      "per_pair_full_sample_minimum_decisions": 500,
+      "full_sample_aggregate_minimum_trades": 1800,
+      "observed_min_pair_decisions": 1659,
+      "observed_anchor_trades": 4053,
+      "verdict": "PASS"
+    },
+    "cross_check_vs_a9f": "A9-F pre-implementation simulation: 1.70 RT/pair/week, 571 binding pair-weeks; this implementation: 1.6853 RT/pair/week, 572 binding pair-weeks (anchor) - independent confirmation"
+  },
+  "spec_ambiguities_and_resolutions": [
+    {
+      "topic": "weekly governor window",
+      "tension": "dispatch note: 'week = Sun 21:00 NY based'; proposal JSON utc_week_definition: '[Monday 00:00Z, next Monday 00:00Z)'",
+      "resolution": "proposal JSON (frozen, authoritative): [Monday 00:00Z, next Monday 00:00Z). Equivalence: every tradable instant lies between London 12:00 and New York 16:00 on a weekday, so no RT can fall in the Sunday-evening window where the two definitions differ; assignments are identical."
+    },
+    {
+      "topic": "resolution scan start",
+      "tension": "retest_hold_state says 'On a later completed bar b'; the break bar itself can satisfy the retest inequality",
+      "resolution": "resolution scan starts strictly AFTER the break bar (a 'subsequent' retest per the economic mechanism); the break bar is never its own decision bar."
+    },
+    {
+      "topic": "void vs retest-hold ordering",
+      "tension": "void_state counts only 'before any retest-hold'; neighbour retest is a different law (E_B) than the void's L_B reference",
+      "resolution": "the void block is the anchor's L_B retest-hold (the law the void is defined against); a neighbour-only fire does not block a later void, but a void kills the neighbour's day as frozen ('voids the day for the anchor and neighbour arms')."
+    },
+    {
+      "topic": "both-sides break tie day",
+      "tension": "'exact tie => no trade' is not one of the three named resolutions (retest-hold/void/NO_RESOLUTION)",
+      "resolution": "counted as a decision with reason TIE_NO_TRADE (the day is terminal and audit-relevant); no trade for any arm."
+    },
+    {
+      "topic": "missing 16:00-NY flat bar",
+      "tension": "dispatch summary: 'missing 16:00-NY flat bar => NO_TRADE'; proposal forced_flat rule: 'exit at the OPEN of the immediately preceding existing H1 bar, recorded as early_forced_flat'; proposal missing_bar_rule: '... (or earliest-available scheduled exit for forced-flat only)'",
+      "resolution": "proposal JSON implemented: when the 16:00-NY bar is absent, exit at the latest existing bar strictly between entry and the flat instant (early_forced_flat; 69/81/130 such exits anchor/neighbour/control on the real snapshot - the A9-F Friday case); when NO such bar exists the trade cannot be flattened and is dropped as NO_TRADE (MISSING_FLAT_BAR). Both behaviours are evidenced in test group 5."
+    },
+    {
+      "topic": "decision_ts semantics",
+      "tension": "'decision_ts' could be the decision bar-open stamp or its close instant",
+      "resolution": "decision_ts = decision bar CLOSE instant (open+1h), the PIT moment the decision becomes known; entry_ts = next H1 bar-open (equal to decision_ts at tier 1.0, +1h at tier 2.0)."
+    },
+    {
+      "topic": "trade dropped for unresolvable exit",
+      "tension": "the invalidation exit bar can be absent after the entry was scheduled",
+      "resolution": "fail-closed: the whole trade is dropped (MISSING_EXIT_BAR), never fill-forwarded; the only exit fallback is the forced-flat one. A trade dropped by a cap or a missing bar consumes no governor budget (it never becomes a round trip)."
+    },
+    {
+      "topic": "exit-instant tie",
+      "tension": "'earlier of invalidation-exit and forced-flat' can tie exactly",
+      "resolution": "tie resolves to exit_reason='invalidation' (deterministic; identical fill instant either way)."
+    },
+    {
+      "topic": "warmup boundary",
+      "tension": "warmup_bars=48 purpose ('bar continuity only') leaves the first evaluable day implicit",
+      "resolution": "first evaluable London-local date = London-local date of bar 48, reported as warmup_first_evaluable_date (2020-01-31 on the real snapshot); earlier days are never evaluated."
+    },
+    {
+      "topic": "tie between invalidation scan and forced-flat window",
+      "tension": "how far the invalidation scan may run",
+      "resolution": "scan covers completed bars from the entry bar through the forced-flat bar inclusive; a scan hit whose (delayed) exit instant would land after the flat instant exits forced-flat instead."
+    }
+  ],
+  "attestation": {
+    "spec_verbatim": true,
+    "no_repairs": "no proposal file was modified; proposal_2.json digest verified unchanged; no post-audit amendment of any kind",
+    "no_real_data_pnl": "no PnL, cost, or return is computed, printed or stored anywhere for real data; the audit is schedule-only (trade counts, decisions, cap/week histograms, digests)",
+    "no_network": true,
+    "no_new_data_authority": true,
+    "no_raw_data_commit": true,
+    "lane_scope_only": "only the four owned files were created/modified; no other file touched",
+    "one_heavy_task": "pgrep -fl pytest checked before each run; no other heavy worker active"
+  }
+}
