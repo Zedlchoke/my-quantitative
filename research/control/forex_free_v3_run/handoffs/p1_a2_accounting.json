@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "role": "A2_ACCOUNTING_REGRESSION_P1_FOREX_FREE_V3",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a2-accounting",
+  "branch": "orca/forex-free-v3-p1-a2-accounting",
+  "bootstrap_sha": "49850a21572cfc2314a9dc2ad15273b7dd14c31c",
+  "commit_sha": null,
+  "measured_at_utc": "2026-09-04T13:08:22Z",
+  "stamp_source": "machine_date_u",
+  "clean": true,
+  "clean_note": "clean=true describes the state AFTER this lane's single clean commit; A1 verifies with git status --porcelain=v1 (must be empty) and git diff --check HEAD^ HEAD (must be clean).",
+  "allowed_globs": [
+    "research/assets/forex_free_v3/**",
+    "tests/assets/forex_free_v3/**",
+    "research/control/forex_free_v3_run/handoffs/p1_a2_accounting.json"
+  ],
+  "changed_files": [
+    "research/assets/forex_free_v3/__init__.py",
+    "research/assets/forex_free_v3/accounting.py",
+    "tests/assets/forex_free_v3/__init__.py",
+    "tests/assets/forex_free_v3/test_accounting.py",
+    "research/control/forex_free_v3_run/handoffs/p1_a2_accounting.json"
+  ],
+  "deliverables": [
+    "V3 accounting kernel research/assets/forex_free_v3/accounting.py inheriting the frozen V2 conventions unchanged: pnl_usd = direction * notional_usd * (exit/entry - 1) on the 10000 USD-unit identity; cost 1.5 bps/side x tier {1.0, 1.5, 2.0} charged exactly once per fill side (1.50/2.25/3.00 USD per side at the frozen notional); cash (USD) never a pair and excluded from concentration; fills as single source of truth with NoTrade sentinels; canonical-JSON digests over exact artifact bytes; flock once-only digest-addressed JSONL publication refusing double publication of the same digest.",
+    "F1 REMEDIATION (V3-L1, the V2 terminal MEDIUM): book_stress() re-books the SAME TradeSpec set at every tier of the frozen ladder through the same once-per-side cost kernel, so booked stress net PnL is recomputed AT the tier cost. It asserts gross price PnL bit-invariant across tiers and calls assert_stress_rows_distinct() internally: on a non-empty trade set, base/tier1.5/tier2.0 booked rows (trade_id, net_pnl_usd) must be pairwise distinct or the kernel raises STRESS_ROWS_NOT_DISTINCT (fail closed). The V2 defect (tier1.5 rows byte-identical to base; tier2.0 at base costs) cannot pass through this path.",
+    "V3-L2 separation: each StressBookResult carries cost_component_delta_vs_base_usd (a PURE cost component, proven by the gross-invariance assertion) and carries fill_delay_events as separately recorded metadata that never enters any PnL in this kernel.",
+    "Dual book: DualBookTrade frozen records plus build_scored_record() carry price_only_pnl_usd and financing_adjusted_pnl_usd as SEPARATE immutable digest-covered columns; validate_scored_record() fails closed DUAL_BOOK_VIOLATION on any post-digest mutation or missing/nonnull-finite column. financing_adjustment_usd is a carried parameter (scalar or per-trade mapping, must cover every trade id); the formula that produces it is frozen in P3 and is NOT computed anywhere in this kernel.",
+    "Break-even bps from the SAME cost kernel: break_even_bps() inverts the charging primitive per_side_cost_usd (bps_cost == per_side_cost_usd(notional, 1.5*tier) exactly for every tier); derivation documented in the docstring: b* = (G/n) * 10000 / (2N); at b* the booked net of the same trades is exactly zero; None for an empty book; 6-decimal publication rounding per the V2 convention.",
+    "ScoredLedgerPublisher.publish_scored_once(): refuses dry-run/unreal records (REAL_PNL_REQUIRED_FOR_SCORED_PUBLICATION), flips published to true BEFORE digesting so the written ledger row carries published:true covered by its self-verifying line digest (V3-L4 fixed by construction at the kernel level), then appends once-only per digest under flock.",
+    "Regression suite tests/assets/forex_free_v3/test_accounting.py: 17 tests, hand-computed goldens, V2 test-file style."
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a2-accounting && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3 -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "17 passed in 0.27s (targeted suite only; the full pytest run remains A1's deferred gate and was NOT run by this lane)"
+    }
+  ],
+  "hand_computed_goldens": {
+    "fixture": "EUR/USD LONG, notional 10000 USD-units, entry 1.1000 -> exit 1.1050",
+    "gross_pnl_usd": "500/11 = +45.454545454545... (IEEE repr 45.45454545454408)",
+    "per_side_cost_usd": {"tier_1.0": 1.5, "tier_1.5": 2.25, "tier_2.0": 3.0},
+    "round_trip_cost_usd": {"tier_1.0": 3.0, "tier_1.5": 4.5, "tier_2.0": 6.0},
+    "booked_net_per_trade_usd": {"tier_1.0": "+42.4545...", "tier_1.5": "+40.9545...", "tier_2.0": "+39.4545..."},
+    "f1_deltas_exact": {"tier1.5_minus_base": -1.5, "tier2.0_minus_base": -3.0},
+    "break_even_bps_per_side": 22.727273,
+    "break_even_check": "at b* the same cost kernel charges 2*b* = 45.4545... USD round trip == gross -> net exactly 0"
+  },
+  "assumptions": [
+    "commit_sha is null BY DESIGN: this lane commits exactly once and the handoff file is inside that commit, so it cannot contain its own SHA. A1 records it with: git -C <worktree> log -1 --format=%H (subject must start with 'FOREX-FREE-V3 P1:').",
+    "The worktree's research/assets/forex_free_v2/accounting.py at HEAD was verified byte-identical to the integration worktree copy before inheritance; it was NOT modified (read-only convention source).",
+    "V3-L3 applied to this handoff: measured_at_utc stamped from machine `date -u` at write time.",
+    "Financing adjustment formula intentionally deferred to Phase P3 per PLAN section 6; the kernel only validates finiteness, carries, sums and digests it.",
+    "V3-L4 (publisher published-flag) is not in this lane's mandate list but is fixed by construction in ScoredLedgerPublisher since the publisher lives in this kernel; integration lanes may adopt or bypass it.",
+    "No network, no downloads, no S1, no scored computations: synthetic fixtures only, per Phase P rules."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/assets/forex_free_v3/accounting.py",
+    "tests/assets/forex_free_v3/test_accounting.py",
+    "research/control/forex_free_v3_run/lessons_register.json"
+  ],
+  "next_action_for_a1": "Verify: (1) git -C <worktree> log -1 --format='%H %s' -> one commit on orca/forex-free-v3-p1-a2-accounting, subject starting 'FOREX-FREE-V3 P1:'; (2) git -C <worktree> status --porcelain=v1 -> empty; (3) git -C <worktree> diff --check HEAD^ HEAD -> clean; (4) re-run the targeted pytest command above expecting exit 0 / 17 passed. Then record commit_sha in the cycle control (not by amending this lane). F1 remediation (V3-L1) and the L2 cost/delay separation are regression-pinned and available for P3 freezing and D1 proposal packets; full pytest remains A1's gate."
+}
