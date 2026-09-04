@@ -1,0 +1,134 @@
+{
+  "schema": "forex_free_v2_proposal_v1",
+  "proposal_id": "FXFV2-A5-P1",
+  "cycle_id": "FOREX-FREE-V2",
+  "lane": "d1-a5-proposals",
+  "mechanism_class": "cross_sectional_dispersion_relative_value",
+  "title": "Same-day extreme residual dislocation convergence: USD-factor-neutral extreme-vs-extreme spread",
+  "economic_mechanism": "Within a single FX trading day, the seven majors share a large common USD factor, but pair-specific microstructural flows (order-cluster stop/take-profit execution cascades, session-specific hedging demand) can push one pair's day-to-date move far away from the cross-sectional norm of the currency bloc after the common USD factor is removed. These transient pair-specific dislocations overshoot and are partially corrected by intraday liquidity provision and end-of-day inventory rebalancing before the New York close. The construction is symmetric over the full 7-pair universe: every day, the pair with the most negative standardized demeaned return and the pair with the most positive standardized demeaned return are selected by the same frozen rule; no pair is ever privileged by name.",
+  "causal_prediction": "Conditional on the standardized cross-sectional range of day-to-date demeaned returns being at least 3.0, the demeaned return spread between the two extreme pairs contracts on average by the forced-flat deadline the same UTC day, by an amount that must clear 6.0 bps per round trip at the base cost tier (2 legs x 2 sides x 1.5 bps). The placebo (date-seeded pair selection with identical mechanics and cost) must show no such contraction; the trailing-4h-window neighbour must show a correlated but smaller effect if the convergence mechanism, rather than the specific measurement window, drives returns.",
+  "primary_literature_trace": [
+    {
+      "citation": "Lustig, H., Roussanov, N., Verdelhan, A. (2011), 'Common Risk Factors in Currency Markets', Journal of Finance 66(4)",
+      "claim": "Currency returns share a pervasive common 'dollar' factor that loads on every pair plus a cross-sectional factor; stripping the common dollar factor is what isolates the cross-sectional (relative-value) component of currency returns, which is the exact neutrality algebra this proposal implements."
+    },
+    {
+      "citation": "Osler, C. L. (2003), 'Currency Orders and Exchange Rate Dynamics: An Explanation for the Predictive Success of Technical Analysis', Journal of Finance 58(5)",
+      "claim": "Stop-loss and take-profit currency orders cluster at predictable price levels and their execution generates intraday exchange-rate moves that overshoot and then partially reverse, providing a microstructural source of transient pair-specific dislocation and same-day correction."
+    }
+  ],
+  "h1_observables": [
+    "completed H1 bar open and close prices (bar-open UTC timestamps) for all 7 pairs; log increments only",
+    "day-to-date usd_view log increment per pair: s_p * (log C_p(decision bar close) - log O_p(first bar of trading day))",
+    "cross-sectional mean and demeaned residual of the above across the 7 pairs at the decision instant",
+    "trailing 20-trading-day rolling standard deviation of the same decision-instant residual, per pair",
+    "re-measured extreme-vs-extreme spread at each completed H1 bar close during the holding window (same window anchors as entry measurement)",
+    "high/low and any volume-like fields are NOT used (provider-artifact sensitivity); only open and close"
+  ],
+  "pit_timing": {
+    "decision": "decision bar = the H1 bar with open-time 12:00:00Z; the decision is computed only from that bar's close and earlier completed bars (known at 13:00:00Z)",
+    "entry": "next allowed H1 bar open after decision-bar completion = the 13:00:00Z bar open; one-event lag, no lookahead; if any required bar (any pair, day-first bar or decision bar) is missing, the day is NO_DECISION -> NO_TRADE, never fill-forward",
+    "monitoring_and_exit": "exit evaluation happens at each completed H1 bar close; an exit signal fills at the NEXT H1 bar open; if the 12:00Z or any monitoring bar is missing, no reversion exit is taken and the position rides to forced flat (fail-closed)",
+    "forced_flat_fallback": "if the forced-flat bar is missing for a held pair, the exit fills at the first available later H1 bar open the same UTC day and the event is logged as FAIL_LATE_FILL"
+  },
+  "pair_universe": {
+    "pairs": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "usd_view_orientation_sign_s_p": {
+      "EUR/USD": -1,
+      "GBP/USD": -1,
+      "AUD/USD": -1,
+      "NZD/USD": -1,
+      "USD/JPY": 1,
+      "USD/CHF": 1,
+      "USD/CAD": 1
+    },
+    "orientation_note": "u_p = s_p * log-increment of the quoted pair price; positive u_p means USD strengthened vs that currency",
+    "symmetry": "selection each day is argmin/argmax of a standardized statistic computed over all 7 pairs with one frozen rule; tie-break is fixed universe order"
+  },
+  "usd_factor_neutral_construction": {
+    "usd_index": "m = (1/7) * sum_p u_p (equal-weighted USD-strength index of the full universe)",
+    "residual": "e_p = u_p - m; by construction sum_p e_p = 0",
+    "standardization": "z_p = e_p / sigma_p with sigma_p the trailing 20-trading-day std of the same decision-instant residual for pair p (requires >= 16 of the 20 trailing days valid, else NO_DECISION)",
+    "trade_algebra": "basket L = argmin_p z_p (usd_view long, x=+1); basket S = argmax_p z_p (usd_view short, x=-1); equal notional per leg. Portfolio log return ~= sum_p x_p u_p = sum_p x_p e_p + m * (sum_L x - sum_S |x|) = sum_p x_p e_p because the long and short units are equal (+1 vs -1). The equal-weighted USD index m cancels EXACTLY to first order, independent of which two pairs the rule selects.",
+    "quoted_position_mapping": "quoted-units position q_p = s_p * x_p (e.g. EUR/USD with x=+1 -> short EUR/USD spot; USD/JPY with x=-1 -> short USD/JPY spot)",
+    "honesty_note": "neutrality is w.r.t. the equal-weighted 7-pair USD proxy only; second-order convexity and unequal per-currency volatilities are not neutralized; no DXY or other external index is an input"
+  },
+  "clocks": {
+    "warmup_bars": 600,
+    "warmup_note": "600 H1 bars (~25 trading days) covers the 20-day sigma window plus one full day-to-date window; all clocks are frozen in UTC except the contract-mandated New-York forced-flat boundary",
+    "decision_bar": "H1 bar opening 12:00:00Z (completes 13:00:00Z)",
+    "entry": "13:00:00Z bar open (next allowed H1 open after decision-bar completion)",
+    "exit_rule": "half-reversion exit: at the first completed H1 bar close t after entry where |D_t| <= 0.5 * |D_entry| (D = re-measured e_S - e_L with identical window anchors), exit at the NEXT H1 bar open; exactly one frozen constant 0.5",
+    "forced_flat": "exit at 16:00 America/New_York bar open on entry UTC day (20:00Z during EDT, 21:00Z during EST), strictly before the 17:00 NY rollover; no position crosses rollover",
+    "tier2_delay_interaction": "the stress-tier 2.0 one-event fill delay applies to entry and exit fills but the forced-flat boundary dominates: a delayed exit never crosses the 16:00 NY bar open"
+  },
+  "arms": {
+    "anchor": {
+      "spec": "one decision per UTC day at the 12:00Z-bar completion; day-to-date demeaned standardized residual z_p; gate: trade only if z_S - z_L >= 3.0 (frozen constant); trade long argmin / short argmax with equal 1-unit per-leg notional in usd_view orientation; half-reversion exit at 0.5 * |D_entry| else forced flat at 16:00 NY bar open",
+      "weekly_cap_backstop": "schedule-level and PIT: if a selected pair has already made 3 round trips in the current Monday-anchored UTC week, it is substituted by the next-ranked pair on its own tail (2nd most extreme); if no eligible pair remains on either tail, NO_TRADE that day; guarantees <= 3 RT/pair/week and <= 1 entry/pair/UTC-day"
+    },
+    "neighbour": {
+      "presumption_under_test": "that the day-to-date window is the right dislocation measurement",
+      "spec": "identical anchor in every respect except u_p (and hence m, e, z, sigma) is measured over the trailing 4 completed H1 bars (bars opening 09:00Z, 10:00Z, 11:00Z, 12:00Z) instead of day-to-date; same 3.0 gate, same selection, same 0.5 half-reversion exit, same forced flat",
+      "expected_relation": "should move TOGETHER with the anchor (correlated sign, similar or smaller magnitude) if cross-sectional residual convergence, not the specific window, is the mechanism"
+    },
+    "control": {
+      "type": "placebo: de-linked cross-sectional ranking",
+      "spec": "identical anchor mechanics, gate evaluation, cost and forced-flat schedule, but the traded pair-pair is chosen by a deterministic date-seeded hash: SHA-256 of the UTC decision date string, first two distinct residues mod 7 in fixed universe order, mapped to (L, S); the demeaned z's are computed and gated exactly as the anchor but play no role in pair choice",
+      "expected_relation": "must NOT reproduce the anchor's expectancy; any positive expectancy surviving the placebo is a schedule/selection artifact and the mechanism claim is void"
+    }
+  },
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tiers": [1.0, 1.5, 2.0],
+    "per_leg_accounting": "2 legs (long L + short S), each charged 1.5 bps x tier per side, entry and exit = 4 side-leg charges per round trip: 6.0 / 9.0 / 12.0 bps per round trip at tiers 1.0 / 1.5 / 2.0; notional 10000 USD-unit per leg",
+    "break_even_diagnostic": "per-trade gross bps = 10^4 * mean(signed leg log-returns between entry fill and exit fill, usd_view orientation); empirical per-side-per-leg break-even C* = mean gross bps / 4; PASS requires C* > 1.5 at base tier and C* > 3.0 at the tier-2.0 variant including its extra fill delay; report the full distribution, not only the mean"
+  },
+  "expected_frequency": {
+    "analytic_estimate": "gate P(z-range >= 3.0) under approximately standard normal demeaned residuals is roughly 0.5-0.7; expected ~3.0 round trips per week across the whole construction (at most 1 per UTC day), each involving 2 distinct pairs",
+    "per_pair": "expected ~3.0 x 2/7 ~= 0.86 RT/pair/week; hard schedule bounds: <= 1 entry/pair/UTC-day by construction (argmin != argmax, one entry each) and <= 3 RT/pair/week by the frozen substitution backstop",
+    "cost_feasibility_statement": "the construction must clear 6.0 bps gross per round trip at base tier; the dislocation captured must therefore be at least ~12% of a 50 bps entry spread; this is the honest hurdle and is stated a priori"
+  },
+  "folds_plan": {
+    "folds": 3,
+    "rule": "post-warmup decision UTC days are split into 3 equal contiguous chronological thirds (floor; remainder to the last fold); each trade belongs to the fold of its entry UTC day; positions are strictly intraday so no trade spans a fold boundary"
+  },
+  "concentration_plan": {
+    "legs_count_as_pair_exposure": true,
+    "schedule_audit": "no pair may exceed 50% of total round trips over the full sample; per-foreign-currency (EUR, GBP, JPY, AUD, NZD, CHF, CAD) leg-count share reported with 50% audit limit; cash/account currency excluded",
+    "scored_gate_input": "per-pair share of gross positive PnL frozen at 40% limit for the Stage-A concentration gate"
+  },
+  "drop_one_pair_plan": {
+    "rule": "with any single pair excluded, recompute m as the 6-pair equal-weighted mean, e and sigma over the remaining 6, and re-run the same argmin/argmax rule, gate, exits and substitution backstop unchanged",
+    "degradation_statement": "the construction remains defined for all 7 single exclusions; USD neutrality then holds w.r.t. the 6-pair index and the excluded currency becomes unhedged - a documented degradation, not a failure"
+  },
+  "minimum_decisions": 250,
+  "minimum_trades_per_cell": 100,
+  "failure_interpretation": {
+    "anchor_expectancy_nonpositive": "same-day extreme-residual convergence is not exploitable net of 6 bps round-trip cost; reject the mechanism",
+    "control_reproduces": "the apparent edge is a schedule or selection artifact, not dislocation convergence; mechanism claim void regardless of anchor sign",
+    "neighbour_diverges": "the effect is specific to the day-to-date measurement window; treat the anchor result as window-specific and non-robust",
+    "break_even_below_base": "if C* <= 1.5 bps per side per leg the strategy is cost-infeasible as designed; reject without re-design, no parameter rescue",
+    "frequency_violation": "any realised schedule breaching <= 1 entry/pair/UTC-day or <= 3 RT/pair/week fails the preregistered contract outright"
+  },
+  "no_parameter_grid": true,
+  "outcome_blind_attestation": {
+    "v1_outcomes_read": false,
+    "v1_per_cell_pnl_or_digests_read": false,
+    "backtest_or_pnl_computed": false,
+    "real_market_data_read": false,
+    "files_read": [
+      "PLAN_forex_v2.md",
+      "research/control/forex_free_v2_run/run_contract.json",
+      "research/control/forex_free_v2_run/frequency_contract.json",
+      "research/control/forex_free_v2_run/data_manifest.json",
+      "research/control/forex_free_v2_run/forbidden_family_inventory.json",
+      "research/assets/forex/sessions.py",
+      "research/assets/forex/calendar.py",
+      "research/assets/forex_free_v1/td_loader.py (bar JSON schema only)"
+    ],
+    "forbidden_paths_opened": [],
+    "git_history_read": false,
+    "statement": "This proposal was designed solely from the frozen V2 contracts, the forbidden-family inventory and the session/calendar/schema modules. Every number above is a frozen constant chosen a priori; no grid, menu, range or result-aware choice exists in this file."
+  }
+}
