@@ -233,7 +233,9 @@ def _series_digest(rows_by_symbol: Mapping[str, Sequence[Any]]) -> str:
         for row in rows_by_symbol[sym]:
             if isinstance(row, Mapping):
                 fields = [str(k) for k in sorted(row)]
-                digest.update(f"{sym}|" + "|".join(f"{k}={row[k]!r}" for k in fields).encode())
+                digest.update(
+                    (f"{sym}|" + "|".join(f"{k}={row[k]!r}" for k in fields)).encode()
+                )
             else:  # Bar-like objects: positional frozen fields
                 digest.update(
                     f"{sym}|{getattr(row, 'ts_event_ns', None)!r}|"

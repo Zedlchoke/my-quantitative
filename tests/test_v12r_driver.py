@@ -191,6 +191,20 @@ def test_scored_metrics_extraction_hand_computed() -> None:
     assert driver.scored_metrics_from_baseline(broken)["score_valid"] is False
 
 
+def test_series_digest_mapping_branch_regression() -> None:
+    """TECHABORT regression: the Mapping branch must encode AFTER concat.
+
+    The OILEV chain crashed on the first Phase-E attempt because the
+    settlements digest concatenated ``str + bytes``; dict-row inputs must
+    digest without error and deterministically.
+    """
+    rows = {"AAAUSDT": ({"publish_ts_ns": 900_000_000_000, "value": -0.00025},)}
+    first = driver._series_digest(rows)
+    second = driver._series_digest({"AAAUSDT": ({"value": -0.00025, "publish_ts_ns": 900_000_000_000},)})
+    assert first == second  # key-order independent
+    assert driver._series_digest({"AAAUSDT": ({"publish_ts_ns": 1, "value": 0.0},)}) != first
+
+
 # --------------------------------------------------------------------------- #
 # Staged snapshot pin
 # --------------------------------------------------------------------------- #
