@@ -1,0 +1,62 @@
+{
+  "schema": "stocks_free_v4_run/baseline_invariants@1",
+  "frozen_at_utc": "2026-09-04T02:15:00Z",
+  "producer_role": "A1",
+  "authority": "PLAN_stocks_v4.md section 6 P3; conventions carried forward unchanged from V3 scoring_contract@1 (frozen 2026-09-03T15:50:00Z) so V4 results stay denominator-compatible",
+  "accounting": {
+    "symbols_excl_cash": "CASH is never a symbol; it absorbs residual weight and is excluded from turnover, concentration and drop-one",
+    "long_short_gross_net": "long/short books accounted separately; gross = sum(|w|) over non-CASH legs; net = sum(w); cash = 1 - net; all reconciled to 1.0 within 1e-9",
+    "force_flat_fold_boundaries": "book forced flat at every fold boundary; boundary sessions carry no cross-fold carry",
+    "min_positions": "at least 1 non-CASH leg per decision; min 5 decision periods per fold",
+    "min_decisions_total": "at least 30 scored decision periods overall per arm"
+  },
+  "fills_and_costs": {
+    "fill_clock": "signals computed on session t close data (PIT); fills at next allowed session open-adjacent close-to-close execution consistent with V3 ADJ-1-EXEC-CLOCK; no same-session fill",
+    "cost_base": "10 bps per side per fill, charged exactly once",
+    "cost_stress": "20 bps per side per fill for the stress rerun",
+    "no_double_charge": "P1-A2 invariant 2; no sidecar repetition of cost"
+  },
+  "turnover": {
+    "convention": "turnover = sum(abs(delta_weight)) over non-CASH legs, one named convention (V3 ADJ-5 corrected)",
+    "ceiling_two_way_per_year": 6.0,
+    "reporting": "annualized two-way; both raw and ceiling-normalized reported"
+  },
+  "folds": [
+    { "fold_id": "S0_FOLD_1", "start": "2018-04-04", "end": "2020-09-01" },
+    { "fold_id": "S0_FOLD_2", "start": "2020-09-10", "end": "2023-02-09" },
+    { "fold_id": "S0_FOLD_3", "start": "2023-02-17", "end": "2025-07-24" }
+  ],
+  "factor_and_benchmark": {
+    "benchmark": "SPY total return (adjusted _all path) per p2_a3_benchmark_contract.json",
+    "sector_factor": "equal-weight sector ETF total return allowed as optional sector factor (authorized data only)",
+    "risk_matched_context": "SPY context scaled ex ante by the arm's frozen gross/vol rule; incremental alpha = arm return minus risk-matched SPY context, per fold and overall",
+    "beta_not_alpha": "raw PnL or long-equity beta exposure is never accepted as alpha (V2/V3 lesson)"
+  },
+  "concentration_and_robustness": {
+    "etf_positive_share_le": 0.35,
+    "fold_positive_share_le": 0.5,
+    "drop_one_etf": "value_book rerun excluding max-contribution symbol; survival = after-drop expectancy > 0",
+    "drop_one_fold": "min over folds of expectancy with that fold removed; survival = min > 0",
+    "stress": "PnL > 0 and PF >= 1.0 at 20 bps/side"
+  },
+  "stage_a_gates_carried_forward": {
+    "expectancy_gt": 0.0,
+    "position_pf_ge": 1.1,
+    "folds_positive_ge": 2,
+    "min_populated_fold_pf_ge": 0.8,
+    "max_fold_mdd_le": 0.15,
+    "risk_matched_excess_positive_folds_ge": 2,
+    "anchor_overall_alpha_gt": 0.0,
+    "control_alpha_abs_ratio_lt": 0.5,
+    "neighbor_mechanism_support": "required",
+    "causal_control_rule": "preregistered per arm; control must NOT reproduce the mechanism",
+    "reproduction": "ALL_MATCH required from detached tree"
+  },
+  "resource_and_timeout": {
+    "heavy_cap": "1 by default on 8 GB host; set only by fresh probe",
+    "execution_timeout_per_cell": "120 minutes hard; safe-stop with < 45 min remaining",
+    "serial_cells": "scored arms within one family are serial; A1 serializes all publication"
+  },
+  "no_pnl_in_phase_p": true,
+  "frozen_before": "V4-D1 proposal wave; changing anything above after proposals are written requires owner adjudication"
+}
