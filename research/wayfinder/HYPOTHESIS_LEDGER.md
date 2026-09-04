@@ -14,8 +14,9 @@
   it, or any parameter/top-K/universe/relaxed-gate variant of it, is rescue
   and ineligible without a new owner plan preregistering a materially new
   mechanism (measured decorrelation vs the rejected ancestor, not prose).
-- Cumulative scored denominators (post-V12/V4, 2026-09-04): crypto 131 published /
-  134 observed logical; stocks 18/18; forex 6/6. S1 untouched everywhere.
+- Cumulative scored denominators (post-FXV2 close, 2026-09-04): crypto 131 published /
+  134 observed logical; stocks 18/18; forex 12/12. S1 untouched everywhere.
+  **Program total: 161 published cells, zero promotions.**
 - **No strategy has ever been promoted.** Every governed scored cycle closed
   REJECT_ALL / CANDIDATE_FAIL / BLOCKED. The near-misses below are the most
   information-dense rows in this ledger.
@@ -74,8 +75,8 @@
 | F1 (orca/forex-integration) | — | Twelve-Data paid-source era | FOREX_BLOCKED_DATA_OR_ROLLOVER_AUTHORITY then FOREX_BLOCKED_SELECTION_INSUFFICIENT. Never scored; pivoted to free sources. |
 | Free-V1 | FXFV1-A3-P1 London-open session continuation | London-open momentum, NY-open neighbour, sign-flipped control | REJECT — anchor expectancy −2.35/trade, PF 0.849, all 3 folds negative, 11,459 trades, 7 pairs. |
 | Free-V1 | FXFV1-A3-P2 Late-NY fade | Fade of standardized intraday extension into late NY | REJECT — FOREX_FREE_V1_REJECT_ALL, 6/6, reproduced. |
-| Free-V2 (in implementation, F2-I) | FXFV2-A4-P1 Tokyo-range compression → London-morning expansion | Session-range breakout; A7-N MEDIUM lineage note (re-specified descendant of V1's *unselected, never-scored* A4-P1) | Frozen, feasibility-simulated 0.72 RT/pair/week. |
-| Free-V2 | FXFV2-A4-P2 London-AM range break + retest-hold | Breakout confirmed by retest-hold reaction state | Frozen, 1.70 RT/pair/week. 4 infeasible proposals recorded unrepaired; USD-leg drift gates frozen outcome-blind. |
+| Free-V2 (CLOSED 2026-09-04, REJECT_ALL 6/6, repro byte-identical, A7 terminal PASS) | FXFV2-A4-P1 Tokyo-range compression → London-morning expansion | Session-range breakout; 1,541 trades anchor | REJECT — **all three arms FAIL EXPECTANCY_NONPOSITIVE (anchor −3.804/trade, PF 0.593; neighbour worse; control worse still)**: coherence exists (anchor > control) but no edge; break-even −0.40 bps → the gross pre-cost edge was already negative, costs only deepen it. |
+| Free-V2 | FXFV2-A4-P2 London-AM range break + retest-hold | Breakout confirmed by retest; 3,830 trades anchor | REJECT — anchor −3.093/trade PF 0.720; **control ≈ anchor (placebo reproduces the behaviour → mechanism not specific)**; break-even −0.05 bps; USD-drift ruled out (|corr| ≤ 0.072). Carry-forward lesson: MEDIUM F1 — stress-tier cost multipliers never applied to booked PnL; mandatory fix before any future cost-sensitive cycle. |
 
 ## E. Near-misses — the most informative rows (read before proposing anything)
 
@@ -100,7 +101,8 @@ alone but by **their own controls outperforming them**: V11 LOT (inverted
 control PF 1.34), V12 OILEV-V2 (inverted control +0.758 vs anchor −0.821),
 V12 BAB (inverted control ≈0 vs negative anchor), Stocks V4 participation
 (stale-rank control +14.9% raw vs anchor −17.6%), Stocks V4 semivariance
-(vol-level control +53.1% vs anchor −28.1%). This is the control apparatus
+(vol-level control +53.1% vs anchor −28.1%), and Forex V2 family2 (placebo
+control ≈ anchor: the behaviour reproduces without the mechanism). This is the control apparatus
 working exactly as designed: it proves the frozen mechanism identity/sign is
 wrong, not merely unprofitable. Three "shadow effects" are now *measured
 phenomena* — inverted-OI-flow, plain vol-level sorting, sector-exposure form —
