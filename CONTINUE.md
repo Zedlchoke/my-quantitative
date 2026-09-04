@@ -262,3 +262,24 @@ no main merge. Evidence:
 `dc760859...`) AND authorizes a V12 driver lane (implement the scored-cell
 driver from the frozen V10R/V11 pattern, integrate, freeze `W12R`, independent
 A7 delta audit) before any scored cell.
+
+## V12 TERMINAL: V12_REJECT_ALL — 2026-09-04 (A1)
+
+Six frozen cells computed, published exactly once, reproduced 6/6 ALL_MATCH
+from the detached reproduction trees (budget 6/9; logical denominators
+125/128 -> 131/134; S1 SEALED_UNTOUCHED; workers 0; no deployment). Clock
+closed within 12h. Terminal report:
+`research/control/v12_run/terminal_report_v12.json`.
+
+- OILEV-V2 **V12_FAMILY_REJECT** — anchor -0.821 (PF 0.717), neighbour
+  -0.845, MDD 82%; inverted control +0.758 (PF 1.360): falsification
+  evidence only, never a candidate (V11 LOT pattern).
+- BAB-LOWBETA **V12_FAMILY_REJECT** — anchor -0.0199 (PF 0.992), neighbour
+  -0.087, 1/3 positive folds, MDD 69%; inverted control beats the anchor.
+  Low-beta long/short dies after taker costs + funding.
+- ILLIQ replication stayed BLOCKED_DATA (3 slots unused).
+- TECHABORT x1 (driver preflight digest bug) — zero budget, forensic on
+  file; W12R2 fix audited by A7 (both LAUNCH_AUTHORIZED verdicts).
+
+**Next safe action:** none pending for V12; no S1 candidate locked. Await
+new owner instruction.

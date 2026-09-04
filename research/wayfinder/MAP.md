@@ -112,6 +112,10 @@ promise.
 - Replacing the existing global default strategy before a separate promotion
   decision is closed.
 
+## V12 terminal (2026-09-04)
+
+- V12 closed **V12_REJECT_ALL**: OILEV-V2 and BAB-LOWBETA both V12_FAMILY_REJECT (6/9 cells computed+published, reproduced 6/6 ALL_MATCH); ILLIQ stayed BLOCKED_DATA. W12R2=ce52e3e; terminal report research/control/v12_run/terminal_report_v12.json. No S1 candidate locked.
+
 ## Frontier tickets
 
 - [Capture the untouched future holdout](tickets/capture-untouched-holdout.md)
