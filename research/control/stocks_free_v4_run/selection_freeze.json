@@ -1,0 +1,62 @@
+{
+  "schema": "stocks_free_v4_run/selection_freeze@1",
+  "frozen_at_utc": "2026-09-04T02:55:00Z",
+  "producer_role": "A1",
+  "wave_sha": "5022f265912e0dd398b79441023c263bc4c61b24",
+  "audit_base_sha": "2ffb71bbd33264c504082cae7bbe049bbd382426",
+  "a7_novelty_audit_head": "158239e9de846f9b76782c1f50a1c96c2d91f730",
+  "a9_feasibility_audit_head": "bb5c3eee7dcc4313908a0b0bda26c11bf74e8f86",
+  "rubric": "PLAN_stocks_v4.md section 8 frozen rubric (7 lexicographic criteria)",
+  "considered": {
+    "SFV4-A4-H1": { "a7": "ELIGIBLE/MEDIUM", "a9": "FEASIBLE_WITH_CONDITIONS", "notes": "shape axis rho -0.02 vs vol level; kappa_t fallback condition" },
+    "SFV4-A4-H2": { "a7": "ELIGIBLE/HIGH", "a9": "FEASIBLE_WITH_CONDITIONS", "notes": "vov anchor rank-identical to inverted vol level (mean rho -0.79, 4/15 dates >= 0.9); vol-level control structurally subsumes anchor -> control test not identifiable; NOT SELECTED" },
+    "SFV4-A5-H1": { "a7": "ELIGIBLE/LOW", "a9": "FEASIBLE", "notes": "volume-only axis orthogonal to references; stale-rank control non-collinear (rho 0.29); unconditional feasibility" },
+    "SFV4-A5-H2": { "a7": "ELIGIBLE/HIGH", "a9": "FEASIBLE", "notes": "anchor 0.78 rank-identical to own price-quietness control -> control expected to fire; weak identification; NOT SELECTED" },
+    "SFV4-A6-H1": { "a7": "ELIGIBLE/HIGH", "a9": "FEASIBLE_WITH_CONDITIONS", "notes": "GK ranks are vol-level ranks (mean rho -0.83); alphabetical control cannot isolate GK from vol level; selection-contaminated with H2; NOT SELECTED" },
+    "SFV4-A6-H2": { "a7": "ELIGIBLE/MEDIUM", "a9": "FEASIBLE_WITH_CONDITIONS", "notes": "new decomposition axis but ZERO risk-match multiple unjustified (hedge truncation cannot offset 0.8-1.0 beta) and 0.57 control overlap; condition strikes the alpha-test core; NOT SELECTED" }
+  },
+  "selected_families": [
+    {
+      "family_id": "SFV4-A5-H1-PARTICIPATION-SHIFT",
+      "hypothesis": "SFV4-A5-H1",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a5_h1.json",
+      "mechanism": "relative dollar-volume participation-shift premium (21d vs 252d dollar-volume shock ratio; Gervais 2001 / Lo-Wang class)",
+      "arms": [
+        { "arm_id": "SFV4-A5-H1-A", "role": "anchor", "rule": "quarterly (63-session clock), long top-3 / short bottom-3 sector ETFs by 21d-vs-252d dollar-volume shock ratio, +-1/6 legs, gross 1.0 net 0, 63-session holding, next-session fills" },
+        { "arm_id": "SFV4-A5-H1-N", "role": "neighbour", "rule": "same mechanism, fixed neighbouring state window per proposal neighbour field" },
+        { "arm_id": "SFV4-A5-H1-C", "role": "causal_negative_control", "rule": "one-quarter-stale participation ranks, identical book form; preregistered falsification: refuted if control expectancy > 0 AND |control alpha| >= 0.5 x anchor alpha" }
+      ],
+      "conditions": [
+        "clock anchoring pinned byte-exact (A9-F recommendation): 63-session clock anchored to S0 start 2018-04-04, decisions at index multiples of 63 from anchor",
+        "adverse churn case ~6.6/yr is preregistered as a falsification surface, not a rescue knob"
+      ]
+    },
+    {
+      "family_id": "SFV4-A4-H1-SEMIVARIANCE-SHARE",
+      "hypothesis": "SFV4-A4-H1",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a4_h1.json",
+      "mechanism": "downside-vs-total semivariance-share risk pricing (lottery/constraint class), market-neutral shape spread",
+      "arms": [
+        { "arm_id": "SFV4-A4-H1-A", "role": "anchor", "rule": "rank 11 sector ETFs by downside/total sum-of-squared-returns trailing 126 sessions; 4/4 hysteresis book (+0.25/-0.25, gross <= 2.0, net ~0), 21-session clock, static weights" },
+        { "arm_id": "SFV4-A4-H1-N", "role": "neighbour", "rule": "same mechanism, shorter state window per proposal neighbour field" },
+        { "arm_id": "SFV4-A4-H1-C", "role": "causal_negative_control", "rule": "identical book sorted on total-variance level; preregistered falsification: refuted if control expectancy > 0 or |control alpha| >= 0.5 x anchor alpha" }
+      ],
+      "conditions": [
+        "KAPPA FALLBACK FROZEN EX ANTE (A9-F C1, frozen before any V4 return is observed): risk-match multiple kappa_t = 1.0 flat for scored sessions until 252 scored sessions accumulate, thereafter trailing-252 OLS of arm on SPY; no in-sample refit of the fallback",
+        "clock anchoring pinned byte-exact: 21-session clock anchored to S0 start 2018-04-04",
+        "early fold-1 net-exposure stretches (9 ticks net +0.25 anchor; 15 ticks 5 legs neighbour) recorded as expected behavior, not defects"
+      ]
+    }
+  ],
+  "not_selected_no_reassignment": ["SFV4-A4-H2", "SFV4-A5-H2", "SFV4-A6-H1", "SFV4-A6-H2"],
+  "budget": { "planned_scored_cells": 6, "families": 2, "arms_per_family": 3 },
+  "rubric_walk": {
+    "1_no_veto": "all six ELIGIBLE (0 INELIGIBLE)",
+    "2_data_pass": "all six authorized-data PASS",
+    "3_identifiable": "PASS: A5-H1, A4-H1, A6-H2; FAIL: A4-H2, A5-H2, A6-H1 (control self-subsumes/contaminates)",
+    "4_feasibility": "A5-H1 unconditional; A4-H1 and A6-H2 conditional; A6-H2 condition strikes alpha-test core",
+    "5_source_to_test": "comparable strength among survivors",
+    "6_impl_risk": "A5-H1 lowest (volume-only); A4-H1 narrow fixable condition vs A6-H2 core defect",
+    "7_tiebreak": "not needed beyond above"
+  }
+}
