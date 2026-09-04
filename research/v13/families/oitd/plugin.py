@@ -20,6 +20,23 @@ signature, universe) by replaying the retained decision stamps in
 chronological order from the flat start, so any single-stamp query is
 independent of call order and two plugin instances built from the same
 injected data produce byte-identical books (determinism is test-pinned).
+
+Traversal (V13R freeze delta): the frozen generic runner queries
+``targets_at`` at EVERY non-final schedule instant
+(``research.adapter_v10.runner._collect_books``) while never OPENING a
+book at a non-fold-claimed instant (``_resolve_boundaries`` marks those
+``ACTION_PURGE_GAP_CARRY``).  At such a NON-decision instant (a purged
+fold-terminal Monday, a dropped fold's stamps) the hysteresis book
+CARRIES: the plugin returns the PREVIOUS retained decision's book
+byte-equal -- no signal is computed at that stamp.  When no retained
+decision precedes the stamp the carried book is the flat start (status
+OK, zero legs).  Instants OFF the frozen Monday schedule still refuse
+fail-closed (the frozen runner never queries them).  Fail-closed
+refusals at RETAINED decision stamps
+(availability violations, eligibility shortfalls, insufficient OI
+stamps mid-window) are unchanged.  This mirrors the frozen V12 family
+plugins, whose ``targets_at`` answers every mandatory runner query while
+the runner itself decides which instants are gaps.
 """
 
 from __future__ import annotations
@@ -48,9 +65,11 @@ from research.v13.families.oitd.strategy import (
     BENCHMARK_SYMBOL,
     CAP_MAX,
     DECISION_CLOCK,
+    FAMILY_ID,
     FILL_CLOCK,
     MIN_ELIGIBLE,
     PURGE_DAYS,
+    STATUS_OK,
     TAKER_FEE_FLOOR_BPS,
     WINDOW_END_ISO,
     WINDOW_START_ISO,
@@ -65,6 +84,11 @@ from research.v13.families.oitd.strategy import (
 
 PLUGIN_SCHEMA = "v13i.oitd.plugin.v1"
 
+#: Reason code of the FLAT carried book at a non-decision instant with no
+#: preceding retained decision (the chain is at its flat start -- e.g. the
+#: drop-one-fold cell's F0 stamps).
+REASON_CARRIED_FLAT_START = "NON_DECISION_INSTANT_CARRIED_FLAT_START"
+
 #: The ONE declared execution lag (pinned; see strategy.next_allowed_fill).
 DECLARED_EXECUTION_LAG = (
     "orders release at decision + 15m; fill reference = the OPEN of the "
@@ -76,6 +100,36 @@ DECLARED_EXECUTION_LAG = (
 )
 
 BASELINE_NAME = "baseline"
+
+
+def _carried_flat_start_payload(arm_id: str, instant_ns: int) -> dict[str, Any]:
+    """The FLAT carried book at a non-decision instant with no prior decision.
+
+    Same payload schema as ``strategy.compute_targets_at`` with zero legs:
+    the hysteresis chain is at its flat start, so the carried book is flat.
+    Status stays ``OK`` (the frozen runner refuses a ``FORCE_FLAT`` status
+    at an OPEN instant and force-flattens the final schedule instant
+    itself); ``carried_forward`` is True with the explicit reason code.
+    """
+    stamp = int(instant_ns)
+    return {
+        "schema": "v13i.oitd.targets.v1",
+        "family_id": FAMILY_ID,
+        "arm_id": str(arm_id),
+        "status": STATUS_OK,
+        "weights": [],
+        "longs": [],
+        "shorts": [],
+        "carried_forward": True,
+        "reason_code": REASON_CARRIED_FLAT_START,
+        "decision_ns": stamp,
+        "diagnostics": {
+            "stamp_ns": stamp,
+            "stamp_iso": iso_utc(stamp),
+            "carried": True,
+            "flat_start": True,
+        },
+    }
 
 
 class OitdPlugin(GenericStrategyBase):
@@ -278,10 +332,6 @@ class OitdPlugin(GenericStrategyBase):
         stress_key = stress.signature().__repr__()
         key = (int(instant_ns), stress_key, universe_key)
         instants = self.decision_instants(stress=stress)
-        if int(instant_ns) not in instants:
-            raise ContractViolation(
-                f"{iso_utc(int(instant_ns))} is not a retained decision stamp"
-            )
         if key in self._chain_cache:
             cached_weights, cached_payload = self._chain_cache[key]
             return dict(cached_weights), dict(cached_payload)
@@ -307,13 +357,52 @@ class OitdPlugin(GenericStrategyBase):
                 dict(payload),
             )
             prev = dict(self._chain_cache[stamp_key][0])
-        cached_weights, cached_payload = self._chain_cache[key]
-        return dict(cached_weights), dict(cached_payload)
+        if int(instant_ns) in instants:
+            cached_weights, cached_payload = self._chain_cache[key]
+            return dict(cached_weights), dict(cached_payload)
+        # NON-decision SCHEDULE instant (a purged fold-terminal Monday, a
+        # dropped fold's stamps): the frozen hysteresis convention CARRIES
+        # the book.  The frozen generic runner queries targets_at at every
+        # non-final schedule instant (_collect_books) yet never OPENS a
+        # book at a non-fold-claimed instant (_resolve_boundaries marks
+        # those ACTION_PURGE_GAP_CARRY), so the answer it needs here is
+        # the PREVIOUS retained decision's book, byte-equal, and NO signal
+        # is computed at this stamp.  Fail-closed refusals at RETAINED
+        # decision stamps are unchanged: the replay above raises on
+        # availability violations and eligibility shortfalls exactly as
+        # before (a carry query inside an unreadable chain refuses too).
+        if int(instant_ns) not in set(stamp_calendar()):
+            # off-schedule instants are never queried by the frozen runner
+            # and never carry: the chain answers only the frozen Monday
+            # stamps (unchanged fail-closed pin)
+            raise ContractViolation(
+                f"{iso_utc(int(instant_ns))} is not a frozen schedule stamp; "
+                "the hysteresis chain answers only the frozen weekly Monday "
+                "decision stamps"
+            )
+        prior_stamps = [int(s) for s in instants if int(s) < int(instant_ns)]
+        if prior_stamps:
+            carried_weights, carried_payload = self._chain_cache[
+                (prior_stamps[-1], stress_key, universe_key)
+            ]
+            return dict(carried_weights), dict(carried_payload)
+        # No retained decision precedes the stamp (the chain is at its flat
+        # start -- e.g. the drop-one-fold cell's F0 stamps): the carried
+        # book IS the flat book.  Status stays OK (the runner refuses a
+        # FORCE_FLAT status at an OPEN instant and force-flattens the final
+        # schedule instant itself).
+        return {}, _carried_flat_start_payload(self._arm_id, int(instant_ns))
 
     def targets_at(
         self, instant_ns: int, *, universe: Sequence[str], stress: StressSpec
     ) -> dict[str, Any]:
-        """Frozen chained hysteresis target book (fail-closed on breadth)."""
+        """Frozen chained hysteresis target book (fail-closed on breadth).
+
+        At a RETAINED decision stamp this is the frozen chained book.  At a
+        NON-decision instant (purged Monday / dropped-fold stamp) the book
+        CARRIES: the previous retained decision's book byte-equal (flat
+        start when none precedes); no signal is computed there.
+        """
         _weights, payload = self._chained_weights(
             int(instant_ns), universe=universe, stress=stress
         )
@@ -380,4 +469,5 @@ __all__ = [
     "DECLARED_EXECUTION_LAG",
     "OitdPlugin",
     "PLUGIN_SCHEMA",
+    "REASON_CARRIED_FLAT_START",
 ]
