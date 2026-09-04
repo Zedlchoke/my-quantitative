@@ -1,0 +1,135 @@
+{
+  "schema": "forex_free_v2_a7_prelaunch_audit_v1",
+  "cycle_id": "FOREX-FREE-V2",
+  "role": "A7-PRELAUNCH independent prelaunch auditor (audit-only lane; no repairs)",
+  "measured_utc": "2026-09-04T06:12:42Z",
+  "auditor_branch": "orca/forex-free-v2-a7-prelaunch",
+  "base_sha_integration": "968665b2d21860c3707f5e2b8b7e69eb76ad7220",
+  "W2": "a68764d8f1501b27d07840de6a8fce11ec8eaa5b",
+  "twins": {
+    "e-exec-1": {"head": "a68764d8f1501b27d07840de6a8fce11ec8eaa5b", "detached": true},
+    "r-reproduce": {"head": "a68764d8f1501b27d07840de6a8fce11ec8eaa5b", "detached": true}
+  },
+  "method": "all facts re-measured against the trees (git + sha256 replay); no report trusted without independent recomputation",
+  "checks": {
+    "C1_pin_chain": {
+      "verdict": "PASS",
+      "details": [
+        "w2_freeze.json FOREX_FREE_V2_W2 == a68764d8f1501b27d07840de6a8fce11ec8eaa5b == both twins HEAD (detached)",
+        "recomputed sha256 of all 9 code_hashes + 6 spec_hashes (15/15) against BOTH twin working trees: 15/15 match each, 0 mismatch",
+        "same 15 digests re-verified against W2 git blobs via 'git show W2:path' in BOTH twins: 15/15 match each",
+        "selection_freeze.json selected-proposal digests (FXFV2-A4-P1 e9878d43..., FXFV2-A4-P2 93e940a9...) match working-tree proposal files (covered by spec_hashes replay); selection_freeze.json self-digest 2e5b7fa2... verified"
+      ]
+    },
+    "C2_staged_manifest_replay": {
+      "verdict": "PASS",
+      "details": [
+        "independently re-hashed all 173 entries of staged_data_manifest.json in e-exec-1: 173/173 match, 0 mismatch, 0 missing",
+        "same in r-reproduce: 173/173 match, 0 mismatch, 0 missing",
+        "the two twin manifests are byte-identical (canonical JSON equality)",
+        "156 snapshot entries (152 data_raw + 4 forex_free_v1 control files) exactly equal V1 staged_data_manifest.json digests_exec2: same key set (0 delta either direction) and same values (0 mismatches), in BOTH twins; V1 digests_repro2 == digests_exec2 also holds",
+        "twins tracked-clean: git status --porcelain shows ONLY the two staged untracked files (staged_data_manifest.json, w2_freeze.json) per twin; unchanged after all dry-runs"
+      ]
+    },
+    "C3_runner_integrity": {
+      "verdict": "PASS",
+      "details": [
+        "scored_runner.py imports research.assets.forex_free_v2.family1/family2/accounting and research.assets.forex_free_v1.td_loader",
+        "FAMILIES = {'family1': family1, 'family2': family2} maps to the REAL modules (verified by import identity test test_runner_registry_is_actual_family_modules)",
+        "compute_cell calls fam.compute_arm_schedule(arm, rows_by_pair, cost_tier=tier); both family modules define compute_arm_schedule (family1.py:584, family2.py:509)",
+        "booking via accounting.PositionBook (open_position/close_position); costs once per side; dry_run zeroes _pnl only",
+        "runner identity suite: 17 passed in 0.35s (tests/assets/forex_free_v2/test_scored_runner.py, run alone in e-exec-1; pgrep resource rule observed, no other pytest/exec_driver running)"
+      ]
+    },
+    "C4_publication_gating": {
+      "verdict": "PASS",
+      "details": [
+        "publish_cell refuses: LAUNCH_AUTHORIZATION_MISSING (no auth file), W2_SHA_MISMATCH (wrong w2_sha), REAL_PNL_REQUIRED_FOR_SCORED_PUBLICATION (dry_run/real_pnl=false records)",
+        "once-only per content digest under fcntl.flock; replay of published digest returns (0,0); parallel-writer serialization tested",
+        "tests confirm each refusal: test_publish_requires_authorization_and_matching_w2, test_publish_refuses_dry_run_records, test_publish_once_only_and_replay_zero_delta, test_publish_serializes_parallel_writers",
+        "exec_driver dummy mode never invokes publish_cell (scored branch only)",
+        "NO V2 scored ledger exists anywhere under .worktrees/forex-free-v2/ (find ledger*.jsonl / scored_ledger*): only prior-cycle V1 artifacts (research/control/forex_free_v1_run/scored_ledger_published.jsonl, tracked, 6 rows, from the completed V1 cycle) and an untracked V1 dry-run data artifact (integration data_raw/forex_free_v1/dryrun/ledger_family2.jsonl, V1 schema RESEARCH_CANDIDATE). No forex_free_v2_run ledger of any kind"
+      ]
+    },
+    "C5_frozen_before_outcome": {
+      "verdict": "PASS",
+      "details": [
+        "freeze chain in integration history: 26e247d (10:39+07) selection frozen + USD-leg drift gates frozen outcome-blind -> a68764d (12:39) W2 runner code with frozen gate constants -> a034683 (12:40) w2_freeze.json -> 968665b (12:54) twins staged",
+        "no scored cell exists (C4), hence no outcome exists; every gate demonstrably pre-dates any possible outcome",
+        "all 17 frozen_gates values in w2_freeze.json match the runner constants exactly (expectancy>0, PF 1.10, 2 positive populated folds, fold PF 0.80, fold-populated 30 trades, MDD 2500 USD, fold share 0.50, pair share 0.40, stress PF 1.00, dropout 5/7, neighbour>0, placebo reject PF 1.10, USD |corr|<=0.30, usd_diag_min_days 60, Sun 21:00 NY -> Fri 16:00 NY entry gate, folds 2020-03-01/2022-05-01/2024-07-01/2026-09-02, purge 14d)",
+        "selection_freeze.json scoring_time_gates_added_frozen_before_any_outcome.usd_leg_drift_diagnostics (D1/D2/D3) recorded at 26e247d, BEFORE W2 code existed and before any outcome; implemented in runner usd_drift_corr + USD_DRIFT_EXPLAINS_ANCHOR gate"
+      ]
+    },
+    "C6_dummy_dry_run": {
+      "verdict": "PASS",
+      "details": [
+        "independent dry-run in r-reproduce -> report q-a7-prelaunch/a7_dryrun_report_r-reproduce.json: mode=dummy, scored=false, real_pnl=false, 8 cells",
+        "same in e-exec-1 -> report q-a7-prelaunch/a7_dryrun_report_e-exec-1.json: mode=dummy, scored=false, real_pnl=false, 8 cells",
+        "recursive scan of every pnl-named field in every cell of both reports: ALL zero (placeholder); no outcome information carried",
+        "all 8 cells fail Stage-A as designed (EXPECTANCY_NONPOSITIVE x6, PF_BELOW_1.10 x6, fold rules x6, stress x6+6, dropout x6, neighbour x2); gates==True nowhere",
+        "publication never invoked (dummy path has no publish call); report note states publication refused",
+        "twins remained tracked-clean after the runs (only the 2 staged untracked files each)"
+      ]
+    },
+    "C7_schedule_frequency_sanity": {
+      "verdict": "PASS",
+      "details": [
+        "family1 (lane_report_family1.json): max_entries_pair_utc_day=1 all arms; max_rt_pair_week=3 enforced by governor (pair_weeks_at_cap3 85/98/304); realized RT/pair/week 0.73/0.80/1.15; floors met (min 93 decisions/pair/fold >= 80; 371/pair full >= 300; fold trades 499/575/634 >= 400; full 1708 >= 1200)",
+        "family2 (lane_report_family2.json): max_entries_pair_day=1, max_rt_pair_week=3; realized RT/pair/week 1.6853/1.8657/2.2467; minimums PASS (min pair decisions 1659 >= 500; anchor trades 4053 >= 1800)",
+        "agreement with A9-F independent sims: family1 anchor 1708 entries == 1708, decisions 2767 vs 2768, RT 0.73 vs 0.72, cap3 pair-weeks 85 == 85, dropped-by-week-cap 9 == 9, per-fold 499/575/634 vs 499/574/635 (one-trade fold-attribution boundary difference, disclosed); family2 572 binding pair-weeks vs 571, RT 1.6853 vs 1.70",
+        "both lane reports attest schedule-only counts, no real-data PnL"
+      ]
+    },
+    "C8_boundaries": {
+      "verdict": "PASS",
+      "details": [
+        "cycle diff bee64be..968665b = 49 files, all forex_free_v2 research/tests/control/audits/proposals + the two pre-cycle PLAN docs; 0 S1/forex_run paths; content-level scan of added lines shows only permitted V1 module/manifest references (td_loader, forex_free_v1_run manifests)",
+        "no credentials/api keys/secrets in cycle diff added lines; the only token-like literal is AUTHORIZATION_TOKEN = 'GO FOREX V2 SCORED EXECUTION' (owner launch phrase used as the publication gate, not a secret)",
+        "git ls-files | grep data_raw in integration: EMPTY (data_raw untracked everywhere; 0 tracked)",
+        "worker scan: only IDE helper processes (VS Code pylance/pet); no pytest, exec_driver, backtest or other heavy workers",
+        "no pushes: zero origin/*forex-free-v2* branches; no merge commits in bee64be..968665b (18 cycle commits, linear)",
+        "main untouched by cycle: last 3 main commits (b6d9790, e5afbbe, 5d25d06) are all owner commits; 968665b and W2 are NOT ancestors of main; root worktree clean except '?? .v2c/'"
+      ]
+    },
+    "C9_a1_incident": {
+      "verdict": "PASS",
+      "details": [
+        "event_log.jsonl line 8: A1_INCIDENT_MISCHERRY_PICK_REMEDIATED records the cwd-error cherry-pick of f29e723/6438a84/3a038a4 onto MAIN (stacked on owner tip 047c685), impact, remediation (git reset --hard 047c685, reflog-verified), correct picks on the integration branch, and prevention (git -C absolute-path rule)",
+        "no residue: f29e723, 6438a84, 3a038a4 are NOT ancestors of main; 047c685 IS an ancestor of main; main tip is owner-owned"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "O1",
+      "severity": "LOW",
+      "finding": "Prior-cycle V1 scored ledgers (research/control/forex_free_v1_run/scored_ledger_published.jsonl, 6 rows) exist as tracked files in every worktree including the twins.",
+      "assessment": "Immutable evidence of the completed, closed V1 cycle (terminal bee64be, FOREX_FREE_V1_REJECT_ALL); not a V2 outcome and not produced by V2 code. No action."
+    },
+    {
+      "id": "O2",
+      "severity": "LOW",
+      "finding": "Family1 lane parity shows a one-trade fold-attribution boundary difference vs A9-F (499/575/634 vs 499/574/635; decisions 2767 vs 2768) and an early_forced_flat count difference (15 vs 70, differing event definitions).",
+      "assessment": "Disclosed in lane_report_family1.json itself; counts-level, not a gate; non-material to scheduling/frequency caps."
+    }
+  ],
+  "high_critical_findings": [],
+  "blockers": [],
+  "counts": {
+    "frozen_digests_replayed": 60,
+    "staged_entries_rehashed": 346,
+    "runner_tests": {"passed": 17, "failed": 0},
+    "dry_run_cells": {"r-reproduce": 8, "e-exec-1": 8},
+    "cycle_commits_examined": 18
+  },
+  "verdict": "FOREX_FREE_V2_S0_LAUNCH_AUTHORIZED",
+  "verdict_scope": "A7 authorizes nothing by itself; this is the last independent gate before the OWNER checkpoint. Scoring remains HARD-STOPPED until the owner explicitly issues 'GO FOREX V2 SCORED EXECUTION'.",
+  "attestation": "audit-only; no repairs; no scored PnL computed. All dry-run pnl values are placeholder zeros; no outcome revealed or recorded anywhere; lane writes confined to q-a7-prelaunch.",
+  "auditor": "A7-PRELAUNCH (independent)",
+  "artifacts": [
+    "research/audits/forex_free_v2/prelaunch/a7_prelaunch_audit.json",
+    "research/audits/forex_free_v2/prelaunch/a7_prelaunch_audit.md",
+    "a7_dryrun_report_r-reproduce.json",
+    "a7_dryrun_report_e-exec-1.json"
+  ]
+}
