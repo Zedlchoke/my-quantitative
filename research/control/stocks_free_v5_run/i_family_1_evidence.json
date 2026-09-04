@@ -1,0 +1,155 @@
+{
+ "schema": "stocks_free_v5_run/i_family_1_evidence@1",
+ "producer_role": "A8",
+ "cycle": "STOCKS-FREE-V5",
+ "phase": "V5-I",
+ "produced_at_utc": "2026-09-04T17:00:00Z",
+ "worktree": ".worktrees/stocks-free-v5/i-family-1",
+ "branch": "orca/stocks-free-v5-i-family-1",
+ "base_sha": "4e52d32",
+ "family_id": "SFV5-A6-H2-CROSS-SECTOR-COUPLING",
+ "hypothesis_id": "SFV5-A6-H2",
+ "proposal": "research/control/stocks_free_v5_run/proposals/a6_h2.json",
+ "arms_implemented": {
+  "A": {
+   "arm_id": "SFV5-A6-H2-A",
+   "rule_name": "COUPLE63-BN-L3S3-42",
+   "role": "anchor",
+   "key": "mean trailing 63-session pairwise Pearson return correlation over eligible peers, ranked ASCENDING (long 3 lowest / short 3 highest), 252-session OLS SPY hedge truncated to [-0.25, +0.25]",
+   "config_sha256": "487fd609e754125c1318d03f7344712464dbec193832dad83946264cca950ac6"
+  },
+  "N": {
+   "arm_id": "SFV5-A6-H2-N",
+   "rule_name": "COUPLE21-BN-L3S3-42",
+   "role": "neighbour",
+   "key": "identical to the anchor except the correlation window is 21 sessions",
+   "config_sha256": "561eb98c186d4ae28d90e91b5d2fdf0a049cf898b5c2bd3612ffd40163fb12d0"
+  },
+  "C": {
+   "arm_id": "SFV5-A6-H2-C",
+   "rule_name": "NOMPRICE42-BN-L3S3",
+   "role": "causal_negative_control",
+   "key": "nominal RAW as-traded close LEVEL at the decision session (long 3 lowest-priced / short 3 highest); same grid, eligibility, baskets, 252-session adjusted-return beta hedge, cap and accounting",
+   "config_sha256": "f780bbf3ba38a9057cb7bf4d211a83cd2e2833ead08da56cec0b0c530a2fd87a"
+  }
+ },
+ "deliverables": [
+  "research/assets/stocks/coupling_family.py",
+  "tests/assets/stocks/test_v5_family_coupling.py",
+  "research/control/stocks_free_v5_run/i_family_1_evidence.json",
+  "research/control/stocks_free_v5_run/i_family_1_schedule_check.json"
+ ],
+ "commands": [
+  {
+   "command": ".venv/bin/python -m pytest tests/assets/stocks/test_v5_family_coupling.py -q",
+   "exit_code": 0,
+   "summary": "41 passed in ~21s"
+  },
+  {
+   "command": ".venv/bin/python -m pytest tests/assets/stocks -q",
+   "exit_code": 0,
+   "summary": "361 passed in ~34s (no regressions; lane suite included)"
+  },
+  {
+   "command": ".venv/bin/python -m compileall research/assets/stocks",
+   "exit_code": 0,
+   "summary": "COMPILE_OK"
+  }
+ ],
+ "test_counts": {
+  "lane_suite_tests": 41,
+  "lane_suite_passed": 41,
+  "lane_suite_failed": 0,
+  "stocks_suite_total_passed": 361,
+  "stocks_suite_failed": 0
+ },
+ "schedule": {
+  "clock": "42-session global grid anchored at S0 start 2018-04-04 (master index + 42k), SPY session calendar clamped to S0 end 2025-07-31",
+  "slots_total": 44,
+  "per_fold": {"S0_FOLD_1": 15, "S0_FOLD_2": 15, "S0_FOLD_3": 14},
+  "voided_ticks": 0,
+  "first_slot": {"k": 0, "decision": "2018-04-04", "fill": "2018-04-05"},
+  "last_slot": {"k": 43, "decision": "2025-06-10", "fill": "2025-06-11"},
+  "force_flats": ["2020-09-01", "2023-02-09", "2025-07-24"],
+  "meets_floors": {"per_fold_ge_5": true, "total_ge_30": true},
+  "eligibility_written_rule": "10 sectors eligible from S0 start (all but XLC), 11 from XLC's 252th session (first scored slot with 11: 2019-08-05); skip rule (< 6 eligible) never triggered on the real snapshot (measured min eligible 10)",
+  "turnover_estimate_weights_only": {
+   "mean_membership_churn_legs_per_transition": 1.488,
+   "max_membership_churn_legs": 3,
+   "mid_two_way_per_year": 2.92,
+   "hedge_upper_bound_two_way_per_year": 2.94,
+   "boundary_upper_bound_two_way_per_year": 1.03,
+   "upper_two_way_per_year_hard_bound": 6.89,
+   "full_reconstitution_bound_two_way_per_year": 15.73,
+   "ceiling_two_way_per_year": 6.0,
+   "verdict": "measured-churn mid 2.92/yr inside the 6.0 ceiling with margin (A9-F comparable ~3.07-4.0); the hard hedge+boundary bound and the full-reconstitution bound are reported as the declared falsification surface, never loosened"
+  }
+ },
+ "identifiability_measured_pnl_free": {
+  "note": "the preregistered L7/A9-F measurement, recomputed by this lane over the 44 real slots (anchor COUPLE63 ranks vs NOMPRICE raw-level ranks; ranks only, zero PnL)",
+  "mean_abs_spearman": 0.2818,
+  "max_abs_spearman": 0.8061,
+  "long_side_ge2_leg_sharing_fraction": 0.1818,
+  "short_side_ge2_leg_sharing_fraction": 0.2045,
+  "min_defined_pairs_per_sector_across_slots": 9,
+  "matches_a9f_audit": true,
+  "test_assertions": "bounds, not exact floats: 0.10 <= mean <= 0.45; mean < 0.60 (kill) and < 0.78 (V4 collision band); sharing < 0.25 and < 0.70 (kill); rank series differ at all 44 slots"
+ },
+ "invariants_verified": [
+  "hand-computed feature/target goldens: dyadic small fixture with exact Pearson values (+1/-1/0), exact bitwise score ties, exact ranking [XLE, XLB, XLK, XLP, XLF, XLI], exact leg weights +-1/6, exact hedge -1/6 and CASH = 1 + 1/6, exact truncation cases (raw +-1/2 -> +-0.25)",
+  "PIT/no-lookahead: decision at t reads only data with timestamp <= decision close (mutations after t - including at the fill session - leave the decision payload byte-identical); the decision close itself and the 63/252-session windows are read; a shifted return row moves the affected ranks; a shifted calendar session moves the schedule",
+  "next-allowed-session fills: fill = master[t+1] for all 44 real slots and all synthetic slots; never same-session; fills never escape their fold span nor collide with a fold-end force-flat",
+  "force-flat at every fold boundary: FORCE_FLAT at 2020-09-01 / 2023-02-09 / 2025-07-24 is the last book event of each fold (no cross-fold carry); voided gap ticks are recorded and never re-timed (zero on the real snapshot)",
+  "deterministic double generation: schedule and books generated via two independent paths (sequential walk and per-fold blockwise) are canonical-JSON byte-identical, including calendars with voided ticks; reruns reproduce identical digests",
+  "split/dividend correctness: returns come ONLY from the adjusted _all close series (one-series return builder; raw panel structurally unreachable from the anchor code path - rescaling/adding/deleting raw prices leaves anchor decisions byte-identical); adjusted path smooth across a synthetic 2:1 split where the raw path gaps ~-50 percent; the control key alone reads the raw level",
+  "scale invariance: multiplying one symbol's closes (hence returns) by a positive constant leaves the coupling ranking and the sector legs unchanged (exact on dyadic scalings); location invariance of Pearson (drift cannot reorder the key) also pinned",
+  "control-cannot-equal-anchor: synthetic (different ordering, different book, XLE on opposite sides) and real-snapshot regression pins above; neighbour agrees on the leader with numerically distinct 21-window scores (mechanism support)",
+  "cap/gross/net/cash invariants on every decision: 6 sector legs at exactly +-1/6, 3v3 dollar-neutral, net = w_SPY, CASH = 1 - net (1e-9), gross = 1 + |hedge| <= 1.25, hedge in [-0.25, +0.25]; book validator refuses entries that do not reconcile, that break sector-neutrality, or that exceed the cap",
+  "cost-once + ADJ-5 turnover: canonical factory path charges each fill (including the fold force-flat) exactly once and reconciles (attribution residual ~1e-18); turnover = sum |delta_weight| over non-CASH legs with CASH excluded and the SPY hedge counted; stress 20 bps doubles the first-fill cost exactly",
+  "schedule-only feasibility on the REAL snapshot: 15/15/14 = 44 slots, zero voided, all structural checks pass for all three arms, shared decision/fill calendar across arms, written-rule eligibility 10->11, floors met (>= 5/fold, >= 30 total), turnover mid inside the ceiling",
+  "non-vacuous drop-one: drop-one ETF (canonical max-|contribution| selector over held sector legs, re-rank from scratch) changes membership and drops the leg; drop-one fold rerun executes and produces a materially different schedule and book; below-minimum rebuilds and unknown symbols are refused; skipped decisions (< 6 eligible) fill nothing",
+  "dummy publication/refusal/replay: structural-digest-only artifact (allowlisted keys, scored=false, real_pnl=false) publishes to a TEMP GatedTrialLedger; replay is zero-delta with identical digests; empty-position results are refused (observed increments, key stays unpublished); the canonical event log is untouched"
+ ],
+ "implementation_readings": [
+  {
+   "topic": "eligibility prose vs written rule",
+   "reading": "the proposal prose claims '9 sectors eligible from S0 start (XLC and XLRE join at ~2019-06)'; the WRITTEN rule (>= 252 sessions of adjusted history through d, counted on the symbol's own session history) gives 10 from S0 start (all but XLC; XLRE's 252nd session precedes S0) and 11 from XLC's 252nd session (2019-06-19; first affected scored slot 2019-08-05). Implemented the WRITTEN rule per the A9-F audit note ('the WRITTEN rule is deterministic and was used - the prose must not be implemented literally'). Window readers additionally fail closed on any missing session inside a read window (measure-zero on this snapshot)."
+  },
+  {
+   "topic": "beta window semantics",
+   "reading": "'OLS of sector returns on SPY returns over the last 252 sessions through d' is implemented as: closes on master indexes [t-251, t] (the 252-session warmup window), with the OLS run on the 251 close-to-close return observations INSIDE that window. Consistent with 'warmup <= 252 sessions' and the nested 63-return correlation window. The proposal prose 'first decision uses adjusted sessions 2017-04-05..2018-04-04' counts 251 sessions on the real calendar; the written 252-session rule gives 2017-04-04..2018-04-04 at the first decision - prose not implemented literally (same precedent as the eligibility reading)."
+  },
+  {
+   "topic": "correlation window semantics",
+   "reading": "'the last 63 available adjusted close-to-close daily returns' is implemented as the 63 return observations at indexes [t-62, t] (63 returns from 64 closes), nested inside the 252-session beta window; the neighbour uses 21 returns. 'Available' is enforced by failing closed on missing observations; the pair rule (either window variance < 1e-12 -> pair excluded from BOTH sum and count; < 5 defined pairs -> sector not rankable at that decision) is implemented verbatim."
+  },
+  {
+   "topic": "control eligibility and skip rule",
+   "reading": "the NOMPRICE control's eligible set is the 252-session availability rule only - the 5-defined-pairs refinement is anchor/neighbour-specific (it exists only where the key is a correlation mean), per the proposal's 'same eligibility' plus rule-text structure. Each arm's skip rule (< 6 rankable sectors at d) applies to its own rankable set; both never bind on the real snapshot (measured: anchor min defined pairs 9, min eligible 10)."
+  },
+  {
+   "topic": "voided ticks",
+   "reading": "a 42-grid tick whose session falls in a fold gap is VOIDED and recorded, never re-timed (zero on the real snapshot); voided slots decide nothing and fill nothing. The blockwise schedule path re-inserts voided ticks at clock position so both generation paths stay byte-identical even on gap-carrying calendars."
+  },
+  {
+   "topic": "force-flat cost semantics",
+   "reading": "fold-boundary FORCE_FLAT rows are costed fill events in the canonical factory path (turnover from held weights to flat, charged exactly once) - reused, not forked. No re-entry trade after the final fold's flat."
+  },
+  {
+   "topic": "turnover estimate convention",
+   "reading": "A9-F's 'legs changed per transition' is read as replaced legs (out = in = symmetric-difference/2); one replaced leg contributes 2 x (1/6) of ADJ-5 |delta_weight|. Annualized over the S0 span (1842 sessions / 252) with 43 transitions. Hedge and boundary components are hard UPPER bounds (full truncation-band flip; flat+rebuild per fold boundary) reported separately - the mid estimate (2.92/yr) is the ceiling-comparable; nothing was loosened to fit."
+  },
+  {
+   "topic": "panel discipline",
+   "reading": "the module never reads disk or network; tests read the staged snapshot read-only and clamp every series to <= 2025-07-31 before any computation, and the module's calendar validator refuses any calendar extending past S0 end (structural S1 guard). Real-snapshot tests are schedule-only plus the one preregistered PnL-free identifiability measurement (ranks only: no betas, no targets, no books, no returns aggregated on real data)."
+  }
+ ],
+ "no_pnl_attestation": "NO strategy PnL, expectancy, profit factor, alpha, or drawdown was computed or stored anywhere in this lane. The only scored-looking numbers live on synthetic fixtures (factory value_book dummy runs, dummy synthetic PnL = minus cost drag) and the only published artifacts are structural digests (schedule digests, book digests, counts) with scored=false and real_pnl=false. The schedule-check artifact is scanned in-test for banned metric vocabulary.",
+ "files_touched": [
+  "research/assets/stocks/coupling_family.py (new)",
+  "tests/assets/stocks/test_v5_family_coupling.py (new)",
+  "research/control/stocks_free_v5_run/i_family_1_evidence.json (new)",
+  "research/control/stocks_free_v5_run/i_family_1_schedule_check.json (new, written by the real-snapshot test; dates and counts only)"
+ ],
+ "frozen_artifacts_modified": []
+}
