@@ -650,72 +650,320 @@ def test_liqepis_sign_inv_negates_anchor(tmp_path: Path, liqepis_frame) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# FROZEN CONFLICT, pinned as evidence: the frozen OITD plugin fail-closed
-# refuses the purged (gap) schedule stamps that the frozen generic runner
-# mandatorily queries (runner._collect_books asks targets_at at EVERY
-# non-final schedule instant; OITD.decision_instants excludes the three
-# purged Mondays).  Two frozen modules, one impossible scored traversal.
-# The driver surfaces this as a fail-closed preflight pin (exit 2, no
-# metric computed); resolving it needs an owner decision + a new freeze
-# delta audit -- NEVER a driver-side workaround.  These tests pin the
-# exact refusal so the blocker cannot regress silently.
+# RESOLVED FROZEN CONFLICT (V13R OITD delta, V12R2-precedent freeze delta):
+# the frozen OITD plugin used to fail-close-refuse the purged (gap) schedule
+# stamps that the frozen generic runner mandatorily queries
+# (runner._collect_books asks targets_at at EVERY non-final schedule
+# instant; OITD.decision_instants excludes the purged Mondays), making the
+# scored traversal impossible.  Resolved on the PLUGIN side, science
+# surface = traversal semantics only: at a NON-decision instant the
+# hysteresis book CARRIES (the previous retained decision's book,
+# byte-equal; flat start when none precedes) and NO signal is computed
+# there, exactly as the frozen hysteresis convention implies and the
+# frozen V12 family plugins answer the same mandatory queries.  Fail-closed
+# refusals at RETAINED decision stamps are unchanged; identity, parameters,
+# schedule bytes and the 3 arm-config digests are unchanged.  The tests
+# below pin the traversal pin PASSING plus the carry/no-signal/fail-closed
+# evidence so neither side can regress silently.
 # --------------------------------------------------------------------------- #
-def test_frozen_oitd_runner_conflict_is_pinned(oitd_frame) -> None:
-    from research.adapter_v10.protocol import ContractViolation
-
+def test_frozen_oitd_runner_traversal_now_completes(oitd_frame) -> None:
+    """compute_cell (full frozen runner traversal, all matrix cells)
+    completes for the anchor arm on the synthetic frame."""
     plugin = _oitd_plugin("OITD-28D", oitd_frame)
-    with pytest.raises(ContractViolation, match="not a retained decision stamp"):
-        driver.compute_cell(
-            family="oitd",
-            arm_id="OITD-28D",
-            plugin=plugin,
-            out_dir=Path("/tmp/v13r_oitd_conflict_must_not_write"),
-            write_artifacts=False,
-        )
+    result = driver.compute_cell(
+        family="oitd",
+        arm_id="OITD-28D",
+        plugin=plugin,
+        out_dir=Path("/tmp/v13r_oitd_traversal_must_not_write"),
+        write_artifacts=False,
+    )
+    assert result["matrix_cells"]
+    books = result["baseline_run"]["books"]
+    assert books, "the traversal produced the baseline books"
 
 
-def test_frozen_oitd_traversal_pin_reports_exact_blocker(oitd_frame) -> None:
+def test_frozen_oitd_traversal_pin_passes_all_cells(oitd_frame) -> None:
+    """verify_runner_traversal probes every non-final instant of every
+    accepted cell; the purged/dropped stamps are answered with the carried
+    book instead of refused."""
     from research.adapter_v10.protocol import StressSpec
-    from research.v13.families.oitd.strategy import stamp_calendar
-
-    plugin = _oitd_plugin("OITD-28D", oitd_frame)
-    pin = driver.verify_runner_traversal(plugin)
-    assert pin["ok"] is False
-    assert pin["problems"], "the pin must record the exact refusal"
+    from research.v13.families.oitd.strategy import iso_utc, stamp_calendar
 
     schedule = list(stamp_calendar())
     interior = set(schedule[:-1])
-    baseline_stress = plugin.baseline_stress()
-    retained = set(plugin.decision_instants(stress=baseline_stress))
-    purged_interior = interior - retained
-
-    # the baseline cell refuses exactly at an interior purged Monday
-    baseline_problem = next(
-        p for p in pin["problems"] if p["cell"] == "baseline"
-    )
-    assert "not a retained decision stamp" in baseline_problem["error"]
-    assert baseline_problem["instant_ns"] in purged_interior
-
-    # the dropped-fold cell refuses inside the dropped fold (F0): those
-    # stamps are baseline-retained but the drop_one_fold cell's gap set
-    dropfold_problem = next(
-        (p for p in pin["problems"] if p["cell"] == "drop_one_fold"), None
-    )
-    if dropfold_problem is not None:
-        probe = StressSpec(name="drop_one_fold", dropped_fold_index=0)
-        dropped_members = {
+    for arm_id in ("OITD-28D", "OITD-56D", "CTL-FLOW-ONLY"):
+        plugin = _oitd_plugin(arm_id, oitd_frame)
+        pin = driver.verify_runner_traversal(plugin)
+        assert pin["ok"] is True, pin["problems"]
+        assert pin["problems"] == []
+        assert len(pin["cells_probed"]) == 6
+        baseline_stress = plugin.baseline_stress()
+        retained = set(plugin.decision_instants(stress=baseline_stress))
+        purged_interior = sorted(iso_utc(t) for t in interior - retained)
+        # the interior purged Mondays really are inside the probed set
+        assert purged_interior, "expected the purged Mondays in the interior"
+        dropfold = StressSpec(name="drop_one_fold", dropped_fold_index=0)
+        dropped = {
             int(v)
-            for fold in plugin.folds(stress=probe, instants=schedule)
+            for fold in plugin.folds(stress=dropfold, instants=schedule)
             if fold.dropped
             for v in fold.instants
         }
-        assert dropfold_problem["instant_ns"] in dropped_members
-        assert dropfold_problem["instant_ns"] in retained
+        assert dropped, "expected dropped-fold stamps inside the probed set"
 
-    # every recorded refusal carries the frozen fail-closed message
-    for problem in pin["problems"]:
-        assert "not a retained decision stamp" in problem["error"]
-        assert problem["instant_ns"] in interior
+
+def test_oitd_off_schedule_stamp_still_refuses(oitd_frame) -> None:
+    """The carry covers only the frozen SCHEDULE stamps (purged Mondays,
+    dropped-fold stamps); an off-schedule instant is refused fail-closed
+    exactly as before the delta (the frozen runner never queries it)."""
+    from research.adapter_v10.protocol import ContractViolation
+    from research.v13.families.oitd.strategy import parse_iso_utc
+
+    plugin = _oitd_plugin("OITD-28D", oitd_frame)
+    stress = plugin.baseline_stress()
+    universe = plugin.tradeable_universe()
+    off_grid = parse_iso_utc("2025-12-08T00:00:00Z") + 3_600_000_000_000
+    with pytest.raises(ContractViolation):
+        plugin.targets_at(off_grid, universe=universe, stress=stress)
+
+
+def test_oitd_final_purged_monday_carries_when_queried(oitd_frame) -> None:
+    """The third purged Monday (2026-08-17) is the schedule-final instant:
+    the runner force-flattens it itself and _collect_books never queries
+    it, but the plugin still answers it with the carried book."""
+    from research.v13.families.oitd.strategy import iso_utc, stamp_calendar
+
+    plugin = _oitd_plugin("OITD-28D", oitd_frame)
+    stress = plugin.baseline_stress()
+    universe = plugin.tradeable_universe()
+    schedule = list(stamp_calendar())
+    final = schedule[-1]
+    assert iso_utc(final) == "2026-08-17T00:00:00Z"
+    retained = set(plugin.decision_instants(stress=stress))
+    assert final not in retained
+    prior = max(s for s in retained if s < final)
+    prior_book = plugin.targets_at(prior, universe=universe, stress=stress)
+    carried = plugin.targets_at(final, universe=universe, stress=stress)
+    assert carried == prior_book
+
+
+# --------------------------------------------------------------------------- #
+# Carry evidence (V13R OITD delta):
+#   (a) the purged Mondays and the drop-one-fold F0 stamps traverse with
+#       the CARRIED book, byte-equal to the prior decision stamp's book
+#       (flat start where no decision precedes);
+#   (b) mutation proof that NO signal is computed at purged stamps;
+#   (c) fail-closed refusals at decision stamps are unchanged.
+# --------------------------------------------------------------------------- #
+def _mutate_frame_at(
+    frame: dict[str, Any], start_ns: int, *, span_days: int
+) -> dict[str, Any]:
+    """Copy of the synthetic frame with every record whose availability
+    stamp lies in ``[start_ns, start_ns + span_days)`` perturbed with a
+    DISTINCT factor per symbol (the OI factor DECREASES with the
+    symbol's index while the base signal level increases with it, so the
+    cross-sectional ranking provably reshuffles -- a uniform factor or a
+    mild one would leave every D_s rank, hence the hysteresis book,
+    unchanged).
+    """
+    from research.v13.families.oitd.audits import tradeable_universe_symbols
+
+    universe = sorted(tradeable_universe_symbols())
+    n = len(universe)
+    start = int(start_ns)
+    end = start + int(span_days) * 86_400_000_000_000
+    out: dict[str, Any] = dict(frame)
+    out["turnover"] = {}
+    for sym, days in frame["turnover"].items():
+        if sym not in universe:
+            out["turnover"][sym] = dict(days)
+            continue
+        t_factor = 1.0 + 0.25 * (n - universe.index(sym))
+        out["turnover"][sym] = {
+            d: (v * t_factor if start <= d * 86_400_000_000_000 < end else v)
+            for d, v in days.items()
+        }
+    out["oi"] = {}
+    out["marks"] = {}
+    for index, sym in enumerate(universe):
+        oi_factor = 1.0 + 100.0 * (n - index)
+        mark_factor = 1.0 + 5.0 * (n - index)
+        if sym in frame.get("oi", {}):
+            out["oi"][sym] = tuple(
+                (int(t), v * oi_factor if start <= int(t) < end else v)
+                for t, v in frame["oi"][sym]
+            )
+        if sym in frame.get("marks", {}):
+            out["marks"][sym] = tuple(
+                (int(t), v * mark_factor if start <= int(t) < end else v)
+                for t, v in frame["marks"][sym]
+            )
+    return out
+
+
+def test_oitd_purged_mondays_carry_byte_equal_prior_decision(
+    oitd_frame,
+) -> None:
+    """(a) The interior purged Mondays traverse with the CARRIED book,
+    byte-equal (payload hash) to the prior decision stamp's book."""
+    from research.v13.families.oitd.strategy import iso_utc
+
+    plugin = _oitd_plugin("OITD-28D", oitd_frame)
+    stress = plugin.baseline_stress()
+    universe = plugin.tradeable_universe()
+    schedule = list(plugin.schedule().instants)
+    retained = set(plugin.decision_instants(stress=stress))
+    purged = sorted(t for t in schedule[:-1] if t not in retained)
+    assert [iso_utc(t) for t in purged] == [
+        "2025-12-15T00:00:00Z",
+        "2026-04-20T00:00:00Z",
+    ]
+    for stamp in purged:
+        prior = max(s for s in retained if s < stamp)
+        prior_book = plugin.targets_at(prior, universe=universe, stress=stress)
+        carried = plugin.targets_at(stamp, universe=universe, stress=stress)
+        assert carried == prior_book
+        assert payload_sha256(carried) == payload_sha256(prior_book)
+        assert carried["status"] == "OK"
+        assert carried["weights"], "the carried book is the prior 12-leg book"
+
+
+def test_oitd_drop_one_fold_f0_stamps_carry(oitd_frame) -> None:
+    """(a) Under the drop-one-fold stress (F0 dropped) every F0 stamp is a
+    gap instant with NO preceding retained decision: the carried book is
+    the flat start (status OK, zero legs, explicit reason code)."""
+    from research.adapter_v10.protocol import StressSpec
+    from research.v13.families.oitd.plugin import REASON_CARRIED_FLAT_START
+    from research.v13.families.oitd.strategy import iso_utc
+
+    plugin = _oitd_plugin("OITD-28D", oitd_frame)
+    probe = StressSpec(name="drop_one_fold", dropped_fold_index=0)
+    universe = plugin.tradeable_universe()
+    schedule = list(plugin.schedule().instants)
+    f0 = sorted(
+        int(v)
+        for fold in plugin.folds(stress=probe, instants=schedule)
+        if fold.dropped
+        for v in fold.instants
+    )
+    retained = set(plugin.decision_instants(stress=probe))
+    assert f0 and all(s not in retained for s in f0)
+    assert min(retained) > max(f0)  # no retained decision precedes any F0 stamp
+    for stamp in f0:
+        carried = plugin.targets_at(stamp, universe=universe, stress=probe)
+        assert carried["status"] == "OK"
+        assert carried["carried_forward"] is True
+        assert carried["reason_code"] == REASON_CARRIED_FLAT_START
+        assert carried["weights"] == []
+        assert carried["decision_ns"] == int(stamp)
+    assert iso_utc(f0[0]) == "2025-08-25T00:00:00Z"
+
+
+def test_oitd_mutation_at_purged_stamp_leaves_carried_book_unchanged(
+    oitd_frame,
+) -> None:
+    """(b) Mutating OI/mark/turnover records readable ONLY at/after a
+    purged Monday leaves that stamp's carried book byte-unchanged (no
+    signal is computed there) and leaves the prior decision unchanged;
+    the SAME mutation moves the NEXT retained decision (the harness
+    bites)."""
+    from research.v13.families.oitd.strategy import iso_utc, parse_iso_utc
+
+    purged = parse_iso_utc("2025-12-15T00:00:00Z")
+    base = _oitd_plugin("OITD-28D", oitd_frame)
+    # span 7d: the records readable at/after the purged Monday up to the
+    # NEXT retained decision -- none of them readable by the PRIOR decision
+    mutated = _oitd_plugin("OITD-28D", _mutate_frame_at(oitd_frame, purged, span_days=7))
+    universe = base.tradeable_universe()
+    stress = base.baseline_stress()
+    retained = sorted(base.decision_instants(stress=stress))
+    prior = max(s for s in retained if s < purged)
+    nxt = min(s for s in retained if s > purged)
+    assert iso_utc(prior) == "2025-12-08T00:00:00Z"
+    assert iso_utc(nxt) == "2025-12-22T00:00:00Z"
+
+    base_prior = base.targets_at(prior, universe=universe, stress=stress)
+    base_next = base.targets_at(nxt, universe=universe, stress=stress)
+    mut_prior = mutated.targets_at(prior, universe=universe, stress=stress)
+    mut_next = mutated.targets_at(nxt, universe=universe, stress=stress)
+    carried_base = base.targets_at(purged, universe=universe, stress=stress)
+    carried_mut = mutated.targets_at(purged, universe=universe, stress=stress)
+
+    # no signal at the purged stamp: the carried book is byte-identical
+    assert payload_sha256(carried_mut) == payload_sha256(carried_base)
+    assert payload_sha256(carried_mut) == payload_sha256(mut_prior)
+    assert payload_sha256(carried_mut) == payload_sha256(base_prior)
+    # the prior decision cannot read records stamped at/after the purge
+    assert payload_sha256(mut_prior) == payload_sha256(base_prior)
+    # the mutation bites at the next retained decision stamp
+    assert payload_sha256(mut_next) != payload_sha256(base_next)
+
+
+def test_oitd_mutation_at_decision_stamp_moves_the_book(oitd_frame) -> None:
+    """(b) The same mutation applied at a retained decision stamp moves
+    that stamp's book (the chain computes real signals at decisions)."""
+    from research.v13.families.oitd.strategy import iso_utc, parse_iso_utc
+
+    decision = parse_iso_utc("2025-12-08T00:00:00Z")
+    base = _oitd_plugin("OITD-28D", oitd_frame)
+    mutated = _oitd_plugin(
+        "OITD-28D", _mutate_frame_at(oitd_frame, decision, span_days=1)
+    )
+    universe = base.tradeable_universe()
+    stress = base.baseline_stress()
+    assert iso_utc(decision) in {
+        iso_utc(s) for s in base.decision_instants(stress=stress)
+    }
+    base_book = base.targets_at(decision, universe=universe, stress=stress)
+    mut_book = mutated.targets_at(decision, universe=universe, stress=stress)
+    assert payload_sha256(mut_book) != payload_sha256(base_book)
+
+
+def test_oitd_fail_closed_still_fires_at_decision_stamps(oitd_frame) -> None:
+    """(c) Genuinely-unreadable inputs still refuse fail-closed.  With the
+    OI warm-up gapped so the FIRST retained decision holds fewer than 7 OI
+    records in its trailing 10d span, that decision stamp raises
+    EligibilityShortfall -- and a purged-stamp query downstream refuses
+    too (the frozen chain itself is unreadable from the flat start).
+    (Mid-chain eligibility collapses carry per the frozen hysteresis rule
+    5a -- that semantic is unchanged by the delta; the golden PIT suite
+    pins the refusal paths.)"""
+    from research.v13.families.oitd.book import EligibilityShortfall
+    from research.v13.families.oitd.strategy import iso_utc
+
+    plugin_clean = _oitd_plugin("OITD-28D", oitd_frame)
+    stress = plugin_clean.baseline_stress()
+    universe = plugin_clean.tradeable_universe()
+    retained = sorted(plugin_clean.decision_instants(stress=stress))
+    first = retained[0]
+    # keep only 3 of the 7 OI records the first decision would read
+    keep_from = first - 3 * 86_400_000_000_000
+    truncated = dict(oitd_frame)
+    truncated["oi"] = {
+        sym: tuple((t, v) for t, v in rows if t >= keep_from)
+        for sym, rows in oitd_frame["oi"].items()
+    }
+    plugin = _oitd_plugin("OITD-28D", truncated)
+    n_readable = sum(
+        1
+        for t, _v in truncated["oi"][universe[0]]
+        if first - 10 * 86_400_000_000_000 < t <= first
+    )
+    assert n_readable < 7  # the warm-up is genuinely insufficient
+    with pytest.raises(EligibilityShortfall):
+        plugin.targets_at(first, universe=universe, stress=stress)
+    # the purged Monday inside the broken chain refuses as well
+    purged_broken = next(
+        t
+        for t in sorted(plugin.schedule().instants)[:-1]
+        if t not in set(retained) and t > first
+    )
+    assert iso_utc(purged_broken) == "2025-12-15T00:00:00Z"
+    with pytest.raises(EligibilityShortfall):
+        plugin.targets_at(purged_broken, universe=universe, stress=stress)
+    # the untouched frame still computes the first decision normally
+    payload = plugin_clean.targets_at(first, universe=universe, stress=stress)
+    assert payload["status"] == "OK" and payload["weights"]
 
 
 def test_liqepis_traversal_pin_passes(liqepis_frame) -> None:
@@ -916,26 +1164,32 @@ def test_main_preflight_only_no_scored_metric(
     assert not (out_dir / "matrix_summary.json").exists()
 
 
-def test_main_oitd_fails_closed_on_frozen_traversal_conflict(
+def test_main_oitd_traversal_pin_now_passes_and_compute_runs(
     tmp_path, monkeypatch, oitd_harness_frame
 ) -> None:
-    """The frozen OITD/runner conflict blocks the scored path BEFORE compute.
-
-    main() must exit 2 (fail-closed preflight) with the exact refusal in
-    the preflight evidence; no matrix artifact and no scored metric exist.
+    """RESOLVED (V13R OITD delta): the frozen OITD/runner conflict no
+    longer blocks the scored path.  main() preflight records the
+    traversal pin PASSING; the matrix compute then runs on the synthetic
+    frame, and with no --publish no ledger write and no cell summary
+    ever happen (the fail-closed publication gate is unchanged).
+    (Formerly this test pinned the exit-2 refusal of the unresolved
+    conflict; that refusal semantics is what the plugin-side carry fix
+    replaced, with digests and identity unchanged.)
     """
     harness = _MainHarness(
         tmp_path, "oitd", "OITD-28D", oitd_harness_frame, _oitd_plugin
     ).install(monkeypatch)
-    out_dir, code = harness.run("blocked")
-    assert code == driver.EXIT_FAIL_CLOSED
+    out_dir, code = harness.run("traverses")
+    assert code == driver.EXIT_OK
     preflight = json.loads((out_dir / "preflight.json").read_text(encoding="utf-8"))
-    assert preflight["no_scored_metric_yet"] is True
     pin = preflight["runner_traversal_pin"]
-    assert pin["ok"] is False
-    assert "not a retained decision stamp" in pin["problems"][0]["error"]
-    assert not (out_dir / "baseline_metrics.json").exists()
-    assert not (out_dir / "matrix_summary.json").exists()
+    assert pin["ok"] is True
+    assert pin["problems"] == []
+    assert preflight["digest_matches_freeze"] is True
+    # the matrix compute ran (schedule-only traversal completed) ...
+    assert (out_dir / "baseline_metrics.json").exists()
+    assert (out_dir / "matrix_summary.json").exists()
+    # ... but without --publish nothing was published
     assert not (out_dir / "cell_summary.json").exists()
 
 
