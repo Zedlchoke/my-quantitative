@@ -1,0 +1,148 @@
+{
+  "schema": "v13_terminal_audit_v1",
+  "artifact": "a7_terminal_v13",
+  "cycle": "CRYPTO-V13",
+  "auditor_role": "A7 (terminal, independent)",
+  "generated_utc": "2026-09-04T19:05:00Z",
+  "worktree": ".worktrees/crypto/v13/r-a7-terminal",
+  "branch": "orca/v13-r-a7-terminal",
+  "audit_base_commit": "bca7d7c5aa1c6d78e16b23e779fb3b0c284a8d09",
+  "verdict": "V13_TERMINAL_APPROVED_0_FAIL",
+  "unresolved_high_critical": 0,
+  "terminal_outcome": {
+    "outcome": "V13_REJECT_ALL",
+    "recomputed_independently": true,
+    "multiple_testing_statement": "observed denominator 140 (134 historical + 6 V13); published 137 (131 historical + 6 V13); no S1 candidate locked (zero V13 Stage-A survivors)"
+  },
+  "items": [
+    {
+      "id": 1,
+      "name": "LEDGER_ONCE_ONLY_ACCOUNTING",
+      "result": "PASS",
+      "evidence": [
+        "exec ledger_oitd.jsonl: 3 rows, all row_type=CELL_RESULT, producer_head_sha bcb28536c7af7140372120f2bd9896b76be00c42 on all rows",
+        "exec ledger_liqepis.jsonl: 3 rows, all row_type=CELL_RESULT, producer_head_sha d0726645fd97ea6e5ae67e405e8720844d71338c on all rows",
+        "trial keys: 6 rows, 6 distinct sha256 keys -> unique 6/6",
+        "zero OBSERVATION rows in either ledger (the W1R dry-run refusals lived in temporary ledgers; attempt-1 LIQEPIS crash emitted zero ledger rows per TECHABORT forensic)",
+        "result digests: ledger result_sha256 == cell_summary.baseline_result_sha256 == artifact.hashes.result_sha256 for 6/6 cells",
+        "A7 RECOMPUTATION: sha256(canonical_repr(artifact minus hashes/artifacts)) equals the ledger digest for 6/6 cells (formula payload_sha256(_strip(result,('hashes','artifacts'))), research/adapter_v10/runner.py:225, canonical_repr floats-as-repr)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "ARTIFACT_BYTE_HASHES",
+      "result": "PASS",
+      "evidence": [
+        "ledger_oitd.jsonl sha256 = 4fa9f3516b36d640265eb98e73168b9b48f2cb919ccb5fc5c7f56ded83fef2b6 (matches expected)",
+        "ledger_liqepis.jsonl sha256 = 1989a9c15c6d6672c3d60ea9ad567759cfcbb0107b4a7efca582e4451ea8bf9f (matches expected)",
+        "6/6 repro_report.json in r-reproduce: all_match=true, verdict=ALL_MATCH; every compared field execution==reproduction; zero mismatched fields (compared: arm_config_digest, baseline_hash_portfolio_payload_sha256, baseline_hash_positions_sha256, baseline_result_sha256, matrix_cells, matrix_digest, producer_head_sha, scored_expectancy_per_day, scored_max_drawdown, scored_n_decisions, scored_n_fills, scored_n_positions, scored_net_return_sum, staged_manifest_sha256, universe)",
+        "canonical registry experiments_v13.jsonl: 0 bytes / sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 in BOTH twins (e-exec-1/results/registry and r-reproduce/results/registry); registry never written; shard-ledger authority design held"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "COST_FUNDING_RECONCILIATION_ANOMALY_ADJUDICATION",
+      "result": "PASS_WITH_ADJUDICATED_ANOMALY",
+      "anomaly_adjudication": {
+        "finding": "LIQEPIS cost_charged_sum 25.025172055575 (28D and SIGN-INV) / 15.838617381575 (56D) over 600 positions; price-only PnL -0.3065/-0.2053/+0.3065; funding 0.0",
+        "defect_class": "Driver-level cost-model parameterization defect (NOT a per-stamp double-charge and NOT a per-fill schedule violation): the LIQEPIS lane of the frozen cell driver hardcodes uniform default tick sizes {sym: 0.01} (research/control/v13_run/tools/run_v13_cell.py liqepis plugin construction, tick_sizes={sym: 0.01 for sym in needed}) instead of loading symbol-specific exchange tick sizes from perp metadata as the OITD lane does (load_tick_sizes, same driver; OITD artifact shows PEPE 1e-7, ACE 1e-5). Under the frozen cost formula rate = taker_fee_bps*1e-4*mult + ticks*tick_size/price (research/adapter_v10/base.py rebalance_cost_between), the slip term becomes 0.01/p: 0.87-4.26 per unit traded on the sub-cent cohort (1000PEPEUSDT entry prices observed 0.0023484-0.0115268) versus ~1e-5..1e-2 with true tick sizes.",
+        "cost_path_reconstruction": [
+          "scored cost path is PER-STAMP transition cost, not per-fill: cost_charged = rebalance_cost_between(prior, target) charged once per weekly decision stamp on |dw| turnover (adapter_v10/runner.py:610); metrics cost_charged_sum = fsum over the 52 daily_rows' cost_charged_per_unit (metrics.py:298)",
+          "LIQEPIS-28D: 52 stamps, 49 cost-bearing; sum gross_realised 50.0; sum cost 25.0252 -> average 0.5005 cost per unit gross traded (= 0.0005 fee + 0.01/p slip, implying mean fill price ~0.02, consistent with the observed cheap cohort); per-stamp cost 0.0-3.42",
+          "600 positions carry the pro-rata allocation: sum cost_allocated_per_unit = 23.7627; residual 1.2624 is the generic stamp-vs-position allocation residual present identically in every OITD cell (~0.00066, ~10% of OITD cost) - a pre-existing V10-inherited reporting nuance, not LIQEPIS-specific",
+          "accounting identity verified: per-position net_pnl_per_unit == price_pnl - cost_allocated - funding (exact); stamp-level price sum == position-level price sum (gap 0.0 in all 6 cells)",
+          "counterfactual at corrected tick sizes: rate ~0.0005-0.0006/unit -> total cost ~0.028; cost falls ~900x (3 orders), confirming A1's '3-4 orders above the frozen per-fill schedule'"
+        ],
+        "verdict_impact": "NONE - verdict invariant to the anomaly. Anchor LIQEPIS-28D price-only PnL -0.3065 over 52 days (expectancy/day ~-0.0059 < 0 even at ZERO cost); 56D price-only -0.2053; PF 0.0475/0.1037 << 1.10; anchor rejected under any cost treatment (inflated, corrected, or zero). SIGN-INV control price-only +0.3065 cannot rescue: the anchor fails, so the falsification shadow never fires. OITD is untouched by the defect (per-unit cost ~0.00051 with true tick sizes, total 0.0050-0.0066, plausible for the frozen hysteresis schedule) and fails on its own metrics.",
+        "funding_scope_note": "CONFIRMED: funding_sum = 0.0 and every position funding_cashflow_per_unit = 0.0 on all 3 LIQEPIS arms because the frozen bars-only producer reads no funding settlements (identity data: 'bars-only (no OI, mark-price or funding-rate field in any signal)'). Funding omitted = costs understated = rejection a fortiori (the family fails on price alone).",
+        "disclosure_before_audit": "CONFIRMED: family_verdicts_v13.json anomaly_for_terminal_a7 block + event_log seq 20 (V13_E_COMPLETE, 2026-09-04T19:25:00Z stamp as corrected by bca7d7c), committed in 5c72040 BEFORE terminal A7",
+        "no_result_retrofit": "CONFIRMED: git diff d0726645..HEAD -- research/v13/families/liqepis/plugin.py is EMPTY; git diff d0726645..HEAD -- research/control/v13_run/tools/run_v13_cell.py is EMPTY; exec and repro trees detached clean at d0726645; 6/6 repro ALL_MATCH at the frozen head",
+        "severity": "MEDIUM",
+        "disposition": "RESOLVED_BY_ADJUDICATION (disclosed pre-audit; defect class identified and mechanically reconstructed; verdict-invariant; documented for any future LIQEPIS re-run: load real tick sizes from perp metadata)"
+      },
+      "oitd_plausibility": "PASS: OITD-28D cost 0.0066477 over 923 fills (~7.2e-6/fill) is consistent with the frozen per-fill schedule: 5 bps taker + 1 adverse tick at REAL tick sizes (per-unit rate ~0.00051; PEPE slip 1e-7/0.0109 ~ 9.2e-6) with hysteresis-driven small |dw| (~0.25 gross traded per stamp). Cells: 0.00665/0.00496/0.00222 - all in the stated ~0.005-0.007 band (control lower on fewer trades)."
+    },
+    {
+      "id": 4,
+      "name": "FAMILY_VERDICT_RECOMPUTATION",
+      "result": "PASS",
+      "evidence": {
+        "frozen_gates_source": "research/control/v13_run/run_contract.json stage_a_gates (expectancy>0, PF>=1.10, 2/3 folds positive, MDD<=20%, stress set positive, control rules, repro ALL_MATCH, zero unresolved HIGH/CRITICAL)",
+        "OITD_anchor_OITD-28D": "expectancy -0.00548752809 <= 0 FAIL; position_pf 0.878537739556 < 1.10 FAIL; folds positive 1/3 (F0 -0.01735, F1 +0.00320, F2 -0.00282) FAIL; MDD 0.305434836376 > 0.20 FAIL -> V13_FAMILY_REJECT (catastrophic-free but mechanical)",
+        "LIQEPIS_anchor_LIQEPIS-28D": "expectancy -0.487147155544 FAIL; position_pf 0.047493405324 FAIL; folds positive 0/3 (all negative) FAIL; MDD 25.331652088265 >> 0.20 FAIL -> V13_FAMILY_REJECT catastrophic",
+        "control_semantics_honored": "OITD control CTL-FLOW-ONLY (net -0.4501) is WORSE than anchor (-0.2854): no falsification shadow; LIQEPIS SIGN-INV (net -24.7187) negative: mirror not fired; neither control fires a rescue, both verdicts stand",
+        "a1_records_match": "family_verdicts_v13.json arms/gate_causes match A7 recomputation from exec baseline_metrics.json/fold_metrics exactly (spot-checked every number quoted)",
+        "no_gate_relaxed": "gates evaluated are verbatim the frozen stage_a_gates; arm_config_digests 6/6 equal to w13_freeze.json (pre-delta freeze) - deltas changed traversal/boundary machinery only"
+      }
+    },
+    {
+      "id": 5,
+      "name": "DENOMINATOR_MATH",
+      "result": "PASS",
+      "evidence": [
+        "state.json denominators: historical 131 published / 134 observed + v13 6/6 -> 137 published / 140 observed logical",
+        "budget 6/9 consistent across state.json, heartbeat.json, event_log seq 20, family_verdicts program.budget",
+        "ILLIQ 3 slots unused-never-reassigned per selection_freeze_v13.json budget.unused_slots_note ('ILLIQ replication slots from V12 remain unused and never reassigned')",
+        "zero V13 survivor: only 2 families selected (selection freeze), both recomputed V13_FAMILY_REJECT -> no Stage-A pass anywhere -> V13_REJECT_ALL; no S1 candidate locked; s1_seal SEALED_UNTOUCHED"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "S1_DEPLOYMENT_WORKERS_TREES",
+      "result": "PASS",
+      "evidence": [
+        "s1_seal = SEALED_UNTOUCHED; owned_workers = 0; deployment_activity = none (state.json)",
+        "forbidden-string scan of research/control/v13_run/ (paper|live|orders|credentials|api key|secret): only hit is the run_contract hard-boundary TEXT 'no S1 access, paper, live, orders, credentials' - a prohibition, not an activity",
+        "exec tree (e-exec-1): clean, detached at d0726645; repro tree (r-reproduce): clean, detached at d0726645; integration worktree: clean at bca7d7c on orca/v13-integration",
+        "main untouched by V13: main HEAD 50e0207 (owner Forex V3 plan over Forex V2 ledger); all 18 orca/v13-* branches NOT merged into main (common merge-base b8876ef, pre-V13)",
+        "no push performed; no merge performed by A7"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "PROCESS_FORENSICS",
+      "result": "PASS",
+      "evidence": [
+        "TECHABORT_liqepis_chain_attempt1.json: attempt-1 at W1R bcb2853 crashed pre-metric (cross-fold holding ContractViolation on BOMEUSDT, 4.9s wall, no BASELINE emitted, ledger_liqepis absent, oitd ledger sha 4fa9f351 unchanged - byte-verified now) -> ZERO budget consumed",
+        "delta chronology (git DAG authoritative): driver-only 0253754 (15:29:15Z, new files only: run_v13_cell.py + tests); OITD traversal delta bcb2853 (16:16:52Z); A7 delta-1 authorization 7bdd8eb 16:44:03Z BEFORE OITD scoring 16:47:10Z; LIQEPIS boundary delta f2aef59 (17:42:16Z, plugin+tests only); A7 delta-2 authorization 9b08750 18:02:37Z BEFORE LIQEPIS scoring 18:04:03Z",
+        "digests unchanged through deltas: all 6 ledger arm_config_digests present verbatim in w13_freeze.json (frozen before any delta)",
+        "delta scope verified: 0253754 adds driver+tests only; bcb2853..d0726645 touches liqepis plugin+tests, control state, w13r_freeze, audits - no OITD science surface, no driver change after freeze",
+        "owner GO recorded verbatim in state.json owner_go ('A7 V13_S0_LAUNCH_AUTHORIZED thi chay GO CRYPTO cells luon nhe, chi thi cua owner') with the exact-string deviation explicitly disclosed (Vietnamese paraphrase; semantic = GO V13 SCORED EXECUTION; A7 prelaunch authorization referenced as binding precondition)",
+        "hand-stamp correction acknowledged: bca7d7c corrected event_log stamps to real UTC (append-only; git DAG order authoritative); A7 used git commit times for chronology"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "T1",
+      "severity": "MEDIUM",
+      "status": "RESOLVED_BY_ADJUDICATION",
+      "finding": "LIQEPIS cost anomaly: uniform default tick size 0.01 in the driver's liqepis lane inflates the frozen tick-slip cost term to 0.01/p (0.87-4.26 per unit traded on sub-cent symbols), producing cost_charged_sum 25.03/15.84 vs ~0.03 at corrected tick sizes; scored cost path is per-stamp transition cost, not per-fill",
+      "verdict_impact": "NONE (anchor negative on price alone; rejected under any cost treatment)",
+      "future_note": "any LIQEPIS re-run must load symbol-specific tick sizes from instrument_metadata_crypto_perp (as the OITD lane already does) and re-publish; current cycle outcome unaffected"
+    },
+    {
+      "id": "T2",
+      "severity": "LOW",
+      "status": "OPEN_OBSERVATION_NO_VERDICT_IMPACT",
+      "finding": "Generic stamp-vs-position cost allocation residual (cost_charged_sum exceeds sum of position cost_allocated: OITD ~0.00066, LIQEPIS 1.2624/2.7124) present identically in both families; a V10-inherited reporting nuance. The scored metric uses the stamp-level (larger, conservative) sum; price PnL reconciles exactly (gap 0.0 all cells)",
+      "verdict_impact": "NONE"
+    },
+    {
+      "id": "T3",
+      "severity": "INFO",
+      "status": "NOTED",
+      "finding": "heartbeat.json/state.json integration_head pins 1e11cd9 (18:17:51Z) while integration has since advanced to bca7d7c (18:18:08Z stamp-correction commit) - expected append-only behavior; heartbeat not rewritten"
+    }
+  ],
+  "reproduction_claim_audit": "6/6 ALL_MATCH independently verified (all fields execution==reproduction, zero mismatches)",
+  "hashes_verified": {
+    "ledger_oitd": "4fa9f3516b36d640265eb98e73168b9b48f2cb919ccb5fc5c7f56ded83fef2b6",
+    "ledger_liqepis": "1989a9c15c6d6672c3d60ea9ad567759cfcbb0107b4a7efca582e4451ea8bf9f",
+    "registry_both_twins": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "producer_heads_verified": {
+    "oitd": "bcb28536c7af7140372120f2bd9896b76be00c42",
+    "liqepis": "d0726645fd97ea6e5ae67e405e8720844d71338c"
+  }
+}
