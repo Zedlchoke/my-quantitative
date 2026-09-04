@@ -1,0 +1,157 @@
+{
+ "schema": "stocks_free_v5_run/a7_prelaunch_audit@1",
+ "cycle": "STOCKS-FREE-V5",
+ "phase": "V5-Q independent prelaunch",
+ "producer_role": "A7 (independent auditor; audit-only, no repairs)",
+ "audited_at_utc": "2026-09-04T17:20:00Z",
+ "audit_head": "49422fe",
+ "audit_worktree": ".worktrees/stocks-free-v5/q-a7-prelaunch (branch orca/stocks-free-v5-q-a7-prelaunch)",
+ "w1_under_audit": "0ecca232caf6cee21a84d78579681e336b616388",
+ "integration_head": "49422fe (orca/stocks-free-v5-integration; W1 0ecca232 is its direct parent: freeze-then-external-pin per lesson L6)",
+
+ "gates": {
+  "G1_authority_chain": {
+   "status": "PASS",
+   "evidence": [
+    "PLAN_stocks_v5.md byte-identical to owner-plan source commit b6d9790512c2c2d5f9a41dad9ec755842856b384 (git diff b6d9790..HEAD -- PLAN_stocks_v5.md empty)",
+    "run_contract.json: base_sha 341dfc18903e98520e13f2ffc2401415cba24943, budget 0/6, historical_denominator 18/18 (V2 6 + V3 6 + V4 6) held separately and never regraded, phase order R -> P0 -> P1 -> P2 -> P3 -> D1 -> D2(selection) -> I -> Q -> independent A7 prelaunch -> HARD STOP",
+    "state.json: phase V5_Q_W1_FROZEN, next V5_Q_A7_PRELAUNCH, v5 counters 0/0/0 replays, budget used 0 planned 6, historical 18/18 prior, w1 pinned 0ecca232caf6cee21a84d78579681e336b616388, s1 SEALED_UNTOUCHED, workers 0, heavy_cap 1",
+    "event_log.jsonl: 14 events in strict phase order; V5_CONCURRENCY_INCIDENT_RECORDED documents the two-session interleaving (e4e8a55 vs b16e3dd/a264e5e) with integrity invariants preserved; V5_OWNER_ADJUDICATION records the owner ruling: quarantine OVERTURNED, e4e8a55 (research/assets/stocks/pit_conditioning.py + regression pins) canonical, cherry-picked to integration as a174806, stocks_compat.py retained as A7 byte-determinism reference ONLY, never in the scored path; V5_W1_FROZEN records budget 0/6 committed 3/6",
+    "Cross-artifact SHA coherence verified: 341dfc1 (V4 terminal), c6a0576 (fusion core), 5fa2bcc (proposal wave), 0ecca232 (W1), 62ac324d (snapshot manifest), f53eb371 (SEC store) agree across run_contract, state, event_log, w1_freeze, selection_freeze, d1_proposal_packet",
+    "budget: used 0/6 with 3 committed (anchor/neighbour/control) and 3 unused forever, recorded identically in state.json, w1_freeze.json, selection_freeze.json and event_log"
+   ],
+   "notes": "heartbeat.json phase field is stale (see LOW-1); state.json + event_log are the authoritative phase record and are coherent"
+  },
+  "G2_frozen_core_integrity": {
+   "status": "PASS",
+   "evidence": [
+    "git diff --name-status c6a0576ef98dd4392e90805c8ba33821da62eabc..HEAD -- research/data_fusion tests/data_fusion = exactly two ADDITIONS: research/data_fusion/stocks_compat.py (113 insertions, 0 deletions) and tests/data_fusion/test_v5_stocks_compatibility.py (361 insertions, 0 deletions); 474 total = the number recorded in event V5_P0_FUSION_ADOPTED",
+    "stocks_compat isolation: repo-wide grep shows the only import site is its own test (tests/data_fusion/test_v5_stocks_compatibility.py:26); zero references from research/assets/stocks/*, factory, coupling_family, main.py or any strategy module",
+    "full-tree diff vs V4 terminal 341dfc1: 130 additions + exactly 1 modification; the single M is .gitignore (+'.staging_sec/'), which implements the plan's no-raw-data-commit boundary (see LOW-2)"
+   ]
+  },
+  "G3_prior_cycle_drift": {
+   "status": "PASS",
+   "evidence": [
+    "git diff --name-status 341dfc18903e98520e13f2ffc2401415cba24943..HEAD -- research/control/stocks_free_v4_run/ research/control/stocks_free_v3_run/ research/control/stocks_free_v2_run/ = EMPTY (zero modifications, zero deletions; only additions elsewhere in the tree)"
+   ]
+  },
+  "G4_w1_freeze_and_twins": {
+   "status": "PASS",
+   "evidence": [
+    "git rev-parse 0ecca23 = 0ecca232caf6cee21a84d78579681e336b616388, matching state.json and w1_freeze.json inputs",
+    "git worktree list: .worktrees/stocks-free-v5/e-exec-1 and .worktrees/stocks-free-v5/r-reproduce both (detached HEAD) at exactly 0ecca232caf6cee21a84d78579681e336b616388; both trees clean (empty porcelain)",
+    "diff -r --exclude=.git between the two twin worktrees: exit 0, byte-identical trees",
+    "coupling_family.py sha256 3c691b59d8c14f9d9c9c5991932b1fcc0e481a6f20fdfef55ea7ce48390fcec3 identical in e-exec-1, r-reproduce and the audit tree",
+    "w1_freeze.json records all freeze inputs: family SFV5-A6-H2-CROSS-SECTOR-COUPLING with 3 arms (anchor COUPLE63-BN-L3S3-42 / neighbour COUPLE21-BN-L3S3-42 / causal control NOMPRICE42-BN-L3S3), snapshot manifest pin, SEC store pin, SPY TR benchmark, 3 folds ending 2025-07-24, costs 10/20 bps, empty-ledger authority, and the gate results independently recomputed below",
+    "W1 commit 0ecca23 touches only freeze artifacts (q_dummy_dryrun.py, q_dummy_dryrun_evidence.json, w1_freeze.json; 320 insertions) and is the direct parent of the external pin commit 49422fe"
+   ]
+  },
+  "G5_data_authority": {
+   "status": "PASS",
+   "evidence": [
+    "INDEPENDENT RE-HASH (research/audits/stocks_free_v5/a7_rehash_data_authority.py, exit 0): MANIFEST.json sha256 recomputed = 62ac324d7e683961b0d88f85153e4a072d09fe0a6745a54687b9e3b219d8f658 = pinned value; all 37 per-file hashes in the manifest re-hashed and matched, 0 mismatches",
+    "SEC store re-hash: /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v5/p0-a3-data/.staging_sec/pit_records.jsonl sha256 = f53eb3712bc9d686ec8a91b3715beaf73be1e5243a89af1816bd62eea51df955 = pin in p2_a3_pit_store_manifest.json and w1_freeze.json; 3,817,158 lines = pinned store_records; 3,156,208,795 bytes",
+    "the selected price/volume family does NOT read the SEC store: coupling_family.py contains no staging/pit_records/sec-store path and no file I/O at all; the import closure (factory, accounting, execution, loader, calendar, common.contracts, stocks_free_v2 harness) contains no staging path reference (sole grep hit is a loader.py docstring); SEC store pin held for authority continuity only"
+   ]
+  },
+  "G6_suites": {
+   "status": "PASS",
+   "evidence": [
+    ".venv/bin/python -m pytest tests -q -> exit 0: 2083 passed, 4 skipped, 0 failed, 79.93s, run ALONE (no heavy process active before start); EXACTLY matches w1_freeze.json gates_at_freeze.full_suite",
+    ".venv/bin/python -m compileall research/assets/stocks research/assets/common research/data_fusion -> exit 0 (COMPILE_OK)",
+    "git diff --check -> exit 0, clean"
+   ]
+  },
+  "G7_dummy_dry_run": {
+   "status": "PASS",
+   "evidence": [
+    "re-ran research/control/stocks_free_v5_run/q_dummy_dryrun.py: exit 0, overall PASS, all six checks true (s0_calendar, dummy_publication, refusal_path, budget_and_artifacts, canonical_ledger_untouched, data_manifest_pin)",
+    "fresh evidence vs committed q_dummy_dryrun_evidence.json: structure identical modulo generated_at_utc and temp_ledger_path; stronger than required - all three arm digests reproduced BYTE-IDENTICAL (A 969fa0f5..., N 7cb92232..., C 9a0ddbb7...), unique across arms; s0_calendar identical (1842 sessions, 2018-04-04..2025-07-31, anchor index 2076); scored=false, real_pnl=false; temp ledger observed 3 / published 3 / replay zero-delta; void arm refused and stays unpublished; canonical ledger ABSENT before and after",
+    "process note: the script writes its evidence into the repo tree; the fresh copy is preserved as research/audits/stocks_free_v5/a7_fresh_q_dummy_dryrun_evidence.json and the tracked control file was restored byte-identical from git (verified clean)"
+   ]
+  },
+  "G8_s1_discipline": {
+   "status": "PASS",
+   "evidence": [
+    "coupling_family.py: S0_END = '2025-07-31'; master-calendar validator fails closed, raising FamilyError on any calendar whose last session exceeds S0_END (module lines 405-419); gate master_calendar_s0_bounded asserted per run (line 1320)",
+    "targeted test run: tests/assets/stocks/test_v5_family_coupling.py -k 's1 or calendar or clamp or sealed' -> 2 passed (incl. test_e00_master_calendar_fails_closed_on_s1_and_disorder: FULL_DATES + ['2025-08-03'] refused), within the 2083-test green suite",
+    "snapshot clamp: the dry-run driver and all real-snapshot test fixtures filter every series (sectors + SPY all/none + benchmark) to datetime <= 2025-07-31 before any computation and assert dates[-1] == S0_END; the raw snapshot on disk extends to 2026-08-27 (S1 region = 270 sealed sessions from 2025-08-01) but is structurally unreachable: clamped at load, refused at calendar construction, asserted in tests"
+   ]
+  },
+  "G9_budget_and_empty_ledger": {
+   "status": "PASS",
+   "evidence": [
+    "execution_ledger.json ABSENT in the integration worktree research/control/stocks_free_v5_run/ and in the audit worktree (empty ledger authority per w1_freeze.json)",
+    "no scored artifact anywhere in research/control/stocks_free_v5_run/ (find for *ledger*, cell_*, *scored* = empty); all present artifacts are R/P0-P3/D1/D2/I/Q structural evidence with explicit no-PnL attestations; integration worktree git-clean",
+    "budget counters: 0/6 used, 3 committed, 3 unused forever, historical 18/18 held separately - coherent across state.json, run_contract.json, selection_freeze.json, w1_freeze.json, event_log"
+   ]
+  },
+  "G10_implementation_readings": {
+   "status": "PASS",
+   "evidence": [
+    "8 readings in i_family_1_evidence.json reviewed against proposals/a6_h2.json: every reading resolves mechanical ambiguity in favor of the WRITTEN preregistered rule text (with the A9-F audit precedent) and none changes the declared economics - mechanism question (mean trailing pairwise-correlation crowding state, predicted negative transmission), 42-session grid, L3/S3 baskets at +/-1/6, 252-session OLS SPY hedge truncated to [-0.25,+0.25], frozen 10/20 bps costs, ADJ-5 turnover, Stage-A gates, and the NOMPRICE42 placebo are all implemented as declared",
+    "turnover reading explicitly reports hard upper bounds separately and states 'nothing was loosened to fit'; panel discipline reading confirms module never touches disk/network and tests clamp to S0"
+   ],
+   "low_notes": "see LOW-3 (prose-vs-written-rule reconciliation on eligibility count and beta-window span; recorded transparently by A8, audited, no economics impact)"
+  }
+ },
+
+ "findings": [
+  {
+   "id": "LOW-1",
+   "severity": "LOW",
+   "gate": "G1",
+   "finding": "heartbeat.json is stale: phase field reads V5_D1_BLIND_PROPOSALS with updated_at_utc 14:06Z, while the authoritative state.json is at V5_Q_W1_FROZEN (15:45Z) and the event log records selection and W1 after that timestamp.",
+   "disposition": "advisory only: the heartbeat is a progress signal, not an authority artifact; run_contract/state/event_log are the authority of record and are mutually coherent. Recommend A1 refresh the heartbeat at the next checkpoint (owner GO)."
+  },
+  {
+   "id": "LOW-2",
+   "severity": "LOW",
+   "gate": "G2",
+   "finding": "The tree is otherwise additions-only since the V4 terminal SHA, with exactly one modification: .gitignore gains '.staging_sec/'.",
+   "disposition": "verified benign and boundary-implementing: it excludes the uncommitted SEC staging store from git per the plan's no-raw-data-commit hard boundary; it touches no V4 frozen artifact, control file, ledger or code path."
+  },
+  {
+   "id": "LOW-3",
+   "severity": "LOW",
+   "gate": "G10",
+   "finding": "Proposal prose deviates from its own written rule in two places: (a) prose says 9 sectors eligible from S0 start, the written >=252-session rule yields 10 at S0 start and 11 after XLC's 252nd session (2019-06-19, first affected slot 2019-08-05); (b) the prose beta-window date span is 251 sessions vs the written 252-session rule (2017-04-04..2018-04-04 at the first decision).",
+   "disposition": "no action: implementation follows the WRITTEN rule per the preregistration and the A9-F audit note ('the prose must not be implemented literally'); A9-F feasibility (15/15/14 slots) was measured on the written rule; A8 recorded both readings transparently before any scoring. Mechanical ambiguity resolution, not an economics change."
+  }
+ ],
+
+ "high_critical_open": 0,
+
+ "commands_run": [
+  {"command": "git worktree list", "exit_code": 0, "result": "e-exec-1 and r-reproduce both (detached HEAD) at 0ecca23"},
+  {"command": "git rev-parse 0ecca23", "exit_code": 0, "result": "0ecca232caf6cee21a84d78579681e336b616388"},
+  {"command": "git -C <twin> rev-parse HEAD (both twins)", "exit_code": 0, "result": "0ecca232caf6cee21a84d78579681e336b616388 both"},
+  {"command": "git -C <twin> status --porcelain=v1 (both twins)", "exit_code": 0, "result": "clean both"},
+  {"command": "diff -r --exclude=.git e-exec-1 r-reproduce", "exit_code": 0, "result": "byte-identical trees"},
+  {"command": "git merge-base --is-ancestor 0ecca23 49422fe", "exit_code": 0, "result": "W1 is the freeze parent of the external pin commit"},
+  {"command": "git diff b6d9790512c2c2d5f9a41dad9ec755842856b384..HEAD -- PLAN_stocks_v5.md", "exit_code": 0, "result": "empty (plan never rewritten)"},
+  {"command": "git diff --numstat c6a0576ef98dd4392e90805c8ba33821da62eabc..HEAD -- research/data_fusion tests/data_fusion", "exit_code": 0, "result": "113-0 stocks_compat.py; 361-0 test_v5_stocks_compatibility.py (additions only)"},
+  {"command": "git diff --name-status c6a0576..HEAD -- research/data_fusion tests/data_fusion", "exit_code": 0, "result": "A only, two files"},
+  {"command": "git diff --name-status 341dfc18903e98520e13f2ffc2401415cba24943..HEAD -- research/control/stocks_free_v4_run/ research/control/stocks_free_v3_run/ research/control/stocks_free_v2_run/", "exit_code": 0, "result": "EMPTY - zero drift"},
+  {"command": "git diff --name-status 341dfc1..HEAD | awk census", "exit_code": 0, "result": "130 A, 1 M (.gitignore only)"},
+  {"command": "grep -rn stocks_compat --include=*.py research/ tests/ main.py strategy_*.py (excluding its own test)", "exit_code": 1, "result": "no matches - stocks_compat absent from the scored path"},
+  {"command": "grep -rn staging|pit_records|sec_store in coupling_family + import closure", "exit_code": 0, "result": "sole hit is a loader.py docstring; no staging path read"},
+  {"command": "shasum -a 256 coupling_family.py (both twins + audit tree)", "exit_code": 0, "result": "3c691b59d8c14f9d9c9c5991932b1fcc0e481a6f20fdfef55ea7ce48390fcec3 all three"},
+  {"command": ".venv/bin/python research/audits/stocks_free_v5/a7_rehash_data_authority.py", "exit_code": 0, "result": "manifest 62ac324d match; 37/37 files match; SEC store f53eb371 match; 3,817,158 lines"},
+  {"command": ".venv/bin/python -m pytest tests -q  (run ALONE)", "exit_code": 0, "result": "2083 passed, 4 skipped in 79.93s"},
+  {"command": ".venv/bin/python -m pytest tests/assets/stocks/test_v5_family_coupling.py -q -k 's1 or calendar or clamp or sealed'", "exit_code": 0, "result": "2 passed, 39 deselected (S1 guard verified explicitly)"},
+  {"command": ".venv/bin/python -m compileall research/assets/stocks research/assets/common research/data_fusion", "exit_code": 0, "result": "COMPILE_OK"},
+  {"command": "git diff --check", "exit_code": 0, "result": "clean"},
+  {"command": ".venv/bin/python research/control/stocks_free_v5_run/q_dummy_dryrun.py", "exit_code": 0, "result": "overall PASS, all six checks true; fresh evidence preserved under research/audits/stocks_free_v5/ and tracked control file restored byte-identical"},
+  {"command": "python comparison: fresh vs committed q_dummy_dryrun_evidence.json", "exit_code": 0, "result": "structure identical modulo timestamp+temp path; all 3 arm digests byte-identical; s0_calendar identical"},
+  {"command": "find research/control/stocks_free_v5_run -name *ledger* -o -name cell_* -o -name *scored*", "exit_code": 0, "result": "empty - no ledger, no scored artifacts"},
+  {"command": "git -C integration status --porcelain=v1", "exit_code": 0, "result": "clean; execution_ledger.json ABSENT in integration control dir"}
+ ],
+
+ "recompute_policy": "every gate recomputed from primary artifacts (git objects, raw bytes, live suite runs); no recorded claim trusted without independent verification; no PnL of the strategy computed anywhere (structural verification only)",
+ "scope_kept": "audit artifacts committed only under research/audits/stocks_free_v5/ (this file, the re-hash script, the fresh dry-run evidence copy); no other path touched; the tracked dry-run evidence file was restored byte-identical after the re-run",
+
+ "verdict": "STOCKS_FREE_V5_S0_LAUNCH_AUTHORIZED",
+ "verdict_line": "STOCKS_FREE_V5_S0_LAUNCH_AUTHORIZED - 0 unresolved HIGH/CRITICAL (3 LOW, all dispositioned); chain R->P0(adjudicated)->P1->P2->P3->D1->D2->I->Q independently recomputed; frozen core additions-only; zero prior-cycle drift; twins detached, byte-identical, W1 0ecca232; data authority re-hashed 62ac324d / f53eb371; 2083 green alone; dummy dry-run reproduced byte-identically; empty ledger authority; budget 0/6 with 3 committed; S1 sealed. HARD STOP stands until the owner types GO STOCKS V5 SCORED EXECUTION."
+}
