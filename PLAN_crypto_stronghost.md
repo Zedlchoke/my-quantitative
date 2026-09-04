@@ -137,6 +137,19 @@ The source host creates one archive from the execution tree's `staged_data/`.
 The archive contains 90 data files plus its local manifest file. Record the
 archive byte count and SHA-256 outside Git.
 
+Verified source-host transfer artifact created on 2026-09-04:
+
+```text
+path       /Users/hoangminhlong/Downloads/v12-staging-W12-f0799cae.tar.gz
+size       108 MiB compressed; 147181897 bytes uncompressed regular files
+contents   91 regular files = 90 frozen data files + staged_manifest_.json
+safety     no absolute path, .. traversal, symlink, hardlink or AppleDouble file
+sha256     dc7608596a74e79629b04f2fb2aca7020569297ed4869159fbbd05d56e4d0ed8
+```
+
+The archive checksum verifies transport integrity. It does not replace the
+mandatory per-file 90/90 check against the committed staging manifest.
+
 The new host must obtain:
 
 ```text
