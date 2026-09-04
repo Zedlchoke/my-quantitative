@@ -1,0 +1,266 @@
+{
+  "schema": "stocks_free_v4_run/d2_a9_feasibility_audit@1",
+  "created_at_utc": "2026-09-04T02:38:51Z",
+  "producer_role": "A9-F",
+  "cycle": "STOCKS-FREE-V4",
+  "phase": "V4-D2 feasibility review (independent auditor)",
+  "scope": "Phase V4-D2 feasibility audit of the six blind proposals at research/control/stocks_free_v4_run/proposals/{a4_h1,a4_h2,a5_h1,a5_h2,a6_h1,a6_h2}.json against the frozen authorities p2_a3_data_manifest.json, p2_a3_benchmark_contract.json and baseline_invariants.json",
+  "mode": "AUDIT ONLY, NO PnL: price files loaded read-only from the hash-pinned snapshot for schedule counting and coverage/field-presence arithmetic exclusively; no return computation, no signal computation, no backtest; proposal files untouched",
+  "authorities_consumed": {
+    "data_manifest": "research/control/stocks_free_v4_run/p2_a3_data_manifest.json (status FROZEN, manifest sha256 match 62ac324d...d8f658)",
+    "benchmark_contract": "research/control/stocks_free_v4_run/p2_a3_benchmark_contract.json (status FROZEN)",
+    "baseline_invariants": "research/control/stocks_free_v4_run/baseline_invariants.json (frozen 2026-09-04T02:15:00Z, before the D1 wave)"
+  },
+  "measured_calendar_facts": {
+    "source": "SPY_none_p1.json datetimes, read-only from /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v2/z8-exec-1/.staging",
+    "spy_sessions_total": 4188,
+    "S0_sessions": 1842,
+    "pre_S0_runway_sessions": 2076,
+    "manifest_crosscheck": "both figures reproduce the frozen census exactly (1842 / 2076); 0 duplicate SPY dates",
+    "fold_sessions": {
+      "S0_FOLD_1": 609,
+      "S0_FOLD_2": 609,
+      "S0_FOLD_3": 609
+    },
+    "fold_spans": {
+      "S0_FOLD_1": "2018-04-04..2020-09-01",
+      "S0_FOLD_2": "2020-09-10..2023-02-09",
+      "S0_FOLD_3": "2023-02-17..2025-07-24"
+    },
+    "inter_fold_gaps": "5 sessions 2020-09-02..2020-09-09 region and 5 sessions 2023-02-10..2023-02-16 region; plus a 5-session unscored tail strip 2025-07-27..2025-07-31 between fold 3 end and the S0 boundary (2025-07-31); consistent with the manifest fold_consistency note (scored_end max 2025-07-24)",
+    "decision_counts_by_clock": {
+      "k21_fold_anchored": {
+        "S0_FOLD_1": 29,
+        "S0_FOLD_2": 29,
+        "S0_FOLD_3": 29,
+        "total": 87,
+        "per_year": 11.88
+      },
+      "k21_S0_anchored_inside_folds": {
+        "S0_FOLD_1": 29,
+        "S0_FOLD_2": 29,
+        "S0_FOLD_3": 29,
+        "total": 87
+      },
+      "k42_S0_anchored_inside_folds": {
+        "S0_FOLD_1": 15,
+        "S0_FOLD_2": 15,
+        "S0_FOLD_3": 14,
+        "total": 44,
+        "per_year": 6.01
+      },
+      "k42_fold_anchored": {
+        "S0_FOLD_1": 15,
+        "S0_FOLD_2": 15,
+        "S0_FOLD_3": 15,
+        "total": 45
+      },
+      "k63_fold_anchored": {
+        "S0_FOLD_1": 10,
+        "S0_FOLD_2": 10,
+        "S0_FOLD_3": 10,
+        "total": 30,
+        "per_year": 4.1
+      },
+      "note": "no 42-grid or 63-grid tick falls inside the inter-fold gaps, so fold membership of decision sessions is unambiguous under the S0-anchored reading; k21 tick DATES differ between the two anchorings even though counts coincide (each fold is exactly 609 = 29x21 sessions)"
+    },
+    "xlc_availability": {
+      "first_trade": "2018-06-19",
+      "pre_inception_S0_gaps": 53,
+      "eligible_ge_126_sessions_from": "2018-12-17",
+      "eligible_ge_252_sessions_from": "2019-06-19",
+      "S0_sessions_inside": 1789
+    },
+    "field_presence_checks_read_only": {
+      "all_12__all_files_carry_open": true,
+      "null_or_nonpositive_open_or_close_rows_across_all__all_files": 0,
+      "invalid_raw_OHLC_rows_across_all_12__none_files": 0,
+      "zero_range_H_equals_L_rows": {
+        "XLRE": 19,
+        "all_others": 0
+      },
+      "C_equals_O_rows_present": "16..90 per symbol (mathematically fine for GK: the ln(C/O) term contributes 0, not undefined)",
+      "zero_or_null_volume_rows_SPY_none_XLK_none": 0
+    }
+  },
+  "common_findings": [
+    "PIT data: every declared input of all six proposals is within the authorized field universe (daily OHLCV raw + adjusted, 12 cohort symbols); none touches a manifest unavailable_field class (fundamentals, earnings, borrow, short interest, holdings, flows, options, intraday).",
+    "Warmup: declared warmups are 126 (A4-H1), 252 (A4-H2, A5-H1, A5-H2, A6-H1, A6-H2), all <= 252 and <= 2076/252 ~ 8.2x covered by the pre-S0 runway; each first S0 session 2018-04-04 is a valid PIT decision tick from runway data. XLC long-warmup edges are handled by declared deterministic availability rules in all six (exact dates measured above).",
+    "Benchmark/factor: all six incremental-alpha tests need only SPY_TOTAL_RETURN (SPY_all adjusted closes) and the optional EW_SECTOR_TOTAL_RETURN (11 sector _all adjusted closes) - both authorized by the frozen benchmark contract. No proposal needs an unauthorized or undefined series.",
+    "Control and drop-one: all six controls (level-sort x2, stale-rank, price-only quietness, alphabetical-ticker, close-to-close variance) and both drop-one modes (max-contribution ETF rerun, fold removal min) are constructible from the frozen conventions without new data or new authority.",
+    "Engineer-days 2.5-4.0 per proposal are sane for a V4-I lane (loader + book executor + control/neighbour variants + accounting tests, all reusing the frozen V4 accounting skeleton).",
+    "Fold arithmetic: each fold is exactly 609 SPY sessions, so floor satisfaction is identical under either clock anchoring wherever counts coincide; the A4 k21 and A6 k42 clock anchoring should nevertheless be frozen byte-exactly by the V4-I lane (see per-hypothesis notes)."
+  ],
+  "per_hypothesis": [
+    {
+      "hypothesis_id": "SFV4-A4-H1",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a4_h1.json",
+      "short": "semivariance-share 126s state, 21-session clock, 4/4 hysteresis, +/-0.25 weights",
+      "verdict": "FEASIBLE_WITH_CONDITIONS",
+      "checks": {
+        "pit_coverage": "PASS - needs only {SYM}_all adjusted closes for the 11 sectors + SPY_all; XLC exclusion until >=126 sessions (2018-12-17) is a declared availability rule",
+        "warmup_feasibility": "PASS - 126 sessions <= 252 allowance; runway 2076 covers ~16x",
+        "schedule_count_breadth": "PASS - measured 29/29/29 = 87 decision ticks (~11.9/yr); proposal claimed ~29/28/29 = 86-89; >=5 per fold and >=30 total with large margin",
+        "cap_gross_net_leverage": "PASS_WITH_NOTE - steady state gross 8x0.25=2.0 (exactly at the declared <=2.0 cap, no undisclosed leverage), net 0. EXCEPTION: on the 9 fold-1 ticks 2018-04-04..2018-11-30 the eligible pool is 10 sectors, so SHORT:=ranks 8-11 has only 3 legs: book is 4L/3S, gross 1.75, net +0.25 - 'net ~0' fails on those ticks (bounded, declared as availability consequence but not quantified in the proposal)",
+        "turnover_plausibility": "PASS - declared 1.5-3.0 two-way/yr (point 2.2, 25-50% of the 6.0 ceiling); at ~11.9 ticks/yr with a 3-name-wide neutral band (ranks 5-7) and a persistent 126-session second-moment state, 1-3 swap events/side/yr is arithmetically plausible; no structural churn path to the ceiling",
+        "benchmark_factor_availability": "PASS - SPY TR + EW sector only; kappa_t is an arm-rule scale, see implementation risk",
+        "control_drop_one": "PASS - variance-LEVEL control, max-contribution drop-one ETF rerun, drop-one-fold min all constructible under frozen conventions; leg share 0.25/2.0=12.5% < 0.35 gate ex ante",
+        "implementation_risk": "CONDITION - see blocking_conditions; automaton transition order/capacity/lexicographic ties are fully specified (deterministic); engineer-days 2.5 sane",
+        "sample_size_floor": "PASS - 87 decisions, holding 21 = clock 21, consistent; min-positions >=1 always satisfied (>=7 legs even in the thin stretch)"
+      },
+      "blocking_conditions": [
+        "C1 (must freeze before any scored computation): kappa_t = clip(OLS slope of arm spread returns on SPY TR over trailing 252 sessions ending t-1, 0, 2) is UNDEFINED at the first 252 scored sessions - the arm has no traded history before S0. Measured: 12 of fold-1's 29 ticks (2018-04-04 through the tick before 2019-04-04) have no defined kappa_t, yet the incremental-alpha gate is evaluated per fold including fold 1. A PIT-consistent fallback (e.g., simulating the frozen rule over the 2076-session pre-S0 runway to synthesize arm history, or any other fixed rule) must be frozen BEFORE any return is observed, per the benchmark contract no_substitution rule; choosing it after seeing fold-1 alpha would violate the contract.",
+        "C2 (freeze treatment): the early fold-1 stretch 2018-04-04..2018-11-30 (9 ticks) runs 4L/3S with net +0.25 because fixed rank thresholds 8-11 leave one empty short slot in a 10-name pool; freeze ex ante that this is accepted as an availability consequence (it will appear in the kappa regression and fold-1 net exposure).",
+        "C3 (minor, freeze byte-exactly): 'every 21st SPY session' + per-fold re-seed admits two anchorings (fold-relative vs S0-anchored) with identical counts 29/29/29 but different tick dates; the V4-I lane must pin one reading (fold-relative is the natural reading of the re-seed clause)."
+      ],
+      "verdict_rationale": "All floors, coverage, cap and turnover checks pass with margin; the only blocking-class item is the undefined kappa_t at S0 start, which is freezable ex ante without redesign, hence conditions rather than infeasible."
+    },
+    {
+      "hypothesis_id": "SFV4-A4-H2",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a4_h2.json",
+      "short": "vol-of-vol (12x21 blocks, 252s) state, 21-session clock, 3/3 hysteresis, +/-0.20 weights",
+      "verdict": "FEASIBLE_WITH_CONDITIONS",
+      "checks": {
+        "pit_coverage": "PASS - realized vov from daily adjusted closes only; correctly does not require options/IV (unavailable); XLC eligibility >=252 sessions from 2019-06-19 (measured exactly, matches the proposal's ~2019-06)",
+        "warmup_feasibility": "PASS - 252 sessions = exactly the allowance; runway 2076 covers ~8x",
+        "schedule_count_breadth": "PASS - measured 29/29/29 = 87 ticks (~11.9/yr), same as H1; floors met with large margin",
+        "cap_gross_net_leverage": "PASS_WITH_NOTE - steady state gross 6x0.20=1.2 <= 1.2 declared (<= 2.0 ceiling), net 0, no undisclosed leverage. EXCEPTION: on the 15 fold-1 ticks 2018-04-04..2019-06-05 the pool is 10 sectors, so SHORT:=ranks 9-11 has only 2 legs: book is 3L/2S, 5 legs, gross 1.00, net +0.20. The proposal's sample_size claim 'at least 6 non-CASH legs are occupied at every tick' is INACCURATE for those 15 ticks (5 legs). No invariant breached (min is >=1 leg).",
+        "turnover_plausibility": "PASS - declared 0.8-2.0 two-way/yr (point 1.3, 13-33% of ceiling); a 5-name-wide neutral band (ranks 4-8) on a 252-session vov state at ~11.9 ticks/yr makes the low churn estimate credible; inside ceiling with the largest headroom of the six",
+        "benchmark_factor_availability": "PASS - SPY TR + EW sector only",
+        "control_drop_one": "PASS - realized-vol LEVEL control and both drop-one modes constructible; the vov-vs-level correlation identification risk is acknowledged ex ante (a scoring concern, not a feasibility blocker); leg share 0.20/1.2=16.7% < 0.35 ex ante",
+        "implementation_risk": "CONDITION - same kappa_t gap as H1; block-alignment PIT rules are fully specified (12th block ends at t, no demeaning, ddof=1); engineer-days 3.0 sane",
+        "sample_size_floor": "PASS - 87 decisions, holding = clock = 21, consistent"
+      },
+      "blocking_conditions": [
+        "C1 (must freeze before any scored computation): kappa_t undefined for the first 252 scored sessions (same 12 fold-1 ticks as H1); freeze a PIT-consistent fallback ex ante.",
+        "C2 (freeze treatment + correct the record): the 15-tick 3L/2S stretch (net +0.20, 5 non-CASH legs) until XLC reaches 252 sessions on 2019-06-19 contradicts the proposal's '>=6 legs at every tick' claim; freeze ex ante that this availability stretch is accepted.",
+        "C3 (minor, freeze byte-exactly): k21 clock anchoring (fold-relative vs S0-anchored), identical counts, must be pinned."
+      ],
+      "verdict_rationale": "Feasible on every measured dimension; conditions are the shared A4 kappa_t gap plus the inaccurate min-legs claim that must be frozen as an accepted availability stretch rather than silently discovered at scoring time."
+    },
+    {
+      "hypothesis_id": "SFV4-A5-H1",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a5_h1.json",
+      "short": "participation-shock 21/231 ratio, 63-session quarterly clock, 3v3 dollar-neutral, gross 1.0",
+      "verdict": "FEASIBLE",
+      "checks": {
+        "pit_coverage": "PASS - DV = raw close x volume is a declared price-level feature on the authorized raw path (manifest explicitly reserves this authorization); _all closes for returns; volume present and strictly positive in checked files (0 zero/null rows); XLC eligibility >=252 sessions from 2019-06-19 declared deterministically",
+        "warmup_feasibility": "PASS - 252 sessions, within allowance, runway-covered; first S0 session a valid tick",
+        "schedule_count_breadth": "PASS - measured exactly 10/10/10 = 30 decisions (63-session fold-anchored grid over 609-session folds; 4.1/yr); proposal's ~10/fold and 30 total are exact, not approximations",
+        "cap_gross_net_leverage": "PASS - gross 1.0, net 0.0 exact (3v3 at +/-1/6 works from a 10-name pool too); no undisclosed leverage",
+        "turnover_plausibility": "PASS - arithmetic independently reproduced: 4.10 decisions/yr x 0.67 two-way per 1-leg-pair swap = 2.73, plus initial build and 3 boundary force-flat/rebuild events 4x2.0/7.32yr = 1.09, total ~3.83/yr vs declared ~3.8 (inside 6.0 with ~1.57x headroom); adverse case (2+2 legs per decision) ~6.6/yr breaches and is preregistered as a falsification surface, not a tuning knob - correct treatment",
+        "benchmark_factor_availability": "PASS - SPY TR with a FIXED declared ex-ante risk-match scale 0.5 (no regression, hence no PIT gap) + EW sector factor OLS as evaluation statistic",
+        "control_drop_one": "PASS - stale-rank control and both drop-one modes constructible; MINOR: the stale control's denominator (t-251..t-84, 168 sessions) is shorter than the anchor's 231-session denominator (deliberate 252-total-lookback preservation); deterministic and frozen, but the control's shock scale differs slightly from the anchor's - acceptable as specified, flagged for the record",
+        "implementation_risk": "PASS - no undefined series, no PIT gap, tie rules and XLC branch declared deterministic; engineer-days 3.0 sane",
+        "sample_size_floor": "PASS_WITH_NOTE - meets >=5/fold (10) and >=30 total (30) EXACTLY with zero slack; the proposal itself declares any voided tick scores the arm ineligible rather than re-timing; position-PF over 30 decision PnLs is thin but per contract"
+      },
+      "blocking_conditions": [],
+      "notes": [
+        "Zero-slack 30-decision floor is the main fragility; it is self-declared and handled by the ineligible-not-retimed rule.",
+        "Final decision slot of each fold (offset 567 of 609) holds a truncated ~42-session stub; no extra turnover, consistent with force-flat boundaries."
+      ],
+      "verdict_rationale": "All nine checks pass with no blocking condition; the exact-floor thinness and the preregistered turnover breach surface are already part of the frozen design."
+    },
+    {
+      "hypothesis_id": "SFV4-A5-H2",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a5_h2.json",
+      "short": "abnormal volume x follow-through median split, 63-session quarterly clock, 3v3 dollar-neutral, gross 1.0",
+      "verdict": "FEASIBLE",
+      "checks": {
+        "pit_coverage": "PASS - same raw-path DV feature + adjusted closes for follow-through |adj_close(t)/adj_close(t-20)-1| (close only, no adjusted-open dependency); XLC branch deterministic (2019-06-19)",
+        "warmup_feasibility": "PASS - 252-session shock window with the 21-session follow measure nested inside; 'max total 252' claim is correct",
+        "schedule_count_breadth": "PASS - 10/10/10 = 30 decisions, identical grid to H1; floors met exactly",
+        "cap_gross_net_leverage": "PASS - gross 1.0, net 0.0; the deterministic completion rule (n-vs-n at +/-1/(2n)) preserves gross 1.0/net 0 under any side shortage (2n x 1/(2n) = 1.0); even-count median with the median-value-goes-to-unconfirmed rule is deterministic (5/5 split for distinct 5th/6th order stats)",
+        "turnover_plausibility": "PASS - same 3.83/yr reproduced arithmetic as H1; the median split is a slow statistic, so ~1 leg pair per decision churn is plausible; same preregistered adverse-case breach treatment",
+        "benchmark_factor_availability": "PASS - fixed 0.5 risk-match scale + EW sector factor; no PIT gap",
+        "control_drop_one": "PASS - price-only quietness control is well-defined and volume-free (no-volume mutation test declared); drop-one-ETF correctly re-derives the median split from scratch; both drop-one modes constructible",
+        "implementation_risk": "PASS - byte-deterministic tie and completion rules declared and sufficient; engineer-days 3.5 sane (3.0 shared with H1 + 0.5 split-specific)",
+        "sample_size_floor": "PASS_WITH_NOTE - 30 decisions exactly, zero slack, same self-declared ineligible-if-voided rule; the completion rule guarantees a decision never voids (>=1 non-CASH leg always)"
+      },
+      "blocking_conditions": [],
+      "notes": [
+        "Same zero-slack floor fragility as H1, self-declared.",
+        "Shares H1 infrastructure, so the pair is serializable within one V4-I lane under the heavy cap."
+      ],
+      "verdict_rationale": "All nine checks pass; no blocking condition."
+    },
+    {
+      "hypothesis_id": "SFV4-A6-H1",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a6_h1.json",
+      "short": "Garman-Klass 63s range-variance sort, 42-session clock, 3+3 +/-1/6 with SPY hedge truncated [-0.25,+0.25], gross cap 1.25",
+      "verdict": "FEASIBLE_WITH_CONDITIONS",
+      "checks": {
+        "pit_coverage": "PASS - raw _none OHLC for within-day ln(H/L), ln(C/O) terms is a declared ex-ante price-level feature on the authorized raw path; clean in S0 (the only recorded splits, 2025-12-05, are post-S0; 0 invalid OHLC rows across all 12 _none files); _all closes for betas/returns; adjusted-open not needed",
+        "warmup_feasibility": "PASS - 252-session beta window with 63-session GK window nested; runway-covered; XLC >=252 sessions from 2019-06-19 declared",
+        "schedule_count_breadth": "PASS - S0-anchored 42-grid (per the proposal's own wording 'every 42nd SPY-calendar session within S0, first decision at the first S0 session'): 15/15/14 = 44 scored ticks, matching the proposal's ~43-44; fold-anchored alternative gives 45; both >=5/fold and >=30 total; no 42-grid tick falls in the inter-fold gaps, so fold membership is unambiguous",
+        "cap_gross_net_leverage": "PASS_WITH_NOTE - sector gross 1.0 + |hedge| <= 0.25 -> gross <= 1.25 as declared (<= 2.0 ceiling), net dollar 0 (CASH absorbs residual), long/short books separate; leg shares: 1/6 of 1.25 = 13.3%, hedge 0.25/1.25 = 20%, both < 0.35 gate ex ante. CONSISTENCY FINDING: the declared ZERO SPY-context multiple is justified by 'the construction zeroes net SPY beta by rule', but with sector betas ~0.7-1.2 the required hedge (1/6)x sum|beta_i| ~ 0.8-1.0 exceeds the +/-0.25 truncation in general, so a material residual beta persists and the zero-multiple justification is not literally satisfied",
+        "turnover_plausibility": "PASS_WITH_NOTE - 6.01 rebalances/yr x declared 0.4-0.8 |dw| per rebalance = 2.4-4.9/yr; the stated '2.0-4.0/yr' understates the top of its own arithmetic (still < 6.0 even at 4.9); churn of 1-2 of 6 legs per 42-session rebalance on persistent range-vol ranks is plausible; full-reconstitution worst case (~12-13/yr) correctly preregistered as a gate failure, not loosened",
+        "benchmark_factor_availability": "PASS - SPY TR context (+ EW sector as declared secondary diagnostic); authorized series only",
+        "control_drop_one": "PASS - alphabetical-ticker control trivially constructible; drop-one-ETF leaves 10 (or 9 early) eligible names, 3+3 baskets still well-defined; drop-one-fold per convention",
+        "implementation_risk": "CONDITION - zero-range sessions exist (XLRE: 19 H==L rows) and are covered by the declared frozen drop-and-refill rule, so no undefined statistic; the remaining item is the hedge/zero-multiple adjudication below; engineer-days 3.5 sane",
+        "sample_size_floor": "PASS - 44 (or 45) decisions, holding = clock = 42, consistent; >=1 non-CASH leg always"
+      },
+      "blocking_conditions": [
+        "C1 (adjudicate before any scored computation): reconcile the declared ZERO SPY-context risk-match with the +/-0.25 hedge truncation. Either (a) keep the zero multiple as a purely frozen ex-ante declaration and record that residual beta is NOT removed by the alpha test (the beta_not_alpha lesson then leans entirely on the control/neutralization gates), or (b) freeze the multiple as the kappa-style clip of the hedge-implied exposure. The choice must be frozen before any return is observed; as written the proposal's justification ('construction zeroes net SPY beta by rule') is inconsistent with its own truncation rule.",
+        "C2 (minor, freeze byte-exactly): pin the k42 clock anchoring (S0-anchored per the proposal text = 44 ticks; fold-anchored = 45)."
+      ],
+      "verdict_rationale": "Everything implementable today; the one substantive item is the zero-multiple-vs-truncated-hedge semantics of the alpha gate, which is an A1-frozen adjudication, not a redesign."
+    },
+    {
+      "hypothesis_id": "SFV4-A6-H2",
+      "proposal_file": "research/control/stocks_free_v4_run/proposals/a6_h2.json",
+      "short": "overnight-variance-share 63s sort, 42-session clock, 3+3 +/-1/6 with SPY hedge truncated [-0.25,+0.25], gross cap 1.25",
+      "verdict": "FEASIBLE_WITH_CONDITIONS",
+      "checks": {
+        "pit_coverage": "PASS - depends on adj_open from the _all path; VERIFIED PRESENT: all 12 _all files carry the open field with 0 null and 0 nonpositive rows, so the declared adj_open reconstruction fallback is not needed (its per-session adjustment-factor form would also be valid); r_on needs the prior session's adjusted close, available throughout the warmup",
+        "warmup_feasibility": "PASS - 252-session beta window with 63-session decomposition window nested; XLC >=252 sessions from 2019-06-19",
+        "schedule_count_breadth": "PASS - identical grid to H1: 15/15/14 = 44 S0-anchored (45 fold-anchored); floors met",
+        "cap_gross_net_leverage": "PASS_WITH_NOTE - same book shape as H1: gross <= 1.25, net dollar 0; the 1e-12 denominator guard is a frozen eligibility rule (deterministic, no substitution) and effectively never binds on liquid sector ETFs; same zero-multiple-vs-truncated-hedge consistency finding as H1",
+        "turnover_plausibility": "PASS_WITH_NOTE - same arithmetic note as H1 (6.01 x 0.4-0.8 = 2.4-4.9/yr vs stated 2.0-4.0; still inside the 6.0 ceiling); overnight-share states are persistent, so 1-2 leg churn per rebalance is plausible",
+        "benchmark_factor_availability": "PASS - SPY TR (+ EW sector diagnostic); authorized only",
+        "control_drop_one": "PASS - close-to-close variance-level control constructible; the control sharing the 'long-low-risk-stat' surface form with a preregistered 0.5-ratio rule is well specified; drop-one modes per convention",
+        "implementation_risk": "CONDITION - adjusted-open risk is retired by measurement (field present); remaining item is the shared A6 hedge/zero-multiple adjudication; engineer-days 4.0 sane including the (now moot) fallback",
+        "sample_size_floor": "PASS - 44 (or 45) decisions, holding = clock = 42"
+      },
+      "blocking_conditions": [
+        "C1 (adjudicate before any scored computation): same as SFV4-A6-H1 C1 - reconcile the ZERO SPY-context multiple with the +/-0.25 hedge truncation and freeze the outcome ex ante.",
+        "C2 (minor, freeze byte-exactly): pin the k42 clock anchoring (44 vs 45 ticks)."
+      ],
+      "verdict_rationale": "All data dependencies verified present; conditions identical to A6-H1."
+    }
+  ],
+  "overall_summary": {
+    "verdicts": {
+      "SFV4-A4-H1": "FEASIBLE_WITH_CONDITIONS",
+      "SFV4-A4-H2": "FEASIBLE_WITH_CONDITIONS",
+      "SFV4-A5-H1": "FEASIBLE",
+      "SFV4-A5-H2": "FEASIBLE",
+      "SFV4-A6-H1": "FEASIBLE_WITH_CONDITIONS",
+      "SFV4-A6-H2": "FEASIBLE_WITH_CONDITIONS"
+    },
+    "infeasible_count": 0,
+    "blocking_before_scoring": [
+      "A4 family (H1+H2): freeze a PIT-consistent kappa_t fallback for the first 252 scored sessions (12 fold-1 ticks have no arm history for the trailing-252 regression); must be frozen before any return is observed.",
+      "A6 family (H1+H2): adjudicate the ZERO SPY-context risk-match multiple against the +/-0.25 hedge truncation and freeze the outcome before any return is observed."
+    ],
+    "non_blocking_freeze_recommendations": [
+      "Pin the k21 (A4) and k42 (A6) clock anchorings byte-exactly in the V4-I lane (counts are 29/29/29=87 and 15/15/14=44 under the proposals' natural readings; fold-anchored A6 alternative = 45; all readings clear the >=5/fold and >=30 floors).",
+      "Record the A4 early fold-1 net-exposure stretches (H1: 9 ticks at net +0.25, gross 1.75, until 2018-12-17; H2: 15 ticks at net +0.20, 5 legs, until 2019-06-19) as accepted availability consequences; correct A4-H2's '>=6 legs at every tick' claim in the implementation spec.",
+      "A5 pair: zero-slack 30-decision floor and preregistered adverse-turnover breach (~6.6/yr at 2+2 legs/decision) are already frozen design features; no change required."
+    ],
+    "cross_checks_against_frozen_authorities": {
+      "calendar_census_reproduced": true,
+      "S0_sessions_measured_vs_manifest": "1842 == 1842",
+      "pre_S0_runway_measured_vs_manifest": "2076 == 2076",
+      "xlc_pre_inception_S0_gaps_measured_vs_manifest": "53 == 53",
+      "unavailable_field_classes_touched_by_any_proposal": 0,
+      "benchmark_contract_authorization_respected_by_all_six": true
+    },
+    "pnl_computed": false,
+    "scored_cells_used": 0
+  },
+  "head_pin": {
+    "audit_commit_note": "this file's content commit is 'V4-D2 A9-F: feasibility audit (no PnL)'; the follow-up empty 'V4-D2 A9-F: final HEAD pin' commit is the A9-F final HEAD, measured with git rev-parse HEAD immediately after it",
+    "branch": "orca/stocks-free-v4-d2-a9-feasibility"
+  }
+}
