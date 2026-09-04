@@ -1,0 +1,1236 @@
+{
+  "schema": "v14_p1_a3_availability_evidence_v1",
+  "cycle": "CRYPTO-V14",
+  "producer_role": "A3",
+  "generated_utc": "2026-09-04T23:42:17.289873Z",
+  "authority": {
+    "plan": "PLAN_crypto_v14.md sections 2 and 6 (P2 coverage-first and evidenced-availability rules)",
+    "run_contract": "research/control/v14_run/run_contract.json (binding_data_rules, candidate_datasets_registered_not_authorized)",
+    "windows": {
+      "authorized": "2024-08-20T00:00:00Z..2026-08-21T23:59:59.999000Z",
+      "blind_s0_screen": "2025-08-22T00:00:00Z..2026-08-21T23:59:59Z"
+    },
+    "classification_rule": "EVIDENCED_AVAILABLE = measured retrievable depth funds the stated conditioning clock over the blind-S0 screen window AND documented endpoint semantics/publication lag are archived; COVERAGE_INSUFFICIENT_FAIL_CLOSED = measured depth cannot fund the clock; ASSERTED_UNEVIDENCED = no measured+documented basis. Documentation claims never substitute for measured depth.",
+    "conditioning_clocks": {
+      "staged_bars": "15m",
+      "funding_settlement": "8h",
+      "oi_snapshots": "5m",
+      "note": "minute-to-day conditioning clocks per V14 cycle contract"
+    }
+  },
+  "documented_vs_measured_discrepancies": [
+    {
+      "id": "D1",
+      "source": "/futures/data/basis",
+      "documented": "Only the data of the latest 30 days is available.",
+      "measured": "rows exist exactly at 2025-08-22T00:00Z (screen start, all 4 symbols, 5m and 15m), at the 2026-08-21 screen end (all 4 symbols), at 2024-08-20 and at 2023-01-01 (BTCUSDT); absent at 2019-12-01",
+      "resolution": "classification follows the MEASURED bound (EVIDENCED_AVAILABLE); documented bound archived verbatim; D2/A9-F must re-verify before any scored use"
+    },
+    {
+      "id": "D2",
+      "source": "/fapi/v1/indexPriceKlines",
+      "documented": "Request parameter is pair (not symbol)",
+      "measured": "symbol= probes return HTTP 400; pair= probes return 200 with data",
+      "resolution": "downstream code must use pair=; disconfirming probes archived"
+    },
+    {
+      "id": "D3",
+      "source": "/futures/data/basis",
+      "documented": "(silence - pagination behavior undocumented)",
+      "measured": "endTime older than the oldest bucket causes the endpoint to repeat the latest page; backward pagination is invalid for this endpoint",
+      "resolution": "use forward startTime pagination or point anchors; identical repeat pages archived (0253-0276)"
+    },
+    {
+      "id": "D4",
+      "source": "/futures/data/takerlongshortRatio, /futures/data/topLongShortAccountRatio",
+      "documented": "(silence)",
+      "measured": "endTime before retention returns HTTP 400 code -1130 \"parameter 'endTime' is invalid.\" while openInterestHist/topLongShortPositionRatio/globalLongShortAccountRatio return []",
+      "resolution": "pagination code must treat -1130 as end-of-data, not retryable error"
+    },
+    {
+      "id": "D5",
+      "source": "/fapi/v1/fundingRate",
+      "documented": "response example shows symbol, fundingRate, fundingTime, markPrice",
+      "measured": "live rows also carry rateType (e.g. 'Regular') and fundingTime with millisecond offsets (...009)",
+      "resolution": "staged parsers must tolerate the extra field; stamp normalization required at settlement-second precision"
+    },
+    {
+      "id": "D6",
+      "source": "/futures/data/openInterestHist",
+      "documented": "response example shows sumOpenInterest, sumOpenInterestValue, timestamp",
+      "measured": "live rows also carry CMCCirculatingSupply",
+      "resolution": "recorded; not relied upon"
+    },
+    {
+      "id": "D7",
+      "source": "/futures/data/* statistics endpoints",
+      "documented": "Only the data of the latest 30 days is available.",
+      "measured": "boundary confirmed at 2026-08-04T23:2x-3xZ (approx 31 days before probe time) for openInterestHist (empty page) / taker+topAccount (-1130) / topPosition+global (empty page)",
+      "resolution": "documented and measured bounds AGREE; both archived; sources excluded from proposal briefs"
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "open_interest_history_fine",
+      "registered_candidate": "open-interest history at finer granularity than the staged OI set",
+      "endpoint": "/futures/data/openInterestHist",
+      "granularity_options": {
+        "documented": [
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "4h",
+          "6h",
+          "12h",
+          "1d"
+        ],
+        "acceptance_probed_http_200": [
+          "30m",
+          "1h",
+          "1d"
+        ],
+        "full_depth_probed": [
+          "5m",
+          "15m"
+        ]
+      },
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Open-Interest-Statistics",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123113224/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Open-Interest-Statistics",
+        "snapshot_utc": "2025-01-23T11:32:24Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "GET /futures/data/openInterestHist",
+        "periodENUMYES\"5m\",\"15m\",\"30m\",\"1h\",\"2h\",\"4h\",\"6h\",\"12h\",\"1d\"",
+        "limitLONGNOdefault 30, max 500",
+        "If startTime and endTime are not sent, the most recent data is returned.",
+        "Only the data of the latest 30 days is available.",
+        "IP rate limit 1000 requests/5min"
+      ],
+      "measured": {
+        "endpoint": "/futures/data/openInterestHist",
+        "param_style": "symbol",
+        "symbols": {
+          "BTCUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "CMCCirculatingSupply",
+              "sumOpenInterest",
+              "sumOpenInterestValue",
+              "symbol",
+              "timestamp"
+            ],
+            "measured_earliest_utc_5m": "2026-08-04T23:25:00Z",
+            "depth_method_5m": "backward_walk",
+            "depth_stop_5m": "empty_page",
+            "depth_note_5m": "empty page at endTime=1785885899999 (2026-08-04T23:24:59.999000Z)",
+            "anchor_screen_start_5m": false,
+            "measured_earliest_utc_15m": "2026-08-04T23:30:00Z",
+            "depth_stop_15m": "empty_page"
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "CMCCirculatingSupply",
+              "sumOpenInterest",
+              "sumOpenInterestValue",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "CMCCirculatingSupply",
+              "sumOpenInterest",
+              "sumOpenInterestValue",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "CMCCirculatingSupply",
+              "sumOpenInterest",
+              "sumOpenInterestValue",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          }
+        },
+        "period_acceptance_http": {
+          "30m": 200,
+          "1h": 200,
+          "1d": 200
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "Request Weight 0",
+          "IP rate limit 1000 requests/5min"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "period-aligned buckets; most recent bucket advances with query time (semantics probes); no update-lag statement on the provider page",
+      "measured_schema_note": "live response carries undocumented field CMCCirculatingSupply",
+      "classification": "COVERAGE_INSUFFICIENT_FAIL_CLOSED",
+      "classification_basis": "relative to the 5m OI-snapshot clock and 15m staged-bar clock over 2025-08-22T00:00:00Z..2026-08-21T23:59:59Z: measured retrievable depth ends at 2026-08-04T23:25:00Z (backward walk to an EMPTY page at endTime 2026-08-04T23:24:59.999Z; 18x500-row pages of 5m rows), and no data exists at the 2025-08-22 screen-start anchor for any of the 4 symbols; consistent with the documented bound 'Only the data of the latest 30 days is available.'"
+    },
+    {
+      "source_id": "taker_buy_sell_volume_ratio",
+      "registered_candidate": "taker buy/sell volume ratios",
+      "endpoint": "/futures/data/takerlongshortRatio",
+      "granularity_options": {
+        "documented": [
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "4h",
+          "6h",
+          "12h",
+          "1d"
+        ],
+        "acceptance_probed_http_200": [
+          "30m",
+          "1h",
+          "1d"
+        ],
+        "full_depth_probed": [
+          "5m",
+          "15m"
+        ]
+      },
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Taker-BuySell-Volume",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123101712/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Taker-BuySell-Volume",
+        "snapshot_utc": "2025-01-23T10:17:12Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "GET /futures/data/takerlongshortRatio",
+        "periodENUMYES\"5m\",\"15m\",\"30m\",\"1h\",\"2h\",\"4h\",\"6h\",\"12h\",\"1d\"",
+        "limitLONGNOdefault 30, max 500",
+        "If startTime and endTime are not sent, the most recent data is returned.",
+        "Only the data of the latest 30 days is available.",
+        "IP rate limit 1000 requests/5min"
+      ],
+      "measured": {
+        "endpoint": "/futures/data/takerlongshortRatio",
+        "param_style": "symbol",
+        "symbols": {
+          "BTCUSDT": {
+            "latest_observed_utc": "2026-09-04T23:15:00Z",
+            "schema_fields_observed": [
+              "buySellRatio",
+              "buyVol",
+              "sellVol",
+              "timestamp"
+            ],
+            "measured_earliest_utc_5m": "2026-08-04T23:20:00Z",
+            "depth_method_5m": "backward_walk",
+            "depth_stop_5m": "http_400",
+            "depth_note_5m": "http_400",
+            "anchor_screen_start_5m": false,
+            "measured_earliest_utc_15m": "2026-08-04T23:15:00Z",
+            "depth_stop_15m": "http_400"
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": "2026-09-04T23:15:00Z",
+            "schema_fields_observed": [
+              "buySellRatio",
+              "buyVol",
+              "sellVol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": "2026-09-04T23:15:00Z",
+            "schema_fields_observed": [
+              "buySellRatio",
+              "buyVol",
+              "sellVol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": "2026-09-04T23:15:00Z",
+            "schema_fields_observed": [
+              "buySellRatio",
+              "buyVol",
+              "sellVol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          }
+        },
+        "period_acceptance_http": {
+          "30m": 200,
+          "1h": 200,
+          "1d": 200
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "Request Weight 0",
+          "IP rate limit 1000 requests/5min"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "period-aligned buckets; most recent bucket advances with query time; no stated update lag",
+      "endpoint_quirk_measured": "an endTime older than the retention edge returns HTTP 400 code -1130 'parameter endTime is invalid.' instead of an empty list (probe 0072); openInterestHist returns [] at the same position",
+      "classification": "COVERAGE_INSUFFICIENT_FAIL_CLOSED",
+      "classification_basis": "relative to 5m/15m conditioning clocks over the screen window: measured depth ends 2026-08-04T23:20:00Z (walk stops with HTTP 400 -1130 once endTime precedes retention); screen-start anchors false for all 4 symbols; matches documented 30-day bound"
+    },
+    {
+      "source_id": "top_trader_long_short_account_ratio",
+      "registered_candidate": "top-trader long/short account ratio (crowding)",
+      "endpoint": "/futures/data/topLongShortAccountRatio",
+      "granularity_options": {
+        "documented": [
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "4h",
+          "6h",
+          "12h",
+          "1d"
+        ],
+        "acceptance_probed_http_200": [
+          "30m",
+          "1h",
+          "1d"
+        ],
+        "full_depth_probed": [
+          "5m",
+          "15m"
+        ]
+      },
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Top-Long-Short-Account-Ratio",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123104931/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Top-Long-Short-Account-Ratio",
+        "snapshot_utc": "2025-01-23T10:49:31Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "The proportion of net long and net short accounts to total accounts of the top 20% users with the highest margin balance. Each account is counted once only.",
+        "GET /futures/data/topLongShortAccountRatio",
+        "periodENUMYES\"5m\",\"15m\",\"30m\",\"1h\",\"2h\",\"4h\",\"6h\",\"12h\",\"1d\"",
+        "limitLONGNOdefault 30, max 500",
+        "If startTime and endTime are not sent, the most recent data is returned.",
+        "Only the data of the latest 30 days is available.",
+        "IP rate limit 1000 requests/5min"
+      ],
+      "measured": {
+        "endpoint": "/futures/data/topLongShortAccountRatio",
+        "param_style": "symbol",
+        "symbols": {
+          "BTCUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "measured_earliest_utc_5m": "2026-08-04T23:25:00Z",
+            "depth_method_5m": "backward_walk",
+            "depth_stop_5m": "http_400",
+            "depth_note_5m": "http_400",
+            "anchor_screen_start_5m": false,
+            "measured_earliest_utc_15m": "2026-08-04T23:30:00Z",
+            "depth_stop_15m": "empty_page"
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          }
+        },
+        "period_acceptance_http": {
+          "30m": 200,
+          "1h": 200,
+          "1d": 200
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "Request Weight 0",
+          "IP rate limit 1000 requests/5min"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "period-aligned buckets; most recent bucket advances with query time; no stated update lag",
+      "classification": "COVERAGE_INSUFFICIENT_FAIL_CLOSED",
+      "classification_basis": "relative to 5m/15m clocks over the screen window: measured depth ends 2026-08-04T23:25:00Z (5m walk stops HTTP 400 -1130; 15m walk stops empty page); screen-start anchors false for all 4 symbols; matches documented 30-day bound"
+    },
+    {
+      "source_id": "top_trader_long_short_position_ratio",
+      "registered_candidate": "top-trader long/short position ratio (crowding)",
+      "endpoint": "/futures/data/topLongShortPositionRatio",
+      "granularity_options": {
+        "documented": [
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "4h",
+          "6h",
+          "12h",
+          "1d"
+        ],
+        "acceptance_probed_http_200": [
+          "30m",
+          "1h",
+          "1d"
+        ],
+        "full_depth_probed": [
+          "5m",
+          "15m"
+        ]
+      },
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Top-Trader-Long-Short-Ratio",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123120056/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Top-Trader-Long-Short-Ratio",
+        "snapshot_utc": "2025-01-23T12:00:56Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "The proportion of net long and net short positions to total open positions of the top 20% users with the highest margin balance.",
+        "GET /futures/data/topLongShortPositionRatio",
+        "periodENUMYES\"5m\",\"15m\",\"30m\",\"1h\",\"2h\",\"4h\",\"6h\",\"12h\",\"1d\"",
+        "limitLONGNOdefault 30, max 500",
+        "If startTime and endTime are not sent, the most recent data is returned.",
+        "Only the data of the latest 30 days is available.",
+        "IP rate limit 1000 requests/5min"
+      ],
+      "measured": {
+        "endpoint": "/futures/data/topLongShortPositionRatio",
+        "param_style": "symbol",
+        "symbols": {
+          "BTCUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "measured_earliest_utc_5m": "2026-08-04T23:30:00Z",
+            "depth_method_5m": "backward_walk",
+            "depth_stop_5m": "empty_page",
+            "depth_note_5m": "empty page at endTime=1785886199999 (2026-08-04T23:29:59.999000Z)",
+            "anchor_screen_start_5m": false,
+            "measured_earliest_utc_15m": "2026-08-04T23:30:00Z",
+            "depth_stop_15m": "empty_page"
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": "2026-09-04T23:25:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          }
+        },
+        "period_acceptance_http": {
+          "30m": 200,
+          "1h": 200,
+          "1d": 200
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "Request Weight 0",
+          "IP rate limit 1000 requests/5min"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "period-aligned buckets; most recent bucket advances with query time; no stated update lag",
+      "classification": "COVERAGE_INSUFFICIENT_FAIL_CLOSED",
+      "classification_basis": "relative to 5m/15m clocks over the screen window: measured depth ends 2026-08-04T23:30:00Z (empty page at retention edge, 5m and 15m); screen-start anchors false for all 4 symbols; matches documented 30-day bound"
+    },
+    {
+      "source_id": "global_long_short_account_ratio",
+      "registered_candidate": "global long/short account ratio (crowding)",
+      "endpoint": "/futures/data/globalLongShortAccountRatio",
+      "granularity_options": {
+        "documented": [
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "4h",
+          "6h",
+          "12h",
+          "1d"
+        ],
+        "acceptance_probed_http_200": [
+          "30m",
+          "1h",
+          "1d"
+        ],
+        "full_depth_probed": [
+          "5m",
+          "15m"
+        ]
+      },
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Long-Short-Ratio",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123111747/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Long-Short-Ratio",
+        "snapshot_utc": "2025-01-23T11:17:47Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "GET /futures/data/globalLongShortAccountRatio",
+        "periodENUMYES\"5m\",\"15m\",\"30m\",\"1h\",\"2h\",\"4h\",\"6h\",\"12h\",\"1d\"",
+        "limitLONGNOdefault 30, max 500",
+        "If startTime and endTime are not sent, the most recent data is returned.",
+        "Only the data of the latest 30 days is available.",
+        "IP rate limit 1000 requests/5min"
+      ],
+      "measured": {
+        "endpoint": "/futures/data/globalLongShortAccountRatio",
+        "param_style": "symbol",
+        "symbols": {
+          "BTCUSDT": {
+            "latest_observed_utc": "2026-09-04T23:25:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "measured_earliest_utc_5m": "2026-08-04T23:30:00Z",
+            "depth_method_5m": "backward_walk",
+            "depth_stop_5m": "empty_page",
+            "depth_note_5m": "empty page at endTime=1785886199999 (2026-08-04T23:29:59.999000Z)",
+            "anchor_screen_start_5m": false,
+            "measured_earliest_utc_15m": "2026-08-04T23:30:00Z",
+            "depth_stop_15m": "empty_page"
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "longAccount",
+              "longShortRatio",
+              "shortAccount",
+              "symbol",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": false,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": false
+          }
+        },
+        "period_acceptance_http": {
+          "30m": 200,
+          "1h": 200,
+          "1d": 200
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "Request Weight 0",
+          "IP rate limit 1000 requests/5min"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "period-aligned buckets; most recent bucket advances with query time; no stated update lag",
+      "classification": "COVERAGE_INSUFFICIENT_FAIL_CLOSED",
+      "classification_basis": "relative to 5m/15m clocks over the screen window: measured depth ends 2026-08-04T23:30:00Z (empty page at retention edge); screen-start anchors false for all 4 symbols; matches documented 30-day bound"
+    },
+    {
+      "source_id": "basis_futures_data",
+      "registered_candidate": "basis / mark-index structure (endpoint route)",
+      "endpoint": "/futures/data/basis",
+      "param_style": "pair + contractType=PERPETUAL (symbol param style measured as the working alternative for this endpoint)",
+      "granularity_options": {
+        "documented": [
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "4h",
+          "6h",
+          "12h",
+          "1d"
+        ],
+        "acceptance_probed_http_200": [
+          "30m",
+          "1h",
+          "1d"
+        ],
+        "full_depth_probed": [
+          "5m",
+          "15m"
+        ]
+      },
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Basis",
+        "archived_snapshot_url": "http://web.archive.org/web/20250430094449/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Basis",
+        "snapshot_utc": "2025-04-30T09:44:49Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "Query future basis",
+        "GET /futures/data/basis",
+        "contractTypeENUMYESCURRENT_QUARTER, NEXT_QUARTER, PERPETUAL",
+        "periodENUMYES\"5m\",\"15m\",\"30m\",\"1h\",\"2h\",\"4h\",\"6h\",\"12h\",\"1d\"",
+        "limitLONGYESDefault 30,Max 500",
+        "If startTime and endTime are not sent, the most recent data is returned.",
+        "Only the data of the latest 30 days is available."
+      ],
+      "measured": {
+        "endpoint": "/futures/data/basis",
+        "param_style": "pair",
+        "symbols": {
+          "BTCUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "annualizedBasisRate",
+              "basis",
+              "basisRate",
+              "contractType",
+              "futuresPrice",
+              "indexPrice",
+              "pair",
+              "timestamp"
+            ],
+            "measured_earliest_utc_5m": "2026-09-03T05:45:00Z",
+            "depth_method_5m": "backward_walk",
+            "depth_stop_5m": "page_cap_hit_data_continues",
+            "depth_note_5m": "page_cap_hit_data_continues",
+            "anchor_screen_start_5m": true,
+            "measured_earliest_utc_15m": "2026-08-30T18:15:00Z",
+            "depth_stop_15m": "page_cap_hit_data_continues"
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "annualizedBasisRate",
+              "basis",
+              "basisRate",
+              "contractType",
+              "futuresPrice",
+              "indexPrice",
+              "pair",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": true,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": true
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "annualizedBasisRate",
+              "basis",
+              "basisRate",
+              "contractType",
+              "futuresPrice",
+              "indexPrice",
+              "pair",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": true,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": true
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": "2026-09-04T23:20:00Z",
+            "schema_fields_observed": [
+              "annualizedBasisRate",
+              "basis",
+              "basisRate",
+              "contractType",
+              "futuresPrice",
+              "indexPrice",
+              "pair",
+              "timestamp"
+            ],
+            "anchors_5m": {
+              "at_screen_start_2025_08_22": true,
+              "at_utc_minus_30d": true,
+              "at_utc_minus_7d": true
+            },
+            "measured_earliest_utc_5m": null,
+            "depth_note_5m": "no data at screen-start anchor; data present at probe-UTC minus 30d and minus 7d -> boundary in (2025-08-22, 2026-08-05)",
+            "anchor_screen_start_15m": true
+          }
+        },
+        "period_acceptance_http": {
+          "30m": 200,
+          "1h": 200,
+          "1d": 200
+        },
+        "depth_brackets_point_anchors": {
+          "authorized_start_2024_08_20": {
+            "BTCUSDT": true,
+            "row_utc": "2024-08-20T00:00:00Z"
+          },
+          "2023_01_01": {
+            "BTCUSDT": true,
+            "row_utc": "2023-01-01T00:00:00Z"
+          },
+          "2019_12_01": {
+            "BTCUSDT": false,
+            "row_utc": null
+          },
+          "screen_end_2026_08_21_5m": {
+            "BTCUSDT": true,
+            "ETHUSDT": true,
+            "SOLUSDT": true,
+            "XRPUSDT": true,
+            "row_utc": "2026-08-22T00:00:00Z"
+          },
+          "screen_start_2025_08_22_15m": {
+            "BTCUSDT": true,
+            "ETHUSDT": true,
+            "SOLUSDT": true,
+            "XRPUSDT": true,
+            "row_utc": "2025-08-22T00:00:00Z"
+          }
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "Request Weight 0",
+          "Only the data of the latest 30 days is available. (documented bound, MEASURED FALSE - see discrepancies)"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "period-aligned buckets; latest observed bucket advances with query time; no stated update lag",
+      "endpoint_quirk_measured": "once endTime precedes the oldest retained bucket the endpoint REPEATS the latest page instead of returning empty (walk pages 01-25 identical, probes 0253-0276 archived); backward-walk depth measurement is invalid for this endpoint - point anchors (startTime+endTime, limit=1) honor ranges exactly (anchor row lands on the queried bucket)",
+      "classification": "EVIDENCED_AVAILABLE",
+      "classification_basis": "relative to 5m and 15m conditioning clocks over 2025-08-22T00:00:00Z..2026-08-21T23:59:59Z: measured point anchors return rows exactly AT the screen start (2025-08-22T00:00Z, all 4 symbols, 5m and 15m) and at the screen end (2026-08-21 boundary, all 4 symbols, 5m); deeper brackets: row exists at 2024-08-20 (authorized start) and at 2023-01-01, absent at 2019-12-01; documented semantics for pair/contractType/period/limit archived. DOCUMENTED-VS-MEASURED DISCREPANCY: the page states 'Only the data of the latest 30 days is available.' but measured depth exceeds 3 years - classification proceeds on the measured bound with the documented bound recorded and the discrepancy flagged for D2 re-verification"
+    },
+    {
+      "source_id": "basis_mark_index_derivable_route",
+      "registered_candidate": "basis / mark-index structure derivable from authorized fields",
+      "endpoints": [
+        "/fapi/v1/premiumIndexKlines",
+        "/fapi/v1/markPriceKlines",
+        "/fapi/v1/indexPriceKlines"
+      ],
+      "param_note": "indexPriceKlines documents and REQUIRES pair= (symbol= returns HTTP 400); the other two take symbol=",
+      "granularity_options": {
+        "documented": "interval ENUM (kline intervals); probed at 15m",
+        "full_depth_probed": [
+          "15m"
+        ]
+      },
+      "doc_evidence": {
+        "premium": {
+          "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Premium-Index-Kline-Data",
+          "archived_snapshot_url": "http://web.archive.org/web/20250123110534/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Premium-Index-Kline-Data",
+          "snapshot_utc": "2025-01-23T11:05:34Z",
+          "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+        },
+        "mark": {
+          "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data",
+          "archived_snapshot_url": "http://web.archive.org/web/20250123105427/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data",
+          "snapshot_utc": "2025-01-23T10:54:27Z",
+          "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+        },
+        "index": {
+          "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Index-Price-Kline-Candlestick-Data",
+          "archived_snapshot_url": "http://web.archive.org/web/20250426013622/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Index-Price-Kline-Candlestick-Data",
+          "snapshot_utc": "2025-04-26T01:36:22Z",
+          "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+        }
+      },
+      "doc_excerpts_verbatim": {
+        "premium": [
+          "Premium index kline bars of a symbol. Klines are uniquely identified by their open time.",
+          "GET /fapi/v1/premiumIndexKlines",
+          "[1,100)1",
+          "limitINTNODefault 500; max 1500.",
+          "If startTime and endTime are not sent, the most recent klines are returned."
+        ],
+        "mark": [
+          "Klines are uniquely identified by their open time.",
+          "GET /fapi/v1/markPriceKlines",
+          "[1,100)1",
+          "limitINTNODefault 500; max 1500.",
+          "If startTime and endTime are not sent, the most recent klines are returned."
+        ],
+        "index": [
+          "Kline/candlestick bars for the index price of a pair.",
+          "Klines are uniquely identified by their open time.",
+          "GET /fapi/v1/indexPriceKlines",
+          "[1,100)1",
+          "pairSTRINGYES",
+          "limitINTNODefault 500; max 1500.",
+          "If startTime and endTime are not sent, the most recent klines are returned."
+        ]
+      },
+      "measured": {
+        "premium_index_klines": {
+          "BTCUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "earliest_first_row_utc_per_symbol": {
+            "BTCUSDT": "2019-12-24T03:15:00Z",
+            "ETHUSDT": "2019-12-24T03:15:00Z",
+            "SOLUSDT": "2020-09-14T07:00:00Z",
+            "XRPUSDT": "2020-01-06T08:15:00Z"
+          }
+        },
+        "mark_price_klines": {
+          "BTCUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_row_utc": null,
+            "screen_start_exists": true
+          },
+          "earliest_first_row_utc_per_symbol": {
+            "BTCUSDT": "2019-12-23T11:45:00Z",
+            "ETHUSDT": "2019-12-23T11:45:00Z",
+            "SOLUSDT": "2020-09-13T11:45:00Z",
+            "XRPUSDT": "2020-01-06T03:15:00Z"
+          }
+        },
+        "index_price_klines_pair_param": {
+          "BTCUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_exists": true,
+            "screen_end_exists": true,
+            "earliest_first_row_utc": "2019-12-23T11:45:00Z"
+          },
+          "ETHUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_exists": true
+          },
+          "SOLUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_exists": true
+          },
+          "XRPUSDT": {
+            "latest_observed_utc": null,
+            "screen_start_exists": true
+          }
+        },
+        "symbol_param_disconfirmation": "all first-pass symbol= probes returned HTTP 400 (probes 0352-0361, 0402-0403 archived)"
+      },
+      "rate_limit": {
+        "documented": [
+          "[1,100) 1",
+          "[100, 500) 2",
+          "[500, 1000] 5",
+          "> 1000 10"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "kline buckets stamped by OPEN time ('Klines are uniquely identified by their open time'); a bucket's close value is complete only at close time (bar-close availability class)",
+      "classification": "EVIDENCED_AVAILABLE",
+      "classification_basis": "relative to the 15m staged-bar clock over the screen window: rows exist at screen start for all 4 symbols on all three routes, at screen end (BTCUSDT probed on all three), earliest rows at listing era (BTC first rows 2019-12), documented semantics and open-time stamping archived"
+    },
+    {
+      "source_id": "bars_klines_REKEY",
+      "rekey": "existing authorized dataset (bar close)",
+      "endpoint": "/fapi/v1/klines",
+      "availability_stamp_class": "bar_close_time",
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Kline-Candlestick-Data",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123095726/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Kline-Candlestick-Data",
+        "snapshot_utc": "2025-01-23T09:57:26Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "Klines are uniquely identified by their open time.",
+        "GET /fapi/v1/klines",
+        "[1,100)1",
+        "limitINTNODefault 500; max 1500.",
+        "If startTime and endTime are not sent, the most recent klines are returned."
+      ],
+      "measured": {
+        "BTCUSDT": {
+          "latest_observed_utc": null,
+          "screen_start_exists": true,
+          "earliest_first_row_utc": "2019-09-08T17:45:00Z"
+        },
+        "ETHUSDT": {
+          "latest_observed_utc": null,
+          "screen_start_exists": true,
+          "earliest_first_row_utc": "2019-11-27T07:45:00Z"
+        },
+        "SOLUSDT": {
+          "latest_observed_utc": null,
+          "screen_start_exists": true,
+          "earliest_first_row_utc": "2020-09-14T07:00:00Z"
+        },
+        "XRPUSDT": {
+          "latest_observed_utc": null,
+          "screen_start_exists": true,
+          "earliest_first_row_utc": "2020-01-06T08:15:00Z"
+        },
+        "screen_end_btcusdt_exists": true
+      },
+      "rate_limit": {
+        "documented": [
+          "[1,100) 1",
+          "[100, 500) 2",
+          "[500, 1000] 5",
+          "> 1000 10"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "bar stamped by open time; the bar's close price is only available at its close time (bar_close_time pin, tests/data_fusion/test_crypto_compat.py)",
+      "classification": "EVIDENCED_AVAILABLE",
+      "classification_basis": "re-key of the authorized bar-close set to the same evidenced standard: documented open-time identity and weight table archived; measured screen-window coverage on all 4 symbols; earliest rows at listing era"
+    },
+    {
+      "source_id": "funding_rate_REKEY",
+      "rekey": "existing authorized dataset (funding settlement)",
+      "endpoint": "/fapi/v1/fundingRate",
+      "availability_stamp_class": "funding_settlement_stamp",
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123093348/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History",
+        "snapshot_utc": "2025-01-23T09:33:48Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "GET /fapi/v1/fundingRate",
+        "share 500/5min/IP rate limit with GET /fapi/v1/fundingInfo",
+        "startTimeLONGNOTimestamp in ms to get funding rate from INCLUSIVE.",
+        "endTimeLONGNOTimestamp in ms to get funding rate  until INCLUSIVE.",
+        "limitINTNODefault 100; max 1000",
+        "In ascending order."
+      ],
+      "measured": {
+        "BTCUSDT": {
+          "latest_settlement_utc": "2026-09-04T16:00:00.009000Z",
+          "earliest_settlement_utc": "2019-09-10T08:00:00Z",
+          "screen_start_exists": true,
+          "screen_end_exists": true
+        },
+        "ETHUSDT": {
+          "latest_settlement_utc": "2026-09-04T16:00:00.009000Z",
+          "earliest_settlement_utc": "2019-11-27T08:00:00Z",
+          "screen_start_exists": true,
+          "screen_end_exists": true
+        },
+        "SOLUSDT": {
+          "latest_settlement_utc": "2026-09-04T16:00:00.009000Z",
+          "earliest_settlement_utc": "2020-09-13T16:00:00.004000Z",
+          "screen_start_exists": true,
+          "screen_end_exists": true
+        },
+        "XRPUSDT": {
+          "latest_settlement_utc": "2026-09-04T16:00:00.009000Z",
+          "earliest_settlement_utc": "2020-01-06T08:00:00Z",
+          "screen_start_exists": true,
+          "screen_end_exists": true
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "share 500/5min/IP rate limit with GET /fapi/v1/fundingInfo"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "each record is a funding settlement stamped at fundingTime; the record becomes available at the settlement itself (funding_settlement_stamp pin)",
+      "measured_schema_note": "live responses carry field rateType (e.g. 'Regular') and millisecond-offset fundingTime stamps (e.g. ...009) absent from the documented example",
+      "classification": "EVIDENCED_AVAILABLE",
+      "classification_basis": "re-key of the authorized funding set: documented inclusive-bound semantics, ascending order, shared rate limit archived; measured earliest settlements 2019-09/2019-11/2020-01/2020-09 per symbol and full screen-window coverage"
+    },
+    {
+      "source_id": "open_interest_snapshot_REKEY",
+      "rekey": "existing authorized dataset (OI snapshot publication semantics)",
+      "endpoint": "/fapi/v1/openInterest",
+      "availability_stamp_class": "oi_snapshot_stamp",
+      "doc_evidence": {
+        "provider_url_of_record": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Open-Interest",
+        "archived_snapshot_url": "http://web.archive.org/web/20250123100715/https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Open-Interest",
+        "snapshot_utc": "2025-01-23T10:07:15Z",
+        "fetch_note": "live developers.binance.com serves a bot challenge to non-browser fetchers; page text archived from the provider page via its Internet Archive snapshot"
+      },
+      "doc_excerpts_verbatim": [
+        "Get present open interest of a specific symbol.",
+        "GET /fapi/v1/openInterest",
+        "\"time\": 1589437530011   // Transaction time"
+      ],
+      "measured": {
+        "semantics": "present-only snapshot: identical body (same time field) returned with and without startTime/endTime params (probes 0391-0398); no history retrievable from this endpoint",
+        "per_symbol_probe_ids": {
+          "BTCUSDT": [
+            "0391",
+            "0392"
+          ],
+          "ETHUSDT": [
+            "0393",
+            "0394"
+          ],
+          "SOLUSDT": [
+            "0395",
+            "0396"
+          ],
+          "XRPUSDT": [
+            "0397",
+            "0398"
+          ]
+        }
+      },
+      "rate_limit": {
+        "documented": [
+          "Request Weight 1"
+        ],
+        "observed_max_used_weight_1m": 48
+      },
+      "publication_lag_semantics": "single point-in-time snapshot stamped at 'time' (Transaction time); available only from the moment of the call (oi_snapshot_stamp pin)",
+      "classification": "COVERAGE_INSUFFICIENT_FAIL_CLOSED",
+      "classification_basis": "as a HISTORICAL source over the S0 windows this endpoint cannot fund any conditioning clock (no retrievable history - documented 'present open interest' and measured param-ignored behavior); usable only for real-time forward collection. The staged historical OI set comes from /futures/data/openInterestHist (rolling ~30d retention, classified FAIL_CLOSED above) and survives only as previously archived data"
+    }
+  ],
+  "request_budget": {
+    "used": 398,
+    "hard_cap": 420,
+    "target": "< 400",
+    "max_used_weight_1m_observed": 48,
+    "sleep_between_requests_s": 0.55,
+    "followup": {
+      "this_script": 21,
+      "cumulative_lane": 419,
+      "hard_cap": 420
+    }
+  }
+}
