@@ -1,0 +1,131 @@
+{
+  "schema": "v13_proposal_a5_v1",
+  "hypothesis_id": "A13-V13-A5-LIQEPIS",
+  "lane": "a5",
+  "cycle": "CRYPTO-V13",
+  "phase": "D1",
+  "outcome_blind": true,
+  "conditioning_space": "liquidity provision / depth-turnover structure (mission Q2)",
+  "item_01_hypothesis_and_mechanism": {
+    "hypothesis_id": "A13-V13-A5-LIQEPIS",
+    "mechanism": "Episodicity H_i(T) = sum over the trailing 2688 completed 15m bars of (q_b/Q)^2, q_b = close x volume (Herfindahl of dollar-volume shares, uniform baseline 1/2688). Resting liquidity has a temporal SHAPE; episodic names have thin standing depth between bursts, providers face bursty inventory/adverse-selection risk and quote wider effective spreads around bursts, and burst prints are information-dominated.",
+    "economic_counterparty": "the liquidity provider facing bursty flow and the positional holder whose risk-transfer needs do not coincide with the bursts",
+    "why_edge_exists": "fragility of episodic liquidity supply is priced by attention (bursts attract chasing flow) rather than by standing-liquidity quality, so smooth-turnover names are systematically underpriced relative to the liquidity service they provide a weekly holder; the shape is endogenous and persistent (Admati & Pfleiderer 1988) and crypto volume seasonality is strong and venue-specific (quarter-hour algorithmic cycles on Binance USDT-M perps; inverted-U intraday patterns)",
+    "expected_sign": "cross-sectionally LOW episodicity (smooth turnover) outperforms HIGH episodicity over the next week; long bottom tercile, short top tercile; signal contains no return term, no OI term, no funding term, no shock threshold, no price-impact term"
+  },
+  "item_02_falsifiable_prediction": {
+    "prediction": "after base costs the anchor earns positive BTC-beta-adjusted weekly excess in at least 2 of 3 frozen folds, the 56d neighbour supports the same sign, and the sign-inverted control does NOT pass the same gate",
+    "falsified_if_any_of": [
+      "anchor beta-context excess not positive in >= 2/3 folds",
+      "sign-inverted control (long HIGH episodicity) also passes the incremental gate: ordering carries no directional liquidity information; anchor result is a tilt artifact",
+      "neighbour sign flips: shape not persistent, contradicting the mechanism persistence requirement",
+      "anchor passes base but fails stress: spread/slippage execution artifact, not liquidity structure"
+    ],
+    "on_falsification": "family rejected; control never promotable to a family; no post-hoc sign reinterpretation"
+  },
+  "item_03_literature": {
+    "queries_and_log": [
+      {"query": "Admati Pfleiderer theory of intraday patterns volume price variability liquidity trading", "retrieved_utc": "2026-09-04T11:15:00Z", "sources": ["Admati & Pfleiderer 1988, Review of Financial Studies 1(1) 3-40"], "verdict": "ACCEPT (primary)", "reason": "endogenous persistent concentration of discretionary liquidity trading; grounds persistence of the shape and the provider-facing mechanism"},
+      {"query": "trading volume concentration burstiness cross-section expected returns turnover Herfindahl", "retrieved_utc": "2026-09-04T11:16:00Z", "sources": ["MDPI JRFM 17(8) 2024 Gini-based volume concentration across S&P 500", "RePEc IJEFR 2021 volume concentration and returns"], "verdict": "PARTIAL ACCEPT", "reason": "precedent that concentration variables are studied cross-sectionally; equity daily aggregation, journal tier and mixed evidence; used as precedent only, not as sign evidence"},
+      {"query": "cryptocurrency perpetual futures intraday volume seasonality liquidity provision pattern empirical", "retrieved_utc": "2026-09-04T11:17:00Z", "sources": ["Jasiak 2024, International Review of Economics and Finance", "Su et al. 2022 inverted-U intraday volume/volatility/liquidity", "arXiv 2607.09426 quarter-hour effect on Binance USDT-M perps"], "verdict": "ACCEPT (primary for crypto transfer)", "reason": "crypto volume has persistent temporal structure on exactly the studied venue/asset class; supports a 24/7 shape measure"},
+      {"query": "Datar Naik Radcliffe liquidity stock returns alternative test turnover 1998", "retrieved_utc": "2026-09-04T11:16:00Z", "sources": ["Datar, Naik & Radcliffe 1998, Journal of Financial Markets 1(2) 203-219"], "verdict": "ACCEPT as lineage contrast only", "reason": "turnover LEVEL ratio without price terms is distinct from Amihud impact ratios; not the anchor basis here: this variable is a temporal dispersion shape with a standing-liquidity mechanism, not a turnover-level liquidity premium"},
+      {"query": "perpetual futures liquidity provision market making funding rate intraday", "retrieved_utc": "2026-09-04T11:17:00Z", "sources": ["arXiv 2605.06405 funding-aware optimal market making in perps"], "verdict": "ACCEPT as mechanism context", "reason": "perp liquidity provision is patterned and state-dependent; supports between-burst thinness as a real supply decision; no design element taken"}
+    ],
+    "primary_claims_carried": [
+      "volume-time concentration is endogenous and persistent (L1)",
+      "crypto/perp volume seasonality is strong and venue-specific (L3)",
+      "concentration-style variables have prior art in cross-sectional work (L2, precedent only)"
+    ],
+    "transfer_caveats": [
+      "Admati-Pfleiderer is an equity session theory; crypto 24/7 + quarter-hour periodicity means the 28d shape mixes a periodic and a burst component by design; the 56d neighbour tests persistence of the mixture",
+      "Herfindahl over 2688 bins is downtime-sensitive; any missing 15m slot refuses the stamp fail-closed so gaps can never masquerade as thinness; refusal counts reported",
+      "dollar-volume proxies conflate taker/maker with intra-bar drift noise, identical across arms",
+      "prior equity concentration evidence is mixed and daily-aggregated; the a priori sign is declared from the provider/holder mechanism, not from precedent; an opposite sign falsifies per item 02",
+      "burstiness correlates with event attention and could be proxied by return-moment characteristics; the ancestry defense is that H uses no return moments whatsoever"
+    ]
+  },
+  "item_04_pit_observable": {
+    "authority": "fusion-record availability semantics: a decision at T never reads a row whose available_time_utc > T; retrieval time never substitutes for availability (research/data_fusion/crypto_compat.py, research/data_fusion/pit.py)",
+    "fields": [
+      {"dataset": "crypto_bars", "field": "close, volume (15m completed)", "availability": "bar close (bar completed at t iff t >= close boundary ts_event)", "use": "q_b = close x volume; H over 2688 (anchor) / 5376 (neighbour) slots; every slot must be present and available; one missing slot refuses the symbol at that stamp (fail-closed, no back-fill)"},
+      {"dataset": "crypto_bars BTCUSDT", "field": "close", "availability": "bar close", "use": "benchmark only: weekly buy-and-hold and 90d beta context; never ranked"},
+      {"dataset": "crypto_funding", "field": "funding_rate", "availability": "settlement stamp", "use": "native cost on held legs only; never a signal"},
+      {"note": "OI snapshots and mark price are explicitly NOT used by this mechanism; declared to bound the conditioning space"}
+    ]
+  },
+  "item_05_universe_warmup_clock": {
+    "universe": "19 tradable symbols = 20 staged REQUIRED_SYMBOLS minus BTCUSDT (benchmark only); per-symbol per-stamp eligibility fail-closed",
+    "warmup_days": {"anchor": 28, "neighbour": 56, "beta_binding_max": 90},
+    "decision_clock": "weekly, every Monday 00:00:00Z (52 discretionary decisions/365d <= 60 floor)",
+    "holding_days_intended": 7,
+    "execution_lag_declared": "ONE lag: fills at the close of the first completed 15m bar strictly after T (Monday 00:15:00Z bar close), generic adapter costs on fills; stress adds +1 event delay",
+    "book_construction": "long bottom tercile / short top tercile of H, 6 symbols per side, equal weight 1/12 per held symbol, gross 1.0, max |weight| = 1/12 <= 0.30 by construction, ties broken by symbol id ascending, middle tercile flat, force-flat at fold boundaries",
+    "folds": "frozen V12 chronological F0/F1/F2 over blind-S0 window 2025-08-22..2026-08-21 with 1-day purge, imported unchanged"
+  },
+  "item_06_arms": {
+    "anchor": {"id": "LIQEPIS-28D", "signal": "Herfindahl H over trailing 2688 completed bars (28d)", "book": "long bottom tercile / short top tercile"},
+    "neighbour": {"id": "LIQEPIS-56D", "signal": "same mechanism, H over 5376 bars (56d)", "justification": "Admati-Pfleiderer persistence implies a slow characteristic; 56d tests independence from one month of flow realization; in the frozen warmup table and the pre-declared sibling of the 28d anchor"},
+    "causal_negative_control": {"id": "LIQEPIS-SIGN-INV", "signal": "identical construction and book with the sign inverted (long HIGH episodicity / short LOW); factory-standard causal negative control isolating the declared sign from a generic long/short tilt"},
+    "preregistered_control_rule": "control MUST NOT reproduce the anchor: if LIQEPIS-SIGN-INV passes the same incremental gate (BTC-beta-context excess positive in >= 2/3 folds), the episodic-liquidity mechanism is falsified, the anchor FAILS and the family is rejected; control never promotable regardless of its own result",
+    "beta_funding_separation": "identical universe, fills and native funding costs across arms; funding is cost only; BTC-beta-adjusted gate; anchor-minus-control difference is sign-direction liquidity information only"
+  },
+  "item_07_incremental_test": {
+    "benchmark": "BTCUSDT buy-and-hold over the same Monday stamps and fold boundaries",
+    "beta_context": "beta from trailing 90d completed daily bars (frozen convention); weekly arm excess adjusted by BTC beta",
+    "gate": "anchor BTC-beta-context excess positive in >= 2/3 folds (Stage-A, unrelaxed); raw excess vs buy-and-hold also positive in >= 2/3 folds for the family to advance; neighbour same sign; control must fail per item 06"
+  },
+  "item_08_costs_floors_concentration_dropone": {
+    "costs_base": "frozen generic adapter fee/slippage schedule on fills; native funding settlements on held legs counted once, cost only; base drag floor <= 8 pct/yr of gross",
+    "costs_stress": "fee x1.5, +2 adverse ticks, +1 event delay; stressed drag floor <= 12 pct/yr of gross",
+    "feasibility_note": "evaluated by A9-F from schedule artifacts only; no cost number computed in this proposal",
+    "floors": {"max_discretionary_decisions_per_365d": 60, "decisions_designed": 52, "min_median_holding_days": 3, "designed_median_holding_days": 7, "min_decisions_screen_window": 52, "min_decisions_per_fold": 15, "zero_position_arms": "refused at publication (inherited)"},
+    "concentration": {"max_symbol_turnover_share": 0.25, "max_symbol_positive_pnl_share": 0.70, "max_abs_weight_at_every_stamp": 0.30, "designed_abs_weight": 0.0833},
+    "drop_one_design": "at the fold-stamp with the largest held |weight|, drop the single symbol attaining that maximum among held positions (non-vacuous by construction); renormalize to 5 per side at 1/10; family survives only if anchor fold-sign pattern and control-rule outcome are unchanged"
+  },
+  "item_09_failure_interpretation": [
+    "anchor fails incremental gate in all folds: smooth-liquidity service not rewarded at weekly horizon or episodicity already priced by attention flows; family rejected, no parameter search",
+    "anchor positive but sign-inverted control also positive: no directional liquidity information in the ordering; anchor result is a tilt/cost artifact; family rejected; control never promotable",
+    "anchor positive, neighbour negative or sign-flipped: shape formation-window fragile, not the persistent characteristic the mechanism requires; family rejected",
+    "anchor passes base but fails stress: microstructure execution artifact; family rejected",
+    "one fold carries > 50 pct of positives: regime-driven burst quarter, not persistent; family rejected",
+    "largest symbol > 0.70 of positive PnL: single-name artifact; family rejected",
+    "high refusal rate from missing formation slots: BLOCKED_DATA verdict, not a mechanism rejection"
+  ],
+  "item_10_source_to_test_map": [
+    {"input": "crypto_bars 15m close x volume (avail = bar close)", "test_use": "q_b per bar; Herfindahl over 2688/5376 completed slots; tercile ranking; fail-closed gap refusal"},
+    {"input": "completed-bar coverage and gaps", "test_use": "warmup satisfiability (90d binding), formation completeness, fold boundaries"},
+    {"input": "BTCUSDT 15m bars", "test_use": "weekly buy-and-hold benchmark and 90d beta context; never ranked"},
+    {"input": "crypto_funding settlements (avail = settlement stamp)", "test_use": "native cost on held legs, identical across arms; never a signal"},
+    {"input": "instrument tick size (crypto_perpetual metadata)", "test_use": "+2-tick stress slippage unit"},
+    {"input": "OI snapshots, mark price, funding rate", "test_use": "explicitly NOT used in any signal; declared to bound the conditioning space"}
+  ],
+  "item_11_ancestry_map": {
+    "V9 dollar-volume shock continuation": "different variable and claim: V9 used dollar-volume SHOCK LEVELS with a continuation claim (buy the spike); LIQEPIS uses within-window temporal DISPERSION of volume shares (shape, no threshold, no level) with an a priori SHORT-the-concentrated sign declared from the provider mechanism, not as an inversion; no parameter rescue, universe carve-out or renaming",
+    "V1-VOLCOMP volatility-compression breakout": "no volatility conditioning, no breakout, no continuation; volume shape only",
+    "V11-ILLIQ-AMIHUD / V12-ILLIQ-REPLICATION": "no |return|/volume price-impact term anywhere; the shape is volume-share dispersion; frozen ILLIQ brief untouched",
+    "V11-LOTTERY-MAX-SKEW": "H uses no return moments (no MAX, skew or lottery characteristics); only volume shares across time",
+    "V12-OILEV-V2": "no OI data enters any signal (no level, flow or differencing)",
+    "V6-V1-CARRY-FUNDING": "funding only as an identical native cost across arms; never a signal",
+    "V4-XSECT-MOM / V8R-XSECT-REVERSAL / V9-TS-TREND / WEEKLY-REVERSAL": "no return term enters any signal",
+    "V10-M01-AGGRESSOR-ABSORPTION": "no aggressor/order-flow panels; 15m LAST bars only",
+    "V12-BAB-LOWBETA": "no beta-sorted book; beta only as identical context adjustment across arms"
+  },
+  "item_12_shadow_region": {
+    "determination": "outside the shadow region: liquidity-supply STRUCTURE mechanism (standing-liquidity reliability), not a liquidity-provision premium harvested against providers and not a crowding-premium rescue; no prior control arm measured volume-time concentration; the recorded shadow observations (inverted OI-flow +0.758; V11 LOT inversion; stocks-program vol-level sorting) involve different variables and no observed sign exists for this mechanism",
+    "front_door_pre_staged_if_classified_shadow": {
+      "own_words": true,
+      "disclosure_of_observed_signs": "the sign of THIS mechanism was never observed in any V12/V11 control arm; the recorded shadow observations are the inventory's own and none is a volume-time-concentration result; if shadow-classified, the family is preregistered CONFIRMATORY and its confirmatory status recorded in the verdict and denominator",
+      "confirmatory_if_shadow_classified": true,
+      "own_causal_negative_control": "sign-inverted arm isolating the directional claim; no OI or funding variable exists in the signal to confound with carry; identical funding/beta context across arms",
+      "a7n_rank_correlation_gate": "|rho| <= 0.20 vs frozen OILEV-V2 anchor AND its inverted control on the common window accepted as binding; failure renders this proposal INELIGIBLE",
+      "stage_a_gates_unrelaxed": true
+    }
+  },
+  "item_13_attestation": {
+    "text": "OUTCOME-BLIND ATTESTATION / lane: a5 proposal: A13-V13-A5-LIQEPIS / I wrote this mechanism and its falsification conditions before computing any return, metric or ranking, and without access to any scored artifact or outcome file.",
+    "utc": "2026-09-04T11:19:42Z",
+    "agent": "a5",
+    "no_returns_pnl_metrics_backtests_computed": true,
+    "no_outcome_files_seen": true
+  }
+}

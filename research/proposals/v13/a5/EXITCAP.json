@@ -1,0 +1,130 @@
+{
+  "schema": "v13_proposal_a5_v1",
+  "hypothesis_id": "A13-V13-A5-EXITCAP",
+  "lane": "a5",
+  "cycle": "CRYPTO-V13",
+  "phase": "D1",
+  "outcome_blind": true,
+  "conditioning_space": "positioning crowding / exit capacity (mission Q2)",
+  "item_01_hypothesis_and_mechanism": {
+    "hypothesis_id": "A13-V13-A5-EXITCAP",
+    "mechanism": "Unwind-days U_i(T) = OI_notional_i(T) / mean daily dollar turnover (trailing 28d). Gross perp position stock relative to routine risk-transfer capacity. Heavy books relative to capacity are vulnerable to forced-deleveraging cascades whose damage is undercompensated; entry liquidity at the crowded moment is deceptive (displayed depth overstates realizable liquidity exactly when crowded books unwind).",
+    "economic_counterparty": "the forced deleverager (auto-liquidated leveraged positions); cascade flow exceeds ordinary counterparties absorption capacity",
+    "why_edge_exists": "crowding is priced by attention, not by exit capacity; liquidation cascades are long-side dominated in aggregate crypto positioning (Cheng et al. 2021: 3.51 pct long vs 1.89 pct short of OI per day), so down-cascades destroy more value than up-squeezes create and the vulnerability is undercompensated in expected return",
+    "expected_sign": "cross-sectionally LOW unwind-days outperforms HIGH unwind-days over the next week; long bottom tercile, short top tercile; signal contains no OI time-difference, no return term, no funding term, no price-impact term"
+  },
+  "item_02_falsifiable_prediction": {
+    "prediction": "after base costs the anchor earns positive BTC-beta-adjusted weekly excess in at least 2 of 3 frozen folds, the 56d neighbour shows the same sign, and the static-scale control does NOT pass the same gate in the anchor direction",
+    "falsified_if_any_of": [
+      "anchor beta-context excess not positive in >= 2/3 folds",
+      "static-scale control reproduces the anchor gate outcome (edge is raw positioning scale, not capacity normalization)",
+      "sign is opposite (high unwind-days outperforms)",
+      "neighbour sign flips (formation-window fragility)"
+    ],
+    "on_falsification": "family rejected; control never promotable to a family"
+  },
+  "item_03_literature": {
+    "queries_and_log": [
+      {"query": "open interest predict returns cryptocurrency perpetual futures crowding", "retrieved_utc": "2026-09-04T11:14:00Z", "sources": ["Giagkiozis et al. 2024, Reconciling Open Interest with Traded Volume in Perpetual Swaps, Ledger (ledgerjournal.org/ojs/ledger/article/view/325)"], "verdict": "ACCEPT", "reason": "volume conflates position-opening and closing trades; turnover per unit of open stock is the natural positioning-stock normalization; practitioner pages rejected as evidence (no methodology)"},
+      {"query": "Bessembinder hedging pressure risk premium futures markets journal of finance", "retrieved_utc": "2026-09-04T11:14:00Z", "sources": ["Bessembinder 1992, Review of Financial Studies 5(4)", "De Roon, Nijman & Veld 2000, Journal of Finance 55(3)", "Basu & Miffre 2013, JBF"], "verdict": "ACCEPT with caveat", "reason": "positioning structure carries futures risk premia; those designs need net hedger dispositions (COT) which are DATA-GATED in crypto; this proposal uses the gross OI stock normalized by realized turnover, a different side-agnostic variable"},
+      {"query": "liquidation cascade bitcoin perpetual futures open interest deleveraging empirical study", "retrieved_utc": "2026-09-04T11:15:00Z", "sources": ["Cheng et al. 2021, Applied Economics 53(47) (forced liquidations 3.51 pct long / 1.89 pct short of outstanding OI per day, BitMEX)", "SSRN 6891658 hidden liquidity in a Bybit BTCPERP liquidation cascade", "Alexander 2023, EJOR automatic liquidation mechanics"], "verdict": "ACCEPT", "reason": "cascade vulnerability mechanism and long/short liquidation asymmetry supporting the a priori sign; Amberdata 5-pct-of-OI threshold rejected as evidence (practitioner)"},
+      {"query": "crypto perpetual futures crowding factor open interest return predictability", "retrieved_utc": "2026-09-04T11:14:00Z", "sources": ["ProSP Physica A 2026", "arXiv 2212.06888 extrapolative demand in perpetuals"], "verdict": "REJECT as direct basis", "reason": "different conditioning variables; retained as context only"},
+      {"query": "Ledger 325 full-text fetch", "retrieved_utc": "2026-09-04T11:17:00Z", "sources": ["ledgerjournal.org PDF"], "verdict": "REJECT (retrieval failure)", "reason": "abstract/body not retrievable; cited on title/venue only with caveat recorded"}
+    ],
+    "primary_claims_carried": [
+      "traded volume conflates open/close trades; volume per unit of open stock measures recycling intensity not direction (L1)",
+      "forced liquidations are first-order and asymmetric on leveraged crypto venues (L3)",
+      "displayed depth least trustworthy when crowded books unwind (L3)"
+    ],
+    "transfer_caveats": [
+      "hedging-pressure premia need net positions (COT), unavailable without a data purchase; our signal is gross and side-agnostic; net-short regimes would weaken the declared long-side cascade asymmetry (declared mechanism risk)",
+      "OI is daily snapshots; intraday crowding invisible; missing snapshot refuses the stamp fail-closed",
+      "dollar turnover approximated by 15m LAST close x base volume; intra-bar drift and taker/maker conflation are identical across arms",
+      "cascade premium is a tail phenomenon; fold-concentration gate (largest fold-positive share <= 50 pct) guards one-regime dominance"
+    ]
+  },
+  "item_04_pit_observable": {
+    "authority": "fusion-record availability semantics: a decision at T never reads a row whose available_time_utc > T; retrieval time never substitutes for availability (research/data_fusion/crypto_compat.py, research/data_fusion/pit.py)",
+    "fields": [
+      {"dataset": "crypto_open_interest", "field": "open_interest", "availability": "OI snapshot stamp", "use": "numerator; latest snapshot with available_time_utc <= T and stamp within trailing 48h, else symbol refused fail-closed"},
+      {"dataset": "crypto_mark_price", "field": "mark_price", "availability": "mark snapshot stamp (kline close)", "use": "pairing rule: OI snapshot at stamp s paired with latest mark with available_time_utc <= s; none within 24h refuses the stamp; OI_notional = OI(s) x mark(s)"},
+      {"dataset": "crypto_bars", "field": "close, volume (15m completed)", "availability": "bar close", "use": "daily dollar turnover = sum(close x volume); days with missing 15m slots excluded and counted; > 10 pct missing days in a formation window refuses the stamp"},
+      {"dataset": "crypto_funding", "field": "funding_rate", "availability": "settlement stamp", "use": "native cost on held legs only; never in any signal, ranking or gate"}
+    ]
+  },
+  "item_05_universe_warmup_clock": {
+    "universe": "19 tradable symbols = 20 staged REQUIRED_SYMBOLS minus BTCUSDT (benchmark only); per-symbol per-stamp eligibility fail-closed",
+    "warmup_days": {"anchor": 28, "neighbour": 56, "beta_binding_max": 90},
+    "decision_clock": "weekly, every Monday 00:00:00Z (52 discretionary decisions/365d <= 60 floor)",
+    "holding_days_intended": 7,
+    "execution_lag_declared": "ONE lag: fills at the close of the first completed 15m bar strictly after T (Monday 00:15:00Z bar close), generic adapter costs on fills; stress adds +1 event delay",
+    "book_construction": "long bottom tercile / short top tercile of unwind-days, 6 symbols per side, equal weight 1/12 per held symbol, gross 1.0, max |weight| = 1/12 <= 0.30 by construction, ties broken by symbol id ascending, middle tercile flat, force-flat at fold boundaries",
+    "folds": "frozen V12 chronological F0/F1/F2 over blind-S0 window 2025-08-22..2026-08-21 with 1-day purge, imported unchanged"
+  },
+  "item_06_arms": {
+    "anchor": {"id": "EXITCAP-28D", "signal": "unwind-days with 28d turnover denominator", "book": "long bottom tercile / short top tercile"},
+    "neighbour": {"id": "EXITCAP-56D", "signal": "same mechanism, 56d turnover denominator", "justification": "capacity measured over a full quarter smooths regime bursts; 56d is in the frozen warmup table and is the pre-declared sibling of the 28d anchor"},
+    "causal_negative_control": {"id": "EXITCAP-STATIC-SCALE", "signal": "identical book; denominator replaced by each symbol median daily dollar turnover over the 90-day pre-window frozen at screen start (per-symbol constant; zero capacity dynamics after freeze); ranking driven by raw OI-notional scale up to a static factor"},
+    "preregistered_control_rule": "control MUST NOT reproduce the anchor: if EXITCAP-STATIC-SCALE is positive in >= 2/3 folds on the same BTC-beta-context excess gate, the anchor edge is attributed to persistent raw positioning scale, the anchor FAILS mechanism attribution and the family is rejected; control never promotable regardless of its own result",
+    "beta_funding_separation": "identical universe, fills and native funding costs across arms; funding is cost only; BTC-beta-adjusted gate; anchor-minus-control difference reflects capacity information only"
+  },
+  "item_07_incremental_test": {
+    "benchmark": "BTCUSDT buy-and-hold over the same Monday stamps and fold boundaries",
+    "beta_context": "beta from trailing 90d completed daily bars (frozen convention); weekly arm excess adjusted by BTC beta",
+    "gate": "anchor BTC-beta-context excess positive in >= 2/3 folds (Stage-A, unrelaxed); raw excess vs buy-and-hold also positive in >= 2/3 folds for the family to advance; neighbour same sign; control must fail per item 06"
+  },
+  "item_08_costs_floors_concentration_dropone": {
+    "costs_base": "frozen generic adapter fee/slippage schedule on fills; native funding settlements on held legs counted once, cost only; base drag floor <= 8 pct/yr of gross",
+    "costs_stress": "fee x1.5, +2 adverse ticks, +1 event delay; stressed drag floor <= 12 pct/yr of gross",
+    "feasibility_note": "evaluated by A9-F from schedule artifacts only; no cost number computed in this proposal",
+    "floors": {"max_discretionary_decisions_per_365d": 60, "decisions_designed": 52, "min_median_holding_days": 3, "designed_median_holding_days": 7, "min_decisions_screen_window": 52, "min_decisions_per_fold": 15, "zero_position_arms": "refused at publication (inherited)"},
+    "concentration": {"max_symbol_turnover_share": 0.25, "max_symbol_positive_pnl_share": 0.70, "max_abs_weight_at_every_stamp": 0.30, "designed_abs_weight": 0.0833},
+    "drop_one_design": "at the fold-stamp with the largest held |weight|, drop the single symbol attaining that maximum among held positions (non-vacuous by construction); renormalize to 5 per side at 1/10; family survives only if anchor fold-sign pattern and control-rule outcome are unchanged"
+  },
+  "item_09_failure_interpretation": [
+    "anchor fails incremental gate in all folds: no after-cost edge; premium absent or already priced; family rejected, no parameter search",
+    "anchor positive but control also positive: edge is raw positioning scale, not exit-capacity normalization; mechanism attribution fails; family rejected",
+    "anchor positive, neighbour negative or sign-flipped: formation-window fragility; family rejected",
+    "anchor fails only under stress: microstructure execution artifact, not positioning structure; family rejected",
+    "one fold carries > 50 pct of positives: regime-dependent cascade window, not persistent; family rejected",
+    "largest symbol > 0.70 of positive PnL: single-name artifact; family rejected",
+    "majority of stamps refused (OI/mark pairing unresolved): BLOCKED_DATA verdict, not a mechanism rejection"
+  ],
+  "item_10_source_to_test_map": [
+    {"input": "crypto_open_interest sumOpenInterest (avail = snapshot stamp)", "test_use": "unwind-days numerator; latest avail <= T, paired at own stamp, stale > 48h refused"},
+    {"input": "crypto_mark_price (avail = snapshot/kline-close stamp)", "test_use": "OI to notional at the OI snapshot stamp (pairing rule)"},
+    {"input": "crypto_bars 15m close x volume (avail = bar close)", "test_use": "daily dollar turnover; 28d/56d/frozen-90d-median denominators; turnover-share concentration"},
+    {"input": "crypto_funding settlements (avail = settlement stamp)", "test_use": "native cost on held legs, identical across arms; never a signal"},
+    {"input": "BTCUSDT 15m bars", "test_use": "weekly buy-and-hold benchmark; 90d beta context"},
+    {"input": "instrument tick size (crypto_perpetual metadata)", "test_use": "+2-tick stress slippage unit"},
+    {"input": "completed-bar coverage and gaps", "test_use": "warmup satisfiability (90d binding), formation-window refusal, fold boundaries"}
+  ],
+  "item_11_ancestry_map": {
+    "V12-OILEV-V2": "forbidden family signals on the TIME-DIFFERENCE of OI (deleveraging flow); EXITCAP has no OI differencing anywhere; conditioning variable is the OI STOCK normalized by realized turnover; sign derived from cascade-vulnerability asymmetry, not from inverting or retuning the anchor; no sign flip, horizon tweak, cap raise, universe carve-out or renaming involved; if shadow-classified anyway, item 12 applies including the binding A7-N |rho| <= 0.20 check vs the frozen OILEV-V2 anchor AND its inverted control",
+    "V6-V1-CARRY-FUNDING": "funding appears only as a native cost identical across arms; no funding-derived signal, premium or ranking",
+    "V11-ILLIQ-AMIHUD / V12-ILLIQ-REPLICATION": "no |return|/volume price-impact term; turnover normalized by OPEN STOCK not price impact; no attempt to reopen the frozen ILLIQ brief",
+    "V4-XSECT-MOM / V8R-XSECT-REVERSAL / V9-TS-TREND / WEEKLY-REVERSAL": "no return term enters any signal; ranking uses OI-notional and turnover only",
+    "V1-VOLCOMP / V9 dollar-volume shock continuation": "no shock level, threshold or breakout; volume enters only as a capacity denominator; no continuation claim",
+    "V11-LOTTERY-MAX-SKEW": "no return-distribution moments",
+    "V10-M01-AGGRESSOR-ABSORPTION": "no aggressor/order-flow data; 15m LAST bars only",
+    "V12-BAB-LOWBETA": "no beta-sorted book; beta enters only as identical context adjustment across arms"
+  },
+  "item_12_shadow_region": {
+    "determination": "outside the shadow region: EXIT-CAPACITY RISK mechanism (gross leverage crowding vs realized risk-transfer capacity), not a liquidity-provision or crowding-premium rescue; signal shares no variable with the observed shadow signs",
+    "front_door_pre_staged_if_classified_shadow": {
+      "own_words": true,
+      "disclosure_of_observed_signs": "inverted OI-flow +0.758 raw (V12 OILEV-V2-28D-FLOW-W-INV causal control); V11 LOT inversion (net +0.71, PF 1.34); stocks-program vol-level sorting control outperformed its anchor; measured control-arm observations, NOT tradable findings, NOT rescuable descendants",
+      "confirmatory_if_shadow_classified": true,
+      "own_causal_negative_control": "static-scale placebo (no capacity dynamics, no OI differencing) + identical funding/beta context across arms",
+      "a7n_rank_correlation_gate": "|rho| <= 0.20 vs frozen OILEV-V2 anchor AND its inverted control on the common window accepted as binding; failure renders this proposal INELIGIBLE",
+      "stage_a_gates_unrelaxed": true
+    }
+  },
+  "item_13_attestation": {
+    "text": "OUTCOME-BLIND ATTESTATION / lane: a5 proposal: A13-V13-A5-EXITCAP / I wrote this mechanism and its falsification conditions before computing any return, metric or ranking, and without access to any scored artifact or outcome file.",
+    "utc": "2026-09-04T11:19:42Z",
+    "agent": "a5",
+    "no_returns_pnl_metrics_backtests_computed": true,
+    "no_outcome_files_seen": true
+  }
+}
