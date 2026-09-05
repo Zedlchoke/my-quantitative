@@ -1,0 +1,521 @@
+{
+ "schema": "forex_free_v4_a7n_novelty_audit_v1",
+ "audit_utc": "2026-09-05T05:19:31Z",
+ "stamp_source": "machine_date_u",
+ "auditor": "A7-N",
+ "cycle_id": "FOREX-FREE-V4",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v4/d2-a7-novelty",
+ "branch": "orca/forex-free-v4-d2-a7-novelty",
+ "base_head": "0a34678aafcb0a0b4626d1ea231bf13f6a6731d2",
+ "base_head_verified": true,
+ "scope": "Independent novelty / anti-rescue audit of the six V4 proposal packets against the cumulative forbidden-family inventory, per PLAN_forex_v4.md sections 1.1 and 8. Decision series only; NO PnL, NO scored computation, NO repairs.",
+
+ "declared_bar": {
+  "written_before_measurement": true,
+  "artifact": "research/audits/forex_free_v4/A7_N_DECLARED_BAR.md",
+  "declaration_order_guarantee": "The bar file was written and frozen in the auditor worktree before the measurement script (research/audits/forex_free_v4/scripts/a7n_measure.py) was first executed; the raw measurement output (a7_n_measurements_raw.json) records the bar file reference. No threshold was moved after numbers were seen.",
+  "gating_statistic": "Spearman rho over ACTIVE shared cells: (pair, daily 16:00 America/New_York decision-clock) cells of the shared decision grid where BOTH books hold a non-flat direction. This operationalizes the ancestry question: when both books are in the market, do they point the same way? A re-grade of the ancestor must agree in direction where both trade.",
+  "supporting_diagnostics_non_gating": "rho_full over ALL shared cells (flats included; attenuated by flat-state participation asymmetry), active direction-agreement rate, n_shared (total and active). Where diagnostics disagree, the gating rho decides and the disagreement is reported.",
+  "thresholds": {
+   "admits_novelty": "|rho_gating| < 0.5 AND n_shared_active >= 30",
+   "conditional": "0.5 <= |rho_gating| <= 0.7 (reported to owner with analysis; owner decides at D2)",
+   "reject_regrade": "|rho_gating| > 0.7",
+   "indeterminate": "n_shared_active < 30 (verdict CONDITIONAL; NOVELTY_PASS unavailable on this measurement alone)"
+  },
+  "absolute_value_rationale": "|rho| because a sign-inverted clone is equally a rescue under the blanket clauses.",
+  "front_door_rule": "ADMITTED iff |rho_gating| < 0.5 vs BOTH the as-scored and the evidenced-corrected ancestor variants with n_shared_active >= 30 on both; REJECTED iff |rho_gating| > 0.7 vs EITHER variant; CONDITIONAL otherwise.",
+  "non_applicability_branch": "Where a decision series cannot be measured (V1/V2 intraday session families; data-blocked V4 proposals), verdict by systematic feature comparison on four recorded features per forbidden row: information source, decision clock, causal control, signal functional form. NOVELTY_PASS requires all four distinct from the row; any shared load-bearing feature is CONDITIONAL or NOVELTY_FAIL as recorded."
+ },
+
+ "reconstruction_method": {
+  "family2_anchor_variants": "The frozen V3 family2 module (research/assets/forex_free_v3/family2.py in the V3 worktree) was imported READ-ONLY and driven directly (load_h1_bars / PairSeries / _schedule_pair) with the frozen PolicyRateReader over two vintage sets: variant (a) as-scored = V3 asserted-bound vintages data_raw/forex_free_v3_macro (V3 tree); variant (b) corrected = evidenced vintages data_raw/forex_free_v3r_macro_evidenced (V3R tree). Decision clock: completed daily 16:00 America/New_York bars, Mon-Fri, 220-valid-NY-day warmup, H1 snapshot data_raw/forex_free_v1 (V3 tree), identical for both variants. A mirrored walk recording per-clock direction state was CERTIFIED by exact trip equality against the frozen _schedule_pair output on all 7 pairs in both variants (see checks). NO PnL and no financing events were computed.",
+  "a4p1_anchor": "Packet-spec state machine over the pinned v2-ledger P0a evidenced vintages (data_raw/forex_free_v4_macro_evidenced, V4 tree): kappa = 48 bps, hysteresis band 0.10, warmup seed w_booked = w_target at first readable clock, forced unwind on differential sign flip or zero, entry/re-size when |dw| >= 0.10, state = sign(w_booked) after each daily 16:00-NY decision clock, macro grid 2019-01-02..2026-09-02.",
+  "a4p2_anchor": "Packet-spec state machine on the snapshot session calendar: events = deduped (area, effective_date, LAST-ROW-WINS) pinned-ledger RATE_CHANGE rows of either leg gated at first_readable_decision_utc; entry at first clock at/after an update iff |Delta_r| >= 48 bps (window-open baseline counts as the initial evidenced state); H = 63 sessions; event-exit on sign flip or |Delta_r| < 24 bps; cost-stressed unwind = 5-session realized vol (sample std of 5 daily log returns of 16:00-NY closes) > 2.5x trailing 63-session median on two consecutive clocks, with lockout until the next evidenced update; trigger inert before the 68-session warmup.",
+  "a6p2_anchor": "Packet-spec state machine: events = deduped RATE_CHANGE rows with delta != 0 gated at operative_available_time_utc; T = first snapshot session stamp >= a (NO_EVAL before 2020-02-11 per packet); direction per frozen area->pair map (US drives all 7, long-USD on hike); H = 10 NY-days; no refresh while positioned; tie-break earlier availability.",
+  "no_pnl_statement": "Every series in this audit is a decision series (pair, decision clock, signed direction in {-1,0,+1}). No price PnL, cost, financing, fold or gate computation was performed anywhere."
+ },
+
+ "integrity_checks": {
+  "v2_ledger_sha256": {
+   "computed": "ae5e1f2e64b8aa7c08472755bd73857543aa89b72ea81b70ad5c5d81e7cd6bd4",
+   "matches_LEDGER_PINNED": true
+  },
+  "p0a_evidenced_vintage_hashes": "All 8 areas computed canonical sha256 match BOTH the tree manifest and the worktree p0a_evidenced_vintages_manifest.json (see a7_n_measurements_raw.json checks).",
+  "family2_walk_certification": "Mirrored-walk trips == frozen _schedule_pair trips, exact, 7/7 pairs, both variants (raw trips per pair a/b: AUD 17, EUR 18, GBP 13, NZD 24, CAD 25, CHF 24, JPY 17 = 138 raw round trips per variant; the raw schedule book, not the runner's scored/purged subset).",
+  "decision_diff_table_replication": "The V3R decision_diff_table.json was replicated row-exactly from my two vintage readers: n_diff 158/158, n_sign_flips 19/19, row (pair, decision_ts) sets EQUAL. This certifies the as-scored vs evidenced reader pair that produced the two family2 variants.",
+  "cross_check_interpretation": "The 158 readable-rate differences / 19 sign flips land almost entirely outside family2's in-market evaluable states, so the two ancestor variants' decision panels agree at rho 0.9993 with only ~2-4 differing active cells - the ancestry correction changes the contract, not the direction series."
+ },
+
+ "measurements": {
+  "method_common": "Decision-level Spearman rho (average-rank ties) over shared (pair, decision-clock) cells; values in {-1,0,+1}; non-evaluable cells (None) excluded. Gating rho on ACTIVE cells (both books non-flat). Window: family2 evaluable span (~2020-11..2026-09) intersected with each proposal's evaluable span; 7 pairs; 9491 total shared cells.",
+  "comparisons": [
+   {
+    "comparison": "FXFV4-A4-P1 vs FXFV3-A6-P1 variant (a) as-scored",
+    "n_shared_total": 9491,
+    "n_shared_active": 5335,
+    "rho_gating_active": 1.0,
+    "rho_full": 0.7504056795775765,
+    "active_agreement_rate": 1.0,
+    "bar_verdict": "REJECT_RE_GRADE"
+   },
+   {
+    "comparison": "FXFV4-A4-P1 vs FXFV3-A6-P1 variant (b) evidenced-corrected",
+    "n_shared_total": 9491,
+    "n_shared_active": 5335,
+    "rho_gating_active": 1.0,
+    "rho_full": 0.7503172774932363,
+    "active_agreement_rate": 1.0,
+    "bar_verdict": "REJECT_RE_GRADE"
+   },
+   {
+    "comparison": "FXFV4-A4-P2 vs FXFV3-A6-P1 variant (a) as-scored",
+    "n_shared_total": 9491,
+    "n_shared_active": 2283,
+    "rho_gating_active": 0.9973745231749876,
+    "rho_full": 0.4640519704524623,
+    "active_agreement_rate": 0.9986859395532195,
+    "bar_verdict": "REJECT_RE_GRADE"
+   },
+   {
+    "comparison": "FXFV4-A4-P2 vs FXFV3-A6-P1 variant (b) evidenced-corrected",
+    "n_shared_total": 9491,
+    "n_shared_active": 2283,
+    "rho_gating_active": 0.9991240469261651,
+    "rho_full": 0.46485491962097253,
+    "active_agreement_rate": 0.9995619798510732,
+    "bar_verdict": "REJECT_RE_GRADE"
+   },
+   {
+    "comparison": "FXFV4-A6-P2 vs FXFV3-A6-P1 variant (a) as-scored",
+    "n_shared_total": 9491,
+    "n_shared_active": 768,
+    "rho_gating_active": 0.05370084527124445,
+    "rho_full": 0.012933146710943784,
+    "active_agreement_rate": 0.52734375,
+    "bar_verdict": "NOVELTY_PASS"
+   },
+   {
+    "comparison": "FXFV4-A6-P2 vs FXFV3-A6-P1 variant (b) evidenced-corrected",
+    "n_shared_total": 9491,
+    "n_shared_active": 768,
+    "rho_gating_active": 0.0538406976766502,
+    "rho_full": 0.012925865801663522,
+    "active_agreement_rate": 0.52734375,
+    "bar_verdict": "NOVELTY_PASS"
+   },
+   {
+    "comparison": "FXFV3-A6-P1 variant (a) vs variant (b) [internal ancestry check]",
+    "n_shared_total": 9491,
+    "n_shared_active": 5338,
+    "rho_gating_active": 0.9992501214442486,
+    "rho_full": 0.9992505739401839,
+    "active_agreement_rate": 0.9996253278381416,
+    "bar_verdict": "n/a (not an admission test; documented control of the variant reconstruction)"
+   }
+  ],
+  "diagnostic_divergence_note_A4P2": "A4-P2's rho_full (0.46) sits below 0.5 while its gating rho is 0.997-0.999. The divergence is a participation artifact, not direction novelty: family2 is flat in HIGH-vol states (56% of shared cells active) while A4-P2 holds through vol with only extreme crash-unwinds (24% of shared cells active, overlapping ALL of family2's active cells). Wherever BOTH books are in the market they agree on direction 99.9% of the time. Per the declared bar the gating statistic governs; both numbers are reported to the owner."
+ },
+
+ "front_door_decision": {
+  "decision_point": "Phase V4-D2 A7-N audit, per PLAN_forex_v4.md section 1.1 and forbidden_family_inventory.json front_door conditions. This decision and the raw numbers go to the owner whether re-entry is admitted or not.",
+  "FXFV4-A4-P1": {
+   "rho_as_scored": 1.0,
+   "rho_corrected": 1.0,
+   "n_shared_active": 5335,
+   "verdict": "REJECTED",
+   "rule_applied": "|rho_gating| = 1.0 > 0.7 vs BOTH variants (declared bar: re-grade of the ancestor)",
+   "finding": "A4-P1's anchor book holds EXACTLY the ancestor's direction at every one of the 5335 shared active decision cells, under both availability conventions. Its claimed novelty (financing-budget fractional sizing, kappa scaling, event hysteresis) lives entirely in position SIZE and trade timing, not in direction: measured at decision level the book IS the V3 family2 anchor direction series. A V4 survivor of this packet would re-grade the invalidated ancestor, which PLAN section 1 item 4 forbids by definition."
+  },
+  "FXFV4-A4-P2": {
+   "rho_as_scored": 0.9973745231749876,
+   "rho_corrected": 0.9991240469261651,
+   "n_shared_active": 2283,
+   "verdict": "REJECTED",
+   "rule_applied": "|rho_gating| = 0.997/0.999 > 0.7 vs BOTH variants (declared bar: re-grade of the ancestor)",
+   "finding": "Wherever A4-P2 and the ancestor are both in the market they take the same direction on 99.87% (vs as-scored) / 99.96% (vs evidenced-corrected) of shared active cells; the ~3-6 differing cells trace to the 19 readable-rate sign-flip cells of the V3R diff table falling at entry/exit boundaries. The fixed horizon, cost-stressed unwind and lockout change holding DURATION and exit timing, not direction. Measured at decision level this packet is likewise an ancestor re-grade."
+  },
+  "front_door_status_after_audit": "CLOSED for cycle FOREX-FREE-V4. Both section-1.1 candidates are measured ancestor re-grades on the declared bar. Per the forbidden inventory the front door remains open ONLY for a future owner-preregistered plan whose construction is directionally distinct from the differential-carry direction, not merely cost-relieved."
+ },
+
+ "per_proposal_verdicts": [
+  {
+   "proposal": "FXFV4-A4-P1 (financing-budget-scaled policy-rate-differential carry)",
+   "lane": "A4",
+   "series_measurement": "rho_gating 1.0 (vs as-scored) / 1.0 (vs evidenced-corrected); n_shared_active 5335",
+   "verdict": "NOVELTY_FAIL",
+   "verdict_basis": "series measurement (declared bar: > 0.7 = re-grade)",
+   "confirmatory_re_entry_flag_recorded": true,
+   "feature_table_summary": "see forbidden_rows_feature_table rows marked proposal=FXFV4-A4-P1; the V3-family2 row is governed by the series measurement"
+  },
+  {
+   "proposal": "FXFV4-A4-P2 (event-anchored persistence hold with cost-stressed unwind)",
+   "lane": "A4",
+   "series_measurement": "rho_gating 0.9974 (vs as-scored) / 0.9991 (vs evidenced-corrected); n_shared_active 2283",
+   "verdict": "NOVELTY_FAIL",
+   "verdict_basis": "series measurement (declared bar: > 0.7 = re-grade)",
+   "confirmatory_re_entry_flag_recorded": true,
+   "feature_table_summary": "see forbidden_rows_feature_table rows marked proposal=FXFV4-A4-P2"
+  },
+  {
+   "proposal": "FXFV4-A5-P1 (ex-post real-rate differential median-cross drift)",
+   "lane": "A5",
+   "series_measurement": "NOT MEASURABLE: packet is DATA_BLOCKED (CPI leg STAGED_NOT_CITABLE); the real differential cannot be constructed under honest availability, so no decision series exists to measure",
+   "verdict": "CONDITIONAL",
+   "verdict_basis": "feature comparison + non-measurability branch of the declared bar",
+   "reasoning": "All four features are distinct from every V1/V2 intraday row and from V3 family1. Against the invalidated V3 family2 the information source is PARTIALLY SHARED: the packet's own nominal component is the ancestor's information source, netted against CPI. The packet discloses exactly this risk and accepts veto if the inflation term is inert (rho ~ 1 after conditioning). Because the decisive measurement (rho of the real-differential book vs the ancestor) requires the unwired CPI evidence, novelty cannot be admitted on features alone; CONDITIONAL and re-measurable the day the CPI ledger extension lands.",
+   "owner_note": "The packet's own preregistered placebo (inflation-sign inversion, >= 90% decision-overlap kill) is the correct instrument and must be enforced at scoring time; it is the mechanism that separates this family from a carry relabel."
+  },
+  {
+   "proposal": "FXFV4-A5-P2 (real-exchange-rate PPP-deviation band reversion, monthly)",
+   "lane": "A5",
+   "series_measurement": "NOT MEASURABLE: packet is DATA_BLOCKED (CPI level leg unwired). Note the FX leg alone is constructible today but the mechanism is undefined without price levels, and a measurement of a mutilated variant would be a strawman, not an audit",
+   "verdict": "NOVELTY_PASS",
+   "verdict_basis": "feature comparison (non-applicability branch)",
+   "reasoning": "Zero interest-rate input anywhere: cannot be a differential-carry descendant by construction; no rate, no momentum, no session structure, no volatility gate. All four features distinct from every forbidden row, including V3 family2 (information source: price levels vs rates; clock: monthly vs daily; control: 12-month-stale-price placebo vs sham derangement; functional form: band reversion vs regime-gated direction hold). Also distinct from A5-P1 (levels vs differentials)."
+  },
+  {
+   "proposal": "FXFV4-A6-P1 (commodity-bloc risk-off event basket, 5-NY-day continuation)",
+   "lane": "A6",
+   "series_measurement": "series vs V3-family2 not required for admission (not a section-1.1 candidate) and would be uninformative by construction: the packet holds the policy-rate series out of its signal entirely (price-only), so its direction series is definitionally independent of the differential",
+   "verdict": "NOVELTY_PASS",
+   "verdict_basis": "feature comparison (non-applicability branch); price-only signal makes ancestry through the carry direction impossible",
+   "reasoning": "Information source: 3-pair cross-sectional bloc z-score (price-only) - distinct from every row including V1-family2's single-pair intraday extension (the nearest neighbor). Clock: daily 16:00-NY completion - the cycle's structural clock, shared with family2 but no forbidden row's mechanism is expressed at it. Control: sham-bloc (EUR/GBP) trigger placebo - absent from all forbidden rows. Functional form: event-triggered fixed-5-day basket continuation - not a fade, not a vol-regime hold, not a range structure. Explicitly checked and excluded: sign inversion of V1-family2 (different observable, clock, horizon and source - continuation-after-cross-sectional-risk-event is not the opposite side of single-pair late-NY extension fade), clock relabel of any V1/V2 session family (no session-open observable anywhere), vol-gate rescue of family2 (the z-score is a one-day event trigger, not a holding-regime gate, and no differential exists in the signal)."
+  },
+  {
+   "proposal": "FXFV4-A6-P2 (policy-change underreaction drift, hike/cut asymmetry)",
+   "lane": "A6",
+   "series_measurement": "rho_gating 0.0537 (vs as-scored) / 0.0538 (vs evidenced-corrected); n_shared_active 768; active agreement 52.7% (chance level)",
+   "verdict": "NOVELTY_PASS",
+   "verdict_basis": "series measurement (declared bar: < 0.5 admits novelty), mandated quantification for the policy-event-driven packet",
+   "reasoning": "Measured, not hand-waved: at the 768 shared active cells the event-drift book and the ancestor's book agree on direction at chance level (52.7%), rho ~ 0.05 vs both variants. The packet reads the SAME pinned ledger but uses the event DELTA sign at availability time with a fixed 10-NY-day horizon - a different functional use of the same information source, confirmed orthogonal at decision level. Feature table distinct on all four features vs all rows (event delta vs differential level; sham-area derangement control vs sham leg-pair; fixed-horizon drift vs vol-gated hold). The US-drives-all-7 long-USD map creates USD-beta overlap with the ancestor's typical positioning, but overlap of EXPOSURE is not ancestry of DECISIONS - measured rho is the audit number and it passes."
+  }
+ ],
+
+ "forbidden_rows_feature_table": [
+  {
+   "proposal": "FXFV4-A4-P1",
+   "row": "V1 family1 (London-open momentum continuation, intraday)",
+   "information_source": "policy-rate differential (macro) vs session-open price momentum - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs intraday session clocks - DISTINCT",
+   "causal_control": "cross-pair derangement vs sign-flipped continuation - DISTINCT",
+   "signal_functional_form": "budget-scaled direction hold vs threshold-gated intraday fade/continuation - DISTINCT",
+   "rescue_variant_check": "no clock relabel (no session observable), no sign inversion, no threshold neighbourhood of the row",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P1",
+   "row": "V1 family2 (late-NY standardized-extension fade, intraday)",
+   "information_source": "macro differential vs intraday price extension - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs late-NY intraday - DISTINCT",
+   "causal_control": "cross-pair derangement vs sign-flipped continuation - DISTINCT",
+   "signal_functional_form": "budget-scaled direction hold vs standardized-extension fade - DISTINCT",
+   "rescue_variant_check": "not a sign inversion (holds the differential direction; the row fades price extension - different observable)",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P1",
+   "row": "V2 family1 (Tokyo-range compression -> London expansion)",
+   "information_source": "macro differential vs session range geometry - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs session clocks - DISTINCT",
+   "causal_control": "derangement vs (row had pair-subset/clock rescue surface only) - DISTINCT",
+   "signal_functional_form": "direction hold vs compression/expansion transition - DISTINCT",
+   "rescue_variant_check": "no pair subset (full 7), no session/clock tweak, no threshold relaxation of the row",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P1",
+   "row": "V2 family2 (London-AM range break + retest-hold)",
+   "information_source": "macro differential vs range-break/retest structure - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs session clocks - DISTINCT",
+   "causal_control": "derangement vs none of this class - DISTINCT",
+   "signal_functional_form": "direction hold vs breakout-confirmation - DISTINCT",
+   "rescue_variant_check": "no breakout machinery anywhere in the packet",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P1",
+   "row": "V3 family1 (FXFV3-A5-P1, policy-divergence-gated daily trend)",
+   "information_source": "differential direction (no price trend) vs trend-with-policy-gate - DISTINCT",
+   "decision_clock": "daily 16:00-NY both - SHARED (cycle structural clock)",
+   "causal_control": "derangement vs family1's control - DISTINCT",
+   "signal_functional_form": "carry direction hold vs gated trend - DISTINCT",
+   "rescue_variant_check": "no expectancy/threshold neighbourhood of family1's rejected gates; no sign inversion",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P1",
+   "row": "V3 family2 (FXFV3-A6-P1, vol-gated differential carry) - GOVERNING ROW",
+   "information_source": "SAME (evidenced policy-rate differential direction); this sharing is the sanctioned front-door region and is exactly what the series measurement prices",
+   "decision_clock": "SAME (daily 16:00-NY)",
+   "causal_control": "DIFFERENT in form (cross-pair derangement vs sham leg-pair derangement; both run-to-complete by design)",
+   "signal_functional_form": "DIFFERENT in machinery (budget-scaled fractional sizing + hysteresis vs binary vol-regime gate at full size) - but DIRECTION-EQUIVALENT per measurement",
+   "rescue_variant_check": "packet discloses confirmatory re-entry honestly; NO threshold/parameter neighbourhood, NO control forgiveness, NO stress exemption, NO pair subset, NO lower costs; nonetheless MEASURED as an ancestor re-grade",
+   "verdict_vs_row": "RE_GRADE (series-governed): rho 1.0 / 1.0"
+  },
+  {
+   "proposal": "FXFV4-A4-P1",
+   "row": "blanket clauses",
+   "information_source": "n/a",
+   "decision_clock": "n/a",
+   "causal_control": "control runs to completion by construction (V3R lesson respected)",
+   "signal_functional_form": "n/a",
+   "rescue_variant_check": "cost authority respected (1.5bps x {1.0,1.5,2.0}); no cherry-picking (full 7-pair universe); no result-aware reuse attested; however the re-grade itself is dispositive",
+   "verdict_vs_row": "no additional blanket violation found beyond the re-grade"
+  },
+  {
+   "proposal": "FXFV4-A4-P2",
+   "row": "V1 family1 (London-open momentum continuation, intraday)",
+   "information_source": "policy-event ledger + differential sign vs session-open momentum - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs intraday - DISTINCT",
+   "causal_control": "mirrored-subset (4-of-7 sign flip) vs sign-flipped continuation - DISTINCT in construction (though both are sign-flip classes, the mirrored subset is a 4/7 partial flip preserving machinery)",
+   "signal_functional_form": "event-anchored fixed-horizon hold vs intraday threshold continuation - DISTINCT",
+   "rescue_variant_check": "no session observable, no sign inversion of the row",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P2",
+   "row": "V1 family2 (late-NY standardized-extension fade, intraday)",
+   "information_source": "macro events vs intraday extension - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs late-NY intraday - DISTINCT",
+   "causal_control": "mirrored subset vs sign-flipped continuation - DISTINCT",
+   "signal_functional_form": "fixed-63-session event hold vs intraday fade - DISTINCT",
+   "rescue_variant_check": "not a sign inversion; no lower fees",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P2",
+   "row": "V2 family1 (Tokyo-range compression -> London expansion)",
+   "information_source": "macro events vs range geometry - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs session clocks - DISTINCT",
+   "causal_control": "mirrored subset vs none of this class - DISTINCT",
+   "signal_functional_form": "event hold vs compression/expansion - DISTINCT",
+   "rescue_variant_check": "no session/clock tweak, no pair subset, no threshold relaxation",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P2",
+   "row": "V2 family2 (London-AM range break + retest-hold)",
+   "information_source": "macro events vs range-break structure - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs session clocks - DISTINCT",
+   "causal_control": "mirrored subset vs none - DISTINCT",
+   "signal_functional_form": "event hold vs breakout-confirmation - DISTINCT",
+   "rescue_variant_check": "no breakout machinery",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P2",
+   "row": "V3 family1 (policy-divergence-gated daily trend)",
+   "information_source": "event delta/level direction, no price trend - DISTINCT",
+   "decision_clock": "daily 16:00-NY both - SHARED (structural)",
+   "causal_control": "mirrored subset vs family1's control - DISTINCT",
+   "signal_functional_form": "event-anchored hold vs gated trend - DISTINCT",
+   "rescue_variant_check": "no neighbourhood rescue of family1's gates",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A4-P2",
+   "row": "V3 family2 (vol-gated differential carry) - GOVERNING ROW",
+   "information_source": "SAME (evidenced differential direction); priced by the series measurement",
+   "decision_clock": "SAME (daily 16:00-NY)",
+   "causal_control": "DIFFERENT in form (mirrored-subset vs sham leg-pair derangement)",
+   "signal_functional_form": "DIFFERENT in machinery (event-anchored entries, fixed horizon, crash unwind + lockout vs daily vol-regime gate) - but DIRECTION-EQUIVALENT in-market per measurement (99.9% agreement)",
+   "rescue_variant_check": "packet discloses confirmatory re-entry; no threshold neighbourhood, no control swap, no stress-tier exemption; MEASURED as an ancestor re-grade regardless",
+   "verdict_vs_row": "RE_GRADE (series-governed): rho 0.9974 / 0.9991"
+  },
+  {
+   "proposal": "FXFV4-A5-P1",
+   "row": "V1/V2 session families (4 rows)",
+   "information_source": "macro real differential vs intraday session price structures - DISTINCT on all 4 rows",
+   "decision_clock": "daily 16:00-NY vs intraday session clocks - DISTINCT on all 4 rows",
+   "causal_control": "inflation-sign-inversion placebo vs row-class controls - DISTINCT",
+   "signal_functional_form": "band-cross drift at 20 sessions vs session structures - DISTINCT",
+   "rescue_variant_check": "no session observable, no range machinery, no clock relabel",
+   "verdict_vs_row": "DISTINCT (all 4 rows)"
+  },
+  {
+   "proposal": "FXFV4-A5-P1",
+   "row": "V3 family1 (policy-divergence-gated daily trend)",
+   "information_source": "real differential (no price-momentum term) vs trend-gated structure - DISTINCT",
+   "decision_clock": "daily 16:00-NY both - SHARED (structural)",
+   "causal_control": "inflation-inversion placebo - DISTINCT",
+   "signal_functional_form": "band-cross drift vs gated trend - DISTINCT",
+   "rescue_variant_check": "no neighbourhood of family1's rejected gates",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A5-P1",
+   "row": "V3 family2 (vol-gated differential carry)",
+   "information_source": "PARTIALLY SHARED: nominal policy-rate leg is the ancestor's source; the CPI leg nets against it and flips sign in identifiable states (packet's own disclosure)",
+   "decision_clock": "SAME (daily 16:00-NY)",
+   "causal_control": "inflation-sign-inversion placebo - DIFFERENT (and exactly the instrument that would expose inflation-inertness)",
+   "signal_functional_form": "real-differential band vs trailing median, 20-session holds, no vol gate - DIFFERENT",
+   "rescue_variant_check": "not a front-door re-entry (does not invoke section 1.1); no threshold/window/pair/cost relief; accepts veto if inflation term is inert",
+   "verdict_vs_row": "CONDITIONAL (shared policy-rate leg, unmeasurable until CPI evidence lands; measured rho then governs)"
+  },
+  {
+   "proposal": "FXFV4-A5-P2",
+   "row": "V1/V2 session families + V3 family1 (5 rows)",
+   "information_source": "price LEVELS vs FX (PPP deviation) - contains no session, range, breakout or trend machinery - DISTINCT on all 5 rows",
+   "decision_clock": "monthly vs intraday/daily - DISTINCT on all 5 rows",
+   "causal_control": "12-month-stale-price placebo - DISTINCT",
+   "signal_functional_form": "band reversion to 3-year real anchor - DISTINCT",
+   "rescue_variant_check": "band-entry AGAINST recent nominal move (not momentum continuation); no clock relabel",
+   "verdict_vs_row": "DISTINCT (all 5 rows)"
+  },
+  {
+   "proposal": "FXFV4-A5-P2",
+   "row": "V3 family2 (vol-gated differential carry)",
+   "information_source": "price levels only; ZERO interest-rate input - DISTINCT (cannot be a carry descendant by construction)",
+   "decision_clock": "monthly vs daily - DISTINCT",
+   "causal_control": "stale-price placebo vs sham derangement - DISTINCT",
+   "signal_functional_form": "band reversion vs regime-gated hold - DISTINCT",
+   "rescue_variant_check": "no rate input to invert, no carry parameter to relax",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P1",
+   "row": "V1 family1 (London-open momentum continuation)",
+   "information_source": "3-pair cross-sectional bloc daily z-score vs single-pair session-open move - DISTINCT",
+   "decision_clock": "daily 16:00-NY completion vs intraday session clocks - DISTINCT",
+   "causal_control": "sham-bloc (EUR/GBP) trigger placebo vs sign-flipped continuation - DISTINCT",
+   "signal_functional_form": "event-triggered fixed-5-day multi-leg basket continuation vs threshold-gated intraday continuation - DISTINCT",
+   "rescue_variant_check": "not a clock relabel (no session-open observable); continuation-after-cross-sectional-risk-event is not a session relabel of the row",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P1",
+   "row": "V1 family2 (late-NY standardized-extension fade)",
+   "information_source": "cross-sectional bloc daily returns vs single-pair intraday extension - DISTINCT",
+   "decision_clock": "daily vs late-NY intraday - DISTINCT",
+   "causal_control": "sham-bloc placebo vs sign-flipped continuation - DISTINCT",
+   "signal_functional_form": "multi-day CONTINUATION basket vs intraday FADE - OPPOSITE construction but NOT a sign inversion of the row (different observable, clock, horizon, source; the blanket clause bars inversion of the same family, not a different continuation hypothesis)",
+   "rescue_variant_check": "no within-day extension measurable anywhere in the packet; no lower fees; fixed ex ante leg set",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P1",
+   "row": "V2 family1 (Tokyo compression -> London expansion)",
+   "information_source": "bloc z-score vs range geometry - DISTINCT",
+   "decision_clock": "daily vs session - DISTINCT",
+   "causal_control": "sham-bloc placebo - DISTINCT",
+   "signal_functional_form": "event basket vs compression/expansion - DISTINCT",
+   "rescue_variant_check": "no range or breach precondition anywhere",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P1",
+   "row": "V2 family2 (London-AM break + retest-hold)",
+   "information_source": "bloc z-score vs range break - DISTINCT",
+   "decision_clock": "daily vs session - DISTINCT",
+   "causal_control": "sham-bloc placebo - DISTINCT",
+   "signal_functional_form": "event basket vs breakout-confirmation - DISTINCT",
+   "rescue_variant_check": "no break/retest machinery",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P1",
+   "row": "V3 family1 (policy-divergence-gated daily trend)",
+   "information_source": "price-only cross-sectional event vs policy-gated price trend - DISTINCT (no policy input in the signal; rates appear only in the frozen financing kernel, which is accounting)",
+   "decision_clock": "daily 16:00-NY both - SHARED (structural)",
+   "causal_control": "sham-bloc placebo - DISTINCT",
+   "signal_functional_form": "fixed-horizon event basket vs state-gated trend - DISTINCT",
+   "rescue_variant_check": "no trend term anywhere; no family1 gate neighbourhood",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P1",
+   "row": "V3 family2 (vol-gated differential carry)",
+   "information_source": "price-only; no policy-rate differential in trigger or direction - DISTINCT",
+   "decision_clock": "daily 16:00-NY both - SHARED (structural)",
+   "causal_control": "sham-bloc (EUR/GBP) vs sham leg-pair derangement - DISTINCT",
+   "signal_functional_form": "one-day signed event trigger + fixed 5-day basket vs realized-vol holding-regime gate on a differential direction - DISTINCT (the z-score is an event trigger, not a vol-state holding gate)",
+   "rescue_variant_check": "not a section-1.1 entry; no differential, no vol-gate rescue, no financing-dependent direction",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P2",
+   "row": "V1 family1 (London-open momentum continuation)",
+   "information_source": "evidenced policy-event ledger vs session-open price - DISTINCT",
+   "decision_clock": "daily 16:00-NY vs intraday - DISTINCT",
+   "causal_control": "sham-area derangement vs sign-flipped continuation - DISTINCT",
+   "signal_functional_form": "event-drift fixed-hold vs intraday threshold continuation - DISTINCT",
+   "rescue_variant_check": "no session observable; not a clock relabel",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P2",
+   "row": "V1 family2 (late-NY standardized-extension fade)",
+   "information_source": "policy-event ledger vs intraday extension - DISTINCT",
+   "decision_clock": "daily vs late-NY intraday - DISTINCT",
+   "causal_control": "sham-area derangement - DISTINCT",
+   "signal_functional_form": "10-NY-day event drift vs intraday fade - DISTINCT (and not a sign inversion: different observable, clock, horizon, source)",
+   "rescue_variant_check": "no extension observable, no fade",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P2",
+   "row": "V2 family1 (Tokyo compression -> London expansion)",
+   "information_source": "event ledger vs range geometry - DISTINCT",
+   "decision_clock": "daily vs session - DISTINCT",
+   "causal_control": "sham-area derangement - DISTINCT",
+   "signal_functional_form": "event drift vs compression/expansion - DISTINCT",
+   "rescue_variant_check": "no session machinery",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P2",
+   "row": "V2 family2 (London-AM break + retest-hold)",
+   "information_source": "event ledger vs range break - DISTINCT",
+   "decision_clock": "daily vs session - DISTINCT",
+   "causal_control": "sham-area derangement - DISTINCT",
+   "signal_functional_form": "event drift vs breakout-confirmation - DISTINCT",
+   "rescue_variant_check": "no break/retest machinery",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P2",
+   "row": "V3 family1 (policy-divergence-gated daily trend)",
+   "information_source": "point-event delta sign at availability vs differential-path-gated trend - DISTINCT",
+   "decision_clock": "daily 16:00-NY both - SHARED (structural)",
+   "causal_control": "sham-area derangement - DISTINCT",
+   "signal_functional_form": "fixed-horizon event drift vs gated trend - DISTINCT",
+   "rescue_variant_check": "no price-trend term anywhere",
+   "verdict_vs_row": "DISTINCT"
+  },
+  {
+   "proposal": "FXFV4-A6-P2",
+   "row": "V3 family2 (vol-gated differential carry)",
+   "information_source": "SAME underlying series, DIFFERENT functional use: event DELTA sign at availability time vs differential LEVEL held under a vol regime; no vol gate, no carry holding law, no financing-dependent direction",
+   "decision_clock": "daily 16:00-NY both - SHARED (structural)",
+   "causal_control": "sham-area derangement (rotation +3) vs sham leg-pair derangement (rotation +2) - same control CLASS, different mapping; control-style similarity is not ancestry of the signal",
+   "signal_functional_form": "MEASURED ORTHOGONAL: rho_gating 0.054 / 0.054, active agreement 52.7% (chance)",
+   "rescue_variant_check": "not a section-1.1 entry; no threshold/window/control/stress descendant of the ancestor",
+   "verdict_vs_row": "DISTINCT (series-governed: NOVELTY_PASS)"
+  }
+ ],
+
+ "owner_report_block": {
+  "heading": "A7-N FRONT-DOOR DECISION + RHO TABLE (verbatim-ready)",
+  "text": "A7-N declared its admission bar in writing before computing any rho (research/audits/forex_free_v4/A7_N_DECLARED_BAR.md): |rho| < 0.5 with n_shared_active >= 30 admits novelty; 0.5-0.7 CONDITIONAL; > 0.7 = re-grade of the ancestor = REJECT; gating statistic = Spearman rho over shared decision cells where BOTH books hold a position. Measurements (decision-level, decision series only, no PnL; family2 variants reconstructed from the frozen code, certified trip-exact against the frozen walk and row-exact against the V3R decision_diff_table 158/19):\n\n(1) FXFV4-A4-P1 vs V3-family2 as-scored: n_shared 9491 total / 5335 active; rho_gating = 1.000; rho_full = 0.750.\n(2) FXFV4-A4-P1 vs V3-family2 evidenced-corrected: rho_gating = 1.000; rho_full = 0.750.\n(3) FXFV4-A4-P2 vs as-scored: rho_gating = 0.9974 (active agreement 99.87%); rho_full = 0.464.\n(4) FXFV4-A4-P2 vs evidenced-corrected: rho_gating = 0.9991 (active agreement 99.96%); rho_full = 0.465.\n(5) FXFV4-A6-P2 vs as-scored: rho_gating = 0.0537 (agreement 52.7%, chance); rho_full = 0.013.\n(6) FXFV4-A6-P2 vs evidenced-corrected: rho_gating = 0.0538; rho_full = 0.013.\n(7) Internal control, ancestor variant (a) vs (b): rho_gating = 0.9993 - the availability correction changes the contract, not the direction series.\n\nFRONT-DOOR DECISION (declared bar applied to the numbers): FXFV4-A4-P1 REJECTED (rho 1.000/1.000 - direction-identical to the invalidated ancestor at every shared in-market cell; its novelty is sizing/timing machinery only). FXFV4-A4-P2 REJECTED (rho 0.997/0.999 - direction-identical where both trade; the low rho_full is a participation artifact, disclosed). The section-1.1 carry front door is CLOSED for cycle FOREX-FREE-V4. A4-P2's policy-change-drift sibling on the open axis, FXFV4-A6-P2, is MEASURED NOVEL (rho 0.054/0.054) and is not a front-door case.\n\nPer-proposal novelty verdicts: FXFV4-A4-P1 NOVELTY_FAIL; FXFV4-A4-P2 NOVELTY_FAIL; FXFV4-A5-P1 CONDITIONAL (data-blocked, unmeasurable; feature-distinct from all intraday rows but PARTIALLY SHARED policy-rate leg with the invalidated ancestor - its own inflation-inversion placebo governs at scoring; re-measure when the CPI ledger lands); FXFV4-A5-P2 NOVELTY_PASS on features (zero rate input; data-blocked); FXFV4-A6-P1 NOVELTY_PASS on features (price-only, all four features distinct from every forbidden row); FXFV4-A6-P2 NOVELTY_PASS on measurement. Both A4 packets' confirmatory_re_entry flags must be recorded in the family verdicts and the cycle denominator as re-entries rejected at D2 on measured ancestry, not as fresh families."
+ }
+ ,
+ "limitations": [
+  "Decision-series audit only: no PnL, costs, financing, folds, gates or validator runs were computed; nothing here speaks to any proposal's profitability, only to whether a V4 survivor would be new information or an ancestor re-grade.",
+  "The gating statistic conditions on both books trading. Flat-state structure differences (family2's vol-regime gate vs A4-P2's event/lockout structure) appear only in rho_full; the declared bar resolves this in favor of the gating rho and both diagnostics are reported. This choice was frozen before measurement.",
+  "A4-P1's macro grid starts 2019-01-02; clocks before the price-snapshot span (2020-01-30) cannot actually fill on the frozen snapshot. This affects only states before family2's first evaluable day (~2020-11) and cannot affect the shared-panel results.",
+  "A4-P2's crash-unwind estimator details (5-return sample std, trailing 63-session median, exit-fill session offset +-1) are not fully pinned by the packet text; at the measured rho resolution (0.997+) +-1 session convention choices cannot change the verdict.",
+  "A6-P2's H-day exit fill is pinned to entry_session + H (the packet's 'after the H-th completed NY-day' admits a +-1-session reading); immaterial at the measured rho.",
+  "The family2 variant reconstruction drives the frozen modules directly and is certified two ways (exact trip equality; exact diff-table replication), but a shared misreading of the frozen law would propagate; no such divergence was found.",
+  "My family2 walk yields 138 raw round trips per variant (schedule book incl. force-flat exits), which is NOT the runner's scored/purged trade count published in the V3/V3R ledgers (113/103); the difference is population definition, not reconstruction error, and is irrelevant to decision-level rho.",
+  "A5-lane verdicts are feature-level because the CPI evidence is not wired; they are re-measurable and the A5-P1 packet itself accepts veto on a measured rho after conditioning.",
+  "Thresholds (0.5/0.7, n >= 30) are auditor judgment frozen ex ante per the PLAN's requirement that eligibility be an audit decision on measured numbers; a different owner could re-run the committed script against the frozen inputs and obtain identical numbers.",
+  "The audit is bounded by the packets as written: any later packet amendment voids the corresponding verdict until re-audited."
+ ],
+
+ "artifacts": {
+  "bar_declaration": "research/audits/forex_free_v4/A7_N_DECLARED_BAR.md",
+  "raw_measurements": "research/audits/forex_free_v4/a7_n_measurements_raw.json",
+  "measurement_script": "research/audits/forex_free_v4/scripts/a7n_measure.py",
+  "narrative": "research/audits/forex_free_v4/AUDIT_HANDOFF.md"
+ }
+}
