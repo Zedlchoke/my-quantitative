@@ -1,0 +1,520 @@
+{
+ "branch": "orca/v14-d2-a9f-feasibility",
+ "cycle": "CRYPTO-V14",
+ "discrepancies_and_observations": [
+  {
+   "id": "A9F-DISC-1",
+   "observation": "premiumIndexKlines CLOSE intermittently emits exact 0.0 when the premium index did not update at the bucket boundary (verified against raw rows: open/high/low carry real values, close is 0; volume fields 0; mark klines carry forward, premium klines do not). Sentinel shares over the authorized window: ACE 48.5%, ONG 48.1%, BOME 30.7%, ZEC 29.1%, NEAR 14.3%, ENA 13.5%, WLD 10.7%, LINK 8.1%, BCH 6.9%, ADA 6.0%, AAVE 5.4%, AVAX 5.4%, 1000PEPE 3.9%, BNB 2.7%, SUI 2.4%, DOGE 1.8%, XRP 1.7%, SOL 0.6%, ETH 0.1%. Under the proposals' frozen fail-closed rule (L-V12-5: malformed == missing; no back-fill, no synthesis), PREMVOL's 2880-slot clean window is unreachable: only 3/19 symbols (BNB, XRP, ETH) have even ONE fully-clean 2880-bucket window anywhere in the authorized window, and the panel measures ZERO eligible names at essentially every stamp (min_iqr=0). Its 90d neighbour is strictly worse. PREMREV's 31-value footprint survives on a shrunken universe: eligible counts min 4 / median 8 (vs the 19-name design), meeting its own N >= 4 floor at every stamp. Verdict routing per the proposals' own failure tables: PREMVOL -> BLOCKED_DATA ('premium-kline coverage gaps force N < 4 persistently - data problem, not economics'); PREMREV -> feasible with drastically reduced breadth (A1 should weigh whether the reduced-universe reading still matches the design intent before selection).",
+   "severity": "HIGH (data vs proposal assumption)",
+   "where": "BASISDYN-PREMVOL (and partially BASISDYN-PREMREV); /fapi/v1/premiumIndexKlines close"
+  },
+  {
+   "id": "A9F-OBS-1",
+   "observation": "/futures/data/basis futuresPrice is the perp's LAST-TRADED price while markPriceKlines close is the MARK price, so PREMFADE's p_b and WIDTHGATE's m_b are different premium bases by construction (route-specific and self-consistent within each proposal). Measured BTCUSDT 2024-08-20T00:00Z: basis-route futuresPrice 59398.40 vs mark close 59368.34.",
+   "severity": "LOW",
+   "where": "all A5/A6 proposals + staged data"
+  },
+  {
+   "id": "A9F-OBS-2",
+   "observation": "The mark/index-derived premium and the endpoint premium kline are distinct observables whose disagreement grows with illiquidity: measured abs-deviation medians ~5e-5 (SOL) to ~6.5e-4 (ONG), per-symbol MAXima 8.7e-2 (ONG), 4.5e-2 (ACE), 2.0e-2 (SOL), 1.7e-2 (ZEC/WLD), 1.7e-2 (ENA) -- all recorded per symbol in the WIDTHGATE panel's staging_identity_check block. A fixed tight band (1e-3) fails several names; a 1e-1 band is trivially loose. A1/I-lane must declare the tolerance from this measured table (or accept the per-symbol fail-closed drops it implies); the WIDTHGATE route data itself is complete (19/19 names x 70,272 buckets).",
+   "severity": "MEDIUM",
+   "where": "BASISLV-WIDTHGATE staging identity check (m_b vs premiumIndexKlines close)"
+  },
+  {
+   "id": "A9F-OBS-3",
+   "observation": "premiumIndexKlines close is NOT exactly markClose/indexClose-1 per bucket (Binance derives the premium kline from higher-frequency snapshots). Measured abs deviation: mean ~4.0e-5, max ~4.2e-4 (BTCUSDT 500-bucket sample). The proposal's 'declared relative tolerance' must be an ABSOLUTE band (~1e-3) or it will flag near-zero-premium buckets spuriously; the lane's panel declares tolerance_abs=1e-3 and records per-symbol maxima.",
+   "severity": "LOW",
+   "where": "BASISLV-WIDTHGATE staging identity check"
+  },
+  {
+   "id": "A9F-OBS-4",
+   "observation": "52 Monday stamps exist in the blind-S0 window; the frozen 1-day fold purge removes the 2025-12-22 stamp, leaving 51 live stamps per arm. A6's >= 48 floor passes; A5's and A8's text floors of '52 weekly decisions' are met only by the SCHEDULED calendar. A1 should record which reading binds at selection; no data failure involved.",
+   "severity": "LOW",
+   "where": "all proposals' decision-count floors"
+  },
+  {
+   "id": "A9F-OBS-5",
+   "observation": "'trailing 30d standard deviation of consecutive 72h premium changes' is ambiguous between daily-sampled (30 changes) and every-15m-overlapping (~2880 changes) readings. The lane's panel uses the DAILY-SAMPLED reading (declared in the artifact); the 72h-change numerator and rank ordering are identical under both, only the sigma scale differs.",
+   "severity": "LOW",
+   "where": "BASISDYN-PREMREV sigma_chg standardization"
+  },
+  {
+   "id": "A9F-OBS-6",
+   "observation": "The endpoint intermittently returns HTTP 418 with an empty body under serial ~0.55-0.9s pacing (29/76 first-pass point anchors, 14/76 retries; kline routes never returned 418 in the same runs). The I-lane staging for PREMFADE MUST implement 418 backoff-retry (this lane's stager uses up to 8 attempts with linear 20s backoff). Full-window staging completed with ZERO missing buckets on all routes, so the data are retrievable; the quirk is operational.",
+   "severity": "MEDIUM (staging robustness, not feasibility)",
+   "where": "/futures/data/basis (BASISLV-PREMFADE primary route)"
+  },
+  {
+   "id": "A9F-OBS-7",
+   "observation": "The day's last 5m OI metrics snapshot lands before 23:55Z on 48-59 of 417 days per symbol (documented in OICH section 4). Calendar-day completeness is 417/417 with zero missing/duplicate day rows; consecutive-ness by day-row index as the proposals freeze. Not a gap.",
+   "severity": "LOW",
+   "where": "OICH/OICYC warmup"
+  },
+  {
+   "id": "A9F-OBS-8",
+   "observation": "Under the remediated kernel with real ticks, the diversified upper-bound fill arithmetic gives ~6.5% base / ~11.8% stressed annual drag of gross (inside the 8%/12% floors, stress marginal), while the pathological all-fills-on-the-worst-tick-name bound (NEARUSDT) gives 10.9%/24.9% (breach). The MEASURED schedules reconstructed from the frozen rank rules churn far less than the bounds and pass both floors with wide margin for every measurable proposal (see per-proposal measured_turnover_schedule_only); the no-symbol->25%-of-turnover floor also passes everywhere measured (max 13.3%).",
+   "severity": "LOW (boundary note)",
+   "where": "all proposals; execution-drag floors vs single-name concentration"
+  },
+  {
+   "id": "A9F-OBS-9",
+   "observation": "The SECOND basis-retry pass reused the imported probe counter (reset to 0) and overwrote evidence files d2probe_0001..0076 (first-pass records for the probes of 1000PEPEUSDT, AAVEUSDT, ACEUSDT, ADAUSDT and part of AVAXUSDT); those overwritten bodies are not recoverable, but every first-pass record (route, symbol, anchor, status, row_count, first/last row stamps, basis row payload) is retained in probe_summary.json, and the affected first-pass conclusions are independently re-established by the full-window staging (G2: 76/76 entries complete, zero missing buckets). The THIRD retry pass (fixed script) wrote correctly-named evidence/d2retry_0305..0380 with no collisions.",
+   "severity": "LOW (evidence-integrity disclosure)",
+   "where": "probe evidence files"
+  }
+ ],
+ "feasibility_report_sha256": "e8e0dfc0944e1c3e12542a38cbdafdb68fd8fb6dc1e466acbfe4c359c8d00a7c",
+ "gates": [
+  {
+   "artifact_sha256": "abde9e2f2a4d297ae8f401414a34026cfdb3bf8a89fd4e05a1c11a634e06fc3a",
+   "command": ".venv/bin/python research/control/v14_run/d2_a9f/probe_basis_depth.py",
+   "evidence": "evidence/d2probe_0001..0304 (one JSON per request); probe_summary.json",
+   "exit_code": 0,
+   "gate": "G1 per-symbol availability re-verification probes (D1 discharge: premium/mark/index klines earliest+anchor probes, 19 ranked names; D2 honored: indexPriceKlines pair=; D3 honored: basis point anchors only)",
+   "notes": "304 keyless GETs; kline routes 200/200 rows-or-empty; 29/76 basis point anchors returned transient HTTP 418 (empty body) -> G1b retry",
+   "verdict": "PASS"
+  },
+  {
+   "artifact_sha256": "67ce822fe48dfbbf8433cbe990dcdfa5a17f6351d2c0985db41bfa4266641f9d",
+   "command": ".venv/bin/python research/control/v14_run/d2_a9f/probe_retry.py",
+   "evidence": "evidence/d2retry_0305..0380; probe_retry_summary.json",
+   "exit_code": 0,
+   "gate": "G1b basis-route retry pass (transient 418 backoff re-checks)",
+   "notes": "76/76 retry point anchors returned rows (third pass, fixed evidence naming): all 19 symbols verified with basis-route rows at 2024-08-20, 2025-06-30, 2025-08-22 and 2026-08-21 -- the earlier first-pass misses were transient 418 noise; per-symbol depth is independently confirmed by the full-window staging (G2)",
+   "verdict": "PASS"
+  },
+  {
+   "artifact_sha256": "3867bdca3162f219d9a62b30b6768997f89a751b7bb86231b1c1175a6e25ee88",
+   "command": ".venv/bin/python research/control/v14_run/d2_a9f/stage_basis.py --routes premium_klines,mark_klines,index_klines,basis",
+   "evidence": "staged/ (machine-local, gitignored); staged_basis_manifest.json",
+   "exit_code": 0,
+   "gate": "G2 staging of the frozen 15m conditioning observables, 19 symbols x 4 routes, authorized window 2024-08-20..2026-08-21",
+   "notes": "0 HTTP requests this run; 70272 expected buckets/symbol/route; missing-bucket entries: NONE",
+   "verdict": "PASS"
+  },
+  {
+   "artifact_sha256": "86445aca11f957cb6eb200073c6bcf43cedb0fcfa63a632402966fed68d17348",
+   "command": ".venv/bin/python research/control/v14_run/d2_a9f/verify_oi_staging.py",
+   "evidence": "oi_staging_verification.json",
+   "exit_code": 0,
+   "gate": "G3 staged OI authority verification (OICH/OICYC; v11_oi_staging_v1)",
+   "notes": "20/20 SHA-256 match vs oi_staging_manifest.json; schema {create_time, sum_open_interest}; 417/417 unique day rows, zero missing days, zero duplicate day rows; 55 daily rows available at the first stamp (>= 29 anchor / >= 15 neighbour); complete 19-symbol cross-section at all 52 weekly stamps; day-row stamps before 23:55 on 48-59 days/symbol (documented, read per row)",
+   "verdict": "PASS"
+  },
+  {
+   "artifact_sha256": "1ecc164715babc4e99c003a87a220d2b3ba5957f8aa14df83658c99dad0dc507",
+   "command": ".venv/bin/python research/control/v14_run/d2_a9f/build_panels.py",
+   "evidence": "panels/ + panel_index.json",
+   "exit_code": 0,
+   "gate": "G4 per-proposal conditioning-feature rank panels for A7-N (52 Monday stamps x 19 symbols; frozen lag conventions; fail-closed eligibility)",
+   "notes": "six panels; no PnL/positions; SHA-256 per panel in panel_index.json",
+   "verdict": "PASS"
+  },
+  {
+   "artifact_sha256": "e8e0dfc0944e1c3e12542a38cbdafdb68fd8fb6dc1e466acbfe4c359c8d00a7c",
+   "command": ".venv/bin/python research/control/v14_run/d2_a9f/feasibility_report.py",
+   "evidence": "feasibility_report.json",
+   "exit_code": 0,
+   "gate": "G5 schedule feasibility + cost arithmetic + control/drop-one report",
+   "notes": "T4/T5/T6 measured on the real snapshot; cost floors evaluated as worst-case fill-bound arithmetic under the remediated kernel with real perp-metadata ticks",
+   "verdict": "PASS"
+  }
+ ],
+ "generated_utc": "2026-09-05T04:59:14Z",
+ "hard_constraints_respected": {
+  "keyless_public_endpoints_only": true,
+  "no_pnl": true,
+  "no_positions": true,
+  "no_selection_or_novelty_opinions": true,
+  "proposals_unmodified": true,
+  "serial_requests_with_sleep": true,
+  "writes_confined_to_worktree": true
+ },
+ "head_before_commit": "f35a3246d63704a050fc9b69bb1b40c547546ccd",
+ "lane": "d2-a9f-feasibility",
+ "not_run_blocked": [],
+ "oi_verification_sha256": "86445aca11f957cb6eb200073c6bcf43cedb0fcfa63a632402966fed68d17348",
+ "panels": {
+  "A8-oich": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/panels/panel_OICH.json",
+   "sha256": "9f502d1c4df204ae6fe3abc9ddd481698d17469a715c3ad425e5cf0ca4cf4dc8"
+  },
+  "A8-oicyc": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/panels/panel_OICYC.json",
+   "sha256": "2ba1b657bb151806ba430937cc79cc1cadbf6142690f631bf33ac53e5d1cb636"
+  },
+  "BASISDYN-PREMREV": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/panels/panel_BASISDYN-PREMREV.json",
+   "sha256": "183d780c30980be0063800a62df8a0b3dc0cfdd455291a1014d7214b977a1259"
+  },
+  "BASISDYN-PREMVOL": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/panels/panel_BASISDYN-PREMVOL.json",
+   "sha256": "a6a3ed5ecaad5b9df8f2025d1aa72635bb619328ec15636b133df864aa0b94e7"
+  },
+  "BASISLV-fade": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/panels/panel_BASISLV-PREMFADE.json",
+   "sha256": "6e228baeedce6337c72bae66b05835f50ccf6e0580c666106932ea511112cf82"
+  },
+  "BASISLV-width": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/panels/panel_BASISLV-WIDTHGATE.json",
+   "sha256": "9320e903517b632e20266ee0101eac530eba69152d0d6b60af83d2774e4c02c2"
+  }
+ },
+ "per_proposal_feasibility": {
+  "BASISDYN-PREMREV": {
+   "blockers": [],
+   "control_identifiability": true,
+   "cost_arithmetic_upper_bound": {
+    "base_drag_frac_yr_diversified": 0.06536968728750876,
+    "base_drag_upper_frac_yr_worst_case": 0.10889277899343544,
+    "base_floor_pass_diversified": true,
+    "base_floor_pass_worst_case": false,
+    "stressed_drag_frac_yr_diversified": 0.1181090618625263,
+    "stressed_drag_upper_frac_yr_worst_case": 0.24867833698030636,
+    "stressed_floor_pass_diversified": true,
+    "stressed_floor_pass_worst_case": false
+   },
+   "drop_one_non_vacuous_by_construction": true,
+   "eligibility": {
+    "floor": 4,
+    "floor_name": "PREMREV >= 4 eligible names",
+    "full_crosssection_share": 0.0,
+    "implied_min_side_size_floor_n_div_3": 1,
+    "median_eligible": 8.0,
+    "min_eligible": 4,
+    "panel": "PREMREV >= 4 eligible names",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 0
+   },
+   "measured_turnover_schedule_only": {
+    "drag_frac_of_gross_window_base": 0.02621,
+    "drag_frac_of_gross_window_stress": 0.045481,
+    "fills_window": 222,
+    "max_symbol_share_of_traded_gross": 0.13348416289592738,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 44.2,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "XRPUSDT"
+   },
+   "schedule": {
+    "fold_live_stamps": {
+     "F0": 17,
+     "F1": 17,
+     "F2": 17
+    },
+    "live_stamps_after_1d_purge": 51,
+    "per_365d_annualized": 52.142857142857146,
+    "scheduled_stamps": 52
+   },
+   "verdict": "FEASIBLE",
+   "warmup": {
+    "needed_from": "2025-07-23",
+    "routes_cover_all_19": {
+     "index_klines": true,
+     "premium_klines": true
+    }
+   }
+  },
+  "BASISDYN-PREMVOL": {
+   "blockers": [
+    "eligibility-floor (52 stamps below)"
+   ],
+   "control_identifiability": true,
+   "cost_arithmetic_upper_bound": {
+    "base_drag_frac_yr_diversified": 0.06536968728750876,
+    "base_drag_upper_frac_yr_worst_case": 0.10889277899343544,
+    "base_floor_pass_diversified": true,
+    "base_floor_pass_worst_case": false,
+    "stressed_drag_frac_yr_diversified": 0.1181090618625263,
+    "stressed_drag_upper_frac_yr_worst_case": 0.24867833698030636,
+    "stressed_floor_pass_diversified": true,
+    "stressed_floor_pass_worst_case": false
+   },
+   "drop_one_non_vacuous_by_construction": true,
+   "eligibility": {
+    "floor": 4,
+    "floor_name": "PREMVOL >= 4 eligible names",
+    "full_crosssection_share": 0.0,
+    "implied_min_side_size_floor_n_div_3": 0,
+    "median_eligible": 0.0,
+    "min_eligible": 0,
+    "panel": "PREMVOL >= 4 eligible names",
+    "stamps_below_floor": 52,
+    "stamps_with_full_19": 0
+   },
+   "measured_turnover_schedule_only": {
+    "drag_frac_of_gross_window_base": 0.000151,
+    "drag_frac_of_gross_window_stress": 0.000229,
+    "fills_window": 1,
+    "max_symbol_share_of_traded_gross": 1.0,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 0.3,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 49,
+    "symbol_turnover_share_floor_0_25_pass": false,
+    "worst_symbol_by_turnover": "ETHUSDT"
+   },
+   "schedule": {
+    "fold_live_stamps": {
+     "F0": 17,
+     "F1": 17,
+     "F2": 17
+    },
+    "live_stamps_after_1d_purge": 51,
+    "per_365d_annualized": 52.142857142857146,
+    "scheduled_stamps": 52
+   },
+   "verdict": "BLOCKED (BLOCKED_DATA per the proposal's own failure table)",
+   "warmup": {
+    "needed_from": "2025-05-27",
+    "routes_cover_all_19": {
+     "premium_klines": true
+    }
+   }
+  },
+  "BASISLV-PREMFADE": {
+   "blockers": [],
+   "control_identifiability": true,
+   "cost_arithmetic_upper_bound": {
+    "base_drag_frac_yr_diversified": 0.06536968728750876,
+    "base_drag_upper_frac_yr_worst_case": 0.10889277899343544,
+    "base_floor_pass_diversified": true,
+    "base_floor_pass_worst_case": false,
+    "stressed_drag_frac_yr_diversified": 0.1181090618625263,
+    "stressed_drag_upper_frac_yr_worst_case": 0.24867833698030636,
+    "stressed_floor_pass_diversified": true,
+    "stressed_floor_pass_worst_case": false
+   },
+   "drop_one_non_vacuous_by_construction": true,
+   "eligibility": {
+    "floor": 12,
+    "floor_name": "PREMFADE >= 12 eligible names",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "PREMFADE >= 12 eligible names",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   },
+   "measured_turnover_schedule_only": {
+    "drag_frac_of_gross_window_base": 0.007777,
+    "drag_frac_of_gross_window_stress": 0.013955,
+    "fills_window": 147,
+    "max_symbol_share_of_traded_gross": 0.11333333333333315,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 12.5,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "XRPUSDT"
+   },
+   "schedule": {
+    "fold_live_stamps": {
+     "F0": 17,
+     "F1": 17,
+     "F2": 17
+    },
+    "live_stamps_after_1d_purge": 51,
+    "per_365d_annualized": 52.142857142857146,
+    "scheduled_stamps": 52
+   },
+   "verdict": "FEASIBLE",
+   "warmup": {
+    "needed_from": "2025-07-28",
+    "routes_cover_all_19": {
+     "basis": true
+    }
+   }
+  },
+  "BASISLV-WIDTHGATE": {
+   "blockers": [],
+   "control_identifiability": true,
+   "cost_arithmetic_upper_bound": {
+    "base_drag_frac_yr_diversified": 0.09805453093126315,
+    "base_drag_upper_frac_yr_worst_case": 0.16333916849015317,
+    "base_floor_pass_diversified": false,
+    "base_floor_pass_worst_case": false,
+    "stressed_drag_frac_yr_diversified": 0.17716359279378946,
+    "stressed_drag_upper_frac_yr_worst_case": 0.37301750547045953,
+    "stressed_floor_pass_diversified": false,
+    "stressed_floor_pass_worst_case": false
+   },
+   "drop_one_non_vacuous_by_construction": true,
+   "eligibility": {
+    "floor": 12,
+    "floor_name": "WIDTHGATE >= 12 eligible names",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "WIDTHGATE >= 12 eligible names",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   },
+   "measured_turnover_schedule_only": {
+    "drag_frac_of_gross_window_base": 0.004702,
+    "drag_frac_of_gross_window_stress": 0.008482,
+    "fills_window": 82,
+    "max_symbol_share_of_traded_gross": 0.12222222222222233,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 7.5,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 44,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "ZECUSDT"
+   },
+   "schedule": {
+    "fold_live_stamps": {
+     "F0": 17,
+     "F1": 17,
+     "F2": 17
+    },
+    "live_stamps_after_1d_purge": 51,
+    "per_365d_annualized": 52.142857142857146,
+    "scheduled_stamps": 52
+   },
+   "verdict": "FEASIBLE",
+   "warmup": {
+    "needed_from": "2025-06-30",
+    "routes_cover_all_19": {
+     "index_klines": true,
+     "mark_klines": true,
+     "premium_klines": true
+    }
+   }
+  },
+  "OICH": {
+   "blockers": [],
+   "control_identifiability": true,
+   "cost_arithmetic_upper_bound": {
+    "base_drag_frac_yr_diversified": 0.06536968728750876,
+    "base_drag_upper_frac_yr_worst_case": 0.10889277899343544,
+    "base_floor_pass_diversified": true,
+    "base_floor_pass_worst_case": false,
+    "stressed_drag_frac_yr_diversified": 0.1181090618625263,
+    "stressed_drag_upper_frac_yr_worst_case": 0.24867833698030636,
+    "stressed_floor_pass_diversified": true,
+    "stressed_floor_pass_worst_case": false
+   },
+   "drop_one_non_vacuous_by_construction": true,
+   "eligibility": {
+    "floor": 8,
+    "floor_name": "OICH hysteresis needs full-ish cross-section (19 expected)",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "OICH hysteresis needs full-ish cross-section (19 expected)",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   },
+   "measured_turnover_schedule_only": {
+    "drag_frac_of_gross_window_base": 0.000612,
+    "drag_frac_of_gross_window_stress": 0.001086,
+    "fills_window": 12,
+    "max_symbol_share_of_traded_gross": 0.08333333333333333,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 1.0,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "ACEUSDT"
+   },
+   "oi_authority": {
+    "rows_417_all": true,
+    "sha_all_match": true,
+    "warmup_rows_at_first_stamp_min": 55,
+    "zero_missing_days_all": true
+   },
+   "schedule": {
+    "fold_live_stamps": {
+     "F0": 17,
+     "F1": 17,
+     "F2": 17
+    },
+    "live_stamps_after_1d_purge": 51,
+    "per_365d_annualized": 52.142857142857146,
+    "scheduled_stamps": 52
+   },
+   "verdict": "FEASIBLE"
+  },
+  "OICYC": {
+   "blockers": [],
+   "control_identifiability": true,
+   "cost_arithmetic_upper_bound": {
+    "base_drag_frac_yr_diversified": 0.06536968728750876,
+    "base_drag_upper_frac_yr_worst_case": 0.10889277899343544,
+    "base_floor_pass_diversified": true,
+    "base_floor_pass_worst_case": false,
+    "stressed_drag_frac_yr_diversified": 0.1181090618625263,
+    "stressed_drag_upper_frac_yr_worst_case": 0.24867833698030636,
+    "stressed_floor_pass_diversified": true,
+    "stressed_floor_pass_worst_case": false
+   },
+   "drop_one_non_vacuous_by_construction": true,
+   "eligibility": {
+    "floor": 19,
+    "floor_name": "OICYC needs the complete 19-symbol cross-section",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "OICYC needs the complete 19-symbol cross-section",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   },
+   "measured_turnover_schedule_only": {
+    "drag_frac_of_gross_window_base": 0.000611,
+    "drag_frac_of_gross_window_stress": 0.001083,
+    "fills_window": 12,
+    "max_symbol_share_of_traded_gross": 0.08333333333333333,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 1.0,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "1000PEPEUSDT"
+   },
+   "oi_authority": {
+    "rows_417_all": true,
+    "sha_all_match": true,
+    "warmup_rows_at_first_stamp_min": 55,
+    "zero_missing_days_all": true
+   },
+   "schedule": {
+    "fold_live_stamps": {
+     "F0": 17,
+     "F1": 17,
+     "F2": 17
+    },
+    "live_stamps_after_1d_purge": 51,
+    "per_365d_annualized": 52.142857142857146,
+    "scheduled_stamps": 52
+   },
+   "verdict": "FEASIBLE"
+  }
+ },
+ "porcelain_before_commit": "M .gitignore\n?? research/control/v14_run/d2_a9f/",
+ "producer_role": "A9-F",
+ "schema": "v14_d2_a9f_lane_handoff_v1",
+ "scope_boundary": "feasibility only: coverage/availability re-verification, schedule feasibility, cost arithmetic, control identifiability, drop-one meaningfulness. NO PnL, NO positions, NO returns-based judgment, NO family selection opinions (A1 selects), NO novelty verdicts (A7-N polices). Proposals unmodified.",
+ "staging_summary": {
+  "bulk_root_absolute": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/staged",
+  "entries": 76,
+  "expected_buckets_per_symbol": 70272,
+  "manifest": "staged_basis_manifest.json",
+  "manifest_sha256": "3867bdca3162f219d9a62b30b6768997f89a751b7bb86231b1c1175a6e25ee88",
+  "missing_buckets_total": 0,
+  "routes": {
+   "basis": "/futures/data/basis pair= contractType=PERPETUAL period=15m (PREMFADE primary; D3 forward pagination only)",
+   "index_klines": "/fapi/v1/indexPriceKlines pair= (D2; WIDTHGATE denominator; PREMREV control)",
+   "mark_klines": "/fapi/v1/markPriceKlines symbol= (WIDTHGATE numerator)",
+   "premium_klines": "/fapi/v1/premiumIndexKlines symbol= (A6 primary; A5 cross-check)"
+  },
+  "total_bytes": 104376707,
+  "total_rows": 5340672
+ }
+}

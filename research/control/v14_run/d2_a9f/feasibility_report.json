@@ -1,0 +1,607 @@
+{
+ "control_and_drop_one": {
+  "controls": {
+   "BASISDYN-PREMREV": {
+    "basis": "index klines staged for all 19 symbols over the full authorized window (staged manifest; same bucket grid as the premium route verified in the panel build)",
+    "control": "IDXREV-72H (standardized 72h INDEX-price change, indexPriceKlines pair=)",
+    "well_defined": true
+   },
+   "BASISDYN-PREMVOL": {
+    "basis": "staged 15m bars cover 2024-08-20..2026-08-21 for all universe symbols (a3_staging_manifest 90/90 SHA re-verified by P1); the control deletes every premium quantity and is computable PIT",
+    "control": "PRICEVOL-30D (30d realized vol of daily log returns from authorized staged bars)",
+    "well_defined": true
+   },
+   "BASISLV-PREMFADE": {
+    "basis": "identical ranks, inverted sign; needs only the anchor panel's rank ordering (exists at every stamp with >= 12 eligible per eligibility block)",
+    "control": "BASISLV-PREMFADE-28D-INV (sign-inverted same book)",
+    "well_defined": true
+   },
+   "BASISLV-WIDTHGATE": {
+    "basis": "gate sidecar in the panel: open stamps = 27 of 46 decided; narrow state is the complement; requires >= 6 prior stamp IQRs (satisfied from stamp 7 onward)",
+    "control": "BASISLV-WIDTHGATE-28D-NARROW (gate inverted: open iff D(T) < trailing median)",
+    "well_defined": true
+   },
+   "OICH": {
+    "basis": "daily closes derivable from staged 15m bars for all 19 symbols; no OI input",
+    "control": "CTL-PRICEVOL (std of 28 most recent daily log closes from staged bars)",
+    "well_defined": true
+   },
+   "OICYC": {
+    "basis": "computable from the same v11_oi_staging_v1 rows; complete 19-symbol cross-section verified at every weekly stamp (oi_staging_verification.json)",
+    "control": "CTL-OISHARE (28-row mean own OI share of the staged-universe aggregate)",
+    "well_defined": true
+   }
+  },
+  "drop_one": {
+   "BASISDYN-PREMREV": {
+    "basis": "the anchor holds exactly 5 names whenever >= 4 eligible (panel eligibility block shows eligible counts)",
+    "non_vacuous_by_construction": true,
+    "rule": "drop the held max-|weight| symbol (all tie at 0.20; tie-break lexicographically first); renormalize 5 -> 4 at 0.25 <= 0.30 cap"
+   },
+   "BASISDYN-PREMVOL": {
+    "basis": "same 5-name book shape; eligibility block shows >= 4 eligible at every stamp",
+    "non_vacuous_by_construction": true,
+    "rule": "same as PREMREV"
+   },
+   "BASISLV-PREMFADE": {
+    "basis": "the book trades only at stamps with >= 12 eligible names (eligibility block); every traded stamp holds >= 6 legs per side, so a held max-|weight| leg always exists; the tie-break (largest |b_i|) is outcome-free and computable from the panel",
+    "non_vacuous_by_construction": true,
+    "rule": "drop the held leg with the largest |b_i(T)| at the stamp with the largest held |weight|; renormalize to gross 1.0"
+   },
+   "BASISLV-WIDTHGATE": {
+    "basis": "gate OPEN at 27 decided stamps; open stamps trade the >= 12-name tercile book, so a held leg exists at every open stamp",
+    "non_vacuous_by_construction": true,
+    "rule": "same as PREMFADE within open-state stamps"
+   },
+   "OICH": {
+    "basis": "book is non-empty whenever either side has >= 2 members (floor: side membership >= 4 at >= 95% of stamps); eligible counts from the panel give side sizes >= 4 whenever 12+ names are eligible",
+    "non_vacuous_by_construction": true,
+    "rule": "drop the HELD symbol with maximum |weight| (tie-break ascending symbol name); weights unchanged; rerun"
+   },
+   "OICYC": {
+    "basis": "complete 19-symbol cross-section at every stamp; sides of 6/6 exist whenever >= 12 eligible (panel shows 19 eligible at every stamp)",
+    "non_vacuous_by_construction": true,
+    "rule": "same as OICH"
+   }
+  },
+  "feature_dispersion": {
+   "BASISDYN-PREMREV": {
+    "all_iqr_strictly_positive": true,
+    "median_n": 8.0,
+    "min_cross_sectional_iqr": 0.17724759810947063,
+    "panel": "PREMREV",
+    "stamps_with_2plus_features": 52
+   },
+   "BASISDYN-PREMVOL": {
+    "all_iqr_strictly_positive": false,
+    "median_n": 1.0,
+    "min_cross_sectional_iqr": 0.0,
+    "panel": "PREMVOL",
+    "stamps_with_2plus_features": 12
+   },
+   "BASISLV-PREMFADE": {
+    "all_iqr_strictly_positive": true,
+    "median_n": 19.0,
+    "min_cross_sectional_iqr": 8.586725761816768e-05,
+    "panel": "PREMFADE",
+    "stamps_with_2plus_features": 52
+   },
+   "BASISLV-WIDTHGATE": {
+    "all_iqr_strictly_positive": true,
+    "median_n": 19.0,
+    "min_cross_sectional_iqr": 9.315369496180892e-05,
+    "panel": "WIDTHGATE",
+    "stamps_with_2plus_features": 52
+   },
+   "OICH": {
+    "all_iqr_strictly_positive": true,
+    "median_n": 19.0,
+    "min_cross_sectional_iqr": 0.02126613169261063,
+    "panel": "OICH",
+    "stamps_with_2plus_features": 52
+   },
+   "OICYC": {
+    "all_iqr_strictly_positive": true,
+    "median_n": 19.0,
+    "min_cross_sectional_iqr": 0.502537657182195,
+    "panel": "OICYC",
+    "stamps_with_2plus_features": 52
+   }
+  }
+ },
+ "cost_arithmetic": {
+  "arithmetic_consistency_note": "stressed/base fee ratio is 1.5 on the fee term; the tick term ratio is 3x base (1->3 ticks), so stressed/base total drag is symbol-mix dependent and > 1.5 for every universe symbol (tick/price > 0) -- the proposals' stated stress ratios are arithmetically consistent with costs-on-fills-only",
+  "floors": {
+   "base": 0.08,
+   "stressed": 0.12
+  },
+  "kernel": "remediated L-V14-0: costs on fills ONLY (once per fill; never per holding-day/stamp on open positions); real perp-metadata ticks; funding settled natively once per settlement is a holding term reported separately, excluded from the execution-drag floors",
+  "measured_turnover_from_rank_schedule": {
+   "BASISDYN-PREMREV": {
+    "drag_frac_of_gross_window_base": 0.02621,
+    "drag_frac_of_gross_window_stress": 0.045481,
+    "fills_window": 222,
+    "max_symbol_share_of_traded_gross": 0.13348416289592738,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 44.2,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "XRPUSDT"
+   },
+   "BASISDYN-PREMVOL": {
+    "drag_frac_of_gross_window_base": 0.000151,
+    "drag_frac_of_gross_window_stress": 0.000229,
+    "fills_window": 1,
+    "max_symbol_share_of_traded_gross": 1.0,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 0.3,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 49,
+    "symbol_turnover_share_floor_0_25_pass": false,
+    "worst_symbol_by_turnover": "ETHUSDT"
+   },
+   "BASISLV-PREMFADE": {
+    "drag_frac_of_gross_window_base": 0.007777,
+    "drag_frac_of_gross_window_stress": 0.013955,
+    "fills_window": 147,
+    "max_symbol_share_of_traded_gross": 0.11333333333333315,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 12.5,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "XRPUSDT"
+   },
+   "BASISLV-WIDTHGATE-ANCHOR(gate-open)": {
+    "drag_frac_of_gross_window_base": 0.004702,
+    "drag_frac_of_gross_window_stress": 0.008482,
+    "fills_window": 82,
+    "max_symbol_share_of_traded_gross": 0.12222222222222233,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 7.5,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 44,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "ZECUSDT"
+   },
+   "OICH": {
+    "drag_frac_of_gross_window_base": 0.000612,
+    "drag_frac_of_gross_window_stress": 0.001086,
+    "fills_window": 12,
+    "max_symbol_share_of_traded_gross": 0.08333333333333333,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 1.0,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "ACEUSDT"
+   },
+   "OICYC": {
+    "drag_frac_of_gross_window_base": 0.000611,
+    "drag_frac_of_gross_window_stress": 0.001083,
+    "fills_window": 12,
+    "max_symbol_share_of_traded_gross": 0.08333333333333333,
+    "note": "schedule-only book reconstruction from the frozen rank rules (no PnL, no positions recorded); weights depend on ranks only",
+    "one_way_traded_gross_window": 1.0,
+    "stamps": 52,
+    "stamps_with_nonempty_book": 52,
+    "symbol_turnover_share_floor_0_25_pass": true,
+    "worst_symbol_by_turnover": "1000PEPEUSDT"
+   }
+  },
+  "proposals": {
+   "BASISDYN-PREMREV": {
+    "base": {
+     "floor": 0.08,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.06536968728750876,
+     "total_drag_frac_of_gross_yr_worst_case": 0.10889277899343544,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "base_schedule": "5.0 bps + 1 tick",
+    "declared_fills_upper_per_decision": 10,
+    "fills_per_year_upper": 520.0,
+    "per_fill_rate_formula": "taker_fee_bps*1e-4*fee_multiplier + ticks*tick_size/price",
+    "stress": {
+     "floor": 0.12,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.1181090618625263,
+     "total_drag_frac_of_gross_yr_worst_case": 0.24867833698030636,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "stress_schedule": "7.5 bps + 3 ticks (+1 event delay, no drag arithmetic effect)",
+    "stress_to_base_ratio_worst_case": 2.283699059561129,
+    "traded_notional_fraction_per_fill": 0.2
+   },
+   "BASISDYN-PREMVOL": {
+    "base": {
+     "floor": 0.08,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.06536968728750876,
+     "total_drag_frac_of_gross_yr_worst_case": 0.10889277899343544,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "base_schedule": "5.0 bps + 1 tick",
+    "declared_fills_upper_per_decision": 10,
+    "fills_per_year_upper": 520.0,
+    "per_fill_rate_formula": "taker_fee_bps*1e-4*fee_multiplier + ticks*tick_size/price",
+    "stress": {
+     "floor": 0.12,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.1181090618625263,
+     "total_drag_frac_of_gross_yr_worst_case": 0.24867833698030636,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "stress_schedule": "7.5 bps + 3 ticks (+1 event delay, no drag arithmetic effect)",
+    "stress_to_base_ratio_worst_case": 2.283699059561129,
+    "traded_notional_fraction_per_fill": 0.2
+   },
+   "BASISLV-PREMFADE": {
+    "base": {
+     "floor": 0.08,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.06536968728750876,
+     "total_drag_frac_of_gross_yr_worst_case": 0.10889277899343544,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "base_schedule": "5.0 bps + 1 tick",
+    "declared_fills_upper_per_decision": 24,
+    "fills_per_year_upper": 1248.0,
+    "per_fill_rate_formula": "taker_fee_bps*1e-4*fee_multiplier + ticks*tick_size/price",
+    "stress": {
+     "floor": 0.12,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.1181090618625263,
+     "total_drag_frac_of_gross_yr_worst_case": 0.24867833698030636,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "stress_schedule": "7.5 bps + 3 ticks (+1 event delay, no drag arithmetic effect)",
+    "stress_to_base_ratio_worst_case": 2.283699059561129,
+    "traded_notional_fraction_per_fill": 0.08333333333333333
+   },
+   "BASISLV-WIDTHGATE": {
+    "base": {
+     "floor": 0.08,
+     "pass_diversified": false,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.09805453093126315,
+     "total_drag_frac_of_gross_yr_worst_case": 0.16333916849015317,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "base_schedule": "5.0 bps + 1 tick",
+    "declared_fills_upper_per_decision": 36,
+    "fills_per_year_upper": 1872.0,
+    "per_fill_rate_formula": "taker_fee_bps*1e-4*fee_multiplier + ticks*tick_size/price",
+    "stress": {
+     "floor": 0.12,
+     "pass_diversified": false,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.17716359279378946,
+     "total_drag_frac_of_gross_yr_worst_case": 0.37301750547045953,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "stress_schedule": "7.5 bps + 3 ticks (+1 event delay, no drag arithmetic effect)",
+    "stress_to_base_ratio_worst_case": 2.2836990595611284,
+    "traded_notional_fraction_per_fill": 0.08333333333333333
+   },
+   "OICH": {
+    "base": {
+     "floor": 0.08,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.06536968728750876,
+     "total_drag_frac_of_gross_yr_worst_case": 0.10889277899343544,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "base_schedule": "5.0 bps + 1 tick",
+    "declared_fills_upper_per_decision": 24,
+    "fills_per_year_upper": 1248.0,
+    "per_fill_rate_formula": "taker_fee_bps*1e-4*fee_multiplier + ticks*tick_size/price",
+    "stress": {
+     "floor": 0.12,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.1181090618625263,
+     "total_drag_frac_of_gross_yr_worst_case": 0.24867833698030636,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "stress_schedule": "7.5 bps + 3 ticks (+1 event delay, no drag arithmetic effect)",
+    "stress_to_base_ratio_worst_case": 2.283699059561129,
+    "traded_notional_fraction_per_fill": 0.08333333333333333
+   },
+   "OICYC": {
+    "base": {
+     "floor": 0.08,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.06536968728750876,
+     "total_drag_frac_of_gross_yr_worst_case": 0.10889277899343544,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "base_schedule": "5.0 bps + 1 tick",
+    "declared_fills_upper_per_decision": 24,
+    "fills_per_year_upper": 1248.0,
+    "per_fill_rate_formula": "taker_fee_bps*1e-4*fee_multiplier + ticks*tick_size/price",
+    "stress": {
+     "floor": 0.12,
+     "pass_diversified": true,
+     "pass_worst_case": false,
+     "total_drag_frac_of_gross_yr_diversified": 0.1181090618625263,
+     "total_drag_frac_of_gross_yr_worst_case": 0.24867833698030636,
+     "worst_case_symbol": "NEARUSDT"
+    },
+    "stress_schedule": "7.5 bps + 3 ticks (+1 event delay, no drag arithmetic effect)",
+    "stress_to_base_ratio_worst_case": 2.283699059561129,
+    "traded_notional_fraction_per_fill": 0.08333333333333333
+   }
+  },
+  "ref_price_source": "last completed staged 15m bar close (raw i128/1e16)",
+  "reference_prices": {
+   "1000PEPEUSDT": 0.0040179,
+   "AAVEUSDT": 123.29,
+   "ACEUSDT": 0.23661,
+   "ADAUSDT": 0.2162,
+   "AVAXUSDT": 7.379,
+   "BCHUSDT": 270.16,
+   "BNBUSDT": 680.14,
+   "BOMEUSDT": 0.0011203,
+   "BTCUSDT": 76827.1,
+   "DOGEUSDT": 0.08402,
+   "ENAUSDT": 0.14973,
+   "ETHUSDT": 2389.35,
+   "LINKUSDT": 11.431,
+   "NEARUSDT": 1.828,
+   "ONGUSDT": 0.06885,
+   "SOLUSDT": 90.99,
+   "SUIUSDT": 0.7929,
+   "WLDUSDT": 0.3763,
+   "XRPUSDT": 1.4117,
+   "ZECUSDT": 776.55
+  },
+  "tick_sizes": {
+   "1000PEPEUSDT": 1e-07,
+   "AAVEUSDT": 0.01,
+   "ACEUSDT": 1e-05,
+   "ADAUSDT": 0.0001,
+   "AVAXUSDT": 0.001,
+   "BCHUSDT": 0.01,
+   "BNBUSDT": 0.01,
+   "BOMEUSDT": 1e-07,
+   "BTCUSDT": 0.1,
+   "DOGEUSDT": 1e-05,
+   "ENAUSDT": 1e-05,
+   "ETHUSDT": 0.01,
+   "LINKUSDT": 0.001,
+   "NEARUSDT": 0.001,
+   "ONGUSDT": 1e-05,
+   "SOLUSDT": 0.01,
+   "SUIUSDT": 0.0001,
+   "WLDUSDT": 0.0001,
+   "XRPUSDT": 0.0001,
+   "ZECUSDT": 0.01
+  },
+  "tick_sizes_source": "crypto_perpetual metadata parquet price_increment (P1 load path semantics)"
+ },
+ "cycle": "CRYPTO-V14",
+ "generated_utc": "2026-09-05T04:47:06Z",
+ "no_pnl": true,
+ "no_positions": true,
+ "producer_role": "A9-F",
+ "schedule_feasibility": {
+  "decision_floor_note": "52 Monday stamps exist in the screen window; the frozen 1-day purge removes the 2025-12-22 stamp (fold F1 start + 1d boundary), leaving 51 live stamps: >= 48 floor of A6 PASS; the A5/A8 text floors of 52 are met by the SCHEDULED count only -- flagged as proposal-internal discrepancy for A1, not a data failure",
+  "decision_stamps": {
+   "count_scheduled": 52,
+   "first": "2025-08-25T00:00:00Z",
+   "floor_max_discretionary_per_365d": 60.0,
+   "floor_pass": true,
+   "last": "2026-08-17T00:00:00Z",
+   "per_365d_annualized": 52.142857142857146
+  },
+  "eligibility_floors": {
+   "A5_tercile_book_min12": {
+    "floor": 12,
+    "floor_name": "PREMFADE >= 12 eligible names",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "PREMFADE >= 12 eligible names",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   },
+   "A5_widthgate_min12": {
+    "floor": 12,
+    "floor_name": "WIDTHGATE >= 12 eligible names",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "WIDTHGATE >= 12 eligible names",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   },
+   "A6_premrev_min4": {
+    "floor": 4,
+    "floor_name": "PREMREV >= 4 eligible names",
+    "full_crosssection_share": 0.0,
+    "implied_min_side_size_floor_n_div_3": 1,
+    "median_eligible": 8.0,
+    "min_eligible": 4,
+    "panel": "PREMREV >= 4 eligible names",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 0
+   },
+   "A6_premvol_min4": {
+    "floor": 4,
+    "floor_name": "PREMVOL >= 4 eligible names",
+    "full_crosssection_share": 0.0,
+    "implied_min_side_size_floor_n_div_3": 0,
+    "median_eligible": 0.0,
+    "min_eligible": 0,
+    "panel": "PREMVOL >= 4 eligible names",
+    "stamps_below_floor": 52,
+    "stamps_with_full_19": 0
+   },
+   "A8_oich_min8_19": {
+    "floor": 8,
+    "floor_name": "OICH hysteresis needs full-ish cross-section (19 expected)",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "OICH hysteresis needs full-ish cross-section (19 expected)",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   },
+   "A8_oicyc_19": {
+    "floor": 19,
+    "floor_name": "OICYC needs the complete 19-symbol cross-section",
+    "full_crosssection_share": 1.0,
+    "implied_min_side_size_floor_n_div_3": 6,
+    "median_eligible": 19.0,
+    "min_eligible": 19,
+    "panel": "OICYC needs the complete 19-symbol cross-section",
+    "stamps_below_floor": 0,
+    "stamps_with_full_19": 52
+   }
+  },
+  "fold_floors": {
+   "min_live_per_fold": 17,
+   "pass": true,
+   "proposals_floor_per_fold": 15
+  },
+  "folds": {
+   "F0": {
+    "first_live_iso": "2025-08-25",
+    "last_live_iso": "2025-12-15",
+    "live_stamps_after_1d_purge": 17,
+    "purged_stamps": [],
+    "scheduled_stamps": 17
+   },
+   "F1": {
+    "first_live_iso": "2025-12-29",
+    "last_live_iso": "2026-04-20",
+    "live_stamps_after_1d_purge": 17,
+    "purged_stamps": [
+     "2025-12-22"
+    ],
+    "scheduled_stamps": 18
+   },
+   "F2": {
+    "first_live_iso": "2026-04-27",
+    "last_live_iso": "2026-08-17",
+    "live_stamps_after_1d_purge": 17,
+    "purged_stamps": [],
+    "scheduled_stamps": 17
+   }
+  },
+  "oi_warmup": {
+   "anchor_needs_29": true,
+   "daily_row_stamps_non_2355": {
+    "1000PEPEUSDT": 57,
+    "AAVEUSDT": 53,
+    "ACEUSDT": 52,
+    "ADAUSDT": 52,
+    "AVAXUSDT": 54,
+    "BCHUSDT": 54,
+    "BNBUSDT": 54,
+    "BOMEUSDT": 51,
+    "BTCUSDT": 48,
+    "DOGEUSDT": 56,
+    "ENAUSDT": 50,
+    "ETHUSDT": 59,
+    "LINKUSDT": 51,
+    "NEARUSDT": 50,
+    "ONGUSDT": 56,
+    "SOLUSDT": 58,
+    "SUIUSDT": 54,
+    "WLDUSDT": 55,
+    "XRPUSDT": 52,
+    "ZECUSDT": 48
+   },
+   "neighbour_needs_15": true,
+   "note": "day-row stamp offsets (day's last 5m snapshot before 23:55) are documented in OICH section 4 and read per row; calendar-day rows are 417/417 with zero missing days",
+   "passes": true,
+   "rows_available_at_first_stamp_min": 55
+  },
+  "storage_request_sanity": {
+   "gap_status": {
+    "basis_route_missing_buckets": 0,
+    "kline_routes_missing_buckets": 0
+   },
+   "measured_note": "A9-F staged the WIDER authorized window (2024-08-20..2026-08-21) on 4 routes: ~5.4k requests total, ~70.4k buckets/symbol/route; proposals' narrower windows need fewer pages -- their arithmetic is consistent with measured page counts at limit=1500 (47 pages/symbol) and limit=500 (141 pages/symbol)",
+   "probes_this_lane": 304,
+   "proposals_own_estimates": {
+    "BASISDYN-PREMREV": "~893 requests (premium route, limit=1500, full authorized window)",
+    "BASISDYN-PREMVOL": "~893 requests (premium route; bars already staged)",
+    "BASISLV-PREMFADE": "~1,425 requests (limit=500, 2025-07-28..screen end)",
+    "BASISLV-WIDTHGATE": "~1,653 requests (3 kline routes, limit=1500, from 2025-06-30)"
+   },
+   "retry_pass": "probe_retry_summary.json (basis-route transient 418 re-checks)",
+   "staged_bytes_total": 104376707,
+   "staged_rows_total": 5340672
+  },
+  "warmup": {
+   "BASISDYN-PREMREV": {
+    "needed_from": "2025-07-23",
+    "routes": {
+     "index_klines": {
+      "covers_needed_start_all_19": true,
+      "latest_first_bucket_utc": "2024-08-20T00:00:00Z"
+     },
+     "premium_klines": {
+      "covers_needed_start_all_19": true,
+      "latest_first_bucket_utc": "2024-08-20T00:00:00Z"
+     }
+    },
+    "why": "30d standardization + 72h before first stamp"
+   },
+   "BASISDYN-PREMVOL": {
+    "needed_from": "2025-05-27",
+    "routes": {
+     "premium_klines": {
+      "covers_needed_start_all_19": true,
+      "latest_first_bucket_utc": "2024-08-20T00:00:00Z"
+     }
+    },
+    "why": "90d neighbour vol window before first stamp"
+   },
+   "BASISLV-PREMFADE": {
+    "needed_from": "2025-07-28",
+    "routes": {
+     "basis": {
+      "covers_needed_start_all_19": true,
+      "latest_first_bucket_utc": "2024-08-20T00:00:00Z"
+     }
+    },
+    "why": "28d formation before first stamp (proposal staging plan)"
+   },
+   "BASISLV-WIDTHGATE": {
+    "needed_from": "2025-06-30",
+    "routes": {
+     "index_klines": {
+      "covers_needed_start_all_19": true,
+      "latest_first_bucket_utc": "2024-08-20T00:00:00Z"
+     },
+     "mark_klines": {
+      "covers_needed_start_all_19": true,
+      "latest_first_bucket_utc": "2024-08-20T00:00:00Z"
+     },
+     "premium_klines": {
+      "covers_needed_start_all_19": true,
+      "latest_first_bucket_utc": "2024-08-20T00:00:00Z"
+     }
+    },
+    "why": "56d neighbour formation before first stamp"
+   }
+  }
+ },
+ "schema": "v14_d2_a9f_feasibility_report_v1"
+}
