@@ -53,7 +53,7 @@
   {
    "id": "F-A7-1",
    "severity": "MEDIUM",
-   "status": "UNRESOLVED",
+   "status": "RESOLVED_IN_DELTA_2026-09-05T12:39:57Z (repair commits 22e4ed8 + 84b7ede; original status UNRESOLVED at prelaunch audit)",
    "title": "Conflict markers survive in the freeze-pinned tree; incident artifact's 'no marker exposure' claim is false; the post-incident procedure was violated again",
    "evidence": "research/assets/forex_free_v4/AMBIGUITIES.md carries literal '<<<<<<< HEAD' (:1), '=======' (:102), '>>>>>>> 6233170' (:206) at HEAD — introduced by the I-FAMILY-2 cherry-pick commit 223397f, still present through e9c1f34..eec23cc, and it is THIS marker-laden content that the W4 freeze hash-pins (C1 19/19 match). research/audits/forex_free_v4/AUDIT_HANDOFF.md carries '<<<<<<< HEAD' (:1), '=======' (:143), '>>>>>>> 2752cf2' (:206...) — introduced by the LATER A9-F cherry-pick 1deef21, i.e. the incident's prevention_added procedure ('never git add an unmerged path') was already violated once more after being written. The incident artifact research/control/forex_free_v4_run/incident_20260905_cherrypick_init_conflict.json states 'AMBIGUITIES.md was correctly renamed AMBIGUITIES_FAMILY2.md (no marker exposure)' — CONTRADICTED by tree bytes: both files exist and AMBIGUITIES.md is the conflicted merge; the second exposure (AUDIT_HANDOFF.md) is absent from the incident record entirely.",
    "score_impact": "none on computation: AMBIGUITIES.md is documentation (family2.py cites it for the recorded control-mapping discrepancy, but the governing semantics are independently fixed by A1 adjudication family2_A1_control_mapping and verified verbatim in code — C2); the __init__.py repairs are verified (compile/import/suites pass). It is a record-integrity and process defect in the prelaunch evidence chain, and it makes the C8 sub-check 'current tree has no markers' fail.",
@@ -86,6 +86,43 @@
  "verdict": "FOREX_FREE_V4_S0_LAUNCH_REFUSED",
  "verdict_rationale": "Nine of ten checks (C1-C7, C9, C10) PASS on independent byte recompute, and zero HIGH/CRITICAL findings are outstanding — but the mandate requires EVERY check to pass. C8 fails its explicit sub-verification ('verify current tree has no markers'): F-A7-1 (MEDIUM, UNRESOLVED) shows conflict markers survive in the freeze-pinned AMBIGUITIES.md and in the prior AUDIT_HANDOFF.md, and the incident artifact's positive claim 'AMBIGUITIES.md ... no marker exposure' is false against tree bytes, with the prevention procedure violated a second time by the A9-F cherry-pick. Under the conjunctive rule this is FOREX_FREE_V4_S0_LAUNCH_REFUSED (plan label FOREX_FREE_V4_BLOCKED_PRELAUNCH). The block is narrow and cheap to clear: a deliberate marker resolution in two markdown files, an incident-record correction, and a re-verified commit — after which a delta audit can authorize without re-running the deep checks (all hashes/digests/twins re-verified here remain valid for the untouched artifacts). The two LOW observations (F-A7-2, F-A7-3) are non-blocking hardening notes for A1's launch mechanics.",
  "blocking_count": 1,
+ "delta": {
+  "delta_audit_utc": "2026-09-05T12:39:57Z",
+  "stamp_source": "machine_date_u",
+  "auditor": "A7",
+  "audited_integration_head": "84b7edeb20e210726ca531efebf6ef0166da8ac6",
+  "w4r_freeze_commit": "22e4ed8a85a7da0c0498d989b62d00246771b831",
+  "scope_rule": "delta-only re-audit: verify the repair and ONLY the repair; the deep chain from the prelaunch audit stands for untouched artifacts (hash-proven below)",
+  "delta_scope_verified": {
+   "D1_marker_resolution": {
+    "verdict": "PASS",
+    "evidence": "grep -cE '^(<<<<<<< |>>>>>>> |=======$)' at integration HEAD 84b7ede: AMBIGUITIES.md = 0, AUDIT_HANDOFF.md = 0. Byte-equality to clean lane sources: AMBIGUITIES.md sha256 23500972fabfc77aedbf14fc0701600411ddba41ea4cb2401529db60795c8ed0 == git show 44f7196:research/assets/forex_free_v4/AMBIGUITIES.md; AUDIT_HANDOFF.md sha256 fd7d7fca856c0918e087fa58b6daefbe3d757dd1e94a5c3ddc72e0bc30b44527 == git show ab06f3b:research/audits/forex_free_v4/AUDIT_HANDOFF.md. Full-tree marker sweep (py/md/json/jsonl under research/ + tests/): zero files."
+   },
+   "D2_w4r_freeze": {
+    "verdict": "PASS",
+    "evidence": "w4_freeze.json status = 'SUPERSEDED_BY_REPAIR (F-A7-1: conflict-marker files restored; see w4r_freeze.json)'. w4r_freeze.json ACTIVE, label FOREX_FREE_V4_W4R, frozen 2026-09-05T12:31:29Z: all 19 code_hashes recomputed from integration-tree bytes, 19/19 match. Hash delta W4->W4R is EXACTLY one file: research/assets/forex_free_v4/AMBIGUITIES.md (78c4cd78d56e... -> 23500972fabf... = the clean lane content). family1.py / family2.py / exec_driver_v4.py: W4 hash == W4R hash == tree bytes == my C1-audited values (zero code-semantics delta). v3_kernel_invariance 7/7 vs w3_freeze.json. AUDIT_HANDOFF.md was never hash-pinned (not in the 19), so its repair does not enter the freeze."
+   },
+   "D3_post_w4r_diff_discipline": {
+    "verdict": "PASS",
+    "evidence": "git diff --name-only 22e4ed8..84b7ede = exactly ['research/control/forex_free_v4_run/twin_replay.json'] — control artifact only. Cumulative 80d3509..84b7ede touches only: the two repaired docs + control artifacts (event_log.jsonl, incident record, twin_replay.json, w4_freeze.json supersede marker, w4r_freeze.json) — no code, no tests, no data."
+   },
+   "D4_twin_integrity_at_w4r": {
+    "verdict": "PASS",
+    "evidence": "e-exec-1 and r-reproduce both detached at exactly 22e4ed8a85a7da0c0498d989b62d00246771b831. Data re-verified at W4R: snapshots 156/156 digests_exec2, evidenced vintages 8/8 canonical sha256, announcement ledger pin ae5e1f2e...cd6bd4. Refreshed cross-tree replay: dryrun_tmp/ledger_dryrun_w4r.jsonl BYTE-IDENTICAL integration vs r-reproduce (sha256 a70b924d89739ab4516f34862d4f66e32cbfb5df9b4b2b2c167b6d47e3a3a073 — identical to the pre-W4R sanitized ledger, corroborating the doc-only delta). dryrun_report_integration_w4r.json: 6 arms, 6 distinct trial_ids + record_ids, scored/real_pnl/published false, 0 leaks (1316 fields scanned), structural_invariant_violations=[], base_head 22e4ed8."
+   },
+   "D5_incident_record_correction": {
+    "verdict": "PASS",
+    "evidence": "incident_20260905_cherrypick_init_conflict.json now carries correction_appended_utc + a 'correction' section that explicitly rules the original scope_of_impact claim ('AMBIGUITIES.md ... no marker exposure') INCOMPLETE/FALSE for AMBIGUITIES.md, documents BOTH marker exposures (223397f family1 AMBIGUITIES.md; 1deef21 A9-F AUDIT_HANDOFF.md), and records restoration from the clean lane sources 44f7196 / ab06f3b."
+   },
+   "D6_no_new_findings": {
+    "verdict": "PASS",
+    "evidence": "Nothing else changed (D3). A7 sanitizer spot-check re-run on the W4R sanitized ledger: 6 records, outcome-suspect non-placeholder count = 0 (independent regex walk, same method as C5). F-A7-2 (LOW, freeze_token arming) and F-A7-3 (LOW, conditional reclass bound) remain OPEN as launch-mechanics notes — non-blocking by their severity and unchanged by the repair."
+   }
+  },
+  "f_a7_1_status": "RESOLVED",
+  "verdict_final": "FOREX_FREE_V4_S0_LAUNCH_AUTHORIZED",
+  "verdict_final_rationale": "The single prelaunch blocker F-A7-1 (MEDIUM) is resolved and verified byte-exact: zero markers at integration HEAD, both files restored from their clean lane sources, W4R freeze recomputes 19/19 with the AMBIGUITIES.md hash as the ONLY delta, all three code files byte-unchanged from the C1-audited W4 values, kernel 7/7, twins detached at the W4R commit with byte-identical sanitized ledgers and clean data pins, diff discipline clean, incident record corrected, and no new findings. The prelaunch audit's other nine checks PASS unchanged (hash-proven untouched). Outstanding conditions are exactly the plan's two-key protocol: this artifact (FOREX_FREE_V4_S0_LAUNCH_AUTHORIZED, unresolved_high_critical=0) plus a FRESH exact-phrase 'GO FOREX V4 SCORED EXECUTION' typed by the owner AFTER this authorization exists (the 03:41 GO remains extinguished; the driver enforces both timestamp bounds)."
+ },
  "unresolved_high_critical": 0,
  "limitations": [
   "data_raw/ is gitignored: data bytes were audited in the integration worktree (the operative run tree) and cross-checked byte-identical against the r-reproduce twin; the audit worktree carries identical git-tracked control/ledger/asset bytes.",
