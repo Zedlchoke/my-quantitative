@@ -1,0 +1,80 @@
+{
+ "schema": "forex_free_v3r_a7_report_v1",
+ "audited_head": "ca3755a581883a3a5984fd90f19f891294b73aae",
+ "branch": "orca/forex-free-v3r-integration",
+ "audit_scope": "FOREX-FREE-V3R data-authority remediation: announcement ledger (169b9e44), twin determinism, corrected books, frozen-code integrity, budget invariants",
+ "checks": {
+  "C1": {
+   "verdict": "PASS",
+   "frozen_code": "7/7 files hash-match w3_freeze.json code_hashes in BOTH .worktrees/forex-free-v3/integration and .worktrees/forex-free-v3r/integration (scored_runner, macro_reader, accounting, family1, family2, macro_fetch, exec_driver)",
+   "v3_published_ledger": "sha256 6329cabcf80f6cc67009dec7f042fba3832607dd2133c00a9e6e4f4a81f2f173 matches the pin (recomputed from bytes)",
+   "worktree_diff": "diff -rq of research/control/forex_free_v3_run/ between worktrees: IDENTICAL; research/assets/forex_free_v3/: only gitignored __pycache__ .pyc differ; all 7 frozen .py byte-identical by hash",
+   "branch_hygiene": "V3R HEAD ca3755a has merge-base 8f674f1b (= V3 branch HEAD); git diff orca/forex-free-v3-integration..HEAD = 162 files, 220535 insertions, 0 deletions, ALL under research/control/forex_free_v3r_run/; zero changes under research/assets/forex_free_v3/, research/control/forex_free_v3_run/, data_raw/",
+   "git_status": "clean in both worktrees at audit time (before and after restoring the C5 side-effect, see NB-1)"
+  },
+  "C2": {
+   "verdict": "PASS",
+   "ledger_pin": "announcement_ledger.jsonl sha256 = 169b9e447f01ba0114396a3f26f208f57f61008a6ce6e30873e3b6642f8cf895 == LEDGER_PINNED",
+   "row_census": "159 rows = 151 RATE_CHANGE + 8 BASELINE_LEVEL (independent scan of the jsonl)",
+   "independent_census": "scanned data_raw/forex_free_v3_macro/<AREA>.json (9/9 file_sha256 match w3_freeze.json data pins in both worktrees) for consecutive value changes in 2019-01-01..2026-09-02: US 22, EMU 19, GB 22, JP 5, CH 11, CA 22, AU 25, NZ 25 changes = 151 total; exact effective-date SETS identical to the ledger rows per area (not just counts)",
+   "values": "all 151 rows' old_value (last value strictly before effective date) and new_value (value on effective date) match the frozen vintages exactly",
+   "baselines": "8 BASELINE_LEVEL rows match each area's first frozen vintage date and level (US 2019-01-01 2.375, EMU 0.0, GB 2019-01-02 0.75, JP -0.1, CH -0.75, CA 1.75, AU 2019-01-02 1.5, NZ 2019-01-03 1.75); operative bound = end of first-vintage day, declared not load-bearing"
+  },
+  "C3": {
+   "verdict": "PASS",
+   "archives": "47/47 EVIDENCED rows: archive file exists and sha256 matches archive_sha256 (paths resolve relative to the run dir); 147 archive files on disk, 47 cited (100 uncited candidate fetches)",
+   "spot_reads": "6 archives read and content confirmed: US 2022-11-03 (page contains 'November 02, 2022 Federal Reserve issues FOMC statement For release at 2:00 p.m. EDT'), US 2024-09-19 (statement 20240918a: 'For release at 2:00 p.m.' + 'September 18, 2024'), GB 2022-11-03 (BoE page 'Bank Rate increased to 3% - November 2022' containing '03 November 2022'), GB 2025-12-18 ('Bank Rate reduced to 3.75% - December 2025' containing '18 December 2025'), JP 2024-03-21 (k240319a.htm contains 'March 19, 2024' = URL-derived date), JP 2025-01-27 (k250124a.htm contains 'January 24, 2025' = URL-derived date)",
+   "instant_consistency": "all 22 US INSTANT rows: operative_available_time_utc == announcement_time_utc; DST-correct (18:00Z summer / 19:00Z winter); special instants historically correct (2020-03-03T15:00Z 10am-EST intermeeting cut, 2020-03-15T21:00Z 5pm-EDT Sunday cut)",
+   "day_consistency": "all 25 DAY rows (GB 21, JP 4): operative_available_time_utc == end of announcement UTC day (GB: decision date; JP: URL-derived statement date, verified present in the page)",
+   "unevidenced": "all 112 UNEVIDENCED rows: operative_available_time_utc == end of effective UTC day == the V3 conservative bound (zero exceptions); i.e. unevidenced rows are provably identical to V3 behavior. 8 baselines likewise at end of first-vintage day",
+   "observation": "rate_verified is true only on 15/21 GB evidenced rows (US 0/22, JP 0/4); date_verified true 47/47. The remediation target is availability TIME, which is evidenced everywhere it is claimed; rate LEVELS are pinned by the frozen vintages and were verified independently under C2, so this does not weaken the availability claim (NB-2)"
+  },
+  "C4": {
+   "verdict": "PASS",
+   "completeness": "scored pairs map to all 8 areas (EUR/USD EMU+US, GBP/USD GB+US, AUD/USD AU+US, NZD/USD NZ+US, USD/JPY US+JP, USD/CHF US+CH, USD/CAD US+CA); every consecutive value-change effective date in window 2019-01-01..2026-09-02 across those 8 frozen vintages has a ledger RATE_CHANGE row (zero gaps); every area's window-start level is covered by its BASELINE_LEVEL row"
+  },
+  "C5": {
+   "verdict": "PASS",
+   "command": "PYTHONPATH=$PWD .venv/bin/python research/control/forex_free_v3r_run/recompute_v3r.py --v3-worktree /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/integration --data-paths-template /tmp/v3_data_paths.json --phases baseline (run from the V3R worktree root)",
+   "result": "exit 0; output twin=ALL_MATCH; in-run guards G1..G3 PASS re-measured (frozen hashes + V3 ledger pin + ledger pin verified immediately before compute inside the same process)",
+   "reproducibility": "regenerated twin_verification.json is BYTE-IDENTICAL to the committed artifact (sha256 ac419d903221971ab160c14420cbaa0d717582fed5fad8742697416eac22a74a before == after); result ALL_MATCH, same 6 cells (incl family2:control) x same 28 TWIN_KEYS",
+   "side_effect": "see NB-1: the baseline-only run also rewrote v3r_recompute_report.json as a 7-line phase-stub in the working tree; restored to committed bytes after recording"
+  },
+  "C6": {
+   "verdict": "PASS",
+   "snapshot_gap": "data_raw/forex_free_v1/USDJPY_1h_2022-03-24_a.json (authorized v1 snapshot, 4460 bars 2022-03-24..2022-12-09): 2022-11-04 has 20 bars ending 19:00Z (the 16:00-EDT = 20:00Z bar is ABSENT); 2022-11-03 and 2022-11-07 are complete 00:00..23:00 with 2022-11-07 21:00Z = 16:00-EST present (DST ended 2022-11-06)",
+   "frozen_logic": "frozen family2: decision clock = daily 16:00 America/New_York bar; fill = OPEN of the next EXISTING 16:00-NY bar (one-event lag); frozen scored_runner MAX_FILL_LAG_DAYS = 4 refuses entry-decision lag > 4 days with ONE_EVENT_LAG_VIOLATION",
+   "arithmetic": "evidenced availability (FOMC statement 2022-11-02T18:00Z, US:2022-11-03 row) makes the 2022-11-03T20:00Z decision (16:00 EDT) the first reading the new rate; next existing 16:00-NY bar after it would be 2022-11-04T20:00Z (missing from snapshot) -> next is 2022-11-07T21:00Z; lag = 4 days 1 hour > 4 days. V3-bound counterfactual (decision 2022-11-04T20:00Z) gives lag 3d1h, within limit -- the abort is specifically caused by the one-day-earlier evidenced readability interacting with the authorized snapshot's Nov-4 truncation",
+   "recording": "validator_aborts.json records the refusal verbatim; the error string matches the frozen template 'ONE_EVENT_LAG_VIOLATION: {did}: fill {entry} is more than 4 days after the decision; not the next-session bar' exactly (MAX_FILL_LAG_DAYS=4 interpolated)",
+   "honesty": "family2:control is ABSENT from v3r_records.jsonl (per-cell abort isolation, no fabricated record); v3r_recompute_report.json mechanism_sanity family2: pass=null, reasons [ARM_MISSING_VALIDATOR_ABORT, control] -- undeterminable, honestly reported; family1 mechanism sanity still evaluated (NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR, pass=false)"
+  },
+  "C7": {
+   "verdict": "PASS",
+   "frozen_gates": "stage_a_gates lives in frozen research/assets/forex_free_v3/scored_runner.py (hash verified under C1); imported and applied to the corrected records from v3r_records.jsonl",
+   "anchor": "frozen stage_a_gates(family2:anchor:tier1.0 corrected record) -> (False, ['STRESS_TIER_2.0_FAIL']) == stored gates/gate_reasons exactly (only reason)",
+   "independent_stress": "recomputed from the record's own stress fields: tier2.0 total_pnl = -101.6181272983 < 0 AND pf = 0.9881455354 < STRESS_MIN_PF 1.0 -> STRESS_TIER_2.0_FAIL fires; tier1.5 passes (total_pnl 52.88 > 0, pf 1.00623 >= 1.0); every other gate input passes (expectancy 20.7236 > min, pf 1.28248 >= 1.10, incremental_alpha 4.4399 > 0, price-only expectancy 2.0134 > 0, decisions 138, folds, mdd, dropout 8/8) -> exactly one firing gate, consistent",
+   "neighbour": "frozen stage_a_gates(family2:neighbour) -> (True, []) == stored PASS; independent spot-check of its own fields: expectancy 17.309 > 0, pf 1.35473 >= 1.10, price-only expectancy 10.417 > 0, stress tiers pass (2434.38/1.1728 and 2024.88/1.1418), dropout 8/8, folds 3/3 positive, pair_concentration max 0.2294 < 0.40 -- PASS consistent",
+   "family1": "all three family1 records FAIL with the stored multi-gate reasons; frozen stage_a_gates output matches stored reasons exactly on all three"
+  },
+  "C8": {
+   "verdict": "PASS",
+   "corrected_books": "all four bridges verified arithmetically on all 5 corrected records (zero failures, tolerance 0.01, max residual ~1e-6): expectancy x scored_population == base.total_pnl (both financing-adjusted and price-only books); booked == base.total_pnl + purged_contribution; gross_price - price_only == n_trades_kept x $3.00 (e.g. anchor 111x3=333.00, neighbour 286x3=858.00); price_only + financing_adjustment == financing_adjusted; kept == scored + purged; booked columns == record columns; all_identities_hold=true is truthful",
+   "v3_published_rows": "the same identities hold on ALL 6 V3 published rows using V3's own numbers: expectancy(base.trades) x scored == total_pnl (diff 0.000000 both books), n_trades == base.trades + purged_trades, gross - price_only == n_trades x 3.00, dual-book residual 0",
+   "finding3_intake_numbers": "reproduced exactly from the V3 family2:anchor row: scored population = base.trades = 105, booked = n_trades = 113, purged price-only carry = 580.4653 - (-692.2936) = -1272.7589 == -1,272.76, cost bridge = 113 x $3.00 = $339.00; V3 booked fin-adj = 2511.7598 + (-1156.9028) = +1354.86 -- matches the claimed corrected-vs-V3 comparison (+977.36 vs +1354.86)"
+  },
+  "C9": {
+   "verdict": "PASS",
+   "survivors_lock": ".worktrees/forex-free-v3/integration/research/control/forex_free_v3_run/survivors_lock.json untouched (S1 SEALED, frozen_at 2026-09-04T22:02:37Z, certified by A7 terminal 2a3e9f6); the entire control/forex_free_v3_run tree is byte-identical between worktrees and the V3R branch carries zero modifications to V3 paths",
+   "no_new_published_cells": "all 5 corrected records have published=false; the recompute driver has no publication path; the V3 published scored ledger sha256 still equals pin 6329cabc... (no append); V3R outputs confined to research/control/forex_free_v3r_run/ (15 files + 147 archives = the full 162-file branch delta); no scored-ledger append anywhere in the branch diff"
+  }
+ },
+ "overall": "PASS",
+ "blocking_findings": [],
+ "non_blocking_findings": [
+  "NB-1 (workfile hygiene, recompute_v3r.py): running the audit-mandated '--phases baseline' rerun REWRITES research/control/forex_free_v3r_run/v3r_recompute_report.json with a 7-line phase-stub ({guards, twin, nulls}), clobbering the committed 186-line full report in the WORKING TREE. The committed artifact at HEAD ca3755a is intact (git diff verified) and the stub itself reconfirms G1..G3 PASS / twin ALL_MATCH. A7 restored the working-tree file to the committed bytes via git checkout after recording the stub content; final git status is clean. Recommendation for a future cycle (not repairable by A7): partial-phase runs should write phase-stamped outputs, not overwrite the pinned report.",
+  "NB-2 (evidence completeness, informational): within the 47 EVIDENCED rows, rate_verified=true only on 15/21 GB rows (US 0/22, JP 0/4); date_verified=true on 47/47. The remediated claim (availability TIME) is fully evidenced where EVIDENCED is asserted, and rate LEVELS are pinned by the frozen vintages (independently verified under C2: all 151 old/new values match), so no conclusion changes. Noted for future evidence-ledger upgrades.",
+  "NB-3 (convention, informational): announcement_ledger.jsonl archive_path values are relative to the run directory (research/control/forex_free_v3r_run/), not the worktree root; resolvable only from the run dir. Verified 47/47 under that convention. A doc-note in the ledger schema would prevent misresolution."
+ ],
+ "audit_side_effects_disclosed": "C5 was executed as mandated; its only side effects were (a) regeneration of twin_verification.json (byte-identical) and (b) the v3r_recompute_report.json working-tree clobber documented in NB-1 and restored. No other file was created or modified by the auditor except this report.",
+ "checks_run": 9
+}
