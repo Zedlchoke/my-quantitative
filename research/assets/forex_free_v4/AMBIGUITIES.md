@@ -106,7 +106,7 @@ Recorded per the lane contract: ambiguities that could not be resolved from
 the frozen packet + binding directives are WRITTEN DOWN here, never resolved
 by judgment that affects scores (no scores were computed in this lane).
 
-## A-1 (material): the packet's control rule text contradicts its own mapping table
+## A-1 (material): RESOLVED_BY_A1 — the frozen mapping table governs
 
 `PROPOSAL_FXFV4-A6-P2.json`, `arms.control.sham_derangement_frozen`:
 
@@ -117,38 +117,48 @@ by judgment that affects scores (no scores were computed in this lane).
   `AU -> GBP/USD`, `NZ -> USD/JPY` — a +4 rotation.
 
 RESOLUTION IMPLEMENTED: the mapping TABLE (`SHAM_AREA` in family2.py).
-Basis: the lane directive cites "the packet's exact mapping"; the A9-F
-control_runnability note for this family also uses the table ("US 22x7 ->
-USD/CHF only; CH 11 -> all 7"). Both derivations are derangements, so the
-control's role (destroy the area-specific link) holds under either; A1 may
-wish to reconcile the packet text at the next frozen revision.
+**A1 ADJUDICATION (binding, research/control/forex_free_v4_run/
+a1_ambiguity_adjudication.json): the lane's choice STANDS — the frozen
+mapping table governs; no change.** A1 may still wish to reconcile the
+packet's `+3` rule sentence at the next frozen revision.
 
-## A-2 (material): decision instant vs the ledger's `first_readable_decision_utc`
+## A-2 (material): RESOLVED_BY_A1 — eligibility = `first_readable_decision_utc`
 
-The frozen mechanism text (packet `mechanism`, `pit_observable.decision_clock`,
-`source_to_test_map` — three places) and the lane task define eligibility as
-`T = first completed 16:00-NY bar with completion >= operative_available_time_utc`,
-keyed to the OPERATIVE AVAILABILITY STAMP ALONE. The ledger additionally
-carries `first_readable_decision_utc`, which equals `first 16:00-NY bar >=
-max(operative_available_time_utc, effective_time_utc)` on ALL 151 deduped
-RATE_CHANGE rows (verified by recomputation) — i.e. it embeds the V3R
-evidenced-vintages reader invariant (`available <= T AND effective <= T`,
-cf. `research/control/forex_free_v4_run/build_evidenced_vintages.py`
-docstring). The two rules differ ONLY on the 87 evidenced rows whose
+The original lane implementation keyed eligibility to the row's operative
+availability stamp alone (packet mechanism text `T >= a`); the ledger's
+`first_readable_decision_utc` field equals `first 16:00-NY bar >=
+max(operative availability, effective)` on all 151 deduped RATE_CHANGE
+rows, and the two rules differ exactly on the 87 evidenced rows whose
 availability stamp precedes their effective instant (US/AU INSTANT
-announcements the day before effectiveness; NZ/CH/JP DAY rows), where the
-implemented (availability-only) decision lands one session EARLIER than the
-`first_readable_decision_utc` value.
+announcements the day before effectiveness; NZ/CH/JP DAY rows).
 
-RESOLUTION IMPLEMENTED: availability-only, per the frozen mechanism text and
-the lane directive ("at/after the row's operative availability stamp; never
-on the effective date itself"). The FINANCING reads, in contrast, keep BOTH
-gates (availability AND effectiveness) exactly as the packet's frozen
-financing formula text specifies, so financing never accrues a rate before it
-is in force. If A1 intends the decision clock to honor
-`first_readable_decision_utc` (max-gate), that is a one-line change in
-`run_arm`'s eligibility anchor but it CHANGES THE SCORED SCHEDULE — decide
-before any scored run.
+**A1 ADJUDICATION (binding, research/control/forex_free_v4_run/
+a1_ambiguity_adjudication.json): OVERRIDES the availability-only
+implementation. Eligibility for every RATE_CHANGE row is the row's
+PRECOMPUTED `first_readable_decision_utc` (fail closed when null,
+MISSING_AVAILABLE_TIME_EVIDENCE class) — the frozen program PIT invariant:
+a decision never reads a row whose effective_time_utc > T. Availability-
+only eligibility would read a rate before it is in force. Financing
+vintages keep BOTH gates (unchanged).**
+
+APPLIED in family2.py (remediation commit): `extract_events` anchors
+`eligible_dt` on `first_readable_decision_utc` (null -> never read);
+`run_arm`/`schedule_counts` schedule from `eligible_dt` (+180d bench shift
+on that instant); the deterministic tie-break still uses the operative
+availability instant, falling back to the eligibility instant. Synthetic
+tests updated: the discriminator now pins a row whose precomputed
+first_readable sits later than any locally derivable instant, and the
+87-row class (pre-effective announcement) is asserted to become eligible
+only at/after the effective instant.
+
+DISCLOSED LEDGER FACT (found during remediation, pinned-row smoke test):
+exactly ONE pinned row (CA eff 2020-03-27, COVID era) carries a
+SATURDAY-stamped `first_readable_decision_utc` (2020-03-28T20:00Z = Sat
+16:00 NY). The frozen rule handles it fail-safe: no completed 16:00-NY
+flat bar exists that day, so the decision lands on the first EXISTING
+weekday decision bar at/after the stamp (Mon 2020-03-30). No row is read
+before its stamp; recorded here so the Monday decision on that one event
+surprises no one at scoring time.
 
 ## A-3 (minor): exit-bar reading of "the 16:00-NY bar after the H-th completed NY-day following entry"
 
