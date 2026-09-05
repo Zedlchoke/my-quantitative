@@ -1,0 +1,191 @@
+{
+ "schema": "v14_i_lane_handoff_v1",
+ "artifact": "i_family_1_lane_handoff",
+ "cycle": "CRYPTO-V14",
+ "lane": "i-family-1",
+ "family_id": "A14-V14-A5-BASISLV-PREMFADE",
+ "branch": "orca/v14-i-family-1",
+ "head_before_commit": "d16341f896558671669d05c83d20f569b8afc119",
+ "head_at_handoff": "see git log after the single 'V14 I F1:' commit on this branch",
+ "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+ "produced_utc": "2026-09-05",
+ "producer_role": "A9 (I-lane family 1)",
+ "scope": "implementation only: frozen family package (plugin/strategy/identity/audits/gate_runner), hand-computed goldens, targeted tests, this handoff. NO scored PnL, no Phase-E runs, no backtests over the scored window (synthetic golden fixtures only), no merges/pushes, no edits outside this lane.",
+ "deliverables": {
+  "research/v14/__init__.py": "package root (V14 families)",
+  "research/v14/families/__init__.py": "families package root",
+  "research/v14/families/basislv_premfade/__init__.py": "family package doc + frozen surface re-exports",
+  "research/v14/families/basislv_premfade/frozen_identity.py": "per-arm StrategyIdentity + RECORDED arm_config_digests (recorded before any scored metric; recomputed==recorded test-pinned)",
+  "research/v14/families/basislv_premfade/strategy.py": "frozen primitives: basis-route premium level signal (trailing 2688/5376 completed 15m buckets, bar-close availability, fail-closed gaps), tercile book (long floor(n/3) low-premium tier / short floor(n/3) high-premium tier, 1/(2k) per leg, gross 1.0, ties by symbol id ascending, min 12 eligible), INV control as exact sign-inverted book, weekly Monday 00:00Z calendar, pinned F0/F1/F2 folds with 1-day trailing purge, force-flat clamps, next-allowed close-fill, drop-one pin, cash reconciliation",
+  "research/v14/families/basislv_premfade/plugin.py": "BasislvPremfadePlugin (GenericStrategyBase subclass): identity/cost_model (V10 floors + real perp tick sizes)/universe/schedule/folds (accepts dropped fold)/targets_at with F0 fold-terminal force-flat flat-book/fills_at/marks_at/settlements/price_only_gate_input_spec + family stress cell (fee x1.5, +2 ticks, +1 event delay)",
+  "research/v14/families/basislv_premfade/audits.py": "SHA-verified A9-F staged-basis loaders (fail-closed on manifest or per-file SHA mismatch; ms->ns grid; basisRoute identity check |p_b - basisRate| <= 1e-4 absolute fail-closed per symbol), verification-only premium/mark/index kline loaders (A9-F sentinel rules), authorized bars/tick-size/funding loaders, schedule-only evidence builders (identity, staged inputs, feasibility, double generation, drop-one)",
+  "research/v14/families/basislv_premfade/gate_runner.py": "preregistered gate: incremental gate (>=2/3 folds), causal-control falsification (INV passing while anchor passes => falsified, control never promotable), neighbour sign rule, and the PRICE-ONLY FAILURE CLAUSE as a REQUIRED gate input (missing inputs => BLOCKED, never inferred PASS; fired => REJECTED_PRICE_ONLY_CARRY_HARVEST)",
+  "research/v14/families/basislv_premfade/restage_basis.py": "committed contingency stager implementing the A9F-OBS-5/OBS-6 pattern (limit=500 forward pagination only, HTTP 418 backoff-retry up to 8 attempts with linear 20s backoff, 0.55s serial pacing, zero-gap fail-closed); writes ONLY inside this lane worktree; NEVER executed by tests; not needed (staged bulk verified)",
+  "research/v14/families/basislv_premfade/golden/premfade_golden_fixture.json": "HAND-COMPUTED 13-symbol constant-premium synthetic world: anchor/neighbour/INV books, tie-break scenario, missing-slot refusal, below-12 floor refusal, availability mutation, side-geometry hand table",
+  "research/v14/families/basislv_premfade/golden/premfade_targets_golden.json": "HAND-COMPUTED anchor target payload at 2025-08-25T00:00:00Z (4v4 at 1/8; middle SYM04..SYM08; gross 1.0; max|w| 0.125)",
+  "tests/test_v14_family1_basislv.py": "29 targeted tests (goldens, L-V14-0 cost-scaling regression, availability-lag mutations, zero-position refusal, fold force-flat, identity/schedule/gate/drop-one pins, real-staged-snapshot evidence with skipif)"
+ },
+ "gates": [
+  {
+   "gate": "I-F1 targeted test suite (goldens + L-V14-0 + mutations + refusals + fold boundaries)",
+   "command": ".venv/bin/python -m pytest tests/test_v14_family1_basislv.py -q",
+   "exit_code": 0,
+   "observed": "29 passed",
+   "artifact": "tests/test_v14_family1_basislv.py",
+   "artifact_sha256": "8a70d1779ea67c780bb09cf4731d25c89885e2e4b556c896ae6c78651a5f448d",
+   "verdict": "PASS",
+   "notes": "targeted only; full pytest reserved for A1. Real-snapshot test auto-skips if the machine-local staged bulk is absent (it was present and passed on this host)."
+  },
+  {
+   "gate": "compileall on lane files",
+   "command": ".venv/bin/python -m compileall -q research/v14/families/basislv_premfade tests/test_v14_family1_basislv.py",
+   "exit_code": 0,
+   "verdict": "PASS"
+  },
+  {
+   "gate": "L-V14-0 cost-scaling regression (family books)",
+   "command": ".venv/bin/python -m pytest tests/test_v14_family1_basislv.py -q -k l_v14_0",
+   "exit_code": 0,
+   "observed": "3 passed: (i) constant 8-leg book across the full 52-stamp schedule charges EXACTLY 4 transitions x 1.0 notional x 6e-4 = 0.0024 with every held weekly boundary at exactly 0.0 (fills, never holding days); (ii) one/two 56d rank-flip segments add exactly 32 fill-units each => 64/96 fill-units => 0.0048/0.0072 = EXACTLY 2x/3x, linear slope 6e-4 per unit notional; (iii) replay identical (cost once) + family stress tiers on one entry transition = 0.0006/0.00085/0.0008 (exact 12:17:16)",
+   "verdict": "PASS"
+  },
+  {
+   "gate": "frozen arm digest report (recomputed == recorded, pre-scored-metric record)",
+   "command": ".venv/bin/python -c \"from research.v14.families.basislv_premfade.frozen_identity import frozen_arm_digest_report as f; assert all(v['match'] for v in f().values())\"",
+   "exit_code": 0,
+   "observed": {
+    "BASISLV-PREMFADE-28D": "8d7704663b923815e0bb2b201c339c9a2c209875c3348752c721d17265247d52",
+    "BASISLV-PREMFADE-56D": "832ccde72cde6bf1a1982fbaad728dbdbd7e21f26a768c389c22de1d1768d4ef",
+    "BASISLV-PREMFADE-28D-INV": "76f0b0ccba127cef85aa91ebaf4faa4d13fffd5130d2cf6f7e305f53aac46893"
+   },
+   "verdict": "PASS",
+   "notes": "digests pairwise distinct (distinct trial keys); recorded by this lane at implementation time BEFORE any scored metric exists."
+  },
+  {
+   "gate": "real A9-F staged snapshot schedule-only evidence (19 symbols, SHA-verified)",
+   "command": "in-repo evidence builders audits.evidence_identity/evidence_schedule_feasibility/evidence_double_generation/evidence_drop_one (exercised in tests/test_v14_family1_basislv.py::test_v14f1_real_staged_snapshot_first_stamp_books_and_determinism and the handoff run)",
+   "exit_code": 0,
+   "observed": {
+    "manifest_sha256_verified": "3867bdca3162f219d9a62b30b6768997f89a751b7bb86231b1c1175a6e25ee88",
+    "basis_files_verified": "19/19 SHA-256 match, fail-closed loader",
+    "identity_check": "max |p_b - basisRate| <= 1e-4 absolute on all 19 symbols (no violations)",
+    "eligibility": "19/19 eligible at EVERY effective stamp (51), side 6v6 at 1/12, max|w| 0.083333333333, gross 1.0",
+    "anchor_one_way_traded_gross_window": 12.49999999995,
+    "a9f_measured_one_way_traded_gross_window": 12.5,
+    "cross_check_delta": 5.0e-11,
+    "double_generation": "all 3 arms byte-identical",
+    "drop_one": "ZECUSDT (largest held |b_i| 9.6668e-4) at the first stamp, non-vacuous, 11 surviving legs renormalized to gross 1.0"
+   },
+   "verdict": "PASS",
+   "notes": "schedule-only: NO PnL, no returns, no cost numbers on real data. The A9-F turnover cross-check (12.49999999995 vs 12.5, fills 147) independently confirms this lane's books reproduce the frozen rank schedule."
+  }
+ ],
+ "plugin_interface_for_driver": {
+  "statement": "The V14 driver (A1's adaptation of research/control/v13_run/tools/run_v13_cell.py) consumes the family mechanically through the SAME V13 plugin surface: instantiate BasislvPremfadePlugin(arm_id=..., basis_by_symbol=..., bars_by_symbol=..., settlements_by_symbol=..., tick_sizes=...) per arm (ARM_IDS = anchor BASISLV-PREMFADE-28D / neighbour BASISLV-PREMFADE-56D / control BASISLV-PREMFADE-28D-INV) and call identity(), cost_model(), baseline_stress(), universe(stress), benchmark_context_symbols(), schedule() (52 Monday 00:00Z stamps, sha-pinned), folds(stress=..., instants=...) (pinned F0/F1/F2, accepts dropped fold), effective_instants() (51), targets_at(instant, universe=..., stress=...) (raises EligibilityShortfall on <12 eligible; returns the FLAT book with reason FOLD_TERMINAL_FORCE_FLAT at 2025-12-15), fills_at(...), marks_at(...), settlements(sym), funding_cashflows_for_spans(spans), rebalance_cost_between(prev, new, prices=..., stress=...), declared_execution_lag(), price_only_gate_input_spec(). run_strategy(plugin, stress=...) works unmodified (proven in tests).",
+  "data_injection": {
+   "basis_by_symbol": "audits.load_basis_world() (A9-F staged basis route, per-file SHA-256 verified vs staged_basis_manifest.json, fail-closed; staged root resolved from the manifest's file paths, or env V14_D2A9F_STAGED_ROOT, or explicit staged_root=)",
+   "bars_by_symbol": "audits.load_execution_bars() from the authorized BARS_ROOT (15m Nautilus bars, i128/1e16 decode, close-boundary snap) for the 19 names + BTCUSDT",
+   "settlements_by_symbol": "audits.load_settlements(sym) from FUNDING_BUNDLES (hour-snapped stamps; cost/credit only, identical across arms, never a signal)",
+   "tick_sizes": "audits.load_tick_sizes() (real perp-metadata price_increment; no uniform stubs, L-V14-0)"
+  },
+  "gate_inputs_required_at_scoring": "evaluate_family_gate(anchor_fold_positive, control_fold_positive, neighbour_fold_positive, price_only_expectancy=..., total_expectancy=...) — the scored layer MUST compute and pass the price-only vs total expectancy split (the price-only failure clause is a REQUIRED gate input; missing inputs yield BLOCKED_PRICE_ONLY_CLAUSE_INPUTS_MISSING, never an advance). Optional stress_passes is carried verbatim."
+ },
+ "frozen_conventions_implemented": {
+  "signal": "b_i(T) = mean p_b over the trailing 2688 (anchor) / 5376 (neighbour) COMPLETED 15m basis-route buckets with close <= T; every slot present AND available else the symbol refuses (fail-closed, L-V12-5); last admissible bucket [Sun 23:45, Mon 00:00); premium/mark/index klines, OI and funding-rate DECLARED OUT OF SCOPE for the signal (proposal section 10)",
+  "book": "long floor(n_eligible/3) lowest-premium / short floor(n_eligible/3) highest-premium, equal 1/(2 floor(n/3)) per leg, gross 1.0, ranks ascend by (b_i, symbol id), middle flat, min 12 eligible (else EligibilityShortfall), max|w| = 1/8 = 0.125 <= 0.30 by construction (asserted), BTCUSDT never ranked",
+  "arms": "anchor 28D / neighbour 56D / control 28D-INV = EXACT element-wise sign inversion of the anchor book (test-pinned)",
+  "clock": "weekly Monday 00:00:00Z; fills at the close of the first completed 15m bar strictly after T (00:15Z close; stress +1 => 00:30Z close); holding 7d force-flat-clamped at fold ends",
+  "folds": "F0 2025-08-22..2025-12-21 / F1 2025-12-22..2026-04-21 / F2 2026-04-22..2026-08-21; 1-day purge as the TRAILING calendar zone of each fold (V11-lineage purge_fold_members convention inherited by the V12 frozen fold contract and the V13 implementation); exactly one stamp (2026-04-20) purged => 51 effective Mondays at 17/17/17; F0 fold-terminal stamp 2025-12-15 answered with the FLAT book (no position crosses a fold boundary)",
+  "costs": "L-V14-0 remediated kernel inherited from the generic adapter: charged on fills only (weight deltas), real perp tick sizes, funding settled once on held legs (start < ts <= end), identical across arms; scored cells must report cost broken out by fills vs holding terms (driver obligation)"
+ },
+ "a9f_observations_disposition": {
+  "A9F-OBS-1": "noted; PREMFADE p_b uses the basis route (futuresPrice last-traded vs indexPrice) exclusively — route-specific and self-consistent",
+  "A9F-OBS-2": "not applicable to PREMFADE signal (mark/index-derived premium is WIDTHGATE's basis); the routes are loaded verification-only",
+  "A9F-OBS-3": "honored: the PREMFADE identity check uses an ABSOLUTE band (1e-4, endpoint basisRate rounded to 4dp, the band A9-F measured) — fail-closed per symbol",
+  "A9F-OBS-4": "RECORDED AND RESOLVED BY THE FROZEN LINEAGE: the observation text describes the purge as removing 2025-12-22 (fold-start reading), but the binding 'V12 frozen fold contract' is the V11-lineage purge_fold_members convention — strip the TRAILING purge_days instants of each fold — which purges 2026-04-20 (F1 end zone) and keeps 2025-12-22 live; this is the reading implemented by the frozen V13 LIQEPIS family and measured by A9-F itself (51 live, 17/17/17). BOTH readings give identical counts (52 scheduled, 51 live, 17/17/17, floors met); only one stamp's membership differs at the F0/F1 boundary. This lane implements the frozen lineage reading and flags it for A1's records.",
+  "A9F-OBS-5": "not applicable to PREMFADE (no sigma_chg standardization); the 418/500 backoff-retry staging pattern is implemented in the committed restage_basis.py contingency",
+  "A9F-OBS-6": "implemented in restage_basis.py (up to 8 attempts, linear 20s backoff, fail-closed); not triggered — the A9-F staged bulk was complete and SHA-verified",
+  "A9F-OBS-7": "not applicable (OI lane)",
+  "A9F-OBS-8": "noted; A9-F measured PREMFADE schedule drag 0.7777% base / 1.3955% stressed of gross — inside the 8%/12% floors; this lane computes no cost numbers on real data",
+  "A9F-OBS-9": "noted (A9-F evidence-integrity disclosure); no impact on this lane — G2 full-window staging independently re-established coverage and this lane re-verified 19/19 basis-file SHAs against the manifest"
+ },
+ "blocked_items": [],
+ "not_run_items": [
+  "full pytest suite (reserved for A1 alone per plan Section 14)",
+  "any scored cell, Phase-E run, or backtest over the scored window on real data (goldens are synthetic-only; real-snapshot evidence is schedule-only)",
+  "network re-staging (not needed; the committed restage_basis.py exists as the auditable contingency)"
+ ],
+ "test_inventory": {
+  "total": 29,
+  "passed": 29,
+  "failed": 0,
+  "skipped": 0,
+  "command": ".venv/bin/python -m pytest tests/test_v14_family1_basislv.py -q",
+  "coverage_map": {
+   "feature_goldens": [
+    "test_v14f1_golden_anchor_book_matches_targets_golden",
+    "test_v14f1_golden_b_i_equals_constant_premium_hand_exact",
+    "test_v14f1_golden_neighbour_book_identical_and_control_exact_negation",
+    "test_v14f1_golden_tie_break_symbol_id_ascending_at_short_boundary",
+    "test_v14f1_golden_missing_slot_refuses_symbol_and_shifts_book_deterministically",
+    "test_v14f1_golden_below_floor_stamp_refuses_fail_closed",
+    "test_v14f1_golden_side_geometry_hand_table",
+    "test_v14f1_golden_world_has_no_scored_metric_available"
+   ],
+   "l_v14_0_cost_scaling": [
+    "test_v14f1_l_v14_0_constant_book_costs_fills_not_holding_days",
+    "test_v14f1_l_v14_0_double_and_triple_fills_cost_exactly_double_and_triple",
+    "test_v14f1_l_v14_0_cost_once_across_replay_and_stress_tiers_on_family_books"
+   ],
+   "availability_lag_mutations": {
+    "basis_route_signal": [
+     "test_v14f1_mutation_basis_route_row_available_after_decision_refuses",
+     "test_v14f1_mutation_basis_route_series_shifted_one_bucket_refuses_every_symbol"
+    ],
+    "execution_bars": [
+     "test_v14f1_mutation_execution_bar_available_after_close_refuses_fill",
+     "test_v14f1_mutation_execution_missing_bar_shifts_fill_deterministically",
+     "test_v14f1_mutation_marks_never_read_a_bar_available_after_the_instant"
+    ],
+    "funding_settlements": [
+     "test_v14f1_mutation_funding_settlement_after_span_end_never_accrues"
+    ],
+    "premium_mark_index_klines_verification_routes_plus_sha_discipline": [
+     "test_v14f1_mutation_verification_routes_sentinel_and_sha_fail_closed"
+    ]
+   },
+   "zero_position_refusal": [
+    "test_v14f1_zero_position_stamp_refusal_propagates_through_plugin",
+    "test_v14f1_zero_position_publication_refused"
+   ],
+   "fold_force_flat": [
+    "test_v14f1_fold_terminal_stamp_is_pinned_and_answered_flat",
+    "test_v14f1_full_window_run_respects_every_fold_boundary",
+    "test_v14f1_force_flat_span_never_crosses_fold_end"
+   ],
+   "identity_schedule_gate_drop_one": [
+    "test_v14f1_frozen_arm_digests_recompute_match_and_are_pairwise_distinct",
+    "test_v14f1_frozen_schedule_and_folds_shape",
+    "test_v14f1_plugin_driver_surface_answers_on_fixture_world",
+    "test_v14f1_gate_runner_preregistered_verdicts",
+    "test_v14f1_drop_one_selection_and_renormalization_pinned",
+    "test_v14f1_real_staged_snapshot_first_stamp_books_and_determinism (skipif staged bulk absent)"
+   ]
+  }
+ },
+ "file_sha256": {
+  "research/v14/__init__.py": "71f3b34072d4201b11f05aa1f32472dddc2999247e837af2179b61c273d1756d",
+  "research/v14/families/__init__.py": "24914509d61434db9cdd53321ad58c250728e1f8fbed2f6610593f0ecb92218f",
+  "research/v14/families/basislv_premfade/__init__.py": "95ce45f96ebf0d08de099e9f7121c4730ea1a1e9300e3784fe99a1189bbd0e6b",
+  "research/v14/families/basislv_premfade/frozen_identity.py": "a6ec552c5394d86627b9da71cc7472237f4924c48f404da36e9a4a807fe72499",
+  "research/v14/families/basislv_premfade/strategy.py": "5b8a035dae016e734e49a43a32a9bd7520780e452bf9c97447175e06cfc04537",
+  "research/v14/families/basislv_premfade/plugin.py": "5dccb1ac070444045041c47853cb6d55bb7c9e1181ebdb8c651ac94ce1b30b4b",
+  "research/v14/families/basislv_premfade/audits.py": "ccbc362cb5f899db513c1456687e8ab0ca235b41e2f40d83fb70a7426e438851",
+  "research/v14/families/basislv_premfade/gate_runner.py": "b066bb9fc104d57d792c82536b083be68c8aac84acb442958942ba93ef40c683",
+  "research/v14/families/basislv_premfade/restage_basis.py": "cc29e574ab81b819bef962c96f9f8fdb4ecd253033704bc27b811d687619b712",
+  "research/v14/families/basislv_premfade/golden/premfade_golden_fixture.json": "ba9b52499d2df4dbceca8d43337d1a4eb31333a1fb505341cc69bcc061e8cd0e",
+  "research/v14/families/basislv_premfade/golden/premfade_targets_golden.json": "426c5e0ab8fdbcb07f7f3ffada6c7abfdfda15b9494292f01003162c0c820037",
+  "tests/test_v14_family1_basislv.py": "8a70d1779ea67c780bb09cf4731d25c89885e2e4b556c896ae6c78651a5f448d"
+ },
+ "handoff_note_to_A1": "The plugin drops into the adapted run_v13_cell driver exactly as the V13 LIQEPIS plugin did: build the three arm plugins with audits.build_plugins()/injected loaders, drive run_strategy per cell, and pass the fold-sign vectors PLUS the price-only/total expectancy split into gate_runner.evaluate_family_gate at scoring. No family-specific driver code is required. The single interpretive record (A9F-OBS-4 purge reading) is documented above with its lineage evidence; both readings give the same 51/17-17-17 counts."
+}
