@@ -158,27 +158,51 @@ def build_data_paths(template_path, macro_dir):
     return data_paths
 
 
-def compute_all_cells(data_paths):
-    """Run the six frozen cells through the frozen runner (no publication)."""
+def compute_all_cells(data_paths, tolerate_validator_aborts=False):
+    """Run the frozen cells through the frozen runner (no publication).
+
+    tolerate_validator_aborts (corrected phase only): the frozen validator
+    may REFUSE a corrected-books decision (e.g. ONE_EVENT_LAG_VIOLATION when
+    evidenced availability creates a decision whose next-session fill is
+    missing from the authorized price snapshot).  The refusal is recorded
+    verbatim as a FROZEN_VALIDATOR_ABORT finding and the remaining cells
+    still compute -- the refused cell is never fabricated.  The baseline
+    twin phase passes tolerate_validator_aborts=False: any abort there is a
+    hard G4 failure."""
     from research.assets.forex_free_v3 import scored_runner as R
     for family_id, module_path in (("family1", "research.assets.forex_free_v3.family1"),
                                    ("family2", "research.assets.forex_free_v3.family2")):
         R.register_family(family_id, importlib.import_module(module_path))
     cells = {}
+    aborts = []
     sanity = {}
     for family_id in ("family1", "family2"):
         family_cells = {}
         for arm in R.ARMS:
-            record = R.compute_cell(family_id, arm, data_paths,
-                                    freeze_token=R.FREEZE_TOKEN)
+            try:
+                record = R.compute_cell(family_id, arm, data_paths,
+                                        freeze_token=R.FREEZE_TOKEN)
+            except R.DecisionRuleError as exc:
+                if not tolerate_validator_aborts:
+                    raise
+                aborts.append({"family_id": family_id, "arm": arm,
+                               "abort": "FROZEN_VALIDATOR_ABORT",
+                               "error": str(exc)})
+                continue
             gates, reasons = R.stage_a_gates(record)
             record["gates"] = gates
             record["gate_reasons"] = reasons
             cells[record["cell_id"]] = record
             family_cells[arm] = record
-        ok, reasons = R.mechanism_sanity(family_cells)
-        sanity[f"{family_id}:MECHANISM_SANITY"] = {"pass": ok, "reasons": reasons}
-    return cells, sanity
+        if len(family_cells) == len(R.ARMS):
+            ok, reasons = R.mechanism_sanity(family_cells)
+            sanity[f"{family_id}:MECHANISM_SANITY"] = {"pass": ok, "reasons": reasons}
+        else:
+            missing = [a["arm"] for a in aborts if a["family_id"] == family_id]
+            sanity[f"{family_id}:MECHANISM_SANITY"] = {
+                "pass": None,
+                "reasons": ["ARM_MISSING_VALIDATOR_ABORT"] + missing}
+    return cells, sanity, aborts
 
 
 def twin_compare(v3_ledger_path, recomputed):
@@ -433,7 +457,10 @@ def main():
 
     if "baseline" in wanted:                                # G4 twin
         baseline_paths = build_data_paths(args.data_paths_template, args.vintage_dir)
-        cells_twin, sanity_twin = compute_all_cells(baseline_paths)
+        cells_twin, sanity_twin, twin_aborts = compute_all_cells(baseline_paths)
+        if twin_aborts:
+            raise SystemExit(json.dumps({"GUARD": "G4_TWIN_VALIDATOR_ABORT",
+                                         "aborts": twin_aborts}, indent=1))
         diffs = twin_compare(v3_ledger, cells_twin)
         if diffs:
             raise SystemExit(json.dumps({"GUARD": "G4_TWIN_MISMATCH",
@@ -447,7 +474,16 @@ def main():
 
     if "corrected" in wanted:
         evidenced_paths = build_data_paths(args.data_paths_template, args.evidenced_dir)
-        cells, sanity = compute_all_cells(evidenced_paths)
+        cells, sanity, validator_aborts = compute_all_cells(
+            evidenced_paths, tolerate_validator_aborts=True)
+        report["validator_aborts"] = validator_aborts
+        if validator_aborts:
+            with open(os.path.join(RUN_DIR, "validator_aborts.json"), "w",
+                      encoding="utf-8") as handle:
+                json.dump({"schema": "forex_free_v3r_validator_abort_v1",
+                           "note": ("frozen validator refused these corrected-books "
+                                    "cells; recorded verbatim, never fabricated"),
+                           "aborts": validator_aborts}, handle, indent=1)
         report["cells"] = {
             cell_id: {
                 "gates": "PASS" if rec["gates"] else "FAIL",

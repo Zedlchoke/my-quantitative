@@ -536,6 +536,7 @@ def verify_candidate(event, kind, url, schedule_ok_claim=None):
     date_tokens = [
         f"{month_full} {derived_day.day}, {derived_day.year}",
         f"{derived_day.day:02d} {month_full} {derived_day.year}",
+        f"{derived_day.day} {month_full} {derived_day.year}",
         f"{derived_day.isoformat()}",
         f"{derived_day.day:02d}.{derived_day.month:02d}.{derived_day.year}",
         f"{derived_day.day:02d} {month_abbr} {derived_day.year}",
@@ -625,6 +626,7 @@ def build_row(event, baselines, schedule_by_area, offline=False):
         "old_bound_end_of_effective_day": end_of_day_utc(eff_day),
     }
     evidence = None
+    unverified_probe = None
     if not offline:
         builder = config.get("candidate_url_builder")
         if builder:
@@ -640,6 +642,13 @@ def build_row(event, baselines, schedule_by_area, offline=False):
         listing = config.get("listing_probe")
         if evidence is None and listing:
             evidence = probe_listing(config, event, listing)
+        # only a VERIFIED page is evidence; an unverified probe (403 listing,
+        # unmatched link, transport error) is recorded but never cited
+        if evidence is not None and not evidence.get("verified"):
+            unverified_probe = {k: evidence.get(k) for k in
+                                ("kind", "url", "verified", "error",
+                                 "archive_path", "archive_sha256", "note")}
+            evidence = None
     if evidence:
         announcement_day = date.fromisoformat(
             url_basis_day(event, evidence["url"]) or event["effective_date"])
@@ -689,6 +698,7 @@ def build_row(event, baselines, schedule_by_area, offline=False):
         "unscheduled": unscheduled,
         "unscheduled_basis": ("documented out-of-cycle decision date; see archived page"
                               if unscheduled else None),
+        "unverified_probe": unverified_probe,
     }
     row["first_readable_decision_utc"] = first_readable_decision(
         effective_instant,
@@ -716,13 +726,46 @@ def probe_listing(config, event, listing):
     if status != 200:
         return {"kind": "listing", "url": url, "verified": False,
                 "archive_path": rel, "archive_sha256": digest}
-    # find links whose neighbouring text shows the decision day
+    # find links whose neighbouring text shows a candidate decision day:
+    # the release is dated the DECISION day, which may trail the BIS
+    # effective date (BoJ announces T, effective T+1..T+3), so probe the
+    # effective day and a few days before; the release page itself must
+    # still verify (its own dated content) before it becomes evidence.
     links = re.findall(r'href="([^"]+)"[^>]*>([^<]{0,120})', text, flags=re.IGNORECASE)
-    day_tokens = {eff_day.strftime(fmt).lower() for fmt in
-                  ("%Y-%m-%d", "%b. %d, %Y", "%B %d, %Y", "%d %B %Y")}
+    probe_days = [eff_day - timedelta(days=k) for k in (0, 1, 2, 3)]
+    day_tokens = set()
+    for day in probe_days:
+        day_tokens |= {day.strftime(fmt).lower() for fmt in
+                       ("%Y-%m-%d", "%b. %d, %Y", "%B %d, %Y", "%d %B %Y")}
+        day_tokens |= {  # unpadded-day variants (BoJ/BoE write "March 9", "9 March")
+            f"{MONTH_NAMES[day.month]} {day.day}, {day.year}",
+            f"{day.day} {MONTH_NAMES[day.month]} {day.year}",
+        }
+
+    def label_matches(label):
+        flat = re.sub(r"\s+", " ", label.replace("&nbsp;", " ").replace("\xa0", " "))
+        flat = flat.lower()
+        return any(token in flat for token in day_tokens)
+
+    # candidate selection: (a) label-token match, (b) URL-encoded day within
+    # the decision-day window (BoJ slugs mprYYMMDDx / kYYMMDDx) -- the index
+    # rows pair dates and titles with row-shifted markup, so the URL day is
+    # the reliable selector; the page must still verify on its own content.
+    # PDFs never verify (no text) but stay archived via the probe fetch.
+    candidates = []
     for href, label in links:
-        if not any(token in label.lower() for token in day_tokens):
-            continue
+        if label_matches(label):
+            candidates.append(href)
+    if listing.get("per_year"):
+        seen = set()
+        for href, _label in links:
+            if href in seen or not href.lower().endswith((".htm", ".html")):
+                continue
+            seen.add(href)
+            link_day = url_basis_day(event, href.rsplit("/", 1)[-1])
+            if link_day and link_day in {d.isoformat() for d in probe_days}:
+                candidates.append(href)
+    for href in candidates:
         if "http" in href:
             link = href
         elif href.startswith("/"):
