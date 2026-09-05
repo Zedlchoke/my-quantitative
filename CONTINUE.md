@@ -44,3 +44,19 @@ only on owner instruction.
 
 Return measured UTC, deadline remaining, integration HEAD, budget, and the
 R0 plan; then continue without repeated GO.
+
+---
+
+## Forex program state (synced 2026-09-05 — separate from the V10R→V11 track above)
+
+Forex V3 closed with provisional survivor FXFV3-A6-P1 (vol-gated policy-rate
+carry); the V3R data-authority remediation then recorded
+`FOREX_FREE_V3_DATA_AUTHORITY_INVALIDATED` (anchor fails frozen
+STRESS_TIER_2.0 under evidenced announcement availability — PF 1.2825
+fin-adj, expectancy +20.72; control arm refused by the frozen validator, so
+mechanism sanity is null; A7 PASS 9/9, 0 blocking). Family2 is in the
+forbidden inventory with the economic observation recorded; front-door
+re-entry only via a future owner-preregistered plan under the standard
+ancestry rho gates. S1 never opened, stays SEALED. No forex thread is
+preregistered. Detail:
+`.worktrees/forex-free-v3r/integration/research/control/forex_free_v3r_run/terminal_verdict.json`.

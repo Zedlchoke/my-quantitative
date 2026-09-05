@@ -10,21 +10,28 @@
 > timestamps were INFERRED (date-only upper bound asserted in code prose),
 > not evidenced per event. See remediation conditions below and
 > `PLAN_forex_v3r.md`.
+>
+> 2026-09-05 terminal: V3R executed (A7 PASS 9/9, 0 blocking) —
+> **S-1 CLOSED — FOREX_FREE_V3_DATA_AUTHORITY_INVALIDATED**. See the
+> terminal adjudication at the end of this entry.
 
 ## S-1 — FXFV3-A6-P1 (Forex V3 family2) — vol-gated policy-rate carry
 
 ```text
-status           PROVISIONAL_STAGE_A_SURVIVOR_PENDING_PIT_AUTHORITY
-                 (downgraded from PIT-audited by owner audit 2026-09-05;
-                 engineering chain PASS, data-authority claim UNPROVEN)
+status           FOREX_FREE_V3_DATA_AUTHORITY_INVALIDATED (terminal 2026-09-05)
+                 (was PROVISIONAL_STAGE_A_SURVIVOR_PENDING_PIT_AUTHORITY;
+                 V3R corrected books failed the frozen contract — terminal
+                 adjudication at the end of this entry)
 remediation      PLAN_forex_v3r.md — announcement ledger + recompute under
                  corrected availability; survivor restored only if anchor
                  and neighbour still PASS every frozen gate unchanged
 producer         proposal lane A6, blind, outcome-blind attested
 certified by     A7 terminal 2a3e9f6 — C1..C8 all PASS, 0 HIGH/CRITICAL
+                 V3R audit: A7 PASS 9/9, 0 blocking (87f7fa7)
 freeze pins      W3C 331a3893184b10782f735be1248d9fa792fe5783
                  ledger sha256 6329cabcf80f6cc67009dec7f042fba3832607dd...
                  reproduction ALL_MATCH, byte-identical in both twins
+                 V3R ledger sha256 169b9e447f01ba0114396a3f26f208f57f6100...
 denominators     forex 18/18 (V1 6 + V2 6 + V3 6); program 173 published
 ```
 
@@ -114,3 +121,42 @@ reproduction ALL_MATCH in both twins.
 - Any S1 plan must re-verify W3C and ledger pins before touching sealed data,
   and must carry the V3R remediation verdict plus the multiple-testing
   statistics above.
+
+### S-1 terminal adjudication — FOREX-FREE-V3R (2026-09-05, verdict recorded)
+
+Per-event evidenced announcement availability (pinned ledger `169b9e44`:
+US 22/22 INSTANT from Fed page release lines, GB 21/22 DAY, JP 4/5 DAY; all
+other events conservative-unevidenced at the V3-identical bound, so the
+residual evidence gaps bias the correction conservatively, never
+favourably), recomputed through the byte-untouched frozen runner (G4 twin
+ALL_MATCH, 6 cells x 28 keys, independently rerun byte-identically by A7;
+full pytest 1496 passed 1 skipped alone):
+
+- **anchor FAILS frozen `STRESS_TIER_2.0`** — the only failing gate: PF
+  1.2825 fin-adj (still above 1.10), expectancy +20.72 over 103 scored
+  trades, booked fin-adj +977.36 (V3: +1,354.86); the tier-2.0 stress book
+  crosses zero (−101.62, PF 0.9881).
+- **control arm irreproducible** — evidenced availability surfaces a
+  2022-11-03 USD/JPY decision whose frozen next-session fill (2022-11-07,
+  over the authorized snapshot's truncated 2022-11-04 bars plus the DST
+  switch) exceeds the frozen 4-day lag by one hour; the frozen validator
+  refuses it, so family2 mechanism sanity is null (the placebo that proved
+  specificity cannot be scored under honest availability).
+- neighbour still passes every frozen gate unchanged (PF 1.3547 fin-adj);
+  diff table 158 decision instants / 19 sign flips, zero none↔value;
+  reconciliation holds exactly on both books (finding 3 resolved:
+  expectancy is scored-population, booked columns are full kept book);
+  DSR/PBO NOT_RUN fail-closed (no per-period series in the program ledger).
+
+Owner decision (recorded 2026-09-05; no gate, threshold, parameter or
+control adjusted to preserve the survivor): **family2 joins the forbidden
+inventory as DATA_AUTHORITY_INVALIDATED** — economically present under
+honest availability (PF 1.2825 / expectancy +20.72), contract-invalidated.
+Front-door re-entry remains open ONLY in a future owner-preregistered plan
+under the standard ancestry rho gates. S1 was never opened and stays
+SEALED_UNTOUCHED; with no survivor remaining, the S1 conditions above bind
+no entry (the seal itself is program-wide and unchanged). Denominators
+unchanged (forex 18/18 published; V3R published nothing). Artifacts:
+`.worktrees/forex-free-v3r/integration/research/control/forex_free_v3r_run/`
+— `terminal_verdict.json`; commits `ca3755a` (R1+R2), `87f7fa7` (A7),
+`c356813` (terminal).

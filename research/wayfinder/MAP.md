@@ -2,6 +2,21 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **FOREX V3 CLOSED → V3R DATA_AUTHORITY_INVALIDATED** (synced by A1,
+  2026-09-05, branch `orca/forex-free-v3r-integration@c356813`) — V3 locked
+  FXFV3-A6-P1 (vol-gated policy-rate carry) provisionally pending evidenced
+  PIT availability; the V3R remediation recomputed the six frozen cells
+  under a pinned official announcement ledger (G4 twin ALL_MATCH; A7 PASS
+  9/9, 0 blocking): anchor fails frozen STRESS_TIER_2.0 (PF 1.2825 fin-adj,
+  expectancy +20.72 under honest availability), control arm refused by the
+  frozen validator (mechanism sanity null). Verdict
+  `FOREX_FREE_V3_DATA_AUTHORITY_INVALIDATED`; family2 in the forbidden
+  inventory (economic observation recorded; front-door re-entry only via a
+  future preregistered plan, standard ancestry rho gates). S1 never opened,
+  stays SEALED. Denominators unchanged (forex 18/18; V3R published
+  nothing). Detail:
+  `.worktrees/forex-free-v3r/integration/research/control/forex_free_v3r_run/terminal_verdict.json`,
+  S-1 entry in [SURVIVORS.md](SURVIVORS.md).
 - **V10P BLOCKED_PRELAUNCH** (synced by A1, 2026-08-27, branch
   `orca/v10-integration@86b7274`) — generic strategy→research adapter built and
   accepted (BG1–BG6, G15, F2 adopted-with-proof, G17 one measured authority,
