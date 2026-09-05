@@ -7,9 +7,9 @@ namespace, never a scored ledger outside tmp):
 (a) all six frozen arms CONSTRUCT through the driver registry on the
     synthetic root and produce PAIRWISE-UNIQUE preflight digests
     (recomputed == recorded, 6/6); the digest pin also fails closed
-    (exit 2) when a recorded digest is tampered with; the basislv arms
-    traverse the FULL preflight incl. the frozen runner-compatibility pin
-    (exit 0);
+    (exit 2) when a recorded digest is tampered with; ALL SIX arms
+    (basislv AND oicyc, post-delta1) traverse the FULL preflight incl.
+    the frozen runner-compatibility pin (exit 0);
 (b) scored records carry the L-V14-0 remediated-kernel cost breakout:
     ``cost_fills`` and ``cost_holding_terms`` present, holding terms
     EXACTLY 0 (charged on fills only, by construction), and the basislv
@@ -31,17 +31,22 @@ namespace, never a scored ledger outside tmp):
     ``research/control`` subtree is refused outright (the structural fix
     for the cancelled lane's six stray control-tree TECHABORT files).
 
-RECORDED BLOCKED EVIDENCE (frozen-family defect; owner decision required):
-the frozen oicyc plugin accepts the drop_one_fold cell at the
-folds-contract probe, but its chained ``targets_at`` crashes under ANY
-dropped-fold stress (``_fold_terminal_stamps`` -> ``fold_assignments``
-refuses a fold with no retained members), while the frozen generic runner
-queries ``targets_at`` at EVERY open instant including a dropped fold's
-stamps.  The oicyc drop_one_fold cell therefore cannot traverse; the
-driver's preflight pin fails the oicyc arms closed pre-metric (exit 2,
-zero budget) and the blocked state is PINNED by
-``test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict`` -- that test
-must flip to exit-0 when an owner-authorized family delta lands.
+DISCHARGED BLOCKED EVIDENCE (delta1, cycle CRYPTO-V14): at the pre-delta
+lane HEAD 0b661a8 the frozen oicyc plugin accepted the drop_one_fold cell
+at the folds-contract probe, but its chained ``targets_at`` crashed under
+ANY dropped-fold stress (``_fold_terminal_stamps`` ->
+``fold_assignments`` refused a fold with no retained members), while the
+frozen generic runner queries ``targets_at`` at EVERY open instant
+including a dropped fold's stamps; the driver's preflight pin failed the
+oicyc arms closed pre-metric (exit 2, zero budget) and that blocked state
+was pinned by
+``test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict``.  The
+owner-authorized family delta (research/v14/families/oicyc/plugin.py:
+terminals derived from the FULL frozen calendar, retention applied as a
+filter; intact-schedule books byte-identical, pinned in
+tests/test_v14_family2_oicyc.py) landed, and that test is now flipped to
+the basislv-style exit-0 assertion as
+``test_v14drv_oicyc_traversal_pin_ok_after_family_delta``.
 
 No real data file is read by these tests: the synthetic world uses the
 frozen universe NAMES (the driver's code path is identical) but every byte
@@ -482,22 +487,25 @@ def test_v14drv_basislv_preflight_traversal_pin_ok(synthetic_world, tmp_path):
     assert preflight["staged"]["files_verified"] == preflight["staged"]["files_expected"]
 
 
-def test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict(
+def test_v14drv_oicyc_traversal_pin_ok_after_family_delta(
     synthetic_world, tmp_path
 ):
-    """BLOCKED evidence (recorded, fail-closed pre-metric, ZERO budget):
+    """DELTA1 DISCHARGE (was: blocked-evidence pin at pre-delta lane HEAD
+    0b661a8, then named
+    ``test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict``):
 
-    The frozen oicyc plugin accepts the drop_one_fold cell at the
-    folds-contract probe, but its chained targets_at crashes under ANY
-    dropped-fold stress: ``_fold_terminal_stamps(retained_instants)`` calls
-    ``fold_assignments``, which refuses when a fold has no retained members
-    ("pinned fold F0 received no decision stamps").  The frozen generic
-    runner queries targets_at at EVERY open instant -- including a dropped
-    fold's stamps -- so the drop_one_fold cell cannot traverse and the
-    three oicyc scored cells are BLOCKED until an owner-authorized
-    family-side delta (never a driver-side workaround).  This test pins the
-    blocked state: when the family delta lands it MUST be flipped to the
-    basislv-style exit-0 assertion.
+    The frozen oicyc plugin's chained ``targets_at`` used to derive its
+    fold-terminal stamps from the RETAINED (stress-filtered) decision
+    stamps, so ``fold_assignments`` refused any dropped-fold traversal
+    ("pinned fold F0 received no decision stamps") while the frozen generic
+    runner queries ``targets_at`` at EVERY open instant.  The owner-side
+    family delta re-derived the terminals from the FULL frozen calendar
+    (the OITD/LIQEPIS V13 + basislv V14 convention; retention applied as a
+    filter) with the intact-schedule books pinned byte-identical
+    (tests/test_v14_family2_oicyc.py, DELTA1 digests).  The oicyc arms
+    therefore now traverse the FULL preflight incl. the frozen
+    runner-compatibility pin across every matrix cell -- exit 0, the same
+    assertions as the basislv pin test.
     """
     out_root = tmp_path / "out" / "oicyc" / OICYC_ANCHOR
     rc = run_driver(
@@ -505,16 +513,17 @@ def test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict(
         out_root,
         ["--family", "oicyc", "--arm", OICYC_ANCHOR, "--preflight-only"],
     )
-    assert rc == run_v14_cell.EXIT_FAIL_CLOSED
+    assert rc == run_v14_cell.EXIT_OK
     preflight = json.loads((out_root / "preflight.json").read_text(encoding="utf-8"))
+    assert preflight["mode"] == "synthetic_dry_run"
     assert preflight["no_scored_metric_yet"] is True
-    pin = preflight["runner_traversal_pin"]
-    assert pin["ok"] is False and pin["problems"]
-    first = pin["problems"][0]
-    assert first["cell"] == "drop_one_fold"
-    assert "received no decision stamps" in first["error"]
-    # construction + digests were fine: the block is traversal-only
-    assert preflight["six_arm_digest_pin"]["pairwise_unique"] is True
+    pin = preflight["six_arm_digest_pin"]
+    assert pin["n_arms"] == 6 and pin["n_match"] == 6 and pin["pairwise_unique"] is True
+    traversal = preflight["runner_traversal_pin"]
+    assert traversal["ok"] is True and traversal["problems"] == []
+    assert "drop_one_fold" in [str(c) for c in traversal["cells_probed"]]
+    # construction + digests were always fine: the discharge is traversal-only
+    assert preflight["remediated_kernel"] is True
 
 
 def test_v14drv_digest_pin_driver_level_values_and_uniqueness(synthetic_world):

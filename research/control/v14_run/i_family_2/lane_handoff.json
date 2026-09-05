@@ -135,6 +135,82 @@
  "scored_results_this_lane": 0,
  "no_pnl": true,
  "no_backtests_over_the_scored_window": "golden fixtures are synthetic; the real-snapshot preflight computed target BOOKS only (schedule-only), never PnL, never positions persisted beyond the preflight payload, never any scored metric",
+ "delta_1": {
+  "schema": "v14_i_family_2_lane_delta_1",
+  "cycle": "CRYPTO-V14",
+  "worktree": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/i-family-2-delta1",
+   "branch": "orca/v14-i-family-2-delta1",
+   "head_before_commit": "0b661a8fdf882273c9abf18223d7d8d43a5fd031"
+  },
+  "defect": "The oicyc family plugin failed closed at the driver preflight on ANY dropped-fold traversal: the V14 scored driver lane (research/control/v14_run/tools/run_v14_cell.py runner_traversal_pin, pinned pre-delta by tests/test_v14_driver.py::test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict expecting exit 2) showed the frozen generic runner queries targets_at at every open instant including a dropped fold's stress stamps, while the plugin's chained book raised ContractViolation('pinned fold F0 received no decision stamps') at the first probed instant (2025-08-25). The three oicyc scored cells were BLOCKED pre-metric.",
+  "root_cause": "plugin._fold_terminal_stamps(instants) derived the fold-terminal force-flat stamps from the RETAINED (stress-filtered) decision stamps: _chained_weights passed decision_instants(stress=stress) in, and fold_assignments refuses when any pinned fold has no retained members -- so the terminal derivation itself crashed whenever a fold was dropped. Fold terminals were treated as a property of the retained subset instead of a property of the frozen calendar.",
+  "fix": "research/v14/families/oicyc/plugin.py ONLY (delta sha256 15b1011d52310dfff2290607a1c1698e306a7144d41a6b659618b3bef8ec25a2): _fold_terminal_stamps() now derives the terminals (2025-12-15 / 2026-04-13 / 2026-08-17 -- each fold's last EFFECTIVE stamp) from the FULL frozen calendar (stamp_calendar() -> fold_assignments), the exact calendar-only derivation of the OITD/LIQEPIS V13 and basislv V14 precedents (research/v13/families/{oitd,liqepis}/plugin.py fold_terminal_force_flat_stamps; research/v14/families/basislv_premfade/plugin.py), and _chained_weights applies retention/drop as a FILTER (terminals & retained instants); a dropped fold's terminal is never a retained stamp so the chain never visits it. No frozen identity constant, window, book rule, cost, clock, threshold, or intact-schedule byte changed. No scored PnL was or is computed.",
+  "intact_schedule_byte_identity_proof": {
+   "method": "captured at PRE-fix lane HEAD 0b661a8 and re-captured POST-fix on the 19-name synthetic test world (tests/test_v14_family2_oicyc.py helpers): digest A = SHA-256 over the canonical JSON (sort_keys, compact separators) of every targets_at payload across the FULL frozen 52-stamp schedule under baseline stress; digest B = the frozen runner's own full-result hash run_strategy(...).hashes['result_sha256']; digests now pinned forever in tests/test_v14_family2_oicyc.py (DELTA1_INTACT_PAYLOAD_DIGESTS / DELTA1_INTACT_RUNNER_RESULT_SHA256).",
+   "CYC-28D": {
+    "payload_digest_before": "a1c13b6d3338611dec5ee359380d67899f6d770ab2da254286b78970b334cee1",
+    "payload_digest_after": "a1c13b6d3338611dec5ee359380d67899f6d770ab2da254286b78970b334cee1",
+    "runner_result_sha256_before": "a39c3d251ba538c6cc4932e2d013e0430293e81f3ff17246a396b01691d9ed35",
+    "runner_result_sha256_after": "a39c3d251ba538c6cc4932e2d013e0430293e81f3ff17246a396b01691d9ed35"
+   },
+   "CYC-14D": {
+    "payload_digest_before": "81e764d12bcb561b58aafcad53ec8a9e3dd54f195503f84307b82b8a62f0f232",
+    "payload_digest_after": "81e764d12bcb561b58aafcad53ec8a9e3dd54f195503f84307b82b8a62f0f232",
+    "runner_result_sha256_before": "f714081736759437b055c16f0e28f2fded5c916aa38852a9913e58ee86b96f42",
+    "runner_result_sha256_after": "f714081736759437b055c16f0e28f2fded5c916aa38852a9913e58ee86b96f42"
+   },
+   "CTL-OISHARE": {
+    "payload_digest_before": "46ef410e0800b8d07bad343abab8361ff609b86291bf062ed2448709cf5b8abd",
+    "payload_digest_after": "46ef410e0800b8d07bad343abab8361ff609b86291bf062ed2448709cf5b8abd",
+    "runner_result_sha256_before": "2200b2336425079a38e1a29a31d745ed2a4dd3dca91c801ec1dc32a3ca2c1e1f",
+    "runner_result_sha256_after": "2200b2336425079a38e1a29a31d745ed2a4dd3dca91c801ec1dc32a3ca2c1e1f"
+   },
+   "frozen_identity_digests": "OICYC_ARM_CONFIG_DIGESTS unchanged (recomputed == recorded 6/6, pairwise unique, re-pinned by the driver digest tests)"
+  },
+  "gates": [
+   {
+    "gate": "D1 targeted family suite incl. the new delta1 regression",
+    "command": ".venv/bin/python -m pytest tests/test_v14_family2_oicyc.py -q",
+    "exit_code": 0,
+    "evidence": "28 passed (27 pre-existing + test_delta1_dropped_fold_traverses_and_intact_books_byte_identical: drop_one_fold cell traverses the frozen runner end-to-end for each single-fold drop with carry/flat-start semantics pinned, and the intact-schedule digests are asserted equal to the pre-fix recorded bytes)",
+    "verdict": "PASS"
+   },
+   {
+    "gate": "D2 driver suite -- blocked pin FLIPPED to exit 0",
+    "command": ".venv/bin/python -m pytest tests/test_v14_driver.py -q",
+    "exit_code": 0,
+    "evidence": "21 passed; test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict renamed test_v14drv_oicyc_traversal_pin_ok_after_family_delta and now asserts the oicyc preflight exits 0 with runner_traversal_pin.ok true, problems == [], drop_one_fold among the probed cells; all other driver tests unchanged and green",
+    "verdict": "PASS"
+   },
+   {
+    "gate": "D3 adjacent frozen-kernel non-regression (remediated cost kernel + family-1 basislv)",
+    "command": ".venv/bin/python -m pytest tests/test_v14_p1_cost_once.py tests/test_v14_family1_basislv.py -q",
+    "exit_code": 0,
+    "evidence": "7 passed + 29 passed",
+    "verdict": "PASS"
+   },
+   {
+    "gate": "D4 compileall + git diff --check on the delta surface",
+    "command": ".venv/bin/python -m compileall -q research/v14 tests/test_v14_family2_oicyc.py tests/test_v14_driver.py && git diff --check",
+    "exit_code": 0,
+    "evidence": "COMPILEALL_OK; DIFF_CHECK_OK",
+    "verdict": "PASS"
+   }
+  ],
+  "traversal_pin_before_after": {
+   "before": {"drop_one_fold": "REFUSED: ContractViolation: pinned fold F0 received no decision stamps (all five other cells OK)"},
+   "after": {"all six matrix cells": "OK (baseline, drop_one_fold, drop_one_symbol, fee_slippage_x1_5, plus_1_event_delay, plus_2_ticks)"}
+  },
+  "scored_results_this_delta": 0,
+  "no_pnl": true,
+  "touched_files": [
+   "research/v14/families/oicyc/plugin.py",
+   "tests/test_v14_family2_oicyc.py",
+   "tests/test_v14_driver.py",
+   "research/control/v14_run/i_family_2/lane_handoff.json (this delta_1 section)"
+  ]
+ },
  "commit": {
   "message_prefix": "V14 I F2:",
   "contents": "research/v14/ (family package + goldens), tests/test_v14_family2_oicyc.py, research/control/v14_run/i_family_2/lane_handoff.json; NO bulk data committed"

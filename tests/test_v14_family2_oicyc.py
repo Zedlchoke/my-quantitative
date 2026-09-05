@@ -28,6 +28,8 @@ frozen module byte is edited.
 from __future__ import annotations
 
 import copy
+import dataclasses
+import hashlib
 import json
 import math
 from datetime import datetime, timedelta, timezone
@@ -668,7 +670,7 @@ def test_lv14_0_real_plugin_runner_long_hold_cost_once_and_zero_intermediate():
         _fold_terminal_stamps,
     )
 
-    terminals = _fold_terminal_stamps(list(stamp_calendar()))
+    terminals = _fold_terminal_stamps()
     assert terminals == {
         parse_iso_utc("2025-12-15T00:00:00Z"),
         parse_iso_utc("2026-04-13T00:00:00Z"),
@@ -695,6 +697,181 @@ def test_lv14_0_real_plugin_runner_long_hold_cost_once_and_zero_intermediate():
     replay = run_strategy(_world_plugin(ANCHOR_ARM), stress=None, write_artifact_file=False)
     assert replay["portfolio_metrics"]["cost_charged_sum"] == metrics["cost_charged_sum"]
     assert replay["hashes"] == result["hashes"]
+
+
+# ------------------------------------------------------------------------- #
+# DELTA1 regression: dropped-fold traversal + intact-schedule byte identity
+# ------------------------------------------------------------------------- #
+#: Intact-schedule byte digests recorded at the PRE-FIX lane HEAD 0b661a8,
+#: BEFORE the delta1 fix re-derived ``plugin._fold_terminal_stamps`` from the
+#: full frozen calendar.  First value per arm: SHA-256 over the canonical
+#: JSON (sort_keys, compact separators) of every ``targets_at`` payload
+#: across the FULL frozen 52-stamp schedule under the baseline stress.
+#: Second value per arm: the frozen runner's own full-result hash
+#: (``run_strategy(...).hashes["result_sha256"]``).  The fix is an
+#: integration-correctness change only: every one of these bytes must stay
+#: identical (the acceptance bar), which these assertions pin forever.
+DELTA1_INTACT_PAYLOAD_DIGESTS = {
+    ANCHOR_ARM: "a1c13b6d3338611dec5ee359380d67899f6d770ab2da254286b78970b334cee1",
+    NEIGHBOUR_ARM: "81e764d12bcb561b58aafcad53ec8a9e3dd54f195503f84307b82b8a62f0f232",
+    CONTROL_ARM: "46ef410e0800b8d07bad343abab8361ff609b86291bf062ed2448709cf5b8abd",
+}
+DELTA1_INTACT_RUNNER_RESULT_SHA256 = {
+    ANCHOR_ARM: "a39c3d251ba538c6cc4932e2d013e0430293e81f3ff17246a396b01691d9ed35",
+    NEIGHBOUR_ARM: "f714081736759437b055c16f0e28f2fded5c916aa38852a9913e58ee86b96f42",
+    CONTROL_ARM: "2200b2336425079a38e1a29a31d745ed2a4dd3dca91c801ec1dc32a3ca2c1e1f",
+}
+#: The NEW dropped-fold traversal product (no pre-fix value exists -- the
+#: pre-fix chain REFUSED with "pinned fold F0 received no decision stamps"):
+#: the frozen runner's full-result hash on the drop_one_fold cell (F0
+#: dropped) for the anchor arm on this world; cost is exactly 4 fill
+#: transitions x 1.0 notional x RATE (F1 entry + fold-terminal flat +
+#: re-entry, then the runner's final force-flat) = 0.0024.
+DELTA1_DROP_F0_RUNNER_RESULT_SHA256 = (
+    "78b5c08fa66432bcc5581426a00589f0befdf051146db28f8e60fd96390020c8"
+)
+
+
+def _delta1_targets_digest(
+    plugin: OicycPlugin, *, universe, stress
+) -> str:
+    """SHA-256 over the canonical JSON of every full-schedule payload."""
+    digest = hashlib.sha256()
+    for instant in stamp_calendar():
+        payload = plugin.targets_at(instant, universe=universe, stress=stress)
+        digest.update(
+            json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode("utf-8")
+        )
+    return digest.hexdigest()
+
+
+def test_delta1_dropped_fold_traverses_and_intact_books_byte_identical():
+    """Driver-discovered V14 integration defect, discharged (DELTA1).
+
+    Pre-fix, the plugin's chained book derived the fold-terminal stamps
+    from the RETAINED (stress-filtered) decision stamps:
+    ``_fold_terminal_stamps(retained)`` called ``fold_assignments``, which
+    refuses when a fold has no retained members -- so the frozen generic
+    runner (which queries ``targets_at`` at every open instant, including a
+    dropped fold's stamps) crashed on ANY drop_one_fold traversal.  The fix
+    (OITD/LIQEPIS V13 + basislv V14 precedent): fold terminals are derived
+    from the FULL frozen calendar -- a calendar property -- and the
+    retention/drop is applied as a filter.
+
+    This regression pins BOTH sides:
+      1. the drop_one_fold cell (and each single-fold drop at plugin level)
+         now TRAVERSES end-to-end through the frozen runner; and
+      2. the intact (non-dropped) schedule books are BYTE-IDENTICAL to the
+         pre-fix recorded digests above -- no frozen identity constant,
+         window, book rule, cost, clock or threshold moved.
+    """
+    from research.v14.families.oicyc.plugin import (
+        REASON_CARRIED_FLAT_START,
+        REASON_FOLD_TERMINAL_FORCE_FLAT,
+        _fold_terminal_stamps,
+    )
+
+    # terminals are a FULL-CALENDAR property: identical under any stress
+    expected_terminals = {
+        parse_iso_utc("2025-12-15T00:00:00Z"),
+        parse_iso_utc("2026-04-13T00:00:00Z"),
+        parse_iso_utc("2026-08-17T00:00:00Z"),
+    }
+    assert _fold_terminal_stamps() == expected_terminals
+
+    # fold ownership of every schedule stamp on the frozen calendar
+    fold_of: dict[int, int] = {}
+    for index, _label, members, _purged in fold_assignments(list(stamp_calendar())):
+        for stamp in members:
+            fold_of[int(stamp)] = index
+
+    for arm_id in (ANCHOR_ARM, NEIGHBOUR_ARM, CONTROL_ARM):
+        plugin = _world_plugin(arm_id)
+        universe = plugin.tradeable_universe()
+        baseline = plugin.baseline_stress()
+
+        # -- (2) intact-schedule byte identity against the PRE-FIX digests
+        assert (
+            _delta1_targets_digest(plugin, universe=universe, stress=baseline)
+            == DELTA1_INTACT_PAYLOAD_DIGESTS[arm_id]
+        )
+        intact = run_strategy(
+            _world_plugin(arm_id), stress=None, write_artifact_file=False
+        )
+        assert (
+            intact["hashes"]["result_sha256"]
+            == DELTA1_INTACT_RUNNER_RESULT_SHA256[arm_id]
+        )
+
+        # -- (1) every single-fold drop traverses the FULL frozen schedule
+        for dropped_index in (0, 1, 2):
+            spec = dataclasses.replace(
+                baseline, name="drop_one_fold", dropped_fold_index=dropped_index
+            )
+            drop_universe = plugin.universe(spec)
+            retained = set(plugin.decision_instants(stress=spec))
+            for instant in stamp_calendar()[:-1]:
+                payload = plugin.targets_at(
+                    instant, universe=drop_universe, stress=spec
+                )
+                assert payload["confirmatory"]["status"] == "CONFIRMATORY"
+                if int(instant) in retained:
+                    # a RETAINED fold-terminal force-flats; every other
+                    # retained stamp is the discretionary chained book
+                    if int(instant) in expected_terminals:
+                        assert (
+                            payload["reason_code"]
+                            == REASON_FOLD_TERMINAL_FORCE_FLAT
+                        )
+                        assert payload["weights"] == []
+                else:
+                    # a NON-decision instant (the dropped fold's stamps and
+                    # the purge gap) CARRIES: byte-equal to the last prior
+                    # retained decision, or the explicit flat start
+                    prior_stamps = [s for s in retained if s < int(instant)]
+                    if prior_stamps:
+                        assert payload == plugin.targets_at(
+                            max(prior_stamps), universe=drop_universe, stress=spec
+                        )
+                    else:
+                        assert payload["reason_code"] == REASON_CARRIED_FLAT_START
+            # structural: the DROPPED fold's own terminal is not a retained
+            # decision stamp -- it never force-flats, the chain carries
+            # through it (the loop above pins that carry byte-equal)
+            dropped_terminal = [
+                s for s in expected_terminals if fold_of[int(s)] == dropped_index
+            ]
+            assert len(dropped_terminal) == 1
+            assert int(dropped_terminal[0]) not in retained
+
+        # F0 dropped with no prior retained decision: the dropped stamps
+        # carry the FLAT START (explicit reason code)
+        spec0 = dataclasses.replace(
+            baseline, name="drop_one_fold", dropped_fold_index=0
+        )
+        first = plugin.targets_at(
+            parse_iso_utc("2025-08-25T00:00:00Z"),
+            universe=plugin.universe(spec0),
+            stress=spec0,
+        )
+        assert first["reason_code"] == REASON_CARRIED_FLAT_START
+        assert first["weights"] == [] and first["carried_forward"] is True
+
+    # -- (1) the frozen drop_one_fold CELL through the frozen runner,
+    #         end-to-end: completes with the pinned new-behavior bytes
+    anchor_plugin = _world_plugin(ANCHOR_ARM)
+    spec0 = dataclasses.replace(
+        anchor_plugin.baseline_stress(), name="drop_one_fold", dropped_fold_index=0
+    )
+    dropped = run_strategy(
+        _world_plugin(ANCHOR_ARM), stress=spec0, write_artifact_file=False
+    )
+    assert dropped["hashes"]["result_sha256"] == DELTA1_DROP_F0_RUNNER_RESULT_SHA256
+    assert dropped["portfolio_metrics"]["cost_charged_sum"] == pytest.approx(
+        4.0 * RATE, abs=1e-15
+    )
 
 
 def test_plugin_chain_deterministic_across_arms_and_call_order():
