@@ -1,0 +1,120 @@
+{
+ "schema": "stocks_free_v9_run/a7_terminal@1",
+ "cycle": "STOCKS-FREE-V9",
+ "phase": "A7 TERMINAL (independent, fresh context; audit-to-refute the terminal verdict)",
+ "built_at_utc": "2026-09-06T05:10:00Z",
+ "producer_role": "A7 independent terminal auditor (fresh context, independent of the A1 thread; recompute-from-bytes; look-for-reasons-the-verdict-is-wrong; artifacts only, no repairs, nothing committed)",
+ "audited_head": "588cd4eadafec92d292eeabf47d9f5ec3fb406ce",
+ "audited_branch": "orca/stocks-free-v9-integration",
+ "tree_state": "clean at audit start, between items, and at close (git status --porcelain empty; committed scored bytes restored and re-verified after my rerun)",
+ "chain_verified": "17e70ac (V9-R1 + dry-run evidence) -> 8702e5d (A7 prelaunch + GO consumption adjudication) -> 588cd4e (scored outputs); all commits resolve, merge-base ancestor-ordered",
+ "rerun_authorization": "V9_LAUNCH_AUTHORIZED=1 + exact phrase 'GO STOCKS V9 SCORED EXECUTION' (terminal-audit rerun authorization per dispatch; two-key satisfied, verified via runner.scored_authorized before any scored computation)",
+ "items": {
+  "A_SCORED_RERUN": {
+   "verdict": "PASS",
+   "command": "shasum/md5 snapshot of committed execution_ledger.json + family_verdicts.json -> cp to /tmp; V9_LAUNCH_AUTHORIZED=1 python -m research.assets.stocks.v9_e_driver 'GO STOCKS V9 SCORED EXECUTION' (exit 0); recursive leaf diff vs snapshots; git checkout -- the two files; re-hash",
+   "evidence": {
+    "pre_run_snapshot": {
+     "execution_ledger.json_sha256": "ebba4c05ebcaef5be03c089bd4973a674c2127d4e016e2e3de0061c2a6bcc2cd",
+     "family_verdicts.json_sha256": "903498730ebb22284c42bdc56dda5b850ec13aa56c7294684f8dad76a4a67081",
+     "md5": ["413c3ff88a495089ccdc080625afc4d1", "025aa6192a0902aa13844e644469781a"]
+    },
+    "rerun_result": "exit 0; family_verdicts.json BYTE-IDENTICAL to committed (sha256 equal, 0/152 leaf diffs); execution_ledger.json differs in exactly 1/65 leaves: code_freeze_sha committed=8702e5d207a321... vs rerun=588cd4eadafe... — the by-design git-HEAD-at-run-time provenance field (the original scored run executed at HEAD 8702e5d and was committed as 588cd4e); ALL scientific fields identical: 7 cell rows with identical arm_config_digest/data_snapshot_digest values, scored decisions 75/75/79/79/79/79, void entries 9/9/8/8/10/10, terminations 277/277/280/280/307/307, drop-one excluded CIK0001255474, panel_sha256 67591464... and price_manifest_sha256 a481499c... identical, counters identical (observed_delta 7, published_delta 0)",
+    "restore": "git checkout -- the two files; post-restore sha256 and md5 match the pre-run snapshot exactly (values above); tree clean; HEAD unchanged 588cd4e"
+   }
+  },
+  "B_GATE_TABLE_RECOMPUTE": {
+   "verdict": "PASS",
+   "command": "Re-ran the three base arms from staged bytes via the frozen runner (universe 1960; panel 10,073,069 rows read / 531,455 kept; anchors n=75, neighbour n=79, control n=79); dumped decision-level PnL records to /tmp; recomputed every gate with a FROM-SCRATCH A7 evaluator (no import of v9_e_driver.evaluate), thresholds read directly from p3_invariants_freeze.json stage_a_gates_carried_forward / concentration_and_robustness",
+   "evidence": {
+    "anchor_identical": {
+     "sum_pnl": "-0.08117048 == committed 'expectancy' -0.08117048340000001 (the committed gate observed value is the SUM over the 75 decisions; per-decision mean = -0.0010822731)",
+     "pf": "0.8095363098127486 — identical to 16 decimal places",
+     "fold_positive": "1/3 == committed 1",
+     "per_fold_pnl": "0.0417992 / -0.05879572 / -0.06417396 — identical",
+     "fold_pf": "1.467 / 0.656 / 0.613 — identical at reported rounding",
+     "mdd": "0.035387 / 0.067080 / 0.079097 — identical (max 0.0791)",
+     "alpha": "-0.014209463976345205 — identical to 18 decimal places (mean per-decision SPY-excess)",
+     "risk_matched_excess_positive_folds": "0/3 == committed 0 (all three alpha fold sums negative)",
+     "etf_share": "0.7352941 -> 0.7353 == committed (34 positive decisions)",
+     "fold_positive_share": "0.38085 -> 0.3808 == committed"
+    },
+    "neighbour_identical": "sum -0.20054965 == committed -0.2005496487; PF 0.6309655617231797 identical",
+    "control_identical": "sum +0.00332397 == committed +0.0033239749; control PF 1.0081 (mine 1.008065 raw); control_reproduces=false both (sign OPPOSITE: control positive vs anchor negative; magnitude ratio 0.041 by sums, 0.0389 by means — both << 0.5; control alpha -0.012535, |control alpha|/|anchor alpha| = 0.882 > 0.5 under the packet's clause-e reading)",
+    "gate_verdicts": "all 10 committed anchor gate rows reproduce: 8 FAIL (expectancy, pf, folds>=2, min_fold_pf, etf 0.35, etf 0.50 packet, SPY-excess folds, alpha) and 2 PASS (max_fold_mdd +0.0709, fold_positive_share +0.1192); margins_to_fail match at reported rounding (-0.08117, -0.2905, -1, -0.3853, -0.2353, -2, -0.014209); packet gates reproduce (stress sum -0.11341602 pf 0.7449 FAIL; drop-one expectancy -0.00122594 with leave-one-fold-out [-0.12296968, -0.02237477, -0.01699652] FAIL; neighbour same-sign PASS); family_verdict REJECT is the mechanical output (anchor_gates_pass=false, control_reproduces=false)"
+   },
+   "verdict_neutral_semantics_findings": [
+    "F1: the gate labelled 'expectancy_gt' is evaluated on the SUM of decision PnLs (n=75), not the per-decision mean the runner's own metrics.expectancy computes (-0.08117 sum vs -0.00108 mean). Sign-identical, threshold 0, verdict unchanged; commit/event-log phrasing '-0.0812/decision' mislabels the sum.",
+    "F2: control_alpha_abs_ratio_lt is implemented as |anchor_alpha|/|control_alpha| = 1.1336 (committed observed reproduces exactly from my recomputation), whereas packet falsification clause (e) declares '|control alpha| < 0.5x anchor alpha', i.e. |c|/|a| = 0.8821. Both readings FAIL at threshold 0.5 — verdict identical under either direction.",
+    "F3: the control-reproduction rule compares PnL SUMS over different decision counts (anchor 75 vs control 79); on means the ratio is 0.0389 vs 0.0410 on sums — conclusion (not reproducing) identical."
+   ]
+  },
+  "C_DENOMINATORS_AND_BUDGET": {
+   "verdict": "PASS",
+   "command": "Read execution_ledger.json counters + cell rows; publication_record.json; state.json; selection_freeze.json; run_contract.json; rerun byte-comparison proving counters untouched",
+   "evidence": {
+    "observed_delta_7": "counters.observed_delta=7 with counter_provenance 'driver_emitted (F-A7T-1); publish-time edits forbidden' and published_delta=0; the 7 cell rows are exactly 3 base trials + 3 stress reruns + 1 drop-one rerun; my scored rerun reproduced the counters block byte-identically (only diff in the whole ledger was the provenance code_freeze_sha) — byte-untouched confirmed",
+    "publication_adjudication": "publication_record.json PUBLISH_3_CELLS adjudicates 3 trials, 'robustness reruns are not trials' (V8 precedent), recorded append-only, never by editing the driver ledger — consistent with the kernel's append_publication_record design",
+    "budget": "3/6 used, 3 unused, unused_rule 'never reassigned' (selection_freeze.json + state.json); no cell exists in the ledger beyond the 3 committed arms",
+    "denominator_arithmetic": "stocks 30/30 = prior 27/27 (run_contract.denominators_inherited) + 3 published; program 185 published / 188 observed logical = prior 182/185 + 3 — arithmetic correct",
+    "survivors": 0
+   }
+  },
+  "D_GO_CONSUMPTION_ADJUDICATION_REVIEW": {
+   "verdict": "PASS (consumption judged CONSISTENT — recorded with the noted deviation, honestly documented two-sided)",
+   "command": "Read owner_go_intent.json, owner_go_consumption.json, event_log.jsonl lines OWNER_GO_INTENT_RECORDED_P8 and A7_PRELAUNCH_AUTHORIZED_AND_GO_CONSUMED, audits/a7_prelaunch_v9.json, PLAN_stocks_v9.md sec 4; verified commit ancestry (17e70ac ancestor of 8702e5d) and the scored ledger's code_freeze_sha",
+   "evidence": {
+    "timeline": "owner phrase 'nếu A7 authorized thì GO STOCKS V9 SCORED EXECUTION' received ~2026-09-06T00:10Z and recorded VERBATIM as STANDING_CONDITIONAL_INTENT - NOT A CONSUMABLE GO KEY (owner_go_intent.json; event 00:10Z) -> A7 prelaunch verdict STOCKS_FREE_V9_S0_LAUNCH_AUTHORIZED (9/9 PASS, 0 HIGH/CRITICAL) built 04:30Z at 17e70ac -> consumption adjudicated CONSUMED 05:30Z in 8702e5d -> scored cells executed after, at code_freeze_sha 8702e5d, outputs committed 588cd4e. The A7 key existed, was AUTHORIZED, and strictly predates both the consumption and every scored cell.",
+    "conditionality": "the phrase is explicitly conditional on A7 authorization and is a COMPLETE decision function: had A7 returned BLOCKED, the same phrase resolves to NO-GO. The condition verified here is real and independently reconfirmed by this terminal audit (my own rerun reproduces the scored outputs; two-key enforcement is real — prelaunch audit probed 3 refusal paths).",
+    "two_key_order": "preserved: A7 verdict first (04:30Z), owner conditional key resolved second (05:30Z), scored work third.",
+    "dissent_recorded": "yes — owner_go_consumption.reasoning_two_sides.strict_P8_reading records the strict reading (PLAN sec 4: phrase 'fresh, informed, typed only after A7 authorization is in the owner's hands'; V4 precedent extinguishes early GOs) and the intent file's own earlier consequence clause promised a FRESH exact-phrase GO request at prelaunch. The reversal from the interim not-consumable adjudication to CONSUMED is documented with governing reasons (authority order 3.1; handbook 2.5 conditional-form model; autonomous operation 25.2), not silent.",
+    "independent_judgment": "CONSISTENT, not a violation. Grounds: (1) unlike V4's bare ambiguous phrase, this phrase contains its own information trigger — the exact fact A7 reports — so the two-key information order is honored in substance; (2) the condition was verified before any scored cell by a genuine, and now independently corroborated, prelaunch audit; (3) materiality: the run REJECTED — no survivor, no S1, no push, no purchase — so a wrong adjudication could at most have spent 3 of 6 budget cells on a negative result; it could not have created any positive claim. Honest caveat recorded: under the plan's literal P-8 freshness wording a re-ask would have been required; that deviation is documented two-sided, does not retroactively change the run, and does not affect the terminal label (which is identical under either reading)."
+   }
+  },
+  "E_S1_AND_BOUNDARIES": {
+   "verdict": "PASS",
+   "command": "grep S1 across V9 code + artifacts; git for-each-ref refs/remotes/origin/orca/stocks-free-v9-integration; git ls-remote origin | grep stocks-free-v9; git ls-files | grep staging; .gitignore; git grep EODHD_API_KEY; live-key -F grep of tracked tree against repo-root .env; state.json/heartbeat workers",
+   "evidence": {
+    "s1": "S1 appears only as SEALED_UNTOUCHED / 'locked for future S1' / 'does not authorize: S1'; zero S1 access paths in v9_family_runner.py, v9_e_driver.py, kernel_band_cost_v9.py (grep zero)",
+    "no_push": "branch has NO local remote-tracking ref and NO origin ref: git ls-remote origin | grep stocks-free-v9 -> empty (exit 1); the branch has never been pushed",
+    "no_raw_data_tracked": "git ls-files 'staging' matches only historical v1 audit manifests and a v3 test helper — zero V9 raw bytes tracked; .gitignore lines 34/36 cover .staging_sec_v9/ and .staging_prices_v9/ (1.49GB panel + 2178 price files remain untracked)",
+    "no_key_material": "EODHD_API_KEY literals in tracked files are env-loading/redaction/test code only; the live key value (read locally from the root .env, never printed) occurs in 0 tracked files (git grep -F)",
+    "workers": "state.json workers_owned=0 (updated 2026-09-05T20:59:23Z after E); heartbeat.json (stale-dated 03:00Z, I-phase) shows 1 lane worker at that earlier time — temporally consistent, counters current"
+   }
+  },
+  "F_NO_RESCUE_SCAN": {
+   "verdict": "PASS",
+   "command": "Read audits/d2_novelty_feasibility_v9.json per-proposal verdicts; sha256 the six proposal files vs d1_proposal_hashes.json; read selection_freeze.json blocked map + A6 adjudication; inspect the scored ledger's arm inventory",
+   "evidence": {
+    "d2_blocks_measured": "5/6 proposals blocked on measured decorrelation: a4_H1 (F1-flow |rho|=0.20010 knife-edge + Goodwill/Assets 0.22116), a5_H1 (Goodwill/Assets 0.20282), a5_H2 (WC-stock 0.41332 + F1-flow 0.20865, its own declared diagnostics), a6_H1 (F1-flow 0.339 + Goodwill 0.504 on the documented date-level pooling basis), a6_H2 (0.335/0.721/0.621/0.485); only a4_distress_H2 NOVELTY_PASS (all four ancestors |rho| <= 0.20: -0.0903/-0.1628/-0.1327/+0.0216)",
+    "six_hashes_intact": "all six committed proposal sha256 match d1_proposal_hashes.json exactly (36b0bc14, 3402961b, c90bb54f, e9f9a645, f29b341a, 1f8ac2cc); selection packet sha 3402961b == selection_freeze.selected[0].packet_sha256",
+    "no_post_hoc_rescue": "the A1 A6-pooling adjudication UPHELD D2's ex-ante documented basis and explicitly refuses re-adjudication after the verdict ('would be post-hoc gate work'); no forbidden V8 F1/F2 form or shadow was re-tested on the new cohort — the only scored family is the D2-eligible one",
+    "selection_single": "selection_freeze.selected contains exactly 1 family x 3 arms, cells_budgeted 3; the scored ledger's cells are only ANCHOR/NEIGHBOUR/CONTROL (+ their reruns)",
+    "unused_not_reallocated": "3 unused budget slots: no additional cells anywhere in the ledger or artifacts; state + selection_freeze both assert 'never reassigned' with no contradicting record"
+   }
+  },
+  "G_STRONGEST_TERMINAL_LABEL": {
+   "verdict": "PASS — STOCKS_FREE_V9_REJECT_ALL is the strongest allowed and correct terminal label",
+   "command": "Recompute the family verdict logic; check the allowed-outcome list (run_contract + PLAN sec 2); verify every plan-arc artifact exists; adjudicate the dsr/pbo statement form",
+   "evidence": {
+    "mechanical_reject": "single selected family SFV9-A4-H2: anchor negative after band costs (sum -0.0812, 8/10 gates FAIL, PF 0.8095 < 1.10, folds 1/3, etf_share 0.7353 vs 0.35/0.50, SPY-excess 0/3, alpha -0.0142); control (Cash/Assets) does NOT reproduce (opposite sign, |c|/|a| ~ 0.04) — so no FALSIFIED_BY_CONTROL claim is made and none is available; the control-beats-anchor observation (+0.0033 vs -0.0812) is recorded strictly informative, not rescuable — the honest treatment",
+    "arc_complete": "census death_census.json; cohort cohort_v9.json; panel p0c_v9_panel_manifest.json (new hash 67591464..., V8 prefix byte-exact per prelaunch item 3); prices p0d_v9_price_manifest.json (2190 entries) + integrity scan 1550/219/0; kernel a4a5ab5 + V9_R1 17e70ac; coverage p2_v9_coverage_first.json (56/154 funded before D1); freeze p3_invariants_freeze.json; D1 93d47c3 six outcome-blind proposals, hashes intact; D2 1ebea0c measured blocks; selection 1ebea0c frozen; implementation 573d71c; dry-run 17e70ac PASS_NONVACUOUS (floor 0.763 vs 0.25, byte-identical x2, independently reconfirmed in the prelaunch audit); prelaunch 8702e5d AUTHORIZED; scored cells 588cd4e (3 trials, rerun byte-equal this audit); reproduction: my scored rerun + verdicts byte-identical — nothing in the arc is missing, so INCOMPLETE does not apply; nothing is blocked, so BLOCKED_* does not apply; zero survivors, so the survivor label does not apply",
+    "dsr_pbo_statement": "the form 'no positive Stage-A candidate exists -> DSR non-computable, PBO non-exercisable' is the HONEST form: DSR requires a candidate Sharpe to deflate (there is none — the only anchor is negative) and PBO/CSCV requires a cross-candidate performance ranking to decompose (a single family with all arms failing provides none). Declaring them non-computable/non-exercisable instead of reporting fabricated values matches program precedent (V14 terminal 'DSR ~0, PBO fail-closed'; forex V3R 'DSR/PBO NOT_RUN fail-closed'); a positive claim would be required before DSR/PBO become computable in any future S1 stage"
+   }
+  }
+ },
+ "findings_non_blocking": [
+  {"id": "A7T-1", "severity": "LOW", "item": "B", "text": "The 'expectancy_gt' gate is evaluated on the SUM of decision PnLs (anchor -0.0812 over 75 decisions) while the runner's metrics.expectancy reports the per-decision mean (-0.00108); commit/event-log phrasing '-0.0812/decision' mislabels the sum. Verdict-neutral (sign identical, threshold 0). Recommend naming the gate cumulative_pnl_gt or reporting both at the next artifact version."},
+  {"id": "A7T-2", "severity": "LOW", "item": "B", "text": "control_alpha_abs_ratio_lt is implemented as |anchor_alpha|/|control_alpha| (observed 1.1336, exactly reproduced) whereas the packet's clause (e) declares |control alpha| < 0.5x anchor alpha (equivalently |c|/|a| = 0.8821 < 0.5). Both directions FAIL at 0.5 on this data — verdict identical — but the implemented ratio direction does not literally match the packet sentence; record the implemented semantics or align them."},
+  {"id": "A7T-3", "severity": "LOW", "item": "B/D", "text": "The control-reproduction rule compares PnL sums over unequal decision counts (anchor 75 vs control 79); on per-decision means the |c|/|a| ratio is 0.0389 vs 0.0410 on sums. Conclusion unchanged (not reproducing, decisively)."},
+  {"id": "A7T-4", "severity": "LOW", "item": "D", "text": "The GO consumption deviates from the plan's literal P-8 freshness wording (re-ask after prelaunch); the deviation is documented two-sided with the strict reading on record, and is outcome-irrelevant here because the authorized run produced a REJECT with zero promotions. Recorded, not blocking."},
+  {"id": "A7T-5", "severity": "LOW", "item": "E", "text": "heartbeat.json is stale (2026-09-06T03:00Z, I-phase, workers_owned 1) relative to state.json (20:59:23Z, workers_owned 0) — temporally consistent; refresh housekeeping only."}
+ ],
+ "resource_accounting": {
+  "full_pytest": "NOT_RUN (per dispatch; no full pytest by terminal A7)",
+  "heavy_io": "one full scored rerun (7 arm executions incl. 1.5GB panel streaming), one independent 3-arm re-run for decision-record extraction, benchmark re-reads; scratch confined to /tmp (a7t_*); committed bytes restored and hash-verified after the rerun",
+  "repo_mutations": "none committed; the two audited artifacts (this file + README) are intentionally untracked"
+ },
+ "verdict": "STOCKS_FREE_V9_REJECT_ALL_CONFIRMED",
+ "blockers": []
+}
