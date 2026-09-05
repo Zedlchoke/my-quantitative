@@ -1,0 +1,206 @@
+{
+ "schema": "stocks_free_v8_run/a7_prelaunch@1",
+ "audit_id": "A7-PRELAUNCH-V8",
+ "auditor": "A7 (independent prelaunch auditor, detached twin r-reproduce-t1)",
+ "audited_at_utc": "2026-09-05T07:05:00Z",
+ "frozen_head": "d908ab51a0a707dcb24ca2c6bb6dfbbaec6a5405",
+ "branch": "orca/stocks-free-v8-integration (tip 62ec23f7 = d908ab5 + control-only W1 seal commit; code tree byte-identical to d908ab5)",
+ "method": "recomputed from bytes in twin /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v8/r-reproduce-t1; staged data read by absolute path from integration .staging_sec_v8/.staging_prices_v8; no file in either tree modified except this artifact; no scored computation performed",
+ "scope": [
+  {
+   "item": 1,
+   "name": "freeze_chain",
+   "status": "PASS",
+   "evidence": {
+    "ancestry": "git merge-base --is-ancestor 5ccc587c 31b705f => exit 0; git merge-base --is-ancestor 31b705f d908ab5 => exit 0; git merge-base --is-ancestor 7ce8fb7 d908ab5 => exit 0",
+    "linear_parent_chain": "31b705f -> a275fe1 -> 324e3a0 -> 1937620 -> 7ce8fb7 -> ec33139 -> 7b0ebc0 -> 9d01bd8 -> 6a187c8 -> f478094 -> 9198bfe -> d2d0828 -> d908ab5 (git log --format='%H %P' verified)",
+    "integrity": "git fsck --no-dangling => exit 0; twin tracked tree byte-identical to d908ab5 (git diff --quiet d908ab5 HEAD => exit 0)",
+    "branch_identity": "integration worktree on orca/stocks-free-v8-integration at 62ec23f; d908ab5 is its ancestor; git diff d908ab5..62ec23f touches ONLY 4 control files (event_log.jsonl, heartbeat.json, state.json, w1_freeze.json) - zero code drift after freeze",
+    "worktree_manifest": "worktree_manifest.json integration.branch == orca/stocks-free-v8-integration, base_sha == 31b705fc == actual bootstrap base - consistent"
+   }
+  },
+  {
+   "item": 2,
+   "name": "selection_and_proposal_hashes",
+   "status": "PASS",
+   "evidence": {
+    "recomputed_sha256": {
+     "a4_h1.json": "7ac2900605daed5b32a3fe1ac84706445e32cb02a08e0b972e8ff6d16aa0620f",
+     "a4_h2.json": "5aeb23ff33ec995fd9c1e10187abf650e2a26bc347524abd3a539aa1242c84f3",
+     "a5_h1.json": "67d601bd8c243b71c05247b90bd65825b4002e67e676d31f5b35aa565ae191d4",
+     "a5_h2.json": "5c6a089c0be6756a0bf31286ff34fb5be8d19baca34a3fd055c8138b7aa9759b",
+     "a6_h1.json": "48f1cfc7e0bad64bf70442ebd5e48b5af308a81ed694e95d545b95c4b794450f",
+     "a6_h2.json": "54334824219506d8d34d80aafadd20a0e0a68b170fa1ed08ee2b6c0c8278909c"
+    },
+    "match_d1_proposal_hashes": "6/6 exact",
+    "match_selection_freeze": "a4_h1 and a4_h2 (the two selected families) exact",
+    "change_history": "a4_h1 last touched at 7b0ebc0 (pre-selection); a5 files at 9d01bd8 (INC-1 fix); no proposal byte touched after selection freeze f478094",
+    "json_validity": "all six proposals parse with json.load (INC-1 resolved)"
+   }
+  },
+  {
+   "item": 3,
+   "name": "frozen_specs_vs_implementation",
+   "status": "FAIL",
+   "evidence": {
+    "fatal": "INDEPENDENT RE-RUN of all six frozen arms (dry_run=True, twin code d908ab5, V8_WT_ROOT=integration staging data) shows eligible=0, populated=0, active_sectors=0, legs=0 at EVERY ONE of the 78 decisions of EVERY arm. The pipeline never constructs a book. Root cause measured: run_arm indexes each name's OWN date array at the GLOBAL union-calendar index (day_pos[d]) and skips any name with dates[i] != d; at decision 2018-07-03, 0/409 price files are index-aligned (15 in-bounds-misaligned, 394 index-out-of-bounds). The ADV63 window slice p['dvol'][global_i-62:global_i+1] is likewise index-corrupted. The frozen spec's sector-neutral tercile books, >=1 non-CASH leg per decision, and hysteresis retention are never exercised; a scored run would emit all-zero PnL (expectancy 0.0) and consume the 6/6 budget on vacuous cells.",
+    "matching_elements": "PIT gate avail_date < decision_date == canonical session_gate_utc strict-before-00:00UTC (read pit_conditioning.py lines 46-58); age bounds per cited clocks (unbounded numerators F1, 400d Assets/F2 legs); tercile 1/3, hysteresis 0.10, MIN_SECTOR_NAMES 6 abstain; next-session fills (0 fill_date<=decision_date violations measured across 468 schedule rows); grid 63+21k per fold; warmup 4 (F1, fold-1 only) / 0 (F2); directions low_long/high_long per proposals; BAND_BPS base 10/15/25; cost once per fill; CASH never a symbol",
+    "deviations": [
+     "CRITICAL: eligibility universally empty (above) - implementation does not implement the frozen universe floor",
+     "HIGH: unit-USD population filter declared in both proposals is NOT implemented - load_panel drops the u field; panel measured to contain CAD rows for all 9 cited fields (23-192 rows each)",
+     "HIGH: a4_h2 eff-date-agreement filter (num/den selected eff dates within 400 days of each other, else unpopulated) NOT implemented in ratio_level",
+     "HIGH: stress rerun (2x band cost) has NO code path - run_arm has no stress parameter; frozen scoring_cells '2 (base + stress)' not executable as frozen",
+     "MEDIUM: held/prev_w not reset at fold boundaries - cross-fold carry of hysteresis state and boundary close/reopen cost under-charge (anti-conservative)",
+     "MEDIUM: a4_h1 330-400d eff-gap fiscal-type filter applied only to the AR leg's eff dates, not INV/AP legs",
+     "MEDIUM: cost band fallback BAND_BPS.get(b, 10.0) silently assigns band-A cost to names absent from the current decision's eligibility map (close legs)"
+    ]
+   }
+  },
+  {
+   "item": 4,
+   "name": "dry_run_hygiene",
+   "status": "PASS_WITH_HIGH_FINDING",
+   "evidence": {
+    "independent_leak_scan": "re-ran the six-arm dry-run myself in the twin (driver logic replicated in-memory, nothing written) and applied my OWN recursive scan (keys pnl/expectancy/metrics/profit/alpha/drawdown/sharpe/mdd/return/win_rate + string values) at ANY depth: ZERO hits on all six arm records",
+    "committed_evidence": "q_dummy_dryrun_evidence.json contains no schedule arrays; digests and floors independently reproduced and byte-matched (6/6 digests identical, floors 74=22+26+26 / 78=26+26+26 identical)",
+    "determinism": "double generation of SFV8-F2-ANCHOR byte-identical under my re-run",
+    "scored_refusal": "re-proven: run_arm(dry_run=False, owner_go='WRONG PHRASE') raises SystemExit('SCORED EXECUTION REFUSED...') before any computation",
+    "high_finding": "the DRY_RUN_PASS verdict is STRUCTURALLY VACUOUS: schedule_floors count decisions (>=30, >=5/fold) over books that are always empty (legs=0 at 100% of decisions); the evidence file omits per-decision eligible/populated/legs distributions, so the emptiness is invisible in the committed artifact - see finding F-A7-2"
+   }
+  },
+  {
+   "item": 5,
+   "name": "data_authority",
+   "status": "PASS",
+   "evidence": {
+    "panel_sha256": "recomputed shasum -a 256 on integration .staging_sec_v8/multivintage_panel.jsonl = 1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40 EXACT; my streaming recount = 3,817,158 rows EXACT",
+    "price_manifest": "p0a_eodhd_price_manifest.json files=409; on-disk .staging_prices_v8/eod=409; key sets equal; 7/7 spot hashes verified (first/100th/200th/300th/last + 2 random); canonical manifest sha256 json.dumps(sort_keys=True) = 83f6de18129c23597ea94064e103551633e2f802c56824bbe1249e9efdf6250b == dry-run evidence pin",
+    "benchmark_manifest": "p0a_benchmark_manifest.json files=11 (SPY + 10 sector ETFs); 11/11 on-disk hashes verified",
+    "integrity_scan": "p0a_integrity_scan.json verdict PASS, 409 files, 3,661,706 bars, 0 violations",
+    "eodhd_authorization": "root research/control/stocks_free_v8_probe/eodhd_probe_verdict.json: G1..G6 all PASS, overall 'ALL SIX GATES PASS - STOCKS-FREE-V8 ACTIVATES'; committed on main at b142acfc6e5b8ad09c617e3de0c760c17744704b, verified ancestor of main tip a04d1b5 (merge-base --is-ancestor exit 0); file byte-unchanged main-tip vs b142acfc. NOTE: run_contract/event_log cite the commit as 'b142acf01' - imprecise abbreviation, real commit verified (LOW finding F-A7-9)",
+    "clock_freeze": "shasum -a 256 research/control/stocks_free_v6_run/p0a_clock_freeze.json = 61e15738d4d8f0a20219608c6235e2aeb5b7bc73985d2f2d56cd5923622ba712 == run_contract/selection_freeze pin; frozen set 228 evaluated / 154 funded",
+    "fundable_clocks": "p0a_fundable_clocks.json sha256 = ff328a9820bde2968a768016a9046436a93ddeb8d1a8e2625aaf5ff83e4be9f8 == proposal pin; 154 FUNDED_CANDIDATE of 228 entries; all 9 distinct cited fields verified FUNDED at the cited bounds (unbounded for F1 numerator fields; 400d for Assets/F2 legs; 120/200d NOT funded for AccumDep and PPE-gross exactly as a4_h2 claims)"
+   }
+  },
+  {
+   "item": 6,
+   "name": "accounting_cost_sanity",
+   "status": "FAIL",
+   "evidence": {
+    "band_bps": "BAND_BPS = A 10.0 / B 15.0 / C 25.0 base == p3_invariants_freeze v8_additions; band_of thresholds A>=50M, B>=10M, C>=2M, D untradable == freeze",
+    "stress_x2": "NOT IMPLEMENTED: no stress parameter anywhere in the runner; frozen stress 20/30/50 bps cannot be executed by the frozen code (HIGH finding F-A7-4)",
+    "cost_once": "cost accumulated once per changed name and subtracted once from pnl (code lines 417-447); no sidecar repetition found",
+    "cash_handling": "weights carry no CASH symbol; per-active-sector 0.5/0.5 legs give net 0, gross 1.0 <= 2.0 cap; cash = residual 1.0 per invariant",
+    "turnover": "sum(abs(delta_weight)) over non-CASH legs == frozen convention",
+    "caveats": "fold-boundary forced-flat under-implemented (prev_w/held carry across folds; boundary close cost never charged - MEDIUM); band-A fallback on close legs (MEDIUM); given the empty-book failure, every real fill/cost path is UNTESTED by the dry-run (turnover=0 and cost_bps_paid=0 at 100% of decisions)"
+   }
+  },
+  {
+   "item": 7,
+   "name": "trial_identity_and_ledger",
+   "status": "PASS",
+   "evidence": {
+    "digests": "6 arm_config_digests pairwise distinct - reproduced independently and byte-equal to committed evidence",
+    "identity_fields": "every arm record carries schema/arm_id/family_id/arm_config_digest/data_snapshot_digest/code_freeze_sha/dry_run/decisions_total/scored_decisions_total/fold_structure/schedule; code_freeze_sha stamped d908ab5 in my re-run records",
+    "ledger_seed": "state.json budget used 0 / planned 6 ('unused slots never reassigned'); selection_freeze scored_cells_budget 0/6; w1_freeze budget 0/6; counters historical 21/21 (v8_observed 0, v8_published 0)",
+    "no_scored_outcome": "grep across research/control/stocks_free_v8_run/ for pnl/expectancy/profit_factor/sharpe/alpha/drawdown/mdd/returns keys: ZERO matches; the only 'expectancy' string in assets is the scored-path code itself (v8_family_runner.py line 496), unreachable without the exact owner GO; no ledger/artifact with any outcome value exists in the tree"
+   }
+  },
+  {
+   "item": 8,
+   "name": "s1_seal",
+   "status": "PASS",
+   "evidence": {
+    "untouched": "git diff --name-only 31b705f d908ab5 = 36 files, ALL confined to research/control/stocks_free_v8_run/, research/assets/stocks/ (v8 files only), tests/assets/stocks/, .gitignore; zero S1-named or foreign-cycle files touched; 62ec23f touches only 4 v8 control files; state.json s1 = SEALED_UNTOUCHED at both d908ab5 and 62ec23f",
+    "no_deployment_fields": "state.json deployment = NO_PAPER_NO_LIVE_NO_ORDERS; grep for paper_trading/live_trading/place_order/broker in v8 control dir matches only SIC industry description strings in the census, no trading fields"
+   }
+  },
+  {
+   "item": 9,
+   "name": "incidents_inc1_inc2",
+   "status": "PASS",
+   "evidence": {
+    "INC_1": "git diff 7b0ebc0 9d01bd8 on proposals/: a5_h1 and a5_h2 only; bare string line 'all failures carry margin-to-fail reporting per LESSONS P-2' rekeyed to \"all_failures\": \"carry margin-to-fail reporting per LESSONS P-2\"; zero semantic parameter change; all six proposals now parse",
+    "INC_2": "git diff d2d0828 d908ab5 on v8_family_runner.py: field-presence check widened from first-entity sample (next(iter(panel.values()))) to panel-wide accumulation with early-exit; still fail-closed (ValueError on missing fields); no other runner line changed; no semantic parameter changed",
+    "residual_note": "committed q_dummy_dryrun_evidence.json carries code_freeze_sha d2d0828 (pre-INC-2-fix); my re-run under d908ab5 reproduces the committed digests and floors byte-for-byte, closing that gap"
+   }
+  },
+  {
+   "item": 10,
+   "name": "hard_stop",
+   "status": "PASS",
+   "evidence": {
+    "code_path": "v8_family_runner.py lines 347-348: 'if not dry_run and owner_go != GO_PHRASE: raise SystemExit(...)' - checked FIRST, before any data work; GO_PHRASE == 'GO STOCKS V8 SCORED EXECUTION'; owner_go is an explicit parameter only - no env var, no file read, no default (grep verified: phrase appears only in the runner constant + state.json/run_contract prose; test uses wrong V7 phrase)",
+    "independent_proof": "run_arm(dry_run=False, owner_go='WRONG PHRASE') => SystemExit, reproduced by me in the twin",
+    "budget_counters": "state.json budget 0/6, owner_go null, hard_stop text present; w1_freeze budget 0/6"
+   }
+  }
+ ],
+ "findings": [
+  {
+   "id": "F-A7-1",
+   "severity": "CRITICAL",
+   "item": 3,
+   "finding": "Frozen runner cannot construct any book: eligibility is 0 names at 100% of decisions for all six arms (independent re-run; root cause = each name's own date array indexed at the global union-calendar index, dates[i] != d for 409/409 files at measured decision 2018-07-03; ADV63 window likewise index-corrupted). Scored execution as-frozen would emit vacuous all-zero cells and consume the entire 6/6 budget. Implementation does not implement the frozen universe floor / book construction.",
+   "blocks_launch": true
+  },
+  {
+   "id": "F-A7-2",
+   "severity": "HIGH",
+   "item": 4,
+   "finding": "Committed q_dummy_dryrun_evidence.json DRY_RUN_PASS is structurally vacuous: schedule floors count decisions over always-empty books; per-decision eligible/populated/legs distributions are omitted from the evidence, hiding the F-A7-1 failure from the freeze record.",
+   "blocks_launch": true
+  },
+  {
+   "id": "F-A7-3",
+   "severity": "HIGH",
+   "item": 3,
+   "finding": "Unit-USD population filter declared in both selected proposals is not implemented (load_panel drops u; CAD rows exist in the panel for all 9 cited fields - measured 23-192 rows per field).",
+   "blocks_launch": true
+  },
+  {
+   "id": "F-A7-4",
+   "severity": "HIGH",
+   "item": 3,
+   "finding": "a4_h2 eff-date-agreement filter (numerator/denominator selected eff dates within 400 days of each other, else unpopulated) not implemented in ratio_level signal construction.",
+   "blocks_launch": true
+  },
+  {
+   "id": "F-A7-5",
+   "severity": "HIGH",
+   "item": 6,
+   "finding": "Stress rerun (2x band cost, 20/30/50 bps) has no code path: run_arm exposes no stress parameter; the frozen '2 (base + stress)' scoring cells per arm are not executable as frozen.",
+   "blocks_launch": true
+  },
+  {
+   "id": "F-A7-6",
+   "severity": "MEDIUM",
+   "item": 6,
+   "finding": "Fold-boundary forced-flat under-implemented: held/prev_w are not reset at fold boundaries, so rank-hysteresis state and weight deltas carry across folds and boundary close/reopen costs are under-charged (anti-conservative for booked PnL).",
+   "blocks_launch": false
+  },
+  {
+   "id": "F-A7-7",
+   "severity": "MEDIUM",
+   "item": 3,
+   "finding": "a4_h1 330-400d eff-gap fiscal-type filter is applied only to the AR leg's eff dates; INV and AP leg vintages are unchecked against the declared filter.",
+   "blocks_launch": false
+  },
+  {
+   "id": "F-A7-8",
+   "severity": "MEDIUM",
+   "item": 6,
+   "finding": "Cost band fallback BAND_BPS.get(b, 10.0) silently assigns band-A (10 bps) cost to any changed name absent from the current decision's eligibility map (e.g. close legs of dropped names).",
+   "blocks_launch": false
+  },
+  {
+   "id": "F-A7-9",
+   "severity": "LOW",
+   "item": 5,
+   "finding": "run_contract.json and event_log.jsonl cite the EODHD probe commit as 'b142acf01'; the actual commit is b142acfc6e5b8ad09c617e3de0c760c17744704b (verified on main, ancestor of tip, verdict byte-unchanged) - imprecise citation, not a chain break. Related: runner observed-calendar S0 session count (609x3=1827) differs from p2_coverage_first s0_sessions 1837 by 10 sessions; subsumed by F-A7-1 but should be reconciled when the calendar handling is repaired.",
+   "blocks_launch": false
+  }
+ ],
+ "resolution_requirements": "Before any re-audit: (1) rewrite the eligibility/calendar handling on date-keyed lookups (never cross-array index arithmetic), prove non-zero eligible/populated/legs distributions and re-publish dry-run evidence including those distributions per decision; (2) implement the unit-USD filter, the a4_h2 eff-agreement filter, and the full AR/INV/AP eff-gap check exactly as frozen; (3) add the executable stress=2x path; (4) reset book state and charge boundary costs at fold boundaries per forced-flat; (5) remove the band-A cost fallback in favor of fail-closed band resolution; then A7 re-audit before any scored cell. Budget remains 0/6 and S1 remains SEALED throughout.",
+ "verdict": "NO_GO_BLOCKED_PRELAUNCH"
+}
