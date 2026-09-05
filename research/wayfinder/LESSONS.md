@@ -97,6 +97,26 @@ the pre-made decision for the moment the result is beautiful and wrong.
 Consequence: every cycle plan carries terminal-negative outcomes as
 first-class closes (standard since V4; this is the strongest proof case).
 
+## P-7 — Bundle ≠ endpoint: a coverage verdict binds to the exact channel measured
+
+Source: Stocks V8 probe-terminal (2026-09-05). The owner hand-downloaded
+Stooq's bulk US bundle (`d_us_txt.zip`, sha256 `0a75aee8...`); the canary set
+killed it in minutes — 0/14 dead names, absent with identical semantics to
+never-existed controls, i.e. a currently-listed snapshot wearing a "full
+history" label. Stooq's per-symbol CSV endpoint, meanwhile, has never been
+measured for delisted coverage (V6 touched it only on living names before the
+agent channel was closed).
+
+Lesson: one provider serves several artifacts — bulk bundle, per-symbol
+endpoint, API — and their universes can differ. A coverage PASS/FAIL names a
+channel, not a vendor. Any channel switch re-runs the canary set (dead names
++ never-existed controls) before any universe freeze.
+
+Consequence: the canary probe is mandatory per channel (second confirmed kill
+after Twelve Data Basic in V7); encoded in `research/control/
+stocks_free_v8_probe/probe_verdict.json` and carried into any future price
+authority probe.
+
 ## Related program-level records
 
 - Falsification-by-control cluster (7 instances, V11→V5):
