@@ -1,0 +1,398 @@
+{
+ "schema": "stocks_free_v9_run/d2_audit@1",
+ "cycle": "STOCKS-FREE-V9",
+ "phase": "D2 (independent novelty + feasibility audit)",
+ "built_at_utc": "2026-09-06T00:00:00Z",
+ "producer_role": "D2 independent auditor, fresh context; audit-only (no repairs, no gate loosening); NO returns/PnL computed anywhere in this audit - conditioning variables, populations, availability and rank correlations only",
+ "audited_head_base": "93d47c35ab27a378ab156d1ca20debc0b9edb0c1",
+ "head_at_audit_close": "77a992c099d6443ef9668f4cdc9a90b8b385a13d",
+ "head_move_note": "HEAD advanced once mid-audit (77a992c: owner conditional GO recorded as standing intent per P-8; touches event_log.jsonl + owner_go_intent.json only). Every audited input (six proposal packets, d1_proposal_hashes, p2/p3, cohort_v9, v6 decision dates, v8_family_runner.py) verified byte-unchanged between base and close; all measurements remain valid.",
+ "wave_sha": "86fecae8044d344e5d5ea9a49bbcfdb2f03c0b5a",
+ "input_integrity": {
+  "panel_v9_sha256_verified": "67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447 (recomputed from .staging_sec_v9/multivintage_panel.jsonl, 10,073,069 rows streamed)",
+  "proposal_sha256_all_match_d1_hashes": true,
+  "price_files": 2178,
+  "cohort_legs_measured": {
+   "ALIVE_EVIDENCED": 410,
+   "DEAD_PRICE_CONFIRMED": 1550,
+   "universe_1960": 1960
+  },
+  "decision_dates_source": "research/control/stocks_free_v6_run/p0a_coverage_census.json decision_dates (30 frozen quarterly dates 2018-04-04..2025-05-23; all 30 present in the union session calendar)"
+ },
+ "method": {
+  "novelty": "For each proposal, its ANCHOR conditioning variable was computed exactly as its packet defines it (fields, clock bounds, as-of rule avail<gate(t), fiscal-match rules where declared) on the frozen 30 quarterly decision dates over its declared universe (A4/A5: ALIVE+DEAD_PRICE_CONFIRMED with the packet's eligibility floor - 63 bars, ADV63 band C+, RAW>=1.00 - and anchor populated; A5 pre-selection diagnostics additionally on the packet's declared 63-bar-only pre-check universe; A6: DEAD leg only). Pooled Spearman (midrank ties) vs reimplemented forbidden-ancestor variables computed per research/assets/stocks/v8_family_runner.py specs: SFV8-F1 accrual FLOW (AR/INV/AP YoY legs, per-field 330-400d eff match, Assets<=400d, t-252-session reference), WC stock-LEVEL shadow (AR+INV-AP)/Assets, SFV8-F2 coverage AccumDep/PPEGross (<=400d, eff-agreement<=400d), Goodwill/Assets shadow, V4-style 21d/252d dollar-volume participation ratio, 63-session prior return (adjusted series). Gate: plan sec.1 |rho|<=0.20 vs F1/F2 forms and shadows and vs participation (forbidden ancestor claimed by A4-H1/A5-H1/A5-H2); 63-session return gated only where a packet claims a bar (A4-H1 <0.80).",
+  "A6_degenerate_pooling_note": "A6 anchors (N63/P63) are date-level regime conditioners with zero within-date cross-sectional variance; the pooled (date,name) Spearman therefore resolves mathematically to the between-date component: Spearman of the 30 conditioner values vs the ancestor's cross-sectional mean over the dead-leg band-eligible set at each date (n=30). This is the honest carrying-through of the pooled standard, applied without loosening; flagged as an adjudication note for A1 (if the owner adjudicates the date-level application out of scope for the pooled standard, A6 eligibility flips).",
+  "fidelity": "A6 active-series filter reimplemented from the packet's definition reproduced 1,250 active-series deaths vs the packet's 1,246 (forms 778 G/471 B/1 G-A vs 776/470); regime paths structurally reproduce (H1 mine 12/20/22 scored per fold vs packet 11/18/27; H2 mine 10/23/27 vs packet 11/26/27; fold-3 all-long L27/M0/H0 reproduces exactly). Tercile-rule implementation details (expanding-history quantiles) are the residual source of count differences."
+ },
+ "items": {
+  "NOVELTY_DECORRELATION": {
+   "verdict": "FAIL",
+   "summary": "4 of 6 proposals fail the plan sec.1 |rho|<=0.20 measured-decorrelation gate; only SFV9-A4-H2 passes every applicable ancestor.",
+   "per_proposal": {
+    "a4_distress_H1": {
+     "verdict": "NOVELTY_FAIL",
+     "anchor": "s=L/(L+ME), 800d clocks, RAW close x shares",
+     "measured": {
+      "SFV8-F1_accrual_FLOW": -0.2001,
+      "WC_stock_LEVEL_shadow": -0.1097,
+      "SFV8-F2_coverage": 0.0011,
+      "Goodwill_over_Assets_shadow": -0.22116,
+      "V4_participation_21d_252d": -0.1032,
+      "mom63_shadow_report_only_bar_0.80": -0.0996
+     },
+     "fail_ancestors": [
+      "SFV8-F1 accrual FLOW (|rho|=0.20010 > 0.20, margin -0.0001, knife-edge: |rho|>0.20 on 15/30 dates, pooled n=4200)",
+      "Goodwill/Assets exposure-form shadow (|rho|=0.22116 > 0.20, margin -0.0212, systematic: 28/30 dates, n=9707)"
+     ],
+     "pass_ancestors": [
+      "WC stock shadow",
+      "F2 coverage",
+      "participation (packet-claimed <=0.20)",
+      "mom63 (packet bar <0.80: met, -0.0996; declared-grid value -0.0971)"
+     ],
+     "note": "momentum-shadow screen the packet itself declared (rho<0.80 vs 63-session return) PASSES comfortably; the failure is vs the V8 forbidden forms per the plan's blanket gate"
+    },
+    "a4_distress_H2": {
+     "verdict": "NOVELTY_PASS",
+     "anchor": "(RE_prior-RE_now-Cash)/Assets, 800d clocks, 330-400d fiscal match",
+     "measured": {
+      "SFV8-F1_accrual_FLOW": -0.0903,
+      "WC_stock_LEVEL_shadow": -0.1628,
+      "SFV8-F2_coverage": -0.1327,
+      "Goodwill_over_Assets_shadow": 0.0216
+     },
+     "fail_ancestors": [],
+     "pass_ancestors": [
+      "all four V8 forms+shadows"
+     ],
+     "note": "pure filing-data family; no price/volume input, so momentum/participation contamination is impossible by construction (packet claim verified from its declared input set)"
+    },
+    "a5_clock_H1": {
+     "verdict": "NOVELTY_FAIL",
+     "anchor": "SE/EntityPublicFloat, unbounded clocks",
+     "measured": {
+      "SFV8-F1_accrual_FLOW": -0.0527,
+      "WC_stock_LEVEL_shadow": 0.0054,
+      "SFV8-F2_coverage": -0.101,
+      "Goodwill_over_Assets_shadow": -0.20282,
+      "V4_participation_21d_252d": 0.0142,
+      "mom63_report_only": 0.0222
+     },
+     "fail_ancestors": [
+      "Goodwill/Assets exposure-form shadow (|rho|=0.20282 > 0.20, margin -0.0028; 18/30 dates)"
+     ],
+     "pass_ancestors": [
+      "F1 flow",
+      "WC stock shadow",
+      "F2 coverage",
+      "participation (packet-claimed)",
+      "12-1 momentum (packet-claimed <=0.20)"
+     ]
+    },
+    "a5_clock_H2": {
+     "verdict": "NOVELTY_FAIL",
+     "anchor": "AP/AR, unbounded clocks",
+     "measured": {
+      "SFV8-F1_accrual_FLOW": -0.20865,
+      "WC_stock_LEVEL_shadow": -0.41332,
+      "SFV8-F2_coverage": -0.1008,
+      "Goodwill_over_Assets_shadow": -0.19763,
+      "V4_participation_21d_252d": -0.0451,
+      "mom63_report_only": -0.055
+     },
+     "fail_ancestors": [
+      "WC stock-LEVEL shadow (|rho|=0.41332 > 0.20; |rho|>0.20 on 30/30 dates, n=10726) - this is the packet's OWN declared pre-selection diagnostic A1",
+      "SFV8-F1 accrual FLOW (|rho|=0.20865 > 0.20, margin -0.0087; 19/30 dates) - the packet's declared diagnostic A2"
+     ],
+     "pass_ancestors": [
+      "F2 coverage",
+      "Goodwill/Assets (0.1976, inside by 0.0024)",
+      "participation"
+     ],
+     "note": "the packet's declared rationale that the ratio-of-legs form decorrelates from the signed asset-scaled stock form is empirically refuted (rho -0.41)"
+    },
+    "a6_death_H1": {
+     "verdict": "NOVELTY_FAIL",
+     "anchor": "N63(t) death-arrival count, expanding-tercile regime (date-level conditioner)",
+     "basis": "date-level (see A6_degenerate_pooling_note), n=30 dates, ancestor = cross-sectional mean over dead-leg band-eligible names",
+     "measured": {
+      "SFV8-F1_accrual_FLOW": 0.33901,
+      "WC_stock_LEVEL_shadow": 0.16795,
+      "SFV8-F2_coverage": -0.13899,
+      "Goodwill_over_Assets_shadow": 0.50384,
+      "V4_participation_21d_252d": -0.03904,
+      "mom63_report_only": -0.06766
+     },
+     "fail_ancestors": [
+      "SFV8-F1 accrual FLOW (0.339 > 0.20)",
+      "Goodwill/Assets shadow (0.504 > 0.20)"
+     ],
+     "pass_ancestors": [
+      "WC stock shadow",
+      "F2 coverage",
+      "participation (n=21 dates with 251-bar history)"
+     ],
+     "note": "packet expected the gate to 'bind trivially'; measurement refutes that at date level"
+    },
+    "a6_death_H2": {
+     "verdict": "NOVELTY_FAIL",
+     "anchor": "P63(t) = 12B-count minus 12G-count regime (date-level conditioner)",
+     "basis": "date-level (see A6_degenerate_pooling_note), n=30",
+     "measured": {
+      "SFV8-F1_accrual_FLOW": -0.33541,
+      "WC_stock_LEVEL_shadow": -0.72068,
+      "SFV8-F2_coverage": 0.62074,
+      "Goodwill_over_Assets_shadow": -0.4852,
+      "V4_participation_21d_252d": -0.1423,
+      "mom63_report_only": -0.10981
+     },
+     "fail_ancestors": [
+      "all four V8 forms+shadows (|rho| 0.335/0.721/0.621/0.485, all > 0.20)"
+     ],
+     "pass_ancestors": [
+      "participation"
+     ]
+    }
+   }
+  },
+  "CONTROL_IDENTIFIABILITY_PRESELECTION": {
+   "verdict": "PASS with one packet-level FAIL (a5_clock_H2 via its own declared ancestry diagnostics; its R1-R4 gates themselves pass)",
+   "per_proposal": {
+    "a4_distress_H1": {
+     "verdict": "PASS",
+     "declared_gates_measured": {
+      "momentum_shadow_bar_rho_lt_0.80_vs_63s_return": {
+       "measured_D30": -0.0996,
+       "measured_declared_grid_80d": -0.0971,
+       "verdict": "PASS"
+      },
+      "anchor_vs_own_control_rho_lt_0.95_book_leverage_L/(L+SE)": {
+       "measured_D30": 0.6257,
+       "measured_declared_grid": 0.623,
+       "verdict": "PASS"
+      }
+     }
+    },
+    "a4_distress_H2": {
+     "verdict": "PASS",
+     "declared_gates_measured": {
+      "anchor_vs_control_rho_lt_0.95_cash_over_assets": {
+       "measured_D30": -0.5939,
+       "measured_declared_grid": -0.5964,
+       "verdict": "PASS"
+      },
+      "note": "sampling floor (median populated fraction >=0.25) is a declared dry-run gate; measured 0.832 median - see FEASIBILITY"
+     }
+    },
+    "a5_clock_H1": {
+     "verdict": "PASS",
+     "declared_gates_measured": {
+      "R1_rank_gate": "per-date Spearman anchor vs par-stub control <=0.70 on >=90% of dates AND pooled |mean rho| <=0.70: measured mean 0.2455, max per-date 0.3664, 0/80 dates >0.70 (80/80 measured) - PASS",
+      "R2_control_nondegeneracy": "largest midrank tie-group <=25% of measured universe: median 3.4%, max 4.5%, 0/80 dates violated - PASS (unlike the V8 a5 authorized-share placebo's 80.8% tie degeneracy)",
+      "R3_control_coverage": "control populated on >=60% of anchor universe: median 90.1%, min 83.2%, 0/80 violated - PASS",
+      "R4_anchor_nondegeneracy": "largest anchor tie-group: median 0.1%, max 0.4% - PASS",
+      "declared_float_size_diagnostic": "anchor vs rank of EntityPublicFloat alone: pooled -0.022, per-date mean -0.037 (range -0.137..0.110) vs declared expectation 0.1-0.4 - diagnostic BELOW declared expectation (less float-size confound than declared); diagnostic, not a gate"
+     }
+    },
+    "a5_clock_H2": {
+     "verdict": "FAIL",
+     "declared_gates_measured": {
+      "R1_rank_gate": "mean per-date rho -0.4771, max |rho| 0.5358, 0/80 dates >0.70 - PASS",
+      "R2_control_nondegeneracy": "max tie-group 0.8% - PASS",
+      "R3_control_coverage": "min 1.22 (control universe exceeds anchor universe; AP<=0 excluded per declared construction, median 0-1 names) - PASS",
+      "R4_anchor_nondegeneracy": "max 0.6% (AR<=0 abstains, median 3 names) - PASS",
+      "packet_declared_ancestry_diagnostics_A1_A2": "A1 |rho|<=0.20 vs WC stock shadow MEASURED 0.41332 - FAIL; A2 |rho|<=0.20 vs F1 flow MEASURED 0.20865 - FAIL",
+      "packet_rule": "'If either diagnostic measures > 0.20 pooled, this proposal is INELIGIBLE at D2 (ancestry too close) - no rescue variant is attempted.'"
+     }
+    },
+    "a6_death_H1": {
+     "verdict": "PASS",
+     "note": "packet declares no pre-selection control-identifiability gate (its stale-63 control and regime-shuffle placebo are scored-phase arms); nothing declared was violated. Its D2-declared novelty screen is measured in item 1 (FAIL there)."
+    },
+    "a6_death_H2": {
+     "verdict": "PASS",
+     "note": "same as a6_death_H1 (label-swap control is a scored-phase arm); nothing declared was violated pre-selection."
+    }
+   }
+  },
+  "FEASIBILITY": {
+   "verdict": "PASS",
+   "summary": "every proposal's measured population can fill its declared arms well above the frozen floors (>=5 scored decisions/fold, >=30 overall, >=1 non-CASH leg); measured on declared grids (per-fold local 63+21k on the union calendar = 27/26/27 = 80 decisions). No PnL computed.",
+   "population": {
+    "a4_distress_H1": {
+     "eligible_med_per_fold": [
+      757,
+      686,
+      478
+     ],
+     "anchor_populated_med": [
+      504,
+      446,
+      309
+     ],
+     "decisions_with_active_sector_book": "80/80",
+     "populated_fraction_of_eligible_med": 0.66
+    },
+    "a4_distress_H2": {
+     "anchor_populated_med": [
+      634,
+      550,
+      395
+     ],
+     "sampling_floor_check": "median populated fraction of eligible = 0.832 (min 0.643) vs packet floor 0.25 - PASS with margin +0.58 (packet expected 0.25-0.45; measured materially higher)",
+     "warmup": "4 declared fold-1 warmup decisions leave >=23 scored fold-1 decisions at measured populations"
+    },
+    "a5_clock_H1": {
+     "precheck_universe_63bar_med": [
+      1160,
+      1052,
+      580
+     ],
+     "anchor_populated_med": [
+      1031,
+      884,
+      552
+     ],
+     "populated_fraction": "0.87-0.95"
+    },
+    "a5_clock_H2": {
+     "anchor_populated_med": [
+      604,
+      519,
+      342
+     ],
+     "populated_fraction_of_63bar_universe": "0.48-0.58 (AR mapped 1016 < AP 1196 intersection-bound, exactly as the packet's risk note declared)"
+    },
+    "a6_death_H1_H2": {
+     "eligible_dead_leg_per_fold": {
+      "S0_FOLD_1": "315-447 (med 363)",
+      "S0_FOLD_2": "173-365 (med 281)",
+      "S0_FOLD_3": "0-145 (med 73, exactly one zero-eligible decision which abstains)"
+     },
+     "scored_decisions_measured_regime_reimpl": {
+      "H1_N63": "12/20/22 = 54 total",
+      "H2_P63": "10/23/27 = 60 total",
+      "N126_neighbour": 49,
+      "P126_neighbour": 66
+     },
+     "floors": "all folds >=5 scored, totals >=30 - PASS (packet's own counts 56/64 are structurally consistent with this reimplementation)"
+    },
+    "grid_count_discrepancy": "A4/A5 packets declare 'approximately 22/26/27' scored decisions per fold; the frozen inherited grid measures 27/26/27 = 80. Fold-1 count is understated by 5 in the A4/A5 packets (A6 packets declare 27/26/27 = 80, matching). Floors are satisfiable under either count; recorded, not repaired."
+   },
+   "bands_and_costs": {
+    "band_distribution_63bar_names_pooled_over_30_dates": {
+     "universe_1960": {
+      "A": 0.3756,
+      "B": 0.1871,
+      "C": 0.1187,
+      "D_UNTRADABLE": 0.3186,
+      "blended_base_bps_per_side_equal_weight_eligible": 14.02
+     },
+     "dead_leg_1550": {
+      "A": 0.0779,
+      "B": 0.1832,
+      "C": 0.1934,
+      "D_UNTRADABLE": 0.5454,
+      "blended_base_bps_per_side": 18.5
+     }
+    },
+    "cross_check": "the dead-leg blend 18.5 bps/side independently reproduces the A6 packets' measured book-weighted claim of 16.5-19.4 bps/side",
+    "cost_burden_note": "A4/A5 books add the alive leg (band-A heavy), so their blend sits near 14 bps/side; A6 dead-only books sit at ~18.5 bps/side as their packets declare; stress = 2x per the frozen schedule"
+   },
+   "flags": [
+    "A6-H2 fold-3 is ALL-LONG (regimes L27/M0/H0 measured; zero short-side decisions in fold 3) - reproduces the packet's declared 15-12B extinction asymmetry. Arms still fill (27 scored decisions in fold 3, all on the long leg) so this is NOT a population failure, but the packet's preregistered 'channel-unvalidated' branch (pass only via fold-3 long => downweight, not promotable on folds 1-2's behalf) is live and A1 should treat the family's falsifiability as one-sided in fold 3.",
+    "A6 fold-3 eligible population is thin (median 73, one zero-eligible decision 2025-07-14 which abstains) - matches the packet's own measured claims; floors still met.",
+    "A4-H2's measured fiscal-matched-pair coverage (0.832) is much higher than the packet's declared expectation (0.25-0.45) - a benign deviation in the proposal-favorable direction, recorded for margin-to-fail honesty."
+   ],
+   "runtime_realism": {
+    "measured": "panel stream of 1.5GB (10.07M rows, 14 fields kept for 1,948 entities): 27s; 2,178 price files (914MB): 18s; full measurement pass (30+80 dates x ~1,960 names x anchor+6 ancestors with as-of engine and band computation): 18s total on this host",
+    "verdict": "a v8-runner-pattern scored cell (80 decisions, as-of engine, band costing, drop-one/stress reruns) is realistically <= 15-20 min, far under the 45-min safe-stop and 120-min hard timeout; A6 packets' own estimates (<=15-20 min) are realistic",
+    "kernel_change_note": "the single bounded kernel change both A4/A5 packets declare (replacing the v8 runner's missing-price-leg skip with preregistered exit-at-last-close semantics) is confirmed necessary: the v8 run_arm skip (fi is None or ei is None -> continue) would silently drop dead-leg fills"
+   }
+  },
+  "PACKET_COMPLIANCE": {
+   "verdict": "PASS",
+   "per_proposal": {
+    "a4_distress_H1": {
+     "clocks_cited_verbatim_in_56_set_with_matching_coverage_and_mapped": true,
+     "n_arms": 3,
+     "outcome_blind_attestation": true,
+     "dead_name_book_semantics": true,
+     "sha256_matches_d1_hashes": true
+    },
+    "a4_distress_H2": {
+     "clocks_cited_verbatim_in_56_set_with_matching_coverage_and_mapped": true,
+     "n_arms": 3,
+     "outcome_blind_attestation": true,
+     "dead_name_book_semantics": true,
+     "sha256_matches_d1_hashes": true
+    },
+    "a5_clock_H1": {
+     "clocks_cited_verbatim_in_56_set_with_matching_coverage_and_mapped": true,
+     "n_arms": 3,
+     "outcome_blind_attestation": true,
+     "dead_name_book_semantics": true,
+     "sha256_matches_d1_hashes": true,
+     "note": "unbounded (null) bounds cited for all four fields are members of the funded 56-set; A4 packets cite only 800d bounds, likewise funded"
+    },
+    "a5_clock_H2": {
+     "clocks_cited_verbatim_in_56_set_with_matching_coverage_and_mapped": true,
+     "n_arms": 3,
+     "outcome_blind_attestation": true,
+     "dead_name_book_semantics": true,
+     "sha256_matches_d1_hashes": true
+    },
+    "a6_death_H1": {
+     "clocks": "no fundamentals clock cited; conditions on the death census stream + price leg, funded by the p3 dead_leg_clock_funding citing_rule ('the dead-leg funded set (or the price leg)')",
+     "n_arms": 3,
+     "outcome_blind_attestation": true,
+     "dead_name_book_semantics": true,
+     "sha256_matches_d1_hashes": true
+    },
+    "a6_death_H2": {
+     "clocks": "same price-leg branch as H1",
+     "n_arms": 3,
+     "outcome_blind_attestation": true,
+     "dead_name_book_semantics": true,
+     "sha256_matches_d1_hashes": true
+    }
+   },
+   "checks_detail": "all cited (field, max_age_days) pairs exist in p2_v9_coverage_first.json dead_leg_funded_clocks.clocks (56 entries); every cited coverage/mapped number matches the p2 entry to the digit (A4-H1: Liab .641/shares .6557/SE .646/Assets .6553/Cash .629; A4-H2: RE .6516; A5-H1: SE .8823/1730, PubFloat .8622/1727, CommonStockValue .9009/1479, Liab .8666/1604, CSO .9051/1398; A5-H2: AP .8787/1196, AR .8998/1016, Cash .8858/1682, LiabCur .8681/1491); dead-name book semantics verbatim strings (fill-check 'missing bar = the order does not exist', exit at last recorded close, no survivorship re-substitution) present in all six"
+  },
+  "ANCESTRY_SWEEP": {
+   "verdict": "PASS (no proposal's MECHANISM collapses to a listed forbidden mechanism under renaming/universe-change; where an exposure-form overlap exists it is caught and recorded by the measured item-1 gate, not by this sweep)",
+   "per_proposal_reasoning": {
+    "a4_distress_H1": "Mechanism: Merton/Campbell-Hilscher out-of-the-money-ness (liabilities vs price-transmitted market equity). Not a renaming of F1 (no WC accrual-delta construct, no AR/INV/AP fields) or F2 (no depreciation/conservatism construct). The sweep finds no universe-change or renaming route from this anchor to a listed mechanism. The failure is the measured-decorrelation gate (Goodwill/Assets shadow -0.221; F1 flow -0.20010): economically natural, since goodwill-heavy bloat and high book leverage co-move cross-sectionally, so the EXPOSURE forms overlap even though the mechanisms differ. Blocked by measurement per plan sec.1, not by mechanism identity.",
+    "a4_distress_H2": "Mechanism: retained-earnings depletion trajectory interacting with thin cash (Shumway profitability/Ohlson-Altman form). Shares the YoY-delta-over-Assets SHAPE with F1 but the accounting construct (RE vs WC components) and the cash interaction are disjoint; measured decorrelation holds (worst |rho| 0.163). No renaming collapses it to F1/F2 or any listed family. Sweep-clean; measured-clean.",
+    "a5_clock_H1": "Mechanism: filed claim-shape (audited book vs filed public float). Distinct construct from WC accrual, dep-coverage, participation, momentum, calendar. No collapse under renaming. Fails only the measured Goodwill/Assets shadow gate by 0.0028 - a shadow-level exposure overlap (bloat co-moves with float-marked-below-book), caught by the gate.",
+    "a5_clock_H2": "Mechanism: trade-credit chain position AP/AR. This is the wave's closest approach to a rescue-by-renaming: it shares BOTH working-capital legs with the forbidden WC stock-level shadow, and its declared functional-form rationale (ratio-of-legs vs signed asset-scaled sum reorders names) is empirically refuted - |rho|=0.41332 vs (AR+INV-AP)/Assets on 30/30 dates. Under renaming (AP/AR is a within-WC reparameterization of the same stock exposure) plus universe change (dead leg added), this is materially the WC stock exposure form on a new universe. Blocked both by this sweep's judgment and by its own declared A1 diagnostic.",
+    "a6_death_H1": "Mechanism: death-arrival intensity regime. The information set (evidenced Form-15 stream) did not exist in any prior cycle (V8 cohort 0/409 deaths); no renaming of a listed family produces an event-count regime conditioner. Sweep-clean at mechanism level. The measured item-1 failure is a timing-co-movement between the regime and forbidden-variable LEVELS in the dying cohort, not a mechanism collapse; under the plan's blanket measured gate it is nonetheless blocked (subject to the A6_degenerate_pooling_note adjudication).",
+    "a6_death_H2": "Mechanism: 12B/12G channel taxonomy - same new-information-set status as H1; sweep-clean at mechanism level; blocked by the measured date-level gate (|rho| 0.335-0.721 vs all four V8 forms) with the same adjudication note, plus the fold-3 all-long one-sidedness flag."
+   }
+  }
+ },
+ "per_proposal_eligibility_for_selection": {
+  "SFV9-A4-H1": "INELIGIBLE - NOVELTY_FAIL (SFV8-F1 accrual FLOW |rho|=0.20010; Goodwill/Assets shadow |rho|=0.22116)",
+  "SFV9-A4-H2": "ELIGIBLE - passes item 1 (all measured ancestors <=0.20), item 2 (control rho -0.594 < 0.95), item 3 (populations 0.832 median vs 0.25 floor; all folds fill), item 4, item 5",
+  "SFV9-A5-H1": "INELIGIBLE - NOVELTY_FAIL (Goodwill/Assets shadow |rho|=0.20282); R1-R4 control-identifiability itself passes",
+  "SFV9-A5-H2": "INELIGIBLE - NOVELTY_FAIL / own pre-selection ancestry diagnostics fire (WC stock shadow 0.41332; F1 flow 0.20865); R1-R4 pass but are moot",
+  "SFV9-A6-H1": "INELIGIBLE - NOVELTY_FAIL at date level (F1 flow 0.339; Goodwill/Assets 0.504), subject to the A6 pooling-basis adjudication note",
+  "SFV9-A6-H2": "INELIGIBLE - NOVELTY_FAIL at date level vs all four V8 forms (0.335/0.721/0.621/0.485), same adjudication note; fold-3 all-long flag recorded"
+ },
+ "blockers": [
+  "5 of 6 proposals blocked from selection by the measured novelty gate (plan sec.1 |rho|<=0.20 vs every forbidden ancestor); only SFV9-A4-H2 is measured-eligible on all five audit items",
+  "A6 verdicts rest on the date-level carrying-through of the pooled standard (documented in method.A6_degenerate_pooling_note); A1/owner adjudication of that basis is requested before A6 eligibility is treated as final"
+ ],
+ "limitations": [
+  "Forbidden-ancestor ranks are REIMPLEMENTATIONS of the v8_family_runner variable specs computed on the V9 panel/universe; V8's own measured rank vectors (410-name survivor panel) are not the audit object and cannot cover dead names - plan sec.1 requires decorrelation vs the ancestor VARIABLES/forms, which is what was measured",
+  "F1-flow pairs are the scarcest ancestor population (fiscal 330-400d match + 252-session reference): pooled n=4,200 for A4-H1, 6,055-7,893 for others; the A4-H1 flow failure is knife-edge (margin -0.0001) while the Goodwill/Assets and WC-stock failures are systematic (28/30 and 30/30 dates over threshold)",
+  "A6 participation/momentum date-level comparisons use 21 of 30 dates (251-bar history requirement within the 2015+ price slice used for memory bounds)",
+  "A6 regime-path counts differ modestly from packet counts (expanding-tercile implementation detail); populations, folds and the fold-3 all-long structure reproduce",
+  "The audit computed conditioning variables, populations, availability and rank correlations ONLY; no return, PnL or scored metric exists in any artifact of this audit"
+ ],
+ "resource_accounting": {
+  "wall_clock_total_minutes": "~6 (slice build 0.8 min; measurements ~0.5 min; A6 + extras ~1.5 min; compliance/hash checks ~2 min including the 1.5GB sha256)",
+  "peak_memory": "panel+price slices ~600MB resident, far under the 8GB heavy cap",
+  "full_pytest": "NOT_RUN - forbidden to D2 by resource policy"
+ }
+}
