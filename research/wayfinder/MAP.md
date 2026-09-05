@@ -2,6 +2,26 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS-FREE-V6 TERMINAL — BLOCKED_DATA_AUTHORITY** (synced by A1,
+  2026-09-05, branch `orca/stocks-free-v6-integration`): no scored
+  cells, budget 0/6, denominator unchanged 21/21. P0a F1 remediation PASS —
+  V5 single-vintage collapse reproduced EXACT from store bytes, mechanism
+  isolated (bridge single-vintage semantics; median newest-vintage cohort
+  15/40 filers), multi-vintage PIT panel rebuilt (pooled coverage
+  us-gaap:Assets 0.946/0.985/0.998 at S0 start/mid/end; lag p50 121d p90
+  419d), 154/228 clocks frozen fundable by A1 (`p0a_clock_freeze.json`).
+  P0b price leg FAILED CLOSED with evidence — Stooq
+  UNAVAILABLE_FAIL_CLOSED (scripted PoW bot-gate; rendering channel
+  falsified on TJX OHLC consistency), Massive Basic
+  CANDIDATE_NOT_AUTHORIZED (signup+key, non-commercial terms); no signup
+  performed. D1 prelaunch impossible without an evidenced price source, so
+  the cycle closed blocked per plan §2/§15. Owner decision request
+  (compliant Stooq path / owner-provided source / accept close) issued and
+  unanswered; fail-closed default applied. Owner GO received 2026-09-04 and
+  recorded as a STANDING Phase-E release for any authorized continuation.
+  Detail: `research/control/stocks_free_v6_run/terminal_report.json`.
+
+
 - **STOCKS-FREE-V5 TERMINAL** (synced by A1, 2026-09-04, branch
   `orca/stocks-free-v5-integration`) — verdict
   `STOCKS_FREE_V5_REJECT_ALL` (terminal A7
