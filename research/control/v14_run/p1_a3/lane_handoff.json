@@ -1,0 +1,134 @@
+{
+  "schema": "v14_p1_a3_lane_handoff_v1",
+  "cycle": "CRYPTO-V14",
+  "lane": "p1-a3-data",
+  "branch": "orca/v14-p1-a3-data",
+  "head_before_commit": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+  "base_sha": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+  "generated_utc": "2026-09-04T23:44:23.220686Z",
+  "producer_role": "A3",
+  "authority_read": [
+    "PLAN_crypto_v14.md (full; sections 2, 6, 15 are task-spec)",
+    "research/control/v14_run/run_contract.json",
+    "research/control/v14_run/first_report_v14.json",
+    "CLAUDE.md"
+  ],
+  "mission_result": {
+    "candidates_evidenced_available": [
+      "basis_futures_data (/futures/data/basis)",
+      "basis_mark_index_derivable_route (/fapi/v1/premiumIndexKlines, /fapi/v1/markPriceKlines, /fapi/v1/indexPriceKlines)"
+    ],
+    "candidates_coverage_insufficient_fail_closed": [
+      "open_interest_history_fine (/futures/data/openInterestHist 5m/15m)",
+      "taker_buy_sell_volume_ratio (/futures/data/takerlongshortRatio)",
+      "top_trader_long_short_account_ratio (/futures/data/topLongShortAccountRatio)",
+      "top_trader_long_short_position_ratio (/futures/data/topLongShortPositionRatio)",
+      "global_long_short_account_ratio (/futures/data/globalLongShortAccountRatio)"
+    ],
+    "rekeyed_authorized": [
+      "bars_klines (/fapi/v1/klines) bar_close_time",
+      "funding_rate (/fapi/v1/fundingRate) funding_settlement_stamp",
+      "open_interest snapshot (/fapi/v1/openInterest) oi_snapshot_stamp - present-only, FAIL_CLOSED as a historical source"
+    ],
+    "headline": "All five /futures/data/* positioning/crowding statistics sources serve only ~30 days of retrievable history (measured, and matching their documented bound) vs the 365-day blind-S0 screen window -> COVERAGE_INSUFFICIENT_FAIL_CLOSED, excluded from D1 proposal briefs. Only the basis/mark-index axis survives as EVIDENCED_AVAILABLE."
+  },
+  "gates": [
+    {
+      "gate": "G1 live API probe execution (candidates + re-keys)",
+      "command": ".venv/bin/python research/control/v14_run/p1_a3/probe_binance_sources.py",
+      "exit_code": 0,
+      "stdout": "research/control/v14_run/p1_a3/probe_run_stdout.txt",
+      "evidence": "evidence/probe_0001..0398 (one JSON per request); probe_results.json",
+      "verdict": "PASS"
+    },
+    {
+      "gate": "G1b follow-up probes (indexPriceKlines pair param; basis depth brackets)",
+      "command": ".venv/bin/python research/control/v14_run/p1_a3/probe_followup.py",
+      "exit_code": 0,
+      "evidence": "evidence/probe_0399..0419; probe_results_followup.json",
+      "verdict": "PASS"
+    },
+    {
+      "gate": "G2 provider documentation archived (verbatim excerpts + snapshot URLs)",
+      "command": ".venv/bin/python research/control/v14_run/p1_a3/fetch_docs.py",
+      "exit_code": 0,
+      "evidence": "evidence/docs/docs_fetch_manifest.json (12/12 pages HTTP 200 via Internet Archive snapshots of the developers.binance.com provider URLs; live site serves a bot challenge to non-browser fetchers)",
+      "verdict": "PASS"
+    },
+    {
+      "gate": "G3 availability-evidence table + coverage census built",
+      "command": ".venv/bin/python research/control/v14_run/p1_a3/build_artifacts.py",
+      "exit_code": 0,
+      "verdict": "PASS"
+    },
+    {
+      "gate": "G4 targeted data-contract suite (untouched-code sanity)",
+      "command": ".venv/bin/python -m pytest tests/data_fusion/test_crypto_compat.py -q",
+      "exit_code": 0,
+      "expected": "23 passed",
+      "observed": "23 passed in 0.18s",
+      "verdict": "PASS"
+    },
+    {
+      "gate": "G5 compile check of lane scripts",
+      "command": ".venv/bin/python -m py_compile research/control/v14_run/p1_a3/{probe_binance_sources,probe_followup,fetch_docs,build_artifacts}.py",
+      "exit_code": 0,
+      "verdict": "PASS"
+    },
+    {
+      "gate": "G6 git diff --check",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "verdict": "PASS"
+    },
+    {
+      "gate": "G7 full pytest -q",
+      "verdict": "NOT_RUN",
+      "reason": "CLAUDE.md requires the full suite to run ALONE with zero heavy workers; this light lane runs targeted suites only; full suite is an integrator/A1 phase gate"
+    },
+    {
+      "gate": "G8 one clean commit on orca/v14-p1-a3-data",
+      "verdict": "PASS (this commit)",
+      "evidence": "see commit_sha field after commit; single commit, message starts 'V14 P1 A3:'"
+    }
+  ],
+  "request_budget_report": {
+    "target": "< ~400 requests",
+    "hard_cap_enforced": 420,
+    "archived_probe_requests": 419,
+    "pre_check_request": 1,
+    "honesty_note": "target exceeded by ~5%: 24 requests were duplicate pages caused by the measured /futures/data/basis endTime quirk (endpoint repeats the latest page instead of returning empty - archived as evidence probes 0253-0276) and 13 requests were indexPriceKlines symbol= disconfirmation probes required by the documented pair= parameter. All requests archived; max observed X-MBX-USED-WEIGHT-1M = 48; sleep 0.55s between requests.",
+    "host_load": "light: single-threaded, rate-limited, 2.0 MB total lane size"
+  },
+  "boundaries_respected": {
+    "free_keyless_only": true,
+    "no_signup_no_credentials": true,
+    "no_new_dependencies": "stdlib only (urllib, json, hashlib, html.parser)",
+    "no_mass_download": "small limits; backward walks stop at measured boundaries; total archived 2.0 MB",
+    "no_proposal_content_no_pnl_no_backtests": true,
+    "worktree_only": "all writes inside .worktrees/crypto/v14/p1-a3-data"
+  },
+  "not_run_or_deferred": [
+    "worktree_manifest.json lane self-registration NOT edited on this lane branch (shared A1 control file; editing it here would cross lanes); A1 registers the lane at integration",
+    "basis earliest boundary bracketed only (exists at 2023-01-01, absent at 2019-12-01) - exact origin pin deferred; not needed for the screen-window classification",
+    "ETH/SOL/XRP stats endpoints measured by point anchors (boundary bracket), not full backward walks - BTCUSDT carries the walk-grade boundary for every /futures/data/* endpoint and all four symbols agree at every anchor",
+    "full pytest -q NOT_RUN (see G7)"
+  ],
+  "artifact_sha256": {
+    "research/control/v14_run/p1_a3/availability_evidence_table.json": "d0dbb4e2be2dc8b8bcaef651ca9a2ce5fabe131d20aa4de5ae4831090efe0a28",
+    "research/control/v14_run/p1_a3/coverage_census.json": "fdebde56b7118456018d14a1a9fbfbe107d3ec729e3d23bc68e252f6437b8688",
+    "research/control/v14_run/p1_a3/probe_results.json": "d9ad972784f62bc7af6bd5532d2f1f8925805e136428bb8e84eab4149d1f7a06",
+    "research/control/v14_run/p1_a3/probe_results_followup.json": "4f983575d42f6a372d29afdb8dfb88164cad5270aa65724227a5a32187c4a286",
+    "research/control/v14_run/p1_a3/probe_binance_sources.py": "604e4b295e72e773e29c2b662abdebf36c81d05ab616f0703feacb1c90e88542",
+    "research/control/v14_run/p1_a3/probe_followup.py": "62300b30c6b1d7d723c1d462aed539b1a0795a959ecadd963342d603e009ada6",
+    "research/control/v14_run/p1_a3/fetch_docs.py": "b9d0363ba400b0b2848ced0854797754d7e4afcab5ceae1e8d39954ea7d289ba",
+    "research/control/v14_run/p1_a3/build_artifacts.py": "f60e793fb5ea7abb2224c6ba5ce8f267c55ee2f22e35d288d8552fd2aec97026",
+    "research/control/v14_run/p1_a3/probe_run_stdout.txt": "593e51408d9f2a140aedc4961353c45e3d2f036828ad6ecdf4bf0bb4d0409281",
+    "research/control/v14_run/p1_a3/evidence/docs/docs_fetch_manifest.json": "0d0f83bd9381b4353f0564c59daffd9b9fb0a1559a001ff3f7222e956a497adf",
+    "evidence/probes_file_count": 419,
+    "evidence_probes_sha256_of_concatenated_index": "670b75eb865bf6d678781e6ebf448f1c2b379ef36883132c03084bbc134d6ba3"
+  },
+  "tree_status_porcelain_before_commit": [
+    "?? research/control/v14_run/p1_a3/"
+  ]
+}
