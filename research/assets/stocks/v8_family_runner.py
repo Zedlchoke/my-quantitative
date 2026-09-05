@@ -209,12 +209,12 @@ def signal_value(spec, panel_entity, decision_date, prev_session_date):
         if any(f not in rows for f in (f0, f1, f2, spec["denominator_field"])):
             return None
         ar0 = asof(rows[f0], decision_date)
-        inv0 = asof(rows[f1], decision_date)
+        inv0 = None if spec.get("drop_leg_index") == 1 else asof(rows[f1], decision_date)
         ap0 = asof(rows[f2], decision_date)
         if prev_session_date is None:
             return None
         ar1 = asof(rows[f0], prev_session_date)
-        inv1 = asof(rows[f1], prev_session_date)
+        inv1 = None if spec.get("drop_leg_index") == 1 else asof(rows[f1], prev_session_date)
         ap1 = asof(rows[f2], prev_session_date)
         legs0 = (ar0, inv0, ap0)
         legs1 = (ar1, inv1, ap1)
@@ -226,11 +226,18 @@ def signal_value(spec, panel_entity, decision_date, prev_session_date):
         # fiscal-type match: EACH field's two leg vintages must be
         # 330-400 eff days apart (F-A7-7 remediation: per field, not AR only)
         from datetime import date
-        for leg0, leg1 in ((ar0, ar1), (inv0, inv1), (ap0, ap1)):
+        pairs = [(ar0, ar1)]
+        if inv0 is not None and inv1 is not None:
+            pairs.append((inv0, inv1))
+        pairs.append((ap0, ap1))
+        for leg0, leg1 in pairs:
             gap = (date.fromisoformat(leg0[1]) - date.fromisoformat(leg1[1])).days
             if not (330 <= gap <= 400):
                 return None
-        num = (ar0[2] - ar1[2]) + (inv0[2] - inv1[2]) - (ap0[2] - ap1[2])
+        num = (ar0[2] - ar1[2])
+        if inv0 is not None and inv1 is not None:
+            num += inv0[2] - inv1[2]
+        num -= (ap0[2] - ap1[2])
         try:
             return num / float(den[2])
         except (TypeError, ZeroDivisionError):
@@ -458,6 +465,7 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
                 if not is_warmup:
                     fold_pnls.append(pnl)
                     decision_pnls[-1]["pnl"] = pnl
+                    decision_pnls[-1]["fold"] = fold["fold_id"]
             records.append({
                 "decision_date": d, "fill_date": fill_d, "fold": fold["fold_id"],
                 "eligible": len(elig), "populated": len(raw_sig),
@@ -523,5 +531,9 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
             "pf": round(wins / losses, 6) if losses > 0 else None,
             "folds": fold_metrics,
             "top_name_contribution": max(name_contrib.items(), key=lambda kv: kv[1]) if name_contrib else None,
+            "decision_pnl": [
+                {"d": x["d"], "fold": x.get("fold"), "pnl": round(x["pnl"], 10)}
+                for x in decision_pnls if x.get("scored") and "pnl" in x
+            ],
         }
     return record
