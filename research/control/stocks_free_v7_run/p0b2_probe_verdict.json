@@ -1,0 +1,80 @@
+{
+ "schema": "stocks_free_v7_run/p0b2_probe_verdict@1",
+ "recorded_at_utc": "2026-09-05T02:35:00Z",
+ "producer_role": "A1",
+ "cycle": "STOCKS-FREE-V7",
+ "phase": "V7-P0b-2 Twelve Data price probe (the cycle's first decision)",
+ "command": ".venv/bin/python research/assets/stocks_p0b2_probe/p0b2_twelve_probe.py (v1, 28 TD calls); re-analysis v2/v3/v4 in research/assets/stocks_p0b2_probe/p0b2_probe_v2.py + control-dir patches from saved bytes (1 control TD call + public SEC calls)",
+ "exit_code": 0,
+ "probe_verdict": "FAIL_CLOSED_BLOCKED_DATA_AUTHORITY",
+ "gate_dispositions": {
+  "gate_1_license_scope": "PASS",
+  "gate_2_depth": "PASS",
+  "gate_3_delisted_coverage": "FAIL",
+  "gate_4_raw_vs_adjusted": "PASS",
+  "gate_5_availability": "PASS",
+  "gate_6_integrity": "PASS"
+ },
+ "first_failing_gate": "gate_3_delisted_coverage",
+ "cycle_terminal_consequence": "STOCKS_FREE_V7_BLOCKED_DATA_AUTHORITY (plan section 2: any probe failure closes V7; a survivorship-biased panel is never scored)",
+ "gate_3_evidence": {
+  "rule_ex_ante": "canary of four documented delisted US filers spanning 2018-2023 (all inside S0 window): ANY name unservable, or servable without the delisting tail, FAILS",
+  "unservable_by_ticker_and_alias_and_search": [
+   "TWTR",
+   "SIVB",
+   "SIVBQ(alias)",
+   "TWX"
+  ],
+  "twtr": {
+   "td_http": 404,
+   "td_error": "symbol or figi parameter missing or invalid",
+   "search_data": "[] (empty)"
+  },
+  "control_never_existed_ZZZZZZ": "same 404 semantics as dead tickers - the response is TD's canonical unknown-symbol error",
+  "frc": {
+   "primary_FRC": "404 unservable",
+   "alias_FRCB": "SERVED: 3747 rows, 2010-12-09..2026-09-03 continuous through the 2023 delisting window (OTC successor carries the lineage)"
+  },
+  "sec_corroboration": "authoritative ticker map + submissions: TWX = Time Warner Inc (CIK 0000055503, Form 25 2018); FRC = First Republic Bank (CIK 0001138949); SIVB/TWTR resolved via company_tickers.json; delisting-related forms recorded in evidence file"
+ },
+ "what_passed": {
+  "gate_2_depth": "8/8 panel sample names serve 5000 daily rows 2006-10-19..2026-09-04 (~20y) on Basic - depth is not the blocker",
+  "gate_4_l7": "CMG 50:1 raw discontinuity -3.909 vs SEC-recorded -3.912 (ex-date 2024-06-26, in quarter); TJX 2:1 raw discontinuity -0.6814 vs -0.6931 (ex-date 2018-11-07, period-attribution +7d tolerance recorded); adjusted series continuous both names; KO dividends: TD adjusted-vs-raw divergence +6.237% vs SEC-recorded DPS-implied +6.005% ($3.78 / $62.95) within tolerance",
+  "gate_5": "Friday 2026-09-04 bar present Saturday 2026-09-05 (prior-session availability evidenced); provider semantics remain ASSERTED_UNDOCUMENTED so the binding close+1-session read-lag stays",
+  "gate_6": "0 OHLC/duplicate/volume violations across 8x5000 bars; CMG max bar gap 9 days; double-pulls byte-identical"
+ },
+ "incidents": [
+  {
+   "id": "INC-1",
+   "what": "probe v1 computed spans/returns on TD's newest-first bar order, parsed symbol_search with the wrong key, and used unauthoritative remembered CIKs for SEC corroboration; v1 FAIL dispositions for gates 2/4 were measurement artifacts",
+   "scope": "analysis layer only; saved raw bytes unaffected; no gate threshold changed; v1 verdict never consumed by a decision",
+   "repair": "v2-v4 re-analysis of saved bytes + authoritative SEC ticker map + one control call",
+   "prevention": "normalize provider bar order at ingestion; CIK resolution only via SEC authoritative map"
+  }
+ ],
+ "budget_and_counters": {
+  "budget": "0/6 (zero scored cells; probe is not a scored cell)",
+  "v7_observed": 0,
+  "v7_published": 0,
+  "historical": "21/21 unchanged"
+ },
+ "td_credit_usage": {
+  "v1_calls": 28,
+  "v2_control_calls": 1,
+  "rate_limits": "8/min pacing, no 429s observed",
+  "daily_cap": "800/day; ~29 used"
+ },
+ "key_handling": "TWELVE_DATA_API_KEY read from gitignored root .env at runtime; never printed, logged, or committed; all stored URLs sanitized",
+ "artifacts": {
+  "evidence": "research/control/stocks_free_v7_run/p0b2_probe_evidence_v2.json (v2 file contains v2-v4 sections)",
+  "retrieval_manifest": "research/control/stocks_free_v7_run/p0b2_retrieval_manifest.json + .staging_prices_v7/manifest_v2_append.json",
+  "raw_bytes": ".staging_prices_v7/raw/ (GITIGNORED, sha256-manifested)",
+  "probe_scripts": [
+   "research/assets/stocks_p0b2_probe/p0b2_twelve_probe.py",
+   "research/assets/stocks_p0b2_probe/p0b2_probe_v2.py"
+  ]
+ },
+ "s1": "SEALED_UNTOUCHED",
+ "workers": 0,
+ "pushes": "none (not authorized)"
+}
