@@ -154,6 +154,24 @@ Consequence: cross-asset program totals are read ONLY from
 program sums are labeled as-of-intake. Encoded in the V15/V10 plan
 templates.
 
+## P-10 — The root checkout is a shared stage: never leave the index dirty across long operations
+
+Source: Forex V5 closeout (2026-09-06). While the Lead ran long
+verifications with 11 renames staged in the root index, the V5 A1 committed
+its ledger/MAP sync in the same checkout — its commit swept the staged
+renames along (recorded as INC-V5-1; 0 content change; a follow-up commit
+4 minutes later restored the load-bearing files, final tree verified by a
+full 912-test pass). Harmless by luck and transparency, not by design.
+
+Lesson: two authorities can commit in the root checkout within minutes of
+each other. Staged-but-uncommitted changes are a trap for the next
+committer; `git commit` without pathspec publishes the whole index.
+
+Consequence: in the root checkout, stage and commit ATOMICALLY (single
+purpose, immediately); prefer committing by explicit pathspec
+(`git commit -- <files>`); any agent finding foreign entries in its commit
+records an incident the same way INC-V5-1 did.
+
 ## Related program-level records
 
 - Falsification-by-control cluster (7 instances, V11→V5):
