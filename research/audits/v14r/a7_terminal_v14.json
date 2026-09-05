@@ -1,0 +1,186 @@
+{
+ "schema": "v14_terminal_audit_v1",
+ "artifact": "a7_terminal_v14",
+ "cycle": "CRYPTO-V14",
+ "auditor_role": "A7 (independent terminal auditor; audit-only, no repairs)",
+ "generated_utc": "2026-09-05T17:05:00Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/q-a7-prelaunch",
+ "branch": "orca/v14-q-a7-prelaunch",
+ "audit_base_commit": "45cce48",
+ "merge": "git merge --ff-only orca/v14-integration from c8df575 to 45cce48 (V14 integration: pick reproduction ALL_MATCH) confirmed before any audit step",
+ "verdict": "V14_TERMINAL_APPROVED_0_FAIL",
+ "terminal_outcome": "V14_REJECT_ALL (basislv_premfade V14_FAMILY_REJECT; oicyc V14_FAMILY_REJECT; zero survivors; nothing locked for S1)",
+ "unresolved_high_critical": 0,
+ "method": "every frozen Stage-A gate independently recomputed from the published artifacts (results/v14_phase_e) using the frozen adapter metric kernels and the frozen family gate_runner functions; no recorded verdict trusted; scripts + raw outputs committed alongside this audit",
+ "scripts": [
+  "research/audits/v14r/a7_terminal/recompute_stage_a.py",
+  "research/audits/v14r/a7_terminal/a7_dsr_pbo.py",
+  "research/audits/v14r/a7_terminal/a7_stage_a_recompute_v14.json",
+  "research/audits/v14r/a7_terminal/a7_dsr_pbo_and_gate_runner_v14.json"
+ ],
+ "items": [
+  {
+   "id": 1,
+   "name": "MERGE_TO_INTEGRATION_HEAD",
+   "result": "PASS",
+   "evidence": [
+    "git merge --ff-only orca/v14-integration: Updating c8df575..45cce48, Fast-forward",
+    "45cce48 = 'V14 integration: pick reproduction -- ALL_MATCH (874,334 leaf comparisons + 754 mission fields, 0 mismatches)'"
+   ]
+  },
+  {
+   "id": 2,
+   "name": "PIN_CHAIN_W1_EXEC_TWIN",
+   "result": "PASS",
+   "evidence": [
+    "exec pin 6d2084321cc054006216c505f74260d0e14c411e exists in the object store; all 6 ledger rows and all 6 cell_summary.producer_head_sha carry it; reproduction_v14.twin_head_confirmed == pin",
+    "W1 pin e19da87fae05c4526030b6359b1c9a66a0f0d84d == state.w1_freeze_pin",
+    "git diff e19da87..6d20843 touches ONLY control/audit bytes: research/audits/v14q/{a7_prelaunch_v14.json,lane_handoff.json} + research/control/v14_run/{event_log.jsonl,heartbeat.json,state.json}; zero code/data files"
+   ]
+  },
+  {
+   "id": 3,
+   "name": "LEDGER_INTEGRITY_AND_ONCE_ONLY",
+   "result": "PASS",
+   "evidence": [
+    "committed basislv_premfade.jsonl sha256 0b9e81077034328e2a7c297fd729ddfa6c7af00ee85467e279bc6f3355639821 == lane_handoff.canonical_reference == anchor cell_summary.ledger_sha256_after",
+    "committed oicyc.jsonl sha256 6614d49ecfbfeb0a951f707420e1a81700a4cbff1fd448a0f8ba738736729b24 == lane_handoff.canonical_reference",
+    "6 CELL_RESULT rows, 6 distinct trial keys, 0 OBSERVATION rows, 0 refusals, 0 TECHABORT files anywhere under research/control/v14_run or results/v14_phase_e",
+    "hash chain per arm: ledger.result_sha256 == cell_summary.baseline_result_sha256 == artifact.hashes.result_sha256 for 6/6 arms"
+   ]
+  },
+  {
+   "id": 4,
+   "name": "PORTFOLIO_METRICS_RECOMPUTE_FROM_SOURCE",
+   "result": "PASS",
+   "evidence": [
+    "all six baseline artifacts: net_return_sum, expectancy_per_day, position_pf, max_drawdown recomputed from the artifacts' own daily_returns/positions rows with the frozen adapter kernels (position_profit_factor, max_drawdown, daily_expectancy) match published values exactly (12dp)",
+    "remediated kernel assertion re-verified: cost_holding_terms == 0.0 in all six scored records",
+    "BTC mark convention validated: recomputed BTCUSDT window gross return -0.445764207383 == committed buy_and_hold per-leg value, abs diff 0.0, using the frozen load_execution_bars over the same staged bytes (e-exec-1/staged_data/binance_bar_15m)"
+   ]
+  },
+  {
+   "id": 5,
+   "name": "STAGE_A_BASISLV_PREMFADE",
+   "result": "FAIL_GATE_TERMINAL_FAMILY_REJECT",
+   "evidence": {
+    "expectancy_gt_0": "0.013465694826 PASS",
+    "position_pf_ge_1_10": "1.360046671971 PASS",
+    "mdd_le_0_20": "0.11585342564 PASS (frozen constant: gate stated as MDD <= 20% in plan section 12; no weaker constant exists in family code)",
+    "folds_positive_ge_2_of_3": "3/3 PASS",
+    "largest_fold_positive_share_le_0_50": "0.511023793543565362815881161202 FAIL -- definition: largest positive fold net / sum of positive fold nets = 0.35782710354 / 0.700216130953; frozen check function fold_concentration_check(MAX_FOLD_POSITIVE_SHARE=0.50) applied to this share returns passed=false; per-position POSITIVE_AGGREGATE_PNL_ONLY_V1 variant would be 0.375437790582 but the gate as frozen is stated on fold PnL shares and the directed computation fails; marginal is marginal",
+    "largest_symbol_positive_pnl_share_le_0_70": "ZECUSDT 0.123890390456 PASS (POSITIVE_AGGREGATE_PNL_ONLY_V1 from artifact positions; share-of-abs variant 0.099727233761 also passes)",
+    "stress_set_positive": "fee x1.5 0.696424464286 / +2 ticks 0.696937465123 / +1 delay 0.695338361894 all positive PASS",
+    "drop_one_non_vacuous": "symbol 1000PEPEUSDT held 46 baseline positions, delta net +0.014895640967 != 0; fold F0 held 192 positions, retained fold signs unchanged vs baseline; PASS",
+    "benchmark_beta_excess_2_of_3": "excess_bh +0.46640809821/+0.268931121014/+0.55801536637 and excess_beta +0.243152690145/+0.097915491755/+0.373737672077 all positive (3/3) PASS",
+    "neighbour_supports": "56D 3/3 folds positive, expectancy +0.011978873924 PASS",
+    "control_not_reproduce": "INV 0/3 folds, expectancy -0.013820412759, PF 0.730138431004 PASS (does not reproduce)",
+    "price_only_clause": "price-only 0.011550403641 > 0, not fired PASS",
+    "verdict": "V14_FAMILY_REJECT -- one failed Stage-A gate (fold concentration); positive raw PnL never overrides a failed concentration gate"
+   }
+  },
+  {
+   "id": 6,
+   "name": "STAGE_A_OICYC_AND_CONTROL_FIRING",
+   "result": "FAIL_GATE_TERMINAL_FAMILY_REJECT",
+   "evidence": {
+    "anchor_headline": "expectancy 0.000793989961 > 0 PASS; PF 1.021059040037 >= 1.10 FAIL; folds 1/3 >= 2/3 FAIL -> REJECTED_ANCHOR_FAIL at frozen rule order #1",
+    "control_firing_determination": "CTL-OISHARE passes all three preregistered headline gates standalone (expectancy 0.010057569215 > 0, PF 1.286932022368 >= 1.10, folds 2/3) and outperformed the anchor (+0.522993599205 vs +0.041287477972): the preregistered must-not-reproduce rule (OICYC.md section 6: control passes all three gates while anchor passes -> OI-dominance/size artifact -> FALSIFIED) is satisfied on the control side; because the anchor already failed, the frozen rule order issues REJECTED_ANCHOR_FAIL rather than the falsification verdict, but the shadow IS falsified in substance -- the dominance-only sort reproduces and exceeds the anchor, so the co-movement information is redundant; family rejected either way; control never promotable",
+    "moot_gates_recorded": "incremental excess_bh 3/3 and excess_beta 2/3 positive (beta computed on the arm's weekly realized rows vs BTC weekly closes, trailing 90d PIT -- audit approximation, the arm's daily MTM series is not a committed artifact); fold-positive share 1.0 > 0.50 (second falsifier, moot); neighbour CYC-14D contradicts (1/3 folds, net -0.082090780443) = falsifier #4 (moot); stress set positive (0.035363073212/0.035193231766/0.035218020304); drop-one symbol (1000PEPEUSDT, 46 positions) and fold (F0, 281 positions, signs unchanged) non-vacuous",
+    "confirmatory": "CONFIRMATORY status recorded in all three oicyc cell summaries (Section 1.1); |rho| 0.0112 shadow gate held at selection",
+    "verdict": "V14_FAMILY_REJECT"
+   }
+  },
+  {
+   "id": 7,
+   "name": "REPRODUCTION_CLAUSE",
+   "result": "PASS",
+   "evidence": [
+    "reproduction_v14.json verdict ALL_MATCH; artifact sha256 b3a6d0d70836438e8d28bfe4bd73f2c7b174f8f18a8feb5c3660e229b240f4f6 == lane_handoff.deliverables value",
+    "874,334 recursive leaf comparisons + 754 mission-table fields, 0 mismatches, 0 file-level diffs; twin results inventory identical (find|sort diff)",
+    "volatile exclusions limited to documented wall-clock/timestamp fields (at_utc, published_utc, ledger path/sha, run/pin/loader seconds); ledger raw-byte diffs are published_utc only, ordered row content identical"
+   ]
+  },
+  {
+   "id": 8,
+   "name": "HISTORICAL_IMMUTABILITY",
+   "result": "PASS",
+   "evidence": [
+    "git diff 96833a8..45cce48 -- research/v12 research/v13: EMPTY (zero code changes)",
+    "research/control/v13_run: exactly one file changed (tools/run_v13_cell.py, +20/-5) = the owner-mandated L-V14-0 LIQEPIS tick fix per plan P1; V13/V12 ledgers, terminal reports, artifacts untouched",
+    "all 141 evidence files added in the range are under results/v14_phase_e (new cycle evidence only)"
+   ]
+  },
+  {
+   "id": 9,
+   "name": "S1_SEAL_BOUNDARIES_DEPLOYMENT",
+   "result": "PASS",
+   "evidence": [
+    "state.s1_seal SEALED_UNTOUCHED; no S1 file opened or written by any V14 lane evidence in the tree",
+    "state.deployment_activity none; no paper/live/order artifacts anywhere in the V14 evidence",
+    "owned_workers 0 (state + heartbeat)",
+    "forbidden-family discipline: no V14 selected family lies in the V12/V13 forbidden inventories (A7-N rho gates: WIDTHGATE excluded at +0.9614 same-cluster; shadow entries only via Section 1.1 terms)"
+   ]
+  },
+  {
+   "id": 10,
+   "name": "DENOMINATORS_AND_MULTIPLE_TESTING",
+   "result": "PASS",
+   "evidence": [
+    "published 137 + 6 = 143; observed 140 + 6 = 146; historical values preserved separately in run_contract/state",
+    "every computed cell counted once: 6 rows / 6 distinct trial keys / 6 PUBLISHED cell summaries; refusals 0; TECHABORT 0",
+    "OICYC three cells carry CONFIRMATORY status in their recorded cell summaries",
+    "updated multiple-testing statement written into terminal_report_v14.json"
+   ]
+  },
+  {
+   "id": 11,
+   "name": "DSR_PBO_PROGRAM_STATISTICS",
+   "result": "PASS_WITH_DOCUMENTED_NOT_RUN",
+   "evidence": {
+    "dsr_basislv_anchor": "0.0022396171023272293 (SR0 0.7082119454593215, N=146, T=52)",
+    "dsr_oicyc_anchor": "4.979039047725564e-07 (SR0 0.7082119454593215, N=146, T=52)",
+    "estimator": "research/dsr.py DSR_BAILEY_LOPEZDEPRADO_V1, applied unmodified",
+    "not_computable": [
+     "historical (V12/V13) per-trial Sharpe series -- exec results trees lost externally, per-period returns not committed -> program-history SR0 calibration NOT_RUN; trial variance calibrated on the six committed V14 arm Sharpes",
+     "PBO program history -- historical per-config block series not derivable -> NOT_RUN",
+     "in-cycle CSCV PBO fail-closed NOT_ENOUGH_CONFIGURATIONS (6 configs < frozen minimum 8)"
+    ],
+    "arbiter_note": "S1 remains the arbiter; DSR/PBO are program statistics, not gates"
+   }
+  },
+  {
+   "id": 12,
+   "name": "UNRESOLVED_HIGH_CRITICAL_SCAN",
+   "result": "PASS",
+   "evidence": [
+    "p_gates_v14.unresolved_high_critical = 0; selection_freeze = 0; prelaunch (c8df575) 12/12 PASS 0 unresolved",
+    "Phase E: six cells exit 0 x6, all PUBLISHED, score_valid true x6, zero refusals, zero TECHABORT",
+    "anomaly/deviation register in terminal_report_v14.json: all entries RECORDED (P1 byte-level BLOCKED external; v13 tree removal external drift; PREMVOL BLOCKED_DATA; A7-N ancestor-rho NOT_RUN caveat; SIGN-INV and CTL-OISHARE firing controls; A7 terminal fold-concentration gate application) -- none unresolved HIGH/CRITICAL"
+   ]
+  }
+ ],
+ "findings": [
+  "both V14 families are rejected on frozen gates computed from published artifacts; this is a correct negative and closes the cycle cleanly",
+  "the basislv anchor's positive headline (net +0.700216130953, PF 1.360046671971, 3/3 folds) does not survive the largest fold-positive share gate: F2 carries 0.511023793543565362815881161202 of the positive fold PnL (> 0.50) -- a single-fold-dominant result, exactly the preregistered single-regime artifact pattern",
+  "oicyc is doubly dead: the anchor fails PF and folds, and the preregistered dominance control CTL-OISHARE passes every headline gate while outperforming the anchor -- the Section 1.1 shadow entry falsified under its own control design",
+  "DSR at the observed program trial count is effectively zero for both anchors, consistent with the terminal verdict",
+  "no repairs were made by A7; no scored evidence was modified; the audit writes only research/control/v14_run/terminal_report_v14.json, research/audits/v14r/a7_terminal_v14.json and the audit script/output files"
+ ],
+ "reproduction_claim_audit": {
+  "claim": "ALL_MATCH",
+  "audited": "committed reproduction_v14.json + lane_handoff.json re-read; SHA verified; comparison totals internally consistent (sum of per-arm file n_leaves and diffs consistent with totals block); twin head == exec pin; canonical vs twin ledger raw-byte SHA difference fully explained by published_utc timestamps with ordered row content compared identical",
+  "verdict": "CLAIM_SUPPORTED"
+ },
+ "hashes_verified": {
+  "results/v14_phase_e/ledgers/basislv_premfade.jsonl": "0b9e81077034328e2a7c297fd729ddfa6c7af00ee85467e279bc6f3355639821",
+  "results/v14_phase_e/ledgers/oicyc.jsonl": "6614d49ecfbfeb0a951f707420e1a81700a4cbff1fd448a0f8ba738736729b24",
+  "research/control/v14_run/r_reproduce/reproduction_v14.json": "b3a6d0d70836438e8d28bfe4bd73f2c7b174f8f18a8feb5c3660e229b240f4f6",
+  "per_arm_result_sha_chain": "ledger == cell_summary == artifact hashes for 6/6 arms"
+ },
+ "producer_heads_verified": {
+  "expected": "6d2084321cc054006216c505f74260d0e14c411e",
+  "ledger_rows": "6/6",
+  "cell_summaries": "6/6"
+ }
+}
