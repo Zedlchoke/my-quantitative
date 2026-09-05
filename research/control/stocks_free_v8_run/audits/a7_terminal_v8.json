@@ -1,0 +1,124 @@
+{
+ "schema": "stocks_free_v8_run/a7_terminal@1",
+ "audit_id": "A7-TERMINAL-V8",
+ "producer_role": "A7 independent TERMINAL auditor (fresh context; recompute from bytes; nothing repaired)",
+ "audited_at_utc": "2026-09-05T12:25:00Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v8/integration",
+ "branch": "orca/stocks-free-v8-integration",
+ "audited_head": "5a2ceae",
+ "head_at_audit_close": "870726c (controller INC-6 bookkeeping commit landed mid-audit at 19:02:58+07; touched event_log.jsonl + incident_register.json only, +10 lines; no scientific artifact)",
+ "method": "full scored re-run of the committed driver with the exact owner GO phrase from this worktree against staged data; independent reimplementation of the frozen gate table from metrics.decision_pnl plus staged SPY/sector benchmarks; hash recomputation of preregistered proposals; byte-level git archaeology for denominators, freeze chain, incident timeline, M-I1 language, S1 lock; audit scratch confined to /tmp; fresh run outputs moved to /tmp and committed tree restored via git checkout -- before any other work continued",
+ "items": {
+  "A_scored_rerun_vs_ledger": {
+   "verdict": "PASS",
+   "evidence": {
+    "rerun": ".venv/bin/python -m research.assets.stocks.v8_e_driver 'GO STOCKS V8 SCORED EXECUTION' from the worktree, exit 0, runtime_total_s 85.9 (committed ledger: 87.6)",
+    "cells_scientific_fields_byte_equal": "6/6 cells: cell_id, family_id, arm_id, arm_config_digest, data_snapshot_digest, scored_decisions (74/74/74/78/78/78), expectancy, sum_pnl, pf, folds (incl per-fold pnl/pf/mdd), stress_sum_pnl, stress_pf, missing_price_legs=0 — ZERO diffs",
+    "panel_and_manifest_sha_equal": true,
+    "family_verdicts_equal_excl_runtime_s": true,
+    "verdicts_reproduced": ["SFV8-F1 FALSIFIED_BY_CONTROL", "SFV8-F2 FALSIFIED_BY_CONTROL"],
+    "expected_provenance_diffs": ["code_freeze_sha efc864d8 (run) vs 5a2ceae (audit rerun, HEAD)", "measured_at_utc", "runtime_s"],
+    "cleanup": "fresh outputs copied to /tmp/a7_audit_fresh/{execution_ledger_fresh.json,family_verdicts_fresh.json,rerun_stdout.json}; worktree restored with git checkout -- on both files; md5 re-verified identical to pre-run baseline (ledger d0646d53..., verdicts 1722ee2d...); git status clean"
+   }
+  },
+  "B_frozen_gate_table_recompute": {
+   "verdict": "PASS",
+   "evidence": {
+    "independent_recompute": "own evaluator (not the driver's) run from metrics.decision_pnl with own fill/end session derivation and own benchmark basket from .staging_prices_v8/benchmarks; reproduced EVERY gate verdict for all four gate-evaluated arms",
+    "anchor_stats_match": "F1: exp -0.0428664005, pf 0.8924984, alpha -0.01366003, folds_pos 2, fold_share 0.4343, etf_share 0.641, n=74; F2: exp -0.0604610237, pf 0.7979000, alpha -0.01330085, folds_pos 0, fold_share 0.4713, etf_share 0.650, n=78 — identical to committed family_verdicts.json",
+    "control_ratio_match": "F1 0.8573, F2 0.9111 (>= 0.5 -> control_alpha_abs_ratio_lt FAIL -> control reproduces anchor)",
+    "max_fold_mdd_le": "verified from byte-verified ledger folds: F1A 0.10907218, F1C 0.12181114, F2A 0.05406742, F2C 0.08268898 — all <= 0.15 PASS, matching committed",
+    "code_vs_p3": "evaluate()/gate() bind thresholds structurally to p3_invariants_freeze.json carried_payload.stage_a_gates_carried_forward (position_pf_ge 1.1, folds_positive_ge 2, min_populated_fold_pf_ge 0.8, max_fold_mdd_le 0.15, risk_matched_excess_positive_folds_ge 2, control_alpha_abs_ratio_lt 0.5) and concentration_and_robustness (etf_positive_share_le 0.35, fold_positive_share_le 0.5); ge/le directions validated by exact agreement of the independent recompute on every gate",
+    "falsified_correct": "both anchors fail >=5 primary gates each; per causal_control_rule a control reproducing the mechanism (sign match AND >=0.5x magnitude) falsifies the family — driver verdict logic matches, independent recompute concurs",
+    "deviations": "see findings F-A7T-2, F-A7T-3"
+   }
+  },
+  "C_control_legitimacy": {
+   "verdict": "PASS",
+   "evidence": {
+    "proposal_hashes_recomputed": "a4_h1.json 7ac2900605daed5b32a3fe1ac84706445e32cb02a08e0b972e8ff6d16aa0620f; a4_h2.json 5aeb23ff33ec995fd9c1e10187abf650e2a26bc347524abd3a539aa1242c84f3 — byte-exact vs d1_proposal_hashes.json",
+    "controls_preregistered": "F1: 'WC STOCK level rank - not the flow - reproduces the anchor alpha at >= 0.5x' (same AR/INV/AP fields, no delta) — ARM_SPECS SFV8-F1-CONTROL kind wc_stock identical fields; F2: 'goodwill-burden control (Goodwill / Assets) reproduces the anchor's positive alpha at >= 0.5x' — ARM_SPECS SFV8-F2-CONTROL numerator Goodwill, denominator Assets",
+    "falsified_by_control_correct": "F1 control exp -0.2111 vs anchor -0.0429 (4.9x, same sign); F2 control -0.1618 vs -0.0605 (2.7x, same sign); control_alpha_abs_ratio_lt FAIL both (0.8573/0.9111 vs 0.5); p3 causal_control_rule: 'a control that outperforms a negative anchor falsifies the family'"
+   }
+  },
+  "D_denominators_budget": {
+   "verdict": "PASS",
+   "evidence": {
+    "ledger_cells": "exactly 6 cells, all cost_tier base; stress runs and reruns recorded as anchor-arm properties inside family_verdicts, never as cells (reruns not counted as trials)",
+    "ledger_deltas": "observed_delta 6, published_delta 6 (see finding F-A7T-1 on published_delta provenance)",
+    "state_counters": "v8_observed 6, v8_published 6, historical_stocks_observed_prior 21, historical_stocks_published_prior 21 -> 27/27; event log PHASE_E_COMPLETE detail: 'denominators 27/27'",
+    "budget": "state budget used 6 / planned 6; owner GO recorded post-A7-INDEP; no survivors"
+   }
+  },
+  "E_hidden_positive_language": {
+   "verdict": "PASS",
+   "evidence": {
+    "sweep": "all 'survivor/positive' hits in research/control/stocks_free_v8_run/ are definitional (folds_positive/stress_positive gate names), disclaimers, or negative results; state.json budget note '6/6 used; no survivors'",
+    "SURVIVORS_md": "canonical file at main repo research/wayfinder/SURVIVORS.md contains exactly one entry, S-1 (FXFV3-A6-P1, forex); ZERO STOCKS-V8/SFV8 entries; not tracked on the integration branch; last modification 30a6ee7 2026-09-05T02:12:42Z (forex V3R terminal sync) predates first V8 cycle event 04:11:25Z — untouched by this cycle"
+   }
+  },
+  "F_mi1_compliance": {
+   "verdict": "PASS",
+   "evidence": {
+    "sweep": "every 'delist' mention in committed V8 artifacts is a disclaimer ('no delist claim' in census status_rules), vendor-probe scope evidence (run_contract gate 3: 59,923 delisted symbols = vendor capability, unexercised by cohort), the M-I1 binding note, or the audit record of the REFUTED premise (0/409 in-window deaths; Form 15-12G vs 12B mislabel)",
+    "no_claim": "no committed V8 artifact claims a delisted leg or survivorship-bias-free coverage; cohort consistently described as current-registry with a frozen survivorship tilt, constant across all arms (p3 carried filer_panel_freeze)",
+    "pending_followup": "census status rename FORM15_TERMINATED 12B/12G split not yet executed — explicitly scoped 'at next code touch' by M-I1; non-blocking (finding F-A7T-5)"
+   }
+  },
+  "G_freeze_chain_and_incidents": {
+   "verdict": "PASS",
+   "evidence": {
+    "linearity": "5ccc587c ancestor of 31b705fc; 31b705fc ancestor of 66c2cac; 66c2cac ancestor of HEAD — all YES; single-parent linear chain, no merges on the audited segment",
+    "incidents": "INC-1..INC-5 registered (incident_register.json + ledger incidents note + commits); INC-4 recorded in p0a_benchmark_manifest.json note ('XLC added at Phase E: panel sector tag present, initial pull omitted it')",
+    "inc5_plausibility": "owner GO accepted 10:35:06Z; launch 1 crashed at evaluation -> 303b8a3 09:44:29Z; launch 2 crashed at margin arithmetic -> efc864d 09:47:53Z; execution_ledger.json ABSENT from git at both techabort commits, first appears at dc1376b with measured_at_utc 10:49:20Z; driver writes ledger+verdicts+stdout only after full evaluation, so zero outcome exposure before the third launch is consistent with artifact bytes; committed runtime_total_s 87.6 consistent with the 10:49:20Z third-launch ledger; evaluation-layer self-test committed at efc864d BEFORE the third launch",
+    "mid_audit_commit": "870726c (INC-6 disclosure) landed during the audit window; verified scope: event_log.jsonl + incident_register.json only"
+   }
+  },
+  "H_s1_and_deployment": {
+   "verdict": "PASS",
+   "evidence": {
+    "s1": "state.json / w1_freeze.json / w2_freeze.json all record s1 SEALED_UNTOUCHED; research/control/stocks_free_v1_run/ last commit 1aee246 2026-09-03 (pre-cycle); survivor ledger untouched per item E",
+    "deployment": "state.json deployment NO_PAPER_NO_LIVE_NO_ORDERS; heartbeat workers_active 0; no paper/live/order artifacts anywhere in the V8 run tree"
+   }
+  }
+ },
+ "reproduction_claim_check": {
+  "claim": "REPRODUCTION_ALL_MATCH from twin (reproduction_evidence.json)",
+  "verdict": "PASS",
+  "evidence": "reproduction_evidence.json (measured 10:52:04Z, twin r-reproduce-e1 @dc1376b): cells scientific content IDENTICAL, family_verdicts IDENTICAL except volatile runtime_s of 4 rerun entries; diff classes enumerated per contract; independently corroborated by this audit's own full scored rerun from the integration worktree (item A: byte-equal scientific fields)"
+ },
+ "findings": [
+  {
+   "id": "F-A7T-1",
+   "severity": "MEDIUM (bookkeeping provenance; no scientific impact)",
+   "what": "Committed execution_ledger.json records published_delta: 6, but the committed driver (byte-identical efc864d8..HEAD) emits published_delta: 0 — proven by this audit's rerun. The ledger first enters git at dc1376b (~25s after the driver write), already at 6: a post-run bookkeeping edit made at publish time, not a driver product.",
+   "mitigation": "Disclosed in reproduction_evidence.json ('incidents note + published_delta present only in the sealed original') and cross-consistent with state.json counters (v8_published 6). No scientific field touched; item A rerun byte-equal.",
+   "required_action": "none for this cycle; future ledgers must carry driver-emitted counters and separate publish-time bookkeeping"
+  },
+  {
+   "id": "F-A7T-2",
+   "severity": "LOW (contract fidelity)",
+   "what": "p3 concentration_and_robustness stress clause requires 'PnL > 0 AND PF >= 1.0'; the driver gates only stress sum_pnl > 0 (stress_pf computed and reported, not gated).",
+   "impact": "None on verdicts: both anchors' stress PF (0.815243 / 0.779376) are < 1.0 and stress sum_pnl negative — stress_positive false under either form."
+  },
+  {
+   "id": "F-A7T-3",
+   "severity": "LOW (contract fidelity)",
+   "what": "p3 carried payload lists drop_one_fold among robustness reruns; not executed for either family (F1 ran drop-one-symbol + drop-signal-leg, F2 ran drop-one-symbol + drop-one-sector — all proposal-preregistered).",
+   "impact": "None on verdicts: rerun survival is a survivor-candidate disqualifier only and cannot rescue; both families falsified on control reproduction plus >=5 primary gates each, independent of any rerun."
+  },
+  {
+   "id": "F-A7T-4",
+   "severity": "INFO",
+   "what": "INC-6 (870726c, mid-audit): F1 drop-INVENTORY-leg rerun expectancy 0.0 is vacuous (signal None-guard x drop_leg_index interaction; median populated 0); recorded NOT_RUN_INFORMATIVE. This audit's rerun reproduced the same 0.0. Family falsified on independent grounds; disclosure honest and correctly scoped as no-verdict-dependence."
+  },
+  {
+   "id": "F-A7T-5",
+   "severity": "LOW",
+   "what": "M-I1 follow-up (census status rename FORM15_TERMINATED with 12B/12G split) still pending; the binding M-I1 terminal condition (NO delisted-leg claim anywhere) is satisfied, so non-blocking as preregistered."
+  }
+ ],
+ "unresolved_high_critical": 0,
+ "final_verdict": "STOCKS_FREE_V8_REJECT_ALL",
+ "verdict_justification": "All eight audited items PASS and all five cycle claims are confirmed from bytes: (1) six cells scored, both families FALSIFIED_BY_CONTROL, reproduced byte-equal by this audit's independent full scored rerun; (2) gates are the frozen p3 carried contract, structurally bound in code and independently recomputed to identical verdicts; (3) REPRODUCTION_ALL_MATCH corroborated; (4) denominators 21->27 observed and published, budget 6/6, reruns correctly excluded from trials; (5) M-I1 binding honored — no delisted-leg claim anywhere, cohort described as current-registry with frozen survivorship tilt. The verdict STOCKS_FREE_V8_REJECT_ALL endorses the cycle's terminal research outcome: ALL SIX scored cells are REJECTED (zero survivors, both mechanisms falsified by their preregistered controls after band costs, negative stress, failing reruns); it is NOT an audit-invalidating rejection — 0 unresolved HIGH/CRITICAL audit findings; the four recorded findings (1 MEDIUM bookkeeping-provenance, 2 LOW contract-fidelity, 1 INFO) are verdict-irrelevant by construction."
+}
