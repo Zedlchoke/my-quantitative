@@ -68,12 +68,43 @@ def write_bars(h1_dir: str, pairs, days, skip=()):
             json.dump({"values": vals}, f)
 
 
-def rc_row(area, eff, old, new, op, status="EVIDENCED", row_type="RATE_CHANGE"):
+def _first_16ny_bar_iso(t: datetime) -> str:
+    """First Mon-Fri 16:00-NY bar instant >= t (the ledger's precomputation
+    of first_readable_decision_utc from max(availability, effective))."""
+    d = t.astimezone(NY).date()
+    while True:
+        if d.weekday() < 5:
+            bar = datetime(d.year, d.month, d.day, 16, 0,
+                           tzinfo=NY).astimezone(UTC)
+            if bar >= t:
+                return bar.strftime("%Y-%m-%dT%H:%M:%SZ")
+        d += timedelta(days=1)
+
+
+def rc_row(area, eff, old, new, op, status="EVIDENCED", row_type="RATE_CHANGE",
+           fr="AUTO"):
+    """One RATE_CHANGE row as the pinned ledger carries it.
+
+    ``fr`` is the row's PRECOMPUTED ``first_readable_decision_utc`` (the
+    A1-adjudicated eligibility field).  ``fr="AUTO"`` mimics the ledger's
+    precomputation: the first 16:00-NY weekday bar at/after
+    max(operative availability, effective).  ``fr=None`` builds the
+    fail-closed class (null first_readable, MISSING_AVAILABLE_TIME_
+    EVIDENCE)."""
+    if fr == "AUTO":
+        if eff is None:  # BASELINE rows carry no first-readable stamp
+            fr = None
+        else:
+            anchor = datetime.fromisoformat(eff + "T00:00:00+00:00")
+            if op is not None:
+                anchor = max(anchor, datetime.fromisoformat(
+                    op.replace("Z", "+00:00")))
+            fr = _first_16ny_bar_iso(anchor)
     return {"schema": "forex_free_v3r_announcement_ledger_row_v1",
             "row_type": row_type, "area": area,
             "effective_date": eff,
             "effective_time_utc": (eff + "T00:00:00Z") if eff else None,
-            "first_readable_decision_utc": None,
+            "first_readable_decision_utc": fr,
             "old_value": old, "new_value": new,
             "decision_id": f"{area}:{eff}" if eff else f"{area}:baseline",
             "announcement": {"status": status,
@@ -169,10 +200,12 @@ def test_frozen_direction_maps_match_the_packet():
 # ------------------------------------------------------------------ #
 def test_feature_golden_au_hike_eligibility_direction_hold_exit(tmp_path):
     # AU hike announced 2021-06-01 04:30Z (INSTANT evidenced), effective
-    # 2021-06-02.  First 16:00-NY bar >= availability: Tue Jun 1 20:00Z
-    # (EDT).  Entry at the open of the next session bar (Jun 2 20:00Z).
-    # Exit at the open of the 10th existing bar after entry:
-    # Jun 3,4,7,8,9,10,11,14,15,16 -> Jun 16 20:00Z.  Side +1 (AU is the
+    # 2021-06-02: the pre-effective announcement is NOT eligible until the
+    # row's first_readable_decision_utc (A1 adjudication A-2) = first
+    # 16:00-NY bar at/after effective = Tue Jun 2 20:00Z (EDT).  Entry at
+    # the open of the next session bar (Jun 3 20:00Z).  Exit at the open
+    # of the 10th existing bar after entry:
+    # Jun 4,7,8,9,10,11,14,15,16,17 -> Jun 17 20:00Z.  Side +1 (AU is the
     # AUD/USD base; delta > 0).
     days = month_weekdays(2021, 5) + month_weekdays(2021, 6)
     rows = baseline_rows() + [rc_row("AU", "2021-06-02", 0.10, 0.15,
@@ -183,21 +216,23 @@ def test_feature_golden_au_hike_eligibility_direction_hold_exit(tmp_path):
     d = out["decisions"][0]
     assert d["pair"] == "AUD/USD"
     assert d["side"] == 1
-    assert d["decision_ts"] == "2021-06-01T20:00:00+00:00"
-    assert d["entry_bar_ts"] == "2021-06-02T20:00:00+00:00"
-    assert d["exit_bar_ts"] == "2021-06-16T20:00:00+00:00"
+    assert d["decision_ts"] == "2021-06-02T20:00:00+00:00"
+    assert d["entry_bar_ts"] == "2021-06-03T20:00:00+00:00"
+    assert d["exit_bar_ts"] == "2021-06-17T20:00:00+00:00"
     assert d["force_flat"] is False
     assert d["notional_usd"] == 10000
-    # entry price = OPEN of the Jun 2 bar (May 2021 has 21 weekdays, so
-    # Jun 1 is bar index 21 and Jun 2 is index 22 -> open = 100.0 + 22)
-    assert d["entry_price"] == pytest.approx(122.0)
-    # exit price = OPEN of the Jun 16 bar (10 sessions after entry, index 32)
-    assert d["exit_price"] == pytest.approx(132.0)
-    # decision instant is the first existing bar at/after availability and
-    # never reads the event before its stamp
+    # entry price = OPEN of the Jun 3 bar (May 2021 has 21 weekdays, so
+    # Jun 1 is bar index 21, Jun 2 index 22, Jun 3 index 23)
+    assert d["entry_price"] == pytest.approx(123.0)
+    # exit price = OPEN of the Jun 17 bar (10 sessions after entry, index 33)
+    assert d["exit_price"] == pytest.approx(133.0)
+    # the decision never reads the event before its availability stamp nor
+    # before the row's first_readable instant
     assert datetime.fromisoformat(d["decision_ts"]) >= \
         datetime.fromisoformat("2021-06-01T04:30:00+00:00")
-    # financing: accrual days Jun 2..Jun 15 (14 calendar days) at the
+    assert datetime.fromisoformat(d["decision_ts"]) >= \
+        datetime.fromisoformat("2021-06-02T20:00:00+00:00")
+    # financing: accrual days Jun 3..Jun 16 (14 calendar days) at the
     # day-start differential: AU 0.15% (effective+available by Jun 2) -
     # US 0.50% = -0.35% => +1 * 10000 * 14 * (-0.0035)/365
     ev = out["financing_events"][0]
@@ -222,8 +257,9 @@ def test_feature_golden_quote_area_cut_and_us_cut_map(tmp_path):
     by_pair = {d["pair"]: d for d in out["decisions"]}
     assert set(by_pair) == set(F.PAIR_UNIVERSE)
     assert by_pair["USD/JPY"]["side"] == 1  # JP cut, quote area, flipped
-    # the US cut (later availability 18:00Z vs JP 03:00Z) loses the
-    # tie-break on USD/JPY and drives the other 6 pairs, flipped map:
+    # the US cut (later operative availability 18:00Z vs JP 03:00Z; both
+    # first_readable stamps land on Jun 2 20:00Z) loses the tie-break on
+    # USD/JPY and drives the other 6 pairs, flipped map:
     assert by_pair["EUR/USD"]["side"] == 1
     assert by_pair["GBP/USD"]["side"] == 1
     assert by_pair["AUD/USD"]["side"] == 1
@@ -232,7 +268,7 @@ def test_feature_golden_quote_area_cut_and_us_cut_map(tmp_path):
     assert by_pair["USD/CAD"]["side"] == -1
     # every decision shares the same decision instant; ids unique
     instants = {d["decision_ts"] for d in out["decisions"]}
-    assert instants == {"2021-06-01T20:00:00+00:00"}
+    assert instants == {"2021-06-02T20:00:00+00:00"}
     ids = [d["decision_id"] for d in out["decisions"]]
     assert len(ids) == len(set(ids)) == 7
 
@@ -272,44 +308,67 @@ def test_availability_lag_mutation_moves_or_kills_the_decision(tmp_path):
     days = month_weekdays(2021, 5) + month_weekdays(2021, 6) + \
         month_weekdays(2021, 7)
     base = baseline_rows()
-    # golden availability: decision Tue Jun 1 20:00Z
+    # golden: first_readable Tue Jun 2 20:00Z -> decision Jun 2 20:00Z
     env1 = make_env(tmp_path / "a", base + [rc_row(
         "AU", "2021-06-02", 0.10, 0.15, "2021-06-01T04:30:00Z")], days)
     d1 = F.run_arm("anchor", env1)["decisions"][0]
-    assert d1["decision_ts"] == "2021-06-01T20:00:00+00:00"
-    # MUTATION: shift the operative availability later, past the golden
-    # decision instant -> the decision MUST move to the next bar.
+    assert d1["decision_ts"] == "2021-06-02T20:00:00+00:00"
+    # MUTATION (PLAN section 9): shift the row's first_readable (the
+    # eligibility field) later, past the golden decision instant -> the
+    # decision MUST move to the next bar and never run earlier.
     env2 = make_env(tmp_path / "b", base + [rc_row(
-        "AU", "2021-06-02", 0.10, 0.15, "2021-06-01T21:00:00Z")], days)
+        "AU", "2021-06-02", 0.10, 0.15, "2021-06-01T04:30:00Z",
+        fr="2021-06-03T21:00:00Z")], days)
     d2 = F.run_arm("anchor", env2)["decisions"][0]
-    assert d2["decision_ts"] == "2021-06-02T20:00:00+00:00"
-    # MUTATION: availability beyond the snapshot -> the event is never
-    # read (no decision bar available; no fabricated backfill).
+    assert d2["decision_ts"] == "2021-06-04T20:00:00+00:00"
+    # MUTATION on the operative availability where availability BINDS the
+    # precomputation (unevidenced-style op AFTER effective): shifting it
+    # later must move the decision (the AUTO first_readable moves with it).
     env3 = make_env(tmp_path / "c", base + [rc_row(
-        "AU", "2021-06-02", 0.10, 0.15, "2021-08-02T00:00:00Z")], days)
-    out3 = F.run_arm("anchor", env3)
-    assert out3["decisions"] == []
-    assert out3["meta"]["skipped_counts"].get("NO_DECISION_BAR_AVAILABLE") == 1
+        "AU", "2021-06-02", 0.10, 0.15, "2021-06-02T23:59:59Z",
+        status="AVAILABILITY_UNEVIDENCED")], days)
+    d3 = F.run_arm("anchor", env3)["decisions"][0]
+    assert d3["decision_ts"] == "2021-06-03T20:00:00+00:00"
+    env4 = make_env(tmp_path / "d", base + [rc_row(
+        "AU", "2021-06-02", 0.10, 0.15, "2021-06-03T23:59:59Z",
+        status="AVAILABILITY_UNEVIDENCED")], days)
+    d4 = F.run_arm("anchor", env4)["decisions"][0]
+    assert d4["decision_ts"] == "2021-06-04T20:00:00+00:00"  # moved +1 session
+    # MUTATION: eligibility beyond the snapshot -> the event is never
+    # read (no decision bar available; no fabricated backfill).
+    env5 = make_env(tmp_path / "e", base + [rc_row(
+        "AU", "2021-06-02", 0.10, 0.15, "2021-06-01T04:30:00Z",
+        fr="2021-08-02T00:00:00Z")], days)
+    out5 = F.run_arm("anchor", env5)
+    assert out5["decisions"] == []
+    assert out5["meta"]["skipped_counts"].get("NO_DECISION_BAR_AVAILABLE") == 1
 
 
-def test_eligibility_uses_operative_availability_never_effective_time(tmp_path):
-    # The DISCRIMINATING case: operative availability AFTER the effective
-    # instant (the ledger's unevidenced conservative LATER bound sits at
-    # the END of the effective UTC day).  Effective 2021-06-02, operative
-    # bound 2021-06-04T23:59:59Z.  Gating on the EFFECTIVE instant would
-    # put the decision at Tue Jun 2 20:00Z; gating on the OPERATIVE
-    # availability (frozen law) puts it at Mon Jun 7 20:00Z.  This test
-    # FAILS if eligibility uses effective_time.
-    days = month_weekdays(2021, 5) + month_weekdays(2021, 6)
-    rows = baseline_rows() + [rc_row("AU", "2021-06-02", 0.10, 0.15,
-                                     "2021-06-04T23:59:59Z",
-                                     status="AVAILABILITY_UNEVIDENCED")]
-    dp = make_env(tmp_path, rows, days)
-    d = F.run_arm("anchor", dp)["decisions"][0]
-    assert d["decision_ts"] == "2021-06-07T20:00:00+00:00"
-    assert d["decision_ts"] >= "2021-06-04T23:59:59+00:00"
-    # the unevidenced-but-stamped row WAS read (at its conservative bound)
-    assert F.run_arm("anchor", dp)["meta"]["events"]["n_unavailable_never_read"] == 0
+def test_eligibility_uses_first_readable_decision_utc(tmp_path):
+    # A1 adjudication A-2 discriminator: the eligibility instant is the
+    # row's PRECOMPUTED first_readable_decision_utc -- never re-derived
+    # from operative availability or from the effective instant.
+    days = month_weekdays(2021, 5) + month_weekdays(2021, 6) + \
+        month_weekdays(2021, 7)
+    base = baseline_rows()
+    # (a) announcement BEFORE effective (the 87-row evidenced class: US/AU
+    # INSTANT the day before, NZ/CH/JP DAY rows): the row must NOT be
+    # eligible until the first decision at/after EFFECTIVE.  Availability-
+    # only eligibility would give Jun 1 20:00Z -- refused.
+    dp_a = make_env(tmp_path / "a", base + [rc_row(
+        "AU", "2021-06-02", 0.10, 0.15, "2021-06-01T04:30:00Z")], days)
+    da = F.run_arm("anchor", dp_a)["decisions"][0]
+    assert da["decision_ts"] == "2021-06-02T20:00:00+00:00"
+    assert datetime.fromisoformat(da["decision_ts"]) >= \
+        datetime.fromisoformat("2021-06-02T00:00:00+00:00")  # >= effective
+    # (b) pure discriminator: a row whose first_readable sits later than
+    # ANY locally derivable instant (Jun 1 availability, Jun 2 effective):
+    # only the precomputed field can produce the Jun 7 decision.
+    dp_b = make_env(tmp_path / "b", base + [rc_row(
+        "AU", "2021-06-02", 0.10, 0.15, "2021-06-01T04:30:00Z",
+        fr="2021-06-07T20:00:00Z")], days)
+    db = F.run_arm("anchor", dp_b)["decisions"][0]
+    assert db["decision_ts"] == "2021-06-07T20:00:00+00:00"
 
 
 # ------------------------------------------------------------------ #
@@ -318,16 +377,22 @@ def test_eligibility_uses_operative_availability_never_effective_time(tmp_path):
 def test_dedupe_last_row_wins_upgrade_moves_eligibility_earlier(tmp_path):
     days = month_weekdays(2021, 5) + month_weekdays(2021, 6)
     base = baseline_rows()
-    unevidenced = rc_row("AU", "2021-06-02", 0.10, 0.15,
-                         "2021-06-02T23:59:59Z", status="AVAILABILITY_UNEVIDENCED")
-    evidenced = rc_row("AU", "2021-06-02", 0.10, 0.15,
-                       "2021-06-01T04:30:00Z", status="EVIDENCED")
-    # unevidenced row ALONE: conservative LATER bound -> decision Jun 3
+    # eff 2021-06-01 (the real AU pattern): the unevidenced row's
+    # conservative bound sits at the END of the effective day -> its
+    # first_readable is the NEXT day's bar (Jun 2); the EVIDENCED upgrade's
+    # first_readable is the effective day's own bar (Jun 1).
+    unevidenced = rc_row("AU", "2021-06-01", 0.10, 0.15,
+                         "2021-06-01T23:59:59Z", status="AVAILABILITY_UNEVIDENCED")
+    evidenced = rc_row("AU", "2021-06-01", 0.10, 0.15,
+                       "2021-05-31T04:30:00Z", status="EVIDENCED")
+    assert unevidenced["first_readable_decision_utc"] == "2021-06-02T20:00:00Z"
+    assert evidenced["first_readable_decision_utc"] == "2021-06-01T20:00:00Z"
+    # unevidenced row ALONE: conservative LATER bound -> decision Jun 2
     dp_unev = make_env(tmp_path / "unev", base + [unevidenced], days)
     d_unev = F.run_arm("anchor", dp_unev)["decisions"][0]
-    assert d_unev["decision_ts"] == "2021-06-03T20:00:00+00:00"
+    assert d_unev["decision_ts"] == "2021-06-02T20:00:00+00:00"
     # duplicated (area, effective_date): the EVIDENCED upgrade must govern
-    # (last-row-wins) -> decision Jun 1, NOT the unevidenced Jun 3 read
+    # (last-row-wins) -> decision Jun 1, NOT the unevidenced Jun 2 read
     dp_dedup = make_env(tmp_path / "dedup", base + [unevidenced, evidenced], days)
     out = F.run_arm("anchor", dp_dedup)
     assert len(out["decisions"]) == 1
@@ -352,10 +417,11 @@ def _assert_one_event_lag(decisions):
 
 def test_missing_next_session_bar_fails_closed_no_trade(tmp_path):
     days = month_weekdays(2021, 6)
-    rows = baseline_rows() + [rc_row("AU", "2021-07-01", 0.10, 0.15,
+    rows = baseline_rows() + [rc_row("AU", "2021-06-30", 0.10, 0.15,
                                      "2021-06-29T21:00:00Z")]
-    # the decision lands on the LAST existing bar (Jun 30): no next-session
-    # bar exists, so the signal is voided fail-closed (never backfilled)
+    # first_readable = Jun 30 20:00Z, the LAST existing bar: no
+    # next-session bar exists, so the signal is voided fail-closed
+    # (never backfilled)
     dp = make_env(tmp_path, rows, days)
     out = F.run_arm("anchor", dp)
     assert out["decisions"] == []
@@ -368,24 +434,26 @@ def test_missing_session_bar_shifts_fill_to_next_existing_bar(tmp_path):
     days = month_weekdays(2021, 5) + month_weekdays(2021, 6)
     rows = baseline_rows() + [rc_row("AU", "2021-06-02", 0.10, 0.15,
                                      "2021-06-01T04:30:00Z")]
-    # Jun 2 absent on AUD/USD: the fill goes to the next EXISTING 16:00-NY
-    # bar (Jun 3), still inside the frozen one-session/4-day convention
-    dp = make_env(tmp_path, rows, days, skip={date(2021, 6, 2)})
+    # first_readable Jun 2 20:00Z; Jun 3 absent on AUD/USD: the fill goes
+    # to the next EXISTING 16:00-NY bar (Jun 4), still inside the frozen
+    # one-session/4-day convention
+    dp = make_env(tmp_path, rows, days, skip={date(2021, 6, 3)})
     out = F.run_arm("anchor", dp)
     assert len(out["decisions"]) == 1
     d = out["decisions"][0]
-    assert d["decision_ts"] == "2021-06-01T20:00:00+00:00"
-    assert d["entry_bar_ts"] == "2021-06-03T20:00:00+00:00"
-    assert d["exit_bar_ts"] == "2021-06-17T20:00:00+00:00"
+    assert d["decision_ts"] == "2021-06-02T20:00:00+00:00"
+    assert d["entry_bar_ts"] == "2021-06-04T20:00:00+00:00"
+    assert d["exit_bar_ts"] == "2021-06-18T20:00:00+00:00"
 
 
 def test_fill_gap_over_4_days_fails_closed_no_trade(tmp_path):
     days = month_weekdays(2021, 5) + month_weekdays(2021, 6)
     rows = baseline_rows() + [rc_row("AU", "2021-06-02", 0.10, 0.15,
                                      "2021-06-01T04:30:00Z")]
-    # Jun 2..Jun 9 bars missing on AUD/USD: the next existing bar is Jun 10,
-    # 9 days after the Jun 1 decision -> over the frozen 4-day allowance
-    skip = {date(2021, 6, d) for d in (2, 3, 4, 7, 8, 9)}
+    # first_readable Jun 2 (decision bar exists); Jun 3..Jun 9 bars missing
+    # on AUD/USD: the next existing bar is Jun 10, 8 days after the Jun 2
+    # decision -> over the frozen 4-day allowance
+    skip = {date(2021, 6, d) for d in (3, 4, 7, 8, 9)}
     dp = make_env(tmp_path, rows, days, skip=skip)
     out = F.run_arm("anchor", dp)
     assert out["decisions"] == []
@@ -411,9 +479,11 @@ def test_golden_schedule_respects_the_one_event_lag(tmp_path):
 # ------------------------------------------------------------------ #
 def test_dst_fall_back_week_stamps_20z_then_21z(tmp_path):
     # EDT through Fri Nov 5 2021; EST from Mon Nov 8 (DST ends Sun Nov 7).
+    # Pre-effective announcement (Nov 3) of an eff-Nov-4 change: eligible
+    # only from the effective day's bar (Nov 4 20:00Z, EDT).
     days = month_weekdays(2021, 11)
-    rows = baseline_rows() + [rc_row("AU", "2021-11-05", 0.10, 0.15,
-                                     "2021-11-04T18:00:00Z")]
+    rows = baseline_rows() + [rc_row("AU", "2021-11-04", 0.10, 0.15,
+                                     "2021-11-03T18:00:00Z")]
     dp = make_env(tmp_path, rows, days)
     d = F.run_arm("anchor", dp)["decisions"][0]
     assert d["decision_ts"] == "2021-11-04T20:00:00+00:00"  # Thu, EDT
@@ -424,9 +494,11 @@ def test_dst_fall_back_week_stamps_20z_then_21z(tmp_path):
 
 def test_dst_spring_forward_week_stamps_21z_then_20z(tmp_path):
     # EST through Fri Mar 11 2022; EDT from Mon Mar 14 (DST starts Sun 13).
+    # Pre-effective announcement (Mar 8) of an eff-Mar-9 change: eligible
+    # only from the effective day's bar (Mar 9 21:00Z, EST).
     days = month_weekdays(2022, 3)
-    rows = baseline_rows() + [rc_row("AU", "2022-03-10", 0.10, 0.15,
-                                     "2022-03-09T05:00:00Z")]
+    rows = baseline_rows() + [rc_row("AU", "2022-03-09", 0.10, 0.15,
+                                     "2022-03-08T05:00:00Z")]
     dp = make_env(tmp_path, rows, days)
     d = F.run_arm("anchor", dp)["decisions"][0]
     assert d["decision_ts"] == "2022-03-09T21:00:00+00:00"  # Wed, EST
@@ -439,8 +511,9 @@ def test_dst_spring_forward_week_stamps_21z_then_20z(tmp_path):
 # force-flat, earliest-scheduled exit, costs, cash                    #
 # ------------------------------------------------------------------ #
 def test_force_flat_at_internal_fold_boundary(tmp_path):
-    # GB hike decision Mon Apr 18 2022 20:00Z; entry Tue Apr 19; scheduled
-    # exit would be May 3 (10 sessions) but the internal boundary
+    # GB hike effective 2022-04-20 (announced pre-effective on Apr 18):
+    # first_readable = Wed Apr 20 20:00Z; entry Thu Apr 21; the scheduled
+    # exit (10 sessions) would be May 5 but the internal boundary
     # 2022-05-01 force-flattens at the LAST decision bar before it:
     # Fri Apr 29 20:00Z (force_flat=true).
     days = month_weekdays(2022, 4) + month_weekdays(2022, 5)
@@ -451,7 +524,8 @@ def test_force_flat_at_internal_fold_boundary(tmp_path):
     assert len(out["decisions"]) == 1
     d = out["decisions"][0]
     assert d["pair"] == "GBP/USD"
-    assert d["entry_bar_ts"] == "2022-04-19T20:00:00+00:00"
+    assert d["decision_ts"] == "2022-04-20T20:00:00+00:00"
+    assert d["entry_bar_ts"] == "2022-04-21T20:00:00+00:00"
     assert d["exit_bar_ts"] == "2022-04-29T20:00:00+00:00"
     assert d["force_flat"] is True
 
@@ -466,11 +540,10 @@ def test_earliest_scheduled_exit_at_data_end_never_fill_forward(tmp_path):
     out = F.run_arm("anchor", dp)
     assert len(out["decisions"]) == 1
     d = out["decisions"][0]
-    # op 2021-06-16T21:00Z is after that day's 16:00-NY bar: the decision
-    # lands on the NEXT session (Jun 17 20:00Z), entry Jun 18
-    assert d["decision_ts"] == "2021-06-17T20:00:00+00:00"
-    assert d["entry_bar_ts"] == "2021-06-18T20:00:00+00:00"
-    # only 8 sessions remain after entry: exit at the last June bar
+    # first_readable = Fri Jun 18 20:00Z; entry Mon Jun 21
+    assert d["decision_ts"] == "2021-06-18T20:00:00+00:00"
+    assert d["entry_bar_ts"] == "2021-06-21T20:00:00+00:00"
+    # only 7 sessions remain after entry: exit at the last June bar
     assert d["exit_bar_ts"] == "2021-06-30T20:00:00+00:00"
     assert d["force_flat"] is False
     assert out["meta"]["schedule_totals"]["AUD/USD"][
@@ -604,11 +677,11 @@ def test_control_fires_different_pairs_than_the_anchor(tmp_path):
 
 
 def test_control_completes_under_fail_closed_missing_bar(tmp_path):
-    # the control's decision lands on the LAST bar: no next-session bar
-    # exists for its sham pair, so the signal is voided fail-closed and the
-    # control still COMPLETES (returns; no decision, no financing row).
+    # the control's first_readable lands on the LAST bar: no next-session
+    # bar exists for its sham pair, so the signal is voided fail-closed and
+    # the control still COMPLETES (returns; no decision, no financing row).
     days = month_weekdays(2021, 6)
-    rows = baseline_rows() + [rc_row("US", "2021-07-01", 0.50, 0.75,
+    rows = baseline_rows() + [rc_row("US", "2021-06-30", 0.50, 0.75,
                                      "2021-06-29T21:00:00Z")]
     dp = make_env(tmp_path, rows, days)
     out = F.run_arm("control", dp)
@@ -647,13 +720,14 @@ def test_neighbour_asymmetric_holds_by_direction(tmp_path):
     dp = make_env(tmp_path, rows, days)
     anchor = {d["pair"]: d for d in F.run_arm("anchor", dp)["decisions"]}
     neigh = {d["pair"]: d for d in F.run_arm("neighbour", dp)["decisions"]}
-    # hike: hold 10 in BOTH arms
-    assert anchor["AUD/USD"]["exit_bar_ts"] == "2021-06-16T20:00:00+00:00"
-    assert neigh["AUD/USD"]["exit_bar_ts"] == "2021-06-16T20:00:00+00:00"
+    # first_readable Jun 2 -> entry Jun 3; hike: hold 10 in BOTH arms
+    # (Jun 4,7,8,9,10,11,14,15,16,17)
+    assert anchor["AUD/USD"]["exit_bar_ts"] == "2021-06-17T20:00:00+00:00"
+    assert neigh["AUD/USD"]["exit_bar_ts"] == "2021-06-17T20:00:00+00:00"
     # cut: anchor still holds 10; the neighbour exits after 3 sessions
-    # (Jun 3, Jun 4, Jun 7)
-    assert anchor["NZD/USD"]["exit_bar_ts"] == "2021-06-16T20:00:00+00:00"
-    assert neigh["NZD/USD"]["exit_bar_ts"] == "2021-06-07T20:00:00+00:00"
+    # (Jun 4, Jun 7, Jun 8)
+    assert anchor["NZD/USD"]["exit_bar_ts"] == "2021-06-17T20:00:00+00:00"
+    assert neigh["NZD/USD"]["exit_bar_ts"] == "2021-06-08T20:00:00+00:00"
     assert neigh["NZD/USD"]["side"] == -1  # NZ base, delta < 0
     # everything else is byte-identical to the anchor modulo the arm tag
     strip = lambda ds: [{k: v for k, v in d.items() if k != "decision_id"}
@@ -719,8 +793,8 @@ def test_no_decision_ever_reads_its_event_before_availability(tmp_path):
         earliest = {}
         for ev in evs:
             for pair in F.mapped_directions(ev, arm_id):
-                earliest[pair] = min(earliest.get(pair, ev["available_dt"]),
-                                     ev["available_dt"])
+                earliest[pair] = min(earliest.get(pair, ev["eligible_dt"]),
+                                     ev["eligible_dt"])
         for d in F.run_arm(arm, dp)["decisions"]:
             assert datetime.fromisoformat(d["decision_ts"]) >= \
                 earliest[d["pair"]]
@@ -764,7 +838,10 @@ def test_malformed_rows_fail_closed(tmp_path):
 
 def test_missing_availability_stamp_never_read_but_others_trade(tmp_path):
     days = month_weekdays(2021, 5) + month_weekdays(2021, 6)
-    stampless = rc_row("AU", "2021-06-02", 0.10, 0.15, None)
+    # null first_readable_decision_utc: the MISSING_AVAILABLE_TIME_EVIDENCE
+    # fail-closed class (A1 adjudication A-2) -- NEVER read
+    stampless = rc_row("AU", "2021-06-02", 0.10, 0.15,
+                       "2021-06-01T04:30:00Z", fr=None)
     good = rc_row("GB", "2021-06-02", 0.50, 0.75, "2021-06-01T09:00:00Z")
     dp = make_env(tmp_path, baseline_rows() + [stampless, good], days)
     out = F.run_arm("anchor", dp)
@@ -984,3 +1061,27 @@ def test_real_ledger_semantics_smoke_against_pinned_counts():
         == pytest.approx(2.375)
     assert reader.policy_rate("US", datetime(2019, 8, 1, 0, 0, tzinfo=UTC)) \
         == pytest.approx(2.125)
+    # A1 adjudication A-2 alignment on the PINNED rows: every event's
+    # eligibility instant is its precomputed first_readable_decision_utc,
+    # never before the effective instant, always a 16:00-NY instant; the
+    # pre-effective announcement class (availability < effective, e.g.
+    # every US INSTANT row) becomes eligible only at/after the effective
+    # instant.  EXACTLY ONE pinned row (CA eff 2020-03-27, COVID era)
+    # carries a SATURDAY-stamped first_readable (2020-03-28T20:00Z); the
+    # frozen rule handles it fail-safe -- no completed 16:00-NY flat bar
+    # exists that day, so the decision lands on the first EXISTING weekday
+    # decision bar at/after the stamp (Mon 2020-03-30).
+    rows_by_key = {(r["area"], r.get("effective_date")): r
+                   for r in deduped if r.get("row_type") == "RATE_CHANGE"}
+    ca = [e for e in extracted["events"] if e["area"] == "CA"]
+    assert len(ca) == 22
+    assert any(e["effective_date"] == "2020-03-27"
+               and e["eligible_dt"] == datetime.fromisoformat(
+                   "2020-03-28T20:00:00+00:00") for e in ca)
+    for ev in extracted["events"]:
+        row = rows_by_key[(ev["area"], ev["effective_date"])]
+        assert ev["eligible_dt"] == datetime.fromisoformat(
+            row["first_readable_decision_utc"].replace("Z", "+00:00"))
+        assert ev["eligible_dt"] >= ev["effective_dt"]
+        local = ev["eligible_dt"].astimezone(NY)
+        assert local.hour == 16 and local.minute == 0

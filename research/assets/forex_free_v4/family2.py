@@ -50,17 +50,24 @@ implemented here verbatim):
 * Events are the RATE_CHANGE rows of the DEDUPED v2 announcement ledger
   (last-row-wins by (area, effective_date) over the raw 220-row file; the
   61 dropped rows are AVAILABILITY_UNEVIDENCED -> EVIDENCED upgrades) with
-  delta = new_value - old_value != 0.  A row without an availability stamp
-  fails closed (MISSING_AVAILABLE_TIME_EVIDENCE) and is never read.
-* Eligibility: availability instant a = operative_available_time_utc,
-  carried exactly as the ledger carries it (EVIDENCED captured stamps for
-  evidenced rows; the conservative LATER bound for unevidenced rows).
+  delta = new_value - old_value != 0.
+* Eligibility (A1 adjudication A-2, BINDING:
+  research/control/forex_free_v4_run/a1_ambiguity_adjudication.json): the
+  eligibility instant is the ledger row's PRECOMPUTED
+  ``first_readable_decision_utc`` field (first 16:00-NY decision at/after
+  max(operative availability, effective) -- the frozen program PIT
+  invariant: a decision never reads a row whose effective_time_utc > T).
   Decision instant T = the first completed daily 16:00 America/New_York
-  flat bar whose completion instant satisfies T >= a (bar stamps 20:00Z
-  EDT / 21:00Z EST via zoneinfo, DST-aware).  A row is never eligible on
-  its own effective instant alone.  Events whose first decision instant
-  falls before the frozen cutoff 2020-02-11 (snapshot start + one session
-  + lag) are NO_EVAL fail-closed, never backfilled.
+  flat bar whose completion instant satisfies T >=
+  first_readable_decision_utc (bar stamps 20:00Z EDT / 21:00Z EST via
+  zoneinfo, DST-aware).  A row with a null ``first_readable_decision_utc``
+  fails closed (MISSING_AVAILABLE_TIME_EVIDENCE) and is never read.  The
+  deterministic tie-break still uses the row's operative availability
+  instant (``announcement.operative_available_time_utc``), falling back to
+  the eligibility instant when absent.  Financing vintages keep BOTH gates
+  (availability AND effectiveness) exactly as before.  Events whose first
+  decision instant falls before the frozen cutoff 2020-02-11 (snapshot
+  start + one session + lag) are NO_EVAL fail-closed, never backfilled.
 * Direction: for A != US, P(A) is the unique authorized pair containing A
   as the non-USD leg; side = +1 (long base) if delta > 0 and A is the
   pair's BASE currency, -1 if delta > 0 and A is the QUOTE currency,
@@ -337,13 +344,18 @@ def extract_events(deduped: list):
     """RATE_CHANGE rows with delta != 0 from the DEDUPED ledger.
 
     Returns (events, unavailable) where each event is a dict with
-    ``area / effective_date / effective_dt / available_dt / delta / value``
-    and events are sorted by (available_dt, effective_dt, area) for
-    determinism; ``unavailable`` lists deduped rows that carry NO
-    availability stamp: they fail closed (MISSING_AVAILABLE_TIME_EVIDENCE)
-    and are NEVER read (never scheduled).  Malformed RATE_CHANGE rows
-    (unparsable stamps, non-numeric values) raise ``DataBlocked``.
-    BASELINE_LEVEL rows are returned separately as the vintage floor.
+    ``area / effective_date / effective_dt / eligible_dt / available_dt /
+    delta / value``.  Per the BINDING A1 adjudication A-2 the eligibility
+    instant ``eligible_dt`` is the row's PRECOMPUTED
+    ``first_readable_decision_utc`` field; a row with that field null
+    fails closed (MISSING_AVAILABLE_TIME_EVIDENCE) and is NEVER read
+    (never scheduled).  ``available_dt`` carries the row's operative
+    availability stamp exactly as the ledger carries it (used only for
+    the deterministic tie-break; ``None`` falls back to the eligibility
+    instant).  Events are sorted by (eligible_dt, tie instant, area) for
+    determinism.  Malformed RATE_CHANGE rows (unparsable stamps,
+    non-numeric values) raise ``DataBlocked``.  BASELINE_LEVEL rows are
+    returned separately as the vintage floor.
     """
     events, unavailable, baselines = [], [], []
     zero_delta = 0
@@ -374,24 +386,30 @@ def extract_events(deduped: list):
         if delta == 0:
             zero_delta += 1  # not an event by definition (none in the pinned ledger)
             continue
-        raw_avail = ann.get("operative_available_time_utc")
-        if raw_avail is None:
-            # Fail closed: MISSING_AVAILABLE_TIME_EVIDENCE -- never read.
+        # A1 adjudication A-2: eligibility = the PRECOMPUTED
+        # first_readable_decision_utc; fail closed when null.
+        raw_fr = row.get("first_readable_decision_utc")
+        if raw_fr is None:
             unavailable.append({"area": area,
                                 "effective_date": row.get("effective_date"),
                                 "reason": "MISSING_AVAILABLE_TIME_EVIDENCE"})
             continue
+        raw_avail = ann.get("operative_available_time_utc")
         events.append({
             "area": area,
             "effective_date": row.get("effective_date"),
             "effective_dt": _parse_utc(row.get("effective_time_utc"),
                                        f"{area} {row.get('effective_date')} effective_time_utc"),
-            "available_dt": _parse_utc(raw_avail,
-                                       f"{area} {row.get('effective_date')} operative_available_time_utc"),
+            "eligible_dt": _parse_utc(raw_fr,
+                                      f"{area} {row.get('effective_date')} first_readable_decision_utc"),
+            "available_dt": (_parse_utc(raw_avail,
+                                        f"{area} {row.get('effective_date')} operative_available_time_utc")
+                             if raw_avail is not None else None),
             "delta": delta,
             "value": float(new),
         })
-    events.sort(key=lambda e: (e["available_dt"], e["effective_dt"], e["area"]))
+    events.sort(key=lambda e: (e["eligible_dt"], e["available_dt"] or e["eligible_dt"],
+                               e["area"]))
     return {"events": events, "unavailable": unavailable,
             "baselines": baselines, "zero_delta_rows": zero_delta}
 
@@ -666,7 +684,7 @@ def _schedule_pair(pair, existing, bars, candidates, arm_id, counts, skipped):
             pos = {"decision_idx": i, "entry_idx": j, "exit_idx": exit_idx,
                    "side": c["side"], "force_flat": force_flat,
                    "area": c["area"], "effective_date": c["effective_date"],
-                   "available_dt": c["available_dt"]}
+                   "tie_dt": c["tie_dt"]}
     # pos can never survive the walk: every exit_idx is an existing index.
     if pos is not None:  # pragma: no cover - structural invariant
         raise DataBlocked(f"{pair}: position unresolved at end of walk")
@@ -764,10 +782,12 @@ def run_arm(arm: str, data_paths: dict, macro_reader=None, freeze_token=None):
                 if c_pair != pair:
                     continue
                 counts["candidates"] += 1
-                available = ev["available_dt"]
+                # A1 adjudication A-2: the schedule anchor is the row's
+                # PRECOMPUTED first_readable_decision_utc.
+                eligible = ev["eligible_dt"]
                 if use_bench_lag:
-                    available = available + timedelta(days=BENCHMARK_LAG_DAYS)
-                idx = first_bar_at_or_after(existing, available)
+                    eligible = eligible + timedelta(days=BENCHMARK_LAG_DAYS)
+                idx = first_bar_at_or_after(existing, eligible)
                 if idx is None:
                     no_eval_total["no_decision_bar_available"] += 1
                     skipped.append({"pair": pair, "area": ev["area"],
@@ -781,11 +801,13 @@ def run_arm(arm: str, data_paths: dict, macro_reader=None, freeze_token=None):
                 candidates.append({"decision_idx": idx, "side": side,
                                    "area": ev["area"],
                                    "effective_date": ev["effective_date"],
-                                   "available_dt": available,
+                                   "eligible_dt": eligible,
+                                   "tie_dt": ev["available_dt"] or eligible,
                                    "delta": ev["delta"]})
-        # Deterministic order: decision instant, then earlier availability,
-        # then effective instant, then area (full tie-break chain).
-        candidates.sort(key=lambda c: (c["decision_idx"], c["available_dt"],
+        # Deterministic order: decision instant, then earlier operative
+        # availability (fallback: the eligibility instant), then effective
+        # date, then area (full tie-break chain).
+        candidates.sort(key=lambda c: (c["decision_idx"], c["tie_dt"],
                                        _eff_key(c), c["area"]))
         trips = _schedule_pair(pair, existing, bars, candidates, arm_id,
                                counts, skipped)
@@ -827,13 +849,21 @@ def run_arm(arm: str, data_paths: dict, macro_reader=None, freeze_token=None):
             "n_unavailable_never_read": len(unavailable),
         },
         "eligibility": {
-            "availability_field": "announcement.operative_available_time_utc "
-                                  "(EVIDENCED captured stamps; conservative LATER "
-                                  "bounds for unevidenced rows -- exactly as the "
-                                  "ledger carries them)",
+            "eligibility_field": "row.first_readable_decision_utc (the "
+                                 "ledger's PRECOMPUTED first 16:00-NY "
+                                 "decision at/after max(operative "
+                                 "availability, effective) -- the frozen "
+                                 "program PIT invariant: a decision never "
+                                 "reads a row whose effective_time_utc > T)",
+            "adjudication": "A1 adjudication A-2 applied (research/control/"
+                            "forex_free_v4_run/a1_ambiguity_adjudication."
+                            "json): eligibility = first_readable_decision_"
+                            "utc; availability-only eligibility rejected",
             "rule": "T = first completed 16:00-NY bar with completion >= "
-                    "operative_available_time_utc; never eligible on the "
-                    "effective instant alone",
+                    "first_readable_decision_utc; fail-closed "
+                    "MISSING_AVAILABLE_TIME_EVIDENCE when the field is null; "
+                    "tie-break on the operative availability instant "
+                    "(fallback: the eligibility instant)",
             "no_eval_cutoff_utc": _iso(NO_EVAL_CUTOFF_UTC),
             "no_eval_before_cutoff": no_eval_total["no_eval_before_cutoff"],
             "no_decision_bar_available": no_eval_total["no_decision_bar_available"],
@@ -940,7 +970,7 @@ def schedule_counts(data_paths: dict) -> dict:
             for ev in events:
                 if pair not in mapped_directions(ev, arm_id):
                     continue
-                idx = first_bar_at_or_after(existing, ev["available_dt"])
+                idx = first_bar_at_or_after(existing, ev["eligible_dt"])
                 if idx is not None and existing[idx] >= NO_EVAL_CUTOFF_UTC:
                     n += 1
             per_pair[pair] = n
