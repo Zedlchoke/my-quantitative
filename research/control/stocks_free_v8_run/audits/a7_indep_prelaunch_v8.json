@@ -1,0 +1,177 @@
+{
+ "schema": "stocks_free_v8_run/a7_indep_prelaunch@1",
+ "audit_id": "A7-INDEP-PRELAUNCH-V8",
+ "producer_role": "A7-INDEP (Lead-dispatched, fresh context)",
+ "audited_at_utc": "2026-09-05T08:55:00Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v8/q-a7-indep",
+ "branch": "orca/stocks-free-v8-q-a7-indep",
+ "base_sha": "66c2cacb35eaee7d4571a8c55a6f0ee22d848573",
+ "code_freeze_sha": "8c6c4c019a4cc21e6f4eb346fa56709269771928",
+ "method": "fresh-context re-verification from bytes; nothing repaired, nothing pushed, S1 never opened; staged data read by absolute path from integration .staging_sec_v8/.staging_prices_v8 via V8_WT_ROOT; all re-runs dry_run=True only; GO-gate refusal probed with DUMMY phrases only (the real owner phrase never typed into any command); no scored computation performed; audit scripts and outputs written to /tmp only, never to any repo tree",
+ "worktree_identity": {
+  "command": "git branch --show-current; git rev-parse HEAD; git diff --stat 8c6c4c019a4cc21e6f4eb346fa56709269771928 HEAD -- . ':!research/control/stocks_free_v8_run'",
+  "exit_code": 0,
+  "observed": "branch orca/stocks-free-v8-q-a7-indep; HEAD 66c2cacb35eaee7d4571a8c55a6f0ee22d848573; code diff vs 8c6c4c0 EMPTY (only run-tree files differ: audits/a7_prelaunch_v8.json, event_log.jsonl, state.json, w2_freeze.json)",
+  "expected": "worktree == W2 control seal 66c2cac; code tree byte-identical to code freeze 8c6c4c0",
+  "pass": true
+ },
+ "items": [
+  {
+   "item": 1,
+   "name": "non_vacuity_six_arm_rerun",
+   "status": "PASS",
+   "evidence": {
+    "command": "V8_WT_ROOT=integration /Users/hoangminhlong/my-quantitative/.venv/bin/python /tmp/a7indep_rerun.py (imports research.assets.stocks.v8_family_runner from THIS worktree; r.run_arm(..., dry_run=True) for all six arms; exit 0; 101.4s)",
+    "exit_code": 0,
+    "observed": "ALL SIX arms re-run on integration staging data: zero zero-eligible, zero zero-populated, zero zero-legs scored decisions in every arm (100% of scored decisions non-zero). Floors: F1 arms 74 scored = 22+26+26 per fold; F2 arms 78 = 26+26+26; floor_ok true (>=30 total, >=5/fold). Minima across scored decisions: eligible >= 389 (all arms), legs >= 59 (F1-ANCHOR). Medians reproduced EXACTLY equal to committed q_dummy_dryrun_evidence.json: eligible 405 all arms; populated 139/177/180/268/310/328 (F1-A/F1-N/F1-C/F2-A/F2-N/F2-C); legs 97/120/130/196/220/229. Exactly 3 FOLD_FORCE_FLAT records per arm, all with positive turnover, excluded from scored counts.",
+    "expected": "eligible/populated/legs NON-ZERO at 100% of scored decisions for all six arms; floors 74=22+26+26 (F1) and 78=26+26+26 (F2) hold; non-vacuity gate median_eligible>=100 AND median_legs>=20 true for all arms",
+    "pass": true,
+    "note": "closes W1 CRITICAL F-A7-1 by independent reproduction; medians match the committed evidence byte-exactly, so the committed DRY_RUN_PASS is validated for the frozen code"
+   }
+  },
+  {
+   "item": 2,
+   "name": "no_rescue_byte_identity",
+   "status": "PASS",
+   "evidence": {
+    "command": "git diff --stat d908ab5..66c2cac -- research/control/stocks_free_v8_run/proposals/ research/control/stocks_free_v8_run/p3_invariants_freeze.json research/control/stocks_free_v8_run/selection_freeze.json",
+    "exit_code": 0,
+    "observed": "EMPTY diff (no output) - proposals/, p3_invariants_freeze.json, selection_freeze.json byte-identical across the remediation range; ancestry: merge-base --is-ancestor d908ab5 66c2cac exit 0; 8c6c4c0 66c2cac exit 0",
+    "expected": "empty diff; no preregistered input (specs, invariants, selection) touched by the remediation",
+    "pass": true
+   }
+  },
+  {
+   "item": 3,
+   "name": "full_pytest_alone",
+   "status": "PASS",
+   "evidence": {
+    "command": "ps aux | grep -iE 'pytest|python' (pre-check); then, from THIS worktree root: /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q (worktree has no .venv; documented fallback used; same interpreter family as the twins' .venv/bin/python)",
+    "exit_code": 0,
+    "observed": "pre-check: no pytest or heavy python worker running (only unrelated VS Code helpers and a foreign visual-gate process at 1.3% CPU, different project); suite: '2134 passed, 5 skipped, 16 warnings in 148.95s (0:02:28)'",
+    "expected": "2134 passed, 5 skipped, exit 0 (w2_freeze.json claim: 2134/5, 93.24s on the twins)",
+    "pass": true,
+    "duration_seconds": 148.95
+   }
+  },
+  {
+   "item": 4,
+   "name": "go_gate_refusal",
+   "status": "PASS",
+   "evidence": {
+    "code_proof": "v8_family_runner.py lines 352-360: run_arm signature (dry_run, owner_go=None, ..., stress=False); FIRST statement pair after spec lookup: 'if not dry_run and owner_go != GO_PHRASE: raise SystemExit(\"SCORED EXECUTION REFUSED: owner GO phrase absent/incorrect\")'; GO_PHRASE constant line 36; owner_go is parameter-only (no env/file/default); dry_run=True is exempt (gate binds scored execution only)",
+    "execution_proof": "/tmp/a7indep_refusal_leak.py: 5 DUMMY phrases (WRONG; real-phrase-with-trailing-space; lowercase variant; real-phrase-with-suffix-X; V7-cycle variant) x {plain, stress=True}: ALL 10 raised SystemExit('SCORED EXECUTION REFUSED...') BEFORE any computation; dry_run=True + wrong phrase did NOT SystemExit (passed the gate, stopped later by the fail-closed panel field check - proving gate ordering precedes data work)",
+    "exit_code": 0,
+    "observed": "fail-closed on every mutation of the phrase including whitespace/case/suffix/wrong-cycle; real owner phrase never typed into any command",
+    "expected": "SystemExit on any non-exact phrase on scored paths; no gate on dry_run paths",
+    "pass": true
+   }
+  },
+  {
+   "item": 5,
+   "name": "hash_chain",
+   "status": "PASS",
+   "evidence": {
+    "panel": "shasum -a 256 integration/.staging_sec_v8/multivintage_panel.jsonl = 1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40 (exit 0) == run_contract/selection_freeze/q_dummy pins; independently re-hashed inside rerun script, match=true",
+    "clock_freeze": "shasum -a 256 research/control/stocks_free_v6_run/p0a_clock_freeze.json = 61e15738d4d8f0a20219608c6235e2aeb5b7bc73985d2f2d56cd5923622ba712 (exit 0) == run_contract/selection_freeze pins (artifact confirmed first, then hash verified)",
+    "price_manifest": "canonical sha256 of json.dumps(p0a_eodhd_price_manifest.json, sort_keys=True) = 83f6de18129c23597ea94064e103551633e2f802c56824bbe1249e9efdf6250b == q_dummy pin; files 409 == on-disk .staging_prices_v8/eod 409; 7/7 spot file hashes match (first/100th/200th/300th/last/random x2: ABT, LUV, UGI, TPR, VNOM, HD, CWEN)",
+    "benchmark_staging": "p0a_benchmark_manifest.json: SPY + 10 sector ETFs (XLB XLE XLF XLI XLK XLP XLRE XLU XLV XLY); 11/11 on-disk hashes in .staging_prices_v8/benchmarks/ verified MATCH - A9-F MEDIUM prerequisite satisfied",
+    "exit_code": 0,
+    "pass": true
+   }
+  },
+  {
+   "item": 6,
+   "name": "arm_config_digests",
+   "status": "PASS",
+   "evidence": {
+    "command": "/tmp/a7indep_items568.py: rebuilt the two ANCHOR spec dicts from PROPOSAL TEXT (a4_h1.json cited clocks/fields/directions/warmup + selection_freeze arm_definitions; not copied from code) and hashed sha256(json.dumps(spec, sort_keys=True)) - the runner's own digest formula (v8_family_runner.py line 503)",
+    "exit_code": 0,
+    "observed": "SFV8-F1-ANCHOR recomputed 784915ab48f09b74c2b16a7b142f1ec591fb7712e98a91062f319940e677973c == committed; SFV8-F2-ANCHOR recomputed 7d05e7311e2c76e4188c52e2b3a290dffd7bade40080fc192d2f101372d055d0 == committed; all six digests pairwise distinct (6 unique / 6); my six-arm rerun digests also match committed 6/6",
+    "expected": "digests recomputable from frozen specs; pairwise distinct across all six arms",
+    "pass": true
+   }
+  },
+  {
+   "item": 7,
+   "name": "leak_scan_dry_run_outputs",
+   "status": "PASS",
+   "evidence": {
+    "command": "recursive scan at ANY depth over MY OWN six-arm dry-run records (/tmp/a7indep_arm_records.json) for keys pnl/expectancy/metrics/profit/alpha/drawdown/sharpe/mdd/win_rate/pf/return/payoff + string tokens pnl=/expectancy=/profit factor",
+    "exit_code": 0,
+    "observed": "ZERO hits across all six arms. Top-level record keys: arm_config_digest, arm_id, code_freeze_sha, data_snapshot_digest, decisions_total, dry_run, family_id, fold_structure, missing_price_legs, schedule, schema, scored_decisions_total, stress. Schedule record keys: active_sectors, cost_bps_paid, decision_date, eligible, fill_date, fold, legs, populated, turnover, warmup - structure only. Code audit: every PnL/metrics assignment in run_arm is inside 'if not dry_run' blocks (lines 433-460, 486-499, 515-526); metrics dict unreachable without the GO gate.",
+    "expected": "zero outcome-shaped fields in dry_run outputs (handbook 17.2)",
+    "pass": true
+   }
+  },
+  {
+   "item": 8,
+   "name": "survivorship_spot_check",
+   "status": "FAIL_PREMISE",
+   "evidence": {
+    "command": "read p0a_submissions_cohort_census.json (status_counts ACTIVE 373 / TERMINATED_REGISTRATION 37, rule '= >=1 Form 15-12B/15-12G (or 15F) filing'); mapped all 37 CIKs to staged price files; scanned ALL 409 staged price files for last-bar dates",
+    "exit_code": 0,
+    "observed": "ZERO of the 37 TERMINATED_REGISTRATION names have a price series ending before 2025-07-24 - all 37 trade through 2026-09-04 (e.g. RTX, Bristol Myers Squibb, S&P Global, Baxter, Weyerhaeuser; termination_form_dates span 2013-2026 incl. BMY 2026-03-27). Widening to the FULL 409-file price set: ZERO series end before S0 end 2025-07-24. The dispatch premise 'the delisted leg is real in the scored data' is REFUTED. Root cause of the mislabel: the census rule conflates Form 15-12G (termination of registration of a class of securities - typically debt; equity keeps trading) with 15-12B (exchange delisting). Mitigations verified: no committed artifact claims in-window cohort deaths (census status_rules explicitly disclaim delist inference for the DERIVED statuses; run_contract's delisted-data evidence is vendor-probe scope, gate 3); the current-registry survivorship tilt is DOCUMENTED and FROZEN at P2/P3 ('current-registry survivorship tilt documented and constant across all arms; no filer may be added or removed after selection freeze' - p3_invariants_freeze carried payload), so comparability across all six arms is intact; the staged cohort matches the frozen 410-filer panel exactly (409 priced - CIK0000004904 AMERICAN ELECTRIC POWER, ACTIVE_FILER, has no price file and is therefore never eligible: fail-closed direction, count 409 documented in proposals/manifests).",
+    "expected_per_dispatch": ">=5 of the 37 with series ending before 2025-07-24",
+    "pass": false,
+    "severity_assessment": "MEDIUM, blocks_launch=false: no committed gate or frozen invariant requires in-window deaths; the survivorship bias is frozen, documented, and identical across all arms (levels bias, not contrast bias); the false premise lived in the dispatch instruction, not in any committed artifact. Recorded so no downstream statement ever cites a real delisted leg in the scored cohort."
+   }
+  },
+  {
+   "item": 9,
+   "name": "lead_finding_code_freeze_label_triage",
+   "status": "RESOLVED_LOW",
+   "evidence": {
+    "command": "git log --format='%H %cI %s' on 62ec23f/8c6c4c0/66c2cac/d908ab5; git log -- q_dummy_dryrun_evidence.json; git diff --stat 62ec23f..8c6c4c0 -- research/assets tests; rerun comparison (item 1)",
+    "exit_code": 0,
+    "observed": "q_dummy_dryrun_evidence.json measured_at 2026-09-05T06:28:44Z with code_freeze_sha 62ec23f (the W1 seal = git HEAD at measurement); 8c6c4c0 committed 2026-09-05T06:29:31Z - 47 seconds LATER. The driver stamps git rev-parse HEAD, so the label was correct-at-run-time for the seal pointer but points at pre-remediation code. THREE decisive facts make this cosmetic (LOW), not an identity break: (a) content self-identification - the committed medians (populated 139-328, legs 97-229) are IMPOSSIBLE under 62ec23f code, which the W1 audit measured producing eligible=0 at 100% of decisions; an auditor can never validate wrong code from this artifact; (b) my independent re-run on the frozen tree (code byte-identical to 8c6c4c0) reproduces all six digests, medians, floors and minima byte-exactly; (c) exactly one code-touching commit exists in d908ab5..66c2cac (8c6c4c0: runner+driver only) and w2_freeze/state.json record code_freeze_sha 8c6c4c0. Operational identity chain (seal 66c2cac + code tree 8c6c4c0 + my rerun) is intact.",
+    "expected": "classify as LOW cosmetic label defect or HIGH identity break",
+    "pass": true,
+    "classification": "LOW"
+   }
+  }
+ ],
+ "delta_audit_claims_reverified": {
+  "F-A7-1_CRITICAL": "RESOLVED - item 1 (zero vacuity at 100% of scored decisions, all six arms, medians reproduced exactly)",
+  "F-A7-2_HIGH": "RESOLVED - driver lines 93-115 compute nonvacuity (median_eligible>=100 AND median_legs>=20) per arm and overall verdict DRY_RUN_FAIL unless all six pass; my rerun confirms the gates bind on real data (nonvacuous=true only because books are non-empty)",
+  "F-A7-3_HIGH": "RESOLVED - load_panel(fields, unit='USD') drops non-USD rows at load (runner lines 110-124); driver calls r.load_panel(fields) with the USD default for all six arms (driver line 63)",
+  "F-A7-4_HIGH": "RESOLVED - ratio_level rejects |num.eff - den.eff| > 400 days (runner lines 261-264)",
+  "F-A7-5_HIGH": "RESOLVED - stress parameter exists (runner lines 354, 371 cost_mult=2.0); stress scored path passes the SAME GO gate (my refusal probe: stress=True + wrong dummy phrase => SystemExit)",
+  "F-A7-6_MEDIUM": "RESOLVED - fold boundary forces flat with close cost and resets held/prev_w (runner lines 470-485); 3 FOLD_FORCE_FLAT records per arm with positive turnover in my rerun",
+  "F-A7-7_MEDIUM": "RESOLVED - accrual_flow enforces 330<=eff-gap<=400 for EACH of AR/INV/AP leg pairs independently (runner lines 229-232)",
+  "F-A7-8_MEDIUM": "RESOLVED with carried LOW residual - bands computed for EVERY name with 63 bars through d before the floor (runner lines 393-403); BAND_BPS fallback ('A',10.0) remains reachable only for a changed name lacking 63 bars at d (delisted-mid-fold edge) - carried as LOW L-D2 of the delta audit, fail-closed recommendation stands",
+  "F-A7-9_LOW": "RESOLVED - recorded in incident_register; numbers binding from artifacts only"
+ },
+ "findings": [
+  {
+   "id": "M-I1",
+   "severity": "MEDIUM",
+   "blocks_launch": false,
+   "finding": "Delisted-leg premise REFUTED in the scored data: 0/409 staged price series end before S0 end 2025-07-24; all 37 census TERMINATED_REGISTRATION names trade through 2026-09-04. The census rule conflates Form 15-12G class-termination (equity keeps trading) with 15-12B delisting. No committed artifact depends on the false premise; the current-registry survivorship tilt is documented and frozen at P2/P3 and constant across all six arms, so arm contrasts and Stage-A gates are unaffected; vendor-side delisted-data capability remains probe-proven (gate 3) but is not exercised by the frozen cohort. Required follow-ups (non-blocking): (1) rename/split the census status (FORM15_TERMINATED with 12B/12G split) at next code touch; (2) any terminal statement must describe the cohort as current-registry with a frozen survivorship tilt and must NOT claim a delisted leg. Note: CIK0000004904 (AEP) has no price file and is structurally never eligible (fail-closed; 409-file count documented)."
+  },
+  {
+   "id": "L-I2",
+   "severity": "LOW",
+   "blocks_launch": false,
+   "finding": "q_dummy_dryrun_evidence.json code_freeze_sha label reads 62ec23f (W1 seal, HEAD at the 06:28:44Z measurement) rather than the code freeze 8c6c4c0 committed 47s later. Provenance label mismatch only: the artifact's non-zero medians are impossible under 62ec23f code, and my independent rerun on the 8c6c4c0-identical tree reproduces it byte-exactly (item 9). Matches delta-audit L-D1; independently re-confirmed."
+  },
+  {
+   "id": "L-I3",
+   "severity": "LOW",
+   "blocks_launch": false,
+   "finding": "Carried from delta audit L-D2 (re-verified in code): cost-band fallback BAND_BPS.get(bands.get(n,'A'),10.0) (runner lines 431, 473) is reachable only for a changed name lacking 63 bars at the decision (delisted-mid-fold edge) and would silently cost at 10 bps. Unreachable for normal opens/closes since bands covers every name with 63 bars. Recommend fail-closed band resolution at next code touch."
+  }
+ ],
+ "prelaunch_preconditions_at_audit_time": {
+  "integration_branch": "orca/stocks-free-v8-integration",
+  "integration_head_observed": "537ccd3ef2720a111831f4cc107746cf074eaf69 (delta audit committed post-seal; git diff 66c2cac..537ccd3 touches ONLY control files: audits/a7_delta_prelaunch_v8.json, event_log, heartbeat, state, worktree_manifest; zero code)",
+  "budget": "0/6",
+  "owner_go": null,
+  "s1": "SEALED_UNTOUCHED",
+  "deployment": "NO_PAPER_NO_LIVE_NO_ORDERS",
+  "hard_stop": "before first scored cell until owner types the exact GO phrase (runner-enforced, item 4)"
+ },
+ "unresolved_high_critical": 0,
+ "resolution_of_prior_findings": "all 8 findings of a7_prelaunch_v8.json independently re-verified RESOLVED (see delta_audit_claims_reverified); F-A7-1 CRITICAL re-proven fixed by full independent re-run, not by trusting the twins",
+ "verdict": "STOCKS_FREE_V8_S0_LAUNCH_AUTHORIZED_INDEP"
+}
