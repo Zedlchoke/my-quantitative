@@ -1,0 +1,198 @@
+{
+ "schema": "v14_prelaunch_audit_v1",
+ "artifact": "a7_prelaunch_v14",
+ "cycle": "CRYPTO-V14",
+ "producer_role": "A7 (independent prelaunch auditor; audit artifacts only, nothing repaired)",
+ "audit_utc": "2026-09-05T14:20:00Z",
+ "audited_head": "e19da87fae05c4526030b6359b1c9a66a0f0d84d",
+ "audited_branch": "orca/v14-q-a7-prelaunch",
+ "audited_worktree": ".worktrees/crypto/v14/q-a7-prelaunch",
+ "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+ "owner_plan": {
+  "path": "PLAN_crypto_v14.md (root checkout, read IN FULL)",
+  "commit": "a2e8f1f4988499696ed3aa12dbb88a11495ee13e",
+  "blob_sha256": "aa3a66513d38f10fc735d84183fe497a1d33d0a2",
+  "sections_applied": ["10 (V14-Q freeze/prelaunch)", "12 (Stage-A gates)", "14 (commands/reporting)", "15 (hard boundaries)"]
+ },
+ "items": [
+  {
+   "id": "1",
+   "name": "FREEZE_PIN_AND_TREE",
+   "verdict": "PASS",
+   "evidence": {
+    "head_check": "git rev-parse HEAD == e19da87fae05c4526030b6359b1c9a66a0f0d84d on orca/v14-q-a7-prelaunch (the W1 freeze pin)",
+    "tree": "git status --porcelain=v1 -> 0 lines",
+    "diff_check": "git diff --check -> exit 0, no output",
+    "compileall": ".venv/bin/python -m compileall -q . -> exit 0",
+    "base_ancestry": "git merge-base --is-ancestor 96833a8c9d616d5ee28a6eb2dbd1d50f94b4f58b HEAD -> true"
+   }
+  },
+  {
+   "id": "2",
+   "name": "CHAIN_COHERENCE",
+   "verdict": "PASS",
+   "evidence": {
+    "commit_span": "git log --oneline 96833a8..HEAD -> 24 commits; story matches event_log.jsonl seq 1..20 one-to-one (R -> P1 A2/A3 -> P close -> D1 x3 -> D2 A9-F/A7-N -> selection -> I F1/F2 -> driver -> delta1 -> Q freeze)",
+    "lane_reachability": "all 11 worktree_manifest lane heads are ancestors of HEAD (af3dbe1, 7dea653, b61cdab, 561f439, 44b12d0, c289e49, b507fc0, 32754a1, a99729b, 663ed0c, 0ae9d67) -- each verified with git merge-base --is-ancestor",
+    "merge_sequence": "D1 lanes 561f439/b61cdab/44b12d0 all branch from the same wave base c60bd4f (matches d1_wave_contract rule); I-family lanes 32754a1/a99729b both branch from the selection freeze d16341f; integration picks are merges with sane parents; no history rewrite detected",
+    "v13_surgical_fix": "git diff 96833a8..HEAD -- research/control/v13_run/tools/run_v13_cell.py is EXACTLY the preregistered L-V14-0 change: load_tick_sizes import, tick_sizes=tick_sizes replacing the uniform {sym: 0.01} stub, tick_sizes added to the inputs digest, docstrings -- 20 insertions / 5 deletions, nothing else",
+    "historical_immutability": "git diff 96833a8..HEAD -- research/v12 research/v13 -> 0 lines (byte-unchanged); research/audits/v13 git tree identical; PLAN.md/NOTES.md/research/control/v12_run untouched; only other non-V14 file changed in the whole diff is .gitignore (+3 documented lines: d2_a9f staged bulk gitignored)"
+   }
+  },
+  {
+   "id": "3",
+   "name": "COUNTERS_AND_DENOMINATORS",
+   "verdict": "PASS",
+   "evidence": {
+    "counters": "state.json counters_v14 = proposals 6 / audited 6 / families 2 / arms 6 / scored_observed 0 / scored_published 0 / refused 0",
+    "budget": "state.json budget 0/9; selection_freeze 6 cells committed by selection, 3 unused slots never reassigned",
+    "historical": "denominators.historical_published_logical=137 / historical_observed_logical=140 preserved separately",
+    "s1": "state.json + first_report s1_seal = SEALED_UNTOUCHED; no S1 path touched by V14 diff",
+    "no_scored_cell": "no results/ tree in any V14 area; no V14 ledger file anywhere (only control event_log.jsonl); no PnL-bearing V14 json; grep of all committed json for V14+pnl/scored hits only control metadata; counters confirm 0",
+    "deployment": "deployment_activity none; no V14 paper/live/orders artifacts"
+   }
+  },
+  {
+   "id": "4",
+   "name": "SELECTION_LAWFULNESS",
+   "verdict": "PASS",
+   "evidence": {
+    "clusters": "d2_a7n/cluster_taxonomy.json: BASISLV-PREMFADE in C1-PREMIUM-LEVEL-CROWDING-FADE; OICYC sole member of C5-POSITIONING-CYCLE-BETA -- two DIFFERENT clusters (plan Section 1.2 satisfied)",
+    "cross_cluster_rho": "d2_a7n/cross_cluster_correlation.json rho_matrix: rho(PREMFADE,OICYC)=+0.372436 < 0.70; no flagged pair >=0.70 between the selected pair; WIDTHGATE|PREMFADE hard same-cluster +0.961404 (>=0.90, per-fold +0.969/+0.951/+0.964) -> WIDTHGATE correctly ineligible alongside",
+    "section_1_1_terms_oicyc": "disclosure + CONFIRMATORY constant in oicyc/strategy.py + frozen identity carries confirmatory status + own falsification control CTL-OISHARE + |rho|<=0.20 vs OILEV-V2 anchor AND inverted control measured 0.011201 (symmetry identity rho_inv=-rho_anchor documented and measured) + no gate relaxation",
+    "rejected_reasons_match_evidence": "PREMREV: A9-F measured drag 0.02621/0.045481 base/stress = the cited 2.62%/4.55%, min-4 breadth; PREMVOL: premium-close 0.0 sentinel treatment in d2_a9f/build_panels.py + degenerate n=12 panel (A7-N ELIGIBLE_NOVELTY_UNVERIFIABLE) + A9-F BLOCKED_DATA; OICH: passes all filters (shadow 0.047132 PASS) but loses the single OI seat to OICYC on the frozen widest-margin tie-break (0.0471 vs 0.0112) -- all match selection_freeze_v14.json",
+    "disclosed_caveat": "A7-N NOT_RUN ancestor-rho gates (V4/V8R/V6) recorded in novelty_verdicts.not_run_disclosures and carried into the selection freeze as a7n_caveat_recorded"
+   }
+  },
+  {
+   "id": "5",
+   "name": "FROZEN_IDENTITY_INTEGRITY",
+   "verdict": "PASS",
+   "evidence": {
+    "suites": "tests/test_v14_family1_basislv.py 29 passed in 4.65s; tests/test_v14_family2_oicyc.py 28 passed in 197.18s; tests/test_v14_p1_cost_once.py 7 passed in 3.57s; tests/test_v14_driver.py 21 passed in 172.72s (85 total, all green)",
+    "independent_digest_recompute": "A7 recomputed arm_config_digest for all six arms from frozen_identity() via research.v11.publication_identity.arm_config_digest: recomputed == lane-recorded (BASISLV_ARM_CONFIG_DIGESTS / OICYC_ARM_CONFIG_DIGESTS) == q_six_arm_dummy_dry_run.json digests; pairwise-unique 6/6",
+    "constants_vs_proposals": "28d/56d formation (2688/5376 15m buckets) in BASISLV-PREMFADE.md and strategy; 29-row/15-row OI windows (CYC-28D/CYC-14D, 28-row control) in oicyc strategy and OICYC.md; weekly Monday 00:00:00:00Z decision clock both families; cap 0.30 (CAP_MAX=0.30); gross 1.0 (basislv _SIDE_RULE gross 1.0; oicyc LEG_GROSS 0.5 x2); folds F0/F1/F2 chronological 1-day purge (PURGE_DAYS=1); screen window 2025-08-22T00:00:00Z..2026-08-21T00:00:00Z both; stress multipliers fee x1.5 / +2 adverse ticks / +1 event delay (STRESS_CELL_NAME fee_x1_5_plus2ticks_plus1delay); largest-symbol positive-PnL share <= 0.70 in the frozen Stage-A gate set (run_contract stage_a_gates == V13 gate list in substance, verified against git show 96833a8:research/control/v13_run/run_contract.json)"
+   }
+  },
+  {
+   "id": "6",
+   "name": "L_V14_0_REGRESSIONS",
+   "verdict": "PASS",
+   "evidence": {
+    "cost_linear_in_fills_tests": "basislv: test_v14f1_l_v14_0_constant_book_costs_fills_not_holding_days / double_and_triple_fills_cost_exactly_double_and_triple / cost_once_across_replay_and_stress_tiers_on_family_books; oicyc: test_lv14_0_family_book_cost_strictly_linear_in_fills / long_hold_book_costs_same_as_short_hold_same_fills / real_plugin_runner_long_hold_cost_once_and_zero_intermediate -- all present and passing",
+    "driver_holding_assert": "run_v14_cell.py cost_breakout() computes cost_holding_terms and scored path raises unless holding_terms_zero_by_construction (lines ~961-964); field recorded in the scored row (lines ~1605/1677/1699); all six independent dry-run baselines show cost_holding_terms 0.0",
+    "kernel_marker": "L-V14-0 remediation marker present in basislv strategy (COSTS charged on FILLS ONLY), oicyc plugin (real per-instrument ticks, exactly once per fill) and driver (remediated_kernel, real perp-meta ticks, no uniform stubs)"
+   }
+  },
+  {
+   "id": "7",
+   "name": "AVAILABILITY_LAG_MUTATIONS",
+   "verdict": "PASS",
+   "evidence": {
+    "basislv": "7 mutation tests green: basis-route row available after decision REFUSES; basis-route series shifted one bucket refuses every symbol; execution bar available after close refuses fill; missing bar shifts fill deterministically; marks never read a bar available after the instant; funding settlement after span end never accrues; verification routes sentinel+SHA fail-closed",
+    "oicyc": "7 mutation tests green: OI row stamped after decision invisible; OI boundary stamp readable-only-next-ns; all OI rows shifted one day shift deterministically; OI lookahead gate raises fail-closed; bars missing-slot/event-delay deterministic; bar close not readable by the fill; funding never enters any signal and accrues once",
+    "coverage": "every adopted conditioning field has a decision-at-T vs available-after-T mutation proof: basis/premium/mark/index klines (basislv), staged OI rows + bars + funding (both families)"
+   }
+  },
+  {
+   "id": "8",
+   "name": "DATA_AUTHORITY",
+   "verdict": "PASS",
+   "evidence": {
+    "staged_90_90": "A7 independently re-ran the P1 verify_inputs pattern (own hashlib pass, not the driver): 90/90 files of .worktrees/crypto/v14/integration/staged_data match research/audits/v12p/a3_staging_manifest.json sha256 (ok=90 bad=0 missing=0); a3 manifest sha256 2606d02678cd6ea1dc2f3e63afdbc4cb739899be3e12958fe270244eb42feb96",
+    "basis_manifest": "d2_a9f/staged_basis_manifest.json sha256 3867bdca3162f219d9a62b30b6768997f89a751b7bb86231b1c1175a6e25ee88 == the digest pinned in basislv frozen_identity _DATA_AUTHORITY; 76/76 entries (19 symbols x 4 routes: basis/index_klines/mark_klines/premium_klines) verified by SHA-256 AND byte size; zero-gap fields internally consistent (expected_buckets 70272/symbol)",
+    "oi_fail_closed": "verify_oi_staging on the machine-local root: 19/19 tradeable symbols sha_all_match=true; TAMPER TEST in temp copy (byte flip of AAVEUSDT_oi.parquet) -> RuntimeError 'OI staging SHA-256 mismatch ... refusing to load (fail-closed)'; MISSING-FILE temp-copy test -> RuntimeError 'missing staged OI parquet ... fail-closed'"
+   }
+  },
+  {
+   "id": "9",
+   "name": "DRY_RUN_GATE",
+   "verdict": "PASS",
+   "evidence": {
+    "independent_rerun": "A7 re-ran the six-arm dummy dry-run from its OWN worktree into a fresh scratch (/var/folders/.../a7_indep_dryrun_guxxlj1i) using the committed synthetic-world builder -- NOT the producer's q_dry_run.py writer (which targets the integration control tree; producer artifact untouched): all six arms exit 0 (BASISLV-PREMFADE-28D/56D/28D-INV, CYC-28D, CYC-14D, CTL-OISHARE)",
+    "zero_ledgers": "scratch-wide rglob for *ledger* files -> [] (publication refused by mode; 'PUBLISH: skipped (no --publish)')",
+    "digests": "preflight digests pairwise-unique 6/6 and byte-equal to the recorded q_six_arm_dummy_dry_run.json values (8d770466.., 832ccde7.., 76f0b0cc.., 0e7b084c.., 7c6baead.., 11858422..); every preflight carries six_arm_digests_pairwise_unique=true; basislv anchor gate honestly BLOCKED_SIBLING_EVIDENCE_MISSING in dry mode",
+    "refusals": "validate_args: --dry-run + --publish -> refused ('--dry-run must never publish; --publish is forbidden with --dry-run'); --dry-run + --ledger -> refused; techabort_sink_under_control_tree(research/control/...) -> True (refused); scratch sink -> allowed"
+   }
+  },
+  {
+   "id": "10",
+   "name": "BOUNDARIES",
+   "verdict": "PASS",
+   "evidence": {
+    "network": "grep requests/urllib/httpx/aiohttp/socket/http(s) over research/v14/ + driver: the ONLY hit is research/v14/families/basislv_premfade/restage_basis.py -- the committed contingency stager (urllib to keyless public Binance /futures/data/basis); its docstring binds it as contingency-only, NEVER run by the test suite, writing only to the lane-local gitignored restaged/ tree; no test, plugin, audit or driver reference executes it (grep clean)",
+    "credentials": "grep api[_-]?key/secret/token/password/credential over V14 code+proposals: no credentials (only keyless/no-signup declarations)",
+    "no_weakening": "no optimizer/grid/threshold weakening in the V14 diff: only 'grid' hits are the 15m bucket alignment; Stage-A gate set in run_contract matches the V13 gate list verbatim in substance (git show 96833a8:research/control/v13_run/run_contract.json); family gate_runners declare 'unrelaxed'; the single v13 driver change carries no gate constant",
+    "s1": "no S1 access anywhere in the V14 diff (the only s1-like token is STRESS_CELL_NAME)"
+   }
+  },
+  {
+   "id": "11",
+   "name": "HARD_STOP",
+   "verdict": "PASS",
+   "evidence": {
+    "publish_gating": "driver publishes ONLY with explicit --publish + --ledger + --expect-head; without --publish it prints 'PUBLISH: skipped' and returns; --publish with expect_head != current HEAD fails closed ('FAIL-CLOSED: exec head ... != expected pin'); --dry-run forbids publish/ledger outright",
+    "cell_contract_budget": "publication passes family_contract_cells from freeze_family_cell_contract -- the ledger refuses cells outside the frozen family contract (REFUSED_CELL_OUTSIDE_FAMILY_CONTRACT), structurally capping publishable rows at the six frozen arms; budget arithmetic in state.json 0/9 with 6 committed, unused slots never reassigned",
+    "no_scored_computation_possible_pre_go": "no scored cell exists anywhere (item 3); no owner GO text exists in the tree (only required_verbatim declarations in run_contract/first_report/handoffs); state + heartbeat owned_workers 0; per plan Section 10 the tree stays HARD-STOPPED until the owner types GO V14 SCORED EXECUTION"
+   }
+  },
+  {
+   "id": "12",
+   "name": "UNRESOLVED_FINDINGS",
+   "verdict": "PASS",
+   "evidence": {
+    "unresolved_high_critical": 0,
+    "disclosed_items_verified": [
+     "P1 byte-level reproduction BLOCKED by external v12/v13 worktree removal: recorded PASS_WITH_RECORDED_BLOCKED_DEVIATION in p_gates_v14.json + event_log seq 6/7; metric-level 6/6 ALL_MATCH + cost-only proof artifacts present and consistent (p1_a2/oitd_baseline_reproduction.json all_match_at_committed_precision; p1_a2/liqepis_cost_recompute.json corrected costs 0.014397717069/0.009807429682/0.014397717069 with fill-identity proof); deviation stands disclosed, external, not closable by this audit",
+     "5 v13r real-snapshot test errors: A7's own full pytest run reproduced exactly 2091 passed / 1 skipped / 5 errors (the 5 test_v13r_liqepis_delta.py real-snapshot tests; default staged root was the externally removed v13 exec tree); re-run with V13R_LIQEPIS_DELTA_STAGED_ROOT=<integration staged_data (90/90 verified)> -> 10/10 PASS in 13.80s -- claim independently verified",
+     "A7-N NOT_RUN ancestor-rho gates for basis proposals: disclosed in novelty_verdicts.not_run_disclosures and selection_freeze.a7n_caveat_recorded; verified present, not re-litigated",
+     "corrected-cost SIGN-INV flip (+0.2921 vs anchor -0.3209): recorded falsification artifact per L-V11-3/L-V12-1 in p_gates disclosure and the append-only adjudication; NOT a candidate; verified recorded, no gate relaxation"
+    ]
+   }
+  }
+ ],
+ "full_suite_independent_run": {
+  "command": ".venv/bin/python -m pytest -q",
+  "exit_code": 0,
+  "observed": "2091 passed, 1 skipped, 5 errors in 560.84s",
+  "errors": "exactly the 5 v13r real-snapshot tests (external staged-root removal); re-run green 10/10 with the documented env override against the assembled 90/90 root",
+  "note": "run while an unrelated stocks-program doc-fetch worker (research.assets.stocks.p0a_v9_death_census, PID 49144, cwd .worktrees/stocks-free-v9/integration) was active on the host; no V14 worker exists and no contention was observed"
+ },
+ "findings": [
+  {
+   "id": "A7Q-F1",
+   "severity": "LOW",
+   "finding": "Pre-existing tracked results/ tree at repo root (results/{account,order_fills,positions}.csv + summary.json, simulated Nautilus BACKTESTER MeanReversionStrategy output, leverage/risk-limit fields) was committed 2026-08-19 (dd01cf0 'Add files via upload', pre-V14) and is byte-inherited unchanged from the V13 terminal tree (blobs identical at 96833a8 and HEAD). Not a V14 artifact, not live/paper activity, untouched by the V14 diff.",
+   "disposition": "recorded; recommend owner cleanup consideration at terminal closeout; no V14 launch impact"
+  },
+  {
+   "id": "A7Q-F2",
+   "severity": "INFO",
+   "finding": "An external stocks-program worker (v9 death-census doc fetch) ran on the host during the audit in a different worktree/program; V14 owned_workers = 0 throughout; the plan's 'full pytest alone' was satisfied within the V14 program (the external process is a light doc fetcher outside crypto scoring).",
+   "disposition": "recorded observation only"
+  },
+  {
+   "id": "A7Q-F3",
+   "severity": "INFO",
+   "finding": "Family-2 targeted test count is 28 at HEAD vs 27 recorded at selection/I-lane time -- the delta1 lane (0ae9d67) added one traversal test before the W1 freeze; commit trail documents the change and the byte-identity proof.",
+   "disposition": "honest evolution, no action"
+  }
+ ],
+ "unresolved_high_critical": 0,
+ "verdict": "V14_S0_LAUNCH_AUTHORIZED",
+ "verdict_basis": "all twelve audit items PASS; zero unresolved HIGH/CRITICAL findings; the tree is HARD-STOPPED before the first scored V14 cell and releases only on the owner's verbatim 'GO V14 SCORED EXECUTION'",
+ "hashes": {
+  "a3_staging_manifest_json": "2606d02678cd6ea1dc2f3e63afdbc4cb739899be3e12958fe270244eb42feb96",
+  "staged_basis_manifest_json": "3867bdca3162f219d9a62b30b6768997f89a751b7bb86231b1c1175a6e25ee88",
+  "q_six_arm_dummy_dry_run_json": "978b87ac8cab6ae740d3524fc9bb68cca82d84e443c40832329629febcfc81b2",
+  "selection_freeze_v14_json": "c56716fc91d2d5cd03353a56109ef2228cf0ea693ebdc19649879b5c7f5926ba",
+  "six_arm_digests_verified": {
+   "basislv_premfade/BASISLV-PREMFADE-28D": "8d7704663b923815e0bb2b201c339c9a2c209875c3348752c721d17265247d52",
+   "basislv_premfade/BASISLV-PREMFADE-56D": "832ccde72cde6bf1a1982fbaad728dbdbd7e21f26a768c389c22de1d1768d4ef",
+   "basislv_premfade/BASISLV-PREMFADE-28D-INV": "76f0b0ccba127cef85aa91ebaf4faa4d13fffd5130d2cf6f7e305f53aac46893",
+   "oicyc/CYC-28D": "0e7b084c4755f63d25fdc2a175123ca78c48bdffb93da962a5e6d0b0875a61b6",
+   "oicyc/CYC-14D": "7c6baead3053b5a53dcb7731adc66f237a54fef412c3372bec204ca047e2dab1",
+   "oicyc/CTL-OISHARE": "11858422224cf502d0eae7abb26eea617afa381b70626e3210b26bb18e00ce08"
+  }
+ }
+}
