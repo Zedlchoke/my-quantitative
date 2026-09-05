@@ -62,6 +62,30 @@ def fill_cost_bps(name: str, dw: float, bands: dict[str, str], cost_mult: float)
     return abs(dw) * resolve_band_bps(name, bands) * cost_mult / 10_000.0
 
 
+def resolve_exit_band_bps(name: str, bands: dict[str, str]) -> float:
+    """Band bps for EXITING a held name (V9-R1 remediation).
+
+    A held name whose band at the exit decision has become UNTRADABLE
+    (ADV63 decayed) or is missing (series ended before the band snapshot)
+    still has to leave the book. Exiting at the silent 10 bps fallback was
+    the L-I3 bug direction (cheap); the conservative monotone fix charges
+    the C-rate ceiling for unrateable exits and the name's own band when a
+    tradable band exists. Entries never use this path: buying an
+    UNTRADABLE name remains a hard error.
+    """
+    b = bands.get(name)
+    if b is None or b == "UNTRADABLE":
+        return BAND_BPS["C"]
+    if b not in BAND_BPS:
+        raise BandResolutionError(f"unknown band {b!r} for {name!r}")
+    return BAND_BPS[b]
+
+
+def exit_cost_bps(name: str, dw: float, bands: dict[str, str], cost_mult: float) -> float:
+    """Linear cost for exiting held notional (never cheaper than C)."""
+    return abs(dw) * resolve_exit_band_bps(name, bands) * cost_mult / 10_000.0
+
+
 def driver_ledger_counters(observed_delta: int, published_delta: int) -> dict:
     """The only sanctioned counter block shape for a V9 scored run.
 

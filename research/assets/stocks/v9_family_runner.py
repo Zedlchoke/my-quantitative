@@ -543,7 +543,13 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
                     continue
                 dw = tgt - old
                 turnover += abs(dw)
-                cost += change_cost(n, dw, bands, cost_mult)
+                if abs(tgt) < abs(old):
+                    # reducing/exiting a held name: its band may have decayed
+                    # to UNTRADABLE or gone missing since entry (V9-R1) -
+                    # conservative C-ceiling exit path, never the cheap 10bps
+                    cost += kernel.exit_cost_bps(n, dw, bands, cost_mult)
+                else:
+                    cost += change_cost(n, dw, bands, cost_mult)  # entries stay strict
                 if tgt != 0.0:
                     exec_w[n] = tgt
             turnover_total += turnover
@@ -581,7 +587,7 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
                         li = len(p["adj"]) - 1
                         r_ret = p["adj"][li] / p["adj"][fi] - 1.0
                     xcost = (abs(wgt)
-                             * kernel.resolve_band_bps(n, held_band)
+                             * kernel.resolve_exit_band_bps(n, held_band)
                              * cost_mult / 10_000.0)
                     cost += xcost
                     turnover += abs(wgt)
@@ -616,7 +622,7 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
         if prev_exec:
             close_turnover = sum(abs(x) for x in prev_exec.values())
             close_cost = sum(
-                abs(x) * kernel.resolve_band_bps(n, last_bands) * cost_mult / 10_000.0
+                abs(x) * kernel.resolve_exit_band_bps(n, last_bands) * cost_mult / 10_000.0
                 for n, x in prev_exec.items())
             turnover_total += close_turnover
             if not dry_run and fold_pnls:

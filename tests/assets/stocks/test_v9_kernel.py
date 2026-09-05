@@ -9,8 +9,10 @@ from research.assets.stocks.kernel_band_cost_v9 import (
     append_publication_record,
     band_of,
     driver_ledger_counters,
+    exit_cost_bps,
     fill_cost_bps,
     resolve_band_bps,
+    resolve_exit_band_bps,
 )
 
 
@@ -60,3 +62,15 @@ def test_driver_counters_and_publication_record():
     rec = append_publication_record(None, at="T1", delta=6)
     rec = append_publication_record(rec, at="T2", delta=0)
     assert [r["at"] for r in rec["publication_records"]] == ["T1", "T2"]
+
+
+def test_exit_band_untradable_or_missing_ceiling_V9_R1():
+    # V8's silent 10 bps fallback was the cheap direction; exits of held
+    # names with unrateable bands cost the C ceiling (25 bps base)
+    assert resolve_exit_band_bps("X", {"X": "UNTRADABLE"}) == 25.0
+    assert resolve_exit_band_bps("DEAD", {}) == 25.0
+    assert resolve_exit_band_bps("Y", {"Y": "A"}) == 10.0  # own band when tradable
+    with pytest.raises(BandResolutionError):
+        resolve_exit_band_bps("Z", {"Z": "Q"})  # unknown label still fails closed
+    assert exit_cost_bps("X", 0.25, {"X": "UNTRADABLE"}, 1.0) == pytest.approx(0.25 * 25.0 / 10_000.0)
+    assert exit_cost_bps("X", 0.25, {}, 2.5) == pytest.approx(0.25 * 25.0 * 2.5 / 10_000.0)
