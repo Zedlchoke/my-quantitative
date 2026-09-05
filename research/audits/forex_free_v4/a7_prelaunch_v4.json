@@ -1,0 +1,109 @@
+{
+ "schema": "forex_free_v4_a7_prelaunch_v1",
+ "audit_utc": "2026-09-05T12:24:35Z",
+ "stamp_source": "machine_date_u",
+ "auditor": "A7",
+ "audited_head": "eec23cc2542fa8404c2315b14aaf77bfc5b0eff1",
+ "freeze_sha": "80d35096054e33689d7081c11fd5b7cf9379b49c",
+ "audit_lane": "orca/forex-free-v4-q-a7-prelaunch",
+ "method": "every check recomputed from bytes in the audit worktree; positive claims audited stricter than negative ones; no repair, no scored run, no network",
+ "checks": {
+  "C1": {
+   "verdict": "PASS",
+   "evidence": "w4_freeze.json code_hashes: 19/19 recomputed from bytes match (script research/audits/forex_free_v4/scripts/a7_c1_freeze_chain.py). V3 kernel 7/7 (scored_runner, macro_reader, accounting, family1, family2, macro_fetch, exec_driver) hash-equal to w3_freeze.json entries. Freeze commit expands exactly to 80d35096054e33689d7081c11fd5b7cf9379b49c (ancestor of HEAD). w4_freeze.json bytes identical at 80d3509 and at HEAD (sha256 aa11e4d3891d8025d23d6c586015246705b89bb90a0ba1392456ea36a62d7536). git diff 80d3509..eec23cc touches ONLY research/control/forex_free_v4_run/{event_log.jsonl,twin_replay.json} — control artifacts. Cycle scope 754b851..80d3509 touches only v4 assets/tests + control. NOTE: the freeze hash-pins research/assets/forex_free_v4/AMBIGUITIES.md in its CONFLICT-MARKER state — bytes match, but see F-A7-1."
+  },
+  "C2": {
+   "verdict": "PASS",
+   "evidence": "selection_freeze.json: 2 families (FXFV4-A6-P1 family1, FXFV4-A6-P2 family2) x 3 arms each (anchor/neighbour/control); budget 0/6 (state.json budget.new_scored_cells=0 display 0/6; dry-run budget_note '0/6'; A4-P1/A4-P2 REJECTED at selection, A5-P1/A5-P2 NOT_SELECTABLE). Proposal sha256 recomputed: A6-P1 e827c904... MATCH, A6-P2 6b4dbb7b... MATCH. dry_run_v4.json arm_config_digests: 6 arms, 6 distinct digests (pairwise distinct verified programmatically). A1 adjudication implemented: family2.py extract_events sets eligible_dt = row's PRECOMPUTED first_readable_decision_utc, fail-closed null -> MISSING_AVAILABLE_TIME_EVIDENCE, never scheduled (lines ~386-405); family1.py:144 Z_STD_DDOF = 1 (used as default ddof at :388, exported :694); control mapping: family2.py SHAM_AREA verbatim equals proposal arms.control.sham_derangement_frozen.mapping (US->CH/EMU->CA/GB->AU/JP->NZ/CH->all7/CA->EMU/AU->GB/NZ->JP), '+3 mod 8' prose recorded as inconsistent paraphrase per A1 ruling; family1 drop-one = frozen 8-scenario harness per adjudication."
+  },
+  "C3": {
+   "verdict": "PASS",
+   "evidence": "announcement_ledger.jsonl sha256 = ae5e1f2e64b8aa7c08472755bd73857543aa89b72ea81b70ad5c5d81e7cd6bd4 == LEDGER_PINNED (220 rows); byte-identical between audit tree and integration tree. First 159 lines sha256 = 169b9e447f01ba0114396a3f26f208f57f61008a6ce6e30873e3b6642f8cf895 == base pin, byte-equal to announcement_ledger_base_v1.jsonl. Dedupe monotonicity recomputed: 212 raw RATE_CHANGE rows -> 159 (area, effective_date) keys; 61 duplicate keys; ALL 61 appended rows (lines 160-220) carry keys ALREADY PRESENT in the base prefix, all status EVIDENCED, every transition AVAILABILITY_UNEVIDENCED->EVIDENCED (last-row-wins keepers: 108 EVIDENCED + 51 UNEVIDENCED), zero non-monotone. A-2 PIT recompute: 87 pre-announcement rows on the deduped basis; on ALL keepers first_readable_decision_utc == first 16:00 America/New_York bar >= max(effective_time_utc, operative_available_time_utc) — 0 mismatches (script a7_c3_data_pit.py). Evidenced vintages 8/8 canonical sha256 match p0a_evidenced_vintages_manifest.json. Snapshots 156/156 match research/control/forex_free_v1_run/staged_data_manifest.json digests_exec2. Twin tree (r-reproduce): 8/8 vintages + 156/156 snapshots hash-identical. No V4/V3 asset code writes into data_raw (grep + read heuristic: 0 hits). data_raw is gitignored: bytes audited in the integration tree (operative run tree), cross-checked against the r-reproduce twin."
+  },
+  "C4": {
+   "verdict": "PASS",
+   "evidence": "V3 kernel 7/7 hash invariance vs w3_freeze.json (see C1). Fold grid constants present verbatim in the frozen runner research/assets/forex_free_v3/scored_runner.py:144-145 FOLD_BOUNDARIES = (2020-03-01T00:00:00+00:00, 2022-05-01T00:00:00+00:00, 2024-07-01T00:00:00+00:00, 2026-09-02T23:59:59+00:00); family2.py mirrors the same tuple. book_stress (research/assets/forex_free_v3/accounting.py:702-778) RE-BOOKS the identical TradeSpec sequence through book_round_trips(specs, cost_tier=tier) for each tier of the frozen ladder COST_TIERS=(1.0,1.5,2.0) (:134), asserts gross price PnL bit-identical across tiers (STRESS_GROSS_NOT_INVARIANT fails closed), computes cost_component_delta_vs_base_usd against the 1.0 book, and assert_stress_rows_distinct fails closed on any V2-style collision. This is genuine re-booking at tiered per-side costs, never proportional rescaling."
+  },
+  "C5": {
+   "verdict": "PASS",
+   "evidence": "dry_run_v4.json + dryrun_tmp/dryrun_report_integration.json (integration tree) + twin_replay.json: 6 arms (family1/family2 x anchor/neighbour/control), 6 distinct trial_ids (FOREX-FREE-V4/familyX/arm) and 6 distinct record_ids (familyX:arm:tier1.0), pairwise_distinct_ids=true; scored=false, real_pnl=false, published=false, dry_run=true at report AND per-record level; structural_invariant_violations=[] (post-fix report; the PRE-fix violation is preserved in committed dry_run_v4.json structural_findings with disposition requiring remediation + re-run — remediation f048ada/41933c3 landed before freeze 80d3509 and the post-fix dry-run is the clean one). Sanitized ledgers BYTE-IDENTICAL: sha256 a70b924d89739ab4516f34862d4f66e32cbfb5df9b4b2b2c167b6d47e3a3a073 for integration AND r-reproduce dryrun_tmp/ledger_dryrun.jsonl (6 records). Twin reports diff = 3 runtime-metadata fields only (base_head 41933c3 vs 80d3509 — identical V4 asset bytes, freeze touched only control files; dry_run_utc; elapsed_s); all six arm records identical. Leak-scan assessment (read exec_driver_v4.py recursive_leak_scan :404-470): it DOES walk nested structures — _walk recurses every dict value and list element, checks EVERY key against FIELD_ALLOWLIST (strict: unknown key = finding; pair/reason/tier exceptions bounded by parent key), and forces zero/None/empty placeholders under every key matching (pnl|profit|expectancy|pf|mdd|break_even|alpha|concentration|survived|gross|share|corr) except the frozen label key incremental_alpha_definition; flags scored/real_pnl/published/dry_run. 1316 fields scanned, 0 leaks. Independent re-scan of the sanitized ledger confirms every outcome-suspect leaf is 0/0.0/False/empty (drop_one_expectancy inner values all 0.0). Named residual miss-surface (LOW): the scan checks KEY NAMES, not string CONTENTS — a numeric payload embedded in an allowlisted string field (e.g. dryrun_gate_check.gate_reasons like \"pf=1.23\") would evade the key-name regex; mitigated because records are built by an explicit projection with placeholder monetary fields, unknown keys fail closed, and the twin replay corroborates determinism."
+  },
+  "C6": {
+   "verdict": "PASS",
+   "evidence": "PYTHONPATH=<worktree root> .venv python research/assets/forex_free_v4/exec_driver_v4.py --mode scored --report /tmp/a7c6_x.json --ledger /tmp/a7c6_x.jsonl from the worktree root: EXIT=1, stderr 'scored mode requires --ledger and --authorization', NO report and NO ledger written, nothing computed (probe file research/audits/forex_free_v4/scored_refusal_probe.json). Gate composition verified by direct evaluate_launch_gates probes in sandboxed trees: (1) W4 gate recomputes ALL W4_CODE_HASH_FILES from tree bytes (token-added probe shows 'W4 code hashes match' — the hash branch is real, not a stub); (2) S0 gate refuses when no s0_launch_authorized.json (S0_NOT_PUBLISHED) and requires verdict FOREX_FREE_V4_S0_LAUNCH_AUTHORIZED with unresolved_high_critical==0; (3) owner_fresh_go gate refuses on missing fresh artifact ('FRESH_GO_MISSING ... 03:41 GO was reclassified OWNER_INTENT extinguished-unconsumed (P-8)') and enforces TWO timestamp bounds: fresh GO must postdate the S0 authorized_utc AND the P-8 reclassification recorded_utc (2026-09-05T03:46:40Z) — realistic stale-GO attack (S0 stamped now + the extinguished 03:41 owner_go_scored_execution.json copied onto owner_fresh_go.json) is REFUSED on BOTH bounds; (4) budget gate counts scored-ledger rows with real_pnl&&!dry_run plus run_contract budget.used against planned 6 (0/6); (5) s1_seal gate requires state s1=='SEALED_UNTOUCHED' and no s1_seal_opened.json marker. Real-tree state: all five gates refuse (w4 token, s0 absent, fresh GO absent) — fail-closed everywhere. See F-A7-2/F-A7-3 for LOW observations."
+  },
+  "C7": {
+   "verdict": "PASS",
+   "evidence": "research/control/forex_free_v3_run/survivors_lock.json sha256 06e2aba1a5145da18083f504b3678ecb0fcf1221498d586b7d74e14d76e59685 — byte-identical (cmp clean) to /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3r/integration/research/control/forex_free_v3_run/survivors_lock.json. V4 code S1 access paths (grep research/assets/forex_free_v4/*.py): exec_driver_v4.py only (a) reads state.json's s1 flag (:607) and (b) checks existence of the opened-marker path GATE_S1_OPENED_MARKER=s1_seal_opened.json (:118,:608); no V4 code opens, writes, or hashes survivors_lock.json — the sealed artifact is never touched."
+  },
+  "C8": {
+   "verdict": "FAIL",
+   "evidence": "Adjudication performed per item (see findings): (a) A9-F HIGHs A4 fold/window — MOOT: A4-P1/A4-P2 REJECTED at selection (selection_freeze.json rubric_application, ancestry veto; no A4 module exists in research/assets/forex_free_v4/). (b) A9-F HIGH A5-P2 monthly clock — MOOT: DATA_BLOCKED_VALID, NOT_SELECTABLE this cycle. (c) family1 emission defect — FIXED: f048ada == cherry-pick 41933c3 (pre-freeze; frozen in w4 code_hashes); BOTH regression tests exist in tests/assets/forex_free_v4/test_family1.py (:927 test_schedule_legs_emits_mid_stream_closed_positions — synthetic re-entry chain asserting the mid-stream-closed position IS emitted with exact entry/exit bar stamps, fails on pre-fix code; :965 test_two_event_fixture_decisions_equal_entries_all_arms — end-to-end n_entries==n_round_trips==len(decisions) per arm, mid-stream close k=67, unique decision_ids, R.validate_decisions) and BOTH PASS in the current tree (2 passed in 1.46s). (d) cherry-pick conflict-marker incident — FAILS the 'verify current tree has no markers' sub-check: F-A7-1. (e) CA Saturday-stamp row — verified in the pinned ledger: CA effective 2020-03-27 (Friday 00:00Z), operative_available 2020-03-27T23:59:59Z (UNEVIDENCED end-of-effective-day bound), first_readable_decision_utc 2020-03-28T20:00:00Z = Saturday 16:00 NY — the correct fail-safe (first decision bar at/after the bound); consistent with the 0-mismatch A-2 recompute in C3 and handled downstream by weekend gates/fill-lag validator. (f) family2 A-2 schedule change — adjudication artifact (first_readable_decision_utc GOVERNS, 87 pre-announcement rows pinned), family2.py extract_events implementation, and tests (test_family2.py :347 test_eligibility_uses_first_readable_decision_utc + mutation test :316) all AGREE."
+  },
+  "C9": {
+   "verdict": "PASS",
+   "evidence": "ps: no python/pytest worker processes besides the auditor's own short-lived commands (0 standing workers; heartbeat.json is the cycle's own record). Disk: /System/Volumes/Data 37 Gi available (228Gi total, 81% capacity used but ample for the cycle's artifacts)."
+  },
+  "C10": {
+   "verdict": "PASS",
+   "evidence": "Plan terminal outcomes present: /Users/hoangminhlong/my-quantitative/PLAN_forex_v4.md 'Allowed terminal outcomes:' block lists all five labels (REJECT_ALL / ONE_OR_MORE_STAGE_A_SURVIVORS_LOCKED_FOR_FUTURE_S1 / BLOCKED_DATA_OR_SELECTION / BLOCKED_PRELAUNCH / INCOMPLETE_NOT_PROMOTABLE) and section 10 pins the launch rule 'only FOREX_FREE_V4_S0_LAUNCH_AUTHORIZED with zero unresolved HIGH/CRITICAL reaches the owner' + HARD STOP until the exact-phrase owner GO. No paper/live/orders/venues/network anywhere in V4 code: grep for paper|live|broker|orders|mt5|oanda yields only benign prose (simulated 'broker rollover financing' formula description, list 'order' wording); import scan for socket/requests/urllib/http/ccmt/order-placement: 0 hits. No push performed: branch orca/forex-free-v4-q-a7-prelaunch has no origin counterpart (rev-parse fails), no origin/*forex-free-v4* branches exist."
+  }
+ },
+ "findings": [
+  {
+   "id": "F-A7-1",
+   "severity": "MEDIUM",
+   "status": "UNRESOLVED",
+   "title": "Conflict markers survive in the freeze-pinned tree; incident artifact's 'no marker exposure' claim is false; the post-incident procedure was violated again",
+   "evidence": "research/assets/forex_free_v4/AMBIGUITIES.md carries literal '<<<<<<< HEAD' (:1), '=======' (:102), '>>>>>>> 6233170' (:206) at HEAD — introduced by the I-FAMILY-2 cherry-pick commit 223397f, still present through e9c1f34..eec23cc, and it is THIS marker-laden content that the W4 freeze hash-pins (C1 19/19 match). research/audits/forex_free_v4/AUDIT_HANDOFF.md carries '<<<<<<< HEAD' (:1), '=======' (:143), '>>>>>>> 2752cf2' (:206...) — introduced by the LATER A9-F cherry-pick 1deef21, i.e. the incident's prevention_added procedure ('never git add an unmerged path') was already violated once more after being written. The incident artifact research/control/forex_free_v4_run/incident_20260905_cherrypick_init_conflict.json states 'AMBIGUITIES.md was correctly renamed AMBIGUITIES_FAMILY2.md (no marker exposure)' — CONTRADICTED by tree bytes: both files exist and AMBIGUITIES.md is the conflicted merge; the second exposure (AUDIT_HANDOFF.md) is absent from the incident record entirely.",
+   "score_impact": "none on computation: AMBIGUITIES.md is documentation (family2.py cites it for the recorded control-mapping discrepancy, but the governing semantics are independently fixed by A1 adjudication family2_A1_control_mapping and verified verbatim in code — C2); the __init__.py repairs are verified (compile/import/suites pass). It is a record-integrity and process defect in the prelaunch evidence chain, and it makes the C8 sub-check 'current tree has no markers' fail.",
+   "required_remediation": "A1 (never A7): resolve AMBIGUITIES.md deliberately (inspect :1:/:2:/:3: stages), remove AUDIT_HANDOFF.md markers (this audit's commit replaces that file with a clean prelaunch handoff; prior content recoverable at 52c307a and 1deef21), correct or supplement the incident artifact to record both marker exposures, re-run compileall + the v4 suites, and commit as a post-freeze control/docs repair with an explicit delta note for A7 re-verification (delta audit is trivial: two markdown files + incident record)."
+  },
+  {
+   "id": "F-A7-2",
+   "severity": "LOW",
+   "status": "OPEN",
+   "title": "W4 launch gate cannot pass on the frozen artifact as-is: w4_freeze.json carries no freeze_token key",
+   "evidence": "exec_driver_v4.py gate 1 (:507-509) requires freeze_token=='FOREX_FREE_V4_W4' or a KEY 'FOREX_FREE_V4_W4' in the freeze JSON; the frozen artifact has neither (top-level freeze_token=None; probe detail 'W4_FREEZE_TOKEN_MISMATCH'). Launch therefore requires an explicit arming edit to the frozen control artifact (adding the token key) — post-freeze, must be committed and logged. Fail-closed direction (nothing can run silently); the underlying hash branch is proven to genuinely recompute all code hashes from tree bytes (token-added probe: 'W4 code hashes match').",
+   "score_impact": "none; observation on launch mechanics. A1 should either add the token in the same remediation commit as F-A7-1 (with the freeze-artifact change called out) or amend the gate to key off the pinned w4 sha256."
+  },
+  {
+   "id": "F-A7-3",
+   "severity": "LOW",
+   "status": "OPEN",
+   "title": "Fresh-GO P-8 reclassification bound is conditional on the reclassification artifact existing",
+   "evidence": "exec_driver_v4.py :568 'if os.path.exists(GATE_GO_RECLASS)' — in a tree lacking owner_intent_reclassification.json the stale 03:41 GO would be bounded only by the S0 authorized_utc, which an S0-forger controls (probe stale_go_attack_no_reclass_file: fresh_go=true with a backdated synthetic S0 and no reclass file). In the REAL tree the artifact exists and the stale GO is refused on both bounds (probe stale_go_attack_realistic: refused). Defence-in-depth suggestion: make the reclassification record mandatory for scored mode (refuse when absent) since it is part of the cycle's pinned authority chain.",
+   "score_impact": "none in the actual tree; noted as hardening."
+  }
+ ],
+ "closed_register_items": [
+  {"item": "A9-F HIGH: A4 fold-scheme/window defects", "disposition": "MOOT — A4-P1/A4-P2 REJECTED at selection (ancestry veto, rho 1.000/0.997); no A4 code in the frozen tree; carry front door CLOSED."},
+  {"item": "A9-F HIGH: A5-P2 monthly clock ambiguity", "disposition": "MOOT — DATA_BLOCKED_VALID, NOT_SELECTABLE this cycle (recorded preregistration)."},
+  {"item": "family1 emission defect (dry-run HIGH)", "disposition": "FIXED-VERIFIED — f048ada/41933c3 pre-freeze; both regression tests present and passing (C8c); post-fix dry-run shows structural_invariant_violations=[] and byte-identical twins (C5)."},
+  {"item": "CA Saturday-stamp row", "disposition": "FAIL-SAFE CORRECT — CA 2020-03-27 first_readable 2020-03-28T20:00Z is the first 16:00-NY decision bar after the end-of-effective-day UNEVIDENCED bound; 0 mismatches across all keepers (C3/C8e)."},
+  {"item": "family2 A-2 schedule change", "disposition": "ADJUDICATION+CODE+TESTS AGREE — first_readable_decision_utc governs, fail-closed, mutation-tested (C2/C8f)."}
+ ],
+ "verdict": "FOREX_FREE_V4_S0_LAUNCH_REFUSED",
+ "verdict_rationale": "Nine of ten checks (C1-C7, C9, C10) PASS on independent byte recompute, and zero HIGH/CRITICAL findings are outstanding — but the mandate requires EVERY check to pass. C8 fails its explicit sub-verification ('verify current tree has no markers'): F-A7-1 (MEDIUM, UNRESOLVED) shows conflict markers survive in the freeze-pinned AMBIGUITIES.md and in the prior AUDIT_HANDOFF.md, and the incident artifact's positive claim 'AMBIGUITIES.md ... no marker exposure' is false against tree bytes, with the prevention procedure violated a second time by the A9-F cherry-pick. Under the conjunctive rule this is FOREX_FREE_V4_S0_LAUNCH_REFUSED (plan label FOREX_FREE_V4_BLOCKED_PRELAUNCH). The block is narrow and cheap to clear: a deliberate marker resolution in two markdown files, an incident-record correction, and a re-verified commit — after which a delta audit can authorize without re-running the deep checks (all hashes/digests/twins re-verified here remain valid for the untouched artifacts). The two LOW observations (F-A7-2, F-A7-3) are non-blocking hardening notes for A1's launch mechanics.",
+ "blocking_count": 1,
+ "unresolved_high_critical": 0,
+ "limitations": [
+  "data_raw/ is gitignored: data bytes were audited in the integration worktree (the operative run tree) and cross-checked byte-identical against the r-reproduce twin; the audit worktree carries identical git-tracked control/ledger/asset bytes.",
+  "audit-only: no scored cell computed, no PnL evaluated, no repair performed anywhere; dry-run reports and ledgers were read, not re-executed (the twin replay byte-identity was verified from the committed artifacts and their dryrun_tmp files).",
+  "AUDIT_HANDOFF.md is replaced by this audit's handoff (my designated deliverable), which removes one of the two F-A7-1 marker exposures going forward; the AMBIGUITIES.md exposure remains at audited_head because it is outside the audit write boundary.",
+  "pytest executed only for the two targeted regression tests (2 passed); the full-suite claim (1562/1562) in the W4 freeze was NOT re-executed by A7 — it is A1's recorded gate evidence, consistent with commit messages and the freeze artifact.",
+  "probe files under research/audits/forex_free_v4/ (probe_data_paths.json, scored_refusal_probe.json) are this audit lane's evidence artifacts; scored_refusal_probe.json was regenerated by A7 this session from live re-runs."
+ ],
+ "artifacts": {
+  "scripts": [
+   "research/audits/forex_free_v4/scripts/a7_c1_freeze_chain.py",
+   "research/audits/forex_free_v4/scripts/a7_c3_data_pit.py",
+   "research/audits/forex_free_v4/scripts/a7_c6_gate_probe.py"
+  ],
+  "probes": [
+   "research/audits/forex_free_v4/scored_refusal_probe.json",
+   "research/audits/forex_free_v4/probe_data_paths.json"
+  ],
+  "handoff": "research/audits/forex_free_v4/AUDIT_HANDOFF.md"
+ }
+}
