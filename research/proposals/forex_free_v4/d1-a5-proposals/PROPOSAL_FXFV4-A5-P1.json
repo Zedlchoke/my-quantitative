@@ -1,0 +1,316 @@
+{
+  "schema": "forex_free_v4_proposal_packet_v1",
+  "proposal_id": "FXFV4-A5-P1",
+  "family_id": "FXFV4-A5-P1",
+  "lane": "A5_blind_proposal_lane_axis2",
+  "axis": "2_inflation_real_rate_structure",
+  "cycle_id": "FOREX-FREE-V4",
+  "wave_sha": "3cf818b566d5de75e147585686a6288cac597f3a",
+  "title": "Ex-post real-rate differential median-cross drift (Fisher-open / Frankel real-interest-differential class)",
+  "packet_status": "DATA_BLOCKED",
+  "data_blocked": true,
+
+  "blocker": {
+    "blocking_series": [
+      {
+        "series": "cpi_bis_ws_long_cpi",
+        "authority_status": "STAGED_NOT_CITABLE (research/control/forex_free_v4_run/p2_data_authority_v4.json)",
+        "gap": "per-print availability evidence NOT WIRED; the probe (M.AU, 92 monthly obs 2018-11..2026-06, keyless sdmx-json v2 API) establishes the series exists, not when each print became publicly available",
+        "consequence": "any CPI vintage read in this packet is currently AGENT_ASSUMPTION_UNAUTHORIZED (P-1)"
+      },
+      {
+        "series": "cpi_ecb_icp",
+        "authority_status": "NOT_FUNDED (partner areas US/JP/GB/CH/CA/AU/NZ not covered for the window)",
+        "gap": "coverage, not evidence",
+        "consequence": "unavailable as an alternative inflation source for the 7-pair universe"
+      }
+    ],
+    "citable_side_of_the_mechanism": "policy-rate leg (BIS WS_CBPOL evidenced vintages, pinned ledger ae5e1f2e...: 220 rows, 108 EVIDENCED, per-row precision INSTANT [AU, US] or DAY [NZ, CH, GB, JP], conservative LATER bound elsewhere) is citable TODAY; the inflation leg is not, so the real differential cannot be constructed",
+    "exactly_what_evidence_makes_it_citable": {
+      "action": "extend the announcement ledger append-only with one row per CPI print per area (US, EMU, GB, JP, CH, CA, AU, NZ), each row carrying: release_id, reference_price_month, announcement_date, announcement_time_utc, precision in {INSTANT, DAY}, operative_available_time_utc, archive_path + archive_sha256 of an OFFICIAL static listing of that specific release (national statistical agency release calendar or release page: BLS [US CPI], ONS [GB], ABS [AU], Stats NZ [NZ], Statistics Canada [CA], Swiss FSO [CH], Statistics Bureau of Japan [JP], Eurostat [EMU HICP flash]; BIS static release-calendar pages acceptable where the national calendar is not keyless-static), status EVIDENCED; rows never eligible on a date earlier than their evidenced stamp; no inferred stamps anywhere (P-1)",
+      "precision_class_required": "INSTANT where an official publish timestamp is evidenced from the official source; DAY where only the release date is evidenced (conservative LATER bound: operative_available at end of the announcement UTC day, never earlier)",
+      "then": "re-pin the ledger, regenerate evidenced CPI vintages through the inherited vintage pipeline with the only-availability-differs invariant, re-run the P2 data-authority gate, and upgrade cpi_bis_ws_long_cpi from STAGED_NOT_CITABLE to EVIDENCED_CITABLE with funded coverage 2019-01..current for all 8 areas"
+    },
+    "expected_interpretation_when_unblocked": "this memo is the pre-registration; if unblocked, the family runs in a future owner-authorized cycle EXACTLY as frozen here (no parameter changes, no window tweaks); this packet contributes one preregistered family to the FOREX_FREE_V4_BLOCKED_DATA_OR_SELECTION candidate set, and its own falsifiable prediction stands whatever the outcome",
+    "not_a_request_for": "any assumed publication lag, any retrieval-time substitution, any broadened interpretation of an official claim (P-1), or any new vendor/source signup"
+  },
+
+  "mechanism_class": "real_rate_differential_drift_fisher_open_class",
+  "mechanism": {
+    "statement": "Currencies whose EX-POST REAL short rate (effective policy rate minus the most recently published year-over-year CPI inflation) sits above their counterpart's by a threshold band relative to its trailing one-year median tend to APPRECIATE over the following 20 sessions (capital-attracted-to-real-yield channel; sticky-price Frankel dynamics). The tradeable signal is the real differential, not the nominal differential: the inflation leg enters with the OPPOSITE sign to the policy-rate leg.",
+    "construction": {
+      "pair_area_map": {
+        "EUR/USD": ["EMU", "US"],
+        "GBP/USD": ["GB", "US"],
+        "AUD/USD": ["AU", "US"],
+        "NZD/USD": ["NZ", "US"],
+        "USD/JPY": ["US", "JP"],
+        "USD/CHF": ["US", "CH"],
+        "USD/CAD": ["US", "CA"]
+      },
+      "real_rate_r(area,t)": "i_eff(area, t) - cpi_yoy_latest_available(area, t), annualized percentage points",
+      "i_eff": "BIS WS_CBPOL effective policy rate read from the evidenced vintage as-of decision time t (vintage pipeline fed by pinned announcement ledger ae5e1f2e..., LEDGER_PINNED in research/control/forex_free_v4_run/)",
+      "cpi_yoy_latest_available": "most recent YoY CPI print of the area whose evidenced availability stamp (operative_available_time_utc) is <= decision time t; read exactly once from the evidenced vintage; replay never",
+      "differential_D(pair,t)": "r_real(base_area,t) - r_real(quote_area,t)",
+      "normalizer_M(pair,t)": "trailing 252-session median of D(pair, .) computed on the same as-of evidenced reads",
+      "activation_floor_F": "0.25 percentage points (single frozen value)",
+      "state_rule": "LONG base vs quote when D >= M + F; SHORT base vs quote when D <= M - F; flat when |D - M| < F"
+    },
+    "why_this_is_NOT_a_policy_carry_relabel": "a carry mechanism conditions on sign(i_base - i_quote); this mechanism conditions on sign((i_b - i_q) - (pi_b - pi_q)). The two disagree whenever |pi_b - pi_q| moves the differential across the band: e.g. JP vs US through 2022-2024 had i_us > i_jp (carry LONG USD) while realized US inflation exceeded Japanese inflation for much of that window, compressing or reversing the real differential. The preregistered placebo control (inflation-sign inversion) makes the disagreement measurable: if anchor and control decision sets are near-identical, the inflation channel is inert and the family fails. A7-N is asked to measure anchor rank correlation against BOTH V3 family2 anchor variants (as-scored and evidenced-availability corrected books); this packet expects a materially sub-1 rho in the inflation-divergent subperiods and discloses that the policy-rate leg is shared machinery, not the claimed signal.",
+    "no_parameter_grid": true,
+    "single_frozen_parameter_set": {
+      "median_window_sessions": 252,
+      "activation_floor_pp": 0.25,
+      "holding_sessions": 20
+    }
+  },
+
+  "falsifiable_prediction": {
+    "primary": "Positions taken per the state rule above have strictly positive after-cost expectancy on the financing-adjusted book (mean PnL per trade > 0 at base costs 1.5 bps per fill), over the full 2019-01..2026-09 scored window and in at least 2 of 3 forced-flat time folds.",
+    "falsified_if_any": [
+      "anchor fin-adj expectancy <= 0 at base tier",
+      "profit factor < 1.10",
+      "fewer than 2 of 3 populated folds positive",
+      "stress tier 1.5 or tier 2.0 book (multipliers applied to booked stress PnL) negative",
+      "placebo control (inflation-sign-inverted differential) reproduces the anchor's Stage-A gate outcome and >= 90% decision overlap -> inflation channel judged non-causal"
+    ],
+    "quantitative_direction_claim": "E[currency return over 20 sessions | real differential above trailing median by >= 0.25 pp] > 0 after 3.0 bps round-trip cost, and the claim is specifically NOT explained by the nominal-differential component (tested by the placebo control arm)"
+  },
+
+  "literature": [
+    {
+      "citation": "Frankel, J.A. (1979), 'On the Mark: A Theory of Floating Exchange Rates Based on Real Interest Differentials', American Economic Review 69(4), 610-622",
+      "role": "names the mechanism class: real (not nominal) interest differentials drive exchange rates under sticky prices; predicts appreciation of the high-real-rate currency",
+      "confidence": "confident exists"
+    },
+    {
+      "citation": "Fisher, I. (1930), The Theory of Interest, Macmillan",
+      "role": "real-rate construction i - pi; nominal anchor of the differential",
+      "confidence": "confident exists"
+    },
+    {
+      "citation": "Meese, R.A. and Rogoff, K. (1983), 'Empirical exchange rate models of the seventies: Do they fit out of sample?', Journal of International Economics 14(1-2), 3-24",
+      "role": "sober prior: fundamentals including interest differentials historically fail to beat a random walk out of sample; motivates the honest expectation that the expectancy margin may be thin or negative",
+      "confidence": "confident exists"
+    },
+    {
+      "citation": "Mark, N.C. (1995), 'Exchange Rates and Fundamentals: Evidence on Long-Horizon Predictability', American Economic Review 85(1), 201-218",
+      "role": "differential-class predictability improves at long horizons; supports choosing a 20-session-plus holding window as the shortest honest test rather than intraday clocks",
+      "confidence": "confident exists"
+    },
+    {
+      "citation": "Engel, C. and West, K.D. (2005), 'Exchange Rates and Fundamentals', Journal of Political Economy 113(3), 485-517",
+      "role": "present-value framing: exchange rates respond to expected future fundamentals; small short-horizon R2 is consistent with the mechanism while bounding expected per-trade effect size",
+      "confidence": "confident exists"
+    },
+    {
+      "citation": "Cheung, Y.-W., Chinn, M.D. and Pascual, A.G. (2005), 'Empirical exchange rate models of the nineties: Are any fit to survive?', Journal of International Money and Finance 24(7), 1150-1175",
+      "role": "modern replication of the Meese-Rogoff exercise; no robust fundamental model survivor, further bounding priors",
+      "confidence": "confident the paper exists; volume/page numbers from memory [unverified-precision]"
+    }
+  ],
+
+  "pit_observable": {
+    "note": "every conditioning row must carry an evidenced stamp or the conservative LATER bound; asserted bounds never authorized (P-1). As of this packet's date NO CPI row exists, hence data_blocked = true.",
+    "conditioning_series": [
+      {
+        "series": "BIS WS_CBPOL effective policy rates, areas US/EMU/GB/JP/CH/CA/AU/NZ",
+        "evidence_class": "EVIDENCED_CITABLE today: pinned announcement ledger ae5e1f2e (220 rows; 108 EVIDENCED; precision INSTANT for AU and US, DAY for NZ/CH/GB/JP; remaining rows conservative LATER-bound AVAILABILITY_UNEVIDENCED and only ever read at the later bound); evidenced vintages regenerated P0a with only-availability-differs invariant",
+        "status": "citable"
+      },
+      {
+        "series": "BIS WS_LONG_CPI YoY CPI inflation, areas US/EMU/GB/JP/CH/CA/AU/NZ",
+        "evidence_class_required": "per-print official release-calendar evidence, precision INSTANT (official publish timestamp evidenced) or DAY (date-only evidenced, operative at end of announcement UTC day, never earlier); one ledger row per print with archive hash",
+        "status": "BLOCKED - NOT WIRED (p2_data_authority_v4.json); any read before the extension lands is AGENT_ASSUMPTION_UNAUTHORIZED"
+      },
+      {
+        "series": "FX daily bars, 7-pair authorized snapshot",
+        "evidence_class": "authorized price snapshot, byte-replayed 152/152 (P2 authority); used for prices, medians, USD benchmark and execution only",
+        "status": "citable"
+      }
+    ],
+    "decision_clock": {
+      "class": "DAILY (structural rule: daily or slower)",
+      "event": "16:00 America/New_York every FX session, DST-aware (20:00 UTC in EDT, 21:00 UTC in EST; same convention as ledger first_readable_decision_utc stamps)",
+      "read_rule": "at each decision event the family reads each conditioning series exactly once, as-of that event's evidenced availability stamps; observed-once / replay-never"
+    }
+  },
+
+  "universe": {
+    "pairs": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "justification": "the authorized 7-pair universe, verbatim from the run contract; no subset selection, no additions",
+    "notional_usd_unit": 10000
+  },
+
+  "warmup": {
+    "fx_sessions": 252,
+    "macro": ">= 13 monthly evidenced CPI prints per area AND full policy-rate ledger baseline coverage per area (all 8 baselines evidenced in the pinned ledger)",
+    "argument": "252 sessions is the median window; 13 prints is the minimum for a stable latest-available YoY read without tying the start date to a specific print's availability",
+    "scored_window": "first decision after warmup completes through 2026-09 last session"
+  },
+
+  "holding_period": {
+    "sessions": 20,
+    "exit_conditions": "expiry at 20 sessions OR opposite-band touch at a decision event (D crosses M to the opposite side), whichever first; exit fill next session",
+    "forced_flat": "any position open at a fold boundary is force-flat at the boundary's last session close, per inherited convention"
+  },
+
+  "entry_exit_rules": {
+    "entry": "at a decision event, when flat: enter per the state rule (LONG base when D >= M + 0.25pp; SHORT base when D <= M - 0.25pp); when already positioned in the same direction, hold (no re-entry churn); when the band flips, exit and allow opposite entry on the same signal",
+    "exit": "per holding_period exit conditions; fill next session",
+    "one_position_per_pair": true,
+    "no_reentry_same_session": true
+  },
+
+  "fill_convention": {
+    "fill": "next-session bar: every entry/exit fills on the first FX session bar strictly AFTER the decision event's 16:00-NY timestamp",
+    "validator_constraint": "if no session starts within 4 calendar days of the decision event, the decision is recorded INVALIDATED_NO_SESSION and receives NO fill (never filled late) - the 4-day next-session validator constraint is satisfied by construction, and no arm (including controls) can emit a fill that violates the one-event-lag rule because every decision already lags its conditioning reads by at least one full session (16:00-NY decision -> next session open)",
+    "no_lookahead": "conditioning reads use only vintages whose evidenced availability stamp precedes the decision event"
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV4-A5-P1:anchor",
+      "spec": "mechanism as constructed above, single frozen parameter set",
+      "decisions": "daily 16:00-NY on every FX session in the scored window"
+    },
+    "neighbour": {
+      "arm_id": "FXFV4-A5-P1:neighbour",
+      "one_presumption_away": "normalization presumption only: replace trailing-median + fixed-floor activation with trailing 252-session z-score activation (enter when |z| >= 0.5, direction by sign of z)",
+      "spec": "identical real-differential construction, identical holding/exit/fills",
+      "gate_role": "neighbour supports the anchor if its gate-relevant diagnostics are directionally consistent (neighbour need not pass every gate; the Stage-A 'neighbour supports' gate is judged on rank-agreement of per-pair expectancy signs)"
+    },
+    "control": {
+      "arm_id": "FXFV4-A5-P1:causal_placebo_control",
+      "role": "placebo-style causal control isolating the inflation channel",
+      "spec": "identical machinery EXCEPT the CPI term enters with inverted sign: D_placebo = (i_b + pi_b) - (i_q + pi_q) = nominal differential + inflation differential (algebraically D + 2*(pi_b - pi_q)); all availability semantics, fills, holding, costs identical",
+      "preregistered_non_reproduction_rule": "the control must (i) produce decision sets differing from the anchor in at least 3 of 7 pairs by at least one entry date each, AND (ii) not pass the anchor's full Stage-A gate set. If the control reproduces the anchor's pass/fail status with >= 90% decision overlap, the inflation channel is judged non-causal and the family FAILS regardless of the anchor's raw PnL",
+      "runs_to_completion_guarantee": "the control uses the same evidenced reads, same legal vintage semantics, same next-session fills - its book executes under exactly the validator constraints as the anchor; no refused-by-construction arm anywhere in this packet (V3R lesson FX-C4/P-3)"
+    },
+    "incremental_benchmark": {
+      "role": "incremental-alpha benchmark treatment",
+      "arm_id": "FXFV4-A5-P1:usd_drift_63d_benchmark",
+      "spec": "usd_drift_63d_benchmark_v1: at each decision event, hold every pair in the sign of the trailing 63-session USD index drift (USD index computed in-runner from the authorized 7-pair snapshot, inherited H2 fix), 20-session holding, identical fills and costs"
+    }
+  },
+
+  "incremental_test": {
+    "frozen_benchmark_treatment": "usd_drift_63d_benchmark_v1",
+    "alpha_definition": "a5_realrate_per_pair_day_normalized_v1: expectancy(anchor, fin-adj, per pair per day in position) - expectancy(benchmark, fin-adj, per pair per day in position), aggregated pair-weighted; gate: overall incremental alpha > 0",
+    "rationale": "the natural confounder of a US-centric real-rate signal is USD itself; the USD-drift benchmark absorbs direction bias so the gate tests information beyond USD momentum",
+    "dual_book": "financing-adjusted book governs; price-only book reported and must not invert sign"
+  },
+
+  "costs": {
+    "base_bps_per_fill": 1.5,
+    "charging": "once per fill (entry and exit each charged), inherited accounting kernel",
+    "round_trip_base_bps": 3.0,
+    "stress_tiers": [1.0, 1.5, 2.0],
+    "application": "F1-fixed: stress multipliers applied to BOOKED stress PnL (proportional scaling of each trade's booked PnL), never to gross assumptions",
+    "tier_is_primary_gate": "STRESS_TIER_2.0 is a primary Stage-A gate, not an appendix",
+    "break_even_bps": "break-even bps per fill reported per cell (fin-adj expectancy zero-cross in bps), mandatory",
+    "no_cost_exemption": true
+  },
+
+  "turnover_and_sample_floor": {
+    "definition_of_decision": "one evaluation per pair per FX session at 16:00-NY; a trade = one entry fill + one exit fill",
+    "expected_decisions_per_arm": "approximately 1750 per pair (2019-01..2026-09 minus 252-session warmup), 7 pairs",
+    "expected_trades": {
+      "anchor": "6-14 band crossings per pair over the sample -> 42-98 anchor trades; band estimate, not a promise",
+      "control": "similar magnitude by construction (same band mechanics on a differently-shifted differential)",
+      "benchmark": "approximately 84 (daily refresh, 20-session holding, 7 pairs)"
+    },
+    "sample_floor": {
+      "min_populated_anchor_trades_full_sample": 60,
+      "fold_population": "every fold must contain >= 12 populated anchor trades or the fold is recorded NOT_POPULATED and fails the fold gate",
+      "min_decisions_per_arm": 100,
+      "band_caveat": "crossing counts depend on the (currently unwired) CPI path; if the realized count lands below the floor the recorded verdict is SAMPLE_FLOOR_FAIL with no parameter rescue"
+    }
+  },
+
+  "folds_plan": {
+    "scheme": "3 equal chronological time folds, force-flat at boundaries, purge gap = 20 sessions (one holding period) between folds",
+    "stage_a_note": "gate: >= 2 of 3 populated folds positive (fin-adj); fold-positive share reported"
+  },
+
+  "drop_one_design": {
+    "drop_one_pair": {
+      "procedure": "7 refits, one per pair dropped, anchor only, frozen parameters untouched",
+      "gate": "dropout survival >= 6 of 8 scenarios (inherited V3 M1-DEV binding: 7 pair-drops + best-fold-drop)",
+      "interpretation": "a family that needs any one pair to pass is pair-concentrated and fails; the dropped pair identity is recorded, never acted on"
+    },
+    "drop_one_fold": {
+      "procedure": "8th scenario drops the best fold",
+      "gate": "survival counted in the same 6-of-8 denominator",
+      "interpretation": "single-fold dependence is recorded as fragility, margin-to-fail reported"
+    }
+  },
+
+  "failure_interpretation": {
+    "expectancy_nonpositive": "the real-differential drift is absent at the 20-session horizon under evidenced availability on this universe/window; consistent with Meese-Rogoff; no rescue by threshold, window, clock or pair changes",
+    "pf_below_1.10": "edge, if any, is too small against 3.0 bps round-trip; recorded as cost-dominated",
+    "stress_tier_fail": "economics exist only at unstressed costs - explicitly not a survivor (V3R lesson)",
+    "control_reproduces_anchor": "the inflation channel is non-causal: the machinery is a nominal-differential mechanism wearing a real-rate label; family fails the causal gate even if profitable, and the finding is recorded as an axis-1 contamination observation, not a rescuable PnL",
+    "sample_floor_fail": "insufficient signal events; family unscored-on-substance, recorded NOT_PROMOTABLE for data-scarcity, a distinct verdict from a scored rejection",
+    "mdd_or_concentration_fail": "risk-shape violation independent of profitability; no override"
+  },
+
+  "source_to_test_map": [
+    {"source": "pinned announcement ledger ae5e1f2e (LEDGER_PINNED)", "test": "ledger re-hash equality at implementation freeze; PIT read test: no decision uses a rate before its evidenced stamp (availability-lag mutation test: shifting stamps forward must change books, shifting backward must be impossible)"},
+    {"source": "CPI evidenced vintages (to be generated on unblock)", "test": "only-availability-differs invariant vs raw series; per-print availability-lag mutation test per area"},
+    {"source": "FX 7-pair snapshot", "test": "byte-replay 152/152 identity; DST 16:00-NY calendar invariants (test_data_authority_v3.py)"},
+    {"source": "accounting kernel", "test": "cost once per fill; stress multipliers reach booked stress PnL (regression inherited from P1 phase)"},
+    {"source": "placebo control arm", "test": "control-runs-under-evidenced-semantics gate: the control book must execute (nonzero decisions) - a refused/empty control book is a DESIGN FAILURE, not a pass"},
+    {"source": "drop-one + folds + benchmark arms", "test": "8-scenario dropout harness, 3-fold force-flat harness, benchmark twin mechanics per inherited scored_runner conventions"}
+  ],
+
+  "margin_to_fail_expectations": {
+    "stated_ex_ante": true,
+    "note": "no PnL exists at D1 (outcome-blind lane); these are priors over gate margins, frozen so post-hoc surprises are legible",
+    "per_gate": {
+      "expectancy_gt_0_fin_adj": "HIGH FAILURE RISK: real-differential effects documented in the literature are horizon-dependent and historically small at 20 sessions; plausible ex-ante drift band 0-5 bps per trade vs 3.0 bps round-trip cost -> margin expected inside one standard error",
+      "pf_ge_1.10": "knife-edge risk, same reason",
+      "folds_2of3_positive": "moderate risk; real-yield-capture profitability clusters in tightening cycles (2022-23) versus easing (2019-21), so fold heterogeneity is expected",
+      "mdd_within_frozen_ceiling": "LOW risk: 20-session FX holds at unit notional across 7 pairs historically fit inherited ceilings",
+      "fold_positive_share_le_50": "reported, LOW risk",
+      "pair_concentration_within_ceiling": "LOW risk: signal is cross-sectional by construction (every pair conditions on its own differential)",
+      "stress_tier_1.5": "HIGH failure risk given thin base margins (tier multiplies booked PnL; a +1.5 bps mean becomes net-negative under x1.5 loss scaling on losers)",
+      "stress_tier_2.0_PRIMARY": "HIGH failure risk - the most likely single gate to kill this family; ex-ante arithmetic: if base expectancy < 3.0 bps/trade the doubled-loss tier book is negative (the exact shape that invalidated V3 family2)",
+      "drop_one_6of8": "moderate risk; USD-leg pairs may dominate (US appears in 7 of 7 area maps as base or quote)",
+      "usd_drift_within_bounds": "LOW risk; benchmark arm absorbs the shared USD component by construction",
+      "incremental_alpha_gt_0": "moderate-to-high risk: 2022-23 Fed cycle may align the real signal with USD momentum, shrinking the benchmark-adjusted edge",
+      "neighbour_supports": "HIGH expected support (same mechanism, normalization variant only)",
+      "control_does_not_reproduce": "moderate confidence the control differs (2021-23 inflation differentials were large); this is also the gate where the family's honesty is tested",
+      "reproduction_ALL_MATCH": "LOW risk; read as self-consistency only (P-4)",
+      "zero_unresolved_HIGH_CRITICAL": "implementation-phase dependent, not ex-ante estimable"
+    },
+    "overall_prior": "given Meese-Rogoff priors and frozen stress arithmetic, the modal ex-ante outcome is a scored negative or a tier-gate kill; that is an acceptable and reportable result per P-6"
+  },
+
+  "constraint_compliance": {
+    "decision_clock_daily_or_slower": true,
+    "seven_pair_universe_only": true,
+    "frozen_cost_authority_respected": "1.5 bps x {1.0, 1.5, 2.0}, no exemption",
+    "no_new_data_sources": "only already-adopted keyless sources (BIS WS_CBPOL adopted; BIS WS_LONG_CPI already staged per P2 authority; national agency static calendars used ONLY as evidence artifacts in the existing ledger pattern, no new vendor, no key, no purchase)",
+    "no_scored_computation_in_D1": true,
+    "nothing_modified_outside_lane_directory": true,
+    "s1_untouched": true
+  },
+
+  "novelty_self_check": {
+    "vs_V1_family1_session_open_momentum_continuation": "no session clocks, no intraday structures - daily 16:00-NY macro conditioning; disjoint",
+    "vs_V1_family2_late_NY_extension_fade": "no extension/fade machinery; disjoint",
+    "vs_V2_family1_tokyo_compression": "no range/compression machinery; disjoint",
+    "vs_V2_family2_london_am_break": "no breakout machinery; disjoint",
+    "vs_V3_family1": "V3 family1 was a momentum+drift-gated structure (rejected on expectancy); this packet has no price-momentum term; disjoint in signal, shares only the daily clock",
+    "vs_V3_family2_invalidated": "V3 family2 = realized-vol-gated NOMINAL policy-differential carry. This packet differs in signal construction (real differential nets inflation against rates; sign flips in identifiable states), has no volatility gate, and adds the causal placebo that separates the inflation channel. DISCLOSED RISK: the policy-rate leg is shared machinery; A7-N must measure rank correlation against BOTH the as-scored and evidenced-corrected V3 family2 anchor books; this packet is NOT a Section 1.1 front-door re-entry (that door belongs to the carry axis) and accepts veto if A7-N finds the inflation term inert (rho ~ 1 after conditioning)",
+    "vs_naive_carry": "signable disagreement states exist (see mechanism.why_this_is_NOT_a_policy_carry_relabel); the placebo arm measures exactly this",
+    "rescue_operations": "none: no threshold, window, clock, pair-subset, sign-inversion or cost relief is available to this family under any outcome"
+  },
+
+  "outcome_blind_attestation": {
+    "statement": "I, lane agent A5 (blind proposal lane, axis 2), designed this packet before any FOREX-FREE-V4 outcome exists. I have not opened scored_ledger_published.jsonl, v3r_records.jsonl, v3r_recompute_report.json, decision_diff_table.json, SURVIVORS.md, or any sibling lane worktree. No per-arm outcome data was consulted; all margin statements are ex-ante priors. This packet would be byte-identical if every cell in the program's history had scored zero.",
+    "signed": "A5_FOREX_V4_BLIND_LANE_AXIS2",
+    "written_before_scoring_utc": "2026-09-05T04:11:57Z"
+  }
+}
