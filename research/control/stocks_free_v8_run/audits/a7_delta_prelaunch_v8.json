@@ -1,0 +1,128 @@
+{
+ "schema": "stocks_free_v8_run/a7_delta_prelaunch@1",
+ "audit_id": "A7-DELTA-PRELAUNCH-V8",
+ "auditor": "A7 (independent prelaunch auditor, detached twin r-reproduce-t1-w2)",
+ "audited_at_utc": "2026-09-05T06:55:00Z",
+ "supersedes_context": "delta re-audit of the 8 findings in a7_prelaunch_v8.json (verdict NO_GO_BLOCKED_PRELAUNCH at d908ab5); W1 freeze superseded, kept as SUPERSEDED_BLOCKED evidence",
+ "audited_head": "66c2cacb35eaee7d4571a8c55a6f0ee22d848573 (W2 control seal; code tree byte-identical to code freeze 8c6c4c019a4cc21e6f4eb346fa56709269771928)",
+ "method": "recomputed from bytes in twin r-reproduce-t1-w2; staged data read by absolute path from integration .staging_sec_v8/.staging_prices_v8 via V8_WT_ROOT; nothing modified except this artifact; no scored computation performed (refusal paths only)",
+ "delta_items": [
+  {
+   "item": 1,
+   "delta": "F-A7-1 CRITICAL per-name indexing",
+   "status": "PASS",
+   "evidence": {
+    "independent_rerun": "re-ran ALL SIX arms myself (dry_run=True, twin code 8c6c4c0, integration staging data): eligible/populated/legs now NON-ZERO at 100% of scored decisions for every arm - zero zero-leg scored decisions (W1: 78/78 zero). Reproduced medians EXACTLY equal to the committed evidence: eligible 405 all arms; populated 139/177/180/268/310/328; legs 97/120/130/196/220/229. Minima across all scored decisions: eligible >= 389, legs >= 59.",
+    "indexing": "load_prices builds per-name pos maps {date: own_index}; grep confirms day_pos (global) is used ONLY for fold/grid structure (lines 390-392, 436-437); every per-name array access goes through p['pos'].get(...) (lines 398, 447, 448). No day_pos misuse inside per-name loops.",
+    "convention_crosscheck": "per-name 63-session ADV window validated against frozen p2 boundary bands: ABT ADV63 @2018-04-04 = 403221309.0 == p2 boundary_bands.start EXACTLY (band A).",
+    "structural_records": "exactly 3 FOLD_FORCE_FLAT records per arm with positive turnover, excluded from decisions/scored counts (78 and 74/26/26/26 floors preserved)"
+   }
+  },
+  {
+   "item": 2,
+   "delta": "F-A7-2 non-vacuity gate binds",
+   "status": "PASS",
+   "evidence": {
+    "committed_block": "q_dummy_dryrun_evidence.json now carries nonvacuity_fba72 with median_eligible/median_populated/median_legs per arm and gate nonvacuous = median_eligible >= 100 AND median_legs >= 20; overall verdict is DRY_RUN_FAIL unless all six arms are nonvacuous (driver lines 113-131)",
+    "mutation_demo": "mutated an in-memory COPY of my re-run schedule with legs=0 and recomputed with the driver's own formula: median_legs=0 -> nonvacuous=False -> would produce DRY_RUN_FAIL. The gate actually binds; it is not decorative.",
+    "floors_scope": "floors now exclude FOLD_FORCE_FLAT records (driver line 78), closing the W1 counting ambiguity"
+   }
+  },
+  {
+   "item": 3,
+   "delta": "F-A7-3 USD unit filter",
+   "status": "PASS",
+   "evidence": {
+    "code": "load_panel(fields, unit='USD') drops rows with u != 'USD' at load (runner lines 110-124); signal_value guards entities whose field keys vanish after the filter (unpopulated, not crash)",
+    "consumers": "v8_q_driver calls r.load_panel(fields) with the default unit='USD' for all six arms - no non-USD path exists",
+    "exclusion_measured": "us-gaap:AccountsReceivableNetCurrent: 30,967 USD rows kept / 98 non-USD rows excluded (streamed recount); load_panel kept = 30,967 exactly"
+   }
+  },
+  {
+   "item": 4,
+   "delta": "F-A7-4 ratio eff-agreement + F-A7-7 per-field eff-gap",
+   "status": "PASS",
+   "evidence": {
+    "ratio_agreement": "ratio_level now rejects when |num.eff - den.eff| > 400 days (runner lines 261-264) - matches a4_h2 'selected eff dates within 400 days of each other (else unpopulated)'",
+    "per_field_gap": "accrual_flow now enforces 330 <= eff-gap <= 400 for EACH of the AR, INV, AP leg pairs independently (runner lines 226-232) - matches a4_h1 fiscal-type match; W1 checked only the AR leg",
+    "PIT_unchanged": "asof gate avail_date < decision_date (strict) and age bounds unchanged from the W1-correct semantics; canonical session_gate_utc equivalence re-affirmed"
+   }
+  },
+  {
+   "item": 5,
+   "delta": "F-A7-5 stress path + F-A7-6 fold-close cost + F-A7-8 own-band closes",
+   "status": "PASS",
+   "evidence": {
+    "stress": "run_arm(stress=False) param; cost_mult = 2.0 if stress (line 371); stress scored runs pass through the SAME owner-GO gate - refusal re-proven with dry_run=False, owner_go='WRONG', stress=True => SystemExit",
+    "fold_close": "at each fold end: close_cost = sum |w_n| * BAND_BPS(band_n) * cost_mult / 1e4 subtracted from fold_pnls[-1] when scored; held={} and prev_w={} reset (runner lines 470-485). Behavioral proof from real data: first decision of S0_FOLD_2 and S0_FOLD_3 has turnover EXACTLY 1.0 (full gross re-opened from flat) vs mid-fold 0.06-0.07 - state reset and full open cost verified",
+    "own_band_closes": "bands dict is computed for EVERY name with 63 bars through d BEFORE the floor is applied (runner lines 393-403), so close legs of names failing the current floor are still costed at their own band; band-A fallback is now reachable only for a changed name lacking 63 bars at d (delisted-mid-fold edge) - recorded as LOW residual L-D2"
+   }
+  },
+  {
+   "item": 6,
+   "delta": "regression full pytest alone",
+   "status": "PASS",
+   "evidence": {
+    "command": ".venv/bin/python -m pytest -q in twin r-reproduce-t1-w2",
+    "result": "2134 passed, 5 skipped in 84.48s, exit 0 - matches w2_freeze.json claim (2134/5) exactly",
+    "workers": "0 foreign heavy jobs verified before launch (ps scan: only 0%-CPU editor helpers); no resource conflict, no NOT_RUN required"
+   }
+  },
+  {
+   "item": 7,
+   "delta": "INC-3 faithfulness + no preregistered parameter change",
+   "status": "PASS",
+   "evidence": {
+    "inputs_unchanged": "git diff d908ab5..66c2cac on proposals/, p3_invariants_freeze.json, selection_freeze.json: ALL BYTE-IDENTICAL; the six arm_config_digests are IDENTICAL to the W1 evidence (specs untouched); grid 63+21k, warmup-4 (F1)/0 (F2), tercile 1/3, hysteresis 0.10, MIN_SECTOR_NAMES 6, band bps 10/15/25, folds - all byte-verified unchanged in code",
+    "INC_3a": "global-vs-per-name index root cause: verified (W1 defect reproduced by me in the W1 audit; fix verified here)",
+    "INC_3c": "tuple-order bug: W1 code had ranks={k:(pct, sector)} vs target_book's (sec, pct) unpacking - confirmed present at d908ab5 (git show line 409) and fixed at 8c6c4c0 (line 417); register accurate",
+    "INC_3b": "two-defs shadowing episode: a PRE-COMMIT transient - not recomputable from committed bytes (committed file has exactly one 'def run_arm'; no commit ever contained two). Its recorded detector (non-vacuity gates failing loudly) is verified real and binding (item 2). Register faithful in every committed-byte-verifiable respect.",
+    "outcome_exposed": "INC-3 outcome_exposed=false verified consistent: no scored cell existed at any point (budget 0/6 throughout both audits)"
+   }
+  },
+  {
+   "item": 8,
+   "delta": "hard stop intact",
+   "status": "PASS",
+   "evidence": {
+    "go_gate": "runner lines 359-360 unchanged, first statement of run_arm, exact phrase 'GO STOCKS V8 SCORED EXECUTION', owner_go parameter-only; independently re-proven SystemExit on wrong phrase (plain AND stress)",
+    "budget": "state.json at 66c2cac: budget 0/6, owner_go null, counters historical 21/21, v8_observed 0",
+    "s1": "SEALED_UNTOUCHED at 66c2cac; delta range 8c6c4c0..66c2cac touches only 4 control files (no S1/foreign-cycle path); deployment NO_PAPER_NO_LIVE_NO_ORDERS",
+    "chain": "d908ab5 -> 8c6c4c0 -> 66c2cac ancestry verified (merge-base --is-ancestor exit 0 both); W2 twin tree byte-identical to 8c6c4c0 code"
+   }
+  }
+ ],
+ "findings": [
+  {
+   "id": "L-D1",
+   "severity": "LOW",
+   "finding": "Committed q_dummy_dryrun_evidence.json carries code_freeze_sha 62ec23f (the PRE-remediation seal commit) because it was generated from the remediated working tree before 8c6c4c0 was committed. Provenance label mismatch only: my independent re-run at the actual freeze 8c6c4c0 reproduces the committed medians, floors, and digests byte-exactly, so the evidence is validated for the frozen code.",
+   "blocks_launch": false
+  },
+  {
+   "id": "L-D2",
+   "severity": "LOW",
+   "finding": "Cost band fallback BAND_BPS.get(bands.get(n,'A'),10.0) remains reachable for a changed name lacking 63 bars at the decision (delisted mid-fold edge) - would silently cost at 10 bps. Unreachable for normal opens/closes (bands covers every name with 63 bars). Non-blocking; recommend fail-closed band resolution at next code touch.",
+   "blocks_launch": false
+  },
+  {
+   "id": "L-D3",
+   "severity": "LOW",
+   "finding": "INC-3(b) two-defs shadowing episode is a pre-commit transient, not recomputable from git bytes. All committed-byte-verifiable INC-3 claims verified (single def, tuple-order fix, non-vacuity detector real and binding); register accepted as faithful.",
+   "blocks_launch": false
+  }
+ ],
+ "resolution_of_prior_findings": {
+  "F-A7-1_CRITICAL": "RESOLVED (item 1)",
+  "F-A7-2_HIGH": "RESOLVED (item 2)",
+  "F-A7-3_HIGH": "RESOLVED (item 3)",
+  "F-A7-4_HIGH": "RESOLVED (item 4)",
+  "F-A7-5_HIGH": "RESOLVED (item 5)",
+  "F-A7-6_MEDIUM": "RESOLVED (item 5)",
+  "F-A7-7_MEDIUM": "RESOLVED (item 4)",
+  "F-A7-8_MEDIUM": "RESOLVED (item 5; LOW residual L-D2)",
+  "F-A7-9_LOW": "RESOLVED (recorded in incident_register; numbers binding from artifacts only)"
+ },
+ "unresolved_high_critical": 0,
+ "verdict": "STOCKS_FREE_V8_S0_LAUNCH_AUTHORIZED"
+}
