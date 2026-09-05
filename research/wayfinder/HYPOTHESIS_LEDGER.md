@@ -86,6 +86,19 @@ Stooq endpoint FAIL G3 (owner-measured), Massive dead-by-depth, Twelve Data
 Basic FAIL G3. Stocks stands dormant with no free path; re-opens only on an
 owner-entitled delisted-inclusive source.
 
+V8 activation addendum (2026-09-05, later): owner purchased EODHD "EOD
+Historical Data — All World" ($19.99/mo, monthly cancel) and placed the key
+in gitignored `.env`. **Six-gate probe: ALL PASS**
+(`stocks_free_v8_probe/eodhd_probe_verdict.json`) — gate 3 decisive: 5/5
+dead canaries with real history ending at exact death sessions (SIVB final
+bar 2023-03-09; TWTR final bar 2022-10-27; FRC/TWX/SIVBQ all correct) +
+59,923 delisted US symbols + 3/3 never-existed controls absent; CMG 50:1
+(2024-06-26) and TJX 2:1 (2018-11-07) reconcile with SEC-pinned facts plus 7
+bonus split signatures all correct; 0 OHLC violations/54,119 bars; double-pull
+3/3 byte-identical. **V8 cycle authorized to start** — fundamentals-conditioned
+discovery on the frozen 154 clocks; HARD STOP before first scored cell pending
+owner GO phrase.
+
 ## D. FOREX — G10 spot, 7 free-data pairs
 
 | Cycle | Family | Mechanism (short) | Outcome |
