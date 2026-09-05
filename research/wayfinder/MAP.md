@@ -2,6 +2,44 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS V9 CLOSED → `STOCKS_FREE_V9_REJECT_ALL`** (synced by Lead,
+  2026-09-06, branch `orca/stocks-free-v9-integration@3a61638`) — first
+  cycle on the death-inclusive universe (evidenced Form-15 census,
+  accession-union 3,395; dead-filer fundamentals extension; EODHD dead-name
+  pulls — the probe-proven delisted capability finally exercised). Single
+  eligible family SFV9-A4-H2 depletion-runway REJECT (PF 0.8095; control
+  Cash/Assets opposite-sign weak-positive — informative shadow recorded,
+  not rescuable); 5/6 proposals novelty-blocked vs the V8 shadow inventory;
+  A1 refused post-hoc pooling re-adjudication. Budget 3/6; stocks 30/30;
+  S1 sealed. Detail:
+  `.worktrees/stocks-free-v9/integration/research/control/stocks_free_v9_run/terminal_report.json`.
+- **CRYPTO V14 CLOSED → `V14_REJECT_ALL`** (2026-09-05, branch
+  `orca/v14-integration@183554a`) — A7 terminal APPROVED 0_FAIL; reproduction
+  ALL_MATCH at 874,334 leaf comparisons. PREMFADE-28D the near-miss of the
+  cycle: +0.700 net, PF 1.360, MDD 11.6%, rejected on fold concentration
+  0.5110 > 0.50 (marginal gate's third decisive kill). OICYC §1.1
+  confirmatory entry closed with status bound in every cell (no exploratory
+  recounting). First program DSR computed (0.00224 / 4.98e-07 over N=146 —
+  effectively zero); PBO NOT_RUN fail-closed (<8 configs). Crypto 143/146.
+  Detail: `.worktrees/crypto/v14/integration/research/control/v14_run/terminal_report_v14.json`.
+- **FOREX V4 CLOSED → `FOREX_FREE_V4_REJECT_ALL`** (2026-09-05, branch
+  `orca/forex-free-v4-integration@edba9bf`) — A7 terminal CONFIRM 8/8 from
+  bytes; 6/6 cells, zero TECHABORT, twin ledger pinned 65725edc.
+  Commodity-bloc risk-off whisper-positive (PF 1.0142, +0.675/trade) failing
+  every robustness bar; family2 negative. Carry front door CLOSED at D2 by
+  measured rho 0.997–1.000 vs both invalidated-ancestor variants. Two-key
+  launch protocol proven in production (frozen phrase gate refused the
+  19:48 shorthand; fresh exact-phrase GO 19:53). Inflation-axis classes
+  DATA_BLOCKED_VALID → carried into PLAN_forex_v5.md. Forex 24/24.
+- **STOCKS V8 CLOSED → `STOCKS_FREE_V8_REJECT_ALL`** (2026-09-05, branch
+  `orca/stocks-free-v8-integration@9557f59`) — first cycle on the
+  owner-entitled EODHD source (probe 6/6 PASS incl. delisted canaries);
+  both families FALSIFIED_BY_CONTROL (cluster instances #8/#9); cohort
+  honesty M-I1 honored (no delisted leg claimed). Stocks 27/27.
+- Program totals after all four closes (ledger authority, P-9): **197
+  published / 200 observed, 0 survivors, S1 SEALED everywhere** (crypto
+  143/146, stocks 30/30, forex 24/24).
+
 - **FOREX V3 CLOSED → V3R DATA_AUTHORITY_INVALIDATED** (synced by A1,
   2026-09-05, branch `orca/forex-free-v3r-integration@c356813`) — V3 locked
   FXFV3-A6-P1 (vol-gated policy-rate carry) provisionally pending evidenced

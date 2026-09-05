@@ -137,6 +137,23 @@ owner through the Lead and requests a FRESH, exact-phrase GO; early-typed
 GOs never authorize the first scored cell on their own. Any cycle closing
 before prelaunch kills its standing GO unconsumed.
 
+## P-9 — Terminal reports quote cross-asset totals as of THEIR intake; the ledger is the only cross-asset authority
+
+Source: the 2026-09-05/06 quad close (V4, V8, V14, V9 inside one day). V9's
+terminal printed program totals 185/188 — measured at its intake, before the
+sibling cycles published — while the true post-close totals were 197/200.
+Each A1 measures foreign cycles only at its own intake; nothing re-syncs the
+sum inside a running cycle.
+
+Lesson: per-asset denominators in a terminal are authoritative (that A1 owns
+them); the program-wide sum in any terminal is an intake-time snapshot that
+goes stale the moment a sibling cycle publishes.
+
+Consequence: cross-asset program totals are read ONLY from
+`HYPOTHESIS_LEDGER.md` (Lead-maintained at every close); terminal-report
+program sums are labeled as-of-intake. Encoded in the V15/V10 plan
+templates.
+
 ## Related program-level records
 
 - Falsification-by-control cluster (7 instances, V11→V5):
