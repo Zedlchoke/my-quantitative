@@ -168,11 +168,27 @@ def _fold_terminal_force_flat_payload(arm_id: str, instant_ns: int) -> dict[str,
     }
 
 
-def _fold_terminal_stamps(instants: Sequence[int]) -> set[int]:
-    """The last retained stamp of each pinned fold (force-flat points)."""
+def _fold_terminal_stamps() -> set[int]:
+    """The last effective stamp of each pinned fold on the FULL frozen
+    calendar (force-flat points).
+
+    Terminals are a property of the FROZEN CALENDAR, never of the retained
+    (stress-filtered) subset: they are derived from ``stamp_calendar()``
+    alone via ``fold_assignments`` -- the same calendar-only derivation as
+    the OITD/LIQEPIS V13 and basislv V14 precedents, which is why those
+    families traverse the drop-one matrix end-to-end.  The retention/drop
+    is applied as a FILTER by the caller (a dropped fold's terminal is
+    simply never a retained stamp, so the chain never visits it).
+    Deriving terminals from the retained subset would crash
+    ``fold_assignments`` on ANY dropped-fold traversal ("pinned fold F0
+    received no decision stamps") -- the V14 driver-discovered integration
+    defect this convention discharges.
+    """
     return {
         int(members[-1])
-        for _index, _label, members, _purged in fold_assignments(list(instants))
+        for _index, _label, members, _purged in fold_assignments(
+            list(stamp_calendar())
+        )
         if members
     }
 
@@ -465,7 +481,10 @@ class OicycPlugin(GenericStrategyBase):
             cached_weights, cached_payload = self._chain_cache[key]
             return dict(cached_weights), dict(cached_payload)
         prev: dict[str, float] = {}
-        terminals = _fold_terminal_stamps(instants)
+        # Terminals come from the FULL frozen calendar (a calendar property);
+        # the retention filter removes any dropped fold's terminal, which the
+        # chain below never visits anyway (it walks retained stamps only).
+        terminals = _fold_terminal_stamps() & {int(s) for s in instants}
         for stamp in instants:
             if int(stamp) in terminals:
                 # FOLD-TERMINAL FORCE-FLAT: the fold realises flat at its
