@@ -2,6 +2,28 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **FOREX V5 CLOSED → `FOREX_FREE_V5_REJECT_ALL`** (closed 2026-09-06, branch
+  `orca/forex-free-v5-integration@3e8cacf`, terminal head 61100aa) — the
+  inflation/real-rate axis cycle. P0 funded the per-print CPI axis on 4/8
+  economies (GB 88 / CA 105 / AU 23 / NZ 30 evidenced in-S0 clocks; US OUT
+  via archived BLS anti-bot 403 — owner hand-provision remains open; EMU/CH/
+  JP release TIMING unevidenced) and closed the ALFRED vintage axis
+  BLOCKED_DATA_AUTHORITY this host (license text unreachable — fail-closed;
+  owner unblock options: FRED API key or alternate network path). P0c
+  extended the announcement ledger 220→250 (cf1f01a7; CA 20/22, EMU 10/19
+  via BoC/ECB PR bytes) and surfaced 9 EMU value-integrity findings —
+  suspected MRO/DFR series mixing in the pinned base ledger, rows left
+  UNEVIDENCED (owner debt, values never edited). D2 measured kills:
+  A6-P2 ancestry rho 0.3257>0.20 (packet-consented); A4-P2 fold-infeasible;
+  selection = FXFV5-A6-P1 alone. Scored REJECT: anchor FAIL 8 gates
+  (gross-of-cost expectancy +0.712 only), sham-calendar neighbour
+  out-earned the anchor (+2.744 vs −2.608) and died at the frozen primary
+  stress gate (PF margin +0.0468 — falsification-by-control instance #10).
+  Reproduction twin byte-identical whole-file; budget 3/3; two-key P-8
+  re-proven. Denominators forex 27/27 (ledger: program 200/203 post-V5).
+  S1 sealed. Detail:
+  `.worktrees/forex-free-v5/integration/research/control/forex_free_v5_run/terminal_verdict.json`.
+
 - **STOCKS V9 CLOSED → `STOCKS_FREE_V9_REJECT_ALL`** (synced by Lead,
   2026-09-06, branch `orca/stocks-free-v9-integration@3a61638`) — first
   cycle on the death-inclusive universe (evidenced Form-15 census,
