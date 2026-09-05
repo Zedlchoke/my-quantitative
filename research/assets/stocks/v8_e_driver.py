@@ -55,10 +55,15 @@ def window_return(bench, d0, d1):
 
 
 def gate(name, ok, observed, threshold, direction):
+    num = isinstance(observed, (int, float)) and not isinstance(observed, bool)
+    if num:
+        margin = (round(observed - threshold, 6) if direction in ("gt", "ge")
+                  else round(threshold - observed, 6))
+    else:
+        margin = None
     return {"gate": name, "verdict": "PASS" if ok else "FAIL",
             "observed": observed, "threshold": threshold,
-            "margin_to_fail": (round(observed - threshold, 6) if direction == "gt"
-                               else round(threshold - observed, 6))}
+            "margin_to_fail": margin}
 
 
 def evaluate(decision_pnl, folds_order, spy, sector_basket, control_alpha=None):
@@ -114,9 +119,9 @@ def evaluate(decision_pnl, folds_order, spy, sector_basket, control_alpha=None):
         gate("folds_positive_ge", fold_pos >= GATES["folds_positive_ge"], fold_pos,
              GATES["folds_positive_ge"], "ge"),
         gate("min_populated_fold_pf_ge",
-             all(v is not None and v >= GATES["min_populated_fold_pf_ge"]
-                 for v in fold_pf.values() if v is not None) and any(v is not None for v in fold_pf.values()),
-             {k: (round(v, 3) if v else v) for k, v in fold_pf.items()},
+             any(v is not None for v in fold_pf.values())
+             and all(v is None or v >= GATES["min_populated_fold_pf_ge"] for v in fold_pf.values()),
+             {k: (round(v, 3) if v is not None else v) for k, v in fold_pf.items()},
              GATES["min_populated_fold_pf_ge"], "ge"),
         gate("max_fold_mdd_le", max(mdds.values()) <= GATES["max_fold_mdd_le"],
              round(max(mdds.values()), 4), GATES["max_fold_mdd_le"], "le"),
