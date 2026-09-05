@@ -1,0 +1,115 @@
+{
+  "hypothesis_id": "FXFV5-A4-P1",
+  "proposal_id": "PROPOSAL_FXFV5-A4-P1",
+  "family_id": "FXFV5-A4-P1",
+  "lane": "A4",
+  "axis": "per-print CPI axis (PLAN_forex_v5.md section 2, axis 1) — within-bloc per-print timing structure",
+  "cycle_id": "FOREX-FREE-V5",
+  "base_sha": "e2b7a0e1e29794ca8449625f271f9a67c302fcf2",
+  "branch": "orca/forex-free-v5-d1-a4-proposals",
+  "mechanism_class": "post_print_reaction_direction_drift",
+  "mechanism": {
+    "name": "availability-exact post-print reaction-direction drift",
+    "statement": "When a domestic CPI print of the non-US leg becomes evidenced-available, take the local pair in the direction of the print-window reaction and hold a fixed horizon: the reaction R = close(first 16:00 America/New_York bar strictly AFTER the print's available_time_utc) / close(last 16:00 America/New_York bar strictly BEFORE available_time_utc) - 1 defines the direction; the decision is taken at that first-after bar (strictly after availability by construction) and the position is filled at the NEXT 16:00-NY bar, held H sessions. One round trip per evidenced print; overlapping holds are booked as independent round trips (event-basket convention); no netting.",
+    "mechanism_before_parameter": {
+      "who_is_forced_or_slow": "A domestic CPI print is a lump arrival of public information about the local policy-rate path. Fast systematic participants reprice the local currency within the release session; reserve managers, corporate hedgers and slower discretionary/CTA money adjust exposures over multiple sessions because their mandates re-balance on review cycles, not on release seconds.",
+      "why_the_effect_exists": "If the release-session repricing only partially diffuses the print's rate-path content, the residual adjustment appears as multi-session drift in the direction of the release-window move. The effect must live ONLY at evidenced print dates: between prints there is no new inflation information and the drift claim makes no prediction.",
+      "observable": "The sign of the availability-exact print-window close-to-close return of the local pair, computed from the authorized price snapshots and the evidenced clock stamps only. No CPI value, no surprise estimate, no US leg, no policy-rate input anywhere in the signal.",
+      "when_it_must_fail": "If release-session repricing is complete before the daily fill (fast-money efficiency), if the reaction sign is noise (no persistent component), if the next-session fill gap (24h) forfeits the drift, or if the frozen cost ladder (3.0 bps round trip at stress tier 2.0) exceeds the per-trade drift. Failure on any of these is a correct REJECT, not a defect of the test.",
+      "control_that_kills_the_convenient_explanation": "A matched non-print-day placebo running the IDENTICAL reaction-and-hold rule at windows containing no evidenced print: if generic daily momentum of the same shape earns the anchor's expectancy, the placebo reproduces the anchor and the per-print mechanism claim dies regardless of anchor profitability (the V2-family2 lesson, HYPOTHESIS_LEDGER E.2)."
+    }
+  },
+  "universe": {
+    "authorized_universe": ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD"],
+    "pairs_traded": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "subset_used": true,
+    "justification": "Evidence-dictated subset, not preference. p0a_cpi_availability_table.json: per_print_axis_eligible = true for GB, CA, AU, NZ only; US is UNAVAILABLE_FAIL_CLOSED (BLS anti-bot 403, archived), so NO pair has an evidenced US CPI leg; EMU is DATA_YES_TIMING_NO (EURUSD), JP FORWARD_SCHEDULE_ONLY (USDJPY), CH UNEVIDENCED (USDCHF). The four traded pairs are exactly the pairs whose NON-US leg has evidenced per-print clocks; the three excluded pairs have no evidenced leg at all. Pair concentration risk from the uneven event counts (CA 105 / GB 88 / NZ 30 / AU 23) is disclosed in margin_to_fail_expectations and probed by the frozen drop-one suite, never by pair-dropping."
+  },
+  "conditioning_clock_source": {
+    "file": "research/control/forex_free_v5_run/p3_conditioning_clocks_v5.json",
+    "schema": "forex_free_v5_conditioning_clocks_v1",
+    "economy_subset": ["GB", "CA", "AU", "NZ"],
+    "clock_counts": {"GB": 88, "CA": 105, "AU": 23, "NZ": 30, "total": 246},
+    "S0_window": {"start": "2018-04-04", "end": "2025-07-24"},
+    "per_row_integrity": "every clock carries decision_date, available_time_utc, precision, reference_period, archive_sha256; no clock outside this file is ever used; clocks are consumed verbatim (no schedule inference, no seasonality imputation, no asserted bounds)",
+    "availability_lag_rule": "a decision at a 16:00 America/New_York bar may condition on a print iff the bar's instant is strictly AFTER the print's available_time_utc parsed with its recorded offset. Consequences locked per economy: CA (INSTANT, 97 stamps at 08:30:00Z plus 8 off-schedule intraday stamps — all before the same-day 16:00-NY bar): first eligible decision is the SAME calendar day's 16:00-NY bar. NZ (INSTANT 10:45:45 with +12:00/+13:00 offsets, i.e. the instant falls on the previous UTC day): first eligible decision is the 16:00-NY bar of the NZ release calendar date. GB and AU (DAY precision, available_time_utc = decision_date 23:59:59Z, AFTER the same-day NY close): first eligible decision is the NEXT trading day's 16:00-NY bar — the availability lag is structural for GB/AU and is never shortened.",
+    "gap_fail_closed": "AU: only the 23 evidenced clocks exist (documented archive gaps — pre-Sep-2019 quarterlies and mid-2022 rows absent from official sources). Any month without an evidenced AU clock produces NO AUDUSD decision. No trade is ever manufactured from an unevidenced release date."
+  },
+  "decision_clock": "DAILY, the completed 16:00 America/New_York bar (20:00Z EDT / 21:00Z EST), DST-aware; one decision event per evidenced print per pair; daily-or-slower satisfied",
+  "warmup": "Feature warmup: 2 daily bars per pair (a reaction needs one prior close; the second bar guards the empty-window edge). Fold scaffolding inherited frozen from the V3 scored runner: warmup region before 2020-03-01T00:00:00Z, PURGE_DAYS = 14, internal boundaries 2022-05-01 and 2024-08-01; pre-fold decisions execute and score in no fold per frozen fold_of(); fold-boundary positions are force-flattened at the boundary's last NY bar and attributed to the entry fold; trades spanning an internal boundary are refused (FOLD_FORCE_FLAT_VIOLATION). Expected scored-region event counts (S0 events after the fold-0 purge): GB ~65, CA ~80, NZ ~21, AU ~23 — anchor book order ~190 round trips against the frozen per-arm floor of 40 decisions.",
+  "features_and_lags": [
+    "print-window reaction R_i = P(first 16:00-NY trading bar strictly after available_time_utc of print i) / P(last 16:00-NY trading bar strictly before available_time_utc of print i) - 1, on pair i's own close series; no other feature exists",
+    "direction = sign(R_i); positions entered from flat only",
+    "lag discipline: the decision instant is the first-after bar itself; the fill is the NEXT 16:00-NY trading bar; every input to the decision (both closes) is observed strictly before the fill instant — one-event-lag clean by construction",
+    "no rolling statistics, no volatility, no thresholds, no CPI values, no cross-pair inputs: the feature set is a single sign per evidenced print"
+  ],
+  "entry_exit_fill_conventions": {
+    "entry": "at the next 16:00-NY trading bar after the decision bar, full unit notional 10000 USD-units, direction sign(R)",
+    "exit": "at the 16:00-NY trading bar exactly H sessions after the entry bar (H = 5 anchor; session = trading bar, weekends/holidays skipped by the authorized calendar)",
+    "fills": "next-bar fills on 16:00 America/New_York DST calendar per frozen runner convention; decision-to-entry gap is exactly one session (1-4 calendar days across weekends); same-bar fills are structurally impossible",
+    "weekend_gate": "an entry landing on the Friday 16:00-NY week-close boundary is dropped fail-closed and recorded in weekend_gate_dropped; the print is NOT re-anchored to a later day (no substitution, event fidelity preserved); exits at the Friday boundary bar are legitimate closes (frozen d3-fixture convention)",
+    "overlap": "round trips from different prints may overlap; each is booked independently; flat is the absence of a round trip, never a side-0 position",
+    "dual_book": "price-only and financing-adjusted columns kept separate and immutable per the frozen kernel; financing adjustments carried by the family under the frozen V3_FROZEN_POLICY_RATE_CARRY formula (the SIGNAL has zero rate content; financing touches only the second book); the price-only sign is never inverted and FINANCING_MANUFACTURES_EDGE remains binding"
+  },
+  "costs": {
+    "authority": "tests/assets/forex_free_v3/test_accounting.py frozen schedule, inherited unchanged",
+    "schedule": "cost = notional * (1.5 bps * tier) / 10000 charged once per fill side; notional 10000 USD-units; tiers {1.0, 1.5, 2.0}; costs never softened",
+    "stress_primary": "tier 2.0 (3.0 bps per side, 6.0 bps round trip) is the primary survival gate; tier books re-price every fill at the tier cost on BOOKED PnL (F1-fixed convention); stress rows pairwise distinct, fail-closed on collision",
+    "break_even_reporting": "break-even bps per cell from the same kernel, reported at all three tiers; a cell whose tier-2.0 break-even exceeds the per-trade gross move is reported as cost-dominated"
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV5-A4-P1:anchor",
+      "spec": "The mechanism exactly: availability-exact reaction sign, next-bar fill, hold H = 5 sessions, 4-pair evidence-dictated universe, 246-clock conditioning file."
+    },
+    "neighbour": {
+      "arm_id": "FXFV5-A4-P1:neighbour",
+      "spec": "Identical machinery with hold H = 10 sessions.",
+      "why_genuine_variant": "It varies only the diffusion horizon of THIS mechanism. If print-window direction carries multi-session content, the longer hold should retain positive expectancy; if the drift is a 1-2 session microstructure artifact that H=5 already barely catches, the neighbour dies with the anchor."
+    },
+    "causal_placebo_control": {
+      "arm_id": "FXFV5-A4-P1:control_nonprint_placebo",
+      "spec": "Matched non-print-day placebo: for each evidenced print, run the identical reaction-and-hold rule anchored at the first trading day at least 35 calendar days AFTER the print's availability that lies outside +/-5 sessions of every evidenced print of that economy; identical hold, fills, notional, costs, dual books, fold handling. The control book has, by construction, no print-window exposure.",
+      "fires_differently_how": "Its anchor days are ordinary days: the same weekday-of-month, the same calendar density, but no release-window information. Where the anchor's reactions cluster around high-volatility release weeks, the placebo reacts to ordinary daily noise.",
+      "runs_to_completion_proof": "Its fills use the same next-bar convention on the same calendar with no conditioning dependency beyond the same clock file; nothing in the control can be refused by the frozen validator (the V3R ONE_EVENT_LAG lesson: a control that cannot execute has null evidentiary value).",
+      "preregistered_rejection_rule": "CONTROL_REPRODUCES_MECHANISM if control financing-adjusted expectancy > 0 AND control PF >= 1.10: the drift then belongs to generic daily momentum of this shape, not to per-print structure, and the family is falsified regardless of anchor PnL."
+    }
+  },
+  "arms_note": "Exactly three scored arms (anchor, neighbour, control) per family per the frozen structure mandate. The runner-required benchmark_treatment book (V3-I convention, not a scored cell) is the same sign rule applied unconditionally: daily close-to-close sign, hold 5, identical fills/costs — the conditioning-removed twin against which incremental alpha is computed per the frozen per_trade_expectancy_difference convention.",
+  "falsification_rule": {
+    "preregistered": [
+      "F1 placebo: control_nonprint_placebo financing-adjusted expectancy > 0 AND PF >= 1.10 (CONTROL_REPRODUCES_MECHANISM) -> the measured drift is not print-specific -> family falsified whatever the anchor earns.",
+      "F2 costs: STRESS_TIER_2.0 gate fails (tier-2.0 booked PnL non-positive or PF < 1.00) -> the per-print drift does not clear the stressed cost ladder -> REJECT.",
+      "F3 gates: any frozen Stage-A failure (EXPECTANCY_NONPOSITIVE, PF_BELOW_1.10, FEWER_THAN_2_POSITIVE_POPULATED_FOLDS, POPULATED_FOLD_PF_BELOW_0.80, MDD_ABOVE_FROZEN_CEILING, POSITIVE_FOLD_SHARE_ABOVE_50PCT, PAIR_CONCENTRATION_ABOVE_40PCT, STRESS_TIER_1.5_FAIL, DROPOUT_SURVIVAL_BELOW_6_OF_8, USD_DRIFT_EXPLAINS_ANCHOR |corr| > 0.30, DECISION_FLOOR_NOT_MET, INCREMENTAL_ALPHA_NOT_POSITIVE, FINANCING_MANUFACTURES_EDGE) -> REJECT with per-gate margins recorded (P-2); no threshold weakening, no rescue.",
+      "F4 sample: per-arm decisions below the frozen floor of 40 records SAMPLE_FLOOR_FAIL and is terminal for the family; never rescored with relaxed floors."
+    ],
+    "expected_failure_interpretation": "A REJECT here is a first-class scientific outcome, expected ex ante to be the modal one: release-session direction is plausibly fully priced by the daily fill, and the modal falsification path is F1 (placebo reproduces anchor — drift is generic momentum) or F2 (drift thinner than the stressed ladder). A base-tier knife-edge pass would be recorded as such with per-gate margins and would still have to survive F1-F4. Nothing in this packet may be re-tuned after any outcome is visible."
+  },
+  "class_adjacency_disclosure": "This proposal is ADJACENT to the pre-registered DATA_BLOCKED_VALID classes (real-differential, PPP-deviation) but does not implement, proxy, or rescue them: it uses NO US leg (unevidenced), NO CPI levels or revisions, NO bilateral price levels, and no real or nominal differential — its only information source is the evidenced per-print release TIMING structure and the within-bloc price reaction to it. The two pre-registered classes carry forward as DATA_BLOCKED_VALID (US leg unevidenced per p0_verdict.json) and are NOT proposed in this packet; they remain selectable the moment their availability evidence is wired under a future owner decision.",
+  "ancestry_disclosure": "Nearest forbidden ancestry for the D2 novelty check: FXFV4-A6-P1 commodity-bloc risk-off event basket (event-conditioned entries with a fixed hold — same gross SHAPE, different conditioning information: official inflation print dates vs risk-off event days; different sign logic: local reaction direction vs risk-off direction) and FXFV1-A3-P1 session momentum (momentum continuation label, different clock entirely: intraday session-open vs daily post-print). Both proposals accept measured |rho| <= 0.20 adjudication against ALL forbidden ancestry at D2; prose distinctions are not the test, the rho numbers are. No session/open structure, no carry/financing direction, no policy-rate input exists in this signal.",
+  "margin_to_fail_expectations": {
+    "likely_fail": [
+      "EXPECTANCY_NONPOSITIVE / PF_BELOW_1.10 — event effects of this class are small; the modal outcome",
+      "STRESS_TIER_2.0 — 6.0 bps stressed round trip vs a per-trade drift plausibly under 10 bps",
+      "INCREMENTAL_ALPHA_NOT_POSITIVE — unconditional daily momentum of the same horizon is a demanding benchmark for an event subset",
+      "PAIR_CONCENTRATION_ABOVE_40PCT — CA (105) + GB (88) are 78% of events; if CA alone contributes > 40% of gross positive PnL the gate fires; universe is fixed by evidence, risk disclosed, drop-one suite probes it"
+    ],
+    "moderate_risk": [
+      "USD_DRIFT_EXPLAINS_ANCHOR — all four pairs are USD crosses; the sign rule is not structurally USD-short or USD-long, but 2021-2022 USD trend overlap is real",
+      "fold-population of AU/NZ in fold 2 (2024-08 onward: ~3 and ~4 events) — book-level fold gates evaluate the pooled book, but per-fold sparsity widens the fold-positive-share margin"
+    ],
+    "expected_clean_pass": [
+      "CONTROL runs to completion (structurally validator-clean)",
+      "MDD_ABOVE_FROZEN_CEILING low risk at 10000-unit notionals (a 1% adverse move costs 100 USD against the 2500 USD ceiling)",
+      "reproduction ALL_MATCH (deterministic rule, no inferred stamps)"
+    ]
+  },
+  "literature": [
+    {"authors": "Andersen, Bollerslev, Diebold, Vega", "year": 2003, "title": "Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange", "venue": "American Economic Review 93(1)", "relevance": "exchange-rate information arrival concentrates at macro announcements; motivates print-anchored windows and the fast-repricing null"},
+    {"authors": "Faust, Rogers, Wang, Wright", "year": 2007, "title": "The High-Frequency Response of Exchange Rates and Interest Rates to Macroeconomic Announcements", "venue": "Journal of Monetary Economics 54(4)", "relevance": "announcement-window FX response and its persistence structure; the drift claim this packet tests"},
+    {"authors": "Ehrmann, Fratzscher", "year": 2005, "title": "Exchange Rates and Fundamentals: Trade-offs Between Short- and Long-run Equilibrium... / How FOMC and ECB announcements move exchange rates", "venue": "ECB working paper series", "relevance": "slower diffusion of macro news beyond the release instant", "note": "[unverified-precision] exact title/venue pairing; both papers confidently exist"},
+    {"authors": "Gross-Klussmann, Hautsch", "year": 2013, "title": "Predicting Short-Term Stock Price Fluctuations based on News", "venue": "Journal of Empirical Finance 20", "relevance": "post-news drift decay horizons; motivates the H=5 / H=10 arm pair"}
+  ],
+  "outcome_blind_attestation": "I attest, as the A4 blind-proposal lane agent for cycle FOREX-FREE-V5, that NO scored outcome exists or was observed for any arm of this proposal or its sibling: no backtest was run, no dry-run was computed, no PnL was calculated, no gate was evaluated, no data file was created, and Phase P measured zero PnL. Every constant above (H=5, H=10, 35-day placebo offset, +/-5 exclusion, availability-lag handling, 4-pair universe) was fixed ex ante from the sanctioned evidence files (p0_verdict.json, p0a_cpi_availability_table.json, p3_conditioning_clocks_v5.json, p2_data_authority_v5.json, forbidden_family_inventory.json, frozen tests/assets/forex_free_v3/*) and would be byte-identical if every cell in the program's history had scored zero.",
+  "signature": "A4_FOREX_V5_BLIND_LANE_PER_PRINT_AXIS — 2026-09-05"
+}
