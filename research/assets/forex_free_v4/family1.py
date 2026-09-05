@@ -479,6 +479,13 @@ def schedule_legs(arm_id: str, decision_instants: list, legs_daily: dict,
     exiting exactly at T is closed at the decision completion -- flat).
     Blocked / unfillable events are NO_TRADE records, never deferred, never
     fill-forwarded.  Exits resolve at entry time (boundary / data-end clamp).
+
+    EMISSION CONVENTION (V3 mirror; A1 remediation of the A8 dry-run HIGH
+    finding): EVERY opened position is emitted into the decision stream
+    EXACTLY ONCE, at the moment it is opened -- exits (and force_flat) are
+    already resolved at that point, so mid-stream exits and trailing
+    force-flats are emitted identically.  One decision row per round trip;
+    open_pos is liveness bookkeeping only and never gates emission.
     """
     ff_by_leg = {leg: force_flat_indices(bars) for leg, bars in legs_daily.items()}
     decisions: list = []
@@ -488,7 +495,7 @@ def schedule_legs(arm_id: str, decision_instants: list, legs_daily: dict,
                 "n_entries": 0, "n_skipped_entry_fills": 0,
                 "n_entries_suppressed_by_boundary": 0,
                 "n_force_flats": 0, "n_round_trips": 0}
-    open_pos = {}  # leg -> {"entry_idx", "entry_ts", "exit_ts", ...}
+    open_pos = {}  # leg -> open position (liveness only; emission is at open)
 
     for ts in decision_instants:
         ts_dt = ts if isinstance(ts, datetime) else datetime.fromisoformat(str(ts))
@@ -501,7 +508,8 @@ def schedule_legs(arm_id: str, decision_instants: list, legs_daily: dict,
             pos = open_pos.get(leg)
             if pos is not None:
                 if pos["exit_ts"] <= ts_dt:
-                    open_pos.pop(leg, None)  # closed at/before this decision
+                    open_pos.pop(leg, None)  # closed: bookkeeping only (its
+                    # decision row was already emitted when it was opened)
                 else:
                     counters["n_leg_blocked_open"] += 1
                     continue  # already in a position: event ignored (no refresh)
@@ -525,34 +533,30 @@ def schedule_legs(arm_id: str, decision_instants: list, legs_daily: dict,
                 counters["n_entries_suppressed_by_boundary"] += 1
                 continue
             exit_idx, force_flat = _resolve_exit(bars, j, ff_by_leg[leg])
+            did = f"{arm_id}|{leg}|{_iso(ts_dt)}"
+            # EMIT EXACTLY ONCE per opened position (mid-stream and trailing
+            # alike): the A8 dry-run HIGH defect -- positions popped mid-stream
+            # by a later decision were previously never emitted -- is made
+            # impossible by construction.
+            decisions.append({
+                "decision_id": did,
+                "pair": leg,
+                "decision_ts": _iso(ts_dt),
+                "side": int(side),
+                "notional_usd": int(notional_usd),
+                "entry_bar_ts": _iso(bars[j][0]),
+                "entry_price": bars[j][1],
+                "exit_bar_ts": _iso(bars[exit_idx][0]),
+                "exit_price": bars[exit_idx][1],
+                "force_flat": bool(force_flat),
+            })
             open_pos[leg] = {"side": side, "decision_ts": ts_dt,
                              "entry_idx": j, "entry_ts": fill_ts,
                              "exit_idx": exit_idx, "exit_ts": bars[exit_idx][0],
                              "force_flat": force_flat}
             counters["n_entries"] += 1
-
-    for leg, side in RESPONSE_LEGS:
-        if leg not in legs_daily:
-            continue  # drop-one scenario: the leg is excluded entirely
-        pos = open_pos.pop(leg, None)
-        if pos is None:
-            continue
-        bars = legs_daily[leg]
-        did = f"{arm_id}|{leg}|{_iso(pos['decision_ts'])}"
-        decisions.append({
-            "decision_id": did,
-            "pair": leg,
-            "decision_ts": _iso(pos["decision_ts"]),
-            "side": int(side),
-            "notional_usd": int(notional_usd),
-            "entry_bar_ts": _iso(bars[pos["entry_idx"]][0]),
-            "entry_price": bars[pos["entry_idx"]][1],
-            "exit_bar_ts": _iso(bars[pos["exit_idx"]][0]),
-            "exit_price": bars[pos["exit_idx"]][1],
-            "force_flat": bool(pos["force_flat"]),
-        })
-        counters["n_force_flats"] += int(pos["force_flat"])
-        counters["n_round_trips"] += 1
+            counters["n_round_trips"] += 1
+            counters["n_force_flats"] += int(force_flat)
     decisions.sort(key=lambda d: (d["decision_ts"], d["pair"]))
     return {"decisions": decisions, "skipped_entries": skipped,
             "counters": counters}
