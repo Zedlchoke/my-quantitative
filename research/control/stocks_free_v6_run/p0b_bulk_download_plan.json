@@ -1,0 +1,52 @@
+{
+ "schema": "stocks_free_v6_run/p0b_bulk_download_plan@1",
+ "generated_at_utc": "2026-09-05T00:30:05.872036+00:00",
+ "status": "PLANNED_NOT_EXECUTED (light phase; A1 schedules the heavy window)",
+ "census_scope": {
+  "universe": "410-filer SEC panel (pinned PIT store, sha256 f53eb371...df955; CIK->ticker mapping archived at .staging_prices_v6/summaries/panel_cik_to_ticker.json)",
+  "window": "S0 folds 2018-04-04..2025-07-24 (download full history per symbol; census measures the S0 intersection)",
+  "endpoint": "https://stooq.com/q/d/l/?s=<symbol>.us&i=d (parameter semantics d1/d2=YYYYMMDD verified operationally in probes)",
+  "politeness": ">=2s inter-request spacing, honest UA, no credentials; see access-channel blocker below"
+ },
+ "census_measures_per_symbol": [
+  "first/last served date; served-history depth vs S0",
+  "row count vs expected NYSE sessions inside S0 (USEquityRegularCalendar, frozen 2010-2030 table)",
+  "missing session days (gaps) listed explicitly \u2014 never gap-patched",
+  "duplicate dates, non-ascending delivery, OHLC interval violations (parser fails loud)",
+  "last-date < 2025-07-24 => delisted/suspended survival flag (names keep history; never silently dropped \u2014 plan \u00a72 leg 3)"
+ ],
+ "census_measures_panel_wide": [
+  "panel coverage fraction per decision date (fraction of 410 with a served bar on/preceding the date)",
+  "delisted-name survival count and histogram of last dates",
+  "symbol-suffix taxonomy encountered (.us, .xus?, duplicates) and identity collisions",
+  "revision/vintage behavior: re-download a fixed 10-symbol subset after >=24h and diff bytes; report added/changed rows (this is the ONLY provable revision test)"
+ ],
+ "expected_volume": {
+  "symbols": 410,
+  "requests": "410 (one full-history CSV per symbol) + 10 revision-check re-downloads",
+  "bytes": "~0.5-1.5 MB per symbol full history => ~0.2-0.6 GB raw, gitignored, sha256-manifested",
+  "duration": ">= 410 * 2s spacing ~= 14 min minimum; budget 1-2 h with retries"
+ },
+ "outputs": [
+  ".staging_prices_v6/raw/<symbol>.csv + sha256_manifest.json (gitignored)",
+  "research/control/stocks_free_v6_run/p0b_coverage_census.json (per-symbol + panel metrics)",
+  "updated p0b_price_authority.json gate outcomes"
+ ],
+ "access_channel_blocker_for_owner": {
+  "finding": "plain-HTTP clients receive a JS proof-of-work challenge on every stooq endpoint (both domains); browser-equivalent rendering works but is summary-lossy and cannot serve as a 410-symbol bulk channel",
+  "options": [
+   "A: authorize a scripted-access approach that satisfies stooq's browser check (owner decision; agent cannot invent consent)",
+   "B: authorize an owner-provided compliant access path (e.g., direct licensed feed)",
+   "C: accept BLOCKED_DATA_AUTHORITY close for the price leg (legitimate per plan \u00a72)"
+  ]
+ },
+ "frozen_conflict_policy": {
+  "default": "single-source (Stooq) if it is the only authorized source",
+  "if_a_second_source_is_authorized": {
+   "per_row_provenance": "every row carries source_id + retrieved_time_utc + raw_sha256",
+   "primary_role": "Stooq fills the series; the second source NEVER silently gap-patches (handbook \u00a711.5)",
+   "conflict_resolution": "on same-day value conflict: primary wins, conflict row written to a quarantine list published in the census; resolution is an owner-visible decision, never silent",
+   "no_blending": "no averaged/interpolated prices from multiple sources, ever"
+  }
+ }
+}
