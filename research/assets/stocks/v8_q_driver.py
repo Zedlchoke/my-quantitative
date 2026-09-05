@@ -73,15 +73,27 @@ def main():
         if hits:
             leaks[a] = hits
     floors = {}
+    nonvacuity = {}
     for a, rec in arms.items():
-        scored = [s for s in rec["schedule"] if not s["warmup"]]
+        scored = [s for s in rec["schedule"] if not s["warmup"] and s.get("event") != "FOLD_FORCE_FLAT"]
         per_fold = {}
         for s in scored:
             per_fold[s["fold"]] = per_fold.get(s["fold"], 0) + 1
+        el = sorted(s["eligible"] for s in scored)
+        po = sorted(s["populated"] for s in scored)
+        lg = sorted(s["legs"] for s in scored)
+        med = lambda x: x[len(x)//2] if x else 0
         floors[a] = {
             "scored_decisions": len(scored),
             "per_fold": per_fold,
             "floor_ok": len(scored) >= 30 and all(v >= 5 for v in per_fold.values()),
+        }
+        # F-A7-2 remediation: vacuity is now DETECTABLE - a book that never
+        # populates must fail the dry run
+        nonvacuity[a] = {
+            "median_eligible": med(el), "median_populated": med(po),
+            "median_legs": med(lg),
+            "nonvacuous": med(el) >= 100 and med(lg) >= 20,
         }
     # deterministic double generation on one arm
     panel = r.load_panel(f2_fields)
@@ -98,7 +110,9 @@ def main():
     except Exception as e:  # noqa: BLE001
         refusal = f"PROVEN ({type(e).__name__})"
 
-    ok = digest_distinct and not leaks and all(f["floor_ok"] for f in floors.values()) and double_ok
+    ok = (digest_distinct and not leaks and double_ok
+          and all(f["floor_ok"] for f in floors.values())
+          and all(n["nonvacuous"] for n in nonvacuity.values()))
     ev = {
         "schema": "stocks_free_v8_run/q_dummy_dryrun_evidence@1",
         "measured_at_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -111,6 +125,7 @@ def main():
         "digest_pairwise_distinct": digest_distinct,
         "recursive_leak_scan_hits": leaks,
         "schedule_floors": floors,
+        "nonvacuity_fba72": nonvacuity,
         "deterministic_double_generation": double_ok,
         "scored_refusal": refusal,
         "verdict": "DRY_RUN_PASS" if ok else "DRY_RUN_FAIL",
@@ -119,7 +134,9 @@ def main():
     print(json.dumps({k: ev[k] for k in ("verdict", "digest_pairwise_distinct",
                                          "recursive_leak_scan_hits",
                                          "deterministic_double_generation",
-                                         "scored_refusal")}))
+                                         "scored_refusal")}
+                    | {"nonvacuity": {a: n["nonvacuous"] for a, n in nonvacuity.items()},
+                       "medians": {a: (n["median_eligible"], n["median_populated"], n["median_legs"]) for a, n in nonvacuity.items()}}))
 
 
 if __name__ == "__main__":

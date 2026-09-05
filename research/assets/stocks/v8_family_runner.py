@@ -107,10 +107,11 @@ ARM_SPECS = {
 
 # ---------------------------------------------------------------- data
 
-def load_panel(fields):
-    """Stream the panel; keep only wanted fields.
-    Returns {entity: {"sector": s, "rows": {field: [(avail, eff, value)]}}}
-    sorted by (avail, eff)."""
+def load_panel(fields, unit="USD"):
+    """Stream the panel; keep only wanted fields. unit="USD" (the frozen
+    specs form ratios/deltas only from USD-stamped vintages - F-A7-3
+    remediation) drops non-matching rows at load, fail-visible via the
+    returned row counts."""
     want = set(fields)
     out = {}
     with open(PANEL) as f:
@@ -118,6 +119,8 @@ def load_panel(fields):
             r = json.loads(line)
             fld = r["f"]
             if fld not in want:
+                continue
+            if unit is not None and r.get("u") != unit:
                 continue
             e = out.setdefault(r["e"], {"sector": r["s"], "rows": {}})
             if r["v"] is None:
@@ -130,19 +133,22 @@ def load_panel(fields):
 
 
 def load_prices():
-    """{entity: {"date": [...], "raw": [...], "adj": [...], "dvol": [...]}}
-    sorted by date."""
+    """{entity: {"date", "raw", "adj", "dvol", "pos"}} sorted by date.
+    pos maps each date to ITS OWN array index (never a global calendar
+    index - the F-A7-1 remediation)."""
     out = {}
     for fn in sorted(os.listdir(PRICES)):
         if not fn.endswith(".json"):
             continue
         cik = fn.split("__")[0]
         bars = json.load(open(f"{PRICES}/{fn}"))
+        dates = [b["date"] for b in bars]
         out[cik] = {
-            "date": [b["date"] for b in bars],
+            "date": dates,
             "raw": [float(b["close"]) for b in bars],
             "adj": [float(b["adjusted_close"]) for b in bars],
             "dvol": [float(b["close"]) * float(b["volume"]) for b in bars],
+            "pos": {d: i for i, d in enumerate(dates)},
         }
     return out
 
@@ -199,6 +205,9 @@ def signal_value(spec, panel_entity, decision_date, prev_session_date):
     f0 = spec["numerator_fields"][0]
     if spec["kind"] == "accrual_flow":
         f1, f2 = spec["numerator_fields"][1], spec["numerator_fields"][2]
+        # an entity lacking a USD vintage for a field is simply unpopulated
+        if any(f not in rows for f in (f0, f1, f2, spec["denominator_field"])):
+            return None
         ar0 = asof(rows[f0], decision_date)
         inv0 = asof(rows[f1], decision_date)
         ap0 = asof(rows[f2], decision_date)
@@ -214,11 +223,13 @@ def signal_value(spec, panel_entity, decision_date, prev_session_date):
         den = asof(rows[spec["denominator_field"]], decision_date, spec["denominator_age"])
         if den is None or not den[2]:
             return None
-        # fiscal-type match: the two leg vintages must be 330-400 eff days apart
+        # fiscal-type match: EACH field's two leg vintages must be
+        # 330-400 eff days apart (F-A7-7 remediation: per field, not AR only)
         from datetime import date
-        gap = (date.fromisoformat(ar0[1]) - date.fromisoformat(ar1[1])).days
-        if not (330 <= gap <= 400):
-            return None
+        for leg0, leg1 in ((ar0, ar1), (inv0, inv1), (ap0, ap1)):
+            gap = (date.fromisoformat(leg0[1]) - date.fromisoformat(leg1[1])).days
+            if not (330 <= gap <= 400):
+                return None
         num = (ar0[2] - ar1[2]) + (inv0[2] - inv1[2]) - (ap0[2] - ap1[2])
         try:
             return num / float(den[2])
@@ -226,6 +237,8 @@ def signal_value(spec, panel_entity, decision_date, prev_session_date):
             return None
     if spec["kind"] == "wc_stock":
         f1, f2 = spec["numerator_fields"][1], spec["numerator_fields"][2]
+        if any(f not in rows for f in (f0, f1, f2, spec["denominator_field"])):
+            return None
         ar = asof(rows[f0], decision_date)
         inv = asof(rows[f1], decision_date)
         ap = asof(rows[f2], decision_date)
@@ -239,9 +252,15 @@ def signal_value(spec, panel_entity, decision_date, prev_session_date):
         except (TypeError, ZeroDivisionError):
             return None
     if spec["kind"] == "ratio_level":
+        if f0 not in rows or spec["denominator_field"] not in rows:
+            return None
         num = asof(rows[f0], decision_date, spec["denominator_age"])
         den = asof(rows[spec["denominator_field"]], decision_date, spec["denominator_age"])
         if num is None or den is None:
+            return None
+        # a4_h2 frozen spec: eff dates must agree within 400 days (F-A7-4)
+        from datetime import date
+        if abs((date.fromisoformat(num[1]) - date.fromisoformat(den[1])).days) > 400:
             return None
         try:
             if not den[2] or not num[2]:
@@ -330,19 +349,12 @@ def weights_from_book(book, sectors):
 
 # ----------------------------------------------------------- simulation
 
-def session_index(price, d):
-    return price["date"].index(d)
-
-
-def advance_sessions(price, d, k):
-    i = session_index(price, d) + k
-    return price["date"][i] if 0 <= i < len(price["date"]) else None
-
-
 def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
-            price_manifest_sha="", panel_sha="", code_freeze_sha=""):
+            price_manifest_sha="", panel_sha="", code_freeze_sha="",
+            stress=False):
     """Simulate one arm. dry_run=True: structure only, no metrics.
-    scored path requires the exact owner GO phrase (fail-closed)."""
+    scored path requires the exact owner GO phrase (fail-closed).
+    stress=True doubles the band cost (the frozen stress rerun)."""
     spec = ARM_SPECS[arm_id]
     if not dry_run and owner_go != GO_PHRASE:
         raise SystemExit("SCORED EXECUTION REFUSED: owner GO phrase absent/incorrect")
@@ -356,20 +368,18 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
     if missing:
         raise ValueError(f"panel missing required fields {missing} - fail closed")
     sect = {e: v["sector"] for e, v in panel.items()}
-    f1_sessions = folds[0]["sessions"]
-    # t-1y evaluation points: 252 sessions back on the global calendar
+    cost_mult = 2.0 if stress else 1.0
+    # global union calendar (fold/grid structure only)
     global_days = sorted({d for p in prices.values() for d in p["date"]})
     day_pos = {d: i for i, d in enumerate(global_days)}
 
-    decisions = []
     held = {}
     prev_w = {}
     records = []
-    cumulative = 0.0
-    peak = 0.0
     fold_metrics = {}
     name_contrib = {}
     decision_pnls = []
+    missing_price_legs = 0
 
     for fold in folds:
         sess = fold["sessions"]
@@ -377,25 +387,23 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
         fold_pnls = []
         for gi, d in enumerate(grid_dates):
             is_warmup = gi < spec["warmup_decisions"] and fold["fold_id"] == "S0_FOLD_1"
-            # eligibility at d
+            if d not in day_pos:
+                continue
+            gi_global = day_pos[d]
+            # bands for EVERY name with 63 bars through d (F-A7-8: closes cost
+            # at the name's own band even when the name fails the floor)
+            bands = {}
             elig = {}
             for e, p in prices.items():
-                if d not in day_pos:
+                i = p["pos"].get(d)
+                if i is None or i < 62:
                     continue
-                dates = p["date"]
-                i = day_pos[d]
-                if i >= len(dates) or dates[i] != d:
-                    continue
-                window = p["dvol"][max(0, i - 62): i + 1]
-                if len(window) < 63:
-                    continue
-                adv = statistics.median(window)
+                adv = statistics.median(p["dvol"][i - 62: i + 1])
                 b = band_of(adv)
-                if b == "UNTRADABLE" or p["raw"][i] < 1.00:
-                    continue
-                elig[e] = {"band": b, "i": i}
+                bands[e] = b
+                if b != "UNTRADABLE" and p["raw"][i] >= 1.00:
+                    elig[e] = i
             # signals
-            gi_global = day_pos[d]
             prev_d = global_days[gi_global - 252] if (spec["kind"] == "accrual_flow" and gi_global >= 252) else None
             raw_sig = {}
             for e in elig:
@@ -406,10 +414,10 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
                 if sig is not None and sig == sig:  # NaN guard
                     raw_sig[e] = sig
             ranks = pct_rank(raw_sig)
-            ranks = {k: (v, sect[k]) for k, v in ranks.items()}
+            ranks = {k: (sect[k], v) for k, v in ranks.items()}  # (sector, pct) as target_book expects
             book, n_active = target_book(ranks, held, spec["direction"])
             w = weights_from_book(book, sect)
-            # fills at next session close
+            # fills at the next GLOBAL session close
             fill_d = global_days[gi_global + 1] if gi_global + 1 < len(global_days) else None
             if fill_d is None:
                 continue
@@ -420,33 +428,33 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
             for n in names_changed:
                 dw = abs(w.get(n, 0.0) - prev_w.get(n, 0.0))
                 turnover += dw
-                b = elig.get(n, {}).get("band", "A")
-                cost += dw * BAND_BPS.get(b, 10.0) / 10000.0
-            fi = day_pos[fill_d]
+                cost += dw * BAND_BPS.get(bands.get(n, "A"), 10.0) * cost_mult / 10000.0
             decision_pnls.append({"d": d, "scored": not is_warmup})
             if not dry_run:
-                # position PnL from fill close to next decision's fill close
                 nxt_gi = gi + 1
-                end_i = None
+                end_date = None
                 if nxt_gi < len(grid_idx) and grid_dates[nxt_gi] in day_pos:
                     ng = day_pos[grid_dates[nxt_gi]]
                     if ng + 1 < len(global_days):
-                        end_i = day_pos[global_days[ng + 1]]
-                if end_i is None:
-                    end_i = day_pos[sess[-1]]  # force flat at fold end
+                        end_date = global_days[ng + 1]
+                if end_date is None:
+                    end_date = sess[-1]  # force flat at fold end
                 pnl = 0.0
                 for n in set(w) | set(prev_w):
                     p = prices.get(n)
-                    if p is None or fi >= len(p["date"]) or end_i >= len(p["date"]):
+                    if p is None:
                         continue
-                    r = p["adj"][end_i] / p["adj"][fi] - 1.0
+                    fi = p["pos"].get(fill_d)
+                    ei = p["pos"].get(end_date)
+                    if fi is None or ei is None or ei <= fi:
+                        if w.get(n, 0.0) != 0.0:
+                            missing_price_legs += 1
+                        continue
+                    r_ret = p["adj"][ei] / p["adj"][fi] - 1.0
                     w_now = w.get(n, 0.0)
-                    w_old = prev_w.get(n, 0.0)
-                    pnl += w_now * r
-                    name_contrib[n] = name_contrib.get(n, 0.0) + w_now * r
+                    pnl += w_now * r_ret
+                    name_contrib[n] = name_contrib.get(n, 0.0) + w_now * r_ret
                 pnl -= cost
-                cumulative += pnl
-                peak = max(peak, cumulative)
                 if not is_warmup:
                     fold_pnls.append(pnl)
                     decision_pnls[-1]["pnl"] = pnl
@@ -459,18 +467,33 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
             })
             held = book
             prev_w = w
+        # fold boundary: force flat WITH cost (F-A7-6) and reset book state
+        if prev_w:
+            close_turnover = sum(abs(x) for x in prev_w.values())
+            close_cost = sum(abs(x) * BAND_BPS.get(bands.get(n, "A"), 10.0) * cost_mult / 10000.0
+                             for n, x in prev_w.items())
+            if not dry_run and fold_pnls:
+                fold_pnls[-1] -= close_cost
+            records.append({
+                "decision_date": sess[-1], "fill_date": sess[-1], "fold": fold["fold_id"],
+                "eligible": 0, "populated": 0, "active_sectors": 0, "legs": 0,
+                "turnover": round(close_turnover, 6),
+                "cost_bps_paid": round(close_cost * 1e4, 4),
+                "warmup": False, "event": "FOLD_FORCE_FLAT",
+            })
+            held = {}
+            prev_w = {}
         if not dry_run:
-            e = sum(x for x in fold_pnls)
+            e_sum = sum(fold_pnls)
             wins = sum(x for x in fold_pnls if x > 0)
             losses = -sum(x for x in fold_pnls if x < 0)
-            cum, peak_fold = 0.0, 0.0
-            mdd = 0.0
+            cum, peak_fold, mdd = 0.0, 0.0, 0.0
             for x in fold_pnls:
                 cum += x
                 peak_fold = max(peak_fold, cum)
                 mdd = max(mdd, peak_fold - cum)
             fold_metrics[fold["fold_id"]] = {
-                "decisions": len(fold_pnls), "sum_pnl": round(e, 8),
+                "decisions": len(fold_pnls), "sum_pnl": round(e_sum, 8),
                 "pf": round(wins / losses, 6) if losses > 0 else None,
                 "mdd": round(mdd, 8),
             }
@@ -482,19 +505,21 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
             (panel_sha + price_manifest_sha).encode()).hexdigest(),
         "code_freeze_sha": code_freeze_sha,
         "dry_run": dry_run,
-        "decisions_total": len(records),
-        "scored_decisions_total": sum(1 for r in records if not r["warmup"]),
+        "stress": stress,
+        "decisions_total": len([x for x in records if x.get("event") != "FOLD_FORCE_FLAT"]),
+        "scored_decisions_total": sum(1 for x in records if not x["warmup"] and x.get("event") != "FOLD_FORCE_FLAT"),
+        "missing_price_legs": missing_price_legs,
         "fold_structure": [{k: (len(v) if k == "sessions" else v) for k, v in f.items()} for f in folds],
         "schedule": records,
     }
     if not dry_run:
         scored = [x["pnl"] for x in decision_pnls if x.get("scored") and "pnl" in x]
-        e = sum(scored)
+        e_sum = sum(scored)
         wins = sum(x for x in scored if x > 0)
         losses = -sum(x for x in scored if x < 0)
         record["metrics"] = {
-            "expectancy": round(e / len(scored), 10) if scored else None,
-            "sum_pnl": round(e, 8),
+            "expectancy": round(e_sum / len(scored), 10) if scored else None,
+            "sum_pnl": round(e_sum, 8),
             "pf": round(wins / losses, 6) if losses > 0 else None,
             "folds": fold_metrics,
             "top_name_contribution": max(name_contrib.items(), key=lambda kv: kv[1]) if name_contrib else None,
