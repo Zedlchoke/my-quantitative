@@ -1,0 +1,229 @@
+{
+  "schema": "forex_free_v5_d2_feasibility_v1",
+  "cycle_id": "FOREX-FREE-V5",
+  "phase": "D2",
+  "producer": "A9_INDEPENDENT_FEASIBILITY_AUDITOR",
+  "measured_at_utc": "2026-09-05T23:59:59Z",
+  "scope_statement": "Feasibility measured WITHOUT PnL: counts, coverage, populations, runtimes only. No profits, no strategy returns, no cost-adjusted outcomes were computed. Sign bits and trigger booleans (A4-P2 sequence agreement, A6-P1 exact-zero check, A6-P2 |z|>=2 triggers) were computed solely to define decision/activation populations; no magnitude of any price move, return or PnL exists in this verdict or in d2_a9_measure_output.json.",
+  "auditor_identity": {
+    "agent": "A9 (fresh context, independent feasibility auditor)",
+    "model_runtime": "ZCode agent, GLM-5.3-Flash runtime",
+    "independence_note": "A9 did not participate in any D1 lane; proposals were read blind from lane-commit git objects and materialized copies are committed under d2_a9_evidence/lane_a{4,5,6}/."
+  },
+  "tree_state": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v5/d2-a9-feasibility",
+    "branch": "orca/forex-free-v5-d2-a9-feasibility",
+    "base_head_verified": "e2b7a0e1e29794ca8449625f271f9a67c302fcf2",
+    "verify_command": "git -C <worktree> rev-parse HEAD  # -> e2b7a0e1e29794ca8449625f271f9a67c302fcf2; git status --short -> clean before audit writes",
+    "writes_confined_to": "research/control/forex_free_v5_run/d2_a9_feasibility_verdict.json + research/control/forex_free_v5_run/d2_a9_evidence/",
+    "plan_disclosure": "PLAN_forex_v5.md is NOT in this worktree's base tree (verified: git ls-tree e2b7a0e1 lists PLAN.md, PLAN_forex.md, PLAN_forex_v2.md, PLAN_stocks.md, PLAN_stocks_v4.md only). It was read read-only via the ROOT checkout /Users/hoangminhlong/my-quantitative/PLAN_forex_v5.md (scope rules: exactly three arms per family; max six scored cells; unused slots never reassigned; S0 2018-04-04..2025-07-24)."
+  },
+  "authorities_used": {
+    "clocks": "research/control/forex_free_v5_run/p3_conditioning_clocks_v5.json (246 clocks: GB 88 / CA 105 / AU 23 / NZ 30; verified CA 97 stamps at 08:30:00Z matching A4-P1's claim)",
+    "p0": "research/control/forex_free_v5_run/p0_verdict.json + p0a_cpi_availability_table.json + p0b_alfred_probe_verdict.json",
+    "data_authority": "research/control/forex_free_v5_run/p2_data_authority_v5.json (price_series INHERITED_BYTE_VERIFIED)",
+    "staged_data": "data_raw/forex_free_v1 (153 files, 41.7 MB; 7 pairs; 1day snapshots 2018-09-03..2026-09-01 after excluding provider weekend-stamped rows per the frozen session-gate convention)",
+    "kernel": "research/assets/forex_free_v3/scored_runner.py (frozen constants) + tests/assets/forex_free_v3/test_scored_runner.py (frozen conventions)",
+    "ledger": "research/control/forex_free_v5_run/announcement_ledger_v5_extension.jsonl (250 rows, sha256 cf1f01a7...; financing kernel only)"
+  },
+  "frozen_conventions_cited": {
+    "min_decisions_per_arm": "MIN_DECISIONS_PER_ARM = 40 (scored_runner.py:176; DECISION_FLOOR_NOT_MET exercised at test_scored_runner.py:368-369 with n_decisions=39 failing)",
+    "fold_population": "FOLD_POPULATED_MIN_TRADES = 30 trades per populated fold (scored_runner.py:154, applied at :378); MIN_POSITIVE_FOLDS = 2 of 3 populated (:152); unpopulated folds ignored (test_scored_runner.py:317-321)",
+    "fold_scaffolding": "FOLD_BOUNDARIES = 2020-03-01 / 2022-05-01 / 2024-07-01 / 2026-09-02, PURGE_DAYS = 14 (scored_runner.py:144-147); fold_of() returns None before B0 (warmup region) and inside purge windows (:233-243)",
+    "fold_force_flat": "a trade spanning an internal boundary raises FOLD_FORCE_FLAT_VIOLATION; force_flat trades attributed to entry fold (test_scored_runner.py:219-228)",
+    "zero_position": "decisions list: exactly one entry per round trip; flat = absence, never side 0 (scored_runner.py:54)",
+    "weekend_gate": "is_market_open_entry: Fri 16:00 NY not < 16:00 -> entry dropped fail-closed; apply_session_gate before fold metrics (scored_runner.py:200-224, :119)",
+    "cost_ladder": "cost = notional * (1.5 bps * tier)/10000 per fill side; tiers {1.0,1.5,2.0}; round trip = 3.0/4.5/6.0 bps = 3/4.5/6 USD on 10000-unit notional",
+    "other": "MIN_PF=1.10, MDD_CEILING_USD=2500, MAX_PAIR_POS_SHARE=0.40, DROPOUT 8 scenarios / 6 survival, PER_ARM_TIMEOUT_MINUTES=60, MAX_FILL_LAG_DAYS=4"
+  },
+  "measurement_basis": {
+    "calendar": "16:00 America/New_York completed daily bar calendar per pair = staged 1day snapshot dates, excluding provider weekend-stamped rows (95-142 per pair present in raw snapshots; frozen session-gate convention treats them as non-sessions). Bar completion instant = date 16:00 NY in UTC (zoneinfo, DST-aware).",
+    "commands": [
+      "git show f176754fe1db809fb131bbd76a6ff18608d4aa04:PROPOSAL_FXFV5-A4-P{1,2}.json > d2_a9_evidence/lane_a4/",
+      "git show 91400501d5e4e33a935c12e26c19c3d6f45d4cee:PROPOSAL_FXFV5-A5-P{1,2}.json > d2_a9_evidence/lane_a5/",
+      "git show c82403d8c6f39a9d31c276db4d8510b70313c6cd:PROPOSAL_FXFV5-A6-P{1,2}.json > d2_a9_evidence/lane_a6/",
+      "python3 research/control/forex_free_v5_run/d2_a9_evidence/d2_a9_measure.py  # -> d2_a9_evidence/d2_a9_measure_output.json"
+    ],
+    "runtime_basis": "the full audit scan (7 pair calendars ~14.6k 1day rows, 246 clocks, all four schedule constructions incl. A6-P2 trigger scan) ran in 0.74 s wall on this host; scored-runner runtime estimate = seconds per arm (JSON parse of the staged snapshots dominates; O(N) schedule construction), >= 3 orders of magnitude under the frozen 60-minute per-arm timeout even x8 dropout scenarios and x3 arms x4 proposals (~96 arm-equivalents => minutes)."
+  },
+  "proposals": {
+    "FXFV5-A4-P1": {
+      "verdict": "FEASIBLE_WITH_RISKS",
+      "measured_counts": {
+        "clocks_S0": 246,
+        "decisions_executable_pre_gate": 229,
+        "decisions_lost_pre_data": {"GB": 5, "CA": 10, "NZ": 2, "note": "staged 1day snapshots start 2018-09-03; S0 starts 2018-04-04; losses land in the unscored pre-2020-03-01 region"},
+        "weekend_gate_dropped_entries": 109,
+        "weekend_gate_dropped_per_economy": {"GB": 82, "AU": 22, "NZ": 5, "CA": 0},
+        "trades_post_session_gate": 120,
+        "trades_post_gate_per_economy": {"CA": 95, "NZ": 23, "GB": 1, "AU": 1},
+        "fills_anchor_H5": 240,
+        "folds_H5": {"fold0": 37, "fold1": 37, "fold2": 19, "pre_B0_unscored": 27},
+        "neighbour_H10_trades": 120,
+        "control_placebo_unique_anchor_days": 215,
+        "control_same_pair_date_overlap_with_anchor": 0,
+        "aggregate_tier2_cost_usd_anchor": 720.0
+      },
+      "measure_results": {
+        "expected_decision_count": "229 executable decisions over S0 (vs 246 published clocks); DECISION_FLOOR 40 met 5.7x (5.7x pre-gate, 3.0x post-gate)",
+        "warmup_coverage": "FITS with documented loss: 17 clocks (2018-04-18..2018-08-17) precede the staged data start; all fall in the unscored pre-B0 region; 2-bar feature warmup satisfied for all executable decisions",
+        "fold_population": "fold0=37, fold1=37 >= 30 POPULATED; fold2=19 < 30 => UNPOPULATED. Stage-A remains evaluable (unpopulated folds ignored) but MIN_POSITIVE_FOLDS=2 then requires BOTH populated folds positive - zero slack",
+        "cost_ceiling": "240 fills; RT 3/4.5/6 bps (3/4.5/6 USD per round trip on the 10000-unit notional); aggregate tier-2 cost 720 USD on the anchor book; 6 bps RT vs multi-session (H=5) FX move scale (tens-to-hundreds of bps, documented scale, not computed) - ladder not arithmetically binding; edge thinness remains the packet-declared modal risk",
+        "missing_data_AU": "23 evidenced AU clocks only (2019-10-30..2025-04-30, contiguous quarterly); 7 S0 quarters unevidenced (2018Q2..2019Q3, 2025Q3-partial); AU decisions on unevidenced months = 0 by the packet's declared gap_fail_closed rule (specified: 'no trade is ever manufactured from an unevidenced release date'). Post-weekend-gate the AU book is 1 trade, so AU exposure is structurally moot in the anchor book",
+        "control_identifiability": "IDENTIFIABLE: same-pair date overlap with anchor = 0/229 (placebo days are outside +-5 sessions of every print by rule); placebo population 215 unique days; PASS (not CONTROL_NOT_IDENTIFIABLE)",
+        "runtime": "seconds per arm (0.74 s measured for the full four-proposal audit scan of the same data); 60-min/arm kernel timeout",
+        "trial_identity": "3 arms (anchor/neighbour/control) + non-scored benchmark_treatment; arm_id namespaces unique; see cycle-level cell-budget finding"
+      },
+      "risks": [
+        "FOLD2_UNPOPULATED: fold2=19 < 30 -> only 2 populated folds -> the 2-positive-populated-folds gate passes only with zero slack (any negative populated fold is terminal)",
+        "STRUCTURAL_WEEKEND_GATE_DECIMATION: GB/AU DAY-precision stamps (23:59:59Z) put the decision on the next day's bar, so mid-week releases fill on the Friday week-close and are dropped fail-closed: GB 82/83 and AU 22/23 entries dropped. The packet's own expected scored-region counts (GB ~65, CA ~80, NZ ~21, AU ~23; anchor book ~190 round trips) overstate the executable post-gate book (measured 120) by ~1.6x; the 4-pair 'evidence-dictated universe' is effectively a CA+NZ book (98% of trades)",
+        "PAIR_CONCENTRATION: CA = 79% of post-gate trades vs the 40% gross-positive-PnL gate - structurally fragile (outcome-dependent, not pre-binding)",
+        "KERNEL_BOUNDARY_MISQUOTE: both A4 packets state internal fold boundary 2024-08-01; the frozen kernel has 2024-07-01. fold_of() governs regardless (scoring unaffected) but the packets' fold scaffolding text is inexact and their fold-2 event estimates used the wrong boundary",
+        "CONTROL_SPEC_AMBIGUITY: the per-print placebo reading double-books 31 anchor days (two prints mapping to the same placebo day); the packet does not specify dedup; cross-pair placebo dates may coincide with other economies' print dates (25 calendar-date collisions across pairs - different books, harmless)"
+      ],
+      "binding_constraint": null
+    },
+    "FXFV5-A4-P2": {
+      "verdict": "INFEASIBLE",
+      "measured_counts": {
+        "sequences_S0": {"GB": 87, "CA": 104, "AU": 22, "NZ": 29, "total": 242},
+        "sign_agreement_entries_pre_gate": {"GB": 40, "CA": 39, "AU": 8, "NZ": 15, "total": 102},
+        "implied_agreement_rate_pct": 21.1,
+        "zero_reaction_breaks": {"CA": 2},
+        "weekend_gate_dropped": {"GB": 40, "AU": 8, "NZ": 3, "CA": 0, "total": 51},
+        "trades_post_session_gate": 51,
+        "trades_post_gate_per_economy": {"CA": 39, "NZ": 12, "GB": 0, "AU": 0},
+        "fills_Q15": 102,
+        "folds_Q15": {"fold0": 11, "fold1": 18, "fold2": 9, "pre_B0_unscored": 13},
+        "gap_adjacent_sequences_gt45d": 12,
+        "control_pseudo_trades": 55,
+        "control_schedule_identity_pct_of_union_dates": 29.6,
+        "control_direction_identity_pct_on_co_dates": 100.0,
+        "aggregate_tier2_cost_usd_anchor": 306.0
+      },
+      "measure_results": {
+        "expected_decision_count": "242 in-window sequences (matches the packet's claim exactly); 102 sign-agreement entries pre-gate (21.1% agreement rate - above the packet's own ~17% floor-risk threshold); 51 executable trades post-gate; DECISION_FLOOR 40 met 1.3x post-gate (2.6x pre-gate)",
+        "warmup_coverage": "same 17 pre-data clocks as P1 (all in unscored region); two-reaction sequence warmup satisfied for all executable decisions",
+        "fold_population": "fold0=11, fold1=18, fold2=9 - ALL THREE below FOLD_POPULATED_MIN_TRADES=30 => ZERO populated folds => FEWER_THAN_2_POSITIVE_POPULATED_FOLDS fires structurally regardless of any PnL realization; the frozen Stage-A gate set is unpassable as specified",
+        "cost_ceiling": "102 fills; RT 3/4.5/6 bps (3/4.5/6 USD per round trip); aggregate tier-2 cost 306 USD; ladder not arithmetically binding at Q=15 session scale - moot given the fold finding",
+        "missing_data_AU": "gap_fail_closed specified ('a gap yields a sequence BREAK and no trade'); 12 of 242 sequences span >45 days (gap-adjacent under the packet's no-bridging rule - adjacent evidenced clocks across the pre-2019 void); AU contributes 0 post-gate trades (all 8 AU agreement entries weekend-dropped)",
+        "control_identifiability": "IDENTIFIABLE as a population (union-date schedule identity 29.6% << 90% bar; control-only dates 31, anchor-only 26) - PASS. DESIGN CAVEAT (not a violation): on co-traded dates the control direction is sign(R_n of home) in BOTH books by construction, so direction identity is 100%; the control's falsification power is selection-only (which dates trade), never direction",
+        "runtime": "seconds per arm; 60-min/arm timeout",
+        "trial_identity": "3 arms + non-scored benchmark; F5 requires D2/A7-N material-non-identity check vs P1 anchor book (same reaction inputs - disclosed)"
+      },
+      "risks": [
+        "BINDING: zero populated folds - no fold reaches the frozen 30-trade population; Stage-A cannot be passed by any outcome; the scored test is structurally unpassable as frozen",
+        "STRUCTURAL_WEEKEND_GATE: all GB (40/40) and AU (8/8) agreement entries fill on the Friday week-close and are dropped; the post-gate book is CA+NZ only (CA 76%)",
+        "PAIR_CONCENTRATION: CA = 76% of post-gate trades vs the 40% gate",
+        "packet's trade estimate ('order 100-140 trades, of which order 90-110 score post-purge') overstates the executable post-gate book (measured 51) because it ignores the frozen weekend session gate"
+      ],
+      "binding_constraint": "FOLD_POPULATION: measured per-fold trades 11/18/9 all < FOLD_POPULATED_MIN_TRADES=30 (zero populated folds; MIN_POSITIVE_FOLDS=2-of-3-populated structurally unsatisfiable). No PnL outcome can pass the frozen gates. Audit-scope: not repaired, not re-tuned."
+    },
+    "FXFV5-A5-P1": {
+      "verdict": "DATA_BLOCKED_VALID",
+      "blocked_status_confirmation": {
+        "declared": "data_availability.status = DATA_BLOCKED_VALID with blocker_citation.authority_file = research/control/forex_free_v5_run/p0b_alfred_probe_verdict.json, verdict BLOCKED_DATA_AUTHORITY, blockers quoted verbatim",
+        "verified_against_authority": "p0b_alfred_probe_verdict.json verdict = BLOCKED_DATA_AUTHORITY; findings match the packet's citations field-for-field: deterministic_retrieval FAIL 1 success in 13+ attempts; alfredgraph.csv never returned bytes; fredgraph.csv single success carried current data only (no vintage column); coverage_vs_S0 and revision_behavior NOT MEASURABLE; LICENSE_UNVERIFIED_FAIL_CLOSED; keyless api -> HTTP 400 api_key required. p0_verdict.json and p2_data_authority_v5.json independently record axis 2 BLOCKED_DATA_AUTHORITY / alfred_vintages BLOCKED_DATA_AUTHORITY",
+        "no_softening_detected": "the packet's no_substitute_sources and unblock_condition (owner-key + license review + 5-point evidence gate) preserve the blocker without softening",
+        "note": "conditional decision-count bands (~350-450/pair daily; declared in the packet) were NOT measured - no authorized vintaged series exists on this host; excluded from measurement per audit instructions"
+      }
+    },
+    "FXFV5-A5-P2": {
+      "verdict": "DATA_BLOCKED_VALID",
+      "blocked_status_confirmation": {
+        "declared": "data_availability.status = DATA_BLOCKED_VALID, same authority_file and verdict, blockers quoted verbatim for DFII5/DFII10/DGS10",
+        "verified_against_authority": "identical p0b BLOCKED_DATA_AUTHORITY evidence bundle; no series-level vintage payload exists to measure coverage or revisions; the packet's revision_test (zero revisions -> BLOCKED, never scored as pass) is consistent with the authority",
+        "no_softening_detected": true,
+        "note": "conditional bands (~265 weekly decisions/pair) declared conditional; NOT measured (no authorized data)"
+      }
+    },
+    "FXFV5-A6-P1": {
+      "verdict": "FEASIBLE_WITH_RISKS",
+      "measured_counts": {
+        "clocks": 246,
+        "decisions_trades": 221,
+        "diagnostics": {"unexecutable_pre_data": 17, "warmup_lt11_fails": 0, "exact_zero_direction_NO_TRADE": 0, "fill_lag_gt4d_fails": 0, "fold_force_flat_refused_spans": 0, "weekend_gate_dropped": 8, "governor_blocks": 0},
+        "fills": 442,
+        "folds": {"fold0": 71, "fold1": 71, "fold2": 35, "pre_B0_unscored": 44},
+        "control_sham_valid_decisions": 198,
+        "control_sham_dropped_clock_inside_window": 24,
+        "control_sham_date_overlap_with_anchor": 1,
+        "benchmark_stale_calendar_population": 242,
+        "aggregate_tier2_cost_usd_anchor": 1326.0
+      },
+      "measure_results": {
+        "expected_decision_count": "229 executable clock windows -> 221 trades after the session gate (95.9% conversion; the pre-release window structure F<a<X places entries the session BEFORE availability, so the weekend gate bites only 8 Mondays-releases vs A4's 109); DECISION_FLOOR 40 met 5.5x; family-declared aggregate floor 140 met 1.58x",
+        "warmup_coverage": "11-bar warmup satisfied for every executable window (0 fails); 17 pre-data clocks (2018-04..2018-08) unexecutable, all in the unscored pre-B0 region",
+        "fold_population": "71/71/35 - ALL THREE >= 30 POPULATED (fold2 = 1.17x the floor); 2-positive-populated-folds gate fully evaluable with slack",
+        "cost_ceiling": "442 fills; RT 3/4.5/6 bps; aggregate tier-2 cost 1326 USD; 1-2 session holds vs 6 bps RT - not arithmetically binding, packet-declared THIN headroom stands as the modal risk (outcome, not feasibility)",
+        "missing_data_AU": "23 evidenced AU clocks (7 S0 quarters unevidenced: 2018Q2..2019Q3 + 2025Q3-partial); packet declares 'gaps (AU pre-Sep-2019 quarterlies and mid-2022) fail closed'; measured AU decisions on unevidenced months = 0 (fail-closed honored by construction); measured note: the evidenced AU series is contiguous quarterly 2019Q4..2025Q2 - no intra-range hole exists in the published clocks",
+        "control_identifiability": "IDENTIFIABLE: +7-day sham schedule valid for 198/222 shifted clocks (24 dropped fail-closed because a real evidenced clock falls inside the sham window - the validity test works); sham entry-instant overlap with anchor = 1; sham folds 59/59/34 (all populated). PASS",
+        "runtime": "seconds per arm; 60-min/arm timeout",
+        "trial_identity": "3 scored arms + stale-calendar benchmark inside the anchor cell (bench_schedule_id distinct); 5-scenario family-side dropout adaptation declared (kernel 8-scenario authority noted; kernel label governs)"
+      },
+      "risks": [
+        "THIN_FOLD2_MARGIN: fold2=35 vs the 30-trade floor (1.17x); the packet estimated 50-70 per fold - overstated ~1.8x",
+        "PAIR_CONCENTRATION structural: CA 105/246 clocks (43%) vs the 40% gross-positive-PnL gate - packet-declared HIGH, unchanged by measurement",
+        "SCHEDULE_VS_REALIZED_STAMPS: the packet's own disclosed limitation - backtest keys windows to realized evidenced stamps assuming schedule/realized coincidence; symmetric across arms (disclosed, not measurable without schedule archives)",
+        "PRE_DATA_S0: 17 clocks (2018-04-04..2018-09-01 window) precede the staged snapshot start 2018-09-03 - disclosed; all land in the unscored region"
+      ],
+      "binding_constraint": null
+    },
+    "FXFV5-A6-P2": {
+      "verdict": "FEASIBLE_WITH_RISKS",
+      "measured_counts": {
+        "evaluation_days_post_warmup_in_S0": 1673,
+        "trigger_days_abs_z_ge_2": 86,
+        "trigger_rate_pct": 5.1,
+        "leg_trades": {"GBPUSD": 68, "AUDUSD": 68, "NZDUSD": 68, "USDJPY": 68, "USDCHF": 68, "USDCAD": 68, "total": 408},
+        "governor_blocks_consecutive_trigger": 30,
+        "weekend_gate_dropped_leg_entries": 78,
+        "fills": 816,
+        "folds": {"fold0": 144, "fold1": 132, "fold2": 60, "purged_or_pre_B0_unscored": 72},
+        "control_flipped_pct": 51.4,
+        "control_direction_identity_pct": 48.6,
+        "control_trigger_day_identity_pct": 100.0,
+        "neighbour_2day_trigger_days": 260,
+        "aggregate_tier2_cost_usd_anchor": 2448.0
+      },
+      "measure_results": {
+        "expected_decision_count": "86 |z|>=2 trigger days x 6 legs = 516 decision events; 408 leg round trips after the governor (30 consecutive-trigger suppressions) and weekend gate (78 Friday-entry drops); DECISION_FLOOR 40 met by ~2 orders of magnitude (516 events; 10038 day-leg evaluations); family-declared 140 aggregate floor met 2.9x",
+        "warmup_coverage": "121-bar warmup consumed inside the staged data (first evaluation ~2019-02; staged start 2018-09-03); first trigger 2019-03-08; all triggers fall in or after the pre-B0 unscored region - warmup FITS",
+        "fold_population": "144/132/60 - ALL >= 30 populated with >= 2x margin (1-day holds make this the most population-robust book of the four)",
+        "cost_ceiling": "816 fills; RT 3/4.5/6 bps; aggregate tier-2 cost 2448 USD; 1-NY-day holds vs 6 bps RT: the ladder consumes a materially larger fraction of a 1-session move than for the multi-session books - packet itself declares THIN headroom and a LIVE USD-drift falsifier; arithmetic feasibility intact (1-session FX daily sigma is tens of bps, documented scale, not computed)",
+        "missing_data_AU": "N/A - price-only family, no AU conditioning; missing bars fail closed per packet (NO_EVAL), no missing-bar events encountered in the 16:00-NY daily calendars used",
+        "control_identifiability": "IDENTIFIABLE: trigger days shared 100% (declared leakage by design); measured hash-parity flip rate 51.4% -> direction identity 48.6% << 90% bar. PASS (flip-rate caveat: the decision_ts string format is implementation-owned; the ~50% parity rate is format-invariant)",
+        "runtime": "seconds per arm (the trigger scan over 2083 EUR/USD bars is the heaviest single step and is sub-second); 60-min/arm timeout",
+        "trial_identity": "3 scored arms + stale-leader benchmark (bench_schedule_id distinct); 7-scenario family-side dropout declared; packet submits decision-schedule rho vs FXFV4-A6-P1 to the |rho|<=0.20 A7-N bar (declared overlap on EUR-down days)"
+      },
+      "risks": [
+        "POPULATION_BELOW_DECLARED_BAND: measured trigger rate 5.1% of evaluation days vs the packet's declared 'roughly 6-10%'; leg trades 408 vs declared 510-810 (floors still met 2.9x) - ex-ante bands overstated, feasibility conclusions unchanged",
+        "USD_DRIFT_GATE_LIVE: the book is USD-directional on trigger days by construction; the packet declares this the most likely single-gate failure (outcome-dependent, retained by design)",
+        "MDD_SIX_CORRELATED_LEGS: packet estimates 800-2200 USD vs the 2500 ceiling (outcome risk, not measurable without PnL - out of scope)",
+        "CONTROL_FORMAT_DEPENDENCE: the SHA-256 flip schedule depends on the exact decision_ts/pair string serialization chosen at implementation; the flip RATE is robust but the exact flip TABLE must be committed at freeze per the packet's own requirement"
+      ],
+      "binding_constraint": null
+    }
+  },
+  "cycle_level_findings": {
+    "trial_identity_and_six_cell_budget": {
+      "candidate_scored_arms": "4 scoreable proposals x 3 arms = 12 scored-arm candidates",
+      "budget": "PLAN_forex_v5.md scope rules: 'exactly three arms per family; max six scored cells; unused slots never reassigned'",
+      "consequence": "the D2 proposal set over-subscribes the six-cell budget 2:1 if every arm of every proposal is scored; at most 2 full families (2x3=6) can be fielded absent selection. This is selection pressure at D3/A7, not a per-proposal infeasibility",
+      "key_collision_risks": [
+        "NO mechanical key collisions: proposal_id / hypothesis_id / arm_id / bench_schedule_id namespaces are disjoint across the six packets (verified: FXFV5-A4-P1:*, FXFV5-A4-P2:*, FXFV5-A6-P1-*, FXFV5-A6-P2-*, FXFV5-A6-P1-bench, FXFV5-A6-P2-bench)",
+        "SHARED_CONDITIONING_CLUSTER: A4-P1, A4-P2 and A6-P1 all condition on the same p3 246-clock file; decision instants differ (A6-P1 pre-availability, A4 post-availability) but cross-family rho (packets' own F5/disclosures and the plan's |rho|<=0.20 novelty bar) must be measured, not argued - selection of siblings into the same 6-cell slate raises measured-rho kill risk",
+        "A6-P2 declared overlap with FXFV4-A6-P1 (EUR-down days) is submitted to the A7-N rho bar by the packet itself; a measured failure kills it pre-scoring",
+        "A4-P2 is INFEASIBLE on fold population, which frees one family's 3 cells - the effective fieldable set is A4-P1 + A6-P1 + A6-P2 (9 arms) still exceeding 6 cells, so selection remains binding"
+      ]
+    },
+    "cross_cutting_data_findings": [
+      "WEEKEND_GATE_AS_FIRST_ORDER_POPULATION_DRIVER: the frozen session gate (Fri 16:00-NY entries dropped) interacts with DAY-precision availability stamps (GB/AU) to remove ~48% of A4-P1 and 100% of GB/AU agreement entries of A4-P2 - any future packet conditioning on next-day-fill event schedules must compute post-gate populations ex ante",
+      "STAGED_DATA_VS_S0_START: staged 1day snapshots start 2018-09-03 while the clocks-authority S0 starts 2018-04-04; 17 clocks (all four pairs' early prints) are unexecutable. Losses are confined to the unscored pre-2020-03-01 region for all four scoreable proposals",
+      "WEEKEND_STAMPED_ROWS: the raw 1day snapshots carry 95-142 provider weekend-stamped rows per pair; excluded per the frozen session-gate convention before calendar construction (recorded in d2_a9_measure_output.json basis)",
+      "KERNEL_BOUNDARY_DISCREPANCY: A4 packets say internal boundary 2024-08-01; frozen kernel is 2024-07-01 (A6 packets quote it correctly). Kernel governs"
+    ]
+  },
+  "pnl_attestation": "No PnL, no strategy return, and no cost-adjusted outcome was computed or recorded anywhere in this audit. Fill/entry/exit prices were read solely to evaluate existence, sign bits (A4-P2 agreement, A6-P1 exact-zero) and |z|>=2 trigger booleans (A6-P2); no magnitude crosses into the verdict.",
+  "forbidden_actions_attestation": "No files written outside the audit worktree; no push; no network fetches; no proposal repaired or re-tuned; lane proposals consumed verbatim from git objects and committed as evidence copies."
+}

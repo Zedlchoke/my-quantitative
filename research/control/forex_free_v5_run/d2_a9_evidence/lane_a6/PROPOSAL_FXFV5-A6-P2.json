@@ -1,0 +1,159 @@
+{
+  "schema": "forex_free_v5_proposal_v1",
+  "proposal_id": "FXFV5-A6-P2",
+  "hypothesis_id": "FXFV5-A6-P2",
+  "family_id": "FXFV5-A6-P2",
+  "lane": "A6",
+  "axis": "open_axis (any evidenced authority in the repo except mechanisms on the cumulative forbidden inventory)",
+  "cycle_id": "FOREX-FREE-V5",
+  "wave_sha": "e2b7a0e1e29794ca8449625f271f9a67c302fcf2 (V5 P1-P3 head; D1 dispatch base of this lane, verified with git rev-parse HEAD before any write)",
+  "title": "Dollar-board diffusion: next-session re-centering of the six non-EUR USD pairs after large standardized EUR/USD repricings, on the daily 16:00-NY DST clock",
+  "mechanism_class": "cross_pair_information_leadership_diffusion",
+  "macro_conditioned": false,
+
+  "conditioning_data_source": {
+    "primary": "research/control/forex_free_v5_run/p2_data_authority_v5.json — price_series INHERITED_BYTE_VERIFIED: the authorized 7-pair H1 research snapshot (data_raw/forex_free_v1, 153 files staged from the V4 tree; V4 P2 measured 152/152 byte-identical vs V3R and 156/156 manifest digests; manifest research/control/forex_free_v1_run/staged_data_manifest.json, V1-frozen). Scored price inputs are H1-derived daily 16:00-NY completed closes only; missing bars fail closed (NO_EVAL), never fill-forward.",
+    "calendar": "DST 16:00-NY calendar invariants EVIDENCED_CITABLE per the same p2 authority (tests/assets/forex_free_v3/test_data_authority_v3.py PASS).",
+    "financing_input": "research/control/forex_free_v5_run/announcement_ledger_v5_extension.jsonl (250 rows, sha256 cf1f01a7ec2d3d7506892c045139910937147df49d3742cc4ec72b36d20fd902) — used ONLY inside the frozen financing kernel as the policy-rate vintage source, never as a signal.",
+    "non_use_disclosure": "No macro clock, CPI print or RATE_CHANGE row is used as trigger or direction input anywhere in this family (post-policy-decision drift is V4-family2-forbidden). The family is price-only: the conditioning variable is another authorized pair's completed daily return."
+  },
+
+  "mechanism": "EUR/USD is the pricing anchor of the dollar board: the deepest USD pair and the ~57.6% weight of the dollar index, so dealer inventory and risk systems mark the whole USD complex off the EUR/USD quote. When EUR/USD reprices by a large standardized amount within one session, every other USD pair's quote is momentarily stale relative to the EUR-implied dollar level. The forced actors are inventory-constrained dealers: their GBP, JPY, CHF, CAD, AUD and NZD books are hedged against a USD position whose mark just moved; quote re-centering executes under inventory and latency constraints, and in a multi-dealer market the re-centering propagates dealer-to-dealer over more than one session (dealer inventory and quote revision dynamics: Ho & Stoll 1981 JFinE; order flow and information diffusion across FX pairs: Evans & Lyons 2002 JF; microstructure of FX quote setting: Lyons 2001; common-factor structure that makes the dollar board cohere: Lustig, Roussanov & Verdelhan 2011 RFS). Systematic relative-value funds re-center crosses with capacity-constrained lag for the same reason. The mechanism under test is the NEXT-NEXT-session tail of this diffusion: at the daily 16:00-NY clock with the mandatory one-event lag, the testable claim is that after a large EUR/USD repricing day t (completed bar), the six follower pairs continue to re-center in the EUR direction over the move from the t+1 close to the t+2 close — the slow inventory tail that thick pairs absorb in session t+1 but the full board completes only later. Quantitative law, frozen: at the completion instant of each daily 16:00-NY bar t, r_L = ln(close_t / close_{t-1}) of EUR/USD; sigma = the standard deviation of EUR/USD daily log returns over the trailing 120 completed NY-days strictly before t; z = r_L / sigma. The trigger fires iff |z| >= 2.0. Direction: each follower's non-USD currency moves WITH the EUR sign against the dollar — EUR-up (z > 0): LONG GBP/USD, LONG AUD/USD, LONG NZD/USD, SHORT USD/JPY, SHORT USD/CHF, SHORT USD/CAD; EUR-down (z < 0): all six mirrored. Enter all six legs flat at the open of the next session's 16:00-NY bar (one-event lag) and hold exactly one NY-day (exit at the following bar). Who is forced to act: dealers re-centering stale quotes and lagged relative-value systems; when it must fail: if cross-pair arbitrage completes the re-centering within the first post-trigger session, the t+1->t+2 drift is zero and the anchor earns nothing but cost — the falsification is live, not decorative.",
+
+  "falsifiable_prediction": "(i) The six-leg follower basket earns positive after-cost financing-adjusted expectancy over the t+1 -> t+2 window after |z| >= 2.0 EUR/USD days, with the price-only book not inverting the anchor expectancy sign; (ii) incremental alpha versus the stale-leader benchmark (identical law with the leader read at t-10 NY-days, staleness strictly exceeding the 1-2-session diffusion window) is strictly > 0 — fresh leader information, not the trading law alone, must carry the value; (iii) the sign-shuffled causal control (identical trigger days, legs, holds, clocks and costs, with each leg's direction flipped on a frozen deterministic ~50% hash-parity schedule) must NOT reproduce the edge under its preregistered rule — if it fires, the leader's signed move is not the operative ingredient and the family fails regardless of the anchor's sign; (iv) the inherited USD-drift diagnostic is a preregistered falsifier of the dollar-momentum explanation: if the book's PnL is just next-day dollar-trend continuation, |corr(daily PnL, USD-wide move)| exceeds the frozen 0.30 ceiling and USD_DRIFT_EXPLAINS_ANCHOR fires; (v) all inherited Stage-A gates pass with the tier-2.0 stress book as a primary gate.",
+
+  "universe": {
+    "authorized_universe": ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD", "AUD/USD", "NZD/USD"],
+    "leader_pair": "EUR/USD (information source ONLY — never traded as a leg)",
+    "traded_legs_anchor": ["GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "subset_justification": "Causal, decided ex ante: the followers are exactly the authorized pairs other than the leader — the full dollar board whose common mark EUR/USD anchors. No cherry-picking is possible (nothing is excluded on any outcome ground); the leader/leg split is the mechanism's design, not a subset choice. Six traded legs also keep the inherited pair-concentration gate (max 0.40 share of gross positive PnL) structurally passable (floor 0.167), which a 2-3 leg design would violate by arithmetic."
+  },
+
+  "decision_clock": "DAILY: one decision per pair per NY trading day at the completion instant of the 16:00 America/New_York flat bar (20:00Z EDT / 21:00Z EST via zoneinfo; DST-aware, never fixed offsets; DST 16:00-NY calendar invariants inherited). Session gate Sun 21:00 America/New_York -> Fri 16:00 New York; no weekend decisions or fills. Daily-or-slower satisfied; no intraday decision anywhere.",
+
+  "warmup": "121 completed valid NY-days of 16:00-NY closes for the leader AND every follower (120-day sigma window plus the leader return day) strictly before the first decision; a day is valid only if the completed bar exists for every used pair — any missing bar voids that day's decision (NO_EVAL, fail-closed, never fill-forward).",
+
+  "features_and_lags": "All features are completed 16:00-NY bars strictly before the decision instant (a completed bar is available at its completion instant by construction; availability-lagged trivially — no stamp-bearing series is used). Leader return r_L at t uses closes t and t-1; sigma uses closes strictly before t. No print value, policy variable or clock series enters any feature.",
+
+  "entry_rules": "On trigger day t (|z| >= 2.0 at the completed bar): if a leg is flat, enter its frozen direction at the open of the next session's 16:00-NY bar (one-event lag). If a leg is already in a position, the new trigger is ignored for that leg (no refresh, no extension). Governor: max 1 position per pair, max 1 entry per pair per NY-day; blocked signals are NO_TRADE, never deferred. All six legs act on the same trigger day as one frozen basket.",
+
+  "exit_rules": "Exit each leg at the open of the 16:00-NY bar after the 1st completed NY-day following entry (fixed 1-NY-day horizon). No profit target, no stop, no time extension, no signal refresh while a leg is open. Force-flat: any open leg exits at the open of the 16:00-NY bar of the last decision day before a fold boundary; a trade spanning an internal boundary is refused (FOLD_FORCE_FLAT_VIOLATION). Missing entry/exit bar => signal voided or earliest-scheduled exit, never fill-forward.",
+
+  "fill_convention": "One-event lag: decision at completed bar t, fill at the next session's 16:00-NY bar, never same-bar (ONE_EVENT_LAG_VIOLATION inherited); a fill gap exceeding 4 calendar days over holiday weekends fails closed to NO_TRADE (inherited validator constraint). Fill prices are the fill bar's open; DST-aware bar stamps 20:00Z/21:00Z.",
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV5-A6-P2-anchor",
+      "spec": "Exactly the frozen mechanism law: |z| >= 2.0 one-session EUR/USD trigger, six-leg EUR-anchored direction map, next-session entry, 1-NY-day hold, governor, force-flat folds, dual book.",
+      "single_frozen_parameter_set": {
+        "leader_pair": "EUR/USD",
+        "sigma_window_ny_days": 120,
+        "trigger_threshold": "|z| >= 2.0 (two-sided; single frozen value, no tuning)",
+        "direction_map": { "z>0": ["LONG GBP/USD", "LONG AUD/USD", "LONG NZD/USD", "SHORT USD/JPY", "SHORT USD/CHF", "SHORT USD/CAD"], "z<0": "all six mirrored" },
+        "holding_ny_days": 1,
+        "entry_lag": "one session (next 16:00-NY bar)"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV5-A6-P2-neigh",
+      "one_presumption_away": "Swaps only the repricing-speed presumption ('a large single-session EUR move captures the dollar-board repricing event') for a two-session cumulative version: z is computed on (r_t + r_{t-1}) standardized by the same trailing 120-day sigma, same |z| >= 2.0, everything else byte-identical. If the diffusion mechanism is real, the neighbour moves TOGETHER with the anchor (same verdict sign, similar fold pattern); divergence means the trigger sits on a knife-edge between session-count definitions and the family is not promotable.",
+      "spec": "Byte-identical to anchor EXCEPT the trigger standardized return is the 2-NY-day cumulative leader return; same legs, map, holds, clocks, costs, dual book.",
+      "single_frozen_parameter_set": { "trigger_horizon_ny_days": 2, "everything_else": "byte-identical to anchor" }
+    },
+    "control": {
+      "arm_id": "FXFV5-A6-P2-ctrl",
+      "role": "Sign-shuffled causal control: destroys exactly the operative ingredient — the SIGNED leader information — while holding the trigger days, leg set, clocks, holds, costs, governor and dual book identical. For each triggered (decision, pair) entry, the direction is flipped iff SHA-256('{decision_ts}|{pair}|FXFV5-A6-P2-CTRL') is even (a frozen deterministic schedule; ~50% of legs flipped on every trigger day by hash parity). The control's expected gross expectancy is structurally zero-minus-costs, so it can only match the anchor if the anchor's PnL does not depend on the leader's direction (direction-irrelevant exposure, cost artifacts, or a volatility-harvest form).",
+      "disclosed_leakage": "The control retains the trigger-day selection (active-EUR days), so any 'event-day exposure' component common to anchor and control affects both; that is intentional — it makes the control a pure test of signed-information content, and the preregistered rule kills the family if the sign does not matter.",
+      "runs_to_completion": "Yes: price-only law on authorized pairs; every control decision has an observable; the book executes under evidenced semantics with the same fail-closed rules as the anchor (the V3R lesson — a control that cannot execute has null evidentiary value — is respected).",
+      "preregistered_non_reproduction_rule": "The control REPRODUCES (and the family FAILS its control gate regardless of the anchor's sign) if control financing-adjusted expectancy > 0 AND control PF >= 1.10, OR control expectancy >= 0.5 x anchor expectancy. Positive raw control PnL never overrides a firing control; the kernel's mechanism_sanity definition governs where its label differs from this prose."
+    }
+  },
+
+  "incremental_test": {
+    "benchmark_definition": "Per the frozen benchmark_treatment convention (freshness removed, everything else identical): the anchor law with the leader read STALE — r_L from NY-day t-10 and sigma ending at t-11 (staleness 10 NY-days strictly exceeds the 1-2-session diffusion window, so the benchmark's entries arrive after the window under test has closed). Identical legs, direction map, clocks, holds, fills, costs, folds.",
+    "gate": "Overall incremental alpha > 0: anchor financing-adjusted expectancy minus benchmark financing-adjusted expectancy, evaluated under the same gates as the anchor. Positive raw anchor PnL never overrides a failed incremental alpha. The benchmark is an auxiliary treatment inside the anchor cell, not a fourth scored arm.",
+    "bench_schedule_id": "FXFV5-A6-P2-bench"
+  },
+
+  "costs": {
+    "base_bps_per_fill": 1.5,
+    "tier_ladder_frozen": { "1.0": 1.5, "1.5": 2.25, "2.0": 3.0 },
+    "application": "F1-FIXED: tier multipliers applied to BOOKED stress PnL through the inherited P1 accounting kernel; base / tier-1.5 / tier-2.0 rows pairwise distinct when trades are non-empty (STRESS_ROWS_NOT_DISTINCT fail-closed). Tier 2.0 is a PRIMARY Stage-A gate, not an appendix.",
+    "delay_stress": "Frozen one-session delay (entry and exit each shifted one additional 16:00-NY bar) carried as a SEPARATE fill_delay_events component, never blended into the cost tiers.",
+    "notional_usd_unit": 10000,
+    "break_even_reporting": "break_even_bps_per_fill reported full-sample and per fold from the same cost kernel; a cell whose break-even sits below the tier bps fails for cost reasons rather than absence of gross edge — diagnostic, never a fee rescue."
+  },
+
+  "turnover_and_sample_floor": {
+    "folds_frozen": "Inherited kernel authority (FOLD_BOUNDARIES 2020-03-01 / 2022-05-01 / 2024-07-01 / 2026-09-02, PURGE_DAYS 14, fold_of governs); family-side S0 cap: entries with instant >= 2025-07-25T00:00:00Z excluded (UNS0_CAP_EXCLUDED, counted) per the clocks authority S0 window 2018-04-04..2025-07-24. Decisions before the kernel's scored domain are unscored by fold_of (warmup region).",
+    "decisions_per_pair_estimate": "~1,350 NY-day evaluations per leg inside the scored domain and S0 cap; DECISION_FLOOR (>= 40) met by two orders of magnitude.",
+    "trades_estimate": "EUR/USD daily |z| >= 2.0 occurs on roughly 6-10% of days (fat tails): est. 85-135 trigger days x 6 legs = 510-810 round trips full-sample — est. 3.6-5.8x the 140 aggregate floor; per-fold population est. 150-250 vs the 30-trade floor.",
+    "sample_floors": {
+      "min_decisions_per_arm": 40,
+      "full_sample_aggregate_min_trades_anchor": 140,
+      "per_populated_fold_min_trades": 30,
+      "populated_rule": "kernel definition governs; a cell below floors is INDETERMINATE, not negative evidence"
+    },
+    "cost_thesis": "The 1-NY-day horizon must clear 3 bps round trip at base tier (6 bps at tier 2.0) from next-next-session diffusion; break-even bps will attribute any reject to cost vs absence of gross edge."
+  },
+
+  "drop_one_design": {
+    "procedure": "This family trades 6 of the 7 authorized pairs (the leader is the excluded pair), so the kernel's 7-pair 8-scenario dropout is adapted family-side as in V4: 6 leg-drops (each excluding exactly one follower; the basket renormalizes to 5 legs with the frozen map unchanged) + the inherited drop-one-BEST-fold = 7 scenarios. Dropping the LEADER (EUR/USD) is structurally vacuous (empty trigger set) and is excluded from the suite — disclosed; the kernel's DROPOUT definition governs where labels differ.",
+    "gate": "Anchor financing-adjusted expectancy > 0 AND PF >= 1.00 in at least 6 of 7 scenarios (proportional tightening of the inherited 6/8 rule to the 7-scenario design).",
+    "non_vacuity": "Each leg-drop changes the basket composition and the per-leg book by construction; asserted at implementation as a test.",
+    "interpretation": "Failure means the edge is a single-leg artifact (e.g. one currency's episode), not a board-wide re-centering mechanism."
+  },
+
+  "governor": { "max_positions_per_pair": 1, "max_entries_per_pair_per_ny_day": 1, "enforcement": "Deterministic and PIT-safe; blocked signals are NO_TRADE, never deferred." },
+
+  "dual_book_and_financing": {
+    "mandate": "Every scored cell books BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns, all arms (inherited kernel).",
+    "financing_formula_frozen_verbatim": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days/365, accrued per calendar day at the day-start as-of policy-rate differential from the evidenced policy-rate vintages of the pinned V5-extension announcement ledger (sha256 cf1f01a7ec2d3d7506892c045139910937147df49d3742cc4ec72b36d20fd902; rows eligible only when available_time_utc <= the accrual instant; never eligible on their own effective date).",
+    "disclosed_approximation": "Policy rates are unsecured official rates, NOT swap/OIS-implied rollover; disclosed ex ante per inherited convention (HISTORICAL_ROLLOVER_FINANCING UNAVAILABLE_FAIL_CLOSED).",
+    "financing_gate": "The financing term must not manufacture the edge: the price-only book must not invert the sign of the anchor's expectancy (FINANCING_MANUFACTURES_EDGE inherited gate). This family is price-only in its signal."
+  },
+
+  "falsification_rule": "The family FAILS (terminal, no post-observation tuning of threshold, sigma window, legs, map, holds or clocks) if ANY of: (i) anchor financing-adjusted expectancy <= 0, or PF < 1.10, or any inherited Stage-A gate fails (margin-to-fail recorded per gate, P-2); (ii) CONTROL_REPRODUCES_MECHANISM: sign-shuffled control fin-adj expectancy > 0 AND PF >= 1.10, OR control expectancy >= 0.5 x anchor expectancy — the leader's signed move is not operative; (iii) USD_DRIFT_EXPLAINS_ANCHOR: |corr(daily PnL, USD-wide move)| > 0.30 (evaluated per kernel when >= 60 days) — the edge is next-day dollar momentum, not cross-pair re-centering; (iv) incremental alpha <= 0 vs the stale-leader benchmark; (v) NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR per kernel mechanism_sanity; (vi) any MDD / fold-population / concentration / dropout / stress-tier-2.0 / financing gate failure.",
+
+  "failure_interpretation": "Negative anchor expectancy after base cost: large EUR repricings carry no after-cost next-next-session diffusion into the dollar board at the frozen cost authority — a complete, publishable reject with break-even bps attributing cost vs gross absence; no sign inversion, no threshold/sigma-window rescue, no leg subset, no lower cost, no re-clocking. Anchor positive but the sign-shuffled control fires: the PnL is direction-irrelevant exposure (event-day beta or cost artifact), not leader information — reject regardless of anchor sign. Anchor positive but the USD-drift diagnostic fires: the edge is dollar-momentum continuation, and the re-centering claim is false — reject (this gate is expected to be a live, honest killer given the book's structural USD directionality). Anchor positive but incremental alpha <= 0: the trading law alone explains the book — reject. Neighbour diverges: trigger knife-edge between session-count definitions — not promotable. Drop-one or concentration failure: single-leg artifact — reject. Realized turnover below the 140-trade floor: INDETERMINATE (never negative evidence); unused slots are never reassigned.",
+
+  "novelty_self_declaration": "Checked against EVERY row of research/control/forex_free_v4_run/forbidden_family_inventory.json (all entries read), the V5 plan's section-1 additions, and the E.2 cluster: (1) V1 family1 session-open (London-open) momentum continuation at intraday clocks — different information source (ANOTHER pair's completed daily standardized move; no session-open price, no open-direction observable anywhere) and different clock (daily 16:00-NY decisions only). This is cross-pair leadership conditioning, not own-pair session continuation. (2) V1 family2 late-NY standardized-extension fade at intraday clocks — no within-day extension is measured, no fade law exists; the claim is multi-session CONTINUATION of a cross-pair repricing; not a sign inversion or threshold/horizon neighbourhood (that family's observable does not exist here). (3) V2 family1 Tokyo-range compression -> London-morning expansion — no session range, no compression/expansion transition anywhere. (4) V2 family2 London-AM range break with retest-hold — no break, no retest confirmation anywhere. (5) V3 family1 (FXFV3-A5-P1, policy-divergence-gated daily trend) — no policy input of any kind and no own-pair trend term: direction is set by another pair's single-day standardized repricing through a frozen six-leg map, with 1-NY-day fixed horizon holds, not a state-gated trend. (6) V3 family2 (FXFV3-A6-P1, realized-vol-gated policy-rate-differential carry, DATA_AUTHORITY_INVALIDATED) and the CLOSED carry region (V4-measured rho 0.997-1.000) — no policy-rate differential in any role, no realized-vol STATE gate (|z| >= 2.0 is a signed one-day event trigger, not a vol-state holding gate and contains no carry direction), no financing-dependent direction; this packet does NOT invoke the Section 1.1 front door. A7-N must measure rho vs BOTH invalidated-ancestor variants; no ingredient of those books is reused. (7) V4 family1 (FXFV4-A6-P1, commodity-bloc risk-off event conditioning and every threshold/window variant) — the trigger is the leader pair's OWN standardized move, two-sided, not any commodity-bloc co-movement observable; the response map is EUR-anchored dollar-board-wide with frozen signs, not a one-sided risk-off basket. DISCLOSED OVERLAP: on EUR-down trigger days (risk-off states) three of six legs (short AUD/NZD, long USD/CAD) coincide with that family's directions, so decision-day sets partially intersect. This is declared, not argued away: the decision-schedule rho vs FXFV4-A6-P1 (BOTH scored variants) is submitted to the |rho| <= 0.20 A7-N bar at D2, and a measured failure kills this proposal pre-scoring — which is the system working. (8) V4 family2 (FXFV4-A6-P2, post-policy-decision drift, REJECTED) — no policy event, no availability-gated decision, no delta sign anywhere; the entire conditioning object is a price-only cross-pair repricing. Not a relabel or sign flip. Blanket clauses: no cost assumptions below the frozen 1.5 bps x {1.0,1.5,2.0} authority; no pair cherry-picking (the six-leg set is 'everything except the leader', fixed ex ante); no result-aware reuse of any earlier packet; no re-grading of any prior cell. E.2 shadow effects (inverted-OI-flow, plain vol-level sorting, sector-exposure form) are crypto/stocks phenomena and are not reused in any role.",
+
+  "control_identifiability_statement": "Why a generic exposure form CANNOT silently pass: this family carries TWO preregistered killers aimed at its two confound classes. The sign-shuffled control retains trigger days, legs, holds and costs and destroys only the leader's SIGN — a direction-irrelevant exposure form (event-day beta, volatility-harvest, cost artifact) reproduces it and dies by CONTROL_REPRODUCES_MECHANISM; a direction-aligned form that is really dollar momentum is killed by the inherited USD-drift diagnostic (|corr| > 0.30), which this packet declares a LIVE expected falsifier, not a formality. No arm can rescue the anchor: controls only falsify. This two-killer structure is designed against the E.2 cluster, where a single convenient control let an exposure-form pass.",
+
+  "source_to_test_map": [
+    { "source_claim": "Dealer-inventory re-centering and multi-session diffusion (Ho-Stoll 1981; Evans-Lyons 2002; Lyons 2001; Lustig-Roussanov-Verdelhan 2011)", "observable": "six-leg t+1 -> t+2 basket drift after |z| >= 2.0 EUR days", "planned_test": "trigger golden (z computation, trailing 120-day sigma, strictly-prior windows, two-sided >= semantics frozen); direction-map golden from synthetic bars; warmup/missing-bar fail-closed" },
+    { "source_claim": "One-event lag and DST 16:00-NY fill convention", "observable": "fill instants", "planned_test": "DST-aware calendar goldens (20:00Z/21:00Z stamps; holiday gap <= 4 days else NO_TRADE); same-bar refusal regression" },
+    { "source_claim": "Sign-shuffle removes exactly the signed-leader ingredient", "observable": "hash-parity flipped legs", "planned_test": "determinism golden of the SHA-256 flip schedule (~50% flip rate asserted on synthetic triggers); control-cannot-equal-anchor schedule-difference test; preregistered non-reproduction rule applied at scoring" },
+    { "source_claim": "Stale-leader benchmark isolates freshness", "observable": "FXFV5-A6-P2-bench schedule", "planned_test": "benchmark identity test (identical except leader read at t-10); incremental alpha recomputation from runner source at A7" },
+    { "source_claim": "USD-drift diagnostic kills the dollar-momentum explanation", "observable": "corr(daily PnL, USD-wide move)", "planned_test": "inherited kernel diagnostic (60-day floor, 0.30 ceiling) plus declared expectation that it is a live falsifier" },
+    { "source_claim": "Dual-book separation; financing cannot manufacture the edge", "observable": "price_only_pnl_usd vs financing_adjusted_pnl_usd", "planned_test": "inherited kernel separation tests + FINANCING_MANUFACTURES_EDGE refusal" },
+    { "source_claim": "F1-fixed stress application, tier 2.0 primary", "observable": "book_stress rows", "planned_test": "tier rows pairwise-distinct fixture (inherited regression)" },
+    { "source_claim": "Drop-one meaningfulness", "observable": "7 drop scenarios", "planned_test": "non-vacuity assertion (each scenario's schedule differs from full book)" }
+  ],
+
+  "margin_to_fail_expectations": {
+    "note": "Ex ante priors written before any V5 outcome exists; never measurements.",
+    "expectancy_gt_0": "If the diffusion tail exists, expected fin-adj expectancy +2 to +15 per 10k-unit leg-trade over 1-session holds; small-window effects are thin. Honest prior: a genuine reject is a live outcome. Knife-edge risk MODERATE.",
+    "pf_ge_110": "Expected 1.00-1.20 if real; historically the thinnest gate class. Knife-edge risk HIGH.",
+    "folds_positive_ge_2_of_3": "Triggers spread over 2020-2025 including the 2022 dollar-trend regime; expected 2/3 positive if real. Fold population est. 5-8x the 30-trade floor. LOW-MODERATE.",
+    "mdd_within_frozen_ceiling": "Six correlated legs firing together on large-EUR-move days is the MDD driver: est. 800-2200 USD vs the 2500 ceiling -> margin 300-1700. MODERATE.",
+    "stress_tier_2_0_primary": "Gross per-leg must clear 6 bps RT; expected gross 5-30 bps IF the effect exists — THIN headroom by construction (1-session windows); the most likely single-gate failure alongside USD-drift. Knife-edge risk HIGH.",
+    "fold_positive_share_and_concentration": "Six legs give a structural floor of 0.167 for the max-pair share; expected max share 0.20-0.35 vs 0.40 — MODERATE margin. Fold-share gate expected inside 0.50. Kernel label definitions govern.",
+    "usd_drift_gate": "DECLARED HIGH AND HONEST: the book is USD-directional on trigger days by construction, so this gate is the most likely single-gate failure (expected |corr| 0.15-0.45 vs the 0.30 ceiling). It is retained deliberately as the preregistered killer of the dollar-momentum explanation — a family that survives it earns that survival.",
+    "incremental_alpha_gt_0": "Staleness (10 NY-days) strictly exceeds the diffusion window; expected margin a large fraction of anchor expectancy IF fresh-leader-driven. Residual risk: if EUR repricings cluster in persistent regimes, the stale trigger fires on overlapping states and erodes margin. THIN-POSITIVE.",
+    "control_non_reproduction": "Structurally the sign-shuffled control's expectancy is <= -costs, so firing requires a genuinely direction-irrelevant anchor — exactly the E.2 exposure-form the control exists to catch. MODERATE risk, intended.",
+    "sample_floor": "Trades margin est. 3.6-5.8x the 140 floor; decisions margin huge. LOW.",
+    "reproduction_all_match": "Harness-deterministic; expected PASS; binary margin.",
+    "overall_prior": "Conditional on the effect existing, the most likely failing gates are USD-drift (declared), tier-2.0 stress and PF >= 1.10; conditional on it not existing, expectancy fails outright. No gate is expected to be failed by cost arithmetic if a gross effect exists."
+  },
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm: 120-day sigma window, |z| >= 2.0 trigger, 1-NY-day hold, frozen six-leg map, 10-NY-day benchmark staleness, frozen hash-parity shuffle seed constant; the neighbour's single presumption swap is the 2-day cumulative trigger. No grids, menus or tuning anywhere.",
+
+  "lane_diversity_note": "This packet is price-only cross-pair leadership: no calendar conditioning (P1 of this lane owns the evidenced-clock axis), no policy-rate signal (financing kernel only), no realized-vol state gate, no per-print value or surprise. Different information source (cross-pair leader return vs P1's evidenced release calendar) and different causal control (sign-shuffled leader vs P1's sham calendar) satisfy the materially-different requirement.",
+
+  "outcome_blind_attestation": "I (A6 lane, FOREX-FREE-V5, open axis) attest this proposal is outcome-blind. I read: PLAN_forex_v5.md sections 0-6 (via git object 704c6a9 in this repo's shared database — the file is not in this worktree's base tree); research/control/forex_free_v4_run/forbidden_family_inventory.json (every entry); research/wayfinder/HYPOTHESIS_LEDGER.md sections A-F (required reading; it indexes prior outcomes as research memory — no scored artifact was opened); research/control/forex_free_v5_run/{p0_verdict.json, p2_data_authority_v5.json, p3_conditioning_clocks_v5.json (structure and counts only), p3_baseline_invariants_v5.json, ledger_manifest_v5_extension.json}; tests/assets/forex_free_v3/{test_accounting.py, test_scored_runner.py} and the scored_runner kernel constants (gate/fold/cost conventions); and the V4 A6 proposal PACKETS (PROPOSAL_FXFV4-A6-P1/P2.json + handoff) solely for packet format and novelty differentiation — design documents from a closed cycle, not scored artifacts. I did NOT read: any scored_ledger_published.jsonl, any terminal_verdict.json, v3r_records/v3r_recompute/decision_diff tables, SURVIVORS.md, or any other V5 lane's worktree. I loaded no market data (no data_raw reads — none staged in this worktree), fetched no network data, computed no backtest, PnL or schedule simulation; every number in this packet is a frozen design constant, a schedule-level design estimate, or a cited evidence count. No literature metadata was verified by network (network fetch forbidden in this lane): all citations are marked recalled-canonical. This packet was written before any V5 scored cell exists.",
+  "written_before_scoring": true,
+  "written_utc": "2026-09-05"
+}
