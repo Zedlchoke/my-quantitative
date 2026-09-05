@@ -2,6 +2,22 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **FOREX V5 CLOSED → FOREX_FREE_V5_REJECT_ALL** (synced by A1, 2026-09-06,
+  branch `orca/forex-free-v5-integration@61100aa`; authoritative copy of this
+  entry synced on main at closeout) — the inflation/real-rate axis cycle: P0
+  funded the per-print CPI axis on 4/8 economies (GB/CA/AU/NZ; US OUT via
+  archived BLS anti-bot 403; EMU/CH/JP release TIMING unevidenced) and closed
+  the ALFRED vintage axis BLOCKED_DATA_AUTHORITY this host (license text
+  unreachable — fail-closed; owner unblock options recorded). D2 measured
+  kills: A6-P2 ancestry rho 0.326>0.20; A4-P2 fold-infeasible; selection =
+  FXFV5-A6-P1 alone (3/3 cells). REJECT: anchor FAIL 8 gates (gross-of-cost
+  expectancy +0.712 only), sham-calendar neighbour out-earned the anchor and
+  died at the frozen primary stress gate (falsification-by-control instance
+  #10). P0c extended the announcement ledger 220→250 (cf1f01a7) and surfaced
+  9 EMU value-integrity findings (owner debt). Denominators forex 27/27;
+  program 191/194. S1 sealed. Detail:
+  `research/control/forex_free_v5_run/terminal_verdict.json` (worktree).
+
 - **FOREX TERMINAL `FOREX_BLOCKED_SELECTION_INSUFFICIENT`** (synced by A1,
   2026-09-03, branch `forex@af707e3` + terminal closeout commit) — G10 spot-FX
   sprint closed honestly: F0 consumed the owner-authorized multi-asset core
