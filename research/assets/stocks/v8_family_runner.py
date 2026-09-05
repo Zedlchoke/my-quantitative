@@ -347,8 +347,12 @@ def run_arm(arm_id, panel, prices, folds, dry_run, owner_go=None,
     if not dry_run and owner_go != GO_PHRASE:
         raise SystemExit("SCORED EXECUTION REFUSED: owner GO phrase absent/incorrect")
     all_fields = set(spec["numerator_fields"]) | {spec["denominator_field"]}
-    sample_rows = next(iter(panel.values()))["rows"] if panel else {}
-    missing = [f for f in all_fields if f not in sample_rows]
+    available = set()
+    for ent in panel.values():
+        available.update(ent["rows"].keys())
+        if all_fields <= available:
+            break
+    missing = sorted(all_fields - available)
     if missing:
         raise ValueError(f"panel missing required fields {missing} - fail closed")
     sect = {e: v["sector"] for e, v in panel.items()}
