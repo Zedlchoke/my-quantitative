@@ -1,0 +1,138 @@
+{
+  "schema": "forex_free_v5_i1_implementation_report_v1",
+  "written_utc": "2026-09-05",
+  "cycle_id": "FOREX-FREE-V5",
+  "family_id": "FXFV5-A6-P1",
+  "lane": "I1 implementation lane, family worker i-family-1",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v5/i-family-1",
+  "branch": "orca/forex-free-v5-i-family-1",
+  "base_sha_verified": "54344353d09f880005a169734cd4671b8a9b9772 (git rev-parse HEAD + branch --show-current before any work; tree clean)",
+  "selection_sha": "c82403d8c6f39a9d31c276db4d8510b70313c6cd (A6 proposal commit; packet materialized from the shared object store)",
+
+  "files_added": {
+    "research/assets/forex_free_v5/__init__.py":
+      "sha256:89e363eb3f0032e922bbeb7eec734febed8a252320ff7834e85eee7763c3b6bb",
+    "research/assets/forex_free_v5/family_a6p1.py":
+      "sha256:78f8dab67c4795009c88b711ccdc528f9a0958d24bfdb3c3e92d9e0aa8415af5",
+    "research/assets/forex_free_v5/exec_driver_v5.py":
+      "sha256:3b1b58fdcb38f03e274c03af7d62d708d542dc2d0223b1dbe1de88bc39c71322",
+    "tests/assets/forex_free_v5/__init__.py":
+      "sha256:a7a5d9e2a1278e3546f3fb079242bce60e0c3f0fd3275930b0a55ff95cdc381b",
+    "tests/assets/forex_free_v5/test_family_a6p1.py":
+      "sha256:2f2c9cea32329a00b4e7f4810cd6092dbd35aea092c6a9ad9123354010ca002e",
+    "tests/assets/forex_free_v5/test_exec_driver_v5.py":
+      "sha256:b5b100acf31f20b768ba60d80a5ca6ae1f7ac0bbf20a1cbd64c4740f28a7de26",
+    "research/control/forex_free_v5_run/i1_inputs/PROPOSAL_FXFV5-A6-P1.json":
+      "sha256:810f8650414ca578c08510fdb150f84d131f89c5fdbd3ace3f0d09a9a344a8f9 (materialized verbatim from git object c82403d8)",
+    "research/control/forex_free_v5_run/i1_inputs/A6_HANDOFF.md":
+      "sha256:c9506ae46374c1a7b3052a02a194a30d14be85ee8ccc512e78e0d02292af2355 (materialized verbatim from git object c82403d8)"
+  },
+
+  "arm_mapping_as_implemented": {
+    "anchor": {
+      "arm_id": "FXFV5-A6-P1-anchor",
+      "schedule": "the frozen mechanism law on all 246 published clocks: window [F, X] spans the evidenced available_time_utc (F < a < X mechanically enforced), direction = -sign(trailing 10-NY-day log-return sum at D), entry at F's open, exit at X's open, no post-release session held"
+    },
+    "neighbour": {
+      "arm_id": "FXFV5-A6-P1-neigh",
+      "schedule": "sham-calendar: identical reversal law (10-NY-day sum) anchored to each clock's +7-calendar-day shift (same time-of-day); a sham anchor is VALID iff no evidenced clock of ANY evidenced economy falls strictly inside the resulting window; invalid anchors dropped fail-closed and counted (sham_dropped)"
+    },
+    "control": {
+      "arm_id": "FXFV5-A6-P1-ctrl",
+      "schedule": "stale-calendar proximity isolation: identical law anchored to each economy's PREVIOUS evidenced clock (c_prev) -- decision, fill and exit instants all derived from c_prev's window; first clock per economy has no predecessor, skipped and counted (stale_no_predecessor_skipped)"
+    },
+    "benchmark_treatment": {
+      "arm_id": "FXFV5-A6-P1-bench",
+      "schedule": "kernel-required aux arm (scored_runner.BENCHMARK_ARM, booked inside a scored anchor cell only, never a scored cell): the SAME frozen c_prev schedule -- the packet's incremental_test bench (FXFV5-A6-P1-bench), yielding kernel incremental_alpha = anchor financing-adjusted expectancy minus stale financing-adjusted expectancy, i.e. packet falsification gate (iii)"
+    }
+  },
+
+  "frozen_spec_reconciliation": {
+    "status": "RESOLVED_BY_FROZEN_SELECTION_RECORD",
+    "note": "The packet's PRE-SELECTION arm table names neighbour = 5-NY-day trailing sum and control = sham-calendar. The FROZEN selection record (research/control/forex_free_v5_run/selection_freeze.json, 'what was selected and why', produced at selection time, after the proposal) lists the three selected arms as anchor / neighbour (+7d sham-calendar benchmark) / causal control (stale-calendar proximity isolation), and the I1 directive specifies the identical mapping. Authority order (selection freeze supersedes pre-selection arm designation) plus the explicit directive resolved the wiring: neighbour = sham +7d, control = stale c_prev. No open question remained. Consequence disclosed for P-2: the kernel's mechanism_sanity slots (NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR on the neighbour, CONTROL_REPRODUCES_MECHANISM on the control) now bind to sham/stale respectively at scored time, and the packet's preregistered non-reproduction prose (sham-control clause with the 0.5x anchor rule) maps to the neighbour slot -- the packet itself stipulates 'the kernel's mechanism_sanity definition governs where its label differs from this prose'. At I1 these are evaluated only on zeroed placeholders and are labelled not-evidence."
+  },
+
+  "spec_notes": [
+    "S0 cap implemented in BOTH forms the packet states -- entry instant >= 2025-07-25T00:00:00Z excluded (turnover_and_sample_floor wording) and window exit X falling after the cap excluded (warmup wording); the X-form is the binding one for in-S0 same-day clocks (with same-day availability stamps the entry-form alone can never fire).",
+    "Fold force-flat: with daily 16:00-NY bars and 00:00Z kernel boundaries, a boundary-crossing window always has F = the last pre-boundary bar, so crossing windows are refused at entry (fold_boundary_no_entry) or voided when the truncated exit would not span the release (fold_window_voided); the truncated-exit force_flat=true branch is implemented and retained, and the kernel's FOLD_FORCE_FLAT_VIOLATION backstop can never fire on a scheduled trade (regression-tested).",
+    "The 4-day next-session fill constraint, session gate, 16:00-NY DST stamps, one-event lag, fold purge semantics, dual book, F1-fixed stress tiers (tier 2.0 primary), break-even bps, once-only publication and dry-run sanitization are the FROZEN V3 kernel's, invoked read-only -- zero kernel files modified."
+  ],
+
+  "conventions_reused": [
+    "research/assets/forex_free_v3/scored_runner.py kernel: register_family/compute_cell/validate_decisions/apply_session_gate/fold_of/book_trades/stress_book/dry_run_sanitized/stage_a_gates/mechanism_sanity/publish_cell/AtomicJsonlPublisher (imported READ-ONLY)",
+    "research/assets/forex_free_v3/accounting.py kernel: book_dual/build_scored_record/book_stress/break_even_bps/canonical_json_bytes (imported READ-ONLY)",
+    "research/assets/forex_free_v4/exec_driver_v4.py harness shape: StructuralRecorder, structural summary, recursive PnL-leak scan with key allowlist, trial identity attach + pairwise distinctness, placeholder gate check, dummy-ledger-must-be-temporary refusal, five-gate scored refusal (SystemExit 2), replay determinism",
+    "research/assets/forex_free_v4/family2.py runner semantics: pinned-ledger vintage reader (available<=t AND effective<=t gates; day-start accruals never eligible on their own effective date), H1 snapshot loader with fail-closed duplicates/prices, existing-decision-bar calendar, last-row-wins dedupe",
+    "tests/assets/forex_free_v3/test_accounting.py conventions: hand-computed literal goldens with the arithmetic written beside them, frozen cost schedule 1.5 bps x {1.0,1.5,2.0}, STRESS_ROWS_NOT_DISTINCT regression, 16:00-NY DST calendar, fold boundaries 2020-03-01/2022-05-01/2024-07-01/2026-09-02 PURGE_DAYS=14, minimum-decision floors, zero-position refusal, trial identity pairwise distinct, deterministic replay"
+  ],
+
+  "trial_identity": {
+    "cycle_id": "FOREX-FREE-V5",
+    "family_id": "FXFV5-A6-P1",
+    "arm_ids": ["FXFV5-A6-P1-anchor", "FXFV5-A6-P1-neigh", "FXFV5-A6-P1-ctrl"],
+    "trial_id_format": "FOREX-FREE-V5/FXFV5-A6-P1/<arm>",
+    "record_id_format": "FXFV5-A6-P1/<arm>:tier1.0 via kernel cell_id",
+    "arm_config_digest": "sha256 over canonical config json (cycle, family, arm, arm_id, record_id, proposal sha256 810f8650..., module file sha256, frozen constants incl. trailing_return_sum_ny_days=10, sham_shift_calendar_days=7, staleness_mode, s0_cap_entry_utc, warmup_daily_bars=11, clocks_pair_map, financing_formula_id, alpha_definition)",
+    "pairwise_distinct": "asserted programmatically in run_dummy and pinned by test",
+    "cash_never_an_instrument": "kernel rule (accounting.CASH_CURRENCY refused by validate_decisions and TradeSpec); cash never appears in concentration",
+    "costs_charged_exactly_once_per_fill": "kernel PositionBook: 1.5 bps x tier once at entry + once at exit (3.00 USD round trip at base, hand-computed golden)"
+  },
+
+  "test_results": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v5/ -q",
+      "exit_code": 0,
+      "passed": 49,
+      "failed": 0,
+      "coverage": "family module: feature golden (trailing 10-NY-day sum on fixed 12-bar fixture, hand-computed 10*ln(1.001) / 10*ln(0.999) / exact-zero), one-event one-bar lag + one-session window semantics, fill-at-OPEN, kernel validator acceptance, no-lookahead mutation (shift changes decisions; shift beyond data voids), availability-lag assertion, warmup gap fail-closed, DST 16:00-NY goldens (21:00Z EST / 20:00Z EDT) + DST-transition window + 3-day financing accrual golden, fold force-flat refusal + truncation voids + kernel backstop, costs exactly once + stress rows pairwise distinct, financing golden (+25/365 USD hand-computed), zero-position refusal via kernel cell, control-schedule proper-subset identifiability (exactly one dropped window per economy), benchmark_treatment == control schedule, sham schedule date-identity < 10%, sham validity + sham_dropped counting, deterministic replay (3 arms), malformed/missing clock rows fail-closed (missing file, dropped row count mismatch, missing available_time, unparsable/naive instant, missing/short archive sha, unevidenced economy, duplicate clock, out-of-S0, header count mismatch, missing precision/reference), S0 cap (X-after-cap exclusion), governor open-position block"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v4/test_exec_driver_v4.py -q",
+      "exit_code": 0,
+      "passed": 6,
+      "failed": 0,
+      "coverage": "adjacent compatibility: the V4 exec-driver harness suite still passes against the untouched V4/V3 machinery"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3/test_accounting.py -q",
+      "exit_code": 0,
+      "passed": 17,
+      "failed": 0,
+      "coverage": "convention compatibility: the frozen accounting kernel goldens still pass"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v5/ tests/assets/forex_free_v4/test_exec_driver_v4.py tests/assets/forex_free_v3/test_accounting.py -q",
+      "exit_code": 0,
+      "passed": 72,
+      "failed": 0
+    }
+  ],
+
+  "scored_and_pnl_discipline": {
+    "scored_run": "NONE (the scored path is implemented but refuses without all five launch gates: W5 freeze + independent S0 FOREX_FREE_V5_S0_LAUNCH_AUTHORIZED + fresh exact-phrase 'GO FOREX V5 SCORED EXECUTION' owner GO + run-contract budget < 3 cells + S1 seal SEALED_UNTOUCHED; the I1 lane never exercised it)",
+    "dry_run_against_real_data": "NONE beyond read-only authority verification (156-entry snapshot digest verification, 246-clock authority parse, pinned-ledger sha cf1f01a7... verification); every run_arm/compute_cell execution in tests is on synthetic fixtures",
+    "pnl": "NO PnL anywhere: dummy mode books the kernel's 0.0/None placeholders; the recursive PnL-leak scan (allowlist + forced-placeholder rule) runs fail-closed on every record",
+    "margin_to_fail_scaffolding": "every sanitized record carries dryrun_gate_scaffold: every frozen gate as {gate, threshold, comparator, observed, margin} with the signed margin in the pass direction (P-2 scaffolding; thresholds are frozen constants, observed/margin computed on placeholders in dummy mode and labelled not-evidence)"
+  },
+
+  "ambiguities": [],
+  "ambiguities_note": "No open ambiguity required a BLOCKED_WITH_QUESTION: the I1 directive's explicit arm definitions and the frozen selection record agree (see frozen_spec_reconciliation for the superseded pre-selection arm table, and spec_notes for the S0-cap dual wording, both implemented and disclosed rather than silently chosen).",
+
+  "known_limitations": [
+    ".gitignore (outside this lane's allowed paths) has no line for research/control/forex_free_v5_run/dryrun_tmp/ (the V4 analogue is ignored); the driver still refuses dummy ledgers outside that directory and the test suite removes its temporary ledgers in finally blocks -- A1 may add the ignore line at integration",
+    "code_freeze_sha is recorded as the placeholder PENDING_V5_W4_FREEZE until a W4-style freeze pins code hashes (the driver's scored gates already require matching hashes for the four code files)",
+    "the scored path is implemented but unexercised by design (lane constraint); its real-data behavior is proven only through the shared frozen kernel paths the dummy mode exercises",
+    "the packet's 5-NY-day neighbour-horizon variant is not part of the selected arm set and is therefore not implemented (see frozen_spec_reconciliation)",
+    "dry-run replay tests hash the real 156-file snapshot each run (read-only verification); a full-scale real-data dry-run remains the I2/Q-phase step and was NOT executed here"
+  ],
+
+  "tree_state": {
+    "clean_after_commit": true,
+    "porcelain_before_commit": ["?? research/assets/forex_free_v5/", "?? research/control/forex_free_v5_run/i1_inputs/", "?? tests/assets/forex_free_v5/"],
+    "forbidden_paths_touched": [],
+    "pushed": false,
+    "workers": 0,
+    "scored_cells_created": 0,
+    "ledger_edits": "none (no canonical ledger touched; dummy ledgers only under dryrun_tmp/, all cleaned)"
+  }
+}
