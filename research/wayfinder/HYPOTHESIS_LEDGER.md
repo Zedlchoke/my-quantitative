@@ -78,6 +78,14 @@
 | V7 (CLOSED 2026-09-05, `STOCKS_FREE_V7_BLOCKED_DATA_AUTHORITY` — fast honest probe close; zero cells, budget 0/6, denominator unchanged) | P0b-2 price probe: Twelve Data Basic under the existing entitlement | Single-name US daily prices | **FAIL at gate 3 (delisted coverage, the make-or-break)**: TWTR/SIVB(+SIVBQ)/TWX unservable by ticker AND alias AND search (never-existed control symbol reproduces identical 404 semantics); FRC only via OTC alias FRCB. **Gates 1/2/4/5/6 PASS with measured baselines**: ~20y depth ×8 names; CMG 50:1 + TJX 2:1 splits reconcile with SEC-recorded ratios; KO adjusted-vs-raw +6.24% vs SEC-dividend-implied +6.00%; 0 OHLC violations in 40k bars; Friday-bar-Saturday-present availability. Owner options recorded: provide a delisted-inclusive source (same gate suite) / authorize a Twelve Data plan upgrade (probe-first) / accept close. Assets keep: frozen panel + 154 clocks + probe evidence. |
 | V8 (probe-terminal 2026-09-05, `STOCKS_FREE_V8_BLOCKED_DATA_AUTHORITY` — activation attempt on an owner-provided FREE source; cycle never bootstrapped, zero cells, budget 0/6, denominators unchanged 21/21) | P0 probe: Stooq bulk `d_us_txt.zip` hand-downloaded by the owner (sha256 `0a75aee8...`; `research/control/stocks_free_v8_probe/probe_verdict.json`) | Single-name US daily prices (free channel) | **FAIL at gate 3 (delisted), terminal by design**: bundle = 13,354 files of the currently-listed universe — living canaries 6/6 deep (KO 1970→, GE 1962→, through 2026-09-04) but **0/14 SEC-corroborated dead names** (TWTR/SIVB/SIVBQ/TWX/FRC/FRCB/BSC/LEHMQ/ENE/SHLDQ/JCP/BBBY...), absent with IDENTICAL semantics to never-existed controls (3/3) = survivorship-biased; all 662 pre-Sep-2026 terminations are ≤3 months old (SPAC units/warrants). Gate 2 PASS measured. **Canary method's second confirmed kill.** Remaining free avenue recorded: Stooq per-symbol endpoint ≠ bulk bundle (never measured for delisted) — owner 30-second browser test on twtr/sivb URLs decides whether the owner-authorized browser-channel route (410 symbols, six gates on certified bytes) revives. Assets intact: frozen panel + 154 clocks + V7 baselines. |
 
+V8 addendum (2026-09-05, same day): the owner's own browser test of both Stooq
+per-symbol endpoint URLs (twtr/sivb) returned nothing downloadable
+(`endpoint_test_owner.json`) — the last free avenue is closed. The free
+price-source space is now exhaustively measured: Stooq bundle FAIL G3,
+Stooq endpoint FAIL G3 (owner-measured), Massive dead-by-depth, Twelve Data
+Basic FAIL G3. Stocks stands dormant with no free path; re-opens only on an
+owner-entitled delisted-inclusive source.
+
 ## D. FOREX — G10 spot, 7 free-data pairs
 
 | Cycle | Family | Mechanism (short) | Outcome |
