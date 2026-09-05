@@ -192,9 +192,11 @@ def main():
 
     panels = {"SFV8-F1": r.load_panel(F1_FIELDS), "SFV8-F2": r.load_panel(F2_FIELDS)}
     cells = []
+    verdicts = {}
     for fam, arm_ids in (("SFV8-F1", ["SFV8-F1-ANCHOR", "SFV8-F1-NEIGHBOUR", "SFV8-F1-CONTROL"]),
                          ("SFV8-F2", ["SFV8-F2-ANCHOR", "SFV8-F2-NEIGHBOUR", "SFV8-F2-CONTROL"])):
         panel = panels[fam]
+        recs = {}
         recs = {}
         for arm_id in arm_ids:
             t0 = time.time()
@@ -259,18 +261,12 @@ def main():
                            "runtime_s": round(time.time() - t0, 1)})
         recs[a_id]["reruns"] = reruns
 
-    # ---- evaluation ----
-    verdicts = {}
-    for fam, arm_ids in (("SFV8-F1", ["SFV8-F1-ANCHOR", "SFV8-F1-NEIGHBOUR", "SFV8-F1-CONTROL"]),
-                         ("SFV8-F2", ["SFV8-F2-ANCHOR", "SFV8-F2-NEIGHBOUR", "SFV8-F2-CONTROL"])):
+        # ---- evaluation (per family; INC-5 fix: recs is family-scoped) ----
         series_by_arm = {}
         for arm_id in arm_ids:
             recs[arm_id]["series"] = decision_series(recs[arm_id]["base"], prices, folds)
             series_by_arm[arm_id] = recs[arm_id]["series"]
         a, nb, c = arm_ids
-        ctrl_alpha = None
-        for arm_id in arm_ids:
-            ctrl_alpha = None
         anchor_eval = evaluate(series_by_arm[a], folds_order, bench["SPY"], sector_basket)
         # control ratio
         c_eval = evaluate(series_by_arm[c], folds_order, bench["SPY"], sector_basket,
