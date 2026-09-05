@@ -1,0 +1,139 @@
+{
+ "schema": "stocks_free_v6_run/p0b_sample_probe_report@1",
+ "windows": [
+  {
+   "symbol": "CMG",
+   "window_id": "split_window",
+   "requested_window": [
+    "2024-06-01",
+    "2024-07-15"
+   ],
+   "rows": 29,
+   "first_row": "2024-06-03",
+   "last_row": "2024-07-15",
+   "expected_sessions": 29,
+   "missing_session_days": [],
+   "window_returns_computed": 28,
+   "in_s0_window": true,
+   "date_params_honored": true,
+   "status": "OK",
+   "file": "cmg_20240601_20240715.csv",
+   "retrieval": {
+    "channel": "browser-equivalent rendering (web reader), summarizer-mediated",
+    "fidelity": "UNVERIFIABLE \u2014 numbers transcribed from the rendered document; content NOT hash-pinnable to server bytes",
+    "requested_url": "https://stooq.com/q/d/l/?s=cmg.us&i=d&d1=20240601&d2=20240715"
+   }
+  }
+ ],
+ "failures": [
+  {
+   "symbol": "TJX",
+   "window_id": "pre_split_scan",
+   "requested_window": [
+    "2018-09-04",
+    "2018-10-12"
+   ],
+   "file": "tjx_20180904_20181012.csv",
+   "status": "FAIL",
+   "error": "parse error: line 29: OHLC interval violated (o=121.85 h=123.15 l=121.02 c=123.25)"
+  },
+  {
+   "symbol": "TJX",
+   "window_id": "split_window_scan",
+   "requested_window": [
+    "2018-10-15",
+    "2018-11-15"
+   ],
+   "file": "tjx_20181015_20181115.csv",
+   "status": "FAIL",
+   "error": "parse error: line 6: OHLC interval violated (o=104.05 h=105.19 l=103.51 c=105.28)"
+  },
+  {
+   "symbol": "TJX",
+   "window_id": "post_split_scan",
+   "requested_window": [
+    "2018-11-16",
+    "2018-12-28"
+   ],
+   "file": "tjx_20181116_20181228.csv",
+   "status": "FAIL",
+   "error": "parse error: line 27: OHLC interval violated (o=105.75 h=106.55 l=105.05 c=106.65)"
+  }
+ ],
+ "l7_crosscheck": {
+  "CMG": {
+   "symbol": "CMG",
+   "n_bars": 29,
+   "series_first_date": "2024-06-03",
+   "series_last_date": "2024-07-15",
+   "split_checks": [
+    {
+     "verdict": "RAW_LIKE_DISCONTINUITY",
+     "raw_impact_return": -0.98,
+     "min_return_in_window_additive": -0.97946403721522,
+     "min_return_day": "2024-06-26",
+     "measured_days": 13,
+     "source_field": "us-gaap:StockholdersEquityNoteStockSplitConversionRatio1",
+     "sec_window": [
+      "2024-06-16",
+      "2024-07-06"
+     ],
+     "sec_ratio": 50.0,
+     "fact_available_time": "2024-07-25 (first of 5 vintages, all ratio=50, event 2024-06-26)",
+     "interpretation": "series shows a RAW-LIKE discontinuity \u2014 adjustment convention undocumented or double-counted"
+    }
+   ],
+   "dividend_check": {
+    "verdict": "NO_DISTRIBUTION_FACTS_IN_STORE",
+    "n_facts": 0,
+    "note": "NOT_RUN semantics: nothing to reconcile against"
+   }
+  }
+ },
+ "note": "light-phase evidence: windowed samples only; full-history bulk download is deferred to the A1-scheduled heavy window and is NOT executed here",
+ "channel_integrity": {
+  "verdict": "CHANNEL_UNFAITHFUL_FAIL_CLOSED",
+  "plain_http_channel": "stooq.com and stooq.pl serve a JavaScript proof-of-work browser-verification challenge to plain-HTTP clients on all endpoints including the /q/d/l/ CSV endpoint; challenge bytes archived and sha256-pinned in p0b_license_evidence.json; challenge NOT solved, no gate bypassed",
+  "rendering_channel": "the only channel that passes the gate delivers page content to the agent through a summarization layer; retrieved numbers cannot be pinned as server bytes",
+  "tjx_falsification_detail": "TJX renders (Sep-Dec 2018) show no split signature anywhere (SEC fact: 2:1 in the 2018-10-22..2018-11-06 quarter), no October 2018 market selloff, a December 2018 price level ~2x the documented post-split level, and mechanically regular volumes (all round hundreds, narrow band); in addition ALL THREE TJX renders fail the OHLC interval consistency check (close > high by ~0.10 on multiple rows) while the CMG render passes every bar-consistency check \u2014 either the rendering paraphrases/fabricates or the source series is corrupt; neither is admissible as hash-pinned research data",
+  "cmg_corroboration_detail": "the CMG render is the single internally consistent window: the -97.95% close-to-close impact lands exactly on the SEC-evidenced 2024-06-26 50:1 split date (expected -98.0%, residual 2.6% = split-day market move), and volume steps 451,554 -> 17,536,154 (~39x, consistent with a 50x share-multiplication) \u2014 corroborated, but fidelity remains unverifiable through the summarizing channel"
+ },
+ "l7_overrides": {
+  "CMG": {
+   "l7_verdict": "SEC_CORROBORATED_FIDELITY_UNVERIFIABLE",
+   "measured_close_to_close_impact": -0.97946403721522,
+   "sec_expected_impact": -0.98,
+   "implied_ratio_close_to_close": 48.695062923523714,
+   "sec_ratio": 50.0,
+   "tolerance_statement": "|implied/sec - 1| <= 5% (split-day market move allowance) -> PASS",
+   "volume_step_evidence": {
+    "pre_split_close_volume": 451554,
+    "split_day_volume": 17536154,
+    "step": 38.85
+   }
+  },
+  "TJX": {
+   "l7_verdict": "CHANNEL_UNFAITHFUL_FAIL_CLOSED",
+   "mechanical_continuity_verdict": "NOT_RUN \u2014 all three TJX renders fail the parse contract's OHLC interval consistency check (close > high), which is itself evidence of render unfaithfulness",
+   "override_reason": "the rendered series is additionally irreconcilable with documented market history (no October 2018 selloff, December 2018 level wrong by ~2x, no split signature, no volume step), so no adjustment convention may be inferred from it and the windows are recorded as failures"
+  },
+  "AIG": {
+   "l7_verdict": "NOT_RUN",
+   "reason": "dividend windows not fetched after the TJX fidelity failure (resource + evidence discipline)"
+  },
+  "AAL": {
+   "l7_verdict": "NOT_RUN",
+   "reason": "not fetched; fidelity failure terminated the probe sequence"
+  },
+  "AGNCZ": {
+   "l7_verdict": "NOT_RUN",
+   "reason": "not fetched; fidelity failure terminated the probe sequence"
+  },
+  "RTX": {
+   "l7_verdict_note": "identity probe not fetched",
+   "l7_verdict": "NOT_RUN",
+   "reason": "not fetched; fidelity failure terminated the probe sequence; RTX also has no split/dividend fields in the pinned store"
+  }
+ },
+ "symbols_budget_note": "light-phase symbol budget: 2 symbols of data windows retrieved (CMG, TJX) within the max-6 budget; 4 additional window requests were spent on TJX to chase the split signature before the fidelity failure was declared; AIG/AAL/AGNCZ/RTX windows NOT fetched"
+}
