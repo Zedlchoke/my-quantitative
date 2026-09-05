@@ -1,0 +1,40 @@
+{
+ "schema": "v15_run_artifact_v1",
+ "artifact": "p3_freeze",
+ "cycle": "CRYPTO-V15",
+ "generated_utc": "2026-09-06T01:40:00Z",
+ "producer_role": "A1",
+ "rule": "frozen BEFORE any proposal exists and before any PnL anywhere; changes after scored PnL is visible are rescue and forbidden",
+ "inherited_conventions": [
+  {"convention": "book/cash accounting; cash not tradable; costs+funding exactly once; turnover single convention", "authority": "research/control/v12_run/p1_freeze.json sha256 31e0c30ad8a9e3504bfa2d4ce0e4a7960b25ce00ff7e0c5f21dba974631f178f"},
+  {"convention": "selection/feasibility: universe eligibility, warmup, cap 0.30 per-symbol signed weight, gross <= 1.0, force-flat fold boundaries, symbol concentration 0.70, drop-one selects a held max-|weight| symbol, stress = base + x1.5 fee / +2 ticks / +1 delay applied to booked PnL", "authority": "research/control/v12_run/selection_freeze.json sha256 0b3b0865ced5b59e300242ed9800bc58686b3cb954b009c8de71af3ef44eced2"},
+  {"convention": "scored-driver contract: preflight digests, refusal gates, registry append-once, replay zero delta, next-allowed-fill", "authority": "research/control/v12_run/w12r_freeze.json + run_v12_cell.py sha256 10d928f1127a449a7719ca6a6c3c7cc8de60903dcd2dd5e3b8aa55288bbb9028"},
+  {"convention": "cost-once kernel pinned by tests (L-V14-0): costs on fills ONLY, real tick sizes, native funding once, cost broken out fills vs holding", "authority": "tests/test_v14_p1_cost_once.py sha256 b0a2a9d52d054746cb0ee2b1f42bc9572364a06b0ca0a2b12ec8be017fea2bc9; P1 regression 2026-09-06: 247 passed in 3.06s"},
+  {"convention": "folds F0/F1/F2 with 1-day purge (V12 frozen fold contract); blind-S0 2025-08-22..2026-08-21; authorized window 2024-08-20..2026-08-21", "authority": "research/control/v14_run/p_freeze_v14.json"},
+  {"convention": "benchmark context: buy-and-hold BTC + BTC-beta excess positive in >= 2/3 folds", "authority": "V14 p_freeze"},
+  {"convention": "DSR estimator DSR_BAILEY_LOPEZDEPRADO_V1 at terminal over N = 146 + V15 observed cells; PBO fail-closed below 8 configurations", "authority": "research/dsr.py sha256 70e68a84a9e40271efdcf91522ca4c0197cce9308f2efb96f6e303afdef8567b; V14 terminal"}
+ ],
+ "v15_data_contract_freeze": {
+  "source": "data.binance.vision data/futures/um/daily/metrics (probe_verdict_v15.json, coverage PASS)",
+  "fields_authorized": ["sum_open_interest", "sum_open_interest_value", "count_toptrader_long_short_ratio", "sum_toptrader_long_short_ratio", "count_long_short_ratio", "sum_taker_long_short_vol_ratio"],
+  "label_semantics": "start-of-period archive-wide on current published bytes: labeled T carries the stock snapshot at T+5min and the taker flow window [T, T+5min); loader normalizes row identity to snapshot time",
+  "row_integrity_at_staging": "per file: exactly 288 rows, 288 unique labels, full 00:00..23:55 grid, sort by create_time; violations refuse the file (fail closed)",
+  "availability_semantics_binding": "MEASURED_BOUND_LAG_3D: every V15 conditioning decision may only read metrics rows with metrics_date <= decision_date - 3 calendar days. Basis: max measured publication lag 67.47h across 4,911 evidenced-regime files; 3 days is the conservative ceiling under every measured regime, so the frozen design is invariant to the within-envelope uncertainty",
+  "availability_caveat_carried": "REWRITTEN_SPAN_AVAILABILITY_CAVEAT: for file dates 2024-03-01..2026-07-11 the per-file original listing date is unevidenced (S3 rewrite campaign 2026-07-14..2026-08-24); standing owner-amended semantic (V11-AMEND-OI-STAGING-20260902, metrics-date availability) is regime-consistent and inherited; nothing beyond the measured envelope is asserted as evidence; A7 prelaunch audits this as a named item; owner sees the full table at the two-key stop",
+  "staging": "downloads sha256-manifested, gitignored, machine-local; dataset identity = per-file sha256 set recorded in the data manifest at freeze"
+ },
+ "stage_a_gates_frozen": "V13/V14 set unchanged, applied ex ante: (1) after-cost anchor expectancy > 0; (2) position PF >= 1.10; (3) >= 2/3 folds positive; (4) largest fold-positive share <= 0.50; (5) MDD <= 0.20; (6) largest symbol positive-PnL share <= 0.70; (7) stress set positive with multipliers on booked PnL; (8) drop-one symbol and fold non-vacuous; (9) BTC buy-and-hold excess and BTC-beta context excess positive in >= 2/3 folds; (10) neighbour supports; (11) causal control does not reproduce under its preregistered rule; (12) reproduction ALL_MATCH; (13) zero unresolved HIGH/CRITICAL; positive raw PnL never overrides a failed concentration/context gate or a firing control",
+ "margin_to_fail_scaffolding": "every gate report carries margin-to-fail = signed distance from the failure threshold (P-2); thin margins recorded as thin, never rounded in a survivor's favor",
+ "selection_rubric_frozen_before_proposals": {
+  "eligibility_preconditions": ["proposal identity complete (hypothesis ID, mechanism, universe, clock, warmup, features+lags, entry/exit/fills, costs, anchor, neighbour, causal control, falsification rule, failure interpretation)", "outcome-blind attestation signed on WAVE_SHA", "A7N novelty: pooled |rho| <= 0.20 vs EVERY forbidden family and measured shadow (incl. OILEV-V2 anchor, OILEV-V2 inverted control, OICYC cells, OITD, LIQEPIS, PREMFADE, BAB, carry families, sprint funding-crowd forms)", "A9F feasibility: decision count, warmup coverage, turnover/cost ceiling, fold population, control identifiability and CONTROL-RUNNABILITY measured with no PnL"],
+  "ranking_rule_deterministic": "within eligibility: prefer distinct primary axes across selected families (AXIS-1 OI level/structure, AXIS-2 crowding ratios, AXIS-3 taker flow); then prefer proposals whose causal control is most structurally independent of the anchor mechanism; then earlier hypothesis ID as tiebreak. No PnL, no outcome, no aesthetic language participates.",
+  "selection_outputs": "max 2 families x 3 arms (anchor/neighbour/control) = max 6 scored cells, budget 6/6 eligible",
+  "ambiguity_rule": "any ambiguity in a selected proposal returns to A1 and the proposing lane before implementation; the implementer never improves a frozen spec"
+ },
+ "forbidden_inventory_v15": ["OITD + near-duplicates (V13)", "LIQEPIS + duplicates (V13)", "OILEV-V2 anchor AND its inverted control — the inverted-OI-flow shadow region exercised and CLOSED by OICYC confirmatory reject (V12/V14)", "PREMFADE basis-level fade at any parameter/universe variant (V14)", "BAB-LOWBETA (V12)", "carry families incl. funding carry (V6/V7) and funding-crowd MR sprint forms", "ILLIQ replication (owner-data-gated, unchanged)", "cross-asset method note: falsification-by-control cluster applies unchanged"],
+ "budget": {"eligible": 6, "computed_published": 0, "display": "0/6"},
+ "phase_order": ["V15_P0P2", "V15_P1", "V15_P3", "V15_D1", "V15_D2", "V15_I", "V15_Q", "HARD_STOP", "V15_E", "reproduce", "terminal"],
+ "hard_boundaries": "no S1/paper/live/orders/credentials; no new keyed or paid source; no optimizer/rescue/threshold weakening; no rewriting of prior ledgers/terminals; pushes owner-only; heavy jobs serialized machine-wide; never git add -A",
+ "no_pnl_computed": true,
+ "unresolved_high_critical": 0
+}
