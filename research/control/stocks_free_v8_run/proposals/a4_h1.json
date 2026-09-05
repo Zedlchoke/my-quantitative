@@ -1,0 +1,129 @@
+{
+  "schema": "stocks_free_v8_run/proposal@1",
+  "cycle": "STOCKS-FREE-V8",
+  "phase": "D1",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v8/integration",
+  "branch": "orca/stocks-free-v8-integration",
+  "wave_sha": "7ce8fb7a566bdd7ccd689adc2c6693498df62045",
+  "hypothesis_id": "A4-FQ-1-WC-ACCRUAL-FLOW",
+  "agent": "A4 (inlined light lane)",
+  "domain": "FUNDAMENTALS-QUALITY",
+  "title": "Sector-neutral working-capital accrual-FLOW conditioning from the multi-vintage SEC panel (Sloan earnings-fixation channel)",
+  "mechanism_question": {
+    "who_is_forced_to_trade_or_slow_to_react": "Earnings-fixation investors: per Sloan (1996), a persistent set of market participants anchors on reported earnings growth without separating the cash component from the working-capital accrual component, so they under-react to the lower persistence of accrual-driven earnings and correct only as cash flows fail to confirm; corporate treasurers and credit desks on the other side of the receivable/inventory build are the forced counterparties.",
+    "why_the_effect_exists": "High working-capital accruals (a receivable build, an inventory build, or a payables drawdown that props up earnings) mean-revert with weaker future earnings; because the accrual component is less persistent than the cash component and the divergence is costly to verify, part of the accrual build is initially mispriced and reverses over subsequent quarters.",
+    "what_observable_measures_it": "The accrual flow ratio A_t = [AR(t) - AR(t-1yr) + INV(t) - INV(t-1yr) - (AP(t) - AP(t-1yr))] / Assets(t-1yr), where every leg is the latest filed vintage as of the respective decision date under the funded clocks below (never latest-in-store), standardized to a percentile within the frozen sector tag s of the panel row; the tradable rank is LOW accrual percentile = long leg, HIGH accrual percentile = short leg.",
+    "when_it_must_fail": "The effect must fail (i) when the accrual rank is stale by four decision periods (the build is already in price), (ii) when the WC STOCK level rank - not the flow - reproduces the anchor alpha at >= 0.5x (then the effect is a working-capital-intensity characteristic premium, not accrual-flow mispricing), and (iii) it must not survive if post-drop-one expectancy <= 0 or fewer than 2 of 3 folds are positive.",
+    "what_control_kills_convenient_explanations": "The WC stock-level control (same three fields, no delta) kills the 'any WC-heavy name underperforms' explanation; the allowance-coverage neighbour (AllowanceForDoubtfulAccountsReceivableCurrent / AccountsReceivableNetCurrent) is required to carry the same sign (provision conservatism supporting the receivables-quality story); risk-matched SPY context and sector-ETF context kill beta and sector exposure respectively."
+  },
+  "falsifiable_prediction": "Within-sector accrual-flow percentile ranks predict next-quarter-to-next-year relative returns monotonically (low-accrual leg outperforms high-accrual leg) in at least 2 of 3 folds S0_FOLD_1/2/3 after band costs, with (a) expectancy > 0 overall, (b) position PF >= 1.1, (c) risk-matched excess vs SPY positive in >= 2 folds and overall alpha > 0, (d) the same vs the sector-ETF factor, (e) the WC stock-level control alpha |ratio| < 0.5 of anchor alpha, and (f) Spearman |rho| <= 0.20 between the accrual rank and both 12-1 price-momentum rank and the V4 semivariance-SHAPE anchor rank, measured before any selection. If any of (a)-(f) fails, the arm is rejected and the Sloan channel is declared untradable on this panel at these costs.",
+  "literature": [
+    "Sloan, R.G. (1996), 'Do Stock Prices Fully Reflect Information in Accruals and Cash Flows About Future Earnings?', The Accounting Review 71(3), 289-315.",
+    "Bradshaw, M.T., Richardson, S.A., Sloan, R.G. (2001), 'Do Analysts and Auditors Use Error-Containing Proxy Measures of Accruals?', Contemporary Accounting Research 18(3), 427-452.",
+    "Thomas, J.K., Zhang, X.-J. (2002), 'Inventory Changes and Future Returns', Review of Accounting Studies 7(2-3), 163-187.",
+    "Richardson, S.A., Sloan, R.G., Soliman, M.T., Tuna, I. (2005), 'Accrual Reliability, Earnings Persistence and Stock Prices', Journal of Accounting and Economics 39(3), 437-485.",
+    "Desai, H., Rajgopal, S., Venkatachalam, M. (2004), 'Value-Glamour and Accruals Mispricing: One Anomaly or Two?', The Accounting Review 79(2), 355-385.",
+    "Green, J., Hand, J.R.M., Zhang, X.F. (2017), 'The Characteristics That Provide Independent Information About Average U.S. Monthly Stock Returns', Review of Financial Studies 30(12), 4389-4436."
+  ],
+  "pit_observable_with_availability_semantics": {
+    "row_schema_fields": "panel rows are the staged .staging_sec_v8/multivintage_panel.jsonl schema {avail, e, eff, evd, f, s, u, v}: e = entity_id (CIKxxxxxxxxxx), f = field (taxonomy:tag), eff = effective (period-end) date, evd = event date when differing, s = frozen sector tag, u = unit, v = filed value, avail = availability date (SEC filed date; availability stamp = end of filed UTC day).",
+    "gate_semantics": "a decision at session t observes a row only if avail < gate(t), where gate(t) = 00:00 UTC of the decision session per research/assets/stocks/pit_conditioning.session_gate_utc; the selected vintage for a field is the one with max avail among rows with avail < gate(t) and age = (decision date - avail date) <= bound; NEVER the latest vintage in the store (multi-vintage as-of semantics, V6 canonical).",
+    "cited_funded_clocks": [
+      {"field": "us-gaap:AccountsReceivableNetCurrent", "clock": "latest filed vintage as of t (unbounded)", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.6515},
+      {"field": "us-gaap:InventoryNet", "clock": "latest filed vintage as of t (unbounded)", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.6402},
+      {"field": "us-gaap:AccountsPayableCurrent", "clock": "latest filed vintage as of t (unbounded)", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.7037},
+      {"field": "us-gaap:AllowanceForDoubtfulAccountsReceivableCurrent", "clock": "latest filed vintage as of t (unbounded)", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.6515},
+      {"field": "us-gaap:Assets", "clock": "latest filed vintage as of t with age <= 400 days", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.9737}
+    ],
+    "all_clocks": "every clock above is quoted verbatim from research/control/stocks_free_v6_run/p0a_fundable_clocks.json (sha256 ff328a98..., 154 FUNDED_CANDIDATE entries; frozen set per p0a_clock_freeze.json); no clock outside this set is used; unbounded clocks are chosen for AR/INV/AP/Allowance because they are the ONLY funded bounds for those fields, and the Assets denominator uses the funded 400-day bound to cap denominator staleness.",
+    "delta_construction": "YoY delta = v(t) - v(t-252 sessions), each leg itself the latest-vintage-as-of its own decision date; a name's delta is populated only when the two selected eff dates are 330-400 days apart (fiscal-type match filter on eff) and both vintages share unit u = USD; coverage is reported per observation as covered/mapped filers per the clock semantics (no shared effective date imposed, multi-vintage as-of mix)."
+  },
+  "aggregation_declaration": {
+    "sector_aggregates_built": "NONE. The arm builds no sector aggregate of fundamentals: conditioning is per-filer PIT observation standardized to a percentile within the frozen sector tag s of the row (s is sector_constant_per_entity, verified in p0a_multivintage_panel_manifest store_invariants).",
+    "max_filing_gap_days": "NOT REQUIRED - no aggregate over filers is computed, so the survivorship-aware aggregate filing-clock parameter is not invoked; per-filer staleness is bounded instead by the cited funded clocks themselves (unbounded for the numerator fields as funded, <= 400 days for the Assets denominator).",
+    "field_list": "us-gaap:AccountsReceivableNetCurrent, us-gaap:InventoryNet, us-gaap:AccountsPayableCurrent, us-gaap:AllowanceForDoubtfulAccountsReceivableCurrent (neighbour only), us-gaap:Assets - exactly the five fields cited with funded clocks above.",
+    "sector_factor": "the optional sector factor for the incremental-alpha test is an equal-weight sector ETF total return mapped from s to SPDR sector ETFs (XLK/XLE/XLV/XLF/XLY/XLP/XLI/XLU/XLB/XLRE) on the authorized EODHD price path; a sector tag with no ETF mapping falls back to SPY and the fallback count is reported."
+  },
+  "universe_warmup_clock_holding_fills": {
+    "universe_eligibility_per_P3_floor": "filer in the frozen 410-filer panel (sha256 1cb115d3...) AND servable per research/control/stocks_free_v8_run/p2_coverage_first.json per_name at the decision date AND ADV63 >= 2,000,000 USD (band C or better; band D names are UNTRADABLE_AT_DECISION and excluded) AND RAW price >= 1.00 USD at the decision.",
+    "warmup": "decision grid = trading sessions at indices 63+21k from each fold start (k = 0,1,2,...): index 63 seeds ADV63 (band assignment); P1 additionally treats the first 4 grid decisions (k=0..3) of the arm as unscored warmup that seeds the YoY delta legs; no decision uses calendar month boundaries (pure session-index grid).",
+    "rebalance_clock_is_a_funded_clock": "the conditioning clock re-evaluated at EVERY decision date is exactly the funded clock set quoted above ('latest filed vintage as of t (unbounded)' for AR/INV/AP/Allowance; 'latest filed vintage as of t with age <= 400 days' for Assets); the position schedule is every 21st trading session (one quarter), i.e. the book is re-decided whenever the funded clocks are re-evaluated on the 21-session grid.",
+    "holding_period": "one grid step (21 trading sessions) with rank-hysteresis: a held name is retained until its rank exits its tercile band by more than one decile, so effective holding is 1-2 quarters; book forced flat at every fold boundary per P3 accounting.",
+    "fill_convention": "signals computed on session t close data under avail < gate(t); fills at the next allowed session close-to-close (V3 ADJ-1-EXEC-CLOCK); no same-session fill; cost charged exactly once per fill; per-fill band from ADV63 as of the decision date (RAW close*volume median over the 63 sessions ending at the decision session).",
+    "portfolio_construction": "sector-neutral long-short: within each sector tag s having >= 6 eligible ranked names, long the bottom accrual tercile and short the top tercile, equal-weight within legs, per-sector net zero; CASH absorbs residual; at least 1 non-CASH leg per decision; gross capped 2.0.",
+    "sample_floor": "scored decisions = grid decisions k >= 4 (unscored warmup excluded); by the frozen folds this yields approx. 22 scored decisions in S0_FOLD_1, approx. 26 in S0_FOLD_2, approx. 27 in S0_FOLD_3 (>= 30 total, >= 5 per fold guaranteed by the 21-session grid; exact counts fixed by the session grid before scoring)."
+  },
+  "anchor_neighbour_causal_negative_control": {
+    "anchor": "PIT multi-vintage YoY working-capital accrual-flow percentile rank as defined above (Delta AR + Delta INV - Delta AP over lagged Assets), long-low/short-high within sector.",
+    "neighbour_mechanism": "receivables provision quality: allowance-coverage rank = AllowanceForDoubtfulAccountsReceivableCurrent / AccountsReceivableNetCurrent, both under their only funded clock ('latest filed vintage as of t (unbounded)'); same accrual-quality family via a STOCK of provision conservatism rather than a FLOW of receivables build (Srivastava 2014 reserve-quality lineage); required to support the family with the same sign alpha.",
+    "causal_negative_control": "working-capital STOCK level rank = (AR + INV - AP) / Assets under the same funded clocks with NO time delta.",
+    "intended_correlation_profile_and_why_it_differs_L7": "the stock control is designed rank-DISTINCT from the anchor: the flow is the first difference of the stock, so the flow rank is dominated by year-over-year receivable/inventory/payables cycles while the stock rank is a persistent characteristic that barely reorders across quarters; intended Spearman rho is moderate-positive (approx. 0.2-0.5 by construction) with a different dynamic profile. Under the accrual-mispricing hypothesis the stock control CANNOT reproduce the anchor because the channel requires the recent build to be uninternalized; a stock rank that has sat in price for years carries, at most, a working-capital-intensity characteristic premium. If the stock control's |alpha| >= 0.5x anchor alpha (control_alpha_abs_ratio_lt gate), the accrual-flow interpretation is falsified and the family dies per the P3 causal_control_rule; a rank-identical control would identify nothing (L7 lesson)."
+  },
+  "incremental_alpha_test": {
+    "vs_SPY": "incremental alpha = arm return minus risk-matched SPY context (SPY scaled ex ante by the arm's frozen gross/vol rule per P3 factor_and_benchmark), computed per fold and overall; require excess positive in >= 2 of 3 folds and overall alpha > 0; raw PnL or long-equity beta exposure is never accepted as alpha.",
+    "vs_sector_ETF": "same test against the equal-weight mapped sector-ETF factor declared in aggregation_declaration (authorized EODHD path), same thresholds; the book is per-sector net zero so residual sector drift must appear as reported tracking error, not alpha.",
+    "stage_a_gates_applied_with_no_relaxation": "expectancy > 0; position PF >= 1.1; folds positive >= 2; populated-fold PF >= 0.8; max fold MDD <= 0.15; ETF positive share <= 0.35; fold positive share <= 0.5; anchor overall alpha > 0; control |alpha| ratio < 0.5; neighbour support required; margin-to-fail reported for every gate on a survivor."
+  },
+  "base_and_stress_costs": {
+    "model": "liquidity-band cost per p3_invariants_freeze.json v8_additions, applied to BOOKED PnL, linear in fills, no sidecar: band A (ADV63 >= 50M) base 10 bps/side, stress 20 bps/side; band B (10M-50M) base 15, stress 30; band C (2M-10M) base 25, stress 50; band D excluded at decision; cost charged exactly once per fill (no_double_charge invariant).",
+    "expected_blend": "per-fill cost is assigned by the executed name's band at its own decision date; using the p2 boundary band populations (start: A 286, B 94, C 10; mid: A 307, B 87, C 11; end: A 376, B 31, C 1) the eligible universe is dominated by bands A/B, so the expected blended base cost is approx. 10-15 bps per side and stress approx. 20-30 bps per side; the arm reports fills, cost, and booked PnL split by band for base AND stress reruns.",
+    "compatibility": "a band-A fill has exactly V4/V5 arithmetic (10/20 bps)."
+  },
+  "turnover_and_sample_floor": {
+    "decisions_total": ">= 30 scored decision periods overall (declared grid yields approx. 75); >= 5 per fold (approx. 22/26/27).",
+    "turnover_convention": "turnover = sum(abs(delta_weight)) over non-CASH legs, V3 ADJ-5 corrected; annualized two-way with hysteresis (retain through one-decile band crossings) expected to sit below the 6.0 two-way per year ceiling; both raw and ceiling-normalized turnover reported.",
+    "floor_mechanics": "min 5 decision periods per fold; min 1 non-CASH leg per decision; CASH excluded from turnover, concentration and drop-one; all books reconcile to 1.0 within 1e-9."
+  },
+  "drop_one_design": [
+    "drop-one-symbol: value_book rerun excluding the max-contribution symbol; survival requires after-drop expectancy > 0.",
+    "drop-one-fold: recompute expectancy with each fold removed; survival requires min over folds > 0.",
+    "drop-one-signal-leg: recompute the accrual rank without the InventoryNet leg (Delta AR - Delta AP only); survival requires sign preservation and expectancy > 0 - if only Delta INV carries the effect, the anchor is an inventory-rotation story (Thomas & Zhang 2002) and the Sloan-channel claim is withdrawn."
+  ],
+  "failure_interpretation": {
+    "fold_1_only": "if the effect lives only in S0_FOLD_1, interpret as post-publication decay of the accrual premium (Green, Hand, Zhang 2017 signal crowding), not evidence of mechanism.",
+    "stock_control_reproduces": "if the WC stock-level control reaches >= 0.5x anchor alpha, the effect is a working-capital-intensity characteristic premium (rational cost-of-capital story), and the accrual-mispricing family is falsified per the causal_control_rule.",
+    "momentum_or_vol_confound": "if |rho| > 0.20 vs 12-1 momentum or vs the V4 semivariance-SHAPE anchor ranks at pre-selection, the arm is invalid as a fundamentals mechanism regardless of expectancy.",
+    "microstructure_artifact": "if the long leg is concentrated in band-C or near-$1 RAW-price names, the effect is a liquidity artifact and fails the band-population review.",
+    "no_effect": "an anchor alpha <= 0 after band costs means the accrual premium is not tradable in this survivorship-aware large-filer panel at these cost bands; the panel's current-registry tilt toward large A-band names is the first-suspect economic explanation."
+  },
+  "source_to_test_map": {
+    "pit_conditioning": ".staging_sec_v8/multivintage_panel.jsonl (3,817,158 records, 410 filers, sha256 1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40), gated through research/assets/stocks/pit_conditioning.py session_gate_utc (untouched canonical bridge); fields us-gaap:AccountsReceivableNetCurrent, us-gaap:InventoryNet, us-gaap:AccountsPayableCurrent, us-gaap:AllowanceForDoubtfulAccountsReceivableCurrent, us-gaap:Assets.",
+    "prices_fills_bands": ".staging_prices_v8/eod (EODHD daily bars, 409 files sha256-pinned in stocks_free_v8_run/p0a_eodhd_price_manifest.json), readable at session close + 1 session; RAW series primary for ADV63 and fill prices.",
+    "servability_and_bands": "research/control/stocks_free_v8_run/p2_coverage_first.json per_name (s0_session_coverage_ratio, boundary_bands).",
+    "clock_authority": "research/control/stocks_free_v6_run/p0a_fundable_clocks.json (sha256 ff328a98...) via p0a_clock_freeze.json frozen set.",
+    "folds_costs_gates": "research/control/stocks_free_v8_run/p3_invariants_freeze.json (folds S0_FOLD_1/2/3; band cost model; Stage-A gates; margin-to-fail reporting)."
+  },
+  "forbidden_inventory_screen": {
+    "A4_XSEC_ETF_RELATIVE_MOMENTUM": "CLEAN - no cross-sectional price momentum input of any lookback; the only price-derived quantity is ADV63 for eligibility/band assignment, which is the sanctioned cost-model input, not a signal.",
+    "A5-SFV2-TREND-DEFENSIVE": "CLEAN - no trend/SMA/vol-target/defensive rotation; sector-neutral long-short book, no time-series filter on prices.",
+    "SFV3-A5-IDIO-SHOCK-REVERSAL": "CLEAN - no idiosyncratic shock, crash, or overshoot variable; conditioning is balance-sheet-only, no OHLCV proxy fabrication (P3 no_ohlcv_proxy_rule).",
+    "SFV3-A6-TOM-SETTLE": "CLEAN - the 21-trading-session decision grid is a fixed session-index schedule with no turn-of-month, settlement, or mid-month anchoring; the calendar is schedule, not signal; no calendar-conditioned return is claimed.",
+    "SFV4-A5-H1-PARTICIPATION-SHIFT": "CLEAN - no fresh-vs-stale dollar-volume shock or participation variable in either leg; ADV63 appears only in the frozen eligibility floor.",
+    "SFV4-A4-H1-SEMIVARIANCE-SHAPE": "CLEAN - no variance, semivariance, or vol-level quantity anywhere; this is not a vol-level re-entry of the Section 1.1 shadow region: the rank is built exclusively from SEC panel fields, so it is expected near-orthogonal to both the V4 semivariance-SHAPE anchor and the V4 vol-level control, and a |rho| <= 0.20 pre-selection measurement gate is declared in falsifiable_prediction (measured and reported before selection, never argued in prose).",
+    "EQ_S2_A3_F1_PIT_RECON_FLOW": "CLEAN - no order-flow or market-microstructure PIT reconstruction; 'flow' in this proposal denotes an accounting flow (balance-sheet delta, Sloan lineage) from the authorized SEC panel, a different object from the frozen PIT reconstruction/flow family.",
+    "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM": "CLEAN - no securities-lending, borrow, or short-interest data.",
+    "generic_forbidden": "CLEAN vs each: no ordinary cross-sectional momentum; no standalone trend/vol-target family; not a long-SPY/sector-beta result (per-sector net-zero book, risk-matched excess required); no earnings surprise / analyst revision / institutional flow / borrow / quote-spread channel; not a daily-indicator grid (distinct economic mechanism with quarterly fundamental clock); no new accounts, paid data, or network fetch outside the authorized set.",
+    "rescue_variants": "none of the eight families is re-parameterized or renamed here: the anchor's signal, horizon, measurement, and controls have no common primitive with any rejected family (no rejected family used filed-vintage balance-sheet deltas).",
+    "blocked_channels": "none used - Massive Basic, Stooq (bulk and per-symbol), and Twelve Data are not referenced; prices come only from the authorized EODHD owner-entitled path; conditioning comes only from the staged SEC panel."
+  },
+  "implementation_estimate": {
+    "build": "one streaming pass over multivintage_panel.jsonl filtered to the 5 declared fields (approx. low hundreds of thousands of rows) into per-filer as-of stacks; arm module reusing pit_conditioning.session_gate_utc unchanged; approx. 150-250 LOC new, no change to canonical bridge or invariants.",
+    "runtime": "single serial cell, well under the 120-minute hard timeout with the < 45-minute safe-stop rule; memory < 8 GB (heavy_cap 1 respected).",
+    "scoring_cells": "2 (base + stress) + drop-one reruns (2 symbol/fold + 1 signal-leg) + 2 control arms + 1 neighbour arm; all parameter-free after this freeze.",
+    "risk_notes": "AR/INV/AP unbounded clocks pooled coverage approx. 0.64-0.70 (census), so the populated delta panel is a subset of the 410 filers; sector terciles require >= 6 ranked eligible names per sector else that sector contributes no legs that decision (reported per decision)."
+  },
+  "wave_sha_pin": {
+    "wave_sha": "7ce8fb7a566bdd7ccd689adc2c6693498df62045",
+    "pinned_inputs": {
+      "d1_proposal_packet": "research/control/stocks_free_v8_run/d1_proposal_packet.json (frozen 2026-09-05T04:28:59Z)",
+      "fundable_clocks_sha256": "ff328a9820bde2968a768016a9046436a93ddeb8d1a8e2625aaf5ff83e4be9f8",
+      "clock_freeze_note": "p0a_clock_freeze.json sha256 61e15738... (154 FROZEN_FUNDABLE clocks)",
+      "panel_sha256": "1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40",
+      "census_sha256": "ec2a5aa40e450cba14d86e67742b3f916d8ffdbdacd8a69e16e8bda93868b356",
+      "forbidden_inventory": "research/control/stocks_free_v8_run/forbidden_family_inventory.json (V8 carry of V7 terminal payload)",
+      "p3_invariants": "research/control/stocks_free_v8_run/p3_invariants_freeze.json (P3_FROZEN)"
+    },
+    "freeze_statement": "all parameters above (fields, clocks, delta window, eff-match 330-400d, tercile/hysteresis thresholds, grid 63+21k, controls, gates) are declared here BEFORE any V8 return is scored and are never tuned after scored PnL is visible."
+  },
+  "attestation": "I wrote these proposals without access to any V8 scored outcome, any per-arm artifact, or any parameter search over returns; my only inputs were this packet and the committed evidence files it cites. Signed: A4 (inlined light lane), 2026-09-05."
+}

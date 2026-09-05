@@ -1,0 +1,128 @@
+{
+  "schema": "stocks_free_v8_run/proposal@1",
+  "cycle": "STOCKS-FREE-V8",
+  "phase": "D1",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v8/integration",
+  "branch": "orca/stocks-free-v8-integration",
+  "wave_sha": "7ce8fb7a566bdd7ccd689adc2c6693498df62045",
+  "hypothesis_id": "A4-FQ-2-DEP-RESERVE-COVERAGE",
+  "agent": "A4 (inlined light lane)",
+  "domain": "FUNDAMENTALS-QUALITY",
+  "title": "Sector-neutral depreciation-reserve coverage conditioning from the multi-vintage SEC panel (Penman-Zhang conservatism channel)",
+  "mechanism_question": {
+    "who_is_forced_to_trade_or_slow_to_react": "Earnings-fixation and book-value-anchored investors: under conservative depreciation the balance sheet chronically understates the productive capacity of asset-heavy firms, so reported ROE and book-based multiples look structurally weak; investors who price reported book and earnings without a conservatism adjustment are slow to re-rate these names, and index/quant rebalancers who mechanically screen on reported ROE are the forced counterparties when the mispricing unwinds.",
+    "why_the_effect_exists": "Penman and Zhang (2002): conservative accounting (accelerated depreciation relative to actual economic wear) depresses recorded earnings and equity relative to underlying capacity; because the hidden reserve only reveals itself gradually through lower future depreciation charges or asset sales, the market initially prices the depressed numbers as low quality and corrects only over multi-quarter horizons.",
+    "what_observable_measures_it": "the depreciation-coverage ratio D_t = AccumulatedDepreciationDepletionAndAmortizationPP&E(t) / PropertyPlantAndEquipmentGross(t), each leg the latest filed vintage as of the decision date under the funded 400-day clocks below (never latest-in-store); the tradable rank is HIGH coverage percentile (largest conservative reserve) = long leg, LOW coverage percentile = short leg, standardized within the frozen sector tag s of the panel row.",
+    "when_it_must_fail": "the effect must fail (i) if the goodwill-burden control (Goodwill / Assets) reproduces the anchor's positive alpha at >= 0.5x (then it is a generic balance-sheet-bloat characteristic, not conservatism-specific mispricing), (ii) if the sign is negative or null in >= 2 folds (old capital stock priced as obsolescence risk, not hidden reserve), and (iii) it must not survive if post-drop-one expectancy <= 0, fewer than 2 of 3 folds are positive, or max fold MDD > 0.15.",
+    "what_control_kills_convenient_explanations": "the goodwill-burden control separates 'any large contra/reserve stock' from conservatism in DEPRECIATION specifically (acquisitive, non-capital-intensive filers vs PP&E-heavy industrials occupy opposite rank regions); the unrecognized-tax-benefit neighbour carries the same conservatism-reserve story through a different business driver; sector-neutral construction plus risk-matched SPY and sector-ETF contexts kill beta and sector explanations; book-equity ratios are NOT used, killing the value/BM dressing."
+  },
+  "falsifiable_prediction": "Within-sector depreciation-coverage percentile ranks predict next-quarter-to-next-year relative returns with HIGH coverage outperforming LOW coverage in at least 2 of 3 folds S0_FOLD_1/2/3 after band costs, with (a) expectancy > 0 overall, (b) position PF >= 1.1, (c) risk-matched excess vs SPY positive in >= 2 folds and overall alpha > 0, (d) the same vs the mapped sector-ETF factor, (e) the Goodwill/Assets control alpha |ratio| < 0.5 of anchor alpha, (f) the UTB/Assets neighbour carrying the same sign, and (g) Spearman |rho| <= 0.20 pre-selection between the coverage rank and both 12-1 price-momentum rank and the V4 semivariance-SHAPE anchor rank. Any failure of (a)-(g) rejects the arm and declares the conservatism channel untradable on this panel at these costs.",
+  "literature": [
+    "Penman, S.H., Zhang, X.-J. (2002), 'Accounting Conservatism, the Quality of Earnings, and Stock Returns', The Accounting Review 77(2), 237-264.",
+    "Basu, S. (1997), 'The Conservatism Principle and the Asymmetric Timeliness of Earnings', Journal of Accounting and Economics 24(1), 3-37.",
+    "LaFond, R., Watts, R.L. (2008), 'The Information Role of Conservatism', The Accounting Review 83(2), 447-478.",
+    "Srivastava, A. (2014), 'Why Have Measures of Earnings Quality Changed Over Time?', Journal of Accounting and Economics 57(2-3), 196-217.",
+    "Zhang, L. (2007), 'The Value Premium', Journal of Finance 62(1), 67-103 (rational alternative interpretation for the failure analysis).",
+    "Cooper, M.J., Gulen, H., Schill, M.J. (2008), 'Asset Growth and the Cross-Section of Stock Returns', Journal of Finance 63(4), 1609-1651 (alternative asset-bloat interpretation for the failure analysis)."
+  ],
+  "pit_observable_with_availability_semantics": {
+    "row_schema_fields": "panel rows are the staged .staging_sec_v8/multivintage_panel.jsonl schema {avail, e, eff, evd, f, s, u, v}: e = entity_id (CIKxxxxxxxxxx), f = field (taxonomy:tag), eff = effective (period-end) date, evd = event date when differing, s = frozen sector tag, u = unit, v = filed value, avail = availability date (SEC filed date; availability stamp = end of filed UTC day).",
+    "gate_semantics": "a decision at session t observes a row only if avail < gate(t) (gate(t) = 00:00 UTC of the decision session per pit_conditioning.session_gate_utc); the selected vintage per field is the one with max avail among rows with avail < gate(t) and age <= 400 days; NEVER the latest vintage in the store; a name with no qualifying vintage for any leg is unpopulated that decision (covered/mapped filer coverage reported per observation).",
+    "cited_funded_clocks": [
+      {"field": "us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment", "clock": "latest filed vintage as of t with age <= 400 days", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.758},
+      {"field": "us-gaap:PropertyPlantAndEquipmentGross", "clock": "latest filed vintage as of t with age <= 400 days", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.6909},
+      {"field": "us-gaap:UnrecognizedTaxBenefits", "clock": "latest filed vintage as of t with age <= 400 days", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.833},
+      {"field": "us-gaap:Goodwill", "clock": "latest filed vintage as of t with age <= 400 days", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.809},
+      {"field": "us-gaap:Assets", "clock": "latest filed vintage as of t with age <= 400 days", "proposed_status": "FUNDED_CANDIDATE", "pooled_mean_coverage": 0.9737}
+    ],
+    "all_clocks": "every clock above is quoted verbatim from research/control/stocks_free_v6_run/p0a_fundable_clocks.json (sha256 ff328a98..., FUNDED_CANDIDATE only; frozen 154-clock set); the 400-day bound is the tightest funded bound common to all five fields (120/200-day clocks are NOT_FUNDED for AccumulatedDepreciation... and PropertyPlantAndEquipmentGross), which deliberately caps fundamental staleness for a slow LEVEL signal; ratios are formed only when numerator and denominator rows share unit u = USD and the selected eff dates are within 400 days of each other (else unpopulated)."
+  },
+  "aggregation_declaration": {
+    "sector_aggregates_built": "NONE. Conditioning is per-filer PIT observation standardized to a percentile within the frozen sector tag s of the row (s sector-constant per entity, verified in p0a_multivintage_panel_manifest store_invariants); no sector mean of any fundamental is computed.",
+    "max_filing_gap_days": "NOT REQUIRED - no aggregate over filers is built, so the survivorship-aware aggregate filing-clock parameter is not invoked; staleness is bounded by the funded 400-day clocks and the declared eff-date agreement filter.",
+    "field_list": "us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment, us-gaap:PropertyPlantAndEquipmentGross, us-gaap:UnrecognizedTaxBenefits, us-gaap:Goodwill, us-gaap:Assets - exactly the five fields cited with funded clocks above.",
+    "sector_factor": "equal-weight mapped sector-ETF total return (SPDR set on the authorized EODHD path) as the optional sector factor; unmapped sector tags fall back to SPY with the fallback count reported."
+  },
+  "universe_warmup_clock_holding_fills": {
+    "universe_eligibility_per_P3_floor": "filer in the frozen 410-filer panel (sha256 1cb115d3...) AND servable per research/control/stocks_free_v8_run/p2_coverage_first.json at the decision date AND ADV63 >= 2,000,000 USD (band C or better; band D excluded as UNTRADABLE_AT_DECISION) AND RAW price >= 1.00 USD at the decision.",
+    "warmup": "decision grid = trading sessions at indices 63+21k from each fold start; index 63 seeds ADV63 for band assignment and eligibility; the LEVEL signal needs no delta seeding, so the first scored decision is the first grid decision (k=0) at session 63 of S0_FOLD_1; no calendar-month anchoring.",
+    "rebalance_clock_is_a_funded_clock": "the conditioning clock re-evaluated at every decision date is exactly the funded 400-day clock set quoted above; positions re-decided on the 21-session grid at which those funded clocks are re-evaluated.",
+    "holding_period": "one grid step (21 trading sessions) with rank hysteresis of one decile band (slow LEVEL signal: effective holding 1-3 quarters); book forced flat at every fold boundary per P3 accounting.",
+    "fill_convention": "signals on session t close data under avail < gate(t); fills next allowed session close-to-close (V3 ADJ-1-EXEC-CLOCK); no same-session fill; cost charged exactly once per fill; band from ADV63 as of the decision date (RAW close*volume).",
+    "portfolio_construction": "sector-neutral long-short: within each sector tag s with >= 6 eligible ranked names, long the top coverage tercile, short the bottom tercile, equal-weight within legs, per-sector net zero; CASH absorbs residual; >= 1 non-CASH leg per decision; gross capped 2.0.",
+    "sample_floor": "scored decisions = all grid decisions (no delta warmup); by the frozen folds this yields approx. 26 (S0_FOLD_1), approx. 26 (S0_FOLD_2), approx. 27 (S0_FOLD_3), approx. 79 total (>= 30 total, >= 5 per fold guaranteed; exact counts fixed by the session grid before scoring)."
+  },
+  "anchor_neighbour_causal_negative_control": {
+    "anchor": "PIT multi-vintage depreciation-coverage percentile rank = AccumulatedDepreciation.../PropertyPlantAndEquipmentGross under the funded 400-day clocks, long-high/short-low within sector.",
+    "neighbour_mechanism": "unrecognized tax benefit reserve rank = UnrecognizedTaxBenefits / Assets (both funded at the 400-day clock): a second conservatism RESERVE with a different business driver (uncertain tax positions vs PP&E aging), required to support the family with the same sign; distinct measurement (gross reserve scale vs within-asset coverage).",
+    "causal_negative_control": "goodwill-burden rank = Goodwill / Assets (both funded at the 400-day clock): the OPPOSITE accounting posture - aggressive capitalization of acquired growth, post-2001 non-amortized.",
+    "intended_correlation_profile_and_why_it_differs_L7": "the control is designed rank-DISTINCT: depreciation coverage concentrates in capital-intensive industrials/utilities/materials filers while goodwill burden concentrates in acquisitive healthcare/tech/media filers, so the intended Spearman rho between anchor and control ranks is near zero or negative; L7 requires a control that is not rank-identical, and here the control cannot share the anchor's mechanism by construction - under the conservatism hypothesis the aggressive-capitalization posture is the polar opposite of the conservative one and must NOT reproduce the anchor's positive alpha. If the goodwill control reaches >= 0.5x anchor |alpha|, the effect is a generic 'reserve/bloat stock' characteristic (Cooper-Gulen-Schill style asset-bloat) and the conservatism interpretation is falsified per the P3 causal_control_rule; a rank-identical control would identify nothing (L7 lesson)."
+  },
+  "incremental_alpha_test": {
+    "vs_SPY": "incremental alpha = arm return minus risk-matched SPY context (SPY scaled ex ante by the arm's frozen gross/vol rule per P3), per fold and overall; require excess positive in >= 2 of 3 folds and overall alpha > 0; long-equity beta exposure is never accepted as alpha.",
+    "vs_sector_ETF": "same test vs the equal-weight mapped sector-ETF factor (authorized EODHD path), same thresholds; the per-sector net-zero book must show positive excess over BOTH benchmarks or the arm fails.",
+    "stage_a_gates_applied_with_no_relaxation": "expectancy > 0; position PF >= 1.1; folds positive >= 2; populated-fold PF >= 0.8; max fold MDD <= 0.15; ETF positive share <= 0.35; fold positive share <= 0.5; anchor overall alpha > 0; control |alpha| ratio < 0.5; neighbour support required; margin-to-fail reported on every gate for survivors."
+  },
+  "base_and_stress_costs": {
+    "model": "liquidity-band cost per p3_invariants_freeze.json v8_additions applied to BOOKED PnL, linear in fills, no sidecar: band A (ADV63 >= 50M) base 10 bps/side, stress 20; band B (10M-50M) base 15, stress 30; band C (2M-10M) base 25, stress 50; band D excluded at decision; charged exactly once per fill.",
+    "expected_blend": "per-fill cost assigned by the executed name's band at its decision date; using the p2 boundary band populations (start: A 286, B 94, C 10; mid: A 307, B 87, C 11; end: A 376, B 31, C 1) the expected blended base cost is approx. 10-15 bps per side, stress approx. 20-30 bps per side; fills, cost, and booked PnL reported split by band for base AND stress.",
+    "compatibility": "a band-A fill has exactly V4/V5 arithmetic (10/20 bps)."
+  },
+  "turnover_and_sample_floor": {
+    "decisions_total": ">= 30 scored decision periods overall (declared grid yields approx. 79); >= 5 per fold (approx. 26/26/27).",
+    "turnover_convention": "turnover = sum(abs(delta_weight)) over non-CASH legs (V3 ADJ-5 corrected); annualized two-way with one-decile hysteresis on a slow level rank expected below the 6.0 ceiling; raw and ceiling-normalized reported.",
+    "floor_mechanics": "min 5 decision periods per fold; min 1 non-CASH leg per decision; CASH excluded from turnover, concentration, drop-one; books reconcile to 1.0 within 1e-9."
+  },
+  "drop_one_design": [
+    "drop-one-symbol: value_book rerun excluding the max-contribution symbol; survival = after-drop expectancy > 0.",
+    "drop-one-fold: recompute expectancy with each fold removed; survival = min over folds > 0.",
+    "drop-one-sector: recompute excluding the single largest-contribution sector tag; survival requires the effect not be one sector in disguise (report per-sector contribution)."
+  ],
+  "failure_interpretation": {
+    "sign_flip_or_null": "if high coverage UNDERPERFORMS (alpha <= 0 in >= 2 folds), interpret as vintage-capital obsolescence: an aged, depreciation-saturated asset base signals capex-starvation and low future productivity, and the arm is recorded as a negative result for the conservatism channel on this panel (not rerun with a flipped sign).",
+    "goodwill_control_reproduces": "if the Goodwill/Assets control reaches >= 0.5x anchor |alpha|, the mechanism is generic balance-sheet bloat/asset-growth (Cooper, Gulen, Schill 2008), not conservatism mispricing; family falsified.",
+    "value_confound": "because coverage correlates with capital intensity and hence with value-like characteristics, the explicit design omits book-value ratios and requires positive excess over BOTH risk-matched SPY and sector-ETF contexts; residual BM confounding is tested by reporting the rank correlation with a book-equity/price rank (diagnostic only, no tuning).",
+    "momentum_or_vol_confound": "|rho| > 0.20 vs 12-1 momentum or the V4 semivariance-SHAPE anchor ranks at pre-selection invalidates the arm regardless of expectancy.",
+    "coverage_driven_breadth_collapse": "the 400-day clocks pool at approx. 0.69-0.76 for the ratio legs (census), so populated breadth is a subset of the 410 filers; if populated breadth falls below 6 ranked eligible names in most sectors at most decisions, the arm is not tradable as constructed and is recorded as an implementation failure, not a mechanism failure."
+  },
+  "source_to_test_map": {
+    "pit_conditioning": ".staging_sec_v8/multivintage_panel.jsonl (3,817,158 records, 410 filers, sha256 1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40), gated through research/assets/stocks/pit_conditioning.py session_gate_utc (untouched canonical bridge); fields us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment, us-gaap:PropertyPlantAndEquipmentGross, us-gaap:UnrecognizedTaxBenefits, us-gaap:Goodwill, us-gaap:Assets.",
+    "prices_fills_bands": ".staging_prices_v8/eod (EODHD daily bars, 409 files sha256-pinned in stocks_free_v8_run/p0a_eodhd_price_manifest.json), readable at session close + 1 session; RAW series primary for ADV63 and fills.",
+    "servability_and_bands": "research/control/stocks_free_v8_run/p2_coverage_first.json per_name (s0_session_coverage_ratio, boundary_bands).",
+    "clock_authority": "research/control/stocks_free_v6_run/p0a_fundable_clocks.json (sha256 ff328a98...) via p0a_clock_freeze.json frozen 154-clock set.",
+    "folds_costs_gates": "research/control/stocks_free_v8_run/p3_invariants_freeze.json (folds S0_FOLD_1/2/3; band cost model; Stage-A gates; margin-to-fail)."
+  },
+  "forbidden_inventory_screen": {
+    "A4_XSEC_ETF_RELATIVE_MOMENTUM": "CLEAN - no price momentum of any lookback enters the rank; ETFs appear only as the optional sector-factor benchmark, which is the sanctioned P3 role.",
+    "A5-SFV2-TREND-DEFENSIVE": "CLEAN - no trend/SMA/EMA/vol-target/defensive rotation; the long-short book has no time-series price filter.",
+    "SFV3-A5-IDIO-SHOCK-REVERSAL": "CLEAN - no idiosyncratic shock/crash/overshoot variable; conditioning is balance-sheet-only, no OHLCV proxy fabrication (P3 no_ohlcv_proxy_rule).",
+    "SFV3-A6-TOM-SETTLE": "CLEAN - decisions sit on a fixed 63+21k session-index grid with no turn-of-month/settlement/mid-month anchoring; the calendar is schedule, not signal.",
+    "SFV4-A5-H1-PARTICIPATION-SHIFT": "CLEAN - no dollar-volume shock or fresh-vs-stale participation variable; ADV63 appears only in the frozen eligibility floor and band assignment.",
+    "SFV4-A4-H1-SEMIVARIANCE-SHAPE": "CLEAN - no variance/semivariance/vol-level quantity anywhere; this is not a Section 1.1 vol-level re-entry: the rank is built exclusively from SEC panel fields, expected near-orthogonal to both the V4 semivariance-SHAPE anchor and the V4 vol-level control, with a declared pre-selection |rho| <= 0.20 measurement gate in falsifiable_prediction (measured and reported before selection, never argued in prose).",
+    "EQ_S2_A3_F1_PIT_RECON_FLOW": "CLEAN - no order-flow or microstructure PIT reconstruction; the arm reads filed financial-statement vintages only, a different object from the frozen PIT reconstruction/flow family.",
+    "A5-S2-F1-LENDING-CONSTRAINT-PREMIUM": "CLEAN - no securities-lending, borrow, or short-interest data.",
+    "generic_forbidden": "CLEAN vs each: no ordinary cross-sectional momentum; no standalone trend/vol-target family; not a long-SPY/sector-beta result (per-sector net-zero book, risk-matched excess required on both benchmarks); no earnings surprise / analyst revision / institutional flow / borrow / quote-spread channel; not a daily-indicator grid (one distinct economic mechanism on a quarterly fundamental clock); no new accounts, paid data, or network fetch outside the authorized set.",
+    "rescue_variants": "none of the eight families is re-parameterized or renamed: the rejected families were all price/signal-timing mechanisms, while this anchor is a filed accounting-reserve level with no price primitive in common.",
+    "blocked_channels": "none used - Massive Basic, Stooq (bulk and per-symbol), Twelve Data are not referenced; prices only via the authorized EODHD owner-entitled path; conditioning only via the staged SEC panel."
+  },
+  "implementation_estimate": {
+    "build": "one streaming pass over multivintage_panel.jsonl filtered to the 5 declared fields into per-filer as-of stacks; arm module reusing pit_conditioning.session_gate_utc unchanged; approx. 150-250 LOC new; no change to canonical bridge, invariants, or cost model.",
+    "runtime": "single serial cell, well under the 120-minute hard timeout with the < 45-minute safe-stop rule; memory < 8 GB (heavy_cap 1 respected).",
+    "scoring_cells": "2 (base + stress) + drop-one reruns (symbol/fold/sector) + 1 control arm (Goodwill/Assets) + 1 neighbour arm (UTB/Assets); all parameters frozen by this proposal.",
+    "risk_notes": "PropertyPlantAndEquipmentGross pooled coverage 0.6909 and AccumulatedDepreciation... 0.758 at the 400-day clock (census), so populated breadth is approx. 55-65 percent of mapped filers; sector terciles require >= 6 ranked eligible names per sector else that sector contributes no legs that decision (reported per decision)."
+  },
+  "wave_sha_pin": {
+    "wave_sha": "7ce8fb7a566bdd7ccd689adc2c6693498df62045",
+    "pinned_inputs": {
+      "d1_proposal_packet": "research/control/stocks_free_v8_run/d1_proposal_packet.json (frozen 2026-09-05T04:28:59Z)",
+      "fundable_clocks_sha256": "ff328a9820bde2968a768016a9046436a93ddeb8d1a8e2625aaf5ff83e4be9f8",
+      "clock_freeze_note": "p0a_clock_freeze.json sha256 61e15738... (154 FROZEN_FUNDABLE clocks)",
+      "panel_sha256": "1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40",
+      "census_sha256": "ec2a5aa40e450cba14d86e67742b3f916d8ffdbdacd8a69e16e8bda93868b356",
+      "forbidden_inventory": "research/control/stocks_free_v8_run/forbidden_family_inventory.json (V8 carry of V7 terminal payload)",
+      "p3_invariants": "research/control/stocks_free_v8_run/p3_invariants_freeze.json (P3_FROZEN)"
+    },
+    "freeze_statement": "all parameters above (fields, 400-day clocks, eff-agreement filter, tercile/one-decile-hysteresis thresholds, grid 63+21k, controls, gates) are declared here BEFORE any V8 return is scored and are never tuned after scored PnL is visible."
+  },
+  "attestation": "I wrote these proposals without access to any V8 scored outcome, any per-arm artifact, or any parameter search over returns; my only inputs were this packet and the committed evidence files it cites. Signed: A4 (inlined light lane), 2026-09-05."
+}
