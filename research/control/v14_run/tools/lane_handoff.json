@@ -1,0 +1,145 @@
+{
+ "schema": "v14_i_tools_lane_handoff_v1",
+ "artifact": "i_exec_driver_lane_handoff",
+ "cycle": "CRYPTO-V14",
+ "lane": "i-exec-driver",
+ "producer_role": "A9 (I-lane exec-driver tooling; Phase E remains owner-gated and A1-run)",
+ "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+ "produced_utc": "2026-09-05",
+ "worktree": {
+  "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/i-exec-driver",
+  "branch": "orca/v14-i-exec-driver",
+  "head_before_commit": "527c62b468de5c15819a6b8e4a09f40751c06234",
+  "head_at_handoff": "see git log after the single 'V14 I TOOLS:' commit on this branch"
+ },
+ "deliverables": {
+  "research/control/v14_run/tools/run_v14_cell.py": "V14 Phase E scored-cell driver (A1-run, owner-gated): V13R run_v13_cell pattern adapted to the two frozen V14 families; split data roots (a3 staged-equivalent + A9-F staged basis + archived staged OI); six-arm digest pin with pairwise uniqueness; frozen runner-compatibility pin pre-metric; L-V14-0 cost breakout (cost_fills / cost_holding_terms, holding asserted 0); basislv price-only vs total expectancy split fed into the family gate as REQUIRED clause inputs; oicyc CONFIRMATORY carry-through; --dry-run synthetic mode that can never write a ledger; TECHABORT discipline with the real-scoring-time-only sink fix",
+  "tests/test_v14_driver.py": "21 targeted tests on a tiny in-test synthetic staged root (never real data, never the repo results namespace, never a ledger outside tmp)",
+  "research/control/v14_run/tools/lane_handoff.json": "this handoff"
+ },
+ "file_sha256": {
+  "research/control/v14_run/tools/run_v14_cell.py": "caaed910704bc7e51e345305b51ab5edf6e8320c97bfc01d28267e3467812dd0",
+  "tests/test_v14_driver.py": "0995c6c8f26056f90002f26136f9695c89c32dc6081148d8d2a825978055ec12"
+ },
+ "audit_of_cancelled_lane_partial_work": {
+  "found": "uncommitted research/control/v14_run/tools/run_v14_cell.py (1678 lines, ~90% complete), tests/test_v14_driver.py (690 lines), and SIX stray untracked TECHABORT_<ARM>.json files at research/control/v14_run/ root",
+  "verdict_sound": "overall architecture was sound and is KEPT: V13R pattern, split data roots, six-arm digest pin, traversal pin, L-V14-0 cost breakout with the holding-terms==0 assertion, basislv gate wiring with REQUIRED clause inputs, oicyc CONFIRMATORY carry, dry-run ledger refusal, synthetic staged-root builder",
+  "defect_1_strays": "the tests ran the driver with the DEFAULT exec root (this lane worktree); any pre-metric crash inside main()'s crash guard wrote TECHABORT forensics into research/control/v14_run/ of the REPO TREE as a test side effect (all six strays record a pytest temp out_dir)",
+  "defect_2_crash": "main() passed every family's kwargs into every build (basis_staged_root into build_oicyc, oi_root into build_basislv) -> TypeError 'build_oicyc() got an unexpected keyword argument basis_staged_root' on the first oicyc arm; this crash is what the six strays recorded",
+  "defect_3_imports": "build_basislv imported TRADEABLE_UNIVERSE from the strategy module; the frozen constant lives in the family's audits module (strategy does not export it)",
+  "defect_4_test_f": "the TECHABORT test passed --ledger together with --dry-run, which validate_args forbids; the injected crash could never fire (test asserted EXIT_CRASH but got EXIT_FAIL_CLOSED)",
+  "defect_5_pin_catch": "the traversal pin caught only adapter ContractViolation; the oicyc EligibilityShortfall subclasses AdapterError, so a breadth refusal crashed the driver raw instead of failing closed with the recorded refusal (now caught as AdapterError)",
+  "defect_6_glob": "the tests' control-tree-clean glob rglob'ed ALL of research/control and would have flagged the COMMITTED historical V12/V13 TECHABORT evidence files as strays (now scoped to research/control/v14_run/)",
+  "fixes_applied": [
+   "deleted the six stray TECHABORT_*.json files (untracked test pollution; NOT committed)",
+   "driver: per-family build kwargs dispatch (no cross-family kwargs)",
+   "driver TECHABORT sink discipline: real runs default to <exec-root>/research/control/v14_run (V13R TECHABORT_liqepis_chain_attempt1 precedent, real scoring time only); --dry-run defaults to <out-root>/TECHABORT inside the mandatory scratch tree; a synthetic run whose sink resolves under ANY research/control subtree is REFUSED at startup (exit 2) -- test-produced control-tree forensics are structurally impossible; tests additionally pass an explicit temp --techabort-dir and assert the V14 control dir stays clean",
+   "driver: build_basislv imports TRADEABLE_UNIVERSE from the frozen audits module",
+   "driver: traversal pin catches AdapterError (ContractViolation + family EligibilityShortfall)",
+   "driver: scored-record extensions extracted into apply_family_scored_record_extensions (importable; keeps the CONFIRMATORY/expectancy obligations testable without the blocked oicyc matrix)",
+   "driver: basis staged-root default tries the integration staged dir then the d2-a9f lane bulk (the integration copy does not exist on this machine; the frozen loader's manifest-path fallback resolves to the same bulk)",
+   "tests: (f) rewritten without --ledger (forbidden with --dry-run); new refusal test pins the synthetic research/control sink refusal; (a) restructured to construct all six arms + digest pin, basislv full preflight exit-0, and the oicyc blocked traversal pinned as recorded evidence; (c)/(f) moved to basislv arms (oicyc matrix blocked); (d) exercises the CONFIRMATORY carry for all three oicyc arms via the importable extension"
+  ]
+ },
+ "gates": [
+  {
+   "gate": "I-TOOLS targeted driver test suite (six areas a-f, synthetic-only)",
+   "command": ".venv/bin/python -m pytest tests/test_v14_driver.py -q",
+   "exit_code": 0,
+   "observed": "21 passed in 157.14s (reproduced on the final tree; earlier green runs 21 passed in 149.01s)",
+   "artifact": "tests/test_v14_driver.py",
+   "artifact_sha256": "0995c6c8f26056f90002f26136f9695c89c32dc6081148d8d2a825978055ec12",
+   "verdict": "PASS",
+   "notes": "targeted only; full pytest reserved for A1. Includes the pinned oicyc BLOCKED evidence test (exit-2 preflight with the recorded frozen-conflict refusal)."
+  },
+  {
+   "gate": "compileall on lane files",
+   "command": ".venv/bin/python -m compileall -q research/control/v14_run/tools/run_v14_cell.py tests/test_v14_driver.py",
+   "exit_code": 0,
+   "observed": "COMPILEALL_OK",
+   "verdict": "PASS"
+  },
+  {
+   "gate": "git diff --check on the lane tree",
+   "command": "git diff --check",
+   "exit_code": 0,
+   "observed": "DIFF_CHECK_OK",
+   "verdict": "PASS"
+  },
+  {
+   "gate": "six-arm arm-config digest pin (recomputed == recorded, pairwise unique)",
+   "command": ".venv/bin/python -c \"import research.adapter_v10; import importlib.util; spec=importlib.util.spec_from_file_location('run_v14_cell','research/control/v14_run/tools/run_v14_cell.py'); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); r=m.verify_all_arm_digests(m.family_registry()); assert r['ok'] and r['n_match']==6 and r['pairwise_unique']\"",
+   "exit_code": 0,
+   "observed": {
+    "BASISLV-PREMFADE-28D": "8d7704663b923815e0bb2b201c339c9a2c209875c3348752c721d17265247d52",
+    "BASISLV-PREMFADE-56D": "832ccde72cde6bf1a1982fbaad728dbdbd7e21f26a768c389c22de1d1768d4ef",
+    "BASISLV-PREMFADE-28D-INV": "76f0b0ccba127cef85aa91ebaf4faa4d13fffd5130d2cf6f7e305f53aac46893",
+    "CYC-28D": "0e7b084c4755f63d25fdc2a175123ca78c48bdffb93da962a5e6d0b0875a61b6",
+    "CYC-14D": "7c6baead3053b5a53dcb7731adc66f237a54fef412c3372bec204ca047e2dab1",
+    "CTL-OISHARE": "11858422224cf502d0eae7abb26eea617afa381b70626e3210b26bb18e00ce08",
+    "n_match": 6,
+    "pairwise_unique": true
+   },
+   "verdict": "PASS",
+   "notes": "values equal the digests recorded by i-family-1 and i-family-2 at implementation time (before any scored metric existed)."
+  },
+  {
+   "gate": "stray-TECHABORT pollution fix verified (control tree clean; sink refused in synthetic mode)",
+   "command": "enforced by tests/test_v14_driver.py::test_v14drv_techabort_fires_on_injected_crash_with_zero_budget and ::test_v14drv_dry_run_refuses_techabort_sink_under_control_tree",
+   "exit_code": 0,
+   "observed": "six stray files deleted; research/control/v14_run/ carries ZERO TECHABORT_*.json on the final tree; a --dry-run with a research/control TECHABORT sink exits 2 without writing",
+   "verdict": "PASS"
+  }
+ ],
+ "digest_algorithm_statement": {
+  "arm_config_digest": "research.v11.publication_identity.arm_config_digest(frozen_identity(arm), arm_id=arm): sha256 over the canonical JSON of the frozen per-arm identity/config payload plus the arm id -- the SAME primitive the V11/V12/V13 drivers pinned",
+  "recomputed_vs_recorded": "the driver recomputes all six digests from the frozen identity modules (research/v14/families/{basislv_premfade,oicyc}/frozen_identity.py) on EVERY invocation and fails closed (exit 2, no data loaded) unless all six equal the lane-recorded digests AND the six exact digests are pairwise distinct (driver-level pairwise-uniqueness assertion, collisions reported)",
+  "import_order_contract": "research.adapter_v10 is imported before anything pulling research.v11.publication_identity (A7 wave-1 pin convention); the digest pin runs BEFORE any staged data is loaded",
+  "staged_integrity": "a3-layout staged root: every one of the 90 authority files byte-verified against research/audits/v12p/a3_staging_manifest.json before any load; A9-F staged basis: manifest SHA pinned to 3867bdca3162f219d9a62b30b6768997f89a751b7bb86231b1c1175a6e25ee88 plus per-file SHA fail-closed in the frozen loader; staged OI: per-file SHA-256 fail-closed against research/control/v11_run/oi_staging_manifest.json via oicyc.audits.load_oi_by_symbol_verified (the ONLY OI load path)",
+  "synthetic_mode": "--dry-run verifies the scratch tree's own staged_manifest_.json (self-consistency, still fail-closed); --publish/--ledger are refused outright with --dry-run and an explicit scratch --out-root is required"
+ },
+ "post_go_invocations": {
+  "preconditions": [
+   "owner typed 'GO V14 SCORED EXECUTION' (plan Section 10 hard stop)",
+   "exec-root is the frozen V14 execution tree (orca/v14-integration worktree) at the W1 freeze pin; --expect-head must equal that pin",
+   "<exec-root>/staged_data is the 90-file a3-verified staged-equivalent snapshot (P1 recompute_*.py assembly precedent)",
+   "budget 0/9; V14 counters zero; ledger seeds are the empty W1 authorities",
+   "basislv gate-input dependency: the anchor's family gate consumes the control/neighbour fold-sign vectors from their driver-written baseline_metrics.json artifacts -- run neighbour and control BEFORE the anchor within the family (serial order below), otherwise the anchor's gate record is the honest BLOCKED_SIBLING_EVIDENCE_MISSING (never an inferred PASS)"
+  ],
+  "basislv_premfade_shard_ledger": "<exec-root>/results/v14_phase_e/ledgers/basislv_premfade.jsonl",
+  "oicyc_shard_ledger": "<exec-root>/results/v14_phase_e/ledgers/oicyc.jsonl",
+  "lines": [
+   "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/tools/run_v14_cell.py --family basislv_premfade --arm BASISLV-PREMFADE-56D --exec-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration --staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/staged_data --basis-staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/staged --oi-root /Users/hoangminhlong/my-quantitative/oi_data/consolidated --ledger /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/results/v14_phase_e/ledgers/basislv_premfade.jsonl --publish --expect-head <W1_FREEZE_PIN>",
+   "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/tools/run_v14_cell.py --family basislv_premfade --arm BASISLV-PREMFADE-28D-INV --exec-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration --staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/staged_data --basis-staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/staged --oi-root /Users/hoangminhlong/my-quantitative/oi_data/consolidated --ledger /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/results/v14_phase_e/ledgers/basislv_premfade.jsonl --publish --expect-head <W1_FREEZE_PIN>",
+   "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/tools/run_v14_cell.py --family basislv_premfade --arm BASISLV-PREMFADE-28D --exec-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration --staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/staged_data --basis-staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/staged --oi-root /Users/hoangminhlong/my-quantitative/oi_data/consolidated --ledger /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/results/v14_phase_e/ledgers/basislv_premfade.jsonl --publish --expect-head <W1_FREEZE_PIN>",
+   "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/tools/run_v14_cell.py --family oicyc --arm CYC-14D --exec-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration --staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/staged_data --basis-staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/staged --oi-root /Users/hoangminhlong/my-quantitative/oi_data/consolidated --ledger /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/results/v14_phase_e/ledgers/oicyc.jsonl --publish --expect-head <W1_FREEZE_PIN>",
+   "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/tools/run_v14_cell.py --family oicyc --arm CTL-OISHARE --exec-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration --staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/staged_data --basis-staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/staged --oi-root /Users/hoangminhlong/my-quantitative/oi_data/consolidated --ledger /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/results/v14_phase_e/ledgers/oicyc.jsonl --publish --expect-head <W1_FREEZE_PIN>",
+   "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/tools/run_v14_cell.py --family oicyc --arm CYC-28D --exec-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration --staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/staged_data --basis-staged-root /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/d2-a9f-feasibility/research/control/v14_run/d2_a9f/staged --oi-root /Users/hoangminhlong/my-quantitative/oi_data/consolidated --ledger /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/integration/results/v14_phase_e/ledgers/oicyc.jsonl --publish --expect-head <W1_FREEZE_PIN>"
+  ],
+  "notes": [
+   "<W1_FREEZE_PIN> is the frozen integration HEAD at W1 (A1 states it; --publish fails closed on mismatch)",
+   "the anchor invocation runs LAST within each family so its baseline_metrics.json gate inputs are complete (basislv anchor additionally writes gate_record.json via the frozen gate_runner with the REQUIRED price-only clause inputs)",
+   "the oicyc lines are BLOCKED today (see blocked_items): they fail closed at the preflight pin (exit 2, zero budget, no TECHABORT) until the owner-authorized family delta lands",
+   "--basis-staged-root may alternatively point at <exec-root>/research/control/v14_run/d2_a9f/staged once A1 materializes the bulk there; the frozen loader's manifest-path fallback resolves to the same SHA-verified bulk"
+  ]
+ },
+ "blocked_items": [
+  {
+   "id": "V14-I-TOOLS-BLOCKED-1",
+   "item": "oicyc drop_one_fold matrix cell cannot traverse; the three oicyc scored cells are BLOCKED at driver preflight (exit 2, pre-metric, zero budget, no TECHABORT) until an owner-authorized family-side delta",
+   "evidence": {
+    "mechanism": "the frozen generic runner (research/adapter_v10/runner.py::_collect_books) queries targets_at at EVERY non-final schedule instant of EVERY accepted matrix cell -- including a dropped fold's stamps (carried, never opened); the frozen oicyc plugin (research/v14/families/oicyc/plugin.py::_chained_weights) computes terminals = _fold_terminal_stamps(retained decision instants), and _fold_terminal_stamps calls the frozen strategy fold_assignments, which raises ContractViolation 'pinned fold F0 received no decision stamps' when any fold has no retained members -- so ANY dropped-fold stress (drop_one_fold cell, dropped_fold_index=0) crashes targets_at BEFORE its documented carry path",
+    "observed": "driver preflight pin record (tests/test_v14_driver.py::test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict): cell drop_one_fold, instant 2025-08-25T00:00:00Z, error 'pinned fold F0 received no decision stamps'; construction + six-arm digest pin are fine (block is traversal-only)",
+    "precedent": "the V13 OITD chained plugin carries dropped-fold stamps without computing fold terminals over the retained set (research/v13/families/oitd/plugin.py::_chained_weights has no _fold_terminal_stamps call); the LIQEPIS fold-terminal handling keys off the FULL calendar (research/v13/families/liqepis/plugin.py::fold_terminal_force_flat_stamps)",
+    "required_fix_shape": "family-side delta: compute the fold-terminal force-flat stamps from the FULL frozen calendar intersected with the retained set (never fold_assignments over the retained-only list); frozen bytes are never edited by this lane -- needs an owner-authorized delta with A7 audit per the TECHABORT/BLOCKED-FROZEN-CONFLICT discipline",
+    "pinned_by_test": "test_v14drv_oicyc_traversal_pin_blocked_frozen_conflict MUST be flipped to the basislv-style exit-0 assertion when the delta lands"
+   }
+  }
+ ],
+ "not_run_items": [
+  "full pytest suite (reserved for A1 alone per plan Section 14)",
+  "any scored cell, Phase-E run, or PnL over the real snapshot (owner-gated; Section 10/11)",
+  "no ledger was written anywhere outside test temp dirs; no real data file was read by the test suite (synthetic bytes only)"
+ ],
+ "handoff_note_to_A1": "The driver is adapted from the proven run_v13_cell pattern and is ready for the W1 freeze sequence EXCEPT the oicyc drop-one traversal (BLOCKED above): schedule A1's six-arm dummy dry-run accordingly (basislv exercises the full scored path end-to-end on the synthetic root; oicyc fails closed at the preflight pin with the recorded refusal). The TECHABORT strays were test pollution; the sink is now structurally real-scoring-time-only and the fix is pinned by tests. Budget semantics are unchanged: a pre-metric crash consumes ZERO budget and the forensic file lands in the designated exec root only."
+}
