@@ -14,9 +14,9 @@
   it, or any parameter/top-K/universe/relaxed-gate variant of it, is rescue
   and ineligible without a new owner plan preregistering a materially new
   mechanism (measured decorrelation vs the rejected ancestor, not prose).
-- Cumulative scored denominators (post-V3R adjudication, 2026-09-05): crypto
-  137 published / 140 observed logical; stocks 21/21; forex 18/18. S1
-  untouched everywhere. **Program total: 176 published cells, 0 survivors.**
+- Cumulative scored denominators (post-V8 close, 2026-09-05): crypto
+  137 published / 140 observed logical; stocks 27/27; forex 18/18. S1
+  untouched everywhere. **Program total: 182 published cells, 0 survivors.**
   The first Stage-A survivor (FXFV3-A6-P1) was invalidated by its own
   remediation cycle — see the Free-V3 row and `LESSONS.md` P-1..P-6.
 - **No strategy has ever been promoted.** Every governed scored cycle closed
@@ -98,6 +98,8 @@ bonus split signatures all correct; 0 OHLC violations/54,119 bars; double-pull
 3/3 byte-identical. **V8 cycle authorized to start** — fundamentals-conditioned
 discovery on the frozen 154 clocks; HARD STOP before first scored cell pending
 owner GO phrase.
+| V8 (CLOSED 2026-09-05, `STOCKS_FREE_V8_REJECT_ALL` — A7 terminal 8/8 PASS independently re-scored from bytes; 6/6 cells published + reproduced ALL_MATCH; prelaunch arc NO_GO→remediation→AUTHORIZED→**A7-INDEP AUTHORIZED** (Lead-dispatched fresh context)→owner GO; budget 6/6) | SFV8-F1-WC-ACCRUAL-FLOW | Sloan-1996 accrual-flow rank, PIT multi-vintage panel, long-low/short-high in sector, 21-session grid, band costs | FALSIFIED_BY_CONTROL — anchor expectancy −0.00058/decision (PF 0.892, alpha −0.0137, SPY-excess 0/3 folds, ETF-share 0.641 vs 0.35); preregistered WC stock-level control same-sign ≥0.5x → exposure-form, no mechanism specificity (falsification-by-control cluster, instance #8); stress −0.077; drop-one fails; margin-to-fail recorded per gate (P-2 honored). |
+| V8 (same terminal) | SFV8-F2-DEP-RESERVE-COVERAGE | Penman–Zhang conservatism coverage (AccumDep/PP&E), long-high/short-low | FALSIFIED_BY_CONTROL — anchor PF 0.798, 0/3 folds positive, alpha −0.0133; Goodwill/Assets control reproduces same-sign ≥0.5x → generic balance-sheet bloat (Cooper–Gulen–Schill form), not conservatism (cluster instance #9). Denominators stocks 27/27; program 182/185. First cycle on the owner-entitled EODHD source (probe 6/6 PASS; 409/410 served). **Cohort honesty note (M-I1): current-registry 410-filer panel, 0/409 in-window deaths — the source's delisted capability was NOT exercised; survivorship tilt documented, constant across arms; no delisted leg claimed anywhere.** next_owner_path: future stocks cycles need a materially new information set (e.g. a TRUE death-inclusive cohort finally exercising delisted coverage, or distress/delisting-risk conditioning that requires it) with measured decorrelation vs the now-forbidden F1/F2. |
 
 ## D. FOREX — G10 spot, 7 free-data pairs
 
