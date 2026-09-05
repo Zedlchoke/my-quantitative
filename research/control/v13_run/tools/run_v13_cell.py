@@ -54,8 +54,13 @@ ledgers are the scored-row authority (V12R convention).
 Frozen-producer data conventions mirrored unchanged (never re-declared):
 OITD consumes bars + daily OI + the ``scan_2026`` funding bundle (native
 settlements COST ONLY + the ``markPrice`` mark root) + perp-meta tick sizes;
-LIQEPIS is BARS-ONLY (no OI, mark or funding field enters any signal; its
-frozen builder stubs tick sizes and injects no real settlements).
+LIQEPIS is BARS-ONLY (no OI, mark or funding field enters any signal) and --
+L-V14-0 remediation (V14 P1 A2) -- also consumes the real perp-meta tick
+sizes through the SAME canonical ``load_tick_sizes`` loader as OITD (the
+V13 driver's uniform ``tick_size 0.01`` stub charged the per-fill
+adverse-tick slip ~3-4 orders above the frozen per-fill schedule on
+sub-cent symbols; verdict-invariant, adjudicated append-only in
+``research/control/v14_run/p1_a2/LIQEPIS_cost_adjudication.json``).
 
 No network access, no S1 access, no tuning, no grids, no threshold changes;
 artifacts are written only under the exec tree's gitignored ``results/``
@@ -464,9 +469,15 @@ def build_liqepis(
     Root-wired mirror of the frozen ``research.v13.families.liqepis.audits``
     ``build_plugins``: the family's loader ``load_fusion_series`` accepts a
     ``bars_root`` parameter wired to the staged bars.  BARS-ONLY family --
-    no OI/mark/funding bundle is read by the frozen producer and tick sizes
-    keep the frozen schedule-only stub convention of the frozen builder.
+    no OI/mark/funding bundle is read by the frozen producer.  L-V14-0
+    remediation (V14 P1 A2): tick sizes are the REAL perp-metadata tick
+    sizes via the same canonical ``load_tick_sizes`` loader the OITD path
+    uses -- the V13 driver's uniform ``tick_size 0.01`` stub inflated the
+    per-fill adverse-tick slip ~3-4 orders on sub-cent symbols.  The
+    stub remains ONLY in the audit-only ``audits.build_plugins`` (which
+    computes no PnL and is never scored).
     """
+    from research.v12.families.oilev_v2.audits import load_tick_sizes
     from research.v13.families.liqepis.audits import (
         load_fusion_series,
         tradeable_universe_symbols,
@@ -493,16 +504,20 @@ def build_liqepis(
         start_ns=first_stamp - 56 * DAY_NS,
         end_ns=parse_iso_utc(WINDOW_END_ISO),
     )
+    # L-V14-0 remediation: real per-instrument tick sizes (cost exactly
+    # once per fill at the frozen per-fill schedule), never a uniform stub.
+    tick_sizes = load_tick_sizes(needed, perp_root=str(roots["perp_meta"]))
     plugin = LiqepisPlugin(
         arm_id=arm_id,
         bars_by_symbol={
             sym: s for sym, s in series.items() if sym in set(needed)
         },
-        tick_sizes={sym: 0.01 for sym in needed},
+        tick_sizes=tick_sizes,
     )
     inputs = {
         "universe": universe,
         "fusion_bars_digest": fusion_series_digest(series),
+        "tick_sizes": dict(sorted(tick_sizes.items())),
         "slots_per_symbol": {
             sym: int(s.close.shape[0]) for sym, s in sorted(series.items())
         },

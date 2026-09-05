@@ -1,0 +1,178 @@
+{
+ "base_commit": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+ "blocked_items": [
+  {
+   "evidence": {
+    "missing_path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v13/e-exec-1 (staged_data/ AND results/v13_phase_e/) -- existed and was READ at session start, removed from the host mid-session (gate G5)",
+    "published_references": "per-cell artifacts (preflight.json, baseline_metrics.json, cell_summary.json, matrix/, ledger_*.jsonl) were gitignored by repo convention and no longer exist; committed authorities that DO survive: terminal_report_v13.json cell_results, family_verdicts_v13.json arms, shard ledger sha256s (1989a9c1.../4fa9f351...), all used above",
+    "staged_data": "90/90 data files ARE recoverable byte-exact from the live workspace (verified vs the committed a3 authority) and were used via the staged-equivalent root; staged_manifest_.json (sha256 f855ad9c778f7a8695d6416b1c912efd7ddc353bf70935669504016cbf3c3c40) bytes are NOT recoverable: never committed, and not deterministically rebuildable (build_file_manifest embeds generated_utc and archive-time extra; the committed a3 manifest bytes hash 2606d026... != f855ad9c...). The driver fail-closes (exit 2) without the manifest; overriding --expect-staged-manifest would falsify the published input_snapshot_sha256 comparison field -- refused."
+   },
+   "item": "Byte-level 6-cell driver re-run (--staged-root ... --repro --compare-with against published V13 per-cell artifacts)",
+   "status": "BLOCKED",
+   "unblock_for_a1": "after restoring the V13 exec tree, run serially from the lane/integration tree: research/control/v13_run/tools/run_v13_cell.py --staged-root <staged_data> --family liqepis --arm <arm> --repro --compare-with <exec tree>/results/v13_phase_e/liqepis/<arm> --out-root results/v14_p1_reproduction/<arm> for the 3 LIQEPIS arms and --family oitd --arm <arm> for the 3 OITD arms; expected: OITD fields identical except producer_head_sha (lane-head volatile metadata, BAB-under-W12R precedent); LIQEPIS identical except cost-derived fields (baseline_result_sha256, portfolio/positions hashes, matrix_digest, net/expectancy/MDD), with cost == adjudicated corrected values"
+  },
+  {
+   "evidence": "reserved for A1 running alone later (mission constraint: targeted tests only)",
+   "item": "Full pytest suite",
+   "status": "NOT_RUN"
+  }
+ ],
+ "branch": "orca/v14-p1-a2-accounting",
+ "defect_characterization_summary": {
+  "accrual_layer": "research/adapter_v10/runner.py _account_boundaries charges strategy.rebalance_cost_between once per schedule boundary; research/adapter_v10/base.py GenericStrategyBase.rebalance_cost_between prices only weight-CHANGING legs (|target-prior| x (fee_rate + ticks x tick_size/price)). Verified against the published V13 artifact: per-boundary recomputation matched published cost with max deviation 0.0; 3/52 unchanged-book boundaries charged exactly 0.0; 265 weight-change legs carried the entire charge. The kernel count is already exactly once per fill -- there is NO per-holding-day or per-open-position accrual.",
+  "hardcode_layer": "research/control/v13_run/tools/run_v13_cell.py build_liqepis (V13 line 501) injected uniform tick_size 0.01 for all 20 symbols instead of loading perp-metadata tick sizes like the OITD path (line ~427). Slip term = 25.013505388908 of the 25.025172055575 LIQEPIS-28D total (99.95%); fee term 0.011666666667.",
+  "per_stamp_symptom": "the LIQEPIS frozen book recomputes at every weekly stamp (carried_forward always False), so the weekly tercile churn pays the per-fill rate at every stamp on the open book's rotated legs -- the anomaly's 'cost per stamp on open positions' symptom. Count per-fill; RATE was the defect."
+ },
+ "fixtures": {
+  "file": "tests/test_v14_p1_cost_once.py",
+  "hand_computed_expected_values": {
+   "a_fills_not_days": "8 legs |w|=0.125: entry 8*0.125*6e-4 = 0.0006, exit 0.0006, total 0.0012 at ANY holding length (6 vs 12 weekly instants identical); 16 legs total 0.0024 = exactly 2x; held-stamp boundaries each charge exactly 0.0",
+   "b_stress_tiers": "same 8-leg fill set: baseline 0.0012, fee x1.5 0.0017, +2 ticks 0.0016 -- three distinct totals, exact ratio 12:17:16; price/funding/n_positions identical across tiers; net moves by exactly the cost delta",
+   "c_replay": "rerun of the same book: identical cost_charged_sum and identical result hashes; cost primitive pure (same transition priced twice returns 0.0006)",
+   "cost_schedule": "rate = 5.0bps*1e-4*fee_mult + ticks*0.01/100.0; baseline rate 6e-4 per unit notional",
+   "d_counters": "scored row published_delta=1 exactly once; replay deltas 0; refused row observed_delta=1 exactly once, replay 0",
+   "defect_pin": "uniform stub tick 0.01 at price 0.0025: per-fill cost 4.0005 vs real tick 1e-7: 0.00054; slip-term ratio exactly 100000x",
+   "e_zero_position": "zero-fill book charges exactly 0.0 at every boundary; n_positions=0; publication REFUSED_ZERO_POSITIONS, published 0 / observed 1",
+   "f_serialization": "append same trial_key twice -> appended True then False (REFUSED_TRIAL_KEY_ALREADY_PRESENT), count stays 1, bytes unchanged; 8 concurrent same-key appends land exactly 1"
+  },
+  "results": "7/7 passed (see gate G1)"
+ },
+ "gate_evidence": [
+  {
+   "command": "command: git rev-parse --abbrev-ref HEAD && git rev-parse HEAD && git status --porcelain=v1\ncwd: /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/p1-a2-accounting\n",
+   "command_file": "results/v14_p1_reproduction/gates/G0_worktree_identity.cmd",
+   "exit_code": 0,
+   "head_at_run": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+   "name": "G0 worktree identity",
+   "stderr_file": "results/v14_p1_reproduction/gates/G0_worktree_identity.stderr",
+   "stdout_file": "results/v14_p1_reproduction/gates/G0_worktree_identity.stdout",
+   "verdict": "PASS: branch orca/v14-p1-a2-accounting, HEAD e5f4c9a46ec31e31091e6c8e5eee75f776ddf295"
+  },
+  {
+   "command": "command: /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_v14_p1_cost_once.py tests/test_v13r_driver.py tests/test_v13p_accounting_regression.py tests/test_v12p_a2_publication.py tests/test_v13i_oitd_invariants_costs.py tests/test_adapter_v10_g1.py tests/test_v13i_liqepis_evidence.py tests/test_v13i_liqepis_goldens.py tests/test_v13i_liqepis_pit.py -q\ncwd: /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/p1-a2-accounting\nHEAD: e5f4c9a46ec31e31091e6c8e5eee75f776ddf295\n",
+   "command_file": "results/v14_p1_reproduction/gates/G1_targeted_pytest.cmd",
+   "exit_code": 0,
+   "files": "tests/test_v14_p1_cost_once.py tests/test_v13r_driver.py tests/test_v13p_accounting_regression.py tests/test_v12p_a2_publication.py tests/test_v13i_oitd_invariants_costs.py tests/test_adapter_v10_g1.py tests/test_v13i_liqepis_evidence.py tests/test_v13i_liqepis_goldens.py tests/test_v13i_liqepis_pit.py",
+   "head_at_run": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+   "name": "G1 targeted tests (fixtures + affected crypto suites)",
+   "stderr_file": "results/v14_p1_reproduction/gates/G1_targeted_pytest.stderr",
+   "stdout_file": "results/v14_p1_reproduction/gates/G1_targeted_pytest.stdout",
+   "verdict": "PASS: 147 passed"
+  },
+  {
+   "command": "command: /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/p1_a2/recompute_liqepis_cost.py --staged-equivalent results/v14_p1_reproduction/staged_equivalent --out results/v14_p1_reproduction/liqepis_cost_recompute.json\ncwd: /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/p1-a2-accounting\nHEAD: e5f4c9a46ec31e31091e6c8e5eee75f776ddf295\n",
+   "command_file": "results/v14_p1_reproduction/gates/G2_liqepis_cost_recompute.cmd",
+   "exit_code": 0,
+   "head_at_run": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+   "name": "G2 LIQEPIS corrected-cost recompute + fill-identity proof",
+   "output_payload": "results/v14_p1_reproduction/liqepis_cost_reproduction committed copy: research/control/v14_run/p1_a2/liqepis_cost_recompute.json",
+   "output_payload_sha256": "bb8d302e203a5d09b780eb7057b22573b53defec25e04af18ff2b071f60d03f1",
+   "stderr_file": "results/v14_p1_reproduction/gates/G2_liqepis_cost_recompute.stderr",
+   "stdout_file": "results/v14_p1_reproduction/gates/G2_liqepis_cost_recompute.stdout",
+   "verdict": "PASS: uniform cost == published checksum on 3/3 arms; cost-free surfaces equal"
+  },
+  {
+   "command": "command: /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/v14_run/p1_a2/recompute_oitd_baseline.py --staged-equivalent results/v14_p1_reproduction/staged_equivalent --out results/v14_p1_reproduction/oitd_baseline_reproduction.json\ncwd: /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/p1-a2-accounting\nHEAD: e5f4c9a46ec31e31091e6c8e5eee75f776ddf295\n",
+   "command_file": "results/v14_p1_reproduction/gates/G3_oitd_reproduction.cmd",
+   "exit_code": 0,
+   "head_at_run": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+   "name": "G3 OITD unaffected-path reproduction vs committed values",
+   "output_payload": "research/control/v14_run/p1_a2/oitd_baseline_reproduction.json",
+   "output_payload_sha256": "1e75180a58c444b610ce2dd52e8d163fc75e8bd0c63d80150af20fb0a699f463",
+   "stderr_file": "results/v14_p1_reproduction/gates/G3_oitd_reproduction.stderr",
+   "stdout_file": "results/v14_p1_reproduction/gates/G3_oitd_reproduction.stdout",
+   "verdict": "PASS: 3/3 arms ALL_MATCH at committed precision"
+  },
+  {
+   "command": "command: V13R_LIQEPIS_DELTA_STAGED_ROOT=<worktree>/results/v14_p1_reproduction/staged_equivalent /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_v13r_liqepis_delta.py -q\ncwd: /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/p1-a2-accounting\nnote: default STAGED_ROOT (.worktrees/crypto/v13/e-exec-1/staged_data) was removed from the host mid-session; the suite honours the documented env override; the override root is the byte-verified staged-equivalent symlink farm (90/90 sha256 == a3 authority)\n",
+   "command_file": "results/v14_p1_reproduction/gates/G4_liqepis_delta_suite.cmd",
+   "exit_code": 0,
+   "head_at_run": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+   "name": "G4 test_v13r_liqepis_delta with staged-equivalent override",
+   "stderr_file": "results/v14_p1_reproduction/gates/G4_liqepis_delta_suite.stderr",
+   "stdout_file": "results/v14_p1_reproduction/gates/G4_liqepis_delta_suite.stdout",
+   "verdict": "PASS: 10 passed (default staged path missing -- see BLOCKED; suite honours V13R_LIQEPIS_DELTA_STAGED_ROOT)"
+  },
+  {
+   "command": "command: ls .worktrees/crypto/v13/e-exec-1 (missing-path evidence)\n",
+   "command_file": "results/v14_p1_reproduction/gates/G5_missing_v13_exectree.cmd",
+   "exit_code": 1,
+   "head_at_run": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+   "name": "G5 missing V13 exec-tree evidence",
+   "stderr_file": "results/v14_p1_reproduction/gates/G5_missing_v13_exectree.stderr",
+   "stdout_file": "results/v14_p1_reproduction/gates/G5_missing_v13_exectree.stdout",
+   "verdict": "EVIDENCE: .worktrees/crypto/v13/e-exec-1 is gone from the host (ls exit 1)"
+  }
+ ],
+ "generated_utc": "2026-09-05T00:30:00Z",
+ "head_at_artifact_time": "e5f4c9a46ec31e31091e6c8e5eee75f776ddf295",
+ "input_chain": {
+  "adjudication_file": "research/control/v14_run/p1_a2/LIQEPIS_cost_adjudication.json",
+  "adjudication_sha256": "6f4d4c5d647b056d46df6acf5bf6934048ccc29117596c98f7f9335f299ba8d8",
+  "fixed_driver_sha256": "e9fe28de48c6a2848a36cb98aa7f008ee35eda376df1660040681e6e365f7453",
+  "staged_equivalent_root": "results/v14_p1_reproduction/staged_equivalent (symlink farm to the live workspace: binance_bar_15m, crypto_perpetual_meta, funding_scan_2026, funding_20240820_20260821, oi_consolidated)",
+  "verification": "90/90 files sha256 == research/audits/v12p/a3_staging_manifest.json authority (sha256 2606d02678cd6ea1dc2f3e63afdbc4cb739899be3e12958fe270244eb42feb96); checked before every compute, fail-closed"
+ },
+ "lane": "p1-a2-accounting",
+ "lesson": "L-V14-0",
+ "out_of_scope_notes": [
+  "funding remains omitted on LIQEPIS (bars-only frozen producer) exactly as published (funding_sum 0.0 reproduced); disclosed scope note carries over from V13",
+  "results/ is gitignored by repo convention (V13 committed no results/), so gate stdout/stderr evidence and the two evidence payloads live in results/v14_p1_reproduction/ locally with sha256s recorded here; committed copies of the evidence payloads and the adjudication live under research/control/v14_run/p1_a2/"
+ ],
+ "plan_section": "PLAN_crypto_v14.md section 6 P1 (binding)",
+ "producer_role": "A2",
+ "schema": "v14_p1_a2_lane_handoff_v1",
+ "six_cell_reproduction_table": {
+  "cells": [
+   {
+    "cell": "OITD-28D",
+    "fields_differing": "none",
+    "proof": "net -0.285351460692, expectancy -0.00548752809, PF 0.878537739556, MDD 0.305434836376 (12dp exact); cost 0.006647739694, funding -0.006932987375 (4dp), n_positions 923 -- remediation does not touch the OITD path (build_oitd untouched, frozen modules byte-identical)",
+    "verdict": "ALL_MATCH"
+   },
+   {
+    "cell": "OITD-56D",
+    "fields_differing": "none",
+    "proof": "net -0.533083489118, expectancy -0.01025160556 (12dp exact); PF 0.7832, MDD 0.5783, cost 0.0050, funding -0.0119, n_positions 944 (recorded 4dp)",
+    "verdict": "ALL_MATCH"
+   },
+   {
+    "cell": "CTL-FLOW-ONLY",
+    "fields_differing": "none",
+    "proof": "net -0.450130116337, expectancy -0.008656348391 (12dp exact); PF 0.8180, MDD 0.4568, n_positions 926",
+    "verdict": "ALL_MATCH"
+   },
+   {
+    "cell": "LIQEPIS-28D",
+    "fields_differing": "cost-derived fields ONLY, through the cost term",
+    "proof": "uniform-tick rerun reproduces published cost 25.025172055575 EXACTLY (fill identity) and price_pnl_sum -0.30648003269, funding 0.0, n_positions 600 exactly; corrected cost 0.014397717069 (ratio 1738x); cost-free position and daily surfaces hash-equal across parameterizations",
+    "verdict": "ALL_MATCH (price/funding/positions identical; cost corrected as adjudicated)"
+   },
+   {
+    "cell": "LIQEPIS-56D",
+    "fields_differing": "cost-derived fields ONLY",
+    "proof": "uniform cost reproduces 15.838617381575 exactly; price_pnl_sum -0.205315640208 (family_verdicts records -0.2053 at 4dp), n_positions 600; corrected cost 0.009807429682 (ratio 1615x)",
+    "verdict": "ALL_MATCH (same basis)"
+   },
+   {
+    "cell": "LIQEPIS-SIGN-INV",
+    "fields_differing": "cost-derived fields ONLY",
+    "proof": "uniform cost reproduces 25.025172055575 exactly; price_pnl_sum +0.30648003269, n_positions 600; corrected cost 0.014397717069",
+    "verdict": "ALL_MATCH (same basis)"
+   }
+  ],
+  "corrected_cost_consistency": "corrected cost = sum over boundaries of |dw| x (5bps fee + 1 adverse tick x real perp tick / fill price), recomputed from the SAME fills the published cost checksum proves identical; real ticks loaded from staged crypto_perpetual_meta (price_increment): e.g. BOMEUSDT 1e-07, 1000PEPEUSDT 1e-07, BTCUSDT 0.1",
+  "note_on_signed_control": "under corrected costs SIGN-INV net is positive (+0.292082315621) while its anchor is negative: a firing control is a falsification artifact (L-V11-3, L-V12-1), never a candidate; V13 verdict UNCHANGED",
+  "scope_honesty": "BYTE-LEVEL driver re-run BLOCKED (see blocked_items). The table below is the METRIC-LEVEL reproduction against COMMITTED V13 terminal values, with an exact cost-checksum fill-identity proof for LIQEPIS. All 6 cells ALL_MATCH at committed precision."
+ },
+ "surgical_fix": {
+  "audit_only_stub_left_in_place": "research/v13/families/liqepis/audits.py:245 keeps the stub per its own scope boundary (audit-only, computes no PnL, never scored)",
+  "diff_summary": "build_liqepis: import load_tick_sizes (same canonical loader as build_oitd); tick_sizes = load_tick_sizes(needed, perp_root=str(roots['perp_meta'])); inputs['tick_sizes'] recorded for preflight provenance (OITD parity); docstrings updated to record the L-V14-0 remediation. 20 insertions, 5 deletions, one file.",
+  "files_changed": [
+   "research/control/v13_run/tools/run_v13_cell.py",
+   "tests/test_v14_p1_cost_once.py (new)",
+   "research/control/v14_run/p1_a2/* (new evidence artifacts)"
+  ],
+  "frozen_constants_untouched": "taker fee floor (TAKER_FEE_FLOOR_BPS_V10), adverse-tick slip floor (ADVERSE_TICKS_SLIPPAGE_FLOOR_V10), stress multipliers, identity modules: byte-identical (git diff 96833a8c9d616d5ee28a6eb2dbd1d50f94b4f58b..HEAD empty over research/v13, research/v12, research/v11, research/adapter_v10, research/contract_v10.py, research/pit_hooks_v10.py)"
+ }
+}
