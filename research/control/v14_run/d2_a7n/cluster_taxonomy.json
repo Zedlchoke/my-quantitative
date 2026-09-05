@@ -1,0 +1,79 @@
+{
+ "schema": "v14_d2_a7n_cluster_taxonomy_v1",
+ "cycle": "CRYPTO-V14",
+ "producer_role": "A7-N (independent novelty/anti-rescue audit)",
+ "generated_utc": "2026-09-05T05:58:00Z",
+ "method": "Clusters assigned on ECONOMIC SUBSTANCE (what state variable the feature reads, what transform is applied, what sign is claimed) and then checked against the measured 6x6 Spearman rank matrix (cross_cluster_correlation.json). Not by lane, axis label or proposal text. The plan Section 1.2 rule A7-N enforces: if family X is selected, any OTHER proposal in X's cluster is ineligible even if otherwise clean.",
+ "clusters": [
+  {
+   "cluster_id": "C1-PREMIUM-LEVEL-CROWDING-FADE",
+   "members": ["BASISLV-PREMFADE", "BASISLV-WIDTHGATE"],
+   "state_variable": "cross-sectional LEVEL of the trailing 28d mean perp-vs-index premium (the crowding/carry premium level) from 15m price-gap routes",
+   "transform": "28d rolling mean, ranked across 19 symbols; WIDTHGATE scales/gates the SAME ordering by the cross-sectional IQR of those levels (median split, no tuned constant)",
+   "sign_claim": "fade: long low-premium tier / short high-premium tier (negative relation to forward weekly relative return); WIDTHGATE claims the same ordering works only in wide-dispersion states",
+   "why_one_cluster": "IDENTICAL state variable and IDENTICAL inside book ordering; WIDTHGATE's gate is a membership/scale modifier of the PREMFADE book, not a different signal. MEASURED: pooled Spearman +0.9614 (n=988), per-fold +0.969/+0.951/+0.964 - at or above the V13 collapse level in EVERY fold",
+   "measured_pooled_rho": 0.961404,
+   "hard_same_cluster": true
+  },
+  {
+   "cluster_id": "C2-PREMIUM-FIRST-DIFFERENCE",
+   "members": ["BASISDYN-PREMREV"],
+   "state_variable": "the premium index kline path (perp-side premium rate), transformed as a FIRST DIFFERENCE",
+   "transform": "standardized 72h change (30d sigma of daily-sampled 72h changes), ranked ascending, long the 5 most-negative",
+   "sign_claim": "premium-overhang reversion: fresh premium collapse -> perp outperformance",
+   "why_own_cluster": "flow (first-moment difference) statistic, distinct from the level state of C1 and from second-moment regimes of C3; MEASURED: pooled |rho| vs every other measurable proposal <= 0.046 (n=402 pairwise-complete)",
+   "measured_pooled_rho_vs_all": {"BASISLV-PREMFADE": 0.014, "BASISLV-WIDTHGATE": -0.022, "OICH": -0.044, "OICYC": 0.046},
+   "hard_same_cluster": false
+  },
+  {
+   "cluster_id": "C3-PREMIUM-SECOND-MOMENT-UNMEASURABLE",
+   "members": ["BASISDYN-PREMVOL"],
+   "state_variable": "the premium index kline path, transformed as a SECOND MOMENT through time",
+   "transform": "std(ddof=1) of consecutive 15m premium-close changes over trailing 30d, ranked ascending, long the 5 lowest",
+   "sign_claim": "premium-instability unwind overhang: low premium-vol (stable funding expectations, uncrowded) outperforms",
+   "why_own_cluster_and_disclosure": "substantively a distinct transform (regime second moment) from C1 (level) and C2 (first difference); A7-N can NEITHER confirm NOR refute measured cluster membership: the premium-close zero sentinel (A9F-DISC-1) leaves the fail-closed 2880-bucket window with only 12 eligible observations in the whole panel (at most 1 name per stamp, zero within-stamp cross-section), so every Spearman involving PREMVOL is mechanically undefined (zero-variance rank vector; recorded null, never fabricated). The C2-vs-C3 relationship (first vs second moment of the SAME series) is therefore empirically UNRESOLVED this cycle - flagged for A1. A9-F separately routes PREMVOL BLOCKED_DATA under the proposal's own failure table.",
+   "measured_pooled_rho_vs_all": null,
+   "hard_same_cluster": false,
+   "measurement_status": "UNMEASURABLE_THIS_CYCLE"
+  },
+  {
+   "cluster_id": "C4-POSITIONING-STABILITY",
+   "members": ["OICH"],
+   "state_variable": "the symbol's own daily open-interest path (aggregate position-book stability), excluding price entirely from the feature",
+   "transform": "second moment of the DAILY path: std(ddof=1) of the 28 most recent daily log OI changes, ranked ascending, long lowest-CH tercile / short highest",
+   "sign_claim": "low churn (sticky, conviction/hedge inventory) outperforms high churn (hot-money books) over the following week",
+   "why_own_cluster": "OI-path second moment: a different information set (positioning, not premium/price) and a different transform from C1-C3. Measured near-orthogonal to the C1 pair (-0.373/-0.338, below the 0.70 candidate line) and to C2 (-0.044), and DISTINCT from its own lane-mate OICYC (+0.132 pooled) despite the shared AXIS-3 label - the label similarity is not a measured cluster",
+   "hard_same_cluster": false
+  },
+  {
+   "cluster_id": "C5-POSITIONING-CYCLE-BETA",
+   "members": ["OICYC"],
+   "state_variable": "the CROSS-SYMBOL co-movement structure of positioning flows (market-wide leverage cycle), excluding own-path level and price entirely from the feature",
+   "transform": "OLS slope of own daily log OI change on the leave-one-out 18-symbol aggregate over 28 paired daily changes, ranked ascending, long lowest-CYC tercile / short highest",
+   "sign_claim": "low cycle-beta (cycle-orthogonal positioning) outperforms high cycle-beta (cycle-chasing, correlated unwinds)",
+   "why_own_cluster": "a co-moment/market-relative slope, not a dispersion: a symbol that doubles WITH the market and one that doubles AGAINST a flat market get opposite slopes but identical own-path statistics, so C5 is provably not C4's transform, and measured pooled rho(OICH, OICYC) = +0.132 (per-fold +0.132 in each fold) - far below the 0.70 candidate line",
+   "hard_same_cluster": false
+  }
+ ],
+ "expected_same_cluster_pairs_declared_ex_ante": [
+  {"pair": "BASISLV-PREMFADE | BASISLV-WIDTHGATE", "justification": "same state variable and same inside book; the gate is a modifier of the same ordering", "measured_after": "+0.9614 CONFIRMED (hard, >= 0.90 in every fold)"},
+  {"pair": "BASISDYN-PREMREV | BASISDYN-PREMVOL", "justification": "first vs second moment of the SAME premium series - related transforms with different sign claims; expected related but not necessarily same-cluster", "measured_after": "UNRESOLVED (PREMVOL panel degenerate, 12 obs); A1 should not treat separation as verified"},
+  {"pair": "OICH | OICYC", "justification": "shared data source (staged OI) and axis label, but provably different transforms (own-path dispersion vs market-relative slope)", "measured_after": "+0.132 CONFIRMED DISTINCT (below the 0.70 candidate line)"}
+ ],
+ "section_1_2_rule_application": {
+  "rule": "if family X is selected, any OTHER proposal in X's cluster is ineligible even if otherwise clean (plan Section 1.2)",
+  "cluster_map_for_A1": {
+   "C1-PREMIUM-LEVEL-CROWDING-FADE": ["BASISLV-PREMFADE", "BASISLV-WIDTHGATE"],
+   "C2-PREMIUM-FIRST-DIFFERENCE": ["BASISDYN-PREMREV"],
+   "C3-PREMIUM-SECOND-MOMENT-UNMEASURABLE": ["BASISDYN-PREMVOL"],
+   "C4-POSITIONING-STABILITY": ["OICH"],
+   "C5-POSITIONING-CYCLE-BETA": ["OICYC"]
+  },
+  "measured_flags_for_A1_attention": {
+   "hard_same_cluster_abs_rho_ge_0.90": ["BASISLV-PREMFADE|BASISLV-WIDTHGATE (+0.9614)"],
+   "same_cluster_candidates_abs_rho_ge_0.70": []
+  },
+  "note": "This is a measured cluster map, NOT a selection ranking and NOT a recommendation; which families are selected is A1's frozen-rubric decision. The only measured HARD same-cluster pair is PREMFADE|WIDTHGATE; selecting both would violate Section 1.2."
+ },
+ "no_pnl": true
+}
