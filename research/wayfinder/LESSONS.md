@@ -117,6 +117,26 @@ after Twelve Data Basic in V7); encoded in `research/control/
 stocks_free_v8_probe/probe_verdict.json` and carried into any future price
 authority probe.
 
+## P-8 — A GO phrase typed before its gate exists is intent, never a key
+
+Source: Forex V4 (2026-09-05 10:41). The owner typed the exact launch phrase
+`GO FOREX V4 SCORED EXECUTION` into the A1 thread while the cycle was still
+in P0a — weeks before any prelaunch exists to stop at (and plausibly as a
+"continue" nudge, since the phrase had been quoted to them as the future
+gate). The A1 recorded it as a standing release but correctly preserved the
+A7 `S0_LAUNCH_AUTHORIZED` condition and skipped nothing.
+
+Lesson: the launch GO is the final human decision made WITH the A7 report in
+hand — a two-key design (A7 key, then owner key, turned in that order). A GO
+typed before the stop exists cannot carry that decision: it is recorded as
+owner intent and is extinguished-unconsumed at the moment it would otherwise
+be spent (the V6 ruling, now restated within-cycle).
+
+Consequence: at the true prelaunch, the A1 presents the A7 verdict to the
+owner through the Lead and requests a FRESH, exact-phrase GO; early-typed
+GOs never authorize the first scored cell on their own. Any cycle closing
+before prelaunch kills its standing GO unconsumed.
+
 ## Related program-level records
 
 - Falsification-by-control cluster (7 instances, V11→V5):
