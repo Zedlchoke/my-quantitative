@@ -1,0 +1,142 @@
+{
+ "schema": "v14_i_family_2_lane_handoff_v1",
+ "cycle": "CRYPTO-V14",
+ "lane": "i-family-2",
+ "producer_role": "A9 (implementation lane, family i-family-2)",
+ "family_id": "A14-V14-A8-OICYC",
+ "selection_freeze": {
+  "family_id": "A14-V14-A8-OICYC",
+  "selection_freeze_sha_d16341f": "worktree HEAD d16341f896558671669d05c83d20f569b8afc119 == the selection-freeze SHA given to this lane",
+  "selection_wave_sha": "c3e3c90561efc972c487a99951ca0f6031ab4fa34907d1c10890d1795b4da4a8",
+  "proposal": "research/proposals/v14/a8/OICYC.md (frozen identity, followed verbatim)",
+  "arms": {
+   "CYC-28D": "anchor (the selection-freeze 'OICYC anchor' shorthand = the proposal's CYC-28D arm id; frozen 29-row window = 28 paired daily changes)",
+   "CYC-14D": "neighbour (frozen 15-row window = 14 paired daily changes)",
+   "CTL-OISHARE": "causal negative control (28-row mean own-share of the aggregate OI, long lowest-share / short highest-share, descending rank presentation; never promotable)"
+  }
+ },
+ "worktree": {
+  "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v14/i-family-2",
+  "branch": "orca/v14-i-family-2",
+  "head_before_commit": "d16341f896558671669d05c83d20f569b8afc119",
+  "porcelain_before_commit": "?? research/v14/\n?? tests/test_v14_family2_oicyc.py\n?? research/control/v14_run/i_family_2/ (this handoff)"
+ },
+ "plugin_interface_statement_for_the_driver": {
+  "statement": "research/v14/families/oicyc exposes the SAME plugin interface the V13 driver consumed (research/control/v13_run/tools/run_v13_cell.py::family_registry) so the V14 driver (adapted by A1) consumes it mechanically: OicycPlugin(arm_id=..., oi_by_symbol=..., bars_by_symbol=..., settlements_by_symbol=..., tick_sizes=...) per arm; identity() -> frozen StrategyIdentity (digest-pinned per arm via research.v11.publication_identity.arm_config_digest); cost_model() -> the generic CostModel on the frozen V10 floors (taker 5.0 bps, adverse-tick floor 1, REAL injected perp-metadata tick sizes -- L-V14-0: cost accrues exactly once per fill through the inherited GenericStrategyBase.rebalance_cost_between, never per holding-day, never per stamp on open positions); tradeable_universe() -> the frozen 19 names (REQUIRED_SYMBOLS minus BTCUSDT); minimum_tradeable_names() -> 12; benchmark_context_symbols() -> cohort + context-only BTCUSDT; schedule() -> the frozen weekly Monday 00:00:00Z stamps (52); folds(stress=..., instants=...) -> the pinned F0/F1/F2 calendar folds with the frozen 1-day calendar-zone purge (51 effective, 17/17/17), ACCEPTS a dropped fold (L-V11-1); decision_instants(stress=...) -> retained stamps; targets_at(instant, universe=, stress=) -> ONE book per arm (the chained median-exit hysteresis book, memoised and call-order independent, byte-equal carry at non-decision instants, fold-terminal force-flat at each fold's last retained stamp); fills_at/marks_at -> the pinned slot-open fill (T+15m, bar OPEN) and covering-bar mark; settlements() -> native funding (COST ONLY); status_metadata() -> the CONFIRMATORY carry-through block; plugin_interface_report() -> the preflight digest block.",
+  "driver_wiring": "mirror run_v13_cell build_oitd: family_registry entry {family_id, arms: sorted(ARM_ROLES), roles, identity: research.v14.families.oicyc.frozen_identity.frozen_identity, recorded_digests: OICYC_ARM_CONFIG_DIGESTS, digest: arm_config_digest(frozen_identity(arm), arm_id=arm), build(staged_root, arm_id)} with OI loaded ONLY through research.v14.families.oicyc.audits.load_oi_by_symbol_verified (SHA-256 fail-closed against research/control/v11_run/oi_staging_manifest.json), bars/marks/settlements/ticks through the frozen V13/V12 loaders (oitd audits load_bars_for_plugin + load_marks_and_settlements, v12 oilev_v2 load_tick_sizes)",
+  "preflight_digests": {
+   "frozen_arm_config_digests_recorded": {
+    "CYC-28D": "0e7b084c4755f63d25fdc2a175123ca78c48bdffb93da962a5e6d0b0875a61b6",
+    "CYC-14D": "7c6baead3053b5a53dcb7731adc66f237a54fef412c3372bec204ca047e2dab1",
+    "CTL-OISHARE": "11858422224cf502d0eae7abb26eea617afa381b70626e3210b26bb18e00ce08"
+   },
+   "recomputed_vs_recorded_all_match": true
+  }
+ },
+ "confirmatory_status_carrying": {
+  "status": "CONFIRMATORY",
+  "mechanism": "plan Section 1.1 status is (a) a field of EVERY arm's frozen config payload (hence inside the arm_config_digest), (b) a 'confirmatory' block in EVERY targets payload (strategy.compute_targets_at and the plugin's carried/flat payloads), (c) exposed by OicycPlugin.status_metadata() (scored_status, role, Section 1.1 disclosure, denominator_note, gates_unrelaxed, control_never_promotable) for the driver's verdict record, (d) carried by every gate_runner verdict (confirmatory_status + section_1_1_disclosure + denominator_note) so the observed/published denominator accounting records it",
+  "section_1_1_terms_check": "new mechanism in its own words (leave-one-out regression slope, not an own-path sign); the V12 OILEV-V2-INV control-arm observation is disclosed in the module docstrings, the frozen config payloads and every verdict; own falsification control CTL-OISHARE implemented exactly; |rho| <= 0.20 gate measured by A7-N at D2 (0.0112, PASS, selection_freeze_v14.json); no gate relaxation anywhere in this package"
+ },
+ "gates": [
+  {
+   "gate": "G1 targeted family test suite (goldens + L-V14-0 cost-scaling + availability-lag mutations + zero-position + fold force-flat)",
+   "command": ".venv/bin/python -m pytest tests/test_v14_family2_oicyc.py -q",
+   "exit_code": 0,
+   "stdout_artifact_sha256": "10928200f0a8ae08b43b21920d68eea697a80f6c24b43b5159c3e75cdd3f5d76",
+   "evidence": "27 passed in 22.21s; stdout captured to a machine-local temp file (content-hash above)",
+   "notes": "targeted only per lane constraints; the full pytest suite is reserved for A1 alone",
+   "verdict": "PASS"
+  },
+  {
+   "gate": "G2 adjacent frozen-kernel non-regression (remediated cost kernel + V13 frozen identity/goldens untouched)",
+   "command": ".venv/bin/python -m pytest tests/test_v14_p1_cost_once.py tests/test_v13i_oitd_golden.py tests/test_v13i_oitd_identity.py -q",
+   "exit_code": 0,
+   "stdout_artifact_sha256": "0655fa6aed8bbe1fed837b9a661d65d730513121743fdea3d7657808b2acfd8d",
+   "evidence": "40 passed in 1.03s",
+   "verdict": "PASS"
+  },
+  {
+   "gate": "G3 SHA-verified staged-OI authority load (v11_oi_staging_v1)",
+   "command": ".venv/bin/python -c \"from research.v14.families.oicyc import audits; print(audits.verify_oi_staging()['symbols_verified'], audits.verify_oi_staging()['sha_all_match'])\"",
+   "exit_code": 0,
+   "artifact_sha256": "loader research/v14/families/oicyc/audits.py = 8ca163d3fb8cb9514249e90fe5a0c73a71090eeb04aedd71eedfdec6ee2983a0",
+   "evidence": "19/19 tradeable symbols SHA-256-verified at read time against research/control/v11_run/oi_staging_manifest.json; loader raises RuntimeError on any mismatch/missing file/manifest gap (fail-closed); 417 daily rows per symbol, duplicates refused",
+   "verdict": "PASS"
+  },
+  {
+   "gate": "G4 real-snapshot schedule-only preflight (all three arms; NO PnL, no scored metrics)",
+   "command": ".venv/bin/python -c \"from research.v14.families.oicyc import audits; from research.v14.families.oicyc.plugin import _fold_terminal_stamps; from research.v14.families.oicyc.strategy import stamp_calendar; data=audits.load_snapshot_data(); plugins=audits.build_plugins(data=data); [plugin.targets_at(s, universe=plugin.tradeable_universe(), stress=plugin.baseline_stress()) for s in stamp_calendar()[:-1] for plugin in plugins.values()]\"",
+   "exit_code": 0,
+   "preflight_sha256": "30b66a121fd8ed62f528ef15c35000c4d183558efec31ddd057bd096bbef9a64",
+   "evidence": "per arm: 48 decision books (51 effective stamps = 48 books + 2 fold-terminal force-flats + 1 purged-stamp carry 2026-04-20), first book 2025-08-25, last book 2026-08-10, gross == 1.0 at every book, |w| <= 1/12 <= 0.30, legs 12..19 (hysteresis on real ranks); warmup 55 rows verified at the first stamp; digests recomputed == recorded",
+   "notes": "schedule-only target books only; no returns, no cost runs, no metrics, nothing scored",
+   "verdict": "PASS"
+  },
+  {
+   "gate": "G5 compileall + git diff --check on the lane surface",
+   "command": ".venv/bin/python -m compileall -q research/v14 tests/test_v14_family2_oicyc.py && git diff --check",
+   "exit_code": 0,
+   "evidence": "COMPILEALL_OK; DIFF_CHECK_OK; porcelain clean except this lane's new files",
+   "verdict": "PASS"
+  }
+ ],
+ "lv14_0_cost_scaling_regression": {
+  "requirement": "per-family test proving cost is strictly linear in the number of fills on the family's books (plan section 9)",
+  "result": "PASS (4 tests)",
+  "tests": [
+   "test_lv14_0_family_book_cost_strictly_linear_in_fills: the golden anchor book shape (8 legs @ |w|=0.125) costs exactly 0.0012 hand = 16 fills x 0.125 x 6e-4 x 2; the 16-leg book (32 fills) costs exactly 2x (0.0024)",
+   "test_lv14_0_long_hold_book_costs_same_as_short_hold_same_fills: identical 16 fills over 5 vs 11 weekly spans charge the IDENTICAL total; every held boundary charges exactly 0.0",
+   "test_lv14_0_stress_tiers_differ_from_base_and_each_other: fee x1.5 / +2 ticks / +1 delay give 0.0012 / 0.0017 / 0.0016 (frozen 12:17:16) on the SAME fills",
+   "test_lv14_0_real_plugin_runner_long_hold_cost_once_and_zero_intermediate: the REAL OicycPlugin through the frozen run_strategy on a 19-name staged-OI world charges only at the 6 weight transitions (entry / fold-terminal force-flats / re-entries / final force-flat), exactly RATE per unit traded at each, zero at all 45 held stamps; replay is hash-identical"
+  ]
+ },
+ "availability_lag_mutation_coverage": [
+  {"field": "staged OI daily rows (signal conditioning)", "test": "test_mutation_oi_row_stamped_after_decision_is_invisible -- a row stamped after the decision changes NO payload byte (anchor and control)"},
+  {"field": "staged OI daily rows (availability boundary)", "test": "test_mutation_oi_boundary_stamp_is_readable_next_ns_is_not -- a row stamped exactly T is readable; T+1ns shifts the consumed change-days back one row deterministically (and drops readable rows 7 -> 6)"},
+  {"field": "staged OI daily rows (one-day availability shift)", "test": "test_mutation_oi_all_rows_shifted_one_day_later_shifts_deterministically -- shifting every row one day later makes the pipeline byte-identically consume the deterministically older window; a 60-day shift starves the frozen 29-row window -> EligibilityShortfall refusal; the frozen 55-row warmup guard refuses"},
+  {"field": "staged OI daily rows (PIT gate)", "test": "test_mutation_oi_lookahead_gate_raises_fail_closed -- LookaheadViolation at decision AND fill horizons; a record stamped exactly at the horizon is readable"},
+  {"field": "staged OI daily rows (incomplete cross-section)", "test": "test_golden_book_incomplete_cross_section_fails_closed -- a frontier-missing row shifts the window to the last complete cross-section row (D2 panel precedent); a broken level INSIDE the window turns every symbol INELIGIBLE and the book layer refuses (no partial aggregate)"},
+  {"field": "bars used for execution/pricing (fill slot selection)", "test": "test_mutation_bars_missing_slot_and_event_delay_shift_deterministically -- first slot-open >= release; missing slot shifts to the next existing slot; no bar at/after release -> NO fill (refusal); non-midnight decisions refuse; duplicate slots refuse"},
+  {"field": "bars used for execution/pricing (fill readability horizon)", "test": "test_mutation_bar_close_not_readable_by_the_fill -- the fill consumes only the bar OPEN at its slot-open; the bar's close stamp (slot-open + 15m) is refused as an input at the fill instant"},
+  {"field": "funding (adopted as COST ONLY; mutation proves zero signal leakage)", "test": "test_mutation_funding_never_enters_any_signal_and_accrues_once -- wild settlement values change NO target-book byte on any arm; accrual is exactly once per settlement inside [ts_opened, ts_closed] and never outside it"}
+ ],
+ "golden_fixtures": [
+  {
+   "file": "research/v14/families/oicyc/golden/cyc_math_fixture.json",
+   "sha256": "38321397f956f681d91497ed77240390743c11ce22eef73b5f6e8047a868df7f",
+   "world": "5 symbols x 7 daily rows; MA alternates 100/200 (dlog +/-ln2), MB alternates 100/150 (+/-ln1.5), MC/MD/ME constant; reduced hand windows (4-row slope window, 4-row share window)",
+   "hand_expectations": "slope_MA = 4*ln2/ln1.5, slope_MB = 4*ln1.5/ln2, zero-variance names slope exactly 0.0; leave-one-out aggregate for MA = +/-ln1.5/4; SH shares over up/down aggregates 650/500; ascending slope ranks and descending share ranks",
+   "tests": "test_golden_math_slope_leave_one_out_and_own_share, test_golden_math_window_refusals_fail_closed"
+  },
+  {
+   "file": "research/v14/families/oicyc/golden/cyc_book_fixture.json",
+   "sha256": "34c52c2a5a148abc8cdc01fcb3fbd8a4fdc76e29ceb2a02c00b237e483ce2693",
+   "world": "12 symbols x 59 daily rows in two regimes; four phase-aligned growth-factor names (x2 / x1.5 / x1.25 / x1.1, dlogs +/-ln2/ln1.5/ln1.25/ln1.1), 7 constant names, one constant-1000 dominance name (S12); the ln2 amplitude MOVES S01 -> S05 between regimes; FROZEN windows (29-row anchor, 15-row neighbour, 28-row control) fully inside one regime at each stamp",
+   "hand_expectations": "slope_s = 11 c_s / (C - c_s) with C = ln2+ln1.5+ln1.25+ln1.1; ascending ranks and both flat-start books (w = 0.125, median rank 6); the T2 hysteresis books with the median-crossing flips (S05 long->short, S01 short->long); the control's SH values over up/down aggregates 2285/2100, its descending average-tie rank presentation (rank 1 = S12), and its long-lowest-share / short-highest-share book",
+   "tests": "test_golden_book_anchor_chain_flat_start_and_median_exit, test_golden_book_neighbour_same_scores_same_books, test_golden_book_control_own_share_descending_book, test_golden_book_incomplete_cross_section_fails_closed"
+  }
+ ],
+ "frozen_convention_notes_for_A1": [
+  "ARM IDS: the selection freeze describes the anchor as 'OICYC'; the proposal's arms table (OICYC.md section 6) pins the arm IDs CYC-28D / CYC-14D / CTL-OISHARE -- the proposal (frozen identity) is followed; the freeze's 'OICYC anchor' is CYC-28D.",
+  "FOLD PURGE: implemented as the measured V13 calendar-zone convention ([end - 1d, end); exactly the 2026-04-20 stamp purged, leaving 51 effective Mondays at 17/17/17) -- the same counts A9F measured for this family (d2_a9f lane_handoff OICYC.schedule: fold_live_stamps 17/17/17, live 51). A9F-OBS-4's prose ('removes the 2025-12-22 stamp') is inconsistent with its own 17/17/17 counts and with the V13 measured convention; the counts are identical under both readings and the implementation is test-pinned.",
+  "FOLD-TERMINAL FORCE-FLAT: at each fold's last retained stamp the plugin returns the FLAT book (the liqepis V13R precedent: the purge zone alone cannot realise the fold's last LIVE book without straddling into the next fold). Real-snapshot preflight: transitions per fold = entry .. force-flat .. re-entry; fold-terminal actions are reported separately from discretionary decisions as OICYC.md requires.",
+  "DAY-ROW ALIGNMENT: feature rows are aligned by UTC day bucket (ONE row per symbol per day, manifest-pinned; the day's last snapshot can land before 23:55Z per A9F-OBS-7), availability stamped PER ROW; consecutive-ness by day-row index, never calendar arithmetic, never exact-stamp equality. This discharged the I-lane obligation A1 noted at selection ('D2 staging discharged the I-lane obligation' applied to PREMFADE staging; the OI staging was already SHA-pinned and is re-verified at every load).",
+  "CONTROL ORIENTATION: the control's frozen 'rank DESCENDING on SH_s' is carried as the descending average-tie rank presentation in payload diagnostics (rank 1 = highest share) while the BOOK is long lowest-share / short highest-share exactly as the proposal states; the median-exit hysteresis operates on the value ordering.",
+  "EXIT = FLIP: 'EXIT only when the rank crosses beyond the median' is implemented as exit-to-the-opposite-side (flip), mirroring the frozen V13 hysteresis family convention, with the exit band pinned at the median (the proposal's own tighter-than-V13 band); flat symbols enter only in their entry tercile."
+ ],
+ "data_authority": {
+  "oi": "archived staged OI v11_oi_staging_v1 at /Users/hoangminhlong/my-quantitative/oi_data/consolidated (READ-ONLY, machine-local), per-file SHA-256 pinned in research/control/v11_run/oi_staging_manifest.json; 20/20 verified again at load time this lane (19 tradeable + BTCUSDT never loaded as a candidate); NO re-fetch from Binance Vision performed or permitted",
+  "bars_funding_ticks": "staged-equivalent roots per the a3_staging_manifest authority through the FROZEN V13/V12 loaders (oitd audits.load_bars_for_plugin / load_marks_and_settlements, v12 load_tick_sizes with REAL perp-metadata ticks -- L-V14-0); wiring shown in audits.load_snapshot_data; this lane loaded them read-only for the preflight only",
+  "declared_non_use": "only sum_open_interest + create_time are read from the staged OI; the metrics' ratio columns and the P2-closed /futures/data/* ratio sources are untouched (OICYC.md section 10)"
+ },
+ "not_run_blocked": [],
+ "blocked_items": [],
+ "scored_results_this_lane": 0,
+ "no_pnl": true,
+ "no_backtests_over_the_scored_window": "golden fixtures are synthetic; the real-snapshot preflight computed target BOOKS only (schedule-only), never PnL, never positions persisted beyond the preflight payload, never any scored metric",
+ "commit": {
+  "message_prefix": "V14 I F2:",
+  "contents": "research/v14/ (family package + goldens), tests/test_v14_family2_oicyc.py, research/control/v14_run/i_family_2/lane_handoff.json; NO bulk data committed"
+ }
+}

@@ -1,1 +1,1 @@
-"""V14 family packages (one package per selected family; V13 plugin surface)."""
+"""V14 family packages (one per implementation lane; V13 plugin surface)."""
