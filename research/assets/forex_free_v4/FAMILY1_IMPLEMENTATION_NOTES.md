@@ -146,3 +146,31 @@ attached pre-publication.
   incremental-alpha gate are applied at scoring by the runner
   (`mechanism_sanity`, `stage_a_gates`); this module only supplies the
   schedules and carries the benchmark arm.
+
+## 8. Defect log
+
+* DEFECT-1 (HIGH; found by the A8 six-arm dummy dry-run on the REAL staged
+  snapshots — `research/control/forex_free_v4_run/dry_run_v4.json`
+  structural_findings, commit 80fe37a, branch orca/forex-free-v4-a8-exec-wiring):
+  `schedule_legs` popped mid-stream closed positions WITHOUT emitting them
+  as decisions — the emission loop only covered positions still open at the
+  end of the walk (trailing force-flats).  Measured on the dry run: anchor
+  660 entries -> 0 decisions, neighbour 620 -> 5, control 650 -> 5 (trigger
+  itself fine: 225/216/219 event days).  Root cause: emission was coupled
+  to the end-of-walk `open_pos` drain instead of to position opening; the
+  lane's single-event synthetic fixtures never exercised the mid-stream pop
+  path.  FIX (emission plumbing only; no change to trigger, basket, hold,
+  costs, DST clock, control/neighbour definitions): every opened position is
+  emitted EXACTLY ONCE at the moment it is opened — exits and `force_flat`
+  are already resolved at that point by `_resolve_exit` — mirroring the V3
+  family modules' one-decision-row-per-round-trip convention
+  (`research/assets/forex_free_v3/family1.py` `_finish` emit pattern; V3
+  files unmodified).  `open_pos` is now liveness bookkeeping only and never
+  gates emission; `n_entries == n_round_trips == len(decisions)` holds by
+  construction and is asserted per arm in
+  `test_two_event_fixture_decisions_equal_entries_all_arms`.  Regression
+  tests: `test_schedule_legs_emits_mid_stream_closed_positions` (unit,
+  re-entry chain with a blocked middle event) and
+  `test_two_event_fixture_decisions_equal_entries_all_arms` (end-to-end,
+  events at valid-day k=61 and k=70, first batch closes mid-stream at k=67
+  before the k=70 event); both verified to FAIL on the pre-fix module.

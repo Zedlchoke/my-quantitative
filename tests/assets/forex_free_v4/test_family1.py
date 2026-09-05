@@ -921,3 +921,83 @@ def test_ny_day_validity_gap_free_and_16bar():
     # valid_daily_bars exposes only valid days' 16:00 closes
     daily = F.valid_daily_bars(bars_hole)
     assert [b[0] for b in daily] == [_ny_1600(days[0]), _ny_1600(days[2])]
+
+
+# ------- 18. A1 remediation regression: mid-stream exits ARE decisions ----
+def test_schedule_legs_emits_mid_stream_closed_positions():
+    """A1 remediation (A8 dry-run HIGH finding): EVERY opened position is
+    emitted exactly once -- mid-stream exits AND trailing positions alike.
+    Synthetic schedule: re-entry chain [t0 blocked t1 re-entry t6]; the
+    t0 position closes mid-stream at t6's bar; under the previous defect
+    (positions popped mid-stream were never emitted) the t0 batch vanished
+    and only 5 of 10 decisions existed -- this test fails on that code."""
+    days = _weekday_dates(date(2025, 6, 2), 15)   # Mon..; 15 weekday bars
+    bars = {leg: F.daily_decision_bars(_flat_bars(days, base))
+            for leg, base in _LEG_BASES.items()}
+    t0, t1, t6 = (_ny_1600(days[0]), _ny_1600(days[1]), _ny_1600(days[6]))
+    sched = F.schedule_legs("arm", [t0, t1, t6], bars)
+    c = sched["counters"]
+    # one decision per opened-and-closed position: 5 legs x 2 entries
+    assert len(sched["decisions"]) == 10
+    assert c["n_entries"] == 10 == c["n_round_trips"]
+    assert c["n_leg_blocked_open"] == 5      # the t1 event: leg still in hold
+    by_pair = {}
+    for d in sched["decisions"]:
+        by_pair.setdefault(d["pair"], []).append(d)
+    assert len(by_pair) == 5
+    for leg, decs in by_pair.items():
+        assert [d["decision_ts"] for d in decs] == [t0.isoformat(),
+                                                    t6.isoformat()]
+        first, second = decs
+        # the MID-STREAM-CLOSED position (would have been lost pre-fix)
+        assert first["entry_bar_ts"] == _ny_1600(days[1]).isoformat()
+        assert first["exit_bar_ts"] == _ny_1600(days[6]).isoformat()
+        assert first["force_flat"] is False
+        # the re-entry position
+        assert second["entry_bar_ts"] == _ny_1600(days[7]).isoformat()
+        assert second["exit_bar_ts"] == _ny_1600(days[12]).isoformat()
+        assert second["force_flat"] is False
+        assert first["decision_id"] != second["decision_id"]
+        assert first["side"] == second["side"] == dict(
+            F.RESPONSE_LEGS)[leg]
+
+
+def test_two_event_fixture_decisions_equal_entries_all_arms():
+    """End-to-end: two risk-off events (k=61 and k=70, hand-checked z =
+    -2.975 and -2.764 on the alternating fixture) -> two full basket
+    entries per leg; decisions == entries per arm; the k=61 batch closes
+    MID-STREAM (exit k=67, normal hold) before the k=70 event."""
+    start = GOLDEN_START
+    days = _weekday_dates(start, 79)
+    drops = {p: {"drops": {61: 3.0, 70: 3.0}}
+             for p in ("AUD/USD", "NZD/USD", "USD/CAD")}
+    with tempfile.TemporaryDirectory() as tmp:
+        data_paths, reader = _build_fixture(tmp, days, spec_overrides=drops)
+        for arm in ("anchor", "neighbour", "control", "benchmark_treatment"):
+            out = F.run_arm(arm, data_paths, reader)
+            total = out["meta"]["schedule"]["total"]
+            # sanity-count assertion: entries == round trips == decisions
+            assert total["n_entries"] == total["n_round_trips"] \
+                == len(out["decisions"])
+            assert len(out["financing_events"]) == len(out["decisions"])
+        anchor = F.run_arm("anchor", data_paths, reader)
+        decs = anchor["decisions"]
+        assert len(decs) == 10                    # 5 legs x 2 events
+        first = [d for d in decs if d["decision_ts"] == _iso_k(61, start)]
+        second = [d for d in decs if d["decision_ts"] == _iso_k(70, start)]
+        assert len(first) == 5 and len(second) == 5
+        for d in first:
+            assert d["entry_bar_ts"] == _iso_k(62, start)
+            assert d["exit_bar_ts"] == _iso_k(67, start)   # closed mid-stream
+            assert d["force_flat"] is False
+        for d in second:
+            assert d["entry_bar_ts"] == _iso_k(71, start)
+            assert d["exit_bar_ts"] == _iso_k(76, start)
+            assert d["force_flat"] is False
+        # one decision per (pair, decision day); ids unique
+        assert len({d["decision_id"] for d in decs}) == 10
+        assert sorted((d["pair"], d["decision_ts"]) for d in decs) == sorted(
+            {(p, ts.isoformat()) for p, ts in
+             [(d["pair"], datetime.fromisoformat(d["decision_ts"]))
+              for d in decs]})
+        R.validate_decisions(anchor["decisions"], anchor["financing_events"])
