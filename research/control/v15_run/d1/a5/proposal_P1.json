@@ -1,0 +1,116 @@
+{
+  "schema": "v15_proposal_v1",
+  "artifact": "d1_blind_proposal",
+  "cycle": "CRYPTO-V15",
+  "lane": "a5",
+  "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+  "hypothesis_id": "A5-V15-P1",
+  "family_name": "ELITE-SIZE-ASYM",
+  "axis": "AXIS-2 crowding ratios (account-positioning long/short crowd ratios)",
+  "confirmatory_status": "EXPLORATORY",
+  "mechanism": "Binance computes two long/short ratios over the SAME top-trader cohort (top 20% of accounts by margin balance): count_toptrader_long_short_ratio is headcount-weighted (#long accounts / #short accounts) and sum_toptrader_long_short_ratio is size-weighted (sum long positions / sum short positions). Their log gap S = ln(sum_toptrader) - ln(count_toptrader) isolates a WITHIN-COHORT size asymmetry: S > 0 means the average elite long-leaning account carries more position size than the average elite short-leaning account, i.e., professional conviction is concentrated on the long side of the same cohort. This is a distributional statement about inequality of commitment inside the professional cohort, not a statement about which way any crowd leans - it can fire while the overall account mix is balanced, which is why it is not a crowd-level or crowd-direction signal. WHO IS FORCED: the size-heavy side. Elite accounts share sizing logic, leverage constraints and similar invalidation levels; when the size-heavy side goes adverse, its exits are mechanical, correlated and price-impact-laden (margin maintenance, stop cascades), while the size-light side has little to unwind. WHY THE EFFECT EXISTS: concentrated one-sided professional positioning is the canonical crowded-trade state - the heavy side has already expressed maximum size, so incremental demand for its direction must come from a weaker, later cohort, and adverse moves trigger forced flow against the heavy side; at daily-to-weekly horizons this forced-flow risk is a forward-return drag on the size-heavy side. OBSERVABLE: per-symbol 5-day median of ln(sum_toptrader_long_short_ratio) - ln(count_toptrader_long_short_ratio), ranked cross-sectionally across the 20 authorized symbols; SHORT the tercile where elite size leans most long, LONG the tercile where elite size leans most short (preregistered direction: fade the size-heavy side). WHEN IT MUST FAIL: (i) when the size-heavy side is hedged inventory (basis/arb books) rather than directional leverage - forced-unwind risk is absent and the signal decays to noise; (ii) in strong persistent trends that keep rewarding the concentrated side (forced-unwind timing is early); (iii) when cross-symbol dispersion of S collapses so ranks are noise. WHAT CONTROL KILLS THE CONVENIENT EXPLANATION: the convenient explanation is that all information is simply the elite cohort's directional lean (a plain long/short-ratio level signal). The causal control runs the identical tercile portfolio on ln(count_toptrader_long_short_ratio) alone; if that level-only control reproduces the anchor's passing profile, the asymmetry is redundant with elite level and the mechanism claim is falsified.",
+  "information_source": {
+    "fields": ["sum_toptrader_long_short_ratio", "count_toptrader_long_short_ratio"],
+    "fields_deliberately_not_read": ["count_long_short_ratio", "sum_taker_long_short_vol_ratio", "sum_open_interest", "sum_open_interest_value", "any funding rate", "any basis/premium", "any price/volume feature"],
+    "label_semantics": "start-of-period archive-wide on current published bytes: labeled-T row carries the ratio snapshot at T+5min; daily observation = the 00:00 UTC labeled row of each metrics_date (one observation per symbol per day)",
+    "row_integrity": "loader sorts rows by create_time; staging refuses any file lacking exactly 288 rows / 288 unique labels / full 00:00..23:55 grid (fail closed, per p3_freeze row_integrity_at_staging)"
+  },
+  "universe": ["1000PEPEUSDT", "AAVEUSDT", "ACEUSDT", "ADAUSDT", "AVAXUSDT", "BCHUSDT", "BNBUSDT", "BOMEUSDT", "BTCUSDT", "DOGEUSDT", "ENAUSDT", "ETHUSDT", "LINKUSDT", "NEARUSDT", "ONGUSDT", "SUIUSDT", "WLDUSDT", "XRPUSDT", "ZECUSDT"],
+  "clock": {
+    "cadence": "daily",
+    "decision_time_utc": "00:00:00 on decision_date D",
+    "conditioning_rule": "every metrics row read satisfies metrics_date <= D - 3 calendar days (MEASURED_BOUND_LAG_3D, hard; conservative ceiling over max measured publication lag 67.47h)",
+    "folds": {
+      "F0": "2025-08-22..2025-12-20 (scored)",
+      "purge_1": "2025-12-21 (book flat, unscored)",
+      "F1": "2025-12-22..2026-04-20 (scored)",
+      "purge_2": "2026-04-21 (book flat, unscored)",
+      "F2": "2026-04-22..2026-08-21 (scored)"
+    },
+    "force_flat": "positions forced flat on the last scored day of every fold; re-entered at the first scored day of the next fold"
+  },
+  "warmup_spec": {
+    "warmup_reference_window": "2025-06-20..2025-08-21 (frozen 56D + purge margin reference)",
+    "max_feature_lookback": "5 usable daily rows ending at D-3 (max calendar lookback 7 days); first S0 decision 2025-08-22 needs metrics from 2025-08-15, fully inside the warmup reference window",
+    "scored_pnl_before": "none; warmup builds feature state only",
+    "fail_closed": "if a symbol has fewer usable rows than required on a decision day, that symbol is excluded from that day's cross-section, logged, and weights renormalized over eligible symbols (probe census shows 0 file gaps 2025-06-20..2026-08-21)"
+  },
+  "features_and_lags": {
+    "clip_rule": "ratio inputs clipped to [0.01, 100] before log (protects ln against all-one-side snapshots)",
+    "s_daily_i_t": "ln(clip(sum_toptrader_long_short_ratio)) - ln(clip(count_toptrader_long_short_ratio)) at metrics_date t, 00:00 UTC row",
+    "S_i_D": "median of s_daily_i_t over t in [D-7, D-3] (5 usable daily rows)",
+    "lag_compliance": "all rows satisfy metrics_date <= D-3 (MEASURED_BOUND_LAG_3D)",
+    "no_price_features": "no price, return, volatility, volume, OI, funding or basis input anywhere in the arm"
+  },
+  "entry_exit_rules": {
+    "entry": "on decision date D: rank the 20 symbols by S_i(D) ascending; LONG side = bottom 7 (elite size leans most SHORT; the size-heavy side is short), SHORT side = top 7 (elite size leans most LONG; fading the size-heavy side); middle 6 flat",
+    "weights": "per-name signed weight = side_gross / n_side with side_gross = 0.5 per populated side (0.5/7 ~= 0.0714, under the 0.30 cap); gross <= 1.0; cap 0.30 per-symbol signed weight enforced",
+    "rebalance": "daily at decision time; a fill occurs only when |delta_w| >= 0.05 (min-trade threshold suppresses micro-turnover)",
+    "exit": "rank-bucket change only; no price stops; force-flat on the last scored day of every fold and on purge days"
+  },
+  "fill_model": {
+    "order": "market order at decision time",
+    "fill_price": "00:00 UTC bar open of decision_date D from the authorized staged klines authority (native per-symbol)",
+    "fill_accounting": "one fill event per symbol per rebalance day per side change, notional = |delta_w| x equity, costs charged exactly once per fill (inherited cost-once kernel, turnover single convention)",
+    "delay_arm": "stress delay = +1 day (decision D fills at D+1 00:00 UTC open)"
+  },
+  "cost_assumptions": {
+    "taker_fee_bps": 5.0,
+    "taker_fee_note": "ASSUMPTION: Binance USDT-M VIP0 taker 0.05% of traded notional, charged exactly once per fill",
+    "slippage_ticks": 2,
+    "slippage_note": "2 ticks per fill at the symbol's native tick size from staged contract specs, charged once per fill",
+    "funding": "native 8h funding applied exactly once per holding interval at staged funding rates (booked separately from fill costs, inherited convention)",
+    "stress": "fee x1.5 (7.5 bps), slippage +2 ticks (4 total), execution +1 day delay, applied to booked PnL per frozen selection convention"
+  },
+  "anchor_spec": {
+    "name": "ELITE-SIZE-ASYM-ANCHOR",
+    "signal": "S_i(D) as defined in features_and_lags",
+    "construction": "cross-sectional tercile long-short: long bottom-7 S, short top-7 S, middle flat, weights per entry_exit_rules",
+    "direction_preregistration": "fade the size-heavy side (forced-unwind story); this direction is fixed ex ante, and if the sign is wrong the falsification rule kills the family - no post-hoc flip is authorized"
+  },
+  "neighbour_spec": {
+    "name": "ELITE-SIZE-ASYM-NB10Q",
+    "variant": "same mechanism, same direction, same machinery except: S_i(D) = median over t in [D-12, D-3] (10 usable daily rows, persistence robustness) and sides are quintiles (long bottom-5, short top-5, middle 10 flat, per-name weight 0.10)",
+    "support_rule": "neighbour SUPPORTS if pooled after-cost expectancy > 0 and position PF >= 1.10 (gate 10); an unsupportive neighbour is itself a falsification item"
+  },
+  "causal_control_spec": {
+    "name": "CTL-ELITELEVEL",
+    "construction": "identical portfolio machinery (terciles 7/6/7, daily, same folds, costs, fills) with signal C_i(D) = median over t in [D-7, D-3] of ln(clip(count_toptrader_long_short_ratio)) - the elite HEADCOUNT lean LEVEL alone, no sum component, no asymmetry; SHORT top tercile (most elite-long), LONG bottom tercile (most elite-short)",
+    "what_it_kills": "the convenient explanation that the anchor's information is just the elite cohort's directional lean (a plain elite long/short-ratio level signal, forbidden-adjacent)",
+    "preregistered_non_reproduction_rule": "the control must NOT produce (pooled after-cost expectancy > 0 AND position PF >= 1.10). If it does, A5-V15-P1 fails stage-A gate 11: the asymmetry is redundant with elite level, the family is closed as forbidden-adjacent plain ratio mean-reversion, and this holds regardless of the anchor's own performance"
+  },
+  "falsification_rule": {
+    "statement": "family A5-V15-P1 is REJECTED ex ante if ANY of the following, all numeric and fixed before any scored run:",
+    "items": [
+      "pooled after-cost anchor expectancy <= 0",
+      "pooled position PF < 1.10",
+      "positive folds < 2 of 3",
+      "largest fold-positive share > 0.50",
+      "max drawdown > 0.20",
+      "largest-symbol positive-PnL share > 0.70",
+      "stress set (x1.5 fee / +2 ticks / +1 delay) not all positive",
+      "drop-one symbol or drop-one fold non-vacuous failure (empty side, or fewer than 20 decision days scored in any fold)",
+      "BTC buy-and-hold excess or BTC-beta context excess non-positive in >= 2 of 3 folds",
+      "neighbour unsupportive (pooled after-cost expectancy <= 0 or PF < 1.10)",
+      "causal control CTL-ELITELEVEL reproduces per its preregistered rule",
+      "reproduction replay mismatch (not ALL_MATCH)",
+      "pooled |rho| > 0.20 vs any forbidden family or measured shadow (A7N decorrelation)"
+    ],
+    "no_override": "positive raw PnL never overrides a failed concentration, context or control gate (frozen gate 13)"
+  },
+  "expected_failure_interpretation": "Flat-to-negative anchor across folds means within-elite size-vs-headcount asymmetry carries no exploitable forward information at the daily horizon on this universe - the gap is either arbitraged within the cohort or dominated by hedged (non-directional) size; this closes the asymmetry construct without saying anything about crowd LEVELS. Anchor fails while CTL-ELITELEVEL passes: the elite headcount lean is the true driver and the asymmetry was a noisy proxy; region closed as redundant with forbidden-adjacent plain elite-ratio MR. Anchor passes headline but the control also passes: gate 11 kills the family - information is reducible to elite level. Fold concentration (one fold carries the PnL): forced-unwind is regime-bound (e.g., a single deleveraging episode) rather than persistent. Stress-only failure: gross edge < 7.5 bps + 4 ticks round-trip drag; mechanism may exist but is untradable at stated costs. D2 |rho| failure vs OILEV-V2 / OICYC / CTL-OISHARE: elite size-heavy accumulation coincides with aggregate OI-crowding states, so the information is not distinct from the closed OI deleveraging axis and this axis stays closed.",
+  "decorrelation_plan": {
+    "measurement": "D2 computes pooled Spearman rho on daily strategy returns (blind-S0, folds pooled) of the anchor arm vs recorded daily returns of EVERY forbidden item: OITD 28D/56D, LIQEPIS, OILEV-V2 anchor AND its sign-inverted control, OICYC cells, CTL-OISHARE, PREMFADE 28D/56D, BAB-LOWBETA, carry families (funding carry 1D/3D/7D), funding/price divergence, H-FUNDCROWD-MR funding-percentile conditioning, sprint XSECT momentum/reversal/trend/vol-shock forms, LOT residual-MAX, ILLIQ-AMIHUD (as available)",
+    "threshold": "|rho| <= 0.20 pooled against EVERY item; any single breach = auto-reject (A7N), no exceptions",
+    "structural_precommitments": [
+      "no funding-rate input anywhere (H-FUNDCROWD-MR's sole input is never read)",
+      "no OI field input anywhere (OILEV/OICYC/OITD inputs never read)",
+      "no basis/premium input (PREMFADE never proxied)",
+      "no price/vol/momentum feature of any kind (sprint forms never proxied)",
+      "count_long_short_ratio (the global crowd level a classic ratio-MR would use) is deliberately NOT read by any arm - the sort key is a within-elite distributional gap that can fire against the crowd's direction",
+      "cross-sectional relative-value construction vs the mostly time-series-conditioned ancestors gives a different return geometry, but this is MEASURED by D2, not assumed"
+    ],
+    "signal_level_audits_for_ledger": "D2 also records per symbol-day rank correlation of the S sort key vs funding-rate percentile and vs count_long_short_ratio level, for the ledger's information-redundancy table"
+  },
+  "status": "ELIGIBLE"
+}
