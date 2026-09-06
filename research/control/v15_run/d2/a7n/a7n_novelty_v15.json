@@ -1,0 +1,1060 @@
+{
+ "schema": "v15_d2_a7n_novelty_v1",
+ "cycle": "CRYPTO-V15",
+ "generated_utc": "2026-09-06",
+ "auditor_role": "A7N",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v15/d2-a7n-novelty",
+ "head_verified": "d078252a7c0f42b5a848b8fd97447be1c479d707",
+ "branch": "orca/v15-d2-a7n-novelty",
+ "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+ "standard": {
+  "threshold": 0.2,
+  "statistic": "pooled Spearman rho on (symbol, decision_date) feature values",
+  "window": "blind-S0 2025-08-22..2026-08-21",
+  "lag": "MEASURED_BOUND_LAG_3D (features read metrics_date <= decision_date - 3)"
+ },
+ "reconstruction_conventions": [
+  "daily OI snapshot = sum_open_interest at the 00:00 UTC labeled row (start-of-period semantics: snapshot at T+5min per frozen data contract); a day counts as available at a stamp only if that stamp exists AND the day is not a global defect date",
+  "OILEV-V2-28DFLOW = sum of 28 consecutive-available-date signed raw OI deltas (contracts, not log)",
+  "OICYC approximation (proposal-grade, per D2 task): stochastic-OI = (OI - trailing-28-avail-date min) / (max - min)",
+  "CTL-OISHARE = symbol sum_open_interest_value (00:00 stamp) / cross-sectional total over available staged symbols",
+  "OITD-28D = mean(OI,28 avail)/mean(OI,56 avail); OITD-56D = mean(OI,56)/mean(OI,112)",
+  "amendment-1 exclusions: global defect dates 2025-07-21, 2025-07-22, 2025-08-29, 2026-08-12 removed from every feature window; >10% missing metrics-day cells in a feature window refuses that (symbol, decision) row",
+  "sign-inverted ancestors (OILEV-V2-INV, OICYC-STOCH28-INV) have |rho| IDENTICAL to their non-inverted forms by construction \u2014 reported once per pair and noted"
+ ],
+ "global_caveats": [
+  "ALL ancestor panels are RECONSTRUCTIONS reconstructed from the CURRENT staging (integration worktree v15_data); the V12-V14 original staged bytes have been lost from the host. Measured rho therefore establishes self-consistency between D1 proposals and the current staging, NOT truth of the original V12-V14 panels.",
+  "pooled Spearman on raw feature values embeds cross-sectional scale differences (e.g. raw OI-flow contract counts span orders of magnitude across symbols); a supplementary cross-sectionally-ranked-then-pooled Spearman is reported per comparison as robustness, but the frozen verdict uses the raw pooled value per the D2 standard",
+  "5-minute-level holes inside present-but-partial ONG/ACE days (e.g. ONG 2026-07-29 has 10 labels, no 23:55) are handled at DAILY granularity here: a6's 23:55 stamp reads refuse on such days and the day counts as missing in window checks; a 5-min-level runner would refuse more rows than this audit does"
+ ],
+ "proposals": [
+  {
+   "hypothesis_id": "A4-V15-P1",
+   "lane": "a4",
+   "family_name": "REGSTAB \u2014 register-stability premium (cross-sectional positioning-churn dispersion)",
+   "grid": "daily",
+   "n_decision_dates": 365,
+   "n_grid_rows": 7300,
+   "n_rows_refused_nan": 6,
+   "primary_feature": "churn28(s,D) = mean |delta_log(sum_open_interest)| over the 28 most recent available metrics dates ending at latest available date <= D-3, cross-sectionally ranked per spec (raw churn used for rho; Spearman is rank-based)",
+   "audit_notes": [
+    "BLOCK is robust across pooling variants: pooled raw rho = -0.43110304 and cross-sectionally-ranked pooled rho = -0.47099183 vs CTL-OISHARE; per-symbol max |rho| 0.60606348 (ACEUSDT).",
+    "The proposal's own expected_failure_interpretation ('static_sort_collapse') preregistered exactly this death: churn ranks persist per symbol, collapsing toward the structural OI-size sort measured as CTL-OISHARE (V14 firing control). Measured, not argued.",
+    "THIN: OITD-28D margin 0.02556963 (|rho| 0.17443037) recorded as thin per honesty rules; moot given the block.",
+    "6 refused rows, all ONGUSDT (hole-heavy symbol, window >10% missing metrics-day cells)."
+   ],
+   "comparisons": [
+    {
+     "ancestor": "OILEV-V2-28DFLOW",
+     "description": "rejected V12 anchor: 28d rolling sum of signed daily OI change, read at 00:00 stamp",
+     "n_pairs": 7294,
+     "pooled_spearman_rho": 0.07505629,
+     "abs_rho": 0.07505629,
+     "margin_to_fail_0.20": 0.12494371,
+     "rho_xsec_ranked_supplementary": 0.1418458,
+     "per_symbol_max_abs_rho": 0.6436497,
+     "per_symbol_max_at": "ONGUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OILEV-V2-INV",
+     "description": "CLOSED V12 shadow: sign-inverted 28D-FLOW (|rho| identical to 28DFLOW by construction)",
+     "n_pairs": 7294,
+     "pooled_spearman_rho": -0.07505629,
+     "abs_rho": 0.07505629,
+     "margin_to_fail_0.20": 0.12494371,
+     "rho_xsec_ranked_supplementary": -0.14166707,
+     "per_symbol_max_abs_rho": 0.6436497,
+     "per_symbol_max_at": "ONGUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "OICYC-STOCH28",
+     "description": "CLOSED V14 confirmatory ancestor, proposal-grade approximation: (OI - min28)/(max28 - min28)",
+     "n_pairs": 7294,
+     "pooled_spearman_rho": -0.06802835,
+     "abs_rho": 0.06802835,
+     "margin_to_fail_0.20": 0.13197165,
+     "rho_xsec_ranked_supplementary": -0.01954983,
+     "per_symbol_max_abs_rho": 0.44157697,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OICYC-STOCH28-INV",
+     "description": "sign-inverted OICYC approximation (|rho| identical to OICYC-STOCH28)",
+     "n_pairs": 7294,
+     "pooled_spearman_rho": 0.06802835,
+     "abs_rho": 0.06802835,
+     "margin_to_fail_0.20": 0.13197165,
+     "rho_xsec_ranked_supplementary": 0.01979914,
+     "per_symbol_max_abs_rho": 0.44157697,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "CTL-OISHARE",
+     "description": "V14 measured firing control: cross-sectional OI-value market share",
+     "n_pairs": 7294,
+     "pooled_spearman_rho": -0.43110304,
+     "abs_rho": 0.43110304,
+     "margin_to_fail_0.20": -0.23110304,
+     "rho_xsec_ranked_supplementary": -0.47099183,
+     "per_symbol_max_abs_rho": 0.60606348,
+     "per_symbol_max_at": "ACEUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-28D",
+     "description": "V13 anchor form: mean(OI,28d)/mean(OI,56d)",
+     "n_pairs": 7294,
+     "pooled_spearman_rho": 0.17443037,
+     "abs_rho": 0.17443037,
+     "margin_to_fail_0.20": 0.02556963,
+     "rho_xsec_ranked_supplementary": 0.2373142,
+     "per_symbol_max_abs_rho": 0.67391724,
+     "per_symbol_max_at": "ZECUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-56D",
+     "description": "V13 neighbour form: mean(OI,56d)/mean(OI,112d)",
+     "n_pairs": 6214,
+     "pooled_spearman_rho": 0.1218629,
+     "abs_rho": 0.1218629,
+     "margin_to_fail_0.20": 0.0781371,
+     "rho_xsec_ranked_supplementary": 0.10781785,
+     "per_symbol_max_abs_rho": 0.64668317,
+     "per_symbol_max_at": "ZECUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    }
+   ],
+   "verdict": "ANCESTRY_BLOCKED",
+   "blocking_ancestors": [
+    {
+     "ancestor": "CTL-OISHARE",
+     "abs_rho": 0.43110304,
+     "margin_to_fail": -0.23110304
+    }
+   ],
+   "thin_passes_margin_lt_0.05": [
+    {
+     "ancestor": "OITD-28D",
+     "abs_rho": 0.17443037,
+     "margin": 0.02556963
+    }
+   ],
+   "not_run": {
+    "PREMFADE": {
+     "status": "NOT_RUN_UNMEASURABLE_FROM_STAGED_FIELDS",
+     "reason": "premium/basis requires price-premium vs index fields absent from the staged metrics schema (6 fields only); the OIv/OI implied-mark-price identity is a price LEVEL, not a basis, and building a premium proxy from it would itself smuggle a forbidden price signal \u2014 not faked, fail-closed per honesty rules"
+    },
+    "XSECT_MOMENTUM_REVERSAL_SPRINTS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price-derived sprint forms; every audited proposal's primary feature is metrics-derived with no kline/price input (verified per proposal information_source), so feature-level overlap with price-form ancestors is not plausible"
+    },
+    "VOL_SHOCK_SPRINT": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/volatility-derived; proposals read no price/volume field in any primary feature"
+    },
+    "BAB-LOWBETA": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "beta is price-derived; no proposal feature is price-derived"
+    },
+    "LIQEPIS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "V13 episodes were conditioned on price/volume liquidity fields absent from every audited anchor's input set"
+    },
+    "CARRY_FAMILIES_FUNDING_1D_3D_7D": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "funding parquet is staged, but the V6/V7 carry book forms (thresholds, conditioning) are not restaged in this worktree; reconstructing a specific form would require inventing parameters; additionally no audited proposal reads any funding field"
+    },
+    "H-FUNDCROWD-MR": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "same reason as carry families: form not restaged; no proposal reads funding"
+    },
+    "FUNDING_PRICE_DIVERGENCE": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "requires funding + price inputs; no proposal feature uses either"
+    },
+    "LOT_RESIDUAL_MAX / ILLIQ_AMIHUD": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/return-derived (residual idio MAX, Amihud illiquidity); no proposal feature touches price or volume"
+    }
+   },
+   "schema_check": {
+    "hypothesis_id": "A4-V15-P1",
+    "missing_fields": [],
+    "universe_n": 20,
+    "universe_matches_staged_20": true,
+    "confirmatory_status": "EXPLORATORY",
+    "flags": []
+   }
+  },
+  {
+   "hypothesis_id": "A4-V15-P2",
+   "lane": "a4",
+   "family_name": "REGSHOCK \u2014 register-shock fade (time-series forced-positioning-overshoot drift)",
+   "grid": "daily",
+   "n_decision_dates": 365,
+   "n_grid_rows": 7300,
+   "n_rows_refused_nan": 0,
+   "primary_feature": "shock-fade indicator: at each decision D scan e = latest available metrics date <= D-3; if |dlog_oi(e)| > max(P90 of trailing 42 |dlog| changes ending e-1, 0.05) then -sign(dlog_oi(e)) else 0",
+   "audit_notes": [
+    "BLOCKING ancestor OICYC-STOCH28: pooled raw |rho| = 0.25327361 > 0.20 (margin -0.05327361). The supplementary cross-sectionally-ranked pooled statistic is 0.16398839 (< 0.20); the frozen D2 standard is the pooled raw statistic on the (symbol, decision_date) panel, so the verdict is ANCESTRY_BLOCKED, and the discrepancy is recorded, not resolved.",
+    "Interpretation of the block direction (recorded, not adjudicated): the fade goes long after OI collapses (low stochastic-OI) and short after OI inflow spikes (high stochastic-OI), reproducing the OI-cycle phase object at event granularity \u2014 i.e., the sign structure of the OICYC confirmatory ancestor.",
+    "Firing census: 746/7300 rows nonzero (10.22%, matching the P90 design rate; 332 long / 414 short) \u2014 the correlation is NOT vacuous.",
+    "0 refused rows: the P90/event windows never tripped the >10% hole rule on this grid."
+   ],
+   "comparisons": [
+    {
+     "ancestor": "OILEV-V2-28DFLOW",
+     "description": "rejected V12 anchor: 28d rolling sum of signed daily OI change, read at 00:00 stamp",
+     "n_pairs": 7300,
+     "pooled_spearman_rho": -0.10198052,
+     "abs_rho": 0.10198052,
+     "margin_to_fail_0.20": 0.09801948,
+     "rho_xsec_ranked_supplementary": -0.05997717,
+     "per_symbol_max_abs_rho": 0.18139355,
+     "per_symbol_max_at": "ZECUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OILEV-V2-INV",
+     "description": "CLOSED V12 shadow: sign-inverted 28D-FLOW (|rho| identical to 28DFLOW by construction)",
+     "n_pairs": 7300,
+     "pooled_spearman_rho": 0.10198052,
+     "abs_rho": 0.10198052,
+     "margin_to_fail_0.20": 0.09801948,
+     "rho_xsec_ranked_supplementary": 0.05997717,
+     "per_symbol_max_abs_rho": 0.18139355,
+     "per_symbol_max_at": "ZECUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "OICYC-STOCH28",
+     "description": "CLOSED V14 confirmatory ancestor, proposal-grade approximation: (OI - min28)/(max28 - min28)",
+     "n_pairs": 7300,
+     "pooled_spearman_rho": -0.25327361,
+     "abs_rho": 0.25327361,
+     "margin_to_fail_0.20": -0.05327361,
+     "rho_xsec_ranked_supplementary": -0.16398839,
+     "per_symbol_max_abs_rho": 0.33811194,
+     "per_symbol_max_at": "ZECUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OICYC-STOCH28-INV",
+     "description": "sign-inverted OICYC approximation (|rho| identical to OICYC-STOCH28)",
+     "n_pairs": 7300,
+     "pooled_spearman_rho": 0.25327361,
+     "abs_rho": 0.25327361,
+     "margin_to_fail_0.20": -0.05327361,
+     "rho_xsec_ranked_supplementary": 0.16398839,
+     "per_symbol_max_abs_rho": 0.33811194,
+     "per_symbol_max_at": "ZECUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "CTL-OISHARE",
+     "description": "V14 measured firing control: cross-sectional OI-value market share",
+     "n_pairs": 7300,
+     "pooled_spearman_rho": -0.00214764,
+     "abs_rho": 0.00214764,
+     "margin_to_fail_0.20": 0.19785236,
+     "rho_xsec_ranked_supplementary": -0.00371071,
+     "per_symbol_max_abs_rho": 0.16687328,
+     "per_symbol_max_at": "BOMEUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-28D",
+     "description": "V13 anchor form: mean(OI,28d)/mean(OI,56d)",
+     "n_pairs": 7300,
+     "pooled_spearman_rho": 0.02029954,
+     "abs_rho": 0.02029954,
+     "margin_to_fail_0.20": 0.17970046,
+     "rho_xsec_ranked_supplementary": 0.02225667,
+     "per_symbol_max_abs_rho": 0.09729205,
+     "per_symbol_max_at": "NEARUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-56D",
+     "description": "V13 neighbour form: mean(OI,56d)/mean(OI,112d)",
+     "n_pairs": 6220,
+     "pooled_spearman_rho": 0.01400214,
+     "abs_rho": 0.01400214,
+     "margin_to_fail_0.20": 0.18599786,
+     "rho_xsec_ranked_supplementary": 0.00648845,
+     "per_symbol_max_abs_rho": 0.1013703,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    }
+   ],
+   "verdict": "ANCESTRY_BLOCKED",
+   "blocking_ancestors": [
+    {
+     "ancestor": "OICYC-STOCH28",
+     "abs_rho": 0.25327361,
+     "margin_to_fail": -0.05327361
+    },
+    {
+     "ancestor": "OICYC-STOCH28-INV",
+     "abs_rho": 0.25327361,
+     "margin_to_fail": -0.05327361
+    }
+   ],
+   "thin_passes_margin_lt_0.05": [],
+   "not_run": {
+    "PREMFADE": {
+     "status": "NOT_RUN_UNMEASURABLE_FROM_STAGED_FIELDS",
+     "reason": "premium/basis requires price-premium vs index fields absent from the staged metrics schema (6 fields only); the OIv/OI implied-mark-price identity is a price LEVEL, not a basis, and building a premium proxy from it would itself smuggle a forbidden price signal \u2014 not faked, fail-closed per honesty rules"
+    },
+    "XSECT_MOMENTUM_REVERSAL_SPRINTS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price-derived sprint forms; every audited proposal's primary feature is metrics-derived with no kline/price input (verified per proposal information_source), so feature-level overlap with price-form ancestors is not plausible"
+    },
+    "VOL_SHOCK_SPRINT": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/volatility-derived; proposals read no price/volume field in any primary feature"
+    },
+    "BAB-LOWBETA": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "beta is price-derived; no proposal feature is price-derived"
+    },
+    "LIQEPIS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "V13 episodes were conditioned on price/volume liquidity fields absent from every audited anchor's input set"
+    },
+    "CARRY_FAMILIES_FUNDING_1D_3D_7D": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "funding parquet is staged, but the V6/V7 carry book forms (thresholds, conditioning) are not restaged in this worktree; reconstructing a specific form would require inventing parameters; additionally no audited proposal reads any funding field"
+    },
+    "H-FUNDCROWD-MR": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "same reason as carry families: form not restaged; no proposal reads funding"
+    },
+    "FUNDING_PRICE_DIVERGENCE": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "requires funding + price inputs; no proposal feature uses either"
+    },
+    "LOT_RESIDUAL_MAX / ILLIQ_AMIHUD": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/return-derived (residual idio MAX, Amihud illiquidity); no proposal feature touches price or volume"
+    }
+   },
+   "schema_check": {
+    "hypothesis_id": "A4-V15-P2",
+    "missing_fields": [],
+    "universe_n": 20,
+    "universe_matches_staged_20": true,
+    "confirmatory_status": "EXPLORATORY",
+    "flags": []
+   }
+  },
+  {
+   "hypothesis_id": "A5-V15-P1",
+   "lane": "a5",
+   "family_name": "ELITE-SIZE-ASYM",
+   "grid": "daily",
+   "n_decision_dates": 365,
+   "n_grid_rows": 6935,
+   "n_rows_refused_nan": 197,
+   "primary_feature": "S_i(D) = median over the 5 usable daily rows in [D-7, D-3] of ln(clip(sum_toptrader_lsr)) - ln(clip(count_toptrader_lsr)) at the 00:00 UTC row",
+   "audit_notes": [
+    "All measured pooled |rho| <= 0.13357811 (OITD-56D); no comparison below the 0.05 thin-margin line, but OITD-56D margin 0.06642189 and OITD-28D margin 0.07566964 are the two smallest \u2014 recorded.",
+    "197 refused rows = every (symbol, decision) whose [D-7, D-3] window contains one of the in-S0 global defect dates 2025-08-29 / 2026-08-12 or an ONG hole day (5-row window: 1 missing = 20% > 10% -> refuse; consistent with the proposal's own fail_closed rule).",
+    "SCHEMA FLAG (does not change the novelty verdict): universe lists 19 symbols - SOLUSDT absent - while entry_exit_rules reference ranking 'the 20 symbols' with a 7/6/7 tercile split; internal inconsistency for A1/lane adjudication per the freeze ambiguity_rule."
+   ],
+   "comparisons": [
+    {
+     "ancestor": "OILEV-V2-28DFLOW",
+     "description": "rejected V12 anchor: 28d rolling sum of signed daily OI change, read at 00:00 stamp",
+     "n_pairs": 6738,
+     "pooled_spearman_rho": -0.02906321,
+     "abs_rho": 0.02906321,
+     "margin_to_fail_0.20": 0.17093679,
+     "rho_xsec_ranked_supplementary": -0.03585364,
+     "per_symbol_max_abs_rho": 0.43194107,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 19,
+     "note": null
+    },
+    {
+     "ancestor": "OILEV-V2-INV",
+     "description": "CLOSED V12 shadow: sign-inverted 28D-FLOW (|rho| identical to 28DFLOW by construction)",
+     "n_pairs": 6738,
+     "pooled_spearman_rho": 0.02906321,
+     "abs_rho": 0.02906321,
+     "margin_to_fail_0.20": 0.17093679,
+     "rho_xsec_ranked_supplementary": 0.03618668,
+     "per_symbol_max_abs_rho": 0.43194107,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 19,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "OICYC-STOCH28",
+     "description": "CLOSED V14 confirmatory ancestor, proposal-grade approximation: (OI - min28)/(max28 - min28)",
+     "n_pairs": 6738,
+     "pooled_spearman_rho": 0.01490661,
+     "abs_rho": 0.01490661,
+     "margin_to_fail_0.20": 0.18509339,
+     "rho_xsec_ranked_supplementary": 0.03080213,
+     "per_symbol_max_abs_rho": 0.28079641,
+     "per_symbol_max_at": "AAVEUSDT",
+     "n_symbols_with_defined_rho": 19,
+     "note": null
+    },
+    {
+     "ancestor": "OICYC-STOCH28-INV",
+     "description": "sign-inverted OICYC approximation (|rho| identical to OICYC-STOCH28)",
+     "n_pairs": 6738,
+     "pooled_spearman_rho": -0.01490661,
+     "abs_rho": 0.01490661,
+     "margin_to_fail_0.20": 0.18509339,
+     "rho_xsec_ranked_supplementary": -0.03047317,
+     "per_symbol_max_abs_rho": 0.28079641,
+     "per_symbol_max_at": "AAVEUSDT",
+     "n_symbols_with_defined_rho": 19,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "CTL-OISHARE",
+     "description": "V14 measured firing control: cross-sectional OI-value market share",
+     "n_pairs": 6738,
+     "pooled_spearman_rho": -0.09235556,
+     "abs_rho": 0.09235556,
+     "margin_to_fail_0.20": 0.10764444,
+     "rho_xsec_ranked_supplementary": -0.10657758,
+     "per_symbol_max_abs_rho": 0.57640648,
+     "per_symbol_max_at": "ETHUSDT",
+     "n_symbols_with_defined_rho": 19,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-28D",
+     "description": "V13 anchor form: mean(OI,28d)/mean(OI,56d)",
+     "n_pairs": 6738,
+     "pooled_spearman_rho": 0.12433036,
+     "abs_rho": 0.12433036,
+     "margin_to_fail_0.20": 0.07566964,
+     "rho_xsec_ranked_supplementary": 0.04243428,
+     "per_symbol_max_abs_rho": 0.66323853,
+     "per_symbol_max_at": "ONGUSDT",
+     "n_symbols_with_defined_rho": 19,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-56D",
+     "description": "V13 neighbour form: mean(OI,56d)/mean(OI,112d)",
+     "n_pairs": 5807,
+     "pooled_spearman_rho": 0.13357811,
+     "abs_rho": 0.13357811,
+     "margin_to_fail_0.20": 0.06642189,
+     "rho_xsec_ranked_supplementary": 0.11271748,
+     "per_symbol_max_abs_rho": 0.7254866,
+     "per_symbol_max_at": "NEARUSDT",
+     "n_symbols_with_defined_rho": 19,
+     "note": null
+    }
+   ],
+   "verdict": "NOVEL",
+   "blocking_ancestors": [],
+   "thin_passes_margin_lt_0.05": [],
+   "not_run": {
+    "PREMFADE": {
+     "status": "NOT_RUN_UNMEASURABLE_FROM_STAGED_FIELDS",
+     "reason": "premium/basis requires price-premium vs index fields absent from the staged metrics schema (6 fields only); the OIv/OI implied-mark-price identity is a price LEVEL, not a basis, and building a premium proxy from it would itself smuggle a forbidden price signal \u2014 not faked, fail-closed per honesty rules"
+    },
+    "XSECT_MOMENTUM_REVERSAL_SPRINTS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price-derived sprint forms; every audited proposal's primary feature is metrics-derived with no kline/price input (verified per proposal information_source), so feature-level overlap with price-form ancestors is not plausible"
+    },
+    "VOL_SHOCK_SPRINT": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/volatility-derived; proposals read no price/volume field in any primary feature"
+    },
+    "BAB-LOWBETA": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "beta is price-derived; no proposal feature is price-derived"
+    },
+    "LIQEPIS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "V13 episodes were conditioned on price/volume liquidity fields absent from every audited anchor's input set"
+    },
+    "CARRY_FAMILIES_FUNDING_1D_3D_7D": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "funding parquet is staged, but the V6/V7 carry book forms (thresholds, conditioning) are not restaged in this worktree; reconstructing a specific form would require inventing parameters; additionally no audited proposal reads any funding field"
+    },
+    "H-FUNDCROWD-MR": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "same reason as carry families: form not restaged; no proposal reads funding"
+    },
+    "FUNDING_PRICE_DIVERGENCE": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "requires funding + price inputs; no proposal feature uses either"
+    },
+    "LOT_RESIDUAL_MAX / ILLIQ_AMIHUD": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/return-derived (residual idio MAX, Amihud illiquidity); no proposal feature touches price or volume"
+    }
+   },
+   "schema_check": {
+    "hypothesis_id": "A5-V15-P1",
+    "missing_fields": [],
+    "universe_n": 19,
+    "universe_matches_staged_20": false,
+    "confirmatory_status": "EXPLORATORY",
+    "flags": [
+     "universe != 20 staged symbols (n=19); absent=['SOLUSDT']; extra=[]"
+    ]
+   }
+  },
+  {
+   "hypothesis_id": "A5-V15-P2",
+   "lane": "a5",
+   "family_name": "CROWD-LATE-CHURN",
+   "grid": "daily",
+   "n_decision_dates": 365,
+   "n_grid_rows": 6935,
+   "n_rows_refused_nan": 66,
+   "primary_feature": "gated crowd-rotation fade indicator: top-5 universe names by |v_glob| (v_glob = 20d log-change of count_long_short_ratio, endpoints D-3/D-23); fire -sign(v_glob) iff |v_top| < 0.5*|v_glob| (v_top = same on count_toptrader_lsr); else 0",
+   "audit_notes": [
+    "LOW-POWER caveat: the anchor fires on only 63 of 6869 scored rows (0.92%; 25 long / 38 short, spread over 72 distinct decision dates). The near-zero pooled rho is measured on a series dominated by ties at 0; low fire-rate means low statistical power, recorded as such \u2014 the pass is not evidence of independence, it is absence of measurable overlap.",
+    "Max measured pooled |rho| = 0.01881768 (OITD-56D); nothing near the threshold.",
+    "66 refused rows: decisions whose D-3 or D-23 endpoint lands on a global defect/ONG hole date.",
+    "SCHEMA FLAG (does not change the novelty verdict): universe lists 19 symbols - SOLUSDT absent - while entry_exit_rules reference a 20-symbol ranked set."
+   ],
+   "comparisons": [
+    {
+     "ancestor": "OILEV-V2-28DFLOW",
+     "description": "rejected V12 anchor: 28d rolling sum of signed daily OI change, read at 00:00 stamp",
+     "n_pairs": 6869,
+     "pooled_spearman_rho": 0.00327328,
+     "abs_rho": 0.00327328,
+     "margin_to_fail_0.20": 0.19672672,
+     "rho_xsec_ranked_supplementary": 0.00559411,
+     "per_symbol_max_abs_rho": 0.10343854,
+     "per_symbol_max_at": "BCHUSDT",
+     "n_symbols_with_defined_rho": 15,
+     "note": null
+    },
+    {
+     "ancestor": "OILEV-V2-INV",
+     "description": "CLOSED V12 shadow: sign-inverted 28D-FLOW (|rho| identical to 28DFLOW by construction)",
+     "n_pairs": 6869,
+     "pooled_spearman_rho": -0.00327328,
+     "abs_rho": 0.00327328,
+     "margin_to_fail_0.20": 0.19672672,
+     "rho_xsec_ranked_supplementary": 0.00343556,
+     "per_symbol_max_abs_rho": 0.10343854,
+     "per_symbol_max_at": "BCHUSDT",
+     "n_symbols_with_defined_rho": 15,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "OICYC-STOCH28",
+     "description": "CLOSED V14 confirmatory ancestor, proposal-grade approximation: (OI - min28)/(max28 - min28)",
+     "n_pairs": 6869,
+     "pooled_spearman_rho": 0.01319043,
+     "abs_rho": 0.01319043,
+     "margin_to_fail_0.20": 0.18680957,
+     "rho_xsec_ranked_supplementary": 0.00939384,
+     "per_symbol_max_abs_rho": 0.09617696,
+     "per_symbol_max_at": "SUIUSDT",
+     "n_symbols_with_defined_rho": 15,
+     "note": null
+    },
+    {
+     "ancestor": "OICYC-STOCH28-INV",
+     "description": "sign-inverted OICYC approximation (|rho| identical to OICYC-STOCH28)",
+     "n_pairs": 6869,
+     "pooled_spearman_rho": -0.01319043,
+     "abs_rho": 0.01319043,
+     "margin_to_fail_0.20": 0.18680957,
+     "rho_xsec_ranked_supplementary": -0.00016895,
+     "per_symbol_max_abs_rho": 0.09617696,
+     "per_symbol_max_at": "SUIUSDT",
+     "n_symbols_with_defined_rho": 15,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "CTL-OISHARE",
+     "description": "V14 measured firing control: cross-sectional OI-value market share",
+     "n_pairs": 6869,
+     "pooled_spearman_rho": 0.00814262,
+     "abs_rho": 0.00814262,
+     "margin_to_fail_0.20": 0.19185738,
+     "rho_xsec_ranked_supplementary": 0.01025102,
+     "per_symbol_max_abs_rho": 0.14419233,
+     "per_symbol_max_at": "LINKUSDT",
+     "n_symbols_with_defined_rho": 15,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-28D",
+     "description": "V13 anchor form: mean(OI,28d)/mean(OI,56d)",
+     "n_pairs": 6869,
+     "pooled_spearman_rho": -0.0145492,
+     "abs_rho": 0.0145492,
+     "margin_to_fail_0.20": 0.1854508,
+     "rho_xsec_ranked_supplementary": -0.00294268,
+     "per_symbol_max_abs_rho": 0.14710825,
+     "per_symbol_max_at": "LINKUSDT",
+     "n_symbols_with_defined_rho": 15,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-56D",
+     "description": "V13 neighbour form: mean(OI,56d)/mean(OI,112d)",
+     "n_pairs": 5881,
+     "pooled_spearman_rho": -0.01881768,
+     "abs_rho": 0.01881768,
+     "margin_to_fail_0.20": 0.18118232,
+     "rho_xsec_ranked_supplementary": -0.01379944,
+     "per_symbol_max_abs_rho": 0.15108873,
+     "per_symbol_max_at": "AAVEUSDT",
+     "n_symbols_with_defined_rho": 13,
+     "note": null
+    }
+   ],
+   "verdict": "NOVEL",
+   "blocking_ancestors": [],
+   "thin_passes_margin_lt_0.05": [],
+   "not_run": {
+    "PREMFADE": {
+     "status": "NOT_RUN_UNMEASURABLE_FROM_STAGED_FIELDS",
+     "reason": "premium/basis requires price-premium vs index fields absent from the staged metrics schema (6 fields only); the OIv/OI implied-mark-price identity is a price LEVEL, not a basis, and building a premium proxy from it would itself smuggle a forbidden price signal \u2014 not faked, fail-closed per honesty rules"
+    },
+    "XSECT_MOMENTUM_REVERSAL_SPRINTS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price-derived sprint forms; every audited proposal's primary feature is metrics-derived with no kline/price input (verified per proposal information_source), so feature-level overlap with price-form ancestors is not plausible"
+    },
+    "VOL_SHOCK_SPRINT": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/volatility-derived; proposals read no price/volume field in any primary feature"
+    },
+    "BAB-LOWBETA": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "beta is price-derived; no proposal feature is price-derived"
+    },
+    "LIQEPIS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "V13 episodes were conditioned on price/volume liquidity fields absent from every audited anchor's input set"
+    },
+    "CARRY_FAMILIES_FUNDING_1D_3D_7D": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "funding parquet is staged, but the V6/V7 carry book forms (thresholds, conditioning) are not restaged in this worktree; reconstructing a specific form would require inventing parameters; additionally no audited proposal reads any funding field"
+    },
+    "H-FUNDCROWD-MR": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "same reason as carry families: form not restaged; no proposal reads funding"
+    },
+    "FUNDING_PRICE_DIVERGENCE": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "requires funding + price inputs; no proposal feature uses either"
+    },
+    "LOT_RESIDUAL_MAX / ILLIQ_AMIHUD": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/return-derived (residual idio MAX, Amihud illiquidity); no proposal feature touches price or volume"
+    }
+   },
+   "schema_check": {
+    "hypothesis_id": "A5-V15-P2",
+    "missing_fields": [],
+    "universe_n": 19,
+    "universe_matches_staged_20": false,
+    "confirmatory_status": "EXPLORATORY",
+    "flags": [
+     "universe != 20 staged symbols (n=19); absent=['SOLUSDT']; extra=[]"
+    ]
+   }
+  },
+  {
+   "hypothesis_id": "A6-V15-P1",
+   "lane": "a6",
+   "family_name": "AXIS-3 taker flow, combined with AXIS-1 OI stock in a ratio-of-ratio construction (taker aggression intensity per unit of positioning churn)",
+   "grid": "5day",
+   "n_decision_dates": 74,
+   "n_grid_rows": 1480,
+   "n_rows_refused_nan": 54,
+   "primary_feature": "S_i(D) = A_bar / (O + 0.02) over W = [D-12, D-3]; A_bar = mean daily aggression (mean over day's labels of clip(ln(clip(sum_taker_lsr,0.2,5.0)),-1.609,1.609)); O = |ln(OIv_2355(D-3)/OIv_2355(D-12))|",
+   "audit_notes": [
+    "Max measured pooled |rho| = 0.14687781 (CTL-OISHARE, margin 0.05312219) \u2014 the closest comparison, recorded; not below the 0.05 thin line but the smallest margin in this proposal's table.",
+    "54 refused rows, measured per-symbol: ONGUSDT 13, ACEUSDT 4, BOMEUSDT 3, and exactly 2 for each of the other 17 symbols. The 2-per-symbol refusals are decisions whose D-3 endpoint lands on a global defect date (D=2025-09-01 with endpoint 2025-08-29; D=2026-08-15 with endpoint 2026-08-12); the ONG/ACE/BOME extras are hole-cluster windows tripping the >10% rule or missing 23:55 endpoint stamps on partial days.",
+    "5-day decision grid: 74 decision dates across F0/F1/F2 fold starts; 1480 grid rows."
+   ],
+   "comparisons": [
+    {
+     "ancestor": "OILEV-V2-28DFLOW",
+     "description": "rejected V12 anchor: 28d rolling sum of signed daily OI change, read at 00:00 stamp",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": 0.03860973,
+     "abs_rho": 0.03860973,
+     "margin_to_fail_0.20": 0.16139027,
+     "rho_xsec_ranked_supplementary": 0.05037162,
+     "per_symbol_max_abs_rho": 0.24584876,
+     "per_symbol_max_at": "ONGUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OILEV-V2-INV",
+     "description": "CLOSED V12 shadow: sign-inverted 28D-FLOW (|rho| identical to 28DFLOW by construction)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": -0.03860973,
+     "abs_rho": 0.03860973,
+     "margin_to_fail_0.20": 0.16139027,
+     "rho_xsec_ranked_supplementary": -0.04867124,
+     "per_symbol_max_abs_rho": 0.24584876,
+     "per_symbol_max_at": "ONGUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "OICYC-STOCH28",
+     "description": "CLOSED V14 confirmatory ancestor, proposal-grade approximation: (OI - min28)/(max28 - min28)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": 0.02429731,
+     "abs_rho": 0.02429731,
+     "margin_to_fail_0.20": 0.17570269,
+     "rho_xsec_ranked_supplementary": 0.05515726,
+     "per_symbol_max_abs_rho": 0.32529604,
+     "per_symbol_max_at": "ACEUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OICYC-STOCH28-INV",
+     "description": "sign-inverted OICYC approximation (|rho| identical to OICYC-STOCH28)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": -0.02429731,
+     "abs_rho": 0.02429731,
+     "margin_to_fail_0.20": 0.17570269,
+     "rho_xsec_ranked_supplementary": -0.05288934,
+     "per_symbol_max_abs_rho": 0.32529604,
+     "per_symbol_max_at": "ACEUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "CTL-OISHARE",
+     "description": "V14 measured firing control: cross-sectional OI-value market share",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": -0.14687781,
+     "abs_rho": 0.14687781,
+     "margin_to_fail_0.20": 0.05312219,
+     "rho_xsec_ranked_supplementary": -0.15866572,
+     "per_symbol_max_abs_rho": 0.47231333,
+     "per_symbol_max_at": "ZECUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-28D",
+     "description": "V13 anchor form: mean(OI,28d)/mean(OI,56d)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": 0.06202563,
+     "abs_rho": 0.06202563,
+     "margin_to_fail_0.20": 0.13797437,
+     "rho_xsec_ranked_supplementary": 0.07010383,
+     "per_symbol_max_abs_rho": 0.34359123,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-56D",
+     "description": "V13 neighbour form: mean(OI,56d)/mean(OI,112d)",
+     "n_pairs": 1226,
+     "pooled_spearman_rho": 0.08846726,
+     "abs_rho": 0.08846726,
+     "margin_to_fail_0.20": 0.11153274,
+     "rho_xsec_ranked_supplementary": 0.01273889,
+     "per_symbol_max_abs_rho": 0.39360127,
+     "per_symbol_max_at": "BOMEUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    }
+   ],
+   "verdict": "NOVEL",
+   "blocking_ancestors": [],
+   "thin_passes_margin_lt_0.05": [],
+   "not_run": {
+    "PREMFADE": {
+     "status": "NOT_RUN_UNMEASURABLE_FROM_STAGED_FIELDS",
+     "reason": "premium/basis requires price-premium vs index fields absent from the staged metrics schema (6 fields only); the OIv/OI implied-mark-price identity is a price LEVEL, not a basis, and building a premium proxy from it would itself smuggle a forbidden price signal \u2014 not faked, fail-closed per honesty rules"
+    },
+    "XSECT_MOMENTUM_REVERSAL_SPRINTS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price-derived sprint forms; every audited proposal's primary feature is metrics-derived with no kline/price input (verified per proposal information_source), so feature-level overlap with price-form ancestors is not plausible"
+    },
+    "VOL_SHOCK_SPRINT": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/volatility-derived; proposals read no price/volume field in any primary feature"
+    },
+    "BAB-LOWBETA": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "beta is price-derived; no proposal feature is price-derived"
+    },
+    "LIQEPIS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "V13 episodes were conditioned on price/volume liquidity fields absent from every audited anchor's input set"
+    },
+    "CARRY_FAMILIES_FUNDING_1D_3D_7D": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "funding parquet is staged, but the V6/V7 carry book forms (thresholds, conditioning) are not restaged in this worktree; reconstructing a specific form would require inventing parameters; additionally no audited proposal reads any funding field"
+    },
+    "H-FUNDCROWD-MR": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "same reason as carry families: form not restaged; no proposal reads funding"
+    },
+    "FUNDING_PRICE_DIVERGENCE": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "requires funding + price inputs; no proposal feature uses either"
+    },
+    "LOT_RESIDUAL_MAX / ILLIQ_AMIHUD": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/return-derived (residual idio MAX, Amihud illiquidity); no proposal feature touches price or volume"
+    }
+   },
+   "schema_check": {
+    "hypothesis_id": "A6-V15-P1",
+    "missing_fields": [],
+    "universe_n": 20,
+    "universe_matches_staged_20": true,
+    "confirmatory_status": "EXPLORATORY",
+    "flags": []
+   }
+  },
+  {
+   "hypothesis_id": "A6-V15-P2",
+   "lane": "a6",
+   "family_name": "AXIS-3 taker flow, combined with AXIS-2 crowding stock in a ratio-of-ratio construction (top-trader positioning change per unit of ambient taker aggression)",
+   "grid": "5day",
+   "n_decision_dates": 74,
+   "n_grid_rows": 1480,
+   "n_rows_refused_nan": 54,
+   "primary_feature": "R_i(D) = g / (A_abs + 0.01) over W = [D-12, D-3]; g = ln(TT_2355(D-3)/TT_2355(D-12)); A_abs = mean over W of per-day mean |clip(ln r_t)|",
+   "audit_notes": [
+    "Max measured pooled |rho| = 0.05079854 (OICYC-STOCH28); all margins >= 0.14920146 \u2014 no thin comparisons.",
+    "Same refusal decode as A6-V15-P1 (54 rows): endpoint-on-defect-date refusals plus ONG/ACE hole-cluster window refusals.",
+    "5-day decision grid: 74 decision dates; 1480 grid rows."
+   ],
+   "comparisons": [
+    {
+     "ancestor": "OILEV-V2-28DFLOW",
+     "description": "rejected V12 anchor: 28d rolling sum of signed daily OI change, read at 00:00 stamp",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": 0.0348706,
+     "abs_rho": 0.0348706,
+     "margin_to_fail_0.20": 0.1651294,
+     "rho_xsec_ranked_supplementary": -0.00473865,
+     "per_symbol_max_abs_rho": 0.21718438,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OILEV-V2-INV",
+     "description": "CLOSED V12 shadow: sign-inverted 28D-FLOW (|rho| identical to 28DFLOW by construction)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": -0.0348706,
+     "abs_rho": 0.0348706,
+     "margin_to_fail_0.20": 0.1651294,
+     "rho_xsec_ranked_supplementary": 0.0071642,
+     "per_symbol_max_abs_rho": 0.21718438,
+     "per_symbol_max_at": "BNBUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "OICYC-STOCH28",
+     "description": "CLOSED V14 confirmatory ancestor, proposal-grade approximation: (OI - min28)/(max28 - min28)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": 0.05079854,
+     "abs_rho": 0.05079854,
+     "margin_to_fail_0.20": 0.14920146,
+     "rho_xsec_ranked_supplementary": -0.00823199,
+     "per_symbol_max_abs_rho": 0.29397935,
+     "per_symbol_max_at": "SUIUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OICYC-STOCH28-INV",
+     "description": "sign-inverted OICYC approximation (|rho| identical to OICYC-STOCH28)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": -0.05079854,
+     "abs_rho": 0.05079854,
+     "margin_to_fail_0.20": 0.14920146,
+     "rho_xsec_ranked_supplementary": 0.0102847,
+     "per_symbol_max_abs_rho": 0.29397935,
+     "per_symbol_max_at": "SUIUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": "sign-inverted form: |rho| identical to non-inverted form"
+    },
+    {
+     "ancestor": "CTL-OISHARE",
+     "description": "V14 measured firing control: cross-sectional OI-value market share",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": 0.02212037,
+     "abs_rho": 0.02212037,
+     "margin_to_fail_0.20": 0.17787963,
+     "rho_xsec_ranked_supplementary": 0.00071309,
+     "per_symbol_max_abs_rho": 0.29809625,
+     "per_symbol_max_at": "ONGUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-28D",
+     "description": "V13 anchor form: mean(OI,28d)/mean(OI,56d)",
+     "n_pairs": 1426,
+     "pooled_spearman_rho": 0.03501852,
+     "abs_rho": 0.03501852,
+     "margin_to_fail_0.20": 0.16498148,
+     "rho_xsec_ranked_supplementary": 0.00101639,
+     "per_symbol_max_abs_rho": 0.37767702,
+     "per_symbol_max_at": "1000PEPEUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    },
+    {
+     "ancestor": "OITD-56D",
+     "description": "V13 neighbour form: mean(OI,56d)/mean(OI,112d)",
+     "n_pairs": 1226,
+     "pooled_spearman_rho": 0.03712579,
+     "abs_rho": 0.03712579,
+     "margin_to_fail_0.20": 0.16287421,
+     "rho_xsec_ranked_supplementary": 0.06508107,
+     "per_symbol_max_abs_rho": 0.28176072,
+     "per_symbol_max_at": "SOLUSDT",
+     "n_symbols_with_defined_rho": 20,
+     "note": null
+    }
+   ],
+   "verdict": "NOVEL",
+   "blocking_ancestors": [],
+   "thin_passes_margin_lt_0.05": [],
+   "not_run": {
+    "PREMFADE": {
+     "status": "NOT_RUN_UNMEASURABLE_FROM_STAGED_FIELDS",
+     "reason": "premium/basis requires price-premium vs index fields absent from the staged metrics schema (6 fields only); the OIv/OI implied-mark-price identity is a price LEVEL, not a basis, and building a premium proxy from it would itself smuggle a forbidden price signal \u2014 not faked, fail-closed per honesty rules"
+    },
+    "XSECT_MOMENTUM_REVERSAL_SPRINTS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price-derived sprint forms; every audited proposal's primary feature is metrics-derived with no kline/price input (verified per proposal information_source), so feature-level overlap with price-form ancestors is not plausible"
+    },
+    "VOL_SHOCK_SPRINT": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/volatility-derived; proposals read no price/volume field in any primary feature"
+    },
+    "BAB-LOWBETA": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "beta is price-derived; no proposal feature is price-derived"
+    },
+    "LIQEPIS": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "V13 episodes were conditioned on price/volume liquidity fields absent from every audited anchor's input set"
+    },
+    "CARRY_FAMILIES_FUNDING_1D_3D_7D": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "funding parquet is staged, but the V6/V7 carry book forms (thresholds, conditioning) are not restaged in this worktree; reconstructing a specific form would require inventing parameters; additionally no audited proposal reads any funding field"
+    },
+    "H-FUNDCROWD-MR": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "same reason as carry families: form not restaged; no proposal reads funding"
+    },
+    "FUNDING_PRICE_DIVERGENCE": {
+     "status": "NOT_RUN_UNDERDETERMINED_FORM",
+     "reason": "requires funding + price inputs; no proposal feature uses either"
+    },
+    "LOT_RESIDUAL_MAX / ILLIQ_AMIHUD": {
+     "status": "NOT_RUN_APPLICABILITY_EXCLUDED",
+     "reason": "price/return-derived (residual idio MAX, Amihud illiquidity); no proposal feature touches price or volume"
+    }
+   },
+   "schema_check": {
+    "hypothesis_id": "A6-V15-P2",
+    "missing_fields": [],
+    "universe_n": 20,
+    "universe_matches_staged_20": true,
+    "confirmatory_status": "EXPLORATORY",
+    "flags": []
+   }
+  }
+ ],
+ "attestations": [
+  {
+   "lane": "a4",
+   "present": true,
+   "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+   "outcome_blind": true,
+   "proposals": [
+    "A4-V15-P1",
+    "A4-V15-P2"
+   ],
+   "flags": []
+  },
+  {
+   "lane": "a5",
+   "present": true,
+   "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+   "outcome_blind": true,
+   "proposals": [
+    "A5-V15-P1",
+    "A5-V15-P2"
+   ],
+   "flags": []
+  },
+  {
+   "lane": "a6",
+   "present": true,
+   "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+   "outcome_blind": true,
+   "proposals": [
+    "A6-V15-P1",
+    "A6-V15-P2"
+   ],
+   "flags": []
+  }
+ ],
+ "final": {
+  "A4-V15-P1": "ANCESTRY_BLOCKED",
+  "A4-V15-P2": "ANCESTRY_BLOCKED",
+  "A5-V15-P1": "NOVEL",
+  "A5-V15-P2": "NOVEL",
+  "A6-V15-P1": "NOVEL",
+  "A6-V15-P2": "NOVEL"
+ },
+ "final_summary": {
+  "NOVEL": [
+   "A5-V15-P1",
+   "A5-V15-P2",
+   "A6-V15-P1",
+   "A6-V15-P2"
+  ],
+  "ANCESTRY_BLOCKED": [
+   "A4-V15-P1",
+   "A4-V15-P2"
+  ],
+  "NOVELTY_UNMEASURABLE": []
+ }
+}
