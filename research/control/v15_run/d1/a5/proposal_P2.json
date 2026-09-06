@@ -1,0 +1,119 @@
+{
+  "schema": "v15_proposal_v1",
+  "artifact": "d1_blind_proposal",
+  "cycle": "CRYPTO-V15",
+  "lane": "a5",
+  "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+  "hypothesis_id": "A5-V15-P2",
+  "family_name": "CROWD-LATE-CHURN",
+  "axis": "AXIS-2 crowding ratios (account-positioning long/short crowd ratios)",
+  "confirmatory_status": "EXPLORATORY",
+  "mechanism": "count_long_short_ratio is the global account mix (all Binance USDT-M accounts, dominated by small retail) and count_toptrader_long_short_ratio is the same construction restricted to the elite cohort (top 20% by margin balance). The two cohorts react at different speeds: elite accounts reposition early; the broad account base chases narratives late and is the least capitalized, most margin-fragile cohort on the venue. WHO IS SLOW: the broad account base. WHAT: over a trailing 20-day window compare the crowd's mix rotation v_glob = delta_ln(count_long_short_ratio) with the elite cohort's rotation v_top = delta_ln(count_toptrader_long_short_ratio). A large crowd rotation that the elite cohort does NOT mirror (|v_top| < 0.5 x |v_glob|) identifies late, unconfirmed, small-account flow: the marginal money arriving after the well-capitalized cohort has finished repositioning. WHY THE EFFECT EXISTS: that flow is price-inelastic (narrative-driven, terms-insensitive), forms a homogeneous exit-liquidity pool, and is the first cohort force-closed in an adverse move (thinnest margin buffers), so forward returns skew against the crowd's rotation direction. Critically, the anchor ABSTAINS whenever the elite cohort confirms the rotation - those days are treated as healthy repositioning, not crowding; the elite non-confirmation gate is the load-bearing element and is what separates this family from any unconditional crowd fade. OBSERVABLE: per-symbol 20-day log rotations of the two account-count ratios, top-5 most-rotated names, gated by elite non-confirmation; SHORT names where the crowd rotated long unconfirmed, LONG names where it rotated short unconfirmed. WHEN IT MUST FAIL: (i) sustained retail-fueled trends (meme regimes) where late small-account flow IS the fuel for weeks - the anchor bleeds while the crowd keeps being right; (ii) when elite non-confirmation reflects elite absence (delisting risk, hollowed book) rather than disagreement; (iii) regime shifts that straddle the 20-day window so rotations mix two eras. WHAT CONTROL KILLS THE CONVENIENT EXPLANATION: the convenient explanation is 'any fast crowd rotation is adverse because the crowd is always wrong' - i.e., the elite gate is decorative. The firing control runs the identical construction with the gate removed, fading every top-5 crowd rotation unconditionally; if the ungated control reproduces the anchor's passing profile, the mechanism reduces to plain crowd-velocity mean reversion and is falsified as a relabel.",
+  "information_source": {
+    "fields": ["count_long_short_ratio", "count_toptrader_long_short_ratio"],
+    "fields_deliberately_not_read": ["sum_taker_long_short_vol_ratio", "sum_open_interest", "sum_open_interest_value", "any funding rate", "any basis/premium", "any price/volume feature"],
+    "note_on_third_field": "sum_toptrader_long_short_ratio is read ONLY by the neighbour arm (elite POSITION-velocity operationalization); the anchor reads the two account-count ratios",
+    "label_semantics": "start-of-period archive-wide on current published bytes: labeled-T row carries the ratio snapshot at T+5min; daily observation = the 00:00 UTC labeled row of each metrics_date",
+    "row_integrity": "loader sorts rows by create_time; staging refuses any file lacking exactly 288 rows / 288 unique labels / full 00:00..23:55 grid (fail closed, per p3_freeze row_integrity_at_staging)"
+  },
+  "universe": ["1000PEPEUSDT", "AAVEUSDT", "ACEUSDT", "ADAUSDT", "AVAXUSDT", "BCHUSDT", "BNBUSDT", "BOMEUSDT", "BTCUSDT", "DOGEUSDT", "ENAUSDT", "ETHUSDT", "LINKUSDT", "NEARUSDT", "ONGUSDT", "SUIUSDT", "WLDUSDT", "XRPUSDT", "ZECUSDT"],
+  "clock": {
+    "cadence": "daily",
+    "decision_time_utc": "00:00:00 on decision_date D",
+    "conditioning_rule": "every metrics row read satisfies metrics_date <= D - 3 calendar days (MEASURED_BOUND_LAG_3D, hard; conservative ceiling over max measured publication lag 67.47h)",
+    "folds": {
+      "F0": "2025-08-22..2025-12-20 (scored)",
+      "purge_1": "2025-12-21 (book flat, unscored)",
+      "F1": "2025-12-22..2026-04-20 (scored)",
+      "purge_2": "2026-04-21 (book flat, unscored)",
+      "F2": "2026-04-22..2026-08-21 (scored)"
+    },
+    "force_flat": "positions forced flat on the last scored day of every fold; re-entered at the first scored day of the next fold"
+  },
+  "warmup_spec": {
+    "warmup_reference_window": "2025-06-20..2025-08-21 (frozen 56D + purge margin reference)",
+    "max_feature_lookback": "21 usable daily rows spanning [D-23, D-3] (20-day rotation end-anchored at D-3); first S0 decision 2025-08-22 needs metrics from 2025-07-30, fully inside the warmup reference window",
+    "scored_pnl_before": "none; warmup builds feature state only",
+    "fail_closed": "if a symbol has fewer usable rows than required on a decision day it is excluded from that day's ranked set, logged (probe census shows 0 file gaps 2025-06-20..2026-08-21); a decision day on which the fired set is empty is a flat day, counted in decision-count feasibility but not in firing statistics"
+  },
+  "features_and_lags": {
+    "clip_rule": "ratio inputs clipped to [0.01, 100] before log",
+    "v_glob_i_D": "ln(clip(count_long_short_ratio at D-3)) - ln(clip(count_long_short_ratio at D-23)); 20-day crowd rotation",
+    "v_top_i_D": "ln(clip(count_toptrader_long_short_ratio at D-3)) - ln(clip(count_toptrader_long_short_ratio at D-23)); 20-day elite rotation (anchor)",
+    "v_tops_i_D_neighbour_only": "ln(clip(sum_toptrader_long_short_ratio at D-3)) - ln(clip(sum_toptrader_long_short_ratio at D-23)); elite POSITION rotation (neighbour arm only)",
+    "lag_compliance": "all rows satisfy metrics_date <= D-3 (MEASURED_BOUND_LAG_3D)",
+    "no_price_features": "no price, return, volatility, volume, OI, funding or basis input anywhere in the arm"
+  },
+  "entry_exit_rules": {
+    "entry": "on decision date D: rank symbols by |v_glob| descending and take the top 5 (most-rotated names). FIRE SHORT on a top-5 name iff v_glob > 0 AND |v_top| < 0.5 x v_glob (crowd rotated long, elites unconfirmed). FIRE LONG iff v_glob < 0 AND |v_top| < 0.5 x |v_glob| (crowd rotated short, elites unconfirmed). All other names flat",
+    "weights": "fired shorts share side gross 0.5 equally; fired longs share side gross 0.5 equally; if one side is empty its 0.5 moves to the other side; per-name signed weight = min(side_gross / n_side, 0.30) with any cap residual staying in cash (book/cash accounting); gross <= 1.0 always",
+    "rebalance": "daily at decision time over the fired set; a fill occurs only when |delta_w| >= 0.05",
+    "exit": "leaving the fired set, gate no longer firing, or direction flip; no price stops; force-flat on the last scored day of every fold and on purge days"
+  },
+  "fill_model": {
+    "order": "market order at decision time",
+    "fill_price": "00:00 UTC bar open of decision_date D from the authorized staged klines authority (native per-symbol)",
+    "fill_accounting": "one fill event per symbol per rebalance day per side change, notional = |delta_w| x equity, costs charged exactly once per fill (inherited cost-once kernel, turnover single convention)",
+    "delay_arm": "stress delay = +1 day (decision D fills at D+1 00:00 UTC open)"
+  },
+  "cost_assumptions": {
+    "taker_fee_bps": 5.0,
+    "taker_fee_note": "ASSUMPTION: Binance USDT-M VIP0 taker 0.05% of traded notional, charged exactly once per fill",
+    "slippage_ticks": 2,
+    "slippage_note": "2 ticks per fill at the symbol's native tick size from staged contract specs, charged once per fill",
+    "funding": "native 8h funding applied exactly once per holding interval at staged funding rates (booked separately from fill costs, inherited convention)",
+    "stress": "fee x1.5 (7.5 bps), slippage +2 ticks (4 total), execution +1 day delay, applied to booked PnL per frozen selection convention"
+  },
+  "anchor_spec": {
+    "name": "CROWD-LATE-CHURN-ANCHOR",
+    "signal": "gate construction on (v_glob, v_top) as defined in features_and_lags and entry_exit_rules",
+    "construction": "top-5 crowd-rotation names, elite non-confirmation gate, fade the crowd's rotation direction, weights per entry_exit_rules",
+    "direction_preregistration": "fade the UNCONFIRMED crowd rotation direction; this direction is fixed ex ante, and if the sign is wrong the falsification rule kills the family - no post-hoc flip is authorized"
+  },
+  "neighbour_spec": {
+    "name": "CROWD-LATE-CHURN-NB-POSVEL",
+    "variant": "same mechanism, same gate arithmetic, same top-5 breadth and weights, except elite confirmation is measured by the elite POSITION-velocity v_tops (20-day log-change of sum_toptrader_long_short_ratio) instead of the elite ACCOUNT-count velocity v_top; gate: |v_tops| < 0.5 x |v_glob|",
+    "support_rule": "neighbour SUPPORTS if pooled after-cost expectancy > 0 and position PF >= 1.10 (gate 10); an unsupportive neighbour is itself a falsification item",
+    "why_this_neighbour": "tests whether 'elite non-confirmation' survives a different operationalization of the elite cohort (position-weighted vs headcount-weighted), i.e., the mechanism, not one field choice, carries the effect"
+  },
+  "causal_control_spec": {
+    "name": "CTL-CROWDVEL-UNGATED",
+    "construction": "identical construction (top-5 |v_glob| names, same folds, costs, fills, weights) with the elite gate REMOVED: SHORT every top-5 name with v_glob > 0 and LONG every top-5 name with v_glob < 0, unconditionally - pure crowd-velocity fade",
+    "what_it_kills": "the convenient explanation that the elite non-confirmation gate is decorative and all information is 'fast crowd rotation is adverse'",
+    "preregistered_non_reproduction_rule": "the control must NOT produce (pooled after-cost expectancy > 0 AND position PF >= 1.10 AND >= 2 of 3 folds positive). If it does, the elite gate is non-load-bearing, A5-V15-P2 fails stage-A gate 11, and the family is closed as a relabel of plain crowd-velocity mean reversion, regardless of the anchor's own performance"
+  },
+  "falsification_rule": {
+    "statement": "family A5-V15-P2 is REJECTED ex ante if ANY of the following, all numeric and fixed before any scored run:",
+    "items": [
+      "pooled after-cost anchor expectancy <= 0",
+      "pooled position PF < 1.10",
+      "positive folds < 2 of 3",
+      "largest fold-positive share > 0.50",
+      "max drawdown > 0.20",
+      "largest-symbol positive-PnL share > 0.70",
+      "stress set (x1.5 fee / +2 ticks / +1 delay) not all positive",
+      "drop-one symbol or drop-one fold non-vacuous failure (fired set empty on more than 50% of a fold's decision days, or fewer than 20 decision days scored in any fold)",
+      "BTC buy-and-hold excess or BTC-beta context excess non-positive in >= 2 of 3 folds",
+      "neighbour unsupportive (pooled after-cost expectancy <= 0 or PF < 1.10)",
+      "causal control CTL-CROWDVEL-UNGATED reproduces per its preregistered rule",
+      "reproduction replay mismatch (not ALL_MATCH)",
+      "pooled |rho| > 0.20 vs any forbidden family or measured shadow (A7N decorrelation)"
+    ],
+    "no_override": "positive raw PnL never overrides a failed concentration, context or control gate (frozen gate 13)"
+  },
+  "expected_failure_interpretation": "Anchor fails flat while CTL-CROWDVEL-UNGATED passes: the elite gate was decoration, plain crowd-velocity fade carries the information, and the family is closed as a forbidden relabel (gate 11). Anchor passes headline but the control also passes: same conclusion, gate 11 kills the family. Fold concentration (one fold carries the PnL): the late-churn mechanism is regime-bound (e.g., a single late-2025 retail-churn episode) rather than persistent. Long-side and short-side arms with opposite signs: the forced-flow story predicts both sides profitable; one-sided success suggests the signal proxies a directional bias (e.g., net short crypto drift) rather than churn, and the BTC-beta context gate adjudicates. Stress-only failure: fired-name breadth too small, so per-name cost drag exceeds gross edge; mechanism may exist but is untradable at stated costs. D2 |rho| failure vs H-FUNDCROWD-MR or the OILEV/OICYC shadows: 20-day crowd rotations coincide with funding-percentile extremes or OI-crowding states, so the information is not distinct from closed regions and the axis stays closed.",
+  "decorrelation_plan": {
+    "measurement": "D2 computes pooled Spearman rho on daily strategy returns (blind-S0, folds pooled) of the anchor arm vs recorded daily returns of EVERY forbidden item: OITD 28D/56D, LIQEPIS, OILEV-V2 anchor AND its sign-inverted control, OICYC cells, CTL-OISHARE, PREMFADE 28D/56D, BAB-LOWBETA, carry families (funding carry 1D/3D/7D), funding/price divergence, H-FUNDCROWD-MR funding-percentile conditioning, sprint XSECT momentum/reversal/trend/vol-shock forms, LOT residual-MAX, ILLIQ-AMIHUD (as available)",
+    "threshold": "|rho| <= 0.20 pooled against EVERY item; any single breach = auto-reject (A7N), no exceptions",
+    "structural_precommitments": [
+      "no funding-rate input anywhere (H-FUNDCROWD-MR's sole input is never read)",
+      "no OI field input anywhere (OILEV/OICYC/OITD inputs never read)",
+      "no basis/premium input (PREMFADE never proxied)",
+      "no price/vol/momentum feature of any kind (sprint forms never proxied)",
+      "the anchor ABSTAINS on elite-confirmed rotation days by construction - a large subset of high-|v_glob| days a plain crowd-fade would trade is deliberately untraded, which mechanically decorrelates from unconditional crowd fade; this is a design fact D2 verifies, not an assumption it accepts",
+      "the signal is a gated difference of two cohort VELOCITIES (zero-centered), not a level percentile: it can fire long on a name whose crowd ratio is near historic highs (fast rotation down from an extreme) and short on a name near lows, so its sign structure differs from level-MR forms; measured, not assumed"
+    ],
+    "signal_level_audits_for_ledger": "D2 also records: overlap fraction of anchor fire-days vs funding-percentile-extreme days; per symbol-day rank correlation of v_glob vs funding percentile and vs count_long_short_ratio level; and the fraction of days the gate abstains among top-5 rotation days, for the ledger's information-redundancy table"
+  },
+  "status": "ELIGIBLE"
+}
