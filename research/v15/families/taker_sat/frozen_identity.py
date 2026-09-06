@@ -254,6 +254,12 @@ METRICS_GRID = (
     "create_time labels, full 00:00..23:55 grid, sorted by create_time; "
     "violations refuse the cell (fail closed, never synthesized)"
 )
+#: Scored-guard remediation A1-ordered pre-score (driver-owned guard;
+#: V14-aligned); budget still 0/6.
+SCORED_GUARD_REMEDIATION_NOTE = (
+    "scored-guard remediation A1-ordered pre-score (driver-owned guard; "
+    "V14-aligned); budget still 0/6"
+)
 
 # --------------------------------------------------------------------------- #
 # Frozen per-arm config payloads (digest inputs; canonicalised sorted)
@@ -295,6 +301,13 @@ _BOOK_COMMON: dict[str, Any] = {
     },
     "funding": "applied once per settlement stamp; LONG_PAYS_POSITIVE_RATE",
     "funding_rate_abs_cap": FUNDING_RATE_ABS_CAP,
+    "scored_flag_semantics": (
+        "run_arm(scored=...) records the flag verbatim in the cell payload; "
+        "unauthorized scored execution is refused at the DRIVER layer "
+        "(--publish/--expect-head + exactly-once ledger chain), never "
+        "inside the family package (V14-aligned, elite_size_asym pattern)"
+    ),
+    "scored_guard_remediation": SCORED_GUARD_REMEDIATION_NOTE,
     "hole_rule": (
         "feature windows compute over available staged rows only; more than "
         "10% missing metrics-day cells in the lookback window refuses the "
@@ -423,9 +436,9 @@ def frozen_identity(arm_id: str) -> StrategyIdentity:
 #: record made before any scored metric exists; equality with the recomputed
 #: digest is test-pinned).
 TAKER_SAT_ARM_CONFIG_DIGESTS: dict[str, str] = {
-    ANCHOR_ARM: "965d5518bb268d5f599d52b3576852e5681aea15323c71ebdd16c4bcdd2081ae",
-    NEIGHBOUR_ARM: "278119293bb8775d88b717e1bb65111726f94667952c107b0534f954651754ed",
-    CONTROL_ARM: "f3468b8947056a76aa61e1af808b792f011837adc886e910d0a7fe92b0dd60a3",
+    ANCHOR_ARM: "908c8033af9321156404ffa4f8307a6f3a88d4d3ca31ab3756eb469271524caa",
+    NEIGHBOUR_ARM: "fb74cf5747f6e59249312717151f033a7dc8f8ba649cdae4497cb1a14888fdd1",
+    CONTROL_ARM: "9081d4426d05a4619e9f2444fad0ab33f7066ffb3625b581b50c548e2bf6770a",
 }
 
 
@@ -479,6 +492,7 @@ __all__ = [
     "RATIO_CLIP_HI",
     "RATIO_CLIP_LO",
     "REBALANCE_DAYS",
+    "SCORED_GUARD_REMEDIATION_NOTE",
     "STRATEGY_ID",
     "STRESS_DELAY_DAYS",
     "STRESS_EXTRA_TICKS",
