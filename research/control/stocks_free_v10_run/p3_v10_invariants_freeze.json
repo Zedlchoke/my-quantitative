@@ -1,0 +1,40 @@
+{
+ "schema": "stocks_free_v10_run/baseline_invariants@1",
+ "frozen_at_utc": "2026-09-06T01:50:00Z",
+ "producer_role": "A1 (PLAN_stocks_v10 sec3 P3)",
+ "authority": "PLAN_stocks_v10.md sec 2/3/4: book/costs/eligibility/margin-to-fail frozen BEFORE any V10 PnL exists; the V9 payload carries unchanged so results stay denominator-compatible with the 30 prior stocks cells; the observable-layer block is new for V10",
+ "carry_forward_basis": "stocks_free_v9_run/p3_invariants_freeze@1 (frozen 2026-09-06T00:14:00Z; panel sha 67591464...)",
+ "carried_payload": {
+  "schema": "stocks_free_v9_run/p3_invariants_freeze@1",
+  "carried_unchanged": true,
+  "kernel_fixes": {
+   "L_I3_band_resolution": "fail-closed: a traded name without a computed band at costing raises BandResolutionError (research/assets/stocks/kernel_band_cost_v9.py); the silent 10bps fallback is forbidden",
+   "F_A7T_1_ledger": "scored ledgers carry driver-emitted counters only; publication bookkeeping lives in a separate append-only record and never edits driver output"
+  },
+  "death_inclusive_universe": {
+   "cohort": "410 ALIVE_EVIDENCED (frozen panel) + 1550 DEAD_PRICE_CONFIRMED + 219 NOT_DEAD_PRICE_SURVIVAL excluded-with-reasons + 513 GAP_COVERAGE recorded (p0d integrity scan)",
+   "panel_v9_sha256": "67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447"
+  },
+  "folds": [
+   {"fold_id": "S0_FOLD_1", "start": "2018-04-04", "end": "2020-09-01"},
+   {"fold_id": "S0_FOLD_2", "start": "2020-09-10", "end": "2023-02-09"},
+   {"fold_id": "S0_FOLD_3", "start": "2023-02-17", "end": "2025-07-24"}
+  ],
+  "forbidden_inventory": "cumulative through V9 + the nine-entry measured veto set (momentum, semivariance, vol-level, WC-stock intensity, Goodwill/bloat, F1-accrual-flow, depletion interaction, cash-level, sector-exposure form); D2 novelty bar pooled |rho| <= 0.20 measured pre-selection",
+  "costs": "band model A/B/C 10/15/25 bps per side base, stress x2 applied to booked PnL; costs linear in fills; charged exactly once per fill"
+ },
+ "v10_additions": {
+  "observable_layer_invariants": [
+   "PIT month-bucket cohort norms: a group's norm sample contains only filer-periods whose first filing stamp is strictly before the calendar-month bucket start of the group's own decision stamp (same-month peers excluded fail-closed)",
+   "own norms: prior-only — eff' < eff AND first_avail' <= first_avail_E, deduplicated per filer-period (timing is a filing property, not a field property)",
+   "availability evidence: every observable row carries observable_available_at (= first_avail for timing, last_avail for revision); no asserted timestamps anywhere (P-1)",
+   "availability-lag mutation rule (tested): pushing a filing stamp later shifts the evidence stamp and lag by exactly that amount and changes no direction/magnitude",
+   "non-numeric vintage values are excluded-with-reason and counted, never coerced (EXCLUDED_NON_NUMERIC); ZERO_BASE rows keep direction with null magnitude",
+   "negative filing lags are counted in the census (0 observed) and fail closed downstream — never silently dropped",
+   "deadline-distance is DATA_BLOCKED_VALID this cycle; any proposal citing it is infeasible (P2 not_funded)"
+  ],
+  "margin_to_fail_scaffolding": "every Stage-A gate reports distance-to-threshold per P-2 before any remediation can shock it",
+  "min_hist_frozen": {"own": 4, "cohort": 30, "scale": "1.4826*MAD"}
+ },
+ "verdict": "P3_FROZEN"
+}
