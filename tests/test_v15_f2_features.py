@@ -151,14 +151,16 @@ def _day_ns(date_str: str) -> int:
 def test_v15f2_window_ends_exactly_at_D_minus_3():
     d = _day_ns("2025-01-20")
     window10 = features.window_dates(d, 10)
-    window20 = features.window_dates(d, 20)
+    window21 = features.window_dates(d, 21)
     assert features.ns_to_date_str(window10[-1]) == "2025-01-17"  # D-3
     assert features.ns_to_date_str(window10[0]) == "2025-01-08"   # D-12
-    # 20 daily aggregates ending at D-3 start at D-22 (inclusive counting,
-    # exactly the anchor template's [D-12, D-3] = 10 convention)
-    assert features.ns_to_date_str(window20[0]) == "2024-12-29"   # D-22
-    assert len(window10) == 10 and len(window20) == 20
-    assert all(stamp < d for stamp in window10 + window20)
+    # ADJUDICATED_BY_A1 (pre-score): the neighbour binds the explicit dated
+    # range [D-23, D-3] inclusive = 21 daily aggregates (the prose count
+    # "20" was a draft remnant)
+    assert features.ns_to_date_str(window21[0]) == "2024-12-28"   # D-23
+    assert features.ns_to_date_str(window21[-1]) == "2025-01-17"  # D-3
+    assert len(window10) == 10 and len(window21) == 21
+    assert all(stamp < d for stamp in window10 + window21)
 
 
 def _daily_fixture(
@@ -187,13 +189,14 @@ def test_v15f2_anchor_feature_golden():
 
 
 def test_v15f2_neighbour_window_golden():
-    dates = [f"2024-12-{day:02d}" for day in range(29, 32)] + [
+    # ADJUDICATED_BY_A1: [D-23, D-3] inclusive = 21 daily aggregates
+    dates = [f"2024-12-{day:02d}" for day in range(28, 32)] + [
         f"2025-01-{day:02d}" for day in range(1, 18)
     ]
-    assert len(dates) == 20  # [D-22, D-3] inclusive
-    daily = _daily_fixture(dates, a=0.5, oi={"2024-12-29": 100.0, "2025-01-17": 200.0})
+    assert len(dates) == 21
+    daily = _daily_fixture(dates, a=0.5, oi={"2024-12-28": 100.0, "2025-01-17": 200.0})
     score, reason = features.evaluate_symbol_feature(
-        window_days=20,
+        window_days=21,
         with_churn=True,
         daily_by_date=daily,
         decision_date_ns=_day_ns("2025-01-20"),
@@ -244,21 +247,23 @@ def test_v15f2_hole_rule_exact_10_percent_boundary():
         decision_date_ns=_day_ns("2025-01-20"),
     )
     assert score2 is None and reason2 == REFUSE_HOLE_FRACTION
-    # neighbour window n=20: 2 missing (10%) computes, 3 (15%) refuses.
-    dates20 = [f"2024-12-{day:02d}" for day in range(29, 32)] + [
+    # neighbour window n=21 ([D-23, D-3], A1 adjudication): 2 missing
+    # (2/21 ~= 9.5%, not more than 10%) computes, 3 (3/21 ~= 14.3%) refuses.
+    dates21 = [f"2024-12-{day:02d}" for day in range(28, 32)] + [
         f"2025-01-{day:02d}" for day in range(1, 18)
     ]
-    daily20 = _daily_fixture(dates20, oi={"2024-12-29": 100.0, "2025-01-17": 200.0})
-    drop2 = {d: v for d, v in daily20.items() if d not in (_day_ns("2025-01-05"), _day_ns("2025-01-06"))}
+    assert len(dates21) == 21
+    daily21 = _daily_fixture(dates21, oi={"2024-12-28": 100.0, "2025-01-17": 200.0})
+    drop2 = {d: v for d, v in daily21.items() if d not in (_day_ns("2025-01-05"), _day_ns("2025-01-06"))}
     score3, reason3 = features.evaluate_symbol_feature(
-        window_days=20, with_churn=True, daily_by_date=drop2,
+        window_days=21, with_churn=True, daily_by_date=drop2,
         decision_date_ns=_day_ns("2025-01-20"),
     )
     assert reason3 is None
     assert score3 == pytest.approx(0.5 / (math.log(2.0) + 0.02))
     drop3 = {d: v for d, v in drop2.items() if d != _day_ns("2025-01-07")}
     score4, reason4 = features.evaluate_symbol_feature(
-        window_days=20, with_churn=True, daily_by_date=drop3,
+        window_days=21, with_churn=True, daily_by_date=drop3,
         decision_date_ns=_day_ns("2025-01-20"),
     )
     assert score4 is None and reason4 == REFUSE_HOLE_FRACTION

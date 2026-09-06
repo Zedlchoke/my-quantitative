@@ -135,7 +135,7 @@ def test_v15f2_frozen_constants_quoted_from_authorities():
     assert LOG_CLIP_ABS == 1.609
     assert CHURN_FLOOR_C == 0.02
     assert LAG_DAYS == 3
-    assert (WINDOW_DAYS_ANCHOR, WINDOW_DAYS_NEIGHBOUR) == (10, 20)
+    assert (WINDOW_DAYS_ANCHOR, WINDOW_DAYS_NEIGHBOUR) == (10, 21)
     assert N_SIDE == 5
     assert WEIGHT_PER_NAME == 0.10
     assert CAP_MAX == 0.30

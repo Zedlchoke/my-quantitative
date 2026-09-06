@@ -13,8 +13,10 @@ Implements ``proposal_P1.json`` ``features_and_lags`` EXACTLY (no tuning):
 * ``anchor_feature_S_i_D``  -- ``S = A_bar / (O + 0.02)`` with ``A_bar`` the
   mean of ``a_i_d`` over W = metrics dates ``[D-12, D-3]`` (10 daily
   aggregates, all <= D-3) and O the churn across the same window endpoints;
-* neighbour                 -- identical except W = ``[D-23, D-3]`` (20 daily
-  aggregates) with the churn endpoints moved to the same window;
+* neighbour                 -- identical except W = ``[D-23, D-3]`` inclusive
+  (21 daily aggregates; ADJUDICATED_BY_A1 pre-score: the explicit dated
+  range binds over the draft prose count "20") with the churn endpoints
+  moved to the same window;
 * causal control CTL-RAWSAT -- the feature is raw ``A_bar_i`` with NO churn
   denominator (identical pipeline, window, ranking, weights, rules, costs).
 

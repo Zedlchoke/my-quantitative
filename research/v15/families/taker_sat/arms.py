@@ -42,7 +42,7 @@ ARM_SPECS: dict[str, dict[str, Any]] = {
         "role": ARM_ROLES[NEIGHBOUR_ARM],
         "window_days": WINDOW_DAYS_NEIGHBOUR,
         "with_churn": True,
-        "feature": "S = A_bar / (O + 0.02), W = 20 daily aggregates [D-22, D-3]",
+        "feature": "S = A_bar / (O + 0.02), W = 21 daily aggregates [D-23, D-3]",
         "proposal_arm_id": PROPOSAL_ARM_IDS[NEIGHBOUR_ARM],
     },
     CONTROL_ARM: {
