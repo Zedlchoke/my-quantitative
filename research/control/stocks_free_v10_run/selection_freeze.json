@@ -1,0 +1,37 @@
+{
+ "schema": "stocks_free_v10_run/selection_freeze@1",
+ "frozen_at_utc": "2026-09-06T03:30:00Z",
+ "producer_role": "A1 (PLAN_stocks_v10 sec3 D2 + selection)",
+ "wave_sha": "bc4b028d8b5d552cff9f56d417a8f17265534645",
+ "inputs": {
+  "proposal_hashes": "research/control/stocks_free_v10_run/d1_proposal_hashes.json (six proposals, three outcome-blind lanes)",
+  "novelty_audit": "research/control/stocks_free_v10_run/audits/d2_v10_novelty_measure.json (pooled Spearman midrank vs nine veto entries; control-identifiability rho; zero PnL)"
+ },
+ "selection_rubric_frozen_before_application_order": [
+  "1. MANDATORY LANE: at least one filing-timing (A4) proposal must be selected if any A4 proposal is eligible (PLAN sec2 axis 1 is the mandatory lane)",
+  "2. ELIGIBILITY GATES (measured, pre-selection): pooled |rho| <= 0.20 vs all nine veto entries AND anchor-vs-control |rho| strictly below the proposal's own declared gate (0.70 for A5-H1/A5-H2; 0.95 for A4-H1 anchor-vs-control; placebo-by-construction controls exempt from a rho gate but their measured rho is recorded)",
+  "3. COVERAGE RANK among eligible proposals: measured entity-decision pair count on the >= 63-bar pre-check universe",
+  "4. LANE DIVERSITY: the two selected families come from different lanes",
+  "5. BUDGET: at most two families x three arms = 6 scored cells (the cycle's entire budget); unused slots never reassigned"
+ ],
+ "measured_eligibility": {
+  "SFV10-A4-H1": {"max_abs_veto_rho": 0.0701, "worst_veto": "cash_level", "anchor_vs_control_rho": 0.1507, "gate": 0.95, "pairs": 39513, "verdict": "ELIGIBLE"},
+  "SFV10-A4-H2": {"max_abs_veto_rho": 0.0338, "worst_veto": "vol_level", "anchor_vs_control_rho": null, "gate": "placebo-by-construction (lexicographic)", "pairs": 27134, "verdict": "ELIGIBLE"},
+  "SFV10-A5-H1": {"max_abs_veto_rho": 0.116, "worst_veto": "vol_level", "anchor_vs_control_rho": 0.4695, "gate": 0.7, "pairs": 43501, "verdict": "ELIGIBLE (rho inside the declared 0.1-0.5 band, below the 0.70 gate)"},
+  "SFV10-A5-H2": {"max_abs_veto_rho": 0.2912, "worst_veto": "sector_exposure_form", "anchor_vs_control_rho": 0.98, "gate": 0.7, "pairs": 43601, "verdict": "INELIGIBLE — DOUBLE-BLOCKED (novelty FAIL vs sector-exposure-form veto; control UNIDENTIFIABLE at 0.98 >= 0.70, exactly the proposal's own declared most-likely death point). Not rescuable, not reworded."},
+  "SFV10-A6-H1": {"max_abs_veto_rho": 0.0525, "worst_veto": "goodwill_bloat", "anchor_vs_control_rho": -0.0225, "gate": "none declared", "pairs": 2285, "verdict": "ELIGIBLE on gates but THIN: 2,285 pairs (~76/decision) sits at the proposal's own pre-declared INFEASIBLE-risk floor for scored-decision minimums; not selected"},
+  "SFV10-A6-H2": {"max_abs_veto_rho": 0.1244, "worst_veto": "sector_exposure_form", "anchor_vs_control_rho": null, "gate": "composition control (no rho gate declared)", "pairs": 11203, "verdict": "ELIGIBLE; not selected (coverage rank + lane diversity)"}
+ },
+ "selection": {
+  "selected_families": ["SFV10-A4-H1", "SFV10-A5-H1"],
+  "rationale": "rubric applied in order: (1) the mandatory filing-timing lane must appear — both A4 proposals are eligible, A4-H1 ranks higher on measured coverage (39,513 vs 27,134); (2) the highest-coverage eligible proposal overall is A5-H1 (43,501) from a different lane, satisfying diversity; A6 lanes are not selected under coverage rank + diversity; budget = 2 families x 3 arms = 6 cells, exactly the cycle budget",
+  "arms": {
+   "SFV10-A4-H1": ["SFV10-A4-H1-ANCHOR (own_z)", "SFV10-A4-H1-NEIGHBOUR (cohort_z)", "SFV10-A4-H1-CONTROL (raw first_lag_days)"],
+   "SFV10-A5-H1": ["SFV10-A5-H1-ANCHOR (down-breadth)", "SFV10-A5-H1-NEIGHBOUR (down-severity median rev_mag)", "SFV10-A5-H1-CONTROL (up-mirror breadth)"]
+  },
+  "implementation_spec": "inherited 21-session grid (63+21k per fold), three frozen S0 folds, ALIVE+DEAD_PRICE_CONFIRMED legs with recorded exclusions, band cost model 10/15/25 bps stress x2 charged once per fill with L-I3 fail-closed resolution and C-rate exit ceiling, per-sector tercile net-zero books with >= 6-name sector floor, |Q| >= 4 breadth floor (A5) / latest-in-800d window as-of rule (A4), next-session fills, fill-check, dead-name exit at last close",
+  "not_selected_eligible": ["SFV10-A4-H2 (coverage rank)", "SFV10-A6-H1 (thin feasibility)", "SFV10-A6-H2 (coverage rank + lane diversity)"],
+  "ineligible": ["SFV10-A5-H2 (novelty FAIL + control UNIDENTIFIABLE)"]
+ },
+ "verdict": "SELECTION_FROZEN_TWO_FAMILIES_SIX_ARMS"
+}

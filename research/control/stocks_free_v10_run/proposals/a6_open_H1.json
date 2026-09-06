@@ -1,0 +1,129 @@
+{
+ "schema": "stocks_free_v10_run/d1_proposal@1",
+ "cycle": "STOCKS-FREE-V10",
+ "phase": "D1",
+ "lane": "open axis (lane A6)",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v10/integration",
+ "branch": "orca/stocks-free-v10-integration",
+ "wave_sha": "bc4b028d8b5d552cff9f56d417a8f17265534645",
+ "hypothesis_id": "SFV10-A6-H1",
+ "agent": "A6",
+ "domain": "vintage-revision EVENT drift on the death-inclusive cohort: conditioning variables built from the sign and magnitude of newly available inter-vintage value revisions of already-public filed facts (V10-R1-REV-DIR / V10-R2-REV-MAG), with the EODHD price leg used only for eligibility, band assignment, fills and benchmark context; no price- or volume-derived observable is ranked anywhere, no fundamentals level or ratio enters any arm, no T-clock (filing lag) observable is cited",
+ "title": "Fresh-revision drift: long/short the sign of newly available inter-vintage revisions of filed values, with magnitude tilt, on the death-inclusive cohort",
+ "mechanism": {
+  "who_is_forced_to_react_or_slow_to_react": "A revision of an already-public filed fact is low-salience news: the first vintage is what screens, analyst models, index committees, covenant tests and risk systems were built on, and the correcting vintage arrives inside amended documents with no headline. The slow side is the entire user base of the ORIGINAL number, which re-derives exposures over weeks (documented post-restatement drift). The forced side is the compliance/risk layer that must mark to the corrected value once the corrected vintage becomes available - selling pressure concentrated on down-revised names (Desai-Krishnamurthy-Venkataraman 2006 document short-seller accumulation around restatements) and slow overhang removal on up-revised names.",
+  "why_the_effect_exists": "This is post-earnings-announcement-drift logic (Ball-Brown 1968; Bernard-Thomas 1989, 1990: underreaction to accounting news produces drift over two to four quarters) applied to the correction stream rather than the original stream. Corrections are weaker-salience accounting news than the original announcement, so underreaction should be at least as strong; the restatement literature measures economically significant negative post-announcement drift and cost-of-capital impact after downward corrections (Palmrose-Richardson-Scholz 2004; Hribar-Jenkins 2004), and material misstatements are preceded by observable process signals (Dechow-Ge-Larson-Sloan 2011). The multi-vintage panel's rev_dir/rev_mag observables are the PIT-native, availability-clean form of this correction stream on the death-inclusive cohort, including dying names whose corrections are largest and least arbitraged.",
+  "what_observable_measures_it": "Per filer-field-period group, the P0 layer provides rev_dir (up/down between first and last vintage) and rev_mag (relative magnitude; ZERO_BASE rows keep direction with null magnitude), each stamped available at last_avail (V10-R1/R2, max_age_days 800). At decision t, a name's score sums sign x capped-magnitude over all its value-changed groups whose last_avail falls in the trailing 252-session window. Long net-up-revised, short net-down-revised, equal weight within legs, 0.5/0.5 gross split. No return, volume, price-derived or fundamentals-level observable enters the conditioner.",
+  "when_it_must_fail": "(a) if inter-vintage changes are rounding/noise, expectancy is nonpositive after band costs; (b) if corrections are repriced within the day, the next-session fill clock harvests nothing; (c) if the book is beta-dressed, the risk-matched alpha and ETF-share gates kill it; (d) if the information is the PERSISTENT revision state (an accounting-quality characteristic) rather than FRESH arrival, the one-window-back stale control reproduces the anchor (>= 0.5x same-sign alpha) and the family dies per the frozen causal control rule; (e) if the drift is smaller than the liquidity cost of amended names (which skew band B/C: distressed and small filers amend more), expectancy is nonpositive."
+ },
+ "falsifiable_prediction": "The fresh-revision long/short book (gross 1.0, net approximately 0, ~27 decisions per fold on the inherited 21-session grid, 3 folds) has positive expectancy AFTER base band costs, position PF >= 1.1, >= 2 of 3 folds positive expectancy, max fold MDD <= 15%, risk-matched incremental alpha > 0 overall and in >= 2 folds, ETF-share <= 0.35, and |stale-control alpha| < 0.5 x |anchor alpha|. The family is FALSIFIED if any of: anchor expectancy <= 0 after base costs; the stale control matches or outruns the anchor including the negative-anchor case (frozen falsification-by-control rule, cluster instances 1-10 honored); pooled novelty rho > 0.20 vs any of the nine veto entries at D2; drop-one (symbol or fold) survival fails; the 2x stress rerun is nonpositive; reproduction is not ALL_MATCH.",
+ "universe": {
+  "legs": "ALIVE_EVIDENCED (410) + DEAD_PRICE_CONFIRMED (1550); the full death-inclusive cohort of p3_v10_invariants_freeze.json. GAP_COVERAGE (513) and NOT_DEAD_PRICE_SURVIVAL (219) excluded, recorded, never held.",
+  "eligibility": "at each decision session a name is eligible iff: (i) >= 63 bars through the decision session in its own series (history floor only); (ii) band C or better (ADV63 >= 2,000,000 USD; UNTRADABLE excluded at decision); (iii) RAW close >= 1.00 USD; (iv) a non-empty conditioner score (H1-specific: >= 1 scoreable revision group in the window).",
+  "dead_name_semantics": "preregistered: a held name whose series ends is exited at its last recorded close on the final session (the delisting-return leg is carried by the price series itself); fill-check enforced (a missing bar at the fill session means the order does not exist - no synthetic continuation, no substitute pricing); no post-series prices read, interpolated or synthesized; no survivorship re-substitution; no arm requires a price after any series' last bar.",
+  "no_lookahead_in_class_labels": "alive/dead attribution is computed only as post-hoc stratified REPORTING per fold; the conditioner never uses survival class (it is not knowable at the decision)."
+ },
+ "clock": {
+  "sanctioned_clocks_cited": [
+   {
+    "clock_id": "V10-R1-REV-DIR",
+    "observable": "rev_dir",
+    "available_at": "last_avail",
+    "max_age_days": 800
+   },
+   {
+    "clock_id": "V10-R2-REV-MAG",
+    "observable": "rev_mag",
+    "available_at": "last_avail",
+    "max_age_days": 800
+   }
+  ],
+  "staleness": "every conditioning input carries max_age_days 800 (P2 staleness rule); the 252-session anchor window and the (252, 504]-session control window are both strictly inside the 800-day bound; no unbounded variant exists in any arm.",
+  "no_contemporaneous_inputs": "an observable row conditions decision t iff its last_avail stamp is strictly earlier than the start-of-day UTC of the decision session (date-only stamps take the conservative-later bound: first session strictly after the stamp, per the P-1/P-3 discipline and the availability-lag mutation rule: pushing a vintage stamp later shifts window membership by exactly that amount and changes no direction or magnitude).",
+  "deadline_distance": "NOT cited: DATA_BLOCKED_VALID per p2 not_funded (P-1); any deadline claim is infeasible this cycle.",
+  "T_clock_separation": "no V10-T1/T2/T3 observable (first_lag_days, own_z, cohort_z) is cited or conditioned in any arm; availability stamps are used only as the evidence layer every sanctioned clock already carries (p2 clock_semantics), never as a signal."
+ },
+ "warmup_decisions": 3,
+ "decision_grid": "inherited 21-session grid: per-fold local session indices 63 + 21k, strictly inside each fold, on the union session calendar (~27 decisions per fold expected under the V8/V9 construction; exact counts computed by A9 from the frozen calendar - structure only). Folds frozen per p3: S0_FOLD_1 2018-04-04..2020-09-01, S0_FOLD_2 2020-09-10..2023-02-09, S0_FOLD_3 2023-02-17..2025-07-24. Books forced flat at every fold boundary with cost. Warmup = 3 grid steps (63 sessions) of price history for bands/eligibility; the conditioner needs no expanding history beyond its trailing window, so no additional abstention is declared; the first grid decision of each fold may abstain fail-closed if the window score floors are unmet.",
+ "entry_exit_fills": "signals computed from PIT stamps strictly before the decision session and bars through session t-1 (eligibility, ADV63 band); orders filled at the next session, close-to-close, no same-session fill; fill-check: a name without a bar at the fill session simply does not fill (its order does not exist; legs are NOT renormalized - realized gross is reported); holding one decision to the next (21 sessions); force-flat with cost at fold boundaries; dead-name exit at last recorded close as preregistered in universe.dead_name_semantics.",
+ "costs": {
+  "model": "band model per research/assets/stocks/kernel_band_cost_v9.py, cited verbatim: BAND_BPS = {\"A\": 10.0, \"B\": 15.0, \"C\": 25.0}; band_of(ADV63): >= 50,000,000 A, >= 10,000,000 B, >= 2,000,000 C, else UNTRADABLE; entries never use the UNTRADABLE path.",
+  "application": "costs linear in fills (|dw| x band bps x multiplier / 10,000), charged exactly once per fill per side, applied to BOOKED PnL; no sidecar, no accrual-by-stamp (V13 lesson).",
+  "resolution": "L-I3 fail-closed: a traded name without a computed band raises BandResolutionError; the silent 10 bps fallback is forbidden; terminal/exit fills of names whose band has become UNTRADABLE or missing are charged the C-rate ceiling (25 bps base / 50 stress) per resolve_exit_band_bps - a computed conservative resolution, never a default.",
+  "stress": "stress tier = x2 multiplier on booked PnL (20/30/50 bps); gate: stress PnL > 0 and stress PF >= 1.0."
+ },
+ "arms": [
+  {
+   "role": "anchor",
+   "id": "SFV10-A6-H1-ANCHOR",
+   "spec": "At each decision t: scoreable set W(t) = all filer-field-period revision rows (V10-R1/R2) with last_avail in the trailing 252 sessions. Cohort-wide normalizer P75(t) = 75th percentile of |rev_mag| over W(t); abstain fail-closed if |W(t)| < 30 groups (frozen floor, mirrors the layer's min_hist_cohort=30 convention). Name score S_i = sum over i's groups in W(t) of sign_g x min(|rev_mag_g| / P75(t), 1.0), where sign_g = +1 if rev_dir = up, -1 if down; ZERO_BASE rows (null magnitude) enter with weight 1.0 (declared handling per the P3 invariant that they keep direction). Names with no scoreable group are unscored. Legs: LONG all eligible names with S_i > 0, SHORT all with S_i < 0; equal weight within legs, 0.5 gross per leg; abstain if either leg < 5 names (frozen floor)."
+  },
+  {
+   "role": "neighbour",
+   "id": "SFV10-A6-H1-NEIGHBOUR",
+   "spec": "Material-revision-only book: identical machinery but a group enters W(t) only if |rev_mag| >= P75(t) (top-quartile relative magnitude; ZERO_BASE rows excluded here since their magnitude is null - declared). Tests whether the drift concentrates in material corrections or is diluted by small amendments. Expected to support the anchor (same sign, sparser book); a sign flip marks the mechanism as magnitude-fragile and downweights the family regardless of the anchor (neighbour_mechanism_support gate inherited)."
+  },
+  {
+   "role": "control",
+   "id": "SFV10-A6-H1-CONTROL-STALE",
+   "spec": "One-window-back stale control: identical machinery with the window shifted to last_avail in (t - 504, t - 252] sessions. It deletes exactly the fresh-arrival content the mechanism claims is load-bearing while preserving the persistent revision-state/quality level. RUNNABLE under evidenced semantics by construction (every counted stamp is in the past; it abstains wherever the anchor abstains; it can never abort on data semantics - the forex V3 lesson). Honest ex-ante expectation: revision state is partly persistent within filers, so the control will earn PART of the anchor's behaviour; the family survives only if freshness adds information: |control alpha| < 0.5 x |anchor alpha| (control_alpha_abs_ratio_lt). If the control matches or outruns the anchor - including outperforming a negative anchor - the family is FALSIFIED per the frozen rule. This control knowingly walks into the falsification-by-control cluster's gunsight (V9-A6 stale-63 precedent) and that is its purpose."
+  }
+ ],
+ "exposure_definition": "Per entity i at decision t, for the D2 rank-correlation screen against each of the nine veto entries on the same decision x entity cohort: EXPOSURE_i(t) = S_i(t) = sum over revision rows g of filer i with last_avail_g strictly before decision-session start and last_avail_g > (t - 252 sessions) of s_g x min(|m_g| / P75_W(t), 1.0), where s_g = +1 if rev_dir_g = 'up', -1 if 'down'; m_g = rev_mag_g (null for ZERO_BASE rows, which take weight 1.0 with sign only); P75_W(t) = the 75th percentile of |m| over ALL cohort scoreable rows in the same window (abstain if < 30 rows). Normalization: the p75 cap winsorizes magnitude at 1.0 so sign dominates. Ranking direction: DESCENDING S (most-up-revised = rank 1). Inputs are exactly the two cited clock observables plus their own availability stamps; no price, volume, share-count, sector or fundamentals field enters the exposure. D2 computes pooled Spearman rho of this exposure vs each veto entry exposure; pooled |rho| <= 0.20 required.",
+ "frozen_thresholds": {
+  "window_252_sessions": "one filing year; the PEAD literature locates drift in the two to four quarters after accounting news (Bernard-Thomas 1989/1990); 252 sessions is the same horizon expressed in the grid's session calendar.",
+  "control_window_504_252": "one window back, non-overlapping with the anchor window, same width - deletes freshness, preserves persistence.",
+  "p75_cap_normalization": "keeps the score sign-dominant and O(1) so a single huge revision cannot dominate an equal-weight leg; no fitted parameter (a rank statistic, not an optimized one).",
+  "cohort_scoreable_floor_30": "mirrors the frozen min_hist_cohort=30 convention of the P0 observable layer.",
+  "leg_floor_5_names": "inherited accounting minimum (>= 1 non-CASH leg per scored decision with meaningful equal-weight dispersion).",
+  "gross_1.0_half_per_leg": "cross-sectional mechanism expressed market-neutral; beta dressing is the veto this design must not enter."
+ },
+ "no_parameter_grid_declaration": "one window, one normalization, one floor per concept, all frozen above with stated rationale; no grid search over windows, caps, terciles, universes, top-K or costs anywhere in any arm; the neighbour's p75 materiality cut reuses the anchor's frozen normalizer, introducing no new threshold.",
+ "incremental_alpha_test": "per the frozen factor_and_benchmark contract carried from V8/V9: arm return minus risk-matched SPY context (SPY scaled ex ante by the arm's frozen gross rule), per fold and overall; gate: overall alpha > 0 and >= 2 folds positive; secondary equal-weight sector-ETF factor reported per fold; ETF-share gate <= 0.35. The book is approximately net-neutral by construction, so the alpha gates' expected bind is mechanism absence, not beta dressing - that is the honest crucible.",
+ "drop_one_design": "(1) drop-one-symbol: rerun excluding the max-contribution name; survival iff after-drop expectancy > 0. (2) drop-one-fold: expectancy recomputed with each fold removed; survival iff min over folds > 0. (3) anchor-extreme rerun excluding the 5 largest single-decision weights. All reruns inherit identical eligibility, bands, fills, costs and dead-name semantics.",
+ "margin_to_fail_expectations": {
+  "expectancy_gt_0": "coin-flip ex ante; the literature drift must clear an expected band-B/C-weighted cost of roughly 15-25 bps/side; if it fails, expect a small negative (order 1e-4/decision).",
+  "position_pf_ge_1.1": "expected binding if the mechanism is real; margin expected thin (< 0.1) per P-2.",
+  "folds_positive_ge_2_of_3": "MEDIUM-HIGH RISK: revision waves cluster in calendar time (restatement waves are sector-period episodes), so one fold may carry the whole effect; declared as the most likely structural failure.",
+  "max_fold_mdd_le_0.15": "MEDIUM RISK: net-neutral book helps, but a one-sided revision wave (e.g. a sector-wide downward correction episode) can skew net exposure within the window.",
+  "incremental_alpha": "MEDIUM RISK for a neutral book: the gate is expected to pass only if the drift is cohort-specific rather than factor-timed.",
+  "etf_share_le_0.35": "expected PASS by neutral construction; if it fails the book has accidental factor loading.",
+  "control_alpha_abs_ratio_lt_0.5": "MEDIUM-HIGH RISK and pre-committed: if the control reproduces the anchor, the information is persistent revision state, not drift - accept falsification without argument (V4/V9 precedent).",
+  "stress_2x": "HIGH RISK if base-cost margin is thin (P-2 knife-edge doctrine).",
+  "scored_decision_floors": "MEDIUM-HIGH RISK by construction: 147,512 value-changed groups exist over the full panel lifetime (up 63,342 / down 84,170, published P0 census), but their within-window density per decision is NOT measured in this packet; the 30-group cohort floor and 5-name leg floors make sparsity fail SAFE (abstain), and a floor-driven scored-decision count under the inherited minimums (>= 30 overall, >= 5 per fold) is a legitimate INFEASIBLE verdict, pre-declared here rather than discovered at scoring.",
+  "novelty_rho_le_0.20": "expected PASS vs all nine entries: the exposure is a filed-value change sign, orthogonal by construction to momentum, semivariance, vol-level, WC-stock, Goodwill/bloat, F1-accrual-flow, depletion, cash-level and sector-form exposures; measured, never argued, at D2.",
+  "reproduction_ALL_MATCH": "required; process gate, no economic expectation."
+ },
+ "failure_interpretation": {
+  "anchor_negative_and_control_negative": "revision corrections carry no tradable drift at these costs; REJECT with margin-to-fail per gate (P-2).",
+  "anchor_negative_control_positive_or_reproducing": "falsification-by-control fires; the priced object is persistent revision state or its shadow, not fresh correction news; recorded, never rescued (cluster instance).",
+  "anchor_positive_alpha_negative": "factor-timed revision waves, not mechanism; REJECT.",
+  "only_one_fold_positive": "restatement-wave artifact of a single calendar episode; not a persistent mechanism.",
+  "anchor_positive_all_gates": "proceed to Stage-A with the preregistered parameters only; no re-tuning; margin-to-fail reported per gate."
+ },
+ "novelty_declaration": {
+  "vs_nine_entry_veto_set": "no ranked observable is a return, variance, volume, balance-sheet composition, accrual flow, depletion, cash or sector-form quantity; the exposure is the signed capped magnitude of filed-value changes between vintages; measured |rho| <= 0.20 is a D2 gate and is expected to bind trivially.",
+  "vs_prior_stocks_families": "no prior family conditioned on the revision stream (it did not exist before V10's P0 layer); SFV8-F1/F2 and SFV9-A4-H2 are fundamentals-level/ratio ranks - no shared rank by construction.",
+  "vs_axis_1_lane": "no T-clock observable cited; filing timeliness plays no role in any arm.",
+  "vs_axis_2_lane_disclosure": "the plan's axis 2 sanctions revision direction/magnitude as conditioners; this proposal's identifying claim is the FRESHNESS-CONDITIONAL drift structure (windowed arrival vs one-window-back control), declared here so A1 can measure within-cycle separation against any sibling axis-2 proposal at selection; if A1 measures insufficient separation the proposal is selectable-not-selected, not reworded.",
+  "generic_mechanisms": "ordinary momentum: PASS (returns never ranked). PEAD on reported earnings surprises: PASS (no analyst or realized-surprise input; the conditioner is a filing-vintage diff, not an earnings-vs-consensus object). low-salience-news underreaction is the literature lineage, not a reused exposure form.",
+  "blocked_channels": "PASS: staged sha-pinned SEC observables + owner-entitled EODHD prices only; no new vendor leg, no keyed fetch.",
+  "rescue_variant_check": "no parameter, universe, sign or name variant of any forbidden family; a sign-flip of any rejected cell is not proposed."
+ },
+ "infeasibility_declarations": "dropped at design time: (1) deadline-distance conditioning - DATA_BLOCKED_VALID (p2 not_funded), infeasible; (2) disclosure-volume shock (facts-count change) - not among the funded V10-T/R clocks, infeasible this cycle; (3) conditioning on realized post-revision RETURN magnitudes - look-ahead by construction, dropped; (4) same-day revision repricing capture - requires intraday evidence that does not exist in the authorized layer, dropped.",
+ "source_to_test_map": {
+  "inputs": ".staging_sec_v10/v10_revision_observables.jsonl (sha b1477.../7110c... pinned in p0_v10_observable_manifest.json) + staged EODHD series (owner-entitled, probe 6/6 PASS lineage) + p2_v10_coverage_first.json (funded clocks) + p3_v10_invariants_freeze.json (folds, cohort, costs) + frozen sector/share-count panel fields only where the benchmark contract requires them.",
+  "pipeline": "load revision rows with last_avail stamps -> per-decision window sets -> P75 normalizer -> name scores -> legs -> eligibility/bands from bars through t-1 -> next-session fills with fill-check -> band-aware costs (L-I3 fail-closed) -> folds -> Stage-A gates + stale control + drop-one + stress rerun + alive/dead stratified attribution reporting.",
+  "not_touched": "no T-clock observable, no deadline evidence, no fundamentals ratio, no price-derived signal."
+ },
+ "implementation_estimate": "single serial cell: revision JSONL scan (minutes), price series load, ~80-decision grid, three arms + stress + drop-one; well under the 120-minute per-cell timeout and 8 GB; heavy_cap 1; no network fetch.",
+ "literature": [
+  "Ball & Brown (1968), 'An Empirical Evaluation of Accounting Income Numbers', Journal of Accounting Research 6(2) - underreaction to accounting news (the drift ancestor)",
+  "Bernard & Thomas (1989), 'Post-Earnings-Announcement Drift: Delayed Price Response or Risk Premium?', JAR 27 (Supplement); Bernard & Thomas (1990), JAR 28(2) - drift concentrated over two to four quarters; the 252-session window rationale",
+  "Palmrose, Richardson & Scholz (2004), 'Determinants of Market Reactions to Restatement Announcements', Journal of Accounting and Economics 38(1) - negative abnormal returns after restatement corrections",
+  "Hribar & Jenkins (2004), 'The Effect of Accounting Restatements on Earnings Revisions and the Estimated Cost of Capital', Review of Accounting Studies 9 - persistent valuation impact of corrected statements",
+  "Desai, Krishnamurthy & Venkataraman (2006), 'Do Short Sellers Target Firms with Poor Earnings Quality? Evidence from Earnings Restatements', Review of Accounting Studies 11 - the forced/short side of the correction trade",
+  "Dechow, Ge, Larson & Sloan (2011), 'Predicting Material Accounting Misstatements', Contemporary Accounting Research 28(1) - correction and process signals as misstatement predictors"
+ ],
+ "outcome_blind_attestation": "No returns, PnL, per-arm outcome or any scored metric exists in this packet or was computed for it; no outcome file was read (none exists); every count cited is a published Phase-P census number from the frozen control artifacts (p0/p2/p3, run_contract), and every structural expectation is declared with its failure direction. The proposal is frozen at wave SHA bc4b028d8b5d552cff9f56d417a8f17265534645 and remains falsifiable in every preregistered direction."
+}
