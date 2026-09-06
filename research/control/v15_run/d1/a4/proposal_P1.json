@@ -1,0 +1,126 @@
+{
+  "schema": "v15_d1_proposal_v1",
+  "cycle": "CRYPTO-V15",
+  "lane": "a4",
+  "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+  "hypothesis_id": "A4-V15-P1",
+  "proposal_status": "PROPOSED",
+  "axis": "AXIS-1_OI_LEVEL_STRUCTURE",
+  "confirmatory_status": "EXPLORATORY",
+  "family_name": "REGSTAB — register-stability premium (cross-sectional positioning-churn dispersion)",
+
+  "mechanism": "Every perpetuals register holds two kinds of committed capital: slow positions (hedgers and conviction accounts that hold through days-to-weeks) and fast leverage traffic (funding- and momentum-sensitive accounts that open and close inside days). sum_open_interest is the stock of that register; its daily log-changes are the register's regeneration rate. A register whose OI is persistently stable is dominated by slow capital; a register that continually sheds and re-accumulates contracts is dominated by fast leverage traffic. Fast traffic is structurally penalized: its exits are mechanical (stops and margin calls), they cluster across accounts, and they execute as cascade fills against thinning books, so the hosting symbol suffers adverse price impact exactly when the traffic must leave. Slow-capital registers generate no cascade selling. Therefore, after taker costs at a daily clock, the high-churn register should carry a negative stability premium relative to the stable register. Observable: churn28 = mean of |delta_log(sum_open_interest)| over the trailing 28 available metrics dates per symbol — unsigned, scale-free, read only at metrics_date <= decision_date - 3d. Book: long the stable tercile, short the churn tercile across the 20-symbol universe, rebalanced daily. Who is forced to sell: the fast-traffic register, mechanically, on stop/margin cascades. Who is slow: stable-register holders, who never need to transact. When it must fail: (i) if churn is merely a proxy for price volatility and a positive volatility premium dominates the window, the price-volatility placebo book should reproduce the anchor and kill it; (ii) if churn is a persistent structural trait of each symbol, the book collapses into a near-static structural sort and D2's measured rho vs CTL-OISHARE or BAB-LOWBETA will exceed 0.20 — the proposal then dies pre-scoring, which is the correct outcome, measured not argued.",
+
+  "axis_degeneracy_note": "The two AXIS-1 fields satisfy sum_open_interest_value / sum_open_interest = implied mark price, so ANY joint use of both fields that does not cancel price collapses to a price-level/momentum signal (PREMFADE-adjacent, forbidden; price-derived cross-sectional forms are mined to rejection per ledger F). This proposal therefore uses sum_open_interest ONLY, at second-moment (unsigned dispersion) structure — deliberately not the level (OILEV-V2 STOCK), not the signed flow (OILEV-V2 FLOW / OITD), not the cycle phase (OICYC), not the cross-sectional share (CTL-OISHARE shadow).",
+
+  "information_source": {
+    "fields": ["sum_open_interest"],
+    "authorized_axis_fields_not_used": ["sum_open_interest_value"],
+    "why_unused": "sum_open_interest_value / sum_open_interest is a price identity; joint use would smuggle a price signal into an OI-axis proposal.",
+    "source": "data.binance.vision data/futures/um/daily/metrics per probe_verdict_v15.json; label semantics start-of-period, snapshot at label+5min, row identity by normalized snapshot time per p3_freeze_v15.json data contract",
+    "control_field_note": "The causal negative control alone uses the authorized staged klines (price) BY DESIGN — it is the price-only placebo; the anchor family's information source remains the OI field only."
+  },
+
+  "universe": ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT","BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT","ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"],
+
+  "clock": {
+    "frequency": "daily",
+    "decision_stamp_utc": "00:00",
+    "folds": "F0/F1/F2 over blind-S0 2025-08-22..2026-08-21 with 1-day purge per frozen V12/V14 fold contract; proposer working thirds: F0 2025-08-22..2025-12-20, purge 2025-12-21, F1 2025-12-22..2026-04-20, purge 2026-04-21, F2 2026-04-22..2026-08-21; force-flat on purge days and at each fold boundary; the runner's frozen fold calendar supersedes these thirds if it differs",
+    "availability_compliance": "MEASURED_BOUND_LAG_3D hard-binding: all conditioning metrics rows satisfy metrics_date <= decision_date - 3 calendar days; design needs no faster availability and is invariant to within-envelope publication-lag uncertainty including the REWRITTEN_SPAN caveat"
+  },
+
+  "warmup_spec": {
+    "warmup_start": "2025-06-20 (probe warmup_reference_window)",
+    "requirement": "28 metrics dates + 3d lag ~= 31 days of metrics history before the first decision; fits the 63-day reference warmup",
+    "first_decision": "2025-08-22, reading metrics rows with metrics_date <= 2025-08-19"
+  },
+
+  "features_and_lags": [
+    {
+      "feature": "churn28(s, t)",
+      "formula": "mean_{i=0..27} | log(sum_open_interest(s, d_i) / sum_open_interest(s, d_{i-1})) | over the 28 most recent available metrics dates d_i at symbol s",
+      "lag": "max(metrics_date used) <= decision_date - 3 calendar days (MEASURED_BOUND_LAG_3D)",
+      "normalization": "cross-sectional rank over all 20 universe symbols each decision date; ties broken by symbol id ascending (deterministic)"
+    }
+  ],
+
+  "entry_exit_rules": {
+    "entry": "each decision date: rank all 20 symbols by churn28; long the bottom tercile (most stable, 6-7 symbols), short the top tercile (most churny, 6-7 symbols); equal signed weight within each side, w = 1/(2*n_side)",
+    "weight_constraints": "|w| <= 0.30 per symbol (satisfied by construction: max |w| ~= 0.083), gross <= 1.0",
+    "exit": "positions exit when the symbol leaves its target tercile at the next daily rebalance; force-flat on purge days and at each fold's final decision date",
+    "no_hysteresis": "no buffers, no minimum-hold, no threshold tuning — the raw rank cut is the spec"
+  },
+
+  "fill_model": {
+    "execution": "decision stamped 00:00 UTC on decision_date D; execution at next-allowed-fill per the frozen scored-driver contract (first tradable stamp after the decision)",
+    "fills": "one fill per symbol per rebalance delta; rebalance deltas only (weight change crosses zero or changes magnitude), not round-trips",
+    "cost_charging": "costs charged exactly once per fill (L-V14-0 cost-once kernel), broken out fills vs holding in booked PnL"
+  },
+
+  "cost_assumptions": {
+    "model": "taker_only",
+    "taker_fee_bps": 5.0,
+    "taker_fee_note": "Binance UM VIP0 taker 0.05% assumption, stated ex ante",
+    "slippage_ticks_per_fill": 1,
+    "tick_source": "real per-symbol tick sizes from the staged instrument config",
+    "stress_tier": {
+      "fee_multiplier": 1.5,
+      "extra_slippage_ticks": 2,
+      "extra_decision_delay_days": 1,
+      "applied_to": "booked PnL per frozen convention"
+    }
+  },
+
+  "anchor_spec": {
+    "name": "REGSTAB-ANCHOR-churn28",
+    "book": "daily cross-sectional tercile book on churn28: long stable tercile / short churn tercile, caps and gross as in entry_exit_rules",
+    "sign_prior": "ex-ante expectation is a NEGATIVE expectancy loading on churn28 rank: the short-churn (long-stability) side earns the stability premium",
+    "lookback": "28 metrics dates",
+    "lag": "3-day availability bound, hard"
+  },
+
+  "neighbour_spec": {
+    "name": "REGSTAB-NEIGH-churn56",
+    "book": "identical construction with the churn window extended to 56 metrics dates (churn56 = mean |delta_log OI| over trailing 56 available metrics dates)",
+    "role": "same mechanism, longer register memory; supports the anchor if the stability premium is a persistent property rather than a 28-day artifact",
+    "gate": "Stage-A gate 10: neighbour supports (same-sign positive expectancy or dominates anchor on the frozen support definition)"
+  },
+
+  "causal_control_spec": {
+    "name": "REGSTAB-CTL-VOLCHURN-PLACEBO",
+    "construction": "identical book mechanics (terciles, daily, same caps, same folds) but the ranking feature is price-range churn: rangec28(s,t) = mean over trailing 28 days of (high - low) / previous_close from the authorized staged klines, ranked cross-sectionally; long the low price-range-churn tercile, short the high",
+    "what_it_kills": "the convenient explanation that 'OI churn is just volatility with extra steps and the book is really shorting volatility/crash-prone names'. If price-range churn alone reproduces the anchor's book, the register carries no incremental information.",
+    "preregistered_non_reproduction_rule": "the control MUST NOT reproduce the anchor: if control after-cost expectancy > 0 AND control expectancy >= 0.5 x anchor expectancy with the same sign, the family is FALSIFIED_BY_CONTROL and dies regardless of the anchor's own PnL; if the control earns a negative expectancy while the anchor is positive, the register-specific mechanism survives its placebo",
+    "runnability": "staged klines are the authorized bars authority (probe_verdict_v15.json); control runs under the same LAG_3D conditioning bound on kline dates"
+  },
+
+  "falsification_rule": {
+    "ex_ante_numeric": [
+      "MECHANISM_DEAD if anchor after-cost expectancy <= 0",
+      "STAGE_A: anchor must satisfy all 13 frozen gates in p3_freeze_v15.json, numerically: PF >= 1.10; >= 2/3 folds positive; largest fold-positive share <= 0.50; MDD <= 0.20; largest symbol positive-PnL share <= 0.70; stress tier positive; drop-one symbol and fold non-vacuous; BTC buy-and-hold excess and BTC-beta context excess positive in >= 2/3 folds; neighbour supports; reproduction ALL_MATCH",
+      "FALSIFIED_BY_CONTROL if placebo expectancy > 0 and placebo expectancy >= 0.5 x anchor expectancy (same sign) — fires regardless of anchor PnL",
+      "INVERTED_SHADOW_RECORDED if the anchor loads positively on churn28 (short-stability wins): recorded as an inverted shadow observation, never re-entered as a sign-flip proposal"
+    ],
+    "no_post_hoc_changes": "no parameter, threshold, universe, tercile count, window, cost or gate change after any PnL is visible"
+  },
+
+  "expected_failure_interpretation": {
+    "control_reproduces": "churn is a volatility proxy; the stability-premium story is wrong and the register adds nothing beyond price-range dispersion — family dies with the cluster instance recorded",
+    "anchor_dead_expectancy": "no stability premium after taker costs at a daily clock on this universe/window; fast-traffic hosting is either fairly priced or already arbitraged",
+    "fold_concentration_fail": "the premium exists only in one regime (e.g. a single deleveraging quarter) and is not a durable mechanism — third decisive kill by a marginal gate would be recorded as thin-margin evidence, never weakened",
+    "static_sort_collapse": "if per-symbol churn ranks are near-persistent, weights are near-static and D2's measured rho vs CTL-OISHARE / BAB-LOWBETA exceeds 0.20: ineligible as a relabelled structural sort — measured, not argued",
+    "inverted_control_wins": "if the placebo or an inverted form outperforms the anchor, the frozen mechanism identity/sign is wrong; recorded, never chased (LOT/OILEV-V2 precedent)"
+  },
+
+  "decorrelation_plan": {
+    "d2_requirement": "pooled |rho| <= 0.20 (V14 standard) of this arm's daily signed-weight series vs EVERY forbidden family and measured shadow, recomputed under identical universe/window/LAG_3D semantics per P-3: OITD anchor/neighbour/control (V13), LIQEPIS (V13), OILEV-V2 anchor/neighbour/INV control (V12), OICYC anchor and control cells including CTL-OISHARE (V14), PREMFADE (V14), BAB-LOWBETA (V12), carry families incl. funding carry 1D/3D/7D (V6), funding-crowd MR sprint forms, funding/price divergence forms",
+    "method": "pool daily signed per-symbol weights over blind-S0; pooled Pearson and Spearman rho per forbidden arm; require |rho| <= 0.20 vs every one; any breach = ineligible",
+    "named_structural_risks": [
+      "vs BAB-LOWBETA: both tilt short 'hot' longs; churn is scale-free and price-free, beta is price-derived — expected low rho, measured at D2",
+      "vs CTL-OISHARE: both are cross-sectional positioning sorts; churn measures stability (second moment), share measures size (level) — if churn ranks are static, rho collapses toward a structural-sort identity and the proposal dies",
+      "vs OILEV-V2 FLOW: churn is unsigned (second moment) vs signed first moment — near-orthogonal by construction in sign-alternating regimes; measured, not argued"
+    ],
+    "no_prose_defense": "decorrelation is a measured gate; no argument substitutes for it"
+  }
+}

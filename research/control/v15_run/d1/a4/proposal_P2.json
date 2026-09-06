@@ -1,0 +1,128 @@
+{
+  "schema": "v15_d1_proposal_v1",
+  "cycle": "CRYPTO-V15",
+  "lane": "a4",
+  "wave_sha": "56e4d7c963cf71b403a8f07ccb0c44bf6036f1a2",
+  "hypothesis_id": "A4-V15-P2",
+  "proposal_status": "PROPOSED",
+  "axis": "AXIS-1_OI_LEVEL_STRUCTURE",
+  "confirmatory_status": "EXPLORATORY",
+  "family_name": "REGSHOCK — register-shock fade (time-series forced-positioning-overshoot drift)",
+
+  "mechanism": "A register shock — a single-day |delta_log(sum_open_interest)| far beyond the symbol's own recent distribution — is the signature of a forced, correlated position event, not of gradual positioning: mass closures (liquidation cascades, stop-waves) shrink the register abruptly, and mass herding openings (fresh leverage influx) inflate it. Because these events are mechanical and correlated across accounts, they overshoot. After a forced closure wave, the capital that could not be forced out is what remains in the register, and the price dislocation left behind by cascade fills (fills executed against a thinning book at cascade prices) reverts over the following days — the register itself certifies that the forced seller is exhausted. After a leverage influx, the register is crowded with fresh stop-density and is vulnerable to the next cascade, so the dislocation the influx rode in on persists only briefly and then reverses against the late entrants — the register certifies the presence of future forced sellers. Observable: event = |delta_log OI| > max(P90 of the symbol's trailing 42 metrics-date changes, 5% absolute floor), read at metrics_date <= decision_date - 3d; the trade FADES the shock: down-shock -> long, up-shock -> short, 5-day hold. Who is forced: margin-called holders at down-shocks (they sell mechanically at cascade prices). Who is slow: the entrants after up-shocks, who average in and only unwind later, and the exhausted forced sellers of a down-shock, who are done selling by definition once the register has collapsed. Sign symmetry is preregistered ex ante: both shock directions are faded; no post-hoc one-sided re-specification. When it must fail: (i) if the post-shock drift is generic volatility-event reversal (oversold bounce after any big day), the price-shock placebo reproduces it and the register adds nothing; (ii) if the effect lives only in the first 48 hours, the binding 3-day availability lag makes it unharvestable by design and the anchor fails — an honest fail, never grounds for asserting faster availability; (iii) if shocks are informative continuations (smart-money exits) rather than forced events, the fade loses on both sides.",
+
+  "axis_degeneracy_note": "sum_open_interest_value / sum_open_interest = implied mark price, so any joint use of the two AXIS-1 fields that does not cancel price collapses to a price signal (PREMFADE-adjacent; price-derived forms mined to rejection). This proposal uses sum_open_interest ONLY, at event/first-conditional structure — deliberately not the level (OILEV-V2 STOCK), not the slow signed flow average (OILEV-V2 FLOW / OITD), not the cycle phase (OICYC), not the cross-sectional share (CTL-OISHARE): the identifying object is the RARE EXTREME single-day change conditional on the register's own recent distribution, traded two-sided, not an average or a level.",
+
+  "information_source": {
+    "fields": ["sum_open_interest"],
+    "authorized_axis_fields_not_used": ["sum_open_interest_value"],
+    "why_unused": "the ratio of the two fields is a price identity; joint use would smuggle a price signal into an OI-axis proposal.",
+    "source": "data.binance.vision data/futures/um/daily/metrics per probe_verdict_v15.json; label semantics start-of-period, snapshot at label+5min, row identity by normalized snapshot time per p3_freeze_v15.json data contract",
+    "control_field_note": "The causal negative control alone uses the authorized staged klines (price) BY DESIGN — it is the price-only placebo; the anchor family's information source remains the OI field only."
+  },
+
+  "universe": ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT","BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT","ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"],
+
+  "clock": {
+    "frequency": "daily",
+    "decision_stamp_utc": "00:00",
+    "folds": "F0/F1/F2 over blind-S0 2025-08-22..2026-08-21 with 1-day purge per frozen V12/V14 fold contract; proposer working thirds: F0 2025-08-22..2025-12-20, purge 2025-12-21, F1 2025-12-22..2026-04-20, purge 2026-04-21, F2 2026-04-22..2026-08-21; force-flat on purge days and at each fold boundary; the runner's frozen fold calendar supersedes these thirds if it differs",
+    "availability_compliance": "MEASURED_BOUND_LAG_3D hard-binding: an event on metrics date e is first actionable at decision date e+3; the design targets the persistent post-shock drift from day 3 onward, needs no faster availability, and is invariant to within-envelope publication-lag uncertainty including the REWRITTEN_SPAN caveat"
+  },
+
+  "warmup_spec": {
+    "warmup_start": "2025-06-20 (probe warmup_reference_window)",
+    "requirement": "42 metrics-date changes + 3d lag ~= 45 days of metrics history before the first decision; fits the 63-day reference warmup",
+    "first_decision": "2025-08-22, reading metrics rows with metrics_date <= 2025-08-19"
+  },
+
+  "features_and_lags": [
+    {
+      "feature": "shock(s, e)",
+      "formula": "delta_log_oi(s, e) = log(sum_open_interest(s, e) / sum_open_interest(s, e-1)) over consecutive available metrics dates; event if |delta_log_oi(s, e)| > max( P90( |delta_log_oi(s, .)| over the 42 available metrics dates ending e-1 ), 0.05 )",
+      "lag": "events on metrics date e are read only by decisions with decision_date >= e + 3 calendar days (MEASURED_BOUND_LAG_3D); each decision scans only the most recent eligible metrics date",
+      "direction": "fade: -sign(delta_log_oi(s, e))",
+      "absolute_floor_note": "the 5% floor prevents threshold collapse in quiet registers; the P90 adapts across symbols with very different register volatility — both frozen ex ante"
+    }
+  ],
+
+  "entry_exit_rules": {
+    "entry": "each decision date, for each symbol with an event at its most recent eligible metrics date and no open position on that symbol: open a signed position of weight 0.10 in the fade direction at the decision stamp",
+    "position_limits": "fixed fractional 0.10 per event; max 10 concurrent events (gross <= 1.0 by construction); per-symbol cap 0.30 respected (0.10 < 0.30); one open position per symbol — a new event on a symbol with an open position is ignored (no pyramiding, no re-trigger)",
+    "candidate_overflow": "if more than 10 eligible events arrive on one decision date, keep the 10 largest |delta_log_oi|; ties broken by symbol id ascending (deterministic)",
+    "exit": "close at the decision stamp 5 calendar days after entry (hold = 5 days); force-flat on purge days and at each fold's final decision date",
+    "no_hysteresis": "no trailing stops, no re-entry rules, no threshold tuning — the event definition and the 5-day flat exit are the entire spec"
+  },
+
+  "fill_model": {
+    "execution": "decision stamped 00:00 UTC on decision_date D; execution at next-allowed-fill per the frozen scored-driver contract (first tradable stamp after the decision)",
+    "fills": "one entry fill and one exit fill per event position; rebalance deltas only; force-flat fills at fold boundaries charged the same way",
+    "cost_charging": "costs charged exactly once per fill (L-V14-0 cost-once kernel), broken out fills vs holding in booked PnL"
+  },
+
+  "cost_assumptions": {
+    "model": "taker_only",
+    "taker_fee_bps": 5.0,
+    "taker_fee_note": "Binance UM VIP0 taker 0.05% assumption, stated ex ante; the book is episodic (~2 round-trips per event, ~36+ events per symbol-year at the P90 rate), so per-fill costs dominate and are priced in",
+    "slippage_ticks_per_fill": 1,
+    "tick_source": "real per-symbol tick sizes from the staged instrument config",
+    "stress_tier": {
+      "fee_multiplier": 1.5,
+      "extra_slippage_ticks": 2,
+      "extra_decision_delay_days": 1,
+      "applied_to": "booked PnL per frozen convention; note the +1 delay stress moves the effective event lag to 4 days — if the anchor survives only at lag 3, stress honestly kills it"
+    }
+  },
+
+  "anchor_spec": {
+    "name": "REGSHOCK-ANCHOR-fadeP90-h5",
+    "book": "event-conditioned two-sided fade book: down-register-shock -> long 0.10, up-register-shock -> short 0.10, 5-day hold, limits as in entry_exit_rules",
+    "sign_prior": "ex-ante expectation is POSITIVE expectancy of the fade: forced register events overshoot and revert; a continuation result (fade loses on both sides) is a legitimate falsification",
+    "event_rate_design": "P90 of trailing 42 changes => ~10% of symbol-days flagged => order 700+ symbol-events across 20 symbols over blind-S0, ample for fold population and drop-one tests",
+    "lag": "3-day availability bound, hard"
+  },
+
+  "neighbour_spec": {
+    "name": "REGSHOCK-NEIGH-fadeP90-h10",
+    "book": "identical event definition, threshold, floor and sizing, with the hold extended from 5 to 10 calendar days",
+    "role": "same mechanism, longer drift horizon; supports the anchor if the post-shock reversion is a persistent multi-day drift rather than a 5-day artifact",
+    "gate": "Stage-A gate 10: neighbour supports (same-sign positive expectancy or dominates anchor on the frozen support definition)"
+  },
+
+  "causal_control_spec": {
+    "name": "REGSHOCK-CTL-PRICESHOCK-PLACEBO",
+    "construction": "identical book mechanics (two-sided fade, 0.10 fixed fractional, 5-day hold, same caps, same folds) but events are defined on price volatility instead of the register: shock if daily true-range percent TR% = (high - low)/previous_close > max( P90 of that symbol's trailing 42 daily TR%, 5% floor ), from the authorized staged klines; direction fades the price shock: down-close shock -> long, up-close shock -> short",
+    "what_it_kills": "the convenient explanation that 'post-register-shock drift is just the generic oversold/overbought bounce after any volatility event — OI is a vol detector with extra lag, the register carries no information of its own'. If price shocks alone reproduce the drift, the forced-positioning story is dead.",
+    "preregistered_non_reproduction_rule": "the control MUST NOT reproduce the anchor: if control after-cost expectancy > 0 AND control expectancy >= 0.5 x anchor expectancy with the same sign, the family is FALSIFIED_BY_CONTROL and dies regardless of the anchor's own PnL; if the control earns a negative expectancy while the anchor is positive, the register-specific mechanism survives its placebo",
+    "runnability": "staged klines are the authorized bars authority (probe_verdict_v15.json); control runs under the same LAG_3D conditioning bound on kline dates"
+  },
+
+  "falsification_rule": {
+    "ex_ante_numeric": [
+      "MECHANISM_DEAD if anchor after-cost expectancy <= 0",
+      "STAGE_A: anchor must satisfy all 13 frozen gates in p3_freeze_v15.json, numerically: PF >= 1.10; >= 2/3 folds positive; largest fold-positive share <= 0.50; MDD <= 0.20; largest symbol positive-PnL share <= 0.70; stress tier positive; drop-one symbol and fold non-vacuous; BTC buy-and-hold excess and BTC-beta context excess positive in >= 2/3 folds; neighbour supports; reproduction ALL_MATCH",
+      "FALSIFIED_BY_CONTROL if placebo expectancy > 0 and placebo expectancy >= 0.5 x anchor expectancy (same sign) — fires regardless of anchor PnL",
+      "ASYMMETRY_RECORDED_NOT_RESPECIFIED: if one shock side (up or down) carries all the expectancy, the result is recorded as-is; no post-hoc one-sided re-specification, no re-tuning of threshold, floor, hold or sizing"
+    ],
+    "no_post_hoc_changes": "no parameter, threshold, universe, hold, sizing, cost or gate change after any PnL is visible"
+  },
+
+  "expected_failure_interpretation": {
+    "control_reproduces": "post-shock drift is generic volatility-event reversal; the register certifies nothing beyond what price already shows — family dies with the cluster instance recorded",
+    "anchor_dead_expectancy": "forced-register events do not overshoot on this universe/window, or the 3-day lag consumes the harvestable window: either way the LAG_3D-compliant design cannot earn — an honest fail, never grounds for asserting faster availability",
+    "fold_concentration_fail": "reversion exists only in one regime (e.g. one cascade-heavy quarter); marginal gate kills are recorded with margin-to-fail, never weakened",
+    "continuation_result": "if the fade loses on both sides, register shocks are informed-continuation events (smart-money exits and informed entries), not forced events — recorded as mechanism information, not re-entered with flipped sign (that would be the LOT/OILEV-V2 shadow pattern)",
+    "stress_only_failure": "if the anchor passes at lag 3 but the +1-day stress tier kills it, the effect lives in the day-3 window only — too fragile to fund, recorded as thin"
+  },
+
+  "decorrelation_plan": {
+    "d2_requirement": "pooled |rho| <= 0.20 (V14 standard) of this arm's daily signed-weight series vs EVERY forbidden family and measured shadow, recomputed under identical universe/window/LAG_3D semantics per P-3: OITD anchor/neighbour/control (V13), LIQEPIS (V13), OILEV-V2 anchor/neighbour/INV control (V12), OICYC anchor and control cells including CTL-OISHARE (V14), PREMFADE (V14), BAB-LOWBETA (V12), carry families incl. funding carry 1D/3D/7D (V6), funding-crowd MR sprint forms, funding/price divergence forms",
+    "method": "pool daily signed per-symbol weights over blind-S0; pooled Pearson rho per forbidden arm; because this book is episodic (zero weights on most symbol-days), also report Spearman rho restricted to the nonzero-weight overlap subset per forbidden arm; require pooled |rho| <= 0.20 vs every one; any breach = ineligible",
+    "named_structural_risks": [
+      "vs OILEV-V2-INV shadow: the up-shock fade (short fresh OI influx) resembles shorting OI inflow; the anchor uses single-day extremes conditional on the register's own distribution while the shadow used a slow 28d signed flow average — expected low rho, measured at D2; a breach kills the proposal and that is the correct outcome",
+      "vs LIQEPIS: both are episode/event-conditioned; LIQEPIS conditioned on price/volume liquidity episodes, this conditions on register extremes from a different field — measured, not argued",
+      "vs OICYC: cycle phase is a slow oscillator of the register; this is a rare-event conditional drift — different object, measured at D2"
+    ],
+    "no_prose_defense": "decorrelation is a measured gate; no argument substitutes for it"
+  }
+}
