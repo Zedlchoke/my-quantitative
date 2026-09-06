@@ -1,0 +1,226 @@
+{
+ "schema": "stocks_free_v10_run/a7_prelaunch@2",
+ "audited_at_utc": "2026-09-06T03:45:00Z",
+ "auditor_role": "A7 (independent fresh-context re-audit #2; not the implementer; audits positives stricter than negatives; recomputes from bytes; repairs nothing)",
+ "cycle": "STOCKS-FREE-V10",
+ "audited_state": {
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v10/integration",
+  "branch": "orca/stocks-free-v10-integration",
+  "head": "afad4b19a465fbfb0db1abd23099323795a38d70",
+  "tree": "clean (git status --porcelain empty; git diff HEAD --stat = 0 lines, so audited bytes are exactly the committed bytes)",
+  "base_verified": "git merge-base 3a616380919cd66d1543231613295566423c8b79 HEAD -> 3a61638... (V9 terminal IS the base); git rev-list --count 3a61638..HEAD -> 5; 725ce39 parent = 3a61638; remediation delta = exactly one commit afad4b1 touching 7 named files (d2 script, d2 audit json, selection_freeze, event_log, v1 audit artifact + README, p0 test)"
+ },
+ "verdict": "STOCKS_FREE_V10_S0_LAUNCH_AUTHORIZED",
+ "verdict_rule": "exactly one of AUTHORIZED (zero unresolved HIGH/CRITICAL) / REFUSED (any unresolved HIGH/CRITICAL); both v1 HIGH findings verified remediated and independently reproduced; zero new HIGH/CRITICAL found -> AUTHORIZED",
+ "delta_verification": {
+  "dv1_high1_wc_stock_intensity_tuple_dead_code": {
+   "status": "VERIFIED_REMEDIATED",
+   "code_read": "research/assets/stocks/d2_v10_novelty_measure.py veto_ratio lines 437-481 read end-to-end",
+   "verified": [
+    "the isinstance(num_f, tuple) unpack (lines 465-476) now precedes ANY asof call: num = asof(e, num_f[0], t) then num2 = asof(e, num_f[1], t), both string-keyed; the tuple can never reach asof as a fields key",
+    "the old code path (asof(e, num_f, t) called before the unpack) is gone; git diff 7764c23..afad4b1 confirms the reordering",
+    "flow branch (f1_accrual_flow) still intercepts before the tuple branch, so its 1-tuple argument is unaffected",
+    "the accrual-minus-cash proxy parameter cash_sub was removed entirely (grep count = 0)"
+   ],
+   "published_artifact": "audits/d2_v10_novelty_measure.json: wc_stock_intensity now measured for ALL six proposals (n_per_veto 1888..36375, previously 0 everywhere); zero null veto_rho anywhere"
+  },
+  "dv2_high2_depletion_ancestor_form": {
+   "status": "VERIFIED_REMEDIATED",
+   "code_read": "veto_depletion() lines 483-504 read end-to-end",
+   "verified": [
+    "implements (RE(prior FY) - RE(now) - Cash(now)) / Assets(now) exactly: re_prior via asof(prior_annual=(y, None)) walks back to the latest Dec-eff value with eff year strictly < y (fiscal-matched annual leg); re_now and Cash as-of t; Assets as-of t; any missing leg -> pair skipped (fail-closed)",
+    "fields match the frozen V9 ancestor verbatim: RE = us-gaap:RetainedEarningsAccumulatedDeficit, Cash = us-gaap:CashAndCashEquivalentsAtCarryingValue, Assets = us-gaap:Assets, the same three constants as v9_family_runner.py lines 112-114; form matches the V9 ARM_SPECS score string '(RE(v_prior) - RE(v_now) - Cash(v_now)) / Assets(v_now)' (v9_family_runner line 129, return at line 320)",
+    "RetainedEarnings is now actually read (the v1 finding was that it never was); the old registration 'depletion_interaction': veto_ratio(RE, flow=True, cash_sub=True) is replaced by veto_depletion()",
+    "measured n_per_veto for depletion_interaction: 34041/23270/36552/36560/2022/7822 across the six proposals"
+   ]
+  },
+  "dv3_fail_closed_gate": {
+   "status": "VERIFIED_REMEDIATED",
+   "code_read": "correlating block lines 553-559",
+   "verified": [
+    "novelty_pass_le_020 = (len(valid) == 9 and max(valid) <= 0.20) where valid = non-null veto rhos; the v1 fail-open form bool(valid) and max(valid) <= 0.20 is gone",
+    "a veto with < 10 overlapping pairs makes spearman return None -> excluded from valid -> len(valid) < 9 -> novelty FAIL; a NOT_RUN entry can no longer be passed silently",
+    "vetoes_measured field added per proposal, cross-checked = 9 for all six"
+   ]
+  },
+  "dv4_published_artifact_and_directions": {
+   "status": "VERIFIED",
+   "independent_reproduction": "A7 re-ran the ENTIRE D2 measurement from bytes on its own copy (script copied to /tmp/a7_r2 with only the OUT path patched; repo untouched): streamed the 1.49GB panel, both observable layers, and all price files; exit 0",
+   "result": "the re-run output is IDENTICAL to the published audits/d2_v10_novelty_measure.json in every field (schema, discipline, measured_conventions, decision_dates, results, verdict_rule) except built_at_utc (03:07:49Z published vs 03:30:03Z re-run)",
+   "maxima_and_directions": {
+    "SFV10-A4-H1": "9/9, max|rho| 0.1037 (wc_stock_intensity), ctrl 0.1507 < 0.95 -> ELIGIBLE (direction unchanged; binding veto moved from cash_level 0.0701 to the now-measured wc veto, still well under 0.20)",
+    "SFV10-A4-H2": "9/9, max|rho| 0.0338 (vol_level) -> ELIGIBLE (unchanged)",
+    "SFV10-A5-H1": "9/9, max|rho| 0.116 (vol_level), ctrl 0.4695 < 0.70 -> ELIGIBLE (unchanged)",
+    "SFV10-A5-H2": "9/9, max|rho| 0.2912 (sector_exposure_form) novelty FAIL, ctrl 0.98 >= 0.70 -> INELIGIBLE DOUBLE-BLOCKED (unchanged)",
+    "SFV10-A6-H1": "9/9, max|rho| 0.0662 (depletion_interaction, the properly-measured form) -> eligible on gates, thin, not selected (direction unchanged)",
+    "SFV10-A6-H2": "9/9, max|rho| 0.1244 (sector_exposure_form) -> eligible, not selected (unchanged)"
+   }
+  },
+  "dv5_selection_refreeze": {
+   "status": "VERIFIED_REMEASUREMENT_NOT_GATE_ADJUSTMENT",
+   "evidence": [
+    "selection_freeze.json measured_eligibility updated to the re-measured numbers (vetoes_measured 9 recorded for all six; worst_veto labels updated where the re-measurement moved them: A4-H1 cash_level 0.0701 -> wc_stock_intensity 0.1037; A6-H1 goodwill 0.0525 -> depletion -0.0662), remediation_note present and accurate",
+    "gates unchanged: novelty bar 0.20, ctrl gates 0.95 (A4-H1) / 0.70 (A5-H1/A5-H2) all identical to the pre-remediation freeze; rubric order text unchanged (diff touches no rubric line)",
+    "selection UNCHANGED: selected_families [SFV10-A4-H1, SFV10-A5-H1], same arms, same rationale, same not_selected/ineligible lists",
+    "verdict directions unchanged in all six rows (ELIGIBLE/INELIGIBLE/thin statuses identical to v1)"
+   ]
+  },
+  "dv6_month_bucket_fixture": {
+   "status": "VERIFIED_PINNED_AND_DISCRIMINATING",
+   "evidence": [
+    "new test_cohort_norm_month_bucket_excludes_same_month_peer (tests/stocks_free_v10/test_p0_observables.py lines 297-315): peer D (eff 2020-03-31, stamp 2020-04-05) sits INSIDE decider B's calendar-month bucket (B stamp 2020-04-10) and strictly earlier by day",
+    "code math verified against production p0_v10_observables.py: bucket = dec_instant[:7] (line 230), sample = stamps strictly before bucket start via bisect_left(stamps, b + '-01') (line 161); D excluded -> sample = 30 A entries -> norm 30.0, scale 1.4826*MAD(1) = 1.4826; assertions pin exactly these",
+    "MUTATION PROBE run by A7: a day-strict stamp-window reimplementation (bisect at the decision stamp itself) admits D -> 31 samples -> median 29, MAD 2 -> scale 2.9652; BOTH fixture assertions would fail. The fixture therefore discriminates the bucket rule from the stamp-window rule (v1 MEDIUM-1 resolved)",
+    "suite: .venv/bin/python -m pytest tests/stocks_free_v10/ -q -> 22 passed (was 21 in v1; +1 = the new fixture)"
+   ]
+  }
+ },
+ "items": {
+  "1_freeze_chain": {
+   "status": "PASS",
+   "evidence": [
+    {"cmd": "git merge-base 3a616380919cd66d1543231613295566423c8b79 HEAD", "exit": 0, "out": "3a616380919cd66d1543231613295566423c8b79 (V9 terminal is the merge-base)"},
+    {"cmd": "git rev-list --count 3a61638..HEAD; git log --format='%P' -1 725ce39", "out": "5 commits; 725ce39 parent = 3a61638"},
+    {"cmd": "shasum -a 256 /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/integration/.staging_sec_v9/multivintage_panel.jsonl (1.49GB re-hashed fresh)", "exit": 0, "out": "67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447", "matches_pin": true},
+    {"cmd": "shasum -a 256 .staging_sec_v10/v10_timing_observables.jsonl .staging_sec_v10/v10_revision_observables.jsonl; wc -l both", "exit": 0, "out": {"timing": "b1477ea39b8b794b7f32162cb349ff53fdd1a37b9a64d0ee20e77412ae802337 (5453478 rows)", "revision": "7110cbf010ae6d3f414a1a45eec1e504aff5e94464755991e98605e4795657c2 (1667422 rows)"}, "matches_p0_manifest_full_values": true}
+   ]
+  },
+  "2_pit_authority_p0_layer": {
+   "status": "PASS_WITH_FINDINGS",
+   "code_read": "research/assets/stocks/p0_v10_observables.py re-read end-to-end at HEAD (333 lines, unchanged by the remediation commit)",
+   "verified": [
+    "own norm prior-only: eff' < eff AND first_avail' <= dec_instant (lines 208-209); own group excluded by the strict eff inequality",
+    "cohort norm month-bucket strict exclusion: per-(sector, month-of-eff) buckets precomputed (lines 153-164); bucket selected by dec_instant[:7] (line 230); sample = stamps strictly before the bucket month start; a group's own stamp and every same-month peer excluded fail-closed — matches the P3 invariant text verbatim",
+    "filer-period dedup keeping min first_avail (own_d/coh_d, lines 130-141)",
+    "no asserted timestamps: grep for now()/today()/utcnow/time.time over p0_v10_observables.py and d2_v10_novelty_measure.py = zero hits; observable_available_at = first_avail (timing) / last_avail (revision) — panel evidence only",
+    "negative lags counted in census (lines 202-203), ZERO_BASE keeps direction with null magnitude (lines 298-302), EXCLUDED_NON_NUMERIC counted never coerced (lines 288-290)",
+    "P3 freeze (p3_v10_invariants_freeze.json v10_additions.observable_layer_invariants) pins the month-bucket rule, own-norm rule, mutation rule, non-numeric rule, negative-lag rule, and deadline DATA_BLOCKED_VALID — all match the code"
+   ],
+   "finding_refs": ["LOW-5"]
+  },
+  "3_signal_specs_vs_selection_freeze": {
+   "status": "PASS",
+   "verified": [
+    "ARM_SPECS (v10_family_runner.py lines 56-63) match selection_freeze.json arms exactly: A4-H1 ANCHOR own_z / NEIGHBOUR cohort_z / CONTROL first_lag_days (kind timing, high_long); A5-H1 ANCHOR rev_breadth(-1) / NEIGHBOUR severity (median rev_mag, declared clean-tie 0.0) / CONTROL rev_breadth(+1) (low_long)",
+    "sig_timing: largest-first_avail group, strict gate (av >= decision_date skipped), age <= CLOCK_DAYS = 800 imported from v9_family_runner, ties averaged (disclosed measured convention), exposure = -value, null rows skipped never coerced",
+    "BREADTH_MIN_Q = 4 matches the frozen |Q| >= 4 floor; _qualifying_q = per-field max-eff, last_avail strict gate, 800d bound",
+    "dry_run=True never computes pnl/returns/metrics: r_ret guarded by 'if not dry_run' (lines 302-315), metrics dict only when not dry_run (line 404), fold_pnls/metrics empty in dry-run"
+   ]
+  },
+  "4_two_key_enforcement": {
+   "status": "PASS",
+   "code": "scored_authorized requires owner_go == 'GO STOCKS V10 SCORED EXECUTION' AND os.environ['STOCKS_V10_LAUNCH_AUTHORIZED'] == '1' (lines 69-71); run_arm raises SystemExit when scored and not authorized (lines 169-172); remediation commit touched neither",
+   "probes_live": [
+    {"probe": "scored_authorized(correct phrase, env unset)", "result": "False"},
+    {"probe": "scored_authorized(wrong phrase, env=1)", "result": "False"},
+    {"probe": "subprocess run_arm(dry_run=False, correct phrase, env unset)", "result": "SystemExit SCORED EXECUTION REFUSED"},
+    {"probe": "subprocess run_arm(dry_run=False, wrong phrase, env=1)", "result": "SystemExit SCORED EXECUTION REFUSED"},
+    {"probe": "test_scored_run_refused_without_two_keys", "result": "passes in suite"}
+   ]
+  },
+  "5_dry_run_evidence": {
+   "status": "PASS",
+   "evidence": "q_dryrun_evidence_v10.json (schema stocks_free_v10_run/q_dryrun_evidence@1): 6/6 arms verdict PASS, overall DRY_RUN_PASS_NONVACUOUS; byte_identical_x2 = true for all six arms; leak_scan_findings = [] for all six arms; nonvacuity floors all binding: scored_decisions 78 per arm (>= 30), per fold 26/26/26 (>= 5), populated_frac floor held (floor_total true); q driver gates re-read from v10_q_driver.py bytes (MIN_SCORED_DECISIONS = 30, MIN_PER_FOLD = 5, SAMPLING_FLOOR = 0.25, walk_leak over LEAK_KEYS, two reps compared for byte identity)",
+   "void_classification": "DECISION_UNFILLABLE_VOID remains in the runner (lines 265-282) with the uniform rule (never a scored zero-leg decision; previous book persists; voided entry orders counted); unchanged by the remediation commit; disclosed in event_log (Q_DRY_RUN_PASS_NONVACUOUS entry) and judged honest in v1 (LOW-1 caveats carried)"
+  },
+  "6_s1_seal_and_boundaries": {
+   "status": "PASS",
+   "evidence": [
+    {"check": "no push", "cmd": "git branch -r --contains HEAD", "out": "empty (HEAD not reachable from any remote ref); no origin/orca/stocks-free-v10-integration exists"},
+    {"check": "staging gitignored", "cmd": "grep staging_sec_v10 .gitignore; git check-ignore -v .staging_sec_v10/v10_timing_observables.jsonl", "out": ".gitignore lines 38-40; check-ignore exit 0"},
+    {"check": "staged-by-name commits", "cmd": "git log --stat over all five V10 commits", "out": "named file lists (5/3/11/6/7 files); no bulk-add pattern; remediation commit afad4b1 = 7 named files"},
+    {"check": "key leakage", "cmd": "git grep -niE 'api_token|api_key|eodhd.{0,20}(key|token)|secret' HEAD over V10 code/tests/control", "out": "all matches are env-var lookups and REDACTION code (e.g. REDACT.sub('api_token=REDACTED')) in pre-existing V8/V9 fetchers, plus the word 'secret' in the v1 audit prose; zero literal key material; only .env.example tracked (empty placeholders)"},
+    {"check": "S1 untouched", "cmd": "git grep -niE '\\.staging_s1|stage_1|s1_' HEAD over v10_family_runner/p0_v10_observables/v10_q_driver", "out": "zero hits; state.json s1 = SEALED_UNTOUCHED"}
+   ]
+  },
+  "7_denominators": {
+   "status": "PASS",
+   "evidence": "state.json counters: v10_observed_logical 0, v10_published 0, budget used 0 / planned 6 / unused 6 (never reassigned), stocks_program_after 30/30 (inherited), program_wide 197/200 intake snapshot, survivors 0, workers_owned 0, s1 SEALED_UNTOUCHED, hard_stop = two-key with neither key in existence; phase Q_COMPLETE_AWAITING_A7_PRELAUNCH_AND_OWNER_GO; no scored cell has run"
+  },
+  "8_post_freeze_tests": {
+   "status": "PASS_WITH_VERIFIED_ENVIRONMENTAL_EXCEPTION",
+   "v10_suite": {"cmd": ".venv/bin/python -m pytest tests/stocks_free_v10/ -q", "exit": 0, "out": "22 passed"},
+   "full_targeted": {"cmd": ".venv/bin/python -m pytest tests/stocks_free_v10/ tests/assets/stocks/ -q", "exit": 1, "out": "447 passed, 9 skipped, 1 failed"},
+   "failure_verification_from_git": "the single failure (tests/assets/stocks/test_v4_family_semivar.py::Test07ControlNotAnchor::test_07c_different_decision_lists_on_real_schedule_dates) raises FileNotFoundError for /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v2/z8-exec-1/.staging/SPY_all_p1.json; VERIFIED NOT ON FAITH: git -C <v9 worktree> rev-parse HEAD -> 3a616380919cd66d1543231613295566423c8b79 exactly (the V9 terminal base), and running the identical test there fails identically (same FileNotFoundError, research/stocks_free_v3/authority.py:171) — pre-existing environmental dependency on a deleted V2 worktree artifact, not a V10 regression; verdict-neutral"
+  },
+  "9_breakage_scan": {
+   "status": "PASS",
+   "verified": [
+    "the remediation commit touches only the D2 script, the D2 audit artifact, selection_freeze, event_log, the v1 audit pair, and the p0 test — no production runner/kernel/q-driver/P0 code changed",
+    "consumers of the D2 output: git grep shows only the producer itself and selection_freeze.json (narrative) reference it — no runtime code reads the D2 JSON, so the veto re-implementation cannot break execution",
+    "the fail-closed gate cannot spuriously block: the independent re-run measured 9/9 for all six proposals on the real data (no null rho), so the stricter gate binds nothing that was passing before for the wrong reason",
+    "cash_sub proxy path fully removed (grep = 0); f1_accrual_flow flow branch unaffected; test count 22 = 21 + 1 with no test removed or weakened",
+    "independent D2 re-run reproduces the published artifact field-for-field (only built_at differs) — the published numbers are what the committed code produces"
+   ]
+  }
+ },
+ "findings": [
+  {
+   "id": "MEDIUM-2",
+   "severity": "MEDIUM",
+   "status": "CARRIED_OPEN (carried from v1; non-blocking under the verdict rule)",
+   "title": "D2 still measures A4-H1/A4-H2 exposures on a mean-over-window proxy of the frozen exposure (delta >= 0, same-gate stamps included, mean over all in-window groups) rather than the frozen single largest-first_avail strict-gate group",
+   "files": ["research/assets/stocks/d2_v10_novelty_measure.py (a4_h1_pairs lines 232-257)", "research/control/stocks_free_v10_run/proposals/a4_timing_H1.json (frozen exposure_definition: 'largest first_avail < gate ... never same-gate', single group)"],
+   "evidence": "the remediation re-ran the veto legs (HIGH-1/HIGH-2) but left a4_h1_pairs unchanged; disclosed as a measured convention in the artifact; both D2 eligibility directions for A4-H1 (0.1037 < 0.20, ctrl 0.1507 < 0.95) hold on the proxy, and A5-H1's D2 exposure matches its frozen spec exactly",
+   "verdict_impact": "none under the stated verdict rule (only unresolved HIGH/CRITICAL block); CONDITION: before or at terminal scoring, re-measure the D2 rows for the selected A4-H1 family on the frozen exposure definition and disclose any movement"
+  },
+  {
+   "id": "LOW-1",
+   "severity": "LOW",
+   "status": "CARRIED_OPEN",
+   "title": "DECISION_UNFILLABLE_VOID honest but unpinned by fixtures, not broken out per-arm in the evidence artifact, carrying the scored-phase unattributed-pnl-window caveat",
+   "verdict_impact": "none; must be quantified and disclosed in the terminal report"
+  },
+  {
+   "id": "LOW-2",
+   "severity": "LOW",
+   "status": "CARRIED_OPEN",
+   "title": "sig_timing tie-average convention resolves a frozen-spec ambiguity in code without a recorded A1 adjudication (disclosed in the module docstring; deterministic)",
+   "verdict_impact": "none"
+  },
+  {
+   "id": "LOW-3",
+   "severity": "LOW",
+   "status": "CARRIED_OPEN (now git-verified)",
+   "title": "full targeted stocks suite has one pre-existing environmental failure (deleted V2 worktree artifact); A7 re-verified from git that the V9 worktree HEAD is exactly the base commit 3a61638 and the identical test fails identically there",
+   "verdict_impact": "none (verdict-neutral, pre-existing)"
+  },
+  {
+   "id": "LOW-4",
+   "severity": "LOW",
+   "status": "CARRIED_OPEN",
+   "title": "D2 measurement dates are the V6 census quarterly dates rather than the frozen grid dates (disclosed)",
+   "verdict_impact": "none"
+  },
+  {
+   "id": "LOW-5",
+   "severity": "LOW",
+   "status": "NEW",
+   "title": "p0_v10_observable_manifest.json frozen_parameters.cohort_norm_rule is day-strict paraphrase ('first_avail' < first_avail_E strict; same-day excluded') that under-describes the implemented and P3-frozen month-bucket rule",
+   "files": ["research/control/stocks_free_v10_run/p0_v10_observable_manifest.json", "research/assets/stocks/p0_v10_observables.py (lines 153-164, 230)", "research/control/stocks_free_v10_run/p3_v10_invariants_freeze.json (precise text)"],
+   "evidence": "the implemented rule excludes the entire same-month bucket, a strict superset of what the manifest text excludes; the manifest statement is true but weaker; P3 (the invariant authority) pins the exact rule and matches the code; the stricter rule can only shrink samples (fail-closed), never leak",
+   "verdict_impact": "none; documentation alignment opportunity"
+  },
+  {
+   "id": "LOW-6",
+   "severity": "LOW",
+   "status": "NEW",
+   "title": "self-reported UTC timestamps in several control artifacts run ahead of both the git clock and observed real time (v1 audit audited_at 05:30Z, event_log entries 04:35-05:40Z, state updated_at 04:35Z, all committed inside afad4b1 whose git timestamp is 03:08:26Z; A7's independent re-run at observed real UTC ~03:30Z corroborates the git clock)",
+   "files": ["research/control/stocks_free_v10_run/audits/a7_prelaunch_v10.json", "research/control/stocks_free_v10_run/event_log.jsonl", "research/control/stocks_free_v10_run/state.json"],
+   "evidence": "internal ordering across artifacts is consistent and every load-bearing number was independently recomputed from bytes by A7, so no evidence rests on the timestamps; recorded for clock-hygiene",
+   "verdict_impact": "none"
+  }
+ ],
+ "resolved_findings_from_v1": [
+  {"id": "HIGH-1", "resolution": "tuple unpacked before any asof call; wc veto measured for all six proposals (n 1888..36375); verified by independent byte-level re-run reproducing the published artifact exactly"},
+  {"id": "HIGH-2", "resolution": "veto_depletion() implements (RE_prior_FY - RE_now - Cash)/Assets with the three frozen V9 fields and fiscal-matched Dec annual legs; accrual+cash_sub proxy deleted; verified against v9_family_runner ARM_SPECS form"},
+  {"id": "MEDIUM-1", "resolution": "new fixture pins the month-bucket same-month-peer exclusion; A7 mutation probe shows it fails under a day-strict stamp-window rule (norm 29/scale 2.9652 vs pinned 30.0/1.4826); 22/22 pass"}
+ ],
+ "summary_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 6, "resolved_from_v1": {"HIGH": 2, "MEDIUM": 1}},
+ "launch_conditions": [
+  "the single carried MEDIUM-2 must be discharged by re-measuring the D2 rows for the selected A4-H1 family on the frozen largest-first_avail exposure definition (before terminal scoring, or disclosed in the terminal report with movement quantified)",
+  "the LOW-1 scored-phase void attribution gap must be quantified in the terminal report",
+  "both launch keys remain undrawn: this verdict authorizes the OWNER to turn the first key; scored execution additionally requires the owner's exact phrase GO STOCKS V10 SCORED EXECUTION and STOCKS_V10_LAUNCH_AUTHORIZED=1, neither of which exists at audit time"
+ ],
+ "verdict_statement": "STOCKS_FREE_V10_S0_LAUNCH_AUTHORIZED (re-audit #2). Both v1 HIGH findings are remediated in bytes and verified beyond the artifact: A7 independently re-ran the entire D2 measurement from the committed code against the hash-pinned panel and reproduced the published novelty artifact field-for-field — 9/9 forbidden-ancestor vetoes measured for all six proposals, zero null rho, wc_stock_intensity now genuinely measured (binding veto for the selected A4-H1 family at 0.1037, still far under the 0.20 bar), depletion_interaction now the exact RE-based V9 ancestor form, and the gate fail-closed at 9/9 measured. The selection freeze records the re-measured numbers with a remediation note, leaves every gate and the rubric untouched, and re-applies the identical selection (SFV10-A4-H1 + SFV10-A5-H1) — re-measurement and re-application, not gate adjustment. The new fixture genuinely discriminates the month-bucket rule (proven by mutation probe), the suite is 22/22, the freeze chain re-hashes clean from the 1.49GB panel to both observable layers, PIT authority holds end-to-end, the two-key guard refuses each key alone, the dry-run evidence stays non-vacuous and leak-free, and every boundary (S1 seal, denominators 0/6 and 30/30, gitignored staging, no push, no key material) verifies from bytes. The one open MEDIUM (A4-H1 D2 exposure proxy, carried from v1 as verdict-neutral) is recorded as a launch condition, not a blocker. The launch may proceed to owner GO under the two-key protocol."
+}
