@@ -294,6 +294,27 @@ def test_cohort_norm_dedup_across_fields():
     assert brow["cohort_scale_days"] == pytest.approx(1.4826, abs=1e-4)
 
 
+def test_cohort_norm_month_bucket_excludes_same_month_peer():
+    # A7 MEDIUM-1 pin: the cohort sample is bucketed by calendar month —
+    # a peer whose stamp lies INSIDE the decision's own bucket (2020-04,
+    # here lag 5 -> stamp 2020-04-05, before B's 2020-04-10) is excluded
+    # even though it is strictly earlier than B's stamp. With D excluded
+    # the sample is the 30 A entries (median 30); a stamp-window rule
+    # would give 31 samples (median 29) — this fixture discriminates.
+    specs = []
+    for i in range(30):
+        y = 1990 + i
+        lag = 29 if i % 2 == 0 else 31
+        specs.append(("CIKA", "us-gaap:Assets", _q(y), [(_lag_avail(_q(y), lag), 1000.0)]))
+    specs.append(("CIKD", "us-gaap:Assets", _q(2020), [(_lag_avail(_q(2020), 5), 1000.0)]))
+    specs.append(("CIKB", "us-gaap:Assets", _q(2020), [(_lag_avail(_q(2020), 10), 1000.0)]))
+    groups, sector = _mk_groups(specs)
+    timing, _rev, _c = compute_observables(groups, sector)
+    brow = next(r for r in timing if r["e"] == "CIKB")
+    assert brow["cohort_norm_days"] == pytest.approx(30.0)
+    assert brow["cohort_scale_days"] == pytest.approx(1.4826, abs=1e-4)
+
+
 def test_negative_lag_counted_not_asserted():
     # avail before eff is a data-quality fact, never a crash: counted in the
     # census with a negative lag, fail-closed downstream by P2/P3 gates.

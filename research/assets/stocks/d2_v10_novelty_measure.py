@@ -434,7 +434,7 @@ def main() -> int:
                     out[(e, t)] = dn / tot if tot > 0 else None
         return out
 
-    def veto_ratio(num_f, den_f="us-gaap:Assets", flow=False, cash_sub=False):
+    def veto_ratio(num_f, den_f="us-gaap:Assets", flow=False):
         out = {}
         for t in gates:
             for e in bookable:
@@ -442,7 +442,7 @@ def main() -> int:
                 if not den:
                     continue
                 if flow:
-                    # 3-leg accrual-flow proxy: (dAR + dINV - dAP) / Assets,
+                    # 3-leg accrual-flow: (dAR + dINV - dAP) / Assets,
                     # fiscal-matched annual (Dec) legs — the V9 F1 spec form
                     y = latest_annual_year(e, "us-gaap:AccountsReceivableNetCurrent", t)
                     if y is None:
@@ -460,24 +460,47 @@ def main() -> int:
                         num += sign * (cur - pri)
                     if not ok:
                         continue
-                    if cash_sub:
-                        c = asof(e, "us-gaap:CashAndCashEquivalentsAtCarryingValue", t)
-                        if c is None:
-                            continue
-                        num = num - c
                     out[(e, t)] = num / den
-                else:
-                    num = asof(e, num_f, t)
+                    continue
+                if isinstance(num_f, tuple):
+                    # wc stock: (AssetsCurrent - LiabilitiesCurrent)/Assets —
+                    # unpack BEFORE any asof call (A7 HIGH-1 remediation: the
+                    # tuple must never reach asof as a key)
+                    num = asof(e, num_f[0], t)
                     if num is None:
                         continue
-                    if isinstance(num_f, tuple):
-                        # wc stock: (AssetsCurrent - LiabilitiesCurrent)/Assets
-                        num2 = asof(e, num_f[1], t)
-                        if num2 is None:
-                            continue
-                        out[(e, t)] = (num - num2) / den
-                    else:
-                        out[(e, t)] = num / den
+                    num2 = asof(e, num_f[1], t)
+                    if num2 is None:
+                        continue
+                    out[(e, t)] = (num - num2) / den
+                    continue
+                num = asof(e, num_f, t)
+                if num is None:
+                    continue
+                out[(e, t)] = num / den
+        return out
+
+    def veto_depletion():
+        """The depletion-runway ancestor form exactly: (RE(prior FY) - RE(now)
+        - Cash(now)) / Assets(now), fiscal-matched annual (Dec) legs
+        (A7 HIGH-2 remediation: this veto was previously measured on an
+        accrual-flow-minus-cash proxy; RE is the defining field)."""
+        out = {}
+        RE = "us-gaap:RetainedEarningsAccumulatedDeficit"
+        for t in gates:
+            for e in bookable:
+                assets = asof(e, "us-gaap:Assets", t)
+                if not assets:
+                    continue
+                y = latest_annual_year(e, RE, t)
+                if y is None:
+                    continue
+                re_now = asof(e, RE, t)
+                re_prior = asof(e, RE, t, prior_annual=(y, None))
+                cash = asof(e, "us-gaap:CashAndCashEquivalentsAtCarryingValue", t)
+                if re_now is None or re_prior is None or cash is None:
+                    continue
+                out[(e, t)] = (re_prior - re_now - cash) / assets
         return out
 
     def veto_sector_form():
@@ -498,7 +521,7 @@ def main() -> int:
         "wc_stock_intensity": veto_ratio(("us-gaap:AssetsCurrent", "us-gaap:LiabilitiesCurrent")),
         "goodwill_bloat": veto_ratio("us-gaap:Goodwill"),
         "f1_accrual_flow": veto_ratio(("us-gaap:AccountsReceivableNetCurrent",), flow=True),
-        "depletion_interaction": veto_ratio("us-gaap:RetainedEarningsAccumulatedDeficit", flow=True, cash_sub=True),
+        "depletion_interaction": veto_depletion(),
         "cash_level": veto_ratio("us-gaap:CashAndCashEquivalentsAtCarryingValue"),
     }
     vetoes["sector_exposure_form"] = veto_sector_form()
@@ -529,7 +552,11 @@ def main() -> int:
             entry["n_per_veto"][vn] = len(common)
         valid = [abs(v) for v in entry["veto_rho"].values() if v is not None]
         entry["max_abs_veto_rho"] = max(valid) if valid else None
-        entry["novelty_pass_le_020"] = bool(valid) and max(valid) <= 0.20
+        entry["vetoes_measured"] = len(valid)
+        # fail-closed: ALL NINE forbidden-ancestor entries must be measured;
+        # a null veto (NOT_RUN) makes the novelty gate FAIL, never pass-open
+        entry["novelty_pass_le_020"] = (
+            len(valid) == 9 and max(valid) <= 0.20)
         if p["control"] is not None and anchor:
             common = [k for k in anchor if k in p["control"]
                       and anchor[k] is not None and p["control"][k] is not None]
