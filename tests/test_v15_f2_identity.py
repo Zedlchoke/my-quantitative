@@ -62,6 +62,7 @@ from research.v15.families.taker_sat.frozen_identity import (
     WINDOW_DAYS_ANCHOR,
     WINDOW_DAYS_NEIGHBOUR,
     frozen_arm_digest_report,
+    frozen_identity,
     verify_pinned_authorities,
 )
 
@@ -239,8 +240,32 @@ def test_v15f2_unknown_arm_and_unknown_tier_refused(tmp_path):
         runner_mod.run_arm(ANCHOR_ARM, tmp_path, stress_tier="extreme")
 
 
-def test_v15f2_scored_execution_refused_fail_closed(tmp_path):
-    with pytest.raises(runner_mod.ScoredExecutionForbidden):
-        runner_mod.run_arm(ANCHOR_ARM, tmp_path, scored=True)
-    with pytest.raises(runner_mod.ScoredExecutionForbidden):
-        runner_mod.run_arm(CONTROL_ARM, tmp_path, True)
+def test_v15f2_scored_guard_is_driver_owned_not_in_family():
+    """A1-ordered pre-score remediation: the family package records the
+    ``scored`` flag verbatim and carries NO unconditional scored refusal;
+    the guard lives at the driver (--publish/--expect-head + ledger chain).
+    """
+    from research.v15.families.taker_sat.frozen_identity import (
+        SCORED_GUARD_REMEDIATION_NOTE,
+    )
+
+    assert SCORED_GUARD_REMEDIATION_NOTE == (
+        "scored-guard remediation A1-ordered pre-score (driver-owned guard; "
+        "V14-aligned); budget still 0/6"
+    )
+    for arm in ARM_IDS:
+        config = frozen_identity(arm).config
+        assert "run_arm(scored=...) records the flag verbatim" in config[
+            "scored_flag_semantics"
+        ]
+        assert config["scored_guard_remediation"] == SCORED_GUARD_REMEDIATION_NOTE
+        assert not hasattr(runner_mod, "ScoredExecutionForbidden"), (
+            "the in-family unconditional scored refusal must stay removed"
+        )
+    staged_root = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "research/v15/families/taker_sat/staged_root.json"
+        ).read_text()
+    )
+    assert staged_root["scored_guard_remediation"] == SCORED_GUARD_REMEDIATION_NOTE

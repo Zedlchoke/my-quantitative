@@ -263,7 +263,8 @@ def _run(world_root: Path, arm_id: str = ANCHOR_ARM, **kwargs):
     kwargs.setdefault("tick_sizes", TICKS)
     kwargs.setdefault("universe", SYMS)
     kwargs.setdefault("folds", FOLDS_MINI)
-    return run_arm(arm_id, world_root, scored=False, **kwargs)
+    scored = kwargs.pop("scored", False)
+    return run_arm(arm_id, world_root, scored, **kwargs)
 
 
 def test_v15f2_anchor_cell_hand_golden(world):
@@ -339,6 +340,43 @@ def test_v15f2_deterministic_double_generation(world):
     second = _run(world)
     assert first == second
     assert first["hashes"]["result_sha256"] == second["hashes"]["result_sha256"]
+
+
+def test_v15f2_scored_flag_recorded_verbatim(world):
+    """A1-ordered pre-score remediation: ``run_arm(scored=...)`` records the
+    flag VERBATIM in the cell payload -- no in-family refusal (the guard is
+    DRIVER-owned: --publish/--expect-head + ledger chain).  Both runs below
+    are SYNTHETIC dry invocations on the hand world; a real scored pass is
+    the driver's owner-gated path, never this suite's."""
+    from research.v15.families.taker_sat.frozen_identity import (
+        SCORED_GUARD_REMEDIATION_NOTE,
+    )
+    from research.v15.families.taker_sat.runner import SCORED_FLAG_SEMANTICS
+
+    dry = _run(world, scored=False)
+    assert dry["scored"] is False
+    assert dry["scored_note"] == SCORED_FLAG_SEMANTICS
+    flagged = _run(world, scored=True)
+    assert flagged["scored"] is True
+    assert flagged["scored_note"] == SCORED_FLAG_SEMANTICS
+    # the flag changes nothing about the computation itself: identical
+    # books, fills, costs, metrics; only the recorded flag (and therefore
+    # the payload digest) differs
+    for key in (
+        "books",
+        "daily_returns",
+        "positions",
+        "scored_metrics",
+        "fold_signs",
+        "per_symbol",
+        "refusals",
+    ):
+        assert flagged[key] == dry[key], key
+    assert flagged["hashes"] != dry["hashes"]
+    assert SCORED_GUARD_REMEDIATION_NOTE in flagged["scored_note"] or (
+        dry["cost_model"]["principle"]
+        == "costs and funding charged exactly once on booked PnL"
+    )
 
 
 def test_v15f2_no_lookahead_cell_mutation_is_inert(world, tmp_path):

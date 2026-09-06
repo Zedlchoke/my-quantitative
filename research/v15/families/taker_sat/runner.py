@@ -9,12 +9,19 @@ contract: ``scored_metrics`` with cost broken out fills-vs-holding,
 per-fold nets, per-symbol PnL shares, MDD, position PF, expectancy, refusal
 registry digest).
 
-DISCIPLINE (implementation lane): ``scored=True`` REFUSES fail-closed --
-scored execution is the A1 owner-gated driver path and this lane computes
-no scored flags anywhere.  The runner is a pure, data-injected library over
-a staged parquet root (``<root>/{metrics,klines,funding}/<SYM>.parquet``);
-tests drive it exclusively on HAND-COMPUTED synthetic roots.  Nothing here
-persists artifacts or touches a scored ledger.
+DISCIPLINE (implementation lane): ``scored`` is RECORDED VERBATIM in the
+cell payload -- the family package takes no position on authorization.
+Guarding unauthorized scored execution lives at the DRIVER layer (the
+owner-gated ``--publish`` / ``--expect-head`` / exactly-once ledger chain,
+the V14 ``run_v14_cell.py`` architecture, matched by the elite_size_asym
+family); an in-family unconditional guard would sit at the wrong layer and
+TECHABORT every legitimate scored invocation.  Remediation A1-ordered
+pre-score (driver-owned guard; V14-aligned); budget still 0/6.  Tests and
+dry runs invoke with ``scored=False``.  The runner is a pure, data-injected
+library over a staged parquet root
+(``<root>/{metrics,klines,funding}/<SYM>.parquet``); tests drive it
+exclusively on HAND-COMPUTED synthetic roots.  Nothing here persists
+artifacts or touches a scored ledger.
 
 STRESS TIER (V12 selection freeze via the proposal): base = fee x1.0,
 1 native tick slippage, no delay; stress = fee x1.5 (7.5 bps), +2 ticks
@@ -65,6 +72,15 @@ BAR_MS = 900_000  # 15m klines
 
 SCHEMA_VERSION = "v15i.taker_sat.cell.v1"
 
+#: Recorded verbatim in every cell payload (A1-ordered pre-score remediation:
+#: the scored guard is DRIVER-owned -- --publish/--expect-head + ledger chain
+#: -- never an in-family refusal; V14-aligned, elite_size_asym pattern).
+SCORED_FLAG_SEMANTICS = (
+    "scored flag recorded verbatim; unauthorized scored execution is "
+    "refused at the driver layer (--publish/--expect-head + exactly-once "
+    "ledger chain), never inside the family package"
+)
+
 COST_TIERS: dict[str, dict[str, float]] = {
     "base": {
         "fee_multiplier": 1.0,
@@ -77,10 +93,6 @@ COST_TIERS: dict[str, dict[str, float]] = {
         "delay_days": float(STRESS_DELAY_DAYS),
     },
 }
-
-
-class ScoredExecutionForbidden(ContractViolation):
-    """``run_arm(scored=True)`` is refused: no scored flags from this lane."""
 
 
 # --------------------------------------------------------------------------- #
@@ -219,19 +231,18 @@ def run_arm(
 ) -> dict[str, Any]:
     """Run one frozen arm over the staged root; return the driver cell dict.
 
-    ``scored=True`` refuses fail-closed (see module docstring).  ``folds``
-    defaults to the frozen F0/F1/F2 calendar; the explicit override exists
-    for synthetic fixtures and must satisfy the same structural invariants.
+    ``scored`` is recorded VERBATIM in the cell payload (A1-ordered pre-score
+    remediation: the guard against unauthorized scored execution is
+    DRIVER-owned -- ``--publish``/``--expect-head`` + exactly-once ledger
+    chain -- never an in-family refusal; V14-aligned).  Tests and dry runs
+    invoke with ``scored=False``.  ``folds`` defaults to the frozen F0/F1/F2
+    calendar; the explicit override exists for synthetic fixtures and must
+    satisfy the same structural invariants.
     """
     arm_id = str(arm_id)
     if arm_id not in ARM_IDS:
         raise ContractViolation(f"unknown arm_id {arm_id!r}; expected {ARM_IDS}")
-    if bool(scored):
-        raise ScoredExecutionForbidden(
-            "run_arm(scored=True) is refused: scored execution is the A1 "
-            "owner-gated driver path; the implementation lane computes no "
-            "scored flags anywhere (budget discipline)"
-        )
+    scored = bool(scored)
     spec = arms.arm_spec(arm_id)
     authority_report = verify_pinned_authorities()
     universe_symbols = tuple(sorted(str(s) for s in (universe or UNIVERSE)))
@@ -471,6 +482,7 @@ def run_arm(
         arm_id=arm_id,
         spec=spec,
         universe=universe_symbols,
+        scored=scored,
         stress_tier=str(stress_tier),
         fee_multiplier=fee_multiplier,
         slip_ticks=slip_ticks,
@@ -507,6 +519,7 @@ def _cell_payload(
     arm_id: str,
     spec: Mapping[str, Any],
     universe: Sequence[str],
+    scored: bool,
     stress_tier: str,
     fee_multiplier: float,
     slip_ticks: int,
@@ -612,11 +625,8 @@ def _cell_payload(
         "role": spec["role"],
         "feature": spec["feature"],
         "universe": list(universe),
-        "scored": False,
-        "scored_note": (
-            "implementation-lane compute: no scored execution, no scored "
-            "flags; run_arm(scored=True) refuses fail-closed"
-        ),
+        "scored": bool(scored),
+        "scored_note": SCORED_FLAG_SEMANTICS,
         "stress_tier": str(stress_tier),
         "cost_model": {
             "taker_fee_bps": float(TAKER_FEE_BPS),
@@ -709,8 +719,8 @@ def _cell_payload(
 
 __all__ = [
     "COST_TIERS",
+    "SCORED_FLAG_SEMANTICS",
     "SCHEMA_VERSION",
-    "ScoredExecutionForbidden",
     "StagedDataError",
     "run_arm",
 ]
