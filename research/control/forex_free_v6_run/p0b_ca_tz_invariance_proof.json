@@ -1,0 +1,1101 @@
+{
+ "schema": "forex_free_v6_p0b_ca_tz_invariance_proof_v1",
+ "measured_at_utc": "2026-09-06T00:49:54Z",
+ "commands": [
+  {
+   "step": "build v3 pins + invariance proof (this script; no network)",
+   "cmd": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/forex_free_v6_run/p0b_ca_tz_v3_builder.py",
+   "result": "rows=107 boundaries=2669 same_date_ok=107 flip_rows=3 scheduled_ok=True verdict=FAIL (3 nonstandard WDS change-event rows; 99/99 scheduled 08:30 rows invariant)",
+   "exit": 0
+  },
+  {
+   "step": "targeted tests (synthetic fixtures only; full suite NOT run \u2014 heavy-cap belongs to the V10 sibling)",
+   "cmd": "cd <worktree> && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v6/test_p0_repair.py -q",
+   "result": "11 passed in 0.14s",
+   "exit": 0
+  }
+ ],
+ "task": "PLAN_forex_v6.md section 3 P0b \u2014 CA ET-as-UTC fix (append-only v3) + daily-clock decision-invariance re-proof",
+ "clock_definition": {
+  "source": "research/control/forex_free_v5_run/run_contract.json",
+  "decision_clock": "daily 16:00-NY (DST)",
+  "s0_window_source": "research/control/forex_free_v5_run/p3_conditioning_clocks_v5.json",
+  "s0_window": {
+   "start": "2018-04-04",
+   "end": "2025-07-24"
+  },
+  "boundary_semantics": "16:00 America/New_York each day (DST-correct via zoneinfo): 20:00Z on EDT days, 21:00Z on EST days"
+ },
+ "tz_conversion": {
+  "method": "Python zoneinfo America/Toronto, DST-correct",
+  "scheduled_rule": "08:30 America/Toronto -> 12:30Z on EDT dates, 13:30Z on EST dates",
+  "rows_scheduled_0830": 99,
+  "rows_nonstandard_wds_release_time": 8,
+  "nonstandard_note": "8 rows carry verbatim StatCan WDS getChangedCubeList release times other than 08:30 (secondary-cube change events, e.g. cube 18100007 at 18:56 local on 2021-07-23 while 21 products released at 08:30 local the same day). Their RECORDED local time is converted verbatim with correct DST \u2014 never blanket-08:30."
+ },
+ "proof": {
+  "rows_checked": 107,
+  "boundary_days_checked": 2669,
+  "same_calendar_date_rows_ok": 107,
+  "rows_with_boundary_side_flips": 3,
+  "known_set_equality": "for every boundary B and row r, (v2_stamp <= B) == (v3_stamp <= B); equivalently the known-print set is identical under v2 vs v3 at every decision instant \u2014 violated only by rows listed in mismatches",
+  "scheduled_rows_all_invariant": true
+ },
+ "mismatches": [
+  {
+   "release_date": "2018-05-28",
+   "release_time_local": "America/Toronto 17:03",
+   "v2_stamp_utc": "2018-05-28T17:03:00Z",
+   "v3_stamp_utc": "2018-05-28T21:03:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": [
+    {
+     "boundary": "2018-05-28T20:00:00Z",
+     "boundary_local": "2018-05-28T16:00 EDT",
+     "v2_side": "known",
+     "v3_side": "not known"
+    }
+   ]
+  },
+  {
+   "release_date": "2018-05-29",
+   "release_time_local": "America/Toronto 18:04",
+   "v2_stamp_utc": "2018-05-29T18:04:00Z",
+   "v3_stamp_utc": "2018-05-29T22:04:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": [
+    {
+     "boundary": "2018-05-29T20:00:00Z",
+     "boundary_local": "2018-05-29T16:00 EDT",
+     "v2_side": "known",
+     "v3_side": "not known"
+    }
+   ]
+  },
+  {
+   "release_date": "2021-07-23",
+   "release_time_local": "America/Toronto 18:56",
+   "v2_stamp_utc": "2021-07-23T18:56:00Z",
+   "v3_stamp_utc": "2021-07-23T22:56:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": [
+    {
+     "boundary": "2021-07-23T20:00:00Z",
+     "boundary_local": "2021-07-23T16:00 EDT",
+     "v2_side": "known",
+     "v3_side": "not known"
+    }
+   ]
+  }
+ ],
+ "row_detail": [
+  {
+   "release_date": "2018-03-23",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-03-23T08:30:00Z",
+   "v3_stamp_utc": "2018-03-23T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-04-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-04-20T08:30:00Z",
+   "v3_stamp_utc": "2018-04-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-04-23",
+   "release_time_local": "America/Toronto 13:05",
+   "v2_stamp_utc": "2018-04-23T13:05:00Z",
+   "v3_stamp_utc": "2018-04-23T17:05:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-05-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-05-18T08:30:00Z",
+   "v3_stamp_utc": "2018-05-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-05-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-05-22T08:30:00Z",
+   "v3_stamp_utc": "2018-05-22T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-05-28",
+   "release_time_local": "America/Toronto 17:03",
+   "v2_stamp_utc": "2018-05-28T17:03:00Z",
+   "v3_stamp_utc": "2018-05-28T21:03:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": [
+    {
+     "boundary": "2018-05-28T20:00:00Z",
+     "boundary_local": "2018-05-28T16:00 EDT",
+     "v2_side": "known",
+     "v3_side": "not known"
+    }
+   ]
+  },
+  {
+   "release_date": "2018-05-29",
+   "release_time_local": "America/Toronto 18:04",
+   "v2_stamp_utc": "2018-05-29T18:04:00Z",
+   "v3_stamp_utc": "2018-05-29T22:04:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": [
+    {
+     "boundary": "2018-05-29T20:00:00Z",
+     "boundary_local": "2018-05-29T16:00 EDT",
+     "v2_side": "known",
+     "v3_side": "not known"
+    }
+   ]
+  },
+  {
+   "release_date": "2018-06-12",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-06-12T08:30:00Z",
+   "v3_stamp_utc": "2018-06-12T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-06-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-06-22T08:30:00Z",
+   "v3_stamp_utc": "2018-06-22T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-07-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-07-20T08:30:00Z",
+   "v3_stamp_utc": "2018-07-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-08-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-08-17T08:30:00Z",
+   "v3_stamp_utc": "2018-08-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-09-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-09-21T08:30:00Z",
+   "v3_stamp_utc": "2018-09-21T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-10-01",
+   "release_time_local": "America/Toronto 11:49",
+   "v2_stamp_utc": "2018-10-01T11:49:00Z",
+   "v3_stamp_utc": "2018-10-01T15:49:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-10-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-10-19T08:30:00Z",
+   "v3_stamp_utc": "2018-10-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-11-23",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-11-23T08:30:00Z",
+   "v3_stamp_utc": "2018-11-23T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2018-12-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2018-12-19T08:30:00Z",
+   "v3_stamp_utc": "2018-12-19T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-01-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-01-18T08:30:00Z",
+   "v3_stamp_utc": "2019-01-18T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-02-25",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-02-25T08:30:00Z",
+   "v3_stamp_utc": "2019-02-25T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-02-27",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-02-27T08:30:00Z",
+   "v3_stamp_utc": "2019-02-27T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-03-04",
+   "release_time_local": "America/Toronto 12:46",
+   "v2_stamp_utc": "2019-03-04T12:46:00Z",
+   "v3_stamp_utc": "2019-03-04T17:46:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-03-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-03-22T08:30:00Z",
+   "v3_stamp_utc": "2019-03-22T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-04-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-04-17T08:30:00Z",
+   "v3_stamp_utc": "2019-04-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-05-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-05-15T08:30:00Z",
+   "v3_stamp_utc": "2019-05-15T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-06-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-06-19T08:30:00Z",
+   "v3_stamp_utc": "2019-06-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-07-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-07-17T08:30:00Z",
+   "v3_stamp_utc": "2019-07-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-08-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-08-21T08:30:00Z",
+   "v3_stamp_utc": "2019-08-21T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-09-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-09-18T08:30:00Z",
+   "v3_stamp_utc": "2019-09-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-10-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-10-16T08:30:00Z",
+   "v3_stamp_utc": "2019-10-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-11-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-11-20T08:30:00Z",
+   "v3_stamp_utc": "2019-11-20T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2019-12-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2019-12-18T08:30:00Z",
+   "v3_stamp_utc": "2019-12-18T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-01-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-01-22T08:30:00Z",
+   "v3_stamp_utc": "2020-01-22T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-02-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-02-19T08:30:00Z",
+   "v3_stamp_utc": "2020-02-19T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-03-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-03-18T08:30:00Z",
+   "v3_stamp_utc": "2020-03-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-04-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-04-22T08:30:00Z",
+   "v3_stamp_utc": "2020-04-22T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-05-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-05-20T08:30:00Z",
+   "v3_stamp_utc": "2020-05-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-06-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-06-17T08:30:00Z",
+   "v3_stamp_utc": "2020-06-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-07-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-07-22T08:30:00Z",
+   "v3_stamp_utc": "2020-07-22T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-08-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-08-19T08:30:00Z",
+   "v3_stamp_utc": "2020-08-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-09-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-09-16T08:30:00Z",
+   "v3_stamp_utc": "2020-09-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-10-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-10-21T08:30:00Z",
+   "v3_stamp_utc": "2020-10-21T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-11-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-11-18T08:30:00Z",
+   "v3_stamp_utc": "2020-11-18T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2020-12-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2020-12-16T08:30:00Z",
+   "v3_stamp_utc": "2020-12-16T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-01-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-01-20T08:30:00Z",
+   "v3_stamp_utc": "2021-01-20T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-02-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-02-17T08:30:00Z",
+   "v3_stamp_utc": "2021-02-17T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-02-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-02-22T08:30:00Z",
+   "v3_stamp_utc": "2021-02-22T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-03-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-03-17T08:30:00Z",
+   "v3_stamp_utc": "2021-03-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-04-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-04-21T08:30:00Z",
+   "v3_stamp_utc": "2021-04-21T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-05-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-05-19T08:30:00Z",
+   "v3_stamp_utc": "2021-05-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-06-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-06-16T08:30:00Z",
+   "v3_stamp_utc": "2021-06-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-07-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-07-21T08:30:00Z",
+   "v3_stamp_utc": "2021-07-21T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-07-23",
+   "release_time_local": "America/Toronto 18:56",
+   "v2_stamp_utc": "2021-07-23T18:56:00Z",
+   "v3_stamp_utc": "2021-07-23T22:56:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": [
+    {
+     "boundary": "2021-07-23T20:00:00Z",
+     "boundary_local": "2021-07-23T16:00 EDT",
+     "v2_side": "known",
+     "v3_side": "not known"
+    }
+   ]
+  },
+  {
+   "release_date": "2021-07-28",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-07-28T08:30:00Z",
+   "v3_stamp_utc": "2021-07-28T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-08-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-08-18T08:30:00Z",
+   "v3_stamp_utc": "2021-08-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-09-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-09-15T08:30:00Z",
+   "v3_stamp_utc": "2021-09-15T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-10-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-10-20T08:30:00Z",
+   "v3_stamp_utc": "2021-10-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-11-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-11-17T08:30:00Z",
+   "v3_stamp_utc": "2021-11-17T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2021-12-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2021-12-15T08:30:00Z",
+   "v3_stamp_utc": "2021-12-15T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-01-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-01-19T08:30:00Z",
+   "v3_stamp_utc": "2022-01-19T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-01-25",
+   "release_time_local": "America/Toronto 11:00",
+   "v2_stamp_utc": "2022-01-25T11:00:00Z",
+   "v3_stamp_utc": "2022-01-25T16:00:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-02-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-02-16T08:30:00Z",
+   "v3_stamp_utc": "2022-02-16T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-03-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-03-16T08:30:00Z",
+   "v3_stamp_utc": "2022-03-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-04-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-04-20T08:30:00Z",
+   "v3_stamp_utc": "2022-04-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-05-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-05-18T08:30:00Z",
+   "v3_stamp_utc": "2022-05-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-06-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-06-15T08:30:00Z",
+   "v3_stamp_utc": "2022-06-15T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-06-22",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-06-22T08:30:00Z",
+   "v3_stamp_utc": "2022-06-22T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-07-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-07-20T08:30:00Z",
+   "v3_stamp_utc": "2022-07-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-08-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-08-16T08:30:00Z",
+   "v3_stamp_utc": "2022-08-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-09-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-09-20T08:30:00Z",
+   "v3_stamp_utc": "2022-09-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-10-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-10-19T08:30:00Z",
+   "v3_stamp_utc": "2022-10-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-11-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-11-16T08:30:00Z",
+   "v3_stamp_utc": "2022-11-16T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2022-12-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2022-12-21T08:30:00Z",
+   "v3_stamp_utc": "2022-12-21T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-01-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-01-17T08:30:00Z",
+   "v3_stamp_utc": "2023-01-17T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-01-27",
+   "release_time_local": "America/Toronto 13:00",
+   "v2_stamp_utc": "2023-01-27T13:00:00Z",
+   "v3_stamp_utc": "2023-01-27T18:00:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": true,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-02-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-02-21T08:30:00Z",
+   "v3_stamp_utc": "2023-02-21T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-03-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-03-21T08:30:00Z",
+   "v3_stamp_utc": "2023-03-21T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-04-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-04-18T08:30:00Z",
+   "v3_stamp_utc": "2023-04-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-05-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-05-16T08:30:00Z",
+   "v3_stamp_utc": "2023-05-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-06-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-06-20T08:30:00Z",
+   "v3_stamp_utc": "2023-06-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-06-27",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-06-27T08:30:00Z",
+   "v3_stamp_utc": "2023-06-27T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-07-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-07-18T08:30:00Z",
+   "v3_stamp_utc": "2023-07-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-08-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-08-15T08:30:00Z",
+   "v3_stamp_utc": "2023-08-15T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-09-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-09-19T08:30:00Z",
+   "v3_stamp_utc": "2023-09-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-10-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-10-17T08:30:00Z",
+   "v3_stamp_utc": "2023-10-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-11-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-11-21T08:30:00Z",
+   "v3_stamp_utc": "2023-11-21T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2023-12-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2023-12-19T08:30:00Z",
+   "v3_stamp_utc": "2023-12-19T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-01-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-01-16T08:30:00Z",
+   "v3_stamp_utc": "2024-01-16T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-02-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-02-20T08:30:00Z",
+   "v3_stamp_utc": "2024-02-20T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-03-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-03-19T08:30:00Z",
+   "v3_stamp_utc": "2024-03-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-04-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-04-16T08:30:00Z",
+   "v3_stamp_utc": "2024-04-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-05-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-05-21T08:30:00Z",
+   "v3_stamp_utc": "2024-05-21T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-06-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-06-18T08:30:00Z",
+   "v3_stamp_utc": "2024-06-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-06-25",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-06-25T08:30:00Z",
+   "v3_stamp_utc": "2024-06-25T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-07-16",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-07-16T08:30:00Z",
+   "v3_stamp_utc": "2024-07-16T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-08-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-08-20T08:30:00Z",
+   "v3_stamp_utc": "2024-08-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-09-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-09-17T08:30:00Z",
+   "v3_stamp_utc": "2024-09-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-10-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-10-15T08:30:00Z",
+   "v3_stamp_utc": "2024-10-15T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-11-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-11-19T08:30:00Z",
+   "v3_stamp_utc": "2024-11-19T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2024-12-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2024-12-17T08:30:00Z",
+   "v3_stamp_utc": "2024-12-17T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-01-21",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-01-21T08:30:00Z",
+   "v3_stamp_utc": "2025-01-21T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-02-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-02-18T08:30:00Z",
+   "v3_stamp_utc": "2025-02-18T13:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-03-18",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-03-18T08:30:00Z",
+   "v3_stamp_utc": "2025-03-18T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-04-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-04-15T08:30:00Z",
+   "v3_stamp_utc": "2025-04-15T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-05-20",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-05-20T08:30:00Z",
+   "v3_stamp_utc": "2025-05-20T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-06-17",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-06-17T08:30:00Z",
+   "v3_stamp_utc": "2025-06-17T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-06-24",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-06-24T08:30:00Z",
+   "v3_stamp_utc": "2025-06-24T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-07-15",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-07-15T08:30:00Z",
+   "v3_stamp_utc": "2025-07-15T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  },
+  {
+   "release_date": "2025-08-19",
+   "release_time_local": "America/Toronto 08:30",
+   "v2_stamp_utc": "2025-08-19T08:30:00Z",
+   "v3_stamp_utc": "2025-08-19T12:30:00Z",
+   "same_calendar_date": true,
+   "nonstandard_wds_release_time": false,
+   "boundary_side_flips": []
+  }
+ ],
+ "pins_v2_untouched": {
+  "ca_statcan_cpi_release_dates.json": {
+   "expected_sha256": "088b0ba80f0580e39ab17832872a93e3dce15bc077ffafa2f87800b4c7115eaa",
+   "recomputed_sha256": "088b0ba80f0580e39ab17832872a93e3dce15bc077ffafa2f87800b4c7115eaa"
+  },
+  "p0a_cpi_prints_ca.json": {
+   "recomputed_sha256": "2d253438f6c2d5f175402c201fc09233d4c49d155161f1a2ce0621eb621fbdb4"
+  }
+ },
+ "v3_files": {
+  "ca_statcan_cpi_release_dates_v3.json": {
+   "sha256": "0f1a93282348cef94aecf2b9a8da275945e809643e3646f551b2df916e2af7b3",
+   "rows": 107
+  },
+  "p0a_cpi_prints_ca_v3.json": {
+   "sha256": "d6f7ec94a8aa8e167e2e46046dffe58354d67eddf9d90ae668ede6487fee3cd0",
+   "rows": 107
+  }
+ },
+ "verdict": "FAIL",
+ "verdict_note": "FAIL: 3 row(s) change side of at least one daily 16:00-NY boundary under corrected stamps \u2014 all of them nonstandard WDS change-event rows; every scheduled 08:30 release row is invariant (0 flips across all boundaries). Reported honestly; the affected clocks shift same-day-known -> next-day-known under v3 stamps and must not be treated as decision-invariant."
+}
