@@ -1,0 +1,78 @@
+{
+ "schema": "v15_d1_proposal_v1",
+ "hypothesis_id": "A6-V15-P2",
+ "axis": "AXIS-3 taker flow, combined with AXIS-2 crowding stock in a ratio-of-ratio construction (top-trader positioning change per unit of ambient taker aggression)",
+ "status": "PROPOSED",
+ "mechanism": "Top-trader positioning (sum_toptrader_long_short_ratio) moves only when large positioned accounts actively reposition, and large accounts reposition slowly and in size relative to the fragmented taker crowd; the fast actor is the taker crowd, the slow actor is the large-account base. The same top-trader repositioning carries different information depending on how much crowd aggression accompanied it: a positioning change that occurs against LOW ambient aggression is autonomous - large accounts moved before and without the crowd - and is treated as informed, warranting continuation in the direction of the repositioning. A positioning change (or non-change) that occurs only under HIGH ambient aggression reflects large accounts reacting to, or passively absorbing, the chasing crowd; there the aggression is uninformed and the repositioning carries no followable signal. WHO IS FORCED/SLOW: large accounts are slow to reposition; the taker crowd is fast but uninformed when its aggression is what provokes or accompanies the large-account move. WHY THE EFFECT EXISTS: information arrives asymmetrically - informed repositioning is cheap in aggression terms (it precedes the crowd), crowd-chasing repositioning is expensive in aggression terms, so aggression-normalized positioning change separates the two. OBSERVABLE: ratio-of-ratio R = delta log top-trader long/short ratio over the window divided by mean absolute clipped log taker ratio over the same window, ranked cross-sectionally; the book is LONG the names where large-account repositioning is most aggression-efficient (informed accumulation) and SHORT the names where it is least (informed distribution or pure crowd absorption). WHEN IT MUST FAIL: when top-trader ratio changes are themselves late momentum-chasing - then efficiency-ranking becomes chase-ranking and loses; when 5-minute taker ratios in dead hours are noise that corrupts the aggression denominator; and when large-account ratios are administered passively (market-maker inventory) rather than directionally, in which case the numerator is mechanical and uninformative. CONVENIENT-EXPLANATION CONTROL: the reading 'this is just top-trader ratio momentum (raw AXIS-2 positioning change)' is killed by CTL-P2, which trades raw delta log top-trader ratio WITHOUT the aggression scaling under identical rules; if the raw positioning-change arm reproduces the anchor, the flow normalization does no causal work and the flow-informed mechanism claim is falsified.",
+ "information_source": {
+  "feature_fields": [
+   "sum_taker_long_short_vol_ratio (AXIS-3 taker flow; buy/sell volume ratio over [T, T+5min) at label T; start-of-period semantics per frozen data contract)",
+   "sum_toptrader_long_short_ratio (AXIS-2 crowding stock; snapshot at label T+5min; day-end stock read at the 23:55 label of each metrics_date)"
+  ],
+  "execution_only_fields": [
+   "staged klines 00:00 UTC bar open prices - authorized staged-bars authority; klines enter FILL PRICES ONLY and never enter any feature"
+  ],
+  "forbidden_reads": "no funding, no premium/index, no volume, no volatility, no count_toptrader_long_short_ratio or count_long_short_ratio; price appears only as execution"
+ },
+ "universe": ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT","BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT","ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"],
+ "clock": "DAILY grid; decisions every 5 calendar days from each fold start within blind-S0 2025-08-22..2026-08-21; folds F0/F1/F2 per the frozen V12/V14 fold contract with 1-day purge; force-flat at fold boundaries. HARD LAG: every feature read is restricted to metrics files with metrics_date <= decision_date - 3 calendar days (MEASURED_BOUND_LAG_3D).",
+ "warmup_spec": "Longest feature window is the neighbour's 20 metrics days plus the 3-day lag, so the first usable decision date D0 requires metrics files for [D0-23, D0-3]. Probe-verified zero-gap coverage 2025-06-20..2026-08-21 for all 20 symbols funds this at every fold start; the warmup reference window 2025-06-20..2025-08-21 (56D + purge margin) exceeds the ~24 calendar days actually consumed. No parameter is estimated in warmup - all constants below are frozen ex ante.",
+ "features_and_lags": {
+  "five_minute_hygiene": "per 5-minute label, r_t = sum_taker_long_short_vol_ratio clipped to [0.2, 5.0] before log; rationale: dead-hour windows can produce extreme ratios from near-zero denominators; hygiene applied identically to every arm",
+  "aggression_intensity_denominator": "A_abs = mean over window W of |clip(ln r_t, -1.609, +1.609)| daily means (mean of per-day means of absolute clipped log ratios)",
+  "positioning_change_g_i": "g = ln( TT_2355(d_last) / TT_2355(d_first) ) where TT_2355(x) = sum_toptrader_long_short_ratio at the 23:55 label of metrics_date x",
+  "anchor_feature_R_i_D": "R = g / (A_abs + c2) over window W = metrics dates [D-12, D-3] (10 daily aggregates, all <= D-3), c2 = 0.01 frozen regularization floor",
+  "lag_discipline": "max metrics_date read at decision D is D-3, satisfying MEASURED_BOUND_LAG_3D exactly; nothing faster is required anywhere in the design (REWRITTEN_SPAN caveat respected by design, not by assumption)"
+ },
+ "entry_exit_rules": [
+  "on each 5-day decision date D at 00:00 UTC, rank the 20 symbols by R_i_D descending; ties broken by symbol name ascending (deterministic)",
+  "LONG the top 5 (most aggression-efficient top-trader accumulation), SHORT the bottom 5 (least aggression-efficient / informed distribution or crowd absorption)",
+  "signed weight +0.10 per long name, -0.10 per short name; gross = 1.0; per-symbol signed weight 0.10 <= cap 0.30",
+  "hold until the next decision date; exit fills at that date's 00:00 UTC open",
+  "if fewer than 10 symbols have complete window data on D, compute ranks on available names; if fewer than 10 are available, stay flat for that cycle (preregistered, deterministic)",
+  "force-flat on the last day of each fold and through the 1-day purge"
+ ],
+ "fill_model": "entry and exit are taker fills at the 00:00 UTC bar open of the decision date from staged klines (start-of-period label semantics; the open is known at bar start); each fill charged exactly once; book/cash accounting, costs charged once per fill, no intrabar path dependence",
+ "cost_assumptions": {
+  "base": "taker fee 5.0 bps per fill + slippage 1 native tick per fill (native per-symbol tick size)",
+  "stress": "fee x1.5 (7.5 bps per fill) + 2 ticks per fill + 1-day execution delay (fills move to the next day's 00:00 UTC open)",
+  "principle": "costs and funding charged exactly once on booked PnL, per the pinned cost-once kernel"
+ },
+ "anchor_spec": {
+  "arm_id": "A6-V15-P2-ANCHOR",
+  "feature": "R_i_D = g_i / (A_abs_i + 0.01) over W = [D-12, D-3], exactly as in features_and_lags",
+  "construction": "cross-sectional 5-vs-5 extreme rank book, weights and rules per entry_exit_rules",
+  "claim": "top-trader positioning change per unit of ambient aggression separates informed repositioning (followed) from crowd-provoked repositioning (not followable); trade with the sign of the aggression-efficient change"
+ },
+ "neighbour_spec": {
+  "arm_id": "A6-V15-P2-NEIGH",
+  "variant": "identical pipeline and constants except window W = metrics dates [D-23, D-3] (20 daily aggregates) for BOTH the positioning change and the aggression denominator; single-knob horizon variant",
+  "support_rule": "neighbour supports if it passes stage-A gate (10); horizon-robustness of the repositioning-efficiency mechanism is the support claim"
+ },
+ "causal_control_spec": {
+  "arm_id": "A6-V15-P2-CTL",
+  "variant": "identical pipeline, window, ranking, weights, rules and costs, but the feature is raw g_i (delta log top-trader ratio) with NO aggression-intensity scaling",
+  "what_it_kills": "the convenient explanation that the anchor is raw top-trader positioning momentum (a plain AXIS-2 crowding-stock signal), not flow-informed positioning change",
+  "preregistered_non_reproduction_rule": "CTL must NOT simultaneously pass stage-A gates (1) after-cost expectancy > 0 and (2) position PF >= 1.10. If CTL passes both, the aggression scaling is doing no causal work, the flow-informed mechanism is falsified, and the family is ineligible regardless of the anchor's own gates - positive raw PnL never overrides this."
+ },
+ "falsification_rule": "A6-V15-P2 is FALSIFIED ex ante if ANY of: (i) after-cost anchor expectancy <= 0; (ii) position PF < 1.10; (iii) positive folds < 2 of 3; (iv) largest fold-positive share > 0.50; (v) MDD > 0.20; (vi) largest-symbol positive-PnL share > 0.70; (vii) stress set (x1.5 fee, +2 ticks, +1 delay) not positive on booked PnL; (viii) drop-one symbol or fold non-vacuous check fails; (ix) CTL reproduces per the preregistered non-reproduction rule; (x) benchmark context gate fails (BTC buy-and-hold excess / BTC-beta context excess positive in < 2 of 3 folds). Positive raw PnL never overrides (iv), (vi), (ix) or (x). All numbers stated before any cell has run; none has.",
+ "expected_failure_interpretation": {
+  "anchor_and_ctl_both_fail": "top-trader positioning change carries no multi-day cross-sectional edge on this universe/window under either normalization; the informed-repositioning hypothesis is dead and not rescuable by parameter change",
+  "anchor_fails_ctl_passes": "the aggression denominator subtracts value; raw positioning change is the signal - the family would be an AXIS-2 crowding relabel, the flow-informed mechanism is wrong and the family is ineligible",
+  "anchor_passes_ctl_passes": "control reproduces - mechanism falsified even under positive PnL; family ineligible",
+  "gate_iv_or_vi_fail": "effect is concentrated in one fold or one symbol: regime-idiosyncratic artifact, not a mechanism",
+  "fails_only_in_stress": "the edge is thinner than its cost envelope; recorded as thin margin, never rounded in the family's favor"
+ },
+ "decorrelation_plan": {
+  "measurement": "D2 computes pooled Spearman rho between each arm's per-symbol-date signed feature series (20 symbols x full decision grid) and the reconstructed signal series of every forbidden family and measured shadow on the same universe/window; eligibility requires pooled |rho| <= 0.20 against EVERY one",
+  "targets": ["OITD", "LIQEPIS", "OILEV-V2 anchor (28D-FLOW)", "OILEV-V2 56D-STOCK neighbour and sign-inverted control (measured SHADOW)", "OICYC cells", "CTL-OISHARE OI-dominance size sort", "PREMFADE 28D/56D and all variants", "BAB-LOWBETA", "funding carry 1D/3D/7D", "funding/price divergence", "funding-crowd MR sprint forms", "XSECT momentum/reversal/trend/vol-shock/dollar-volume sprint forms", "LOT residual-MAX", "ILLIQ-AMIHUD", "M01 aggressor-absorption panel"],
+  "dangerous_neighbours_named_ex_ante": [
+   "funding-crowd MR sprint forms - mitigated because no funding field enters any P2 quantity; the crowd term is measured by taker aggression intensity, not by funding",
+   "raw crowding-ratio / top-trader momentum forms - mitigated structurally: the causal control IS raw positioning change, so a crowding relabel self-falsifies by reproduction",
+   "M01 aggressor-absorption - M01 measured price response to aggressor flow; P2 measures positioning response to ambient aggression, no price response and no volume anywhere",
+   "CTL-OISHARE - OI co-movement/size information was measured redundant; P2 uses no OI field at all"
+  ]
+ },
+ "anti_relabel_statement": "The ranking variable is a positioning-ratio-native ratio-of-ratio (top-trader positioning change per unit of ambient taker aggression); raw taker flow is never ranked, raw crowding ratio is never ranked (and is preregistered as the falsifying control), and no funding, volume, volatility or price-derived quantity enters any feature.",
+ "confirmatory_status": "EXPLORATORY"
+}

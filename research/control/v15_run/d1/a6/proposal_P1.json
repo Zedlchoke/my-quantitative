@@ -1,0 +1,77 @@
+{
+ "schema": "v15_d1_proposal_v1",
+ "hypothesis_id": "A6-V15-P1",
+ "axis": "AXIS-3 taker flow, combined with AXIS-1 OI stock in a ratio-of-ratio construction (taker aggression intensity per unit of positioning churn)",
+ "status": "PROPOSED",
+ "mechanism": "In USDT-M perpetuals every taker buy is matched against a maker sell, so one-sided aggressive flow can only persist while counterparties keep supplying the other side. The slow actor in this construction is the aggressive taker cohort: it keeps hitting the book in the direction of the recent move and pays taker fees and slippage to chase, while the standing open-interest base does not move. When cumulative signed taker aggression over a ~10 metrics-day window is large relative to the positioning churn it produced (|delta log open-interest value| over the same window), the aggression is failing to convert into new positioning: it is being absorbed by existing holders reducing into the aggressive side. That absorption is supplied by position-holders who are better informed about continuation, and the chasing cohort is slow to unwind, so unconverted aggression is expected to mean-revert over a multi-day horizon. WHO IS FORCED/SLOW: the aggressive chaser is slow to exit; the reducing position-holder is the passive, informed counterparty. WHY THE EFFECT EXISTS: aggression that does not move the positioning stock is distribution into strength, not new demand. OBSERVABLE: scale-free ratio-of-ratio, mean clipped log taker buy/sell ratio over the window (aggression intensity) divided by floored positioning churn, ranked cross-sectionally over the 20 authorized symbols; extreme buy-side saturation is faded (short), extreme sell-side saturation is bought (long). WHEN IT MUST FAIL: when aggressive flow is genuinely informed - conversion into fresh aligned positioning raises churn, lowers the saturation score and removes the fade; and in liquidation-cascade regimes where unconverted aggression keeps trending as forced flows cascade; and in sustained trend regimes where fading one-sided aggression is systematically early. CONVENIENT-EXPLANATION CONTROL: the reading 'this is just short-term flow reversal (XSECT sprint relabel)' is killed by CTL-P1, which fades raw aggression intensity WITHOUT the positioning-churn denominator under identical rules; if the raw-flow arm reproduces the anchor, the positioning-ratio normalization does no causal work and the mechanism claim is falsified.",
+ "information_source": {
+  "feature_fields": [
+   "sum_taker_long_short_vol_ratio (AXIS-3 taker flow; buy/sell volume ratio over [T, T+5min) at label T; start-of-period semantics per frozen data contract)",
+   "sum_open_interest_value (AXIS-1 OI stock in USD; snapshot at label T+5min; day-end stock read at the 23:55 label of each metrics_date)"
+  ],
+  "execution_only_fields": [
+   "staged klines 00:00 UTC bar open prices - authorized staged-bars authority; klines enter FILL PRICES ONLY and never enter any feature"
+  ],
+  "forbidden_reads": "no funding, no premium/index, no volume, no volatility, no price-derived feature quantity; price appears only as execution"
+ },
+ "universe": ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT","BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT","ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"],
+ "clock": "DAILY grid; decisions every 5 calendar days from each fold start within blind-S0 2025-08-22..2026-08-21; folds F0/F1/F2 per the frozen V12/V14 fold contract with 1-day purge; force-flat at fold boundaries. HARD LAG: every feature read is restricted to metrics files with metrics_date <= decision_date - 3 calendar days (MEASURED_BOUND_LAG_3D).",
+ "warmup_spec": "Longest feature window is the neighbour's 20 metrics days plus the 3-day lag, so the first usable decision date D0 requires metrics files for [D0-23, D0-3]. Probe-verified zero-gap coverage 2025-06-20..2026-08-21 for all 20 symbols funds this at every fold start; the warmup reference window 2025-06-20..2025-08-21 (56D + purge margin) exceeds the ~24 calendar days actually consumed. No parameter is estimated in warmup - all constants below are frozen ex ante.",
+ "features_and_lags": {
+  "five_minute_hygiene": "per 5-minute label, r_t = sum_taker_long_short_vol_ratio clipped to [0.2, 5.0] before log; rationale: dead-hour windows can produce extreme ratios from near-zero denominators; hygiene applied identically to every arm",
+  "daily_aggression_a_i_d": "mean over the 288 labels of metrics_date d of clip(ln r_t, -1.609, +1.609). Known accepted limitation: only the ratio field is authorized, so the daily aggregate is equal-weighted across 5-minute windows and overweights low-activity hours; identical treatment in every arm, so it cannot manufacture an anchor-vs-control difference",
+  "positioning_churn_o_i_W": "|ln( OIv_2355(d_last) / OIv_2355(d_first) )| where OIv_2355(x) = sum_open_interest_value at the 23:55 label of metrics_date x",
+  "anchor_feature_S_i_D": "S = A_bar / (O + c), A_bar = mean of a_i_d over window W = metrics dates [D-12, D-3] (10 daily aggregates, all <= D-3), O = positioning churn across the same window endpoints, c = 0.02 frozen regularization floor",
+  "lag_discipline": "max metrics_date read at decision D is D-3, satisfying MEASURED_BOUND_LAG_3D exactly; nothing faster is required anywhere in the design (REWRITTEN_SPAN caveat respected by design, not by assumption)"
+ },
+ "entry_exit_rules": [
+  "on each 5-day decision date D at 00:00 UTC, rank the 20 symbols by S_i_D descending; ties broken by symbol name ascending (deterministic)",
+  "SHORT the top 5 (extreme buy-side aggression saturation), LONG the bottom 5 (extreme sell-side aggression saturation)",
+  "signed weight +0.10 per long name, -0.10 per short name; gross = 1.0; per-symbol signed weight 0.10 <= cap 0.30",
+  "hold until the next decision date; exit fills at that date's 00:00 UTC open",
+  "if fewer than 10 symbols have complete window data on D, compute ranks on available names; if fewer than 10 are available, stay flat for that cycle (preregistered, deterministic)",
+  "force-flat on the last day of each fold and through the 1-day purge"
+ ],
+ "fill_model": "entry and exit are taker fills at the 00:00 UTC bar open of the decision date from staged klines (start-of-period label semantics; the open is known at bar start); each fill charged exactly once; book/cash accounting, costs charged once per fill, no intrabar path dependence",
+ "cost_assumptions": {
+  "base": "taker fee 5.0 bps per fill + slippage 1 native tick per fill (native per-symbol tick size)",
+  "stress": "fee x1.5 (7.5 bps per fill) + 2 ticks per fill + 1-day execution delay (fills move to the next day's 00:00 UTC open)",
+  "principle": "costs and funding charged exactly once on booked PnL, per the pinned cost-once kernel"
+ },
+ "anchor_spec": {
+  "arm_id": "A6-V15-P1-ANCHOR",
+  "feature": "S_i_D = A_bar_i / (O_i + 0.02) over W = [D-12, D-3], exactly as in features_and_lags",
+  "construction": "cross-sectional 5-vs-5 extreme rank book, weights and rules per entry_exit_rules",
+  "claim": "aggression saturation relative to positioning churn predicts multi-day reversal of the aggressive side"
+ },
+ "neighbour_spec": {
+  "arm_id": "A6-V15-P1-NEIGH",
+  "variant": "identical pipeline and constants except window W = metrics dates [D-23, D-3] (20 daily aggregates) and churn endpoints moved to the same window; single-knob horizon variant",
+  "support_rule": "neighbour supports if it passes stage-A gate (10); horizon-robustness of the saturation mechanism is the support claim"
+ },
+ "causal_control_spec": {
+  "arm_id": "A6-V15-P1-CTL",
+  "variant": "identical pipeline, window, ranking, weights, rules and costs, but the feature is raw A_bar_i (daily aggression intensity) with NO positioning-churn denominator",
+  "what_it_kills": "the convenient explanation that the anchor is plain flow-reversal / flow-momentum relabeling the XSECT sprint ancestry",
+  "preregistered_non_reproduction_rule": "CTL must NOT simultaneously pass stage-A gates (1) after-cost expectancy > 0 and (2) position PF >= 1.10. If CTL passes both, the anchor's saturation normalization is doing no causal work, the mechanism is falsified, and the family is ineligible regardless of the anchor's own gates - positive raw PnL never overrides this."
+ },
+ "falsification_rule": "A6-V15-P1 is FALSIFIED ex ante if ANY of: (i) after-cost anchor expectancy <= 0; (ii) position PF < 1.10; (iii) positive folds < 2 of 3; (iv) largest fold-positive share > 0.50; (v) MDD > 0.20; (vi) largest-symbol positive-PnL share > 0.70; (vii) stress set (x1.5 fee, +2 ticks, +1 delay) not positive on booked PnL; (viii) drop-one symbol or fold non-vacuous check fails; (ix) CTL reproduces per the preregistered non-reproduction rule; (x) benchmark context gate fails (BTC buy-and-hold excess / BTC-beta context excess positive in < 2 of 3 folds). Positive raw PnL never overrides (iv), (vi), (ix) or (x). All numbers stated before any cell has run; none has.",
+ "expected_failure_interpretation": {
+  "anchor_and_ctl_both_fail": "aggression fade carries no multi-day edge on this universe/window under either normalization; the exhaustion hypothesis is dead and not rescuable by parameter change",
+  "anchor_fails_ctl_passes": "the OI-churn denominator subtracts value; raw flow is the signal and the mechanism claim is wrong - the family would additionally be an XSECT-adjacent relabel and ineligible",
+  "anchor_passes_ctl_passes": "control reproduces - mechanism falsified even under positive PnL; family ineligible",
+  "gate_iv_or_vi_fail": "effect is concentrated in one fold or one symbol: regime-idiosyncratic artifact, not a mechanism",
+  "fails_only_in_stress": "the edge is thinner than its cost envelope; recorded as thin margin, never rounded in the family's favor"
+ },
+ "decorrelation_plan": {
+  "measurement": "D2 computes pooled Spearman rho between each arm's per-symbol-date signed feature series (20 symbols x full decision grid) and the reconstructed signal series of every forbidden family and measured shadow on the same universe/window; eligibility requires pooled |rho| <= 0.20 against EVERY one",
+  "targets": ["OITD", "LIQEPIS", "OILEV-V2 anchor (28D-FLOW)", "OILEV-V2 56D-STOCK neighbour and sign-inverted control (measured SHADOW)", "OICYC cells", "CTL-OISHARE OI-dominance size sort", "PREMFADE 28D/56D and all variants", "BAB-LOWBETA", "funding carry 1D/3D/7D", "funding/price divergence", "funding-crowd MR sprint forms", "XSECT momentum/reversal/trend/vol-shock/dollar-volume sprint forms", "LOT residual-MAX", "ILLIQ-AMIHUD", "M01 aggressor-absorption panel"],
+  "dangerous_neighbours_named_ex_ante": [
+   "OILEV-V2 anchor/inverted pair - shares a delta-OI ingredient; mitigated because P1 ranks on taker aggression SCALED BY churn, never ranks on OI flow itself, and never conditions on OI-flow sign, so the shared ingredient is a denominator modulation, not the ranking variable",
+   "XSECT dollar-volume/vol-shock sprints - mitigated because no volume or volatility field enters any P1 feature quantity",
+   "M01 aggressor-absorption - M01 measured price response to aggressor flow; P1 uses no price response and no volume, only flow-to-positioning conversion"
+  ]
+ },
+ "anti_relabel_statement": "The ranking variable is a positioning-ratio-native ratio-of-ratio (taker aggression per unit of positioning churn); raw taker flow is never ranked, OI flow is never ranked, and no volume or price-derived quantity enters any feature. The CTL arm is preregistered precisely so that a flow-reversal relabel of the XSECT ancestry is detectable and self-falsifying.",
+ "confirmatory_status": "EXPLORATORY"
+}
