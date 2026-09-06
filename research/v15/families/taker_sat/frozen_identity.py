@@ -164,9 +164,11 @@ CHURN_FLOOR_C = 0.02
 LAG_DAYS = 3
 #: Anchor/control window W = metrics dates [D-12, D-3] = 10 daily aggregates.
 WINDOW_DAYS_ANCHOR = 10
-#: Neighbour window W = metrics dates [D-23, D-3] = 20 daily aggregates
+#: Neighbour window W = metrics dates [D-23, D-3] = 21 daily aggregates
 #: (single-knob horizon variant; churn endpoints move with the window).
-WINDOW_DAYS_NEIGHBOUR = 20
+#: ADJUDICATED_BY_A1 (pre-score): the explicit dated range binds over the
+#: draft prose count "20" -- see the neighbour config's adjudication note.
+WINDOW_DAYS_NEIGHBOUR = 21
 #: amendment-1 hole rule: a lookback window with MORE than 10% missing
 #: metrics-day cells refuses the symbol's decision (integer test
 #: ``10 * missing > n``; exactly 10% still computes over available days).
@@ -330,30 +332,34 @@ _FROZEN_CONFIGS: dict[str, dict[str, Any]] = {
         "signal": "saturation_ratio_of_ratio",
         "feature": (
             "identical pipeline and constants except the window horizon: "
-            "A_bar = mean of a_i_d over W = the 20 metrics dates [D-22, "
-            "D-3] with churn endpoints moved to the same window; "
-            "single-knob horizon variant of the anchor (the anchor template "
-            "is range/count-consistent: [D-12, D-3] = 10 daily aggregates "
-            "by inclusive counting, so 20 daily aggregates = [D-22, D-3]; "
-            "the proposal's '[D-23, D-3]' offset is its literal '20 metrics "
-            "days plus the 3-day lag' addition -- flagged to A1 for "
-            "adjudication, one-constant revert if ruled otherwise)"
+            "A_bar = mean of a_i_d over W = the 21 metrics dates [D-23, "
+            "D-3] inclusive, with churn endpoints moved to the same window "
+            "endpoints [D-23, D-3]; single-knob horizon variant of the "
+            "anchor"
         ),
         "window_days": WINDOW_DAYS_NEIGHBOUR,
-        "window_expr": "[D-22, D-3] (20 daily aggregates; proposal cites "
-        "[D-23, D-3] -- off-by-one flagged to A1)",
-        "churn_endpoints": "[D-22, D-3]",
+        "window_expr": "[D-23, D-3] inclusive (21 daily aggregates)",
+        "churn_endpoints": "[D-23, D-3]",
         "role": "neighbour",
         "support_rule": (
             "neighbour supports if it passes the stage-A gate (10); "
             "horizon-robustness of the saturation mechanism is the support "
             "claim"
         ),
-        "spec_ambiguity_flag": (
-            "proposal neighbour window: '[D-23, D-3]' (21 dates inclusive) "
-            "vs '20 daily aggregates' stated twice; implemented as the "
-            "count-consistent single-knob reading 20 x [D-22, D-3]; "
-            "adjudication belongs to A1"
+        "spec_ambiguity_adjudication": (
+            "ADJUDICATED_BY_A1 (V15 selection-phase ambiguity rule, family "
+            "A6-V15-F1-TAKER-SAT, neighbour window off-by-one). Ruling: "
+            "bind the EXPLICIT RANGE [D-23, D-3] inclusive = 21 daily "
+            "aggregates (WINDOW_DAYS_NEIGHBOUR = 21). Reasons recorded: "
+            "(1) a dated range is the more precise instrument -- prose "
+            "counts are derived text and '20' appears to be a draft "
+            "remnant; (2) the family's own internal convention is "
+            "inclusive-endpoint ranges (anchor [D-12, D-3] = 10 "
+            "aggregates, consistent); (3) materiality is confined to the "
+            "NEIGHBOUR arm's support gate, and the adjudication is frozen "
+            "BEFORE any scored outcome exists (none exists; budget still "
+            "0/6). Applied by the I-F2 lane as a one-frozen-constant "
+            "revert; digest re-pinned pre-score."
         ),
     },
     CONTROL_ARM: {
@@ -418,7 +424,7 @@ def frozen_identity(arm_id: str) -> StrategyIdentity:
 #: digest is test-pinned).
 TAKER_SAT_ARM_CONFIG_DIGESTS: dict[str, str] = {
     ANCHOR_ARM: "965d5518bb268d5f599d52b3576852e5681aea15323c71ebdd16c4bcdd2081ae",
-    NEIGHBOUR_ARM: "4beb59ef29716236520d0cdd164339e8ad41fe60dd940b56bd3d1b5507aee7a0",
+    NEIGHBOUR_ARM: "278119293bb8775d88b717e1bb65111726f94667952c107b0534f954651754ed",
     CONTROL_ARM: "f3468b8947056a76aa61e1af808b792f011837adc886e910d0a7fe92b0dd60a3",
 }
 
