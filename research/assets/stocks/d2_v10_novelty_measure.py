@@ -229,16 +229,32 @@ def main() -> int:
     def elig_bars(cik, t):
         return cik in series and has_bars(cik, t)
 
+    def _a4_window_pairs(lst, t, value_idx, null_skip):
+        """A7 MEDIUM-2 remediation: the FROZEN largest-first_avail window
+        rule (mirror of v10_family_runner.sig_timing): only groups sharing
+        the largest qualifying stamp enter the mean; ties average."""
+        best_av = None
+        vals = []
+        for av, eff, oz, cz, lag in lst:
+            if av >= t.isoformat():
+                continue
+            if (t - dd(av)).days > STALE_DAYS:
+                continue
+            v = (av, eff, oz, cz, lag)[value_idx]
+            if null_skip and v is None:
+                continue
+            if best_av is None or av > best_av:
+                best_av = av
+                vals = [v]
+            elif av == best_av:
+                vals.append(v)
+        return vals
+
     def a4_h1_pairs():
-        # exposure = -own_z of latest qualifying group; mean over qualifying groups
         out = {}
         for t in gates:
             for e, lst in tim.items():
-                vals = []
-                for av, eff, oz, cz, lag in lst:
-                    delta = (t - dd(av)).days
-                    if delta >= 0 and delta <= STALE_DAYS and oz is not None:
-                        vals.append(-oz)
+                vals = [-v for v in _a4_window_pairs(lst, t, 2, True)]
                 if vals and elig_bars(e, t):
                     out[(e, t)] = sum(vals) / len(vals)
         return out
@@ -247,11 +263,7 @@ def main() -> int:
         out = {}
         for t in gates:
             for e, lst in tim.items():
-                vals = []
-                for av, eff, oz, cz, lag in lst:
-                    delta = (t - dd(av)).days
-                    if 0 <= delta <= STALE_DAYS:
-                        vals.append(-lag)
+                vals = [-v for v in _a4_window_pairs(lst, t, 4, False)]
                 if vals and elig_bars(e, t):
                     out[(e, t)] = sum(vals) / len(vals)
         return out
