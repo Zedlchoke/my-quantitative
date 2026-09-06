@@ -1,0 +1,45 @@
+{
+ "schema": "v15i.taker_sat.staged_root.v1",
+ "artifact": "staged_root",
+ "family_id": "A6-V15-F1-TAKER-SAT",
+ "producer_role": "A8 implementation lane (i-family-2), cycle CRYPTO-V15",
+ "data_root": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v15/integration/v15_data/parquet",
+ "subtrees": {
+  "metrics": "metrics/<SYM>.parquet (create_time, symbol, sum_open_interest, sum_open_interest_value, count_toptrader_long_short_ratio, sum_toptrader_long_short_ratio, count_long_short_ratio, sum_taker_long_short_vol_ratio, ts)",
+  "klines": "klines/<SYM>.parquet (15m bars; FILL PRICES ONLY -- the 00:00 UTC bar open; never enters any feature)",
+  "funding": "funding/<SYM>.parquet (funding_time_ms, funding_rate; COST ONLY, applied once per settlement stamp)"
+ },
+ "universe": ["1000PEPEUSDT","AAVEUSDT","ACEUSDT","ADAUSDT","AVAXUSDT","BCHUSDT","BNBUSDT","BOMEUSDT","BTCUSDT","DOGEUSDT","ENAUSDT","ETHUSDT","LINKUSDT","NEARUSDT","ONGUSDT","SOLUSDT","SUIUSDT","WLDUSDT","XRPUSDT","ZECUSDT"],
+ "loader_contract": {
+  "lag_days": 3,
+  "lag_rule": "MEASURED_BOUND_LAG_3D: every feature read is restricted to metrics rows with metrics_date <= decision_date - 3 calendar days",
+  "global_defect_date_exclusions": ["2025-07-21","2025-07-22","2025-08-29","2026-08-12"],
+  "hole_rule": "feature windows compute over available staged rows only; more than 10% missing metrics-day cells in a symbol's lookback window refuses that symbol's decision (refusal registry); a refused decision never becomes a fill and never synthesizes data",
+  "day_cell_integrity": "exactly 288 rows, 288 unique create_time labels, full 00:00..23:55 grid, sorted by create_time, finite positive authorized fields; violations refuse the cell (fail closed)",
+  "label_semantics": "start-of-period: labeled T carries the stock snapshot at T+5min and the taker flow window [T, T+5min); the daily aggregate consumes each label of its own metrics_date exactly once (no boundary double-count)",
+  "funding_abs_cap": 0.0375,
+  "fail_closed": true
+ },
+ "native_tick_sizes_source": "research.v12.families.oilev_v2.audits.load_tick_sizes over crypto_perpetual metadata (real per-instrument ticks; never a uniform stub)",
+ "pinned_authorities_sha256": {
+  "proposal_P1": "2b7a3ed3caf636af3646cddeeee081e49ae3549ef3cffa0875962c7928a5c034",
+  "selection_freeze": "0e02c2dfa09561ba17fb9c2a8afd876d24105a7c0929f9a30488605d46676cf0",
+  "p3_freeze": "1df3f29a3138d26a3def086f3d82e5476ebb0602b37cdaca8f97c07feabeffb7",
+  "p3_freeze_amendment_1": "552bb550d5582c1fb930c1a9fc21f10441ee82db174a2f6889f181297606f434",
+  "probe_verdict": "f9873dfc8e178feeb943f99d0e1c2ca0363ebafd40c8e1f795cb755fe99fa179"
+ },
+ "arm_config_digests": {
+  "A6-F1-ANCHOR-SAT": "965d5518bb268d5f599d52b3576852e5681aea15323c71ebdd16c4bcdd2081ae",
+  "A6-F1-NEIGHBOR": "4beb59ef29716236520d0cdd164339e8ad41fe60dd940b56bd3d1b5507aee7a0",
+  "A6-F1-CTL-RAWSAT": "f3468b8947056a76aa61e1af808b792f011837adc886e910d0a7fe92b0dd60a3"
+ },
+ "spec_ambiguities_flagged_to_a1": [
+  {
+   "item": "proposal neighbour window '[D-23, D-3]' (21 dates inclusive) vs '20 daily aggregates' stated twice; anchor template is inclusive-count-consistent ([D-12, D-3] = 10), so 20 aggregates = [D-22, D-3]",
+   "implemented": "count-consistent single-knob reading: window_days 20 over [D-22, D-3], churn endpoints [D-22, D-3]",
+   "alternative_if_A1_rules_otherwise": "window_days 21 over [D-23, D-3] (one frozen constant + digest re-pin)"
+  }
+ ],
+ "no_pnl_computed": true,
+ "note": "machine-local read-only staged root recorded at implementation time, BEFORE any cell ran; the implementation lane executed no real-data run and no scored execution"
+}
