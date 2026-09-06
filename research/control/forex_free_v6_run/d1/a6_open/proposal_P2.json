@@ -1,0 +1,156 @@
+{
+  "schema": "forex_free_v6_d1_blind_proposal_v1",
+  "hypothesis_id": "FXFV6-A6-P2",
+  "cycle": "FOREX-FREE-V6",
+  "written_at_utc": "2026-09-06T02:05:00Z",
+  "lane": {
+    "agent": "A6",
+    "axis": 3,
+    "axis_kind": "open",
+    "lane_kind": "blind_proposal",
+    "wave_sha": "6a961556fb2619750762cf3160d9800f7dbd26a4",
+    "branch": "orca/forex-free-v6-d1-a6-open",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/d1-a6-open",
+    "outcome_blind": true
+  },
+  "title": "Dollar-factor concentration-gated cross-pair short-horizon reversal on staged daily prices",
+  "mechanism": {
+    "paragraph": "Slow actor: global asset allocators and FX overlay managers running multi-day USD-book rebalancing under observation and transaction frictions (staggered, infrequent adjustment - not fast dealers). A dominant share of bilateral USD-pair variance is a common dollar factor; when that factor explains an unusually large share of recent cross-pair co-movement, the common move has outrun the diversification of slow books - heterogeneous managers have chased the same aggregate USD swing and only gradually re-diversify. The proposed exploitable residue: in the high-concentration state the common component mean-reverts over the following week, so fading each pair's own trailing 10-decision-day move earns after-cost alpha across the board; when concentration is ordinary, recent moves are idiosyncratic (currency-specific regimes) and the same fade has no edge. Information source is PURELY price-derived cross-pair co-movement on staged daily snapshots - no calendar, no macro series, no print content.",
+    "forced_or_slow_actor": "Institutional USD-book managers with observation/transaction-cost frictions (slow actors) whose staggered rebalancing overshoots the common dollar factor before re-diversifying.",
+    "why_it_should_exist": "Factor concentration is the observable footprint of crowded one-sided USD positioning by slow books; crowding is precisely the state in which subsequent reversal premium (liquidity provision against exhausted one-sided flows) is paid.",
+    "literature_lineage": [
+      "Lustig, H., Roussanov, N. and Verdelhan, A. (2011), 'Common Risk Factors in Currency Markets', Review of Financial Studies - the dollar factor as the first principal component of USD-pair returns.",
+      "Verdelhan, A. (2018), 'The Share of Systematic Variation in Bilateral Exchange Rates', Journal of Finance - the common dollar factor's time-varying share of bilateral variance.",
+      "Nagel, S. (2012), 'Evaporating Liquidity', Review of Financial Studies - reversal premium as compensation to slow liquidity providers after one-sided flows.",
+      "Menkhoff, L., Sarno, L., Schmeling, M. and Schrimpf, A. (2012), 'Currency Momentum Strategies', Journal of Financial Economics - global (non-carry) FX factors and short-horizon return structure."
+    ],
+    "print_content_used": false,
+    "novelty_statement": "The information source is the time-varying cross-pair co-movement structure (PCA concentration share) of the 7 staged USD pairs - a price-derived second-moment observable with NO conditioning calendar, NO macro input, NO rates input and NO session shape. It is not release-window avoidance (no calendar exists here), not carry (no differentials), not a session family (daily clock), not commodity-bloc risk-off (the state is a PCA share, not an event class). D2 must measure |rho| <= 0.20 against the full forbidden inventory, including the reversal-adjacent shapes."
+  },
+  "information_source": {
+    "prices": {
+      "file": "inherited staged daily snapshots for all 7 pairs, byte-verified per research/control/forex_free_v6_run/p2_data_authority_v6.json (manifest sha256 fe2155c0ef51bcac32262ebaf1c7d98fc724727eca1dda8b6644012ad854c460, 156 files, V4/V5 byte-identity chain)",
+      "granularity": "daily decision closes only; the 4h snapshots are NOT used by this proposal",
+      "derived_quantities": ["per-pair daily log returns at the 16:00 America/New_York decision close", "7x7 correlation matrix of the trailing 20 returns", "first-eigenvalue share of the correlation matrix", "per-pair trailing 10-day cumulative returns and 20-day volatilities"]
+    },
+    "clocks": "NONE - this proposal conditions on nothing but staged prices; the conditioning clocks file is not consulted for entries"
+  },
+  "availability_semantics": {
+    "rule": "price-derived: a state at decision close t uses only closes at or before t (trailing windows, rolling percentile reference) - PIT by construction",
+    "missing_days_fail_closed": "if ANY of the 7 pairs lacks a decision close inside the trailing 20-decision-day window at t, NO new entries are formed at t (fail-closed; the state is undefined rather than computed on a shrunken cross-section)",
+    "no_asserted_timestamps": "no availability stamp of any kind is consumed (P-1 trivially satisfied; nothing in this proposal is calendar-aware)"
+  },
+  "universe": {
+    "included": ["AUDUSD", "EURUSD", "GBPUSD", "NZDUSD", "USDCAD", "USDCHF", "USDJPY"],
+    "excluded": "NONE - every pair enters identically as a leg of the cross-pair co-movement measure; evidenced reason: all 7 pairs are staged, byte-verified daily snapshots (p2_data_authority_v6.json), and the dollar-factor mechanism requires the full 7-pair cross-section to define concentration"
+  },
+  "clock": {
+    "decision_instant": "daily 16:00 America/New_York, DST-correct (20:00Z EDT / 21:00Z EST), per clocks-file clock_semantics",
+    "decision_day_convention": "weekday rule, FX 24/5; no holiday calendar is in evidence and none is assumed",
+    "frequency": "daily-or-slower only; no intraday decisions"
+  },
+  "features_and_lags": {
+    "notation": "decision day t; pair i in the 7-pair universe; r_{i,t} = ln(C_{i,t} / C_{i,t-1})",
+    "pc1_share_s_t": "lambda_1 / sum(lambda) of the eigenvalues of the 7x7 CORRELATION matrix of the trailing 20 daily returns {r_{i,tau}: tau in t-19..t} (correlation, not covariance - scale-free across pairs; the PC1 sign is irrelevant, only the share is used)",
+    "reference_distribution": "{s_tau} over the 252 decision days ending at t-1 (each s_tau computed on its own trailing-20 window; the reference excludes the current day)",
+    "state_high": "s_t >= 75th percentile of the reference distribution (preregistered top-quartile concentration)",
+    "cum10_i_t": "sum of {r_{i,tau}: tau in t-9..t} (10 returns ending at t)",
+    "vol20_i_t": "sample standard deviation of {r_{i,tau}: tau in t-19..t}",
+    "noise_floor": "pair i is skipped at t if |cum10_i_t| < 0.25 * vol20_i_t * sqrt(10) (the move must exceed a quarter of its own trailing 10-day scale; preregistered against sign-of-noise entries)",
+    "direction": "-sign(cum10_i_t) (FADE) for every pair passing the noise floor",
+    "pit": "all inputs are closes at or before the decision instant of t",
+    "fitted_parameters": "NONE - windows 20/252/10, percentile 75, floor multiplier 0.25, hold length 5 are preregistered constants; no training, no calibration, no threshold search anywhere"
+  },
+  "entry_exit_fills": {
+    "entry_decision": "at decision close t when state_high holds; all qualifying pairs entered simultaneously, direction = fade",
+    "entry_fill": "at the decision close of the FIRST decision day after the entry decision (next decision close); no same-bar fills",
+    "exit_decision": "at the decision close exactly 5 decision days after the entry fill",
+    "exit_fill": "at the decision close exactly 5 decision days after the entry fill (exit decision close is 4 decision days after entry fill; the position closes at the NEXT decision close)",
+    "holding_profile": "exposure spans exactly 5 decision-day close-to-close intervals per pair; 6 bps round trip at stress tier 2.0 against typical 5-day USD-factor ranges",
+    "overlap_rule": "one position per pair; while a position is open on pair i, new signals on i are SKIPPED (no stacking, no re-entry inside an open hold)",
+    "fold_boundary_rule": "any trade whose exit fill crosses a fold boundary is DROPPED from both books and counted"
+  },
+  "costs": {
+    "frozen": "1.5 bps per side x {1.0, 1.5, 2.0} applied at every fill (entry and exit each one side, per pair)",
+    "tiers": {"1.0": "1.5 bps/side, 3.0 bps round trip", "1.5": "2.25 bps/side, 4.5 bps round trip", "2.0": "3.0 bps/side, 6.0 bps round trip"},
+    "primary": "stress tier 2.0 is the PRIMARY gate; tiers 1.0/1.5 reported for the cost ladder",
+    "dual_books": "book A = net of costs at the tier multiplier; book B = gross price-only (zero cost); the gross book must not invert the aggregate sign of the net book (house dual-book invariant)"
+  },
+  "arms": {
+    "anchor": {
+      "id": "FXFV6-A6-P2-anchor",
+      "definition": "cross-pair fade when the dollar-factor concentration is high (state_high): enter -sign(cum10_i_t) on every pair passing the noise floor, per entry_exit_fills",
+      "identifying_claim": "high factor concentration is the load-bearing state that pays the reversal premium"
+    },
+    "neighbour": {
+      "id": "FXFV6-A6-P2-neighbour",
+      "differs_from_anchor_by_exactly_one_axis": "state side: the COMPLEMENT state (s_t < the same 75th-percentile reference threshold) instead of high concentration; windows, floor, direction, clock, costs, folds identical",
+      "role": "identifiability: the anchor must out-earn the neighbour on the identifying metric, else the concentration state is not load-bearing and the edge is unconditional short-horizon reversal"
+    },
+    "control": {
+      "id": "FXFV6-A6-P2-placebo",
+      "kind": "deterministic shifted-state placebo (causal control; this proposal is price-derived, so the mandatory control is a placebo that must RUN and kills mechanism-specificity when it reproduces the anchor)",
+      "definition": "identical fade rule, identical floor, identical fills and costs, with the state series circularly shifted by +100 decision days: state_placebo_t = state_{t-100} (the state is a past value, so the placebo is trivially PIT-safe and fully deterministic - no randomness, no seeds)",
+      "role_and_falsifier": "the placebo preserves the state's marginal distribution (same fraction of high days) while destroying its alignment with the price path; if the placebo reproduces the anchor (>= 0.5x the anchor's identifying metric, same sign), the timing claim is dead - the edge is unconditional fade, not dollar-factor concentration timing"
+    }
+  },
+  "falsification_rule": {
+    "identifying_metric": "pooled per-trade NET return (bps per unit notional) on the stress tier 2.0 book, pooled over all anchor-eligible events within each held-out fold evaluation",
+    "kill_conditions": [
+      "placebo identifying metric >= 0.5 x anchor identifying metric with the same sign -> REJECT family (unconditional reversal, no concentration timing)",
+      "neighbour identifying metric >= anchor identifying metric -> REJECT family as the named mechanism (concentration not load-bearing)",
+      "anchor identifying metric <= 0 in ANY of the 3 held-out fold evaluations -> REJECT family (no fold rescue, no re-aggregation)"
+    ],
+    "no_rescue": "no parameter, threshold, universe, hold, cost or gate change after any PnL is visible (preregistration); REJECT is a successful outcome"
+  },
+  "expected_failure_interpretation": {
+    "anchor_fails_gates": "no evidence that dollar-factor concentration pays a 5-day reversal premium after frozen costs; recorded as a falsified shape",
+    "placebo_reproduces_anchor": "the fade earns regardless of when concentration was high - the state carries no information; family dies as a concentration-timing claim",
+    "neighbour_earns_like_anchor": "short-horizon FX reversal is unconditional here; family dies as a dollar-factor claim and the unconditional reversal residual is recorded as a measured observation, NOT re-proposed without a new preregistration",
+    "non_vacuity_failure": "if warmup or fail-closed missing-day rules cannot fund the decision floors, the arm is NOT_RUN fail-closed"
+  },
+  "fold_contract": {
+    "S0": "2018-04-04 .. 2025-07-24, frozen, no extension",
+    "warmup": "272 decision days (252-day rolling reference + 20-day state window + 1); the first eligible decision date is approximately 2019-05; fold machinery must account for the warmup (A9 measures)",
+    "folds": "3 contiguous temporal thirds of S0 by decision-day count; boundaries frozen by A1/A9 before any scored computation",
+    "drop_one": "the IDENTICAL frozen rule (zero fitted parameters) is evaluated on each third as held-out; stability-only folds - the family passes only if the identifying metric is positive in each of the 3 held-out evaluations",
+    "no_empty_folds": "if any arm has zero decisions in a held-out fold, that arm-fold is NOT_RUN and the family cannot pass (fail-closed)",
+    "boundary_trades": "dropped and counted per boundary-crossing rule"
+  },
+  "gates": {
+    "non_vacuity_floor": ">= 30 decisions per arm per held-out fold (7-pair cross-section funds more events than P1's 4 pairs; A9 measures BEFORE selection; below floor = NOT_RUN)",
+    "primary_profitability": "pooled per-trade net mean > 0 at stress tier 2.0 in each held-out fold; per-fold PF and margins reported",
+    "control_gate": "placebo must RUN and must NOT reproduce the anchor (see falsification_rule)",
+    "specificity_gate": "anchor > neighbour on the identifying metric",
+    "dual_book_invariant": "gross book does not invert the aggregate net sign",
+    "breakeven_bps": "break-even bps per trade reported per arm vs the 6.0 bps tier-2.0 round trip (P-2 knife-edge discipline)",
+    "margin_to_fail": "every gate reports its margin to its failure threshold (P-2)",
+    "usd_drift": "mean and per-fold dispersion of the aggregate net USD factor exposure while in the high state - the claim is factor REVERSAL, so a persistent one-sided USD drift instead of oscillation around flat is reported as a mechanism inconsistency"
+  },
+  "per_decision_evidence_traceability": {
+    "each_decision_row_records": [
+      "decision date and decision instant (16:00 America/New_York)",
+      "pair and arm id",
+      "state inputs: s_t, the reference percentile value, cum10_i_t, vol20_i_t, noise-floor pass/fail with their exact input windows",
+      "entry/exit decision and fill dates, fill prices, side",
+      "costs booked per side at the tier multiplier and book (net/gross)",
+      "fold id and fold-boundary-drop flag",
+      "for the placebo arm: the shifted-state source date (t-100)"
+    ],
+    "recompute_contract": "any data-semantics change (P-3) recomputes ALL THREE arms including the placebo - a control verdict does not survive a semantics change for free"
+  },
+  "ancestry_disclosure": {
+    "session_structure_families": "daily clock only; no session windows, opens, fades or range structures are computed (the forbidden fades are intraday session shapes)",
+    "vol_gated_carry": "no policy-rate input of any kind; nothing in the state or direction touches rate differentials",
+    "commodity_bloc_risk_off": "the state is a price-derived PCA share, not an event class; no risk-off conditioning exists",
+    "v5_release_window_position_avoidance": "no calendar exists in this proposal at all - rho to any calendar-conditioned family should be structurally near zero; D2 measures",
+    "reversal_adjacency": "the fade direction is reversal-shaped by design; the claim is NOT generic reversal but concentration-TIMED reversal, which is exactly what the neighbour and placebo falsify; D2 measures |rho| against the forbidden inventory"
+  },
+  "a9_open_questions": [
+    "Snapshot close convention: confirm the staged daily snapshot cut aligns to (or maps fail-closed to) the 16:00 America/New_York decision close for all 7 pairs; if the staged cut differs, the mapping must be defined from the staged manifest BEFORE D2 - if unmappable, the proposal is UNAVAILABLE_FAIL_CLOSED.",
+    "Missing-day frequency: how often the fail-closed all-7-pairs rule blocks new entries.",
+    "Warmup interaction: confirm the 272-decision-day warmup leaves fold 1's held-out span and the S0 window non-degenerate; report first eligible date exactly.",
+    "Turnover and cost ceiling: expected simultaneous positions (up to 7) x 6-day holds vs the cost ladder; margin to break-even at tier 2.0.",
+    "PCA numerical stability: any dates where the 7x7 correlation matrix is singular or near-singular on standardized returns - the fail-closed no-entry rule must be counted, not silently absorbed."
+  ]
+}
