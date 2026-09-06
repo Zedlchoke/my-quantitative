@@ -1,0 +1,159 @@
+{
+  "schema": "forex_free_v6_d1_proposal_v1",
+  "hypothesis_id": "FXFV6-A4-P2",
+  "family_id": "FXFV6-A4-POSTRELEASE-DIRECTION",
+  "axis": 1,
+  "axis_name": "post-release direction/drift conditioning (mandatory lane) - cross-economy spillover variant",
+  "cycle": "FOREX-FREE-V6",
+  "lane": "D1-A4-postrelease",
+  "wave_sha": "6a961556fb2619750762cf3160d9800f7dbd26a4",
+  "branch": "orca/forex-free-v6-d1-a4-postrelease",
+  "written_before_any_v6_outcome_exists": true,
+
+  "mechanism": "CROSS-ECONOMY SPILLOVER: the conditioning EVENTS are the 88 evidenced GB (ONS) CPI clocks, but the traded pairs are the three USD majors that have NO funded own-economy calendar (EURUSD, USDJPY, USDCHF). For each GB clock and each of the three pairs, the proposal measures THAT PAIR's OWN initial reaction R = ln(close(D0)/close(D_prev)) over the same availability-aligned window used by the axis, takes direction = sign(R), fills at the next decision close, and holds k decision sessions. The economic claim is gradual cross-market information diffusion: a UK CPI print is informative about the European rate complex (synchronized BoE/ECB reaction functions and the documented global inflation common factor, Ciccarelli & Mojon 2010), and through the global rate factor about funding-currency pairs (USDJPY, USDCHF); agents trading EURUSD/USDJPY/USDCHF professionally update to FOREIGN inflation news later than GBP-focused agents do - the sticky-information friction (Mankiw & Reis 2002) binds hardest exactly where the news is not one's home print - so the pair's own initial response to the foreign print continues over the following sessions (Hong & Stein 1999 gradual information diffusion; Coibion & Gorodnichenko 2015 forecast underreaction; the FX announcement literature documents these cross-market spillovers in event time: Andersen, Bollerslev, Diebold & Vega 2003, 2007; Faust, Rogers, Wang & Wright 2007). The slow actor is the foreign-pair inattentive cohort completing incorporation; the fast actor is GBP-complex flow whose hedging spills into correlated pairs within the first day. Direction is read per-pair from the pair's own reaction, so NO cross-pair sign assumption is made (the design does not presuppose EURUSD and USDJPY drift the same way; it presupposes only that each pair's own response to informative news diffuses). No print VALUES, no consensus, no GBP-cross direction import: the signal is the pair's own measured price reaction to a foreign evidenced release, computable from staged prices plus availability stamps alone.",
+
+  "information_source": {
+    "calendars": "research/control/forex_free_v6_run/p3_conditioning_clocks_v6.json - GB clocks ONLY (88 in S0; DAY-precision ONS Release-date stamps, archive_sha256 per clock). CA/AU/NZ clocks are deliberately NOT used here as foreign sources: GB is the largest funded calendar and is a single uniform semantics class (all DAY precision); assigning CA/AU/NZ-as-foreign-source is left unassigned rather than smuggled in (unused slots are never reassigned)",
+    "prices": "staged daily snapshots under data_raw/forex_free_v1 (156-file manifest-verified, manifest sha256 fe2155c0ef51bcac32262ebaf1c7d98fc724727eca1dda8b6644012ad854c460, INHERITED_BYTE_VERIFIED per p2_data_authority_v6.json); the 4h snapshots are NOT used (daily-or-slower only)",
+    "direction_computation": "per pair p and GB clock c: R_p = ln(close_p(D0)/close_p(D_prev)) on p's own daily decision-close series; direction_p = sign(R_p); R == 0 exactly -> that pair-event skipped and counted zero_signal_skipped; |R_p| reported as diagnostic only, never a gate",
+    "warmup": "5 decision closes of EACH PAIR's decision series must exist ending at close(D_prev); a pair-event without full warmup is skipped fail-closed and counted warmup_skipped",
+    "print_values_or_consensus": "NOT USED and NOT ASSUMED - see open_feasibility_questions_for_A9"
+  },
+
+  "availability_semantics": {
+    "adopted_verbatim_from": "p3_conditioning_clocks_v6.json clock_semantics (P-1: cited, not asserted); identical to FXFV6-A4-P1's semantics block so the two proposals share one availability authority",
+    "decision_clock": "daily 16:00 America/New_York, DST-correct via zoneinfo (20:00Z EDT / 21:00Z EST)",
+    "conditionability_rule": {
+      "GB_DAY": "each GB clock is DAY-precision (23:59:59Z end-of-day bound, ONS bulletin Release date field) and is conditionable at the 16:00-NY decision on its published decision_date, per the published convention 'available for the daily decision on its decision_date by construction'",
+      "fail_closed_rule": "any GB clock whose published stamp contradicts these semantics at implementation time is skipped and reported; CA/AU/NZ clocks are out of scope for this proposal; clocks not published in p3_conditioning_clocks_v6.json are never conditionable (P-1)",
+      "reaction_window_definition": "D0 = GB clock decision_date; D_prev = immediately preceding weekday decision date; reaction window = [close_p(D_prev), close_p(D0)] per pair; with the ONS morning release convention the window contains the release for every GB clock under the published day-precision availability semantics"
+    }
+  },
+
+  "universe": {
+    "pairs": ["EURUSD", "USDJPY", "USDCHF"],
+    "mapping": "all three pairs are conditioned on the SAME 88 GB clocks (each pair contributes up to 88 pair-events; 264 pre-skip maximum)",
+    "pooled_book": true,
+    "inclusion_evidence": "these are precisely the S0 pairs WITHOUT a funded own-economy calendar (p2_data_authority_v6.json: EMU LEDGER_REPAIRED_NOT_A_FUNDED_CALENDAR; no CH/JP calendar exists in evidence), so the GB-print axis is the only evidenced print axis that can reach them - the design gives the otherwise-unused third of the frozen universe an evidenced print conditioning source",
+    "exclusions_evidenced": {
+      "GBPUSD": "own-economy pair for GB; reserved to FXFV6-A4-P1 - keeping the two proposals' pair sets DISJOINT prevents the same event-pair economics from being double-counted across the wave",
+      "USDCAD": "own-economy pair for CA; reserved to FXFV6-A4-P1 (same disjointness rule)",
+      "AUDUSD": "own-economy pair for AU; reserved to FXFV6-A4-P1 (same disjointness rule)",
+      "NZDUSD": "own-economy pair for NZ; reserved to FXFV6-A4-P1 (same disjointness rule)"
+    }
+  },
+
+  "clock": "daily 16:00 America/New_York (zoneinfo DST-correct); daily-or-slower only; no intraday decisions; signals computed at decision closes, fills at decision closes",
+
+  "features_lags": {
+    "features": ["sign(R_p) per pair (the only gating feature)", "|R_p| (reported diagnostic, never gates)", "GB clock decision_date, available_time_utc, archive_sha256 (attribution features, shared across the three pair-events of a clock)"],
+    "lags": "R_p uses closes lagged at most 1 decision session (close_p(D_prev)); no other lags; no rolling windows; no thresholds"
+  },
+
+  "entry_exit_fill_rules": {
+    "signal_decision_instant": "16:00-NY decision on D0, using data through close_p(D0), independently per pair",
+    "entry_fill": "close_p(D1) where D1 = next weekday after D0 (FX 24/5 weekday convention, no holiday refinement - published next_trading_day_rule); FILL AT NEXT DECISION CLOSE, never same-bar",
+    "hold": "k decision sessions (anchor k=5; neighbour k=10)",
+    "exit_fill": "close_p(D1+k); the time exit is issued at the immediately preceding decision instant (D1+k-1) so the exit fill is also never same-bar",
+    "overlap_policy": "max one open position PER PAIR; the three pairs trade the same event dates independently (their books are pooled only at accounting level); a new event on a pair with an open position is skipped and counted collision_skipped (no stacking, no early exit, no re-entry); with monthly GB cadence vs k <= 10 this is expected never to bind in S0, and it is frozen so it cannot bind asymmetrically across arms",
+    "skip_accounting": "every skipped pair-event carries a reason code and the clock tuple; pair-events + skips must reconcile to 3 x 88 = 264 or the run is BLOCKED"
+  },
+
+  "costs": {
+    "ladder_bps_per_side": 1.5,
+    "multipliers": [1.0, 1.5, 2.0],
+    "round_trip_bps": [3.0, 4.5, 6.0],
+    "tier_2_0": "PRIMARY GATE: anchor mean per-trade net bps must be > 0 at 2.0x (6.0 bps round trip) for any survival claim",
+    "break_even_reporting": "per-side break-even = |mean gross per-trade bps| / 2, reported against the 1.5 bps floor (P-2 margin convention)",
+    "dual_books": {
+      "costed": "net of ladder costs + financing per the inherited accounting kernel formula (kernel-owned, no new financing assumptions)",
+      "price_only": "no costs, no financing",
+      "invariant": "sign(price_only mean) must equal sign(costed mean); any inversion is an accounting HARD_FAIL, never a rescue"
+    }
+  },
+
+  "cells": {
+    "definition": "3 arms x 2 books = 6 cells (max six cells respected); the cost ladder is a stress recomputation of the costed book, not additional cells",
+    "arms": [
+      {
+        "arm_id": "anchor_foreign_reaction_drift_k5",
+        "role": "anchor",
+        "rule": "GB-clock events on EURUSD/USDJPY/USDCHF, per-pair direction sign(R_p), enter close(D1), hold k=5 decision sessions, time exit close(D6)"
+      },
+      {
+        "arm_id": "neighbour_foreign_reaction_drift_k10",
+        "role": "neighbour",
+        "rule": "identical to anchor except k=10 (hold horizon is the single differing design axis); supports the anchor by testing whether cross-market diffusion, if any, is first-week or persists a second week",
+        "differs_from_anchor_by_exactly_one_axis": "k: 5 -> 10"
+      },
+      {
+        "arm_id": "control_sham_gb_calendar_plus7_k5",
+        "role": "causal control (MANDATORY sham-calendar placebo)",
+        "rule": "identical rule to the anchor with every GB clock's conditionable date shifted +7 calendar days (same weekday by construction); each pair's D_prev is the previous weekday of the shifted date; same price series, same fills, same costs, same evidenced semantics, same fold contract; the sham measures whether the rule is just 'own-pair short-horizon momentum after any nonzero prior-day move' rather than GB-print-anchored diffusion",
+        "coincidence_note": "a shifted date coinciding with a real GB clock is mechanically reported and does NOT alter the sham (the sham is defined by the shifted calendar, not by release absence; no discretion)"
+      }
+    ]
+  },
+
+  "falsification_rule": {
+    "identifying_metric": "mean per-trade NET PnL in bps at 1.0x ladder on the pooled arm population (computed identically for sham and anchor)",
+    "family_dead_condition": "if sign(sham identifying metric) == sign(anchor identifying metric) AND |sham| >= 0.5 * |anchor| -> the family is DEAD: the rule earns regardless of which calendar it is conditioned on, i.e. it is generic short-horizon momentum wearing calendar language; no rescue, no reinterpretation",
+    "reject_condition": "anchor identifying metric <= 0 at 1.0x -> REJECT (no cross-market post-release diffusion survives costs at the frozen floor)",
+    "survival_requires": [
+      "anchor identifying metric > 0 at 1.0x",
+      "sham does NOT reproduce anchor (not same-sign at >= 0.5x magnitude)",
+      "anchor net mean > 0 at 2.0x tier (PRIMARY gate)",
+      "dual-book non-inversion holds",
+      "fold non-vacuity: >= 30 pooled anchor trades in EACH of the 3 folds (measured GB clock populations give 33/27/28 clocks x 3 pairs = 99/81/84 pair-events pre-skip, so this gate can only fail on implementation data-mapping failure - reported margin per P-2)",
+      "drop-one fold robustness: pooled mean of each 2-fold subset shares the full-sample anchor sign (with purge, below)",
+      "drop-top-pair sign robustness (USD-concentration gate): excluding the single largest net contributor pair keeps the identifying metric same-sign; per-pair and USD-base-vs-USD-quote splits reported as usd_drift_diag",
+      "sanity gate FOREIGN_REACTION_EXISTENCE: at least 60% of pair-events must have R_p != 0; below that the foreign-print reaction is degenerate and the mechanism is vacuous -> family DEAD regardless of PnL",
+      "sanity gate EVENT_REACTION_NONDEGENERACY: median |R_p| on GB-clock event days must exceed median |R_p| on non-event decision days of the same pairs over S0; if violated the direction signal is not event-anchored -> family DEAD regardless of PnL"
+    ],
+    "purge": "drop-one computations purge trades whose hold spans a fold boundary (purge_days = 16 calendar days, covering max hold 11 sessions); per-fold stats assign by event decision_date D0",
+    "sham_must_run": "the sham MUST produce trades (same shifted clock count per fold as the anchor: 33/27/28 x 3 pairs); a sham that cannot run is a design failure (plan section 4 D2), reported BLOCKED, never 'control not applicable'"
+  },
+
+  "expected_failure_interpretation": {
+    "reject_with_flat_or_negative_sham": "no tradable cross-market diffusion after 3.0 bps round trip: foreign-print information is either fully impounded in the pair by the first post-availability decision close, or the pairs do not react to GB prints at all (distinguishable via the FOREIGN_REACTION_EXISTENCE diagnostic); scientifically this bounds the cross-economy sticky-information channel at the daily clock and is recorded as information-limitation, not calendar-evidence failure",
+    "sham_reproduces": "the mechanism was own-pair momentum dressed as foreign-print diffusion; placebo falsification fires and the family joins the measured shadow inventory",
+    "anchor_negative": "post-foreign-print REVERSAL in the uncovered pairs; informative direction for any future preregistration, still a REJECT for this family",
+    "tier_2_0_fail_with_positive_gross": "diffusion exists but is thinner than 6 bps round trip: real but non-tradable at the frozen cost floor; recorded, no rescue"
+  },
+
+  "fold_contract": {
+    "folds": [
+      {"id": "F1", "start": "2018-04-04", "end": "2020-12-31"},
+      {"id": "F2", "start": "2021-01-01", "end": "2023-03-31"},
+      {"id": "F3", "start": "2023-04-01", "end": "2025-07-24"}
+    ],
+    "assignment": "by event clock decision_date D0",
+    "measured_event_population_per_fold_pre_skip": {"gb_clocks": [33, 27, 28], "pooled_pair_events": [99, 81, 84]},
+    "drop_one": "3 drop-one subsets; each remaining-pair pooled mean must share the full-sample anchor sign; fold boundaries and the purge rule above are frozen now",
+    "no_fold_may_be_empty": "guaranteed by construction (pooled 99/81/84 pair-events pre-skip, per-pair 33/27/28) and gated at >= 30 pooled per fold"
+  },
+
+  "per_clock_evidence_citation_requirement": "every conditioning decision in any artifact of this proposal (each pair-event, each skip, each fold count) must carry the resolved GB clock tuple (economy=GB, decision_date, available_time_utc, archive_sha256) byte-resolvable to a row of p3_conditioning_clocks_v6.json plus the pair it drove; a pair-event whose tuple cannot be resolved is an invented clock -> HARD_FAIL; count reconciliation (pair-events + skips == 264 = 3 x 88) is a mandatory reported check; no CA/AU/NZ clock may appear in any artifact of this proposal (scope guard, mechanically checkable by economy field)",
+
+  "ancestry_disclosure": {
+    "v5_a4_p1_blocked": "PLAN_forex_v6.md section 1 records that V5's A4-P1 was D2-blocked with a fold-population failure; this proposal is a DIFFERENT axis-1 mechanism (cross-economy spillover onto the uncovered pairs, disjoint universe) that adopts the same hardened fold contract as FXFV6-A4-P1 (measured per-fold populations 99/81/84 pooled pre-skip, >= 30/fold gate, drop-one with purge). The precise V5 failure mechanism is invisible to this outcome-blind agent (no V5 outcome files read) and is listed as a D2 cross-check in open_feasibility_questions_for_A9.",
+    "forbidden_inventory_checked": {
+      "release_window_avoidance_V5": "NOT replicated: position-TAKING after foreign releases in the pair's own reaction direction - the opposite exposure shape of window avoidance; the conditioning variable (foreign print's availability + own measured reaction) does not exist in the avoidance family",
+      "sham_calendar_shadow": "adopted as the mandatory control, not the strategy; the falsification rule is pre-wired to fire when the sham reproduces the anchor",
+      "carry_and_vol_gated_carry_V3_V4": "NOT replicated: no rate-differential input anywhere; conditioning is foreign-print-reaction direction only",
+      "session_structures_V1_V2": "NOT replicated: the only clock is the universal daily 16:00-NY decision clock; no session-clock shape; events are defined by release availability, not session boundaries",
+      "commodity_bloc_risk_off_V4": "NOT replicated: no risk-off conditioning; EURUSD/USDJPY/USDCHF enter only via GB CPI print reactions"
+    },
+    "novelty_statement": "the information source (own-pair reaction to a FOREIGN evidenced print, on the pairs no other print axis can reach) and the exposure shape (post-release continuation) are both absent from the forbidden packet; D2 must still measure |rho| <= 0.20 against ALL of it, including against FXFV6-A4-P1 (same family, disjoint universe, different conditioning source) so the wave's two proposals are separable at selection"
+  },
+
+  "open_feasibility_questions_for_A9": [
+    "PRINT VALUES: no CPI print VALUES are archived in the repo (calendar pins carry release timing only), and no consensus estimates exist in-repo; the true surprise direction is NOT in-repo computable. This proposal uses each pair's own market-reaction direction as the sanctioned in-repo fallback. An owner-evidenced archival path to print values would enable a value-based refinement ONLY as a new preregistration.",
+    "DECISION-CLOSE MAPPING: confirm the staged daily snapshots map to the 16:00-NY decision closes per the inherited kernel decision_clock convention; fail-closed if not evidenced. The 4h snapshots are intentionally unused.",
+    "REACTION-EXISTENCE PRECHECK (non-scored, A9 may run it as availability instrumentation only): whether EURUSD/USDJPY/USDCHF exhibit nonzero reactions to GB clocks at the daily decision close is measurable before scoring; the 60% sanity gate is adjudicated inside the scored run regardless, so no outcome information flows to this lane.",
+    "D2 CROSS-CHECK: measure |rho| of this proposal's books against FXFV6-A4-P1 (same family, disjoint pairs) and against the full forbidden packet.",
+    "SHAM COINCIDENCES: report any shifted GB date landing on a real GB clock (expected: none at monthly cadence; mechanical report only, no discretion)."
+  ],
+
+  "no_code_no_pnl_declaration": "this file is a preregistration only: no code, no PnL, no network fetches, no scored computation was performed by its author; no existing file was modified"
+}
