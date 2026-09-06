@@ -104,6 +104,58 @@ Khi hai nguồn hướng dẫn mâu thuẫn, dùng thứ tự:
 Historical artifact là bằng chứng về quá khứ, không tự động là trạng thái hiện
 tại. Luôn đo lại checkout.
 
+### 3.1 Active-cycle registry là router duy nhất
+
+Không suy ra cycle đang chạy chỉ từ tên file có version cao nhất. Một plan có
+thể đã được viết nhưng vẫn là `PLANNED_NOT_STARTED`; một worktree có thể tồn tại
+nhưng đang `PAUSED_RESOURCE_CONFLICT`; một version thấp hơn có thể chỉ còn là
+evidence lịch sử.
+
+Repository phải có một registry máy đọc được, mặc định:
+
+```text
+plans/ACTIVE_CYCLES.json
+```
+
+Mỗi asset/cycle tối thiểu ghi:
+
+```json
+{
+  "cycle_id": "CRYPTO_V15",
+  "asset": "crypto",
+  "plan": "plans/PLAN_crypto_v15.md",
+  "status": "ACTIVE_LIGHT",
+  "phase": "D1_PROPOSALS",
+  "integration_worktree": "/absolute/path",
+  "branch": "orca/v15-integration",
+  "head": "40-char-sha",
+  "budget_used": 0,
+  "budget_max": 6,
+  "go_phrase": "GO CRYPTO V15 SCORED EXECUTION",
+  "s1": "SEALED_UNTOUCHED"
+}
+```
+
+Allowed lifecycle statuses:
+
+```text
+PLANNED_NOT_STARTED
+ACTIVE_LIGHT
+ACTIVE_HEAVY
+PAUSED_RESOURCE_CONFLICT
+BLOCKED
+TERMINAL
+```
+
+`CLAUDE.md`, `RULES.md`, `CONTINUE.md`, plan path và GO registry phải đồng
+thuận với registry. Nếu version, phase, GO phrase hoặc worktree khác nhau, đó là
+`ROUTER_DRIFT`: **STOP trước dispatch/scoring**, đo lại và để Lead/A1 sửa bằng
+một commit chỉ chứa router/control-plane files. Không chọn nguồn thuận tiện nhất.
+
+`CONTINUE.md` là checkpoint ngắn được dẫn xuất từ registry, không phải authority
+lịch sử và không được chỉ tới một `PLAN.md` không tồn tại. Frozen cycle contract
+không bị viết lại khi global state đổi; registry ghi trạng thái hiện tại riêng.
+
 ## 4. Intake: 15 phút đầu tiên
 
 Không sửa file trước khi intake hoàn tất.
@@ -377,6 +429,31 @@ Không dùng song song khi:
 - scoring đang chạy trên máy yếu;
 - câu hỏi nhỏ hơn chi phí coordination.
 
+### 8.5 Context packet theo vai trò
+
+Lead/A1 đọc toàn bộ handbook. Không bắt mọi lane agent nạp toàn bộ lịch sử nếu
+nhiệm vụ chỉ cần một lát cắt nhỏ; việc đó tốn token và làm loãng ownership.
+
+Mỗi dispatch packet phải tự đủ dùng và chỉ chứa:
+
+```text
+cycle/role/objective
+exact base SHA + absolute worktree + branch
+allowed/forbidden paths
+frozen data/clock/cost identity liên quan
+forbidden ancestry hoặc audit criteria liên quan
+required inputs/outputs
+test commands
+stop conditions
+commit and handoff format
+```
+
+A4/A5/A6 proposal lanes không nhận scored outcome files. A7 nhận evidence cần
+audit nhưng không nhận chỉ dẫn “làm sao để PASS”. A8 nhận frozen implementation
+contract, không được diễn giải lại hypothesis. A9 nhận feasibility inputs không
+có PnL. Packet phải dẫn tới authority đầy đủ để tra cứu khi có ambiguity, nhưng
+không sao chép hàng nghìn dòng không liên quan.
+
 ## 9. Worktree và branch discipline
 
 ### 9.1 Mỗi agent một worktree
@@ -471,6 +548,45 @@ Lead ghi:
 Không “sleep rồi hy vọng”. Theo dõi log, heartbeat, artifact growth và process
 health.
 
+### 10.3 Global heavy-worker lock
+
+Giới hạn “một heavy job” là **machine-wide**, không phải per cycle. Mỗi A1 tự
+đếm worker của mình là chưa đủ vì hai cycle có thể cùng nhìn thấy máy rảnh.
+
+Heavy worker phải lấy exclusive OS lock trước khi chạy, ví dụ bằng Python
+`fcntl.flock` trên:
+
+```text
+.runtime/heavy_worker.lock
+```
+
+Runtime file là local/gitignored. Registry đi kèm tối thiểu ghi:
+
+```text
+cycle_id / role / PID / process-start token
+absolute worktree / command digest
+started_at / last_heartbeat / expected artifacts / status
+```
+
+Nếu không lấy được lock, trả `NOT_RUN_RESOURCE_CONFLICT`; không spin/retry vô
+hạn và không chạy chen. Lock stale chỉ được thu hồi sau khi kiểm tra cả PID lẫn
+process-start token để tránh nhầm một PID đã được hệ điều hành tái sử dụng.
+
+Worker kết thúc phải ghi `FINISHED`, `FAILED` hoặc `TECHABORT` và giải phóng
+lock trong `finally`. State/heartbeat nói `workers=0` trong khi process còn sống
+là `CONTROL_STATE_DRIFT`, không được launch job tiếp theo cho đến khi reconcile.
+
+### 10.4 Nhiều cycle cùng tồn tại
+
+Cho phép proposal/docs/audit nhẹ chạy song song khi ownership không giao nhau.
+Chỉ một cycle có thể mang `ACTIVE_HEAVY` tại một thời điểm. Các cycle khác ghi
+`ACTIVE_LIGHT` hoặc `PAUSED_RESOURCE_CONFLICT` trong active-cycle registry.
+
+Worktree được tạo không tự động có nghĩa cycle đã được launch. Bootstrap phải có
+manifest/state/event-log commit sạch. Worktree có control files chưa commit là
+`BOOTSTRAP_INCOMPLETE`; hoặc A1 commit đúng pathspec, hoặc park nó rõ ràng. Không
+dispatch lane mới từ một integration tree bẩn.
+
 ## 11. Data authority và PIT
 
 Đây là nơi một backtest đúng code vẫn có thể sai khoa học.
@@ -558,6 +674,42 @@ Kiểm tra:
 
 Adapter tests PASS chỉ chứng minh parser hoạt động; không chứng minh dataset đủ
 để scoring.
+
+### 11.7 Archive bị rewrite và retrospective-only data
+
+Publication lag và revision integrity là hai câu hỏi khác nhau:
+
+```text
+publication lag: file xuất hiện trễ bao lâu sau event?
+revision integrity: byte/value lịch sử có bị thay đổi về sau không?
+```
+
+Thêm một lag bảo thủ không chứng minh revision integrity. Nếu kho dữ liệu cho
+thấy historical span được upload/ghi lại về sau và không có original listing,
+checksum hoặc independent snapshot tại thời điểm lịch sử, Lead phải mở hard
+gate trước proposal selection/scoring:
+
+```text
+PASS_PIT_EVIDENCED
+RETROSPECTIVE_ONLY
+BLOCKED_DATA
+```
+
+- `PASS_PIT_EVIDENCED`: có bằng chứng đủ mạnh rằng row/value đã available với
+  nội dung đó tại decision time.
+- `RETROSPECTIVE_ONLY`: được dùng để sinh hypothesis hoặc nghiên cứu mô tả,
+  nhưng không đủ điều kiện Stage A/S1 và không được quảng bá như PIT backtest.
+- `BLOCKED_DATA`: không được tính scored result.
+
+Các đường sửa hợp lệ: giới hạn về đoạn có archived snapshots độc lập; xây
+forward-only snapshot từ hiện tại; hoặc tìm publication/checksum evidence lịch
+sử. Owner có thể authorize nghiên cứu retrospective, nhưng authorization không
+biến retrospective bytes thành historical PIT evidence.
+
+Với SEC/multi-vintage data, `available_time` của mỗi vintage phải là accepted/
+submission timestamp của đúng accession. Amendment tạo vintage mới chỉ từ lúc
+amendment available; không được đưa restated value lùi về filing gốc. Mutation
+test phải chứng minh filing/vintage đến muộn làm signal dịch đúng decision period.
 
 ## 12. Scientific research protocol
 
@@ -675,6 +827,30 @@ input/config/code computation identity không đổi; nhưng lịch sử sự c�
 
 Không chỉ đếm cell trong sprint. Lead duy trì program-level history để đánh giá
 multiple testing. Một survivor sau hàng trăm cells chưa phải edge thật.
+
+### 13.4 Intake snapshot không phải current total
+
+Frozen contract giữ denominator tại thời điểm intake và không được sửa ngược.
+Nhưng mọi checkpoint/terminal phải phân biệt rõ:
+
+```json
+{
+  "intake_snapshot": {
+    "published": 197,
+    "observed": 200,
+    "as_of_commit": "..."
+  },
+  "current_ledger_snapshot": {
+    "published": 200,
+    "observed": 203,
+    "as_of_commit": "..."
+  }
+}
+```
+
+Current total lấy từ canonical global ledger, không cộng tay terminal reports.
+Chênh lệch hợp lệ do cycle khác đóng sau intake phải được giải thích; không gọi
+snapshot cũ là trạng thái hiện tại và không rewrite frozen contract để làm đẹp.
 
 ## 14. Implementation discipline
 
@@ -1188,25 +1364,27 @@ Sai. Im lặng không phải authorization.
 
 ```text
 1. Reconcile terminal cycle trước.
-2. Freeze starting SHA, counters, S1 và forbidden inventory.
-3. Viết plan với terminal outcomes âm.
-4. Bootstrap integration worktree.
-5. Pass accounting/data/PIT factory gates.
-6. Freeze baseline invariants.
-7. Dispatch blind proposal lanes từ một wave SHA.
-8. Audit novelty và feasibility.
-9. Apply frozen selection rubric.
-10. Freeze selected proposal hashes và six-arm identities.
-11. Implement trong isolated lanes.
-12. Integrate tuần tự và run gates.
-13. Create code/data freeze và detached twins.
-14. Exact-arm sanitized dry-run.
-15. Independent A7 prelaunch.
-16. Owner GO nếu plan yêu cầu.
-17. Run bounded scored cells.
-18. Reproduce independently.
-19. Terminal A7.
-20. Close state, ledger, Wayfinder và workers.
+2. Reconcile ACTIVE_CYCLES, router docs, processes và global heavy lock.
+3. Freeze starting SHA, counters, S1 và forbidden inventory.
+4. Viết plan với terminal outcomes âm.
+5. Bootstrap integration worktree; commit manifest/state/event log sạch.
+6. Register cycle status + exact GO phrase; validate router consistency.
+7. Pass accounting/data/PIT factory gates, gồm rewrite/revision gate nếu có.
+8. Freeze baseline invariants.
+9. Dispatch blind proposal lanes từ một wave SHA bằng role-specific packets.
+10. Audit novelty và feasibility.
+11. Apply frozen selection rubric.
+12. Freeze selected proposal hashes và six-arm identities.
+13. Implement trong isolated lanes.
+14. Integrate tuần tự và run gates.
+15. Create code/data freeze và detached twins.
+16. Exact-arm sanitized dry-run.
+17. Independent A7 prelaunch.
+18. Owner GO nếu plan yêu cầu.
+19. Acquire global heavy lock; run bounded scored cells.
+20. Reproduce independently dưới cùng resource discipline.
+21. Terminal A7.
+22. Close state, ledger, Wayfinder, registry, workers và release lock.
 ```
 
 ## 30. Playbook: Data Fusion hoặc shared core
@@ -1357,10 +1535,15 @@ Trước mọi quyết định quan trọng, hỏi:
 [ ] Tôi đang ở đúng cwd/branch/worktree/HEAD?
 [ ] Dirty files đã được giải thích?
 [ ] Tôi đã đọc đúng plan hiện hành?
+[ ] ACTIVE_CYCLES, CLAUDE, RULES, CONTINUE và GO phrase có đồng thuận?
+[ ] Cycle này là ACTIVE_LIGHT, ACTIVE_HEAVY hay PAUSED_RESOURCE_CONFLICT?
+[ ] Global heavy lock và worker registry có khớp process thật?
 [ ] Authority này đến từ owner hay do agent suy luận?
 [ ] Dữ liệu có PIT và license evidence thật?
+[ ] Có historical rewrite/restatement nào chỉ được che bằng lag giả định?
 [ ] Cycle khác và S1 có bị ảnh hưởng?
 [ ] Trial identity và denominator có đầy đủ?
+[ ] Intake snapshot và current ledger total có được phân biệt?
 [ ] Gate đã thực sự chạy hay chỉ được mô tả?
 [ ] A7 có độc lập và có kiểm giả định đầu vào?
 [ ] Positive claim có mạnh hơn evidence không?
