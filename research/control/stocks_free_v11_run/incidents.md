@@ -130,3 +130,24 @@ at dispatch: "Ghi incident kể cả khi vô hại").
   (GitHub audit log) and returns.
 - state: cycle held at PRELAUNCH, verdict STOCKS_FREE_V11_BLOCKED_PRELAUNCH
   pending owner; nothing scored, nothing pushed by A1 or lanes.
+
+## INC-V11-4 status update — owner directive recorded; A7 v2 to re-adjudicate (status: OPEN -> OWNER_DIRECTED_RE_ADJUDICATION)
+
+- updated_at_utc: 2026-09-07T13:35:00Z
+- new evidence since the refusal (ddf536f):
+  (a) root main advanced d2b0f92 -> 26d0e30 with Lead handoff a77dce3
+      ("ACTIVE stocks V11 (D1 done)" listed among program cycles; sibling
+      cycles closed "on origin" — owner-side origin management of active
+      cycles is stated practice; program 218/221 as-of-handoff);
+  (b) at 13:2xZ the owner, fully informed of F-1 (the ratify/remove/
+      investigate options were presented verbatim), directed the cycle to
+      proceed: "GO STOCKS V11 SCORED EXECUTION kiem tra heavy lock".
+- recorded interpretation (two-sided, fail-closed): this is an
+  owner-directed CONTINUATION in full knowledge of the undisclosed push —
+  it is NOT an explicit attribution of the 03:11:29Z push. The original
+  pusher remains unattributed from bytes. A7 v2 re-adjudicates item 10
+  with this record on the branch and decides independently whether the
+  boundary is now satisfied or still blocks.
+- the typed phrase is recorded as OWNER_INTENT (owner_go_intent.json),
+  NOT consumed: the P-8 gate (fresh A7 AUTHORIZED verdict first) does not
+  exist yet; a fresh owner typing AFTER that verdict is the consumable key.
