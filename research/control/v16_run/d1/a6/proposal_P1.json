@@ -1,0 +1,55 @@
+{
+  "proposal_id": "A6-V16-P1",
+  "lane": "a6",
+  "axis": "AXIS-3 open axis",
+  "title": "CLOSE-DISPLACE-FADE: day-boundary close-to-VWAP displacement fade (volume-clock vs time-clock displacement at the UTC day boundary)",
+  "causal_claim_one_sentence": "Benchmark-driven passive flow (VWAP/TWAP execution desks and daily-candle mark users) is forced to complete near the UTC day boundary, so when a day's terminal print sits far from that day's volume-weighted average price relative to the day's range, scheduled completion flow rather than informed flow has displaced price off its volume anchor and the displacement mean-reverts over the next session; the mechanism must fail when late-day prints carry informed directional content (displacement persists instead of reverting) or once the public price-shape pattern is crowded.",
+  "falsification_rule": "The claim is proven wrong if any of: (a) after cost, the fade of extreme prior-day |displacement| earns non-positive expectancy (frozen rule order #1, G1 anchor FAIL); (b) the raw prior-return-fade exposure-form control reproduces the anchor (same sign, >= 0.5x anchor expectancy) — proving the displacement variable adds no information beyond short-term reversal (G11 falsification-by-control fires); (c) the measured sign is robustly opposite (displacement continues rather than reverts across >= 2 folds); or (d) G12 pooled ancestry |rho| > 0.20 vs any forbidden family or measured shadow at D2.",
+  "control_class": "raw-level/exposure-form placebo (mandatory for conditioning-variable claims per FAMILY_PIPELINE section 3 step 11): the identical quantile-fade book conditioned instead on the prior day's volatility-normalized return z-score — the convenient explanation 'day-boundary displacement is just short-term reversal' must NOT reproduce the anchor; fully panel-runnable under evidenced semantics (all control inputs are staged price columns). Sham-calendar is deliberately NOT the mandated class and the V5 lesson is addressed head-on: the conditioning variable is a within-interval price-shape ratio, not a calendar event — the UTC boundary only defines the aggregation interval and no day-of-week/session/holiday term enters the rule.",
+  "expected_failure_mode": "Control-identifiability: displacement shares most of its variation with the prior day's signed return, so the measured anchor-vs-control exposure correlation at D2 plausibly exceeds the 0.20 bar and the family dies as a relabelled reversal ancestor; secondarily, crowding of a public price-shape regularity and fold concentration (the p80 trigger yields a thin event book of roughly 60 active symbol-days per symbol).",
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "clock": "daily",
+  "warmup": "61 days (60-day trailing percentile window + 1-day condition lag); decisions begin 2025-10-21 event-time; first holding day 2025-10-22",
+  "decision_timestamp_semantics": "Event-time: the decision timestamp is the transact_time of the final print of UTC day t — the instant the day-t aggregates (vwap, last_price, high_price, low_price) are complete by exchange event time; the entry fill books at that instant's price (last_price[t]). The 8.3-10.7h measured archive publication lag (p0_freeze_v16.json) is a staging property, not a decision property (p2_coverage_clocks_v16.json conditioning_availability: zero conditioning lag at decision time); under the I/Q availability-lag mutation, any conditioning field found arriving late moves the decision exactly one period.",
+  "features": [
+    {
+      "name": "vwap",
+      "role": "conditioning input: volume-clock average price of day t-1",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "last_price",
+      "role": "conditioning input: time-clock terminal print of day t-1; also entry/exit fill price",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "high_price",
+      "role": "conditioning input: range normalization of day t-1",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "low_price",
+      "role": "conditioning input: range normalization of day t-1",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "derived disp[t] = (last_price[t] - vwap[t]) / (high_price[t] - low_price[t])",
+      "role": "close-to-VWAP displacement, dimensionless; divergence between the volume clock (VWAP) and the time clock (terminal print), normalized by the day's own range; derived from staged columns only",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "derived ret_z[t] = (last_price[t]/last_price[t-1] - 1) / rolling_60d_std(daily returns)",
+      "role": "CONTROL-ARM-ONLY exposure: prior-day volatility-normalized return; derived from staged columns only",
+      "availability": "EVIDENCED (exchange event time)"
+    }
+  ],
+  "arms": {
+    "anchor": "Per symbol, at end of day t-1: if |disp[t-1]| >= rolling 60-day 80th percentile of |disp|, hold position -sign(disp[t-1]) over day t (1-day hold, FADE of the displacement); else flat. Unit notional per active symbol-day; entry fill at last_price[t-1] (decision instant), exit at last_price[t]; both symbols may be simultaneously active.",
+    "neighbour": "Same mechanism, different parameters, exact numbers: trigger threshold = rolling 90-day 75th percentile of |disp|, 1-day hold, identical fill/sizing convention (wider estimation window, looser quantile — parameter sensitivity of the displacement fade).",
+    "control": "Exposure-form placebo, exact spec: identical book machinery conditioned instead on |ret_z[t-1]| >= rolling 60-day 80th percentile of |ret_z|, position -sign(ret_z[t-1]), 1-day hold — plain volatility-normalized short-term reversal; identical costs, folds, gates."
+  },
+  "costs": "L-V14-0 cost-once per fill; stress multipliers applied to booked PnL (tier 2.0 primary)",
+  "folds": "F0/F1/F2, 1-day purge (frozen V12 contract)",
+  "gates": "Frozen G1..G12 set per p3_invariants_v16.json, rule order #1 (after-cost expectancy first, first FAIL kills the arm): G1 expectancy>0; G2 PF>=1.10; G3 folds>=2/3; G4 largest-fold-positive-share<=0.50; G5 MDD<=0.20; G10 neighbour supports; G11 control does not reproduce (falsification-by-control cluster binding); G12 novelty pooled |rho|<=0.20 vs the FULL forbidden inventory incl. V15 additions (elite-size-asym, taker-saturation, elite-LEVEL shadow).",
+  "novelty_self_check": "Walk of the crypto forbidden inventory: OITD + duplicates (no OI term structure anywhere), LIQEPIS + duplicates (no liquidity-state or episode variable — the conditioning is a within-day price ratio), OILEV-V2 anchor + inverted shadow (no OI or leverage flow), PREMFADE basis-level fade (same FADE FORM, different variable — basis is a spot-perp premium; no basis or funding input exists in this panel; the resemblance of form is disclosed, not hidden), BAB (no beta sort), carry families (no funding input), ILLIQ owner-gated (no Amihud |return|/volume form — the normalizer is the day's own price range, not volume), elite-size-ASYMMETRY form (no account-level size/headcount data of any kind), taker-saturation form (no OI churn denominator, no taker-side ratio), elite-LEVEL measured shadow (no elite level conditioning). Cross-asset ancestry, stated with candor: the nearest living ancestors are prior-return reversal families (crypto sprint H-XSECT-REVERSAL-v1 and V8R cross-sectional reversal; the stocks momentum/reversal program) — displacement correlates positively with the prior day's signed return and I expect the pooled exposure |rho| vs reversal-form exposures to be material (plausibly 0.3-0.6); if the D2 measurement returns |rho| > 0.20 the family is vetoed and that is a correct cheap-kill, not a dispute. The claimed different information set: divergence between the day's volume-clock average price and its time-clock terminal print — two sessions with identical returns can carry opposite displacement (intraday path shape is invisible to any prior-return variable), and the mechanism story (scheduled benchmark-completion flow at the day boundary) is distinct from the reversal story (underreaction to news). Panel-only construction; no V15 bulk-metrics legs are used, so there is no V15 staging manifest dependency."
+}
