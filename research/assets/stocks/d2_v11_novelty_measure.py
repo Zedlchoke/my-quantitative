@@ -335,7 +335,12 @@ def load_context():
                 rev.setdefault(e, []).append(
                     (r["last_avail"], d, r["rev_mag"], r["inter_arrival_days"], r["depth"]))
     for e in rev:
-        rev[e].sort()
+        # None-safe key: ZERO_BASE rows keep direction with null magnitude
+        # (V10 invariant); plain tuple sort crashes on ties where rev_mag is None
+        rev[e].sort(key=lambda r: (r[0], r[1],
+                                   r[2] if r[2] is not None else 0.0,
+                                   r[3] if r[3] is not None else -1,
+                                   r[4]))
     C.rev = rev
     # veto-11 prefix arrays per entity: avails + cumulative total/down counts
     bread = {}

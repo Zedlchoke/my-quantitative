@@ -89,3 +89,14 @@ at dispatch: "Ghi incident kể cả khi vô hại").
   builders, hash pins, determinism, hash-mismatch BLOCK path).
 - impact: none on published evidence — no audit JSON existed before these
   fixes; the measurement below runs on the fixed module.
+
+## INC-V11-3 — D2 runtime crash on first heavy run (rev None-sort); fixed, determinism proven
+
+- measured_at_utc: 2026-09-07T05:55:00Z
+- what: the first full D2 run crashed at load_context (`rev[e].sort()` —
+  tuple comparison hit rev_mag=None on ZERO_BASE rows when last_avail ties;
+  the V10 invariant "ZERO_BASE rows keep direction with null magnitude"
+  makes None legal data). A1 fixed with an explicit None-safe sort key.
+  No partial audit was published (the crash happened before any output).
+- determinism: the fixed module ran twice end-to-end; audit JSON
+  byte-identical (sha256 1fba3975d5c5b6d2f1f60b73691f1682ee46da95ce49135f9fb40166104a4746).

@@ -1,0 +1,1228 @@
+{
+ "built_at_utc": "2026-09-07T05:20:00Z",
+ "conventions_applied": {
+  "global": [
+   "group->entity aggregation by MEAN over qualifying groups so rank correlation is defined at the entity level (house convention; applied in the A4 anchors, the veto-10 mean over the most-recent-stamp groups, and every share-valued exposure)",
+   "PIT stamps: veto 10 windows on observable_available_at (most recent in-window stamp, ties averaged); veto 11 window observable_available_at <= t and > t-800d, per the D2 mandate wording",
+   "rev_dir encoding -1=down / 0=flat / 1=up, fail-closed verified at runtime against the V10 P0 manifest dir_counts",
+   "veto values evaluated at arbitrary (entity, decision-instant) pairs including event-anchored dates; the 63-bar lookback family uses adjusted closes strictly before t (inherited V10 form unchanged); accounting vetoes as-of t (latest avail < t)",
+   "sector_exposure_form sector means computed over all priced bookable entities with a defined 63s momentum at the same decision instant (V10 form)",
+   "Spearman midrank ties, pooled; n >= 10 per comparison else None; novelty fail-closed: a null veto measurement fails the gate",
+   "decision grids: 21-session grid = per-fold local session indices 63+21k (A5-H1/H2, A6-H1); weekly 5-session scheduling grid = per-fold local indices 63+5k (A6-H2; the 63 offset is the inherited eligibility warmup \u2014 recorded convention)",
+   "A4 abstain-with-reason semantics: the exposure pair is excluded (counted) when the reaction is exactly 0, a required entity/benchmark bar is missing, or the sector tag is unmapped \u2014 against-eligibility resolution of the 'missing dates abstain' clause",
+   "A4 residual-reaction base: bar 1's return is measured from the last close at-or-before the arrival (STRICT_NEXT_BAR); the benchmark must print closes on all six dates d0..d5 else the event abstains (against-eligibility)"
+  ],
+  "per_proposal": {
+   "SFV11-A4-H1": [
+    "anchor exposure(e, t=bar-6 close date) = sign of the 5-bar sector-residual initial reaction; universe = in-fold arrivals of the two sanctioned cohort legs with >= 20 STRICT_NEXT_BAR bars; neighbour = identical arithmetic vs SPY",
+    "identifiability control = hash-seeded (sha256 of 'cik|first_avail') uniformly drawn clear 20-bar sham window inside the matched event's fold (P0 section-d clearance); enumerated deterministically via prefix sums over clear window starts + hash-mod index (uniform over clear windows)",
+    "anchor-vs-control rho on the aligned (entity, calendar-date) UNION cell grid, positions coded +1/-1 open and 0 flat/absent (0-fill on the union)",
+    "same-entity same-date collisions of multiple events aggregate the open signs and code the net state (MEAN-family house convention)"
+   ],
+   "SFV11-A4-H2": [
+    "anchor = AMENDMENT arrivals only: chain position >= 2 derived from timing-layer group keys with stamps <= the arrival (an arrival is an amendment iff any same-filer-period group has first_avail strictly before it; the exact rank is bounded [2, depth_g] from the group aggregates; max over groups = against-eligibility)",
+    "neighbour = FIRST-VINTAGE arrivals (chain position 1) with identical arithmetic",
+    "sham control identical to H1, matched 1:1 on the amendment events; union-grid position-state rho, gate 0.95"
+   ],
+   "SFV11-A5-H1": [
+    "anchor late_share on the raw share values (no standardization) per the exposure definition; Q window last_avail in [t-800d, t), floor |Q| >= 4",
+    "control = within-sector marginal-preserving permutation of the anchor values (numpy PCG64 seed 20260907, applied to the CIK-sorted index vector, redrawn per decision date in session-index order; sectors of size 1 map to identity)",
+    "anchor-vs-neighbour rho on common (entity, date) pairs (deep_share neighbour)"
+   ],
+   "SFV11-A5-H2": [
+    "anchor HHI over timing-layer depth>=2 groups (fields enter as chain keys only); Q window last_avail in [t-800d, t), floor N >= 4",
+    "control = geometry-null: per entity-date keep N and the field set F exactly and REDRAW each group's field label uniformly over F via the PCG64 permutation applied to the group-key-sorted index vector (labels F_order[p[i] mod |F|]); the alternative within-entity label-permutation reading was REJECTED as internally contradictory (it would leave the per-entity n_f multiset \u2014 and therefore HHI \u2014 invariant, making control == anchor and contradicting the proposal's declared 0.2-0.5 expected band and its 'only the repetition geometry is destroyed' text)",
+    "neighbour = median amend_count over Q on the same pairs"
+   ],
+   "SFV11-A6-H1": [
+    "primary field per entity = the priority-ordered share field with the most period groups (ties broken by the declared priority order)",
+    "V_last = the latest qualifying eff-period group (group first_avail < t, within 800d) valued at its latest vintage with avail < t; V_prev = the immediately preceding eff group valued the same as-of way \u2014 the as-of convention matches the accounting-veto reading (highest plausible correlation to vetoed forms; against-eligibility)",
+    "|S| > ln 2 excluded; both values strictly positive required",
+    "neighbour (long-only buyback) uses the SAME exposure vector \u2014 neighbour rho 1.0 by construction, recorded",
+    "control = exposure values rotated by one in the hex-sorted sha256('cycle|hid|cik|decision_index') hash order per decision (no RNG library, byte-reproducible) \u2014 the deterministic permutation placebo as declared"
+   ],
+   "SFV11-A6-H2": [
+    "predictor: next_hat = the latest evidenced arrival projected forward in frozen 364-day steps (V11-E3 cadence constant) to the first projection after t; window [next_hat-7, next_hat+7]; scheduled when the window starts within the next 5 sessions and the tranche floor (>= 5 names) is met; exposure = holding indicator (1 while an open anchor window covers the date) at scheduling dates",
+    "scheduling grid = per-fold local session indices 63+5k (the 63 offset is the inherited eligibility warmup; recorded convention \u2014 it shifts scheduling dates only, not the exposure form); the declared lane pre-check window counts are cited alongside the module's own measured counts",
+    "control = sham calendar: the first 15-calendar-day position searched forward in 15-day steps from the anchor window start containing no evidenced event date, clipped to the fold; windows with no clear position excluded-with-reason (counted), per the declared P0 limitation note",
+    "neighbour (sector-residual hedged) holds the SAME name legs \u2014 the indicator is identical, rho 1.0 by construction, recorded"
+   ]
+  }
+ },
+ "decision_dates": {
+  "a4_event_anchored": {
+   "folds": [
+    {
+     "end": "2020-09-01",
+     "fold_id": "S0_FOLD_1",
+     "start": "2018-04-04"
+    },
+    {
+     "end": "2023-02-09",
+     "fold_id": "S0_FOLD_2",
+     "start": "2020-09-10"
+    },
+    {
+     "end": "2025-07-24",
+     "fold_id": "S0_FOLD_3",
+     "start": "2023-02-17"
+    }
+   ],
+   "note": "A4 decision instants are arrival-anchored (t = the bar-6 close date of each in-fold event); no fixed date grid \u2014 folds: S0_FOLD_1 2018-04-04..2020-09-01; S0_FOLD_2 2020-09-10..2023-02-09; S0_FOLD_3 2023-02-17..2025-07-24"
+  },
+  "grid_21s_per_fold": {
+   "S0_FOLD_1": [
+    "2018-07-03",
+    "2018-08-02",
+    "2018-08-31",
+    "2018-10-02",
+    "2018-10-31",
+    "2018-11-30",
+    "2019-01-03",
+    "2019-02-04",
+    "2019-03-06",
+    "2019-04-04",
+    "2019-05-06",
+    "2019-06-05",
+    "2019-07-05",
+    "2019-08-05",
+    "2019-09-04",
+    "2019-10-03",
+    "2019-11-01",
+    "2019-12-03",
+    "2020-01-03",
+    "2020-02-04",
+    "2020-03-05",
+    "2020-04-03",
+    "2020-05-05",
+    "2020-06-04",
+    "2020-07-06",
+    "2020-08-04"
+   ],
+   "S0_FOLD_2": [
+    "2020-12-09",
+    "2021-01-11",
+    "2021-02-10",
+    "2021-03-12",
+    "2021-04-13",
+    "2021-05-12",
+    "2021-06-11",
+    "2021-07-13",
+    "2021-08-11",
+    "2021-09-10",
+    "2021-10-11",
+    "2021-11-09",
+    "2021-12-09",
+    "2022-01-10",
+    "2022-02-09",
+    "2022-03-11",
+    "2022-04-11",
+    "2022-05-11",
+    "2022-06-10",
+    "2022-07-13",
+    "2022-08-11",
+    "2022-09-12",
+    "2022-10-11",
+    "2022-11-09",
+    "2022-12-09",
+    "2023-01-11"
+   ],
+   "S0_FOLD_3": [
+    "2023-05-19",
+    "2023-06-21",
+    "2023-07-21",
+    "2023-08-21",
+    "2023-09-20",
+    "2023-10-19",
+    "2023-11-17",
+    "2023-12-19",
+    "2024-01-22",
+    "2024-02-21",
+    "2024-03-21",
+    "2024-04-22",
+    "2024-05-21",
+    "2024-06-21",
+    "2024-07-23",
+    "2024-08-21",
+    "2024-09-20",
+    "2024-10-21",
+    "2024-11-19",
+    "2024-12-19",
+    "2025-01-23",
+    "2025-02-24",
+    "2025-03-25",
+    "2025-04-24",
+    "2025-05-23",
+    "2025-06-25"
+   ]
+  },
+  "scheduling_weekly_5s_per_fold": {
+   "S0_FOLD_1": [
+    "2018-07-03",
+    "2018-07-11",
+    "2018-07-18",
+    "2018-07-25",
+    "2018-08-01",
+    "2018-08-08",
+    "2018-08-15",
+    "2018-08-22",
+    "2018-08-29",
+    "2018-09-06",
+    "2018-09-13",
+    "2018-09-20",
+    "2018-09-27",
+    "2018-10-04",
+    "2018-10-11",
+    "2018-10-18",
+    "2018-10-25",
+    "2018-11-01",
+    "2018-11-08",
+    "2018-11-15",
+    "2018-11-23",
+    "2018-11-30",
+    "2018-12-10",
+    "2018-12-17",
+    "2018-12-24",
+    "2019-01-02",
+    "2019-01-09",
+    "2019-01-16",
+    "2019-01-24",
+    "2019-01-31",
+    "2019-02-07",
+    "2019-02-14",
+    "2019-02-22",
+    "2019-03-01",
+    "2019-03-08",
+    "2019-03-15",
+    "2019-03-22",
+    "2019-03-29",
+    "2019-04-05",
+    "2019-04-12",
+    "2019-04-22",
+    "2019-04-29",
+    "2019-05-06",
+    "2019-05-13",
+    "2019-05-20",
+    "2019-05-28",
+    "2019-06-04",
+    "2019-06-11",
+    "2019-06-18",
+    "2019-06-25",
+    "2019-07-02",
+    "2019-07-10",
+    "2019-07-17",
+    "2019-07-24",
+    "2019-07-31",
+    "2019-08-07",
+    "2019-08-14",
+    "2019-08-21",
+    "2019-08-28",
+    "2019-09-05",
+    "2019-09-12",
+    "2019-09-19",
+    "2019-09-26",
+    "2019-10-03",
+    "2019-10-10",
+    "2019-10-17",
+    "2019-10-24",
+    "2019-10-31",
+    "2019-11-07",
+    "2019-11-14",
+    "2019-11-21",
+    "2019-11-29",
+    "2019-12-06",
+    "2019-12-13",
+    "2019-12-20",
+    "2019-12-30",
+    "2020-01-07",
+    "2020-01-14",
+    "2020-01-22",
+    "2020-01-29",
+    "2020-02-05",
+    "2020-02-12",
+    "2020-02-20",
+    "2020-02-27",
+    "2020-03-05",
+    "2020-03-12",
+    "2020-03-19",
+    "2020-03-26",
+    "2020-04-02",
+    "2020-04-09",
+    "2020-04-17",
+    "2020-04-24",
+    "2020-05-01",
+    "2020-05-08",
+    "2020-05-15",
+    "2020-05-22",
+    "2020-06-01",
+    "2020-06-08",
+    "2020-06-15",
+    "2020-06-22",
+    "2020-06-29",
+    "2020-07-07",
+    "2020-07-14",
+    "2020-07-21",
+    "2020-07-28",
+    "2020-08-04",
+    "2020-08-11",
+    "2020-08-18",
+    "2020-08-25",
+    "2020-09-01"
+   ],
+   "S0_FOLD_2": [
+    "2020-12-09",
+    "2020-12-16",
+    "2020-12-23",
+    "2020-12-31",
+    "2021-01-08",
+    "2021-01-15",
+    "2021-01-25",
+    "2021-02-01",
+    "2021-02-08",
+    "2021-02-16",
+    "2021-02-23",
+    "2021-03-02",
+    "2021-03-09",
+    "2021-03-16",
+    "2021-03-23",
+    "2021-03-30",
+    "2021-04-07",
+    "2021-04-14",
+    "2021-04-21",
+    "2021-04-28",
+    "2021-05-05",
+    "2021-05-12",
+    "2021-05-19",
+    "2021-05-26",
+    "2021-06-03",
+    "2021-06-10",
+    "2021-06-17",
+    "2021-06-24",
+    "2021-07-01",
+    "2021-07-09",
+    "2021-07-16",
+    "2021-07-23",
+    "2021-07-30",
+    "2021-08-06",
+    "2021-08-13",
+    "2021-08-20",
+    "2021-08-27",
+    "2021-09-03",
+    "2021-09-13",
+    "2021-09-20",
+    "2021-09-27",
+    "2021-10-04",
+    "2021-10-11",
+    "2021-10-18",
+    "2021-10-25",
+    "2021-11-01",
+    "2021-11-08",
+    "2021-11-15",
+    "2021-11-22",
+    "2021-11-30",
+    "2021-12-07",
+    "2021-12-14",
+    "2021-12-21",
+    "2021-12-29",
+    "2022-01-05",
+    "2022-01-12",
+    "2022-01-20",
+    "2022-01-27",
+    "2022-02-03",
+    "2022-02-10",
+    "2022-02-17",
+    "2022-02-25",
+    "2022-03-04",
+    "2022-03-11",
+    "2022-03-18",
+    "2022-03-25",
+    "2022-04-01",
+    "2022-04-08",
+    "2022-04-18",
+    "2022-04-25",
+    "2022-05-02",
+    "2022-05-09",
+    "2022-05-16",
+    "2022-05-23",
+    "2022-05-31",
+    "2022-06-07",
+    "2022-06-14",
+    "2022-06-22",
+    "2022-06-29",
+    "2022-07-07",
+    "2022-07-14",
+    "2022-07-21",
+    "2022-07-28",
+    "2022-08-04",
+    "2022-08-11",
+    "2022-08-18",
+    "2022-08-25",
+    "2022-09-01",
+    "2022-09-09",
+    "2022-09-16",
+    "2022-09-23",
+    "2022-09-30",
+    "2022-10-07",
+    "2022-10-14",
+    "2022-10-21",
+    "2022-10-28",
+    "2022-11-04",
+    "2022-11-11",
+    "2022-11-18",
+    "2022-11-28",
+    "2022-12-05",
+    "2022-12-12",
+    "2022-12-19",
+    "2022-12-27",
+    "2023-01-04",
+    "2023-01-11",
+    "2023-01-19",
+    "2023-01-26",
+    "2023-02-02",
+    "2023-02-09"
+   ],
+   "S0_FOLD_3": [
+    "2023-05-19",
+    "2023-05-26",
+    "2023-06-05",
+    "2023-06-12",
+    "2023-06-20",
+    "2023-06-27",
+    "2023-07-05",
+    "2023-07-12",
+    "2023-07-19",
+    "2023-07-26",
+    "2023-08-02",
+    "2023-08-09",
+    "2023-08-16",
+    "2023-08-23",
+    "2023-08-30",
+    "2023-09-07",
+    "2023-09-14",
+    "2023-09-21",
+    "2023-09-28",
+    "2023-10-05",
+    "2023-10-12",
+    "2023-10-19",
+    "2023-10-26",
+    "2023-11-02",
+    "2023-11-09",
+    "2023-11-16",
+    "2023-11-24",
+    "2023-12-01",
+    "2023-12-08",
+    "2023-12-15",
+    "2023-12-22",
+    "2024-01-02",
+    "2024-01-09",
+    "2024-01-17",
+    "2024-01-24",
+    "2024-01-31",
+    "2024-02-07",
+    "2024-02-14",
+    "2024-02-22",
+    "2024-02-29",
+    "2024-03-07",
+    "2024-03-14",
+    "2024-03-21",
+    "2024-03-28",
+    "2024-04-05",
+    "2024-04-12",
+    "2024-04-19",
+    "2024-04-26",
+    "2024-05-03",
+    "2024-05-10",
+    "2024-05-17",
+    "2024-05-24",
+    "2024-06-03",
+    "2024-06-10",
+    "2024-06-17",
+    "2024-06-25",
+    "2024-07-02",
+    "2024-07-10",
+    "2024-07-17",
+    "2024-07-24",
+    "2024-07-31",
+    "2024-08-07",
+    "2024-08-14",
+    "2024-08-21",
+    "2024-08-28",
+    "2024-09-05",
+    "2024-09-12",
+    "2024-09-19",
+    "2024-09-26",
+    "2024-10-03",
+    "2024-10-10",
+    "2024-10-17",
+    "2024-10-24",
+    "2024-10-31",
+    "2024-11-07",
+    "2024-11-14",
+    "2024-11-21",
+    "2024-11-29",
+    "2024-12-06",
+    "2024-12-13",
+    "2024-12-20",
+    "2024-12-30",
+    "2025-01-07",
+    "2025-01-15",
+    "2025-01-23",
+    "2025-01-30",
+    "2025-02-06",
+    "2025-02-13",
+    "2025-02-21",
+    "2025-02-28",
+    "2025-03-07",
+    "2025-03-14",
+    "2025-03-21",
+    "2025-03-28",
+    "2025-04-04",
+    "2025-04-11",
+    "2025-04-21",
+    "2025-04-28",
+    "2025-05-05",
+    "2025-05-12",
+    "2025-05-19",
+    "2025-05-27",
+    "2025-06-03",
+    "2025-06-10",
+    "2025-06-17",
+    "2025-06-25",
+    "2025-07-02",
+    "2025-07-10",
+    "2025-07-17",
+    "2025-07-24"
+   ]
+  }
+ },
+ "discipline": "feature/rank arithmetic only; zero PnL; universe = entity-decision pairs where the proposal exposure is defined on the bookable pool (ALIVE_EVIDENCED + DEAD_EVIDENCED); grid families additionally require >= 63 price bars through the decision session, event-anchored A4 families use their declared >= 20 STRICT_NEXT_BAR conditioning; Spearman midrank ties, pooled; deterministic output (built_at passed by the runner)",
+ "producer_role": "D2 measurement lane module (executed by A1)",
+ "proposal_hashes": {
+  "a4_event_H1.json": {
+   "measured": "73e5059d221b8ee2998cad04b39b6e30e09c227d3143fc3fb9b60823f4ae60cd",
+   "pin": "73e5059d221b8ee2998cad04b39b6e30e09c227d3143fc3fb9b60823f4ae60cd",
+   "verdict": "MATCH",
+   "wave_sha_verdict": "MATCH"
+  },
+  "a4_event_H2.json": {
+   "measured": "31bd8a9ab866ff76cdd44f30a99d5e1a8d7304f06f7a346396b060508d73c18e",
+   "pin": "31bd8a9ab866ff76cdd44f30a99d5e1a8d7304f06f7a346396b060508d73c18e",
+   "verdict": "MATCH",
+   "wave_sha_verdict": "MATCH"
+  },
+  "a5_process_H1.json": {
+   "measured": "a55d08fe12371e2a645e16e339f51409328524a7a2b321547760529246893f18",
+   "pin": "a55d08fe12371e2a645e16e339f51409328524a7a2b321547760529246893f18",
+   "verdict": "MATCH",
+   "wave_sha_verdict": "MATCH"
+  },
+  "a5_process_H2.json": {
+   "measured": "ebb148b6c3a18a6028409b05d1c2ac28fca5c6c4298013662c82ac16eab3dbe7",
+   "pin": "ebb148b6c3a18a6028409b05d1c2ac28fca5c6c4298013662c82ac16eab3dbe7",
+   "verdict": "MATCH",
+   "wave_sha_verdict": "MATCH"
+  },
+  "a6_open_H1.json": {
+   "measured": "45d752d8f37901b934c991b975c2d446893684288fa5b1b986bdaf70c0460299",
+   "pin": "45d752d8f37901b934c991b975c2d446893684288fa5b1b986bdaf70c0460299",
+   "verdict": "MATCH",
+   "wave_sha_verdict": "MATCH"
+  },
+  "a6_open_H2.json": {
+   "measured": "bd0c00e5cbbc73a82261b213938324493b2f6cf80057939a8a8b91c8de35e7f7",
+   "pin": "bd0c00e5cbbc73a82261b213938324493b2f6cf80057939a8a8b91c8de35e7f7",
+   "verdict": "MATCH",
+   "wave_sha_verdict": "MATCH"
+  }
+ },
+ "results": {
+  "SFV11-A4-H1": {
+   "anchor_pairs": 22819,
+   "counters": {
+    "abstain_bench_bar_missing": 54,
+    "abstain_no_base_bar": 672,
+    "abstain_other": 0,
+    "abstain_reaction_zero": 3,
+    "abstain_sector_unmapped": 5603,
+    "anchor_pairs": 22819,
+    "events_total": 74931,
+    "excluded_class": 1272,
+    "excluded_entry_after_fold_end": 171,
+    "excluded_out_of_fold": 38604,
+    "excluded_strict_bars": 5717,
+    "matched_events": 29338,
+    "neighbour_pairs": 22819,
+    "sham_cells": 346830,
+    "sham_no_clear_window": 438,
+    "sham_pseudo_signal_abstain": 5778
+   },
+   "feasibility": {
+    "arithmetic": {
+     "census_event_count_overall": 29470,
+     "census_event_counts_per_fold_ge20_strict": {
+      "S0_FOLD_1": 12755,
+      "S0_FOLD_2": 10556,
+      "S0_FOLD_3": 6159
+     },
+     "scored_decision_dates_distinct_per_fold": {
+      "S0_FOLD_1": 573,
+      "S0_FOLD_2": 527,
+      "S0_FOLD_3": 496
+     },
+     "turnover_ceiling": {
+      "arithmetic": "events=29470 x arms=3 x 2 fills = 176820 fills; holding bar6..bar20 = 14 session steps; slot churn = 2/14 x 252 = 36.0 two-way/yr (ADJ-5 fill reading) vs ceiling 25 -> margin -11.0; round-trip reading 252/14 = 18.0/yr -> margin +7.0",
+      "declared_ceiling_two_way_per_year": 25.0,
+      "implied_round_trips_per_year": 18.0,
+      "implied_two_way_per_year_fill_convention": 36.0,
+      "note": "two-way convention ambiguity recorded; the against-eligibility reading is the ADJ-5 fill convention (higher churn); the ceiling margin is A9-adjudicated on the actual book \u2014 reported, never silently passed"
+     }
+    },
+    "control_runnability": {
+     "matched_events": 29338,
+     "p0_census_reference": "19 entities with zero clear 20-bar windows (P0 census section d) \u2014 declared ex-ante as matched-subset falsification; honest, not infeasible",
+     "runnable": true,
+     "sham_no_clear_window": 438,
+     "sham_pseudo_signal_abstain": 5778
+    },
+    "decisions": {
+     "basis": "event-anchored: distinct entry-fill calendar dates per fold (a scored decision = a date with >= 1 entry fill and >= 1 non-CASH leg); an upper bound on the event count is the census per-fold event counts shown above",
+     "expected_scored_decisions_overall": 1596,
+     "expected_scored_decisions_per_fold": {
+      "S0_FOLD_1": 573,
+      "S0_FOLD_2": 527,
+      "S0_FOLD_3": 496
+     },
+     "floors_pass": true,
+     "grid_or_event_decisions_overall": 1596,
+     "margin_min_fold_vs_5": 491,
+     "margin_overall_vs_30": 1566,
+     "warmup_decisions_deducted_overall": 0
+    },
+    "declared_constraints_note": "infeasibility_declarations respected: a declared-and-designed-around limitation is honest, not infeasible (excluded-with-reason counts carried in the counters)",
+    "floors": {
+     "overall_min": 30,
+     "per_fold_min": 5
+    },
+    "verdict": "RUNNABLE"
+   },
+   "identifiability": {
+    "anchor_vs_control_rho": 0.0487,
+    "anchor_vs_neighbour_rho": 0.749,
+    "control_cells": 581189,
+    "control_identifiable": true,
+    "control_runnability": {
+     "matched_events": 29338,
+     "sham_no_clear_window": 438,
+     "sham_pseudo_signal_abstain": 5778
+    },
+    "gate_declared_text": "anchor-vs-control pooled Spearman rho < 0.95 on the aligned (entity, calendar-date) cell grid over the three folds, coding each arm's position as +1/-1 where a position is open and 0 where flat or absent; rank identity is forbidden \u2014 the V4/V5 lesson (rho 0.78-0.83 caught pre-selection) is honored by measuring, never arguing",
+    "gate_number_found_in_text": true,
+    "gate_value": 0.95,
+    "grid": "union (entity, calendar-date) cells, positions +1/-1 open, 0 flat/absent",
+    "margin_to_gate": 0.9013,
+    "neighbour_pairs": 22819
+   },
+   "novelty": {
+    "argmax_veto": "momentum_63s",
+    "margin_to_020": -0.019,
+    "max_abs_veto_rho": 0.219,
+    "n_per_veto": {
+     "cash_level": 22297,
+     "depletion_interaction": 19148,
+     "f1_accrual_flow": 7845,
+     "goodwill_bloat": 16818,
+     "momentum_63s": 22585,
+     "own_z_characteristic_form": 21308,
+     "revision_direction_breadth_form": 22441,
+     "sector_exposure_form": 22819,
+     "semivariance_share": 22537,
+     "vol_level": 22585,
+     "wc_stock_intensity": 19119
+    },
+    "novelty_pass_le_020": false,
+    "veto_rho": {
+     "cash_level": -0.0113,
+     "depletion_interaction": -0.0302,
+     "f1_accrual_flow": 0.0085,
+     "goodwill_bloat": 0.0092,
+     "momentum_63s": 0.219,
+     "own_z_characteristic_form": 0.0114,
+     "revision_direction_breadth_form": -0.0092,
+     "sector_exposure_form": 0.0101,
+     "semivariance_share": -0.1957,
+     "vol_level": -0.0372,
+     "wc_stock_intensity": -0.0022
+    },
+    "vetoes_measured": 11
+   },
+   "proposal_file": "a4_event_H1.json",
+   "verdict": "INELIGIBLE_NOVELTY"
+  },
+  "SFV11-A4-H2": {
+   "anchor_pairs": 22595,
+   "counters": {
+    "abstain_bench_bar_missing": 54,
+    "abstain_no_base_bar": 672,
+    "abstain_other": 0,
+    "abstain_reaction_zero": 3,
+    "abstain_sector_unmapped": 5603,
+    "anchor_pairs": 22595,
+    "events_total": 74931,
+    "excluded_class": 1272,
+    "excluded_entry_after_fold_end": 171,
+    "excluded_out_of_fold": 38604,
+    "excluded_strict_bars": 5717,
+    "matched_events": 28803,
+    "neighbour_pairs": 225,
+    "sham_cells": 343065,
+    "sham_no_clear_window": 425,
+    "sham_pseudo_signal_abstain": 5507
+   },
+   "feasibility": {
+    "arithmetic": {
+     "census_event_count_overall": 29470,
+     "census_event_counts_per_fold_ge20_strict": {
+      "S0_FOLD_1": 12755,
+      "S0_FOLD_2": 10556,
+      "S0_FOLD_3": 6159
+     },
+     "partition_counts_amend_first_per_fold": {
+      "S0_FOLD_1": {
+       "amendment_arrivals_chain_ge2": 12586,
+       "first_vintage_arrivals": 169
+      },
+      "S0_FOLD_2": {
+       "amendment_arrivals_chain_ge2": 10200,
+       "first_vintage_arrivals": 356
+      },
+      "S0_FOLD_3": {
+       "amendment_arrivals_chain_ge2": 6146,
+       "first_vintage_arrivals": 13
+      }
+     },
+     "scored_decision_dates_distinct_per_fold": {
+      "S0_FOLD_1": 571,
+      "S0_FOLD_2": 525,
+      "S0_FOLD_3": 495
+     },
+     "turnover_ceiling": {
+      "arithmetic": "events=29470 x arms=3 x 2 fills = 176820 fills; holding bar6..bar20 = 14 session steps; slot churn = 2/14 x 252 = 36.0 two-way/yr (ADJ-5 fill reading) vs ceiling 25 -> margin -11.0; round-trip reading 252/14 = 18.0/yr -> margin +7.0",
+      "declared_ceiling_two_way_per_year": 25.0,
+      "implied_round_trips_per_year": 18.0,
+      "implied_two_way_per_year_fill_convention": 36.0,
+      "note": "two-way convention ambiguity recorded; the against-eligibility reading is the ADJ-5 fill convention (higher churn); the ceiling margin is A9-adjudicated on the actual book \u2014 reported, never silently passed"
+     }
+    },
+    "control_runnability": {
+     "matched_events": 28803,
+     "p0_census_reference": "19 entities with zero clear 20-bar windows (P0 census section d) \u2014 declared ex-ante as matched-subset falsification; honest, not infeasible",
+     "runnable": true,
+     "sham_no_clear_window": 425,
+     "sham_pseudo_signal_abstain": 5507
+    },
+    "decisions": {
+     "basis": "event-anchored: distinct entry-fill calendar dates per fold (a scored decision = a date with >= 1 entry fill and >= 1 non-CASH leg); an upper bound on the event count is the census per-fold event counts shown above",
+     "expected_scored_decisions_overall": 1591,
+     "expected_scored_decisions_per_fold": {
+      "S0_FOLD_1": 571,
+      "S0_FOLD_2": 525,
+      "S0_FOLD_3": 495
+     },
+     "floors_pass": true,
+     "grid_or_event_decisions_overall": 1591,
+     "margin_min_fold_vs_5": 490,
+     "margin_overall_vs_30": 1561,
+     "warmup_decisions_deducted_overall": 0
+    },
+    "declared_constraints_note": "infeasibility_declarations respected: a declared-and-designed-around limitation is honest, not infeasible (excluded-with-reason counts carried in the counters)",
+    "floors": {
+     "overall_min": 30,
+     "per_fold_min": 5
+    },
+    "verdict": "RUNNABLE"
+   },
+   "identifiability": {
+    "anchor_vs_control_rho": 0.0482,
+    "anchor_vs_neighbour_rho": null,
+    "control_cells": 575962,
+    "control_identifiable": true,
+    "control_runnability": {
+     "matched_events": 28803,
+     "sham_no_clear_window": 425,
+     "sham_pseudo_signal_abstain": 5507
+    },
+    "gate_declared_text": "anchor-vs-control pooled Spearman rho < 0.95 on the aligned (entity, calendar-date) cell grid over the three folds, positions coded +1/-1 open and 0 flat/absent; rank identity forbidden",
+    "gate_number_found_in_text": true,
+    "gate_value": 0.95,
+    "grid": "union (entity, calendar-date) cells, positions +1/-1 open, 0 flat/absent",
+    "margin_to_gate": 0.9018,
+    "neighbour_pairs": 1
+   },
+   "novelty": {
+    "argmax_veto": "momentum_63s",
+    "margin_to_020": -0.0192,
+    "max_abs_veto_rho": 0.2192,
+    "n_per_veto": {
+     "cash_level": 22106,
+     "depletion_interaction": 19139,
+     "f1_accrual_flow": 7843,
+     "goodwill_bloat": 16744,
+     "momentum_63s": 22509,
+     "own_z_characteristic_form": 21300,
+     "revision_direction_breadth_form": 22441,
+     "sector_exposure_form": 22595,
+     "semivariance_share": 22462,
+     "vol_level": 22509,
+     "wc_stock_intensity": 18934
+    },
+    "novelty_pass_le_020": false,
+    "veto_rho": {
+     "cash_level": -0.0127,
+     "depletion_interaction": -0.03,
+     "f1_accrual_flow": 0.0081,
+     "goodwill_bloat": 0.0077,
+     "momentum_63s": 0.2192,
+     "own_z_characteristic_form": 0.0118,
+     "revision_direction_breadth_form": -0.0092,
+     "sector_exposure_form": 0.0107,
+     "semivariance_share": -0.1963,
+     "vol_level": -0.0377,
+     "wc_stock_intensity": -0.0027
+    },
+    "vetoes_measured": 11
+   },
+   "proposal_file": "a4_event_H2.json",
+   "verdict": "INELIGIBLE_NOVELTY"
+  },
+  "SFV11-A5-H1": {
+   "anchor_pairs": 112668,
+   "counters": {},
+   "feasibility": {
+    "arithmetic": {
+     "grid_decisions_per_fold_21s": {
+      "S0_FOLD_1": 26,
+      "S0_FOLD_2": 26,
+      "S0_FOLD_3": 26
+     },
+     "turnover_ceiling": {
+      "arithmetic": "78 grid decisions over ~3.5y -> ~12 decisions/yr; upper bound without hysteresis 2.0 two-way per decision x 12 = 24.0/yr; per-slot 2/21 x 252 = 24.0/yr vs ceiling 6; the declared hysteresis is the design response (expectation 'below the 6.0/year ceiling'); measured on the actual book by A9",
+      "declared_ceiling_two_way_per_year": 6.0
+     }
+    },
+    "control_runnability": {
+     "mechanism": "A5-H1 within-sector permutation / A5-H2 geometry-null label redraw \u2014 both run wherever the anchor runs, by construction",
+     "runnable": true
+    },
+    "decisions": {
+     "basis": "inherited 21-session grid: per-fold local session indices 63+21k",
+     "expected_scored_decisions_overall": 78,
+     "expected_scored_decisions_per_fold": {
+      "S0_FOLD_1": 26,
+      "S0_FOLD_2": 26,
+      "S0_FOLD_3": 26
+     },
+     "floors_pass": true,
+     "grid_or_event_decisions_overall": 78,
+     "margin_min_fold_vs_5": 21,
+     "margin_overall_vs_30": 48,
+     "warmup_decisions_deducted_overall": 0
+    },
+    "declared_constraints_note": "infeasibility_declarations respected: a declared-and-designed-around limitation is honest, not infeasible (excluded-with-reason counts carried in the counters)",
+    "floors": {
+     "overall_min": 30,
+     "per_fold_min": 5
+    },
+    "verdict": "RUNNABLE"
+   },
+   "identifiability": {
+    "anchor_vs_control_rho": 0.0792,
+    "anchor_vs_neighbour_rho": 0.5826,
+    "control_cells": 112668,
+    "control_identifiable": true,
+    "gate_declared_text": "On every frozen decision date t over S0_FOLD_1/2/3, over the pre-check universe = bookable-pool names with >= 63 price bars through t (bar counts from the sha-pinned staged price bars; NO band computation, NO returns): (R1) RANK GATE - pooled |mean Spearman rho| between the anchor rank vector and the shuffled-control rank vector <= 0.30, and per-date rho <= 0.30 on >= 90% of dates (declared expected band 0.00-0.10: a within-sector marginal-preserving permutation leaves expected rank correlation near zero); (R2) CONTROL NON-DEGENERACY - by marginal preservation the control terciles populate wit",
+    "gate_number_found_in_text": true,
+    "gate_value": 0.3,
+    "margin_to_gate": 0.2208,
+    "neighbour_pairs": 112668,
+    "per_date_dates_measured": 78,
+    "per_date_le_gate_share": 1.0
+   },
+   "novelty": {
+    "argmax_veto": "sector_exposure_form",
+    "margin_to_020": 0.0446,
+    "max_abs_veto_rho": 0.1554,
+    "n_per_veto": {
+     "cash_level": 108959,
+     "depletion_interaction": 94675,
+     "f1_accrual_flow": 36430,
+     "goodwill_bloat": 75572,
+     "momentum_63s": 110586,
+     "own_z_characteristic_form": 101766,
+     "revision_direction_breadth_form": 112648,
+     "sector_exposure_form": 112668,
+     "semivariance_share": 111460,
+     "vol_level": 112559,
+     "wc_stock_intensity": 94150
+    },
+    "novelty_pass_le_020": true,
+    "veto_rho": {
+     "cash_level": -0.0168,
+     "depletion_interaction": -0.0736,
+     "f1_accrual_flow": -0.0472,
+     "goodwill_bloat": 0.069,
+     "momentum_63s": 0.0119,
+     "own_z_characteristic_form": 0.1017,
+     "revision_direction_breadth_form": 0.0877,
+     "sector_exposure_form": -0.1554,
+     "semivariance_share": 0.0343,
+     "vol_level": -0.0361,
+     "wc_stock_intensity": -0.0147
+    },
+    "vetoes_measured": 11
+   },
+   "proposal_file": "a5_process_H1.json",
+   "verdict": "ELIGIBLE"
+  },
+  "SFV11-A5-H2": {
+   "anchor_pairs": 112668,
+   "counters": {},
+   "feasibility": {
+    "arithmetic": {
+     "grid_decisions_per_fold_21s": {
+      "S0_FOLD_1": 26,
+      "S0_FOLD_2": 26,
+      "S0_FOLD_3": 26
+     },
+     "turnover_ceiling": {
+      "arithmetic": "78 grid decisions over ~3.5y -> ~12 decisions/yr; upper bound without hysteresis 2.0 two-way per decision x 12 = 24.0/yr; per-slot 2/21 x 252 = 24.0/yr vs ceiling 6; the declared hysteresis is the design response (expectation 'below the 6.0/year ceiling'); measured on the actual book by A9",
+      "declared_ceiling_two_way_per_year": 6.0
+     }
+    },
+    "control_runnability": {
+     "mechanism": "A5-H1 within-sector permutation / A5-H2 geometry-null label redraw \u2014 both run wherever the anchor runs, by construction",
+     "runnable": true
+    },
+    "decisions": {
+     "basis": "inherited 21-session grid: per-fold local session indices 63+21k",
+     "expected_scored_decisions_overall": 78,
+     "expected_scored_decisions_per_fold": {
+      "S0_FOLD_1": 26,
+      "S0_FOLD_2": 26,
+      "S0_FOLD_3": 26
+     },
+     "floors_pass": true,
+     "grid_or_event_decisions_overall": 78,
+     "margin_min_fold_vs_5": 21,
+     "margin_overall_vs_30": 48,
+     "warmup_decisions_deducted_overall": 0
+    },
+    "declared_constraints_note": "infeasibility_declarations respected: a declared-and-designed-around limitation is honest, not infeasible (excluded-with-reason counts carried in the counters)",
+    "floors": {
+     "overall_min": 30,
+     "per_fold_min": 5
+    },
+    "verdict": "RUNNABLE"
+   },
+   "identifiability": {
+    "anchor_vs_control_rho": 0.9516,
+    "anchor_vs_neighbour_rho": -0.094,
+    "control_cells": 112668,
+    "control_identifiable": false,
+    "gate_declared_text": "On every frozen decision date t over S0_FOLD_1/2/3, over the pre-check universe = bookable-pool names with >= 63 price bars through t (bar counts from the sha-pinned staged price bars; NO band computation, NO returns): (R1) RANK GATE - pooled |mean Spearman rho| between the anchor rank vector and the geometry-null control rank vector <= 0.70, and per-date rho <= 0.70 on >= 90% of dates (declared expected band 0.2-0.5: post-shuffle HHI is near-deterministic in (N, F), so ranks correlate through volume/cardinality - the gate certifies the permutation ran and that geometry, not (N,F) alone, is wh",
+    "gate_number_found_in_text": true,
+    "gate_value": 0.7,
+    "margin_to_gate": -0.2516,
+    "neighbour_pairs": 112668,
+    "per_date_dates_measured": 78,
+    "per_date_le_gate_share": 0.0
+   },
+   "novelty": {
+    "argmax_veto": "depletion_interaction",
+    "margin_to_020": -0.0392,
+    "max_abs_veto_rho": 0.2392,
+    "n_per_veto": {
+     "cash_level": 108959,
+     "depletion_interaction": 94675,
+     "f1_accrual_flow": 36430,
+     "goodwill_bloat": 75572,
+     "momentum_63s": 110586,
+     "own_z_characteristic_form": 101766,
+     "revision_direction_breadth_form": 112648,
+     "sector_exposure_form": 112668,
+     "semivariance_share": 111460,
+     "vol_level": 112559,
+     "wc_stock_intensity": 94150
+    },
+    "novelty_pass_le_020": false,
+    "veto_rho": {
+     "cash_level": 0.0298,
+     "depletion_interaction": 0.2392,
+     "f1_accrual_flow": 0.0269,
+     "goodwill_bloat": -0.0023,
+     "momentum_63s": -0.0361,
+     "own_z_characteristic_form": -0.0683,
+     "revision_direction_breadth_form": -0.0789,
+     "sector_exposure_form": 0.2205,
+     "semivariance_share": -0.0678,
+     "vol_level": 0.1033,
+     "wc_stock_intensity": -0.0289
+    },
+    "vetoes_measured": 11
+   },
+   "proposal_file": "a5_process_H2.json",
+   "verdict": "INELIGIBLE_NOVELTY"
+  },
+  "SFV11-A6-H1": {
+   "anchor_pairs": 93307,
+   "counters": {},
+   "feasibility": {
+    "arithmetic": {
+     "cohort_floor": {
+      "floor_valid_exposures_per_decision": 30,
+      "measured_entities_with_exposure_any_date": 1772,
+      "note": "A9 re-verifies the per-decision valid-exposure floor",
+      "runnable": true
+     },
+     "entities_with_defined_exposure": 1772,
+     "grid_decisions_per_fold_21s": {
+      "S0_FOLD_1": 26,
+      "S0_FOLD_2": 26,
+      "S0_FOLD_3": 26
+     },
+     "turnover_ceiling": {
+      "arithmetic": "per-decision one-way ~1x gross declared; ~12 decisions/yr -> ~24 two-way/yr structural; NO numeric ceiling declared in turnover_and_sample_floor \u2014 nothing to breach; A9 verifies",
+      "declared_ceiling_two_way_per_year": null
+     }
+    },
+    "control_runnability": {
+     "mechanism": "deterministic hash-order permutation placebo \u2014 abstains exactly where the anchor abstains, can never abort (forex V3 lesson)",
+     "runnable": true
+    },
+    "decisions": {
+     "basis": "inherited 21-session grid; 3 warmup decisions deducted overall per warmup_decisions",
+     "expected_scored_decisions_overall": 75,
+     "expected_scored_decisions_per_fold": {
+      "S0_FOLD_1": 26,
+      "S0_FOLD_2": 26,
+      "S0_FOLD_3": 26
+     },
+     "floors_pass": true,
+     "grid_or_event_decisions_overall": 78,
+     "margin_min_fold_vs_5": 21,
+     "margin_overall_vs_30": 45,
+     "warmup_decisions_deducted_overall": 3
+    },
+    "declared_constraints_note": "infeasibility_declarations respected: a declared-and-designed-around limitation is honest, not infeasible (excluded-with-reason counts carried in the counters)",
+    "floors": {
+     "overall_min": 30,
+     "per_fold_min": 5
+    },
+    "verdict": "RUNNABLE"
+   },
+   "identifiability": {
+    "anchor_vs_control_rho": 0.0092,
+    "anchor_vs_neighbour_note": "long-only buyback arm uses the SAME S_i(t) exposure vector (portfolio construction variant) \u2014 anchor-vs-neighbour rho = 1.0 by construction",
+    "anchor_vs_neighbour_rho": 1.0,
+    "control_cells": 93307,
+    "control_identifiable": true,
+    "gate_declared_text": "pooled Spearman rho(anchor exposure vector, permutation-control exposure vector) <= 0.10, measured BEFORE selection from the PIT panel only (the permutation is exposure-space arithmetic; no outcome file exists or is needed). By construction the permuted vector is a relabelling of the anchor's values across names, so the gate measures that the control's conditioning geometry is decorrelated from the anchor's name assignment; a measured rho > 0.10 means the permutation was not executed as declared - a DESIGN FAILURE, not a pass.",
+    "gate_number_found_in_text": true,
+    "gate_value": 0.1,
+    "margin_to_gate": 0.0908,
+    "neighbour_pairs": 0
+   },
+   "novelty": {
+    "argmax_veto": "vol_level",
+    "margin_to_020": -0.0066,
+    "max_abs_veto_rho": 0.2066,
+    "n_per_veto": {
+     "cash_level": 90731,
+     "depletion_interaction": 79620,
+     "f1_accrual_flow": 32123,
+     "goodwill_bloat": 65864,
+     "momentum_63s": 92142,
+     "own_z_characteristic_form": 88741,
+     "revision_direction_breadth_form": 92625,
+     "sector_exposure_form": 93307,
+     "semivariance_share": 92449,
+     "vol_level": 93227,
+     "wc_stock_intensity": 76572
+    },
+    "novelty_pass_le_020": false,
+    "veto_rho": {
+     "cash_level": 0.1815,
+     "depletion_interaction": 0.1569,
+     "f1_accrual_flow": 0.0221,
+     "goodwill_bloat": 0.0433,
+     "momentum_63s": -0.0185,
+     "own_z_characteristic_form": -0.0403,
+     "revision_direction_breadth_form": 0.0248,
+     "sector_exposure_form": 0.0795,
+     "semivariance_share": -0.0181,
+     "vol_level": 0.2066,
+     "wc_stock_intensity": 0.1195
+    },
+    "vetoes_measured": 11
+   },
+   "proposal_file": "a6_open_H1.json",
+   "verdict": "INELIGIBLE_NOVELTY"
+  },
+  "SFV11-A6-H2": {
+   "anchor_pairs": 2458,
+   "counters": {},
+   "feasibility": {
+    "arithmetic": {
+     "declared_lane_precheck": {
+      "by_fold": {
+       "S0_FOLD_1": 14846,
+       "S0_FOLD_2": 12262,
+       "S0_FOLD_3": 10419
+      },
+      "source": "A6-H2 decision_grid / non_vacuity_gates (P0 derived artifact); the module's own measured counts are shown alongside",
+      "windows_total": 37527
+     },
+     "scheduled_windows_measured_per_fold": {
+      "S0_FOLD_1": 427,
+      "S0_FOLD_2": 1300,
+      "S0_FOLD_3": 2750
+     },
+     "scheduling_decisions_per_fold_weekly_5s": {
+      "S0_FOLD_1": 110,
+      "S0_FOLD_2": 110,
+      "S0_FOLD_3": 110
+     },
+     "sham_runnability": {
+      "gate": 0.8,
+      "match_rate": 1.0,
+      "p0_reference": "clear-window density 84.6% at the 20-bar bracket; 3 entities with zero clear 5-bar windows excluded-from-control-only (declared; tolerated per P0 limitation note)",
+      "sham_failed": 0,
+      "sham_placed": 295
+     },
+     "turnover_ceiling": {
+      "arithmetic": "one entry + one exit fill per window per side; ~10.5 sessions held per 15-day window -> ~47.6 two-way/yr per slot structural; NO numeric ceiling declared in turnover_and_sample_floor; A9 verifies",
+      "declared_ceiling_two_way_per_year": null
+     }
+    },
+    "control_runnability": {
+     "runnable": true,
+     "scheduled_windows": 4477,
+     "sham_failed": 0,
+     "sham_placed": 295
+    },
+    "decisions": {
+     "basis": "scored decisions = scheduled windows (warmup 1 deducted overall)",
+     "expected_scored_decisions_overall": 4476,
+     "expected_scored_decisions_per_fold": {
+      "S0_FOLD_1": 427,
+      "S0_FOLD_2": 1300,
+      "S0_FOLD_3": 2750
+     },
+     "floors_pass": true,
+     "grid_or_event_decisions_overall": 4477,
+     "margin_min_fold_vs_5": 422,
+     "margin_overall_vs_30": 4446,
+     "warmup_decisions_deducted_overall": 1
+    },
+    "declared_constraints_note": "infeasibility_declarations respected: a declared-and-designed-around limitation is honest, not infeasible (excluded-with-reason counts carried in the counters)",
+    "floors": {
+     "overall_min": 30,
+     "per_fold_min": 5
+    },
+    "verdict": "RUNNABLE"
+   },
+   "identifiability": {
+    "anchor_vs_control_rho": -0.0901,
+    "anchor_vs_neighbour_note": "sector-residual hedged arm holds the SAME name legs \u2014 the holding-indicator exposure is identical, anchor-vs-neighbour rho = 1.0 by construction",
+    "anchor_vs_neighbour_rho": 1.0,
+    "control_cells": 2672,
+    "control_identifiable": true,
+    "control_runnability": {
+     "scheduled_windows": 4477,
+     "sham_failed": 0,
+     "sham_placed": 295
+    },
+    "gate_declared_text": "pooled Spearman rho(anchor holding-indicator exposure vector, sham holding-indicator exposure vector) <= 0.10, measured BEFORE selection from the PIT panel + price availability only (both indicators are schedule arithmetic; no outcome file exists or is needed). Windows are placed to be disjoint from event dates by construction, so a measured rho > 0.10 means the sham was not placed as declared - a DESIGN FAILURE, not a pass.",
+    "gate_number_found_in_text": true,
+    "gate_value": 0.1,
+    "grid": "union (entity, calendar-date) holding-indicator cells",
+    "margin_to_gate": 0.0099,
+    "neighbour_pairs": 0
+   },
+   "novelty": {
+    "argmax_veto": null,
+    "margin_to_020": null,
+    "max_abs_veto_rho": null,
+    "n_per_veto": {
+     "cash_level": 2228,
+     "depletion_interaction": 1957,
+     "f1_accrual_flow": 653,
+     "goodwill_bloat": 1118,
+     "momentum_63s": 2429,
+     "own_z_characteristic_form": 1518,
+     "revision_direction_breadth_form": 1543,
+     "sector_exposure_form": 2458,
+     "semivariance_share": 2078,
+     "vol_level": 2439,
+     "wc_stock_intensity": 1933
+    },
+    "novelty_pass_le_020": false,
+    "veto_rho": {
+     "cash_level": null,
+     "depletion_interaction": null,
+     "f1_accrual_flow": null,
+     "goodwill_bloat": null,
+     "momentum_63s": null,
+     "own_z_characteristic_form": null,
+     "revision_direction_breadth_form": null,
+     "sector_exposure_form": null,
+     "semivariance_share": null,
+     "vol_level": null,
+     "wc_stock_intensity": null
+    },
+    "vetoes_measured": 0
+   },
+   "proposal_file": "a6_open_H2.json",
+   "verdict": "INELIGIBLE_NOVELTY"
+  }
+ },
+ "schema": "stocks_free_v11_run/d2_novelty_measure@1",
+ "verdict_rule": "INELIGIBLE_NOVELTY if max|rho| > 0.20 vs any of the eleven veto entries (argmax veto + rho + margin reported); INELIGIBLE_CONTROL_UNIDENTIFIABLE if |anchor-control rho| >= the gate declared in that proposal's pre_selection_identifiability_check (0.95 A4-H1/H2, 0.30 A5-H1, 0.70 A5-H2, 0.10 A6-H1/H2); else ELIGIBLE on the novelty/identifiability dimension \u2014 feasibility is reported separately as RUNNABLE / INFEASIBLE_<REASON>; novelty is fail-closed (a null veto entry fails the gate, never passes open)",
+ "veto_set": {
+  "count": 11,
+  "names": [
+   "momentum_63s",
+   "semivariance_share",
+   "vol_level",
+   "wc_stock_intensity",
+   "goodwill_bloat",
+   "f1_accrual_flow",
+   "depletion_interaction",
+   "cash_level",
+   "sector_exposure_form",
+   "own_z_characteristic_form",
+   "revision_direction_breadth_form"
+  ],
+  "rev_dir_encoding": {
+   "authority": "v10 P0 manifest dir_counts (up 63342 / flat 1519910 / down 84170)",
+   "mapping": {
+    "-1": "down",
+    "0": "flat",
+    "1": "up"
+   },
+   "runtime_check": {
+    "manifest": {
+     "down": 84170,
+     "flat": 1519910,
+     "up": 63342
+    },
+    "measured": {
+     "down": 84170,
+     "flat": 1519910,
+     "up": 63342
+    },
+    "verdict": "MATCH"
+   }
+  }
+ },
+ "wave_sha": "ea668797b661dfa2c9d2b2799e46fe0f13f71820"
+}
