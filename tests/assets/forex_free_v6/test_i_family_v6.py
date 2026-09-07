@@ -242,12 +242,16 @@ def make_manifest(tmp):
     return path
 
 
-def make_fixture(tmp, end_days=560):
+def make_fixture(tmp, end_days=1200):
     """One synthetic snapshot serving both families: 7 staged pairs (the
     P1 four with hand-built story closes + the P2 three with a dominant
     common factor) over the SAME weekday span (so the 7-pair intersection
     grid spans the full fixture), the 246-row clocks authority with the
-    story rows, the tiny financing ledger and a synthetic manifest."""
+    story rows, the tiny financing ledger and a synthetic manifest.
+
+    The default span (1200 weekdays from 2018-09-03, ending 2023-04-07)
+    covers both A9-PRIMARY A6-P2 fold boundaries (2020-12-18 and
+    2023-04-05) so the fold-boundary fixtures exercise F1/F2/F3."""
     days = weekdays(WEEKDAY_SERIES_START, end_days)
     closes = p1_story_closes(end_days)
     # P2 pairs: a dominant common factor plus small idiosyncratic noise
@@ -534,7 +538,8 @@ def test_p2_exit_crossing_fold_boundary_dropped(fixture):
     result = G.run_arm("neighbour", fixture)
     meta = result["meta"]
     dropped = meta["skipped_counts"]["boundary_crossing_dropped"]
-    assert dropped > 0   # the fixture spans B1 = 2020-09-09 with daily states
+    assert dropped > 0   # the fixture spans both A9-primary boundaries
+                         # (2020-12-18, 2023-04-05) with daily states
     grid_days, _ = G.build_grid(fixture["price_1day_dir"])
     index = {d.isoformat(): i for i, d in enumerate(grid_days)}
     for d in result["decisions"]:
@@ -546,6 +551,25 @@ def test_p2_exit_crossing_fold_boundary_dropped(fixture):
                                  "leg_skips_end_of_data",
                                  "boundary_crossing_dropped"))
     assert meta["n_decisions"] + legs == sc["state_days"] * 7
+
+
+def test_p2_fold_boundaries_are_a9_primary_grid():
+    """F-A7-1 remediation: the A6-P2 fold assignment implements the A9
+    PRIMARY funded 7-pair common decision-day grid (selection_freeze.json
+    amendment_1; authority d2_a9_feasibility_verdict.json
+    measurement_basis.fold_freeze): a decision on 2020-12-18 -> F1;
+    2020-12-21 -> F2; 2023-04-05 -> F2; 2023-04-06 -> F3.  The grid is
+    weekdays-only, so no decision dates exist on the 2020-12-19/20
+    weekend (F1 ends 2020-12-18, F2 starts 2020-12-21)."""
+    assert G.FOLD_BOUNDARIES_P2 == ("2020-12-18", "2023-04-05")
+    grid = [date(2018, 9, 3), date(2019, 6, 3), date(2020, 12, 18),
+            date(2020, 12, 21), date(2023, 4, 5), date(2023, 4, 6),
+            date(2025, 7, 24)]
+    expected = ["F1", "F1", "F1", "F2", "F2", "F3", "F3"]
+    for i, (day, fold) in enumerate(zip(grid, expected)):
+        assert G.fold_of_index(grid, i) == fold, (day, fold)
+    assert date(2020, 12, 19).weekday() == 5   # Saturday: never a grid date
+    assert date(2020, 12, 20).weekday() == 6   # Sunday: never a grid date
 
 
 def test_p2_neighbour_is_complement_state(fixture):
@@ -851,6 +875,43 @@ def test_dryrun_sanitized_pairwise_ids_and_digest_table(fixture, tmp_ledger,
         assert rec["dryrun_gate_check"]["note"].startswith("not evidence")
         assert rec["dryrun_structure"]["n_decisions_returned"] == \
             rec["n_decisions"]
+
+
+def test_dryrun_records_stamp_code_freeze_from_run_contract(
+        fixture, tmp_ledger, tmp_path, monkeypatch):
+    """F-A7-2: every built record stamps code_freeze_sha from the run
+    contract's code_freeze_full_sha (synthetic tmp contract here); the
+    loader refuses fail-closed when the contract or the field is absent --
+    no placeholder is ever written."""
+    sha = "c0de" + "0" * 36      # synthetic tmp-contract value (40 chars,
+                                 # the git-sha shape of the real stamp)
+    assert len(sha) == 40
+    contract_path = os.path.join(str(tmp_path), "run_contract.json")
+    with open(contract_path, "w", encoding="utf-8") as fh:
+        json.dump({"schema": "forex_free_v6_run_contract_v1",
+                   "code_freeze_full_sha": sha}, fh)
+    monkeypatch.setattr(D, "RUN_CONTRACT_PATH", contract_path)
+    assert D.load_code_freeze_sha() == sha
+    ledger = os.path.join(tmp_ledger, "cf_ledger.jsonl")
+    report = D.run_dryrun(fixture, ledger,
+                          os.path.join(str(tmp_path), "cf_report.json"),
+                          verify_data=False)
+    assert report["code_freeze_sha"] == sha
+    records = read_ledger(ledger)
+    assert len(records) == 6
+    assert all(rec["code_freeze_sha"] == sha for rec in records)
+    # fail closed: the run contract is missing entirely
+    absent = os.path.join(str(tmp_path), "absent_contract.json")
+    monkeypatch.setattr(D, "RUN_CONTRACT_PATH", absent)
+    with pytest.raises(SystemExit, match="RUN_CONTRACT_MISSING"):
+        D.load_code_freeze_sha()
+    # fail closed: the contract exists but carries no code_freeze_full_sha
+    empty = os.path.join(str(tmp_path), "empty_contract.json")
+    with open(empty, "w", encoding="utf-8") as fh:
+        json.dump({"schema": "forex_free_v6_run_contract_v1"}, fh)
+    monkeypatch.setattr(D, "RUN_CONTRACT_PATH", empty)
+    with pytest.raises(SystemExit, match="CODE_FREEZE_SHA_MISSING"):
+        D.load_code_freeze_sha()
 
 
 def test_dryrun_deterministic_double_generation(fixture, tmp_ledger,

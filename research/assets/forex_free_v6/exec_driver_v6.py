@@ -103,7 +103,6 @@ SCORED_REFUSAL_SCHEMA = "forex_free_v6_scored_refusal_v1"
 OWNER_GO_PHRASE = "GO FOREX V6 SCORED EXECUTION"
 S0_VERDICT = "FOREX_FREE_V6_S0_LAUNCH_AUTHORIZED"
 PLANNED_SCORED_CELLS = 6            # exactly 2 families x 3 arms (freeze)
-CODE_FREEZE_SHA_PLACEHOLDER = "PENDING_V6_CODE_FREEZE"
 
 BASE_TIER = 1.0
 STRESS_TIERS = (1.0, 1.5, 2.0)
@@ -305,6 +304,29 @@ def load_freeze(root=ROOT):
     if not os.path.exists(path):
         raise SystemExit(f"SELECTION_FREEZE_MISSING: {path}")
     return json.load(open(path, encoding="utf-8"))
+
+
+def load_code_freeze_sha(root=ROOT):
+    """The W-freeze code hash stamped into every scored/dry-run record:
+    run_contract.json's ``code_freeze_full_sha`` (F-A7-2 remediation).
+    Read once at driver startup; fail closed when the run contract or the
+    field is absent -- a record is never built with a placeholder."""
+    path = os.path.join(root, RUN_CONTRACT_PATH) \
+        if not os.path.isabs(RUN_CONTRACT_PATH) else RUN_CONTRACT_PATH
+    if not os.path.exists(path):
+        raise SystemExit(f"RUN_CONTRACT_MISSING: {path} "
+                         "(code_freeze_full_sha unresolvable -- refusing "
+                         "to build records)")
+    try:
+        contract = json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"RUN_CONTRACT_UNREADABLE: {path} ({exc})")
+    sha = contract.get("code_freeze_full_sha")
+    if not isinstance(sha, str) or not sha.strip():
+        raise SystemExit("RUN_CONTRACT_CODE_FREEZE_SHA_MISSING: run_contract"
+                         ".code_freeze_full_sha absent -- refusing to "
+                         "build records")
+    return sha
 
 
 # -------------------------------------------------------------------------- #
@@ -683,11 +705,12 @@ def fold_split(trades, pnls, family_id):
     return out
 
 
-def arm_record(family_id, arm, family_result, spec, digest, reader,
-               data_paths, root=ROOT):
+def arm_record(family_id, arm, family_result, spec, digest, code_freeze_sha,
+               reader, data_paths, root=ROOT):
     """Compute the FULL arm record (books, folds, drop-one, diagnostics,
-    gate scaffold).  The dry-run sanitizes this record afterwards; the
-    scored path would publish it as-is (never exercised by this lane)."""
+    gate scaffold).  ``code_freeze_sha`` is the run-contract-stamped W-freeze
+    hash (F-A7-2); the dry-run sanitizes this record afterwards; the scored
+    path would publish it as-is (never exercised by this lane)."""
     module = importlib.import_module(spec["module"])
     trades = family_result["decisions"]
     meta = family_result["meta"]
@@ -780,7 +803,7 @@ def arm_record(family_id, arm, family_result, spec, digest, reader,
         "arm": arm,
         "proposal_id": family_id,
         "arm_config_digest": digest,
-        "code_freeze_sha": CODE_FREEZE_SHA_PLACEHOLDER,
+        "code_freeze_sha": code_freeze_sha,
         "data_snapshot_digest": sha256_file(data_paths["staged_manifest"]),
         "cell_id": f"{family_id}:{arm}@tier{PRIMARY_TIER}",
         "record_id": f"{CYCLE_ID}-{family_id}-{arm}-{digest[:12]}",
@@ -1268,6 +1291,8 @@ def run_dryrun(data_paths, ledger_path, report_path, root=ROOT,
     os.makedirs(abs_tmp, exist_ok=True)
 
     t0 = time.time()
+    code_freeze_sha = load_code_freeze_sha(root)   # F-A7-2: stamp the real
+    # W-freeze hash from the run contract at startup; fail closed if absent
     freeze_table, freeze_checks = verify_freeze(root)
     data_verification = verify_staged_data(data_paths, root) \
         if verify_data else {"skipped": "synthetic fixture run"}
@@ -1288,7 +1313,8 @@ def run_dryrun(data_paths, ledger_path, report_path, root=ROOT,
                               if r["family_id"] == family_id
                               and r["arm"] == arm)
             record = arm_record(family_id, arm, result, spec,
-                                digest_row["recomputed_digest"], reader,
+                                digest_row["recomputed_digest"],
+                                code_freeze_sha, reader,
                                 data_paths, root)
             structure = _structure_summary(family_id, result)
             n_kept = int(record["n_trades_kept"])
@@ -1376,7 +1402,7 @@ def run_dryrun(data_paths, ledger_path, report_path, root=ROOT,
         "dryrun_utc": _utc_now_iso(),
         "stamp_source": "machine_date_u",
         "base_head": git_head(root),
-        "code_freeze_sha": CODE_FREEZE_SHA_PLACEHOLDER,
+        "code_freeze_sha": code_freeze_sha,
         "digest_verification_table": freeze_table,
         "digest_checks": freeze_checks,
         "data_verification": data_verification,
@@ -1449,6 +1475,8 @@ def run_scored(data_paths, report_path, root=ROOT):
         raise SystemExit(2)
 
     # Gates satisfied: scored books, appended to the seeded ledger.
+    code_freeze_sha = load_code_freeze_sha(root)   # F-A7-2: stamp the real
+    # W-freeze hash from the run contract; fail closed if absent
     freeze_table, _ = verify_freeze(root)
     verify_staged_data(data_paths, root)
     modules = _register_families(root)
@@ -1470,7 +1498,8 @@ def run_scored(data_paths, report_path, root=ROOT):
                               if r["family_id"] == family_id
                               and r["arm"] == arm)
             record = arm_record(family_id, arm, result, spec,
-                                digest_row["recomputed_digest"], reader,
+                                digest_row["recomputed_digest"],
+                                code_freeze_sha, reader,
                                 data_paths, root)
             record["published"] = True   # the append below is the publication
             evidence = L.append_row(ledger_path, record,

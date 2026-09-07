@@ -76,11 +76,14 @@ FAIL-CLOSED / PIT DISCIPLINE:
     2018-04-04..2025-07-24; exit fills resolve on the staged grid after S0
     and fail closed at staged-data end (no asserted dates).
 
-Folds: 3 contiguous temporal thirds of S0 by decision-day count; the
-boundaries in evidence are the A9 measured thirds grid (B1 2020-09-09,
-B2 2023-02-16, research/control/forex_free_v6_run/d2/a9_feasibility/
-FXFV6-A6-P2.json) -- the only in-repo frozen-boundary evidence for this
-family.  Trades assign by entry decision date t.
+Folds: 3 contiguous temporal thirds of S0 by decision-day count; frozen
+by A9 (d2_a9_feasibility_verdict.json measurement_basis.fold_freeze,
+carried by selection_freeze.json amendment_1) on the funded 7-pair common
+decision-day grid: F1 2018-09-03..2020-12-18, F2 2020-12-21..2023-04-05,
+F3 2023-04-06..2025-07-24.  The calendar-thirds grid (B1 2020-09-09,
+B2 2023-02-16, d2/a9_feasibility/FXFV6-A6-P2.json
+sensitivity_fold_thirds_full_S0_grid) is the A9 SENSITIVITY alternative,
+not the freeze.  Trades assign by entry decision date t.
 
 Windows 20/252/10, percentile 75, floor multiplier 0.25 and hold length 5
 are preregistered constants: no training, no calibration, no threshold
@@ -138,9 +141,15 @@ NOTIONAL_USD = 10000.0
 S0_START = "2018-04-04"
 S0_END = "2025-07-24"
 
-# frozen fold thirds (A9 measured thirds grid -- the only in-repo
-# frozen-boundary evidence for this family; see module docstring)
-FOLD_BOUNDARIES_P2 = ("2020-09-09", "2023-02-16")
+# A6-P2 fold freeze (selection_freeze.json amendment_1; authority
+# d2_a9_feasibility_verdict.json measurement_basis.fold_freeze): the A9
+# PRIMARY funded 7-pair common decision-day grid -- F1 ends 2020-12-18
+# (inclusive), F2 spans 2020-12-21..2023-04-05 (inclusive), F3 starts
+# 2023-04-06.  The grid is weekdays-only, so no decision dates exist on
+# the 2020-12-19/20 weekend (F1 ends 2020-12-18, F2 starts 2020-12-21).
+# The calendar-thirds grid (B1 2020-09-09, B2 2023-02-16) is the A9
+# SENSITIVITY alternative, not the freeze.
+FOLD_BOUNDARIES_P2 = ("2020-12-18", "2023-04-05")
 FOLD_IDS = ("F1", "F2", "F3")
 
 DECISION_CLOCK = "daily 16:00 America/New_York (DST-correct via zoneinfo)"
@@ -290,9 +299,9 @@ def fold_of_index(grid_days, i):
     d = grid_days[i]
     b1 = date.fromisoformat(FOLD_BOUNDARIES_P2[0])
     b2 = date.fromisoformat(FOLD_BOUNDARIES_P2[1])
-    if d < b1:
+    if d <= b1:
         return "F1"
-    if d < b2:
+    if d <= b2:
         return "F2"
     return "F3"
 
@@ -460,9 +469,11 @@ def run_arm(arm: str, data_paths: dict):
             "s0_window": {"start": S0_START, "end": S0_END},
         },
         "fold_boundaries": list(FOLD_BOUNDARIES_P2),
-        "fold_boundary_evidence": ("A9 measured thirds grid "
-                                   "d2/a9_feasibility/FXFV6-A6-P2.json "
-                                   "(sensitivity_fold_thirds_full_S0_grid)"),
+        "fold_boundary_evidence": ("d2_a9_feasibility_verdict.json "
+                                   "measurement_basis.fold_freeze (A9 "
+                                   "primary funded-grid fold freeze; "
+                                   "carried by selection_freeze.json "
+                                   "amendment_1)"),
         "grid_days": n,
         "grid_first_date": grid_days[0].isoformat(),
         "grid_last_date": grid_days[-1].isoformat(),
