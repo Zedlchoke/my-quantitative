@@ -1,0 +1,94 @@
+{
+ "schema": "forex_free_v7_a7_prelaunch_verdict_r2_v1",
+ "verdict": "FOREX_FREE_V7_PRELAUNCH_REFUSED_R2",
+ "refused_because": "1 unresolved HIGH finding (F-A7-PL-6, NEW): the run contract was not refreshed after the freeze supersession — it still pins code_freeze_sha=3cad88a (superseded by ea905c8 per w_freeze_v7_r2.json) and data_pins.clocks_sha256=d2ed14bb (superseded by the r2 clocks authority 1219dc99 per selection_freeze_v7_amendment_1.json), and the scored driver writes that stale pin into EVERY scored ledger row and into the identity/reproduction_inputs diagnostic artifacts with no cross-check. The failure direction is fail-open at exactly the moment the two-key gate opens: flipping only the launch keys (the sole edit the contract's own note describes) yields an append-only ledger carrying a false code-freeze SHA. V6 precedent (run_contract pins == effective freeze == w_freeze sha) establishes the pins as load-bearing scored provenance. Cheap, precise fix: refresh the two pins to the w_freeze_v7_r2 values (and ideally cross-check rc.code_freeze_sha in the driver) as a metadata-only commit, then targeted re-audit.",
+ "all_r1_findings_fixed_and_reverified": true,
+ "head_audited": "7d8f2e686fbc24f294501d820473592205dbdad0",
+ "code_freeze_audited": "ea905c87834771ced8bae14bbc34fa7a70d3ce5c",
+ "branch_audited": "orca/forex-free-v7-integration",
+ "audit_protocol": "fresh-context re-audit of the delta (FAMILY_PIPELINE §7.29-30); re-derived from bytes; hunted NEW leaks the fix could introduce; no code repaired; real run contract never written",
+ "findings": [
+  {
+   "id": "F-A7-PL-6",
+   "severity": "HIGH",
+   "blocking": true,
+   "description": "Run-contract provenance pins are stale against the declared r2 freeze. Facts: (a) run_contract.json is byte-identical to the r1-era file (sha bc4ccad6..., unchanged since commit 9385d4e) — the remediation did not touch it; (b) it pins code_freeze_sha=3cad88a8013b802f8febca3cd57df86f3b73c5f5 while w_freeze_v7_r2.json declares code_freeze_full_sha=ea905c87834771ced8bae14bbc34fa7a70d3ce5c (supersedes 3cad88a, P-3); (c) data_pins.clocks_sha256=d2ed14bb... (the r1 file, retained append-only) while the conditioning authority is p2_conditioning_clocks_v7_r2.json sha 1219dc99... per amendment_1 and the driver's own CLOCK_AUTHORITY; (d) exec_driver_v7.py cmd_scored writes rc.get('code_freeze_sha') into every scored ledger row and emit_diagnostics writes it into identity.jsonl/reproduction_inputs.jsonl with no cross-check against the effective freeze. Consequence if launched as-is after flipping the launch keys: every scored row and diagnostic identity carries a false code-freeze SHA in the append-only ledger — a PROCESS_INCIDENT that cannot be repaired post hoc. The driver DOES read the correct r2 clocks by hardcode (decisions would be r2-based while the contract claims d2ed14bb conditioning). Fix is metadata-only: update the contract pins to ea905c8 / 1219dc99 (optionally add a driver-side cross-check rc.code_freeze_sha vs the W-r2 freeze), commit, re-verify. REFUSED until then.",
+   "evidence": "shasum run_contract.json == git show 9385d4e:run_contract.json (bc4ccad6...); run_contract.json launch-block note describes only the launch-key edit; w_freeze_v7_r2.json supersedes; selection_freeze_v7_amendment_1.json swaps clocks authority; exec_driver_v7.py line ~62 CLOCK_AUTHORITY=r2 vs contract data_pins; cmd_scored ledger rows 'code_freeze_sha': rc.get('code_freeze_sha','')"
+  },
+  {
+   "id": "F-A7-PL-7",
+   "severity": "LOW",
+   "blocking": false,
+   "description": "state.json is stale post-remediation: still head 3cad88a, phase 'PRELAUNCH (W complete; awaiting A7 fresh-context audit)', updated_at 2026-09-07T10:53:46Z (r1 W time). Informational metadata only; the authoritative r2 state lives in w_freeze_v7_r2.json, amendment_1, and prelaunch_remediation_v7.json.",
+   "evidence": "state.json vs git log HEAD"
+  },
+  {
+   "id": "F-A7-PL-8",
+   "severity": "LOW",
+   "blocking": false,
+   "description": "Three informational notes, none a leak: (a) the updated D2 novelty script still loads CLK_V7 from the r1 clocks path — semantically inert because event_available_time_utc/precision_class are byte-identical between r1 and r2 (verified 0 diffs on 1077 rows) and entries are derived from w0/w1, not the carried decision_date; only the sort key differs (event vs funded date), and D2 counts are feasibility estimates while the dryrun is the binding non-vacuity proof; (b) A4-P1 entry_not_in_series rose 4 -> 83 under the corrected funded-decision rule — fail-closed exclusions of decision dates lacking a 16:00-NY bar in the H1 series (conservative direction, counted); (c) the r1 twin worktree r-reproduce was removed when r-reproduce-r2 was created — acceptable since freeze 3cad88a is superseded, and the r2 twin is verified byte-identical to the integration tree on all remediated code and the r2 clocks file.",
+   "evidence": "compute_ancestry_rhos_v7.py CLK_V7 load path; r1-vs-r2 row diff (0 event-field diffs); live runner counts; twin shasum parity 34057c21/53cf16bc/1219dc99"
+  }
+ ],
+ "recomputations": {
+  "delta_chain": {
+   "head": "7d8f2e6 (W r2 metadata commit) on top of remediation tip ea905c8; A7 r1 REFUSED recorded verbatim in 28cdd94",
+   "git_diff_ea905c8..HEAD_stat": "1 file, +13: w_freeze_v7_r2.json ONLY — metadata-only, freeze integrity holds",
+   "twin": "r-reproduce-r2 detached exactly at ea905c8, clean; family_a4p1_v7.py 34057c21, exec_driver_v7.py 53cf16bc, p2_conditioning_clocks_v7_r2.json 1219dc99 all byte-identical to the integration tree",
+   "remediation_scope": "code delta 3cad88a..ea905c8 = driver 12 lines (CLOCK_AUTHORITY -> r2; nested-or-top-level launch read), A4-P1 runner 7 lines (universal funded-decision derivation), A6-P2 31 lines (exit exclusion), novelty script 25 lines (same funded-decision rule in the schedule; gate statistic/ancestors/bar UNCHANGED), tests +37 (two no-lookahead fixtures); selection amendment_1 changes NO family, NO arm mechanism, NO threshold, NO universe"
+  },
+  "fa7_pl1_fix": {
+   "r2_clocks_file": "sha 1219dc9951e518df964cb4a992a2dd09fe0b6411f44e4bc953a7a13b44604ef4 recomputed, MATCH; schema v2; 1077/1077 rows carry decision_date = funded decision AND decision_date_superseded = original event date; superseded field matches r1 carried values row-by-row (0 mismatches); r2 decision_date >= w1 on ALL 1077 rows (0 violations); runner's own _first_decision_after(w1) equals the r2 carried decision_date on ALL 1077 rows (0 divergences); event fields byte-identical r1 -> r2 (0 diffs); r1 file still on disk at sha d2ed14bb (append-only supersession)",
+   "live_arms_real_data": "exhaustive entry-instant check: anchor 506 decisions entries_before_w1=0; neighbour 429, entries_before_w1=0; control 486 (incl. +7d shifted windows), entries_before_w1=0 — 0/1441 exceptions; driver CLOCK_AUTHORITY confirmed = p2_conditioning_clocks_v7_r2.json",
+   "folds": "anchor [52,228,226], neighbour [42,196,191], control [53,209,224]"
+  },
+  "fa7_pl2_recompute": {
+   "novelty_rerun": "EXACT reproduction of the claimed r2 values with the UPDATED script (output redirected, D2 evidence untouched): A4-P1 0.0875 PASS (worst session_london_open_continuation; margin improved vs r1 0.0949), A4-P2 0.102 PASS, A6-P1 0.2689 ANCESTRY_VETO vs V6_A6P2_anchor (unchanged, sound), A6-P2 0.1639 PASS",
+   "control_identifiability": "anchor-vs-sham+7d pooled max |rho| computed by A7 with the script's own compare(): 0.0821 — exact match to claim, bar < 0.90 PASS",
+   "feasibility": "A4-P1 anchor D2-convention (warmup=0) trades/fold [59,228,226] — exact match, all >= 30; dryrun-convention (warmup=20) [52,228,226] — exact",
+   "dryrun_r2": "A7 rerun byte-equal to published q_dryrun/dryrun_report_r2.json arm rows; nonvacuous True; 18/18 arm-folds >= 30"
+  },
+  "fa7_pl5_a6p2": "folds [246,426,360] UNCHANGED as claimed; 0 clamped exits (exit == entry+5th session byte-verified on every decision; exit_beyond_series counter present, 0 on real data); 0 booked exits past S0 end; 0 episode overlaps; 1032/1032 entries at trigger+1 close",
+  "fa7_pl4_refusals": "6/6 proofs (see refusal_proofs)",
+  "new_leak_hunt": {
+   "exit_past_s0_from_shift": "the +1-2d decision shift pushed 12 neighbour and 12 control exits past S0 end — all EXCLUDED (s0_exit_excluded counted, 0 booked past S0, verified live); anchor 0",
+   "sham_dedupe": "still bounds correctly: sham_dropped_true_event_inside=24 fail-closed drops (windows unchanged by the fix); control folds identical to r1 [53,209,224] as expected — the sham already used the corrected rule",
+   "r2_decision_date": "never precedes w1 (0/1077)",
+   "sanitized_dryrun_scan": "A7 recursive scan (33 substrings x every depth + float-shape): 24 hits, ALL integer process-counter names inside counts (rw_unavailable, zero_signal, entry_not_in_series, exit_beyond_series, s0_exit_excluded, sham_dropped_true_event_inside, entry_beyond_s0); zero outcome-shaped values; no floats"
+  },
+  "diagnostic_gate": {
+   "validate_contract": "DIAGNOSTIC_CONTRACT_PASS, 0 findings (contract unchanged by the remediation)",
+   "smoke_check_twin_rerun": "DIAGNOSTIC_CONTRACT_PASS — A7 ran it MYSELF from a fresh empty sandbox against the r2 twin driver at the absolute path /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v7/r-reproduce-r2/research/assets/forex_free_v7/exec_driver_v7.py diagnostic-smoke",
+   "log": "a7_prelaunch_evidence_r2/a7r2_diagnostic_gate.log"
+  },
+  "state_gates": {
+   "run_contract_launch": "STILL PENDING — launch.s0_launch_authorized=false, verdict null, owner_go_fresh=false, phrase null; no top-level launch keys; scored driver refuses the real contract as-is (proof 5, exit 2)",
+   "budget": "0/6 (run_contract, state.json)",
+   "scored_ledger": "does not exist in integration or twin",
+   "s1": "SEALED_UNTOUCHED everywhere; incident INC-V7-1 properly recorded (0 cost: 0 PnL, 0 cells, 0 scored outcomes)"
+  }
+ },
+ "refusal_proofs": {
+  "1_no_contract": "fresh temp cwd -> exit 2, missing_gates=[run_contract_file]",
+  "2_s0_false_nested": "temp contract, launch{}.s0_launch_authorized=false -> exit 2, missing_gates=[s0_launch_authorized]",
+  "3_owner_false_nested": "temp contract, launch{} s0 true+verdict, owner_go_fresh=false -> exit 2, missing_gates=[owner_fresh_go]",
+  "4_both_true_toplevel": "top-level keys true (r1 style) -> gate PASSES, driver proceeds past refusal (fails later on sandbox-missing data)",
+  "5_real_contract_as_is": "real worktree as-is -> exit 2, missing_gates=[s0_launch_authorized, owner_fresh_go] — PENDING as required",
+  "6_nested_only_positive_control": "temp contract with ONLY launch{} populated (gates true, phrase exact, budget 0) -> gate PASSES, driver proceeds past the gate checks to the data stage (FileNotFoundError in sandbox, 0 'refused' in output) — the nested-only path opens exactly as the F-A7-PL-4 fix intends",
+  "hygiene": "all temp contracts under a7_prelaunch_evidence_r2/rr2_*; real run contract NEVER written; post-proof git status shows only a7_prelaunch_evidence_r2/ untracked"
+ },
+ "synthetic_suite": "pytest tests/assets/forex_free_v7/ -q -> 13 passed (11 prior + TestNoLookaheadFundedDecision: every-entry>=w1 incl. sham shift, and event+1d moves the funded decision exactly one 16:00-NY period), exit 0",
+ "verdict_files_trusted_after_rederivation": [
+  "prelaunch_remediation_v7.json (every number re-derived exactly)",
+  "p2_conditioning_clocks_v7_r2.json (row-by-row vs r1; exhaustive window check)",
+  "selection_freeze_v7_amendment_1.json (no family/arm/threshold change confirmed)",
+  "w_freeze_v7_r2.json (diff verified; twin verified)",
+  "q_dryrun/dryrun_report_r2.json (byte-equal rerun)",
+  "d2/a7_novelty rerun under P-3 (exact 4/4 + identifiability + feasibility)",
+  "incident_inc_v7_1.json (consistent with the r1 verdict of record)",
+  "NOT re-derived this round (unchanged, r1-verified): p0 census, p3 gate set vs V6, run contract data_snapshot_digest fe2155c0 (snapshot unchanged; 156/156 digest verification stands from r1)"
+ ],
+ "launch_consequence": "A7 does NOT publish FOREX_FREE_V7_S0_LAUNCH_AUTHORIZED in this round; the owner must NOT type GO FOREX V7 SCORED EXECUTION. Path to authorization is narrow and cheap: (1) metadata-only commit refreshing run_contract.json code_freeze_sha -> ea905c87834771ced8bae14bbc34fa7a70d3ce5c and data_pins.clocks_sha256 -> 1219dc9951e518df964cb4a992a2dd09fe0b6411f44e4bc953a7a13b44604ef4 (optionally: driver cross-check of rc.code_freeze_sha), optionally refresh state.json; (2) A7 re-audit of that delta only. All research-semantics findings are CLOSED: F-A7-PL-1/2/3/4/5 fixed and re-verified from bytes; no new leak class found in the fix itself.",
+ "attestation": "audited from bytes, fresh context over the delta, never repaired; positives audited stricter than negatives; refusal stated plainly; no file outside a7_prelaunch_evidence_r2/ and this verdict was created or modified; nothing committed or pushed",
+ "audited_at_utc": "2026-09-07T11:41:29Z"
+}
