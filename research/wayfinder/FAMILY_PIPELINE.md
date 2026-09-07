@@ -186,14 +186,14 @@ proposal:
   The runner had never persisted per-period returns; the statistic that
   prices multiple testing was unreachable on the exact family that
   needed it most.
-- **V15 (crypto)**: `TERMINAL_PENDING` at governance intake (phase E,
-  budget 0/6). Measured at the p3 freeze: the frozen output contract
-  carries no per-period-returns fields, and the stage-A gate table's
-  per-symbol class is not covered by an output contract. Owner-reported
-  at dispatch (verify and link at canonical close): gates G6–G9 NOT_RUN
-  for absent per-period returns, DSR/PBO NOT_RUN, and a terminal rerun
-  producing a metadata TECHABORT. Cited here as the design pressure for
-  the gate, pending V15's terminal artifacts.
+- **V15 (crypto, terminal 2026-09-07 — measured from the closed
+  terminal artifacts)**: DSR/PBO `NOT_RUN` fail-closed because the
+  driver never committed per-period series; stage-A gates G6–G9 `NOT_RUN`
+  for absent per-symbol diagnostics (moot only because frozen rule
+  order #1 killed both families first — expectancy negative); a terminal
+  reproduction spot-check (A6-F1-CTL-RAWSAT) died to an external
+  tick-metadata loss mid-audit (fail-closed TECHABORT, staged data
+  re-verified 60/60). A7 terminal `V15_TERMINAL_APPROVED_0_FAIL`.
 
 ## 9. Failure taxonomy (registry `FAMILY_FAILURES.jsonl`)
 
@@ -254,11 +254,20 @@ outcome_blind_attestation      signed on the wave SHA
 ```text
 FAMILY_PIPELINE protocol             DOCUMENTED (merge candidate on this branch —
                                      standing standard only upon owner merge)
-FAMILY_FAILURES registry + validator IMPLEMENTED/TESTED at commit 2 of this branch
-diagnostic persistability gate       IMPLEMENTED/TESTED at commit 3 + remediation
-                                     (adoption: future cycles)
-global heavy lock                    IMPLEMENTED/TESTED at commit 4 + remediation
-                                     (adoption: future cycles)
+FAMILY_FAILURES registry + validator IMPLEMENTED/TESTED; adoption pending first
+                                     cycle close under it
+diagnostic persistability gate       IMPLEMENTED/TESTED, round-2 hardened (canon
+                                     schemas, registered schema_ids, path safety,
+                                     fresh-emission sandbox); adoption pending
+                                     first prelaunch under it
+global heavy lock                    IMPLEMENTED/TESTED, round-2 hardened
+                                     (machine-wide home runtime). Round-1 lock was
+                                     ADOPTED by CRYPTO-V16 P0 on 2026-09-07
+                                     (runtime history: 3 records, 2 FAILED +
+                                     1 FINISHED, cycle_id CRYPTO-V16; artifact
+                                     heavy_lock block ACQUIRED_AND_RELEASED_
+                                     FINISHED); the round-2 machine-wide version
+                                     re-adopts when a cycle next acquires it
 ```
 
 RULES.md §9 carries the live status table. The authoritative ladder is:

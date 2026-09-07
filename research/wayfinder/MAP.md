@@ -14,9 +14,10 @@
   sham-shadow is counter-evidenced** (no falsification kill). FXFV6-A6-P2
   USD PC1-gated reversal mechanically dead (−3.299/trade; neighbour + placebo
   worse). Budget 6/6; reproduction whole-file byte-identical (twin @8a0fd01,
-  ledger sha 8517ca36…); two-key P-8 legal. **A7 terminal NOT_RUN at close —
-  independent terminal audit still dispatchable (disclosed by the Lead in the
-  ledger row).** Forex 33/33; program 218/221 (ledger authority, P-9). S1
+  ledger sha 8517ca36…); two-key P-8 legal. **A7 terminal NOT_RUN at close (disclosed in the ledger row) — ADDENDUM
+  same day: it has since RUN → `CONFIRM_FOREX_FREE_V6_REJECT_ALL`
+  (`0dead47`, 0 blocking, A7's own worktree re-run byte-identical; kernel debt
+  F-A7-T-1 carried as owner item).** Forex 33/33; program 218/221 (ledger authority, P-9). S1
   sealed. Detail:
   `.worktrees/forex-free-v6/integration/research/control/forex_free_v6_run/terminal_verdict.json`.
 

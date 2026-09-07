@@ -9,33 +9,45 @@ Why this gate exists (owner amendment 2026-09-07):
   testing was unreachable on the exact family that needed it most.
 - V15 (crypto): the frozen output contract carried no per-period-returns
   fields (measured at the p3 freeze); at terminal: gates G6-G9 NOT_RUN
-  for absent per-period returns, DSR/PBO NOT_RUN, and a terminal rerun
-  producing a metadata TECHABORT.
+  for absent per-symbol diagnostics, DSR/PBO NOT_RUN, and a terminal
+  rerun producing a metadata TECHABORT (A7 terminal APPROVED_0_FAIL).
 
 Gate position: BEFORE A7 launch authorization. A run contract that
 reaches A7 without a passing diagnostic contract is BLOCKED_PRELAUNCH —
 the A1 must remediate the contract, not the auditor.
 
+Round-2 hardening (owner remediation 2026-09-07):
+
+1. **Canonical schemas.** ``CATEGORY_REQUIRED_FIELDS`` fixes the required
+   fields per diagnostic category; a contract CANNOT pick an arbitrary
+   field list — its declared ``required_fields`` must EQUAL the canon
+   (set-equality). ``schema_id`` must be the REGISTERED id for that
+   category (``diag/<category>@1``); unregistered ids are rejected.
+2. **Fresh-emission proof.** Artifact paths must be RELATIVE, contain no
+   ``..`` and no absolute components; the smoke test always runs the
+   driver inside a NEW, EMPTY sandbox directory it creates itself (under
+   ``sandbox_root`` when given), so artifacts that existed before the
+   driver ran can never satisfy the gate — a no-op driver cannot PASS on
+   stale outputs.
+3. The smoke test parses every emitted artifact and verifies content:
+   required fields per record, identity match against the contract's
+   ``cycle_id``, and non-empty / non-all-null series.
+
 Contract format (a ``diagnostic_output_contract`` block inside the run
-contract). Hardened per owner remediation 2026-09-07: every persisted
-output declares its ``schema_id``, ``format`` (json|jsonl) and
-``required_fields``; the smoke test's artifact list is DERIVED from the
-validated contract (never hand-picked), and the smoke test parses and
-verifies artifact CONTENT — identity match and non-empty series — not
-mere existence::
+contract)::
 
     {
       "cycle_id": "STOCKS-FREE-V12",
       "asset": "stocks",
-      "mechanism_class": "event_conditioned",
       "multiple_testing_accounting": true,
+      "calendar_conditioned": false,
+      "confirmatory_entry_declared": false,
       "outputs": {
         "per_period_series": {
           "persist": true,
           "artifact": "artifacts/per_period_series.jsonl",
           "schema_id": "diag/per_period_series@1",
-          "format": "jsonl",
-          "required_fields": ["cycle_id", "arm_id", "period", "returns"]
+          "format": "jsonl"
         },
         ...
       },
@@ -43,21 +55,21 @@ mere existence::
         "dsr_per_period_series": {
           "applicability": "multiple_testing_accounting",
           "persist": true,
-          "artifact": "artifacts/dsr_series.jsonl",
-          "schema_id": "diag/dsr_series@1",
-          "format": "jsonl",
-          "required_fields": ["cycle_id", "period", "returns"]
+          "artifact": "artifacts/dsr_per_period_series.jsonl",
+          "schema_id": "diag/dsr_per_period_series@1",
+          "format": "jsonl"
         }
       }
     }
 
 Verdicts:
   DIAGNOSTIC_CONTRACT_PASS   every mandatory category persisted with a
-                             complete block; every conditional either
-                             persisted or provably not-applicable under
-                             its FROZEN predicate
-  BLOCKED_PRELAUNCH          anything missing, malformed, or an empty
-                             derived artifact list; findings name the gap
+                             complete, canon-conforming block; every
+                             conditional either persisted or provably
+                             not-applicable under its FROZEN predicate
+  BLOCKED_PRELAUNCH          anything missing, malformed, unsafe, or an
+                             empty derived artifact list; findings name
+                             the gap
 
 A conditional that is absent without a frozen applicability predicate is
 a finding — "NOT_RUN for convenience" is exactly what this gate exists
@@ -69,6 +81,7 @@ frozen/running cycles are NOT retrofitted.
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
@@ -79,15 +92,47 @@ BLOCKED = "BLOCKED_PRELAUNCH"
 
 FORMATS = {"json", "jsonl"}
 
+# Canonical required fields per diagnostic category (owner remediation
+# round 2): contracts conform, they do not choose.
+CATEGORY_REQUIRED_FIELDS: dict[str, list[str]] = {
+    "identity": [
+        "cycle_id", "family_id", "arm_id", "arm_config_digest",
+        "data_snapshot_digest", "code_freeze_sha", "cost_tier",
+    ],
+    "per_period_series": ["cycle_id", "arm_id", "period", "returns"],
+    "per_symbol_breakdown": ["cycle_id", "symbol", "contribution_pnl"],
+    "per_fold_breakdown": ["cycle_id", "fold_id", "pnl", "population"],
+    "stress_tiers": ["cycle_id", "tier", "pnl"],
+    "drop_one_inputs": ["cycle_id", "omitted_symbol", "pnl"],
+    "benchmark_context": ["cycle_id", "fold_id", "benchmark", "excess_return"],
+    "margins_to_fail": ["cycle_id", "gate_id", "value", "threshold", "margin"],
+    "counters": ["observed_delta", "published_delta", "budget_used", "reruns_not_trials"],
+    "reproduction_inputs": ["code_freeze_sha", "data_manifest_sha", "sanitized"],
+}
+
+CONDITIONAL_REQUIRED_FIELDS: dict[str, list[str]] = {
+    "dsr_per_period_series": ["cycle_id", "period", "returns"],
+    "sham_control_calendar": ["cycle_id", "arm_id", "calendar"],
+    "financing_dual_books": ["cycle_id", "book", "pnl"],
+    "confirmatory_status_binding": ["cycle_id", "arm_id", "status"],
+}
+
+# Every category/conditional registers exactly one schema id; contracts
+# must cite it — schema_id resolves to a REGISTERED schema or the block
+# is rejected.
+REGISTERED_SCHEMAS: dict[str, str] = {
+    **{cat: f"diag/{cat}@1" for cat in CATEGORY_REQUIRED_FIELDS},
+    **{name: f"diag/{name}@1" for name in CONDITIONAL_REQUIRED_FIELDS},
+}
+
 # Terminal questions every scored cycle must be able to answer from
-# persisted bytes. Each entry: (category, why).
+# persisted bytes (why-text per category).
 MANDATORY_CATEGORIES: dict[str, str] = {
-    "identity": "cycle/family/arm/arm_config_digest/data_snapshot_digest/"
-    "code_freeze_sha/cost_tier on every record — trial identity (handbook §13.1)",
-    "per_period_series": "per-period decision/position/returns series — DSR, PBO "
-    "and every per-period statistic die without it (V3R)",
-    "per_symbol_breakdown": "per-symbol/per-instrument leg contributions — "
-    "concentration, drop-one, symbol-attribution gates (V15 gap)",
+    "identity": "trial identity on every record (handbook §13.1)",
+    "per_period_series": "DSR, PBO and every per-period statistic die "
+    "without it (V3R)",
+    "per_symbol_breakdown": "concentration, drop-one, symbol-attribution "
+    "gates (V15 gap)",
     "per_fold_breakdown": "per-fold PnL, population and populated-fold flags",
     "stress_tiers": "stress books per tier applied to booked PnL",
     "drop_one_inputs": "inputs sufficient to rerun drop-one-symbol/instrument",
@@ -121,27 +166,66 @@ CONDITIONAL_DIAGNOSTICS: dict[str, tuple[str, str]] = {
 }
 
 
-def _block_ok(block: Any) -> bool:
-    """A persisted output block is complete only with schema_id, format
-    and required_fields — existence alone is not a contract."""
+def _artifact_path_ok(path: Any) -> bool:
+    if not isinstance(path, str) or not path:
+        return False
+    p = PurePosixPathSafe(path)
+    return not p.is_absolute and ".." not in p.parts and "" not in p.parts
+
+
+class PurePosixPathSafe:
+    """Minimal path-shape check without filesystem access."""
+
+    def __init__(self, raw: str):
+        self.raw = raw
+        self.is_absolute = raw.startswith("/") or (len(raw) > 1 and raw[1] == ":")
+        self.parts = [seg for seg in raw.replace("\\", "/").split("/") if seg != ""]
+
+
+def _canon_for(category: str) -> Optional[list[str]]:
+    if category in CATEGORY_REQUIRED_FIELDS:
+        return CATEGORY_REQUIRED_FIELDS[category]
+    return CONDITIONAL_REQUIRED_FIELDS.get(category)
+
+
+def _block_problems(category: str, block: Any) -> list[str]:
+    """Complete, canon-conforming, path-safe block or a list of problems."""
+    problems: list[str] = []
     if not isinstance(block, dict):
-        return False
+        return [f"{category}: block must be an object"]
     if not block.get("persist"):
-        return False
+        problems.append(f"{category}: not persisted")
     artifact = block.get("artifact")
+    if not _artifact_path_ok(artifact):
+        problems.append(
+            f"{category}: unsafe artifact path {artifact!r} — must be relative, "
+            f"no '..', no absolute components"
+        )
     schema_id = block.get("schema_id")
-    required = block.get("required_fields")
+    registered = REGISTERED_SCHEMAS.get(category)
+    if not isinstance(schema_id, str) or not schema_id:
+        problems.append(f"{category}: schema_id missing")
+    elif schema_id != registered:
+        problems.append(
+            f"{category}: schema_id {schema_id!r} does not resolve to the "
+            f"registered schema {registered!r}"
+        )
     fmt = block.get("format")
-    return (
-        isinstance(artifact, str)
-        and bool(artifact)
-        and isinstance(schema_id, str)
-        and bool(schema_id)
-        and isinstance(required, list)
-        and bool(required)
-        and all(isinstance(f, str) and f for f in required)
-        and fmt in FORMATS
-    )
+    if fmt not in FORMATS:
+        problems.append(f"{category}: format must be one of {sorted(FORMATS)}")
+    declared = block.get("required_fields")
+    canon = _canon_for(category)
+    if canon is None:
+        problems.append(f"{category}: unknown category (no canonical schema)")
+    elif declared is not None and sorted(declared) != sorted(canon):
+        # Round 2: the canon IS the contract — a declared list that
+        # differs from the canonical set is rejected, a missing list
+        # simply means the canon applies (verification always uses canon).
+        problems.append(
+            f"{category}: required_fields are not the canonical set "
+            f"{sorted(canon)} (got {sorted(declared)})"
+        )
+    return problems
 
 
 def _asset_flags() -> frozenset[str]:
@@ -183,10 +267,8 @@ def validate_contract(contract: dict) -> tuple[str, list[dict]]:
 
     for category, why in MANDATORY_CATEGORIES.items():
         block = outputs.get(category)
-        if not _block_ok(block):
-            flag(category, "HIGH",
-                 f"mandatory diagnostic not persisted as a complete block "
-                 f"(persist/artifact/schema_id/format/required_fields) ({why})")
+        for problem in _block_problems(category, block):
+            flag(category, "HIGH", f"{problem} ({why})")
 
     conditional = contract.get("conditional", {})
     if not isinstance(conditional, dict):
@@ -204,17 +286,14 @@ def validate_contract(contract: dict) -> tuple[str, list[dict]]:
                  f"NOT_RUN-for-convenience is refused ({why})")
             continue
         applies, note = _eval_applicability(str(block["applicability"]), contract)
-        if applies and not _block_ok(block):
-            flag(name, "HIGH",
-                 f"conditional APPLIES ({note}) but not persisted as a complete "
-                 f"block ({why})")
-        if not applies and _block_ok(block):
+        for problem in _block_problems(name, block):
+            flag(name, "HIGH" if applies else "LOW", problem)
+        if not applies and block.get("persist"):
             flag(name, "LOW", f"conditional persisted though frozen predicate says "
                               f"not applicable ({note})")
 
     # A conditional that is NOT declared and whose frozen predicate would
-    # apply is a gap: the cycle must declare it (persisted or explicitly
-    # frozen-off with the predicate visible).
+    # apply is a gap: the cycle must declare it.
     for name, (expr, why) in CONDITIONAL_DIAGNOSTICS.items():
         if name in conditional:
             continue
@@ -229,37 +308,47 @@ def validate_contract(contract: dict) -> tuple[str, list[dict]]:
 
 
 def expected_artifacts_from_contract(contract: dict) -> tuple[list[dict], list[str]]:
-    """Derive the artifact list from the contract itself.
-
-    Hardened per owner remediation: the smoke test may not be handed a
-    wish-list — the artifacts it verifies are exactly those the validated
-    contract declares (mandatory outputs + persisted-and-applicable
-    conditionals). An empty derivation is a problem, not a pass.
-    """
+    """Derive the artifact list from the contract itself (mandatory +
+    persisted-and-applicable conditionals). An empty derivation is a
+    problem, not a pass. Each spec carries the CANONICAL required fields
+    and registered schema id — never the contract's own guess."""
     artifacts: list[dict] = []
     problems: list[str] = []
     for category, block in (contract.get("outputs") or {}).items():
-        if isinstance(block, dict) and block.get("persist") and block.get("artifact"):
-            artifacts.append({"category": category, **block})
+        if isinstance(block, dict) and block.get("persist") and _artifact_path_ok(block.get("artifact")):
+            canon = _canon_for(category)
+            artifacts.append({
+                "category": category,
+                "artifact": block["artifact"],
+                "format": block.get("format", "jsonl"),
+                "required_fields": list(canon) if canon else [],
+                "schema_id": REGISTERED_SCHEMAS.get(category),
+            })
     for name, block in (contract.get("conditional") or {}).items():
         if not isinstance(block, dict) or "applicability" not in block:
             continue
         applies, _ = _eval_applicability(str(block["applicability"]), contract)
-        if applies and block.get("persist") and block.get("artifact"):
-            artifacts.append({"category": name, **block})
+        if applies and block.get("persist") and _artifact_path_ok(block.get("artifact")):
+            canon = _canon_for(name)
+            artifacts.append({
+                "category": name,
+                "artifact": block["artifact"],
+                "format": block.get("format", "jsonl"),
+                "required_fields": list(canon) if canon else [],
+                "schema_id": REGISTERED_SCHEMAS.get(name),
+            })
     if not artifacts:
         problems.append("derived artifact list is EMPTY — nothing to verify")
     return artifacts, problems
 
 
-def _verify_artifact(spec: dict, contract: dict, cwd: Optional[Path]) -> list[str]:
-    """Parse the artifact and verify content: required fields, identity,
-    non-empty series. Existence alone is not verification."""
+def _verify_artifact(spec: dict, contract: dict, sandbox: Path) -> list[str]:
+    """Parse the artifact INSIDE the sandbox and verify content: canon
+    fields per record, identity match, non-empty series."""
     problems: list[str] = []
     category = spec["category"]
     rel = spec["artifact"]
-    base = Path(cwd) if cwd else Path.cwd()
-    path = base / rel
+    path = sandbox / rel
     if not path.exists():
         return [f"{category}: artifact {rel} not emitted"]
 
@@ -288,7 +377,6 @@ def _verify_artifact(spec: dict, contract: dict, cwd: Optional[Path]) -> list[st
                         f"{rec.get('cycle_id')!r} != {contract.get('cycle_id')!r}"
                     )
         if category.endswith("_series") and records:
-            # non-empty series: at least one non-null value per required column
             for field in required:
                 if all(rec.get(field) is None for rec in records):
                     problems.append(
@@ -319,21 +407,21 @@ def smoke_check_twin_rerun(
     run_command: list[str],
     contract: dict,
     *,
-    cwd=None,
+    sandbox_root: Optional[Path] = None,
     timeout: int = 600,
 ) -> tuple[str, list[str]]:
-    """Terminal-A7 smoke test on the twin, hardened:
+    """Terminal-A7 smoke test on the twin, fresh-emission hardened:
 
-    1. the contract must pass :func:`validate_contract` first (a broken
-       contract never runs the driver);
-    2. the artifact list is DERIVED from the contract — never supplied;
-    3. the twin's driver runs once and every declared artifact is parsed
-       and verified for content: required fields, identity match against
-       the contract's cycle_id, non-empty series.
+    1. the contract must pass :func:`validate_contract` first;
+    2. the artifact list is DERIVED from the contract (canon fields,
+       registered schemas);
+    3. a NEW EMPTY sandbox directory is created (under ``sandbox_root``
+       when given) and the driver runs with the sandbox as its cwd —
+       artifacts that existed before the run can never satisfy the gate;
+    4. every artifact is parsed and verified for content: canon fields,
+       identity match, non-empty series.
 
-    Returns (verdict, problems). This is the 'terminal rerun
-    smoke-tested on twin' arm of the gate — the V15 metadata-TECHABORT
-    class dies here, before launch, instead of at terminal.
+    Returns (verdict, problems).
     """
     import subprocess
 
@@ -346,9 +434,13 @@ def smoke_check_twin_rerun(
     if problems:
         return BLOCKED, problems
 
+    sandbox = Path(tempfile.mkdtemp(prefix="diag_smoke_", dir=sandbox_root))
+    if any(sandbox.iterdir()):
+        return BLOCKED, ["sandbox not empty at creation — refusing to run"]
+
     try:
         proc = subprocess.run(
-            run_command, cwd=cwd, timeout=timeout, capture_output=True, text=True
+            run_command, cwd=sandbox, timeout=timeout, capture_output=True, text=True
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return BLOCKED, [f"twin smoke run failed to execute: {exc}"]
@@ -357,5 +449,5 @@ def smoke_check_twin_rerun(
         return BLOCKED, [f"twin smoke run exit {proc.returncode}: {tail}"]
 
     for spec in artifacts:
-        problems.extend(_verify_artifact(spec, contract, cwd))
+        problems.extend(_verify_artifact(spec, contract, sandbox))
     return (PASS if not problems else BLOCKED), problems
