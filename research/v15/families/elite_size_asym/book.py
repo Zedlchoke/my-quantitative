@@ -15,7 +15,11 @@ Verbatim from proposal_P1 ``entry_exit_rules`` (nothing tuned):
   side counts scale proportionally -- ``n_side = max(1, round(n *
   side_fraction))`` with the frozen fractions 1/3 (anchor/control: 20 -> 7,
   the frozen 7/6/7) and 1/4 (neighbour: 20 -> 5, the frozen 5/10/5), so the
-  full-universe books match the frozen counts exactly.
+  full-universe books match the frozen counts exactly;
+* refusal-while-held dates (A1-ordered PRE-SCORE gross-cap remediation):
+  the carried refused weights keep their budget and the fresh book
+  renormalizes into the RESIDUAL budget ``GROSS_MAX - sum|carried|``
+  (:func:`renormalize_into_residual`), so gross <= 1.0 at every transition.
 * ties break by symbol id ascending (deterministic).
 """
 
@@ -109,6 +113,61 @@ def side_symbols(book: Mapping[str, float]) -> Tuple[list, list]:
     return longs, shorts
 
 
+_GROSS_TOL = 1e-12
+
+
+def renormalize_into_residual(
+    desired: Mapping[str, float],
+    carried_refused: Mapping[str, float],
+    *,
+    gross_max: float = GROSS_MAX,
+) -> Tuple[Dict[str, float], Dict[str, float]]:
+    """Residual-budget renormalization for refusal-while-held dates.
+
+    A1-ordered PRE-SCORE remediation (binding adjudication, cycle
+    CRYPTO-V15): when a held symbol's decision is hole-refused, its weight
+    is carried unchanged (its decision never becomes a fill) while the
+    fresh book renormalizes into the RESIDUAL budget
+    ``gross_max - sum(|carried refused weights|)`` -- the fresh side budgets
+    scale proportionally to the residual (the frozen 0.30 signed cap still
+    binds each name; a downward scale can only shrink weights), and gross
+    stays <= gross_max at the transition.
+
+    Returns ``(merged_desired, event)`` where ``merged_desired`` carries the
+    (possibly scaled) fresh book PLUS the carried refused weights (their
+    budget is reserved; their decision never becomes a fill) and ``event``
+    carries the hand-auditable renormalization evidence.  When the fresh
+    book already fits the residual it is returned unchanged (no scale-up,
+    so the signed cap can never be re-introduced).  When the residual is
+    <= 0 the fresh side is forced flat and the event records it
+    (unreachable under the frozen 0.30 cap with the folded universes, kept
+    as a fail-closed branch).  The refused legs themselves always merge
+    back unchanged -- dropping them would turn their carry into a
+    threshold-triggered exit fill, exactly the double-charge the
+    remediation forbids.
+    """
+    carried_gross = sum(abs(float(w)) for w in carried_refused.values())
+    fresh_gross = sum(abs(float(w)) for w in desired.values())
+    residual = gross_max - carried_gross
+    carried = {sym: float(w) for sym, w in carried_refused.items()}
+    event = {
+        "carried_gross": carried_gross,
+        "fresh_gross_before": fresh_gross,
+        "residual": residual,
+        "scale": 1.0,
+        "forced_fresh_flat": False,
+    }
+    if not desired:
+        return carried, event
+    if residual <= _GROSS_TOL:
+        return carried, {**event, "forced_fresh_flat": True}
+    if fresh_gross > residual + _GROSS_TOL:
+        scale = residual / fresh_gross
+        scaled = {sym: float(w) * scale for sym, w in desired.items()}
+        return {**scaled, **carried}, {**event, "scale": scale}
+    return {**desired, **carried}, event
+
+
 __all__ = [
     "ANCHOR_BOOK",
     "BookSpec",
@@ -117,6 +176,7 @@ __all__ = [
     "book_gross",
     "build_book",
     "per_name_weight",
+    "renormalize_into_residual",
     "side_count",
     "side_symbols",
 ]

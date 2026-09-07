@@ -38,6 +38,7 @@ from research.v15.families.elite_size_asym.runner import (
 from tests.test_v15_f1_fixtures import (
     BASE_RATE,
     TICK_SIZES,
+    build_root,
     constant_root,
     copy_root_with_mutated_metrics,
     day,
@@ -372,6 +373,144 @@ def test_v15f1_shifting_data_forward_changes_results(constant_root, tmp_path):
     unshifted_bome = unshifted["refusal_registry"]["by_symbol"].get(BOME, 0)
     shifted_bome = shifted["refusal_registry"]["by_symbol"].get(BOME, 0)
     assert unshifted_bome == shifted_bome == 10
+
+
+# --------------------------------------------------------------------------- #
+# A1-ordered PRE-SCORE remediation: gross cap on refusal-while-held dates
+# --------------------------------------------------------------------------- #
+def _breach_root(source, destination):
+    """Reproduce the sanitized real-data dry-run breach synthetically.
+
+    Two ingredients, hand-timed around a refusal-while-held episode:
+
+    * ZECUSDT (index 19, held short at -0.5/7 from entry) gets a metrics
+      hole at 2025-09-09 -> its decision is refused on every date whose
+      window [D-7, D-3] contains 09-09, i.e. 2025-09-12..16;
+    * UNIVERSE[0:6] (held long) flip to the top of the asymmetry ranking
+      over window days 2025-09-05..09-09 (sum -> 50, clipped to ln 100 at
+      the feature), so the fresh books rank them SHORT from 2025-09-10 and
+      the flips fill with |dw| >= 0.05.
+
+    Without the residual-budget renormalization, the 2025-09-15 transition
+    (flip reverts; ZEC still refused and carried) fills 12 fresh legs at
+    the unscaled 0.5/6 while the refused ZEC keeps its 0.5/7:
+    gross = 12 * (0.5/6) + 0.5/7 = 1.0714 > 1.0 -> SpecViolation
+    ("gross cap breached in transition"), exactly the class of crash the
+    sanitized dry-run produced.  With the remediation the fresh side fills
+    at (0.5/6) * (13/14) = 0.077381 instead: gross = 12 * 0.077381
+    + 0.5/7 = 1.0000 exactly, and the refused ZEC carries with no fill.
+    The stale ±0.0774 legs then sit inside the frozen 0.05 min-trade band
+    of their ±0.0714 targets, so the book legally carries them (gross
+    stays 1.0) and the blocked fresh entries are recorded as gross-fit
+    events until the fold-flat clears the book.
+    """
+
+    def mutated_sum(symbol, day_value):
+        if symbol in set(UNIVERSE[0:6]) and day("2025-09-05") <= day_value <= day("2025-09-09"):
+            return 50.0
+        return default_sum(symbol, day_value)
+
+    return build_root(
+        destination,
+        skip_metrics_days={"ZECUSDT": {day("2025-09-09")}},
+        sum_fn=mutated_sum,
+    )
+
+
+def test_v15f1_refusal_while_held_renormalizes_into_residual_budget(tmp_path):
+    root = _breach_root(constant_root, tmp_path / "breach")
+    cell = _run(ANCHOR_ARM, root)
+    run = cell["baseline_run"]
+
+    # THE regression: gross <= 1.0 at EVERY transition (the frozen
+    # p3_freeze invariant the sanitized dry-run crash protected).
+    for book in run["books"]:
+        gross = sum(abs(float(w)) for _, w in book["weights"])
+        assert gross <= 1.0 + 1e-9, (book["decision_date"], gross)
+
+    # the refused symbol's decision never becomes a fill: no ZEC fill on
+    # any refusal date, its held weight persists unchanged through them
+    refusal_dates = [f"2025-09-{dd:02d}" for dd in range(12, 17)]
+    for date_iso in refusal_dates:
+        assert all(
+            f["symbol"] != ZEC for f in _fills_on(cell, date_iso)
+        ), date_iso
+    books_by_date = {b["decision_date"]: b for b in run["books"]}
+    for date_iso in refusal_dates:
+        weights = dict(books_by_date[date_iso]["weights"])
+        assert weights[ZEC] == pytest.approx(-0.5 / 7.0, abs=1e-12)
+
+    # hand-exact renormalization evidence on the first refusal day:
+    # carried gross 0.5/7 -> residual 13/14 -> scale = 13/14
+    events = {
+        event["decision_date"]: event
+        for event in run["renormalization_events"]
+        if event["kind"] == "refusal_residual"
+        and event["carried_refused_symbols"] == [ZEC]
+    }
+    event = events["2025-09-12"]
+    assert event["carried_gross"] == pytest.approx(0.5 / 7.0, abs=1e-12)
+    assert event["residual"] == pytest.approx(1.0 - 0.5 / 7.0, abs=1e-12)
+    assert event["scale"] == pytest.approx((1.0 - 0.5 / 7.0), abs=1e-12)
+    assert event["forced_fresh_flat"] is False
+    # on 2025-09-12 every fresh scaled target sits inside the frozen
+    # 0.05 min-trade band of the carried weights, so only LINK (long ->
+    # middle, delta -0.5/7) fills; the effective book is 13 x (0.5/7)
+    # carried + the refused ZEC leg, gross = 13/14 (hand)
+    weights = dict(books_by_date["2025-09-12"]["weights"])
+    assert sum(abs(w) for w in weights.values()) == pytest.approx(
+        13.0 * (0.5 / 7.0), abs=1e-9
+    )
+    assert weights.get("LINKUSDT", 0.0) == 0.0  # exited (long -> middle)
+    # on 2025-09-15 (flip reverts; ZEC still refused) the fresh legs fill
+    # at the SCALED weight (0.5/6) * (13/14) and the book lands on gross
+    # exactly 1.0 with the refused leg carried (hand)
+    fresh_scaled = (0.5 / 6.0) * (1.0 - 0.5 / 7.0)
+    weights = dict(books_by_date["2025-09-15"]["weights"])
+    assert sum(abs(w) for w in weights.values()) == pytest.approx(
+        12.0 * fresh_scaled + 0.5 / 7.0, abs=1e-9
+    )
+    assert weights["ZECUSDT"] == pytest.approx(-0.5 / 7.0, abs=1e-12)
+    assert weights["1000PEPEUSDT"] == pytest.approx(fresh_scaled, abs=1e-12)
+    # the saturated follow-through is recorded, not silent: the blocked
+    # fresh entries appear as gross-fit events (residual 0 -> the fresh
+    # side force-flats for that transition, the A1 branch)
+    gross_fit = [e for e in run["renormalization_events"] if e["kind"] == "gross_fit"]
+    assert gross_fit
+    assert all(e["forced_fresh_flat"] is True for e in gross_fit)
+
+
+def test_v15f1_renormalize_residual_branches_hand(tmp_path):
+    from research.v15.families.elite_size_asym.book import (
+        renormalize_into_residual,
+    )
+
+    # fresh book already fits the residual: returned unchanged (no
+    # scale-up) with the carried refused weight merged back in
+    scaled, event = renormalize_into_residual({"A": 0.3}, {"R": -0.1})
+    assert scaled == {"A": 0.3, "R": -0.1}
+    assert event["scale"] == 1.0 and event["forced_fresh_flat"] is False
+    # proportional scaling: carried 0.2, fresh 1.0 -> scale 0.8; the
+    # carried weight merges back unchanged
+    scaled, event = renormalize_into_residual(
+        {"A": 0.5, "B": -0.5}, {"R": -0.2}
+    )
+    assert scaled["A"] == pytest.approx(0.4)
+    assert scaled["B"] == pytest.approx(-0.4)
+    assert scaled["R"] == -0.2
+    assert event["scale"] == pytest.approx(0.8, abs=1e-12)
+    # residual exhausted: the fresh side is forced flat and recorded, but
+    # the carried refused weights STILL merge back (their decision never
+    # becomes a fill)
+    scaled, event = renormalize_into_residual(
+        {"A": 0.3, "B": -0.3, "C": 0.3, "D": -0.1}, {"R": -0.5, "S": -0.5}
+    )
+    assert scaled == {"R": -0.5, "S": -0.5}
+    assert event["forced_fresh_flat"] is True and event["residual"] == 0.0
+    # empty fresh book (all-refused day): the carried book is the desired
+    # book, no scaling drama
+    scaled, event = renormalize_into_residual({}, {"R": -0.1})
+    assert scaled == {"R": -0.1} and event["scale"] == 1.0
 
 
 # --------------------------------------------------------------------------- #

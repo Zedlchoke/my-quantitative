@@ -23,26 +23,32 @@ The implementer never improves a frozen spec (p3_freeze ambiguity_rule).
 
 from research.v15.families.elite_size_asym.frozen_identity import (
     ANCHOR_ARM,
+    ARM_CONFIG_DIGESTS,
     ARM_IDS,
     ARM_ROLES,
     CONTROL_ARM,
     FAMILY_ID,
     NEIGHBOR_ARM,
     RECORDED_SPEC_SHA256,
+    REMEDIATION_NOTE,
     SPEC_AUTHORITY_RELPATHS,
     UNIVERSE,
+    verify_arm_digests,
     verify_spec_sha256s,
 )
 
 __all__ = [
     "ANCHOR_ARM",
+    "ARM_CONFIG_DIGESTS",
     "ARM_IDS",
     "ARM_ROLES",
     "CONTROL_ARM",
     "FAMILY_ID",
     "NEIGHBOR_ARM",
     "RECORDED_SPEC_SHA256",
+    "REMEDIATION_NOTE",
     "SPEC_AUTHORITY_RELPATHS",
     "UNIVERSE",
+    "verify_arm_digests",
     "verify_spec_sha256s",
 ]

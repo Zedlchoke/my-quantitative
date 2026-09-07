@@ -31,6 +31,7 @@ from research.v15.families.elite_size_asym.book import (
 )
 from research.v15.families.elite_size_asym.frozen_identity import (
     ANCHOR_ARM,
+    ARM_CONFIG_DIGESTS,
     CONTROL_ARM,
     FOLDS,
     GLOBAL_DEFECT_DATES,
@@ -39,6 +40,7 @@ from research.v15.families.elite_size_asym.frozen_identity import (
     RECORDED_SPEC_SHA256,
     SPEC_AUTHORITY_RELPATHS,
     UNIVERSE,
+    verify_arm_digests,
     verify_spec_sha256s,
 )
 from research.v15.families.elite_size_asym.refusal_registry import RefusalRegistry
@@ -451,6 +453,54 @@ def test_v15f1_staged_root_json_records_absolute_machine_root():
 # --------------------------------------------------------------------------- #
 # Refusal registry
 # --------------------------------------------------------------------------- #
+def test_v15f1_arm_config_digests_recorded_match_and_pairwise_unique():
+    # recorded at implementation time with ZERO scored V15 cells; the
+    # recorded digests carry the A1-ordered PRE-SCORE gross-cap remediation
+    # (the sizing procedure is a digest input), so the values changed with
+    # the remediation and are re-pinned in frozen_identity
+    report = verify_arm_digests()
+    assert report["all_match"] is True
+    assert report["pairwise_unique"] is True
+    assert report["ok"] is True
+    assert set(report["arms"]) == {ANCHOR_ARM, NEIGHBOR_ARM, CONTROL_ARM}
+    for arm_id, entry in report["arms"].items():
+        assert entry["computed_from_identity"] == entry["recorded_in_freeze"]
+        assert len(entry["computed_from_identity"]) == 64
+
+
+def test_v15f1_sizing_procedure_carries_the_remediation_in_every_config():
+    from research.v15.families.elite_size_asym.frozen_identity import (
+        REMEDIATION_NOTE,
+        frozen_arm_config,
+    )
+
+    for arm_id in (ANCHOR_ARM, NEIGHBOR_ARM, CONTROL_ARM):
+        config = frozen_arm_config(arm_id)
+        assert "residual budget GROSS_MAX - sum|carried refused weights|" in (
+            config["sizing_procedure"]
+        )
+        assert config["remediation_note"] == REMEDIATION_NOTE
+    # the control stays structurally the same book on the level feature and
+    # never promotable
+    assert frozen_arm_config(CONTROL_ARM)["control_never_promotable"] is True
+
+
+def test_v15f1_staged_root_digest_table_mirrors_frozen_identity():
+    import json
+
+    payload = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "research/v15/families/elite_size_asym/staged_root.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert payload["arm_config_digests"] == ARM_CONFIG_DIGESTS
+    assert "gross-cap remediation A1-ordered pre-score" in payload[
+        "remediation_note"
+    ]
+    assert "budget still 0/6" in payload["remediation_note"]
+
+
 def test_v15f1_refusal_registry_append_once_and_digest():
     registry = RefusalRegistry()
     assert registry.record_window_hole("2025-09-01", "ONGUSDT", "detail-a")

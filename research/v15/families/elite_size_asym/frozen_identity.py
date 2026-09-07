@@ -29,6 +29,8 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
+from research.adapter_v10.protocol import StrategyIdentity
+
 FAMILY_ID = "A5-V15-F1-ELITE-SIZE-ASYM"
 STRATEGY_ID = "elite_size_asym_v15"
 CYCLE = "CRYPTO-V15"
@@ -214,18 +216,210 @@ def verify_spec_sha256s(repo_root: Path | str) -> Dict[str, Dict[str, Any]]:
     return report
 
 
+# --------------------------------------------------------------------------- #
+# Frozen arm-config identity + digests (oicyc V14 pattern; remediated)
+# --------------------------------------------------------------------------- #
+REMEDIATION_NOTE = (
+    "gross-cap remediation A1-ordered pre-score (residual-budget "
+    "renormalization on refusal-while-held); budget still 0/6"
+)
+
+_SIZING_PROCEDURE = (
+    "side_gross 0.5 per populated side; per-name weight min(0.5/n_side, "
+    "0.30); gross <= 1.0; REFUSAL-WHILE-HELD DATES (A1-ordered PRE-SCORE "
+    "remediation): carried refused weights keep their budget and the fresh "
+    "book renormalizes into the residual budget GROSS_MAX - sum|carried "
+    "refused weights| (fresh side budgets scale proportionally to the "
+    "residual; the 0.30 signed cap still binds each name; a downward scale "
+    "only shrinks weights; residual <= 0 forces the fresh side flat and "
+    "records the event)"
+)
+
+_BOOK_COMMON: Dict[str, Any] = {
+    "book": "elite_size_asym_cross_sectional_rank",
+    "leg_gross": SIDE_GROSS,
+    "weight_cap_abs": WEIGHT_CAP_SIGNED,
+    "gross_max": GROSS_MAX,
+    "min_trade_delta": MIN_TRADE_DELTA,
+    "tie_break": "symbol_id_ascending",
+    "decision_clock": "daily 00:00:00 UTC on every scored day",
+    "lag_rule": "MEASURED_BOUND_LAG_3D (metrics_date <= D - 3, hard)",
+    "hole_rule": (
+        ">10% missing metrics-day cells in the feature window refuse the "
+        "symbol-date (per-arm refusal registry; never a fill, never "
+        "synthesized)"
+    ),
+    "sizing_procedure": _SIZING_PROCEDURE,
+    "exit_rule": (
+        "rank-bucket change only; force-flat at the last scored day of "
+        "every fold and on purge days; re-entry at the next fold's first "
+        "scored day"
+    ),
+    "folds_contract": [
+        {"fold_id": fold["fold_id"], "start": fold["start"], "end": fold["end"]}
+        for fold in FOLDS
+    ],
+    "purge_days": list(PURGE_DAYS),
+    "window": [WINDOW_START_ISO, WINDOW_END_ISO],
+    "universe_size": len(UNIVERSE),
+    "cross_section": "frozen 20-symbol universe; refusals shrink the eligible set",
+    "fill_rule": "00:00 UTC bar OPEN of the fill date; min-trade |dw| >= 0.05",
+    "cost": {
+        "taker_fee_bps": TAKER_FEE_BPS,
+        "slippage_ticks": SLIPPAGE_TICKS,
+        "cost_once_per_fill": True,
+        "funding": "native settlements once per holding interval, cost only",
+        "stress_tiers": "fee x1.5 / +2 ticks / +1 day delay",
+    },
+    "data": (
+        "staged v15 parquet (metrics/klines/funding) read through this "
+        "package's staged_root.json; machine-local, read-only"
+    ),
+    "scored_status": "EXPLORATORY",
+    "remediation_note": REMEDIATION_NOTE,
+}
+
+_FROZEN_CONFIGS: Dict[str, Dict[str, Any]] = {
+    ANCHOR_ARM: {
+        **_BOOK_COMMON,
+        "signal": "ln(clip(sum_toptrader)) - ln(clip(count_toptrader)), median over [D-7, D-3]",
+        "window_lookback_days": ANCHOR_WINDOW_LOOKBACK_DAYS,
+        "side_fraction": ANCHOR_SIDE_FRACTION,
+        "side_shape_on_20": "7/6/7 terciles",
+        "sort": "ascending on S_i(D): long bottom-7, short top-7, middle flat",
+        "role": "anchor",
+        "direction": "fade the size-heavy side (preregistered, no post-hoc flip)",
+    },
+    NEIGHBOR_ARM: {
+        **_BOOK_COMMON,
+        "signal": "ln(clip(sum_toptrader)) - ln(clip(count_toptrader)), median over [D-12, D-3]",
+        "window_lookback_days": NEIGHBOR_WINDOW_LOOKBACK_DAYS,
+        "side_fraction": NEIGHBOR_SIDE_FRACTION,
+        "side_shape_on_20": "5/10/5 (per-name weight 0.10)",
+        "sort": "ascending on S_i(D): long bottom-5, short top-5, middle flat",
+        "role": "neighbour",
+        "direction": "same mechanism and direction as the anchor",
+    },
+    CONTROL_ARM: {
+        **_BOOK_COMMON,
+        "signal": "ln(clip(count_toptrader)) alone, median over [D-7, D-3] (never reads the sum ratio)",
+        "window_lookback_days": ANCHOR_WINDOW_LOOKBACK_DAYS,
+        "side_fraction": ANCHOR_SIDE_FRACTION,
+        "side_shape_on_20": "7/6/7 terciles (identical machinery)",
+        "sort": "ascending on C_i(D): long bottom-7, short top-7 (identical machinery)",
+        "role": "causal_negative_control",
+        "direction": "long most-elite-short tercile, short most-elite-long tercile",
+        "control_never_promotable": True,
+        "falsification": (
+            "if CTL-ELITELEVEL reproduces per its preregistered rule, "
+            "A5-V15-P1 fails stage-A gate 11 regardless of the anchor"
+        ),
+    },
+}
+
+#: Per-arm stable config id (digest input via the canonical v11 payload).
+ARM_CONFIG_IDS: Dict[str, str] = {
+    ANCHOR_ARM: "elite-size-asym-anchor-asym-v15",
+    NEIGHBOR_ARM: "elite-size-asym-nb10q-v15",
+    CONTROL_ARM: "elite-size-asym-ctl-elitelevel-v15",
+}
+
+DIRECTION = "BOTH_WITH_SIGN_SEMANTICS"
+FUNDING_SIGN_CONVENTION = "LONG_PAYS_POSITIVE_RATE"
+BENCHMARK_SYMBOLS_EXCLUDED: Tuple[str, ...] = ()  # BTCUSDT is ranked here
+
+#: The RECORDED ``arm_config_digest`` per arm (binding implementation-lane
+#: record made with zero scored V15 cells; equality with the recomputed
+#: digest is test-pinned).  The recorded values carry the A1-ordered
+#: PRE-SCORE gross-cap remediation in ``sizing_procedure`` (the sizing
+#: procedure is a digest input), so the digests changed with the remediation
+#: and are re-pinned here.
+ARM_CONFIG_DIGESTS: Dict[str, str] = {
+    ANCHOR_ARM: "a1efb186862819882abcf1602fbb8c786b5d487a075f10712469c509e808cae1",
+    NEIGHBOR_ARM: "ba4f27b1de8683ab812e788e5d5f18a1c122cef977bdcb446130fceaf696bde4",
+    CONTROL_ARM: "7a4bd244089f2a923edb024e8ec0e66eb5f2938c21eaa60463bc104a1e9c0d36",
+}
+
+
+def frozen_arm_config(arm_id: str) -> Dict[str, Any]:
+    """The exact frozen ``config`` payload of one arm (digest input)."""
+    arm_id = str(arm_id)
+    if arm_id not in _FROZEN_CONFIGS:
+        raise KeyError(f"unknown arm_id {arm_id!r}; expected {ARM_IDS}")
+    return dict(_FROZEN_CONFIGS[arm_id])
+
+
+def frozen_identity(arm_id: str) -> StrategyIdentity:
+    """The frozen V15 identity of one arm (digest equality is test-pinned)."""
+    arm_id = str(arm_id)
+    if arm_id not in ARM_CONFIG_IDS:
+        raise KeyError(f"unknown arm_id {arm_id!r}; expected {ARM_IDS}")
+    return StrategyIdentity(
+        strategy_id=STRATEGY_ID,
+        family_id=FAMILY_ID,
+        arm_config_id=ARM_CONFIG_IDS[arm_id],
+        direction=DIRECTION,
+        window_start_iso=WINDOW_START_ISO,
+        window_end_iso=WINDOW_END_ISO,
+        benchmark_symbols_excluded=BENCHMARK_SYMBOLS_EXCLUDED,
+        funding_sign_convention=FUNDING_SIGN_CONVENTION,
+        matrix_cohort_hint=FAMILY_ID,
+        arm_id=arm_id,
+        config=frozen_arm_config(arm_id),
+    )
+
+
+def frozen_arm_digest_report() -> Dict[str, Dict[str, Any]]:
+    """Recomputed vs recorded ``arm_config_digest`` per arm (honest report)."""
+    from research.v11.publication_identity import arm_config_digest
+
+    report: Dict[str, Dict[str, Any]] = {}
+    for arm_id in ARM_IDS:
+        computed = arm_config_digest(frozen_identity(arm_id), arm_id=arm_id)
+        recorded = ARM_CONFIG_DIGESTS[arm_id]
+        report[arm_id] = {
+            "computed_from_identity": computed,
+            "recorded_in_freeze": recorded,
+            "match": bool(computed == recorded),
+        }
+    return report
+
+
+def verify_arm_digests() -> Dict[str, Any]:
+    """Fail-closed digest pin: recomputed == recorded for every arm AND
+    pairwise uniqueness across the three arms."""
+    report = frozen_arm_digest_report()
+    all_match = all(entry["match"] for entry in report.values())
+    digests = [entry["computed_from_identity"] for entry in report.values()]
+    pairwise_unique = len(set(digests)) == len(ARM_IDS) and len(digests) == len(ARM_IDS)
+    return {
+        "arms": report,
+        "all_match": all_match,
+        "pairwise_unique": pairwise_unique,
+        "ok": all_match and pairwise_unique,
+    }
+
+
 __all__ = [
     "ANCHOR_ARM",
+    "ARM_CONFIG_DIGESTS",
+    "ARM_CONFIG_IDS",
     "ARM_IDS",
     "ARM_ROLES",
     "CONTROL_ARM",
     "CYCLE",
+    "DIRECTION",
     "FAMILY_ID",
     "NEIGHBOR_ARM",
     "PRODUCER_ROLE",
     "RECORDED_SPEC_SHA256",
+    "REMEDIATION_NOTE",
     "SPEC_AUTHORITY_RELPATHS",
     "STRATEGY_ID",
     "UNIVERSE",
+    "frozen_arm_config",
+    "frozen_arm_digest_report",
+    "frozen_identity",
+    "verify_arm_digests",
     "verify_spec_sha256s",
 ]

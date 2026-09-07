@@ -30,7 +30,13 @@ Frozen mechanics (authorities in the package docstring; nothing tuned):
   warmup ``fail_closed``: "excluded from that day's cross-section, logged,
   and weights renormalized over eligible symbols") and its decision never
   becomes a fill (amendment_1): a refused HELD symbol carries its existing
-  weight unchanged for that day;
+  weight unchanged for that day, and the fresh book renormalizes into the
+  RESIDUAL budget ``GROSS_MAX - sum|carried refused weights|``
+  (:func:`book.renormalize_into_residual`; A1-ordered PRE-SCORE gross-cap
+  remediation -- sides scale proportionally to the residual, the 0.30
+  signed cap still binds, residual <= 0 forces the fresh side flat and the
+  event is recorded in ``renormalization_events``), so gross <= 1.0 at
+  every transition;
 * costs charged EXACTLY ONCE per fill event:
   ``cost = |delta_w| * equity * (taker_fee_bps*1e-4*fee_multiplier
   + slippage_ticks * tick_size / fill_price)`` -- the inherited cost-once
@@ -74,7 +80,10 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from research.v15.families.elite_size_asym import arms as arms_mod
 from research.v15.families.elite_size_asym import features as features_mod
 from research.v15.families.elite_size_asym import loader as loader_mod
-from research.v15.families.elite_size_asym.book import build_book
+from research.v15.families.elite_size_asym.book import (
+    build_book,
+    renormalize_into_residual,
+)
 from research.v15.families.elite_size_asym.frozen_identity import (
     FAMILY_ID,
     FOLDS,
@@ -98,6 +107,28 @@ from research.v15.families.elite_size_asym.refusal_registry import RefusalRegist
 SCHEMA = "v15_f1_cell_result_v1"
 EQUITY = 1.0
 _GROSS_TOL = 1e-12
+_GROSS_FIT_MAX_PASSES = 8
+
+
+def _effective_transition(
+    desired: Mapping[str, float],
+    current: Mapping[str, float],
+    force_flat: bool,
+) -> Dict[str, float]:
+    """The effective post-transition book: fill to target where
+    ``|delta_w| >= MIN_TRADE_DELTA`` (the frozen min-trade rule), carry
+    otherwise.  Force-flat transitions BYPASS the threshold: flattening at
+    fold boundaries is absolute (a dust leg below the threshold could
+    otherwise never be flattened and would straddle the fold)."""
+    effective: Dict[str, float] = {}
+    for symbol in sorted(set(current) | set(desired)):
+        target_w = float(desired.get(symbol, 0.0))
+        current_w = float(current.get(symbol, 0.0))
+        if force_flat or abs(target_w - current_w) >= MIN_TRADE_DELTA:
+            effective[symbol] = target_w
+        else:
+            effective[symbol] = current_w
+    return effective
 
 
 class SpecViolation(RuntimeError):
@@ -335,6 +366,7 @@ def _simulate(
     book_rows: List[Dict[str, Any]] = []
     daily_rows: List[Dict[str, Any]] = []
     pf_rows: List[Tuple[float, float, float]] = []  # (price, funding, cost)
+    renormalization_events: List[Dict[str, Any]] = []
     per_symbol_totals: Dict[str, float] = {sym: 0.0 for sym in UNIVERSE}
 
     cost_fills_total = 0.0
@@ -367,30 +399,110 @@ def _simulate(
         for decision_day in sorted(instant_to_days.get(instant, [])):
             decision = decisions[decision_day]
             desired: Dict[str, float] = dict(decision.target)
-            for symbol in UNIVERSE:
-                if symbol in desired:
-                    continue
-                if (
-                    current.get(symbol, 0.0) != 0.0
-                    and symbol in decision.refused
-                ):
-                    # Refused HELD symbol: excluded from today's cross-
-                    # section, its decision never becomes a fill -> carry.
-                    desired[symbol] = current[symbol]
-            effective: Dict[str, float] = {}
-            for symbol in sorted(set(current) | set(desired)):
-                target_w = float(desired.get(symbol, 0.0))
-                current_w = float(current.get(symbol, 0.0))
-                if abs(target_w - current_w) < MIN_TRADE_DELTA:
-                    effective[symbol] = current_w
-                else:
-                    effective[symbol] = target_w
+            # Refused HELD symbols carry their weight unchanged (excluded
+            # from the cross-section; the refused decision never becomes a
+            # fill).  The fresh book renormalizes into the RESIDUAL budget
+            # (A1-ordered PRE-SCORE gross-cap remediation): side budgets
+            # scale proportionally to GROSS_MAX - sum|carried refused|, the
+            # 0.30 signed cap still binds, residual <= 0 forces the fresh
+            # side flat (recorded).
+            carried_refused = {
+                symbol: current[symbol]
+                for symbol in UNIVERSE
+                if symbol not in desired
+                and current.get(symbol, 0.0) != 0.0
+                and symbol in decision.refused
+            }
+            if carried_refused:
+                desired, event = renormalize_into_residual(
+                    desired, carried_refused
+                )
+                renormalization_events.append(
+                    {
+                        "decision_date": decision_day.isoformat(),
+                        "kind": "refusal_residual",
+                        "carried_refused_symbols": sorted(carried_refused),
+                        **event,
+                    }
+                )
+            # Deterministic gross-fit reconciliation: the frozen min-trade
+            # threshold can carry legs at STALE weights (e.g. a leg that
+            # filled at the scaled refusal-period weight and now faces a
+            # smaller fresh target), so the effective book can exceed the
+            # frozen gross even when every target set fits.  The p3_freeze
+            # invariant binds at EVERY transition: scale the FILLING legs'
+            # targets into the budget left by the carried legs (all carries
+            # count, refused or stale) and re-apply the threshold; repeat a
+            # bounded number of deterministic passes, then fail closed.
+            effective = _effective_transition(desired, current, decision.force_flat)
+            for attempt in range(_GROSS_FIT_MAX_PASSES):
+                effective_gross = sum(abs(w) for w in effective.values())
+                if effective_gross <= GROSS_MAX + _GROSS_TOL:
+                    break
+                carried_legs = {
+                    symbol: weight
+                    for symbol, weight in effective.items()
+                    if weight == float(current.get(symbol, 0.0)) and weight != 0.0
+                }
+                filling_legs = {
+                    symbol: float(weight)
+                    for symbol, weight in desired.items()
+                    if effective.get(symbol, 0.0) == float(weight)
+                    and float(weight) != float(current.get(symbol, 0.0))
+                }
+                if not filling_legs:
+                    raise SpecViolation(
+                        f"gross cap breached with nothing left to scale on "
+                        f"{decision_day.isoformat()}: "
+                        f"{ {s: round(w, 6) for s, w in sorted(effective.items()) if w != 0.0} }"
+                    )
+                residual = GROSS_MAX - sum(
+                    abs(w) for w in carried_legs.values()
+                )
+                filling_gross = sum(abs(w) for w in filling_legs.values())
+                # scale DOWN only: the filling legs must FIT the budget the
+                # carried legs leave; unused residual stays in cash
+                scale = min(1.0, max(residual, 0.0) / filling_gross)
+                desired = {
+                    symbol: (weight * scale if symbol in filling_legs else weight)
+                    for symbol, weight in desired.items()
+                }
+                renormalization_events.append(
+                    {
+                        "decision_date": decision_day.isoformat(),
+                        "kind": "gross_fit",
+                        "attempt": attempt + 1,
+                        "carried_legs_gross": sum(
+                            abs(w) for w in carried_legs.values()
+                        ),
+                        "residual": residual,
+                        "scale": scale,
+                        "forced_fresh_flat": scale == 0.0,
+                    }
+                )
+                effective = _effective_transition(
+                    desired, current, decision.force_flat
+                )
+            else:
+                raise SpecViolation(
+                    f"gross cap not reconciled within "
+                    f"{_GROSS_FIT_MAX_PASSES} passes on "
+                    f"{decision_day.isoformat()}"
+                )
             if any(
                 abs(w) > WEIGHT_CAP_SIGNED + _GROSS_TOL for w in effective.values()
             ):
-                raise SpecViolation("signed weight cap breached in transition")
+                raise SpecViolation(
+                    f"signed weight cap breached in transition on "
+                    f"{decision_day.isoformat()}: "
+                    f"{ {s: round(w, 6) for s, w in sorted(effective.items()) if abs(w) > WEIGHT_CAP_SIGNED + _GROSS_TOL} }"
+                )
             if sum(abs(w) for w in effective.values()) > GROSS_MAX + _GROSS_TOL:
-                raise SpecViolation("gross cap breached in transition")
+                raise SpecViolation(
+                    f"gross cap breached in transition on "
+                    f"{decision_day.isoformat()}: "
+                    f"{ {s: round(w, 6) for s, w in sorted(effective.items()) if w != 0.0} }"
+                )
             n_fills_before = len(fills)
             for symbol in sorted(effective):
                 target_w = effective[symbol]
@@ -502,6 +614,7 @@ def _simulate(
         "cost_breakout": _cost_breakout(daily_rows, book_rows, cost_fills_total),
         "per_symbol_totals": dict(sorted(per_symbol_totals.items())),
         "refusal_registry": dict(registry_summary),
+        "renormalization_events": list(renormalization_events),
         "stress": {
             "fee_multiplier": float(fee_multiplier),
             "slippage_ticks": int(slippage_ticks),
