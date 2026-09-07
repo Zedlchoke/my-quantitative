@@ -2,6 +2,24 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **FOREX V6 CLOSED → `FOREX_FREE_V6_REJECT_ALL`** (closed 2026-09-07,
+  branch `orca/forex-free-v6-integration@4d81dcd`) — the direction-conditioned
+  calendar cycle. FXFV6-A4-P1 own-economy CPI reaction-direction drift is
+  **the forex season's near-miss**: anchor fin-adj +824.37 @tier2.0
+  (+0.963/trade, 208 trades) dying on FOUR robustness gates — PF margin
+  −0.0021 (razor per P-2), GBPUSD concentration 0.4257, break-even 3.475bps,
+  LOPO 3/4; k=10 neighbour out-earned (+1922.02, PF 1.1142) failing its own
+  gates. **Sham control NEGATIVE (−910.40) while the anchor EARNS — release-
+  DIRECTION conditioning carries genuine calendar information; V5's
+  sham-shadow is counter-evidenced** (no falsification kill). FXFV6-A6-P2
+  USD PC1-gated reversal mechanically dead (−3.299/trade; neighbour + placebo
+  worse). Budget 6/6; reproduction whole-file byte-identical (twin @8a0fd01,
+  ledger sha 8517ca36…); two-key P-8 legal. **A7 terminal NOT_RUN at close —
+  independent terminal audit still dispatchable (disclosed by the Lead in the
+  ledger row).** Forex 33/33; program 218/221 (ledger authority, P-9). S1
+  sealed. Detail:
+  `.worktrees/forex-free-v6/integration/research/control/forex_free_v6_run/terminal_verdict.json`.
+
 - **CRYPTO V15 CLOSED → `V15_REJECT_ALL`** (closed 2026-09-07, branch
   `orca/v15-integration`, closeout `ad61fca` + terminal-line merge; code
   freeze `824190c`) — the archived-positioning-metrics cycle on
