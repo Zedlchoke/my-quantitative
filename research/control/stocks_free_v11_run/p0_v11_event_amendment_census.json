@@ -1,0 +1,570 @@
+{
+ "schema": "stocks_free_v11_run/p0_v11_event_amendment_census@1",
+ "produced_by": "A3 lane (dispatched by A1)",
+ "built_at_utc": "2026-09-07T01:50:41Z",
+ "cycle": "STOCKS-FREE-V11",
+ "scope": "COVERAGE ONLY \u2014 full census (not a sample) of the filing-event and amendment-process axes on the existing hash-verified panel. No proposal, no PnL, no outcome-shaped fields. Per PLAN_stocks_v11.md section 3 P0 and run_contract structural mandate 'P0 publishes the event/amendment coverage census on the existing panel BEFORE D1; no new vendor leg'.",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v11/integration",
+ "branch": "orca/stocks-free-v11-integration",
+ "heavy_cap": "1 machine-wide; all census passes single-process, serialized, one pass per input stream",
+ "pin_reverification": [
+  {
+   "input": "multivintage_panel.jsonl (V9 staging)",
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/integration/.staging_sec_v9/multivintage_panel.jsonl",
+   "pin": "67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447",
+   "measured": "67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447",
+   "verdict": "MATCH",
+   "command": "shasum -a 256 .staging_sec_v9/multivintage_panel.jsonl",
+   "exit_code": 0
+  },
+  {
+   "input": "cohort_v9.json",
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/integration/research/control/stocks_free_v9_run/cohort_v9.json",
+   "pin": "6a95401ff84bff2144ac3c0b9426a6fa86daf3dde8d478195666249e3fa2aa62",
+   "measured": "6a95401ff84bff2144ac3c0b9426a6fa86daf3dde8d478195666249e3fa2aa62",
+   "verdict": "MATCH",
+   "command": "shasum -a 256 research/control/stocks_free_v9_run/cohort_v9.json",
+   "exit_code": 0
+  },
+  {
+   "input": "v10_timing_observables.jsonl",
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v10/integration/.staging_sec_v10/v10_timing_observables.jsonl",
+   "pin": "b1477ea39b8b794b7f32162cb349ff53fdd1a37b9a64d0ee20e77412ae802337",
+   "measured": "b1477ea39b8b794b7f32162cb349ff53fdd1a37b9a64d0ee20e77412ae802337",
+   "verdict": "MATCH",
+   "command": "shasum -a 256 <v10 staging>/v10_timing_observables.jsonl",
+   "exit_code": 0
+  },
+  {
+   "input": "v10_revision_observables.jsonl",
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v10/integration/.staging_sec_v10/v10_revision_observables.jsonl",
+   "pin": "7110cbf010ae6d3f414a1a45eec1e504aff5e94464755991e98605e4795657c2",
+   "measured": "7110cbf010ae6d3f414a1a45eec1e504aff5e94464755991e98605e4795657c2",
+   "verdict": "MATCH",
+   "command": "shasum -a 256 <v10 staging>/v10_revision_observables.jsonl",
+   "exit_code": 0
+  }
+ ],
+ "pin_reverification_gate": "ALL 4 MATCH (exit 0 each) before any compute; sequence per dispatch mandate (hash first, census second)",
+ "interpreter": {
+  "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python /tmp/v11_a3_census.py",
+  "note": "dispatch named /Users/hoangminhlong/.venv/bin/python which does not exist on this machine; the repo-root venv used here is the interpreter the A1 first report measured as '.venv/bin/python 3.12.14'. Harmless path discrepancy, recorded."
+ },
+ "method": {
+  "event_definition": "filer-event = distinct (e, first_avail) pair from the timing observable layer; e = filer CIK ('CIK########'), first_avail = evidenced vintage-availability date (P-1: the timestamps ARE the evidence).",
+  "event_order": "per-event rows emitted in timing-layer insertion order (first occurrence while streaming the hash-verified file); deterministic \u2014 two independent full runs produced byte-identical artifacts (same sha256).",
+  "window_conventions": {
+   "STRICT_NEXT_BAR": "post-arrival bookable bars = entity EOD bars with date > first_avail (bisect_right on the entity's sorted EOD date array)",
+   "SAME_DAY_INCLUSIVE": "post-arrival bookable bars = entity EOD bars with date >= first_avail (bisect_left)"
+  },
+  "class_mapping": "e -> cohort class from cohort_v9.json members (ALIVE_EVIDENCED / DEAD_EVIDENCED / GAP_COVERAGE / NOT_DEAD_NAME_ALIVE); entities outside every class would be UNMAPPED \u2014 zero occurred, nothing guessed",
+  "chain_group": "timing-layer row with depth >= 2 (one row per filer-field-period group); depth histogram taken over ALL timing rows; entities-by-max-depth uses each entity's maximum depth",
+  "inter_arrival": "inter_arrival_days from the revision observable layer (one row per depth>=2 group), percentiles with linear interpolation, per class and pooled; 0 null values encountered",
+  "dead_leg": "DEAD_EVIDENCED entities present in the timing layer: price first/last dates from the entity's EOD file; bars after LAST filer-event under STRICT_NEXT_BAR; death-vs-stale ambiguity bucketed by (last_price_date - last_event) calendar days <= 120 vs > 120 \u2014 REPORTED NOT ADJUDICATED",
+  "placebo_runnability": "MANDATORY sham-event placebo control class census. STRICT_NEXT_BAR window semantics: a window of k bars starting at trading index t (k=5 resp. 20) is RUNNABLE iff it fits inside the entity's EOD series (t+k <= n) and NO bar date within it equals any filer-event date of that entity (prefix-sum over an event-date indicator on the trading calendar). Event dates falling on non-trading days can never collide with a window by construction.",
+  "margin_philosophy": "Thresholds are reported as measured distributions, not gates passed. No gate is being adjudicated here: the only verdicts published are per-axis FUNDABLE/BLOCKED, each justified by the stated count. Margin-to-fail discipline (P-2) applies to later gates; this census supplies the denominators those gates will need."
+ },
+ "census_a_event_windows": {
+  "events_total_distinct_pairs": 74931,
+  "events_on_priced_entities": 74862,
+  "events_on_unpriced_entities": 69,
+  "unpriced_entities_with_events": [
+   "CIK0000004904"
+  ],
+  "unpriced_entities_with_events_classes": {
+   "CIK0000004904": "ALIVE_EVIDENCED"
+  },
+  "events_by_class": {
+   "ALIVE_EVIDENCED": 24248,
+   "DEAD_EVIDENCED": 49411,
+   "GAP_COVERAGE": 0,
+   "NOT_DEAD_NAME_ALIVE": 1272,
+   "UNMAPPED": 0
+  },
+  "STRICT_NEXT_BAR_threshold_counts": {
+   "ALL": {
+    "ge1": 70592,
+    "ge5": 70433,
+    "ge10": 70087,
+    "ge20": 69696,
+    "ge60": 67859,
+    "n_measured": 74862
+   },
+   "ALIVE_EVIDENCED": {
+    "ge1": 24179,
+    "ge5": 24171,
+    "ge10": 24160,
+    "ge20": 24138,
+    "ge60": 23830,
+    "n_measured": 24179
+   },
+   "DEAD_EVIDENCED": {
+    "ge1": 45141,
+    "ge5": 44990,
+    "ge10": 44655,
+    "ge20": 44288,
+    "ge60": 42772,
+    "n_measured": 49411
+   },
+   "GAP_COVERAGE": {
+    "ge1": 0,
+    "ge5": 0,
+    "ge10": 0,
+    "ge20": 0,
+    "ge60": 0,
+    "n_measured": 0
+   },
+   "NOT_DEAD_NAME_ALIVE": {
+    "ge1": 1272,
+    "ge5": 1272,
+    "ge10": 1272,
+    "ge20": 1270,
+    "ge60": 1257,
+    "n_measured": 1272
+   },
+   "UNMAPPED": {
+    "ge1": 0,
+    "ge5": 0,
+    "ge10": 0,
+    "ge20": 0,
+    "ge60": 0,
+    "n_measured": 0
+   }
+  },
+  "SAME_DAY_INCLUSIVE_threshold_counts": {
+   "ALL": {
+    "ge1": 70615,
+    "ge5": 70456,
+    "ge10": 70111,
+    "ge20": 69723,
+    "ge60": 67881,
+    "n_measured": 74862
+   },
+   "ALIVE_EVIDENCED": {
+    "ge1": 24179,
+    "ge5": 24171,
+    "ge10": 24160,
+    "ge20": 24143,
+    "ge60": 23830,
+    "n_measured": 24179
+   },
+   "DEAD_EVIDENCED": {
+    "ge1": 45164,
+    "ge5": 45013,
+    "ge10": 44679,
+    "ge20": 44309,
+    "ge60": 42794,
+    "n_measured": 49411
+   },
+   "GAP_COVERAGE": {
+    "ge1": 0,
+    "ge5": 0,
+    "ge10": 0,
+    "ge20": 0,
+    "ge60": 0,
+    "n_measured": 0
+   },
+   "NOT_DEAD_NAME_ALIVE": {
+    "ge1": 1272,
+    "ge5": 1272,
+    "ge10": 1272,
+    "ge20": 1271,
+    "ge60": 1257,
+    "n_measured": 1272
+   },
+   "UNMAPPED": {
+    "ge1": 0,
+    "ge5": 0,
+    "ge10": 0,
+    "ge20": 0,
+    "ge60": 0,
+    "n_measured": 0
+   }
+  },
+  "strict_bars_quantiles_all_priced_events": {
+   "p5": 0.0,
+   "p10": 71.0,
+   "p25": 395.0,
+   "p50": 1083.0,
+   "p75": 2024.0,
+   "p90": 2977.0,
+   "p95": 3483.0
+  },
+  "sameday_bars_quantiles_all_priced_events": {
+   "p5": 0.0,
+   "p10": 72.0,
+   "p25": 396.0,
+   "p50": 1084.0,
+   "p75": 2025.0,
+   "p90": 2978.0,
+   "p95": 3484.0
+  },
+  "events_per_entity_by_class": {
+   "ALIVE_EVIDENCED": {
+    "entities": 391,
+    "median": 65.0,
+    "ge1": 391,
+    "ge5": 390,
+    "ge20": 384,
+    "ge50": 351
+   },
+   "DEAD_EVIDENCED": {
+    "entities": 1752,
+    "median": 29.0,
+    "ge1": 1752,
+    "ge5": 1715,
+    "ge20": 1120,
+    "ge50": 192
+   },
+   "GAP_COVERAGE": {
+    "entities": 0,
+    "median": null,
+    "ge1": 0,
+    "ge5": 0,
+    "ge20": 0,
+    "ge50": 0
+   },
+   "NOT_DEAD_NAME_ALIVE": {
+    "entities": 19,
+    "median": 69.0,
+    "ge1": 19,
+    "ge5": 19,
+    "ge20": 19,
+    "ge50": 19
+   },
+   "UNMAPPED": {
+    "entities": 0,
+    "median": null,
+    "ge1": 0,
+    "ge5": 0,
+    "ge20": 0,
+    "ge50": 0
+   }
+  },
+  "duplicate_price_dates_detected": 0,
+  "margin_note": "priced events with ZERO strict post-arrival bars: 74,862 - 70,592 = 4,270 (5.70%) \u2014 window truncation concentrates at dead legs / series ends (p5 of strict_bars = 0, p10 = 71). Consistent with the death-inclusive cohort; quantified here, not repaired."
+ },
+ "census_b_amendment_chains": {
+  "chain_groups_total_depth_ge2": 1667422,
+  "cross_check": "equals revision-layer row count (1,667,422) exactly",
+  "depth_histogram_all_timing_rows": {
+   "1": 3786056,
+   "2": 621430,
+   "3": 187896,
+   "4": 128203,
+   "5": 604376,
+   "6": 68975,
+   "7": 18867,
+   "8": 7951,
+   "9": 12198,
+   "10": 14533,
+   "11": 1900,
+   "12": 435,
+   "13": 184,
+   "14": 121,
+   "15": 58,
+   "16": 50,
+   "17": 50,
+   "18": 29,
+   "19": 34,
+   "20": 22,
+   "21": 22,
+   "22": 14,
+   "23": 11,
+   "24": 5,
+   "25": 12,
+   "26": 5,
+   "27": 8,
+   "28": 3,
+   "29": 2,
+   "30": 3,
+   "31": 2,
+   "32": 1,
+   "33": 2,
+   "34": 4,
+   "35": 1,
+   "36": 5,
+   "37": 1,
+   "38": 1,
+   "39": 3,
+   "40": 1,
+   "41": 1,
+   "42": 1,
+   "47": 2
+  },
+  "chain_group_entity_counts_by_class": {
+   "ALIVE_EVIDENCED": {
+    "entities_with_ge1_chain_group": 391,
+    "entities_ge1": 391,
+    "entities_ge5": 391,
+    "entities_ge20": 391,
+    "entities_ge50": 391,
+    "median_chain_groups": 1531.0
+   },
+   "DEAD_EVIDENCED": {
+    "entities_with_ge1_chain_group": 1746,
+    "entities_ge1": 1746,
+    "entities_ge5": 1746,
+    "entities_ge20": 1743,
+    "entities_ge50": 1680,
+    "median_chain_groups": 523.5
+   },
+   "GAP_COVERAGE": {
+    "entities_with_ge1_chain_group": 0,
+    "entities_ge1": 0,
+    "entities_ge5": 0,
+    "entities_ge20": 0,
+    "entities_ge50": 0,
+    "median_chain_groups": null
+   },
+   "NOT_DEAD_NAME_ALIVE": {
+    "entities_with_ge1_chain_group": 19,
+    "entities_ge1": 19,
+    "entities_ge5": 19,
+    "entities_ge20": 19,
+    "entities_ge50": 19,
+    "median_chain_groups": 1612.0
+   },
+   "UNMAPPED": {
+    "entities_with_ge1_chain_group": 0,
+    "entities_ge1": 0,
+    "entities_ge5": 0,
+    "entities_ge20": 0,
+    "entities_ge50": 0,
+    "median_chain_groups": null
+   }
+  },
+  "entities_by_max_chain_depth_by_class": {
+   "ALIVE_EVIDENCED": {
+    "entities_total": 391,
+    "ge2": 391,
+    "ge3": 391,
+    "ge4": 391,
+    "ge5": 390
+   },
+   "DEAD_EVIDENCED": {
+    "entities_total": 1752,
+    "ge2": 1746,
+    "ge3": 1742,
+    "ge4": 1728,
+    "ge5": 1703
+   },
+   "GAP_COVERAGE": {
+    "entities_total": 0,
+    "ge2": 0,
+    "ge3": 0,
+    "ge4": 0,
+    "ge5": 0
+   },
+   "NOT_DEAD_NAME_ALIVE": {
+    "entities_total": 19,
+    "ge2": 19,
+    "ge3": 19,
+    "ge4": 19,
+    "ge5": 19
+   },
+   "UNMAPPED": {
+    "entities_total": 0,
+    "ge2": 0,
+    "ge3": 0,
+    "ge4": 0,
+    "ge5": 0
+   }
+  },
+  "inter_arrival_days_percentiles_by_class": {
+   "ALIVE_EVIDENCED": {
+    "n": 609974,
+    "p10": 203.0,
+    "p25": 363.0,
+    "p50": 364.0,
+    "p75": 368.0,
+    "p90": 474.0,
+    "min": 1,
+    "max": 4654
+   },
+   "DEAD_EVIDENCED": {
+    "n": 1023812,
+    "p10": 147.0,
+    "p25": 317.0,
+    "p50": 364.0,
+    "p75": 369.0,
+    "p90": 456.0,
+    "min": 1,
+    "max": 4076
+   },
+   "GAP_COVERAGE": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "p50": null,
+    "p75": null,
+    "p90": null,
+    "min": null,
+    "max": null
+   },
+   "NOT_DEAD_NAME_ALIVE": {
+    "n": 33636,
+    "p10": 183.0,
+    "p25": 361.0,
+    "p50": 364.0,
+    "p75": 368.0,
+    "p90": 554.0,
+    "min": 1,
+    "max": 3642
+   },
+   "UNMAPPED": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "p50": null,
+    "p75": null,
+    "p90": null,
+    "min": null,
+    "max": null
+   },
+   "POOLED": {
+    "n": 1667422,
+    "p10": 169.0,
+    "p25": 356.0,
+    "p50": 364.0,
+    "p75": 368.0,
+    "p90": 460.0,
+    "min": 1,
+    "max": 4654
+   }
+  },
+  "margin_note": "2,156 entities carry >=1 chain group and all of them carry >=50; max chain depth >=5 reached by 2,112 entities (390 ALIVE + 1,703 DEAD + 19 NOT_DEAD_NAME_ALIVE). Pooled cadence p10-p90 = 169-460 days around the annual-report mode (p50 = 364)."
+ },
+ "census_c_dead_leg": {
+  "class": "DEAD_EVIDENCED",
+  "entities_in_class": 1752,
+  "priced_entities": 1752,
+  "unpriced_entities": 0,
+  "entities_with_events": 1752,
+  "entities_without_events": 0,
+  "entities_ge20_strict_bars_after_last_event": 1038,
+  "entities_price_end_within_120d_after_last_event": 1482,
+  "entities_price_end_later_than_120d_after_last_event": 270,
+  "entities_no_events_but_priced": 0,
+  "price_first_dates_min": "1969-12-31",
+  "price_first_dates_max": "2025-04-21",
+  "price_last_dates_min": "1998-10-08",
+  "price_last_dates_max": "2026-07-17",
+  "note": "price-first/last min-max over DEAD_EVIDENCED priced entities; bars-after-last-event under STRICT_NEXT_BAR (date > last_event); the 120-day split is reported, not adjudicated",
+  "dead_class_entities_in_timing_layer_note": "scope = DEAD_EVIDENCED members present in the timing layer (1752 of 1769 class members); the other 17 have no evidenced timing rows and hence no filer-events"
+ },
+ "census_d_sham_placebo_runnability": {
+  "convention": "STRICT_NEXT_BAR window semantics; window of k bars starting at trading index t is runnable iff it fits and contains no bar date equal to any of the entitys filer-event dates",
+  "totals_all": {
+   "w5_total": 8034881,
+   "w20_total": 7044549,
+   "t5_positions_total": 8357571,
+   "t20_positions_total": 8325319,
+   "entities_with_ge1_w5": 2158,
+   "entities_with_ge1_w20": 2142,
+   "entities_censused": 2161
+  },
+  "totals_by_class": {
+   "ALIVE_EVIDENCED": {
+    "entities": 390,
+    "w5_total": 3351633,
+    "w20_total": 2986915,
+    "entities_ge1_w5": 390,
+    "entities_ge1_w20": 390,
+    "entities_zero_w5": 0,
+    "t5_positions_total": 3471543,
+    "t20_positions_total": 3465693
+   },
+   "DEAD_EVIDENCED": {
+    "entities": 1752,
+    "w5_total": 4501065,
+    "w20_total": 3894752,
+    "entities_ge1_w5": 1749,
+    "entities_ge1_w20": 1733,
+    "entities_zero_w5": 3,
+    "t5_positions_total": 4697500,
+    "t20_positions_total": 4671383
+   },
+   "NOT_DEAD_NAME_ALIVE": {
+    "entities": 19,
+    "w5_total": 182183,
+    "w20_total": 162882,
+    "entities_ge1_w5": 19,
+    "entities_ge1_w20": 19,
+    "entities_zero_w5": 0,
+    "t5_positions_total": 188528,
+    "t20_positions_total": 188243
+   }
+  },
+  "distribution_per_entity": {
+   "per_entity_w5": {
+    "p10": 388.0,
+    "p25": 792.0,
+    "p50": 2270.0,
+    "p75": 5498.0,
+    "p90": 9567.0
+   },
+   "per_entity_w5_min": 0,
+   "per_entity_w5_max": 16114
+  },
+  "margin_note": "clear-window density: 8,034,881 / 8,357,571 = 96.1% of all 5-bar positions and 7,044,549 / 8,325,319 = 84.6% of all 20-bar positions are fully clear of event dates; 2,158 of 2,161 priced entities have >=1 runnable 5-bar placebo window (3 DEAD_EVIDENCED entities have zero 5-bar windows and 19 have zero 20-bar windows \u2014 their calendars are event-saturated near death). The placebo calendar is runnable."
+ },
+ "axis_verdicts": {
+  "event_reaction_axis": {
+   "verdict": "FUNDABLE",
+   "justifying_count": "70,433 of 74,862 priced filer-events (94.08%) have >=5 bookable post-arrival bars under STRICT_NEXT_BAR; 69,696 (93.10%) have >=20; SAME_DAY_INCLUSIVE is equal or better at every threshold (>=20: 69,723). The mandatory sham-event placebo control class is runnable (section d)."
+  },
+  "amendment_process_axis": {
+   "verdict": "FUNDABLE",
+   "justifying_count": "1,667,422 chain groups (depth>=2) across 2,156 entities; every chain-bearing entity carries >=50 chain groups and 2,112 reach max chain depth >=5; cadence percentiles (p10=169 / p50=364 / p90=460 days) fund conditioning clocks."
+  },
+  "verdict_scope": "Coverage verdicts only, per axis, from full-census counts. No proposal, no gate, no PnL exists yet. BLOCKED_DATA branch of PLAN section 2 does not trigger."
+ },
+ "evidence_paths": {
+  "inputs": [
+   "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/integration/.staging_sec_v9/multivintage_panel.jsonl (not read by this census; pin re-verified only)",
+   "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/integration/research/control/stocks_free_v9_run/cohort_v9.json",
+   "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v10/integration/.staging_sec_v10/v10_timing_observables.jsonl",
+   "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v10/integration/.staging_sec_v10/v10_revision_observables.jsonl",
+   "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/integration/.staging_prices_v9/eod/ (2,178 entity EOD files)",
+   "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/integration/.staging_prices_v9/benchmarks/ (SPY + 11 SPDR sectors; present, not used by this census)"
+  ],
+  "census_script": "/tmp/v11_a3_census.py (machine-local, not committed; sha256 below)",
+  "census_summary_intermediate": "/tmp/v11_a3_census_summary.json (machine-local, not committed)",
+  "authorities": [
+   "research/control/stocks_free_v11_run/run_contract.json",
+   "research/control/stocks_free_v11_run/first_report.md",
+   "plans/PLAN_stocks_v11.md section 3 P0",
+   "RULES.md sections 1 and 5"
+  ]
+ },
+ "derived_artifact": {
+  "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v11/integration/.staging_sec_v11/v11_event_window_census.jsonl",
+  "rows": 74931,
+  "sha256": "728f14208cf29f419fe7bc5d2589a27b51c8f7033273a66fe7441c226f410fd9",
+  "row_order": "timing-layer insertion order of distinct (e, first_avail)",
+  "fields": [
+   "cik",
+   "first_avail",
+   "class",
+   "strict_bars",
+   "sameday_bars"
+  ],
+  "null_convention": "strict_bars/sameday_bars are null for the 69 events whose entity has no EOD price file",
+  "gitignore_status": ".staging_sec_v11/ is gitignored in this worktree; bytes never committed",
+  "determinism": "two independent full runs produced byte-identical sha256"
+ },
+ "census_script_sha256": "3568cd037c6ed9b534dea0a261afa3ba3e70df817171da3a83043e9b82eefc91",
+ "limitations_and_observations": [
+  "PRICE-FILE JOIN MISS: cohort entity CIK0000004904 (class ALIVE_EVIDENCED) has 69 filer-events but no EOD file in .staging_prices_v9/eod; its events are counted in totals with null bookable-bar fields (0.09% of events). Unresolved at census level; would need an owner-side price fetch if that name ever matters.",
+  "UNMAPPED ENTITIES: none. All 2,162 timing-layer entities map to a cohort class; the UNMAPPED bucket exists in the schema and is zero everywhere.",
+  "GAP_COVERAGE contributes zero filer-events and zero chains (0 of its 513 members appear in the timing layer) \u2014 by construction of the class; reported so the zero is not mistaken for a join failure.",
+  "EVENT TRUNCATION AT DEATH: 4,270 priced events (5.70%) have zero strict post-arrival bars; 4,247 zero same-day bars. p5 of the strict_bars distribution is 0. Any later event-book gate must state which threshold it conditions on; this census only measures.",
+  "DEATH-VS-STALE AMBIGUITY (reported, not adjudicated): 1,482 of 1,752 DEAD_EVIDENCED timing entities have a price series ending within 120 calendar days after their last filer-event; 270 end later. 1,038 have >=20 strict bars after the last event. Which bucket is 'death' vs 'stale feed' is deliberately not decided here.",
+  "PLACEBO SATURATED CALENDARS: 3 DEAD_EVIDENCED entities have zero clear 5-bar windows and 19 have zero clear 20-bar windows \u2014 a placebo design that requires a window per event would be unrunnable for those entities unless windows are allowed to sit elsewhere in the calendar (design decision for a later phase, not taken here).",
+  "Same-day-inclusive vs strict: the two conventions differ by at most a few hundred events at every threshold (max delta 23 at >=1) because first_avail dates rarely land on trading days of the same entity; near-halt / near-suspension edge cases are inside the 4,270 zero-bar bucket and are not separately resolvable from this census.",
+  "Benchmark files were not exercised by this census (event books are per-entity EOD only); SPY/sector benchmarks remain verified-by-pin from the A1 first report.",
+  "TOOLING: one census-script defect (undefined pooled-array name) aborted the first two runs before any artifact was finalized; fixed and the published numbers come only from completed runs. A3 tooling only \u2014 no input bytes touched, no artifact published from a partial state.",
+  "The multivintage panel was pin-re-verified but not streamed (this census needs only the timing/revision observable layers, cohort, and prices); its role here is lineage continuity with the frozen contract."
+ ]
+}
