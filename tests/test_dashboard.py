@@ -256,6 +256,9 @@ def test_snapshot_top_level_keys_and_counts(fake_repo: Path):
     assert snap["failures"]["total"] == 5
     assert snap["header"]["program"] == {"published": 20, "observed": 21}
     assert snap["header"]["crypto"] == {"published": 12, "observed": 13}
+    # dạng tắt "stocks 5/5; forex 3/3" trong ledger cũng là artifact nêu rõ
+    assert snap["header"]["stocks"] == {"published": 5, "observed": 5}
+    assert snap["header"]["forex"] == {"published": 3, "observed": 3}
     assert snap["header"]["zero_survivors"] is True
     assert snap["header"]["s1"] == "S1 untouched (ledger)"
     phrases = [g["phrase"] for g in snap["header"]["go_registry"]]

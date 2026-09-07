@@ -448,8 +448,11 @@ def collect_header(root: Path) -> dict:
         {"published": int(m.group(1)), "observed": int(m.group(2))}
         if m else {"published": None, "observed": None, "note": NO_DATA})
     for asset in ("crypto", "stocks", "forex"):
-        ma = re.search(
-            rf"{asset}\s+(\d+)\s*published\s*/\s*(\d+)\s*observed", text, re.I)
+        ma = (re.search(
+                  rf"{asset}\s+(\d+)\s*published\s*/\s*(\d+)\s*observed",
+                  text, re.I)
+              or re.search(rf"{asset}\s+(\d+)/(\d+)\b(?!\s*(?:cells|folds))",
+                           text, re.I))
         out[asset] = ({"published": int(ma.group(1)), "observed": int(ma.group(2))}
                       if ma else {"published": None, "observed": None,
                                   "note": NO_DATA})
@@ -709,18 +712,23 @@ def build_active_cycles(snapshot: dict) -> dict:
     return registry
 
 
-def write_outputs(snapshot: dict, out_dir: Path) -> None:
-    """Sinh plans/ACTIVE_CYCLES.json + dashboard/index.html."""
+def write_outputs(snapshot: dict, out_dir: Path,
+                  write_registry: bool = True) -> None:
+    """Sinh dashboard/index.html; ghi plans/ACTIVE_CYCLES.json khi
+    write_registry=True (lúc launch / CLI). Auto-refresh 30s của app
+    gọi với write_registry=False để không ghi churn vào file đã
+    commit."""
     try:
         from dashboard_render import render  # chạy trực tiếp / tests
     except ImportError:  # chạy qua `python -m research.governance...`
         from .dashboard_render import render
     root = Path(snapshot["root"])
-    ac_path = root / ACTIVE_CYCLES_REL
-    ac_path.parent.mkdir(parents=True, exist_ok=True)
-    ac_path.write_text(
-        json.dumps(build_active_cycles(snapshot), ensure_ascii=False,
-                   indent=1) + "\n", encoding="utf-8")
+    if write_registry:
+        ac_path = root / ACTIVE_CYCLES_REL
+        ac_path.parent.mkdir(parents=True, exist_ok=True)
+        ac_path.write_text(
+            json.dumps(build_active_cycles(snapshot), ensure_ascii=False,
+                       indent=1) + "\n", encoding="utf-8")
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_text(render(snapshot), encoding="utf-8")
 
