@@ -1,0 +1,176 @@
+{
+ "schema": "stocks_free_v11_run/a7_terminal@1",
+ "audited_at_utc": "2026-09-07T15:45:30Z",
+ "auditor_role": "A7 (terminal, fresh-context, independent of the A1 thread; never saw this cycle before this audit)",
+ "cycle": "STOCKS-FREE-V11",
+ "audited_state": {
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v11/integration",
+  "branch": "orca/stocks-free-v11-integration",
+  "head": "71d5172cadef3128083adfc4c99dc9e14b3a48c4",
+  "tree": "CLEAN (git status --porcelain=v1 empty at audit start and at commit time; measured 0 lines)",
+  "head_is_terminal_draft_commit": true
+ },
+ "method": "Independent recomputation from bytes only: git chain re-verification, 13-file re-hash against kernel_inheritance_manifest.json, per-gate margin recomputation from family_verdicts.json against the preregistered thresholds in proposals/a5_process_H1.json, git history diff of runner/driver/kernel after the dry-run commit, INDEPENDENT re-execution of the scored driver in the detached twin .worktrees/stocks-free-v11/repro @aac07d9 under the machine-wide heavy lock (root research.governance.heavy_lock, cycle_id STOCKS-FREE-V11, role A7_TWIN_VERIFICATION) with the root interpreter, twin cwd/PYTHONPATH, V11_LAUNCH_AUTHORIZED=1 and argv 'GO STOCKS V11 SCORED EXECUTION', followed by byte-for-byte cmp of both output files; staged-layer and cohort/manifest sha re-hashing; pytest; boundary probes (ps, remote ls-remote, key scan, S1 filesystem check). Repair of nothing; verdict NOT_RUN_RESOURCE_CONFLICT would have been recorded had the lock been busy (it was free).",
+ "items": [
+  {
+   "id": "1_CHAIN",
+   "recomputed": [
+    "git status --porcelain=v1 -> empty, exit 0 (tree clean, measured)",
+    "git rev-parse HEAD -> 71d5172cadef3128083adfc4c99dc9e14b3a48c4 == terminal_report.chain.terminal_head (the commit that added terminal_report.json)",
+    "git branch --show-current -> orca/stocks-free-v11-integration",
+    "git log -1 on each of 4755f03 cd394b2 6520668 53f111a ea66879 38bf6f0 dcc9fcd eb44bfa 2d2ddaf dfac8a8 3a4becb 506a661 0902d22 fb24286 ddf536f b2e6b9d 5927892 e6870c0 e4185ab 802e79b 45be553 aac07d9 5608200 71d5172 -> all exist, message subjects match the terminal chain narrative, exit 0",
+    "git merge-base HEAD main -> d2b0f925a47a69947f85c06d7b95c25aa95a83a2 == claimed bootstrap (V10 terminal bec559c in ancestry per first-report chain)",
+    "git merge-base --is-ancestor aac07d9 HEAD -> ANCESTOR_OK (code_freeze commit is in terminal ancestry)",
+    "re-hash of 13 files sampled across all three kernel_inheritance_manifest.json groups (39+28+54=121 files) incl. cohort_v9.json and both large test suites -> 13/13 sha256+bytes MATCH, 0 mismatches (>= 10 required)"
+   ],
+   "measured_vs_claimed": "measured HEAD/tree/branch/commits/re-hashes == claimed exactly",
+   "verdict": "PASS"
+  },
+  {
+   "id": "2_GATES_FROM_BYTES",
+   "recomputed": [
+    "Recomputed every anchor/control gate margin from family_verdicts.json observed vs threshold: expectancy -0.01122558 vs 0 -> -0.011226 FAIL; position PF 0.9496 vs 1.10 -> -0.1504 FAIL; min populated-fold PF 0.376 vs 0.8 -> FAIL; max fold MDD 0.077 vs 0.15 -> +0.073 PASS; fold-positive share 0.5034 vs 0.5 -> -0.0034 FAIL; ETF share 0.7632 vs 0.5 -> -0.2632 FAIL; SPY-excess positive folds 0 vs 2 -> -2 FAIL; overall alpha -0.01271891 vs 0 -> -0.012719 FAIL; folds_positive 2 vs 2 -> PASS. All recorded margins reproduced to the recorded rounding.",
+    "Rule (g) recomputed from raw alphas: anchor -0.012718914937904842, control -0.015316704313854209, same sign (both negative), |control|/|anchor| = 1.2042 >= 0.5 -> KILL per the frozen falsifiable_prediction (g) and failure_interpretation.control_ratio_ge_0.5_same_sign",
+    "Verdict-authoritative code path inspected: v11_e_driver.py lines 405-407 control_reproduces = same-sign AND abs(c_alpha) >= 0.5*abs(a_alpha) - the frozen rule implemented literally; FALSIFIED_BY_CONTROL branch takes precedence (line 435-436)",
+    "No gate weakened post-freeze: git log 0902d22..HEAD -- v11_family_runner.py v11_e_driver.py kernel_band_cost_v9.py -> EMPTY; git diff 0902d22..HEAD on those files -> empty (exit 0); proposals/a5_process_H1.json has exactly one commit (38bf6f0, the D1 wave); selection_freeze.json exactly one commit (3a4becb)",
+    "In-code frozen constants equal the proposal frozen_thresholds: 460 / 6 / minQ 4 / sector 6 / gross 2.0 / seed 20260907 / census join 1,667,422 / gates {pf 1.10, minfold 0.8, folds 2, mdd 0.15, share 0.5, etf 0.50, spy-folds 2, ratio-kill 0.5}"
+   ],
+   "measured_vs_claimed": "anchor alpha -0.012719 and control alpha -0.015317 measured; ratio 1.2042x same sign (terminal says '1.21x' - rounds to 1.20x, LOW finding F-A7T-5); verdict rule (g) applied correctly at the verdict path; gate list matches the proposal's stage_a_gates_applied_with_no_relaxation plus the duplicate etf packet row",
+   "verdict": "PASS"
+  },
+  {
+   "id": "3_TRIAL_ACCOUNTING",
+   "recomputed": [
+    "execution_ledger.json cells: exactly 8 (ANCHOR-BASE, ANCHOR-STRESS, NEIGHBOUR-BASE, NEIGHBOUR-STRESS, CONTROL-BASE, CONTROL-STRESS, ANCHOR-DROPONE-SYMBOL, ANCHOR-DROPONE-PROCESS-LEG) == claimed composition 3 BASE + 3 STRESS x2 + 2 drop-one",
+    "counters.driver_emitted: observed_delta 8, published_delta 0 at run time, publish-time-edit prohibition noted (F-A7T-1)",
+    "publication_record.json: trials_of_record 3 with reruns-are-not-trials adjudication (stress x2 and drop-one are reruns of the same frozen cells), matching the V10 precedent (V10 published anchor+C2 with stress/repro reruns uncounted)",
+    "budget: selection_freeze.json froze 1 family x 3 arms = 3 of 6 cells, unused slots never reassigned -> 3/6 used, 3 slots dead, consistent with terminal counters"
+   ],
+   "measured_vs_claimed": "measured == claimed exactly",
+   "verdict": "PASS"
+  },
+  {
+   "id": "4_DENOMINATORS_P9",
+   "recomputed": [
+    "HYPOTHESIS_LEDGER.md lines 17-20 (ledger authority): 'crypto 149 published / 152 observed (V15 +6/6); stocks 36/36 (V10 +6/6); forex 33/33 (V6 +6/6). Program total: 218 published / 221 observed logical, 0 survivors.' -> stocks 36/36 inherited confirmed at the stated authority lines",
+    "39/39 post-V11 = 36 inherited + 3 V11 published trials: arithmetic verified",
+    "Wording audit: terminal_report counters.program_wide stamps 206/209 explicitly as as-of-intake, records 218/221 as CURRENT ledger authority, and defers the post-V11 program re-stamp (221/224) to the Lead at ledger append - it claims no cross-asset total it cannot prove",
+    "LOW finding F-A7T-5: publication_record program note has an arithmetic typo ('222+3=224' should read '221+3=224'); the 221/224 conclusion stated elsewhere is correct"
+   ],
+   "measured_vs_claimed": "measured == claimed; wording stays inside what the bytes prove",
+   "verdict": "PASS"
+  },
+  {
+   "id": "5_REPRODUCTION",
+   "recomputed": [
+    "Independent re-execution (NOT the predecessor's): heavy lock acquired via root research.governance.heavy_lock.acquire(cycle_id=STOCKS-FREE-V11, role=A7_TWIN_VERIFICATION, worktree=repro, expected_artifacts=[both files]) -> LOCK ACQUIRED, released FINISHED",
+    "Command: /Users/hoangminhlong/my-quantitative/.venv/bin/python -m research.assets.stocks.v11_e_driver 'GO STOCKS V11 SCORED EXECUTION' with cwd=repro twin, PYTHONPATH=repro twin, env V11_LAUNCH_AUTHORIZED=1 -> exit code 0, elapsed 76.5s",
+    "Byte comparison: cmp twin/research/control/stocks_free_v11_run/family_verdicts.json vs integration copy -> IDENTICAL; cmp twin execution_ledger.json vs integration copy -> IDENTICAL",
+    "sha256 measured: family_verdicts b82de30c1ab847fd73de8ea99aee0c180a3bb6999b32a0ef70409c97c7585b6f (claimed b82de30c... MATCH); execution_ledger 2fcdf1271bce9386555dc6f3bb0f27f806b03bd695518972a196cac7fdb362b8 (claimed 2fcdf127... MATCH)",
+    "Twin HEAD aac07d9cc85e77ad79c2dfb774d84638fefc8af0 == ledger code_freeze_sha == run-time HEAD -> no provenance-leaf exception",
+    "Re-run stdout verdict block: FALSIFIED_BY_CONTROL, anchor_expectancy -0.0112255833, anchor_alpha -0.012718914937904842, gates_all_pass false, neighbour_support false, control_reproduces true"
+   ],
+   "measured_vs_claimed": "REPRODUCTION_ALL_MATCH independently reproduced: byte-equal on BOTH files, claimed shas match to the full hex; exit 0",
+   "verdict": "PASS"
+  },
+  {
+   "id": "6_DATA_AUTHORITY",
+   "recomputed": [
+    "shasum -a 256 cohort_v9.json -> 6a95401ff84bff2144ac3c0b9426a6fa86daf3dde8d478195666249e3fa2aa62 == pin, exit 0",
+    "shasum -a 256 v10_timing_observables.jsonl -> b1477ea39b8b794b7f32162cb349ff53fdd1a37b9a64d0ee20e77412ae802337 == pin; wc -l -> 5,453,478 rows == claimed",
+    "shasum -a 256 v10_revision_observables.jsonl -> 7110cbf010ae6d3f414a1a45eec1e504aff5e94464755991e98605e4795657c2 == pin; wc -l -> 1,667,422 rows == claimed (also the runner's fail-closed join expectation)",
+    "sha256_json(p0d_v9_price_manifest.json) sorted-keys -> a481499cae061d7f31f1ab164653c9d758a48b334b41b746bfa4d7e648ab631f == execution_ledger.price_manifest_sha256",
+    "shasum -a 256 .staging_sec_v9/multivintage_panel.jsonl -> 67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447 == run_contract inherited_hashes pin"
+   ],
+   "measured_vs_claimed": "all five data pins re-hashed from bytes and MATCH, including both row counts",
+   "verdict": "PASS"
+  },
+  {
+   "id": "7_FALSIFICATION_SCRUTINY",
+   "recomputed": [
+    "Comparator question answered from the frozen text, not opinion: falsifiable_prediction (g) and mechanism.which_control_kills fix the comparator at RISK-MATCHED ALPHA ('the shuffled-chain control's |alpha| < 0.5x the anchor's alpha - same-sign reproduction at >= 0.5x kills'); the control's much worse expectancy (-0.2165 vs -0.0112) is not the comparator and cannot rescue the family. The alpha-level reproduction is the RIGHT comparator per the frozen rule.",
+    "Control implementation verified against the frozen spec: within-sector marginal-preserving PCG64(20260907) permutation applied to the CIK-sorted index vector, re-drawn per decision date, sectors of size 1 identity; D2 pre-selection measured anchor-vs-control rho 0.0792 << 0.30 so the control rank structure is near-orthogonal as declared; control book non-vacuous (79 decisions, 297 terminations, 8 void entries)",
+    "Anchor's OWN gates fail independent of the control: 7 distinct metric failures (expectancy, position PF, min populated-fold PF, fold-positive share, ETF share, SPY-excess positive folds 0/3, overall alpha) - the terminal's 'six independent gates' list plus overall alpha; under-state, never over-state",
+    "Drop-one gates are the frozen ones: symbol (after-drop expectancy -0.000545 <= 0 FAIL), fold (min leave-one-out -0.001117 <= 0 FAIL), process-leg depth>=3 (+0.000464 breaks sign preservation vs anchor -0.011226 FAIL) - all match drop_one_design text; verdict logic has NO path to STAGE_A_SURVIVOR_CANDIDATE on these bytes (requires anchor_gates_pass AND all drops AND neighbour - anchor_gates_pass is false on 7 rows regardless of the control)",
+    "Deviation hunt (recorded as findings, none verdict-changing): (a) the display row control_alpha_abs_ratio_lt reports the RECIPROCAL ratio 0.8304 = |anchor|/|control| because the inherited v9 evaluate() is called on the control record with control_alpha=anchor alpha - the binding kill does not use this row (F-A7T-2); (b) neighbour support implemented on expectancy sign while frozen text says 'same-sign alpha' - the two readings disagree here (expectancy opposite-sign -> FAIL as recorded; alpha same-sign -0.0122 vs -0.0127 -> would be support), an over-kill direction that cannot convert a survivor into a reject, and the family verdict is decided by control_reproduces regardless (F-A7T-3)"
+   ],
+   "measured_vs_claimed": "No reading under which the family survived was found: rule (g) kill is per the frozen rule on the frozen comparator; the REJECT is overdetermined (control kill + 7 independent anchor gate failures + 3 drop-one failures)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "8_BOUNDARIES",
+   "recomputed": [
+    "workers: ps aux | grep v11/python -> only IDE helper processes, zero run workers; terminal claims 0 -> measured 0",
+    "S1: find for s1 artifacts -> none anywhere in the worktree; run_contract/terminal s1 SEALED_UNTOUCHED -> measured consistent",
+    "keys: grep for EODHD_API_KEY/api_token assignments across research/ -> only redaction regexes; no hardcoded key material; .env present locally, git check-ignore .env -> ignored (env-only boundary held)",
+    "push: git for-each-ref refs/remotes + live git ls-remote origin -> origin/orca/stocks-free-v11-integration = 2d2ddaf9 (the INC-V11-4 prelaunch push, adjudicated history); local HEAD 71d5172 is ahead and unpushed -> nothing pushed after e6870c0",
+    "a7_prelaunch_v11_r2.json verdict line: STOCKS_FREE_V11_S0_LAUNCH_AUTHORIZED (schema a7_prelaunch_r2@1) -> confirmed",
+    "tree clean before and after the audit; the twin re-execution left only the twin's two pre-existing untracked artifact files (overwritten byte-identically)"
+   ],
+   "measured_vs_claimed": "measured == claimed on all boundary dimensions",
+   "verdict": "PASS"
+  },
+  {
+   "id": "9_TESTS",
+   "recomputed": [
+    "ROOT .venv/bin/python -m pytest tests/assets/stocks/test_v11_family_runner.py tests/assets/stocks/test_v9_kernel.py tests/assets/stocks/test_v9_family_runner.py -q -> '74 passed in 8.32s', exit 0"
+   ],
+   "measured_vs_claimed": "74 == 74 expected",
+   "verdict": "PASS"
+  },
+  {
+   "id": "10_INCIDENTS",
+   "recomputed": [
+    "incidents.md contains INC-V11-0 (line 6), INC-V11-1 (line 30), INC-V11-2 (line 75), INC-V11-3 (line 93), INC-V11-4 (line 104) + status update (line 134), INC-V11-5 (line 164), INC-V11-5b (line 177)",
+    "F-4 timestamp correction present (line 155-159): push epoch 1788753872 = 2026-09-07T04:04:32Z - the terminal's incidents summary matches this corrected time",
+    "ANOM-D1 present in the run's control records (prelaunch_v1_closeout.json: 'ANOM-D1 README interleave + A6 V10-schema read (harmless, disclosed)' and audits/a7_prelaunch_v11.json) rather than in incidents.md - location note recorded as LOW finding F-A7T-6; the terminal's one-line ANOM-D1 summary matches the recorded content",
+    "git diff 5608200..HEAD on execution_ledger.json / family_verdicts.json / publication_record.json -> empty: published run bytes untouched after publication (only terminal_report.json + event_log appended)"
+   ],
+   "measured_vs_claimed": "INC-V11-0..5b + ANOM-D1 all present with the F-4 correction; terminal summary matches the records",
+   "verdict": "PASS"
+  }
+ ],
+ "findings": [
+  {
+   "id": "F-A7T-2",
+   "severity": "MEDIUM",
+   "status": "RESOLVED_VERDICT_NEUTRAL",
+   "title": "control_alpha_abs_ratio_lt display row reports the reciprocal of the frozen rule's ratio",
+   "detail": "family_verdicts.json control gate row shows observed 0.8304 = |anchor alpha|/|control alpha| (0.01271891/0.01531670), the reciprocal of rule (g)'s quantity |control|/|anchor| = 1.2042. Cause: the inherited v9 evaluate() computes ratio = abs(control_alpha)/abs(alpha) and the v11 driver calls it on the CONTROL record with control_alpha=anchor alpha, inverting numerator/denominator; its pass condition (observed < 0.5) is therefore not the frozen survival condition in general. The binding family verdict does NOT use this row: control_reproduces (v11_e_driver.py:405-407) implements the frozen rule exactly (same-sign AND abs(c) >= 0.5*abs(a)), and in this run both formulations agree on kill. Verdict FALSIFIED_BY_CONTROL unaffected; recorded so the row is not misread in future audits."
+  },
+  {
+   "id": "F-A7T-3",
+   "severity": "MEDIUM",
+   "status": "RESOLVED_VERDICT_NEUTRAL",
+   "title": "neighbour support gate implemented on expectancy sign; frozen text says same-sign alpha - the two readings disagree in this run",
+   "detail": "v11_e_driver.py:401-402 computes neighbour_support from (n_exp > 0) == (a_exp > 0); falsifiable_prediction (h) and the stage-A gate list say 'same-sign alpha'. Measured: neighbour expectancy +0.030176 vs anchor -0.011226 -> opposite sign (gate FAIL as recorded); neighbour alpha -0.012195 vs anchor alpha -0.012719 -> SAME sign (an alpha-sign reading would record support). publication_record wording 'opposite-sign on alpha -0.012195' is imprecise (the alpha sign is same; the expectancy sign is opposite). Direction of the deviation is over-kill (added a FAIL row), so it cannot have converted a survivor into a reject, and FALSIFIED_BY_CONTROL is decided by control_reproduces plus 7 independent anchor gate failures regardless of this row."
+  },
+  {
+   "id": "F-A7T-4",
+   "severity": "LOW",
+   "status": "RESOLVED_NOTE",
+   "title": "proposal's declared ETF-share expectation (0.00) mis-describes the inherited metric; gate application unaffected",
+   "detail": "The proposal reads '(e) ETF positive share <= 0.50 (expected 0.00 - the book holds no ETF legs)'. The inherited evaluate() metric measures the share of positive-PnL decisions whose window sector-basket return is positive (the V4/V10 beta-masquerade detector; V10 measured 0.8333 on a no-ETF book), for which 0.00 is not the expected value of a no-ETF book. The gate itself was applied unchanged at its frozen 0.50 and the anchor FAILED it (0.7632, margin -0.2632), a correct application. Pre-registered prose mis-expectation only; no effect on the outcome (the anchor fails this gate, which cannot rescue it)."
+  },
+  {
+   "id": "F-A7T-5",
+   "severity": "LOW",
+   "status": "RESOLVED_NOTE",
+   "title": "Two reporting nits: 1.21x should round 1.20x; publication_record program arithmetic typo",
+   "detail": "(a) The exact control/anchor alpha ratio is 1.2042 (0.015316704/0.012718915); the terminal and publication record say '1.21x' (rounds to 1.20x). The margin-to-threshold statement (same-sign >= 0.5x kills) is unaffected. (b) publication_record trial_accounting.program_denominator_note writes '218+3=221/222+3=224'; the second term should read 221+3=224. The final stamps used elsewhere (program 221/224, stocks 39/39) are arithmetically correct."
+  },
+  {
+   "id": "F-A7T-6",
+   "severity": "LOW",
+   "status": "RESOLVED_NOTE",
+   "title": "ANOM-D1 lives in the prelaunch records, not incidents.md",
+   "detail": "INC-V11-0 through INC-V11-5b are all in incidents.md; ANOM-D1 (README interleave + A6 V10-schema read, disclosed) is recorded in prelaunch_v1_closeout.json and audits/a7_prelaunch_v11.json. The terminal's incidents summary names ANOM-D1 without misstating its location and its one-line description matches the recorded content. Precision note only."
+  }
+ ],
+ "verdict": "STOCKS_FREE_V11_REJECT_ALL_CONFIRMED",
+ "verdict_rule": "Draft label STOCKS_FREE_V11_REJECT_ALL confirmed: the single scored family SFV11-A5-H1 is FALSIFIED_BY_CONTROL under the preregistered rule (g) (same-sign control |alpha| >= 0.5x anchor |alpha|, measured 1.2042x), the anchor independently fails 7 distinct Stage-A gates with recorded margins recomputed from bytes, all three drop-one variants fail as frozen, zero survivors exist, 0 unresolved HIGH/CRITICAL findings against the draft (2 MEDIUM + 3 LOW, all verdict-neutral), and the scored bytes reproduce byte-identically under independent re-execution.",
+ "adjudication_summary": "Every load-bearing claim recomputed from bytes survived. Chain: 24 commits verified with message content, HEAD == terminal draft commit, tree clean, merge-base d2b0f92, 13/13 inherited-file re-hashes MATCH. Gates: all margins recomputed and match; the gate list equals the frozen proposal text; zero edits to runner/driver/kernel after the dry-run commit 0902d22; the proposal and selection freeze are single-commit artifacts. Trial accounting: 8 driver cells = 3 trials + 5 reruns; trials of record 3; budget 3/6 with 3 slots dead. Denominators: ledger authority line verified (stocks 36/36, program 218/221); 39/39 post-V11 arithmetic correct; the terminal claims no cross-asset total beyond its evidence and defers the Lead re-stamp. Data authority: all five pins re-hashed from bytes (panel, cohort, timing 5,453,478 rows, revision 1,667,422 rows, price manifest) - MATCH. INDEPENDENT FALSIFICATION-SHAPENED CONCLUSION: I hunted for any reading under which SFV11-A5-H1 survived and found none. The control-vs-anchor comparison is made on the comparator the frozen rule itself fixes (risk-matched alpha, not expectancy), the permutation control is implemented to its frozen spec and was non-vacuous, the kill condition was applied literally at the verdict path, and even discarding the control entirely leaves the anchor dead on 7 independent gates plus 3 drop-one failures - the REJECT is overdetermined, and the two MEDIUM findings (reciprocal display ratio; expectancy-vs-alpha neighbour wording) plus three LOW reporting nits are all incapable of flipping the verdict and are disclosed here. Reproduction: I re-ran the scored driver myself in the detached twin under the machine-wide heavy lock (role A7_TWIN_VERIFICATION) - exit 0, 76.5s, and both output files BYTE-EQUAL to the integration copies at the claimed shas (family_verdicts b82de30c..., execution_ledger 2fcdf127...), twin HEAD == code_freeze_sha aac07d9, no provenance-leaf exception. Boundaries held (workers 0, S1 absent, keys env-only and gitignored, nothing pushed after e6870c0 - remote tip still the adjudicated 2d2ddaf), tests 74/74, incidents complete with the F-4 correction. A REJECT_ALL is the earned outcome of a successful preregistered falsification test, recorded not rescued.",
+ "s1": "SEALED_UNTOUCHED",
+ "workers": 0,
+ "committed_by_a7": true
+}
