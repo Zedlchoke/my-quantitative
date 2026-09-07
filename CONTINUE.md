@@ -60,3 +60,18 @@ re-entry only via a future owner-preregistered plan under the standard
 ancestry rho gates. S1 never opened, stays SEALED. No forex thread is
 preregistered. Detail:
 `.worktrees/forex-free-v3r/integration/research/control/forex_free_v3r_run/terminal_verdict.json`.
+
+## Owner-keyed doors (Lead-measured current state)
+
+- 2026-09-07 ~18:05 VN: **FRED_API_KEY PRESENT in `.env`** (owner placed it;
+  length 32, value never read into repo/chat). Functional probe by Lead:
+  one keyless-public GET to api.stlouisfed.org (series DFF, limit 1) ->
+  HTTP 200, observation (2026-09-03, 3.63). The frozen
+  `plans/PLAN_forex_v7.md` status line keeps its as-measured-at-freeze
+  "ABSENT" wording (handbook §3.1 — frozen contracts are not rewritten on
+  global-state change; this file carries current state). Effect: the FRED
+  real-rate lane is unlockable by a FUTURE forex cycle's plan; V7's
+  selection is already frozen with lane 2 carried DATA_BLOCKED_VALID —
+  the key does NOT reopen it (no rescue). Key presence is not data
+  authority: the future cycle still runs the full license/PIT/coverage
+  audit on the FRED axis before any proposal exists.
