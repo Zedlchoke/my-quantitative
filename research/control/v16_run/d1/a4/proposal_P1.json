@@ -1,0 +1,54 @@
+{
+  "proposal_id": "A4-V16-P1",
+  "lane": "a4",
+  "axis": "AXIS-1 aggressor-flow imbalance",
+  "title": "NETFLOW-FADE-D1: daily net aggressor-flow imbalance extreme fade (time-series trailing quantiles, 1-day hold)",
+  "causal_claim_one_sentence": "Leveraged momentum chasers and stop-loss takers are forced to trade in the direction of a day's extreme one-sided aggressor flow because their triggers fire with price rather than information, while the slower position-tilting liquidity demanders who absorb that impact re-price over one or more following sessions, so the day after an extreme signed-flow day must drift against that flow; the mechanism must fail when the extreme flow is the front edge of multi-day informed execution that continues instead of reverting, or when crowded fading has already priced the reversion into the prior close.",
+  "falsification_rule": "The claim is proven wrong if either (a) the anchor's after-cost expectancy is <= 0 under frozen rule order #1 (extreme signed-flow days carry no next-day adverse drift net of costs), or (b) the unsigned-volume exposure control CTL-VOLUME-LEVEL reproduces the anchor per the frozen falsification-by-control convention (control expectancy same sign and >= 0.5x the anchor's expectancy on the pooled decision set), which proves the anchor's return is generic extreme-activity-day exposure rather than signed-flow-imbalance information; observation (b) binds as family death regardless of anchor strength.",
+  "control_class": "Exposure-form / raw-level placebo (mandatory for flow-imbalance mechanisms): CTL-VOLUME-LEVEL conditions on the UNSIGNED raw activity level (trailing-90d 90th percentile of total_notional) and takes a FIXED long side with identical timing, sizing and costs; it carries the activity-day exposure of the anchor without any signed-flow information and must NOT reproduce the anchor. It is not a sign-flip mirror and not a calendar placebo (no calendar conditioning anywhere in this family).",
+  "expected_failure_mode": "Fold concentration: daily flow extremes cluster in a handful of high-volatility episodes, so positive fold share concentrates in one of F0/F1/F2 (> 0.50, the marginal-gate kill that took CARRY-7D at 51.66%, ILLIQ at 0.7055 and PREMFADE at 0.5110); secondarily stale-flow noise plus costs: BTC/ETH daily imbalance extremes are dominated by mechanical liquidation cascades whose reversion is largely complete by the prior close, leaving a gross edge below the taker round-trip paid on every 1-day hold (cost-dominated, the BAB death mode).",
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "clock": "daily — one decision per symbol at each 00:00 UTC symbol-day boundary, first decision after warmup; daily clock is FUNDED per p2_coverage_clocks_v16.json; no sub-daily evaluation exists anywhere in the family",
+  "warmup": "90 days — trailing-quantile windows are 90 completed symbol-days (anchor and control); decisions start at the first UTC midnight after 90 completed in-window symbol-days per symbol",
+  "decision_timestamp_semantics": "event-time — the conditioning value for the decision at UTC midnight D is the completed symbol-day D-1 aggregate keyed by transact_time (zero conditioning lag; p2 conditioning_availability: exchange-event-time observables available in real time on the public trade stream; the p0 REWRITTEN_SPAN archive caveat does not touch the decision clock). If day D-1 is absent or integrity_ok=false (data hole), that decision is skipped and evaluation moves exactly one period to midnight D+1 using the then-latest complete day; no backfilling, no intra-period re-evaluation, no revision of a fired decision.",
+  "features": [
+    {
+      "name": "flow_imbalance",
+      "panel_column": "flow_imbalance",
+      "usage": "anchor and neighbour conditioning: completed prior-day net signed flow and its trailing-90d (anchor) / trailing-60d (neighbour) empirical 10th/90th and 15th/85th percentiles",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "total_notional",
+      "panel_column": "total_notional",
+      "usage": "control conditioning only: trailing-90d 90th percentile of raw day notional (unsigned activity level)",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "integrity_ok",
+      "panel_column": "integrity_ok",
+      "usage": "gate only (not conditioning): a false stamp forces the one-period-late decision move",
+      "availability": "EVIDENCED (exchange event time)"
+    }
+  ],
+  "feature_provenance_statement": "Every feature is computed from the listed PANEL_SCHEMA.md columns only; all derived quantities are trailing empirical percentiles of those columns per symbol; no OI, funding, depth or basis series exists in the family by construction (absent from the panel by design).",
+  "arms": {
+    "anchor": {
+      "arm_id": "NETFLOW-FADE-90/10-H1",
+      "spec": "Per symbol, at each UTC midnight t after 90-day warmup: q10/q90 = 10th/90th percentiles of flow_imbalance over the trailing 90 completed symbol-days [t-90, t). If flow_imbalance(t-1) <= q10 (extreme sell-side aggression) go LONG the symbol for 1 day; if flow_imbalance(t-1) >= q90 (extreme buy-side aggression) go SHORT for 1 day; else flat. Exit at the next midnight (force-flat at fold boundaries per the frozen V12 fold contract). Each symbol is an independent sub-book with gross <= 0.30 (frozen adapter-cap compatible; no leg weight above the cap — the OILEV weight lesson); portfolio is the equal-weight sum of sub-books. Fills at the first print after the boundary; taker fills; cost charged exactly once per fill."
+    },
+    "neighbour": {
+      "arm_id": "NETFLOW-FADE-60/15/85-H2",
+      "spec": "Same mechanism, different parameters, exact numbers: trailing window 60 completed symbol-days; percentiles 15/85; holding period 2 days (exit at the second midnight); same sign rule, same sizing, same fills, same costs. Fires more often (~30% of days by construction) with a looser extremity definition and a longer hold, testing parameter robustness of the same exhaustion-reversion mechanism."
+    },
+    "control": {
+      "arm_id": "CTL-VOLUME-LEVEL-LONG",
+      "spec": "Exposure-form/raw-level placebo, exact spec: at each UTC midnight t, if total_notional(t-1) >= its trailing-90d 90th percentile, go LONG the symbol for 1 day (fixed side, direction-blind); else flat; identical timing, sizing (<= 0.30 gross per symbol), fills and costs as the anchor. It holds the same extreme-activity-day exposure class as the anchor with the signed-flow information removed; by the frozen G11 binding it must NOT reproduce the anchor (same-sign >= 0.5x expectancy = falsification)."
+    }
+  },
+  "costs": "L-V14-0 cost-once per fill; stress multipliers applied to booked PnL (tier 2.0 primary)",
+  "folds": "F0/F1/F2, 1-day purge (frozen V12 contract)",
+  "gates": "Frozen G1..G12 set of p3_invariants_v16.json, evaluated in frozen order, first FAIL kills the arm, no new gates invented: G1 expectancy>0 (rule order #1); G2 PF>=1.10; G3 folds>=2/3; G4 largest-fold-positive-share<=0.50; G5 MDD<=0.20; G10 neighbour supports; G11 control does not reproduce (falsification-by-control cluster binding); G12 novelty pooled |rho|<=0.20 vs the FULL forbidden inventory incl. V15 additions (elite-size-asym, taker-saturation, elite-LEVEL shadow), measured at D2.",
+  "novelty_self_check": "Closest forbidden relatives, named and answered candidly. (1) TAKER-SAT (V15, REJECT) — the closest ancestor and the honest admission: P1 IS essentially taker-aggression conditioning WITHOUT OI. The shared ingredient is signed one-sided taker flow. The differences: TAKER-SAT was taker-aggression PER UNIT OF OI CHURN (an OI-churn denominator from the V15 bulk daily-metrics information set), traded as a cross-sectional extreme fade across the ~20-symbol universe on a 5-day clock; P1 uses the raw aggTrades-panel net signed flow itself with NO OI, funding or positioning input anywhere (the panel has no such columns by design), as a within-symbol time-series trailing-quantile extreme fade on the frozen 2-symbol universe with a 1-day hold. A different denominator, book construction and clock — but whether the pooled |rho| of P1's conditioning exposures vs TAKER-SAT's recorded exposures stays <= 0.20 is MEASURED at D2, not argued here; if the measurement exceeds 0.20, P1 is vetoed exactly as designed. (2) M01-AGGRESSOR-ABSORPTION-PANEL (crypto V10, registry row, REJECT) — same broad aggressor-flow territory; P1 uses no absorption geometry (no impact-per-volume or price-response construct), only flow extremity itself, so it is a different mechanism class on a different information set (print-level aggTrades reduction vs staged bars); the measured rho governs here too. (3) OITD + duplicates, LIQEPIS + duplicates, OILEV-V2 anchor + inverted shadow — OI term-structure, liquidity-episode and OI-leverage information sets; untouched and untouchable: no OI or depth input exists in this family. (4) PREMFADE — basis-level fade; no basis series is used. (5) BAB and the carry families — beta/funding constructs; not used. (6) ILLIQ (owner-gated) — price-impact-per-volume illiquidity; P1 normalizes by nothing but its own trailing flow distribution. (7) elite-size-ASYMMETRY form and the elite-LEVEL measured shadow — top-trader positioning aggregates from the bulk-metrics asset; a different information set. No shadow is re-entered as a sign-flip; P1 carries its own preregistered falsification control and accepts the D2 measured veto.",
+  "notes": "Written outcome-blind on wave 4b913c30b7386bab9f5c3bedbd1685e9d07df4f1. Per-symbol sub-book sizing declared adapter-cap compatible (<= 0.30 gross each) explicitly so the OILEV weight-infeasibility kill cannot recur; A9 measures decision counts (~20% anchor firing by trailing-quantile construction, ~110 pooled 1-day decisions after 90d warmup) for fold non-vacuity and the turnover/cost ceiling."
+}

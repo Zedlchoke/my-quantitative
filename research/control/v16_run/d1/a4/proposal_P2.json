@@ -1,0 +1,60 @@
+{
+  "proposal_id": "A4-V16-P2",
+  "lane": "a4",
+  "axis": "AXIS-1 aggressor-flow imbalance",
+  "title": "CASCADE-FADE-RUN: same-side print-run concentration exhaustion fade (sequence-signed aggressor flow, trailing quantiles)",
+  "causal_claim_one_sentence": "Stop-loss and liquidation cascades force takers to print long same-side runs within a session because each fill mechanically triggers the next stop level while the trade is informationless, and the market makers providing that cascade can only re-price and rebuild inventory over following sessions, so a day whose same-side run concentration is extreme relative to its print count must revert against the cascade side on the next day; the mechanism fails when run concentration is merely a mechanical function of print count (an activity proxy in disguise) or when the cascade is the visible edge of persistent informed flow that continues instead of exhausting.",
+  "falsification_rule": "The claim is proven wrong if either (a) the anchor's after-cost expectancy is <= 0 under frozen rule order #1 (cascade run concentration carries no next-day reversion net of costs), or (b) the side-blind cascade-intensity exposure control CTL-CASCADE-UNSIGNED reproduces the anchor per the frozen falsification-by-control convention (control expectancy same sign and >= 0.5x the anchor's expectancy on the pooled decision set), which proves the return is post-cascade-day exposure rather than side-signed cascade-exhaustion reversion; observation (b) binds as family death regardless of anchor strength.",
+  "control_class": "Exposure-form / raw-level placebo (mandatory for flow-imbalance mechanisms), side-blind variant: CTL-CASCADE-UNSIGNED strips the SIGN from the mechanism entirely — it conditions on the unsigned cascade-intensity level max(buy_streak_max, sell_streak_max)/log2(max(trade_count,2)) at its trailing-90d 90th percentile and takes a FIXED long side with identical timing, sizing and costs; it must NOT reproduce the anchor. Not a sign-flip mirror and not a calendar placebo (no calendar conditioning anywhere in this family).",
+  "expected_failure_mode": "Stale-flow noise via activity contamination: max same-side run length scales mechanically with trade_count, so if the log2 normalization fails to strip the activity component the anchor degenerates into an unsigned-activity proxy and dies by its own control reproducing (the exposure-form death); alternatively non-selectivity plus fold concentration: cascade extremes cluster in a few high-volatility regime months, producing G4 largest-fold-positive-share > 0.50 or repeated same-side cascade fades inside a trending month breaching G5 MDD <= 0.20.",
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "clock": "daily — one decision per symbol at each 00:00 UTC symbol-day boundary, first decision after warmup; daily clock is FUNDED per p2_coverage_clocks_v16.json; no sub-daily evaluation exists anywhere in the family",
+  "warmup": "120 days — the neighbour's trailing window is 120 completed symbol-days (anchor and control use 90), so decisions start at the first UTC midnight after 120 completed in-window symbol-days per symbol",
+  "decision_timestamp_semantics": "event-time — the conditioning values for the decision at UTC midnight D are the completed symbol-day D-1 aggregates (buy_streak_max, sell_streak_max, trade_count) keyed by transact_time (zero conditioning lag; p2 conditioning_availability; the p0 REWRITTEN_SPAN archive caveat does not touch the decision clock). If day D-1 is absent or integrity_ok=false (data hole), that decision is skipped and evaluation moves exactly one period to midnight D+1 using the then-latest complete day; no backfilling, no intra-period re-evaluation, no revision of a fired decision.",
+  "features": [
+    {
+      "name": "buy_streak_max",
+      "panel_column": "buy_streak_max",
+      "usage": "anchor and neighbour conditioning: buy-side leg of the signed streak ratio r; buy-side leg of the unsigned control intensity",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "sell_streak_max",
+      "panel_column": "sell_streak_max",
+      "usage": "anchor and neighbour conditioning: sell-side leg of the signed streak ratio r; sell-side leg of the unsigned control intensity",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "trade_count",
+      "panel_column": "trade_count",
+      "usage": "control normalization and anchor diagnostic: log2(max(trade_count,2)) chance-baseline run length that de-activity-izes the streak statistic",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "integrity_ok",
+      "panel_column": "integrity_ok",
+      "usage": "gate only (not conditioning): a false stamp forces the one-period-late decision move",
+      "availability": "EVIDENCED (exchange event time)"
+    }
+  ],
+  "feature_provenance_statement": "Every feature is computed from the listed PANEL_SCHEMA.md columns only; the streak ratio r = (buy_streak_max - sell_streak_max)/(buy_streak_max + sell_streak_max) (0 if denominator 0) and the control intensity c = max(buy_streak_max, sell_streak_max)/log2(max(trade_count,2)) are the only derived quantities; no OI, funding, depth or basis series exists in the family by construction (absent from the panel by design). The sequence statistic (longest same-side print run) does not exist at bar level — it is native to the aggTrades print stream.",
+  "arms": {
+    "anchor": {
+      "arm_id": "STREAK-FADE-90/10-H1",
+      "spec": "Per symbol, at each UTC midnight t after 120-day warmup: r(t-1) = (buy_streak_max - sell_streak_max)/(buy_streak_max + sell_streak_max) of completed day t-1; q10/q90 = 10th/90th percentiles of r over the trailing 90 completed symbol-days [t-90, t). If r(t-1) <= q10 (extreme sell-cascade concentration) go LONG the symbol for 1 day; if r(t-1) >= q90 (extreme buy-cascade concentration) go SHORT for 1 day; else flat. Exit at the next midnight (force-flat at fold boundaries per the frozen V12 fold contract). Each symbol is an independent sub-book with gross <= 0.30 (frozen adapter-cap compatible; no leg weight above the cap — the OILEV weight lesson); portfolio is the equal-weight sum of sub-books. Fills at the first print after the boundary; taker fills; cost charged exactly once per fill."
+    },
+    "neighbour": {
+      "arm_id": "STREAK-FADE-120/15/85-H2",
+      "spec": "Same mechanism, different parameters, exact numbers: trailing window 120 completed symbol-days; percentiles 15/85; holding period 2 days (exit at the second midnight, matching the market-maker inventory-rebuild horizon of the causal claim); same sign rule, same sizing, same fills, same costs. Fires more often (~30% of days by construction) with a looser extremity definition, testing parameter robustness of the same cascade-exhaustion mechanism."
+    },
+    "control": {
+      "arm_id": "CTL-CASCADE-UNSIGNED-LONG",
+      "spec": "Exposure-form/raw-level placebo, exact spec: at each UTC midnight t, compute c(t-1) = max(buy_streak_max, sell_streak_max)/log2(max(trade_count,2)) of completed day t-1; if c(t-1) >= its trailing-90d 90th percentile, go LONG the symbol for 1 day (fixed side, sign-blind); else flat; identical timing, sizing (<= 0.30 gross per symbol), fills and costs as the anchor. It holds the same extreme-cascade-day exposure class with the cascade SIDE removed; by the frozen G11 binding it must NOT reproduce the anchor (same-sign >= 0.5x expectancy = falsification), and a reproducing control additionally exposes the anchor as an activity proxy despite the log2 normalization."
+    }
+  },
+  "costs": "L-V14-0 cost-once per fill; stress multipliers applied to booked PnL (tier 2.0 primary)",
+  "folds": "F0/F1/F2, 1-day purge (frozen V12 contract)",
+  "gates": "Frozen G1..G12 set of p3_invariants_v16.json, evaluated in frozen order, first FAIL kills the arm, no new gates invented: G1 expectancy>0 (rule order #1); G2 PF>=1.10; G3 folds>=2/3; G4 largest-fold-positive-share<=0.50; G5 MDD<=0.20; G10 neighbour supports; G11 control does not reproduce (falsification-by-control cluster binding); G12 novelty pooled |rho|<=0.20 vs the FULL forbidden inventory incl. V15 additions (elite-size-asym, taker-saturation, elite-LEVEL shadow), measured at D2.",
+  "novelty_self_check": "Closest forbidden relatives, named and answered candidly. (1) M01-AGGRESSOR-ABSORPTION-PANEL (crypto V10 registry row, REJECT) — the closest ancestor and the honest admission: cascade/run-concentration conditioning is the print-level cousin of aggressor absorption, and both live in the broad aggressor-flow territory. The differences: M01 measured aggressor-side absorption from staged BARS (a coarser information set with no print sequence, run lengths or within-day ordering); P2's statistic — longest same-side print run normalized by the log2 chance baseline of the print count — is a sequence/ordering observable that does not exist at bar level and is computed only from the P0-frozen aggTrades panel; and the claimed mechanism is cascade exhaustion-reversion (forced mechanical flow runs out), not absorption geometry (impact per unit of passive liquidity). Whether pooled |rho| vs M01's recorded exposures stays <= 0.20 is MEASURED at D2, not argued here; if the measurement exceeds 0.20, P2 is vetoed exactly as designed. (2) TAKER-SAT (V15, REJECT) — the streak ratio is a signed-aggression SHAPE, not a level: no OI-churn denominator, no cross-sectional ranking, no 5-day clock; P2 is within-symbol time-series on the frozen 2-symbol universe. Same candid caveat as P1: the signed-aggression ingredient is shared and the D2 measurement decides. (3) Sibling disclosure — A4-V16-P1: P1 and P2 share the lane axis and the contrarian signed-flow family; they differ in observable (net daily flow level vs within-day run sequence) and horizon structure, and their mutual decorrelation is NOT a forbidden-inventory veto — disclosed for selection honesty, decided by measurement if both survive to selection. (4) OITD + duplicates, LIQEPIS + duplicates, OILEV-V2 anchor + inverted shadow — OI term-structure, liquidity-episode and OI-leverage information sets; untouched: no OI or depth input exists; candid note: if D2 measures streak intensity as a liquidity-episode proxy vs LIQEPIS with pooled |rho| > 0.20, the veto fires. (5) PREMFADE — no basis series used. (6) BAB and carry families — no beta or funding input. (7) ILLIQ (owner-gated) — no impact-per-volume normalization. (8) elite-size-ASYMMETRY form and elite-LEVEL measured shadow — top-trader positioning aggregates; different information set. No shadow is re-entered as a sign-flip; P2 carries its own preregistered falsification control and accepts the D2 measured veto.",
+  "notes": "Written outcome-blind on wave 4b913c30b7386bab9f5c3bedbd1685e9d07df4f1. Per-symbol sub-book sizing declared adapter-cap compatible (<= 0.30 gross each); A9 measures decision counts (~20% anchor firing by trailing-quantile construction, ~100+ pooled 1-day decisions after the 120d warmup on the ~365-day S0 window) for fold non-vacuity and the turnover/cost ceiling; the control's own ~10% firing keeps it non-vacuous without mirroring the anchor."
+}
