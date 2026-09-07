@@ -279,5 +279,125 @@
   "next_step": "remediate A7-H1 (and fold in A7-M1/A7-M2), then re-run a fresh-context A7 prelaunch before the owner GO key"
  },
  "final_verdict": "V15_S0_LAUNCH_REFUSED",
- "blocking": ["A7-H1"]
+ "blocking": ["A7-H1"],
+ "final_verdict_current": "V15_S0_LAUNCH_AUTHORIZED",
+ "blocking_current": [],
+ "delta_audit": {
+  "generated_utc": "2026-09-07T05:10:00Z",
+  "auditor_role": "A7 (same fresh-context auditor, delta re-audit)",
+  "remediation_commit": "f306776cfc77382b06535a26ba526e2a14f85bdd (orca/v15-integration)",
+  "delta_scope_verified": "git diff 636a09f..f306776 touches EXACTLY one new file: research/control/v15_run/q_six_arm_sanitized_dry_run_v2.json (+132 lines). v1 byte-identical (sha256 2fb7b52629e23315a70cdf946c74812f8ec7ec1295ac39762f6a218a5ca6a2c1 at both 636a09f and f306776). code_freeze_v15.json byte-identical (empty diff); code_freeze_sha 824190ca8622e194c2bbe1fed77fd488faac5df4 unchanged; zero code/spec/gate/selection/family/driver bytes changed => the no-rescue attestation in the incident record is verified in bytes.",
+  "integration_head_at_delta_audit": "f306776cfc77382b06535a26ba526e2a14f85bdd (tree clean)",
+  "v2_artifact_sha256": "75e27968893c46b880f90ed65045e39b877eeb6c3c3018762454b62255164f37",
+  "delta_checks": [
+   {
+    "id": "DELTA-1",
+    "item": "v2 excludes every outcome-shaped field",
+    "verdict": "PASS",
+    "evidence": "A7 independent content-level scan over all 29 committed control/v15_run JSONs at f306776: banned-key walk (fold_net_sums|fold_positive|expectancy|profit_factor|net_return|max_drawdown|sharpe|pnl, numeric/list/dict values) => v2 has ZERO hits; outcome-shaped content exists ONLY in v1 (the named incident file) and as prose pattern-name strings inside v2's incident/scan text (naming, not values)",
+    "margin": "0 banned keys in v2"
+   },
+   {
+    "id": "DELTA-2",
+    "item": "v2 is a faithful sanitization of the same runs, not new numbers",
+    "verdict": "PASS",
+    "evidence": "all shared per-arm fields (n_decisions/n_fills/n_positions/score_valid/cost_holding_terms/replay_byte_identical/wall_s) byte-equal to v1 for all 6 arms; non-vacuity 6/6 (n_decisions 710..4678, n_fills 438..680, score_valid true, cost_holding_terms==0.0 L-V14-0 6/6); replay 6/6",
+    "margin": "6/6 identical; cost_holding_terms 0.0 x6"
+   },
+   {
+    "id": "DELTA-3",
+    "item": "incident Q-LEAK-1 recorded with full exposure assessment",
+    "verdict": "PASS",
+    "evidence": "v2 incident_Q_LEAK_1: names the leak, attributes discovery to A7-H1/d2e34d9, quantifies exposure (18 fold PnL sums pre-launch incl. CTL-ELITELEVEL 3/3 folds positive), states zero scored cells / budget 0/6 / no ledger, attests no parameter/gate/universe/cost/selection change made or authorized (verified in bytes by DELTA scope), designates the exposure permanent context for launch decision and terminal audit",
+    "margin": null
+   },
+   {
+    "id": "DELTA-4",
+    "item": "v1 disposition: append-only incident evidence",
+    "verdict": "PASS",
+    "evidence": "v1 bytes unchanged (sha256 match); v2 supersedes field declares SUPERSEDED_BLOCKED per A7-H1; history immutability is program law (p3_freeze hard_boundaries: no rewriting of prior ledgers/terminals); this matches the original A7-H1 required_remediation ('rewrite/replace the Q evidence artifact ... record an incident note')",
+    "margin": null
+   },
+   {
+    "id": "DELTA-5",
+    "item": "leak scan in v2 is real and honest (A7-M1 repair)",
+    "verdict": "PASS",
+    "evidence": "files_scanned=28 == exact count of committed control JSONs at f306776 excluding v2 itself (29 committed incl. v2; census via git ls-tree); pattern extended with fold_net_sums|fold_positive; result honestly ok=false with all 12 hits attributed solely to the known incident file v1 - the only truthful outcome possible while v1 stays committed; A7 independent rescan reproduces exactly this result set",
+    "margin": "files_scanned=28 (non-vacuous); 12/12 hits == v1 only"
+   },
+   {
+    "id": "DELTA-6",
+    "item": "no code change => prior test evidence carries",
+    "verdict": "PASS",
+    "evidence": "diff 636a09f..f306776 contains no file under research/v15/, research/v12/, research/adapter_v10/, research/control/v15_run/tools/, or tests/; the 105-pass/exit-0 suite result at the original audit remains valid for the unchanged bytes",
+    "margin": null
+   },
+   {
+    "id": "DELTA-7",
+    "item": "freeze-record q_evidence pointer still names the superseded v1",
+    "verdict": "PASS_WITH_NOTE",
+    "evidence": "code_freeze_v15.json (byte-unchanged) q_evidence still references q_six_arm_sanitized_dry_run.json including its obsolete 'leak scan clean' phrase; SEE new finding A7-M3 - discoverability handled by v2's supersedes declaration and the remediation commit; owner must read v2 + incident at the two-key stop",
+    "margin": null
+   }
+  ],
+  "finding_resolutions": [
+   {
+    "id": "A7-H1",
+    "severity": "HIGH",
+    "resolution": "RESOLVED",
+    "basis": "The governing Q evidence for launch is now v2, whose no-outcome attestation is TRUE (independently verified). v1 is superseded, marked SUPERSEDED_BLOCKED, retained append-only as incident evidence per history immutability; incident Q-LEAK-1 quantifies the exposure and freezes the response (no frozen byte changed - verified). This is exactly the original finding's required_remediation. Residual risk (the already-committed v1 outcome bytes) is permanent, disclosed context transferred to the owner's GO decision and the terminal audit - no unresolved HIGH remains."
+   },
+   {
+    "id": "A7-M1",
+    "severity": "MEDIUM",
+    "resolution": "RESOLVED",
+    "basis": "Scan re-run for real: 28 files (non-vacuous, equals the committed control-JSON census less v2 itself), pattern extended with fold-sign names, honest ok=false with hits attributed solely to the incident file; independently reproduced by A7."
+   },
+   {
+    "id": "A7-M2",
+    "severity": "MEDIUM",
+    "resolution": "UNRESOLVED (non-blocking)",
+    "basis": "No action taken; verified no push occurred (origin/orca/v15-integration still at pre-V15 base 183554a; remediation commit not pushed). Owner to delete or acknowledge the remote ref at the two-key stop."
+   },
+   {
+    "id": "A7-L1",
+    "severity": "LOW",
+    "resolution": "UNRESOLVED (non-blocking)",
+    "basis": "Cosmetic pin-wording in p3_freeze inherited-convention line; no action required for launch."
+   },
+   {
+    "id": "A7-L2",
+    "severity": "LOW",
+    "resolution": "INFORMATIONAL",
+    "basis": "Briefing mnemonic mismatch; no chain defect (unchanged)."
+   },
+   {
+    "id": "A7-M3",
+    "severity": "MEDIUM",
+    "resolution": "UNRESOLVED (non-blocking)",
+    "basis": "NEW: the canonical freeze record (code_freeze_v15.json, byte-frozen at 636a09f) still lists q_evidence = v1 with the obsolete 'leak scan clean' phrase, while the governing sanitized evidence is v2 + incident Q-LEAK-1. The supersession is discoverable only via v2's own supersedes field and the remediation commit. Owner must read v2 (and the incident) as the operative Q evidence at the two-key stop; optionally add an owner-side pointer note. Not blocking: the exposure is fully disclosed and the correct artifact self-identifies."
+   },
+   {
+    "id": "A7-L3",
+    "severity": "LOW",
+    "resolution": "UNRESOLVED (non-blocking)",
+    "basis": "NEW: the remediation commit message describes the full-tree scan as 'CLEAN' while the v2 artifact honestly records ok=false (12 hits, all in incident-evidence v1). The artifact governs; commit-message wording is recorded so the discrepancy cannot be cited as an artifact claim."
+   }
+  ],
+  "delta_counts": {
+   "delta_checks": 7,
+   "pass": 7,
+   "fail": 0,
+   "findings_now": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 2, "LOW": 2, "INFORMATIONAL": 1},
+   "blocking_now": []
+  },
+  "launch_conditions_carried_to_two_key_stop": [
+   "owner reads q_six_arm_sanitized_dry_run_v2.json + incident Q-LEAK-1 as the operative Q evidence (not v1)",
+   "owner acknowledges incident Q-LEAK-1 exposure (fold-level baseline PnL visible pre-launch) as permanent context for the launch decision and the V15 terminal audit (DSR/terminal must carry it)",
+   "owner deletes or explicitly acknowledges the stale origin/orca/v15-integration ref (A7-M2)",
+   "no parameter/gate/universe/cost/selection change in response to the exposed fold signs - any such change is rescue and forbidden (already attested and byte-verified)"
+  ],
+  "reissued_final_verdict": "V15_S0_LAUNCH_AUTHORIZED",
+  "reissue_rule": "V15_S0_LAUNCH_AUTHORIZED requires zero unresolved HIGH/CRITICAL: A7-H1 and A7-M1 RESOLVED; remaining MEDIUM/LOW findings are non-blocking with owner actions recorded above"
+ }
 }
