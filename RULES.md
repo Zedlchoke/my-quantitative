@@ -174,3 +174,24 @@ negative result with full evidence is a success. A thin survivor with
 unevidenced assumptions is the most expensive failure the program knows
 (forex V3 paid for P-1..P-6). Freeze the rules while calm — they are the
 only thing that holds when the number is beautiful and wrong (P-6).
+
+## 9. Mechanism status ladder (governance; see `research/wayfinder/FAMILY_PIPELINE.md`)
+
+Ladder: `DOCUMENTED -> IMPLEMENTED -> TESTED -> ADOPTED_BY_ACTIVE_CYCLE`.
+A mechanism reaches IMPLEMENTED/TESTED only after its code and tests
+pass; ADOPTED only when a cycle's live plan preregisters it. Frozen and
+running cycles are never retrofitted (adoption boundary: crypto V16+,
+forex V7+, stocks V12+).
+
+```text
+FAMILY_PIPELINE protocol              DOCUMENTED (merged standard; future plans cite it)
+FAMILY_FAILURES registry + validator  IMPLEMENTED + TESTED (38 governance tests green;
+                                      47 seed entries, git --verify PASS)
+diagnostic persistability gate        IMPLEMENTED + TESTED (BLOCKED_PRELAUNCH on missing
+                                      mandatory/conditional diagnostics; runs BEFORE A7
+                                      launch authorization when adopted)
+global heavy lock                     IMPLEMENTED + TESTED (fcntl.flock machine-wide; registry
+                                      PID+process-start-token; NOT_RUN_RESOURCE_CONFLICT
+                                      refusal; safe stale recovery)
+ADOPTED_BY_ACTIVE_CYCLE               none yet (V15/V6/V11 predate the boundary)
+```
