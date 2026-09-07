@@ -186,7 +186,7 @@ forex V7+, stocks V12+).
 ```text
 FAMILY_PIPELINE protocol              DOCUMENTED (merged standard; future plans cite it)
 FAMILY_FAILURES registry + validator  IMPLEMENTED + TESTED (38 governance tests green;
-                                      47 seed entries, git --verify PASS)
+                                      50 entries (47 seed + V15 finalized + V6 close), git --verify PASS)
 diagnostic persistability gate        IMPLEMENTED + TESTED (BLOCKED_PRELAUNCH on missing
                                       mandatory/conditional diagnostics; runs BEFORE A7
                                       launch authorization when adopted)

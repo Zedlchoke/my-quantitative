@@ -144,13 +144,18 @@ def test_real_registry_validates():
     }
 
 
-def test_real_registry_v15_is_terminal_pending_only():
+def test_real_registry_v15_finalized_after_canonical_close():
+    # Amendment 3 lifecycle: V15 was seeded TERMINAL_PENDING; once its A7
+    # terminal completed (APPROVED_0_FAIL) and the Lead updated the
+    # canonical ledger, the entry MUST have been finalized to CLOSED rows.
     entries, _ = load_registry(REGISTRY)
+    assert not [e for e in entries if e["status"] == "TERMINAL_PENDING"]
     v15 = [e for e in entries if e["cycle_id"] == "CRYPTO-V15"]
-    assert len(v15) == 1
-    assert v15[0]["status"] == "TERMINAL_PENDING"
-    assert v15[0]["verdict_class"] is None
-    assert v15[0]["primary_failure"] is None
+    assert len(v15) == 2
+    assert all(e["status"] == "CLOSED" for e in v15)
+    by_id = {e["family_id"]: e for e in v15}
+    assert by_id["A5-V15-F1-ELITE-SIZE-ASYM"]["primary_failure"]["code"] == "CONTROL_OUTEARNED_ANCHOR"
+    assert by_id["A6-V15-F1-TAKER-SAT"]["primary_failure"]["code"] == "EXPECTANCY_NONPOSITIVE"
 
 
 def test_real_registry_sprint_entries_declare_unknown_sha():
