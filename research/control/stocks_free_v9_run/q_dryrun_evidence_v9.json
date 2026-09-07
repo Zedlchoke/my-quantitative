@@ -1,0 +1,72 @@
+{
+ "schema": "stocks_free_v9_run/q_dryrun_evidence@1",
+ "built_at_utc": "2026-09-05T20:23:21Z",
+ "producer_role": "A1 (PLAN_stocks_v9 sec 4 Q)",
+ "remediation_V9_R1": {
+  "trigger": "first real dry-run failed closed: held name CIK0000002034 reached costing with an UNTRADABLE band (ADV63 decay) - the exact L-I3 edge class the kernel now refuses",
+  "fix": "kernel resolve_exit_band_bps/exit_cost_bps: exits of held names with UNTRADABLE/missing band charge the C-rate ceiling (25 bps x multiplier); tradable-band exits keep the own band; entries remain strict hard errors",
+  "rationale": "conservative monotone (the V8 silent 10bps was the cheap direction; overstated cost cannot create false survivors); matches the in-cycle preregistered convention for unrateable terminal exits (A6 packet, wave 86fecae)",
+  "tests": "tests/assets/stocks/test_v9_kernel.py test_exit_band_untradable_or_missing_ceiling_V9_R1 (8/8 kernel + 33/33 family PASS)"
+ },
+ "dry_run_verdict": "DRY_RUN_PASS_NONVACUOUS",
+ "commands": [
+  {
+   "cmd": "python -m research.assets.stocks.v9_e_driver --dry-run",
+   "exit": 0,
+   "runs": 2
+  },
+  {
+   "cmd": "python -m pytest -q  (alone, zero foreign workers measured)",
+   "exit": 0,
+   "result": "2174 passed, 5 skipped"
+  },
+  {
+   "cmd": "python -m pytest tests/assets/stocks tests/data_fusion tests/test_panel.py -q (post-remediation)",
+   "exit": 0
+  }
+ ],
+ "determinism": {
+  "runs": 2,
+  "sha256_run1": "b8d1be241956baf6284a2d4a3cacfafbe13191d8a5e613aecedb33648021b915",
+  "sha256_run2": "b8d1be241956baf6284a2d4a3cacfafbe13191d8a5e613aecedb33648021b915",
+  "byte_identical": true
+ },
+ "leak_scan": {
+  "method": "recursive token scan over the full artifact bytes (pnl, expectancy, profit_factor, pf, alpha, sharpe, stress_sum, sum_pnl, mdd, drawdown, fold_pnl)",
+  "found": "NONE"
+ },
+ "sanitized_flags": {
+  "scored": false,
+  "real_pnl": false,
+  "published": false,
+  "go_phrase_observed": null,
+  "launch_flag_observed": false
+ },
+ "sampling_floor_gate": {
+  "median_populated_frac": 0.762931,
+  "threshold": 0.25,
+  "verdict": "PASS",
+  "margin_to_fail": 0.512931,
+  "packet_declared_failure_mode": "REFUTED_BY_MEASUREMENT"
+ },
+ "non_vacuity": {
+  "scored_decisions": {
+   "observed": 75,
+   "threshold": 30,
+   "margin": 45
+  },
+  "per_fold_min": {
+   "observed": 22,
+   "threshold": 5,
+   "margin": 17
+  },
+  "noncash_legs_min": {
+   "observed": 199,
+   "threshold": 1,
+   "margin": 198
+  },
+  "record_ids_pairwise_distinct": true
+ },
+ "code_freeze_note": "code_freeze_sha recorded by A1 at the commit containing this artifact; data authority pinned by p0c/p0d manifests",
+ "dryrun_ledger_sha256": "b8d1be241956baf6284a2d4a3cacfafbe13191d8a5e613aecedb33648021b915"
+}

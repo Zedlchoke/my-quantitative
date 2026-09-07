@@ -1,0 +1,179 @@
+{
+  "schema": "stocks_free_v9_run/d1_proposal@1",
+  "cycle": "STOCKS-FREE-V9",
+  "phase": "D1",
+  "lane": "distress / delisting-risk conditioning (mandatory lane A4)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v9/d1-a4-distress",
+  "branch": "orca/stocks-free-v9-d1-a4-distress",
+  "wave_sha": "86fecae8044d344e5d5ea9a49bbcfdb2f03c0b5a",
+  "hypothesis_id": "SFV9-A4-H2",
+  "agent": "A4 (blind proposal lane, outcome-blind)",
+  "domain": "DISTRESS-PROXIMITY-FILING",
+  "title": "Cash-net depletion runway conditioning: retained-earnings depletion trajectory interacting with thin cash, on the death-inclusive cohort (Shumway profitability / Ohlson-Altman book lineage)",
+  "mechanism": "Who is forced to buy/sell: the forced sellers are mandate-constrained holders reacting with a lag to filing-stamped deterioration - covenant screens, going-concern language, and minimum-quality mandates fire on reported solvency trajectories (a second consecutive year of retained-earnings depletion with a thin cash buffer), and their exits cluster AFTER the filing becomes public but BEFORE the price fully reflects a multi-quarter depletion path; the forced buyers are none - the only natural buyer of an actively burning, cash-thin name is a bottom-fisher at prices so low that the sub-dollar floor already excluded it, which is exactly why the drift is downward. Why the effect exists: retained-earnings depletion over a fiscal year is a PIT proxy for the earnings flow (Shumway 2001's profitability variable, NI/TA, constructed here from funded balance-sheet fields because no income statement is funded for the dead leg), and the literature's robust failure signal is the INTERACTION of a negative earnings flow with a thin liquidity buffer (Ohlson 1980's funds-from-operations/total-liabilities term; Altman 1968's cash/TA and RE/TA terms): a name that is losing equity AND has no cash to fund the burn is measurably closer to failure, while a name losing equity with a year of cash in the vault can refinance, restructure, or wait - the same depletion carries different failure probability depending on the cash cushion, so a single monotone score that rewards cash against depletion separates proximity, not just badness. Which observable measures it: score = (RE_depletion_1y - Cash_now) / Assets_now, where RE_depletion_1y = RE(prior-year vintage) - RE(current vintage) (positive when retained earnings deplete), all legs PIT as-of under the funded 800-day clocks with the two RE vintages fiscal-matched 330-400 effective days apart; within-sector terciles on the inherited 21-session grid - LOW score (accruing equity, fat cash) is the long leg, HIGH score (deep burn, thin cash) is the short leg. This is an equal-weight Altman-form linear distress score (flow term minus stock term, same scaler) with no free parameters. When it must fail: (i) if the cash-level-only control (no depletion trajectory) reproduces the anchor at >= 0.5x alpha ratio, the effect is the thin-cash characteristic (a liquidity/value shadow), not the depletion trajectory interacting with it; (ii) if the depletion-velocity neighbour flips sign (accruing-equity names do not outperform), the trajectory carries no distress information and the family dies; (iii) if the fiscal-matched delta construction populates < 25% of eligible names at the median decision at dry-run, the family is BLOCKED_DATA (sanctioned close) - never re-matched, never re-tuned; (iv) the family dies if any inherited Stage-A gate fails per the ex-ante margins below.",
+  "falsifiable_prediction": "Directional and falsifiable: within-sector terciles of score = (RE_depletion_1y - Cash_now)/Assets_now predict relative returns monotonically over the inherited 21-session decision window - the highest-tercile names (burning, cash-thin) underperform the lowest-tercile names (accruing, cash-rich) in at least 2 of 3 folds after band costs, with (a) long-short expectancy > 0, (b) position PF >= 1.10, (c) risk-matched excess vs SPY positive in >= 2 folds and overall alpha > 0, (d) the depletion-velocity neighbour (trajectory without the cash interaction) carrying the SAME sign as the anchor (mechanism support), (e) the cash-level-only control NOT reproducing the anchor: |control alpha| < 0.5x anchor alpha, the control never outperforming the anchor in the anchor's direction, and control-vs-anchor ranks not rank-identical (Spearman rho < 0.95 measured pre-selection), (f) the trajectory and not the level carries the information, demonstrated by (d)+(e) jointly: neighbour supports while control fails to reproduce, and (g) the D2 pre-selection screen reporting Spearman |rho| <= 0.20 vs every forbidden-ancestor rank including the archived SFV8-F1 accrual-flow anchor rank (recomputable from the frozen v8_family_runner.py spec). If any of (a)-(g) fails, the family is rejected and cash-net depletion runway is declared untradable on this cohort at these costs.",
+  "universe": {
+    "legs": [
+      "ALIVE_EVIDENCED (410 members, frozen V8 panel, cohort_v9.json)",
+      "DEAD_PRICE_CONFIRMED (1550 members, p0d integrity-scan confirmed; dead names are REQUIRED - dying filers concentrate in the deep-burn tail and their delisting returns are carried by the price series, which a survivor panel cannot express)"
+    ],
+    "excluded_legs": [
+      "GAP_COVERAGE (513, recorded, no price authority)",
+      "NOT_DEAD_PRICE_SURVIVAL (219, reorg-survivor mode, recorded exclusion)"
+    ],
+    "eligibility_floor_inherited": [
+      "member of the two cohort legs above",
+      ">= 63 price bars through the decision session (inherited floor; also the ADV63 window)",
+      "ADV63 >= 2,000,000 USD (band C or better) at the decision; band D is UNTRADABLE_AT_DECISION and excluded",
+      "RAW close >= 1.00 USD at the decision (sub-dollar microstructure exclusion)",
+      "signal populated: current RE vintage and prior-year RE vintage both available under the 800-day clock at their respective as-of points AND 330-400 effective days apart (fiscal-type match, inherited F-A7-7/F-A7-4 precedent), plus Cash and Assets vintages under the 800-day clock"
+    ],
+    "sector_conditioning": "sector-neutral tercile books on the frozen SIC->SPDR sector tag carried in the cohort/panel (UNMAPPED sectors never guessed and abstain); sectors with fewer than 6 ranked names abstain that decision (inherited); equal-weight 0.5 long / 0.5 short per active sector, CASH absorbs the net"
+  },
+  "clock": {
+    "citation_rule": "only clocks in p2_v9_coverage_first.json dead_leg_funded_clocks.clocks (56 clocks, 33 fields) are cited, verbatim as {field, max_age_days} pairs; nothing else is legal; no market-leg input is used anywhere in this family (pure filing data)",
+    "staleness_rule_declared_ex_ante": "every input uses the 800-day bounded funded clock, never the unbounded (null) variant; on a death-inclusive cohort an unbounded clock lets vintage AGE become the ranking variable (delinquent dying filers), a vintage-age shadow rather than the mechanism; the prior-year RE leg is evaluated at its own as-of reference (t minus 252 sessions) with the same funded 800-day bound applied at that reference gate, so each evaluation cites a funded clock at its own gate",
+    "cited_funded_clocks": [
+      {
+        "field": "us-gaap:RetainedEarningsAccumulatedDeficit",
+        "max_age_days": 800,
+        "role": "anchor and neighbour depletion legs: two as-of evaluations of the SAME funded clock - current leg as-of the decision gate, prior-year leg as-of the t-252-session reference gate, each with age <= 800 days at its own gate and the pair 330-400 effective days apart (fiscal-type match); unit USD",
+        "dead_leg_pooled_coverage": 0.6516
+      },
+      {
+        "field": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "max_age_days": 800,
+        "role": "anchor runway term (subtracted) and the control's sole input; unit USD",
+        "dead_leg_pooled_coverage": 0.629
+      },
+      {
+        "field": "us-gaap:Assets",
+        "max_age_days": 800,
+        "role": "common scaler for anchor, neighbour and control; unit USD",
+        "dead_leg_pooled_coverage": 0.6553
+      }
+    ],
+    "market_leg_inputs": [],
+    "delta_construction_declared": "RE_depletion_1y = RE(v_prior) - RE(v_now), both legs selected by the multi-vintage as-of rule (latest filed vintage with avail < gate and age <= 800 days at each leg's own gate); a name lacking a 330-400 effective-day pair is UNPOPULATED at that decision - never proxied, never interpolated, no surrogate pairing; this mirrors the inherited F1 YoY-delta machinery with a different accounting construct (see novelty_declaration)"
+  },
+  "warmup_decisions": {
+    "anchor": 4,
+    "neighbour": 0,
+    "control": 0,
+    "justification": "the anchor is a YoY delta arm and inherits the F1 precedent of 4 warmup decisions on fold 1 (v8_family_runner.py SFV8-F1-ANCHOR warmup_decisions: 4) so the prior-year reference is populated inside data before scoring begins; neighbour and control are level arms (F2 precedent, 0 warmup)"
+  },
+  "decision_grid": {
+    "grid": "inherited 21-session grid, unchanged: per-fold local indices 63 + 21k, strictly inside each fold; folds forced flat at boundaries with cost",
+    "deviation": "none - denominator compatibility with the 21 prior scored cells requires the inherited grid; no deviation is proposed"
+  },
+  "entry_exit_fills": {
+    "entry": "signals computed on session t close data (PIT gate = 00:00 UTC t); fills at the next global session close; no same-session fill (inherited fill clock)",
+    "fill_check_preregistered": "a fill references only names with a bar at the fill session; a missing bar means the order does not exist - no silent substitute pricing (p3 v9_additions.dead_name_book_semantics_PREREGISTERED)",
+    "exit_preregistered": "a held name whose series ends is exited at its LAST recorded close on its final session; the delisting return is carried by the price series itself - no synthetic penalty, no synthetic continuation (p3 dead-name book semantics)",
+    "no_survivorship_resubstitution": "a dead name is never replaced by a successor entity's series (p3 forbidden clause); books re-form only at decision sessions from the surviving-eligible set, never by substitution",
+    "weights": "inherited: equal-weight within legs, 1/n_active allocation per sector, 0.5 long / 0.5 short per active sector, CASH absorbs residual; min 1 non-CASH leg per decision, min 30 scored decisions overall, min 5 scored decisions per fold",
+    "hysteresis": "one-decile retention hysteresis on book membership (inherited runner rule) to keep turnover inside the frozen 6.0x/yr ceiling",
+    "implementation_feasibility_note": "same bounded kernel change as H1: the V8 runner's missing-price-leg skip is replaced by the preregistered exit-at-last-close semantics for the dead leg; the delta arm reuses the as-of engine and the 330-400-day fiscal-match guard already exercised by F1 (adjusted for the V9 clock bounds)"
+  },
+  "costs": {
+    "band_model_inherited": [
+      {"band": "A", "rule": "ADV63 >= 50,000,000", "base_bps_per_side": 10.0, "stress_bps_per_side": 20.0, "multiplier": 1.0},
+      {"band": "B", "rule": "10,000,000 <= ADV63 < 50,000,000", "base_bps_per_side": 15.0, "stress_bps_per_side": 30.0, "multiplier": 1.5},
+      {"band": "C", "rule": "2,000,000 <= ADV63 < 10,000,000", "base_bps_per_side": 25.0, "stress_bps_per_side": 50.0, "multiplier": 2.5},
+      {"band": "D", "rule": "ADV63 < 2,000,000", "status": "UNTRADABLE_AT_DECISION - excluded from eligibility at that decision"}
+    ],
+    "charging": "linear in fills (L-V14-0), charged exactly once per fill on traded notional, applied to booked PnL (never a sidecar); band from the trailing 63-session median dollar volume as of the decision (PIT); fail-closed band resolution (L-I3): BandResolutionError on a traded name without a computed band",
+    "stress": "stress rerun at the stress bps above (20/30/50 per side); stress must remain positive on PnL with PF >= 1.0",
+    "turnover_ceiling": "6.0 two-way per year, annualized, raw and ceiling-normalized both reported"
+  },
+  "arms": [
+    {
+      "arm_id": "SFV9-A4-H2-ANCHOR",
+      "role": "anchor",
+      "score": "(RE(v_prior) - RE(v_now) - Cash(v_now)) / Assets(v_now)  [equal-weight Altman-form linear distress score: depletion flow minus cash stock, one scaler, no free parameters]",
+      "inputs": ["us-gaap:RetainedEarningsAccumulatedDeficit (800d; two fiscal-matched as-of legs)", "us-gaap:CashAndCashEquivalentsAtCarryingValue (800d)", "us-gaap:Assets (800d)"],
+      "direction": "low_long (LOW score = accruing equity and fat cash = long; HIGH score = deep burn and thin cash = short)",
+      "data_space": "{two RE vintages 330-400 eff days apart} x {Cash vintage} x {Assets vintage}; no price, no volume, no share count"
+    },
+    {
+      "arm_id": "SFV9-A4-H2-NEIGHBOUR",
+      "role": "neighbour (adjacent form supporting the depletion-trajectory component)",
+      "score": "(RE(v_prior) - RE(v_now)) / Assets(v_now)  [depletion velocity alone, same fiscal match]",
+      "inputs": ["us-gaap:RetainedEarningsAccumulatedDeficit (800d; two fiscal-matched as-of legs)", "us-gaap:Assets (800d)"],
+      "direction": "low_long (accruing equity long, depleting equity short)",
+      "support_expectation": "same sign as the anchor (the trajectory carries distress information on its own); if the neighbour flips sign, the trajectory component is void and the anchor's edge - if any - belongs to the cash term",
+      "data_space": "{two RE vintages 330-400 eff days apart} x {Assets vintage}; strictly a subset of the anchor's input space minus Cash"
+    },
+    {
+      "arm_id": "SFV9-A4-H2-CONTROL",
+      "role": "causal/placebo control designed to refute the mechanism-specific explanation",
+      "score": "Cash(v_now) / Assets(v_now)  [runway stock alone]",
+      "inputs": ["us-gaap:CashAndCashEquivalentsAtCarryingValue (800d)", "us-gaap:Assets (800d)"],
+      "direction": "high_long (cash-rich long, thin-cash short - the same mechanistic direction as the anchor's cash term, for a clean reproduction test)",
+      "mechanism_refuted_if_reproduced": "the mechanism claim is that the DEPLETION TRAJECTORY interacting with the cash cushion carries the proximity information. If the cash-level-only control reproduces the anchor at >= 0.5x alpha ratio, the effect is the static thin-cash characteristic (a liquidity/value shadow priced without any trajectory) and the depletion claim is dead - the same falsification pattern that killed V8 F1 (its WC stock-level control reproducing the flow anchor)",
+      "differs_from_anchor_in_data_space": "the control is a single field, single vintage, no trajectory pair and no RE field; the anchor requires two RE vintages satisfying a 330-400-day fiscal match plus Cash and Assets (four vintage selections from three fields, two of them history-dependent); cash LEVEL and cash-NET-DEPLETION are materially different rank vectors (depletion carries the entire RE-trajectory variance, which the control cannot see), and the not-rank-identical requirement (Spearman rho < 0.95, measured at D2 pre-selection on the decision grid) is declared ex ante per the V4/V5 pre-selection lesson"
+    }
+  ],
+  "margin_to_fail_expectations": {
+    "reporting_authority": "LESSONS P-2 and p3 v8_additions.margin_to_fail_reporting: every gate on a surviving family reports distance to its failure threshold, ex ante declared here",
+    "gates_ex_ante": [
+      {"gate": "expectancy_gt", "threshold": 0.0, "ex_ante_expectation": "positive but THIN: filing-stamped distress is public information and should be partly arbitraged; margin expected < 0.05 per decision; knife-edge passes are fragile per P-2"},
+      {"gate": "position_pf_ge", "threshold": 1.1, "ex_ante_expectation": "pass margin expected < 0.15"},
+      {"gate": "folds_positive_ge", "threshold": 2, "of": 3, "ex_ante_expectation": "the burn signal is strongest in the 2020 stress fold and 2022-2023 rate-shock fold; fold 1 alone carrying everything would be a COVID artifact, hence the >= 2/3 bar"},
+      {"gate": "min_populated_fold_pf_ge", "threshold": 0.8, "ex_ante_expectation": "no fold deep-negative; expected margin > 0.0"},
+      {"gate": "max_fold_mdd_le", "threshold": 0.15, "ex_ante_expectation": "sector-neutral 0.5L/0.5S book should sit well inside; margin expected > 0.05"},
+      {"gate": "risk_matched_excess_positive_folds_ge", "threshold": 2, "ex_ante_expectation": "SPY-excess positive in >= 2 folds"},
+      {"gate": "anchor_overall_alpha_gt", "threshold": 0.0, "ex_ante_expectation": "positive; margin expected small"},
+      {"gate": "etf_share_le", "threshold": 0.5, "ex_ante_note": "packet-level gate per the D1 brief; the p3-frozen etf_positive_share_le = 0.35 also binds unchanged, so the expectation is stated against the TIGHTER 0.35; a fail is a book-construction bug"},
+      {"gate": "fold_positive_share_le", "threshold": 0.5, "ex_ante_expectation": "inherited concentration gate"},
+      {"gate": "stress_positive", "definition": "PnL > 0 and PF >= 1.0 at stress multipliers (20/30/50 bps)", "ex_ante_expectation": "band-C-heavy books on distressed small caps make this the most likely honest failure; margin expected thin"},
+      {"gate": "drop_one_survival", "definition": "post-drop-one-symbol expectancy > 0; and min over folds with that fold removed > 0", "ex_ante_expectation": "expected margin large given ~1960 cohort names and sector-neutral terciles"},
+      {"gate": "sampling_floor", "definition": "median populated fraction of eligible names >= 0.25 per decision at dry-run (fiscal-matched deltas are lossy)", "ex_ante_expectation": "RE 800d coverage 0.6516 with fiscal matching and the four-vintage intersection should land 0.25-0.45; below 0.25 the family is BLOCKED_DATA at dry-run - sanctioned close, never re-matched or re-tuned"},
+      {"gate": "control_not_reproduce", "definition": "control_alpha_abs_ratio < 0.5 AND the control never outperforms the anchor in the anchor's direction (inherited causal_control_rule)", "ex_ante_expectation": "cash level and cash-net depletion are correlated but distinct; expectation is a control ratio in the 0.1-0.4 band; >= 0.5 falsifies honestly"}
+    ],
+    "pre_selection_screens_d2": [
+      "Spearman rho anchor-vs-control < 0.95 (not rank-identical)",
+      "Spearman |rho| <= 0.20 vs every forbidden-ancestor rank, INCLUDING the archived SFV8-F1 accrual-flow anchor rank recomputed from the frozen v8_family_runner.py spec (the closest ancestor by construction type: a YoY delta over Assets) and the SFV8-F2 anchor rank",
+      "no market-leg confound to screen: the family uses no price or volume input, so no momentum or vol-shadow correlation can arise by construction"
+    ],
+    "falsification_fires_when": "any inherited gate fails on the anchor, OR the neighbour flips sign (no trajectory support), OR the cash-level control reproduces >= 0.5x, OR the sampling floor is missed at dry-run (BLOCKED_DATA close)"
+  },
+  "novelty_declaration": {
+    "could_be_confused_with": [
+      {
+        "ancestor": "SFV8-F1 WC-ACCRUAL-FLOW (V8) and its WC stock-level exposure shadow",
+        "concrete_design_difference": "both are YoY-delta-over-Assets constructions, but the ACCOUNTING CONSTRUCT is different: F1's delta is the working-capital ACCRUAL flow (dAR + dINV - dAP - earnings-fixation mispricing per Sloan); H2's delta is the retained-earnings trajectory (earnings/profitability flow per Shumway, minus dividends), a construct F1 never touches; the field sets are disjoint (F1: AR, INV, AP over Assets; H2: RE, Cash over Assets); and the mechanism is different: H2 ranks FAILURE PROXIMITY (burn vs runway interaction), not accrual mispricing - the cash interaction term has no analogue in F1; the D2 screen must still measure |rho| <= 0.20 vs the archived F1 anchor rank because both scores share the delta-over-Assets shape and the veto is decided by measurement, never prose"
+      },
+      {
+        "ancestor": "SFV8-F2 DEP-RESERVE-COVERAGE (V8) and the Goodwill/Assets bloat shadow",
+        "concrete_design_difference": "F2 ranks a depreciation-reserve ratio (and Goodwill/Assets) - static conservatism/bloat levels from asset-side fields; H2 uses no asset-side reserve, no Goodwill, no PP&E and computes a flow-stock interaction, not a coverage level"
+      },
+      {
+        "ancestor": "SFV4-A4-H1 SEMIVARIANCE-SHARE and the vol-level shadow",
+        "concrete_design_difference": "H2 has no price or return input whatsoever - pure filing data - so no variance-shape or vol-level construct is even representable in its data space"
+      },
+      {
+        "ancestor": "SFV4-A5-H1 PARTICIPATION-SHIFT and the sector-exposure shadow",
+        "concrete_design_difference": "no volume, no dollar-volume shock; sector exposure neutralized by construction (0.5L/0.5S per sector); the only ADV use is the inherited eligibility band, identical across all arms"
+      },
+      {
+        "ancestor": "A4_XSEC_ETF_RELATIVE_MOMENTUM (V2) and generic cross-sectional momentum",
+        "concrete_design_difference": "no price input, hence no return sort anywhere in the family; momentum-shadow contamination is impossible by construction, not by screening"
+      },
+      {
+        "ancestor": "vintage-age shadow (delinquent-filer staleness as a pseudo-signal)",
+        "concrete_design_difference": "the 800-day bound at each leg's own gate is declared ex ante precisely so that filing STALENESS cannot become the ranking variable; a name with no in-bound vintage is unpopulated, never ranked by age"
+      }
+    ],
+    "lineage_statement": "the mechanism is new to this factory: Shumway (2001) profitability conditioning and Ohlson (1980)/Altman (1968) linear distress scores - none of these constructs appear in the cumulative forbidden inventory, and the dead leg's PIT filings (6.26M rows added in P0c) are what make the depletion trajectory observable on dying filers for the first time",
+    "measured_decorrelation_required": "|rho| <= 0.20 pooled vs every forbidden ancestor per plan section 1, measured at D2 before selection; anchor-vs-own-control correlation allowed nonzero (both contain Cash) but must be < 0.95 (not rank-identical)"
+  },
+  "literature": [
+    "Shumway, T. (2001), 'Forecasting Bankruptcy More Accurately: A Simple Hazard Model', Journal of Business 74(1), 101-124.",
+    "Ohlson, J.A. (1980), 'Financial Ratios and the Probabilistic Prediction of Bankruptcy', Journal of Accounting Research 18(1), 109-131.",
+    "Altman, E.I. (1968), 'Financial Ratios, Discriminant Analysis and the Prediction of Corporate Bankruptcy', Journal of Finance 23(4), 589-609.",
+    "Campbell, J.Y., Hilscher, J., Szilagyi, J. (2008), 'In Search of Distress Risk', Journal of Finance 63(6), 2899-2939.",
+    "Nissim, D., Penman, S.H. (2001), 'Ratio Analysis and Equity Valuation: From Research to Practice', Review of Accounting Studies 6(1), 109-154."
+  ],
+  "outcome_blind_attestation": "proposal written without access to any scored outcome; no returns computed in this lane"
+}
