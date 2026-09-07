@@ -172,6 +172,30 @@ purpose, immediately); prefer committing by explicit pathspec
 (`git commit -- <files>`); any agent finding foreign entries in its commit
 records an incident the same way INC-V5-1 did.
 
+## P-11 — A terminal can only price what the driver persisted: per-period series are a launch requirement, not a terminal wish
+
+Source: two independent incidents. Forex V3R (2026-09-05): DSR/PBO
+NOT_RUN fail-closed at terminal — "no per-period series in the program
+ledger"; the statistic that prices multiple testing was unreachable on the
+exact family that needed it most. Crypto V15 (2026-09-07): the same NOT_RUN
+for the same reason (no per-period series committed), plus G6–G9 NOT_RUN
+for absent per-symbol diagnostics, plus a reproduction spot-check dying to
+an external tick-metadata loss mid-audit (fail-closed TECHABORT).
+
+Lesson: reproduction certifies self-consistency (P-4) but cannot summon
+data the runner never wrote. Every diagnostic the terminal will need —
+per-period returns for DSR/PBO, per-symbol legs, margins per gate — must
+be an output-contract item proven BEFORE launch, and the twin must be
+smoke-tested to re-emit it.
+
+Consequence: the diagnostic persistability gate (validate every mandatory
+terminal diagnostic's output contract + frozen applicability for
+conditionals + twin smoke; missing ⇒ BLOCKED_PRELAUNCH) is IMPLEMENTED and
+TESTED on branch `orca/governance-family-pipeline` (commits a01d4a2 /
+cffaeb9 / f31598d; 38 governance tests) per the owner's 2026-09-07
+amended directive; adoption boundary crypto V16+, forex V7+, stocks V12+.
+Cite: `research/wayfinder/FAMILY_PIPELINE.md` §8.1 and §11.
+
 ## Related program-level records
 
 - Falsification-by-control cluster (7 instances, V11→V5):
