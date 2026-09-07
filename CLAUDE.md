@@ -9,9 +9,9 @@ gates and reproduction all reconcile.
 1. Read the applicable plan in full before changing files. All plans live in
    `plans/`; the highest version per asset is the live one (see `RULES.md`
    for the law summary and the agent roster):
-   - crypto live: `plans/PLAN_crypto_v15.md`
+   - crypto live: `plans/PLAN_crypto_v16.md`
    - stocks live: `plans/PLAN_stocks_v11.md`
-   - forex live: `plans/PLAN_forex_v6.md`
+   - forex: no live plan (V6 closed 2026-09-07; next plan TBD)
 2. Read `NOTES.md` and `research/wayfinder/MAP.md` when the task touches research.
 3. Run `/repo-intake`. Re-measure the checkout; historical plan snapshots are
    evidence, not current truth.

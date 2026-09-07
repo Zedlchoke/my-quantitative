@@ -93,7 +93,7 @@ ran correctly, artifact  -> PASS
    cells); recursive leak scans check every record depth for outcome-shaped
    fields.
 
-## 3. FOREX rules (live plan: `plans/PLAN_forex_v6.md`)
+## 3. FOREX rules (no live plan — V6 closed 2026-09-07; rules below remain binding for any future forex cycle)
 
 - Data: keyless official sources ONLY (BIS WS_CBPOL, ECB SDMX, official
   release-calendar pages, ALFRED if evidenced). No signup, no key, no
@@ -109,7 +109,7 @@ ran correctly, artifact  -> PASS
   rho 0.997–1.000), commodity-bloc risk-off. The V3R economic observation
   (PF 1.2825 under honest availability) stays recorded — it is not a license.
 
-## 4. CRYPTO rules (live plan: `plans/PLAN_crypto_v15.md`)
+## 4. CRYPTO rules (live plan: `plans/PLAN_crypto_v16.md`)
 
 - Data: keyless Binance public endpoints + the data.binance.vision bulk
   repository ONLY. Coverage-first: a source that cannot fund the S0 window
@@ -158,13 +158,13 @@ ran correctly, artifact  -> PASS
 
 ```text
 GO STOCKS V11 SCORED EXECUTION      (live plan plans/PLAN_stocks_v11.md)
-GO CRYPTO V15 SCORED EXECUTION      (live plan plans/PLAN_crypto_v15.md)
-GO FOREX V6 SCORED EXECUTION        (live plan plans/PLAN_forex_v6.md)
+GO CRYPTO V16 SCORED EXECUTION      (live plan plans/PLAN_crypto_v16.md)
 ```
 
-The stocks V10 and forex V5 phrases were each consumed at their own gates
-and are dead with their closed cycles. Expired/unconsumed phrases of closed
-cycles are dead — they never carry forward (V6 ruling; P-8).
+The crypto V15 and forex V6 phrases were each consumed at their own gates
+and are dead with their closed cycles (both closed 2026-09-07); forex has
+no live phrase until a V7 plan exists. Expired/unconsumed phrases of
+closed cycles are dead — they never carry forward (V6 ruling; P-8).
 
 ## 8. The one-paragraph spirit
 
