@@ -44,6 +44,15 @@ màn hình:
 - Bộ nhớ thất bại: 50 family với verdict class + chữ ký, click mở
   evidence (terminal sha, path, ledger row); TECHABORT/NOT_RUN làm mờ
   với nhãn "không mang bằng chứng chất lượng".
+- **PnL tổng quan so sánh được** (owner-approved 2026-09-07): bảng
+  thống nhất anchor / neighbour / control của các family đã đóng —
+  expectancy, PnL, PF, số fold dương, MDD, margin-to-fail — parse từ
+  terminal verdict JSON của các cycle đóng (~12 cycle có số máy-đọc-
+  được); family nào không có (sprint cũ / không persist) hiện
+  `KHÔNG CÓ DỮ LIỆU` + dẫn dòng ledger. KHÔNG có per-trade/per-period
+  PnL cho family đã đóng (drivers không persist — bài học P-11); từ
+  V16/V7/V11 trở đi gate bắt buộc per-period series nên tương lai có
+  đủ.
 - Near-miss do Lead tuyển; chữ ký thất bại dạng bar-chart; bài học
   P-1..P-11 dạng accordion.
 
@@ -54,7 +63,13 @@ màn hình:
 `source_path`. Trạng thái sống đo best-effort, fail-closed. **Sinh
 `plans/ACTIVE_CYCLES.json`** mỗi lần chạy (registry §3.1: cycle_id,
 plan, status, phase, worktree, branch, head, budget, go_phrase, s1,
-measured_at).
+measured_at). **Panel PnL**: với mỗi cycle đóng, tìm terminal verdict/
+report JSON trong cây git tại terminal SHA đã ghi trong
+FAMILY_FAILURES.jsonl (`git show <sha>:<path>`), trích theo bộ key
+thống nhất (anchor/neighbour/control × expectancy/pnl/pf/folds/mdd/
+margins) — schema khác nhau giữa các cycle thì map tường minh từng
+cycle trong một bảng MAPPER có test; không trích được →
+`KHÔNG CÓ DỮ LIỆU`, không bao giờ điền số đoán.
 
 **Lớp 2 — Renderer `dashboard_render.py` (stdlib)**
 HTML tự chứa: CSS/SVG inline, JS vanilla tối thiểu (filter/expand),
@@ -78,10 +93,14 @@ xuất file không cần window (dùng được khi không muốn dependency).
    "đo bằng ps").
 4. Bảng failure-memory: filter theo asset / verdict / chữ ký; click mở
    evidence.
-5. Bar-chart SVG: đếm primary_failure code.
-6. Near-miss tuyển bởi Lead (viện dẫn §E.1 + V6/V10/V15).
-7. Accordion P-1..P-11.
-8. Footer nguồn.
+5. **Bảng PnL tổng quan**: mỗi family một hàng, cột cố định
+   (asset/cycle/family/anchor exp/anchor PF/neighbour/control/PnL/
+   folds/MDD/verdict), sort theo cột, số dương âm tô màu, hover hiện
+   nguồn; hàng KHÔNG CÓ DỮ LIỆU làm mờ.
+6. Bar-chart SVG: đếm primary_failure code.
+7. Near-miss tuyển bởi Lead (viện dẫn §E.1 + V6/V10/V15).
+8. Accordion P-1..P-11.
+9. Footer nguồn.
 
 ## 4. Deliverables & commits (pathspec; KHÔNG push/merge main trước chữ của chủ)
 
