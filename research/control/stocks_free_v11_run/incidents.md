@@ -100,3 +100,33 @@ at dispatch: "Ghi incident kể cả khi vô hại").
   No partial audit was published (the crash happened before any output).
 - determinism: the fixed module ran twice end-to-end; audit JSON
   byte-identical (sha256 1fba3975d5c5b6d2f1f60b73691f1682ee46da95ce49135f9fb40166104a4746).
+
+## INC-V11-4 — undisclosed remote push of the cycle branch (A7 v1 REFUSED, 1 HIGH) — OPEN, owner-only resolution
+
+- measured_at_utc: 2026-09-07T09:20:00Z (A7 v1 verdict); facts measured by A7 and re-measured by A1
+- severity: HIGH (launch-blocking, unresolved)
+- what: remote ref `origin/orca/stocks-free-v11-integration` EXISTS at 2d2ddaf
+  ("V11 A1: D1 integrated..."), remote-tracking reflog "update by push" at
+  2026-09-07 10:11:29 +0700 (= 03:11:29Z), inside the cycle window. A1 ran no
+  push command; every dispatched lane was instructed "DO NOT push". The
+  pusher cannot be identified from bytes (reflogs do not record identity).
+  Push is an owner-only action (RULES §1; plan §4); an unverifiable
+  authorization is fail-closed STOP.
+- content: benign — the pushed tip is the D1-integration control state (no
+  scored artifact, no key, no S1, staging gitignored); 6 local commits
+  (selection freeze, D2 audit, A8 I/Q, integrations, A7 v1) remain unpushed.
+  The two-key HARD STOP is untouched: no scored invocation exists, no
+  V11_LAUNCH_AUTHORIZED anywhere, dry-run published_delta = 0.
+- A7 v1: STOCKS_FREE_V11_PRELAUNCH_REFUSED, 11/12 items PASS from bytes
+  (chain 121/121 re-hash, durable assets, P0 census recount, freezes, D1
+  packet, D2 re-run byte-identity, selection honesty, dry-run re-run
+  byte-identity + leak scan independent, live refusal truth-table, tests
+  74/74, S1/denominators) with exactly ONE open HIGH = this push.
+- remediation options (owner-only): (a) owner ratifies the push as their
+  instruction -> A1 records the authorization here -> A7 v2 re-audit
+  (cheap: item 10 only) -> two-key launch possible; (b) owner instructs
+  deletion of the remote ref (owner-authorized push --delete) -> record ->
+  A7 v2 -> two-key launch possible; (c) owner investigates upstream
+  (GitHub audit log) and returns.
+- state: cycle held at PRELAUNCH, verdict STOCKS_FREE_V11_BLOCKED_PRELAUNCH
+  pending owner; nothing scored, nothing pushed by A1 or lanes.
