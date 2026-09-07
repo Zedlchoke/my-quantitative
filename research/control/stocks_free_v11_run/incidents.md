@@ -26,3 +26,29 @@ at dispatch: "Ghi incident kể cả khi vô hại").
   after; adjudicated outcome-neutral): standing lesson — V11 commits every
   scored driver BEFORE its run so the ledger's code_freeze_sha is the exact
   run-time HEAD.
+
+## INC-V11-1 — P0 lane census-script defect aborted two runs pre-artifact (harmless)
+
+- measured_at_utc: 2026-09-07T01:58:30Z (lane handoff disclosure)
+- severity: NONE (harmless; recorded per the record-even-harmless rule)
+- what: the lane's census script had an undefined variable (`rev_iad_pool`)
+  aborting its first two runs BEFORE any artifact existed; lane fixed and
+  proved determinism with two independent complete runs producing
+  byte-identical derived artifact sha256 728f1420…0fd9 (74,931 rows).
+- impact on artifacts: none (no partial artifact ever published; A1
+  re-hashed the artifact independently and it matches the manifest pin).
+- secondary note: the lane initially looked for `~/.venv/bin/python` before
+  using the correct repo-root `.venv/bin/python 3.12.14` (work-order
+  shorthand ambiguity); correct interpreter used for all published numbers.
+
+## Anomaly log (non-incident observations from P0, recorded for D1 lanes)
+
+- CIK0000004904 (ALIVE_EVIDENCED, 69 events) has no EOD price file — 0.09%
+  join miss; events reported, price-side null, never guessed.
+- GAP_COVERAGE contributes zero events/chains (class construction: 0/513
+  members in the timing layer) — zero is real.
+- 19 entities have zero clear 20-bar placebo windows (event-saturated
+  calendars near death) — sham-placebo design must tolerate; not blocking.
+- 1,482 DEAD entities' price series end within 120d of last event vs 270
+  end later — death-vs-stale ambiguity reported, not adjudicated (P1/P3
+  freeze decides semantics; any semantics change recomputes controls per P-3).
