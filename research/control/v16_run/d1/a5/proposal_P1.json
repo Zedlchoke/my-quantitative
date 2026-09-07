@@ -1,0 +1,73 @@
+{
+  "proposal_id": "A5-V16-P1",
+  "lane": "a5",
+  "axis": "AXIS-2 trade-arrival structure",
+  "title": "Burst-exhaustion fade: one-day counter-move after extreme print-arrival clustering (arrival_burstiness z > +2.0), BTCUSDT + ETHUSDT daily",
+  "causal_claim_one_sentence": "Stop-cascade and liquidation participants are forced to print in dense clusters (arrival_burstiness z28 > +2.0) because their protective orders trigger one another while slow liquidity suppliers withdraw and only re-price after the cluster exhausts, so the day after an extreme-clustering day drifts back against the burst day's direction, and the mechanism must fail exactly when bursts carry permanent regime information or when fast money crowds the same fade so the reversion is already priced into the burst-day close.",
+  "falsification_rule": "The claim is proved wrong if (a) the anchor's after-cost expectancy is <= 0 (frozen rule order #1, G1), OR (b) the reshuffled-interval control CTL-SHUFFLE-BURST (identical trigger threshold +2.0 and identical fade rule applied to the seed-20260907 within-symbol/within-fold permutation of the burstiness_z28 series, which preserves the marginal distribution of trigger values and trigger counts but destroys the date alignment of arrival clustering) reproduces the anchor at same sign with >= 0.5x expectancy or out-earns the anchor (G11) - either outcome proves the temporal alignment of print-arrival clustering with the fade dates carries no information (or negative information), and the burst-exhaustion mechanism does not exist on this window.",
+  "control_class": "Reshuffled-interval placebo (mandatory class for arrival-structure mechanisms, per p3_invariants_v16.json frozen arms contract: 'arrival-structure -> reshuffled-interval placebo'). Exact spec: per symbol, per fold, the daily burstiness_z28 conditioning series is permuted with numpy default_rng(20260907) (one fixed seed, applied identically across folds for determinism and reproduction); the anchor trigger (burstiness_z28 > +2.0 on the permuted series), fade direction (-sign of the REAL ret1 at the permuted trigger date), entry vwap(t+1) and exit vwap(t+2) are unchanged. The permutation preserves the exact marginal intensity of the conditioning statistic (same values, same trigger frequency, same trade count) while destroying the temporal clustering alignment between arrival bursts and calendar dates; it must NOT reproduce the anchor.",
+  "expected_failure_mode": "The family is willing to lose to this hypothesis: burst days are regime information rather than forced-cascade overreaction, so the fade becomes short-momentum and expectancy dies at G1; and because bursts concentrate into a few stress weeks, booked PnL concentrates in 1-2 folds and the anchor dies at G4 fold concentration (the exact gate that killed CARRY-7D at 51.66% and PREMFADE at 0.5110). Secondary plausible deaths: trigger scarcity leaves a fold with too few bookable decisions (cheap-kill 3, the V15 A5-P2 non-vacuity death), or one-day-hold taker costs exceed the fade edge (COST_DOMINATED, the BAB death).",
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "clock": "daily (event-time symbol-day; sub-daily NOT_GRANTED_BY_DESIGN per p2_coverage_clocks_v16.json)",
+  "warmup": "28 days (trailing 28-day robust location/scale for burstiness_z28; decisions start only after warmup, frozen at selection)",
+  "decision_timestamp_semantics": "Event-time (exchange transact_time aggregates). The symbol-day row is final at the day's last print; the decision for day t uses only fields with event timestamps <= end of day t and executes on day t+1 (entry at vwap(t+1), exit at vwap(t+2)); any conditioning field arriving late under publication semantics moves the decision exactly one period (availability-lag mutation; conditioning_availability per p2_coverage_clocks_v16.json: exchange-event-time, zero conditioning lag at decision time).",
+  "features": [
+    {
+      "column": "arrival_burstiness",
+      "role": "primary conditioning field: variance/mean - 1 of print counts in 5-minute buckets per symbol-day; standardized to burstiness_z28 = (x - trailing-28d median) / (1.4826 * trailing-28d MAD), per symbol, trailing only",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "vwap",
+      "role": "execution and measurement price: ret1(t) = vwap(t)/vwap(t-1) - 1; entry vwap(t+1), exit vwap(t+2) (neighbour exit vwap(t+3))",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "symbol",
+      "role": "identity key of the staged daily panel",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "date",
+      "role": "UTC symbol-day identity of the staged daily panel",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "first_ts_ms",
+      "role": "day-boundary integrity stamp: confirms the conditioning day's window completeness before a decision may fire",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "last_ts_ms",
+      "role": "day-boundary integrity stamp: confirms the conditioning day's window completeness before a decision may fire",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "integrity_ok",
+      "role": "provenance guard: decisions from rows with integrity_ok false are dropped, not repaired",
+      "availability": "EVIDENCED (exchange event time)"
+    }
+  ],
+  "arms": [
+    {
+      "role": "anchor",
+      "name": "BURST-FADE-1D",
+      "spec": "Trigger on day t (per symbol): burstiness_z28(t) > +2.0 AND ret1(t) != 0, where ret1(t) = vwap(t)/vwap(t-1) - 1. Direction = -sign(ret1(t)) (fade the burst day's move). Entry at vwap(t+1), exit at vwap(t+2), hold 1 day. Equal risk per triggered symbol-day; book weights under the frozen v12 adapter runner (0.30 cap). Both symbols pooled in one book."
+    },
+    {
+      "role": "neighbour",
+      "name": "BURST-FADE-1.5-2D",
+      "spec": "Same mechanism, different parameters: trigger burstiness_z28(t) > +1.5 (lower bar, more triggers), hold 2 days (entry vwap(t+1), exit vwap(t+3)); direction and sizing identical to the anchor. Must support the anchor (G10) or the family is not corroborated."
+    },
+    {
+      "role": "control",
+      "name": "CTL-SHUFFLE-BURST",
+      "spec": "Reshuffled-interval placebo, exact spec: per symbol, per fold, permute the daily burstiness_z28 series with numpy default_rng(20260907); apply the anchor's trigger (> +2.0) to the permuted series; on each permuted trigger date take direction -sign(REAL ret1 at that date), entry REAL vwap(t+1), exit REAL vwap(t+2), sizing identical. Same marginal intensity of the conditioning statistic, destroyed temporal clustering alignment. Must NOT reproduce the anchor (G11); if it reproduces at same sign >= 0.5x or out-earns, the family dies as falsified-by-control."
+    }
+  ],
+  "costs": "L-V14-0 cost-once per fill; stress multipliers applied to booked PnL (tier 2.0 primary)",
+  "folds": "F0/F1/F2, 1-day purge (frozen V12 contract)",
+  "gates": "Frozen set G1..G12 from p3_invariants_v16.json, evaluated in frozen order, first FAIL kills the arm - G1 expectancy > 0; G2 PF >= 1.10; G3 folds >= 2/3; G4 largest-fold-positive-share <= 0.50; G5 MDD <= 0.20; G10 neighbour supports; G11 control does not reproduce (falsification-by-control cluster binding); G12 novelty pooled |rho| <= 0.20 vs the FULL forbidden inventory incl. V15 additions (elite-size-asym, taker-saturation, elite-LEVEL shadow). No new gates are invented.",
+  "novelty_self_check": "Walked against the crypto forbidden inventory: (1) LIQEPIS + duplicates - LIQEPIS was liquidity EPISODICITY conditioned on open-interest/depth (bulk-metrics) episode data; this proposal conditions on PRINT-ARRIVAL clustering (arrival_burstiness = dispersion of 5-minute print counts; interarrival shape) computed from aggTrades event-time prints - a different observable (arrival dispersion of prints vs OI/depth episodicity), a different data surface (the V16 staged aggTrades panel, whose fields are absent-by-design from the V15 bulk panel and vice versa), and a different mechanism (cascade-exhaustion fade vs liquidity-episode conditioning). Candid proximity statement: both share 'episode/clustering' vocabulary, and the veto is MEASURED, not argued - if pooled |rho| vs the LIQEPIS conditioning exposures exceeds 0.20 at D2, this proposal dies at G12 and that is the correct outcome. (2) OITD + duplicates, OILEV-V2 anchor + inverted shadow - open-interest term-structure/flow mechanisms; no OI field exists in the aggTrades panel, so the information set cannot coincide; the inverted shadow is an OI-flow exposure, not an arrival-shape exposure. (3) PREMFADE - basis/premium LEVEL fade; no basis field exists here. (4) BAB - beta-sorted cross-section, unrelated to print timing. (5) Carry families - funding sign/slope, unrelated. (6) ILLIQ (owner-gated) - Amihud |return|/notional impact LEVEL; this trigger contains no impact-per-volume magnitude, only gap/count dispersion; ILLIQ remains the closest activity-flavored ancestor and is listed for D2 measurement. (7) V15 additions - elite-size-ASYMMETRY, taker-saturation, elite-LEVEL measured shadow: all three are built from bulk-metrics toptrader/taker fields in V15's cross-sectional 20-symbol form; this proposal is a time-series gate on 2 majors from aggTrades columns that do not exist in the V15 staged panel, and the elite-LEVEL shadow is measured on headcount-LEVEL exposure, which an arrival-shape trigger cannot linearly reproduce - again measured at D2, not assumed. (8) Beyond the crypto inventory, honest flags: V8R H-XSECT-REVERSAL-v2 shares the fade DIRECTION (not the information set, universe, or clock: cross-sectional weekly on 10 alts vs time-series daily burst-gated on 2 majors); V9 XSECT-VOLSHK shares the word 'activity shock' with P2's sibling trigger (notional volume vs print count; cross-sectional vs time-series). Neither is a re-test or parameter variant of any forbidden family: each arm here is a new mechanism on the one keyless family never mined before V16 (aggTrades), with the mandatory reshuffled-interval falsification control of its own.",
+  "outcome_blind_attestation": "Signed on wave SHA 4b913c30b7386bab9f5c3bedbd1685e9d07df4f1; see outcome_blind_attestation.json in this directory."
+}
