@@ -93,7 +93,7 @@ ran correctly, artifact  -> PASS
    cells); recursive leak scans check every record depth for outcome-shaped
    fields.
 
-## 3. FOREX rules (live plan: `plans/PLAN_forex_v5.md`)
+## 3. FOREX rules (live plan: `plans/PLAN_forex_v6.md`)
 
 - Data: keyless official sources ONLY (BIS WS_CBPOL, ECB SDMX, official
   release-calendar pages, ALFRED if evidenced). No signup, no key, no
@@ -123,7 +123,7 @@ ran correctly, artifact  -> PASS
 - Terminals: DSR over the cumulative crypto trial count; confirmatory
   status, where declared, is bound in every cell and the ledger.
 
-## 5. STOCKS rules (live plan: `plans/PLAN_stocks_v10.md`)
+## 5. STOCKS rules (live plan: `plans/PLAN_stocks_v11.md`)
 
 - Data: EODHD is owner-entitled (subscription owner-held; key in gitignored
   `.env`, environment-only, redacted from error strings, never in
@@ -136,7 +136,9 @@ ran correctly, artifact  -> PASS
 - Publication is append-only (F-A7T-1); band resolution fails closed (L-I3).
 - Forbidden: all prior stocks families plus the measured shadows (momentum,
   semivariance, vol-level, WC-stock intensity, Goodwill/bloat, F1 accrual
-  flow, depletion interaction, cash-level) — the nine-entry veto set.
+  flow, depletion interaction, cash-level, V10's deseasonalized-timing
+  characteristic form, V10's revision-correction direction/breadth form) —
+  the eleven-entry veto set.
 
 ## 6. The agent roster (who gets spawned, and what each one is)
 
@@ -155,13 +157,14 @@ ran correctly, artifact  -> PASS
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 
 ```text
-GO STOCKS V10 SCORED EXECUTION      (live plan plans/PLAN_stocks_v10.md)
+GO STOCKS V11 SCORED EXECUTION      (live plan plans/PLAN_stocks_v11.md)
 GO CRYPTO V15 SCORED EXECUTION      (live plan plans/PLAN_crypto_v15.md)
-GO FOREX V5 SCORED EXECUTION        (live plan plans/PLAN_forex_v5.md)
+GO FOREX V6 SCORED EXECUTION        (live plan plans/PLAN_forex_v6.md)
 ```
 
-Expired/unconsumed phrases of closed cycles are dead — they never carry
-forward (V6 ruling; P-8).
+The stocks V10 and forex V5 phrases were each consumed at their own gates
+and are dead with their closed cycles. Expired/unconsumed phrases of closed
+cycles are dead — they never carry forward (V6 ruling; P-8).
 
 ## 8. The one-paragraph spirit
 
