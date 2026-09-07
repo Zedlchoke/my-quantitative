@@ -160,3 +160,16 @@ at dispatch: "Ghi incident kể cả khi vô hại").
   matching A7 v1's measurement. Both timestamps are inside the cycle
   window; nothing else changes. Corrected here per append-only discipline
   (prior entries stand as written, this note supersedes the timestamp).
+
+## INC-V11-5 — first scored launch attempt aborted pre-run (wrong interpreter path; nothing computed)
+
+- measured_at_utc: 2026-09-07T14:05:00Z
+- what: the launch wrapper invoked the driver with the worktree-local path
+  `.worktrees/stocks-free-v11/integration/.venv/bin/python`, which does not
+  exist (the sanctioned interpreter is the REPO-ROOT `.venv/bin/python`).
+  FileNotFoundError inside the wrapper AFTER heavy-lock acquire, BEFORE the
+  driver process started. Lock released cleanly; no scored cell, no counter
+  impact (nothing was computed); no partial artifact (measured: no
+  execution_ledger.json / family_verdicts.json; tree clean).
+- action: retry with the root interpreter; this record per the
+  record-even-harmless rule.
