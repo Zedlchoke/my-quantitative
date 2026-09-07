@@ -42,3 +42,39 @@
 Branch evidence for every removed worktree remains on GitHub (all `orca/*`
 cycle branches pushed). Historical worktree trees at any frozen SHA can be
 recreated with `git worktree add <path> <SHA>`.
+
+## Cleanup 2026-09-07 (owner-authorized "dọn file không cần thiết cho nhẹ máy")
+
+Archives in `~/staging_backups/cleanup_2026-09-07/` (sha256 in its
+`SHA256SUMS.txt`):
+
+```text
+forex-free-v5_full.tar.gz    224M, 29,439 files — closed V5 forest, removed
+                             after: integration branch verified PUSHED
+                             (3dacf1a on origin); V6 verified self-contained
+                             (own v6 staging; its references to v5 are
+                             inherited committed artifacts only).
+                             Restore: tar xzf <f> -C .worktrees/
+legacy_root_data.tar.gz      337M, 13,981 files — root legacy sprint-era
+                             data: results/ (1.0G), catalog_live_crypto/
+                             (129M), research_snapshots/ (113M), oi_data/
+                             (98M), funding_data/ (11M), derivatives_data/
+                             (8.4M). Empirically non-load-bearing: the five
+                             test files referencing these paths pass 101/101
+                             with results/ absent (synthetic config strings).
+                             Restore: tar xzf <f> in repo root.
+```
+
+Removed without archive (regenerable caches): `.pytest_cache`, root
+`__pycache__` dirs. TRACKED legacy files restored and KEPT (not deletable by
+tree rm): `results/*.csv` (4 demo outputs), `catalog/data/**` (Nautilus
+parquets) — formal removal, if ever wanted, is a tracked-file commit
+decision.
+
+Kept on disk: `stocks-free-v9` (4.8G — canonical multivintage panel; V11
+mid-flight re-hashes it; next big cleanup candidate once V11 closes),
+`stocks-free-v10` (2.8G — newest verified asset copies + observables),
+`stocks-free-v11`, `crypto/v15`, `forex-free-v6` (all ACTIVE), `.venv`,
+`catalog/`. Worktrees: 34 → 32 (v5 forest 8 removed, v11 +1 was added by the
+V11 bootstrap). Net repo tree: 14G → 12G; archives added 561M to
+`~/staging_backups/`.
