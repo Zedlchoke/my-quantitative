@@ -2,6 +2,21 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **STOCKS V10 CLOSED → `STOCKS_FREE_V10_REJECT_ALL`** (closed 2026-09-06,
+  branch `orca/stocks-free-v10-integration@bec559c`) — the filing-timing/
+  revision cycle on the death-inclusive panel. Both families mechanical-REJECT:
+  SFV10-A4-H1 own_z timing carries real directional content (raw-lag control
+  opposite-sign; cohort_z neighbour same-sign) but dies PF margin −0.019 /
+  ETF-share 0.8333 / SPY-excess 0/3 — sector-book drowning of a sub-cost
+  signal (P-2 knife-edge class); SFV10-A5-H1 revision direction dead (−0.2047)
+  with the severity neighbour equally dead → the revision axis is mined out.
+  A7 terminal CONFIRM 8/8 (0 HIGH/CRITICAL); reproduction ALL_MATCH (twin
+  @5b40d48, single by-design provenance leaf, INC-V10-1 adjudicated
+  outcome-neutral); two-key P-8 proven end-to-end (A7 v1 REFUSED →
+  remediation afad4b1 → v2 AUTHORIZED → owner exact GO). Budget 6/6; stocks
+  36/36; program 206/209 (ledger authority, P-9). S1 sealed. Detail:
+  `.worktrees/stocks-free-v10/integration/research/control/stocks_free_v10_run/terminal_report.json`.
+
 - **FOREX V5 CLOSED → `FOREX_FREE_V5_REJECT_ALL`** (closed 2026-09-06, branch
   `orca/forex-free-v5-integration@3e8cacf`, terminal head 61100aa) — the
   inflation/real-rate axis cycle. P0 funded the per-print CPI axis on 4/8
