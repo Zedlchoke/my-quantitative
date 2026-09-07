@@ -1,0 +1,41 @@
+{
+ "schema": "stocks_free_v11_run/selection_freeze@1",
+ "frozen_at_utc": "2026-09-07T06:30:00Z",
+ "producer_role": "A1 (PLAN_stocks_v11 sec3 D2 + selection)",
+ "wave_sha": "ea668797b661dfa2c9d2b2799e46fe0f13f71820",
+ "inputs": {
+  "proposal_hashes": "research/control/stocks_free_v11_run/d1_proposal_hashes.json (six proposals, three outcome-blind lanes; runtime-verified 6/6 MATCH by the D2 module)",
+  "novelty_audit": "research/control/stocks_free_v11_run/audits/d2_v11_novelty_measure.json (pooled Spearman midrank vs the ELEVEN veto entries; control-identifiability rho vs each proposal's declared gate; A9-F feasibility; zero PnL; deterministic x2 byte-identical sha256 1fba3975d5c5b6d2f1f60b73691f1682ee46da95ce49135f9fb40166104a4746)"
+ },
+ "selection_rubric_frozen_before_application_order": [
+  "1. MANDATORY LANE: at least one filing-event (A4) proposal must be selected IF any A4 proposal is eligible (plan sec2 axis 1 is the mandatory lane); if no A4 proposal is eligible the lane's death is a measured cycle outcome, recorded, never rescued",
+  "2. ELIGIBILITY GATES (measured, pre-selection): pooled |rho| <= 0.20 vs ALL ELEVEN veto entries (fail-closed: a null veto measurement fails the gate) AND anchor-vs-control |rho| strictly below the proposal's own declared gate AND A9-F feasibility RUNNABLE (a sham/falsification control that cannot run is a design failure, not a pass)",
+  "3. COVERAGE RANK among eligible proposals: measured anchor pairs",
+  "4. LANE DIVERSITY: the selected families come from different lanes when more than one family is selected (cannot bind on a singleton eligible set)",
+  "5. BUDGET: at most two families x three arms = 6 scored cells (the cycle's entire budget); unused slots are never reassigned"
+ ],
+ "measured_eligibility": {
+  "SFV11-A4-H1": {"max_abs_veto_rho": 0.219, "worst_veto": "momentum_63s", "margin_to_020": -0.019, "pairs": 22819, "anchor_vs_control_rho": 0.0487, "feasibility": "RUNNABLE", "verdict": "INELIGIBLE_NOVELTY (thin margin, P-2 class)"},
+  "SFV11-A4-H2": {"max_abs_veto_rho": 0.2192, "worst_veto": "momentum_63s", "margin_to_020": -0.0192, "pairs": 22595, "anchor_vs_control_rho": 0.0482, "feasibility": "RUNNABLE", "verdict": "INELIGIBLE_NOVELTY (thin margin, P-2 class)"},
+  "SFV11-A5-H1": {"max_abs_veto_rho": 0.1554, "worst_veto": "sector_exposure_form", "margin_to_020": 0.0446, "pairs": 112668, "anchor_vs_control_rho": 0.0792, "feasibility": "RUNNABLE", "verdict": "ELIGIBLE (ctrl 0.0792 << gate 0.30; per-date compliance measured in the audit)"},
+  "SFV11-A5-H2": {"max_abs_veto_rho": 0.2392, "worst_veto": "depletion_interaction", "margin_to_020": -0.0392, "pairs": 112668, "anchor_vs_control_rho": 0.9516, "feasibility": "RUNNABLE", "verdict": "INELIGIBLE — DOUBLE-BLOCKED (novelty FAIL and control UNIDENTIFIABLE at its own 0.70 gate; the geometry-null control is near-identical to the anchor as measured)"},
+  "SFV11-A6-H1": {"max_abs_veto_rho": 0.2066, "worst_veto": "vol_level", "margin_to_020": -0.0066, "pairs": 93307, "anchor_vs_control_rho": 0.0092, "feasibility": "RUNNABLE", "verdict": "INELIGIBLE_NOVELTY (thinnest kill of the cycle; recorded as thin per P-2)"},
+  "SFV11-A6-H2": {"max_abs_veto_rho": null, "worst_veto": null, "margin_to_020": null, "pairs": 2458, "anchor_vs_control_rho": -0.0901, "feasibility": "RUNNABLE", "verdict": "INELIGIBLE_NOVELTY fail-closed (holding-indicator support is constant 1.0 on its own cells -> zero variance -> all eleven veto correlations unmeasurable; the frozen verdict rule measures null as FAIL, never pass-open)"}
+ },
+ "selection": {
+  "selected_families": ["SFV11-A5-H1"],
+  "rationale": "rubric applied in frozen order: (1) the mandatory filing-event lane has NO eligible proposal — both A4 proposals measured INELIGIBLE vs momentum_63s at 0.219/0.2192; the lane dies as a measured outcome and is recorded, not rescued; (2) the eligible set is the singleton {SFV11-A5-H1} (eleven/eleven vetoes measured, max 0.1554 with margin +0.0446, control identifiable at 0.0792 << 0.30, A9-F RUNNABLE); (3) coverage rank trivially orders the singleton; (4) lane diversity cannot bind on one family; (5) budget: 1 family x 3 arms = 3 scored cells of 6 — the three unused slots are dead forever, never reassigned",
+  "arms": {
+   "SFV11-A5-H1": [
+    "SFV11-A5-H1-ANCHOR (late_share cadence-latency, per-sector long-low/short-high terciles)",
+    "SFV11-A5-H1-NEIGHBOUR (deep_share, depth >= 6 chains)",
+    "SFV11-A5-H1-CONTROL (shuffled-chain within-sector marginal-preserving permutation, PCG64 seed 20260907)"
+   ]
+  },
+  "implementation_spec": "per proposals/a5_process_H1.json verbatim: inherited 21-session grid (63+21k per fold) over the three frozen S0 folds; bookable pool ALIVE_EVIDENCED + DEAD_PRICE_CONFIRMED with recorded exclusions, exit-at-last-close, no survivorship re-substitution; eligibility per decision >= 63 price bars + ADV63 >= 2,000,000 USD (band C or better, L-I3 fail-closed) + raw_close >= 1.0; exposure late_share(e,t) = |{g in Q: inter_arrival_days > 460}| / |Q| with |Q| >= 4, Q = staged revision-layer chain groups with last_avail < gate(t) and 0 <= t - last_avail <= 800d; frozen thresholds latency_cut 460 (P2 pooled p90), neighbour depth cut 6, min_sector_names 6, terciles long-bottom/short-top with ties-to-long, hysteresis one-decile exit band, gross cap 2.0; fills next-session close, fill-check, band cost model 10/15/25 bps stress x2 charged once per fill via kernel_band_cost_v9.py verbatim with resolve_exit_band_bps C-rate ceiling for unrateable exits; per-sector net-zero books (no ETF legs); drop-one design (symbol/fold/process-leg depth>=3) as declared",
+  "not_selected_eligible": [],
+  "ineligible": ["SFV11-A4-H1 (novelty FAIL momentum_63s 0.219)", "SFV11-A4-H2 (novelty FAIL momentum_63s 0.2192)", "SFV11-A5-H2 (novelty FAIL 0.2392 + control UNIDENTIFIABLE 0.9516)", "SFV11-A6-H1 (novelty FAIL vol_level 0.2066)", "SFV11-A6-H2 (fail-closed null: all eleven vetoes unmeasurable on constant indicator support)"]
+ },
+ "mandatory_lane_statement": "The plan's mandatory filing-event lane was proposed (two outcome-blind A4 proposals), funded (P0/P2), and measured (D2). Both proposals measured ineligible on the preregistered novelty bar vs momentum_63s (thin margins -0.019/-0.0192 per P-2). Per the frozen rubric's step 1, the lane dies as a MEASURED CYCLE OUTCOME; nothing is rescued, re-cut, or re-measured (no parameter weakening). A negative mandatory-lane result is a successful research outcome per plan sec 0.",
+ "verdict": "SELECTION_FROZEN_ONE_FAMILY_THREE_ARMS_BUDGET_3_OF_6"
+}
