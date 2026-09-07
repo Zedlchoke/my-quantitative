@@ -151,3 +151,12 @@ at dispatch: "Ghi incident kể cả khi vô hại").
 - the typed phrase is recorded as OWNER_INTENT (owner_go_intent.json),
   NOT consumed: the P-8 gate (fresh A7 AUTHORIZED verdict first) does not
   exist yet; a fresh owner typing AFTER that verdict is the consumable key.
+
+## F-4 correction (A7 v2 finding, applied at next A1 touch)
+
+- The INC-V11-4 records above state the push time as 03:11:29Z — that is
+  2d2ddaf's COMMIT time, not the push time. The remote-tracking reflog
+  entry is epoch 1788753872 = 2026-09-07T04:04:32Z (11:04:32 +0700),
+  matching A7 v1's measurement. Both timestamps are inside the cycle
+  window; nothing else changes. Corrected here per append-only discipline
+  (prior entries stand as written, this note supersedes the timestamp).
