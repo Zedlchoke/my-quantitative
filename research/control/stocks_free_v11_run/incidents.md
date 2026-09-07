@@ -52,3 +52,22 @@ at dispatch: "Ghi incident kể cả khi vô hại").
 - 1,482 DEAD entities' price series end within 120d of last event vs 270
   end later — death-vs-stale ambiguity reported, not adjudicated (P1/P3
   freeze decides semantics; any semantics change recomputes controls per P-3).
+
+## ANOM-2026-09-07-D1 — harmless coordination notes from the parallel D1 lanes
+
+- measured_at_utc: 2026-09-07T03:45:00Z
+- (a) README interleaving: the three lanes ran in parallel and interleaved
+  commits on the shared proposals/README.md; each appended its own section
+  byte-preservingly (A1 verified 0 deletion lines in both inter-lane diffs).
+  Proposal JSON files were never read across lanes (each lane attests; files
+  appeared mid-task for A5 and remained untracked-unread). Mechanisms were
+  developed independently; no cross-lane mechanism contamination identified.
+  A7 prelaunch may re-weigh.
+- (b) A6 disclosed reading V10's closed a6_open_H1.json "for schema format
+  only" (a closed historical authority already in its packet context; the
+  V10 A4-H2/A6-H2 never-scored texts were not read). Outcome-blind
+  discipline intact; disclosure recorded per fail-closed habit. D2 still
+  measures novelty by exposure rho, not by intent.
+- (c) A5's self-check initially resolved a non-existent interpreter path
+  before using the repo venv (same shorthand class as INC-V11-0); published
+  artifacts unaffected.
