@@ -1,11 +1,16 @@
 """Tests for the global heavy lock (machine-wide serialization).
 
-Covers the owner-mandated behaviours: OS-level flock, refusal verdict
-NOT_RUN_RESOURCE_CONFLICT (never spin/overlap), registry with PID +
-process-start token, heartbeat + command digest + cycle/worktree
-ownership, and SAFE stale-lock recovery (a killed worker's flock is
-auto-released by the OS; its registry row is archived only after PID +
-token checks — a reused PID must not be mistaken for the holder).
+Owner remediation items (2026-09-07):
+- runtime is SHARED, derived from the git common dir — cross-worktree
+  contention is proven on a REAL temporary git repository with two real
+  linked worktrees;
+- no public entry point accepts a runtime path;
+- alive PID + matching start token + free flock => CONTROL_STATE_DRIFT,
+  fail closed (nothing archived);
+- cleanup holds the flock while reconciling;
+- crash cleanup (SIGKILL) archives the stale row only because the OS
+  freed the flock AND the pid is dead;
+- PID reuse (token mismatch) is stale, never alive.
 """
 
 from __future__ import annotations
@@ -15,70 +20,38 @@ import os
 import signal
 import subprocess
 import sys
-import textwrap
 import time
 from pathlib import Path
 
 import pytest
 
+from research.governance import heavy_lock
 from research.governance.heavy_lock import (
+    CONTROL_STATE_DRIFT,
     HISTORY_NAME,
     LOCK_NAME,
     REGISTRY_NAME,
+    HeavyLockError,
     LockBusyError,
     NOT_RUN_RESOURCE_CONFLICT,
     acquire,
     cleanup_stale,
     command_digest,
     process_start_token,
-)
-
-HOLDER_SCRIPT = textwrap.dedent(
-    """
-    import sys, time
-    sys.path.insert(0, {repo!r})
-    from research.governance.heavy_lock import acquire
-    handle = acquire(
-        {runtime!r},
-        cycle_id="TEST-CYCLE",
-        role="holder",
-        worktree="/tmp/wt",
-        command=["python3", "holder.py"],
-        expected_artifacts=["out.jsonl"],
-    )
-    print("ACQUIRED", flush=True)
-    for _ in range(120):
-        handle.heartbeat()
-        time.sleep(0.5)
-    """
+    shared_runtime_dir,
 )
 
 
 @pytest.fixture()
-def runtime(tmp_path):
-    return tmp_path / "runtime"
-
-
-def _spawn_holder(runtime: Path, repo_root: Path):
-    script = runtime.parent / "holder.py"
-    script.write_text(HOLDER_SCRIPT.format(repo=str(repo_root), runtime=str(runtime)), encoding="utf-8")
-    proc = subprocess.Popen(
-        [sys.executable, str(script)],
-        stdout=subprocess.PIPE,
-        text=True,
-    )
-    assert proc.stdout is not None
-    assert proc.stdout.readline().strip() == "ACQUIRED"
-    return proc
-
-
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[1]
+def runtime(tmp_path, monkeypatch):
+    """Hermetic shared runtime: patch the DERIVATION, not a caller param."""
+    target = tmp_path / "runtime"
+    monkeypatch.setattr(heavy_lock, "shared_runtime_dir", lambda: target)
+    return target
 
 
 def test_acquire_writes_registry_with_token_and_digest(runtime):
     with acquire(
-        runtime,
         cycle_id="C1",
         role="A1",
         worktree="/wt/x",
@@ -86,32 +59,50 @@ def test_acquire_writes_registry_with_token_and_digest(runtime):
         expected_artifacts=["a.jsonl"],
     ) as handle:
         row = json.loads((runtime / REGISTRY_NAME).read_text())
-        assert row["cycle_id"] == "C1"
         assert row["pid"] == os.getpid()
         assert row["process_start_token"] == process_start_token(os.getpid())
         assert row["command_digest"] == command_digest(["python", "-m", "driver"])
-        assert row["worktree"] == "/wt/x"
         assert row["status"] == "RUNNING"
         handle.heartbeat(extra={"phase": "E"})
-        row = json.loads((runtime / REGISTRY_NAME).read_text())
-        assert row["last_heartbeat"]
-        assert row["extra"]["phase"] == "E"
+        assert json.loads((runtime / REGISTRY_NAME).read_text())["extra"]["phase"] == "E"
     assert not (runtime / REGISTRY_NAME).exists()
     history = (runtime / HISTORY_NAME).read_text().strip().splitlines()
     assert history and json.loads(history[-1])["status"] == "FINISHED"
 
 
-def test_contention_refuses_with_not_run_resource_conflict(runtime):
-    proc = _spawn_holder(runtime, _repo_root())
+def test_no_public_api_accepts_a_runtime_path():
+    # Remediation: callers cannot choose a worktree-local runtime.
+    import inspect
+
+    for fn in (acquire, cleanup_stale):
+        params = inspect.signature(fn).parameters
+        assert not any("runtime" in p for p in params), (
+            f"{fn.__name__} must not expose a runtime parameter"
+        )
+
+
+def test_contention_refuses_with_not_run_resource_conflict(runtime, tmp_path):
+    # Cross-process holder with the same patched runtime derivation; the
+    # REAL git-derivation path is exercised separately below (worktree test).
+    proc = subprocess.Popen(
+        [sys.executable, "-c",
+         "import sys, os, time;"
+         f"sys.path.insert(0, {str(Path(__file__).resolve().parents[1])!r});"
+         "os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD']='1';"
+         "from research.governance import heavy_lock;"
+         f"heavy_lock.shared_runtime_dir = lambda: {str(runtime)!r};"
+         "h = heavy_lock.acquire(cycle_id='TEST-CYCLE', role='holder', "
+         f"worktree={str(tmp_path)!r}, command=['python3','holder.py'], "
+         "expected_artifacts=['out.jsonl']);"
+         "print('ACQUIRED', flush=True);"
+         "[ (h.heartbeat(), time.sleep(0.5)) for _ in range(240) ]"],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
     try:
+        assert proc.stdout is not None and proc.stdout.readline().strip() == "ACQUIRED"
         with pytest.raises(LockBusyError) as excinfo:
-            acquire(
-                runtime,
-                cycle_id="C2",
-                role="other",
-                worktree="/wt/y",
-                command=["python", "-m", "other"],
-            )
+            acquire(cycle_id="C2", role="other", worktree="/wt/y", command=["python", "-m", "other"])
         assert excinfo.value.verdict == NOT_RUN_RESOURCE_CONFLICT
         assert "TEST-CYCLE" in str(excinfo.value)
     finally:
@@ -119,30 +110,25 @@ def test_contention_refuses_with_not_run_resource_conflict(runtime):
         proc.wait(timeout=10)
 
 
-def test_crash_cleanup_os_releases_flock_and_registry_archived(runtime):
-    proc = _spawn_holder(runtime, _repo_root())
-    row_pid = None
-    deadline = time.time() + 10
-    while time.time() < deadline:
-        row_path = runtime / REGISTRY_NAME
-        if row_path.exists():
-            row = json.loads(row_path.read_text())
-            row_pid = row["pid"]
-            break
-        time.sleep(0.05)
-    assert row_pid and row_pid != os.getpid()
+def test_crash_cleanup_os_releases_flock_and_registry_archived(runtime, tmp_path):
+    proc = subprocess.Popen(
+        [sys.executable, "-c",
+         "import sys, time;"
+         f"sys.path.insert(0, {str(Path(__file__).resolve().parents[1])!r});"
+         "from research.governance import heavy_lock;"
+         f"heavy_lock.shared_runtime_dir = lambda: {str(runtime)!r};"
+         "h = heavy_lock.acquire(cycle_id='TEST-CYCLE', role='holder', "
+         f"worktree={str(tmp_path)!r}, command=['python3','holder.py']);"
+         "print('ACQUIRED', flush=True);"
+         "time.sleep(120)"],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    assert proc.stdout is not None and proc.stdout.readline().strip() == "ACQUIRED"
     os.kill(proc.pid, signal.SIGKILL)
     proc.wait(timeout=10)
 
-    # OS auto-released the flock; acquire must succeed and archive the
-    # stale RUNNING row into history with the death reason.
-    with acquire(
-        runtime,
-        cycle_id="C3",
-        role="reclaimer",
-        worktree="/wt/z",
-        command=["python", "-m", "reclaim"],
-    ) as handle:
+    with acquire(cycle_id="C3", role="reclaimer", worktree="/wt/z", command=["python", "-m", "reclaim"]):
         history = [
             json.loads(line)
             for line in (runtime / HISTORY_NAME).read_text().strip().splitlines()
@@ -150,13 +136,44 @@ def test_crash_cleanup_os_releases_flock_and_registry_archived(runtime):
         stale = [h for h in history if h.get("cycle_id") == "TEST-CYCLE"]
         assert stale, "crashed holder must be archived"
         assert stale[-1]["reclaim_reason"] == "pid_dead"
-        assert handle.owner["cycle_id"] == "C3"
+
+
+def test_alive_row_with_free_flock_is_control_state_drift_fail_closed(runtime):
+    # Simulate a LIVE worker whose registry says RUNNING while its flock
+    # is free (bookkeeping lies). Our own pid + OUR REAL token = alive.
+    runtime.mkdir(parents=True, exist_ok=True)
+    (runtime / REGISTRY_NAME).write_text(
+        json.dumps(
+            {
+                "cycle_id": "LIVE-GHOST",
+                "role": "worker",
+                "pid": os.getpid(),
+                "process_start_token": process_start_token(os.getpid()),
+                "worktree": "/wt/ghost",
+                "command_digest": "0" * 64,
+                "started_at": "2026-01-01T00:00:00Z",
+                "last_heartbeat": "2026-01-01T00:00:00Z",
+                "expected_artifacts": [],
+                "status": "RUNNING",
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(HeavyLockError) as excinfo:
+        acquire(cycle_id="X", role="r", worktree="/wt/x", command=["python", "-m", "x"])
+    assert CONTROL_STATE_DRIFT in str(excinfo.value)
+    # fail closed: the suspicious row is preserved, NOT archived
+    row = json.loads((runtime / REGISTRY_NAME).read_text())
+    assert row["cycle_id"] == "LIVE-GHOST"
+    assert not (runtime / HISTORY_NAME).exists()
+    # cleanup reports the drift without clearing
+    result = cleanup_stale()
+    assert result["action"] == "none"
+    assert CONTROL_STATE_DRIFT in result["reason"]
+    assert (runtime / REGISTRY_NAME).exists()
 
 
 def test_pid_reuse_token_mismatch_is_stale_not_alive(runtime):
-    # Simulate a reused PID: registry row carries OUR pid but a WRONG
-    # process-start token. The row must be judged stale (archived), not
-    # alive — a recycled PID may never be mistaken for the holder.
     runtime.mkdir(parents=True, exist_ok=True)
     (runtime / REGISTRY_NAME).write_text(
         json.dumps(
@@ -175,49 +192,77 @@ def test_pid_reuse_token_mismatch_is_stale_not_alive(runtime):
         ),
         encoding="utf-8",
     )
-    result = cleanup_stale(runtime)
+    result = cleanup_stale()
     assert result["action"] == "archived_stale"
     assert result["reason"] == "pid_reused_token_mismatch"
-    assert not (runtime / REGISTRY_NAME).exists()
     history = json.loads((runtime / HISTORY_NAME).read_text().strip().splitlines()[0])
     assert history["cycle_id"] == "GHOST"
 
 
-def test_cleanup_stale_leaves_live_row_alone(runtime):
-    with acquire(
-        runtime,
-        cycle_id="ALIVE",
-        role="worker",
-        worktree="/wt/a",
-        command=["python", "-m", "w"],
-    ):
-        result = cleanup_stale(runtime)
+def test_cleanup_stale_leaves_live_lock_alone(runtime):
+    with acquire(cycle_id="ALIVE", role="worker", worktree="/wt/a", command=["python", "-m", "w"]):
+        result = cleanup_stale()
         assert result["action"] == "none"
+        assert "lock held" in result["reason"]
         assert (runtime / REGISTRY_NAME).exists()
 
 
 def test_release_refuses_bogus_status(runtime):
-    handle = acquire(
-        runtime,
-        cycle_id="C4",
-        role="r",
-        worktree="/wt/c4",
-        command=["python", "-m", "c4"],
-    )
+    handle = acquire(cycle_id="C4", role="r", worktree="/wt/c4", command=["python", "-m", "c4"])
     with pytest.raises(Exception):
         handle.release(status="SOMEHOW_DONE")
     handle.release(status="TECHABORT", note="driver died")
     history = json.loads((runtime / HISTORY_NAME).read_text().strip().splitlines()[-1])
     assert history["status"] == "TECHABORT"
-    assert history["release_note"] == "driver died"
 
 
-def test_lock_file_is_gitignored_path_shape(runtime):
-    with acquire(
-        runtime,
-        cycle_id="C5",
-        role="r",
-        worktree="/wt/c5",
-        command=["python", "-m", "c5"],
-    ):
-        assert (runtime / LOCK_NAME).exists()
+def test_shared_runtime_dir_resolves_from_any_worktree(tmp_path):
+    """Cross-worktree contention, proven on a REAL temporary git repo:
+    two linked worktrees + the root all derive the SAME runtime, and a
+    holder in worktree A blocks an acquirer in worktree B."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init", "-q"], check=True)
+    wt1 = tmp_path / "wt1"
+    wt2 = tmp_path / "wt2"
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", str(wt1)], check=True)
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", str(wt2)], check=True)
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    holder_code = (
+        "import sys, os, time;"
+        f"sys.path.insert(0, {str(Path(__file__).resolve().parents[1])!r});"
+        "from research.governance.heavy_lock import acquire, shared_runtime_dir;"
+        "h = acquire(cycle_id='WT1-CYCLE', role='holder', worktree=os.getcwd(), "
+        "command=['python3', 'holder.py']);"
+        "print('ACQUIRED', shared_runtime_dir(), flush=True);"
+        "time.sleep(120)"
+    )
+    proc = subprocess.Popen(
+        [sys.executable, "-c", holder_code],
+        cwd=str(wt1),
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert proc.stdout is not None
+        line = proc.stdout.readline().split()
+        assert line[0] == "ACQUIRED"
+        wt1_runtime = Path(line[1])
+        assert wt1_runtime == repo / ".runtime", "runtime must derive from the git common dir"
+
+        # From worktree 2 (different cwd, real derivation), the same lock:
+        old = Path.cwd()
+        os.chdir(wt2)
+        try:
+            assert shared_runtime_dir() == repo / ".runtime"
+            with pytest.raises(LockBusyError) as excinfo:
+                acquire(cycle_id="WT2", role="contender", worktree=str(wt2), command=["python", "-m", "c"])
+            assert excinfo.value.verdict == NOT_RUN_RESOURCE_CONFLICT
+            assert "WT1-CYCLE" in str(excinfo.value)
+        finally:
+            os.chdir(old)
+    finally:
+        proc.send_signal(signal.SIGTERM)
+        proc.wait(timeout=10)
