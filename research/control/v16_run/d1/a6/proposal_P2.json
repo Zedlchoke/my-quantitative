@@ -1,0 +1,45 @@
+{
+  "proposal_id": "A6-V16-P2",
+  "lane": "a6",
+  "axis": "AXIS-3 open axis",
+  "title": "RUNPERSIST: same-side aggressor run persistence across the UTC day boundary (path-shape of the print sequence)",
+  "causal_claim_one_sentence": "An extreme maximal same-side aggressor run on day t reflects order-splitting execution algorithms (or cascade engines) still mid-parent-order at the day boundary, and a split parent order is slow to complete and forced to keep taking liquidity in the same direction into the next session, so extreme run-side days see next-day same-direction continuation; the mechanism must fail when run extremes are end-of-day single-print artifacts or intraday liquidation cascades that fully mean-revert before the next session.",
+  "falsification_rule": "The claim is proven wrong if any of: (a) after cost, the continuation book earns non-positive expectancy (frozen rule order #1, G1 anchor FAIL); (b) the day-label-permuted reshuffled-interval control reproduces the anchor (same sign, >= 0.5x anchor expectancy) — the t to t+1 alignment of run shape carries no next-day information (G11 fires); (c) the measured sign is robustly OPPOSITE the claimed continuation direction across >= 2 folds (the claim's direction is wrong, not merely unprofitable); or (d) G12 pooled ancestry |rho| > 0.20 vs any forbidden family, recorded ancestor, or measured shadow at D2.",
+  "control_class": "reshuffled-interval placebo (mandatory for temporal-structure claims per FAMILY_PIPELINE section 3 step 11), in the only semantics runnable on the panel-only surface: permute the DAY-INDEX alignment of the conditioning series within the post-warmup span and run the identical continuation book — this destroys the t to t+1 pairing while preserving the marginal exposure distribution. A within-day sign-sequence shuffle is infeasible because per-print signs are not staged in the daily panel; that constraint is disclosed here rather than papered over (P-3: a control that cannot run under evidenced semantics is a design failure — this one runs).",
+  "expected_failure_mode": "Mechanical streak inflation: maximal run length grows with daily print count, so on high-activity days the conditioning variable degenerates toward a volume/activity-level proxy — the mined dollar-volume-shock axis (XSECT-VOLSHK ancestry) — and the family dies at D2 (rho vs activity-form exposures) or at G4 fold concentration because activity regimes cluster in time; secondarily, crowding of a public run-persistence regularity; the shared aggressor-sign ancestry with M01-AGGRESSOR-ABSORPTION is the accepted rho risk the family is willing to lose to.",
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "clock": "daily",
+  "warmup": "61 days (60-day trailing percentile window + 1-day condition lag); decisions begin 2025-10-21 event-time; first holding day 2025-10-22",
+  "decision_timestamp_semantics": "Event-time: the decision timestamp is the transact_time of the final print of UTC day t — the instant the day-t aggregates (buy_streak_max, sell_streak_max) are complete by exchange event time; the entry fill books at that instant's price (last_price[t]). The 8.3-10.7h measured archive publication lag (p0_freeze_v16.json) is a staging property, not a decision property (p2_coverage_clocks_v16.json conditioning_availability: zero conditioning lag at decision time); under the I/Q availability-lag mutation, any conditioning field found arriving late moves the decision exactly one period.",
+  "features": [
+    {
+      "name": "buy_streak_max",
+      "role": "conditioning input: longest consecutive taker-buy print run of day t-1",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "sell_streak_max",
+      "role": "conditioning input: longest consecutive taker-sell print run of day t-1",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "derived run_imb[t] = (buy_streak_max[t] - sell_streak_max[t]) / (buy_streak_max[t] + sell_streak_max[t])",
+      "role": "signed run-side skew of the print sequence, in (-1, 1); a within-day ratio, count-normalized by construction — measures the SIDE-SHAPE of the aggressive sequence, not its net direction; derived from staged columns only",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "name": "last_price",
+      "role": "entry/exit fill price only (no conditioning role)",
+      "availability": "EVIDENCED (exchange event time)"
+    }
+  ],
+  "arms": {
+    "anchor": "Per symbol, at end of day t-1: if |run_imb[t-1]| >= rolling 60-day 80th percentile of |run_imb|, hold position sign(run_imb[t-1]) over day t (1-day hold, CONTINUATION of the run side); else flat. Unit notional per active symbol-day; entry fill at last_price[t-1] (decision instant), exit at last_price[t]; both symbols may be simultaneously active.",
+    "neighbour": "Same mechanism, different parameters, exact numbers: trigger threshold = rolling 90-day 75th percentile of |run_imb|, 1-day hold, identical fill/sizing convention (wider estimation window, looser quantile — parameter sensitivity of run-persistence continuation).",
+    "control": "Reshuffled-interval placebo, exact spec: apply the identical anchor rule to run_imb with day labels permuted within 2025-10-21..2026-08-21 under numpy default_rng(seed=16), ONE fixed permutation shared by both symbols (a 200-permutation dispersion band is declared as a diagnostic output only, never as the bookable control); identical costs, folds, gates."
+  },
+  "costs": "L-V14-0 cost-once per fill; stress multipliers applied to booked PnL (tier 2.0 primary)",
+  "folds": "F0/F1/F2, 1-day purge (frozen V12 contract)",
+  "gates": "Frozen G1..G12 set per p3_invariants_v16.json, rule order #1 (after-cost expectancy first, first FAIL kills the arm): G1 expectancy>0; G2 PF>=1.10; G3 folds>=2/3; G4 largest-fold-positive-share<=0.50; G5 MDD<=0.20; G10 neighbour supports; G11 control does not reproduce (falsification-by-control cluster binding); G12 novelty pooled |rho|<=0.20 vs the FULL forbidden inventory incl. V15 additions (elite-size-asym, taker-saturation, elite-LEVEL shadow).",
+  "novelty_self_check": "Walk of the crypto forbidden inventory: OITD + duplicates and OILEV-V2 anchor + inverted shadow (no OI anywhere in the construction), LIQEPIS + duplicates (no liquidity-state or episode variable — run skew is a sequence-shape statistic, not a liquidity level or episode state), PREMFADE basis-level fade (no basis input), BAB (no beta sort), carry families (no funding input), ILLIQ owner-gated (no Amihud form), elite-size-ASYMMETRY form (no account-level data — print-run counts are not account sizes), taker-saturation form (no OI churn denominator), elite-LEVEL measured shadow (no elite level conditioning). Recorded crypto ancestry, with candor: M01-AGGRESSOR-ABSORPTION (V10/V10R, ledger + FAMILY_FAILURES) shares the aggressor-sign source — but its form was flow-versus-price-resistance absorption, while run_imb is a run-LENGTH path statistic computable on net-balanced days (flow_imbalance near zero with |run_imb| extreme is exactly the decoupling case), so the exposures are structurally non-identical; the pooled |rho| vs M01-form and AXIS-1-sibling flow-imbalance exposures is measured at D2 and plausibly lands in the 0.2-0.4 band — if it exceeds 0.20 the family dies there and that is a correct cheap-kill, not a dispute. Lane-distinctness is respected: the mechanism claim is run persistence (temporal structure of the print sequence), not net-flow direction, which is AXIS-1 territory. Sprint ancestry XSECT-VOLSHK (dollar-volume shock continuation) is named as the primary expected failure mode via activity contamination; the within-day ratio, percentile thresholding, and the interval-permuted control are the declared mitigations, and the family is willing to lose on exactly that. Panel-only construction; no V15 bulk-metrics legs are used, so there is no V15 staging manifest dependency."
+}
