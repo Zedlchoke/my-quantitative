@@ -1,0 +1,73 @@
+{
+  "proposal_id": "A5-V16-P2",
+  "lane": "a5",
+  "axis": "AXIS-2 trade-arrival structure",
+  "title": "Quiet-tape drift follow: one-day continuation after arrival-drought days with a persistent drift sign (trade_count z <= -1.0), BTCUSDT + ETHUSDT daily",
+  "causal_claim_one_sentence": "A participation-constrained large executor (TWAP/VWAP-schedule trader) is forced to keep printing through arrival-quiet days (trade_count z28 <= -1.0) because its schedule must complete regardless of tape thinness, so its persistent one-sided demand continues pushing price in the prevailing drift direction on the next day, and the mechanism must fail when quiet days are demand-absent regime idles (weekend-thinned or holiday-thinned sessions with no scheduled flow), in which case the conditional drift is zero and the book pays only costs.",
+  "falsification_rule": "The claim is proved wrong if (a) the anchor's after-cost expectancy is <= 0 (frozen rule order #1, G1), OR (b) the reshuffled-interval control CTL-SHUFFLE-COUNT (identical trigger threshold -1.0 and identical drift-sign follow rule applied to the seed-20260907 within-symbol/within-fold permutation of the count_z28 series, which preserves the marginal distribution and frequency of quiet-day designations but destroys the date alignment between arrival droughts and the drift being followed) reproduces the anchor at same sign with >= 0.5x expectancy or out-earns the anchor (G11) - either outcome proves the temporal alignment of arrival droughts with persistent-drift days carries no information (or negative information), and the scheduled-execution-persistence mechanism does not exist on this window.",
+  "control_class": "Reshuffled-interval placebo (mandatory class for arrival-structure mechanisms, per p3_invariants_v16.json frozen arms contract: 'arrival-structure -> reshuffled-interval placebo'). Exact spec: per symbol, per fold, the daily count_z28 conditioning series is permuted with numpy default_rng(20260907) (one fixed seed, applied identically across folds for determinism and reproduction); the anchor trigger (count_z28 <= -1.0 on the permuted series) fires on the permuted dates, and on each permuted trigger date the direction is +sign of the REAL drift3 at that date (drift3(t) = vwap(t)/vwap(t-3) - 1), entry REAL vwap(t+1), exit REAL vwap(t+2), sizing identical. The permutation preserves the exact marginal intensity of the conditioning statistic (same values, same trigger frequency, same trade count) while destroying the temporal alignment between arrival droughts and specific calendar dates; it must NOT reproduce the anchor.",
+  "expected_failure_mode": "The family is willing to lose to this hypothesis: quiet tapes are mostly demand-absent regime-idle sessions (weekend-thinned UTC days on a 24/7 market) whose conditional drift is economically zero, so the anchor dies at G1 after one-day taker costs (COST_DOMINATED); and because quiet days concentrate in weekends and holiday regimes, booked PnL concentrates in 1-2 folds and the anchor dies at G4 fold concentration - a risk the reshuffled-interval control directly interrogates, since shuffled trigger dates draw quietness designations away from the true weekend cluster. Secondary plausible deaths: trigger scarcity / fold non-vacuity (cheap-kill 3), or the drift sign whipsaws at daily sampling on two majors so G2/G5 fail (PF 1.10 floor, MDD 0.20 ceiling).",
+  "universe": ["BTCUSDT", "ETHUSDT"],
+  "clock": "daily (event-time symbol-day; sub-daily NOT_GRANTED_BY_DESIGN per p2_coverage_clocks_v16.json)",
+  "warmup": "28 days (trailing 28-day robust location/scale for count_z28, which covers the 3-day drift lookback; decisions start only after warmup, frozen at selection)",
+  "decision_timestamp_semantics": "Event-time (exchange transact_time aggregates). The symbol-day row is final at the day's last print; the decision for day t uses only fields with event timestamps <= end of day t and executes on day t+1 (entry at vwap(t+1), exit at vwap(t+2)); any conditioning field arriving late under publication semantics moves the decision exactly one period (availability-lag mutation; conditioning_availability per p2_coverage_clocks_v16.json: exchange-event-time, zero conditioning lag at decision time).",
+  "features": [
+    {
+      "column": "trade_count",
+      "role": "primary conditioning field: aggressor print count per symbol-day (arrival intensity); standardized to count_z28 = (x - trailing-28d median) / (1.4826 * trailing-28d MAD), per symbol, trailing only",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "vwap",
+      "role": "execution and measurement price: ret1(t) = vwap(t)/vwap(t-1) - 1; drift3(t) = vwap(t)/vwap(t-3) - 1; entry vwap(t+1), exit vwap(t+2) (neighbour exit vwap(t+3))",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "symbol",
+      "role": "identity key of the staged daily panel",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "date",
+      "role": "UTC symbol-day identity of the staged daily panel",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "first_ts_ms",
+      "role": "day-boundary integrity stamp: confirms the conditioning day's window completeness before a decision may fire",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "last_ts_ms",
+      "role": "day-boundary integrity stamp: confirms the conditioning day's window completeness before a decision may fire",
+      "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+      "column": "integrity_ok",
+      "role": "provenance guard: decisions from rows with integrity_ok false are dropped, not repaired",
+      "availability": "EVIDENCED (exchange event time)"
+    }
+  ],
+  "arms": [
+    {
+      "role": "anchor",
+      "name": "QUIET-DRIFT-1D",
+      "spec": "Trigger on day t (per symbol): count_z28(t) <= -1.0 AND sign(ret1(t)) == sign(drift3(t)) != 0, where ret1(t) = vwap(t)/vwap(t-1) - 1 and drift3(t) = vwap(t)/vwap(t-3) - 1 (the quiet day continues the 3-day drift direction). Direction = +sign(drift3(t)) (follow the drift). Entry at vwap(t+1), exit at vwap(t+2), hold 1 day. Equal risk per triggered symbol-day; book weights under the frozen v12 adapter runner (0.30 cap). Both symbols pooled in one book."
+    },
+    {
+      "role": "neighbour",
+      "name": "QUIET-DRIFT-0.5-2D",
+      "spec": "Same mechanism, different parameters: trigger count_z28(t) <= -0.5 (lower bar, more triggers), hold 2 days (entry vwap(t+1), exit vwap(t+3)); drift-sign rule, direction and sizing identical to the anchor. Must support the anchor (G10) or the family is not corroborated."
+    },
+    {
+      "role": "control",
+      "name": "CTL-SHUFFLE-COUNT",
+      "spec": "Reshuffled-interval placebo, exact spec: per symbol, per fold, permute the daily count_z28 series with numpy default_rng(20260907); apply the anchor's trigger (<= -1.0) to the permuted series; on each permuted trigger date take direction +sign(REAL drift3 at that date), entry REAL vwap(t+1), exit REAL vwap(t+2), sizing identical. Same marginal intensity of the conditioning statistic, destroyed temporal alignment of arrival droughts with calendar dates. Must NOT reproduce the anchor (G11); if it reproduces at same sign >= 0.5x or out-earns, the family dies as falsified-by-control."
+    }
+  ],
+  "costs": "L-V14-0 cost-once per fill; stress multipliers applied to booked PnL (tier 2.0 primary)",
+  "folds": "F0/F1/F2, 1-day purge (frozen V12 contract)",
+  "gates": "Frozen set G1..G12 from p3_invariants_v16.json, evaluated in frozen order, first FAIL kills the arm - G1 expectancy > 0; G2 PF >= 1.10; G3 folds >= 2/3; G4 largest-fold-positive-share <= 0.50; G5 MDD <= 0.20; G10 neighbour supports; G11 control does not reproduce (falsification-by-control cluster binding); G12 novelty pooled |rho| <= 0.20 vs the FULL forbidden inventory incl. V15 additions (elite-size-asym, taker-saturation, elite-LEVEL shadow). No new gates are invented.",
+  "novelty_self_check": "Walked against the crypto forbidden inventory: (1) LIQEPIS + duplicates - LIQEPIS was liquidity EPISODICITY conditioned on open-interest/depth (bulk-metrics) episode data; this proposal conditions on ARRIVAL INTENSITY (trade_count z-score, a print-frequency level) with a drift-sign follow rule - a different observable (print-count intensity vs OI/depth episodicity), a different data surface (V16 staged aggTrades panel vs V13 Data Fusion OI/depth), and a different mechanism (scheduled-execution persistence/continuation vs liquidity-episode conditioning). Candid proximity statement: both describe 'when liquidity/activity is thin', and the veto is MEASURED, not argued - if pooled |rho| vs LIQEPIS conditioning exposures exceeds 0.20 at D2, this proposal dies at G12 and that is the correct outcome. (2) OITD + duplicates, OILEV-V2 anchor + inverted shadow - open-interest positioning mechanisms; no OI field exists in the aggTrades panel, so the information set cannot coincide. (3) PREMFADE - basis/premium LEVEL fade; no basis field exists here. (4) BAB and carry families - beta sorts and funding sign/slope, unrelated to print intensity. (5) ILLIQ (owner-gated) - Amihud |return|/notional impact LEVEL; this trigger contains no impact magnitude and no notional, only a print-count level; ILLIQ is the closest activity-flavored ancestor and is listed for D2 measurement. (6) V15 additions - elite-size-ASYMMETRY, taker-saturation, elite-LEVEL measured shadow: all built from bulk-metrics toptrader/taker fields in a cross-sectional 20-symbol form; this proposal is a time-series gate on 2 majors from the aggTrades trade_count column, which does not exist in the V15 staged panel, and the elite-LEVEL shadow is measured on headcount-LEVEL exposure (positioning counts), which a print-count trigger cannot linearly reproduce - measured at D2, not assumed. (7) Beyond the crypto inventory, honest flags: V9 XSECT-VOLSHK-S15 (dollar-volume SHOCK continuation, cross-sectional top-6 on 10 alts) is the nearest activity-continuation ancestor - it used notional-volume shock ratios cross-sectionally, whereas this proposal uses print-count DROUGHTS time-series on 2 majors with a drift-sign persistence condition; V8R H-XSECT-REVERSAL-v2 is opposite-signed to this continuation rule but on a different information set, universe and clock. Neither is a re-test or parameter variant of any forbidden family: this is a new mechanism on the one keyless family never mined before V16 (aggTrades), with the mandatory reshuffled-interval falsification control of its own.",
+  "outcome_blind_attestation": "Signed on wave SHA 4b913c30b7386bab9f5c3bedbd1685e9d07df4f1; see outcome_blind_attestation.json in this directory."
+}
