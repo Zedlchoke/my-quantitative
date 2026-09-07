@@ -1,9 +1,13 @@
 # FAMILY PIPELINE — the research-family lifecycle protocol
 
-> Governance protocol dated 2026-09-07, adopted by owner directive
-> "APPROVED WITH AMENDMENTS — hợp nhất, không thay thế". This file MERGES
-> the owner's 8-phase/40-step pipeline proposal into the existing factory
-> machinery; it replaces nothing. Order of authority is unchanged
+> Governance protocol dated 2026-09-07, adopting the owner's
+> "APPROVED WITH AMENDMENTS" directive. **Merge-candidate status**: this
+> file lives on branch `orca/governance-family-pipeline` and becomes the
+> standing factory standard ONLY when the owner merges that branch to
+> main; until then it is normative for nothing except its own branch and
+> plans that explicitly preregister it. It merges the owner's
+> 8-phase/40-step pipeline proposal into the existing factory machinery;
+> it replaces nothing. Order of authority is unchanged
 > (RULES.md §0): owner instruction > live plan > CLAUDE.md > frozen
 > contracts > historical plans > prose. Where this file and a live plan
 > disagree, the LIVE PLAN of the running cycle wins; this file governs
@@ -248,10 +252,13 @@ outcome_blind_attestation      signed on the wave SHA
 ## 11. Mechanism implementation status
 
 ```text
-FAMILY_PIPELINE protocol             DOCUMENTED (this file; merged, replaces nothing)
+FAMILY_PIPELINE protocol             DOCUMENTED (merge candidate on this branch —
+                                     standing standard only upon owner merge)
 FAMILY_FAILURES registry + validator IMPLEMENTED/TESTED at commit 2 of this branch
-diagnostic persistability gate       IMPLEMENTED/TESTED at commit 3 (adoption: future cycles)
-global heavy lock                    IMPLEMENTED/TESTED at commit 4 (adoption: future cycles)
+diagnostic persistability gate       IMPLEMENTED/TESTED at commit 3 + remediation
+                                     (adoption: future cycles)
+global heavy lock                    IMPLEMENTED/TESTED at commit 4 + remediation
+                                     (adoption: future cycles)
 ```
 
 RULES.md §9 carries the live status table. The authoritative ladder is:

@@ -184,14 +184,24 @@ running cycles are never retrofitted (adoption boundary: crypto V16+,
 forex V7+, stocks V12+).
 
 ```text
-FAMILY_PIPELINE protocol              DOCUMENTED (merged standard; future plans cite it)
-FAMILY_FAILURES registry + validator  IMPLEMENTED + TESTED (38 governance tests green;
-                                      50 entries (47 seed + V15 finalized + V6 close), git --verify PASS)
-diagnostic persistability gate        IMPLEMENTED + TESTED (BLOCKED_PRELAUNCH on missing
-                                      mandatory/conditional diagnostics; runs BEFORE A7
-                                      launch authorization when adopted)
-global heavy lock                     IMPLEMENTED + TESTED (fcntl.flock machine-wide; registry
-                                      PID+process-start-token; NOT_RUN_RESOURCE_CONFLICT
-                                      refusal; safe stale recovery)
-ADOPTED_BY_ACTIVE_CYCLE               none yet (V15/V6/V11 predate the boundary)
+FAMILY_PIPELINE protocol              DOCUMENTED (merge candidate on branch
+                                      orca/governance-family-pipeline — standing
+                                      standard only upon owner merge to main)
+FAMILY_FAILURES registry + validator  IMPLEMENTED + TESTED (52 governance tests green;
+                                      50 entries, git --verify PASS)
+diagnostic persistability gate        IMPLEMENTED + TESTED, hardened (BLOCKED_PRELAUNCH
+                                      on missing mandatory/conditional diagnostics or
+                                      incomplete output blocks; artifact list DERIVED
+                                      from the validated contract; smoke parses and
+                                      verifies content/identity/non-empty series; runs
+                                      BEFORE A7 launch authorization when adopted)
+global heavy lock                     IMPLEMENTED + TESTED, hardened (shared runtime
+                                      from git common-dir — no caller-selected path;
+                                      fcntl.flock machine-wide; registry PID+process-
+                                      start-token; NOT_RUN_RESOURCE_CONFLICT refusal;
+                                      alive-row+free-lock = CONTROL_STATE_DRIFT fail
+                                      closed; cleanup holds the flock)
+ADOPTED_BY_ACTIVE_CYCLE               none yet — PLAN_crypto_v16 (on main) preregisters
+                                      all three; adopted when a dispatched V16 A1
+                                      actually applies them
 ```
