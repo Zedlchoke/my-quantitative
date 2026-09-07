@@ -173,3 +173,17 @@ at dispatch: "Ghi incident kể cả khi vô hại").
   execution_ledger.json / family_verdicts.json; tree clean).
 - action: retry with the root interpreter; this record per the
   record-even-harmless rule.
+
+## INC-V11-5b — second launch attempt aborted pre-run (script-path invocation; nothing computed)
+
+- measured_at_utc: 2026-09-07T14:10:00Z
+- what: driver invoked as a script path (`python .../v11_e_driver.py PHRASE`)
+  from cwd=worktree — script-mode sys.path does not include the worktree
+  root, so `from research.assets.stocks import ...` failed
+  (ModuleNotFoundError) at import time, before any work. The driver's own
+  docstring prescribes the module form
+  (`python -m research.assets.stocks.v11_e_driver`). Lock acquired and
+  released cleanly both attempts; still zero scored cells, zero counter
+  impact; artifacts unchanged (only the committed dry-run ledger exists).
+- action: third attempt uses the module form. The repeated-abort class is
+  recorded honestly: two failed ARMING attempts, zero computed results.
