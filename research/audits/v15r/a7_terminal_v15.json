@@ -1,0 +1,195 @@
+{
+  "schema": "v15_a7_terminal_audit_v1",
+  "artifact": "a7_terminal_v15",
+  "cycle": "CRYPTO-V15",
+  "generated_utc": "2026-09-07T02:55:00Z",
+  "producer_role": "A7 independent terminal auditor (fresh context)",
+  "audit_worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v15/r-a7-terminal",
+  "audit_branch": "orca/v15-r-a7-terminal",
+  "audit_base_commit": "12486b20765d9edc58e3ac43735d0b9ba2263672",
+  "audited_terminal_verdict": "V15_REJECT_ALL",
+  "terminal_report": "research/control/v15_run/terminal_report_v15.json (commit 12486b2)",
+  "canonical_results_location": "untracked gitignored files under e-exec-1/results/v15_phase_e (see finding A7-F1)",
+  "final_verdict": "V15_TERMINAL_APPROVED_0_FAIL",
+  "zero_unresolved_high_critical": 0,
+
+  "checks": [
+    {
+      "id": "chain_code_freeze_eq_exec_head",
+      "status": "PASS",
+      "evidence": "git -C e-exec-1 rev-parse HEAD = 824190ca8622e194c2bbe1fed77fd488faac5df4 (clean, 0 modified); every ledger row and all 6 preflight/cell_summary files record producer_head_sha/exec_head/expect_head/code_sha256 = 824190c; twin publication commit d117f40 has parent 824190c (twin re-ran at the freeze); git diff 824190c..12486b2 outside research/control and results is EMPTY (family/driver/test code byte-identical from freeze to terminal commit).",
+      "note": "Prompt's stated 'integration HEAD 12486b2' actually lives on the r-twin line; r-twin-1 HEAD = 12486b2 = 824190c + 3 R-phase commits (results-publication, incident, terminal report only). See finding A7-F2."
+    },
+    {
+      "id": "chain_post_freeze_commits_touch_only_allowed_paths",
+      "status": "PASS",
+      "evidence": "824190c..12486b2 (R line): d117f40 adds results/v15_phase_e/rerun/** (12 stray files, later removed by aa72dee) ; aa72dee removes them + adds research/control/v15_run/incident_STRAY_RERUN_COPY.json ; 12486b2 adds research/control/v15_run/terminal_report_v15.json. 824190c..0103ca9 (integration line): 636a09f code_freeze_v15.json; f306776 q_six_arm_sanitized_dry_run_v2.json; 7e21e3b+9bebe99 research/audits/v15q/a7_prelaunch_v15.json; 1ee6e83+0103ca9 research/control/v15_run/state.json. No source/data/param file touched post-freeze on either line.",
+      "note": "d117f40's commit message claims 'per-family shard ledgers committed' but its file list contains ONLY the 12 rerun stray copies — the ledgers were never committed. Finding A7-F1."
+    },
+    {
+      "id": "chain_selection_freeze_pins_match_proposal_bytes",
+      "status": "PASS",
+      "evidence": "sha256(research/control/v15_run/d1/a5/proposal_P1.json) = 6d2bc25fc3d3e5ebd96ca60c8e428efed9823b94589073f41ddcbdf47392cb16 == selection_freeze_v15.json pin (identical from worktree file and from git object 12486b2). sha256(d1/a6/proposal_P1.json) = 2b7a3ed3caf636af3646cddeeee081e49ae3549ef3cffa0875962c7928a5c034 == recorded pin. A7's own re-run preflight additionally re-verified proposal/selection/p3/p3-amendment/probe authority pins 5/5 match at exec time."
+    },
+    {
+      "id": "ledgers_shape_and_producer_pin",
+      "status": "PASS",
+      "evidence": "results/v15_phase_e/ledgers/{elite_size_asym,taker_sat}.jsonl: exactly 3 rows each, 6 rows total, all row_type=CELL_RESULT, all producer_head_sha=824190c, published timestamps 01:57:30Z..02:00:37Z."
+    },
+    {
+      "id": "ledgers_six_digests_pairwise_unique",
+      "status": "PASS",
+      "evidence": "6 distinct arm_config_digests, pairwise unique; they equal the driver's fail-closed recorded digests (ELITE_ARM_CONFIG_DIGESTS_RECORDED / taker frozen record); my aborted re-run's preflight independently recomputed the six-arm pin: n_match=6, pairwise_unique=true, collisions=[]. Note: frozen_identity.ARM_CONFIG_DIGESTS carries a DIFFERENT (module-internal namespace) digest set matching staged_root.json; the two namespaces are by-design distinct (module StrategyIdentity payload vs driver identity payload)."
+    },
+    {
+      "id": "ledgers_scored_metrics_present",
+      "status": "PASS",
+      "evidence": "All 6 baseline_metrics.json contain scored_metrics (17 fields, score_valid=true, margin_to_fail block) and fold_signs; all 6 cell_summary.json contain publish_stage=PUBLISHED, published=true, reason_codes=[], margin_to_fail, result_sha256 == ledger result_sha256 (value equality verified all 6)."
+    },
+    {
+      "id": "replay_zero_duplicate_trial_keys",
+      "status": "PASS",
+      "evidence": "6 trial_keys pairwise unique; per-shard denominators increment 0->3 exactly once per arm (cell_summary denominator_before/after consistent); zero OBSERVATION rows in either shard ledger; 0 refusals, 0 TECHABORT in cycle evidence."
+    },
+    {
+      "id": "denominators_149_152_vs_v14_base",
+      "status": "PASS",
+      "evidence": "research/control/v14_run/terminal_report_v14.json: published_logical_after=143, observed_logical_after=146. V15 adds 6 published + 6 observed CELL rows, 0 refusals/TECHABORT => 149/152 as published."
+    },
+    {
+      "id": "gate_table_recomputed_from_published_bytes",
+      "status": "PASS",
+      "evidence": "For each of the 6 arms recomputed from baseline_metrics.json + cell_summary.json: G1 expectancy>0, G2 PF>=1.10, G3 folds>=2/3 (fold_signs.fold_positive), G4 largest fold-positive share<=0.50 (from fold_net_sums), G5 MDD<=0.20. Values: A5 anchor exp -0.0017291777762520673 / PF 0.8969209361810312 / MDD 0.6594817780491514 / 1/3 folds / lf_share 1.0; A5 neighbour -0.0017557168690759035 / 0.898508668093068 / 0.6742187424056909 / 0/3; A5 control +0.0019636484565409007 / 1.1312261983301342 / 0.10261468735902768 / 3/3 / lf_share 0.5297616637078855; A6 anchor -0.003803247418 / 0.841977674604 / 0.403114069123 / 0/3; A6 neighbour -0.003979072076 / 0.819699893908 / 0.369423307617 / 0/3; A6 control -0.005180166245 / 0.787331315141 / 0.596741797144 / 0/3. Terminal report cell_results and family_gate_tables agree to >=11 decimal places (requirement 9+); only exception is A5-neighbour folds_positive rendered '?' (finding A7-F6). Full machine output: a7_recompute_output.json.",
+      "note": "All five headline gates FAIL for both anchors and both neighbours. CTL-ELITELEVEL passes G1/G2/G3/G5 and FAILS G4 (finding A7-F4)."
+    },
+    {
+      "id": "rule_order_1_gives_family_REJECT_both_families",
+      "status": "PASS",
+      "evidence": "Frozen rule order #1 (p3_freeze_v15.json stage_a_gates_frozen gate (1): after-cost anchor expectancy > 0) fails for both anchors (-0.001729 and -0.003803 per day); terminal report family_verdict = 'V15_FAMILY_REJECT (rule order #1)' for both families; REJECT is invariant to every downstream gate including all NOT_RUN gates and both control outcomes."
+    },
+    {
+      "id": "F1_control_status_and_verdict_invariance",
+      "status": "PASS_WITH_FINDING",
+      "evidence": "CTL-ELITELEVEL passes G1/G2/G3/G5 standalone (+0.001964/day, PF 1.1312, 3/3 folds, MDD 10.26%) but FAILS frozen gate (4): largest fold-positive share 0.52976 > 0.50 (its own margin_to_fail records -0.02976, failing side). The terminal report's phrase 'passes headline gates standalone' lists only 4 gates and omits the G4 fail. Outperforms anchor by net +1.3405 (claim '+1.34' verified). Regardless: control is never promotable, formal G11 falsification is superseded by rule order #1 in the report itself, and the family verdict is unchanged. Finding A7-F4 (LOW)."
+    },
+    {
+      "id": "F2_control_does_NOT_reproduce",
+      "status": "PASS",
+      "evidence": "CTL-RAWSAT (raw aggression, churn denominator removed) is WORSE than the anchor: exp -0.005180/day vs -0.003803, PF 0.7873 vs 0.8420, 0/3 folds, MDD 59.7%. No firing control; no falsification shadow; plain mechanical reject — report's G11 PASS description is accurate."
+    },
+    {
+      "id": "twin_reproduction_artifact",
+      "status": "PASS",
+      "evidence": "results/v15_phase_e/reproduction_v15.json: verdict ALL_MATCH, leaf_comparisons=61633, mismatches=0, scope preflight+baseline_metrics per arm with 15 volatile/tree fields excluded; twin re-ran at exec pin 824190c with no --publish (publish-side files absent-by-design documented per arm)."
+    },
+    {
+      "id": "a7_independent_rerun_A6-F1-CTL-RAWSAT",
+      "status": "NOT_RUN",
+      "evidence": "A7 executed the frozen driver in its own audit worktree (code byte-identical to freeze outside research/control): run_v15_cell.py --family taker_sat --arm A6-F1-CTL-RAWSAT --out-root <audit>/research/audits/v15r/rerun_A6-F1-CTL-RAWSAT (no --publish). Preflight PASSED all pins (mode=real, six-arm digest pin 6/6, staging 60/60 parquet sha256, spec authority pins 5/5), then the run ABORTED pre-metric with fail-closed FileNotFoundError: 'no instrument metadata parquet for 1000PEPEUSDT' — the machine-local catalog_live_crypto instrument-metadata tree (20 symbols) was externally removed between the last canonical publish (02:00:37Z) and this attempt (TECHABORT generated 02:35:38Z; only BTCUSDT/ETHUSDT survive under a different root). TECHABORT forensic: zero budget consumed, no ledger touched, scored_metric_computed=false. Evidence: rerun_preflight_A6-F1-CTL-RAWSAT.json, TECHABORT_A6-F1-CTL-RAWSAT_rerun1.json. Finding A7-F3.",
+      "compensating_verification": "(a) A7 independently re-verified all 60 staged run-data parquet sha256s against the COMMITTED staging_report.json: 60/60 match; (b) canonical fill prices in the published bytes are tick-quantized consistently with the surviving ground-truth metadata (BTC 0.1, ETH 0.01), confirming real ticks at run time; (c) the verdict itself was recomputed entirely from persisted bytes, which do not depend on re-execution; (d) the pre-loss twin ALL_MATCH remains the only full re-execution evidence and is internally consistent (leaked pre-launch fold bytes == scored fold bytes for all 18 values). No scored-bytes diff vs canonical was possible; recorded as mismatch-cannot-compare, not mismatch."
+    },
+    {
+      "id": "hidden_positive_scan",
+      "status": "PASS_WITH_FINDINGS",
+      "evidence": "(1) No cell in any committed or persisted artifact passes more headline gates than the terminal report states: anchors/neighbours 0/5, A5 control 4/5 (G4 miss — finding A7-F4). (2) The frozen runner computes stress tiers (fee_x1_5, plus2ticks, delay_plus1d) and per-symbol PnL maps IN-MEMORY (runner cell dict includes stress_tiers with per-tier 'positive' and per_symbol_pnl maps) but the driver persists only a baseline projection: no stress net exists in any persisted/committed byte anywhere (checked e-exec-1 results tree, r-twin line commits, all branches via git log --all). G7 NOT_RUN wording is accurate about persistence, but the gate was computed-then-discarded, not unimplementable (finding A7-F5). G6's scalar largest_symbol_positive_pnl_share IS persisted in all 6 margin_to_fail blocks and PASSES everywhere (0.287..0.465 <= 0.70) while G6 is declared NOT_RUN — value exists, verdict-invariant (finding A7-F5). (3) margin_to_fail blocks present in all 6 cell_summary.json and all 6 baseline_metrics.json. (4) No S1/paper/live/credential/secret artifact in any V15-cycle commit (file-list scan e6ef371..12486b2 both lines) nor in the exec tree; s1_seal=SEALED_UNTOUCHED, deployment_activity=none, owned_workers=0. (5) Canonical results were never committed (finding A7-F1)."
+    },
+    {
+      "id": "q_leak_1_exposure_carry",
+      "status": "PASS",
+      "evidence": "Incident record (q_six_arm_sanitized_dry_run_v2.json incident_Q_LEAK_1 + integration-line commits f306776/9bebe99): v1 committed fold_net_sums (18 values) + fold_positive for all 6 arms pre-launch; notably CTL-ELITELEVEL 3/3 positive. A7 byte-compared the leaked v1 fold data against the FINAL scored fold_signs: all 18 fold_net_sums values and all 18 fold_positive flags IDENTICAL (12dp) — the scored results match what the leak already showed and the dry-run->scored pipeline is deterministic. The terminal report's exposure statement is consistent: the anchors' scored direction (negative expectancy) is the direction the leak already pointed (both anchors' leaked fold nets summed negative), i.e. the leak created no pro-survivor bias for the rejected anchors; and no parameter/gate/universe/cost/selection change followed the leak (spec-authority pins re-verified 5/5 at exec time in A7's own re-run preflight; proposal bytes match selection-freeze pins). The one judgment-flavored gate (G11, where the control's firing was pre-revealed) is superseded by rule order #1 in the report itself."
+    },
+    {
+      "id": "verdict_is_strongest_allowed_label",
+      "status": "PASS",
+      "evidence": "PLAN_crypto_v15.md allowed terminal outcomes: V15_REJECT_ALL | V15_ONE_OR_MORE_STAGE_A_SURVIVORS_LOCKED_FOR_FUTURE_S1 | V15_BLOCKED_DATA_OR_SELECTION | V15_BLOCKED_PRELAUNCH | V15_INCOMPLETE_NOT_PROMOTABLE. Zero survivors (both anchors fail rule order #1; no cell passes all headline gates) excludes the survivor label. No BLOCKED condition holds: data authority verified (60/60 staged sha256; PASS_UNDER_AMENDMENT_1), selection completed (2 families x 3 arms pinned). No INCOMPLETE condition holds: budget 6/6 computed and published (0 TECHABORT, 0 refusal), gates evaluated fail-closed from bytes, DSR/PBO and G6-G9 NOT_RUN fail-closed and verdict-invariant under rule order #1, twin reproduction ALL_MATCH, A7 prelaunch authorized with 0 unresolved HIGH/CRITICAL. V15_REJECT_ALL is therefore the strongest allowed terminal label and the plan states a correct REJECT_ALL is a successful research run.",
+      "note": "Committed state.json (integration tip 0103ca9) still reads phase=V15_E_SCORED_EXECUTION budget 0/6 (last update 01:56:48Z, pre-execution); the 6/6 budget exists only in the terminal report on the unmerged R line — folded into finding A7-F2."
+    }
+  ],
+
+  "findings": [
+    {
+      "id": "A7-F1",
+      "severity": "MEDIUM",
+      "title": "Canonical V15 results and shard ledgers were never committed to git",
+      "detail": "The published bytes A7 used to recompute the verdict (results/v15_phase_e/ledgers/*.jsonl, per-arm baseline_metrics/cell_summary/preflight/publish_record, reproduction_v15.json) exist ONLY as untracked, gitignored files in the e-exec-1 worktree. No branch in the repository contains them (git log --all --diff-filter=A is empty for these paths). Commit d117f40's message claims 'per-family shard ledgers committed (results/ force-added per V14 precedent)' but its actual file list contains only 12 stray rerun duplicates (removed in aa72dee); the terminal report's chain section likewise points at ledgers 'see results/v15_phase_e/ledgers' as if tree-resident. The verdict was recomputed successfully from these untracked bytes and is unaffected, but the cycle's evidence base is not durably committed and remains exposed to exactly the class of external deletion that occurred during this audit (A7-F3).",
+      "verdict_impact": "none",
+      "recommended_repair": "commit the canonical results + ledgers + reproduction_v15.json (e.g. force-add per the claimed V14 precedent) on the terminal branch"
+    },
+    {
+      "id": "A7-F2",
+      "severity": "MEDIUM",
+      "title": "Terminal state stranded off the declared integration branch; provenance fields and committed state inconsistent",
+      "detail": "terminal_report_v15.json records worktree=.worktrees/crypto/v15/integration, branch=orca/v15-integration, integration_head=aa72dee — but aa72dee (and 12486b2) are NOT ancestors of orca/v15-integration, whose tip is 0103ca9 (LAUNCH) and which contains neither the terminal report nor any results. The R-phase commits (d117f40, aa72dee, 12486b2) live on the r-twin line only. The committed state.json (integration tip) still reads budget 0/6 / phase V15_E_SCORED_EXECUTION, last updated 01:56:48Z pre-execution; the 6/6 budget exists only in the unmerged terminal report. Byte content of the terminal report itself was verified consistent; this is a provenance/merge bookkeeping defect, not an evidence defect.",
+      "verdict_impact": "none",
+      "recommended_repair": "merge 12486b2 (or cherry-pick the R-phase commits) into orca/v15-integration and update state.json to close the cycle there"
+    },
+    {
+      "id": "A7-F3",
+      "severity": "MEDIUM",
+      "title": "External machine-local data loss during the audit window blocks independent re-execution",
+      "detail": "catalog_live_crypto (the instrument-metadata tree consumed by the frozen tick loader for BOTH families, hardcoded WORKSPACE_ROOT dependency) was removed from the machine between the last canonical publish (2026-09-07T02:00:37Z) and A7's re-run attempt (TECHABORT 02:35:38Z). Only 2 of 20 symbol metadata dirs survive (under a different root). Consequently no V15 arm can be re-executed in this environment right now; A7's assigned reproduction arm failed closed pre-metric (zero budget, no ledger impact). Staged run data (metrics/klines/funding parquet) remains intact: A7 re-verified 60/60 sha256s against the committed staging authority. The V15 verdict is unaffected (recomputed from persisted bytes), but the same exposure that hit the V14 forest and the F1 lane has now removed V15's re-execution substrate; combined with A7-F1 the cycle's reproducibility currently rests on committed code + committed authorities + untracked result bytes.",
+      "verdict_impact": "none (negative result; verdict byte-recomputable)",
+      "recommended_repair": "restore or re-stage the instrument metadata with sha256 pinning, and fold tick metadata into the staged/committed data authority for future cycles"
+    },
+    {
+      "id": "A7-F4",
+      "severity": "LOW",
+      "title": "Terminal report overstates the F1 firing control: CTL-ELITELEVEL fails frozen gate (4)",
+      "detail": "The report's G11 narrative says the control 'passes headline gates standalone (+0.001964/day, PF 1.1312, 3/3 folds, MDD 10.3%)' — four gates. The frozen headline set is five gates; the control FAILS gate (4) largest-fold-positive-share 0.52976 > 0.50, recorded failing-side in its own margin_to_fail (-0.02976). Verdict-invariant: the control is never promotable, G11 falsification is superseded by rule order #1 in the same report, and the F1 family reject binds on the anchor's gate (1) fail regardless.",
+      "verdict_impact": "none"
+    },
+    {
+      "id": "A7-F5",
+      "severity": "LOW",
+      "title": "G6/G7 were computed in memory then discarded; NOT_RUN wording slightly understates this",
+      "detail": "The frozen elite runner's cell dict computes stress_tiers (net_return_sum + per-tier 'positive') and full per_symbol_pnl maps at run time; the driver persists neither (G7), persisting only the G6 scalar share inside margin_to_fail. The report's NOT_RUN reasons ('not persisted by the driver contract' / 'tier nets not persisted') are accurate about persistence but the gates were not unimplementable — they ran and their outputs were dropped. G6's persisted scalar passes in all 6 arms (0.287-0.465 <= 0.70). Stress-tier outcomes are unrecoverable, so a hypothetical positive stress tier can be neither confirmed nor excluded from persisted bytes; under frozen rule order #1 (anchor gate-(1) fail) no stress or concentration outcome can alter either family verdict.",
+      "verdict_impact": "none"
+    },
+    {
+      "id": "A7-F6",
+      "severity": "LOW",
+      "title": "cell_results.A5-F1-NEIGHBOR.folds_positive rendered '?' though bytes record 0/3",
+      "detail": "baseline_metrics fold_signs.fold_positive = [false,false,false] for A5-F1-NEIGHBOR; the terminal report left the field as '?'. Completeness only; G10's neighbour-supports FAIL is correctly based on expectancy.",
+      "verdict_impact": "none"
+    },
+    {
+      "id": "A7-F7",
+      "severity": "LOW",
+      "title": "Ledger result_sha256 binds an unpersisted in-memory payload",
+      "status_note": "documented semantics, no discrepancy found",
+      "detail": "result_sha256 = sha256 of the runner's full in-memory cell/run payload (canonical JSON, hashes field empty at hash time), which is a superset of the persisted baseline_metrics projection; the hash therefore cannot be recomputed from published bytes alone. A7 verified ledger result_sha256 == cell_summary.result_sha256 == baseline_metrics.hashes.result_sha256 for all 6 arms (value-level binding) and the twin's full recursive leaf diff (61,633 leaves) provides the file-level binding.",
+      "verdict_impact": "none"
+    },
+    {
+      "id": "A7-F8",
+      "severity": "INFO",
+      "title": "Minor numeric/narrative precision items",
+      "detail": "(a) cell_results.A5-F1-CTL-ELITELEVEL.mdd = 0.10261468736 vs bytes 0.10261468735902768 — 11-dp rounding, within the 9+ decimal requirement. (b) 'falsification artifact #10' cluster numbering is carried from V14 narrative precedent (V14 report references the cluster twice) and is not independently countable from committed bytes; non-material. (c) Prompt stated integration HEAD 12486b2; actual integration tip is 0103ca9 and 12486b2 sits on the r-twin line (see A7-F2).",
+      "verdict_impact": "none"
+    }
+  ],
+
+  "reproduction_spotcheck_summary": {
+    "assigned_arm": "A6-F1-CTL-RAWSAT",
+    "attempted": true,
+    "outcome": "NOT_RUN (environmental): fail-closed TECHABORT at tick-metadata load, pre-metric, zero budget impact",
+    "scored_bytes_diff_vs_canonical": "NOT_COMPARABLE (run aborted before metrics)",
+    "independent_partial_verification": [
+      "driver preflight at code identical to freeze: six-arm digest pin 6/6, pairwise unique, collisions none",
+      "spec authority pins 5/5 (proposal/selection/p3/amendment/probe)",
+      "staged data 60/60 parquet sha256 verified by driver, and independently re-verified by A7 against committed staging_report.json",
+      "persisted fill prices tick-quantized consistently with surviving ground-truth metadata (BTC 0.1, ETH 0.01)"
+    ]
+  },
+
+  "verdict_assessment": {
+    "audited_label": "V15_REJECT_ALL",
+    "strongest_allowed": true,
+    "recomputed_from_bytes": true,
+    "incomplete_or_blocked_condition_holds": false,
+    "budget": "6/6 computed and published, 0 refusals, 0 TECHABORT (cycle evidence; committed state.json stale — A7-F2)",
+    "reproduction": "twin ALL_MATCH 61,633/0; A7 independent re-run blocked by external data loss (A7-F3)",
+    "hidden_positive_found": false,
+    "q_leak_1_exposure_consistent": true
+  }
+}
