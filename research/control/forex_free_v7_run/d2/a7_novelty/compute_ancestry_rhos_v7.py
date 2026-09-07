@@ -915,6 +915,15 @@ def sigma_20d(pair, i):
     return float(np.std(rs, ddof=1))
 
 
+def _funded_decision(w1):
+    """first 16:00-NY at/after w1 (F-A7-PL-1 remediation)."""
+    dd = w1.astimezone(NY).date()
+    cand = datetime.combine(dd, datetime.min.time(), tzinfo=NY).replace(hour=16)
+    while cand.astimezone(UTC) < w1:
+        cand = cand + timedelta(days=1)
+    return cand.astimezone(NY).date()
+
+
 def _entry_hold(s, pair, d_entry, side, k, cur_exit):
     ser = SERIES[pair]
     if d_entry not in CLOSES[pair]:
@@ -948,15 +957,9 @@ def sched_v7_a4p1(k=4, sham=False, economies=("GB", "CA")):
             continue
         s.counts["clocks"] += 1
         w0, w1 = c["w0"], c["w1"]
-        d_entry = c["decision_date"]
         if sham:
             w0 += timedelta(days=7); w1 += timedelta(days=7)
-            # funded decision for the shifted window: first 16:00-NY after w1
-            dd = w1.astimezone(NY).date()
-            cand = datetime.combine(dd, datetime.min.time(), tzinfo=NY).replace(hour=16)
-            while cand.astimezone(UTC) < w1:
-                cand = cand + timedelta(days=1)
-            d_entry = cand.astimezone(NY).date()
+        d_entry = _funded_decision(w1)
         rw = r_W(c["pair"], w0, w1)
         if rw is None:
             s.counts["rw_unavailable"] += 1
@@ -976,14 +979,10 @@ def sched_v7_a4p2(theta=1.0, k=3, sham=False):
     cur_exit = {}
     for c in sorted(CLK_V7, key=lambda x: (x["decision_date"], x["economy"], x["pair"])):
         s.counts["clocks"] += 1
-        w0, w1, d_entry = c["w0"], c["w1"], c["decision_date"]
+        w0, w1 = c["w0"], c["w1"]
         if sham:
             w0 += timedelta(days=7); w1 += timedelta(days=7)
-            dd = w1.astimezone(NY).date()
-            cand = datetime.combine(dd, datetime.min.time(), tzinfo=NY).replace(hour=16)
-            while cand.astimezone(UTC) < w1:
-                cand = cand + timedelta(days=1)
-            d_entry = cand.astimezone(NY).date()
+        d_entry = _funded_decision(w1)
         rw = r_W(c["pair"], w0, w1)
         if rw is None:
             s.counts["rw_unavailable"] += 1

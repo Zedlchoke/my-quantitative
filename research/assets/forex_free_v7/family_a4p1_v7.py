@@ -211,14 +211,17 @@ def run_arm(arm: str, data_paths: dict):
     for c in sorted(clocks, key=lambda x: (x["decision_date"], x["economy"], x["pair"])):
         counts["clocks"] += 1
         w0, w1 = c["w0"], c["w1"]
-        d_entry = c["decision_date"]
         if sham:
             w0 = w0 + timedelta(days=SHAM_SHIFT_CALENDAR_DAYS)
             w1 = w1 + timedelta(days=SHAM_SHIFT_CALENDAR_DAYS)
             if any(w0 < t < w1 for t in true_event_instants):
                 counts["sham_dropped_true_event_inside"] += 1
                 continue
-            d_entry = _first_decision_after(w1)
+        # funded-decision rule (F-A7-PL-1 remediation): EVERY arm enters at
+        # the first 16:00-NY instant at/after the reaction-window end w1 —
+        # the window is CLOSED before the decision; the carried
+        # decision_date field is informational only.
+        d_entry = _first_decision_after(w1)
         rw = r_window_return(price_dir, c["pair"], w0, w1)
         if rw is None:
             counts["rw_unavailable"] += 1

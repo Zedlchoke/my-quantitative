@@ -59,7 +59,7 @@ CTL = os.path.join("research", "control", "forex_free_v7_run")
 SELECTION_FREEZE = os.path.join(CTL, "selection_freeze_v7.json")
 RUN_CONTRACT_PATH = os.path.join(CTL, "run_contract.json")
 SCORED_LEDGER_DEFAULT = os.path.join(CTL, "scored_ledger_published.jsonl")
-CLOCK_AUTHORITY = os.path.join(CTL, "p2_conditioning_clocks_v7.json")
+CLOCK_AUTHORITY = os.path.join(CTL, "p2_conditioning_clocks_v7_r2.json")
 V5_LEDGER = os.path.join("research", "control", "forex_free_v5_run",
                          "announcement_ledger_v5_extension.jsonl")
 STAGED_MANIFEST = os.path.join("research", "control", "forex_free_v1_run",
@@ -480,12 +480,16 @@ def cmd_scored(args):
     if not os.path.exists(RUN_CONTRACT_PATH):
         return _die(_refuse(["run_contract_file"]))
     rc = json.load(open(RUN_CONTRACT_PATH))
+    launch = rc.get("launch") or {}
+    def _lg(key):
+        # F-A7-PL-4: accept the field nested under launch OR top-level
+        return rc.get(key, launch.get(key))
     if rc.get("cycle_id") != CYCLE_ID:
         missing.append("cycle_id")
-    if not rc.get("s0_launch_authorized") or \
-            rc.get("s0_launch_authorized_verdict") != S0_VERDICT:
+    if not _lg("s0_launch_authorized") or \
+            _lg("s0_launch_authorized_verdict") != S0_VERDICT:
         missing.append("s0_launch_authorized")
-    if not rc.get("owner_go_fresh") or rc.get("owner_go_phrase") != OWNER_GO_PHRASE:
+    if not _lg("owner_go_fresh") or _lg("owner_go_phrase") != OWNER_GO_PHRASE:
         missing.append("owner_fresh_go")
     used = rc.get("budget", {}).get("used", 0)
     if used >= PLANNED_SCORED_CELLS:

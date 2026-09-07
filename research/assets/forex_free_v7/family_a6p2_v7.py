@@ -122,7 +122,7 @@ def run_arm(arm: str, data_paths: dict):
 
     decisions = []
     counts = {"candidate_days": 0, "warmup": 0, "panel_incomplete": 0,
-              "episodes": 0, "entry_beyond_s0": 0}
+              "episodes": 0, "entry_beyond_s0": 0, "exit_beyond_series": 0}
     hist_lead = []
     hist_own = {p: [] for p in FOLLOWERS}
     open_until_idx = -1
@@ -163,10 +163,14 @@ def run_arm(arm: str, data_paths: dict):
                         v = rets[p][t] - mu
                         if abs(v) >= thr:
                             side = 1 if rets[p][t] > 0 else -1
-                            decisions.append(_mk(p, side, entry_day, t, v, fold_starts,
-                                                 common, closes))
-                            decisions[-1]["arm_config_digest"] = f"a6p2:{arm}:q{q}:lead{LEAD}:hold5:nonoverlap"
-                            legs += 1
+                            rec = _mk(p, side, entry_day, t, v, fold_starts,
+                                      common, closes)
+                            if rec is not None:
+                                rec["arm_config_digest"] = f"a6p2:{arm}:q{q}:lead{LEAD}:hold5:nonoverlap"
+                                decisions.append(rec)
+                                legs += 1
+                            else:
+                                counts["exit_beyond_series"] += 1
             else:
                 h = [x for x in hist_lead if x is not None]
                 if len(h) >= MIN_OBS:
@@ -174,10 +178,14 @@ def run_arm(arm: str, data_paths: dict):
                     if abs(d_t) >= thr:
                         side = 1 if d_t > 0 else -1
                         for p in FOLLOWERS:
-                            decisions.append(_mk(p, side, entry_day, t, d_t, fold_starts,
-                                                 common, closes))
-                            decisions[-1]["arm_config_digest"] = f"a6p2:{arm}:q{q}:lead{LEAD}:hold5:nonoverlap"
-                            legs += 1
+                            rec = _mk(p, side, entry_day, t, d_t, fold_starts,
+                                      common, closes)
+                            if rec is not None:
+                                rec["arm_config_digest"] = f"a6p2:{arm}:q{q}:lead{LEAD}:hold5:nonoverlap"
+                                decisions.append(rec)
+                                legs += 1
+                            else:
+                                counts["exit_beyond_series"] += 1
             if legs:
                 counts["episodes"] += 1
                 open_until_idx = i + HOLD
@@ -202,7 +210,10 @@ def run_arm(arm: str, data_paths: dict):
 def _mk(pair, side, entry_day, trigger_day, contrast, fold_starts, common, closes):
     ds = sorted(closes[pair])
     ie = ds.index(entry_day)
-    ix = min(ie + HOLD, len(ds) - 1)
+    if ie + HOLD >= len(ds):
+        return None   # exit beyond series — excluded (S0-boundary parity
+                      # with A4-P1; F-A7-PL-5 remediation), never clamped
+    ix = ie + HOLD
     return {
         "pair": pair, "side": side,
         "entry_day": str(entry_day), "exit_day": str(ds[ix]),

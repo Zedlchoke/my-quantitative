@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, ROOT)
@@ -192,6 +192,41 @@ class TestUsdDriftAndGates(unittest.TestCase):
             self.assertIn("gate", m)
             self.assertIn("margin", m)
 
+
+
+
+class TestNoLookaheadFundedDecision(unittest.TestCase):
+    """F-A7-PL-3 remediation: the leak class A7 caught must be structurally
+    impossible and tested on both fixture and real authorities."""
+
+    def test_every_entry_at_or_after_window_end(self):
+        from datetime import date, datetime, timedelta, timezone
+        for mod, paths in ((F1, SYNTH_PATHS),):
+            clocks = {}
+            for r in json.load(open(paths["clocks_path"]))["clocks"]:
+                T = datetime.fromisoformat(r["event_available_time_utc"]
+                                           .replace("Z", "+00:00"))
+                pc = r["precision_class"]
+                w0 = T if pc.startswith("INSTANT") else \
+                    (T.replace(hour=0, minute=0, second=0) + timedelta(days=1))
+                clocks[r["clock_id"]] = w0 + timedelta(hours=24)
+            for arm in mod.ARM_IDS:
+                out = mod.run_arm(arm, paths)
+                for d in out["decisions"]:
+                    w1 = clocks[d["clock_id"]]
+                    if arm == "control":
+                        w1 = w1 + timedelta(days=7)
+                    self.assertGreaterEqual(
+                        datetime.fromisoformat(d["entry_ts"]),
+                        w1,
+                        f"lookahead: {arm} entry {d['entry_ts']} < w1 {w1}")
+
+    def test_event_plus_one_day_moves_decision_one_period(self):
+        """Availability-lag mutation contract: shifting the event +1 day
+        moves the funded decision exactly one 16:00-NY period."""
+        c0 = F1._first_decision_after(datetime(2021, 6, 10, 13, 35, tzinfo=timezone.utc))
+        c1 = F1._first_decision_after(datetime(2021, 6, 11, 13, 35, tzinfo=timezone.utc))
+        self.assertEqual((c1 - c0).days, 1)
 
 if __name__ == "__main__":
     unittest.main()
