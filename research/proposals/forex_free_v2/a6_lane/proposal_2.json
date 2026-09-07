@@ -1,0 +1,173 @@
+{
+  "schema": "forex_free_v2_proposal_v1",
+  "proposal_id": "FXFV2-A6-P2",
+  "lane": "d1-a6-proposals",
+  "cycle": "FOREX-FREE-V2",
+  "written_at_utc": "2026-09-04",
+  "mechanism_class": "volatility/liquidity state transitions visible in H1 OHLCV",
+  "mechanism_subclass": "session-liquidity turnover transition: thin-Asian-session -> liquid-European-session state change detected from H1 range behavior (session-liquidity state; direction is state-conditional reversion, not clock-keyed continuation or clock-keyed fade)",
+
+  "economic_mechanism": "FX intraday liquidity has a strong session-dependent seasonal: the Asian hours are the thinnest liquidity block of the UTC day and the arrival of European turnover is the largest within-day liquidity state transition (Bollerslev & Domowitz 1993 document geography-of-sessions trading patterns in the interbank market; Andersen & Bollerslev 1998 document the strong periodic intraday volatility/activity patterns tied to session turnover). In thin Asian hours, price displacement is dominated by dealer-inventory imbalance accumulated on little two-way flow rather than by information; when turnover arrives, inventories are rebalanced into deeper markets and a disproportionate share of the thin-session displacement is retraced. The tradeable object is the liquidity STATE TRANSITION thin->liquid: (a) a same-day THIN-ASIAN state, measured as the Asian-window (UTC 00:00-06:00) high-low range below its trailing 15-day median, and (b) a data-detected TURNOVER BURST (the first H1 bar in the 06:00-10:00 UTC handoff window whose true range exceeds 1.5x the same day's Asian-median true range), which marks the arrival of liquidity without hard-coding a venue open time. Direction is OPPOSITE the sign of the Asian drift, i.e., a reversion of the thin-session inventory move conditional on the thin state. The burst detector brackets the London-handoff DST shift (London 08:00 local = 07:00Z in BST, 08:00Z in GMT) inside a frozen 4-hour detection window, so the mechanism keys on a measured liquidity event, not on a wall-clock label.",
+
+  "causal_prediction": "Conditional on a thin Asian state, the first detected turnover burst marks the return of two-way liquidity; the thin-session drift reverts over the following hours, so an entry at the next H1 bar open in the direction OPPOSITE the Asian drift shows positive after-cost expectancy before the 16:00 America/New_York forced flat, with mean gross reversion large enough to exceed the 3 bps round-trip base cost. Falsifiable consequences frozen ex ante: (i) the anchor arm shows positive after-cost expectancy; (ii) the identical burst-reversion WITHOUT the thin-state gate (control arm) does NOT reproduce the expectancy -- if it does, Asian-drift reversion is unconditional (including information-driven Asian sessions that continue into Europe) and the proposal is rejected; (iii) the neighbour arm (thin state gauged by the Asian true-range sum instead of the high-low range) moves TOGETHER with the anchor; a neighbour/anchor divergence falsifies the robustness of the liquidity-state measurement.",
+
+  "primary_literature_trace": [
+    {
+      "source": "Andersen, Torben G. and Tim Bollerslev (1998), 'Deutsche Mark-Dollar Volatility: Intraday Activity Patterns, Macroeconomic Announcements, and Longer Run Dependencies', Journal of Finance 53(1), pp. 219-265",
+      "claim": "Intraday FX volatility and activity follow strong, highly periodic session-dependent patterns tied to geographic trading-session turnover, so liquidity state changes across the UTC day are a first-order, data-visible feature of FX price dynamics."
+    },
+    {
+      "source": "Bollerslev, Tim and Ian Domowitz (1993), 'Trading Patterns and Prices in the Interbank Foreign Exchange Market', Journal of Finance 48(4), pp. 1421-1443",
+      "claim": "Interbank FX quote activity and price behavior depend on which geographic trading sessions are open, with distinctly different dynamics in thin single-session periods and around session handoffs -- the microstructure basis for thin-session displacements behaving differently from liquid-session ones."
+    }
+  ],
+
+  "h1_observables": {
+    "input_note": "H1 bars only (bar-open timestamps on the hourly grid); canonical schema {datetime, open, high, low, close} carries no volume, so liquidity state is proxied by range behavior (a standard OHLC-based liquidity/volatility proxy). D1 is never used. UTC-hour windows are used deliberately: Japan has no DST and a UTC definition makes the state DST-invariant end to end.",
+    "definitions": {
+      "asian_window_day_d": "the 6 H1 bars of UTC calendar day d whose open-hour (UTC) is in {00,01,02,03,04,05}; all 6 bars must exist else NO_TRADE for day d",
+      "asian_range_A_d": "max(high) - min(low) over the 6 Asian-window bars of day d",
+      "thin_state_d": "TRUE iff A_d < median(A over the 15 most recent PRIOR UTC days with complete Asian windows; require at least 10 complete prior days else NO_TRADE) -- median split, one natural threshold, no free percentile",
+      "asian_drift_D_d": "close(bar open 05:00 UTC) - open(bar open 00:00 UTC) of day d, in price units; D_d == 0 -> NO_TRADE (no direction)",
+      "true_range_u": "TR_u = max(high_u - low_u, |high_u - close_{u-1}|, |low_u - close_{u-1}|)",
+      "asian_median_TR_d": "median of TR over the 6 Asian-window bars of day d (fail-closed NO_TRADE if it is 0 or undefined)",
+      "turnover_burst_d": "the FIRST bar u of day d with open-hour (UTC) in {06,07,08,09} that exists and satisfies TR_u > 1.5 x asian_median_TR_d; if no such bar exists in the window, NO_TRADE for day d",
+      "signal_direction_d": "-1 x sign(asian_drift_D_d): Asian drift up -> SHORT; Asian drift down -> LONG (state-conditional reversion of the thin-session inventory move)"
+    },
+    "fail_closed": "Any missing bar inside the Asian window, the trailing 15-day baseline set, the burst window, or the entry bar makes the affected decision NO_TRADE. Missing bars are never filled forward (data_manifest missing_bar_rule)."
+  },
+
+  "pit_timing": {
+    "decision": "The decision bar is the turnover-burst bar u. The thin state, Asian drift, and Asian-median TR inputs are all known from bars completed strictly before bar u completes (Asian window ends at the 06:00 UTC bar open); TR_u is known only when bar u completes.",
+    "entry": "Entry order fills at the OPEN of bar u+1, the next allowed H1 bar after the decision bar completes (one-event lag, no lookahead).",
+    "no_lookahead_mutation_check": "Implementation must include the standard mutation test: shifting any decision-bar input by one bar must change the schedule."
+  },
+
+  "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+
+  "usd_factor_neutral_construction": null,
+  "usd_drift_falsification": {
+    "construction": "null -- single-pair directional schedule; USD drift is falsified, not hedged.",
+    "falsification_procedure_frozen": [
+      "Per arm and per fold, classify every entry by its USD leg: +1 if long USD, -1 if short USD.",
+      "Diagnostic D1 (imbalance): if in any fold |share(long-USD entries) - 0.5| > 0.15, the schedule is flagged USD-directional and the USD-drift explanation is NOT rejected -> family fails.",
+      "Diagnostic D2 (coherence): cross-sectional mean USD-leg sign across pairs with same-day entries; full-sample |mean| > 0.25 flags USD-directional -> family fails.",
+      "Diagnostic D3 (conditional expectancy): expectancy split by USD-leg sign; if one group carries all positive expectancy with the split stable across folds, the edge is USD drift rather than the liquidity-state mechanism -> family fails."
+    ]
+  },
+
+  "clocks": {
+    "warmup_bars": 400,
+    "warmup_note": "400 completed H1 bars cover 15 trailing UTC days of Asian windows (360 bars) plus the current day's Asian window and margin; fold 1 scoring starts after warmup consumes 2020-01-30..2020-02-14 of coverage.",
+    "decision_bar": "The turnover-burst bar u of UTC day d (first qualifying bar, UTC open-hour in {06..09}), evaluated only if thin_state_d is TRUE; at most one decision per pair per UTC day by construction; if the day's entry is infeasible the pair-day is NO_TRADE.",
+    "entry": "Open of bar u+1 (next allowed H1 bar). Entry must satisfy: bar u+1 exists; its open instant is strictly earlier than the open instant of the 16:00 America/New_York bar of the entry bar's UTC calendar day (guaranteed by construction here since the latest possible entry bar open is 10:00 UTC < 20:00Z/21:00Z, but the check is still frozen and enforced); the 1-entry/pair/UTC-day cap and 3-RT/pair/ISO-week cap are unmet.",
+    "exit_rule": "No stops, no targets, no time-exit other than the forced flat: the single position opened at entry is closed at the OPEN of the 16:00 America/New_York bar on the entry UTC day.",
+    "forced_flat": "exit at 16:00 America/New_York bar open on entry UTC day",
+    "dst_note": "The 16:00 America/New_York instant is computed per day via the IANA zone (20:00Z EDT, 21:00Z EST); no fixed UTC offset anywhere. The Asian window (00-06 UTC) is DST-invariant by construction; the burst window (06-10 UTC) brackets the London-handoff DST shift by design.",
+    "tier2_delay_note": "Under cost tier 2.0 the entry fill is delayed one event (bar u+2 open); if the delayed instant is not strictly earlier than that day's 16:00 NY bar open, the trade becomes NO_TRADE under tier 2.0."
+  },
+
+  "schedule_caps": {
+    "max_entries_per_pair_per_utc_day": 1,
+    "max_round_trips_per_pair_per_week": 3,
+    "week_definition": "ISO week (UTC) of the entry bar's open timestamp",
+    "cap_enforcement": "Frozen schedule rule evaluated at signal time; a blocked signal is NO_TRADE, never deferred."
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV2-A6-P2-ANCHOR",
+      "spec": "Exactly the h1_observables + clocks + schedule_caps above: thin_state_d AND first turnover burst in the 06-10 UTC window -> direction = opposite sign of the Asian drift -> entry at next H1 open -> single exit at the 16:00 New York bar open on entry day. One frozen parameter set: {asian_window_utc_hours: [0,5], burst_window_utc_hours: [6,9], burst_factor: 1.5, baseline_days: 15, min_baseline_days: 10}. No stops, no targets, no additional thresholds.",
+      "expected_behavior": "Positive after-cost expectancy if the thin->liquid turnover transition carries a state-conditional reversion edge."
+    },
+    "neighbour": {
+      "arm_id": "FXFV2-A6-P2-NEIGHBOUR",
+      "one_presumption_changed": "The thin state is gauged by the Asian true-range sum TA_d = sum of TR over the 6 Asian-window bars of day d (gap-aware range including the 00:00 UTC reference to the prior bar's close) instead of the simple high-low range: thin_state_d iff TA_d < median(TA over the same 15-trailing-day baseline set, >= 10 complete else NO_TRADE).",
+      "everything_else": "Burst detector, reversion direction, first-of-day dedup, entry/exit clocks, caps, cost, folds are byte-identical to the anchor.",
+      "expected_behavior": "Moves TOGETHER with the anchor (same verdict sign, similar fold pattern) because both gauge the same thin-liquidity presumption; divergence falsifies the robustness of the state measurement."
+    },
+    "control": {
+      "arm_id": "FXFV2-A6-P2-CONTROL",
+      "placebo_design": "Identical to the anchor in every respect EXCEPT the thin-state gate is deleted: on every day with a complete Asian window, the first turnover burst (TR_u > 1.5 x same-day Asian median TR, unchanged detector) fires the same reversion trade in the direction opposite the same Asian drift, subject to the same caps and clocks. This removes exactly the liquidity-state conditioning and nothing else.",
+      "expected_behavior": "Should NOT reproduce the anchor's mechanism: unconditional Asian-drift fading includes information-driven Asian sessions whose drift continues into Europe; if control expectancy is >= 0.5 x anchor expectancy, or control PF >= 1.10 with positive sign, the edge is not state-conditional and the proposal is rejected.",
+      "frequency_note": "The control's raw signal rate is higher (bursts occur on most days); the frozen caps bind more often. That truncation is part of the frozen placebo schedule and mirrors the anchor's cap handling."
+    }
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tiers": [1.0, 1.5, 2.0],
+    "notional_usd_unit": 10000,
+    "tier_2_extra": "one-event delay on fills (see clocks.tier2_delay_note)",
+    "break_even_diagnostic": {
+      "definition": "Per scored cell: BE = mean over trades of |gross per-trade move| in bps of entry price, divided by 2 (two sides per round trip) -- the per-side cost at which mean net expectancy equals zero.",
+      "reporting": "Every cell reports BE, the multiple BE / 1.5, and net expectancy at each frozen tier.",
+      "frozen_interpretation": "A cell with BE < 1.5 bps is structurally unprofitable at base cost and cannot pass Stage-A; BE is computed from the frozen schedule with no parameter adjustment permitted."
+    }
+  },
+
+  "expected_frequency": {
+    "trades_per_pair_per_week": 1.7,
+    "analytic_basis": "Thin state holds ~50% of days (median split). The first burst occurs in the 4-bar detection window on roughly 60-75% of days (per-bar breach probability of 1.5x the thin Asian median TR is high at European turnover arrival), giving ~0.35-0.40 qualifying decisions per pair-day; holidays and missing bars reduce this to an analytic estimate of ~1.7 executed round trips per pair per week.",
+    "cap_compliance": "Estimate obeys max 1 entry/pair/UTC-day by the one-decision-per-day construction and stays under the 3 RT/pair/week cap (the cap remains a frozen backstop).",
+    "full_sample_order_of_magnitude": "7 pairs x ~330 weeks x ~1.7 ≈ 3900 round trips family-wide (schedule estimate only; no data was loaded)."
+  },
+
+  "folds_plan": {
+    "n_folds": 3,
+    "assignment": "Chronological by entry-bar open timestamp (UTC); fold 1 effective start after the 400-bar warmup consumed from 2020-01-30.",
+    "boundaries_utc": ["2020-02-14T00:00Z to 2022-02-01T00:00Z", "2022-02-01T00:00Z to 2024-04-01T00:00Z", "2024-04-01T00:00Z to 2026-09-02T00:00Z (end of coverage)"],
+    "evaluation_rule": "Each fold's schedule is computed with warmup drawn only from strictly earlier bars; only trades whose ENTRY bar falls inside the fold are scored in it. Every observable is strictly backward-looking, so no purge leakage is structurally possible; a trade whose decision bar precedes a boundary and entry bar follows is assigned wholly to the entry fold.",
+    "gate_hook": "At least 2/3 populated folds positive and no populated fold PF < 0.80 are Stage-A gates recorded per fold; the plan freezes only the split and assignment, never the outcomes."
+  },
+
+  "concentration_plan": {
+    "schedule_level_checks": "Per arm: per-pair trade counts, per-pair sign counts (long/short), and per-pair fold spread are reported.",
+    "frozen_limit": "No single pair may exceed 30% of an arm's full-sample trade count (uniform expectation 14.3% across 7 pairs); any breach fails the concentration gate. Currency-leg concentration (entries long USD vs short USD) is reported and feeds the usd_drift_falsification diagnostics.",
+    "rationale": "All 7 pairs run one identical frozen rule; a concentration breach indicates a data artifact or an unintended pair-specific mechanism, both disqualifying."
+  },
+
+  "drop_one_pair_plan": {
+    "procedure": "For each of the 7 pairs, recompute all three arms' full schedules with that pair excluded.",
+    "frozen_pass_rule": "The anchor retains positive after-cost expectancy in at least 6 of 7 exclusions, with at least 2/3 positive populated folds in each retained case; if removing any single pair flips the anchor's expectancy non-positive, the mechanism is pair-dependent and the family is rejected (the offending pair is recorded).",
+    "neighbour_and_control": "Recomputed identically for the same exclusions to preserve the arm comparison."
+  },
+
+  "minimum_decisions": {
+    "value": 3000,
+    "definition": "Thin-state day-decisions (UTC pair-days where the thin state held and the burst window was evaluated), summed over all 7 pairs, full sample. Analytic expectation is ~5500, so the minimum is a degenerate-sample guard, not a target."
+  },
+
+  "minimum_trades_per_cell": {
+    "full_sample": 500,
+    "per_populated_fold": 100,
+    "note": "Per arm-cell (anchor, neighbour, control each separately). A cell below these floors is NOT_RUN-grade insufficient sample and cannot be promoted."
+  },
+
+  "failure_interpretation": [
+    "Anchor expectancy <= 0 after base cost: the thin->liquid turnover transition does not carry a reversion edge that clears the frozen cost on this snapshot. Valid REJECT of this family; no sign inversion (which would turn it into an Asian-drift continuation trade), no lower cost, no threshold/lookback rescue, no pair selection, no session relabeling.",
+    "Anchor positive but control reproduces the mechanism (control expectancy >= 0.5 x anchor, or control PF >= 1.10 with positive sign): Asian-drift reversion is unconditional rather than liquidity-state-conditional. REJECT -- an unconditional clock-window fade is adjacent to the forbidden late-NY standardized-extension fade class and is ineligible regardless of sign.",
+    "Anchor and neighbour diverge (opposite verdict signs or contradictory fold patterns): the thin-liquidity state measurement presumption is fragile; the mechanism is unstable and NOT promotable even if the anchor alone is positive.",
+    "Realised schedule frequency violates the preregistered caps on the real snapshot: INELIGIBLE per the frequency contract.",
+    "Concentration or drop-one-pair failure: the edge is a pair-specific or data artifact; REJECT.",
+    "USD-drift diagnostics D1-D3 flag the schedule: the anchor is explained by USD-wide drift rather than the liquidity-state transition; REJECT of the neutrality claim and of the family."
+  ],
+
+  "forbidden_family_differentiation": {
+    "vs_london_open_continuation": "Full disclosure: the burst detection window (06-10 UTC) brackets the London handoff, as any turnover-based design must. The mechanism is nevertheless structurally different: (a) the state variable is the measured thin-Asian liquidity state, not a session label; (b) the trigger is a data-detected true-range burst, not the clock reaching an open; (c) the direction source is the ASIAN drift (measured 00-06 UTC), traded in OPPOSITION -- the forbidden family trades in the direction OF the London-session move; this design trades against the Asian-session move, a different measured quantity with the opposite positioning; (d) the control deletes only the thin-state gate, isolating the state-conditioning claim.",
+    "vs_ny_open_nearby_clock_continuation": "No NY-open term exists in the spec; the only New York reference is the universal forced-flat clock required of every V2 position.",
+    "vs_late_ny_standardized_extension_fade": "The fade is keyed to a thin->liquid turnover transition detected in the 06-10 UTC window and conditions on a measured thin-Asian state; the forbidden family fades the standardized daily extension in late New York by clock. Different clock, different measured quantity (Asian drift vs standardized daily extension), different state conditioning; no threshold/horizon variant relationship is claimed or intended.",
+    "no_sign_inversion": "Neither the anchor nor any arm inverts a rejected V1 family; the control REMOVES the state-conditioning rather than flipping a sign.",
+    "vs_proposal_1_same_lane": "Genuinely different from FXFV2-A6-P1: different state variable (session-window liquidity thinness + same-day turnover burst vs trailing 24-bar realized-vol compression), different trigger (burst detection vs channel breach), different direction source (opposite the Asian drift vs continuation of the breach side), different dominant trade window (06-10 UTC entries vs any-hour entries)."
+  },
+
+  "d1_context_usage": "none -- D1 never enters any observable; the scored input is H1 OHLC only",
+
+  "no_parameter_grid": true,
+
+  "outcome_blind_attestation": {
+    "statement": "This proposal was written outcome-blind. I read only the allowlisted V2 control plane (run_contract.json, frequency_contract.json, data_manifest.json, forbidden_family_inventory.json), PLAN_forex_v2.md, research/assets/forex/sessions.py, research/assets/forex/calendar.py, and the bar JSON schema in research/assets/forex_free_v1/td_loader.py. I did NOT open research/control/forex_free_v1_run/, any V1 family/runner/exec/probe module, anything under research/proposals/, tests/assets/forex_free_v1/, or PLAN_forex.md. I ran no git log/show/diff and read no V1 per-cell result, PnL table, or scored digest beyond the mechanism names in the forbidden inventory.",
+    "no_backtest": "No backtest, PnL computation, or real-data load was performed; data_raw/ was never read. All frequency and sample figures are analytic schedule-level estimates.",
+    "no_tuning": "The single frozen parameter sets were fixed a priori from round, prespecified values (UTC hours 0-5 Asian window, 6-9 burst window, 1.5x burst factor, 15-day baseline with 10-day floor; TR-sum neighbour) with no search over alternatives."
+  }
+}

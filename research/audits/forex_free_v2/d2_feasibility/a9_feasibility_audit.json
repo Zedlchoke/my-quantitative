@@ -1,0 +1,311 @@
+{
+  "schema": "forex_free_v2_feasibility_audit_v1",
+  "audit_id": "FXFV2-A9-FEASIBILITY",
+  "role": "A9-F independent feasibility auditor",
+  "cycle": "FOREX-FREE-V2",
+  "phase": "F2-D2",
+  "base_sha": "24c7230",
+  "branch": "orca/forex-free-v2-a9-feasibility",
+  "measured_utc_start": "2026-09-04T03:00:11Z",
+  "measured_utc_sims": "2026-09-04T03:18:33Z",
+  "attestation": "no PnL computed; schedule/descriptive analysis only; read-only snapshot; S1 untouched",
+  "method": {
+    "backtest_run": false,
+    "pnl_computed": false,
+    "strategy_returns_computed": false,
+    "schedule_simulations_run_on_real_snapshot": [
+      "FXFV2-A4-P1 (anchor arm schedule, counts only)",
+      "FXFV2-A4-P2 (anchor arm schedule, counts only)",
+      "FXFV2-A5-P1 (anchor gate+substitution schedule, counts only)",
+      "FXFV2-A5-P2 (anchor gate+substitution schedule, counts only)",
+      "FXFV2-A6-P1 (anchor arm schedule, counts only; bar-index reading AND grid-contiguity sensitivity)",
+      "FXFV2-A6-P2 (anchor arm schedule, counts only)"
+    ],
+    "descriptive_stats_only": "bar ranges and |close-to-close| moves in bps (direction-agnostic, all-bars), cross-sectional demeaned extreme spreads at decision instants; never conditioned into a traded PnL",
+    "snapshot": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw/forex_free_v1 via research/assets/forex_free_v1/td_loader.load_pair_h1 (read-only, no writes, no copies); research/assets/forex_free_v2/data_authority.py helpers (h1_grid_audit, local_wall_to_utc semantics); S1 not listed, opened, hashed or copied"
+  },
+  "data_level": {
+    "coverage": {
+      "EUR/USD": "2020-01-30T07:00Z .. 2026-09-02T00:00Z, 42658 bars",
+      "GBP/USD": "2020-01-30T12:00Z .. 2026-09-02T00:00Z, 42729 bars",
+      "AUD/USD": "2020-01-29T03:00Z .. 2026-09-02T00:00Z, 42749 bars",
+      "NZD/USD": "2020-01-29T19:00Z .. 2026-09-02T00:00Z, 42775 bars",
+      "USD/JPY": "2020-01-29T03:00Z .. 2026-09-02T00:00Z, 42646 bars",
+      "USD/CHF": "2020-01-29T02:00Z .. 2026-09-02T00:00Z, 42635 bars",
+      "USD/CAD": "2020-01-29T01:00Z .. 2026-09-02T00:00Z, 42732 bars"
+    },
+    "grid_audit_counts": "inside-open missing bars 283..349 per pair (0.7-0.8% of grid); out-of-session present 3403..3535 bars per pair (~8%) — the provider emits week-boundary bars (Sunday from ~19:00Z, Monday 00:00Z) that the frozen weekly convention (Sun 21:00 NY open) classifies out-of-session",
+    "flat_bar_16NY": "16:00 America/New_York bar present on all normal weekdays; ABSENT on 410 of 2408 pair-Fridays (17.0%) — provider short-days (e.g. EUR/USD Fridays 2021-07-09/16 end at 13:00Z; 2020-12-25 ends 17:00Z) — and absent on a handful of other weekdays (Mon 1, Tue 14, Wed 35, Thu 4)",
+    "week_boundary_bars": "Monday 00:00Z present on 2391/2408 pair-Mondays (98.3%); Sunday bars exist from ~19:00Z (e.g. 2021-08-08 19:00..23:00Z) — Monday Tokyo/Asian/day-first observables are complete ONLY because of these convention-out-of-session bars",
+    "descriptive_magnitudes_bps": {
+      "median_H1_true_range": {"EUR/USD": 10.09, "GBP/USD": 11.25, "AUD/USD": 15.33, "NZD/USD": 15.78, "USD/JPY": 11.19, "USD/CHF": 11.62, "USD/CAD": 9.93},
+      "median_abs_move_4h": {"EUR/USD": 9.38, "GBP/USD": 10.97, "AUD/USD": 14.3, "NZD/USD": 14.46, "USD/JPY": 10.12, "USD/CHF": 10.21, "USD/CAD": 7.87},
+      "median_abs_move_8h": {"EUR/USD": 15.96, "GBP/USD": 18.5, "AUD/USD": 21.64, "NZD/USD": 21.99, "USD/JPY": 16.45, "USD/CHF": 17.38, "USD/CAD": 13.01},
+      "median_abs_move_12h": {"EUR/USD": 20.44, "GBP/USD": 23.16, "AUD/USD": 26.88, "NZD/USD": 26.94, "USD/JPY": 20.49, "USD/CHF": 21.73, "USD/CAD": 17.26},
+      "A5P1_daytodate_demeaned_extreme_spread": {"median": 57.8, "p25": 41.5, "p75": 84.5, "n": 1750},
+      "A5P2_priorsession_bottom2_top2_spread": {"median": 114.3, "p25": 78.4, "p75": 162.3, "n": 1751}
+    }
+  },
+  "cross_cutting_findings": [
+    {
+      "id": "X1",
+      "severity": "MEDIUM",
+      "title": "Friday 16:00 NY flat bar is absent on 17% of pair-Fridays; only the A4 proposals define a sound fallback",
+      "evidence": "410/2408 pair-Friday absences measured; A4 early_forced_flat fallback executed 70 (P1) and 89 (P2) times; A5 FAIL_LATE_FILL fallback unresolvable on 36 (P1) / 140 (P2) leg events; A6-P1 110 and A6-P2 157 entries with no flat bar and no fallback text",
+      "impact": "determines the pass/fail split below; any fix must remain a frozen one-line fallback amendment by the owner, not an audit repair"
+    },
+    {
+      "id": "X2",
+      "severity": "MEDIUM",
+      "title": "Week-boundary input hygiene is unspecified: load-all vs inside-open-only produce materially different schedules",
+      "evidence": "~3.4k out-of-session bars/pair (8%), incl. Monday 00:00Z (98.3% of Mondays) and Sunday 19:00Z+; loading all bars makes Monday Tokyo ranges (A4-P1), Monday day-to-date increments (A5-P1), Monday NY-rollover session starts (A5-P2) and Monday Asian windows (A6-P2) span the weekend gap via boundary stamps; filtering them makes all Monday pair-days fail-closed NO_TRADE (~20% of weekdays)",
+      "impact": "every session-windowed proposal must pin its bar-universe rule before implementation; neither reading is in any proposal"
+    },
+    {
+      "id": "X3",
+      "severity": "LOW",
+      "title": "Frequency point estimates are off in both directions across lanes",
+      "evidence": "A4-P1 0.72 RT/pair/wk vs frozen band 1.0-1.6; A4-P2 1.70 vs band 0.7-1.3; A5-P1 gate 38.9% vs claimed 50-70%; A5-P2 and A6 within claims",
+      "impact": "estimates are non-binding; caps and cell floors decide feasibility and are reported per proposal"
+    },
+    {
+      "id": "X4",
+      "severity": "LOW",
+      "title": "Determinism pins required",
+      "evidence": "sigma ddof unspecified (A5), median/percentile implementation (statistics vs numpy) unpinned, zoneinfo/tzdata version affects EU/US desync windows, residual recentring in z (A5) ambiguous (spec says e/sigma; sims used e/sigma)",
+      "impact": "implementations must pin these constants or two correct implementations can produce different schedules"
+    }
+  ],
+  "proposals": [
+    {
+      "proposal_id": "FXFV2-A4-P1",
+      "title": "Tokyo-range compression, conditional expansion into the London morning",
+      "simulated_on_real_data": true,
+      "observed": {
+        "entries_full_sample": 1708,
+        "rt_per_pair_per_week": 0.72,
+        "max_entries_pair_utc_day": 1,
+        "max_rt_pair_week_after_governor": 3,
+        "pair_weeks_at_cap3": 85,
+        "signals_dropped_by_week_cap": 9,
+        "per_fold_trades": {"F1": 499, "F2": 574, "F3": 635},
+        "decisions_compressed_total": 2768,
+        "decisions_min_per_pair_fold": 93,
+        "compression_incidence": 0.238,
+        "break_given_compression": 0.617,
+        "early_forced_flat_events": 70,
+        "first_state_evaluable_day": "2020-03-04/05",
+        "entry_hours_utc": "10-12 only"
+      },
+      "checks": {
+        "warmup_and_pit": "PASS — 600-bar warmup fits inside 2020-01-30 start; all observables OHLC-only on completed H1 bars, one-event lag entry/exit; no bid/ask, no H4, no D1",
+        "dst_and_forced_flat": "PASS — 16:00 NY flat via zoneinfo (20/21Z) correct; entries 10-12Z far from 20-21Z boundary; Friday missing flat bar handled by frozen early_forced_flat (70 events executed)",
+        "frequency_contract": "PASS on caps (1/pair/day structural; <=3 RT/pair/week enforced) — but realized 0.72 RT/pair/week sits BELOW the frozen band 1.0-1.6",
+        "cost_drag_schedule_level": "PLAUSIBLE-DEMANDING — 3 bps RT base vs median 8-11h hold-window move 13-22 bps => ~15-25% capture needed at base tier, 30-45% at tier 2.0 (6 bps)",
+        "usd_neutrality": "N/A as claimed (null construction, descriptive diagnostic scheduled) — consistent",
+        "missing_bar_fail_closed": "PASS — Tokyo 9-bar and 20-session trailing rules fail closed; missing entry bar voids; forced-flat fallback defined",
+        "implementation_resource": "PASS — single-leg, 3-arm single-parameter state machines; 7 pairs x ~42.7k bars trivially fits 8 GB"
+      },
+      "findings": [
+        {"severity": "MEDIUM", "id": "A4P1-1", "finding": "Realized frequency 0.72 RT/pair/week is below the proposal's own frozen band 1.0-1.6: compression incidence measured 23.8% (assumed 25-35%) and first-break-given-compression 61.7% (assumed 85-95%). Cell floors still clear (per-fold 499/574/635 >= 400; full 1708 >= 1200) but the per-pair-per-fold decision floor margin is thin: min 93 vs floor 80 (1.16x) — a slightly different (still legitimate) bar-universe choice can push cells INDETERMINATE."},
+        {"severity": "MEDIUM", "id": "A4P1-2", "finding": "The Tokyo range window [00:00,09:00) UTC overlaps the London-morning decision window by 1-2 bars (BST: 07:00Z+08:00Z; GMT: 08:00Z). A decision bar that is part of its own T_H/T_L can never strictly breach (self-referential extreme), so the effective trigger window is 2-3 bars, not '4 hourly bars', and is DST-asymmetric. Not a lookahead (bar completed before entry), but a specification defect the implementation must resolve deterministically (exclude decision bar from range or accept dead bars)."},
+        {"severity": "MEDIUM", "id": "A4P1-3", "finding": "Cross-cutting X2 applies: Monday Tokyo ranges are complete only via convention-out-of-session Monday 00:00Z bars, and then span the weekend gap; the spec does not pin the bar universe."},
+        {"severity": "LOW", "id": "A4P1-4", "finding": "Fold F1 nominally starts 2020-03-01 but the compression state first becomes evaluable 2020-03-04/05; fail-closed absorbs the 3-4 day misalignment."},
+        {"severity": "LOW", "id": "A4P1-5", "finding": "Weekly governor binds in 85 pair-weeks (9 signals dropped, not deferred) — compliant, but not 'not expected to bind' as the proposal states."}
+      ],
+      "verdict": "FEASIBILITY_PASS"
+    },
+    {
+      "proposal_id": "FXFV2-A4-P2",
+      "title": "London-morning range expansion into the London afternoon, confirmed by retest-hold",
+      "simulated_on_real_data": true,
+      "observed": {
+        "entries_full_sample": 4029,
+        "rt_per_pair_per_week": 1.70,
+        "max_entries_pair_utc_day": 1,
+        "max_rt_pair_week_after_governor": 3,
+        "pair_weeks_at_cap3": 571,
+        "signals_dropped_by_week_cap": 166,
+        "per_fold_trades": {"F1": 1297, "F2": 1319, "F3": 1413},
+        "decisions_resolved_total": 10197,
+        "decisions_min_per_pair_fold": 434,
+        "states": {"retest": 4202, "void": 5995, "no_resolution": 1417},
+        "early_forced_flat_events": 89,
+        "entry_hours_utc": "13-19 only (20 at 19Z, all < 20:00 London deadline)"
+      },
+      "checks": {
+        "warmup_and_pit": "PASS — 48-bar warmup trivially fits; same-day state machine on completed H1 bars, one-event lag; L_H/L_L fixed at 12:00 London before trigger window opens",
+        "dst_and_forced_flat": "PASS — entry deadline (<20:00 London) leaves >=1h to 16:00 NY in ALL four offset combinations including EU/US desync weeks (19:00 London = 19:00Z vs flat 20:00Z EDT worst case); no entry near the 20-21Z Friday boundary beyond the deadline; 89 early_forced_flat events handled by the frozen fallback",
+        "frequency_contract": "PASS on caps (1/pair/day structural; <=3/week enforced) — but realized 1.70 RT/pair/week is ~2x the frozen band 0.7-1.3 and the weekly cap binds in 571 pair-weeks (~15%), truncating the sample via drop-not-defer",
+        "cost_drag_schedule_level": "DEMANDING — 3 bps RT vs short holds (entries 13-19Z to flat 20/21Z: 1-7h; median 4h move 8-14 bps) => ~20-35% capture needed at base tier; tier 2.0 doubles it",
+        "usd_neutrality": "N/A as claimed — consistent",
+        "missing_bar_fail_closed": "PASS — 4-bar AM range, entry bar, resolution window all fail closed; Sunday phantom dates and thin Fridays land in NO_TRADE (1,804 am_range_incomplete pair-days)",
+        "implementation_resource": "PASS — single-leg; 3-state resolution machine; control arm variant well-defined; 8 GB trivial"
+      },
+      "findings": [
+        {"severity": "MEDIUM", "id": "A4P2-1", "finding": "Realized anchor frequency 1.70 RT/pair/week is ~2x the frozen expected band 0.7-1.3 (estimate 1.0); the weekly cap binds in 571 pair-weeks with 166 signals dropped. Contract still holds (drop-not-defer) but the proposal's 'expected slack ~3x' is false in practice: the governor is a first-class schedule element and materially truncates the scored sample."},
+        {"severity": "LOW", "id": "A4P2-2", "finding": "Whether the initial-break bar itself can be the void bar is unspecified (sim excludes it, i <= i_brk); a same-bar wick-back can otherwise flip state ordering."},
+        {"severity": "LOW", "id": "A4P2-3", "finding": "Cross-cutting X4: control-arm void state uses the same windows — no extra risk, but the 20:00-London deadline must be computed with zoneinfo (desync weeks verified safe at >=1h margin)."}
+      ],
+      "verdict": "FEASIBILITY_PASS"
+    },
+    {
+      "proposal_id": "FXFV2-A5-P1",
+      "title": "Same-day extreme residual dislocation convergence (USD-neutral 2-leg RV)",
+      "simulated_on_real_data": true,
+      "observed": {
+        "decision_days_gated": 1734,
+        "gate_met_days": 674,
+        "gate_rate": 0.389,
+        "round_trips_full_sample": 673,
+        "construction_rt_per_week": 1.99,
+        "rt_per_pair_per_week": 0.29,
+        "per_fold_legs": {"F1": 408, "F2": 436, "F3": 502},
+        "max_rt_pair_week_after_substitution": 3,
+        "pair_weeks_at_cap3": 41,
+        "fail_late_fill_leg_events": 36,
+        "fail_late_fill_friday_unresolvable": 36,
+        "first_trade_day": "2020-04-06"
+      },
+      "checks": {
+        "warmup_and_pit": "PASS — decision at 12:00Z-bar completion, entry 13:00Z open (one event); 600-bar warmup respected (first trade 2020-04-06)",
+        "dst_and_forced_flat": "PARTIAL — entry 13:00Z far from flat; flat bar missing handling is the blocking defect below; mid-week fallback would fill AT the 17:00 NY rollover instant, not strictly before",
+        "frequency_contract": "PASS on caps via frozen substitution backstop (max 3 RT/pair/week, 41 pair-weeks at cap; 1 entry/pair/day structural since argmin != argmax and one decision/day) — realized frequency 1.99 construction-RT/week vs ~3.0 claimed; gate rate 38.9% vs claimed 50-70%",
+        "cost_drag_schedule_level": "PLAUSIBLE — 6 bps RT base (2 legs x 2 sides x 1.5) vs median entry spread 57.8 bps (p25 41.5) => ~10% capture needed at base tier, ~21% at tier 2.0 (12 bps)",
+        "usd_neutrality": "PASS — algebra verified: with x_L=+1, x_S=-1, return = e_L - e_S; m*(sum_L x - sum_S|x|) = m*(1-1) = 0 cancels exactly to first order independent of selection; symmetric argmin/argmax over all 7 pairs with frozen universe-order tie-break; drop-one re-derivation well-defined (6-pair index, sum e = 0 preserved)",
+        "missing_bar_fail_closed": "PASS at entry (day-first/decision/entry-bar missing -> NO_DECISION; observed 1 event); FAIL at exit (see HIGH)",
+        "implementation_resource": "PASS with caveats — 2-leg same-timestamp entry/exit (no divergence while bars exist); substitution backstop is deterministic but adds state; 8 GB trivial"
+      },
+      "findings": [
+        {"severity": "HIGH", "id": "A5P1-1", "finding": "BLOCKING: the forced-flat fallback ('exit fills at the first available later H1 bar open the same UTC day') is unsatisfiable whenever the 16:00 NY bar is missing on a Friday. Measured: all 36 flat-bar-missing leg events (2.7% of 1,346 legs) occurred on provider-short Fridays (e.g. Fridays ending 13:00Z), where no later bar exists the same UTC day. The frozen spec therefore has NO defined exit for those legs: the only outcomes are forbidden weekend carry (carry is FORBIDDEN per frequency_contract) or an undefined/crashing schedule. As written the proposal cannot be implemented deterministically under the no-carry contract."},
+        {"severity": "MEDIUM", "id": "A5P1-2", "finding": "Frequency claims optimistic: gate incidence 38.9% vs claimed 50-70%; construction cadence 1.99 RT/week vs ~3.0 claimed; per-pair 0.29/week vs 0.86 claimed. Cell floors still clear (204/218/251 RT per fold >= 100; decisions 1,734 >= 250), so feasibility is unaffected, but the estimates should not be relied on downstream."},
+        {"severity": "MEDIUM", "id": "A5P1-3", "finding": "Cross-cutting X2: Monday day-to-date increments run from the 00:00Z convention-out-of-session stamp (weekend-gap-contaminated) when all bars are loaded, or Mondays die entirely when filtered; unpinned."},
+        {"severity": "LOW", "id": "A5P1-4", "finding": "sigma estimator ddof and residual recentring in z_p = e_p/sigma_p are unpinned; sd of a zero-mean residual makes this near-neutral but two implementations can differ at the 3.0 gate margin."}
+      ],
+      "verdict": "FEASIBILITY_FAIL"
+    },
+    {
+      "proposal_id": "FXFV2-A5-P2",
+      "title": "Prior-session outlier basket reversal (USD-neutral 4-leg RV)",
+      "simulated_on_real_data": true,
+      "observed": {
+        "decision_days_gated": 1735,
+        "gate_met_days": 1229,
+        "gate_rate": 0.709,
+        "round_trips_full_sample": 1192,
+        "construction_rt_per_week": 3.52,
+        "leg_visits_per_pair_per_week": 2.01,
+        "per_fold_legs": {"F1": 1488, "F2": 1616, "F3": 1664},
+        "max_rt_pair_week_after_substitution": 3,
+        "pair_weeks_at_cap3": 904,
+        "fail_late_fill_leg_events": 160,
+        "fail_late_fill_friday_unresolvable": 140
+      },
+      "checks": {
+        "warmup_and_pit": "PASS — prior NY-rollover session fully complete by 00:00Z; decision 07:00Z-bar completion, entry 08:00Z open; one-event lag",
+        "dst_and_forced_flat": "PARTIAL — entry 08:00Z far from flat; same Friday missing-flat defect as A5-P1, amplified 4x",
+        "frequency_contract": "PASS on caps via substitution (max 3; 904 pair-weeks at cap — the backstop is constantly active, ~47% of pair-weeks); realized per-pair leg cadence 2.01/week matches the claimed 2.0",
+        "cost_drag_schedule_level": "PLAUSIBLE — 12 bps RT base (4 legs x 2 sides) vs median prior-session bottom2-top2 demeaned spread 114.3 bps (p25 78.4; proposal claimed 50-120) => ~10.5% capture at base tier, 21% at tier 2.0 (24 bps)",
+        "usd_neutrality": "PASS — 2-vs-2 unit balance cancels m exactly to first order; symmetric ranking; drop-one (k=2 of 6) well-posed; per-currency leg audit defined",
+        "missing_bar_fail_closed": "PASS at entry (all 4 legs' 08:00Z bars required; 3 events); FAIL at exit (see HIGH)",
+        "implementation_resource": "PASS with caveats — 4-leg same-timestamp fills; single missing flat bar strands the other three legs and breaks the neutral pair-off (divergent exits); 8 GB trivial"
+      },
+      "findings": [
+        {"severity": "HIGH", "id": "A5P2-1", "finding": "BLOCKING: same unsatisfiable FAIL_LATE_FILL fallback as A5-P1, 4x amplified: 160 flat-bar-missing leg events (2.9% of 4,768 legs), of which 140 fall on provider-short Fridays with no later bar the same UTC day. Additionally, one leg's missing flat bar leaves the other three legs flat and one leg riding — the USD-neutral algebra no longer describes the residual position and no frozen rule covers it."},
+        {"severity": "MEDIUM", "id": "A5P2-2", "finding": "The weekly cap binds in 904 pair-weeks (~47% of all pair-weeks) with constant substitution: schedule remains contract-compliant, but realized composition (which pairs trade) is governor-shaped, not signal-shaped, on nearly half the pair-weeks — the scored construction differs materially from the unconstrained ranking."},
+        {"severity": "LOW", "id": "A5P2-3", "finding": "Cross-cutting X2: Monday session returns start from the first existing bar at/after the Sunday 17:00 NY rollover, which on this snapshot is a convention-out-of-session Sunday 21:00-22:00Z stamp (weekend-gap-adjacent); unpinned."}
+      ],
+      "verdict": "FEASIBILITY_FAIL"
+    },
+    {
+      "proposal_id": "FXFV2-A6-P1",
+      "title": "24-bar TR compression state + 48-bar channel breach (any-hour)",
+      "simulated_on_real_data": true,
+      "simulated_variants": ["bar-index reading (primary)", "grid-contiguity reading (sensitivity)"],
+      "observed": {
+        "bar_index": {
+          "entries_full_sample": 4009,
+          "rt_per_pair_per_week": 1.69,
+          "per_fold_trades_a6_borders": {"F1": 1194, "F2": 1356, "F3": 1459},
+          "compression_state_bars": 111718,
+          "decisions_fired": 4441,
+          "max_rt_pair_week_after_cap": 3,
+          "signals_dropped_by_week_cap": 208,
+          "missing_flat_bar_entries": 110,
+          "entries_out_of_session_stamps": 147,
+          "sunday_entries": 66,
+          "pair_days_with_2_entries_under_decision_day_dedup": 79
+        },
+        "grid_contiguity": {
+          "entries_full_sample": 357,
+          "per_fold_trades": {"F1": 0, "F2": 0, "F3": 357},
+          "compression_state_bars": 14518,
+          "note": "the snapshot contains NO 241 consecutive hourly bars before 2026-01 (first contig-qualified month 2026-01); a 240h lookback spans a weekend except in gapless 2026 stretches"
+        }
+      },
+      "checks": {
+        "warmup_and_pit": "PASS (index reading) — 320 bars cover 24+240+48+1=313-bar deepest lookback; entry at bar t+1 open; mutation-test requirement stated",
+        "dst_and_forced_flat": "PARTIAL — flat instant DST-correct; entry strictly-before-flat check correctly blocks Friday-close-boundary entries (224 events); but exit has no missing-flat fallback (HIGH)",
+        "frequency_contract": "MIXED — caps hold under cap_enforcement (max 3/week after dropping 208), but the 1-entry/pair/UTC-day cap is breached by the spec's own dedup key on 79 pair-days (see MEDIUM); frequency 1.69 vs claimed 1.8 — accurate",
+        "cost_drag_schedule_level": "PLAUSIBLE — 3 bps RT vs 1-8h holds (median 4h move 8-14 bps) — hurdle ~20-40% on the shortest holds, lower on typical ones",
+        "usd_neutrality": "N/A (single-pair directional) — falsification diagnostics D1-D3 frozen and computable from schedule counts",
+        "missing_bar_fail_closed": "AMBIGUOUS/BLOCKING — see HIGH on semantics; exit side fail-closed semantics cannot apply to an open position",
+        "implementation_resource": "PASS — single-leg, single exit, trivial state; 8 GB fine"
+      },
+      "findings": [
+        {"severity": "HIGH", "id": "A6P1-1", "finding": "BLOCKING: no missing-flat-bar fallback. 110 of 4,009 entries (2.7%) have no 16:00 America/New_York bar on the entry date (provider-short Fridays). The frozen exit rule ('closed at the OPEN of the 16:00 NY bar on the entry UTC day') is the ONLY exit; it cannot execute. data_authority.last_flat_bar_index raises MissingBarNoTradeError — but NO_TRADE fail-closed semantics are entry-time semantics; for an open position they resolve to forbidden weekend carry or a crashing/undefined schedule."},
+        {"severity": "HIGH", "id": "A6P1-2", "finding": "BLOCKING: 'if any bar required by S24_t, baseline_B_t, channel_hi/lo ... is missing' is ambiguous between (a) bar-index reading (the prior 240 array slots; fail-closed vacuous after warmup) and (b) grid-contiguity reading (all hourly instants present). Measured impact is 11x: index reading 4,009 entries across all three folds and 111,718 state evaluations (feasible, cells clear); contiguity reading 357 entries ALL in fold 3 (F1/F2 unpopulated => per-populated-fold floor 100 and 2/3-populated-folds gate unevaluable; minimum_decisions 20,000 vs 14,518 fails). The snapshot has no 241 consecutive hourly bars before 2026-01, so reading (b) makes the proposal sample-infeasible. The spec text (index-based definitions) and the fail-closed sentence (grid-flavored) point in different directions; both readings are legitimate implementations."},
+        {"severity": "MEDIUM", "id": "A6P1-3", "finding": "The first-of-day dedup keys on the DECISION bar's UTC date while the cap counts ENTRIES per UTC day; around 00:00Z the keys diverge (decision 23:xxZ -> entry next day). Measured: 79 pair-days with 2 entries (5-16 per pair) unless an entry-day cap check is additionally enforced; as written the realized schedule violates max 1 entry/pair/UTC-day on those days."},
+        {"severity": "MEDIUM", "id": "A6P1-4", "finding": "Any-hour trigger reads convention-out-of-session stamps as tradable: 147 entries (66 on Sundays, incl. Sunday 18-19Z and Monday 00:00Z) sit outside the frozen weekly window on provider boundary bars; a market-open filter is not specified."},
+        {"severity": "LOW", "id": "A6P1-5", "finding": "TR is gap-aware by definition, so weekend close-to-close jumps enter S24 for ~24h after every weekend; accepted by spec but depresses compression-state incidence near Mondays (already reflected in measured counts)."}
+      ],
+      "verdict": "FEASIBILITY_FAIL"
+    },
+    {
+      "proposal_id": "FXFV2-A6-P2",
+      "title": "Thin-Asian-session state + turnover-burst reversion",
+      "simulated_on_real_data": true,
+      "observed": {
+        "entries_full_sample": 4557,
+        "rt_per_pair_per_week": 1.92,
+        "per_fold_trades_a6_borders": {"F1": 1401, "F2": 1541, "F3": 1615},
+        "thin_state_days": 6229,
+        "max_rt_pair_week_after_cap": 3,
+        "signals_dropped_by_week_cap": 376,
+        "pair_weeks_at_cap3": 860,
+        "missing_flat_bar_entries": 157,
+        "entry_hours_utc": "07-10 only",
+        "asian_incomplete_pair_days": 2267,
+        "no_burst_days": 1178
+      },
+      "checks": {
+        "warmup_and_pit": "PASS — 15-day Asian baseline needs ~10-15 days; thin state/drift/median-TR known before burst bar completes; entry at burst bar u+1 open; TR_u uses prior bar close (no self-reference)",
+        "dst_and_forced_flat": "PASS on entry timing — latest entry 10:00Z is >=10h before the 20/21Z flat in all DST regimes; burst window brackets the London handoff by design; but exit has no missing-flat fallback (HIGH)",
+        "frequency_contract": "PASS on caps (1/day structural — one burst/day; <=3/week enforced, 376 dropped, 860 pair-weeks at cap); realized 1.92 vs claimed 1.7 (+13%, acceptable)",
+        "cost_drag_schedule_level": "PLAUSIBLE — 3 bps RT vs long holds (07-10Z to 20/21Z: 10-14h; median 12h move 17-27 bps) => ~15% capture needed at base tier",
+        "usd_neutrality": "N/A (single-pair reversion) — D1-D3 falsification diagnostics frozen and computable",
+        "missing_bar_fail_closed": "PASS at entry (Asian 6-bar window, 15-day baseline, burst, entry bar all fail closed; 2,267 pair-days fail on incomplete Asian windows = mostly Sundays/short days); FAIL at exit (see HIGH)",
+        "implementation_resource": "PASS — single-leg, one decision/day, trivial state; 8 GB fine"
+      },
+      "findings": [
+        {"severity": "HIGH", "id": "A6P2-1", "finding": "BLOCKING: same missing-flat gap as A6-P1 — hold-to-flat at the 16:00 NY bar is the ONLY exit and 157 of 4,557 entries (3.4%) have no such bar on the entry date (provider-short Fridays). No fallback is defined; forbidden weekend carry or undefined schedule."},
+        {"severity": "MEDIUM", "id": "A6P2-2", "finding": "Weekly cap binds in 860 pair-weeks (~45%) with 376 signals dropped: contract-compliant but the scored schedule is governor-truncated to roughly 2/3 of raw signal days in hot regimes (realized 1.92 RT/pair/week vs 1.7 claimed is pre-truncation-consistent only because dropped signals reduce it)."},
+        {"severity": "LOW", "id": "A6P2-3", "finding": "Cross-cutting X2: Monday Asian windows are complete only via convention-out-of-session Monday 00:00Z bars; filtering them makes every Monday NO_TRADE. Unpinned bar-universe rule."}
+      ],
+      "verdict": "FEASIBILITY_FAIL"
+    }
+  ],
+  "summary": {
+    "FEASIBILITY_PASS": ["FXFV2-A4-P1", "FXFV2-A4-P2"],
+    "FEASIBILITY_FAIL": ["FXFV2-A5-P1", "FXFV2-A5-P2", "FXFV2-A6-P1", "FXFV2-A6-P2"],
+    "fail_nature": "All four failures share ONE blocking class: the missing 16:00 America/New_York flat bar on provider-short Fridays (17% of pair-Fridays) with either no fallback (A6) or an unsatisfiable fallback (A5: 'next later bar same UTC day'). A6-P1 additionally fails on the decision-critical missing-bar-semantics ambiguity (11x frequency divergence between the two readings). All four are otherwise schedule-feasible (caps hold, cells clear) and repairable only by an owner-side frozen amendment (e.g. adopt the A4 early_forced_flat fallback); this audit does not repair.",
+    "observed_frequency_stats": {
+      "A4-P1": "max 1 entry/pair/UTC-day; max 3 RT/pair/week (85 pair-weeks at cap); 0.72 RT/pair/week",
+      "A4-P2": "max 1 entry/pair/UTC-day; max 3 RT/pair/week (571 at cap); 1.70 RT/pair/week",
+      "A5-P1": "max 3 RT/pair/week via substitution (41 at cap); 1.99 construction-RT/week; 0.29 per pair",
+      "A5-P2": "max 3 RT/pair/week via substitution (904 at cap); 3.52 construction-RT/week; 2.01 leg-visits/pair/week",
+      "A6-P1": "max 3 RT/pair/week (208 dropped); 1.69 RT/pair/week; 1/pair/day breached on 79 pair-days under decision-day dedup",
+      "A6-P2": "max 1 entry/pair/UTC-day; max 3 RT/pair/week (860 at cap); 1.92 RT/pair/week"
+    }
+  }
+}

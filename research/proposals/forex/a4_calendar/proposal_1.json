@@ -1,0 +1,145 @@
+{
+  "proposal_id": "FX2-A4-P1",
+  "lane": "forex-f2-a4-calendar (A4: sessions, holidays, DST, macro clocks; session/DST-clock perspective)",
+  "mechanism_name": "DST desynchronization of the London-New York overlap: a session-clock liquidity-provision premium",
+  "economic_mechanism": "The deepest liquidity window of the 24/5 FX week is the London-New York overlap. BIS Triennial 2022 evidence shows the UK (38%) and US (19%) host the majority of global FX turnover and the US dollar is on one side of 88% of trades, so the London/NY trading day concentrates dealer staffing, electronic market-maker quoting and client flow. The wall-clock alignment of these two centers is not constant: it is governed by two independent statutory DST calendars (Europe/London switches last Sunday of March and October; America/New_York switches second Sunday of March and first Sunday of November). In every year there are weeks in which the two zones' UTC offsets differ from their long-run aligned value of 5 hours (4 hours in the spring gap, 6 hours in the autumn gap; per IANA tzdb rules, real in-repo via zoneinfo). Hypothesis: during these desynchronized weeks, the overlap window is shifted and effectively thinner for the same client flow, so dealer inventory-carrying risk per unit volume rises and liquidity providers demand higher compensation. If that compensation is real, (i) bid/ask spreads in the preregistered New-York-morning window should widen during desynchronized weeks relative to synchronized weeks, and (ii) passive risk-takers standing in that window should on average earn a spread-adjusted premium relative to the identical window on synchronized weeks. The proposal is a time-structure hypothesis: it predicts where in the clock compensation accrues, not which currency wins.",
+  "expected_counterparty": "Bank dealing desks and electronic market makers quoting the London-New York overlap, whose inventory-carrying cost rises when the deepest window contracts or shifts; and fast-money flow that migrates toward whichever center is open, concentrated into the smaller effective overlap. The premium, if it exists, is compensation paid by liquidity takers to liquidity providers for bearing inventory risk in a structurally thinner window.",
+  "signal_fields_and_publication_clock": {
+    "signal_fields": [
+      "dst_state_desync: binary per-UTC-day indicator computed purely from tzdb offsets: D(t) = tz_offset('Europe/London', t) - tz_offset('America/New_York', t); desynchronized iff D(t) != +5h (spring gap gives D=+4h, autumn gap gives D=+6h). No observed returns, volumes or spreads enter the definition.",
+      "overlap_window_utc: the interval [08:00, 12:00] America/New_York local wall time, converted to UTC via zoneinfo, preregistered before any outcome inspection.",
+      "bid, ask, and midpoint 1h bars (midpoint used for diagnostics and normalization only, never as an executable fill)",
+      "realized-return per 1h bar from executable sides (sell-side for longs, buy-side for shorts)"
+    ],
+    "publication_clock": "The signal is pure calendar arithmetic published by the IANA tzdb years in advance; zoneinfo DST resolution is implemented and tested in-repo (research/assets/forex/sessions.py, tests/assets/forex/test_sessions_dst.py). There is no data-dependent estimation step and no look-ahead: the desync label for any date is computable before that date exists. Session wall-time labels in the repo (08:00-17:00 conventions) are SYNTHETIC_TEST_ONLY defaults; the overlap window boundary [08:00, 12:00] America/New_York is therefore declared as a preregistered convention that must be re-expressed from the winning provider's documented session convention at freeze, before any scoring.",
+    "prohibited_clock_check": "The window and the desync labels are fixed from named IANA zones and tzdb switch rules preregistered here; they are never derived from observed profitable hours. Any session filter added after PnL observation would be a new family/trial per PLAN_forex.md section 7/A4."
+  },
+  "formation_holding_rebalance": {
+    "formation": "At the UTC instant of 08:00 America/New_York on each trading day with D != +5h (desynchronized day), form equal-risk-weighted positions in the pair universe; do nothing on D = +5h days except the neighbour and negative-control arms, which use identical mechanics on their own preregistered day sets.",
+    "holding": "Four hours, until 12:00 America/New_York the same day; positions are always flat outside the window and never held across the New York 17:00 rollover boundary, so swap/rollover accrual is zero by construction in the primary arm.",
+    "rebalance": "None intrawindow; the strategy re-forms the next desynchronized trading day. Expected frequency: roughly 10 trading days around the March gap (US switches ~2 weeks before Europe) and roughly 5 trading days around the October/November gap (Europe switches ~1 week before the US), i.e. about 15 form/flatten round trips per pair per year."
+  },
+  "pair_universe_and_neutralization": {
+    "universe": "All seven frozen initial pairs: EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD. EURUSD and GBPUSD are predeclared as the expected effect-concentration pairs (London-intermediated flow); USDCAD is predeclared as the weakest-mechanism pair (its main flow window is North American).",
+    "neutralization": "Two declared methods. (1) Paired-difference neutrality: anchor, neighbour and negative-control arms hold the identical basket and weights, differing only in which calendar days they are active, so the anchor-minus-neighbour difference is currency-neutral and USD-direction-neutral by construction. (2) Reporting neutrality: per-pair and per-currency risk/PnL contributions are decomposed, USD-direction contribution is reported against the declared FX benchmark per PLAN_forex.md section 13, and the gates 'no pair >30% / no currency >40% of risk or PnL' and 'positive result not explained solely by USD direction' apply. No cross-currency bet is introduced."
+  },
+  "expected_spread_rollover_turnover": {
+    "expected_spread": "Overlap hours are expected to carry the tightest spreads of the week (mechanism corollary: deepest window), with measurable relative widening during desynchronized weeks; cost model must use measured side-specific bid/ask of the frozen provider, never a global pip. Stresses at spread x1.5 and x2 in illiquid-session scenarios are mandatory per PLAN_forex.md section 12.",
+    "expected_rollover": "Zero by construction: no arm holds a position across the New York 17:00 rollover. Rollover-schedule authority is therefore not required for the primary arms; any future variant that crosses the boundary is a new preregistered family and is feasibility-blocked until rollover authority exists.",
+    "expected_turnover": "Low: approximately 15 form/flatten events per pair per year (about 210 round trips per year across 7 pairs), all inside the tightest-spread window of the day. No leverage; position sizing risk-equal across pairs."
+  },
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "Identical basket mechanics applied only on desynchronized trading days (D in {+4h, +6h}), inside the preregistered overlap window [08:00, 12:00] America/New_York.",
+      "why_it_validates": "This is the only arm exposed to the hypothesized structural change (shifted/thinner deepest window). Confirmation requires two jointly predicted signatures: relative spread widening in the anchor window versus synchronized weeks (microstructure corroboration), and spread-adjusted anchor expectancy exceeding the neighbour. One without the other fails the mechanism (spread widening without premium is pure cost; premium without widening points to a different driver)."
+    },
+    "neighbour": {
+      "definition": "The theoretically justified neighbour: identical basket and window applied on synchronized days (D = +5h) in the calendar weeks immediately adjacent to each desynchronization gap (same season, same macro backdrop, same clock window, only the DST state differs).",
+      "why_it_validates": "The neighbour shares every mechanism input except the desynchronization itself, isolating the causal variable. The mechanism predicts anchor > neighbour after costs; if the neighbour matches or beats the anchor, the effect is generic time-of-day seasonality (as documented by Ranaldo 2009), not DST-structure compensation, and the family's specific claim dies."
+    },
+    "negative_control": {
+      "definition": "Causal placebo: identical basket and window applied to preregistered placebo day-sets in which the D-state label is shifted by one week in each direction (days labeled desynchronized that are actually synchronized, and vice versa). Because D(t) is deterministic tzdb arithmetic, the true state of every placebo day is known at freeze, so the placebo is fully specified ex ante and requires no new data.",
+      "why_it_destroys": "If placebo arms perform like the anchor, returns are tracking the calendar label incorrectly or responding to something other than true DST alignment (e.g., season, month boundary), and the mechanism is destroyed. A genuine mechanism must fail on mislabeled clocks; persistence under mislabeled clocks proves the label, and hence the mechanism, is not what drives returns."
+    }
+  },
+  "expected_regimes_and_falsification": {
+    "expected_regimes": "Effect, if present, should be strongest in the March gap (offset error of 1 hour lasting about two weeks; larger reallocation of the overlap) and milder in the autumn gap (about one week); strongest in EURUSD and GBPUSD, weakest or absent in USDCAD; corroborated by spread widening rather than by directional USD moves; plausibly more visible in high-volatility regimes when inventory constraints bind harder, but the hypothesis does not require a volatility regime to appear.",
+    "falsification_criteria": [
+      "Anchor expectancy <= neighbour expectancy after measured bid/ask costs.",
+      "No relative spread widening in anchor windows (mechanism's liquidity channel absent).",
+      "Anchor-like performance in any negative-control placebo arm.",
+      "Effect concentrated in a single pair, a single fold, or a single gap episode (fails drop-one-pair/currency/fold survival gates).",
+      "Effect disappears under mandatory spread x1.5 / x2 illiquid-session stress.",
+      "Positive result explained solely by USD direction against the declared benchmark."
+    ],
+    "no_post_score_replacement": "Failure of any preregistered criterion retires the family; anchors, neighbours, controls, windows and day-sets may not be re-specified after any outcome cell is computed."
+  },
+  "macro_session_external_validity_risks": [
+    "Legislative DST abolition (repeatedly proposed in the EU, debated in the US) would end the desynchronization structure; the tzdb is the operative authority and tracks such changes, but the two-gap-per-year structure is a policy artifact, not a law of nature.",
+    "The repo's session wall-time labels are SYNTHETIC_TEST_ONLY defaults; the preregistered [08:00, 12:00] America/New_York window must be reconciled with the frozen provider's documented convention before freeze, and a provider that timestamps in a fixed offset (no DST) would misalign the whole clock - a fail-closed condition.",
+    "Holiday effects: the March gap contains moving holidays (Good Friday/Easter) with structurally thin sessions; official holiday tables are SYNTHETIC_TEST_ONLY in-repo, so holiday exclusions are currently unauthoritative and the family is blocked on an authoritative holiday source.",
+    "Provider/dealer scope: FX is decentralized; any finding is conditional on the frozen feed's dealer population and must not be labeled a global FX market result (PLAN_forex.md section 2).",
+    "Historical microstructure drift: the share of electronic vs voice dealing and the opening times of regional venues changed over an 8-year window; the effect may decay or appear only in part of the sample, which the chronological-fold gates will expose.",
+    "DST-switch weekends themselves have documented (contested) behavioral anomalies in the literature; the neighbour and placebo controls are designed so that a generic switch-week effect cannot be mistaken for the desynchronization-week premium."
+  ],
+  "exact_trial_count": {
+    "primary_scored_trials": 3,
+    "enumeration": "Exactly three primary outcome trials for this family, run serially per PLAN_forex.md section 12: (1) anchor, (2) neighbour, (3) negative-control placebo. The mandated stress and context recomputations (spread x1.5/x2, DST-boundary and weekend-gap subsets, drop-one-pair/currency/fold, London-only/New-York-only/full-declared-session context) are recomputations of these same preregistered arms; every computed cell increments the forex observed denominator exactly once regardless of publication success.",
+    "no_post_score_replacement": true
+  },
+  "required_pit_fields_with_availability": [
+    {
+      "field": "1h bid/ask OHLC history, >=8 years, all 7 pairs, UTC event and ingest timestamps",
+      "source": "owner-authorized institutional bid/ask provider per PLAN_forex.md section 2",
+      "availability": "UNAVAILABLE - 0 of 7 pairs; no provider entitlement; fail-closed. This proposal is feasibility-blocked at selection unless the owner authorizes data."
+    },
+    {
+      "field": "IANA tzdb DST rules for Europe/London and America/New_York",
+      "source": "IANA tzdb via repo zoneinfo (research/assets/forex/sessions.py; tests/assets/forex/test_sessions_dst.py)",
+      "availability": "AVAILABLE - zoneinfo DST is real and correctness contracts are implemented; this is the only load-bearing field that exists today."
+    },
+    {
+      "field": "Provider-documented session wall-time convention (to reconcile the preregistered 08:00-12:00 America/New_York window)",
+      "source": "frozen provider's market/session documentation",
+      "availability": "UNAVAILABLE pending provider freeze; in-repo defaults are SYNTHETIC_TEST_ONLY."
+    },
+    {
+      "field": "Authoritative holiday tables for EUR, GBP, JPY, AUD, CAD, CHF, NZD, USD (holiday-week exclusions)",
+      "source": "authoritative per-currency holiday authority named at freeze",
+      "availability": "SYNTHETIC_TEST_ONLY - no authoritative source in repo; blocked for scoring use."
+    },
+    {
+      "field": "Rollover/swap schedule",
+      "source": "provider/broker rollover schedule",
+      "availability": "UNAVAILABLE - not required by the primary arms (never held across the New York 17:00 rollover by construction); any overnight-crossing variant is blocked."
+    },
+    {
+      "field": "PIT macro vintages (rates, CPI, release values)",
+      "source": "not used by this mechanism",
+      "availability": "UNAVAILABLE in repo, and deliberately not required: the signal is pure calendar arithmetic and uses no macro values."
+    }
+  ],
+  "literature_sources": [
+    {
+      "title": "Triennial Central Bank Survey of Foreign Exchange and OTC Derivatives Markets in 2022",
+      "authors": "Bank for International Settlements",
+      "year": 2022,
+      "doi_or_url": "https://www.bis.org/statistics/rpfx22_fx.htm",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "UK 38% and US 19% of global FX turnover (top five centres 78%); USD on one side of 88% of trades; spot 28% ($2.1 trillion/day) of $7.5 trillion daily turnover. Supports the claim that the London-New York day is the dominant liquidity window and that USD pairs are the relevant universe."
+    },
+    {
+      "title": "Segmentation and Time-of-Day Patterns in Foreign Exchange Markets",
+      "authors": "Angelo Ranaldo",
+      "year": 2009,
+      "doi_or_url": "https://ideas.repec.org/p/snb/snbwpa/2007-03.html (SNB WP 2007-3; Journal of Banking and Finance 33, 2199-2206; ZORA: https://www.zora.uzh.ch/entities/publication/f9e1a49a-94a1-4875-bb3a-8adcc1a657cd)",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "Time-of-day patterns in spot FX are statistically and economically significant; currencies tend to appreciate during domestic trading hours and depreciate during foreign hours. Supports the premise that session structure carries return-relevant information; this proposal asks whether that structure is disturbed specifically by DST desynchronization of the two dominant centres."
+    },
+    {
+      "title": "Losing Sleep at the Market: The Daylight Saving Anomaly",
+      "authors": "Mark J. Kamstra, Lisa A. Kramer, Maurice D. Levi",
+      "year": 2000,
+      "doi_or_url": "https://www.aeaweb.org/articles?id=10.1257/aer.90.4.1005 (American Economic Review 90(4), 1005-1011, DOI 10.1257/aer.90.4.1005)",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "Equity market returns differ around daylight-saving switch days across countries. Used only as evidence that DST transitions are market-relevant events; NOT used as the mechanism (this proposal's channel is liquidity structure, not behavioral sleep disruption). Known contested replications are declared as an external-validity risk."
+    },
+    {
+      "title": "Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange",
+      "authors": "Torben G. Andersen, Tim Bollerslev, Francis X. Diebold, Clara Vega",
+      "year": 2003,
+      "doi_or_url": "https://www.aeaweb.org/articles?id=10.1257/000282803321455151 (American Economic Review 93(1), 38-62, DOI 10.1257/000282803321455151)",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "Background only: FX price discovery concentrates in seconds-to-minutes around scheduled US macro releases and intraday activity is strongly time-of-day dependent. Establishes that intraday FX clocks matter; supports the lane premise, not the specific DST claim."
+    }
+  ],
+  "prohibited_shortcut_check": {
+    "rsi_ema_parameter_grids_without_mechanism": "NOT APPLICABLE - no technical-indicator grids; the single preregistered parameter set (window [08:00,12:00] America/New_York; D != +5h label) follows from the mechanism, and no grid search over windows, hours or offsets is authorized.",
+    "single_provider_volume_treated_as_global_fx_volume": "NOT APPLICABLE - volume is never used as a signal or filter; any volume-like quantity remains DIAGNOSTIC_ONLY and feed-scoped per PLAN_forex.md section 2.",
+    "carry_computed_from_todays_rate_applied_historically": "NOT APPLICABLE - no interest rates or swap points enter any signal; primary arms never cross the rollover boundary so no swap accrual exists to model.",
+    "session_filters_selected_after_seeing_profitable_hours": "NOT APPLICABLE - the desync day-set and the overlap window are fixed from IANA tzdb rules and a preregistered New York wall-time convention before any outcome observation; observed profitable hours are never consulted.",
+    "midpoint_backtests_labeled_executable": "NOT APPLICABLE - all return computations require side-specific bid/ask fills (sell to close longs, ask to close shorts); midpoint is diagnostics-only and any scoring without executable bid/ask fails closed."
+  },
+  "ancestry_statement": "This is a new, first-generation proposal inside the forex F2 outcome-blind discovery lane. This repository contains no previously rejected or scored FX family (no forex score or S1 access exists per PLAN_forex.md entry checks), so the proposal cannot be a rescue of a rejected idea. Its intellectual ancestry is declarative: it extends Ranaldo's (2009) session time-of-day segmentation and the BIS turnover geography by asking a question neither answers - whether the London-New York overlap premium changes specifically when statutory DST calendars desynchronize the two centres - and it is deliberately distinct from equity DST-behavioral anomalies (Kamstra-Kramer-Levi), which it uses as motivation only and neutralizes via its synchronized-week neighbour and mislabeled-clock negative controls.",
+  "data_availability_honesty": "Feasibility-blocked at selection absent owner authorization: real FX bid/ask history is UNAVAILABLE (0 of 7 pairs, fail-closed), authoritative holiday tables are SYNTHETIC_TEST_ONLY, and provider session conventions are unfrozen. The DST clock itself (tzdb via zoneinfo) is real and implemented. No claim is made that required market data exists in the repo."
+}

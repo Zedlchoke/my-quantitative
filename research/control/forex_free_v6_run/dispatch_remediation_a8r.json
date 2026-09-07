@@ -1,0 +1,23 @@
+{
+ "schema": "forex_free_v6_dispatch_packet_v1",
+ "dispatch_id": "A8-R-REMEDIATION",
+ "when": "after subagent capacity returns (quota reset 2026-09-10T10:01:27); spawn as general-purpose agent",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/i-family (reuse lane worktree; branch orca/forex-free-v6-i-family; FIRST: git fetch nothing, git merge/rebase FORBIDDEN - create branch orca/forex-free-v6-i-family-r2 from integration HEAD then work there)",
+ "base": "integration HEAD at dispatch time (>= 2baa37c; measure it)",
+ "objective": "remediate A7 finding F-A7-1 (HIGH) + companions F-A7-2 (LOW), F-A7-3 (LOW), per selection_freeze.json amendment_1",
+ "changes_allowed": [
+  "research/assets/forex_free_v6/family_a6p2.py: FOLD_BOUNDARIES_P2 = (2020-12-18, 2023-04-05) exclusive-start/inclusive-end semantics per the A9 primary grid F1 2018-09-03..2020-12-18 | F2 2020-12-21..2023-04-05 | F3 2023-04-06..2025-07-24 (check the family's existing boundary comparison operator and keep fold membership identical to the frozen grid: decision_date <= 2020-12-18 -> F1; 2020-12-21 <= d <= 2023-04-05 -> F2; d >= 2023-04-06 -> F3); replace the in-code justification comment (it cites the sensitivity grid as 'the boundaries in evidence' - factually wrong); update the fixturized fold-boundary tests to the primary grid",
+  "research/assets/forex_free_v6/exec_driver_v6.py: stamp code_freeze_sha from run_contract.code_freeze_full_sha at scored/dry-run record build (replaces PENDING_V6_CODE_FREEZE placeholder; validator unchanged)",
+  "tests/assets/forex_free_v6/test_i_family_v6.py: fold-boundary fixtures to primary grid; code_freeze stamp assertion",
+  "research/control/forex_free_v6_run/f_a7_3_correction_note.json: NEW file annotating that d2/a9_feasibility/FXFV6-A6-P2.json sensitivity block carries A6-P1's numbers (never edit the A9 lane's committed file)"
+ ],
+ "forbidden": "any other change; no re-freeze; no parameter change beyond the boundary fix; no scored run; no push; no git add -A",
+ "verification": [
+  "arm_config_digests re-verified 6/6 vs selection_freeze.json (unchanged)",
+  "PYTHONPATH=. .venv/bin/python -m pytest tests/assets/forex_free_v6/ -q (expect 103+ passed, 0 failed)",
+  "dry-run --mode dryrun: per-arm fold populations for FXFV6-A6-P2 anchor must be 143/322/230 (+/- the driver's documented kept-decisions semantics; A9 measured 143/322/230 on the primary grid)",
+  "dry-run still: 6/6 arms non-vacuous, pairwise-distinct IDs, 0 leaks, scored ledger absent"
+ ],
+ "commit": "ONE commit by pathspec: 'FOREX-FREE-V6 A8-R: F-A7-1 remediation (A6-P2 folds to A9-primary grid) + F-A7-2 code_freeze stamp + F-A7-3 correction note'",
+ "handoff_to": "A1 cherry-pick, re-freeze stamp (new code_freeze commit), re-run twin dry-run, then dispatch A7-REAUDIT packet"
+}

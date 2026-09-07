@@ -1,0 +1,117 @@
+{
+  "proposal_id": "FXFV1-A3-P2",
+  "lane": "A3 (outcome-blind proposal lane, FOREX-FREE-V1 F4, session-flow perspective)",
+  "mechanism_name": "Late-NY Fade of the Volatility-Standardized Intraday Extension (session-bounded mean reversion, flatten before rollover)",
+  "mechanism_group": "session_bounded_mean_reversion",
+  "economic_mechanism": "Intraday FX extensions that have accumulated by early-to-mid New York hours are disproportionately liquidity-driven rather than information-driven: stop-loss orders execute in the direction of the prevailing move and generate self-reinforcing but transient price cascades (Osler 2003/2005), and such temporary price pressure reverts once the cascade exhausts (transient-pressure/inventory-reversion view; Elaut, Lampaert & Froemmel 2018 attribute FX intraday momentum to liquidity provision, implying that liquidity-driven move segments are the ones that mean-revert). Late in the New York afternoon, dealer inventory management ahead of the 17:00 America/New_York rollover shades quotes to attract offsetting flow, adding systematic counter-pressure. The mechanism: measure the same-day move from the NY-open reference after exactly four completed NY-session H1 bars; when that move is LARGE relative to the pair's trailing 20-trading-day daily volatility (frozen gate |z| >= 1.0), take the OPPOSITE side for the late-NY window (13:00 -> 16:00 New York wall clock) and flatten strictly before the rollover. The volatility gate is the causal discriminator: only standardized-large moves are candidates for transient pressure; small moves are treated as noise/information and not traded.",
+  "expected_counterparty": "The initiators of the transient extension: (i) stop-loss cascade participants whose stops execute as price-insensitive market orders in the direction of the move (mandated risk management, not profit-seeking; Osler 2003/2005); (ii) late intraday momentum entrants chasing the move into thinning afternoon liquidity; (iii) urgency-driven client flows that must execute before the rollover value-date cut regardless of price. These counterparties tolerate the late-day reversion loss because their trades are mandate- or urgency-driven.",
+  "signal_fields_and_publication_clock": "Inputs per pair: Twelve Data H1 OHLC closes and bar open timestamps (UTC) only, plus session-boundary instants from the frozen calendar (zoneinfo named zones; never from data, never fixed offsets). A bar timestamped T (open) is COMPLETED at T+1h; only completed bars may enter signals. NY open N = 08:00 America/New_York (whole-hour UTC offset, so N always coincides with an H1 bar boundary - implementation must assert alignment and fail closed). Signal timeline: p0 = close of last completed bar with end <= N; p4 = close of the 4th NY-session bar, public at 12:00 New York wall clock; r = p4/p0 - 1. Volatility scale: sigma = sample standard deviation (n-1) of the trailing 20 completed FX trading days' daily rollover-to-rollover log returns, where a trading day's return = ln(close of last completed bar strictly before that day's 17:00 NY rollover / same for the prior trading day); trading days from the frozen calendar (Sunday open maps to Monday). z = r/sigma. All signal inputs are public by 12:00 New York on day d; the 20-day sigma uses only days strictly before d (no look-ahead). Warm-up: a pair produces no trades until 20 completed trading days exist (~2020-02-26 for the cycle sample; exact first trade date is data-determined, not tuned).",
+  "entry_exit_and_rollover_flat_rule": "If z >= +1.0, position -1 (short); if z <= -1.0, position +1 (long); if |z| < 1.0, no trade. Frozen constants: gate exactly 1.0, signal window exactly 4 NY-session bars, sigma lookback exactly 20 trading days. Entry fill: close of the NEXT completed H1 bar after the signal bar (the 5th NY-session bar; fill instant 13:00 New York wall clock). Exit (flatten): close of the last completed H1 bar with end STRICTLY BEFORE the same weekday's 17:00 America/New_York rollover - uniformly the bar ending 16:00 New York wall clock in EST (end 21:00Z < 22:00Z) and EDT (end 20:00Z < 21:00Z), so the holding window is uniformly 3 completed bars (13:00 -> 16:00 New York), DST-exact. Friday: the flatten bar is the frozen 16:00 New York weekly-close bar; no weekend exposure. One position per pair per day; days with no trigger are flat. Missing-bar rule (fail closed): any pair-day missing a required bar (p0, p4, any of the 20 sigma days' boundary bars, entry or flatten bar) is skipped as NO_TRADE and counted; no interpolation, no carry-over.",
+  "execution_model": "Next-allowed-bar execution, conservative close-to-close: the signal is computed on completed bar t only; the earliest fill is the close of bar t+1 (never bar t, never intra-bar). Under cost cell S3 an additional one-event delay applies (fill at bar t+2 close); the flatten rule is unchanged and still executes strictly before the rollover, which remains feasible because the flatten bar is at least one bar after the delayed entry bar in all session/dst configurations.",
+  "frozen_cost_stress_matrix": {
+    "declared_before_any_returns": true,
+    "basis": "Conservative PROXY costs chosen a priori, identical to FXFV1-A3-P1 for cycle comparability; not estimated from data, not a bid/ask claim.",
+    "spread_proxy_bps_per_side_base": 1.5,
+    "applied_to": "every fill (entry and exit), so base round trip = 3.0 bps",
+    "cells": [
+      {"cell": "S1 (base)", "multiplier": 1.0, "spread_proxy_bps_per_side": 1.5, "extra_delay_events": 0},
+      {"cell": "S2", "multiplier": 1.5, "spread_proxy_bps_per_side": 2.25, "extra_delay_events": 0},
+      {"cell": "S3 (worst)", "multiplier": 2.0, "spread_proxy_bps_per_side": 3.0, "extra_delay_events": 1}
+    ],
+    "one_event_delay_definition": "S3 shifts the entry fill one additional completed bar later (bar t+2 close instead of t+1 close); flatten unchanged, still the last completed bar strictly before the rollover."
+  },
+  "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "Late-NY fade exactly as specified: |z| >= 1.0 gate on the 4-bar NY-session extension standardized by 20-day daily sigma; position -sign(r) entered at 13:00 New York; flattened at the last completed bar strictly before 17:00 America/New_York; all 7 pairs.",
+      "why_it_validates": "If large standardized intraday extensions are transient liquidity pressure, the anchor must show positive net expectancy on a majority of pairs at S1, with anchor > sign-flipped control and the liquidity-thinness ordering anchor <= neighbour-in-thinness predicted by the pressure mechanism."
+    },
+    "neighbour": {
+      "definition": "Tokyo-open analogue, identical construction anchored at 09:00 Asia/Tokyo (whole-hour offset): p0 from the last completed bar with end <= Tokyo open; p4 = 4th Tokyo-session bar (signal 13:00 Tokyo); fill 14:00 Tokyo; same frozen |z| >= 1.0 gate and same 20-day sigma series; same flatten rule (strictly before 17:00 New York rollover). Theory: transient price pressure per unit of flow scales inversely with session liquidity - Tokyo is the thinnest G10 session, so standardized extensions there should revert AT LEAST as strongly (predicted same-signed, magnitude >= anchor).",
+      "why_it_validates": "A liquidity gradient (Tokyo fade >= NY fade) is a distinctive implication of the pressure-reversion mechanism and not of generic artifacts; confirming the ordering supports the theory.",
+      "why_it_destroys": "If Tokyo shows no fade (same-signed but < 25% of the anchor's mean net per-trade return, or opposite-signed) on >= 5 of 7 pairs, the NY-afternoon result is unlikely to be a liquidity-pressure mechanism and is suspected to be a late-session data artifact (e.g., stale-quote wiggles in provider closes), falsifying the proposal."
+    },
+    "negative_control": {
+      "definition": "Sign-flipped anchor (continuation control): buy the standardized extension instead of fading it; identical gate, timing, fills, flatten rule, universe and frozen cost matrix.",
+      "why_it_validates": "Not a validation arm: the causal control. A transient-pressure mechanism supports the proposal only if flipping the sign destroys the edge.",
+      "why_it_destroys": "If the continuation control's mean net per-trade return >= the anchor's on >= 4 of 7 pairs at S1, gated days behave like intraday-momentum days rather than pressure-reversion days and the proposal is falsified."
+    }
+  },
+  "falsification_rule": {
+    "preregistered": "Evaluated once in F8 after scoring is authorized; thresholds frozen now, no re-tuning, no rescue, no re-gating.",
+    "reject_if_any": [
+      "F2a (causal control): at cost cell S1, the sign-flipped continuation control's mean net per-trade return >= the anchor's on >= 4 of 7 pairs.",
+      "F2b (cost stress): at cost cell S3 (x2 spread + one-event delay), the anchor's cumulative net return < 0 on >= 5 of 7 pairs.",
+      "F2c (liquidity gradient): the Tokyo-open neighbour's mean net per-trade return is opposite-signed to the anchor's, or same-signed but < 25% of the anchor's, on >= 5 of 7 pairs.",
+      "F2d (DST robustness, diagnostic on anchor trades, not a new trial): if the anchor's mean net per-trade return flips sign between EDT-computed and EST-computed session-day subsets on >= 5 of 7 pairs, the effect is a clock artifact -> REJECT."
+    ],
+    "necessary_survival_conditions": "Anchor cumulative net return > 0 at S1 on >= 5 of 7 pairs AND anchor > sign-flipped control on >= 5 of 7 pairs.",
+    "no_other_analysis": "No other gate level, lookback, signal window or session anchor may be scored for this proposal; a failed rule is terminal for the cycle."
+  },
+  "expected_regimes": "Expected to work in range-bound low-surprise weeks, after one-sided stop-cascade days, and in late-afternoon inventory-unwind conditions. Expected to fail in sustained macro-trend weeks (FOMC/ECB/BOJ turning points), central-bank intervention episodes (JPY, CHF) where extensions are information that continues, and on gap-driven days where the 20-day sigma underestimates the new volatility regime.",
+  "dst_session_clock_spec": {
+    "week_window": "Open Sunday 21:00 America/New_York, close Friday 16:00 America/New_York (frozen calendar; identical to research/assets/forex/sessions.py DEFAULT_FX_WEEK_CONVENTION). Out-of-session bars excluded by calendar rule only.",
+    "session_anchors": "New York session open 08:00 America/New_York; Tokyo session open 09:00 Asia/Tokyo (declared a priori, frozen for the whole cycle, never re-optimized).",
+    "rollover": "17:00 America/New_York daily; flatten at the last completed H1 bar with end strictly before the rollover instant (uniformly the bar ending 16:00 New York wall clock, EST and EDT alike); the daily sigma series uses these same rollover-to-rollover closes so the volatility scale shares the strategy's exact clock.",
+    "implementation_requirements": "All instants computed in named IANA zones via zoneinfo (DST-correct); nonexistent wall times fail closed; ambiguous wall times resolved by explicit fold policy; whole-hour bar-boundary alignment asserted for NY and Tokyo anchors; no fixed UTC offsets anywhere; Sunday open maps to Monday's FX trading day; Friday flatten coincides with the frozen 16:00 New York week close."
+  },
+  "exact_trial_count": {
+    "scored_trials": 21,
+    "decomposition": "3 variants (anchor, Tokyo-open neighbour, sign-flipped continuation control) x 7 pairs = 21 scored trials, each evaluated once over 2020-01-29 -> 2026-09-02 (per-pair warm-up of 20 trading days is data-determined, not a trial).",
+    "not_additional_trials": "The 3-column frozen cost stress matrix re-costs the identical 21 trade streams; the F2d EDT/EST split is a diagnostic partition of anchor trades.",
+    "forbidden": "No parameter grid: gate exactly 1.0, window exactly 4 NY-session bars, sigma lookback exactly 20 trading days, anchors exactly NY/Tokyo - no other configuration may be scored."
+  },
+  "data_fields_used": {
+    "source": "Twelve Data H1 OHLC, closes-eligible canonical bars only, 2020-01-29 -> 2026-09-02",
+    "fields": ["H1 open", "H1 high", "H1 low", "H1 close", "H1 bar timestamp (UTC)"],
+    "signal_dependency": "closes and timestamps only (open/high/low unused by the signal); session boundaries and trading-day labels from the frozen calendar, not from data",
+    "per_pair": "each pair uses only its own series; no cross-pair inputs"
+  },
+  "forbidden_assumptions_check": {
+    "no_bid_ask": "PASS - no bid/ask data used or assumed recoverable; the 1.5 bps/side proxy is a declared conservative stress, not a data claim, and outputs are labelled RESEARCH_CANDIDATE_NOT_LIVE_READY.",
+    "no_volume": "PASS - no volume field used; centralized FX volume is forbidden under the contract (the volatility scale is return-based, not volume-based).",
+    "no_financing": "PASS - every position is flattened at the last completed bar strictly before the NY rollover; zero swap/financing assumed, accrued or collected.",
+    "no_overnight": "PASS - no position spans a rollover instant or the weekend; the Friday flatten coincides with the frozen Friday 16:00 America/New_York week close.",
+    "no_lookahead": "PASS - signals use completed bars only; sigma uses only trading days strictly before the signal day; fills occur at the next completed bar at the earliest.",
+    "no_outcome_tuning": "PASS - zero returns/backtests computed in this lane; all constants frozen before any scoring."
+  },
+  "literature_sources": [
+    {
+      "title": "Stop-Loss Orders and Price Cascades in Currency Markets",
+      "authors": "Carol L. Osler",
+      "year": 2003,
+      "venue": "Federal Reserve Bank of New York Staff Report No. 150; published as Journal of International Money and Finance 24(2), 219-241 (2005)",
+      "url": "https://www.newyorkfed.org/research/staff_reports/sr150.html",
+      "retrieval_utc": "2026-09-03T07:55:00Z (approximate; WebSearch)",
+      "claim": "Stop-loss orders execute in the direction of the move and create rapid, self-reinforcing price cascades when clustered - the transient-pressure mechanism this proposal fades."
+    },
+    {
+      "title": "Intraday Momentum in FX Markets: Disentangling Informed Trading from Liquidity Provision",
+      "authors": "G. Elaut, C. Lampaert, M. Froemmel",
+      "year": 2018,
+      "venue": "Journal of Financial Markets (also SSRN 2694985)",
+      "url": "https://www.sciencedirect.com/science/article/abs/pii/S1386418116300313",
+      "retrieval_utc": "2026-09-03T08:05:00Z (approximate; WebSearch)",
+      "claim": "FX intraday effects are driven by liquidity provision rather than informed trading - supports attributing standardized-large extensions to transient liquidity pressure rather than information."
+    },
+    {
+      "title": "Extreme Returns Without News (title as surfaced in search snippet; venue/year NOT confirmable in this lane)",
+      "authors": "T. Savaser (per snippet)",
+      "year": null,
+      "venue": "UNVERIFIED",
+      "url": "UNVERIFIED (surfaced only as a cross-reference snippet in the Osler search, 2026-09-03)",
+      "retrieval_utc": "2026-09-03T07:55:00Z (approximate; WebSearch snippet only)",
+      "claim": "PER SNIPPET: extreme returns without news are temporary and mean-revert once cascades exhaust. UNVERIFIED - not used as a load-bearing citation; recorded for honesty only."
+    },
+    {
+      "title": "OTC foreign exchange turnover in April 2022 (Triennial Central Bank Survey)",
+      "authors": "Bank for International Settlements",
+      "year": 2022,
+      "venue": "BIS Triennial Survey commentary",
+      "url": "https://www.bis.org/publications/202210-commentary-otc-derivatives",
+      "retrieval_utc": "2026-09-03T08:05:00Z (approximate; WebSearch)",
+      "claim": "Session liquidity hierarchy (UK largest centre, US second, Asia thinner) - grounds the predicted liquidity gradient between Tokyo and NY fades."
+    }
+  ],
+  "label": "RESEARCH_CANDIDATE_NOT_LIVE_READY"
+}

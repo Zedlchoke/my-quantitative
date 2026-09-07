@@ -1,0 +1,156 @@
+{
+  "proposal_id": "FX2-A4-P2",
+  "lane": "forex-f2-a4-calendar (A4: sessions, holidays, DST, macro clocks; macro-event timing economics)",
+  "mechanism_name": "Pre-release liquidity-withdrawal premium: scheduled-macro-release timing in USD pairs, anchored on the New York rollover clock",
+  "economic_mechanism": "Scheduled US macro releases (nonfarm payrolls, CPI, FOMC decisions) are known to the minute years/months in advance from official agency calendars, and FX price discovery around them is concentrated in seconds-to-minutes after the print (Andersen-Bollerslev-Diebold-Vega 2003, AER). In equity markets, expected returns concentrate before scheduled announcements (Lucca-Moench 2015, JF), consistent with scheduled announcements being intervals of concentrated priced risk. Hypothesis: the same announcement-timing economics exists in spot FX. Market makers cap inventory and thin their quotes ahead of known release times; risk-transfer flow arriving into a thinning book moves price systematically before the print; therefore compensation for bearing scheduled-event exposure accrues in a preregistered pre-release window, and a holder of the standard G10-versus-USD basket who owns only that window earns, on average, a spread-adjusted premium relative to identical clock durations on matched non-release days. The mechanism is timing economics, not macro forecasting: no released value, surprise or vintage enters any signal, so no PIT macro-value data is consumed. Premium accrues before the release, not from it.",
+  "expected_counterparty": "Dealers and fast-money liquidity providers who de-risk and cap inventory ahead of scheduled releases and must be compensated by pre-release price concession from risk-transfer flow; equivalently, investors who are unwilling to hold scheduled-event exposure and pay (in expectation) those who do. The counterparty is time-constrained by the official release calendar, which is what makes the interaction schedulable rather than opportunistic.",
+  "signal_fields_and_publication_clock": {
+    "signal_fields": [
+      "release_timestamp: the officially announced wall-clock time of each event in the frozen release list (BLS nonfarm payrolls and CPI, typically 08:30 America/New_York; FOMC policy decision, 14:00 America/New_York), known publicly at least weeks in advance; only the timestamp is used, never the outcome",
+      "event_pre_window: [first New York 17:00 rollover boundary strictly before release_timestamp, release_timestamp minus 5 minutes], computed with the New York rollover clock (America/New_York via zoneinfo; rollover boundary is the repo's preregistered week convention)",
+      "matched_non_release_clock: same duration, same weekday-of-week and same wall-clock phase on preregistered non-release days",
+      "post_release_placebo_clock: [release_timestamp plus 65 minutes, release_timestamp plus 65 minutes plus the same duration]",
+      "1h bid/ask bars; midpoint diagnostics only, never an executable fill"
+    ],
+    "publication_clock": "The release calendar is published by the agencies (BLS, BEA, Board of Governors) on fixed schedules; timestamps are deterministic public facts with no estimation step and no look-ahead (each timestamp is known before its window opens). DST correctness is handled by expressing 08:30/14:00 as America/New_York wall times via zoneinfo, never fixed UTC offsets. FOMC statement time moved to 14:00 with the 2011 presser-cycle conventions: the frozen list records, per event, the official time in force at that date, taken from the agency calendar itself, not from a reconstruction.",
+    "prohibited_clock_check": "Windows are derived from official agency calendars and the New York rollover convention, preregistered here; they are never derived from observed profitable hours. A release-time or window change made after observing PnL would be a new family/trial."
+  },
+  "formation_holding_rebalance": {
+    "formation": "At the first New York 17:00 rollover boundary strictly before each frozen-list release timestamp, form equal-risk-weighted positions in the pair universe (the standard G10-vs-USD basket).",
+    "holding": "Until release_timestamp minus 5 minutes: about 15.5 hours for 08:30 releases (formation crosses exactly one rollover boundary) and about 21 hours for 14:00 FOMC releases (crosses two). The arm deliberately does NOT hold through the release: the claim is about pre-release compensation, not about gambling on the print; holding through the release is a different family and is not authorized here.",
+    "rebalance": "One entry and one exit per event, roughly 32 events per year in the frozen list (12 payrolls + 12 CPI + 8 FOMC decisions), i.e. about 64 round trips per year across the universe. No intrawindow rebalancing; positions are flat between event windows."
+  },
+  "pair_universe_and_neutralization": {
+    "universe": "All seven frozen initial pairs: EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD (USD on one side of 88% of global trades per BIS 2022, so US releases are the relevant common clock).",
+    "neutralization": "Primary arm holds long-foreign/short-USD in all seven pairs at equal risk; the USD-direction component is therefore explicitly present and is declared, not hidden: it is decomposed against the declared cash-rate and FX benchmark context per PLAN_forex.md sections 10 and 13 ('positive result not explained solely by USD direction unless preregistered' - here it IS preregistered as part of the basket, and the currency-neutral check is mandatory). Currency-neutral co-test: the same three arms are additionally run dollar-flat (equal-and-offset long/short USD legs constructed from the same pairs, e.g. long EURUSD against short USDJPY-matched legs), preregistered as a decomposition arm, to show whether a premium survives with zero net USD. Concentration gates (no pair >30%, no currency >40%) apply to all arms."
+  },
+  "expected_spread_rollover_turnover": {
+    "expected_spread": "Pre-release windows are expected to carry WIDER spreads than comparable non-release hours (that is part of the mechanism: liquidity withdrawal), so the cost model must use measured side-specific bid/ask per pair and per window, never a global pip; the spread-widening signature is a required corroboration, and the spread x1.5/x2 illiquid-session stresses are mandatory.",
+    "expected_rollover": "Material by design: windows cross one (08:30 releases) or two (FOMC) New York rollover boundaries, so long/short swap accrual asymmetry enters the cost identity. This makes authoritative rollover schedules a hard requirement and a stated blocker: without them the family cannot be costed and fails closed.",
+    "expected_turnover": "Low-to-moderate: 2 round trips per event across 7 pairs (about 64 pair-round-trips per year for ~32 frozen events), plus no other activity. Held-notional is flat outside windows."
+  },
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "Standard G10-vs-USD basket held over event_pre_window [prior NY 17:00 rollover, T-5min] for every event in the frozen release list (NFP, CPI, FOMC decision).",
+      "why_it_validates": "This is the only arm exposed to scheduled-event liquidity withdrawal. Confirmation requires the joint signatures: relative spread widening in anchor windows versus matched hours (the liquidity channel actually operating) and positive spread-and-rollover-adjusted anchor expectancy exceeding the neighbour. Premium without widening, or widening that eats the premium, each fail the mechanism."
+    },
+    "neighbour": {
+      "definition": "Theoretically justified neighbour: identical basket, identical durations, held from the NY 17:00 rollover boundary to the same wall-clock phase on preregistered matched non-release days (same weekday, same session phase, adjacent weeks), for the same count of windows as the anchor.",
+      "why_it_validates": "Shares every clock and basket input except the scheduled release. The mechanism predicts anchor > neighbour after costs. If the neighbour matches the anchor, any return is generic overnight/rollover-window drift and the event-timing claim is dead; this directly separates the proposal from a disguised 'hold overnight' strategy."
+    },
+    "negative_control": {
+      "definition": "Causal post-release placebo: identical basket and identical duration held from T+65 minutes after each release (after the seconds-to-minutes price-discovery window documented by Andersen et al. 2003) on the same release days.",
+      "why_it_destroys": "The placebo holds the same risk on the same days with the event already resolved; scheduled-event inventory compensation cannot operate there. If placebo expectancy approximates the anchor, pre-release timing is not the source of returns (returns would be generic intraday drift on release days or an artifact of the basket), and the mechanism is destroyed."
+    }
+  },
+  "expected_regimes_and_falsification": {
+    "expected_regimes": "Premium, if present, should be larger in regimes of high macro uncertainty and binding dealer risk limits (tightening cycles, crisis episodes) and should show as relative spread widening concentrated in the hours just before the release; FOMC windows (afternoon, crossing two rollovers) are predeclared as candidate concentration points; no claim is made that every event window is positive - the hypothesis is about the frozen-list average.",
+    "falsification_criteria": [
+      "Anchor expectancy <= neighbour expectancy after measured spread AND rollover costs.",
+      "No relative spread widening in anchor windows.",
+      "Post-release placebo (T+65min start) performs like the anchor.",
+      "Effect appears only after relaxing the frozen release list or windows (list manipulation is forbidden).",
+      "Effect concentrated in a single release type, pair, fold or regime such that drop-one gates fail.",
+      "Stressed variants (spread x1.5/x2, rollover x1.5, adverse long/short swap schedule, one-event execution delay) turn expectancy non-positive under the PLAN section 13 stress gate.",
+      "Result not reproducible in the currency-neutral decomposition arm without any USD-direction component and claimed as currency-neutral anyway."
+    ],
+    "no_post_score_replacement": "Release list, windows, formation/exit offsets (+65min placebo, T-5min exit) are frozen before any outcome computation; a failed family retires as-is."
+  },
+  "macro_session_external_validity_risks": [
+    "HARD DATA BLOCKER: the repo has no PIT source of scheduled release timestamps; official BLS/BEA/Board calendars must be owner-authorized and ingested as point-in-time facts. Without them the family is feasibility-blocked at selection. Note the asymmetry: only timestamps are needed (public, deterministic, known in advance), NOT macro vintages or released values, which remain unavailable and unused.",
+    "Rollover authority blocker: windows cross the New York 17:00 boundary; without an authoritative long/short swap schedule the cost identity cannot close (PLAN_forex.md section 0/8 gates) - fail-closed.",
+    "Release-time regime changes: FOMC statement/presser conventions changed in 2011; BLS release-hour conventions are stable but not guaranteed; the frozen list must record the official time per event from agency calendars, and a mid-sample schedule change is a declared structural break, handled by chronological-fold gates rather than by re-specification.",
+    "Holiday interactions: releases never occur on market holidays by construction, but the formation leg crossing a half-day/holiday session (tables SYNTHETIC_TEST_ONLY in-repo) is an unauthoritative exclusion risk.",
+    "Regime drift and competition: the equity pre-FOMC drift literature documents rise and partial disappearance of pre-announcement premia over time; an FX premium may decay with electronic market-making growth and would appear in fold decomposition, not be tuned away.",
+    "Embargo/early-release incidents and flash events around release times can dominate single-window outcomes; no single event may dominate a fold (PLAN section 13 gate).",
+    "Feed scope: results are conditional on the frozen provider's dealer population around release times; one feed's pre-release thinning is not 'the global FX market' (PLAN section 2)."
+  ],
+  "exact_trial_count": {
+    "primary_scored_trials": 3,
+    "enumeration": "Exactly three primary outcome trials, run serially per PLAN_forex.md section 12: (1) anchor (pre-release windows, frozen list), (2) neighbour (matched non-release clocks), (3) negative control (post-release T+65min placebo). The preregistered currency-neutral decomposition of the same three arms is a declared context recomputation, as are the mandatory stresses (spread x1.5/x2, rollover x1.5 and adverse swap schedule, one-event execution delay, drop-one-pair/currency/fold, session context reports); every computed cell increments the forex observed denominator exactly once regardless of publication success.",
+    "no_post_score_replacement": true
+  },
+  "required_pit_fields_with_availability": [
+    {
+      "field": "Scheduled US release timestamps (NFP, CPI, FOMC decisions), per event, with official wall time in force at each date",
+      "source": "official agency calendars: BLS release schedule, BEA release schedule, Board of Governors FOMC calendar (owner-authorized PIT ingest)",
+      "availability": "UNAVAILABLE - no source in repo; only timestamps are needed (public deterministic calendar facts), NOT macro vintages or released values; feasibility-blocked at selection until the owner authorizes the ingest."
+    },
+    {
+      "field": "1h bid/ask OHLC history, >=8 years, all 7 pairs, UTC event and ingest timestamps",
+      "source": "owner-authorized institutional bid/ask provider per PLAN_forex.md section 2",
+      "availability": "UNAVAILABLE - 0 of 7 pairs; no provider entitlement; fail-closed."
+    },
+    {
+      "field": "Rollover/swap schedule with long/short asymmetry, triple-roll and holiday adjustments",
+      "source": "provider/broker rollover schedule per PLAN_forex.md sections 2 and 7/A5",
+      "availability": "UNAVAILABLE - hard requirement here because windows cross the New York 17:00 rollover; fail-closed without it."
+    },
+    {
+      "field": "Session/DST clock (America/New_York wall times for release hours and the rollover boundary)",
+      "source": "IANA tzdb via repo zoneinfo (research/assets/forex/sessions.py; tests/assets/forex/test_sessions_dst.py)",
+      "availability": "AVAILABLE - zoneinfo DST is real and correctness contracts are implemented; wall-time release hours must be reconciled to the frozen provider's convention at freeze (in-repo session labels are SYNTHETIC_TEST_ONLY defaults)."
+    },
+    {
+      "field": "Holiday tables (holiday-session interaction checks)",
+      "source": "authoritative per-currency holiday authority",
+      "availability": "SYNTHETIC_TEST_ONLY - no authoritative source in repo; blocked for scoring use."
+    },
+    {
+      "field": "PIT macro vintages and released values (rates, CPI prints, survey expectations)",
+      "source": "not used by this mechanism by design",
+      "availability": "UNAVAILABLE in repo, and deliberately not required: no released value, surprise or expectation enters any signal; the mechanism consumes only the timestamp."
+    }
+  ],
+  "literature_sources": [
+    {
+      "title": "Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange",
+      "authors": "Torben G. Andersen, Tim Bollerslev, Francis X. Diebold, Clara Vega",
+      "year": 2003,
+      "doi_or_url": "https://www.aeaweb.org/articles?id=10.1257/000282803321455151 (American Economic Review 93(1), 38-62, DOI 10.1257/000282803321455151)",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "FX price discovery around scheduled US macro releases completes within seconds to minutes; surprises (not the scheduled event per se) drive the jump, with payroll announcements among the most market-moving. Grounds (a) the T+65min placebo start (post-discovery) and (b) the premise that scheduled releases are the market's common timing clock."
+    },
+    {
+      "title": "The Pre-FOMC Announcement Drift",
+      "authors": "David O. Lucca, Emanuel Moench",
+      "year": 2015,
+      "doi_or_url": "Journal of Finance 70(1), 329-371; volume/issue/pages verified via citing-literature metadata in search results (including DOI prefix 10.1111/jofi.121... in a Journal of Financial Economics 2026 citation listing); DOI suffix not independently confirmed - existence and bibliographic location VERIFIED, exact DOI string UNVERIFIED",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "In equities, expected returns concentrate in the hours BEFORE scheduled FOMC announcements - scheduled announcements are intervals of concentrated priced risk. Used as the cross-asset conceptual analog motivating a pre-release compensation hypothesis in FX; no FX-specific pre-announcement-drift result is claimed as verified."
+    },
+    {
+      "title": "US Interest Rate Surprises and Currency Returns",
+      "authors": "Juan Antolin-Diaz, Gino Cenedese, Shangqi Han, Lucio Sarno",
+      "year": 2023,
+      "doi_or_url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565111 (SSRN WP 4565111; MIT Sloan WP 7313-23; listed as revise-and-resubmit at Review of Financial Studies on the author's research page)",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "Currencies more exposed to US monetary policy earn positive average excess returns around monetary-policy events - evidence that scheduled US policy events are a priced, systematic FX channel. Supports event-window economics in FX; this proposal times a fixed basket on the release clock instead of sorting currencies on exposure."
+    },
+    {
+      "title": "Triennial Central Bank Survey of Foreign Exchange and OTC Derivatives Markets in 2022",
+      "authors": "Bank for International Settlements",
+      "year": 2022,
+      "doi_or_url": "https://www.bis.org/statistics/rpfx22_fx.htm",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "USD is on one side of 88% of trades; UK+US host 57% of turnover - justifies a USD-pair universe and US releases as the common scheduled clock for G10 FX."
+    },
+    {
+      "title": "Ranaldo, Segmentation and Time-of-Day Patterns in Foreign Exchange Markets (context source)",
+      "authors": "Angelo Ranaldo",
+      "year": 2009,
+      "doi_or_url": "https://ideas.repec.org/p/snb/snbwpa/2007-03.html (Journal of Banking and Finance 33, 2199-2206)",
+      "retrieval_utc": "2026-09-02T23:57:41Z",
+      "claim_used": "Context only: FX returns have economically significant time-of-day structure, which is exactly why the neighbour arm (matched non-release clocks) and the T+65min placebo are required - to separate event-window compensation from generic session seasonality."
+    }
+  ],
+  "prohibited_shortcut_check": {
+    "rsi_ema_parameter_grids_without_mechanism": "NOT APPLICABLE - no technical indicators; the single preregistered configuration (frozen release list, rollover-anchored formation, T-5min exit, T+65min placebo) follows from the mechanism, and no grid search over offsets or durations is authorized.",
+    "single_provider_volume_treated_as_global_fx_volume": "NOT APPLICABLE - volume is never a signal or filter; spread is read from the frozen provider's bid/ask as a mechanism diagnostic and feed-scoped cost, never as a global market quantity.",
+    "carry_computed_from_todays_rate_applied_historically": "NOT APPLICABLE - no interest rates, swap points or expectations enter any signal; rollover appears only as a measured cost line item requiring an authoritative schedule, whose absence is declared a blocker rather than worked around with today's rates.",
+    "session_filters_selected_after_seeing_profitable_hours": "NOT APPLICABLE - release lists and windows come from official agency calendars and the preregistered New York rollover convention before any outcome observation; matched non-release days and the T+65min placebo are fixed ex ante; observed profitable hours are never consulted.",
+    "midpoint_backtests_labeled_executable": "NOT APPLICABLE - all returns computed from side-specific bid/ask fills (bid to close longs, ask to close shorts); midpoint diagnostics-only; without executable bid/ask the family fails closed and is never labeled executable."
+  },
+  "ancestry_statement": "First-generation proposal in the forex F2 discovery lane; this repository has no previously rejected or scored FX family (no forex score or S1 access per PLAN_forex.md entry checks), so there is nothing to rescue. It is not a disguised carry family (no rate data is used; the premium claim is about timing, not interest differentials) and not a rescued session filter (windows are ex ante agency-calendar facts, not selected profitable hours). Declarative ancestry: it transports the scheduled-announcement risk-premium logic documented in equities (Lucca-Moench 2015) and the FX announcement price-discovery evidence (Andersen et al. 2003) into a G10 spot-FX timing family anchored on the New York rollover clock, with the neighbour and post-release placebo designed specifically to distinguish event-window compensation from generic overnight or session drift.",
+  "data_availability_honesty": "Feasibility-blocked at selection absent owner authorization on two independent grounds: (1) real FX bid/ask history UNAVAILABLE (0 of 7 pairs, fail-closed); (2) PIT scheduled release timestamps UNAVAILABLE in repo (official agency calendars must be authorized and ingested - timestamps only, macro vintages remain unused and unavailable); (3) rollover/swap schedule authority UNAVAILABLE, required here because windows cross the New York rollover. Holiday tables are SYNTHETIC_TEST_ONLY. The session/DST clock is real and implemented. No claim is made that any required data currently exists in the repo."
+}

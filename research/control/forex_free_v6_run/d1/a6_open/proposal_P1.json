@@ -1,0 +1,166 @@
+{
+  "schema": "forex_free_v6_d1_blind_proposal_v1",
+  "hypothesis_id": "FXFV6-A6-P1",
+  "cycle": "FOREX-FREE-V6",
+  "written_at_utc": "2026-09-06T02:05:00Z",
+  "lane": {
+    "agent": "A6",
+    "axis": 3,
+    "axis_kind": "open",
+    "lane_kind": "blind_proposal",
+    "wave_sha": "6a961556fb2619750762cf3160d9800f7dbd26a4",
+    "branch": "orca/forex-free-v6-d1-a6-open",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/d1-a6-open",
+    "outcome_blind": true
+  },
+  "title": "Post-print realized-volatility term-structure compression gates pre-print trend continuation on print-currency pairs",
+  "mechanism": {
+    "paragraph": "Slow actor: institutional allocators, corporate hedgers and overlay managers who de-gear currency exposure ahead of a known, dated CPI uncertainty and re-engage only on their next observation/decision cycle (observation and transaction frictions, not price speed). Scheduled CPI prints resolve a dated uncertainty: the announcement literature shows realized volatility spikes into the release and decays quickly afterwards, while sticky-information agents update beliefs only sporadically. The proposed exploitable residue is in the LEVEL of daily realized volatility, not any session shape: when the short-window realized volatility measured across the print availability boundary is compressed relative to the pre-print baseline, the uncertainty-dampening phase has ended and slow re-engagement dominates the following week, so the pre-print trend continues with less noise; outside that state the same trend carries no edge. The mechanism consumes ZERO print content - only evidenced availability dates and price-derived volatility levels.",
+    "forced_or_slow_actor": "Institutional allocators / corporate hedgers / CTA and overlay risk managers with observation-cost-driven infrequent adjustment (slow actors); no fast-market actor is claimed.",
+    "why_it_should_exist": "Known-date uncertainty resolution plus sticky-information re-engagement produces a state-dependent trend-quality regime: post-print compression days are the window in which slow re-risking resumes an existing trend that de-gearing had dampened into the print.",
+    "literature_lineage": [
+      "Mankiw, N.G. and Reis, R. (2002), 'Sticky Information versus Sticky Prices', Journal of Monetary Economics - agents update infrequently, so information diffuses slowly.",
+      "Alvarez, F., Guiso, L. and Lippi, F. (2012), 'Durable Consumption and Asset Management with Transaction and Observation Costs', Review of Economic Studies - observation frictions create delayed portfolio re-engagement.",
+      "Andersen, T., Bollerslev, T., Diebold, F. and Vega, C. (2003), 'Micro Effects of Public Announcements: High-Frequency Evidence from the Dollar Exchange Rate', Journal of International Economics - announcement volatility jumps and decays rapidly after macro prints in FX.",
+      "Jones, C., Lamont, O. and Lumsdaine, R. (1998), 'Macroeconomic News and Bond Market Volatility' - announcement-day volatility elevation without persistent post-announcement elevation (uncertainty resolution)."
+    ],
+    "print_content_used": false,
+    "novelty_statement": "The information source is (a) evidenced per-print AVAILABILITY DATES (no print values, no print direction, no consensus) and (b) the daily realized-volatility term structure (short-window vs long-window level shift) from staged prices. It is not release-window position-avoidance (this family OPENS directional positions after availability; V5's family went flat into windows), not policy-rate carry (no rates input), not a session shape (daily clock only), not commodity-bloc risk-off conditioning. Wave diversity: distinct from axis-1 print-direction drift by construction (zero print content); D2 must still measure |rho| <= 0.20 against the full forbidden inventory."
+  },
+  "information_source": {
+    "clocks": {
+      "file": "research/control/forex_free_v6_run/p3_conditioning_clocks_v6.json",
+      "rows": 246,
+      "per_economy_in_S0": {"GB": 88, "CA": 105, "AU": 23, "NZ": 30},
+      "row_fields_used": ["economy", "decision_date", "available_time_utc", "available_for_daily_decision_date (CA rows)", "archive_sha256"],
+      "row_fields_not_used": ["reference_period (no print values exist anywhere in this proposal)"]
+    },
+    "prices": {
+      "file": "inherited staged daily snapshots for the 4 print-currency pairs, byte-verified per research/control/forex_free_v6_run/p2_data_authority_v6.json (manifest sha256 fe2155c0ef51bcac32262ebaf1c7d98fc724727eca1dda8b6644012ad854c460, 156 files, V4/V5 byte-identity chain)",
+      "granularity": "daily decision closes only; the 4h snapshots are NOT used by this proposal",
+      "derived_quantities": ["daily log returns at the 16:00 America/New_York decision close", "realized-volatility windows defined in features_and_lags"]
+    }
+  },
+  "availability_semantics": {
+    "rule": "A clock conditions the mapped pair from its published conditionable date: GB/AU/NZ DAY-precision rows are available for the daily decision on their decision_date by published construction (23:59:59Z end-of-day bound / offset-qualified instant per clock_semantics in the clocks file); CA INSTANT rows are conditionable at their published available_for_daily_decision_date.",
+    "ca_boundary_rows": "The 3 CA boundary-shift rows (decision dates 2018-05-28, 2018-05-29, 2021-07-23) are conditionable ONLY at their published available_for_daily_decision_date (2018-05-29, 2018-05-30, 2021-07-26 respectively); the release-date decision instant is NOT conditionable for them.",
+    "gaps_fail_closed": "AU pre-Sep-2019 quarterly rows and AU mid-2022 rows recorded as gaps in the clocks file carry NO evidenced availability and generate NO events - no interpolation, no synthetic prints.",
+    "no_asserted_timestamps": "Every conditioning date traces to a clocks-file row with its archive_sha256 (P-1); nothing else in this proposal is calendar-aware."
+  },
+  "universe": {
+    "included": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "mapping": "each clock conditions exactly the pair containing its currency: GB->GBPUSD, CA->USDCAD, AU->AUDUSD, NZ->NZDUSD",
+    "excluded": {
+      "pairs": ["EURUSD", "USDCHF", "USDJPY"],
+      "evidence": "no funded per-print clocks exist for EUR (p2_data_authority_v6.json: EMU status LEDGER_REPAIRED_NOT_A_FUNDED_CALENDAR), CH or JP (no calendar files in evidence), and US is OUT (p0c_unlock_verdict per p2_data_authority_v6.json); no clock maps to these pairs, so including them would require unevidenced conditioning (P-1 fail-closed)"
+    }
+  },
+  "clock": {
+    "decision_instant": "daily 16:00 America/New_York, DST-correct (20:00Z EDT / 21:00Z EST), per clocks-file clock_semantics",
+    "decision_day_convention": "weekday rule, FX 24/5; no holiday calendar is in evidence and none is assumed (next_trading_day_rule in the clocks file)",
+    "frequency": "daily-or-slower only; no intraday decisions"
+  },
+  "features_and_lags": {
+    "notation": "decision day t; C_t = decision close of t; r_t = ln(C_t / C_{t-1})",
+    "rv5_A": "sample standard deviation of {r_{A-4}, ..., r_A} (5 returns) at the decision close of the clock's conditionable date A",
+    "rv20_A": "sample standard deviation of {r_{A-24}, ..., r_{A-5}} (20 returns immediately preceding the rv5 window)",
+    "trend10_A": "sum of {r_{A-9}, ..., r_A} (10 returns ending at A)",
+    "state_compression": "rv5_A <= 0.9 * rv20_A",
+    "state_expansion": "rv5_A >= 1.1 * rv20_A",
+    "dead_zone": "0.9 < rv5_A / rv20_A < 1.1 produces no event (preregistered dead zone against knife-edge classification)",
+    "direction": "sign(trend10_A); no event if trend10_A == 0 exactly",
+    "pit": "all inputs are closes at or before the decision instant of A; the print day's close enters rv5/trend10 only when the clock is already conditionable at A per availability_semantics",
+    "fitted_parameters": "NONE - 0.9 / 1.1 / window lengths 5 and 20 / trend length 10 are preregistered constants; no training, no calibration, no threshold search anywhere"
+  },
+  "entry_exit_fills": {
+    "entry_decision": "at the decision close of A when state_compression holds (anchor) or state_expansion holds (neighbour); direction = sign(trend10_A)",
+    "entry_fill": "at the decision close of the FIRST decision day after the entry decision (next decision close); no same-bar fills",
+    "exit_decision": "at the decision close exactly 5 decision days after the entry fill",
+    "exit_fill": "at the decision close exactly 5 decision days after the entry fill (the exit decision close is 4 decision days after entry fill; the position is closed at the NEXT decision close)",
+    "holding_profile": "exposure spans exactly 5 decision-day close-to-close intervals; 6 bps round trip at stress tier 2.0 against typical 5-day FX trend ranges",
+    "overlap_rule": "one position per pair; a new clock signal on a pair with an open position is SKIPPED (no stacking, no pyramiding, no early exit)",
+    "fold_boundary_rule": "any trade whose exit fill crosses a fold boundary is DROPPED from both books and counted"
+  },
+  "costs": {
+    "frozen": "1.5 bps per side x {1.0, 1.5, 2.0} applied at every fill (entry and exit each one side)",
+    "tiers": {"1.0": "1.5 bps/side, 3.0 bps round trip", "1.5": "2.25 bps/side, 4.5 bps round trip", "2.0": "3.0 bps/side, 6.0 bps round trip"},
+    "primary": "stress tier 2.0 is the PRIMARY gate; tiers 1.0/1.5 reported for the cost ladder",
+    "dual_books": "book A = net of costs at the tier multiplier; book B = gross price-only (zero cost); the gross book must not invert the aggregate sign of the net book (house dual-book invariant)"
+  },
+  "arms": {
+    "anchor": {
+      "id": "FXFV6-A6-P1-anchor",
+      "definition": "post-print vol-compression state (rv5_A <= 0.9 * rv20_A) gates pre-print trend continuation: enter sign(trend10_A) at A, per entry_exit_fills",
+      "identifying_claim": "the compression state is the load-bearing information"
+    },
+    "neighbour": {
+      "id": "FXFV6-A6-P1-neighbour",
+      "differs_from_anchor_by_exactly_one_axis": "state side: vol-EXPANSION (rv5_A >= 1.1 * rv20_A) instead of compression; all windows, direction rule, mapping, clock, costs, folds identical",
+      "role": "identifiability: the anchor must out-earn the neighbour on the identifying metric, else the vol term-structure axis is not load-bearing"
+    },
+    "control": {
+      "id": "FXFV6-A6-P1-sham",
+      "kind": "sham-calendar (MANDATORY, house standard since V5)",
+      "definition": "identical rule, identical state semantics, identical pair mapping, with every clock's conditionable date replaced by A_sham = next weekday >= conditionable date + 7 calendar days; must RUN under evidenced price semantics with non-vacuous decision counts",
+      "falsifier": "if the sham reproduces the anchor (>= 0.5x the anchor's identifying metric, same sign), the effect is calendar-agnostic and the family is REJECTED"
+    }
+  },
+  "falsification_rule": {
+    "identifying_metric": "pooled per-trade NET return (bps per unit notional) on the stress tier 2.0 book, pooled over all anchor-eligible events within each held-out fold evaluation",
+    "kill_conditions": [
+      "sham control identifying metric >= 0.5 x anchor identifying metric with the same sign -> REJECT family (calendar-agnostic earning)",
+      "neighbour identifying metric >= anchor identifying metric -> REJECT family as the named mechanism (vol state not load-bearing; it is plain trend)",
+      "anchor identifying metric <= 0 in ANY of the 3 held-out fold evaluations -> REJECT family (no fold rescue, no re-aggregation)"
+    ],
+    "no_rescue": "no parameter, threshold, universe, hold, cost or gate change after any PnL is visible (preregistration); REJECT is a successful outcome"
+  },
+  "expected_failure_interpretation": {
+    "anchor_fails_gates": "no evidence that post-print volatility compression hosts exploitable trend continuation at daily frequency under frozen costs; recorded as a falsified shape, not a data problem",
+    "sham_reproduces_anchor": "the earning is calendar-agnostic (any +7d pseudo-print calendar earns alike) - the same null V5's sham measured; family dies as a calendar-conditioned claim",
+    "neighbour_earns_like_anchor": "the rv5/rv20 level shift is not the identifying information; family dies as a vol-term-structure claim",
+    "non_vacuity_failure": "if evidenced availability cannot fund the decision floors, the arm is NOT_RUN fail-closed - never rescued by loosening semantics"
+  },
+  "fold_contract": {
+    "S0": "2018-04-04 .. 2025-07-24, frozen, no extension",
+    "folds": "3 contiguous temporal thirds of S0 by decision-day count; boundaries frozen by A1/A9 before any scored computation",
+    "drop_one": "the IDENTICAL frozen rule (zero fitted parameters) is evaluated on each third as held-out; stability-only folds - the family passes only if the identifying metric is positive in each of the 3 held-out evaluations",
+    "no_empty_folds": "if any arm has zero decisions in a held-out fold, that arm-fold is NOT_RUN and the family cannot pass (fail-closed)",
+    "boundary_trades": "dropped and counted per boundary-crossing rule"
+  },
+  "gates": {
+    "non_vacuity_floor": ">= 15 decisions per arm per held-out fold (A9 measures actual funded counts BEFORE selection; below floor = NOT_RUN)",
+    "primary_profitability": "pooled per-trade net mean > 0 at stress tier 2.0 in each held-out fold; per-fold PF and margins reported",
+    "control_gate": "sham must RUN and must NOT reproduce the anchor (see falsification_rule)",
+    "specificity_gate": "anchor > neighbour on the identifying metric",
+    "dual_book_invariant": "gross book does not invert the aggregate net sign",
+    "breakeven_bps": "break-even bps per trade reported per arm vs the 6.0 bps tier-2.0 round trip (P-2 knife-edge discipline)",
+    "margin_to_fail": "every gate reports its margin to its failure threshold (P-2)",
+    "usd_drift": "mean net USD exposure across open positions reported per fold (report-only for this 4-pair family; the family's claim is state-gated trend, not a persistent USD bet)"
+  },
+  "per_decision_evidence_traceability": {
+    "each_decision_row_records": [
+      "decision date and decision instant (16:00 America/New_York)",
+      "pair and arm id",
+      "clock row provenance: economy, decision_date, available_time_utc, precision, archive_sha256 (P-1)",
+      "state inputs: rv5_A, rv20_A, ratio, trend10_A with their exact input windows",
+      "entry/exit decision and fill dates, fill prices, side",
+      "costs booked per side at the tier multiplier and book (net/gross)",
+      "fold id and fold-boundary-drop flag"
+    ],
+    "recompute_contract": "any data-semantics change (P-3) recomputes ALL THREE arms including the sham - a control verdict does not survive a semantics change for free"
+  },
+  "ancestry_disclosure": {
+    "v5_release_window_position_avoidance": "opposite action (opens after availability; V5 went flat into windows) and different information source (rv term structure vs calendar window); rho to be measured at D2",
+    "axis1_print_direction_drift": "zero print content - no print values or directions exist anywhere in this proposal; rho to be measured at D2",
+    "vol_gated_carry": "no policy-rate input of any kind; the forbidden family's rho measured in V4 was 0.997-1.000 on rate differentials, absent here",
+    "session_structure_families": "daily clock only; no session windows, opens, fades or range structures are computed",
+    "commodity_bloc_risk_off": "no risk-off event conditioning; AUDUSD/NZDUSD enter only via their own evidenced CPI clocks and a price-derived vol state"
+  },
+  "a9_open_questions": [
+    "Snapshot close convention: confirm the staged daily snapshot cut aligns to (or maps fail-closed to) the 16:00 America/New_York decision close; if the staged cut differs, the mapping must be defined from the staged manifest BEFORE D2. This proposal assumes nothing silently - if unmappable, the proposal is UNAVAILABLE_FAIL_CLOSED.",
+    "Decision counts: how many of the 246 clocks survive (a) CA boundary-row remapping, (b) AU gap fail-closed rows, (c) the 0.9-1.1 dead zone - floors require >= 15 per arm per held-out fold.",
+    "Weekday/roll convention: print dates falling on days with no staged decision close (weekday rule without a holiday calendar) - count them and confirm the skip rule is funded.",
+    "Fold-boundary trade drops: expected count per fold.",
+    "Overlap skips: fraction of signals skipped under the one-position-per-pair rule."
+  ]
+}

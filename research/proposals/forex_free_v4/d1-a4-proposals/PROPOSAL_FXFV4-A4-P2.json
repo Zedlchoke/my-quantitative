@@ -1,0 +1,143 @@
+{
+  "proposal_id": "PROPOSAL_FXFV4-A4-P2",
+  "lane": "A4",
+  "axis": "axis 1: policy-rate / carry region (PLAN_forex_v4.md section 2, sanctioned carry front door section 1.1)",
+  "cycle_id": "FOREX-FREE-V4",
+  "wave_sha": "3cf818b566d5de75e147585686a6288cac597f3a",
+  "family_id": "FXFV4-A4-P2",
+  "mechanism_class": "event_anchored_persistence_hold_with_cost_stressed_unwind",
+  "mechanism": {
+    "name": "evidenced-event-anchored differential carry with fixed-horizon holding and cost-stressed early unwind",
+    "statement": "Trade the policy-rate differential ONLY at the instants where the pinned evidence says it changed. Each evidenced differential update that leaves the pair above a cost floor opens ONE full-size position in the differential direction, held a FIXED calendar horizon (63 sessions), exited early only if the evidenced differential itself collapses or if the pair enters a cost-stressed (volatility-crash) state that makes further exposure expensive. A lockout bars re-entry until the NEXT evidenced rate update, making churn structurally impossible: the fill count is bounded by the ledger's event count plus horizon completions, so doubling the cost multiplier scales a small cost base and cannot flip the economics.",
+    "conditioning_variable": "Delta_r_i(t) = r_base_i(t) - r_quote_i(t) from evidenced-vintage BIS WS_CBPOL levels, identical PIT semantics to PROPOSAL_FXFV4-A4-P1: the usable level at decision clock t comes from the most recent pinned-ledger row with first_readable_decision_utc <= t AND effective_date <= t (frozen-reader invariant available_time_utc <= decision_ts AND effective_time_utc <= decision_ts). An 'evidenced differential update' for pair i is a ledger row of either leg whose first_readable_decision_utc has been crossed by the current decision clock and which has not yet been acted on by pair i.",
+    "cost_floor": "kappa_e = SAFETY x C_rt(tier 2.0) x (252 / H) with SAFETY = 2, C_rt(tier 2.0) = 6.0 bps round trip, H = 63 sessions fixed holding horizon. kappa_e = 48 bps = 0.0048 annualized: a position is opened only when the expected gross carry over its intended fixed horizon covers twice the tier-2.0 round trip.",
+    "entry_rule": "At the first daily decision clock (16:00 America/New_York, DST-aware) at or after an evidenced differential update for pair i: if |Delta_r_i| >= kappa_e, enter NEXT SESSION at full unit size, direction sign(Delta_r_i); if |Delta_r_i| < kappa_e, the pair stands down flat until its next evidenced update (no daily re-check acts between events). At the window-open decision clock the baseline differentials count as the initial evidenced state (baseline rows are the conservative, non-load-bearing establishing levels).",
+    "holding_rule": "Fixed horizon H = 63 sessions from the entry fill; calendar exit filled at the next session after the horizon completes.",
+    "event_exit_rule": "If a NEW evidenced update (while held) flips sign(Delta_r_i) or drops |Delta_r_i| below 24 bps (half the floor), unwind at the next session; if the update leaves |Delta_r_i| >= kappa_e with unchanged sign, HOLD THROUGH (do not churn: the fixed horizon is not restarted).",
+    "cost_stressed_unwind_rule": "Compute the pair's 5-session realized volatility (annualized close-to-close log returns of 16:00-NY session bars from the authorized snapshot) and its trailing 63-session median of the same statistic. If 5-session vol > 2.5 x trailing median on TWO CONSECUTIVE decision clocks, unwind at the next session: the state is one in which spreads, slippage and financing stress compound, so exposure is shortened BEFORE further cost accrues rather than after. The trigger is inert until the 68-session warmup completes.",
+    "anti_churn_lockout": "After an early unwind the pair is LOCKED OUT of re-entry until its NEXT evidenced rate update (either leg). Volatility triggers therefore cannot cycle: one crash exit per evidenced-event regime, maximum. This lockout is the component that makes the fill count structurally event-bound and is the design answer to doubled costs.",
+    "why_it_survives_doubled_costs_by_design": "Fill count is bounded by (evidenced event crossings + horizon completions + at most one crash exit per regime), roughly a few fills per pair per year; the front door's 'unwind rules that shorten exposure in cost-stressed states' is implemented literally (the crash trigger) and the lockout removes the churn channel through which stress-tier doubling killed the ancestor's book. No threshold of any ancestor is touched.",
+    "distinction_from_invalidated_ancestor": "FXFV3-A6-P1 gated a continuously-held book daily on a realized-volatility regime (LOW holds, HIGH unwinds) - volatility was the ENTRY AND EXIT signal, evaluated every clock. Here volatility appears ONLY in a one-way crash-protection unwind with a two-session confirmation and a lockout; entry is driven exclusively by evidenced policy events and the cost floor; holding is a fixed calendar horizon. The mechanism claims post-event drift in the differential direction over a fixed horizon, a falsifiable claim the ancestor never made. A7-N must still measure rank correlation against BOTH V3 family2 anchor variants (as-scored and evidenced-corrected books); eligibility is decided on those numbers at D2."
+  },
+  "falsifiable_prediction": {
+    "must_hold_if_mechanism_is_real": [
+      "Entries taken on evidenced event days deliver positive financing-adjusted expectancy over their fixed 63-session hold net of tier-2.0 costs (per-entry realized carry over the hold >= the 6 bps round trip on average, and >= 2 x 6 bps x realized_hold/63 on the above-floor tranche).",
+      "The fixed-horizon, crash-unwind, locked-out book beats the naive always-in differential-direction book per trade (incremental alpha > 0, per_trade_expectancy_difference_v1): the floor, the horizon and the crash exit add after-cost value over passive exposure.",
+      "The mirrored-subset control (identical dates/sizes/horizons; direction flipped on 4 preregistered pairs) has expectancy <= 0 or PF < 1.10, because flipping the direction converts carry-receiving positions into carry-paying positions on those pairs.",
+      "Crash-unwind exits occur in states where subsequent 21-session drift is adverse to the held direction (the trigger has forward-looking content); if exits are uniformly followed by favorable drift, the trigger is noise and the mechanism's risk story is falsified even if PnL is positive."
+    ],
+    "what_would_falsify_it": [
+      "Event-day entries fail to cover their tier-2.0 round trip over the fixed hold (the post-event drift claim is dead).",
+      "Incremental alpha <= 0 (the observation is passive differential exposure; no tradable construction exists beyond the naive book).",
+      "The mirrored-subset control reproduces the anchor (direction is contentless; PnL came from timing/size machinery).",
+      "The crash trigger exits are followed by favorable drift (shortening exposure in cost-stressed states destroys value rather than protecting it)."
+    ]
+  },
+  "literature": [
+    {"authors": "Lustig, Roussanov, Verdelhan", "year": 2011, "title": "Common Risk Factors in Currency Markets", "venue": "Review of Financial Studies 24(11)", "relevance": "the differential-direction factor this mechanism trades at evidenced event instants"},
+    {"authors": "Brunnermeier, Nagel, Pedersen", "year": "2008/2009", "title": "Carry Trades and Currency Crashes", "venue": "NBER Macroeconomics Annual 2008, vol 23", "relevance": "carry crashes cluster in volatility states; direct motivation for a one-way cost-stressed unwind"},
+    {"authors": "Menkhoff, Sarno, Schmeling, Schrimpf", "year": 2012, "title": "Carry Trades and Global Foreign Exchange Volatility", "venue": "Journal of Finance 67(2)", "relevance": "volatility as the pricing state of carry; motivates the 2.5x-median crash trigger"},
+    {"authors": "Daniel, Hodrick, Lu", "year": 2017, "title": "The Carry Trade: Risks and Drawdowns", "venue": "Critical Finance Review 6(2)", "relevance": "drawdown episodes of FX carry; informs MDD margin expectations and crash-exit design"},
+    {"authors": "Andersen, Bollerslev, Diebold, Vega", "year": 2003, "title": "Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange", "venue": "American Economic Review 93(1)", "relevance": "price discovery concentrates at macro/policy announcements; the mechanism trades exactly those evidenced instants (at the earliest evidenced-readable clock)"},
+    {"authors": "Faust, Rogers, Wang, Wright", "year": 2007, "title": "The High-Frequency Response of Exchange Rates and Interest Rates to Macroeconomic Announcements", "venue": "Journal of Monetary Economics 54(4)", "relevance": "policy-announcement response of rates and FX; supports event-anchored holding over passive exposure", "note": "[unverified] exact volume/pagination; existence confident"},
+    {"authors": "Nagel", "year": 2012, "title": "Evaporating Liquidity", "venue": "Review of Financial Studies 25(7)", "relevance": "cost-stressed (funding-liquidity) states are when exit costs and spreads spike; the unwind rule shortens exposure there"},
+    {"authors": "Burnside, Eichenbaum, Kleshchelski, Rebelo", "year": 2006, "title": "The Returns to Currency Speculation", "venue": "NBER Working Paper 12489 (later JEEA/related versions)", "relevance": "no-arbitrage benchmarks for carry returns; the naive-book bar for incremental alpha", "note": "[unverified] exact publication venue of the final version; working paper existence confident"}
+  ],
+  "confirmatory_re_entry": true,
+  "confirmatory_re_entry_disclosure": "This proposal is a CONFIRMATORY RE-ENTRY of the invalidated ancestor FXFV3-A6-P1 (V3 family2, DATA_AUTHORITY_INVALIDATED at the V3R terminal, owner decision 2026-09-05), exclusively through the PLAN_forex_v4.md section 1.1 carry front door, alongside its lane sibling PROPOSAL_FXFV4-A4-P1 with a DIFFERENT risk construction. The ancestor was economically present (PF 1.2825 financing-adjusted under evidenced availability) but contract-invalidated: it failed frozen STRESS_TIER_2.0 (tier-2.0 PnL -101.62, PF 0.9881) and its control arm could not execute (ONE_EVENT_LAG_VIOLATION), leaving mechanism sanity null. This packet does not re-grade the ancestor or relax any of its thresholds: it re-derives the trading schedule from the pinned evidence itself (trade only where the evidence says the differential changed), holds a fixed horizon, shortens exposure in cost-stressed states, and locks out re-entry between events - a construction whose cost survival is structural. If A7-N's measured rank correlations against BOTH V3 family2 anchor variants (as-scored and evidenced-corrected books, 158 differing decisions, 19 sign flips) classify this family as an ancestor duplicate, it dies at D2 regardless of this packet; the confirmatory_re_entry flag must be recorded in the family verdict and the cycle denominator either way.",
+  "pit_observable": {
+    "conditioning_series": "Per-pair policy-rate differential Delta_r_i(t) from the 8 area series {US, EMU, GB, JP, CH, CA, AU, NZ} of BIS WS_CBPOL (EVIDENCED_CITABLE per p2_data_authority_v4.json); plus per-pair 5-session realized volatility and its 63-session trailing median computed from the authorized 16:00-NY session-bar price snapshot (prices are continuous-quote data with no announcement semantics; the snapshot is the frozen byte-replay authority).",
+    "evidence_class_per_row_group": {
+      "US rate changes": "22/22 EVIDENCED INSTANT (PAGE_RELEASE_LINE): readable at effective day 16:00 America/New_York (20:00Z)",
+      "AU rate changes": "25/50 EVIDENCED INSTANT (OFFICIAL_FIXED_SCHEDULE): readable at effective day 16:00 America/New_York (20:00Z)",
+      "GB rate changes": "21/22 EVIDENCED DAY (DAY_CONSERVATIVE): readable at the per-row 16:00 America/New_York instant (sampled rows are next-day 20:00Z EDT / 21:00Z EST)",
+      "JP rate changes": "4/5 EVIDENCED DAY (DAY_CONSERVATIVE): readable at the per-row 16:00 America/New_York instant",
+      "NZ rate changes": "25/50 EVIDENCED DAY (DAY_CONSERVATIVE): readable at the per-row 16:00 America/New_York instant",
+      "CH rate changes": "11/22 EVIDENCED DAY (DAY_CONSERVATIVE): readable at the per-row 16:00 America/New_York instant",
+      "CA rate changes": "0/22 evidenced: ALL conservative LATER bound (end of effective UTC day; first_readable_decision_utc next-day 16:00 America/New_York)",
+      "EMU rate changes": "0/19 evidenced: ALL conservative LATER bound as CA",
+      "baselines": "8 BASELINE_LEVEL rows, AVAILABILITY_UNEVIDENCED with conservative non-load-bearing establishing bound (level constant at window start)",
+      "unevidenced rate-change rows generally": "112 rows carry conservative LATER bounds only; an unevidenced event can delay a decision, never advance one"
+    },
+    "decision_clock": "DAILY, 16:00 America/New_York, DST-aware; ledger first_readable stamps coincide exactly with these instants. Entries/exits act only on the first clock at/after the relevant row's first_readable_decision_utc. The realized-volatility trigger uses only session bars already closed at the decision clock (no intraday data, no inferred stamps).",
+    "evidence_discipline": "EVIDENCED INSTANT / EVIDENCED DAY / conservative LATER bound per pinned row; no asserted availability anywhere; the volatility statistic is derived from the frozen price snapshot, whose availability is the snapshot itself (no announcement semantics)."
+  },
+  "universe": {
+    "pairs": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "subset_used": false,
+    "justification": "Full authorized 7-pair universe. Every pair's two legs are evidenced-citable in the WS_CBPOL catalog; USD commonality is the universe definition, not a choice. The mirrored-subset control requires the full set for its preregistered 4-of-7 flip; pair exclusion would also weaken the drop-one suite. No cherry-picking."
+  },
+  "warmup": "68 sessions, used ONLY by the cost-stressed unwind trigger (63-session trailing vol median + 5-session vol). Entries from the window-open baseline state are permitted from the first scored clock; the crash trigger is inert until its warmup completes, and this inertness is part of the preregistered spec (no backfilled volatility statistics).",
+  "holding_period": "Fixed 63 sessions from entry fill (approximately three months), with early exits only via the event-exit rule or the cost-stressed unwind rule. Both early exits feed the same lockout.",
+  "entry_rules": "First decision clock at/after an evidenced differential update for the pair (or window open, for the initial baseline state): enter next session, full unit size, direction sign(Delta_r), if and only if |Delta_r| >= kappa_e = 48 bps; otherwise stand down flat until the next evidenced update. A locked-out pair ignores all non-event conditions.",
+  "exit_rules": "Exactly three exits exist: (1) horizon completion at 63 sessions (next-session fill); (2) event exit on sign flip or |Delta_r| < 24 bps at a new evidenced update (next-session fill); (3) cost-stressed unwind when the 5-session vol exceeds 2.5x its trailing 63-session median on two consecutive decision clocks (next-session fill). After (3), the pair is locked out until its next evidenced rate update. No discretionary or additional exits.",
+  "fill_convention": "Every fill executes on the FIRST session bar strictly after its decision clock (next-session convention on the authorized 16:00-NY DST-aware session calendar). Decision-to-fill gap is exactly one session (1-4 calendar days across weekends/holidays), inside the frozen validator's next-session/4-day constraint by construction; no fill ever waits for evidence beyond its own decision stamp. The control's fill schedule is the anchor's fill schedule, so validator compliance is inherited, not argued.",
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV4-A4-P2:anchor",
+      "spec": "The mechanism above exactly: kappa_e = 48 bps, H = 63 sessions, crash trigger 2.5x / 63-session median / two consecutive clocks, lockout until next evidenced update."
+    },
+    "neighbour": {
+      "arm_id": "FXFV4-A4-P2:neighbour",
+      "spec": "Identical rules with H = 42 sessions (shorter fixed horizon, same floor and trigger).",
+      "why_genuine_variant": "The mechanism's claim is post-event drift over weeks-to-months; a horizon at which the claim still holds supports it, while a horizon at which it fails would localize the claim. It varies THIS mechanism's horizon, not any ancestor parameter, and its cost budget per hold is weaker (round trip over 42 sessions requires |Delta_r| >= 72 bps for the same SAFETY), making it a genuinely different trade-off rather than a duplicate."
+    },
+    "causal_placebo_control": {
+      "arm_id": "FXFV4-A4-P2:control_mirrored_subset",
+      "spec": "Mirrored-subset control: identical decision dates, entry sizes, horizon arithmetic, crash trigger, lockout and costs; the SIGN of every position is flipped on the preregistered fixed subset {GBP/USD, NZD/USD, USD/CHF, USD/CAD}; {EUR/USD, AUD/USD, USD/JPY} keep the anchor's direction. The flip converts carry-receiving positions into carry-paying positions on 4 of 7 pairs while preserving the entire machinery.",
+      "fires_differently_how": "Direction differs from the anchor on 4 of 7 pairs at every entry; PnL decomposition versus the anchor is therefore non-degenerate by construction.",
+      "runs_to_completion_proof": "Its fill schedule IS the anchor's: same event-triggered decision dates, same next-session fills, same exits. If the anchor's book executes under the frozen validator, the control's does too - a ONE_EVENT_LAG_VIOLATION abort is structurally impossible. This directly repairs the V3R failure mode (a refused control has null evidentiary value) by design rather than by forgiveness of the old control.",
+      "preregistered_rejection_rule": "CONTROL_REPRODUCES_MECHANISM if control financing-adjusted expectancy > 0 AND control PF >= 1.10 (frozen CONTROL_REJECT_PF). Prediction: the control's expectancy is <= 0 (it systematically pays the differential on the flipped subset); if it matches the anchor, direction is contentless and the mechanism is falsified."
+    }
+  },
+  "incremental_test": {
+    "benchmark": "Naive differential-direction book: daily 16:00 America/New_York clock, w = sign(Delta_r) whenever |Delta_r| > 0 else 0, full unit size, fills only on sign changes, next-session convention, same frozen cost ladder and dual-book accounting.",
+    "alpha_definition": "per_trade_expectancy_difference_v1 (frozen family2 convention): anchor financing-adjusted per-trade expectancy minus benchmark financing-adjusted per-trade expectancy; gate passes only if > 0.",
+    "what_it_must_beat_and_why_it_is_the_right_bar": "The differential-carry direction itself. Since direction changes only at rate events, the naive book is already event-anchored and low-turnover; the test isolates whether the cost floor, the fixed horizon and the cost-stressed unwind add after-cost value over simply holding the direction. Positive raw PnL never overrides this gate.",
+    "stress_role": "Alpha reported at tiers 1.0/1.5/2.0; the tier-2.0 anchor book is a primary gate regardless of alpha."
+  },
+  "costs": {
+    "base": "1.5 bps per side, charged exactly once per fill side (frozen kernel authority)",
+    "stress_tiers": "multipliers x1.5 and x2.0 applied to BOOKED stress PnL (F1-fixed convention): 2.25 / 3.0 bps per side (round trip 4.5 / 6.0 bps)",
+    "break_even_reporting": "break-even bps per cell at tiers 1.0/1.5/2.0 from the same kernel; a cell whose tier-2.0 break-even is below 3.0 bps per side is reported as unable to pass the primary stress gate",
+    "financing": "dual book (price-only and financing-adjusted) with the frozen financing formula; FINANCING_MANUFACTURES_EDGE if financing-adjusted expectancy > 0 while price-only expectancy <= 0"
+  },
+  "turnover_and_sample_floor": {
+    "expected_decisions": "180-360 trades (entries + horizon exits + event exits + rare crash exits) across the universe over 2019-01..2026-09; bound by the ~212 pinned rate-change rows plus one horizon completion and at most one crash exit per regime per pair",
+    "minimum_decisions_for_validity": "frozen per-arm floor 40 scored decisions (MIN_DECISIONS_PER_ARM); below it DECISION_FLOOR_NOT_MET (sample failure, not mechanistic reject)",
+    "fold_population": "3 folds on inherited frozen boundaries (2020-03-01, 2022-05-01, end 2026-09-02), purge 14 days, force-flat at boundaries; populated at >= 30 trades (frozen floor); >= 2 positive populated folds required",
+    "honest_population_warning": "Fold 1 (2019-01..2020-03, ~14 months) is event-poor: initial baseline entries (up to 7) plus 2019 AU/NZ/US/GB cuts and 2020-03 CA/US emergency moves give an ex ante estimate of 25-45 trades - straddling the 30-trade populated floor. Disclosed ex ante as the family's main sample risk."
+  },
+  "drop_one_design": {
+    "scenarios": "7 drop-one-PAIR exclusions + 1 drop-one-BEST-fold exclusion = 8 scenarios (frozen V3-I/M1-DEV suite)",
+    "survival_definition": "reduced book financing-adjusted expectancy > 0",
+    "floor": "DROPOUT_MIN_SURVIVAL = 6 of 8 (binding)"
+  },
+  "failure_interpretation": "A reject decomposes mechanistically: (1) event entries fail to cover the tier-2.0 round trip over the fixed hold -> post-event differential drift does not exist after honest costs in this region, and with P1 testing the sizing channel, a joint failure would close the front door for the cycle; (2) INCREMENTAL_ALPHA_NOT_POSITIVE with positive expectancy -> the observation is passive differential exposure, and the fixed-horizon/crash construction adds nothing tradable; (3) CONTROL_REPRODUCES_MECHANISM -> direction contentless, timing/machinery artifact; (4) crash-exit diagnostics adverse (exits followed by favorable drift) -> shortening exposure in cost-stressed states destroys value in this universe, refuting the front-door premise for this construction; (5) DECISION_FLOOR_NOT_MET or fold-population failures are sample failures, recorded as inconclusive and not re-run with loosened floors this cycle.",
+  "source_to_test_map": [
+    {"source": "research/control/forex_free_v4_run/announcement_ledger.jsonl (v2 pin sha256 ae5e1f2e64b8aa7c08472755bd73857543aa89b72ea81b70ad5c5d81e7cd6bd4; base 159 rows byte-identical to V3R pin 169b9e44...)", "feature": "evidenced differential-update instants (the only entry/exit event sources) and per-row availability classes", "gate": "PIT eligibility; availability-lag mutation tests; event-exit rule"},
+    {"source": "data_raw/forex_free_v3_macro/<AREA>.json (hashes in w3_freeze.data_freeze.macro_vintages) + inherited evidenced-vintage pipeline under the v2 ledger", "feature": "Delta_r_i(t) levels", "gate": "cost floor kappa_e; event-exit threshold; only-availability-differs invariant"},
+    {"source": "price snapshot data_raw/forex_free_v1 (156-file manifest, byte-identical per V4_P2)", "feature": "16:00-NY session bars -> fills, marks, 5-session realized vol, 63-session vol median", "gate": "cost-stressed unwind trigger (inert until 68-session warmup), MDD ceiling 2500 USD, USD-drift diagnostic |corr| <= 0.30, dual books, drop-one"},
+    {"source": "p2_data_authority_v4.json macro_series_catalog.policy_rates_bis_wscbpol = EVIDENCED_CITABLE", "feature": "citation authority", "gate": "coverage-first gating; no CPI or other non-citable series used anywhere in this proposal"}
+  ],
+  "margin_to_fail_expectations": {
+    "note": "Honest ex ante predictions per frozen Stage-A gate. Derived only from the sanctioned packet and public macro history; no scored outcome file has been read.",
+    "expectancy_financial_adjusted_gt_0": "KNIFE-EDGE pass expected. The region carried +20.72/trade expectancy for the ancestor's denser book; this sparser book earns few but larger-budget trades, with correspondingly few observations per fold.",
+    "price_only_sign_not_inverted": "KNIFE-EDGE; plausible fail, as for any carry family (FINANCING_MANUFACTURES_EDGE).",
+    "PF_ge_1.10": "KNIFE-EDGE. Fewer, higher-budget trades raise per-trade variance; PF is sample-fragile at 100-200 trades.",
+    "positive_populated_folds_ge_2_of_3": "KNIFE-EDGE with the fold-1 population risk disclosed above; if fold 1 populates, its 2019-2020 carry states are favorable ex ante but the 2020-03 crash sits inside it.",
+    "MDD_within_2500_USD_ceiling": "Thin-to-moderate pass expected: full unit sizes (unlike P1's fractional sizing) but horizon discipline and the crash unwind bound exposure duration; 2020-03 and 2022 CHF/JPY rallies are the ex ante MDD candidates.",
+    "fold_positive_share_le_50pct": "KNIFE-EDGE; plausible fail - the 2022-05..2026-09 fold holds the widest differentials and plausibly most positive PnL.",
+    "pair_concentration_le_40pct": "KNIFE-EDGE; plausible fail - USD/JPY, USD/CHF and GBP/USD carry the largest above-floor differentials over the window.",
+    "stress_tier_1.5_positive": "Pass with margin expected: this family has the lowest fill count of the lane; tier scaling multiplies a small cost base.",
+    "stress_tier_2.0_positive_PRIMARY": "Pass with margin expected - the strongest design-level claim in this lane: fills are event-bound with a hard lockout, so the tier-2.0 book differs from the base book mainly by cost accrual on a small number of fills. Residual risk: a few large-budget trades flipping sign under doubled costs if realized holds run short of H.",
+    "dropout_survival_ge_6_of_8": "KNIFE-EDGE: dropping GBP/USD or USD/JPY removes a large share of above-floor entries; 2 tolerated failures is tight for an event-bound sample.",
+    "usd_drift_corr_le_0.30": "PLAUSIBLE FAIL, disclosed: the differential direction is structurally USD-long over most of the window on this universe; the crash-unwind may reduce but not neutralize USD beta.",
+    "incremental_alpha_gt_0": "KNIFE-EDGE; the most likely mechanistic failure for THIS family: the naive book is already event-anchored, so the floor/horizon/crash-exit package must demonstrably add value. Central estimate: barely positive or zero.",
+    "neighbour_supports": "Thin pass expected: the H=42 neighbour trades the same events with a weaker per-hold budget; if post-event drift is real at weeks-to-months scale it should stay positive, but it is the arm most exposed to short-hold noise.",
+    "control_does_not_reproduce_AND_runs_to_completion": "Pass with margin: the mirrored subset systematically pays carry on 4 pairs (predicted negative expectancy) and inherits the anchor's validator-clean fill schedule; residual risk is a favorable-signal coincidence on the 3 unflipped pairs carrying the control, which the expectancy AND PF rule handles.",
+    "reproduction_ALL_MATCH": "Pass with margin: deterministic event schedule, no inferred stamps, no retrieval-time substitution.",
+    "zero_unresolved_HIGH_CRITICAL": "Pass expected, implementation-dependent (inherited kernel and data only)."
+  },
+  "outcome_blind_attestation": "I, lane agent A4 of cycle FOREX-FREE-V4, attest that I have NOT opened, read, or derived numbers from any scored outcome artifact: research/control/forex_free_v3_run/scored_ledger_published.jsonl, research/control/forex_free_v3r_run/v3r_records.jsonl, v3r_recompute_report.json, decision_diff_table.json, research/wayfinder/SURVIVORS.md, the V1/V2 published scored ledgers, or any other lane's worktree (d1-a5-proposals, d1-a6-proposals). Ancestor figures quoted here (PF 1.2825, +20.72/trade, tier-2.0 -101.62/PF 0.9881, 158 differing decisions, 19 sign flips) come ONLY from the sanctioned packet: PLAN_forex_v4.md sections 0/1.1 and forbidden_family_inventory.json (evidence and instruction, not scored outcomes). All design constants (kappa_e, H, trigger multiples, lockout, inherited frozen fold boundaries and floors) were fixed ex ante from the frozen authorities before any V4 outcome exists. Signed: A4, 2026-09-05."
+}

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "role": "A_IMPL_GATES_FIX_I_FOREX_FREE_V3",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-gates-fix",
+  "branch": "orca/forex-free-v3-i-gates-fix",
+  "bootstrap_sha": "f1df6bd5c53083ed57b529bacd6323b07a251879",
+  "commit_sha": null,
+  "measured_at_utc": "2026-09-04T19:13:13Z",
+  "stamp_source": "machine_date_u",
+  "clean": true,
+  "clean_note": "clean=true describes the state AFTER this lane's single clean commit; A1 verifies with git status --porcelain=v1 (must be empty) and git diff --check HEAD^ HEAD (must be clean).",
+  "remediates": "A7 prelaunch audit research/audits/forex_free_v3/prelaunch/a7_prelaunch_v3.{json,md} findings H1, H2, H3, M1 (L1 accepted wart, untouched). Outcome-blind: NO scored PnL was computed or read; all fixtures synthetic.",
+  "allowed_globs": [
+    "research/assets/forex_free_v3/**",
+    "tests/assets/forex_free_v3/**",
+    "research/control/forex_free_v3_run/handoffs/i_gates_fix.json"
+  ],
+  "changed_files": [
+    "research/assets/forex_free_v3/scored_runner.py",
+    "research/assets/forex_free_v3/family1.py",
+    "research/assets/forex_free_v3/family2.py",
+    "tests/assets/forex_free_v3/test_scored_runner.py",
+    "tests/assets/forex_free_v3/test_family1.py",
+    "tests/assets/forex_free_v3/test_family2.py",
+    "research/control/forex_free_v3_run/handoffs/i_gates_fix.json"
+  ],
+  "per_finding_fixes": {
+    "H1_incremental_alpha": "Family API contract gains the REQUIRED arm 'benchmark_treatment' (runner docstring + enforcement). On a SCORED anchor cell the runner calls run_arm('benchmark_treatment'), validates it under the same fail-closed rules, session-gates, books it through the SAME V3 kernel dual book, and records incremental_alpha = anchor financing-adjusted expectancy - benchmark expectancy (10dp); the value is ALWAYS present on a scored anchor record (BENCHMARK_BOOK_EMPTY fails closed if the benchmark book is empty), so INCREMENTAL_ALPHA_NOT_POSITIVE can no longer be dead code. Dry-run leaves None (no outcome leak). The benchmark arm is refused as a cell of its own (BENCHMARK_TREATMENT_IS_NOT_A_SCORED_CELL); a family without the arm fails the scored anchor cell via its own unknown-arm refusal. Non-anchor scored cells keep the meta pass-through (normally None).",
+    "H2_usd_drift": "The frozen D1 equal-weight USD index is now computed INSIDE the runner from the authorized H1 snapshot only (new usd_index_daily_returns / usd_index_from_data_paths; day step = 16:00-NY bar -> next existing 16:00-NY bar; XXX/USD contributes -pair return, USD/XXX +pair return; equal-weight mean per day keyed by the later bar's UTC date). Source keys understood, in order: usd_index_h1_dir, price_h1_dir (family1), h1_dir (family2); a present-but-broken source raises BLOCKED_DATA. meta.usd_index_daily_returns is NO LONGER consulted (family2 keeps passing None). Per scored arm the correlation of daily arm PnL vs the index feeds the unchanged usd_corr_abs_ceiling 0.3 gate over the >= 60-common-day window. Fail-closed: a SCORED run with booked trades and no price source raises USD_INDEX_SOURCE_MISSING; the record carries usd_index_source + usd_index_pairs for audit.",
+    "H3_dry_run_hygiene": "compute_cell now applies dry_run_sanitized() to EVERY dummy dry-run record AFTER internal computation: gross_price_pnl_usd, price_only_pnl_usd, financing_adjustment_usd, financing_adjusted_pnl_usd, base, base_price_only, every folds entry, the stress sub-record at every tier (total_pnl/expectancy/gross_positive -> 0.0, pf -> None, cost delta -> 0.0 -- the exact leak the auditor measured on family2:causal_negative_control), break_even_cost_bps -> None, mdd_usd -> 0.0, fold_positive_share -> 0.0, pair_concentration -> {}, drop_one_expectancy -> 0.0, dropout_scenarios -> expectancy/survived None, incremental_alpha -> None, benchmark_treatment -> None, usd_drift_diag -> corr None/evaluated False. Counts (n_decisions, n_trades_kept, weekend_gate_dropped, purged_trades, folds_declared, per-metrics trades, delay_stress counts) and scored=false/real_pnl=false/published=false survive.",
+    "M1_fold_drop_survival": "New dropout_scenarios() extends the dropout suite with ONE drop-one-BEST-fold scenario (the fold with the highest expectancy among folds holding trades; its trades removed, after-cost expectancy of the reduced book recomputed) alongside the frozen 7 drop-one-PAIR exclusions; per-scenario {scenario, expectancy, survived} booleans are recorded in record['dropout_scenarios']. A scenario survives iff the reduced-book expectancy > 0; an unevaluable fold scenario is survived=False (fail closed). stage_a_gates counts survivals across the whole suite against the UNCHANGED frozen DROPOUT_SURVIVAL_MIN = 5; the gate reason is renamed DROP_ONE_PAIR_SURVIVAL_INSUFFICIENT -> DROPOUT_SURVIVAL_INSUFFICIENT. DEVIATION NOTE: the lane order said '7 scenarios = 6 drop-one-pair + 1 drop-one-best-fold'; the frozen universe has SEVEN pairs, so dropping one pair scenario would have been arbitrary selection -- the suite is the 7 pair exclusions PLUS the fold scenario (8 total) with the frozen minimum 5 unchanged, which preserves every frozen behavior and only ADDS the fold test.",
+    "L1": "Untouched (accepted wart per the audit)."
+  },
+  "benchmark_arm_definitions_as_implemented": {
+    "family1_benchmark_treatment": "FXFV3-A5-P1-bench, verbatim from proposal research/proposals/forex_free_v3/a5_lane/proposal_1.json arms.incremental_benchmark: unconditional daily momentum -- LONG base when m = close_t/close_(t-21) - 1 > 0, SHORT when m < 0, FLAT when m == 0 (strict, void when m uncomputable) -- identical decision clock, one-event-lag fills, holding law, fold force-flats, universe, warmup and costs; ZERO macro reads enter the state (pair_state_series never consults the reader for this arm); financing still accrues per the frozen V3_FROZEN_POLICY_RATE_CARRY formula so the benchmark book dual-books like any arm.",
+    "family2_benchmark_treatment": "FXFV3-A6-P1-bench, verbatim from proposal research/proposals/forex_free_v3/a6_lane/proposal_1.json incremental_test_vs_frozen_benchmark: the anchor law with direction_i = sign(as-of differential read at T-270d) (BENCHMARK_LAG_DAYS = 270, frozen ex ante) under the SAME vol gate (20-day blocks / 10 baseline blocks / 220-valid-NY-day warmup), clocks, fills, holding law and costs; financing accrues at the TRUE day-start differentials (the lag touches only the direction signal); exact-zero differential at T-270d is NO_EVAL fail-closed like the anchor."
+  },
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-gates-fix && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3 -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "89 passed, 2 skipped in ~43s (baseline before this lane: 80 passed, 2 skipped; +9 new tests). The full repo suite was NOT run per lane rules. New coverage: hand-computed 2-pair USD-index golden (signed legs, weekend single-step, Saturday/decoy-bar exclusion, source-key priority, fail-closed empty/missing source); USD_INDEX_SOURCE_MISSING on a scored run without a price source; dry-run hygiene asserting EVERY monetary field 0.0/None while all counts survive; incremental-alpha gate fires (alpha = -387.7547699215 hand-computed) and passes (+523.3361391695) on synthetic anchor/benchmark pairs; scored anchor requires the benchmark arm; dropout scenario suite hand-built (7 pairs + best-fold, 25.0 reduced expectancy pinned) and the 5-survival boundary of the gate; family1 benchmark pin (m-flip short->long round trips at bars 21/50/90, financing 8.0136986301 / -11.5068493151, anchor flat on same data, reader=None only for the benchmark state); family2 benchmark pin (constant vintages -> identical schedule/sides; US rate change 2025-06-02 -> 2025-06-13 sides flip where the differential sign changes, USD/CHF NO_EVAL under the lagged read, GBP/USD +1 vs -1)."
+    }
+  ],
+  "freeze_impact": "All seven w3_freeze.json code_hashes are INVALIDATED by this delta (scored_runner.py, family1.py, family2.py changed). A RE-FREEZE and an A7 delta re-audit are REQUIRED before S0 can return AUTHORIZED; dummy dry-run record_ids and decision/kept counts are unchanged, but dry-run records now carry the new placeholder fields (dropout_scenarios, usd_index_source, usd_index_pairs, benchmark_treatment, dry_run sanitizer output).",
+  "assumptions": [
+    "commit_sha is null BY DESIGN: this lane commits exactly once and the handoff file is inside that commit; A1 records the SHA with git log -1 --format=%H (subject starts with 'FOREX-FREE-V3 I-GATES-FIX:').",
+    "No scored PnL exists anywhere; every fixture in the new/changed tests is synthetic and hand-computed. No network, no data_raw reads, no full-repo pytest.",
+    "The USD index equal-weight mean runs over the pairs present in the snapshot directory (2-pair synthetic fixtures pin it); on the authorized snapshot that is the full frozen 7-pair universe (recorded as usd_index_pairs).",
+    "exec_driver.py is UNTOUCHED: it iterates the three scored ARMS; the benchmark arm is invoked inside compute_cell only, under the same per-arm timeout."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/assets/forex_free_v3/scored_runner.py",
+    "research/assets/forex_free_v3/family1.py",
+    "research/assets/forex_free_v3/family2.py",
+    "tests/assets/forex_free_v3/test_scored_runner.py",
+    "tests/assets/forex_free_v3/test_family1.py",
+    "tests/assets/forex_free_v3/test_family2.py",
+    "research/audits/forex_free_v3/prelaunch/a7_prelaunch_v3.json",
+    "research/control/forex_free_v3_run/baseline_invariants.json"
+  ],
+  "next_action_for_a1": "Verify: (1) git log -1 --format='%H %s' -> one commit on orca/forex-free-v3-i-gates-fix, subject starting 'FOREX-FREE-V3 I-GATES-FIX:'; (2) git status --porcelain=v1 empty; (3) git diff --check HEAD^ HEAD clean; (4) re-run the targeted pytest command expecting exit 0 / 89 passed, 2 skipped. Then schedule the re-freeze lane (all seven code_hashes change) and the A7 delta re-audit of H1/H2/H3/M1 closure before any S0 release."
+}

@@ -1,0 +1,230 @@
+{
+  "schema": "forex_free_v4_proposal_v1",
+  "proposal_id": "FXFV4-A6-P2",
+  "hypothesis_id": "FXFV4-A6-P2",
+  "family_id": "FXFV4-A6-P2",
+  "lane": "A6",
+  "axis": "open_axis (axis 3: any literature-backed mechanism on authorized data within the non-forbidden space)",
+  "cycle_id": "FOREX-FREE-V4",
+  "wave_sha": "3cf818b566d5de75e147585686a6288cac597f3a",
+  "title": "Policy-change underreaction drift with hike/cut asymmetry: an evidenced-availability event study on the daily 16:00-NY decision clock",
+  "mechanism_class": "monetary_event_underreaction_drift_asymmetric_holding",
+  "macro_conditioned": true,
+
+  "mechanism": "When a central bank CHANGES its policy rate, the exchange-rate response documented in the announcement literature has an instantaneous jump component (Andersen, Bollerslev, Diebold & Vega 2003 AER; Faust, Rogers, Wang & Wright 2007 JME) but the position-relevant claim under test is the residual DRIFT: benchmarked global allocators rebalance on monthly/quarterly cycles, hedging-cost adjustments lag, and trend systems require multi-day confirmation, so the currency whose rate path shifted continues to drift in the direction of the change for days after the change becomes READABLE (Taylor-rule fundamentals carry out-of-sample predictive content at short horizons - Molodtsova & Papell 2009; the honest counterweight is Rossi 2013: most FX fundamentals fail out-of-sample, so the claim is deliberately narrow and event-gated). The asymmetry arm encodes the documented transmission asymmetry between telegraphed, gradual tightening and faster-priced emergency easing (asymmetric policy effects: Cover 1992 as cross-asset analog; FX-specific hike/cut asymmetry citations are weaker and marked unverified below), by shortening the cut holding horizon. Quantitative law, frozen. Events are RATE_CHANGE rows of the pinned v2 announcement ledger (sha256 ae5e1f2e64b8aa7c08472755bd73857543aa89b72ea81b70ad5c5d81e7cd6bd4; 220 rows = 212 RATE_CHANGE + 8 BASELINE_LEVEL, areas AU/NZ/CA/CH/GB/US/EMU/JP; 108 rows carry EVIDENCED stamps, the remainder carry conservative LATER bounds - the P2 data authority classifies 108/151 rate changes evidenced incl. all 8 areas' baselines; every row carries operative_available_time_utc / first_readable_decision_utc, so every event is availability-gated either way). An event in area A has delta = new_value - old_value != 0 and availability instant a = operative_available_time_utc. Direction: for A != US, P(A) is the unique authorized pair containing A as the non-USD leg (EMU->EUR/USD, GB->GBP/USD, AU->AUD/USD, NZ->NZD/USD, JP->USD/JPY, CH->USD/CHF, CA->USD/CAD); sign(P(A)) = +1 (long the A-currency vs USD) if delta > 0 and A is the pair's BASE currency, -1 if delta > 0 and A is the pair's QUOTE currency (e.g. a BoJ hike strengthens JPY => USD/JPY falls => -1), sign flipped for delta < 0. For A = US, the event drives ALL 7 pairs with the long-USD map on a hike: EUR/USD -1, GBP/USD -1, AUD/USD -1, NZD/USD -1, USD/JPY +1, USD/CHF +1, USD/CAD +1 (flipped on a cut). Decision instant T = the first completed daily 16:00 America/New_York flat bar whose completion instant satisfies T >= a (a row is NEVER eligible on its own effective instant alone; rows without an availability stamp fail closed and are never read). Entry at the open of the next session's 16:00-NY bar after T; hold 10 completed NY-days (anchor); no refresh while the pair's position is open (deterministic tie-break: when two eligible events hit the same pair at the same decision instant, the earlier availability instant wins, the other is ignored). Who is slow: benchmarked allocators and hedging programs on rebalance cycles; when it must fail: if policy changes are fully anticipated and instantly priced, conditional drift is zero - the falsification is live.",
+
+  "falsifiable_prediction": "(i) The conditional 10-NY-day forward return in the change-sign direction after availability-gated policy-change events is positive after base cost on the financing-adjusted book, with the price-only book not inverting the anchor expectancy sign; (ii) the asymmetry neighbour (cut holding 3 NY-days vs hike 10) moves WITH the anchor (same verdict sign) - if the drift is real and asymmetric, shortening cut holds does not destroy it; (iii) incremental alpha versus the stale-event benchmark (identical law, every availability instant shifted +180 calendar days) is strictly > 0 - fresh policy information, not the event-timing skeleton alone, must carry the value; (iv) the sham-area causal control (identical clocks, holding law and costs, each area's events driving a DIFFERENT area's pair under a frozen derangement) must NOT reproduce the edge under its preregistered rule; (v) all inherited Stage-A gates pass with tier-2.0 stress as a primary gate.",
+
+  "literature": [
+    {
+      "authors": "Torben G. Andersen; Tim Bollerslev; Francis X. Diebold; Clara Vega",
+      "venue": "Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange, American Economic Review 93(1), 38-62",
+      "year": 2003,
+      "claim": "Announcement surprises produce conditional mean jumps in FX - establishes event-time framing and that the news component (not the calendar) drives the response; the instant jump is the part this family does NOT claim; the claim under test is the residual multi-day drift.",
+      "metadata_status": "VERIFIED_METADATA via web search 2026-09-05 (aeaweb.org/articles?id=10.1257/000282803321455151)"
+    },
+    {
+      "authors": "Jon Faust; John H. Rogers; Shing-Yi B. Wang; Jonathan H. Wright",
+      "venue": "The High-Frequency Response of Exchange Rates and Interest Rates to Macroeconomic Announcements, Journal of Monetary Economics 54(4), 1051-1068",
+      "year": 2007,
+      "claim": "Exchange rates respond to policy/news shocks within minutes but response dynamics and interest-rate co-movement leave room for post-announcement adjustment - supports measuring the response from availability time on daily-or-slower clocks.",
+      "metadata_status": "VERIFIED_METADATA via web search 2026-09-05 (ideas.repec.org/a/eee/moneco/v54y2007i4p1051-1068.html)"
+    },
+    {
+      "authors": "Tanya Molodtsova; David H. Papell",
+      "venue": "Out-of-Sample Exchange Rate Predictability with Taylor Rule Fundamentals, Journal of International Economics 77(2), 167-180",
+      "year": 2009,
+      "claim": "Taylor-rule/policy-rate fundamentals carry short-horizon out-of-sample FX predictive content - the strongest published basis that policy-rate information has position-relevant predictive value beyond the instant.",
+      "metadata_status": "CONFIDENT_METADATA recalled (canonical citation, carried from the V3 A5 packet context) [unverified-pages]"
+    },
+    {
+      "authors": "Barbara Rossi",
+      "venue": "Exchange Rate Predictability, Journal of Economic Literature 51(4), 1063-1119",
+      "year": 2013,
+      "claim": "Most FX fundamental predictors fail out-of-sample - carried as the honest counterweight; the narrow, event-gated, availability-honest claim of this family is designed to be falsifiable where broad predictor claims are not.",
+      "metadata_status": "CONFIDENT_METADATA recalled (canonical citation) [unverified-pages]"
+    },
+    {
+      "authors": "James P. Cover",
+      "venue": "Asymmetric Effects of Positive and Negative Money-Supply Shocks, Quarterly Journal of Economics 107(4)",
+      "year": 1992,
+      "claim": "Monetary policy effects are asymmetric in the sign of the shock (cross-asset/output analog) - the analog basis for the hike/cut holding asymmetry in the neighbour arm.",
+      "metadata_status": "CONFIDENT_METADATA recalled (canonical citation) [unverified-pages]"
+    },
+    {
+      "authors": "Ben S. Bernanke; Kenneth N. Kuttner",
+      "venue": "What Explains the Stock Market's Reaction to Federal Reserve Policy?, Journal of Finance 60(3)",
+      "year": 2005,
+      "claim": "Asset-price responses decompose into anticipated and surprise components; unanticipated components dominate - cross-asset analog supporting the availability-gated (not effective-date-gated) event read.",
+      "metadata_status": "CONFIDENT_METADATA recalled (canonical citation) [unverified-pages]"
+    },
+    {
+      "authors": "Michael Ehrmann; Marcel Fratzscher",
+      "venue": "central bank communication and exchange-rate response timing (ECB working paper series)",
+      "year": 2005,
+      "claim": "Central-bank communication and policy timing shape exchange-rate responses - supports event-time framing. Cited for concept only.",
+      "metadata_status": "UNVERIFIED_METADATA_RECALLED [unverified]"
+    },
+    {
+      "authors": "Jonathan Kearns; Phil Manners",
+      "venue": "The Impact of Monetary Policy on the Exchange Rate (RBA research discussion paper, policy-shock FX response)",
+      "year": 2006,
+      "claim": "Identified policy shocks move AUD/USD with quantifiable response dynamics - supports currency-specific (non-US-area) event responses.",
+      "metadata_status": "UNVERIFIED_METADATA_RECALLED [unverified]"
+    }
+  ],
+
+  "novelty_statement": "Comparison against every row of forbidden_family_inventory.json - different information source AND different causal control for each: (1) V1 family1 session-open (London-open) momentum continuation: the information source here is an EVIDENCED POLICY-EVENT LEDGER (availability-gated rate-change rows), not any session price; there is no session observable, no open-direction continuation rule, no intraday clock; the causal control is a sham-area derangement placebo, absent from all V1/V2 rows. (2) V1 family2 late-NY standardized-extension fade: no price-extension observable and no fade construction anywhere; positions are held 10 NY-days from event availability with a fixed horizon - structurally unrelated, and deliberately not a sign inversion of that row (different observable, information source, clock and holding law). (3) V2 family1 Tokyo-range compression -> London-morning expansion: no session range or compression/expansion transition exists in any arm. (4) V2 family2 London-AM range break with retest-hold: no range break and no retest-hold confirmation exists in any arm. (5) V3 family1 (FXFV3-A5-P1, policy-divergence-gated daily trend): family1 conditioned a PRICE-TREND book on the policy-differential drift (a path/level structure); this family has NO price-trend term anywhere - direction is the event's delta sign read at its availability instant with a fixed holding horizon. Different information (point-event delta vs differential path), different trading law (event-drift vs gated trend), different control (sham-area derangement vs whatever family1 carried). (6) V3 family2 (FXFV3-A6-P1, realized-vol regime-gated policy-rate-differential carry, DATA_AUTHORITY_INVALIDATED): the differential LEVEL (r_base - r_quote) never appears as a signal anywhere in this family - only the event's DELTA sign does; there is no realized-vol state gate, no carry holding law, no financing-dependent direction. This is NOT the Section 1.1 carry front door, invokes none of its conditions, and does not re-grade the invalidated family in any form (no threshold/window/control/stress descendant of it appears here). Blanket clauses: no sign inversion of any rejected family; no cost assumptions below the frozen 1.5 bps x {1.0,1.5,2.0} authority; no pair cherry-picking (the area->pair direction map is fixed ex ante from the authorized universe structure, including the US-drives-all-7 rule); no result-aware reuse of earlier packets. Lane note: A4 owns the policy-rate/carry region; this family uses policy rates in an EVENT-RESPONSE role (delta sign at availability time), never as a differential level or carry direction - the controller's axis-3 brief lists central-bank forward-guidance asymmetry explicitly as open-axis territory, and this packet is the ledger-observable operationalization of that example (guidance text is not in the authorized data; the change's sign, size and availability time are).",
+
+  "pit_observable": {
+    "conditioning_series": "BIS WS_CBPOL policy-rate vintages for the 8 areas backing the 7 pairs, with per-row availability evidence from the pinned v2 announcement ledger (sha256 ae5e1f2e64b8aa7c08472755bd73857543aa89b72ea81b70ad5c5d81e7cd6bd4; citable per research/control/forex_free_v4_run/p2_data_authority_v4.json: policy_rates_bis_wscbpol status EVIDENCED_CITABLE, evidence 'pinned v2 announcement ledger ae5e1f2e, 220 rows; 108/151 rate changes evidenced incl. all 8 areas' baselines; AU INSTANT, NZ/CH DAY, US/GB/JP carried from V3R'). Scored price inputs (fills, PnL) are the authorized H1 snapshot's daily 16:00-NY closes only, frozen span 2020-01-30..2026-09-02 (price_series_byte_replay 152/152 identical). CPI/ECB-ICP series are NOT citable and are not used.",
+    "evidence_class": "PER-EVENT AVAILABILITY EVIDENCE (the pinned ledger): a row is eligible at decision instant T iff operative_available_time_utc <= T; EVIDENCED rows use their captured stamps (US INSTANT page-release-line, GB DAY, JP DAY, AU INSTANT, NZ/CH DAY); rows without evidence carry the conservative LATER bound already embedded in the ledger and are eligible only at that later bound; rows lacking any availability stamp fail closed (MISSING_AVAILABLE_TIME_EVIDENCE) and are never read. Availability strictly later than effectiveness: no row is eligible on its own effective date alone.",
+    "decision_clock": "DAILY: the decision for an event is taken at the completion instant of the first daily 16:00 America/New_York flat bar with completion >= the event's availability instant (bar stamps 20:00Z EDT / 21:00Z EST via zoneinfo, DST-aware). Daily-or-slower rule satisfied; no intraday decision anywhere; measured median lag from effective to first-readable is ~1.8 days (lane-counted over the ledger's rate-change rows, max ~1.9), so decisions typically land 2 NY-sessions after effectiveness."
+  },
+
+  "universe": {
+    "authorized_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "traded_legs_anchor": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "subset_justification": "All 7 pairs trade (no subset): the area->pair map is complete and structural - each non-USD area's events drive its own pair, and US events drive all 7 because the USD is a leg of every authorized pair. Direction conventions per pair side are frozen above. No pair is added or removed ex post for any reason."
+  },
+
+  "warmup": "No statistical warmup (the law is event-gated, not state-estimated). Structural constraint: fills require the price snapshot, so events whose first decision instant falls before 2020-02-11 (snapshot start + one session + lag) are NO_EVAL fail-closed, never backfilled - this removes the 2019 events (lane-estimated 40-60 pair-events, mostly 2019 US cuts x 7 pairs and AU/NZ 2019 cuts). All 2020-2026 events, including the March 2020 emergency-cut cluster, are in evidence.",
+
+  "holding_period": "Anchor: exactly 10 completed NY-days for every event (hike or cut). Neighbour (asymmetry arm): 10 completed NY-days for hikes, 3 for cuts. No targets, no stops, no refresh while open; no position crosses a fold boundary.",
+
+  "entry_rules": "At the decision instant T of an eligible event: if the mapped pair is flat, enter sign(P) direction at the open of the next session's 16:00-NY bar (one-event lag). If the mapped pair already holds a position, the event is ignored for that pair (no refresh, no extension, no reversal). Deterministic tie-break: two eligible events mapping to the same pair at the same decision instant resolve to the earlier availability instant; the later is ignored. Governor: max 1 position per pair, max 1 entry per pair per NY-day; blocked signals are NO_TRADE, never deferred.",
+
+  "exit_rules": "Exit at the open of the 16:00-NY bar after the H-th completed NY-day following entry (H = 10 anchor; 10/3 hike/cut neighbour). Missing entry/exit bar => signal voided or earliest-scheduled exit, never fill-forward. Force-flat: any open position exits at the open of the 16:00-NY bar of the last decision day before a fold boundary.",
+
+  "fill_convention": "Next-session fill at the open of the first 16:00-NY bar of the next NY trading session strictly after the decision instant - at least one full session after the decision (one-event lag) and at most 4 calendar days later over holiday weekends, satisfying the 4-day next-session validator constraint; a would-be fill gap exceeding 4 days fails closed to NO_TRADE. Never same-bar fills, never fill-forward. This arm is fillable by construction: every ledger row carries an availability stamp (evidenced or conservative LATER), so the decision->fill chain never refuses for missing evidence (the V3R lesson - a control that cannot execute has null evidentiary value - is respected for ALL arms).",
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV4-A6-P2-anchor",
+      "spec": "Exactly the frozen mechanism law: availability-gated RATE_CHANGE events; frozen area->pair direction map; H = 10 NY-days for all events; next-session fills; force-flat folds; dual book per frozen kernel.",
+      "single_frozen_parameter_set": {
+        "event_rows": "RATE_CHANGE rows with delta != 0 of the pinned v2 ledger, all 8 areas",
+        "direction_map": "A!=US -> unique pair of A; A==US -> all 7 pairs long-USD on hike; base/quote sign convention as frozen in mechanism",
+        "holding_ny_days_all_events": 10,
+        "entry_lag": "one session (next 16:00-NY bar after the first decision T >= a)",
+        "tie_break": "earlier availability instant wins"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV4-A6-P2-neigh",
+      "one_presumption_away": "Replaces only the SYMMETRIC-PERSISTENCE presumption (one holding horizon for all events) with the ASYMMETRIC-PERSISTENCE presumption (drift after hikes persists 10 NY-days; drift after cuts is largely priced within 3). If the drift mechanism is real, the neighbour moves TOGETHER with the anchor (same verdict sign, similar fold pattern); divergence means the drift estimate is knife-edge between hike- and cut-driven books and the family is not promotable.",
+      "spec": "Byte-identical to anchor EXCEPT: H_hike = 10 NY-days, H_cut = 3 NY-days (hike/cut classified by the row's delta sign, availability-gated identically). Same events, map, clocks, fills, costs, folds, dual book.",
+      "single_frozen_parameter_set": {
+        "holding_hike_ny_days": 10,
+        "holding_cut_ny_days": 3,
+        "everything_else": "byte-identical to anchor"
+      }
+    },
+    "control": {
+      "arm_id": "FXFV4-A6-P2-ctrl",
+      "role": "Placebo-style causal control: destroys exactly the operative ingredient - the AREA-SPECIFIC policy-surprise-to-ITS-OWN-currency link - while holding the event set, clocks, holding law, costs, governor and dual book identical. Each area's events are re-mapped to a DIFFERENT area's pair under a frozen derangement (rotation +3 along the frozen area order), with the direction re-expressed per the sham pair's base/quote convention.",
+      "sham_derangement_frozen": {
+        "area_order": ["US", "EMU", "GB", "JP", "CH", "CA", "AU", "NZ"],
+        "rule": "sham(X) = area_order[(index(X)+3) mod 8]; event in area X drives P(sham(X)) with sign from X's delta interpreted as a move in sham(X)'s currency (+sign(delta_X) if sham(X) is the sham pair's base, -sign(delta_X) if quote; if sham(X)==US, the long-USD map on all 7 pairs applies)",
+        "mapping": {
+          "US": "drives USD/CHF", "EMU": "drives USD/CAD", "GB": "drives AUD/USD",
+          "JP": "drives NZD/USD", "CH": "drives all 7 (long-USD map)", "CA": "drives EUR/USD",
+          "AU": "drives GBP/USD", "NZ": "drives USD/JPY"
+        },
+        "disclosed_leakage": "The sham pair always differs from the pair the area's events drive in the anchor, but sham mappings share USD legs and rate cycles cluster globally (2022-2023 synchronized hikes), so the sham book is correlated with the anchor's directional tilts; the control is not independent of the global rate environment - it destroys the area-specific surprise link, which is the ingredient under test. Also disclosed: sham pair-event counts differ from the anchor's (e.g. JP's 5 events drive NZD/USD instead of NZ's 50), so some sham legs are thinner; the book still executes fully under evidenced semantics."
+      },
+      "spec": "Identical to anchor except the mapping above. All else (clocks, H=10, fills, dual book, costs, folds, caps) byte-identical.",
+      "runs_to_completion": "Yes: every sham decision reads a real, availability-gated ledger row and a real snapshot price; the book executes under evidenced semantics with the anchor's fail-closed rules.",
+      "preregistered_non_reproduction_rule": "The control REPRODUCES (and the family FAILS its control gate regardless of the anchor's sign) if control financing-adjusted expectancy > 0 AND control PF >= 1.10, OR control expectancy >= 0.5 x anchor expectancy. Positive raw control PnL never overrides a firing control."
+    }
+  },
+
+  "incremental_test": {
+    "benchmark_definition": "Per the frozen benchmark_treatment convention (macro conditioning removed, everything else identical): the anchor law with every event's availability instant shifted +180 calendar days LATER (stale events). The schedule shape, event/clock structure, holding, fills and costs are unchanged; only the freshness of the policy information is removed.",
+    "lag_constant": "+180 days is a round constant fixed ex ante (two orders of magnitude above the ~1.8-day measured availability lag; never tuned, never data-chosen).",
+    "gate": "overall incremental alpha > 0: anchor financing-adjusted expectancy minus benchmark financing-adjusted expectancy, evaluated under the same gates as the anchor. Positive raw anchor PnL never overrides a failed incremental alpha. The benchmark is an auxiliary treatment inside the anchor cell, not a fourth scored arm.",
+    "bench_schedule_id": "FXFV4-A6-P2-bench"
+  },
+
+  "costs": {
+    "base_bps_per_fill": 1.5,
+    "tier_ladder_frozen": { "1.0": 1.5, "1.5": 2.25, "2.0": 3.0 },
+    "application": "F1-FIXED: tier multipliers applied to BOOKED stress PnL through the inherited P1 accounting kernel; base / tier-1.5 / tier-2.0 rows pairwise distinct when trades are non-empty. Tier 2.0 is a PRIMARY Stage-A gate.",
+    "delay_stress": "Frozen one-session delay (entry and exit each shifted one additional 16:00-NY bar) carried as a SEPARATE stress component, never blended into the cost tiers.",
+    "notional_usd_unit": 10000,
+    "break_even_reporting": "break_even_bps_per_fill = mean gross per-trade return (bps of the 10000 USD unit, both books) / 2, reported full-sample and per fold. A cell whose break-even bps sits below the tier bps cannot pass Stage-A for cost reasons rather than absence of gross edge; diagnostic, never a fee rescue."
+  },
+
+  "turnover_and_sample_floor": {
+    "folds_frozen": ["2020-03-01", "2022-05-01", "2024-07-01", "2026-09-02"],
+    "fold_scheme": "3 chronological folds (F1 2020-03-01..2022-05-01, F2 2022-05-01..2024-07-01, F3 2024-07-01..2026-09-02; UTC dates; pre-snapshot events excluded as NO_EVAL). Purge 14 calendar days either side of internal boundaries; trades whose entry OR exit instant falls inside a purge window are excluded from fold statistics and counted in purge_excluded. Stage-A requires >= 2/3 populated folds positive; a fold is populated iff >= 30 trades.",
+    "decisions_estimate": "Lane-counted ledger rows: 212 RATE_CHANGE across AU 50, NZ 50, CA 22, CH 22, GB 22, US 22, EMU 19, JP 5, effective 2019-05..2026-07. Pair-event decisions: non-US areas 190 + US 22x7 = 344 pair-events gross; pre-snapshot NO_EVAL removes an est. 40-60 (2019 events, mostly US x 7 and AU/NZ); est. 290-315 decisions remain; >= 40 per arm satisfied with wide margin.",
+    "trades_estimate": "After the flat-only/no-refresh dedup of the March-2020-type clusters (same-pair repeats within the 10-day hold are dropped), est. 180-260 scored trades across 7 pairs full-sample. Preregistered band 25-45 pair-events per year.",
+    "sample_floors": {
+      "min_decisions_per_arm": 40,
+      "full_sample_aggregate_min_trades_anchor": 140,
+      "per_populated_fold_min_trades": 30,
+      "populated_rule": "fold populated iff >= 30 trades; a cell below floors is INDETERMINATE, not negative evidence. DISCLOSED: the trades estimate margin over the 140 floor is thin (est. 1.3-1.9x) - a below-floor outcome is a live possibility and is recorded as INDETERMINATE, never as evidence either way."
+    },
+    "cost_thesis": "The 10-day drift window is the cost thesis: conditional drift must exceed 3 bps RT at base tier (6 bps at tier 2.0). Break-even bps per cell will attribute any reject to cost vs gross absence."
+  },
+
+  "drop_one_design": {
+    "procedure": "Recompute the full anchor schedule (and neighbour/control/bench identically) 8 times: 7 pair-drops (each excluding exactly one pair) + the inherited best-fold drop.",
+    "gate": "Anchor financing-adjusted expectancy > 0 AND PF >= 1.00 in at least 6 of 8 scenarios (inherited M1-DEV constants verbatim).",
+    "non_vacuity_and_limitation": "Each pair-drop changes the schedule; asserted at implementation as a difference test (>= 1 trade differs). DISCLOSED LIMITATION: dropping USD/JPY removes only ~5 trades (JP has 5 rate changes in the window) - that scenario is near-vacuous by data scarcity, not by design; the gate can only detect pair-concentration through the other 6 pairs. Fold spread is likewise lumpy: JP trades land late-window (F3).",
+    "interpretation": "Failure means the edge is a single-pair/area artifact (e.g. one currency's hiking episode), not a policy-event drift mechanism."
+  },
+
+  "governor": {
+    "max_positions_per_pair": 1,
+    "max_entries_per_pair_per_ny_day": 1,
+    "enforcement": "Deterministic and PIT-safe; blocked signals are NO_TRADE, never deferred; tie-break = earlier availability instant."
+  },
+
+  "dual_book_and_financing": {
+    "mandate": "Every scored cell books BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns, all arms (inherited kernel).",
+    "financing_formula_frozen_verbatim": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days/365, accrued per calendar day at the day-start as-of policy-rate differential from the evidenced vintages (rows eligible only when available_time_utc <= the accrual instant; never eligible on their own effective date).",
+    "disclosed_approximation": "Policy rates are unsecured official rates, NOT swap/OIS-implied rollover; disclosed ex ante per inherited convention (HISTORICAL_ROLLOVER_FINANCING UNAVAILABLE_FAIL_CLOSED).",
+    "financing_gate": "The financing term must not manufacture the edge: the price-only book must not invert the anchor expectancy sign (Stage-A gate). Particular care in this family: during a US hiking cycle the drift book is USD-long AND the differential accrual is USD-positive - a price-only sign inversion would prove the book earns financing, not drift."
+  },
+
+  "failure_interpretation": "Negative anchor expectancy after base cost: availability-gated policy-change events carry no after-cost drift edge at the frozen cost authority on this snapshot - a complete, publishable reject with break-even bps attributing cost vs gross absence; no sign inversion, no horizon/threshold rescue, no pair subset, no lower cost, no re-clocking. Anchor positive but the sham-area control fires under its preregistered rule: the area-specific surprise link is not operative (global rate-wave beta or the event skeleton alone explains it) and the family fails its control gate regardless of anchor sign. Anchor positive but incremental alpha <= 0 vs the +180d stale-event benchmark: fresh policy information adds nothing beyond the event timing; the underreaction claim is falsified and the family is not promotable. Anchor positive on financing-adjusted but price-only inverts the expectancy sign: the edge is manufactured by the financing approximation; fails the dual-book gate. Neighbour diverges from anchor: hike/cut drift decomposition is knife-edge fragile; not promotable. Drop-one or concentration failure: single-pair/area artifact; reject. Trades below the 140 floor: INDETERMINATE (recorded as such, never spun as negative or positive evidence). Realized turnover outside the preregistered band: INELIGIBLE per the frequency contract. Any gate failure is terminal for the family as specified - the map, horizons, staleness and clocks are never re-tuned post-observation.",
+
+  "source_to_test_map": [
+    { "source_claim": "Availability-gated event eligibility (pinned v2 ledger semantics)", "observable": "decision instants T >= operative_available_time_utc", "planned_test": "PIT availability-lag mutation test: shifting a row's available_time_utc past a decision instant must flip the read to the prior state (no event); never-eligible-on-effective-date test; MISSING_AVAILABLE_TIME_EVIDENCE fail-closed test" },
+    { "source_claim": "Announcement jumps vs residual drift (Andersen et al. 2003; Faust et al. 2007)", "observable": "H-day post-decision drift in the delta-sign direction", "planned_test": "decision/fill clock goldens: first 16:00-NY completion >= a; next-session fill; 4-day validator boundary (Good-Friday-type gap); >4-day gap => NO_TRADE" },
+    { "source_claim": "Direction map correctness (base/quote sign convention; US long-USD map)", "observable": "sign(P) per event", "planned_test": "hand-computed golden fixtures per area (hike and cut, base and quote areas, US map) asserted against the frozen map" },
+    { "source_claim": "Hike/cut asymmetry (Cover 1992 analog; unverified FX-specific citations)", "observable": "neighbour H_cut = 3 vs H = 10", "planned_test": "neighbour schedule identity test (identical except cut-holding constant)" },
+    { "source_claim": "Dual-book separation (financing cannot manufacture the edge)", "observable": "price_only_pnl_usd vs financing_adjusted_pnl_usd", "planned_test": "inherited P1 kernel separation tests + price-only sign-inversion refusal test, with the US-cycle financing caveat tested explicitly" },
+    { "source_claim": "F1-fixed stress application, tier 2.0 primary", "observable": "book_stress rows", "planned_test": "tier 1.5 / 2.0 pairwise-distinct fixture (inherited remediation regression)" },
+    { "source_claim": "Control removes exactly the area-specific surprise link", "observable": "sham derangement mapping", "planned_test": "control-cannot-equal-anchor test: schedules must differ on at least one decision per mapped pair; preregistered non-reproduction rule applied at scoring" },
+    { "source_claim": "Incremental alpha vs freshness-removed benchmark", "observable": "FXFV4-A6-P2-bench schedule", "planned_test": "benchmark schedule identity test (identical except +180d availability shift); incremental alpha recomputation from runner source at A7" },
+    { "source_claim": "Drop-one meaningfulness (with the disclosed JP near-vacuity)", "observable": "8 drop-one schedules", "planned_test": "non-vacuity assertion (>= 1 trade differs per scenario) + explicit JP-scenario disclosure in the cell report" }
+  ],
+
+  "margin_to_fail_expectations": {
+    "note": "Ex ante, per Stage-A gate, written before any V4 outcome exists. Numbers are expectations/priors, never measurements.",
+    "expectancy_gt_0": "If residual drift exists, expected fin-adj expectancy +2 to +20 per 10k-unit trade (event mixes anticipated and surprise components, so the prior is wide); genuine reject is a live outcome. Knife-edge risk HIGH.",
+    "pf_ge_110": "Expected 1.00-1.20 if real. Knife-edge risk HIGH.",
+    "folds_positive_ge_2_of_3": "F1 contains the March-2020 emergency cluster (large same-direction books) and F2/F3 contain the 2022-2023 synchronized hikes; lumpy event arrival makes fold signs genuinely uncertain. Expected 2/3 positive if real; fold-population margin est. 1.5-2.7x the 30-trade floor in F1 - MODERATE.",
+    "mdd_within_frozen_ceiling": "Clustered multi-pair same-direction entries (March 2020; 2022 hiking wave) drive MDD; expected 900-2200 USD vs the frozen 2500 ceiling -> margin 300-1600. MODERATE.",
+    "stress_tier_2_0_primary": "Gross per-trade must clear 6 bps RT at tier 2.0; expected gross 15-70 bps IF drift exists; expected tier-2.0 PF 0.95-1.15. Knife-edge risk HIGH - historically the killing gate.",
+    "fold_positive_share_and_concentration": "Restated inherited gates apply verbatim (max_positive_fold_share 0.5, max_pair_positive_share 0.4; the kernel's definition governs where prose differs). Expected max-pair share 20-45% given event clustering on US events (7-pair legs) - knife-edge MODERATE-HIGH.",
+    "usd_drift_gate": "DISCLOSED HIGH RISK - the most likely single-gate failure: US events are 22 of 212 rows but ~154 of ~344 pair-events (~45%), producing USD-wide positions during US tightening/easing cycles; expected |corr(daily PnL, USD-wide move)| 0.2-0.5 vs the 0.3 ceiling. If it fails, the family fails completely - disclosed ex ante, never tuned around. Mitigation attempted and rejected ex ante: excluding US-area events was considered and rejected because it drops the trade count below the 140 floor (INDETERMINATE by construction) - a worse, self-inflicted failure mode.",
+    "incremental_alpha_gt_0": "Fresh-vs-stale separation is clean (rare, date-specific events; +180d staleness cannot coincide with the drift window); expected positive margin IF the mechanism is real. Residual risk LOW-MODERATE.",
+    "control_non_reproduction": "Disclosed leakage through global rate waves could make the sham book fire (synchronized cycles share direction); expected control expectancy <= 0.5 x anchor IF the area-specific claim is right; firing is a genuine MODERATE risk.",
+    "sample_floor": "Decisions margin ~7x floor (comfortable); trades margin est. 1.3-1.9x the 140 floor - THIN; a below-floor cell is INDETERMINATE by frozen rule. This is the family's second most likely failure mode after the USD-drift gate.",
+    "reproduction_all_match": "Harness-deterministic; expected PASS; binary margin.",
+    "overall_prior": "Conditional on drift existing, the most likely failing gates are tier-2.0 stress and the USD-drift diagnostic, then PF and the sample floor; conditional on drift not existing, expectancy fails outright. The packet declares in advance: an INDETERMINATE (below-floor) or USD-drift-failed outcome is a complete, honest terminal for this family."
+  },
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm (the area->pair map, H = 10, H_cut = 3 in the neighbour only, +3 derangement rotation, +180-day benchmark shift). No grids, menus or tuning anywhere; the neighbour is a distinct single frozen spec, not a second point on the anchor's knob; the benchmark staleness is fixed, never fit.",
+
+  "lane_diversity_note": "A4 owns the policy-rate/carry region (differential LEVEL direction, including the Section 1.1 front door); this family never reads a differential level as a signal - the only policy input is the evidenced event's delta sign at its availability instant (event-response dynamics), the controller-sanctioned open-axis operationalization of 'central-bank forward-guidance asymmetry'. A5 owns inflation/real-rate structure; no price-level or inflation series appears here. The wave therefore spans three genuinely different conditioning sources.",
+
+  "outcome_blind_attestation": "I (A6 lane, FOREX-FREE-V4, open axis) attest this proposal is outcome-blind. I read: PLAN_forex_v4.md (sections 1, 2, 7, 12 and context); research/control/forex_free_v4_run/{forbidden_family_inventory.json, p2_data_authority_v4.json, announcement_ledger.jsonl (availability evidence and row counts only), p3_baseline_invariants.json (gate constants; no PnL)}; research/control/forex_free_v3_run/{w3_freeze.json (frozen cost/convention authority; unscored dry-run counts only), data_authority_v3.json (data dispositions)}; and the V3 lane proposal PACKETS research/proposals/forex_free_v3/a6_lane/proposal_1.json and a5_lane/proposal_1.json solely for packet format and novelty differentiation - design documents, not outcomes. I did NOT read: research/control/forex_free_v3_run/scored_ledger_published.jsonl, research/control/forex_free_v3r_run/v3r_records.jsonl, v3r_recompute_report.json, decision_diff_table.json, research/wayfinder/SURVIVORS.md, any other V4 lane's worktree (d1-a4-proposals, d1-a5-proposals), or any per-arm PnL/outcome/verdict file anywhere. I loaded no market data (no data_raw reads), fetched no macro or price data, computed no backtest, PnL or schedule simulation; every number in this packet is a schedule-level design estimate, a frozen design constant, or an evidence count (ledger row/status tallies and effective->readable lag statistics computed from the pinned ledger, which is availability evidence, not outcomes). Literature metadata was checked by web search only (no outcomes are searchable there); uncertain citations are marked [unverified]. This packet was written before any V4 scored cell exists.",
+  "written_before_scoring": true,
+  "written_utc": "2026-09-05"
+}

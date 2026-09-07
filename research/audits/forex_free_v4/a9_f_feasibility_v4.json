@@ -1,0 +1,436 @@
+{
+  "schema": "forex_free_v4_feasibility_audit_v1",
+  "audit_utc": "2026-09-05T00:00:00Z",
+  "stamp_source": "machine_date_u",
+  "auditor": "A9-F",
+  "base_head": "0a34678aafcb0a0b4626d1ea231bf13f6a6731d2",
+  "branch": "orca/forex-free-v4-d2-a9-feasibility",
+  "scope": "independent feasibility audit of all six FOREX-FREE-V4 D1 proposal packets: availability-evidence semantics, price-data coverage, schedule breadth vs ONE_EVENT_LAG_VIOLATION precedent, cost arithmetic, tier-2.0 primacy, control runnability, drop-one meaningfulness, implementation ambiguity, and DATA_BLOCKED blocker-spec accuracy. Light arithmetic only; no PnL, no backtest, no scored computation.",
+  "authorities_read": [
+    "research/control/forex_free_v4_run/p2_data_authority_v4.json (verdict PASS; policy_rates_bis_wscbpol EVIDENCED_CITABLE; cpi_bis_ws_long_cpi STAGED_NOT_CITABLE availability NOT WIRED; cpi_ecb_icp NOT_FUNDED)",
+    "research/control/forex_free_v4_run/announcement_ledger.jsonl (sha256 ae5e1f2e... verified by recomputation; 220 raw rows; 61 appended upgrade rows ALL transitions AVAILABILITY_UNEVIDENCED->EVIDENCED in AU 25 / CH 11 / NZ 25; last-row-wins dedupe by (area, effective_date) yields 159 unique rows = 151 RATE_CHANGE + 8 BASELINE_LEVEL; deduped evidenced rate changes 108 = US 22/22 INSTANT, AU 25/25 INSTANT, GB 21/22 DAY, NZ 25/25 DAY, CH 11/11 DAY, JP 4/5 DAY; deduped unevidenced rate changes 43 = CA 22, EMU 19, GB 1, JP 1)",
+    "research/control/forex_free_v3_run/w3_freeze.json (cost authority 1.5 bps x {1.0,1.5,2.0}; M1-DEV binding DROPOUT_MIN_SURVIVAL=6 of 8; macro vintages 2019-01..2026-09; notional 10000 USD; 3 folds)",
+    "research/control/forex_free_v1_run/staged_data_manifest.json (156 digests; per-pair 1day/1h/4h files, filenames dated 2018-09-01 onward incl. DST-window files)",
+    "research/control/forex_free_v1_run/w1_freeze.json loader_manifest_7_pairs (ACTUAL H1 bar spans: first 2020-01-29..2020-01-30, last 2026-09-02, ~42.6-42.8k bars/pair, gaps_gt_85h = [] for all 7 pairs; quarantined bars 0-12)",
+    "research/control/forex_free_v3_run/data_authority_v3.json (H1 RESEARCH_AUTHORIZED, D1 CONTEXT_ONLY, H4 UNAVAILABLE_FAIL_CLOSED; session model Sun 21:00 NY -> Fri 16:00 NY DST-aware)",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3r/integration/research/control/forex_free_v3r_run/validator_aborts.json (the ONE_EVENT_LAG_VIOLATION precedent: family2 control, decision 2022-11-03T20:00Z, fill 2022-11-07T21:00Z — refused as more than 4 days after the decision AND not the next-session bar)",
+    "research/assets/forex_free_v3/scored_runner.py (frozen constants verified verbatim: FOLD_BOUNDARIES = 2020-03-01, 2022-05-01, 2024-07-01, 2026-09-02; INTERNAL_BOUNDARIES = 2022-05-01, 2024-07-01; PURGE_DAYS = 14; MIN_PF = 1.10; MIN_POSITIVE_FOLDS = 2 of 3 populated; FOLD_POPULATED_MIN_TRADES = 30; MDD_CEILING_USD = 2500; MAX_POS_FOLD_SHARE = 0.50; MAX_PAIR_POS_SHARE = 0.40; DROPOUT_SCENARIOS = 8; DROPOUT_MIN_SURVIVAL = 6; CONTROL_REJECT_PF = 1.10; USD_CORR_CEILING = 0.30; USD_DIAG_MIN_DAYS = 60; MIN_DECISIONS_PER_ARM = 40; MAX_FILL_LAG_DAYS = 4; fold_of() returns None (warmup region) for entries before 2020-03-01; validator codes DECISION_CLOCK_VIOLATION / ONE_EVENT_LAG_VIOLATION (same-bar fill or fill lag > 4 days) / FOLD_FORCE_FLAT_VIOLATION)",
+    "research/assets/forex_free_v3/accounting.py (book_stress RE-BOOKS the same trade set at each tier's per-side cost 1.5/2.25/3.0 bps; gross PnL asserted tier-invariant; assert_stress_rows_distinct; fill_delay_events carried unblended)",
+    "research/proposals/forex_free_v4/{d1-a4,d1-a5,d1-a6}-proposals/*.json (all six packets)"
+  ],
+  "cross_cutting_facts_established": [
+    "CF1. The actual H1 price-bar span is 2020-01-29/30 .. 2026-09-02 (w1_freeze loader manifest), NOT 2018-09 despite snapshot filenames. Any trade (entry or exit fill) before 2020-01-30 is unfillable; under the inherited runner, entries before 2020-03-01 fall in the warmup region and receive NO fold.",
+    "CF2. The inherited frozen fold boundaries are (2020-03-01, 2022-05-01, 2024-07-01, 2026-09-02) = three folds F1 2020-03..2022-05, F2 2022-05..2024-07, F3 2024-07..2026-09 (scored_runner FOLD_BOUNDARIES, identical in V3 baseline_invariants). Fold schemes not expressible on this grid are runner-modifying deviations.",
+    "CF3. Deduped ledger event distribution by inherited folds (by effective_date and by first_readable_decision_utc, identical splits): pre-2020-03-01 = 8 events (AU 3, NZ 2, US 3) -> 26 pair-events; F1 = 21 events (AU 3, CA 5, GB 5, NZ 5, US 3) -> 39 pair-events; F2 = 70 events (AU 13, CA 9, CH 7, EMU 11, GB 11, JP 1, NZ 8, US 10) -> 130 pair-events; F3 = 52 events (AU 6, CA 8, CH 4, EMU 8, GB 6, JP 4, NZ 10, US 6) -> 88 pair-events. ZERO deduped events fall in 2020-01-30..2020-03-01.",
+    "CF4. Gross deduped pair-events for event-driven designs = 151 non-anchor multiplications: non-US areas 129 events x 1 pair + US 22 x 7 pairs = 283. Any packet counting from the raw 220-row file (212 rate changes) overstates by the 61 upgrade duplicates (e.g. 'AU 50' is 25 unique events; 'NZ 50' is 25; 'CH 22' is 11).",
+    "CF5. The 8 BASELINE_LEVEL rows carry effective_date = null, effective_time_utc = null, first_readable_decision_utc = null, operative_available_time_utc = 2019-01-01T23:59:59Z, status AVAILABILITY_UNEVIDENCED. The frozen-reader invariant (available_time_utc <= decision_ts AND effective_time_utc <= decision_ts) is NOT mechanically evaluable on these rows, and any use of baseline LEVELS to set an initial book state or open scored entries makes the 'provenance-only, non-load-bearing' claim false.",
+    "CF6. Cost kernel mechanics: tier books are re-bookings of the identical trade set at 2.25 / 3.0 bps per side with gross tier-invariant and STRESS_ROWS_NOT_DISTINCT refusal — NOT proportional scaling of net booked PnL. Packet prose saying 'applied to BOOKED stress PnL' is authoritative shorthand only where the packet also states the re-pricing semantics; prose describing proportional/loss scaling is mechanically wrong against the kernel.",
+    "CF7. Maximum inter-bar gap in the staged snapshot is <= 85h (gaps_gt_85h = [] on all 7 pairs), so a fill placed on the IMMEDIATE next bar after any 16:00-NY decision can never exceed the 4-day validator bound on this snapshot. The V3R abort was a 2-session-late fill (scheduling bug), not a calendar gap. Designs whose control books inherit the anchor's fill schedule byte-for-byte are structurally immune; designs that merely ASSERT the 4-day bound without a fail-closed path rely on implementation correctness, with the frozen validator abort as the only backstop.",
+    "CF8. Tier-2.0 is declared a PRIMARY Stage-A gate in all six packets (verified per packet, see per-proposal records). Base/tier arithmetic 1.5 bps/side x {1.0,1.5,2.0} -> 3.0/4.5/6.0 bps round trip is internally consistent in all six packets."
+  ],
+  "per_proposal": {
+    "FXFV4-A4-P1": {
+      "packet": "research/proposals/forex_free_v4/d1-a4-proposals/PROPOSAL_FXFV4-A4-P1.json",
+      "verdict": "FEASIBLE",
+      "verdict_rationale": "Mechanism, data citations, PIT semantics, cost arithmetic and control design are implementable with existing authorized data and the inherited kernel; the packet is runnable once its fold-scheme/window defects (F1/F2 below) are resolved by falling back to the inherited frozen boundaries it claims to inherit. Not DATA_BLOCKED: every cited series is citable. Not INFEASIBLE: no finding removes the ability to construct Delta_r, fill next-session, or run all arms on the staged snapshot.",
+      "findings": [
+        {
+          "id": "A4P1-H1",
+          "severity": "HIGH",
+          "dimension": "coverage/fold_population",
+          "evidence": "Packet states '3 folds on the inherited frozen boundaries (2020-03-01, 2022-05-01, end 2026-09-02)' and 'Fold 1 (2019-01..2020-03, ~14 months)'. The inherited frozen boundaries (scored_runner FOLD_BOUNDARIES) are 2020-03-01, 2022-05-01, 2024-07-01, 2026-09-02 — the packet drops the 2024-07-01 internal boundary, producing a non-inherited 4.3-year third fold. Moreover fold_of() returns None (warmup region) for entries before 2020-03-01, so a pre-2020-03 fold is not expressible on the inherited runner at all.",
+          "consequence": "Two mutually exclusive fold schemes: the packet's stated scheme (F1 pre-2020-03) is unimplementable on the frozen runner; under the inherited scheme the gate arithmetic (2-of-3 positive populated folds) degrades differently than the packet's ex-ante disclosure assumes. Implementation cannot be mechanical until D2/owner pins the scheme. The packet's own intent string ('inherited frozen boundaries') points to the inherited grid; under that reading the packet runs with degraded fold population rather than failing."
+        },
+        {
+          "id": "A4P1-H2",
+          "severity": "HIGH",
+          "dimension": "coverage/window_start",
+          "evidence": "Packet scores 'over 2019-01..2026-09' and estimates fold 1 as ~14 months of trading. Actual H1 bars start 2020-01-29/30 (w1_freeze loader manifest) and the inherited fold window starts 2020-03-01. CF3 shows ZERO deduped ledger events fall in 2020-01-30..2020-03-01.",
+          "consequence": "Fold 1 as described by the packet cannot exist: under the packet's own scheme it contains 0 event-driven trades (structurally unpopulated, gate degrades to 2-of-2 as the packet itself half-anticipates but with a ~14-month window that does not exist); under the inherited scheme the first fold (2020-03..2022-05) is itself knife-edge at the 30-trade populated floor (estimated 25-32 trades, see estimated_decision_counts). The 'honest_population_warning' materially understates the risk because it is anchored to a wrong window start."
+        },
+        {
+          "id": "A4P1-M1",
+          "severity": "MEDIUM",
+          "dimension": "availability-evidence bookkeeping",
+          "evidence": "Packet evidence_class_per_row_group quotes raw-file fractions: 'AU rate changes: 25/50 rows EVIDENCED', 'NZ: 25/50', 'CH: 11/22', '112 AVAILABILITY_UNEVIDENCED rows total'. Per the pinned-ledger dedupe (last-row-wins), the operative state is AU 25/25, NZ 25/25, CH 11/11 evidenced (all 61 upgrade duplicates are UNEVIDENCED->EVIDENCED), with 43 deduped unevidenced rate-change rows + 8 baselines = 51 unevidenced rows, not 112. The same packet's own ledger summary ('220 rows ... 108 EVIDENCED') matches the deduped evidenced count, so the packet mixes raw and deduped counting conventions internally.",
+          "consequence": "Conservative direction (operative state is MORE evidenced than the packet claims; no P-1 violation — no asserted bounds), but an implementer keying availability gates to the packet's per-row-group text rather than to the ledger's last-row-wins semantics will mis-build the vintage reader. Mismatch is detectable at implementation (ledger re-hash + row-group tallies) and must be resolved in favor of the deduped ledger."
+        },
+        {
+          "id": "A4P1-M2",
+          "severity": "MEDIUM",
+          "dimension": "evidence semantics of initialization",
+          "evidence": "Packet claims baseline rows are 'provenance-only and NOT computationally load-bearing (the level is constant at window start, so its availability cannot change any readable value inside the window)' and seeds 'w_booked seeded to w_target at the first populated clock without a fill'. w_target at that clock is computed FROM the baseline levels, and the seed state determines when the hysteresis trigger first fires (seed-to-target suppresses an immediate entry that a seed-from-zero convention would produce). Baseline rows are AVAILABILITY_UNEVIDENCED with effective_time_utc = null (CF5).",
+          "consequence": "The initialization IS load-bearing for the scored trade schedule, and it rests on unevidenced rows whose frozen-reader invariant is not mechanically evaluable. PIT-legality is not violated (the conservative bound 2019-01-01T23:59:59Z precedes any window), but the packet's non-load-bearing claim is false and the null effective_time handling forces an implementer judgment. The seed convention itself (seed = target vs seed = 0) is not stated as a frozen choice elsewhere in the packet."
+        },
+        {
+          "id": "A4P1-M3",
+          "severity": "MEDIUM",
+          "dimension": "coverage/turnover arithmetic",
+          "evidence": "Packet estimates '120-220 trades' driven by 'the ~212 rate-change rows of the pinned ledger'. Deduped gross pair-events = 283 (CF4); 26 pre-price-window pair-events are unfillable; hysteresis (|dw| >= 0.10) plus saturation (w pegged at +/-1 while |Delta_r| >= 48 bps, e.g. EMU-US stays between -87 and -238 bps from baseline through 2026-06, so all 19 EMU events and most US hikes fire no trade on EUR/USD) suppress an estimated 40-55% of fillable pair-events. Estimated total round trips 95-155, fold split (inherited scheme) ~25-32 / ~40-70 / ~40-60.",
+          "consequence": "The expected-decision band is overstated roughly 1.5-2x. The per-arm 40-decision floor is met with margin (decisions ~= fillable pair-events ~= 257), but fold populations sit at or near the 30-trade populated floor in the first inherited fold, and the full-sample outcome may land below the packet's band floor of 120."
+        },
+        {
+          "id": "A4P1-L1",
+          "severity": "LOW",
+          "dimension": "schedule breadth / validator precedent",
+          "evidence": "Packet asserts 'The decision-to-fill gap is exactly one session (1-4 calendar days across weekends/holidays), always inside the frozen validator's next-session/4-day constraint' with no fail-closed >4-day path specified. CF7 shows the assertion holds on this snapshot (gaps_gt_85h = []) provided fills go to the immediate next bar; the V3R abort was a scheduling bug, not a calendar gap. The control arm's fill schedule is byte-identical to the anchor's, so a validator abort, if it ever occurred, would hit both arms identically.",
+          "consequence": "Residual risk is implementation correctness of 'first session bar strictly after the decision clock', backstopped by the frozen validator. An explicit fail-closed NO_TRADE path (as in the A6 packets) would remove the residual ambiguity; as written, a >4-day condition has unspecified behavior."
+        },
+        {
+          "id": "A4P1-L2",
+          "severity": "LOW",
+          "dimension": "cost arithmetic prose",
+          "evidence": "costs.stress_tiers says 'multipliers x1.5 and x2.0 applied to BOOKED stress PnL (F1-fixed convention)' and immediately also 'tier books re-price every fill at 2.25 / 3.0 bps per side'. The kernel (book_stress) implements the re-pricing semantics with gross tier-invariant (CF6); literal proportional scaling of net booked PnL would make the tier-2.0 gate sign-preserved from base and contradict the ancestor's observed base-positive/tier-2.0-negative outcome.",
+          "consequence": "Arithmetic is internally consistent (C_rt(tier2.0) = 6.0 bps; kappa = 2 x 6 x 252/63 = 48 bps verified; SAFETY=3 neighbour kappa = 72 bps verified; carry-at-kappa = 12 bps = 2 x RT verified). Only the 'applied to BOOKED stress PnL' phrasing is ambiguous; the re-pricing sentence governs and matches the kernel."
+        }
+      ],
+      "ambiguities": [
+        "Which fold scheme governs: the packet's misstated date list or the inherited FOLD_BOUNDARIES (A4P1-H1).",
+        "Where the scored window opens (2019-01 assumed by packet; price-achievable 2020-01-30; inherited fold window 2020-03-01) and therefore when the hysteresis seed clock occurs (A4P1-H2/M2).",
+        "Seed convention for w_booked at window open (seed = w_target as prose implies, vs seed = 0) — changes the first scored trade (A4P1-M2).",
+        "Handling of null effective_time_utc on BASELINE_LEVEL rows inside the frozen-reader invariant (A4P1-M2).",
+        "Behavior if a decision's next-bar gap ever exceeded 4 days: no fail-closed path specified (A4P1-L1)."
+      ],
+      "estimated_decision_counts": {
+        "definition": "auditor estimates from deduped ledger + snapshot spans; light arithmetic, no simulation",
+        "decision_clocks_available": "daily 16:00-NY over 2020-01-30..2026-09-02 ~= 1,700 sessions; decision clocks are event-anchored so unused",
+        "gross_pair_events_deduped": 283,
+        "unfillable_pre_price_window": 26,
+        "estimated_round_trips_full_sample": "95-155 (after hysteresis + saturation suppression est. 40-55%)",
+        "per_inherited_fold_round_trips": {"F1_2020-03_2022-05": "25-32", "F2_2022-05_2024-07": "40-70", "F3_2024-07_2026-09": "40-60"},
+        "floors": {"MIN_DECISIONS_PER_ARM": 40, "FOLD_POPULATED_MIN_TRADES": 30},
+        "floor_verdict": "per-arm decision floor met with margin; first inherited fold AT the 30-trade populated floor (knife-edge); under the packet's own fold scheme fold 1 = 0 trades -> gate degrades to 2-of-2 populated folds positive"
+      },
+      "fold_population_risks": [
+        "Packet-scheme fold 1 (pre-2020-03): 0 event-driven trades — structurally unpopulated (certainty, not risk).",
+        "Inherited-scheme F1 (2020-03..2022-05): estimated 25-32 trades vs floor 30 — knife-edge; the 21 deduped events -> 39 pair-events in this span, less US-cut saturation effects, leave the fold at the boundary.",
+        "Under either scheme the effective gate is 2-of-2 populated folds positive; a below-floor outcome in the first populated fold would make the family verdict INCONCLUSIVE-by-population (the packet's failure_interpretation branch 4) rather than a mechanistic reject."
+      ],
+      "control_runnability": "PASS by construction: cross-pair derangement control has byte-identical decision dates, sizes, hysteresis bookkeeping and fill schedule to the anchor; no arm references evidence later than the anchor's stamps; ONE_EVENT_LAG_VIOLATION structurally impossible (CF7) — the exact V3R failure mode is designed out.",
+      "tier2_primacy": "Confirmed: margin_to_fail_expectations.stress_tier_2.0_positive_PRIMARY and costs.break_even_reporting both treat tier-2.0 as the primary stress gate; break-even derivable from the kernel (accounting.break_even_bps exists)."
+    },
+    "FXFV4-A4-P2": {
+      "packet": "research/proposals/forex_free_v4/d1-a4-proposals/PROPOSAL_FXFV4-A4-P2.json",
+      "verdict": "FEASIBLE",
+      "verdict_rationale": "As A4-P1: implementable with authorized data and kernel; event-anchored schedule is validator-clean and the mirrored-subset control inherits the anchor's fill schedule. Feasibility is qualified by the same fold-scheme/window HIGH findings and by the baseline-entry evidence finding.",
+      "findings": [
+        {
+          "id": "A4P2-H1",
+          "severity": "HIGH",
+          "dimension": "coverage/fold_population",
+          "evidence": "Identical defect to A4P1-H1: claims 'inherited frozen boundaries (2020-03-01, 2022-05-01, end 2026-09-02)', omits 2024-07-01; inherited runner cannot express a pre-2020-03-01 fold.",
+          "consequence": "Same as A4P1-H1; the packet's honest_population_warning estimates fold 1 at '25-45 trades' which is unreachable (see A4P2-H2)."
+        },
+        {
+          "id": "A4P2-H2",
+          "severity": "HIGH",
+          "dimension": "coverage/window_start + evidence semantics",
+          "evidence": "Packet permits scored ENTRIES from the window-open baseline state ('At the window-open decision clock the baseline differentials count as the initial evidenced state'; 'Entries from the window-open baseline state are permitted from the first scored clock') and estimates fold 1 (2019-01..2020-03) at 25-45 trades including 'initial baseline entries (up to 7)'. Baselines are AVAILABILITY_UNEVIDENCED with effective_time_utc = null (CF5) and there are ZERO deduped rate events in 2020-01-30..2020-03-01 (CF3); prices start 2020-01-30.",
+          "consequence": "Fold 1 as described cannot exist. Up to ~7 window-open baseline round trips (force-flat at the boundary) would be the only fold-1 trades under the packet's scheme — far below the 30-trade floor and generated entirely from unevidenced baseline rows. Under the inherited scheme (window effectively 2020-03-01), the window-open baseline entries instead land at the top of inherited F1, where baseline differentials (e.g. USD/JPY +172.5 bps, USD/CHF +237.5 bps, EUR/USD -162.5 bps all above kappa_e = 48 bps) open up to 7 immediate entries — implementable, but the initial book state still rests on unevidenced baseline rows and the packet's 'non-load-bearing' claim is false for a design that opens scored entries on them."
+        },
+        {
+          "id": "A4P2-M1",
+          "severity": "MEDIUM",
+          "dimension": "availability-evidence bookkeeping",
+          "evidence": "Same raw-vs-deduped counting mismatch as A4P1-M1 ('AU 25/50', 'NZ 25/50', 'CH 11/22', '112 rows' unevidenced vs operative 25/25, 25/25, 11/11 and 51 unevidenced rows).",
+          "consequence": "Same as A4P1-M1; conservative direction, no P-1 violation, but the vintage reader must be built from deduped ledger semantics."
+        },
+        {
+          "id": "A4P2-M2",
+          "severity": "MEDIUM",
+          "dimension": "coverage/turnover arithmetic",
+          "evidence": "Packet estimates '180-360 trades (entries + horizon exits + event exits + rare crash exits) ... bound by the ~212 pinned rate-change rows'. Deduped basis: 283 gross pair-events, 26 unfillable pre-window; 63-session horizons make each pair re-entrant only ~4x/year, and the anti-churn lockout further suppresses. Estimated round trips 100-130 full sample (inherited folds approx 20-25 / 50-60 / 30-45).",
+          "consequence": "Band overstated roughly 2x (partly a definitions issue: counting exits as 'trades'); per-arm 40-decision floor met; third inherited fold is itself near the 30-trade populated floor (est. 30-45)."
+        },
+        {
+          "id": "A4P2-L1",
+          "severity": "LOW",
+          "dimension": "schedule breadth / validator precedent",
+          "evidence": "Next-session convention asserted inside the 4-day bound with no fail-closed path (same as A4P1-L1); control (mirrored subset) inherits the anchor's fill schedule byte-for-byte; crash-unwind trigger (two consecutive clocks) and event-exit both fill next-session after a daily clock — no same-bar fills anywhere.",
+          "consequence": "ONE_EVENT_LAG_VIOLATION structurally designed out for all arms; residual implementation-only risk, backstopped by the validator."
+        },
+        {
+          "id": "A4P2-L2",
+          "severity": "LOW",
+          "dimension": "cost arithmetic prose",
+          "evidence": "Same 'applied to BOOKED stress PnL' phrasing alongside correct re-pricing semantics; kappa_e = 2 x 6 x 252/63 = 48 bps and the neighbour's 2 x 6 x 252/42 = 72 bps both verified; event-exit half-floor 24 bps internally consistent.",
+          "consequence": "Arithmetic consistent; kernel semantics govern."
+        }
+      ],
+      "ambiguities": [
+        "Fold scheme (packet list vs inherited FOLD_BOUNDARIES) and hence where window-open baseline entries land (A4P2-H1/H2).",
+        "Whether window-open baseline entries are scored trades keyed to AVAILABILITY_UNEVIDENCED rows, and how null effective_time_utc is evaluated for them (A4P2-H2).",
+        "Interaction of the 68-session volatility-trigger warmup with the window start (inert until ~May 2020 under an inherited 2020-03-01 window — disclosed in packet but the anchor date is ambiguous given H1).",
+        "Behavior on a hypothetical >4-day next-bar gap (no fail-closed path)."
+      ],
+      "estimated_decision_counts": {
+        "decision_clocks_available": "daily 16:00-NY over 2020-01-30..2026-09-02; event-anchored",
+        "gross_pair_events_deduped": 283,
+        "unfillable_pre_price_window": 26,
+        "estimated_round_trips_full_sample": "100-130 (63-session horizons cap re-entry ~4x/pair/year; lockout suppresses crash-exit churn)",
+        "per_inherited_fold_round_trips": {"F1_2020-03_2022-05": "20-25 (incl. up to 7 window-open baseline entries)", "F2_2022-05_2024-07": "50-60", "F3_2024-07_2026-09": "30-45"},
+        "floors": {"MIN_DECISIONS_PER_ARM": 40, "FOLD_POPULATED_MIN_TRADES": 30},
+        "floor_verdict": "per-arm floor met; first inherited fold below the 30-trade floor (est. 20-25) -> gate degrades to 2-of-2; third fold borderline"
+      },
+      "fold_population_risks": [
+        "Packet-scheme fold 1: at most ~7 baseline round trips on unevidenced baseline rows — structurally unpopulated.",
+        "Inherited-scheme F1: est. 20-25 round trips — below the 30-trade floor; the family's main sample risk is one fold WORSE than the packet's own disclosure (which estimated 25-45 straddling the floor on a window that does not exist).",
+        "F3 borderline (30-45): a below-floor outcome there leaves a single populated fold -> INCONCLUSIVE-by-population under the 2-positive-populated-folds gate."
+      ],
+      "control_runnability": "PASS by construction: mirrored-subset control has identical decision dates, sizes, horizons, crash trigger, lockout and fills; sign flips on 4 preregistered pairs change economics, not scheduling; no validator abort possible (CF7).",
+      "tier2_primacy": "Confirmed: 'stress_tier_2.0_positive_PRIMARY' in margin_to_fail_expectations; costs section reports break-even at all three tiers with the 3.0 bps/side tier-2.0 floor language."
+    },
+    "FXFV4-A5-P1": {
+      "packet": "research/proposals/forex_free_v4/d1-a5-proposals/PROPOSAL_FXFV4-A5-P1.json",
+      "verdict": "DATA_BLOCKED_VALID",
+      "verdict_rationale": "The blocker is real and accurately specified: the inflation leg (cpi_bis_ws_long_cpi) is STAGED_NOT_CITABLE with availability evidence NOT WIRED per p2_data_authority_v4.json, and the catalog explicitly rules it 'NOT citable by V4 D1 proposals'; the alternative (cpi_ecb_icp) is NOT_FUNDED for 7 of 8 areas. The mechanism genuinely cannot be constructed PIT-honestly today, so DATA_BLOCKED is the correct disposition and the packet is a valid FOREX_FREE_V4_BLOCKED_DATA_OR_SELECTION candidate. Findings below qualify the frozen unblock-time spec, not the blocker's validity.",
+      "findings": [
+        {
+          "id": "A5P1-V1",
+          "severity": "LOW",
+          "dimension": "blocker accuracy",
+          "evidence": "Blocker claims verified against the catalog: cpi_bis_ws_long_cpi STAGED_NOT_CITABLE, probe M.AU 92 monthly obs 2018-11..2026-06 keyless, 'probe bytes archived at /tmp probe only (not staged)'; consequence 'NOT citable by V4 D1 proposals'. The packet's unblock path (per-print official release-calendar ledger rows with archive hashes for BLS/ONS/ABS/StatsNZ/StatCan/FSO/SBJ/Eurostat, precision INSTANT or conservative DAY, then re-pin, regenerate vintages, re-run P2, upgrade status) matches the catalog's requirement and the existing ledger-extension tooling (announcement_archives_v4_extension/, announcement_ledger_builder_v4_extension.py present in the run tree).",
+          "consequence": "Blocker spec accurate; unblock path correct and sufficient in principle. Two nits: (a) constraint_compliance says 'BIS WS_LONG_CPI already staged per P2 authority' while the catalog records the probe bytes as NOT staged (/tmp only) — the series body is re-fetchable but nothing is staged; (b) the inherited vintage pipeline is daily-rates-oriented; monthly reference_price_month -> announcement_date semantics are specified in the packet but are genuine new implementation work at unblock time."
+        },
+        {
+          "id": "A5P1-M1",
+          "severity": "MEDIUM",
+          "dimension": "folds/cost prose (matters at unblock)",
+          "evidence": "folds_plan specifies 'purge gap = 20 sessions' while the inherited runner freezes PURGE_DAYS = 14 (calendar days); sample_floor uses a 12-trade fold-population floor while the inherited FOLD_POPULATED_MIN_TRADES = 30 and sibling packet A5-P2 uses 30; costs.application describes 'proportional scaling of each trade's booked PnL' and margin notes describe 'x1.5 loss scaling on losers' while the kernel re-books at tiered per-side costs with gross tier-invariant (CF6).",
+          "consequence": "Three frozen-convention deviations/conflicts inside one packet. If unblocked and run 'EXACTLY as frozen here' (the packet's own commitment), the runner and the packet would disagree on purge width, fold floor, and stress mechanics; implementation would face non-mechanical choices. These must be reconciled before any unblock cycle."
+        },
+        {
+          "id": "A5P1-M2",
+          "severity": "MEDIUM",
+          "dimension": "coverage arithmetic (matters at unblock)",
+          "evidence": "Packet expects 'approximately 1750 [decisions] per pair (2019-01..2026-09 minus 252-session warmup)'. With actual bars from 2020-01-30 (CF1), the post-warmup window is ~2021-02..2026-09 ~= 1,430 sessions per pair. Band-crossing trades '6-14 per pair' shrink proportionally to ~5-12; the 60-trade full-sample floor is inside the shrunken band (35-84) rather than merely 'band-caveat' territory.",
+          "consequence": "Decision floor (100/packet, 40 frozen) comfortably met either way, but the 60-populated-anchor-trades floor becomes a coin flip; SAMPLE_FLOOR_FAIL is a live modal outcome the packet partially anticipates via band_caveat."
+        },
+        {
+          "id": "A5P1-L1",
+          "severity": "LOW",
+          "dimension": "availability semantics (policy leg)",
+          "evidence": "pit_observable correctly states the policy-rate leg is citable only with pinned-ledger semantics and that unevidenced rows are read 'only ever read at the later bound'; placebo algebra D_placebo = D + 2*(pi_b - pi_q) verified correct; control shares the anchor's daily clock and next-session fills so it runs under evidenced semantics (no refused-control path).",
+          "consequence": "Availability discipline and control design are sound; the control-reproduction gate (>= 90% overlap -> inflation channel non-causal) is mechanically checkable."
+        }
+      ],
+      "ambiguities": [
+        "Purge width (20 sessions vs frozen 14 calendar days) and fold-population floor (12 vs frozen 30) at unblock time (A5P1-M1).",
+        "Stress application prose (proportional scaling) vs kernel re-booking semantics (A5P1-M1).",
+        "Several corrupted/garbled text fields (mechanism.why_this_is_NOT_a_policy_carry_relabel, warmup.macro shorthand) that are interpretable in context but are not clean spec sentences.",
+        "Exact warmup anchor for the 252-session median given the window-start question (CF1)."
+      ],
+      "estimated_decision_counts": {
+        "note": "unblock-time estimates on actual price span",
+        "decision_clocks_available": "daily 16:00-NY, ~1,430 sessions per pair post-252-session warmup (~10,000 aggregate)",
+        "estimated_trades": "35-84 band crossings across 7 pairs (packet's own 42-98 deflated ~17% for the true window)",
+        "floors": {"min_decisions_per_arm_packet": 100, "min_populated_anchor_trades_full_sample": 60, "fold_floor_packet": 12},
+        "floor_verdict": "decision floor met; 60-trade full-sample floor at risk (band straddles it); fold floor met trivially if folds follow the inherited grid"
+      },
+      "fold_population_risks": [
+        "Daily-cadence decisions make fold populations large; the binding risk is the full-sample 60-trade floor, not per-fold counts.",
+        "If the inherited 30-trade fold floor replaces the packet's 12, a fold with < 30 band-crossings records NOT_POPULATED; with ~35-84 trades total this is plausible."
+      ],
+      "control_runnability": "PASS at unblock time: identical clocks/fills/availability semantics as anchor; explicitly no refused-by-construction arm; source_to_test_map includes the control-runs-under-evidenced-semantics gate with an empty control book defined as DESIGN FAILURE.",
+      "tier2_primacy": "Confirmed: costs.tier_is_primary_gate states STRESS_TIER_2.0 is a primary Stage-A gate, not an appendix; falsified_if_any includes both tier-1.5 and tier-2.0 negativity.",
+      "blocker_verification": {
+        "cpi_not_citable": "ACCURATE — catalog consequence: 'NOT citable by V4 D1 proposals'; availability_evidence 'NOT WIRED'; any assumed publication lag AGENT_ASSUMPTION_UNAUTHORIZED. The packet correctly refuses all asserted lags.",
+        "named_unblock_paths_correct": "YES — per-print official static release calendars (BLS/ONS/ABS/StatsNZ/StatCan/SwissFSO/SBJ/Eurostat, BIS static calendars acceptable as fallback), ledger append-only rows with archive hashes, precision INSTANT or conservative DAY, re-pin + vintage regeneration + P2 re-gate + status upgrade. Matches catalog requirements and existing extension tooling.",
+        "sufficiency_caveats": "Vintage pipeline must be extended to monthly print semantics (reference_price_month vs announcement_date) — specified but new work; probe bytes are not staged (re-fetch needed); the catalog's 'NOT citable by V4 D1 proposals' means even a mid-cycle unblock cannot fund V4 D1 use, which the packet correctly respects by targeting a future owner-authorized cycle."
+      }
+    },
+    "FXFV4-A5-P2": {
+      "packet": "research/proposals/forex_free_v4/d1-a5-proposals/PROPOSAL_FXFV4-A5-P2.json",
+      "verdict": "DATA_BLOCKED_VALID",
+      "verdict_rationale": "Blocker accurate and identical in kind to A5-P1: q = s - (P_base - P_quote) is not PIT-constructible because CPI index-level vintages carry no availability evidence (STAGED_NOT_CITABLE, NOT WIRED); cpi_ecb_icp NOT_FUNDED. The stale-price placebo control is legal under evidenced semantics (older reads are always safe), so the design is unblock-compatible and the DATA_BLOCKED disposition is valid.",
+      "findings": [
+        {
+          "id": "A5P2-H1",
+          "severity": "HIGH",
+          "dimension": "schedule definition ambiguity (must be fixed before any unblock)",
+          "evidence": "decision_clock.event reads: 'for each pair, the first FX session whose 16:00 America/New_York decision timestamp falls strictly after BOTH areas' latest CPI print evidenced availability stamps, and at least one full session after each print (one-event-lag rule)'. Read literally this condition is satisfied by EVERY session after the latest print (i.e. a daily clock), not a monthly one; the packet elsewhere claims 'MONTHLY ... ~57 monthly decision events per pair' and 'first post-print session 16:00-NY per pair'.",
+          "consequence": "The decision clock is not mechanically implementable as written: 'monthly' cadence needs an explicit anchor (first qualifying session after each new print, or first qualifying session per calendar month). The one-event-lag qualifier is correct against the V3R precedent, but the cadence definition would force an implementer judgment on every session. This does not invalidate the DATA_BLOCKED disposition; it must be repaired in the frozen memo before any unblock cycle."
+        },
+        {
+          "id": "A5P2-M1",
+          "severity": "MEDIUM",
+          "dimension": "coverage arithmetic (matters at unblock)",
+          "evidence": "Packet expects '~57 monthly decision events per pair (93-month window minus 36-month warmup)' and '160-280 pair-month trades' from 'band entries expected in 40-70% of pair-months' against floors of 120 full-sample trades and 30/fold. Actual price span 2020-01-30..2026-09-02 (CF1) ~= 79.5 months; minus the 36-month warmup ~= 43-44 monthly decisions per pair ~= 300-310 pair-months; 40-70% -> ~120-215 trades.",
+          "consequence": "The 120-trade full-sample floor moves from 'comfortable' to knife-edge at the low end of the packet's own band; fold counts (inherited grid, ~1/3 each) land ~40-72 — above the 30/fold floor only in mid-band. SAMPLE_FLOOR_FAIL is a realistic modal outcome."
+        },
+        {
+          "id": "A5P2-M2",
+          "severity": "MEDIUM",
+          "dimension": "exit-rule spec corruption (matters at unblock)",
+          "evidence": "holding_period.exit_conditions contains garbled text: 'or early exit when q re-crosses toward Q by at least half the entry deviation at a decision event' — the entry_exit_rules.exit field says only 'per holding_period exit conditions'. The band constants are consistent (band_log_points 0.02 = 2% log deviation; state_rule thresholds q >= Q + 0.02 / q <= Q - 0.02).",
+          "consequence": "The early-exit rule (the only exit besides expiry and fold force-flat) is not stated in implementable form. Must be rewritten as a mechanical condition before unblock."
+        },
+        {
+          "id": "A5P2-M3",
+          "severity": "MEDIUM",
+          "dimension": "folds/cost prose (matters at unblock)",
+          "evidence": "folds_plan 'purge gap = 21 sessions' vs frozen PURGE_DAYS = 14; sample_floor fold floor 30 matches the frozen FOLD_POPULATED_MIN_TRADES = 30 (unlike sibling P1's 12); costs.application 'proportional scaling of each trade's booked PnL' vs kernel re-booking at tiered per-side costs (CF6).",
+          "consequence": "Purge width and stress-application prose conflict with the frozen kernel; fold floor happens to match. Reconcile before unblock."
+        },
+        {
+          "id": "A5P2-L1",
+          "severity": "LOW",
+          "dimension": "blocker accuracy + control legality",
+          "evidence": "Blocker verified accurate (catalog: STAGED_NOT_CITABLE / NOT WIRED / NOT_FUNDED for the alternative; consequence NOT citable by V4 D1 proposals). The stale-mismatch placebo reads P(quote, t-12m) — an OLDER evidenced read is always PIT-legal, so the control runs to completion under evidenced semantics; the packet's own margin note honestly discloses that low-inflation subperiods may drive >= 90% anchor/control overlap and accepts the frozen rule anyway.",
+          "consequence": "Blocker valid; control design legal and runnable at unblock time."
+        }
+      ],
+      "ambiguities": [
+        "Monthly cadence definition (A5P2-H1) — the packet's central clock is ambiguous.",
+        "Early-exit rule wording (A5P2-M2).",
+        "Purge width (21 sessions vs 14 calendar days) and stress-application prose (A5P2-M3).",
+        "Which fold boundaries the '3 equal chronological folds' inherit — consistent with the inherited grid only if the window is 2020-03..2026-09; packet never states dates.",
+        "Warmup composition: 756 FX sessions AND >= 37 monthly CPI prints per area — the binding constraint at unblock depends on when CPI evidence coverage starts, which is currently unknowable."
+      ],
+      "estimated_decision_counts": {
+        "note": "unblock-time estimates on actual price span",
+        "decision_clocks_available": "~43-44 monthly decision events per pair ~= 300-310 pair-month decisions (packet assumed 57/pair on a 93-month window)",
+        "estimated_trades": "~120-215 pair-month trades (packet band 160-280, deflated)",
+        "floors": {"min_decisions_per_arm_packet": 200, "min_populated_anchor_trades_full_sample": 120, "fold_floor": 30},
+        "floor_verdict": "200-decision floor likely met (~300-310); 120-trade floor knife-edge at low band; per-fold floor met in mid-band only"
+      },
+      "fold_population_risks": [
+        "Band-entry concentration: wide real deviations cluster in 2-3 pairs for long stretches (packet's own disclosure), so per-fold trade counts are heterogeneous; low-band outcomes put one or more folds below 30 trades.",
+        "Inherited-grid folds are equal thirds of 2020-03..2026-09; the packet's fold plan never states dates, so even the fold grid is an implicit choice."
+      ],
+      "control_runnability": "PASS at unblock time: stale-price control uses only legal evidenced reads; decision dates per pair are produced by the same session-selection rule as the anchor, so fills satisfy the same validator constraints; packet defines an empty/refused control book as DESIGN FAILURE.",
+      "tier2_primacy": "Confirmed: costs 'tier 2.0 is a primary Stage-A gate'; secondary_falsifiable_form makes tier-2.0 negativity an explicit falsifier.",
+      "blocker_verification": {
+        "cpi_not_citable": "ACCURATE — same catalog basis as A5-P1; the packet additionally needs index LEVELS (not just YoY), which the staged probe confirms the series carries (index 2010=100 + YoY).",
+        "named_unblock_paths_correct": "YES — identical ledger-extension mechanism with per-print official calendars and archive hashes; coverage target 2019-01..current for all 8 areas is consistent with the probe's 2018-11 start.",
+        "sufficiency_caveats": "Same as A5-P1 (monthly vintage pipeline extension, nothing staged, V4-D1 ineligibility respected by targeting a future cycle)."
+      }
+    },
+    "FXFV4-A6-P1": {
+      "packet": "research/proposals/forex_free_v4/d1-a6-proposals/PROPOSAL_FXFV4-A6-P1.json",
+      "verdict": "FEASIBLE",
+      "verdict_rationale": "Price-only mechanism on the authorized H1 snapshot; no macro availability dependency; decision clock daily at a completed-bar instant; next-session fills with an explicit >4-day fail-closed NO_TRADE path (the strongest validator-precedent compliance of the six packets); sham-bloc control runs by construction; frozen constants quoted verbatim match the runner; fold boundaries quoted match the inherited grid exactly.",
+      "findings": [
+        {
+          "id": "A6P1-M1",
+          "severity": "MEDIUM",
+          "dimension": "fold_population",
+          "evidence": "F1 (2020-03-01..2022-05-01) population estimated by the packet at 1.0-1.8x the 30-trade floor (30-54). Warmup (60 valid NY-days from 2020-01-30) puts first decisions in early May 2020, so effective F1 decisions span ~2020-05..2022-05; the COVID risk-off cluster dominates this span. Auditor estimate: at the packet's own event frequency (z <= -1 on 10-16% of NY-days) F1 holds ~540 valid decision days -> ~54-86 event days -> after 5-day hold overlap, ~60-120 leg-entries — comfortably populated, but the packet's own thinner estimate shows the design anticipates population thinness.",
+          "consequence": "Fold 1 populated in either estimate; the packet's disclosure (THIN, INDETERMINATE risk acknowledged) is adequate. No structural risk, but a sub-30 outcome remains possible if realized event frequency lands at the bottom of the band with heavy overlap."
+        },
+        {
+          "id": "A6P1-M2",
+          "severity": "MEDIUM",
+          "dimension": "drop-one deviation from frozen denominator",
+          "evidence": "Drop-one design uses 6 scenarios (5 leg-drops + best-fold drop) with a 5-of-6 survival gate, described as a 'proportional tightening of the inherited M1-DEV 6/8 rule'. The frozen harness constant is DROPOUT_SCENARIOS = 8, DROPOUT_MIN_SURVIVAL = 6 (ratio 0.75; the proposed 5/6 = 0.833 is tighter). The design reason is sound (EUR/GBP are not traded legs; only 5 pair-drops are meaningful) and the packet explicitly warns 'asserted at implementation as a test'.",
+          "consequence": "A deviation from the frozen 8-scenario denominator with disclosed, tightening-only effect. Implementation must either parameterize the dropout harness for 6 scenarios or map the 5 leg-drops into the inherited harness; either is mechanical, but it is runner-adjacent work the packet should have costed. Leg-drop non-vacuity is genuinely satisfied (dropping a trigger leg changes S_t; dropping a response leg changes the basket), so drop-one meaningfulness is preserved."
+        },
+        {
+          "id": "A6P1-L1",
+          "severity": "LOW",
+          "dimension": "schedule breadth / validator precedent",
+          "evidence": "Fill convention: next-session 16:00-NY bar open, 'at most 4 calendar days later over holiday weekends ... a fill gap that would exceed 4 days fails closed to NO_TRADE'; session gate Sun 21:00 -> Fri 16:00 NY; missing bars fail closed (NO_EVAL / earliest-scheduled exit, never fill-forward). This is the exact discipline the V3R ONE_EVENT_LAG_VIOLATION demands, plus a fail-closed path the A4/A5 packets lack.",
+          "consequence": "Validator-clean by construction and by explicit failure path; control (sham EUR/GBP bloc) and benchmark (t-10 trigger) inherit the same machinery and cannot be refused."
+        },
+        {
+          "id": "A6P1-L2",
+          "severity": "LOW",
+          "dimension": "citation imprecision",
+          "evidence": "pit_observable cites 'frozen span 2020-01-30..2026-09-02 (research/control/forex_free_v4_run/p2_data_authority_v4.json: price_series_byte_replay 152/152 identical...)'. The byte-replay verdict is indeed in p2_data_authority_v4.json, but the span itself is recorded in the w1_freeze loader manifest, not in p2. Decisions estimate ~1,450 NY-days per leg slightly undercounts the ~1,600 post-warmup NY-days; harmless vs floors (satisfied by two orders of magnitude).",
+          "consequence": "Cosmetic citation misattribution; all substantive numbers check out."
+        }
+      ],
+      "ambiguities": [
+        "How the 6-scenario dropout suite maps onto the frozen 8-scenario harness (A6P1-M2).",
+        "'completed NY-day' validity definition ('all of that day's completed H1 bars exist') needs a bar-count convention per day (fail-closed direction is stated, so this is implementable without judgment).",
+        "No other material ambiguities found: trigger signs, standardization window, threshold semantics (z == -1.0 fires, <= frozen), governor, fold force-flat, and benchmark staleness are all stated mechanically."
+      ],
+      "estimated_decision_counts": {
+        "decision_clocks_available": "~1,600 valid NY-days per leg post-warmup (2020-05..2026-09), ~8,000 aggregate (packet said ~7,250; floor met either way by two orders of magnitude)",
+        "estimated_trades": "175-350 round trips across 5 legs (packet band, confirmed plausible at 10-16% event frequency with 5-day hold overlap)",
+        "per_inherited_fold_trades": {"F1_2020-03_2022-05": "60-120 (packet's own estimate 30-54; both >= 30)", "F2_2022-05_2024-07": "60-120", "F3_2024-07_2026-09": "50-110"},
+        "floors": {"min_decisions_per_arm": 40, "full_sample_aggregate_min_trades_anchor": 140, "per_populated_fold_min_trades": 30},
+        "floor_verdict": "decision floor trivially met; 140-trade floor margin ~1.25-2.5x (packet's own disclosure, confirmed); all three folds likely populated, F1 the thinnest"
+      },
+      "fold_population_risks": [
+        "F1 populated but with the least margin in the packet's own estimate (1.0-1.8x floor); a bottom-of-band event frequency with heavy 5-day overlap could push F1 below 30 -> INDETERMINATE cell, disclosed.",
+        "Folds use the inherited grid verbatim — no fold-scheme risk."
+      ],
+      "control_runnability": "PASS: sham-bloc trigger is price-only on authorized pairs in the snapshot; every decision has an observable; identical fail-closed machinery; packet explicitly encodes the V3R lesson ('a control that cannot execute has null evidentiary value').",
+      "tier2_primacy": "Confirmed: costs.application 'Tier 2.0 is a PRIMARY Stage-A gate, not an appendix'; falsifiable_prediction (iv) includes tier-2.0 as primary; delay-stress carried separately exactly as the inherited kernel does (fill_delay_events unblended)."
+    },
+    "FXFV4-A6-P2": {
+      "packet": "research/proposals/forex_free_v4/d1-a6-proposals/PROPOSAL_FXFV4-A6-P2.json",
+      "verdict": "FEASIBLE",
+      "verdict_rationale": "Event-driven design fully grounded in the pinned deduped-ledger semantics (availability-gated eligibility, conservative LATER bounds, fail-closed missing-evidence path); next-session fills with explicit >4-day fail-closed NO_TRADE; sham-area derangement control executes real availability-gated rows on real snapshot prices; frozen constants and fold grid quoted verbatim. Feasible, with the turnover-basis finding below thinning the disclosed floor margins.",
+      "findings": [
+        {
+          "id": "A6P2-M1",
+          "severity": "MEDIUM",
+          "dimension": "coverage/turnover arithmetic on raw vs deduped ledger",
+          "evidence": "Packet counts '212 RATE_CHANGE across AU 50, NZ 50, CA 22, CH 22, GB 22, US 22, EMU 19, JP 5' -> 'non-US areas 190 + US 22x7 = 344 pair-events gross; ... est. 290-315 decisions remain' and F1 population 'est. 1.5-2.7x the 30-trade floor'. The operative deduped ledger has 151 rate changes (AU 25, NZ 25, CH 11 unique — the 50/50/22 figures are raw rows including the 61 UNEVIDENCED->EVIDENCED upgrade duplicates): gross pair-events = 129 + 154 = 283; pre-snapshot NO_EVAL removes ~26-31; within-hold (10 NY-day) flat-only suppression removes ~10-20 (e.g. the second 2020-03 US cut is ignored on all 7 pairs). Estimated decisions ~240-255; estimated scored trades ~200-230 — inside the packet's 180-260 trades band, but the per-fold consequence is material: inherited F1 contains 21 deduped events -> 39 pair-events -> after double-cut suppression ~21-27 trades, AT/BELOW the 30-trade populated floor (the packet's 45-81 was computed on raw counts).",
+          "consequence": "The 140-trade full-sample floor survives (margin ~1.4-1.6x, thinner than the disclosed 1.3-1.9x on a larger base is roughly equivalent); the per-arm 40-decision floor survives; but F1 flips from 'comfortably populated' to 'likely unpopulated', degrading the fold gate to 2-of-2. The packet's INDETERMINATE-not-negative rule would make this a population outcome, not a mechanistic one. The conservative direction of dedupe (upgrades only ADD evidence) means no availability risk — purely a counting-basis error."
+        },
+        {
+          "id": "A6P2-M2",
+          "severity": "MEDIUM",
+          "dimension": "drop-one meaningfulness",
+          "evidence": "8-scenario suite (7 pair-drops + best-fold) matches the frozen DROPOUT_SCENARIOS = 8 / DROPOUT_MIN_SURVIVAL = 6 verbatim. The packet itself discloses that dropping USD/JPY removes only ~5 trades (JP has exactly 5 deduped events, 2024-03..2026-06 — verified) making that scenario near-vacuous 'by data scarcity, not by design', and that the gate 'can only detect pair-concentration through the other 6 pairs'.",
+          "consequence": "Disclosure is accurate and the suite is compliant; the effective denominator for meaningful pair-drops is 6-7 of 8 while the gate stays at 6 — an announced weakening of detection power, not a feasibility defect."
+        },
+        {
+          "id": "A6P2-L1",
+          "severity": "LOW",
+          "dimension": "availability semantics",
+          "evidence": "Eligibility rule (decision instant T = first completed 16:00-NY bar completion >= operative_available_time_utc; never eligible on effective date alone; rows without stamps fail closed MISSING_AVAILABLE_TIME_EVIDENCE) matches the pinned-ledger semantics; measured median effective->readable lag ~1.8 days is consistent with the ledger's first_readable_decision_utc values (auditor spot-check). The claim 'every ledger row carries operative_available_time_utc / first_readable_decision_utc' is literally false for the 8 BASELINE_LEVEL rows (both null), but this family reads only RATE_CHANGE rows, on which the claim holds.",
+          "consequence": "Semantics correct on the rows actually used; the universal quantifier is a wording nit. Tie-break (earlier availability instant wins) is mechanical."
+        },
+        {
+          "id": "A6P2-L2",
+          "severity": "LOW",
+          "dimension": "schedule breadth / validator precedent + benchmark edge effects",
+          "evidence": "Fill convention: next-session 16:00-NY bar, fail-closed NO_TRADE if the gap would exceed 4 days; one-event-lag satisfied; control's decisions are driven by the same availability instants as the anchor with a different pair map, so its fill chain is validator-identical (CF7). The +180d stale-event benchmark shifts late-window events past 2026-09-02 (the last ~6 months of events have no stale twin), shrinking the benchmark book asymmetrically — an accepted consequence of the frozen constant, disclosed as 'schedule shape unchanged' only approximately.",
+          "consequence": "Validator-clean; incremental-alpha comparison remains well-defined (both books scored on the same window); the asymmetry is a diagnostic caveat, not a feasibility issue."
+        }
+      ],
+      "ambiguities": [
+        "None blocking. Minor: the deterministic tie-break resolves same-instant events per pair, but events from DIFFERENT areas mapping to the same pair at DIFFERENT availability instants inside an open 10-day hold are silently ignored (no queueing) — stated ('no refresh'), mechanical.",
+        "Warmup statement 'events whose first decision instant falls before 2020-02-11 (snapshot start + one session + lag) are NO_EVAL' fixes a concrete cutoff — mechanical, though the +12-day offset is a convention choice stated as frozen."
+      ],
+      "estimated_decision_counts": {
+        "gross_pair_events_deduped": 283,
+        "unfillable_pre_snapshot_no_eval": "26-31 (packet's 40-60 was computed on the raw basis; on deduped counts the pre-2020-02-11 events are the 8 pre-2020-03 rows -> 26 pair-events)",
+        "estimated_decisions": "240-255 (packet: 290-315 — overstated ~20% by the raw-counting basis)",
+        "estimated_round_trips_full_sample": "200-230 (inside the packet's 180-260 band)",
+        "per_inherited_fold_round_trips": {"F1_2020-03_2022-05": "21-27 (AT/BELOW the 30-trade floor)", "F2_2022-05_2024-07": "100-120", "F3_2024-07_2026-09": "75-85"},
+        "floors": {"min_decisions_per_arm": 40, "full_sample_aggregate_min_trades_anchor": 140, "per_populated_fold_min_trades": 30},
+        "floor_verdict": "decision floor met ~6x; 140-trade floor met at ~1.4-1.6x; F1 likely UNPOPULATED -> fold gate degrades to 2-of-2 populated folds positive"
+      },
+      "fold_population_risks": [
+        "F1 (2020-03..2022-05) is the family's population crux: 21 deduped events, 39 pair-events, minus 2020-03 double-cut suppression -> est. 21-27 trades vs floor 30. The packet's own margin estimate (1.5-2.7x floor) is invalidated by the deduped counting basis.",
+        "JP trades land late-window (F3) — disclosed; concentration gates (max pair share 0.40) face US-event clustering (22 events x 7 pairs ~= 45% of pair-events) — disclosed as the family's most likely single-gate failure (USD-drift corr 0.2-0.5 vs 0.30 ceiling)."
+      ],
+      "control_runnability": "PASS: every sham decision reads a real availability-gated ledger row and a real snapshot price; sham pair-event multiplicities rebalance (US 22x7 -> USD/CHF only; CH 11 -> all 7) keeping the total at 283; disclosed thin legs (e.g. NZ's 25 events driving USD/JPY) do not refuse; fail-closed rules inherited from the anchor.",
+      "tier2_primacy": "Confirmed: costs.application 'Tier 2.0 is a PRIMARY Stage-A gate'; falsifiable_prediction (v); delay-stress separate per the kernel."
+    }
+  },
+  "precedent_test_summary": {
+    "precedent": "V3R validator_aborts.json: family2 control refused, ONE_EVENT_LAG_VIOLATION — fill 2022-11-07T21:00Z more than 4 days after decision 2022-11-03T20:00Z and not the next-session bar; a refused control has null evidentiary value.",
+    "A4-P1": "Control fill schedule byte-identical to anchor -> abort structurally impossible. Residual: no fail-closed >4-day path in the spec (validator abort is the backstop); scheduling correctness is the only failure channel, same as the V3R bug's channel.",
+    "A4-P2": "Same as A4-P1 via the mirrored-subset identity of fill schedules.",
+    "A5-P1": "All arms share the daily 16:00-NY clock and next-session fills; control cannot be refused; same residual spec gap (no >4-day fail-closed path).",
+    "A5-P2": "Per-print session selection with an explicit >= 1-session lag; control legal (older reads always safe); same residual spec gap; cadence definition itself ambiguous (A5P2-H1).",
+    "A6-P1": "Strongest compliance: explicit next-session rule, explicit 4-day bound, explicit fail-closed NO_TRADE on breach, fail-closed missing-bar handling; control and benchmark inherit the machinery.",
+    "A6-P2": "Same discipline as A6-P1 on an event-driven clock; every arm's decision->fill chain keyed to availability instants with fail-closed missing-evidence path."
+  },
+  "no_pnl_computed": true,
+  "limitations": [
+    "data_raw/forex_free_v1 is absent in this worktree (gitignored); price coverage was audited from research/control/forex_free_v1_run/staged_data_manifest.json (156 digests) and the w1_freeze loader manifest (per-pair bar spans, gap checks), cross-checked against the A6 packets' span claims. No price bytes were read.",
+    "Trade/decision counts are light-arithmetic estimates from the deduped ledger event distribution, snapshot spans, and stated mechanism constants (hysteresis/saturation, hold horizons, band frequencies). They are bounds for floor-checking, not simulations; no schedule was generated and no price series was touched.",
+    "The A6-P1 event-frequency band (10-16% of NY-days) and A5 band-crossing estimates are taken from the packets as design priors; the audit checked their internal consistency, not their empirical truth.",
+    "Verdict FEASIBLE is a data/design-feasibility ruling only: it says the packet can be implemented and run to completion on authorized data under the frozen kernel/validator. It predicates no outcome on any Stage-A gate, and several gates are independently disclosed by the packets as knife-edge or likely-fail (e.g. A6-P2 USD-drift, A4 stress-tier margins).",
+    "The A4 fold-scheme findings (A4P1-H1/A4P2-H1) admit two readings; this audit rules the inherited FOLD_BOUNDARIES authoritative because both packets explicitly claim to inherit them, and records the deviation as the finding rather than silently adopting either scheme.",
+    "Ledger analysis used the documented last-row-wins dedupe by (area, effective_date); the 61 duplicates were verified to be exclusively UNEVIDENCED->EVIDENCED upgrades, so dedupe is evidence-monotone and the conservative direction of all packet evidence claims is preserved.",
+    "This audit writes only research/audits/forex_free_v4/ artifacts and repairs nothing."
+  ]
+}

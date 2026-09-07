@@ -1,0 +1,138 @@
+{
+ "schema": "forex_free_v5_a7_prelaunch_v1",
+ "cycle_id": "FOREX-FREE-V5",
+ "audit": "A7-PRELAUNCH (independent, fresh context; audited nothing this cycle prior; implemented nothing)",
+ "measured_at_utc": "2026-09-05T20:30:00Z",
+ "auditor": "A7-prelaunch (fresh-context)",
+ "authority_chain_audited": {
+  "plan": "/Users/hoangminhlong/my-quantitative/PLAN_forex_v5.md (sections 2,3,4,5 read in full)",
+  "integration_branch": "orca/forex-free-v5-integration",
+  "integration_head": "adaf6c3cc7efc75dfc0ebcca8d9b0c9e25ae6baf (verified: git rev-parse HEAD)",
+  "wave_sha": "e2b7a0e1e29794ca8449625f271f9a67c302fcf2",
+  "d2_novelty": "24be2d0", "d2_feasibility": "38e534d",
+  "selection_sha": "54344353d09f880005a169734cd4671b8a9b9772",
+  "i1_lane_commits": {"A4": "f176754", "A5": "91400501d5e4e33a935c12e26c19c3d6f45d4cee", "A6": "c82403d8c6f39a9d31c276db4d8510b70313c6cd"},
+  "i1_original": "5540513a046f64b0243511169adf06837204d728", "i1_cherry": "2b177629bfca0d6ad6a15d77550975b5471f8d29",
+  "freeze": "a9adba53fe4f9cc86c45fa63ab2563b576596df0", "freeze_marker": "9661b0f",
+  "twin": "r-reproduce detached at a9adba53fe4f9cc86c45fa63ab2563b576596df0 (verified)"
+ },
+ "check_groups": {
+  "C1_ancestry_freeze_chain": {
+   "result": "PASS",
+   "evidence": [
+    "git log --format='%H %P' : parent chain adaf6c3<-9661b0f<-a9adba5<-c9be0ef<-2b17762<-5434435<-38e534d<-24be2d0<-e2b7a0e<-f0237fc<-edba9bf; all expected SHAs exist with the claimed parents (wave->selection->I1->freeze->HEAD)",
+    "git diff 5540513 2b17762 -- research/ tests/ : EMPTY; git diff --stat over whole tree: EMPTY (I1 cherry-pick content-identical)",
+    "commits after freeze a9adba5 (complete list): 9661b0f touches ONLY research/control/forex_free_v5_run/W5_FREEZE_SHA.txt; adaf6c3 touches ONLY dryrun_e1/{dryrun_integration,dryrun_twin}.json + dryrun_v5.json (control/audit artifacts; zero research/ or tests/ code)",
+    "W5_FREEZE_SHA.txt content == 'W5_FREEZE=a9adba53fe4f9cc86c45fa63ab2563b576596df0' (re-read from commit object)",
+    "twin parity: diff -rq integration/research/assets r-reproduce/research/assets excluding __pycache__ = 0 lines; control authorities (both ledger pins, clocks, selection_freeze) byte-identical (cmp)"
+   ]
+  },
+  "C2_selection_legality": {
+   "result": "PASS",
+   "evidence": [
+    "budget: selection_freeze.json budget {planned 6, committed 3, unused 3, unused_slots_policy 'never reassigned'} == plan section 2; exactly 3 arms in selected.arms; driver PLANNED_SCORED_CELLS=3 (budget gate refuses at >=3)",
+    "recomputation A6-P2 kill: trigger schedules rebuilt independently from H1 snapshot bytes - my A6P2 trigger set == committed schedule_A6P2_triggers.json (77 days, z-values identical); my F1 anchor set == schedule_F1_triggers.json (201, z identical); F1 median rebuilt from prices = 195 (== claimed); FULLCAL_EURdown_3leg_cellwise_signed recomputed from scratch: anchor rho 0.3257 (n=4974), neighbour rho 0.3202 (n=4974) - both match the d2 bytes and both exceed the 0.20 bar; jaccard overlap recomputed 0.1415 (nA41 nB201 inter30) - matches",
+    "recomputation A4-P1 R2: d2_a9_measure_output.json A4_P1.anchor.folds_H5 = {37,37,19} (fold2=19 < FOLD_POPULATED_MIN_TRADES=30) - selection's R2 FAIL is faithful; A4-P2 folds 11/18/9 all <30; A6-P1 folds 71/71/35 all populated",
+    "rubric-before-application by substance: R1's 0.20 bar pre-registered in PLAN section 2 AND in the A6-P2 packet's own consent clause (git show c82403d:PROPOSAL_FXFV5-A6-P2.json, byte-verified: 'submitted to the |rho| <= 0.20 A7-N bar at D2, and a measured failure kills this proposal pre-scoring'); R2's floor 30 is the frozen kernel constant (research/assets/forex_free_v3/scored_runner.py:154); R4's clocks published BEFORE D1 (e2b7a0e is the lane commits' parent)",
+    "A5-P1/P2 carried DATA_BLOCKED_VALID consistent with d2 verdicts (6 occurrences in novelty verdict) and plan section 1 (unfunded, not forbidden)"
+   ],
+   "see_findings": ["F-A7-1", "F-A7-2", "F-A7-5"]
+  },
+  "C3_no_scored_results": {
+   "result": "PASS",
+   "evidence": [
+    "no scored ledger exists in research/control/forex_free_v5_run/ (only announcement_ledger.jsonl + extension); V1..V4 scored_ledger_published.jsonl = 6+6+6+6 rows, unchanged since edba9bf (git diff edba9bf..adaf6c3 touches no assets/tests/v4-control paths)",
+    "dryrun_v5.json + both dryrun_e1 reports: scored=false real_pnl=false published=false; temp ledger dryrun_tmp/e1_integration.jsonl = 3 rows, all dry_run=true sanitized (read; gitignored)",
+    "ledger pins re-hashed: announcement_ledger.jsonl 220 rows sha256 ae5e1f2e64b8aa7c08472755bd73857543aa89b72ea81b70ad5c5d81e7cd6bd4 (== recorded base pin); announcement_ledger_v5_extension.jsonl 250 rows sha256 cf1f01a7ec2d3d7506892c045139910937147df49d3742cc4ec72b36d20fd902 (== recorded extension pin)"
+   ]
+  },
+  "C4_data_semantics_pit": {
+   "result": "PASS",
+   "evidence": [
+    "clock->archive backing: ALL 246/246 clock rows' archive_sha256 re-hashed and matched to files under cpi_calendar_archives/ (exceeds the 12-sample requirement; per economy GB 88 / CA 105 / AU 23 / NZ 30, 0 unmatched); 12-row cross-economy sample walked to exact archive paths (GB bulletins, CA wds_changed_*, AU releases, NZ releases)",
+    "AU gap fail-closed: unevidenced months have NO clock row and no inference path exists (arm_targets enumerates clocks only); load_clocks fail-closed on any malformed row and pins counts to frozen 88/105/23/30=246; warmup void/fill-forward refusal tested (test_warmup_gap_fails_closed - documented as 'the AU documented-gap discipline')",
+    "availability lag: resolve_window mechanically enforces F < a < X with D strictly before F; features read only the 11 closes strictly before D; tests test_decision_is_availability_lagged, test_no_lookahead_mutation_shift_changes_decisions, test_no_lookahead_mutation_beyond_data_mutes, test_exit_is_first_bar_after_availability; kernel validate_decisions re-validates the emitted stream (test_kernel_accepts_the_golden_decision_stream)",
+    "p3_conditioning_clocks_v5.json sha256 independently re-hashed 5a084c736cdc9173cbc614605ed28f4c98908a5e7aded062e52e8c18a04ad353 (== dryrun report data_verification)"
+   ],
+   "see_findings": ["F-A7-3"]
+  },
+  "C5_dryrun_hygiene": {
+   "result": "PASS",
+   "evidence": [
+    "recursive leak scan read at exec_driver_v5.py:424-499: _walk visits EVERY dict value and list element with parent-key-scoped allowlist, forced zero/None/False placeholders for every key matching pnl|profit|expectancy|pf|mdd|break_even|alpha|concentration|survived|gross|share|corr (label exceptions are frozen identifier strings), and flag check scored/real_pnl/published false + dry_run true; test_leak_scan_catches_seeded_outcomes proves the scan is live",
+    "temp-only ledger: run_dummy raises SystemExit DUMMY_LEDGER_MUST_BE_TEMPORARY unless the ledger is under dryrun_tmp/ (commonpath check); test_dummy_ledger_outside_dryrun_tmp_refused",
+    "pairwise-distinct: record_id + trial_id + arm_config_digest must be pairwise distinct, else PAIRWISE_ID_VIOLATION raised; verified in both reports (3 arms each, all distinct)",
+    "twin EXACT_MATCH RECOMPUTED by auditor from the two committed reports: after normalizing away exactly {dry_run_utc, elapsed_s, base_head, temporary_ledger}, dryrun_integration.json == dryrun_twin.json (deep-equal True); base_heads 9661b0f vs a9adba5 differ only by the freeze marker; cross-tree record_id->arm_config_digest maps equal; 3 records / 1056 fields scanned / 0 leaks in both"
+   ]
+  },
+  "C6_denominators_budget": {
+   "result": "PASS",
+   "evidence": [
+    "V4 terminal denominators from bytes: forex_free_v4_run/terminal_verdict.json program_denominators {forex_published_before_v4 18, v4_cells 6, forex_program_total 24}; per-cycle scored ledgers 6/6/6/6 counted",
+    "V5 seed = 0 scored (no v5 scored ledger exists); budget 3/6 committed, unused 3 never reassigned (selection_freeze + driver gate); observed == published == 0 pre-launch (all five launch-gate artifacts absent: w4_freeze.json, state.json, run_contract.json, s0_launch_authorized.json, owner_fresh_go.json -> every gate refuses, scored path fail-closed)",
+    "charter figure 'program 188/191': NO byte counterpart found anywhere in the tree, plans, or control states (searched 188/191 patterns repo-wide). The binding forex-side denominators verify cleanly; the 188/191 figure is unverifiable from bytes and is NOT load-bearing for the V5 launch gates"
+   ],
+   "see_findings": ["F-A7-4"]
+  },
+  "C7_boundaries": {
+   "result": "PASS",
+   "evidence": [
+    "S1 SEALED_UNTOUCHED: no S1 path touched by any V5 commit (git diff edba9bf..adaf6c3 file list contains no S1/live/paper paths; the single grep hit 'sitemap_pages1.xml' is a filename coincidence); the V5 driver only READS state.s1 and checks an opened-marker path; p0_verdict.json s1.status=SEALED_UNTOUCHED",
+    "no network in scored path: family/kernel/driver import no HTTP client (driver's only subprocess is local 'git rev-parse'); Phase-P curl usage lives in pre-freeze evidence builders under control/, documented, keyless",
+    "costs frozen: accounting ladder 1.5 bps x tier per fill side, tiers {1.0,1.5,2.0}, STRESS_TIERS=(1.5,2.0) in the frozen kernel; tier-2.0-primary gate present in the P-2 scaffold ('stress_tier2.0_primary_total_pnl_gt_0'); nothing weakened",
+    "no signup/key artifacts: grep hits are BLOCKED records (p0b) and A5 owner-key gate declarations - documents of refusal, not credentials",
+    "carry front door: direction = -sign(trailing 10-day price return sum) only; the pinned ledger's policy rates are read exclusively by LedgerVintageReader inside financing_adjustment (accounting-only dual book; available<=t AND effective<=t gates); RATE_CHANGE rows are never a signal - no funding/borrow logic reconstitutes carry"
+   ]
+  },
+  "C8_statistics_trial_identity": {
+   "result": "PASS",
+   "evidence": [
+    "arm_config_digests pairwise distinct in both dryrun reports (driver-enforced)",
+    "data snapshot digest recorded: price manifest research/control/forex_free_v1_run/staged_data_manifest.json (manifest_sha256 fe2155c0...) 156/156 verified 0 mismatches; clocks sha 5a084c73...; ledger pin cf1f01a7... - all independently re-hashed",
+    "fold contract: kernel FOLD_BOUNDARIES 2020-03-01/2022-05-01/2024-07-01/2026-09-02, PURGE_DAYS 14, FOLD_POPULATED_MIN_TRADES 30, MIN_POSITIVE_FOLDS 2-of-3; family fold_exit_resolution truncates force-flat strictly-before-boundary or voids the clock (never emits a shortened span); tests test_fold_boundary_window_refused, test_fold_truncation_voids_when_span_breaks, test_kernel_accepts_the_golden_decision_stream",
+    "margin-to-fail fields present in the report schema: dryrun_gate_scaffold carries {gate, threshold, comparator, observed, margin} per gate on every arm record, labelled not-evidence in dummy mode (LESSONS P-2)",
+    "independent suite run on the frozen tree by this auditor: full suite 1610 passed, 1 skipped (env-unstaged), 0 failed in 149s (recorded freeze claim 1611 passed corresponds to the env-staged run; the single skip is the documented env-unstaged case); V5 subset alone 49/49 passed"
+   ]
+  },
+  "input_assumption_audit": {
+   "result": "PASS",
+   "assumptions": [
+    {
+     "name": "4-day fill-lag cap semantics",
+     "verification": "kernel scored_runner.py:177,322 raises ONE_EVENT_LAG_VIOLATION when entry - decision > MAX_FILL_LAG_DAYS(4); family refuses pre-emission when F - D > 4 days (REASON_FILL_LAG). Same instant semantics on both sides; the kernel backstop is unchanged and re-validates every emitted stream. Consistent with the packet's 'one-event lag ... 4-day next-session constraint'. PASS"
+    },
+    {
+     "name": "arm mapping between packet and selection_freeze (disclosed in i1_implementation_report.json)",
+     "verification": "packet arms = anchor / neighbour(5-day sum) / control(sham +7d); selection arms = anchor / neighbour(sham +7d) / control(stale c_prev). Verified in packet bytes: (a) the stale c_prev law IS the packet's own incremental_test bench verbatim (benchmark_definition: 'anchored to the SAME economy's PREVIOUS evidenced clock (c_prev) ... First clock per economy has no predecessor and is skipped', bench_schedule_id FXFV5-A6-P1-bench); (b) the packet's control arm carries the exact stipulation 'the kernel's mechanism_sanity definition governs where its label differs from this prose'. The mapping was frozen in selection_freeze BEFORE I1, at zero PnL, and the d2 measurements covered the selected schedules (anchor folds 71/71/35; sham folds 59/59/34, 24 fail-closed drops, 1 date overlap; stale population upper bound 242). Consequence disclosed for P-2: mechanism_sanity slots rebind to sham/stale. See F-A7-6 and F-A7-7"
+    },
+    {
+     "name": "S0-cap dual wording",
+     "verification": "packet states the cap in BOTH forms (fail_closed: 'X would fall after the S0 cap (entry instant must be < 2025-07-25T00:00:00Z)'; turnover_and_sample_floor: 'entries with instant >= 2025-07-25T00:00:00Z excluded'); family_a6p1.py:736 implements existing[f_idx] >= cap OR existing[x_idx] > cap; i1 report spec_notes discloses both forms and which binds; kernel fold domain (ends 2026-09-02) vs family S0 cap is disclosed with 'fold_of governs'. Implementation == frozen documents. PASS"
+    }
+   ]
+  },
+  "frozen_suite_reproduction": {
+   "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<integration root> .venv/bin/python -m pytest tests/ -q -p no:cacheprovider",
+   "result": "1610 passed, 1 skipped, 0 failed (env-unstaged single skip, consistent with the freeze record's targeted note); V5 subset 49/49"
+  }
+ },
+ "findings": [
+  {"id": "F-A7-1", "severity": "LOW", "group": "C2", "title": "consolidated rubric text committed with the application, not before", "detail": "The R1-R4 text exists as such only in selection_freeze.json (commit 5434435) - there is no earlier commit whose bytes contain the consolidated rubric, so git history alone cannot order 'frozen' before 'applied'. Substance provenance closes the gap: R1's 0.20 bar is in the owner plan (section 2) and in the A6-P2 packet's own pre-measurement consent clause (c82403d); R2's floor 30 is a frozen kernel constant since V3; R4's clocks were published at e2b7a0e before the lane commits. No outcome information existed at selection (d2 was decision-schedule computation only). Not blocking; recommended for the next cycle: commit the rubric (or its sha) in its own pre-D2 commit."},
+  {"id": "F-A7-2", "severity": "LOW", "group": "C2", "title": "R3's '>90% date identity' numeric bar has no pre-measurement registration", "detail": "The concept ('control identifiability measured pre-selection') is plan-mandated, but the specific 90% numeric first appears in the d2_a9 verdict/selection freeze. Immaterial to every outcome: the selected family's sham overlap is 1/198 (~0.5%), A4-P1 0/229, A4-P2 29.6% - all verdicts are invariant to any bar between ~1% and 90%. A6-P2's 100% trigger identity did not save it (killed by R1). Record the numeric in the plan or a pre-D2 freeze next cycle."},
+  {"id": "F-A7-3", "severity": "LOW", "group": "C4", "title": "CA available_time_utc rows carry ET-stamps-as-UTC in the PIT authority file", "detail": "Raw WDS archive bytes say releaseTime '2023-12-19T08:30' (undesignated, America/Toronto per StatCan convention); the p3 clock rows write 'T08:30:00Z'. True UTC is 12:30Z (EDT) / 13:30Z (EST), so the recorded availability is 4-5h EARLY. Demonstrated immaterial at the only consumer: the decision clock is daily 16:00-NY bars, and no 16:00-NY daily bar exists between 08:30Z and 13:30Z, so F/D/X and every decision are identical under both readings (checked for anchor, neighbour sham shift, and control anchoring). But the field label is wrong in a sha-pinned authority file; must be corrected before any intra-day clock ever consumes CA stamps. Append-only discipline (values never edited) was respected - the fix belongs in a superseding authority row, not an edit."},
+  {"id": "F-A7-4", "severity": "LOW", "group": "C6", "title": "charter figure 'program 188/191' has no byte counterpart", "detail": "The prelaunch charter cites 'program 188/191' as a denominator to verify unchanged. No 188/191 denominator exists anywhere in the tree, plans, or control states (repo-wide byte search). What the bytes DO establish: forex program 24/24 (terminal_verdict + 6/6/6/6 scored ledgers), V5 seed 0 scored, budget 3/6, unused never reassigned, observed==published==0. The unverifiable figure is not load-bearing for any V5 launch gate. Charter-keeping issue only."},
+  {"id": "F-A7-5", "severity": "INFO", "group": "C2", "title": "selection freeze says 'fold3 19 < 30'; the evidence names the same fold 'fold2'", "detail": "d2_a9 measure output indexes folds 0/1/2 (folds_H5.fold2=19). Selection_freeze's R2 note calls it fold3. Same count, same proposal, same conclusion; a naming-offset typo only."},
+  {"id": "F-A7-6", "severity": "LOW", "group": "input-assumption/C8", "title": "selected scored arm set is not literally the packet's arm table (disclosed, packet-consented)", "detail": "The packet's 5-NY-day-sum neighbour is not scored; the packet's bench (stale c_prev) is scored as the control and the packet's sham control is scored as the neighbour. All three scored schedules are packet-derived bytes, the mapping was frozen pre-I1 at zero PnL, the packet's own clauses (bench definition; 'kernel's mechanism_sanity definition governs') pre-consent the wiring, and the i1 report discloses the rebinding of the mechanism_sanity slots. Residual effect: the packet's horizon-knife-edge falsifier (5d-vs-10d divergence) is no longer a scored arm; its protective function now rides on the kernel mechanism_sanity gates bound to sham/stale. Acceptable; noted so the scored-time P-2 report is read with this mapping in view."},
+  {"id": "F-A7-7", "severity": "LOW", "group": "C2", "title": "feasibility evidence for the SELECTED control arm (stale c_prev) has no fold-population measurement", "detail": "d2_a9 measured anchor folds 71/71/35 and sham folds 59/59/34, but for the stale schedule only a 'schedule_population_upper_bound 242'. R2 was applied to the anchor's folds. If the stale control's own folds turn out unpopulated at scoring, the kernel fails that cell closed (an honest outcome), costing a budget cell (3/6) but leaking nothing. Structural population bound (242 >= 238 stale candidates pre-filters) makes the risk small; noted as research-efficiency, not safety."},
+  {"id": "F-A7-8", "severity": "INFO", "group": "C4/C7", "title": "P0c's 9 EMU value-integrity findings confirmed out-of-scope for this launch; remain owner debt", "detail": "The 9 EMU ledger rows (2023-09-20 + 2024/2025 block, suspected MRO/DFR mixing in the pre-V5 base ledger) were left UNEVIDENCED, values never edited (append-only respected). The selected family's pair map is GBPUSD(GB,US)/USDCAD(US,CA)/AUDUSD(AU,US)/NZDUSD(NZ,US) - EMU rows can never enter its financing reader. No contamination path to the scored cells. Owner should disposition the 9 rows before any future EUR-involving family."}
+ ],
+ "unresolved_high_critical": 0,
+ "verdict": "FOREX_FREE_V5_S0_LAUNCH_AUTHORIZED",
+ "verdict_conditions": [
+  "A7 writes no launch artifacts itself: the driver's five gates remain refused until (1) this verdict is persisted as research/control/forex_free_v5_run/s0_launch_authorized.json with verdict FOREX_FREE_V5_S0_LAUNCH_AUTHORIZED and zero unresolved HIGH/CRITICAL findings (findings F-A7-1..F-A7-8 are LOW/INFO and none block), then (2) the owner types the fresh exact phrase GO FOREX V5 SCORED EXECUTION postdating the S0 artifact (P-8 two-key)",
+  "budget gate is armed at 3 planned cells; unused 3 slots stay dead per plan section 2"
+ ],
+ "verdict_line": "FOREX_FREE_V5_S0_LAUNCH_AUTHORIZED - A7-PRELAUNCH independent, fresh context: 8/8 check groups reconcile from bytes (C1 chain+freeze, C2 selection+recomputed kill rho 0.3257/0.3202>0.20 and fold 19<30 kill, C3 zero scored results with both ledger pins re-hashed, C4 246/246 clock SHAs matched to archives with fail-closed AU gaps and tested availability lag, C5 recursive leak scan + twin EXACT_MATCH recomputed true, C6 denominators 24/24 and 0/3 with all five launch gates refusing, C7 S1 sealed / no network / tier-2.0 intact / no carry reconstitution, C8 digests+snapshot+fold contract+P-2 margins); full frozen suite independently reproduced 1610 passed + 1 env-unstaged skip, 0 failed; 0 HIGH/CRITICAL, 3 LOW + 2 INFO findings recorded, none blocking",
+ "writes_by_this_audit": ["/tmp/a7v5prelaunch/a7_prelaunch_v5.json", "/tmp/a7v5prelaunch/recompute_rho.py"],
+ "forbidden_respected": "no repo writes, no repairs, no push, no network, nothing scored"
+}

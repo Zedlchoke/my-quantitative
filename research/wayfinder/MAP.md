@@ -132,6 +132,23 @@
   nothing). Detail:
   `.worktrees/forex-free-v3r/integration/research/control/forex_free_v3r_run/terminal_verdict.json`,
   S-1 entry in [SURVIVORS.md](SURVIVORS.md).
+
+- **FOREX TERMINAL `FOREX_BLOCKED_SELECTION_INSUFFICIENT`** (synced by A1,
+  2026-09-03, branch `forex@af707e3` + terminal closeout commit) — G10 spot-FX
+  sprint closed honestly: F0 consumed the owner-authorized multi-asset core
+  `8310366` (F0 PASS, 78 tests), F1 correctness engineering complete
+  (FX0–FX6 PASS, 118-test forex suite; provider/instruments/loader/audit,
+  sessions/DST/rollover clocks, conversion/rollover/accounting/execution,
+  all synthetic-golden), F2 produced six outcome-blind proposals (pool
+  `4b9ee91`) and A7 audited them 0 ELIGIBLE / 5 CONDITIONAL_ON_OWNER_DATA /
+  1 INELIGIBLE. F3 never opened: no FX data authority exists (bid/ask 0/7
+  pairs, rollover/swap, PIT rates all UNAVAILABLE_FAIL_CLOSED; owner did not
+  authorize any provider). Scored cells 0, budget 0/6, denominators 0/0,
+  S1 SEALED_UNTOUCHED, workers 0. The five conditional proposals are frozen
+  future inputs; re-grading only after concrete data authority, outcome-blind.
+  Evidence: `research/control/forex_run/terminal_report.json`,
+  `research/audits/forex/f2_novelty/a7_f2_novelty_audit.json`.
+
 - **V10P BLOCKED_PRELAUNCH** (synced by A1, 2026-08-27, branch
   `orca/v10-integration@86b7274`) — generic strategy→research adapter built and
   accepted (BG1–BG6, G15, F2 adopted-with-proof, G17 one measured authority,

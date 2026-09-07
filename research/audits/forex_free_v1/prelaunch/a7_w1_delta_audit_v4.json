@@ -1,0 +1,47 @@
+{
+ "schema": "forex_free_v1_a7_w1_delta_audit_v4",
+ "audit_id": "A7-W1-DELTA-V4",
+ "cycle": "FOREX-FREE-V1",
+ "auditor": "A7",
+ "audited_at_utc": "2026-09-03T13:51:38Z",
+ "audit_type": "narrow re-verification of the single v3 blocker B4 only",
+ "audited_tip": "4e763fb",
+ "branch": "orca/forex-free-v1-f7-a7-prelaunch (audit lane re-based onto integration tip 4e763fb; prior v3 audit commit 30f7b4d re-based to 068ddea - a ff-only move was impossible because the v3 audit commit and the B4 repair commit 4e763fb both descend from b245ee9, mirroring the v3 lane move)",
+ "repairs_commit": "4e763fb",
+ "prior_audit": "a7_w1_delta_audit_v3 verdict FOREX_FREE_V1_W1_BLOCKED (B4 HIGH; carried B1 PASS, B2 PASS, C1 MEDIUM accepted)",
+ "VERDICT": "FOREX_FREE_V1_W1_LAUNCH_AUTHORIZED",
+ "w1_sha_declared": "f33a32a2f245d08447a67bb6a0b1f7276c7c5a85",
+ "runner_sha256_at_w1": "c71176e31cd63f28ea166f8469d36b54ca305f684eec1e47528a5987bf3ca1be",
+ "change_scope_check": "git diff b245ee9..4e763fb touches exactly one file: research/control/forex_free_v1_run/staged_data_manifest.json (+4/-3: the two w1_freeze.json digest entries 6f91d741... -> 78db4205... in digests_exec2 and digests_repro2, plus a b4_note field). Lane diff vs integration tip after re-base is the v2+v3 audit artifacts only. No other change vs v3's audited PASS state.",
+ "blocker_resolution": {
+  "B4_stale_w1_freeze_digest_entries_in_staged_manifest": {
+   "status": "RESOLVED",
+   "independent_verification": [
+    "authoritative staged_data_manifest.json @ 4e763fb: digests_exec2['research/control/forex_free_v1_run/w1_freeze.json'] = 78db42051d54be9dbd769d46a612de4d22dbc5e96e69484a3baae3156d9c0e42 and digests_repro2 entry likewise; both maps 156 entries and pairwise equal",
+    "independently recomputed sha256 of the staged freeze file in EACH tree: integration/lane w1_freeze.json = 78db4205..., exec-2 w1_freeze.json = 78db4205..., repro-2 w1_freeze.json = 78db4205... - all equal the manifest entries",
+    "staged copies byte-identical to the integration w1_freeze.json: cmp exec-2 vs integration IDENTICAL, cmp repro-2 vs integration IDENTICAL, cmp exec-2 vs repro-2 IDENTICAL",
+    "manifest replay re-run against the authoritative manifest: exec-2 tree 156/156 ok, 0 mismatch, 0 missing; repro-2 tree 156/156 ok, 0 mismatch, 0 missing - the v3 155/156 single-mismatch (freeze self-entry) is gone and the 156/156 pillar holds again",
+    "superseded digest 6f91d741... no longer appears in the authoritative manifest"
+   ],
+   "residual_note_non_blocking": "the stage-time snapshot copies of staged_data_manifest.json INSIDE exec-2 and repro-2 (staged_utc 2026-09-03T13:30:00Z, pre-dating repair 4e763fb) still carry the superseded 6f91d741... entries and lack b4_note, so a reproducer replaying those local snapshot manifests against their own tree would see 155/156. This does not affect the verdict basis: the replay pillar is defined on the authoritative control-tree manifest, which passes 156/156 in both trees; the staged DATA (w1_freeze.json and all 155 other files) is byte-verified against it. Recorded as an accepted non-blocking consistency blemish (C1-style disposition), not a blocker."
+  }
+ },
+ "carried_reverification": {
+  "B1_family2_digest_key": "PASS carried - runner unchanged: sha256(scored_runner.py) recomputed = c71176e31cd63f28ea166f8469d36b54ca305f684eec1e47528a5987bf3ca1be in integration/lane, exec-2 and repro-2 alike; freeze code_hashes entry matches",
+  "B2_pair_concentration_gate": "PASS carried - freeze bytes unchanged since v3's audited corrected freeze (78db4205... everywhere), so all v3 PASS findings tied to freeze contents (six arm digests, spec hashes 4/4, data_probe hashes 3/3, sessions.py 5f818ef1..., calendar.py 43202327...) carry unchanged",
+  "C1_runner_not_hard_enforcing_scoring_authorized": "MEDIUM accepted carried - mitigation runtime re-verified at 4e763fb: publish_cell refusals LAUNCH_AUTHORIZATION_MISSING / LAUNCH_NOT_AUTHORIZED / W1_SHA_MISMATCH all re-triggered correctly in-process (scored_runner.py:166-171)",
+  "freeze_self_consistency": "w1_freeze.json FOREX_FREE_V1_W1 = f33a32a2f245d08447a67bb6a0b1f7276c7c5a85; staged_data_manifest.json W1 = f33a32a2f245d08447a67bb6a0b1f7276c7c5a85; both equal the declared w1_sha"
+ },
+ "regression_checks": {
+  "targeted_tests": "tests/assets/forex_free_v1: 91 passed (expected 91) - matches v3",
+  "gate_smoke": "publish_cell refuses missing/unauthorized/mismatched verdict artifacts at 4e763fb (see C1 mitigation)",
+  "tree_states": "integration worktree clean at 4e763fb; audit lane clean after re-base (068ddea on 4e763fb); exec-2 and repro-2 detached exactly at f33a32a with staged freeze+manifest as the only working-tree modifications (established staging pattern)"
+ },
+ "blockers": [],
+ "launch_authorization": {
+  "authorized": true,
+  "w1_sha": "f33a32a2f245d08447a67bb6a0b1f7276c7c5a85",
+  "runner_sha256": "c71176e31cd63f28ea166f8469d36b54ca305f684eec1e47528a5987bf3ca1be",
+  "execution_trees": {"exec-2": "f33a32a", "repro-2": "f33a32a"}
+ }
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "forex_free_v3_handoff_q_a7_prelaunch_v1",
+  "written_at_utc": "2026-09-04T18:16:38Z",
+  "stamp_source": "machine_date_u",
+  "producer": "A7 (independent prelaunch audit)",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/q-a7-prelaunch",
+  "branch": "orca/forex-free-v3-q-a7-prelaunch",
+  "head_at_audit": "c9d653639d24d85ca4478cae7770e032fc5c63b3",
+  "w3_audited": "9d961103018719de51433321feb846ed274ab604",
+  "audit_artifacts": [
+    "research/audits/forex_free_v3/prelaunch/a7_prelaunch_v3.json",
+    "research/audits/forex_free_v3/prelaunch/a7_prelaunch_v3.md"
+  ],
+  "verdict": "FOREX_FREE_V3_S0_LAUNCH_BLOCKED",
+  "checks": {
+    "C1_pin_twin_integrity": "PASS (twins detached at W3, clean; price 156/156 both twins both digest sets; macro 9/9 both twins at data_freeze.macro_vintages.file_sha256)",
+    "C2_dummy_dry_run": "PASS (auditor-rerun in own tree on e-exec-1 twin data; 6/6 arms scored=false real_pnl=false published=false; record_ids pairwise unique; ALL 6 record_ids + decision/kept counts EXACTLY match w3_freeze six_arm_dummy_dry_run)",
+    "C3_zero_real_scored_artifacts": "PASS (no V3 ledger; state budget 0/6; event log ledger_authority empty)",
+    "C4_chain": "PASS (cafd78e -> 236dcda -> 9d9611 -> HEAD via merge-base --is-ancestor; forbidden_inventory sha256 6aefd432...; baseline_invariants sha256 14a6fab6...; both byte-identical to committed HEAD bytes)",
+    "C5_code_hashes": "PASS (7/7 match in BOTH twin trees)",
+    "C6_resource_probe": "PASS (8 logical cores / 4 performance, 8GB RAM 47% free, 42Gi disk free; serial arms + 60min per-arm timeout consistent with contract)",
+    "C7_gate_review": "FAIL (3 HIGH + 1 MEDIUM + 1 LOW)"
+  },
+  "dry_run_record_ids_measured": [
+    "family1:anchor:tier1.0",
+    "family1:neighbour:tier1.0",
+    "family1:causal_negative_control:tier1.0",
+    "family2:anchor:tier1.0",
+    "family2:neighbour:tier1.0",
+    "family2:causal_negative_control:tier1.0"
+  ],
+  "dry_run_determinism": "identical to w3_freeze.json across trees (auditor tree code x e-exec-1 twin data)",
+  "findings": [
+    {"id": "H1", "severity": "HIGH", "title": "INCREMENTAL_ALPHA_NOT_POSITIVE gate cannot fire for either selected family (no supplier of meta.incremental_alpha anywhere; runner skips gate when None)", "status": "UNRESOLVED BLOCKER"},
+    {"id": "H2", "severity": "HIGH", "title": "USD-drift diagnostic gate cannot fire for either selected family (family1 omits usd_index_daily_returns; family2 supplies None deferring to a nonexistent injection point; supplying requires post-freeze code change => re-freeze)", "status": "UNRESOLVED BLOCKER"},
+    {"id": "H3", "severity": "HIGH", "title": "Dummy dry-run records leak real outcome info: stress-tier PnL (measured family2 ctrl tier1.0 total_pnl=-644.1209630929) and break_even_cost_bps (-1.401446) present despite scored=false/real_pnl=false", "status": "UNRESOLVED BLOCKER"},
+    {"id": "M1", "severity": "MEDIUM", "title": "Drop-one FOLD survival not computed/gated (only drop-one pair), vs baseline v3_sample_floors and PLAN section 12", "status": "UNRESOLVED"},
+    {"id": "L1", "severity": "LOW", "title": "Timeout TechAbort discards results fail-closed but cannot kill the hung worker daemon thread (residual resource use only)", "status": "accepted wart"}
+  ],
+  "blockers": ["H1", "H2", "H3"],
+  "next_action_for_a1": "Do NOT start Phase E. The owner conditional GO does not release (prelaunch returned BLOCKED). To unblock: implement a code delta that (1) supplies meta.incremental_alpha per baseline v3_benchmark_treatment (same mechanism with macro conditioning removed), (2) supplies usd_index_daily_returns per the frozen D1 equal-weight formula for BOTH families (family1 currently omits the key entirely), (3) zeroes/omits stress metrics and break_even_cost_bps in dry-run records, (4) optionally adds drop-one fold survival. Then re-run W3 gates, cut a new code-bearing freeze (all seven code_hashes change), refresh twins, and request an A7 delta prelaunch re-audit. Alternatively obtain an explicit owner-accepted recorded decision on the gate gaps.",
+  "next_action_for_a7": "On re-submission: re-verify the seven code hashes, re-run the six-arm dry-run determinism check, and re-review stage_a_gates enforceability for H1/H2/H3 before issuing a new S0 verdict.",
+  "boundaries_respected": "audit-only: no code or data repaired anywhere; auditor ran compute_cell in dry-run mode only (freeze_token=None); no publication attempted; no writes outside audit artifacts + this handoff"
+}

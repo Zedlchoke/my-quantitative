@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "role": "A_IMPL_FAMILY2_I_FOREX_FREE_V3 (SELECTED family2 = FXFV3-A6-P1)",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-family-2",
+  "branch": "orca/forex-free-v3-i-family-2",
+  "bootstrap_sha": "7e0ba2b5a167221d3fd280774d65fc3d4cb0885c",
+  "commit_sha": null,
+  "measured_at_utc": "2026-09-04T16:30:43Z",
+  "stamp_source": "machine_date_u",
+  "clean": true,
+  "clean_note": "clean=true describes the state AFTER this lane's single clean commit; A1 verifies with git status --porcelain=v1 (must be empty) and git diff --check HEAD^ HEAD (must be clean). commit_sha is null because this handoff file is inside that single commit; A1 reads the SHA with git log -1 --format=%H (subject starts with 'FOREX-FREE-V3 I-FAMILY2:').",
+  "allowed_globs": [
+    "research/assets/forex_free_v3/family2.py",
+    "tests/assets/forex_free_v3/test_family2.py",
+    "research/control/forex_free_v3_run/handoffs/i_family2.json"
+  ],
+  "changed_files": [
+    "research/assets/forex_free_v3/family2.py",
+    "tests/assets/forex_free_v3/test_family2.py",
+    "research/control/forex_free_v3_run/handoffs/i_family2.json"
+  ],
+  "spec": "research/proposals/forex_free_v3/a6_lane/proposal_1.{json,md} (binding); family API contract from research/assets/forex_free_v3/scored_runner.py module docstring; financing formula from baseline_invariants.json v3_financing_formula.",
+  "deliverables": [
+    "research/assets/forex_free_v3/family2.py exposes run_arm(arm, data_paths, macro_reader, freeze_token=None) -> {decisions, financing_events, meta} for arms anchor / neighbour / causal_negative_control (driver shorthand 'control' normalized). Decisions only at completed daily 16:00 America/New_York flat H1 bars (weekday Mon-Fri; 20:00Z EDT / 21:00Z EST via zoneinfo); entry/exit fills at the OPEN of the next EXISTING 16:00-NY bar (one-event lag; missing next bar => action skipped fail-closed and recorded in meta.skipped_decisions with reason MISSING_NEXT_FILL_BAR).",
+    "Vol regime from price history ONLY, exact window in meta.vol_regime_window: 20-NY-day current block, 10 prior non-overlapping 20-day blocks, 220 completed valid NY-days warmup; anchor S = mean(rr), B = median of the 10 block means (median of 10 = mean of the two middle order statistics); LOW iff S < B strictly (S == B => HIGH). rr_d = sum of H1 true ranges of the window bars / the day's 16:00-NY close; window = bars strictly after the previous enumerated NY weekday's decision bar through the day's decision bar; window must be consecutive hourly except the single structural Fri->Mon weekend close, else the day is invalid (fail-closed NO_EVAL); provider Sat/Sun-UTC-stamped artifacts are excluded from the walk. Neighbour: S/B are sample stds (ddof=1) of the 19 close-to-close log returns inside the same 20-day windows (identical 220-day warmup).",
+    "Direction read EXCLUSIVELY through the injected availability-gated macro_reader (differential at the decision instant; available_time_utc <= T enforced by the reader, never bypassed); None or exact zero => pair-day NO_EVAL. Causal negative control: direction from the FROZEN sham derangement (base and quote legs rotated +2 along the frozen pair order, spec mapping reproduced exactly: EUR/USD->(AU,US), GBP/USD->(NZ,US), AUD/USD->(US,JP), NZD/USD->(US,CH), USD/JPY->(US,CA), USD/CHF->(EMU,USD), USD/CAD->(GB,US)); the rotation constant IS the recorded seed (meta.sham_derangement.seed) -- deterministic, no runtime randomness, identity-free (asserted at import and in tests).",
+    "Fold boundaries 2022-05-01 / 2024-07-01 force flat: an open position exits at the OPEN of the last decision day's 16:00-NY bar before the boundary with force_flat=true; an entry whose fill would land on that bar is suppressed (skipped_decision FOLD_BOUNDARY_NO_ENTRY); post-boundary decisions may open positions in the next fold (no position crosses a boundary).",
+    "Financing events one per decision, formula id 'V3_FROZEN_POLICY_RATE_CARRY' (all events of an arm carry the same id): adjustment = sign * notional(10000) * sum(day-start as-of differentials in decimals)/365 over calendar days [entry-fill date, exit-fill date); weekend days carry the most recent prior weekday decision instant; adopted percent-per-annum vintages converted to decimals (/100) exactly once at the family financing boundary (disclosed in meta.financing.units); approximation disclosure carried verbatim in meta.financing.disclosed_approximation (policy rates are unsecured official rates, NOT swap/OIS rollover).",
+    "meta declares decision_clock='daily', proposal_id FXFV3-A6-P1, pair_universe, vol_regime_window (exact 20/10/220 window statement), sham_derangement (rule+seed+mapping), financing (formula verbatim + units + accrual + approximation), macro_source (BIS WS_CBPOL via PolicyRateReader, ECB SDMX EXR declared fallback), skipped_decisions + skipped_counts + schedule_totals; usd_index_daily_returns is null with meta.usd_index_note deferring the frozen D1 equal-weight index series to scoring integration (runner owns the correlation statistic; absent => diagnostic unevaluated, disclosed).",
+    "Fail-closed BLOCKED_DATA everywhere: missing/malformed h1_dir, missing pair snapshot files, conflicting duplicate stamps, non-positive prices, missing macro_reader => family2.DataBlocked(BLOCKED_DATA); macro area/series gaps propagate the reader's MacroDataBlocked; no fabrication, no fill-forward, NO_EVAL otherwise.",
+    "schedule_counts(data_paths) module function: schedule-only feasibility replay from the price snapshot ONLY (no PnL, no macro reads) returning per-pair calendar facts and per-arm decision counts.",
+    "tests/assets/forex_free_v3/test_family2.py: 15 tests, all expected numbers hand-computed literals, synthetic fixtures only (continuous 24/7 hourly bar builders + tiny vintage fixtures; NO network, NO real scored PnL): (1) rr goldens 0.024/0.041/0.014/0.010625 with the 7+17 bar window accounting stated, differential directions -1/+1/None pinned incl. exact-zero NO_EVAL; (2) PIT mutation: shifting a vintage's available_time_utc past a decision date flips that date's eligibility (EUR/USD -1 vs +1 across 2024-03-20/21; test fails if the availability lag regresses to effective-date-only reads); (3) vol boundary: S==B=>HIGH median-split unit pins (_median10 = 0.055 literal) plus a series-level gate flip pinned at exactly the first spike day (LOW at wd 258, HIGH at wd 259) and warmup None at 219 valid days; (4) DST 2025: Fri 2025-03-07T21:00Z -> Mon 2025-03-10T20:00Z and Fri 2025-10-31T20:00Z -> Mon 2025-11-03T21:00Z next-session fill mapping, plus e2e invariant entry_bar_ts == next existing bar (>=1 three-day weekend lag); (5) derangement mapping pinned literal, identity-free, deterministic across runs, control directions differ from anchor on the fixture (GBP/USD -1 vs +1; USD/CHF control-only trades; anchor USD/CHF never trades); (6) force-flat at 2024-07-01: exit_bar_ts == 2024-06-28T20:00:00+00:00 force_flat=true, no entry at the ff bar, validate_decisions passes (no FOLD_FORCE_FLAT_VIOLATION), no trade spans the boundary; (7) dual-book separation on a hand-aligned 3-day (Fri->Mon) hold: financing = side*10000*diff_decimal*3/365 pinned per pair from fixture rates, booked financing-adjusted minus price-only equals the carried adjustment; (8) byte-identical double generation for all three arms (canonical JSON equality); (9) schedule-only replay on the REAL snapshot (skips cleanly when the gitignored snapshot/manifest is absent): 156/156 digests verified before counting, no PnL keys.",
+    "meta contract test pins decision payload shape (exact key set, notional 10000, side +/-1, 16:00-NY weekday stamps) and financing-event/decision id bijection; fail-closed tests pin BLOCKED_DATA on missing h1_dir/pair files/reader and the reader's MacroDataBlocked for unknown areas; arm validation refuses unknown arms."
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-family-2 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3 -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "72 passed in 40.11s (57 pre-existing runner/accounting/data-authority + 15 new family2; the real-snapshot replay RAN, not skipped). Full-suite pytest remains A1's deferred gate and was NOT run. compileall clean on both new files."
+    }
+  ],
+  "real_snapshot_replay": {
+    "scope": "SCHEDULE-ONLY (counts, no PnL, no macro read; family2.schedule_counts). NO scored PnL was computed anywhere in this lane.",
+    "snapshot_source": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/e-exec-1/data_raw/forex_free_v1/ copied to <worktree>/data_raw/forex_free_v1/ (gitignored, chmod a-w, never staged)",
+    "manifest": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/integration/research/control/forex_free_v1_run/staged_data_manifest.json (section digests_exec2)",
+    "digest_verification": {"total_entries": 156, "matched": 156, "mismatched": 0, "missing": 0, "verdict": "PASS 156/156"},
+    "decision_bars_present_per_pair": {"EUR/USD": 1652, "GBP/USD": 1657, "AUD/USD": 1656, "NZD/USD": 1656, "USD/JPY": 1653, "USD/CHF": 1655, "USD/CAD": 1654},
+    "decision_bars_note": "matches the A9-F measured enumeration EXACTLY (1652-1657 per pair)",
+    "per_arm_schedule_decision_counts": {"anchor": 9491, "neighbour": 9491, "causal_negative_control": 9491},
+    "decision_floor": ">= 40 per arm satisfied (9491); arms share the state-evaluability calendar so schedule counts coincide by construction (vol STATE differs per arm; direction/trade differentiation needs macro vintages, which do not exist locally)",
+    "activation_220_ny_days": {
+      "a9f_bar_counting_basis_221st_weekday_bar": "2020-12-02..2020-12-03 across pairs (test pins within the A9-F measured window 2020-12-02..04)",
+      "strict_valid_day_basis_first_schedule_decision": "2020-12-08 (NZD/USD) .. 2020-12-14 (AUD/USD)",
+      "offset_disclosure": "the strict spec reading (220 COMPLETED VALID NY-days, fail-closed on invalid days) activates 4-10 NY-days after the A9-F bar-counting window because a handful of early missing decision bars invalidate their own and the following day for state purposes; both bases are measured, pinned in test 9 and reported here",
+      "per_pair_first_schedule_decision": {"EUR/USD": "2020-12-09", "GBP/USD": "2020-12-09", "AUD/USD": "2020-12-14", "NZD/USD": "2020-12-08", "USD/JPY": "2020-12-11", "USD/CHF": "2020-12-10", "USD/CAD": "2020-12-10"},
+      "per_pair_schedule_decision_days": {"EUR/USD": 1349, "GBP/USD": 1360, "AUD/USD": 1356, "NZD/USD": 1359, "USD/JPY": 1354, "USD/CHF": 1356, "USD/CAD": 1357}
+    },
+    "verdict": "PASS: per-arm schedule decision counts 9491 >= 40; ~220-NY-day activation matches the A9-F measured window (2020-12-02..04) on the bar-counting basis, with the disclosed 2020-12-08..14 strict-valid-day offset; decision-bar enumeration reproduces A9-F exactly."
+  },
+  "hand_computed_goldens": {
+    "rr_windows": {"jan2": 0.024, "jan3": 0.041, "jan4": 0.014, "jan5": 0.010625, "accounting": "24-bar window = 7 prior-evening bars + 17 same-day bars; TR = 2x = rr_day/24 per bar"},
+    "median_of_10": 0.055,
+    "gate_flip": "LOW at wd258, HIGH at wd259 (first 0.50-spike day; S=0.02925 > baseline-dominated median), warmup None at 219 valid days",
+    "three_day_hold_financing": "side*10000*diff_decimal*3/365 (e.g. EUR/USD: -1*10000*(-0.0125)*3/365 = +1.0273972602739727 USD); booked financing-adjusted minus price-only equals the carried adjustment",
+    "dst_stamps": {"2025_spring": {"fri": "2025-03-07T21:00:00+00:00", "mon": "2025-03-10T20:00:00+00:00"}, "2025_fall": {"fri": "2025-10-31T20:00:00+00:00", "mon": "2025-11-03T21:00:00+00:00"}},
+    "boundary_force_flat_exit_bar": "2024-06-28T20:00:00+00:00"
+  },
+  "assumptions": [
+    "data_paths contract for this family: {'h1_dir': <dir with {SYMBOL}_1h_*.json TwelveData-format files>, 'macro_vintages': {...} (read by the runner-built reader)}. Provider no-data error payloads are empty windows (recorded evidence), not failures.",
+    "Decision ts convention: the enumerated H1 bar whose America/New_York wall time is 16:00 (A9-F definition); decision_ts carries that UTC stamp; fills use the next existing such bar's OPEN (open-stamped provider bars).",
+    "Neighbour S/B use the 19 close-to-close log returns inside each 20-NY-day window (aligned with the anchor's windows, identical 220-day warmup); the proposal's 'sigma of the 20 most recent returns' is ambiguous by one, and this choice keeps everything_else byte-identical to the anchor as the spec requires.",
+    "Financing units: adopted vintages are percent-per-annum (per the P0 fixture/adapter convention); /100 conversion applied exactly once family-side; direction sign is unit-invariant.",
+    "usd_index_daily_returns intentionally deferred to scoring integration: the frozen D1 equal-weight USD-index formula is not in this lane's sources; the runner treats absence as not-evaluated and cannot fail on it -- A7 scoring integration must supply it.",
+    "meta.fill_delay_events left empty: the frozen one-event delay stress is runner-carried unblended (delay_stress.n_delayed_trades=0 here); recomputation of the delayed schedule is A7 scoring work per the i-runner handoff.",
+    "Friday decision-bar-open entry fills are dropped by the runner's inherited session gate (Fri 16:00 NY closed) -- fail-closed inherited behavior, disclosed, not family-filtered.",
+    "No macro vintage series exists locally (A9-F HIGH finding): run_arm against the real snapshot without vintages fails closed BLOCKED_DATA by design; the real replay is therefore schedule-only, and per-arm DIFFERENTIATION (direction/trades) is testable only on synthetic vintages (tests 2/5/7)."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/assets/forex_free_v3/family2.py",
+    "tests/assets/forex_free_v3/test_family2.py",
+    "research/proposals/forex_free_v3/a6_lane/proposal_1.json",
+    "research/assets/forex_free_v3/scored_runner.py",
+    "research/control/forex_free_v3_run/baseline_invariants.json"
+  ],
+  "next_action_for_a1": "Verify: (1) git log -1 --format='%H %s' -> one commit on orca/forex-free-v3-i-family-2 with subject starting 'FOREX-FREE-V3 I-FAMILY2:'; (2) git status --porcelain=v1 empty; (3) git diff --check HEAD^ HEAD clean; (4) re-run the targeted pytest command expecting exit 0 / 72 passed. Then hand family2.py to the A7 scoring-integration lane together with family1 when it lands: register via --family family2=research.assets.forex_free_v3.family2, supply data_paths {h1_dir, macro_vintages}, supply meta.usd_index_daily_returns (frozen D1 formula) and the one-event delay schedule at scoring time."
+}

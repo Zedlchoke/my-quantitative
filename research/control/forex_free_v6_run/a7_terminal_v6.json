@@ -1,0 +1,126 @@
+{
+ "agent": "A7",
+ "audited_terminal": "research/control/forex_free_v6_run/terminal_verdict.json (FOREX_FREE_V6_REJECT_ALL)",
+ "authority": "plans/PLAN_forex_v6.md sections 2, 4, 5; handbook 20.2 asymmetric discipline",
+ "blocking_findings": [],
+ "branch": "orca/forex-free-v6-integration",
+ "check_groups": {
+  "T1_freeze_ancestry": {
+   "commands": [
+    "git diff 513f851..HEAD -- research/assets tests  -> 0 bytes (EMPTY)",
+    "git log --format='%h %s' 3dacf1a..HEAD  -> 34 commits, every one FOREX-FREE-V6 lane-accounted",
+    "git merge-base --is-ancestor 0f7677b 8a0fd01  -> exit 0",
+    "git merge-base --is-ancestor 2baa37c 8a0fd01  -> exit 0",
+    "git merge-base --is-ancestor 5f274c4 8a0fd01  -> exit 0 (launch inputs commit AFTER prelaunch AUTHORIZED commit)",
+    "grep -o '\"code_freeze_sha\":\"[a-f0-9]*\"' scored_ledger_published.jsonl | sort -u  -> single value 513f8510729aaec9853d621ae40d511b977ebe09"
+   ],
+   "evidence": "All 6 ledger rows carry code_freeze_sha == 513f851 (remediated code-carrying freeze); selection 0f7677b + amendment 2baa37c are ancestors of launch-inputs commit 8a0fd01; prelaunch 5f274c4 precedes launch 8a0fd01 in ancestry; chain 3dacf1a..HEAD fully accounted with no unaccounted commit.",
+   "verdict": "PASS"
+  },
+  "T2_launch_legality_P8": {
+   "commands": [
+    "python -c json.load(run_contract.json)  -> launch.launch_authorized=true, s0_launch_authorized_verdict='FOREX_FREE_V6_S0_LAUNCH_AUTHORIZED', owner_go_phrase='GO FOREX V6 SCORED EXECUTION', owner_go_fresh=true",
+    "git show 8a0fd01:research/control/forex_free_v6_run/scored_ledger_published.jsonl | wc -l  -> 0",
+    "wc -l scored_ledger_published.jsonl (now)  -> 6",
+    "live refusal probe: scored mode at pristine HEAD  -> SystemExit 2, failed_gates=['ledger_seed'], run_contract gate ok (a7_terminal_evidence/a7_refusal_probe_pristine_head.json)"
+   ],
+   "evidence": "s0_launch_authorized.json verdict string exact (A7_R2, head af06091, 0 blocking, published at 5f274c4); owner_fresh_go.json typed_phrase == 'GO FOREX V6 SCORED EXECUTION' typed 2026-09-07T03:05Z AFTER the A7 verdict (03:03:53Z); owner_go_intent_2026_09_06.json records the early phrase INTENT_RECORDED_NOT_A_KEY / extinguished-unconsumed; ledger seed 0 lines at launch commit and 6 now; launch gates verified BINDING by the auditor's own live refusal probe.",
+   "verdict": "PASS"
+  },
+  "T3_recompute_the_kills": {
+   "commands": [
+    "independent per-row recomputation of all 36 scaffold margins from row fields (pf=gross_pos/|gross_pos-total|, expectancy=total/trades, conc=max, folds>0 count, stress tier2.0, BE vs 1.5, LOPO share)  -> every stored observed/margin byte-true (a7_terminal_evidence/a7_gate_margin_recompute.json)",
+    "git worktree add --detach /tmp/a7v6-term HEAD; rsync data_raw/forex_free_v1 EXCLUDING dryrun (152 files, 0 dryrun)",
+    "pristine-HEAD scored probe -> REFUSED exit 2 (budget 6/6 replay safety live)",
+    "seed restored to launch-input posture (0 lines, == 8a0fd01 state) INSIDE throwaway only; PYTHONPATH=. python -m research.assets.forex_free_v6.exec_driver_v6 --mode scored --report /tmp/a7v6_report.json  -> exit 0, 6/6 cells, all gates_pass false",
+    "shasum -a 256 produced ledger -> 8517ca369cf9e9fcff73ca69be3a22170c86e47a060a2735006e44d18008497d; cmp vs committed -> BYTE-IDENTICAL; worktree removed"
+   ],
+   "evidence": "A4-P1 anchor: PF 1.0978943061 vs 1.10 (margin -0.0021056939), GBP conc 0.425745 (-0.025745), BE 3.4750450694 (-1.9750450694), LOPO 0.75 (-0.25) \u2014 all FAIL byte-true; +824.37 fin-adj book confirmed (gross 1445.6187488885, costs 624.0 at tier2.0, financing +2.7534246575). Neighbour: conc -0.040415 and BE -4.6250152344 decisive. A4-P1 sham: -910.3961738195, PF 0.8990. A6-P2 anchor/neighbour/placebo: -2299.2254/-7553.5965/-4046.5650 all-negative on expectancy, PF, stress tier2.0. NO gate passes that was recorded FAIL in any verdict-relevant sense: every cell fails strict-negative substantive gates under BOTH frozen-code semantics (margin<=0 fails) AND the most generous equality-pass reading \u2014 no family survives under any semantics, so no wrongly-killed cell exists. INDEPENDENT REPRODUCTION at HEAD: whole-file byte-identical, sha256 == claimed 8517ca36...",
+   "verdict": "PASS (with finding F-A7-T-1, verdict-neutral; see findings)"
+  },
+  "T4_control_coherence": {
+   "commands": [
+    "sham expectancy -4.4194 vs anchor +3.9633 (identifying metric)  -> opposite sign; rule 'fires on reproduction (>= 0.5x same sign)' does NOT fire",
+    "A6-P2 placebo -6.4745 vs anchor -3.2987  -> placebo materially WORSE (more negative); terminal reads no-falsification-kill (see F-A7-T-4 for the rule-letter note)",
+    "all 6 rows gates=false  -> neither control used to pass anything",
+    "shasum -a 256 p3_conditioning_clocks_v6.json -> 6f2a9a85aad4cb2918c5c09639500a097d2abc324115287797e58b2ce3a0ab41 == pinned in selection_freeze.json AND run_contract.json (all 6 arm frozen_config blocks)"
+   ],
+   "evidence": "Both families ran under post-amendment CA v3 semantics (amendment 2baa37c precedes selection/launch); clocks authority fail-closed re-verified by the auditor's own scored re-run (verify_staged_data: 152 manifest digests + clocks pin + V5 financing ledger pin \u2014 any mismatch aborts); controls bind only as diagnostics; nothing was passed on a control.",
+   "verdict": "PASS"
+  },
+  "T5_denominators_budget": {
+   "commands": [
+    "wc -l scored_ledger_published.jsonl -> 6; all rows scored=true, real_pnl=true, published=true, dry_run=false",
+    "6 distinct record_ids; 6 distinct arm_config_digests",
+    "selection_rubric_v6.json budget: max_cells=6, funded_families_max=2, arms_per_family=3; run_contract planned_scored_cells=6; state.json budget used=6/planned=6",
+    "plans/PLAN_forex_v6.md line 153: 'forex 27/27' pre-V6 -> 27+6=33 as claimed"
+   ],
+   "evidence": "Budget 6/6 exactly equals the frozen plan/rubric maximum with no unused-slot reassignment. Terminal program totals carry the P-9 as-of-intake label verbatim: program_as_of_intake '209 observed logical / 206... published tracked by the Lead ledger per P-9' + note 'this terminal's program sum is intake-stamped (P-9)'.",
+   "verdict": "PASS"
+  },
+  "T6_s1_boundaries_incidents": {
+   "commands": [
+    "git diff --name-only 3dacf1a..HEAD | grep -ci 's1' -> 0",
+    "grep -rn 'S1' research/assets/forex_free_v6/ tests/assets/forex_free_v6/ -> 0 matches",
+    "git log 3dacf1a..HEAD --oneline -- '*SURVIVOR*' -> 0 commits",
+    "state.json: phase=TERMINAL_FOREX_FREE_V6_REJECT_ALL, workers=0; terminal_verdict.json workers_at_close=0"
+   ],
+   "evidence": "No S1 artifact touched anywhere in the cycle diff history; S1 SEALED_UNTOUCHED in contract and terminal; SURVIVORS.md untouched (no survivor claims anywhere \u2014 all 6 gates false); INC-V6-1 and the 2026-09-06 early-GO extinguishment are recorded honestly in terminal_verdict.json incidents; workers 0 at close.",
+   "verdict": "PASS"
+  },
+  "T7_claim_language": {
+   "commands": [
+    "byte-attribution of every strongest statement: PF 1.0979/-0.0021, conc 0.425745, BE 3.475, LOPO 3/4, neighbour +1922.02/PF 1.1142@t2.0, sham -910.40/PF 0.899, A6-P2 -2299.23/-7553.60/-4046.56, corr -0.006, folds F1 +344/F2 -377/F3 +857 -> all match ledger bytes"
+   ],
+   "evidence": "The sham sentence is a mechanism OBSERVATION inside a rejected family (paired with 'the family dies on robustness gates, not on mechanism absence' and MECHANISM_SANITY 'economics fail the frozen bars'); it creates no survivor and asserts no tradability. The committed reproduction artifact already carries the P-4 hedge ('ALL_MATCH (self-consistency only per P-4)'). Findings below record the hedging gap and two wording/semantics notes.",
+   "verdict": "PASS (with LOW findings F-A7-T-2/T-3/T-4; no verdict-relevant overstatement)"
+  }
+ },
+ "findings": [
+  {
+   "blocking": false,
+   "detail": "exec_driver_v6.evaluate_gates treats margin<=0 as failure (docstring: 'margin > 0 passes'). Three consequences: (a) dual_book_sign_non_inversion (threshold 1.0, observed = 1.0 if ok else 0.0) has max margin 0.0 -> can NEVER pass; (b) lopo_sign_robustness_all_subsets (threshold 1.0, share in [0,1]) likewise can never pass \u2014 every arm's LOPO margin is <= 0 by construction, so 'gates: false' was predetermined for all six cells regardless of data; (c) positive_populated_folds_ge_2 at exactly 2/3 fails (margin 0.0) although the frozen rubric TEXT says 'positive populated folds >= 2/3' \u2014 the code effectively requires 3/3. Terminal prose that counts these as failures (e.g. neighbour 'failed ... LOPO' with LOPO share 1.00 = fully sign-robust 4/4 subsets) inherits this mechanical labeling. VERDICT-NEUTRAL THIS CYCLE, verified both directions: every one of the six cells also fails strict-negative substantive gates under the most generous equality-pass semantics (anchor: PF -0.0021, conc -0.025745, BE -1.9750, LOPO -0.25; neighbour: conc -0.040415, BE -4.6250; all A6-P2 cells: expectancy/PF/stress negatives) \u2014 no family survives under ANY reading, so no cell was wrongly killed and REJECT_ALL is robust. Flagged because the quirk errs toward killing and would structurally kill a hypothetical at-threshold survivor in any future cycle on this scaffold. NOT repaired by A7 (A1 owns the driver).",
+   "id": "F-A7-T-1",
+   "severity": "HIGH",
+   "title": "Frozen gate evaluator fails at equality: dual_book and LOPO gates are structurally unsatisfiable \u2014 the all-fail outcome was construction-guaranteed on this scaffold (verdict-neutral this cycle)"
+  },
+  {
+   "blocking": false,
+   "detail": "Ledger row: F1 +344.44, F2 -377.23, F3 +857.16 -> 2/3 positive (positive_populated_folds margin 0.0). terminal_verdict.json itself states 'folds 2/3 positive (F1 +344, F2 -377, F3 +857)' correctly. Non-governing commit prose; recorded for precision.",
+   "id": "F-A7-T-2",
+   "severity": "LOW",
+   "title": "Commit ab70ef9 message says 'folds 1/3' for the A4-P1 anchor; ledger bytes show 2/3 positive folds"
+  },
+  {
+   "blocking": false,
+   "detail": "The claim is a single-window mechanism observation drawn from a family that failed every economic gate (PF 1.0979 < 1.10; BE 3.475 > 1.5 floor; LOPO 3/4; conc 0.4257). It is bounded in the same sentence ('the family dies on robustness gates, not on mechanism absence'), creates no survivor, and no tradable content exists anywhere in the cycle (REJECT_ALL; SURVIVORS untouched; financing flagged 'accounting only, never a signal'; reproduction artifact hedged per P-4). It must NOT be quoted as an edge claim or as proof of an exploitable calendar effect; recommend future terminals label such mechanism remarks 'observation on this window; not a tradable finding'.",
+   "id": "F-A7-T-3",
+   "severity": "LOW",
+   "title": "'Conditioning carries GENUINE calendar information' / 'V5 sham-shadow null now COUNTER-EVIDENCED' lacks an explicit observation-only hedge"
+  },
+  {
+   "blocking": false,
+   "detail": "Rubric text: rule 'fires on reproduction (>= 0.5x same sign on identifying metric)'. A6-P2 placebo expectancy -6.4745 vs anchor -3.2987: same sign, 1.96x magnitude \u2014 meets the rule's LETTER if applied symmetrically to a negative anchor; the terminal instead reads 'placebo worse than anchor -> not a reproduction -> coherence holds, the family simply loses' (economically the sensible reading: a materially worse control does not reproduce the anchor). Verdict-identical under either reading: the family is REJECTed on expectancy -3.30 / PF -0.165 / stress tier2.0 -4390.23 regardless of the falsification label. Recommend pinning the rule's anchor-sign assumption in future rubrics.",
+   "id": "F-A7-T-4",
+   "severity": "LOW",
+   "title": "A6-P2 'no falsification kill' rests on a directional reading of the preregistered rule text"
+  }
+ ],
+ "head_audited": "4d81dcd3ebd69a4b1f34125027c3e3a98b7cfc44",
+ "lane": "terminal-audit",
+ "measured_at_utc": "2026-09-07T04:20:00Z",
+ "producer": "A7_INDEPENDENT_TERMINAL_AUDITOR",
+ "reproduction": {
+  "committed_ledger_sha256": "8517ca369cf9e9fcff73ca69be3a22170c86e47a060a2735006e44d18008497d",
+  "method": "detached throwaway worktree at HEAD 4d81dcd; data_raw/forex_free_v1 copied from integration tree excluding dryrun dirs (152 files, 0 dryrun); pristine-HEAD scored probe REFUSED as designed (failed_gates=['ledger_seed'], exit 2); launch-input seed posture (0 lines, == 8a0fd01) restored inside the throwaway only; scored re-run exit 0 with 6/6 cells, all gates false",
+  "produced_ledger_sha256": "8517ca369cf9e9fcff73ca69be3a22170c86e47a060a2735006e44d18008497d",
+  "status": "INDEPENDENTLY_REPRODUCED_BY_A7 (P-4: self-consistency, not truth)",
+  "throwaway_worktree_removed": true,
+  "whole_file_byte_identical": true
+ },
+ "schema": "forex_free_v6_a7_terminal_v1",
+ "tree_clean_at_audit_start": true,
+ "verdict": "CONFIRM_FOREX_FREE_V6_REJECT_ALL",
+ "verdict_basis": "Recomputed from bytes at 4d81dcd3ebd69a4b1f34125027c3e3a98b7cfc44: (1) every claimed kill is byte-true \u2014 all 36 recorded gate margins reproduce exactly from the rows' own fields; all six cells fail strict-negative substantive gates and still fail under the most generous equality-pass reading of the scaffold, so no family was wrongly killed and none wrongly survived; (2) launch legal \u2014 two-key order byte-verified (A7 AUTHORIZED 5f274c4, then owner FRESH exact phrase; 2026-09-06 phrase extinguished-unconsumed), seed 0->6, and the auditor's own live refusal probe proves the launch gates still bind at HEAD; (3) reproduction whole-file byte-identical \u2014 the auditor's independent scored re-run at HEAD produced sha256 8517ca36... identical to the committed ledger and to the claimed hash; (4) controls coherent, nothing passed on a control, clocks/financing pins fail-closed re-verified in the auditor's own run; (5) budget 6/6 == frozen plan maximum, denominators 6/6 distinct, S1 sealed, no survivors, incidents honest, workers 0. Findings F-A7-T-1 (HIGH, framework equality-semantics quirk, verdict-neutral this cycle as proven both ways) and three LOW wording notes are recorded for the owners; none is verdict-changing. A correct REJECT_ALL is a successful research run.",
+ "workers": 0
+}

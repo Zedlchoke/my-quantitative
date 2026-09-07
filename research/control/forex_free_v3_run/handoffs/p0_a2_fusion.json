@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "role": "A2_FUSION_ADOPTION_P0 (FOREX-FREE-V3, lane p0-a2-fusion)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p0-a2-fusion",
+  "branch": "orca/forex-free-v3-p0-a2-fusion",
+  "bootstrap_sha": "32254754bea41623689ac3da937ee1c332310470",
+  "commit_sha": null,
+  "clean": true,
+  "stamp_utc": "2026-09-04T12:31:48Z",
+  "stamp_source": "machine_date_u",
+  "commit_sha_note": "commit_sha is null because this handoff file is part of the single commit it describes (self-reference). A1 must read the actual SHA with: git -C <worktree> rev-parse HEAD on branch orca/forex-free-v3-p0-a2-fusion after this commit lands. Verified clean=True refers to the state at write time before the single planned commit.",
+  "ownership": {
+    "owned_paths": [
+      "research/data_fusion/**",
+      "tests/data_fusion/**",
+      "research/control/forex_free_v3_run/handoffs/p0_a2_fusion.json"
+    ],
+    "forbidden_touched": [],
+    "notes": "No file outside the allowed globs was created, modified or deleted. No research/control/*_v1_run or *_v2_run path, no data_raw, no PLAN_*.md, no scoring code touched. TRUEFX/SEC/FINRA adapters NOT adopted (not present in the adopted tree; source_registry.py lists them as registry entries only)."
+  },
+  "adoption": {
+    "source_commit": "cba3549b42c9388c2a095aebae6275fba4263eaa",
+    "source_branch": "orca/data-fusion-v1-a3-macro",
+    "source_commit_subject": "A3 macro lane: fail-closed ECB SDMX, BIS WS_CBPOL and key-gated FRED/ALFRED adapters with offline fixtures",
+    "method": "git checkout cba3549b42c9388c2a095aebae6275fba4263eaa -- research/data_fusion tests/data_fusion (from inside the lane worktree)",
+    "byte_identity_verdict": "PASS — 34/34 blobs match",
+    "byte_identity_comparison": "git ls-tree -r cba3549b42c9388c2a095aebae6275fba4263eaa -- research/data_fusion tests/data_fusion vs git ls-files -s on the staged index (git ls-tree -r HEAD is empty for these paths until the commit lands; the staged index is exactly what HEAD becomes). Normalized to mode+sha+path and diffed: zero differences, 34/34. Post-commit A1 re-verification command: git ls-tree -r HEAD -- research/data_fusion tests/data_fusion (must equal the source listing).",
+    "blob_counts": {
+      "research_data_fusion": 14,
+      "tests_data_fusion": 20,
+      "total": 34,
+      "matched": 34
+    },
+    "new_files_added": [
+      "tests/data_fusion/test_forex_v3_p0_adoption.py"
+    ],
+    "adopted_files_modified": []
+  },
+  "diff_summary": {
+    "new_files": [
+      "research/data_fusion/__init__.py",
+      "research/data_fusion/adapters/MACRO_evidence.md",
+      "research/data_fusion/adapters/__init__.py",
+      "research/data_fusion/adapters/base.py",
+      "research/data_fusion/adapters/bis.py",
+      "research/data_fusion/adapters/ecb.py",
+      "research/data_fusion/adapters/fred.py",
+      "research/data_fusion/authority.py",
+      "research/data_fusion/conflicts.py",
+      "research/data_fusion/identity.py",
+      "research/data_fusion/manifest.py",
+      "research/data_fusion/models.py",
+      "research/data_fusion/pit.py",
+      "research/data_fusion/source_registry.py",
+      "tests/data_fusion/__init__.py",
+      "tests/data_fusion/adapters/__init__.py",
+      "tests/data_fusion/adapters/conftest.py",
+      "tests/data_fusion/adapters/fixtures/README.md",
+      "tests/data_fusion/adapters/fixtures/bis_cbpol.json",
+      "tests/data_fusion/adapters/fixtures/ecb_sdmx_exr.json",
+      "tests/data_fusion/adapters/fixtures/fred_alfred_obs.json",
+      "tests/data_fusion/adapters/fixtures/fred_vintagedates.json",
+      "tests/data_fusion/adapters/test_base.py",
+      "tests/data_fusion/adapters/test_bis.py",
+      "tests/data_fusion/adapters/test_ecb.py",
+      "tests/data_fusion/adapters/test_fred.py",
+      "tests/data_fusion/conftest.py",
+      "tests/data_fusion/test_authority.py",
+      "tests/data_fusion/test_conflicts.py",
+      "tests/data_fusion/test_identity.py",
+      "tests/data_fusion/test_manifest.py",
+      "tests/data_fusion/test_models.py",
+      "tests/data_fusion/test_pit.py",
+      "tests/data_fusion/test_source_registry.py",
+      "tests/data_fusion/test_forex_v3_p0_adoption.py",
+      "research/control/forex_free_v3_run/handoffs/p0_a2_fusion.json"
+    ],
+    "modified_files": [],
+    "deleted_files": []
+  },
+  "regressions": [
+    {
+      "id": "P0-RG-A",
+      "test": "tests/data_fusion/test_forex_v3_p0_adoption.py::test_bis_policy_rate_rows_map_with_true_effective_availability_semantics (+ test_bis_availability_is_never_invented, test_ecb_series_rows_map_with_true_effective_availability_semantics)",
+      "pins": "Policy-rate rows map onto NormalizedRecord with TRUE effective/availability semantics: effective_time_utc is midnight of the CBPOL/EXR observation date; available_time_utc is only the owner-evidence end-of-UTC-day upper bound; the two fields are distinct (a 2024-05-01-effective rate is not eligible until 2024-05-01T23:59:59Z); availability is never invented (parse without ReleaseEvidence fails closed MISSING_AVAILABLE_TIME_EVIDENCE; ECB header.prepared is never availability); raw_sha256 ties to the fixture bytes (sha256 of bis_cbpol.json computed in-test).",
+      "status": "PASS"
+    },
+    {
+      "id": "P0-RG-B",
+      "test": "tests/data_fusion/test_forex_v3_p0_adoption.py::test_pit_no_lookahead_decision_at_t_never_reads_unavailable_rows (+ test_pit_no_lookahead_asof_join_over_bis_and_ecb)",
+      "pins": "PIT no-lookahead: a decision/query at time T via pit.select_asof / pit.asof_join can never return a row whose available_time_utc > T (nor, by default, one whose effective_time_utc > T); hand-pinned: on the rate's effective day (2024-05-01T00:00Z and T12:00Z) the selection still reads the OLD 4.0 rate and only after the 2024-05-01T23:59:59Z availability stamp reads 4.25; the availability gate holds even with require_effective=False.",
+      "status": "PASS",
+      "mutation_evidence": "Temporarily disabled the availability gate in research/data_fusion/models.py eligible_at (added 'and False'): the two no-lookahead regressions plus RG-A/RG-C FAILED (4 failed, 2 passed), proving the pin fails if semantics regress. models.py was then restored with git checkout -- from the staged index; blob sha256 re-verified byte-identical to source commit blob 6ddf25d5a10745d7f50ee7200e30f58f9d41f1ca. The mutation was never committed."
+    },
+    {
+      "id": "P0-RG-C",
+      "test": "tests/data_fusion/test_forex_v3_p0_adoption.py::test_rate_change_surfaces_as_new_dated_vintage_row",
+      "pins": "Rate-change events surface as dated vintages: the 4.0->4.25 policy-rate change appends a NEW vintage row to pit.VintageSeries carrying its own effective (2024-05-01T00:00Z), availability (2024-05-01T23:59:59Z) and vintage (== availability from evidence) stamps; series is append-only (earlier vintage never mutated, byte-identical re-append idempotent); a conflicting restated row landing on an already-filled rank fails closed with AmbiguousVintageError instead of overwriting.",
+      "status": "PASS"
+    }
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p0-a2-fusion && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/data_fusion -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "96 passed in 0.11s (90 adopted Data Fusion V1 tests green before this lane's additions; 6 new P0 adoption regressions included in the 96). This is the targeted tests/data_fusion suite only — the full repo suite was NOT run (deferred gate of A1 per cycle instructions; a foreign heavy worker is on this machine)."
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p0-a2-fusion && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/data_fusion/test_forex_v3_p0_adoption.py -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "6 passed (the three P0 regressions, two of them split into boundary sub-tests)"
+    },
+    {
+      "command": "git ls-tree -r cba3549b42c9388c2a095aebae6275fba4263eaa -- research/data_fusion tests/data_fusion vs staged index (normalized mode+sha+path diff)",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "34/34 blob SHAs identical; diff empty"
+    },
+    {
+      "command": "mutation check: availability gate disabled in models.eligible_at, then pytest tests/data_fusion/test_forex_v3_p0_adoption.py -q",
+      "exit_code": 1,
+      "status": "PASS (expected failure observed)",
+      "evidence": "4 failed, 2 passed — both no-lookahead regressions (P0-RG-B) fail when the availability semantics regress, as required. models.py restored byte-identical afterwards (blob 6ddf25d5a10745d7f50ee7200e30f58f9d41f1ca re-verified); the committed tree contains the pristine adopted bytes."
+    },
+    {
+      "command": "full repository pytest suite",
+      "exit_code": null,
+      "status": "NOT_RUN",
+      "evidence": "Deliberately not run: full suite is A1's deferred gate per cycle instructions (shared machine, foreign heavy worker)."
+    }
+  ],
+  "assumptions": [
+    "Adopted set is exactly the two authorized path trees at cba3549 (frozen Data Fusion V1 core + A3-macro ECB/BIS/FRED adapters with offline fixtures); FRED remains key-gated (adapter tests use offline fixtures only; no key, no signup, no download).",
+    "TRUEFX/SEC/FINRA were not adopted: they are absent from the source tree's path-limited checkout; their appearance in research/data_fusion/source_registry.py is registry metadata (status CANDIDATE_NOT_AUTHORIZED / DOCUMENTED_CANDIDATE), not an adapter adoption.",
+    "git ls-tree -r HEAD cannot show the adopted paths before the commit (paths are new on this branch); the staged index was used as the faithful proxy for HEAD and equals it after the single commit. A1 post-commit re-verification command is recorded in byte_identity_comparison."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "tests/data_fusion/test_forex_v3_p0_adoption.py",
+    "research/data_fusion/models.py",
+    "research/data_fusion/pit.py",
+    "research/data_fusion/adapters/ecb.py",
+    "research/data_fusion/adapters/bis.py",
+    "research/data_fusion/adapters/base.py",
+    "research/data_fusion/source_registry.py",
+    "tests/data_fusion/adapters/fixtures/bis_cbpol.json",
+    "tests/data_fusion/adapters/fixtures/ecb_sdmx_exr.json"
+  ],
+  "next_action_for_a1": "On orca/forex-free-v3-p0-a2-fusion, run: git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p0-a2-fusion rev-parse HEAD (this handoff's commit — commit_sha is null here by self-reference), then re-verify byte identity post-commit with: git ls-tree -r HEAD -- research/data_fusion tests/data_fusion and confirm it equals git ls-tree -r cba3549b42c9388c2a095aebae6275fba4263eaa -- research/data_fusion tests/data_fusion (34/34). Then treat P0 as ADOPTED for the data freeze: policy-rate series carry effective_date PIT semantics for P2/P3 financing dispositions; no carry authorization is implied by these adapters (BIS_POLICY_RATE_NOT_CARRY_AUTHORIZATION / ECB_DATA_NOT_CARRY_AUTHORIZATION notes remain binding); full-suite gate remains A1's deferred responsibility."
+}
