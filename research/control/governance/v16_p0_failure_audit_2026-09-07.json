@@ -1,0 +1,45 @@
+{
+  "schema": "governance/v16_p0_failure_audit@1",
+  "measured_at_utc": "2026-09-07T05:30:00Z",
+  "producer_role": "Lead Engineer (owner remediation round 2, item 6)",
+  "subject": "the two FAILED heavy-lock releases during CRYPTO-V16 P0 precheck",
+  "evidence": {
+    "lock_history": "/Users/hoangminhlong/my-quantitative/.runtime/heavy_worker.history.jsonl (3 records, cycle_id CRYPTO-V16)",
+    "final_artifact": ".worktrees/crypto/v16/integration/research/control/v16_run/p0_probe/aggtrades_precheck_sample.json",
+    "driver": ".worktrees/crypto/v16/integration/research/control/v16_run/p0_probe/precheck_stream_sample.py (uncommitted at audit time)"
+  },
+  "retry_accounting": {
+    "command_digest": "48424829468ccef4e6b3e5b8fb4fd6901160ae929c9808ada71ce81069a39773",
+    "attempts": [
+      {"pid": 41677, "started_utc": "2026-09-07T03:39:50Z", "released_utc": "2026-09-07T03:40:15Z", "duration_s": 25, "status": "FAILED", "release_note": ""},
+      {"pid": 41834, "started_utc": "2026-09-07T03:40:42Z", "released_utc": "2026-09-07T03:41:07Z", "duration_s": 25, "status": "FAILED", "release_note": ""},
+      {"pid": 41920, "started_utc": "2026-09-07T03:41:20Z", "released_utc": "2026-09-07T03:45:12Z", "duration_s": 232, "status": "FINISHED", "release_note": ""}
+    ],
+    "classification": "the two FAILED attempts are TECHABORT-class: they carry NO family-quality evidence either way (failure taxonomy, FAMILY_PIPELINE section 9). Evidence-only precheck: zero PnL, zero scored cells, observed/published denominators unchanged (crypto 149/152).",
+    "retried_legal": "retry of an evidence-only probe after a driver defect is legal remediation (no scored outcome existed); identical command digest across attempts confirms no scope drift."
+  },
+  "cause_finding": {
+    "verdict": "NOT_RECOVERABLE_FROM_ARTIFACTS — the wrapper released FAILED with empty release_note and did not persist stderr; the traceback is lost.",
+    "forensics": [
+      "both FAILED attempts lived ~25s; the FINISHED attempt's download phase alone took 25.59s — both failures died at the download-completion boundary, i.e. in the content-length check or at stream_reduce entry (single-CSV-member guard / header handling / first-row column access).",
+      "the driver file mtime (10:41 local) sits between attempt 2 release (10:41:07) and attempt 3 start (10:41:20) — the script was edited between attempts; the surviving version is the fixed one."
+    ],
+    "prevention_encoded": "heavy-lock round-2 docstring mandates FAILED releases carry the stderr tail in the release note (research/governance/heavy_lock.py)."
+  },
+  "bounded_design_result_FINISHED_attempt": {
+    "symbol_month": "ETHUSDT 2025-11",
+    "compressed_bytes": 1110070854,
+    "sha256": "c51b2fbafa8b69cd40136f67d37caad2736286f241cdff4d87c0118cbad85272",
+    "rows_reduced": 83984361,
+    "peak_rss_MiB": 43.0,
+    "parse_seconds": 205.74,
+    "raw_archive_deleted": true,
+    "no_pnl_fields": true,
+    "reading": "the bounded aggTrades design FITS the 8 GB host on the worst-case sample measured — P0's feasibility question is answerable; per owner order, V16 proceeds no further (no P0 completion, no scored execution) until governance merge approval."
+  },
+  "guardrails_honored": [
+    "V16 did NOT pass P0 (single worst-case sample measured; census not run)",
+    "no scored execution, no proposals, no PnL anywhere",
+    "S1 SEALED_UNTOUCHED"
+  ]
+}

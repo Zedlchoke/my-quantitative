@@ -187,21 +187,30 @@ forex V7+, stocks V12+).
 FAMILY_PIPELINE protocol              DOCUMENTED (merge candidate on branch
                                       orca/governance-family-pipeline — standing
                                       standard only upon owner merge to main)
-FAMILY_FAILURES registry + validator  IMPLEMENTED + TESTED (52 governance tests green;
-                                      50 entries, git --verify PASS)
-diagnostic persistability gate        IMPLEMENTED + TESTED, hardened (BLOCKED_PRELAUNCH
-                                      on missing mandatory/conditional diagnostics or
-                                      incomplete output blocks; artifact list DERIVED
-                                      from the validated contract; smoke parses and
-                                      verifies content/identity/non-empty series; runs
-                                      BEFORE A7 launch authorization when adopted)
-global heavy lock                     IMPLEMENTED + TESTED, hardened (shared runtime
-                                      from git common-dir — no caller-selected path;
-                                      fcntl.flock machine-wide; registry PID+process-
-                                      start-token; NOT_RUN_RESOURCE_CONFLICT refusal;
-                                      alive-row+free-lock = CONTROL_STATE_DRIFT fail
-                                      closed; cleanup holds the flock)
-ADOPTED_BY_ACTIVE_CYCLE               none yet — PLAN_crypto_v16 (on main) preregisters
-                                      all three; adopted when a dispatched V16 A1
-                                      actually applies them
+FAMILY_FAILURES registry + validator  IMPLEMENTED + TESTED (54 governance tests green;
+                                      50 entries, git --verify PASS); adopted only at
+                                      the first cycle close that appends under it
+diagnostic persistability gate        IMPLEMENTED + TESTED, round-2 hardened (canon
+                                      CATEGORY_REQUIRED_FIELDS — contracts cannot pick
+                                      field lists; schema_id must resolve to the
+                                      registered diag/<category>@1; relative-path-only
+                                      artifacts; smoke runs in a fresh empty sandbox so
+                                      stale artifacts can never PASS; BLOCKED_PRELAUNCH
+                                      on any gap; runs BEFORE A7 launch authorization
+                                      when adopted); adopted only at the first
+                                      prelaunch that runs it
+global heavy lock                     IMPLEMENTED + TESTED, round-2 hardened (machine-
+                                      wide = this user on this host; home runtime
+                                      outside every repository; fcntl.flock; registry
+                                      PID+process-start-token; malformed registry or
+                                      live-pid-with-missing/unrecoverable token =
+                                      CONTROL_STATE_DRIFT fail closed; reclaim only on
+                                      PROVEN pid-dead or DEFINITE token mismatch;
+                                      cleanup holds the flock). Round-1 lock was
+                                      ADOPTED by CRYPTO-V16 P0 (2026-09-07, runtime
+                                      history 2 FAILED + 1 FINISHED); round-2 re-adopts
+                                      on next acquisition
+ADOPTED_BY_ACTIVE_CYCLE              heavy lock: round-1 yes (V16 P0 evidence);
+                                      round-2 pending. gate/registry: not yet —
+                                      marked adopted only when actually used
 ```
