@@ -2,6 +2,27 @@
 
 ## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
 
+- **CRYPTO V15 CLOSED → `V15_REJECT_ALL`** (closed 2026-09-07, branch
+  `orca/v15-integration`, closeout `ad61fca` + terminal-line merge; code
+  freeze `824190c`) — the archived-positioning-metrics cycle on
+  data.binance.vision bulk daily metrics (keyless, sha256-pinned; staging
+  PASS_UNDER_AMENDMENT_1: 4 global defect dates, ONG/ACE hole-heavy). 6/6
+  cells published, 0 TECHABORT, reproduction ALL_MATCH 61,633 leaves. Both
+  anchors fail rule order #1: ELITE-SIZE-ASYM −0.00173/day PF 0.897 with
+  **falsification-by-control instance #11** (CTL-ELITELEVEL +0.00196
+  PF 1.131 — asymmetry carries negative information vs plain elite level);
+  TAKER-SAT −0.00380/day PF 0.842, control does not reproduce. A4's OI-axis
+  pair novelty-blocked pre-score (rho 0.431 vs CTL-OISHARE, 0.253 vs
+  OICYC-STOCH28 — the closed shadow measured). DSR/PBO NOT_RUN fail-closed
+  (no per-period series persisted — driver-contract lesson for future
+  cycles). Two-key P-8 proven again: fresh-context A7 REFUSED prelaunch on
+  Q-LEAK_1 (fold-sign leak in q v1) → sanitized v2 + incident, exposure
+  carried → AUTHORIZED → owner exact GO. The bulk-metrics frontier is
+  measured-exhausted on this universe/window/cost regime pending an owner
+  data decision. Crypto 149/152; program 212/215 (ledger authority, P-9).
+  S1 sealed. Detail:
+  `.worktrees/crypto/v15/integration/research/control/v15_run/terminal_report_v15.json`.
+
 - **STOCKS V10 CLOSED → `STOCKS_FREE_V10_REJECT_ALL`** (closed 2026-09-06,
   branch `orca/stocks-free-v10-integration@bec559c`) — the filing-timing/
   revision cycle on the death-inclusive panel. Both families mechanical-REJECT:

@@ -14,10 +14,10 @@
   it, or any parameter/top-K/universe/relaxed-gate variant of it, is rescue
   and ineligible without a new owner plan preregistering a materially new
   mechanism (measured decorrelation vs the rejected ancestor, not prose).
-- Cumulative scored denominators (post-stocks-V10 close; ledger authority per
-  P-9): crypto 143 published / 146 observed; stocks 36/36 (V10 +6/6); forex
-  27/27. S1 untouched everywhere.
-  **Program total: 206 published / 209 observed logical, 0 survivors.**
+- Cumulative scored denominators (post-crypto-V15 close, 2026-09-07; ledger
+  authority per P-9): crypto 149 published / 152 observed (V15 +6/6); stocks
+  36/36 (V10 +6/6); forex 27/27. S1 untouched everywhere.
+  **Program total: 212 published / 215 observed logical, 0 survivors.**
   The first Stage-A survivor (FXFV3-A6-P1) was invalidated by its own
   remediation cycle — see the Free-V3 row and `LESSONS.md` P-1..P-6.
 - **No strategy has ever been promoted.** Every governed scored cycle closed
@@ -47,6 +47,8 @@
 | V13 | A13-V13-A5-LIQEPIS | Liquidity-episode conditioning | REJECT — **price-only PnL already negative (−0.31)** so verdict-invariant, BUT terminal recorded a cost anomaly: cost_charged 25.03 over 600 positions ≈ 3–4 orders above the frozen per-fill schedule (suspected per-stamp accrual = cost-once violation). Mandatory fix before any future cost-sensitive cycle. Denominators 137/140; Data Fusion core adopted byte-identical — the PIT framework is now proven live in a scored cycle. |
 | V14 (CLOSED 2026-09-05, `V14_REJECT_ALL` — A7 terminal APPROVED 0_FAIL; 6/6 published + reproduced ALL_MATCH at 874,334 leaf comparisons + 754 mission fields; **first program DSR computed**) | A14-V14-A5-BASISLV-PREMFADE | Premium/basis-level fade, 28D anchor (V14's evidenced-available basis axis; cost-once kernel remediated) | REJECT — **the cycle's near-miss**: anchor +0.700 net, PF 1.360, MDD 11.6%, but fold concentration 0.5110 > 0.50 (the marginal gate's third decisive kill after CARRY-7D 51.66% and ILLIQ's concentration 0.7055); DSR 0.00224 over N=146 observed — effectively zero at program scale. |
 | V14 (same terminal) | A14-V14-A8-OICYC | OI-cycle entry in the §1.1 inverted-OI-flow shadow region — CONFIRMATORY status bound in every cell and the ledger | REJECT — anchor DSR 4.98e-07; the front door was exercised honestly (new mechanism words, disclosed confirmatory origin, own falsification control, rho gates measured) and closed; no cell can be recounted as exploratory. PBO NOT_RUN fail-closed (CSCV minimum 8 configurations unmet at the 6-cell cap). Denominators crypto 143/146; program 197/200 after the quad close (P-9). |
+| V15 (CLOSED 2026-09-07, `V15_REJECT_ALL` — A7 prelaunch two-key proven again (fresh-context REFUSED on Q-LEAK_1 fold-sign leak → sanitized v2 + incident → AUTHORIZED; owner fresh exact GO); A7 terminal APPROVED_0_FAIL; 6/6 published + reproduced ALL_MATCH at 61,633 leaf comparisons; budget 6/6) | A5-V15-F1-ELITE-SIZE-ASYM | Within-elite size-vs-headcount asymmetry (ln sum_toptrader − ln count_toptrader), cross-sectional 7/6/7 fade of the size-heavy side, daily, LAG_3D | REJECT — anchor −0.00173/day (PF 0.897, MDD 65.9%, 1/3 folds) fails rule order #1; **firing control — cluster instance #11 (forex V5's sham-calendar neighbour took #10 on its concurrent sync): CTL-ELITELEVEL (elite headcount LEVEL alone, asymmetry removed) passes headline gates (+0.00196/day, PF 1.131, MDD 10.3%) and outperforms the anchor — the asymmetry carries negative information vs plain elite-level exposure**; control also fails G4 (0.5298>0.50) so it is a falsification artifact, never promotable. A4's two OI-axis proposals were novelty-blocked pre-score (rho 0.431 vs CTL-OISHARE, 0.253 vs OICYC-STOCH28 — the closed shadow measured). |
+| V15 (same terminal) | A6-V15-F1-TAKER-SAT | Taker aggression per unit of OI churn, cross-sectional extreme fade, 5-day daily clock | REJECT — mechanical: anchor −0.00380/day (PF 0.842, MDD 40.3%, 0/3 folds); neighbour −0.00398; control CTL-RAWSAT does NOT reproduce (worse: −0.00518, PF 0.787) so no falsification shadow — plain negative. A6-P2 blocked pre-score (control self-subsumption rho 0.9929); A5-P2 infeasible (fold non-vacuity). Data: data.binance.vision bulk daily metrics + klines + fapi funding, keyless, sha256-pinned; staging PASS_UNDER_AMENDMENT_1 (4 global defect dates; ONG/ACE hole-heavy). DSR/PBO NOT_RUN fail-closed (no per-period series committed — lessons: drivers must persist them). Denominators crypto 149/152; program 212/215 (P-9). |
 
 ## B. CRYPTO — pre-factory sprints (NOTES.md, 2026-08-21→24, semi-governed)
 
