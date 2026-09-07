@@ -1,0 +1,102 @@
+{
+  "proposal_id": "FXFV7-A4-P1",
+  "lane": "A4",
+  "axis": "cross-economy spillover",
+  "mechanism_name": "release-sign spillover continuation drift on non-reporting pairs (GB+CA bloc)",
+  "causal_claim_one_sentence": "Because trade invoicing is dominated by the USD leg (Gopinath dominant-currency pricing), importers, exporters and liquidity providers carrying non-reporting currency books are forced to rebalance USD exposure when a GB or CA CPI print reprices global USD rate expectations, and their staggered rebalancing leaves a same-sign drift on the non-reporting pairs for several days after the print-window reaction; the mechanism must fail if the spillover reaction is fully arbitraged inside the 24-hour reaction window or if dealer inventory absorbs the flow before the first 16:00-NY funded decision.",
+  "falsification_rule": "The claim is proven wrong if any of: (a) sign(r_W)-conditioned positions on non-reporting pairs show nonpositive financing-adjusted expectancy at stress tier 2.0 (rule 1); (b) PF < 1.10 (rule 2) or populated positive folds < 2 of 3 (rule 3); (c) the sham-calendar placebo arm reproduces the anchor's expectancy sign and magnitude within the rule-10 control-coherence bound (mechanism carries no calendar information, contra V6's sham-NEGATIVE precedent on the own-economy form); (d) pooled |rho| > 0.20 vs ANY forbidden exposure schedule measured at D2, especially V6 FXFV6-A4-P1 own-economy reaction-direction drift.",
+  "control_class": "sham-calendar placebo (mandatory on lane 1): every qualifying (economy, event_date) is shifted +7 calendar days to the SAME WEEKDAY; the shifted clock inherits the identical reaction-window length, funded-decision offset and k-hold semantics; r_W and hold returns are recomputed from the SAME staged price bytes at the shifted dates; a shifted clock is dropped fail-closed if its window overlaps a true same-economy event date or the 2 calendar days bracketing one; V6's sham-NEGATIVE (-910.40, PF 0.899 on the own-pair form) is the recorded proof this control discriminates.",
+  "expected_failure_mode": "The family is willing to lose to cost domination and USD-leg crowding: at tier 2.0 the round trip costs 6.0 bps against a same-sign drift edge plausibly of similar magnitude; the six non-reporting positions funded by one event date are correlated through the common USD leg, so rule-4 pair concentration (<=0.40) and rule-9 USD-drift diagnostic may kill an otherwise-positive mechanism; fold 1 carries only 84 GB+CA clocks (earliest funding 2020-02-19 because 1h snapshot coverage starts 2020-01-29/30), so rule-3 fold population is a live risk; and PIT exposure is limited to calendar stamps plus provider bars, so an availability-lag mutation that delays event_available_time_utc by +1 day must move each decision exactly one 16:00-NY period or the proposal dies at I/Q.",
+  "universe": {
+    "definition": "NON-reporting pairs only, per economy, as enumerated by the P2 clocks (own-pair leakage verified absent: GBPUSD never appears under GB; USDCAD never under CA)",
+    "clock_subset_cited": [
+      "SPILL:GB:* across nonrep pairs {AUDUSD, EURUSD, NZDUSD, USDCAD, USDCHF, USDJPY} — 395 clocks (EURUSD 65, others 66)",
+      "SPILL:CA:* across nonrep pairs {AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCHF, USDJPY} — 438 clocks (6 pairs x 73)"
+    ],
+    "total_clocks_conditioned_on": 833,
+    "excluded_by_construction": ["GBPUSD under GB prints (own pair — the dead V6 ancestor's pair)", "USDCAD under CA prints (own pair)", "all US-calendar conditioning (OUT since V5)"],
+    "evidence": "research/control/forex_free_v7_run/p2_conditioning_clocks_v7.json sha256 d2ed14bb7e66c283..., per_economy_per_pair and clocks[] records; EVIDENCED"
+  },
+  "clock": {
+    "definition": "daily 16:00 America/New_York (DST-correct), exactly the P2 funded decisions; one funded clock = one decision evaluation",
+    "window_semantics_per_clock": {
+      "GB": "precision_class DAY: event_available_time_utc 23:59:59Z bound; reaction window W = [next 00:00Z, +24h] (conservative LATER, no same-day intraday claim authorized)",
+      "CA": "precision_class INSTANT_TRUE_UTC_V3: W = [T, T+24h] at the TRUE-UTC stamp (e.g. 2020-02-19T13:30:00Z)"
+    },
+    "funded_decision_rule": "first 16:00-NY instant >= W end, inside S0 2018-04-04..2025-07-24, with a same-day daily bar (P0 frozen semantics, inherited verbatim by every clock)",
+    "evidence": "research/control/forex_free_v7_run/p0_census_v7.json sha256 c658295c88f5e1d5..., frozen_semantics.reaction_window + funded_decision_rule; clock-level stamps in p2_conditioning_clocks_v7.json clocks[]; EVIDENCED"
+  },
+  "warmup": {
+    "definition": "20 trading days of daily bars preceding each W start, required present or the clock is dropped fail-closed",
+    "evidence": "p0_census_v7.json price_data_inheritance.per_pair_meta: all 7 pairs daily_span_start 2018-09-03T00:00:00+00:00 with 2178-2229 daily bars; earliest W start of any funded clock is 2020-01-30T00:00:00Z (GB/CA clocks begin 2020-02-19), so warmup exists for 100% of the 833 clocks; EVIDENCED"
+  },
+  "decision_timestamp_semantics": "position opened at the funded 16:00-NY instant of the clock's decision_date, held k trading days on the 16:00-NY clock (FX 24/5 weekday convention, no holiday calendar in evidence), returns accounted close-to-close on daily bars, financing-adjusted per the family kernel; the 1h reaction window W is CLOSED before the decision instant by the funding rule, so the conditioning feature is strictly available pre-decision",
+  "features": [
+    {
+      "field": "event_clock (clock_id, economy, nonrep_pair, decision_date, event_available_time_utc, precision_class)",
+      "role": "conditioning calendar",
+      "availability": "EVIDENCED",
+      "pointer": "p2_conditioning_clocks_v7.json clocks[], 833 records in scope; availability-lag mutation contract carried (event +1d => decision moves exactly one 16:00-NY period)"
+    },
+    {
+      "field": "reaction_return r_W = last-1h-bar close / first-1h-bar close inside W - 1",
+      "role": "direction conditioning feature (sign only)",
+      "availability": "EVIDENCED",
+      "pointer": "staged 1h snapshot (manifest research/control/forex_free_v1_run/staged_data_manifest.json sha256 fe2155c0ef51bcac..., 156 files, byte-verified chain V4 P2 -> V5 P2 -> V6 P2, inherited by p0_census_v7.json price_data_inheritance); per-pair 1h coverage 42,688-42,827 bars, spans from 2020-01-29T01:00Z/2020-01-30T07:00Z to 2026-09-02T00:00:00+00:00, provider timestamps +00:00; every funded W passed the P0 bookable_bar_rule (>=12 1h bars inside W), so r_W is computable for all 833 clocks; a provider bar-hole shrinks bookability per the P2 mutation contract (zero decisions, not stale decisions)"
+    },
+    {
+      "field": "hold_returns k x daily close-to-close from the funded decision_date",
+      "role": "PnL accounting input",
+      "availability": "EVIDENCED",
+      "pointer": "per_pair_meta daily bars: daily_span 2018-09-03..2026-09-01, 2178-2229 bars per pair, covers every k-day hold of every 2020-2025 decision_date"
+    },
+    {
+      "field": "dominant-currency USD-leg interpretation of sign(r_W)",
+      "role": "economic narrative (Gopinath invoicing; LP rebalancing)",
+      "availability": "ASSERTED",
+      "pointer": "literature lineage declared in plans/PLAN_forex_v7.md section 2; no dataset claims"
+    }
+  ],
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV7-A4-P1-anchor",
+      "spec": "for each funded clock, position = sign(r_W) on the non-reporting pair, entered at the funded 16:00-NY instant, held k=4 trading days",
+      "mechanism": "cross-economy release-sign continuation drift"
+    },
+    "neighbour": {
+      "arm_id": "FXFV7-A4-P1-neighbour-k9",
+      "spec": "SAME mechanism, SAME feature, SAME clocks; hold k=9 trading days instead of k=4 (tests whether the spillover drift persists beyond one week; distinct parameter, not a distinct mechanism)",
+      "note": "deliberately NOT the V6 k=5/k=10 grid — the hold axis is shifted so this proposal is not a relabelled parameter twin of the dead own-economy ancestor"
+    },
+    "control": {
+      "arm_id": "FXFV7-A4-P1-sham-plus7d",
+      "spec": "sham-calendar placebo at anchor parameters (k=4): +7 calendar-day matched-weekday shift of every qualifying event date, identical windows/offsets/holds, recomputed on the same staged price bytes, fail-closed dedupe vs true event dates",
+      "expected_sign": "must NOT reproduce the anchor (rule 10); V6's sham-NEGATIVE shows the control class discriminates when the mechanism carries genuine calendar information"
+    }
+  },
+  "costs": "P3 freeze inherited verbatim: 1.5 bps/side x {1.0, 1.5, 2.0}; tier 2.0 PRIMARY; break-even bps gate vs 1.5 floor (rule 5)",
+  "folds": {
+    "rule": "3 folds = thirds of S0 2018-04-04..2025-07-24 by decision_date; calendar-third boundaries 2020-09-09 and 2023-02-16; gate: >=2 of 3 folds positive-populated (rule 3)",
+    "expected_decision_counts_by_fold": {
+      "fold_1_2018-04-04_to_2020-09-09": {"GB": 42, "CA": 42, "total": 84},
+      "fold_2_2020-09-10_to_2023-02-16": {"GB": 180, "CA": 198, "total": 378},
+      "fold_3_2023-02-17_to_2025-07-24": {"GB": 173, "CA": 198, "total": 371},
+      "total_S0": 833
+    },
+    "non_vacuity": "every arm (anchor, neighbour, control) evaluates the same 833 funded clocks by construction, so decisions per fold per arm are 84/378/371 before any cost or gate application — strictly positive in all three folds; the control arm can only shrink by explicit fail-closed dedupe, counted at execution",
+    "honest_total": "833 decision evaluations per arm, 2496 across the three arms, each evaluation at most one k-day position; no PnL is computed at D1"
+  },
+  "gates_referenced": "p3_invariants_freeze_v7.json baseline_invariants.rule_order 1-10 verbatim (expectancy mechanical reject at tier 2.0; PF>=1.10; folds>=2/3; pair concentration<=0.40; break-even<=1.5bps floor; dual-book sign non-inversion; LOPO all subsets; tier-2.0 stress margin; USD-drift diagnostic; mechanism sanity with MANDATORY sham-calendar), plus ancestry veto |rho|<=0.20 pooled vs all forbidden inventory including V6 FXFV6-A4-P1 and FXFV6-A6-P2",
+  "ancestry_distinctness": {
+    "vs_V6_FXFV6-A4-P1": "that ancestor conditioned REPORTING-economy own pairs (GBPUSD around GB prints, USDCAD-class around CA prints); this proposal NEVER holds the reporting pair — the traded set is exactly the 6 non-reporting pairs per clock, verified absent own-pair leakage in the P2 clocks; the exposure schedules share no (pair, event) cell by construction, and D2 measures pooled |rho|<=0.20 as the binding authority",
+    "vs_V5_avoidance_sham": "not a position-avoidance form — positions are OPENED after the window closes, not avoided during it",
+    "vs_V4_V3R_carry": "no carry signal, no rate differential anywhere in the conditioning",
+    "vs_V1_V2": "no session-of-day momentum/fade structure; the only timing is the frozen 16:00-NY funded decision"
+  },
+  "no_new_data": "no FRED, no key-requiring source, no signup; conditioning restricted to the published P2 clocks and the staged price snapshot",
+  "outcome_blind_attestation": {
+    "agent": "A4-lane",
+    "wave_sha": "5646a108588abbfc28c8fa9fa7664ddfe4d44f1b",
+    "attests": "no scored outcome file was read; this proposal is written blind from the wave SHA and the frozen authorities"
+  }
+}
