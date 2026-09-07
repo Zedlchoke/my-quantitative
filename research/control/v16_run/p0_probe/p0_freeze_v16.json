@@ -1,0 +1,83 @@
+{
+ "schema": "v16_run_artifact_v1",
+ "artifact": "p0_freeze",
+ "generated_utc": "2026-09-07T04:28:00Z",
+ "producer_role": "A1 (P0 completion per plan section 4; owner dispatch 2026-09-07 lifted the stop)",
+ "verdict": "P0_PASS_DESIGN_FROZEN",
+ "blocked_data_triggered": false,
+ "frozen_design": {
+  "symbols": [
+   "BTCUSDT",
+   "ETHUSDT"
+  ],
+  "symbols_rationale": "canonical deepest-book USD-M perps spanning the major regime; plan allows at most 2-3; the binding word is BOUNDED - the third candidate SOLUSDT (census: smallest, 2.34 GB) was measured but is NOT frozen and NOT granted (an ungranted option is dead unless a future plan preregisters it)",
+  "universe_membership": "BTCUSDT, ETHUSDT both members of the frozen V14/V15 20-symbol universe (v15 first_report data_authority_inherited.universe)",
+  "window": "2025-08-22T00:00:00Z..2026-08-21T23:59:59.999Z (inherited frozen S0; row-filter transact_time at BOTH boundaries - monthly zips over-cover by up to 10 days combined)",
+  "vehicle": "data.binance.vision data/futures/um/monthly/aggTrades/<SYM>/<SYM>-aggTrades-YYYY-MM.zip (13 months x 2 symbols = 26 files, 17.38 GB compressed)",
+  "extraction": "streaming zip->csv member -> bounded DAILY observables per symbol-day; NO CSV ever written to disk; sha256 pinned per zip at download; raw archives DELETED after reduction; only the manifest + reduced panel persist",
+  "conditioning_clock": "exchange event time (transact_time) - availability at decision time is inherent to the public trade stream, not a property of archive publication"
+ },
+ "frozen_ceilings_breach_is_blocked_data": {
+  "peak_rss_MiB": 1024,
+  "transient_working_disk_GiB": 3,
+  "end_to_end_serial_extraction_hours": 6,
+  "per_month_parse_minutes": 30,
+  "heavy_phases": "every download/extraction/full-pytest/scored run under the round-2 machine-wide heavy lock (~/.my-quantitative-governance/heavy_runtime); FAILED releases MUST carry the stderr tail in the release note (round-2 mandate, encoded after the V16 P0 failure audit)"
+ },
+ "measured_inputs": {
+  "census": "39/39 symbol-months HTTP 200, zero holes (research/control/v16_run/p0_probe/aggtrades_census.json)",
+  "worst_month_sample": {
+   "symbol_month": "ETHUSDT 2025-11",
+   "compressed_bytes": 1110070854,
+   "sha256": "c51b2fbafa8b69cd40136f67d37caad2736286f241cdff4d87c0118cbad85272",
+   "rows": 83984361,
+   "peak_rss_MiB": 43.0,
+   "parse_seconds": 205.74
+  },
+  "projection_2_symbols_13_months": {
+   "compressed_GB": 17.38,
+   "est_rows": 1315000000,
+   "est_serial_end_to_end_hours": 0.95,
+   "note": "2/3 of the 39-file census totals; margins vs ceilings: RSS 24x, disk ~3x, runtime ~6x"
+  },
+  "publication_lag_hours_measured": {
+   "BTCUSDT": {
+    "n": 13,
+    "min": 8.3,
+    "p50": 8.8,
+    "max": 10.7
+   },
+   "ETHUSDT": {
+    "n": 13,
+    "min": 8.3,
+    "p50": 8.8,
+    "max": 10.7
+   },
+   "SOLUSDT": {
+    "n": 13,
+    "min": 8.3,
+    "p50": 8.8,
+    "max": 10.7
+   }
+  },
+  "license": {
+   "terms_pdf_url": "https://data.binance.vision/Binance_Vision-Terms_of_Use.pdf",
+   "terms_pdf_sha256_fresh": "94d6f61a39b5f821ef1d38f968aea1f2aa136e374f2061a2131db9a6af96bc3b",
+   "v15_pin_sha256": "94d6f61a39b5f821ef1d38f968aea1f2aa136e374f2061a2131db9a6af96bc3b",
+   "byte_identical_to_v15_pin": true,
+   "terms_html_sha256_fresh": "6c9e9d3dc793e558e2d29bfcbd54f8d3fb1092193fceab1240dbc68716ac53e4",
+   "retrieved_at": "2026-09-07T04:21:35Z",
+   "verdict": "AUTHORIZED_INTERNAL_RESEARCH (V15 scope reading carried: section 4.1 permits algorithmic historical backtesting for purely personal non-production research; no live proprietary trading)",
+   "v15_evidence": "v15 p0_probe probe_verdict_v15.json .license (Terms v1.0, last updated 2026-08-26)"
+  }
+ },
+ "availability_verdicts": {
+  "coverage": "PASS_PIT_EVIDENCED - 26/26 frozen symbol-months listed and HEAD-sized; S0 window fully funded",
+  "archive_axis": "PASS_PIT_EVIDENCED for event-time conditioning, WITH the first-class REWRITTEN_SPAN caveat carried (original listing dates inside a potentially rewritten span UNEVIDENCED per-file; V15-identical; carried to D2/A7/owner, not silently resolved). The caveat does not touch the decision clock: conditioning fields are exchange-event-time observables available in real time on the public trade stream.",
+  "license": "PASS - AUTHORIZED_INTERNAL_RESEARCH, terms bytes re-fetched 2026-09-07 byte-identical to the V15 pin 94d6f61a...",
+  "host": "PASS - 8 GB RAM / ~31 GB disk; measured peak RSS 43.0 MiB vs 1024 ceiling"
+ },
+ "round1_audit_acknowledgment": "research/control/governance/v16_p0_failure_audit_2026-09-07.json (on main since 77e31ff): the two FAILED precheck releases are TECHABORT-class, carry no family-quality evidence, retry was legal (identical command digest), denominators unchanged 149/152; prevention (stderr tail in FAILED release notes) is encoded in the round-2 lock now on this branch and BINDS all V16 heavy runs from here",
+ "p0_does_not_grant": "no observables selected (D1 blind lanes choose from the three sanctioned axes), no families, no arms, no scored computation, no S1, no live anything",
+ "publish_before_d1": true
+}
