@@ -128,3 +128,90 @@ No outcome files accessed (none exist). A1-owned files untouched. A5's
 modified by this lane (this section is additive). Only this lane's three
 files (`a4_event_H1.json`, `a4_event_H2.json`, this README) are staged by
 name; no push.
+
+---
+
+# V11 D1 lane A6 — open axis (axis 3)
+
+Cycle: STOCKS-FREE-V11 · Phase: D1 · Wave SHA: `ea668797b661dfa2c9d2b2799e46fe0f13f71820`
+Worktree: `/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v11/integration` (branch `orca/stocks-free-v11-integration`)
+
+(The sections above belong to lanes A5 and A4; this A6 section is appended
+additively because the lanes share this directory. A5's and A4's bytes above
+are untouched.)
+
+## Lane scope
+
+A6 is the blind proposal lane for the OPEN axis: two outcome-blind,
+literature-backed mechanisms on authorized staged data in the non-forbidden
+space, under the eleven-entry measured veto set (D2 pooled |rho| <= 0.20 on
+conditioning exposures, measured pre-selection), P2 verbatim clock citations,
+P3 frozen invariants, and the stocks_free_v11_run/d1_proposal@1 structure.
+One proposal is a second field family (equity-stub share counts); the other
+exercises the plan 2.1 book-form provision in its neighbour arm. No new
+vendor leg; no outcome file exists or was read.
+
+## Files
+
+| File | Hypothesis | Mechanism (one line) | Clocks cited (P2 verbatim) | Control (falsification) |
+|---|---|---|---|---|
+| `a6_open_H1.json` | SFV11-A6-H1 | Net-share-issuance financing flow: long/short ln growth of evidenced shares-outstanding vintages (supply absorption + managerial market timing) on the death-inclusive cohort. | V11-E1-FILING-EVENT (the share-count stream is a substream of the 74,931 filer-events; staleness rule verbatim) | Deterministic within-decision permutation placebo (matched-null): preserves the exposure distribution and all book machinery, destroys only the name-to-flow link. |
+| `a6_open_H2.json` | SFV11-A6-H2 | Disclosure-event uncertainty premium: hold names through PIT-predicted annual-arrival windows (latest evidenced arrival + 364d, +/- 7 calendar days); non-directional scheduling book; sector-residual neighbour per plan 2.1. | V11-E1-FILING-EVENT + V11-E3-AMEND-CADENCE (its published pooled p50 = 364d is the predictor's single constant) | Mandatory sham-event placebo calendar: same names/lengths/machinery, first clear 15-day position (no evidenced event dates inside); P0 section-d runnability. |
+
+## Identifiability gates declared (pre-selection, PIT panel + price availability only)
+
+- H1: pooled Spearman rho(anchor, permutation exposure) <= 0.10;
+  non-vacuity >= 30 scored decisions overall / >= 5 per fold, leg floor 5,
+  cohort floor 30. Lane pre-check recorded for A9 re-verification
+  (measured this lane, no outcome fields): 138,719 fold-window share-count
+  vintage rows; 1,758 priced tradable-cohort entities (361 ALIVE + 1,397
+  DEAD) with a valid consecutive period pair.
+- H2: pooled Spearman rho(anchor, sham holding indicator) <= 0.10; sham
+  match rate >= 0.80; same non-vacuity floors. Lane pre-check: 37,527
+  predicted windows inside folds (14,846 / 12,262 / 10,419) across 2,131
+  priced tradable-cohort entities.
+- H2 neighbour ETF-share is 0.500 by construction (1:1 sector hedge)
+  against the <= 0.50 gate: declared BOUNDARY, margin 0.0000 per P-2; the
+  anchor has no ETF legs (NOT_APPLICABLE declared ex-ante) and carries the
+  family gates.
+
+## Infeasibility declarations (summary)
+
+Both: `deadline_distance` never cited (DATA_BLOCKED_VALID, P-1); no
+revision direction/severity input (ancestry-vetoed); no timing-lag
+observable cited; no new vendor leg.
+H1 additionally: no split series is authorized (declared ln(2) tail
+exclusion with failure direction); no cross-field treasury synthesis (no
+common eff granularity); no form-type conditioning (panel is field-level).
+H2 additionally: no form-type filter on the arrival stream; no intraday
+announcement timing (date-granularity stamps); per-entity cadence
+estimation rejected at design time as a fitted parameter; the 3
+sham-starved entities excluded-with-reason from the control only.
+
+## A6 self-check (run at this SHA, before commit)
+
+- [x] Both files parse as valid JSON (repo venv interpreter, exit 0).
+- [x] Schema `stocks_free_v11_run/d1_proposal@1`; cycle/phase/lane "A6"/worktree/branch/wave_sha/hypothesis_id/agent correct.
+- [x] Exactly three arms each (anchor / neighbour / control); each control's refutation semantics, runnability and P-3 recompute declared.
+- [x] Clock tuples checked programmatically byte-equal against `p2_v11_coverage_first.json` funded_clocks; max_age_days 800 everywhere; deadline_distance never cited.
+- [x] Folds byte-equal to the P3 carried payload; costs/stress/L-I3 cited from P3 + `research/assets/stocks/kernel_band_cost_v9.py` (`resolve_exit_band_bps` verified in kernel source).
+- [x] No outcome-shaped fields (key-name scan; expectation/interpretation prose only); no parameter grids; frozen_thresholds + no_parameter_grid_declaration present in each.
+- [x] Every gate carries a failure_interpretation written now; margin-to-fail expectations declared per gate (P-2).
+- [x] Eleven-entry veto set addressed entry-by-entry in novelty_declaration (could_be_confused_with); D2 pooled |rho| <= 0.20 declared measured, never argued.
+- [x] outcome_blind_attestation signed on the wave SHA in each file.
+
+## A6 disclosure / off-limits / untouched
+
+Disclosure: this lane read ONE closed historical file for schema format
+only — `stocks_free_v10_run/proposals/a6_open_H1.json` (V10, closed cycle;
+outcome-blind artifact; V10's terminal was already inside this lane's
+dispatch packet). V10's A4-H2 and A6-H2 texts were NOT read. The two V11
+mechanisms above (share-issuance financing flow; announcement-premium
+scheduling) are not derived from any V10 proposal text; the fresh-revision
+mechanism in the file read is forbidden to this lane this wave in any case.
+No outcome files accessed (none exist). A1-owned files (event_log.jsonl,
+first_report.md, run_contract.json, p2/p3 files, incidents.md,
+worktree_manifest.json) untouched. A4's and A5's proposal files and README
+sections not modified (this section is additive). Only this lane's three
+files (`a6_open_H1.json`, `a6_open_H2.json`, this README) are staged by
+name; no push.
