@@ -97,7 +97,7 @@ def forbidden_exposures() -> tuple[dict[str, dict[str, pd.Series]], dict[str, st
     for sym in SYMBOLS:
         m = pd.read_parquet(V15_DATA / "parquet" / "metrics" / f"{sym}.parquet")
         m["date"] = pd.to_datetime(m["create_time"]).dt.date.astype(str)
-        m = m.sort_values("date").set_index("date")
+        m = m.sort_values("ts").groupby("date").last()  # intraday 5-min rows -> daily last
         oi = m["sum_open_interest"]
         taker = m["sum_taker_long_short_vol_ratio"]
         churn = oi.diff().abs() / oi
@@ -110,14 +110,12 @@ def forbidden_exposures() -> tuple[dict[str, dict[str, pd.Series]], dict[str, st
             m["count_toptrader_long_short_ratio"] / m["count_long_short_ratio"])
         exp.setdefault("TAKER_raw_ratio", {})[sym] = taker
         exp.setdefault("LIQEPIS_proxy_oi_spike", {})[sym] = z28(churn)
-        f = pd.read_json(V15_DATA / "funding_json" / f"{sym}.json")
-        # funding rows: list of dicts with fundingTime + fundingRate (binance fapi shape)
-        try:
-            f["date"] = pd.to_datetime(f["fundingTime"], unit="ms").dt.date.astype(str)
-            fr = f.set_index("date")["fundingRate"].astype(float)
-            exp.setdefault("CARRY-BAB_funding_rate_8h", {})[sym] = fr
-        except Exception:
-            notes["CARRY-BAB_funding_rate_8h"] = "funding json parse failed for " + sym
+        fj = json.load(open(V15_DATA / "funding_json" / f"{sym}.json"))
+        f = pd.DataFrame(fj["rows"])  # {symbol, fundingTime(ms), fundingRate(str), ...}
+        f["date"] = pd.to_datetime(f["fundingTime"], unit="ms").dt.date.astype(str)
+        fr = f.set_index("date")["fundingRate"].astype(float)
+        fr = fr[~fr.index.duplicated(keep="last")]  # 8h cadence -> daily last
+        exp.setdefault("CARRY-BAB_funding_rate_8h", {})[sym] = fr
     notes["PREMFADE_basis_premium"] = (
         "NOT_MEASURABLE: no prem/futures basis series in authorized staged data "
         "(v15 staging has no .pmbasis parquet); mechanism is basis-level, "
@@ -252,6 +250,7 @@ def main() -> None:
         "control_identifiability": ident,
         "sibling_proposal_pearson": sib,
         "trigger_counts_whole_window": counts,
+        "fold_populations": folds,
         "panel_rows": {s: int((panel.symbol == s).sum()) for s in SYMBOLS},
     }
     (ART / "d2_novelty_v16.json").write_text(json.dumps(artifact, indent=1) + "\n")

@@ -1,0 +1,170 @@
+{
+ "schema": "v16_run_artifact_v1",
+ "artifact": "selection_freeze",
+ "generated_utc": "2026-09-07T13:55:00Z",
+ "producer_role": "A1 (selection per FAMILY_PIPELINE phase 5; outcome-blind - zero PnL exists anywhere)",
+ "wave_sha": "4b913c30b7386bab9f5c3bedbd1685e9d07df4f1",
+ "measurement_basis": "research/control/v16_run/d2/d2_novelty_v16.json (panel 365 days/symbol, staging manifest sha pinned)",
+ "declared_selection_rule": {
+  "R1": "rank survivors by ancestry margin (distance below the 0.20 veto line, max over reconstructable forbidden exposures); largest margin takes slot 1",
+  "R2": "slot 2 = next-best information set; between proposals sharing ONE conditioning feature, prefer the spec whose HONEST warmup leaves the larger decision-day population per fold (kill 15 health)",
+  "R3": "tie-break: mechanism-direction diversity across the two selected families",
+  "note": "rule declared before selection; no scored outcome exists to motivate it"
+ },
+ "measurements_summary": {
+  "vetoed": {
+   "A4-V16-P1 NETFLOW-FADE-D1": "ancestry |rho|=0.2225>0.20 vs ELITE-LEVEL toptrader position ratio (-0.2195 p / -0.2225 s; also ELITE-SIZE-ASYM -0.2225 s) - NOT vs TAKER-SAT (0.12) as the lane predicted; margin over line +0.0225 (P-2 recorded)",
+   "A5-V16-P1 burst-exhaustion": "ancestry |rho|=0.3385 vs OITD OI-churn (+0.3385 p; LIQEPIS proxy +0.3224) AND fold population 10/9/10 symbol-decisions < 15 floor - double kill",
+   "A5-V16-P2 quiet-tape": "ancestry |rho|=0.3885 vs LIQEPIS proxy (+0.3885 p; OITD churn +0.3584)"
+  },
+  "survivors": {
+   "A6-V16-P1 CLOSE-DISPLACE-FADE": {
+    "ancestry_max_rho": 0.1438,
+    "margin": 0.0562,
+    "identifiability_vs_control_ret1": 0.3075,
+    "decision_days": 87,
+    "symbol_decisions_per_fold": [
+     37,
+     44,
+     43
+    ]
+   },
+   "run_imb_information_set": {
+    "ancestry_max_rho": 0.1927,
+    "margin": 0.0073,
+    "THIN_MARGIN_disclosed": "razor-thin vs CARRY-BAB funding-rate pearson 0.1927 (spearman 0.1556) - carried to A7 terminal scrutiny (P-2)"
+   }
+  }
+ },
+ "selection_rule_application": {
+  "slot_1": "A6-V16-P1 CLOSE-DISPLACE-FADE by R1 (margin 0.0562 vs 0.0073)",
+  "slot_2": "A6-V16-P2 RUNPERSIST by R2: both run_imb proposals share one conditioning series (sibling rho 1.0 by construction); honest-spec populations favor 60d warmup (~109 decision days, ~36/fold) over A4-P2's 120d warmup (~96, ~32/fold); R3 not reached",
+  "lane_concentration_disclosure": "both selected proposals originate from lane a6 - legal (lanes are blind; selection is by measured rule); A7 asked to scrutinize this concentration"
+ },
+ "frozen_families": [
+  {
+   "family_id": "CLOSE-DISPLACE-FADE",
+   "proposal_id": "A6-V16-P1",
+   "proposal_sha256": "629b0737e9db575072a70d1eaa6e9090113b1e6e9a3b896160a4eb2a4ddb764a",
+   "arms": {
+    "anchor": "Per symbol, at end of day t-1: if |disp[t-1]| >= rolling 60-day 80th percentile of |disp|, hold position -sign(disp[t-1]) over day t (1-day hold, FADE of the displacement); else flat. Unit notional per active symbol-day; entry fill at last_price[t-1] (decision instant), exit at last_price[t]; both symbols may be simultaneously active.",
+    "neighbour": "Same mechanism, different parameters, exact numbers: trigger threshold = rolling 90-day 75th percentile of |disp|, 1-day hold, identical fill/sizing convention (wider estimation window, looser quantile \u2014 parameter sensitivity of the displacement fade).",
+    "control": "Exposure-form placebo, exact spec: identical book machinery conditioned instead on |ret_z[t-1]| >= rolling 60-day 80th percentile of |ret_z|, position -sign(ret_z[t-1]), 1-day hold \u2014 plain volatility-normalized short-term reversal; identical costs, folds, gates."
+   },
+   "clock": "daily",
+   "universe": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "features": [
+    {
+     "name": "vwap",
+     "role": "conditioning input: volume-clock average price of day t-1",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "last_price",
+     "role": "conditioning input: time-clock terminal print of day t-1; also entry/exit fill price",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "high_price",
+     "role": "conditioning input: range normalization of day t-1",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "low_price",
+     "role": "conditioning input: range normalization of day t-1",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "derived disp[t] = (last_price[t] - vwap[t]) / (high_price[t] - low_price[t])",
+     "role": "close-to-VWAP displacement, dimensionless; divergence between the volume clock (VWAP) and the time clock (terminal print), normalized by the day's own range; derived from staged columns only",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "derived ret_z[t] = (last_price[t]/last_price[t-1] - 1) / rolling_60d_std(daily returns)",
+     "role": "CONTROL-ARM-ONLY exposure: prior-day volatility-normalized return; derived from staged columns only",
+     "availability": "EVIDENCED (exchange event time)"
+    }
+   ],
+   "causal_claim": "Benchmark-driven passive flow (VWAP/TWAP execution desks and daily-candle mark users) is forced to complete near the UTC day boundary, so when a day's terminal print sits far from that day's volume-weighted average price relative to the day's range, scheduled completion flow rather than informed flow has displaced price off its volume anchor and the displacement mean-reverts over the next session; the mechanism must fail when late-day prints carry informed directional content (displacement persists instead of reverting) or once the public price-shape pattern is crowded.",
+   "falsification_rule": "The claim is proven wrong if any of: (a) after cost, the fade of extreme prior-day |displacement| earns non-positive expectancy (frozen rule order #1, G1 anchor FAIL); (b) the raw prior-return-fade exposure-form control reproduces the anchor (same sign, >= 0.5x anchor expectancy) \u2014 proving the displacement variable adds no information beyond short-term reversal (G11 falsification-by-control fires); (c) the measured sign is robustly opposite (displacement continues rather than reverts across >= 2 folds); or (d) G12 pooled ancestry |rho| > 0.20 vs any forbidden family or measured shadow at D2.",
+   "expected_failure_mode": "Control-identifiability: displacement shares most of its variation with the prior day's signed return, so the measured anchor-vs-control exposure correlation at D2 plausibly exceeds the 0.20 bar and the family dies as a relabelled reversal ancestor; secondarily, crowding of a public price-shape regularity and fold concentration (the p80 trigger yields a thin event book of roughly 60 active symbol-days per symbol).",
+   "control_class": "raw-level/exposure-form placebo (mandatory for conditioning-variable claims per FAMILY_PIPELINE section 3 step 11): the identical quantile-fade book conditioned instead on the prior day's volatility-normalized return z-score \u2014 the convenient explanation 'day-boundary displacement is just short-term reversal' must NOT reproduce the anchor; fully panel-runnable under evidenced semantics (all control inputs are staged price columns). Sham-calendar is deliberately NOT the mandated class and the V5 lesson is addressed head-on: the conditioning variable is a within-interval price-shape ratio, not a calendar event \u2014 the UTC boundary only defines the aggregation interval and no day-of-week/session/holiday term enters the rule."
+  },
+  {
+   "family_id": "RUNPERSIST",
+   "proposal_id": "A6-V16-P2",
+   "proposal_sha256": "369d77de76f6cd2c88ec949659b3114094d9464f7b10787ab00bced663bb6cef",
+   "arms": {
+    "anchor": "Per symbol, at end of day t-1: if |run_imb[t-1]| >= rolling 60-day 80th percentile of |run_imb|, hold position sign(run_imb[t-1]) over day t (1-day hold, CONTINUATION of the run side); else flat. Unit notional per active symbol-day; entry fill at last_price[t-1] (decision instant), exit at last_price[t]; both symbols may be simultaneously active.",
+    "neighbour": "Same mechanism, different parameters, exact numbers: trigger threshold = rolling 90-day 75th percentile of |run_imb|, 1-day hold, identical fill/sizing convention (wider estimation window, looser quantile \u2014 parameter sensitivity of run-persistence continuation).",
+    "control": "Reshuffled-interval placebo, exact spec: apply the identical anchor rule to run_imb with day labels permuted within 2025-10-21..2026-08-21 under numpy default_rng(seed=16), ONE fixed permutation shared by both symbols (a 200-permutation dispersion band is declared as a diagnostic output only, never as the bookable control); identical costs, folds, gates."
+   },
+   "clock": "daily",
+   "universe": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "features": [
+    {
+     "name": "buy_streak_max",
+     "role": "conditioning input: longest consecutive taker-buy print run of day t-1",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "sell_streak_max",
+     "role": "conditioning input: longest consecutive taker-sell print run of day t-1",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "derived run_imb[t] = (buy_streak_max[t] - sell_streak_max[t]) / (buy_streak_max[t] + sell_streak_max[t])",
+     "role": "signed run-side skew of the print sequence, in (-1, 1); a within-day ratio, count-normalized by construction \u2014 measures the SIDE-SHAPE of the aggressive sequence, not its net direction; derived from staged columns only",
+     "availability": "EVIDENCED (exchange event time)"
+    },
+    {
+     "name": "last_price",
+     "role": "entry/exit fill price only (no conditioning role)",
+     "availability": "EVIDENCED (exchange event time)"
+    }
+   ],
+   "causal_claim": "An extreme maximal same-side aggressor run on day t reflects order-splitting execution algorithms (or cascade engines) still mid-parent-order at the day boundary, and a split parent order is slow to complete and forced to keep taking liquidity in the same direction into the next session, so extreme run-side days see next-day same-direction continuation; the mechanism must fail when run extremes are end-of-day single-print artifacts or intraday liquidation cascades that fully mean-revert before the next session.",
+   "falsification_rule": "The claim is proven wrong if any of: (a) after cost, the continuation book earns non-positive expectancy (frozen rule order #1, G1 anchor FAIL); (b) the day-label-permuted reshuffled-interval control reproduces the anchor (same sign, >= 0.5x anchor expectancy) \u2014 the t to t+1 alignment of run shape carries no next-day information (G11 fires); (c) the measured sign is robustly OPPOSITE the claimed continuation direction across >= 2 folds (the claim's direction is wrong, not merely unprofitable); or (d) G12 pooled ancestry |rho| > 0.20 vs any forbidden family, recorded ancestor, or measured shadow at D2.",
+   "expected_failure_mode": "Mechanical streak inflation: maximal run length grows with daily print count, so on high-activity days the conditioning variable degenerates toward a volume/activity-level proxy \u2014 the mined dollar-volume-shock axis (XSECT-VOLSHK ancestry) \u2014 and the family dies at D2 (rho vs activity-form exposures) or at G4 fold concentration because activity regimes cluster in time; secondarily, crowding of a public run-persistence regularity; the shared aggressor-sign ancestry with M01-AGGRESSOR-ABSORPTION is the accepted rho risk the family is willing to lose to.",
+   "control_class": "reshuffled-interval placebo (mandatory for temporal-structure claims per FAMILY_PIPELINE section 3 step 11), in the only semantics runnable on the panel-only surface: permute the DAY-INDEX alignment of the conditioning series within the post-warmup span and run the identical continuation book \u2014 this destroys the t to t+1 pairing while preserving the marginal exposure distribution. A within-day sign-sequence shuffle is infeasible because per-print signs are not staged in the daily panel; that constraint is disclosed here rather than papered over (P-3: a control that cannot run under evidenced semantics is a design failure \u2014 this one runs)."
+  }
+ ],
+ "budget": {
+  "cells": "2 families x 3 arms = 6 cells = FULL budget; unused slots (A4-P1, A4-P2, A5-P1, A5-P2) are DEAD - never reassigned, never lent"
+ },
+ "data_snapshot_digest": {
+  "BTCUSDT": "5bb5016da6e639e98e1561e7581324901501e06a1cf9d13b3723e034d24c4616",
+  "ETHUSDT": "c54147674dea80d6d1223e78a7dc4422c5a4a3861817dddc0891119119ba3b81"
+ },
+ "code_freeze_sha": "PENDING (frozen at I-phase code freeze; identity fields completed then)",
+ "diagnostic_contracts": {
+  "CLOSE-DISPLACE-FADE": {
+   "contract_sha256": "3dab596b882c1e6d077b16ee08c90676241504ef3efe0b452dfe3643f39416ce",
+   "verdict": "DIAGNOSTIC_CONTRACT_PASS",
+   "findings": []
+  },
+  "RUNPERSIST": {
+   "contract_sha256": "c8b8040996e5acd0dd60547a0ff21e5e83654e8e67abde13f85110748fe7f35a",
+   "verdict": "DIAGNOSTIC_CONTRACT_PASS",
+   "findings": []
+  }
+ },
+ "p3_freeze_amendment_1_v16": {
+  "declared_at": "D2 pre-selection, before any scored outcome",
+  "identifiability_veto_threshold": 0.7,
+  "fold_population_floor_symbol_decisions": 15,
+  "justification": "P3 declared the classes but not the numbers; declared before selection so no outcome can motivate them (V15 p3_freeze_amendment_1 precedent)"
+ },
+ "thin_margins_register": [
+  "run_imb ancestry margin 0.0073 (razor, P-2)",
+  "staging peak RSS 954.8 MiB vs 1024 ceiling - 69.2 MiB margin (7%, thin) - driver must stay single-day-streaming; any per-day list retention over the full window breaches",
+  "A6-P1 control identifiability 0.3075 - healthy but nontrivial; the 'just reversal' control MUST run and is expected to be the decisive falsification test"
+ ],
+ "no_pnl": true
+}
