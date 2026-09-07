@@ -93,7 +93,7 @@ ran correctly, artifact  -> PASS
    cells); recursive leak scans check every record depth for outcome-shaped
    fields.
 
-## 3. FOREX rules (no live plan — V6 closed 2026-09-07; rules below remain binding for any future forex cycle)
+## 3. FOREX rules (live plan: `plans/PLAN_forex_v7.md`)
 
 - Data: keyless official sources ONLY (BIS WS_CBPOL, ECB SDMX, official
   release-calendar pages, ALFRED if evidenced). No signup, no key, no
@@ -159,6 +159,7 @@ ran correctly, artifact  -> PASS
 ```text
 GO STOCKS V11 SCORED EXECUTION      (live plan plans/PLAN_stocks_v11.md)
 GO CRYPTO V16 SCORED EXECUTION      (live plan plans/PLAN_crypto_v16.md)
+GO FOREX V7 SCORED EXECUTION        (live plan plans/PLAN_forex_v7.md)
 ```
 
 The crypto V15 and forex V6 phrases were each consumed at their own gates
