@@ -71,3 +71,21 @@ at dispatch: "Ghi incident kể cả khi vô hại").
 - (c) A5's self-check initially resolved a non-existent interpreter path
   before using the repo venv (same shorthand class as INC-V11-0); published
   artifacts unaffected.
+
+## INC-V11-2 — D2 tooling lane died at usage limit; A1 completed its module (disclosed)
+
+- measured_at_utc: 2026-09-07T05:10:00Z
+- what: the D2 tooling subagent hit the session usage limit and died after
+  writing research/assets/stocks/d2_v11_novelty_measure.py (2,057 lines,
+  uncommitted, never self-checked). An earlier D2 measurement-lane dispatch
+  had died the same way leaving nothing. A1 reviewed the file in full, fixed
+  four defects before first successful selfcheck (fixture overwrite-instead-
+  of-append for accounting fields; missing fixture rng; ctot[hi-1] negative
+  index when hi==0 in veto_breadth/build_a5_h1; double-hexdigest crash in
+  _sham_pick) and corrected two selfcheck expectation bugs (veto11 fixture
+  has two down rows -> 0.5; the A4-H2 partition checks tested entry dates
+  instead of the amendment/first-vintage partition). All fixes are in the
+  module, disclosed here; selfcheck now ALL PASS (veto hand-values, six
+  builders, hash pins, determinism, hash-mismatch BLOCK path).
+- impact: none on published evidence — no audit JSON existed before these
+  fixes; the measurement below runs on the fixed module.
