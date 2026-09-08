@@ -93,7 +93,7 @@ ran correctly, artifact  -> PASS
    cells); recursive leak scans check every record depth for outcome-shaped
    fields.
 
-## 3. FOREX rules (live plan: `plans/PLAN_forex_v7.md`)
+## 3. FOREX rules (live plan: `plans/PLAN_forex_v8.md`)
 
 - Data: keyless official sources ONLY (BIS WS_CBPOL, ECB SDMX, official
   release-calendar pages, ALFRED if evidenced). No signup, no key, no
@@ -123,7 +123,7 @@ ran correctly, artifact  -> PASS
 - Terminals: DSR over the cumulative crypto trial count; confirmatory
   status, where declared, is bound in every cell and the ledger.
 
-## 5. STOCKS rules (live plan: `plans/PLAN_stocks_v11.md`)
+## 5. STOCKS rules (live plan: `plans/PLAN_stocks_v12.md`)
 
 - Data: EODHD is owner-entitled (subscription owner-held; key in gitignored
   `.env`, environment-only, redacted from error strings, never in
@@ -157,15 +157,18 @@ ran correctly, artifact  -> PASS
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 
 ```text
-GO STOCKS V11 SCORED EXECUTION      (live plan plans/PLAN_stocks_v11.md)
-GO CRYPTO V16 SCORED EXECUTION      (live plan plans/PLAN_crypto_v16.md)
-GO FOREX V7 SCORED EXECUTION        (live plan plans/PLAN_forex_v7.md)
+GO CRYPTO V16 SCORED EXECUTION     (live plan plans/PLAN_crypto_v16.md;
+                                    CONSUMED at its gate 2026-09-08 07:35 VN
+                                    — cycle in scored execution; dead for any
+                                    future use per P-8)
+GO STOCKS V12 SCORED EXECUTION     (live plan plans/PLAN_stocks_v12.md)
+GO FOREX V8 SCORED EXECUTION       (live plan plans/PLAN_forex_v8.md)
 ```
 
-The crypto V15 and forex V6 phrases were each consumed at their own gates
-and are dead with their closed cycles (both closed 2026-09-07); forex has
-no live phrase until a V7 plan exists. Expired/unconsumed phrases of
-closed cycles are dead — they never carry forward (V6 ruling; P-8).
+The stocks V11 and forex V7 phrases were each consumed at their own gates
+(2026-09-07) and are dead with their closed cycles; the crypto V15, forex
+V6 and all earlier phrases are likewise dead. Expired/consumed phrases
+never carry forward (V6 ruling; P-8).
 
 ## 8. The one-paragraph spirit
 
