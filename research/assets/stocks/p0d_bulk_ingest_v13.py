@@ -264,7 +264,7 @@ def main():
             if t:
                 sym_map.append((m["cik"], t))
         for j, (cik, sym) in enumerate(sym_map):
-            for kind, urlt, ddir in (("div", "dividents", EODHD_DIV), ("splits", "splits", EODHD_SPL)):
+            for kind, urlt, ddir in (("div", "div", EODHD_DIV), ("splits", "splits", EODHD_SPL)):
                 p = f"{ddir}/{sym.replace('/', '_')}.json"
                 if os.path.exists(p):
                     continue
