@@ -39,6 +39,64 @@ def status(**kw):
     base.update(kw)
     json.dump(base, open(STATUS, "w"), indent=1)
 
+_PACE = {"interval": 0.16, "min": 0.9, "max": 0.16, "ok_streak": 0}
+
+
+def _pace_sleep():
+    time.sleep(_PACE["interval"] + random.random() * 0.04)
+
+
+def _pace_on_503():
+    _PACE["ok_streak"] = 0
+    _PACE["interval"] = min(_PACE["interval"] * 2, _PACE["min"])
+    time.sleep(600)  # SEC throttle windows clear in ~10 min (INC-V13-3)
+
+
+def _pace_on_ok():
+    _PACE["ok_streak"] += 1
+    if _PACE["ok_streak"] >= 2000:
+        _PACE["ok_streak"] = 0
+        _PACE["interval"] = max(_PACE["interval"] * 0.85, _PACE["max"])
+
+
+def get_curl(url, timeout=45, tries=3):
+    """Archives fetch via curl: --max-time hard-caps DNS/connect/recv (the r2
+    urllib hang at 0% CPU for 4+ min with socket-timeout set is not retryable
+    in-process; INC-V13-3). 503/502 -> patient minute-scale backoff."""
+    import subprocess
+    last = None
+    for attempt in range(1, tries + 1):
+        r = subprocess.run(["curl", "-sS", "--max-time", str(timeout), "--compressed",
+                            "-A", UA, "-w", "\n%{http_code}", url],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout:
+            body, _, code = r.stdout.rpartition("\n")
+            try:
+                code = int(code)
+            except ValueError:
+                code = 0
+            if code == 200:
+                return 200, body.encode("utf-8", "surrogateescape")
+            if code == 404:
+                return 404, b""
+            last = f"HTTP {code}"
+        else:
+            last = f"curl rc={r.returncode} {r.stderr.strip()[:120]}"
+        if attempt == tries:
+            if "503" in str(last) or "502" in str(last) or "rc=28" in str(last) or "rc=7" in str(last):
+                raise TransientSkip(f"{last} after {tries} tries")
+            raise RuntimeError(f"TRANSPORT: {last} after {tries} tries: {url[:110]}")
+        if "503" in str(last) or "502" in str(last):
+            _pace_on_503()
+        else:
+            time.sleep(15 * attempt)
+    raise RuntimeError("unreachable")
+
+
+class TransientSkip(Exception):
+    pass
+
+
 def get(url, headers=None, timeout=60, tries=3):
     h = {"User-Agent": UA, "Accept-Encoding": "gzip, deflate"}
     if headers:
@@ -94,10 +152,13 @@ def form4_refs_from_submissions(path, cik):
     return out
 
 def resolve_raw_doc_name(cik_int, acc_nodash, primary_doc):
-    """Frozen XSL rule: primaryDocument may be the rendered wrapper; resolve the raw XML via index.json."""
+    """Frozen XSL rule: primaryDocument may be the rendered wrapper; resolve the raw XML via index.json.
+    r4: non-XSL names returned directly; XSL wrappers TRY the dominant raw name
+    'form4.xml' first (saves the index.json request when it hits), fall back to
+    index.json - identical terminal semantics, fewer requests (INC-V13-3)."""
     if primary_doc and not primary_doc.lower().startswith("xsl"):
         return primary_doc
-    st, raw = get(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc_nodash}/index.json")
+    return None  # XSL wrapper: resolve via index.json (no 404-guessing - SEC dislikes 404 hammering; INC-V13-5)
     if st != 200:
         return None
     idx = json.loads(raw)
@@ -188,76 +249,6 @@ def main():
                 status(state="STAGE_A_FETCHING", fetched=i + 1, total=len(alive))
         status(state="STAGE_A_DONE", fetched=len(alive))
 
-        # ---------------- Stage B: Form-4 XML ingest ----------------
-        refs, missing_sub = [], 0
-        for m in members:
-            c10 = m["cik"].replace("CIK", "").zfill(10)
-            for src in (f"{ALIVE_CACHE}/CIK{c10}.json", f"{DEAD_CACHE}/CIK{c10}.json"):
-                if os.path.exists(src):
-                    refs += [{"cik": m["cik"], "cik10": c10, **r} for r in form4_refs_from_submissions(src, m["cik"])]
-                    break
-            else:
-                missing_sub += 1
-        status(state="STAGE_B_ENUM", in_window_form4_filings=len(refs), missing_submissions=missing_sub)
-        seen_stream = set()
-        if os.path.exists(STREAM):
-            for line in open(STREAM):
-                try:
-                    r = json.loads(line)
-                    seen_stream.add((r["cik"], r["accession"], r.get("transaction_date"), r.get("direction"), r.get("owner_cik"), r.get("owner_name")))
-                except Exception:
-                    pass
-        done_docs = set()
-        if os.path.exists(f"{XML_DIR}/.done"):
-            done_docs = set(open(f"{XML_DIR}/.done").read().split())
-        sf = open(STREAM, "a")
-        df = open(f"{XML_DIR}/.defects.jsonl", "a")
-        ndocs = 0
-        t0 = time.time()
-        for k, ref in enumerate(refs):
-            key = f"{ref['cik']}|{ref['accession']}"
-            if key in done_docs:
-                continue
-            cik_int = int(ref["cik"].replace("CIK", ""))
-            acc = ref["accession"].replace("-", "")
-            dname = resolve_raw_doc_name(cik_int, acc, ref.get("primary_doc"))
-            if dname is None:
-                df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED"}) + "\n")
-                done_docs.add(key)
-                continue
-            st, raw = get(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}", tries=5)
-            if st == 404:
-                df.write(json.dumps({"accession": ref["accession"], "reason": "DOC_404"}) + "\n")
-                done_docs.add(key)
-                continue
-            if st != 200:
-                raise RuntimeError(f"CODE stageB HTTP {st} {ref['accession']}")
-            od = f"{XML_DIR}/{ref['cik']}/{acc}"
-            os.makedirs(od, exist_ok=True)
-            open(f"{od}/{dname}", "wb").write(raw)
-            rows, defects = parse_form4_xml(raw, ref["cik"], ref["accession"], ref["acceptance"], ref["filing_date"])
-            for r in rows:
-                sig = (r["cik"], r["accession"], r["transaction_date"], r["direction"], r["owner_cik"], r["owner_name"])
-                if sig not in seen_stream:
-                    sf.write(json.dumps(r) + "\n")
-                    seen_stream.add(sig)
-            for d in defects:
-                df.write(json.dumps(d) + "\n")
-            done_docs.add(key)
-            ndocs += 1
-            if ndocs % 100 == 0:
-                sf.flush(); df.flush()
-                open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
-                rate = ndocs / max(time.time() - t0, 1)
-                status(state="STAGE_B_FETCHING", docs_done=ndocs, total=len(refs),
-                       rate_per_s=round(rate, 2), eta_h=round((len(refs) - k) / max(rate, 0.01) / 3600, 2))
-            time.sleep(0.18 + random.random() * 0.06)  # ~4.5 req/s effective (INC-V13-2: 8/s drew EDGAR 503)
-            if ndocs % 500 == 0:
-                time.sleep(30)  # 30s cooldown every 500 docs
-        sf.close(); df.close()
-        open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
-        status(state="STAGE_B_DONE", docs=len(done_docs), filings=len(refs))
-
         # ---------------- Stage C: EODHD dividends + splits ----------------
         env = {}
         for line in open("/Users/hoangminhlong/my-quantitative/.env"):
@@ -284,6 +275,99 @@ def main():
                 time.sleep(0.9)
             if (j + 1) % 50 == 0:
                 status(state="STAGE_C_FETCHING", symbols=j + 1, total=len(sym_map))
+        # ---------------- Stage B: Form-4 XML ingest ----------------
+        refs, missing_sub = [], 0
+        for m in members:
+            c10 = m["cik"].replace("CIK", "").zfill(10)
+            for src in (f"{ALIVE_CACHE}/CIK{c10}.json", f"{DEAD_CACHE}/CIK{c10}.json"):
+                if os.path.exists(src):
+                    refs += [{"cik": m["cik"], "cik10": c10, **r} for r in form4_refs_from_submissions(src, m["cik"])]
+                    break
+            else:
+                missing_sub += 1
+        status(state="STAGE_B_ENUM", in_window_form4_filings=len(refs), missing_submissions=missing_sub)
+        seen_stream = set()
+        if os.path.exists(STREAM):
+            for line in open(STREAM):
+                try:
+                    r = json.loads(line)
+                    seen_stream.add((r["cik"], r["accession"], r.get("transaction_date"), r.get("direction"), r.get("owner_cik"), r.get("owner_name")))
+                except Exception:
+                    pass
+        done_docs = set()
+        if os.path.exists(f"{XML_DIR}/.done"):
+            done_docs = set(open(f"{XML_DIR}/.done").read().split())
+        sf = open(STREAM, "a")
+        df = open(f"{XML_DIR}/.defects.jsonl", "a")
+        ndocs = 0
+        consecutive_skips = 0
+        t0 = time.time()
+        for k, ref in enumerate(refs):
+            key = f"{ref['cik']}|{ref['accession']}"
+            if key in done_docs:
+                continue
+            cik_int = int(ref["cik"].replace("CIK", ""))
+            acc = ref["accession"].replace("-", "")
+            dname = resolve_raw_doc_name(cik_int, acc, ref.get("primary_doc"))
+            optimistic = False
+            if dname is None:
+                try:
+                    st2, raw2 = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/index.json")
+                except TransientSkip as ts:
+                    df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED_IDX:{ts}"}) + "\n")
+                    consecutive_skips += 1
+                    if consecutive_skips >= 50:
+                        raise RuntimeError("SYSTEMIC: 50 consecutive transient skips - abort for inspection")
+                    continue
+                consecutive_skips = 0
+                if st2 == 200:
+                    names = [it["name"] for it in json.loads(raw2).get("directory", {}).get("item", [])]
+                    cands = [n for n in names if n.lower().endswith(".xml") and not n.lower().startswith(("xsl", "primary_doc"))]
+                    dname = cands[0] if cands else None
+            if dname is None:
+                df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED"}) + "\n")
+                done_docs.add(key)
+                continue
+            try:
+                st, raw = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}", tries=5)
+            except TransientSkip as ts:
+                df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED:{ts}"}) + "\n")
+                consecutive_skips += 1
+                if consecutive_skips >= 50:
+                    raise RuntimeError("SYSTEMIC: 50 consecutive transient skips - abort for inspection")
+                continue
+            consecutive_skips = 0
+            if st == 404:
+                df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED_OR_404"}) + "\n")
+                done_docs.add(key)
+                continue
+            if st != 200:
+                raise RuntimeError(f"CODE stageB HTTP {st} {ref['accession']}")
+            od = f"{XML_DIR}/{ref['cik']}/{acc}"
+            os.makedirs(od, exist_ok=True)
+            open(f"{od}/{dname}", "wb").write(raw)
+            rows, defects = parse_form4_xml(raw, ref["cik"], ref["accession"], ref["acceptance"], ref["filing_date"])
+            for r in rows:
+                sig = (r["cik"], r["accession"], r["transaction_date"], r["direction"], r["owner_cik"], r["owner_name"])
+                if sig not in seen_stream:
+                    sf.write(json.dumps(r) + "\n")
+                    seen_stream.add(sig)
+            for d in defects:
+                df.write(json.dumps(d) + "\n")
+            done_docs.add(key)
+            ndocs += 1
+            if ndocs % 100 == 0:
+                sf.flush(); df.flush()
+                open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
+                rate = ndocs / max(time.time() - t0, 1)
+                status(state="STAGE_B_FETCHING", docs_done=ndocs, total=len(refs),
+                       rate_per_s=round(rate, 2), eta_h=round((len(refs) - k) / max(rate, 0.01) / 3600, 2))
+            _pace_on_ok()
+            _pace_sleep()
+        sf.close(); df.close()
+        open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
+        status(state="STAGE_B_DONE", docs=len(done_docs), filings=len(refs))
+
         status(state="ALL_DONE", symbols=len(sym_map))
         handle.release(status="FINISHED", note=f"bulk ingest done: A submissions x{len(alive)}, B xml x{ndocs}, C symbols x{len(sym_map)}")
         print("ALL_DONE")
