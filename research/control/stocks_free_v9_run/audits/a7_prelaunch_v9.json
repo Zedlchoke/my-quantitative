@@ -1,0 +1,160 @@
+{
+ "schema": "stocks_free_v9_run/a7_prelaunch@1",
+ "cycle": "STOCKS-FREE-V9",
+ "phase": "A7 PRELAUNCH (independent, fresh context; audit-to-refute)",
+ "built_at_utc": "2026-09-06T04:30:00Z",
+ "producer_role": "A7 independent prelaunch auditor (never the A1 thread; no repairs, no gate changes, no code/data touched; artifacts left untracked)",
+ "audited_head": "17e70ac4930ebf6893230b347e12d400cad04911",
+ "audited_branch": "orca/stocks-free-v9-integration",
+ "tree_state": "clean (git status --porcelain empty at audit start and end; my artifacts untracked by design)",
+ "method": "Every verdict recomputed from bytes and source: git ancestry via merge-base, sha256 re-hashes of staged raw data (1.49GB panel, 2178 price files sampled 25, delisted cache, submissions/form15 raw), line-by-line packet-vs-runner diff, sandbox execution of the driver (dry-run re-run + three scored-refusal probes), independent leak scan, targeted fixture tests only (41/41; full pytest is A1's job).",
+ "items": {
+  "1_FREEZE_CHAIN_AND_ANCESTRY": {
+   "verdict": "PASS",
+   "command": "git rev-parse HEAD; git status --porcelain; for c in chain: git merge-base --is-ancestor $prev $c; shasum -a 256 research/control/stocks_free_v9_run/proposals/*.json; git show <lane>:<proposal> | shasum -a 256",
+   "evidence": {
+    "head_match": "17e70ac4930ebf6893230b347e12d400cad04911 == HEAD; tree clean",
+    "chain": "9557f59 -> 4bb7de7 -> 281e30b -> 4f5b081 -> c6000b9 -> a4a5ab5 -> 86fecae -> 0434426 -> 93d47c3 -> 1ebea0c -> 77a992c -> a4fa9fa -> 573d71c -> 17e70ac: all 13 resolve as commits and every consecutive pair is ancestor-ordered (merge-base --is-ancestor, zero breaks)",
+    "proposal_hashes": "6/6 committed proposal file sha256 match d1_proposal_hashes.json exactly (a4_H1 36b0bc14..., a4_H2 3402961b..., a5_H1 c90bb54f..., a5_H2 e9f9a645..., a6_H1 f29b341a..., a6_H2 1f8ac2cc...)",
+    "lane_blob_identity": "lane branch heads 72afa5b/8178322/d534404 (recorded in d1_proposal_hashes.lane_commits) are NOT in integration ancestry; the work entered via 46e2d72/4072862/7cf58bb (cherry-picks per event_log D1_INTEGRATED) inside 93d47c3's lineage. Pinned-hash closure verified byte-wise: blobs at the lane commits hash to the SAME pinned values (36b0bc14 / c90bb54f / f29b341a)",
+    "selection_packet": "selection_freeze.selected[0].packet_sha256 3402961bc263e3a3b84876d8cf0aa1889a47107bc8e77263b07df360280ead57 == committed a4_distress_H2.json file hash == d1_proposal_hashes entry",
+    "d2_base_consistency": "D2 audited_head_base 93d47c3 == selection_freeze.d2_audit.base_head; D2 head_move_note documents the single mid-audit advance to 77a992c with byte-unchanged inputs"
+   }
+  },
+  "2_SELECTION_INTEGRITY": {
+   "verdict": "PASS",
+   "command": "Read selection_freeze.json + audits/d2_novelty_feasibility_v9.json + proposals/a4_distress_H2.json; line-by-line diff of packet declared fields against research/assets/stocks/v9_family_runner.py, kernel_band_cost_v9.py, v9_e_driver.py, p3_invariants_freeze.json, p2_v9_coverage_first.json",
+   "evidence": {
+    "single_family": "exactly one selected: SFV9-A4-H2, lane a4_distress, 3 arms (ANCHOR/NEIGHBOUR/CONTROL), cells_budgeted 3, budget committed 3 / planned 6 / unused 3 (never reassigned)",
+    "five_blocks_measured": "all five blocked proposals carry measured D2 numbers in audits/d2_novelty_feasibility_v9.json and they match selection_freeze reasons: a4_H1 F1-flow |rho|=0.20010 + Goodwill/Assets -0.22116; a5_H1 Goodwill/Assets -0.20282; a5_H2 WC-stock -0.41332 (own A1) + F1-flow -0.20865 (own A2); a6_H1 F1-flow 0.33901 + Goodwill 0.50384 (date-level pooling basis, upheld by A1 adjudication recorded in selection_freeze); a6_H2 0.33541/-0.72068/0.62074/-0.4852 all >0.20",
+    "packet_vs_code_diff_result": "NO DIVERGENCE found on any score-affecting declared field:",
+    "field_by_field": {
+     "anchor_formula": "packet (RE(v_prior)-RE(v_now)-Cash(v_now))/Assets(v_now), low_long == runner signal_value depletion_runway (lines 314-320) + ARM_SPECS direction",
+     "neighbour_formula": "packet (RE(v_prior)-RE(v_now))/Assets(v_now), low_long == depletion_velocity (lines 314-316)",
+     "control_formula": "packet Cash(v_now)/Assets(v_now), high_long == cash_ratio (lines 321-328); control reproduction rule |c|>=0.5|a| with same sign is extensionally equivalent to the packet's (e) clause since same-direction outperformance implies ratio>=1",
+     "re_pair_guard": "packet 330-400 effective days, fiscal-type match, else UNPOPULATED == FISCAL_GAP_MIN/MAX_DAYS 330/400 on eff dates (line 307-309), never proxied/interpolated",
+     "clocks_800d": "packet 800d bounded at EACH leg's own gate == CLOCK_DAYS=800 passed to asof at decision gate and at the t-252 reference gate (REFERENCE_LAG_SESSIONS=252, global union calendar); unbounded variant unreachable; all three (field,800d) pairs verbatim members of the p2 funded 56-clock set with coverage to the digit (RE .6516/1728, Cash .629/1682, Assets .6553/1745)",
+     "warmup": "packet 4/0/0 on fold 1 == ARM_SPECS warmup_decisions 4/0/0, is_warmup gated to S0_FOLD_1",
+     "universe_legs": "packet ALIVE_EVIDENCED + DEAD_PRICE_CONFIRMED, GAP_COVERAGE(513) and NOT_DEAD_PRICE_SURVIVAL(219) never enter == load_universe() (cohort ALIVE + scan verdict==DEAD_PRICE_CONFIRMED only); universe = 410+1550 = 1960 as D2 measured",
+     "eligibility_floor": "packet >=63 bars + ADV63>=2M (band C or better) + RAW>=1.00 + populated == runner bands/elig loop (i>=62, kernel.band_of != UNTRADABLE, raw>=1.00); band D UNTRADABLE excluded from entries",
+     "sector_terciles": "packet sector-neutral terciles, <6 ranked names abstain, UNMAPPED never guessed, 0.5L/0.5S per active sector, CASH absorbs net, one-decile hysteresis == MIN_SECTOR_NAMES=6, TERCILE=1/3, HYSTERESIS=0.10, target_book/weights_from_book, UNMAPPED/''/None skipped pre-rank",
+     "grid_and_fills": "packet inherited 21-session grid (per-fold local 63+21k), fills at NEXT GLOBAL session close, no same-session fill, folds forced flat WITH cost == GRID_START=63/GRID_STEP=21, fill_d=global_days[gi+1], FOLD_FORCE_FLAT record",
+     "band_costs": "packet A 10/20 x1.0, B 15/30 x1.5, C 25/50 x2.5, D UNTRADABLE == kernel BAND_BPS {10,15,25} x cost_mult {1.0, stress 2.0} -> 20/30/50 stress; identical to the p3-carried V8 table",
+     "gate_table": "packet gates_ex_ante + p3 stage_a_gates_carried_forward == driver evaluate()/extra_gates with defaults equal to the frozen numbers (expectancy_gt 0, pf_ge 1.1, folds_ge 2/3, min_fold_pf_ge 0.8, mdd_le 0.15, risk_matched_folds_ge 2, alpha_gt 0, control_ratio_lt 0.5, etf_positive_share_le 0.35 tighter + packet etf_share_le 0.5, fold_positive_share_le 0.5, stress_positive pnl>0 & pf>=1.0, drop_one_survival, neighbour same-sign support, sampling_floor 0.25); min_populated_fold_pf_ge None-passing semantics verbatim-inherited from v8_e_driver.py",
+     "dead_name_semantics": "p3 PREREGISTERED fill-check / exit-at-last-close / no-resubstitution implemented (void_entry_orders counter; termination branch exits at last recorded close; no successor series anywhere)",
+     "folds": "runner FOLDS == p3_invariants_freeze folds == carried V8 payload (2018-04-04..2020-09-01 / 2020-09-10..2023-02-09 / 2023-02-17..2025-07-24)",
+     "outcome_discipline": "run_arm(dry_run=True) computes structure only; pnl/metrics guarded by `if not dry_run` at every write; no wall-clock field anywhere in records"
+    }
+   }
+  },
+  "3_DATA_AUTHORITY_PIT": {
+   "verdict": "PASS",
+   "command": "shasum -a 256 .staging_sec_v9/multivintage_panel.jsonl; shasum -a 256 V8/.staging_sec_v8/multivintage_panel.jsonl; cmp -n <v8_size> v8 v9; wc -l both panels; 25-file sha256 spot-rehash vs p0d_v9_price_manifest.json; sha256 delisted cache; json walk of p0d_v9_integrity_scan.json + cohort_v9.json; sample rehash of p0a/p0b raw manifests; recompute ledger-embedded price_manifest canonical sha",
+   "evidence": {
+    "panel_v9_rehash": "67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447 == frozen pin (p0c manifest, p3 v9_additions, dry-run ledger); 10,073,069 lines",
+    "panel_v8_rehash": "1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40 == frozen parent prefix pin (run_contract.inherited_hashes, p0c manifest.parent_panel)",
+    "prefix_invariant": "cmp over the first 564,358,483 bytes (exact V8 file size): zero differing bytes before V8 EOF -> the frozen V8 panel is a byte-exact prefix of the V9 panel; row delta 10,073,069-3,817,158 = 6,255,911 == p0c panel_rows_dead_appended exactly",
+    "ledger_input_hashes": "dry-run ledger panel_sha256 == my panel rehash; price_manifest_sha256 a481499cae061d7f... == my recomputation of sha256(canonical json dump of p0d_v9_price_manifest.json) using the driver's own sha256_json recipe",
+    "price_manifest": "2190 entries = 2178 eod/ + 12 benchmarks/; on-disk counts match (ls: 2178 and 12); deterministic 25-file sample (seed 1709) re-hashed: 25/25 match, 0 mismatches",
+    "delisted_cache": ".staging_sec_v9/eodhd_us_delisted.json sha256 bd7d969cf1ff00c1aa81e42ccccb71ef5d7ced3c9bbb4a3c38cf1e8f4792d06b — FULL match (not just prefix) to p0b_v9_delisted_cache_manifest.json; bytes are CSV with the declared header; 59,923 symbols recorded",
+    "integrity_scan_counts": "scan dead_verdicts = 1550 DEAD_PRICE_CONFIRMED + 219 NOT_DEAD_PRICE_SURVIVAL, PRICE_UNAVAILABLE 0, alive_no_pull 0 == claimed 1550/219/0; scan total 1769 == cohort DEAD_EVIDENCED 1769; cohort legs ALIVE_EVIDENCED 410 / GAP_COVERAGE 513 / NOT_DEAD_NAME_ALIVE 19 == P0b claims; universe 410+1550=1960 == D2 input_integrity",
+    "raw_manifest_samples": "p0b_v9_raw_hash_manifest (2302 files): 6-file random sample all match; p0a_v9_death_census_raw_manifest (3447 files): 4-file sample all match",
+    "inherited_authorities": "V6 clock freeze + fundable clocks present in worktree; V8 eodhd_probe_verdict.json present and tracked in the root checkout /Users/hoangminhlong/my-quantitative/research/control/stocks_free_v8_probe/"
+   }
+  },
+  "4_KERNEL_AND_ACCOUNTING": {
+   "verdict": "PASS",
+   "command": "Read kernel_band_cost_v9.py + runner costing paths; sandbox: V9_CONTROL_DIR=/tmp/a7_sandbox2 python -m research.assets.stocks.v9_e_driver '<phrase>' under three key combinations; hash-snapshot of research/control/stocks_free_v9_run before/after; python -m pytest -q tests/assets/stocks/test_v9_kernel.py tests/assets/stocks/test_v9_family_runner.py",
+   "evidence": {
+    "L_I3_fail_closed": "kernel resolve_band_bps raises BandResolutionError on missing name, UNTRADABLE verdict, and unknown band (kernel lines 41-57); the V8 silent 10bps fallback does not exist; run_arm fail-closes up front if the arm's required panel fields are absent entirely",
+    "V9_R1_exit_semantics": "resolve_exit_band_bps: band None or UNTRADABLE -> BAND_BPS['C'] (25) x cost_mult; tradable band -> own band; unknown band raises. Reachable exit paths all use it: reductions (|tgt|<|old| -> exit_cost_bps, runner line 550), dead-name terminations (line 590, resolve_exit_band_bps on held_band), fold force-flat (line 625, on last_bands). Entries/opens/increases use change_cost -> resolve_band_bps (strict) — the entry path and exit path are disjoint by the |tgt|<|old| branch",
+    "linear_once_per_fill": "every charge is abs(dw)*bps*mult/1e4 (linear in traded notional); one charge per name per fill loop; terminations charged once at window accounting and removed from next_exec; fold-flat charged once then book state reset; no sidecar; dry-run records carry cost_bps_paid for structure only",
+    "F_A7T_1": "dry-run counters driver-emitted observed_delta=3 / published_delta=0 with counter_provenance 'driver_emitted (F-A7T-1); publish-time edits forbidden'; kernel driver_ledger_counters raises if published_delta>observed_delta; exhaustive grep of the three modules shows no code path sets published=True or edits counters after the dump; the only artifact writers are main()'s two json.dump calls",
+    "two_key_sandbox": "scored refusals ALL exit non-zero and write NOTHING: (correct phrase, no env) -> exit 1; (correct phrase, V9_LAUNCH_AUTHORIZED=0) -> exit 1; (V9_LAUNCH_AUTHORIZED=1, non-exact phrase with trailing space) -> exit 1; in all three cases no execution_ledger.json / family_verdicts.json created in the sandbox control dir. Refusal is enforced at three layers (driver main, run_scored, run_arm). Real control dir hash-snapshot (30 files) identical before/after all my runs",
+    "targeted_tests": "41/41 PASS (8 kernel + 33 family-runner hand-computed fixtures) in 6.5s",
+    "observation_low": "an equal-magnitude sign reversal (L->S at same |w|) of a held name whose band decayed to UNTRADABLE takes the strict entry path and would crash BandResolutionError — fail-closed (a sanctioned safe-stop), never mis-accounted; unreachable for pure exits which V9-R1 covers"
+   }
+  },
+  "5_DRY_RUN_HYGIENE": {
+   "verdict": "PASS",
+   "command": "Independent recursive token scan over execution_ledger_dryrun.json values and keys; V9_CONTROL_DIR=/tmp/a7_sandbox python -m research.assets.stocks.v9_e_driver --dry-run; structural diff vs committed artifact; sha256 both",
+   "evidence": {
+    "leak_scan": "value-level scan of every JSON string for pnl/expectancy/profit_factor/pf/alpha/sharpe/stress/drawdown/mdd/sum_pnl/fold_pnl/stress_sum: zero outcome values. Only key-name occurrences are the four sanctioned real_pnl sanitized flags (all false). One benign negated mention recorded: producer_role string 'outcome-blind, no PnL computed' contains the token 'pnl' in negation — not an outcome value (LOW, recorded for A1)",
+    "rerun_byte_identity": "my independent re-run at HEAD 17e70ac exits 0; raw-file sha256 334f2d9d... differs from the committed b8d1be241956baf6284a2d4a3cacfafbe13191d8a5e613aecedb33648021b915 in EXACTLY 4 fields, all the by-design code_freeze_sha git-head provenance (committed artifact embeds 573d71c because the successful dry-run was executed with HEAD=573d71c plus the remediation in the working tree, then committed as 17e70ac). After patching code_freeze_sha to the embedded value the re-run is BYTE-IDENTICAL to the committed artifact (verified True). This simultaneously proves the V9-R1 remediation changed zero dry-run-visible bytes on this dataset",
+    "sampling_floor_reproduces": "median_populated_frac 0.762931 vs threshold 0.25 -> PASS (margin 0.513), decisions_measured 75 — identical to committed artifact and q_dryrun_evidence",
+    "non_vacuity_reproduces": "nv_scored_decisions_overall_ge 75>=30 PASS; nv_scored_decisions_per_fold_ge 22>=5 PASS; nv_noncash_legs_per_decision_ge 199>=1 PASS; record_ids_pairwise_distinct true; cells ANCHOR/NEIGHBOUR/CONTROL 79/79/79 decisions, void entries 9/8/10, terminations 277/280/307 — all identical",
+    "sanitized_flags": "scored=false, real_pnl=false, published=false, go_phrase_observed=null, launch_flag_observed=false"
+   }
+  },
+  "6_S1_AND_BOUNDARIES": {
+   "verdict": "PASS",
+   "command": "git ls-files | grep -i staging; cat .gitignore; git check-ignore -v; git for-each-ref refs/remotes/origin/orca/stocks-free-v9-integration; git grep -nI 'EODHD_API_KEY|api_token'; live-key grep of the full tracked tree against repo-root .env; grep S1 across V9 control+code",
+   "evidence": {
+    "s1_sealed": "the only S1 references in V9 artifacts are SEALED_UNTOUCHED (run_contract, state), 'locked for future S1' (allowed terminal outcome), and 'does not authorize: S1' (owner_go_intent); no artifact or code path opens S1",
+    "no_raw_bytes_tracked": "git ls-files staging matches only unrelated historical filenames (v1 audit manifests, a v3 test helper) — zero V9 raw data tracked; .gitignore lines 34/36 cover .staging_sec_v9/ and .staging_prices_v9/ (check-ignore confirms); .env ignored",
+    "no_push": "current branch orca/stocks-free-v9-integration has NO refs/remotes/origin counterpart (for-each-ref empty); remote list confirms the branch was never pushed",
+    "no_key_material": "all EODHD_API_KEY / api_token literals in tracked files are env-loading code, redaction regexes, manifest URLs with api_token=REDACTED, or tests asserting redaction; the live key value (23 chars, read locally from the repo-root .env, never printed) appears in 0 tracked files (git grep -F over the whole tree)"
+   }
+  },
+  "7_DENOMINATOR_SEED": {
+   "verdict": "PASS",
+   "command": "Read state.json counters; selection_freeze budget; heartbeat.json",
+   "evidence": {
+    "v9_counters": "state.json v9_observed 0 / v9_published 0 / budget_used 0 of planned 6 — correct E-phase seed (nothing scored has ever run)",
+    "budget_commitment": "selection_freeze budget committed 3 / planned 6 / unused 3 (never reassigned); heartbeat confirms 'SFV9-A4-H2 x 3 arms frozen; budget 3/6'; run_contract froze 0/6 of 6 planned max",
+    "program_carry": "stocks_program_prior 27/27 and program_wide_prior 182 published / 185 observed carried in state.json, matching the V8 terminal (27/27 cells, program 182/0 survivors)",
+    "note_low": "state.json 'phase' label is stale (P0B_COHORT_RECONCILIATION, updated 2026-09-05T14:55) and heartbeat phase says I_IMPLEMENTATION — the COUNTERS are correct and are the seed; A1 should refresh the phase labels at E open. Cannot change any verdict-relevant number"
+   }
+  },
+  "8_INPUT_ASSUMPTIONS_P1_SWEEP": {
+   "verdict": "PASS",
+   "command": "Cohort provenance fields (dead_join_rule, sector_rule, sic_sector_map 157 entries), p0b delisted-cache manifest, p0d integrity-scan rule text, driver data-root resolution (V9_REPO_ROOT), staged-byte inventory",
+   "evidence": {
+    "EVIDENCED": [
+     "panel/prices/benchmarks/delisted-cache/census raw bytes: sha256-verified this audit (item 3)",
+     "death filings existence and dates: EDGAR archive bytes with manifests (p0a), canaries verified by A1 and re-traceable to staged bytes",
+     "per-name price-death reconciliation: integrity scan rule (last trade within +/-120d of evidenced death filing date) evaluated per dead name — 1550 confirmed on staged bytes",
+     "price authority lineage: V8 eodhd_probe_verdict.json (tracked, root checkout) + 12 benchmarks re-staged byte-verified against the V8 manifest"
+    ],
+    "DERIVED_declared_rule_measured": [
+     "EODHD symbol join: normalized-name equality with declared suffix-stripping, no fuzzy scores, multi-ambiguity -> first Code with method recorded (cohort dead_join_rule); validated per-member by the +/-120d price-death reconciliation; 219 joins that survived price-wise were excluded (NOT_DEAD_PRICE_SURVIVAL) — the join is not taken on faith",
+     "SIC->SPDR sector map: majority-derived from the hash-verified V8 alive panel (157 SIC entries); unseen/tied SICs -> UNMAPPED, never guessed; runner abstains UNMAPPED names and <6-name sectors — residual mis-tagging risk is bounded by sector-neutral construction and does not touch anchor ranks",
+     "form-bucket labels (12B/12G class-termination taxonomy): metadata derived from filing class-table text under the declared v4 rule (M-I1 appendix); the priced dead leg does not depend on the label — it depends on the evidenced filing date + price-death check",
+     "'t minus 252 sessions' read on the global union calendar and fold-1-only warmup: DERIVED from packet text + V8 F1 precedent + D2's independent reimplementation reaching the same constructions"
+    ],
+    "ASSERTED": [
+     "EODHD subscription active at scored time: NOT load-bearing — scored execution reads staged, hash-verified bytes only (driver data roots resolve to .staging_*; no network call exists in v9_e_driver/v9_family_runner); subscription matters only for re-pulls after data loss",
+     "residual dead-leg mis-join risk (a wrong entity whose price death coincidentally lands +/-120d of the filing date): irreducible from staged bytes; bounded by 1550/1769 confirmations and the recorded 513 GAP_COVERAGE / 219 survival exclusions; recorded, accepted, non-blocking"
+    ],
+    "conclusion": "no ASSERTED item is load-bearing for the scored launch itself; all load-bearing inputs are staged bytes hash-pinned this audit"
+   }
+  },
+  "9_V9_R1_DELTA": {
+   "verdict": "PASS",
+   "command": "git diff 573d71c 17e70ac -- research/assets/stocks/ tests/; read tests/assets/stocks/test_v9_kernel.py; rerun dry-run byte comparison",
+   "evidence": {
+    "minimal": "+24 kernel lines (resolve_exit_band_bps + exit_cost_bps), 12 runner lines rewiring three exit charge sites, +1 kernel test; no change to specs, folds, grid, gates, band table, eligibility, or any arm formula",
+    "conservative_direction": "unrateable exits move from (pre-fix) hard crash on the entry path or the V8-class silent cheap fallback to the C-rate ceiling 25 x multiplier; overstated cost cannot create a Stage-A survivor; strictly monotone in the falsifying direction; matches the in-cycle preregistered convention for unrateable terminal exits (A6 packet, wave 86fecae); entries remain strict hard errors",
+    "tested": "test_exit_band_untradable_or_missing_ceiling_V9_R1 present in tests/assets/stocks/test_v9_kernel.py; targeted suite 41/41 PASS; dry-run output proven byte-invariant under the change on the real dataset (item 5)",
+    "refreeze_verdict": "NOT REQUIRED as a separate act: the remediation is INSIDE the audited HEAD (17e70ac), was committed before any scored PnL existed (trigger was the first real dry-run failing closed — the designed behavior), is recorded in q_dryrun_evidence_v9.json with rationale and tests, and this audit covers it line by line. Recorded nuance: the frozen packet's literal L-I3 sentence ('BandResolutionError on a traded name without a computed band') is applied to entries strictly and to exits via this documented conservative exception — an authored, preregistered-direction deviation with in-cycle authority, not a post-hoc gate change"
+   }
+  }
+ },
+ "findings_non_blocking": [
+  {"id": "A7-L1", "severity": "LOW", "item": 5, "text": "Cross-HEAD dry-run reproduction is byte-identical only after patching the 4 by-design code_freeze_sha provenance fields (git head embedded at run time). A1's 'byte-identical x2' claim is verified within-state; A1 should record the provenance-patch recipe for future cross-HEAD reproductions."},
+  {"id": "A7-L2", "severity": "LOW", "item": 5, "text": "Leak scan: producer_role contains the negated token 'PnL' ('no PnL computed'). Not an outcome value; zero outcome tokens otherwise. Reword at the next artifact version or record the standing exception."},
+  {"id": "A7-L3", "severity": "LOW", "item": 7, "text": "state.json phase label (P0B) and heartbeat phase (I_IMPLEMENTATION) are stale relative to Q-complete; counters are correct. Refresh at E open."},
+  {"id": "A7-L4", "severity": "LOW", "item": 4, "text": "Equal-|w| sign reversal of a held name with a decayed band takes the strict entry path -> BandResolutionError (fail-closed crash, sanctioned safe-stop; cannot mis-account). Optional future hardening, no scored-run dependency."},
+  {"id": "A7-L5", "severity": "LOW", "item": 1, "text": "d1_proposal_hashes.lane_commits reference lane branch heads outside the integration ancestry (cherry-pick integration). Closed by byte-identity of pinned proposal blobs to both lane commits and integration-tree files; provenance intact."},
+  {"id": "A7-L6", "severity": "LOW", "item": 8, "text": "Residual dead-leg mis-join risk from name-equality joining is irreducible from staged bytes (mitigated by per-member +/-120d price-death reconciliation, 1550/1769; 219 survival exclusions; 513 gaps recorded). Accepted; relevant only to dead-leg interpretation, not to authorization mechanics."}
+ ],
+ "resource_accounting": {
+  "full_pytest": "NOT_RUN (A1's job per dispatch; q_dryrun_evidence records 2174 passed / 5 skipped)",
+  "targeted_tests": "41/41 PASS (test_v9_kernel.py + test_v9_family_runner.py)",
+  "heavy_io": "two 1.5GB/0.56GB panel sha256 passes, one cmp prefix pass, one full dry-run re-run (~3 min), three refusal probes (fast-fail); artifacts under /tmp only; zero bytes modified in the repo",
+  "state_restored": "research/control/stocks_free_v9_run/ hash-snapshot (30 files) identical before/after all auditor actions; sandbox ledgers in /tmp/a7_sandbox*, untracked"
+ },
+ "launch_mechanics_note": "This artifact constitutes the A7 key only. The two-key design stands: scored execution additionally requires a FRESH exact owner phrase 'GO STOCKS V9 SCORED EXECUTION' with V9_LAUNCH_AUTHORIZED=1 set by A1; owner_go_intent.json correctly remains STANDING_CONDITIONAL_INTENT_PER_P8 / UNCONSUMED and must not be treated as the second key.",
+ "verdict": "STOCKS_FREE_V9_S0_LAUNCH_AUTHORIZED",
+ "blockers": []
+}
