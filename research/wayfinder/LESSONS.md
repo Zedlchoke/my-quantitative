@@ -198,8 +198,13 @@ Cite: `research/wayfinder/FAMILY_PIPELINE.md` §8.1 and §11.
 
 ## Related program-level records
 
-- Falsification-by-control cluster (7 instances, V11→V5):
-  `HYPOTHESIS_LEDGER.md` §E.2.
+- Falsification-by-control cluster (13 instances, V11→V7; latest: forex V7
+  sham reproduces spillover anchor #12, stocks V11 shuffled-chain reproduces
+  cadence-latency alpha 1.2042x #13): `HYPOTHESIS_LEDGER.md` §E.2.
+- P-11 first delivery (forex V7, 2026-09-07): DSR computed at terminal from
+  the driver-persisted per-period series (N=39) — the diagnostic
+  persistability gate turned a NOT_RUN class into a computed statistic on
+  its first adopted forex cycle.
 - Economic observation "policy-carry present under honest availability,
   contract-invalidated" (PF 1.2825 / +20.72 per trade under corrected books;
   front-door re-entry open in a future preregistered plan): recorded in the

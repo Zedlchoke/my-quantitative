@@ -1,6 +1,47 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced by A2, 2026-08-25, branch orca/v7-a2-closure)
+## Sprint state (synced by the Lead, 2026-09-08 morning)
+
+- **FOREX V7 CLOSED → `FOREX_FREE_V7_REJECT_ALL`** (closed 2026-09-07
+  20:32 VN, branch `orca/forex-free-v7-integration`, terminal `f59ea0c` +
+  closeout `efb9601`) — the cross-economy spillover cycle. Both families
+  mechanically negative AND control-killed: FXFV7-A4-P1 anchor −4.026/trade
+  (PF 0.9088) with **falsification-by-control #12 — the +7d sham reproduces
+  the anchor once the reaction window is closed before entry (F-A7-PL-1
+  remediation): cross-economy conditioning carries no incremental
+  information; together with V6 (own-economy, sham-NEGATIVE) the whole
+  reaction-direction class is closed**. FXFV7-A6-P2 lead-lag −8.410/trade
+  with the own-lag control out-earning the anchor (negative information).
+  Budget 6/6; reproduction whole-file byte-identical (twin @ea905c8, ledger
+  sha 1a82118b…); **first forex DSR from persisted per-period series
+  (N=39, all ~0; P-11 gate delivering)**; A7 prelaunch arc R1 REFUSED
+  (CRITICAL lookahead) → R3 AUTHORIZED → owner fresh GO; heavy lock waited
+  out the V16 extraction (90 attempts). Forex 39/39. Detail:
+  `.worktrees/forex-free-v7/integration/research/control/forex_free_v7_run/terminal_verdict_v7.json`.
+
+- **STOCKS V11 CLOSED → `STOCKS_FREE_V11_REJECT_ALL`** (closed 2026-09-07
+  22:49 VN, branch `orca/stocks-free-v11-integration@9d3a061`) — the
+  filing-event/amendment-process cycle. The MANDATORY filing-event lane
+  died measured at D2 (novelty 0.219/0.2192 vs momentum_63s); the single
+  scored family SFV11-A5-H1 (amendment cadence-latency book)
+  FALSIFIED_BY_CONTROL — anchor fails 7 gates and the shuffled-chain
+  control reproduces its alpha 1.2042x same sign (**cluster #13**:
+  cadence-latency spread is an exposure-shape artifact, not process
+  information). A7 terminal CONFIRM 10/10 from bytes (0 HIGH/CRITICAL);
+  reproduction ALL_MATCH byte-equal both files (twin @aac07d9); budget 3/6,
+  3 slots dead forever; two-key arc incl. an A7 v1 REFUSED on an undisclosed
+  push (INC-V11-4, resolved disclosed-owner-directed). Stocks 39/39. Detail:
+  `.worktrees/stocks-free-v11/integration/research/control/stocks_free_v11_run/terminal_report.json`.
+
+- **Program totals after both closes (ledger authority, P-9): 227 published
+  / 230 observed, 0 survivors, S1 SEALED everywhere** (crypto 149/152,
+  stocks 39/39, forex 39/39). Failure registry 53 entries --verify PASS.
+
+- **CRYPTO V16 ACTIVE — two-key complete 2026-09-08 07:35 VN** (owner typed
+  the exact `GO CRYPTO V16 SCORED EXECUTION` after A7
+  `CRYPTO_V16_S0_LAUNCH_AUTHORIZED`; an earlier attempt failed the frozen
+  form gate — missing "GO " — and was correctly refused). Scored cells next
+  under the machine-wide heavy lock.
 
 - **FOREX V6 CLOSED → `FOREX_FREE_V6_REJECT_ALL`** (closed 2026-09-07,
   branch `orca/forex-free-v6-integration@4d81dcd`) — the direction-conditioned
