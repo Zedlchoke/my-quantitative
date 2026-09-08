@@ -1,0 +1,18 @@
+{
+ "schema": "v17_run_artifact_v1",
+ "artifact": "smoke_reconcile_v1_calibration",
+ "generated_utc": "2026-09-08T01:55:00Z",
+ "purpose": "evidence for the v1->v2 freeze tolerance remediation (handbook 22.1, pre-scoring; zero outcomes exist)",
+ "smoke_scope": "ETHUSDT 2026-05 (31 days) vs V16 panel, frozen v1 tolerances",
+ "v1_result": "2 tolerance FAILs on otherwise EXACT reconciliation (trade_count/first_ts/last_ts exact 31/31; last/high/low_price exact float equality 31/31)",
+ "measured_noise": {
+  "total_qty_max_abs_diff": 1.38795e-05,
+  "total_notional_max_abs_diff": 0.0400009,
+  "vwap_max_abs_diff": 1.97024e-08,
+  "flow_imbalance_max_abs_diff": 4.95414e-09,
+  "avg_trade_size_max_abs_diff": 4.88368e-09,
+  "interarrival_mean_s_max_abs_diff": 4.20059e-05
+ },
+ "root_cause": "v1 tolerances were derived from per-hour CSV rounding bounds ONLY, omitting double-precision accumulation-order noise (V16 sums ~1M rows in row order; V17 sums 24 hourly parts) - noise is signed-random, ~N x ulp(running sum)/2 bounded, 100x the rounding term; additionally the rel tolerance term is meaningless for near-zero-magnitude fields (interarrival_mean_s ~0.05 s makes rel 1e-8 an effective exact-equality gate)",
+ "not_a_data_bug_because": "every exact field (counts/timestamps/price selections) matched exactly on all 31 days; every failing diff is 5+ orders below any real defect signature (polarity flip O(1), hour-bucketing off-by-one O(day/24) on counts which are exact)"
+}

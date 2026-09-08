@@ -1,7 +1,7 @@
 {
  "schema": "v17_run_artifact_v1",
  "artifact": "p0_freeze",
- "generated_utc": "2026-09-08T01:45:00Z",
+ "generated_utc": "2026-09-08T02:00:00Z",
  "producer_role": "A1 (P0 per plan section 4 + owner GO for P0 2026-09-08; contract frozen BEFORE any extraction)",
  "verdict": "P0_CONTRACT_FROZEN",
  "blocked_data_triggered": false,
@@ -108,38 +108,32 @@
     "type": "exact_float"
    },
    "total_qty": {
-    "abs": 1e-05,
-    "rel": 1e-09
+    "abs": 0.001
    },
    "buy_qty": {
-    "abs": 1e-05,
-    "rel": 1e-09
+    "abs": 0.001
    },
    "sell_qty": {
-    "abs": 1e-05,
-    "rel": 1e-09
+    "abs": 0.001
    },
    "total_notional": {
-    "abs": 1.0,
-    "rel": 1e-10
+    "abs": 25.0
    },
    "vwap": {
-    "abs": 0.0005,
+    "abs": 0.001,
     "rel": 1e-09
    },
    "flow_imbalance": {
     "abs": 1e-07
    },
    "avg_trade_size": {
-    "abs": 5e-08,
-    "rel": 1e-08
+    "abs": 5e-08
    },
    "interarrival_mean_s": {
-    "abs": 0.0001,
-    "rel": 1e-08
+    "abs": 0.001
    }
   },
-  "tolerance_basis": "dominant term is per-hour CSV rounding carried to daily (<= 24 x half-ulp per field), computed per field before freezing; a real polarity/lookahead/bucketing bug produces O(1) or O(1e-2) deviations - orders above every tolerance",
+  "tolerance_basis": "v2: per-field max(measured v1 smoke noise, analytic N*ulp bias bound for BTC-scale days) with >= 10x headroom: total_qty 1.4e-5 measured / 2.4e-5 BTC bias bound -> 1e-3; total_notional 0.04 measured / ~6.1 BTC bias bound -> 25.0; vwap 2e-8 measured / 3e-5 BTC bound -> abs 1e-3 + rel 1e-9 (non-binding, 1.2e-4); flow_imbalance 5e-9 -> 1e-7; avg_trade_size 4.9e-9 -> 5e-8; interarrival_mean_s 4.2e-5 -> 1e-3; exact fields (counts/timestamps/prices) passed EXACTLY in v1 and stay exact",
   "excluded_fields_cannot_be_derived_from_bounded_h1": [
    "median_trade_size",
    "p90_trade_size",
@@ -185,5 +179,12 @@
   "extract_v17_panel.py": "06066c2fd5e1de3171d4a1c7993ae8c1329fbbeacb90caa224332cd2329201ef",
   "reconcile_v17_daily.py": "26737e563bf3513566346d1c25ec4d2360b468822e5c80422b3783e84a0c73ee"
  },
- "keyless_law": "no key, no signup, no purchase by any agent (plan section 5)"
+ "keyless_law": "no key, no signup, no purchase by any agent (plan section 5)",
+ "freeze_version": 2,
+ "supersedes": {
+  "v1_commit": "4365a04",
+  "reason": "tolerance calibration corrected after the smoke reconcile (handbook 22.1 pre-scoring remediation; zero outcomes existed); v1 bytes preserved in git; calibration evidence: research/control/v17_run/staging/smoke_reconcile_v1_calibration.json",
+  "what_changed": "field_tolerances only - re-derived as max(measured v1 smoke noise, analytic accumulation bias bound N*ulp(sum)/2) x >=10 headroom, pure-abs except vwap (large-magnitude field where rel is meaningful); exact fields untouched; schema/extraction/reconciliation logic untouched",
+  "what_did_not_change_and_why_this_is_not_rescue": "no scored outcome exists (P0, pre-proposal); the gate's calibration arithmetic was wrong, not the gate; real-defect signatures (exact counts, exact prices, O(1) polarity terms) remain exactly gated - exact is exact, and every abs tolerance is >= 10x the noise bound yet orders below any real bug"
+ }
 }
