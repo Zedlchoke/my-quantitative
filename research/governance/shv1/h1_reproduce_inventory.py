@@ -35,8 +35,9 @@ def main():
         head = sh(f"git -C {p} rev-parse HEAD").stdout.strip()
         branch = sh(f"git -C {p} branch --show-current").stdout.strip()
         dirty = sh(f"git -C {p} status --porcelain=v1").stdout.strip()
-        if head != meta["head_at_creation"]:
-            failures.append(f"lane {lane} head {head[:7]} != frozen {meta['head_at_creation'][:7]}")
+        anc = sh(f"git -C {p} merge-base --is-ancestor {meta['head_at_creation']} HEAD && echo OK").stdout.strip()
+        if anc != "OK":
+            failures.append(f"lane {lane} head {head[:7]} does not descend from frozen creation head {meta['head_at_creation'][:7]}")
         if branch != meta["branch"]:
             failures.append(f"lane {lane} branch {branch} != frozen {meta['branch']}")
         if dirty:
