@@ -8,10 +8,25 @@ thiếu -> `KHÔNG CÓ DỮ LIỆU`, không bao giờ suy diễn.
 
 from __future__ import annotations
 
+import base64
 import html as _html
 import json
+from pathlib import Path
 
 NO_DATA = "KHÔNG CÓ DỮ LIỆU"
+
+
+def _logo_html() -> str:
+    """Logo chủ lab (dashboard_logo.png cạnh module này), nhúng base64
+    để HTML giữ tính tự chứa (không mạng). Thiếu file -> không render,
+    không lỗi."""
+    try:
+        b64 = base64.b64encode(
+            (Path(__file__).with_name("dashboard_logo.png")).read_bytes()
+        ).decode("ascii")
+    except OSError:
+        return ""
+    return f'<img class="logo" alt="logo" src="data:image/png;base64,{b64}"/>'
 
 _CSS = """
 :root{--bg:#0f1216;--card:#171c23;--card2:#1d242e;--fg:#e8ecf1;--mut:#8b98a8;
@@ -21,6 +36,9 @@ body{margin:0;background:var(--bg);color:var(--fg);
 font:14px/1.5 -apple-system,'SF Pro Text','Segoe UI',Roboto,sans-serif;
 padding:20px 24px 60px}
 h1{font-size:22px;margin:0 0 2px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{height:56px;width:auto;border-radius:12px;
+box-shadow:0 0 0 1px var(--line)}
 h2{font-size:16px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 h3{font-size:13px;margin:14px 0 6px;color:var(--acc)}
 .sub{color:var(--mut);font-size:12px}
@@ -376,7 +394,7 @@ def render(s: dict) -> str:
 <html lang="vi"><head><meta charset="utf-8">
 <title>Lab Dashboard</title><style>{_CSS}</style></head>
 <body>
-<h1>LAB DASHBOARD</h1>
+<div class="brand">{_logo_html()}<div><h1>LAB DASHBOARD</h1></div></div>
 <div class="sub">measured_at: <span class="num">{esc(s['measured_at'])}</span>
 · root: <code>{esc(s['root'])}</code> · Công cụ cho chủ sở hữu — KHÔNG phải
 research cycle; mọi số truy được artifact, thiếu = {NO_DATA}.</div>
