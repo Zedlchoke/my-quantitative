@@ -1,0 +1,120 @@
+{
+ "schema": "stocks_free_v13_run/p0_census_contract@1",
+ "frozen_at_utc": "2026-09-08T14:23:18Z",
+ "frozen_by": "A1_STOCKS_V13 (per plan sec4-P0: contract frozen BEFORE bulk ingest and BEFORE any counting)",
+ "s0_decision_grid": {
+  "authority": "research/control/stocks_free_v6_run/p0a_coverage_census.json decision_dates (inherited, byte-identical)",
+  "dates": [
+   "2018-04-04",
+   "2018-07-03",
+   "2018-10-02",
+   "2019-01-03",
+   "2019-04-04",
+   "2019-07-05",
+   "2019-10-03",
+   "2020-01-03",
+   "2020-04-03",
+   "2020-07-06",
+   "2020-09-10",
+   "2020-12-09",
+   "2021-03-12",
+   "2021-06-11",
+   "2021-09-10",
+   "2021-12-09",
+   "2022-03-11",
+   "2022-06-10",
+   "2022-09-12",
+   "2022-12-09",
+   "2023-02-17",
+   "2023-05-19",
+   "2023-08-21",
+   "2023-11-17",
+   "2024-02-21",
+   "2024-05-21",
+   "2024-08-21",
+   "2024-11-19",
+   "2025-02-24",
+   "2025-05-23"
+  ],
+  "fold_partition_ex_ante": "date-ordered thirds: fold1 = dates[0:10], fold2 = dates[10:20], fold3 = dates[20:30]",
+  "acceptance_window_for_bookable": "acceptance datetime in (previous_decision_date, decision_date]; first date lower bound = 2018-01-01 (grid start open)"
+ },
+ "universe": {
+  "cohort": "cohort_v9.json sha256 6a95401ff84bff2144ac3c0b9426a6fa86daf3dde8d478195666249e3fa2aa62",
+  "bookable_members": "ALIVE_EVIDENCED (410) + DEAD_EVIDENCED (1769) = 2179 filer-entities with a priced leg",
+  "excluded": "GAP_COVERAGE (513, no price leg) and NOT_DEAD_NAME_ALIVE (19, guard duplicates)"
+ },
+ "p0a_form4_channel_contract": {
+  "channel": "SEC EDGAR submissions JSON data.sec.gov/submissions/CIK{10}.json - keyless, declared UA 'Research my-quantitative@example.com', <=10 req/s house cap (2.0s spacing used), WAF respected (V9 lesson); raw bytes local-only gitignored, sha256 manifest committed",
+  "form4_identity": "filings.recent.form == '4' (plus paginated older files when the recent-1000 slice truncates the S0 window: TRUNCATION_FLAG rule below)",
+  "pit_authority": "acceptanceDateTime (filing acceptance timestamp) - the announcement-ledger house standard; P-1: no asserted lags; filingDate used only as date-only fallback if acceptanceDateTime absent (0 occurrences measured in pre-check)",
+  "xsl_resolution_rule_frozen": "submissions primaryDocument may point at the XSL-rendered wrapper (xslF345X03/...); the RAW document is resolved via the filing index.json (e.g. form4.xml); implementation MUST parse the raw XML only",
+  "form4_xml_parse_contract_frozen_before_bulk_ingest": {
+   "required_elements": [
+    "nonDerivativeTable",
+    "derivativeTable",
+    "transactionDate",
+    "transactionCode",
+    "transactionAcquiredDisposedCode",
+    "transactionShares/transactionAmounts",
+    "rptOwnerName",
+    "rptOwnerRelationship (isDirector/isOfficer/isTenPercentOwner)",
+    "issuerCik",
+    "documentType"
+   ],
+   "derivative_vs_nonderivative": "parsed into SEPARATE streams; conditioning on non-derivative open-market buys/sells (A/D code G) is the primary observable; derivative-table entries recorded but not primary",
+   "direction": "transactionAcquiredDisposedCode value A=buy D=sell; missing code or value '.' = FAIL-CLOSED row (excluded from conditioning, counted in defect table)",
+   "size_class": "ex-ante buckets on transactionShares value: <1k, 1k-10k, 10k-100k, >=100k (frozen now; CMP routine-vs-opportunistic lineage is the proposal stage's job on these buckets)",
+   "identity": "reporting owner = rptOwnerCik if present else normalized rptOwnerName + issuer CIK; entity = issuer CIK (cohort member)",
+   "malformed": "any XML missing a required element => row FAIL-CLOSED to defects, never guessed"
+  },
+  "truncation_flag_rule": "if filings.recent oldest filingDate > 2018-04-04 and filings.files non-empty => entity flagged TRUNCATION_SLICE; census counts reported as slice-bounded LOWER bounds for flagged entities; exact older-page backfill is an implementation-stage duty under the lock",
+  "dead_source_cache": ".worktrees/stocks-free-v9/integration/.staging_sec_v9/submissions_dead (2301 files, fetched post-window 2026-09-05; cache manifest sha256 list committed with census; dead filers stop filing at death so cache is terminal-complete for S0)",
+  "alive_source": "fresh fetch of 410 alive CIKs under the machine-wide heavy lock (V17 holds; bounded waiter, NOT_RUN_RESOURCE_CONFLICT discipline, never contention)"
+ },
+ "p0a_canary_protocol_p7": {
+  "principle": "a living-only Form-4 channel is survivorship-biased and DIES AS A CHANNEL (P-7); dead entities MUST appear with identical semantics to living ones",
+  "dead_canary_set": "12 dead members with pre-death Form-4 activity: 4 famous (TWITTER 1418091, ACTIVISION 718877, ALEXION 899866, ACETO 2034) + 8 drawn deterministically (sorted-by-CIK every 147th of dead-with-Form4 list) at run time - live re-fetch, ALL must return HTTP 200 with >=1 Form-4 present",
+  "never_existed_controls": {
+   "ciks": [
+    "CIK0009999990",
+    "CIK0009999991"
+   ],
+   "expect": "HTTP 404 (identical absence semantics; dead != never-existed)"
+  },
+  "living_controls": {
+   "ciks": [
+    "CIK0000001800 ABBOTT",
+    "CIK0000078003 PFIZER"
+   ],
+   "expect": "HTTP 200 with dense in-window Form-4"
+  },
+  "kill_rule": "any dead canary 404/absent => channel survivorship-biased => P0a verdict BLOCKED_DATA (lane 1 dies in P0)"
+ },
+ "p0a_decision_floor_ex_ante": {
+  "statement_rule": "floor stated from census-design principles BEFORE counting; a catastrophic-under-coverage bar, not a fine discriminator (V6 floor precedent)",
+  "bookable_pair": "(entity in bookable universe, decision date D) with >=1 Form-4 acceptance in (prev(D), D]",
+  "floor": {
+   "distinct_entities_with_1pair_min": 250,
+   "total_bookable_pairs_min": 1500,
+   "dead_share_of_pairs_min": 0.03,
+   "per_fold_pairs_min_each": 250
+  },
+  "verdict_rule": "all four => FUNDABLE; any miss => BLOCKED_DATA_OR_SELECTION cheap close per plan sec2"
+ },
+ "p0b_macro_repin_contract": {
+  "series": [
+   "DFII10",
+   "T10YIE",
+   "DGS10"
+  ],
+  "evidence": "FOREX-V8 staged_vintaged_manifest.json pins (staged 2026-09-08T03:00:42Z; V8 P0 verdicts 13 PASS_PIT_EVIDENCED after dense map + revision scan + mutation 7/7)",
+  "method": "fresh GET fred/series/observations realtime_start=2018-01-01 realtime_end=2025-08-01 file_type=json under owner FRED key (environment-only, never printed/committed), normalize json.dumps(sort_keys=True), sha256 byte-compare vs pins",
+  "kill_rule": "ANY byte drift => vintaged archive rewritten => lane 2 DIES in P0 (plan sec2)",
+  "key_handling": ".env FRED_API_KEY; no key material in any artifact/log/commit"
+ },
+ "governance": {
+  "heavy_lock": "alive-fetch + any older-page backfill under machine-wide lock; lock currently held by CRYPTO-V17 (respected)",
+  "publish": "both censuses publish BEFORE D1 (plan sec4-P0)"
+ }
+}
