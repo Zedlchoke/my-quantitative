@@ -4,8 +4,9 @@ Read the LIVE plan of the cycle you serve (highest version per asset in
 `plans/`): crypto `PLAN_crypto_v17.md` (ACTIVE_LIGHT — A1 bootstrapped
 2026-09-08 `ff33929`, P0 pending), stocks `PLAN_stocks_v12.md`
 (ACTIVE_LIGHT — A1 bootstrapped 2026-09-08 `02b4ac2`, P0 lane running),
-forex `PLAN_forex_v8.md` (awaiting owner dispatch). Both live A1s HARD
-STOP at their two-key P-8 gates. This file is a derived checkpoint, not
+forex `PLAN_forex_v8.md` (ACTIVE_LIGHT — A1 bootstrapped 2026-09-08
+`fc259c7`, P0 FRED/vintage audit in scope). All three live A1s HARD STOP
+at their two-key P-8 gates. This file is a derived checkpoint, not
 an authority. Two A1 threads share the machine: heavy phases queue under
 the machine-wide lock (NOT_RUN_RESOURCE_CONFLICT, never contention); root
 commits are atomic single-purpose pathspec only (P-10).
