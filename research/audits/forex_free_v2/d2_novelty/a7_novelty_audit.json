@@ -1,0 +1,227 @@
+{
+  "schema": "forex_free_v2_a7_novelty_audit_v1",
+  "cycle": "FOREX-FREE-V2",
+  "phase": "F2-D2",
+  "auditor": "A7-N (independent novelty auditor; audit-only, no repairs)",
+  "measured_at_utc": "2026-09-04T03:17:36Z",
+  "base_sha": "24c7230",
+  "base_sha_full": "24c72306cb3724328061e398372c0cf88898b600",
+  "branch": "orca/forex-free-v2-a7-novelty",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/d2-a7-novelty",
+  "attestation": "audit-only, no repairs, no PnL computed",
+  "auditor_access_note": "Unlike the proposal agents, A7-N is authorized to read the full V1 evidence: forbidden_family_inventory.json, PLAN_forex_v2.md section 1, research/control/forex_free_v1_run/* (state.json, scored_ledger_published.jsonl, selection_freeze.json, w1_freeze.json), research/assets/forex_free_v1/family1.py and family2.py, research/proposals/forex_free_v1/*, and the V1 novelty audit (research/audits/forex_free_v1/f4_novelty/a7_f4_audit.json). All were read and used.",
+
+  "forbidden_set_verified": {
+    "family1_london_open_continuation": {
+      "spec": "FXFV1-A3-P1; research/assets/forex_free_v1/family1.py read by A7-N",
+      "mechanism": "unconditional sign of 3-bar post-open momentum (c3/c0-1) anchored at 08:00 Europe/London (NY-open neighbour), entry fill at the 12:00 London bar close, flatten at the bar ending 16:00 New York",
+      "v1_outcome": "anchor expectancy -2.3526674, PF 0.8489389, 11459 trades, EXPECTANCY_NONPOSITIVE (scored_ledger_published.jsonl matches forbidden_family_inventory.json)",
+      "forbidden_variants": ["NY-open nearby-clock continuation", "session relabeling", "sign inversion", "threshold/lookback neighbourhood rescue"]
+    },
+    "family2_late_ny_standardized_extension_fade": {
+      "spec": "FXFV1-A3-P2; research/assets/forex_free_v1/family2.py read by A7-N",
+      "mechanism": "fade of the vol-standardized same-day move measured from the NY-open reference after exactly 4 NY-session H1 bars when |z|>=1.0 (sigma20), entered at the 13:00 NY bar close, flat at the 16:00 NY bar; Tokyo-open neighbour arm is the session-relocated instantiation of the same fade mechanism (its V1 cell was also scored and rejected: expectancy -2.7196, PF 0.8874, 142 trades)",
+      "v1_outcome": "anchor expectancy -2.8956520, PF 0.6375628, 1020 trades, EXPECTANCY_NONPOSITIVE (ledger matches inventory)",
+      "forbidden_variants": ["nearby threshold variants", "nearby horizon variants", "sign inversion", "lower assumed fees"]
+    },
+    "known_near_duplicate": {
+      "identity": "V1 FXFV1-A4-P2 (unselected) - London-morning-momentum carry into the NY overlap; V1 novelty audit rated FXFV1-A3-P1 <-> FXFV1-A4-P2 HIGH (same mechanism family, signal windows one bar apart, same 12:00-London fill)",
+      "status": "INELIGIBLE for V2 proposals"
+    },
+    "rescue_operations": ["sign inversion", "lower fees than 1.5 bps x {1.0,1.5,2.0}", "pair cherry-picking", "nearby threshold/lookback rescue", "session relabeling", "re-grading V1 results under a new label", "result-aware reuse of V1's six proposals without a fresh blind packet and independent novelty decision"]
+  },
+
+  "verdict_rule": {
+    "novelty": "NOVELTY_FAIL if the anchor reproduces, relabels, inverts, threshold-shifts, or re-clocks a rejected V1 mechanism, or is essentially 'enter at/near a session open in the direction of the move' / 'fade a standardized late-NY extension' / the London-to-NY momentum duplicate. Otherwise NOVELTY_PASS with findings.",
+    "overlap": "A proposal pair FAILS overlap only if the two anchors would be the same trade schedule in direction AND session. State-variable reuse alone is a WARNING, not a fail.",
+    "source_integrity": "fabricated or materially misdescribed citation = HIGH",
+    "control": "a control that would itself reproduce the proposed mechanism = HIGH"
+  },
+
+  "proposals": {
+    "FXFV2-A4-P1": {
+      "verdict": "NOVELTY_PASS",
+      "file": "research/proposals/forex_free_v2/a4_lane/proposal_1.json",
+      "mechanism_read": "Tokyo-session range (9 bars, 09:00-18:00 JST) with compression state 1{range < 0.75 x trailing-20-valid-session median}; first London-morning [08:00,12:00) Europe/London H1 bar whose high/low breaches the Tokyo extreme triggers entry at the next H1 open in the breach direction; invalidation = completed close back inside the range; forced flat 16:00 America/New_York bar open.",
+      "vs_family1": "NOT a variant. The signal object changed (prior-session extreme level breach vs open-relative 3-bar momentum), the cadence changed (conditional ~25-35% of days vs unconditional daily), and an invalidation exit exists. However the anchor remains a London-morning continuation trade: same session window as family1 and, on compression days, the breach side will frequently equal the open-momentum sign. This is the neighborhood, not the mechanism.",
+      "vs_family2": "No fade anywhere; different session pair (Tokyo->London); no standardized-extension observable. Clean.",
+      "vs_near_duplicate": "No session-to-session momentum carry; entries at/before the duplicate's 12:00-London fill on a ~30% subset of days with a different direction source. Not the duplicate.",
+      "lineage_disclosure": "MEDIUM - FXFV2-A4-P1 is a materially re-specified descendant of V1's UNSELECTED, NEVER-SCORED FXFV1-A4-P1 ('Tokyo-morning range contraction -> London-morning expansion breakout': 6-bar Tokyo range, first completed-bar CLOSE beyond the range in [08:00,12:00) London, opposite-extreme stop, 15:00 NY flatten). V2 changes: quantified compression gate (0.75 x trailing-20 median) that V1 lacked as a trigger condition, intrabar-extreme touch trigger vs close-beyond, 9-bar vs 6-bar Tokyo window, invalidation exit, 16:00 vs 15:00 NY flat, midpoint placebo control. Eligible: V1 A4-P1 has no observed outcome, so 'result-aware reuse' cannot apply, and this audit is the independent novelty decision over a fresh blind packet. Not a fault of A4 (firewall forbade reading V1 proposals), but the lineage must travel with the proposal into selection.",
+      "control_adequacy": "ADEQUATE. The midpoint placebo holds compression, windows, exits and clock fixed and removes exactly the claimed ingredient (level placement at the extremes). If the real edge were generic compression-conditional London-morning momentum (the family1-like alternative), the midpoint control would cross in the move direction on nearly every valid state day and would reproduce the anchor - and the frozen failure_interpretation then self-rejects. The control cannot rescue the anchor and can only kill it: correct direction of inference. LOW caveat (disclosed in the proposal): the control fires more often, so the weekly governor cap truncates its schedule and changes day composition relative to the anchor.",
+      "usd_explainability": "GAP - MEDIUM. No USD neutrality is claimed (permitted; PLAN section 12 gates neutrality only 'where the proposal claims neutrality'), but the only scheduled USD diagnostic is explicitly non-gated and descriptive. A coherent broad-USD-drift explanation of the anchor (breakout days clustering in the USD direction across all 7 pairs) would be caught by NO frozen gate: the direction_check counts quoted-pair long/short, not USD-leg sign. A6-P1/P2 freeze D1-D3 diagnostics for exactly this exposure; A4-P1/A4-P2 freeze none. Recommendation to the scorer (audit recommendation, not a repair): apply A6-style D1-D3 USD-leg diagnostics to both A4 anchors at Stage-A before any survivor is locked.",
+      "source_integrity": "VERIFIED. Crabel 1990 (Day Trading with Short Term Price Patterns and Opening Range Breakout, Traders Press) is a real book; the narrow-range-conditioning characterization is the standard reading of Crabel's ORB work. Osler 2000 (Support for Resistance: Technical Analysis and Intraday Exchange Rates, FRBNY Economic Policy Review 6(2), July 2000) verified by A7-N against newyorkfed.org: author, venue, year and the predictive-success-of-S/R-levels finding match; the proposal's order-cluster sentence is appropriately hedged ('consistent with') - the direct order-level evidence is Osler 2003. LOW nuance only.",
+      "outcome_blindness": "CLEAN. No V1 outcome numbers, digests, or result-dependent language in the proposal (full read + grep sweep).",
+      "findings": [
+        {"id": "A4P1-1", "severity": "MEDIUM", "claim": "London-morning continuation neighborhood of forbidden family1; differentiation rests on the compression state + level-breach trigger, and on the midpoint control self-rejecting a generic momentum edge.", "evidence": "proposal_1.json clocks.decision_bar (London [08:00,12:00)) vs family1.py SESSION_OPEN_WALL_HOUR=8; novelty_self_check claims verified in spec."},
+        {"id": "A4P1-2", "severity": "MEDIUM", "claim": "Undisclosed lineage to V1's unselected FXFV1-A4-P1 (same family idea, materially re-specified). Eligible as a fresh blind packet; lineage must be recorded at selection.", "evidence": "research/proposals/forex_free_v1/a4_lane/proposal_1.json (anchor_neighbour_negative_control, entry_exit_and_rollover_flat_rule) vs proposal_1.json arms.anchor."},
+        {"id": "A4P1-3", "severity": "MEDIUM", "claim": "No frozen USD-drift falsification diagnostic despite a directional un-hedged anchor; descriptive diagnostic only.", "evidence": "proposal_1.json usd_factor_neutral_construction=null, usd_neutrality_justification (non-gated diagnostic) vs A6 proposals' usd_drift_falsification D1-D3; PLAN_forex_v2.md line 235 assigns this check to A7."},
+        {"id": "A4P1-4", "severity": "LOW", "claim": "Midpoint control is cap-truncated to a different day-mix than the anchor (disclosed); anchor-vs-control comparison partially confounded by composition.", "evidence": "proposal_1.json arms.control expected_behavior."},
+        {"id": "A4P1-5", "severity": "LOW", "claim": "Osler 2000 claim hedged as 'consistent with' order clusters; direct cluster evidence is Osler 2003 (cited in the sibling proposal).", "evidence": "proposal_1.json primary_literature_trace[1]; newyorkfed.org EPR 6(2) abstract."}
+      ]
+    },
+
+    "FXFV2-A4-P2": {
+      "verdict": "NOVELTY_PASS",
+      "file": "research/proposals/forex_free_v2/a4_lane/proposal_2.json",
+      "mechanism_read": "London-AM range (4 bars, 08:00-12:00 Europe/London); first completed bar in [12:00,17:00) breaching the range extreme; entry at next H1 open in the break direction ONLY after a retest-hold bar (touch of the broken level + close beyond it) within [12:00,19:00); invalidation = close back inside the pre-break range; forced flat 16:00 America/New_York bar open; no volatility filter.",
+      "vs_family1": "NOT a variant. Different session phase (London afternoon resolution of a morning range vs London-open momentum), conditional (~35-45% of days), trigger = level break + reaction state, invalidation exit. Still a London-direction continuation trade: on trend days it holds the same direction family1 would have held, hours later and only on retest-hold days.",
+      "vs_family2": "No fade; no standardized extension; different clock. Clean.",
+      "vs_near_duplicate": "NOT the V1 near-duplicate (V1 A4-P2: unconditional sign of the 3-4-bar London-morning move, fixed 12:00-London fill, no retest state). V2 A4-P2 requires a break of the London-AM range plus a retest-hold reaction bar, entering later (13:00-19:00 London) on a subset of days. Different schedule in trigger, timing and conditioning.",
+      "lineage_disclosure": "No V1 ancestor found. The retest-hold confirmation filter and the complement-state control are new relative to all six V1 proposals read by A7-N.",
+      "control_adequacy": "ADEQUATE. The control is the complement state (trade the void/failed-retest bar in the original break direction) - it holds break detection, session, clock, cost and caps identical and removes exactly the proposed ingredient (the retest-hold state). It would reproduce the anchor only if continuation were state-independent (unconditional breakout), in which case the frozen failure_interpretation self-rejects. The proposal also documents rejecting an unconditional-break-at-first-touch control because it would have embedded a rival mechanism - correct reasoning. LOW caveat: the control's invalidation law (close beyond the OPPOSITE extreme) differs from the anchor's (close back inside the range); this is a defensible fairness choice (anchor-law invalidation would near-instantly stop void-day entries) but makes the anchor/control exit laws asymmetric.",
+      "usd_explainability": "GAP - MEDIUM, identical in kind to A4-P1: null construction declared, only a non-gated descriptive diagnostic; no frozen USD-leg falsification. Same recommendation as A4P1-3.",
+      "source_integrity": "VERIFIED. Osler 2003 (Journal of Finance 58(5), 1791-1819, 'Currency Orders and Exchange Rate Dynamics...') is real with correct details; the stop-clustering-beyond-extremes claim is the paper's core finding. Brock, Lakonishok & LeBaron 1992 (Journal of Finance 47(5), 1731-1764) is real; the trading-range-break predictive-content claim on DJIA 1897-1986 matches the paper.",
+      "outcome_blindness": "CLEAN (same sweep as A4-P1).",
+      "findings": [
+        {"id": "A4P2-1", "severity": "MEDIUM", "claim": "London-direction continuation neighborhood: on trend days the anchor holds the same direction as forbidden family1/the V1 near-duplicate, hours later, on a conditional subset; the retest-hold state and complement-state control are the operative differentiators.", "evidence": "proposal_2.json h1_observables, arms.control vs V1 a4_lane/proposal_2.json economic_mechanism and family1.py."},
+        {"id": "A4P2-2", "severity": "MEDIUM", "claim": "No frozen USD-drift falsification diagnostic (same exposure as A4-P1).", "evidence": "proposal_2.json usd_factor_neutral_construction=null."},
+        {"id": "A4P2-3", "severity": "LOW", "claim": "Control invalidation asymmetry (opposite-extreme stop) noted; defensible, disclosed in arms.control.spec.", "evidence": "proposal_2.json arms.control.spec."}
+      ]
+    },
+
+    "FXFV2-A5-P1": {
+      "verdict": "NOVELTY_PASS",
+      "file": "research/proposals/forex_free_v2/a5_lane/proposal_1.json",
+      "mechanism_read": "Cross-sectional, USD-factor-neutral extreme-vs-extreme RV: at the 12:00Z bar completion, day-to-date USD-view log increments are demeaned by the equal-weighted 7-pair index and z-standardized by trailing 20-day residual sigma; if the z-range >= 3.0, long argmin / short argmax, equal notional; half-reversion exit (0.5 x entry spread) or forced flat 16:00 NY bar open; 6 bps RT base cost.",
+      "vs_family1": "No session-open clock, no open-relative direction, no single-pair directional bet. Clean.",
+      "vs_family2": "No fade of a standardized extension; the z-standardization is used for cross-sectional RANKING (pair selection), not as a single-pair extension gate, and the direction is relative (spread), not a pair-direction fade. Clean.",
+      "vs_near_duplicate": "No session-to-session momentum. Clean.",
+      "lineage_disclosure": "No V1 ancestor: none of the six V1 proposals is a same-day demeaned cross-sectional dislocation trade (V1 A5-P1 was a EUR/USD-anchored lead-lag; V1 A5-P2 was NY-morning intraday momentum).",
+      "control_adequacy": "ADEQUATE. The placebo de-links ranking via a SHA-256 date-seeded hash pair choice while keeping gate evaluation, schedule, cost and forced flat identical; any expectancy surviving the placebo is declared a schedule/selection artifact and voids the claim. A hash placebo cannot reproduce a convergence mechanism except by luck, and if it does the proposal self-voids: correct inference direction. The trailing-4h neighbour tests the measurement-window presumption and is preregistered to move together.",
+      "usd_explainability": "ADEQUATE - algebra checked by A7-N. u_p = s_p x log-increment; portfolio return = u_L - u_S = (e_L + m) - (e_S + m) = e_L - e_S: the equal-weighted USD index m cancels EXACTLY to first order for equal +1/-1 units, independent of the selected pairs; the honesty_note correctly limits the claim (second-order convexity and unequal per-pair vols not neutralized; proxy is the 7-pair index, not DXY).",
+      "source_integrity": "VERIFIED. Lustig, Roussanov & Verdelhan (2011, Journal of Finance 66(4), 'Common Risk Factors in Currency Markets') is real and the dollar-factor/demeaning characterization is accurate. Osler 2003 verified (above).",
+      "outcome_blindness": "CLEAN (attestation enumerates files read; grep sweep found no V1 numbers).",
+      "findings": [
+        {"id": "A5P1-1", "severity": "LOW", "claim": "Trading-day boundary for 'day-to-date' (first bar of trading day) is not explicitly frozen (00:00Z vs NY-rollover anchored); P2 freezes NY-rollover but P1 does not. Implementation ambiguity, not novelty.", "evidence": "proposal_1.json h1_observables item 2 (contrast A5-P2 h1_observables item 2 'trading days NY-rollover anchored')."},
+        {"id": "A5P1-2", "severity": "LOW", "claim": "Analytic gate probability estimate 0.5-0.7 for z-range >= 3.0 over 7 approximately-normal residuals is on the generous side (expected range of 7 iid N(0,1) is ~2.83; P(range>=3) is nearer ~0.4); schedule estimate only, audited at implementation.", "evidence": "proposal_1.json expected_frequency.analytic_estimate."}
+      ]
+    },
+
+    "FXFV2-A5-P2": {
+      "verdict": "NOVELTY_PASS",
+      "file": "research/proposals/forex_free_v2/a5_lane/proposal_2.json",
+      "mechanism_read": "Cross-sectional USD-neutral outlier-basket reversal: prior NY-rollover trading session demeaned z-standardized returns; if z-range >= 2.0, long bottom-2 vs short top-2 baskets (4 legs, 12 bps RT base) at the 08:00Z bar open; hold-to-flat at 16:00 NY bar open.",
+      "vs_family1": "No session clock in the signal; symmetric cross-sectional construction. Clean.",
+      "vs_family2": "Reversal direction is cross-sectional (sell yesterday's cross-sectional winners / buy losers after demeaning), not a single-pair fade of a vol-standardized same-session extension; different clock (T-1 session -> 08:00Z today vs NY 4-bar window); different object. Clean.",
+      "vs_near_duplicate": "Clean.",
+      "lineage_disclosure": "No V1 ancestor among the six V1 proposals.",
+      "control_adequacy": "ADEQUATE WITH A GRADED-DELINK CAVEAT - MEDIUM. The stale-ranking control (T-2 instead of T-1) removes the specific 'today's flow unwinds YESTERDAY'S outliers' link, but cross-sectional ranks of demeaned returns are positively autocorrelated day-over-day, so T-2 is correlated with T-1: the de-link is graded, not clean. If the true reversal horizon were ~2 days, the control would partially reproduce the anchor; the frozen rule (positive stale-ranking expectancy voids the mechanism claim) handles that conservatively (it may reject a real-but-different slower mechanism, which is safe), but PARTIAL reproduction has no frozen interpretation. Unlike A5-P1 there is no hash placebo to triangulate. Acceptable as frozen; noted for the scorer's interpretation.",
+      "usd_explainability": "ADEQUATE - algebra checked: 2v2 equal units give sum(x)=0 so m cancels exactly to first order; a preregistered usd_drift_explanation failure mode exists in failure_interpretation.",
+      "source_integrity": "VERIFIED. Lehmann (1990, QJE 105(1), 'Fads, Martingales, and Market Efficiency') is real; the short-horizon cross-sectional reversal characterization is accurate and the equity-to-FX port is explicitly labeled. Nagel (2012, RFS 25(7), 'Evaporating Liquidity') is real; the liquidity-provision rationale is the paper's thesis.",
+      "outcome_blindness": "CLEAN.",
+      "findings": [
+        {"id": "A5P2-1", "severity": "MEDIUM", "claim": "Stale-ranking control is a graded de-link (rank autocorrelation between T-1 and T-2); partial control reproduction lacks a frozen interpretation; no independent hash placebo in this proposal.", "evidence": "proposal_2.json arms.control vs arms of A5-P1; failure_interpretation.control_reproduces."}
+      ]
+    },
+
+    "FXFV2-A6-P1": {
+      "verdict": "NOVELTY_PASS",
+      "file": "research/proposals/forex_free_v2/a6_lane/proposal_1.json",
+      "mechanism_read": "Compression->expansion state transition with NO session clock: state = 24-bar true-range sum below the median of 10 prior non-overlapping 24-bar blocks; trigger = first-of-day H1 CLOSE beyond the prior-48-bar high/low channel (decision bar excluded); direction = breach side; entry next H1 open; single exit 16:00 NY bar open.",
+      "vs_family1": "NOT a variant. No session-open term, no open-relative momentum, no session label anywhere in state/trigger/direction (verified in spec); the trigger is evaluable any hour and the conditioning is a realized-vol state. The unconditional 48-bar channel breach is generic Donchian-style breakout, which is NOT itself a forbidden family - and the control arm is exactly that unconditional breakout, with a frozen self-reject rule (control expectancy >= 0.5x anchor or control PF >= 1.10 with positive sign).",
+      "vs_family2": "Never fades; no standardized extension; no NY clock. Clean.",
+      "vs_near_duplicate": "No cross-session momentum measurement. Clean.",
+      "lineage_disclosure": "No V1 ancestor: the closest V1 proposals (A4-P1 compression breakout) key on a session clock and session range; A6-P1's clock-free state design is genuinely different in trigger, dedup and any-hour coverage.",
+      "control_adequacy": "ADEQUATE. Deleting the compression gate removes exactly the proposed ingredient (the state transition) while keeping the breakout machinery; any generic-breakout edge lands in the control and the frozen numeric self-reject rule converts a reproduced control into rejection. The cap-truncation composition caveat (control fires more often, caps bind more) is disclosed (frequency_note). LOW: the 0.5x/PF-1.10 thresholds are the auditor-checked frozen quantification of 'control reproduces' - reasonable and preregistered.",
+      "usd_explainability": "ADEQUATE. Null construction with FROZEN falsification diagnostics D1 (USD-leg imbalance |share-0.5|>0.15 per fold), D2 (cross-sectional USD-leg coherence |mean|>0.25), D3 (conditional expectancy split by USD leg with fold stability) - meaningful and preregistered; concentration gate also reports USD-leg share.",
+      "source_integrity": "VERIFIED with one LOW typo. Osler 2003 real (pages misprinted as '1791-1916'; correct 1791-1819). Engle 1982 (Econometrica 50(4), 987-1007, ARCH) real; the volatility-clustering/predictability claim is exactly the paper's contribution.",
+      "outcome_blindness": "CLEAN.",
+      "findings": [
+        {"id": "A6P1-1", "severity": "MEDIUM", "claim": "OVERLAP (warning, not fail) with FXFV2-A4-P1: same mechanism genus (trailing-range compression -> breach continuation, flat 16:00 NY), overlapping trigger hours (A6-P1's first-of-day channel breach frequently lands in the London morning where A4-P1 trades), and correlated direction on compressed trend days. Anchors are NOT the same schedule (different channel levels: 48-bar vs Tokyo 9-bar range; different dedup; ~1.8 vs ~1.3 RT/pair/week; A6-P1 also trades non-London hours), so the overlap rule does not fail it. MERGE CANDIDATE - see overall.", "evidence": "proposal_1.json h1_observables/clocks vs a4 proposal_1.json h1_observables/clocks."},
+        {"id": "A6P1-2", "severity": "LOW", "claim": "Osler 2003 page range typo ('1791-1916').", "evidence": "proposal_1.json primary_literature_trace[0]."},
+        {"id": "A6P1-3", "severity": "LOW", "claim": "Self-reject thresholds for the control (0.5x expectancy / PF 1.10) are frozen but arbitrary magnitudes; acceptable as preregistered.", "evidence": "proposal_1.json arms.control.expected_behavior."}
+      ]
+    },
+
+    "FXFV2-A6-P2": {
+      "verdict": "NOVELTY_PASS",
+      "file": "research/proposals/forex_free_v2/a6_lane/proposal_2.json",
+      "mechanism_read": "Session-liquidity state transition: thin-Asian state (UTC 00:00-06:00 high-low range below trailing 15-day median, >=10 baseline days) AND first turnover burst (TR > 1.5 x same-day Asian median TR, UTC hours 06-09); direction OPPOSITE the Asian drift (close(05:00Z) - open(00:00Z) sign); entry next H1 open; single exit 16:00 NY bar open.",
+      "vs_family1": "NOT a variant. Direction is AGAINST the measured Asian drift, not with any session-open move; trigger is a data-detected range burst, not a clock; the proposal fully discloses that the burst window brackets the London handoff. Verified: no session-open direction term exists.",
+      "vs_family2": "NOT a nearby-clock/threshold/horizon variant of the late-NY standardized-extension fade: clock is 06-10 UTC (vs late-NY 17-21 UTC); the measured quantity is the raw 6-hour Asian drift (vs a z-standardized 4-bar NY extension); and the conditioning state (thin-Asian range) is absent from family2. MEDIUM adjacency finding recorded, however: rejected family2's Tokyo-open neighbour arm (scored and rejected in V1: expectancy -2.7196, PF 0.8874, 142 trades) was also a fade of an Asian-session displacement toward the same 16:00 NY flat. A6-P2 shares that fade-the-Asian-move genus. The operative safeguard is structural and frozen: the control arm deletes the thin-state gate, so the family2-neighbour-like UNCONDITIONAL Asian-drift fade IS the control; if the control reproduces the anchor (>=0.5x or PF>=1.10), the proposal self-rejects. The novelty claim therefore stands or falls exactly on the state-conditioning, which is the claimed mechanism.",
+      "vs_near_duplicate": "Clean - no session-to-session momentum carry.",
+      "lineage_disclosure": "No V1 proposal fades the Asian drift under a thin-state gate with a burst trigger. The A6 search_log documents candidates rejected for forbidden-family proximity (including all clock-keyed continuation and late-session fade variants).",
+      "control_adequacy": "ADEQUATE. Same structure as A6-P1: delete exactly the thin-state gate, keep the burst detector, reversion direction, caps, clocks; frozen numeric self-reject rule. The control is precisely the unconditional Asian-drift fade (the family2-adjacent rival), so a reproduced control kills the proposal. LOW: cap-truncation composition caveat disclosed.",
+      "usd_explainability": "ADEQUATE. Null construction with frozen D1-D3 diagnostics identical in form to A6-P1; Asian windows are DST-invariant UTC, so no hidden session-clock drift channel.",
+      "source_integrity": "VERIFIED by A7-N web check. Andersen & Bollerslev 1998 (Journal of Finance 53(1), 219-265, 'Deutsche Mark-Dollar Volatility: Intraday Activity Patterns...') real; periodic intraday activity tied to geographic sessions is the paper's finding. Bollerslev & Domowitz 1993 (Journal of Finance 48(4), 1421-1443, 'Trading Patterns and Prices in the Interbank Foreign Exchange Market') verified via JSTOR/Wiley records: authors, venue, year, pages all exact; intraday activity/spread patterns and thin-session dynamics claims match the abstract.",
+      "outcome_blindness": "CLEAN.",
+      "findings": [
+        {"id": "A6P2-1", "severity": "MEDIUM", "claim": "Adjacency to rejected family2's Tokyo-open neighbour cell (both fade an Asian-session displacement to the same 16:00 NY flat). Not a forbidden variant (different clock, raw unstandardized quantity, new state gate), and the control arm structurally embeds the forbidden-genus rival so reproduction self-rejects; but the scorer must treat the control verdict as load-bearing for eligibility.", "evidence": "proposal_2.json forbidden_family_differentiation + arms.control vs family2.py ARM_REGISTRY neighbour; V1 ledger family2:neighbour cell."},
+        {"id": "A6P2-2", "severity": "LOW", "claim": "OVERLAP (warning) with FXFV2-A4-P1: shared thin/compressed-Asian state genus and overlapping entry windows (A6-P2 entries 07:00-10:00 UTC vs A4-P1 London-morning entries 07:00-11:00Z BST / 08:00-12:00Z GMT); direction agreement is non-systematic (A4-P1 follows the London breach, A6-P2 opposes the Asian drift; agreement roughly chance-level on compressed days). Not the same schedule; not a mirror of A4-P1 (a true mirror would fade the London breach).", "evidence": "proposal_2.json h1_observables vs a4 proposal_1.json clocks.decision_bar."}
+      ]
+    }
+  },
+
+  "overlap_matrix_6x6": {
+    "rule": "FAIL only if same trade schedule in direction AND session; state-variable reuse alone = WARNING",
+    "matrix": {
+      "FXFV2-A4-P1": {"FXFV2-A4-P2": "WARNING", "FXFV2-A5-P1": "LOW", "FXFV2-A5-P2": "LOW", "FXFV2-A6-P1": "WARNING-STRONG (merge candidate)", "FXFV2-A6-P2": "WARNING"},
+      "FXFV2-A4-P2": {"FXFV2-A5-P1": "LOW", "FXFV2-A5-P2": "LOW", "FXFV2-A6-P1": "WARNING", "FXFV2-A6-P2": "LOW"},
+      "FXFV2-A5-P1": {"FXFV2-A5-P2": "WARNING (state reuse, complementary horizons)", "FXFV2-A6-P1": "LOW", "FXFV2-A6-P2": "LOW"},
+      "FXFV2-A5-P2": {"FXFV2-A6-P1": "LOW", "FXFV2-A6-P2": "LOW"},
+      "FXFV2-A6-P1": {"FXFV2-A6-P2": "WARNING (state reuse, opposite direction logic)"}
+    },
+    "fails": [],
+    "rationale_for_key_cells": {
+      "FXFV2-A4-P1 vs FXFV2-A6-P1 (WARNING-STRONG)": "Both are 'trailing-range compression -> first breach continuation, flat 16:00 NY'. On a compressed day the London-morning Tokyo-range breach and the 48-bar-channel close-breach can be the same bar event with the same direction, entered one bar apart. Schedules are not identical (A4-P1 keys on the overnight Tokyo extremes only in the London morning at ~1.3 RT/pair/week; A6-P1 keys on a 2-day channel any hour at ~1.8 RT/pair/week with first-of-day dedup), so the FAIL condition is not met - but if BOTH pass Stage-A they are one mechanism family instantiated twice.",
+      "FXFV2-A4-P1 vs FXFV2-A4-P2 (WARNING)": "Same assigned mechanism_class and same London day; both continuation. Trigger windows are sequential, not identical (Tokyo-range breach in the London morning vs London-AM-range break + retest-hold in the London afternoon); on trend days both hold the same direction with overlapping holding periods (double exposure). Not the same schedule; correlated books.",
+      "FXFV2-A4-P2 vs FXFV2-A6-P1 (WARNING)": "Both can hold the same London-afternoon continuation direction (retest-hold entry vs any-hour channel breach). Different state variable and trigger; schedules not identical.",
+      "FXFV2-A5-P1 vs FXFV2-A5-P2 (WARNING)": "Same standardized-demeaned-residual construction family and identical USD-neutrality algebra, but complementary horizons (same-day 13:00Z convergence vs overnight 08:00Z reversal), different trade objects (2 vs 4 legs), different exits. State-variable reuse only; per the rule a WARNING.",
+      "FXFV2-A4-P1 vs FXFV2-A6-P2 (WARNING)": "Shared thin/compressed-Asian state genus and overlapping 07-11Z entry windows; direction sources differ (London breach side vs anti-Asian-drift) making co-firing direction non-systematic. Not the same schedule and not a mirror."
+    }
+  },
+
+  "merge_candidates": [
+    {
+      "pair": ["FXFV2-A4-P1", "FXFV2-A6-P1"],
+      "strength": "MUST",
+      "rule": "If both are selected, they MUST be treated as ONE family (state-conditional breach-continuation) for family counting and the selection budget - either select one representative or implement a trade-schedule overlap audit (same pair, same day, same direction) and count the union as one family cell budget.",
+      "basis": "Same compression->breach-continuation mechanism genus, overlapping trigger hours, correlated direction on compressed trend days."
+    },
+    {
+      "pair": ["FXFV2-A4-P1", "FXFV2-A4-P2"],
+      "strength": "SHOULD",
+      "rule": "If both are selected, treat as one super-family ('conditional London-day range expansion') for family counting, or demonstrate schedule disjointness and cap joint exposure: on London trend days both anchors hold the same direction with overlapping holding windows.",
+      "basis": "Same assigned mechanism_class, same session day, correlated directions."
+    }
+  ],
+
+  "recommended_family_groupings": {
+    "independent_families": ["FXFV2-A5-P1", "FXFV2-A5-P2", "FXFV2-A6-P2"],
+    "conditional_groupings": [
+      "Group G1 (state-conditional breakout continuation): {FXFV2-A4-P1, FXFV2-A6-P1} - one family slot maximum.",
+      "Group G2 (conditional London-day range expansion): {FXFV2-A4-P1, FXFV2-A4-P2} - correlated books; joint exposure audit if both selected.",
+      "Note: FXFV2-A4-P1 appears in both groupings. If A4-P1, A4-P2 and A6-P1 all survived, the honest reading is one super-family of state-conditional London-day continuation instantiated three ways; the selection budget should not count them as three independent families."
+    ]
+  },
+
+  "process_findings": [
+    {
+      "id": "PROC-1",
+      "severity": "LOW",
+      "claim": "A4 ran one post-commit `git log -1` on its own lane tip (5900b03), disclosed to A1 and recorded in the V2 event log as non-contaminating. A7-N independently confirms non-contamination: (a) the read happened AFTER the lane commit froze the proposals, so no information could have influenced them; (b) the only visible content was A4's own commit message, which A7-N read at 5900b03 - pure V2-cycle text with no V1 outcomes; (c) A4's lane-report firewall statement ('git log never run') is accurate for the pre-commit design phase it attests. Deviation is a letter-level firewall breach with zero outcome content.",
+      "evidence": "research/control/forex_free_v2_run/event_log.jsonl F2_D1_COMPLETE (2026-09-04T04:35:00Z) firewall_note; commit 5900b03 message; lane_report_a4.json."
+    },
+    {
+      "id": "PROC-2",
+      "severity": "NONE (verified clean)",
+      "claim": "Outcome blindness of the six proposals verified by full read plus a targeted grep sweep for V1 outcome numbers (-2.35/-2.89/11459/11512/1020/0.849/0.638) and ledger digests: zero hits; the only matches are forward-looking falsification language. No proposal contains V1 expectancy/PF/digests or any statement requiring knowledge of results; all failure interpretations are frozen ex ante. A5/A6 attestations enumerate files read and forbidden paths; A4's prose attestation is consistent with its search log.",
+      "evidence": "six proposal JSONs; grep sweep; lane reports; search logs."
+    }
+  ],
+
+  "high_findings": [],
+  "ineligible_proposals": [],
+  "overall_summary": {
+    "proposals_audited": 6,
+    "novelty_pass": 6,
+    "novelty_fail": 0,
+    "high_findings": 0,
+    "medium_findings": 8,
+    "low_findings": 8,
+    "overlap_fails": 0,
+    "fabricated_citations": 0,
+    "control_failures": 0,
+    "notes": "All six proposals are novelty-eligible against the frozen V1 forbidden set. The audit's material outputs for selection are the two merge-candidate rulings (A4-P1+A6-P1 MUST; A4-P1+A4-P2 SHOULD) and the recommendation that the scorer apply A6-style USD-leg diagnostics D1-D3 to the two A4 anchors, whose directional books carry an unfalsified-by-construction USD-drift exposure."
+  }
+}

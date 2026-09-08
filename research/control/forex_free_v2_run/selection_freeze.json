@@ -1,0 +1,67 @@
+{
+  "schema": "forex_free_v2_selection_freeze_v1",
+  "frozen_at_utc": "2026-09-04T05:05:00Z",
+  "producer": "A1_FOREX_CONTROLLER",
+  "cycle_id": "FOREX-FREE-V2",
+  "selection_sha_base": "24c7230 (six proposals integrated) + audit lanes",
+  "proposal_wave_sha": "9e7e89c253caee2d7ec2681bbfe9e375da84c0d5",
+  "rule": "maximum two families; each selected family receives exactly three immutable arms; unused slots are never reassigned; no proposal file may be modified after this freeze",
+  "proposal_digests": {
+    "FXFV2-A4-P1": "e9878d43609213e74ac7bcc7b75dfeb2c464c05733ec675c030e091d414aaf0d",
+    "FXFV2-A4-P2": "93e940a9da932719dfe97ff76977abfc82c7b4ea663bc70c62d90a54fd4f56cd",
+    "FXFV2-A5-P1": "4dfd932952956093ad710b2e5663435a0b6b6db9f2462c55f3c880f4355dbef5",
+    "FXFV2-A5-P2": "cabf1a3bfd32a947ea8519de4dc3afa8c1c5be529259d7374f09be733895b6ba",
+    "FXFV2-A6-P1": "ad301bc41211f478fb699c290b287ce046c43c6eca7b84e4ecc5bbdc2c69dcb3",
+    "FXFV2-A6-P2": "0f17a7b3d42d75c310bae05c5c06df880ab7a85ba0c0be55d7ff0a922234d6af"
+  },
+  "selected": [
+    {
+      "family": "family1",
+      "proposal": "FXFV2-A4-P1",
+      "title": "Tokyo-range compression -> London-morning expansion",
+      "arms": ["anchor", "neighbour", "control"],
+      "arms_source": "research/proposals/forex_free_v2/a4_lane/proposal_1.json arms block (immutable, content-addressed above)",
+      "novelty_verdict": "NOVELTY_PASS (A7-N, 0 HIGH)",
+      "feasibility_verdict": "FEASIBILITY_PASS (A9-F; schedule-simulated on real snapshot: max 1 entry/pair/day, max 3 RT/pair/week, realized 0.72 RT/pair/week)",
+      "lineage_note": "A7-N MEDIUM: materially re-specified descendant of V1's UNSELECTED, NEVER-SCORED FXFV1-A4-P1; eligible as a fresh blind packet with this audit as the independent decision; lineage recorded here",
+      "carried_observations": ["MEDIUM: decision-floor margin 93 vs 80 thin", "MEDIUM: no frozen USD-drift diagnostic in proposal (compensated by scoring-time gate below)"]
+    },
+    {
+      "family": "family2",
+      "proposal": "FXFV2-A4-P2",
+      "title": "London-AM range break confirmed by retest-hold",
+      "arms": ["anchor", "neighbour", "control"],
+      "arms_source": "research/proposals/forex_free_v2/a4_lane/proposal_2.json arms block (immutable, content-addressed above)",
+      "novelty_verdict": "NOVELTY_PASS (A7-N, 0 HIGH; differentiated from the V1 near-duplicate London-to-NY momentum by the retest-hold reaction state + complement control)",
+      "feasibility_verdict": "FEASIBILITY_PASS (A9-F; schedule-simulated: max 1 entry/pair/day, max 3 RT/pair/week, realized 1.70 RT/pair/week; weekly governor binds in 571 pair-weeks and is first-class in the spec)",
+      "carried_observations": ["MEDIUM: realized frequency ~2x proposal's own expected band (within contract caps)", "MEDIUM: no frozen USD-drift diagnostic in proposal (compensated by scoring-time gate below)"]
+    }
+  ],
+  "not_selected": [
+    {"proposal": "FXFV2-A5-P1", "reason": "FEASIBILITY_FAIL (A9-F HIGH): frozen FAIL_LATE_FILL fallback unsatisfiable on provider-short Fridays; all 36 flat-bar-missing legs unresolvable -> would force forbidden weekend carry or undefined exit"},
+    {"proposal": "FXFV2-A5-P2", "reason": "FEASIBILITY_FAIL (A9-F HIGH): same defect 4x amplified (140/160 leg events unresolvable on Fridays); stranded legs break neutrality"},
+    {"proposal": "FXFV2-A6-P1", "reason": "FEASIBILITY_FAIL (A9-F HIGH x2): 110 entries with no 16:00 NY exit bar and no fallback; missing-bar semantics ambiguous (index vs contiguity, 11x divergence, all-entries-in-fold-3 artifact)"},
+    {"proposal": "FXFV2-A6-P2", "reason": "FEASIBILITY_FAIL (A9-F HIGH): 157 entries with no flat bar; hold-to-flat only exit without fallback"}
+  ],
+  "not_selected_rule": "infeasible proposals are not repaired or amended post-audit; their slots go to feasible proposals; A9-F notes all four failures share one data-level driver (16:00 NY flat bar absent on 410/2408 pair-Fridays) and would need an owner-side frozen amendment",
+  "merge_caveats_frozen": {
+    "super_family": "A7-N: {FXFV2-A4-P1, FXFV2-A4-P2} share the London-day state-conditional genus. If BOTH families survive Stage-A, they are locked for future S1 as ONE family (single survivor slot), not two.",
+    "must_merge_pair": "A7-N: {FXFV2-A4-P1, FXFV2-A6-P1} would have been one family; moot since A6-P1 is infeasible."
+  },
+  "scoring_time_gates_added_frozen_before_any_outcome": {
+    "usd_leg_drift_diagnostics": "per A7-N recommendation, Stage-A for BOTH families adds USD-leg drift falsification (A6-style D1-D3 diagnostics): (D1) equal-weight USD-index drift attribution of anchor PnL, (D2) anchor PnL recomputed with USD-leg returns removed where the construction allows, (D3) sign-flip correlation of anchor PnL vs USD-index drift; anchor fails the neutrality claim if USD drift alone explains the edge",
+    "authority": "outcome-blind: frozen at selection time before any V2 scored cell exists",
+    "gates_source": "research/audits/forex_free_v2/d2_novelty/a7_novelty_audit.json recommendations + A6 proposal D1-D3 definitions"
+  },
+  "rubric_application": {
+    "1_novelty_no_rescue": "PASS for A4-P1/A4-P2 (all six passed novelty; no rescue veto)",
+    "2_free_data_authority": "PASS for A4-P1/A4-P2 (H1-only observables, no bid/ask/rollover/H4)",
+    "3_frequency_cost_feasibility": "PASS only for A4-P1/A4-P2 (A9-F schedule sims on real snapshot)",
+    "4_control_and_falsification": "PASS (both have complement/reaction-state controls; USD-leg diagnostics frozen above)",
+    "5_sample_and_breadth": "PASS (7 pairs, >=80/93 decision floors, 3 folds)",
+    "6_source_to_test_trace": "PASS (Osler 2003 JF; Crabel 1990; B/L/L 1992 JF - verified by A7-N)",
+    "7_implementation_risk": "both single-leg directional schedules with existing kernel/clock helpers; A4-P1 marginally simpler",
+    "8_tie_break": "not needed (two clear survivors); family1=A4-P1 by lexicographic ID"
+  },
+  "budget": {"planned_scored_cells": 6, "families": 2, "arms_per_family": 3}
+}

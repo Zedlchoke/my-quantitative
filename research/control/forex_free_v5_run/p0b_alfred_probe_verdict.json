@@ -1,0 +1,63 @@
+{
+ "schema": "forex_free_v5_p0b_alfred_probe_verdict_v1",
+ "measured_at_utc": "2026-09-05T15:33:07Z",
+ "producer": "A1_FOREX_CONTROLLER",
+ "authority": "PLAN_forex_v5.md section 3 P0b",
+ "channel": "alfred.stlouisfed.org / fred.stlouisfed.org (graph CSV, keyless) + api.stlouisfed.org (keyless test)",
+ "attempts": [
+  {
+   "cmd": "curl -sS -L --max-time 60 https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=CPIAUCSL",
+   "result": "curl(92) HTTP/2 stream INTERNAL_ERROR"
+  },
+  {
+   "cmd": "curl -sS --http1.1 -L --max-time 90 (alfred alfredgraph.csv)",
+   "result": "curl(28) timeout 0 bytes"
+  },
+  {
+   "cmd": "curl -sS -I --max-time 40 (fred fredgraph.csv HEAD)",
+   "result": "curl(92) HTTP/2 INTERNAL_ERROR"
+  },
+  {
+   "cmd": "curl -sS --http1.1 --max-time 50 fredgraph.csv?id=CPIAUCSL",
+   "result": "HTTP 200 17725B (single success; current-data CSV, no vintage column)"
+  },
+  {
+   "cmd": "6x curl --http1.1 --max-time 45 (same fredgraph URL)",
+   "result": "6/6 curl(28) timeout"
+  },
+  {
+   "cmd": "curl -4 / curl --no-alpn / browser-UA variants",
+   "result": "all curl(28) timeout"
+  },
+  {
+   "cmd": "python urllib",
+   "result": "TLS cert chain failure (local python)"
+  },
+  {
+   "cmd": "GET api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL (no key)",
+   "result": "HTTP 400 191B 'Variable api_key is not set' (host reachable, key required)"
+  },
+  {
+   "cmd": "GET fred.stlouisfed.org/legal/ (license text)",
+   "result": "curl(28) timeout; WebFetch timeout x2; UNREACHABLE from all channels"
+  }
+ ],
+ "findings": {
+  "endpoint_semantics": "NOT ESTABLISHED - alfredgraph.csv (vintage CSV) never returned bytes; the single fredgraph.csv success carried current data only (observation_date,value), no realtime/vintage column",
+  "coverage_vs_S0": "NOT MEASURABLE this host (no vintage payload retrievable)",
+  "revision_behavior": "NOT MEASURABLE this host",
+  "license": "LICENSE_UNVERIFIED_FAIL_CLOSED - legal/terms text unreachable from all channels; storage authorization cannot be granted without reading terms (handbook 11.4)",
+  "deterministic_retrieval": "FAIL - 1 success in 13+ attempts; channel fails the deterministic-retrieval data gate"
+ },
+ "verdict": "BLOCKED_DATA_AUTHORITY",
+ "consequence": "axis 2 (vintaged market-based real-rate structure via ALFRED) UNFUNDED this host; FOREX_FREE_V5 carries it as DATA_BLOCKED_VALID (pre-registered class, not forbidden, not rescuable without new evidence)",
+ "owner_options_recorded": [
+  "owner signs up for a FRED API key (free) - signup is an owner action, never an agent action; key placed by owner in gitignored .env; on next cycle api.stlouisfed.org was reachable from this host, so key-based PIT pull may work where graph CSV does not",
+  "owner provides a different network path / machine and re-runs this probe",
+  "accept axis-2 unfunded close for V5"
+ ],
+ "artifacts": {
+  "single_success_current_data_csv": "alfred_probe/fredgraph_cpiaucsl_onesuccess.csv",
+  "api_keyless_400_response": "alfred_probe/api_stlouisfed_keyless_400_response.json"
+ }
+}

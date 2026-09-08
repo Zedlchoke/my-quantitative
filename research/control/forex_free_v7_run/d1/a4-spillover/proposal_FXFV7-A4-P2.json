@@ -1,0 +1,105 @@
+{
+  "proposal_id": "FXFV7-A4-P2",
+  "lane": "A4",
+  "axis": "cross-economy spillover",
+  "mechanism_name": "foreign-print overshoot-magnitude-gated fade on non-reporting pairs (all four blocs)",
+  "causal_claim_one_sentence": "When a GB, CA, AU or NZ CPI print jolts a non-reporting USD pair by more than one typical trading day's move — a displacement that pair-local fundamentals do not require and that event-locked liquidity providers must absorb into inventory — the providers are forced to shed that inventory over the following days and the overshoot decays, so fading the post-window jump (selling an up-jolt, buying a down-jolt) at the funded 16:00-NY decision earns the decay; the mechanism must fail if the jolt is informed common-USD-factor repricing that persists rather than inventory overshoot.",
+  "falsification_rule": "The claim is proven wrong if any of: (a) theta-gated fade positions show nonpositive financing-adjusted expectancy at stress tier 2.0 (rule 1); (b) PF < 1.10 (rule 2) or populated positive folds < 2 of 3 (rule 3); (c) the sham-calendar placebo reproduces the anchor's expectancy under rule-10 control coherence (meaning fat-tailed FX days carry the same decaying-overshoot structure with or without a real print, so the foreign-print calendar carries no information); (d) pooled |rho| > 0.20 vs ANY forbidden exposure schedule measured at D2, specifically including V6 FXFV6-A6-P2 USD PC1-concentration-gated cross-pair reversal.",
+  "control_class": "sham-calendar placebo (mandatory on lane 1): every qualifying (economy, event_date) is shifted +7 calendar days to the SAME WEEKDAY; the shifted clock inherits the identical reaction-window length, theta gate, funded-decision offset and k-hold semantics; the overshoot and hold returns are recomputed from the SAME staged price bytes at the shifted dates; shifted clocks whose windows overlap a true same-economy event date or the 2 calendar days bracketing one are dropped fail-closed; V6's sham-NEGATIVE on the same control class is the recorded proof the control discriminates.",
+  "expected_failure_mode": "The family is willing to lose to three named alternatives: (i) coverage starvation — the theta gate selects a subset of the 1077 clocks and if |o|>=theta fires too rarely the arms go vacuous or rule-3 fold population fails (COVERAGE_INSUFFICIENT is an accepted death, not a tuning target); (ii) persistence — the jolt is a durable common-USD repricing, the fade fights the drift and rule-1 kills it (note this proposal's sign logic is deliberately OPPOSITE to FXFV7-A4-P1 on the same event dates, so the family loses at most one of the two, never both to the same sign error); (iii) control-identifiability — if sham dates generate similar overshoot-decay payoffs, CONTROL_REPRODUCED_MECHANISM ends the proposal. USD-leg correlation across the six same-date positions again exposes rules 4 and 9, accepted.",
+  "universe": {
+    "definition": "NON-reporting pairs only, per economy, as enumerated by the P2 clocks (own-pair leakage verified absent: AUDUSD never under AU, NZDUSD never under NZ, GBPUSD never under GB, USDCAD never under CA)",
+    "clock_subset_cited": [
+      "SPILL:GB:* across nonrep pairs {AUDUSD, EURUSD, NZDUSD, USDCAD, USDCHF, USDJPY} — 395 clocks",
+      "SPILL:CA:* across nonrep pairs {AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCHF, USDJPY} — 438 clocks",
+      "SPILL:AU:* across nonrep pairs {EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY} — 132 clocks",
+      "SPILL:NZ:* across nonrep pairs {AUDUSD, EURUSD, GBPUSD, USDCAD, USDCHF, USDJPY} — 112 clocks (offset-qualified instants; NZ +12:00 flat-convention caveat carried: on NZDT dates the expressed instant is 1h early, conservative direction LATER, tolerance stated as one 1h bar at window edges with the >=12-bar bookability rule absorbing it)"
+    ],
+    "total_clocks_conditioned_on": 1077,
+    "excluded_by_construction": ["every reporting pair around its own economy's print (the V6 ancestor's cells)", "all US-calendar conditioning (OUT since V5)"],
+    "evidence": "research/control/forex_free_v7_run/p2_conditioning_clocks_v7.json sha256 d2ed14bb7e66c283..., per_economy_per_pair, clocks[], caveats[]; EVIDENCED"
+  },
+  "clock": {
+    "definition": "daily 16:00 America/New_York (DST-correct), exactly the P2 funded decisions; one funded clock = one gate evaluation + at most one position",
+    "window_semantics_per_clock": {
+      "GB": "precision_class DAY: W = [next 00:00Z, +24h] after the 23:59:59Z availability bound (conservative LATER)",
+      "CA": "precision_class INSTANT_TRUE_UTC_V3: W = [T, T+24h]",
+      "AU": "precision_class DAY: W = [next 00:00Z, +24h] (conservative LATER)",
+      "NZ": "precision_class INSTANT_OFFSET_QUALIFIED: W = [T, T+24h] with the +12:00 offset caveat and one-bar edge tolerance stated above"
+    },
+    "funded_decision_rule": "first 16:00-NY instant >= W end, inside S0 2018-04-04..2025-07-24, with a same-day daily bar (P0 frozen semantics inherited verbatim)",
+    "evidence": "research/control/forex_free_v7_run/p0_census_v7.json sha256 c658295c88f5e1d5..., frozen_semantics; clock-level stamps in p2_conditioning_clocks_v7.json; EVIDENCED"
+  },
+  "warmup": {
+    "definition": "trailing 20 trading days of daily bars immediately preceding each W start, required to compute sigma_20d; clocks lacking it are dropped fail-closed",
+    "evidence": "p0_census_v7.json price_data_inheritance.per_pair_meta: all pairs daily_span_start 2018-09-03, 2178-2229 daily bars; earliest W start across the 1077 clocks is 2020-01-30T00:00:00Z, so warmup exists for 100% of funded clocks; EVIDENCED"
+  },
+  "decision_timestamp_semantics": "gate evaluated and position (if any) opened at the funded 16:00-NY instant of the clock's decision_date, held k trading days on the 16:00-NY clock (FX 24/5 weekday convention), close-to-close daily-bar accounting, financing-adjusted per the family kernel; W is strictly closed before the decision instant by the funding rule, so r_W, sigma_20d and the gate input are strictly available pre-decision",
+  "features": [
+    {
+      "field": "event_clock (clock_id, economy, nonrep_pair, decision_date, event_available_time_utc, precision_class)",
+      "role": "conditioning calendar",
+      "availability": "EVIDENCED",
+      "pointer": "p2_conditioning_clocks_v7.json clocks[], all 1077 records in scope; availability-lag mutation contract carried (+1d shift => exactly one 16:00-NY decision period move; bar-hole => zero decisions, never stale ones)"
+    },
+    {
+      "field": "overshoot o = r_W / sigma_20d, where r_W is the 1h close-to-close return across W and sigma_20d is the stdev of the trailing 20 daily close-to-close returns of the SAME pair",
+      "role": "magnitude conditioning feature (gate |o| >= theta; sign only for direction)",
+      "availability": "EVIDENCED",
+      "pointer": "staged snapshot: 1h bars (42,688-42,827 per pair, provider timestamps +00:00, spans 2020-01-29/30..2026-09-02T00:00:00+00:00) for r_W under the P0 >=12-bar bookability rule; daily bars (2178-2229 per pair, 2018-09-03..2026-09-01) for sigma_20d; manifest research/control/forex_free_v1_run/staged_data_manifest.json sha256 fe2155c0ef51bcac..., inherited by p0_census_v7.json price_data_inheritance"
+    },
+    {
+      "field": "hold_returns k x daily close-to-close from the funded decision_date",
+      "role": "PnL accounting input",
+      "availability": "EVIDENCED",
+      "pointer": "per_pair_meta daily spans cover every 2020-2025 decision_date plus k=3 days"
+    },
+    {
+      "field": "dealer-inventory overshoot-decay interpretation",
+      "role": "economic narrative (LP inventory limits; dominant-currency rebalancing flows)",
+      "availability": "ASSERTED",
+      "pointer": "literature lineage declared in plans/PLAN_forex_v7.md section 2; no dataset claims"
+    }
+  ],
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV7-A4-P2-anchor",
+      "spec": "for each funded clock with |o| >= 1.0: position = -sign(r_W) on the non-reporting pair, entered at the funded 16:00-NY instant, held k=3 trading days; clocks with |o| < 1.0 evaluate to flat",
+      "mechanism": "cross-economy foreign-print overshoot fade (magnitude-gated reversion)"
+    },
+    "neighbour": {
+      "arm_id": "FXFV7-A4-P2-neighbour-theta2",
+      "spec": "SAME mechanism, SAME feature, SAME clocks, SAME k=3; stricter gate theta = 2.0 (only jolts exceeding two typical daily moves are faded — tests whether the decay effect concentrates in extreme overshoots; distinct conditioning parameter, not a distinct mechanism)"
+    },
+    "control": {
+      "arm_id": "FXFV7-A4-P2-sham-plus7d",
+      "spec": "sham-calendar placebo at anchor parameters (theta=1.0, k=3): +7 calendar-day matched-weekday shift of every qualifying event date, identical windows/gates/offsets/holds, recomputed on the same staged price bytes, fail-closed dedupe vs true event dates",
+      "expected_sign": "must NOT reproduce the anchor (rule 10)"
+    }
+  },
+  "costs": "P3 freeze inherited verbatim: 1.5 bps/side x {1.0, 1.5, 2.0}; tier 2.0 PRIMARY (6.0 bps round trip); break-even bps gate vs 1.5 floor (rule 5)",
+  "folds": {
+    "rule": "3 folds = thirds of S0 2018-04-04..2025-07-24 by decision_date; calendar-third boundaries 2020-09-09 and 2023-02-16; gate: >=2 of 3 folds positive-populated (rule 3)",
+    "expected_decision_counts_by_fold": {
+      "fold_1_2018-04-04_to_2020-09-09": {"GB": 42, "CA": 42, "AU": 18, "NZ": 12, "total": 114},
+      "fold_2_2020-09-10_to_2023-02-16": {"GB": 180, "CA": 198, "AU": 60, "NZ": 42, "total": 480},
+      "fold_3_2023-02-17_to_2025-07-24": {"GB": 173, "CA": 198, "AU": 54, "NZ": 58, "total": 483},
+      "total_S0": 1077
+    },
+    "non_vacuity": "every arm evaluates the same 1077 funded clocks by construction (decision evaluations per fold per arm = 114/480/483, strictly positive); the theta gate selects a subset of evaluations into positions and the gated count is measured at execution, never tuned post hoc — gate starvation is a declared death (COVERAGE_INSUFFICIENT), not a parameter-search space; the control arm can only shrink by explicit fail-closed dedupe",
+    "honest_total": "1077 decision evaluations per arm, 3231 across the three arms; gated positions <= evaluations; no PnL is computed at D1"
+  },
+  "gates_referenced": "p3_invariants_freeze_v7.json baseline_invariants.rule_order 1-10 verbatim (expectancy mechanical reject at tier 2.0; PF>=1.10; folds>=2/3; pair concentration<=0.40; break-even<=1.5bps floor; dual-book sign non-inversion; LOPO all subsets; tier-2.0 stress margin; USD-drift diagnostic; mechanism sanity with MANDATORY sham-calendar), plus ancestry veto |rho|<=0.20 pooled vs all forbidden inventory including V6 FXFV6-A4-P1 and FXFV6-A6-P2",
+  "ancestry_distinctness": {
+    "vs_V6_FXFV6-A6-P2": "that ancestor was gated on a rolling USD PC1 CONCENTRATION factor (regime variable, not event-locked) and reversed cross pairs on regime days; this proposal is gated on the EVENT-LOCKED magnitude of a foreign print's spillover into a specific non-reporting pair, conditioned only on the 1077 P2 clocks, with sign taken pair-locally from the jolt itself; exposure schedules differ (print-locked decision dates vs regime days) and D2 measures pooled |rho|<=0.20 as the binding authority",
+    "vs_V6_FXFV6-A4-P1": "no own-pair conditioning anywhere (reporting pairs excluded per clock); and the sign logic is REVERSION of a pair-local overshoot, not continuation of a release-signed drift",
+    "vs_FXFV7-A4-P1": "distinct mechanism by construction: P1 trades WITH sign(r_W) unconditionally (continuation); P2 trades AGAINST sign(r_W) conditionally on |o|>=theta (magnitude-gated fade); conditioning feature (sign vs magnitude), trade direction (with vs against), neighbour axis (hold k vs gate theta) and economy scope (GB+CA vs all four blocs) all differ — not parameter twins, not relabelled versions",
+    "vs_V5_V4_V3R_V1_V2": "no position-avoidance, no carry/rate-differential input, no session-of-day structure; single frozen 16:00-NY decision clock"
+  },
+  "no_new_data": "no FRED, no key-requiring source, no signup; conditioning restricted to the published P2 clocks and the staged price snapshot",
+  "outcome_blind_attestation": {
+    "agent": "A4-lane",
+    "wave_sha": "5646a108588abbfc28c8fa9fa7664ddfe4d44f1b",
+    "attests": "no scored outcome file was read; this proposal is written blind from the wave SHA and the frozen authorities"
+  }
+}

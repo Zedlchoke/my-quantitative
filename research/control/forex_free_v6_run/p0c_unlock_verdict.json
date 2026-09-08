@@ -1,0 +1,104 @@
+{
+  "schema": "forex_free_v6_p0c_unlock_verdict_v1",
+  "measured_at_utc": "2026-09-06T00:59:27Z",
+  "lane": "p0-a3-unlock (A3, data-authority lane)",
+  "task": "PLAN_forex_v6.md section 3 P0c unlock check: three axes, fresh measurement for V6, fail-closed",
+  "worktree_state": {
+    "root": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/p0-a3-unlock",
+    "branch": "orca/forex-free-v6-p0-a3-unlock",
+    "head": "cbe022e46de1ae546cb7113664906913168e1541",
+    "head_equals_expected_base": true,
+    "status_porcelain_at_start": "clean"
+  },
+  "axis1_fred_api_key": {
+    "command": "grep -c '^FRED_API_KEY=' /Users/hoangminhlong/my-quantitative/.env",
+    "grep_exit_code": 1,
+    "PRESENT_COUNT": 0,
+    "expected": 0,
+    "method_note": "presence count only; no .env value ever read or printed",
+    "conclusion": "FRED_API_KEY ABSENT - third consecutive measurement at 0 (A1, A2, A3)"
+  },
+  "axis2_keyless_fred_alfred_probe": {
+    "note": "fresh V6 measurement; V5 result (CSV hangs, keyless API 400, license unreachable) NOT inherited",
+    "probe_a_csv": {
+      "command": "curl -sS --max-time 25 -o fredgraph_csv_CPIAUCSL.raw -w \"%{http_code} %{size_download}\" \"https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL\"",
+      "curl_exit_code": 0,
+      "http_code": 200,
+      "bytes_downloaded": 17725,
+      "archive": "research/control/forex_free_v6_run/alfred_probe_v6/fredgraph_csv_CPIAUCSL.raw",
+      "sha256": "5a102ceb6a4c5fe5a2e0319d6feca89b55dde6199e51de0760f42791a949cdaa",
+      "content_verified": "CSV text; header observation_date,CPIAUCSL; 955 data rows 1947-01-01 onward with numeric observations (spot-checked head only; full read not performed, not needed for unlock adjudication)",
+      "substantive_series_bytes": true,
+      "delta_vs_v5": "V5 measured this path as hanging; V6 fresh measurement returns 200 with substantive bytes - the DATA path is newly viable, the license gate is what still blocks (see probe_c)"
+    },
+    "probe_b_api_keyless": {
+      "command": "curl -sS --max-time 25 -o fred_api_series_keyless.raw -w \"%{http_code} %{size_download}\" \"https://api.stlouisfed.org/fred/series?series_id=CPIAUCSL\"",
+      "curl_exit_code": 0,
+      "http_code": 400,
+      "bytes_downloaded": 191,
+      "archive": "research/control/forex_free_v6_run/alfred_probe_v6/fred_api_series_keyless.raw",
+      "sha256": "59b94c4327ea4bf7f431a4b571418e6989bca2420095e7c6f7ee544e3a8f7dd9",
+      "body_summary": "XML error: code 400, message 'Bad Request. Variable api_key is not set. Read https://fred.stlouisfed.org/docs/api/api_key.html ...'",
+      "substantive_series_bytes": false,
+      "delta_vs_v5": "unchanged - keyless API stays 400"
+    },
+    "probe_c_license": {
+      "attempts": [
+        {
+          "command": "curl -sS --max-time 25 -o license_policy.raw -w \"%{http_code} %{size_download}\" -A \"Mozilla/5.0\" \"https://www.stlouisfed.org/legal/licensing-policy\"",
+          "curl_exit_code": 92,
+          "http_code": 0,
+          "bytes_downloaded": 0,
+          "stderr": "curl: (92) HTTP/2 stream 1 was not closed cleanly: INTERNAL_ERROR (err 2)",
+          "evidence": "research/control/forex_free_v6_run/alfred_probe_v6/license_policy.meta + license_policy.stderr (no .raw written: 0 bytes received)"
+        },
+        {
+          "command": "curl -sS --http1.1 --max-time 25 -o license_policy_http11_retry.raw -w \"%{http_code} %{size_download}\" -A \"Mozilla/5.0\" \"https://www.stlouisfed.org/legal/licensing-policy\"",
+          "curl_exit_code": 28,
+          "http_code": 0,
+          "bytes_downloaded": 0,
+          "stderr": "curl: (28) Operation timed out after 25010 milliseconds with 0 bytes received",
+          "evidence": "research/control/forex_free_v6_run/alfred_probe_v6/license_policy_http11_retry.meta + license_policy_http11_retry.stderr"
+        },
+        {
+          "command": "curl -sS --max-time 25 -o license_alternate.raw -w \"%{http_code} %{size_download}\" -A \"Mozilla/5.0\" \"https://www.stlouisfed.org/legal/licensing\"",
+          "curl_exit_code": 92,
+          "http_code": 0,
+          "bytes_downloaded": 0,
+          "stderr": "curl: (92) HTTP/2 stream 1 was not closed cleanly: INTERNAL_ERROR (err 2)",
+          "evidence": "research/control/forex_free_v6_run/alfred_probe_v6/license_alternate.meta + license_alternate.stderr"
+        }
+      ],
+      "license_page_reachable_and_readable": false,
+      "delta_vs_v5": "unchanged - license page unreachable on 3 attempts across 2 URLs and 2 protocol versions"
+    },
+    "interpretation_rule_applied": "WORKING PATH requires HTTP 200 with substantive series bytes AND a reachable, readable license page; a 200 on data with unreachable license is BLOCKED_LICENSE, fail closed",
+    "axis2_outcome": "BLOCKED_LICENSE",
+    "axis2_detail": "probe_a now yields a substantive keyless CSV (200, 17725 bytes, 955 data rows) but probe_b keyless API stays 400 and the license page is unreachable (exit 92 / 28 / 92, 0 bytes, three attempts archived); per the fail-closed rule the axis is NOT a working path; license review remains a precondition for any use"
+  },
+  "axis3_us_bls_staging": {
+    "cutoff": "2026-09-06T00:00:00Z (epoch 1788652800)",
+    "cutoff_reference_file": "research/control/forex_free_v6_run/alfred_probe_v6/cutoff_ref_2026-09-06T000000Z.txt (mtime pinned to cutoff via os.utime)",
+    "find_command_template": "find <SCOPE> -maxdepth 4 -iname '*bls*' -newer <cutoff_ref>",
+    "scopes_searched": [
+      "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/integration/research/control/forex_free_v6_run",
+      "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/p0-a2-repair/research/control/forex_free_v6_run",
+      "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/p0-a3-unlock/research/control/forex_free_v6_run",
+      "/Users/hoangminhlong/my-quantitative/research",
+      "/Users/hoangminhlong/my-quantitative/data",
+      "/Users/hoangminhlong/my-quantitative"
+    ],
+    "matches": 0,
+    "non_vacuity_control": "same find without the name filter returns all files created today in scope (probe archives, A2 repair artifacts) - the -newer cutoff demonstrably detects fresh files, so zero *bls* matches is a real negative, not a broken filter",
+    "exclusions_respected": "V5-era archives research/control/forex_free_v5_run/cpi_calendar_archives/US/ (two 403 anti-bot HTMLs) explicitly NOT counted as new staging; bls.gov NOT fetched by this lane (channel closed for scripted access per V5 evidence)",
+    "conclusion": "no NEW owner-provided BLS schedule pages anywhere in scope",
+    "us_bls_outcome": "OUT"
+  },
+  "lane_funding": {
+    "lane2_market_based_real_rate": "DATA_BLOCKED_VALID carried",
+    "rationale": "PLAN section 2 funds lane 2 'IF AND ONLY IF the owner unlocks FRED/ALFRED (key or path)'. Measured: FRED_API_KEY absent (axis 1); keyless API 400 and license page unreachable (axis 2) so no working path exists under the pre-registered fail-closed rule; the CSV-only data path, while newly responsive in V6, cannot fund the lane without the license gate. Consistent with the plan's carried state ('Without the unlock this lane is DATA_BLOCKED_VALID, carried again')."
+  },
+  "evidence_directory": "research/control/forex_free_v6_run/alfred_probe_v6/",
+  "inputs_read_only": "research/control/forex_free_v6_run/p0c_inputs_observed.json (A2 pick; read, not modified)",
+  "no_scored_computation": "P0c phase: no PnL, no S1 access, no .env values read, no raw data committed beyond probe evidence archives"
+}

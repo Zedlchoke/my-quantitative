@@ -1,0 +1,105 @@
+{
+ "schema": "forex_free_v7_prelaunch_remediation_v1",
+ "remediated_at_utc": "2026-09-07T11:26:14Z",
+ "producer": "A1_FOREX_V7_CONTROLLER (remediation lane per FAMILY_PIPELINE \u00a77.29; no scored outcome exists)",
+ "trigger": "A7 prelaunch REFUSED (a7_prelaunch_v7_verdict.json) on F-A7-PL-1 CRITICAL",
+ "changes": [
+  {
+   "finding": "F-A7-PL-1 CRITICAL",
+   "fix": "family_a4p1_v7.py: EVERY arm (anchor/neighbour/control) now derives d_entry = first 16:00-NY at/after the reaction-window end w1; the carried decision_date (event date) is informational only. The sham arm's correct rule is now the universal rule.",
+   "p2_clocks": "p2_conditioning_clocks_v7_r2.json published (append-only supersedes d2ed14bb): decision_date := funded decision; event-date value preserved in decision_date_superseded; 1077/1077 rows shifted; sha 1219dc9951e518df964cb4a992a2dd09fe0b6411f44e4bc953a7a13b44604ef4"
+  },
+  {
+   "finding": "F-A7-PL-3 MEDIUM",
+   "fix": "tests/assets/forex_free_v7: TestNoLookaheadFundedDecision \u2014 (a) every A4-P1 decision entry_ts >= its clock's w1 (sham +7d accounted); (b) event +1 day moves the funded decision exactly one 16:00-NY period"
+  },
+  {
+   "finding": "F-A7-PL-4 LOW",
+   "fix": "exec_driver_v7.py reads launch gates nested under launch{} OR top-level (V6 parity)"
+  },
+  {
+   "finding": "F-A7-PL-5 LOW",
+   "fix": "family_a6p2_v7.py: exit beyond series end EXCLUDED (S0-boundary parity with A4-P1), never clamped; counts re-derived"
+  }
+ ],
+ "p3_recompute_controls": {
+  "note": "P-3: the semantics change recomputes every A4-P1-dependent control",
+  "novelty_rerun": {
+   "FXFV7-A4-P1": {
+    "was": 0.0949,
+    "now": 0.0875,
+    "verdict": "PASS (margin improved)"
+   },
+   "FXFV7-A4-P2": {
+    "was": 0.1299,
+    "now": 0.102,
+    "verdict": "PASS"
+   },
+   "FXFV7-A6-P1": {
+    "unchanged": 0.2689,
+    "verdict": "ANCESTRY_VETO (unchanged)"
+   },
+   "FXFV7-A6-P2": {
+    "unchanged": 0.1639,
+    "verdict": "PASS"
+   }
+  },
+  "control_identifiability": {
+   "FXFV7-A4-P1_anchor-vs-sham": {
+    "was": 0.0633,
+    "now": 0.0821,
+    "bar": "< 0.90 PASS"
+   }
+  },
+  "feasibility": {
+   "A4-P1_anchor_trades_per_fold": {
+    "was_est": [
+     59,
+     251,
+     247
+    ],
+    "now": [
+     59,
+     228,
+     226
+    ],
+    "floor_30": "PASS all folds"
+   },
+   "A6-P2_anchor_folds": {
+    "unchanged": [
+     246,
+     426,
+     360
+    ],
+    "exit_exclusions_outside_S0": true
+   }
+  },
+  "dryrun_r2": {
+   "nonvacuous": true,
+   "A4-P1": {
+    "anchor": [
+     52,
+     228,
+     226
+    ],
+    "neighbour": [
+     42,
+     196,
+     191
+    ],
+    "control": [
+     53,
+     209,
+     224
+    ]
+   },
+   "A6-P2": {
+    "unchanged": true
+   }
+  }
+ },
+ "selection": "BOTH selected families REMAIN ELIGIBLE under the corrected semantics (novelty, identifiability, feasibility all hold); selection_freeze_v7.json amended (amendment_1), no family swap, no slot reassignment",
+ "tests": "13/13 PASS (11 prior + 2 new no-lookahead fixtures)",
+ "verdict": "REMEDIATION_COMPLETE \u2014 pending A7 re-audit of the delta",
+ "s1": "SEALED_UNTOUCHED"
+}

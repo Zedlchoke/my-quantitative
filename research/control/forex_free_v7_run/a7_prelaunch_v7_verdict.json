@@ -1,0 +1,113 @@
+{
+ "schema": "forex_free_v7_a7_prelaunch_verdict_v1",
+ "verdict": "FOREX_FREE_V7_PRELAUNCH_REFUSED",
+ "refused_because": "1 unresolved CRITICAL finding (F-A7-PL-1): the selected FXFV7-A4-P1 anchor and neighbour arms book their entry BEFORE the reaction window closes, so side=sign(r_W) conditions on post-entry price movement — a direct lookahead leak contradicting the P0 census frozen semantics, the P2 clocks rule string, and the proposal's own decision_timestamp_semantics. Zero-HIGH/CRITICAL requirement (P-8 two-key gate) is not met.",
+ "head_audited": "9385d4e074efc4bf87b88c87bb23b187e181fd18",
+ "branch_audited": "orca/forex-free-v7-integration",
+ "audited_at_utc": "2026-09-07T11:20:08Z",
+ "audit_protocol": "fresh context, refutation-first, positives audited stricter than negatives; every verdict file re-derived at least in sample; no code repaired; real run contract never written",
+ "findings": [
+  {
+   "id": "F-A7-PL-1",
+   "severity": "CRITICAL",
+   "blocking": true,
+   "description": "FXFV7-A4-P1 anchor and neighbour arms enter at the 16:00-NY instant of the clock's decision_date, but the P2 clocks file carries decision_date = the EVENT date. The 16:00-NY entry instant therefore precedes the reaction-window end w1 by 16.5-28.0 hours on ALL 833 GB+CA clocks (byte-verified exhaustively). r_W is computed from 1h bars in [w0, w1], so the conditioning sign includes up to ~28h of price movement that happens AFTER the position is opened; 139/551 anchor and 113/444 neighbour entries even precede the window START w0 (GB DAY windows begin next 00:00Z after the event). The frozen authorities all say the opposite: P0 census frozen_semantics funded_decision_rule = 'first 16:00-NY DST-correct decision instant >= W-end'; the P2 clocks file's own rule string repeats it; the proposal asserts 'the 1h reaction window W is CLOSED before the decision instant by the funding rule, so the conditioning feature is strictly available pre-decision'. The +7d sham control arm DOES implement the correct rule (recomputes the first 16:00-NY after the shifted w1 via _first_decision_after; 0/486 entries before w1) — the correct construction existed in the same module and was selectively not applied to the true arms, so anchor-vs-sham comparisons are invalid on both sides. The A6-P2 family (its own trigger/entry machinery, no clocks-file dependence) byte-verifies clean (1032/1032 entries at trigger+1 close, holds verified, 0 episode overlaps, folds 246/426/360 matching D2 exactly). Remediation: recompute the funded decision_date per clock (first 16:00-NY >= w1) in the runner (or the clocks authority), then re-derive D2 feasibility, the sanitized dryrun, the novelty schedule and its rho for A4-P1, and re-run the diagnostic twin smoke; a semantics change at this point also re-triggers P-3 control recomputation (the sham already implements the corrected semantics, which is why it showed different counts).",
+   "evidence": "research/control/forex_free_v7_run/a7_prelaunch_evidence/a7_clock_window_check.{py,json} (833/833 clocks violate decision>=w1; live runner: anchor 551/551 entries<w1 with 139<w0, neighbour 444/444 with 113<w0, control 0/486); commands and outputs in a7_prelaunch_evidence/; code: research/assets/forex_free_v7/family_a4p1_v7.py lines 143-153 + 211-249 (d_entry = c['decision_date'] trusted; sham path alone calls _first_decision_after); p0_census_v7.json frozen_semantics.funded_decision_rule; p2_conditioning_clocks_v7.json rule string; d1/a4-spillover/proposal_FXFV7-A4-P1.json decision_timestamp_semantics"
+  },
+  {
+   "id": "F-A7-PL-2",
+   "severity": "MEDIUM",
+   "blocking": false,
+   "description": "All published A4-P1 decision-count evidence was measured on the leaking schedule and must be re-derived after remediation: D2 feasibility fold counts [59,251,247]/[49,203,198], Q dryrun counts [52,250,249]/[42,203,199] (A7 reproduced them exactly under the leak), and the D2 novelty rho 0.0949 (the novelty script's non-sham sched_v7_a4p1 uses the same event-date entry, so the measured ancestry margin corresponds to the broken schedule, not the frozen proposal semantics). The A6-P2 numbers (folds 246/426/360, novelty 0.1639) are unaffected.",
+   "evidence": "q_gate_verdict_v7.json + d2_verdict_v7.json vs A7 live reruns in a7_prelaunch_evidence/ (identical under the leak); compute_ancestry_rhos_v7.py sched_v7_a4p1 line ~951"
+  },
+  {
+   "id": "F-A7-PL-3",
+   "severity": "MEDIUM",
+   "blocking": false,
+   "description": "Synthetic fixture gap: tests/assets/forex_free_v7 passes 11/11 with no fixture asserting that the decision instant is >= the reaction-window end (no lookahead-mutation test on the funded-decision rule). The leak class was invisible to the suite that was supposed to catch it (FAMILY_PIPELINE §6 step 24 'no-lookahead mutations').",
+   "evidence": "pytest tests/assets/forex_free_v7/ -q -> 11 passed, exit 0 (A7 run); no test touches decision-vs-w1 ordering"
+  },
+  {
+   "id": "F-A7-PL-4",
+   "severity": "LOW",
+   "blocking": false,
+   "description": "Launch-field shape mismatch: the V7 driver reads s0_launch_authorized / s0_launch_authorized_verdict / owner_go_fresh / owner_go_phrase at the TOP level of run_contract.json, while the written contract stores them only nested under 'launch'. Fail-closed today (scored refuses as-is, proven), but the same mismatch would silently keep refusing after an editor flips only the nested 'launch' fields. The V6 precedent contract carries the fields in BOTH places; the launch edit must write the top-level keys (or the driver must read the nested block).",
+   "evidence": "exec_driver_v7.py cmd_scored rc.get('s0_launch_authorized') vs run_contract.json 'launch' object; V6 run_contract.json carries top-level launch_authorized + nested launch block; A7 refusal proof 5"
+  },
+  {
+   "id": "F-A7-PL-5",
+   "severity": "LOW",
+   "blocking": false,
+   "description": "S0 exit-boundary inconsistency between families: A4-P1 excludes decisions whose exit would land beyond S0 end (s0_exit_excluded counter, 0/12 observed); A6-P2 clamps the exit at the series end via min(ie+HOLD, len-1) so late fold-3 decisions can book exits on post-S0 bars (forward booking of an open position — not lookahead — but a different boundary convention than A4-P1 within the same cycle).",
+   "evidence": "family_a4p1_v7.py counts['s0_exit_excluded'] vs family_a6p2_v7.py _mk min(ie+HOLD,...)"
+  }
+ ],
+ "recomputations": {
+  "chain": {
+   "head": "9385d4e074efc4bf87b88c87bb23b187e181fd18",
+   "git_diff_3cad88a..HEAD_stat": "4 files, +186 lines, ONLY metadata control files (event_log.jsonl, run_contract.json, state.json, w_freeze_v7.json); freeze integrity holds",
+   "code_freeze_sha_in_run_contract": "3cad88a8013b802f8febca3cd57df86f3b73c5f5",
+   "wave_sha": "5646a108588abbfc28c8fa9fa7664ddfe4d44f1b is a real commit (P3 freeze) and appears in the outcome_blind_attestation of all four D1 proposals (checked A4-P1 and A6-P2 verbatim; all four carry FAMILY_PIPELINE §10 frozen fields)",
+   "proposal_sha256": "A4-P1 4d03bb89... and A6-P2 3783ddc6... recomputed, MATCH selection_freeze_v7.json; cross-hashes verified: selection_freeze f7856296 = run_contract.selection_freeze_sha256; d2_verdict 06467e32 = selection_freeze.d2_verdict_sha256; p3 ec046060 = rubric/p3 references; p0 c658295c = p3 census_authority; p2 clocks d2ed14bb = run_contract.clocks_sha256; rubric e435a975 = d2 authority ref",
+   "twin": "r-reproduce detached exactly at 3cad88a, clean tree; staged manifest sha fe2155c0 verified and all 156 file digests re-verified against BOTH digest trees (digests_exec2, digests_repro2): 156/156, 0 mismatches"
+  },
+  "semantics_gate_set": {
+   "method": "V7 p3 rule order 1-10 compared field-by-field against the V6 scored gate scaffold (V6 selection_rubric_v6 stage_a_gates + V6 exec_driver_v6.py constants)",
+   "result": "VERBATIM: expectancy>0 mechanical (tier 2.0 primary), PF>=1.10, positive populated folds>=2/3, pair concentration<=0.40, break-even<=1.5bps floor, dual-book sign non-inversion, LOPO all subsets, stress tier 2.0 primary (strict >0 plus PF>=1.00), USD-drift |corr|<=0.30 ceiling (USD_CORR_CEILING=0.30 in both drivers), mechanism-sanity sham mandatory on lane 1; identical_to_v6_thresholds=true holds",
+   "reaction_window_semantics": "INSTANT [T,T+24h] CA/NZ, DAY next-00:00Z GB/AU — consistent across p0 census, p2 clocks TEXT, and proposal; INCONSISTENT with the runner's funded-decision application = F-A7-PL-1"
+  },
+  "lookahead": {
+   "a4p1": "CRITICAL LEAK — see F-A7-PL-1 (833/833 clocks decision<w1; live runner anchor 551/551, neighbour 444/444, control 0/486)",
+   "a6p2": "CLEAN — trigger uses day-t closes only (d_t from log returns ending at t); entry at trigger+1 close byte-verified 1032/1032; holds of 5 sessions byte-verified; expanding percentile uses strictly prior completed days with min 60 obs (60 < warmup 65); episode non-overlap 0 violations; folds match D2 246/426/360 exactly",
+   "sham_control": "+7d shift with fail-closed dedupe VERIFIED working: sham_dropped_true_event_inside=24 clocks dropped where a true evidenced instant falls inside the shifted window; control decisions recomputed post-shift-w1"
+  },
+  "novelty_rerun": {
+   "command": "copy of d2/a7_novelty/compute_ancestry_rhos_v7.py with OUT redirected to a7_prelaunch_evidence/novelty_rerun_evidence (original D2 evidence untouched)",
+   "results": "EXACT reproduction: A4-P1 0.0949 (worst session_tokyo_london_expansion), A4-P2 0.1299, A6-P1 0.2689 ANCESTRY_VETO vs V6_A6P2_anchor (USD-PC1 reversal) — veto sound, > 0.20 bar with containment diagnostic 0.5328 shared-cell, A6-P2 0.1639 (worst V6_A4P1_sham+7d)",
+   "caveat": "A4-P1 rho measured on the leaking schedule (F-A7-PL-2)"
+  },
+  "nonvacuity_and_leaks": {
+   "dryrun": "A7 rerun of exec_driver_v7.py dryrun: exit 0; 6/6 arms non-vacuous; 18/18 arm-folds >= 30; counts reproduce q_gate_verdict_v7.json exactly (A4-P1 anchor 52/250/249, neighbour 42/203/199, control 53/209/224; A6-P2 anchor 246/426/360, neighbour 282/498/438, control 125/235/189)",
+   "a7_own_recursive_scan": "33 outcome-shaped substrings x every key at every depth + float-shape value scan: ZERO outcome-shaped values; only process-counter key names (rw_unavailable, zero_signal, entry_not_in_series, exit_beyond_series, s0_exit_excluded, sham_dropped_true_event_inside, entry_beyond_s0) — sanitized report clean",
+   "pytest": "pytest tests/assets/forex_free_v7/ -q -> 11 passed, exit 0"
+  },
+  "accounting_spotcheck": {
+   "scope": "A6-P2 anchor, 5 mid-sample decisions, tiers 1.0 and 2.0",
+   "method": "hand recomputation from price bytes: gross = side*10000*(exit/entry-1); cost = 2*bps_cost(10000,tier) = 3.00/6.00 USD round trip; financing = side*10000*sum(day-start as-of policy-rate diffs)/365 from the pinned V5-extension ledger",
+   "result": "MATCH to 6 decimals on all 5 decisions at both tiers; financing ledger sha256 cf1f01a7... verified from bytes; skips fail-closed (0 in sample, mechanism verified in driver)"
+  },
+  "s1_budget_ledger": {
+   "s1": "SEALED_UNTOUCHED in state.json, run_contract, all control verdicts; no S1 artifacts materialized; S0 only",
+   "budget": "0/6 consumed (run_contract, selection_freeze, state.json all used=0)",
+   "scored_ledger": "research/control/forex_free_v7_run/scored_ledger_published.jsonl DOES NOT EXIST (integration and twin); no scored rows anywhere"
+  }
+ },
+ "refusal_proofs": {
+  "1_no_contract": "fresh temp cwd, no run contract -> exit 2, refusal JSON missing_gates=[run_contract_file]",
+  "2_s0_launch_authorized_false": "temp contract, s0_launch_authorized=false (all else eligible) -> exit 2, missing_gates=[s0_launch_authorized]",
+  "3_owner_go_fresh_false": "temp contract, s0 true + verdict, owner_go_fresh=false -> exit 2, missing_gates=[owner_fresh_go]",
+  "4_positive_control": "temp contract, both keys true + exact phrase -> launch gate PASSES, driver proceeds past refusal (then fails on sandbox-missing data files, exit 1) — the gate is real, not vacuous",
+  "5_real_contract_as_is": "real worktree, real run contract, launch fields PENDING -> exit 2, missing_gates=[s0_launch_authorized, owner_fresh_go] — refuses as-is (correct)",
+  "hygiene": "all temp contracts crafted inside a7_prelaunch_evidence/refusal_sandbox_*; the real run contract was NEVER written; post-proof git status shows only a7_prelaunch_evidence/ untracked",
+  "evidence_dir": "research/control/forex_free_v7_run/a7_prelaunch_evidence/refusal_sandbox_*"
+ },
+ "diagnostic_gate": {
+  "validate_contract": "DIAGNOSTIC_CONTRACT_PASS, 0 findings (research/governance/diagnostic_persistability.py on run_contract.diagnostic_output_contract)",
+  "smoke_check_twin_rerun": "DIAGNOSTIC_CONTRACT_PASS — A7 ran smoke_check_twin_rerun MYSELF from a fresh empty sandbox against the TWIN driver at the absolute path /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v7/r-reproduce/research/assets/forex_free_v7/exec_driver_v7.py diagnostic-smoke; fresh emission verified",
+  "log": "research/control/forex_free_v7_run/a7_prelaunch_evidence/diagnostic_gate_a7.log"
+ },
+ "verdict_files_trusted_after_rederivation": [
+  "p0_census_v7.json (counts cross-checked; pins recomputed)",
+  "p2_conditioning_clocks_v7.json (833 GB+CA subset exhaustively recomputed)",
+  "p3_invariants_freeze_v7.json (gate set vs V6 verbatim; diagnostic contract re-validated)",
+  "d2_verdict_v7.json (novelty rerun exact; kills consistent)",
+  "selection_freeze_v7.json (proposal hashes recomputed)",
+  "q_gate_verdict_v7.json (dryrun + pytest + diagnostic smoke re-run)",
+  "w_freeze_v7.json (diff 3cad88a..HEAD verified; twin HEAD verified)",
+  "run_contract.json (refusal proofs 1-5)",
+  "NOT fully re-derived (sampled/consistent only): p1_kernel_regression_verdict.json, first_report_v7.json — pre-freeze history, classification consistent with the V6 P1 pattern"
+ ],
+ "launch_consequence": "Both keys remain unturned: A7 does NOT publish FOREX_FREE_V7_S0_LAUNCH_AUTHORIZED; the owner must NOT type GO FOREX V7 SCORED EXECUTION. The scored driver refuses as-is today (proven) and must keep refusing. Remediation must fix F-A7-PL-1 (funded-decision recomputation), then re-derive the A4-P1-dependent evidence (D2 feasibility + novelty schedule, sanitized dryrun, twin smoke) under P-3 control recomputation, and a re-audit of the delta follows (FAMILY_PIPELINE §7 step 30).",
+ "attestation": "audited from bytes, fresh context, never repaired; refusal is a first-class outcome; no file outside a7_prelaunch_evidence/ and this verdict was created or modified; nothing committed or pushed"
+}

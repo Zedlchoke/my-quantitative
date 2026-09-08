@@ -1,0 +1,101 @@
+{
+  "proposal_id": "FXFV1-A5-P2",
+  "lane": "FOREX-FREE-V1/F4-A5 (cross-pair relative movement / intraday risk-premium perspective)",
+  "mechanism_name": "NY-morning USD-factor intraday momentum, flat before rollover",
+  "mechanism_group": "intraday_risk_premium_time_of_day",
+  "economic_mechanism": "Market intraday momentum - the first part of the session predicting the last part - is documented in US equities by Gao, Han, Li & Zhou (2018, JFE): the first half-hour return predicts the last half-hour return, attributed to slow-moving institutional demand and liquidity-provider risk-bearing that do not fully equilibrate within the day. The FX analogue is economically motivated, not scan-selected: during the NY morning (09:00-13:00 ET) the USD absorbs the bulk of US-hours hedging and macro flow - equity-market-linked USD hedging adjustments, option-related flow concentrated after the 10:00 ET NY option cut, and slow-moving momentum-chasing leveraged accounts. These flows arrive against liquidity providers who ratchet quotes rather than clear the move, leaving a partially unarbitrated intraday USD risk premium that persists into the NY afternoon. Mechanism: measure the USD's NY-morning move on the deepest USD pair (EUR/USD); if it is material (|z| >= 1.0), hold the SAME direction into the NY afternoon window (entry after 13:00 ET, flat before the 17:00 ET rollover). The mechanism is directional USD risk premium with strictly bounded, single-pair, intraday-only exposure - distinct from P1's currency-neutral relative-value structure, which is why it earns a separate falsification rule and trial budget.",
+  "expected_counterparty": "(a) Liquidity providers fading the NY-morning move who must unwind or re-quote into the afternoon if flow persists - we are on the persistence side of their inventory risk; (b) late-session institutional flow: asset managers hedging toward benchmark/valuation points late in the NY day and option-related rebalancing after the 10:00 ET cut, whose arrivals are partially predictable from the morning's direction. If instead the afternoon is dominated by pure mean-reversion profit-taking (dealers skewing quotes back), the mechanism fails and the placebo control will show it.",
+  "signal_fields_and_publication_clock": "Fields: Twelve Data H1 CLOSE prices only, EUR/USD (anchor) or USD/JPY (neighbour). No bid/ask, no volume, no rates, no equity/futures data - the USD factor is proxied purely by the single authorized pair's own morning move. Bar clock: H1 bar labeled by UTC open t covers [t, t+1h), complete and publishable at t+1h. Decision instant = close of the bar closing 13:00 America/New_York on the trade date; all inputs (window closes, causal 20-trade-date scaling) strictly available then. DST: ET labels resolved via zoneinfo per date.",
+  "entry_exit_and_rollover_flat_rule": "One trade per trade-date maximum, skipped days allowed. SIGNAL: r = log close(bar closing 13:00 ET) - log close(bar closing 09:00 ET), the four NY-morning bars. z = r / sd20, sd20 = std of the same 4-bar window return over the PRIOR 20 trade-dates (causal; <20 priors => skip). TRADE if |z| >= 1.0 (frozen). DIRECTION: continuation - sign(r) held into the afternoon (EUR/USD up => LONG EUR/USD; EUR/USD down => SHORT EUR/USD; USD/JPY mirrored consistently in USD-side terms: USD up => LONG USD/JPY). ENTRY: next-allowed-bar execution - fill at the close of the bar closing 14:00 ET. NO-RUNWAY SKIP RULE: entry bar later than that => trade skipped. EXIT: close of the bar closing 16:00 ET, the LAST completed H1 bar STRICTLY BEFORE the 17:00 America/New_York rollover; the 16:00-17:00 ET fixing-adjacent bar is never held. FLAT RULE: zero exposure at every NY rollover and at the Friday 16:00 ET weekly close (last Friday action bar closes 15:00 ET); no overnight or weekend positions ever => no financing/rollover accrual.",
+  "execution_model": "Next-allowed-bar execution at H1 close granularity: decision at close of the 13:00 ET bar, fill at the close of the 14:00 ET bar, exit at the close of the 16:00 ET bar. Single conservative proxy price (mid/last; contract has no bid/ask) with the full spread+slippage burden carried by the frozen cost matrix. Single pair per trade, 1x notional, no stops/limits/partial fills, no intrabar events. Two-bar holding window: the shortest honest expression of the hypothesis, so the cost matrix must clear a small gross move - which is exactly what the x{1,1.5,2} stress tests.",
+  "frozen_cost_stress_matrix": {
+    "cost_basis": "Proxy half-spread+slippage per side, frozen a priori BEFORE any return computation: EUR/USD 0.9 pip, USD/JPY 1.1 pips per side (round trip = 2x per side). Pip = 0.0001 (EUR/USD), 0.01 (USD/JPY). Converted to bp of notional at FROZEN round reference rates (constants, not data): EUR/USD 1.10, USD/JPY 110.00. Reference-rate sensitivity absorbed by the x1.5/x2 tiers.",
+    "round_trip_bp_per_leg": {"EURUSD": 1.6364, "USDJPY": 2.0},
+    "both_legs_rule": "This mechanism is SINGLE-leg (one pair per trade), so the cross-pair both-legs rule is not triggered at x1. The x2 tier (3.2727 bp EUR/USD; 4.0 bp USD/JPY) deliberately exceeds any plausible two-leg both-sides charge for one pair, making the whole matrix double-conservative: survival at x2 implies survival under an honest both-legs costing of a comparable cross-pair variant.",
+    "matrix_bp_of_notional": {
+      "anchor_EURUSD": {"x1": 1.6364, "x1.5": 2.4545, "x2": 3.2727},
+      "neighbour_USDJPY": {"x1": 2.0, "x1.5": 3.0, "x2": 4.0},
+      "placebo_yesterday_signal": {"x1": 1.6364, "x1.5": 2.4545, "x2": 3.2727}
+    },
+    "one_event_delay_stress": "Entry fill delayed one further completed bar: 14:00 ET close -> 15:00 ET close; exit unchanged (16:00 ET bar close). Holding window shrinks to a single bar. Must survive the delay at the x1.5 tier.",
+    "frozen_declaration": "These numbers were fixed before any return, PnL, or backtest of this mechanism was computed anywhere in this lane."
+  },
+  "pair_universe": {
+    "signal_and_execution_pairs": ["EUR/USD", "USD/JPY"],
+    "universe_scope": "Authorized contract pairs only: EUR/USD, GBP/USD, AUD/USD, NZD/USD, USD/JPY, USD/CHF, USD/CAD. This proposal uses EUR/USD (anchor: deepest USD venue) and USD/JPY (neighbour: second-most-liquid USD pair, different macro region). One pair per trade; never held simultaneously.",
+    "deliberate_exclusions": "GBP/AUD/NZD/CHF/CAD excluded ex ante from THIS mechanism to keep the trial count minimal and avoid scanning for the best-reacting pair; exclusions are not evidence of anything."
+  },
+  "currency_neutralization": "NOT currency-neutral - this is a directional intraday USD risk-premium bet, stated as such. Neutralization discipline: (i) exposure confined to ONE authorized pair per trade at 1x notional, never aggregated, so net USD exposure is bounded by a single pair's one-trade notional; (ii) anchor (EUR/USD) and neighbour (USD/JPY) never held simultaneously, preventing accidental USD-basket stacking; (iii) PnL measured and reported in USD; (iv) flat before every rollover, so USD exposure never bridges a financing boundary.",
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "EUR/USD: today's NY-morning window (09:00-13:00 ET) return, |z| >= 1.0, held same-direction 14:00-16:00 ET as specified.",
+      "why_it_validates": "EUR/USD is the deepest USD market, hence the cleanest single-pair proxy of the USD factor: if intraday USD risk premium is real, the pair that carries most US-hours USD flow should exhibit the intraday momentum most reliably and at the lowest cost."
+    },
+    "neighbour": {
+      "definition": "USD/JPY: identical rule (USD-side sign convention), executed on USD/JPY, same windows and thresholds.",
+      "why_it_validates": "Pre-registered a priori: USD/JPY is the other top-three USD pair and the main non-European carrier of USD hedging flow, so the same flow-persistence channel should produce a weaker but positive trace. Success confined to EUR/USD alone, or stronger on USD/JPY than EUR/USD, would undercut the USD-factor-flow interpretation (JPY idiosyncrasies - intervention risk, risk-off crashes - are channel-external) and downgrade the candidate."
+    },
+    "negative_control": {
+      "definition": "Placebo on the information set: the SAME rule, windows, thresholds and execution, but the signal is the PREVIOUS trade-date's 09:00-13:00 ET window return instead of today's (fill today at 14:00 ET close, exit 16:00 ET close).",
+      "why_it_destroys": "The hypothesis is INTRADAY flow persistence: the morning move carries information only while the same session's flows are still working. Yesterday's morning move is causally valid information (no look-ahead) but should carry no intraday-premium content beyond slow multi-day drift. If the placebo earns an edge statistically comparable to the anchor, the effect is multi-day momentum/news persistence mislabeled as intraday risk premium - the interpretation, and with it the candidate, is destroyed."
+    }
+  },
+  "falsification_rule": "Pre-registered, evaluated once on the full 2020-01-29..2026-09-02 sample, no re-specification allowed. All statistics NET of the frozen cost matrix. KILL the candidate if ANY of: (F1) anchor hit rate - fraction of trades where the 14:00->16:00 ET move matches the signal sign - is <= 0.50, or two-sided sign-test p vs 0.5 is >= 0.05; (F2) anchor net mean trade return at x1.5 <= placebo net mean trade return (no intraday-specific content over the prior-day signal); (F3) cost fragility - anchor unprofitable at x1.5, or profitable at x1 but not x2 (edge lives inside cost uncertainty => dead); (F4) delay fragility - anchor unprofitable under the one-event-delay stress at x1.5. SURVIVE as a research candidate only if F1-F4 all pass for the anchor; the neighbour must then be directionally positive; the placebo is required to be flat-to-negative. All outcomes, including kills, are reported.",
+  "expected_regimes": [
+    "Works (if the mechanism is real): trending NY mornings driven by persistent macro/hedging flow; high-volume US-session regimes; days when the US session extends rather than reverses the European move.",
+    "Degrades: choppy mean-reverting sessions, days dominated by a single digested headline, and option-expiry-heavy Fridays with large 10:00 ET cuts that fully clear the morning move by midday.",
+    "Fails: sharp risk-off episodes where USD/JPY (neighbour) gaps on intervention or safe-haven flows unconnected to NY-morning flow; 2020-03-style liquidity spirals; sessions where the afternoon reverses the morning via dealer inventory unwinds."
+  ],
+  "dst_session_clock_spec": "All session boundaries computed in America/New_York wall time via zoneinfo on the trade date (never fixed offsets): EST weeks UTC-5, EDT weeks UTC-4; transitions verified against repo goldens in tests/assets/forex/test_sessions_dst.py (rollover 22:00Z EST / 21:00Z EDT; weekly close 21:00Z EST / 20:00Z EDT). Frozen trading week: Sunday 21:00 ET open -> Friday 16:00 ET close. Daily NY rollover 17:00 ET always falls on an H1 close boundary; per the data contract the position is FLAT at the last completed H1 bar whose close instant is STRICTLY BEFORE each rollover (the 16:00-17:00 ET bar is never held). Friday: additionally flat at the last completed bar strictly before the 16:00 ET weekly close. Signal (13:00 ET close), entry (14:00 ET close), exit (16:00 ET close) are ET wall-clock labels resolved per-date, DST-correct by construction across all four annual US/EU transition configurations.",
+  "exact_trial_count": {
+    "mechanism_configurations": 3,
+    "enumeration": "anchor EUR/USD (1) + neighbour USD/JPY (1) + previous-day placebo control (1).",
+    "frozen_hyperparameters": "window 09:00-13:00 ET (4 bars), z threshold 1.0, scaling window 20 prior trade-dates, entry next completed bar (14:00 ET close), exit 16:00 ET bar: each fixed at exactly ONE value; no grid, no scan, no outcome tuning anywhere.",
+    "not_counted_as_trials": "the x{1,1.5,2} cost tiers and the one-event delay are accounting stresses on the same 3 configurations, not additional configurations.",
+    "lane_total_trials_both_proposals": 6
+  },
+  "data_fields_used": "Twelve Data H1 OHLC bars for EUR/USD and USD/JPY; of each bar only the CLOSE is read by signal/execution logic (open/high/low deliberately unused); bar UTC open timestamps for calendar alignment; 2020-01-29..2026-09-02 range only. Explicitly NOT used: bid/ask, tick data, any volume field (centralized FX volume is never admissible), interest rates, rollover/financing or swap data, equity/futures/commodity prices, macro event calendars.",
+  "forbidden_assumptions_check": {
+    "no_bid_ask_data_assumed": true,
+    "no_volume_assumed": true,
+    "no_financing_or_rollover_rates_assumed": true,
+    "no_overnight_positions": true,
+    "no_lookahead": "causal 20-trade-date scaling; placebo control is itself a no-look-ahead construction; fills strictly after the signal bar is publishable",
+    "no_intrabar_fills_or_stops": true,
+    "no_grid_search_or_outcome_tuning": "single frozen value per hyperparameter; placebo and delay/cost stresses pre-registered",
+    "proxy_costs_not_claimed_live": "frozen conservative constants used as stress, frozen before any returns; x2 tier covers a hypothetical both-legs charge",
+    "no_ohlc_high_low_in_signals": true,
+    "no_cross_asset_data_assumed": "USD factor proxied by the authorized FX pair itself only",
+    "label": "RESEARCH_CANDIDATE_NOT_LIVE_READY"
+  },
+  "literature_sources": [
+    {
+      "title": "Market intraday momentum",
+      "authors": "Lei Gao, Yufeng Han, Sophia Zhengzi Li, Guofu Zhou",
+      "year": 2018,
+      "url": "https://www.sciencedirect.com/science/article/abs/pii/S0304405X18301351",
+      "claim": "In US equities the first half-hour return predicts the last half-hour return (market intraday momentum), attributed to slow-moving institutional demand - the direct template for the NY-morning -> NY-afternoon FX mechanism proposed here. FX analogue itself is our hypothesis, not their finding.",
+      "retrieval_utc": "2026-09-03T08:22:25Z",
+      "verified": true
+    },
+    {
+      "title": "Liquidity in the Foreign Exchange Market: Measurement, Commonality, and Risk Premiums",
+      "authors": "Loriano Mancini, Angelo Ranaldo, Jan Wrampelmeyer",
+      "year": 2013,
+      "url": "https://onlinelibrary.wiley.com/doi/10.1111/jofi.12053",
+      "claim": "EUR/USD is the most liquid exchange rate - grounds EUR/USD as the cleanest single-pair proxy of the USD factor and anchors the frozen cost assumptions for the deepest pair.",
+      "retrieval_utc": "2026-09-03T08:22:25Z",
+      "verified": true
+    },
+    {
+      "title": "BIS Triennial Central Bank Survey, OTC foreign exchange turnover",
+      "authors": "Bank for International Settlements",
+      "year": 2022,
+      "url": "https://www.bis.org/publ/qtrpdf/r_qt2212f.htm",
+      "claim": "USD/JPY ranks among the most traded pairs - grounds its a-priori selection as neighbour. Ranking verified; precise share digits UNVERIFIED at retrieval.",
+      "retrieval_utc": "2026-09-03T08:22:25Z",
+      "verified": "PARTIAL"
+    }
+  ],
+  "label": "RESEARCH_CANDIDATE_NOT_LIVE_READY"
+}

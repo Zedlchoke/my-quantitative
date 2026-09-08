@@ -1,0 +1,168 @@
+{
+  "schema": "forex_free_v1_a7_prelaunch_v1",
+  "measured_at_utc": "2026-09-03T12:05:43Z",
+  "auditor": "A7_PRELAUNCH (independent recompute; no repair, no scoring)",
+  "cycle_id": "FOREX-FREE-V1",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/f7-a7-prelaunch",
+  "branch": "orca/forex-free-v1-f7-a7-prelaunch",
+  "bootstrap_sha": "d26c6886a12957d725062cb3722025cba29c6a39",
+  "head_at_audit": "d26c6886a12957d725062cb3722025cba29c6a39",
+  "worktree_clean_at_start": true,
+  "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python (3.12.14). NOTE: task brief specified /Users/hoangminhlong/.venv/bin/python which does not exist on this machine; the project virtualenv was used instead. Informational, LOW, not a blocker.",
+  "verdict": "FOREX_FREE_V1_LAUNCH_AUTHORIZED",
+  "checks": [
+    {
+      "id": "C1_pin_chain",
+      "name": "Git ancestry from cycle terminal through wave, family picks, to W1 prep; selection freeze and rubric precedence",
+      "command": "git merge-base --is-ancestor for {de904c2,9911016,62cb736,261cc03,8783bd2,bd5f2a3} vs HEAD and pairwise; diff of worktree_manifest.json selection_rubric_frozen_before_audit between 8783bd2 and HEAD",
+      "evidence": {
+        "terminal": "de904c2ebdcbefccc16afe4baa60d44507becba3 'FOREX TERMINAL: FOREX_BLOCKED_SELECTION_INSUFFICIENT (honest closeout)' 2026-09-03T07:41+07",
+        "wave": "991101691865af1209422b1a517c05889685fa1f 'F5 closeout ... selection frozen' 2026-09-03T16:04+07",
+        "family1": "62cb7365d4b5577c265f3367a6840b8243b37b16 'F6 family-1 FXFV1-A3-P1' 2026-09-03T18:24:25+07",
+        "family2": "261cc038d8751df2467d9f12293402047277c81a 'F6 family-2 FXFV1-A3-P2' 2026-09-03T18:24:28+07",
+        "w1_prep": "d26c6886a12957d725062cb3722025cba29c6a39 (HEAD)",
+        "ancestry": "de904c2 -> 9911016 -> {62cb736, 261cc03} -> d26c688: all merge-base --is-ancestor checks TRUE",
+        "selection": "research/control/forex_free_v1_run/selection_freeze.json selects exactly FXFV1-A3-P1 + FXFV1-A3-P2 (3 arms x 3 cost cells each); tie-break lexicographic over 6 eligible all-9/9 proposals",
+        "rubric_precedence": "rubric frozen in 8783bd2 (2026-09-03T09:30Z, frozen_before_any_audit_or_selection=true); 8783bd2 is ancestor of audit integration bd5f2a3 (2026-09-03T16:04+07); rubric block byte-identical (sorted-keys JSON diff) between 8783bd2 and HEAD; post-freeze worktree_manifest.json commits (aa23ad0, f339eea) only ADD F6 lane records"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C2_spec_fidelity",
+      "name": "family1.py / family2.py vs authoritative proposal JSONs",
+      "command": "line-by-line module read vs proposal_{1,2}.json; independent execution: arm_identity distinctness, synthetic EDT/EST flatten spot-check, family2 _sigma20_closes PIT probe",
+      "evidence": {
+        "signal_f1": "m = c3/c0 - 1; c0 = close of bar ending at session open; c3 = close of 3rd session bar; public at open+3h (family1.py:431-447); weekend rejected fail-closed",
+        "signal_f2": "r = p4/p0 - 1 over exactly 4 session bars; gate |z| = |r/sigma20| >= 1.0 exactly (GATE_Z=1.0); fade -sign(r) (family2.py:531-560)",
+        "variants": "f1: anchor=London 08:00 Europe/London sign(m), neighbour=NY 08:00 America/New_York sign(m), control=London -sign(m) (family1.py:327-331); f2: anchor=NY 08:00 fade, neighbour=Tokyo 09:00 Asia/Tokyo fade, control=NY 08:00 sign-flipped continuation (family2.py:105-123) — both match proposal anchor/neighbour/negative_control blocks",
+        "sigma20_pit": "independently executed family2._sigma20_closes: 21 prior-NY-weekday 16:00-NY closes strictly before the signal date (max sigma day 2026-06-19 < signal 2026-06-22), sample stdev n-1, 20 log returns; WARMUP fail-closed before 21 prior days",
+        "zones": "all instants via zoneinfo named zones (Europe/London, America/New_York, Asia/Tokyo), fold=0 explicit policy, round-trip fail-closed on nonexistent wall times, whole-hour alignment asserted (family1._resolve_wall_instant, family2._zone_instant_utc)",
+        "fills": "BOTH families: entry bar = the bar STARTING at signal completion instant (never the signal bar, never intra-bar), fill = that bar's CLOSE; f1 build_schedule entry_start=signal_instant, entry_fill=entry_bar.end (family1.py:524-527); f2 build_schedule entry_open=signal_dt, fill=entry_bar.end_dt (family2.py:650-659)",
+        "delay": "top tier only adds exactly one entry-delay event: f1 extra_delay = 1 if tier == 2.0 (family1.py:594); f2 DELAY_EVENTS_BY_TIER {2.0: 1} (family2.py:102); flatten never delayed in either",
+        "flatten_dst": "independent synthetic run: family1 anchor flatten_end 2026-07-15T20:00Z (EDT, 16:00 NY wall) and 2026-01-14T21:00Z (EST, 16:00 NY wall), rollovers 21:00Z/22:00Z; flatten bar required, never substituted; position cannot span the rollover (f1 entry/flatten same NY trade day assert family1.py:538-541; f2 anchor rollover-same-day FailClosed family2.py:741-744)",
+        "costs": "BASE 1.5 bps/side applied to EVERY fill, tiers exactly {1.0, 1.5, 2.0} in both modules; S3 per-side 3.0 bps",
+        "arm_digests": "independently recomputed: f1 {anchor fe1d81f4..., neighbour 44fac3b3..., control 6e66df5b...} 3 distinct, stable; f2 {anchor 460ce5a2..., neighbour 69a896de..., control d5deb4db...} 3 distinct, stable; f2 ledger arm digests match recomputation"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C3_tests",
+      "name": "Targeted suites then full suite, exact counts",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v1 tests/assets/forex tests/test_protocol_contracts.py tests/test_protocol_metrics.py -q ; then /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest -q",
+      "evidence": {
+        "targeted": "214 passed in 4.48s (0 failed, 0 skipped reported)",
+        "full_suite": "1162 passed, 16 warnings (pandas deprecation in pre-existing test_execution_truth.py), 61.72s, run alone (pre-run ps check: zero pytest processes)",
+        "delta_vs_f6_closeout": "F6 closeout recorded 1156; d26c688 added exactly 6 test functions to tests/assets/forex_free_v1/test_td_loader.py (git diff f339eea..d26c688 -- tests/ = 1 file, 75 insertions, 6 'def test_'); 1156 + 6 = 1162 accounted for"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C4_dry_runs",
+      "name": "Exact-arm dry-run digests recorded and reproducible; replay idempotence test-enforced",
+      "command": "re-derived family1 six run digests via goldens_family1.dryrun_pair_bars + family1.run_arm and compared to data_raw/forex_free_v1/dryrun/f6_family1_dst_fixture_ledger.jsonl; re-derived family2 digest from test_family2 fixture payload via family2.run_digest; git check-ignore on dryrun dir",
+      "evidence": {
+        "family1_ledger": "data_raw/forex_free_v1/dryrun/f6_family1_dst_fixture_ledger.jsonl: 6 rows, 6 distinct digests; independent recomputation SET MATCH = True (EUR/USD anchor dc9cba8a..., GBP/USD control 7c46c94c..., etc.); directory gitignored (git check-ignore OK)",
+        "family2_digest": "independently re-derived payload digest == d53dc7bc3bbf3563cd877bcf6b803f891d35df9e7ef323e6c462d290172b0edc EXACT (ledger_family2.jsonl run_header, 19 rows); ledger arm_report arm_digest values match my recomputed family2 arm identities",
+        "replay_idempotence_test_enforced": "tests/assets/forex_free_v1/test_family1.py:271 test_publish_idempotent_on_identical_digest (assert NOOP, appended False) and :429 (all six digests replay NOOP, row count stays 6); test_family2.py:472 test_publish_idempotent_replay_noop (assert REPLAY_NOOP, rows_added 0) and :701; both tests green in C3 runs"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C5_data_authority",
+      "name": "Data contract, quality manifests, digest ledger, independent loader re-verification",
+      "command": "read data_contract.json / data_quality_final.json / canonical_manifest_final.json / request_manifest.json; td_loader.load_pair_h1('EUR/USD', <integration worktree data_raw>, request_manifest) with sha256 verification of all 18 canonical windows; coverage arithmetic recomputed for all 7 pairs",
+      "evidence": {
+        "contract": "data_contract.json v2_amended: H1 = H1_RESEARCH_AUTHORIZED; amended 6.5y cycle floor with owner authorization BEFORE proposals/outcomes; original 8-year gate failure preserved verbatim; H4/HISTORICAL_BID_ASK/HISTORICAL_ROLLOVER_FINANCING = UNAVAILABLE_FAIL_CLOSED",
+        "coverage": "recomputed from data_quality_final.json: EUR/USD 6.5892y, GBP/USD 6.5886y, AUD/USD 6.5924y, NZD/USD 6.5906y, USD/JPY 6.5924y, USD/CHF 6.5925y, USD/CAD 6.5926y — all >= 6.5y; span 2020-01-29/30 -> 2026-09-02; matches claimed 6.589-6.593y",
+        "gaps": "gaps_gt_85h = [] for all 7 pairs",
+        "quarantine": "EUR/USD quarantined = 12 (0.0281% of considered rows, under preregistered 0.1% fail-closed ceiling); all other pairs 0; manifest rows 42670 = 42658 canonical + 12 quarantined reconciles",
+        "digest_verification": "all 18 EUR/USD canonical _a.json windows sha256-verified against request_manifest requests + canonical_digest_ledger (0 failures); loader fail-closed UNVERIFIED_FILE path armed",
+        "loader_recheck": "EUR/USD re-loaded through research/assets/forex_free_v1/td_loader.py: 42658 rows, 12 quarantined, first 2020-01-30 07:00 last 2026-09-02 00:00, 6.5892y, ascending unique timestamps, reload digest deterministic (5eeb562af9dc4570...); matches committed quality audit exactly"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C6_cost_honesty",
+      "name": "No bid/ask, volume, financing or live-readiness claims; label intact",
+      "command": "grep -inE 'bid.?ask|volume|financing|swap|live.ready|spread' over family1.py family2.py proposal_1.json proposal_2.json with negation filtering",
+      "evidence": {
+        "scan": "only remaining matches after excluding explicit negations/forbidden-checks are the label occurrences themselves",
+        "label": "RESEARCH_CANDIDATE_NOT_LIVE_READY present in all four artifacts (family modules LABEL constant + docstrings; both proposal JSON label fields)",
+        "no_scoring": "family1 run_arm schedule_only=True scoring_authorized=False; family2 scope=SCHEDULE_ONLY_DRYRUN_NO_SCORING; family2 compute_metrics scored=False status=DRY_RUN_FEASIBILITY_ONLY; proxy costs declared 'chosen a priori, not estimated from data, not a bid/ask claim'"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C7_boundary",
+      "name": "Budget 0/6, S1 SEALED_UNTOUCHED, credentials, workers, no push/main-merge",
+      "command": "git diff --stat de904c2..HEAD over forbidden paths; git log --merges de904c2..HEAD; git for-each-ref refs/remotes; git grep credential scans; ps for concurrent forex workers",
+      "evidence": {
+        "budget": "run_contract.json budget {planned_scored_cells: 6, computed: 0, label 0/6}; state.json budget 0/6 denominators {published: 0, observed: 0}; no forex-free-v1 scored ledger anywhere (repo-wide scored-artifact search negative); results/ contains only 4 files uploaded 2026-08-19 (dd01cf0, pre-cycle, prior-cycle USDT backtest), untouched by de904c2..HEAD",
+        "s1": "s1_isolation SEALED_UNTOUCHED declared in run_contract.json, state.json, selection_freeze.json; S1 not inspected per forbidden_actions",
+        "credentials": ".env.example contains EMPTY key placeholders only; request_manifest key_source = 'existing gitignored root .env'; credential_policy forbids print/log/commit; repo scan found no embedded key values",
+        "history": "de904c2..HEAD contains ZERO merge commits (linear); origin/main last at b8876ef (2026-08-31, pre-cycle); no orca/forex-free-v1-* remote refs exist (cycle branches local-only, no push)",
+        "forbidden_paths": "research/proposals/forex/, research/audits/forex/, research/control/forex_run/, results/registry/ untouched in cycle; the two selected proposal JSONs unchanged since audit integration bd5f2a3"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C8_resource",
+      "name": "8 cores / 8 GB; serial cells; suite alone",
+      "command": "sysctl -n hw.ncpu hw.memsize; ps before and during audit",
+      "evidence": {
+        "machine": "hw.ncpu = 8, hw.memsize = 8589934592 (8 GB) exactly per run_contract resource_cap",
+        "serial": "six cells planned serially (cap >= 1 satisfied); during the audit the only forex-cycle workers were this auditor's commands",
+        "alone": "full suite pre-run ps check showed zero pytest processes; NOTE: at 19:02:16+07 a pytest belonging to a DIFFERENT cycle (.worktrees/crypto/v12/integration, homebrew Python, 'tests -q -x') started on the same machine, after this auditor's recorded runs; it touches no forex worktree and does not affect the recorded counts"
+      },
+      "result": "PASS"
+    },
+    {
+      "id": "C9_accepted_deviations",
+      "name": "Verify the three known accepted deviations (not new findings)",
+      "command": "code-level verification + selection_freeze.json cross-check",
+      "evidence": {
+        "next_bar_close_fills": "verified implemented identically in BOTH family modules (C2.fills) per frozen spec execution_model 'fill at the close of bar t+1'",
+        "a4_p1_medium": "MEDIUM objection (control-arm exit vs own flat invariant) recorded against FXFV1-A4-P1, which is UNSELECTED (selection_freeze unselected_preserved[0]) — moot for this cycle",
+        "high_orthogonality": "the single HIGH orthogonality pair is FXFV1-A3-P1 <-> FXFV1-A4-P2; the A3-P1 member is selected, the A4-P2 member is NOT selected (selection_freeze note records this explicitly)"
+      },
+      "result": "PASS"
+    }
+  ],
+  "test_counts": {
+    "targeted": {"command": "pytest tests/assets/forex_free_v1 tests/assets/forex tests/test_protocol_contracts.py tests/test_protocol_metrics.py -q", "passed": 214, "failed": 0, "duration_s": 4.48},
+    "full": {"command": "pytest -q", "passed": 1162, "failed": 0, "warnings": 16, "duration_s": 61.72, "run_alone": true, "delta_vs_f6_1156_explained": "+6 test_td_loader.py tests added in d26c688"}
+  },
+  "objections": [
+    {
+      "id": "OBS-A7-PRE-01",
+      "severity": "LOW",
+      "status": "accepted_informational",
+      "text": "Task brief named interpreter /Users/hoangminhlong/.venv/bin/python which does not exist; audit used the project virtualenv /Users/hoangminhlong/my-quantitative/.venv/bin/python (3.12.14). Same test commands and counts."
+    },
+    {
+      "id": "OBS-A7-PRE-02",
+      "severity": "LOW",
+      "status": "accepted_informational",
+      "text": "A concurrent pytest from the unrelated crypto/v12 cycle ran on the same machine starting 19:02:16+07, after this auditor's recorded test runs; different worktree/interpreter, no forex interaction, machine not saturated (load < 4 on 8 cores)."
+    },
+    {
+      "id": "OBS-A7-PRE-03",
+      "severity": "LOW",
+      "status": "accepted_informational",
+      "text": "Pre-cycle results/ files (account.csv, order_fills.csv, positions.csv, summary.json; uploaded 2026-08-19, prior-cycle USDT backtest) exist in the repo root. They predate the cycle, are untouched by de904c2..HEAD, and are not forex-free-v1 scored artifacts; budget 0/6 unaffected."
+    }
+  ],
+  "pre_existing_accepted_deviations": [
+    "Both families fill at the close of the next allowed bar (frozen spec execution_model) — verified in both modules",
+    "A4-P1 MEDIUM objection applies to an UNSELECTED proposal — moot",
+    "HIGH orthogonality pair member A4-P2 is unselected — recorded in selection_freeze.json"
+  ],
+  "blockers": [],
+  "launch_gate_summary": {
+    "scored_cells": 0,
+    "cells_authorized_to_score": 6,
+    "scored_trials_per_family": 21,
+    "results_label": "RESEARCH_CANDIDATE_NOT_LIVE_READY",
+    "verdict": "FOREX_FREE_V1_LAUNCH_AUTHORIZED"
+  }
+}

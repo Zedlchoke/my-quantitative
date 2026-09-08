@@ -1,0 +1,74 @@
+{
+ "schema": "forex_free_v5_p0_verdict_v1",
+ "measured_at_utc": "2026-09-05T15:33:47Z",
+ "producer": "A1_FOREX_CONTROLLER",
+ "cycle_id": "FOREX-FREE-V5",
+ "authority": "PLAN_forex_v5.md section 3 (P0a, P0b, P0c); LESSONS.md P-1 P-2 P-7",
+ "head": "edba9bfe690da10e7f0dd271d8ad95d2794492df",
+ "branch": "orca/forex-free-v5-integration",
+ "gates": {
+  "P0a_CPI_release_calendars": {
+   "verdict": "PASS_WITH_RECORDED_OUTS",
+   "evidence_bundle": {
+    "availability_table": "p0a_cpi_availability_table.json",
+    "per_print_tables": [
+     "p0a_cpi_prints_gb.json",
+     "p0a_cpi_prints_ca.json",
+     "p0a_cpi_prints_au.json",
+     "p0a_cpi_prints_nz.json"
+    ],
+    "builders": [
+     "build_gb_cpi_evidence.py",
+     "build_ca_cpi_evidence.py",
+     "build_au_nz_cpi_evidence.py"
+    ],
+    "archive_bytes": "cpi_calendar_archives/ (per-print pages + WDS responses, sha256 per row)"
+   },
+   "conditional_universe_per_print_axis": [
+    "GB",
+    "CA",
+    "AU",
+    "NZ"
+   ],
+   "out_blocs": {
+    "US": "UNAVAILABLE_FAIL_CLOSED (BLS anti-bot 403, archived)",
+    "JP": "FORWARD_SCHEDULE_ONLY (no historical archive)",
+    "CH": "UNEVIDENCED (JS app)",
+    "EMU": "DATA_YES_TIMING_NO (EU Login/JS wall)"
+   },
+   "pair_consequence": "no pair has both legs evidenced (US out); fundable per-print legs are the non-US legs GBPUSD/USDCAD/AUDUSD/NZDUSD",
+   "asserted_bounds_used": "NONE"
+  },
+  "P0b_ALFRED_vintages": {
+   "verdict": "BLOCKED_DATA_AUTHORITY",
+   "evidence_bundle": "p0b_alfred_probe_verdict.json",
+   "consequence": "axis 2 unfunded this host; carried as DATA_BLOCKED_VALID; owner options recorded"
+  },
+  "P0c_announcement_ledger_extension": {
+   "verdict": "PASS",
+   "base_pin": "ae5e1f2e64b8aa7c08472755bd73857543aa89b72ea81b70ad5c5d81e7cd6bd4 (220 rows, re-verified)",
+   "extension_sha256": "cf1f01a7ec2d3d7506892c045139910937147df49d3742cc4ec72b36d20fd902",
+   "extension_rows": 250,
+   "upgrades": {
+    "CA": "20/22 (BoC FAD press releases; 2 unscheduled 2020-03 cuts remain unevidenced - URL pattern differs, gap recorded)",
+    "EMU": "10/19 (ECB PRs 2022-2023 MRO + 2026; value findings on the rest)"
+   },
+   "only_availability_differs_violations": 0,
+   "manifest": "ledger_manifest_v5_extension.json",
+   "pin_file": "LEDGER_PINNED_V5_EXTENSION",
+   "value_integrity_findings": "9 EMU rows (2023-09-20 + 2024/2025 block) left UNEVIDENCED: located ECB PRs do not confirm the ledger's values - suspected MRO/DFR series mixing in the base ledger; flagged for A7 terminal/owner; values never edited (append-only)"
+  }
+ },
+ "p0_summary": {
+  "axis1_per_print": "FUNDED on 4-economy subset (GB/CA/AU/NZ non-US legs); US leg unevidenced -> no cross-leg real-differential vs US; within-bloc per-print structures only",
+  "axis2_alfred_vintages": "BLOCKED_DATA_AUTHORITY this host",
+  "pre_registered_classes": {
+   "real_differential": "DATA_BLOCKED_VALID stays (needs both legs incl. US)",
+   "PPP_deviation": "DATA_BLOCKED_VALID stays (needs both legs)"
+  },
+  "pnl_computed_in_phase_p": "none"
+ },
+ "s1": {
+  "status": "SEALED_UNTOUCHED"
+ }
+}

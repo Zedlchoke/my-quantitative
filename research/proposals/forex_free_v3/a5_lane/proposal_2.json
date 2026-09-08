@@ -1,0 +1,219 @@
+{
+  "schema": "forex_free_v3_proposal_v1",
+  "proposal_id": "FXFV3-A5-P2",
+  "hypothesis_id": "FXFV3-A5-P2",
+  "lane": "A5",
+  "cycle": "FOREX-FREE-V3",
+  "title": "Daily panel-outlier reversal in a high-dispersion state",
+  "mechanism_class": "cross_sectional_short_horizon_reversal",
+  "macro_conditioned": false,
+  "conditioning_series": [],
+  "macro_free_note": "The SIGNAL conditions on nothing but the authorized price snapshot (daily 16:00-NY flat-bar closes). The v3 dual-book mandate still applies to every arm: the financing-adjusted book is computed per the frozen policy-rate-differential formula as a book attribute required of all arms - it is not part of this hypothesis and no macro series conditions any entry, exit or sizing decision. This proposal satisfies the lane quota as the permitted macro-free second proposal (P1, FXFV3-A5-P1, carries the lane's macro conditioning on BIS WS_CBPOL).",
+
+  "economic_mechanism": "Order flow is the proximate driver of exchange-rate moves (Evans and Lyons 2002): one-sided flow - stop cascades, inventory-driven dealing, hedging waves - moves a pair far more than concurrent information would justify. Liquidity-provision theory says the compensation for standing against such one-sided flow arrives as short-horizon reversal: providers accumulate inventory during the extreme move and unwind it as flow normalizes (Nagel 2012, equity evidence; the FX transfer is the hypothesis under test, not an established result). FX momentum is documented at 1-12 month horizons (Menkhoff et al. 2012) and is weakest at short horizons, which motivates the short-horizon contrarian complement rather than contradicting it. The proposed mechanism is CROSS-SECTIONAL, not time-series: a pair's 5-day move is measured as an outlier against the 7-pair panel (scale-free z against the panel median and dispersion), so the USD common factor that drives all pairs together is netted out and only panel-relative overextension is faded. The conditioning state - cross-sectional dispersion of 5-day returns above its own trailing median - selects the days on which an outlier move is most plausibly flow-driven overextension rather than slow information diffusion.",
+
+  "falsifiable_prediction": "On daily decisions inside the high-dispersion state, a pair whose 5-day panel z-score exceeds +1.0 (extreme panel winner) is followed by partial reversion over the next days: SHORTing it at the next 16:00-NY bar open, symmetrically LONGing pairs with z < -1.0, exiting when z crosses back through zero or at the 10-bar time stop, yields after-cost financing-adjusted expectancy > 0, PF >= 1.10, >= 2/3 chronological folds positive, positive stress books with tier multipliers applied, AND strictly higher full-sample per-pair-day after-cost financing-adjusted PnL than the identical reversal book without the dispersion-state gate (overall incremental alpha > 0). The prediction is falsified - family rejected regardless of anchor raw PnL - if any of: (a) incremental alpha <= 0 vs the ungated benchmark (the gate adds nothing); (b) the time-series-z control reproduces the anchor edge under its preregistered rule (control expectancy > 0 AND control PF >= 1.10) - the cross-sectional panel-centering ingredient is then not causal; (c) the price-only book inverts the anchor expectancy sign; (d) the neighbour diverges from the anchor while the control behaves (knife-edge threshold).",
+
+  "primary_literature_trace": [
+    {
+      "authors": "Martin D. D. Evans, Richard K. Lyons",
+      "venue": "Order Flow and Exchange Rate Dynamics, Journal of Political Economy 110(1), 170-180",
+      "year": 2002,
+      "claim": "Order flow explains a large share of exchange-rate movements, establishing one-sided flow as the proximate driver of FX moves. Honest scope: establishes flow as a driver; does not by itself establish that extreme flow-driven moves revert."
+    },
+    {
+      "authors": "Stefan Nagel",
+      "venue": "Evaporating Liquidity, Review of Financial Studies 25(7), 2005-2039",
+      "year": 2012,
+      "claim": "Short-term reversal profits compensate liquidity provision made during one-sided flow, and reversal intensifies when liquidity withdraws. Equity evidence; the mechanism is hypothesized (not established) to transfer to FX here, which is exactly what the causal control tests."
+    },
+    {
+      "authors": "Lukas Menkhoff, Lucio Sarno, Maik Schmeling, Andreas Schrimpf",
+      "venue": "Currency Momentum Strategies, Journal of Financial Economics 106(3), 660-684",
+      "year": 2012,
+      "claim": "Currency momentum lives at 1-12 month horizons in developed FX and is weakest at short horizons, motivating a short-horizon contrarian hypothesis as the complement; also documents that FX return behavior is horizon-dependent, so a 5-day contrarian rule is not the mirror image of the monthly momentum literature."
+    }
+  ],
+
+  "pit_observables": {
+    "note": "All scored quantities derive from completed H1 snapshot bars only (td_loader schema: datetime/open/high/low/close; no volume, no bid/ask, no D1 series, no macro series in the signal).",
+    "price_daily_bar": "The daily decision bar is the completed H1 bar whose open instant maps to 16:00 America/New_York local wall time (20:00Z EDT / 21:00Z EST; named-zone conversion via zoneinfo per the A3 calendar authority). Closes of consecutive daily bars are the daily closes. Inherited session entry gate (Sun 21:00 -> Fri 16:00 America/New_York) bounds the week; the Friday 16:00-NY bar is the last decision bar of the week.",
+    "five_day_return_R": "R_p(t) = close_p(t) / close_p(t-5) - 1 over the 5 most recent daily bars ending at decision bar t, per pair. Any missing bar among the 5 => that pair NOT evaluated that day (fail-closed); the panel evaluation proceeds only if all 7 pairs have complete windows (any missing pair => whole panel voided that day, NO_DECISION_VOID, fail-closed).",
+    "panel_z": "Using the 7 pair returns R at decision t: med = median over the 7 values; sd = population standard deviation over the 7 values (ddof = 0, frozen for determinism). z_p(t) = (R_p(t) - med) / sd. If sd == 0 => panel voided that day (fail-closed, no trade).",
+    "dispersion_state": "HIGH-DISPERSION state at t iff sd(t) > median of the same sd series over the 126 most recent daily decisions strictly before t (as-of, trailing). Fewer than 126 prior decisions exist only during warmup, which is excluded by construction.",
+    "warmup": "warmup_daily_bars = 126 (the deepest trailing requirement: the dispersion median window; the 5-day return nests inside). From the 2020-01-30 snapshot start the schedule activates at the first decision bar on or after approximately 2020-08-03; F1 statistics begin there."
+  },
+
+  "universe": {
+    "pairs": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "justification": "All 7 pairs - and the panel is the mechanism: the cross-sectional z is defined over exactly this frozen panel and would change meaning under any subset, so no ex-ante exclusion is possible without changing the hypothesis. Pair heterogeneity is handled ex post by the frozen concentration gates and the drop-one-pair plan.",
+    "notional_usd_unit": 10000
+  },
+
+  "clocks": {
+    "decision_clock_class": "DAILY (daily-or-slower hard precondition satisfied; no intraday decision anywhere)",
+    "decision_event": "At the close of each daily bar t (16:00-NY completion), compute the panel z for all 7 pairs and the dispersion state with inputs as-of that close instant.",
+    "entry_fill": "OPEN of the next EXISTING 16:00-NY bar after the decision bar (one-event lag, inherited). A Friday-close decision fills at the following Monday 16:00-NY bar open (disclosed, not a gap exploit). Missing fill bar => that signal is voided, NO_TRADE, fail-closed, never fill-forward.",
+    "holding_exit_rule": "Daily re-evaluation per open position: exit at the OPEN of the next existing 16:00-NY bar after the FIRST completed decision bar at which (a) reversion completes: SHORT exits when z_p <= 0, LONG exits when z_p >= 0; or (b) the time stop fires: 10 daily bars have elapsed since entry; whichever comes first. No profit target beyond the zero-crossing.",
+    "forced_flat": "Fold boundaries force-flat (inherited): open positions closed at the open of the last existing 16:00-NY bar before the boundary date; affected trades enter purge accounting.",
+    "missing_bar_rule": "Any required bar missing => NO_TRADE (or earliest-available scheduled exit for forced-flat only), never silent fill-forward."
+  },
+
+  "trade_budget_governor": {
+    "max_open_positions_per_pair": 1,
+    "max_round_trips_per_pair_per_utc_week": 3,
+    "utc_week_definition": "[Monday 00:00Z, next Monday 00:00Z)",
+    "cap_enforcement": "deterministic and PIT-safe: signals that would exceed either cap are dropped (not deferred); the weekly cap bounds worst-case turnover"
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV3-A5-P2-anchor",
+      "spec": "In HIGH-DISPERSION state: SHORT pair p when z_p(t) > +1.0; LONG pair p when z_p(t) < -1.0; no trade otherwise. In LOW-DISPERSION state: no trades at all. Exits per the holding rule (zero-crossing or 10-bar time stop); governor as frozen.",
+      "single_frozen_parameter_set": {
+        "return_window_daily_bars": 5,
+        "z_threshold": 1.0,
+        "dispersion_median_window_daily_bars": 126,
+        "time_stop_daily_bars": 10,
+        "exit": "z zero-crossing or time stop",
+        "forced_flat": "fold boundaries"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV3-A5-P2-neigh",
+      "one_presumption_away": "Holds the mechanism concept 'fade the panel outlier in the high-dispersion state' fixed and moves ONE presumption: outlier selection by RANK (the single most extreme |z| pair per day, exactly one candidate per day) instead of by the z > 1.0 threshold. If the mechanism is real the neighbour should move together with the anchor; divergence indicts the anchor's threshold as knife-edge.",
+      "spec": "Identical to anchor in state gate, returns, exits, costs and governor EXCEPT: on each high-dispersion day exactly the pair with maximum |z_p| is a candidate (fade direction by its sign); ties resolved deterministically by frozen pair order (universe list order); the day's candidate is dropped if the governor would exceed a cap.",
+      "single_frozen_parameter_set": {
+        "return_window_daily_bars": 5,
+        "selection": "max |z| rank, one candidate per day, frozen pair-order tie-break",
+        "dispersion_median_window_daily_bars": 126,
+        "time_stop_daily_bars": 10,
+        "exit": "z zero-crossing or time stop",
+        "forced_flat": "fold boundaries"
+      }
+    },
+    "control": {
+      "arm_id": "FXFV3-A5-P2-ctrl",
+      "role": "Causal negative control: removes the CROSS-SECTIONAL ingredient (panel centering and panel dispersion) while holding clock, state-gate shape, threshold, exits, costs and governor identical. Tests whether the panel-relative construction is causal or whether ordinary time-series reversal carries the book.",
+      "spec": "Per pair independently: tz_p(t) = R_p(t) / sigma_p(t), where sigma_p is the population standard deviation of that pair's daily 5-day returns over the 126 most recent daily decisions strictly before t. Same HIGH-DISPERSION state gate (panel sd vs its trailing 126-day median, unchanged), same threshold |tz| > 1.0, same direction rule (SHORT above, LONG below), same exits, governor and costs.",
+      "preregistered_non_reproduction_rule": "The control REPRODUCES the anchor's edge - and the family FAILS its control gate regardless of anchor performance - if the control's full-sample after-cost financing-adjusted expectancy > 0 AND its PF >= 1.10 (inherited control_reject_pf). A nonpositive or weak control is a PASS for this gate.",
+      "single_frozen_parameter_set": {
+        "return_window_daily_bars": 5,
+        "own_sigma_window_daily_bars": 126,
+        "z_threshold": 1.0,
+        "dispersion_median_window_daily_bars": 126,
+        "time_stop_daily_bars": 10,
+        "exit": "tz zero-crossing or time stop",
+        "forced_flat": "fold boundaries"
+      }
+    },
+    "incremental_benchmark": {
+      "role": "The frozen V3 benchmark treatment, instantiated for this macro-free proposal ex ante: the SAME mechanism with the proposal's conditioning removed, at identical decision clock, fills, universe, warmup and costs. Computed inside the anchor cell's scoring run as an unscored reference book (digest-covered diagnostic); it does NOT consume a scored-cell slot (budget remains 3 arms per family).",
+      "arm_id": "FXFV3-A5-P2-bench",
+      "spec": "Unconditional panel-outlier reversal: SHORT when z_p > +1.0, LONG when z_p < -1.0, every day regardless of dispersion state; identical exits (z zero-crossing, 10-bar time stop), fills, costs, governor. The dispersion-state gate - this proposal's conditioning ingredient - is the only removal."
+    }
+  },
+
+  "incremental_test": {
+    "frozen_benchmark_treatment": "identical panel-outlier reversal without the dispersion-state gate (FXFV3-A5-P2-bench)",
+    "operationalization": "overall incremental alpha := (full-sample sum of the anchor's after-cost financing-adjusted per-pair-day PnL) - (same for the benchmark), both normalized per pair-day of the identical post-warmup schedule window, with identical notional units per active position. Gate: > 0. The per-trade expectancy difference (anchor - benchmark) is reported alongside as a diagnostic, not the gate.",
+    "rationale": "Per-pair-day normalization is exposure-fair: the anchor trades a subset of the benchmark's days, so the gate asks whether the dispersion-state conditioning adds value on the same capital envelope.",
+    "dual_book": "anchor, neighbour, control and benchmark each book BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns (v3 dual-book mandate); the financing term follows the frozen formula as a book attribute and is reported, gated and never claimed by this hypothesis."
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "charging": "once per side on notional, at entry and at exit",
+    "tiers": [1.0, 1.5, 2.0],
+    "tier_bps_per_side": { "1.0": 1.5, "1.5": 2.25, "2.0": 3.0 },
+    "f1_fixed_stress_application": "F1-FIXED: tier multipliers are applied to BOOKED stress PnL through the P1 kernel book_stress (research/assets/forex_free_v3/accounting.py, commit 3c6fc11); the base / tier1.5 / tier2.0 rows must be pairwise distinct whenever trades are non-empty.",
+    "delay_stress": "frozen one-event delay (every fill shifted one additional daily bar, schedule recomputed) carried as a SEPARATE stress component, never blended into the cost tiers (lesson V3-L2).",
+    "notional_usd_unit": 10000,
+    "break_even_diagnostic": "break_even_bps_per_side = mean gross per-trade return in bps / 2 (round trip = 2 sides), anchor arm, full-sample and per fold, reported next to tier results. Interpretation frozen in advance: the stress gate is plausibly attainable only if break-even exceeds 3.0 bps/side; diagnostic only, never a fee rescue.",
+    "no_cost_exemption": "no pair, fold or regime ever receives lower assumed costs (blanket clause respected)"
+  },
+
+  "financing_disclosure": {
+    "formula": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days / 365, accrued per calendar day at that day's day-start as-of differential (availability-gated per data_authority_v3.json financing_disposition); sign = +1 for long base/short quote, -1 for short base/long quote; rates in annualized decimals from adopted BIS WS_CBPOL rows; weekends and holidays accrue calendar days.",
+    "carry_adjacent": "NO - the hypothesis makes no rate claim and no decision reads any macro series; the financing book exists only because the v3 dual-book mandate applies to all arms. Rate-series availability stamps enter the financing book through the frozen kernel, not through the signal.",
+    "disclosed_approximation": "policy rates are unsecured official rates, NOT swap/OIS-implied or broker rollover financing; the proposal's economics do not depend on financing precision beyond policy-rate differentials.",
+    "financing_gate": "the financing term must not manufacture the edge: the price-only book must not invert the sign of the anchor's after-cost expectancy; if it does, the family is rejected (PLAN_forex_v3.md section 12)."
+  },
+
+  "expected_turnover_and_sample_floor": {
+    "definition_of_decision": "A decision = one daily bar after warmup on which the arm's frozen schedule completed a go/no-go panel evaluation (go or no-go); void candidates count as decisions without trades. All four books evaluate every post-warmup daily bar.",
+    "expected_decisions_per_arm": "approx. 1180 per pair full-sample (approx. 2020-08-03..2026-09-02), approx. 8260 panel-wide; the frozen floor of >= 40 decisions per arm is met by more than two orders of magnitude.",
+    "expected_trades": {
+      "anchor": "the high-dispersion state occurs on roughly half of decisions at schedule level, and on such days the |z| > 1.0 threshold typically flags 1-2 of the 7 pairs; with zero-crossing/10-bar exits and the weekly governor: band 15-35 round trips / pair / year, ~100-230 per pair full-sample, ~700-1600 panel-wide.",
+      "neighbour": "exactly one candidate per day caps it below the anchor: band 10-30 round trips / pair / year aggregated unevenly across the panel.",
+      "control": "own-sigma outliers are more frequent than panel outliers: band 30-80 round trips / pair / year, hard-bounded by the weekly governor at 156 / pair / year.",
+      "benchmark": "ungated: band 25-50 round trips / pair / year.",
+      "band_caveat": "all counts are schedule-level design estimates from frozen constants and the statistical shape of a 7-name cross-section; never optimized; audited at implementation on the real snapshot (schedule-only)."
+    },
+    "sample_floor": {
+      "min_decisions_per_arm_full_sample": 40,
+      "fold_population": "inherited fold_populated_min_trades 30 applies to populated-fold statistics; F1 (effectively 2020-08-03..2022-05-01 after warmup) is the thinnest fold; schedule estimate ~200-500 anchor trades panel-wide in F1. An arm/fold below the inherited floor is INDETERMINATE, not negative evidence.",
+      "feasibility_headroom": "5-day FX moves are of order 20-100 bps gross per trade at schedule level against the 3-6 bps round-trip cost band, so the expected turnover can plausibly clear its own cost band; verified at A9 feasibility with frozen-cost turnover arithmetic."
+    }
+  },
+
+  "folds_plan": {
+    "scheme": "3 chronological folds over the frozen boundary set 2020-03-01 / 2022-05-01 / 2024-07-01 / 2026-09-02.",
+    "folds": [
+      { "fold": "F1", "start_utc_date": "2020-03-01", "end_utc_date": "2022-05-01" },
+      { "fold": "F2", "start_utc_date": "2022-05-01", "end_utc_date": "2024-07-01" },
+      { "fold": "F3", "start_utc_date": "2024-07-01", "end_utc_date": "2026-09-02" }
+    ],
+    "purge": "any trade whose entry OR exit instant falls within 14 calendar days either side of an internal fold boundary (2022-04-17..2022-05-15 and 2024-06-17..2024-07-15 UTC) is excluded from that fold's statistics and counted in purge_excluded; force-flat executes at boundaries regardless, and the affected trades enter the same purge accounting.",
+    "stage_a_note": "scoring requires after-cost anchor expectancy > 0 (financing-adjusted, price-only also reported), PF >= 1.10, >= 2/3 folds positive, MDD within the frozen USD ceiling, concentration ceilings, stress PnL > 0 with tier multipliers applied, meaningful drop-one, USD-drift diagnostic within the frozen bound, incremental alpha > 0, neighbour support, control non-reproduction, financing gate, reproduction ALL_MATCH (PLAN_forex_v3.md section 12, frozen by reference)."
+  },
+
+  "concentration_plan": {
+    "pair_concentration_gate": "no single pair > 40% of gross positive trade PnL full-sample (inherited max_pair_positive_share 0.4); largest fold-positive share <= 50% (inherited max_positive_fold_share 0.5); account/cash is not a pair.",
+    "direction_check": "longs and shorts must each be >= 25% of anchor trades full-sample; the mechanism is direction-symmetric (fades winners, buys losers) and a one-sided schedule indicates a broken implementation, not an edge.",
+    "weekday_coverage_check": "every weekday Mon-Fri must appear among decision days; absent weekdays indicate a clock/DST defect.",
+    "panel_integrity_check": "the panel median/sd use exactly the 7 frozen pairs in every decision; any implementation that silently drops a pair from the cross-section is a defect caught by comparing decision-day counts against the calendar."
+  },
+
+  "drop_one_plan": {
+    "drop_one_pair": {
+      "procedure": "recompute the anchor full-sample schedule 7 times, each time excluding exactly one pair - the excluded pair is removed from BOTH the trading set and the cross-sectional panel (the panel becomes 6 names; this is the honest reading: the hypothesis is defined over the surviving panel).",
+      "gate": "anchor after-cost financing-adjusted expectancy sign unchanged (positive) AND PF >= 1.00 in at least 5 of the 7 recomputes (inherited dropout_survival_min_of_7).",
+      "interpretation": "failure means the edge is a single-name artifact (one currency's episode dominating the panel), not a panel-wide overextension-reversal mechanism."
+    },
+    "drop_one_fold": {
+      "procedure": "recompute the anchor full-sample schedule 3 times, each time excluding exactly one fold.",
+      "gate": "anchor after-cost financing-adjusted expectancy remains > 0 in all 3 recomputes.",
+      "interpretation": "a book whose expectancy flips sign when any single fold is removed is fold-concentrated and fails."
+    }
+  },
+
+  "failure_interpretation": "(a) Anchor expectancy <= 0: panel-outlier reversal in a high-dispersion state has no after-cost edge at the frozen 1.5-3.0 bps/side authority; the family is dead; a correct REJECT_ALL is a complete outcome. (b) Anchor positive but incremental alpha <= 0 vs the ungated benchmark: the dispersion-state conditioning adds nothing; family rejected - positive raw PnL never overrides a failed incremental alpha. (c) Control fires its preregistered rule: ordinary time-series reversal carries the book and the cross-sectional construction is not causal; family rejected via the control gate. (d) Neighbour diverges from the anchor while the control behaves: the z = 1.0 threshold is presumed knife-edge; supporting-arm expectation failed. (e) Price-only book inverts the anchor expectancy sign: the financing term manufactures the edge; rejected. (f) F1 starvation below inherited population floors: cell INDETERMINATE (recorded as such, never silently promoted or demoted).",
+
+  "source_to_test_map": [
+    { "ingredient": "DST-aware daily 16:00-NY decision bar identification", "test": "existing research/assets/forex/calendar.py + sessions.py suites (A3 calendar authority) plus implementation golden across the 2025 US spring-forward/fall-back and US/EU desync weeks" },
+    { "ingredient": "panel z construction (median, population sd ddof=0, sd==0 fail-closed), 5-day returns, 126-day dispersion median", "test": "implementation-lane hand-computed golden fixture on a synthetic 7-name panel, including a zero-dispersion day and a missing-bar day" },
+    { "ingredient": "state gate boundary behaviour (sd strictly above/below trailing median)", "test": "implementation golden with a hand-pinned equality day (sd exactly equal to the median => LOW state => no trades)" },
+    { "ingredient": "one-event-lag fills, next-existing-bar fill after Friday, missing-bar fail-closed", "test": "implementation golden + no-fill-forward mutation test" },
+    { "ingredient": "cost once per side; F1-fixed tier multipliers on booked stress PnL; delay stress kept separate", "test": "P1 kernel tests on research/assets/forex_free_v3/accounting.py @ 3c6fc11 (existing) + implementation assert that base/tier1.5/tier2.0 rows are pairwise distinct" },
+    { "ingredient": "financing accrual per frozen formula including weekend calendar days (book attribute only)", "test": "implementation golden vs hand-computed values on a synthetic 2-week window; kernel availability gating covered by adopted tests/data_fusion regressions" },
+    { "ingredient": "governor caps (1 open position/pair; 3 RT/pair/week; deterministic drop)", "test": "implementation tests with synthetic over-cap days" },
+    { "ingredient": "purge windows, force-flat, drop-one pair (panel becomes 6 names)/fold mechanics", "test": "implementation tests with synthetic schedules" },
+    { "ingredient": "data authorization", "authority": "research/control/forex_free_v3_run/data_authority_v3.json: H1 Twelve-Data-derived series RESEARCH_AUTHORIZED (156/156 digest replay PASS); no macro series conditions the signal; D1/H4/bid-ask/rollover unused" }
+  ],
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm: 5-day return window, z threshold 1.0, 126-day dispersion median, 10-bar time stop, 126-day own-sigma window (control), rank selection with frozen pair-order tie-break (neighbour), 10000 USD notional, the frozen clocks/fills/costs. No grids, menus, ranges or tuning anywhere; the neighbour and control are distinct frozen specs, not points on the anchor's knob; the benchmark is a fixed treatment, not a variant to select.",
+
+  "novelty_self_check": {
+    "vs_V1_family1_session_open_momentum_continuation": "Different clock (one daily 16:00-NY decision vs intraday session-open bars), different direction of use (contrarian vs continuation), different object (panel-relative 5-day overextension vs unconditional continuation from a session open). No session-open price, no session window, no intraday bar enters any decision; not a re-clock because that family's mechanism (session-open order-flow continuation) appears nowhere here.",
+    "vs_V1_family2_late_NY_standardized_extension_fade": "This is the closest-looking row (both 'fade an extension'), and the distinction is load-bearing: family2's observable is the standardized extension of the LATE-NY SESSION at an intraday clock (session geometry, hours-scale); this proposal's observable is the 5-DAY panel-relative return outlier measured once per day (multi-day, cross-sectional, no session geometry, no standardization by session statistics). The shared word 'fade' does not make a daily cross-sectional panel z a re-labelled session-extension z; A7-N can verify decorrelation by comparing their trade-time distributions, which do not overlap (one trades only within sessions, the other only at 16:00-NY completions).",
+    "vs_V2_family1_Tokyo_compression_to_London_expansion": "No compression state, no session range, no expansion trigger: the dispersion state is a cross-sectional statistic across PAIRS (dispersion of 7 concurrent 5-day returns), not a time-series range of one session, and it gates rather than triggers.",
+    "vs_V2_family2_London_AM_break_with_retest_hold": "No level breach, no retest-hold state machine, no session extremes, no intraday resolution window.",
+    "vs_currency_momentum_families": "The anchor is contrarian at a horizon where the documented FX momentum effect is weakest (Menkhoff et al. 2012); it is not an inverted or re-horizoned momentum family used to rescue anything - the falsification rules treat 'it is just short reversal' as a failure mode via the causal control, not as a rescue.",
+    "rescue_operations": "no sign inversion of any forbidden row, no reduced cost assumptions, no pair cherry-picking (the panel is the frozen universe by construction), no session relabeling, no re-clocking of an intraday family to daily, no re-grading of V1/V2 results under a new label."
+  },
+
+  "outcome_blind_attestation": "I (A5) read no outcome data of any kind: no V1/V2 per-cell PnL tables, ledgers, family modules, test fixtures under tests/assets/forex_free_v1/ or forex_free_v2/, no PLAN_forex.md or PLAN_forex_v2.md, and no V3 scored artifact (none exists). My only V1/V2 knowledge is the mechanism names and summary evidence quoted in the binding forbidden_family_inventory.json and PLAN_forex_v3.md. I loaded no market data (no data_raw reads, no snapshot reads), fetched nothing, computed no backtest, PnL or schedule simulation; every count in this proposal is a schedule-level design estimate from frozen constants and the statistical shape of a 7-name cross-section, and every gate value is inherited frozen authority. This proposal was written before any V3 scoring existed and is signed outcome-blind: lane A5, cycle FOREX-FREE-V3, 2026-09-04.",
+  "written_before_scoring_utc": "2026-09-04T13:57:11Z"
+}

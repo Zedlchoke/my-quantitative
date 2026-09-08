@@ -1,0 +1,35 @@
+{
+  "schema": "forex_free_v1_data_contract_v2_amended",
+  "measured_at_utc": "2026-09-03T03:35:00Z",
+  "producer": "A1_FOREX_CONTROLLER",
+  "cycle_id": "FOREX-FREE-V1",
+  "amendment_authority": "Owner authorization 2026-09-03: cycle-specific minimum H1/H4 history = 6.5 calendar years (zero-cost feasibility rationale), authorized before proposals/implementation/outcomes; original eight-year gate results preserved verbatim; no fabrication authorization",
+  "original_8y_gate_preserved": {"D1": "~7.995y (2018-09-03->2026-09-01)", "H4_H1": "~6.59y (2020-01-29/30->2026-09-01/02) — FAILED the original eight-year floor; that result is preserved and not rewritten"},
+  "amended_classification": {
+    "D1": "D1_CONTEXT_AUTHORIZED (benchmark/context only; not sufficient alone for strategies required to flatten before NY rollover)",
+    "H1": "H1_RESEARCH_AUTHORIZED",
+    "H4": "UNAVAILABLE_FAIL_CLOSED",
+    "HISTORICAL_BID_ASK": "UNAVAILABLE_FAIL_CLOSED",
+    "HISTORICAL_ROLLOVER_FINANCING": "UNAVAILABLE_FAIL_CLOSED (all positions must flatten before NY rollover; no financing assumption)"
+  },
+  "H1_evidence": {
+    "license_storage": "PASS (F1, 8/8)",
+    "coverage": "all 7 pairs 6.587-6.593 calendar years >= 6.5y amended minimum (canonical_manifest.json)",
+    "determinism": "PASS — original windows and refetched repair sub-windows: pull A == pull B content-identical (values+meta)",
+    "capped_responses": "NONE remaining — 7 truncated 5000-row windows quarantined (TRUNCATED suffix, kept out of canonical set); refetched split windows 1,083-1,369 rows < 5000",
+    "filename_collision": "ELIMINATED — refetch uses start_END names; originals quarantined",
+    "boundary_duplicates": "FOUND AND DEDUPED — ~1,088-1,096 inclusive-end boundary rows per pair; canonical series have unique sorted timestamps",
+    "calendar_weekend": "PASS — frozen FX trading-week calendar: Sun 21:00 America/New_York open -> Fri 16:00 close (DST-correct via zoneinfo; matches FxWeekConvention default); weekend bars classified (flat stale + non-flat out-of-session) and excluded by the calendar rule only, never by returns",
+    "alignment": "PASS — hourly bars exist at every UTC hour incl. 21:00/22:00; the NY rollover instant always falls between two completed H1 bars, so a completed-bar strategy can always exit strictly before rollover",
+    "completed_bar_pit": "PASS — canonical series unique, ascending, bar end <= end_date < fetch time",
+    "flatten_schedule": "PASS — hourly resolution expresses exit at the last bar before NY rollover year-round"
+  },
+  "H4_evidence": {
+    "coverage": "6.587-6.590y >= 6.5y (would pass amended floor)",
+    "alignment": "FAIL — 4h bar anchor follows the Sydney open (20:00 UTC in northern winter / 21:00 UTC in northern summer); in northern-winter months the NY rollover instant (22:00 UTC) falls INSIDE a 4h bar, so a completed-bar signal cannot always exit strictly before rollover",
+    "verdict": "UNAVAILABLE_FAIL_CLOSED per owner condition 6 (alignment insufficient for unambiguous rollover-avoiding strategies)"
+  },
+  "cost_policy": "unchanged: no bid/ask claim; frozen conservative proxy-cost + adverse-cost stress matrix required in every F4 proposal before any returns; all outputs RESEARCH_CANDIDATE_NOT_LIVE_READY",
+  "evidence": ["data_probe/canonical_manifest.json", "data_probe/coverage_summary.json", "data_probe/ecb_crosscheck.json", "data_probe/repair_pass.json", "data_probe/weekend_flat_audit_eurusd.json"],
+  "F4": "AUTHORIZED — outcome-blind proposal lanes on H1 only, positions flat before NY rollover, next-allowed-bar execution, DST-correct clocks, frozen cost stresses, anchor/neighbour/negative control, no grids, no old-proposal rescue, zero scoring"
+}

@@ -1,0 +1,178 @@
+{
+  "schema": "forex_free_v7_d1_blind_proposal_v1",
+  "proposal_id": "FXFV7-A6-P1",
+  "cycle": "FOREX-FREE-V7",
+  "written_at_utc": "2026-09-07T00:00:00Z",
+  "lane": {
+    "agent": "A6",
+    "axis": "open axis — cross-sectional relative-strength (panel co-momentum) structure on the staged 7-pair G10 daily panel",
+    "lane_kind": "blind_proposal",
+    "wave_sha": "5646a108588abbfc28c8fa9fa7664ddfe4d44f1b",
+    "branch": "orca/forex-free-v7-integration",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v7/integration",
+    "outcome_blind": true
+  },
+  "title": "Cross-sectional currency rank momentum on the 7-pair G10 panel: weekly rank rebalancing books the persistence of slow mandate-driven rebalancing",
+  "causal_claim_one_sentence": "Mandate-constrained currency actors (reserve managers, corporate hedgers, monthly-cycle overlay/CTA rebalancers) can only adjust exposure on slow decision cycles, so cross-pair relative strength among the 7 staged G10 pairs persists at 1-4 week horizons, and the mechanism must fail when repricing is intraday-instant or when the panel cross-section collapses into the single dollar factor.",
+  "control_class": "mandatory-by-mechanism: exposure-form control (this is a conditioning-variable claim, not calendar-conditioned, so no sham-calendar placebo is the mandatory class) — the control arm holds the identical weekly grid, holds, weights and costs with the rank assignment replaced by a preregistered TIME-INVARIANT fixed book (long AUDUSD/EURUSD/GBPUSD, short NZDUSD/USDCAD/USDCHF, USDJPY unused); full spec in arms.control. The claim dies if the fixed-exposure control reproduces the anchor (>= 0.5x identifying metric, same sign).",
+  "mechanism": {
+    "paragraph": "Slow actor: institutional allocators, corporate hedgers and overlay funds whose FX adjustment is gated by committee/observation cycles (days to weeks), not by price speed. When one staged G10 currency has out-moved the others over the trailing month, the flows that produced the move (reserve diversification, hedge rebalancing, benchmark re-risking) continue mechanically at their next adjustment dates, so relative strength persists beyond the ranking horizon; fast speculators absorb part of it, but the residual drift at weekly horizons is what the rank book attempts to monetize. The mechanism consumes ZERO calendar content — no release dates, no announcement ledger rows, no session shapes, no rates: only trailing daily returns of the 7 staged pairs, ranked cross-sectionally.",
+    "forced_or_slow_actor": "Reserve managers / corporate hedgers / monthly-mandate overlay and CTA rebalancers with observation- and committee-cost-driven infrequent adjustment (slow actors); no fast-market actor is claimed.",
+    "why_it_should_exist": "Rebalancing flows are scheduled, not information-timed: they extend the trailing relative move into the following weeks, producing cross-sectional persistence at the 1-4 week horizon that a weekly rank book can book after costs.",
+    "literature_lineage": [
+      "Menkhoff, L., Sarno, L., Schmeling, M. and Sydert, J. (2012), 'Currency Momentum Strategies', Journal of Financial Economics 104(3) — cross-sectional rank momentum in currencies earns a premium at 1-12 month horizons; adapted here to the 7-pair staged panel at a 1-4 week horizon.",
+      "Moskowitz, T., Ooi, Y.H. and Pedersen, L.H. (2012), 'Time Series Momentum', Journal of Financial Economics 104(2) — slow capital produces multi-week return persistence in futures markets; the cross-sectional rank form is the panel analogue."
+    ],
+    "calendar_content_used": false,
+    "novelty_statement": "The information source is the trailing-return RANK across all 7 staged pairs — a cross-sectional ordering, not a reaction to any release, not a session shape, not a carry or rates input, not a vol-level gate. Wave diversity: lane A4 owns calendar-conditioned cross-economy spillover; this proposal is unconditional on any calendar. D2 must still measure |rho| <= 0.20 pooled vs the full forbidden ancestry, in particular FXFV6-A6-P2 (USD PC1-concentration-gated cross-pair REVERSAL — opposite sign, no gating factor here) and V1/V2 session momentum (no session windows here)."
+  },
+  "information_source": {
+    "conditioning_clocks": "NOT USED — this proposal is NOT calendar-conditioned and consumes zero rows of research/control/forex_free_v7_run/p2_conditioning_clocks_v7.json; per the wave packet, a non-calendar mechanism states its own evidenced availability below.",
+    "prices": {
+      "file": "inherited staged daily snapshot for all 7 pairs, byte-verified per research/control/forex_free_v7_run/p0_census_v7.json price_data_inheritance (manifest research/control/forex_free_v1_run/staged_data_manifest.json sha256 fe2155c0ef51bcac32262ebaf1c7d98fc724727eca1dda8b6644012ad854c460, 156 files, byte-verified chain V4 P2 -> V5 P2 -> V6 closed integration -> V7 census)",
+      "granularity": "daily decision closes only; the 1h/4h staged snapshots are NOT used by this proposal",
+      "per_pair_daily_evidence": "p0_census_v7.json price_data_inheritance.per_pair_meta: 7/7 pairs carry daily_bars 2178-2229 with daily_span_start 2018-09-03T00:00:00Z and daily_span_end 2026-09-01T00:00:00Z (EURUSD 2178, GBPUSD 2188, USDJPY 2207, USDCAD 2228, AUDUSD 2229, NZDUSD 2229, USDCHF 2213)",
+      "derived_quantities": ["daily log returns at the 16:00 America/New_York decision close", "trailing H-day cumulative log returns per pair, sign-corrected to non-USD-leg strength"]
+    }
+  },
+  "availability_semantics": {
+    "rule": "Every feature at decision date t is computed ONLY from decision closes at or before t; the trailing return of pair j over H trading days ending at t uses closes available at the t decision instant (no look-ahead: return windows END at t, fills execute at t+1).",
+    "evidence_class": "EVIDENCED for every price field (staged snapshot per_pair_meta above); no field carries an ASSERTED or UNEVIDENCED external timestamp because no external data is consumed.",
+    "gaps_fail_closed": "a pair with a missing decision close inside its trailing window is EXCLUDED from that decision's ranking (no interpolation, no synthetic bars); if fewer than 5 of 7 pairs are rankable, the decision is skipped and counted, not repaired.",
+    "no_asserted_timestamps": "nothing in this proposal is calendar-aware; the only timestamps used are the frozen decision-clock instants and the staged bar stamps."
+  },
+  "universe": {
+    "included": ["EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF"],
+    "evidence": "all 7 pairs are the staged free-data panel (p0_census_v7.json price_data_inheritance.per_pair_meta; dead_or_nodata_pairs is empty)",
+    "strength_convention": "non-USD-leg strength: s_j = cumulative H-day log return for EURUSD/GBPUSD/AUDUSD/NZDUSD, and s_j = NEGATIVE cumulative H-day log return for USDJPY/USDCAD/USDCHF (so s_j is always base-currency-minus-USD strength)",
+    "excluded": "none of the staged pairs is excluded; no pair outside the staged panel exists in this proposal"
+  },
+  "clock": {
+    "decision_instant": "daily 16:00 America/New_York, DST-correct (20:00Z EDT / 21:00Z EST), per p3_invariants_freeze_v7.json decision_clock and p2_conditioning_clocks_v7.json decision_clock",
+    "decision_day_convention": "weekday rule, FX 24/5; no holiday calendar is in evidence and none is assumed (same convention as the P2/P3 clocks)",
+    "grid": "weekly: every 5th decision day on the frozen decision calendar, starting at the first funded decision",
+    "frequency": "daily-or-slower only; no intraday decisions"
+  },
+  "warmup": {
+    "requirement": "65 trading days of daily history (covers the neighbour's H=60 window plus buffer)",
+    "evidence": "staged daily spans start 2018-09-03T00:00:00Z (p0_census_v7.json per_pair_meta.daily_span_start) — 65 weekdays after 2018-09-03 is 2018-11-30 (computed on the weekday calendar, no holiday calendar in evidence)",
+    "first_funded_decision": "on/after 2018-11-30, first funded decision instant >= that date on the frozen 16:00-NY clock with a same-day daily bar for all rankable pairs"
+  },
+  "decision_timestamp_semantics": {
+    "as_of_rule": "as-of daily bar by stamp-date convention, per p2_conditioning_clocks_v7.json funded-decision rule",
+    "entry": "decision at grid date t's 16:00-NY close; fill at the FIRST decision close after t (t+1); no same-bar fills",
+    "exit": "fill at the decision close exactly 5 decision days after the entry fill",
+    "inside_s0": "every decision date must lie inside S0 2018-04-04..2025-07-24 (p3 freeze s0_window); trades whose exit crosses the S0 end are closed at the last S0 decision close and flagged"
+  },
+  "features_and_lags": {
+    "notation": "decision day t; C_t = decision close of t; r_j,t = sign-adjusted daily log return of pair j (strength convention above)",
+    "momH_j_t": "sum of {r_j,t-H+1, ..., r_j,t} (H daily strength returns ending at t)",
+    "anchor_state": "rank the 7 momH values at t; LONG the 3 strongest (top ranks), SHORT the 3 weakest (bottom ranks); the median pair is unused",
+    "equal_weight": "each booked position 1/6 of family notional",
+    "pit": "all inputs are closes at or before the t decision instant; entry fill is at t+1",
+    "fitted_parameters": "NONE — H, hold length, 3-and-3 rank split and equal weights are preregistered constants; no training, no calibration, no threshold search anywhere"
+  },
+  "entry_exit_fills": {
+    "entry_decision": "at the 16:00-NY close of each grid date t when >= 5 of 7 pairs are rankable",
+    "entry_fill": "at the t+1 decision close; no same-bar fills",
+    "exit_fill": "at the decision close exactly 5 decision days after the entry fill",
+    "holding_profile": "exposure spans exactly 5 decision-day close-to-close intervals; 6.0 bps round trip at stress tier 2.0 against multi-week relative-strength ranges",
+    "overlap_rule": "full re-formation at each grid date (the book is a portfolio; positions from the prior grid are closed as the new grid opens — no intra-grid re-optimization)",
+    "fold_boundary_rule": "any trade whose exit fill crosses a fold boundary is DROPPED from both books and counted"
+  },
+  "costs": {
+    "frozen": "1.5 bps per side x {1.0, 1.5, 2.0} applied at every fill (entry and exit each one side), per p3_invariants_freeze_v7.json cost_ladder",
+    "tiers": {"1.0": "1.5 bps/side, 3.0 bps round trip", "1.5": "2.25 bps/side, 4.5 bps round trip", "2.0": "3.0 bps/side, 6.0 bps round trip"},
+    "primary": "stress tier 2.0 is the PRIMARY gate (p3 freeze baseline_invariants rule 8)",
+    "dual_books": "book A = net of costs at the tier multiplier; book B = gross price-only (zero cost); the gross book must not invert the aggregate sign of the net book (house dual-book invariant, p3 rule 6)",
+    "break_even_bps": "break-even bps per trade reported per arm vs the 1.5 bps floor (p3 rule 5, margin-to-fail per P-2)"
+  },
+  "arms": {
+    "anchor": {
+      "id": "FXFV7-A6-P1-anchor",
+      "definition": "H=20 trading days trailing strength, weekly grid, long top-3 / short bottom-3 ranks, hold 5, per entry_exit_fills",
+      "identifying_claim": "the trailing RANK REBALANCING (not static currency exposure) is the load-bearing information"
+    },
+    "neighbour": {
+      "id": "FXFV7-A6-P1-neighbour",
+      "differs_from_anchor_by_exactly_one_axis": "lookback H=60 trading days instead of 20; grid, hold, weights, mapping, clock, costs identical",
+      "role": "identifiability: the anchor must out-earn the neighbour on the identifying metric, else the 1-month momentum axis is not load-bearing (it is plain slow trend at any horizon)"
+    },
+    "control": {
+      "id": "FXFV7-A6-P1-fixed-exposure",
+      "kind": "exposure-form control (mandatory-by-mechanism for a conditioning-variable claim)",
+      "definition": "identical weekly grid, identical hold, identical weights and costs, with the rank assignment replaced by a TIME-INVARIANT fixed book: long AUDUSD/EURUSD/GBPUSD, short NZDUSD/USDCAD/USDCHF, USDJPY unused (alphabetical assignment fixed for the life of the run, preregistered here, never re-picked)",
+      "falsifier": "if the fixed-exposure control reproduces the anchor (>= 0.5x the anchor's identifying metric, same sign), the rank conditioning is not load-bearing — the earning is a static currency bet — and the family is REJECTED"
+    }
+  },
+  "falsification_rule": {
+    "identifying_metric": "pooled per-trade NET return (bps per unit notional) on the stress tier 2.0 book, pooled over all anchor decisions within each held-out fold evaluation",
+    "kill_conditions": [
+      "fixed-exposure control identifying metric >= 0.5 x anchor identifying metric with the same sign -> REJECT family (rank conditioning not load-bearing; static-exposure shadow)",
+      "neighbour identifying metric >= anchor identifying metric -> REJECT family as the named mechanism (lookback axis not load-bearing)",
+      "anchor identifying metric <= 0 in ANY of the 3 held-out fold evaluations -> REJECT family (no fold rescue, no re-aggregation)",
+      "any p3 freeze baseline_invariants rule 1-8 fails on the anchor -> REJECT per that gate (expectancy non-positive, PF < 1.10, positive populated folds < 2, pair concentration > 0.40, break-even bps > 1.5, dual-book inversion, LOPO failure, tier-2.0 negative margin)",
+      "pooled |rho| > 0.20 vs ANY forbidden-ancestry exposure measured at D2 on exposure schedules -> proposal dies at D2 (ancestry veto, p3 freeze)"
+    ],
+    "no_rescue": "no parameter, threshold, universe, hold, cost or gate change after any PnL is visible (preregistration); REJECT is a successful outcome"
+  },
+  "expected_failure_mode": "Static-exposure shadow: a 3-and-3 rank tilt on a 7-pair all-vs-USD panel may be nearly a constant dollar/region bet, so the fixed-assignment control earns the same and gate 10 (control coherence) kills it; secondarily the rank book's exposure may correlate with the dead FXFV6-A6-P2 USD-PC1-gated cross-pair reversal beyond the 0.20 pooled rho veto at D2. This is the hypothesis the family is willing to lose to.",
+  "fold_contract": {
+    "S0": "2018-04-04 .. 2025-07-24, frozen, no extension (p3 freeze s0_window)",
+    "folds": "3 contiguous temporal thirds of S0 by decision_date; boundaries frozen by A1/A9 before any scored computation; calendar-thirds arithmetic on the weekday decision calendar gives approximate boundaries 2020-09-08 and 2023-02-14",
+    "drop_one": "the IDENTICAL frozen rule (zero fitted parameters) is evaluated on each third as held-out; stability-only folds — the family passes only if the identifying metric is positive in each of the 3 held-out evaluations",
+    "no_empty_folds": "if any arm has zero decisions in a held-out fold, that arm-fold is NOT_RUN and the family cannot pass (fail-closed)",
+    "boundary_trades": "dropped and counted per boundary-crossing rule"
+  },
+  "expected_per_fold_decision_counts": {
+    "basis": "measured on the weekday decision calendar (1907 S0 weekdays; no holiday calendar in evidence), weekly grid from first funded decision 2018-11-30",
+    "per_arm_per_fold": {"anchor": {"F1": 93, "F2": 127, "F3": 127, "total": 347}, "neighbour": {"F1": 93, "F2": 127, "F3": 127, "total": 347}, "control": {"F1": 93, "F2": 127, "F3": 127, "total": 347}},
+    "note": "anchor/neighbour/control share the identical grid by construction; counts are grid dates (each books 6 positions); non-vacuous in every fold against the >= 15 floor by a factor of ~6x"
+  },
+  "gates": {
+    "inherit": "p3_invariants_freeze_v7.json baseline_invariants rules 1-10, identical thresholds, margin_to_fail scaffolding per P-2, ancestry veto |rho| <= 0.20 pooled vs ALL forbidden ancestry",
+    "non_vacuity_floor": ">= 15 decisions per arm per held-out fold (A9 measures actual funded counts BEFORE selection; below floor = NOT_RUN)",
+    "primary_profitability": "financing-adjusted expectancy > 0 at stress tier 2.0 (rule 1), PF >= 1.10 (rule 2), positive populated folds >= 2 of 3 (rule 3)",
+    "pair_concentration": "max single-pair share of fin-adj PnL <= 0.40 (rule 4) — the 6-position book spreads concentration by construction but this gate is measured, not assumed",
+    "break_even_bps": "break-even bps per trade <= 1.5 floor (rule 5)",
+    "dual_book_invariant": "gross book does not invert the aggregate net sign (rule 6)",
+    "lopo": "leave-one-pair-out sign robustness on all subsets (rule 7)",
+    "stress_tier_2": "tier 2.0 non-negative margin, primary book (rule 8)",
+    "usd_drift_diag": "mean net USD exposure per fold reported (rule 9, diagnostic) — the panel is all-vs-USD so this report is load-bearing for interpretation",
+    "control_coherence": "fixed-exposure control must RUN and must NOT reproduce the anchor (rule 10)",
+    "budget": "3 arms = 1 family cell-triple against p3 budget (planned_scored_cells 6, arms_per_family 3, max_families 2, shared with lane A4; selection owns the fit)"
+  },
+  "per_decision_evidence_traceability": {
+    "each_decision_row_records": [
+      "decision date and decision instant (16:00 America/New_York)",
+      "pair, side, arm id",
+      "rank inputs: momH per pair with exact input windows and rankable-pair count",
+      "entry/exit decision and fill dates, fill prices, side",
+      "costs booked per side at the tier multiplier and book (net/gross)",
+      "fold id and fold-boundary-drop flag",
+      "arm_config_digest (F-TERM-4 inherited)"
+    ],
+    "recompute_contract": "any data-semantics change (P-3) recomputes ALL THREE arms including the fixed-exposure control — a control verdict does not survive a semantics change for free"
+  },
+  "ancestry_disclosure": {
+    "FXFV6_A4_P1_own_economy_reaction_direction": "no release conditioning anywhere; no reporting-pair reaction windows; conditioning is unconditional trailing ranks on all 7 pairs; rho measured at D2",
+    "FXFV6_A6_P2_usd_pc1_gated_reversal": "no PC1, no concentration measure, no reversal sign; unconditional momentum ranks; the adjacency (cross-pair, vs-USD panel) is named and rho measured at D2",
+    "V5_release_window_position_avoidance": "no release windows, no sham calendar semantics consumed",
+    "V4_carry_and_commodity_bloc_risk_off": "no rate-differential or rates input of any kind; no event basket",
+    "V3R_vol_gated_carry": "no vol gate and no carry input; ranks use return levels only",
+    "V1_V2_session_momentum_fade_and_ranges": "daily clock only; no session windows, opens, fades or range structures are computed",
+    "FRED_real_rate_axis": "no FRED, no keys, no real-rate or inflation series anywhere (DATA_BLOCKED axis untouched)"
+  },
+  "a9_open_questions": [
+    "Snapshot close convention: confirm the staged daily bar stamp maps to (or fails closed against) the 16:00 America/New_York decision close; if unmappable, the proposal is UNAVAILABLE_FAIL_CLOSED.",
+    "Exact fold boundaries frozen by A1/A9 on the decision-date list; approximate calendar-thirds boundaries used here for non-vacuity arithmetic only.",
+    "Rankable-pair exclusions: count grid dates where a provider hole drops a pair below the 5-of-7 floor and the decision is skipped.",
+    "Fold-boundary trade drops: expected count per fold.",
+    "Pair concentration and net USD exposure measured per fold (gates 4 and 9) on the actual 6-position books."
+  ],
+  "outcome_blind_attestation": {
+    "agent": "A6-lane",
+    "wave_sha": "5646a108588abbfc28c8fa9fa7664ddfe4d44f1b",
+    "attests": "no scored outcome file was read; this proposal is written blind from the wave SHA and the frozen authorities"
+  }
+}

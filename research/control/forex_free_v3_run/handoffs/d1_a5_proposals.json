@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "role": "A5_PROPOSAL_LANE_D1 (FOREX-FREE-V3, lane d1-a5-proposals)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/d1-a5-proposals",
+  "branch": "orca/forex-free-v3-d1-a5-proposals",
+  "bootstrap_sha": "cafd78eed1ce29f8d7a0847a374d7005e9a2b313",
+  "wave_sha": "cafd78eed1ce29f8d7a0847a374d7005e9a2b313",
+  "commit_sha": null,
+  "clean": true,
+  "stamp_utc": "2026-09-04T13:57:11Z",
+  "stamp_source": "machine_date_u",
+  "commit_sha_note": "commit_sha is null because this handoff file is part of the single commit it describes (self-reference). A1 must read the actual SHA with: git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/d1-a5-proposals rev-parse HEAD on branch orca/forex-free-v3-d1-a5-proposals after this commit lands. clean=true refers to the state at write time before the single planned commit; post-commit porcelain must be empty.",
+  "ownership": {
+    "owned_paths": [
+      "research/proposals/forex_free_v3/a5_lane/proposal_1.json",
+      "research/proposals/forex_free_v3/a5_lane/proposal_1.md",
+      "research/proposals/forex_free_v3/a5_lane/proposal_2.json",
+      "research/proposals/forex_free_v3/a5_lane/proposal_2.md",
+      "research/control/forex_free_v3_run/handoffs/d1_a5_proposals.json"
+    ],
+    "forbidden_touched": [],
+    "notes": "No file outside the owned paths was created, modified or deleted. No research/control/*_v1_run or *_v2_run path, no data_raw, no PLAN_*.md at repo root, no scoring code, no ledger, no digest, no counter touched. Exactly two proposals written (quota respected); no lane report or search log beyond the required set."
+  },
+  "proposal_quota": {
+    "required": "exactly two outcome-blind proposals; EXACTLY ONE conditioning on adopted macro series (ECB SDMX EXR and/or BIS WS_CBPOL via adopted research/data_fusion adapters), the second may be macro-free but daily-or-slower and genuinely new",
+    "delivered": 2,
+    "macro_conditioned_delivered": 1,
+    "compliance": "PASS — P1 conditions on adopted BIS WS_CBPOL (AUTHORIZED_FOR_V3_RESEARCH) with PIT effective/availability semantics and the frozen financing formula (carry-adjacent, dual book); P2 is macro-free, daily-clock, and carries the dual book as a book attribute only."
+  },
+  "proposals": [
+    {
+      "hypothesis_id": "FXFV3-A5-P1",
+      "title": "Policy-divergence-gated daily trend (PIT vintage semantics)",
+      "mechanism_class": "macro_conditioned_trend_gating",
+      "macro_conditioned": true,
+      "conditioning_series": "BIS WS_CBPOL policy rates (US/EA/GB/JP/CH/CA/AU/NZ), availability-gated as-of reads; ECB SDMX EXR deliberately unused (EXR is not a policy-rate series)",
+      "mechanism_one_line": "Daily 21-bar momentum book on the 7-pair universe whose entries require the 63-day PIT policy-differential drift to agree in sign with the trend; carries the frozen financing formula (carry-adjacent, dual book).",
+      "arms": ["FXFV3-A5-P1-anchor", "FXFV3-A5-P1-neigh", "FXFV3-A5-P1-ctrl", "FXFV3-A5-P1-bench (unscored reference inside anchor cell)"],
+      "incremental_benchmark": "unconditional 21-bar momentum book, identical clock/fills/universe/warmup/costs; overall incremental alpha = per-pair-day after-cost financing-adjusted PnL, anchor minus benchmark > 0",
+      "control_non_reproduction_rule": "control (macro-direction-only, sign(g)) fails the family if its full-sample after-cost financing-adjusted expectancy > 0 AND PF >= 1.10 (inherited control_reject_pf)",
+      "files": [
+        "research/proposals/forex_free_v3/a5_lane/proposal_1.json",
+        "research/proposals/forex_free_v3/a5_lane/proposal_1.md"
+      ],
+      "data_dependency": "live BIS WS_CBPOL warmup coverage is NOT_PROVEN_ON_LIVE_FETCH per data_authority_v3.json; proposal is BLOCKED_DATA if the P3 freeze / Q data-hash gate fails coverage for all eight rate areas — no silent price-only fallback"
+    },
+    {
+      "hypothesis_id": "FXFV3-A5-P2",
+      "title": "Daily panel-outlier reversal in a high-dispersion state",
+      "mechanism_class": "cross_sectional_short_horizon_reversal",
+      "macro_conditioned": false,
+      "conditioning_series": "none (signal uses only the authorized H1 snapshot daily 16:00-NY flat-bar closes; financing book per frozen formula applies to all arms as a book attribute)",
+      "mechanism_one_line": "Fade 5-day panel-relative outlier pairs (|z|>1 vs the 7-pair cross-section) only in a high-cross-sectional-dispersion state; exit on z zero-crossing or 10-bar time stop.",
+      "arms": ["FXFV3-A5-P2-anchor", "FXFV3-A5-P2-neigh", "FXFV3-A5-P2-ctrl", "FXFV3-A5-P2-bench (unscored reference inside anchor cell)"],
+      "incremental_benchmark": "ungated panel-outlier reversal (dispersion-state gate removed), identical clock/fills/universe/warmup/costs; overall incremental alpha = per-pair-day after-cost financing-adjusted PnL, anchor minus benchmark > 0",
+      "control_non_reproduction_rule": "control (time-series-z reversal, no panel centering, same state gate) fails the family if its full-sample after-cost financing-adjusted expectancy > 0 AND PF >= 1.10 (inherited control_reject_pf)",
+      "files": [
+        "research/proposals/forex_free_v3/a5_lane/proposal_2.json",
+        "research/proposals/forex_free_v3/a5_lane/proposal_2.md"
+      ],
+      "data_dependency": "price snapshot only; 156/156 digest replay already PASS in data_authority_v3.json"
+    }
+  ],
+  "packet_discipline_checklist": {
+    "mechanism_and_falsifiable_prediction": "both proposals: present",
+    "literature_2_to_4_honest": "P1: 4 entries (Molodtsova-Papell 2009, Menkhoff et al. 2012, Clarida-Davis-Pedersen 2009, Rossi 2013 as counterweight); P2: 3 entries (Evans-Lyons 2002, Nagel 2012, Menkhoff et al. 2012), transferability honestly scoped",
+    "pit_observable_with_availability_semantics": "both: present; P1 pins available_time_utc <= T with P0 regression reference and end-of-UTC-day upper-bound consequence; P2 is price-only with fail-closed missing-bar/zero-sd rules",
+    "universe_warmup_clock_holding_fills": "both: frozen 7-pair universe, daily 16:00-NY decision bar, warmup 63 / 126 daily bars, state-based holding with force-flat, next-existing-16:00-NY-bar fills",
+    "three_arms": "both: anchor + neighbour (one presumption away) + causal negative control with preregistered non-reproduction rule",
+    "incremental_test_vs_frozen_benchmark": "both: benchmark = same mechanism with conditioning removed, identical clock/fills/universe/warmup/costs, computed as unscored reference inside the anchor cell (does not consume a scored-cell slot; budget stays 3 arms/family)",
+    "costs_f1_fixed": "both: 1.5 bps/side base, tiers {1.0,1.5,2.0} -> {1.5,2.25,3.0} applied to BOOKED stress PnL via P1 kernel book_stress @ 3c6fc11, pairwise-distinct rows, delay stress separate (V3-L2)",
+    "turnover_and_sample_floor": "both: decisions/arm floor >= 40 met by 1-2 orders of magnitude at schedule level; trade bands stated with caveats; inherited fold_populated_min_trades 30 carried",
+    "drop_one_design": "both: drop-one pair (>=5/7, inherited min-of-7) + drop-one-fold (3/3 positive)",
+    "failure_interpretation": "both: enumerated reject/indeterminate interpretations including incremental-alpha and control firing",
+    "source_to_test_map": "both: ingredient-to-test table naming existing suites (P0 fusion regressions, calendar/sessions, P1 accounting kernel) and implementation-lane goldens",
+    "signed_outcome_blind_attestation": "both: signed lane A5, 2026-09-04, written before any V3 scoring",
+    "novelty_self_check": "both: distinguishing statements against every row of forbidden_family_inventory.json (V1 family1, V1 family2, V2 family1, V2 family2) plus blanket clauses and rescue-operation denial"
+  },
+  "constraints_respected": {
+    "decision_clock": "both proposals decide only at the completed 16:00 America/New_York flat bar (daily); no intraday decision anywhere",
+    "forbidden_inventory": "no renamed/inverted/re-clock variant of any forbidden row proposed; both mechanisms use no session geometry at all",
+    "unauthorized_data": "none: no TrueFX, no FRED, no signup, no network fetch; P1 uses only the adopted BIS WS_CBPOL disposition",
+    "outcome_access": "none: no PnL, no backtest, no data load; every number is a schedule-level design estimate or inherited frozen constant",
+    "tuning_talk": "none: single frozen constants; explicit no_parameter_grid declarations",
+    "finance_boundaries": "no S1, no paper/live/orders; carry-adjacent economics limited to the frozen policy-rate-differential financing authority with disclosed approximation"
+  },
+  "assumptions": [
+    "Fold boundary semantics frozen as in baseline_invariants.json: force-flat at 2022-05-01 and 2024-07-01, purge 14 calendar days either side of internal boundaries (2022-04-17..2022-05-15, 2024-06-17..2024-07-15).",
+    "Warmup activation dates (~2020-05-01 for P1, ~2020-08-03 for P2) are schedule-level derivations from 63/126 daily bars over the 2020-01-30 snapshot start; the implementation lane pins the exact first decision bar.",
+    "BIS rate-area series identifiers follow the adopted bis.py adapter convention and are resolved once at implementation; no new source, key or download is introduced.",
+    "Population standard deviation (ddof=0) frozen for all cross-sectional dispersion quantities for determinism."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/proposals/forex_free_v3/a5_lane/proposal_1.json",
+    "research/proposals/forex_free_v3/a5_lane/proposal_1.md",
+    "research/proposals/forex_free_v3/a5_lane/proposal_2.json",
+    "research/proposals/forex_free_v3/a5_lane/proposal_2.md",
+    "research/control/forex_free_v3_run/forbidden_family_inventory.json",
+    "research/control/forex_free_v3_run/baseline_invariants.json",
+    "research/control/forex_free_v3_run/data_authority_v3.json",
+    "research/control/forex_free_v3_run/handoffs/p0_a2_fusion.json"
+  ],
+  "next_action_for_a1": "After this commit lands: read the real SHA with git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/d1-a5-proposals rev-parse HEAD and record it in worktree_manifest.json (commit_sha null here by self-reference; porcelain must be empty). Route both packets to A7-N (novelty/anti-rescue vs every forbidden row, including the P2-vs-V1-family2 distinction called out in proposal_2.json novelty_self_check) and A9-F (feasibility: PIT/warmup on the real snapshot — P1 carries the NOT_PROVEN_ON_LIVE_FETCH BIS coverage dependency resolvable only at the P3 freeze / Q data-hash gate; frozen-cost turnover arithmetic; control identifiability; drop-one meaningfulness). Lane quota delivered: 2 proposals, 1 macro-conditioned (BIS WS_CBPOL), 1 macro-free."
+}

@@ -1,0 +1,206 @@
+{
+  "schema": "forex_free_v3_proposal_v1",
+  "proposal_id": "FXFV3-A6-P1",
+  "hypothesis_id": "FXFV3-A6-P1",
+  "lane": "A6",
+  "cycle": "FOREX-FREE-V3",
+  "title": "Realized-volatility regime-gated policy-rate-differential carry at the daily decision clock",
+  "mechanism_class": "carry_adjacent_vol_regime_gated_directional",
+  "macro_conditioned": true,
+  "conditioning_series": [
+    "BIS WS_CBPOL policy-rate vintages for the 8 currency areas backing the 7 pairs (US, EMU, GB, JP, CH, CA, AU, NZ), adopted AUTHORIZED_FOR_V3_RESEARCH, PIT availability-gated",
+    "ECB SDMX EXR adopted official-rate series as the authorized fallback for any area gap (same availability semantics)"
+  ],
+
+  "economic_mechanism": "Uncovered interest parity fails persistently and in a signed, exploitable direction: the currency of the higher-policy-rate area tends to appreciate rather than depreciate by the differential (Fama 1984 forward-premium puzzle; the economic basis of carry). But differential-directed positions carry crash risk concentrated in HIGH-volatility states: carry crashes coincide with global turbulence and rising volatility (Brunnermeier, Nagel & Pedersen 2009), and carry returns load negatively on global FX volatility innovations (Menkhoff, Sarno, Schmeling & Schrimpf 2012). The proposed mechanism therefore holds the per-pair differential direction ONLY while the pair's own trailing realized volatility, measured at the daily decision clock from the authorized H1 snapshot, sits in the LOW tail of its own trailing distribution, and unwinds to flat in the HIGH state. The tradeable object is the state-gated differential direction, not any price-structure break: direction comes exclusively from adopted policy-rate vintages read point-in-time; the volatility state is a conditioning gate on holding, never a trigger. Every scored book carries BOTH a price-only PnL and a financing-adjusted PnL under the frozen financing formula, so the financing term cannot manufacture the edge (financing gate, PLAN_forex_v3.md section 12).",
+
+  "causal_prediction": "On days where the pair's smoothed realized-range state is LOW relative to its trailing block distribution, holding the higher-policy-rate currency against the lower earns positive expectancy after base cost on the financing-adjusted book, and the price-only book does not invert the anchor's expectancy sign. Falsifiable consequences frozen ex ante: (i) the anchor passes the inherited Stage-A gates (expectancy > 0, PF >= 1.10, >= 2/3 chronological folds positive); (ii) the stale-information benchmark (identical law, differential frozen at a +270-day as-of lag) does NOT match the anchor — incremental alpha > 0 is required, so the fresh policy-rate information, not the trading law alone, must carry the value; (iii) the sham-pairing causal control (identical vol gate and clocks, direction read from another pair's differential under a frozen derangement) must NOT reproduce the edge under the preregistered rule; if it fires, the differential direction is not the operative ingredient and the family fails regardless of the anchor's sign.",
+
+  "primary_literature_trace": [
+    {
+      "authors": "Eugene F. Fama",
+      "venue": "Forward and Spot Exchange Rates, Journal of Monetary Economics 14(3), 319-338",
+      "year": 1984,
+      "claim": "The forward premium is a biased predictor of depreciation (slope well below 1, often negative), decomposing the differential into expected depreciation plus a risk premium — the canonical UIP-violation basis for differential-directed FX exposure.",
+      "metadata_status": "UNVERIFIED_METADATA_RECALLED (search service rate-limited; venue/volume/pages recalled from training knowledge, claim is standard and load-bearing only as motivation)"
+    },
+    {
+      "authors": "Markus K. Brunnermeier, Stefan Nagel, Lasse H. Pedersen",
+      "venue": "Carry Trades and Currency Crashes, NBER Macroeconomics Annual 23, 313-348",
+      "year": 2009,
+      "claim": "Carry positions are subject to crash risk: exchange-rate moves between high- and low-rate currencies are negatively skewed, and crashes coincide with global turbulence, rising volatility and falling funding liquidity.",
+      "metadata_status": "VERIFIED_METADATA via web search 2026-09-04 (nber.org/papers/w14473; NBER Macroeconomics Annual 2008 vol. 23, published 2009)"
+    },
+    {
+      "authors": "Lukas Menkhoff, Lucio Sarno, Maik Schmeling, Andreas Schrimpf",
+      "venue": "Carry Trades and Global Foreign Exchange Volatility, Journal of Finance 67(2), 681-718",
+      "year": 2012,
+      "claim": "Carry-trade excess returns are significantly negatively exposed to innovations in global FX volatility; volatility risk prices the cross-section of carry returns.",
+      "metadata_status": "VERIFIED_METADATA via web search 2026-09-04 (doi 10.1111/j.1540-6261.2012.01728.x)"
+    }
+  ],
+
+  "pit_observables": {
+    "note": "Scored price input is the authorized Twelve-Data-derived H1 research series only (7 pairs, completed-bar PIT, snapshot 2020-01-30..2026-09-02). D1 series, bid/ask and rollover data are never used. Macro input is adopted BIS WS_CBPOL vintages (fallback: ECB SDMX EXR), availability-gated.",
+    "decision_instant_T": "The completion instant of the daily 16:00 America/New_York flat bar (20:00Z EDT / 21:00Z EST via zoneinfo, never fixed offsets). One decision per pair per NY trading day.",
+    "policy_rate_r_area_T": "Latest value of the policy-rate vintage series for `area` whose available_time_utc <= T. BINDING semantics per data_authority_v3.json: a row is eligible at T only when available_time_utc <= T; BIS CBPOL rows are NEVER eligible on their own effective date (availability strictly later than effectiveness); rows lacking owner-captured ReleaseEvidence fail closed (MISSING_AVAILABLE_TIME_EVIDENCE) and are never read. A decision at T can never read a row with available_time_utc > T.",
+    "asof_diff_i_T": "r_base_area(T) - r_quote_area(T) using the 8 areas {US, EMU, GB, JP, CH, CA, AU, NZ} mapped to the 7 frozen pairs. If either leg has no eligible vintage at T, the pair-day is NO_EVAL (fail-closed), never backfilled.",
+    "direction_i_T": "sign(asof_diff_i(T)); +1 = long base / short quote. Exact zero => no direction, pair-day NO_EVAL.",
+    "ny_day_d_and_rr_d": "NY trading day d = the 24-hour window ending at day d's 16:00-NY bar close (sessions.py trading-day semantics). rr_d = (sum of true ranges of all completed H1 bars in d's window) / (close of d's 16:00-NY bar); TR_t = max(high_t - low_t, |high_t - close_{t-1}|, |low_t - close_{t-1}|) on consecutive completed H1 bars. All of d's bars must exist else the day is invalid for state purposes (fail-closed).",
+    "vol_state_i_T": "S_T = mean of rr over the 20 most recent completed NY-days ending at day d; B_T = median of the 10 non-overlapping prior 20-day block means of rr (blocks strictly before the current block, uncontaminated by it). vol_state = LOW iff S_T < B_T; HIGH otherwise. Requires 220 completed valid NY-days; else NO_EVAL. Median split: no tuned percentile threshold.",
+    "fail_closed": "Any missing H1 bar, missing eligible policy-rate vintage, or short warmup => NO_EVAL for that pair-day; missing entry/exit bar => signal voided or earliest-scheduled exit only (never fill-forward)."
+  },
+
+  "universe_warmup_clock_fills": {
+    "pair_universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "pair_universe_justification": "Frozen 7-pair V3 universe, all pairs; the mechanism (differential direction gated by the pair's own vol state) is generic and not a priori pair-specific. Ex-ante subsetting is forbidden; heterogeneity is handled ex post by concentration gates and drop-one.",
+    "snapshot": "2020-01-30 .. 2026-09-02 (frozen H1 snapshot)",
+    "warmup": "220 completed valid NY-days for the state blocks (~320 calendar days); first decisions therefore occur inside fold F1 (~2020-11), which still contains > 1.5 years of decisions. Policy-rate PIT records must exist from before the first decision; a missing vintage fails closed. DISCLOSED CAVEAT (data_authority_v3.json): live-fetch warmup coverage of the adopted macro series is NOT_PROVEN_ON_LIVE_FETCH and must be proven at the P3 freeze / Q data-hash gate before conditioning is scored; this packet only cites the series.",
+    "decision_clock": "Daily: one decision per pair per NY trading day at the completed 16:00 America/New_York flat bar (daily-or-slower rule satisfied; no intraday decision anywhere). Session entry gate inherited: Sun 21:00 America/New_York -> Fri 16:00 New York; no weekend decisions.",
+    "entry_fills": "Next-session fill: the open of the next 16:00-NY bar after the decision bar completes (one-event lag; no same-bar fills).",
+    "exit_rule": "State-driven: exit at the next 16:00-NY bar open after the first decision that reads vol_state HIGH (unwind), or after direction_i flips (reverse at that same fill), or at a force-flat boundary. No profit target, no time stop.",
+    "forced_flat": "Fold boundaries force-flat (inherited): any open position exits at the open of the 16:00-NY bar of the last decision day before a fold boundary. No position crosses a fold boundary.",
+    "missing_bar_rule": "Fail-closed NO_TRADE / earliest-scheduled exit; never silent fill-forward."
+  },
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV3-A6-P1-anchor",
+      "spec": "At each decision T: if vol_state LOW and flat, enter direction_i at the next 16:00-NY bar open; if vol_state LOW and position direction != direction_i, reverse at the next bar open; if vol_state HIGH, exit to flat at the next bar open. Dual book: price-only and financing-adjusted columns per frozen formula. Governor below.",
+      "single_frozen_parameter_set": {
+        "state_block_ny_days": 20,
+        "baseline_blocks": 10,
+        "range_measure": "sum of H1 true ranges per NY-day / 16:00-NY close",
+        "direction_source": "as-of BIS WS_CBPOL differential sign, availability-gated",
+        "entry_lag": "one 16:00-NY bar",
+        "exit": "state-driven (HIGH unwind / sign flip reverse / force-flat)"
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV3-A6-P1-neigh",
+      "one_presumption_away": "Replaces only the volatility-state MEASUREMENT presumption (range-based) with a close-to-close dispersion estimator holding the same presumption 'the pair is in the low tail of its own recent volatility distribution'. If the mechanism is real, neighbour moves TOGETHER with the anchor (same verdict sign, similar fold pattern); divergence means the state measurement sits on a knife edge and the family is not promotable.",
+      "spec": "Identical to anchor in every frozen constant EXCEPT: state input is sigma_d = sample std of the 20 most recent daily close-to-close log returns (16:00-NY closes); S_T = sigma over the last 20 NY-days, B_T = median of the 10 prior non-overlapping 20-day block stds; LOW iff S_T < B_T.",
+      "single_frozen_parameter_set": {
+        "state_block_ny_days": 20,
+        "baseline_blocks": 10,
+        "dispersion_measure": "std of daily close-to-close log returns",
+        "everything_else": "byte-identical to anchor"
+      }
+    },
+    "control": {
+      "arm_id": "FXFV3-A6-P1-ctrl",
+      "role": "Causal negative control: destroys exactly the operative ingredient (the pair's own policy-rate differential direction) while holding the vol gate, clocks, holding law, costs and governor identical. Direction is read from a SHAM leg-pair per pair under a frozen derangement (base and quote legs each rotated +2 positions along the frozen pair order), so each pair trades a real but unrelated areas' differential sign.",
+      "sham_derangement_frozen": {
+        "pair_order": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+        "rule": "sham_base_i = base[(i+2) mod 7], sham_quote_i = quote[(i+2) mod 7]",
+        "mapping": {
+          "EUR/USD": "(AUD, USD)", "GBP/USD": "(NZD, USD)", "AUD/USD": "(USD, JPY)",
+          "NZD/USD": "(USD, CHF)", "USD/JPY": "(USD, CAD)", "USD/CHF": "(EUR, USD)",
+          "USD/CAD": "(GBP, USD)"
+        },
+        "disclosed_leakage": "The sham leg-pair always differs from the pair's own leg-pair, but a sham leg-pair may share one leg with the pair it drives (e.g. EUR/USD is driven by the (AUD, USD) differential, which shares the USD leg with the pair's own quote leg), so the placebo is not fully independent of the broad USD rate environment; it does destroy the pair-specific differential-direction link, which is the ingredient under test."
+      },
+      "spec": "Identical to anchor except direction_i := sign(asof_diff of sham leg-pair). All else (state, clocks, dual book, costs, folds, caps) byte-identical.",
+      "preregistered_non_reproduction_rule": "The control REPRODUCES (and the family FAILS its control gate regardless of anchor sign) if control financing-adjusted expectancy > 0 AND control PF >= 1.10 (inherited control_reject_pf), OR control expectancy >= 0.5 x anchor expectancy. Positive raw control PnL never overrides a firing control."
+    }
+  },
+
+  "incremental_test_vs_frozen_benchmark": {
+    "benchmark_definition": "Per baseline_invariants.json v3_benchmark_treatment: the SAME mechanism with macro conditioning removed, at identical decision clock, fills, universe, warmup and costs. Concretely: the anchor law with direction computed from the as-of differential frozen at a +270-calendar-day availability lag (asof_diff read at T-270d): fresh policy-rate information is removed while the trading law, vol gate, schedule shape, event/clock structure and costs are unchanged.",
+    "lag_constant": "+270 days is a round constant fixed ex ante (longer than any 2020-2026 central-bank pause in the window); never tuned, never data-chosen.",
+    "gate": "overall incremental alpha > 0: anchor financing-adjusted expectancy minus benchmark financing-adjusted expectancy, evaluated with the same gates as the anchor (PLAN_forex_v3.md section 12). Positive raw anchor PnL never overrides a failed incremental alpha. The benchmark schedule is an auxiliary treatment inside the anchor cell, not a fourth scored arm.",
+    "bench_schedule_id": "FXFV3-A6-P1-bench"
+  },
+
+  "dual_book_and_financing": {
+    "mandate": "Mandatory dual book per baseline_invariants.json v3_dual_book: every scored cell books BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns, all arms.",
+    "financing_formula_frozen_verbatim": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days/365, accrued per calendar day at the day-start as-of differential; sign=+1 for long base/short quote, -1 for short base/long quote",
+    "asof_accrual_semantics": "Each calendar day's accrual reads the differential from vintages with available_time_utc <= that day's 16:00-NY decision instant (effective-date semantics: BIS rows never eligible on effective date alone).",
+    "disclosed_approximation": "Policy rates are unsecured official rates, NOT swap/OIS-implied rollover. This approximation is disclosed ex ante per PLAN_forex_v3.md section 2 and data_authority_v3.json financing_disposition; no financing precision beyond policy-rate differentials is assumed (HISTORICAL_ROLLOVER_FINANCING UNAVAILABLE_FAIL_CLOSED).",
+    "financing_gate": "The financing term must not manufacture the edge: the price-only book must not invert the sign of the anchor's expectancy (Stage-A gate). This is decisive for this carry-adjacent family.",
+    "authorization_note": "Series authorization never self-authorizes a strategy (BIS_POLICY_RATE_NOT_CARRY_AUTHORIZATION / ECB_DATA_NOT_CARRY_AUTHORIZATION remain binding); the family stands or falls on its own gates."
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tier_ladder_frozen": { "1.0": 1.5, "1.5": 2.25, "2.0": 3.0 },
+    "f1_fixed_application": "F1-FIXED per baseline_invariants.json v3_cost_schedule: tier multipliers are applied to BOOKED stress PnL via the P1 kernel (research/assets/forex_free_v3/accounting.py book_stress); base / tier-1.5 / tier-2.0 rows must be pairwise distinct when trades are non-empty.",
+    "delay_stress": "Frozen one-event delay (entry and exit each shifted one additional 16:00-NY bar) carried as a SEPARATE stress component, never blended into the cost tiers (lesson V3-L2).",
+    "notional_usd_unit": 10000,
+    "break_even_diagnostic": "break_even_bps_per_side = mean gross per-trade return (bps of the 10000 USD unit, both books) / 2, reported full-sample and per fold for the anchor. Frozen interpretation: a cell whose break-even bps is below the tier-bps cannot pass Stage-A for cost reasons rather than absence of gross edge; this is a diagnostic, never a fee rescue."
+  },
+
+  "governor": {
+    "max_positions_per_pair": 1,
+    "max_entries_per_pair_per_ny_day": 1,
+    "enforcement": "Deterministic and PIT-safe; blocked signals are NO_TRADE, never deferred."
+  },
+
+  "expected_turnover": {
+    "decisions_per_pair_estimate": "~1,600 NY-day decisions per pair over the ~6.5y scored span (one per NY-day after warmup); >= 40 decisions per arm satisfied by two orders of magnitude.",
+    "trades_per_pair_per_year_estimate": 5,
+    "band": "3 - 10",
+    "analytic_schedule_argument": "The state is a 20-day smoothed median split against the median of 10 prior block means; block-mean crossings of a stable median are infrequent (est. 2-6 state transitions/area-year). Trades occur at LOW-state entries, HIGH-state unwinds and differential-sign reversals: est. 3-10 round trips per pair-year. Policy-differential signs change at most a few times per pair over 2020-2026.",
+    "full_sample_schedule_estimate": "~20-65 RT per pair; ~140-455 across 7 pairs (schedule estimate only; no data loaded).",
+    "sample_floors": {
+      "min_decisions_per_arm": 40,
+      "full_sample_aggregate_min_trades_anchor": 140,
+      "per_populated_fold_min_trades": 30,
+      "populated_rule": "fold populated iff >= 30 trades (inherited fold_populated_min_trades); a cell below floors is INDETERMINATE, not negative evidence"
+    },
+    "turnover_feasibility_note": "The low cadence is the cost thesis: gross carry accrual over multi-week LOW-state holds must exceed 3 bps RT base cost. Break-even bps per cell will attribute any reject to cost vs absence of gross edge."
+  },
+
+  "folds_plan": {
+    "folds_frozen": ["2020-03-01", "2022-05-01", "2024-07-01", "2026-09-02"],
+    "scheme": "3 chronological folds over the decision span: F1 2020-03-01..2022-05-01, F2 2022-05-01..2024-07-01, F3 2024-07-01..2026-09-02 (UTC dates; warmup excluded). Purge 14 calendar days either side of internal boundaries (2022-04-17..2022-05-15, 2024-06-17..2024-07-15): trades whose entry OR exit instant falls inside a purge window are excluded from fold statistics and counted in purge_excluded. Stage-A requires >= 2/3 populated folds positive.",
+    "stage_a_note": "All inherited V2 frozen gates apply unchanged (min_expectancy_gt 0, min_pf 1.1, mdd ceiling 2500 USD, max_positive_fold_share 0.5, max_pair_positive_share 0.4, stress_min_pf 1.0, dropout_survival_min_of_7 5, usd_corr_abs_ceiling 0.3, usd_diag_min_days 60)."
+  },
+
+  "concentration_plan": {
+    "pair_concentration_gate": "No single pair > 40% of gross positive trade PnL full-sample; no single pair > 50% within any populated fold (inherited ceilings).",
+    "direction_check": "Long-base and short-base trades must each be >= 25% of anchor trades full-sample; a one-sided schedule indicates a broken differential read, not an edge.",
+    "usd_drift_diagnostic": "Inherited unchanged: |corr(daily PnL, USD-wide move)| <= 0.3 over >= 60 days; a differential-carry book may legitimately load on USD-wide rate moves, and if the inherited diagnostic flags it the family FAILS - disclosed ex ante, not tuned around."
+  },
+
+  "drop_one_pair_plan": {
+    "procedure": "Recompute the full anchor schedule (and neighbour/control/bench identically) 7 times, each excluding exactly one pair.",
+    "gate": "Anchor financing-adjusted expectancy stays positive and PF >= 1.00 in at least 5 of 7 drop-one recomputes (inherited dropout_survival_min_of_7).",
+    "interpretation": "Failure means the edge is a single-pair artifact (one area's rate episode), not a cross-pair differential-vol mechanism. Drop-one is non-vacuous by construction (each exclusion changes the schedule)."
+  },
+
+  "minimum_decisions": {
+    "definition": "A decision = one pair-NY-day on which the arm's frozen schedule completed a state+differential evaluation (go or no-go). NO_EVAL days (missing vintage/bars) count as decisions without trades.",
+    "per_arm_full_sample_minimum": 40,
+    "expected": "~1,600 per pair; ~11,000 aggregate"
+  },
+
+  "failure_interpretation": "Negative anchor expectancy after base cost: vol-gated differential carry earns no after-cost edge at the frozen cost authority on this snapshot - a complete, publishable reject with break-even bps attributing cost vs gross absence; no sign inversion, no threshold/lookback rescue, no pair subset, no lower cost, no re-clocking. Anchor positive but control fires under the preregistered rule: the differential direction is not operative (the vol-gated holding law alone explains it) and the family fails its control gate. Anchor positive but incremental alpha <= 0 vs the stale-differential benchmark: fresh policy-rate information adds nothing beyond the trading law; the macro-conditioning claim is falsified and the family is not promotable. Anchor positive on financing-adjusted but the price-only book inverts the expectancy sign: the edge is manufactured by the financing approximation and fails the dual-book gate. Neighbour diverges from anchor: the vol-state measurement is knife-edge fragile; not promotable. Drop-one or concentration failure: single-pair/area artifact; reject. Realised turnover outside the preregistered band on the real snapshot: INELIGIBLE per the frequency contract.",
+
+  "source_to_test_map": [
+    { "source_claim": "UIP violation / differential direction (Fama 1984)", "observable": "asof_diff_i sign", "planned_test": "hand-computed as-of differential golden fixture; PIT availability mutation test (shifting a vintage's available_time_utc past T must flip the read to the prior rate)" },
+    { "source_claim": "carry crash risk in HIGH-vol states (Brunnermeier-Nagel-Pedersen 2009; Menkhoff et al. 2012)", "observable": "vol_state gate", "planned_test": "daily rr and block-state goldens from synthetic H1 bars; state boundary test (S_T == B_T => HIGH, no position)" },
+    { "source_claim": "H1->NY-day aggregation correctness", "observable": "rr_d, daily closes", "planned_test": "DST-aware 16:00-NY bar mapping goldens (20:00Z/21:00Z) reusing the P2-reverified calendar module" },
+    { "source_claim": "dual-book separation (financing cannot manufacture the edge)", "observable": "price_only_pnl_usd vs financing_adjusted_pnl_usd", "planned_test": "P1 kernel separation tests + price-only sign-inversion refusal test" },
+    { "source_claim": "F1-fixed stress application", "observable": "book_stress rows", "planned_test": "tier 1.5 / 2.0 pairwise-distinct fixture (inherited P1 remediation regression)" },
+    { "source_claim": "control removes exactly the differential ingredient", "observable": "sham derangement direction", "planned_test": "control-cannot-equal-anchor test: schedules must differ on at least one decision per pair; preregistered non-reproduction rule applied at scoring" },
+    { "source_claim": "incremental alpha vs macro-removed benchmark", "observable": "FXFV3-A6-P1-bench schedule", "planned_test": "benchmark schedule identity test (identical except +270d as-of lag); incremental alpha recomputation from runner source at A7" },
+    { "source_claim": "drop-one meaningfulness", "observable": "7 drop-one schedules", "planned_test": "non-vacuity assertion (each drop-one schedule differs from full)" }
+  ],
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm (20-day blocks, 10 blocks, the derangement rotation, the +270d benchmark lag). No grids, menus or tuning anywhere; the neighbour is a distinct single frozen spec, not a second point on the anchor's knob.",
+
+  "novelty_self_check": {
+    "vs_V1_family1_london_open_momentum_continuation": "No session-open price, no open-direction continuation, no intraday clock: the only clock is the frozen daily 16:00-NY decision bar, and direction comes from adopted policy-rate vintages, never from a session-structure measurement.",
+    "vs_V1_family2_late_NY_standardized_extension_fade": "No fade, no standardized-extension observable, no late-session window anywhere in state, trigger, entry or exit; positions are held across days inside LOW-vol states.",
+    "vs_V2_family1_tokyo_compression_london_expansion": "No session range, no compression-to-expansion state transition, no breach trigger; the vol state is a smooth 20-day median-split GATE on a differential-direction position, not a breakout precondition, and the clock is daily.",
+    "vs_V2_family2_london_AM_break_retest_hold": "No range break and no retest-hold confirmation exist anywhere; entry is state- and differential-driven at a daily bar, structurally unrelated to intraday range mechanics.",
+    "re_clock_check": "This is not a re-clock of any forbidden row: none of the four rows is a differential-direction or vol-conditioned mechanism, so no daily-grain relabeling of them occurs; the mechanisms are new (macro-conditioned carry gating), not renamed intraday session strategies.",
+    "blanket_clauses": "No sign inversion of a rejected family; no reduced costs; no pair cherry-picking; no result-aware reuse of V1/V2 packets (fresh blind packet, new hypothesis_id, independent design).",
+    "vs_V2_sibling_mechanisms_honest_extra": "vs FXFV2-A5-P1/P2 (same-day cross-sectional dispersion RV): no cross-sectional spread or extreme-vs-extreme construction here - a per-pair time-series design. vs FXFV2-A6-P1 (H1 compression-gated 48-bar channel breach): no channel, no breach, no intraday bar; the vol state gates a differential direction rather than preconditioning a price-structure break. vs FXFV2-A6-P2 (session liquidity seasonal): no session-hour observable of any kind."
+  },
+
+  "outcome_blind_attestation": "I (A6 lane, FOREX-FREE-V3) attest this proposal is outcome-blind. I read: PLAN_forex_v3.md; research/control/forex_free_v3_run/{forbidden_family_inventory.json, baseline_invariants.json, data_authority_v3.json, run_contract.json}; the read-only V2 format reference research/proposals/forex_free_v2/a4_lane/proposal_1.json; my own lane's V2 predecessor packets (forex_free_v2 a5/a6 lane proposal JSONs) solely for novelty differentiation; the V1 a4 proposal .md for document format; and the p0_a2_fusion.json handoff for handoff format. I read NO V1/V2 outcome artifacts: no ledgers, no per-cell PnL, no terminal reports, no verdict files, no tests/assets outcome fixtures, no research/control/forex_free_v1_run/ or forex_free_v2_run/ files. I loaded no market data (no data_raw reads), fetched no macro data, computed no backtest, PnL or schedule simulation; every number here is a schedule-level design estimate or frozen design constant. Literature metadata was checked by web search only (no outcomes searchable there). This packet was written before any V3 scoring exists and before any V3 data freeze digest of scored results.",
+  "written_before_scoring_utc": "2026-09-04T13:59:00Z"
+}

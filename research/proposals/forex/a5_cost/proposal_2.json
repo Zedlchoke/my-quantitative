@@ -1,0 +1,100 @@
+{
+  "proposal_id": "FX2-A5-P2",
+  "lane": "A5 — cost/rollover/accounting perspective (F2 outcome-blind proposal lane)",
+  "mechanism_name": "Fixing-and-rollover window risk premium: preregistered financing-hour USD exposure on DST-correct clocks",
+  "economic_mechanism": "Currency benchmarks (Tokyo 09:55 JST fix, ECB 14:15 CET reference rate, WM/Reuters 16:00 London fix) and the New York 17:00 ET rollover concentrate inelastic, mandate-driven order flow: passive hedging and benchmarking flows must trade at the fixings, and dealer position rolls plus swap/financing charging concentrate at the New York roll. Krohn, Mueller & Whelan (2024, Journal of Finance) document sharp, predictable return and volume spikes around these fixing times, consistent with price pressure from benchmark-driven flows that temporarily moves exchange rates away from fundamentals and partially reverses afterward; the intraday concentration of FX volatility in session-related periodicity has been documented since Andersen & Bollerslev (1997), and the split of daily FX returns into distinct overnight vs intraday components since at least Cornett, Schwarz & Szego (1995). From this lane's cost/financing perspective the mechanism is a liquidity-provision premium: whoever absorbs the inelastic fixing/rollover flow, or holds exposure through the financing hour when spreads widen and inventory risk peaks, is compensated for that service. The tradeable object is the deterministic window membership itself, known infinitely in advance from the calendar - no estimation on returns of any kind. Direction is preregistered from the documented price-pressure sign (persistent USD demand concentrated at benchmarks/roll), not selected from observed profitable hours.",
+  "expected_counterparty": "Passive benchmark-hedgers (index and pension mandates transacting at the WM/R or ECB fixing regardless of price), corporate treasury fixing flows, and dealers who are long inventory risk through the rollover hour; leveraged investors paying the financing wedge at the roll. They pay the premium for execution certainty at a benchmark time or for parking financing through the roll; this proposal is the patient side of that service.",
+  "signal_fields_and_publication_clock": "Signal fields: (1) window membership = deterministic time-of-day/week predicates evaluated in named zoneinfo timezones - America/New_York 17:00 rollover boundary, Europe/London 16:00 WM/R fixing, Asia/Tokyo 09:55 fixing - so DST is handled by the real timezone database, never by fixed UTC offsets; (2) PIT fixing-convention history (dates and methodology changes of each benchmark fix), required because fixing conventions changed over history; (3) executable bid/ask at window open and window close. Publication clock: the calendar itself - window membership is known in advance with zero estimation, so there is no look-ahead channel by construction; the fixing-convention history must be PIT (a convention change is used only from its effective date). AVAILABILITY HONESTY: real bid/ask history is UNAVAILABLE (0 of 7 pairs), the PIT fixing-convention history has no source in the repo (UNAVAILABLE), and rollover/swap schedule authority is UNAVAILABLE (needed only for the roll-through arm).",
+  "formation_holding_rebalance": "Formation: at the first tick/bar boundary of each preregistered window, enter a USD-long basket (long USD against each of the six non-USD currencies in equal risk weight) using the executable ask side. Holding: exactly the window duration - on the current 1h base event clock, the single 1h bar containing the fixing/rollover timestamp; no intrabar entry/exit is claimed. Exit: at the executable bid side at window close. No portfolio rebalancing exists; this is an event schedule, not a rebalanced portfolio. Two preregistered variants of the anchor differ only in the roll boundary: variant A (no-roll) closes strictly before the New York 17:00 roll so no swap is charged and the tested premium is spread-net only; variant B (roll-through) holds across the roll so the charged rollover is inside the test - the A-minus-B difference directly measures the rollover cost as an economic variable.",
+  "pair_universe_and_neutralization": "The seven initial frozen pairs: EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD. Expression: one USD-long basket per window (long USD vs each non-USD currency), equal-risk weights - a single dollar factor, no cross-currency exposure, so the only 'neutralization' is that no non-USD/non-USD exposure is ever held; per-currency exposure caps apply; margin and exposure reported by underlying currency per the A5 accounting requirement.",
+  "expected_spread_rollover_turnover": "Turnover is high by construction: roughly one window entry+exit per trading day for the anchor window (about 2 fills/pair/day gross across the basket, up to 6 window-days/week including neighbour windows). Spread is therefore the first-order economic variable and a deliberately honest headwind: spreads are typically widest exactly around the rollover and thinnest around major fixings' liquidity, and the mechanism survives only if the window premium exceeds the measured round-trip executable cost - measured per pair, per session, from real bid/ask (never a global pip, never midpoint labeled executable). Rollover: zero in variant A by construction; in variant B the charged swap (with long/short asymmetry and Wednesday triple-roll) is a central object, and the A-vs-B difference is the measured financing wedge. ROLLOVER SCHEDULE AUTHORITY IS UNAVAILABLE, so variant B is feasibility-blocked until an owner-authorized swap schedule exists; variant A is blocked only on bid/ask history (also currently UNAVAILABLE).",
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "FX2-A5-P2-ANCHOR: USD-long basket held during the WM/R 16:00 London fixing window (the 1h bar containing 16:00 Europe/London), variant A (close before the New York roll), scored net of executable spread.",
+      "why_it_validates": "The WM/R 4pm London fix is the best-documented benchmark concentration of inelastic hedging flow (Krohn-Mueller-Whelan 2024). If the price-pressure/liquidity-provision premium is real and positive for the dollar side of that flow, the anchor earns positive net drift with reversal-shaped intraday structure; this is the direct, preregistered test of the mechanism."
+    },
+    "neighbour": {
+      "definition": "FX2-A5-P2-NEIGHBOUR: identical USD-long basket construction during the Tokyo 09:55 JST fixing window (the 1h bar containing 09:55 Asia/Tokyo).",
+      "why_it_validates": "Theoretically justified cousin: the same benchmark price-pressure mechanism operates at a second, independent fixing with different session liquidity (Tokyo morning) and different fixing-market structure. The mechanism predicts a same-signed (dollar-side) premium with the same sharp-around-fix/reverse-after shape. If only the London window earns and the Tokyo window shows nothing, either the mechanism is specific to WM/R market structure (which must then be argued) or the London result is suspect - the neighbour is what distinguishes a general fixing premium from a one-off artifact."
+    },
+    "negative_control": {
+      "definition": "FX2-A5-P2-CONTROL-PLACEBO: the identical USD-long basket, identical window length and pairs, but the window is shifted by a preregistered +6 hours, landing on a time with no benchmark fixing and no rollover event (16:00 London + 6h = 22:00 London / 17:00 New York + 6h off-roll). The offset is fixed by mechanism reasoning (event-free local time) before any PnL is seen.",
+      "why_it_destroys": "The placebo preserves every mechanical property of the anchor - basket composition, window length, turnover, spread exposure, DST behavior - and removes only the hypothesized cause (benchmark/rollover event timing). If the premium is caused by fixing price pressure, the placebo window must show approximately zero net premium after costs. A placebo premium comparable to the anchor would demonstrate a generic time-of-day drift, session artifact, or clock bug rather than the fixing mechanism, and destroys the family."
+    }
+  },
+  "expected_regimes_and_falsification": "Expected regimes: the premium should be structurally stable across macro regimes but scale with benchmark-hedging volume - growing as passive FX-hedging demand grows - and should be weakest on holiday-thinned weeks; it should NOT depend on the macro rate cycle (that is P1's space). Historical structural breaks are part of the expectation: fixing conventions and their market importance changed over the decades (e.g., Tokyo fix regulation, WM/R methodology), so sub-periods before a convention existed are expected to show no premium at that window - if a 'premium' appears where the fixing did not yet operate, that is a clock/PIT bug, not economics. FALSIFICATION (any one closes the family): (a) anchor net-of-cost <= 0 over S0; (b) placebo premium >= anchor premium; (c) neighbour shows the opposite-signed premium with no structural explanation; (d) premium appears in pre-convention sub-periods or shifts with DST transitions (proving a clock artifact); (e) premium exists only when scored on midpoint or with a constant spread (execution-realism artifact).",
+  "macro_session_external_validity_risks": "1) Fixing-convention PIT history is required: Tokyo 09:55 and WM/R 16:00 conventions, methodology and market importance changed over history; using today's conventions on the whole sample is an anachronism (no repo source exists - UNAVAILABLE). 2) DST: the same wall-clock fixing maps to different UTC times across the year; named-zone clocks handle this, but any hardcoded offset silently breaks window alignment twice a year. 3) Holiday weeks and early closes lack normal fixing/rollover liquidity - windows on those days are expected dead, and per-currency holiday tables are SYNTHETIC_TEST_ONLY today. 4) Macro-release days (NFP, FOMC, CPI) change flow composition; any exclusion of such days must be preregistered before scoring, never tuned afterward. 5) Dealer scope: fixings are specific benchmarks in a decentralized market; one provider's quotes around the fix are not the global market and fixing-window spreads vary by dealer. 6) The 1h base event clock is coarse relative to 30-minute fixing windows: results on 1h bars bound the mechanism but finer execution claims would need finer PIT data and new trials, not silent substitution.",
+  "exact_trial_count": 4,
+  "exact_trial_enumeration": [
+    "FX2-A5-P2-ANCHOR-A (WM/R 16:00 London window, USD basket, no-roll, net of spread)",
+    "FX2-A5-P2-ANCHOR-B (same window held through the New York roll, rollover charged - feasibility-blocked on swap-schedule authority)",
+    "FX2-A5-P2-NEIGHBOUR (Tokyo 09:55 JST window, USD basket)",
+    "FX2-A5-P2-CONTROL-PLACEBO (+6h event-free shifted window)"
+  ],
+  "no_post_score_replacement": "Exactly these four arms. Window definitions, the +6h placebo offset, and pair weights are frozen before any scored ledger exists. No arm may be added, shifted, re-windowed or replaced after any score is observed.",
+  "required_pit_fields_with_availability": [
+    {
+      "field": "1h bid/ask quote history for the 7 initial pairs, >= 8 years (executable sides at window open/close)",
+      "source": "owner-authorized institutional quote provider (frozen before any scoring)",
+      "availability": "UNAVAILABLE - 0 of 7 pairs; no provider entitlement; fails closed"
+    },
+    {
+      "field": "PIT fixing-convention history (Tokyo 09:55, ECB 14:15, WM/R 16:00 dates and methodology changes) and authoritative benchmark fixing calendar",
+      "source": "benchmark administrator / central-bank documentation as point-in-time records",
+      "availability": "UNAVAILABLE - no such source exists in the repo; feasibility-blocked until owner-authorized"
+    },
+    {
+      "field": "broker/provider rollover-swap schedule (long/short, Wednesday triple-roll, holiday rolls) - required only for variant B (roll-through)",
+      "source": "frozen broker/provider swap schedule documentation",
+      "availability": "UNAVAILABLE - no swap points in the repo; variant B fails closed without it"
+    },
+    {
+      "field": "holiday tables for all 8 currency jurisdictions",
+      "source": "authoritative per-currency holiday authority",
+      "availability": "SYNTHETIC_TEST_ONLY - no authoritative source in the repo; must not back promotable evidence"
+    },
+    {
+      "field": "session/DST clocks for America/New_York, Europe/London, Asia/Tokyo and the New York rollover boundary",
+      "source": "zoneinfo named timezones + A4 correctness contracts",
+      "availability": "IMPLEMENTED - zoneinfo DST is real and contracts are tested; session wall-time labels are SYNTHETIC_TEST_ONLY defaults, so window predicates must be defined in named zones, not wall-time labels"
+    },
+    {
+      "field": "finer-than-1h data for true 30-minute fixing windows",
+      "source": "provider tick/minute entitlement",
+      "availability": "UNAVAILABLE and out of initial scope (1h base event clock); declared honestly - no intrabar claims are made on 1h data"
+    }
+  ],
+  "feasibility_statement": "This proposal is feasibility-blocked at selection as it stands: real bid/ask history and the PIT fixing-convention history are UNAVAILABLE (and the swap-schedule authority for variant B is UNAVAILABLE). It proceeds only if the owner explicitly authorizes those sources; it never claims or implies the data exists.",
+  "literature_sources": [
+    {
+      "title": "Foreign Exchange Fixings and Returns Around the Clock",
+      "authors": "Ingomar Krohn, Philippe Mueller, Paul Whelan",
+      "year": 2024,
+      "venue": "Journal of Finance 79(1), 541-578",
+      "id": "DOI:10.1111/jofi.13306 ; SSRN 3521370 ; https://ideas.repec.org/a/bla/jfinan/v79y2024i1p541-578.html",
+      "retrieval_utc": "2026-09-02T23:55Z",
+      "claim_used": "Sharp, predictable return and volume spikes occur around the daily currency fixings (Tokyo, ECB, WM/R London 4pm), consistent with price pressure from benchmark-driven flows that temporarily moves exchange rates away from fundamentals - the direct motivation for preregistered fixing-window exposure and its expected reversal shape."
+    },
+    {
+      "title": "Intraday Periodicity and Volatility Persistence in Financial Markets",
+      "authors": "Torben G. Andersen, Tim Bollerslev",
+      "year": 1997,
+      "venue": "Journal of Empirical Finance 4(2-3), 115-158",
+      "id": "https://www.sciencedirect.com/science/article/pii/S0927539897000042",
+      "retrieval_utc": "2026-09-02T23:52Z",
+      "claim_used": "FX return volatility has a pervasive, deterministic intraday periodic component tied to global trading-session activity - the basis for treating window timing as structural rather than fitted, and for expecting window risk (and hence any premium) to concentrate at session/fixing times."
+    },
+    {
+      "title": "Seasonalities and Intraday Return Patterns in the Foreign Currency Futures Market",
+      "authors": "M. Millon Cornett et al. (lead author verified from publisher listing; full author list not independently opened this session)",
+      "year": 1995,
+      "venue": "Journal of Financial Economics (article 037842669500084T)",
+      "id": "https://www.sciencedirect.com/science/article/pii/037842669500084T",
+      "retrieval_utc": "2026-09-02T23:52Z",
+      "claim_used": "Daily FX returns decompose into distinct and offsetting overnight vs trading-hours components (insignificant daily returns masking significant negative overnight and positive intraday pieces) - evidence that when-exposure within the FX day is economically meaningful and separable.",
+      "verification_note": "Title, venue, year and claim taken from the publisher listing returned by search; full author list not independently opened - treated as verified at the level of the publisher record URL above."
+    }
+  ],
+  "prohibited_shortcut_check": "None apply. (1) No RSI/EMA parameter grids and no indicator tuning; the signal is deterministic calendar membership. (2) No volume data is used, so no single-provider volume is treated as global FX volume (the fixing-volume claim lives in cited literature, not in repo data). (3) The carry-from-today's-rates shortcut is not applicable - no interest rates are used anywhere in this proposal. (4) Session windows are NOT selected after seeing profitable hours: all windows and the placebo offset are fixed from documented fixing times and mechanism reasoning before any PnL exists, and the +6h placebo is declared in the same breath as the anchor. (5) No midpoint backtest will be labeled executable: entry/exit require executable ask/bid sides from a frozen provider; mid-only or constant-spread results are DIAGNOSTIC_ONLY and never promotable.",
+  "ancestry_statement": "This is a first-cycle F2 outcome-blind proposal, not a rescue: no forex family has been scored in this repo, there is no previously rejected session/window family being re-litigated, and this lane has read no other proposal lane's output and no scored ledger. It is economically adjacent to any crypto time-of-day seasonality families by the generic idea of clock-based exposure, but it is not a port or rescue of one: the mechanism is benchmark-fixing price pressure and financing-hour liquidity provision in a decentralized dealer market with DST-real named-zone clocks, Tokyo/London fixing institutions, and a 24/5 weekly structure - none of which exist in 24/7 perpetual markets - and the cost objects (fixing-window spreads and charged rollover) are FX-native. The preregistered placebo is what makes it a mechanism proposal rather than a session filter chosen after the fact."
+}

@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "role": "A3_DATA_AUTHORITY_P2 (FOREX-FREE-V3, lane p1-a3-data)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data",
+  "branch": "orca/forex-free-v3-p1-a3-data",
+  "bootstrap_sha": "6f294a968abb4299d4b060e2675e1e153219c7d3",
+  "commit_sha": null,
+  "clean": true,
+  "stamp_utc": "2026-09-04T13:23:54Z",
+  "stamp_source": "machine_date_u",
+  "commit_sha_note": "commit_sha is null because this handoff file is part of the single commit it describes (self-reference). A1 must read the actual SHA with: git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data rev-parse HEAD on branch orca/forex-free-v3-p1-a3-data after this commit lands. Verified clean=True refers to the state at write time before the single planned commit.",
+  "ownership": {
+    "owned_paths": [
+      "research/control/forex_free_v3_run/data_authority_v3.json",
+      "research/control/forex_free_v3_run/handoffs/p1_a3_data.json",
+      "tests/assets/forex_free_v3/test_data_authority_v3.py"
+    ],
+    "forbidden_touched": [],
+    "notes": "No file outside the three allowed globs was created, modified or deleted. No raw data copied or committed; the 156-file replay hashed the read-only V2 detached trees in place. No network fetch, no download, no API call, no key, no S1 access. No V1/V2 artifact, ledger or digest byte modified."
+  },
+  "price_replay": {
+    "manifest": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/integration/research/control/forex_free_v1_run/staged_data_manifest.json",
+    "manifest_sha256": "fe2155c0ef51bcac32262ebaf1c7d98fc724727eca1dda8b6644012ad854c460",
+    "schema": "forex_free_v1_staged_data_manifest_v2",
+    "paths_per_tree": 156,
+    "method": "offline sha256 of every manifest path (repo-root-relative) against each tree, read-only",
+    "trees": {
+      "e-exec-1": {
+        "root": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/e-exec-1",
+        "matched": 156,
+        "missing": 0,
+        "mismatch": 0
+      },
+      "r-reproduce": {
+        "root": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/r-reproduce",
+        "matched": 156,
+        "missing": 0,
+        "mismatch": 0
+      }
+    },
+    "verdict": "PASS — 156/156 sha256 digests match in BOTH trees, 0 missing, 0 mismatch; the V1/V2 authorized price snapshot is byte-for-byte intact for V3 and the twin-integrity claim (byte_identical_exec_repro=true) re-verified independently"
+  },
+  "calendar_reverification": {
+    "modules": [
+      "research/assets/forex/sessions.py (DST-aware weekly 24/5 model: Sun 21:00 America/New_York open -> Fri 16:00 close; NY 17:00 rollover shifted correctly by DST via zoneinfo; DST transitions located by bisection against zoneinfo truth)",
+      "research/assets/forex/calendar.py (FxSessionCalendar: rollover-anchored trading days, session bounds, no fabricated weekend sessions)",
+      "tests/assets/forex_free_v2/test_data_authority.py (16:00-NY flat-bar probes: 21:00Z in EST weeks / 20:00Z in EDT weeks across the 2025 US spring-forward 2025-03-09 and fall-back 2025-11-02 transitions incl. US/EU desync weeks)",
+      "tests/assets/forex_free_v1/test_td_loader.py (loader goldens: sorted unique bars, boundary dup elimination, fail-closed integrity)"
+    ],
+    "runs": [
+      {
+        "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex -q",
+        "exit_code": 0,
+        "counts": "118 passed, 0 failed"
+      },
+      {
+        "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v2/test_data_authority.py tests/assets/forex_free_v1/test_td_loader.py -q",
+        "exit_code": 0,
+        "counts": "30 passed, 0 failed"
+      }
+    ],
+    "snapshot_dependence": "NOT_RUN against the real snapshot by this lane — deliberately: no price snapshot exists in this lane worktree and copying raw data is forbidden. Every run test is snapshot-independent (synthetic fixtures / isolated temp roots / string filenames only). The snapshot-dependent part is verified by (a) the 156/156 digest replay above — the exact bar bytes the calendar rule consumes are byte-identical to what V1/V2 verified — and (b) the V2 P2 recorded DST stamps (16:00 NY => 21:00Z EST / 20:00Z EDT across US+EU 2025 transitions) which run against the same inherited module code."
+  },
+  "data_authority_v3": {
+    "path": "research/control/forex_free_v3_run/data_authority_v3.json",
+    "dispositions": [
+      {"series": "PRICE H1 (Twelve-Data-derived, 7 pairs)", "v3_disposition": "RESEARCH_AUTHORIZED", "carried_from": "V1 authority @ bee64beaf2637ea51216cffc6be6393d545bf474, unchanged"},
+      {"series": "PRICE D1", "v3_disposition": "CONTEXT_ONLY", "carried_from": "V1 contract amendment v2, unchanged (benchmark/context only, never scored returns)"},
+      {"series": "PRICE H4", "v3_disposition": "UNAVAILABLE_FAIL_CLOSED", "carried_from": "V1 contract, unchanged (4h anchor misaligns with NY rollover in northern winter)"},
+      {"series": "PRICE HISTORICAL_BID_ASK", "v3_disposition": "UNAVAILABLE_FAIL_CLOSED", "carried_from": "V1 contract, unchanged"},
+      {"series": "PRICE HISTORICAL_ROLLOVER_FINANCING", "v3_disposition": "UNAVAILABLE_FAIL_CLOSED", "carried_from": "V1 contract, unchanged"},
+      {"series": "ECB_SDMX (EXR daily official-rate series, adopted P0)", "v3_disposition": "AUTHORIZED_FOR_V3_RESEARCH", "access": "keyless (anonymous-no-key)", "availability": "effective = midnight of observation date; available only from owner ReleaseEvidence (end-of-UTC-day upper bound); never header.prepared", "warmup": "NOT_PROVEN_ON_LIVE_FETCH (fixture-proven semantics only; live depth/warmup must be proven at P3 freeze)"},
+      {"series": "BIS_CBPOL (WS_CBPOL policy rates, adopted P0)", "v3_disposition": "AUTHORIZED_FOR_V3_RESEARCH", "access": "keyless (anonymous-no-key)", "availability": "effective = event date (BIS_EFFECTIVE_DATE_SEMANTICS); available strictly later (never eligible on effective date; no backdated carry)", "warmup": "NOT_PROVEN_ON_LIVE_FETCH (fixture-proven semantics only; live depth/warmup must be proven at P3 freeze)"},
+      {"series": "FRED_ALFRED", "v3_disposition": "UNAUTHORIZED_FOR_V3", "reason": "KEY_GATED — no owner key decision exists; no signup allowed (PLAN_forex_v3.md s15); adapter fails closed CREDENTIAL_REQUIRED without a key"},
+      {"series": "TRUEFX", "v3_disposition": "CANDIDATE_NOT_AUTHORIZED", "reason": "unchanged; owner license decision required to change; no signup/download"}
+    ],
+    "financing_disposition": {
+      "model": "POLICY_RATE_DIFFERENTIALS_ONLY (adopted ECB/BIS series, effective-date PIT availability gating)",
+      "historical_rollover_financing": "UNAVAILABLE_FAIL_CLOSED",
+      "beyond_differentials": "INELIGIBLE absent an owner-authorized financing source (swap points, broker rollover, OIS/overnight curves, bid-ask financing all out of scope)",
+      "dual_book_rule": "price-only PnL and financing-adjusted PnL are separate immutable columns in every scored book; financing must not manufacture the edge"
+    }
+  },
+  "diff_summary": {
+    "new_files": [
+      "research/control/forex_free_v3_run/data_authority_v3.json",
+      "research/control/forex_free_v3_run/handoffs/p1_a3_data.json",
+      "tests/assets/forex_free_v3/test_data_authority_v3.py"
+    ],
+    "modified_files": [],
+    "deleted_files": []
+  },
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3/test_data_authority_v3.py -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "13 passed in 0.17s — pins: ECB/BIS registered keyless with AUTHORIZED_FOR_V3_RESEARCH for their declared scope; BIS fixture effective!=availability with no eligibility on effective date; ECB fixture end-of-UTC-day availability upper bound; FRED fails closed (CREDENTIAL_REQUIRED) without a key + UNAUTHORIZED_FOR_V3; TrueFX CANDIDATE_NOT_AUTHORIZED; V1 price dispositions carried unchanged; snapshot replay evidence 156/156 both trees; financing dispositions pinned. All offline (adopted fixtures, no network, no keys, no raw data)."
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "118 passed (sessions/DST/rollover/calendar suite inherited from V1/V2)"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v2/test_data_authority.py tests/assets/forex_free_v1/test_td_loader.py -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "30 passed (V2 flat-bar DST probes incl. EST 21:00Z / EDT 20:00Z across 2025 US+EU transitions; V1 loader goldens on isolated temp roots)"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/data_fusion -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "96 passed (adopted Data Fusion V1 suite — confirms the code the new test asserts against is intact; supplementary, not a lane gate)"
+    },
+    {
+      "command": "156-file sha256 replay vs staged_data_manifest.json against e-exec-1 and r-reproduce trees",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "matched=156 missing=0 mismatch=0 per tree; ALL_156_MATCH_BOTH_TREES"
+    },
+    {
+      "command": "full repository pytest suite",
+      "exit_code": null,
+      "status": "NOT_RUN",
+      "evidence": "Deliberately not run: targeted-tests-only lane on a shared machine; full pytest remains A1's gate per cycle instructions."
+    }
+  ],
+  "assumptions": [
+    "The handoff template at /Users/hoangminhlong/.claude/skills/agent-handoff/assets/handoff.template.json does not exist on this machine; this handoff follows the project's established handoff format from research/control/forex_free_v3_run/handoffs/p0_a2_fusion.json.",
+    "AUTHORIZED_FOR_V3_RESEARCH is a V3 disposition tier defined in data_authority_v3.json; it does not change the adopted fusion code's DOCUMENTED_CANDIDATE discovery posture, and it does not by itself authorize any strategy family (carry notes BIS_POLICY_RATE_NOT_CARRY_AUTHORIZATION / ECB_DATA_NOT_CARRY_AUTHORIZATION remain binding).",
+    "Warmup coverage of ECB/BIS macro series is declared NOT_PROVEN_ON_LIVE_FETCH: this lane performed no fetch (no-network boundary), so live-retrieved depth/warmup must be proven at the V3 P3 freeze / Q data-hash gate before any proposal conditions on macro rows or financing-adjusted books are scored.",
+    "The V2 detached trees (e-exec-1, r-reproduce) were accessed strictly read-only for hashing; no byte was written to any V1/V2 worktree."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/control/forex_free_v3_run/data_authority_v3.json",
+    "tests/assets/forex_free_v3/test_data_authority_v3.py",
+    "research/assets/forex/sessions.py",
+    "research/assets/forex/calendar.py",
+    "research/data_fusion/source_registry.py",
+    "research/data_fusion/adapters/ecb.py",
+    "research/data_fusion/adapters/bis.py",
+    "research/data_fusion/adapters/fred.py",
+    "research/data_fusion/adapters/MACRO_evidence.md",
+    "tests/data_fusion/adapters/fixtures/ecb_sdmx_exr.json",
+    "tests/data_fusion/adapters/fixtures/bis_cbpol.json"
+  ],
+  "next_action_for_a1": "On orca/forex-free-v3-p1-a3-data, run: git -C /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data rev-parse HEAD (this handoff's commit — commit_sha is null here by self-reference) and confirm porcelain is empty. Then treat P2 data authority as DISPOSED for V3: the 156-file price snapshot is byte-verified in both V2 twin trees (safe for the P3/Q data-hash gates), the DST calendar is re-verified via 148 targeted passing tests, and the P3 freeze must prove macro-series warmup coverage NOT_PROVEN_ON_LIVE_FETCH here on the live-retrieved owner-authorized macro snapshot before any macro-conditioned proposal becomes scoreable. Financing for carry-adjacent proposals is policy-rate-differentials-only with effective-date PIT semantics; anything finer is INELIGIBLE."
+}

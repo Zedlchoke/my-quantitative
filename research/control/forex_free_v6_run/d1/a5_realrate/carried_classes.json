@@ -1,0 +1,129 @@
+{
+  "schema": "forex_free_v6_a5_carried_v1",
+  "produced_at_utc": "2026-09-06T01:46:31Z",
+  "cycle": "FOREX-FREE-V6",
+  "lane": {
+    "agent": "A5 (blind proposal lane)",
+    "axis": 2,
+    "axis_name": "market-based real-rate structure",
+    "funding_status": "NOT_FUNDED_THIS_CYCLE",
+    "carried_status": "DATA_BLOCKED_VALID",
+    "wave_sha": "6a961556fb2619750762cf3160d9800f7dbd26a4",
+    "branch": "orca/forex-free-v6-d1-a5-realrate",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/d1-a5-realrate"
+  },
+  "authority": {
+    "plan": "plans/PLAN_forex_v6.md",
+    "section_2_axis_2_quote": "market-based real-rate structure — IF AND ONLY IF the owner unlocks FRED/ALFRED (key or path): vintaged breakeven/real-yield series with true PIT semantics; the pre-registered V4/V5 classes (real-differential, PPP-deviation) test here. Without the unlock this lane is DATA_BLOCKED_VALID, carried again.",
+    "section_3_p0c_quote": "P0c unlock check (A3): measure whether the owner has placed a FRED key in `.env` (FRED_API_KEY) or a working ALFRED network path exists; outcome recorded; lane 2 funded or carried accordingly.",
+    "section_0_door_a_quote": "ALFRED/FRED axis: DATA_BLOCKED_VALID on this host (CSV hangs, keyless API 400, license page unreachable) — unblockable ONLY by owner: a free FRED API key (owner signup; license review) or a working network path",
+    "slot_rule_quote": "unused slots never reassigned (plans/PLAN_forex_v6.md section 2, binding rules carried)",
+    "measurement_delta_note": "plans/PLAN_forex_v6.md section 0 froze the V5 measurement ('CSV hangs'); the fresh V6 P0c measurement supersedes it factually — the keyless CSV data path returned 200 with substantive bytes in V6 — while the license page remained unreachable, so the fail-closed adjudication is unchanged (BLOCKED_LICENSE). Cited from p0c_unlock_verdict.json delta_vs_v5 fields; not re-measured by this lane."
+  },
+  "classes": [
+    {
+      "class_name": "real-differential",
+      "slot": "carried",
+      "status": "DATA_BLOCKED_VALID",
+      "pre_registered_mechanism_definition": {
+        "recorded_wording": [
+          {
+            "source": "plans/PLAN_forex_v4.md, section 2, 'Three sanctioned information axes', item 2 (closed historical authority)",
+            "quote": "inflation and real-rate structure — CPI/price-level differentials via the adopted ECB SDMX adapters (PPP-deviation and real-differential class mechanisms), each series carrying its own availability evidence (release calendars, per P-1)"
+          },
+          {
+            "source": "plans/PLAN_forex_v5.md, section 2, axis 1, closing sentence (closed historical authority)",
+            "quote": "The real-differential and PPP-deviation classes pre-register here."
+          },
+          {
+            "source": "plans/PLAN_forex_v5.md, section 0, frozen starting point, 'carried forward' row (closed historical authority)",
+            "quote": "carried forward two DATA_BLOCKED_VALID proposal classes — real-differential and PPP-deviation — pre-registered selectable the moment their availability evidence is wired (this cycle's P0 exists for exactly that)"
+          }
+        ],
+        "definition_as_recorded": "Class mechanism condition on cross-economy real-rate structure: nominal rate/yield differentials between the pair-universe economies adjusted for CPI/price-level inflation differentials, i.e. the real differential. This is a verbatim-carried reading of the pre-registered wording above — no parameter, threshold, universe, clock, arm, cost or gate is specified, tuned or invented in this record; concretization happens only inside a future funded D1 lane under fresh packet discipline."
+      },
+      "required_data_authority": {
+        "series": "vintaged breakeven/real-yield series with true PIT semantics (plans/PLAN_forex_v6.md section 2, axis 2)",
+        "vintage_datasets": "FRED/ALFRED vintage datasets; ALFRED (archival FRED) as the PIT authority: vintage-archived breakeven/forward inflation and real-yield series with TRUE point-in-time semantics; vintage availability stamps; revision behavior as the ONLY provable PIT test; coverage vs the S0 window; license scope for internal research storage (plans/PLAN_forex_v5.md section 2 axis 2 and section 3 P0b)",
+        "availability_evidence": "absolute per P-1 — every conditioning row carries an evidenced stamp or the conservative LATER bound; asserted bounds are never authorized (plans/PLAN_forex_v4.md section 2; RULES.md section 3)"
+      },
+      "current_blocking_evidence": {
+        "one_line": "FRED_API_KEY ABSENT (grep exit 1, PRESENT_COUNT 0, third consecutive zero measurement at A1/A2/A3); keyless FRED API stays 400; license page unreachable on 3 archived attempts across 2 URLs and 2 protocol versions (curl exit 92/28/92, 0 bytes) — under the pre-registered fail-closed rule a 200-on-data with an unreachable license page is BLOCKED_LICENSE, so no working path exists and the class is carried, not funded.",
+        "pointer": "research/control/forex_free_v6_run/p0c_unlock_verdict.json (axis1_fred_api_key; axis2_keyless_fred_alfred_probe.probe_a/probe_b/probe_c; interpretation_rule_applied; lane_funding.lane2_market_based_real_rate = 'DATA_BLOCKED_VALID carried'); corroborated by research/control/forex_free_v6_run/p2_data_authority_v6.json (lane_2_market_based_real_rate.status = 'DATA_BLOCKED_VALID')"
+      },
+      "owner_unblock_options": [
+        {
+          "option": "FRED_API_KEY in gitignored .env",
+          "terms": "owner signup only — the owner's own free signup placed by the owner in gitignored .env; agents never sign up and never accept terms; no .env value is ever read or printed (plans/PLAN_forex_v6.md section 5 Hard boundaries; p0c_unlock_verdict.json axis1 method_note)",
+          "unlocks": "keyed FRED/ALFRED vintage API access; license review remains a precondition for any use"
+        },
+        {
+          "option": "owner-captured license-page staging drop for review",
+          "terms": "the owner captures the FRED/ALFRED licensing-policy page bytes and stages them for review (the Stooq-lesson channel: owner downloads, agent hashes and pins; plans/PLAN_forex_v6.md section 0 door (b)); the license gate is the current blocker even though the keyless CSV data path newly returned 200 in V6",
+          "unlocks": "the license review that probe_c shows is the open precondition; a staged capture enables review but does not by itself authorize use"
+        },
+        {
+          "option": "a working network path",
+          "terms": "must satisfy the pre-registered fail-closed rule: 'WORKING PATH requires HTTP 200 with substantive series bytes AND a reachable, readable license page' (p0c_unlock_verdict.json, interpretation_rule_applied)",
+          "unlocks": "a keyless funding route if and only if the license page becomes reachable and readable while the data path holds"
+        }
+      ],
+      "slot_binding": "bound by binding_statement at the top level of this file"
+    },
+    {
+      "class_name": "PPP-deviation",
+      "slot": "carried",
+      "status": "DATA_BLOCKED_VALID",
+      "pre_registered_mechanism_definition": {
+        "recorded_wording": [
+          {
+            "source": "plans/PLAN_forex_v4.md, section 2, 'Three sanctioned information axes', item 2 (closed historical authority)",
+            "quote": "inflation and real-rate structure — CPI/price-level differentials via the adopted ECB SDMX adapters (PPP-deviation and real-differential class mechanisms), each series carrying its own availability evidence (release calendars, per P-1)"
+          },
+          {
+            "source": "plans/PLAN_forex_v5.md, section 2, axis 1, closing sentence (closed historical authority)",
+            "quote": "The real-differential and PPP-deviation classes pre-register here."
+          },
+          {
+            "source": "plans/PLAN_forex_v5.md, section 0, frozen starting point, 'carried forward' row (closed historical authority)",
+            "quote": "carried forward two DATA_BLOCKED_VALID proposal classes — real-differential and PPP-deviation — pre-registered selectable the moment their availability evidence is wired (this cycle's P0 exists for exactly that)"
+          }
+        ],
+        "definition_as_recorded": "Class mechanism condition on the deviation of the exchange rate from the level implied by cross-economy CPI/price-level differentials (the PPP-implied path). This is a verbatim-carried reading of the pre-registered wording above — no parameter, threshold, universe, clock, arm, cost or gate is specified, tuned or invented in this record; concretization happens only inside a future funded D1 lane under fresh packet discipline."
+      },
+      "required_data_authority": {
+        "series": "vintaged breakeven/real-yield series with true PIT semantics (plans/PLAN_forex_v6.md section 2, axis 2); the class was pre-registered on CPI/price-level differential inputs (plans/PLAN_forex_v4.md section 2 item 2), so its funded form requires whichever of the two authorities the owner unlock actually delivers — the market-based real-rate axis authority recorded here is the one V6 assigns to this lane",
+        "vintage_datasets": "FRED/ALFRED vintage datasets; ALFRED (archival FRED) as the PIT authority: vintage-archived breakeven/forward inflation and real-yield series with TRUE point-in-time semantics; vintage availability stamps; revision behavior as the ONLY provable PIT test; coverage vs the S0 window; license scope for internal research storage (plans/PLAN_forex_v5.md section 2 axis 2 and section 3 P0b)",
+        "availability_evidence": "absolute per P-1 — every conditioning row carries an evidenced stamp or the conservative LATER bound; asserted bounds are never authorized (plans/PLAN_forex_v4.md section 2; RULES.md section 3)"
+      },
+      "current_blocking_evidence": {
+        "one_line": "FRED_API_KEY ABSENT (grep exit 1, PRESENT_COUNT 0, third consecutive zero measurement at A1/A2/A3); keyless FRED API stays 400; license page unreachable on 3 archived attempts across 2 URLs and 2 protocol versions (curl exit 92/28/92, 0 bytes) — under the pre-registered fail-closed rule a 200-on-data with an unreachable license page is BLOCKED_LICENSE, so no working path exists and the class is carried, not funded.",
+        "pointer": "research/control/forex_free_v6_run/p0c_unlock_verdict.json (axis1_fred_api_key; axis2_keyless_fred_alfred_probe.probe_a/probe_b/probe_c; interpretation_rule_applied; lane_funding.lane2_market_based_real_rate = 'DATA_BLOCKED_VALID carried'); corroborated by research/control/forex_free_v6_run/p2_data_authority_v6.json (lane_2_market_based_real_rate.status = 'DATA_BLOCKED_VALID')"
+      },
+      "owner_unblock_options": [
+        {
+          "option": "FRED_API_KEY in gitignored .env",
+          "terms": "owner signup only — the owner's own free signup placed by the owner in gitignored .env; agents never sign up and never accept terms; no .env value is ever read or printed (plans/PLAN_forex_v6.md section 5 Hard boundaries; p0c_unlock_verdict.json axis1 method_note)",
+          "unlocks": "keyed FRED/ALFRED vintage API access; license review remains a precondition for any use"
+        },
+        {
+          "option": "owner-captured license-page staging drop for review",
+          "terms": "the owner captures the FRED/ALFRED licensing-policy page bytes and stages them for review (the Stooq-lesson channel: owner downloads, agent hashes and pins; plans/PLAN_forex_v6.md section 0 door (b)); the license gate is the current blocker even though the keyless CSV data path newly returned 200 in V6",
+          "unlocks": "the license review that probe_c shows is the open precondition; a staged capture enables review but does not by itself authorize use"
+        },
+        {
+          "option": "a working network path",
+          "terms": "must satisfy the pre-registered fail-closed rule: 'WORKING PATH requires HTTP 200 with substantive series bytes AND a reachable, readable license page' (p0c_unlock_verdict.json, interpretation_rule_applied)",
+          "unlocks": "a keyless funding route if and only if the license page becomes reachable and readable while the data path holds"
+        }
+      ],
+      "slot_binding": "bound by binding_statement at the top level of this file"
+    }
+  ],
+  "binding_statement": "The two pre-registered class slots recorded here (real-differential; PPP-deviation) are CARRIED under DATA_BLOCKED_VALID for cycle FOREX-FREE-V6, exactly as plans/PLAN_forex_v6.md section 2 provides ('Without the unlock this lane is DATA_BLOCKED_VALID, carried again'). These slots are never reassigned — to no other mechanism, family, or axis — per the V6 binding rule that unused slots are never reassigned. Any future funding of this axis, in this cycle or any successor, re-runs D1 packet discipline FRESH from a new wave SHA: a funded lane never inherits this packet's blind attestations, and this carried record confers no proposal rights, no scored rights, and no attestation inheritance on any future lane.",
+  "scope_statement": "This record formalizes the carried state only. No new mechanism design, no code, no PnL, no network fetch, and no modification of existing files was performed by this lane. The pre-registered class wording is quoted verbatim from the closed historical authorities named in each entry; all outcome/prose content of V4/V5 outside the pre-registered real-rate class definitions was not mined.",
+  "evidence_files_read": [
+    "research/control/forex_free_v6_run/p0c_unlock_verdict.json",
+    "research/control/forex_free_v6_run/p2_data_authority_v6.json"
+  ]
+}
