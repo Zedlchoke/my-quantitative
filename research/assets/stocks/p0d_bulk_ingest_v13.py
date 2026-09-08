@@ -46,10 +46,31 @@ def _pace_sleep():
     time.sleep(_PACE["interval"] + random.random() * 0.04)
 
 
+_HANDLE = {"h": None}
+
+
 def _pace_on_503():
     _PACE["ok_streak"] = 0
     _PACE["interval"] = min(_PACE["interval"] * 2, _PACE["min"])
-    time.sleep(600)  # SEC throttle windows clear in ~10 min (INC-V13-3)
+    h = _HANDLE.get("h")
+    if h is not None:  # release during the deep pause: a sleeping crawl must not
+        # starve sibling cycles of the machine lock for days (scheduler discipline)
+        try:
+            h.release(status="FINISHED", note="THROTTLE_WINDOW_RELEASE (10-min 503 pause; relaunch/reacquire after)")
+        except Exception:
+            pass
+        _HANDLE["h"] = None
+        time.sleep(600)
+        for i in range(5):
+            try:
+                _HANDLE["h"] = heavy_lock.acquire(cycle_id="STOCKS-FREE-V13", role="P0D_BULK_INGEST",
+                                                  worktree=W, command=["reacquire-after-throttle"],
+                                                  expected_artifacts=[STREAM])
+                return
+            except heavy_lock.LockBusyError:
+                time.sleep(300)
+        raise RuntimeError("THROTTLE_REACQUIRE_GAVE_UP (sibling holds lock; relaunch later)")
+    time.sleep(600)  # pre-lock phase: just sleep
 
 
 def _pace_on_ok():
@@ -222,6 +243,7 @@ def main():
             handle = heavy_lock.acquire(cycle_id="STOCKS-FREE-V13", role="P0D_BULK_INGEST",
                                         worktree=W, command=[sys.executable, __file__],
                                         expected_artifacts=[STREAM])
+            _HANDLE["h"] = handle
             status(state="LOCK_ACQUIRED", attempts=attempt)
             break
         except heavy_lock.LockBusyError:
@@ -369,7 +391,8 @@ def main():
         status(state="STAGE_B_DONE", docs=len(done_docs), filings=len(refs))
 
         status(state="ALL_DONE", symbols=len(sym_map))
-        handle.release(status="FINISHED", note=f"bulk ingest done: A submissions x{len(alive)}, B xml x{ndocs}, C symbols x{len(sym_map)}")
+        h = _HANDLE.get("h") or handle
+        h.release(status="FINISHED", note=f"bulk ingest done: A submissions x{len(alive)}, B xml x{ndocs}, C symbols x{len(sym_map)}")
         print("ALL_DONE")
     except Exception:
         err = traceback.format_exc()
