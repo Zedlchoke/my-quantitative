@@ -1,0 +1,159 @@
+{
+  "schema": "forex_free_v8_d1_proposal_v1",
+  "cycle": "FOREX-FREE-V8",
+  "lane": "a4-axis2",
+  "lane_role": "inflation-expectation class (axis-2 PRIORITY), outcome-blind proposal 1 of 2",
+  "hypothesis_id": "FXFV8-A4-P1",
+  "wave_sha": "86338a4d99aeaa762da8aa3c6b39f72b8a7417b6",
+  "outcome_blind": true,
+  "title": "Expectation-vs-real decomposition of US rate shocks: breakeven-dislocation absorption on USD spot",
+
+  "mechanism": "Who is forced to act: global fixed-income allocators running paired nominal-Treasury/TIPS mandates must rebalance between the two legs whenever the breakeven — the relative price of inflation protection — dislocates, and corporate/reserve treasurers who price USD cash in purchasing-power terms cut USD-cash overweights when market-implied expected inflation jumps; both populations rebalance on daily-to-weekly cycles, so spot absorbs the expectation shock over days rather than instantly. Why the effect exists: the identity DGS10 ~= DFII10 + T10YIE means the same nominal-yield move can be a REAL-rate shock (real yields up, breakeven flat) or an EXPECTATION shock (breakeven up, real yields flat), and the two decompositions carry opposite short-horizon USD implications — a real-rate shock raises the yield attractiveness of USD assets (USD-supportive), whereas an expectation shock erodes the expected real return of USD cash and nominal holdings and triggers rotation toward inflation-protected and non-USD exposure (USD-adverse); only the expectation-dominated component should carry the USD-adverse signature at a multi-day horizon. Observable: the standardized 10-observation change of the vintaged as-of T10YIE (expectation shock) with the same-window standardized DFII10 change as the decomposition companion, both H.15 daily series under AX2-C1/C4 as-of semantics. When it MUST fail: (i) if the same trigger geometry rebuilt on DGS10 reproduces the anchor's trades, the effect is nominal-yield-level exposure relabelled, not expectation content (falsifier F1-a); (ii) if the policy-response channel (hawkish repricing lifting USD together with the shock) dominates the purchasing-power channel at the 5-day horizon, the frozen direction inverts and expectancy goes negative; (iii) if breakeven dislocations are TIPS-market microstructure/liquidity noise uncorrelated with allocators' USD decisions, the anchor degrades to noise and fails PF/fold/stress gates; (iv) if the trigger rate is too sparse to clear costs, the break-even-bps gate fails.",
+
+  "universe": {
+    "pairs": ["EURUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "GBPUSD"],
+    "position_convention": "USD-short unit = +1 EURUSD, +1 GBPUSD, +1 AUDUSD, +1 NZDUSD, -1 USDJPY, -1 USDCAD, -1 USDCHF; equal risk unit per pair, no pair weighting, no cross-pair lead-lag structure (EURUSD-lead-lag diffusion class is forbidden ancestry and is not entered)",
+    "jp_note": "USDJPY trades on US-only conditioning like every pair; no JP CPI/FRED conditioning anywhere (AX2-C6)"
+  },
+
+  "conditioning": {
+    "data_authority": "p2_conditioning_clocks_v8.json r3 fields ONLY; verdicts PASS_PIT_EVIDENCED per p0_verdicts_final_v8.json; AX2-C1..C8 binding",
+    "fields": [
+      {
+        "series": "T10YIE",
+        "class": "us_breakeven_10y",
+        "freq": "daily",
+        "availability_lag_days": {"median": 0, "min": 0, "max": 5},
+        "role": "anchor expectation shock (mechanism-bearing)"
+      },
+      {
+        "series": "DFII10",
+        "class": "us_real_yield_10y",
+        "freq": "daily",
+        "availability_lag_days": {"median": 1, "min": 1, "max": 5},
+        "role": "anchor decomposition companion (real shock)"
+      },
+      {
+        "series": "T5YIE",
+        "class": "us_breakeven_5y",
+        "freq": "daily",
+        "availability_lag_days": {"median": 0, "min": 0, "max": 5},
+        "role": "neighbour expectation shock (5y point)"
+      },
+      {
+        "series": "DFII5",
+        "class": "us_real_yield_5y",
+        "freq": "daily",
+        "availability_lag_days": {"median": 1, "min": 1, "max": 5},
+        "role": "neighbour decomposition companion (5y point)"
+      },
+      {
+        "series": "DGS10",
+        "class": "us_nominal_10y_CONTROL (AX2-C8 mandatory)",
+        "freq": "daily",
+        "availability_lag_days": {"median": 1, "min": 1, "max": 5},
+        "role": "causal control: nominal-yield exposure form of the anchor"
+      }
+    ],
+    "transforms": {
+      "AX2-C1": "every scoring-time pull is a single-date as-of snapshot (realtime_start = realtime_end = the decision's as-of date); current-vintage pulls forbidden in scored paths",
+      "AX2-C2": "all transforms computed inside one as-of snapshot per decision; no splicing across snapshots/vintages",
+      "AX2-C3": "these are spread/yield series (no index rebase class measured); the loader still ships and consults the rebase/revision event table (p2_rebase_revision_events_v8.json); no level-level CPI conditioning anywhere in this proposal",
+      "shock_definition": "s_x(t) = v_x(t) - v_x(t-10 obs) on the as-of stream (v = last value whose available_time <= decision instant); z_x(t) = s_x(t) / stdev(s_x over trailing 126 obs of the as-of stream, min 100 valid obs, else no-decision)",
+      "dominance_definition": "anchor state requires |z_e10| >= |z_r10| (expectation component at least as large as the real component of the same-window move); neighbour analogously |z_e5| >= |z_r5|",
+      "thresholds_frozen": {"k_obs": 10, "z_window_obs": 126, "z_trigger": 0.75, "refractory_clocks": 3, "hold_days": 5}
+    },
+    "lags_policy": "each field consumed at its own availability (AX2-C4); the 0-day vs 1-day median-lag asymmetry between T10YIE and DFII10/DGS10 is inherent to H.15 publication semantics and is consumed as-is; I/Q availability-lag mutation must shift the consumed decision exactly one period per field"
+  },
+
+  "decision_clock": {
+    "rule": "AX2-C4",
+    "spec": "daily 16:00 America/New_York, DST-correct; a conditioning value enters at the first such clock STRICTLY AFTER its available_time (= first-binding vintage realtime_start); never early, never absorbed; FX 24/5 weekday convention; grid = S0 trading-day clocks (n=1907, 2018-04-04..2025-07-24)"
+  },
+
+  "warmup": {
+    "reserved_clocks": 136,
+    "derivation": "z-window 126 obs + k=10 obs lookback + rounding; no decisions before S0 clock 137 (~2018-10); warmup values are computed but never traded",
+    "decision_capable_clocks_S0": 1771
+  },
+
+  "entry_exit_fills": {
+    "entry": "at the decision clock, when the arm's state is true and no position is open in that pair and the refractory (3 consecutive non-trigger clocks since last state exit) has elapsed: open the USD-short unit (state z > +0.75) or USD-long unit (state z < -0.75) on ALL 7 pairs at equal risk; fill = that clock's daily close price",
+    "exit": "time exit at hold_days = 5 trading days after entry, at that clock's close; earlier exit only if the dual-book financing-inadjustable price gap exceeds nothing (no discretionary exits); positions never overlap within a pair",
+    "fills": "same-clock market fill at daily close, no intrabar logic, no slippage model beyond the cost ladder",
+    "dual_book": "price-only book and financing-adjusted book carried per frozen invariant 6 (sign non-inversion)"
+  },
+
+  "costs": {
+    "ladder": "1.5 bps/side x {1.0, 1.5, 2.0}",
+    "primary_tier": 2.0,
+    "note": "tier 2.0 is the PRIMARY book for all gate evaluation (inherited V6/V7); break-even bps floor 1.5 applies (frozen rule 5)"
+  },
+
+  "arms": {
+    "count": 3,
+    "anchor": {
+      "id": "FXFV8-A4-P1-anchor",
+      "spec": "expectation-dominated shock state on T10YIE with DFII10 dominance companion: trigger |z_e10| >= 0.75 AND |z_e10| >= |z_r10|; direction SHORT USD on z_e10 > 0, LONG USD on z_e10 < 0 (purchasing-power erosion / rotation channel frozen); hold 5 trading days; refractory 3 clocks; all 7 pairs, equal risk",
+      "mechanism_bearing_component": "the expectation component of the rate move (T10YIE)"
+    },
+    "neighbour": {
+      "id": "FXFV8-A4-P1-neighbour-5y",
+      "spec": "identical rule geometry at the 5y point of the expectation curve: trigger |z_e5(T5YIE)| >= 0.75 AND |z_e5| >= |z_r5(DFII5)|; same direction convention, hold 5, refractory 3, all 7 pairs",
+      "tests": "whether the claimed expectation-shock absorption is specific to the 10y point (long-horizon purchasing-power pricing) or is a generic expectation-class effect; differs from anchor ONLY in the maturity point of the two decomposing series"
+    },
+    "control": {
+      "id": "FXFV8-A4-P1-control-dgs10-exposure-form",
+      "type": "causal control (AX2-C8 MANDATORY nominal-yield exposure form)",
+      "spec": "anchor's trigger geometry rebuilt on DGS10 as-of changes: trigger |z_n10(DGS10)| >= 0.75 with NO dominance condition (the whole nominal move is the exposure), same direction convention (SHORT USD on nominal-shock-up, LONG on down), hold 5, refractory 3, all 7 pairs, same as-of semantics AX2-C1..C4",
+      "identifiability": "differs from anchor ONLY in the mechanism-bearing input (T10YIE+DFII10 decomposition swapped for DGS10 total move, dominance condition removed because the nominal form has no decomposition); it neither subsumes nor is subsumed by the anchor: on expectation-dominated days both fire in the same direction, on real-dominated days only the control fires — that overlap asymmetry is exactly the refutation surface",
+      "refutes": "the convenient explanation 'this is just nominal-carry/level exposure relabelled' (carry front door, measured rho 0.997-1.000 class)"
+    },
+    "sham_calendar_note": "NOT REQUIRED for this proposal: no arm conditions on any expectation-release instant or CPI calendar; all three arms are driven solely by daily as-of market series (T10YIE/T5YIE/DFII10/DFII5/DGS10). House sham-calendar standard (clusters #10/#12) therefore not triggered here; it is triggered and satisfied in proposal-2."
+  },
+
+  "falsification_rule": {
+    "preregistered": true,
+    "primary_numeric": "F1-a NOMINAL RELABEL: if the DGS10 control arm's financing-adjusted expectancy per trade at tier 2.0 has the SAME SIGN as the anchor's AND |exp_control| >= 0.5 x |exp_anchor|, the family DIES as a nominal-yield exposure shadow (measured, never argued, at D2 alongside the pooled ancestry-rho gate)",
+    "secondary_numeric": [
+      "F1-b SIGN INVERSION: if anchor expectancy at tier 2.0 < 0 while the DGS10 control expectancy > 0, the frozen purchasing-power direction is refuted -> family DIES",
+      "F1-c HORIZON ATTRIBUTION: if the 5y neighbour expectancy has the anchor's sign AND >= 2 x the anchor expectancy, the effect is not specific to the claimed 10y mechanism -> family DIES (information lives elsewhere; recorded, not rescued)",
+      "F1-d INHERITED BASELINES: any arm failing the frozen rule_order 1..10 (p3_invariants_freeze_v8.json) fails; the family is promotable only if the anchor passes all gates AND none of F1-a..F1-c fires"
+    ],
+    "nonvacuity": "if anchor trades < 300 S0-wide (or any fold has 0 anchor trades), the cell is VOID as vacuous (BLOCKED_SELECTION-class), not evidence about the mechanism; unused slot never reassigned"
+  },
+
+  "expected_failure_interpretation": {
+    "F1-a_fire": "the USD reaction to US rate shocks is priced off the nominal level alone; expectation content is not a separable tradable component on G10 spot at this horizon; the inflation-expectation shock-absorption class closes for this cycle",
+    "F1-b_fire": "the policy-response channel dominates the purchasing-power channel at the 5-day horizon (hawkish repricing lifts USD with expectation shocks); a sign flip is FORBIDDEN as rescue (sign-flip of a rejected cell); recorded as measured negative information",
+    "F1-c_fire": "absorption is a front-end phenomenon; the 10y attribution was wrong; recorded, family dies",
+    "gates_fail_no_control_fire": "genuine mechanism-specific information exists but not at tradeable margins (cost floor, stress tier, concentration) — the thin-margin class per P-2; recorded with margins_to_fail scaffolding"
+  },
+
+  "fold_structure": {
+    "folds": 3,
+    "by_time_non_overlapping": [
+      {"fold": 1, "start": "2018-04-04", "end": "2020-10-30"},
+      {"fold": 2, "start": "2020-11-02", "end": "2023-02-28"},
+      {"fold": 3, "start": "2023-03-01", "end": "2025-07-24"}
+    ],
+    "gate_inherited": "positive_populated_folds >= 2 of 3 (frozen rule 3); fold boundaries fixed at D1, never moved after PnL is visible"
+  },
+
+  "decision_count_sanity": {
+    "S0_clocks": 1907,
+    "decision_capable_after_warmup": 1771,
+    "trigger_rate_assumption": "P(|z|>=0.75) ~ 0.30-0.45 on 10-obs changes; dominance |z_e|>=|z_r| multiplies ~0.5-0.6; 3-clock refractory + 5-day holds bound non-overlap",
+    "expected_anchor_pair_trades": "1500-3000 across S0 (~700-1400 per fold)",
+    "floor": 300,
+    "verdict": "non-vacuous: comfortably enough decisions for 3 populated folds on 7 pairs"
+  },
+
+  "novelty_attestation": {
+    "forbidden_packet_checked": "d1_packet_forbidden_inventory_v8.json read in full",
+    "not_entered_classes": "no session momentum/fade (daily 16:00-NY clock only), no range structures, no policy-rate input (market H.15 yields only, and the DGS10 exposure-form control stands guard against the carry relabel), no vol gating, no commodity-bloc risk-off basket, no release-window avoidance, no reaction-direction conditioning on release signs either side of the economy boundary (no CPI releases, no release signs anywhere), no EURUSD lead-lag diffusion, no USD-PC1 gating, no cross-economy real-yield differential (no foreign market real-yield series exists or is used; construct is a US-internal decomposition, not a cross-economy differential)",
+    "ancestry_rho_exposure": "anchor conditioning exposures (T10YIE-dominated shock states, daily 16:00-NY grid) are a priori low-rho vs carry-region and session/reaction-direction ancestry exposures; measured at D2 pre-selection, bar |rho| <= 0.20, never argued"
+  },
+
+  "pnl_anywhere": false
+}
