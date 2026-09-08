@@ -123,7 +123,7 @@ ran correctly, artifact  -> PASS
 - Terminals: DSR over the cumulative crypto trial count; confirmatory
   status, where declared, is bound in every cell and the ledger.
 
-## 5. STOCKS rules (live plan: `plans/PLAN_stocks_v12.md`)
+## 5. STOCKS rules (live plan: `plans/PLAN_stocks_v13.md`)
 
 - Data: EODHD is owner-entitled (subscription owner-held; key in gitignored
   `.env`, environment-only, redacted from error strings, never in
@@ -157,15 +157,19 @@ ran correctly, artifact  -> PASS
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 
 ```text
-GO CRYPTO V17 SCORED EXECUTION     (live plan plans/PLAN_crypto_v17.md)
-GO STOCKS V12 SCORED EXECUTION     (live plan plans/PLAN_stocks_v12.md)
-GO FOREX V8 SCORED EXECUTION       (live plan plans/PLAN_forex_v8.md)
+GO CRYPTO V17 SCORED EXECUTION     (live plan plans/PLAN_crypto_v17.md;
+                                    paused with its cycle at SHV1 — needs
+                                    fresh use at its own gate per plan §10)
+GO STOCKS V13 SCORED EXECUTION     (live plan plans/PLAN_stocks_v13.md)
+GO FOREX V8 SCORED EXECUTION       (live plan plans/PLAN_forex_v8.md;
+                                    paused with its cycle at SHV1 — needs
+                                    fresh use at its own gate per plan §10)
 ```
 
-The crypto V16, stocks V11 and forex V7 phrases were each consumed at
-their own gates (2026-09-07/08) and are dead with their closed cycles;
-the crypto V15, forex V6 and all earlier phrases are likewise dead.
-Expired/consumed phrases never carry forward (V6 ruling; P-8).
+The stocks V12 phrase died unconsumed with its closed cycle
+(BLOCKED_DATA_OR_SELECTION, 0 cells — 2026-09-08). The crypto V16,
+stocks V11 and forex V7 phrases were consumed at their own gates and are
+dead. Expired/consumed phrases never carry forward (V6 ruling; P-8).
 
 ## 8. The one-paragraph spirit
 
