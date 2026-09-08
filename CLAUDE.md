@@ -9,7 +9,7 @@ gates and reproduction all reconcile.
 1. Read the applicable plan in full before changing files. All plans live in
    `plans/`; the highest version per asset is the live one (see `RULES.md`
    for the law summary and the agent roster):
-   - crypto live: `plans/PLAN_crypto_v16.md`
+   - crypto live: `plans/PLAN_crypto_v17.md`
    - stocks live: `plans/PLAN_stocks_v12.md`
    - forex live: `plans/PLAN_forex_v8.md`
 2. Read `NOTES.md` and `research/wayfinder/MAP.md` when the task touches research.

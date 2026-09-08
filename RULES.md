@@ -109,7 +109,7 @@ ran correctly, artifact  -> PASS
   rho 0.997–1.000), commodity-bloc risk-off. The V3R economic observation
   (PF 1.2825 under honest availability) stays recorded — it is not a license.
 
-## 4. CRYPTO rules (live plan: `plans/PLAN_crypto_v16.md`)
+## 4. CRYPTO rules (live plan: `plans/PLAN_crypto_v17.md`)
 
 - Data: keyless Binance public endpoints + the data.binance.vision bulk
   repository ONLY. Coverage-first: a source that cannot fund the S0 window
@@ -157,18 +157,15 @@ ran correctly, artifact  -> PASS
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 
 ```text
-GO CRYPTO V16 SCORED EXECUTION     (live plan plans/PLAN_crypto_v16.md;
-                                    CONSUMED at its gate 2026-09-08 07:35 VN
-                                    — cycle in scored execution; dead for any
-                                    future use per P-8)
+GO CRYPTO V17 SCORED EXECUTION     (live plan plans/PLAN_crypto_v17.md)
 GO STOCKS V12 SCORED EXECUTION     (live plan plans/PLAN_stocks_v12.md)
 GO FOREX V8 SCORED EXECUTION       (live plan plans/PLAN_forex_v8.md)
 ```
 
-The stocks V11 and forex V7 phrases were each consumed at their own gates
-(2026-09-07) and are dead with their closed cycles; the crypto V15, forex
-V6 and all earlier phrases are likewise dead. Expired/consumed phrases
-never carry forward (V6 ruling; P-8).
+The crypto V16, stocks V11 and forex V7 phrases were each consumed at
+their own gates (2026-09-07/08) and are dead with their closed cycles;
+the crypto V15, forex V6 and all earlier phrases are likewise dead.
+Expired/consumed phrases never carry forward (V6 ruling; P-8).
 
 ## 8. The one-paragraph spirit
 
