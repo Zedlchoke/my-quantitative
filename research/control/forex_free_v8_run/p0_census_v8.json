@@ -1,0 +1,70 @@
+{
+  "schema": "forex_free_v8_p0_census_v1",
+  "measured_at_utc": "2026-09-08T02:35:00Z",
+  "producer": "A1_FOREX_V8_CONTROLLER (P0 in A1 thread — V7 precedent)",
+  "authority": "plans/PLAN_forex_v8.md §2 §4-P0 §5; handbook §11.4 §11.7; RULES.md §3",
+  "s0_window": "2018-04-04..2025-07-24",
+  "keyed_door": "FRED_API_KEY owner-placed, environment-only, functional probe HTTP 200 (see p0_fred_precheck.json)",
+  "census_method": [
+    "fred/series direct probes (DFII5/DFII10/T10YIE/T5YIE/T5YIFR/DGS10/MICH/REAINTRATREARAT10Y/NASDAQOMRXREAL + WDI-style IDs + foreign guesses)",
+    "fred/series/search full-text: 'real yield', 'breakeven inflation', 'inflation-indexed', 'index-linked bond', 'real interest rate' (FULL 260-hit scan), 'real return bond', 'inflation compensation', 'real yield curve', 'real forward rate', 'inflation swap', 'breakeven', 'linkers', 7 country-targeted yield searches, 'inflation expectations survey'",
+    "fred/series/search/tags for 'real yield' and 'breakeven' (tag channel polluted by realtor.com listing tags — recorded, not load-bearing)",
+    "fred/sources (126 sources) + fred/source/releases enumeration for RBA(31)/SNB(34)/BoJ(37)/ONS-GB(74)/BoE(76)/ECB(77)/Nasdaq(97) — /fred/source/series endpoint 404s (path does not exist on this API version); releases channel used instead",
+    "vintage semantics: fred/series/observations with vintage_dates (the ALFRED archive via API)"
+  ],
+  "funded_economy_table": [
+    {"economy": "US", "market_real_yield": "FUNDED — DFII10/DFII5 daily from 2003-01-02, ALFRED vintages <=2007 -> span S0; 1-business-day publication lag evidenced (obs 2018-04-05 binds at vintage 2018-04-06)", "breakeven": "FUNDED — T10YIE/T5YIE/T5YIFR daily from 2003-01-02, vintages from ~2014..2016 -> span S0", "nominal_control_leg": "FUNDED — DGS10 daily from 1962, vintages span S0", "copyright_flag": false, "verdict": "PASS_PIT_EVIDENCED (path; dense vintage/revision map pending)"}
+  ],
+  "foreign_legs_measured_absent": [
+    {"channel": "full-text searches (13 country/structure terms)", "result": "0 foreign market real-yield/breakeven series; all international hits are OECD NOMINAL long-term government bond yields (IRLTLT01*, monthly, vintages exist) or irrelevant (ICE BofA EM indices, IMF fiscal oil-price breakevens)"},
+    {"channel": "full 260-hit 'real interest rate' scan", "result": "US TIPS universe (DTP*/WTP*/TP* individual inflation-indexed notes+bonds) + US aggregates only"},
+    {"channel": "WDI FR.INR.RINR real interest rate", "result": "HTTP 400 — not on FRED"},
+    {"channel": "BoE source (76)", "releases": "Bankstats (Monetary & Financial Statistics); A Millennium of Macroeconomic Data for the UK; SONIA Interest Rate Benchmark", "result": "no market real-yield/index-linked release; nominal/monetary only (Millennium series-level sweep left to A3 for completeness)"},
+    {"channel": "ECB source (77)", "releases": "Weekly Financial Statements; Key ECB Interest Rates; EONIA; Euro Short Term Rate", "result": "policy/money-market nominal only; euro-area ILS/5y5y expected inflation NOT on FRED"},
+    {"channel": "RBA(31)/SNB(34)/BoJ(37)/ONS-GB(74)", "releases": "FX transactions/interventions, SNB bulletins, BoJ accounts, UK national accounts", "result": "no real-yield datasets"},
+    {"channel": "Nasdaq source (97)", "releases": "Nasdaq Daily Index Data (NASDAQOMRXREAL: OMRX Real Return Bond Index)", "result": "copyright-flagged (Copyright © NASDAQ, Inc.), NO ALFRED vintages (HTTP 400), index level not a yield -> RETROSPECTIVE_ONLY + CANDIDATE_NOT_AUTHORIZED"},
+    {"channel": "direct foreign ID guesses (CAMURRBA/CANRRB/AUIRB/BOEUKRY/UKRPI10/IR3CRED01GBM156N)", "result": "absent (last two probes of the first batch cut by a transient SSL EOF after ~60 successful calls; retried set covered by the searches above — residual risk LOW, recorded)"}
+  ],
+  "axis2_legs_measured": {
+    "us_market_expectation_leg": "US breakevens (T10YIE/T5YIE) vintaged, PASS path — market-based expectation observable",
+    "foreign_realized_inflation_leg": "OECD CPI series on FRED carry vintages WITH measured revision capture (GBRCPIALLMINMEI obs 2018-02: 117.294 at vintage 2018-04-06 -> 104.9 by 2018-10-09, a base-year rebase captured by the archive) — PASS path pending dense lag/vintage audit per series",
+    "in_hand_calendars": "per-print CPI calendars GB(88)/CA(105)/AU(23)/NZ(30) evidenced in-S0, pins re-verified from bytes this cycle (gb_ons_cpi aad19697, ca_v3 0f1a9328, au 42a4e4a3, nz 62f82c23)",
+    "note": "axis 2's construction does NOT require foreign market real yields — plan §2 explicitly anticipates realized-inflation legs from the in-hand calendars; vintaged OECD CPI is a NEW evidenced-availability alternative"
+  },
+  "keyless_official_documented_candidates": {
+    "status_class": "DOCUMENTED_CANDIDATE (handbook §11.4) — recorded, NOT activated",
+    "rows": [
+      "Bank of England nominal+real yield curves (keyless official)",
+      "Bank of Canada real return bond yields (keyless official)",
+      "RBA inflation-indexed bond yields (keyless official)",
+      "ECB SDMX ILS/5y5y expected inflation (keyless official)"
+    ],
+    "precedent": "V5 P0 recorded owner unblock options at its ALFRED BLOCKED close; same pattern — activating a non-FRED primary authority for lane 1 is an OWNER scoping decision, not an A1 inference"
+  },
+  "structural_finding": {
+    "bar": "plan §2: FRED/ALFRED real-yield series must fund the S0 window for >=2 economies with evidenced vintage semantics, else 'the axis dies in P0 before any proposal exists'",
+    "measured": "funded market-real-yield economies = {US} — bar FAILED on this census",
+    "consequence": "sanctioned axis 1 (real-yield/breakeven differentials across economies vs USD) is BLOCKED_DATA on the keyed door; the mandatory nominal-yield exposure-form control (DGS10) remains funded for any surviving real-rate-adjacent lane",
+    "cycle_implication": "the AXIS dies, not automatically the cycle: axes 2+3 remain sanctioned and axis 2's legs are measured fundable; whether D1's three-lane structure can be legally filled with axis 1 dead is adjudicated at D1/selection against the frozen plan — FOREX_FREE_V8_BLOCKED_DATA_OR_SELECTION stays a first-class terminal",
+    "owner_options_recorded": [
+      "A (plan-conformant continuation, A1 recommendation): complete P0's dense vintage/revision maps for axis-2 series, proceed toward D1 with the surviving axes; the three-lane structure question resolves against the frozen plan at D1",
+      "B: close the cycle now as FOREX_FREE_V8_BLOCKED_DATA_OR_SELECTION (cheap, honest, zero budget)",
+      "C (V5 precedent): owner expands the lane-1 data authority to keyless official real-yield sources (BoE/BoC/RBA/ECB) — an owner scoping decision, recorded as DOCUMENTED_CANDIDATE above"
+    ]
+  },
+  "terms_of_use": "recorded in p0_fred_precheck.json (owner personal research = personal use; third-party copyright flags checked per series; attribution notice noted; no raw-data commit, sha256-manifest + derived-stats only)",
+  "incidents": [
+    "transient SSL EOF / DNS-resolution failures during the sweep (~60 successful calls in); retried with backoff until complete — no data verdict rests on a failed call",
+    "/fred/source/series endpoint 404 (path absent) — releases channel substituted; recorded for A3"
+  ],
+  "remaining_P0_work_before_D1": [
+    "dense vintage map per funded series (exact earliest vintage; vintage density across S0; revision counts on sampled windows)",
+    "per-series revision-integrity proof (value deltas across vintages) for the axis-2 CPI legs",
+    "release-lag distributions for axis-2 CPI (first-available vintage per print)",
+    "formal per-series §11.7 verdicts upgraded from 'path' to final once the dense map lands",
+    "mutation-test scaffolding is I/Q-phase (plan §4) — not P0"
+  ],
+  "budget": {"used": 0, "planned": 6},
+  "s1": "SEALED_UNTOUCHED",
+  "pnl_anywhere": false
+}
