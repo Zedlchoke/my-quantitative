@@ -1,0 +1,137 @@
+"""SHV1 G5 - monitoring purity (tests/test_dashboard_purity.py) + doctor read-only.
+
+The dashboard/doctor read path must leave `git status --porcelain=v1`
+unchanged (sec7.5). The collector purity case drives the write layer directly
+(the load-bearing property); doctor cases run against tmp_path fixture trees.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import types
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "research"))
+
+from governance import doctor  # noqa: E402
+
+
+def _git(root: Path, *args: str) -> str:
+    return subprocess.run(("git", "-C", str(root)) + args, capture_output=True,
+                          text=True, check=True).stdout
+
+
+def _make_repo(root: Path):
+    """A git repo shaped like the real one: tracked projection + gitignored dashboard/."""
+    (root / "plans").mkdir(parents=True)
+    (root / "plans" / "ACTIVE_CYCLES.json").write_text('{"cycles": []}\n')
+    (root / "dashboard").mkdir()
+    (root / ".gitignore").write_text("dashboard/\n.runtime/\n")
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "-C", str(root), "add", ".gitignore", "plans/ACTIVE_CYCLES.json"], check=True)
+    subprocess.run(["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-qm", "init"], check=True)
+
+
+def test_repeated_collector_refresh_leaves_git_status_unchanged(tmp_path, monkeypatch):
+    _make_repo(tmp_path)
+    from governance import dashboard_collect as dc  # module under test
+    # render is not the property under test - stub the renderer module the way
+    # write_outputs imports it (top-level `from dashboard_render import render`)
+    fake_render = types.ModuleType("dashboard_render")
+    fake_render.render = lambda snap: "<!doctype html><html></html>"
+    monkeypatch.setitem(sys.modules, "dashboard_render", fake_render)
+    before = _git(tmp_path, "status", "--porcelain=v1")
+    projection_before = (tmp_path / "plans" / "ACTIVE_CYCLES.json").read_bytes()
+    snapshot = {"root": str(tmp_path), "measured_at": "2026-09-08T00:00:00Z",
+                "header": {"s1": "SEALED_UNTOUCHED"}, "cycles": [], "pnl_cycles": []}
+    for _ in range(3):  # repeated refreshes: a launch + auto-refresh equivalents
+        dc.write_outputs(snapshot, tmp_path / "dashboard", write_registry=True)
+        dc.write_outputs(snapshot, tmp_path / "dashboard", write_registry=False)
+    after = _git(tmp_path, "status", "--porcelain=v1")
+    assert before == after, "dashboard refresh must not change git status (tracked files)"
+    assert (tmp_path / "dashboard" / "index.html").exists(), "runtime snapshot still produced"
+    # and the tracked projection was NOT rewritten (byte-frozen)
+    assert (tmp_path / "plans" / "ACTIVE_CYCLES.json").read_bytes() == projection_before
+
+
+def test_collector_source_has_no_tracked_write_path():
+    """The removed code path must stay removed: only the runtime snapshot write remains."""
+    import inspect
+    from governance import dashboard_collect as dc
+    src = inspect.getsource(dc.write_outputs)
+    assert "ac_path" not in src, "tracked-projection write must not return"
+    assert src.count("write_text") == 1, "only the gitignored runtime index.html write remains"
+
+
+def test_doctor_is_readonly_on_fixture_tree(tmp_path):
+    _make_repo(tmp_path)
+    (tmp_path / "plans" / "CYCLE_REGISTRY.json").write_text(
+        json.dumps({"schema": "cycle_registry@1", "cycles": []}))
+    tree_before = {p: p.stat().st_mtime for p in tmp_path.rglob("*")
+                   if p.is_file() and ".git" not in p.parts}
+    # ps_lines=[] makes detection 5 hermetic (host process table is out of scope here)
+    findings = doctor.check(root=tmp_path, ps_lines=[])
+    tree_after = {p: p.stat().st_mtime for p in tmp_path.rglob("*")
+                  if p.is_file() and ".git" not in p.parts}
+    assert tree_before == tree_after, "doctor must be read-only (no file mutated)"
+    assert all(f[1] is not None for f in findings)
+    kinds = {k for k, _ in findings}
+    # fixture has no legacy states: allowed labeled diagnostics only
+    assert kinds <= {"STATE_MISSING", "CONTROL_STATE_DRIFT", "ROUTER_GAP",
+                     "STALE_ROUTER_ENTRY", "MONITORING_MUTATION"}
+
+
+def test_doctor_live_worker_detection_self_and_foreign(tmp_path):
+    """Detection 5: the diagnostic's own process is excluded; a foreign repo
+    worker alive while the registry claims workers=0 is flagged."""
+    _make_repo(tmp_path)
+    (tmp_path / "plans" / "CYCLE_REGISTRY.json").write_text(json.dumps({
+        "schema": "cycle_registry@1",
+        "cycles": [{"cycle_id": "CRYPTO-V17", "lifecycle": "PAUSED_MAINTENANCE",
+                    "workers": 0, "heartbeat_utc": "2026-09-08T00:00:00Z",
+                    "budget": {"used": 0, "max": 6}, "s1": "SEALED_UNTOUCHED",
+                    "integration_worktree": ""}]}))
+    self_line = f"user {os.getpid()} 0.0 0.1 /Users/x/my-quantitative/.venv/bin/python -m pytest"
+    foreign = "user 424242 0.0 0.1 /Users/x/my-quantitative/.worktrees/crypto/v17/integration/research/control/v17_run/staging/extract_v17_panel.py --full"
+    findings = doctor.check(root=tmp_path, ps_lines=[self_line, foreign])
+    kinds = [k for k, _ in findings]
+    assert "LIVE_WORKER_UNREPRESENTED" in kinds, "foreign worker must be flagged"
+    assert "1 repo worker process(es)" in dict(findings)["LIVE_WORKER_UNREPRESENTED"]
+    findings_clean = doctor.check(root=tmp_path, ps_lines=[self_line])
+    assert not [k for k, _ in findings_clean if k == "LIVE_WORKER_UNREPRESENTED"], \
+        "the diagnostic process itself must never be flagged"
+
+
+def test_doctor_flags_stale_router_entry(tmp_path):
+    _make_repo(tmp_path)
+    (tmp_path / "plans" / "ACTIVE_CYCLES.json").write_text(
+        json.dumps({"cycles": [{"cycle_id": "STOCKS-V11"}]}))
+    (tmp_path / "plans" / "CYCLE_REGISTRY.json").write_text(json.dumps({
+        "schema": "cycle_registry@1",
+        "cycles": [{"cycle_id": "CRYPTO-V17", "lifecycle": "PAUSED_MAINTENANCE",
+                    "workers": 0, "heartbeat_utc": "2026-09-08T00:00:00Z",
+                    "budget": {"used": 0, "max": 6}, "s1": "SEALED_UNTOUCHED",
+                    "integration_worktree": ""}],
+    }))
+    findings = doctor.check(root=tmp_path)
+    kinds = [k for k, _ in findings]
+    assert "STALE_ROUTER_ENTRY" in kinds, "closed cycle named by projection must be flagged"
+    assert "ROUTER_GAP" in kinds, "registry cycle missing from projection must be flagged"
+
+
+def test_dead_lock_owner_detection_matches_reality():
+    """Detection 6 asserted against the real host lock registry (when present)."""
+    reg_lock = Path.home() / ".my-quantitative-governance" / "heavy_runtime" / "heavy_worker.registry.json"
+    if not reg_lock.exists():
+        pytest.skip("no heavy-lock registry on this host right now (lock free) - NOT_RUN by design")
+    data = json.loads(reg_lock.read_text())
+    rows = data if isinstance(data, list) else data.get("rows", [data])
+    dead = [r for r in rows if isinstance(r.get("pid"), int) and not doctor._pid_alive(r["pid"])]
+    findings = doctor.check(root=doctor.main_root())
+    flagged = [d for k, d in findings if k == "LOCK_OWNER_DEAD"]
+    assert bool(dead) == bool(flagged)

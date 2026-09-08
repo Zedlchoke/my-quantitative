@@ -1,0 +1,44 @@
+{
+ "schema": "system_hardening_v1/h5_integration_report@1",
+ "phase": "H5",
+ "produced_at_utc": "2026-09-08T13:05:00Z",
+ "producer": "A1_SHV1_CONTROLLER",
+ "shv1_wave_sha": "eda97ab7b0ce0c93ad55ac74ccd42e083a488908",
+ "integration_branch": "orca/system-hardening-v1-integration",
+
+ "pick_order_and_results": [
+  {"order": 1, "lane": "A2_router", "lane_commit": "53d76e9bce29604d9d11337136e8f44d148418a7", "pick_commit": "a611465", "targeted_tests": "tests/test_atomic_io.py + test_cycle_registry.py + test_legacy_adapters.py -> 22 passed", "git_diff_check": "clean"},
+  {"order": 2, "lane": "A3_scheduler", "lane_commit": "e514140f96407a3df1d104d91ae19b55b2037066", "pick_commit": "1e71194", "targeted_tests": "tests/test_scheduler.py -> 12 passed (Gate H3 fixture green)", "git_diff_check": "clean"},
+  {"order": 3, "lane": "A4_dashboard", "lane_commit": "57033adf0625095f0f3c96fb171fb6fb4250b77f", "pick_commit": "8ac27b6", "targeted_tests": "tests/test_dashboard_purity.py + test_dashboard.py -> 18 passed / 1 skipped (lock-registry absent on host: truthful NOT_RUN)", "git_diff_check": "clean"}
+ ],
+ "integration_head_after_picks": "8ac27b6",
+
+ "reconciliation": {
+  "combined_targeted_suite": "39 passed / 1 skipped (all SHV1 test files together)",
+  "researchctl_cycle_list": "resolves V17/V8 PAUSED_MAINTENANCE + V12 TERMINAL + 3 historical closed; two H0-recorded drifts surface as warnings (labeled, not normalized)",
+  "researchctl_cycle_doctor": "only the known labeled findings: 3x ROUTER_GAP (projection omits live cycles - the sec2 contradiction this cycle exists to fix)",
+  "scientific_hash_verification": "10/10 MATCH (V17 freeze v5 + 2 self-pins + 2 V16 panel anchors; V12 panel/cohort/v10-timing/v10-revision pins; V8 selection freeze)"
+ },
+
+ "full_suite_alone": {
+  "precondition": "verified before launch: zero live repo workers (ps sweep), heavy lock FREE (0-byte lock file, no registry holder) - the alone-condition of plan sec8 H5 held",
+  "command": ".venv/bin/python -m pytest tests/ -q (integration tree)",
+  "result": "1012 passed / 1 skipped / 6 errors in 61.63s",
+  "exit_code": 1,
+  "log": ".runtime/shv1_full_suite_integration.log (gitignored runtime evidence)",
+  "error_classification": {
+   "all_6_errors": "tests/test_v9_universe_audit.py (deterministic rerun / byte-identical / universe / gap / window / gate-shape cases)",
+   "root_cause": "TypeError: NoneType object is not a mapping at scripts/v9_universe_audit.py:567 - gitignored raw staging data absent in a fresh worktree",
+   "pre_existing_at_base_proven": "identical 6 errors reproduced on the PRISTINE audit lane at SHV1_WAVE_SHA eda97ab (zero SHV1 commits) - same file, same error, same count; 14 passed there as here",
+   "verdict": "PASS_WITH_PREEXISTING_ENV_CLASSES (V8-P1 precedent: PASS_UNDER_PREEXISTING_ENV_CLASSES); NOT caused by any SHV1 lane"
+  }
+ },
+
+ "gates_addressed": {
+  "G4_resource_safety": "heavy-lock discipline exercised (admission inspection + NOT_RUN_RESOURCE_CONFLICT semantics) in test_scheduler; alone-condition honored for the full suite",
+  "G6_legacy_compatibility": "legacy adapters byte-preservation asserted; existing suites green in the 1012 (family_failures, diagnostic_persistability, acceptance, dashboard)",
+  "G7_repo_regression": "targeted after every pick + git diff --check clean + full suite alone (with truthful pre-existing classification)"
+ },
+
+ "notes": "The A4 lane intentionally CHANGED one tracked-file behavior (collector no longer writes plans/ACTIVE_CYCLES.json) per sec7.5 - the corresponding legacy test was updated within A4's frozen ownership; this is the deliverable, not a regression."
+}
