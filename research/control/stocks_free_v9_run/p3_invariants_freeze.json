@@ -1,0 +1,212 @@
+{
+ "schema": "stocks_free_v9_run/baseline_invariants@1",
+ "frozen_at_utc": "2026-09-05T17:14:19Z",
+ "producer_role": "A1 (PLAN_stocks_v9 sec3 P3)",
+ "authority": "PLAN_stocks_v9.md sec 2/3/4: book/costs/eligibility/margin-to-fail frozen BEFORE any V9 PnL exists; the V8 payload carries unchanged so results stay denominator-compatible; the death-inclusive block is new for V9",
+ "carry_forward_basis": "stocks_free_v8_run/baseline_invariants@1 (frozen 2026-09-05T04:14:15Z)",
+ "carried_payload": {
+  "schema": "stocks_free_v8_run/baseline_invariants@1",
+  "frozen_at_utc": "2026-09-05T04:14:15Z",
+  "producer_role": "A1",
+  "authority": "PLAN_stocks_v8.md section 4 (== PLAN_stocks_v7.md sections 2/9/12): equity cost model with liquidity-band stress multipliers applied to BOOKED PnL; every V4/V5 convention carried forward UNCHANGED so V8 results stay denominator-compatible with the 21 prior cells; the liquidity-band block is new for V8",
+  "carry_forward_basis": "stocks_free_v5_run/baseline_invariants@1 (frozen 2026-09-04T06:45:00Z), payload carried unchanged below",
+  "carried_payload": {
+   "schema": "stocks_free_v5_run/baseline_invariants@1",
+   "frozen_at_utc": "2026-09-04T06:45:00Z",
+   "producer_role": "A1",
+   "authority": "PLAN_stocks_v5.md section 6 P3; every V4 convention below is carried forward UNCHANGED from stocks_free_v4_run/baseline_invariants@1 (frozen 2026-09-04T02:15:00Z) so V5 results stay denominator-compatible with the 18 prior cells; the PIT block is new for V5 and binds every conditioning arm",
+   "accounting": {
+    "symbols_excl_cash": "CASH is never a symbol; it absorbs residual weight and is excluded from turnover, concentration and drop-one",
+    "long_short_gross_net": "long/short books accounted separately; gross = sum(|w|) over non-CASH legs; net = sum(w); cash = 1 - net; all reconciled to 1.0 within 1e-9",
+    "force_flat_fold_boundaries": "book forced flat at every fold boundary; boundary sessions carry no cross-fold carry",
+    "min_positions": "at least 1 non-CASH leg per decision; min 5 decision periods per fold",
+    "min_decisions_total": "at least 30 scored decision periods overall per arm"
+   },
+   "fills_and_costs": {
+    "fill_clock": "signals computed on session t close data (PIT); fills at next allowed session open-adjacent close-to-close execution consistent with V3 ADJ-1-EXEC-CLOCK; no same-session fill",
+    "cost_base": "10 bps per side per fill, charged exactly once",
+    "cost_stress": "20 bps per side per fill for the stress rerun",
+    "no_double_charge": "P1-A2 invariant 2; no sidecar repetition of cost"
+   },
+   "turnover": {
+    "convention": "turnover = sum(abs(delta_weight)) over non-CASH legs, one named convention (V3 ADJ-5 corrected)",
+    "ceiling_two_way_per_year": 6.0,
+    "reporting": "annualized two-way; both raw and ceiling-normalized reported"
+   },
+   "folds": [
+    {
+     "fold_id": "S0_FOLD_1",
+     "start": "2018-04-04",
+     "end": "2020-09-01"
+    },
+    {
+     "fold_id": "S0_FOLD_2",
+     "start": "2020-09-10",
+     "end": "2023-02-09"
+    },
+    {
+     "fold_id": "S0_FOLD_3",
+     "start": "2023-02-17",
+     "end": "2025-07-24"
+    }
+   ],
+   "factor_and_benchmark": {
+    "benchmark": "SPY total return (adjusted _all path) per the frozen benchmark contract; identical to V4",
+    "sector_factor": "equal-weight sector ETF total return allowed as optional sector factor (authorized data only)",
+    "risk_matched_context": "SPY context scaled ex ante by the arm's frozen gross/vol rule; incremental alpha = arm return minus risk-matched SPY context, per fold and overall",
+    "beta_not_alpha": "raw PnL or long-equity beta exposure is never accepted as alpha (V2/V3/V4 lesson)"
+   },
+   "concentration_and_robustness": {
+    "etf_positive_share_le": 0.35,
+    "fold_positive_share_le": 0.5,
+    "drop_one_etf": "value_book rerun excluding max-contribution symbol; survival = after-drop expectancy > 0",
+    "drop_one_fold": "min over folds of expectancy with that fold removed; survival = min > 0",
+    "stress": "PnL > 0 and PF >= 1.0 at 20 bps/side"
+   },
+   "stage_a_gates_carried_forward": {
+    "expectancy_gt": 0.0,
+    "position_pf_ge": 1.1,
+    "folds_positive_ge": 2,
+    "min_populated_fold_pf_ge": 0.8,
+    "max_fold_mdd_le": 0.15,
+    "risk_matched_excess_positive_folds_ge": 2,
+    "anchor_overall_alpha_gt": 0.0,
+    "control_alpha_abs_ratio_lt": 0.5,
+    "neighbor_mechanism_support": "required",
+    "causal_control_rule": "preregistered per arm; control must NOT reproduce the mechanism; a control that outperforms a negative anchor falsifies the family (confirmatory-region families included)",
+    "reproduction": "ALL_MATCH required from detached tree"
+   },
+   "pit_conditioning_v5": {
+    "conditioning_lag_rule": "a fundamental or macro observation influences decisions no earlier than its availability stamp plus one session; implemented as available_time_utc < 00:00 UTC of the decision session (research/assets/stocks/pit_conditioning.session_gate_utc); regression-pinned at the gate boundary",
+    "availability_semantics": "SEC filed dates are date-only: availability is the end of the filed UTC day (conservative upper bound); retrieval time never substitutes for availability; ALFRED vintage dates would carry the same end-of-day bound if macro were authorized",
+    "authorized_conditioning_sources": "SEC_EDGAR only for V5 (Submissions + Company Facts); every other fusion source is CANDIDATE_NOT_AUTHORIZED or out-of-scope and any arm reading one fails closed",
+    "sector_aggregation_mechanism": "single-vintage equal-weight mean over sorted filers (math.fsum), survivorship-aware via the max_filing_gap_days filing-clock rule; coverage (filers_included/filers_mapped) reported per observation",
+    "aggregation_parameter_declaration": "max_filing_gap_days and the conditioning field(s) are proposal-level design choices that MUST be declared ex ante in the family freeze before any scoring; they are never tuned after scored PnL is visible",
+    "filer_panel_freeze": "the panel in .staging_sec/panel.json is frozen at P2; current-registry survivorship tilt documented and constant across all arms; no filer may be added or removed after selection freeze",
+    "no_ohlcv_proxy_rule": "fabricating fundamental or macro proxies from OHLCV fields is forbidden (plan 6.P2); price-derived conditioners live in the non-forbidden price/volume space only, outside PIT claims"
+   },
+   "section_1_1_confirmatory_region": {
+    "vol_level_family_requirements": "if a vol-level confirmatory family is proposed: risk overlay (vol targeting / beta hedge / gross clamp) chosen BEFORE any V5 data is scored; preregistered confirmatory status recorded in family verdict and denominator; own falsification control (e.g. one-quarter-stale vol-level ranks) distinct from V4 control arms; A7-N measures rank correlation vs the V4 semivariance anchor with |rho| <= 0.20 and documents the relation to the level axis; Stage-A gates apply with no relaxation; MDD <= 15% is not negotiable",
+    "v4_control_raw_pnl_status": "+53.14% raw (vol-level control) and +14.91% raw (stale-rank control) are NOT evidence and NOT targets"
+   },
+   "resource_and_timeout": {
+    "heavy_cap": "1 by default on 8 GB host; set only by fresh probe",
+    "execution_timeout_per_cell": "120 minutes hard; safe-stop with < 45 min remaining",
+    "serial_cells": "scored arms within one family are serial; A1 serializes all publication"
+   },
+   "no_pnl_in_phase_p": true,
+   "frozen_before": "V5-D1 proposal wave; changing anything above after proposals are written requires owner adjudication"
+  },
+  "v8_additions": {
+   "liquidity_band_cost_model": {
+    "note": "preregistered at P3 BEFORE any V8 returns are examined; bands by trailing 63-session median dollar volume (ADV) as-of each decision date (PIT, availability = session close + 1); cost stays linear in fills (L-V14-0); multipliers applied to booked PnL, never a sidecar (FX V2 M-F1 lesson)",
+    "band_definition": "ADV63 = median(close*volume) over the 63 sessions ending at the decision session",
+    "bands": [
+     {
+      "band": "A",
+      "rule": "ADV63 >= 50_000_000",
+      "base_bps_per_side": 10.0,
+      "stress_bps_per_side": 20.0,
+      "multiplier": 1.0
+     },
+     {
+      "band": "B",
+      "rule": "10_000_000 <= ADV63 < 50_000_000",
+      "base_bps_per_side": 15.0,
+      "stress_bps_per_side": 30.0,
+      "multiplier": 1.5
+     },
+     {
+      "band": "C",
+      "rule": "2_000_000 <= ADV63 < 10_000_000",
+      "base_bps_per_side": 25.0,
+      "stress_bps_per_side": 50.0,
+      "multiplier": 2.5
+     },
+     {
+      "band": "D",
+      "rule": "ADV63 < 2_000_000",
+      "status": "UNTRADABLE_AT_DECISION - excluded from eligibility at that decision"
+     }
+    ],
+    "compatibility": "a band-A fill has exactly V4/V5 arithmetic (10/20 bps)",
+    "raw_series_convention": "prices RAW series primary (V6 corporate_actions policy); RAW close*volume for ADV, RAW fill prices with split/dividend adjustment handled by the frozen corporate-actions module"
+   },
+   "universe_eligibility_frozen_before_returns": [
+    "filer in the frozen 410-filer panel (sha256 1cb115d3...)",
+    "name servable by the authorized price authority at that decision date (reconciliation p0a_cohort_price_reconciliation)",
+    "ADV63 >= 2_000_000 USD (band C or better) at the decision",
+    "price RAW >= 1.00 USD at the decision (sub-dollar microstructure exclusion)"
+   ],
+   "conditioning_block": {
+    "pit_semantics": "multi-vintage: a decision at t observes the latest filed vintage with avail < gate(t); never the latest vintage in the store (V6 canonical)",
+    "clock_rule": "a proposal may cite only clocks in the frozen 154-clock set (p0a_clock_freeze.json sha256 61e15738...); any other clock is UNFUNDED and its proposal is ineligible",
+    "conditioning_fields": "census fields of the frozen panel; coverage floors from p0a_coverage_census.json"
+   },
+   "margin_to_fail_reporting": "per LESSONS P-2: every Stage-A gate report on a survivor must include the distance to its failure threshold (margin-to-fail), computed at scoring time",
+   "availability_convention": "daily bars readable at session close + 1 session (V7 Friday-bar-Saturday-present baseline; EODHD EOD publication semantics per probe G5)"
+  },
+  "folds": [
+   {
+    "fold_id": "S0_FOLD_1",
+    "start": "2018-04-04",
+    "end": "2020-09-01"
+   },
+   {
+    "fold_id": "S0_FOLD_2",
+    "start": "2020-09-10",
+    "end": "2023-02-09"
+   },
+   {
+    "fold_id": "S0_FOLD_3",
+    "start": "2023-02-17",
+    "end": "2025-07-24"
+   }
+  ],
+  "verdict": "P3_FROZEN"
+ },
+ "v9_additions": {
+  "kernel_fixes_carried": {
+   "L_I3_band_resolution": "fail-closed: a traded name without a computed band at costing raises BandResolutionError (research/assets/stocks/kernel_band_cost_v9.py); the silent 10bps fallback is forbidden",
+   "F_A7T_1_ledger": "scored ledgers carry driver-emitted counters only; publication bookkeeping lives in a separate append-only record and never edits driver output"
+  },
+  "death_inclusive_universe": {
+   "cohort": "410 ALIVE_EVIDENCED (frozen panel) + 1550 DEAD_PRICE_CONFIRMED (census candidate + EODHD symbol join + price-death reconciliation); 219 NOT_DEAD_PRICE_SURVIVAL excluded with recorded reasons; 513 GAP_COVERAGE recorded",
+   "data": {
+    "panel_v9_sha256": "67591464ee49acc159886143a379bda5890b1df602818b600d7938df92af1447",
+    "panel_v8_frozen_prefix": "1cb115d3dbb563cbc6ec4b1ce78ef2347b4538b23fc9e3232e38b1f9d16cdd40",
+    "delisted_cache_sha256": "bd7d969cf1ff00c1aa81e42ccccb71ef5d7ced3c9bbb4a3c38cf1e8f4792d06b",
+    "price_manifest": "research/control/stocks_free_v9_run/p0d_v9_price_manifest.json"
+   },
+   "dead_name_book_semantics_PREREGISTERED": {
+    "eligibility": "a name is eligible at a decision only with >=63 bars through it (inherited floor) and a non-UNTRADABLE band",
+    "fill_check": "a fill references only names with a bar at the fill session; missing bar = the order does not exist (no silent substitute pricing)",
+    "exit": "a held name whose series ends is exited at its last recorded close on its final session (delisting-return leg carried by the price series itself; no synthetic penalty, no synthetic continuation)",
+    "forbidden": "no survivorship re-substitution: a dead name is never replaced by a successor entity's series"
+   }
+  },
+  "dead_leg_clock_funding": {
+   "artifact": "research/control/stocks_free_v9_run/p2_v9_coverage_first.json",
+   "funded_clocks_on_dead_leg": 56,
+   "citing_rule": "D1 proposals may cite only clocks in the dead-leg funded set (or the price leg); anything else is UNFUNDED and its proposal is ineligible"
+  }
+ },
+ "folds": [
+  {
+   "fold_id": "S0_FOLD_1",
+   "start": "2018-04-04",
+   "end": "2020-09-01"
+  },
+  {
+   "fold_id": "S0_FOLD_2",
+   "start": "2020-09-10",
+   "end": "2023-02-09"
+  },
+  {
+   "fold_id": "S0_FOLD_3",
+   "start": "2023-02-17",
+   "end": "2025-07-24"
+  }
+ ],
+ "verdict": "P3_FROZEN"
+}
