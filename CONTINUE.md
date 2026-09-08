@@ -1,11 +1,14 @@
 # CONTINUE.md — program checkpoint (Lead-synced 2026-09-08 morning)
 
 Read the LIVE plan of the cycle you serve (highest version per asset in
-`plans/`): crypto `PLAN_crypto_v17.md` (ACTIVE_LIGHT — A1 bootstrapped under
-owner dispatch 2026-09-08, P0 pending, HARD STOP at the two-key P-8 gate),
-stocks `PLAN_stocks_v12.md` (awaiting owner dispatch), forex
-`PLAN_forex_v8.md` (awaiting owner dispatch). This file is a derived
-checkpoint, not an authority.
+`plans/`): crypto `PLAN_crypto_v17.md` (ACTIVE_LIGHT — A1 bootstrapped
+2026-09-08 `ff33929`, P0 pending), stocks `PLAN_stocks_v12.md`
+(ACTIVE_LIGHT — A1 bootstrapped 2026-09-08 `02b4ac2`, P0 lane running),
+forex `PLAN_forex_v8.md` (awaiting owner dispatch). Both live A1s HARD
+STOP at their two-key P-8 gates. This file is a derived checkpoint, not
+an authority. Two A1 threads share the machine: heavy phases queue under
+the machine-wide lock (NOT_RUN_RESOURCE_CONFLICT, never contention); root
+commits are atomic single-purpose pathspec only (P-10).
 
 ## Measured program state
 
@@ -23,12 +26,18 @@ checkpoint, not an authority.
 - Program totals (ledger authority, P-9): **233 published / 236 observed,
   0 survivors; S1 SEALED everywhere** (crypto 155/158, stocks 39/39,
   forex 39/39). Failure registry 55 entries --verify PASS.
-- CRYPTO-V17 ACTIVE_LIGHT as of 2026-09-08 (A1 bootstrap commit ff33929
-  on orca/v17-integration from main 09ccfcc; first report GO for P0; no
-  scored cell may run — A7 prelaunch verdict NOT_RUN, owner GO phrase
-  absent per P-8). Still awaiting owner dispatch:
-  stocks `PLAN_stocks_v12.md` (chain-structure + death-event frontier),
-  forex `PLAN_forex_v8.md` (real-rate frontier under the FRED key).
+- CRYPTO-V16 A7T ADDENDUM (2026-09-08 08:12 VN): the terminal A7 audit
+  ran 27 min after canonical close → `V16_TERMINAL_APPROVED_0_FAIL`
+  (`2762cd7`, a7_terminal_v16.json; anchors' gates recomputed
+  exact-to-r12; the margins-misattribution defect adjudicated
+  verdict-neutral). The V16 close chain is now A7-terminal-complete.
+- RUNNING (ACTIVE_LIGHT): CRYPTO-V17 (A1 bootstrap `ff33929`; first
+  report GO for P0; no scored cell — A7 prelaunch NOT_RUN, owner GO
+  absent per P-8) and STOCKS-V12 (A1 bootstrap `02b4ac2`, first report
+  `e0dcb0f` GO for P0, census-only P0 lane dispatched `ac06951`; both
+  lanes pre-checked fundable; GO phrase registered, unconsumed). Still
+  awaiting owner dispatch: forex `PLAN_forex_v8.md` (real-rate frontier
+  under the FRED key).
 
 ## Owner-keyed doors (Lead-measured current state)
 
@@ -45,9 +54,8 @@ checkpoint, not an authority.
 
 - F-A7-T-1 kernel debt (gate-equality quirk, verdict-neutral, carried
   from forex V6 close).
-- EODHD $19.99/mo: keep active while stocks cycles run; cancel when
-  stocks idle (currently idle until V12 dispatch — owner decision point
-  before dispatching V12).
-- Dashboard build agent: plan approved (`plans/PLAN_dashboard.md`),
-  worktree `.worktrees/governance/lab-dashboard` @ `orca/lab-dashboard`
-  ready, NOT started — owner dispatches with the prompt they hold.
+- EODHD $19.99/mo: keep active — STOCKS-V12 is dispatched and running.
+- Dashboard: BUILT, merged to main (`effbe42` + logo), pushed; app opens
+  via `LabDashboard.command`; registry `plans/ACTIVE_CYCLES.json`
+  regenerates on each collector run (worktree-existence semantics —
+  closed-cycle wording is the known follow-up).
