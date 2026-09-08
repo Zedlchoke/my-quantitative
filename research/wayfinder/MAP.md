@@ -21,6 +21,22 @@
   sealed. Detail:
   `.worktrees/forex-free-v6/integration/research/control/forex_free_v6_run/terminal_verdict.json`.
 
+- **CRYPTO V16 CLOSED → `V16_REJECT_ALL`** (closed 2026-09-07, branch
+  `orca/v16-integration`, terminal `46db31d`, code freeze `8711987`) — the
+  bounded aggTrades microstructure probe, first governance cycle (diagnostic
+  gate + round-2 machine-wide heavy lock + failure memory ADOPTED and
+  exercised, incl. a live VACUOUS_CELL self-refusal during the twin smoke).
+  Two sanctioned-axis survivors of blind selection both rejected under rule
+  order #1: CLOSE-DISPLACE-FADE at G2 (PF 1.0636; MDD 0.2064 razor), 
+  RUNPERSIST at G1 (−0.00147/day; control out-earned). D2 measured vetoes:
+  A4-P1 vs ELITE-LEVEL 0.2225 (measured beats argued — lane predicted
+  TAKER-SAT, ledger said elite), A5 both (OI-churn/LIQEPIS 0.34-0.39 + fold
+  floor). Two-key P-8 fully legal incl. one form-fail attempt recorded.
+  Reproduction ALL_MATCH 60/60/1854. DSR NOT_RUN fail-closed (historical
+  trial Sharpes never persisted — standing data debt), PBO NOT_RUN (6<8).
+  aggTrades keyless frontier now MEASURED-EXHAUSTED at daily clock for
+  {BTC,ETH}. Crypto 155/158; program 224/227 (P-9). S1 sealed. Detail:
+  `research/control/v16_run/terminal_report_v16.json`.
 - **CRYPTO V15 CLOSED → `V15_REJECT_ALL`** (closed 2026-09-07, branch
   `orca/v15-integration`, closeout `ad61fca` + terminal-line merge; code
   freeze `824190c`) — the archived-positioning-metrics cycle on
