@@ -19,6 +19,37 @@ What this is
     * diag     research/control/v17_run/p3_diagnostic_contract_scaffold.json
                  (10 mandatory categories, results/v17/{family}/{arm}/)
 
+A8 families lane extensions (additive; the frozen defaults are untouched)
+    The two SELECTED families (V17-A4-P2-SILRES, V17-a5-P1-ATTN-PHASE) fill
+    at the PUBLISHED bucket VWAP and inside the position bucket, per their
+    frozen proposals.  The family spec may therefore declare:
+
+    * ``"fill_price": "last_price" (default) | "vwap" | "h1_bucket0_vwap"``
+      -- the published price fills execute against.  ``h1_bucket0_vwap``
+      (D1 clock only: the vwap of the day's first H1 bucket) realizes the
+      ATTN-PHASE frozen fill law "day t bucket-0 VWAP (close_ts 01:00)".
+    * ``"entry": {"lag_buckets": 0}`` -- fill inside the position bucket,
+      allowed ONLY together with a non-close ``fill_price`` (the decision
+      still consumes strictly-prior buckets via the one-bar lag; the
+      bucket's VWAP is a published transaction price, not decision info).
+      Without that declaration lag 0 is still refused (same-bucket close
+      conservatism, unchanged).
+    * ``"exit": {"holding_buckets": H}`` at ARM level -- per-arm override
+      of the family holding (SILRES neighbour freezes K=4 vs anchor K=2).
+    * ``"booking": "event" (default) | "state_machine"`` -- state_machine
+      (D1 clock) books ONE round trip per maximal constant-position
+      episode of the exposure path: entry at the episode's first day,
+      exit at the first differing day (both at the family ``fill_price``),
+      forced exit at the fold's last tradable H1 bucket VWAP when the
+      episode reaches the fold edge (the ATTN-PHASE force-flat law); no
+      position ever crosses a fold boundary or the +/-1-day purge.
+    * ``"sham_calendar": {"calendar": str, "note": str}`` -- scored arms
+      additionally emit ``sham_control_calendar.jsonl`` rows
+      {cycle_id, arm_id, calendar} (diag/sham_control_calendar@1 canon)
+      carrying the family's control-calendar descriptor: the ATTN-PHASE
+      sham rotation, or the SILRES not-applicable marker per the D2
+      re-freeze (calendar_conditioned=false for that family).
+
 Selection JSON schema (frozen shape consumed here)
     {
       "cycle_id": "CRYPTO-V17",
@@ -126,6 +157,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import inspect
 import json
 import math
 import re
@@ -133,7 +165,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 try:  # package import (tests: research.control.v17_run.driver.run_v17_cell)
     from research.control.v17_run.driver.family_registry_v17 import (
@@ -153,6 +185,11 @@ except ImportError:  # script execution from the driver directory
 CYCLE_ID = "CRYPTO-V17"
 ARM_KINDS = ("anchor", "neighbour", "control")
 CLOCKS = ("H1", "H4", "D1")
+
+#: Published fill-price conventions (family spec "fill_price").
+FILL_PRICES = ("last_price", "vwap", "h1_bucket0_vwap")
+#: Booking models (family spec "booking").
+BOOKINGS = ("event", "state_machine")
 
 TAKER_FEE_BPS = 5.0
 TICK_SIZE = 0.01
@@ -240,6 +277,9 @@ CANON_FIELDS: Dict[str, Tuple[str, ...]] = {
     "sanitized_decisions": (
         "cycle_id", "family_id", "arm_id", "date", "hour", "decision_taken", "symbol",
     ),
+    # Conditional (diag/sham_control_calendar@1): emitted only for families
+    # whose spec declares "sham_calendar" (see the README extensions block).
+    "sham_control_calendar": ("cycle_id", "arm_id", "calendar"),
 }
 
 LEAK_PATTERN = re.compile(
@@ -302,6 +342,9 @@ class ArmSpec:
     exposure: Mapping[str, Any]
     raw: Mapping[str, Any]
     arm_config_digest: str
+    #: arm-level overrides of the family entry/exit (None = family value).
+    lag_override: Optional[int] = None
+    holding_override: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -313,6 +356,9 @@ class FamilySpec:
     holding_buckets: int
     arms: Tuple[ArmSpec, ...]
     raw: Mapping[str, Any]
+    fill_price: str = "last_price"
+    booking: str = "event"
+    sham_calendar: Optional[Mapping[str, Any]] = None
 
 
 def load_selection(path: Path) -> Tuple[str, List[FamilySpec]]:
@@ -340,6 +386,34 @@ def load_selection(path: Path) -> Tuple[str, List[FamilySpec]]:
     return cycle_id, specs
 
 
+def _parse_fill_price(family_id: str, fam_raw: Mapping[str, Any], clock: str) -> str:
+    fill_price = str(fam_raw.get("fill_price", "last_price"))
+    if fill_price not in FILL_PRICES:
+        raise DriverError(
+            f"family {family_id}: fill_price {fill_price!r} not in {FILL_PRICES}"
+        )
+    if fill_price == "h1_bucket0_vwap" and clock != "D1":
+        raise DriverError(
+            f"family {family_id}: fill_price h1_bucket0_vwap requires clock D1 "
+            f"(got {clock!r})"
+        )
+    return fill_price
+
+
+def _check_lag_zero_gate(family_id: str, lag: int, fill_price: str) -> None:
+    """lag 0 fills INSIDE the position bucket; allowed only when the family
+    pins a published non-close fill price (never the close the decision
+    could be confused with).  Without that declaration the frozen refusal
+    stands (fail closed, unchanged for pre-existing specs)."""
+    if lag == 0 and fill_price == "last_price":
+        raise DriverError(
+            f"family {family_id}: entry.lag_buckets must be >= 1 "
+            "(lag 0 peeks the same-bucket close the decision consumed); "
+            "declare fill_price 'vwap'|'h1_bucket0_vwap' to fill at the "
+            "bucket's published VWAP inside the position bucket"
+        )
+
+
 def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
     if not isinstance(fam_raw, dict):
         raise DriverError("each family must be a JSON object")
@@ -363,13 +437,31 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
     exitp = fam_raw.get("exit")
     lag = int(entry.get("lag_buckets", 1)) if isinstance(entry, dict) else 1
     holding = int(exitp.get("holding_buckets", 1)) if isinstance(exitp, dict) else 1
-    if lag < 1:
+    if lag < 0:
         raise DriverError(
-            f"family {family_id}: entry.lag_buckets must be >= 1 "
-            "(lag 0 peeks the same-bucket close the decision consumed)"
+            f"family {family_id}: entry.lag_buckets must be >= 0, got {lag}"
         )
     if holding < 1:
         raise DriverError(f"family {family_id}: exit.holding_buckets must be >= 1")
+    fill_price = _parse_fill_price(family_id, fam_raw, clock)
+    _check_lag_zero_gate(family_id, lag, fill_price)
+    booking = str(fam_raw.get("booking", "event"))
+    if booking not in BOOKINGS:
+        raise DriverError(f"family {family_id}: booking {booking!r} not in {BOOKINGS}")
+    if booking == "state_machine" and clock != "D1":
+        raise DriverError(
+            f"family {family_id}: booking state_machine requires clock D1 "
+            f"(got {clock!r})"
+        )
+    sham_calendar = fam_raw.get("sham_calendar")
+    if sham_calendar is not None:
+        if not isinstance(sham_calendar, dict) or not isinstance(
+            sham_calendar.get("calendar"), str
+        ):
+            raise DriverError(
+                f"family {family_id}: sham_calendar must be an object with a "
+                "string 'calendar' descriptor"
+            )
     arms_raw = fam_raw.get("arms")
     if not isinstance(arms_raw, list) or len(arms_raw) != 3:
         raise DriverError(
@@ -428,6 +520,37 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
             raise DriverError(
                 f"family {family_id}/{arm_id}: control_spec must be an object"
             )
+        # arm-level entry/exit overrides (A8 families lane: SILRES neighbour
+        # freezes K=4 vs the anchor K=2 within one family).
+        arm_entry = arm_raw.get("entry")
+        arm_exit = arm_raw.get("exit")
+        lag_override: Optional[int] = None
+        holding_override: Optional[int] = None
+        if arm_entry is not None:
+            if not isinstance(arm_entry, dict) or "lag_buckets" not in arm_entry:
+                raise DriverError(
+                    f"family {family_id}/{arm_id}: arm entry override must be "
+                    "an object with lag_buckets"
+                )
+            lag_override = int(arm_entry["lag_buckets"])
+            if lag_override < 0:
+                raise DriverError(
+                    f"family {family_id}/{arm_id}: arm entry.lag_buckets must "
+                    f"be >= 0, got {lag_override}"
+                )
+            _check_lag_zero_gate(f"{family_id}/{arm_id}", lag_override, fill_price)
+        if arm_exit is not None:
+            if not isinstance(arm_exit, dict) or "holding_buckets" not in arm_exit:
+                raise DriverError(
+                    f"family {family_id}/{arm_id}: arm exit override must be "
+                    "an object with holding_buckets"
+                )
+            holding_override = int(arm_exit["holding_buckets"])
+            if holding_override < 1:
+                raise DriverError(
+                    f"family {family_id}/{arm_id}: arm exit.holding_buckets "
+                    f"must be >= 1, got {holding_override}"
+                )
         arms.append(
             ArmSpec(
                 family_id=family_id,
@@ -436,6 +559,8 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
                 exposure=exposure,
                 raw=arm_raw,
                 arm_config_digest=sha256_text(canon_json([arm_raw])),
+                lag_override=lag_override,
+                holding_override=holding_override,
             )
         )
     missing = [k for k in ARM_KINDS if k not in kinds_seen]
@@ -449,6 +574,9 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
         holding_buckets=holding,
         arms=tuple(arms),
         raw=fam_raw,
+        fill_price=fill_price,
+        booking=booking,
+        sham_calendar=sham_calendar,
     )
 
 
@@ -733,6 +861,19 @@ def build_folds(n_days: int) -> Tuple[List[Fold], frozenset]:
 # --------------------------------------------------------------------------- #
 # Exposure evaluation (registry formulas / endpoint series)
 # --------------------------------------------------------------------------- #
+def _formula_accepts_h1(fn: Callable[..., Any]) -> bool:
+    """True iff the registered formula declares the ``h1`` keyword (or
+    ``**kwargs``): such formulas receive the raw H1 rows alongside the
+    family-clock frames (the ATTN-PHASE hour composition needs H1 grain)."""
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):  # pragma: no cover - builtins only
+        return False
+    if "h1" in sig.parameters:
+        return True
+    return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+
+
 def evaluate_exposure(
     arm: ArmSpec,
     spec: FamilySpec,
@@ -741,6 +882,7 @@ def evaluate_exposure(
     *,
     base_dir: Path,
     allow_example: bool,
+    h1: Optional[Mapping[str, Sequence[Mapping[str, Any]]]] = None,
 ) -> Dict[str, List[Optional[float]]]:
     exposure = arm.exposure
     if exposure.get("type") == "panel_formula":
@@ -754,6 +896,8 @@ def evaluate_exposure(
             fn = registry_resolve(formula_id)
         except KeyError as exc:
             raise DriverError(f"formula registry refusal: {exc}")
+        if _formula_accepts_h1(fn):
+            return fn(frames, dict(exposure.get("params", {})), h1=h1)
         return fn(frames, dict(exposure.get("params", {})))
     if exposure.get("type") == "endpoint_series":
         epath = Path(str(exposure["path"]))
@@ -795,6 +939,151 @@ def evaluate_exposure(
     raise DriverError(  # pragma: no cover - guarded by _parse_family
         f"unsupported exposure type {exposure.get('type')!r}"
     )
+
+
+# --------------------------------------------------------------------------- #
+# Published fill prices (family "fill_price") + state-machine booking
+# --------------------------------------------------------------------------- #
+def build_price_map(
+    spec: FamilySpec,
+    frames: Mapping[str, Sequence[Mapping[str, Any]]],
+    h1: Mapping[str, Sequence[Mapping[str, Any]]],
+    grid: Sequence[str],
+) -> Dict[str, List[float]]:
+    """Per-symbol price series fills execute against (fail closed).
+
+    * last_price (default) / vwap: the frame row's published column.
+    * h1_bucket0_vwap (D1 clock): the vwap of the day's FIRST H1 bucket --
+      the frozen ATTN-PHASE fill law "day t bucket-0 VWAP (close_ts 01:00)".
+    """
+    prices: Dict[str, List[float]] = {}
+    if spec.fill_price == "h1_bucket0_vwap":
+        day_of = [k[:10] for k in grid]
+        for sym, rows in frames.items():
+            first_vwap = {
+                str(r["day_utc"]): float(r["vwap"])
+                for r in h1[sym]
+                if str(r["hour_utc"]).endswith("T00")
+            }
+            series = []
+            for day in day_of:
+                if day not in first_vwap:
+                    raise DriverError(
+                        f"fill_price h1_bucket0_vwap: {sym} lacks the hour-00 "
+                        f"H1 row for {day}; refusing (fail closed)"
+                    )
+                series.append(first_vwap[day])
+            prices[sym] = series
+        return prices
+    column = "last_price" if spec.fill_price == "last_price" else "vwap"
+    return {sym: [float(r[column]) for r in rows] for sym, rows in frames.items()}
+
+
+def h1_fold_exit_price(
+    h1: Mapping[str, Sequence[Mapping[str, Any]]],
+    sym: str,
+    last_member_day: str,
+) -> float:
+    """The fold's last tradable H1 bucket VWAP: the vwap of the fold's last
+    member day's hour-23 bucket (its close_ts equals the fold's last day
+    boundary -- the frozen ATTN-PHASE force-flat exit price)."""
+    for row in h1[sym]:
+        if (
+            str(row["day_utc"]) == last_member_day
+            and str(row["hour_utc"]).endswith("T23")
+        ):
+            return float(row["vwap"])
+    raise DriverError(
+        f"state_machine forced exit: {sym} lacks the hour-23 H1 row for "
+        f"{last_member_day}; refusing (fail closed)"
+    )
+
+
+def compute_state_machine_trips(
+    exposures: Mapping[str, Sequence[Optional[float]]],
+    spec: FamilySpec,
+    grid: Sequence[str],
+    folds: Sequence[Fold],
+    prices: Mapping[str, Sequence[float]],
+    h1: Mapping[str, Sequence[Mapping[str, Any]]],
+) -> List[dict]:
+    """Round trips for ``booking: "state_machine"`` (D1 long/flat books).
+
+    The exposure formula emits the FULL position path (hold-through days
+    included).  Within each fold's member days, ONE round trip is booked
+    per maximal constant nonzero episode:
+      entry  at the episode's first day   (family fill_price: the day's
+             bucket-0 VWAP -- the frozen "decision at 00:00 fills at day t
+             bucket-0 VWAP" law; the driver's one-bar lag guarantees the
+             decision consumed strictly-prior days),
+      exit   at the first member day whose path differs (the OFF decision
+             day: "an OFF decision closes the position at that day's
+             bucket-0 VWAP"),
+      forced exit at the fold's LAST member day, at that day's hour-23 H1
+             bucket VWAP ("closed at that fold's last tradable H1 bucket
+             VWAP") when the episode reaches the fold edge -- so no
+             position ever crosses a fold boundary or the +/-1-day purge,
+             and the book re-enters at the next fold's first member day if
+             the state is still ON ("the machinery resumes at the first
+             decision after the purge").
+    """
+    if spec.clock != "D1":  # pragma: no cover - guarded in _parse_family
+        raise DriverError("state_machine booking requires the D1 clock")
+    trips: List[dict] = []
+    for sym in spec.universe:
+        series = exposures[sym]
+        if len(series) != len(grid):
+            raise DriverError(
+                f"state_machine[{sym}]: path length {len(series)} != grid "
+                f"{len(grid)}"
+            )
+        # path[b] = position held over day-b buckets (None/0 warmup = flat);
+        # series[i] is the decision for day i+1 (driver one-bar lag).
+        path = [0.0] * len(grid)
+        for i, value in enumerate(series):
+            if value is not None and value != 0.0:
+                if i + 1 < len(grid):
+                    path[i + 1] = float(value)
+        for fold in folds:
+            members = [b for b in fold.member_days if b < len(grid)]
+            i = 0
+            while i < len(members):
+                b = members[i]
+                if path[b] == 0.0:
+                    i += 1
+                    continue
+                j = i
+                while (
+                    j + 1 < len(members) and path[members[j + 1]] == path[b]
+                ):
+                    j += 1
+                entry_b = members[i]
+                entry_price = float(prices[sym][entry_b])
+                if j + 1 < len(members):
+                    exit_b = members[j + 1]
+                    exit_price = float(prices[sym][exit_b])
+                else:
+                    # episode reaches the fold edge: force-flat at the fold's
+                    # last tradable H1 bucket VWAP
+                    exit_b = members[j]
+                    exit_price = h1_fold_exit_price(h1, sym, grid[exit_b][:10])
+                trips.append(
+                    {
+                        "symbol": sym,
+                        "decision_bucket": entry_b,
+                        "entry_bucket": entry_b,
+                        "exit_bucket": exit_b,
+                        "fold_label": fold.label,
+                        "fold_index": fold.index,
+                        "position": path[b],
+                        "entry_price": entry_price,
+                        "exit_price": exit_price,
+                        "forced_exit": j + 1 >= len(members),
+                    }
+                )
+                i = j + 1
+    trips.sort(key=lambda t: (t["entry_bucket"], t["symbol"], t["decision_bucket"]))
+    return trips
 
 
 # --------------------------------------------------------------------------- #
@@ -853,14 +1142,21 @@ def compute_round_trips(
     folds: Sequence[Fold],
     purged: frozenset,
     n_buckets: int,
+    *,
+    lag_buckets: Optional[int] = None,
+    holding_buckets: Optional[int] = None,
 ) -> List[dict]:
     """Bookable round trips (one per decision), force-flat on the purge.
 
     A decision at bucket d is REFUSED (never booked) when its holding
     window [d+lag, d+lag+holding] touches a purged UTC day, when the
     decision day is purged, when entry/exit leave the decision's fold, or
-    when the round trip would run off the grid.
+    when the round trip would run off the grid.  ``lag_buckets`` /
+    ``holding_buckets`` override the family spec values (arm-level frozen
+    overrides); None keeps the family value.
     """
+    lag = spec.lag_buckets if lag_buckets is None else int(lag_buckets)
+    holding = spec.holding_buckets if holding_buckets is None else int(holding_buckets)
     fold_by_day: Dict[int, Fold] = {}
     for fold in folds:
         for day in fold.member_days:
@@ -875,8 +1171,8 @@ def compute_round_trips(
             fold = fold_by_day.get(decision_day)
             if fold is None:
                 continue  # decision on a purged day: refused
-            entry = d + spec.lag_buckets
-            exit_b = entry + spec.holding_buckets
+            entry = d + lag
+            exit_b = entry + holding
             if entry > n_buckets - 1 or exit_b > n_buckets - 1:
                 continue  # force-flat: runs off the grid
             window_days = {bucket_day[b] for b in range(entry, exit_b + 1)}
@@ -920,8 +1216,20 @@ def simulate_book(
         if sym not in active:
             continue
         pos = float(trip["position"])
-        entry_price = float(prices[sym][trip["entry_bucket"]])
-        exit_price = float(prices[sym][trip["exit_bucket"]])
+        # state_machine trips pin their FROZEN published fill prices
+        # (episode entry/exit at the family fill_price; the forced fold-edge
+        # exit at the fold's last tradable H1 bucket VWAP); event trips
+        # default to the family price map at the booked buckets.
+        raw_entry = trip.get("entry_price")
+        raw_exit = trip.get("exit_price")
+        entry_price = (
+            float(raw_entry) if raw_entry is not None
+            else float(prices[sym][trip["entry_bucket"]])
+        )
+        exit_price = (
+            float(raw_exit) if raw_exit is not None
+            else float(prices[sym][trip["exit_bucket"]])
+        )
         notional = NOTIONAL * abs(pos)
         gross = pos * (exit_price / entry_price - 1.0) * NOTIONAL
         cost_entry = fill_cost(notional, entry_price, tier)
@@ -1080,9 +1388,7 @@ def compute_family(
     fold_by_day = {day: f for f in folds for day in f.member_days}
 
     arms_by_kind = {arm.kind: arm for arm in spec.arms}
-    prices = {
-        sym: [float(r["last_price"]) for r in frames[sym]] for sym in spec.universe
-    }
+    prices = build_price_map(spec, frames, h1, grid)
     state: Dict[str, Any] = {
         "spec": spec, "frames": frames, "grid": grid, "days": days,
         "bucket_day": bucket_day, "folds": folds, "purged": purged,
@@ -1091,7 +1397,8 @@ def compute_family(
     arms: Dict[str, dict] = {}
     for arm in spec.arms:
         exposures = evaluate_exposure(
-            arm, spec, frames, grid, base_dir=base_dir, allow_example=allow_example
+            arm, spec, frames, grid, base_dir=base_dir, allow_example=allow_example,
+            h1=h1,
         )
         if sorted(exposures) != sorted(spec.universe):
             raise DriverError(
@@ -1132,9 +1439,16 @@ def compute_family(
                 "metrics": None, "first_b": None, "last_b": None,
             }
             continue
-        trips = compute_round_trips(
-            positions, spec, bucket_day, folds, purged, n_buckets
-        )
+        if spec.booking == "state_machine":
+            trips = compute_state_machine_trips(
+                exposures, spec, grid, folds, prices, h1
+            )
+        else:
+            trips = compute_round_trips(
+                positions, spec, bucket_day, folds, purged, n_buckets,
+                lag_buckets=arm.lag_override,
+                holding_buckets=arm.holding_override,
+            )
         books = {
             tier: simulate_book(trips, prices, tier, spec.universe)
             for tier in STRESS_TIERS
@@ -1348,6 +1662,21 @@ def emit_scored_arm(
     _emit(arm_dir / "counters.jsonl", [counters])
     _emit(arm_dir / "reproduction_inputs.jsonl", [reproduction])
 
+    # Conditional diag/sham_control_calendar@1 rows (A8 families lane): the
+    # family's frozen control-calendar descriptor -- the ATTN-PHASE sham
+    # rotation, or the SILRES not-applicable marker per the D2 re-freeze.
+    if spec.sham_calendar is not None:
+        sham_rows = [
+            {
+                "cycle_id": CYCLE_ID,
+                "arm_id": arm_id,
+                "calendar": str(spec.sham_calendar["calendar"]),
+                "note": str(spec.sham_calendar.get("note", "")),
+            }
+        ]
+        _check_canon("sham_control_calendar", sham_rows)
+        _emit(arm_dir / "sham_control_calendar.jsonl", sham_rows)
+
     kernel = {
         "remediated_kernel": True,
         "cost_fills": book.cost_fills_total,
@@ -1410,6 +1739,13 @@ def emit_sanitized_arm(
             arm_state["trips"], state["prices"], "T1.0", spec.universe
         ).round_trips
     }
+    if spec.booking == "state_machine":
+        # the OFF decision that closes an episode is a booked decision too
+        base_trips |= {
+            (t["symbol"], t["exit_bucket"])
+            for t in arm_state["trips"]
+            if not t.get("forced_exit", False)
+        }
     grid: Sequence[str] = state["grid"]
     bucket_day: Sequence[int] = state["bucket_day"]
     days: Sequence[str] = state["days"]
