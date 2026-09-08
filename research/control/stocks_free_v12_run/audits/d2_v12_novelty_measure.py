@@ -1581,7 +1581,7 @@ def feasibility_block(C, pid, built):
         per_fold = {f["fold_id"]: len(C.grid21[f["fold_id"]]) for f in C.folds}
         overall = sum(per_fold.values())
         warmup = WARMUP[pid]
-        first_t = dd(grid_dates_flat(C, C.grid21)[0])
+        first_t = grid_dates_flat(C, C.grid21)[0]
         mu0 = built["measured_universe"].get(first_t, 0)
         anc0 = sum(1 for k in built["anchor"] if k[1] == first_t)
         ar = {"basis": "inherited 21-session grid (fold-local 63+21k), all grid dates scored",
