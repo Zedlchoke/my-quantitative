@@ -1,0 +1,189 @@
+{
+ "schema": "v17_run_artifact_v1",
+ "artifact": "p0_freeze",
+ "generated_utc": "2026-09-08T01:45:00Z",
+ "producer_role": "A1 (P0 per plan section 4 + owner GO for P0 2026-09-08; contract frozen BEFORE any extraction)",
+ "verdict": "P0_CONTRACT_FROZEN",
+ "blocked_data_triggered": false,
+ "frozen_design": {
+  "symbols": [
+   "BTCUSDT",
+   "ETHUSDT",
+   "SOLUSDT"
+  ],
+  "symbols_rationale": "BTC/ETH mandatory (lane 1 intraday + lane 3 open axis, V16 rationale inherited); SOLUSDT pulled in the SAME pass IFF the three frozen lane-2 viability conditions below hold - failure of any drops SOL with disclosure, never rescue",
+  "sol_lane2_viability_conditions": {
+   "a_census": "SOL census 13/13 months HTTP 200 zero holes - MEASURED TRUE (aggtrades_census.json re-read at intake)",
+   "b_window_funding": "SOL reduced rows fund the full S0 window: days_populated == 365 (daily-or-slower clocks under the 1-day-purge fold contract) - checked after extraction from the manifest",
+   "c_ceilings": "the pass with SOL included fits every frozen ceiling - evaluated from the same run's measurements",
+   "on_failure": "drop SOLUSDT; lanes 1/3 proceed on BTC/ETH; disclosure in event log + report; lane 2 dies COVERAGE_INSUFFICIENT_FAIL_CLOSED"
+  },
+  "window": "2025-08-22T00:00:00Z..2026-08-21T23:59:59.999Z (inherited frozen S0; row-filter transact_time at BOTH boundaries)",
+  "vehicle": "data.binance.vision data/futures/um/monthly/aggTrades/<SYM>/<SYM>-aggTrades-YYYY-MM.zip (13 months x 3 symbols = 39 files, 19.71 GB compressed per census); keyless; per-zip sha256 pinned at download; raw zips DELETED after per-month reduction; only manifest + reduced panel persist",
+  "conditioning_clock": "exchange event time (transact_time) - V16 semantics inherited",
+  "bucketing": "ONE streaming pass emits UTC-H1 rows per symbol; H4 and daily aggregates are DERIVED post-extraction from H1 rows only (no second raw pass)",
+  "extraction_discipline": "bounded O(1) accumulators per hour; NO per-trade retention; NO data-derived percentiles/quantiles; the V16 954.8 MiB peak came from per-day list retention (sizes/gaps/side lists) - that state class is FORBIDDEN here; time-ascending enforced (>100 regressions aborts with FAILED heavy-lock release carrying stderr tail)"
+ },
+ "h1_row_schema": {
+  "identity": [
+   "symbol",
+   "hour_utc (YYYY-MM-DDTHH UTC)",
+   "day_utc"
+  ],
+  "counts": [
+   "n_trades",
+   "buy_count",
+   "sell_count"
+  ],
+  "volumes": [
+   "buy_qty(8dp)",
+   "sell_qty(8dp)",
+   "buy_quote(2dp)",
+   "sell_quote(2dp)",
+   "quote_total(2dp)",
+   "qty_total(8dp)",
+   "vwap(8dp, =quote_total/qty_total)",
+   "sum_qty_squared(8dp)"
+  ],
+  "prices": [
+   "first_price",
+   "last_price",
+   "high_price",
+   "low_price"
+  ],
+  "bounded_scalars": [
+   "max_trade_quote(2dp)",
+   "n_price_moves",
+   "sum_squared_log_ret(12dp, within-hour consecutive kept-row moves; the move into an hour's first row belongs to no hour)",
+   "gap_sum_s(6dp)",
+   "gap_count",
+   "entry_gap_s(6dp, gap from the previous KEPT row to this hour's first row)"
+  ],
+  "run_state": [
+   "run_close_dir(buy/sell/none; cross-hour carry, O(1))",
+   "run_close_len",
+   "run_switch_count(within-hour direction changes)",
+   "max_run_buy / max_run_sell (max over the hour's rows of the GLOBAL run length ending at that row - cross-hour carry is part of the definition)"
+  ],
+  "timestamps": [
+   "first_ts_ms",
+   "last_ts_ms"
+  ],
+  "identities_and_semantics": [
+   "qty in aggTrades is always > 0, so sum|qty| == sum qty == qty_total - one column, identity noted (draft's sum_abs_qty/sum_qty collapsed; disclosed refinement)",
+   "a zero-trade hour emits NO row (absent, not fabricated zeros); completeness is asserted as hourly_rows == 365x24 per symbol in the manifest (draft's 'emit zero rows' wording refined; disclosed)",
+   "buy aggressor polarity identical to V16: is_buyer_maker=false => buyer is the taker => BUY"
+  ]
+ },
+ "daily_derive": "group H1 rows by day_utc in order; additive fields summed; flow_imbalance=(B-S)/(B+S); vwap=sum(quote_total)/sum(qty_total); high/low over traded rows; last_price=last row's last_price; avg_trade_size=qty/n; interarrival_mean_s=(sum gap_sum_s + same-day entry_gap_s)/(gap_count + same-day entry gaps) - cross-midnight entry gaps belong to no day, exactly V16's within-day consecutive-kept-pair semantics; first/last_ts_ms = first/last rows'",
+ "reconciliation": {
+  "purpose": "MANDATORY P0 self-audit (owner mandate): daily derived from H1 must reconcile against V16's sha-pinned daily panel; mismatch beyond frozen tolerance = P0 blocker (BLOCKED_DATA)",
+  "v16_pins": {
+   "BTCUSDT": "5bb5016da6e639e98e1561e7581324901501e06a1cf9d13b3723e034d24c4616",
+   "ETHUSDT": "c54147674dea80d6d1223e78a7dc4422c5a4a3861817dddc0891119119ba3b81"
+  },
+  "pins_verified_before_compare": true,
+  "symbols": [
+   "BTCUSDT",
+   "ETHUSDT"
+  ],
+  "expected_days": 365,
+  "field_tolerances": {
+   "trade_count": {
+    "type": "int"
+   },
+   "first_ts_ms": {
+    "type": "int"
+   },
+   "last_ts_ms": {
+    "type": "int"
+   },
+   "last_price": {
+    "type": "exact_float"
+   },
+   "high_price": {
+    "type": "exact_float"
+   },
+   "low_price": {
+    "type": "exact_float"
+   },
+   "total_qty": {
+    "abs": 1e-05,
+    "rel": 1e-09
+   },
+   "buy_qty": {
+    "abs": 1e-05,
+    "rel": 1e-09
+   },
+   "sell_qty": {
+    "abs": 1e-05,
+    "rel": 1e-09
+   },
+   "total_notional": {
+    "abs": 1.0,
+    "rel": 1e-10
+   },
+   "vwap": {
+    "abs": 0.0005,
+    "rel": 1e-09
+   },
+   "flow_imbalance": {
+    "abs": 1e-07
+   },
+   "avg_trade_size": {
+    "abs": 5e-08,
+    "rel": 1e-08
+   },
+   "interarrival_mean_s": {
+    "abs": 0.0001,
+    "rel": 1e-08
+   }
+  },
+  "tolerance_basis": "dominant term is per-hour CSV rounding carried to daily (<= 24 x half-ulp per field), computed per field before freezing; a real polarity/lookahead/bucketing bug produces O(1) or O(1e-2) deviations - orders above every tolerance",
+  "excluded_fields_cannot_be_derived_from_bounded_h1": [
+   "median_trade_size",
+   "p90_trade_size",
+   "large_trade_share",
+   "interarrival_median_s",
+   "interarrival_p90_s",
+   "arrival_burstiness",
+   "buy_streak_max",
+   "sell_streak_max",
+   "source_files",
+   "integrity_ok"
+  ],
+  "exclusion_note": "the 8 statistical fields are exactly the retention/percentile class the V17 contract forbids at H1 (V16 computed them from per-day lists - the source of its 954.8 MiB RSS); their absence from H1 is the design working, not a gap"
+ },
+ "frozen_ceilings_breach_is_blocked_data": {
+  "peak_rss_MiB": 1024,
+  "transient_working_disk_GiB": 3,
+  "end_to_end_serial_extraction_hours_full": 6,
+  "end_to_end_serial_extraction_hours_smoke": 1,
+  "per_month_parse_minutes": 30,
+  "evaluation": "RSS/wall evaluated in-script after the build and raise on breach (FAILED release carries stderr tail); per-month parse raises immediately; disk free checked before every download",
+  "heavy_phases": "every download/extraction under the round-2 machine-wide heavy lock (~/.my-quantitative-governance/heavy_runtime); FAILED releases MUST carry the stderr tail in the release note"
+ },
+ "v16_measured_margins_carried": {
+  "rss": "954.8 MiB measured full-run in V16 (thin 6.8%) - V17 drops the retention state class, same parser buffers over the same rows: expected same-or-lower class, MEASURED at run time, ceiling unchanged",
+  "serial": "2.55 h measured for 26 files/17.38 GB; 39 files/19.71 GB projects ~2.9 h vs 6 h ceiling (projection; the run measures)",
+  "disk": "worst zip 1.11 GB measured; reduced H1 panel ~2.2 MB/symbol vs 3 GiB transient ceiling",
+  "per_month": "worst 704 s vs 30 min"
+ },
+ "fold_contract": {
+  "name": "1-day-purge",
+  "rule": "any fold with intraday decision clocks purges +/-1 full UTC day around every fold boundary before any decision may reference the region",
+  "coverage_first": "fold population is a P2 per-proposal-clock check; H1-class clocks that cannot fund the frozen minimum populated folds under the purge die COVERAGE_INSUFFICIENT_FAIL_CLOSED in P2 - pre-scoring, no rescue"
+ },
+ "cost_binding_carried": "A9-F turnover/cost ceiling kill measured BEFORE selection; taker costs exactly once per fill (L-V14-0); stress tier 2.0 PRIMARY; every lane's expected_failure_mode names cost domination",
+ "execution_plan": {
+  "step1_smoke": "extract_v17_panel.py --smoke ETHUSDT:2026-05 SOLUSDT:2026-05 (one ETH month with a V16 reconciliation target + one SOL month for the SOL code path); smoke H1 daily-derive for 2026-05 must reconcile against the V16 panel rows for 2026-05 before the full build; smoke outputs deleted after verification",
+  "step2_full": "extract_v17_panel.py (39 symbol-months) under the lock, manifest written to v17_data/staging_v17/panel_manifest.json",
+  "step3_reconcile": "reconcile_v17_daily.py on the full panel; RECONCILE_FAIL = P0 blocker",
+  "step4_publish": "census copy + freeze + manifest + reconciliation verdict + SOL viability verdict committed by pathspec BEFORE D1"
+ },
+ "script_self_pins": {
+  "extract_v17_panel.py": "06066c2fd5e1de3171d4a1c7993ae8c1329fbbeacb90caa224332cd2329201ef",
+  "reconcile_v17_daily.py": "26737e563bf3513566346d1c25ec4d2360b468822e5c80422b3783e84a0c73ee"
+ },
+ "keyless_law": "no key, no signup, no purchase by any agent (plan section 5)"
+}
