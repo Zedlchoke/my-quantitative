@@ -16,7 +16,11 @@ Nguồn:
   - panel PnL: với mỗi cycle đóng, terminal SHA + evidence_path đã pin
     trong registry -> `git show <sha>:<path>` -> MAPPER theo schema.
 
-Sinh plans/ACTIVE_CYCLES.json mỗi lần chạy (handbook §3.1).
+SHV1 sec7.5 (H4): collection/refresh la READ-ONLY doi voi tracked files -
+snapshot chi ghi vao runtime dir gitignored (dashboard/). Tracked
+projection plans/ACTIVE_CYCLES.json khong bao gio duoc ghi boi collector;
+no la projection byte-frozen cho toi khi canonical registry (cycle_registry@1)
+thay the.
 """
 
 from __future__ import annotations
@@ -714,21 +718,17 @@ def build_active_cycles(snapshot: dict) -> dict:
 
 def write_outputs(snapshot: dict, out_dir: Path,
                   write_registry: bool = True) -> None:
-    """Sinh dashboard/index.html; ghi plans/ACTIVE_CYCLES.json khi
-    write_registry=True (lúc launch / CLI). Auto-refresh 30s của app
-    gọi với write_registry=False để không ghi churn vào file đã
-    commit."""
+    """Sinh dashboard/index.html vào runtime dir (gitignored).
+
+    SHV1 sec7.5: tham số write_registry được CHẤP NHẬN nhưng BỎ QUA (call-site
+    compatibility với lab_app); collector không bao giờ ghi tracked file
+    plans/ACTIVE_CYCLES.json nữa - ghi tracked chỉ qua researchctl registry.
+    Refresh khởi động/dừng phải để git status --porcelain=v1 nguyên vẹn (G5).
+    """
     try:
         from dashboard_render import render  # chạy trực tiếp / tests
     except ImportError:  # chạy qua `python -m research.governance...`
         from .dashboard_render import render
-    root = Path(snapshot["root"])
-    if write_registry:
-        ac_path = root / ACTIVE_CYCLES_REL
-        ac_path.parent.mkdir(parents=True, exist_ok=True)
-        ac_path.write_text(
-            json.dumps(build_active_cycles(snapshot), ensure_ascii=False,
-                       indent=1) + "\n", encoding="utf-8")
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "index.html").write_text(render(snapshot), encoding="utf-8")
 
