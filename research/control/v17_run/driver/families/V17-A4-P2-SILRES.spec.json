@@ -1,0 +1,79 @@
+{
+  "schema": "v17_run_artifact_v1",
+  "artifact": "a8_family_spec",
+  "cycle_id": "CRYPTO-V17",
+  "family_id_frozen": "V17-A4-P2-SILRES",
+  "source_proposal": {
+    "path": "research/control/v17_run/d1/a4/proposal_P2.json",
+    "blob_sha_frozen": "c54f2d0433dea00b487b42ef345e96d1cdea0116",
+    "selection_freeze": "research/control/v17_run/selection_freeze_v17.json"
+  },
+  "frozen_semantics": {
+    "trigger": "entry_gap_s(b) >= rolling Q90 of the PRIOR 720 buckets AND n_trades(b) >= 1.5x rolling median of the PRIOR 720 buckets (strictly-prior windows, per symbol); direction = sign(last_price - first_price) of the trigger bucket; zero elsewhere",
+    "entry_fill": "next bucket's published vwap (bucket b+1) => driver lag_buckets 0 against the position bucket with fill_price vwap",
+    "anchor_exit": "time exit K=2 held buckets => cover at bucket b+3 vwap (exit.holding_buckets 2)",
+    "neighbour": "silence threshold P75 of trailing-720 entry_gap_s, resumption 1.2x trailing-720 median n_trades, holding K=4 (exit at bucket b+5 vwap) via the arm-level exit override",
+    "control": "reshuffled-interval placebo: per symbol-month block of 720 consecutive buckets the anchor's trigger positions are permuted across the block with numpy default_rng seed 17040002, ONE draw per block, event count per block preserved, direction recomputed from the resampled bucket's own sign(last_price - first_price)",
+    "costs": "taker fee EXACTLY ONCE PER FILL, TIER 2.0 PRIMARY BOOK (10.0 bps + 2-tick slip floor) - frozen driver kernel",
+    "force_flat": "driver purge law: any decision whose holding window touches a purged UTC day or a fold edge is never booked; machinery resumes at the first decision after the purge"
+  },
+  "families": [
+    {
+      "family_id": "V17-A4-P2-SILRES",
+      "clock": "H1",
+      "universe": ["BTCUSDT", "ETHUSDT"],
+      "entry": {"lag_buckets": 0},
+      "exit": {"holding_buckets": 2},
+      "fill_price": "vwap",
+      "booking": "event",
+      "sham_calendar": {
+        "calendar": "NOT_APPLICABLE:RESHUFFLED_INTERVAL_PLACEBO",
+        "note": "D2 re-freeze sets calendar_conditioned=false for SILRES: the control is an arrival-structure reshuffled-interval placebo, not a session/calendar sham; its sham_control_calendar rows carry this not-applicable marker per diag/sham_control_calendar@1"
+      },
+      "arms": [
+        {
+          "arm_id": "anchor",
+          "kind": "anchor",
+          "exposure": {
+            "type": "panel_formula",
+            "formula_id": "SILRES.anchor",
+            "params": {
+              "gap_percentile": 90.0,
+              "resumption_multiple": 1.5,
+              "warmup_buckets": 720
+            }
+          }
+        },
+        {
+          "arm_id": "neighbour",
+          "kind": "neighbour",
+          "exit": {"holding_buckets": 4},
+          "exposure": {
+            "type": "panel_formula",
+            "formula_id": "SILRES.neighbour",
+            "params": {
+              "gap_percentile": 75.0,
+              "resumption_multiple": 1.2,
+              "warmup_buckets": 720
+            }
+          }
+        },
+        {
+          "arm_id": "control",
+          "kind": "control",
+          "exposure": {
+            "type": "panel_formula",
+            "formula_id": "SILRES.control",
+            "params": {
+              "gap_percentile": 90.0,
+              "resumption_multiple": 1.5,
+              "warmup_buckets": 720,
+              "block_buckets": 720,
+              "seed": 17040002
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
