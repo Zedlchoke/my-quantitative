@@ -174,7 +174,7 @@ def main() -> None:
         if not day_set_ok or not (len(v16) == EXPECTED_DAYS == len(derived)):
             fail = True
     report["reconciled_field_count"] = len(recon["field_tolerances"])
-    report["excluded_fields"] = recon["excluded_fields"]
+    report["excluded_fields"] = recon["excluded_fields_cannot_be_derived_from_bounded_h1"]
     report["verdict"] = "RECONCILE_FAIL_P0_BLOCKER" if fail else "RECONCILE_PASS"
     out = WORKTREE / args.out
     out.parent.mkdir(parents=True, exist_ok=True)

@@ -1,7 +1,7 @@
 {
  "schema": "v17_run_artifact_v1",
  "artifact": "p0_freeze",
- "generated_utc": "2026-09-08T04:22:06Z",
+ "generated_utc": "2026-09-08T17:49:02Z",
  "producer_role": "A1 (P0 per plan section 4 + owner GO for P0 2026-09-08; contract frozen BEFORE any extraction)",
  "verdict": "P0_CONTRACT_FROZEN",
  "blocked_data_triggered": false,
@@ -177,14 +177,13 @@
  },
  "script_self_pins": {
   "extract_v17_panel.py": "9ea77d21e1ad4575110113fe17ef6615d1a923919e39d5fa2a42daccc3d30dc2",
-  "reconcile_v17_daily.py": "26737e563bf3513566346d1c25ec4d2360b468822e5c80422b3783e84a0c73ee"
+  "reconcile_v17_daily.py": "df6ae5f563fce106dd2bb8abf6a3b5054c7beb284163b359f1c682bba9b8a53c"
  },
  "keyless_law": "no key, no signup, no purchase by any agent (plan section 5)",
- "freeze_version": 5,
+ "freeze_version": 6,
  "supersedes": {
-  "v4_sha256": "98688efc467b590e5be9fe2b0acdb012582555fb4a65f3492a94466dd759bd71 (v4 = bounded retry on exceptions)",
-  "reason": "full attempt 2 HUNG (not failed): BTC 2026-03 prefetch froze at exactly 799,224,859 bytes for 13+ minutes on a stalled-but-open connection - a trickling/dead socket never trips the per-read timeout and raises nothing, so the v4 exception-only retry never fired and the main thread blocked forever in join(); A1 killed the process (SIGKILL) after 13 min zero-progress; 7 correct BTC months (incl. both largest) discarded for a single clean manifest; lock row left RUNNING with a proven-dead pid - the round-2 classifier reclaims it on next acquire (pid-dead path, by design)",
-  "what_changed": "transport layer only: stall watchdog (60 s read-idle socket timeout + 120 s no-progress + 30 min per-attempt deadline backstop -> raises -> feeds the EXISTING v4 retry: 3 attempts, 30/60 s backoff, whole-file re-download, sha256+content-length verified per attempt) + download-progress heartbeat every 64 MB (closes the monitoring blind spot where last_heartbeat went stale for up to ~25 min during big months); reduce_month/observables/schema/ceilings byte-identical",
-  "what_did_not_change_and_why_this_is_not_rescue": "ceilings untouched (1024 MiB / 3 GiB / 6 h / 30 min-month); no outcome exists (pre-proposal P0); data bytes, pins and reduction semantics identical - the watchdog only converts infinite silent waits into bounded, retried, evidenced failures"
+  "v5_sha256": "1ca4fa3d45342e6437a56c8e1c2c8401e08f5407084681436f12274675a6ce90 (v5 = stall watchdog, commit 8b9de48)",
+  "reason": "CODE_OR_SCHEMA_ERROR class (SHV1 retry taxonomy - never auto-retried): reconcile script main() crashed on a field-NAME mismatch between the freeze artifact (key excluded_fields_cannot_be_derived_from_bounded_h1) and the report-assembly line (read excluded_fields); the KeyError fired AFTER the full comparison loop completed and ONLY in report assembly - the smoke runs never hit it because they import derive_daily/within directly and bypass main(); fix = one line reading the freeze's actual key; the comparison logic, tolerances, and all scientific content are untouched",
+  "what_changed": "reconcile script one-line key fix + this re-pin; extractor untouched; extraction itself was NOT touched by this defect (attempt 3 completed clean under v5)"
  }
 }
