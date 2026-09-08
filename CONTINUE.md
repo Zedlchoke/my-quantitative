@@ -1,7 +1,8 @@
 # CONTINUE.md — program checkpoint (Lead-synced 2026-09-08 morning)
 
 Read the LIVE plan of the cycle you serve (highest version per asset in
-`plans/`): crypto `PLAN_crypto_v16.md` (RUNNING — scored execution),
+`plans/`): crypto `PLAN_crypto_v17.md` (ACTIVE_LIGHT — A1 bootstrapped under
+owner dispatch 2026-09-08, P0 pending, HARD STOP at the two-key P-8 gate),
 stocks `PLAN_stocks_v12.md` (awaiting owner dispatch), forex
 `PLAN_forex_v8.md` (awaiting owner dispatch). This file is a derived
 checkpoint, not an authority.
@@ -22,8 +23,10 @@ checkpoint, not an authority.
 - Program totals (ledger authority, P-9): **233 published / 236 observed,
   0 survivors; S1 SEALED everywhere** (crypto 155/158, stocks 39/39,
   forex 39/39). Failure registry 55 entries --verify PASS.
-- NO cycle currently running. Plans awaiting owner dispatch:
-  crypto `PLAN_crypto_v17.md` (intraday aggTrades frontier),
+- CRYPTO-V17 ACTIVE_LIGHT as of 2026-09-08 (A1 bootstrap commit ff33929
+  on orca/v17-integration from main 09ccfcc; first report GO for P0; no
+  scored cell may run — A7 prelaunch verdict NOT_RUN, owner GO phrase
+  absent per P-8). Still awaiting owner dispatch:
   stocks `PLAN_stocks_v12.md` (chain-structure + death-event frontier),
   forex `PLAN_forex_v8.md` (real-rate frontier under the FRED key).
 
