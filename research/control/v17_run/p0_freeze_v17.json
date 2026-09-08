@@ -1,7 +1,7 @@
 {
  "schema": "v17_run_artifact_v1",
  "artifact": "p0_freeze",
- "generated_utc": "2026-09-08T02:00:00Z",
+ "generated_utc": "2026-09-08T02:01:16Z",
  "producer_role": "A1 (P0 per plan section 4 + owner GO for P0 2026-09-08; contract frozen BEFORE any extraction)",
  "verdict": "P0_CONTRACT_FROZEN",
  "blocked_data_triggered": false,
@@ -176,15 +176,15 @@
   "step4_publish": "census copy + freeze + manifest + reconciliation verdict + SOL viability verdict committed by pathspec BEFORE D1"
  },
  "script_self_pins": {
-  "extract_v17_panel.py": "06066c2fd5e1de3171d4a1c7993ae8c1329fbbeacb90caa224332cd2329201ef",
+  "extract_v17_panel.py": "639c9b4ac894592aee14da17340c68cd30544442c78497f4fb66b81a9cf49176",
   "reconcile_v17_daily.py": "26737e563bf3513566346d1c25ec4d2360b468822e5c80422b3783e84a0c73ee"
  },
  "keyless_law": "no key, no signup, no purchase by any agent (plan section 5)",
- "freeze_version": 2,
+ "freeze_version": 3,
  "supersedes": {
-  "v1_commit": "4365a04",
-  "reason": "tolerance calibration corrected after the smoke reconcile (handbook 22.1 pre-scoring remediation; zero outcomes existed); v1 bytes preserved in git; calibration evidence: research/control/v17_run/staging/smoke_reconcile_v1_calibration.json",
-  "what_changed": "field_tolerances only - re-derived as max(measured v1 smoke noise, analytic accumulation bias bound N*ulp(sum)/2) x >=10 headroom, pure-abs except vwap (large-magnitude field where rel is meaningful); exact fields untouched; schema/extraction/reconciliation logic untouched",
-  "what_did_not_change_and_why_this_is_not_rescue": "no scored outcome exists (P0, pre-proposal); the gate's calibration arithmetic was wrong, not the gate; real-defect signatures (exact counts, exact prices, O(1) polarity terms) remain exactly gated - exact is exact, and every abs tolerance is >= 10x the noise bound yet orders below any real bug"
+  "v2_sha256": "8e7c85d6249f7535e82a5a365bd81ac60cad717c459bae54cd3afeaa8e8d7938 (v2 in turn superseded v1 at 4365a04 for tolerance calibration)",
+  "reason": "runtime projection from MEASURED smoke rates: serial download+parse = 19.71 GB at 1.6 MB/s (smoke-measured; V16 enjoyed 6.4 MB/s) = 3.5 h PLUS ~1.66e9 in-file rows at 113-155 K rows/s (smoke-measured, same per-row rate class as V16) = 3.0-3.8 h -> up to ~7.3 h wall, i.e. network weather alone could push the build past the frozen 6 h ceiling and force a false BLOCKED_DATA",
+  "what_changed": "extractor download SCHEDULING only: month N+1's zip prefetched in a worker thread while month N parses, all inside the SAME single heavy-lock acquisition; reduce_month/observables/schema/sha-pinning/disk-gate byte-identical; worst-case transient disk = two zips ~2.3 GB < 3 GiB ceiling; wall is measured end-to-end unchanged; projected wall becomes parse-bound ~3.8-4 h even at smoke bandwidth",
+  "what_did_not_change_and_why_this_is_not_rescue": "ceilings untouched (1024 MiB / 3 GiB / 6 h / 30 min-month); no outcome exists (pre-proposal P0); data bytes, pins and reduction semantics identical - only network I/O overlaps CPU; the 6 h ceiling keeps bounding the machine-serial footprint honestly instead of being breached by bandwidth variance"
  }
 }

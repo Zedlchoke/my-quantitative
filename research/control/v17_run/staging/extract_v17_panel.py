@@ -28,6 +28,7 @@ import math
 import resource
 import shutil
 import sys
+import threading
 import time
 import traceback
 import urllib.request
@@ -82,7 +83,12 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def download_pin(url: str, dest: Path) -> tuple[int, str]:
+def download_pin(url: str, dest: Path, result: Optional[dict] = None) -> tuple[int, str]:
+    """Download + sha-pin. When `result` is given the work runs cooperatively
+    as a prefetch target: the caller joins it before reducing (pipelined
+    download/parse keeps the frozen serial data semantics while overlapping
+    network I/O with CPU; disk bound: at most two transient zips ~2.3 GB
+    worst-case vs the 3 GiB ceiling)."""
     free = shutil.disk_usage(dest.parent).free
     if free < MAX_DISK_TRANSIENT:
         raise RuntimeError(
@@ -99,6 +105,30 @@ def download_pin(url: str, dest: Path) -> tuple[int, str]:
     if expected != -1 and total != expected:
         raise IOError(f"content-length mismatch {expected} != {total}")
     return total, digest.hexdigest()
+
+
+def download_pin_async(url: str, dest: Path) -> tuple["threading.Thread", dict]:
+    """Start a prefetch download in a daemon thread; join() re-raises errors."""
+    result: dict = {}
+
+    def work() -> None:
+        try:
+            n, sha = download_pin(url, dest)
+            result["bytes"] = n
+            result["sha256"] = sha
+        except BaseException as exc:  # re-raised at join
+            result["error"] = exc
+
+    t = threading.Thread(target=work, name=f"prefetch-{dest.name}", daemon=True)
+    t.start()
+    return t, result
+
+
+def join_download(t: "threading.Thread", result: dict) -> tuple[int, str]:
+    t.join()
+    if "error" in result:
+        raise result["error"]
+    return result["bytes"], result["sha256"]
 
 
 def new_hour() -> dict:
@@ -307,18 +337,27 @@ def run_build(pairs, staging: Path, lock) -> dict:
     cross = {"run": RunState(), "prev_ts_global": None}
     t_start = time.perf_counter()
     try:
-        for symbol, month in pairs:
-            url = f"{BASE}/{symbol}/{symbol}-aggTrades-{month}.zip"
-            dest = staging / f"{symbol}-aggTrades-{month}.zip"
-            nbytes, sha = download_pin(url, dest)
+        def start_dl(i: int):
+            sym, mon = pairs[i]
+            url = f"{BASE}/{sym}/{sym}-aggTrades-{mon}.zip"
+            dest = staging / f"{sym}-aggTrades-{mon}.zip"
+            t, res = download_pin_async(url, dest)
+            return (sym, mon, url), t, res, dest
+
+        pending = start_dl(0) if pairs else None
+        for i, (symbol, month) in enumerate(pairs):
+            meta, thread, res, dest = pending
+            nbytes, sha = join_download(thread, res)
             stats = reduce_month(dest, symbol, writer, integrity, cross)
             manifest_entries.append({
-                "symbol": symbol, "month": month, "url": url,
+                "symbol": symbol, "month": month, "url": meta[2],
                 "bytes_compressed": nbytes, "sha256": sha, **stats})
             dest.unlink()
             lock.heartbeat(extra={"last_done": f"{symbol}-{month}"})
             print(f"{symbol} {month}: kept {stats['rows_kept_in_window']}, "
                   f"{stats['parse_seconds']}s", flush=True)
+            if i + 1 < len(pairs):
+                pending = start_dl(i + 1)
     finally:
         writer.close()
     peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
