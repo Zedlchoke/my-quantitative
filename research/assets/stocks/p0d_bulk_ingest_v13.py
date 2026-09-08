@@ -58,7 +58,8 @@ def get(url, headers=None, timeout=60, tries=3):
             last = e
             if attempt == tries:
                 raise
-            time.sleep(20 * attempt)
+            # 503 = SEC throttle/unavailable: patient minute-scale backoff (INC-V13-2)
+            time.sleep(60 * attempt if e.code in (503, 502) else 20 * attempt)
         except Exception as e:
             last = e
             if attempt == tries:
@@ -224,7 +225,7 @@ def main():
                 df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED"}) + "\n")
                 done_docs.add(key)
                 continue
-            st, raw = get(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}")
+            st, raw = get(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}", tries=5)
             if st == 404:
                 df.write(json.dumps({"accession": ref["accession"], "reason": "DOC_404"}) + "\n")
                 done_docs.add(key)
@@ -250,7 +251,9 @@ def main():
                 rate = ndocs / max(time.time() - t0, 1)
                 status(state="STAGE_B_FETCHING", docs_done=ndocs, total=len(refs),
                        rate_per_s=round(rate, 2), eta_h=round((len(refs) - k) / max(rate, 0.01) / 3600, 2))
-            time.sleep(0.1 + random.random() * 0.05)  # ~8 req/s effective, under the 10/s ceiling
+            time.sleep(0.18 + random.random() * 0.06)  # ~4.5 req/s effective (INC-V13-2: 8/s drew EDGAR 503)
+            if ndocs % 500 == 0:
+                time.sleep(30)  # 30s cooldown every 500 docs
         sf.close(); df.close()
         open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
         status(state="STAGE_B_DONE", docs=len(done_docs), filings=len(refs))
