@@ -1,0 +1,187 @@
+{
+  "schema": "forex_free_v8_d1_proposal_v1",
+  "cycle": "FOREX-FREE-V8",
+  "lane": "a5-axis3-open",
+  "wave_sha": "86338a4d99aeaa762da8aa3c6b39f72b8a7417b6",
+  "hypothesis_id": "FXFV8-A5-P1",
+  "title": "US inflation-compensation term-structure dispersion regime conditioning (far-vs-near breakeven slope, USD-wide)",
+  "outcome_blind": true,
+  "no_scored_results_used": true,
+  "pnl_anywhere": false,
+
+  "mechanism": "When the US inflation-compensation curve steepens at the far end (T10YIE rising relative to T5YIE), the slow actors are real-money mandates and corporate USD hedgers: benchmark rebalancing committees, reserve-manager review cycles and annual/semi-annual corporate hedging-tenor resets reprice USD exposure over weeks to months, so a persistent far-forward repricing converts into accumulated USD selling (and the mirror accumulation on inversion). The effect exists because the far-vs-near breakeven slope is the market-priced gauge of long-run USD nominal-anchor credibility (the 5y5y-forward information set, here the raw T10YIE-T5YIE slope since 2*T10YIE-T5YIE has the identical sign): an erosion of the anchor raises the required compensation for holding USD claims (expected-monetization channel; anchoring evidence in Christensen-Rudebusch; the GSPW inflation-compensation decomposition), and that premium can only clear through a weaker spot dollar over the horizon on which slow real-money flow actually transacts. The observable is the as-of slope D(t)=T10YIE-T5YIE standardized on a trailing 252-binding-clock window, consumed at the first daily 16:00 America/New_York clock strictly after each leg's available_time (AX2-C4). The family MUST fail when slope moves are TIPS liquidity-premium cycles (issuance/refunding wedges per the DKW decomposition) rather than expectation content -- the frozen sign then inverts spuriously and expectancy goes non-positive; it MUST also fail if the exposure pools at |rho|>0.20 against the V3R/V4 carry region at D2, if PnL is USD beta (gate 9 diagnostic), or under any AX2-C4 mutation failure (a late vintage must move the decision exactly one period).",
+
+  "literature_anchors": [
+    "Guerkaynak, Sack, Wright (2010) 'The TIPS yield curve and inflation compensation' -- far-vs-near inflation compensation as the long-horizon expectation gauge",
+    "Christensen & Rudebusch (2019) anchoring studies -- far-forward inflation compensation as the central-bank-anchor credibility measure; de-anchoring episodes move it persistently",
+    "D'Amico, Kim, Wei (2018) TIPS liquidity decomposition -- names the failure mode: slope moves can be liquidity premia, not expectations (this is what the falsification apparatus must be able to catch)",
+    "Krugman (1979) expected-monetization currency dynamics -- anchor erosion implies spot-currency weakness through slow flow adjustment",
+    "Taylor, Peel, Sarno (2001) nonlinear real-rate reversion -- supports threshold-activated, persistence-conditional regimes (regime-interaction ingredient)"
+  ],
+
+  "universe": {
+    "pairs": ["EURUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "GBPUSD"],
+    "note": "All 7 pairs: the mechanism is USD-wide (US anchor credibility), no foreign vintaged legs are consumed, so no AX2-C5/C6 exclusions arise.",
+    "usd_sign_map": {
+      "EURUSD": {"long_pair": "short_USD"},
+      "USDJPY": {"long_pair": "long_USD"},
+      "USDCAD": {"long_pair": "long_USD"},
+      "AUDUSD": {"long_pair": "short_USD"},
+      "NZDUSD": {"long_pair": "short_USD"},
+      "USDCHF": {"long_pair": "long_USD"},
+      "GBPUSD": {"long_pair": "short_USD"}
+    }
+  },
+
+  "conditioning_fields": [
+    {
+      "series_id": "T10YIE",
+      "class": "us_breakeven_10y",
+      "freq": "daily",
+      "verdict": "PASS_PIT_EVIDENCED (p0_verdicts_final_v8.json)",
+      "availability_lag_days": {"min": 0, "median": 0, "max": 5},
+      "transform": "leg of slope D(t) = T10YIE(t) - T5YIE(t); slope then z-scored on trailing 252 binding clocks",
+      "as_of_rule": "AX2-C1: realtime_start=realtime_end=<decision_asof_date>; value consumed at first daily 16:00-NY clock strictly after its first-binding available_time (AX2-C4)"
+    },
+    {
+      "series_id": "T5YIE",
+      "class": "us_breakeven_5y",
+      "freq": "daily",
+      "verdict": "PASS_PIT_EVIDENCED (p0_verdicts_final_v8.json)",
+      "availability_lag_days": {"min": 0, "median": 0, "max": 5},
+      "transform": "leg of slope D(t) as above",
+      "as_of_rule": "AX2-C1/C4 as above; both legs of one clock are read from the same as-of snapshot (AX2-C2 single-snapshot)"
+    },
+    {
+      "series_id": "DGS10",
+      "class": "us_nominal_10y_CONTROL (AX2-C8 mandatory)",
+      "freq": "daily",
+      "verdict": "PASS_PIT_EVIDENCED (p0_verdicts_final_v8.json)",
+      "availability_lag_days": {"min": 1, "median": 1, "max": 5},
+      "transform": "control arm only: DGS10 deviation z-scored on trailing 252 binding clocks",
+      "as_of_rule": "AX2-C1/C4 identical semantics to the anchor legs"
+    }
+  ],
+  "transform_semantics": {
+    "slope": "D(t) = T10YIE(t) - T5YIE(t), computed inside one as-of snapshot per clock (AX2-C2). No splicing of vintages.",
+    "z_score": "z(t) = (D(t) - mean(D over trailing 252 binding clocks)) / std(D over trailing 252 binding clocks); the trailing window is composed of values AS BOUND at their own decision clocks (never re-pulled at current vintage; AX2-C1).",
+    "rebase_safety": "yield/breakeven series are rate levels, not index levels; no rebase-class events apply (P2 rebase event table applies to CPI legs only, not consumed here). Trailing-window composition is rebase-safe by construction.",
+    "lags": "no discretionary lags; availability lag is carried structurally by AX2-C4 (first clock strictly after available_time; median 0-1 day). Mutation-test binding: a vintage arriving k periods late shifts the consumed decision exactly k periods."
+  },
+
+  "decision_clock": {
+    "instant": "daily 16:00 America/New_York (DST-correct)",
+    "rule": "AX2-C4: the decision that can consume a vintaged value is the first daily clock strictly after the value's available_time; one decision per clock per pair; FX 24/5 weekday convention",
+    "calendar_conditioning": "none -- no release instant or release calendar enters the book (state variable on the universal daily grid); see sham_calendar"
+  },
+
+  "warmup": {
+    "in_S0_burn_clocks": 252,
+    "description": "The trailing z-score window burns the first 252 binding clocks of S0 (staged census grid is S0-scoped; no pre-S0 staging required). Usable decision grid begins on or about 2019-04-04 (~1655 usable clocks). The DGS10 control arm uses the identical warmup.",
+    "data_requirements_declared": "none beyond the existing P2 staged census (T10YIE/T5YIE/DGS10 daily, full S0)."
+  },
+
+  "entry_exit_fills": {
+    "activation": "enter when |z| >= 1.0; direction frozen: z >= +1.0 => SHORT USD basket (buy EURUSD/AUDUSD/NZDUSD/GBPUSD, sell USDJPY/USDCAD/USDCHF); z <= -1.0 => LONG USD basket (mirror)",
+    "exit": "exit when |z| <= 0.5 (hysteresis band) OR after 21 business days max hold, whichever first",
+    "reentry": "allowed at the next clock if the activation condition re-fires; max one position per pair at any time",
+    "fills": "at the decision-instant price (daily 16:00-NY close snapshot of the pair); no intraday actions; no stops/targets beyond the frozen exit rules",
+    "sizing": "fixed notional 1 unit per pair; per-trade return recorded in bps of notional"
+  },
+
+  "costs": {
+    "ladder": "1.5 bps/side x {1.0, 1.5, 2.0}",
+    "tier_primary": 2.0,
+    "round_trip_primary_bps": 6.0,
+    "books": "dual book mandatory: price-only and financing-adjusted; all gates evaluated on the financing-adjusted book at tier 2.0 primary",
+    "cost_sanity": "21-business-day max hold against 6.0 bps round trip at tier 2.0 => the family needs a per-trade gross edge > ~6 bps; expected per-trade drift from slow flow is the tested quantity; break_even_bps_le_1.5 floor gate applies"
+  },
+
+  "arms": [
+    {
+      "slot": "anchor",
+      "name": "far-vs-near breakeven slope dispersion regime (fresh 252-clock standardization)",
+      "driver": "z_slope(252)",
+      "activation": "|z| >= 1.0, exit |z| <= 0.5, max hold 21bd, directions as frozen in entry_exit_fills",
+      "mechanism_bearing_component": "cross-horizon dispersion of US inflation compensation (fresh-standardized)"
+    },
+    {
+      "slot": "neighbour",
+      "name": "same slope regime, slow 504-clock standardization (dose-response in anchor freshness)",
+      "driver": "z_slope(504), same thresholds/exit/hold",
+      "delta_vs_anchor": "standardization window 252 -> 504 binding clocks ONLY; identical series, direction map, thresholds, holds, costs",
+      "expected_behaviour": "if the mechanism is fresh far-forward repricing propagating slowly, the slow anchor should still be same-sign but strictly weaker than the anchor (stale standardization dilutes the fresh component)"
+    },
+    {
+      "slot": "control",
+      "name": "DGS10 nominal-yield exposure-form control (AX2-C8 mandatory)",
+      "driver": "z_dgs10(252) = trailing 252-clock standardized DGS10 deviation, as-of semantics identical (AX2-C1..C4)",
+      "activation": "|z| >= 1.0; z >= +1.0 => LONG USD basket (the convenient nominal-yield exposure: higher US nominal yields are USD-supportive); z <= -1.0 => SHORT USD basket; exit |z| <= 0.5 or 21bd max hold",
+      "delta_vs_anchor": "the mechanism-bearing component (cross-horizon breakeven dispersion) is REPLACED by the nominal-yield level form; everything else identical (universe, clock, holds, costs, dual books). This is the mandated shadow check: if the putative anchor-credibility PnL is reproducible from the nominal yield alone, the family is a nominal-yield shadow."
+    }
+  ],
+  "control_identifiability": "Control differs from anchor ONLY in the mechanism-bearing component (slope dispersion -> nominal level), keeping universe, clock, warmup, thresholds' shape, holds, fills and costs identical; the neighbour differs ONLY in the standardization horizon. No arm subsumes another: the anchor's driver is orthogonalizable from the control's driver (slope cancels the common level by construction; the control contains no cross-horizon term).",
+
+  "falsification_rule": {
+    "preregistered": true,
+    "evaluation_book": "financing-adjusted, tier 2.0 primary, pooled S0 usable grid",
+    "rules": [
+      "R1 nominal-shadow kill: control fin-adj expectancy > 0 AND control fin-adj expectancy >= 0.5 x anchor fin-adj expectancy => FAMILY DIES (anchor info is nominal-yield exposure, not dispersion).",
+      "R2 parameterization kill: neighbour same-sign fin-adj expectancy >= 1.0 x anchor fin-adj expectancy => the frozen 252-clock parameterization is not the mechanism-bearing form => FAMILY DIES (never rescue by adopting the neighbour's parameter).",
+      "R3 fragility kill: anchor fin-adj expectancy > 0 AND neighbour fin-adj expectancy <= 0 => standardization-horizon fragility => FAMILY DIES.",
+      "R4 mechanical reject: anchor fin-adj expectancy <= 0 => gate 1 rejects the family (nothing to interpret).",
+      "survival requires: anchor > 0 AND R1..R3 clear AND all ten p3 baseline gates pass (pf>=1.10, >=2/3 positive folds, pair concentration <=0.40, break-even <=1.5 bps, dual-book no inversion, LOPO sign-robust, stress tier 2.0 non-negative margin, mechanism sanity: control must NOT reproduce anchor)."
+    ],
+    "sham_calendar": {
+      "applicability": "NOT_APPLICABLE",
+      "reason": "no release instant and no release calendar conditions the book: T10YIE/T5YIE/DGS10 are daily state variables consumed on the universal daily 16:00-NY grid under AX2-C4 availability semantics (median lag 0-1 day, no window is opened or closed around any release, and no decision is conditioned on a release date). The V5/V6/V7 sham apparatus targets trade windows anchored to release instants; none exist here. Availability-lag causality is instead enforced by the AX2-C4/I-Q mutation test (a late vintage must shift the decision exactly one period)."
+    }
+  },
+
+  "expected_failure_interpretation": "If R1 fires: the 'anchor-credibility' PnL was US nominal-yield exposure in slope clothing -- record as a shadow effect (E.2 cluster discipline), no descendants, no sign flips. If the gates kill on costs, folds or stress tier 2.0 while R1-R3 are clear: far-forward content is real but too slow or too small against 6.0 bps round trips -- the information exists, the after-cost monetization does not. If D2 novelty measurement pools |rho|>0.20 against carry-region or any forbidden ancestry exposure: the family never reaches scoring -- the exposure form collides with a closed class and the proposal is withdrawn without comment. Every failure falsifies the mechanism family, not the parameterization: no window, threshold or sign may be re-entered (unused slots never reassigned).",
+
+  "fold_structure": {
+    "n_folds": 3,
+    "rule": "equal thirds of the usable decision grid (post-warmup), split mechanically at run time",
+    "approx_bounds": {
+      "F1": "2019-04-04 .. 2021-04-05",
+      "F2": "2021-04-06 .. 2023-04-03",
+      "F3": "2023-04-04 .. 2025-07-24"
+    },
+    "gate_binding": "positive populated folds >= 2 of 3 (p3 rule 3); each fold must be independently populated for the family to be evaluable"
+  },
+
+  "expected_decision_count_sanity": {
+    "usable_clocks_S0": "~1655 per pair (1907 census clocks minus 252 warmup)",
+    "expected_activation_share": "0.20-0.40 of clocks (self-standardized trailing z on a slow spread; |z|>=1.0 by construction is roughly the outer tercile, with trend dwell)",
+    "expected_entries_pooled": "~230-460 anchor entries (episodes of ~8-15 clock-days each, x7 pairs)",
+    "non_vacuity_floor": ">= 200 pooled anchor entries AND >= 25 anchor entries in each of the 3 folds; if floors are not met the family closes VACUOUS pre-scoring (data-adequacy closure, unused slots never reassigned) -- this is not a rescue path",
+    "cost_viability_note": "at 6.0 bps round trip the family must show per-trade gross drift > 6 bps to clear rule 1/5; multi-day holds make this arithmetically checkable before any scoring"
+  },
+
+  "lane_boundary_note": "A4 owns plain expectation-level conditioning (breakeven level/change, real-yield level/change). This proposal's anchor conditions on the CROSS-HORIZON DISPERSION of breakevens (a second-moment/term-structure ingredient that cancels the common level by construction) with a regime interaction; the level form appears only inside the MANDATED DGS10 control arm, where it belongs. No foreign legs, no lane-1 real-yield differential (that lane is BLOCKED and would require foreign market real yields, which the keyed catalog does not carry).",
+
+  "ancestry_distinctness": {
+    "vs_session_momentum_fade_V1V2": "no session/intraday features, no open/close times, daily-or-slower only",
+    "vs_range_structures_V2": "no range, breakout or compression observables",
+    "vs_policy_rate_carry_V3R_and_relabels": "no policy rates anywhere; the DGS10 control is the mandated shadow check that MEASURES any accidental nominal-carry kinship rather than asserting its absence; D2 rho vs V3R/V4 carry-region exposures is expected |rho|<=0.20 because the anchor's driver is a stationary second-order spread, not a yield differential direction",
+    "vs_commodity_bloc_risk_off_V4": "no event baskets, no commodity-bloc conditioning, no risk-off gates",
+    "vs_release_window_avoidance_V5": "no release instants, no windows; see falsification_rule.sham_calendar",
+    "vs_reaction_direction_V6_V7": "no conditioning on release signs or post-release direction, own- or cross-economy",
+    "vs_eurusd_lead_lag_V7": "no cross-pair price leads or followers; per-pair positions share a common driver by design (USD-wide), not by price diffusion",
+    "vs_usd_pc1_gated_reversal_V6": "no cross-pair price PCA; the driver is exogenous macro (breakevens), not spot prices",
+    "vs_real_yield_differential_lane1": "no foreign real-yield series exist or are consumed; no differential-of-real-yields form anywhere",
+    "vs_carry_front_door_V4_rho": "expected pooled rho <= 0.20 on all forbidden ancestry, to be MEASURED at D2 pre-selection on the conditioning exposures; no argument in lieu of measurement"
+  },
+
+  "ax2_compliance": {
+    "AX2_C1": "as-of pulls only; current-vintage pulls forbidden in scored paths",
+    "AX2_C2": "slope and z-score computed inside single as-of snapshots; trailing window uses as-bound historical values only",
+    "AX2_C3": "rebase event table not applicable to rate-level legs; no splicing performed",
+    "AX2_C4": "decision clock = first daily 16:00-NY strictly after available_time; mutation-test binding",
+    "AX2_C5": "no truncated legs consumed (US daily fields fund full S0)",
+    "AX2_C6": "no JP legs",
+    "AX2_C7": "full provenance columns per conditioning row (source_id, series_id, event/effective/available/vintage/retrieved times, raw_sha256, license_id, normalizer_version)",
+    "AX2_C8": "DGS10 nominal-yield exposure-form control present as the control arm under identical as-of semantics"
+  }
+}
