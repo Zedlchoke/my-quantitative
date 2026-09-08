@@ -108,16 +108,25 @@ def download_pin(url: str, dest: Path, result: Optional[dict] = None) -> tuple[i
 
 
 def download_pin_async(url: str, dest: Path) -> tuple["threading.Thread", dict]:
-    """Start a prefetch download in a daemon thread; join() re-raises errors."""
+    """Start a prefetch download in a daemon thread; join() re-raises errors.
+    Bounded retry: transient network drops re-download the WHOLE file (sha256
+    + content-length verified per attempt), max 3 attempts, backoff 30/60 s."""
     result: dict = {}
+    delays = (30.0, 60.0)
 
     def work() -> None:
-        try:
-            n, sha = download_pin(url, dest)
-            result["bytes"] = n
-            result["sha256"] = sha
-        except BaseException as exc:  # re-raised at join
-            result["error"] = exc
+        last_exc: Optional[BaseException] = None
+        for attempt in range(len(delays) + 1):
+            try:
+                n, sha = download_pin(url, dest)
+                result["bytes"] = n
+                result["sha256"] = sha
+                return
+            except BaseException as exc:  # re-raised at join after last attempt
+                last_exc = exc
+                if attempt < len(delays):
+                    time.sleep(delays[attempt])
+        result["error"] = last_exc
 
     t = threading.Thread(target=work, name=f"prefetch-{dest.name}", daemon=True)
     t.start()
