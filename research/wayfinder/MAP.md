@@ -2,6 +2,28 @@
 
 ## Sprint state (synced by the Lead, 2026-09-08 morning)
 
+- **CRYPTO V16 CLOSED → `V16_REJECT_ALL`** (closed 2026-09-08 07:45 VN,
+  branch `orca/v16-integration`, terminal `46db31d` + canonical close
+  `9d62d5c`) — the first aggTrades tick cycle and the first
+  governance-native cycle (gate + lock + registry adopted and exercised
+  end-to-end; per-period series persisted; two-key arc incl. a
+  form-refused GO attempt correctly rejected). CLOSE-DISPLACE-FADE dies
+  G2 PF razor (−0.0364) — plain negative; RUNPERSIST dies G1 with the
+  control out-earning (corroborating shadow). D2 measured vetoes: 3
+  proposals rho-blocked (0.2225/0.3385/0.3885); run_imb razor 0.1927.
+  Budget 6/6; reproduction ALL_MATCH 60/60/1854; DSR NOT_RUN fail-closed
+  for historical trials (prior Sharpes never persisted — prospective
+  P-11 contract now in force). **aggTrades frontier measured-exhausted
+  at the DAILY clock on BTC/ETH; sub-daily is the untested axis.**
+  Crypto 155/158. Detail:
+  `.worktrees/crypto/v16/integration/research/control/v16_run/terminal_report_v16.json`.
+
+- **Program totals after all three closes (ledger authority, P-9):
+  233 published / 236 observed, 0 survivors, S1 SEALED everywhere**
+  (crypto 155/158, stocks 39/39, forex 39/39). Failure registry 55
+  entries --verify PASS. No cycle is currently running; V17 (crypto),
+  V12 (stocks) and V8 (forex) plans await owner dispatch.
+
 - **FOREX V7 CLOSED → `FOREX_FREE_V7_REJECT_ALL`** (closed 2026-09-07
   20:32 VN, branch `orca/forex-free-v7-integration`, terminal `f59ea0c` +
   closeout `efb9601`) — the cross-economy spillover cycle. Both families
@@ -33,15 +55,9 @@
   push (INC-V11-4, resolved disclosed-owner-directed). Stocks 39/39. Detail:
   `.worktrees/stocks-free-v11/integration/research/control/stocks_free_v11_run/terminal_report.json`.
 
-- **Program totals after both closes (ledger authority, P-9): 227 published
-  / 230 observed, 0 survivors, S1 SEALED everywhere** (crypto 149/152,
-  stocks 39/39, forex 39/39). Failure registry 53 entries --verify PASS.
-
-- **CRYPTO V16 ACTIVE — two-key complete 2026-09-08 07:35 VN** (owner typed
-  the exact `GO CRYPTO V16 SCORED EXECUTION` after A7
-  `CRYPTO_V16_S0_LAUNCH_AUTHORIZED`; an earlier attempt failed the frozen
-  form gate — missing "GO " — and was correctly refused). Scored cells next
-  under the machine-wide heavy lock.
+- **Program totals after the 2026-09-07 evening closes (superseded same
+  night by V16): 227 published / 230 observed** — see the current totals
+  above.
 
 - **FOREX V6 CLOSED → `FOREX_FREE_V6_REJECT_ALL`** (closed 2026-09-07,
   branch `orca/forex-free-v6-integration@4d81dcd`) — the direction-conditioned

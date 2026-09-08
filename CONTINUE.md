@@ -15,13 +15,17 @@ checkpoint, not an authority.
   cadence-latency falsified by shuffled-chain control, cluster #13;
   mandatory filing-event lane died measured at D2, novelty 0.219 vs
   momentum_63s). Both A7-confirmed from bytes, reproduced byte-identical.
-- Program totals (ledger authority, P-9): **227 published / 230 observed,
-  0 survivors; S1 SEALED everywhere** (crypto 149/152, stocks 39/39,
-  forex 39/39). Failure registry 53 entries --verify PASS.
-- RUNNING: crypto V16 — two-key complete 2026-09-08 07:35 VN (A7
-  `CRYPTO_V16_S0_LAUNCH_AUTHORIZED` + owner exact GO; an earlier
-  form-failing attempt was correctly refused); scored cells execute
-  serially under the machine-wide heavy lock.
+- CLOSED 2026-09-08 07:45 VN: `V16_REJECT_ALL` (terminal `46db31d` +
+  canonical close `9d62d5c`; first governance-native cycle — gate + lock
+  + registry exercised end-to-end; aggTrades frontier measured-exhausted
+  at the daily clock on BTC/ETH; sub-daily untested).
+- Program totals (ledger authority, P-9): **233 published / 236 observed,
+  0 survivors; S1 SEALED everywhere** (crypto 155/158, stocks 39/39,
+  forex 39/39). Failure registry 55 entries --verify PASS.
+- NO cycle currently running. Plans awaiting owner dispatch:
+  crypto `PLAN_crypto_v17.md` (intraday aggTrades frontier),
+  stocks `PLAN_stocks_v12.md` (chain-structure + death-event frontier),
+  forex `PLAN_forex_v8.md` (real-rate frontier under the FRED key).
 
 ## Owner-keyed doors (Lead-measured current state)
 
