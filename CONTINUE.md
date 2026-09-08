@@ -1,12 +1,17 @@
 # CONTINUE.md — program checkpoint (Lead-synced 2026-09-08 morning)
 
 Read the LIVE plan of the cycle you serve (highest version per asset in
-`plans/`): crypto `PLAN_crypto_v17.md` (ACTIVE_LIGHT — A1 bootstrapped
-2026-09-08 `ff33929`, P0 pending), stocks `PLAN_stocks_v12.md`
-(ACTIVE_LIGHT — A1 bootstrapped 2026-09-08 `02b4ac2`, P0 lane running),
-forex `PLAN_forex_v8.md` (ACTIVE_LIGHT — A1 bootstrapped 2026-09-08
-`fc259c7`, P0 FRED/vintage audit in scope). All three live A1s HARD STOP
-at their two-key P-8 gates. This file is a derived checkpoint, not
+`plans/`): **NO asset cycle is running.** Crypto `PLAN_crypto_v17.md`
+(mid-P0, owner-PAUSED 2026-09-08 pending SYSTEM-HARDENING-V1; attempt 2
+hang remediated pre-outcome, attempt 3 resource-conflict) and forex
+`PLAN_forex_v8.md` (selection frozen 10:52, owner-PAUSED pending SHV1)
+await SHV1 pause packets + resume. Stocks V12 is CLOSED
+(`STOCKS_FREE_V12_BLOCKED_DATA_OR_SELECTION`, 0/6 cells, all proposals
+D2-killed measured). **SYSTEM-HARDENING-V1**
+(`plans/PLAN_system_hardening_v1.md`) is the active control-plane plan —
+`PLANNED_NOT_STARTED`, activates on owner dispatch. GO phrases V17/V8
+remain registered-unconsumed; no GO carries across the maintenance pause
+(plan §10). This file is a derived checkpoint, not
 an authority. Two A1 threads share the machine: heavy phases queue under
 the machine-wide lock (NOT_RUN_RESOURCE_CONFLICT, never contention); root
 commits are atomic single-purpose pathspec only (P-10).
