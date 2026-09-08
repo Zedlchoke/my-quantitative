@@ -374,11 +374,14 @@ def test_v17_gate_margins_arm_attributed(tmp_path, panel12):
         records = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
         assert [r["gate_id"] for r in records] == ["G1", "G2", "G3", "G4", "G5"]
         for rec in records:
+            _UPPER = {"G4", "G5"}
             assert set(rec) == {"cycle_id", "gate_id", "value", "threshold",
                                 "margin", "arm_id"}
             assert rec["arm_id"] == arm_id          # arm-attributed, in the record
             assert rec["cycle_id"] == "CRYPTO-V17"
-            assert rec["margin"] == d.r12(rec["threshold"] - rec["value"])
+            assert rec["margin"] == d.r12(
+                (rec["threshold"] - rec["value"]) if rec["gate_id"] in _UPPER
+                else (rec["value"] - rec["threshold"]))
         margins[arm_id] = {r["gate_id"]: r for r in records}
     # distinct arms -> distinct OWN series -> distinct G1 margins (no sharing)
     assert margins["anchor"]["G1"]["value"] != margins["control"]["G1"]["value"]
@@ -444,6 +447,7 @@ def test_v17_sanitized_emits_decisions_and_nothing_outcome_shaped(tmp_path, pane
         assert records
         taken = 0
         for rec in records:
+            _UPPER = {"G4", "G5"}
             assert set(rec) == {
                 "cycle_id", "family_id", "arm_id", "date", "hour",
                 "decision_taken", "symbol",

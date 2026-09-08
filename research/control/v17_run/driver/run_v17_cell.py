@@ -104,7 +104,8 @@ Frozen semantics implemented (each traced to its source)
   PF >= 1.10; G3 folds >= 2/3; G4 largest-fold-positive-share <= 0.50;
   G5 MDD <= 0.20.  G10/G11/G12 are D2/terminal-level and are skipped
   in-cell.  margins_to_fail records carry EVERY in-cell gate with
-  margin = threshold - value (task-pinned convention; note V16 used
+  margin in the program-wide positive=pass convention (value-threshold on
+  lower-bound gates, threshold-value on upper-bound ceilings; V16 precedent)
   value - threshold on lower-bound gates) plus arm identity
   (p3_invariants margins_attribution: "margins artifacts carry arm
   identity"; the round-2 canon validator checks required fields present,
@@ -1017,22 +1018,27 @@ def gate_margins(metrics: ArmMetrics, arm_id: str) -> List[dict]:
     path results/v17/{family}/{arm}/ carries it as well.
     """
     n_pos = metrics.positive_folds
+    # margin convention (program-wide, V16 precedent): POSITIVE = PASS.
+    # lower-bound gates (value must EXCEED threshold): margin = value - threshold;
+    # upper-bound gates (value must stay UNDER ceiling): margin = threshold - value.
+    # direction>False encodes the upper-bound class.
     gates = [
-        ("G1", metrics.expectancy, 0.0),
-        ("G2", metrics.pf, GATE_PF_THRESHOLD),
-        ("G3", n_pos / FOLD_COUNT, GATE_FOLD_POSITIVE_FRACTION),
-        ("G4", metrics.fold_concentration, GATE_FOLD_CONCENTRATION),
-        ("G5", metrics.mdd, GATE_MDD_CEILING),
+        ("G1", metrics.expectancy, 0.0, False),
+        ("G2", metrics.pf, GATE_PF_THRESHOLD, False),
+        ("G3", n_pos / FOLD_COUNT, GATE_FOLD_POSITIVE_FRACTION, False),
+        ("G4", metrics.fold_concentration, GATE_FOLD_CONCENTRATION, True),
+        ("G5", metrics.mdd, GATE_MDD_CEILING, True),
     ]
     records = []
-    for gate, value, threshold in gates:
+    for gate, value, threshold, upper_bound in gates:
+        margin = (threshold - value) if upper_bound else (value - threshold)
         records.append(
             {
                 "cycle_id": CYCLE_ID,
                 "gate_id": gate,
                 "value": r12(value),
                 "threshold": r12(threshold),
-                "margin": r12(threshold - value),
+                "margin": r12(margin),
                 "arm_id": arm_id,
             }
         )
