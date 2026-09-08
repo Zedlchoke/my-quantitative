@@ -1,7 +1,7 @@
 {
  "schema": "v17_run_artifact_v1",
  "artifact": "p0_freeze",
- "generated_utc": "2026-09-08T02:42:57Z",
+ "generated_utc": "2026-09-08T04:22:06Z",
  "producer_role": "A1 (P0 per plan section 4 + owner GO for P0 2026-09-08; contract frozen BEFORE any extraction)",
  "verdict": "P0_CONTRACT_FROZEN",
  "blocked_data_triggered": false,
@@ -176,15 +176,15 @@
   "step4_publish": "census copy + freeze + manifest + reconciliation verdict + SOL viability verdict committed by pathspec BEFORE D1"
  },
  "script_self_pins": {
-  "extract_v17_panel.py": "762f5a8d628a364c81a85cbbfde5adb3317a6be474a78e37e9136fe31718486f",
+  "extract_v17_panel.py": "9ea77d21e1ad4575110113fe17ef6615d1a923919e39d5fa2a42daccc3d30dc2",
   "reconcile_v17_daily.py": "26737e563bf3513566346d1c25ec4d2360b468822e5c80422b3783e84a0c73ee"
  },
  "keyless_law": "no key, no signup, no purchase by any agent (plan section 5)",
- "freeze_version": 4,
+ "freeze_version": 5,
  "supersedes": {
-  "v3_sha256": "b9931b5057d05d04c2d1079233d3493b76113e739438aacdc865a4635be44786 (v3 = pipelined prefetch, commit 003cffa)",
-  "reason": "full run attempt 1 FAILED at month 3/39: the v3 prefetch had NO retry and one transient network drop (BrokenPipeError mid-download of BTCUSDT 2025-10) aborted the build; the round-2 mandate held - FAILED heavy-lock release carried the stderr tail; months 1-2 reduced correctly (BTC 2025-08 kept 11,621,236 = V16 manifest EXACT; 2025-09 kept 27,229,666); the build restarts from scratch for a single clean 39-month manifest (35 min of correct work discarded by design, partial zip cleaned)",
-  "what_changed": "download scheduling only: bounded retry (max 3 attempts, backoff 30/60 s, whole-file re-download each attempt, sha256 + content-length verified per attempt, partial file truncated on retry); reduce_month/observables/schema/ceilings byte-identical",
-  "what_did_not_change_and_why_this_is_not_rescue": "ceilings untouched; no outcome exists (pre-proposal P0; nothing scored, no proposal generated); data semantics identical - retry only hardens the transport layer against transient drops; every byte still pinned and length-verified before reduction"
+  "v4_sha256": "98688efc467b590e5be9fe2b0acdb012582555fb4a65f3492a94466dd759bd71 (v4 = bounded retry on exceptions)",
+  "reason": "full attempt 2 HUNG (not failed): BTC 2026-03 prefetch froze at exactly 799,224,859 bytes for 13+ minutes on a stalled-but-open connection - a trickling/dead socket never trips the per-read timeout and raises nothing, so the v4 exception-only retry never fired and the main thread blocked forever in join(); A1 killed the process (SIGKILL) after 13 min zero-progress; 7 correct BTC months (incl. both largest) discarded for a single clean manifest; lock row left RUNNING with a proven-dead pid - the round-2 classifier reclaims it on next acquire (pid-dead path, by design)",
+  "what_changed": "transport layer only: stall watchdog (60 s read-idle socket timeout + 120 s no-progress + 30 min per-attempt deadline backstop -> raises -> feeds the EXISTING v4 retry: 3 attempts, 30/60 s backoff, whole-file re-download, sha256+content-length verified per attempt) + download-progress heartbeat every 64 MB (closes the monitoring blind spot where last_heartbeat went stale for up to ~25 min during big months); reduce_month/observables/schema/ceilings byte-identical",
+  "what_did_not_change_and_why_this_is_not_rescue": "ceilings untouched (1024 MiB / 3 GiB / 6 h / 30 min-month); no outcome exists (pre-proposal P0); data bytes, pins and reduction semantics identical - the watchdog only converts infinite silent waits into bounded, retried, evidenced failures"
  }
 }

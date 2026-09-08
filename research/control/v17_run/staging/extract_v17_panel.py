@@ -55,6 +55,13 @@ WIN_END_MS = int(datetime(2026, 8, 21, 23, 59, 59, 999000, tzinfo=timezone.utc).
 CHUNK = 8 * 1024 * 1024
 MAX_DISK_TRANSIENT = 3 * 1024 ** 3
 MAX_MONTH_PARSE_S = 1800.0
+# stall watchdog (freeze v5): a stalled-but-open connection raises nothing,
+# so exception-only retry never fires; bound every wait instead
+READ_IDLE_TIMEOUT_S = 60
+NO_PROGRESS_TIMEOUT_S = 120.0
+ATTEMPT_DEADLINE_S = 1800.0
+RETRY_DELAYS_S = (30.0, 60.0)
+HEARTBEAT_EVERY_BYTES = 64 * 1024 * 1024
 
 H1_SCHEMA = [
     "symbol", "hour_utc", "day_utc",
@@ -83,12 +90,11 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def download_pin(url: str, dest: Path, result: Optional[dict] = None) -> tuple[int, str]:
-    """Download + sha-pin. When `result` is given the work runs cooperatively
-    as a prefetch target: the caller joins it before reducing (pipelined
-    download/parse keeps the frozen serial data semantics while overlapping
-    network I/O with CPU; disk bound: at most two transient zips ~2.3 GB
-    worst-case vs the 3 GiB ceiling)."""
+def download_pin(url: str, dest: Path, on_progress=None) -> tuple[int, str]:
+    """Download + sha-pin with a stall watchdog (freeze v5): a stalled-but-open
+    connection raises nothing, so exception-only retry never fires - bound
+    every wait instead (60 s read-idle via socket timeout, 120 s no-progress,
+    30 min deadline backstop per attempt)."""
     free = shutil.disk_usage(dest.parent).free
     if free < MAX_DISK_TRANSIENT:
         raise RuntimeError(
@@ -96,36 +102,54 @@ def download_pin(url: str, dest: Path, result: Optional[dict] = None) -> tuple[i
             f"(< {MAX_DISK_TRANSIENT / 2**30:.0f} GiB) -> BLOCKED_DATA")
     digest = hashlib.sha256()
     total = 0
-    with urllib.request.urlopen(url, timeout=180) as resp, open(dest, "wb") as fh:
+    t_attempt = time.monotonic()
+    last_progress = t_attempt
+    with urllib.request.urlopen(url, timeout=READ_IDLE_TIMEOUT_S) as resp, \
+            open(dest, "wb") as fh:
         expected = int(resp.headers.get("Content-Length", "-1"))
         while chunk := resp.read(CHUNK):
-            digest.update(chunk)
-            fh.write(chunk)
-            total += len(chunk)
+            if chunk:
+                digest.update(chunk)
+                fh.write(chunk)
+                prev = total
+                total += len(chunk)
+                now = time.monotonic()
+                if now - last_progress > NO_PROGRESS_TIMEOUT_S:
+                    raise TimeoutError(
+                        f"STALL: no download progress for "
+                        f"{now - last_progress:.0f}s at {total} bytes")
+                last_progress = now
+                if on_progress and total // HEARTBEAT_EVERY_BYTES != \
+                        prev // HEARTBEAT_EVERY_BYTES:
+                    on_progress(total)
+            if time.monotonic() - t_attempt > ATTEMPT_DEADLINE_S:
+                raise TimeoutError(
+                    f"DEADLINE: attempt exceeded {ATTEMPT_DEADLINE_S:.0f}s "
+                    f"at {total} bytes")
     if expected != -1 and total != expected:
         raise IOError(f"content-length mismatch {expected} != {total}")
     return total, digest.hexdigest()
 
 
-def download_pin_async(url: str, dest: Path) -> tuple["threading.Thread", dict]:
+def download_pin_async(url: str, dest: Path, on_progress=None) -> tuple["threading.Thread", dict]:
     """Start a prefetch download in a daemon thread; join() re-raises errors.
-    Bounded retry: transient network drops re-download the WHOLE file (sha256
-    + content-length verified per attempt), max 3 attempts, backoff 30/60 s."""
+    Bounded retry on ANY failure incl. stall-watchdog timeouts: transient
+    drops and silent stalls re-download the WHOLE file (sha256 + content-
+    length verified per attempt), max 3 attempts, backoff 30/60 s."""
     result: dict = {}
-    delays = (30.0, 60.0)
 
     def work() -> None:
         last_exc: Optional[BaseException] = None
-        for attempt in range(len(delays) + 1):
+        for attempt in range(len(RETRY_DELAYS_S) + 1):
             try:
-                n, sha = download_pin(url, dest)
+                n, sha = download_pin(url, dest, on_progress)
                 result["bytes"] = n
                 result["sha256"] = sha
                 return
             except BaseException as exc:  # re-raised at join after last attempt
                 last_exc = exc
-                if attempt < len(delays):
-                    time.sleep(delays[attempt])
+                if attempt < len(RETRY_DELAYS_S):
+                    time.sleep(RETRY_DELAYS_S[attempt])
         result["error"] = last_exc
 
     t = threading.Thread(target=work, name=f"prefetch-{dest.name}", daemon=True)
@@ -350,7 +374,12 @@ def run_build(pairs, staging: Path, lock) -> dict:
             sym, mon = pairs[i]
             url = f"{BASE}/{sym}/{sym}-aggTrades-{mon}.zip"
             dest = staging / f"{sym}-aggTrades-{mon}.zip"
-            t, res = download_pin_async(url, dest)
+
+            def progress(nbytes: int, sym=sym, mon=mon) -> None:
+                lock.heartbeat(extra={"downloading": f"{sym}-{mon}",
+                                      "mb_downloaded": round(nbytes / 1e6)})
+
+            t, res = download_pin_async(url, dest, progress)
             return (sym, mon, url), t, res, dest
 
         pending = start_dl(0) if pairs else None
