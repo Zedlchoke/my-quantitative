@@ -409,15 +409,27 @@ def test_render_failure_filter_attributes(fake_repo: Path):
 # ACTIVE_CYCLES.json + write_outputs
 # ---------------------------------------------------------------------------
 
-def test_write_outputs_active_cycles_and_html(fake_repo: Path, tmp_path: Path):
+def test_write_outputs_readonly_projection_and_html(fake_repo: Path, tmp_path: Path):
+    """SHV1 sec7.5: collector NEVER writes the tracked projection anymore.
+
+    plans/ACTIVE_CYCLES.json stays byte-frozen (G5 monitoring purity); the
+    projection payload computation is preserved (build_active_cycles) for the
+    canonical-registry era; only the gitignored runtime index.html is written.
+    The write_registry parameter is accepted for call-site compatibility and
+    ignored.
+    """
     snap = dc.collect_snapshot(fake_repo)
+    ac_path = fake_repo / dc.ACTIVE_CYCLES_REL
+    ac_path.parent.mkdir(parents=True, exist_ok=True)
+    ac_path.write_text('{"cycles": []}\n', encoding="utf-8")
+    projection_before = ac_path.read_bytes()
     out_dir = tmp_path / "dashboard_out"
-    dc.write_outputs(snap, out_dir)
-    ac = json.loads((fake_repo / dc.ACTIVE_CYCLES_REL).read_text(
-        encoding="utf-8"))
-    assert ac["measured_at"] == snap["measured_at"]
-    assert len(ac["cycles"]) == len(dc.LIVE_CYCLES)
-    for c in ac["cycles"]:
+    dc.write_outputs(snap, out_dir, write_registry=True)
+    assert ac_path.read_bytes() == projection_before, \
+        "collector must not write the tracked projection (G5 monitoring purity)"
+    payload = dc.build_active_cycles(snap)
+    assert len(payload["cycles"]) == len(dc.LIVE_CYCLES)
+    for c in payload["cycles"]:
         for field in ("cycle_id", "plan", "status", "phase", "worktree",
                       "branch", "head", "budget", "go_phrase", "s1",
                       "measured_at"):
