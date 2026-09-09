@@ -23,7 +23,7 @@ from research.governance import heavy_lock  # noqa: E402
 WORKTREE = Path(__file__).resolve().parents[3]  # integration root (this file sits one level above staging)
 VENV = Path("/Users/hoangminhlong/my-quantitative/.venv/bin/python")
 Q = WORKTREE / "research" / "control" / "v17_run" / "q_dry_run"
-FAMILIES = ["V17-A4-P2-SILRES", "V17-a5-P1-ATTN-PHASE"]
+FAMILIES = ["V17-A4-P1-WKNDLIQ", "V17-a5-P1-ATTN-PHASE"]  # selection freeze v2 (6da1d76): SILRES dead by its own frozen rule 4
 LEAK_KEYS = {"pnl", "profit", "expectancy", "sharpe", "pf", "profit_factor",
              "mdd", "drawdown", "gate_verdict", "margin", "stress", "score"}
 
