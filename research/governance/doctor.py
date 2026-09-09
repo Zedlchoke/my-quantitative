@@ -1,11 +1,17 @@
 """SHV1 sec7.6 doctor - read-only consistency diagnostics for the control plane.
 
 Doctor LABELS stale and contradictory state; it NEVER repairs it (sec7.5).
-Detections (all read-only):
- 1. STALE_ROUTER_ENTRY / ROUTER_GAP   - committed projection vs canonical registry
+Detections (all read-only, each with a LOW/MEDIUM/HIGH severity):
+ 1. STALE_ROUTER_ENTRY / ROUTER_GAP / PROJECTION_DRIFT
+      - committed projection vs canonical registry. MDP-V1 M0: the
+        projection is compared to the canonical NON-TERMINAL records (a
+        TERMINAL cycle missing from the projection is NOT a gap — terminal
+        cycles are historical evidence). A generated-format projection is
+        additionally byte-compared to its regeneration; legacy hand-shaped
+        files and hand edits are drift, never silently accepted.
  2. BRANCH_MISMATCH / HEAD_MISMATCH   - worktree vs registry authority
  3. STATE_MISSING / CONTROL_STATE_DRIFT - legacy state files
- 4. STALE_HEARTBEAT                    - non-terminal cycles, >24h
+ 4. STALE_HEARTBEAT                    - ACTIVE_* cycles only, >24h
  5. LIVE_WORKER_UNREPRESENTED          - repo python workers vs registry workers
  6. LOCK_OWNER_DEAD                    - heavy-lock registry row with dead pid
  7. BUDGET_DISAGREEMENT                - registry vs legacy states
@@ -29,9 +35,42 @@ from pathlib import Path
 OWNER_PREEXISTING_UNTRACKED = {".zcode/"}  # owner space, classified at H0
 STALE_HEARTBEAT_HOURS = 24
 
+SEVERITY = {
+    # HIGH: control-state contradictions, seal breaches, frozen-evidence drift
+    "CONTROL_STATE_DRIFT": "HIGH",
+    "S1_SEAL_DISAGREEMENT": "HIGH",
+    "LOCK_OWNER_DEAD": "HIGH",
+    "FROZEN_ARTIFACT_DRIFT": "HIGH",
+    # MEDIUM: structural drift that needs reconciliation before dispatch
+    "REGISTRY_NOT_ADOPTED": "MEDIUM",
+    "ROUTER_GAP": "MEDIUM",
+    "PROJECTION_DRIFT": "MEDIUM",
+    "WORKTREE_MISSING": "MEDIUM",
+    "BRANCH_MISMATCH": "MEDIUM",
+    "BUDGET_DISAGREEMENT": "MEDIUM",
+    "LIVE_WORKER_UNREPRESENTED": "MEDIUM",
+    "MONITORING_MUTATION": "MEDIUM",
+    # LOW: expected-stale labels and legitimate-progress indicators
+    "STALE_ROUTER_ENTRY": "LOW",
+    "HEAD_MISMATCH": "LOW",       # legitimate progress until cycle reconcile lands it
+    "STALE_HEARTBEAT": "LOW",
+    "STATE_MISSING": "LOW",
+}
+
+
+def severity_of(kind: str) -> str:
+    return SEVERITY.get(kind, "MEDIUM")
+
 
 def _sh(cmd: str, cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, shell=True, cwd=str(cwd), capture_output=True, text=True)
+
+
+def _git_in(wt: Path, *args: str) -> str:
+    """git output for a worktree path ('' when git refuses — never guessed)."""
+    out = subprocess.run(["git", "-C", str(wt), *args],
+                         capture_output=True, text=True)
+    return out.stdout.strip() if out.returncode == 0 else ""
 
 
 def main_root() -> Path:
@@ -69,16 +108,46 @@ def check(root: Path = None, ps_lines: list = None) -> list:
     else:
         reg_ids = {c["cycle_id"] for c in registry["cycles"]}
 
-    # 1. stale router entries (projection vs registry)
+    # 1. stale router entries + projection equality (projection vs registry)
     projection, perr = _read_json(root / "plans" / "ACTIVE_CYCLES.json")
     if perr:
         findings.append(("CONTROL_STATE_DRIFT", f"ACTIVE_CYCLES.json: {perr}"))
     else:
-        for ghost in sorted({c["cycle_id"] for c in projection.get("cycles", [])} - reg_ids):
+        proj_ids = {c["cycle_id"] for c in projection.get("cycles", []) if isinstance(c, dict)}
+        # M0: the projection must carry the canonical NON-TERMINAL records.
+        # A TERMINAL cycle missing from the projection is NOT a gap — it is
+        # historical evidence and never dispatchable.
+        nonterminal_ids = set()
+        if registry and registry.get("schema") == "cycle_registry@1":
+            nonterminal_ids = {c["cycle_id"] for c in registry.get("cycles", [])
+                               if c.get("lifecycle") != "TERMINAL"}
+        for ghost in sorted(proj_ids - reg_ids):
             findings.append(("STALE_ROUTER_ENTRY",
                              f"projection names {ghost}; canonical registry does not (closed/historical)"))
-        for missing in sorted(reg_ids - {c["cycle_id"] for c in projection.get("cycles", [])}):
-            findings.append(("ROUTER_GAP", f"projection omits registry cycle {missing}"))
+        for missing in sorted(nonterminal_ids - proj_ids):
+            findings.append(("ROUTER_GAP", f"projection omits non-terminal registry cycle {missing}"))
+        # byte-equality against the deterministic regeneration (generated
+        # format only; a legacy hand-shaped file is itself drift once the
+        # registry exists — recorded here, repaired only by the writer)
+        if registry and registry.get("schema") == "cycle_registry@1" and reg_err is None:
+            from governance import cycle_registry as cr
+            try:
+                actual = (root / "plans" / "ACTIVE_CYCLES.json").read_bytes()
+                if projection.get("schema") == cr.PROJECTION_SCHEMA:
+                    if not cr.projection_matches(registry, actual):
+                        findings.append(("PROJECTION_DRIFT",
+                                         "ACTIVE_CYCLES.json bytes differ from the deterministic "
+                                         "regeneration of canonical non-terminal records "
+                                         "(hand edit or stale generation)"))
+                elif not cr.projection_matches(registry, actual):
+                    findings.append(("PROJECTION_DRIFT",
+                                     f"ACTIVE_CYCLES.json is not in generated format "
+                                     f"(schema {projection.get('schema')!r} != "
+                                     f"{cr.PROJECTION_SCHEMA}) and does not byte-match the "
+                                     "regeneration — regenerate via the registry writer "
+                                     "(cycle reconcile)"))
+            except Exception as exc:  # noqa: BLE001 - diagnostic must never crash
+                findings.append(("CONTROL_STATE_DRIFT", f"projection comparison failed: {exc}"))
 
     legacy_sources = {
         "CRYPTO-V17": ".worktrees/crypto/v17/integration/research/control/v17_run/state_v17.json",
@@ -87,7 +156,9 @@ def check(root: Path = None, ps_lines: list = None) -> list:
     }
     states = {}
     for cid, rel in legacy_sources.items():
-        state, err = _read_json(root / rel)
+        # these paths are MAIN-CHECKOUT-relative (nested worktrees exist only
+        # under the main checkout) - resolve against main root, not `root`
+        state, err = _read_json(main_root() / rel)
         if err:
             findings.append(("STATE_MISSING" if "No such file" in (err or "")
                              or "[Errno 2]" in (err or "") else "CONTROL_STATE_DRIFT",
@@ -106,8 +177,8 @@ def check(root: Path = None, ps_lines: list = None) -> list:
             if not wt_path.exists():  # 2. branch/worktree mismatch
                 findings.append(("WORKTREE_MISSING", f"{cid}: {wt}"))
             else:
-                branch = _sh("branch --show-current", wt_path).stdout.strip()
-                head = _sh("rev-parse HEAD", wt_path).stdout.strip()
+                branch = _git_in(wt_path, "branch", "--show-current")
+                head = _git_in(wt_path, "rev-parse", "HEAD")
                 if branch != rec["branch"]:
                     findings.append(("BRANCH_MISMATCH",
                                      f"{cid}: on {branch!r} registry says {rec['branch']!r}"))
@@ -115,14 +186,14 @@ def check(root: Path = None, ps_lines: list = None) -> list:
                     findings.append(("HEAD_MISMATCH",
                                      f"{cid}: branch {head[:7]} vs registry {rec['head'][:7]}"))
         hb = rec.get("heartbeat_utc") or ""
-        if hb and rec.get("lifecycle") not in ("TERMINAL",):  # 4. stale heartbeat
+        if hb and rec.get("lifecycle") in ("ACTIVE_LIGHT", "ACTIVE_HEAVY"):  # 4. stale heartbeat
             try:
                 age = now - datetime.datetime.strptime(hb, "%Y-%m-%dT%H:%M:%SZ").replace(
                     tzinfo=datetime.timezone.utc)
                 if age > datetime.timedelta(hours=STALE_HEARTBEAT_HOURS):
                     findings.append(("STALE_HEARTBEAT",
                                      f"{cid}: heartbeat {hb} is {age.days}d old "
-                                     "(expected-stale while PAUSED_MAINTENANCE; label only)"))
+                                     "(paused/planned cycles are expected-stale; label only)"))
             except ValueError:
                 findings.append(("CONTROL_STATE_DRIFT", f"{cid}: heartbeat {hb!r} unparseable"))
         state = states.get(cid)
@@ -226,7 +297,14 @@ def _pid_alive(pid: int) -> bool:
 def render(findings: list) -> str:
     if not findings:
         return "doctor: no findings"
-    return "\n".join(f"[{kind}] {detail}" for kind, detail in findings)
+    return "\n".join(f"[{severity_of(kind)}][{kind}] {detail}" for kind, detail in findings)
+
+
+def check_detailed(root: Path = None, ps_lines: list = None) -> list:
+    """Same findings as check(), each labeled with its severity:
+    [{"kind": ..., "severity": "LOW|MEDIUM|HIGH", "detail": ...}, ...]"""
+    return [{"kind": kind, "severity": severity_of(kind), "detail": detail}
+            for kind, detail in check(root=root, ps_lines=ps_lines)]
 
 
 if __name__ == "__main__":

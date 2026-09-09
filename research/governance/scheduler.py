@@ -23,6 +23,8 @@ from governance import retry_classifier as rc
 
 DEFAULT_JOURNAL = Path.home() / ".my-quantitative-governance" / "heavy_runtime" / "scheduler_jobs.json"
 
+CONTROL_STATE_DRIFT = "CONTROL_STATE_DRIFT"
+
 
 class Scheduler:
     def __init__(self, journal_path: Optional[os.PathLike] = None,
@@ -228,3 +230,110 @@ def list_jobs(journal_path: Optional[os.PathLike] = None) -> list:
 
 def cancel_job(job_id: str, journal_path: Optional[os.PathLike] = None) -> str:
     return Scheduler(journal_path=journal_path).cancel(job_id)
+
+
+# ----------------------------------------------- reconciled job view (MDP-V1 M0)
+
+JOB_VIEW_SCHEMA = "job_view@1"
+LIVENESS_METHOD = "os.kill(pid, 0) + ps -p PID -o lstart= compared to registry process_start_token"
+
+
+def reconciled_jobs(journal_path: Optional[os.PathLike] = None) -> dict:
+    """ONE reconciled view: scheduler journal UNION live heavy-lock registry.
+
+    MDP-V1 M0 (PLAN sec3.2): silent divergence between the scheduler journal
+    and machine-wide heavy-lock ownership is forbidden. Every row is labeled
+    with its source ("scheduler" / "heavy_lock") and the heavy-lock row
+    carries liveness evidence (pid alive, live process-start token, token
+    match). A dead-pid or token-mismatch lock row is surfaced as
+    CONTROL_STATE_DRIFT — never dropped, never guessed away.
+
+    Read-only. This view is NOT a second writable authority: the scheduler
+    journal stays written by controllers, the lock registry by
+    heavy_lock.acquire/heartbeat/release; the union is derived on read.
+    The journal file is never created by this function.
+    """
+    from governance import heavy_lock as hl
+
+    jp = Path(journal_path) if journal_path else DEFAULT_JOURNAL
+    notes = []
+    jobs: list = []
+    if jp.exists():
+        try:
+            state = json.loads(jp.read_bytes().decode("utf-8"))
+            jobs = [{"source": "scheduler", **job} for job in state.get("jobs", [])]
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError) as exc:
+            jobs = [{"source": "scheduler", "job_id": "JOURNAL_DRIFT",
+                     "status": CONTROL_STATE_DRIFT,
+                     "note": f"scheduler journal unparseable, preserved unread ({exc})"}]
+    else:
+        notes.append(f"scheduler journal absent at {jp} (no controller has run here)")
+
+    runtime = Path(hl.machine_runtime_dir())
+    registry_path = runtime / hl.REGISTRY_NAME
+    lock_path = runtime / hl.LOCK_NAME
+    history_path = runtime / hl.HISTORY_NAME
+
+    lock_row, err = hl._load_registry(registry_path)
+    if err is not None:
+        jobs.append({
+            "source": "heavy_lock", "job_id": "HEAVY_LOCK_DRIFT",
+            "status": CONTROL_STATE_DRIFT,
+            "note": f"heavy-lock registry {err} — fail closed, preserved for inspection",
+            "evidence": {"registry_path": str(registry_path), "lock_path": str(lock_path)},
+        })
+    elif lock_row is not None:
+        pid = lock_row.get("pid")
+        alive = hl._pid_alive(pid) if isinstance(pid, int) else False
+        live_token = hl.process_start_token(int(pid)) if (alive and isinstance(pid, int)) else None
+        row_token = lock_row.get("process_start_token")
+        token_match = bool(alive and live_token and row_token and live_token == row_token)
+        drift = None
+        if lock_row.get("status") != "RUNNING":
+            drift = f"registry row status {lock_row.get('status')!r} (not RUNNING)"
+        elif not isinstance(pid, int):
+            drift = "malformed row (pid missing or not an int)"
+        elif not alive:
+            drift = f"dead pid {pid} — stale registry row (CONTROL_STATE_DRIFT, never dropped silently)"
+        elif not row_token or live_token is None:
+            drift = "pid alive with missing/unrecoverable process-start token"
+        elif not token_match:
+            drift = f"process-start token mismatch for pid {pid} (PID reuse or stale row)"
+        jobs.append({
+            "source": "heavy_lock",
+            "job_id": (f"heavy-lock/{lock_row.get('cycle_id')}/{lock_row.get('role')}"
+                       if lock_row.get("cycle_id") else "heavy-lock/unknown"),
+            "cycle_id": lock_row.get("cycle_id"),
+            "role": lock_row.get("role"),
+            "status": lock_row.get("status"),
+            "command": lock_row.get("command"),
+            "worktree": lock_row.get("worktree"),
+            "started_at": lock_row.get("started_at"),
+            "last_heartbeat": lock_row.get("last_heartbeat"),
+            "liveness": {
+                "pid": pid,
+                "pid_alive": alive,
+                "live_process_start_token": live_token,
+                "registry_process_start_token": row_token,
+                "token_match": token_match if alive else None,
+                "method": LIVENESS_METHOD,
+            },
+            "control_state_drift": drift,
+            "evidence": {"registry_path": str(registry_path), "lock_path": str(lock_path)},
+        })
+
+    history_tail = []
+    if history_path.exists():
+        try:
+            lines = history_path.read_text(encoding="utf-8").splitlines()
+            history_tail = [json.loads(l) for l in lines[-3:] if l.strip()]
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            notes.append(f"heavy-lock history tail unreadable ({exc})")
+
+    return {
+        "schema": JOB_VIEW_SCHEMA,
+        "journal": str(jp),
+        "jobs": jobs,
+        "heavy_lock_history_tail": history_tail,
+        "notes": notes,
+    }
