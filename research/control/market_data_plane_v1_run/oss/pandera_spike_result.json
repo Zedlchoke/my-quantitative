@@ -1,0 +1,43 @@
+{
+ "schema": "mdp_pandera_spike_result@1",
+ "recorded_utc": "2026-09-09T13:04:30Z",
+ "head": "5e2bc38de8abbbf31796435db8f062f345637e5f",
+ "decision": "PANDERA_EVALUATED_NOT_ADOPTED",
+ "decided_by": "A1 per frozen acceptance criteria (architecture_freeze.json pandera_acceptance_criteria)",
+ "criteria": [
+  {
+   "criterion": "identical accepted/rejected row sets and reason attribution vs native frozen schema",
+   "status": "FAIL",
+   "evidence": "on RAW boundary fixtures (10-60 rows): one type-poisoned raw row (e.g. float timestamp) makes the strict dtype contract reject the WHOLE batch where the native validator rejects just that row \u2014 crypto trades, forex bid/ask, stocks quotes; macro series row sets agree but attribution differs (native MALFORMED_SHAPE vs schema-selection UNKNOWN_EVENT_TYPE)",
+   "supplementary": "on pre-normalized canonical batches pandera matches native exactly (same rows, same attribution) \u2014 the boundary it can serve is post-normalization, which is not the provider boundary the spike scoped"
+  },
+  {
+   "criterion": "no timestamp timezone loss",
+   "status": "PASS"
+  },
+  {
+   "criterion": "no Decimal-to-float conversion",
+   "status": "PASS"
+  },
+  {
+   "criterion": "deterministic errors independent of row order",
+   "status": "PASS"
+  },
+  {
+   "criterion": "no mutation of the input DataFrame",
+   "status": "PASS"
+  },
+  {
+   "criterion": "runtime/peak-memory regression within 20%",
+   "status": "FAIL",
+   "evidence": "median pandera/native ratio 81-267x on small fixtures; 8.3x on a 2000-row trade batch (native ~0.040s vs pandera ~0.331s)"
+  },
+  {
+   "criterion": "optional import isolation (hot path independent of pandas/pandera)",
+   "status": "PASS",
+   "evidence": "subprocess isolation test green"
+  }
+ ],
+ "conclusion": "native frozen schema validator RETAINED; pandera 0.33.1 remains installed as a dev-only dependency of record for the spike evidence; it is not imported by any production module (deferred_import_scan verifies)",
+ "is_a_successful_outcome": true
+}
