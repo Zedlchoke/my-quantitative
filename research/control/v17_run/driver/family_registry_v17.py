@@ -86,6 +86,42 @@ spec JSONs under ``driver/families/`` reference these ids):
     Series value = the STATE path (1.0 ON / 0.0 flat; ``None`` before the
     median window exists); hold-through days carry the state unchanged.
 
+``OICASCADE.anchor`` / ``OICASCADE.neighbour`` / ``OICASCADE.control``
+    V17-A6-P2-OICASCADE OI-collapse cascade-exhaustion event book (H4,
+    BTCUSDT+ETHUSDT+SOLUSDT, long-only 24h event book; selection v3 --
+    implemented 1:1 from the frozen proposal blob ff38f2c5c7d617fa2fbf2de
+    bff0007f3d73a003f).  Needs the REDUCED open-interest endpoint series
+    (data.binance.vision futures metrics, 1,095-file sha-manifested pull,
+    reduced cache referenced by the family spec's per-arm
+    ``endpoint_series`` path), so the formulas declare the ``endpoint``
+    keyword and the driver passes the availability-aligned series through
+    (one value per H4 bucket: the last metrics snapshot with create_time
+    tau <= that bucket's close; null = no admissible snapshot within the
+    frozen +/-30 min endpoint tolerance).  Gate at H4 close T:
+    ``r_OI(T) = OI(T)/OI(T-24h) - 1`` (both endpoint buckets present, else
+    the frozen substitution "undefined = 0") must be <= the rolling P10
+    (neighbour P5) of the PRIOR 720 strictly-past H4 closes AND the panel
+    24h return ``R_24h(T) = last_price(T)/last_price(T-24h) - 1 < 0``.
+    Series = +1.0 at a TAKEN event (driver lag 0 + vwap fill => entry at
+    the next H4 bucket's published VWAP; exit span holding_buckets 5/11 =
+    the first bucket close >= T+24h / T+48h), 0.0 elsewhere, ``None``
+    before the quantile window exists.  One position per symbol: events
+    firing while a position is open are ignored (0.0), re-arm after flat.
+    The control is the randomized-event-time sham: per symbol,
+    ``numpy.random.default_rng(1717)`` (fresh per symbol -- the sham is
+    per-symbol), rejection-sampling the anchor's TAKEN-window count of 24h
+    long windows uniformly over S0, excluding +/-1-day fold purge zones,
+    closes within +/-3 days of any true gate-fired event, and closes
+    within 24h of an accepted window (redraw on collision; exhausted draw
+    space = hard error).  DATA AUTHORITY NOTES (recorded for A1): the
+    sha-manifest covers S0 only (2025-08-22..2026-08-21) -- the proposal's
+    pre-S0 warmup segment (2025-04-25..2025-08-21) is absent from the
+    cached pull, so on the cached authority the 720-close window funds no
+    decisions before S0 H4 index 720; and the reduced cache's BTCUSDT/
+    ETHUSDT arrays are byte-identical to SOLUSDT's (the D2 reduction wrote
+    the loop-final per-symbol series under every key) -- the formulas are
+    data-source-agnostic; both notes ride the family spec.
+
 Percentile/median conventions (implementation pins, conservative): the
 rolling quantile is ``numpy.percentile`` linear interpolation; the median
 is ``numpy.median`` (average of the two middles).  The reshuffle PRNG is
@@ -766,6 +802,342 @@ def wkndliq_control(
 
 
 # --------------------------------------------------------------------------- #
+# V17-A6-P2-OICASCADE -- OI-collapse cascade-exhaustion event book (frozen
+# proposal research/control/v17_run/d1/a6/proposal_P2.json, blob sha
+# ff38f2c5c7d617fa2fbf2debff0007f3d73a003f; selection v3, never yet
+# implemented before this lane)
+# --------------------------------------------------------------------------- #
+#: H4 buckets per UTC day on the frozen clock (24h / 4h).
+OIC_H4_PER_DAY = 6
+#: Frozen sham PRNG seed (proposal section ``control``, verbatim).
+OIC_SHAM_SEED = 1717
+#: Sham draws exclude any H4 close within +/-3 days of a true event.
+OIC_SHAM_EVENT_EXCLUSION_DAYS = 3
+#: Deterministic bound on rejection-sampling attempts per required window
+#: (fail closed: an exhausted draw space is a hard error, never a shortfall).
+OIC_MAX_DRAW_ATTEMPTS_PER_WINDOW = 200_000
+
+_H4_MS = 4 * 3600 * 1000
+_DAY_MS = 24 * 3600 * 1000
+
+
+def _oic_bucket_close_ms(key: str) -> int:
+    """UTC close (ms) of the H4 bucket whose START key is ``YYYY-MM-DDTHH``
+    (the driver's H4 grid keys are bucket-start hours 00/04/08/12/16/20)."""
+    from datetime import datetime, timezone
+
+    dt = datetime.strptime(str(key), "%Y-%m-%dT%H").replace(tzinfo=timezone.utc)
+    return int(dt.timestamp() * 1000) + _H4_MS
+
+
+def _oic_common_params(params: Mapping[str, Any]) -> Tuple[float, int, int, int]:
+    """Validate one arm's frozen gate parameters.
+
+    ``oi_percentile``: the r_OI gate percentile (anchor 10.0 = P10,
+    neighbour 5.0 = P5); ``window_closes``: strictly-past H4 closes funding
+    the rolling quantile (frozen 720 = 120d x 6 H4, the proposal's "720 H4
+    decisions of consumed lookback"); ``holding_buckets``: driver exit span
+    entry->exit (5 = 24h held buckets t+1..t+6 for the anchor, 11 = 48h for
+    the neighbour); ``h4_per_day``: 6 (frozen clock constant).
+    """
+    oi_percentile = float(params["oi_percentile"])
+    window_closes = int(params.get("window_closes", 720))
+    holding_buckets = int(params["holding_buckets"])
+    h4_per_day = int(params.get("h4_per_day", OIC_H4_PER_DAY))
+    if not 0.0 < oi_percentile < 100.0:
+        raise ValueError(
+            f"oi_percentile must be in (0, 100), got {oi_percentile}"
+        )
+    if window_closes < 1:
+        raise ValueError(f"window_closes must be >= 1, got {window_closes}")
+    if holding_buckets < 1:
+        raise ValueError(f"holding_buckets must be >= 1, got {holding_buckets}")
+    if h4_per_day < 1:
+        raise ValueError(f"h4_per_day must be >= 1, got {h4_per_day}")
+    return oi_percentile, window_closes, holding_buckets, h4_per_day
+
+
+def _oic_check_grid_regular(closes: Sequence[int]) -> None:
+    """The 24h-ago endpoint of bucket i is the series value 6 buckets back;
+    that index arithmetic is only honest on a gap-free 4h grid (fail closed
+    on any irregular spacing)."""
+    for a, b in zip(closes, closes[1:]):
+        if b - a != _H4_MS:
+            raise ValueError(
+                "OICASCADE: the H4 bucket grid is not a gap-free 4h UTC grid "
+                f"({a} -> {b}); refusing (the 24h endpoint index law needs it)"
+            )
+
+
+def _oic_gate(
+    rows: Sequence[Mapping[str, Any]],
+    oi: Sequence[Optional[float]],
+    *,
+    oi_percentile: float,
+    window_closes: int,
+    holding_buckets: int,
+    h4_per_day: int,
+) -> Tuple[List[Optional[float]], List[int]]:
+    """Frozen event gate + one-position book over ONE symbol's H4 frames.
+
+    Availability law (endpoint series): value i is the LAST metrics
+    snapshot with create_time tau <= close(i) (the reducer's own
+    last-snapshot-at-or-before-close law); a None at bucket i means no
+    admissible snapshot for that bucket (the freshest available snapshot
+    would be a full bucket stale -- outside the frozen +/-30 min endpoint
+    tolerance).  r_OI(T) = OI(T)/OI(T-24h) - 1 with BOTH endpoints present;
+    otherwise the frozen substitution "undefined = 0" applies.  No value at
+    a bucket AFTER its close can ever enter (the decision at i reads only
+    buckets i and i-6 for the endpoints and the strictly-past window
+    [i-window_closes, i-1] for the threshold).
+
+    Event(T) = 1 iff r_OI(T) <= rolling P(oi_percentile) of the PRIOR
+    window_closes H4 closes AND R_24h(T) = last_price(T)/last_price(T-24h)
+    - 1 < 0.  The rolling quantile is numpy.percentile linear interpolation
+    (the registry-standard convention pin).
+
+    One position per symbol: an event firing while a position is open is
+    IGNORED (series 0.0) and the book re-arms only after flat -- decisions
+    at most ``holding_buckets`` closes after a taken event collide with its
+    open window (entry fill at t+1 vwap .. exit fill at t+1+holding vwap),
+    so the taken set is pairwise >= h4_per_day apart for the frozen 24h
+    book.  Series[i] = +1.0 at a TAKEN event (desired long over the bucket
+    that follows -- the driver's one-bar lag fills at bucket i+1's
+    published VWAP), 0.0 elsewhere, None before the quantile window exists
+    (honest warmup).  Also returns ALL gate-fired event closes (suppressed
+    ones included) -- the sham's "+/-3 days of a true event" exclusion set.
+    """
+    n = len(rows)
+    if len(oi) != n:
+        raise ValueError(
+            f"OICASCADE: endpoint OI series length {len(oi)} != H4 grid {n}"
+        )
+    closes = [_oic_bucket_close_ms(str(r["hour_utc"])) for r in rows]
+    _oic_check_grid_regular(closes)
+    back = h4_per_day  # 24h-ago bucket offset on the regular grid
+    r_oi: List[float] = []
+    for i in range(n):
+        j = i - back
+        if j >= 0 and oi[i] is not None and oi[j] is not None:
+            r_oi.append(float(oi[i]) / float(oi[j]) - 1.0)
+        else:
+            r_oi.append(0.0)  # frozen "undefined = 0" substitution
+    r_24: List[Optional[float]] = []
+    for i in range(n):
+        j = i - back
+        if j >= 0:
+            prev = float(rows[j]["last_price"])
+            r_24.append(
+                float(rows[i]["last_price"]) / prev - 1.0 if prev > 0.0 else None
+            )
+        else:
+            r_24.append(None)
+    series: List[Optional[float]] = [None] * n
+    events: List[int] = []
+    last_taken: Optional[int] = None
+    for i in range(window_closes, n):
+        p = float(np.percentile(r_oi[i - window_closes : i], oi_percentile))
+        if (
+            r_oi[i] <= p
+            and r_24[i] is not None
+            and r_24[i] < 0.0
+        ):
+            events.append(i)
+            if last_taken is None or i - last_taken > holding_buckets:
+                series[i] = 1.0
+                last_taken = i
+            else:
+                series[i] = 0.0  # event while open: ignored, no pyramiding
+        else:
+            series[i] = 0.0
+    return series, events
+
+
+def _oic_endpoint_or_refuse(
+    endpoint: Optional[Mapping[str, Sequence[Optional[float]]]],
+    panels: Mapping[str, Sequence[Mapping[str, Any]]],
+) -> None:
+    if endpoint is None:
+        raise ValueError(
+            "OICASCADE formulas require the reduced OI endpoint series "
+            "(driver passes endpoint=... from the arm's endpoint_series "
+            "path); refusing to approximate the OI-collapse gate from "
+            "panel columns alone"
+        )
+    missing = [s for s in panels if s not in endpoint]
+    if missing:
+        raise ValueError(f"OICASCADE endpoint series lacks symbols {missing}")
+
+
+def _oic_purged_bucket_days(n_days: int) -> frozenset:
+    """Mirror of the driver's 1-day purge (run_v17_cell.purged_day_indices):
+    +/-1 full UTC day around each internal fold boundary at floor(i*N/3)."""
+    if n_days < 3:
+        raise ValueError(f"cannot form 3 folds from {n_days} days")
+    edges = [i * n_days // 3 for i in range(3)] + [n_days]
+    purged = {edges[1] - 1, edges[1], edges[2] - 1, edges[2]}
+    return frozenset(p for p in purged if 0 <= p < n_days)
+
+
+@register("OICASCADE.anchor", example_only=False)
+def oicascade_anchor(
+    panels: Mapping[str, Sequence[Mapping[str, Any]]],
+    params: Mapping[str, Any],
+    *,
+    endpoint: Optional[Mapping[str, Sequence[Optional[float]]]] = None,
+) -> Dict[str, List[Optional[float]]]:
+    """V17-A6-P2-OICASCADE anchor: bottom-decile 24h OI collapse AND
+    negative 24h panel return -> LONG 24h.
+
+    Frozen anchor parameters (proposal section ``anchor``): gate at the
+    trailing-120d P10 of r_OI_24h (window_closes 720, strictly-past), R_24h
+    < 0; entered at the NEXT H4 bucket's VWAP (driver lag 0 + fill_price
+    vwap), exit at the first bucket whose close >= T + 24h => exit span
+    holding_buckets 5 on the H4 grid (entry bucket t+1, exit bucket t+6:
+    exactly the buckets whose VWAPs the frozen text fills at).  Long-only
+    +1, one position per symbol, overlapping events ignored.
+    """
+    _oic_endpoint_or_refuse(endpoint, panels)
+    pct, win, holding, per_day = _oic_common_params(params)
+    return {
+        sym: _oic_gate(
+            rows,
+            endpoint[sym],
+            oi_percentile=pct,
+            window_closes=win,
+            holding_buckets=holding,
+            h4_per_day=per_day,
+        )[0]
+        for sym, rows in panels.items()
+    }
+
+
+@register("OICASCADE.neighbour", example_only=False)
+def oicascade_neighbour(
+    panels: Mapping[str, Sequence[Mapping[str, Any]]],
+    params: Mapping[str, Any],
+    *,
+    endpoint: Optional[Mapping[str, Sequence[Optional[float]]]] = None,
+) -> Dict[str, List[Optional[float]]]:
+    """V17-A6-P2-OICASCADE neighbour: frozen (P5, 48h) variant.
+
+    Same mechanism, frozen neighbour parameters (proposal section
+    ``neighbour``): gate at trailing-120d P5 of r_OI_24h with 48h holding
+    => exit span holding_buckets 11 (entry t+1, exit t+12 = the first
+    bucket close >= T + 48h); identical long direction, fills and costs.
+    Roughly half the events with twice the holding.
+    """
+    _oic_endpoint_or_refuse(endpoint, panels)
+    pct, win, holding, per_day = _oic_common_params(params)
+    return {
+        sym: _oic_gate(
+            rows,
+            endpoint[sym],
+            oi_percentile=pct,
+            window_closes=win,
+            holding_buckets=holding,
+            h4_per_day=per_day,
+        )[0]
+        for sym, rows in panels.items()
+    }
+
+
+@register("OICASCADE.control", example_only=False)
+def oicascade_control(
+    panels: Mapping[str, Sequence[Mapping[str, Any]]],
+    params: Mapping[str, Any],
+    *,
+    endpoint: Optional[Mapping[str, Sequence[Optional[float]]]] = None,
+) -> Dict[str, List[Optional[float]]]:
+    """V17-A6-P2-OICASCADE control: randomized-event-time sham (frozen).
+
+    Frozen control mechanics (proposal section ``control``), verbatim:
+    with ``numpy.random.default_rng(1717)`` (seed pinned to the frozen
+    1717; ONE fresh generator per symbol -- the sham is per-symbol, so
+    each symbol's stream is a pure function of the seed and its own true
+    event set), draw per symbol the SAME number of 24h LONG windows as the
+    anchor book's taken windows, at H4 closes sampled uniformly over S0,
+    EXCLUDING (redraw on collision, rejection sampling):
+      * closes inside the +/-1-day fold purge zones (the driver's frozen
+        purged UTC days, mirrored by ``_oic_purged_bucket_days``);
+      * closes within +/-3 days of ANY true gate-fired event of that
+        symbol (18 H4 buckets);
+      * closes closer than 24h (6 buckets) to an already-accepted sham
+        window (the anchor's own no-pyramiding geometry: taken events are
+        pairwise >= 6 buckets apart).
+    Direction always +1; identical next-H4-VWAP fills, once-per-fill
+    tier-2.0 costs and force-flat law (the driver's).  This severs the
+    conditioning link (OI collapse + down-move) while preserving
+    unconditional long exposure; per G11, if the sham earns the same
+    (positive) sign with |sham exp| >= 0.5 x |anchor exp| the family DIES.
+    No warmup None: the placebo consumes no rolling statistics of its own
+    (the true-event set comes from the anchor gate).  An exhausted draw
+    space is a hard error (fail closed, never a shortfall in windows).
+    """
+    _oic_endpoint_or_refuse(endpoint, panels)
+    pct, win, holding, per_day = _oic_common_params(params)
+    seed = int(params["seed"])
+    if seed != OIC_SHAM_SEED:
+        raise ValueError(
+            f"OICASCADE.control seed must be the frozen 1717, got {seed}"
+        )
+    exclusion = int(params.get("event_exclusion_days", OIC_SHAM_EVENT_EXCLUSION_DAYS))
+    if exclusion < 0:
+        raise ValueError(f"event_exclusion_days must be >= 0, got {exclusion}")
+    max_attempts = int(
+        params.get("max_draw_attempts", OIC_MAX_DRAW_ATTEMPTS_PER_WINDOW)
+    )
+    out: Dict[str, List[Optional[float]]] = {}
+    for sym, rows in panels.items():
+        gate, events = _oic_gate(
+            rows,
+            endpoint[sym],
+            oi_percentile=pct,
+            window_closes=win,
+            holding_buckets=holding,
+            h4_per_day=per_day,
+        )
+        needed = sum(1 for v in gate if v == 1.0)  # anchor TAKEN windows
+        n = len(rows)
+        if needed == 0:
+            out[sym] = [0.0] * n  # nothing to match: the honest mirror
+            continue
+        closes = [_oic_bucket_close_ms(str(r["hour_utc"])) for r in rows]
+        _oic_check_grid_regular(closes)
+        first_start = closes[0] - _H4_MS
+        day_of = [(c - _H4_MS - first_start) // _DAY_MS for c in closes]
+        purged_days = _oic_purged_bucket_days(
+            len({str(r["day_utc"]) for r in rows})
+        )
+        excl_buckets = exclusion * per_day
+        rng = np.random.default_rng(seed)  # frozen seed, fresh per symbol
+        accepted: List[int] = []
+        attempts = 0
+        budget = max_attempts * needed
+        while len(accepted) < needed:
+            if attempts >= budget:
+                raise ValueError(
+                    f"OICASCADE.control[{sym}]: sham draw space exhausted "
+                    f"({attempts} draws for {needed} windows); refusing "
+                    "(fail closed)"
+                )
+            attempts += 1
+            k = int(rng.integers(0, n))
+            if day_of[k] in purged_days:
+                continue  # +/-1-day fold purge zone
+            if any(abs(k - e) <= excl_buckets for e in events):
+                continue  # within +/-3 days of a true event
+            if any(abs(k - a) < per_day for a in accepted):
+                continue  # overlaps an accepted 24h sham window
+            accepted.append(k)
+        series: List[Optional[float]] = [0.0] * n
+        for k in accepted:
+            series[k] = 1.0
+        out[sym] = series
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # The EXAMPLE formula -- FOR TESTS ONLY (see module docstring)
 # --------------------------------------------------------------------------- #
 @register("EXAMPLE_TEST_ONLY.h1_vwap_revert", example_only=True)
@@ -806,6 +1178,10 @@ __all__ = [
     "ATTN_REFERENCE",
     "ATTN_TRADED",
     "EXAMPLE_ONLY_PREFIX",
+    "OIC_H4_PER_DAY",
+    "OIC_MAX_DRAW_ATTEMPTS_PER_WINDOW",
+    "OIC_SHAM_EVENT_EXCLUSION_DAYS",
+    "OIC_SHAM_SEED",
     "WKND_SHAM_SEED",
     "WKND_WEEKDAYS",
     "WKND_WEEK_ANCHOR_WEEKDAY",
@@ -815,6 +1191,9 @@ __all__ = [
     "day_index_from_origin",
     "example_h1_vwap_revert",
     "is_example_only",
+    "oicascade_anchor",
+    "oicascade_control",
+    "oicascade_neighbour",
     "register",
     "registered_ids",
     "resolve",
