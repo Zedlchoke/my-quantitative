@@ -387,8 +387,80 @@ def main():
             _pace_on_ok()
             _pace_sleep()
         sf.close(); df.close()
+
+        # Lead-mandated final reconciliation (constraint 4): zero unexplained.
+        # TRANSIENT_SKIPPED docs are never in .done; retry them in bounded passes.
+        for pass_no in range(1, 6):
+            undone = [r for r in refs if f"{r['cik']}|{r['accession']}" not in done_docs]
+            if not undone:
+                break
+            status(state=f"STAGE_B_RECOVERY_PASS_{pass_no}", undone=len(undone), total=len(refs))
+            sf = open(STREAM, "a"); df = open(f"{XML_DIR}/.defects.jsonl", "a")
+            for ref in undone:
+                key = f"{ref['cik']}|{ref['accession']}"
+                cik_int = int(ref["cik"].replace("CIK", ""))
+                acc = ref["accession"].replace("-", "")
+                dname = resolve_raw_doc_name(cik_int, acc, ref.get("primary_doc"))
+                if dname is None:
+                    try:
+                        st2, raw2 = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/index.json")
+                    except TransientSkip as ts:
+                        df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED_IDX:{ts}"}) + "\n")
+                        continue
+                    if st2 == 200:
+                        names = [it["name"] for it in json.loads(raw2).get("directory", {}).get("item", [])]
+                        cands = [n for n in names if n.lower().endswith(".xml") and not n.lower().startswith(("xsl", "primary_doc"))]
+                        dname = cands[0] if cands else None
+                if dname is None:
+                    df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED"}) + "\n")
+                    done_docs.add(key)
+                    continue
+                try:
+                    st, raw = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}")
+                except TransientSkip as ts:
+                    df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED:{ts}"}) + "\n")
+                    continue
+                if st == 404:
+                    df.write(json.dumps({"accession": ref["accession"], "reason": "DOC_404_FINAL"}) + "\n")
+                    done_docs.add(key)
+                    continue
+                if st != 200:
+                    raise RuntimeError(f"CODE recovery HTTP {st} {ref['accession']}")
+                od = f"{XML_DIR}/{ref['cik']}/{acc}"
+                os.makedirs(od, exist_ok=True)
+                open(f"{od}/{dname}", "wb").write(raw)
+                rows, defects = parse_form4_xml(raw, ref["cik"], ref["accession"], ref["acceptance"], ref["filing_date"])
+                for r in rows:
+                    sig = (r["cik"], r["accession"], r["transaction_date"], r["direction"], r["owner_cik"], r["owner_name"])
+                    if sig not in seen_stream:
+                        sf.write(json.dumps(r) + "\n")
+                        seen_stream.add(sig)
+                for d in defects:
+                    df.write(json.dumps(d) + "\n")
+                done_docs.add(key)
+                _pace_on_ok(); _pace_sleep()
+            sf.close(); df.close()
+            open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
+
+        # coverage proof: every doc fetched OR accounted with a named reason
+        undone_final = [r for r in refs if f"{r['cik']}|{r['accession']}" not in done_docs]
+        reasons = {}
+        for line in open(f"{XML_DIR}/.defects.jsonl"):
+            try:
+                d0 = json.loads(line)
+                reasons.setdefault(d0["accession"], d0["reason"])
+            except Exception:
+                pass
+        accounted = sum(1 for r in refs if f"{r['cik']}|{r['accession']}" not in done_docs and reasons.get(r["accession"]))
+        ok_proof = (len(undone_final) == 0) or (len(undone_final) == accounted)
+        recon = {"total_refs": len(refs), "done": len(done_docs),
+                 "undone": len(undone_final), "undone_with_reason": accounted,
+                 "zero_unexplained": ok_proof}
+        json.dump(recon, open(f"{XML_DIR}/.reconciliation.json", "w"), indent=1)
+        if not ok_proof:
+            raise RuntimeError(f"RECONCILIATION_FAILED: {recon}")
         open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
-        status(state="STAGE_B_DONE", docs=len(done_docs), filings=len(refs))
+        status(state="STAGE_B_DONE", docs=len(done_docs), filings=len(refs), reconciliation=recon)
 
         status(state="ALL_DONE", symbols=len(sym_map))
         h = _HANDLE.get("h") or handle
