@@ -1,0 +1,16 @@
+{
+ "schema": "mdp_a7_objections@1",
+ "audit": "MARKET_DATA_PLANE_V1_A7",
+ "commit_audited": "42981b1b1f66ed03e0a933db0a5ef7041220d80e",
+ "objections": [
+  {
+   "id": "OBJ-1",
+   "severity": "LOW",
+   "finding": "The integration branch tip advanced past the frozen audit SHA while A7 was in flight: orca/market-data-plane-v1-integration is at b344f45, not the audited 42981b1. Diff 42981b1..b344f45 touches only run-control files (event_log.jsonl, heartbeat.json, state.json) — zero audited code, and the commit message itself records 'G11 A7 in flight from frozen 42981b1'. No gate claim is affected; recorded for SHA-chain traceability so the terminal report must state that G11 is granted against 42981b1.",
+   "evidence": "git rev-parse orca/market-data-plane-v1-integration => b344f450ba09c5b046467b3f8c83a5b2674aec08; git diff --stat 42981b1..b344f45 => 3 files changed (event_log.jsonl +1, heartbeat.json, state.json); b344f45 message: 'MDP-V1 run control: gates G0-G10 recorded, G9 partial (full suite deferred on foreign heavy lock), G11 A7 in flight from frozen 42981b1'",
+   "recommendation": "P9 terminal report must pin the audited SHA 42981b1 in the G11 record and keep post-audit commits run-control-only, or open a new audit wave if any code changes."
+  }
+ ],
+ "high_critical_count": 0,
+ "notes": "All other observations were verified non-objections: verify_chunk returns a diagnostic report instead of raising (documented contract; corruption is visible via report.errors + scan_orphans and the write path raises HashDisagreement); archive.py's 'except OSError: pass' is temp-file cleanup immediately followed by re-raise; the two pandera-spike 'except Exception: pass' sites are timing-benchmark loops in the isolated dev-only spike module; the empty tracked .dvc/config carries zero credentials or host paths (host path confined to gitignored .dvc/config.local); src/fastpath.dll is unhashed in upstream_manifest but is an explicitly forbidden binary; the M0 doctor MEDIUM MONITORING_MUTATION (owner-space registry drift at f3903f8) is below the HIGH bar the gate requires explaining and is owner-space canonical sync deferred to merge."
+}
