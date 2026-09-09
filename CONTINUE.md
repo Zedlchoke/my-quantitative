@@ -1,25 +1,43 @@
-# CONTINUE.md — program checkpoint (Lead-synced 2026-09-09 morning)
+# CONTINUE.md — program checkpoint (Lead-synced 2026-09-09 midday)
 
 Read the LIVE plan of the cycle you serve (highest version per asset in
 `plans/`); the canonical registry (`plans/CYCLE_REGISTRY.json` via
 `researchctl cycle list`) is the router authority. Measured 2026-09-09
-~10:20 VN: **three asset cycles moving.** CRYPTO-V17 post-remediation
-(selection re-frozen v2 WKNDLIQ + ATTN-PHASE at `6da1d76`; Q re-run in
-flight; next: A7 fresh-context re-audit, then owner GO). STOCKS-FREE-V13
-substrate crawl (~2,400/345,152 Form-4 docs, ETA ~Sunday; D2 blocked on
-partial substrate). FOREX-FREE-V8 scored-complete
-`REJECT_ALL` (falsification-by-control #14, budget 3/6, `07e1b95`);
-close chain in flight (twin reproduction → A7 terminal → Lead sync:
-forex 42/42, program 236/239, registry TERMINAL). **FOREX-FREE-V9**
-(`plans/PLAN_forex_v9.md`, owner-requested 2026-09-09 — the
-PPP-deviation frontier) is written and PLANNED_NOT_STARTED: bootstrap is
-BLOCKED until the V8 close chain lands (plan §0). GO phrases V17/V13
-registered-unconsumed; V8's was consumed at its gate (`720decb`) and is
-dead; V9's registers with its plan. This file is a derived checkpoint,
-not an authority. Machine: heavy phases queue under the machine-wide
-lock (NOT_RUN_RESOURCE_CONFLICT, never contention; V13's SEC
-silence-window yielding is the standing pattern); root commits are
-atomic single-purpose pathspec only (P-10).
+~12:50 VN:
+
+- **FOREX-FREE-V8: TERMINAL, fully closed.** `FOREX_FREE_V8_REJECT_ALL`
+  (falsification-by-control #14 — DGS10-level control out-earns the
+  anchor 4.0116x same-sign; DSR N=42 0.341/0.406/0.540). A7 terminal
+  `CONFIRM..._0_HIGH_CRITICAL` (`869f391`), closeout `4018884`,
+  reproduction ALL_MATCH (twin r1 complete 11:40 VN), budget 3/6, GO
+  phrase dead with the cycle. Registry TERMINAL in root (`079ebd2`).
+  Lead evidence sync THIS commit: ledger 236/239 (forex 42/42), failure
+  registry 56/0 PASS, MAP V8 entry.
+- **FOREX-FREE-V9: bootstrap precondition SATISFIED** (PLAN_forex_v9 §0:
+  twin → closeout → A7T → registry TERMINAL + ledger sync all landed).
+  PLANNED_NOT_STARTED — activates on owner dispatch. GO phrase
+  `GO FOREX V9 SCORED EXECUTION` registered-unconsumed.
+- **CRYPTO-V17: selection RE-FROZEN v3** (`74781fb`) after A7 v2
+  REFUSED (WKNDLIQ D2 novelty was buggy — day-string vs weekday-names;
+  re-measured |rho| 0.5628 → VETO_MEASURED; both lane-1 proposals dead
+  by frozen rules). R3 branch applies: ATTN-PHASE + OICASCADE selected
+  (mandatory-lane MISS disclosed — lane-1 re-opens only in a future
+  owner plan). Next: OICASCADE implementation lane → Q v3 → fresh A7 v3
+  → owner GO. One transient FAILED lock row during Q-job relaunch
+  (stderr json.loads) — A1 active on the arc.
+- **STOCKS-FREE-V13: speed experiment LIVE (owner-ordered max speed).**
+  Measured 12:42 VN: 24,502/345,152 docs at **6.48 doc/s** (~15x the
+  morning's 0.44/s); ETA ~overnight (~02:30 VN 2026-09-10). Census
+  contract untouched; byte cross-verify per the pre-authorized
+  experiment shape; D2 still BLOCKED until substrate complete. Two
+  transient FAILED lock rows during experiment relaunches (NameError
+  subprocess / json.loads) disclosed. Heartbeat-stuck-at-acquire
+  hygiene item carried for the A1.
+- Machine: one heavy lane machine-wide (NOT_RUN_RESOURCE_CONFLICT,
+  never contention); V13 yields on SEC 503 windows; the 12:45 courtesy-
+  yield automation fired and found NO yield needed (both waiters had
+  completed/died before 12:45). Root commits atomic pathspec only
+  (P-10).
 
 ## Measured program state
 
