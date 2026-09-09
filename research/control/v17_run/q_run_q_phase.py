@@ -40,7 +40,7 @@ def digest_dir(d):
 def main():
     spec_probe = WORKTREE / "research/control/v17_run/driver/families/V17-A4-P2-SILRES.spec.json"
     print(f"WORKTREE={WORKTREE} spec_exists={spec_probe.exists()}", flush=True)
-    deadline = time.time() + 4 * 3600
+    deadline = time.time() + 12 * 3600  # extended: the V13 holder is an owner download, not an ingest
     while True:
         try:
             cm = heavy_lock.acquire(
