@@ -215,7 +215,8 @@ def cmd_cycle_update(args) -> int:
     transition table (TERMINAL is absorbing; closing kills the GO phrase
     per P-8); records every applied change as an append-only journal event.
     """
-    if args.head is None and args.lifecycle is None:
+    if args.head is None and args.lifecycle is None and args.phase is None \
+            and args.workers is None and args.active_heavy is None:
         print("refused: nothing to update (pass --head and/or --lifecycle)", file=sys.stderr)
         return 2
     reg = _load_registry()
@@ -223,6 +224,10 @@ def cmd_cycle_update(args) -> int:
     changes, new_sha = cycle_registry.update_cycle(
         REGISTRY_PATH, reg, prev_sha=prev_sha, cycle_id=args.cycle,
         head=args.head, lifecycle=args.lifecycle, reason=args.reason,
+        phase=args.phase,
+        workers=None if args.workers is None else int(args.workers),
+        active_heavy=None if args.active_heavy is None
+        else args.active_heavy == "true",
     )
     print(json.dumps({
         "cycle": args.cycle,
@@ -356,6 +361,10 @@ def main(argv=None) -> int:
     c.add_argument("--cycle", required=True)
     c.add_argument("--head", default=None, help="new measured branch HEAD sha (40-hex)")
     c.add_argument("--lifecycle", default=None, choices=cycle_registry.LIFECYCLE)
+    c.add_argument("--phase", default=None, help="free-text measured phase label")
+    c.add_argument("--workers", default=None, help="live worker count (non-negative int)")
+    c.add_argument("--active-heavy", default=None, choices=["true", "false"],
+                   help="whether the cycle currently owns the machine-wide heavy slot")
     c.add_argument("--reason", default="operator update")
     c.set_defaults(fn=cmd_cycle_update)
     c = csub.add_parser("reconcile")

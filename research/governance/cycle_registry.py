@@ -397,6 +397,8 @@ def register_cycle(path: os.PathLike | str, registry: dict, *, prev_sha: Optiona
 
 def update_cycle(path: os.PathLike | str, registry: dict, *, prev_sha: Optional[str],
                  cycle_id: str, head: Optional[str] = None, lifecycle: Optional[str] = None,
+                 phase: Optional[str] = None, workers: Optional[int] = None,
+                 active_heavy: Optional[bool] = None,
                  reason: str = "update") -> tuple:
     """Update a cycle's measured HEAD and/or lifecycle atomically.
 
@@ -407,15 +409,30 @@ def update_cycle(path: os.PathLike | str, registry: dict, *, prev_sha: Optional[
     Returns (changes, new_registry_sha256).
     """
     rec = resolve(registry, cycle_id)
-    if head is None and lifecycle is None:
+    if head is None and lifecycle is None and phase is None \
+            and workers is None and active_heavy is None:
         raise ValueError("update: nothing to do (pass --head and/or --lifecycle)")
     if head is not None and not _HEX40.match(head):
         raise ValueError(f"update: head must be a 40-hex sha, got {head!r}")
+    if workers is not None and (not isinstance(workers, int) or workers < 0):
+        raise ValueError(f"update: workers must be a non-negative int, got {workers!r}")
     changes = []
     if head is not None and head != rec["head"]:
         changes.append({"cycle_id": cycle_id, "field": "head",
                         "from": rec["head"], "to": head})
         rec["head"] = head
+    if phase is not None and phase != rec.get("phase"):
+        changes.append({"cycle_id": cycle_id, "field": "phase",
+                        "from": rec.get("phase"), "to": phase})
+        rec["phase"] = phase
+    if workers is not None and workers != rec.get("workers", 0):
+        changes.append({"cycle_id": cycle_id, "field": "workers",
+                        "from": rec.get("workers", 0), "to": workers})
+        rec["workers"] = workers
+    if active_heavy is not None and active_heavy != rec.get("active_heavy", False):
+        changes.append({"cycle_id": cycle_id, "field": "active_heavy",
+                        "from": rec.get("active_heavy", False), "to": active_heavy})
+        rec["active_heavy"] = active_heavy
     if lifecycle is not None and lifecycle != rec["lifecycle"]:
         prev_lifecycle = rec["lifecycle"]
         transition(registry, cycle_id, lifecycle, reason=reason)
