@@ -33,6 +33,7 @@ STAGING = WORKTREE / "v17_data" / "staging_v17"
 D2 = WORKTREE / "research" / "control" / "v17_run" / "d2"
 SYMS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 S0_START_MS = 1755820800000            # 2025-08-22T00:00:00Z
+WARMUP_START_MS = S0_START_MS - 119 * 86400000  # pre-S0 warmup for the OI P10 window (proposal-frozen 720 H4 closes)
 S0_END_MS = S0_START_MS + 365 * 86400000 - 1
 DAY_MS = 86400000
 
@@ -87,11 +88,12 @@ def pull_oi_metrics():
             return json.loads(cache.read_text())
     d0 = datetime(2025, 8, 22, tzinfo=timezone.utc).date()
     oi = {}
+    oi_snapshots = {}
     manifest = []
     for sym in SYMS:
         series = {}  # h4_bucket_start_ms -> last sum_open_interest
-        for i in range(365):
-            day = d0.fromordinal(d0.toordinal() + i).isoformat()
+        for i in range(484):  # 365 S0 days + 119 pre-S0 warmup days (proposal P10 window needs 720 H4 closes)
+            day = d0.fromordinal(d0.toordinal() + i - 119).isoformat()
             y, m, dd = day.split("-")
             url = f"https://data.binance.vision/data/futures/um/daily/metrics/{sym}/{sym}-metrics-{y}-{m}-{dd}.zip"
             raw = fetch(url, binary=True)
@@ -109,7 +111,7 @@ def pull_oi_metrics():
                         tau = int(datetime.strptime(row["create_time"].strip(),
                                                     "%Y-%m-%d %H:%M:%S")
                                   .replace(tzinfo=timezone.utc).timestamp() * 1000)
-                        if tau < S0_START_MS or tau > S0_END_MS:
+                        if tau < WARMUP_START_MS or tau > S0_END_MS:
                             continue
                         h4 = tau // (4 * 3600 * 1000) * 4 * 3600 * 1000
                         v = row.get("sum_open_interest")
@@ -117,12 +119,12 @@ def pull_oi_metrics():
                             series[h4] = float(v)
             if (i + 1) % 60 == 0:
                 print(f"oi {sym}: {i + 1}/365 days", flush=True)
-        oi[sym] = [series[k] for k in sorted(series)]
+        oi_snapshots[sym] = [series[k] for k in sorted(series)]
         print(f"oi {sym}: {len(series)} H4 snapshots", flush=True)
     (D2 / "oi_metrics_manifest.json").write_text(json.dumps(
         {"files": len(manifest), "sources": manifest}, indent=0) + "\n")
-    cache.write_text(json.dumps({s: [series[k] for k in sorted(series)] for s in SYMS}))
-    return oi
+    cache.write_text(json.dumps(oi_snapshots))
+    return oi_snapshots
 
 # ---------------- novelty ----------------
 
