@@ -361,3 +361,137 @@ def cleanup_stale() -> dict:
     finally:
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
+
+
+# ------------------------------------------------------- inspection (MDP-V1 M0)
+
+def flock_state(lock_path: Path) -> str:
+    """Read-only probe: 'held' when ANOTHER process holds the flock, 'free'
+    when it could be taken (immediately released again). Never blocks."""
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
+    except OSError as exc:
+        return f"unopenable ({exc})"
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return "held"
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
+        return "free"
+    finally:
+        os.close(fd)
+
+
+VERDICT_HELD_PROVEN = "HELD_PROVEN"
+VERDICT_FREE_PROVEN = "FREE_PROVEN"
+VERDICT_DRIFT = CONTROL_STATE_DRIFT
+
+
+def inspect() -> dict:
+    """Classify the machine-wide heavy lock into EXACTLY one verdict:
+    HELD_PROVEN | FREE_PROVEN | CONTROL_STATE_DRIFT, each with an evidence
+    object. Ambiguous state NEVER becomes FREE (fail closed); this is a
+    read-only diagnostic — it never reclaims, archives or repairs.
+
+    HELD_PROVEN: RUNNING registry row + pid alive + process-start token
+                 matches the live holder + the flock is actually held.
+    FREE_PROVEN: no registry row AND the lock file is not flocked.
+    everything else (dead pid, token mismatch / PID reuse, missing or
+    unrecoverable token, malformed registry, registry row under a free
+    flock, flocked file without a row) -> CONTROL_STATE_DRIFT.
+    """
+    runtime = Path(machine_runtime_dir())
+    lock_path = runtime / LOCK_NAME
+    registry_path = runtime / REGISTRY_NAME
+
+    def evidence(pid=None, pid_alive=None, lstart=None, row_token=None,
+                 token_match=None, flock=None, row=None, note=None) -> dict:
+        ev = {
+            "pid": pid,
+            "pid_alive": pid_alive,
+            "lstart": lstart,
+            "registry_process_start_token": row_token,
+            "token_match": token_match,
+            "flock_state": flock,
+            "registry_path": str(registry_path),
+            "lock_path": str(lock_path),
+            "liveness_method": "os.kill(pid, 0) + ps -p PID -o lstart= token comparison",
+        }
+        if row is not None:
+            ev["registry_row"] = row
+        if note is not None:
+            ev["note"] = note
+        return ev
+
+    row, err = _load_registry(registry_path)
+    if err is not None:
+        return {
+            "verdict": VERDICT_DRIFT,
+            "reason": f"registry malformed ({err}) — fail closed, preserved for inspection",
+            "evidence": evidence(flock=flock_state(lock_path), row=None),
+        }
+
+    flock = flock_state(lock_path)
+    if row is None:
+        if flock == "free":
+            return {"verdict": VERDICT_FREE_PROVEN,
+                    "reason": "no registry row and the lock file is not flocked",
+                    "evidence": evidence(pid=None, pid_alive=False, lstart=None,
+                                         row_token=None, token_match=None, flock=flock)}
+        return {
+            "verdict": VERDICT_DRIFT,
+            "reason": "lock file is flocked but no registry row exists — holder unknown",
+            "evidence": evidence(flock=flock),
+        }
+
+    # a registry row exists — only a RUNNING row with full proof may be HELD
+    status = row.get("status")
+    pid = row.get("pid")
+    if status != "RUNNING":
+        return {
+            "verdict": VERDICT_DRIFT,
+            "reason": f"registry row status {status!r} (not RUNNING) — bookkeeping "
+                      "contradicts a clean lock state",
+            "evidence": evidence(pid=pid, flock=flock, row=row),
+        }
+    if not isinstance(pid, int):
+        return {
+            "verdict": VERDICT_DRIFT,
+            "reason": "malformed RUNNING row (pid missing or not an int)",
+            "evidence": evidence(pid=pid, flock=flock, row=row),
+        }
+    alive = _pid_alive(pid)
+    live_token = process_start_token(pid) if alive else None
+    row_token = row.get("process_start_token")
+    token_match = bool(alive and live_token and row_token and live_token == row_token)
+    ev = evidence(pid=pid, pid_alive=alive, lstart=live_token, row_token=row_token,
+                  token_match=token_match if alive else None, flock=flock, row=row)
+    if alive and token_match and flock == "held":
+        return {"verdict": VERDICT_HELD_PROVEN,
+                "reason": f"pid {pid} alive, process-start token matches the registry "
+                          f"row, and the flock is held ({row.get('cycle_id')}/{row.get('role')})",
+                "evidence": ev}
+    if not alive:
+        return {"verdict": VERDICT_DRIFT,
+                "reason": f"RUNNING registry row pid {pid} is dead — stale registry "
+                          "(reclaim only per round-2 discipline, never by inspection)",
+                "evidence": ev}
+    if not row_token or live_token is None:
+        return {"verdict": VERDICT_DRIFT,
+                "reason": "pid alive with missing or unrecoverable process-start "
+                          "token — liveness unverifiable",
+                "evidence": ev}
+    if not token_match:
+        return {"verdict": VERDICT_DRIFT,
+                "reason": f"process-start token mismatch for pid {pid} (PID reuse or "
+                          "stale registry row) — ambiguity is never FREE",
+                "evidence": ev}
+    return {"verdict": VERDICT_DRIFT,
+            "reason": "pid alive + token match while the flock is free — bookkeeping "
+                      "contradicts the OS",
+            "evidence": ev}

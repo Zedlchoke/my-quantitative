@@ -1,0 +1,33 @@
+{
+ "schema": "mdp_dvc_poc_contract@1",
+ "frozen_utc": "2026-09-09",
+ "frozen_by": "A1",
+ "authority": "plans/PLAN_market_data_plane_v1.md section 4.5; architecture_freeze.json dvc_poc_topology",
+ "pinned_version": "3.67.1 (sha256 b1ea7d8d690a637adbcba74591555f811eed1ab96cc74d808dfd861669d030ed; see dependency_freeze.json)",
+ "initialization": {
+   "where": "ONLY inside .worktrees/market-data-plane-v1/integration (dvc init; .dvc/ tracked there)",
+   "cache": "default .dvc/cache inside the integration worktree; gitignored by dvc automatically; verified in git status",
+   "remote": {
+     "kind": "local directory remote (drive-like 'local' remote)",
+     "placement": "governance home OUTSIDE every git worktree: /Users/hoangminhlong/.my-quantitative-governance/mdp_dvc_remote (measured path recorded HERE as run evidence only; the tracked .dvc/config must carry it as a portable local path setting — no credentials, no host-private path inside any REUSABLE tracked config file; if dvc requires an absolute path for a local remote, the path is written to .dvc/config.local (gitignored) and the tracked config documents the pattern)",
+     "disposable": true,
+     "created_by": "the POC run; deleted at cleanup"
+   }
+ },
+ "fixture": {
+   "generator": "research/control/market_data_plane_v1_run/oss/dvc_poc_fixture_generator.py (committed)",
+   "shape": "32 files x 4 MiB = 128 MiB under bundle/ in a scratch dir OUTSIDE git tracking, generated from seed 20260909 with a documented deterministic PRNG (hashlib-based counter stream; no proprietary bytes)",
+   "determinism": "same seed => byte-identical bundle; generator writes bundle_manifest.json with per-file sha256 + total byte count"
+ },
+ "proof_chain": [
+   "1. dvc add bundle/ ; verify: raw bytes git-ignored (git status clean of bundle/), .dvc/bundle.dvc pointer + .gitignore changes tracked only",
+   "2. dvc push ; verify: 32 objects present in the disposable remote",
+   "3. consumer: git clone --branch orca/market-data-plane-v1-integration the repo into a TEMP dir outside every worktree; dvc init/pull is NOT needed for clone; consumer runs dvc pull using the same remote",
+   "4. restored-bundle proof: per-file sha256, file count (32), total byte count (134217728), bundle_manifest.json equality, and the MDP replay digest of the bundle's chunk manifests computed by the plane's replay digest function all EQUAL the producer's recorded values",
+   "5. negatives (each must FAIL VISIBLY, never fall back to newer/local data): (a) absent object: delete one remote object + local cache object, dvc pull => nonzero exit and explicit missing-object error; (b) corrupted cache object: flip one byte in a cache object, verify/checkout => hash mismatch error; (c) wrong pointer: edit .dvc/bundle.dvc md5 to a valid-but-wrong hash, dvc pull => explicit not-found/failure",
+   "6. zero scientific mutation: program counters (researchctl program counters), scientific budget, S1 state, registry lifecycle and provider authority unchanged before vs after (snapshot diff recorded)"
+ ],
+ "non_roles_enforced": ["no dvc exp run", "no experiment dashboards", "no metric ranking", "no parameter sweeps", "no owner or asset-cycle data moved into DVC", "DVC checksum never cited as data authority or PIT evidence"],
+ "cleanup_bounded_list": ["temp producer scratch dir", "temp consumer clone dir", "disposable remote dir (after result JSON hashes are recorded)", "dvc state inside the integration worktree REMAINS as the tracked POC pointer evidence"],
+ "result_artifact": "research/control/market_data_plane_v1_run/oss/dvc_poc_result.json (producer/consumer hashes, negative outcomes with exit codes + stderr tails, counter snapshot diff, cleanup ledger)"
+}

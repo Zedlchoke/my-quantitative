@@ -88,12 +88,21 @@ def normalize_legacy_state(cycle_id: str, state: dict, *,
     cycles without a known authority.
     """
     warnings: list = []
+    status = state.get("status")
+    phase = state.get("phase") or ""
     if cycle_id == "STOCKS-FREE-V12":
         lifecycle = "TERMINAL"
+    elif status == "TERMINAL":
+        lifecycle = "TERMINAL"
+    elif status is None and phase.startswith("CLOSED"):
+        lifecycle = "TERMINAL"
+        warnings.append(
+            f"legacy status field absent; TERMINAL derived from the closure phase "
+            f"{phase[:80]!r} (drift recorded-not-normalized per sec2)"
+        )
     else:
         lifecycle = "PAUSED_MAINTENANCE" if state.get("hard_stop_reason") else None
         if lifecycle is None:
-            status = state.get("status")
             lifecycle = {"ACTIVE_LIGHT": "ACTIVE_LIGHT", "ACTIVE_HEAVY": "ACTIVE_HEAVY"}.get(status)
             if lifecycle is None:
                 raise KeyError(f"{cycle_id}: cannot derive lifecycle from legacy state")

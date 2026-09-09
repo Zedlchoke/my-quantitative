@@ -1,0 +1,77 @@
+{
+ "schema": "mdp_dvc_poc_result@1",
+ "recorded_utc": "2026-09-09T13:20:00Z",
+ "dvc_version": "3.67.1 (pip, .venv)",
+ "fixture": {
+  "files": 32,
+  "bytes_each": 4194304,
+  "total_bytes": 134217728,
+  "seed": 20260909,
+  "generator": "research/control/market_data_plane_v1_run/oss/dvc_poc_fixture_generator.py",
+  "cross_process_determinism": "verified pre-POC (two runs, identical sha256)"
+ },
+ "producer": {
+  "worktree": ".worktrees/market-data-plane-v1/integration (dvc init here only)",
+  "tracked": [
+   "dvc_poc_bundle.dvc",
+   ".dvc/config (portable)",
+   ".dvcignore",
+   ".dvc/.gitignore",
+   ".gitignore entry"
+  ],
+  "raw_bytes_gitignored": "verified via git check-ignore + clean status",
+  "remote_config": ".dvc/config.local (GITIGNORED) -> /Users/hoangminhlong/.my-quantitative-governance/mdp_dvc_remote (outside every git worktree)"
+ },
+ "push": {
+  "objects_on_remote": 34
+ },
+ "consumer": {
+  "clone": "/tmp/mdp_dvc_consumer (git clone --branch orca/market-data-plane-v1-integration; temp, outside every worktree)",
+  "pull": "34 files fetched and 33 files added; exit 0",
+  "verification": "bundle_manifest.json byte-equal; all 32 files sha256 match; total bytes 134217728 exact; final re-verify after repair: NONE bad"
+ },
+ "negatives": [
+  {
+   "id": "NEG1_absent_object",
+   "action": "deleted one remote object + consumer cache copy",
+   "dvc_exit": 1,
+   "stderr_tail": [
+    "ERROR: failed to transfer '05d820c8...' - [Errno 2] No such file or directory",
+    "ERROR: failed to pull data from the cloud - 1 files failed to download"
+   ],
+   "fallback_to_newer_or_local": "NONE",
+   "verdict": "FAIL_VISIBLE PASS"
+  },
+  {
+   "id": "NEG2_corrupted_object",
+   "action": "flipped byte 0 of one remote object (cache objects are READ-ONLY at FS level -> local corruption blocked by design)",
+   "finding": "DVC-LIMITATION-1: dvc 3.67.1 local-remote transfer does NOT re-hash on pull (exit 0, silent) and push skips existing paths without content comparison",
+   "two_layer_detection": "the plane's manifest verification (contract step 4) detected 2 corrupt file(s) visibly: synthetic_0016.bin (+ a second object corrupted during run overlap), hashes compared against committed bundle_manifest.json",
+   "verdict": "PASS_WITH_MITIGATION: fail-visible is achieved by the required plane-level verification layer, never by dvc alone; recorded as a hard rule for any future DVC adoption",
+   "repair": "remote object restored from pristine producer bytes by md5 path; final consumer verify NONE bad"
+  },
+  {
+   "id": "NEG3_wrong_pointer",
+   "action": "rewrote dvc_poc_bundle.dvc md5 to valid-format wrong hash",
+   "dvc_exit": 1,
+   "stderr_tail": [
+    "Is your cache up to date?",
+    "https://error.dvc.org/missing-files"
+   ],
+   "fallback_to_newer_or_local": "NONE",
+   "verdict": "FAIL_VISIBLE PASS"
+  }
+ ],
+ "zero_scientific_mutation": {
+  "program_counters": "byte-identical pre/post (236 published / 239 observed, 0 survivors)",
+  "registry_sha256": "d41ed3af68e6b74e... identical pre/post",
+  "s1": "SEALED_UNTOUCHED unchanged"
+ },
+ "cleanup_bounded_list": [
+  "/tmp/mdp_dvc_consumer (removed)",
+  "dvc_poc_bundle/ scratch bytes in integration worktree (removed; pointer + manifest JSON retained)",
+  "/tmp/neg*_backup* (removed)",
+  "disposable remote dir /Users/hoangminhlong/.my-quantitative-governance/mdp_dvc_remote (retained until terminal closeout as audit evidence, then owner-deletable)",
+  "worktree .dvc/cache (removed; dvc state/poiner retained as tracked evidence)"
+ ]
+}
