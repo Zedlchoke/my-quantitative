@@ -1,0 +1,20 @@
+{
+  "schema": "forex_free_v9_p0_route_discovery_v1",
+  "measured_at_utc": "2026-09-09T04:40:00Z",
+  "producer": "A1_FOREX_V9_CONTROLLER (P0 pre-check, route discovery round)",
+  "authority": "plans/PLAN_forex_v9.md §4-P0 §2 (kill test: >=2 funded non-US + US, PIT-evidenced index levels)",
+  "routes_discovered": [
+    {"economy": "GB", "source": "ONS", "route": "https://www.ons.gov.uk/generator?format=csv&uri=/economy/inflationandpriceindices/timeseries/d7bt/mm23 (CPI ALL ITEMS 2015=100, D7BT, full monthly history)", "probe": "timeseries page HTTP 200, generator link extracted from page HTML", "keyless": true, "state": "ROUTE_FOUND — sample pull + revision audit next"},
+    {"economy": "CA", "source": "StatCan", "route": "https://www150.statcan.gc.ca/n1/en/tbl/csv/18100004-eng.zip (table 18100004, CPI monthly, full download)", "probe": "HTTP 200 application/zip, PK header verified", "keyless": true, "state": "ROUTE_FOUND — WDS metadata POST timed out (throttle); release dates already pinned by CA_v3 calendar (0f1a9328)"},
+    {"economy": "AU", "source": "ABS", "route": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/consumer-price-index-australia/latest-release + per-release xlsx tables (640101.xlsx = index numbers by capital city; jul-2026 release measured)", "probe": "latest-release page HTTP 200 with xlsx links (browser UA required; data.api host 403-WAF — xlsx route used instead)", "keyless": true, "state": "ROUTE_FOUND — quarterly, release-quarter-scoped paths (archive of past releases needed for original-listing evidence)"},
+    {"economy": "US", "source": "BLS via FRED (owner key)", "route": "CPIAUCSL (vintaged, ALFRED archive <=2003-01-07; lag 10-14d)", "probe": "keyless fredgraph.csv HTTP 200 re-asserted", "keyless": true, "state": "PASS path inherited from V8 P0 (durable evidence)"},
+    {"economy": "NZ", "source": "Stats NZ", "route": "Infoshare (http://infoshare.stats.govt.nz/default.aspx HTTP 200 — ASP.NET session app; POST navigation needed) — current CSV page 404/moved", "probe": "measured", "keyless": true, "state": "ROUTE_PARTIAL — scripting the Infoshare download chain is P0 work"}
+  ],
+  "kill_test_provisional": ">=2 non-US candidates (GB, CA, AU) + US have DISCOVERED keyless routes — the kill test is NOT yet adjudicated: PIT-evidence per series (announcement instant vs the V5-pinned calendars + unrevised-as-of verification or original-listing/vintage evidence) is the remaining P0 census",
+  "notes": [
+    "ONS api.ons.gov.uk decommissioned for these routes (404 all shapes) — the /generator pattern is the working keyless CSV channel",
+    "ABS data.api host is WAF-403 from this host/UA; the www.abs.gov.au xlsx release tables are the working channel (quarterly paths = release-scoped snapshots, favorable for original-listing evidence)",
+    "StatCan WDS GET=405, POST with JSON throttled/timeouts — bulk zip is the primary CA channel; the V5 CA_v3 release-date calendar carries the announcement instants"
+  ],
+  "pnl_anywhere": false
+}
