@@ -321,6 +321,7 @@ def test_consolidated_empty_candidates_and_unknown_instrument():
         "venues_used": [],
         "skipped_stale_count": 0,
         "crossed": False,
+        "reference_currency": None,  # A1 ruling A4_Q2: currency is recorded
     }
     # venue permitted but no quote for THIS instrument: absent, not stale
     assert book.consolidated_bbo(["VA"], "ETH-USD", {"VA"}, 10_000, 5_000)["skipped_stale_count"] == 0
@@ -445,3 +446,20 @@ def test_property_consolidated_deterministic_and_monotone(specs, now_ns):
         q["event_id"] for q in fresh.values() if q["ask"] == best_ask
     )
     assert result["venues_used"] == sorted(fresh)
+
+
+def test_consolidated_result_records_reference_currency_a1_ruling():
+    # A1 ruling A4_Q2 (MDP-V1): currency exclusion must be observable.
+    book = bbo_mod.VenueBook()
+    et = 1_700_000_000_000_000_000
+    for venue, ccy, bid, ask in (("AAA", "USD", "100.0", "100.2"),
+                                 ("BBB", "USD", "100.1", "100.3"),
+                                 ("CCC", "EUR", "99.9", "100.1")):
+        book.apply_quote(quote_event(venue, bid=bid, ask=ask, et=et, rt=et + 1,
+                                     currency=ccy, event_id=f"e-{venue}"))
+    res = book.consolidated_bbo(["AAA", "BBB", "CCC"], INST, {"AAA", "BBB", "CCC"},
+                                et + 1, 10**9)
+    assert res["reference_currency"] == "USD"   # AAA is the lexicographic anchor
+    assert res["venues_used"] == ["AAA", "BBB"]
+    empty = book.consolidated_bbo([], INST, set(), et + 1, 10**9)
+    assert empty["reference_currency"] is None

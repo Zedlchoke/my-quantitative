@@ -412,12 +412,10 @@ def validate_event(event) -> dict:
     _validated_hash64(event.get("raw_sha256"), "raw_sha256")
 
     manifest_sha = event.get("manifest_sha256")
-    # Nullability note (flagged to A1, not silently decided as spec): the
-    # archive write sequence publishes the chunk before its manifest, so a
-    # not-yet-linked event may carry an explicit null here; when present the
-    # value must be a 64-char lowercase hex sha256.
-    if manifest_sha is not None:
-        _validated_hash64(manifest_sha, "manifest_sha256")
+    # A1 ruling (a1_rulings.json A2_Q1, MDP-V1): provenance is the plane's
+    # core promise, so manifest_sha256 (the upstream retrieval manifest per
+    # A3_Q4) is REQUIRED 64-hex in @1 — null is rejected, never tolerated.
+    _validated_hash64(manifest_sha, "manifest_sha256")
 
     currency = event.get("currency")
     if currency is not None:

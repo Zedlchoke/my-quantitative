@@ -534,3 +534,13 @@ def test_import_isolation_hot_path_modules_never_import_heavy_libs():
                           text=True, timeout=120)
     assert proc.returncode == 0, proc.stderr
     assert "ISOLATION_OK" in proc.stdout
+
+
+def test_manifest_sha256_is_required_never_null_a1_ruling():
+    fields = base_trade()
+    for bad in (None,):
+        ev = dict(fields, manifest_sha256=bad)
+        with pytest.raises(models.MarketDataPlaneError):
+            models.build_event(ev)
+    # 64-hex required form still accepted
+    assert models.build_event(dict(fields))["manifest_sha256"] == fields["manifest_sha256"]

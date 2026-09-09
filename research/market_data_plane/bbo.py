@@ -245,7 +245,8 @@ class VenueBook:
              "ask_contributors": [event_id, ...],
              "venues_used": [venue, ...],           # sorted
              "skipped_stale_count": int,
-             "crossed": bool}
+             "crossed": bool,
+             "reference_currency": str|None}   # recorded per A1 ruling A4_Q2
 
         ``crossed`` mirrors the frozen convention (``bid >= ask``, so a locked
         book also reports True).  A crossed CONSOLIDATED result is reported
@@ -277,10 +278,15 @@ class VenueBook:
                 "venues_used": [],
                 "skipped_stale_count": skipped_stale,
                 "crossed": False,
+                "reference_currency": None,
             }
 
         anchor_currency = fresh[0]["currency"]
         compatible = [q for q in fresh if q["currency"] == anchor_currency]
+        # A1 ruling (a1_rulings.json A4_Q2, MDP-V1): the chosen reference
+        # currency is RECORDED so currency exclusion is observable, not silent.
+        # fresh[] is built over sorted venue names, so fresh[0] is the fresh
+        # venue-local with the lexicographically smallest venue name.
 
         best_bid = max(q["bid"] for q in compatible)
         best_ask = min(q["ask"] for q in compatible)
@@ -294,6 +300,7 @@ class VenueBook:
             "venues_used": sorted({q["venue"] for q in compatible}),
             "skipped_stale_count": skipped_stale,
             "crossed": best_bid >= best_ask,
+            "reference_currency": anchor_currency,
         }
 
 
