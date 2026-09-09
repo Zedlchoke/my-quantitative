@@ -13,6 +13,7 @@ TRANSIENT_TRANSPORT bounded 3-attempt backoff; CODE_OR_SCHEMA_ERROR never
 retried (fail the job, release FAILED with stderr tail).
 """
 import json, hashlib, os, sys, time, random, traceback, urllib.request, urllib.error, gzip, io, re
+import subprocess
 import xml.etree.ElementTree as ET
 import threading
 from concurrent.futures import ThreadPoolExecutor
