@@ -1,20 +1,25 @@
-# CONTINUE.md — program checkpoint (Lead-synced 2026-09-08 morning)
+# CONTINUE.md — program checkpoint (Lead-synced 2026-09-09 morning)
 
 Read the LIVE plan of the cycle you serve (highest version per asset in
-`plans/`): **NO asset cycle is running.** Crypto `PLAN_crypto_v17.md`
-(mid-P0, owner-PAUSED 2026-09-08 pending SYSTEM-HARDENING-V1; attempt 2
-hang remediated pre-outcome, attempt 3 resource-conflict) and forex
-`PLAN_forex_v8.md` (selection frozen 10:52, owner-PAUSED pending SHV1)
-await SHV1 pause packets + resume. Stocks V12 is CLOSED
-(`STOCKS_FREE_V12_BLOCKED_DATA_OR_SELECTION`, 0/6 cells, all proposals
-D2-killed measured). **SYSTEM-HARDENING-V1**
-(`plans/PLAN_system_hardening_v1.md`) is the active control-plane plan —
-`PLANNED_NOT_STARTED`, activates on owner dispatch. GO phrases V17/V8
-remain registered-unconsumed; no GO carries across the maintenance pause
-(plan §10). This file is a derived checkpoint, not
-an authority. Two A1 threads share the machine: heavy phases queue under
-the machine-wide lock (NOT_RUN_RESOURCE_CONFLICT, never contention); root
-commits are atomic single-purpose pathspec only (P-10).
+`plans/`); the canonical registry (`plans/CYCLE_REGISTRY.json` via
+`researchctl cycle list`) is the router authority. Measured 2026-09-09
+~10:20 VN: **three asset cycles moving.** CRYPTO-V17 post-remediation
+(selection re-frozen v2 WKNDLIQ + ATTN-PHASE at `6da1d76`; Q re-run in
+flight; next: A7 fresh-context re-audit, then owner GO). STOCKS-FREE-V13
+substrate crawl (~2,400/345,152 Form-4 docs, ETA ~Sunday; D2 blocked on
+partial substrate). FOREX-FREE-V8 scored-complete
+`REJECT_ALL` (falsification-by-control #14, budget 3/6, `07e1b95`);
+close chain in flight (twin reproduction → A7 terminal → Lead sync:
+forex 42/42, program 236/239, registry TERMINAL). **FOREX-FREE-V9**
+(`plans/PLAN_forex_v9.md`, owner-requested 2026-09-09 — the
+PPP-deviation frontier) is written and PLANNED_NOT_STARTED: bootstrap is
+BLOCKED until the V8 close chain lands (plan §0). GO phrases V17/V13
+registered-unconsumed; V8's was consumed at its gate (`720decb`) and is
+dead; V9's registers with its plan. This file is a derived checkpoint,
+not an authority. Machine: heavy phases queue under the machine-wide
+lock (NOT_RUN_RESOURCE_CONFLICT, never contention; V13's SEC
+silence-window yielding is the standing pattern); root commits are
+atomic single-purpose pathspec only (P-10).
 
 ## Measured program state
 

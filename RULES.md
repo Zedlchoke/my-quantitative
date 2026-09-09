@@ -93,7 +93,7 @@ ran correctly, artifact  -> PASS
    cells); recursive leak scans check every record depth for outcome-shaped
    fields.
 
-## 3. FOREX rules (live plan: `plans/PLAN_forex_v8.md`)
+## 3. FOREX rules (live plan: `plans/PLAN_forex_v9.md`)
 
 - Data: keyless official sources ONLY (BIS WS_CBPOL, ECB SDMX, official
   release-calendar pages, ALFRED if evidenced). No signup, no key, no
@@ -161,15 +161,19 @@ GO CRYPTO V17 SCORED EXECUTION     (live plan plans/PLAN_crypto_v17.md;
                                     paused with its cycle at SHV1 — needs
                                     fresh use at its own gate per plan §10)
 GO STOCKS V13 SCORED EXECUTION     (live plan plans/PLAN_stocks_v13.md)
-GO FOREX V8 SCORED EXECUTION       (live plan plans/PLAN_forex_v8.md;
-                                    paused with its cycle at SHV1 — needs
-                                    fresh use at its own gate per plan §10)
+GO FOREX V9 SCORED EXECUTION       (live plan plans/PLAN_forex_v9.md;
+                                    written 2026-09-09 owner-requested —
+                                    activates only after the V8 close
+                                    chain lands; bootstrap precondition
+                                    per plan §0)
 ```
 
-The stocks V12 phrase died unconsumed with its closed cycle
-(BLOCKED_DATA_OR_SELECTION, 0 cells — 2026-09-08). The crypto V16,
-stocks V11 and forex V7 phrases were consumed at their own gates and are
-dead. Expired/consumed phrases never carry forward (V6 ruling; P-8).
+The forex V8 phrase was consumed at its own gate 2026-09-09 (two-key
+complete at `720decb`) and is dead. The stocks V12 phrase died
+unconsumed with its closed cycle (BLOCKED_DATA_OR_SELECTION, 0 cells —
+2026-09-08). The crypto V16, stocks V11 and forex V7 phrases were
+consumed at their own gates and are dead. Expired/consumed phrases never
+carry forward (V6 ruling; P-8).
 
 ## 8. The one-paragraph spirit
 

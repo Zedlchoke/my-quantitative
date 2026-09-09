@@ -11,7 +11,9 @@ gates and reproduction all reconcile.
    for the law summary and the agent roster):
    - crypto live: `plans/PLAN_crypto_v17.md`
    - stocks live: `plans/PLAN_stocks_v13.md`
-   - forex live: `plans/PLAN_forex_v8.md`
+   - forex live: `plans/PLAN_forex_v9.md` (V8 scored-complete
+     `REJECT_ALL`; close chain in flight — V9 bootstrap blocked until it
+     lands, per plan §0)
 2. Read `NOTES.md` and `research/wayfinder/MAP.md` when the task touches research.
 3. Run `/repo-intake`. Re-measure the checkout; historical plan snapshots are
    evidence, not current truth.
