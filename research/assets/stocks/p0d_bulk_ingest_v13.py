@@ -70,7 +70,7 @@ def get_curl(url, timeout=45, tries=3):
         else:
             last = f"curl rc={r.returncode} {r.stderr.strip()[:120]}"
         if attempt == tries:
-            if any(x in str(last) for x in ("503", "502", "rc=28", "rc=7")):
+            if any(x in str(last) for x in ("503", "502", "rc=28", "rc=7", "rc=60")):  # rc=60 = TLS verify flake (INC-V13-10): minutes-scale transient
                 _on_503_hook()
                 raise TransientSkip(f"{last} after {tries} tries")
             raise RuntimeError(f"TRANSPORT: {last} after {tries} tries: {url[:110]}")
