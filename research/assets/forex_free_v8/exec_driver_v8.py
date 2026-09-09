@@ -714,15 +714,15 @@ def _launch_gate_state():
         return ["run_contract_file"]
     with open(RUN_CONTRACT_PATH) as f:
         rc = json.load(f)
-    launch = rc.get("launch") or {}
+    launch = rc.get("launch_gate") or {}
 
     def _lg(key):
-        return rc.get(key, launch.get(key))
+        return launch.get(key)
 
     if rc.get("cycle_id") != CYCLE_ID:
         missing.append("cycle_id")
     if not _lg("s0_launch_authorized") or \
-            _lg("s0_launch_authorized_verdict") != S0_VERDICT:
+            _lg("a7_prelaunch_verdict") != S0_VERDICT:
         missing.append("s0_launch_authorized")
     if not _lg("owner_go_fresh") or _lg("owner_go_phrase") != OWNER_GO_PHRASE:
         missing.append("owner_fresh_go")
