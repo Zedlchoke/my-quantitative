@@ -2,83 +2,6 @@
  "cycle_id": "CRYPTO-V17",
  "families": [
   {
-   "family_id": "V17-A4-P1-WKNDLIQ",
-   "clock": "H1",
-   "universe": [
-    "BTCUSDT",
-    "ETHUSDT"
-   ],
-   "entry": {
-    "lag_buckets": 0
-   },
-   "exit": {
-    "holding_buckets": 50
-   },
-   "fill_price": "vwap",
-   "booking": "event",
-   "sham_calendar": {
-    "calendar": "SHAM_WEEKEND_OFFSET:default_rng(17040001)_one_draw_per_week_no_anchor_overlap",
-    "note": "calendar_conditioned=true (A8 post-F1 replacement family): session-conditioned weekend book with a randomized session-boundary sham control - one numpy default_rng(17040001) draw per Friday-anchored week, uniform over the weekly entry offsets whose equally-long window does not overlap the true anchor window; sham_control_calendar rows carry this descriptor per diag/sham_control_calendar@1"
-   },
-   "frozen_falsification_rules": {
-    "weekend_event_coverage": {
-     "rule": "falsification_rule (4), verbatim: the family DIES if ANY single fold has fewer than 12 scored weekend events (calendar coverage insufficient to test the session boundary)",
-     "min_scored_events_per_fold": 12,
-     "book": "anchor",
-     "tier": "T2.0",
-     "action": "mark_dead",
-     "enforcement": "fail-closed in run_v17_cell.run_family (A7 finding F1 remediation): every scored cell record of this family carries frozen_rule_enforcement; a fold below the floor sets verdict=DEAD_FROZEN_RULE_COVERAGE and family_alive=false; an unevaluable anchor book refuses the cell"
-    }
-   },
-   "arms": [
-    {
-     "arm_id": "anchor",
-     "kind": "anchor",
-     "exposure": {
-      "type": "panel_formula",
-      "formula_id": "WKNDLIQ.anchor",
-      "params": {
-       "entry_weekday_utc": "Friday",
-       "entry_hour_utc": 22,
-       "cover_weekday_utc": "Monday",
-       "cover_hour_utc": 0
-      }
-     }
-    },
-    {
-     "arm_id": "neighbour",
-     "kind": "neighbour",
-     "exit": {
-      "holding_buckets": 54
-     },
-     "exposure": {
-      "type": "panel_formula",
-      "formula_id": "WKNDLIQ.neighbour",
-      "params": {
-       "entry_weekday_utc": "Friday",
-       "entry_hour_utc": 20,
-       "cover_weekday_utc": "Monday",
-       "cover_hour_utc": 2
-      }
-     }
-    },
-    {
-     "arm_id": "control",
-     "kind": "control",
-     "exposure": {
-      "type": "panel_formula",
-      "formula_id": "WKNDLIQ.control",
-      "params": {
-       "entry_weekday_utc": "Friday",
-       "entry_hour_utc": 22,
-       "seed": 17040001,
-       "holding_buckets": 50
-      }
-     }
-    }
-   ]
-  },
-  {
    "family_id": "V17-a5-P1-ATTN-PHASE",
    "clock": "D1",
    "universe": [
@@ -140,6 +63,122 @@
        "min_hold_days": 1,
        "sham_rotation": "day_index_mod_24",
        "rotation_origin": "2025-08-22"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "family_id": "V17-A6-P2-OICASCADE",
+   "clock": "H4",
+   "universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT"
+   ],
+   "entry": {
+    "lag_buckets": 0
+   },
+   "exit": {
+    "holding_buckets": 5
+   },
+   "fill_price": "vwap",
+   "booking": "event",
+   "sham_calendar": {
+    "calendar": "NOT_APPLICABLE:RANDOMIZED_EVENT_TIME_SHAM",
+    "note": "calendar_conditioned=false (selection v3 OICASCADE lane): the control is a randomized-EVENT-TIME sham (numpy default_rng seed 1717 per symbol, matched count of 24h long windows, +/-1-day purge-zone and +/-3-day true-event exclusions, redraw on collision) - an event-time sham class, NOT a calendar sham; sham_control_calendar rows carry this not-applicable marker per diag/sham_control_calendar@1 (persisted under the frozen calendar_conditioned predicate => the validator's LOW finding is accepted and disclosed, per the D2 re-freeze instruction)"
+   },
+   "frozen_falsification_rules": {
+    "control_reproduces": {
+     "rule": "falsification_rule (K1), verbatim: CONTROL REPRODUCES - the randomized-event-time sham earns the same (positive) sign with |sham exp| >= 0.5 x |anchor exp| at tier 2.0 pooled over S0 (G11) -> DEAD, unconditional drift/beta explains the anchor",
+     "book": "anchor",
+     "control_book": "control",
+     "tier": "T2.0",
+     "sham_expectancy_ratio": 0.5,
+     "action": "mark_dead",
+     "enforcement": "fail-closed in run_v17_cell: pooled after-cost expectancy = net PnL per booked round trip, anchor vs control T2.0 books; an unevaluable (zero-trip) book refuses the cell"
+    },
+    "fold_negative_majority": {
+     "rule": "falsification_rule (K2), verbatim: ANCHOR NEGATIVE - anchor after-cost expectancy <= 0 at tier 2.0 in >= 2 of the 3 chronological folds (G1/G3 territory) -> REJECT",
+     "book": "anchor",
+     "tier": "T2.0",
+     "max_negative_folds": 2,
+     "folds_total": 3,
+     "action": "mark_dead",
+     "enforcement": "fail-closed in run_v17_cell: per-fold expectancy = per-fold net PnL / scored population; a zero-population fold is recorded null (unevaluable_folds) and counted neither negative nor positive - disclosed, never hidden"
+    },
+    "ancestry_veto_measured": {
+     "rule": "falsification_rule (K3), verbatim: ANCESTRY VETO - D2 pooled |rho| > 0.20 between the exposure series and ANY forbidden conditioning exposure (OI families in particular) -> vetoed as re-label; no clock, threshold, universe or sign-flip rescue is permitted",
+     "source_artifact": "research/control/v17_run/d2/d2_novelty_endpoint_v17.json",
+     "measured_proxy": "panel_daily:ret (spearman)",
+     "measured_pooled_abs_rho": 0.1899,
+     "veto_threshold": 0.2,
+     "frozen_verdict": "PASS",
+     "action": "mark_dead",
+     "enforcement": "fail-closed in run_v17_cell: the D2 measurement is carried FROZEN (selection_freeze_v3_v17.json: G12 D2 already measured 0.1899 PASS, margin 0.0101 recorded thin per P-2; do not re-argue) and the driver mechanically checks the recorded value against the frozen threshold in every scored cell record"
+    }
+   },
+   "arms": [
+    {
+     "arm_id": "anchor",
+     "kind": "anchor",
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "OICASCADE.anchor",
+      "endpoint_series": {
+       "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration/v17_data/oi_series_reduced.json",
+       "format": "json",
+       "alignment": "availability_law_h4_bucket_last_snapshot_at_or_before_close_24h_endpoint_tol_30min_else_undefined_0"
+      },
+      "params": {
+       "oi_percentile": 10.0,
+       "window_closes": 720,
+       "h4_per_day": 6,
+       "holding_buckets": 5
+      }
+     }
+    },
+    {
+     "arm_id": "neighbour",
+     "kind": "neighbour",
+     "exit": {
+      "holding_buckets": 11
+     },
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "OICASCADE.neighbour",
+      "endpoint_series": {
+       "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration/v17_data/oi_series_reduced.json",
+       "format": "json",
+       "alignment": "availability_law_h4_bucket_last_snapshot_at_or_before_close_24h_endpoint_tol_30min_else_undefined_0"
+      },
+      "params": {
+       "oi_percentile": 5.0,
+       "window_closes": 720,
+       "h4_per_day": 6,
+       "holding_buckets": 11
+      }
+     }
+    },
+    {
+     "arm_id": "control",
+     "kind": "control",
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "OICASCADE.control",
+      "endpoint_series": {
+       "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration/v17_data/oi_series_reduced.json",
+       "format": "json",
+       "alignment": "availability_law_h4_bucket_last_snapshot_at_or_before_close_24h_endpoint_tol_30min_else_undefined_0"
+      },
+      "params": {
+       "seed": 1717,
+       "oi_percentile": 10.0,
+       "window_closes": 720,
+       "h4_per_day": 6,
+       "holding_buckets": 5,
+       "event_exclusion_days": 3,
+       "max_draw_attempts": 200000
       }
      }
     }
