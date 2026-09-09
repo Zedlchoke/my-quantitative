@@ -39,7 +39,7 @@ def status(**kw):
     base.update(kw)
     json.dump(base, open(STATUS, "w"), indent=1)
 
-_PACE = {"interval": 0.3, "min": 0.9, "max": 0.3, "ok_streak": 0}
+_PACE = {"interval": 0.25, "min": 0.9, "max": 0.25, "ok_streak": 0}
 
 
 def _pace_sleep():
