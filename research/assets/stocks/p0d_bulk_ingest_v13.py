@@ -43,6 +43,7 @@ def status(**kw):
 
 _PACE_NOTE = "global token-bucket ladder lives in stage B (thread-safe); get_curl raises TransientSkip on 503-family"
 _on_503_hook = lambda: None  # wired to pac_503 by stage B
+_HANDLE = {"h": None}  # current heavy-lock handle (supervisor releases during silence)
 
 
 def get_curl(url, timeout=45, tries=3):
