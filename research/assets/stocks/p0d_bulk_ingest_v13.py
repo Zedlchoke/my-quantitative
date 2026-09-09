@@ -179,9 +179,9 @@ def parse_form4_xml(xml_bytes, cik, accession, acceptance, filing_date):
     ndt = root.find(".//nonDerivativeTable")
     for txn in (ndt.findall("nonDerivativeTransaction") if ndt is not None else []):
         tdate = txt(txn.find("transactionDate"), "value") if txn.find("transactionDate") is not None else None
-        tcode_el = txn.find("transactionCode")
-        tcode = (tcode_el.get("transactionCode") if tcode_el is not None else None) or txt(tcode_el, "value")
-        ad_el = txn.find("transactionAcquiredDisposedCode")
+        tcode_el = txn.find("transactionCoding/transactionCode")   # INC-V13-9: lives in <transactionCoding>
+        tcode = txt(tcode_el, "value") if tcode_el is not None else None
+        ad_el = txn.find("transactionAmounts/transactionAcquiredDisposedCode")  # INC-V13-9: nested in <transactionAmounts>
         ad = txt(ad_el, "value") if ad_el is not None else None
         shares_el = txn.find(".//transactionShares/value")
         shares = shares_el.text if shares_el is not None else None
