@@ -1,0 +1,92 @@
+{
+  "schema": "v17_run_artifact_v1",
+  "artifact": "a8_family_spec",
+  "cycle_id": "CRYPTO-V17",
+  "family_id_frozen": "V17-A4-P1-WKNDLIQ",
+  "source_proposal": {
+    "path": "research/control/v17_run/d1/a4/proposal_P1.json",
+    "blob_sha_frozen": "efb773bcc3d70ae1c348be5ba0c99a7ee5efda47",
+    "selection_freeze": "research/control/v17_run/selection_freeze_v17.json",
+    "lane_entry": "A8 replacement (post-F1 remediation): the previously selected V17-A4-P2-SILRES died by its own frozen falsification rule 4 (measured anchor trigger duty 0.81%/0.99% outside the frozen [5%,60%] window - kill accepted, never argued); the next-ranked lane-1 survivor V17-A4-P1-WKNDLIQ enters selection via the frozen rubric's mandatory-lane rule"
+  },
+  "frozen_semantics": {
+    "exposure": "pure calendar flag on the published UTC-H1 grid: weekend_flag(t) = 1 if (day_utc(t)=Friday AND hour_utc(t)>=22) OR day_utc(t) in {Saturday, Sunday}, else 0; the decision bucket is the Friday hour_utc=21 close (anchor) / Friday 19:00 close (neighbour); series = -1.0 at the decision bucket, 0.0 elsewhere; no price/flow/size column is consumed and no warmup lookback exists (0 warmup decisions), so the one-bar availability law is satisfied trivially",
+    "entry_fill": "SHORT 1 unit notional per symbol independently; entry.lag_buckets 0 + fill_price vwap => the fill executes at the position bucket's published VWAP, which by the one-bar lag IS the next bucket after the decision: the Friday 22:00 bucket vwap (anchor) / Friday 20:00 bucket vwap (neighbour)",
+    "cover": "Monday 00:00 bucket vwap (anchor) / Monday 02:00 bucket vwap (neighbour) => exit.holding_buckets 50 (family) / 54 (neighbour arm override) on the UTC-H1 grid: Friday 22:00 -> Monday 00:00 is exactly 50 held buckets and Friday 20:00 -> Monday 02:00 is exactly 54. RECONCILIATION (recorded, QUESTION_FOR_A1): the frozen text labels these spans '26 buckets' / '30 buckets' - a systematic one-day (24h) under-count of the weekend span; the frozen calendar anchors (day_utc + hour_utc, stated three times each across entry_exit_fills/anchor/neighbour) are implemented verbatim and the spans are derived from them",
+    "no_reentry": "one decision per week (the series is nonzero at exactly one bucket per week), short-only, no pyramiding, no re-entry inside the week; BTCUSDT and ETHUSDT traded independently with symmetric 1 unit",
+    "force_flat": "driver purge law (SILRES convention): any decision whose holding window touches a +/-1-full-UTC-day purged fold boundary, a fold edge, or the grid end is never booked; the book resumes at the next qualifying calendar boundary after the purge",
+    "control": "randomized session-boundary sham, frozen mechanics verbatim: numpy default_rng seed 17040001, ONE draw per week over S0 (weeks = the 168-bucket Friday-anchored windows hosting each anchor decision, ascending), uniform over exactly the weekly entry offsets whose equally-long (50-bucket, duration-matched) window does NOT overlap the true anchor window - Friday-anchored offsets 72..140 (Monday 00:00 .. Wednesday 20:00 starts; 69 offsets); entry at the drawn offset's bucket vwap, cover 50 buckets later at the bucket vwap; identical fill timing, once-per-fill tier-2.0 costs and force-flat law. RECONCILIATION (recorded, QUESTION_FOR_A1): the frozen text says '144 hourly offsets' - the same one-day under-count (excluding exactly 24 offsets cannot realise 'do not overlap the true anchor window' against the true 50-bucket window); the seed, one-draw-per-week, no-overlap and equal-duration mechanics are implemented verbatim. G11 contract: sham reproduces the anchor (same sign AND |sham pooled after-cost expectancy| >= 0.5 x |anchor pooled after-cost expectancy|) => family DIES",
+    "frozen_rule_enforcement": "falsification_rule (4) VERBATIM and FAIL-CLOSED in the driver path (closes A7 finding F1's unenforced-rule gap for THIS family): fewer than 12 scored weekend events in ANY single fold kills the family (calendar coverage insufficient to test the session boundary). run_v17_cell evaluates it on the anchor T2.0 book of every scored cell of this family and the cell record ALWAYS carries frozen_rule_enforcement {rule_id, per_fold_scored_events, min_fold_scored_events, verdict PASS|DEAD_FROZEN_RULE_COVERAGE, family_alive}; a below-floor fold marks the family DEAD in the cell output (the pre-registered REJECT path, never silently skippable - an unevaluable anchor book refuses the cell). Scored weekend event = one booked anchor round trip (one per symbol-weekend)",
+    "costs": "taker fee EXACTLY ONCE PER FILL (L-V14-0), TIER 2.0 PRIMARY BOOK (fee 5.0 bps x 2.0 = 10.0 bps per fill, slip floor 2 ticks) - frozen driver kernel; two taker fills per symbol per weekend round trip"
+  },
+  "families": [
+    {
+      "family_id": "V17-A4-P1-WKNDLIQ",
+      "clock": "H1",
+      "universe": ["BTCUSDT", "ETHUSDT"],
+      "entry": {"lag_buckets": 0},
+      "exit": {"holding_buckets": 50},
+      "fill_price": "vwap",
+      "booking": "event",
+      "sham_calendar": {
+        "calendar": "SHAM_WEEKEND_OFFSET:default_rng(17040001)_one_draw_per_week_no_anchor_overlap",
+        "note": "calendar_conditioned=true (A8 post-F1 replacement family): session-conditioned weekend book with a randomized session-boundary sham control - one numpy default_rng(17040001) draw per Friday-anchored week, uniform over the weekly entry offsets whose equally-long window does not overlap the true anchor window; sham_control_calendar rows carry this descriptor per diag/sham_control_calendar@1"
+      },
+      "frozen_falsification_rules": {
+        "weekend_event_coverage": {
+          "rule": "falsification_rule (4), verbatim: the family DIES if ANY single fold has fewer than 12 scored weekend events (calendar coverage insufficient to test the session boundary)",
+          "min_scored_events_per_fold": 12,
+          "book": "anchor",
+          "tier": "T2.0",
+          "action": "mark_dead",
+          "enforcement": "fail-closed in run_v17_cell.run_family (A7 finding F1 remediation): every scored cell record of this family carries frozen_rule_enforcement; a fold below the floor sets verdict=DEAD_FROZEN_RULE_COVERAGE and family_alive=false; an unevaluable anchor book refuses the cell"
+        }
+      },
+      "arms": [
+        {
+          "arm_id": "anchor",
+          "kind": "anchor",
+          "exposure": {
+            "type": "panel_formula",
+            "formula_id": "WKNDLIQ.anchor",
+            "params": {
+              "entry_weekday_utc": "Friday",
+              "entry_hour_utc": 22,
+              "cover_weekday_utc": "Monday",
+              "cover_hour_utc": 0
+            }
+          }
+        },
+        {
+          "arm_id": "neighbour",
+          "kind": "neighbour",
+          "exit": {"holding_buckets": 54},
+          "exposure": {
+            "type": "panel_formula",
+            "formula_id": "WKNDLIQ.neighbour",
+            "params": {
+              "entry_weekday_utc": "Friday",
+              "entry_hour_utc": 20,
+              "cover_weekday_utc": "Monday",
+              "cover_hour_utc": 2
+            }
+          }
+        },
+        {
+          "arm_id": "control",
+          "kind": "control",
+          "exposure": {
+            "type": "panel_formula",
+            "formula_id": "WKNDLIQ.control",
+            "params": {
+              "entry_weekday_utc": "Friday",
+              "entry_hour_utc": 22,
+              "seed": 17040001,
+              "holding_buckets": 50
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
