@@ -52,6 +52,23 @@ spec JSONs under ``driver/families/`` reference these ids):
     each placebo event's direction is recomputed from the RESAMPLED
     bucket's own ``sign(last_price - first_price)``.  No warmup ``None``:
     the placebo needs no rolling statistics at the resampled buckets.
+``WKNDLIQ.anchor`` / ``WKNDLIQ.neighbour`` / ``WKNDLIQ.control``
+    V17-A4-P1-WKNDLIQ weekend liquidity-participation cycle (H1,
+    BTCUSDT+ETHUSDT, short-only session-conditioned book).  Pure calendar
+    flag: -1.0 at exactly ONE decision bucket per week (anchor: the
+    Friday hour_utc=21 bucket, decision at its close; neighbour: Friday
+    19:00), 0.0 elsewhere, no warmup ``None`` (the trigger consumes no
+    lookback).  No price/flow/size column is read, so the availability
+    law holds trivially.  With the family's lag-0 + ``vwap`` fill law the
+    driver fills at the NEXT bucket's published VWAP (Friday 22:00 /
+    Friday 20:00) and the family holding (50 / 54 buckets; the
+    neighbour's is an arm-level exit override) realizes the frozen cover
+    calendar (Monday 00:00 / Monday 02:00 bucket VWAP).  The control is
+    the randomized session-boundary sham: ONE
+    ``numpy.random.default_rng(17040001)`` uniform draw per week over
+    exactly the weekly entry offsets whose equally-long window does NOT
+    overlap the true anchor window (formula docstring: full arithmetic
+    and the frozen-constant reconciliation note).
 ``ATTN_PHASE.anchor`` / ``ATTN_PHASE.neighbour`` / ``ATTN_PHASE.control``
     V17-a5-P1-ATTN-PHASE SOL US-session attention-phase continuation
     (daily, SOLUSDT traded; BTCUSDT+ETHUSDT reference-only and pinned to
@@ -508,6 +525,247 @@ def _attn_state_series(
 
 
 # --------------------------------------------------------------------------- #
+# V17-A4-P1-WKNDLIQ -- weekend liquidity-participation cycle (frozen proposal
+# research/control/v17_run/d1/a4/proposal_P1.json, blob efb773bcc3d70ae1c348b
+# e5ba0c99a7ee5efda47)
+# --------------------------------------------------------------------------- #
+WKND_WEEKDAYS = (
+    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+    "Sunday",
+)
+#: The sham's week clock: 168-bucket windows anchored at Friday 00:00 UTC
+#: (the anchor mechanism's own weekly boundary).  Consecutive such windows
+#: tile the timeline without overlap.
+WKND_WEEK_ANCHOR_WEEKDAY = "Friday"
+#: Frozen sham PRNG seed (proposal section ``control``, verbatim).
+WKND_SHAM_SEED = 17040001
+
+
+def _wknd_weekday_of(day_utc: str) -> str:
+    from datetime import date
+
+    name = date.fromisoformat(day_utc).strftime("%A")
+    if name not in WKND_WEEKDAYS:  # pragma: no cover - strftime total
+        raise ValueError(f"unrecognised weekday for {day_utc!r}: {name!r}")
+    return name
+
+
+def _wknd_params(params: Mapping[str, Any]) -> Tuple[str, int]:
+    """Validate one arm's frozen entry calendar; return (weekday, entry_hour).
+
+    The formula emits at the DECISION bucket = the hour BEFORE the entry
+    bucket (the proposal's "decision at the close of the entry-hour-minus-1
+    bucket"), so the entry hour must be >= 1 inside its own day.
+    """
+    weekday = str(params.get("entry_weekday_utc", "Friday"))
+    entry_hour = int(params.get("entry_hour_utc", 22))
+    if weekday not in WKND_WEEKDAYS:
+        raise ValueError(
+            f"entry_weekday_utc {weekday!r} not a UTC weekday name"
+        )
+    if not 1 <= entry_hour <= 23:
+        raise ValueError(
+            f"entry_hour_utc must be in 1..23 (decision = entry hour - 1), "
+            f"got {entry_hour}"
+        )
+    return weekday, entry_hour
+
+
+def _wknd_calendar_series(
+    rows: Sequence[Mapping[str, Any]],
+    weekday: str,
+    entry_hour: int,
+) -> List[float]:
+    """Short-only calendar flag over ONE symbol's H1 rows.
+
+    series[i] = -1.0 iff row i's (day_utc, hour_utc) == (weekday,
+    entry_hour - 1) -- the decision bucket whose close fills at the next
+    bucket's published VWAP (the driver's lag-0 + vwap law); 0.0
+    elsewhere.  Exactly one decision bucket per calendar week; no
+    re-entry, no pyramiding; the series consumes NO price/flow/size
+    column (availability law trivially satisfied).
+    """
+    decision_hour = entry_hour - 1
+    out: List[float] = []
+    for row in rows:
+        if (
+            _wknd_weekday_of(str(row["day_utc"])) == weekday
+            and int(str(row["hour_utc"])[11:13]) == decision_hour
+        ):
+            out.append(-1.0)
+        else:
+            out.append(0.0)
+    return out
+
+
+@register("WKNDLIQ.anchor", example_only=False)
+def wkndliq_anchor(
+    panels: Mapping[str, Sequence[Mapping[str, Any]]],
+    params: Mapping[str, Any],
+) -> Dict[str, List[Optional[float]]]:
+    """V17-A4-P1-WKNDLIQ anchor: Friday 22:00 -> Monday 00:00 weekend short.
+
+    Frozen anchor parameters (proposal sections ``entry_exit_fills`` /
+    ``anchor``): decision at the Friday hour_utc=21 close, entry fill at
+    the Friday 22:00 bucket's published vwap (driver lag 0 + fill_price
+    vwap), cover at the Monday 00:00 bucket's published vwap -- exactly
+    50 held H1 buckets on the UTC grid, pinned by the family spec's
+    ``exit.holding_buckets`` (the frozen text's "26 buckets" label
+    under-counts its own Friday 22:00 -> Monday 00:00 calendar anchors by
+    exactly one 24h day; the calendar boundaries are implemented
+    verbatim -- QUESTION_FOR_A1).  Short-only, 1 unit per symbol
+    independently, one entry per week, no re-entry.
+    """
+    weekday, entry_hour = _wknd_params(params)
+    return {
+        sym: _wknd_calendar_series(rows, weekday, entry_hour)
+        for sym, rows in panels.items()
+    }
+
+
+@register("WKNDLIQ.neighbour", example_only=False)
+def wkndliq_neighbour(
+    panels: Mapping[str, Sequence[Mapping[str, Any]]],
+    params: Mapping[str, Any],
+) -> Dict[str, List[Optional[float]]]:
+    """V17-A4-P1-WKNDLIQ neighbour: Friday 20:00 -> Monday 02:00 window.
+
+    Same mechanism, frozen neighbour window parameters (proposal section
+    ``neighbour``): decision at the Friday 19:00 close, entry fill at the
+    Friday 20:00 bucket vwap, cover at the Monday 02:00 bucket vwap --
+    54 held H1 buckets, pinned by the neighbour arm's exit override in
+    the family spec.  Everything else identical to the anchor.
+    """
+    weekday, entry_hour = _wknd_params(params)
+    return {
+        sym: _wknd_calendar_series(rows, weekday, entry_hour)
+        for sym, rows in panels.items()
+    }
+
+
+def _wknd_admissible_offsets(
+    anchor_entry_hour: int, holding_buckets: int
+) -> List[int]:
+    """Weekly entry offsets (Friday-anchored, 0..167) whose equally-long
+    window does NOT overlap the true anchor window.
+
+    Week frame: offsets 0..167 from Friday 00:00 UTC.  The true anchor
+    window is the held arc [a, a+H-1] (mod 168) with a =
+    ``anchor_entry_hour`` (the anchor enters on the week-anchor day) and
+    H = ``holding_buckets``.  A sham entry at offset k holds [k, k+H-1]
+    (mod 168); the excluded starts form the arc [a-H+1, a+H-1] (2H-1
+    offsets, cyclic), so the no-overlap admissible set is the contiguous
+    arc [a+H, a+168-H] (mod 168) of 169-2H offsets, empty (refused) once
+    H > 84.
+
+    Reconciliation note (recorded, not hidden): the frozen control text
+    says "144 hourly offsets" -- the same one-day-under-count of the
+    weekend span that labels the 50-bucket Friday 22:00 -> Monday 00:00
+    window "26 buckets" (168 - 144 = 24 excluded offsets cannot realise
+    "do not overlap the true anchor window" for any window length that
+    matches the anchor's real 50-bucket span; the honest no-overlap set
+    on the frozen calendar is these 69 offsets, Friday-relative
+    72..140 = Monday 00:00 .. Wednesday 20:00 starts).  The frozen
+    PRNG/seed/one-draw-per-week/no-overlap mechanics are implemented
+    verbatim; the count is raised as QUESTION_FOR_A1.
+    """
+    a, holding = int(anchor_entry_hour), int(holding_buckets)
+    if not 1 <= a <= 23:
+        raise ValueError(f"anchor_entry_hour must be in 1..23, got {a}")
+    if not 1 <= holding <= 167:
+        raise ValueError(
+            f"holding_buckets must be in 1..167, got {holding}"
+        )
+    if 2 * holding > 168:
+        raise ValueError(
+            f"holding_buckets {holding} too long for a no-overlap weekly "
+            "sham window (2xH > 168); refusing"
+        )
+    return [(a + holding + j) % 168 for j in range(169 - 2 * holding)]
+
+
+@register("WKNDLIQ.control", example_only=False)
+def wkndliq_control(
+    panels: Mapping[str, Sequence[Mapping[str, Any]]],
+    params: Mapping[str, Any],
+) -> Dict[str, List[Optional[float]]]:
+    """V17-A4-P1-WKNDLIQ control: randomized session-boundary sham.
+
+    Frozen control mechanics (proposal section ``control``), verbatim:
+    identical book to the anchor (symbols, short-only direction, fill
+    timing at the entry bucket's published vwap via the driver's lag-0 +
+    vwap law, EQUAL holding duration via the family
+    ``exit.holding_buckets``, once-per-fill tier-2.0 costs, force-flat
+    law) but each week's window start is drawn with
+    ``numpy.random.default_rng(seed)`` (frozen seed 17040001), ONE draw
+    per week over S0, uniformly over exactly the weekly entry offsets
+    whose equally-long window does not overlap the true anchor window
+    (see ``_wknd_admissible_offsets``).  Weeks are the 168-bucket windows
+    anchored at each Friday 00:00 UTC present in the panel (the anchor
+    mechanism's own weekly clock, one week per anchor decision), iterated
+    in ascending order; the draw is consumed for EVERY week (an
+    off-grid entry after the last week is drawn then skipped -- the
+    driver would refuse the trip anyway), so the stream is a pure
+    function of the seed and the week count.  The drawn SHAM CALENDAR is
+    ONE window per week shared by every symbol (the anchor's calendar is
+    symbol-independent, and the sham replaces exactly that calendar --
+    exactly one draw per week over S0, not one per symbol).  The shared
+    bucket grid is a driver-validated invariant.  Deterministic: no wall
+    clock, no global state.
+    """
+    seed = int(params.get("seed", WKND_SHAM_SEED))
+    if seed != WKND_SHAM_SEED:
+        raise ValueError(
+            f"WKNDLIQ.control seed must be the frozen 17040001, got {seed}"
+        )
+    _, anchor_entry_hour = _wknd_params(params)
+    holding = int(params["holding_buckets"])
+    admissible = _wknd_admissible_offsets(anchor_entry_hour, holding)
+    rng = np.random.default_rng(seed)
+    from datetime import datetime, timedelta
+
+    first = next(iter(panels))
+    rows = panels[first]
+    index_of = {str(r["hour_utc"]): i for i, r in enumerate(rows)}
+    week_days = sorted(
+        {
+            str(r["day_utc"])
+            for r in rows
+            if _wknd_weekday_of(str(r["day_utc"])) == WKND_WEEK_ANCHOR_WEEKDAY
+        }
+    )
+    decision_indices: List[int] = []
+    for week_day in week_days:  # ONE draw per week, ascending, frozen
+        k = int(admissible[int(rng.integers(0, len(admissible)))])
+        entry_dt = (
+            datetime.strptime(week_day, "%Y-%m-%d") + timedelta(hours=k)
+        )
+        entry_key = entry_dt.strftime("%Y-%m-%dT%H")
+        decision_key = (entry_dt - timedelta(hours=1)).strftime(
+            "%Y-%m-%dT%H"
+        )
+        d_idx = index_of.get(decision_key)
+        e_idx = index_of.get(entry_key)
+        if d_idx is None or e_idx is None or e_idx != d_idx + 1:
+            continue  # entry window off-grid: decision never existed
+        decision_indices.append(d_idx)
+    out: Dict[str, List[Optional[float]]] = {}
+    for sym, sym_rows in panels.items():
+        if [str(r["hour_utc"]) for r in sym_rows] != [
+            str(r["hour_utc"]) for r in rows
+        ]:
+            raise ValueError(
+                f"WKNDLIQ.control: symbol {sym} grid differs from "
+                f"{first}; refusing (the sham calendar is shared)"
+            )
+        series = [0.0] * len(sym_rows)
+        for d_idx in decision_indices:
+            series[d_idx] = -1.0
+        out[sym] = series
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # The EXAMPLE formula -- FOR TESTS ONLY (see module docstring)
 # --------------------------------------------------------------------------- #
 @register("EXAMPLE_TEST_ONLY.h1_vwap_revert", example_only=True)
@@ -548,6 +806,9 @@ __all__ = [
     "ATTN_REFERENCE",
     "ATTN_TRADED",
     "EXAMPLE_ONLY_PREFIX",
+    "WKND_SHAM_SEED",
+    "WKND_WEEKDAYS",
+    "WKND_WEEK_ANCHOR_WEEKDAY",
     "attn_anchor",
     "attn_control",
     "attn_neighbour",
@@ -561,4 +822,7 @@ __all__ = [
     "silres_control",
     "silres_neighbour",
     "sign",
+    "wkndliq_anchor",
+    "wkndliq_control",
+    "wkndliq_neighbour",
 ]

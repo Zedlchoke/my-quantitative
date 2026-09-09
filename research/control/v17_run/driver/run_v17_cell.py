@@ -49,6 +49,19 @@ A8 families lane extensions (additive; the frozen defaults are untouched)
       carrying the family's control-calendar descriptor: the ATTN-PHASE
       sham rotation, or the SILRES not-applicable marker per the D2
       re-freeze (calendar_conditioned=false for that family).
+    * ``"frozen_falsification_rules": {"weekend_event_coverage": {...}}``
+      (A8 post-F1 remediation, CRYPTO-V17) -- a frozen proposal kill rule
+      wired FAIL-CLOSED into the scored emission path.  When the block is
+      present the driver ALWAYS evaluates the rule on the family's anchor
+      T2.0 book and the scored cell record carries a
+      ``frozen_rule_enforcement`` field (verdict PASS or
+      DEAD_FROZEN_RULE_COVERAGE with the per-fold scored-event counts);
+      a family whose scored weekend-event count in ANY single fold is
+      below ``min_scored_events_per_fold`` is MARKED DEAD in the cell
+      output (the pre-registered REJECT path -- a legal coverage death,
+      never silently skippable).  A malformed rule block refuses the
+      family at load.  V17-A4-P1-WKNDLIQ freezes rule (4) here
+      (min 12 scored weekend events in any single fold).
 
 Selection JSON schema (frozen shape consumed here)
     {
@@ -359,6 +372,9 @@ class FamilySpec:
     fill_price: str = "last_price"
     booking: str = "event"
     sham_calendar: Optional[Mapping[str, Any]] = None
+    #: frozen proposal kill rules wired fail-closed into the scored path
+    #: (A8 post-F1 remediation); None = no frozen rule declared (legacy).
+    frozen_rules: Optional[Mapping[str, Any]] = None
 
 
 def load_selection(path: Path) -> Tuple[str, List[FamilySpec]]:
@@ -414,6 +430,64 @@ def _check_lag_zero_gate(family_id: str, lag: int, fill_price: str) -> None:
         )
 
 
+#: The one frozen-rule shape the driver owns (A8 post-F1 remediation):
+#: a per-fold scored-event coverage floor from the family's frozen
+#: falsification rule, evaluated on the ANCHOR primary book, marking the
+#: family DEAD in the cell record when any fold falls below the floor.
+FROZEN_RULE_COVERAGE = "weekend_event_coverage"
+
+
+def _parse_frozen_rules(
+    family_id: str, fam_raw: Mapping[str, Any]
+) -> Optional[Mapping[str, Any]]:
+    """Validate the optional ``frozen_falsification_rules`` block (fail closed).
+
+    Supported rule: ``weekend_event_coverage`` with EXACTLY the frozen
+    shape the driver enforces -- ``min_scored_events_per_fold`` (int >= 1),
+    ``book`` == "anchor", ``tier`` a declared stress tier, ``action`` ==
+    "mark_dead".  Anything else is a load-time refusal (a frozen kill
+    rule that cannot be mechanically enforced must never parse silently).
+    """
+    block = fam_raw.get("frozen_falsification_rules")
+    if block is None:
+        return None
+    if not isinstance(block, dict) or set(block) != {FROZEN_RULE_COVERAGE}:
+        raise DriverError(
+            f"family {family_id}: frozen_falsification_rules must declare "
+            f"exactly the rule {FROZEN_RULE_COVERAGE!r} (got "
+            f"{sorted(block) if isinstance(block, dict) else block!r})"
+        )
+    rule = block[FROZEN_RULE_COVERAGE]
+    if not isinstance(rule, dict):
+        raise DriverError(
+            f"family {family_id}: frozen rule {FROZEN_RULE_COVERAGE!r} must "
+            "be an object"
+        )
+    floor = rule.get("min_scored_events_per_fold")
+    if not isinstance(floor, int) or isinstance(floor, bool) or floor < 1:
+        raise DriverError(
+            f"family {family_id}: {FROZEN_RULE_COVERAGE} requires an integer "
+            f"min_scored_events_per_fold >= 1 (got {floor!r})"
+        )
+    if rule.get("book") != "anchor":
+        raise DriverError(
+            f"family {family_id}: {FROZEN_RULE_COVERAGE} evaluates the "
+            f"anchor book only (got book={rule.get('book')!r})"
+        )
+    tier = rule.get("tier")
+    if tier not in STRESS_TIERS:
+        raise DriverError(
+            f"family {family_id}: {FROZEN_RULE_COVERAGE} tier {tier!r} not "
+            f"in {sorted(STRESS_TIERS)}"
+        )
+    if rule.get("action") != "mark_dead":
+        raise DriverError(
+            f"family {family_id}: {FROZEN_RULE_COVERAGE} action must be "
+            f"'mark_dead' (got {rule.get('action')!r})"
+        )
+    return block
+
+
 def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
     if not isinstance(fam_raw, dict):
         raise DriverError("each family must be a JSON object")
@@ -462,6 +536,7 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
                 f"family {family_id}: sham_calendar must be an object with a "
                 "string 'calendar' descriptor"
             )
+    frozen_rules = _parse_frozen_rules(family_id, fam_raw)
     arms_raw = fam_raw.get("arms")
     if not isinstance(arms_raw, list) or len(arms_raw) != 3:
         raise DriverError(
@@ -577,6 +652,7 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
         fill_price=fill_price,
         booking=booking,
         sham_calendar=sham_calendar,
+        frozen_rules=frozen_rules,
     )
 
 
@@ -1786,6 +1862,74 @@ def emit_sanitized_arm(
 
 
 # --------------------------------------------------------------------------- #
+# Frozen falsification-rule enforcement (fail-closed; A8 post-F1 remediation)
+# --------------------------------------------------------------------------- #
+def enforce_frozen_coverage_rule(spec: FamilySpec, state: dict) -> dict:
+    """Evaluate the family's frozen weekend-event coverage rule, fail closed.
+
+    The frozen rule (WKNDLIQ proposal falsification_rule item 4, verbatim
+    intent): ``fewer than 12 scored weekend events in any single fold``
+    kills the family -- calendar coverage insufficient to test the session
+    boundary.  The scored event set is the ANCHOR book's round trips on
+    the rule's frozen tier (the anchor only ever books that arm's events;
+    one scored weekend event per symbol-weekend).  Every fold of the fold
+    structure MUST appear in the counts (a fold missing from the book is
+    zero events -- never an absent key), so the rule cannot be skipped by
+    a sparse book: below-floor folds mark the family DEAD in the cell
+    record (the pre-registered REJECT path), and an unevaluable rule is a
+    hard refusal, never a pass-through.
+    """
+    if not isinstance(spec.frozen_rules, dict) or not spec.frozen_rules:
+        raise DriverError(
+            f"family {spec.family_id}: enforcement requested without a "
+            "frozen_falsification_rules block"
+        )
+    rule = spec.frozen_rules[FROZEN_RULE_COVERAGE]
+    floor = int(rule["min_scored_events_per_fold"])
+    tier = str(rule["tier"])
+    anchor_arm_id = _anchor_arm_id(spec)
+    anchor = state["arms"].get(anchor_arm_id)
+    if anchor is None or anchor.get("metrics") is None:
+        raise DriverError(
+            f"family {spec.family_id}: frozen coverage rule cannot be "
+            f"evaluated (no anchor book); refusing (fail closed)"
+        )
+    book = anchor["books"][tier]
+    if book.n_round_trips == 0:
+        raise DriverError(
+            f"family {spec.family_id}: frozen coverage rule cannot be "
+            f"evaluated (anchor booked zero trips at {tier}); refusing "
+            "(fail closed)"
+        )
+    folds: Sequence[Fold] = state["folds"]
+    per_fold = {
+        fold.label: int(book.fold_population.get(fold.label, 0))
+        for fold in folds
+    }
+    min_fold = min(per_fold.values())
+    dead = min_fold < floor
+    return {
+        "rule_id": FROZEN_RULE_COVERAGE,
+        "source": (
+            "family spec frozen_falsification_rules (frozen proposal "
+            "falsification_rule item 4)"
+        ),
+        "frozen_rule_text": str(rule.get("rule", "")),
+        "book": "anchor",
+        "arm_id": anchor_arm_id,
+        "tier": tier,
+        "min_scored_events_per_fold": floor,
+        "per_fold_scored_events": per_fold,
+        "min_fold_scored_events": int(min_fold),
+        "verdict": (
+            "DEAD_FROZEN_RULE_COVERAGE" if dead else "PASS"
+        ),
+        "family_alive": not dead,
+        "fail_closed": True,
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Family driver
 # --------------------------------------------------------------------------- #
 def run_family(
@@ -1817,7 +1961,16 @@ def run_family(
             code_freeze_sha=head, scored_root=scored_root,
         )
     emit_family_dsr(spec, state, out_root, scored_root=scored_root)
-    return {"sanitized": False, "arms": results}
+    record: Dict[str, Any] = {"sanitized": False, "arms": results}
+    # Frozen falsification-rule enforcement (A8 post-F1 remediation): a
+    # family that declares a frozen kill rule gets it EVALUATED on every
+    # scored cell -- the verdict always lands in the cell record
+    # (fail-closed: there is no output path that skips it).
+    if spec.frozen_rules:
+        record["frozen_rule_enforcement"] = enforce_frozen_coverage_rule(
+            spec, state
+        )
+    return record
 
 
 # --------------------------------------------------------------------------- #
@@ -1893,6 +2046,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 f"cost_holding_terms={kernel['cost_holding_terms']} "
                 f"remediated_kernel={kernel['remediated_kernel']} "
                 f"first_failing_gate={kernel['first_failing_gate']}"
+            )
+        enforcement = result.get("frozen_rule_enforcement")
+        if enforcement is not None:
+            print(
+                f"frozen_rule_enforcement {spec.family_id} "
+                f"{enforcement['rule_id']}: verdict="
+                f"{enforcement['verdict']} family_alive="
+                f"{enforcement['family_alive']} "
+                f"per_fold_scored_events="
+                f"{enforcement['per_fold_scored_events']} "
+                f"(floor {enforcement['min_scored_events_per_fold']})"
             )
     return 0
 
