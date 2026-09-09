@@ -146,11 +146,10 @@ def measure(name, ex_by_sym, panel_syms, extra_proxies):
     rhos = {}
     for pname in names:
         pr = {s: [d[s][k].get(pname) for k in ks] for s in panel_syms}
-        # align exposure (daily series keyed by symbol) to the same day grid
-        ex = {}
-        for s in ex_by_sym:
-            series = ex_by_sym[s]
-            ex[s] = series[:len(ks)] if len(series) >= len(ks) else series + [None] * (len(ks) - len(series))
+        # F2 remediation: hourly-grid endpoint exposures are daily-aggregated
+        # (per symbol-day mean) via align_daily_from_hourly BEFORE panel-proxy
+        # comparison - the committed bytes had lost this call (A7 finding F2)
+        ex = align_daily_from_hourly(ex_by_sym, {s: panel_load(s) for s in ex_by_sym})
         rhos["panel_daily:" + pname] = {"pearson": pooled_abs(ex, pr, pearson),
                                         "spearman": pooled_abs(ex, pr, spearman)}
     for pname, pr in extra_proxies.items():

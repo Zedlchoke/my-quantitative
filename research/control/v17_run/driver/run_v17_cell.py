@@ -1395,7 +1395,9 @@ def arm_metrics(book: BookResult, folds: Sequence[Fold], first_b: int, last_b: i
 
 
 def gate_margins(metrics: ArmMetrics, arm_id: str) -> List[dict]:
-    """In-cell frozen gates G1..G5, PER ARM, margin = threshold - value.
+    """In-cell frozen gates G1..G5, PER ARM, margin in the program-wide
+    positive=pass convention (A7 finding F3: this docstring previously
+    restated the pre-8926c9a inverted wording; code was already correct).
 
     G10/G11/G12 are D2/terminal-level and are skipped in-cell.  The
     arm-attribution invariant puts arm_id on every record; the artifact
