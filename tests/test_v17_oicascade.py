@@ -46,13 +46,29 @@ Fixture map (task items a-g):
       - test_spec_loads_through_driver_schema
       - test_spec_end_to_end_scored_sanitized_and_enforced
       - test_diag_contract_passes_persistability_gate
+* (h) warmup-extended endpoint authority (A8 remediation r2)
+      - test_loader_warmup_extended_alignment       (series_start_utc +
+      bucket_hours: the loader serves the full warmup+S0 array whose last
+      len(grid) slots land on the S0 grid -- value at S0 start == cache[714]
+      at production geometry; legacy strict-length contract byte-identical
+      without the hints; misalignment / short cache / lone hints refused)
+      - test_formula_consumes_warmup_slots          (the trailing P10 window
+      and the T-24h denominator reach into the pre-S0 slots via the fixed
+      warmup offset: the SAME S0 collapse that is honest-warmup None on a
+      grid-length cache FIRES on the warmup-extended authority; a warmup
+      slot inside the early-S0 window is decision load-bearing; with a
+      720-slot warmup the FIRST S0 H4 close has 720 prior closes and is
+      decided, never None)
+      - test_no_after_close_influence_with_warmup   (the availability law
+      holds unchanged on the extended authority: no endpoint value strictly
+      after a decision's close can influence it)
 """
 
 from __future__ import annotations
 
 import copy
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -72,6 +88,10 @@ SPEC_PATH = FAMILIES_DIR / "V17-A6-P2-OICASCADE.spec.json"
 CONTRACT_PATH = FAMILIES_DIR / "V17-A6-P2-OICASCADE.diag_contract.json"
 S0 = date(2025, 8, 22)  # frozen S0 window start
 UNIVERSE = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+#: Warmup offset of the corrected real cache: 119 pre-S0 days x 6 H4 = 714
+#: slots before S0 ordinal 0 (the spec's series_start_utc 2025-04-25T00:00Z
+#: + bucket_hours 4 land the last len(grid) slots exactly on the S0 grid).
+WARMUP_SLOTS = 119 * 6
 
 #: Frozen arm parameters exactly as pinned by the spec.
 ANCHOR_PARAMS = {
@@ -418,18 +438,26 @@ def _write_oic_csv(directory: Path, symbol: str, n_days: int) -> None:
 
 
 def _synthetic_endpoint(n_days: int, collapse_buckets) -> dict:
-    """Reduced OI series per symbol: a STRICTLY INCREASING r_OI baseline
-    (r = 1e-5 x bucket index -> the current r is always above its own
-    window's decile, so the calm book can never fire -- a stationary
-    series would fire ~10% of buckets by decile construction and saturate
-    the sham's +/-3-day exclusion space) plus engineered collapses
-    (r_OI(c) = -0.5, far under any window P10).  Events are therefore
-    EXACTLY the engineered set, per symbol."""
+    """Reduced OI series per symbol, WARMUP-EXTENDED exactly as the frozen
+    spec's alignment hints describe (WARMUP_SLOTS pre-S0 slots + n_days x 6
+    S0 slots; ``collapse_buckets`` are S0-ordinals, mapped behind the
+    warmup offset): a STRICTLY INCREASING r_OI baseline (r = 1e-5 x slot
+    index -> the current r is always above its own window's decile, so the
+    calm book can never fire -- a stationary series would fire ~10% of
+    buckets by decile construction and saturate the sham's +/-3-day
+    exclusion space) plus engineered collapses (r_OI(c) = -0.5, far under
+    any window P10).  Events are therefore EXACTLY the engineered set, per
+    symbol."""
     oi = {}
+    total = WARMUP_SLOTS + n_days * 6
     for sym in UNIVERSE:
         series = [1_000_000.0] * 6
-        for i in range(6, n_days * 6):
-            r = -0.5 if i in collapse_buckets else 1e-5 * i
+        for i in range(6, total):
+            r = (
+                -0.5
+                if (i - WARMUP_SLOTS) in collapse_buckets
+                else 1e-5 * i
+            )
             series.append(series[i - 6] * (1.0 + r))
         oi[sym] = series
     return oi
@@ -475,12 +503,13 @@ def _loaded_spec():
 # (d, e2e) 24h holding + force-flat on the real driver path
 # ------------------------------------------------------------------------- #
 def test_anchor_books_24h_and_force_flats_at_purge(tmp_path, monkeypatch):
-    """250-day world: warmup consumes closes 0..719 (day 120); engineered
-    collapses in F1 (day 130) and F2 (day 200) book 6-bucket round trips
-    (entry t+1 vwap -> exit t+6 vwap = the T+24h bucket); no booked trip
-    touches a purged fold-boundary day or escapes its fold; an event at
-    the last H4 close never books (grid-end force-flat); the neighbour's
-    48h holding books 11-bucket trips."""
+    """250-day world on the warmup-extended authority (the staged endpoint
+    carries the spec's 714 pre-S0 slots, so the gate is decided from S0
+    ordinal 6): engineered collapses in F1 (day 130) and F2 (day 200) book
+    6-bucket round trips (entry t+1 vwap -> exit t+6 vwap = the T+24h
+    bucket); no booked trip touches a purged fold-boundary day or escapes
+    its fold; an event at the last H4 close never books (grid-end
+    force-flat); the neighbour's 48h holding books 11-bucket trips."""
     spec = _loaded_spec()
     collapse = [130 * 6 + 2, 200 * 6 + 4]
     manifest = _stage(tmp_path, spec, n_days=250, collapse_buckets=collapse)
@@ -877,9 +906,10 @@ def test_fold_negative_rule_end_to_end_dead(tmp_path, monkeypatch):
     lose, so both populated folds (F1: 3 trips, F2: 3 trips -- exactly the
     engineered events, all negative) are negative -> the family is MARKED
     DEAD via the AND-combined wrapper while K1 (negative sham) and K3
-    (frozen 0.1899) PASS; F0 has zero scored events (the warmup gap on the
-    S0-only cached authority) and is recorded NULL -- disclosed, never
-    counted hidden-negative."""
+    (frozen 0.1899) PASS; F0 has zero scored events (the fixture's calm
+    OI baseline fires nowhere in days 0..119 even though the
+    warmup-extended authority now decides every early-S0 bucket) and is
+    recorded NULL -- disclosed, never counted hidden-negative."""
     spec = _loaded_spec()
     collapse = [130 * 6 + 2, 200 * 6 + 4]
     manifest = _stage(tmp_path, spec, n_days=250, collapse_buckets=collapse)
@@ -957,12 +987,17 @@ def test_spec_loads_through_driver_schema():
     assert by_kind["control"].exposure["params"] == CONTROL_PARAMS
     assert by_kind["control"].holding_override is None  # the 24h span
     assert by_kind["control"].exposure["params"]["seed"] == reg.OIC_SHAM_SEED
-    # all three arms carry the availability-aligned endpoint series block
+    # all three arms carry the availability-aligned endpoint series block,
+    # pinned to the CORRECTED warmup-extended cache authority (A8 r2):
+    # series_start_utc 2025-04-25T00:00:00Z + bucket_hours 4 => the loader
+    # serves 2,904 slots whose last 2,190 land on the S0 H4 grid
     for arm in spec.arms:
         block = arm.exposure["endpoint_series"]
         assert block["format"] == "json"
         assert block["path"].endswith("oi_series_reduced.json")
         assert "availability" in block["alignment"]
+        assert block["series_start_utc"] == "2025-04-25T00:00:00Z"
+        assert block["bucket_hours"] == 4
         assert callable(reg.resolve(arm.exposure["formula_id"]))
         assert not reg.is_example_only(arm.exposure["formula_id"])
     # the THREE frozen falsification rules ride the spec and parse
@@ -1112,3 +1147,218 @@ def test_diag_contract_passes_persistability_gate():
     # the persisted conditional's canon mirrors the governance canon
     assert set(d.CANON_FIELDS["sham_control_calendar"]) == set(
         CONDITIONAL_REQUIRED_FIELDS["sham_control_calendar"])
+
+
+# ------------------------------------------------------------------------- #
+# (h) warmup-extended endpoint authority (A8 remediation r2)
+# ------------------------------------------------------------------------- #
+def _loader_grid(n_buckets: int) -> list:
+    """An S0 H4 bucket grid (bucket-START keys, the loader's alignment law)."""
+    return [_h4_key(i) for i in range(n_buckets)]
+
+
+def _hinted_cache(warmup: int, n_buckets: int) -> list:
+    """A warmup-extended cache: `warmup` pre-S0 slots + n_buckets S0 slots,
+    slot value = 1_000.0 + slot index (hand-checkable alignment)."""
+    return [1_000.0 + k for k in range(warmup + n_buckets)]
+
+
+def _hints_for(warmup: int) -> dict:
+    """Alignment hints whose series_start_utc sits EXACTLY `warmup` H4
+    slots before the frozen S0 grid start (2025-08-22T00:00Z)."""
+    s0_start = datetime(2025, 8, 22, tzinfo=timezone.utc)
+    start = s0_start - timedelta(hours=4 * warmup)
+    return {
+        "format": "json",
+        "series_start_utc": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "bucket_hours": 4,
+    }
+
+
+def _load_endpoint(tmp_path: Path, cache, grid, block) -> list:
+    path = tmp_path / "oi_warm.json"
+    path.write_text(json.dumps({"BTCUSDT": cache}), encoding="utf-8")
+    return d._load_endpoint_series(
+        dict(block, path=str(path)),
+        family_id="F", arm_id="A", universe=["BTCUSDT"],
+        grid=grid, base_dir=tmp_path,
+    )["BTCUSDT"]
+
+
+def test_loader_warmup_extended_alignment(tmp_path):
+    """The hinted loader serves the FULL warmup+S0 array (contiguous,
+    float-or-null): its value at S0 start IS cache[warmup] and its LAST
+    len(grid) entries land exactly on the S0 grid -- at production
+    geometry, cache[714].  Misaligned starts, trailing shortfalls, caches
+    shorter than the grid, lone hints and naive timestamps all refuse
+    (fail closed)."""
+    grid = _loader_grid(12)
+    # production geometry, scaled grid: value at S0 start == cache[714]
+    cache = _hinted_cache(WARMUP_SLOTS, 12)
+    series = _load_endpoint(tmp_path, cache, grid, _hints_for(WARMUP_SLOTS))
+    assert len(series) == WARMUP_SLOTS + len(grid)
+    assert series[WARMUP_SLOTS] == cache[WARMUP_SLOTS]
+    assert series == [float(v) for v in cache]  # contiguous warmup+S0 view
+    assert series[-len(grid):] == [float(v) for v in cache[-len(grid):]]
+    # a null warmup slot passes through as None
+    cache[3] = None
+    series = _load_endpoint(tmp_path, cache, grid, _hints_for(WARMUP_SLOTS))
+    assert series[3] is None
+    assert series[WARMUP_SLOTS] == float(1_000.0 + WARMUP_SLOTS)
+    # misaligned series_start (+1 slot): the last slots miss the grid keys
+    bad = _hints_for(2)
+    bad["series_start_utc"] = "2025-08-21T20:00:00Z"  # one slot late
+    with pytest.raises(d.DriverError, match="warmup alignment broken"):
+        _load_endpoint(tmp_path, _hinted_cache(2, 12), grid, bad)
+    # a shortfall at the trailing end lands the last slot off-grid too
+    with pytest.raises(d.DriverError, match="warmup alignment broken"):
+        _load_endpoint(tmp_path, _hinted_cache(2, 12)[:-1], grid, _hints_for(2))
+    # a cache SHORTER than the grid is refused even under hints
+    with pytest.raises(d.DriverError, match="shorter than the bucket grid"):
+        _load_endpoint(tmp_path, _hinted_cache(2, 12)[:6], grid, _hints_for(2))
+    # lone hints refused (both-or-neither), at loader AND parse-time gate
+    lone = _hints_for(2)
+    del lone["bucket_hours"]
+    with pytest.raises(d.DriverError, match="given together"):
+        _load_endpoint(tmp_path, _hinted_cache(2, 12), grid, lone)
+    with pytest.raises(d.DriverError, match="given together"):
+        d._validate_endpoint_alignment_hints(
+            {"series_start_utc": "2025-04-25T00:00:00Z"}, "F", "A"
+        )
+    # bucket_hours must be a positive int, series_start_utc must carry UTC
+    for bad_bh in ("4", 4.0, 0, True):
+        with pytest.raises(d.DriverError, match="bucket_hours"):
+            d._validate_endpoint_alignment_hints(
+                {"series_start_utc": "2025-04-25T00:00:00Z", "bucket_hours": bad_bh},
+                "F", "A",
+            )
+    with pytest.raises(d.DriverError, match="explicit UTC offset"):
+        d._validate_endpoint_alignment_hints(
+            {"series_start_utc": "2025-04-25T00:00:00", "bucket_hours": 4},
+            "F", "A",
+        )
+
+
+def test_loader_legacy_contract_byte_identical(tmp_path):
+    """Without the hints the strict-length contract is untouched: a
+    grid-length cache loads to exactly the same float-or-null list, and
+    any other length gets the legacy '!= bucket grid' refusal."""
+    grid = _loader_grid(12)
+    cache = _hinted_cache(0, 12)
+    series = _load_endpoint(tmp_path, cache, grid, {"format": "json"})
+    assert len(series) == len(grid)
+    assert series == [float(v) for v in cache]
+    cache[5] = None
+    series = _load_endpoint(tmp_path, cache, grid, {"format": "json"})
+    assert series[5] is None and series[4] == float(1_004.0)
+    with pytest.raises(d.DriverError, match="length 5 != bucket grid 12"):
+        _load_endpoint(
+            tmp_path, _hinted_cache(0, 12)[:5], grid, {"format": "json"}
+        )
+
+
+def test_formula_consumes_warmup_slots():
+    """The fixed warmup offset (S0 ordinal i -> authority slot i + warmup)
+    puts the trailing P10 window AND the T-24h denominator into the pre-S0
+    slots.  Hand-separated hypotheses on a warmup-14 authority (win 12):
+    ordinal 6's window is slots [8..19] -- six of them pre-S0.  Variant A
+    parks two WARMUP slots (8, 9) at -0.01 -> window p10 = -0.007 and the
+    collapse r_OI = -0.009 at ordinal 6 fires; variant B parks them at
+    -0.02 -> p10 = -0.016 and the IDENTICAL S0 data does NOT fire: a
+    warmup slot inside the early-S0 window is decision load-bearing.  On
+    the grid-length legacy authority the same collapse at ordinal 6 is an
+    honest-warmup None -- the exact remediation delta."""
+    warmup, n, win = 14, 30, 12
+    collapse_r = -0.009
+
+    def extended(low_slots: float) -> list:
+        r = [0.02] * (warmup + n)
+        r[8] = r[9] = low_slots  # two WARMUP slots of ordinal 6's window
+        r[warmup + 6] = collapse_r  # the engineered S0 collapse
+        return oi_from_r(r)
+
+    prices = [100.0 - 0.5 * i for i in range(n)]  # r_24 < 0 from ordinal 6
+    panels = {"BTCUSDT": _h4_rows(prices)}
+    params = _gate_params(win)
+
+    p10_a = float(np.percentile([-0.01, -0.01] + [0.02] * 10, 10.0))
+    assert p10_a == pytest.approx(-0.007)
+    warm_series = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": extended(-0.01)}
+    )["BTCUSDT"]
+    assert warm_series[:6] == [0.0] * 6  # decided; panel r_24 warmup: no fire
+    assert warm_series[6] == 1.0  # fires on the warmup-funded window
+    p10_b = float(np.percentile([-0.02, -0.02] + [0.02] * 10, 10.0))
+    assert p10_b == pytest.approx(-0.016)
+    cold_series = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": extended(-0.02)}
+    )["BTCUSDT"]
+    assert cold_series[6] == 0.0  # -0.009 now sits ABOVE its window p10
+    # the legacy contract on the SAME S0 data: no warmup slots -> the
+    # ordinal-6 collapse is never even decided (honest warmup None)
+    r_s0 = [0.02] * n
+    r_s0[6] = collapse_r
+    legacy_series = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": oi_from_r(r_s0)}
+    )["BTCUSDT"]
+    assert legacy_series[:win] == [None] * win
+    assert legacy_series[6] is None
+
+
+def test_first_s0_close_fully_windowed_at_720_warmup():
+    """With a 720-slot warmup the FIRST S0 H4 close has exactly 720 prior
+    closes -- every one of them pre-S0 -- and is DECIDED (never the
+    honest-warmup None); the same close on a grid-length legacy authority
+    is None because its window cannot exist there."""
+    warmup, n = 720, 12
+    prices = [100.0 - 0.5 * i for i in range(n)]
+    panels = {"BTCUSDT": _h4_rows(prices)}
+    params = _gate_params(720)
+    extended = oi_from_r([0.02] * (warmup + n))
+    assert len(extended) == warmup + n
+    warm_series = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": extended}
+    )["BTCUSDT"]
+    assert warm_series[0] == 0.0  # window = slots [0:720], all pre-S0
+    legacy_series = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": oi_from_r([0.02] * n)}
+    )["BTCUSDT"]
+    assert legacy_series == [None] * n
+
+
+def test_no_after_close_influence_with_warmup():
+    """Availability law on the warmup-extended authority: the decision at
+    S0 ordinal i is a function of authority slots <= i + warmup ONLY --
+    rewriting every endpoint value strictly AFTER a taken event's
+    authority slot leaves the path up to and including that decision
+    byte-identical, and the event's OWN close endpoint stays
+    load-bearing."""
+    warmup, n, event_i = 10, 40, 30
+    event_w = warmup + event_i
+    prices = [100.0 - 0.5 * i for i in range(n)]  # r_24 < 0 everywhere
+    r = [0.001 * k for k in range(warmup + n)]  # strictly rising: calm
+    r[event_w] = -0.5  # engineered OI collapse at S0 ordinal 30
+    oi = oi_from_r(r)
+    panels = {"BTCUSDT": _h4_rows(prices)}
+    params = _gate_params(10)
+    series = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": oi}
+    )["BTCUSDT"]
+    assert series[event_i] == 1.0
+    # perturb EVERY authority slot strictly after the event close: the
+    # path up to and including the event decision is untouched
+    tampered = list(oi)
+    for k in range(event_w + 1, warmup + n):
+        tampered[k] = tampered[k] * 3.0 + 7_000_000.0
+    series2 = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": tampered}
+    )["BTCUSDT"]
+    assert series2[: event_i + 1] == series[: event_i + 1]
+    # the event's OWN close endpoint is load-bearing: a +50% OI print
+    # (r_OI = +0.5, far above the window decile) un-fires the event
+    no_collapse = list(oi)
+    no_collapse[event_w] = no_collapse[event_w - 6] * 1.5
+    series3 = reg.resolve("OICASCADE.anchor")(
+        panels, params, endpoint={"BTCUSDT": no_collapse}
+    )["BTCUSDT"]
+    assert series3[event_i] == 0.0
