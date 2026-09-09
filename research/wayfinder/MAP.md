@@ -1,6 +1,28 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced by the Lead, 2026-09-08 morning)
+## Sprint state (synced at the FOREX-V8 close, 2026-09-09)
+
+- **FOREX V8 CLOSED → `FOREX_FREE_V8_REJECT_ALL`** (closed 2026-09-09, branch
+  `orca/forex-free-v8-integration`, terminal 07de93c + closeout 4018884,
+  A7 terminal `CONFIRM_FOREX_FREE_V8_REJECT_ALL` 0 HIGH/CRITICAL) — the
+  real-rate frontier cycle under the owner FRED key. P0: lane 1
+  (cross-economy market real-yield differentials) **BLOCKED_DATA measured**
+  (US-only funding in the keyed catalog; owner PATH A ratified, keyless
+  official sources DOCUMENTED_CANDIDATE for V9+). D2 lane kills: A4-P1
+  0.3411 / A4-P2 0.3831 ancestry vetoes; A5-P2 blocked-data. E: FXFV8-A5-P1
+  3/3 cells published — **falsification-by-control #14: the mandated
+  DGS10-LEVEL control out-earns the anchor 4.01x same-sign (+19.77 vs
+  +4.93/trade)** — nominal-yield-level exposure in new words; anchor
+  whisper-positive (PF 1.0531) killed by its own control; DSR N=42
+  0.341/0.406/0.540; reproduction ALL_MATCH (14/14 artifacts byte-identical,
+  twin emission canon-identical); F2 strict ruling BOUND verdict-neutral.
+  Budget 3/6, 3 slots dead; **forex 42/42; program 236/239** (ledger
+  authority, P-9). S1 SEALED. Detail:
+  `.worktrees/forex-free-v8/integration/research/control/forex_free_v8_run/terminal_verdict_v8.json`.
+
+- **CRYPTO V17 / STOCKS V13**: V17 paused-maintenance (SHV1); V13
+  bootstrapped through the hardened control plane (bulk ingest observed on
+  the heavy lock).
 
 - **CRYPTO V16 CLOSED → `V16_REJECT_ALL`** (closed 2026-09-08 07:45 VN,
   branch `orca/v16-integration`, terminal `46db31d` + canonical close
