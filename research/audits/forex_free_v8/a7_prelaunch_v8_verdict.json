@@ -183,8 +183,8 @@
   "verdict": "FOREX_FREE_V8_S0_LAUNCH_AUTHORIZED",
   "verdict_rule_applied": "AUTHORIZED requires ZERO unresolved HIGH/CRITICAL findings; launch gate must be FALSE at audit time (it is; a TRUE would be automatic REFUSED); scored-mode refusal must be proven (proven, exit 2)",
   "unresolved_high_critical": 0,
-  "unresolved_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 2, "LOW": 1},
-  "unresolved_medium_ids": ["F1", "F2"],
+  "unresolved_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 1},
+  "unresolved_medium_ids": ["F2"],
   "notes_for_e_phase": [
     "The two MEDIUM findings are disclosed obligations, not blockers: F1 must be reconciled before the owner GO is typed (alignment is A1's, mechanical, non-scientific); F2 must be adjudicated by the owner before any verdict interpretation of scored output.",
     "This artifact does NOT flip any gate: run_contract.launch_gate.s0_launch_authorized remains false and a7_prelaunch_verdict remains null in the audited tree; consumption is the controller's act.",
@@ -192,6 +192,27 @@
   ],
   "pnl_anywhere": false,
   "s1": "SEALED_UNTOUCHED",
+  "f1_reverification_addendum": {
+    "added_at_utc": "2026-09-09T02:35:00Z",
+    "remediation_commit": "997c850ec054ab7906d1fd00565bc06d2c3d277e",
+    "method": "cherry-picked into q-a7-prelaunch (blob bases of both touched files verified IDENTICAL to 997c850^ before pick, so tested bytes == shipped bytes); shipped contract re-hashed UNFLIPPED f89744cefaf50aa0... both sides",
+    "diff_review": "exec_driver_v8.py _launch_gate_state now reads rc['launch_gate'] exclusively (top-level fallback removed) with the contract's own field names: s0_launch_authorized, a7_prelaunch_verdict == FOREX_FREE_V8_S0_LAUNCH_AUTHORIZED, owner_go_fresh, owner_go_phrase == 'GO FOREX V8 SCORED EXECUTION'; budget check unchanged (used + 3 <= 6)",
+    "independent_runs": [
+      "V8 suite after pick: 48/48 PASS (new test covers shipped->two-keys and flipped->[] both directions)",
+      "scored with shipped contract: exit 2, refusal JSON missing_gates exactly [s0_launch_authorized, owner_fresh_go]; zero side effects (no ledger, no artifacts dir, porcelain 0)",
+      "own harness on the fixed reader: fully-flipped contract -> []; wrong a7_prelaunch_verdict -> refuses; wrong owner_go_phrase (trailing space) -> refuses; stale/null a7_prelaunch_verdict with everything else flipped -> refuses; budget used=4 -> refuses 'budget'"
+    ],
+    "observations": [
+      "the fix makes the a7_prelaunch_verdict string load-bearing: the gate cannot be flipped past the reader without this artifact's verdict present",
+      "note-level residual (unchanged from audited baseline, not a regression): s0_launch_authorized is checked by truthiness, so a non-boolean truthy value would pass that sub-check; the contract is a governed committed artifact so this is not exploitable in protocol"
+    ],
+    "f1_status_after_reverification": "RESOLVED_CONFIRMED"
+  },
+  "f2_adjudication_timing_answer": {
+    "question": "owner pre-adjudication BEFORE the GO, or only at E-phase verdict interpretation?",
+    "answer": "BEFORE the GO (before any scored compute). Gate margins are outcome-shaped (PnL-derived); adjudicating the exactly-2/3 semantics after compute but 'before interpretation' is still outcome-conditioned because the adjudicator would know which reading flips the verdict - rescue-class rule-making under the p3 freeze ('no_threshold_change_after_pnl_visible'). Zero-cost path: owner ratifies the executable strict-inequality semantics as-is in one sentence pre-GO (no code change; conservative default stands and a 2/3-kill remains transparent via margins_to_fail margin 0.0), OR pre-commits the equality-pass reading as a code change landing before any scored compute. Deciding at interpretation time with margins visible is NOT acceptable.",
+    "binding_case_note": "the ambiguity binds only if the anchor lands at exactly 2/3 positive folds with all other gates green; the protocol must still be fixed before outcomes exist regardless of probability"
+  },
   "gitignored_bytes_used_not_committed": [
     "research/control/forex_free_v8_run/staged_vintaged/",
     "data_raw/forex_free_v1/"
