@@ -41,13 +41,15 @@ Read the LIVE plan of the cycle you serve (highest version per asset in
 
 ## Measured program state
 
-- CLOSED 2026-09-07 evening: `FOREX_FREE_V7_REJECT_ALL` (terminal
-  `f59ea0c`; cross-economy spillover sham-reproduction, cluster #12 —
-  with V6 this closes the whole reaction-direction class) and
-  `STOCKS_FREE_V11_REJECT_ALL` (terminal `9d3a061`; amendment
-  cadence-latency falsified by shuffled-chain control, cluster #13;
-  mandatory filing-event lane died measured at D2, novelty 0.219 vs
-  momentum_63s). Both A7-confirmed from bytes, reproduced byte-identical.
+- CLOSED 2026-09-09: `FOREX_FREE_V8_REJECT_ALL` (terminal 07de93c + closeout
+  4018884; A7 terminal CONFIRM 0 HIGH/CRITICAL) — falsification-by-control
+  #14: the mandated DGS10-LEVEL control out-earns the FXFV8-A5-P1 anchor
+  4.01x same-sign; lane 1 BLOCKED_DATA measured (US-only keyed-catalog
+  funding, owner PATH A); budget 3/6, 3 slots dead; reproduction ALL_MATCH.
+  Forex 42/42; program 236/239 (ledger authority, P-9). S1 SEALED.
+- CLOSED 2026-09-07 evening: `FOREX_FREE_V7_REJECT_ALL` (terminal f59ea0c) +
+  `STOCKS_FREE_V11_REJECT_ALL` (9d3a061) — both A7-confirmed, reproduced
+  byte-identical.
 - CLOSED 2026-09-08 07:45 VN: `V16_REJECT_ALL` (terminal `46db31d` +
   canonical close `9d62d5c`; first governance-native cycle — gate + lock
   + registry exercised end-to-end; aggTrades frontier measured-exhausted
