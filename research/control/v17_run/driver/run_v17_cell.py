@@ -84,12 +84,22 @@ Selection JSON schema (frozen shape consumed here)
               "kind": "anchor" | "neighbour" | "control",
               "exposure":
                 {"type": "panel_formula", "formula_id": str, "params": {...},
-                 "endpoint_series"?: {"path": str, "format": "json"}}
+                 "endpoint_series"?: {"path": str, "format": "json",
+                   "series_start_utc"?: str,   # ISO-8601 UTC bucket start of
+                                               # cached slot 0 (warmup hints)
+                   "bucket_hours"?: int}       # slot width; hints must ride
+                                               # TOGETHER and mark a
+                                               # warmup-EXTENDED cache whose
+                                               # last len(grid) slots land on
+                                               # the S0 grid (A8 remediation
+                                               # r2); without hints the file
+                                               # must be grid-length exactly
                                           # optional availability-aligned
                                           # endpoint data (OICASCADE reduced
                                           # OI series), passed to formulas
                                           # declaring the `endpoint` keyword
-              | {"type": "endpoint_series", "path": str, "format": "json"},
+              | {"type": "endpoint_series", "path": str, "format": "json",
+                 "series_start_utc"?: str, "bucket_hours"?: int},
               "control_spec": {...}              # optional, opaque to the
             }                                    # driver; digested, not acted on
           ]
@@ -99,7 +109,11 @@ Selection JSON schema (frozen shape consumed here)
     Exactly three arms per family; kinds anchor/neighbour/control exactly
     once each.  ``endpoint_series`` paths resolve against the selection
     file's directory; the JSON must map every universe symbol to a list of
-    floats (or null warmups) index-aligned with the bucket grid.
+    floats (or null warmups) index-aligned with the bucket grid -- or, under
+    the alignment hints, a longer warmup+S0 list whose LAST ``len(grid)``
+    entries land exactly on the bucket grid (the loader returns the full
+    array; formulas consume pre-S0 slots via a fixed warmup offset while
+    decisions stay S0-only).
 
 CLI (exactly)
     python run_v17_cell.py --selection PATH [--families ID[,ID]] [--sanitized]
@@ -760,6 +774,9 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
                         f"family {family_id}/{arm_id}: endpoint_series format "
                         "must be json"
                     )
+                _validate_endpoint_alignment_hints(
+                    endpoint_block, family_id, arm_id
+                )
         elif etype == "endpoint_series":
             epath = exposure.get("path")
             if not isinstance(epath, str) or not epath.strip():
@@ -770,6 +787,7 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
                 raise DriverError(
                     f"family {family_id}/{arm_id}: endpoint_series format must be json"
                 )
+            _validate_endpoint_alignment_hints(exposure, family_id, arm_id)
         else:
             raise DriverError(
                 f"family {family_id}/{arm_id}: exposure.type {etype!r} unsupported "
@@ -1142,6 +1160,79 @@ def _formula_accepts_h1(fn: Callable[..., Any]) -> bool:
     return _formula_accepts_kw(fn, "h1")
 
 
+def _iso_utc_ms(value: str) -> int:
+    """Parse an ISO-8601 UTC timestamp ("2025-04-25T00:00:00Z") to epoch ms
+    (fail closed on anything naive or unparseable)."""
+    from datetime import datetime, timezone
+
+    text = str(value).strip()
+    try:
+        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise DriverError(
+            f"endpoint series alignment series_start_utc {value!r} is not an "
+            f"ISO-8601 timestamp: {exc}"
+        )
+    if dt.tzinfo is None:
+        raise DriverError(
+            f"endpoint series alignment series_start_utc {value!r} must carry "
+            "an explicit UTC offset (fail closed)"
+        )
+    return int(dt.astimezone(timezone.utc).timestamp() * 1000)
+
+
+def _grid_key_start_ms(key: str) -> int:
+    """UTC start (ms) of the bucket whose grid key is ``YYYY-MM-DDTHH``
+    (the driver's H1/H4 grid keys are bucket-START hours)."""
+    from datetime import datetime, timezone
+
+    try:
+        dt = datetime.strptime(str(key), "%Y-%m-%dT%H").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError as exc:
+        raise DriverError(
+            f"endpoint series alignment needs hour-precision grid keys "
+            f"(YYYY-MM-DDTHH); grid key {key!r} is not (fail closed): {exc}"
+        )
+    return int(dt.timestamp() * 1000)
+
+
+def _validate_endpoint_alignment_hints(
+    block: Mapping[str, Any], family_id: str, arm_id: str
+) -> None:
+    """Parse-time shape check for the OPTIONAL warmup-alignment hints of an
+    endpoint-series block (A8 remediation r2): ``series_start_utc`` (ISO-8601
+    UTC, the first cached snapshot's bucket start) + ``bucket_hours`` (the
+    reduced series' bucket width) must be given TOGETHER or not at all --
+    present, they let the loader serve a warmup-EXTENDED cache (pre-S0
+    snapshots funding early-S0 trailing windows) instead of refusing it."""
+    ss = block.get("series_start_utc")
+    bh = block.get("bucket_hours")
+    if (ss is None) != (bh is None):
+        raise DriverError(
+            f"family {family_id}/{arm_id}: endpoint_series series_start_utc "
+            "and bucket_hours must be given together (fail closed)"
+        )
+    if ss is None:
+        return
+    if not isinstance(ss, str) or not ss.strip():
+        raise DriverError(
+            f"family {family_id}/{arm_id}: endpoint_series series_start_utc "
+            "must be a non-empty ISO-8601 string"
+        )
+    _iso_utc_ms(ss)  # parseability checked at load-time shape gate
+    if (
+        not isinstance(bh, int)
+        or isinstance(bh, bool)
+        or int(bh) < 1
+    ):
+        raise DriverError(
+            f"family {family_id}/{arm_id}: endpoint_series bucket_hours must "
+            f"be a positive integer, got {bh!r}"
+        )
+
+
 def _load_endpoint_series(
     block: Mapping[str, Any],
     *,
@@ -1156,7 +1247,19 @@ def _load_endpoint_series(
     resolution against the selection directory (absolute paths pass
     through), JSON object mapping every universe symbol to a list
     index-aligned with the bucket grid, float-or-null values, no unknown
-    symbols."""
+    symbols.
+
+    Warmup-extended authority (A8 remediation r2): when the block carries
+    the OPTIONAL alignment hints ``series_start_utc`` (ISO-8601 UTC bucket
+    start of cached slot 0) + ``bucket_hours`` (slot width), the file may
+    hold MORE slots than the S0 bucket grid -- index 0 = series_start_utc,
+    step bucket_hours -- and the LAST ``len(grid)`` slots must land EXACTLY
+    on the S0 grid (first/last grid keys pinned; the step + count pin the
+    rest).  The loader then returns the FULL warmup+S0 array (length
+    ``len(values)``): the formula indexes S0 ordinal i at i + warmup so
+    early-S0 decisions can consume pre-S0 snapshots (the 24h-ago endpoint
+    denominator and the trailing 120d P10 window).  Without the hints the
+    legacy strict-length contract applies byte-identically."""
     epath = Path(str(block["path"]))
     if not epath.is_absolute():
         epath = base_dir / epath
@@ -1171,6 +1274,19 @@ def _load_endpoint_series(
         raise DriverError(f"endpoint series {epath} is not valid JSON: {exc}")
     if not isinstance(doc, dict):
         raise DriverError(f"endpoint series {epath} must map symbol -> [values]")
+    ss_hint = block.get("series_start_utc")
+    bh_hint = block.get("bucket_hours")
+    if (ss_hint is None) != (bh_hint is None):
+        raise DriverError(
+            f"family {family_id}/{arm_id}: endpoint_series series_start_utc "
+            "and bucket_hours must be given together (fail closed)"
+        )
+    hinted = ss_hint is not None
+    start_ms = step_ms = None
+    warmup = 0
+    if hinted:
+        start_ms = _iso_utc_ms(str(ss_hint))
+        step_ms = int(bh_hint) * 3600 * 1000
     out: Dict[str, List[Optional[float]]] = {}
     for sym in universe:
         if sym not in doc:
@@ -1179,7 +1295,33 @@ def _load_endpoint_series(
                 f"(family {family_id}/{arm_id})"
             )
         values = doc[sym]
-        if not isinstance(values, list) or len(values) != len(grid):
+        if not isinstance(values, list):
+            raise DriverError(
+                f"endpoint series {epath}[{sym}] length n/a "
+                f"!= bucket grid {len(grid)} (family {family_id}/{arm_id})"
+            )
+        if hinted:
+            warmup = len(values) - len(grid)
+            if warmup < 0:
+                raise DriverError(
+                    f"endpoint series {epath}[{sym}] length {len(values)} is "
+                    f"shorter than the bucket grid {len(grid)}: a "
+                    "warmup-extended authority must cover the full S0 grid "
+                    f"(family {family_id}/{arm_id})"
+                )
+            first_s0_ms = start_ms + warmup * step_ms
+            last_ms = start_ms + (len(values) - 1) * step_ms
+            if first_s0_ms != _grid_key_start_ms(grid[0]) or last_ms != (
+                _grid_key_start_ms(grid[-1])
+            ):
+                raise DriverError(
+                    f"endpoint series {epath}[{sym}] warmup alignment broken: "
+                    f"series_start_utc + {{warmup, last}}*bucket_hours does "
+                    f"not land on the S0 grid keys {grid[0]}..{grid[-1]} "
+                    f"(warmup slots {warmup}, family {family_id}/{arm_id}); "
+                    "refusing (fail closed)"
+                )
+        elif len(values) != len(grid):
             raise DriverError(
                 f"endpoint series {epath}[{sym}] length "
                 f"{len(values) if isinstance(values, list) else 'n/a'} "

@@ -113,14 +113,21 @@ spec JSONs under ``driver/families/`` reference these ids):
     long windows uniformly over S0, excluding +/-1-day fold purge zones,
     closes within +/-3 days of any true gate-fired event, and closes
     within 24h of an accepted window (redraw on collision; exhausted draw
-    space = hard error).  DATA AUTHORITY NOTES (recorded for A1): the
-    sha-manifest covers S0 only (2025-08-22..2026-08-21) -- the proposal's
-    pre-S0 warmup segment (2025-04-25..2025-08-21) is absent from the
-    cached pull, so on the cached authority the 720-close window funds no
-    decisions before S0 H4 index 720; and the reduced cache's BTCUSDT/
-    ETHUSDT arrays are byte-identical to SOLUSDT's (the D2 reduction wrote
-    the loop-final per-symbol series under every key) -- the formulas are
-    data-source-agnostic; both notes ride the family spec.
+    space = hard error).  DATA AUTHORITY (remediated, A8 r2): the CORRECTED
+    reduced cache is warmup-EXTENDED -- 2,904 H4 snapshots per symbol
+    (484 days from 2025-04-25T00:00Z = 119 pre-S0 warmup days + the 365-day
+    S0), per-symbol distinct; the family spec's endpoint_series blocks pin
+    the alignment hints (series_start_utc 2025-04-25T00:00:00Z +
+    bucket_hours 4) and the loader returns the full warmup+S0 array.  The
+    formulas index S0 ordinal i at the fixed warmup offset
+    ``w = i + (len(endpoint) - len(grid))`` (714 = 119 x 6 on the real
+    authority) so the T-24h endpoint denominator and the trailing 720-close
+    P10 window CONSUME pre-S0 slots: the first decidable S0 ordinal is
+    ``max(0, 720 - warmup)`` (6 on the real authority) instead of 720, so
+    fold F0 is tradeable, while decisions remain S0-only (grid-aligned
+    series, fold force-flat unchanged).  Old stale notes (byte-identical
+    arrays / S0-only pull) were remediated by the D2 re-pull + this lane;
+    they ride the family spec's recorded reconciliation text.
 
 Percentile/median conventions (implementation pins, conservative): the
 rolling quantile is ``numpy.percentile`` linear interpolation; the median
@@ -885,41 +892,64 @@ def _oic_gate(
     last-snapshot-at-or-before-close law); a None at bucket i means no
     admissible snapshot for that bucket (the freshest available snapshot
     would be a full bucket stale -- outside the frozen +/-30 min endpoint
-    tolerance).  r_OI(T) = OI(T)/OI(T-24h) - 1 with BOTH endpoints present;
-    otherwise the frozen substitution "undefined = 0" applies.  No value at
-    a bucket AFTER its close can ever enter (the decision at i reads only
-    buckets i and i-6 for the endpoints and the strictly-past window
-    [i-window_closes, i-1] for the threshold).
+    tolerance).
+
+    Warmup-extended authority (A8 remediation r2): ``oi`` may carry MORE
+    slots than the S0 grid -- the full warmup+S0 cache the loader returned
+    under the family spec's alignment hints.  The fixed warmup offset is
+    ``warmup = len(oi) - len(rows)`` (714 = 119 x 6 on the corrected real
+    cache): S0 ordinal i reads its own endpoint at ``w = i + warmup`` and
+    its 24h-ago denominator at ``w - h4_per_day``, and its trailing
+    ``window_closes`` quantile window is the strictly-past slots
+    ``r_oi[w - window_closes : w]`` -- so EARLY-S0 decisions consume
+    pre-S0 warmup slots (both the denominator and the window reach back
+    past the S0 start; that is the remediation's entire point).  A short
+    window (``w < window_closes``) is an honest warmup None, never a
+    partial quantile.  With ``len(oi) == len(rows)`` (no warmup) every
+    index degenerates to the legacy S0-only arithmetic byte-identically.
+
+    r_OI(T) = OI(T)/OI(T-24h) - 1 with BOTH endpoints present; otherwise
+    the frozen substitution "undefined = 0" applies.  No value at a bucket
+    AFTER its close can ever enter (the decision at S0 ordinal i reads
+    only endpoint buckets w and w-6 for the endpoints and the
+    strictly-past window [w-window_closes, w-1] for the threshold).
 
     Event(T) = 1 iff r_OI(T) <= rolling P(oi_percentile) of the PRIOR
     window_closes H4 closes AND R_24h(T) = last_price(T)/last_price(T-24h)
-    - 1 < 0.  The rolling quantile is numpy.percentile linear interpolation
-    (the registry-standard convention pin).
+    - 1 < 0 (panel-side 24h lookback stays S0-only: the panel has no
+    pre-S0 rows, so S0 ordinals < h4_per_day cannot fire).  The rolling
+    quantile is numpy.percentile linear interpolation (the
+    registry-standard convention pin).
 
     One position per symbol: an event firing while a position is open is
     IGNORED (series 0.0) and the book re-arms only after flat -- decisions
     at most ``holding_buckets`` closes after a taken event collide with its
     open window (entry fill at t+1 vwap .. exit fill at t+1+holding vwap),
     so the taken set is pairwise >= h4_per_day apart for the frozen 24h
-    book.  Series[i] = +1.0 at a TAKEN event (desired long over the bucket
-    that follows -- the driver's one-bar lag fills at bucket i+1's
-    published VWAP), 0.0 elsewhere, None before the quantile window exists
-    (honest warmup).  Also returns ALL gate-fired event closes (suppressed
-    ones included) -- the sham's "+/-3 days of a true event" exclusion set.
+    book.  Series[i] (S0-aligned, length len(rows)) = +1.0 at a TAKEN
+    event (desired long over the bucket that follows -- the driver's
+    one-bar lag fills at bucket i+1's published VWAP), 0.0 elsewhere,
+    None before the quantile window exists (honest warmup; decisions
+    themselves remain S0-only -- the fold force-flat law is untouched).
+    Also returns ALL gate-fired event closes (suppressed ones included,
+    S0 ordinals) -- the sham's "+/-3 days of a true event" exclusion set.
     """
     n = len(rows)
-    if len(oi) != n:
+    if len(oi) < n:
         raise ValueError(
-            f"OICASCADE: endpoint OI series length {len(oi)} != H4 grid {n}"
+            f"OICASCADE: endpoint OI series length {len(oi)} is shorter "
+            f"than the H4 grid {n}; refusing (the warmup-extended "
+            "authority must cover the full S0 grid)"
         )
+    warmup = len(oi) - n
     closes = [_oic_bucket_close_ms(str(r["hour_utc"])) for r in rows]
     _oic_check_grid_regular(closes)
     back = h4_per_day  # 24h-ago bucket offset on the regular grid
     r_oi: List[float] = []
-    for i in range(n):
-        j = i - back
-        if j >= 0 and oi[i] is not None and oi[j] is not None:
-            r_oi.append(float(oi[i]) / float(oi[j]) - 1.0)
+    for k in range(len(oi)):  # full warmup+S0 authority
+        j = k - back
+        if j >= 0 and oi[k] is not None and oi[j] is not None:
+            r_oi.append(float(oi[k]) / float(oi[j]) - 1.0)
         else:
             r_oi.append(0.0)  # frozen "undefined = 0" substitution
     r_24: List[Optional[float]] = []
@@ -935,10 +965,13 @@ def _oic_gate(
     series: List[Optional[float]] = [None] * n
     events: List[int] = []
     last_taken: Optional[int] = None
-    for i in range(window_closes, n):
-        p = float(np.percentile(r_oi[i - window_closes : i], oi_percentile))
+    for i in range(n):
+        w = i + warmup  # S0 ordinal i lives at authority slot w
+        if w < window_closes:
+            continue  # honest warmup: the window does not exist yet
+        p = float(np.percentile(r_oi[w - window_closes : w], oi_percentile))
         if (
-            r_oi[i] <= p
+            r_oi[w] <= p
             and r_24[i] is not None
             and r_24[i] < 0.0
         ):
