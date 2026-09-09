@@ -2,7 +2,7 @@
  "cycle_id": "CRYPTO-V17",
  "families": [
   {
-   "family_id": "V17-A4-P2-SILRES",
+   "family_id": "V17-A4-P1-WKNDLIQ",
    "clock": "H1",
    "universe": [
     "BTCUSDT",
@@ -12,13 +12,23 @@
     "lag_buckets": 0
    },
    "exit": {
-    "holding_buckets": 2
+    "holding_buckets": 50
    },
    "fill_price": "vwap",
    "booking": "event",
    "sham_calendar": {
-    "calendar": "NOT_APPLICABLE:RESHUFFLED_INTERVAL_PLACEBO",
-    "note": "D2 re-freeze sets calendar_conditioned=false for SILRES: the control is an arrival-structure reshuffled-interval placebo, not a session/calendar sham; its sham_control_calendar rows carry this not-applicable marker per diag/sham_control_calendar@1"
+    "calendar": "SHAM_WEEKEND_OFFSET:default_rng(17040001)_one_draw_per_week_no_anchor_overlap",
+    "note": "calendar_conditioned=true (A8 post-F1 replacement family): session-conditioned weekend book with a randomized session-boundary sham control - one numpy default_rng(17040001) draw per Friday-anchored week, uniform over the weekly entry offsets whose equally-long window does not overlap the true anchor window; sham_control_calendar rows carry this descriptor per diag/sham_control_calendar@1"
+   },
+   "frozen_falsification_rules": {
+    "weekend_event_coverage": {
+     "rule": "falsification_rule (4), verbatim: the family DIES if ANY single fold has fewer than 12 scored weekend events (calendar coverage insufficient to test the session boundary)",
+     "min_scored_events_per_fold": 12,
+     "book": "anchor",
+     "tier": "T2.0",
+     "action": "mark_dead",
+     "enforcement": "fail-closed in run_v17_cell.run_family (A7 finding F1 remediation): every scored cell record of this family carries frozen_rule_enforcement; a fold below the floor sets verdict=DEAD_FROZEN_RULE_COVERAGE and family_alive=false; an unevaluable anchor book refuses the cell"
+    }
    },
    "arms": [
     {
@@ -26,11 +36,12 @@
      "kind": "anchor",
      "exposure": {
       "type": "panel_formula",
-      "formula_id": "SILRES.anchor",
+      "formula_id": "WKNDLIQ.anchor",
       "params": {
-       "gap_percentile": 90.0,
-       "resumption_multiple": 1.5,
-       "warmup_buckets": 720
+       "entry_weekday_utc": "Friday",
+       "entry_hour_utc": 22,
+       "cover_weekday_utc": "Monday",
+       "cover_hour_utc": 0
       }
      }
     },
@@ -38,15 +49,16 @@
      "arm_id": "neighbour",
      "kind": "neighbour",
      "exit": {
-      "holding_buckets": 4
+      "holding_buckets": 54
      },
      "exposure": {
       "type": "panel_formula",
-      "formula_id": "SILRES.neighbour",
+      "formula_id": "WKNDLIQ.neighbour",
       "params": {
-       "gap_percentile": 75.0,
-       "resumption_multiple": 1.2,
-       "warmup_buckets": 720
+       "entry_weekday_utc": "Friday",
+       "entry_hour_utc": 20,
+       "cover_weekday_utc": "Monday",
+       "cover_hour_utc": 2
       }
      }
     },
@@ -55,13 +67,12 @@
      "kind": "control",
      "exposure": {
       "type": "panel_formula",
-      "formula_id": "SILRES.control",
+      "formula_id": "WKNDLIQ.control",
       "params": {
-       "gap_percentile": 90.0,
-       "resumption_multiple": 1.5,
-       "warmup_buckets": 720,
-       "block_buckets": 720,
-       "seed": 17040002
+       "entry_weekday_utc": "Friday",
+       "entry_hour_utc": 22,
+       "seed": 17040001,
+       "holding_buckets": 50
       }
      }
     }
