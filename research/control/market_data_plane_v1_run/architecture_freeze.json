@@ -1,0 +1,158 @@
+{
+ "schema": "mdp_architecture_freeze@1",
+ "frozen_utc": "2026-09-09",
+ "frozen_by": "A1",
+ "authority": "plans/PLAN_market_data_plane_v1.md sections 5-8",
+ "rule": "No lane starts from an unfrozen contract. Ambiguities return to A1; lanes never improve a frozen spec.",
+
+ "package": {
+   "path": "research/market_data_plane",
+   "python": "3.12 (host .venv)",
+   "import_isolation": "the event-stream hot path (models, quality, replay, archive, bbo) must not import pandas, pandera, dvc or nautilus_trader at module import time; heavy interop lives in isolated modules (_pandera_spike.py, nautilus_bridge.py) and is imported lazily inside functions",
+   "module_ownership": {
+     "A2": ["research/market_data_plane/models.py", "research/market_data_plane/quality.py", "research/market_data_plane/reason_codes.py", "tests/test_mdp_models.py", "tests/test_mdp_quality.py", "tests/mdp_hypothesis/__init__.py", "tests/mdp_hypothesis/strategies.py", "tests/mdp_hypothesis/profiles.py", "tests/test_mdp_pandera_spike.py", "research/market_data_plane/_pandera_spike.py"],
+     "A3": ["research/market_data_plane/archive.py", "research/market_data_plane/manifest.py", "research/market_data_plane/replay.py", "research/market_data_plane/quarantine.py", "tests/test_mdp_archive.py", "tests/test_mdp_replay.py", "tests/test_mdp_quarantine.py"],
+     "A4": ["research/market_data_plane/bbo.py", "research/market_data_plane/depth.py", "research/market_data_plane/tca.py", "tests/test_mdp_bbo.py", "tests/test_mdp_depth.py", "tests/test_mdp_tca.py"],
+     "A8": ["research/market_data_plane/nautilus_bridge.py", "tests/test_mdp_nautilus_bridge.py", "tests/mdp_bridge_fixtures/ (provider-neutral fixtures)", "docs/MDP_BRIDGE_NOTES.md"],
+     "A1": ["research/market_data_plane/__init__.py", "run-control artifacts", "contract freeze", "Data Fusion adoption glue", "DVC POC", "dependency pins", "integration-only corrections", "terminal report"],
+     "A7": ["research/audits/market_data_plane_v1/** only"]
+   }
+ },
+
+ "schemas": {
+   "event_schema_version": "mdp.market_event@1",
+   "manifest_schema_version": "mdp.raw_chunk_manifest@1",
+   "envelope_fields": ["schema_version","event_id","raw_id","source_id","venue","instrument_id","asset_class","event_type","exchange_time_utc_ns","receive_time_utc_ns","available_time_utc_ns","sequence_number","price","quantity","side","bid_price","ask_price","bid_size","ask_size","currency","price_precision","size_precision","quality_status","reason_codes","raw_sha256","manifest_sha256","normalizer_version"],
+   "field_rules": {
+     "timestamps": "exchange_time_utc_ns, receive_time_utc_ns, available_time_utc_ns are int UTC nanoseconds; naive/local/float timestamps are rejected at construction (TIMEZONE_NAIVE_REJECTED / MALFORMED_SHAPE); the three times are never aliases and may be equal only when independently evidenced",
+     "decimals": "price, quantity, bid_price, ask_price, bid_size, ask_size persist as canonical decimal STRINGS (fixed-point, no exponent form) plus explicit integer price_precision/size_precision (number of fractional digits); in-memory they are decimal.Decimal parsed from the string; binary float is forbidden in persisted canonical evidence (PRECISION_LOSS on float input that is not exactly representable at declared precision; float input is otherwise converted via Decimal(repr(x)) then validated)",
+     "event_id": "lowercase hex sha256 of the UTF-8 canonical identity string joined by 0x1F: schema_version|source_id|venue|instrument_id|event_type|exchange_time_utc_ns|receive_time_utc_ns|available_time_utc_ns|sequence_number|raw_sha256",
+     "quality_status": "enum VALID | SUSPECT | INVALID | QUARANTINED; no event is VALID merely because parsing succeeded",
+     "reason_codes": "sorted unique list drawn from reason_codes@1 only",
+     "nulls": "absent fields are explicit nulls allowed only per the event-type matrix"
+   },
+   "event_type_matrix": {
+     "TRADE":  {"required": ["price","quantity"], "optional": ["side","currency"], "forbidden_non_null": ["bid_price","ask_price","bid_size","ask_size"]},
+     "QUOTE":  {"required": ["bid_price","ask_price","bid_size","ask_size"], "optional": ["currency"], "forbidden_non_null": ["price","quantity","side"]},
+     "DEPTH_SNAPSHOT": "RESERVED in @1 - constructing it raises UNKNOWN_EVENT_TYPE",
+     "DEPTH_DELTA": "RESERVED in @1 - constructing it raises UNKNOWN_EVENT_TYPE"
+   },
+   "sequence_number": "int >= 0; null only when the source manifest declares sequence_semantics=NONE",
+   "raw_id": "opaque source-record identifier string; raw_sha256 = sha256 of the raw provider record bytes (hex)",
+   "manifest_fields": ["schema_version","manifest_id","source_id","provider_id","venue","instrument_id","asset_class","event_class","request_identity_secrets_removed","entitlement_evidence_ref","allowed_use_classification","retrieval_start_utc_ns","retrieval_end_utc_ns","payload_byte_length","record_count","payload_sha256","media_type","encoding","min_exchange_time_utc_ns","max_exchange_time_utc_ns","min_receive_time_utc_ns","max_receive_time_utc_ns","min_available_time_utc_ns","max_available_time_utc_ns","parser_version","normalizer_version","prev_manifest_id","next_manifest_id","completeness_status","gap_reasons","sequence_semantics","ordered_delivery","created_utc"],
+   "manifest_rules": "manifest_id = sha256 of canonical_json(manifest minus manifest_id field); prev/next linkage nullable; completeness_status in {COMPLETE, GAPS_PRESENT}; gap_reasons list of reason codes; allowed_use_classification in {RESEARCH_AUTHORIZED, RESEARCH_CONDITIONAL, NOT_AUTHORIZED}",
+   "canonical_json": "json.dumps(obj, sort_keys=True, separators=(',',':'), ensure_ascii=True, allow_nan=False); decimals as strings per field_rules; replay stream = newline-delimited canonical_json per event"
+ },
+
+ "reason_codes@1": {
+   "codes": ["MALFORMED_SHAPE","MISSING_REQUIRED_FIELD","UNKNOWN_EVENT_TYPE","TIMEZONE_NAIVE_REJECTED","NON_FINITE_PRICE","PRECISION_LOSS","NEGATIVE_PRICE","NEGATIVE_SIZE","CROSSED_QUOTE","STALE_QUOTE","IMPOSSIBLE_TIME_ORDER","OUT_OF_ORDER_DELIVERY","SEQUENCE_GAP","SEQUENCE_RESET","DUPLICATE_EVENT","SOURCE_RESET_UNEVIDENCED","UNKNOWN_INSTRUMENT","MANIFEST_MISMATCH","STATISTICAL_ANOMALY","QUARANTINE_ORPHAN","HASH_DISAGREEMENT"],
+   "classes": {
+     "reject_to_quarantine": ["MALFORMED_SHAPE","MISSING_REQUIRED_FIELD","UNKNOWN_EVENT_TYPE","TIMEZONE_NAIVE_REJECTED","NON_FINITE_PRICE","PRECISION_LOSS","NEGATIVE_PRICE","NEGATIVE_SIZE","CROSSED_QUOTE","IMPOSSIBLE_TIME_ORDER","SOURCE_RESET_UNEVIDENCED","UNKNOWN_INSTRUMENT","MANIFEST_MISMATCH","HASH_DISAGREEMENT","QUARANTINE_ORPHAN"],
+     "flag_suspect": ["STALE_QUOTE","OUT_OF_ORDER_DELIVERY","SEQUENCE_GAP","SEQUENCE_RESET","STATISTICAL_ANOMALY"],
+     "bookkeeping": ["DUPLICATE_EVENT"]
+   },
+   "semantics": {
+     "SEQUENCE_GAP": "raised only when the chunk manifest declares sequence_semantics=CONTIGUOUS; with sequence_semantics=NONE a jump is not missing data",
+     "OUT_OF_ORDER_DELIVERY": "flagged only when manifest declares ordered_delivery=true; replay sorting is deterministic and never deletes",
+     "CROSSED_QUOTE": "bid_price >= ask_price inside ONE venue+instrument quote; cross-venue price disagreement is recorded by consolidated BBO contributors, never coded CROSSED_QUOTE",
+     "STATISTICAL_ANOMALY": "diagnostic only, never silent deletion; default rule set flags |z|>6 on log price change within instrument and event class",
+     "STALE_QUOTE": "quote whose exchange_time is older than the staleness threshold parameter at evaluation time; threshold is always an explicit input"
+   }
+ },
+
+ "archive_protocol": {
+   "layout": "<root>/chunks/<h2>/<h2b>/<sha256>.jsonl + <root>/manifests/<manifest_id>.json where h2=sha[0:2], h2b=sha[2:4]",
+   "write_sequence": ["write chunk bytes to sibling temp file .tmp-<pid>-<monotonic counter> in the SAME directory","flush","os.fsync","os.replace to final content-addressed path (atomic)","re-read and verify sha256 + byte length + record count","only then publish the manifest atomically (same temp+fsync+replace)"],
+   "immutability": "an existing content hash is read-only: re-put of identical bytes is a no-op; detection of DIFFERENT bytes at an existing content path is CORRUPTION (fail closed, HASH_DISAGREEMENT), never overwrite",
+   "append_forbidden": "no code path appends to a published .jsonl chunk",
+   "orphans": "chunk without manifest, or manifest without chunk, or trailing partial record => quarantined/diagnosed, never guessed complete",
+   "manifest_publication_failure": "chunk left in place, run ends with explicit orphan record; recovery runbook handles re-publication after human verification"
+ },
+
+ "replay_contract": {
+   "total_order_key": ["exchange_time_utc_ns","receive_time_utc_ns","available_time_utc_ns","source_id","venue","instrument_id","event_type","sequence_number","event_id"],
+   "tie_break": "event_id is the final total tie-break; order is total, stable and independent of input file order",
+   "inputs": "an explicit manifest ID list + predicate; replay records (manifest_ids, predicate_source) into its result; discovery of newer files is forbidden",
+   "digest": "stream_digest = sha256 over the exact byte stream (canonical_json + newline per event); aggregate per-chunk digests recorded alongside",
+   "clock": "clock speed affects waiting only, never event order or content; no wall-clock value enters event content",
+   "corruption": "a corrupted replay record fails or quarantines visibly; except Exception: pass is forbidden"
+ },
+
+ "bbo_contract": {
+   "venue_local": "per venue+instrument: last non-stale quote wins; ties broken by (exchange_time, receive_time, event_id); contributes bid/ask/event_id",
+   "consolidated": "union of venue-locals whose venue is in permitted_venues and identity-compatible (same instrument_id, same currency); best_bid = max bid, best_ask = min ask; records contributing quote event IDs per side; a crossed CONSOLIDATED result is allowed and is reported as-is with contributors (it is information, not an error)",
+   "staleness": "staleness_threshold_ns is a required parameter of every evaluation call; no hidden default",
+   "depth": "L1 required; L2/depth optional and reports NOT_EVALUABLE unless proven snapshot/delta sequence semantics are supplied as input; synthesizing depth from bars is forbidden and tested against"
+ },
+
+ "tca_contract": {
+   "inputs": "fills (with side, price, quantity, fee, instrument, timestamps) + quote evidence + clock evidence; fills are input evidence, the plane never places orders",
+   "metrics": ["arrival_mid (bid+ask)/2 of the venue BBO at decision ts; consolidated fallback only if recorded","decision_to_fill_slippage_bps = side_sign*(fill-arrival_mid)/arrival_mid*1e4","effective_spread_bps = 2*side_sign*(fill-mid_at_fill)/fill*1e4","realized_spread_bps at frozen horizons H in [1000000000, 5000000000, 30000000000, 300000000000] ns = 2*side_sign*(fill-mid_at_fill_plus_H)/fill*1e4","fill_ratio = filled_quantity/submitted_quantity","fees (separate column)","funding_or_swap (separate column)","impact_proxy_bps = side_sign*(mid_at_fill_plus_H - mid_at_fill)/mid_at_fill*1e4"],
+   "separation": "fees, funding and slippage remain separate columns before any total-cost view",
+   "not_evaluable": "missing quote, clock, side, currency-conversion or fee evidence returns NOT_EVALUABLE for the affected metric; substituting zero is forbidden; currency mismatch without conversion evidence => NOT_EVALUABLE"
+ },
+
+ "nautilus_bridge_contract": {
+   "target": "nautilus_trader==1.230.0 (installed)",
+   "mappings": {"QUOTE->QuoteTick": "bid/ask Price and sizes from instrument metadata precisions (mandatory argument); ts_event=exchange_time_utc_ns, ts_init=available_time_utc_ns; no implicit now()", "TRADE->TradeTick": "price/size via instrument precisions; aggressor_side mapped when side present else NONE per nautilus enum", "Bar": "NOT mapped in @1: the plane has no canonical BAR event type; OHLCV can never become quotes or depth"},
+   "rules": ["instrument metadata (precisions, instrument_id) is a mandatory bridge input","Decimal/fixed-point round-trips without precision drift (golden fixtures assert exact string equality after round trip)","INVALID/QUARANTINED events raise unless diagnostic_only=True is explicitly passed (then they are tagged, never silently streamed)","SUSPECT events stream with their status preserved in a sidecar list, not silently","no lookahead: the bridge never reorders, never substitutes timestamps, and mutation attempts are golden-tested","no strategy, risk, portfolio, broker or execution code is introduced"],
+   "fixtures": "provider-neutral synthetic examples for crypto trades, forex bid/ask, stocks trades/quotes; fixtures prove code semantics only and confer zero data authority",
+   "compatibility_path": "A8 verifies constructor signatures against the installed 1.230.0 and records them; any irreconcilable difference => BLOCKED_COMPATIBILITY report to A1, no workaround imports"
+ },
+
+ "hypothesis_profiles": {
+   "registration": "tests/mdp_hypothesis/profiles.py registers 'mdp_ci' and 'mdp_deep' via settings.register_profile; conftest.py selects by HYPOTHESIS_PROFILE env var, default mdp_ci",
+   "mdp_ci": {"derandomize": true, "max_examples": 50, "deadline": null, "deadline_reason": "deterministic CI on a shared host; per-test slowness is reported by the gate command instead", "suppress_health_check": [], "print_blob": true},
+   "mdp_deep": {"derandomize": false, "max_examples": 500, "deadline": null, "deadline_reason": "alone-running optional gate; seed/host/elapsed recorded in the result JSON", "suppress_health_check": [], "print_blob": true},
+   "rules": "profiles frozen here; every real counterexample becomes a committed golden regression fixture before its fix is declared; the terminal claim never rests on the Hypothesis example database alone; random tests touch no provider API, S1, raw licensed data, ledger, or orders"
+ },
+
+ "pandera_acceptance_criteria": {
+   "spike_scope": "batch/DataFrame ingestion boundary only; strict=True; no implicit column addition; coerce=False by default",
+   "fixtures": ["crypto trades","forex bid/ask","stocks quotes","macro series"],
+   "adopt_requires_all": ["identical accepted/rejected row sets and reason attribution vs native frozen schema","no timestamp timezone loss","no Decimal-to-float conversion","deterministic errors independent of row order","no mutation of the input DataFrame","no unexplained runtime or peak-memory regression over 20% vs the native validator on the same fixtures","optional import isolation: event-stream hot path does not depend on pandas/pandera"],
+   "failure_verdict": "PANDERA_EVALUATED_NOT_ADOPTED with the failing criterion recorded; that is a successful evidence-based decision and does not block MDP-V1"
+ },
+
+ "dvc_poc_topology": {
+   "fixture": "deterministic synthetic bundle: 32 files x 4 MiB = 128 MiB generated from a fixed seed by a committed generator script; bytes are non-proprietary and reproducible",
+   "worktree": "DVC initialized ONLY inside .worktrees/market-data-plane-v1/integration",
+   "remote": "disposable local directory remote under the governance home OUTSIDE every git worktree (measured path recorded in run evidence only); tracked dvc config uses portable/relative settings, no host-private absolute path, no credentials",
+   "cache": "default .dvc/cache inside the integration worktree, gitignored",
+   "proof_chain": ["dvc add bundle; raw bytes git-ignored; pointer + .gitignore tracked","dvc push to the disposable remote","create consumer: second temp clone of the integration branch; dvc pull","restored bundle SHA-256, file count, byte count, manifest and MDP replay digest equal producer","negatives: absent object, corrupted cache object, wrong pointer each FAIL VISIBLY, never fall back to newer/local data"],
+   "non_roles": "dvc never counts/executes/compares/ranks/publishes scientific trials; no dvc exp run, no metric ranking, no parameter sweeps; no owner data moved into DVC in this cycle"
+ },
+
+ "data_fusion_adoption": {
+   "core_pick": "research/data_fusion/** + tests/data_fusion/** from exact commit c6a0576ef98dd4392e90805c8ba33821da62eabc (see data_fusion_pin.json)",
+   "versioned_fixes": [
+     {"id": "DF-ISSUE-1", "fix": "date-only validity end resolves to next-day 00:00:00 exclusive instead of 23:59:59; fixture covers the sub-second boundary", "attribution": "recorded in file header and this freeze; original audited semantics referenced"},
+     {"id": "DF-ISSUE-2", "fix": "equal available_time+vintage with differing content raises a fail-closed conflict unless a preregistered authoritative revision key is supplied; silent later-retrieval preference removed; fixture covers both paths", "attribution": "as above"}
+   ],
+   "boundary": "MDP-V1 must not create a competing NormalizedRecord; market events reference Data Fusion evidence objects rather than duplicating them"
+ },
+
+ "exact_arithmetic_goldens": [
+   "price 0.1 stored as '0.1' never 0.1000000000000000055511151231257827",
+   "price 1e-8 and size 1e9 round-trip as strings at declared precision",
+   "bid 100.005 ask 100.005 => CROSSED_QUOTE reject; bid 100.005 ask 100.006 valid",
+   "mid of 0.00001/0.00002 computed in Decimal is 0.000015 exactly",
+   "float 0.1 input converts to Decimal('0.1') and passes; float 1/3 input fails declared precision 2 with PRECISION_LOSS",
+   "event stream digest is byte-stable across two processes and a detached worktree"
+ ],
+
+ "benchmark_method": {
+   "rule": "correctness gates dominate speed; this is not an HFT claim and MDRAP benchmarks are never compared as equivalent",
+   "fixture": "frozen synthetic canonical stream committed as a generator script + recorded fixture sha256 (200k mixed TRADE/QUOTE events)",
+   "procedure": "2 warmups + 7 measured runs; report median and p95 events/s, per-run wall time, peak RSS via resource.getrusage(ru_maxrss); host, python version, fixture sha recorded",
+   "gate": "no unexplained regression > 20% vs the frozen baseline run recorded at first PASS; fastest single run is never published"
+ },
+
+ "integration_order": ["M0 governance lane (own branch, alone)", "P2 freeze (this file)", "P3: A2 -> A3 -> A4 cherry-picked in order with targeted tests after every pick", "P4: A1 Data Fusion core pick + DF-ISSUE-1/2 versioned fixes; then A8 nautilus bridge from the new integration SHA", "P5 gates", "P5A supporting OSS proof wave", "P6 performance", "P7 docs + demo", "P8 A7 audit", "P9 closeout"],
+
+ "test_inventory": {
+   "targeted_mdp_suite": "tests/test_mdp_models.py tests/test_mdp_quality.py tests/test_mdp_archive.py tests/test_mdp_replay.py tests/test_mdp_quarantine.py tests/test_mdp_bbo.py tests/test_mdp_depth.py tests/test_mdp_tca.py tests/test_mdp_nautilus_bridge.py tests/test_mdp_pandera_spike.py (plus Hypothesis property modules)",
+   "governance_suite": "tests/test_cycle_registry.py tests/test_heavy_lock.py tests/test_scheduler.py tests/test_protocol_registry.py tests/test_atomic_io.py tests/test_legacy_adapters.py tests/test_diagnostic_persistability.py plus new M0 test files (lane-defined)",
+   "compatibility": "Data Fusion tests at pin, governance suite, protocol suite, asset compatibility suites; full pytest ONLY when the machine-wide lock is FREE_PROVEN"
+ }
+}
