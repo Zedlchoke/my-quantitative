@@ -39,7 +39,7 @@ def status(**kw):
     base.update(kw)
     json.dump(base, open(STATUS, "w"), indent=1)
 
-_PACE = {"interval": 0.16, "min": 0.9, "max": 0.16, "ok_streak": 0}
+_PACE = {"interval": 0.3, "min": 0.9, "max": 0.3, "ok_streak": 0}
 
 
 def _pace_sleep():
@@ -77,7 +77,7 @@ def _pace_on_ok():
     _PACE["ok_streak"] += 1
     if _PACE["ok_streak"] >= 2000:
         _PACE["ok_streak"] = 0
-        _PACE["interval"] = max(_PACE["interval"] * 0.85, _PACE["max"])
+        _PACE["interval"] = max(_PACE["interval"] * 0.9, _PACE["max"])
 
 
 def get_curl(url, timeout=45, tries=3):
