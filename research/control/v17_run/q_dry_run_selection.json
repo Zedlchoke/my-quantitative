@@ -1,0 +1,138 @@
+{
+ "cycle_id": "CRYPTO-V17",
+ "families": [
+  {
+   "family_id": "V17-A4-P2-SILRES",
+   "clock": "H1",
+   "universe": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "entry": {
+    "lag_buckets": 0
+   },
+   "exit": {
+    "holding_buckets": 2
+   },
+   "fill_price": "vwap",
+   "booking": "event",
+   "sham_calendar": {
+    "calendar": "NOT_APPLICABLE:RESHUFFLED_INTERVAL_PLACEBO",
+    "note": "D2 re-freeze sets calendar_conditioned=false for SILRES: the control is an arrival-structure reshuffled-interval placebo, not a session/calendar sham; its sham_control_calendar rows carry this not-applicable marker per diag/sham_control_calendar@1"
+   },
+   "arms": [
+    {
+     "arm_id": "anchor",
+     "kind": "anchor",
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "SILRES.anchor",
+      "params": {
+       "gap_percentile": 90.0,
+       "resumption_multiple": 1.5,
+       "warmup_buckets": 720
+      }
+     }
+    },
+    {
+     "arm_id": "neighbour",
+     "kind": "neighbour",
+     "exit": {
+      "holding_buckets": 4
+     },
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "SILRES.neighbour",
+      "params": {
+       "gap_percentile": 75.0,
+       "resumption_multiple": 1.2,
+       "warmup_buckets": 720
+      }
+     }
+    },
+    {
+     "arm_id": "control",
+     "kind": "control",
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "SILRES.control",
+      "params": {
+       "gap_percentile": 90.0,
+       "resumption_multiple": 1.5,
+       "warmup_buckets": 720,
+       "block_buckets": 720,
+       "seed": 17040002
+      }
+     }
+    }
+   ]
+  },
+  {
+   "family_id": "V17-a5-P1-ATTN-PHASE",
+   "clock": "D1",
+   "universe": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT"
+   ],
+   "entry": {
+    "lag_buckets": 0
+   },
+   "exit": {
+    "holding_buckets": 1
+   },
+   "fill_price": "h1_bucket0_vwap",
+   "booking": "state_machine",
+   "sham_calendar": {
+    "calendar": "SHAM_SESSION_ROTATION:k_t=day_index_mod_24",
+    "note": "D2 re-freeze sets calendar_conditioned=true for ATTN-PHASE: randomized session-boundary sham control with the frozen rotation k_t = (day_index of t from 2025-08-22) mod 24; sham_control_calendar rows carry this descriptor per diag/sham_control_calendar@1"
+   },
+   "arms": [
+    {
+     "arm_id": "anchor",
+     "kind": "anchor",
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "ATTN_PHASE.anchor",
+      "params": {
+       "window_start": 14,
+       "window_end": 21,
+       "median_days": 60,
+       "min_hold_days": 1
+      }
+     }
+    },
+    {
+     "arm_id": "neighbour",
+     "kind": "neighbour",
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "ATTN_PHASE.neighbour",
+      "params": {
+       "window_start": 13,
+       "window_end": 22,
+       "median_days": 90,
+       "min_hold_days": 2
+      }
+     }
+    },
+    {
+     "arm_id": "control",
+     "kind": "control",
+     "exposure": {
+      "type": "panel_formula",
+      "formula_id": "ATTN_PHASE.control",
+      "params": {
+       "window_start": 14,
+       "window_end": 21,
+       "median_days": 60,
+       "min_hold_days": 1,
+       "sham_rotation": "day_index_mod_24",
+       "rotation_origin": "2025-08-22"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}
