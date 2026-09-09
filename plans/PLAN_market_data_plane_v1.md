@@ -213,6 +213,135 @@ Prefer a clean implementation against this plan's frozen contracts. If code is
 copied or materially derived, retain MIT attribution in file headers and the
 third-party notice. Provenance is mandatory even when the algorithm is small.
 
+### 4.4 Supporting open-source adoption decisions
+
+MDP-V1 also evaluates a narrow set of mature supporting projects. This is not
+authority to install their latest versions blindly or to expand the scientific
+scope. A1 records repository URL, exact commit/tag, license, release date,
+Python compatibility, dependency diff, package hashes, and the accept/reject
+reason in `research/control/market_data_plane_v1_run/oss/adoption_matrix.json`
+before changing dependencies.
+
+The binding decisions are:
+
+| Project | MDP-V1 decision | Exact role | Explicit non-role |
+|---|---|---|---|
+| DVC | mandatory local proof-of-concept | content-addressed transport/reproduction of large data outside Git | data authority, scientific trial tracker, or replacement for manifests |
+| Hypothesis | mandatory test-only adoption | bounded property-based tests for event, archive, replay, BBO/TCA and bridge invariants | stochastic production logic or unbounded fuzzing |
+| Pandera | mandatory compatibility spike; production adoption conditional | strict provider-DataFrame boundary validation | canonical event store or silent coercion layer |
+| Microsoft RD-Agent | deferred, design-only | future outcome-blind proposal explorer | scorer, selector, A7 auditor, GO authority, or S1 reader |
+| skfolio | deferred until multiple independent survivors exist | future portfolio/risk oracle and validation comparison | current family rescue or post-outcome optimizer |
+| Dagster | deferred until operational trigger is met | future multi-host recurring-data orchestration | replacement for SHV1 during this cycle |
+| Qlib | reference/conformance only | future stocks/factor benchmark | second backtester/execution stack |
+| OpenLineage | schema-reference only | future interoperable job/dataset lineage vocabulary | new server or control plane in MDP-V1 |
+| MLflow / Great Expectations / ArcticDB | not adopted in MDP-V1 | reconsider only under a separate owner plan | duplicate ledger, duplicate validation platform, or license-ambiguous storage dependency |
+
+No deferred project may be imported, installed, vendored, or called by this
+cycle. Links in documentation are not dependencies.
+
+### 4.5 DVC boundary and proof contract
+
+DVC is adopted only as a data-object transport/cache experiment. It must not
+count, execute, compare, rank, or publish scientific trials. In particular,
+`dvc exp run`, experiment dashboards, metric ranking, and automated parameter
+sweeps are forbidden for scored research unless a future scientific plan
+explicitly integrates them with the canonical denominator ledger.
+
+The POC must:
+
+1. pin one compatible DVC release and its dependency lock/hash evidence;
+2. initialize DVC only inside the MDP-V1 integration worktree;
+3. configure a disposable local-directory remote outside every Git worktree;
+4. generate a deterministic, non-proprietary synthetic data bundle large
+   enough to exercise chunking and cache transfer;
+5. `dvc add` the bundle while confirming raw bytes remain Git-ignored and only
+   safe pointer/metadata files are tracked;
+6. push to the disposable remote, remove only a separately created consumer
+   copy, then pull into a second temporary checkout;
+7. prove the restored bundle SHA-256, file count, byte count, manifest and MDP
+   replay digest match the producer exactly;
+8. prove an absent object, corrupted cache object and wrong pointer fail
+   visibly and never fall back to a newer/local dataset;
+9. record cache and remote paths without embedding credentials or host-private
+   absolute paths in reusable tracked configuration;
+10. delete no owner data and leave cleanup as an explicit, bounded list.
+
+The POC uses only generated fixtures. Moving existing Crypto, Stocks, or Forex
+raw data into DVC is a later migration requiring its own owner plan and data-
+license review. A DVC hash proves byte identity, not license, entitlement, PIT,
+coverage, survivorship freedom, or economic validity.
+
+### 4.6 Hypothesis test profile
+
+Hypothesis is a test dependency only. Freeze one compatible version and create
+two named profiles:
+
+- `mdp_ci`: deterministic/derandomized, bounded examples, deadline disabled
+  only where the reason is documented, health checks not globally suppressed;
+- `mdp_deep`: higher bounded examples for an alone-running optional gate, with
+  seed, host and elapsed time recorded.
+
+Property tests must generate valid and invalid combinations of:
+
+- UTC-nanosecond timestamp order and equality boundaries;
+- exact decimal price/quantity precision and extreme magnitudes;
+- duplicate IDs, sequence gaps, sequence resets and out-of-order delivery;
+- truncated chunks, byte/count/hash disagreement and crash boundaries;
+- replay input permutations and stable total ordering;
+- stale/crossed/locked quotes within and across venues;
+- empty, one-sided and malformed depth updates;
+- missing fee, side, quote, conversion and clock evidence in TCA;
+- Nautilus precision and timestamp round trips.
+
+Every discovered counterexample that represents a real defect becomes a small
+committed golden regression fixture before the implementation is declared
+fixed. The terminal claim may not depend only on Hypothesis's hidden example
+database. Random tests never touch provider APIs, S1, raw licensed data, the
+scientific ledger, or real orders.
+
+### 4.7 Pandera compatibility spike
+
+Pandera is evaluated only at batch/DataFrame ingestion boundaries. The spike
+uses `strict=True`, no implicit column addition, and `coerce=False` by default.
+It compares Pandera output/failure classification with the native frozen schema
+on fixtures for crypto trades, forex bid/ask, stocks quotes, and macro series.
+
+Production adoption requires all of:
+
+- identical accepted/rejected row sets and reason attribution;
+- no timestamp timezone loss and no Decimal-to-float conversion;
+- deterministic errors independent of row order;
+- no mutation of the input DataFrame;
+- no unexplained runtime or peak-memory regression over the frozen 20% bound;
+- optional import isolation so event-stream hot paths do not depend on pandas.
+
+If any condition fails, record `PANDERA_EVALUATED_NOT_ADOPTED` and retain the
+native validator. That is a successful, evidence-based decision and does not
+block MDP-V1. Installing Pandera merely because it is popular is forbidden.
+
+### 4.8 Deferred-project activation triggers
+
+These objective triggers prevent future tooling from being added by taste:
+
+- **RD-Agent:** only after MDP-V1 passes and at least one reboot asset cycle
+  completes under the new plane. It runs in a no-outcome proposal sandbox;
+  FAMILY_PIPELINE cheap-kills outputs, A7 remains independent, and RD-Agent is
+  never shown S0/S1 performance while proposing.
+- **skfolio:** only after at least two survivors from different mechanism
+  families have passed their own reproduction and future S1 authorization.
+  First use is an independent metric/risk oracle; optimizer output is not live
+  allocation authority.
+- **Dagster:** only when at least two hosts or ten recurring production data
+  jobs are active, or SHV1's scheduler has two independently evidenced
+  operational failures that Dagster directly addresses. Adoption wraps existing
+  commands first; it does not rewrite the factory.
+- **Qlib:** only as a pinned offline comparison on a frozen public fixture.
+  Its data loader, backtester and execution assumptions cannot become canonical
+  by convenience.
+- **OpenLineage:** only if external interoperability becomes necessary. Map
+  existing run/job/dataset IDs first; do not create a second writable lineage
+  authority.
+
 ## 5. Architecture and ownership
 
 ### 5.1 Branches and worktrees
@@ -248,12 +377,14 @@ repairs an objection.
 - M0: `research/governance/**`, `research/researchctl.py`, corresponding
   governance tests, registry/projection migration tools;
 - A2: `research/market_data_plane/models.py`, `quality.py`, `reason_codes.py`,
-  schema/quality tests;
+  schema/quality tests, Hypothesis strategies/profiles, and the isolated
+  Pandera compatibility spike;
 - A3: `archive.py`, `manifest.py`, `replay.py`, `quarantine.py`, archive tests;
 - A4: `bbo.py`, `depth.py`, `tca.py`, market-view tests;
 - A8: `nautilus_bridge.py`, adapter fixtures, integration tests, operator docs;
 - A1: run-control artifacts, contract freeze, Data Fusion adoption glue,
-  integration-only corrections, terminal report;
+  DVC POC and safe dependency pins, integration-only corrections, terminal
+  report;
 - A7: `research/audits/market_data_plane_v1/**` only.
 
 No two live lanes own the same file. Shared `__init__.py` edits belong to A1
@@ -431,6 +562,10 @@ Create `research/control/market_data_plane_v1_run/` with `run_contract.json`,
 `state.json`, `heartbeat.json`, `event_log.jsonl`, and
 `worktree_manifest.json`. Events are append-only.
 
+The first report also inventories whether `dvc`, `hypothesis`, or `pandera`
+already exists in the environment. Presence is not adoption: package name,
+version, import path and hash must match the later freeze.
+
 ### M0 — SHV1 post-adoption closure
 
 Perform Section 3 in its own lane, integrate, run targeted gates, and publish
@@ -444,14 +579,19 @@ interrupt the live holder.
 - verify Data Fusion exact commit and its frozen audit;
 - write `upstream_manifest.json`, `data_fusion_pin.json`, and
   `third_party_decision.md`;
+- produce `oss/adoption_matrix.json` for DVC, Hypothesis, Pandera, RD-Agent,
+  skfolio, Dagster, Qlib, OpenLineage, MLflow, Great Expectations and ArcticDB;
+- pin accepted package versions and lock/hash their transitive dependency diff
+  before installation; licenses and notices are included in the evidence;
 - reject any secret/default-key/example credential during recursive scan.
 
 ### P2 — Contract freeze
 
 Freeze schemas, quality codes, replay order, exact arithmetic, archive protocol,
 TCA definitions, Nautilus mapping, ownership, tests, benchmark method, and
-integration order in `architecture_freeze.json`. Hash it. No lane starts from
-an unfrozen contract.
+integration order in `architecture_freeze.json`. Also freeze the Hypothesis
+profiles, Pandera acceptance criteria and DVC POC fixture/remote topology. Hash
+it. No lane starts from an unfrozen contract.
 
 ### P3 — Parallel implementation wave
 
@@ -471,7 +611,7 @@ new integration SHA. Integrate A8 only after all P3 contracts are green.
 Run:
 
 - schema validation and exact-arithmetic goldens;
-- property-like fixed-seed event permutations;
+- mandatory Hypothesis `mdp_ci` properties plus fixed-seed golden permutations;
 - malformed/truncated/hash-drift archive negatives;
 - crash-boundary atomicity tests;
 - duplicate/gap/reset/out-of-order quality tests;
@@ -484,10 +624,43 @@ Run:
 - recursive secret and forbidden-component scan;
 - `compileall` and `git diff --check`.
 
+Run `mdp_deep` after `mdp_ci` only when it does not contend for the foreign
+heavy slot. A timeout or resource conflict is reported independently; it cannot
+erase the deterministic CI profile result.
+
 Full pytest runs alone only when the machine-wide lock is proven free. If an
 asset worker still owns it, record `NOT_RUN_RESOURCE_CONFLICT`, finish all
 light gates, and enqueue the full suite through the reconciled scheduler. Never
 contend with or terminate the asset worker.
+
+### P5A — Supporting OSS proof wave
+
+After core correctness passes, execute the Section 4 supporting-OSS decisions:
+
+1. run the DVC producer -> disposable local remote -> independent consumer
+   proof, including missing/corrupt object negatives;
+2. run the Pandera/native differential suite and publish either
+   `PANDERA_ADOPTED` or `PANDERA_EVALUATED_NOT_ADOPTED`;
+3. rerun the Hypothesis CI profile from a clean process and persist any real
+   minimized counterexample as a golden test;
+4. scan the dependency tree, tracked files and Git history range for secrets,
+   raw bytes, unexpected network clients and deferred-project imports;
+5. demonstrate that no DVC operation changed program denominators, scientific
+   budget, S1 state, registry lifecycle or provider authority.
+
+Evidence paths:
+
+```text
+research/control/market_data_plane_v1_run/oss/
+  adoption_matrix.json
+  dependency_freeze.json
+  dvc_poc_contract.json
+  dvc_poc_result.json
+  hypothesis_profiles.json
+  hypothesis_result.json
+  pandera_spike_result.json
+  deferred_import_scan.json
+```
 
 ### P6 — Performance characterization
 
@@ -510,6 +683,12 @@ Write:
 - archive recovery and quarantine runbook;
 - asset adoption checklist explaining that each future cycle must separately
   authorize data and freeze semantics.
+- DVC operator note separating `git pull`, `dvc pull`, manifest verification,
+  data-authority verification and `dvc repro`;
+- Hypothesis test-author guide showing how a minimized failure becomes a
+  deterministic golden fixture;
+- future RD-Agent sandbox contract and deferred-tool trigger checklist; these
+  are design documents only, not installed integrations.
 
 Run a safe local demo only on committed synthetic fixtures: ingest -> manifest
 -> quality -> replay -> BBO/TCA -> Nautilus conversion. It must not use network,
@@ -531,6 +710,11 @@ A7 must independently test:
 - BBO/depth/TCA correctness;
 - Nautilus compatibility;
 - no credentials/raw licensed payloads in git;
+- DVC transport proof, corrupt-object negatives and zero scientific-counter
+  mutation;
+- Hypothesis profile reproducibility and persisted regression examples;
+- Pandera adoption/rejection decision against its frozen criteria;
+- zero runtime import or installation of deferred projects;
 - full-suite result and resource precondition;
 - tree/worktree/worker state.
 
@@ -557,6 +741,10 @@ instructions. Stop every owned worker and leave all cycle worktrees clean.
 | G6 | BBO/depth/TCA hand-computed and missing-evidence gates PASS |
 | G7 | NautilusTrader 1.230.0 round-trip and no-lookahead PASS |
 | G8 | No secrets, raw licensed data, forbidden modules, or execution code PASS |
+| G8A | DVC two-checkout transport/recovery POC PASS; zero authority/counter mutation |
+| G8B | Hypothesis CI properties PASS; real counterexamples persisted as goldens |
+| G8C | Pandera spike concludes ADOPTED or EVALUATED_NOT_ADOPTED from frozen criteria |
+| G8D | Deferred-project import/install scan PASS |
 | G9 | Targeted/compatibility/full suite, compileall, diff-check PASS |
 | G10 | Bounded performance characterization complete without false HFT claim |
 | G11 | Fresh A7 audit: zero HIGH/CRITICAL |
@@ -596,6 +784,14 @@ edge, or authorize trading.
 - no paper/testnet/live broker or exchange activity;
 - no provider account, purchase, license acceptance, or credential display;
 - no raw proprietary payload in git;
+- no use of DVC experiment ranking, parameter sweeps, or metrics as a shadow
+  scientific ledger;
+- no treating a DVC checksum as data authority or PIT evidence;
+- no hidden Hypothesis database as the only reproduction evidence;
+- no Pandera coercion, row dropping, timezone stripping, or Decimal-to-float
+  conversion;
+- no install/import of RD-Agent, skfolio, Dagster, Qlib, OpenLineage, MLflow,
+  Great Expectations, or ArcticDB in this cycle;
 - no disabling a gate because it is slow or inconvenient;
 - no killing or competing with a foreign cycle's worker;
 - no whole-repo MDRAP vendor drop and no unreviewed binary.
@@ -625,5 +821,9 @@ Selective MDRAP adaptation only: pin the exact upstream commit, preserve MIT
 provenance, do not execute its untrusted scripts/binaries, do not add it as a
 runtime dependency, and do not import its strategy/execution/security stack.
 Use the audited Data Fusion pin and NautilusTrader 1.230.0 contracts exactly.
+Execute the supporting-OSS contract exactly: DVC local transport POC,
+Hypothesis test-only adoption, Pandera boundary spike with evidence-based
+adopt/reject, and no installation of deferred projects. DVC never establishes
+data authority or scientific trial identity; RD-Agent never runs in MDP-V1.
 Publish evidence at every gate and close truthfully on a real hard stop.
 ```
