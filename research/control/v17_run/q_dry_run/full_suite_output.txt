@@ -1,0 +1,1490 @@
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 21%]
+........................................................................ [ 28%]
+........................................................................ [ 35%]
+........................................................................ [ 42%]
+........................................................................ [ 49%]
+........................................................................ [ 56%]
+........................................................................ [ 63%]
+........................................................................ [ 70%]
+........................................................................ [ 77%]
+........................................................................ [ 85%]
+..............................EEEEE..............E...................... [ 92%]
+........................................................................ [ 99%]
+........                                                                 [100%]
+==================================== ERRORS ====================================
+__________ ERROR at setup of test_deterministic_rerun_byte_identical ___________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x1058662a0>, _basetemp=PosixPath.../5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-741'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def rerun_pair(tmp_path_factory):
+        """Two independent full audit runs; returns (run1_dir, run2_dir)."""
+        from scripts.v9_universe_audit import main
+    
+        d1 = tmp_path_factory.mktemp("v9_run1")
+        d2 = tmp_path_factory.mktemp("v9_run2")
+        outs1 = {a.name: d1 / a.name for a in ARTIFACTS}
+        outs2 = {a.name: d2 / a.name for a in ARTIFACTS}
+>       main(manifest_out=outs1[ARTIFACTS[0].name],
+             audit_out=outs1[ARTIFACTS[1].name],
+             gate_out=outs1[ARTIFACTS[2].name])
+
+tests/test_v9_universe_audit.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/v9_universe_audit.py:846: in main
+    res = run_audit()
+          ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+catalog_root = '/Users/hoangminhlong/my-quantitative/catalog_live_crypto'
+funding_root = '/Users/hoangminhlong/my-quantitative/funding_data/scan_2026'
+repo_root = PosixPath('/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration')
+
+    def run_audit(
+        *,
+        catalog_root: str | Path = CATALOG_ROOT,
+        funding_root: str | Path = FUNDING_ROOT,
+        repo_root: Path = REPO_ROOT,
+    ) -> dict:
+        """Full offline audit; returns {'manifest':..., 'audit':..., 'gate':...}."""
+        pinned, source_block = load_pinned_selection(repo_root)
+        source_block["schema_version"] = pinned["schema_version"]
+        source_block["agent"] = pinned["agent"]
+        source_block["generated_at_utc"] = pinned["generated_at_utc"]
+        source_block["verdict"] = pinned["verdict"]
+    
+        chosen = pinned["chosen_top10"]
+        symbols = [c["symbol"] for c in chosen]
+        assert len(symbols) == TOP_N, f"pinned selection must have exactly {TOP_N} symbols"
+        assert len(set(symbols)) == TOP_N, "duplicate symbols in pinned selection"
+        btc_in_selected = BTC_SYMBOL in symbols
+    
+        # ---- current-bytes revalidation -------------------------------------- #
+        funding_files = {
+            os.path.basename(os.path.dirname(p)): p
+            for p in sorted(glob.glob(os.path.join(str(funding_root), "*", "funding.json")))
+        }
+        funding_raw = {sym: json.load(open(p))["rows"] for sym, p in funding_files.items()}
+        corroborate = build_corroboration(funding_raw)
+    
+        per_symbol_reval: dict[str, dict] = {}
+        drifts: list[dict] = []
+        selected_symbols: list[dict] = []
+        coverage_required: dict[str, tuple[int, int]] = {}
+        coverage_all: dict[str, tuple[int, int]] = {}
+    
+        for entry in chosen:
+            sym = entry["symbol"]
+            files = bar_files_for_symbol(catalog_root, sym)
+            inst = load_instrument(sym)
+            vol = median_daily_quote_volume_pre_window(files)
+            cen_pre = census_for_symbol(files, PRE_START_S, PRE_END_S)
+            cen_sc = census_for_symbol(files, SCORED_START_S, SCORED_END_S)
+            fund = analyze_funding(funding_raw[sym], corroborate) if sym in funding_raw else None
+            age = listing_age_check(inst, dt_to_s(FIRST_POSSIBLE_EXPOSURE))
+            meta_ok = bool(inst and inst["quote_currency"] == QUOTE_REQUIRED
+                           and inst["contract_type"] == "PERPETUAL"
+                           and inst["status"] == "TRADING")
+    
+            cov_sc = measured_coverage(files, SCORED_START_S, SCORED_END_S)
+            cov_pre = measured_coverage(files, PRE_START_S, PRE_END_S)
+            if cov_sc is not None:
+                coverage_all[sym] = cov_sc
+                if sym != BTC_SYMBOL:
+                    coverage_required[sym] = cov_sc
+            dups = duplicate_raw_stamps(files)
+    
+            # drift vs pinned metrics (exact decimal string comparison)
+            pinned_exact_vol = _pinned_exact_volume(pinned, sym)
+            if vol["median_daily_quote_volume_usdt_exact"] != pinned_exact_vol:
+                drifts.append({"symbol": sym, "field": "median_daily_quote_volume_usdt_exact",
+                               "pinned": pinned_exact_vol,
+                               "current": vol["median_daily_quote_volume_usdt_exact"]})
+            if entry["days_with_bars_pre_window"] != vol["days_with_bars_pre_window"]:
+                drifts.append({"symbol": sym, "field": "days_with_bars_pre_window",
+                               "pinned": entry["days_with_bars_pre_window"],
+                               "current": vol["days_with_bars_pre_window"]})
+            if entry["census_pre_window_gaps"] != cen_pre["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_pre_window_gaps",
+                               "pinned": entry["census_pre_window_gaps"],
+                               "current": cen_pre["gaps_found"]})
+            if entry["census_scored_window_gaps"] != cen_sc["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_gaps",
+                               "pinned": entry["census_scored_window_gaps"],
+                               "current": cen_sc["gaps_found"]})
+            if entry["census_scored_window_unexplained"] != cen_sc["unexplained_gaps"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_unexplained",
+                               "pinned": entry["census_scored_window_unexplained"],
+                               "current": cen_sc["unexplained_gaps"]})
+            if entry["funding_held_exposure_complete"] != (fund or {}).get("complete"):
+                drifts.append({"symbol": sym, "field": "funding_held_exposure_complete",
+                               "pinned": entry["funding_held_exposure_complete"],
+                               "current": (fund or {}).get("complete")})
+    
+            per_symbol_reval[sym] = {
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "metadata_sanity_ok": meta_ok,
+                "listing_age": age,
+                "volume_pre_window": vol,
+                "census_pre_window": cen_pre,
+                "census_scored_window": cen_sc,
+                "funding_held_exposure_audit": fund,
+                "scored_window_first_open_utc": utc_str(cov_sc[0]) if cov_sc else None,
+                "scored_window_last_open_utc": utc_str(cov_sc[1]) if cov_sc else None,
+                "pre_window_first_open_utc": utc_str(cov_pre[0]) if cov_pre else None,
+                "pre_window_last_open_utc": utc_str(cov_pre[1]) if cov_pre else None,
+                "duplicate_bar_timestamps_scored_and_pre": dups,
+            }
+    
+            selected_symbols.append({
+                "rank": entry["rank"],
+                "symbol": sym,
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "median_daily_quote_volume_pre_window_usdt":
+                    vol["median_daily_quote_volume_usdt"],
+                "median_daily_quote_volume_pre_window_usdt_exact":
+                    vol["median_daily_quote_volume_usdt_exact"],
+                "days_with_bars_pre_window": vol["days_with_bars_pre_window"],
+                "census_pre_window_gaps": cen_pre["gaps_found"],
+                "census_pre_window_unexplained": cen_pre["unexplained_gaps"],
+                "census_scored_window_gaps": cen_sc["gaps_found"],
+                "census_scored_window_unexplained": cen_sc["unexplained_gaps"],
+                "funding_held_exposure_complete": bool((fund or {}).get("complete")),
+                "listing_age_days_at_first_possible_exposure":
+                    age["age_days_at_first_possible_exposure"],
+                "listing_age_gate_ok": age["ok"],
+                "metadata_sanity_ok": meta_ok,
+            })
+    
+        selected_symbols.sort(key=lambda c: c["rank"])
+    
+        # ---- BTC benchmark context ------------------------------------------- #
+        btc_context: dict | None = None
+        btc_censuses: dict[str, dict] = {}
+        btc_cov = None
+        if not btc_in_selected:
+            btc_files = bar_files_for_symbol(catalog_root, BTC_SYMBOL)
+            if btc_files:
+                btc_cov = measured_coverage(btc_files, SCORED_START_S, SCORED_END_S)
+                if btc_cov is not None:
+                    coverage_all[BTC_SYMBOL] = btc_cov
+                btc_censuses = {
+                    "pre_window": census_for_symbol(btc_files, PRE_START_S, PRE_END_S),
+                    "scored_window": census_for_symbol(btc_files, SCORED_START_S, SCORED_END_S),
+                }
+                btc_fund = analyze_funding(funding_raw[BTC_SYMBOL], corroborate) \
+                    if BTC_SYMBOL in funding_raw else None
+                btc_dups = duplicate_raw_stamps(btc_files)
+                btc_context = {
+                    "symbol": BTC_SYMBOL,
+                    "instrument_id": f"{BTC_SYMBOL}-PERP.{VENUE}",
+                    "role": "benchmark_measurement_only_excluded_from_ranking",
+                    "census_pre_window_gaps": btc_censuses["pre_window"]["gaps_found"],
+                    "census_scored_window_gaps": btc_censuses["scored_window"]["gaps_found"],
+                    "census_scored_window_unexplained":
+                        btc_censuses["scored_window"]["unexplained_gaps"],
+                    "funding_held_exposure_complete":
+                        bool((btc_fund or {}).get("complete")),
+                    "funding_held_exposure_audit": btc_fund,
+                    "duplicate_bar_timestamps": btc_dups,
+                    "scored_window_first_open_utc": utc_str(btc_cov[0]) if btc_cov else None,
+                    "scored_window_last_open_utc": utc_str(btc_cov[1]) if btc_cov else None,
+                }
+    
+        # ---- measured common completed-bar windows ---------------------------- #
+        req_start, req_end = intersection_range(coverage_required)
+        all_start, all_end = intersection_range(coverage_all)
+        scored_measured_required = {
+            "start_utc": close_stamp_iso(req_start) if req_start is not None else None,
+            "end_utc": close_stamp_iso(req_end) if req_end is not None else None,
+            "basis": ("MEASURED intersection of completed 15m bar coverage across the "
+                      "10 selected altcoins inside the contract scored window "
+                      "[2025-08-21T00:00:00Z, 2026-08-21T00:00:00Z); endpoints are "
+                      "completed-bar CLOSE stamps; never trimmed to dodge gaps"),
+        }
+        scored_measured_all = {
+            "start_utc": close_stamp_iso(all_start) if all_start is not None else None,
+            "end_utc": close_stamp_iso(all_end) if all_end is not None else None,
+            "basis": "same measurement including BTCUSDT as benchmark context",
+        }
+    
+        # ---- gap-census totals ------------------------------------------------ #
+        slots_checked = sum(
+            per_symbol_reval[s]["census_pre_window"]["expected_15m_slots"]
+            + per_symbol_reval[s]["census_scored_window"]["expected_15m_slots"]
+            for s in symbols
+        )
+        gaps_found = sum(
+            per_symbol_reval[s]["census_pre_window"]["gaps_found"]
+            + per_symbol_reval[s]["census_scored_window"]["gaps_found"]
+            for s in symbols
+        )
+        unexplained_total = sum(
+            per_symbol_reval[s]["census_pre_window"]["unexplained_gaps"]
+            + per_symbol_reval[s]["census_scored_window"]["unexplained_gaps"]
+            for s in symbols
+        )
+        documented_runs = []
+        non_boundary_explained: list[dict] = []
+        for s in symbols:
+            for wname in ("pre_window", "scored_window"):
+                for g in per_symbol_reval[s][f"census_{wname}"]["gap_runs"]:
+                    rec = {"symbol": s, "window": wname, **{k: g[k] for k in
+                            ("start_utc", "end_utc", "missing_slots", "cause",
+                             "explained", "evidence")}}
+                    if g["cause"] in DOCUMENTED_CAPTURE_BOUNDARY_CLASSES:
+                        documented_runs.append(rec)
+                    elif g["explained"]:
+                        non_boundary_explained.append(rec)
+    
+        # BTC context censuses were computed above; include their totals separately
+        btc_slots = sum(v["expected_15m_slots"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+        btc_gaps = sum(v["gaps_found"] for v in btc_censuses.values()) if btc_censuses else 0
+        btc_unexplained = sum(v["unexplained_gaps"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+    
+        # ---- funding verdicts -------------------------------------------------- #
+        funding_per_symbol = {
+>           s: {**per_symbol_reval[s]["funding_held_exposure_audit"],
+                "verdict": ("COMPLETE"
+                            if per_symbol_reval[s]["funding_held_exposure_audit"]["complete"]
+                            else "INCOMPLETE")}
+            for s in symbols
+        }
+E       TypeError: 'NoneType' object is not a mapping
+
+scripts/v9_universe_audit.py:567: TypeError
+_______ ERROR at setup of test_rerun_reproduces_committed_artifact_bytes _______
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x1058662a0>, _basetemp=PosixPath.../5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-741'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def rerun_pair(tmp_path_factory):
+        """Two independent full audit runs; returns (run1_dir, run2_dir)."""
+        from scripts.v9_universe_audit import main
+    
+        d1 = tmp_path_factory.mktemp("v9_run1")
+        d2 = tmp_path_factory.mktemp("v9_run2")
+        outs1 = {a.name: d1 / a.name for a in ARTIFACTS}
+        outs2 = {a.name: d2 / a.name for a in ARTIFACTS}
+>       main(manifest_out=outs1[ARTIFACTS[0].name],
+             audit_out=outs1[ARTIFACTS[1].name],
+             gate_out=outs1[ARTIFACTS[2].name])
+
+tests/test_v9_universe_audit.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/v9_universe_audit.py:846: in main
+    res = run_audit()
+          ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+catalog_root = '/Users/hoangminhlong/my-quantitative/catalog_live_crypto'
+funding_root = '/Users/hoangminhlong/my-quantitative/funding_data/scan_2026'
+repo_root = PosixPath('/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration')
+
+    def run_audit(
+        *,
+        catalog_root: str | Path = CATALOG_ROOT,
+        funding_root: str | Path = FUNDING_ROOT,
+        repo_root: Path = REPO_ROOT,
+    ) -> dict:
+        """Full offline audit; returns {'manifest':..., 'audit':..., 'gate':...}."""
+        pinned, source_block = load_pinned_selection(repo_root)
+        source_block["schema_version"] = pinned["schema_version"]
+        source_block["agent"] = pinned["agent"]
+        source_block["generated_at_utc"] = pinned["generated_at_utc"]
+        source_block["verdict"] = pinned["verdict"]
+    
+        chosen = pinned["chosen_top10"]
+        symbols = [c["symbol"] for c in chosen]
+        assert len(symbols) == TOP_N, f"pinned selection must have exactly {TOP_N} symbols"
+        assert len(set(symbols)) == TOP_N, "duplicate symbols in pinned selection"
+        btc_in_selected = BTC_SYMBOL in symbols
+    
+        # ---- current-bytes revalidation -------------------------------------- #
+        funding_files = {
+            os.path.basename(os.path.dirname(p)): p
+            for p in sorted(glob.glob(os.path.join(str(funding_root), "*", "funding.json")))
+        }
+        funding_raw = {sym: json.load(open(p))["rows"] for sym, p in funding_files.items()}
+        corroborate = build_corroboration(funding_raw)
+    
+        per_symbol_reval: dict[str, dict] = {}
+        drifts: list[dict] = []
+        selected_symbols: list[dict] = []
+        coverage_required: dict[str, tuple[int, int]] = {}
+        coverage_all: dict[str, tuple[int, int]] = {}
+    
+        for entry in chosen:
+            sym = entry["symbol"]
+            files = bar_files_for_symbol(catalog_root, sym)
+            inst = load_instrument(sym)
+            vol = median_daily_quote_volume_pre_window(files)
+            cen_pre = census_for_symbol(files, PRE_START_S, PRE_END_S)
+            cen_sc = census_for_symbol(files, SCORED_START_S, SCORED_END_S)
+            fund = analyze_funding(funding_raw[sym], corroborate) if sym in funding_raw else None
+            age = listing_age_check(inst, dt_to_s(FIRST_POSSIBLE_EXPOSURE))
+            meta_ok = bool(inst and inst["quote_currency"] == QUOTE_REQUIRED
+                           and inst["contract_type"] == "PERPETUAL"
+                           and inst["status"] == "TRADING")
+    
+            cov_sc = measured_coverage(files, SCORED_START_S, SCORED_END_S)
+            cov_pre = measured_coverage(files, PRE_START_S, PRE_END_S)
+            if cov_sc is not None:
+                coverage_all[sym] = cov_sc
+                if sym != BTC_SYMBOL:
+                    coverage_required[sym] = cov_sc
+            dups = duplicate_raw_stamps(files)
+    
+            # drift vs pinned metrics (exact decimal string comparison)
+            pinned_exact_vol = _pinned_exact_volume(pinned, sym)
+            if vol["median_daily_quote_volume_usdt_exact"] != pinned_exact_vol:
+                drifts.append({"symbol": sym, "field": "median_daily_quote_volume_usdt_exact",
+                               "pinned": pinned_exact_vol,
+                               "current": vol["median_daily_quote_volume_usdt_exact"]})
+            if entry["days_with_bars_pre_window"] != vol["days_with_bars_pre_window"]:
+                drifts.append({"symbol": sym, "field": "days_with_bars_pre_window",
+                               "pinned": entry["days_with_bars_pre_window"],
+                               "current": vol["days_with_bars_pre_window"]})
+            if entry["census_pre_window_gaps"] != cen_pre["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_pre_window_gaps",
+                               "pinned": entry["census_pre_window_gaps"],
+                               "current": cen_pre["gaps_found"]})
+            if entry["census_scored_window_gaps"] != cen_sc["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_gaps",
+                               "pinned": entry["census_scored_window_gaps"],
+                               "current": cen_sc["gaps_found"]})
+            if entry["census_scored_window_unexplained"] != cen_sc["unexplained_gaps"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_unexplained",
+                               "pinned": entry["census_scored_window_unexplained"],
+                               "current": cen_sc["unexplained_gaps"]})
+            if entry["funding_held_exposure_complete"] != (fund or {}).get("complete"):
+                drifts.append({"symbol": sym, "field": "funding_held_exposure_complete",
+                               "pinned": entry["funding_held_exposure_complete"],
+                               "current": (fund or {}).get("complete")})
+    
+            per_symbol_reval[sym] = {
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "metadata_sanity_ok": meta_ok,
+                "listing_age": age,
+                "volume_pre_window": vol,
+                "census_pre_window": cen_pre,
+                "census_scored_window": cen_sc,
+                "funding_held_exposure_audit": fund,
+                "scored_window_first_open_utc": utc_str(cov_sc[0]) if cov_sc else None,
+                "scored_window_last_open_utc": utc_str(cov_sc[1]) if cov_sc else None,
+                "pre_window_first_open_utc": utc_str(cov_pre[0]) if cov_pre else None,
+                "pre_window_last_open_utc": utc_str(cov_pre[1]) if cov_pre else None,
+                "duplicate_bar_timestamps_scored_and_pre": dups,
+            }
+    
+            selected_symbols.append({
+                "rank": entry["rank"],
+                "symbol": sym,
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "median_daily_quote_volume_pre_window_usdt":
+                    vol["median_daily_quote_volume_usdt"],
+                "median_daily_quote_volume_pre_window_usdt_exact":
+                    vol["median_daily_quote_volume_usdt_exact"],
+                "days_with_bars_pre_window": vol["days_with_bars_pre_window"],
+                "census_pre_window_gaps": cen_pre["gaps_found"],
+                "census_pre_window_unexplained": cen_pre["unexplained_gaps"],
+                "census_scored_window_gaps": cen_sc["gaps_found"],
+                "census_scored_window_unexplained": cen_sc["unexplained_gaps"],
+                "funding_held_exposure_complete": bool((fund or {}).get("complete")),
+                "listing_age_days_at_first_possible_exposure":
+                    age["age_days_at_first_possible_exposure"],
+                "listing_age_gate_ok": age["ok"],
+                "metadata_sanity_ok": meta_ok,
+            })
+    
+        selected_symbols.sort(key=lambda c: c["rank"])
+    
+        # ---- BTC benchmark context ------------------------------------------- #
+        btc_context: dict | None = None
+        btc_censuses: dict[str, dict] = {}
+        btc_cov = None
+        if not btc_in_selected:
+            btc_files = bar_files_for_symbol(catalog_root, BTC_SYMBOL)
+            if btc_files:
+                btc_cov = measured_coverage(btc_files, SCORED_START_S, SCORED_END_S)
+                if btc_cov is not None:
+                    coverage_all[BTC_SYMBOL] = btc_cov
+                btc_censuses = {
+                    "pre_window": census_for_symbol(btc_files, PRE_START_S, PRE_END_S),
+                    "scored_window": census_for_symbol(btc_files, SCORED_START_S, SCORED_END_S),
+                }
+                btc_fund = analyze_funding(funding_raw[BTC_SYMBOL], corroborate) \
+                    if BTC_SYMBOL in funding_raw else None
+                btc_dups = duplicate_raw_stamps(btc_files)
+                btc_context = {
+                    "symbol": BTC_SYMBOL,
+                    "instrument_id": f"{BTC_SYMBOL}-PERP.{VENUE}",
+                    "role": "benchmark_measurement_only_excluded_from_ranking",
+                    "census_pre_window_gaps": btc_censuses["pre_window"]["gaps_found"],
+                    "census_scored_window_gaps": btc_censuses["scored_window"]["gaps_found"],
+                    "census_scored_window_unexplained":
+                        btc_censuses["scored_window"]["unexplained_gaps"],
+                    "funding_held_exposure_complete":
+                        bool((btc_fund or {}).get("complete")),
+                    "funding_held_exposure_audit": btc_fund,
+                    "duplicate_bar_timestamps": btc_dups,
+                    "scored_window_first_open_utc": utc_str(btc_cov[0]) if btc_cov else None,
+                    "scored_window_last_open_utc": utc_str(btc_cov[1]) if btc_cov else None,
+                }
+    
+        # ---- measured common completed-bar windows ---------------------------- #
+        req_start, req_end = intersection_range(coverage_required)
+        all_start, all_end = intersection_range(coverage_all)
+        scored_measured_required = {
+            "start_utc": close_stamp_iso(req_start) if req_start is not None else None,
+            "end_utc": close_stamp_iso(req_end) if req_end is not None else None,
+            "basis": ("MEASURED intersection of completed 15m bar coverage across the "
+                      "10 selected altcoins inside the contract scored window "
+                      "[2025-08-21T00:00:00Z, 2026-08-21T00:00:00Z); endpoints are "
+                      "completed-bar CLOSE stamps; never trimmed to dodge gaps"),
+        }
+        scored_measured_all = {
+            "start_utc": close_stamp_iso(all_start) if all_start is not None else None,
+            "end_utc": close_stamp_iso(all_end) if all_end is not None else None,
+            "basis": "same measurement including BTCUSDT as benchmark context",
+        }
+    
+        # ---- gap-census totals ------------------------------------------------ #
+        slots_checked = sum(
+            per_symbol_reval[s]["census_pre_window"]["expected_15m_slots"]
+            + per_symbol_reval[s]["census_scored_window"]["expected_15m_slots"]
+            for s in symbols
+        )
+        gaps_found = sum(
+            per_symbol_reval[s]["census_pre_window"]["gaps_found"]
+            + per_symbol_reval[s]["census_scored_window"]["gaps_found"]
+            for s in symbols
+        )
+        unexplained_total = sum(
+            per_symbol_reval[s]["census_pre_window"]["unexplained_gaps"]
+            + per_symbol_reval[s]["census_scored_window"]["unexplained_gaps"]
+            for s in symbols
+        )
+        documented_runs = []
+        non_boundary_explained: list[dict] = []
+        for s in symbols:
+            for wname in ("pre_window", "scored_window"):
+                for g in per_symbol_reval[s][f"census_{wname}"]["gap_runs"]:
+                    rec = {"symbol": s, "window": wname, **{k: g[k] for k in
+                            ("start_utc", "end_utc", "missing_slots", "cause",
+                             "explained", "evidence")}}
+                    if g["cause"] in DOCUMENTED_CAPTURE_BOUNDARY_CLASSES:
+                        documented_runs.append(rec)
+                    elif g["explained"]:
+                        non_boundary_explained.append(rec)
+    
+        # BTC context censuses were computed above; include their totals separately
+        btc_slots = sum(v["expected_15m_slots"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+        btc_gaps = sum(v["gaps_found"] for v in btc_censuses.values()) if btc_censuses else 0
+        btc_unexplained = sum(v["unexplained_gaps"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+    
+        # ---- funding verdicts -------------------------------------------------- #
+        funding_per_symbol = {
+>           s: {**per_symbol_reval[s]["funding_held_exposure_audit"],
+                "verdict": ("COMPLETE"
+                            if per_symbol_reval[s]["funding_held_exposure_audit"]["complete"]
+                            else "INCOMPLETE")}
+            for s in symbols
+        }
+E       TypeError: 'NoneType' object is not a mapping
+
+scripts/v9_universe_audit.py:567: TypeError
+____________ ERROR at setup of test_btc_excluded_from_traded_top10 _____________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x1058662a0>, _basetemp=PosixPath.../5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-741'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def rerun_pair(tmp_path_factory):
+        """Two independent full audit runs; returns (run1_dir, run2_dir)."""
+        from scripts.v9_universe_audit import main
+    
+        d1 = tmp_path_factory.mktemp("v9_run1")
+        d2 = tmp_path_factory.mktemp("v9_run2")
+        outs1 = {a.name: d1 / a.name for a in ARTIFACTS}
+        outs2 = {a.name: d2 / a.name for a in ARTIFACTS}
+>       main(manifest_out=outs1[ARTIFACTS[0].name],
+             audit_out=outs1[ARTIFACTS[1].name],
+             gate_out=outs1[ARTIFACTS[2].name])
+
+tests/test_v9_universe_audit.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/v9_universe_audit.py:846: in main
+    res = run_audit()
+          ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+catalog_root = '/Users/hoangminhlong/my-quantitative/catalog_live_crypto'
+funding_root = '/Users/hoangminhlong/my-quantitative/funding_data/scan_2026'
+repo_root = PosixPath('/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration')
+
+    def run_audit(
+        *,
+        catalog_root: str | Path = CATALOG_ROOT,
+        funding_root: str | Path = FUNDING_ROOT,
+        repo_root: Path = REPO_ROOT,
+    ) -> dict:
+        """Full offline audit; returns {'manifest':..., 'audit':..., 'gate':...}."""
+        pinned, source_block = load_pinned_selection(repo_root)
+        source_block["schema_version"] = pinned["schema_version"]
+        source_block["agent"] = pinned["agent"]
+        source_block["generated_at_utc"] = pinned["generated_at_utc"]
+        source_block["verdict"] = pinned["verdict"]
+    
+        chosen = pinned["chosen_top10"]
+        symbols = [c["symbol"] for c in chosen]
+        assert len(symbols) == TOP_N, f"pinned selection must have exactly {TOP_N} symbols"
+        assert len(set(symbols)) == TOP_N, "duplicate symbols in pinned selection"
+        btc_in_selected = BTC_SYMBOL in symbols
+    
+        # ---- current-bytes revalidation -------------------------------------- #
+        funding_files = {
+            os.path.basename(os.path.dirname(p)): p
+            for p in sorted(glob.glob(os.path.join(str(funding_root), "*", "funding.json")))
+        }
+        funding_raw = {sym: json.load(open(p))["rows"] for sym, p in funding_files.items()}
+        corroborate = build_corroboration(funding_raw)
+    
+        per_symbol_reval: dict[str, dict] = {}
+        drifts: list[dict] = []
+        selected_symbols: list[dict] = []
+        coverage_required: dict[str, tuple[int, int]] = {}
+        coverage_all: dict[str, tuple[int, int]] = {}
+    
+        for entry in chosen:
+            sym = entry["symbol"]
+            files = bar_files_for_symbol(catalog_root, sym)
+            inst = load_instrument(sym)
+            vol = median_daily_quote_volume_pre_window(files)
+            cen_pre = census_for_symbol(files, PRE_START_S, PRE_END_S)
+            cen_sc = census_for_symbol(files, SCORED_START_S, SCORED_END_S)
+            fund = analyze_funding(funding_raw[sym], corroborate) if sym in funding_raw else None
+            age = listing_age_check(inst, dt_to_s(FIRST_POSSIBLE_EXPOSURE))
+            meta_ok = bool(inst and inst["quote_currency"] == QUOTE_REQUIRED
+                           and inst["contract_type"] == "PERPETUAL"
+                           and inst["status"] == "TRADING")
+    
+            cov_sc = measured_coverage(files, SCORED_START_S, SCORED_END_S)
+            cov_pre = measured_coverage(files, PRE_START_S, PRE_END_S)
+            if cov_sc is not None:
+                coverage_all[sym] = cov_sc
+                if sym != BTC_SYMBOL:
+                    coverage_required[sym] = cov_sc
+            dups = duplicate_raw_stamps(files)
+    
+            # drift vs pinned metrics (exact decimal string comparison)
+            pinned_exact_vol = _pinned_exact_volume(pinned, sym)
+            if vol["median_daily_quote_volume_usdt_exact"] != pinned_exact_vol:
+                drifts.append({"symbol": sym, "field": "median_daily_quote_volume_usdt_exact",
+                               "pinned": pinned_exact_vol,
+                               "current": vol["median_daily_quote_volume_usdt_exact"]})
+            if entry["days_with_bars_pre_window"] != vol["days_with_bars_pre_window"]:
+                drifts.append({"symbol": sym, "field": "days_with_bars_pre_window",
+                               "pinned": entry["days_with_bars_pre_window"],
+                               "current": vol["days_with_bars_pre_window"]})
+            if entry["census_pre_window_gaps"] != cen_pre["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_pre_window_gaps",
+                               "pinned": entry["census_pre_window_gaps"],
+                               "current": cen_pre["gaps_found"]})
+            if entry["census_scored_window_gaps"] != cen_sc["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_gaps",
+                               "pinned": entry["census_scored_window_gaps"],
+                               "current": cen_sc["gaps_found"]})
+            if entry["census_scored_window_unexplained"] != cen_sc["unexplained_gaps"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_unexplained",
+                               "pinned": entry["census_scored_window_unexplained"],
+                               "current": cen_sc["unexplained_gaps"]})
+            if entry["funding_held_exposure_complete"] != (fund or {}).get("complete"):
+                drifts.append({"symbol": sym, "field": "funding_held_exposure_complete",
+                               "pinned": entry["funding_held_exposure_complete"],
+                               "current": (fund or {}).get("complete")})
+    
+            per_symbol_reval[sym] = {
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "metadata_sanity_ok": meta_ok,
+                "listing_age": age,
+                "volume_pre_window": vol,
+                "census_pre_window": cen_pre,
+                "census_scored_window": cen_sc,
+                "funding_held_exposure_audit": fund,
+                "scored_window_first_open_utc": utc_str(cov_sc[0]) if cov_sc else None,
+                "scored_window_last_open_utc": utc_str(cov_sc[1]) if cov_sc else None,
+                "pre_window_first_open_utc": utc_str(cov_pre[0]) if cov_pre else None,
+                "pre_window_last_open_utc": utc_str(cov_pre[1]) if cov_pre else None,
+                "duplicate_bar_timestamps_scored_and_pre": dups,
+            }
+    
+            selected_symbols.append({
+                "rank": entry["rank"],
+                "symbol": sym,
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "median_daily_quote_volume_pre_window_usdt":
+                    vol["median_daily_quote_volume_usdt"],
+                "median_daily_quote_volume_pre_window_usdt_exact":
+                    vol["median_daily_quote_volume_usdt_exact"],
+                "days_with_bars_pre_window": vol["days_with_bars_pre_window"],
+                "census_pre_window_gaps": cen_pre["gaps_found"],
+                "census_pre_window_unexplained": cen_pre["unexplained_gaps"],
+                "census_scored_window_gaps": cen_sc["gaps_found"],
+                "census_scored_window_unexplained": cen_sc["unexplained_gaps"],
+                "funding_held_exposure_complete": bool((fund or {}).get("complete")),
+                "listing_age_days_at_first_possible_exposure":
+                    age["age_days_at_first_possible_exposure"],
+                "listing_age_gate_ok": age["ok"],
+                "metadata_sanity_ok": meta_ok,
+            })
+    
+        selected_symbols.sort(key=lambda c: c["rank"])
+    
+        # ---- BTC benchmark context ------------------------------------------- #
+        btc_context: dict | None = None
+        btc_censuses: dict[str, dict] = {}
+        btc_cov = None
+        if not btc_in_selected:
+            btc_files = bar_files_for_symbol(catalog_root, BTC_SYMBOL)
+            if btc_files:
+                btc_cov = measured_coverage(btc_files, SCORED_START_S, SCORED_END_S)
+                if btc_cov is not None:
+                    coverage_all[BTC_SYMBOL] = btc_cov
+                btc_censuses = {
+                    "pre_window": census_for_symbol(btc_files, PRE_START_S, PRE_END_S),
+                    "scored_window": census_for_symbol(btc_files, SCORED_START_S, SCORED_END_S),
+                }
+                btc_fund = analyze_funding(funding_raw[BTC_SYMBOL], corroborate) \
+                    if BTC_SYMBOL in funding_raw else None
+                btc_dups = duplicate_raw_stamps(btc_files)
+                btc_context = {
+                    "symbol": BTC_SYMBOL,
+                    "instrument_id": f"{BTC_SYMBOL}-PERP.{VENUE}",
+                    "role": "benchmark_measurement_only_excluded_from_ranking",
+                    "census_pre_window_gaps": btc_censuses["pre_window"]["gaps_found"],
+                    "census_scored_window_gaps": btc_censuses["scored_window"]["gaps_found"],
+                    "census_scored_window_unexplained":
+                        btc_censuses["scored_window"]["unexplained_gaps"],
+                    "funding_held_exposure_complete":
+                        bool((btc_fund or {}).get("complete")),
+                    "funding_held_exposure_audit": btc_fund,
+                    "duplicate_bar_timestamps": btc_dups,
+                    "scored_window_first_open_utc": utc_str(btc_cov[0]) if btc_cov else None,
+                    "scored_window_last_open_utc": utc_str(btc_cov[1]) if btc_cov else None,
+                }
+    
+        # ---- measured common completed-bar windows ---------------------------- #
+        req_start, req_end = intersection_range(coverage_required)
+        all_start, all_end = intersection_range(coverage_all)
+        scored_measured_required = {
+            "start_utc": close_stamp_iso(req_start) if req_start is not None else None,
+            "end_utc": close_stamp_iso(req_end) if req_end is not None else None,
+            "basis": ("MEASURED intersection of completed 15m bar coverage across the "
+                      "10 selected altcoins inside the contract scored window "
+                      "[2025-08-21T00:00:00Z, 2026-08-21T00:00:00Z); endpoints are "
+                      "completed-bar CLOSE stamps; never trimmed to dodge gaps"),
+        }
+        scored_measured_all = {
+            "start_utc": close_stamp_iso(all_start) if all_start is not None else None,
+            "end_utc": close_stamp_iso(all_end) if all_end is not None else None,
+            "basis": "same measurement including BTCUSDT as benchmark context",
+        }
+    
+        # ---- gap-census totals ------------------------------------------------ #
+        slots_checked = sum(
+            per_symbol_reval[s]["census_pre_window"]["expected_15m_slots"]
+            + per_symbol_reval[s]["census_scored_window"]["expected_15m_slots"]
+            for s in symbols
+        )
+        gaps_found = sum(
+            per_symbol_reval[s]["census_pre_window"]["gaps_found"]
+            + per_symbol_reval[s]["census_scored_window"]["gaps_found"]
+            for s in symbols
+        )
+        unexplained_total = sum(
+            per_symbol_reval[s]["census_pre_window"]["unexplained_gaps"]
+            + per_symbol_reval[s]["census_scored_window"]["unexplained_gaps"]
+            for s in symbols
+        )
+        documented_runs = []
+        non_boundary_explained: list[dict] = []
+        for s in symbols:
+            for wname in ("pre_window", "scored_window"):
+                for g in per_symbol_reval[s][f"census_{wname}"]["gap_runs"]:
+                    rec = {"symbol": s, "window": wname, **{k: g[k] for k in
+                            ("start_utc", "end_utc", "missing_slots", "cause",
+                             "explained", "evidence")}}
+                    if g["cause"] in DOCUMENTED_CAPTURE_BOUNDARY_CLASSES:
+                        documented_runs.append(rec)
+                    elif g["explained"]:
+                        non_boundary_explained.append(rec)
+    
+        # BTC context censuses were computed above; include their totals separately
+        btc_slots = sum(v["expected_15m_slots"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+        btc_gaps = sum(v["gaps_found"] for v in btc_censuses.values()) if btc_censuses else 0
+        btc_unexplained = sum(v["unexplained_gaps"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+    
+        # ---- funding verdicts -------------------------------------------------- #
+        funding_per_symbol = {
+>           s: {**per_symbol_reval[s]["funding_held_exposure_audit"],
+                "verdict": ("COMPLETE"
+                            if per_symbol_reval[s]["funding_held_exposure_audit"]["complete"]
+                            else "INCOMPLETE")}
+            for s in symbols
+        }
+E       TypeError: 'NoneType' object is not a mapping
+
+scripts/v9_universe_audit.py:567: TypeError
+__________ ERROR at setup of test_zero_unexplained_gaps_both_windows ___________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x1058662a0>, _basetemp=PosixPath.../5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-741'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def rerun_pair(tmp_path_factory):
+        """Two independent full audit runs; returns (run1_dir, run2_dir)."""
+        from scripts.v9_universe_audit import main
+    
+        d1 = tmp_path_factory.mktemp("v9_run1")
+        d2 = tmp_path_factory.mktemp("v9_run2")
+        outs1 = {a.name: d1 / a.name for a in ARTIFACTS}
+        outs2 = {a.name: d2 / a.name for a in ARTIFACTS}
+>       main(manifest_out=outs1[ARTIFACTS[0].name],
+             audit_out=outs1[ARTIFACTS[1].name],
+             gate_out=outs1[ARTIFACTS[2].name])
+
+tests/test_v9_universe_audit.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/v9_universe_audit.py:846: in main
+    res = run_audit()
+          ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+catalog_root = '/Users/hoangminhlong/my-quantitative/catalog_live_crypto'
+funding_root = '/Users/hoangminhlong/my-quantitative/funding_data/scan_2026'
+repo_root = PosixPath('/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration')
+
+    def run_audit(
+        *,
+        catalog_root: str | Path = CATALOG_ROOT,
+        funding_root: str | Path = FUNDING_ROOT,
+        repo_root: Path = REPO_ROOT,
+    ) -> dict:
+        """Full offline audit; returns {'manifest':..., 'audit':..., 'gate':...}."""
+        pinned, source_block = load_pinned_selection(repo_root)
+        source_block["schema_version"] = pinned["schema_version"]
+        source_block["agent"] = pinned["agent"]
+        source_block["generated_at_utc"] = pinned["generated_at_utc"]
+        source_block["verdict"] = pinned["verdict"]
+    
+        chosen = pinned["chosen_top10"]
+        symbols = [c["symbol"] for c in chosen]
+        assert len(symbols) == TOP_N, f"pinned selection must have exactly {TOP_N} symbols"
+        assert len(set(symbols)) == TOP_N, "duplicate symbols in pinned selection"
+        btc_in_selected = BTC_SYMBOL in symbols
+    
+        # ---- current-bytes revalidation -------------------------------------- #
+        funding_files = {
+            os.path.basename(os.path.dirname(p)): p
+            for p in sorted(glob.glob(os.path.join(str(funding_root), "*", "funding.json")))
+        }
+        funding_raw = {sym: json.load(open(p))["rows"] for sym, p in funding_files.items()}
+        corroborate = build_corroboration(funding_raw)
+    
+        per_symbol_reval: dict[str, dict] = {}
+        drifts: list[dict] = []
+        selected_symbols: list[dict] = []
+        coverage_required: dict[str, tuple[int, int]] = {}
+        coverage_all: dict[str, tuple[int, int]] = {}
+    
+        for entry in chosen:
+            sym = entry["symbol"]
+            files = bar_files_for_symbol(catalog_root, sym)
+            inst = load_instrument(sym)
+            vol = median_daily_quote_volume_pre_window(files)
+            cen_pre = census_for_symbol(files, PRE_START_S, PRE_END_S)
+            cen_sc = census_for_symbol(files, SCORED_START_S, SCORED_END_S)
+            fund = analyze_funding(funding_raw[sym], corroborate) if sym in funding_raw else None
+            age = listing_age_check(inst, dt_to_s(FIRST_POSSIBLE_EXPOSURE))
+            meta_ok = bool(inst and inst["quote_currency"] == QUOTE_REQUIRED
+                           and inst["contract_type"] == "PERPETUAL"
+                           and inst["status"] == "TRADING")
+    
+            cov_sc = measured_coverage(files, SCORED_START_S, SCORED_END_S)
+            cov_pre = measured_coverage(files, PRE_START_S, PRE_END_S)
+            if cov_sc is not None:
+                coverage_all[sym] = cov_sc
+                if sym != BTC_SYMBOL:
+                    coverage_required[sym] = cov_sc
+            dups = duplicate_raw_stamps(files)
+    
+            # drift vs pinned metrics (exact decimal string comparison)
+            pinned_exact_vol = _pinned_exact_volume(pinned, sym)
+            if vol["median_daily_quote_volume_usdt_exact"] != pinned_exact_vol:
+                drifts.append({"symbol": sym, "field": "median_daily_quote_volume_usdt_exact",
+                               "pinned": pinned_exact_vol,
+                               "current": vol["median_daily_quote_volume_usdt_exact"]})
+            if entry["days_with_bars_pre_window"] != vol["days_with_bars_pre_window"]:
+                drifts.append({"symbol": sym, "field": "days_with_bars_pre_window",
+                               "pinned": entry["days_with_bars_pre_window"],
+                               "current": vol["days_with_bars_pre_window"]})
+            if entry["census_pre_window_gaps"] != cen_pre["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_pre_window_gaps",
+                               "pinned": entry["census_pre_window_gaps"],
+                               "current": cen_pre["gaps_found"]})
+            if entry["census_scored_window_gaps"] != cen_sc["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_gaps",
+                               "pinned": entry["census_scored_window_gaps"],
+                               "current": cen_sc["gaps_found"]})
+            if entry["census_scored_window_unexplained"] != cen_sc["unexplained_gaps"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_unexplained",
+                               "pinned": entry["census_scored_window_unexplained"],
+                               "current": cen_sc["unexplained_gaps"]})
+            if entry["funding_held_exposure_complete"] != (fund or {}).get("complete"):
+                drifts.append({"symbol": sym, "field": "funding_held_exposure_complete",
+                               "pinned": entry["funding_held_exposure_complete"],
+                               "current": (fund or {}).get("complete")})
+    
+            per_symbol_reval[sym] = {
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "metadata_sanity_ok": meta_ok,
+                "listing_age": age,
+                "volume_pre_window": vol,
+                "census_pre_window": cen_pre,
+                "census_scored_window": cen_sc,
+                "funding_held_exposure_audit": fund,
+                "scored_window_first_open_utc": utc_str(cov_sc[0]) if cov_sc else None,
+                "scored_window_last_open_utc": utc_str(cov_sc[1]) if cov_sc else None,
+                "pre_window_first_open_utc": utc_str(cov_pre[0]) if cov_pre else None,
+                "pre_window_last_open_utc": utc_str(cov_pre[1]) if cov_pre else None,
+                "duplicate_bar_timestamps_scored_and_pre": dups,
+            }
+    
+            selected_symbols.append({
+                "rank": entry["rank"],
+                "symbol": sym,
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "median_daily_quote_volume_pre_window_usdt":
+                    vol["median_daily_quote_volume_usdt"],
+                "median_daily_quote_volume_pre_window_usdt_exact":
+                    vol["median_daily_quote_volume_usdt_exact"],
+                "days_with_bars_pre_window": vol["days_with_bars_pre_window"],
+                "census_pre_window_gaps": cen_pre["gaps_found"],
+                "census_pre_window_unexplained": cen_pre["unexplained_gaps"],
+                "census_scored_window_gaps": cen_sc["gaps_found"],
+                "census_scored_window_unexplained": cen_sc["unexplained_gaps"],
+                "funding_held_exposure_complete": bool((fund or {}).get("complete")),
+                "listing_age_days_at_first_possible_exposure":
+                    age["age_days_at_first_possible_exposure"],
+                "listing_age_gate_ok": age["ok"],
+                "metadata_sanity_ok": meta_ok,
+            })
+    
+        selected_symbols.sort(key=lambda c: c["rank"])
+    
+        # ---- BTC benchmark context ------------------------------------------- #
+        btc_context: dict | None = None
+        btc_censuses: dict[str, dict] = {}
+        btc_cov = None
+        if not btc_in_selected:
+            btc_files = bar_files_for_symbol(catalog_root, BTC_SYMBOL)
+            if btc_files:
+                btc_cov = measured_coverage(btc_files, SCORED_START_S, SCORED_END_S)
+                if btc_cov is not None:
+                    coverage_all[BTC_SYMBOL] = btc_cov
+                btc_censuses = {
+                    "pre_window": census_for_symbol(btc_files, PRE_START_S, PRE_END_S),
+                    "scored_window": census_for_symbol(btc_files, SCORED_START_S, SCORED_END_S),
+                }
+                btc_fund = analyze_funding(funding_raw[BTC_SYMBOL], corroborate) \
+                    if BTC_SYMBOL in funding_raw else None
+                btc_dups = duplicate_raw_stamps(btc_files)
+                btc_context = {
+                    "symbol": BTC_SYMBOL,
+                    "instrument_id": f"{BTC_SYMBOL}-PERP.{VENUE}",
+                    "role": "benchmark_measurement_only_excluded_from_ranking",
+                    "census_pre_window_gaps": btc_censuses["pre_window"]["gaps_found"],
+                    "census_scored_window_gaps": btc_censuses["scored_window"]["gaps_found"],
+                    "census_scored_window_unexplained":
+                        btc_censuses["scored_window"]["unexplained_gaps"],
+                    "funding_held_exposure_complete":
+                        bool((btc_fund or {}).get("complete")),
+                    "funding_held_exposure_audit": btc_fund,
+                    "duplicate_bar_timestamps": btc_dups,
+                    "scored_window_first_open_utc": utc_str(btc_cov[0]) if btc_cov else None,
+                    "scored_window_last_open_utc": utc_str(btc_cov[1]) if btc_cov else None,
+                }
+    
+        # ---- measured common completed-bar windows ---------------------------- #
+        req_start, req_end = intersection_range(coverage_required)
+        all_start, all_end = intersection_range(coverage_all)
+        scored_measured_required = {
+            "start_utc": close_stamp_iso(req_start) if req_start is not None else None,
+            "end_utc": close_stamp_iso(req_end) if req_end is not None else None,
+            "basis": ("MEASURED intersection of completed 15m bar coverage across the "
+                      "10 selected altcoins inside the contract scored window "
+                      "[2025-08-21T00:00:00Z, 2026-08-21T00:00:00Z); endpoints are "
+                      "completed-bar CLOSE stamps; never trimmed to dodge gaps"),
+        }
+        scored_measured_all = {
+            "start_utc": close_stamp_iso(all_start) if all_start is not None else None,
+            "end_utc": close_stamp_iso(all_end) if all_end is not None else None,
+            "basis": "same measurement including BTCUSDT as benchmark context",
+        }
+    
+        # ---- gap-census totals ------------------------------------------------ #
+        slots_checked = sum(
+            per_symbol_reval[s]["census_pre_window"]["expected_15m_slots"]
+            + per_symbol_reval[s]["census_scored_window"]["expected_15m_slots"]
+            for s in symbols
+        )
+        gaps_found = sum(
+            per_symbol_reval[s]["census_pre_window"]["gaps_found"]
+            + per_symbol_reval[s]["census_scored_window"]["gaps_found"]
+            for s in symbols
+        )
+        unexplained_total = sum(
+            per_symbol_reval[s]["census_pre_window"]["unexplained_gaps"]
+            + per_symbol_reval[s]["census_scored_window"]["unexplained_gaps"]
+            for s in symbols
+        )
+        documented_runs = []
+        non_boundary_explained: list[dict] = []
+        for s in symbols:
+            for wname in ("pre_window", "scored_window"):
+                for g in per_symbol_reval[s][f"census_{wname}"]["gap_runs"]:
+                    rec = {"symbol": s, "window": wname, **{k: g[k] for k in
+                            ("start_utc", "end_utc", "missing_slots", "cause",
+                             "explained", "evidence")}}
+                    if g["cause"] in DOCUMENTED_CAPTURE_BOUNDARY_CLASSES:
+                        documented_runs.append(rec)
+                    elif g["explained"]:
+                        non_boundary_explained.append(rec)
+    
+        # BTC context censuses were computed above; include their totals separately
+        btc_slots = sum(v["expected_15m_slots"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+        btc_gaps = sum(v["gaps_found"] for v in btc_censuses.values()) if btc_censuses else 0
+        btc_unexplained = sum(v["unexplained_gaps"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+    
+        # ---- funding verdicts -------------------------------------------------- #
+        funding_per_symbol = {
+>           s: {**per_symbol_reval[s]["funding_held_exposure_audit"],
+                "verdict": ("COMPLETE"
+                            if per_symbol_reval[s]["funding_held_exposure_audit"]["complete"]
+                            else "INCOMPLETE")}
+            for s in symbols
+        }
+E       TypeError: 'NoneType' object is not a mapping
+
+scripts/v9_universe_audit.py:567: TypeError
+______ ERROR at setup of test_window_constants_and_measured_scored_window ______
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x1058662a0>, _basetemp=PosixPath.../5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-741'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def rerun_pair(tmp_path_factory):
+        """Two independent full audit runs; returns (run1_dir, run2_dir)."""
+        from scripts.v9_universe_audit import main
+    
+        d1 = tmp_path_factory.mktemp("v9_run1")
+        d2 = tmp_path_factory.mktemp("v9_run2")
+        outs1 = {a.name: d1 / a.name for a in ARTIFACTS}
+        outs2 = {a.name: d2 / a.name for a in ARTIFACTS}
+>       main(manifest_out=outs1[ARTIFACTS[0].name],
+             audit_out=outs1[ARTIFACTS[1].name],
+             gate_out=outs1[ARTIFACTS[2].name])
+
+tests/test_v9_universe_audit.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/v9_universe_audit.py:846: in main
+    res = run_audit()
+          ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+catalog_root = '/Users/hoangminhlong/my-quantitative/catalog_live_crypto'
+funding_root = '/Users/hoangminhlong/my-quantitative/funding_data/scan_2026'
+repo_root = PosixPath('/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration')
+
+    def run_audit(
+        *,
+        catalog_root: str | Path = CATALOG_ROOT,
+        funding_root: str | Path = FUNDING_ROOT,
+        repo_root: Path = REPO_ROOT,
+    ) -> dict:
+        """Full offline audit; returns {'manifest':..., 'audit':..., 'gate':...}."""
+        pinned, source_block = load_pinned_selection(repo_root)
+        source_block["schema_version"] = pinned["schema_version"]
+        source_block["agent"] = pinned["agent"]
+        source_block["generated_at_utc"] = pinned["generated_at_utc"]
+        source_block["verdict"] = pinned["verdict"]
+    
+        chosen = pinned["chosen_top10"]
+        symbols = [c["symbol"] for c in chosen]
+        assert len(symbols) == TOP_N, f"pinned selection must have exactly {TOP_N} symbols"
+        assert len(set(symbols)) == TOP_N, "duplicate symbols in pinned selection"
+        btc_in_selected = BTC_SYMBOL in symbols
+    
+        # ---- current-bytes revalidation -------------------------------------- #
+        funding_files = {
+            os.path.basename(os.path.dirname(p)): p
+            for p in sorted(glob.glob(os.path.join(str(funding_root), "*", "funding.json")))
+        }
+        funding_raw = {sym: json.load(open(p))["rows"] for sym, p in funding_files.items()}
+        corroborate = build_corroboration(funding_raw)
+    
+        per_symbol_reval: dict[str, dict] = {}
+        drifts: list[dict] = []
+        selected_symbols: list[dict] = []
+        coverage_required: dict[str, tuple[int, int]] = {}
+        coverage_all: dict[str, tuple[int, int]] = {}
+    
+        for entry in chosen:
+            sym = entry["symbol"]
+            files = bar_files_for_symbol(catalog_root, sym)
+            inst = load_instrument(sym)
+            vol = median_daily_quote_volume_pre_window(files)
+            cen_pre = census_for_symbol(files, PRE_START_S, PRE_END_S)
+            cen_sc = census_for_symbol(files, SCORED_START_S, SCORED_END_S)
+            fund = analyze_funding(funding_raw[sym], corroborate) if sym in funding_raw else None
+            age = listing_age_check(inst, dt_to_s(FIRST_POSSIBLE_EXPOSURE))
+            meta_ok = bool(inst and inst["quote_currency"] == QUOTE_REQUIRED
+                           and inst["contract_type"] == "PERPETUAL"
+                           and inst["status"] == "TRADING")
+    
+            cov_sc = measured_coverage(files, SCORED_START_S, SCORED_END_S)
+            cov_pre = measured_coverage(files, PRE_START_S, PRE_END_S)
+            if cov_sc is not None:
+                coverage_all[sym] = cov_sc
+                if sym != BTC_SYMBOL:
+                    coverage_required[sym] = cov_sc
+            dups = duplicate_raw_stamps(files)
+    
+            # drift vs pinned metrics (exact decimal string comparison)
+            pinned_exact_vol = _pinned_exact_volume(pinned, sym)
+            if vol["median_daily_quote_volume_usdt_exact"] != pinned_exact_vol:
+                drifts.append({"symbol": sym, "field": "median_daily_quote_volume_usdt_exact",
+                               "pinned": pinned_exact_vol,
+                               "current": vol["median_daily_quote_volume_usdt_exact"]})
+            if entry["days_with_bars_pre_window"] != vol["days_with_bars_pre_window"]:
+                drifts.append({"symbol": sym, "field": "days_with_bars_pre_window",
+                               "pinned": entry["days_with_bars_pre_window"],
+                               "current": vol["days_with_bars_pre_window"]})
+            if entry["census_pre_window_gaps"] != cen_pre["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_pre_window_gaps",
+                               "pinned": entry["census_pre_window_gaps"],
+                               "current": cen_pre["gaps_found"]})
+            if entry["census_scored_window_gaps"] != cen_sc["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_gaps",
+                               "pinned": entry["census_scored_window_gaps"],
+                               "current": cen_sc["gaps_found"]})
+            if entry["census_scored_window_unexplained"] != cen_sc["unexplained_gaps"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_unexplained",
+                               "pinned": entry["census_scored_window_unexplained"],
+                               "current": cen_sc["unexplained_gaps"]})
+            if entry["funding_held_exposure_complete"] != (fund or {}).get("complete"):
+                drifts.append({"symbol": sym, "field": "funding_held_exposure_complete",
+                               "pinned": entry["funding_held_exposure_complete"],
+                               "current": (fund or {}).get("complete")})
+    
+            per_symbol_reval[sym] = {
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "metadata_sanity_ok": meta_ok,
+                "listing_age": age,
+                "volume_pre_window": vol,
+                "census_pre_window": cen_pre,
+                "census_scored_window": cen_sc,
+                "funding_held_exposure_audit": fund,
+                "scored_window_first_open_utc": utc_str(cov_sc[0]) if cov_sc else None,
+                "scored_window_last_open_utc": utc_str(cov_sc[1]) if cov_sc else None,
+                "pre_window_first_open_utc": utc_str(cov_pre[0]) if cov_pre else None,
+                "pre_window_last_open_utc": utc_str(cov_pre[1]) if cov_pre else None,
+                "duplicate_bar_timestamps_scored_and_pre": dups,
+            }
+    
+            selected_symbols.append({
+                "rank": entry["rank"],
+                "symbol": sym,
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "median_daily_quote_volume_pre_window_usdt":
+                    vol["median_daily_quote_volume_usdt"],
+                "median_daily_quote_volume_pre_window_usdt_exact":
+                    vol["median_daily_quote_volume_usdt_exact"],
+                "days_with_bars_pre_window": vol["days_with_bars_pre_window"],
+                "census_pre_window_gaps": cen_pre["gaps_found"],
+                "census_pre_window_unexplained": cen_pre["unexplained_gaps"],
+                "census_scored_window_gaps": cen_sc["gaps_found"],
+                "census_scored_window_unexplained": cen_sc["unexplained_gaps"],
+                "funding_held_exposure_complete": bool((fund or {}).get("complete")),
+                "listing_age_days_at_first_possible_exposure":
+                    age["age_days_at_first_possible_exposure"],
+                "listing_age_gate_ok": age["ok"],
+                "metadata_sanity_ok": meta_ok,
+            })
+    
+        selected_symbols.sort(key=lambda c: c["rank"])
+    
+        # ---- BTC benchmark context ------------------------------------------- #
+        btc_context: dict | None = None
+        btc_censuses: dict[str, dict] = {}
+        btc_cov = None
+        if not btc_in_selected:
+            btc_files = bar_files_for_symbol(catalog_root, BTC_SYMBOL)
+            if btc_files:
+                btc_cov = measured_coverage(btc_files, SCORED_START_S, SCORED_END_S)
+                if btc_cov is not None:
+                    coverage_all[BTC_SYMBOL] = btc_cov
+                btc_censuses = {
+                    "pre_window": census_for_symbol(btc_files, PRE_START_S, PRE_END_S),
+                    "scored_window": census_for_symbol(btc_files, SCORED_START_S, SCORED_END_S),
+                }
+                btc_fund = analyze_funding(funding_raw[BTC_SYMBOL], corroborate) \
+                    if BTC_SYMBOL in funding_raw else None
+                btc_dups = duplicate_raw_stamps(btc_files)
+                btc_context = {
+                    "symbol": BTC_SYMBOL,
+                    "instrument_id": f"{BTC_SYMBOL}-PERP.{VENUE}",
+                    "role": "benchmark_measurement_only_excluded_from_ranking",
+                    "census_pre_window_gaps": btc_censuses["pre_window"]["gaps_found"],
+                    "census_scored_window_gaps": btc_censuses["scored_window"]["gaps_found"],
+                    "census_scored_window_unexplained":
+                        btc_censuses["scored_window"]["unexplained_gaps"],
+                    "funding_held_exposure_complete":
+                        bool((btc_fund or {}).get("complete")),
+                    "funding_held_exposure_audit": btc_fund,
+                    "duplicate_bar_timestamps": btc_dups,
+                    "scored_window_first_open_utc": utc_str(btc_cov[0]) if btc_cov else None,
+                    "scored_window_last_open_utc": utc_str(btc_cov[1]) if btc_cov else None,
+                }
+    
+        # ---- measured common completed-bar windows ---------------------------- #
+        req_start, req_end = intersection_range(coverage_required)
+        all_start, all_end = intersection_range(coverage_all)
+        scored_measured_required = {
+            "start_utc": close_stamp_iso(req_start) if req_start is not None else None,
+            "end_utc": close_stamp_iso(req_end) if req_end is not None else None,
+            "basis": ("MEASURED intersection of completed 15m bar coverage across the "
+                      "10 selected altcoins inside the contract scored window "
+                      "[2025-08-21T00:00:00Z, 2026-08-21T00:00:00Z); endpoints are "
+                      "completed-bar CLOSE stamps; never trimmed to dodge gaps"),
+        }
+        scored_measured_all = {
+            "start_utc": close_stamp_iso(all_start) if all_start is not None else None,
+            "end_utc": close_stamp_iso(all_end) if all_end is not None else None,
+            "basis": "same measurement including BTCUSDT as benchmark context",
+        }
+    
+        # ---- gap-census totals ------------------------------------------------ #
+        slots_checked = sum(
+            per_symbol_reval[s]["census_pre_window"]["expected_15m_slots"]
+            + per_symbol_reval[s]["census_scored_window"]["expected_15m_slots"]
+            for s in symbols
+        )
+        gaps_found = sum(
+            per_symbol_reval[s]["census_pre_window"]["gaps_found"]
+            + per_symbol_reval[s]["census_scored_window"]["gaps_found"]
+            for s in symbols
+        )
+        unexplained_total = sum(
+            per_symbol_reval[s]["census_pre_window"]["unexplained_gaps"]
+            + per_symbol_reval[s]["census_scored_window"]["unexplained_gaps"]
+            for s in symbols
+        )
+        documented_runs = []
+        non_boundary_explained: list[dict] = []
+        for s in symbols:
+            for wname in ("pre_window", "scored_window"):
+                for g in per_symbol_reval[s][f"census_{wname}"]["gap_runs"]:
+                    rec = {"symbol": s, "window": wname, **{k: g[k] for k in
+                            ("start_utc", "end_utc", "missing_slots", "cause",
+                             "explained", "evidence")}}
+                    if g["cause"] in DOCUMENTED_CAPTURE_BOUNDARY_CLASSES:
+                        documented_runs.append(rec)
+                    elif g["explained"]:
+                        non_boundary_explained.append(rec)
+    
+        # BTC context censuses were computed above; include their totals separately
+        btc_slots = sum(v["expected_15m_slots"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+        btc_gaps = sum(v["gaps_found"] for v in btc_censuses.values()) if btc_censuses else 0
+        btc_unexplained = sum(v["unexplained_gaps"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+    
+        # ---- funding verdicts -------------------------------------------------- #
+        funding_per_symbol = {
+>           s: {**per_symbol_reval[s]["funding_held_exposure_audit"],
+                "verdict": ("COMPLETE"
+                            if per_symbol_reval[s]["funding_held_exposure_audit"]["complete"]
+                            else "INCOMPLETE")}
+            for s in symbols
+        }
+E       TypeError: 'NoneType' object is not a mapping
+
+scripts/v9_universe_audit.py:567: TypeError
+____________ ERROR at setup of test_gate_document_shape_and_status _____________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x1058662a0>, _basetemp=PosixPath.../5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-741'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def rerun_pair(tmp_path_factory):
+        """Two independent full audit runs; returns (run1_dir, run2_dir)."""
+        from scripts.v9_universe_audit import main
+    
+        d1 = tmp_path_factory.mktemp("v9_run1")
+        d2 = tmp_path_factory.mktemp("v9_run2")
+        outs1 = {a.name: d1 / a.name for a in ARTIFACTS}
+        outs2 = {a.name: d2 / a.name for a in ARTIFACTS}
+>       main(manifest_out=outs1[ARTIFACTS[0].name],
+             audit_out=outs1[ARTIFACTS[1].name],
+             gate_out=outs1[ARTIFACTS[2].name])
+
+tests/test_v9_universe_audit.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/v9_universe_audit.py:846: in main
+    res = run_audit()
+          ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+catalog_root = '/Users/hoangminhlong/my-quantitative/catalog_live_crypto'
+funding_root = '/Users/hoangminhlong/my-quantitative/funding_data/scan_2026'
+repo_root = PosixPath('/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration')
+
+    def run_audit(
+        *,
+        catalog_root: str | Path = CATALOG_ROOT,
+        funding_root: str | Path = FUNDING_ROOT,
+        repo_root: Path = REPO_ROOT,
+    ) -> dict:
+        """Full offline audit; returns {'manifest':..., 'audit':..., 'gate':...}."""
+        pinned, source_block = load_pinned_selection(repo_root)
+        source_block["schema_version"] = pinned["schema_version"]
+        source_block["agent"] = pinned["agent"]
+        source_block["generated_at_utc"] = pinned["generated_at_utc"]
+        source_block["verdict"] = pinned["verdict"]
+    
+        chosen = pinned["chosen_top10"]
+        symbols = [c["symbol"] for c in chosen]
+        assert len(symbols) == TOP_N, f"pinned selection must have exactly {TOP_N} symbols"
+        assert len(set(symbols)) == TOP_N, "duplicate symbols in pinned selection"
+        btc_in_selected = BTC_SYMBOL in symbols
+    
+        # ---- current-bytes revalidation -------------------------------------- #
+        funding_files = {
+            os.path.basename(os.path.dirname(p)): p
+            for p in sorted(glob.glob(os.path.join(str(funding_root), "*", "funding.json")))
+        }
+        funding_raw = {sym: json.load(open(p))["rows"] for sym, p in funding_files.items()}
+        corroborate = build_corroboration(funding_raw)
+    
+        per_symbol_reval: dict[str, dict] = {}
+        drifts: list[dict] = []
+        selected_symbols: list[dict] = []
+        coverage_required: dict[str, tuple[int, int]] = {}
+        coverage_all: dict[str, tuple[int, int]] = {}
+    
+        for entry in chosen:
+            sym = entry["symbol"]
+            files = bar_files_for_symbol(catalog_root, sym)
+            inst = load_instrument(sym)
+            vol = median_daily_quote_volume_pre_window(files)
+            cen_pre = census_for_symbol(files, PRE_START_S, PRE_END_S)
+            cen_sc = census_for_symbol(files, SCORED_START_S, SCORED_END_S)
+            fund = analyze_funding(funding_raw[sym], corroborate) if sym in funding_raw else None
+            age = listing_age_check(inst, dt_to_s(FIRST_POSSIBLE_EXPOSURE))
+            meta_ok = bool(inst and inst["quote_currency"] == QUOTE_REQUIRED
+                           and inst["contract_type"] == "PERPETUAL"
+                           and inst["status"] == "TRADING")
+    
+            cov_sc = measured_coverage(files, SCORED_START_S, SCORED_END_S)
+            cov_pre = measured_coverage(files, PRE_START_S, PRE_END_S)
+            if cov_sc is not None:
+                coverage_all[sym] = cov_sc
+                if sym != BTC_SYMBOL:
+                    coverage_required[sym] = cov_sc
+            dups = duplicate_raw_stamps(files)
+    
+            # drift vs pinned metrics (exact decimal string comparison)
+            pinned_exact_vol = _pinned_exact_volume(pinned, sym)
+            if vol["median_daily_quote_volume_usdt_exact"] != pinned_exact_vol:
+                drifts.append({"symbol": sym, "field": "median_daily_quote_volume_usdt_exact",
+                               "pinned": pinned_exact_vol,
+                               "current": vol["median_daily_quote_volume_usdt_exact"]})
+            if entry["days_with_bars_pre_window"] != vol["days_with_bars_pre_window"]:
+                drifts.append({"symbol": sym, "field": "days_with_bars_pre_window",
+                               "pinned": entry["days_with_bars_pre_window"],
+                               "current": vol["days_with_bars_pre_window"]})
+            if entry["census_pre_window_gaps"] != cen_pre["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_pre_window_gaps",
+                               "pinned": entry["census_pre_window_gaps"],
+                               "current": cen_pre["gaps_found"]})
+            if entry["census_scored_window_gaps"] != cen_sc["gaps_found"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_gaps",
+                               "pinned": entry["census_scored_window_gaps"],
+                               "current": cen_sc["gaps_found"]})
+            if entry["census_scored_window_unexplained"] != cen_sc["unexplained_gaps"]:
+                drifts.append({"symbol": sym, "field": "census_scored_window_unexplained",
+                               "pinned": entry["census_scored_window_unexplained"],
+                               "current": cen_sc["unexplained_gaps"]})
+            if entry["funding_held_exposure_complete"] != (fund or {}).get("complete"):
+                drifts.append({"symbol": sym, "field": "funding_held_exposure_complete",
+                               "pinned": entry["funding_held_exposure_complete"],
+                               "current": (fund or {}).get("complete")})
+    
+            per_symbol_reval[sym] = {
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "metadata_sanity_ok": meta_ok,
+                "listing_age": age,
+                "volume_pre_window": vol,
+                "census_pre_window": cen_pre,
+                "census_scored_window": cen_sc,
+                "funding_held_exposure_audit": fund,
+                "scored_window_first_open_utc": utc_str(cov_sc[0]) if cov_sc else None,
+                "scored_window_last_open_utc": utc_str(cov_sc[1]) if cov_sc else None,
+                "pre_window_first_open_utc": utc_str(cov_pre[0]) if cov_pre else None,
+                "pre_window_last_open_utc": utc_str(cov_pre[1]) if cov_pre else None,
+                "duplicate_bar_timestamps_scored_and_pre": dups,
+            }
+    
+            selected_symbols.append({
+                "rank": entry["rank"],
+                "symbol": sym,
+                "instrument_id": f"{sym}-PERP.{VENUE}",
+                "median_daily_quote_volume_pre_window_usdt":
+                    vol["median_daily_quote_volume_usdt"],
+                "median_daily_quote_volume_pre_window_usdt_exact":
+                    vol["median_daily_quote_volume_usdt_exact"],
+                "days_with_bars_pre_window": vol["days_with_bars_pre_window"],
+                "census_pre_window_gaps": cen_pre["gaps_found"],
+                "census_pre_window_unexplained": cen_pre["unexplained_gaps"],
+                "census_scored_window_gaps": cen_sc["gaps_found"],
+                "census_scored_window_unexplained": cen_sc["unexplained_gaps"],
+                "funding_held_exposure_complete": bool((fund or {}).get("complete")),
+                "listing_age_days_at_first_possible_exposure":
+                    age["age_days_at_first_possible_exposure"],
+                "listing_age_gate_ok": age["ok"],
+                "metadata_sanity_ok": meta_ok,
+            })
+    
+        selected_symbols.sort(key=lambda c: c["rank"])
+    
+        # ---- BTC benchmark context ------------------------------------------- #
+        btc_context: dict | None = None
+        btc_censuses: dict[str, dict] = {}
+        btc_cov = None
+        if not btc_in_selected:
+            btc_files = bar_files_for_symbol(catalog_root, BTC_SYMBOL)
+            if btc_files:
+                btc_cov = measured_coverage(btc_files, SCORED_START_S, SCORED_END_S)
+                if btc_cov is not None:
+                    coverage_all[BTC_SYMBOL] = btc_cov
+                btc_censuses = {
+                    "pre_window": census_for_symbol(btc_files, PRE_START_S, PRE_END_S),
+                    "scored_window": census_for_symbol(btc_files, SCORED_START_S, SCORED_END_S),
+                }
+                btc_fund = analyze_funding(funding_raw[BTC_SYMBOL], corroborate) \
+                    if BTC_SYMBOL in funding_raw else None
+                btc_dups = duplicate_raw_stamps(btc_files)
+                btc_context = {
+                    "symbol": BTC_SYMBOL,
+                    "instrument_id": f"{BTC_SYMBOL}-PERP.{VENUE}",
+                    "role": "benchmark_measurement_only_excluded_from_ranking",
+                    "census_pre_window_gaps": btc_censuses["pre_window"]["gaps_found"],
+                    "census_scored_window_gaps": btc_censuses["scored_window"]["gaps_found"],
+                    "census_scored_window_unexplained":
+                        btc_censuses["scored_window"]["unexplained_gaps"],
+                    "funding_held_exposure_complete":
+                        bool((btc_fund or {}).get("complete")),
+                    "funding_held_exposure_audit": btc_fund,
+                    "duplicate_bar_timestamps": btc_dups,
+                    "scored_window_first_open_utc": utc_str(btc_cov[0]) if btc_cov else None,
+                    "scored_window_last_open_utc": utc_str(btc_cov[1]) if btc_cov else None,
+                }
+    
+        # ---- measured common completed-bar windows ---------------------------- #
+        req_start, req_end = intersection_range(coverage_required)
+        all_start, all_end = intersection_range(coverage_all)
+        scored_measured_required = {
+            "start_utc": close_stamp_iso(req_start) if req_start is not None else None,
+            "end_utc": close_stamp_iso(req_end) if req_end is not None else None,
+            "basis": ("MEASURED intersection of completed 15m bar coverage across the "
+                      "10 selected altcoins inside the contract scored window "
+                      "[2025-08-21T00:00:00Z, 2026-08-21T00:00:00Z); endpoints are "
+                      "completed-bar CLOSE stamps; never trimmed to dodge gaps"),
+        }
+        scored_measured_all = {
+            "start_utc": close_stamp_iso(all_start) if all_start is not None else None,
+            "end_utc": close_stamp_iso(all_end) if all_end is not None else None,
+            "basis": "same measurement including BTCUSDT as benchmark context",
+        }
+    
+        # ---- gap-census totals ------------------------------------------------ #
+        slots_checked = sum(
+            per_symbol_reval[s]["census_pre_window"]["expected_15m_slots"]
+            + per_symbol_reval[s]["census_scored_window"]["expected_15m_slots"]
+            for s in symbols
+        )
+        gaps_found = sum(
+            per_symbol_reval[s]["census_pre_window"]["gaps_found"]
+            + per_symbol_reval[s]["census_scored_window"]["gaps_found"]
+            for s in symbols
+        )
+        unexplained_total = sum(
+            per_symbol_reval[s]["census_pre_window"]["unexplained_gaps"]
+            + per_symbol_reval[s]["census_scored_window"]["unexplained_gaps"]
+            for s in symbols
+        )
+        documented_runs = []
+        non_boundary_explained: list[dict] = []
+        for s in symbols:
+            for wname in ("pre_window", "scored_window"):
+                for g in per_symbol_reval[s][f"census_{wname}"]["gap_runs"]:
+                    rec = {"symbol": s, "window": wname, **{k: g[k] for k in
+                            ("start_utc", "end_utc", "missing_slots", "cause",
+                             "explained", "evidence")}}
+                    if g["cause"] in DOCUMENTED_CAPTURE_BOUNDARY_CLASSES:
+                        documented_runs.append(rec)
+                    elif g["explained"]:
+                        non_boundary_explained.append(rec)
+    
+        # BTC context censuses were computed above; include their totals separately
+        btc_slots = sum(v["expected_15m_slots"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+        btc_gaps = sum(v["gaps_found"] for v in btc_censuses.values()) if btc_censuses else 0
+        btc_unexplained = sum(v["unexplained_gaps"] for v in btc_censuses.values()) \
+            if btc_censuses else 0
+    
+        # ---- funding verdicts -------------------------------------------------- #
+        funding_per_symbol = {
+>           s: {**per_symbol_reval[s]["funding_held_exposure_audit"],
+                "verdict": ("COMPLETE"
+                            if per_symbol_reval[s]["funding_held_exposure_audit"]["complete"]
+                            else "INCOMPLETE")}
+            for s in symbols
+        }
+E       TypeError: 'NoneType' object is not a mapping
+
+scripts/v9_universe_audit.py:567: TypeError
+=============================== warnings summary ===============================
+tests/test_execution_truth.py: 16 warnings
+  /Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration/tests/test_execution_truth.py:152: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+    engine.run()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_v9_universe_audit.py::test_deterministic_rerun_byte_identical
+ERROR tests/test_v9_universe_audit.py::test_rerun_reproduces_committed_artifact_bytes
+ERROR tests/test_v9_universe_audit.py::test_btc_excluded_from_traded_top10 - ...
+ERROR tests/test_v9_universe_audit.py::test_zero_unexplained_gaps_both_windows
+ERROR tests/test_v9_universe_audit.py::test_window_constants_and_measured_scored_window
+ERROR tests/test_v9_universe_audit.py::test_gate_document_shape_and_status - ...
+1010 passed, 16 warnings, 6 errors in 34.38s
+
+=== STDERR ===
