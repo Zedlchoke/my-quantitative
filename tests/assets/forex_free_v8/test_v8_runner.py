@@ -1008,3 +1008,27 @@ class TestTwinDeterminism(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_launch_gate_reads_launch_gate_block_and_refusal_keys(tmp_path, monkeypatch):
+    """F1 remediation (A7 finding F1): the scored gate reads the run
+    contract's launch_gate.* block with the contract's own field names.
+    Hand-check: a flipped contract yields NO missing keys; the shipped
+    (unflipped) contract yields exactly [s0_launch_authorized,
+    owner_fresh_go]."""
+    import importlib, json, os
+    drv = importlib.import_module("research.assets.forex_free_v8.exec_driver_v8")
+    rc = json.load(open(os.path.join("research", "control", "forex_free_v8_run", "run_contract.json")))
+    monkeypatch.setattr(drv, "RUN_CONTRACT_PATH", str(tmp_path / "run_contract.json"))
+    shipped = json.loads(json.dumps(rc))
+    with open(tmp_path / "run_contract.json", "w") as f:
+        json.dump(shipped, f)
+    assert drv._launch_gate_state() == ["s0_launch_authorized", "owner_fresh_go"]
+    flipped = json.loads(json.dumps(rc))
+    flipped["launch_gate"]["s0_launch_authorized"] = True
+    flipped["launch_gate"]["a7_prelaunch_verdict"] = "FOREX_FREE_V8_S0_LAUNCH_AUTHORIZED"
+    flipped["launch_gate"]["owner_go_fresh"] = True
+    flipped["launch_gate"]["owner_go_phrase"] = "GO FOREX V8 SCORED EXECUTION"
+    with open(tmp_path / "run_contract.json", "w") as f:
+        json.dump(flipped, f)
+    assert drv._launch_gate_state() == []
