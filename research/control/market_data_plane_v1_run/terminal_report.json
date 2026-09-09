@@ -1,0 +1,84 @@
+{
+ "schema": "mdp_terminal_report@1",
+ "cycle": "MARKET-DATA-PLANE-V1",
+ "verdict": "MARKET_DATA_PLANE_V1_BLOCKED_RESOURCE_CONFLICT",
+ "verdict_basis": "Every engineering gate G0-G8D, G10, G11 PASS (A7 fresh-context: 16/16 items PASS, 0 HIGH/CRITICAL, 1 LOW). G9 is PARTIAL by design: targeted/compatibility suites, compileall and diff-check all PASS, but the FULL repo suite requires the machine-wide heavy lock FREE_PROVEN and it remains HELD_PROVEN by the foreign STOCKS-FREE-V13 P0D_BULK_INGEST worker (pid 6418) throughout the run. Per plan section 0/9 P5 the cycle never contended, finished all light phases, and enqueued the full suite through the reconciled scheduler (job MARKET-DATA-PLANE-V1/FULL_SUITE_REGRESSION/20545b514b91, WAITING / NOT_RUN_RESOURCE_CONFLICT). Per section 11 this closes BLOCKED_RESOURCE_CONFLICT with resumable evidence - the honest terminal, not a bypassed gate.",
+ "recorded_utc": "2026-09-09T13:37:43Z",
+ "head_integration": "9662781dfcd066eb3ca3084752e33cb99f07aa4c",
+ "sha_chain": {
+  "plan_amendment_landed_at_go": "f3903f8524c73f83d1884a5fcd0433e0a5a5c4fd",
+  "p0_bootstrap": "c217bd9",
+  "p1_intake": "f2b42c2",
+  "p2_freeze": "a40b403 (freeze sha256 7f7403e6...)",
+  "m0_lane": "1d36918 -> pick 6643359",
+  "m0_gate": "35492e6",
+  "a2": "572e106 -> pick aa9481d",
+  "a3": "37fce51 -> pick a8e311d",
+  "a4": "ee8af6b -> pick 540f7a1",
+  "data_fusion_adoption": "be6f680",
+  "df_fixes_G3": "14fdc01",
+  "a8": "4f18de6",
+  "p5_p5a_evidence": "075af45",
+  "p6_baseline": "afa4fc3",
+  "p7_docs_demo": "42981b1",
+  "a7_audit_sha": "42981b1b1f66ed03e0a933db0a5ef7041220d80e (audit commit 3f2021 -> pick 9662781)",
+  "OBJ-1_disposition": "ACCEPTED: G11 is pinned to 42981b1. Post-audit integration commits are evidence-only (run-control state/event, this report, registry close, A7 artifact pick) - zero source/test changes. Any future code change on this branch requires a new A7 wave per the plan."
+ },
+ "gates": {
+  "G0": "PASS",
+  "G1": "PASS (gates/M0_SHV1_POST_ADOPTION.json)",
+  "G2": "PASS (upstream_manifest.json; A7 re-cloned and re-hashed 59/59)",
+  "G3": "PASS (G3_data_fusion_fixes.json; DF-ISSUE-2 CONFIRMED LIVE at pin and closed via pit_rank; DF-ISSUE-1 next-day exclusive)",
+  "G4": "PASS (227-test MDP suite)",
+  "G5": "PASS (incl. detached-tree reproduction, A7 independently reproduced)",
+  "G6": "PASS",
+  "G7": "PASS (nautilus 1.230.0, lossless-or-raise)",
+  "G8": "PASS (secret/forbidden/execution scans; A7 independently verified)",
+  "G8A": "PASS (dvc_poc_result.json; DVC-LIMITATION-1 recorded with mandatory plane-side verification mitigation; zero scientific mutation proven)",
+  "G8B": "PASS (mdp_ci + mdp_deep; no real counterexamples to persist)",
+  "G8C": "PANDERA_EVALUATED_NOT_ADOPTED (2/7 frozen criteria fail; native validator retained)",
+  "G8D": "PASS",
+  "G9": "PARTIAL: targeted+compat+compileall+diff-check PASS; FULL SUITE NOT_RUN_RESOURCE_CONFLICT (WAITING job 20545b514b91)",
+  "G10": "PASS (baseline frozen: median 11573.1 eps, p95 11599.7, 200k events; 20% gate armed; no HFT claim)",
+  "G11": "PASS (A7 verdict 0 HIGH/CRITICAL, pinned to 42981b1)",
+  "G12": "PASS (no owned workers; all MDP worktrees clean; foreign V13 worker alive and untouched throughout)"
+ },
+ "test_counts": {
+  "mdp_plane": 227,
+  "data_fusion": 206,
+  "governance": 112,
+  "protocol_compatibility": 157,
+  "hypothesis_deep": 11,
+  "pandera_spike": 6,
+  "a2_deep_note": "mdp_deep 500-example profile run twice (A2 intake + A1 clean rerun)"
+ },
+ "not_run_items": [
+  {
+   "item": "full repo pytest suite",
+   "reason": "NOT_RUN_RESOURCE_CONFLICT: machine-wide heavy lock HELD_PROVEN by STOCKS-FREE-V13 pid 6418 (never contended, never killed)",
+   "resumption": "job MARKET-DATA-PLANE-V1/FULL_SUITE_REGRESSION/20545b514b91 WAITING; when lock is FREE_PROVEN: run pytest tests/ -q alone on this integration tip (or a fresh frozen SHA + new A7 wave if advanced); G9 flips to PASS and the plane verdict upgrades"
+  },
+  {
+   "item": "mdp_deep on the combined suite",
+   "reason": "profile is defined per property module; combined-suite deep run is an optional alone-running gate, not required by G8B"
+  }
+ ],
+ "limitations": [
+  "DVC-LIMITATION-1: dvc 3.67.1 local-remote transfer never re-hashes; DVC checksums are byte-identity only after explicit verification; the plane's manifest verification is the mandatory detection layer",
+  "NautilusBridge: Equity size_precision pinned 0 in nautilus 1.230.0 (stock fixtures use Cfd(AssetClass.EQUITY)); TradeId is a deterministic 32-hex prefix of event_id; negative ns timestamps unconvertible (uint64)",
+  "Pandera NOT adopted: provider-boundary batch semantics diverge (type-poisoned row rejects whole batch) and runtime 8.3-267x; revisit only under a future owner plan",
+  "Registry reconciliation was exercised cycle-locally (integration branch); the root canonical registry is untouched by this cycle (owner space; Lead sync at merge)",
+  "SLOT-CAP-1 process deviation disclosed at P3 (4 children transiently vs cap 3); m0 worktree mislocation drift disclosed and repaired"
+ ],
+ "adoption_instructions": "See docs/MARKET_DATA_PLANE.md (architecture), docs/MDP_OPERATIONS.md (adapter checklist, runbook, asset adoption checklist, DVC/Hypothesis/RD-Agent notes), docs/THIRD_PARTY_NOTICES.md, docs/MDP_BRIDGE_NOTES.md. The plane authorizes zero datasets; each future asset cycle separately authorizes data and freezes semantics.",
+ "scientific_invariants": {
+  "ledger": "236 published / 239 observed, 0 survivors (byte-identical pre/post POC)",
+  "s1": "SEALED_UNTOUCHED throughout",
+  "scored_results": "ZERO - engineering-only cycle"
+ },
+ "foreign_cycles": {
+  "STOCKS-FREE-V13": "pid 6418 alive, HELD_PROVEN, never contended; registry row updated truthfully (ACTIVE_LIGHT workers=1 active_heavy=true) via atomic commands",
+  "CRYPTO-V17": "measured head reconciled, drift note retained",
+  "FOREX-FREE-V9": "registered PLANNED_NOT_STARTED"
+ }
+}
