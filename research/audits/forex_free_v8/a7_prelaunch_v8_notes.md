@@ -37,6 +37,12 @@ to prove the refusal (exit 2, refusal JSON, zero side effects).
   contract stores them under `launch_gate.*`. Fail-closed (refusal proven);
   must be reconciled by A1 BEFORE the owner GO is typed or the authorization
   step must write driver-visible keys.
+  **RE-VERIFICATION 2026-09-09: RESOLVED_CONFIRMED** — integration 997c850
+  cherry-picked (blob bases identical), 48/48, shipped-contract refusal now
+  exactly `[s0_launch_authorized, owner_fresh_go]`, flipped-contract path
+  reachable `[]`, wrong-verdict/phrase/stale-verdict/budget states all refuse.
+  See `f1_reverification_addendum` in the verdict JSON. Unresolved MEDIUM
+  count is now 1 (F2 only).
 - **F2 MEDIUM** — strict `margin > 0` means exactly-2/3 positive folds fails
   gate 3 although the frozen text says ">= 2 of 3" (gate 8 equality likewise).
   Conservative direction (can kill a survivor, never pass a false one); V6
