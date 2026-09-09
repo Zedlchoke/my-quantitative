@@ -115,7 +115,7 @@ def trade_fields(draw):
         "price_precision": price_precision,
         "size_precision": size_precision,
         "raw_sha256": draw(hex64()),
-        "manifest_sha256": draw(st.one_of(st.none(), hex64())),
+        "manifest_sha256": draw(hex64()),  # A1 ruling A2_Q1: required 64-hex in @1
         "normalizer_version": draw(identifiers()),
     }
 
@@ -151,7 +151,7 @@ def quote_fields(draw):
         "price_precision": price_precision,
         "size_precision": size_precision,
         "raw_sha256": draw(hex64()),
-        "manifest_sha256": None,
+        "manifest_sha256": draw(hex64()),  # A1 ruling A2_Q1: required 64-hex in @1
         "normalizer_version": draw(identifiers()),
     }
 

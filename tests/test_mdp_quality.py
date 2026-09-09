@@ -27,6 +27,7 @@ def trade(**overrides):
         price="100.00", quantity="1.0", side="buy",
         price_precision=2, size_precision=1,
         raw_sha256=hashlib.sha256(b"raw").hexdigest(),
+        manifest_sha256=hashlib.sha256(b"manifest").hexdigest(),
         normalizer_version="mdp-normalizer@1",
     )
     fields.update(overrides)
@@ -43,6 +44,7 @@ def quote(**overrides):
         bid_size="10", ask_size="10",
         price_precision=3, size_precision=0,
         raw_sha256=hashlib.sha256(b"raw-q").hexdigest(),
+        manifest_sha256=hashlib.sha256(b"manifest-q").hexdigest(),
         normalizer_version="mdp-normalizer@1",
     )
     fields.update(overrides)
