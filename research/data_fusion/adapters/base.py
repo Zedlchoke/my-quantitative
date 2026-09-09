@@ -19,7 +19,7 @@ Fail-closed contracts implemented here:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from enum import Enum
 from hashlib import sha256
 import json
@@ -96,7 +96,18 @@ def midnight_utc(day: date) -> datetime:
 
 
 def end_of_utc_day(day: date) -> datetime:
-    return datetime.combine(day, time(23, 59, 59), tzinfo=timezone.utc)
+    """Exclusive end of ``day``: the first instant of the NEXT UTC day.
+
+    DF-ISSUE-1 fix (MDP-V1 versioned correction, 2026-09-09): the audited
+    pin mapped a date-only end to ``day 23:59:59``, which leaves a one-second
+    hole at the day boundary.  Date-only boundaries now resolve to the
+    next-day ``00:00:00`` EXCLUSIVE — the half-open interval covers every
+    instant of ``day`` and nothing of ``day+1``.  For availability evidence
+    this is strictly more conservative (eligibility starts at midnight); for
+    validity ends it closes the sub-second gap.  Original audited semantics
+    available at pin ``c6a0576`` (append-only history).
+    """
+    return midnight_utc(day + timedelta(days=1))
 
 
 # ---------------------------------------------------------------------------

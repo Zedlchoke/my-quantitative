@@ -1,0 +1,25 @@
+{
+ "gate": "G3_DATA_FUSION_EXACT_ADOPTION_AND_SEMANTICS_FIXES",
+ "verdict": "PASS",
+ "recorded_utc": "2026-09-09T12:55:00Z",
+ "adoption": {
+   "pin": "c6a0576ef98dd4392e90805c8ba33821da62eabc",
+   "mode": "git checkout <pin> -- research/data_fusion tests/data_fusion; commit be6f680",
+   "baseline_tests": "204 passed at pin semantics (pre-fix)",
+   "boundary": "no competing NormalizedRecord created; MDP event stream is separate; Data Fusion remains the evidence layer"
+ },
+ "df_issue_1": {
+   "defect": "end_of_utc_day mapped date-only ends to 23:59:59, leaving a one-second hole at the day boundary",
+   "fix": "end_of_utc_day now returns next-day 00:00:00 EXCLUSIVE (half-open interval covers all of day, nothing of day+1); availability evidence shifts 1s more conservative (disclosed), validity ends close the sub-second gap",
+   "tests": "19 pin tests carried old 23:59:59 literals/hour-minute asserts -> updated to the corrected boundary with DF-ISSUE-1 markers",
+   "attribution": "original audited semantics preserved at pin c6a0576 (append-only history); fix documented in function docstring"
+ },
+ "df_issue_2": {
+   "defect_as_recorded": "equal available_time/vintage with differing content may not silently choose by later retrieval timestamp",
+   "finding": "DEFECT CONFIRMED LIVE AT PIN (initial intake assumption of present-at-pin protection was WRONG and was corrected by the characterization test): vintage_rank included retrieved_time_utc, so equal-vintage records with different retrieval times received different ranks; the AmbiguousVintageError guard never fired and select_asof silently preferred the later pull; VintageSeries.append silently accepted the conflicting revision. The pin's own test only covered the equal-retrieval corner.",
+   "fix": "new pit_rank(available, vintage) is the semantic conflict identity; both select_asof same-rank detection and VintageSeries.append now compare pit_rank and fail closed with AMBIGUOUS_VINTAGE_RANK regardless of retrieval order; retrieved_time survives only as a post-guard ordering tie-break; a preregistered authoritative revision key remains a future explicit extension",
+   "tests": "test_df_issue2_later_retrieval_never_silently_resolves_equal_rank (both retrieval orders refuse) + test_df_issue2_append_refuses_later_pull_with_different_content; DF suite 206 passed post-fix (204 at pin + 2)",
+   "attribution": "original audited semantics preserved at pin c6a0576; fix documented in pit_rank docstring"
+ },
+ "note": "DF-ISSUE-2's live-defect confirmation is exactly the class of finding the plan's issue list anticipated; no scored research ever depended on the silent path (zero sources authorized for scored research; candidate adapters only)"
+}

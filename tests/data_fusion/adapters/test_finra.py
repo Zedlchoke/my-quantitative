@@ -127,7 +127,7 @@ def test_daily_happy_path(adapter):
     for record in output.records:
         assert record.event_time_utc == datetime(2024, 1, 2, tzinfo=UTC)
         assert record.effective_time_utc == datetime(2024, 1, 2, tzinfo=UTC)
-        assert record.available_time_utc == datetime(2024, 1, 2, 23, 59, 59, tzinfo=UTC)
+        assert record.available_time_utc == datetime(2024, 1, 3, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
         assert record.vintage_time_utc == record.available_time_utc
         assert record.available_time_utc < record.retrieved_time_utc == RETRIEVED_TIME
 

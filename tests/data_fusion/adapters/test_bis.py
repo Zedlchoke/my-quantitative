@@ -72,7 +72,7 @@ def test_parse_policy_rates_happy_path(adapter):
     assert first.event_time_utc == datetime(2024, 3, 20, tzinfo=UTC)
     # CBPOL dates are effective dates: effective time == event time
     assert first.effective_time_utc == datetime(2024, 3, 20, tzinfo=UTC)
-    assert first.available_time_utc == datetime(2024, 5, 1, 23, 59, 59, tzinfo=UTC)
+    assert first.available_time_utc == datetime(2024, 5, 2, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     codes = output.note_codes()
     assert BIS_EFFECTIVE_DATE_SEMANTICS in codes
     assert BIS_AVAILABILITY_NOT_EXACT in codes
@@ -120,7 +120,7 @@ def test_timezones_are_utc_anchored(adapter):
     for record in output.records:
         assert record.event_time_utc.utcoffset() == timedelta(0)
         assert record.effective_time_utc.utcoffset() == timedelta(0)
-        assert record.available_time_utc == datetime(2024, 5, 1, 23, 59, 59, tzinfo=UTC)
+        assert record.available_time_utc == datetime(2024, 5, 2, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
 
 
 def test_two_pull_equality(adapter):

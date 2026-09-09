@@ -27,6 +27,24 @@ def vintage_rank(record: NormalizedRecord) -> tuple[datetime, datetime, datetime
     )
 
 
+def pit_rank(record: NormalizedRecord) -> tuple[datetime, datetime]:
+    """Semantic point-in-time identity of a revision: (available, vintage).
+
+    DF-ISSUE-2 fix (MDP-V1 versioned correction, 2026-09-09): the audited pin
+    computed same-rank conflict checks over ``vintage_rank``, whose third
+    component is ``retrieved_time_utc``.  Two records with EQUAL availability
+    and vintage but differing content therefore received different ranks, the
+    ambiguity guard never fired, and the later retrieval silently won — the
+    exact recorded defect.  Conflict detection now uses ``pit_rank``;
+    retrieval time survives only as an ordering tie-break AFTER the
+    fail-closed check guarantees equal-rank content is byte-identical.
+    A preregistered authoritative revision key remains a future, explicit
+    extension — never a silent retrieval-order preference.  Original audited
+    semantics preserved at pin ``c6a0576`` (append-only history).
+    """
+    return (record.available_time_utc, record.vintage_time_utc)
+
+
 @dataclass(frozen=True, slots=True)
 class VintageSeries:
     """Append-only revision set for exactly one logical key.
@@ -46,9 +64,9 @@ class VintageSeries:
     def append(self, record: NormalizedRecord) -> "VintageSeries":
         if record.logical_key != self.key:
             raise ValueError("record logical key does not match series key")
-        rank = vintage_rank(record)
+        rank = pit_rank(record)
         for existing in self.records:
-            if vintage_rank(existing) == rank:
+            if pit_rank(existing) == rank:
                 if existing.canonical_bytes() == record.canonical_bytes():
                     return self
                 raise AmbiguousVintageError("append would overwrite an existing vintage")
@@ -82,7 +100,7 @@ def select_asof(
         )
     )
     winner = eligible[-1]
-    same_rank = [r for r in eligible if vintage_rank(r) == vintage_rank(winner)]
+    same_rank = [r for r in eligible if pit_rank(r) == pit_rank(winner)]
     if len({r.canonical_bytes() for r in same_rank}) > 1:
         raise AmbiguousVintageError("conflicting records have identical PIT rank")
     return winner

@@ -82,7 +82,7 @@ def test_parse_series_happy_path(adapter):
     assert first.unit == "USD_PER_EUR"
     assert first.event_time_utc == datetime(2024, 1, 2, tzinfo=UTC)
     assert first.effective_time_utc == datetime(2024, 1, 2, tzinfo=UTC)
-    assert first.available_time_utc == datetime(2024, 1, 3, 23, 59, 59, tzinfo=UTC)
+    assert first.available_time_utc == datetime(2024, 1, 4, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     assert output.raw_sha256 == series_response(fixture_bytes("ecb_sdmx_exr.json")).sha256_hex()
     codes = output.note_codes()
     assert ECB_PREPARED_TIME_NOT_AVAILABILITY_PROOF in codes
@@ -160,19 +160,19 @@ def test_timezones_are_utc_anchored(adapter):
     output = parse(adapter)
     for record in output.records:
         assert record.available_time_utc.utcoffset() == timedelta(0)
-        assert record.available_time_utc == datetime(2024, 1, 3, 23, 59, 59, tzinfo=UTC)
+        assert record.available_time_utc == datetime(2024, 1, 4, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     # date-only evidence must be anchored to UTC end of day; naive or
     # non-UTC evidence instants are refused outright
     with pytest.raises(ValueError):
         ReleaseEvidence(
             captured_from="local wall clock",
-            available_time_utc=datetime(2024, 1, 3, 23, 59, 59),
+            available_time_utc=datetime(2024, 1, 4, 0, 0, 0),  # DF-ISSUE-1: next-day exclusive end,
             basis=AvailabilityBasis.EXACT,
         )
     with pytest.raises(ValueError):
         ReleaseEvidence(
             captured_from="local wall clock",
-            available_time_utc=datetime(2024, 1, 3, 23, 59, 59, tzinfo=timezone(timedelta(hours=7))),
+            available_time_utc=datetime(2024, 1, 4, 0, 0, 0, tzinfo=timezone(timedelta(hours=7))),  # DF-ISSUE-1: next-day exclusive end,
             basis=AvailabilityBasis.EXACT,
         )
 

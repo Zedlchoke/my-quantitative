@@ -157,7 +157,7 @@ def test_parse_utc_accepts_z_and_offset_zero_only():
 
 def test_date_only_evidence_is_end_of_day_upper_bound():
     evidence = date_only_evidence("calendar", date(2024, 1, 3))
-    assert evidence.available_time_utc == datetime(2024, 1, 3, 23, 59, 59, tzinfo=UTC)
+    assert evidence.available_time_utc == datetime(2024, 1, 4, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     assert evidence.basis is AvailabilityBasis.DATE_ONLY_UPPER_BOUND
 
 

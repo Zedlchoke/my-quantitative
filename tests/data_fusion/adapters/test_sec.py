@@ -142,9 +142,9 @@ def test_submissions_availability_is_end_of_filed_day_upper_bound(adapter):
     output = adapter.parse_submissions(submissions_response(adapter, fixture_bytes(SUBMISSIONS_FIXTURE)))
     first, second = output.records
     assert first.event_time_utc == datetime(2024, 1, 3, 14, 30, tzinfo=UTC)
-    assert first.available_time_utc == datetime(2024, 1, 3, 23, 59, 59, tzinfo=UTC)
+    assert first.available_time_utc == datetime(2024, 1, 4, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     assert second.event_time_utc == datetime(2024, 1, 8, tzinfo=UTC)
-    assert second.available_time_utc == datetime(2024, 1, 8, 23, 59, 59, tzinfo=UTC)
+    assert second.available_time_utc == datetime(2024, 1, 9, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     for record in output.records:
         # Separated PIT roles; retrieved_time never substitutes availability.
         assert record.available_time_utc == record.vintage_time_utc
@@ -310,10 +310,10 @@ def test_company_facts_happy_path(adapter):
     dei = by_field[("dei:EntityCommonStockSharesOutstanding", 1000)]
     assert dei.unit == "shares"
     assert dei.event_time_utc == datetime(2023, 12, 31, tzinfo=UTC)
-    assert dei.available_time_utc == datetime(2024, 1, 3, 23, 59, 59, tzinfo=UTC)
+    assert dei.available_time_utc == datetime(2024, 1, 4, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     original = by_field[("us-gaap:Assets", 5000)]
     assert original.unit == "USD"
-    assert original.available_time_utc == datetime(2024, 1, 8, 23, 59, 59, tzinfo=UTC)
+    assert original.available_time_utc == datetime(2024, 1, 9, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
 
 
 def test_duration_facts_skipped_with_note(adapter):
@@ -332,8 +332,8 @@ def test_revision_availability_follows_filed_date(adapter):
         key=lambda r: r.available_time_utc,
     )
     assert [r.value for r in assets] == [5000, 5100]
-    assert assets[0].available_time_utc == datetime(2024, 1, 8, 23, 59, 59, tzinfo=UTC)
-    assert assets[1].available_time_utc == datetime(2024, 4, 15, 23, 59, 59, tzinfo=UTC)
+    assert assets[0].available_time_utc == datetime(2024, 1, 9, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
+    assert assets[1].available_time_utc == datetime(2024, 4, 16, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     # Same period end event for both vintages; availability strictly ordered.
     assert assets[0].event_time_utc == assets[1].event_time_utc == datetime(2023, 12, 31, tzinfo=UTC)
     assert assets[0].available_time_utc < assets[1].available_time_utc <= RETRIEVED_TIME

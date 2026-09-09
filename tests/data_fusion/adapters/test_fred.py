@@ -80,8 +80,8 @@ def test_parse_vintagedates_happy_path(adapter):
     assert first.value == "2024-01-12"
     assert first.unit == "DATE"
     # date-only vintage -> end-of-vintage-day UTC upper bound
-    assert first.available_time_utc == datetime(2024, 1, 12, 23, 59, 59, tzinfo=UTC)
-    assert first.vintage_time_utc == datetime(2024, 1, 12, 23, 59, 59, tzinfo=UTC)
+    assert first.available_time_utc == datetime(2024, 1, 13, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
+    assert first.vintage_time_utc == datetime(2024, 1, 13, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     codes = output.note_codes()
     assert FRED_VINTAGE_DATE_ONLY_NOT_EXACT_RELEASE_TIME in codes
     assert FRED_KEY_GATED_CANDIDATE in codes
@@ -131,10 +131,10 @@ def test_parse_observations_revisions_are_append_only(adapter):
     }
     dec_2023 = datetime(2023, 12, 1, tzinfo=UTC)
     first_vintage = by_vintage[
-        (dec_2023.isoformat(), datetime(2024, 1, 12, 23, 59, 59, tzinfo=UTC).isoformat())
+        (dec_2023.isoformat(), datetime(2024, 1, 13, 0, 0, 0, tzinfo=UTC).isoformat())  # DF-ISSUE-1: next-day exclusive end
     ]
     second_vintage = by_vintage[
-        (dec_2023.isoformat(), datetime(2024, 2, 9, 23, 59, 59, tzinfo=UTC).isoformat())
+        (dec_2023.isoformat(), datetime(2024, 2, 10, 0, 0, 0, tzinfo=UTC).isoformat())  # DF-ISSUE-1: next-day exclusive end
     ]
     # two vintages of the same observation date: two separate records,
     # both kept, never an overwrite
@@ -195,7 +195,7 @@ def test_observations_timezone_anchor_and_two_pull_equality(adapter):
     output = adapter.parse_observations(response_for(request, body), series_id="CPIAUCSL", unit="INDEX")
     for record in output.records:
         assert record.available_time_utc.utcoffset() == timedelta(0)
-        assert record.available_time_utc.hour == 23 and record.available_time_utc.minute == 59
+        assert record.available_time_utc.hour == 0 and record.available_time_utc.minute == 0  # DF-ISSUE-1: next-day exclusive end
     second = adapter.parse_observations(response_for(request, body), series_id="CPIAUCSL", unit="INDEX")
     assert [record.canonical_bytes() for record in output.records] == [
         record.canonical_bytes() for record in second.records

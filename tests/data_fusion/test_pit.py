@@ -89,3 +89,37 @@ def test_vintage_series_refuses_foreign_logical_key(record_factory):
     series = VintageSeries.started_by(record_factory())
     with pytest.raises(ValueError, match="logical key"):
         series.append(record_factory(field="assets", raw_sha256="b" * 64))
+
+
+def test_df_issue2_later_retrieval_never_silently_resolves_equal_rank(record_factory):
+    """DF-ISSUE-2 characterization (MDP-V1 versioned closure).
+
+    Two records with EQUAL available_time and EQUAL vintage but DIFFERING
+    content must fail closed even when one was retrieved LATER — the later
+    retrieval timestamp is never an authoritative revision key at the pin or
+    under MDP-V1.  Verified present at the audited pin c6a0576; this test
+    pins the contract so it cannot regress silently.
+    """
+    late_retrieval = datetime(2024, 2, 8, tzinfo=UTC)
+    early_pull = record_factory(value=100, retrieved_time_utc=dt(10))
+    late_pull = record_factory(
+        value=101, raw_sha256="b" * 64, retrieved_time_utc=late_retrieval
+    )
+    with pytest.raises(AmbiguousVintageError) as exc_late_first:
+        select_asof([late_pull, early_pull], dt(5))
+    assert exc_late_first.value.code == "AMBIGUOUS_VINTAGE_RANK"
+    with pytest.raises(AmbiguousVintageError) as exc_early_first:
+        select_asof([early_pull, late_pull], dt(5))
+    assert exc_early_first.value.code == "AMBIGUOUS_VINTAGE_RANK"
+
+
+def test_df_issue2_append_refuses_later_pull_with_different_content(record_factory):
+    """VintageSeries.append must also refuse equal-vintage differing content
+    regardless of retrieval time (DF-ISSUE-2: both entry paths closed)."""
+    early_pull = record_factory(value=100, retrieved_time_utc=dt(10))
+    late_pull = record_factory(
+        value=101, raw_sha256="b" * 64, retrieved_time_utc=datetime(2024, 2, 8, tzinfo=UTC)
+    )
+    series = VintageSeries.started_by(early_pull)
+    with pytest.raises(AmbiguousVintageError):
+        series.append(late_pull)

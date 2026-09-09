@@ -166,7 +166,7 @@ def test_parse_archive_happy_path(adapter):
 
 def test_availability_is_end_of_month_upper_bound_never_exact(adapter):
     output = parse_fixture(adapter)
-    month_end = datetime(2024, 1, 31, 23, 59, 59, tzinfo=UTC)
+    month_end = datetime(2024, 2, 1, 0, 0, 0, tzinfo=UTC)  # DF-ISSUE-1: next-day exclusive end
     for record in output.records:
         assert record.available_time_utc == month_end
         assert record.vintage_time_utc == month_end
