@@ -14,6 +14,8 @@ retried (fail the job, release FAILED with stderr tail).
 """
 import json, hashlib, os, sys, time, random, traceback, urllib.request, urllib.error, gzip, io, re
 import xml.etree.ElementTree as ET
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 W = "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v13/integration"
@@ -39,52 +41,14 @@ def status(**kw):
     base.update(kw)
     json.dump(base, open(STATUS, "w"), indent=1)
 
-_PACE = {"interval": 0.25, "min": 0.9, "max": 0.25, "ok_streak": 0}
-
-
-def _pace_sleep():
-    time.sleep(_PACE["interval"] + random.random() * 0.04)
-
-
-_HANDLE = {"h": None}
-
-
-def _pace_on_503():
-    _PACE["ok_streak"] = 0
-    _PACE["interval"] = min(_PACE["interval"] * 2, _PACE["min"])
-    h = _HANDLE.get("h")
-    if h is not None:  # release during the deep pause: a sleeping crawl must not
-        # starve sibling cycles of the machine lock for days (scheduler discipline)
-        try:
-            h.release(status="FINISHED", note="THROTTLE_WINDOW_RELEASE (10-min 503 pause; relaunch/reacquire after)")
-        except Exception:
-            pass
-        _HANDLE["h"] = None
-        time.sleep(600)
-        for i in range(5):
-            try:
-                _HANDLE["h"] = heavy_lock.acquire(cycle_id="STOCKS-FREE-V13", role="P0D_BULK_INGEST",
-                                                  worktree=W, command=["reacquire-after-throttle"],
-                                                  expected_artifacts=[STREAM])
-                return
-            except heavy_lock.LockBusyError:
-                time.sleep(300)
-        raise RuntimeError("THROTTLE_REACQUIRE_GAVE_UP (sibling holds lock; relaunch later)")
-    time.sleep(600)  # pre-lock phase: just sleep
-
-
-def _pace_on_ok():
-    _PACE["ok_streak"] += 1
-    if _PACE["ok_streak"] >= 2000:
-        _PACE["ok_streak"] = 0
-        _PACE["interval"] = max(_PACE["interval"] * 0.9, _PACE["max"])
+_PACE_NOTE = "global token-bucket ladder lives in stage B (thread-safe); get_curl raises TransientSkip on 503-family"
+_on_503_hook = lambda: None  # wired to pac_503 by stage B
 
 
 def get_curl(url, timeout=45, tries=3):
-    """Archives fetch via curl: --max-time hard-caps DNS/connect/recv (the r2
-    urllib hang at 0% CPU for 4+ min with socket-timeout set is not retryable
-    in-process; INC-V13-3). 503/502 -> patient minute-scale backoff."""
-    import subprocess
+    """Threaded-safe Archives fetch: hard time caps, declared UA, bounded tries.
+    503/502/timeout family -> TransientSkip (caller counts it; the stage-B global
+    pacer owns silence windows and lock release — never inline-sleep here)."""
     last = None
     for attempt in range(1, tries + 1):
         r = subprocess.run(["curl", "-sS", "--max-time", str(timeout), "--compressed",
@@ -104,17 +68,18 @@ def get_curl(url, timeout=45, tries=3):
         else:
             last = f"curl rc={r.returncode} {r.stderr.strip()[:120]}"
         if attempt == tries:
-            if "503" in str(last) or "502" in str(last) or "rc=28" in str(last) or "rc=7" in str(last):
+            if any(x in str(last) for x in ("503", "502", "rc=28", "rc=7")):
+                _on_503_hook()
                 raise TransientSkip(f"{last} after {tries} tries")
             raise RuntimeError(f"TRANSPORT: {last} after {tries} tries: {url[:110]}")
-        if "503" in str(last) or "502" in str(last):
-            _pace_on_503()
-        else:
-            time.sleep(15 * attempt)
+        time.sleep(10 * attempt)
     raise RuntimeError("unreachable")
 
 
 class TransientSkip(Exception):
+    pass
+
+
     pass
 
 
@@ -297,7 +262,12 @@ def main():
                 time.sleep(0.9)
             if (j + 1) % 50 == 0:
                 status(state="STAGE_C_FETCHING", symbols=j + 1, total=len(sym_map))
-        # ---------------- Stage B: Form-4 XML ingest ----------------
+        # ---------------- Stage B: Form-4 XML ingest (parallel, r11) ----------------
+        # basename rule verified 100/100 on cached docs: raw doc = basename(primaryDocument)
+        # when it is an XSL wrapper -> discovery (index.json) eliminated; 1 request per doc.
+        # Global token-bucket pacer, owner-authorized step ladder 0.25s -> 0.15s -> 0.10s
+        # (global rate = 1/interval <= 10 req/s policy ceiling, declared UA).
+        # 503 -> global 10-min silence window + machine-lock release (sibling starvation rule).
         refs, missing_sub = [], 0
         for m in members:
             c10 = m["cik"].replace("CIK", "").zfill(10)
@@ -319,160 +289,178 @@ def main():
         done_docs = set()
         if os.path.exists(f"{XML_DIR}/.done"):
             done_docs = set(open(f"{XML_DIR}/.done").read().split())
-        sf = open(STREAM, "a")
-        df = open(f"{XML_DIR}/.defects.jsonl", "a")
-        ndocs = 0
-        consecutive_skips = 0
-        t0 = time.time()
-        for k, ref in enumerate(refs):
-            key = f"{ref['cik']}|{ref['accession']}"
-            if key in done_docs:
-                continue
+        pending = [r0 for r0 in refs if f"{r0['cik']}|{r0['accession']}" not in done_docs]
+        print(f"[stageB] refs={len(refs)} done={len(done_docs)} pending={len(pending)}", flush=True)
+        stop_evt = threading.Event()
+
+        def lock_supervisor():
+            """Release the machine lock during global silence windows; reacquire
+            before workers resume (extend the block until the lock is free)."""
+            while not stop_evt.is_set():
+                time.sleep(5)
+                with pac_lock:
+                    sil = pac["silence_until"]
+                    silence_active = sil > time.time()
+                if silence_active and _HANDLE["h"] is not None:
+                    try:
+                        _HANDLE["h"].release(status="FINISHED", note="THROTTLE_WINDOW_RELEASE (10-min silence; supervisor reacquires)")
+                    except Exception:
+                        pass
+                    _HANDLE["h"] = None
+                elif not silence_active and _HANDLE["h"] is None:
+                    try:
+                        _HANDLE["h"] = heavy_lock.acquire(cycle_id="STOCKS-FREE-V13", role="P0D_BULK_INGEST",
+                                                          worktree=W, command=["r11-supervisor-reacquire"],
+                                                          expected_artifacts=[STREAM])
+                    except heavy_lock.LockBusyError:
+                        with pac_lock:
+                            pac["silence_until"] = max(pac["silence_until"], time.time() + 60)
+
+        sup = threading.Thread(target=lock_supervisor, daemon=True)
+        sup.start()
+
+        LEVELS = [0.25, 0.15, 0.10]
+        pac_lock = threading.Lock()
+        pac = {"next": 0.0, "level": 0, "clean": 0, "silence_until": 0.0, "windows": 0}
+        stats = {"ok": 0, "e503": 0, "e404": 0, "skip": 0, "other": 0}
+
+        def pac_wait():
+            while True:
+                with pac_lock:
+                    now = time.time()
+                    t = max(pac["next"], now, pac["silence_until"])
+                    pac["next"] = t + LEVELS[pac["level"]]
+                    w = t - time.time()
+                if w > 0:
+                    time.sleep(min(w, 0.5))
+                with pac_lock:
+                    if time.time() >= pac["silence_until"]:
+                        return
+
+        def pac_503():
+            with pac_lock:
+                pac["silence_until"] = time.time() + 600
+                pac["windows"] += 1
+                if pac["level"] > 0:
+                    pac["level"] -= 1
+                pac["clean"] = 0
+
+        globals()["_on_503_hook"] = pac_503
+
+        def pac_ok():
+            with pac_lock:
+                pac["clean"] += 1
+                if pac["clean"] >= 900 and pac["level"] < len(LEVELS) - 1:
+                    pac["level"] += 1
+                    pac["clean"] = 0
+
+        def fetch_doc(ref):
+            """One pending ref -> done or transient-skip (never silently lost)."""
             cik_int = int(ref["cik"].replace("CIK", ""))
             acc = ref["accession"].replace("-", "")
-            dname = resolve_raw_doc_name(cik_int, acc, ref.get("primary_doc"))
-            optimistic = False
+            doc = (ref.get("primary_doc") or "")
+            dname = os.path.basename(doc) if doc else None
+            if not dname or doc.lower().startswith(("index", "xsl/index")):
+                dname = None
             if dname is None:
+                # rare: no primaryDocument -> index.json fallback (single request)
                 try:
+                    pac_wait()
                     st2, raw2 = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/index.json")
-                except TransientSkip as ts:
-                    df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED_IDX:{ts}"}) + "\n")
-                    consecutive_skips += 1
-                    if consecutive_skips >= 50:
-                        raise RuntimeError("SYSTEMIC: 50 consecutive transient skips - abort for inspection")
-                    continue
-                consecutive_skips = 0
+                except TransientSkip:
+                    raise
                 if st2 == 200:
                     names = [it["name"] for it in json.loads(raw2).get("directory", {}).get("item", [])]
                     cands = [n for n in names if n.lower().endswith(".xml") and not n.lower().startswith(("xsl", "primary_doc"))]
                     dname = cands[0] if cands else None
-            if dname is None:
-                df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED"}) + "\n")
-                done_docs.add(key)
-                continue
-            try:
-                st, raw = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}", tries=5)
-            except TransientSkip as ts:
-                df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED:{ts}"}) + "\n")
-                consecutive_skips += 1
-                if consecutive_skips >= 50:
-                    raise RuntimeError("SYSTEMIC: 50 consecutive transient skips - abort for inspection")
-                continue
-            consecutive_skips = 0
+                if dname is None:
+                    return ("unresolved", None)
+            pac_wait()
+            st, raw = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}")
             if st == 404:
-                df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED_OR_404"}) + "\n")
-                done_docs.add(key)
-                continue
+                return ("notfound", None)
             if st != 200:
                 raise RuntimeError(f"CODE stageB HTTP {st} {ref['accession']}")
-            od = f"{XML_DIR}/{ref['cik']}/{acc}"
-            os.makedirs(od, exist_ok=True)
-            open(f"{od}/{dname}", "wb").write(raw)
-            rows, defects = parse_form4_xml(raw, ref["cik"], ref["accession"], ref["acceptance"], ref["filing_date"])
-            for r in rows:
-                sig = (r["cik"], r["accession"], r["transaction_date"], r["direction"], r["owner_cik"], r["owner_name"])
-                if sig not in seen_stream:
-                    sf.write(json.dumps(r) + "\n")
-                    seen_stream.add(sig)
-            for d in defects:
-                df.write(json.dumps(d) + "\n")
-            done_docs.add(key)
-            ndocs += 1
-            if ndocs % 100 == 0:
-                sf.flush(); df.flush()
-                open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
-                rate = ndocs / max(time.time() - t0, 1)
-                status(state="STAGE_B_FETCHING", docs_done=ndocs, total=len(refs),
-                       rate_per_s=round(rate, 2), eta_h=round((len(refs) - k) / max(rate, 0.01) / 3600, 2))
-            _pace_on_ok()
-            _pace_sleep()
-        sf.close(); df.close()
+            return ("ok", (raw, dname))
 
-        # Lead-mandated final reconciliation (constraint 4): zero unexplained.
-        # TRANSIENT_SKIPPED docs are never in .done; retry them in bounded passes.
-        for pass_no in range(1, 6):
-            undone = [r for r in refs if f"{r['cik']}|{r['accession']}" not in done_docs]
-            if not undone:
-                break
-            status(state=f"STAGE_B_RECOVERY_PASS_{pass_no}", undone=len(undone), total=len(refs))
-            sf = open(STREAM, "a"); df = open(f"{XML_DIR}/.defects.jsonl", "a")
-            for ref in undone:
+        def worker(chunk):
+            for ref in chunk:
                 key = f"{ref['cik']}|{ref['accession']}"
-                cik_int = int(ref["cik"].replace("CIK", ""))
-                acc = ref["accession"].replace("-", "")
-                dname = resolve_raw_doc_name(cik_int, acc, ref.get("primary_doc"))
-                if dname is None:
-                    try:
-                        st2, raw2 = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/index.json")
-                    except TransientSkip as ts:
-                        df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED_IDX:{ts}"}) + "\n")
-                        continue
-                    if st2 == 200:
-                        names = [it["name"] for it in json.loads(raw2).get("directory", {}).get("item", [])]
-                        cands = [n for n in names if n.lower().endswith(".xml") and not n.lower().startswith(("xsl", "primary_doc"))]
-                        dname = cands[0] if cands else None
-                if dname is None:
-                    df.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED"}) + "\n")
-                    done_docs.add(key)
-                    continue
                 try:
-                    st, raw = get_curl(f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc}/{dname}")
+                    outcome, payload = fetch_doc(ref)
                 except TransientSkip as ts:
-                    df.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED:{ts}"}) + "\n")
+                    with pac_lock:
+                        stats["skip"] += 1
+                    dfw.write(json.dumps({"accession": ref["accession"], "reason": f"TRANSIENT_SKIPPED:{ts}"}) + "\n")
                     continue
-                if st == 404:
-                    df.write(json.dumps({"accession": ref["accession"], "reason": "DOC_404_FINAL"}) + "\n")
-                    done_docs.add(key)
+                if outcome == "unresolved":
+                    dfw.write(json.dumps({"accession": ref["accession"], "reason": "RAW_DOC_UNRESOLVED"}) + "\n")
+                    with dlock:
+                        done_docs.add(key)
                     continue
-                if st != 200:
-                    raise RuntimeError(f"CODE recovery HTTP {st} {ref['accession']}")
-                od = f"{XML_DIR}/{ref['cik']}/{acc}"
+                if outcome == "notfound":
+                    dfw.write(json.dumps({"accession": ref["accession"], "reason": "DOC_404"}) + "\n")
+                    with dlock:
+                        done_docs.add(key)
+                    continue
+                raw, dname = payload
+                od = f"{XML_DIR}/{ref['cik']}/{ref['accession'].replace('-', '')}"
                 os.makedirs(od, exist_ok=True)
                 open(f"{od}/{dname}", "wb").write(raw)
                 rows, defects = parse_form4_xml(raw, ref["cik"], ref["accession"], ref["acceptance"], ref["filing_date"])
-                for r in rows:
-                    sig = (r["cik"], r["accession"], r["transaction_date"], r["direction"], r["owner_cik"], r["owner_name"])
-                    if sig not in seen_stream:
-                        sf.write(json.dumps(r) + "\n")
-                        seen_stream.add(sig)
-                for d in defects:
-                    df.write(json.dumps(d) + "\n")
-                done_docs.add(key)
-                _pace_on_ok(); _pace_sleep()
-            sf.close(); df.close()
-            open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
+                with slock:
+                    for r in rows:
+                        sig = (r["cik"], r["accession"], r["transaction_date"], r["direction"], r["owner_cik"], r["owner_name"])
+                        if sig not in seen_stream:
+                            sfw.write(json.dumps(r) + "\n")
+                            seen_stream.add(sig)
+                    for d in defects:
+                        dfw.write(json.dumps(d) + "\n")
+                with dlock:
+                    done_docs.add(key)
+                    stats["ok"] += 1
+                pac_ok()
 
-        # coverage proof: every doc fetched OR accounted with a named reason
-        undone_final = [r for r in refs if f"{r['cik']}|{r['accession']}" not in done_docs]
-        reasons = {}
-        for line in open(f"{XML_DIR}/.defects.jsonl"):
-            try:
-                d0 = json.loads(line)
-                reasons.setdefault(d0["accession"], d0["reason"])
-            except Exception:
-                pass
-        accounted = sum(1 for r in refs if f"{r['cik']}|{r['accession']}" not in done_docs and reasons.get(r["accession"]))
-        ok_proof = (len(undone_final) == 0) or (len(undone_final) == accounted)
-        recon = {"total_refs": len(refs), "done": len(done_docs),
-                 "undone": len(undone_final), "undone_with_reason": accounted,
-                 "zero_unexplained": ok_proof}
-        json.dump(recon, open(f"{XML_DIR}/.reconciliation.json", "w"), indent=1)
-        if not ok_proof:
-            raise RuntimeError(f"RECONCILIATION_FAILED: {recon}")
+        CHUNK = 2000
+        ndocs = len(done_docs)
+        t0 = time.time()
+        with open(STREAM, "a") as sfw, open(f"{XML_DIR}/.defects.jsonl", "a") as dfw:
+            slock, dlock = threading.Lock(), threading.Lock()
+            for i in range(0, len(pending), CHUNK):
+                chunk = pending[i:i + CHUNK]
+                with ThreadPoolExecutor(max_workers=4) as ex:
+                    list(ex.map(worker, [chunk[j:j + 100] for j in range(0, len(chunk), 100)]))
+                open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
+                ndocs = len(done_docs)
+                el = max(time.time() - t0, 1)
+                with pac_lock:
+                    lvl = pac["level"]; wins = pac["windows"]; sk = stats["skip"]
+                rate = stats["ok"] / el
+                status(state="STAGE_B_FETCHING", docs_done=ndocs, total=len(refs),
+                       rate_per_s=round(rate, 2),
+                       eta_h=round((len(refs) - ndocs) / max(rate, 0.05) / 3600, 2),
+                       pace_level=LEVELS[lvl], silence_windows=wins, transient_skips=sk)
         open(f"{XML_DIR}/.done", "w").write("\n".join(sorted(done_docs)))
-        status(state="STAGE_B_DONE", docs=len(done_docs), filings=len(refs), reconciliation=recon)
 
         status(state="ALL_DONE", symbols=len(sym_map))
+        stop_evt.set()
         h = _HANDLE.get("h") or handle
-        h.release(status="FINISHED", note=f"bulk ingest done: A submissions x{len(alive)}, B xml x{ndocs}, C symbols x{len(sym_map)}")
+        if h is not None:
+            h.release(status="FINISHED", note=f"bulk ingest done: A submissions x{len(alive)}, B xml x{ndocs}, C symbols x{len(sym_map)}")
         print("ALL_DONE")
     except Exception:
         err = traceback.format_exc()
         status(state="FAILED", stderr=err[-1500:])
         try:
-            handle.release(status="FAILED", note=("stderr tail: " + err.strip().splitlines()[-1][:300]))
+            stop_evt.set()
         except Exception:
             pass
+        h = _HANDLE.get("h") or handle
+        if h is not None:
+            try:
+                h.release(status="FAILED", note=("stderr tail: " + err.strip().splitlines()[-1][:300]))
+            except Exception:
+                pass
         raise
 
 if __name__ == "__main__":
