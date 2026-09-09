@@ -49,19 +49,24 @@ A8 families lane extensions (additive; the frozen defaults are untouched)
       carrying the family's control-calendar descriptor: the ATTN-PHASE
       sham rotation, or the SILRES not-applicable marker per the D2
       re-freeze (calendar_conditioned=false for that family).
-    * ``"frozen_falsification_rules": {"weekend_event_coverage": {...}}``
-      (A8 post-F1 remediation, CRYPTO-V17) -- a frozen proposal kill rule
-      wired FAIL-CLOSED into the scored emission path.  When the block is
-      present the driver ALWAYS evaluates the rule on the family's anchor
-      T2.0 book and the scored cell record carries a
-      ``frozen_rule_enforcement`` field (verdict PASS or
-      DEAD_FROZEN_RULE_COVERAGE with the per-fold scored-event counts);
-      a family whose scored weekend-event count in ANY single fold is
-      below ``min_scored_events_per_fold`` is MARKED DEAD in the cell
-      output (the pre-registered REJECT path -- a legal coverage death,
-      never silently skippable).  A malformed rule block refuses the
-      family at load.  V17-A4-P1-WKNDLIQ freezes rule (4) here
-      (min 12 scored weekend events in any single fold).
+    * ``"frozen_falsification_rules": {...}``
+      (A8 post-F1 remediation + OICASCADE lane, CRYPTO-V17) -- frozen
+      proposal kill rules wired FAIL-CLOSED into the scored emission
+      path.  When the block is present the driver ALWAYS evaluates the
+      declared rules on the cell's books and the scored cell record
+      carries a ``frozen_rule_enforcement`` field (a family whose verdict
+      is a kill is MARKED DEAD in the cell output -- the pre-registered
+      REJECT path, a legal death, never silently skippable).  A malformed
+      rule block refuses the family at load; an unevaluable rule refuses
+      the cell.  Known rules: ``weekend_event_coverage`` (WKNDLIQ rule 4:
+      min scored anchor events per fold, mark_dead) and the OICASCADE set
+      ``control_reproduces`` (K1/G11: sham same positive sign with
+      |sham exp| >= 0.5 x |anchor exp| at the frozen tier pooled over S0),
+      ``fold_negative_majority`` (K2: anchor expectancy <= 0 in >= 2 of
+      the 3 folds at the frozen tier), ``ancestry_veto_measured`` (K3/G12:
+      the D2 measured pooled |rho| carried FROZEN -- 0.1899 vs ret, not
+      re-measured in-cell -- mechanically checked against the 0.20 veto
+      threshold).
 
 Selection JSON schema (frozen shape consumed here)
     {
@@ -78,7 +83,12 @@ Selection JSON schema (frozen shape consumed here)
               "arm_id": str,                     # path label of the arm
               "kind": "anchor" | "neighbour" | "control",
               "exposure":
-                {"type": "panel_formula", "formula_id": str, "params": {...}}
+                {"type": "panel_formula", "formula_id": str, "params": {...},
+                 "endpoint_series"?: {"path": str, "format": "json"}}
+                                          # optional availability-aligned
+                                          # endpoint data (OICASCADE reduced
+                                          # OI series), passed to formulas
+                                          # declaring the `endpoint` keyword
               | {"type": "endpoint_series", "path": str, "format": "json"},
               "control_spec": {...}              # optional, opaque to the
             }                                    # driver; digested, not acted on
@@ -430,11 +440,36 @@ def _check_lag_zero_gate(family_id: str, lag: int, fill_price: str) -> None:
         )
 
 
-#: The one frozen-rule shape the driver owns (A8 post-F1 remediation):
-#: a per-fold scored-event coverage floor from the family's frozen
-#: falsification rule, evaluated on the ANCHOR primary book, marking the
-#: family DEAD in the cell record when any fold falls below the floor.
+#: The frozen-rule shapes the driver owns (A8 post-F1 remediation +
+#: A8 OICASCADE implementation lane).  Each is a pre-registered kill wired
+#: FAIL-CLOSED into the scored emission path; an unevaluable rule is a
+#: hard refusal, never a pass-through:
+#:
+#: * ``weekend_event_coverage`` -- WKNDLIQ falsification_rule (4): a
+#:   per-fold scored-event coverage floor on the anchor primary book.
+#: * ``control_reproduces`` -- OICASCADE falsification_rule (K1/G11): the
+#:   randomized-event-time sham earns the same (positive) sign with
+#:   |sham exp| >= 0.5 x |anchor exp| at the frozen tier pooled over S0.
+#: * ``fold_negative_majority`` -- OICASCADE falsification_rule (K2): the
+#:   anchor after-cost expectancy <= 0 at the frozen tier in >= 2 of the
+#:   3 chronological folds.
+#: * ``ancestry_veto_measured`` -- OICASCADE falsification_rule (K3/G12):
+#:   the D2 pooled |rho| ancestry veto, carried at its FROZEN measured
+#:   value (0.1899 vs ret, recorded -- not re-measured in-cell); the
+#:   enforcement mechanically checks the recorded number against the
+#:   frozen 0.20 threshold so a doctored record cannot pass silently.
 FROZEN_RULE_COVERAGE = "weekend_event_coverage"
+FROZEN_RULE_CONTROL_REPRODUCES = "control_reproduces"
+FROZEN_RULE_FOLD_NEGATIVE = "fold_negative_majority"
+FROZEN_RULE_ANCESTRY_MEASURED = "ancestry_veto_measured"
+KNOWN_FROZEN_RULES = frozenset(
+    {
+        FROZEN_RULE_COVERAGE,
+        FROZEN_RULE_CONTROL_REPRODUCES,
+        FROZEN_RULE_FOLD_NEGATIVE,
+        FROZEN_RULE_ANCESTRY_MEASURED,
+    }
+)
 
 
 def _parse_frozen_rules(
@@ -442,49 +477,179 @@ def _parse_frozen_rules(
 ) -> Optional[Mapping[str, Any]]:
     """Validate the optional ``frozen_falsification_rules`` block (fail closed).
 
-    Supported rule: ``weekend_event_coverage`` with EXACTLY the frozen
-    shape the driver enforces -- ``min_scored_events_per_fold`` (int >= 1),
-    ``book`` == "anchor", ``tier`` a declared stress tier, ``action`` ==
-    "mark_dead".  Anything else is a load-time refusal (a frozen kill
-    rule that cannot be mechanically enforced must never parse silently).
+    The block must be a non-empty object whose keys are KNOWN frozen rules
+    (an unknown kill rule that cannot be mechanically enforced must never
+    parse silently) and each rule must carry exactly the frozen shape its
+    enforcer implements.  An empty rule dictionary is refused: declaring
+    the block and enforcing nothing is not a legal state.
     """
     block = fam_raw.get("frozen_falsification_rules")
     if block is None:
         return None
-    if not isinstance(block, dict) or set(block) != {FROZEN_RULE_COVERAGE}:
+    if not isinstance(block, dict) or not block:
         raise DriverError(
-            f"family {family_id}: frozen_falsification_rules must declare "
-            f"exactly the rule {FROZEN_RULE_COVERAGE!r} (got "
-            f"{sorted(block) if isinstance(block, dict) else block!r})"
+            f"family {family_id}: frozen_falsification_rules must be a "
+            f"non-empty object over the known rules {sorted(KNOWN_FROZEN_RULES)}"
         )
-    rule = block[FROZEN_RULE_COVERAGE]
-    if not isinstance(rule, dict):
+    unknown = sorted(set(block) - KNOWN_FROZEN_RULES)
+    if unknown:
         raise DriverError(
-            f"family {family_id}: frozen rule {FROZEN_RULE_COVERAGE!r} must "
-            "be an object"
+            f"family {family_id}: unknown frozen rule(s) {unknown}; the "
+            f"driver enforces exactly {sorted(KNOWN_FROZEN_RULES)}"
         )
-    floor = rule.get("min_scored_events_per_fold")
-    if not isinstance(floor, int) or isinstance(floor, bool) or floor < 1:
-        raise DriverError(
-            f"family {family_id}: {FROZEN_RULE_COVERAGE} requires an integer "
-            f"min_scored_events_per_fold >= 1 (got {floor!r})"
-        )
-    if rule.get("book") != "anchor":
-        raise DriverError(
-            f"family {family_id}: {FROZEN_RULE_COVERAGE} evaluates the "
-            f"anchor book only (got book={rule.get('book')!r})"
-        )
-    tier = rule.get("tier")
-    if tier not in STRESS_TIERS:
-        raise DriverError(
-            f"family {family_id}: {FROZEN_RULE_COVERAGE} tier {tier!r} not "
-            f"in {sorted(STRESS_TIERS)}"
-        )
-    if rule.get("action") != "mark_dead":
-        raise DriverError(
-            f"family {family_id}: {FROZEN_RULE_COVERAGE} action must be "
-            f"'mark_dead' (got {rule.get('action')!r})"
-        )
+    if FROZEN_RULE_COVERAGE in block:
+        rule = block[FROZEN_RULE_COVERAGE]
+        if not isinstance(rule, dict):
+            raise DriverError(
+                f"family {family_id}: frozen rule {FROZEN_RULE_COVERAGE!r} "
+                "must be an object"
+            )
+        floor = rule.get("min_scored_events_per_fold")
+        if not isinstance(floor, int) or isinstance(floor, bool) or floor < 1:
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_COVERAGE} requires an "
+                f"integer min_scored_events_per_fold >= 1 (got {floor!r})"
+            )
+        if rule.get("book") != "anchor":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_COVERAGE} evaluates the "
+                f"anchor book only (got book={rule.get('book')!r})"
+            )
+        tier = rule.get("tier")
+        if tier not in STRESS_TIERS:
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_COVERAGE} tier {tier!r} "
+                f"not in {sorted(STRESS_TIERS)}"
+            )
+        if rule.get("action") != "mark_dead":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_COVERAGE} action must be "
+                f"'mark_dead' (got {rule.get('action')!r})"
+            )
+    if FROZEN_RULE_CONTROL_REPRODUCES in block:
+        rule = block[FROZEN_RULE_CONTROL_REPRODUCES]
+        if not isinstance(rule, dict) or not isinstance(rule.get("rule"), str):
+            raise DriverError(
+                f"family {family_id}: frozen rule "
+                f"{FROZEN_RULE_CONTROL_REPRODUCES!r} must be an object with "
+                "the frozen rule text"
+            )
+        if rule.get("book") != "anchor" or rule.get("control_book") != "control":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_CONTROL_REPRODUCES} "
+                f"compares the anchor and control books (got "
+                f"book={rule.get('book')!r}, "
+                f"control_book={rule.get('control_book')!r})"
+            )
+        tier = rule.get("tier")
+        if tier not in STRESS_TIERS:
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_CONTROL_REPRODUCES} tier "
+                f"{tier!r} not in {sorted(STRESS_TIERS)}"
+            )
+        ratio = rule.get("sham_expectancy_ratio")
+        if (
+            not isinstance(ratio, (int, float))
+            or isinstance(ratio, bool)
+            or float(ratio) != 0.5
+        ):
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_CONTROL_REPRODUCES} "
+                f"freezes sham_expectancy_ratio at 0.5 (got {ratio!r})"
+            )
+        if rule.get("action") != "mark_dead":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_CONTROL_REPRODUCES} "
+                f"action must be 'mark_dead' (got {rule.get('action')!r})"
+            )
+    if FROZEN_RULE_FOLD_NEGATIVE in block:
+        rule = block[FROZEN_RULE_FOLD_NEGATIVE]
+        if not isinstance(rule, dict) or not isinstance(rule.get("rule"), str):
+            raise DriverError(
+                f"family {family_id}: frozen rule "
+                f"{FROZEN_RULE_FOLD_NEGATIVE!r} must be an object with the "
+                "frozen rule text"
+            )
+        if rule.get("book") != "anchor":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_FOLD_NEGATIVE} evaluates "
+                f"the anchor book only (got book={rule.get('book')!r})"
+            )
+        tier = rule.get("tier")
+        if tier not in STRESS_TIERS:
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_FOLD_NEGATIVE} tier "
+                f"{tier!r} not in {sorted(STRESS_TIERS)}"
+            )
+        max_neg = rule.get("max_negative_folds")
+        if not isinstance(max_neg, int) or isinstance(max_neg, bool) or max_neg < 1:
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_FOLD_NEGATIVE} requires "
+                f"an integer max_negative_folds >= 1 (got {max_neg!r})"
+            )
+        folds_total = rule.get("folds_total")
+        if (
+            not isinstance(folds_total, int)
+            or isinstance(folds_total, bool)
+            or folds_total != FOLD_COUNT
+        ):
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_FOLD_NEGATIVE} freezes "
+                f"folds_total at the driver's {FOLD_COUNT} chronological "
+                f"folds (got {folds_total!r})"
+            )
+        if rule.get("action") != "mark_dead":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_FOLD_NEGATIVE} action "
+                f"must be 'mark_dead' (got {rule.get('action')!r})"
+            )
+    if FROZEN_RULE_ANCESTRY_MEASURED in block:
+        rule = block[FROZEN_RULE_ANCESTRY_MEASURED]
+        if not isinstance(rule, dict) or not isinstance(rule.get("rule"), str):
+            raise DriverError(
+                f"family {family_id}: frozen rule "
+                f"{FROZEN_RULE_ANCESTRY_MEASURED!r} must be an object with "
+                "the frozen rule text"
+            )
+        source = rule.get("source_artifact")
+        if not isinstance(source, str) or not source.strip():
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_ANCESTRY_MEASURED} needs "
+                "the measured D2 source_artifact path"
+            )
+        measured = rule.get("measured_pooled_abs_rho")
+        if (
+            not isinstance(measured, (int, float))
+            or isinstance(measured, bool)
+            or not 0.0 <= float(measured) <= 1.0
+        ):
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_ANCESTRY_MEASURED} "
+                f"requires measured_pooled_abs_rho in [0, 1] (got "
+                f"{measured!r})"
+            )
+        threshold = rule.get("veto_threshold")
+        if (
+            not isinstance(threshold, (int, float))
+            or isinstance(threshold, bool)
+            or not 0.0 < float(threshold) <= 1.0
+        ):
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_ANCESTRY_MEASURED} "
+                f"requires veto_threshold in (0, 1] (got {threshold!r})"
+            )
+        if rule.get("frozen_verdict") != "PASS":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_ANCESTRY_MEASURED} "
+                f"carries the FROZEN measured verdict (got "
+                f"{rule.get('frozen_verdict')!r}); a measured veto is not "
+                "re-argued in-cell"
+            )
+        if rule.get("action") != "mark_dead":
+            raise DriverError(
+                f"family {family_id}: {FROZEN_RULE_ANCESTRY_MEASURED} "
+                f"action must be 'mark_dead' (got {rule.get('action')!r})"
+            )
     return block
 
 
@@ -575,6 +740,26 @@ def _parse_family(fam_raw: Any, *, base_dir: Path) -> FamilySpec:
                 raise DriverError(
                     f"family {family_id}/{arm_id}: params must be an object"
                 )
+            # optional availability-aligned endpoint series (A8 OICASCADE
+            # lane): validated here, loaded per cell in evaluate_exposure
+            endpoint_block = exposure.get("endpoint_series")
+            if endpoint_block is not None:
+                if not isinstance(endpoint_block, dict):
+                    raise DriverError(
+                        f"family {family_id}/{arm_id}: endpoint_series must "
+                        "be an object"
+                    )
+                epath = endpoint_block.get("path")
+                if not isinstance(epath, str) or not epath.strip():
+                    raise DriverError(
+                        f"family {family_id}/{arm_id}: endpoint_series needs "
+                        "path"
+                    )
+                if endpoint_block.get("format", "json") != "json":
+                    raise DriverError(
+                        f"family {family_id}/{arm_id}: endpoint_series format "
+                        "must be json"
+                    )
         elif etype == "endpoint_series":
             epath = exposure.get("path")
             if not isinstance(epath, str) or not epath.strip():
@@ -937,17 +1122,83 @@ def build_folds(n_days: int) -> Tuple[List[Fold], frozenset]:
 # --------------------------------------------------------------------------- #
 # Exposure evaluation (registry formulas / endpoint series)
 # --------------------------------------------------------------------------- #
-def _formula_accepts_h1(fn: Callable[..., Any]) -> bool:
-    """True iff the registered formula declares the ``h1`` keyword (or
-    ``**kwargs``): such formulas receive the raw H1 rows alongside the
-    family-clock frames (the ATTN-PHASE hour composition needs H1 grain)."""
+def _formula_accepts_kw(fn: Callable[..., Any], keyword: str) -> bool:
+    """True iff the registered formula declares ``keyword`` (or
+    ``**kwargs``).  ``h1`` carries the raw H1 rows (the ATTN-PHASE hour
+    composition needs H1 grain); ``endpoint`` carries an availability-
+    aligned endpoint series loaded from the arm's ``endpoint_series`` path
+    (the OICASCADE reduced open-interest series)."""
     try:
         sig = inspect.signature(fn)
     except (TypeError, ValueError):  # pragma: no cover - builtins only
         return False
-    if "h1" in sig.parameters:
+    if keyword in sig.parameters:
         return True
     return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+
+
+def _formula_accepts_h1(fn: Callable[..., Any]) -> bool:
+    """Back-compat wrapper: does the formula accept the raw H1 rows?"""
+    return _formula_accepts_kw(fn, "h1")
+
+
+def _load_endpoint_series(
+    block: Mapping[str, Any],
+    *,
+    family_id: str,
+    arm_id: str,
+    universe: Sequence[str],
+    grid: Sequence[str],
+    base_dir: Path,
+) -> Dict[str, List[Optional[float]]]:
+    """Load + fail-closed-validate one endpoint-series file (the shape is
+    validated at parse time; this resolves and checks the DATA): path
+    resolution against the selection directory (absolute paths pass
+    through), JSON object mapping every universe symbol to a list
+    index-aligned with the bucket grid, float-or-null values, no unknown
+    symbols."""
+    epath = Path(str(block["path"]))
+    if not epath.is_absolute():
+        epath = base_dir / epath
+    if not epath.exists():
+        raise DriverError(
+            f"endpoint series file missing: {epath} "
+            f"(family {family_id}/{arm_id})"
+        )
+    try:
+        doc = json.loads(epath.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise DriverError(f"endpoint series {epath} is not valid JSON: {exc}")
+    if not isinstance(doc, dict):
+        raise DriverError(f"endpoint series {epath} must map symbol -> [values]")
+    out: Dict[str, List[Optional[float]]] = {}
+    for sym in universe:
+        if sym not in doc:
+            raise DriverError(
+                f"endpoint series {epath} lacks symbol {sym} "
+                f"(family {family_id}/{arm_id})"
+            )
+        values = doc[sym]
+        if not isinstance(values, list) or len(values) != len(grid):
+            raise DriverError(
+                f"endpoint series {epath}[{sym}] length "
+                f"{len(values) if isinstance(values, list) else 'n/a'} "
+                f"!= bucket grid {len(grid)} (family {family_id}/{arm_id})"
+            )
+        series: List[Optional[float]] = []
+        for v in values:
+            if v is None:
+                series.append(None)
+                continue
+            fv = float(v)
+            if not math.isfinite(fv):
+                raise DriverError(f"endpoint series {epath}[{sym}] non-finite value")
+            series.append(fv)
+        out[sym] = series
+    extras = sorted(set(doc) - set(universe))
+    if extras:
+        raise DriverError(f"endpoint series {epath} carries unknown symbols {extras}")
+    return out
 
 
 def evaluate_exposure(
@@ -972,46 +1223,36 @@ def evaluate_exposure(
             fn = registry_resolve(formula_id)
         except KeyError as exc:
             raise DriverError(f"formula registry refusal: {exc}")
-        if _formula_accepts_h1(fn):
-            return fn(frames, dict(exposure.get("params", {})), h1=h1)
-        return fn(frames, dict(exposure.get("params", {})))
-    if exposure.get("type") == "endpoint_series":
-        epath = Path(str(exposure["path"]))
-        if not epath.is_absolute():
-            epath = base_dir / epath
-        if not epath.exists():
-            raise DriverError(f"endpoint series file missing: {epath}")
-        try:
-            doc = json.loads(epath.read_text(encoding="utf-8"))
-        except ValueError as exc:
-            raise DriverError(f"endpoint series {epath} is not valid JSON: {exc}")
-        if not isinstance(doc, dict):
-            raise DriverError(f"endpoint series {epath} must map symbol -> [values]")
-        out: Dict[str, List[Optional[float]]] = {}
-        for sym in spec.universe:
-            if sym not in doc:
-                raise DriverError(f"endpoint series {epath} lacks symbol {sym}")
-            values = doc[sym]
-            if not isinstance(values, list) or len(values) != len(grid):
+        kwargs: Dict[str, Any] = {}
+        if _formula_accepts_kw(fn, "h1"):
+            kwargs["h1"] = h1
+        endpoint_block = exposure.get("endpoint_series")
+        if endpoint_block is not None:
+            if not _formula_accepts_kw(fn, "endpoint"):
                 raise DriverError(
-                    f"endpoint series {epath}[{sym}] length "
-                    f"{len(values) if isinstance(values, list) else 'n/a'} "
-                    f"!= bucket grid {len(grid)}"
+                    f"family {spec.family_id}/{arm.arm_id}: formula "
+                    f"{formula_id!r} does not accept an endpoint series; "
+                    "refusing the endpoint_series block (fail closed)"
                 )
-            series: List[Optional[float]] = []
-            for v in values:
-                if v is None:
-                    series.append(None)
-                    continue
-                fv = float(v)
-                if not math.isfinite(fv):
-                    raise DriverError(f"endpoint series {epath}[{sym}] non-finite value")
-                series.append(fv)
-            out[sym] = series
-        extras = sorted(set(doc) - set(spec.universe))
-        if extras:
-            raise DriverError(f"endpoint series {epath} carries unknown symbols {extras}")
-        return out
+            kwargs["endpoint"] = _load_endpoint_series(
+                endpoint_block,
+                family_id=spec.family_id,
+                arm_id=arm.arm_id,
+                universe=spec.universe,
+                grid=grid,
+                base_dir=base_dir,
+            )
+        return fn(frames, dict(exposure.get("params", {})), **kwargs)
+    if exposure.get("type") == "endpoint_series":
+        series = _load_endpoint_series(
+            exposure,
+            family_id=spec.family_id,
+            arm_id=arm.arm_id,
+            universe=spec.universe,
+            grid=grid,
+            base_dir=base_dir,
+        )
+        return series
     raise DriverError(  # pragma: no cover - guarded by _parse_family
         f"unsupported exposure type {exposure.get('type')!r}"
     )
@@ -1932,6 +2173,220 @@ def enforce_frozen_coverage_rule(spec: FamilySpec, state: dict) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# Frozen falsification-rule enforcement, OICASCADE rule set (fail-closed;
+# A8 implementation lane for V17-A6-P2-OICASCADE, selection v3)
+# --------------------------------------------------------------------------- #
+def _arm_id_of_kind(spec: FamilySpec, kind: str) -> str:
+    for arm in spec.arms:
+        if arm.kind == kind:
+            return arm.arm_id
+    raise DriverError(f"family {spec.family_id}: no {kind} arm")  # parse-guarded
+
+
+def _arm_book_or_refuse(spec: FamilySpec, state: dict, arm_id: str, tier: str):
+    arm_state = state["arms"].get(arm_id)
+    if (
+        not isinstance(state.get("arms"), dict)
+        or arm_state is None
+        or arm_state.get("metrics") is None
+        or tier not in arm_state.get("books", {})
+    ):
+        raise DriverError(
+            f"family {spec.family_id}: frozen falsification rules cannot be "
+            f"evaluated (no {tier} book for arm {arm_id}); refusing "
+            "(fail closed)"
+        )
+    return arm_state["books"][tier]
+
+
+def _pooled_trip_expectancy(spec: FamilySpec, book, arm_id: str, tier: str) -> float:
+    """Pooled after-cost expectancy of an event book at one tier: net PnL
+    per booked round trip (the proposal's per-event economics, pooled over
+    S0 and symbols).  A zero-trip book is UNEVALUABLE (refuse, never
+    pass-through)."""
+    if book.n_round_trips == 0:
+        raise DriverError(
+            f"family {spec.family_id}: frozen falsification rules cannot be "
+            f"evaluated (arm {arm_id} booked zero trips at {tier}); refusing "
+            "(fail closed)"
+        )
+    return float(book.pnl) / float(book.n_round_trips)
+
+
+def _enforce_control_reproduces_rule(spec: FamilySpec, state: dict) -> dict:
+    """OICASCADE falsification_rule (K1/G11), fail closed: the randomized-
+    event-time sham earns the same (positive) sign with |sham exp| >= 0.5 x
+    |anchor exp| at the frozen tier pooled over S0 -> DEAD (unconditional
+    drift/beta explains the anchor)."""
+    rule = spec.frozen_rules[FROZEN_RULE_CONTROL_REPRODUCES]
+    tier = str(rule["tier"])
+    ratio = float(rule["sham_expectancy_ratio"])
+    anchor_id = _arm_id_of_kind(spec, "anchor")
+    control_id = _arm_id_of_kind(spec, "control")
+    anchor_book = _arm_book_or_refuse(spec, state, anchor_id, tier)
+    control_book = _arm_book_or_refuse(spec, state, control_id, tier)
+    anchor_exp = _pooled_trip_expectancy(spec, anchor_book, anchor_id, tier)
+    control_exp = _pooled_trip_expectancy(spec, control_book, control_id, tier)
+    dead = control_exp > 0.0 and abs(control_exp) >= ratio * abs(anchor_exp)
+    return {
+        "rule_id": FROZEN_RULE_CONTROL_REPRODUCES,
+        "source": (
+            "family spec frozen_falsification_rules (frozen proposal "
+            "falsification_rule K1 / G11)"
+        ),
+        "frozen_rule_text": str(rule.get("rule", "")),
+        "book": "anchor",
+        "control_book": "control",
+        "arm_id": anchor_id,
+        "control_arm_id": control_id,
+        "tier": tier,
+        "sham_expectancy_ratio": ratio,
+        "anchor_expectancy": r12(anchor_exp),
+        "control_expectancy": r12(control_exp),
+        "anchor_round_trips": int(anchor_book.n_round_trips),
+        "control_round_trips": int(control_book.n_round_trips),
+        "verdict": (
+            "DEAD_FROZEN_RULE_CONTROL_REPRODUCES" if dead else "PASS"
+        ),
+        "family_alive": not dead,
+        "fail_closed": True,
+    }
+
+
+def _enforce_fold_negative_rule(spec: FamilySpec, state: dict) -> dict:
+    """OICASCADE falsification_rule (K2), fail closed: the anchor after-cost
+    expectancy <= 0 at the frozen tier in >= max_negative_folds of the
+    frozen folds_total chronological folds -> REJECT.  A fold with zero
+    scored events has NO expectancy -- it is recorded as null and counted
+    neither negative nor positive (the record discloses it; hiding it is
+    not a legal state)."""
+    rule = spec.frozen_rules[FROZEN_RULE_FOLD_NEGATIVE]
+    tier = str(rule["tier"])
+    max_neg = int(rule["max_negative_folds"])
+    folds_total = int(rule["folds_total"])
+    anchor_id = _arm_id_of_kind(spec, "anchor")
+    anchor_book = _arm_book_or_refuse(spec, state, anchor_id, tier)
+    folds: Sequence[Fold] = state["folds"]
+    if len(folds) != folds_total:
+        raise DriverError(
+            f"family {spec.family_id}: fold count {len(folds)} != the "
+            f"rule's frozen folds_total {folds_total}; refusing (fail closed)"
+        )
+    per_fold_exp: Dict[str, Optional[float]] = {}
+    per_fold_pop: Dict[str, int] = {}
+    unevaluable: List[str] = []
+    negative = 0
+    for fold in folds:
+        pop = int(anchor_book.fold_population.get(fold.label, 0))
+        per_fold_pop[fold.label] = pop
+        if pop == 0:
+            per_fold_exp[fold.label] = None
+            unevaluable.append(fold.label)
+            continue
+        exp = float(anchor_book.per_fold.get(fold.label, 0.0)) / pop
+        per_fold_exp[fold.label] = r12(exp)
+        if exp <= 0.0:
+            negative += 1
+    dead = negative >= max_neg
+    return {
+        "rule_id": FROZEN_RULE_FOLD_NEGATIVE,
+        "source": (
+            "family spec frozen_falsification_rules (frozen proposal "
+            "falsification_rule K2)"
+        ),
+        "frozen_rule_text": str(rule.get("rule", "")),
+        "book": "anchor",
+        "arm_id": anchor_id,
+        "tier": tier,
+        "max_negative_folds": max_neg,
+        "folds_total": folds_total,
+        "per_fold_expectancy": per_fold_exp,
+        "per_fold_population": per_fold_pop,
+        "unevaluable_folds": unevaluable,
+        "negative_folds": negative,
+        "verdict": "DEAD_FROZEN_RULE_FOLD_NEGATIVE" if dead else "PASS",
+        "family_alive": not dead,
+        "fail_closed": True,
+    }
+
+
+def _enforce_ancestry_rule(spec: FamilySpec, state: dict) -> dict:
+    """OICASCADE falsification_rule (K3/G12), fail closed on the FROZEN
+    measured numbers: the D2 pooled |rho| ancestry veto is carried at its
+    recorded measurement (0.1899 vs panel_daily:ret -- already measured,
+    do not re-argue); the enforcement mechanically checks the recorded
+    value against the frozen 0.20 threshold so a doctored record cannot
+    pass silently, and the verdict always lands in the cell record."""
+    del state  # the veto is D2-level; nothing in-cell re-measures it
+    rule = spec.frozen_rules[FROZEN_RULE_ANCESTRY_MEASURED]
+    measured = float(rule["measured_pooled_abs_rho"])
+    threshold = float(rule["veto_threshold"])
+    dead = measured > threshold
+    return {
+        "rule_id": FROZEN_RULE_ANCESTRY_MEASURED,
+        "source": (
+            "family spec frozen_falsification_rules (frozen proposal "
+            "falsification_rule K3 / G12)"
+        ),
+        "frozen_rule_text": str(rule.get("rule", "")),
+        "source_artifact": str(rule["source_artifact"]),
+        "measured_proxy": str(rule.get("measured_proxy", "")),
+        "measured_pooled_abs_rho": r12(measured),
+        "veto_threshold": r12(threshold),
+        "frozen_verdict": str(rule["frozen_verdict"]),
+        "note": (
+            "D2 measured pooled |rho| carried frozen; NOT re-measured "
+            "in-cell (selection v3: G12 already measured 0.1899 PASS, "
+            "margin 0.0101 recorded thin per P-2)"
+        ),
+        "verdict": "DEAD_FROZEN_RULE_ANCESTRY_VETO" if dead else "PASS",
+        "family_alive": not dead,
+        "fail_closed": True,
+    }
+
+
+_FROZEN_RULE_ENFORCERS = {
+    FROZEN_RULE_COVERAGE: enforce_frozen_coverage_rule,
+    FROZEN_RULE_CONTROL_REPRODUCES: _enforce_control_reproduces_rule,
+    FROZEN_RULE_FOLD_NEGATIVE: _enforce_fold_negative_rule,
+    FROZEN_RULE_ANCESTRY_MEASURED: _enforce_ancestry_rule,
+}
+
+
+def enforce_frozen_rules(spec: FamilySpec, state: dict) -> dict:
+    """Evaluate EVERY frozen falsification rule the family declares, fail
+    closed.  A family declaring only the legacy coverage rule keeps the
+    exact single-record shape (WKNDLIQ byte-compat); a multi-rule family
+    (OICASCADE K1/K2/K3) gets one verdict record per rule under ``rules``
+    plus the AND-combined family_alive -- the pre-registered kills are
+    owned code, never conventions."""
+    if not isinstance(spec.frozen_rules, dict) or not spec.frozen_rules:
+        raise DriverError(
+            f"family {spec.family_id}: enforcement requested without a "
+            "frozen_falsification_rules block"
+        )
+    if set(spec.frozen_rules) == {FROZEN_RULE_COVERAGE}:
+        return enforce_frozen_coverage_rule(spec, state)
+    records = {
+        rule_id: _FROZEN_RULE_ENFORCERS[rule_id](spec, state)
+        for rule_id in sorted(spec.frozen_rules)
+    }
+    dead = [rid for rid, rec in records.items() if not rec["family_alive"]]
+    return {
+        "rule_id": "frozen_falsification_rules",
+        "source": (
+            "family spec frozen_falsification_rules (frozen proposal "
+            "falsification_rule set)"
+        ),
+        "rules": records,
+        "dead_rules": dead,
+        "verdict": "PASS" if not dead else "DEAD_FROZEN_RULES",
+        "family_alive": not dead,
+        "fail_closed": True,
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Family driver
 # --------------------------------------------------------------------------- #
 def run_family(
@@ -1964,12 +2419,13 @@ def run_family(
         )
     emit_family_dsr(spec, state, out_root, scored_root=scored_root)
     record: Dict[str, Any] = {"sanitized": False, "arms": results}
-    # Frozen falsification-rule enforcement (A8 post-F1 remediation): a
-    # family that declares a frozen kill rule gets it EVALUATED on every
-    # scored cell -- the verdict always lands in the cell record
-    # (fail-closed: there is no output path that skips it).
+    # Frozen falsification-rule enforcement (A8 post-F1 remediation, then
+    # the OICASCADE rule set): a family that declares frozen kill rules
+    # gets them EVALUATED on every scored cell -- the verdict always lands
+    # in the cell record (fail-closed: there is no output path that skips
+    # it).
     if spec.frozen_rules:
-        record["frozen_rule_enforcement"] = enforce_frozen_coverage_rule(
+        record["frozen_rule_enforcement"] = enforce_frozen_rules(
             spec, state
         )
     return record
