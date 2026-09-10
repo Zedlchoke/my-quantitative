@@ -1018,11 +1018,16 @@ def test_launch_gate_reads_launch_gate_block_and_refusal_keys(tmp_path, monkeypa
     owner_fresh_go]."""
     import importlib, json, os
     drv = importlib.import_module("research.assets.forex_free_v8.exec_driver_v8")
-    rc = json.load(open(os.path.join("research", "control", "forex_free_v8_run", "run_contract.json")))
+    # construct the unflipped contract fixture directly — the merged tree's
+    # shipped contract may legitimately be flipped (V8 close state); this test
+    # asserts the READER behavior, not the repository contract state
+    rc = {"cycle_id": "FOREX-FREE-V8",
+          "launch_gate": {"s0_launch_authorized": False, "owner_go_fresh": False,
+                           "owner_go_phrase": "GO FOREX V8 SCORED EXECUTION",
+                           "a7_prelaunch_verdict": None}}
     monkeypatch.setattr(drv, "RUN_CONTRACT_PATH", str(tmp_path / "run_contract.json"))
-    shipped = json.loads(json.dumps(rc))
     with open(tmp_path / "run_contract.json", "w") as f:
-        json.dump(shipped, f)
+        json.dump(rc, f)
     assert drv._launch_gate_state() == ["s0_launch_authorized", "owner_fresh_go"]
     flipped = json.loads(json.dumps(rc))
     flipped["launch_gate"]["s0_launch_authorized"] = True
