@@ -1,0 +1,182 @@
+{
+  "proposal_id": "FXFV1-A4-P1",
+  "lane": "FOREX-FREE-V1/F4/A4 (range expansion / breakout perspective)",
+  "mechanism_name": "Tokyo-morning range contraction -> London-morning expansion breakout (intraday-only, flat before NY rollover)",
+  "mechanism_group": "RANGE_EXPANSION_BREAKOUT__SESSION_STRUCTURE",
+  "economic_mechanism": {
+    "summary": "Asian hours for the European-quoted majors are structurally quiet (documented intraday FX volatility periodicity: Andersen & Bollerslev 1997). Stop-loss and option-barrier orders accumulate just outside the visible Tokyo-night range. When London opens, dealer hedging and stop-trigger flow turn a range compression into directional expansion; entries that join the first completed-bar close beyond the Tokyo range ride triggered-stop momentum flow (Osler 2005: clustered stop-loss orders produce self-reinforcing price cascades in FX) and exit the same NY day before rollover.",
+    "profit_source": "directional continuation during the London-open / NY-morning liquidity expansion following a quiet Tokyo-night compression",
+    "loss_source": "failed breakouts: London flow rejects the extreme and mean-reverts back inside the range; the losing trade's counterparty is the range-fader",
+    "why_h1_bars_suffice": "the range and its violation are both defined on completed hourly bars; the mechanism is a multi-hour session event, not a tick-level microstructure event",
+    "no_volume_claim": "mechanism uses prices only; FX volume is decentralized and is never used"
+  },
+  "expected_counterparty": {
+    "on_winning_trades": "(a) stop-loss orders resting beyond the Tokyo range extremes (Osler 2005: stop clusters trigger cascades - we join the cascade late, capturing its continuation); (b) dealers hedging into triggered-stop flow at the London open",
+    "on_losing_trades": "range-fade liquidity providers who sell/buy the London extension back inside the Tokyo range",
+    "why_they_let_us_win": "stop clusters are mechanical and price-insensitive; someone must take the other side of them, and the cascade they trigger persists for hours, longer than our intraday holding window"
+  },
+  "signal_fields_and_publication_clock": {
+    "signal_fields": [
+      "twelvedata H1 open/high/low/close, UTC-stamped, completed canonical bars only (bar datetime = bar OPEN instant; bar is actionable only at open_instant + 1h = completion instant)"
+    ],
+    "publication_clock": "each completed H1 bar publishes at its completion instant (open stamp + 1h); signals are computed once per completion instant and never revised; the decision instant is always strictly before the fill instant (next allowed bar open)",
+    "session_labels": "Tokyo window keyed to Asia/Tokyo wall clock (no DST in Japan -> fixed 00:00-06:00 UTC year-round); breakout window keyed to Europe/London wall clock (UK DST via zoneinfo); flatten boundary keyed to America/New_York wall clock (US DST via zoneinfo)"
+  },
+  "entry_exit_and_rollover_flat_rule": {
+    "range_construction_completed_bars_only": "For each Tokyo business day D: take the completed H1 bars whose open instants map to [09:00, 15:00) Asia/Tokyo wall clock on D (stamps 09,10,11,12,13,14 JST; exactly 6 bars). AH = max(high), AL = min(low), W = AH - AL. If fewer than 6 canonical in-calendar bars exist in the window, the day is structurally INVALID and no trade may initiate (this excludes every Monday, because Mon 09:00-10:00 JST precedes the Sun 21:00 America/New_York weekly open; this is a calendar fact, not a choice).",
+    "entry_signal": "Completed-bar decision window: bars whose open instants map to [08:00, 12:00) Europe/London (stamps 08,09,10,11 London). On each such completed bar B in chronological order: LONG signal if close(B) > AH (strict); SHORT signal if close(B) < AL (strict); first signal of the day only, opposite side permanently cancelled for that day; no signal by end of window = no trade.",
+    "entry_execution": "next-allowed-bar: fill at the open of the first canonical calendar bar whose open instant is strictly after B's completion instant, provided that open instant maps to a NY wall-clock time strictly before 15:00 America/New_York; otherwise the signal is discarded (flatten rule takes precedence)",
+    "exits": [
+      "stop exit: on any completed bar C after the fill, LONG if close(C) < AL (strict), SHORT if close(C) > AH (strict) -> fill at the open of the next allowed bar (same 15:00 NY cutoff); this structural opposite-extreme stop is the only risk exit; there is no profit target",
+      "mandatory flatten: any position still open exits with fill at the open of the H1 bar stamped 15:00 America/New_York (bar completion 16:00 NY, two full hours strictly before the 17:00 NY rollover instant); identical rule on Friday, where the 15:00 NY bar is the last bar of the week (weekly close Fri 16:00 NY per the frozen calendar)"
+    ],
+    "rollover_flat_invariant": "no fill may execute at a bar open at or after 15:00 America/New_York; therefore the book is flat from 15:00 NY wall clock, strictly before every 17:00 NY rollover instant under any bar-stamping convention; positions never span a rollover instant, never span the weekend; financing exposure is zero by construction (no financing data used or needed)",
+    "one_position_rule": "at most one position per NY trading day, no re-entry after a stop, no stop-and-reverse"
+  },
+  "execution_model": {
+    "signals": "completed H1 bars only; no intrabar trigger fills; a close beyond a level is detected at bar completion",
+    "fills": "always at the OPEN price of the next allowed canonical bar; gaps fill at the open (no assumption of a fill at the trigger level AH/AL); market-order semantics; no limit orders, no partial fills",
+    "allowed_bar": "a canonical, deduped H1 bar of the frozen trading-week calendar (Sun 21:00 America/New_York -> Fri 16:00 America/New_York, DST-correct via zoneinfo); the canonical series contains no weekend bars",
+    "data_gap_rule_fail_conservative": "if the fill bar for an ENTRY is missing, the order is cancelled; if a fill bar for an EXIT is missing, the exit executes at the first available later bar open and the event is logged as a data-gap breach to be reconciled by A7; an exit later than the 15:00 NY boundary is never silently accepted",
+    "no_assumptions": "no bid/ask (proxy spread exists only inside the frozen cost stress), no volume, no rollover/financing data, no leverage, no intrabar path assumptions"
+  },
+  "frozen_cost_stress_matrix": {
+    "frozen_before_any_returns": true,
+    "definition": "round-trip cost in price basis points charged once per completed round trip: net_log_return = log(exit_open / entry_open) - cost_bps * 1e-4; proxy spread is a CONSERVATIVE STRESS INPUT, never a live-spread claim",
+    "one_event_delay_stress": "every execution (entry, stop exit, flatten) shifted one additional completed bar later; a delayed exit that would land at or after the 15:00 NY boundary collapses into the 15:00 NY flatten fill, so the delay never violates the flat invariant",
+    "stress_cells_per_arm_per_pair": 6,
+    "matrix_bps_round_trip": {
+      "EUR/USD": {"proxy_bps": 2.0, "x1.5_bps": 3.0, "x2.0_bps": 4.0},
+      "GBP/USD": {"proxy_bps": 3.0, "x1.5_bps": 4.5, "x2.0_bps": 6.0},
+      "AUD/USD": {"proxy_bps": 3.0, "x1.5_bps": 4.5, "x2.0_bps": 6.0},
+      "NZD/USD": {"proxy_bps": 4.0, "x1.5_bps": 6.0, "x2.0_bps": 8.0},
+      "USD/JPY": {"proxy_bps": 2.0, "x1.5_bps": 3.0, "x2.0_bps": 4.0},
+      "USD/CHF": {"proxy_bps": 3.0, "x1.5_bps": 4.5, "x2.0_bps": 6.0},
+      "USD/CAD": {"proxy_bps": 3.0, "x1.5_bps": 4.5, "x2.0_bps": 6.0}
+    },
+    "multipliers": [1.0, 1.5, 2.0],
+    "delay_variants": ["no_delay", "one_bar_delay"],
+    "rationale": "proxies are set at roughly twice typical ECN all-in round-trip costs for these majors (UNVERIFIED practitioner levels, frozen for stress only); x2.0 is the survival condition"
+  },
+  "pair_universe": {
+    "pairs": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+    "window": "2020-01-29 -> 2026-09-02 H1 canonical (approx 6.59y per pair), all 7 pairs evaluated identically",
+    "preregistered_heterogeneity_prediction": "USD/JPY's 'Tokyo morning' is its home liquidity session, not a quiet window; the mechanism should therefore be weakest on USD/JPY and strongest on EUR/USD, GBP/USD, USD/CHF. This sub-prediction is evaluated but NOT a kill rule."
+  },
+  "anchor_neighbour_negative_control": {
+    "anchor": {
+      "definition": "exactly the mechanism in entry_exit_and_rollover_flat_rule: Tokyo range [09:00,15:00) JST (6 bars), London decision window [08:00,12:00) London (4 bars), opposite-extreme stop, 15:00 NY flatten",
+      "why_it_validates": "if the London-open stop-cascade / expansion mechanism is real, completed-bar closes beyond a quiet Tokyo range should be followed by directional continuation that survives the frozen conservative cost matrix"
+    },
+    "neighbour": {
+      "definition": "single preregistered adjacent variant: Tokyo range widened by one bar on each side, [08:00,16:00) JST (8 bars); every other element identical",
+      "why_it_validates": "tests boundary sensitivity: a real session-structure mechanism degrades gracefully when the range window moves by one bar; a data-mined artifact typically flips sign or collapses",
+      "why_more_variants_are_forbidden": "any additional window would be a grid; the neighbour is fixed here, before any returns exist"
+    },
+    "negative_control": {
+      "definition": "identical rule on the identical range (same AH/AL from the same Tokyo bars, same completed-close breakout logic, same execution and 15:00 NY flatten), but entries restricted to completed bars stamped in [18:00, 21:00) America/New_York - the deep Asian quiet window for these pairs",
+      "why_it_destroys": "the mechanism's claim is session timing: expansion follows the London open, not the range level itself. Documented FX intraday volatility periodicity (Andersen & Bollerslev 1997) puts near-minimum activity in this control window. If the same breakout signal carries equal-or-greater net expectancy in the quiet window, the session-timing story is false - the rule is generic breakout beta - and the anchor is rejected",
+      "causality_note": "the control holds the signal constant and moves only the session hour of execution, isolating the timing channel"
+    }
+  },
+  "falsification_rule": {
+    "scope": "evaluated only in the later authorized phase on the full canonical H1 window per pair; nothing here computes or inspects returns",
+    "statistic_per_pair_per_arm": "per-trade net log return (bps) under the stated stress cell; summary = mean trade expectancy with day-clustered t-stat, plus trade count",
+    "kills": {
+      "K1_viability": "FAIL if fewer than 4 of 7 pairs have mean net trade expectancy > 0 at stress x1.0/no-delay, OR fewer than 4 of 7 at x1.5/one-bar-delay, OR any pair below -5 bps/trade at x1.5/one-bar-delay",
+      "K2_session_causality": "FAIL if anchor mean net expectancy (x1.0/no-delay) does not exceed the negative control's in at least 5 of 7 pairs",
+      "K3_neighbour_robustness": "FAIL if Spearman rank correlation of anchor vs neighbour mean net expectancy across the 7 pairs is below +0.5",
+      "K4_cost_fragility": "FAIL if the sign of mean net expectancy differs between x1.0 and x2.0 in 4 or more pairs"
+    },
+    "survival_condition": "K1 AND K2 AND K3 AND NOT K4 all hold; any other outcome falsifies the proposal as specified; no re-specification, no parameter rescue, no window change permitted after any return is visible",
+    "no_grid_search": "anchors contain zero free parameters; the single neighbour is preregistered; no other configuration is evaluable under this proposal"
+  },
+  "expected_regimes": {
+    "favours": "post-compression expansion days; London/NY trend days; macro-surprise weeks with stop cascades at session opens; normal-liquidity Tue-Thu",
+    "adverse": "holiday-thinned weeks; persistent chop around the range edge (whipsaw at x1.5+ costs); regimes where Asian hours carry the volatility (JPY-centered shocks - preregistered USD/JPY weakness); low-range regimes where stop clusters sit inside noise",
+    "structural_bounds_not_results": "at most one trade per invalid-Monday-excluded NY trading day; expected order of magnitude 300-900 trades/pair over 6.59y - design bounds only, no returns computed here"
+  },
+  "dst_session_clock_spec": {
+    "frozen_calendar": "trading week Sunday 21:00 America/New_York open -> Friday 16:00 America/New_York close; daily rollover 17:00 America/New_York; all boundaries computed via zoneinfo named zones (DST-correct), matching DEFAULT_FX_WEEK_CONVENTION in research/assets/forex/sessions.py",
+    "bar_labeling": "each canonical H1 bar is labeled by its UTC open instant; NY / London / Tokyo wall-clock labels are derived per bar via zoneinfo (America/New_York, Europe/London, Asia/Tokyo); UTC->zone mapping is single-valued so DST fall-back is unambiguous",
+    "transition_days": "US transitions occur ~02:00 local Sunday and UK transitions ~01:00 UTC Sunday: both fall outside all Mon-Fri session windows used here, so no session window is ever truncated by a DST transition on a trading day",
+    "flatten_boundary": "15:00 America/New_York wall-clock bar open (bar completion 16:00 NY), i.e. strictly before the 17:00 NY rollover by two full hours in both EST and EDT"
+  },
+  "exact_trial_count": {
+    "anchor_cells": 7,
+    "neighbour_cells": 7,
+    "negative_control_cells": 7,
+    "total_evaluation_cells": 21,
+    "stress_cells_per_cell": 6,
+    "statistic_sets_per_cell": 1,
+    "free_parameters_in_anchor": 0,
+    "preregistered_neighbours": 1,
+    "additional_variants_permitted": 0,
+    "grid_search": false,
+    "trial_count_frozen": "2026-09-03, before any return/PnL/backtest computation"
+  },
+  "data_fields_used": [
+    "twelvedata_h1_open (UTC-stamped canonical bars)",
+    "twelvedata_h1_high",
+    "twelvedata_h1_low",
+    "twelvedata_h1_close",
+    "bar open timestamp (UTC) for session mapping via zoneinfo"
+  ],
+  "data_fields_explicitly_not_used": [
+    "volume (null in canonical series; centralized FX volume forbidden)",
+    "bid/ask (UNAVAILABLE_FAIL_CLOSED)",
+    "rollover/financing (UNAVAILABLE_FAIL_CLOSED; flat-by-construction)",
+    "D1/H4 series (D1 context-only; H4 UNAVAILABLE_FAIL_CLOSED)",
+    "any other provider, any fundamental/macro series"
+  ],
+  "forbidden_assumptions_check": {
+    "centralized_volume_used": "PASS - not used",
+    "bid_ask_fabricated": "PASS - proxy spread is a frozen stress input only, never an executable price",
+    "financing_or_swap_modeled": "PASS - flat strictly before every rollover by construction; zero financing exposure",
+    "overnight_or_weekend_position": "PASS - flatten at/before 15:00 NY bar open; Friday rule leaves the weekend flat",
+    "intrabar_fill_assumed": "PASS - all fills at next allowed bar open",
+    "signals_on_incomplete_bars": "PASS - ranges and signals on completed bars only",
+    "grid_search_or_tuning": "PASS - zero free anchor parameters, one preregistered neighbour, 21 fixed cells",
+    "outcome_peeking_or_old_proposal_rescue": "PASS - outcome-blind; frozen research/proposals/forex/** not opened and not reused",
+    "beyond_authorized_data_contract": "PASS - Twelve Data H1 OHLC, 7 pairs, 2020-01-29->2026-09-02 only"
+  },
+  "literature_sources": [
+    {
+      "title": "Stop-Loss Orders and Price Cascades in Currency Markets",
+      "authors": "Carol L. Osler",
+      "year": 2005,
+      "url": "https://www.sciencedirect.com/science/article/abs/pii/S0261560604001147 (also FRBNY Staff Report No. 150, 2002: https://www.newyorkfed.org/research/staff_reports/sr150.html)",
+      "retrieval_utc": "2026-09-03T08:26:56Z",
+      "claim": "clustered currency stop-loss orders contribute to rapid self-reinforcing price movements (cascades), so trends are especially rapid where stops cluster",
+      "verification": "VERIFIED_METADATA (title/venue/finding via search; full text not re-read); FX-specific and directly supports the anchor's counterparty story"
+    },
+    {
+      "title": "Support for Resistance: Technical Analysis and Intraday Exchange Rates",
+      "authors": "Carol L. Osler",
+      "year": 2000,
+      "url": "https://www.newyorkfed.org/research/epr/00v06n2/0007osle.html",
+      "retrieval_utc": "2026-09-03T08:26:56Z",
+      "claim": "intraday exchange rates exhibit support/resistence behavior at round numbers tied to clustered customer take-profit and stop-loss orders",
+      "verification": "UNVERIFIED (not re-fetched in this lane; title/venue recalled from the Osler 2005 search context)"
+    },
+    {
+      "title": "Intraday Periodicity and Volatility Persistence in Financial Markets",
+      "authors": "Torben G. Andersen, Tim Bollerslev",
+      "year": 1997,
+      "url": "https://www.sciencedirect.com/science/article/pii/S0927539897000042",
+      "retrieval_utc": "2026-09-03T08:26:56Z",
+      "claim": "FX return volatility has a pervasive, deterministic intraday periodicity keyed to the global session clock (Asian calm, European/NY activity peaks)",
+      "verification": "VERIFIED_METADATA (title/venue/finding via search; full text not re-read); supports both the anchor's session timing and the placement of the negative control in the activity trough"
+    },
+    {
+      "title": "Transfer claim: Tokyo-range breakout edge concentrated at the London open in G10 spot FX at H1",
+      "authors": "this proposal (hypothesis under test)",
+      "year": 2026,
+      "url": "n/a - preregistered hypothesis",
+      "retrieval_utc": "2026-09-03T08:26:56Z",
+      "claim": "that the documented periodicity plus stop-cluster mechanics produce a tradable, cost-surviving H1 breakout edge in 2020-2026 Twelve Data data",
+      "verification": "UNVERIFIED - this is exactly what the falsification rules exist to test"
+    }
+  ],
+  "label": "RESEARCH_CANDIDATE_NOT_LIVE_READY"
+}

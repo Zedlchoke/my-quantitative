@@ -1,0 +1,39 @@
+{
+  "schema": "forex_free_v1_runner_api_notes_v1",
+  "recorded_utc": "2026-09-03T12:35:00Z",
+  "producer": "A1_FOREX_CONTROLLER",
+  "purpose": "Verified-at-runtime API facts for wiring scored_runner.py (F8). Every item below was executed against the real modules, not inferred.",
+  "bar_adapters": {
+    "canonical_store": "gitignored data_raw/forex_free_v1/{TAG}_1h_*_a.json windows; td_loader.load_pair_h1(pair, data_root, request_manifest) -> (rows, quarantined); rows use key 'datetime' = 'YYYY-MM-DD HH:MM:SS' (naive UTC string) and string prices",
+    "family1_rows": "family1.load_bars requires {'timestamp': ISO-8601 UTC AWARE string (e.g. datetime.fromisoformat(dt).replace(tzinfo=timezone.utc).isoformat()), 'open','high','low','close': REAL NUMBERS (strings rejected)}; returns tuple[Bar,...]",
+    "family2_rows": "family2.load_bars requires {'datetime': tz-AWARE ISO (naive rejected by _parse_utc), prices as floats per _as_finite_float}; returns BarSeries; same canonical rows converted with .isoformat() aware form"
+  },
+  "run_arm": {
+    "signature_both": "run_arm(bars, arm_id, cost_tier, pair=None) -> dict",
+    "cost_tiers": [1.0, 1.5, 2.0],
+    "tier_semantics": "cost = 1.5 bps/side x tier on EVERY fill; tier 2.0 additionally applies the frozen one-event entry delay",
+    "delay_param": "NOT a parameter; tier 2.0 implies S3 delay inside the modules"
+  },
+  "family1_result_shapes": {
+    "fills": "list of {trade_id: 'anchor|PAIR|YYYY-MM-DD', role: 'ENTRY'|'FLATTEN', instant: ISO string, price: float, side: 'BUY'|'SELL', cost_bps: float}",
+    "cashflows": "list of {trade_id, position: +1/-1, entry_instant, exit_instant, gross_return_frac, cost_frac, net_return_frac} — one per trade; net_return_frac x NOTIONAL = net PnL",
+    "trade_grouping": "fills group by trade_id; cashflows already per-trade (preferred extraction source)",
+    "extra_keys": ["run_digest", "canonical_json", "schedule_only", "scoring_authorized", "feasibility", "decisions_per_year", "turnover", "bar_span"]
+  },
+  "family2_result_shapes": {
+    "cashflows": "list of {arm_id, pair, day: 'YYYY-MM-DD', gross_ret, cost_ret, net_ret} — per-trade net returns",
+    "fills": "per-fill records (entry/exit) with own fields; extraction uses cashflows for PnL and fills for timestamps if needed",
+    "arm_registry": "family2.ARM_IDS + family2.arm_identity(arm_id) -> sha256 digest; ARM_REGISTRY/ArmSpec(arm_id, tz, tz_name, anchor_hour, direction_multiplier)"
+  },
+  "family1_arm_configs": "family1.frozen_arm_configs() -> anchor/neighbour/control; neighbour differs by session_zone (America/New_York vs Europe/London); control carries position_sign -1",
+  "scoring_gate": "family1.run_arm returns 'scoring_authorized': False (hard-coded at family1.py:718 in dry-run context). BEFORE any scored cell, locate the documented authorization mechanism (grep scoring_authorized family*.py fully) and set it through that mechanism only; the runner must refuse to publish a cell whose run reports scoring_authorized false.",
+  "runner_design_frozen": {
+    "notional_usd_unit": 10000,
+    "folds": "3 equal chronological thirds by exit instant",
+    "cell": "family x arm across 7 pairs; pnl per trade = net_return_frac (family-specific) x 10000",
+    "metrics": "after-cost expectancy/trade, position PF, per-fold pnl/expectancy/pf/positive, MDD on cumulative chronological pnl, pair/fold concentration of positive pnl",
+    "stage_a_gates": "expectancy>0, PF>=1.10, >=2/3 folds positive, no fold PF<0.80, MDD<=12% of notional, no fold >50% of positive pnl, no pair >40%",
+    "accounting": "observed counter +1 per computed cell before publication; publication idempotent by cell digest; replay adds nothing",
+    "stress_axes": "cost tiers x{1,1.5,2} (+delay at top), drop-one-pair, drop-one-fold"
+  }
+}

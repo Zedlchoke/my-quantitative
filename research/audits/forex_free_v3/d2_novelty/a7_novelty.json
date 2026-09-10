@@ -1,0 +1,271 @@
+{
+  "schema": "forex_free_v3_a7_novelty_audit_v1",
+  "audited_at_utc": "2026-09-04T15:05:00Z",
+  "stamp_source": "machine_date_u",
+  "auditor": "A7-N (independent novelty/anti-rescue audit, phase V3-D2)",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/d2-a7-novelty",
+  "branch": "orca/forex-free-v3-d2-a7-novelty",
+  "head_sha_at_audit": "ac83dc80dce6664e92e09f30ec4b4be100cc7608",
+  "porcelain_at_start": "clean",
+  "authority": [
+    "research/control/forex_free_v3_run/forbidden_family_inventory.json (4 cumulative forbidden rows + blanket clauses; confirmatory_region NONE)",
+    "/Users/hoangminhlong/my-quantitative/PLAN_forex_v3.md sections 1, 1.1, 7, 8",
+    "research/control/forex_free_v3_run/baseline_invariants.json (gates, clock rule, cost schedule, dual book, financing formula, sample floors, benchmark treatment)",
+    "research/control/forex_free_v3_run/data_authority_v3.json (BIS_CBPOL / ECB_SDMX AUTHORIZED_FOR_V3_RESEARCH; NOT_PROVEN_ON_LIVE_FETCH caveat; financing disposition)",
+    "research/control/forex_free_v2_run/forbidden_family_inventory.json @ 2d68c81 (incorporated by reference; checked: adds no rows beyond the 4 carried into the V3 inventory)"
+  ],
+  "scope": [
+    "research/proposals/forex_free_v3/a4_lane/proposal_1.json (+ .md)",
+    "research/proposals/forex_free_v3/a4_lane/proposal_2.json (+ .md)",
+    "research/proposals/forex_free_v3/a5_lane/proposal_1.json (+ .md)",
+    "research/proposals/forex_free_v3/a5_lane/proposal_2.json (+ .md)",
+    "research/proposals/forex_free_v3/a6_lane/proposal_1.json (+ .md)",
+    "research/proposals/forex_free_v3/a6_lane/proposal_2.json (+ .md)"
+  ],
+  "method": "Per PLAN §1.1 and the inventory audit_note: rank/feature comparison of every proposal against every forbidden row on five features (information source, decision clock, conditioning variable, holding, direction rule); rename/invert/re-clock test; rescue-clause scan; control causality (non-strawman) check; outcome-blind attestation check; macro-flag consistency check; cross-proposal duplicate check. A proposal is INELIGIBLE if any forbidden row's operative information source and conditioning survive in it as a renamed, sign-inverted or re-clocked variant (operationalized: the row's observable appears in the proposal, possibly transformed), or if any rescue clause fires.",
+
+  "feature_table": {
+    "forbidden_rows": {
+      "F1_v1_family1": {
+        "mechanism": "London-open momentum continuation at intraday clocks",
+        "source": "price session structure (session-open move, free G10 bid/mid)",
+        "clock": "intraday",
+        "conditioning": "session-open event at London/NY open",
+        "holding": "intraday session-scale",
+        "direction_rule": "continuation of the session-open move",
+        "forbidden_variants": ["NY-open nearby-clock continuation", "session relabeling", "sign inversion", "threshold/lookback neighbourhood rescue"]
+      },
+      "F2_v1_family2": {
+        "mechanism": "late-NY standardized-extension fade at intraday clocks",
+        "source": "price session structure (standardized late-session extension)",
+        "clock": "intraday",
+        "conditioning": "standardized session-extension level",
+        "holding": "intraday session-scale",
+        "direction_rule": "fade of the extension",
+        "forbidden_variants": ["nearby threshold variants", "nearby horizon variants", "sign inversion", "lower assumed fees"]
+      },
+      "F3_v2_family1": {
+        "mechanism": "Tokyo-range compression -> London-morning expansion",
+        "source": "price session structure (overnight range compression)",
+        "clock": "intraday",
+        "conditioning": "Tokyo-range compression state",
+        "holding": "intraday London-morning",
+        "direction_rule": "expansion breakout continuation",
+        "forbidden_variants": ["pair subsets", "session/clock tweaks", "sign inversion", "threshold relaxation"]
+      },
+      "F4_v2_family2": {
+        "mechanism": "London-AM range break with retest-hold confirmation",
+        "source": "price session structure (AM range break + retest)",
+        "clock": "intraday",
+        "conditioning": "range-break + retest-hold state",
+        "holding": "intraday",
+        "direction_rule": "breakout continuation confirmed by retest-hold",
+        "forbidden_variants": ["pair subsets", "session/clock tweaks", "sign inversion", "threshold relaxation"]
+      }
+    },
+    "proposals": {
+      "FXFV3-A4-P1": {
+        "title": "Post-availability drift in the direction of a policy-rate change",
+        "source": "macro vintage series (BIS WS_CBPOL change events, availability-gated); prices only for fills/PnL",
+        "clock": "daily 16:00-NY, event-driven (decisions only on newly-eligible change events)",
+        "conditioning": "policy-rate change event availability (available_time_utc <= T)",
+        "holding": "10 sessions (neighbour 5)",
+        "direction_rule": "sign of the rate change (hike long / cut short the area's currency); no price input to direction",
+        "macro_conditioned_declared": true
+      },
+      "FXFV3-A4-P2": {
+        "title": "Policy-rate differential divergence trend at a weekly clock",
+        "source": "macro vintage series (BIS WS_CBPOL as-of differential)",
+        "clock": "weekly (Wednesday 16:00-NY; holiday => whole-week NO_TRADE, never re-clocked)",
+        "conditioning": "sign of 26-week change in the availability-gated policy-rate differential",
+        "holding": "1 week (5 sessions) with zero-trade roll while direction unchanged",
+        "direction_rule": "sign(d(T) - d(T-26w)); level => NO_TRADE; carry-adjacent disclosed (change not level)",
+        "macro_conditioned_declared": true
+      },
+      "FXFV3-A5-P1": {
+        "title": "Policy-divergence-gated daily trend",
+        "source": "daily price trend (21d) for direction + macro vintage drift (63d) as gate",
+        "clock": "daily 16:00-NY",
+        "conditioning": "strict sign agreement of m(21d) and g(63d differential drift)",
+        "holding": "multi-day state persistence (exit on sign flip)",
+        "direction_rule": "continuation of the pair's own daily trend, gated by macro drift agreement",
+        "macro_conditioned_declared": true
+      },
+      "FXFV3-A5-P2": {
+        "title": "Daily panel-outlier reversal in a high-dispersion state",
+        "source": "daily 16:00-NY closes, cross-sectional (7-pair panel)",
+        "clock": "daily 16:00-NY",
+        "conditioning": "HIGH-dispersion state (panel sd > trailing 126d median) + panel z threshold |z|>1",
+        "holding": "z zero-crossing or 10-bar time stop",
+        "direction_rule": "fade of the panel-relative 5-day outlier",
+        "macro_conditioned_declared": false
+      },
+      "FXFV3-A6-P1": {
+        "title": "Realized-vol regime-gated policy-rate-differential carry",
+        "source": "macro vintage differential level (direction) + own realized range (gate)",
+        "clock": "daily 16:00-NY",
+        "conditioning": "LOW-vol state (20d block mean vs median of 10 prior blocks; no tuned threshold)",
+        "holding": "state-driven multi-day (exit on HIGH state or differential sign flip)",
+        "direction_rule": "sign of the differential LEVEL (carry direction), vol-gated; carry-adjacent disclosed",
+        "macro_conditioned_declared": true
+      },
+      "FXFV3-A6-P2": {
+        "title": "Cross-pair information diffusion: leave-one-out basket lead-lag",
+        "source": "daily 16:00-NY closes, cross-pair (leave-one-out mean of other 6 pairs)",
+        "clock": "daily 16:00-NY",
+        "conditioning": "none (always-on sign of the LOO lead)",
+        "holding": "5 NY-days fixed (neighbour 2)",
+        "direction_rule": "continuation of the cross-pair common-factor lead",
+        "macro_conditioned_declared": false
+      }
+    }
+  },
+
+  "pairwise_feature_comparison": {
+    "note": "distinct_features counts how many of the 5 features differ in kind between the proposal and the forbidden row. 'PARTIAL direction-class' = only the abstract continuation/fade class is shared; the operative object and horizon differ. Ineligibility requires the row's operative observable (intraday session geometry) to survive in the proposal; no pair meets that.",
+    "rows": {
+      "FXFV3-A4-P1": {"vs_F1": 5, "vs_F2": 5, "vs_F3": 5, "vs_F4": 5, "shared_features": "none (all five features differ in kind; direction is macro-signed, not price-signed)"},
+      "FXFV3-A4-P2": {"vs_F1": 5, "vs_F2": 5, "vs_F3": 5, "vs_F4": 5, "shared_features": "none (weekly clock, macro conditioning, one-week holding, macro-signed direction)"},
+      "FXFV3-A5-P1": {"vs_F1": 4, "vs_F2": 5, "vs_F3": 5, "vs_F4": 5, "shared_features": "vs_F1 direction-rule class only: both are 'continuation', but F1 continues the session-open move at an intraday clock while A5-P1 continues the pair's own 21-day daily trend gated by macro drift; F1's observable (session-open behavior) appears nowhere"},
+      "FXFV3-A5-P2": {"vs_F1": 5, "vs_F2": 4, "vs_F3": 5, "vs_F4": 5, "shared_features": "vs_F2 direction-rule class only: both 'fade an extension', but F2 fades the standardized LATE-SESSION extension at an intraday clock while A5-P2 fades the 5-day panel-relative return outlier at a daily clock under a dispersion-state gate; F2's observable (session geometry) appears nowhere"},
+      "FXFV3-A6-P1": {"vs_F1": 5, "vs_F2": 5, "vs_F3": 5, "vs_F4": 5, "shared_features": "none (direction from differential LEVEL gated by a daily vol state; no session structure anywhere)"},
+      "FXFV3-A6-P2": {"vs_F1": 4, "vs_F2": 5, "vs_F3": 4, "vs_F4": 4, "shared_features": "direction-rule class only vs F1/F3/F4: both 'continuation', but the forbidden rows continue session-structure moves at intraday clocks while A6-P2 continues the leave-one-out cross-pair daily mean; none of the forbidden rows is a cross-pair lead-lag construction"}
+    },
+    "minimum_distinct_features_any_pair": 4,
+    "rename_invert_reclock_test": "No proposal contains any forbidden row's operative observable. Source and clock differ in kind for all 24 proposal-row pairs (macro-vintage or daily-grain cross-sectional price vs intraday session structure). Sign inversion: no proposal trades an inverted forbidden signal (A4-P1's internal sign-flip arm is a preregistered causal control that can only add falsification, never a rescue). Re-clock: the inventory's re-clock guard targets intraday->nearby-clock moves of the same signal; moving to the ex-ante frozen daily-or-slower rule with a different observable is not a re-clock."
+  },
+
+  "rescue_clause_scan": {
+    "clock_rule": "All six decision clocks are daily or slower (event-driven daily, weekly, or daily 16:00-NY) per baseline_invariants v3_decision_clock and PLAN §2; no intraday decision clock anywhere. Compliant, and chosen ex ante by the frozen invariant, not outcome-driven.",
+    "cost_rule": "All six use the frozen 1.5 bps/side base with tiers {1.0,1.5,2.0} -> 1.5/2.25/3.0 bps/side, F1-fixed application to BOOKED stress PnL via book_stress, delay stress carried unblended, break-even diagnostic explicitly never a fee rescue. No lower fee assumptions anywhere.",
+    "pair_subsets": "None; all six trade the full frozen 7-pair universe with explicit no-ex-ante-subsetting justifications; concentration/USD-drift/drop-one gates handle heterogeneity ex post.",
+    "sign_inversion_of_rejected_families": "None as a trading rule. A4-P1's control is the only sign flip and it is internal, preregistered, and falsifying.",
+    "session_relabeling": "None; no proposal uses a session label or session window in any decision.",
+    "threshold_relaxation": "None of a forbidden row: A5-P2's z=1.0 and A6-P1's median split are thresholds on NEW observables, not relaxed parameters of session-structure rows.",
+    "regrading_or_result_aware_reuse": "None; all six are fresh blind packets with new hypothesis_ids and independent designs (A6 discloses reading V2 predecessor packets for novelty differentiation only — mechanism knowledge, permitted; no outcome artifacts).",
+    "verdict": "PASS for all six; no rescue operation fires."
+  },
+
+  "cross_proposal_duplicates": {
+    "pairwise_checked": ["A4-P1 vs A4-P2", "A4-P1 vs A5-P1", "A4-P1 vs A5-P2", "A4-P1 vs A6-P1", "A4-P1 vs A6-P2", "A4-P2 vs A5-P1", "A4-P2 vs A5-P2", "A4-P2 vs A6-P1", "A4-P2 vs A6-P2", "A5-P1 vs A5-P2", "A5-P1 vs A6-P1", "A5-P1 vs A6-P2", "A5-P2 vs A6-P1", "A5-P2 vs A6-P2", "A6-P1 vs A6-P2"],
+    "duplicates_found": [],
+    "duplicate_verdict": "No two proposals are the same mechanism in different clothes. Closest adjacencies are recorded as genus overlaps (MEDIUM, non-binding) below.",
+    "genus_overlaps_non_binding": [
+      {
+        "members": ["FXFV3-A4-P2", "FXFV3-A5-P1", "FXFV3-A6-P1"],
+        "genus": "policy-rate-differential-conditioned (all three read the same adopted BIS WS_CBPOL differential ingredient: A4-P2 direction=26w drift; A5-P1 gate=63d drift; A6-P1 direction=level)",
+        "why_not_duplicates": "Direction rules differ in kind (drift sign vs trend-gated-by-drift vs level sign), clocks differ (weekly vs daily), and each isolates its own ingredient via a different falsification structure (stale-shift control vs macro-only control vs sham derangement + +270d stale benchmark).",
+        "non_binding_remark_to_A1": "If more than one of the three is selected, record a merge caveat in the V2 selection-freeze style (super_family: shared macro-differential genus; one survivor slot if both survive Stage-A) and note the shared single-series dependency: a WS_CBPOL live-coverage failure at the P3/Q gate would hit all selected members at once (all three already declare BLOCKED_DATA_OR_SELECTION on that gate). Selection remains A1's."
+      },
+      {
+        "members": ["FXFV3-A5-P2", "FXFV3-A6-P2"],
+        "genus": "daily cross-sectional price books on the same frozen 7-pair panel",
+        "why_not_duplicates": "Opposite exploitation signs (fade outliers vs continue the LOO mean), different statistics (dispersion-gated panel z vs leave-one-out mean sign), different holding laws (zero-cross/10-bar vs fixed 5-day).",
+        "non_binding_remark_to_A1": "If both are selected they partially offset each other and share the 16:00-NY daily-bar dependency; A9-F should verify Friday flat-bar handling for both (the driver that killed four V2 proposals). Selection remains A1's."
+      }
+    ]
+  },
+
+  "verdicts": [
+    {
+      "hypothesis_id": "FXFV3-A4-P1",
+      "verdict": "NOVELTY_PASS",
+      "checks": {
+        "feature_comparison_vs_4_rows": "PASS (5/5 distinct features vs every row; no session-structure observable anywhere; direction is macro-signed at a daily event-driven clock)",
+        "rescue_clause_scan": "PASS (frozen costs/tiers; all 7 pairs; daily clock per invariant; no inversion-of-forbidden as a rule)",
+        "control_causality": "PASS — canonical placebo: exact sign-flip of the conditioning on identical dates/fills/horizons; preregistered rule (control >= anchor or control positive-with-PF>=1.10 falsifies) makes it non-strawman; the incremental price-trend benchmark at identical event dates separately catches 'schedule-only' effects",
+        "outcome_blind_attestation": "PASS (specific: no outcome data, no V1/V2 PnL tables, no data loads, no backtests; signed 2026-09-04)",
+        "macro_flag_consistency": "PASS (macro_conditioned=true matches the BIS change-event conditioning; financing is a PnL adjustment, not the signal)"
+      },
+      "findings": ["FXFV3-A4-P1 attestation lacks the explicit written_before_scoring_utc timestamp field carried by A5/A6 packets (attestation text is signed with the date; cosmetic)"]
+    },
+    {
+      "hypothesis_id": "FXFV3-A4-P2",
+      "verdict": "NOVELTY_PASS",
+      "checks": {
+        "feature_comparison_vs_4_rows": "PASS (5/5 distinct vs every row; weekly clock; conditioning is the 26w differential change, not session geometry)",
+        "rescue_clause_scan": "PASS (carry-adjacency honestly disclosed; dual book with price-only sign non-inversion gate per PLAN §2 financing rules; holiday Wednesdays never re-clocked — the packet itself names re-clocking as a forbidden operation)",
+        "control_causality": "PASS — +182d availability shift destroys conditioning freshness on an identical schedule; preregistered non-reproduction rule; informative because the control coincides with the anchor exactly where freshness does not matter (policy-freeze windows) and diverges where it does",
+        "outcome_blind_attestation": "PASS (specific; signed 2026-09-04; no written_before_scoring_utc field — same cosmetic gap as A4-P1)",
+        "macro_flag_consistency": "PASS (macro_conditioned=true matches differential-change conditioning; financing level vs signal change distinction disclosed)"
+      },
+      "findings": [
+        "Scored window loses ~7 months to warmup (26w price benchmark), shortening F1; disclosed and gate-hardening, accepted ex ante",
+        "FXFV3-A4-P2 attestation lacks the explicit written_before_scoring_utc timestamp field (cosmetic)"
+      ]
+    },
+    {
+      "hypothesis_id": "FXFV3-A5-P1",
+      "verdict": "NOVELTY_PASS",
+      "checks": {
+        "feature_comparison_vs_4_rows": "PASS (4/5 vs F1: only the abstract continuation class is shared; the continued object is the pair's own 21-day daily trend, not a session-open move; 5/5 vs F2/F3/F4)",
+        "rescue_clause_scan": "PASS (no grid: single frozen 21/63 values; strict-inequality activation, no threshold parameter; frozen costs; Rossi 2013 carried as counterweight)",
+        "control_causality": "PASS — macro-direction-only control isolates the claimed interaction; preregistered fire rule (control exp>0 AND PF>=1.10); the ungated-momentum incremental benchmark separately enforces that the gate adds value; two independent falsification paths, neither strawman",
+        "outcome_blind_attestation": "PASS (strictest scope statement of the six lanes; written_before_scoring_utc 2026-09-04T13:57:11Z)",
+        "macro_flag_consistency": "PASS (macro_conditioned=true; BIS drift gate in the signal AND financing, both availability-gated)"
+      },
+      "findings": []
+    },
+    {
+      "hypothesis_id": "FXFV3-A5-P2",
+      "verdict": "NOVELTY_PASS",
+      "checks": {
+        "feature_comparison_vs_4_rows": "PASS (4/5 vs F2, the closest row: only the fade class is shared; observable is the 5-day panel-relative return at a daily clock vs F2's standardized intraday session extension; trade-time distributions non-overlapping by construction; 5/5 vs F1/F3/F4)",
+        "rescue_clause_scan": "PASS (z=1.0 is a threshold on a NEW observable, not a relaxed forbidden-row parameter; governor caps turnover; frozen costs; 'just short reversal' treated as a failure mode via the causal control, not a rescue)",
+        "control_causality": "PASS — own-time-series z control removes exactly the cross-sectional ingredient while keeping the state gate, threshold, exits, governor; preregistered fire rule; ungated-panel benchmark removes exactly the dispersion conditioning",
+        "outcome_blind_attestation": "PASS (strictest scope statement; written_before_scoring_utc 2026-09-04T13:57:11Z)",
+        "macro_flag_consistency": "PASS (macro_conditioned=false matches: no macro series in any decision; financing book computed as mandated book attribute only)"
+      },
+      "findings": ["Closest-row analysis vs V1 family2 is load-bearing and correctly argued; the causal control and incremental test must carry the decorrelation burden at scoring time (design already assigns them that role)"]
+    },
+    {
+      "hypothesis_id": "FXFV3-A6-P1",
+      "verdict": "NOVELTY_PASS",
+      "checks": {
+        "feature_comparison_vs_4_rows": "PASS (5/5 vs every row; direction from differential LEVEL gated by a daily realized-vol state; no session structure, no fade, no breakout anywhere)",
+        "rescue_clause_scan": "PASS (carry-adjacent per PLAN §2 with the exact financing honesty the plan demands: frozen policy-rate-differential formula, PIT effective-date semantics, disclosed approximation, dual book, price-only sign gate; +270d benchmark lag and +2 derangement are round frozen constants, not tuned)",
+        "control_causality": "PASS — sham derangement destroys exactly the pair-specific differential-direction link on an identical law; disclosed USD-leg leakage is honest and the extra preregistered rule (control exp >= 0.5x anchor also fires) tightens it beyond the inherited gate",
+        "outcome_blind_attestation": "PASS (fully enumerated read-scope including V2 predecessor packets for novelty differentiation — mechanism knowledge only, no outcome artifacts; written_before_scoring_utc 2026-09-04T13:59:00Z)",
+        "macro_flag_consistency": "PASS (macro_conditioned=true; direction source is the availability-gated differential; ECB SDMX fallback declared)"
+      },
+      "findings": ["Fama (1984) literature metadata flagged UNVERIFIED_METADATA_RECALLED by the proposal itself (search rate-limited); motivational only, no parameter taken from it"]
+    },
+    {
+      "hypothesis_id": "FXFV3-A6-P2",
+      "verdict": "NOVELTY_PASS",
+      "checks": {
+        "feature_comparison_vs_4_rows": "PASS (4/5 vs F1/F3/F4: only the abstract continuation class is shared; the continued object is the leave-one-out cross-pair daily mean, an ingredient no forbidden row contains; 5/5 vs F2)",
+        "rescue_clause_scan": "PASS (no session observable, no channel/breach, no dispersion spread; leave-one-out over all 7 pairs forecloses pair subsetting; frozen costs with cost-heavy cadence disclosed ex ante rather than rescued by lower fees)",
+        "control_causality": "PASS — own lag-1 self-signal control removes exactly the cross-pair ingredient; preregistered fire rule including the 0.5x anchor rule; the T-2 stale-lead placebo benchmark separately destroys freshness; two falsification paths, neither strawman",
+        "outcome_blind_attestation": "PASS (fully enumerated read-scope, no outcome artifacts; written_before_scoring_utc 2026-09-04T13:59:00Z)",
+        "macro_flag_consistency": "PASS (macro_conditioned=false; macro series enters only the mandated financing column, never direction)"
+      },
+      "findings": ["Highest cadence of the six (~1 RT per 6 NY-days, ~1,900 RT, ~5,700 bps aggregate base cost): cost-dominance is a live risk, disclosed ex ante by the proposal; break-even headroom is A9-F's check, not a novelty matter"]
+    }
+  ],
+
+  "findings_summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 5,
+    "INFO": 4,
+    "by_id": {
+      "M1": {"severity": "MEDIUM", "scope": ["FXFV3-A4-P2", "FXFV3-A5-P1", "FXFV3-A6-P1"], "finding": "Shared macro-differential genus (same BIS WS_CBPOL ingredient, three different mechanisms). Not duplicates; non-binding merge-caveat recommendation to A1 plus shared single-series live-coverage dependency at the P3/Q gate.", "binding": false},
+      "M2": {"severity": "MEDIUM", "scope": ["FXFV3-A5-P2", "FXFV3-A6-P2"], "finding": "Shared daily cross-sectional price genus with opposite exploitation signs; partially offsetting if both selected; common 16:00-NY Friday flat-bar dependency for A9-F. Non-binding.", "binding": false},
+      "L1": {"severity": "LOW", "scope": ["FXFV3-A4-P1", "FXFV3-A4-P2"], "finding": "Attestations lack the explicit written_before_scoring_utc timestamp field carried by A5/A6; attestation text signed with date only. Cosmetic consistency gap."},
+      "L2": {"severity": "LOW", "scope": ["FXFV3-A6-P1"], "finding": "Fama (1984) metadata UNVERIFIED_METADATA_RECALLED (self-disclosed); motivational only."},
+      "L3": {"severity": "LOW", "scope": ["FXFV3-A6-P2"], "finding": "Cost-heavy cadence (~5,700 bps aggregate base cost) — disclosed ex ante; A9-F break-even headroom check decides."},
+      "L4": {"severity": "LOW", "scope": ["FXFV3-A4-P2"], "finding": "~7 months warmup_discarded truncates the scored window and F1; disclosed and gate-hardening."},
+      "L5": {"severity": "LOW", "scope": ["FXFV3-A5-P2"], "finding": "V1-family2 adjacency is the audit's closest call; decorrelation rests on design features plus scoring-time control/incremental gates; correctly argued in the packet."},
+      "I1": {"severity": "INFO", "finding": "V2 terminal feasibility defect (16:00-NY flat bar absent on 410/2408 pair-Fridays) is structurally addressed by all six V3 packets via next-existing-bar + fail-closed NO_TRADE semantics — verified in every packet's fills/missing-bar rules."},
+      "I2": {"severity": "INFO", "finding": "Macro-conditioning quorum met: 4 of 6 proposals macro-conditioned (A4-P1, A4-P2, A5-P1, A6-P1) >= 3 required by baseline_invariants v3_sample_floors.macro_conditioning_quorum."},
+      "I3": {"severity": "INFO", "finding": "Never-scored V2 ancestors (FXFV2-A5-P1/P2, FXFV2-A6-P1/P2 — feasibility-failed, never scored, not forbidden rows) are adjacent to A5-P2/A6-P2/A6-P1 self-checks; all six V3 packets are fresh blind packets with independent designs, eligible under the V2 A7-N precedent for re-specified descendants of never-scored proposals."},
+      "I4": {"severity": "INFO", "finding": "A6 lanes disclose a broader attestation read-scope (V2 predecessor proposal packets for novelty differentiation, V1/V2 format references) than A4/A5; mechanism knowledge only, permitted by packet discipline, and more disclosing, not less."}
+    }
+  },
+
+  "blockers": [],
+  "audit_conclusion": "All six proposals are genuinely new mechanisms relative to the four-row cumulative forbidden inventory: no renamed, sign-inverted, or re-clocked variant of any forbidden row exists among them; no rescue clause fires; every causal control is a preregistered single-ingredient ablation on an identical schedule (non-strawman); all outcome-blind attestations are present and specific; macro flags are consistent with the actual conditioning. NOVELTY_PASS for all six. Selection is A1's; the two MEDIUM genus overlaps are non-binding selection-time remarks."
+}

@@ -1,0 +1,241 @@
+{
+  "schema": "forex_free_v8_d1_proposal_v1",
+  "cycle": "FOREX-FREE-V8",
+  "lane": "a5-axis3-open",
+  "wave_sha": "86338a4d99aeaa762da8aa3c6b39f72b8a7417b6",
+  "hypothesis_id": "FXFV8-A5-P2",
+  "title": "Vintaged 36-month real-misalignment anchor (realized-CPI PPP-deviation class) with absolute-band regime activation",
+  "outcome_blind": true,
+  "no_scored_results_used": true,
+  "pnl_anywhere": false,
+
+  "mechanism": "The forced, slow actors are cross-border price-takers: importers, exporters, corporate treasurers and reserve managers whose cost bases, wholesale contracts and hedging tenors reset on quarterly-to-annual cycles; they respond to a persistent real exchange-rate misalignment only after contracts roll, while the marginal monthly price-setter is fast financial flow that ignores purchasing-power anchors until misalignment is extreme. The effect exists because this slow/fast wedge is the documented PPP puzzle (Rogoff 1996: real exchange rates are volatile yet mean-revert with a multi-year half-life; Lothian-Taylor: long-run PPP holds over decades; Taylor-Peel-Sarno 2001: reversion is non-linear and ACCELERATES in the size of the deviation) -- once the vintaged real misalignment breaches wide absolute bands, the stabilizing real-economy flow dominates the financial flow and the currency reverts over multi-month horizons. The observable, per pair, is dev(t) = 36-month log FX return minus the vintaged 36-month cumulative relative CPI (home minus US), built as the sum of three consecutive within-snapshot y/y steps per AX2-C3 (rebase-safe: a base change rescales both ends of any y/y, so y/y steps are rebase-invariant exactly; a window spanning a REBASE_CLASS event is marked UNDEFINED and the pair force-exits -- no splicing, no splice-ratio adjustment), consumed daily at 16:00 America/New_York from as-of vintages (AX2-C1/C4). The family MUST fail when the misalignment reflects structural forces the monetary anchor cannot price -- terms-of-trade regime shifts (commodity booms repricing AUD/NZD/CAD fair value), productivity differentials, or durable rate-differential regimes that legitimately sustain wide deviations -- because then the deviation persists and no reversion arrives; it MUST also fail if the +7d sham-calendar neighbour reproduces the anchor (print-freshness carries no information, the cluster #10/#12 verdict), if the DGS10 exposure-form control reproduces it (nominal-yield shadow), or if publication lags (AU/NZ median 41d, GB/CA median 42d) leave the state too stale to matter after costs.",
+
+  "literature_anchors": [
+    "Rogoff (1996) 'The purchasing power parity puzzle' -- real exchange-rate mean reversion, 3-5y half-life; the canonical valuation-anchor mechanism",
+    "Lothian & Taylor (1996) 'Real exchange rate behavior: the recent float from the perspective of the past two centuries' -- long-run PPP as a slow anchor",
+    "Taylor, Peel & Sarno (2001) 'Nonlinear mean reversion in real exchange rates' -- reversion accelerates with deviation size; justifies ABSOLUTE misalignment bands (±10%) rather than standardized z-scores",
+    "Fama (1984) forward-premium puzzle lineage + long-horizon relative-inflation predictability of nominal FX moves -- realized relative inflation as the slow anchor's content",
+    "This is the second preregistered V4 inflation-axis class: 'real-differential and PPP-deviation classes, recorded DATA_BLOCKED_VALID in V4 and carried since' (PLAN_forex_v8.md §2; ledger V4 row) -- now fundable on vintaged CPI legs per the P2 census"
+  ],
+
+  "universe": {
+    "pairs": ["EURUSD", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "GBPUSD"],
+    "note": "6 of the 7 G10 spot pairs. USDJPY is EXCLUDED: USDJPY's home-economy realized-CPI leg (JP) is BLOCKED_DATA per AX2-C6 (OECD feed dead since 2021-06, no vintaged successor); a PPP-deviation anchor for USDJPY is unfundable this cycle. The mechanism is pair-specific, so USDJPY cannot borrow another economy's anchor.",
+    "per_pair_cpi_leg": {
+      "EURUSD": "CP0000EZ19M086NEST (EZ HICP, monthly, full S0, REBASE_CLASS handled by y/y steps per AX2-C3)",
+      "USDCAD": "CANCPIALLMINMEI (CA monthly; census trim ~2025-05, tail AX2-C5)",
+      "AUDUSD": "AUSCPIALLQINMEI (AU quarterly; census trim ~2025-03, tail AX2-C5)",
+      "NZDUSD": "NZLCPIALLQINMEI (NZ quarterly; census trim ~2025-03, tail AX2-C5)",
+      "USDCHF": "CP0000CHM086NEST (CH HICP, monthly, full S0; chosen over CHECPIALLMINMEI because the HICP leg funds the full S0 window -- the OECD leg trims at ~2025-06)",
+      "GBPUSD": "GBRCPIALLMINMEI (GB monthly; census trim ~2025-05, tail AX2-C5)"
+    },
+    "us_leg_all_pairs": "CPIAUCSL (US CPI, monthly, full S0)"
+  },
+
+  "conditioning_fields": [
+    {
+      "series_id": "CPIAUCSL",
+      "class": "us_cpi_monthly",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED",
+      "prints_in_S0": 102,
+      "transform": "US leg of the 36m accumulation: three consecutive within-snapshot y/y log steps (monthly periodicity)",
+      "as_of_rule": "AX2-C1/C4; median availability lag 13d"
+    },
+    {
+      "series_id": "CP0000EZ19M086NEST",
+      "class": "ez_hicp_monthly",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (rebase-carrying leg; mutation PASS x2 proves AX2-C3 on real data)",
+      "prints_in_S0": 102,
+      "transform": "home leg, EURUSD: three consecutive within-snapshot y/y log steps",
+      "as_of_rule": "AX2-C1/C4; median lag 19d"
+    },
+    {
+      "series_id": "CANCPIALLMINMEI",
+      "class": "ca_cpi_monthly",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED",
+      "prints_in_S0": 99,
+      "transform": "home leg, USDCAD: three consecutive within-snapshot y/y log steps; no clocks beyond last evidenced print (AX2-C5 trim ~2025-05)",
+      "as_of_rule": "AX2-C1/C4; median lag 42d"
+    },
+    {
+      "series_id": "AUSCPIALLQINMEI",
+      "class": "au_cpi_quarterly",
+      "freq": "quarterly",
+      "verdict": "PASS_PIT_EVIDENCED (REBASE INSIDE S0 measured at vintage 2018-10-09; y/y steps rebase-safe)",
+      "prints_in_S0": 33,
+      "transform": "home leg, AUDUSD: three consecutive within-snapshot y/y log steps over quarterly periodicity (P_Q/P_{Q-4} x P_{Q-4}/P_{Q-8} x P_{Q-8}/P_{Q-12} = 12-quarter span = 36 months); no clocks beyond last evidenced print (AX2-C5 trim ~2025-03)",
+      "as_of_rule": "AX2-C1/C4; median lag 41d (lag=1 archive pre-fill anomaly rows flagged for A3/I-Q per P0 verdict)"
+    },
+    {
+      "series_id": "NZLCPIALLQINMEI",
+      "class": "nz_cpi_quarterly",
+      "freq": "quarterly",
+      "verdict": "PASS_PIT_EVIDENCED",
+      "prints_in_S0": 33,
+      "transform": "home leg, NZDUSD: three consecutive within-snapshot quarterly y/y log steps (36-month span); AX2-C5 trim ~2025-03",
+      "as_of_rule": "AX2-C1/C4; median lag 41d"
+    },
+    {
+      "series_id": "CP0000CHM086NEST",
+      "class": "ch_hicp_monthly",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (REBASE_CLASS -- AX2-C3)",
+      "prints_in_S0": 102,
+      "transform": "home leg, USDCHF: three consecutive within-snapshot y/y log steps",
+      "as_of_rule": "AX2-C1/C4; median lag 19d"
+    },
+    {
+      "series_id": "GBRCPIALLMINMEI",
+      "class": "gb_cpi_monthly",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED",
+      "prints_in_S0": 99,
+      "transform": "home leg, GBPUSD: three consecutive within-snapshot y/y log steps; AX2-C5 trim ~2025-05",
+      "as_of_rule": "AX2-C1/C4; median lag 42d"
+    },
+    {
+      "series_id": "DGS10",
+      "class": "us_nominal_10y_CONTROL (AX2-C8 mandatory)",
+      "freq": "daily",
+      "verdict": "PASS_PIT_EVIDENCED",
+      "transform": "control arm only: Delta_dgs10(t) = DGS10(t) - DGS10(t-36m), both values as bound at t's as-of snapshot; in percentage points",
+      "as_of_rule": "AX2-C1/C4 identical semantics"
+    }
+  ],
+
+  "instrument_leg_disclosure": {
+    "what": "The FX leg of dev(t) is the traded pair's OWN daily 16:00-NY close history: ln(S(t)/S(t-36m)). It is the instrument being traded, not an external conditioning field; a PPP deviation is undefined without it, and AX2-C2 explicitly sanctions 'PPP deviations ... computed INSIDE one as-of snapshot' as a single-snapshot transform. No other price-derived feature (returns, momentum, ranges, PCA, leads) enters any computation -- the FX leg is a single 36-month point-to-point log ratio refreshed daily.",
+    "price_derived_class_check": "the 36-month horizon places the FX leg in a different regime from every forbidden price class (V1/V2 session/range: intraday; V7 lead-lag: cross-pair daily leads; V6 PC1: cross-pair daily PCA); ancestry rho at D2 is expected |rho|<=0.20 and is measured, not argued.",
+    "rebase_interaction": "the FX leg is a market price (no revisions/rebases); only the CPI legs carry the rebase event table."
+  },
+
+  "transform_semantics": {
+    "dev": "dev_pair(t) = ln(S(t)/S(t-36m)) - [ home_36m_infl(t) - us_36m_infl(t) ], positive dev = home currency REAL-OVERVALUED vs USD over the trailing 36 months; computed inside one as-of snapshot per clock (AX2-C2)",
+    "accumulation": "home/us 36m inflation = sum of three consecutive NON-OVERLAPPING within-snapshot y/y log steps at the leg's native periodicity (3 x 12m for monthly legs = 36m; 3 x 4-quarter for quarterly legs = 36m). y/y steps are exactly rebase-invariant (a base rescale cancels in any P/P_12m computed on one base); a 36m accumulation therefore fails ONLY if a REBASE_CLASS event (>2% per AX2-C3 event table) splits one of its three y/y steps at that vintage -- in that case dev_pair(t) is UNDEFINED.",
+    "undefined_state_handling": "while dev_pair is UNDEFINED (rebase-spanning window or un-refreshed trims), the pair holds NO ENTRY and any open position force-exits at the next clock; entries resume only after three clean post-event y/y steps rebuild the accumulation. This is the preregistered rebase handling -- no splice-ratio adjustment, no level-level conditioning across a rebase boundary (AX2-C3).",
+    "bands": "absolute log-unit bands per Taylor-Peel-Sarno nonlinear-reversion calibrations: enter |dev| >= 0.0953 (+/-10% real misalignment), exit |dev| <= 0.0488 (hysteresis at half the entry band). No trailing z-score (deliberately: avoids trailing-window data hunger on the 33-print AU/NZ quarterly legs and keeps the anchor absolute).",
+    "lags": "no discretionary lags; each leg enters at first clock strictly after ITS OWN available_time (AX2-C4); dev is recomputed from the latest bound values of all legs (a step-function state on the daily grid)"
+  },
+
+  "decision_clock": {
+    "instant": "daily 16:00 America/New_York (DST-correct)",
+    "rule": "AX2-C4; the state is stepwise (updates at CPI print availability), evaluated on every trading day; entries/exits only at the daily clock",
+    "calendar_conditioning": "the book holds through prints and is not windowed around any release instant; however, the anchor state refreshes at vintaged print availability, so the +7d sham-calendar variant is MANDATORY and occupies the neighbour arm (see arms/falsification_rule)"
+  },
+
+  "warmup": {
+    "description": "No in-S0 z-warmup (absolute bands). The 36m accumulations require vintaged CPI history back to 2015-01 and pair closes back to 2015-04 so that dev is defined from the S0 start (2018-04-04).",
+    "data_requirements_declared": "D1-DECLARED per p2_conditioning_clocks_v8.json inclusion_rule_r3 ('Long-run PPP fields requiring deeper price-level history are a D1-declared data requirement to be staged separately before I/Q -- not part of this census'): (a) staged vintaged CPI history 2015-01-01..2018-03-31 for the 8 legs above (FRED/ALFRED, as-of semantics identical to AX2-C1); (b) staged daily pair closes 2015-04-01..2018-04-03 for the 6 pairs (same free-source lineage as prior forex cycles), 16:00-NY clock. If staging cannot fund ANY pair's deep history, that pair is dropped; if fewer than 4 pairs fund, the family closes BLOCKED_DATA pre-scoring."
+  },
+
+  "entry_exit_fills": {
+    "activation": "enter when |dev| >= 0.0953; direction frozen (mean-reversion): dev >= +0.0953 (home REAL-OVERVALUED) => SHORT home currency (e.g., sell EURUSD); dev <= -0.0953 (home REAL-UNDERVALUED) => LONG home currency",
+    "exit": "exit when |dev| <= 0.0488 OR after 63 business days max hold, whichever first; force-exit on UNDEFINED dev (rebase-spanning window or post-trim tail)",
+    "reentry": "allowed at the next clock if the activation condition re-fires (persistent misalignment beyond max-hold re-quotes rather than rescuing a position); max one position per pair at any time",
+    "fills": "at the decision-instant price (daily 16:00-NY close snapshot); no intraday actions",
+    "sizing": "fixed notional 1 unit per pair; per-trade return in bps of notional"
+  },
+
+  "costs": {
+    "ladder": "1.5 bps/side x {1.0, 1.5, 2.0}",
+    "tier_primary": 2.0,
+    "round_trip_primary_bps": 6.0,
+    "books": "dual book: price-only and financing-adjusted; gates on fin-adj at tier 2.0 primary",
+    "cost_sanity": "63-business-day max hold => per-trade gross edge must exceed 6.0 bps; a multi-quarter reversion with misalignment bands of ±10% implies expected reversion drift an order of magnitude above the cost bar IF the mechanism is live -- arithmetic, not hope, decides at scoring"
+  },
+
+  "arms": [
+    {
+      "slot": "anchor",
+      "name": "36m vintaged real-misalignment anchor, absolute ±10% bands (fresh as-of legs)",
+      "driver": "dev_pair(t) per transform_semantics, all legs at AX2-C4 availability",
+      "activation": "|dev| >= 0.0953 enter, |dev| <= 0.0488 exit, 63bd max hold, mean-reversion direction",
+      "mechanism_bearing_component": "pair-specific vintaged real-misalignment anchor PLUS its print-freshness (the timing at which each leg's value becomes bindable)"
+    },
+    {
+      "slot": "neighbour",
+      "name": "+7d sham-calendar variant of the anchor (cluster #10/#12 mandatory sham)",
+      "driver": "identical book to the anchor EXCEPT every CPI leg's available_time is shifted +7 calendar days before the AX2-C4 binding (signal refresh lags 7 days on every print)",
+      "delta_vs_anchor": "ONLY the availability timing of the mechanism-bearing state changes; series, bands, direction, holds, costs identical",
+      "expected_behaviour": "if vintaged print-freshness is mechanism-bearing, the sham is same-sign but materially weaker (or negative -- the V6 precedent: a sham that LOSES while the anchor EARNS is evidence of genuine timing information); a sham that REPRODUCES the anchor is the falsification verdict",
+      "placement_note": "house standard (V5 precedent, cluster instance #10) places the +7d sham-calendar variant in a non-anchor arm; AX2-C8 binds the control arm to SAME as-of semantics, so the sham cannot also be the control without violating C8 -- hence sham=neighbour, DGS10=control."
+    },
+    {
+      "slot": "control",
+      "name": "DGS10 nominal-yield exposure-form control (AX2-C8 mandatory)",
+      "driver": "Delta_dgs10(t) = DGS10(t) - DGS10(t-36m) in percentage points, as-of semantics identical",
+      "activation": "Delta >= +1.0pp => LONG USD basket (the convenient exposure: rising US nominal yields are USD-supportive); Delta <= -1.0pp => SHORT USD basket; exit |Delta| <= 0.5pp or 63bd max hold; universe/clock/fills/costs identical to the anchor",
+      "delta_vs_anchor": "the mechanism-bearing component (pair-specific real-misalignment anchor) is REPLACED by the 36m nominal-yield change form; everything else identical",
+      "identifiability_note": "identifiability is preserved in the time-series dimension (same pairs, clock, holds, costs, driver cadence); the cross-section is necessarily USD-wide because no foreign nominal-yield series is authorized -- this is inherent to AX2-C8 and is disclosed, not hidden."
+    }
+  ],
+  "control_identifiability": "Each non-anchor arm differs from the anchor in EXACTLY one mechanism-bearing component: neighbour = availability timing (+7d), control = driver identity (PPP anchor -> nominal-yield change). No arm subsumes another: the anchor is pair-specific and price-level-based; the control is USD-wide and rate-based; the neighbour is the anchor degraded only in freshness. Near-identical or self-subsuming control risk is nil by construction.",
+
+  "falsification_rule": {
+    "preregistered": true,
+    "evaluation_book": "financing-adjusted, tier 2.0 primary, pooled S0 usable grid",
+    "rules": [
+      "R1 sham-reproduction kill (cluster #10/#12): neighbour (+7d sham) fin-adj expectancy > 0 AND >= 0.5 x anchor fin-adj expectancy => print-freshness carries no information, the anchor is a stale-state artefact => FAMILY DIES.",
+      "R2 nominal-shadow kill (AX2-C8): control fin-adj expectancy > 0 AND >= 0.5 x anchor fin-adj expectancy => PPP reversion was nominal-yield reversion => FAMILY DIES.",
+      "R3 mechanical reject: anchor fin-adj expectancy <= 0 => gate 1 rejects; if the per-pair breakdown localizes losses in terms-of-trade currencies (AUD/NZD/CAD) that is the recorded structural-regime failure mode of the anchor, not a path to a trimmed universe (universe was frozen at D1 -- altering it post-hoc is rescue).",
+      "R4 survival requires: anchor > 0 AND R1/R2 clear AND all ten p3 baseline gates pass (pf>=1.10, >=2/3 positive folds, pair concentration <=0.40 -- watch GBPUSD/USDCAD whose legs trim at ~2025-05, break-even <=1.5 bps, dual-book no inversion, LOPO sign-robust across the 6 pairs, stress tier 2.0 non-negative margin, mechanism sanity).",
+      "sham negative is EVIDENCE FOR the mechanism (V6 precedent: genuine calendar information) and is recorded, never chased with sign flips."
+    ],
+    "sham_calendar": {
+      "applicability": "MANDATORY -- the anchor state refreshes at vintaged CPI print availability",
+      "variant": "+7d sham-calendar variant of the anchor occupies the neighbour arm (fully specified above)",
+      "auxiliary": "the control arm additionally records its own +7d availability-shift variant (DGS10 consumed 7 days late) in the diag/control_rows artifact as a staleness diagnostic; it is not a scored arm and consumes no slot (AX2-C8 requires the scored control at same-as-of semantics)"
+    }
+  },
+
+  "expected_failure_interpretation": "If R1 fires: the deviation state is causally inert -- decisions do not depend on when prints arrive, so the PIT-vintage freshness that justified the whole census carries no content on this class; family dies as calendar-non-causal (the #10/#12 verdict pattern). If R2 fires: PPP reversion was nominal-rate reversion wearing price levels -- shadow recorded, no descendants. If R3 fires with term-of-trade concentration: the monetary anchor is invalid for commodity currencies in 2020-22 -- a genuine mechanism boundary, recorded as the expected failure mode of the class. If gates kill on costs/folds/stress while R1/R2 are clear: the anchor is real but its reversion horizon is longer than the S0 grid can monetize after 6.0 bps round trips. Every failure falsifies the family; no band, hold, universe or sign may be re-entered (unused slots never reassigned).",
+
+  "fold_structure": {
+    "n_folds": 3,
+    "rule": "equal thirds of the usable decision grid from S0 start (deep-history staged), split mechanically at run time; per-pair trims shorten F3 for GB/CA (~2025-05) and AU/NZ (~2025-03)",
+    "approx_bounds": {
+      "F1": "2018-04-04 .. 2020-09-08",
+      "F2": "2020-09-09 .. 2023-02-04",
+      "F3": "2023-02-05 .. 2025-07-24 (truncated per pair at its last valid conditioning clock per AX2-C5)"
+    },
+    "gate_binding": "positive populated folds >= 2 of 3; each fold must be populated for evaluability"
+  },
+
+  "expected_decision_count_sanity": {
+    "usable_clocks_S0": "~1835 per pair from 2018-04-04 (GBPUSD/USDCAD to ~2025-05, AUDUSD/NZDUSD to ~2025-03 per AX2-C5 trims)",
+    "expected_activation_share": "0.25-0.45 of clocks (G10 real misalignments are large and persistent: 10%+ deviations from 3y PPP were common over 2018-2025; hysteresis exit at 5% keeps episodes long)",
+    "expected_entries_pooled": "~60-160 anchor entries across 6 pairs (episodes of 30-63 business days; persistent misalignment re-quotes through the 63bd max hold)",
+    "non_vacuity_floor": ">= 50 pooled anchor entries AND >= 10 anchor entries in each of the 3 folds; below the floors the family closes VACUOUS pre-scoring (data-adequacy closure; unused slots never reassigned)",
+    "cost_viability_note": "long holds amortize the 6.0 bps round trip; the sanity check is that EPISODE counts (not clock counts) are what must clear the fold-population gates"
+  },
+
+  "lane_boundary_note": "A4 owns plain expectation-level conditioning (breakeven level/change, real-yield level/change, expectation series +/- foreign realized-inflation legs as INPUT to expectation books). This proposal consumes NO expectation series in its anchor at all: the mechanism-bearing ingredient is a DEVIATION-FROM-ANCHOR structure (36m real misalignment vs a purchasing-power anchor) with absolute-band regime activation -- a different observable pair (price-level anchor vs FX) and a different mechanism family (valuation-anchor reversion, the V4-carried PPP-deviation class). If D2 novelty measurement finds collision with an A4 proposal, the pre-selection rho/novelty measurement decides; nothing here asserts immunity in lieu of measurement.",
+
+  "ancestry_distinctness": {
+    "vs_session_momentum_fade_V1V2": "no session features; daily-or-slower only; the FX leg is a single 36m ratio, not a return stream",
+    "vs_range_structures_V2": "no ranges, breaks or compression observables",
+    "vs_policy_rate_carry_V3R_and_relabels": "no policy rates; no yield differentials; the DGS10 control MEASURES any nominal kinship instead of asserting its absence; expected pooled |rho|<=0.20 vs carry-region exposures at D2",
+    "vs_commodity_bloc_risk_off_V4": "no event baskets or risk-off gates; AUD/NZD are traded on valuation bands, not event conditioning",
+    "vs_release_window_avoidance_V5": "no windows around releases; the mandatory +7d sham measures any residual timing artefact",
+    "vs_reaction_direction_V6_V7": "no conditioning on release signs or post-release direction; positions persist through prints",
+    "vs_eurusd_lead_lag_V7": "no cross-pair leads; drivers are pair-specific vintaged CPI anchors",
+    "vs_usd_pc1_gated_reversal_V6": "no price PCA; the reversal gate is a pair-specific macro deviation, not a cross-pair factor",
+    "vs_real_yield_differential_lane1": "no real-yield series consumed at all (lane 1 is BLOCKED and unfundable; this class needs only realized price levels + FX)",
+    "vs_carry_front_door_V4_rho": "D2 pre-selection rho measurement against all forbidden ancestry is expected |rho|<=0.20 and is the binding test, never argued"
+  },
+
+  "ax2_compliance": {
+    "AX2_C1": "as-of pulls only for every leg including deep-history staging (declared data requirement)",
+    "AX2_C2": "dev, accumulations and Delta_dgs10 computed inside single as-of snapshots; no cross-vintage splicing",
+    "AX2_C3": "y/y-step accumulation is exactly rebase-invariant; REBASE_CLASS-spanning windows marked UNDEFINED with preregistered force-exit/no-entry; rebase event table ships with the dataset and appears in diagnostics; no splice-ratio adjustment anywhere",
+    "AX2_C4": "each leg consumed at first daily 16:00-NY clock strictly after its own available_time; mutation-test binding per leg class (GB monthly PASS x2, EZ monthly PASS x2, AU quarterly PASS x2, US daily PASS already evidenced)",
+    "AX2_C5": "GB/CA tails at ~2025-05, AU/NZ at ~2025-03 honoured (force-exit at trim; no current-vintage backfill)",
+    "AX2_C6": "USDJPY excluded (JP leg BLOCKED)",
+    "AX2_C7": "full provenance per conditioning row",
+    "AX2_C8": "DGS10 nominal-yield exposure-form control present as the control arm under identical as-of semantics"
+  }
+}

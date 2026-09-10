@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "role": "A_IMPL_RUNNER_I_FOREX_FREE_V3",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-runner",
+  "branch": "orca/forex-free-v3-i-runner",
+  "bootstrap_sha": "236dcdaaaffb66b2d8cd85d8e2984687f9bc6d67",
+  "commit_sha": null,
+  "measured_at_utc": "2026-09-04T14:58:50Z",
+  "stamp_source": "machine_date_u",
+  "clean": true,
+  "clean_note": "clean=true describes the state AFTER this lane's single clean commit; A1 verifies with git status --porcelain=v1 (must be empty) and git diff --check HEAD^ HEAD (must be clean).",
+  "allowed_globs": [
+    "research/assets/forex_free_v3/**",
+    "tests/assets/forex_free_v3/**",
+    "research/control/forex_free_v3_run/handoffs/i_runner.json"
+  ],
+  "changed_files": [
+    "research/assets/forex_free_v3/scored_runner.py",
+    "research/assets/forex_free_v3/exec_driver.py",
+    "research/assets/forex_free_v3/macro_reader.py",
+    "tests/assets/forex_free_v3/test_scored_runner.py",
+    "research/control/forex_free_v3_run/handoffs/i_runner.json"
+  ],
+  "deliverables": [
+    "Central V3 scored runner research/assets/forex_free_v3/scored_runner.py, adapted from the proven V2 architecture (family arm APIs -> runner books everything -> frozen gates -> once-only publish), now booking exclusively through the V3 P1 kernel (research/assets/forex_free_v3/accounting.py). The full FAMILY API CONTRACT is documented in the module docstring so the A5/A6 implementation lanes implement against it without reading runner internals: run_arm(arm, data_paths, macro_reader, freeze_token) -> {decisions, financing_events, meta}; decisions carry decision_id/pair/decision_ts/side/notional_usd/entry_bar_ts/entry_price/exit_bar_ts/exit_price/force_flat; financing_events carry {decision_id, financing_adjustment_usd, formula} which the runner carries, sums and digests but NEVER computes; meta declares decision_clock ('daily' enforced), usd_index_daily_returns, fill_delay_events, incremental_alpha, proposal_id.",
+    "V3 DELTA decision clock: runner consumes DECISION EVENTS at daily-or-slower granularity and fails closed (DecisionRuleError codes) on DECISION_CLOCK_VIOLATION (decision/fill instants must be completed 16:00 America/New_York daily bars via zoneinfo), ONE_EVENT_LAG_VIOLATION (fill must be strictly after the decision instant and within 4 days: Friday decisions fill Monday, same-bar fills forbidden), CLOCK_UNSUPPORTED (only declared 'daily' passes).",
+    "V3 DELTA fold force-flat: FOLD_FORCE_FLAT_VIOLATION on any trade spanning an internal fold boundary (2022-05-01 / 2024-07-01); force-flat trades closed at the boundary's last NY bar attribute cleanly to the entry fold; folds/purge (14d) inherited unchanged from V2 w2_freeze per baseline_invariants.json.",
+    "V3 DELTA dual book: every cell record carries price_only_pnl_usd AND financing_adjusted_pnl_usd as separate digest-covered kernel columns (book_dual); dry-run zeroes both as placeholders (scored=false, real_pnl=false); test pins digest + validate_scored_record DUAL_BOOK_VIOLATION on mutation.",
+    "V3 DELTA stress: F1-FIXED book_stress over the frozen ladder {1.0, 1.5, 2.0} with tier multipliers applied to BOOKED stress PnL and pairwise-distinct rows certified by the kernel; the frozen one-event delay (fill_delay_events) is carried UNBLENDED (delay_stress.carried_unblended=true, V3-L2); hand-computed tier nets 451.5454545455/450.0454545455/448.5454545455 with pure cost deltas -1.5/-3.0.",
+    "V3 DELTA break-even: break_even_cost_bps recorded per cell from the kernel (break_even_bps over gross price PnLs).",
+    "V3 DELTA financing gate: FINANCING_MANUFACTURES_EDGE fires when the financing-adjusted anchor expectancy is positive while the price-only expectancy is non-positive (financing must not manufacture the edge, PLAN section 12).",
+    "V3 DELTA timeout: 60-minute wall per arm (config, resource_contract) enforced by call_family_arm; timeout raises TechAbort and the exec driver takes the fail-closed TECHABORT path (run stops, nothing further booked/published, report records TECHABORT_TIMEOUT, exit 3).",
+    "V3 DELTA macro reader: research/assets/forex_free_v3/macro_reader.py wraps the P0 pit.select_asof core; PolicyRateReader.policy_rate(area, decision_ts)/differential(base, quote, ts) are availability-gated (available_time_utc <= T, effective semantics) and fail closed with MacroDataBlocked (BLOCKED_DATA) on missing vintage files/areas; no eligible vintage at T returns None (NO_EVAL, never backfilled); vintage JSON files are NormalizedRecord canonical payloads.",
+    "Gates enforced (stage_a_gates, frozen ex ante from baseline_invariants.json): EXPECTANCY_NONPOSITIVE (financing-adjusted), FINANCING_MANUFACTURES_EDGE, PF_BELOW_1.10, INCREMENTAL_ALPHA_NOT_POSITIVE (when meta supplies it), DECISION_FLOOR_NOT_MET (<40 decisions), FEWER_THAN_2_POSITIVE_POPULATED_FOLDS, POPULATED_FOLD_PF_BELOW_0.80, MDD_ABOVE_FROZEN_CEILING (2500 USD), POSITIVE_FOLD_SHARE_ABOVE_50PCT, PAIR_CONCENTRATION_ABOVE_40PCT, STRESS_EMPTY_TRADE_SET / STRESS_TIER_x_FAIL (pnl>0, PF>=1.0), DROP_ONE_PAIR_SURVIVAL_INSUFFICIENT (<5 of 7), USD_DRIFT_EXPLAINS_ANCHOR (|corr|>0.3 over >=60 days, runner-owned statistic over the frozen D1 index series). mechanism_sanity carries NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR and CONTROL_REPRODUCES_MECHANISM.",
+    "Publication: once-only, digest-addressed, behind a freeze token (FOREX_FREE_V3_W3): publish_cell requires an authorization file {freeze_token: ...} (LAUNCH_AUTHORIZATION_MISSING / FREEZE_TOKEN_MISMATCH), refuses dry-run records (REAL_PNL_REQUIRED_FOR_SCORED_PUBLICATION), computes gates into the payload and delegates to the kernel ScoredLedgerPublisher (published flipped true pre-digest, flock once-only, replay = zero delta).",
+    "exec_driver.py: serial per-family anchor->neighbour->control loop, --family family_id=module.path registry, modes dummy/scored, TECHABORT fail-closed path, forex_free_v3_exec_report_v1. Smoke-tested in dummy mode (exit 0, 3 cells + MECHANISM_SANITY).",
+    "Test suite tests/assets/forex_free_v3/test_scored_runner.py: 40 tests mirroring the 17 V2 runner tests adapted to V3 plus the required V3 additions (dummy end-to-end dry-run, once-only publish, dual-book presence+immutability, F1-fixed distinct stress rows, financing gate on a synthetic manufactured case, fold force-flat attribution, one-event-lag/clock rejections, USD-drift diag hand case, TECHABORT timeout, macro-reader gating/BLOCKED_DATA). All expected numbers are hand-computed literals; synthetic fixtures only."
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-runner && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3 -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "57 passed in 0.16s (40 runner + 17 existing accounting; the full pytest run remains A1's deferred gate and was NOT run by this lane). compileall clean on all four new files."
+    }
+  ],
+  "hand_computed_goldens": {
+    "fixture": "EUR/USD LONG 10000 USD-units, entry 1.10 -> exit 1.15; financing adjustment +2.0 USD carried by the family",
+    "gross_move_pnl_usd": 454.5454545455,
+    "price_only_pnl_usd": 451.5454545455,
+    "financing_adjusted_pnl_usd": 453.5454545455,
+    "stress_tier_nets": {"1.0": 451.5454545455, "1.5": 450.0454545455, "2.0": 448.5454545455},
+    "f1_cost_deltas": {"tier1.5_minus_base": -1.5, "tier2.0_minus_base": -3.0},
+    "break_even_bps_per_side": 227.272727,
+    "e2e_three_fixture_sums": {"gross": 203.8720538721, "price_only": 194.8720538721, "financing_adjustment": 2.5, "financing_adjusted": 197.3720538721}
+  },
+  "assumptions": [
+    "commit_sha is null BY DESIGN: this lane commits exactly once and the handoff file is inside that commit; A1 records the SHA with git log -1 --format=%H (subject starts with 'FOREX-FREE-V3 I-RUNNER:').",
+    "Family modules do not exist yet (A5/A6 lanes); the runner registry is populated at driver start via --family family_id=module.path. The dummy family used in tests implements the documented contract only.",
+    "Fold/purge semantics inherited UNCHANGED from V2 w2_freeze (entry-based, 14d purge after boundary) per baseline_invariants.json 'inherited unchanged'; the A5 packet's +/-14d entry-or-exit purge wording is stricter and is the family-lane's scheduling responsibility; the runner pins the frozen inherited convention.",
+    "usd_index_daily_returns (frozen D1 equal-weight formula) is computed family-side from the price snapshot and supplied via meta; the correlation statistic and its gate are runner-owned.",
+    "Stress gate evaluates the price-only booked tier PnL (pure cost component per V3-L2); the financing term is never stress-blended.",
+    "One scored-mode e2e compute_cell on synthetic fixtures exists in tests (freeze_token='scored-token-for-tests'); no real scored computation, no network, no data_raw reads.",
+    "V3-L3 applied: measured_at_utc stamped from machine `date -u`."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/assets/forex_free_v3/scored_runner.py",
+    "research/assets/forex_free_v3/macro_reader.py",
+    "research/assets/forex_free_v3/exec_driver.py",
+    "tests/assets/forex_free_v3/test_scored_runner.py",
+    "research/control/forex_free_v3_run/baseline_invariants.json"
+  ],
+  "next_action_for_a1": "Verify: (1) git -C <worktree> log -1 --format='%H %s' -> one commit on orca/forex-free-v3-i-runner, subject starting 'FOREX-FREE-V3 I-RUNNER:'; (2) git status --porcelain=v1 empty; (3) git diff --check HEAD^ HEAD clean; (4) re-run the targeted pytest command expecting exit 0 / 57 passed. Then hand the scored_runner module docstring FAMILY API CONTRACT to the A5 and A6 implementation lanes as the binding interface; integrate one family at a time with targeted tests after each pick."
+}

@@ -1,0 +1,139 @@
+{
+  "schema": "forex_free_v5_d1_blind_proposal_v1",
+  "hypothesis_id": "FXFV5-A5-P1",
+  "cycle": "FOREX-FREE-V5",
+  "lane": "A5 (blind proposal lane, vintaged market-based real-rate axis / axis 2)",
+  "base_sha": "e2b7a0e1e29794ca8449625f271f9a67c302fcf2",
+  "written_at_utc": "2026-09-05T16:08:06Z",
+  "authority": "PLAN_forex_v5.md sections 1, 2, 4; axis-2 funding decision delegated to P0b successor evidence; forbidden inventory research/control/forex_free_v4_run/forbidden_family_inventory.json binding on A5",
+  "mechanism_class": "breakeven-driven (inflation-expectations component of the nominal/real decomposition)",
+
+  "mechanism": {
+    "one_line": "Vintaged US 10-year breakeven-inflation SHOCK continuation: a 5-business-day change in ALFRED-vintaged T10YIE is a persistent inflation-path information shock that spot FX under-reacts to for 1-3 sessions because the marginal FX pricer (systematic accounts on a weekly CFTC re-weight cycle, corporate hedgers on a monthly cycle) updates slower than the dealer-intermediated breakeven market; the anchor trades the next 3 sessions in the sign of the shock.",
+    "mechanism_before_parameter": {
+      "who_is_forced_to_trade_or_slow_to_react": "TIPS/breakeven repricing originates with rates desks and dealer inventory in a thin, dealer-intermediated market; the FX side is repriced by systematic trend/CTA accounts that re-weight weekly (CFTC reporting cycle) and corporate/hedging flows that rebalance monthly. Neither is forced to react intraday to a breakeven move; the under-reaction window is 1-3 sessions.",
+      "why_the_effect_exists": "A 5-day breakeven change is a persistent information shock (it forecasts CPI-path revisions and Fed-relevant repricing), not microstructure noise; persistent shocks diffused into a market whose marginal participants update weekly produce same-sign drift, not instant random-walk pricing.",
+      "observable": "Same-sign FX drift over the 3 sessions following large 5-day breakeven moves, measurable per decision row with the vintaged as-of series; PIT-testable because each decision reads only rows whose ALFRED realtime_start vintage precedes it.",
+      "when_it_must_fail": "(1) When breakeven moves are liquidity/supply-technical (TIPS settlement, auction cycles, dealer balance-sheet) rather than information - the shock carries no inflation-path content and the book must degrade to noise. (2) When inflation is the market's dominant attention object (e.g. the 2021-22 regime) and repricing is same-session - the continuation window collapses; the frozen 3-fold structure will expose this as regime dependence and the fold gates must kill it. (3) If the effect is USD-index beta rather than inflation information, the runner-owned USD-drift diagnostic (|corr| > 0.30) fires.",
+      "control_that_kills_the_convenient_explanation": "Causal control arm = vintage-shuffled placebo: every decision reads the T10YIE value from a seeded, frozen shuffled vintage mapping (deterministic permutation with seed 20260905, each decision t mapped into [t-180, t-1] days, table committed at freeze). It preserves the series' marginal dynamics while destroying the as-of information linkage: if the placebo reproduces the anchor, the behaviour is generic FX drift, not vintage information, and CONTROL_REPRODUCES_MECHANISM kills the family. A second, unscored identifiability check at D2 (nominal-yield placebo: DGS10 5-day change, same clock and lag) kills the 'any US rates shock works' explanation."
+    },
+    "signal_definition": {
+      "series": "ALFRED T10YIE (10-Year Breakeven Inflation Rate, daily; nominal DGS10 minus real DFII10 decomposition)",
+      "shock": "d5(t) = T10YIE_vint(t) - T10YIE_vint(t - 5 business days), both reads strictly as-of decision time t",
+      "normalization": "z5(t) = d5(t) / rolling stdev of d5 over the trailing 252 vintaged daily observations, all as-of t (no backfill)",
+      "decision_rule": "z5(t) > 0 -> LONG the USD leg of every authorized pair; z5(t) < 0 -> SHORT the USD leg; z5(t) == 0 or no eligible vintage -> no decision (NO_EVAL, never backfilled). No activity thresholds, no sizing weights - sign-only, one mechanism."
+    }
+  },
+
+  "universe": ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD"],
+  "universe_note": "runner notation EUR/USD, GBP/USD, USD/JPY, USD/CHF, USD/CAD, AUD/USD, NZD/USD; USD appears as base or quote per market convention; the signal is common (US series) so pair_concentration (<=40%) and dropout (>=6/8) are the honest concentration police",
+
+  "data_source": {
+    "provider": "ALFRED (archival FRED, Federal Reserve Bank of St. Louis), keyless graph-CSV or api.stlouisfed.org with an OWNER key",
+    "series_ids": ["T10YIE"],
+    "series_roles": {"T10YIE": "anchor + neighbour + vintage-shuffled-control conditioning series"},
+    "vintage_semantics": "TRUE as-of per row: every series row must carry its ALFRED realtime_start vintage stamp; a decision at time t may read only rows with realtime_start <= t, mirroring the inherited PolicyRateReader as-of gating (missing eligible vintage -> None/NO_EVAL, never backfilled). The revision test - comparing the same observation_date across at least two distinct vintages - is the ONLY provable PIT check and is mandatory before S0: if T10YIE shows zero revisions across the S0 window, the PIT claim is unprovable and the cell is BLOCKED, not scored.",
+    "s0_window": "2018-04-04..2025-07-24",
+    "expected_coverage_check": "vintage-complete daily coverage of the S0 window must be MEASURED by the successor P0b probe before any read is legal; asserted bounds are never authorized (P-1)"
+  },
+
+  "data_availability": {
+    "status": "DATA_BLOCKED_VALID",
+    "blocker_citation": {
+      "authority_file": "research/control/forex_free_v5_run/p0b_alfred_probe_verdict.json",
+      "verdict": "BLOCKED_DATA_AUTHORITY",
+      "blockers_verbatim": {
+        "deterministic_retrieval": "FAIL - 1 success in 13+ attempts; channel fails the deterministic-retrieval data gate",
+        "endpoint_semantics": "NOT ESTABLISHED - alfredgraph.csv (vintage CSV) never returned bytes; the single fredgraph.csv success carried current data only (observation_date,value), no realtime/vintage column",
+        "coverage_vs_S0": "NOT MEASURABLE this host (no vintage payload retrievable)",
+        "revision_behavior": "NOT MEASURABLE this host",
+        "license": "LICENSE_UNVERIFIED_FAIL_CLOSED - legal/terms text unreachable from all channels; storage authorization cannot be granted without reading terms (handbook 11.4)",
+        "api_keyless": "GET api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL (no key) -> HTTP 400 'Variable api_key is not set' (host reachable, key required)"
+      },
+      "consequence_verbatim": "axis 2 (vintaged market-based real-rate structure via ALFRED) UNFUNDED this host; FOREX_FREE_V5 carries it as DATA_BLOCKED_VALID (pre-registered class, not forbidden, not rescuable without new evidence)"
+    },
+    "no_substitute_sources": "Per lane instruction: no substitute data sources; no softening of this field; the mechanism defines what WOULD be funded the moment availability evidence is wired."
+  },
+
+  "unblock_condition": {
+    "primary": "OWNER signs up for a FRED API key (free; signup is an owner action, never an agent action) and places it in gitignored .env; owner (or delegate under owner instruction) performs the FRED/ALFRED license review for internal research storage (handbook 11.4). p0b_alfred_probe_verdict.json records that api.stlouisfed.org was reachable from this host, so key-based PIT pull may work where graph CSV does not.",
+    "alternative": "Owner provides a different network path / machine and the probe is re-run there under the same evidence standard.",
+    "evidence_gate_that_would_unblock_this_proposal": "A successor P0b probe (A3 lane) must publish, from bytes with sha256: (1) deterministic retrieval: >= 3/3 consecutive successes on the vintaged endpoint; (2) vintaged payload with a per-row realtime_start column verified; (3) measured coverage of T10YIE vintages vs 2018-04-04..2025-07-24 at >= 99% of decision-clock bars; (4) a revision matrix comparing >= 2 distinct vintages of the same observation_date (the only provable PIT check); (5) FRED/ALFRED license text retrieved, archived, and internal-research storage authorized by the owner. Any miss -> the proposal stays DATA_BLOCKED_VALID."
+  },
+
+  "decision_clock": {
+    "clock": "daily 16:00 America/New_York completed bars (inherited DST-aware calendar; weekend gate: no fills Saturday/Sunday, market reopens Sunday 21:00 NY)",
+    "slower_or_equal_daily": true
+  },
+
+  "warmup": {
+    "declared_warmup_daily_bars": 257,
+    "composition": "252-bar trailing z-score window + 5-bar shock lag",
+    "consequence": "first decisions ~2019-05 given S0 start 2018-04-04; all three frozen folds expected populated; declared to the runner via meta.warmup_daily_bars for the a5_per_pair_day_normalized_v1 alpha window"
+  },
+
+  "features_and_lags": {
+    "features": ["T10YIE vintaged level (as-of)", "5-business-day change of T10YIE", "252-bar rolling stdev of the 5-day change (all as-of)"],
+    "lags": "decision at t uses vintages strictly available before t; entry bar is the next completed session bar after the decision (one-event-lag); no same-bar fills (ONE_EVENT_LAG_VIOLATION fatal)",
+    "forbidden_inputs": "no policy-rate series, no CPI prints, no announcement-ledger conditioning, no price-derived features other than the entry/exit execution prices themselves"
+  },
+
+  "entry_exit_fills": {
+    "entry": "next completed 16:00-NY session bar after the decision (market order at that bar); one position per pair max - a pair with an open position skips (no pyramiding); Friday decisions fill Monday (3-day weekend lag is legal under the frozen validator)",
+    "exit": "entry bar + 3 sessions, market order at that bar's 16:00-NY close (fixed horizon, no stop/target parameters)",
+    "force_flat": "fold-boundary force-flat per the inherited runner; trades spanning the 2022-05-01 internal boundary are refused (FOLD_FORCE_FLAT_VIOLATION)"
+  },
+
+  "costs": {
+    "frozen_schedule": "cost = notional * (1.5 bps * tier) / 10000, charged ONCE per fill side, notional 10000 USD-units, tiers {1.0, 1.5, 2.0}; costs are never softened (blanket clause: no fee/cost assumptions below the frozen 1.5 bps x {1.0,1.5,2.0} authority)",
+    "stress_tier_2_0_primary": true,
+    "stress_booking": "F1-fixed: booked PnL RE-COMPUTED at each tier's per-side cost on the SAME trades; tier rows pairwise distinct, kernel fails closed (STRESS_ROWS_NOT_DISTINCT); fill-delay stress carried unblended",
+    "dual_books": "price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns; the price-only sign is never inverted; FINANCING_MANUFACTURES_EDGE gate live (adjusted-positive with price-only non-positive fails); financing adjustments carried by the family with the inherited frozen formula, never invented by the runner",
+    "break_even_publication": "break-even bps from the same cost kernel, 6-decimal convention, published per cell"
+  },
+
+  "arms": {
+    "count": 3,
+    "anchor": "sign of the as-of 5-day T10YIE change (z>0 long USD, z<0 short USD), daily 16:00-NY clock, 3-session hold, as specified",
+    "neighbour": "same mechanism, 10-business-day change window (same series, same clock, same hold, same z-normalization over 252 bars); must SUPPORT the anchor or NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR fails the family - this is a robustness neighbour, not a second mechanism",
+    "causal_control": "vintage-shuffled placebo: identical machinery, but each decision reads T10YIE from a seeded frozen shuffled vintage mapping (permutation over [t-180, t-1] days, seed 20260905, table committed at freeze); PIT information linkage destroyed, marginal dynamics preserved; the control RUNS TO COMPLETION under the same evidenced semantics and must FAIL - reproduction kills the family via CONTROL_REPRODUCES_MECHANISM",
+    "benchmark_treatment": "inherited required benchmark arm per the runner contract (not a scored cell); alpha definition declared as a5_per_pair_day_normalized_v1 with warmup_daily_bars = 257"
+  },
+
+  "falsification_rule": {
+    "frozen_stage_a_gates": "any of EXPECTANCY_NONPOSITIVE, PF_BELOW_1.10, FEWER_THAN_2_POSITIVE_POPULATED_FOLDS, POPULATED_FOLD_PF_BELOW_0.80, MDD_ABOVE_FROZEN_CEILING, PAIR_CONCENTRATION_ABOVE_40PCT, POSITIVE_FOLD_SHARE_ABOVE_50PCT, STRESS_TIER_1.5_FAIL, STRESS_TIER_2.0_FAIL (primary), DROPOUT_SURVIVAL_BELOW_6_OF_8, USD_DRIFT_EXPLAINS_ANCHOR, DECISION_FLOOR_NOT_MET, INCREMENTAL_ALPHA_NOT_POSITIVE, FINANCING_MANUFACTURES_EDGE -> family falsified, scored negative recorded",
+    "mechanism_sanity": "neighbour must support the anchor; the vintage-shuffled control must fail - CONTROL_REPRODUCES_MECHANISM or NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR -> family falsified",
+    "nominal_placebo_identifiability_d2": "at D2 the pre-selection control-identifiability measurement runs the DGS10 5-day-change placebo (same clock, same lag, unscored diagnostic): >= 90% decision-sign agreement with the anchor -> the 'inflation-expectation-specific' claim is dead -> reject even if the anchor passes all gates",
+    "revision_test": "zero vintaged revisions across S0 -> PIT distinctness unprovable -> BLOCKED (never scored as a pass)",
+    "ancestry_rho_bar": "at D2, measured Spearman rho of the anchor decision vector vs BOTH V3 family2 anchor variants (as-scored and evidenced-corrected books) AND vs the V4 family1 commodity-bloc anchor must satisfy |rho| <= 0.20; above the bar the cell dies pre-selection with no appeal"
+  },
+
+  "expected_failure_interpretation": {
+    "scored_negative": "a first-class honest result: vintaged breakeven shocks carry no after-cost incremental information for daily-or-slower FX books under the frozen gates; NOT a sign-flip opportunity, NOT a threshold-neighbour rescue target (blanket clauses bind); recorded, not repaired",
+    "stress_tier_kill": "if base tier passes but tier 2.0 (primary) kills it, the class is thin-margin per P-2 and the kill is recorded with per-gate margins; a knife-edge pass, if it occurs, is recorded as knife-edge",
+    "usd_drift_fire": "the honest reading is USD-index beta, not inflation information - the convenient explanation is confirmed as the explanation and the family is rejected",
+    "placebo_reproduction": "the mechanism identity/sign is wrong (E.2 class): behaviour without mechanism; recorded as a shadow effect, never pursued as an inversion",
+    "modal_ex_ante_outcome": "given 3.0 bps base round-trip cost against a 3-session drift class and the dominant-attention regime inside S0, the modal ex-ante outcome is a scored negative or a stress-tier kill - a correct negative is a successful research run (P-6)"
+  },
+
+  "decorrelation_from_carry_ex_ante": {
+    "carry_ancestor": "V3 family2 FXFV3-A6-P1: realized-vol regime-gated POLICY-RATE-DIFFERENTIAL LEVEL carry (BIS WS_CBPOL); decision = static differential sign, essentially constant per pair for months; front door CLOSED at D2 of V4 by measured rho 0.997-1.000 vs both invalidated-ancestor variants",
+    "this_mechanism": "decision = sign of a 5-day CHANGE in TIPS-implied breakeven inflation - a different market segment (inflation-expectations component, not policy rates), a different statistic (short-window change, not level), and a sign that flips on a large fraction of sessions; the carry information set (WS_CBPOL) is not an input anywhere in the feature stack",
+    "ex_ante_expectation": "rho expected near zero by construction (high-frequency sign flips vs near-static sign); the claim is nonetheless EMPIRICAL, not rhetorical: the |rho| <= 0.20 bar vs both ancestor variants is a binding pre-selection kill-switch",
+    "not_a_relabel_statement": "this proposal is not the V3 anchor with a new label, not a threshold/window variant of any forbidden row, and not a sign inversion of any rejected family"
+  },
+
+  "margin_to_fail_expectations_ex_ante": {
+    "most_probable_kills": ["STRESS_TIER_2_0_FAIL", "EXPECTANCY_NONPOSITIVE", "USD_DRIFT_EXPLAINS_ANCHOR"],
+    "moderate_risk": ["INCREMENTAL_ALPHA_NOT_POSITIVE", "PAIR_CONCENTRATION_ABOVE_40PCT", "POSITIVE_FOLD_SHARE_ABOVE_50PCT (regime concentration in 2021-22)"],
+    "low_risk": ["DECISION_FLOOR_NOT_MET", "NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR", "MDD_ABOVE_FROZEN_CEILING"],
+    "note": "all margins are ex-ante priors over an unfunded mechanism; per-gate margins must be REPORTED at scoring (P-2), never asserted here"
+  },
+
+  "expected_decision_counts_band": {
+    "condition": "conditioned on the unwired ALFRED path being unblocked exactly as specified",
+    "band": "~350-450 decisions per pair (no-pyramid 3-session hold over ~1540 post-warmup sessions); ~2500-3100 booked decisions across 7 pairs; realized counts below the frozen floor record DECISION_FLOOR_NOT_MET, never a rescore"
+  },
+
+  "outcome_blind_attestation": "I, lane agent A5 (blind proposal lane, cycle FOREX-FREE-V5), designed this packet before any FOREX-FREE-V5 scored outcome exists for this mechanism. I have not computed, observed, or consulted any PnL, expectancy, fold statistic, pair-level result, or arm comparison for FXFV5-A5-P1 or its arms; no S0 price read, no macro read, and no scored computation were performed in this lane; I have not opened S1 or any sibling lane worktree (d1-a4, d1-a6). The data_availability blockers were copied verbatim from research/control/forex_free_v5_run/p0b_alfred_probe_verdict.json and were not softened. Every numeric statement about expected performance is an ex-ante prior. This packet would be byte-identical if every cell in the program's history had scored zero."
+}

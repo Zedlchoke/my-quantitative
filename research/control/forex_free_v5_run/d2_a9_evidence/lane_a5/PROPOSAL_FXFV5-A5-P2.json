@@ -1,0 +1,139 @@
+{
+  "schema": "forex_free_v5_d1_blind_proposal_v1",
+  "hypothesis_id": "FXFV5-A5-P2",
+  "cycle": "FOREX-FREE-V5",
+  "lane": "A5 (blind proposal lane, vintaged market-based real-rate axis / axis 2)",
+  "base_sha": "e2b7a0e1e29794ca8449625f271f9a67c302fcf2",
+  "written_at_utc": "2026-09-05T16:08:06Z",
+  "authority": "PLAN_forex_v5.md sections 1, 2, 4; axis-2 funding decision delegated to P0b successor evidence; forbidden inventory research/control/forex_free_v4_run/forbidden_family_inventory.json binding on A5",
+  "mechanism_class": "real-yield-driven (real component of the nominal/real decomposition - TIPS real-yield curve structure, NOT the inflation-expectations component used by FXFV5-A5-P1)",
+
+  "mechanism": {
+    "one_line": "Vintaged US real-yield CURVE-STRUCTURE weekly drift: a weekly change in the TIPS real-curve slope (DFII5 minus DFII10) is a revised expected-short-real-rate path that global real-money allocators (pension LDI, real-return-mandate funds, monthly rebalancing cycles) monetize with a settlement lag, so spot USD drifts for about one week in the direction of the real tightening/easing impulse; the anchor holds each weekly decision for 5 sessions, non-overlapping.",
+    "mechanism_before_parameter": {
+      "who_is_forced_to_trade_or_slow_to_react": "The slow side is real-money: LDI and real-return allocators rebalance monthly and their hedging ratios adjust after flows settle; systematic FX accounts re-weight weekly. A move in the real curve that changes expected short-real-rate paths therefore translates into capital reallocation over 1-2 weeks, not instantly; the fast side (rates desks pricing TIPS) has no FX mandate.",
+      "why_the_effect_exists": "The real curve slope embeds the market's expected short-real-rate path; a structural weekly move in it changes real-return differentials that drive bond-flow-driven FX (pull factor) with a persistence of weeks. This is a level-structure (term-structure) variable in the REAL segment - a different market, a different horizon, and a different statistic from both policy-rate carry levels and 5-day breakeven shocks.",
+      "observable": "Weekly same-sign FX drift following extreme weekly changes in the as-of real-curve slope; PIT-testable per decision row because each read is restricted to rows whose ALFRED realtime_start vintage precedes the decision.",
+      "when_it_must_fail": "(1) When slope moves are TIPS financing/liquidity-technical rather than expectations (dealers' balance-sheet cycles, auction settlement) - no real-path content, book degrades to noise. (2) When real-yield structure is already the market's dominant attention object and is impounded same-week (large parts of 2022-25 inside S0) - the drift window collapses and the frozen folds expose the regime dependence. (3) If the 'real' claim is fake and the book is really a yield-level/carry-direction book, the nominal-yield-level placebo control reproduces the anchor and the family dies in-run.",
+      "control_that_kills_the_convenient_explanation": "Causal control arm = nominal-yield-level placebo: decisions from the sign of DGS10 relative to its trailing 104-week median, same weekly clock, same lag, same hold. Yield level is the carry-adjacent explanation ('high US nominal yields pull capital'); if that placebo reproduces the anchor, the real-curve-structure claim is dead and the family fails via CONTROL_REPRODUCES_MECHANISM - this directly polices the closed carry region from inside the run, not only via the D2 rho bar."
+    },
+    "signal_definition": {
+      "series": "ALFRED DFII5 (5-Year Treasury Inflation-Indexed Security, Constant Maturity) and DFII10 (10-Year), daily vintaged; DGS10 (10-Year nominal constant maturity) used ONLY by the placebo control arm",
+      "slope": "s(t) = DFII5_vint(t) - DFII10_vint(t) (front-minus-long real yield; an INCREASE in s = front real rates rising relative to the long end = real tightening impulse), all reads strictly as-of decision time",
+      "weekly_change": "ds(t) = s(t) - s(t - 5 sessions) measured at the weekly decision bar, z-scored over the trailing 104 weekly observations as-of t (no backfill)",
+      "decision_rule": "z(t) > 0 (real tightening impulse) -> LONG the USD leg of every authorized pair; z(t) < 0 -> SHORT the USD leg; z == 0 or no eligible vintage -> no decision (NO_EVAL, never backfilled). Sign-only, no thresholds, no sizing weights."
+    }
+  },
+
+  "universe": ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD"],
+  "universe_note": "runner notation EUR/USD, GBP/USD, USD/JPY, USD/CHF, USD/CAD, AUD/USD, NZD/USD; common US signal across pairs makes pair_concentration (<=40%) and dropout (>=6/8) the honest concentration police",
+
+  "data_source": {
+    "provider": "ALFRED (archival FRED, Federal Reserve Bank of St. Louis), keyless graph-CSV or api.stlouisfed.org with an OWNER key",
+    "series_ids": ["DFII5", "DFII10", "DGS10"],
+    "series_roles": {"DFII5": "anchor + neighbour front-real leg", "DFII10": "anchor + neighbour long-real leg", "DGS10": "nominal-yield-level placebo control arm ONLY - never an anchor input"},
+    "vintage_semantics": "TRUE as-of per row: every series row must carry its ALFRED realtime_start vintage stamp; a decision at time t may read only rows with realtime_start <= t, mirroring the inherited PolicyRateReader as-of gating (missing eligible vintage -> None/NO_EVAL, never backfilled). The revision test - comparing the same observation_date across at least two distinct vintages - is the ONLY provable PIT check and is mandatory before S0; DFII series carry known vintage revisions, and if the successor probe measures zero revisions across S0 the PIT claim is unprovable and the cell is BLOCKED, not scored.",
+    "s0_window": "2018-04-04..2025-07-24",
+    "expected_coverage_check": "vintage-complete coverage of DFII5/DFII10/DGS10 across the S0 window must be MEASURED by the successor P0b probe before any read is legal; asserted bounds are never authorized (P-1)"
+  },
+
+  "data_availability": {
+    "status": "DATA_BLOCKED_VALID",
+    "blocker_citation": {
+      "authority_file": "research/control/forex_free_v5_run/p0b_alfred_probe_verdict.json",
+      "verdict": "BLOCKED_DATA_AUTHORITY",
+      "blockers_verbatim": {
+        "deterministic_retrieval": "FAIL - 1 success in 13+ attempts; channel fails the deterministic-retrieval data gate",
+        "endpoint_semantics": "NOT ESTABLISHED - alfredgraph.csv (vintage CSV) never returned bytes; the single fredgraph.csv success carried current data only (observation_date,value), no realtime/vintage column",
+        "coverage_vs_S0": "NOT MEASURABLE this host (no vintage payload retrievable)",
+        "revision_behavior": "NOT MEASURABLE this host",
+        "license": "LICENSE_UNVERIFIED_FAIL_CLOSED - legal/terms text unreachable from all channels; storage authorization cannot be granted without reading terms (handbook 11.4)",
+        "api_keyless": "GET api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL (no key) -> HTTP 400 'Variable api_key is not set' (host reachable, key required)"
+      },
+      "consequence_verbatim": "axis 2 (vintaged market-based real-rate structure via ALFRED) UNFUNDED this host; FOREX_FREE_V5 carries it as DATA_BLOCKED_VALID (pre-registered class, not forbidden, not rescuable without new evidence)"
+    },
+    "no_substitute_sources": "Per lane instruction: no substitute data sources; no softening of this field; the mechanism defines what WOULD be funded the moment availability evidence is wired."
+  },
+
+  "unblock_condition": {
+    "primary": "OWNER signs up for a FRED API key (free; signup is an owner action, never an agent action) and places it in gitignored .env; owner (or delegate under owner instruction) performs the FRED/ALFRED license review for internal research storage (handbook 11.4). p0b_alfred_probe_verdict.json records that api.stlouisfed.org was reachable from this host, so key-based PIT pull may work where graph CSV does not.",
+    "alternative": "Owner provides a different network path / machine and the probe is re-run there under the same evidence standard.",
+    "evidence_gate_that_would_unblock_this_proposal": "A successor P0b probe (A3 lane) must publish, from bytes with sha256: (1) deterministic retrieval: >= 3/3 consecutive successes on the vintaged endpoint; (2) vintaged payload with a per-row realtime_start column verified for DFII5, DFII10 and DGS10; (3) measured coverage vs 2018-04-04..2025-07-24 at >= 99% of decision-clock bars; (4) a revision matrix comparing >= 2 distinct vintages of the same observation_date per series (the only provable PIT check); (5) FRED/ALFRED license text retrieved, archived, and internal-research storage authorized by the owner. Any miss -> the proposal stays DATA_BLOCKED_VALID."
+  },
+
+  "decision_clock": {
+    "clock": "weekly: the first completed 16:00 America/New_York session bar of each week (Monday; on a Monday holiday the next session bar), inherited DST-aware calendar and weekend gate",
+    "slower_or_equal_daily": "weekly is strictly slower than daily - satisfies the frozen daily-or-slower scope rule"
+  },
+
+  "warmup": {
+    "declared_warmup_weekly_bars": 105,
+    "composition": "104-week trailing z-score window + 1 weekly lag",
+    "consequence": "first decisions ~2020-04 given S0 start 2018-04-04; fold 0 partially populated (2020-04..2022-05), folds 1 and 2 populated; ~270 weekly decisions x 7 pairs expected, far above the 40-decision floor; for the runner's per-pair-day alpha window the equivalent warmup_daily_bars is declared so the a5_per_pair_day_normalized_v1 window is computed identically"
+  },
+
+  "features_and_lags": {
+    "features": ["DFII5 vintaged level (as-of)", "DFII10 vintaged level (as-of)", "real-curve slope s = DFII5 - DFII10", "5-session change of s", "104-week rolling stdev of the weekly slope change (all as-of)", "DGS10 vintaged level for the placebo arm only"],
+    "lags": "decision at t uses vintages strictly available before t; entry bar is the next completed session bar after the decision (one-event-lag); no same-bar fills (ONE_EVENT_LAG_VIOLATION fatal)",
+    "forbidden_inputs": "no policy-rate series, no CPI prints, no announcement-ledger conditioning, no price-derived features other than entry/exit execution prices; DGS10 never enters the anchor feature stack"
+  },
+
+  "entry_exit_fills": {
+    "entry": "next completed 16:00-NY session bar after the weekly decision (market order at that bar); one position per pair max, non-overlapping weekly books (no pyramiding); weekend gate inherited",
+    "exit": "at the entry bar of the following week's cycle (5-session hold, market order at that bar's 16:00-NY close); non-overlapping by construction - no overlapping-dependence inflation of the fold statistics",
+    "force_flat": "fold-boundary force-flat per the inherited runner; trades spanning the 2022-05-01 internal boundary are refused (FOLD_FORCE_FLAT_VIOLATION)"
+  },
+
+  "costs": {
+    "frozen_schedule": "cost = notional * (1.5 bps * tier) / 10000, charged ONCE per fill side, notional 10000 USD-units, tiers {1.0, 1.5, 2.0}; costs are never softened (blanket clause: no fee/cost assumptions below the frozen 1.5 bps x {1.0,1.5,2.0} authority)",
+    "stress_tier_2_0_primary": true,
+    "stress_booking": "F1-fixed: booked PnL RE-COMPUTED at each tier's per-side cost on the SAME trades; tier rows pairwise distinct, kernel fails closed (STRESS_ROWS_NOT_DISTINCT); fill-delay stress carried unblended",
+    "dual_books": "price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns; the price-only sign is never inverted; FINANCING_MANUFACTURES_EDGE gate live; financing adjustments carried by the family with the inherited frozen formula, never invented by the runner",
+    "break_even_publication": "break-even bps from the same cost kernel, 6-decimal convention, published per cell"
+  },
+
+  "arms": {
+    "count": 3,
+    "anchor": "sign of the as-of weekly change in the DFII5-DFII10 real-curve slope (z>0 long USD, z<0 short USD), weekly clock, 5-session hold, as specified",
+    "neighbour": "same mechanism, 10-session (bi-weekly) slope-change window at the same weekly clock and hold; must SUPPORT the anchor or NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR fails the family - a robustness neighbour, not a second mechanism",
+    "causal_control": "nominal-yield-level placebo: decisions from the sign of DGS10 relative to its trailing 104-week median, same weekly clock, same lag, same hold; it RUNS TO COMPLETION under the same evidenced semantics and must FAIL - reproduction (CONTROL_REPRODUCES_MECHANISM) proves the book is a yield-level/carry-direction trade, not real-curve structure, and kills the family from inside the run",
+    "benchmark_treatment": "inherited required benchmark arm per the runner contract (not a scored cell); alpha definition declared as a5_per_pair_day_normalized_v1 with the equivalent daily warmup declared in meta"
+  },
+
+  "falsification_rule": {
+    "frozen_stage_a_gates": "any of EXPECTANCY_NONPOSITIVE, PF_BELOW_1.10, FEWER_THAN_2_POSITIVE_POPULATED_FOLDS, POPULATED_FOLD_PF_BELOW_0.80, MDD_ABOVE_FROZEN_CEILING, PAIR_CONCENTRATION_ABOVE_40PCT, POSITIVE_FOLD_SHARE_ABOVE_50PCT, STRESS_TIER_1.5_FAIL, STRESS_TIER_2.0_FAIL (primary), DROPOUT_SURVIVAL_BELOW_6_OF_8, USD_DRIFT_EXPLAINS_ANCHOR, DECISION_FLOOR_NOT_MET, INCREMENTAL_ALPHA_NOT_POSITIVE, FINANCING_MANUFACTURES_EDGE -> family falsified, scored negative recorded",
+    "mechanism_sanity": "neighbour must support the anchor; the nominal-yield-level control must fail - CONTROL_REPRODUCES_MECHANISM or NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR -> family falsified",
+    "vintage_shuffle_mutation_iq": "at I/Q, the availability-lag mutation test on the conditioning series is a vintage-shuffled read (seeded frozen mapping, same construction standard as FXFV5-A5-P1's control): if the anchor's gate status survives the shuffle, the PIT information linkage was inert -> family fails",
+    "revision_test": "zero vintaged revisions across S0 for DFII5/DFII10 -> PIT distinctness unprovable -> BLOCKED (never scored as a pass)",
+    "ancestry_rho_bar": "at D2, measured Spearman rho of the anchor decision vector vs BOTH V3 family2 anchor variants (as-scored and evidenced-corrected books) AND vs the V4 family1 commodity-bloc anchor must satisfy |rho| <= 0.20; above the bar the cell dies pre-selection with no appeal"
+  },
+
+  "expected_failure_interpretation": {
+    "scored_negative": "a first-class honest result: vintaged real-yield curve structure carries no after-cost incremental information for weekly-or-slower FX books under the frozen gates; NOT a sign-flip opportunity, NOT a threshold-neighbour rescue target (blanket clauses bind); recorded, not repaired",
+    "stress_tier_kill": "if base tier passes but tier 2.0 (primary) kills it, the class is thin-margin per P-2 and the kill is recorded with per-gate margins; a knife-edge pass, if it occurs, is recorded as knife-edge",
+    "placebo_reproduction": "the nominal-yield-level control reproducing the anchor is the most informative possible failure: it proves the 'real structure' was nominal yield level in disguise - a carry-adjacent trade inside a closed region - and the family is rejected with that finding recorded",
+    "usd_drift_fire": "the honest reading is USD-index beta, not real-rate information - the family is rejected",
+    "modal_ex_ante_outcome": "given a weekly drift class against 3.0 bps base round-trip cost, and the post-2022 high-attention real-rate regime inside S0, the modal ex-ante outcome is a scored negative or a fold-concentration/stress kill - a correct negative is a successful research run (P-6)"
+  },
+
+  "decorrelation_from_carry_ex_ante": {
+    "carry_ancestor": "V3 family2 FXFV3-A6-P1: realized-vol regime-gated POLICY-RATE-DIFFERENTIAL LEVEL carry (BIS WS_CBPOL); decision = static differential sign, essentially constant per pair for months; front door CLOSED at D2 of V4 by measured rho 0.997-1.000 vs both invalidated-ancestor variants",
+    "this_mechanism": "decision = sign of a WEEKLY CHANGE in the TIPS real-curve slope (DFII5 - DFII10) - a market-based, forward-looking term-structure statistic in the REAL segment, not a policy-rate level; the decision sign flips on sub-quarter scale (weekly slope changes cross zero constantly), whereas carry decisions are near-static; the carry information set (WS_CBPOL) is not an input anywhere in the feature stack, and the in-run nominal-yield-level placebo arm exists precisely to kill the yield-level/carry explanation if it is the true driver",
+    "ex_ante_expectation": "rho expected low by construction (flipping weekly sign vs near-static sign); the claim is nonetheless EMPIRICAL, not rhetorical: the |rho| <= 0.20 bar vs both ancestor variants is a binding pre-selection kill-switch",
+    "not_a_relabel_statement": "this proposal is not the V3 anchor with a new label, not a realized-vol regime gate in new clothes, not a threshold/window variant of any forbidden row, and not a sign inversion of any rejected family"
+  },
+
+  "margin_to_fail_expectations_ex_ante": {
+    "most_probable_kills": ["EXPECTANCY_NONPOSITIVE", "STRESS_TIER_2_0_FAIL", "POSITIVE_FOLD_SHARE_ABOVE_50PCT (regime concentration)"],
+    "moderate_risk": ["USD_DRIFT_EXPLAINS_ANCHOR", "CONTROL_REPRODUCES_MECHANISM (nominal-level placebo)", "INCREMENTAL_ALPHA_NOT_POSITIVE"],
+    "low_risk": ["DECISION_FLOOR_NOT_MET", "NEIGHBOUR_DOES_NOT_SUPPORT_ANCHOR", "PAIR_CONCENTRATION_ABOVE_40PCT", "MDD_ABOVE_FROZEN_CEILING"],
+    "note": "all margins are ex-ante priors over an unfunded mechanism; per-gate margins must be REPORTED at scoring (P-2), never asserted here"
+  },
+
+  "expected_decision_counts_band": {
+    "condition": "conditioned on the unwired ALFRED path being unblocked exactly as specified",
+    "band": "~265 weekly decisions per pair over the post-warmup window; ~1800-1900 booked decisions across 7 pairs (non-overlapping 5-session holds); realized counts below the frozen floor record DECISION_FLOOR_NOT_MET, never a rescore"
+  },
+
+  "outcome_blind_attestation": "I, lane agent A5 (blind proposal lane, cycle FOREX-FREE-V5), designed this packet before any FOREX-FREE-V5 scored outcome exists for this mechanism. I have not computed, observed, or consulted any PnL, expectancy, fold statistic, pair-level result, or arm comparison for FXFV5-A5-P2 or its arms; no S0 price read, no macro read, and no scored computation were performed in this lane; I have not opened S1 or any sibling lane worktree (d1-a4, d1-a6). The data_availability blockers were copied verbatim from research/control/forex_free_v5_run/p0b_alfred_probe_verdict.json and were not softened. Every numeric statement about expected performance is an ex-ante prior. This packet would be byte-identical if every cell in the program's history had scored zero."
+}

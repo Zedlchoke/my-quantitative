@@ -1,0 +1,50 @@
+{
+  "schema": "forex_free_v2_lane_report_a2_v1",
+  "cycle_id": "FOREX-FREE-V2",
+  "phase": "F2-P1 (runner and exact accounting)",
+  "agent": "A2",
+  "written_at_utc": "2026-09-04T02:09:48Z",
+  "branch": "orca/forex-free-v2-a2-accounting",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/integration/.worktrees/forex-free-v2/p0-a2-accounting",
+  "base_commit": "fba2563dc42c271bd3ae3fe06324477cf5a1ab05",
+  "files_created": [
+    "research/assets/forex_free_v2/__init__.py",
+    "research/assets/forex_free_v2/accounting.py",
+    "tests/assets/forex_free_v2/__init__.py",
+    "tests/assets/forex_free_v2/test_accounting.py",
+    "research/control/forex_free_v2_run/lane_report_a2.json"
+  ],
+  "pytest": {
+    "command": ".venv/bin/python -m pytest tests/assets/forex_free_v2/test_accounting.py -q",
+    "exit_code": 0,
+    "passed": 32,
+    "failed": 0,
+    "duration_seconds": 0.16,
+    "resource_rule": "pgrep -fl pytest checked before each run; no test process was running (only heavy task rule respected); full suite NOT run"
+  },
+  "conventions_frozen": {
+    "pnl_formula": "pnl_usd = direction * notional_usd * (exit_price / entry_price - 1); direction = +1 for LONG, -1 for SHORT",
+    "pnl_convention": "FROZEN USD-unit design carried from V1 scored_runner.extract_trades / family1 (gross = position * (exit/entry - 1)); notional is 10000 USD-units by design so the result is already USD; the only USD conversion is the identity convert_to_usd_identity(x, from_currency='USD') -> x; any other source currency raises UNAVAILABLE_FAIL_CLOSED",
+    "cost_authority": "1.5 bps per side x stress tier in {1.0, 1.5, 2.0}, charged exactly once per fill side (entry once at open, exit once at close, exit reuses the tier bound at entry); bps_cost(notional, tier) = notional * (1.5 * tier) / 10000; round trip = 3.0 / 4.5 / 6.0 bps",
+    "notional": "10000 USD-unit (frozen contract); kernel validates notional > 0 and finite",
+    "single_source_of_truth": "PositionBook.fills: every state mutation appends exactly one Fill; turnover_from_fills and trades_from_fills reconcile strictly from fills; one position lifecycle per trade_id (reuse after close rejected TRADE_ID_REUSED)",
+    "no_trade_sentinel": "a skipped/missing bar is recorded via record_no_trade into book.no_trades, never touching fills, positions or costs (no position, no cost provable from fills)",
+    "concentration": "V1 parity: shares of POSITIVE pnl by pair, round 6 decimals, all None when no positive pnl; the cash/account currency 'USD' is rejected as a pair at open and excluded automatically from concentration numerator and denominator",
+    "canonical_digest": "canonical_json_bytes(obj) = json.dumps(obj, sort_keys=True, separators=(',',':'), ensure_ascii=False).encode('utf-8'); sha256_hex of those EXACT bytes; a ledger line is exactly the canonical bytes plus one newline, so sha256(line_bytes) == record digest",
+    "publication": "AtomicJsonlPublisher.publish_once is once-only per record digest: fcntl.flock (LOCK_EX) + per-instance threading.Lock serialize appends across threads/processes on one host; under the lock the ledger is rescanned (restart-safe) and an existing digest returns (observed_delta=0, published_now=0); first publication returns (1,1)"
+  },
+  "goldens": {
+    "method": "hand-computed literals with arithmetic in comments; SYNTHETIC_TEST_ONLY fixtures; multi-pair EUR/USD, USD/JPY, GBP/USD",
+    "cases": {
+      "T1_EURUSD_LONG_tier1.0": "10000*(1.1550/1.1000-1)=+500.00; costs 1.50+1.50=3.00; net 497.00",
+      "T2_USDJPY_SHORT_tier1.5": "-10000*(151.50/150.00-1)=-100.00; costs 2.25+2.25=4.50; net -104.50",
+      "T3_GBPUSD_FLAT_tier2.0": "10000*(1.2700/1.2700-1)=0.0 exactly; costs 3.00+3.00=6.00; net -6.00",
+      "missing_bar": "NO_TRADE sentinel: no fill, no position, no cost, turnover 0",
+      "book_totals": "pnl 400.00 gross; costs 13.50; net 386.50; turnover 30000 entry + 30000 exit = 60000",
+      "concentration": "positive parts 500/150/100 over 750 -> 0.666667 / 0.2 / 0.133333, sum 1; USD(999) excluded; negative pair contributes 0.0 share with denominator 650"
+    }
+  },
+  "attestation": "no real-data PnL computed; synthetic only; no network",
+  "deviations": "none from lane instructions; one initial test failure was a hand-arithmetic error in a test comment (positive-part denominator 650 vs 750 when a pair is negative), fixed in the test, module unchanged",
+  "tree_state_after_commit": "git status --porcelain empty"
+}

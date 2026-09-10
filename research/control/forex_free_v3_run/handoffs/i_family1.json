@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "role": "A_IMPL_FAMILY1_I_FOREX_FREE_V3",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-family-1",
+  "branch": "orca/forex-free-v3-i-family-1",
+  "bootstrap_sha": "7e0ba2b5a167221d3fd280774d65fc3d4cb0885c",
+  "commit_sha": null,
+  "measured_at_utc": "2026-09-04T16:12:49Z",
+  "stamp_source": "machine_date_u",
+  "clean": true,
+  "clean_note": "clean=true describes the state AFTER this lane's single clean commit; A1 verifies with git status --porcelain=v1 (must be empty except gitignored data_raw/) and git diff --check HEAD^ HEAD (must be clean).",
+  "allowed_globs": [
+    "research/assets/forex_free_v3/family1.py",
+    "tests/assets/forex_free_v3/test_family1.py",
+    "research/control/forex_free_v3_run/handoffs/i_family1.json"
+  ],
+  "changed_files": [
+    "research/assets/forex_free_v3/family1.py",
+    "tests/assets/forex_free_v3/test_family1.py",
+    "research/control/forex_free_v3_run/handoffs/i_family1.json"
+  ],
+  "deliverables": [
+    "research/assets/forex_free_v3/family1.py implements SELECTED family FXFV3-A5-P1 (policy-differential-gated daily trend) against the scored_runner FAMILY API CONTRACT: run_arm(arm, data_paths, macro_reader, freeze_token=None) -> {decisions, financing_events, meta}; arms anchor (21-bar momentum m=close_t/close_(t-21)-1 AND 63-bar PIT differential drift g=d(t)-d(t-63), strict sign agreement, g==0 flat), neighbour FXFV3-A5-P1-neigh (gate = sign(d(t) - median(d over 252 most recent daily as-of reads)), one presumption away per the binding proposal_1.json), causal_negative_control FXFV3-A5-P1-ctrl (sign(g) only, no price trend; runner's CONTROL_REPRODUCES_MECHANISM gate owns the preregistered non-reproduction rule).",
+    "Decision clock: decisions evaluated on completed daily bars = the H1 snapshot bar whose OPEN instant maps to 16:00 America/New_York wall time via zoneinfo (20:00Z EDT weeks, 21:00Z EST weeks); decision_ts recorded = that open instant. Provider Sunday 16:00-NY bars sit before the frozen Sun 21:00-NY weekly open and are EXCLUDED from the daily series (observed 172 such bars/pair in the real snapshot), so Friday decisions fill Monday, never a closed Sunday bar. Warmup: first 63 daily bars per pair void (anchor/control); neighbour needs 252 eligible reads (voids until bar 251).",
+    "Fills: entry/exit at the OPEN of the NEXT EXISTING 16:00-NY bar (one-event lag); next bar missing => skipped_decision / skipped_exit recorded in meta, never fill-forward; fill lag beyond the runner's frozen 4-day allowance => skipped, keeping the stream inside ONE_EVENT_LAG_VIOLATION bounds. Exit law: hold while the arm state persists; state cease (flip/0/void) => exit next existing bar; fold boundaries 2022-05-01/2024-07-01 force-flat: open positions close AT the last existing pre-boundary bar's open with force_flat=true, and entry decisions on that bar and the one before are suppressed (they would fill at or immediately before the forced flatten). A position still open at data end cannot book an exit and is dropped with a counter (fail-closed).",
+    "Macro: policy rates read ONLY via macro_reader.policy_rate/differential (availability-gated available_time_utc <= decision instant; missing vintage files/areas raise MacroDataBlocked BLOCKED_DATA; None = NO_EVAL => bar void, never backfilled). Pair->areas frozen: EUR/USD(EMU,US), GBP/USD(GB,US), AUD/USD(AU,US), NZD/USD(NZ,US), USD/JPY(US,JP), USD/CHF(US,CH), USD/CAD(US,CA). Vintages are percent-per-annum (BIS adapter unit); converted to annualized decimals by /100 at one defined point. data_paths keys consumed: price_h1_dir (directory directly containing <TAG>_1h_*_a.json TwelveData windows, td_loader schema, error-status windows skipped, dedupe on stamp, OHLC quarantine with 0.1% fail-closed ceiling) and macro_vintages (only when macro_reader is None). freeze_token accepted and ignored.",
+    "Financing events: one per decision, formula id V3_FROZEN_POLICY_RATE_CARRY; adjustment = round(sign * notional_usd * fsum(day-start differentials) / 365, 10) accrued per calendar day at that day's 00:00Z as-of differential over the held calendar days (entry < day-start <= exit); a non-evaluable day-start read fails closed (RuntimeError BLOCKED_DATA) - unreachable after an eligible entry decision by monotone availability. Disclosed approximation carried in meta.financing_disclosure: policy rates are unsecured official rates, NOT swap/OIS-implied rollover.",
+    "Determinism: no wall-clock reads, sorted iterations, fixed float order, rounding ONLY at the financing round-10 point; decisions sorted by (decision_ts, pair); decision_id = f'{arm_id}|{pair}|{decision_ts_iso}'. Tests assert run_arm twice returns identical output for all three arms.",
+    "tests/assets/forex_free_v3/test_family1.py: 10 tests, all expected numbers hand-computed literals on tiny synthetic fixtures; NO network, NO real scoring. (1) feature goldens: bar 63 = 2020-04-28 first evaluable bar with g==0.0 exact, m=0.021/1.242, d=-0.0075; 2020-06-01 decision still reads the OLD US rate (availability stamp 2020-06-01T23:59:59Z > 20:00Z); 2020-06-02: d=-0.0175, g=-0.01, m=0.021/1.267, EUR/USD gate flat (disagreement), USD/JPY gate long (d=0.0135, g=+0.01); 2020-08-28 g==0.0 exact; anchor book = exactly 1 round trip (USD/JPY long 2020-06-02 -> entry 06-03 -> exit decision 08-28 -> fill 08-31) with financing = 10000*89*0.0135/365 = 32.9178082192. (2) PIT mutation: pushing the US vintage's available_time to 2020-07-01 makes the 2020-06-02 gate NOT-eligible (d stays -0.0075, g==0.0 exact) and moves the JPY entry to 2020-07-02. (3) next-session fill: fixture with US step effective 2021-06-17 (availability 2021-06-17T23:59:59Z) opens the g window at Friday 2021-06-18: EUR/USD SHORT decision 2021-06-18T20:00Z fills Monday 2021-06-21T20:00Z; g returns to exactly 0 at the 63rd weekday later (2021-09-15), exit fills 2021-09-16; truncated variant: go decision on the last bar => 7 skipped_decisions (one per pair), reason NO_NEXT_BAR_FOR_ENTRY_FILL, zero round trips. (4) DST: 2025 spring-forward/fall-back stamps 2025-03-07T21:00Z (EST Fri) / 2025-03-10T20:00Z (EDT Mon) / 2025-10-31T20:00Z / 2025-11-03T21:00Z, decoy 15:00/17:00-NY instants never selected, hours subset {20,21}. (5) control-cannot-equal-anchor: control trades all 7 pairs (drops the m leg) incl. EUR/USD SHORT where the anchor must stay flat; neighbour voids to bar 251 then evaluates flat. (6) force-flat: control positions open across 2022-05-01 close at Friday 2022-04-29T20:00Z with force_flat=true (7/7 pairs), no trade spans the boundary, runner validate passes. (7) financing: 3-calendar-day LONG hold at d=-0.0075 => round(10000*(-0.0225)/365,10) = -0.6164383562; mirrored short +0.6164383562; Fri->Mon weekend hold accrues 3 day-starts identically; kernel book_dual financing_adjusted - price_only == the carried term; (8) determinism; (9) real-snapshot schedule-only (below); plus BLOCKED_DATA fail-closed on missing vintage area / missing price dir.",
+    "REAL-SNAPSHOT SCHEDULE-ONLY REPLAY (no PnL): data_raw/forex_free_v1 copied from /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/e-exec-1/data_raw/forex_free_v1/ (152 price files) plus the 4 control files (forex_free_v1_run/{data_probe/*3, w1_freeze.json}) from the v2 i-family-2 worktree; ALL 156/156 digests verified inside the test against digests_exec2 of /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/integration/research/control/forex_free_v1_run/staged_data_manifest.json; data_raw/ is gitignored and never committed. Macro gate fed by a DISCLOSED deterministic synthetic stub (8 areas, 4-phase cycle, steps every 9 calendar days from 2019-01-07) because real BIS vintages are NOT_PROVEN_ON_LIVE_FETCH (Q data-hash gate) - the pass measures the real daily decision clock, next-session fills, skip handling and fold force-flat mechanics only. Runner contract validation (validate_decisions) passes for all three arms; no 'pnl' key anywhere on a decision; all decision/fill stamps are 20:00Z/21:00Z 16:00-NY bars; weekday coverage Mon-Fri complete.",
+    "MEASURED real-snapshot schedule counts (decisions = round trips; go/no-go bars = schedule evaluations): anchor 95 decisions / 11142 evaluated bars / 359 go bars / 0 skips; neighbour 52 decisions / 9826 evaluated bars (1757 void pre-252-reads) / 170 go bars / 0 skips; causal_negative_control 125 decisions / 11142 evaluated bars / 731 go bars / 1 skipped entry fill (fail-closed lag case) / 0 skipped exits. All arms >= the frozen 40-decision floor. Warmup feasibility: exactly the first 63 daily bars per pair are void; first evaluable EUR/USD bar 2020-04-28 (activation ~2020-05-01 per spec); EUR/USD daily bars 1592 = the selection freeze's ~1589/pair feasibility estimate."
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/i-family-1 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v3 -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "67 passed in ~47s (10 family1 + 40 runner + 17 accounting; data_authority_v3 covered by the runner file set). NO full suite run (A1's deferred gate)."
+    }
+  ],
+  "hand_computed_goldens": {
+    "momentum_21d_at_2020_04_28": "0.021/1.242 = 0.0169082126 (rel 1e-9)",
+    "differential_goldens": {"d_pre": -0.0075, "d_post": -0.0175, "g_step": -0.01, "g_after_63_bars": "0.0 exact (same float rows)"},
+    "availability_lag": "2020-06-01T20:00Z decision still reads the old rate; 2020-06-02T20:00Z is the first eligible",
+    "anchor_book_fixture": "exactly 1 round trip: USD/JPY LONG, decision 2020-06-02T20:00Z, entry 2020-06-03T20:00Z, exit decision 2020-08-28T20:00Z (Fri), fill 2020-08-31T20:00Z (Mon)",
+    "financing_89day_jpy_long": "10000*89*0.0135/365 = 32.9178082192",
+    "financing_3day_hold": "round(10000*(-0.0075)*3/365,10) = -0.6164383562 (long), +0.6164383562 (short)",
+    "force_flat": "control positions close AT 2022-04-29T20:00:00+00:00 (last pre-boundary bar) with force_flat=true",
+    "dst_2025": ["2025-03-07T21:00:00+00:00", "2025-03-10T20:00:00+00:00", "2025-10-31T20:00:00+00:00", "2025-11-03T21:00:00+00:00"]
+  },
+  "real_snapshot_replay": {
+    "digests": "156/156 verified vs staged_data_manifest.json digests_exec2",
+    "anchor_decisions": 95,
+    "neighbour_decisions": 52,
+    "control_decisions": 125,
+    "decision_floor": 40,
+    "evaluated_bars_per_arm": {"anchor": 11142, "neighbour": 9826, "control": 11142},
+    "go_bars": {"anchor": 359, "neighbour": 170, "control": 731},
+    "skipped_entry_fills": {"anchor": 0, "neighbour": 0, "control": 1},
+    "skipped_exit_fills": {"anchor": 0, "neighbour": 0, "control": 0},
+    "first_evaluable_bar_eurusd": "2020-04-28T20:00:00+00:00",
+    "macro_input": "DISCLOSED synthetic schedule stub (9-day steps); real BIS coverage remains BLOCKED at the Q gate - this pass is schedule-only and never scored"
+  },
+  "assumptions": [
+    "commit_sha is null BY DESIGN: this lane commits exactly once and the handoff file is inside that commit; A1 records the SHA with git log -1 --format=%H (subject starts with 'FOREX-FREE-V3 I-FAMILY1:').",
+    "decision_ts = the 16:00-NY daily bar's OPEN instant (the runner's clock validation instant); macro as-of reads use the same decision instant, which reproduces the frozen first-eligible-decision semantics for date-only BIS availability stamps (2020-06-01 golden pins this).",
+    "A void bar (NO_EVAL macro, missing lookback) cannot hold a position: any open position exits at the next existing bar when the state becomes void (fail-closed, never persists an unevaluable state).",
+    "Entries decided Thursday fill Friday 16:00-NY; the runner's inherited session entry gate drops Friday-16:00 entry fills at booking time (weekend_gate_dropped) - runner-owned, fail-closed, not a family-side suppression.",
+    "The real-snapshot per-arm counts are stub-cadence-dependent (schedule feasibility evidence, not scored outcomes); with the disclosed 9-day cadence all arms clear the frozen floor with margin.",
+    "data_raw/ content is byte-verified, gitignored, and excluded from the commit; the digest manifest lives in the v2 integration worktree and is read read-only.",
+    "V3-L3 applied: measured_at_utc stamped from machine `date -u`."
+  ],
+  "blockers": [],
+  "evidence_paths": [
+    "research/assets/forex_free_v3/family1.py",
+    "tests/assets/forex_free_v3/test_family1.py",
+    "research/proposals/forex_free_v3/a5_lane/proposal_1.json",
+    "research/control/forex_free_v3_run/baseline_invariants.json"
+  ],
+  "next_action_for_a1": "Verify: (1) git log -1 --format='%H %s' -> one commit on orca/forex-free-v3-i-family-1, subject starting 'FOREX-FREE-V3 I-FAMILY1:'; (2) git status --porcelain=v1 empty (data_raw/ gitignored); (3) git diff --check HEAD^ HEAD clean; (4) re-run the targeted pytest command expecting exit 0 / 67 passed (the real-snapshot replay needs the gitignored data_raw copy; without it the suite is 66 passed + 1 skipped). Family1 is ready for scored-cell integration via register_family('family1', research.assets.forex_free_v3.family1) once the Q macro-hash gate proves live BIS coverage; until then the disclosed stub must never reach a scored run."
+}

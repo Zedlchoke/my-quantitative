@@ -1,0 +1,152 @@
+{
+  "schema": "forex_free_v3_a7_prelaunch_delta_audit_v1",
+  "audited_at_utc": "2026-09-04T20:03:10Z",
+  "stamp_source": "machine_date_u",
+  "auditor": "A7 (independent prelaunch DELTA re-audit, second pass, phase V3-Q, cycle FOREX-FREE-V3)",
+  "cycle_id": "FOREX-FREE-V3",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/q-a7-prelaunch2",
+  "branch": "orca/forex-free-v3-q-a7-prelaunch2",
+  "head_sha_at_audit": "067d4b4af96ad3eb77b72170f42dbd14ac30672b",
+  "porcelain_at_start": "clean (empty)",
+  "w3b_freeze_sha_audited": "2d4c88339790c0406bedc35a6c0b8258a58806b2",
+  "fix_commit_audited": "df3da1700719b56c51e2ae58a464a35eab28d949",
+  "ancestry": "2d4c883 is an ancestor of HEAD (verified); HEAD is the freeze-record commit only",
+  "scope": "Re-audit of prelaunch findings H1/H2/H3/M1 after the gates-fix delta, plus regression sweep of df3da17 and re-verification of the unchanged chain. Audit artifacts only; zero repairs.",
+  "method": "Frozen runner/family sources read line-by-line against baseline_invariants.json, PLAN_forex_v3.md section 12 and BOTH binding proposals (a5_lane/proposal_1.json, a6_lane/proposal_1.json). All hashes recomputed from bytes in BOTH twin trees. The 6-arm dummy dry-run re-executed INDEPENDENTLY in the auditor tree against the e-exec-1 twin data (freeze_token=None) and recursively scanned for leaks. df3da17 diff reviewed hunk-by-hunk. Test suite re-run by the auditor (89 passed, 2 skipped in 42.9s).",
+
+  "checks": {
+    "C1_pin_twin_integrity": {
+      "verdict": "PASS",
+      "audit_tree": {"HEAD": "067d4b4af96ad3eb77b72170f42dbd14ac30672b", "branch": "orca/forex-free-v3-q-a7-prelaunch2", "porcelain": "empty", "w3b_ancestor_of_HEAD": true},
+      "twin_e_exec_1": {"HEAD": "2d4c88339790c0406bedc35a6c0b8258a58806b2", "detached_at_W3B": true, "porcelain": "clean"},
+      "twin_r_reproduce": {"HEAD": "2d4c88339790c0406bedc35a6c0b8258a58806b2", "detached_at_W3B": true, "porcelain": "clean"}
+    },
+    "C2_data_and_code_chain_both_twins": {
+      "verdict": "PASS",
+      "price_digests": "156/156 match staged_data_manifest.json digests_exec2 AND digests_repro2 in e-exec-1; 156/156 in r-reproduce; 0 missing, 0 mismatch (keys are repo-relative data_raw/forex_free_v1/*)",
+      "macro_digests": "9/9 sha256 match w3_freeze.json data_freeze.macro_vintages.file_sha256 under data_raw/forex_free_v3_macro/ in BOTH twins",
+      "code_hashes": "7/7 match w3_freeze.json code_hashes (the W3B values) in BOTH twins: scored_runner.py, macro_reader.py, accounting.py, family1.py, family2.py, macro_fetch.py, exec_driver.py"
+    },
+    "C3_independent_six_arm_dry_run": {
+      "verdict": "PASS",
+      "executed_in": "auditor tree q-a7-prelaunch2 code (== W3B frozen bytes) with e-exec-1 twin DATA (data_raw/forex_free_v1 + data_raw/forex_free_v3_macro); freeze_token=None; compute_cell called directly for all 6 scored arms after register_family",
+      "record_ids_pairwise_unique": true,
+      "record_ids_equal_freeze": "6/6 equal w3_freeze.json six_arm_dummy_dry_run arms (determinism across trees)",
+      "n_decisions_equal_freeze": "6/6 (family1 312/302/154, family2 138/344/145)",
+      "zero_leak_scan": "recursive scan over all 6 records: ZERO nonzero floats other than cost_tier=1.0 (config label) and integer counts; gross/price-only/financing/financing-adjusted columns 0.0; base/base_price_only/folds/stress metrics zeroed with pf=None; break_even_cost_bps=None; mdd_usd=0.0; pair_concentration={}; drop_one_expectancy all 0.0; dropout_scenarios 8x (expectancy=None, survived=None); incremental_alpha=None; benchmark_treatment=None; usd_drift_diag corr=None/evaluated=False; scored=real_pnl=published=False, dry_run=True on every record",
+      "wall_seconds": {"family1:anchor": 84.7, "family1:neighbour": 82.9, "family1:causal_negative_control": 101.4, "family2:anchor": 93.2, "family2:neighbour": 92.8, "family2:causal_negative_control": 93.1}
+    },
+    "C4_delta_gate_review": {
+      "verdict": "PASS_WITH_FINDINGS (H1/H2/H3 fixes verified; M1 deviation ruled; new finding D1)",
+      "H1_benchmark_arm": {
+        "refuse_as_scored_cell": "compute_cell raises BENCHMARK_TREATMENT_IS_NOT_A_SCORED_CELL for arm='benchmark_treatment' (verified in source)",
+        "same_kernel_dual_book": "scored anchor books benchmark_treatment via the same book_trades -> accounting.book_dual(cost_tier=1.0) path as the anchor, decisions validated under the SAME fail-closed rules (clock/lag/fold/financing), session-gated, fold-assigned; BENCHMARK_BOOK_EMPTY fails closed",
+        "alpha_always_present_when_scored": "scored anchor records always carry a finite incremental_alpha (anchor expectancy - benchmark expectancy, 10dp); gate INCREMENTAL_ALPHA_NOT_POSITIVE fires on <= 0; dry-run leaves None (no leak); a family without the arm fails the scored anchor via its own unknown-arm refusal (verified in family1.py/family2.py)",
+        "family1_benchmark_arm_verbatim": "PASS: unconditional 21-bar momentum (LONG m>0 / SHORT m<0 / FLAT m==0), zero macro reads in the state (reader never consulted; pinned by test with AttributeError probe), identical clock/fills/holds/costs; financing accrues per frozen formula per the proposal's dual-book mandate for the benchmark",
+        "family2_benchmark_arm_verbatim": "PASS: anchor law with direction differential read at T-270d (BENCHMARK_LAG_DAYS=270), same vol gate/warmup/schedule/costs; financing accrues at TRUE day-start differentials (lag touches only the direction signal); matches a6_lane/proposal_1.json incremental_test_vs_frozen_benchmark verbatim",
+        "alpha_operationalization": "FINDING D1 (HIGH): the runner gates BOTH families on the per-trade expectancy difference; for family2 that IS the frozen gate (a6 proposal: 'anchor financing-adjusted expectancy minus benchmark financing-adjusted expectancy'), but the binding a5 proposal freezes a DIFFERENT operationalization and explicitly demotes the implemented quantity to a non-gate diagnostic - see findings D1"
+      },
+      "H2_usd_index": {
+        "in_runner": "PASS: usd_index_from_data_paths builds the frozen D1 equal-weight USD-leg index from the authorized H1 snapshot only (16:00-NY weekday daily steps, XXX/USD contributes -r, USD/XXX +r, equal-weight mean keyed by the later bar's UTC date); family meta usd_index_daily_returns is never consulted (family2 now passes None)",
+        "gate_unchanged": "PASS: feeds the unchanged |corr| <= 0.30 gate (USD_DRIFT_EXPLAINS_ANCHOR), evaluated only over >= 60 days with trades (USD_DIAG_MIN_DAYS unchanged); hand-computed 2-pair golden test pins signed legs, weekend single-step, decoy-bar exclusion, source-key priority",
+        "fail_closed": "PASS: scored run with booked trades and no price source raises USD_INDEX_SOURCE_MISSING; a PRESENT but empty/broken source raises BLOCKED_DATA (a malformed snapshot can never silently disable the gate); dry-run never builds the index (usd_index_source=None, no leak)",
+        "determinism": "PASS: fixed source-key order, sorted file names, sorted day keys, fsum over fixed pair order"
+      },
+      "H3_dry_run_hygiene": {
+        "sanitizer": "PASS: dry_run_sanitized applied to EVERY dummy record after internal computation; covers all four top-level book columns, base/base_price_only metrics, every fold, every stress tier (incl. cost_component_delta_vs_base_usd - the measured W3 leak), break_even_cost_bps, mdd_usd, fold_positive_share, pair_concentration, drop_one_expectancy, dropout_scenarios, incremental_alpha, benchmark_treatment, usd_drift_diag; counts and mode flags survive",
+        "independent_rerun": "PASS: zero-leak recursive scan on all 6 arms (see C3); determinism vs freeze 6/6"
+      },
+      "M1_dropout": {
+        "implemented": "8 scenarios = 7 drop-one-PAIR (frozen universe order) + 1 drop-one-BEST-fold (max fold expectancy, deterministic tie-break -fold); survival = reduced-book financing-adjusted expectancy > 0; unevaluable fold scenario fails closed; gate counts survivals >= DROPOUT_SURVIVAL_MIN=5 (reason renamed DROPOUT_SURVIVAL_INSUFFICIENT)",
+        "a7_ruling": "DEVIATION UPHELD AS HIGH (weaker), resolved CONDITIONALLY per A1's recorded precommitment - see findings M1-DEV"
+      },
+      "regression_sweep": {
+        "verdict": "PASS",
+        "diff_scope": "git show df3da17: scored_runner.py (+344/-46 net across 3 files), family1.py, family2.py, 3 test files, 1 handoff",
+        "frozen_constants": "NO frozen gate constant changed (expectancy>0, PF>=1.10, 2 pos folds, fold PF>=0.80, populated>=30, MDD 2500, fold share 0.5, pair share 0.4, stress PF 1.0, neighbour>0, control reject 1.10, corr 0.30, diag 60d, decisions 40, purge 14, folds, timeout 60min all byte-identical; DROPOUT_SURVIVAL_MIN=5 value unchanged, comment updated)",
+        "scored_arm_semantics": "anchor/neighbour/control decision handling untouched; the only behavioral deltas are the four declared fixes; family1 benchmark branch inserted ahead of the existing state chain without altering non-benchmark arms; family2 direction_of gains a lag branch that is inert for scored arms",
+        "nondeterminism": "none introduced: fixed tuple/dict insertion orders, sorted iterations, fsum/round at defined points, deterministic max() tie-break, no wall-clock or randomness in the new code"
+      }
+    },
+    "C5_ledger_budget_hygiene": {
+      "verdict": "PASS",
+      "budget": "state.json budget computed=0 published=0 label 0/6; phase V3_Q_A7_DELTA_REAUDIT_DISPATCHED",
+      "v3_scored_ledger": "none exists in the audit tree or either twin (repo-wide search); the only ledger-like files under twin data_raw/forex_free_v1/dryrun/ are V1 dry-run fixture ledgers (FXFV1-A3-P2 schema), byte-identical across twins, not V3 artifacts",
+      "event_log": "W3B_FROZEN_REAUDIT_DISPATCHED records w3b 2d4c883 superseding BLOCKED w3 9d9611; no scored/publication events"
+    },
+    "C6_tests": {
+      "verdict": "PASS",
+      "command": "python -m pytest tests/assets/forex_free_v3 -q",
+      "result": "89 passed, 2 skipped in 42.88s (matches the i_gates_fix handoff claim; pass-1 baseline was 80+2)"
+    }
+  },
+
+  "findings": [
+    {
+      "id": "D1",
+      "severity": "HIGH",
+      "title": "Family1 incremental-alpha Stage-A gate is evaluated on a formula the binding A5 proposal explicitly froze OUT of the gate (per-trade expectancy difference implemented; per-pair-day normalized difference is the frozen gate)",
+      "evidence": {
+        "a5_proposal_frozen_gate": "research/proposals/forex_free_v3/a5_lane/proposal_1.json incremental_test.operationalization: 'overall incremental alpha := (full-sample sum of the anchor's after-cost financing-adjusted per-pair-day PnL) - (same for the benchmark), both normalized per pair-day of the identical post-warmup schedule window, with identical notional units per active position. Gate: > 0. The per-trade expectancy difference (anchor - benchmark) is reported alongside as a diagnostic, not the gate.'",
+        "implemented": "scored_runner.py compute_cell: bench_expectancy = per-trade mean of the benchmark's financing-adjusted book; incremental_alpha = book_metrics(pnls_fin)['expectancy'] - bench_expectancy; stage_a_gates fires INCREMENTAL_ALPHA_NOT_POSITIVE on exactly this value. No other code path evaluates the A5 per-pair-day formula.",
+        "family2_unaffected": "a6_lane/proposal_1.json freezes 'anchor financing-adjusted expectancy minus benchmark financing-adjusted expectancy' as ITS gate - the implemented formula matches family2 verbatim",
+        "no_waiver": "i_gates_fix.json documents the expectancy-difference formula but records no deviation against the A5 operationalization; w3_freeze.json delta_notes are silent on it",
+        "related_nuance": "the A5 comparison window question ('identical post-warmup schedule window') is subsumed: the implemented per-trade difference performs no day-normalization at all, and the family1 benchmark's own state activates at its 21-bar momentum warmup (~2020-03) while the anchor activates at the 63-bar macro warmup (~2020-05)"
+      },
+      "impact": "The cycle's central incremental-information test for family1 is evaluated on a non-frozen formula. Per-trade and per-pair-day normalizations can differ in sign (the anchor trades a subset of the benchmark's active days; the A5 proposal froze per-pair-day normalization precisely for exposure fairness), so a family1 verdict under the implemented gate can contradict the verdict of its own frozen gate in either direction - a false Stage-A survivor or a false reject. Pre-registration integrity is broken for the family1 incremental gate even though no outcome data exists yet.",
+      "required_remediation_before_any_scored_run": "(a) implement the A5 frozen operationalization for family1:anchor inside compute_cell (pair-day normalized difference of full-sample financing-adjusted sums over the identical post-warmup schedule window; the per-trade difference stays reported as the proposal's diagnostic) - code delta, all seven code_hashes re-frozen, delta re-audit; OR (b) the owner records an explicit deviation waiver accepting the per-trade expectancy difference as the family1 gate (event_log + deviation register), formally superseding the A5 operationalization text.",
+      "status": "UNRESOLVED - LAUNCH BLOCKER"
+    },
+    {
+      "id": "M1-DEV",
+      "severity": "HIGH (ruled); RESOLVED CONDITIONALLY per recorded A1 precommitment",
+      "title": "Dropout gate denominator moved from the frozen 5-of-7 to 5-of-8: strictly weaker",
+      "ruling": "WEAKER. The new gate's pass set is a strict superset of the frozen 5-of-7 gate: every book with >= 5 pair-drop survivals still passes (the fold scenario only adds survivals), and books with exactly 4 pair-drop survivals that survive the best-fold drop now pass where the frozen gate failed them. Tolerated scenario failures rise from 2 to 3; the survival ratio falls from 71.4% to 62.5%. The added scenario is genuinely harder on fold-concentrated books, but that does not restore the frozen failure tolerance.",
+      "required_tightening": "6-of-8 minimum must BIND before any scored run (restores the frozen <= 2 tolerated failures; A1 has precommitted to accept 6/8 or 5/7-equivalent). Since finding D1 already forces a re-freeze delta, the runner constant DROPOUT_SURVIVAL_MIN 5 -> 6 should ride that same delta (preferred, verifiable); alternatively an owner-recorded, verifiable control-plane override, checked by the next audit before S0 authorization.",
+      "status": "RESOLVED-CONDITIONAL (binding 6/8 before scoring)"
+    },
+    {
+      "id": "I1",
+      "severity": "INFO",
+      "title": "Fold-drop coverage is one scenario (best fold), not the proposals' all-3-fold recomputes",
+      "note": "baseline_invariants v3_sample_floors and the A5 proposal (drop_one_fold: expectancy > 0 in ALL 3 single-fold recomputes) describe full fold-drop coverage; the fix implements only the best-expectancy fold drop. With unequal fold trade counts the max-expectancy fold is not always the most damaging removal, so single-best-fold is partial coverage of the frozen intent. Owner should extend to all-3 fold scenarios in the D1 remediation delta (suite would become 10 scenarios with an equivalently tightened floor) or record the deviation.",
+      "status": "OPEN (advisory; to be settled in the D1 remediation)"
+    },
+    {
+      "id": "I2",
+      "severity": "INFO",
+      "title": "stage_a_gates legacy fallback derives pair-only scenarios when dropout_scenarios is absent",
+      "note": "Hand-built/legacy records without the 8-scenario list are gated on the 7 pair scenarios only (the fold scenario is absent, not credited). Production records from compute_cell always carry the full list, so this path cannot occur in the published pipeline; noted for completeness.",
+      "status": "ACCEPTED"
+    },
+    {
+      "id": "L1",
+      "severity": "LOW (carried)",
+      "title": "Per-arm timeout cannot kill a hung family worker thread (pass-1 finding, accepted wart)",
+      "note": "call_family_arm unchanged; TechAbort still discards results fail-closed; residual resource use only. Not a delta regression.",
+      "status": "ACCEPTED WART (unchanged)"
+    }
+  ],
+
+  "delta_fix_verification_summary": {
+    "H1": "IMPLEMENTED and verified (same-kernel dual-booked benchmark, always-present scored alpha, enforced gate, fail-closed refusals, both benchmark arms rule-verbatim vs proposals) - with residual finding D1 on the family1 alpha operationalization",
+    "H2": "IMPLEMENTED and verified (in-runner D1 index from the authorized snapshot, unchanged 0.3/60-day gate, fail-closed missing/broken source, dry-run never computes it)",
+    "H3": "IMPLEMENTED and verified (sanitizer covers every booked monetary metric; independent 6-arm rerun: zero leaks, 6/6 record_id and n_decisions determinism vs freeze across trees)",
+    "M1": "IMPLEMENTED with a denominator deviation ruled HIGH and resolved conditionally (6/8 binding required before scoring)"
+  },
+
+  "verdict": {
+    "result": "FOREX_FREE_V3_S0_LAUNCH_BLOCKED",
+    "rule": "FOREX_FREE_V3_S0_LAUNCH_AUTHORIZED requires every check PASS and zero unresolved HIGH/CRITICAL findings; M1-DEV is resolved conditionally via the recorded A1 precommitment, but D1 is an unresolved HIGH with no precommitment covering it",
+    "checks_passed": ["C1", "C2", "C3", "C5", "C6"],
+    "checks_passed_with_findings": ["C4"],
+    "blockers": ["D1"],
+    "conditions_bound_on_any_future_AUTHORIZED": [
+      "D1 resolved: A5-frozen per-pair-day incremental gate implemented for family1 (code delta + re-freeze of all seven code_hashes + delta re-audit) OR owner-recorded deviation waiver",
+      "M1-DEV: dropout survival floor 6-of-8 binding before the first scored run (fold into the D1 re-freeze delta, or verified control-plane override)",
+      "I1 settled (extend fold-drop coverage to all 3 folds or record the deviation) - advisory, owner's call in the same remediation"
+    ],
+    "blocker_statement": "Phase E must not start. The gates-fix delta genuinely closes pass-1 H1/H2/H3 mechanics (all re-verified independently, including a clean cross-tree dry-run determinism and zero-leak result), but the delta introduced one new HIGH: the family1 incremental-alpha gate is evaluated on the quantity the binding A5 proposal explicitly demoted to a non-gate diagnostic. Resolve D1 (fix or recorded waiver), bind 6/8, re-freeze, and re-dispatch an A7 delta audit.",
+    "what_is_solid": "Twin pin/integrity at W3B, byte-identity of 156 price + 9 macro digests in both twins, 7/7 W3B code hashes in both twins, commit chain, budget 0/6, empty V3 ledger authority, the H2 in-runner USD index and H3 sanitizer mechanics, and full six-arm dry-run determinism across trees. The remaining blocker is confined to one gate formula in compute_cell."
+  }
+}

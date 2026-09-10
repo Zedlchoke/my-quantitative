@@ -1,0 +1,45 @@
+{
+  "schema": "forex_free_v8_p0_fred_precheck_v1",
+  "measured_at_utc": "2026-09-08T01:15:00Z",
+  "producer": "A1_FOREX_V8_CONTROLLER (pre-check only; NOT the P0 census — P0/A3 must produce the authoritative funded-economy table before D1)",
+  "authority": "plans/PLAN_forex_v8.md §2 §4-P0 §6; handbook §11.4 §11.7",
+  "s0_window": "2018-04-04..2025-07-24 (inherited from V7 conditioning-clock rule, research/control/forex_free_v7_run/p2_conditioning_clocks_v7.json)",
+  "key_handling": {
+    "presence": "FRED_API_KEY PRESENT in gitignored .env (measured 2026-09-08; length 32; ascii-alphanumeric)",
+    "gitignore": ".env ignored per .gitignore line 1 (git check-ignore exit 0)",
+    "functional_probe": "HTTP 200 on fred/series/observations DFF limit=1 (observation 2026-09-03 = 3.63); matches Lead probe 2026-09-07",
+    "redaction": "key read from environment only; no key value or URL-with-key in any output, log, or artifact; no key material committed"
+  },
+  "terms_of_use": {
+    "url": "https://fred.stlouisfed.org/docs/api/terms_of_use.html",
+    "recorded": [
+      "API key required; key is personal to the registrant (owner's own signup; agents never sign up, per plan §5)",
+      "third-party-owned series remain under their owners' copyright; user solely responsible for owner-imposed restrictions; copyrighted series carry the word 'Copyright' in notes",
+      "for third-party data used beyond personal use, the data owner must be contacted first",
+      "attribution notice required on applications: 'This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.'",
+      "provider may impose rate limits; AS-IS, no warranty; termination requires ceasing use"
+    ],
+    "house_fit": "owner's personal quantitative research = personal use; house rules stricter than ToU: no raw-data commit (sha256 manifests + derived stats only), no redistribution, redaction of keys",
+    "copyright_flag_check": "DFII10/T10YIE/DGS10 notes contain NO copyright flag (US Treasury H.15 = US-government data); NASDAQOMRXREAL notes DO (Copyright © NASDAQ, Inc.)"
+  },
+  "vintage_semantics_measured": {
+    "method": "fred/series/observations with vintage_dates under the owner key (the ALFRED archive via API)",
+    "dfii10": "vintages 2007/2010/2014/2016/2017 all HTTP 200; obs 2018-04-05 binds value 0.75 from realtime_start 2018-04-06 (1-business-day publication lag evidenced); value held constant to vintage 2025-07-24 on sample",
+    "t10yie": "no vintage at 2007-01-03/2010-01-04/2014-01-02 (HTTP 400); vintage present at 2016-01-04 (HTTP 200) -> archive starts between 2014-01 and 2016-01, SPANS S0 start 2018-04-04; obs-level binding same semantics as DFII10",
+    "dgs10": "vintages span S0 (2018/2021 measured HTTP 200)",
+    "foreign_cpi_gbr_example": "vintages EXIST with measured revision capture: obs 2018-02-01 = 117.294 at vintage 2018-04-06, rebased to 104.9 by vintage 2018-10-09 -> vintage snapshots carry the revision history (dense lag/vintage mapping is P0 work)",
+    "section_11_7_note": "publication lag observed != revision integrity proven; PASS_PIT_EVIDENCED verdicts below are PRELIMINARY paths, contingent on P0's dense vintage map + revision scan + mutation test"
+  },
+  "per_series_precheck": [
+    {"series": "DFII10/DFII5", "economy": "US", "kind": "market real yield (H.15 TIPS CMT)", "freq": "Daily", "start": "2003-01-02", "covers_S0": true, "alfred_vintages": "yes, from <=2007, span S0", "copyright_flag": false, "precheck_verdict": "PASS_PIT_EVIDENCED (path)"},
+    {"series": "T10YIE/T5YIE/T5YIFR", "economy": "US", "kind": "market breakeven inflation", "freq": "Daily", "start": "2003-01-02", "covers_S0": true, "alfred_vintages": "yes, from ~2014..2016, span S0", "copyright_flag": false, "precheck_verdict": "PASS_PIT_EVIDENCED (path)"},
+    {"series": "DGS10", "economy": "US", "kind": "nominal 10y CMT (MANDATORY exposure-form control leg)", "freq": "Daily", "start": "1962-01-02", "covers_S0": true, "alfred_vintages": "yes, span S0", "copyright_flag": false, "precheck_verdict": "PASS_PIT_EVIDENCED (path)"},
+    {"series": "GB/CA/AU/NZ/JP/CH/EU market real yield or breakeven", "economy": "non-US", "kind": "market real yield / breakeven", "freq": "-", "start": "-", "covers_S0": "-", "alfred_vintages": "-", "copyright_flag": "-", "precheck_verdict": "BLOCKED_DATA (NOT FOUND in keyed catalog: 7 country-targeted searches 0-hit; 'index-linked bond' 0-hit; full 260-hit 'real interest rate' scan = US TIPS universe; WDI FR.INR.RINR-style IDs HTTP 400)", "note": "absence verdict needs P0's exhaustive census (tag/category/source browse) before it is final"},
+    {"series": "NASDAQOMRXREAL", "economy": "Nasdaq OMRX (identity unconfirmed, likely US TIPS index)", "kind": "index level, not a yield", "freq": "Daily", "start": "2008-11-17", "covers_S0": true, "alfred_vintages": "NO (HTTP 400 in ALFRED)", "copyright_flag": true, "precheck_verdict": "RETROSPECTIVE_ONLY + CANDIDATE_NOT_AUTHORIZED (third-party copyright + no vintage archive)"},
+    {"series": "REAINTRATREARAT10Y", "economy": "US", "kind": "Cleveland Fed model real-rate construct", "freq": "Monthly", "start": "1982-01-01", "covers_S0": true, "alfred_vintages": "NO", "copyright_flag": false, "precheck_verdict": "RETROSPECTIVE_ONLY (model-based, not market-based; no vintages)"},
+    {"series": "OECD CPI panel (e.g. GBRCPIALLMINMEI)", "economy": "GB + peers", "kind": "realized CPI (axis-2 legs; complements the per-print calendars)", "freq": "Monthly", "start": "long history", "covers_S0": true, "alfred_vintages": "YES with measured revision capture (rebase 117.294->104.9)", "copyright_flag": false, "precheck_verdict": "PASS_PIT_EVIDENCED (path, pending dense lag/vintage audit per series)"}
+  ],
+  "funded_economy_count_market_real_yield": "1 (US) on this pre-check's measurements — BELOW the plan's >=2-economies bar IF the census confirms; the BLOCKED_DATA cheap close for the differential axis remains live and is P0's adjudication, not the pre-check's",
+  "governance_implication": "mandatory lane 1 requires differentials across funded economies vs USD; with only US market real yields the differential is unfundable from FRED/ALFRED alone unless P0 finds foreign series the pre-check missed; axis 2 (expectation/PPP with foreign realized-inflation legs, vintaged OECD CPI + in-hand per-print calendars) and axis 3 remain open",
+  "verdict": "PRECHECK_COMPLETE — GO/NO_GO for P0 recorded in first_report_v8.json"
+}

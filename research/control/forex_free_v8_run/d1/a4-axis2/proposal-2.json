@@ -1,0 +1,146 @@
+{
+  "schema": "forex_free_v8_d1_proposal_v1",
+  "cycle": "FOREX-FREE-V8",
+  "lane": "a4-axis2",
+  "lane_role": "inflation-expectation class (axis-2 PRIORITY), outcome-blind proposal 2 of 2",
+  "hypothesis_id": "FXFV8-A4-P2",
+  "wave_sha": "86338a4d99aeaa762da8aa3c6b39f72b8a7417b6",
+  "outcome_blind": true,
+  "title": "Expectation-realization gap state: market-implied expected inflation vs realized CPI trend as a slow USD purchasing-power regime",
+
+  "mechanism": "Who is forced to act (or slow to react): reserve managers and long-horizon global allocators set strategic USD weights off purchasing-power trajectories reviewed on monthly-to-quarterly cycles; they are structurally slow, so when market-implied expected US inflation (the 10y breakeven) runs persistently far above the realized US inflation trend that anchor portfolios still assume, USD cash and USD-denominated assets are being repriced to erode faster than the realized trend their mandates price in, and the underweighting of USD arrives with a lag — producing drift of USD lower while the gap is wide, and the mirror-image drift higher when the market prices disinflation far below the still-sticky realized trend. Why the effect exists: this is relative-PPP logic operating at the expectation margin — the currency whose EXPECTED inflation exceeds its REALIZED trend is overpriced in purchasing-power terms and mean-reverts via slow portfolio underweighting, and neither input alone carries the signal (a high breakeven with correspondingly high realized trend is equilibrium, not dislocation; a high realized trend fully priced by breakevens is likewise no dislocation). Observable: GAP(t) = T10YIE as-of level minus CPIAUCSL as-of y/y (computed inside a single snapshot, rebase-invariant per AX2-C3), z-scored over a trailing year of the daily as-of stream. When it MUST fail: (i) if the DGS10 exposure-form control (nominal yield minus the same realized leg) reproduces the anchor, the state is a nominal-yield level position, not an expectation-realization state (F2-a); (ii) if the +7d sham-CPI-calendar neighbour reproduces or out-earns the anchor, the realized leg's genuine values/timing carry no or negative information and the rule is a slow breakeven-level position wearing a gap costume (F2-b, house clusters #10/#12 standard); (iii) if the gap regime is dominated by TIPS liquidity premia or a broad growth/risk USD trend, concentration/USD-drift diagnostics and PF gates fail; (iv) if the state moves too slowly to clear costs, the break-even-bps gate fails.",
+
+  "universe": {
+    "pairs": ["EURUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "GBPUSD"],
+    "position_convention": "USD-short unit = +1 EURUSD, +1 GBPUSD, +1 AUDUSD, +1 NZDUSD, -1 USDJPY, -1 USDCAD, -1 USDCHF; equal risk unit per pair, no pair weighting, no cross-pair lead-lag structure",
+    "jp_note": "USDJPY trades on US-only conditioning like every pair; no JP CPI/FRED conditioning anywhere (AX2-C6)"
+  },
+
+  "conditioning": {
+    "data_authority": "p2_conditioning_clocks_v8.json r3 fields ONLY; verdicts PASS_PIT_EVIDENCED per p0_verdicts_final_v8.json; AX2-C1..C8 binding",
+    "fields": [
+      {
+        "series": "T10YIE",
+        "class": "us_breakeven_10y",
+        "freq": "daily",
+        "availability_lag_days": {"median": 0, "min": 0, "max": 5},
+        "role": "market-implied expected inflation level (mechanism-bearing)"
+      },
+      {
+        "series": "CPIAUCSL",
+        "class": "us_cpi_monthly",
+        "freq": "monthly",
+        "availability_lag_days": {"median": 13, "min": 10, "max": 14},
+        "coverage_trim": "full S0 (102 prints, first print 2017-01 first_available 2018-01-01)",
+        "role": "realized-inflation trend leg (y/y only, never level-level)"
+      },
+      {
+        "series": "DGS10",
+        "class": "us_nominal_10y_CONTROL (AX2-C8 mandatory)",
+        "freq": "daily",
+        "availability_lag_days": {"median": 1, "min": 1, "max": 5},
+        "role": "causal control: nominal-yield exposure form of the anchor gap"
+      }
+    ],
+    "transforms": {
+      "AX2-C1": "every scoring-time pull is a single-date as-of snapshot (realtime_start = realtime_end = the decision's as-of date); current-vintage pulls forbidden in scored paths",
+      "AX2-C2_single_snapshot": "for each decision, R(t) = 100 x (v_last / v_lag12 - 1) is computed INSIDE one as-of snapshot, where v_last is the CPIAUCSL obs with the latest effective_time whose available_time <= the decision instant and v_lag12 is the obs 12 reference-months earlier in the SAME snapshot; GAP(t) = T10YIE(t) - R(t); GAP_z(t) = GAP(t) z-scored over the trailing 252 obs of the as-of GAP stream (min 200 valid obs, else no-decision)",
+      "AX2-C3_rebase_safety": "the only ratio used is y/y within one snapshot (rebase-invariant to first order; EZ/CH-HICP rebase-class evidence motivates the rule and the US leg ships the same rebase/revision event table from p2_rebase_revision_events_v8.json); level-level CPI conditioning FORBIDDEN and absent; splice-ratio adjustment FORBIDDEN and absent; CPI y/y value is carried forward between prints as a STATE (the rule runs every trading day, it is not a release-window rule)",
+      "thresholds_frozen": {"z_window_obs": 252, "entry_abs_z": 0.75, "exit_abs_z": 0.25, "max_hold_trading_days": 60}
+    },
+    "lags_policy": "AX2-C4 per field: T10YIE consumed at the first 16:00-NY clock strictly after its available_time (median same-day); CPIAUCSL y/y enters at the first such clock strictly after the print's first_available (median lag 13 calendar days); the I/Q availability-lag mutation must shift the consumed decision exactly one period (a print arriving k periods late shifts the consumed decision exactly k periods); no other calendar enters any arm"
+  },
+
+  "decision_clock": {
+    "rule": "AX2-C4",
+    "spec": "daily 16:00 America/New_York, DST-correct; FX 24/5 weekday convention; grid = S0 trading-day clocks (n=1907, 2018-04-04..2025-07-24); the book is evaluated at every clock (continuous state rule), with CPI print availability only governing when new realized values become consumable"
+  },
+
+  "warmup": {
+    "reserved_clocks": 252,
+    "derivation": "z-window 252 obs of the GAP stream (which itself requires the first in-census CPI print available 2018-01-01) + rounding; no decisions before S0 clock 253 (~2019-02); warmup values computed but never traded",
+    "decision_capable_clocks_S0": 1655
+  },
+
+  "entry_exit_fills": {
+    "entry": "at the decision clock, when no position is open in a pair and GAP_z >= +0.75: open the USD-SHORT unit on ALL 7 pairs (expected inflation far above realized trend -> purchasing-power overpricing -> slow USD underweighting); when GAP_z <= -0.75: open the USD-LONG unit on ALL 7 pairs (disinflation priced below sticky realized trend -> USD purchasing-power underpricing); fill = that clock's daily close price",
+    "exit": "state exit with hysteresis: close when |GAP_z| < 0.25 at a decision clock; forced exit after max_hold_trading_days = 60 (risk bounding only, declared as such); fill at the exiting clock's close",
+    "fills": "same-clock market fill at daily close, no intrabar logic, no slippage beyond the cost ladder; position flips (state crossing sign while in-position) execute as close-and-reverse in the same clock",
+    "dual_book": "price-only book and financing-adjusted book carried per frozen invariant 6 (sign non-inversion)"
+  },
+
+  "costs": {
+    "ladder": "1.5 bps/side x {1.0, 1.5, 2.0}",
+    "primary_tier": 2.0,
+    "note": "tier 2.0 PRIMARY for all gate evaluation (inherited V6/V7); low trade frequency concentrates the break-even-bps risk (frozen rule 5 floor 1.5 bps), which is declared as a primary expected failure surface"
+  },
+
+  "arms": {
+    "count": 3,
+    "arm_budget_note": "the arm budget is exactly 3 and BOTH a DGS10 exposure-form control (AX2-C8, owner directive) and a +7d sham-calendar variant (house standard, clusters #10/#12, triggered because the realized leg's availability instants condition the state) are mandatory; the neighbour slot is therefore assigned to the mandatory sham-calendar variant",
+    "anchor": {
+      "id": "FXFV8-A4-P2-anchor",
+      "spec": "GAP = T10YIE - CPIAUCSL_yy (true availability both legs); GAP_z over trailing 252 obs; entry |z| >= 0.75 (sign: z >= +0.75 SHORT USD, z <= -0.75 LONG USD), exit |z| < 0.25, max hold 60 trading days, all 7 pairs, continuous state rule at the daily clock",
+      "mechanism_bearing_components": "BOTH the market-implied expectation level (T10YIE) AND the genuinely-timed realized-inflation trend (CPIAUCSL y/y as-of)"
+    },
+    "neighbour": {
+      "id": "FXFV8-A4-P2-neighbour-sham7d",
+      "type": "mandatory +7d sham-calendar variant (house standard; falsification cluster instances #10 #12)",
+      "spec": "IDENTICAL rule in every field — same thresholds, window, hysteresis, holds, universe, direction, clock — except the CPIAUCSL availability stream used to build the realized leg is shifted +7 CALENDAR DAYS (sham calendar); the T10YIE stream stays true; AX2-C4 applies unchanged to the sham stream (a sham print shifts the consumed decision exactly one period after its sham availability)",
+      "tests": "whether the realized leg's GENUINE release timing/values carry the information (anchor materially different from sham) or the rule is indifferent to when realized data truly arrives (sham reproduces or out-earns anchor -> gap mechanism falsified, V5-class negative-information case if sham out-earns)"
+    },
+    "control": {
+      "id": "FXFV8-A4-P2-control-dgs10-gap-form",
+      "type": "causal control (AX2-C8 MANDATORY nominal-yield exposure form)",
+      "spec": "the anchor's gap geometry rebuilt with the expectation series swapped for the nominal yield: GAP_n = DGS10 - CPIAUCSL_yy (true availability both legs), identical z-window 252, entry 0.75 / exit 0.25, max hold 60, same direction convention, same universe and clock, same as-of semantics AX2-C1..C4",
+      "identifiability": "differs from anchor ONLY in the mechanism-bearing component (T10YIE swapped for DGS10); the realized leg, timing, and trade geometry are byte-identical, so the control neither subsumes the anchor nor is a near-duplicate: it isolates exactly the claim that the EXPECTATION series (not any yield level) is the operative input",
+      "refutes": "the convenient explanation 'this is a nominal-yield/carry-level position relabelled' (carry front door, measured rho 0.997-1.000 class)"
+    }
+  },
+
+  "falsification_rule": {
+    "preregistered": true,
+    "primary_numeric": "F2-a NOMINAL RELABEL: if the DGS10 gap-form control's financing-adjusted expectancy per trade at tier 2.0 has the SAME SIGN as the anchor's AND |exp_control| >= 0.5 x |exp_anchor|, the family DIES as a nominal-yield exposure shadow (measured at D2 alongside the pooled ancestry-rho gate, never argued)",
+    "secondary_numeric": [
+      "F2-b SHAM CALENDAR: if the +7d sham neighbour's expectancy has the anchor's sign AND |exp_sham| >= 0.5 x |exp_anchor|, OR the sham out-earns the anchor (same sign with |exp_sham| > |exp_anchor|, or opposite signs with sham > 0), the realized leg's genuine information is absent or negative -> family DIES (house clusters #10/#12 standard)",
+      "F2-c MECHANICAL: anchor financing-adjusted expectancy at tier 2.0 <= 0 -> family DIES (frozen rule 1)",
+      "F2-d INHERITED BASELINES: the anchor must additionally pass frozen rule_order 2..10 (pf >= 1.10, folds >= 2 positive, concentration <= 0.40, break-even bps <= 1.5, dual-book non-inversion, LOPO all subsets, stress tier 2.0 non-negative margin, USD-drift diagnostic, mechanism sanity); the family is promotable only if the anchor passes all AND neither F2-a nor F2-b fires"
+    ],
+    "nonvacuity": "if anchor trades < 60 S0-wide (or any fold has 0 anchor trades), the cell is VOID as vacuous (BLOCKED_SELECTION-class), not evidence about the mechanism; unused slot never reassigned"
+  },
+
+  "expected_failure_interpretation": {
+    "F2-a_fire": "the purchasing-power gap is spanned by the nominal yield: whatever the anchor earns is a rates-level position; the expectation-realization gap class closes for this cycle",
+    "F2-b_fire": "the realized-inflation leg is dead weight (sham reproduces) or negative information (sham out-earns, V5-class); the 'gap' is a slow breakeven-level position and the stated mechanism is falsified; recorded, never rescued by retiming",
+    "F2-c_or_gates_fire": "either the PPP-at-the-expectation-margin drift does not exist on G10 spot at tradeable margins, or it exists but dies on the cost floor / stress tier / concentration — thin-margin class per P-2 recorded through margins_to_fail",
+    "slow_state_warning": "the most likely failure surface is the break-even-bps gate (few trades must carry 2 x 1.5 bps x 2.0 tier = 6 bps round-trip): a thin-margin rejection here is a COST verdict, not a mechanism-absence verdict, and is recorded as such"
+  },
+
+  "fold_structure": {
+    "folds": 3,
+    "by_time_non_overlapping": [
+      {"fold": 1, "start": "2018-04-04", "end": "2020-10-30"},
+      {"fold": 2, "start": "2020-11-02", "end": "2023-02-28"},
+      {"fold": 3, "start": "2023-03-01", "end": "2025-07-24"}
+    ],
+    "gate_inherited": "positive_populated_folds >= 2 of 3 (frozen rule 3); fold boundaries fixed at D1, never moved after PnL is visible"
+  },
+
+  "decision_count_sanity": {
+    "S0_clocks": 1907,
+    "decision_capable_after_warmup": 1655,
+    "trigger_rate_assumption": "a 252-obs z of a slowly-moving daily state spends ~25-45% of clocks outside the |z|<0.25 hysteresis band; 60-day max hold bounds episode length at 27+ forced episodes minimum; expected true episodes 25-45 across S0, x 7 pairs",
+    "expected_anchor_pair_trades": "175-315 across S0 (~60-105 per fold)",
+    "floor": 60,
+    "verdict": "non-vacuous: >= ~20 anchor trades per fold expected on 7 pairs, enough for 3 populated folds; the 60-trade floor guards the vacuous tail"
+  },
+
+  "novelty_attestation": {
+    "forbidden_packet_checked": "d1_packet_forbidden_inventory_v8.json read in full",
+    "not_entered_classes": "no session momentum/fade, no range structures, no policy-rate input (DGS10 appears ONLY as the mandatory exposure-form control, never as an anchor input), no vol gating, no commodity-bloc risk-off basket, no release-window avoidance (the book runs continuously, entries are never scheduled around releases and no post-release session logic exists), no reaction-direction conditioning on release signs (no release-day spot reaction sign enters any rule — the CPI leg enters as a y/y VALUE state, never as a sign/reaction), no EURUSD lead-lag diffusion, no USD-PC1 gated reversal (the gate is a US expectation-realization state, not a cross-pair return factor; direction is PPP-frozen, not spot-reversal), no cross-economy real-yield differential (no foreign market real-yield series exists or is used; the foreign realized-CPI legs of the census are NOT used here — the construct is US-internal, expectation-minus-realized, not a cross-economy differential)",
+    "sham_calendar_discharge": "the CPI availability instants condition the state, so the mandatory +7d sham-calendar variant is included as the neighbour arm per house standard (clusters #10/#12)",
+    "ancestry_rho_exposure": "anchor conditioning exposures (slow T10YIE-minus-CPIy/y state, daily 16:00-NY grid) are a priori low-rho vs carry-region, session, release-window and reaction-direction ancestry exposures (different input series, different clock geometry, no event windows); measured at D2 pre-selection, bar |rho| <= 0.20, never argued"
+  },
+
+  "pnl_anywhere": false
+}

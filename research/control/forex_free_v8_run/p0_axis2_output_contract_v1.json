@@ -1,0 +1,22 @@
+{
+  "schema": "forex_free_v8_axis2_output_contract_v1",
+  "frozen_at_utc": "2026-09-08T03:20:00Z",
+  "producer": "A1_FOREX_V8_CONTROLLER (P0)",
+  "authority": "plans/PLAN_forex_v8.md §2 axis 2, §4-P0; owner directive 2026-09-08 (rebase inside the output contract; mutation test in P0); handbook §11.1-§11.7",
+  "scope": "conditioning fields built from vintaged series (US breakevens T10YIE/T5YIE [+T5YIFR], US real yields DFII10/DFII5, nominal control DGS10, realized-CPI legs: US CPIAUCSL, EZ CP0000EZ19M086NEST, CH CP0000CHM086NEST + CHECPIALLMINMEI, GB GBRCPIALLMINMEI, CA CANCPIALLMINMEI, AU AUSCPIALLQINMEI, NZ NZLCPIALLQINMEI)",
+  "rules": [
+    {"id": "AX2-C1", "rule": "AS-OF PULLS ONLY", "spec": "every scoring-time pull uses realtime_start=realtime_end=<decision_asof_date> (the vintage snapshot as known that day). Current-vintage pulls are forbidden for any scored conditioning value — they contaminate PIT with post-window revisions/rebases."},
+    {"id": "AX2-C2", "rule": "SINGLE-SNAPSHOT TRANSFORM", "spec": "y/y, gaps, PPP deviations and any derived conditioning value are computed INSIDE one as-of snapshot. Splicing values across snapshots/vintages into one transform is forbidden."},
+    {"id": "AX2-C3", "rule": "REBASE DETECTION AND HANDLING", "spec": "the loader MUST build a rebase/revision event table per series: for each obs, compare the value bound at first-available vintage vs later vintages (evidence in p0_dense_vintage_map_v8.json); |delta| <=2% = revision-class, >2% = REBASE_CLASS (e.g. base-year change 2015=100 -> 2025=100 measured on EZ HICP family). Conditioning transforms use y/y within a single snapshot (rebase-invariant to first order). Level-level conditioning across a rebase boundary is FORBIDDEN; splice-ratio adjustment is FORBIDDEN (adds an unfrozen assumption). The rebase event table ships with the dataset and appears in the diagnostics."},
+    {"id": "AX2-C4", "rule": "DECISION CLOCK", "spec": "the decision that can consume a vintaged value is the first daily-or-slower cycle clock STRICTLY AFTER the value's available_time (= first-binding vintage's realtime_start). A vintage arriving k periods late must shift the consumed decision exactly k periods later — proven per conditioning field by the P0/I-Q mutation test (never early, never absorbed)."},
+    {"id": "AX2-C5", "rule": "TAIL TRUNCATION", "spec": "economies whose EVIDENCED (vintaged) feed ends before S0 end (GB/CA monthly to 2025-03, CH-OECD to 2025-04, AU/NZ quarterly to 2025-01) have NO conditioning clocks beyond their last evidenced print. Backfilling the tail from current-vintage pulls is forbidden. EZ/CH-HICP/US fund the full S0 window subject to the dense map bounds."},
+    {"id": "AX2-C6", "rule": "FORBIDDEN LEG", "spec": "JP realized-CPI from FRED is BLOCKED_DATA (OECD feed ends 2021-06; no current vintaged successor in the keyed catalog). JP conditioning via FRED CPI is ineligible this cycle."},
+    {"id": "AX2-C7", "rule": "RECORD PROVENANCE", "spec": "each conditioning row carries: source_id (FRED), series_id, event_time (obs period), effective_time (period end), available_time (first-binding vintage realtime_start), vintage_time (the as-of snapshot used), retrieved_time, raw_sha256 of the staged response, license_id (FRED API ToU + upstream source), normalizer_version. §11.2 minimum satisfied."},
+    {"id": "AX2-C8", "rule": "NOMINAL CONTROL", "spec": "every real-rate/expectation family carries the DGS10 nominal-yield exposure-form control under the SAME as-of semantics (AX2-C1..C4). Control verdicts recompute under any semantics change (P-3)."}
+  ],
+  "mutation_test_contract": {
+    "requirement": "per axis-2 economy leg: pick the median-lag print and the MAX-lag print from p0_dense_vintage_map_v8.json; pull full as-of snapshots at (first_available - 1 day) and (first_available + 1 day); assert (a) target obs absent before, present after with the vintage value; (b) the conditioning decision (which print the book consumes) shifts EXACTLY ONE period at the decision clock following first_available — and shifts k periods when the print is k periods late; (c) y/y computed in each snapshot is internally consistent (single-vintage). US daily leg: the T-1 obs must enter exactly at T's decision clock (1-business-day lag).",
+    "evidence_file": "p0_mutation_test_v8.json"
+  },
+  "pnl_anywhere": false
+}

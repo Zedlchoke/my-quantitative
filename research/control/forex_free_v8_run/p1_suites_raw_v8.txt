@@ -1,0 +1,481 @@
+=== SUITE forex_free_v1 ===
+........................................................................ [ 79%]
+...................                                                      [100%]
+91 passed in 1.97s
+exit=0
+=== SUITE forex_free_v2 ===
+................................F...F..F....F........................... [ 57%]
+s...................................s.................                   [100%]
+=================================== FAILURES ===================================
+_____________ TestStagedManifestReplay.test_full_replay_156_of_156 _____________
+
+self = <tests.assets.forex_free_v2.test_data_authority.TestStagedManifestReplay testMethod=test_full_replay_156_of_156>
+
+    def test_full_replay_156_of_156(self):
+>       results = DA.replay_staged_manifest()
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/assets/forex_free_v2/test_data_authority.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+manifest_path = None
+snapshot_root = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration'
+
+    def replay_staged_manifest(
+        manifest_path: str | None = None,
+        snapshot_root: str = SNAPSHOT_ROOT,
+    ) -> dict:
+        """Re-hash EVERY entry of ``digests_exec2`` against the read-only snapshot.
+    
+        The staged manifest is the V1 W1 byte-level authority (156 entries per
+        tree).  Each listed relative path is resolved under ``snapshot_root`` and
+        sha256-hashed; per-file evidence (expected vs observed digest, byte size,
+        status) is collected for every entry.
+    
+        Fail-closed: any mismatch or missing file raises
+        :class:`StagedManifestReplayError` carrying the full results -- a caller
+        can never receive a pass-looking return while a digest disagrees.
+        """
+        path = manifest_path or DEFAULT_MANIFEST_PATH
+        with open(path, "r", encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        digests = manifest.get("digests_exec2")
+        if not isinstance(digests, dict) or not digests:
+            raise ValueError(f"{path}: no digests_exec2 map")
+        repro = manifest.get("digests_repro2")
+        files: list[dict] = []
+        matched = mismatches = missing = 0
+        repro_disagreements = 0
+        for rel in sorted(digests):
+            expected = digests[rel]
+            s1_boundary_assert(rel)  # defense in depth: manifest entries stay out of S1
+            full = os.path.join(snapshot_root, rel)
+            entry: dict[str, Any] = {
+                "path": rel,
+                "expected_sha256": expected,
+                "status": None,
+            }
+            if repro is not None and rel in repro and repro[rel] != expected:
+                repro_disagreements += 1
+            if not os.path.exists(full):
+                entry["status"] = "MISSING"
+                missing += 1
+            else:
+                observed = _sha256_file(full)
+                entry["observed_sha256"] = observed
+                entry["bytes"] = os.path.getsize(full)
+                if observed == expected:
+                    entry["status"] = "MATCH"
+                    matched += 1
+                else:
+                    entry["status"] = "MISMATCH"
+                    mismatches += 1
+            files.append(entry)
+        checked = len(digests)
+        results = {
+            "schema": "forex_free_v2_staged_manifest_replay_v1",
+            "manifest_path": os.path.abspath(path),
+            "manifest_schema": manifest.get("schema"),
+            "manifest_staged_utc": manifest.get("staged_utc"),
+            "W1": manifest.get("W1"),
+            "byte_identical_exec_repro_declared": manifest.get("byte_identical_exec_repro"),
+            "exec_vs_repro_disagreements": repro_disagreements,
+            "snapshot_root": os.path.abspath(snapshot_root),
+            "checked": checked,
+            "matched": matched,
+            "mismatches": mismatches,
+            "missing": missing,
+            "fail_closed_ok": mismatches == 0 and missing == 0 and checked == matched,
+            "files": files,
+        }
+        if mismatches or missing:
+>           raise StagedManifestReplayError(
+                f"STAGED_MANIFEST_REPLAY_FAILED: checked={checked} matched={matched} "
+                f"mismatches={mismatches} missing={missing}",
+                results,
+            )
+E           research.assets.forex_free_v2.data_authority.StagedManifestReplayError: STAGED_MANIFEST_REPLAY_FAILED: checked=156 matched=0 mismatches=0 missing=156
+
+research/assets/forex_free_v2/data_authority.py:294: StagedManifestReplayError
+_____ TestTdLoaderDeterminism.test_same_pair_loaded_twice_identical_digest _____
+
+self = <tests.assets.forex_free_v2.test_data_authority.TestTdLoaderDeterminism testMethod=test_same_pair_loaded_twice_identical_digest>
+
+    def test_same_pair_loaded_twice_identical_digest(self):
+>       rows_a, quar_a = td_loader.load_pair_h1("EUR/USD", DA.SNAPSHOT_DATA_ROOT)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/assets/forex_free_v2/test_data_authority.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pair = 'EUR/USD'
+data_root = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw'
+request_manifest = None, quarantine_ceiling = 0.001
+
+    def load_pair_h1(pair, data_root, request_manifest=None, quarantine_ceiling=0.001):
+        """Ascending, unique, validated H1 bars for one pair from canonical
+        1h window files under <data_root>/forex_free_v1/. When request_manifest
+        is given, every window file's sha256 must match a recorded request entry
+        (fail-closed UNVERIFIED_FILE otherwise). OHLC-inconsistent bars (provider
+        rounding artifacts) are QUARANTINED — excluded with reason, never silently
+        accepted; more than quarantine_ceiling fraction per pair fails closed."""
+        tag = pair.replace("/", "")
+        raw = os.path.join(data_root, "forex_free_v1")
+        if not os.path.isdir(raw):
+>           raise ValueError(f"NO_RAW_DIR: {raw}")
+E           ValueError: NO_RAW_DIR: /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw/forex_free_v1
+
+research/assets/forex_free_v1/td_loader.py:24: ValueError
+_____________ TestH1GridAuditSynthetic.test_real_pair_smoke_eurusd _____________
+
+self = <tests.assets.forex_free_v2.test_data_authority.TestH1GridAuditSynthetic testMethod=test_real_pair_smoke_eurusd>
+
+    def test_real_pair_smoke_eurusd(self):
+>       rows, _ = td_loader.load_pair_h1("EUR/USD", DA.SNAPSHOT_DATA_ROOT)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/assets/forex_free_v2/test_data_authority.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pair = 'EUR/USD'
+data_root = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw'
+request_manifest = None, quarantine_ceiling = 0.001
+
+    def load_pair_h1(pair, data_root, request_manifest=None, quarantine_ceiling=0.001):
+        """Ascending, unique, validated H1 bars for one pair from canonical
+        1h window files under <data_root>/forex_free_v1/. When request_manifest
+        is given, every window file's sha256 must match a recorded request entry
+        (fail-closed UNVERIFIED_FILE otherwise). OHLC-inconsistent bars (provider
+        rounding artifacts) are QUARANTINED — excluded with reason, never silently
+        accepted; more than quarantine_ceiling fraction per pair fails closed."""
+        tag = pair.replace("/", "")
+        raw = os.path.join(data_root, "forex_free_v1")
+        if not os.path.isdir(raw):
+>           raise ValueError(f"NO_RAW_DIR: {raw}")
+E           ValueError: NO_RAW_DIR: /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw/forex_free_v1
+
+research/assets/forex_free_v1/td_loader.py:24: ValueError
+__ TestLastFlatBarDSTProbes.test_real_data_flat_bar_eurusd_winter_and_summer ___
+
+self = <tests.assets.forex_free_v2.test_data_authority.TestLastFlatBarDSTProbes testMethod=test_real_data_flat_bar_eurusd_winter_and_summer>
+
+    def test_real_data_flat_bar_eurusd_winter_and_summer(self):
+>       rows, _ = td_loader.load_pair_h1("EUR/USD", DA.SNAPSHOT_DATA_ROOT)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/assets/forex_free_v2/test_data_authority.py:246: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pair = 'EUR/USD'
+data_root = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw'
+request_manifest = None, quarantine_ceiling = 0.001
+
+    def load_pair_h1(pair, data_root, request_manifest=None, quarantine_ceiling=0.001):
+        """Ascending, unique, validated H1 bars for one pair from canonical
+        1h window files under <data_root>/forex_free_v1/. When request_manifest
+        is given, every window file's sha256 must match a recorded request entry
+        (fail-closed UNVERIFIED_FILE otherwise). OHLC-inconsistent bars (provider
+        rounding artifacts) are QUARANTINED — excluded with reason, never silently
+        accepted; more than quarantine_ceiling fraction per pair fails closed."""
+        tag = pair.replace("/", "")
+        raw = os.path.join(data_root, "forex_free_v1")
+        if not os.path.isdir(raw):
+>           raise ValueError(f"NO_RAW_DIR: {raw}")
+E           ValueError: NO_RAW_DIR: /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v1/integration/data_raw/forex_free_v1
+
+research/assets/forex_free_v1/td_loader.py:24: ValueError
+=========================== short test summary info ============================
+FAILED tests/assets/forex_free_v2/test_data_authority.py::TestStagedManifestReplay::test_full_replay_156_of_156
+FAILED tests/assets/forex_free_v2/test_data_authority.py::TestTdLoaderDeterminism::test_same_pair_loaded_twice_identical_digest
+FAILED tests/assets/forex_free_v2/test_data_authority.py::TestH1GridAuditSynthetic::test_real_pair_smoke_eurusd
+FAILED tests/assets/forex_free_v2/test_data_authority.py::TestLastFlatBarDSTProbes::test_real_data_flat_bar_eurusd_winter_and_summer
+4 failed, 120 passed, 2 skipped in 1.70s
+exit=1
+=== SUITE forex_free_v3 ===
+.......................................F...............s................ [ 74%]
+.........................                                                [100%]
+=================================== FAILURES ===================================
+_______________________ test_real_snapshot_schedule_only _______________________
+
+    def test_real_snapshot_schedule_only():
+        price_dir = os.path.join(REAL_DATA_DIR, "forex_free_v1")
+        if not os.path.isdir(price_dir):
+            pytest.skip("real snapshot not copied into this worktree (gitignored)")
+        manifest = None
+        if os.path.exists(REAL_MANIFEST):
+            with open(REAL_MANIFEST, "r", encoding="utf-8") as handle:
+                manifest = json.load(handle)
+            import hashlib
+            bad = missing = 0
+            for rel, expected in manifest["digests_exec2"].items():
+                path = os.path.join(os.path.dirname(REAL_DATA_DIR), rel)
+                if not os.path.exists(path):
+                    missing += 1
+                elif hashlib.sha256(open(path, "rb").read()).hexdigest() != expected:
+                    bad += 1
+            assert (bad, missing) == (0, 0), "staged snapshot digests must match 156/156"
+    
+        with tempfile.TemporaryDirectory() as tmp:
+            # DISCLOSED synthetic schedule stub: real BIS vintages are
+            # NOT_PROVEN_ON_LIVE_FETCH (blocked at the Q data-hash gate), so the
+            # macro gate runs on a deterministic oscillating stub (steps every
+            # 9 calendar days through a 4-phase cycle per area; cadence chosen
+            # only to exercise go/no-go churn, never scored).  This measures the
+            # real daily 16:00-NY schedule (decision/fill/skip mechanics) only.
+            areas = {"US": 1.50, "EMU": -0.40, "GB": 0.75, "JP": -0.10,
+                     "CH": -0.75, "CA": 1.00, "AU": 0.85, "NZ": 1.20}
+            paths = {}
+            for area, base in areas.items():
+                rows = []
+                day = date(2019, 1, 7)
+                k = 0
+                while day <= date(2026, 8, 31):
+                    value = round(base + 0.25 * ((k % 4) - 1.5), 4)
+                    rows.append((value, day.isoformat(), f"{day.isoformat()}T23:59:59Z"))
+                    day += timedelta(days=9)
+                    k += 1
+                path = os.path.join(tmp, f"{area}.json")
+                with open(path, "w", encoding="utf-8") as handle:
+                    json.dump([_vintage(area, v, eff, av) for v, eff, av in rows], handle)
+                paths[area] = path
+            reader = PolicyRateReader.from_data_paths({"macro_vintages": paths})
+            data_paths = {"price_h1_dir": price_dir,
+                          "macro_vintages": paths}
+    
+            counts = {}
+            for arm in ("anchor", "neighbour", "causal_negative_control"):
+>               out = F.run_arm(arm, data_paths, reader)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/assets/forex_free_v3/test_family1.py:558: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+research/assets/forex_free_v3/family1.py:479: in run_arm
+    h1 = load_pair_h1_bars(pair, price_dir)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pair = 'EUR/USD'
+price_h1_dir = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v8/integration/data_raw/forex_free_v1'
+
+    def load_pair_h1_bars(pair: str, price_h1_dir: str) -> list:
+        """Ascending, unique, validated H1 bars for one pair from the canonical
+        window files (``<TAG>_1h_*_a.json``) under ``price_h1_dir``.
+    
+        Error-status provider windows (no coverage) are skipped; overlapping
+        windows dedupe on the bar stamp; OHLC-inconsistent provider artifacts are
+        quarantined (excluded, counted) with the inherited 0.1 percent
+        fail-closed ceiling.  Each bar is ``(open_utc, open, high, low, close)``.
+        """
+        tag = pair.replace("/", "")
+        if not os.path.isdir(price_h1_dir):
+            raise RuntimeError(
+                f"BLOCKED_DATA: no price H1 directory for {pair}: {price_h1_dir!r}")
+        names = sorted(f for f in os.listdir(price_h1_dir)
+                       if f.startswith(f"{tag}_1h_") and f.endswith("_a.json")
+                       and "TRUNCATED" not in f)
+        if not names:
+>           raise RuntimeError(
+                f"BLOCKED_DATA: no canonical H1 window files for {pair} under {price_h1_dir!r}")
+E           RuntimeError: BLOCKED_DATA: no canonical H1 window files for EUR/USD under '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v8/integration/data_raw/forex_free_v1'
+
+research/assets/forex_free_v3/family1.py:168: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/assets/forex_free_v3/test_family1.py::test_real_snapshot_schedule_only
+1 failed, 95 passed, 1 skipped in 73.98s (0:01:13)
+exit=1
+=== SUITE forex_free_v4 ===
+...F.............................................................        [100%]
+=================================== FAILURES ===================================
+_______________ test_dummy_six_arm_sanitized_pairwise_and_replay _______________
+
+    def test_dummy_six_arm_sanitized_pairwise_and_replay():
+        """The full discipline on a synthetic snapshot: sanitize-clean records,
+        pairwise-distinct trial identity, zero-position visibility, replay
+        determinism with zero denominator delta."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            data_paths = _make_fixture(tmp)
+            run_id = uuid.uuid4().hex[:8]
+            work = _tmp_ledger(f"pytest_{run_id}")
+            try:
+                ledger1 = os.path.join(work, "ledger.jsonl")
+>               report1 = D.run_dummy(data_paths, ledger1,
+                                      os.path.join(work, "report1.json"))
+
+tests/assets/forex_free_v4/test_exec_driver_v4.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+research/assets/forex_free_v4/exec_driver_v4.py:715: in run_dummy
+    data_verification = verify_staged_data(root)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v8/integration'
+
+    def verify_staged_data(root=ROOT):
+        """Verify the staged data authority against its pinned manifests; fail
+        closed on any mismatch.  Returns the evidence dict."""
+        # 1) price snapshot: 156/156 sha256 vs staged_data_manifest digests_exec2
+        manifest_path = os.path.join(root, STAGED_MANIFEST)
+        manifest = json.load(open(manifest_path, encoding="utf-8"))
+        digests = manifest["digests_exec2"]
+        snap_ok, snap_bad = 0, []
+        for rel, expected in sorted(digests.items()):
+            path = os.path.join(root, rel)
+            if not os.path.exists(path) or sha256_file(path) != expected:
+                snap_bad.append(rel)
+            else:
+                snap_ok += 1
+        if snap_bad:
+>           raise RuntimeError(f"STAGED_SNAPSHOT_MISMATCH: {snap_bad[:5]} "
+                               f"({len(snap_bad)} bad of {len(digests)})")
+E           RuntimeError: STAGED_SNAPSHOT_MISMATCH: ['data_raw/forex_free_v1/AUDUSD_1day_2018-09-01_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2018-09-01_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2019-05-19_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2020-02-03_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2020-10-20_a.json'] (152 bad of 156)
+
+research/assets/forex_free_v4/exec_driver_v4.py:282: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/assets/forex_free_v4/test_exec_driver_v4.py::test_dummy_six_arm_sanitized_pairwise_and_replay
+1 failed, 64 passed in 17.24s
+exit=1
+=== SUITE forex_free_v5 ===
+FF.F...F.........................................                        [100%]
+=================================== FAILURES ===================================
+________________ test_scored_mode_refuses_without_launch_gates _________________
+
+tmp_path = PosixPath('/private/var/folders/5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-657/test_scored_mode_refuses_witho0')
+
+    def test_scored_mode_refuses_without_launch_gates(tmp_path):
+        """No W5 freeze / S0 / fresh GO artifacts => refusal BEFORE any
+        compute; a refusal report is written and no scored ledger is
+        created."""
+        report = tmp_path / "refusal.json"
+        ledger = tmp_path / "scored_ledger.jsonl"
+        auth = tmp_path / "auth.json"
+        auth.write_text(json.dumps({"freeze_token": D.W4_FREEZE_TOKEN}))
+        with pytest.raises(SystemExit) as exc:
+            D.run_scored({}, str(ledger), str(auth), str(report))
+        assert exc.value.code == 2
+        assert not ledger.exists()          # nothing booked, nothing published
+        refusal = json.loads(report.read_text())
+        assert refusal["refused"] is True
+        failed = {k for k, v in refusal["gates"].items() if not v["ok"]}
+>       assert {"w4_freeze", "s0_launch_authorized", "owner_fresh_go",
+                "budget", "s1_seal"} <= failed
+E       AssertionError: assert {'budget', 'o..., 'w4_freeze'} <= {'budget', 'o...ation_inputs'}
+E         
+E         Extra items in the left set:
+E         's0_launch_authorized'
+E         's1_seal'
+E         'w4_freeze'
+
+tests/assets/forex_free_v5/test_exec_driver_v5.py:69: AssertionError
+----------------------------- Captured stdout call -----------------------------
+{"mode": "scored", "refused": true, "failed_gates": ["owner_fresh_go", "budget", "publication_inputs"], "report": "/private/var/folders/5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-657/test_scored_mode_refuses_witho0/refusal.json"}
+______________ test_scored_mode_refusal_lists_every_missing_gate _______________
+
+tmp_path = PosixPath('/private/var/folders/5x/qwclk7413dz3f32234k4619w0000gn/T/pytest-of-hoangminhlong/pytest-657/test_scored_mode_refusal_lists0')
+
+    def test_scored_mode_refusal_lists_every_missing_gate(tmp_path):
+        ok, gates = D.evaluate_launch_gates()
+        assert ok is False
+        for gate in ("w4_freeze", "s0_launch_authorized", "owner_fresh_go",
+                     "budget", "s1_seal"):
+>           assert gate in gates and gates[gate]["ok"] is False
+E           assert ('w4_freeze' in {'w4_freeze': {'ok': True, 'detail': 'all pinned code hashes match'}, 's0_launch_authorized': {'ok': True, 'detail': "...e, 'detail': 'phrase_ok=True postdates_s0=False'}, 'budget': {'ok': False, 'detail': '3/3 scored cells consumed'}, ...} and True is False)
+
+tests/assets/forex_free_v5/test_exec_driver_v5.py:78: AssertionError
+______________ test_dummy_three_arm_sanitized_pairwise_and_replay ______________
+
+    def test_dummy_three_arm_sanitized_pairwise_and_replay():
+        """The full discipline on a synthetic snapshot: sanitize-clean records,
+        pairwise-distinct trial identity, margin-to-fail scaffold, zero-
+        position visibility, replay determinism with zero denominator delta."""
+        with tempfile.TemporaryDirectory() as tmp:
+            data_paths = _make_fixture(tmp)
+            run_id = uuid.uuid4().hex[:8]
+            work = _tmp_ledger(f"pytest_{run_id}")
+            try:
+                ledger1 = os.path.join(work, "ledger.jsonl")
+>               report1 = D.run_dummy(data_paths, ledger1,
+                                      os.path.join(work, "report1.json"))
+
+tests/assets/forex_free_v5/test_exec_driver_v5.py:98: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+research/assets/forex_free_v5/exec_driver_v5.py:795: in run_dummy
+    data_verification = verify_staged_data(root)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v8/integration'
+
+    def verify_staged_data(root=ROOT):
+        """Verify the staged data authority against its pinned manifests; fail
+        closed on any mismatch.  Returns the evidence dict."""
+        from research.assets.forex_free_v5 import family_a6p1 as F
+        # 1) price snapshot: sha256 vs staged_data_manifest digests_exec2
+        manifest_path = os.path.join(root, STAGED_MANIFEST)
+        manifest = json.load(open(manifest_path, encoding="utf-8"))
+        digests = manifest["digests_exec2"]
+        snap_ok, snap_bad = 0, []
+        for rel, expected in sorted(digests.items()):
+            path = os.path.join(root, rel)
+            if not os.path.exists(path) or sha256_file(path) != expected:
+                snap_bad.append(rel)
+            else:
+                snap_ok += 1
+        if snap_bad:
+>           raise RuntimeError(f"STAGED_SNAPSHOT_MISMATCH: {snap_bad[:5]} "
+                               f"({len(snap_bad)} bad of {len(digests)})")
+E           RuntimeError: STAGED_SNAPSHOT_MISMATCH: ['data_raw/forex_free_v1/AUDUSD_1day_2018-09-01_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2018-09-01_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2019-05-19_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2020-02-03_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2020-10-20_a.json'] (152 bad of 156)
+
+research/assets/forex_free_v5/exec_driver_v5.py:325: RuntimeError
+_________________ test_verify_staged_data_pins_the_authorities _________________
+
+    def test_verify_staged_data_pins_the_authorities():
+        """The real staged authorities verify fail-closed (read-only): 153-file
+        snapshot digests, the 246-clock conditioning authority, and the pinned
+        V5-extension ledger sha."""
+>       evidence = D.verify_staged_data()
+                   ^^^^^^^^^^^^^^^^^^^^^^
+
+tests/assets/forex_free_v5/test_exec_driver_v5.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v8/integration'
+
+    def verify_staged_data(root=ROOT):
+        """Verify the staged data authority against its pinned manifests; fail
+        closed on any mismatch.  Returns the evidence dict."""
+        from research.assets.forex_free_v5 import family_a6p1 as F
+        # 1) price snapshot: sha256 vs staged_data_manifest digests_exec2
+        manifest_path = os.path.join(root, STAGED_MANIFEST)
+        manifest = json.load(open(manifest_path, encoding="utf-8"))
+        digests = manifest["digests_exec2"]
+        snap_ok, snap_bad = 0, []
+        for rel, expected in sorted(digests.items()):
+            path = os.path.join(root, rel)
+            if not os.path.exists(path) or sha256_file(path) != expected:
+                snap_bad.append(rel)
+            else:
+                snap_ok += 1
+        if snap_bad:
+>           raise RuntimeError(f"STAGED_SNAPSHOT_MISMATCH: {snap_bad[:5]} "
+                               f"({len(snap_bad)} bad of {len(digests)})")
+E           RuntimeError: STAGED_SNAPSHOT_MISMATCH: ['data_raw/forex_free_v1/AUDUSD_1day_2018-09-01_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2018-09-01_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2019-05-19_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2020-02-03_a.json', 'data_raw/forex_free_v1/AUDUSD_1h_2020-10-20_a.json'] (152 bad of 156)
+
+research/assets/forex_free_v5/exec_driver_v5.py:325: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/assets/forex_free_v5/test_exec_driver_v5.py::test_scored_mode_refuses_without_launch_gates
+FAILED tests/assets/forex_free_v5/test_exec_driver_v5.py::test_scored_mode_refusal_lists_every_missing_gate
+FAILED tests/assets/forex_free_v5/test_exec_driver_v5.py::test_dummy_three_arm_sanitized_pairwise_and_replay
+FAILED tests/assets/forex_free_v5/test_exec_driver_v5.py::test_verify_staged_data_pins_the_authorities
+4 failed, 45 passed in 1.24s
+exit=1
+=== SUITE forex_free_v6 ===
+........................................................................ [ 68%]
+.................................                                        [100%]
+105 passed in 11.36s
+exit=0
+=== SUITE forex_free_v7 ===
+.............                                                            [100%]
+13 passed in 2.27s
+exit=0
+ALL_SUITES_DONE

@@ -1,0 +1,176 @@
+{
+  "schema": "forex_free_v3_proposal_v1",
+  "hypothesis_id": "FXFV3-A4-P1",
+  "lane": "A4",
+  "cycle": "FOREX-FREE-V3",
+  "title": "Post-availability drift in the direction of a policy-rate change",
+  "mechanism_class": "macro_event_conditioned_directional_drift",
+  "macro_conditioned": true,
+
+  "economic_mechanism": "When a G10 central bank changes its policy rate, the market reprices that currency's expected future short-rate path. High-frequency event studies show the immediate move is large but incomplete: spot FX underreacts to monetary policy news on the day and continues to drift in the direction of the surprise over subsequent days. If a policy-rate change becomes point-in-time available (availability stamp, never the effective date alone), a position taken at the next daily decision point in the direction of the change should earn a small positive drift over the following one-to-two weeks, over and above what the pair's own recent price trend explains.",
+
+  "falsifiable_prediction": {
+    "direction": "After a policy-rate change of currency X first satisfies available_time_utc <= T, the pair(s) containing X drift in the DIRECTION OF THE CHANGE (hike -> long X; cut -> short X) over the frozen 10-session holding horizon.",
+    "magnitude_class": "small per pair-event: order 5-30 bps gross mean drift over 10 sessions at the 10000 USD-unit notional; the break-even round trip at base cost is 3.00 USD (6 bps of notional), so the predicted drift must exceed ~2x break-even for the stress tiers to be attainable at all.",
+    "horizon": "10 trading sessions after the next-session fill; a correct REJECT_ALL (anchor expectancy <= 0 after cost, or PF < 1.10, or the control reproducing the anchor) falsifies the mechanism."
+  },
+
+  "literature_pointers": [
+    {
+      "authors": "Jon Faust, John H. Rogers, Swapnil Swamy",
+      "venue": "Monetary policy expectations and surprise moves in exchange rates, International Finance Discussion Paper / Journal of International Economics",
+      "year": "2012 (working paper) / 2021 (journal)",
+      "documented": "Monetary policy surprises produce large, immediate exchange-rate moves aligned with the direction of the surprise; the decomposition of expected vs surprise components is documented on daily event windows.",
+      "extrapolated": "The paper documents the event-day reaction, not a multi-day post-availability drift. The 10-session drift is an extrapolation from the broader FX post-announcement-drift literature and is exactly what this proposal tests; it may be absent."
+    },
+    {
+      "authors": "Elvira Cenesizoglu, Timothy Maheswaran",
+      "venue": "Exploring the sources of return predictability: stochastic volatility and market jumps in high-frequency FX data / post-announcement drift studies in FX",
+      "year": "2017",
+      "documented": "Daily FX returns exhibit post-announcement drift following scheduled macro news releases: directional continuation after news beyond the announcement bar.",
+      "extrapolated": "Documented for high-frequency news releases; the extrapolation is that slower-moving central-bank decisions exhibit the same continuation at a daily-or-slower decision clock."
+    },
+    {
+      "authors": "T. Clifton Green",
+      "venue": "Economic News and the Impact of Trading on Foreign Exchange Markets, Journal of Finance 59(2)",
+      "year": "2004",
+      "documented": "FX price discovery around macro announcements is concentrated and directional; announcement information is absorbed imperfectly at the announcement instant.",
+      "extrapolated": "Used only to motivate imperfect absorption; no parameter, threshold or horizon is taken from it."
+    }
+  ],
+
+  "pit_observable": {
+    "conditioning_series": {
+      "source_id": "BIS_CBPOL",
+      "adapter": "research/data_fusion/adapters/bis.py (parser bis-adapter-1.0.0, adopted at P0 commit cba3549b42c9388c2a095aebae6275fba4263eaa)",
+      "series": "WS_CBPOL policy rates, one series per rate area of the 7-pair universe; BORROWER_COUNTRY codes {US, XM, GB, JP, AU, NZ, CA, CH} x TYPE_OF_TRANSFORMATION_ADJUSTMENT = P (the adopted fixture convention); exact SDMX key resolved through BisAdapter.build_policy_rate_request at implementation and pinned in the source-to-test map",
+      "disposition": "AUTHORIZED_FOR_V3_RESEARCH per research/control/forex_free_v3_run/data_authority_v3.json",
+      "pair_to_area_map": {
+        "EUR/USD": ["XM", "US"],
+        "GBP/USD": ["GB", "US"],
+        "AUD/USD": ["AU", "US"],
+        "NZD/USD": ["NZ", "US"],
+        "USD/JPY": ["US", "JP"],
+        "USD/CHF": ["US", "CH"],
+        "USD/CAD": ["US", "CA"]
+      }
+    },
+    "decision_rule": "A CHANGE EVENT for area X is a vintage row whose policy rate differs from the previous eligible vintage of the same series. At each completed 16:00 America/New_York flat bar close T (the daily decision point), the arm selects all vintage rows R of the areas in the map satisfying R.available_time_utc <= T with no row of the same series available in (R.available_time_utc, T]; R is a change event iff R.rate != previous_eligible_vintage.rate. Direction for pair P containing area X: +1 (long the X side) if the change is a hike (new rate > old rate), -1 if a cut; a USD-area event moves all 7 pairs (USD side); a non-USD-area event moves exactly its own pair. Positions opened by an earlier event of the same pair are closed at the fill bar of the new event (event override, exactly one concurrent position per pair).",
+    "availability_semantics": "A macro row is read at decision time T only if row.available_time_utc <= T, via the adopted pit.select_asof (research/data_fusion/pit.py). Per the adopted authority: BIS effective_time_utc is midnight UTC of the observation date and availability is strictly later than effectiveness (never eligible on its own effective date); date-only ReleaseEvidence yields the end-of-UTC-day upper bound; missing evidence fails closed (MISSING_AVAILABLE_TIME_EVIDENCE). Because 16:00 NY (20:00Z/21:00Z) precedes the end-of-day upper bound, a same-day-effective change is in practice first tradeable at the NEXT 16:00-NY decision bar. No row with available_time_utc > T is ever read; this is regression-pinned upstream in tests/data_fusion/test_forex_v3_p0_adoption.py::test_pit_no_lookahead_decision_at_t_never_reads_unavailable_rows and re-pinned at implementation on the decision path.",
+    "price_observable_note": "Prices enter only as H1-snapshot-derived completed 16:00-NY flat bars (fills and PnL) and as the benchmark arm's trailing 10-session close-to-close return (computed from the same completed bars). No D1 context data, no bid/ask, no volume enters any scored quantity."
+  },
+
+  "universe": ["EUR/USD", "GBP/USD", "AUD/USD", "NZD/USD", "USD/JPY", "USD/CHF", "USD/CAD"],
+  "universe_justification": "Frozen cycle universe; no pair subsetting. A non-USD rate change touches exactly one pair, a USD change touches all seven; pair concentration and USD-drift gates are applied ex post as frozen, never by ex-ante exclusion.",
+
+  "warmup": {
+    "price": "10 completed 16:00-NY sessions of the H1 snapshot before the first scored decision (needed by the benchmark arm's trailing 10-session return; snapshot begins 2020-01-30, first fold begins 2020-03-01, margin ~7 sessions).",
+    "macro": "Full as-of vintage history per area must contain at least 2 eligible vintages before that area's first decision (needed to classify a change); areas with fewer are NO_TRADE fail-closed until satisfied.",
+    "note": "data_authority_v3.json records live-fetch warmup coverage of BIS WS_CBPOL as NOT_PROVEN_ON_LIVE_FETCH; resolution belongs to the P3 freeze / Q data-hash gate. If live coverage of any required area fails that gate, this proposal is BLOCKED_DATA_OR_SELECTION, not re-specced."
+  },
+
+  "decision_clock": "Daily: the completed 16:00 America/New_York flat bar (21:00Z EST weeks / 20:00Z EDT weeks per the A3 calendar evidence). Decisions occur only on days with a newly-eligible change event (event-driven daily clock); all other days are non-decision days. No intraday decision clock anywhere.",
+  "holding_period": "10 trading sessions measured on completed 16:00-NY session bars from the entry bar.",
+  "fills": "Next 16:00-NY bar after the decision: a decision at the completed bar closing at T fills at the OPEN of the next session's 16:00-NY bar (one-event lag, inherited). Missing next bar => signal voided, NO_TRADE, fail-closed, never fill-forward. Exits (horizon end, event override, forced flat) fill at the OPEN of the designated next-session 16:00-NY bar.",
+
+  "arms": {
+    "anchor": {
+      "arm_id": "FXFV3-A4-P1-anchor",
+      "spec": "On each newly-eligible change event, direction = sign of the change in the policy rate of the affected area (hike +1 / cut -1 applied to the area's pair side per the map); fill next 16:00-NY open; exit at the open of the 16:00-NY bar 10 sessions later, or on event override, or forced flat at fold boundaries.",
+      "single_frozen_parameter_set": {
+        "conditioning": "BIS WS_CBPOL change events, availability-gated",
+        "holding_sessions": 10,
+        "event_override": "close and reverse on next eligible opposite-or-same event of the same pair",
+        "one_position_per_pair": true
+      }
+    },
+    "neighbour": {
+      "arm_id": "FXFV3-A4-P1-neigh",
+      "one_presumption_away": "Same mechanism (drift in the direction of the change) at the nearby horizon 5 sessions instead of 10. If the drift is real, the sign must be preserved at the shorter horizon; divergence isolates horizon fragility rather than a mechanism split.",
+      "spec": "Identical to anchor except holding_sessions = 5. All other constants, fills, overrides and costs identical.",
+      "single_frozen_parameter_set": {
+        "holding_sessions": 5
+      }
+    },
+    "control": {
+      "arm_id": "FXFV3-A4-P1-ctrl",
+      "role": "Causal negative control: sign-flipped conditioning. Preregistered rule: if the mechanism is the documented surprise-aligned continuation, the sign-flipped arm must NOT reproduce the anchor's positive after-cost expectancy (control expectancy must be < anchor expectancy and control PF < control_reject gate of 1.10 while anchor passes its gates). If the control matches or beats the anchor, the mechanism is falsified regardless of the anchor's sign.",
+      "spec": "Identical to anchor in every constant EXCEPT direction := -sign(rate change) (hike -> short the area's currency side; cut -> long). Same event dates, same fills, same 10-session horizon, same override law, same costs.",
+      "single_frozen_parameter_set": {
+        "direction_rule": "-1 x anchor direction rule",
+        "holding_sessions": 10
+      }
+    }
+  },
+
+  "incremental_test": {
+    "frozen_benchmark_treatment": "The SAME mechanism with macro conditioning removed: identical event dates, identical event-override law, identical 10-session horizon, identical fills, universe, warmup and costs, but the direction rule reads NO macro row at all — direction = sign of the pair's own trailing 10-session close-to-close return measured on completed 16:00-NY bars at the decision instant (a pure-price trend analogue occupying the identical schedule).",
+    "gate": "overall incremental alpha > 0: anchor after-cost expectancy (financing-adjusted book; price-only book also booked) minus benchmark after-cost expectancy, evaluated on the matched trade set. Positive raw PnL never overrides a failed incremental alpha or a firing control.",
+    "zero_macro_read_pin": "The benchmark arm must construct its direction without instantiating any VintageSeries read; pinned by an in-test assertion that the benchmark decision path touches no pit.select_asof call on macro series."
+  },
+
+  "cost": {
+    "base_bps_per_side": 1.5,
+    "tiers": [1.0, 1.5, 2.0],
+    "tier_bps_ladder": { "1.0": 1.5, "1.5": 2.25, "2.0": 3.0 },
+    "f1_fixed_application": "Stress PnL is BOOKED through the P1 kernel (research/assets/forex_free_v3/accounting.py: book_stress) so tier multipliers hit booked stress PnL; assert_stress_rows_distinct must hold (base/tier1.5/tier2.0 rows pairwise distinct when trades are non-empty; 3.00 < 4.50 < 6.00 USD round-trip cost at the 10000 USD-unit notional).",
+    "delay_stress": "The frozen one-event delay is carried as a SEPARATE stress component (fill delayed one additional session), never blended into the cost tiers (lesson V3-L2).",
+    "notional_usd_unit": 10000,
+    "break_even_diagnostic": "break_even_bps_per_side = mean gross per-trade return in bps / 2, reported full-sample and per fold for the anchor (a diagnostic attributing any reject to cost vs gross-edge absence; never a fee rescue)."
+  },
+
+  "expected_turnover_and_sample_floor": {
+    "event_cadence_argument": "Across the 8 rate areas and the ~6.5y post-warmup window (2020-03-01..2026-09-02), schedule-level expectation is ~40-70 change events; USD-area events move 7 pairs, each other area moves 1 pair. Expected pair-events: ~120-180 decisions for the anchor schedule (~20-30 per year). Never optimized; audited at implementation on the schedule only.",
+    "turnover_estimate": "~150 pair-events x 2 sides ~ 300 sides over the window (~46 sides/year), 3.00 USD round-trip cost per trade at base tier.",
+    "sample_floor": ">= 40 decisions/arm enforced per v3_sample_floors.min_decisions_per_arm; a decision = one newly-eligible change event evaluation per affected pair (including NO_TRADE outcomes from missing-bar voids). Below the floor the cell is INDETERMINATE, not negative evidence.",
+    "concentration_note": "USD-area events dominate the schedule by construction; the frozen max_pair_positive_share / max_positive_fold_share / USD-drift gates (usd_corr_abs_ceiling 0.3) decide this ex post, and the drop-one design probes it."
+  },
+
+  "folds_plan": {
+    "folds_frozen": ["2020-03-01", "2022-05-01", "2024-07-01", "2026-09-02"],
+    "scheme": "3 chronological folds: F1 2020-03-01..2022-05-01, F2 2022-05-02..2024-07-01, F3 2024-07-02..2026-09-02.",
+    "purge": "Any trade whose entry OR exit instant falls within 14 calendar days either side of an internal fold boundary is excluded from fold statistics and counted in purge_excluded.",
+    "force_flat": "Fold boundaries force-flat per baseline invariants.",
+    "stage_a_note": ">= 2/3 chronological folds positive; no populated fold PF < 0.8; fold_populated_min_trades 30 (inherited frozen gates)."
+  },
+
+  "drop_one_design": {
+    "drop_one_pair": "Recompute the anchor full-sample schedule 7 times, each excluding exactly one pair. Gate: expectancy sign unchanged (positive) in >= 5/7 recomputes (inherited dropout_survival_min_of_7).",
+    "drop_one_fold": "Recompute excluding exactly one fold, 3 times. Gate: expectancy sign unchanged (positive) in >= 2/3.",
+    "interpretation": "Failure means the edge is a single-pair artifact or a single-regime artifact (e.g. one rate cycle), not the general post-change drift mechanism."
+  },
+
+  "financing_and_dual_book": {
+    "mandate": "Every arm books BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns (kernel book_dual).",
+    "formula": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days/365, accrued per calendar day at the day-start as-of differential, sign=+1 long base/short quote, -1 short base/long quote; rates from the same availability-gated BIS WS_CBPOL as-of path (a rate change enters financing only from its availability stamp).",
+    "disclosed_approximation": "Policy rates are unsecured official rates, NOT swap/OIS-implied rollover; this approximation is disclosed ex ante per PLAN_forex_v3.md section 2. The financing term is a PnL adjustment here, not the signal: the conditioning variable is the rate CHANGE, independent of the level differential.",
+    "gate": "The financing term must not manufacture the edge: the price-only book must not invert the sign of the anchor's expectancy."
+  },
+
+  "failure_interpretation": "(a) Anchor after-cost expectancy <= 0 or PF < 1.10: post-availability directional drift after policy-rate changes carries no after-cost information at the frozen cost authority; the mechanism family is dead and no nearby variant may be attempted this cycle. (b) Anchor positive but the sign-flipped control also positive and >= anchor: the direction of the rate change is not the operative ingredient — the schedule itself (event timing + horizon) is being monetized through some other exposure; mechanism falsified. (c) Anchor positive but incremental alpha <= 0 vs the price-trend benchmark: the event dates merely re-schedule an ordinary trend signal; macro conditioning adds nothing; mechanism falsified. (d) Anchor positive but the price-only book inverts sign against the financing adjustment: financing manufactures the edge; fail the dual-book gate. (e) Neighbour (5-session horizon) flips sign while control behaves: horizon fragility; the anchor fails its supporting-arm expectation. (f) Drop-one failure: single-pair or single-cycle artifact. A correct REJECT_ALL is a complete outcome.",
+
+  "source_to_test_map": [
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_pit_availability_gate_on_decision_path", "pins": "A decision at T never reads a WS_CBPOL row with available_time_utc > T; a same-day-effective change is first readable at the next 16:00-NY decision bar (composes the adopted tests/data_fusion/test_forex_v3_p0_adoption.py no-lookahead pin onto the P1 decision rule)." },
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_change_event_detection_golden", "pins": "Hand-computed golden: vintage sequence with hold/hike/cut rows classifies exactly the rate-differing rows as events with the frozen directions; fail-closed on missing evidence (MISSING_AVAILABLE_TIME_EVIDENCE)." },
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_one_event_lag_fill_and_override", "pins": "Fill at next-session 16:00-NY bar open after the decision; event override closes and reverses with exactly one concurrent position per pair; missing fill bar => NO_TRADE, never fill-forward." },
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_control_direction_is_exact_sign_flip_of_anchor", "pins": "Control cannot equal anchor: per event, control direction == -anchor direction on identical dates/fills/horizons; the arm's schedules are identical except sign." },
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_benchmark_reads_no_macro_series", "pins": "Incremental benchmark direction derives only from completed 16:00-NY bar closes; the benchmark decision path performs zero VintageSeries reads (no pit.select_asof on macro series)." },
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_stress_tiers_distinct_and_delay_separate", "pins": "book_stress books tier 1.0/1.5/2.0 rows pairwise distinct on non-empty trades; one-event delay stress carried unblended (compose kernel assert_stress_rows_distinct)." },
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_dual_book_separation_and_financing_gate", "pins": "price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable columns via book_dual; price-only sign non-inversion check wired to the gate." },
+    { "test_file": "tests/assets/forex_free_v3/test_proposal_fxfv3_a4_p1.py::test_p1_fold_force_flat_purge_and_drop_one_nonvacuous", "pins": "Force-flat at frozen fold boundaries, 14d purge accounting, drop-one-pair (7) and drop-one-fold (3) recomputes each change the trade set (non-vacuous)." },
+    { "test_file": "tests/assets/forex/test_calendar.py + tests/assets/forex (existing, by reference)", "pins": "DST-aware 16:00-NY flat bar stamps (21:00Z EST / 20:00Z EDT) already pinned upstream by A3; P1 reuses, does not re-pin." }
+  ],
+
+  "outcome_blind_attestation": "I (A4) wrote this proposal without access to any per-arm outcome data; no scored PnL exists for V3. I read no V1/V2 per-cell PnL tables, no ledgers, no family modules beyond the mechanism names and summary evidence quoted in research/control/forex_free_v3_run/forbidden_family_inventory.json and PLAN_forex_v3.md. I loaded no market data and no macro data (no data_raw reads, no network, no adapter fetch); I computed no backtest, PnL or schedule simulation. Every number in this packet is a frozen design constant or a schedule-level design estimate. Signed: A4 proposal lane, 2026-09-04.",
+
+  "novelty_self_check": {
+    "vs_V1_family1_session_open_momentum_continuation": "Different information source (BIS WS_CBPOL policy-rate vintages, availability-gated) rather than session-open price behavior; different decision clock (daily 16:00-NY event-driven, not intraday); direction comes from the sign of a rate change, never from an opening price or session structure. The decorrelating feature I expect: the conditioning variable (macro vintage availability) is orthogonal to session price structure, so signal dates coincide only accidentally with the forbidden intraday schedules.",
+    "vs_V1_family2_late_session_standardized_extension_fade": "No session-extension observable, no fade, no intraday clock; entries occur on at most ~30 days per year per pair (event cadence) versus the late-NY daily cadence, and never at an intraday time-of-day rule.",
+    "vs_V2_family1_Tokyo_compression_to_London_expansion": "No range/compression state, no Tokyo or London window, no expansion trigger; the entire mechanism is defined by central-bank vintage data. The decorrelating feature: the information source (policy-rate change availability) shares no inputs with the overnight-range measurement.",
+    "vs_V2_family2_London_AM_range_break_with_retest_hold": "No range break, no retest confirmation, no London window; positions hold 10 sessions across the week rather than intraday, so PnL does not concentrate in any session band.",
+    "rescue_operations": "No sign inversion of a forbidden family (the only sign flip is inside this proposal's own preregistered control), no reduced cost assumptions, no pair cherry-picking, no session relabeling, no threshold relaxation. The mechanism is not a renamed, re-clocked or inverted variant of any forbidden row: the forbidden rows condition on session price geometry at intraday clocks; this proposal conditions on monetary-policy vintage data at a daily clock and holds across sessions."
+  },
+
+  "no_parameter_grid": true,
+  "no_parameter_grid_note": "Exactly one frozen value per constant per arm (holding 10/5 sessions, the frozen map, the frozen availability semantics). No grids, menus, ranges or tuning anywhere; the neighbour is a distinct single frozen spec, not a second point on a knob."
+}

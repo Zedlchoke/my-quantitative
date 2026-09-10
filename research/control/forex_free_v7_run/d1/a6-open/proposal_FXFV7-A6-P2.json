@@ -1,0 +1,179 @@
+{
+  "schema": "forex_free_v7_d1_blind_proposal_v1",
+  "proposal_id": "FXFV7-A6-P2",
+  "cycle": "FOREX-FREE-V7",
+  "written_at_utc": "2026-09-07T00:00:00Z",
+  "lane": {
+    "agent": "A6",
+    "axis": "open axis — cross-pair lead-lag diffusion on the staged 7-pair G10 daily panel (one lead pair's idiosyncratic move conditions the other six)",
+    "lane_kind": "blind_proposal",
+    "wave_sha": "5646a108588abbfc28c8fa9fa7664ddfe4d44f1b",
+    "branch": "orca/forex-free-v7-integration",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v7/integration",
+    "outcome_blind": true
+  },
+  "title": "Lead-lag diffusion: large idiosyncratic EURUSD moves diffuse into the other six G10 pairs over the following days",
+  "causal_claim_one_sentence": "Dealer liquidity providers warehouse correlated G10 books under per-pair risk limits and hedge at bounded intraday-to-daily rates, so a large EURUSD move in excess of the panel mean carries pair-specific information that diffuses into the other six pairs over the following days, and the mechanism must fail when cross-pair hedging is near-instant (diffusion compresses to the lead day) or when the lead move is itself the dollar factor (no idiosyncratic content).",
+  "control_class": "mandatory-by-mechanism: raw-level control (this is a conditioning-variable claim, not calendar-conditioned, so no sham-calendar placebo is the mandatory class) — the control arm runs the identical trigger machinery, percentile, hold, weights and costs with the conditioning variable replaced by each follower's OWN raw prior-day return contrast |r_j,t - mean_k(r_k,t)| at its own expanding 80th percentile (zero lead content); full spec in arms.control. The claim dies if the own-lag control reproduces the anchor (>= 0.5x identifying metric, same sign) — the Lo-MacKinlay identification, preregistered.",
+  "mechanism": {
+    "paragraph": "Slow actor: the dealer/liquidity-provider layer. Cross-pair dealers warehouse inventory across correlated pairs under per-pair value-at-risk limits; when the most liquid G10 pair makes a large move that is NOT common to the panel (idiosyncratic, hence information-bearing rather than a common-factor repricing), the hedging flow that re-balances correlated books arrives over the following days at rates bounded by risk limits and capital, leaving measurable continuation in the follower pairs at the daily decision horizon. Fast markets absorb the common part of the move within the lead day; the claim is only about the idiosyncratic residual. The mechanism consumes ZERO calendar content — no release dates, no ledger rows, no session shapes, no rates: only daily decision-close returns of the 7 staged pairs.",
+    "forced_or_slow_actor": "Dealer/liquidity-provider inventory hedgers under per-pair risk limits (slow-to-hedge layer); corporate hedgers on the follower pairs who respond to reference-currency moves with a lag; no fast-market actor is claimed.",
+    "why_it_should_exist": "Bounded hedging rates under risk limits convert a large idiosyncratic lead move into multi-day follower drift — the cross-asset lead-lag structure documented since Lo-MacKinlay, with the panel mean subtraction isolating the idiosyncratic part that common-factor pricing cannot have already absorbed.",
+    "literature_lineage": [
+      "Lo, A.W. and MacKinlay, A.C. (1990), 'When Are Contrarian Profits Due to Stock Market Overreaction?', Review of Financial Studies 3(2) — cross-autocorrelation (lead-lag) structure, not own-serial-correlation, generating predictable cross-pair continuation; the classic identification: lead-variable profits must not survive when the lead is replaced by the follower's own lag.",
+      "Hou, K. (2007), 'Industry Information Diffusion and the Lead-Lag Effect in Stock Returns', Review of Financial Studies 20(2) — information about a commonality diffuses slowly from a lead entity to related entities because of limited attention and bounded adjustment; the G10 cross-pair analogue conditions followers on the panel's most liquid lead."
+    ],
+    "calendar_content_used": false,
+    "novelty_statement": "The information source is the lagged IDIOSYNCRATIC return of one lead pair (excess over the equal-weight panel mean), cross-applied to the six follower pairs — not a reaction to any release, not a session shape, not a carry or rates input, not a vol-level gate, and not a factor-concentration gate. Wave diversity: lane A4 owns calendar-conditioned cross-economy spillover; this proposal conditions on lagged prices only and is unconditional on any calendar. D2 must still measure |rho| <= 0.20 pooled vs the full forbidden ancestry — in particular FXFV6-A6-P2 (USD PC1-concentration-gated cross-pair reversal: different conditioning variable, no PC1/concentration input, continuation sign) and V1/V2 session momentum/fade (no session windows here)."
+  },
+  "information_source": {
+    "conditioning_clocks": "NOT USED — this proposal is NOT calendar-conditioned and consumes zero rows of research/control/forex_free_v7_run/p2_conditioning_clocks_v7.json; per the wave packet, a non-calendar mechanism states its own evidenced availability below.",
+    "prices": {
+      "file": "inherited staged daily snapshot for all 7 pairs, byte-verified per research/control/forex_free_v7_run/p0_census_v7.json price_data_inheritance (manifest research/control/forex_free_v1_run/staged_data_manifest.json sha256 fe2155c0ef51bcac32262ebaf1c7d98fc724727eca1dda8b6644012ad854c460, 156 files, byte-verified chain V4 P2 -> V5 P2 -> V6 closed integration -> V7 census)",
+      "granularity": "daily decision closes only; the 1h/4h staged snapshots are NOT used by this proposal",
+      "per_pair_daily_evidence": "p0_census_v7.json price_data_inheritance.per_pair_meta: 7/7 pairs carry daily_bars 2178-2229 with daily_span_start 2018-09-03T00:00:00Z and daily_span_end 2026-09-01T00:00:00Z",
+      "derived_quantities": ["daily log returns at the 16:00 America/New_York decision close", "lead-pair idiosyncratic return: r_lead,t minus the equal-weight mean of all 7 pair returns at t", "expanding-window percentile of |idiosyncratic return|"]
+    }
+  },
+  "availability_semantics": {
+    "rule": "Every feature at decision date t is computed ONLY from decision closes at or before t; the trigger statistic and its percentile reference are formed from data through t (the trigger day's own close is the newest input), fills execute at t+1 — the earliest a follower position can exist is the first decision close after the lead move is observed.",
+    "evidence_class": "EVIDENCED for every price field (staged snapshot per_pair_meta above); no field carries an ASSERTED or UNEVIDENCED external timestamp because no external data is consumed.",
+    "gaps_fail_closed": "a missing decision close for ANY of the 7 pairs at date t voids the trigger computation at t (no imputation); a follower with a hole inside its holding window is closed at its last available close and flagged, never repaired.",
+    "no_asserted_timestamps": "nothing in this proposal is calendar-aware; the only timestamps used are the frozen decision-clock instants and the staged bar stamps."
+  },
+  "universe": {
+    "lead": "EURUSD — the staged panel's most liquid pair; the lead role is a preregistered constant, never re-picked",
+    "followers": ["GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF"],
+    "evidence": "all 7 pairs are the staged free-data panel (p0_census_v7.json price_data_inheritance.per_pair_meta; dead_or_nodata_pairs is empty)",
+    "side_convention": "followers are traded in their own quoted direction: sign of the lead's idiosyncratic move maps to long/short of each follower pair as quoted (base-currency strengthening => long pairs quoted USD-per-base, short USD-base pairs)"
+  },
+  "clock": {
+    "decision_instant": "daily 16:00 America/New_York, DST-correct (20:00Z EDT / 21:00Z EST), per p3_invariants_freeze_v7.json decision_clock and p2_conditioning_clocks_v7.json decision_clock",
+    "decision_day_convention": "weekday rule, FX 24/5; no holiday calendar is in evidence and none is assumed",
+    "frequency": "event-triggered on the daily clock (daily-or-slower); no intraday decisions"
+  },
+  "warmup": {
+    "requirement": "65 trading days (60 observation minimum for the expanding percentile plus buffer), identical to FXFV7-A6-P1's warmup budget",
+    "evidence": "staged daily spans start 2018-09-03T00:00:00Z (p0_census_v7.json per_pair_meta.daily_span_start); 65 weekdays after 2018-09-03 is 2018-11-30 (weekday calendar, no holiday calendar in evidence)",
+    "first_funded_decision": "on/after 2018-11-30; before the 60-observation minimum is reached the trigger CANNOT fire (fail-closed, no expanding-percentile shortcut)"
+  },
+  "decision_timestamp_semantics": {
+    "as_of_rule": "as-of daily bar by stamp-date convention, per p2_conditioning_clocks_v7.json funded-decision rule",
+    "trigger_day": "day t: compute d_t = r_lead,t - mean_j(r_j,t) over all 7 pairs at the t decision close; trigger fires iff |d_t| >= its expanding-window 80th percentile over all prior computed d values (minimum 60 observations, all strictly at or before t)",
+    "entry": "decision at t's close; fill at the FIRST decision close after t (t+1); no same-bar fills",
+    "exit": "fill at the decision close exactly 5 decision days after the entry fill",
+    "non_overlap": "one family position set at a time: while a hold is active, later triggers are SKIPPED and counted (no stacking, no pyramiding, no early exit); re-entry only from a new trigger after expiry",
+    "inside_s0": "every decision date must lie inside S0 2018-04-04..2025-07-24 (p3 freeze s0_window); trades whose exit crosses the S0 end are closed at the last S0 decision close and flagged"
+  },
+  "features_and_lags": {
+    "notation": "decision day t; C_t = decision close of t; r_j,t = ln(C_j,t / C_j,t-1) at decision closes",
+    "d_t": "r_EURUSD,t - (1/7) * sum_j r_j,t (lead idiosyncratic return; the lead is part of the mean, so d_t is a contrast within the staged panel)",
+    "trigger_t": "|d_t| >= percentile_80({|d_s| : s <= t, s computed}, min 60 obs)",
+    "direction_t": "sign(d_t); no event if d_t == 0 exactly",
+    "pit": "all inputs are closes at or before the t decision instant; entry fill is at t+1",
+    "fitted_parameters": "NONE — lead pair, 80th percentile, 60-observation minimum, hold length and equal weights are preregistered constants; no training, no calibration, no threshold search anywhere"
+  },
+  "entry_exit_fills": {
+    "entry_decision": "at the t decision close when trigger_t fires and no family position set is open",
+    "entry_fill": "at the t+1 decision close; no same-bar fills",
+    "exit_fill": "at the decision close exactly 5 decision days after the entry fill",
+    "holding_profile": "exposure spans exactly 5 decision-day close-to-close intervals; 6.0 bps round trip at stress tier 2.0 against multi-day follower drift",
+    "overlap_rule": "one position set at a time (see non_overlap); skipped triggers are counted, not queued",
+    "fold_boundary_rule": "any trade whose exit fill crosses a fold boundary is DROPPED from both books and counted"
+  },
+  "costs": {
+    "frozen": "1.5 bps per side x {1.0, 1.5, 2.0} applied at every fill (entry and exit each one side), per p3_invariants_freeze_v7.json cost_ladder",
+    "tiers": {"1.0": "1.5 bps/side, 3.0 bps round trip", "1.5": "2.25 bps/side, 4.5 bps round trip", "2.0": "3.0 bps/side, 6.0 bps round trip"},
+    "primary": "stress tier 2.0 is the PRIMARY gate (p3 freeze baseline_invariants rule 8)",
+    "dual_books": "book A = net of costs at the tier multiplier; book B = gross price-only (zero cost); the gross book must not invert the aggregate sign of the net book (house dual-book invariant, p3 rule 6)",
+    "break_even_bps": "break-even bps per trade reported per arm vs the 1.5 bps floor (p3 rule 5, margin-to-fail per P-2)"
+  },
+  "arms": {
+    "anchor": {
+      "id": "FXFV7-A6-P2-anchor",
+      "definition": "lead EURUSD, trigger at the expanding 80th percentile of |d_t|, direction sign(d_t), all 6 followers, hold 5, non-overlapping, per decision_timestamp_semantics",
+      "identifying_claim": "the CROSS-PAIR lead content (EURUSD idiosyncratic move) is the load-bearing information, not the follower pairs' own momentum"
+    },
+    "neighbour": {
+      "id": "FXFV7-A6-P2-neighbour",
+      "differs_from_anchor_by_exactly_one_axis": "trigger percentile 70 instead of 80; lead, hold, mapping, clock, costs identical",
+      "role": "identifiability: the anchor must out-earn the neighbour on the identifying metric, else the large-move (information-bearing) axis is not load-bearing and the effect is diffuse drift"
+    },
+    "control": {
+      "id": "FXFV7-A6-P2-own-lag",
+      "kind": "raw-level control (mandatory-by-mechanism for a conditioning-variable claim)",
+      "definition": "identical trigger machinery, percentile, hold, weights and costs, with the conditioning variable replaced by each follower's OWN raw prior-day return contrast: follower j triggers on |r_j,t - mean_k(r_k,t)| >= its own expanding 80th percentile (min 60 obs) and trades sign(r_j,t) — i.e., the same book built from raw own-pair levels only, zero lead content",
+      "falsifier": "if the own-lag control reproduces the anchor (>= 0.5x the anchor's identifying metric, same sign), the cross-pair diffusion claim is not load-bearing — the earning is own-pair continuation — and the family is REJECTED (the Lo-MacKinlay identification, preregistered)"
+    }
+  },
+  "falsification_rule": {
+    "identifying_metric": "pooled per-trade NET return (bps per unit notional) on the stress tier 2.0 book, pooled over all anchor decisions within each held-out fold evaluation",
+    "kill_conditions": [
+      "own-lag control identifying metric >= 0.5 x anchor identifying metric with the same sign -> REJECT family (cross-pair lead content not load-bearing; own-serial-correlation shadow)",
+      "neighbour identifying metric >= anchor identifying metric -> REJECT family as the named mechanism (large-move threshold axis not load-bearing)",
+      "anchor identifying metric <= 0 in ANY of the 3 held-out fold evaluations -> REJECT family (no fold rescue, no re-aggregation)",
+      "any p3 freeze baseline_invariants rule 1-8 fails on the anchor -> REJECT per that gate (expectancy non-positive, PF < 1.10, positive populated folds < 2, pair concentration > 0.40, break-even bps > 1.5, dual-book inversion, LOPO failure, tier-2.0 negative margin)",
+      "pooled |rho| > 0.20 vs ANY forbidden-ancestry exposure measured at D2 on exposure schedules -> proposal dies at D2 (ancestry veto, p3 freeze)"
+    ],
+    "no_rescue": "no parameter, threshold, lead choice, universe, hold, cost or gate change after any PnL is visible (preregistration); REJECT is a successful outcome"
+  },
+  "expected_failure_mode": "Dollar-factor shadow: EURUSD idiosyncratic moves may still proxy the dollar factor, making the book an ungated cousin of the dead FXFV6-A6-P2 USD-PC1-gated reversal (sign-flipped) and breaching the 0.20 pooled rho veto at D2; alternatively the own-lag control reproduces the anchor (the drift is own-pair continuation, not cross-pair diffusion) and gate 10 kills it. This is the hypothesis the family is willing to lose to.",
+  "fold_contract": {
+    "S0": "2018-04-04 .. 2025-07-24, frozen, no extension (p3 freeze s0_window)",
+    "folds": "3 contiguous temporal thirds of S0 by decision_date; boundaries frozen by A1/A9 before any scored computation; calendar-thirds arithmetic on the weekday decision calendar gives approximate boundaries 2020-09-08 and 2023-02-14",
+    "drop_one": "the IDENTICAL frozen rule (zero fitted parameters) is evaluated on each third as held-out; stability-only folds — the family passes only if the identifying metric is positive in each of the 3 held-out evaluations",
+    "no_empty_folds": "if any arm has zero decisions in a held-out fold, that arm-fold is NOT_RUN and the family cannot pass (fail-closed)",
+    "boundary_trades": "dropped and counted per boundary-crossing rule"
+  },
+  "expected_per_fold_decision_counts": {
+    "basis": "measured on the weekday decision calendar (1907 S0 weekdays; no holiday calendar in evidence), trigger eligibility from first funded decision 2018-11-30; the 80th-percentile tail makes ~20% of days eligible and the 5-day non-overlap rule caps entries near days/5, combined with a 0.8 clustering-slack factor",
+    "per_arm_per_fold": {"anchor": {"F1_approx": 74, "F2_approx": 102, "F3_approx": 102, "total_approx": 278}, "neighbour": {"F1_approx": 130, "F2_approx": 180, "F3_approx": 180, "note": "70th percentile makes ~30% of days eligible before the non-overlap cap"}, "control": {"F1_approx": 74, "F2_approx": 102, "F3_approx": 102, "note": "own-lag control machinery mirrors the anchor's trigger rate"}},
+    "note": "counts are trigger entries (each books 6 follower positions); A9 measures actual funded counts BEFORE selection; non-vacuous in every fold against the >= 15 floor by a factor of ~5x"
+  },
+  "gates": {
+    "inherit": "p3_invariants_freeze_v7.json baseline_invariants rules 1-10, identical thresholds, margin_to_fail scaffolding per P-2, ancestry veto |rho| <= 0.20 pooled vs ALL forbidden ancestry",
+    "non_vacuity_floor": ">= 15 decisions per arm per held-out fold (A9 measures actual funded counts BEFORE selection; below floor = NOT_RUN)",
+    "primary_profitability": "financing-adjusted expectancy > 0 at stress tier 2.0 (rule 1), PF >= 1.10 (rule 2), positive populated folds >= 2 of 3 (rule 3)",
+    "pair_concentration": "max single-pair share of fin-adj PnL <= 0.40 (rule 4) — the 6-follower book spreads concentration by construction but this gate is measured, not assumed",
+    "break_even_bps": "break-even bps per trade <= 1.5 floor (rule 5)",
+    "dual_book_invariant": "gross book does not invert the aggregate net sign (rule 6)",
+    "lopo": "leave-one-pair-out sign robustness on all subsets (rule 7) — for this family LOPO also probes whether one follower drives the entire diffusion claim",
+    "stress_tier_2": "tier 2.0 non-negative margin, primary book (rule 8)",
+    "usd_drift_diag": "mean net USD exposure per fold reported (rule 9, diagnostic) — load-bearing here because the dollar-factor shadow is the named failure mode",
+    "control_coherence": "own-lag control must RUN and must NOT reproduce the anchor (rule 10)",
+    "budget": "3 arms = 1 family cell-triple against p3 budget (planned_scored_cells 6, arms_per_family 3, max_families 2, shared with lane A4; selection owns the fit)"
+  },
+  "per_decision_evidence_traceability": {
+    "each_decision_row_records": [
+      "decision date and decision instant (16:00 America/New_York)",
+      "follower pair, side, arm id",
+      "trigger inputs: d_t, expanding percentile value, observation count, lead/follower closes with exact input windows",
+      "entry/exit decision and fill dates, fill prices, side",
+      "costs booked per side at the tier multiplier and book (net/gross)",
+      "fold id, fold-boundary-drop flag and skip-while-open flag",
+      "arm_config_digest (F-TERM-4 inherited)"
+    ],
+    "recompute_contract": "any data-semantics change (P-3) recomputes ALL THREE arms including the own-lag control — a control verdict does not survive a semantics change for free"
+  },
+  "ancestry_disclosure": {
+    "FXFV6_A4_P1_own_economy_reaction_direction": "no release conditioning anywhere; no reporting-pair reaction windows; conditioning is a lagged price contrast, unconditional on calendars; rho measured at D2",
+    "FXFV6_A6_P2_usd_pc1_gated_reversal": "no PC1, no factor-concentration gate, no reversal sign; conditioning variable is a single preregistered lead pair's idiosyncratic return with continuation sign; the adjacency is named as the primary D2 risk and rho measured at D2",
+    "V5_release_window_position_avoidance": "no release windows, no sham calendar semantics consumed",
+    "V4_carry_and_commodity_bloc_risk_off": "no rate-differential or rates input of any kind; no event basket",
+    "V3R_vol_gated_carry": "no realized-volatility gate and no carry input; the trigger is a percentile of a lagged return contrast (event selection), not a vol-level or vol-term-structure state",
+    "V1_V2_session_momentum_fade_and_ranges": "daily clock only; no session windows, opens, fades or range structures are computed",
+    "FRED_real_rate_axis": "no FRED, no keys, no real-rate or inflation series anywhere (DATA_BLOCKED axis untouched)"
+  },
+  "a9_open_questions": [
+    "Snapshot close convention: confirm the staged daily bar stamp maps to (or fails closed against) the 16:00 America/New_York decision close; if unmappable, the proposal is UNAVAILABLE_FAIL_CLOSED.",
+    "Exact fold boundaries frozen by A1/A9 on the decision-date list; approximate calendar-thirds boundaries used here for non-vacuity arithmetic only.",
+    "Trigger clustering: measure actual non-overlap entry counts and skipped-trigger counts per fold (the 74/102/102 figures are expectations, not guarantees).",
+    "Warmup percentile floor: confirm the 60-observation minimum leaves enough pre-2020 triggers for fold 1 non-vacuity (>= 15).",
+    "Fold-boundary trade drops and pair concentration/net USD exposure per fold (gates 4 and 9) on the actual books."
+  ],
+  "outcome_blind_attestation": {
+    "agent": "A6-lane",
+    "wave_sha": "5646a108588abbfc28c8fa9fa7664ddfe4d44f1b",
+    "attests": "no scored outcome file was read; this proposal is written blind from the wave SHA and the frozen authorities"
+  }
+}

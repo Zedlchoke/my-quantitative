@@ -1,0 +1,60 @@
+{
+  "schema": "forex_free_v1_data_authority_v1",
+  "measured_at_utc": "2026-09-03T01:35:00Z",
+  "producer": "A1_FOREX_CONTROLLER",
+  "cycle_id": "FOREX-FREE-V1",
+  "method": "official pages fetched independently by A1 on 2026-09-03; short verbatim excerpts recorded as evidence; full pages not committed",
+  "F1_conditions": {
+    "1_basic_costs_zero": {
+      "verdict": "PASS",
+      "evidence": "twelvedata.com/pricing: Basic plan is 'Free', '$0 billed yearly'; Subscribe leads to registration, not a checkout page; no credit-card requirement stated anywhere on the page.",
+      "retrieved_utc": "2026-09-03T01:20:00Z", "source_url": "https://twelvedata.com/pricing"
+    },
+    "2_forex_timeseries_included": {
+      "verdict": "PASS",
+      "evidence": "pricing page: 'Real-time forex market data' and forex market data features at Basic tier; /time_series docs: 'Supports: 1min, 5min, 15min, 30min, 45min, 1h, 2h, 4h, 8h, 1day, 1week, 1month' with no asset-class exclusion; cost '1 per symbol' per request; outputsize '1 to 5000'.",
+      "retrieved_utc": "2026-09-03T01:28:00Z", "source_url": "https://twelvedata.com/docs#time-series"
+    },
+    "3_personal_internal_research_permitted": {
+      "verdict": "PASS",
+      "evidence": "Terms: license is for 'Customer's internal business purposes and not for redistribution or external commercial purposes'; Free Tier prohibition is 'Use Free Tier data for commercial purposes'. The owner's individual, non-commercial research is internal use. Redistribution ban is tracked separately (condition 5).",
+      "retrieved_utc": "2026-09-03T01:22:00Z", "source_url": "https://twelvedata.com/terms"
+    },
+    "4_persistent_local_snapshots_permitted": {
+      "verdict": "PASS_WITH_RECORDED_CONDITIONS",
+      "evidence": "ToS §2.3(g) prohibits storing 'beyond permitted timeframes specified in the Documentation'; the Documentation prescribes NO storage-limit timeframe and itself recommends 'Cache responses for frequently accessed data to reduce API calls and improve performance'. Retention is 'For duration permitted by subscription' and on termination 'All Data must be deleted within 30 days' with 'Certification of deletion required if requested' (§16.2). 'Customer retains rights to Derived Data created in compliance with this Agreement' (§6.2) where Derived Data 'cannot be reverse-engineered to recreate the original Data'. CONCLUSION: persistent local snapshots are permitted for this account while it is active; on account termination the raw snapshots must be deleted within 30 days; manifests/checksums/compact audits (Derived Data) survive. Raw responses are kept in gitignored local storage only, never committed (also satisfying condition 5).",
+      "retrieved_utc": "2026-09-03T01:22:00Z", "source_urls": ["https://twelvedata.com/terms", "https://twelvedata.com/docs#time-series"]
+    },
+    "5_redistribution_and_raw_commit_forbidden": {
+      "verdict": "PASS (forbidden confirmed)",
+      "evidence": "ToS §2.3(b): no act to 'Redistribute, resell, sublicense, or transfer any Data or access rights to third parties'; 'Redistribution' defined as 'any publication, distribution, or provision of Data to third parties'. Consistent with owner boundary: raw responses gitignored, only manifests/hashes/compact audits committed; no push without separate authorization.",
+      "retrieved_utc": "2026-09-03T01:22:00Z", "source_url": "https://twelvedata.com/terms"
+    },
+    "6_termination_retention_recorded": {
+      "verdict": "RECORDED",
+      "evidence": "On termination 'Customer must delete all Data'; 'All Data must be deleted within 30 days'; certification on request; Twelve Data may suspend access immediately for suspected violations; Derived Data rights retained (§6.2).",
+      "retrieved_utc": "2026-09-03T01:22:00Z", "source_url": "https://twelvedata.com/terms"
+    },
+    "7_no_paid_trial_card_or_auto_upgrade": {
+      "verdict": "PASS",
+      "evidence": "Pricing: Basic '$0 billed yearly'; subscribe flow is registration only; FAQ: 'Free trial is available under the Basic plan' (the free tier itself, incl. '8 trial WS' WebSocket credits — not a paid trial); no automatic-upgrade mechanic described anywhere; ToS is silent on any auto-conversion. Probe safeguard: requests hit only /time_series; no upgrade/billing endpoints are touched.",
+      "retrieved_utc": "2026-09-03T01:20:00Z", "source_url": "https://twelvedata.com/pricing"
+    },
+    "8_ecb_reuse_compatible": {
+      "verdict": "PASS",
+      "evidence": "ESCB statistics reuse policy: 'All publicly available ESCB statistics may be reused free of charge on the condition that the source is quoted'. Disclaimer & copyright: 'users of this website may make free use of the information obtained directly from it' subject to: accurate reproduction with 'the ECB must be cited as the source'; sold-material notification; modifications 'must be stated explicitly'; framing rule. Reference-rate page: rates updated 'around 16:00 CET every working day', EUR base, 'published for information purposes only'. Internal research with 'Source: ECB' attribution and explicit statement of derived cross-conversions is compatible.",
+      "retrieved_utc": "2026-09-03T01:40:00Z",
+      "source_urls": ["https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html", "https://www.ecb.europa.eu/services/using-our-site/disclaimer/html/index.en.html", "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html"]
+    }
+  },
+  "F1_verdict": "PASS — all eight conditions satisfied; zero-cost boundary intact; fail-closed triggers (storage forbidden / license unavailable / material term mismatch) not observed",
+  "technical_parameters_for_probe": {
+    "intervals_supported": ["1h", "4h", "1day"],
+    "outputsize_max": 5000,
+    "credit_cost": "1 per symbol per request",
+    "basic_rate_limits": "8 credits/minute, 800/day (pricing page)",
+    "datetime_semantics": "bar-open datetime; timezone param honored for intraday (probe requests UTC); IGNORED for 1day which returns exchange-local dates; date filtering for forex defaults to UTC",
+    "volume_semantics": "'Trading volume which occurred during the current bar' for applicable instruments only; may be null for forex — NEVER treated as centralized spot-FX volume",
+    "planned_request_budget": {"D1": "7 pairs x 1 window x 2 pulls = 14", "H4": "7 pairs x 3 windows x 2 pulls = 42", "H1": "7 pairs x ~11 windows x 2 pulls = ~154", "total": "~210 credits, within 800/day, paced <= 8/min"}
+  }
+}

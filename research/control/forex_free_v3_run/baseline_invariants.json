@@ -1,0 +1,77 @@
+{
+  "schema": "forex_free_v3_baseline_invariants_v1",
+  "frozen_at_utc": "2026-09-04T13:30:00Z",
+  "stamp_source": "machine_date_u",
+  "producer": "A1_FOREX_CONTROLLER",
+  "cycle_id": "FOREX-FREE-V3",
+  "authority": "PLAN_forex_v3.md section 6 P3; frozen BEFORE any proposal generation; no PnL computed in Phase P",
+  "inherited_v2_frozen_gates": {
+    "min_expectancy_gt": 0.0,
+    "min_pf": 1.1,
+    "min_positive_populated_folds": 2,
+    "min_populated_fold_pf": 0.8,
+    "fold_populated_min_trades": 30,
+    "mdd_ceiling_usd": 2500.0,
+    "max_positive_fold_share": 0.5,
+    "max_pair_positive_share": 0.4,
+    "stress_min_pf": 1.0,
+    "dropout_survival_min_of_7": 5,
+    "neighbour_min_expectancy": 0.0,
+    "control_reject_pf": 1.1,
+    "usd_corr_abs_ceiling": 0.3,
+    "usd_diag_min_days": 60,
+    "folds": [
+      "2020-03-01",
+      "2022-05-01",
+      "2024-07-01",
+      "2026-09-02"
+    ],
+    "purge_days": 14,
+    "source": "research/control/forex_free_v2_run/w2_freeze.json frozen_gates, inherited unchanged"
+  },
+  "v3_decision_clock": {
+    "rule": "daily-or-slower HARD precondition; intraday decision clocks forbidden",
+    "decision_point": "completed 16:00 America/New_York flat bar (daily clock) or a weekly/monthly boundary the proposal freezes ex ante",
+    "fill": "next-session fill at the following 16:00-NY bar after the decision event (one-event lag rule inherited: one-event lag on any signal derived from a bar)",
+    "force_flat": "fold boundaries force-flat (inherited)",
+    "session_entry_gate": "Sun 21:00 America/New_York -> Fri 16:00 New York (frozen, outcome-blind, inherited)"
+  },
+  "v3_cost_schedule": {
+    "base": "1.5 bps/side on notional, charged once per side",
+    "tier_ladder": {
+      "1.0": 1.5,
+      "1.5": 2.25,
+      "2.0": 3.0
+    },
+    "stress_application": "F1-FIXED: tier multipliers applied to BOOKED stress PnL via the P1 kernel book_stress; base/tier1.5/tier2.0 rows must be pairwise distinct when trades non-empty",
+    "delay_stress": "frozen one-event delay carried as a SEPARATE stress component, never blended into cost tiers (lesson V3-L2)",
+    "kernel": "research/assets/forex_free_v3/accounting.py (commit 3c6fc11)"
+  },
+  "v3_dual_book": {
+    "mandate": "every scored cell books BOTH price_only_pnl_usd and financing_adjusted_pnl_usd as separate immutable digest-covered columns",
+    "mandatory_for": "all arms; decisive for carry-adjacent (rate-differential) arms",
+    "financing_gate": "financing term must not manufacture the edge: the price-only book must not invert the sign of the anchor expectancy (PLAN_forex_v3.md section 12)"
+  },
+  "v3_financing_formula": {
+    "authorized_basis": "policy-rate differentials from adopted ECB SDMX EXR / BIS WS_CBPOL series ONLY, availability-gated (a day's differential is read only if its available_time_utc <= that day's decision timestamp)",
+    "formula": "financing_adjusted_pnl = price_only_pnl + sign * notional_usd * (r_base - r_quote) * holding_days/365, accrued per calendar day at the day-start as-of differential; sign=+1 for long base/short quote, -1 for short base/long quote",
+    "disclosed_approximation": "policy rates are unsecured official rates, NOT swap/OIS-implied rollover; every carry-adjacent proposal must disclose this approximation (PLAN_forex_v3.md section 2)",
+    "ineligibility": "proposals whose economics depend on financing precision beyond policy-rate differentials are INELIGIBLE absent an owner-authorized source (HISTORICAL_ROLLOVER_FINANCING UNAVAILABLE_FAIL_CLOSED)"
+  },
+  "v3_benchmark_treatment": {
+    "incremental_alpha_benchmark": "the SAME mechanism with macro conditioning removed, at identical decision clock, fills, universe, warmup and costs",
+    "gate": "overall incremental alpha > 0 vs this benchmark (PLAN_forex_v3.md section 12); positive raw PnL never overrides a failed incremental alpha or a firing control"
+  },
+  "v3_sample_floors": {
+    "min_decisions_per_arm": 40,
+    "min_meaningful_drop_one": "drop-one pair and drop-one fold survival per inherited dropout_survival_min_of_7",
+    "macro_conditioning_quorum": "at least 3 of 6 proposals must condition on adopted macro series (ECB/BIS)"
+  },
+  "resource_contract": {
+    "machine": "8GB Apple M1, 8 logical cores (4 performance), shared with foreign cycles",
+    "heavy_cap": "one heavy lane at a time; scored arms strictly serial; full pytest alone with zero heavy workers",
+    "per_arm_timeout_minutes": 60,
+    "publication": "A1-serialized, flock once-only, digest-addressed"
+  },
+  "no_pnl_in_phase_P": "confirmed: only accounting fixtures and offline-adapter tests were run; zero real strategy PnL computed"
+}

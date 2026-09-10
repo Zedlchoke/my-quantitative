@@ -1,0 +1,62 @@
+{
+ "schema": "forex_free_v5_gate_evidence_v1",
+ "gate": "V5_P3_BASELINE_INVARIANTS",
+ "measured_at_utc": "2026-09-05T15:49:50Z",
+ "producer": "A1_FOREX_CONTROLLER",
+ "head": "edba9bfe690da10e7f0dd271d8ad95d2794492df (P0 commit f0237fc on top)",
+ "suites": [
+  {
+   "command": "pytest tests/assets/forex_free_v3/ -q (FXFV3_SNAPSHOT_DIR/FXFV3_DATA_MANIFEST env-staged, worktree-local data_raw/forex_free_v1 copied from V4 tree)",
+   "result": "97 passed, 0 skipped"
+  },
+  {
+   "command": "pytest tests/data_fusion/ -q",
+   "result": "96 passed"
+  },
+  {
+   "command": "pytest tests/assets/common/ -q",
+   "result": "57 passed"
+  },
+  {
+   "command": "pytest tests/ -q (FULL SUITE ALONE, no heavy worker; V9 census verified finished)",
+   "result": "see full_pytest_p1.log (running at artifact write time; verdict below)"
+  },
+  {
+   "command": "git diff --check",
+   "result": "clean"
+  }
+ ],
+ "invariant_mapping": {
+  "book/cash accounting": "test_accounting.py",
+  "fills and frozen cost schedule": "test_accounting.py + test_scored_runner.py",
+  "financing formula (dual books)": "test_accounting.py",
+  "force-flat folds": "test_scored_runner.py",
+  "concentration/drop-one/stress conventions": "test_scored_runner.py + test_family*.py",
+  "minimum decisions / zero-position refusal": "test_scored_runner.py",
+  "observed-once/replay-never": "test_scored_runner.py",
+  "daily-or-slower clock + DST calendar": "test_data_authority_v3.py",
+  "macro adoption PIT semantics": "test_forex_v3_p0_adoption.py"
+ },
+ "margin_to_fail_scaffolding": {
+  "authority": "LESSONS.md P-2 \u2014 every future survivor reports margin-to-fail per gate",
+  "contract": "at scoring, each Stage-A gate reports {gate_id, threshold, observed, margin_to_fail = threshold - observed (signed, fail direction documented)}; a survivor whose ANY margin is within 10% of its threshold is classed knife-edge and reported as such",
+  "application_in_v5": "encoded in D2 feasibility template and the scored execution report schema before any cell"
+ },
+ "pnl_in_phase_p": "none computed",
+ "conditioning_clocks_published_before_D1": "p3_conditioning_clocks_v5.json (246 clocks: GB 88, CA 105, AU 23, NZ 30)",
+ "verdict": "PASS",
+ "incidents": [
+  {
+   "what": "full-suite run 1: 1561 passed, 1 failed (test_dummy_six_arm_sanitized_pairwise_and_replay) \u2014 verify_staged_data raised FileNotFoundError on data_raw/forex_free_v4_macro_evidenced/AU.json",
+   "cause": "gitignored staged macro vintages not yet staged in the fresh V5 worktree (only forex_free_v1 had been copied); test failed CLOSED as designed",
+   "impact": "none \u2014 environmental staging gap, no code change, no outcome exposure",
+   "repair": "staged data_raw/forex_free_v4_macro_evidenced from the V4 tree byte-as-is; targeted rerun of the suite: 6/6 passed; full suite rerun recorded in full_pytest_p1_rerun.log",
+   "classification": "ENVIRONMENTAL_STAGING, not a rescue (no gate weakened, no parameter touched)"
+  }
+ ],
+ "full_suite": {
+  "first_run": "1 failed, 1561 passed (log: full_pytest_p1.log)",
+  "rerun_after_staging": "see full_pytest_p1_rerun.log",
+  "workers_during_run": 0
+ }
+}

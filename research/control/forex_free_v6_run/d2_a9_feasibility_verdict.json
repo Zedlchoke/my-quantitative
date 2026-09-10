@@ -1,0 +1,211 @@
+{
+ "schema": "forex_free_v6_d2_a9_feasibility_v1",
+ "measured_at_utc": "2026-09-06T02:49:07Z",
+ "head": "be9f2f69cd28e45dbac17d54c222fde5f03bb630",
+ "branch": "orca/forex-free-v6-d2-a9-feasibility",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v6/d2-a9-feasibility",
+ "tree_state_at_audit_start": "HEAD == base be9f2f69cd28e45dbac17d54c222fde5f03bb630; branch orca/forex-free-v6-d2-a9-feasibility; git status --porcelain empty before any A9 write",
+ "producer": "A9_INDEPENDENT_FEASIBILITY_AUDITOR",
+ "cycle": "FOREX-FREE-V6",
+ "phase": "D2",
+ "authority": "plans/PLAN_forex_v6.md sections 2 and 4 (read on MAIN checkout); RULES.md; research/wayfinder/LESSONS.md P-1, P-2; frozen rubric research/control/forex_free_v6_run/selection_rubric_v6.json (feasibility_floor + in_repo_information_only gates)",
+ "rubric_floors_applied": {
+  "fold_floor": ">= 30 qualifying decisions per fold per arm (anchor, neighbour, control) - each of the 3 folds",
+  "control_floor": "sham/control event count >= 50% of anchor count",
+  "information": "in-repo only: data_raw/forex_free_v1 + p3_conditioning_clocks_v6.json"
+ },
+ "no_pnl_statement": "NO SCORED COMPUTATION OF ANY KIND was performed or emitted: no returns, no PF, no PnL, no cost-adjusted outcome, no signed price magnitude. The measurement is counts, dates and boolean flags only. Internally, sign bits (R == 0 exactly) and preregistered state booleans (rv5/rv20 bands, trend10 nonzero, PCA-concentration percentile flag, noise-floor comparison) were computed solely to define decision populations, per the A9 count-fidelity mandate; no magnitude appears in any output file. No scored outcome artifact of any past cycle was read; V5 artifacts consulted were confined to schedule semantics (run_contract.json decision_clock; the V5 D2 A9 feasibility artifact for the V5 A4-P1 fold-failure threshold cross-check that the V6 A4-P1 proposal explicitly requests).",
+ "measurement_basis": {
+  "decision_calendar": "per pair = staged 1day snapshot dates with weekday() < 5; provider weekend-stamped rows are not NY sessions and are excluded (measured exclusions per pair in evidence); bar completion instant = date 16:00 America/New_York, zoneinfo DST-correct",
+  "clocks": "research/control/forex_free_v6_run/p3_conditioning_clocks_v6.json: 246 clocks verified (GB 88 / CA 105 / AU 23 / NZ 30); all 105 CA rows carry available_for_daily_decision_date; exactly 3 CA boundary rows remap (2018-05-28->2018-05-29, 2018-05-29->2018-05-30, 2021-07-23->2021-07-26); all clock decision_dates and CA avail dates are weekdays; AU published clocks are 2019-10-30..2025-04-30 (gaps never published, fail-closed by construction)",
+  "S0": "2018-04-04..2025-07-24 frozen; first funded decision day on every pair = 2018-09-03",
+  "fold_freeze": "A4 folds are frozen in the proposals (F1 2018-04-04..2020-12-31, F2 2021-01-01..2023-03-31, F3 2023-04-01..2025-07-24; assignment by event D0). A6 folds ('thirds of S0 by decision-day count', rubric delegates the freeze to A1/A9) are FROZEN HERE on the funded 7-pair common decision-day grid: F1 2018-09-03..2020-12-18, F2 2020-12-21..2023-04-05, F3 2023-04-06..2025-07-24; a full-S0-grid alternative freeze is measured as a sensitivity and does not change any verdict",
+  "counts_reconciliation": "A4-P1: events + skips == 246 per economy (GB 88 / CA 105 / AU 23 / NZ 30) enforced; A4-P2: pair-events + skips == 264 enforced; A6-P1: 246 enforced; A6-P2: decision-day scan over the funded grid",
+  "script": "research/control/forex_free_v6_run/d2/a9_feasibility/a9_feasibility_measure.py",
+  "evidence": [
+   "research/control/forex_free_v6_run/d2/a9_feasibility/measure_output.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A4-P1.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A4-P2.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A6-P1.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A6-P2.json"
+  ],
+  "wall_seconds": 0.469
+ },
+ "cross_proposal_findings": {
+  "s0_head_data_gap": "S0 starts 2018-04-04 but every staged 1day series starts 2018-09-03: a 152-calendar-day unfunded S0 head. 17 published clocks (GB 5, CA 10, NZ 1, AU 0; 2018-04-18..2018-08-17) fall inside it and are skipped pre-data in every clock-driven arm. FXFV6-A4-P1's warmup assertion ('this binds only against staging edge, not the S0 window') is contradicted by the staged bytes and is recorded as an asserted-not-evidenced bound (P-1 class). The gap alone does not break any floor except at FXFV6-A6-P1 (see verdict).",
+  "provider_weekday_gaps": "inside the funded span: EURUSD 4 (2019-05-22, 2025-01-01, 2025-04-18, 2025-04-21), GBPUSD 4 (same dates), USDCHF 1 (2025-01-01), USDJPY 1 (2024-01-01), AUDUSD/NZDUSD/USDCAD 0. Exactly one clock is lost to a provider gap (GB 2019-05-22). No mid-S0 gap starves any fold.",
+  "data_alignment": "PASS for all four proposals with a convention citation: the staged daily rows are date-keyed OHLC bars with no intraday timestamp; the mapping to the 16:00-NY decision close is the inherited frozen kernel convention (research/control/forex_free_v5_run/run_contract.json decision_clock 'daily 16:00-NY (DST)'; completed-daily-bar calendar = staged 1day weekday dates). This is the exact convention the proposals require ('per the inherited kernel decision_clock convention'). Weekend-stamped provider rows excluded per the same frozen convention (per-pair counts in evidence). Not byte-evident (a date-keyed bar cannot prove its cut time) - recorded as convention-evidenced, the strongest evidence class available in-repo.",
+  "runtime": "the full four-proposal schedule reconstruction (7 pair calendars ~14.6k rows, 246 clocks, A6-P2 full PCA state series) runs in 0.47 s wall on this host; scoring phase (6 cells, cost-ladder recomputation) estimated in minutes - RUNTIME CLASS LIGHT for every proposal; nothing approaches 1h single-machine time"
+ },
+ "proposals": {
+  "FXFV6-A4-P1": {
+   "proposal_path": "research/control/forex_free_v6_run/d1/a4_postrelease/proposal_P1.json",
+   "verdict": "FEASIBLE",
+   "counts_per_arm_per_fold": {
+    "anchor_reaction_drift_k5": {"F1": 69, "F2": 73, "F3": 75},
+    "neighbour_reaction_drift_k10": {"F1": 69, "F2": 72, "F3": 75},
+    "control_sham_calendar_plus7_k5": {"F1": 70, "F2": 71, "F3": 73}
+   },
+   "published_per_fold_pre_skip": {"anchor": {"F1": 90, "F2": 78, "F3": 78}},
+   "published_matches_proposal_claim": true,
+   "skip_reason_breakdown": {
+    "anchor": {"pre_staged_data_start": 17, "collision_skipped": 11, "missing_staged_close_d0": 1},
+    "neighbour": {"pre_staged_data_start": 17, "collision_skipped": 12, "missing_staged_close_d0": 1},
+    "control": {"pre_staged_data_start": 17, "collision_skipped": 11, "zero_signal_skipped": 3}
+   },
+   "skip_evidence": "17 clocks in the S0 head gap; 11 collisions all CA (clustered 2018 double-releases and the 3 remapped WDS rows colliding with adjacent monthly prints, e.g. 2021-07-21 open through 2021-07-29 kills both 2021-07-26 and 2021-07-28 events); 1 provider gap (GB 2019-05-22); 3 exact-zero reactions on the +7 sham dates",
+   "margin_to_30_floor_P2": {"anchor": {"F1": 39, "F2": 43, "F3": 45}, "neighbour": {"F1": 39, "F2": 42, "F3": 45}, "control": {"F1": 40, "F2": 41, "F3": 43}, "min_margin": 39},
+   "control_ratio_vs_anchor_per_fold": {"F1": 1.014, "F2": 0.973, "F3": 0.973},
+   "control_floor_50pct": "PASS all folds",
+   "identifiability": {
+    "result": "IDENTIFIABLE",
+    "same_pair_qualified_date_overlap_sham_vs_anchor": 0,
+    "same_economy_shifted_date_on_real_clock": ["2018-05-29", "2019-03-04", "2021-07-28", "2022-06-22", "2023-06-27", "2024-06-25", "2025-06-24"],
+    "coincidence_note": "7 mechanical +7d landings on real same-economy clock dates (e.g. CA 2021-07-21+7 = the 2021-07-28 print date); per the frozen sham definition they do not alter the sham; reported only, no discretion",
+    "sham_vs_anchor_total_ratio": 0.991,
+    "collapse_check": "sham runs at full anchor population with zero schedule overlap - does not collapse to the anchor schedule"
+   },
+   "turnover_cost_ceiling": "217 anchor round trips (69/73/75 per fold); aggregate cost drag 651 bps of exposure at tier 1.0x and 1302 bps at tier 2.0x; ~1.5 RTs/month pooled. Tier-2.0 primary gate is adjudicated on mean per-trade net bps (not computed here - no PnL); at k=5 decision sessions per trade the per-trade gross must clear 6.0 bps round trip; population is ample for that adjudication. COST FLAG: moderate",
+   "warmup_coverage": "first eligible decision date 2018-09-19 (anchor/neighbour) vs S0 start 2018-04-04: bound by the S0-head staged-data gap plus the 5-close warmup, not by the clock calendar; sham first eligible 2018-09-26; no fold starved",
+   "v5_a4_p1_failure_cross_check": "the V5 A4-P1 D2-blocked fold population measured fold2 = 19 < 30 (V5 D2 A9 artifact); this redesign measures 69/73/75 qualifying decisions (min margin +39) and clears the V5 failure band at count fidelity. Two V5 decimation mechanisms are absent by construction here: V6 GB/AU DAY-precision clocks condition ON their decision_date (no next-day remap) and the V6 proposals carry no Friday session gate.",
+   "runtime_class": "LIGHT",
+   "in_repo_information_only": "PASS - staged daily snapshots + clocks file only; 4h/1h probes unused by this proposal"
+  },
+  "FXFV6-A4-P2": {
+   "proposal_path": "research/control/forex_free_v6_run/d1/a4_postrelease/proposal_P2.json",
+   "verdict": "FEASIBLE",
+   "counts_per_arm_per_fold": {
+    "anchor_foreign_reaction_drift_k5": {"F1": 82, "F2": 81, "F3": 83},
+    "neighbour_foreign_reaction_drift_k10": {"F1": 82, "F2": 81, "F3": 83},
+    "control_sham_gb_calendar_plus7_k5": {"F1": 83, "F2": 81, "F3": 84}
+   },
+   "published_per_fold_pre_skip": {"anchor_pair_events": {"F1": 99, "F2": 81, "F3": 84}},
+   "published_matches_proposal_claim": true,
+   "reconciliation_264": "PASS (88 GB clocks x 3 pairs = 264 pair-events, each qualified or skipped with a reason)",
+   "skip_reason_breakdown": {
+    "anchor": {"pre_staged_data_start": 15, "missing_staged_close_d0": 1, "zero_signal_skipped": 2},
+    "neighbour": {"pre_staged_data_start": 15, "missing_staged_close_d0": 1, "zero_signal_skipped": 2},
+    "control": {"pre_staged_data_start": 15, "zero_signal_skipped": 1}
+   },
+   "skip_evidence": "15 GB-clock x 3-pair triples in the S0 head gap (5 lost clocks); 1 provider gap (GB 2019-05-22 x 3 pairs); 2 exact-zero reactions (anchor); ZERO collisions (monthly GB cadence vs k <= 10 never binds)",
+   "margin_to_30_floor_P2": {"anchor": {"F1": 52, "F2": 51, "F3": 53}, "neighbour": {"F1": 52, "F2": 51, "F3": 53}, "control": {"F1": 53, "F2": 51, "F3": 54}, "min_margin": 51},
+   "control_ratio_vs_anchor_per_fold": {"F1": 1.012, "F2": 1.0, "F3": 1.012},
+   "control_floor_50pct": "PASS all folds",
+   "identifiability": {
+    "result": "IDENTIFIABLE",
+    "same_economy_shifted_date_on_real_gb_clock": [],
+    "same_pair_qualified_date_overlap_sham_vs_anchor": 0,
+    "sham_vs_anchor_total_ratio": 1.008,
+    "collapse_check": "zero shifted-date coincidences at monthly GB cadence; schedules fully disjoint"
+   },
+   "turnover_cost_ceiling": "246 anchor round trips (82/81/83 per fold); aggregate cost drag 738 bps of exposure at tier 1.0x and 1476 bps at tier 2.0x. Tier-2.0 primary gate adjudicated on mean per-trade net bps (not computed - no PnL); per-trade gross must clear 6.0 bps round trip at k=5 sessions. COST FLAG: moderate",
+   "warmup_coverage": "first eligible decision date 2018-09-19 (anchor/neighbour), 2018-09-26 (sham) vs S0 start 2018-04-04; S0-head gap only; no fold starved",
+   "runtime_class": "LIGHT",
+   "in_repo_information_only": "PASS - staged daily snapshots + clocks file only; GBPUSD never traded (disjointness guard checkable by economy field; verified: no CA/AU/NZ clock enters any schedule)"
+  },
+  "FXFV6-A6-P1": {
+   "proposal_path": "research/control/forex_free_v6_run/d1/a6_open/proposal_P1.json",
+   "verdict": "NOT_FEASIBLE_RUBRIC_FOLD_FLOOR",
+   "counts_per_arm_per_fold": {
+    "anchor": {"F1": 24, "F2": 41, "F3": 39},
+    "neighbour": {"F1": 20, "F2": 28, "F3": 28},
+    "control_sham": {"F1": 35, "F2": 38, "F3": 47}
+   },
+   "floor_failures": {
+    "anchor": "F1 = 24 < 30 (margin -6)",
+    "neighbour": "F1 = 20 (-10), F2 = 28 (-2), F3 = 28 (-2): all three folds below the rubric floor",
+    "control": "35/38/47 passes the floor but cannot rescue the family (the floor binds on EVERY arm)"
+   },
+   "robustness_of_the_failure": "under the alternative full-S0 thirds freeze (B1 2020-09-09, B2 2023-02-16) the anchor folds are 20/43/42 and the neighbour 19/30/29 - the failure persists under both freeze choices, so the verdict does not hinge on the A9 fold freeze",
+   "margin_to_30_floor_P2": {"anchor_min_margin": -6, "neighbour_min_margin": -10},
+   "margin_to_proposal_own_gate": "the proposal's own non_vacuity_floor is >= 15 per arm per fold; anchor 24/41/39 and neighbour 20/28/28 would pass THAT gate (min margin +5) - the RUBRIC floor of 30 governs eligibility and is what fails; margin-to-own-gate recorded per P-2 so the distinction is explicit",
+   "root_causes_measured": [
+    "S0-head staged-data gap: 17 of 246 clocks unfunded (all in F1), plus 3 warmup skips (26-close requirement right after the data start) and 1 provider gap - F1 loses ~21 events before any state test",
+    "state scarcity: of the 223 event clocks that reach the state test, only ~109 land in the compression band (rv5 <= 0.9 x rv20); 38 land in the preregistered 0.9-1.1 dead zone (no event) and 78 in expansion - the dead zone plus band selectivity removes ~52% of the book",
+    "246-clock 4-pair book with AU contributing only 23 clocks (evidenced gaps pre-Sep-2019 and mid-2022 fail closed by construction) leaves thin per-third populations once the state gate is applied"
+   ],
+   "skip_reason_breakdown": {
+    "anchor": {"pre_staged_data_start": 17, "warmup_skipped": 3, "dead_zone_skipped": 38, "state_not_compression_skipped": 78, "missing_staged_close_a": 1, "collision_skipped": 4},
+    "neighbour": {"pre_staged_data_start": 17, "warmup_skipped": 3, "dead_zone_skipped": 38, "state_not_expansion_skipped": 109, "missing_staged_close_a": 1},
+    "control_sham": {"pre_staged_data_start": 17, "warmup_skipped": 2, "dead_zone_skipped": 38, "state_not_compression_skipped": 65, "collision_skipped": 2}
+   },
+   "identifiability": {
+    "result": "IDENTIFIABLE (moot given the floor failure)",
+    "twin_band_agreement_frac": 0.382,
+    "twin_band_comparable": 225,
+    "same_economy_sham_date_on_real_clock": ["2018-05-29", "2019-03-04", "2021-07-28", "2022-06-22", "2023-06-27", "2024-06-25", "2025-06-24"],
+    "sham_vs_anchor_total_ratio": 1.162,
+    "note": "the +7d sham shifts the rv/trend windows enough that the compression flag agrees with the anchor twin on only 38.2% of comparable clocks - the sham schedule genuinely differs from the anchor schedule; no design failure on the control axis"
+   },
+   "turnover_cost_ceiling": "105 anchor round trips (315 bps aggregate at 1.0x, 630 bps at 2.0x) - moot for eligibility given the floor failure",
+   "warmup_coverage": "first state-eligible clock ~2018-10-09 (26-close warmup after the data start); first compression-qualified decision 2018-12-19; the S0-head gap + warmup consume the head of F1",
+   "runtime_class": "LIGHT",
+   "in_repo_information_only": "PASS",
+   "verdict_basis": "rubric feasibility_floor: 'each of the 3 folds carries >= 30 qualifying decisions for EVERY arm (anchor, neighbour, control)' - FAILED by anchor F1 and by all neighbour folds; fail-closed, no rescue (weakening the dead zone, the bands or the folds after this measurement is forbidden)"
+  },
+  "FXFV6-A6-P2": {
+   "proposal_path": "research/control/forex_free_v6_run/d1/a6_open/proposal_P2.json",
+   "verdict": "FEASIBLE",
+   "counts_per_arm_per_fold": {
+    "anchor": {"F1": 143, "F2": 322, "F3": 230},
+    "neighbour": {"F1": 279, "F2": 466, "F3": 506},
+    "control_placebo": {"F1": 81, "F2": 332, "F3": 199}
+   },
+   "count_unit": "pair-leg entries (each leg = one round trip = one trade on the pooled per-trade identifying metric); entry DAYS: anchor 56/125/81, neighbour 124/204/245, placebo 31/126/74",
+   "skip_reason_breakdown": {
+    "anchor": {"leg_skips_noise_floor": 727, "leg_skips_collision": 2028, "state_undefined_days": 0, "state_not_high_days": 1025},
+    "neighbour": "same rule machinery, complement state",
+    "control_placebo": {"state_undefined_days": 0}
+   },
+   "overlap_rule_measurement": "the one-position-per-pair rule binds hard on a daily-cadence book: 2028 signal-legs collision-skipped on the anchor (a multi-day high-state run enters each pair once per ~6-day hold cycle); answered per the proposal's a9_open_questions",
+   "state_series": {
+    "first_state_date": "2018-10-01",
+    "first_state_eligible_date": "2019-09-19",
+    "state_high_days_within_S0": 497,
+    "state_high_fraction_of_scanned_days": 0.327,
+    "note": "the preregistered 75th-percentile rolling reference admits 32.7% of days rather than a stationary 25% - the concentration series trends upward across S0; does not affect any floor (recorded as a state-balance observation)",
+    "numerical_guard": {"singular_or_degenerate_correlation": 0, "nonfinite": 0}
+   },
+   "margin_to_30_floor_P2": {"anchor": {"F1": 113, "F2": 292, "F3": 200}, "neighbour": {"F1": 249, "F2": 436, "F3": 476}, "control": {"F1": 51, "F2": 302, "F3": 169}, "min_margin": 51},
+   "control_ratio_vs_anchor_per_fold": {"F1": 0.566, "F2": 1.031, "F3": 0.865},
+   "control_floor_50pct": "PASS all folds (thinnest: F1 0.566, margin +0.066 above the 0.5 floor - thin, recorded per P-2; driven by the placebo's +100-day warmup shift eating into F1)",
+   "identifiability": {
+    "result": "IDENTIFIABLE",
+    "state_flag_disagreement_frac": 0.456,
+    "comparable_days": 1422,
+    "anchor_entry_days": 262,
+    "placebo_entry_days": 231,
+    "entry_day_overlap": 53,
+    "placebo_vs_anchor_leg_ratio_total": 0.898,
+    "collapse_check": "the +100-day circularly-shifted state disagrees with the true state on 45.6% of comparable decision days and entry-day overlap is 53/262 - the placebo does NOT collapse to the anchor schedule"
+   },
+   "turnover_cost_ceiling": "anchor 695 round trips; aggregate cost drag 2085 bps of exposure at tier 1.0x and 4170 bps at tier 2.0x; neighbour 1264 RTs (7584 bps at 2.0x). HIGHEST-TURNOVER BOOK OF THE WAVE. COST FLAG: HIGH - at ~230 anchor RTs/fold, the tier-2.0 primary gate requires mean gross per-trade edge > 6.0 bps round trip on 5-session holds; the aggregate drag makes the book cost-dominated unless that per-trade edge is comfortably positive (adjudicated in the scored phase; NOT computed here - no PnL). Frequency alone does not break the gate; the flag is structural.",
+   "warmup_coverage": "272-decision-day warmup on the funded grid ends 2019-09-19 - the proposal's 'approximately 2019-05' estimate is off by 4.5 months because of the S0-head staged-data gap; placebo first eligible 2020-02-06 (warmup + 100-day shift). F1 for the placebo starts at its shifted eligibility but still funds 81 leg decisions. No fold starved.",
+   "missing_day_rule": "primary measurement runs the 7-pair intersection grid where every decision day has all 7 closes by construction (state_undefined_days = 0 measured); sensitivity on the universal funded weekday grid blocks 64 decision days (all in F3, from the 2025-01-01 / 2025-04-18 / 2025-04-21 provider-gap cluster; the 2019-05-22 gap precedes warmup end) - all folds remain far above floors under either implementation",
+   "fold_boundary_drops": "anchor 0/0/0, neighbour 7/6/0, placebo 6/6/0 trades dropped per fold (exit fill crossing the fold boundary) - counted, not silently absorbed",
+   "runtime_class": "LIGHT (7x7 eigendecomposition per decision day, ~1522 days: sub-second)",
+   "in_repo_information_only": "PASS - staged prices only, no clocks consumed (verified: schedule contains no clock-derived date)"
+  }
+ },
+ "verdict_summary": {
+  "feasible_count": 3,
+  "not_feasible_count": 1,
+  "feasible": ["FXFV6-A4-P1", "FXFV6-A4-P2", "FXFV6-A6-P2"],
+  "not_feasible": {"FXFV6-A6-P1": "NOT_FEASIBLE_RUBRIC_FOLD_FLOOR"},
+  "budget_note": "the two-family / six-cell budget admits any two of the three feasible proposals (2 families x 3 arms = 6 cells); selection among them is the rubric's novelty/independence ranking, outside A9 scope",
+  "control_identifiability_all_pass": true,
+  "min_feasible_margin_to_30_floor": 39
+ },
+ "commit": {
+  "message": "FOREX-FREE-V6 D2 A9 feasibility: per-arm/fold decision counts vs frozen floors - 3 FEASIBLE / 1 NOT_FEASIBLE",
+  "paths": [
+   "research/control/forex_free_v6_run/d2/a9_feasibility/a9_feasibility_measure.py",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/measure_output.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A4-P1.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A4-P2.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A6-P1.json",
+   "research/control/forex_free_v6_run/d2/a9_feasibility/FXFV6-A6-P2.json",
+   "research/control/forex_free_v6_run/d2_a9_feasibility_verdict.json"
+  ]
+ }
+}

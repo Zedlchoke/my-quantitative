@@ -1,0 +1,177 @@
+{
+  "schema": "forex_free_v3_data_authority_v1",
+  "measured_at_utc": "2026-09-04T13:23:54Z",
+  "stamp_source": "machine_date_u",
+  "producer": "A3_FOREX_DATA_LANE_P2",
+  "cycle_id": "FOREX-FREE-V3",
+  "lane": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data",
+    "branch": "orca/forex-free-v3-p1-a3-data",
+    "bootstrap_sha": "6f294a968abb4299d4b060e2675e1e153219c7d3"
+  },
+  "authority_chain": {
+    "plan": "PLAN_forex_v3.md sections 2, 6 (P2), 15",
+    "v1_data_authority": "research/control/forex_free_v1_run/data_authority.json @ bee64beaf2637ea51216cffc6be6393d545bf474 (F1 conditions 8/8 PASS; Twelve Data free Basic $0; internal non-commercial research; persistent local snapshots permitted with recorded conditions; redistribution and raw commit forbidden)",
+    "v1_data_contract": "research/control/forex_free_v1_run/data_contract.json @ bee64beaf2637ea51216cffc6be6393d545bf474 (amended v2: H1_RESEARCH_AUTHORIZED, D1_CONTEXT_AUTHORIZED, H4/bid-ask/rollover UNAVAILABLE_FAIL_CLOSED)",
+    "v2_data_manifest": "research/control/forex_free_v2_run/data_manifest.json (V2 reuses the authorized V1 snapshot byte-for-byte; no new download)",
+    "fusion_adoption": "P0 lane p0-a2-fusion @ commit cba3549b42c9388c2a095aebae6275fba4263eaa (Data Fusion V1 core + A3-macro ECB SDMX / BIS WS_CBPOL / key-gated FRED adapters, 34/34 blobs byte-identical), evidence: research/data_fusion/adapters/MACRO_evidence.md",
+    "standing_rule": "nothing here unlocks S1, paper, live or orders; a passing source or series never self-authorizes a strategy family; all dispositions are owner-bound and may be revoked"
+  },
+  "price_series": {
+    "H1_twelve_data": {
+      "disposition": "RESEARCH_AUTHORIZED",
+      "carried_from": "V1 authority @ bee64beaf2637ea51216cffc6be6393d545bf474 (unchanged in V3)",
+      "scope": "Twelve-Data-derived H1 research series, 7-pair universe (EUR/USD, GBP/USD, AUD/USD, NZD/USD, USD/JPY, USD/CHF, USD/CAD), completed-bar PIT, missing bar => NO_TRADE fail-closed",
+      "decision_clock_eligibility": "any clock; V3 restricts scored decision clocks to daily-or-slower"
+    },
+    "D1_twelve_data": {
+      "disposition": "CONTEXT_ONLY",
+      "carried_from": "V1 data contract amendment v2 (D1_CONTEXT_AUTHORIZED); renamed CONTEXT_ONLY here for the V3 disposition table",
+      "scope": "daily bars for benchmark/context only; never enter scored returns"
+    },
+    "H4_twelve_data": {
+      "disposition": "UNAVAILABLE_FAIL_CLOSED",
+      "carried_from": "V1 data contract (4h bar anchor misaligns with the NY rollover instant in northern-winter months)",
+      "scope": "no scored use"
+    },
+    "HISTORICAL_BID_ASK": {
+      "disposition": "UNAVAILABLE_FAIL_CLOSED",
+      "carried_from": "V1 data contract",
+      "scope": "no bid/ask claim; frozen conservative proxy-cost schedule only"
+    },
+    "HISTORICAL_ROLLOVER_FINANCING": {
+      "disposition": "UNAVAILABLE_FAIL_CLOSED",
+      "carried_from": "V1 data contract (all positions must flatten before NY rollover; no financing assumption from price data)",
+      "scope": "see financing_disposition below"
+    },
+    "snapshot_replay_evidence": {
+      "method": "read-only sha256 replay of every manifest path against both V2 detached trees; NO data copied, NO data committed, NO writes to the V1/V2 worktrees",
+      "manifest": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/integration/research/control/forex_free_v1_run/staged_data_manifest.json",
+      "manifest_sha256": "fe2155c0ef51bcac32262ebaf1c7d98fc724727eca1dda8b6644012ad854c460",
+      "schema": "forex_free_v1_staged_data_manifest_v2",
+      "file_count_per_tree": 156,
+      "manifest_byte_identical_exec_repro": true,
+      "staged_utc": "2026-09-03T13:30:00Z",
+      "replayed_utc": "2026-09-04",
+      "trees": {
+        "e-exec-1": {
+          "root": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/e-exec-1",
+          "matched": 156,
+          "missing": 0,
+          "mismatch": 0
+        },
+        "r-reproduce": {
+          "root": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v2/r-reproduce",
+          "matched": 156,
+          "missing": 0,
+          "mismatch": 0
+        }
+      },
+      "verdict": "PASS — 156/156 digests match in both trees; the authorized price snapshot is byte-for-byte intact for V3"
+    },
+    "calendar_reverification_evidence": {
+      "module": "research/assets/forex/sessions.py + research/assets/forex/calendar.py (DST-aware weekly 24/5 model; default Sun 21:00 America/New_York open -> Fri 16:00 close; NY 17:00 rollover shifted correctly by DST via zoneinfo; DST transitions located by bisection against zoneinfo truth)",
+      "flat_bar_rule": "16:00 New York bar stamps 21:00Z in EST weeks and 20:00Z in EDT weeks (V2 data-lane probes across the 2025 US spring-forward 2025-03-09 and fall-back 2025-11-02 transitions, including the US/EU desync weeks)",
+      "commands": [
+        {
+          "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex -q",
+          "exit_code": 0,
+          "result": "118 passed in 4.46s"
+        },
+        {
+          "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v3/p1-a3-data && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/assets/forex_free_v2/test_data_authority.py tests/assets/forex_free_v1/test_td_loader.py -q",
+          "exit_code": 0,
+          "result": "30 passed in 4.71s"
+        }
+      ],
+      "snapshot_dependence_note": "All run tests are snapshot-independent (synthetic fixtures / isolated temp roots / string filenames only). No price snapshot exists in this lane worktree and none was copied (fail-closed boundary). The snapshot-dependent part of the calendar/flat-bar verification is covered by (a) the 156/156 digest replay in price_series.snapshot_replay_evidence — the exact bar data the calendar rule consumes is byte-identical to what V1/V2 verified — and (b) the V2 P2 recorded DST stamps (16:00 NY => 21:00Z EST / 20:00Z EDT across US+EU 2025 transitions) which run against the same inherited module code."
+    }
+  },
+  "macro_series": {
+    "ECB_SDMX": {
+      "series_family": "ECB Data API SDMX — EXR daily official-rate series as adopted in P0 (adapter research/data_fusion/adapters/ecb.py, parser ecb-adapter-1.0.0)",
+      "v3_disposition": "AUTHORIZED_FOR_V3_RESEARCH",
+      "authorized_scope": "daily-or-slower decision-clock research inputs on the V3 7-pair universe, point-in-time with availability gating; NOT an authorization of any strategy family by the source itself (ECB_DATA_NOT_CARRY_AUTHORIZATION note remains binding)",
+      "access": {
+        "keyless": true,
+        "entitlement": "anonymous-no-key",
+        "evidence": [
+          "research/data_fusion/source_registry.py: ECB_SDMX account_or_key_required=false",
+          "research/data_fusion/adapters/MACRO_evidence.md: public anonymous API, offline adapter work, no account, no key, no click-through",
+          "ECB statistical reuse policy recorded in V1 authority F1 condition 8 (free reuse with source attribution)"
+        ]
+      },
+      "availability_stamp_semantics": {
+        "effective_time_utc": "midnight UTC of the SDMX observation TIME_PERIOD",
+        "available_time_utc": "only from owner-captured ReleaseEvidence; the payload carries NO historical availability (header.prepared is message metadata, never availability — ECB_PREPARED_TIME_NOT_AVAILABILITY_PROOF); date-only evidence yields the end-of-UTC-day upper bound with note ECB_AVAILABILITY_NOT_EXACT; missing evidence fails closed with MISSING_AVAILABLE_TIME_EVIDENCE before any record is produced",
+        "eligibility_rule": "a row is eligible at T only when available_time_utc <= T; a decision at T can never read a row whose available_time_utc > T (P0 regression-pinned in tests/data_fusion/test_forex_v3_p0_adoption.py)"
+      },
+      "warmup_coverage": {
+        "status": "NOT_PROVEN_ON_LIVE_FETCH",
+        "proven_offline": "the record mapping, effective/availability stamp semantics, fail-closed refusal without evidence, and PIT eligibility gating are proven on the hand-written fixture tests/data_fusion/adapters/fixtures/ecb_sdmx_exr.json and its in-test mutations (no network, no wall clock)",
+        "not_proven": "historical depth and warmup sufficiency of LIVE-retrieved ECB SDMX series over the V3 decision-clock window (daily-or-slower, warmup long enough for the 6.5y H1-anchored folds) is NOT_PROVEN_ON_LIVE_FETCH; this lane performed no fetch (no-network boundary)",
+        "resolution": "must be proven at the V3 P3 freeze / Q data-hash gate on the live-retrieved, owner-authorized macro snapshot before any proposal conditions on ECB rows; until then proposals may cite the series but coverage claims are unverifiable"
+      }
+    },
+    "BIS_CBPOL": {
+      "series_family": "BIS Data API — WS_CBPOL policy rates (adapter research/data_fusion/adapters/bis.py, parser bis-adapter-1.0.0)",
+      "v3_disposition": "AUTHORIZED_FOR_V3_RESEARCH",
+      "authorized_scope": "daily-or-slower decision-clock research inputs and policy-rate-differential financing modelling on the V3 7-pair universe, point-in-time with availability gating; policy rates never auto-unlock a carry strategy (BIS_POLICY_RATE_NOT_CARRY_AUTHORIZATION note remains binding)",
+      "access": {
+        "keyless": true,
+        "entitlement": "anonymous-no-key",
+        "evidence": [
+          "research/data_fusion/source_registry.py: BIS_CBPOL account_or_key_required=false",
+          "research/data_fusion/adapters/MACRO_evidence.md: public anonymous API, offline adapter work, no account, no key, no click-through",
+          "BIS public terms recorded in the registry terms_url (https://www.bis.org/terms_conditions.htm)"
+        ]
+      },
+      "availability_stamp_semantics": {
+        "effective_time_utc": "midnight UTC of the CBPOL observation date — CBPOL dates are policy-rate EFFECTIVE dates, so effective_time_utc == event_time_utc (BIS_EFFECTIVE_DATE_SEMANTICS)",
+        "available_time_utc": "only from owner-captured ReleaseEvidence; the payload carries no historical release time; missing evidence fails closed (MISSING_AVAILABLE_TIME_EVIDENCE); date-only evidence yields the end-of-UTC-day upper bound (BIS_AVAILABILITY_NOT_EXACT)",
+        "eligibility_rule": "a record is NEVER eligible on its own effective date — availability is strictly later than effectiveness, so no backdated carry signal (proven on the offline fixture)"
+      },
+      "warmup_coverage": {
+        "status": "NOT_PROVEN_ON_LIVE_FETCH",
+        "proven_offline": "effective/availability separation, fail-closed refusal, vintage append-only behaviour and the no-eligibility-on-effective-date rule are proven on the hand-written fixture tests/data_fusion/adapters/fixtures/bis_cbpol.json (US.P: 4.0 effective 2024-03-20, 4.25 effective 2024-05-01) and its in-test mutations",
+        "not_proven": "historical depth and warmup sufficiency of LIVE-retrieved BIS WS_CBPOL rows for all G10 rate areas backing the 7 pairs across the full V3 window is NOT_PROVEN_ON_LIVE_FETCH; this lane performed no fetch (no-network boundary)",
+        "resolution": "must be proven at the V3 P3 freeze / Q data-hash gate on the live-retrieved, owner-authorized macro snapshot; rate-change coverage (dated vintages per policy change) must be shown on real data before financing-adjusted books are scored"
+      }
+    }
+  },
+  "forex_candidates": {
+    "TRUEFX": {
+      "v3_disposition": "CANDIDATE_NOT_AUTHORIZED",
+      "unchanged_from": "V2 data manifest classification and the Data Fusion registry",
+      "owner_license_decision_required": true,
+      "scope": "monthly tick archive adapter exists in the fusion codebase as a registry candidate only; no signup, no download, no use in V3 absent a separate owner data-authority decision"
+    }
+  },
+  "macro_key_gated": {
+    "FRED_ALFRED": {
+      "v3_disposition": "UNAUTHORIZED_FOR_V3",
+      "key_gated": true,
+      "rationale": "no owner key decision exists; no signup allowed under PLAN_forex_v3.md section 15; adapter entitlement api-key-required-not-provisioned; the adapter itself fails closed with CREDENTIAL_REQUIRED without a key",
+      "forbidden_inference": ["analyst_consensus", "exact_wire_release_timestamp"],
+      "note": "a future owner key decision could reclassify this series; nothing in V3 depends on it"
+    }
+  },
+  "financing_disposition": {
+    "carry_adjacent_financing_model": "POLICY_RATE_DIFFERENTIALS_ONLY",
+    "authority_basis": "PLAN_forex_v3.md section 2 carry rules: financing modelled from policy-rate differentials with effective-date PIT semantics frozen ex ante and the approximation disclosed in the proposal, or an owner-authorized financing source",
+    "permitted_inputs": [
+      "BIS WS_CBPOL policy-rate differentials (adopted, AUTHORIZED_FOR_V3_RESEARCH)",
+      "ECB SDMX adopted official-rate series where a policy-rate field is required (adopted, AUTHORIZED_FOR_V3_RESEARCH)"
+    ],
+    "pit_semantics": "every financing term uses rows gated on available_time_utc (effective-date semantics above): a rate change affects financing only from its availability stamp, never its effective date alone; rate changes surface as dated vintages (append-only)",
+    "historical_rollover_financing": "UNAVAILABLE_FAIL_CLOSED",
+    "beyond_differentials_verdict": "INELIGIBLE — any proposal whose economics depend on financing precision beyond adopted policy-rate differentials (swap points, broker rollover, OIS/overnight curves, bid-ask financing) is INELIGIBLE absent an owner-authorized financing source",
+    "dual_book_rule": "every scored book carries BOTH a price-only PnL and a financing-adjusted PnL; the financing term must not manufacture the edge (price-only book must not invert the anchor's expectancy sign)"
+  },
+  "boundaries": {
+    "raw_data_commit": "forbidden — the replay in this file hashed the read-only V2 trees in place; zero bytes of raw data were copied into or committed from this lane",
+    "network": "no fetch, download, API call or key use occurred in this lane; all macro evidence is offline fixture evidence plus previously recorded owner captures",
+    "s1": "SEALED_UNTOUCHED",
+    "prior_cycles": "no V1/V2 artifact, digest, counter or ledger byte modified; V2 trees accessed read-only"
+  }
+}

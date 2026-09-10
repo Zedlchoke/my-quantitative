@@ -1,0 +1,185 @@
+{
+ "schema": "forex_free_v8_a7_terminal_v1",
+ "measured_at_utc": "2026-09-09T05:20:00Z",
+ "auditor": "A7_TERMINAL_FRESH_CONTEXT",
+ "head_audited": "07de93cfb0d932f8cb6eb3f5d6b38164548c7103",
+ "worktree": ".worktrees/forex-free-v8/r-a7-terminal",
+ "branch": "orca/forex-free-v8-r-a7-terminal",
+ "interpreter": "/Users/hoangminhlong/my-quantitative/.venv/bin/python",
+ "subject": "terminal_verdict_v8.json claim FOREX_FREE_V8_REJECT_ALL (family FXFV8-A5-P1, 3 cells, budget 3/6)",
+ "checks": [
+  {
+   "id": "C1_worktree_state",
+   "desc": "branch orca/forex-free-v8-r-a7-terminal at 07de93c, porcelain=v1 = 0 before and after audit work",
+   "result": "PASS",
+   "evidence": ["git branch/rev-parse/status at audit start and end"]
+  },
+  {
+   "id": "C2_gate_margin_arithmetic",
+   "desc": "every gate_reasons margin recomputed from row values; comparator-directed margin formula (obs-thr for '>=' , thr-obs for '<=')",
+   "result": "PASS",
+   "evidence": [
+    "research/control/forex_free_v8_run/scored_ledger_published_v8.jsonl",
+    "gate2 anchor: observed-threshold 1.0531109111-1.10 = -0.0468890889 exact (magnitude; note the audit-brief's subtraction order 1.10-1.0531 yields +0.0469 — the recorded sign follows the '>=' comparator)",
+    "gate3 anchor: 2 positive of 3 populated folds (exp +21.3215/+43.1322/-51.1859), margin 2-2 = 0.0, strict pass rule (margin>0) => FAIL",
+    "gate5 anchor: 1.5-6.3458737732 = -4.8458737732 exact; neighbour -7.2108814853 exact; control -9.5040290256 exact",
+    "artifacts/margins_to_fail.jsonl: anchor FAILS exactly {2,3,5,10}; neighbour {3,5,10}; control {3,5,10}; 10 gates per cell"
+   ]
+  },
+  {
+   "id": "C3_row_internal_recompute",
+   "desc": "per-arm pooled expectancy/PnL recomputed from the row's own fold blocks; break-even, concentration, dual-book, LOPO, stress recomputed from rows + committed artifacts",
+   "result": "PASS",
+   "evidence": [
+    "fold-weighted expectancy == row expectancy for all 3 arms (exact); fold-sum total_pnl == row financing_adjusted_pnl_usd (exact)",
+    "break_even_bps == (price_only_pnl/n_trades)/2 per side for all arms (diff <= 2.7e-11, per-trade rounding)",
+    "pair_concentration max 0.191136 <= 0.40, shares sum to 1; dual books same sign all arms; LOPO: all 7 drop-one PnLs positive per arm (artifacts/drop_one_inputs.jsonl) => share 1.0; stress tier2.0 total_pnl >= 0 all arms; fold populations 70/133/111, 70/140/112, 84/112/105 all >= 25 floor"
+   ]
+  },
+  {
+   "id": "C4_independent_scored_rerun",
+   "desc": "fresh-context rerun of exec_driver_v8.py scored in the A7 worktree on copied gitignored bytes (staged_vintaged + data_raw/forex_free_v1 from integration worktree; never committed), single run only",
+   "result": "PASS",
+   "evidence": [
+    "exit 0; ledger appended 3 rows (6 total); rows 3:6 canon-JSON (sort_keys) IDENTICAL to committed rows 0:3 for all 3 arms — every field byte-equal after canon",
+    "14/14 freshly emitted artifacts byte-identical to HEAD-committed artifacts",
+    "staged pin verify passed in-driver (T10YIE/T5YIE/DGS10 sha256 vs committed manifest); V5 financing ledger pin cf1f01a7 verified",
+    "worktree restored to HEAD bytes after comparison; final porcelain = 0"
+   ]
+  },
+  {
+   "id": "C5_twin_reproduction",
+   "desc": "twin worktree r-reproduce-1 (detached 720decb) artifact byte-match and ledger canon-match; seeded-prefix observation weighed",
+   "result": "PASS",
+   "evidence": [
+    "14/14 twin artifacts byte-identical to A7-HEAD artifacts and to integration-worktree artifacts",
+    "twin rows 0:3 are a byte-exact seeded prefix of the committed ledger; twin rows 3:6 canon-match committed rows 0:3 (all three arms, every field)",
+    "OBSERVATION: the twin scratch ledger now carries 9 rows = seeded 3 + TWO fresh emissions (rows 3:6 and 6:9, both canon-identical to committed); the second emission post-dates the terminal commit (twin files mtime ~04:40Z vs commit 04:33:26Z) and is consistent with the V9-bootstrap precondition runner (r1_reproduce_runner.py) re-executing the twin driver; untracked scratch file, never committed, reruns-not-trials — no scientific impact",
+    "seeded-prefix weighing: the driver recomputes everything from sha256-pinned bytes and only APPENDS to the ledger (no read path); seeding cannot contaminate the emission; decisively, the A7 rerun in C4 ran UNSEEDED (appended directly onto exactly the 3 committed rows) and reproduced all numbers — append-mode seeding undermines nothing"
+   ]
+  },
+  {
+   "id": "C6_falsification_quantification",
+   "desc": "R1/R2 recomputed from ledger expectancies and checked against the D1 preregistration",
+   "result": "PASS",
+   "evidence": [
+    "A7 independent falsification ratio: control/anchor fin-adj expectancy 19.7700614189/4.9281797948 = 4.0116, same sign (both > 0) — matches the terminal's 4.01x claim",
+    "R1 (control>0 AND >= 0.5x anchor, preregistered d1/a5-axis3/proposal-1.json falsification_rule.rules[0]): 19.7701 >= 2.4641 => FIRES on all arms",
+    "R2 (neighbour same-sign >= 1.0x anchor, rules[1]): 9.0380736998/4.9281797948 = 1.8340 >= 1.0 => FIRES on all arms",
+    "R3 (anchor>0 AND neighbour<=0): neighbour +9.038 > 0 => not fired; R4 (anchor<=0): +4.928 > 0 => not fired; matches ledger falsification_rules blocks and artifacts/control_rows.jsonl exactly",
+    "survival_requires (anchor>0 AND NOT R1 AND NOT R2 AND NOT R3 AND all ten gates) => family dead"
+   ]
+  },
+  {
+   "id": "C7_f2_boundary_neutrality",
+   "desc": "anchor exactly 2/3 positive folds; owner pre-GO strict ruling binds; verdict-neutrality if gate 3 hypothetically passed",
+   "result": "PASS",
+   "evidence": [
+    "owner_fresh_go.json f2_ruling choice 1: 'strict-as-executed gate-3 semantics ratified pre-GO ... an exactly-2/3 positive-fold anchor FAILS gate 3 with margin 0.0'",
+    "pre-GO ordering proven by git chronology: A7 prelaunch commit 2a0f1c6 @2026-09-09T01:53:56Z < two-key commit 720decb carrying the GO+ruling @02:06:10Z < scored commit 07e1b95 @02:16:28Z (all before any scored compute)",
+    "NEUTRALITY CONFIRMED: with gate 3 hypothetically passing, the anchor still fails gate 2 (PF 1.0531 < 1.10, margin -0.0469) and gate 10 (control DOES reproduce anchor), and preregistered R1+R2 fire independently of any gate — the family dies under either F2 reading",
+    "gate 5 fail (BE 6.346 > 1.5, V7-inherited '<=' direction, F-A7-T-1-class adjudicated owner debt) is additive only: conservative direction can never rescue, and the reject does not rest on it (G2/R1/R2 sufficient)"
+   ]
+  },
+  {
+   "id": "C8_dsr_recompute",
+   "desc": "DSR recomputed from artifacts/per_period_series.jsonl (4920 rows = 3 arms x 1640 periods) via research/dsr.py dsr_probability, n_trials=42, trials = 3 V8 arm Sharpes",
+   "result": "PASS",
+   "evidence": [
+    "anchor dsr 0.34069405314711143 / neighbour 0.40584145546448613 / control 0.5396817836770421 — all three match terminal_dsr_v8.json to the last bit",
+    "sr0 0.014025205891650681 exact; per-arm daily Sharpe/skew/Pearson-kurtosis recomputed from raw series match (0.0039119184/1.5224/111.1855; 0.0082163596/3.4290/144.9235; 0.0164116690/4.0771/108.8712)",
+    "PBO NOT_RUN_FAIL_CLOSED correct: 3 cells < CSCV minimum 8 (PBO_MIN_CONFIGURATIONS)",
+    "DSR contradicts nothing: all arms far below significance incl. the out-earning control (0.54) — no deflated edge anywhere, consistent with REJECT_ALL"
+   ]
+  },
+  {
+   "id": "C9_bookkeeping",
+   "desc": "budget 3/6 with 3 unused slots never reassigned; S1 SEALED_UNTOUCHED; registry verify; no promotion; no push/merge",
+   "result": "PASS",
+   "evidence": [
+    "state.json budget used 3/planned 6; run_contract budget bound 3 + p3 'unused_slots_never_reassigned': true; counters.jsonl observed 3 / published 3 / budget_used 3",
+    "state.json s1 SEALED_UNTOUCHED; no S1 path in any V8 asset/driver (conditioning = staged T10YIE/T5YIE/DGS10 + V1 H1 spot only); HYPOTHESIS_LEDGER S1 seal language intact",
+    "research/governance/validate_family_failures.py: 'family_failures: 56 entries, 0 errors -> PASS'; last line is the FXFV8-A5-P1 CLOSED SCIENTIFIC_REJECTION row",
+    "SURVIVORS.md has zero FXFV8/FOREX-FREE-V8 references; terminal survivors: []; no promotion artifacts anywhere in the cycle tree",
+    "07de93c contained by NO remote branch (git branch -r --contains empty) and NOT in local main — no push, no merge"
+   ]
+  },
+  {
+   "id": "C10_refutation_hunt",
+   "desc": "deliberate attempts to refute the REJECT",
+   "result": "PASS",
+   "evidence": [
+    "(a) no gate the verdict claims failed actually passes: the fail set per arm is exactly the margins_to_fail fail set; conversely the passes claimed (G1/G4/G6/G7/G8/G9, LOPO 1.0, concentration clean, dual books clean) verified true",
+    "(b) no book/tier reading rescues the anchor: control out-earns anchor on fin-adj tier2.0 (5950.79 vs 1547.45 total, 3.85x), price-only (6624.43 vs 3985.21, 1.66x), and every stress tier (exp 22.77 vs 7.93 at tier1.0) — ratio 4.01x on the primary book is the conservative one",
+    "(c) control not disadvantaged by construction: arm_frozen_config identical across arms in entry_z/exit_z/max_hold/pairs/warmup(252)/clock/s0 window/cost ladder/tier/financing formula; differs ONLY in preregistered driver (slope vs level), z-window (252/504/252) and the control direction inversion, each frozen in d1/a5-axis3/proposal-1.json BEFORE outcomes with explicit rationale; arm_config_digests recompute-match ledger and run_contract; identical 1640-clock usable grid all arms (artifacts/identity.jsonl); financing_unavailable_skipped 0 all arms",
+    "(d) nothing in DSR contradicts the reject (see C8); if anything the control's higher-but-insignificant DSR reinforces it"
+   ]
+  }
+ ],
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "LOW",
+   "title": "owner_fresh_go.json recorded_at_utc (02:40:00Z) post-dates its own committing commit",
+   "detail": "720decb committed the GO file at 2026-09-09T02:06:10Z; the file's hand-written recorded_at_utc is 02:40:00Z — impossible ordering, evidently a typo. Git chronology independently establishes the required pre-GO ordering (A7 prelaunch 01:53:56Z < GO commit 02:06:10Z < scored commit 02:16:28Z), so the two-key legality is unaffected. Recommend timestamp hygiene in future control files.",
+   "verdict_impact": "none"
+  },
+  {
+   "id": "F2",
+   "severity": "LOW",
+   "title": "terminal_verdict measured_at_utc (02:35:00Z) pre-dates the twin reproduction runs it reports",
+   "detail": "The verdict's measured_at stamps ~02:35Z (consistent with the DSR pass over the 02:16Z-committed series) but its reproduction section reports twin runs whose on-disk artifacts were born ~04:28Z, with the terminal commit at 04:33:26Z. The commit post-dates everything it reports, so the claim chain is sound; only the measured_at label is imprecise.",
+   "verdict_impact": "none"
+  },
+  {
+   "id": "F3",
+   "severity": "LOW",
+   "title": "twin scratch ledger now carries 9 rows (one scored emission beyond the terminal's 6-row observation)",
+   "detail": "A second twin scored emission executed after the terminal commit (mtime ~04:40Z; consistent with the V9-bootstrap precondition runner's docstring). Both emissions are canon-identical to the committed rows (deterministic pipeline, pinned bytes); the file is untracked scratch, never committed anywhere; reruns-not-trials semantics hold. Disclosed as an execution-accounting observation; no scientific impact.",
+   "verdict_impact": "none"
+  },
+  {
+   "id": "F4",
+   "severity": "LOW",
+   "title": "FAMILY_FAILURES V8 registry row prose nits (disclosed)",
+   "detail": "terminal_sha is null with the field listed in unknown_fields (row recorded 02:35Z, before the terminal commit existed — self-consistent but unpopulated); primary_failure and secondary_failures[0] reuse the same code CONTROL_OUTEARNED_ANCHOR, and secondary_failures[1] labels the DSR/PBO summary DIAGNOSTIC_CONTRACT_GAP though diagnostics were emitted per contract. No factual error found in the row's numbers (all cross-checked).",
+   "verdict_impact": "none"
+  },
+  {
+   "id": "F5",
+   "severity": "INFO",
+   "title": "gate 10 encoding fails mechanically on non-control arms; gate 5 '<=' direction is owner-adjudicated debt",
+   "detail": "For anchor/neighbour, gate 10 evaluates bool(None) => margin 0.0 => FAIL by construction — verbatim V7 precedent (V7 anchor row carries the same margin-0.0 mechanism_sanity fail) and ratified by the A8 boolean-gate encoding ruling; the substantive gate-10 fact (control DOES reproduce anchor) is independently verified. Gate 5's V7-inherited '<=' comparator fails any arm with a positive gross edge — F-A7-T-1-class owner debt, adjudicated pre-GO, conservative direction, disclosed in the terminal. Both are verdict-neutral here: the reject stands on gate 2 + R1 + R2 alone.",
+   "verdict_impact": "none"
+  }
+ ],
+ "independent_falsification_ratio": 4.0116,
+ "unresolved_high_critical": 0,
+ "unresolved_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 4, "INFO": 1},
+ "verdict": "CONFIRM_FOREX_FREE_V8_REJECT_ALL",
+ "verdict_rationale": "Every load-bearing number of the terminal verdict recomputes exactly from committed bytes in a fresh context, including a full unseeded scored rerun (3/3 rows canon-identical, 14/14 artifacts byte-identical), an exact DSR recompute, exact preregistered falsification arithmetic (R1 4.0116x same-sign >= 0.5x; R2 1.8340x >= 1.0x), and complete gate-margin verification. The F2 boundary landed exactly at 2/3 under a pre-GO owner ruling proven by git chronology and is verdict-neutral (independent kills on gates 2/5/10 + R1 + R2). Refutation hunt found no reading — book, tier, or construction — under which the control does not out-earn the anchor or the anchor survives. Bookkeeping, S1 seal, registry, and no-push/no-merge all verified. 4 LOW + 1 INFO findings, all verdict-impact none.",
+ "pnl_anywhere": "inside the 3 scored cells only; no promotion, no S1, no live/paper",
+ "artifacts_referenced": [
+  "research/control/forex_free_v8_run/terminal_verdict_v8.json",
+  "research/control/forex_free_v8_run/scored_ledger_published_v8.jsonl",
+  "research/control/forex_free_v8_run/terminal_dsr_v8.json",
+  "research/control/forex_free_v8_run/p3_invariants_freeze_v8.json",
+  "research/control/forex_free_v8_run/owner_fresh_go.json",
+  "research/control/forex_free_v8_run/run_contract.json",
+  "research/control/forex_free_v8_run/d1/a5-axis3/proposal-1.json",
+  "research/control/forex_free_v8_run/state.json",
+  "research/control/forex_free_v8_run/event_log.jsonl",
+  "artifacts/margins_to_fail.jsonl",
+  "artifacts/per_period_series.jsonl",
+  "artifacts/drop_one_inputs.jsonl",
+  "artifacts/identity.jsonl",
+  "artifacts/control_rows.jsonl",
+  "artifacts/counters.jsonl",
+  "research/dsr.py",
+  "research/assets/forex_free_v8/exec_driver_v8.py",
+  "research/assets/forex_free_v8/family_a5p1_v8.py",
+  "research/governance/validate_family_failures.py",
+  "research/wayfinder/FAMILY_FAILURES.jsonl",
+  ".worktrees/forex-free-v8/r-reproduce-1 (twin, detached 720decb)"
+ ]
+}
