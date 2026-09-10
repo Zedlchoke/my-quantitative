@@ -283,6 +283,7 @@ def new_diag():
         "floor_abstain_leg": 0,
         "floor_abstain_degenerate_scale": 0,
         "void_entry_orders": 0,
+        "invalid_price_bars": 0,
         "dead_leg_exits": 0,
         "fold_force_flat_exits": 0,
         "scheduled_exits": 0,
@@ -676,9 +677,16 @@ def execute_decision(book_w, prices, bands, D, fold, global_days, day_pos,
             "ret": None,
             "pnl_contrib": None,
         }
-        if fi is None:
+        # INC-V13-15: a bar with adj price <= 0 is an INVALID bar (dead-OTC
+        # vendor artifact, 138 files measured). A fill or exit landing on an
+        # invalid bar VOIDS the leg (fail-closed, counted) — never divides.
+        def _bar_ok(idx):
+            return idx is not None and p["adj"][idx] > 0.0
+        if fi is None or not _bar_ok(fi):
             period["void_orders"] += 1
             diag["void_entry_orders"] += 1
+            if fi is not None:
+                diag["invalid_price_bars"] += 1
             leg["exit_reason"] = "VOID_NO_FILL"
             legs.append(leg)
             continue
@@ -705,6 +713,12 @@ def execute_decision(book_w, prices, bands, D, fold, global_days, day_pos,
             diag["fold_force_flat_exits"] += 1
         exit_cost = (abs(w) * kernel.resolve_exit_band_bps(cik, bands)
                      * cost_mult / 10_000.0)
+        if not _bar_ok(ei):
+            period["void_orders"] += 1
+            diag["invalid_price_bars"] += 1
+            leg["exit_reason"] = "VOID_INVALID_EXIT_BAR"
+            legs.append(leg)
+            continue
         realized_ret = None
         if not dry_run:
             realized_ret = p["adj"][ei] / p["adj"][fi] - 1.0
