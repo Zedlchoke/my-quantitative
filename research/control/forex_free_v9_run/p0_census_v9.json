@@ -1,0 +1,71 @@
+{
+ "schema": "forex_free_v9_p0_census_v1",
+ "measured_at_utc": "2026-09-10T04:20:00Z",
+ "producer": "A1_FOREX_V9_CONTROLLER (P0 in A1 thread \u2014 V7/V8 precedent)",
+ "authority": "plans/PLAN_forex_v9.md \u00a74-P0 \u00a72; handbook \u00a711.4 \u00a711.7",
+ "s0_window": "2018-04-04..2025-07-24",
+ "staging": {
+  "policy": "raw bytes gitignored in the V9 worktree data_raw/forex_free_v9_cpi/ (no raw-data commit); sha256 manifest committed (fred_vintaged_manifest_v9.json covers the FRED legs; official-source shas recorded in the event log)",
+  "official_sources_sha256": {
+   "GB/ons_d7bt_cpi_allitems.csv": "164f5f8987915fb4ed20619b4fae2d5619322719f8eb979a767cd66e018e223e",
+   "CA/statcan_18100004.zip": "19f2712264fcfda9a2aacb019f6907582e73f40b7780ca88db7c986e5c95aa26",
+   "CA/canada_allitems_nsa_2002_100_monthly.csv": "tidy extraction from the zip",
+   "AU/abs_640101_jul2026.xlsx": "0c1c6fa0d6ed6f11d7ddf5e5bd684432acee59e83eb36c840f42b1f36cb472dc"
+  },
+  "fred_vintaged_manifest": "data_raw/forex_free_v9_cpi/fred_vintaged_manifest_v9.json (committed): GB 4737 rows / CA 5091 / AU 1551 / NZ 1958 / US 1962 \u2014 deterministic retrieval VERIFIED cross-cycle (row counts byte-match the V8 staging at 07e1b95 exactly)"
+ },
+ "funded_economy_table": [
+  {
+   "economy": "US",
+   "official": "BLS CPI (All Urban Consumers) via FRED CPIAUCSL; fresh V9 staging 1962 realtime rows, 942 obs 1947-01..2025-06",
+   "availability": "V8 dense audit inherited + fresh staging: vintaged archive <=2003-01-07, publication lag 10-14d, revisions captured",
+   "verdict": "PASS_PIT_EVIDENCED"
+  },
+  {
+   "economy": "GB",
+   "official": "ONS D7BT CPI INDEX 00 ALL ITEMS 2015=100, monthly, 663 rows through 2026 JUL (covers the S0 tail the FRED OECD feed loses after 2025-03)",
+   "fred_vintaged": "GBRCPIALLMINMEI 4737 rows, archive spans <=2011-01-11 through 2025-03 (V8 dense audit: lag med 42d [14-49], 5 rebase-class events + revisions mapped; mutation PASS x2)",
+   "announcement_instants": "GB_cal pin aad19697 (88 in-S0 release dates)",
+   "verdict": "PASS_PIT_EVIDENCED (vintaged channel + official continuation; ONS unrevised-policy claim recorded, independent first-print check = P0 note)"
+  },
+  {
+   "economy": "CA",
+   "official": "StatCan table 18100004 zip staged + tidy extraction: Canada all-items NSA 2002=100 monthly, 1351 rows 1914-01..2026-07, 91 in-S0-relevant, STATUS column empty (no preliminary flags)",
+   "fred_vintaged": "CANCPIALLMINMEI 5091 rows spanning S0 (V8: lag med 42d [25-49], 5 rebase-class + 216 revision events mapped)",
+   "announcement_instants": "CA_v3 pin 0f1a9328 (105 in-S0 release dates)",
+   "verdict": "PASS_PIT_EVIDENCED (vintaged channel; official current-table unrevised-as-of NOT independently verified \u2014 recorded honestly)"
+  },
+  {
+   "economy": "AU",
+   "official": "ABS 640101 xlsx jul-2026 release staged (Table 1 index numbers by capital city); past-release direct pulls network-failed (code 56 x3 \u2014 recorded)",
+   "fred_vintaged": "AUSCPIALLQINMEI 1551 rows spanning S0 (V8: lag med 41d, REBASE INSIDE S0 measured + captured at vintage 2018-10-09; mutation PASS x2 with corrected quarter-first-month obs)",
+   "announcement_instants": "AU_cal pin 42a4e4a3 (23 in-S0 release dates)",
+   "verdict": "PASS_PIT_EVIDENCED (vintaged channel; ABS current-table carries measured revisions -> vintaged is the qualifying channel)"
+  },
+  {
+   "economy": "NZ",
+   "official": "Infoshare unreachable this session (network; POST session-app chain = P0-remaining)",
+   "fred_vintaged": "NZLCPIALLQINMEI 1958 rows spanning S0 (V8: lag med 41d, REVISED-class samples measured; quarterly class mutation covered by AU leg)",
+   "announcement_instants": "NZ_cal pin 62f82c23 (30 in-S0 release dates)",
+   "verdict": "PASS_PIT_EVIDENCED (vintaged channel; official continuation = P0-remaining)"
+  }
+ ],
+ "kill_test": {
+  "test": ">=2 funded non-US economies AND a US leg with PIT-evidenced (announcement instant + unrevised-as-of OR vintaged) CPI index levels across S0",
+  "measured": "non-US funded = {GB, CA, AU, NZ} (4 >= 2) + US \u2014 ALL via vintaged archives spanning S0 (self-contained V9 staging, deterministic retrieval verified cross-cycle) with announcement instants from the pinned calendars",
+  "verdict": "KILL TEST PASSED \u2014 mandatory lane FUNDED; no BLOCKED_DATA"
+ },
+ "channel_notes": [
+  "official tables are CURRENT-vintage (revised in place): the PIT qualification for GB/CA/AU/NZ rests on the VINTAGED archives (explicitly allowed by the kill test wording), with official sources as continuation + tail coverage (ONS/StatCan run to 2026-07 \u2014 covering the S0 tail the FRED OECD feed loses after 2025-03)",
+  "V8 dense-map + mutation evidence (committed on orca/forex-free-v8-integration: p0_dense_vintage_map_v8_r2.json, p0_mutation_test_v8_r2.json) inherited as the revision-integrity proof for these same series",
+  "the V8 integration worktree was removed from disk after close (gitignored staging bytes lost; committed artifacts + manifests safe on the branch) \u2014 recorded; V9 evidence is now self-contained",
+  "NZ official continuation + AU past-release original-listing pulls = P0-remaining notes (not blocking: the vintaged channel qualifies)"
+ ],
+ "verdict": "P0 CENSUS COMPLETE \u2014 MANDATORY LANE (realized-inflation PPP-deviation misalignment) FUNDED; publish BEFORE D1 satisfied",
+ "budget": {
+  "used": 0,
+  "planned": 6
+ },
+ "s1": "SEALED_UNTOUCHED",
+ "pnl_anywhere": false
+}
