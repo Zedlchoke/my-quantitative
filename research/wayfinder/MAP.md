@@ -1,6 +1,22 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced at the FOREX-V8 close, 2026-09-09)
+## Sprint state (synced at the FOREX-V9 close, 2026-09-10)
+
+- **FOREX V9 CLOSED → `FOREX_FREE_V9_BLOCKED_DATA_OR_SELECTION`** (0 cells,
+  budget 0/6; branch `orca/forex-free-v9-integration`, terminal 6e9f606,
+  A7 prelaunch REFUSED 67229fa accepted) — the PPP-deviation frontier.
+  P0: kill test PASSED (official-source staging GB/CA/AU + FRED vintaged
+  GB/CA/AU/NZ/US self-contained; deterministic retrieval cross-cycle).
+  D1: 4 outcome-blind proposals on wave 8b99412. D2: A4-P1 0.2599 / A4-P2
+  0.4842 VETO; A5-P1/A5-P2 passed the A1 measurement (0.1062/0.0580) but
+  **A7 prelaunch re-measured on the frozen daily-grid representation:
+  0.3034/0.3119 vs V8-A5-P1-anchor — both VETO; the selection was invalid
+  as measured and the cycle closed honestly at 0 cells**. Lessons: D2 rho
+  must be measured on the runner's own decision grid, committed and
+  reproducible; GB/CA current-vintage deviation recorded binding. Spot V1
+  snapshot lost post-close; TD re-acquisition sample-proven. **forex
+  42/42; program 236/239** (ledger authority, P-9). S1 SEALED. Detail:
+  `.worktrees/forex-free-v9/integration/research/control/forex_free_v9_run/terminal_verdict_v9.json`.
 
 - **FOREX V8 CLOSED → `FOREX_FREE_V8_REJECT_ALL`** (closed 2026-09-09, branch
   `orca/forex-free-v8-integration`, terminal 07de93c + closeout 4018884,

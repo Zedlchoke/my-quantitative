@@ -5,18 +5,19 @@ Read the LIVE plan of the cycle you serve (highest version per asset in
 `researchctl cycle list`) is the router authority. Measured 2026-09-09
 ~12:50 VN:
 
-- **FOREX-FREE-V8: TERMINAL, fully closed.** `FOREX_FREE_V8_REJECT_ALL`
-  (falsification-by-control #14 — DGS10-level control out-earns the
-  anchor 4.0116x same-sign; DSR N=42 0.341/0.406/0.540). A7 terminal
-  `CONFIRM..._0_HIGH_CRITICAL` (`869f391`), closeout `4018884`,
-  reproduction ALL_MATCH (twin r1 complete 11:40 VN), budget 3/6, GO
-  phrase dead with the cycle. Registry TERMINAL in root (`079ebd2`).
-  Lead evidence sync THIS commit: ledger 236/239 (forex 42/42), failure
-  registry 56/0 PASS, MAP V8 entry.
-- **FOREX-FREE-V9: bootstrap precondition SATISFIED** (PLAN_forex_v9 §0:
-  twin → closeout → A7T → registry TERMINAL + ledger sync all landed).
-  PLANNED_NOT_STARTED — activates on owner dispatch. GO phrase
-  `GO FOREX V9 SCORED EXECUTION` registered-unconsumed.
+- **FOREX-FREE-V8: TERMINAL.** `FOREX_FREE_V8_REJECT_ALL`
+  (falsification-by-control #14 — DGS10-level control out-earns the anchor
+  4.0116x; DSR N=42 0.341/0.406/0.540). Registry TERMINAL. Ledger 236/239
+  (forex 42/42), failure registry 56/0.
+- **FOREX-FREE-V9: TERMINAL — `FOREX_FREE_V9_BLOCKED_DATA_OR_SELECTION`**
+  (0 cells, budget 0/6). All 4 proposals D2-killed measured: A4-P1 0.2599 /
+  A4-P2 0.4842 vetoes; A5-P1/A5-P2 passed the A1 monthly-grid measurement
+  but **A7 prelaunch re-measured on the frozen daily-grid representation:
+  0.3034/0.3119 vs the V8-A5-P1 anchor — both vetoed; the selection was
+  invalid as measured** and the cycle closed honestly. Lesson: D2 novelty
+  rho must be measured on the runner's own decision-grid representation,
+  committed and reproducible. GB/CA current-vintage deviation recorded as a
+  binding disclosure for future cycles.
 - **CRYPTO-V17: selection RE-FROZEN v3** (`74781fb`) after A7 v2
   REFUSED (WKNDLIQ D2 novelty was buggy — day-string vs weekday-names;
   re-measured |rho| 0.5628 → VETO_MEASURED; both lane-1 proposals dead
