@@ -516,3 +516,103 @@ def test_check_v1_run_dir_without_registry_row(tmp_path):
     (tmp_path / "plans" / "CYCLE_REGISTRY.json").unlink()
     kinds = [f["kind"] for f in tc.check_v1_run_dir(run_dir)]
     assert "REGISTRY_ROW_MISSING" in kinds
+
+
+# ------------------- MDP-V2R1 A4 additive: declared TERMINAL_ANCHOR rows ----
+
+ANCHOR = "a" * 40
+DESCENDANT_TIP = "b" * 40
+
+
+def _declared_row(anchor=ANCHOR, **over):
+    row = dict(_consistent_bundle()["registry_row"],
+               head=anchor,
+               head_semantics="TERMINAL_ANCHOR",
+               terminal_anchor_sha=anchor,
+               post_terminal_policy="ALLOWLISTED_APPEND_ONLY_DESCENDANTS")
+    row.update(over)
+    return row
+
+
+def _call_declared(bundle, identity_result=None, addendum=None):
+    return tc.validate_terminal_consistency(
+        bundle["terminal_report"], bundle["state"], bundle["heartbeat"],
+        bundle["worktree_manifest"], bundle["registry_row"],
+        bundle["branch_tip"], bundle["event_log_lines"], addendum,
+        identity_result)
+
+
+def test_declared_identity_evidence_only_descendant_is_not_head_stale():
+    """A declared TERMINAL_ANCHOR row with the live tip ahead by an
+    evidence-only descendant does NOT yield REGISTRY_HEAD_STALE via the new
+    hook: head binds the anchor, descendants are terminal_identity's job."""
+    b = _consistent_bundle()
+    b["registry_row"] = _declared_row()
+    b["branch_tip"] = DESCENDANT_TIP  # tip moved after the anchor
+    identity = {"findings": [], "branch_tip": DESCENDANT_TIP,
+                "terminal_anchor_sha": ANCHOR,
+                "descendant_commits": ["c" * 40]}
+    assert _call_declared(b, identity_result=identity) == []
+
+
+def test_declared_identity_head_mismatch_is_registry_head_stale():
+    """head != terminal_anchor_sha on a declared row IS registry staleness —
+    with or without repo context (identity_result)."""
+    b = _consistent_bundle()
+    b["registry_row"] = _declared_row()
+    b["registry_row"]["head"] = "d" * 40
+    findings = _call_declared(b)  # default hook: identity_result=None
+    assert [f["kind"] for f in findings] == ["REGISTRY_HEAD_STALE"]
+    assert ANCHOR in findings[0]["detail"]
+    # the hook does not mask the mismatch, it only adds its own findings
+    identity = {"findings": [{"kind": "TERMINAL_IDENTITY_ANCHOR_MISSING",
+                              "severity": "HIGH", "detail": "gone"}],
+                "branch_tip": DESCENDANT_TIP, "terminal_anchor_sha": ANCHOR,
+                "descendant_commits": []}
+    kinds = [f["kind"] for f in _call_declared(b, identity_result=identity)]
+    assert kinds == ["REGISTRY_HEAD_STALE", "TERMINAL_IDENTITY_ANCHOR_MISSING"]
+
+
+def test_undeclared_row_keeps_legacy_head_vs_tip_behavior():
+    """Rows WITHOUT the declaration keep today's behavior EXACTLY: a tip that
+    moved ahead still yields REGISTRY_HEAD_STALE (no silent adoption of the
+    new semantics), with the hook defaulting to None."""
+    b = _consistent_bundle()
+    b["branch_tip"] = DESCENDANT_TIP
+    assert [f["kind"] for f in _call_declared(b)] == ["REGISTRY_HEAD_STALE"]
+
+
+def test_identity_result_findings_folded_in_with_exact_shape():
+    """identity_result findings are appended verbatim as {kind, severity,
+    detail}; the default (None) adds nothing."""
+    b = _consistent_bundle()
+    identity = {"findings": [
+        {"kind": "TERMINAL_IDENTITY_FORBIDDEN_PATH", "severity": "HIGH",
+         "detail": "research/governance/x.py modified after the anchor"}],
+        "branch_tip": DESCENDANT_TIP, "terminal_anchor_sha": ANCHOR,
+        "descendant_commits": []}
+    out = _call_declared(b, identity_result=identity)
+    assert out == [{"kind": "TERMINAL_IDENTITY_FORBIDDEN_PATH",
+                    "severity": "HIGH",
+                    "detail": "research/governance/x.py modified after the "
+                              "anchor"}]
+
+
+def test_identity_findings_are_not_addendum_coverable():
+    """Terminal identity violations are structural: no addendum suppresses
+    them (the folded findings bypass the coverage layer by design)."""
+    b = _consistent_bundle()
+    b["registry_row"] = _declared_row()
+    b["registry_row"]["head"] = "d" * 40
+    identity = {"findings": [{"kind": "TERMINAL_IDENTITY_NOT_ANCESTOR",
+                              "severity": "HIGH", "detail": "off-branch"}],
+                "branch_tip": DESCENDANT_TIP, "terminal_anchor_sha": ANCHOR,
+                "descendant_commits": []}
+    add = _full_addendum(_stale_bundle())  # a well-formed addendum shape
+    add["supersedes_fields"].append(
+        {"file": "registry", "field": "head", "stale_value": "d" * 40,
+         "corrected_value": ANCHOR})
+    out = _call_declared(b, identity_result=identity, addendum=add)
+    kinds = [f["kind"] for f in out]
+    assert "REGISTRY_HEAD_STALE" not in kinds  # covered by the addendum
+    assert kinds == ["TERMINAL_IDENTITY_NOT_ANCESTOR"]  # identity stands

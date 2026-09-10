@@ -21,6 +21,14 @@ MDP-V1 M0 additions (PLAN_market_data_plane_v1 sec3.2):
 - A transition to TERMINAL kills the cycle's GO phrase state (P-8: no GO
   survives its cycle's close) — the terminal-GO-death invariant is enforced
   by the writer, not by convention.
+
+MDP-V2R1 A4 addition (PLAN_market_data_plane_v2r1 §12):
+- :func:`declare_terminal_identity` writes the additive TERMINAL_ANCHOR
+  semantics onto a TERMINAL row through the SAME atomic CAS + journal path
+  (event TERMINAL_IDENTITY_DECLARED). The fields are additive: rows without
+  them stay valid legacy rows and validate_registry accepts both shapes.
+  Once declared the identity is immutable; an identical re-declaration is an
+  idempotent no-op (no write, no journal event).
 """
 from __future__ import annotations
 
@@ -31,7 +39,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from governance import atomic_io
+from governance import atomic_io, terminal_identity
 
 SCHEMA_ID = "cycle_registry@1"
 REGISTRY_REL = "plans/CYCLE_REGISTRY.json"
@@ -503,3 +511,92 @@ def reconcile_registry(path: os.PathLike | str, registry: dict, *, prev_sha: Opt
     report["mode"] = "EXECUTED"
     report["registry_sha256"] = new_sha
     return report, new_sha
+
+
+# --------------------------------------- declare_terminal_identity (MDP-V2R1)
+
+def declare_terminal_identity(path: os.PathLike | str, registry: dict, *,
+                              prev_sha: Optional[str], cycle_id: str,
+                              terminal_anchor_sha: str,
+                              post_terminal_policy: str = terminal_identity.POST_TERMINAL_POLICY,
+                              reason: str = "declare terminal identity") -> tuple:
+    """Declare the additive TERMINAL_ANCHOR semantics on a TERMINAL row.
+
+    MDP-V2R1 §12.1: a commit cannot contain its own SHA, so a TERMINAL row
+    binds ``head`` to the terminal ANCHOR (the last commit the auditor
+    audited) instead of the live branch tip; post-terminal descendants are
+    judged by governance.terminal_identity against the frozen allowlist.
+
+    Writes ONLY the three additive fields (+ updated_at_utc bookkeeping)
+    through the atomic CAS + journal path; the row's head and every other
+    field are never modified here. Fails closed (no write) unless:
+
+    - the row lifecycle is TERMINAL;
+    - terminal_anchor_sha is 40-hex AND row head is 40-hex AND they are equal;
+    - post_terminal_policy equals the frozen
+      ALLOWLISTED_APPEND_ONLY_DESCENDANTS value;
+    - the identity is not already declared (an identical re-declaration is
+      an idempotent no-op returning (record, current file sha256) with NO
+      write and NO journal event; a different re-declaration raises — the
+      declared identity is immutable).
+
+    Every applied declaration is recorded as a TERMINAL_IDENTITY_DECLARED
+    journal event. Returns (record, new_registry_sha256) — new_registry_sha256
+    is the current file sha on the idempotent no-op path.
+    """
+    rec = resolve(registry, cycle_id)
+    if rec["lifecycle"] != "TERMINAL":
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} lifecycle is "
+            f"{rec['lifecycle']!r}, TERMINAL required — identity semantics "
+            "apply only to closed cycles")
+    if not _HEX40.match(terminal_anchor_sha or ""):
+        raise ValueError(
+            f"declare_terminal_identity: terminal_anchor_sha must be a 40-hex "
+            f"sha, got {terminal_anchor_sha!r}")
+    if not _HEX40.match(rec.get("head", "") or ""):
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} head "
+            f"{rec.get('head')!r} is not a 40-hex sha")
+    if rec["head"] != terminal_anchor_sha:
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} head {rec['head']!r} != "
+            f"terminal_anchor_sha {terminal_anchor_sha!r} — under "
+            f"{terminal_identity.HEAD_SEMANTICS!r} the row head IS the "
+            "terminal anchor (re-anchor first via CAS update, never by "
+            "hand-editing)")
+    if post_terminal_policy != terminal_identity.POST_TERMINAL_POLICY:
+        raise ValueError(
+            f"declare_terminal_identity: post_terminal_policy must be "
+            f"{terminal_identity.POST_TERMINAL_POLICY!r}, got "
+            f"{post_terminal_policy!r}")
+
+    wanted = {
+        "head_semantics": terminal_identity.HEAD_SEMANTICS,
+        "terminal_anchor_sha": terminal_anchor_sha,
+        "post_terminal_policy": post_terminal_policy,
+    }
+    already = {k: rec[k] for k in terminal_identity.IDENTITY_FIELDS if k in rec}
+    if already:
+        if already == wanted:
+            # idempotent re-declaration: no write, no journal event
+            return rec, atomic_io.sha256_file(path)
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} already declares terminal "
+            f"identity {already} — the declared identity is immutable; "
+            "re-declaration with different values is refused")
+    rec.update(wanted)
+    now = now_utc()
+    rec["updated_at_utc"] = now
+    registry["updated_at_utc"] = now
+    registry["write_token"] = f"declare_terminal_identity:{cycle_id}:{reason[:60]}"
+    new_sha = save(path, registry, expect_prev_sha=prev_sha)
+    journal_event(path, {
+        "event": "TERMINAL_IDENTITY_DECLARED",
+        "cycle_id": cycle_id,
+        "head": rec["head"],
+        "terminal_anchor_sha": terminal_anchor_sha,
+        "post_terminal_policy": post_terminal_policy,
+        "reason": reason,
+    })
+    return rec, new_sha
