@@ -2649,14 +2649,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         enforcement = result.get("frozen_rule_enforcement")
         if enforcement is not None:
+            # rule-shape-agnostic detail line: the coverage rule carries
+            # per_fold_scored_events/floor; the event-rule family (OICASCADE
+            # K1/K2/K3) carries fold detail of its own - print whatever the
+            # enforcement record actually holds (stdout only; never parsed)
+            detail = {
+                k: v for k, v in enforcement.items()
+                if k not in ("rule_id", "verdict", "family_alive", "cycle_id",
+                             "family_id")}
             print(
                 f"frozen_rule_enforcement {spec.family_id} "
                 f"{enforcement['rule_id']}: verdict="
                 f"{enforcement['verdict']} family_alive="
-                f"{enforcement['family_alive']} "
-                f"per_fold_scored_events="
-                f"{enforcement['per_fold_scored_events']} "
-                f"(floor {enforcement['min_scored_events_per_fold']})"
+                f"{enforcement['family_alive']} {detail}"
             )
     return 0
 
