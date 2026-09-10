@@ -13,7 +13,7 @@
      "scheduled_exits": 4524,
      "void_entry_orders": 214
     },
-    "dry_run": true,
+    "dry_run": false,
     "exposure_form": "transition_state_pm1",
     "family_id": "SFV13-A6-P1",
     "grid": {
@@ -38,6 +38,49 @@
     },
     "hold_sessions": 21,
     "hypothesis_id": "SFV13-A6-H1",
+    "metrics": {
+     "alive_legs_total": 3469,
+     "dead_class_legs_total": 1303,
+     "dead_legs_total": 34,
+     "drop_one_fold_expectancy_min": -0.001310078106,
+     "drop_one_symbol_expectancy_min": 0.000595049751,
+     "drop_one_symbol_worst": "CIK0000073887",
+     "expectancy": 0.002142933176,
+     "folds": {
+      "S0_FOLD_1": {
+       "decisions": 7,
+       "mdd": 0.0254081534,
+       "pf": 4.669346,
+       "sum_pnl": 0.0932313046
+      },
+      "S0_FOLD_2": {
+       "decisions": 10,
+       "mdd": 0.0469571843,
+       "pf": 0.822495,
+       "sum_pnl": -0.0137064593
+      },
+      "S0_FOLD_3": {
+       "decisions": 10,
+       "mdd": 0.0216656496,
+       "pf": 0.210144,
+       "sum_pnl": -0.0216656496
+      }
+     },
+     "folds_positive": 1,
+     "max_fold_mdd": 0.0469571843,
+     "mdd_overall_cum": 0.0686228339,
+     "pf": 1.444881,
+     "scored_periods": 27,
+     "sector_ew_mean": 0.01140948365,
+     "spy_excess_folds": {
+      "S0_FOLD_1": -0.014559313082,
+      "S0_FOLD_2": -0.008193722172,
+      "S0_FOLD_3": -0.020006536616
+     },
+     "spy_excess_folds_positive": 0,
+     "spy_excess_overall": -0.013056603056,
+     "sum_pnl": 0.0578591958
+    },
     "role": "anchor",
     "schedule": [
      {
@@ -426,13 +469,158 @@
      }
     ],
     "schema": "stocks_free_v13_run/arm_record@1",
-    "scored": false,
+    "scored": true,
     "stress": false,
     "target_gross": 1.0,
     "variant": "BASE"
    },
    "exposure_form": "transition_state_pm1",
-   "gates": "WITHHELD_DRY_RUN_SANITIZED",
+   "gates": [
+    {
+     "basis": "frozen rule (3): anchor expectancy <= 0 after base band costs -> REJECT",
+     "direction": "gt",
+     "gate": "expectancy_gt_0_after_base_costs",
+     "margin_to_fail": 0.00214293,
+     "observed": 0.002142933176,
+     "threshold": 0.0,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen Stage-A position PF gate; PF undefined (no losing periods) passes as +inf",
+     "direction": "ge",
+     "gate": "position_pf_ge_1.10",
+     "margin_to_fail": 0.344881,
+     "observed": 1.444881,
+     "threshold": 1.1,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "folds_positive_ge_2_of_3",
+     "margin_to_fail": -1,
+     "observed": 1,
+     "threshold": 2,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "carried houses gate per selection_freeze.stage_a_gates",
+     "direction": "le",
+     "gate": "max_fold_mdd_le_0.20_houses_carried",
+     "margin_to_fail": 0.15304282,
+     "observed": 0.0469571843,
+     "threshold": 0.2,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "proposal stage_a_gate_expectations declares 0.15; BOTH thresholds reported, adjudication returned to A1",
+     "direction": "le",
+     "gate": "max_fold_mdd_le_0.15_proposal_table",
+     "margin_to_fail": 0.10304282,
+     "observed": 0.0469571843,
+     "threshold": 0.15,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "risk-matched SPY-excess, SPY scaled ex ante by the frozen gross rule 1.0",
+     "direction": "gt",
+     "gate": "spy_excess_overall_gt_0",
+     "margin_to_fail": -0.0130566,
+     "observed": -0.013056603056,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "spy_excess_folds_ge_2_of_3",
+     "margin_to_fail": -2,
+     "observed": 0,
+     "threshold": 2,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "NOT_APPLICABLE ex ante (preregistered): no ETF legs in any arm",
+     "direction": "le",
+     "gate": "etf_share_le_0.50",
+     "margin_to_fail": 0.5,
+     "observed": 0.0,
+     "threshold": 0.5,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen rule (5): stress x2 PnL <= 0 -> dead",
+     "direction": "gt",
+     "gate": "stress_pnl_gt_0",
+     "margin_to_fail": 0.00484876,
+     "observed": 0.0048487613,
+     "threshold": 0.0,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen rule (5): stress PF < 1.0 -> dead; PF undefined (no losing periods) passes as +inf",
+     "direction": "ge",
+     "gate": "stress_pf_ge_1.0",
+     "margin_to_fail": 0.030974,
+     "observed": 1.030974,
+     "threshold": 1.0,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen rule (6), symbol dimension; exact arithmetic from persisted per-entity legs (costs allocated to legs)",
+     "direction": "gt",
+     "gate": "drop_one_symbol_min_expectancy_gt_0",
+     "margin_to_fail": 0.00059505,
+     "observed": 0.000595049751,
+     "threshold": 0.0,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen rule (6), fold dimension",
+     "direction": "gt",
+     "gate": "drop_one_fold_min_expectancy_gt_0",
+     "margin_to_fail": -0.00131008,
+     "observed": -0.001310078106,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "floor abstains recorded: 6",
+     "direction": "ge",
+     "gate": "floor_cohort_scoreable_ge_30_every_scored_date",
+     "margin_to_fail": 335,
+     "observed": 365,
+     "threshold": 30,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "floor_legs_ge_5_every_scored_date",
+     "margin_to_fail": 2,
+     "observed": 7,
+     "threshold": 5,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "scored_decisions_overall_ge_30",
+     "margin_to_fail": -9,
+     "observed": 21,
+     "threshold": 30,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "scored_decisions_per_fold_ge_5",
+     "margin_to_fail": 1,
+     "observed": 6,
+     "threshold": 5,
+     "verdict": "PASS"
+    }
+   ],
    "role": "anchor",
    "stress": {
     "arm_id": "SFV13-A6-H1-ANCHOR",
@@ -446,7 +634,7 @@
      "scheduled_exits": 4524,
      "void_entry_orders": 214
     },
-    "dry_run": true,
+    "dry_run": false,
     "exposure_form": "transition_state_pm1",
     "family_id": "SFV13-A6-P1",
     "grid": {
@@ -471,6 +659,49 @@
     },
     "hold_sessions": 21,
     "hypothesis_id": "SFV13-A6-H1",
+    "metrics": {
+     "alive_legs_total": 3469,
+     "dead_class_legs_total": 1303,
+     "dead_legs_total": 34,
+     "drop_one_fold_expectancy_min": -0.002602266561,
+     "drop_one_symbol_expectancy_min": -0.0013409548,
+     "drop_one_symbol_worst": "CIK0000073887",
+     "expectancy": 0.000179583752,
+     "folds": {
+      "S0_FOLD_1": {
+       "decisions": 7,
+       "mdd": 0.0312759112,
+       "pf": 3.401527,
+       "sum_pnl": 0.0751099584
+      },
+      "S0_FOLD_2": {
+       "decisions": 10,
+       "mdd": 0.0616523588,
+       "pf": 0.59383,
+       "sum_pnl": -0.0367160909
+      },
+      "S0_FOLD_3": {
+       "decisions": 10,
+       "mdd": 0.0335451062,
+       "pf": 0.038019,
+       "sum_pnl": -0.0335451062
+      }
+     },
+     "folds_positive": 1,
+     "max_fold_mdd": 0.0616523588,
+     "mdd_overall_cum": 0.1015371083,
+     "pf": 1.030974,
+     "scored_periods": 27,
+     "sector_ew_mean": 0.01140948365,
+     "spy_excess_folds": {
+      "S0_FOLD_1": -0.017579537445,
+      "S0_FOLD_2": -0.01075034791,
+      "S0_FOLD_3": -0.022382427943
+     },
+     "spy_excess_folds_positive": 0,
+     "spy_excess_overall": -0.015707124779,
+     "sum_pnl": 0.0048487613
+    },
     "role": "anchor",
     "schedule": [
      {
@@ -859,7 +1090,7 @@
      }
     ],
     "schema": "stocks_free_v13_run/arm_record@1",
-    "scored": false,
+    "scored": true,
     "stress": true,
     "target_gross": 1.0,
     "variant": "STRESS"
@@ -871,14 +1102,14 @@
     "arm_spec": "anchor exposure values permuted within (date, sector) by sha256 of 'cycle|{hyp}|{cik}|{decision_index}' hex-sorted (no RNG library); identical machinery",
     "cost_multiplier": 1.0,
     "counters": {
-     "dead_leg_exits": 64,
+     "dead_leg_exits": 63,
      "decisions_scheduled": 27,
      "floor_abstains": 0,
      "fold_force_flat_exits": 0,
      "scheduled_exits": 9172,
-     "void_entry_orders": 449
+     "void_entry_orders": 450
     },
-    "dry_run": true,
+    "dry_run": false,
     "exposure_form": "within_sector_permutation",
     "family_id": "SFV13-A6-P1",
     "grid": {
@@ -903,6 +1134,49 @@
     },
     "hold_sessions": 21,
     "hypothesis_id": "SFV13-A6-H1",
+    "metrics": {
+     "alive_legs_total": 7180,
+     "dead_class_legs_total": 2505,
+     "dead_legs_total": 62,
+     "drop_one_fold_expectancy_min": -0.002134606147,
+     "drop_one_symbol_expectancy_min": -0.003294575729,
+     "drop_one_symbol_worst": "CIK0001339605",
+     "expectancy": -0.002929653757,
+     "folds": {
+      "S0_FOLD_1": {
+       "decisions": 7,
+       "mdd": 0.0257256919,
+       "pf": 0.362891,
+       "sum_pnl": -0.0257256919
+      },
+      "S0_FOLD_2": {
+       "decisions": 10,
+       "mdd": 0.0319086741,
+       "pf": 0.232008,
+       "sum_pnl": -0.0319086741
+      },
+      "S0_FOLD_3": {
+       "decisions": 10,
+       "mdd": 0.0394142845,
+       "pf": 0.625339,
+       "sum_pnl": -0.0214662855
+      }
+     },
+     "folds_positive": 0,
+     "max_fold_mdd": 0.0394142845,
+     "mdd_overall_cum": 0.0970486505,
+     "pf": 0.431839,
+     "scored_periods": 27,
+     "sector_ew_mean": 0.013378645084,
+     "spy_excess_folds": {
+      "S0_FOLD_1": -0.03993166754,
+      "S0_FOLD_2": -0.015115949131,
+      "S0_FOLD_3": -0.012428412436
+     },
+     "spy_excess_folds_positive": 0,
+     "spy_excess_overall": -0.020866802923,
+     "sum_pnl": -0.0791006514
+    },
     "role": "control",
     "schedule": [
      {
@@ -1226,20 +1500,20 @@
       "void_orders": 7
      },
      {
-      "cost_bps_paid": 23.993468,
+      "cost_bps_paid": 23.832154,
       "decision_date": "2023-11-17",
       "eligible": 539,
       "event": "DECISION",
       "fill_date": "2023-11-20",
       "fold": "S0_FOLD_3",
-      "legs_filled": 304,
+      "legs_filled": 302,
       "legs_long": 257,
       "legs_short": 53,
       "legs_target": 310,
-      "realized_gross": 0.9910160344,
+      "realized_gross": 0.9856389009,
       "record_id": "SFV13-A6-H1-CONTROL-WITHIN-SECTOR-PERMUTATION|BASE|D|2023-11-17",
       "scoreable": 393,
-      "void_orders": 6
+      "void_orders": 8
      },
      {
       "cost_bps_paid": 21.312404,
@@ -1339,27 +1613,172 @@
      }
     ],
     "schema": "stocks_free_v13_run/arm_record@1",
-    "scored": false,
+    "scored": true,
     "stress": false,
     "target_gross": 1.0,
     "variant": "BASE"
    },
    "exposure_form": "within_sector_permutation",
-   "gates": "WITHHELD_DRY_RUN_SANITIZED",
+   "gates": [
+    {
+     "basis": "frozen rule (3): anchor expectancy <= 0 after base band costs -> REJECT",
+     "direction": "gt",
+     "gate": "expectancy_gt_0_after_base_costs",
+     "margin_to_fail": -0.00292965,
+     "observed": -0.002929653757,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "frozen Stage-A position PF gate; PF undefined (no losing periods) passes as +inf",
+     "direction": "ge",
+     "gate": "position_pf_ge_1.10",
+     "margin_to_fail": -0.668161,
+     "observed": 0.431839,
+     "threshold": 1.1,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "folds_positive_ge_2_of_3",
+     "margin_to_fail": -2,
+     "observed": 0,
+     "threshold": 2,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "carried houses gate per selection_freeze.stage_a_gates",
+     "direction": "le",
+     "gate": "max_fold_mdd_le_0.20_houses_carried",
+     "margin_to_fail": 0.16058572,
+     "observed": 0.0394142845,
+     "threshold": 0.2,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "proposal stage_a_gate_expectations declares 0.15; BOTH thresholds reported, adjudication returned to A1",
+     "direction": "le",
+     "gate": "max_fold_mdd_le_0.15_proposal_table",
+     "margin_to_fail": 0.11058572,
+     "observed": 0.0394142845,
+     "threshold": 0.15,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "risk-matched SPY-excess, SPY scaled ex ante by the frozen gross rule 1.0",
+     "direction": "gt",
+     "gate": "spy_excess_overall_gt_0",
+     "margin_to_fail": -0.0208668,
+     "observed": -0.020866802923,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "spy_excess_folds_ge_2_of_3",
+     "margin_to_fail": -2,
+     "observed": 0,
+     "threshold": 2,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "NOT_APPLICABLE ex ante (preregistered): no ETF legs in any arm",
+     "direction": "le",
+     "gate": "etf_share_le_0.50",
+     "margin_to_fail": 0.5,
+     "observed": 0.0,
+     "threshold": 0.5,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen rule (5): stress x2 PnL <= 0 -> dead",
+     "direction": "gt",
+     "gate": "stress_pnl_gt_0",
+     "margin_to_fail": -0.14476993,
+     "observed": -0.1447699313,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "frozen rule (5): stress PF < 1.0 -> dead; PF undefined (no losing periods) passes as +inf",
+     "direction": "ge",
+     "gate": "stress_pf_ge_1.0",
+     "margin_to_fail": -0.781804,
+     "observed": 0.218196,
+     "threshold": 1.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "frozen rule (6), symbol dimension; exact arithmetic from persisted per-entity legs (costs allocated to legs)",
+     "direction": "gt",
+     "gate": "drop_one_symbol_min_expectancy_gt_0",
+     "margin_to_fail": -0.00329458,
+     "observed": -0.003294575729,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "frozen rule (6), fold dimension",
+     "direction": "gt",
+     "gate": "drop_one_fold_min_expectancy_gt_0",
+     "margin_to_fail": -0.00213461,
+     "observed": -0.002134606147,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "floor abstains recorded: 0",
+     "direction": "ge",
+     "gate": "floor_cohort_scoreable_ge_30_every_scored_date",
+     "margin_to_fail": 335,
+     "observed": 365,
+     "threshold": 30,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "floor_legs_ge_5_every_scored_date",
+     "margin_to_fail": 24,
+     "observed": 29,
+     "threshold": 5,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "scored_decisions_overall_ge_30",
+     "margin_to_fail": -3,
+     "observed": 27,
+     "threshold": 30,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "scored_decisions_per_fold_ge_5",
+     "margin_to_fail": 2,
+     "observed": 7,
+     "threshold": 5,
+     "verdict": "PASS"
+    }
+   ],
    "role": "control",
    "stress": {
     "arm_id": "SFV13-A6-H1-CONTROL-WITHIN-SECTOR-PERMUTATION",
     "arm_spec": "anchor exposure values permuted within (date, sector) by sha256 of 'cycle|{hyp}|{cik}|{decision_index}' hex-sorted (no RNG library); identical machinery",
     "cost_multiplier": 2.0,
     "counters": {
-     "dead_leg_exits": 64,
+     "dead_leg_exits": 63,
      "decisions_scheduled": 27,
      "floor_abstains": 0,
      "fold_force_flat_exits": 0,
      "scheduled_exits": 9172,
-     "void_entry_orders": 449
+     "void_entry_orders": 450
     },
-    "dry_run": true,
+    "dry_run": false,
     "exposure_form": "within_sector_permutation",
     "family_id": "SFV13-A6-P1",
     "grid": {
@@ -1384,6 +1803,49 @@
     },
     "hold_sessions": 21,
     "hypothesis_id": "SFV13-A6-H1",
+    "metrics": {
+     "alive_legs_total": 7180,
+     "dead_class_legs_total": 2505,
+     "dead_legs_total": 62,
+     "drop_one_fold_expectancy_min": -0.003792717901,
+     "drop_one_symbol_expectancy_min": -0.005705871038,
+     "drop_one_symbol_worst": "CIK0001339605",
+     "expectancy": -0.005361849309,
+     "folds": {
+      "S0_FOLD_1": {
+       "decisions": 7,
+       "mdd": 0.0451005948,
+       "pf": 0.124527,
+       "sum_pnl": -0.0451005948
+      },
+      "S0_FOLD_2": {
+       "decisions": 10,
+       "mdd": 0.0573027885,
+       "pf": 0.078591,
+       "sum_pnl": -0.0573027885
+      },
+      "S0_FOLD_3": {
+       "decisions": 10,
+       "mdd": 0.0569306716,
+       "pf": 0.407196,
+       "sum_pnl": -0.042366548
+      }
+     },
+     "folds_positive": 0,
+     "max_fold_mdd": 0.0573027885,
+     "mdd_overall_cum": 0.1593340549,
+     "pf": 0.218196,
+     "scored_periods": 27,
+     "sector_ew_mean": 0.013378645084,
+     "spy_excess_folds": {
+      "S0_FOLD_1": -0.042699510818,
+      "S0_FOLD_2": -0.017655360571,
+      "S0_FOLD_3": -0.014750663829
+     },
+     "spy_excess_folds_positive": 0,
+     "spy_excess_overall": -0.023392544458,
+     "sum_pnl": -0.1447699313
+    },
     "role": "control",
     "schedule": [
      {
@@ -1707,20 +2169,20 @@
       "void_orders": 7
      },
      {
-      "cost_bps_paid": 47.986937,
+      "cost_bps_paid": 47.664309,
       "decision_date": "2023-11-17",
       "eligible": 539,
       "event": "DECISION",
       "fill_date": "2023-11-20",
       "fold": "S0_FOLD_3",
-      "legs_filled": 304,
+      "legs_filled": 302,
       "legs_long": 257,
       "legs_short": 53,
       "legs_target": 310,
-      "realized_gross": 0.9910160344,
+      "realized_gross": 0.9856389009,
       "record_id": "SFV13-A6-H1-CONTROL-WITHIN-SECTOR-PERMUTATION|STRESS|D|2023-11-17",
       "scoreable": 393,
-      "void_orders": 6
+      "void_orders": 8
      },
      {
       "cost_bps_paid": 42.624807,
@@ -1820,7 +2282,7 @@
      }
     ],
     "schema": "stocks_free_v13_run/arm_record@1",
-    "scored": false,
+    "scored": true,
     "stress": true,
     "target_gross": 1.0,
     "variant": "STRESS"
@@ -1832,14 +2294,14 @@
     "arm_spec": "X' = paid_now - paid_prev (continuous integer), computed only where the state is assertable under the same absence rule; identical machinery - exactly one thing changed",
     "cost_multiplier": 1.0,
     "counters": {
-     "dead_leg_exits": 67,
+     "dead_leg_exits": 66,
      "decisions_scheduled": 27,
      "floor_abstains": 0,
      "fold_force_flat_exits": 0,
      "scheduled_exits": 10026,
-     "void_entry_orders": 574
+     "void_entry_orders": 575
     },
-    "dry_run": true,
+    "dry_run": false,
     "exposure_form": "payment_count_change",
     "family_id": "SFV13-A6-P1",
     "grid": {
@@ -1864,6 +2326,49 @@
     },
     "hold_sessions": 21,
     "hypothesis_id": "SFV13-A6-H1",
+    "metrics": {
+     "alive_legs_total": 8010,
+     "dead_class_legs_total": 2657,
+     "dead_legs_total": 66,
+     "drop_one_fold_expectancy_min": -0.000795602599,
+     "drop_one_symbol_expectancy_min": -0.000570870603,
+     "drop_one_symbol_worst": "CIK0001592057",
+     "expectancy": 0.000159768131,
+     "folds": {
+      "S0_FOLD_1": {
+       "decisions": 7,
+       "mdd": 0.0463481526,
+       "pf": 0.666155,
+       "sum_pnl": -0.0166216351
+      },
+      "S0_FOLD_2": {
+       "decisions": 10,
+       "mdd": 0.0457817135,
+       "pf": 0.909914,
+       "sum_pnl": -0.0048596351
+      },
+      "S0_FOLD_3": {
+       "decisions": 10,
+       "mdd": 0.0173858159,
+       "pf": 2.016387,
+       "sum_pnl": 0.0257950097
+      }
+     },
+     "folds_positive": 1,
+     "max_fold_mdd": 0.0463481526,
+     "mdd_overall_cum": 0.0492886482,
+     "pf": 1.033411,
+     "scored_periods": 27,
+     "sector_ew_mean": 0.013378645084,
+     "spy_excess_folds": {
+      "S0_FOLD_1": -0.038631087995,
+      "S0_FOLD_2": -0.012411045233,
+      "S0_FOLD_3": -0.007177157416
+     },
+     "spy_excess_folds_positive": 0,
+     "spy_excess_overall": -0.017658557117,
+     "sum_pnl": 0.0043137395
+    },
     "role": "neighbour",
     "schedule": [
      {
@@ -2187,20 +2692,20 @@
       "void_orders": 5
      },
      {
-      "cost_bps_paid": 23.502954,
+      "cost_bps_paid": 23.396739,
       "decision_date": "2023-11-17",
       "eligible": 539,
       "event": "DECISION",
       "fill_date": "2023-11-20",
       "fold": "S0_FOLD_3",
-      "legs_filled": 273,
+      "legs_filled": 272,
       "legs_long": 47,
       "legs_short": 232,
       "legs_target": 279,
-      "realized_gross": 0.9634320164,
+      "realized_gross": 0.9598915216,
       "record_id": "SFV13-A6-H1-NEIGHBOUR-PAYMENT-FREQUENCY-CHANGE|BASE|D|2023-11-17",
       "scoreable": 393,
-      "void_orders": 6
+      "void_orders": 7
      },
      {
       "cost_bps_paid": 23.933911,
@@ -2300,27 +2805,172 @@
      }
     ],
     "schema": "stocks_free_v13_run/arm_record@1",
-    "scored": false,
+    "scored": true,
     "stress": false,
     "target_gross": 1.0,
     "variant": "BASE"
    },
    "exposure_form": "payment_count_change",
-   "gates": "WITHHELD_DRY_RUN_SANITIZED",
+   "gates": [
+    {
+     "basis": "frozen rule (3): anchor expectancy <= 0 after base band costs -> REJECT",
+     "direction": "gt",
+     "gate": "expectancy_gt_0_after_base_costs",
+     "margin_to_fail": 0.00015977,
+     "observed": 0.000159768131,
+     "threshold": 0.0,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen Stage-A position PF gate; PF undefined (no losing periods) passes as +inf",
+     "direction": "ge",
+     "gate": "position_pf_ge_1.10",
+     "margin_to_fail": -0.066589,
+     "observed": 1.033411,
+     "threshold": 1.1,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "folds_positive_ge_2_of_3",
+     "margin_to_fail": -1,
+     "observed": 1,
+     "threshold": 2,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "carried houses gate per selection_freeze.stage_a_gates",
+     "direction": "le",
+     "gate": "max_fold_mdd_le_0.20_houses_carried",
+     "margin_to_fail": 0.15365185,
+     "observed": 0.0463481526,
+     "threshold": 0.2,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "proposal stage_a_gate_expectations declares 0.15; BOTH thresholds reported, adjudication returned to A1",
+     "direction": "le",
+     "gate": "max_fold_mdd_le_0.15_proposal_table",
+     "margin_to_fail": 0.10365185,
+     "observed": 0.0463481526,
+     "threshold": 0.15,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "risk-matched SPY-excess, SPY scaled ex ante by the frozen gross rule 1.0",
+     "direction": "gt",
+     "gate": "spy_excess_overall_gt_0",
+     "margin_to_fail": -0.01765856,
+     "observed": -0.017658557117,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "spy_excess_folds_ge_2_of_3",
+     "margin_to_fail": -2,
+     "observed": 0,
+     "threshold": 2,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "NOT_APPLICABLE ex ante (preregistered): no ETF legs in any arm",
+     "direction": "le",
+     "gate": "etf_share_le_0.50",
+     "margin_to_fail": 0.5,
+     "observed": 0.0,
+     "threshold": 0.5,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "frozen rule (5): stress x2 PnL <= 0 -> dead",
+     "direction": "gt",
+     "gate": "stress_pnl_gt_0",
+     "margin_to_fail": -0.05990736,
+     "observed": -0.0599073636,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "frozen rule (5): stress PF < 1.0 -> dead; PF undefined (no losing periods) passes as +inf",
+     "direction": "ge",
+     "gate": "stress_pf_ge_1.0",
+     "margin_to_fail": -0.358822,
+     "observed": 0.641178,
+     "threshold": 1.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "frozen rule (6), symbol dimension; exact arithmetic from persisted per-entity legs (costs allocated to legs)",
+     "direction": "gt",
+     "gate": "drop_one_symbol_min_expectancy_gt_0",
+     "margin_to_fail": -0.00057087,
+     "observed": -0.000570870603,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "frozen rule (6), fold dimension",
+     "direction": "gt",
+     "gate": "drop_one_fold_min_expectancy_gt_0",
+     "margin_to_fail": -0.0007956,
+     "observed": -0.000795602599,
+     "threshold": 0.0,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "floor abstains recorded: 0",
+     "direction": "ge",
+     "gate": "floor_cohort_scoreable_ge_30_every_scored_date",
+     "margin_to_fail": 335,
+     "observed": 365,
+     "threshold": 30,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "floor_legs_ge_5_every_scored_date",
+     "margin_to_fail": 42,
+     "observed": 47,
+     "threshold": 5,
+     "verdict": "PASS"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "scored_decisions_overall_ge_30",
+     "margin_to_fail": -3,
+     "observed": 27,
+     "threshold": 30,
+     "verdict": "FAIL"
+    },
+    {
+     "basis": "",
+     "direction": "ge",
+     "gate": "scored_decisions_per_fold_ge_5",
+     "margin_to_fail": 2,
+     "observed": 7,
+     "threshold": 5,
+     "verdict": "PASS"
+    }
+   ],
    "role": "neighbour",
    "stress": {
     "arm_id": "SFV13-A6-H1-NEIGHBOUR-PAYMENT-FREQUENCY-CHANGE",
     "arm_spec": "X' = paid_now - paid_prev (continuous integer), computed only where the state is assertable under the same absence rule; identical machinery - exactly one thing changed",
     "cost_multiplier": 2.0,
     "counters": {
-     "dead_leg_exits": 67,
+     "dead_leg_exits": 66,
      "decisions_scheduled": 27,
      "floor_abstains": 0,
      "fold_force_flat_exits": 0,
      "scheduled_exits": 10026,
-     "void_entry_orders": 574
+     "void_entry_orders": 575
     },
-    "dry_run": true,
+    "dry_run": false,
     "exposure_form": "payment_count_change",
     "family_id": "SFV13-A6-P1",
     "grid": {
@@ -2345,6 +2995,49 @@
     },
     "hold_sessions": 21,
     "hypothesis_id": "SFV13-A6-H1",
+    "metrics": {
+     "alive_legs_total": 8010,
+     "dead_class_legs_total": 2657,
+     "dead_legs_total": 66,
+     "drop_one_fold_expectancy_min": -0.002429213653,
+     "drop_one_symbol_expectancy_min": -0.002938032999,
+     "drop_one_symbol_worst": "CIK0001592057",
+     "expectancy": -0.002218791246,
+     "folds": {
+      "S0_FOLD_1": {
+       "decisions": 7,
+       "mdd": 0.0525437268,
+       "pf": 0.389479,
+       "sum_pnl": -0.0359786111
+      },
+      "S0_FOLD_2": {
+       "decisions": 10,
+       "mdd": 0.0598382019,
+       "pf": 0.58168,
+       "sum_pnl": -0.0296101575
+      },
+      "S0_FOLD_3": {
+       "decisions": 10,
+       "mdd": 0.0272641211,
+       "pf": 1.152557,
+       "sum_pnl": 0.005681405
+      }
+     },
+     "folds_positive": 1,
+     "max_fold_mdd": 0.0598382019,
+     "mdd_overall_cum": 0.0851182127,
+     "pf": 0.641178,
+     "scored_periods": 27,
+     "sector_ew_mean": 0.013378645084,
+     "spy_excess_folds": {
+      "S0_FOLD_1": -0.041396370292,
+      "S0_FOLD_2": -0.014886097471,
+      "S0_FOLD_3": -0.009412002384
+     },
+     "spy_excess_folds_positive": 0,
+     "spy_excess_overall": -0.020128599546,
+     "sum_pnl": -0.0599073636
+    },
     "role": "neighbour",
     "schedule": [
      {
@@ -2668,20 +3361,20 @@
       "void_orders": 5
      },
      {
-      "cost_bps_paid": 47.005908,
+      "cost_bps_paid": 46.793478,
       "decision_date": "2023-11-17",
       "eligible": 539,
       "event": "DECISION",
       "fill_date": "2023-11-20",
       "fold": "S0_FOLD_3",
-      "legs_filled": 273,
+      "legs_filled": 272,
       "legs_long": 47,
       "legs_short": 232,
       "legs_target": 279,
-      "realized_gross": 0.9634320164,
+      "realized_gross": 0.9598915216,
       "record_id": "SFV13-A6-H1-NEIGHBOUR-PAYMENT-FREQUENCY-CHANGE|STRESS|D|2023-11-17",
       "scoreable": 393,
-      "void_orders": 6
+      "void_orders": 7
      },
      {
       "cost_bps_paid": 47.867823,
@@ -2781,20 +3474,20 @@
      }
     ],
     "schema": "stocks_free_v13_run/arm_record@1",
-    "scored": false,
+    "scored": true,
     "stress": true,
     "target_gross": 1.0,
     "variant": "STRESS"
    }
   }
  },
- "built_at_utc": "2026-09-10T14:57:03Z",
+ "built_at_utc": "2026-09-10T14:05:00Z",
  "cells": 3,
  "cycle": "STOCKS-FREE-V13",
  "diag": {
-  "benchmark_missing_bars": 0,
+  "benchmark_missing_bars": 72,
   "benchmark_sector_files_missing": 0,
-  "dead_leg_exits": 330,
+  "dead_leg_exits": 326,
   "div_entities_without_staged_file": 1273,
   "div_undated_records_excluded": 0,
   "div_unreadable_files": 0,
@@ -2807,22 +3500,25 @@
   "floor_abstain_degenerate_scale": 0,
   "floor_abstain_leg": 12,
   "fold_force_flat_exits": 0,
+  "invalid_price_bars": 6,
   "mad_zero_identity_scale_decisions": 36,
   "missing_price_series": 39,
   "scheduled_exits": 47444,
   "unmapped_sector_names": 0,
-  "void_entry_orders": 2474
+  "void_entry_orders": 2478
  },
  "dry_run_hygiene": {
   "record_ids_pairwise_distinct": true,
   "recursive_leak_scan": "ran on every artifact at every record depth (stress PnL leak class)",
-  "sanitized": true
+  "sanitized": false
  },
  "family_gates": {
   "control_reproduction": {
    "kill": false,
-   "note": "anchor expectancy zero/undefined; ratio undefined",
-   "observed_ratio": null
+   "margin_to_fail": null,
+   "observed_ratio": -1.36712324,
+   "rule": "same-sign >= 0.5x kills (incl. negative-anchor case)",
+   "same_sign": false
   },
   "self_subsumption": {
    "kill": false,
@@ -2834,7 +3530,7 @@
  },
  "family_id": "SFV13-A6-P1",
  "hypothesis_id": "SFV13-A6-H1",
- "mode": "dry_run",
+ "mode": "scored",
  "permutation_audit": {
   "anchor_state_multiset_by_sector": {
    "2019-01-03": {
@@ -4516,8 +5212,8 @@
  },
  "proposal_sha256": "c5958b96cb6fa5dec334f60020155dee08b7a73993429e6743aaeae48f55ef7d",
  "published": false,
- "real_pnl": false,
+ "real_pnl": true,
  "schema": "stocks_free_v13_run/family_verdicts@1",
- "scored": false,
+ "scored": true,
  "wave_sha": "f1fba3c479d0e46057deb92d0460bf1d3c7d3cab"
 }
