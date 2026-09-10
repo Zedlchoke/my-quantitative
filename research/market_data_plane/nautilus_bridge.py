@@ -15,8 +15,17 @@ Frozen mapping (section nautilus_bridge_contract.mappings):
 * ``TRADE -> TradeTick`` — price/size via instrument precisions; aggressor
   side mapped ``buy -> AggressorSide.BUYER``, ``sell -> AggressorSide.SELLER``,
   absent side -> ``AggressorSide.NO_AGGRESSOR`` (nautilus enum).
-* ``Bar`` — NOT mapped in @1: the plane has no canonical BAR event type, so
-  OHLCV can never become quotes or depth (:func:`to_bar` always raises).
+* ``Bar`` — NOT mapped from ``mdp.market_event@1`` events (the @1 envelope
+  has no BAR type, so OHLCV can never become quotes or depth: any non-bar
+  input to :func:`to_bar` raises the frozen ``BAR_NOT_MAPPED_IN_V1``
+  NotImplementedError).  The V2 cycle ADDITIVELY maps canonical
+  ``mdp.market_bar@2`` bars (research/market_data_plane/bars.py) to nautilus
+  1.230.0 ``Bar``: OHLC Price / volume Quantity at the bar's DECLARED
+  precisions (which must equal the instrument's — precision/identity
+  mismatch fails closed), ``ts_event = close_time_utc_ns`` (bar completion)
+  and ``ts_init = available_time_utc_ns``; a null NOT_EVALUABLE volume is
+  refused, never substituted with zero; bars have no aggressor so the
+  deterministic TradeId rule does not apply.
 
 Frozen rules honoured here:
 
@@ -49,6 +58,7 @@ from dataclasses import dataclass
 from decimal import Decimal, localcontext
 from typing import Any
 
+from . import bars as _bars
 from . import models as _models
 
 __all__ = [
@@ -68,7 +78,10 @@ __all__ = [
 
 # --- frozen constants --------------------------------------------------------
 
-#: Bar mapping is frozen OUT of @1 (plan section 8 + freeze mappings.Bar).
+#: Bars are NOT mapped from mdp.market_event@1 events (plan section 8 +
+#: freeze mappings.Bar).  The @2 :func:`to_bar` mapping is additive: any
+#: NON-bar input (every @1 event included) is refused with this frozen
+#: message, so OHLCV can never enter the tick paths from event land.
 BAR_NOT_MAPPED_IN_V1 = (
     "mdp.market_event@1 has no BAR type; OHLCV can never become quotes/depth"
 )
@@ -572,10 +585,256 @@ def convert_stream(
     return out
 
 
-def to_bar(*_args, **_kwargs):
-    """Bars are NOT mapped in @1 — always raises ``NotImplementedError``.
+# --- bar mapping (mdp.market_bar@2, V2-additive; @1 events stay refused) -----
 
-    The plane has no canonical BAR event type, so OHLCV can never become
-    quotes or depth (frozen mappings.Bar; plan section 8).
+def _bar_no_lookahead_gate(bar: dict) -> None:
+    """Frozen no-lookahead rule for bars: ts_init >= ts_event.
+
+    ``ts_event = close_time_utc_ns`` (bar completion) and
+    ``ts_init = available_time_utc_ns``.  Checked on the RAW input before
+    revalidation (same convention as the event path) so a mutated stream is
+    refused here even when its bar_id would otherwise mask the mutation.
+    nautilus ts fields are uint64 ns: negative values cannot be represented.
     """
-    raise NotImplementedError(BAR_NOT_MAPPED_IN_V1)
+    ts_event = bar.get("close_time_utc_ns")
+    ts_init = bar.get("available_time_utc_ns")
+    if not isinstance(ts_event, int) or isinstance(ts_event, bool) or \
+            not isinstance(ts_init, int) or isinstance(ts_init, bool):
+        raise NautilusBridgeError(
+            "close_time_utc_ns/available_time_utc_ns must be int ns")
+    if ts_event < 0 or ts_init < 0:
+        raise NautilusBridgeError(
+            f"timestamps must be non-negative uint64 ns; got "
+            f"close={ts_event} available={ts_init}")
+    if ts_init < ts_event:
+        raise BridgeLookaheadError(
+            f"no-lookahead violation: available_time_utc_ns ({ts_init}) < "
+            f"close_time_utc_ns ({ts_event}); the bridge never substitutes "
+            f"timestamps")
+
+
+def _bar_spec_from_interval_ns(interval_ns: int, instrument_id: str) -> str:
+    """Derive the nautilus BarType ``{step}-{AGGREGATION}`` segment.
+
+    nautilus 1.230.0 restricts aggregation steps to values that evenly divide
+    the parent unit (verified: ``BarSpecification`` raises "step must evenly
+    divide 60 / 1000"): MILLISECOND step | 1000, SECOND/MINUTE step | 60,
+    HOUR step | 24.  The largest qualifying unit wins so 15-minute bars map
+    to ``15-MINUTE`` (never ``900-SECOND``).  Intervals outside these rules
+    raise (fail closed) — the caller must then pass an explicit nautilus
+    BarType; the bridge never rounds an interval into a different one.
+    """
+    if not isinstance(interval_ns, int) or isinstance(interval_ns, bool) \
+            or interval_ns <= 0:
+        raise NautilusBridgeError(
+            f"interval_ns must be an int > 0, got {interval_ns!r}")
+    unit_ns_step = (
+        (3_600_000_000_000, 24, "HOUR"),
+        (60_000_000_000, 60, "MINUTE"),
+        (1_000_000_000, 60, "SECOND"),
+        (1_000_000, 1000, "MILLISECOND"),
+    )
+    for unit_ns, divides, name in unit_ns_step:
+        if interval_ns % unit_ns == 0:
+            step = interval_ns // unit_ns
+            if divides % step == 0:
+                return f"{step}-{name}"
+    raise NautilusBridgeError(
+        f"bar interval_ns {interval_ns} is not representable as a nautilus "
+        f"1.230.0 periodic BarType step (step must evenly divide the parent "
+        f"unit); pass an explicit bar_type — the bridge never rounds the "
+        f"interval (bar {instrument_id})")
+
+
+def _resolve_bar_type(bar_type, interval_ns: int, instrument_id: str):
+    """Explicit nautilus BarType/str, or the deterministic derivation."""
+    from nautilus_trader.model.data import BarType
+
+    if bar_type is None:
+        derived = (f"{instrument_id}-"
+                   f"{_bar_spec_from_interval_ns(interval_ns, instrument_id)}"
+                   f"-LAST-EXTERNAL")
+        return BarType.from_str(derived)
+    if isinstance(bar_type, str):
+        return BarType.from_str(bar_type)
+    if isinstance(bar_type, BarType):
+        return bar_type
+    raise NautilusBridgeError(
+        f"bar_type must be None (deterministic derivation), a nautilus "
+        f"BarType, or its string form; got {type(bar_type).__name__}")
+
+
+def _bar_quality_gate(
+    bar: dict,
+    instrument_id: str,
+    *,
+    diagnostic_only: bool,
+    diagnostics: BridgeDiagnostics | None,
+) -> bool:
+    """Frozen quality gate for bars (same semantics as the event gate).
+
+    Mirrors :func:`_quality_gate` on the bar identity fields (bar_id instead
+    of event_id, schema name instead of event_type); kept as a separate
+    helper so the event-path helpers stay byte-identical.
+    """
+    status = bar["quality_status"]
+    if status in ("INVALID", "QUARANTINED"):
+        if not diagnostic_only:
+            raise BridgeQualityError(
+                f"bar {bar['bar_id']} has quality_status {status} "
+                f"(reason_codes={bar['reason_codes']}); INVALID/QUARANTINED "
+                f"bars cannot enter the conversion stream — pass "
+                f"diagnostic_only=True explicitly to exclude+record them")
+        if diagnostics is None:
+            raise NautilusBridgeError(
+                f"bar {bar['bar_id']} is {status} and diagnostic_only=True "
+                f"was passed: a BridgeDiagnostics sink is mandatory so the "
+                f"exclusion is recorded, never silent")
+        diagnostics.records.append(BridgeDiagnostic(
+            event_id=bar["bar_id"],
+            instrument_id=instrument_id,
+            event_type=_bars.SCHEMA_VERSION,
+            quality_status=status,
+            reason_codes=tuple(bar["reason_codes"]),
+            action=ACTION_REJECTED_EXCLUDED,
+            detail=("excluded from conversion output under diagnostic_only="
+                    f"True (status {status})"),
+        ))
+        return False
+    if status == "SUSPECT" and diagnostics is None:
+        raise BridgeQualityError(
+            f"bar {bar['bar_id']} is SUSPECT (reason_codes={bar['reason_codes']}): "
+            f"the freeze requires its status to be preserved in a sidecar; "
+            f"pass a BridgeDiagnostics sink to stream it")
+    return True
+
+
+def _record_bar_converted(
+    diagnostics: BridgeDiagnostics | None,
+    bar: dict,
+    instrument_id: str,
+) -> None:
+    if diagnostics is None:
+        return
+    action = (ACTION_SUSPECT_STREAMED
+              if bar["quality_status"] == "SUSPECT" else ACTION_CONVERTED)
+    diagnostics.records.append(BridgeDiagnostic(
+        event_id=bar["bar_id"],
+        instrument_id=instrument_id,
+        event_type=_bars.SCHEMA_VERSION,
+        quality_status=bar["quality_status"],
+        reason_codes=tuple(bar["reason_codes"]),
+        action=action,
+        detail=(f"streamed mdp.market_bar@2 bar with quality_status "
+                f"{bar['quality_status']}"),
+    ))
+
+
+def to_bar(
+    bar: dict,
+    instrument,
+    *,
+    bar_type=None,
+    diagnostic_only: bool = False,
+    diagnostics: BridgeDiagnostics | None = None,
+):
+    """Map one canonical ``mdp.market_bar@2`` bar to a nautilus ``Bar``.
+
+    Frozen @2 mapping (additive — ``mdp.market_event@1`` stays byte-frozen
+    and bar-free): OHLC become nautilus ``Price`` and volume a
+    ``Quantity`` at the bar's DECLARED ``price_precision``/``size_precision``
+    (lossless-or-raise; declared precisions must EQUAL the instrument
+    metadata precisions — a mismatch is a precision/identity failure and
+    raises).  ``ts_event = close_time_utc_ns`` (bar completion) and
+    ``ts_init = available_time_utc_ns`` (no-lookahead available-time gate on
+    the raw input, uint64 ns enforced); there is no implicit ``now()`` and
+    no aggressor side (bars have none, so the deterministic TradeId rule
+    does not apply).
+
+    ``bar_type`` is the nautilus ``BarType`` (or its string form); when
+    ``None`` it is derived deterministically from ``interval_ns``
+    (``{step}-{MINUTE|SECOND|MILLISECOND|HOUR}-LAST-EXTERNAL``, step must
+    evenly divide the parent nautilus unit) — unrepresentable intervals
+    raise instead of being rounded.  The plane's own ``bar_type`` label field
+    is never parsed by the bridge.
+
+    A bar whose volume is not evaluable (null, NOT_EVALUABLE) is REFUSED:
+    nautilus requires a Quantity and the bridge never substitutes zero
+    (frozen "NEVER zero" rule).  The quality gate mirrors the event path
+    (INVALID/QUARANTINED raise unless diagnostic_only=True with a mandatory
+    sidecar; SUSPECT streams only with a recorded sidecar; VALID records
+    CONVERTED when a sink is given).
+
+    Any non-bar input (every ``mdp.market_event@1`` event included) raises
+    ``NotImplementedError(BAR_NOT_MAPPED_IN_V1)``: bars are NOT mapped from
+    @1 events.
+    """
+    if not isinstance(bar, dict):
+        raise NautilusBridgeError(
+            f"bar must be a canonical mdp.market_bar@2 dict, "
+            f"got {type(bar).__name__}")
+    if bar.get("schema_version") != _bars.SCHEMA_VERSION:
+        # Bars are NOT mapped in @1 (frozen): every non-mdp.market_bar@2
+        # input — mdp.market_event@1 events included — is refused with the
+        # frozen stub message.
+        raise NotImplementedError(BAR_NOT_MAPPED_IN_V1)
+
+    _bar_no_lookahead_gate(bar)
+    canonical = _bars.validate_bar(bar)
+    instrument_id, price_precision, size_precision = _validate_instrument(instrument)
+    if canonical["instrument_id"] != instrument_id:
+        raise NautilusBridgeError(
+            f"bar instrument_id {canonical['instrument_id']!r} does not "
+            f"match instrument metadata {instrument_id!r} "
+            f"(UNKNOWN_INSTRUMENT semantics)")
+    if canonical["price_precision"] != price_precision or \
+            canonical["size_precision"] != size_precision:
+        raise BridgePrecisionError(
+            f"bar {canonical['bar_id']} declared precisions "
+            f"(price {canonical['price_precision']}, size "
+            f"{canonical['size_precision']}) differ from instrument "
+            f"{instrument_id} precisions (price {price_precision}, size "
+            f"{size_precision}); the bridge refuses precision/identity "
+            f"mismatch — never re-renders a bar at another precision")
+    if not _bar_quality_gate(
+            canonical, instrument_id,
+            diagnostic_only=diagnostic_only, diagnostics=diagnostics):
+        return None
+    if canonical["volume"] is None:
+        raise NautilusBridgeError(
+            f"bar {canonical['bar_id']} volume is not evaluable (null, "
+            f"completeness NOT_EVALUABLE); nautilus Bar requires a Quantity "
+            f"and the bridge never substitutes zero — exclude it explicitly")
+
+    # nautilus_trader imported INSIDE functions only (freeze import_isolation).
+    from nautilus_trader.model.data import Bar
+
+    open_price = _nautilus_price(
+        _require_lossless(canonical, "open", instrument_id, price_precision),
+        price_precision, "open", instrument_id, canonical["bar_id"])
+    high_price = _nautilus_price(
+        _require_lossless(canonical, "high", instrument_id, price_precision),
+        price_precision, "high", instrument_id, canonical["bar_id"])
+    low_price = _nautilus_price(
+        _require_lossless(canonical, "low", instrument_id, price_precision),
+        price_precision, "low", instrument_id, canonical["bar_id"])
+    close_price = _nautilus_price(
+        _require_lossless(canonical, "close", instrument_id, price_precision),
+        price_precision, "close", instrument_id, canonical["bar_id"])
+    volume = _nautilus_quantity(
+        _require_lossless(canonical, "volume", instrument_id, size_precision),
+        size_precision, "volume", instrument_id, canonical["bar_id"],
+        must_be_positive=False)
+
+    nautilus_bar = Bar(
+        _resolve_bar_type(bar_type, canonical["interval_ns"], instrument_id),
+        open_price,
+        high_price,
+        low_price,
+        close_price,
+        volume,
+        canonical["close_time_utc_ns"],     # ts_event (verified uint64 ns)
+        canonical["available_time_utc_ns"],  # ts_init  (verified uint64 ns)
+    )
+    _record_bar_converted(diagnostics, canonical, instrument_id)
+    return nautilus_bar
