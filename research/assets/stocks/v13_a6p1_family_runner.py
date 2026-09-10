@@ -1481,4 +1481,7 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    # INC-V13-14: main() already strips sys.argv[1:] when argv is None;
+    # passing full sys.argv made argv[0] (module path) the owner_go candidate
+    # -> the authorized scored path could never parse the GO phrase.
+    sys.exit(main())
