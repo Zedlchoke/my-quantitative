@@ -26,8 +26,16 @@ validator fails closed, never silently accepts a correction.
 Public API (frozen):
     validate_terminal_consistency(terminal_report, state, heartbeat,
         worktree_manifest, registry_row, branch_tip, event_log_lines,
-        addendum=None) -> list[dict]   # [{kind, severity, detail}, ...]
+        addendum=None, identity_result=None) -> list[dict]
+        # [{kind, severity, detail}, ...]
     check_v1_run_dir(run_dir, addendum=None) -> list[dict]
+
+MDP-V2R1 A4 (plan §12): a registry row that declares
+head_semantics "TERMINAL_ANCHOR" (+ terminal_anchor_sha) binds head to the
+audited terminal anchor; evidence-only descendants standing after the anchor
+are NOT registry staleness. Callers with repo context may pass
+``identity_result`` (a governance.terminal_identity result) to fold deeper
+ancestry/allowlist findings in; None keeps the historical behavior exactly.
 
 Read-only: no file is ever written or repaired by this module.
 """
@@ -297,9 +305,25 @@ def _check_registry(findings: list, registry_row, report: dict,
             coverage_rule=_COVERAGE_DEAD_PREFIX))
 
     # head: the registry must carry the integration branch tip (or, when no
-    # tip is resolvable, at least the terminal report head)
-    expected_head = branch_tip if branch_tip else report["head_integration"]
+    # tip is resolvable, at least the terminal report head) — UNLESS the row
+    # declares TERMINAL_ANCHOR identity (MDP-V2R1 A4): then head IS the
+    # terminal anchor, and evidence-only descendants standing after the
+    # anchor are NOT staleness (deeper ancestry/allowlist checking is
+    # governance.terminal_identity's job, folded in via identity_result).
     head = registry_row.get("head")
+    anchor = registry_row.get("terminal_anchor_sha")
+    if (registry_row.get("head_semantics") == "TERMINAL_ANCHOR"
+            and isinstance(anchor, str)):
+        if head != anchor:
+            findings.append(_finding(
+                "REGISTRY_HEAD_STALE", "registry", "head", head, anchor,
+                f"registry head {head!r} != declared terminal_anchor_sha "
+                f"{anchor!r} (TERMINAL_ANCHOR identity binds head to the "
+                "anchor; live branch descendants are judged by "
+                "governance.terminal_identity, never by head repinning)"))
+        return
+
+    expected_head = branch_tip if branch_tip else report["head_integration"]
     if head != expected_head:
         findings.append(_finding(
             "REGISTRY_HEAD_STALE", "registry", "head", head, expected_head,
@@ -372,7 +396,8 @@ def validate_terminal_consistency(terminal_report: dict, state: dict,
                                   heartbeat: dict, worktree_manifest: dict,
                                   registry_row: dict, branch_tip: str,
                                   event_log_lines: list,
-                                  addendum: dict = None) -> list:
+                                  addendum: dict = None,
+                                  identity_result: dict = None) -> list:
     """Reconcile a terminal cycle's artifacts. [] = consistent.
 
     Findings are [{"kind", "severity", "detail"}, ...]. A well-formed
@@ -380,6 +405,13 @@ def validate_terminal_consistency(terminal_report: dict, state: dict,
     value and the derived corrected value suppresses exactly those
     findings; anything less leaves them standing (fail closed). Inputs are
     never mutated and no file is ever written.
+
+    MDP-V2R1 A4 hook: ``identity_result`` (a governance.terminal_identity
+    validate_terminal_identity result dict) is optional; None (the default)
+    keeps the historical behavior exactly. When provided, its findings are
+    folded into the returned list AFTER addendum coverage — terminal identity
+    violations are structural, never addendum-coverable (a new anchor after
+    A7 audit is the only cure).
     """
     findings: list[dict] = []
     events = _check_event_log(findings, event_log_lines)
@@ -408,8 +440,13 @@ def validate_terminal_consistency(terminal_report: dict, state: dict,
                                 and any(_entry_covers(e, f)
                                         for e in entries))]
 
-    return [{"kind": f["kind"], "severity": f["severity"],
-             "detail": f["detail"]} for f in findings]
+    out = [{"kind": f["kind"], "severity": f["severity"],
+            "detail": f["detail"]} for f in findings]
+    if identity_result is not None:
+        out.extend({"kind": f.get("kind"), "severity": f.get("severity"),
+                    "detail": f.get("detail")}
+                   for f in (identity_result.get("findings") or []))
+    return out
 
 
 # ------------------------------------------------------------ run-dir loader
