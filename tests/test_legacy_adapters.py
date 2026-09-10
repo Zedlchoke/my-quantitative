@@ -1,14 +1,18 @@
 """SHV1 G6 - legacy read adapters never rewrite legacy bytes.
 
-Fixtures replicate the three measured legacy shapes (v17 state_v17.json,
-forex state.json, stocks cycle_state.json) including the two H0-recorded head
-drifts. A byte-preservation case reads the REAL legacy files through
-main_repo_root() and asserts no mutation; it skips (NOT_RUN semantics) when
-the main checkout is not present.
+The byte-preservation and composition cases run HERMETICALLY against COMMITTED
+synthetic fixture replicas of the measured legacy shapes under
+tests/fixtures/legacy_adapters/ (injected via build_registry_from_legacy's
+source_paths / source_root) — no real worktree path, no skip, no network.
+Unit cases below replicate the three measured legacy shapes (v17
+state_v17.json, forex state.json open + closed, stocks cycle_state.json)
+including the two H0-recorded head drifts.
 """
 from __future__ import annotations
 
 import json
+import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -17,6 +21,22 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "research"))
 
 from governance import legacy_adapters  # noqa: E402
+
+FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "legacy_adapters"
+
+# committed synthetic replicas of LEGACY_SOURCES (class SYNTHETIC_HAND_COMPUTED,
+# digests pinned in tests/fixtures/governance_fixture_manifest.json)
+FIXTURE_SOURCES = {
+    "CRYPTO-V17": FIXTURE_DIR / "v17_state.json",
+    "FOREX-FREE-V8": FIXTURE_DIR / "forex_v8_state.json",
+    "STOCKS-FREE-V12": FIXTURE_DIR / "stocks_v12_cycle_state.json",
+}
+# measured 2026-09-09: the V8 legacy state closed (REJECT_ALL at its terminal
+# gate); this replica carries NO status field — closure is recorded in the phase.
+FIXTURE_SOURCES_V8_CLOSED = dict(
+    FIXTURE_SOURCES, **{"FOREX-FREE-V8": FIXTURE_DIR / "forex_v8_state_closed.json"}
+)
+ALL_FIXTURE_FILES = tuple(sorted(FIXTURE_DIR.glob("*.json")))
 
 V17_SHAPE = {
     "schema": "v17_run_artifact_v1", "artifact": "state", "cycle_id": "CRYPTO-V17",
@@ -116,31 +136,146 @@ def test_undeterminable_legacy_state_fails_closed():
                                                measured_branch_head="b" * 40)
 
 
+def _fixture_heads():
+    measured = "f" * 40  # distinct from any recorded fixture head
+    return {cid: measured for cid in legacy_adapters.LEGACY_SOURCES}
+
+
+def _fixture_hashes():
+    return {p.name: legacy_adapters.file_sha256(p) for p in ALL_FIXTURE_FILES}
+
+
 def test_real_legacy_files_are_read_without_byte_mutation():
-    """The read path never mutates the REAL legacy state files, whatever they
-    currently say (closed, paused or active). Driven from LEGACY_SOURCES —
-    no cycle name or lifecycle is hard-coded here."""
-    root = legacy_adapters.main_repo_root()
-    before = {rel: legacy_adapters.file_sha256(root / rel)
-              for rel in legacy_adapters.LEGACY_SOURCES.values()}
-    measured = "f" * 40  # distinct from any real recorded head
-    heads = {cid: measured for cid in legacy_adapters.LEGACY_SOURCES}
-    reg = legacy_adapters.build_registry_from_legacy(heads)
+    """The read path never mutates legacy state files. Runs hermetically
+    against the COMMITTED fixture replicas of the legacy shapes (stand-ins
+    for LEGACY_SOURCES, injected via source_paths/source_root): every fixture
+    file is hashed before and after full build_registry_from_legacy reads
+    (the open and the closed v8 shape) and the bytes must be identical.
+    Driven from the injected mapping — no cycle name or lifecycle is
+    hard-coded beyond the fixture mapping itself."""
+    before = _fixture_hashes()
+    reg = legacy_adapters.build_registry_from_legacy(
+        _fixture_heads(), source_paths=dict(FIXTURE_SOURCES), source_root=FIXTURE_DIR)
     assert len(reg["cycles"]) == len(legacy_adapters.LEGACY_SOURCES) + len(legacy_adapters.HISTORICAL_CLOSED)
-    after = {rel: legacy_adapters.file_sha256(root / rel)
-             for rel in legacy_adapters.LEGACY_SOURCES.values()}
+    reg_closed = legacy_adapters.build_registry_from_legacy(
+        _fixture_heads(), source_paths=dict(FIXTURE_SOURCES_V8_CLOSED),
+        source_root=FIXTURE_DIR)
+    assert len(reg_closed["cycles"]) == len(reg["cycles"])
+    after = _fixture_hashes()
     assert before == after, "legacy state files were mutated by a read path"
 
 
 def test_registry_composition_validates_and_carries_warnings():
-    """Composition validates as cycle_registry@1 and every head mismatch vs
+    """Composition (from the committed fixture replicas, injected via
+    source_paths) validates as cycle_registry@1 and every head mismatch vs
     the supplied measured authority surfaces as a recorded warning (drift is
-    recorded, not normalized) — for whatever the legacy files currently say."""
+    recorded, not normalized) — for whatever the fixture replicas say."""
     reg = legacy_adapters.build_registry_from_legacy(
-        {cid: "f" * 40 for cid in legacy_adapters.LEGACY_SOURCES})
+        _fixture_heads(), source_paths=dict(FIXTURE_SOURCES), source_root=FIXTURE_DIR)
     from governance import cycle_registry
     cycle_registry.validate_registry(reg)
     warnings = [w for c in reg["cycles"] for w in c.get("adapter_warnings", [])]
     assert warnings, "head drift between legacy files and the measured authority must surface as warnings"
     assert all(("drift recorded-not-normalized" in w or "stale" in w or "prose" in w)
                for w in warnings)
+    # the closed v8 replica composes to TERMINAL with the same wording classes
+    reg_closed = legacy_adapters.build_registry_from_legacy(
+        _fixture_heads(), source_paths=dict(FIXTURE_SOURCES_V8_CLOSED),
+        source_root=FIXTURE_DIR)
+    cycle_registry.validate_registry(reg_closed)
+    closed_warnings = [w for c in reg_closed["cycles"]
+                       for w in c.get("adapter_warnings", [])]
+    assert any("recorded-not-normalized" in w for w in closed_warnings), \
+        "derived TERMINAL from a closure phase must be recorded, not normalized"
+
+
+# ------------------------------------------------------- negative (typed errors)
+
+def _tmp_sources_with(tmp_path, cid, value):
+    """source_paths mapping with one entry replaced and the other two backed
+    by valid byte-identical copies of the committed fixtures under tmp_path."""
+    sources = {k: tmp_path / (k + ".json") for k in legacy_adapters.LEGACY_SOURCES}
+    for other, fixture in FIXTURE_SOURCES.items():
+        if other != cid:
+            shutil.copyfile(fixture, sources[other])
+    sources[cid] = value
+    return sources
+
+
+def test_missing_source_raises_typed_error_with_cycle_and_path(tmp_path):
+    err = _missing_source_error(tmp_path)
+    assert err.cycle_id == "CRYPTO-V17"
+    assert Path(err.path).is_absolute()
+    assert err.path == str((tmp_path / "CRYPTO-V17.json").resolve())
+    assert err.reason.startswith("missing")
+
+
+def _missing_source_error(tmp_path):
+    sources = _tmp_sources_with(tmp_path, "CRYPTO-V17", tmp_path / "CRYPTO-V17.json")
+    with pytest.raises(legacy_adapters.LegacySourceUnavailable) as excinfo:
+        legacy_adapters.build_registry_from_legacy(
+            _fixture_heads(), source_paths=sources, source_root=tmp_path)
+    return excinfo.value
+
+
+def test_malformed_source_raises_typed_error(tmp_path):
+    bad = tmp_path / "broken.json"
+    bad.write_bytes(b'{"schema": "v17_run_artifact_v1", "cycle_id": "CRYPT')  # truncated
+    sources = _tmp_sources_with(tmp_path, "CRYPTO-V17", bad)
+    with pytest.raises(legacy_adapters.LegacySourceUnavailable) as excinfo:
+        legacy_adapters.build_registry_from_legacy(
+            _fixture_heads(), source_paths=sources, source_root=tmp_path)
+    err = excinfo.value
+    assert err.cycle_id == "CRYPTO-V17"
+    assert err.path == str(bad.resolve())
+    assert err.reason.startswith("malformed json")
+
+
+def test_source_path_escape_raises_typed_error(tmp_path):
+    outside = tmp_path.parent / "outside_of_root.json"  # declared escape target
+    outside.write_bytes(b'{"schema": "x"}\n')  # even a readable target is rejected
+    sources = _tmp_sources_with(tmp_path, "CRYPTO-V17", "../outside_of_root.json")
+    with pytest.raises(legacy_adapters.LegacySourceUnavailable) as excinfo:
+        legacy_adapters.build_registry_from_legacy(
+            _fixture_heads(), source_paths=sources, source_root=tmp_path)
+    err = excinfo.value
+    assert err.cycle_id == "CRYPTO-V17"
+    assert err.path == "../outside_of_root.json"  # the declared source
+    assert err.reason.startswith("path escape")
+    assert "outside declared source root" in err.reason
+    # absolute paths are confined too: a real fixture file outside the
+    # declared root is rejected, never silently read
+    sources_abs = _tmp_sources_with(tmp_path, "CRYPTO-V17", FIXTURE_SOURCES["CRYPTO-V17"])
+    with pytest.raises(legacy_adapters.LegacySourceUnavailable) as excinfo_abs:
+        legacy_adapters.build_registry_from_legacy(
+            _fixture_heads(), source_paths=sources_abs, source_root=tmp_path)
+    assert excinfo_abs.value.reason.startswith("path escape")
+
+
+def test_repeated_builds_are_identical_excluding_timestamps():
+    """Two full builds from the same committed fixtures produce identical
+    normalized records field-by-field, excluding only the updated_at_utc
+    timestamp fields (which must themselves be UTC ISO8601 Z stamps)."""
+    utc = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+    first = legacy_adapters.build_registry_from_legacy(
+        _fixture_heads(), source_paths=dict(FIXTURE_SOURCES), source_root=FIXTURE_DIR)
+    second = legacy_adapters.build_registry_from_legacy(
+        _fixture_heads(), source_paths=dict(FIXTURE_SOURCES), source_root=FIXTURE_DIR)
+    assert set(first) == set(second)
+    for field in first:
+        if field == "updated_at_utc":
+            assert utc.match(first[field]) and utc.match(second[field])
+            continue
+        if field == "cycles":
+            continue  # never compared wholesale: records carry wall-clock stamps
+        assert first[field] == second[field], f"top-level field {field} differs across runs"
+    assert len(first["cycles"]) == len(second["cycles"])
+    for rec1, rec2 in zip(first["cycles"], second["cycles"]):
+        assert rec1["cycle_id"] == rec2["cycle_id"]
+        assert set(rec1) == set(rec2)
+        for field in rec1:
+            if field == "updated_at_utc":
+                assert utc.match(rec1[field]) and utc.match(rec2[field])
+                continue
+            assert rec1[field] == rec2[field], \
+                f"cycle {rec1['cycle_id']} field {field} differs across runs"

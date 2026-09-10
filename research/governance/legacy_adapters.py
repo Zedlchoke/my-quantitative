@@ -3,6 +3,17 @@
 SHV1 sec7.2 / G6: legacy records are normalized in memory ONLY. No function in
 this module writes to any legacy file. Drift found in legacy records is
 surfaced as warnings - recorded, never silently normalized (sec2).
+
+Source-path injection (MDP-V2R1 D1): :func:`build_registry_from_legacy`
+accepts an optional ``source_paths`` mapping (cycle_id -> path) and an
+optional ``source_root`` confinement root so tests can run against committed
+fixture replicas of the historical legacy shapes. Production behavior is
+unchanged when both are omitted: each ``LEGACY_SOURCES[cid]`` path resolves
+under :func:`main_repo_root`. Every resolved source path is confined to its
+declared root; a missing, unreadable, malformed, or escaping source raises
+:class:`LegacySourceUnavailable` carrying the cycle_id, the exact path, and a
+reason. ``normalize_legacy_state`` KeyError semantics for unknown cycle ids
+are unchanged.
 """
 from __future__ import annotations
 
@@ -10,9 +21,30 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from governance import cycle_registry
+
+
+class LegacySourceUnavailable(Exception):
+    """A declared legacy source is missing, unreadable, malformed, or escapes
+    its declared confinement root.
+
+    Attributes:
+        cycle_id: the cycle whose source could not be read.
+        path: the exact path attempted (string form of the resolved path, or
+            the declared source for a path escape).
+        reason: short machine-readable cause ("missing" | "unreadable: ..." |
+            "malformed json: ..." | "path escape: ...").
+    """
+
+    def __init__(self, cycle_id: str, path: Union[str, Path], reason: str):
+        self.cycle_id = cycle_id
+        self.path = str(path)
+        self.reason = reason
+        super().__init__(
+            f"{cycle_id}: legacy source unavailable at {self.path}: {reason}"
+        )
 
 
 def main_repo_root() -> Path:
@@ -78,6 +110,48 @@ HISTORICAL_CLOSED = {
 
 def file_sha256(path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def resolve_legacy_source(cycle_id: str, source: Union[str, Path], source_root) -> Path:
+    """Resolve one declared source against ``source_root`` and confine it.
+
+    Absolute ``source`` values are used as-is but must still resolve inside
+    the declared root; relative values are joined onto it. Raises
+    :class:`LegacySourceUnavailable` (reason "path escape: ...") when the
+    resolved path is not inside ``source_root``. Pure path resolution —
+    never touches the filesystem beyond resolving symlinks.
+    """
+    root = Path(source_root).resolve()
+    given = Path(source)
+    final = (given if given.is_absolute() else root / given).resolve()
+    if final != root and root not in final.parents:
+        raise LegacySourceUnavailable(
+            cycle_id, given,
+            f"path escape: resolved to {final}, outside declared source root {root}",
+        )
+    return final
+
+
+def load_legacy_state(cycle_id: str, source: Union[str, Path],
+                      source_root=None) -> dict:
+    """Read one legacy state document (read-only): confine, read, parse.
+
+    ``source_root`` defaults to :func:`main_repo_root` (production layout).
+    Raises :class:`LegacySourceUnavailable` with cycle_id + path + reason for
+    a missing file, an unreadable file, malformed JSON, or a path escape.
+    """
+    root = Path(source_root) if source_root is not None else main_repo_root()
+    path = resolve_legacy_source(cycle_id, source, root)
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError as exc:
+        raise LegacySourceUnavailable(cycle_id, path, "missing") from exc
+    except OSError as exc:
+        raise LegacySourceUnavailable(cycle_id, path, f"unreadable: {exc}") from exc
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise LegacySourceUnavailable(cycle_id, path, f"malformed json: {exc}") from exc
 
 
 def normalize_legacy_state(cycle_id: str, state: dict, *,
@@ -159,17 +233,28 @@ def normalize_legacy_state(cycle_id: str, state: dict, *,
     }
 
 
-def build_registry_from_legacy(measured_heads: dict) -> dict:
-    """Compose a full cycle_registry@1 from the three legacy state files.
+def build_registry_from_legacy(measured_heads: dict, source_paths=None, *,
+                               source_root=None) -> dict:
+    """Compose a full cycle_registry@1 from the legacy state files.
 
     `measured_heads` maps cycle_id -> branch head measured by the caller
     (git rev-parse). Known closed cycles come from HISTORICAL_CLOSED (the H1
     freeze inventory), never from guessed worktrees.
+
+    `source_paths` is an optional mapping cycle_id -> path (str or Path)
+    overriding LEGACY_SOURCES (committed-fixture reads in tests). None keeps
+    production behavior: every LEGACY_SOURCES[cid] resolves under
+    main_repo_root(). `source_root` overrides the confinement root for the
+    declared paths (default: main_repo_root()). Sources are read read-only;
+    each is confined to the declared root, and a missing, unreadable,
+    malformed, or escaping source raises LegacySourceUnavailable carrying the
+    cycle_id and exact path.
     """
+    sources = LEGACY_SOURCES if source_paths is None else source_paths
+    root = Path(source_root) if source_root is not None else main_repo_root()
     cycles = []
     for cid in ("CRYPTO-V17", "FOREX-FREE-V8", "STOCKS-FREE-V12"):
-        path = main_repo_root() / LEGACY_SOURCES[cid]
-        state = json.loads(path.read_bytes().decode("utf-8"))
+        state = load_legacy_state(cid, sources[cid], source_root=root)
         cycles.append(normalize_legacy_state(cid, state, measured_branch_head=measured_heads[cid]))
     for cid, meta in HISTORICAL_CLOSED.items():
         asset = ("crypto" if cid.startswith("CRYPTO")
