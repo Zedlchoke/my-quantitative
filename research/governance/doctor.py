@@ -55,6 +55,9 @@ SEVERITY = {
     "HEAD_MISMATCH": "LOW",       # legitimate progress until cycle reconcile lands it
     "STALE_HEARTBEAT": "LOW",
     "STATE_MISSING": "LOW",
+    # F5: an exact-digest ACTIVE waiver keeps the finding VISIBLE (kind
+    # relabeled WAIVED_HIGH, severity retained - never PASS, never dropped)
+    "WAIVED_HIGH": "HIGH",
 }
 
 
@@ -87,11 +90,18 @@ def _read_json(path: Path):
         return None, str(exc)
 
 
-def check(root: Path = None, ps_lines: list = None) -> list:
+def check(root: Path = None, ps_lines: list = None, waivers: list = None) -> list:
     """Return findings as (kind, detail) tuples; empty list = no findings.
 
     `ps_lines` overrides the host process scan (detection 5) for hermetic
     tests; None = scan the live host.
+
+    `waivers` (F5) is an optional list of validated structured waivers
+    (governance.doctor_waivers). A HIGH finding whose detail digest exactly
+    matches an ACTIVE, unexpired waiver is relabeled WAIVED_HIGH (visible,
+    severity retained, never PASS, never dropped); a mismatched digest or
+    expired waiver leaves the finding HIGH untouched. Read-only: doctor
+    still never writes any file.
     """
     root = (root or main_root()).resolve()
     findings = []
@@ -283,6 +293,14 @@ def check(root: Path = None, ps_lines: list = None) -> list:
     if dirty:
         findings.append(("MONITORING_MUTATION",
                          f"main checkout dirty beyond owner .zcode/ space: {dirty[:3]}"))
+    # F5: apply structured waivers - visible WAIVED_HIGH relabel only
+    if waivers:
+        from governance import doctor_waivers as _dw
+        findings = [("WAIVED_HIGH", detail)
+                    if severity_of(kind) == "HIGH"
+                    and _dw.waiver_applies(waivers, kind, detail)
+                    else (kind, detail)
+                    for kind, detail in findings]
     return findings
 
 
@@ -300,11 +318,18 @@ def render(findings: list) -> str:
     return "\n".join(f"[{severity_of(kind)}][{kind}] {detail}" for kind, detail in findings)
 
 
-def check_detailed(root: Path = None, ps_lines: list = None) -> list:
+def check_detailed(root: Path = None, ps_lines: list = None,
+                   waivers: list = None) -> list:
     """Same findings as check(), each labeled with its severity:
-    [{"kind": ..., "severity": "LOW|MEDIUM|HIGH", "detail": ...}, ...]"""
+    [{"kind": ..., "severity": "LOW|MEDIUM|HIGH", "detail": ...}, ...]
+
+    `waivers` (F5) is passed through to check(): an exact-digest ACTIVE
+    waiver on a HIGH finding emits kind WAIVED_HIGH with severity HIGH
+    retained - visible, never PASS, never dropped.
+    """
     return [{"kind": kind, "severity": severity_of(kind), "detail": detail}
-            for kind, detail in check(root=root, ps_lines=ps_lines)]
+            for kind, detail in check(root=root, ps_lines=ps_lines,
+                                      waivers=waivers)]
 
 
 if __name__ == "__main__":
