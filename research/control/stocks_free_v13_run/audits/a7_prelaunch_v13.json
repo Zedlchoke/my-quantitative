@@ -1,0 +1,194 @@
+{
+  "schema": "stocks_free_v13_run/a7_prelaunch_verdict@1",
+  "cycle": "STOCKS-FREE-V13",
+  "auditor": "A7_STOCKS_V13_PRELAUNCH (independent fresh-context; audit-only lane)",
+  "audit_worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v13/q-a7-prelaunch",
+  "audited_commit": "5b0f48e",
+  "audited_at_utc": "2026-09-10T16:35:00Z",
+  "python": "/Users/hoangminhlong/.venv/bin/python (repo venv)",
+  "method": "every number recomputed from bytes; prose never trusted; negative paths exercised LIVE against the real machine lock and real refusal gate",
+  "verdict": "STOCKS_V13_S0_LAUNCH_AUTHORIZED",
+  "verdict_rule": "0 unresolved HIGH/CRITICAL (2 MEDIUM + 2 LOW + 1 NOTE open, none blocking; remediations F-1/F-2 REQUIRED before any lane that consumes form4_stream or before the next freeze-amendment, and recommended at scored execution for F-3/F-4)",
+  "blocking_conditions_checked": {
+    "high_or_critical_open": 0,
+    "scored_cell_ran_before_authorization": false,
+    "go_phrase_consumed": false,
+    "s1_touched": false
+  },
+  "items": [
+    {
+      "id": "A7-1",
+      "item": "SELECTION/FREEZE CHAIN",
+      "status": "PASS",
+      "evidence": [
+        "plans/PLAN_stocks_v13.md sec2 authority: three sanctioned axes, carried rules (exactly 3 arms, max 6 cells, slots never reassigned, novelty |rho|<=0.20 vs 14-entry veto set, V11 sec2.1 sector-residual provision) read from file, lines 60-160",
+        "selection_rubric.json frozen_at 2026-09-08T14:42:39Z in commit c7995e1; ancestry PROVEN: git merge-base --is-ancestor c7995e1 f23421b / 5063762 / a53ec4d all exit 0 (freeze strictly precedes every D1 proposal lane)",
+        "selection_freeze.json committed 4ab3294 (2026-09-10T14:00:52Z): exactly ONE family SFV13-A6-P1, 3 cells, budget 3/6 with 3 slots dead forever, base_sha 2517835 (the erratum commit)",
+        "proposal sha256 RE-HASHED from bytes: c5958b96cb6fa5dec334f60020155dee08b7a73993429e6743aaeae48f55ef7d == selection_freeze.proposal_sha256 (shasum -a 256, exit 0)",
+        "D2 audit sha256 RE-HASHED: 06d9e0e04ac276b4a7e3c06df0b8410e58315260c783ba8f70d77416a2242807 == selection_freeze.d2_evidence.audit_sha256",
+        "D2 internal ordering: rubric(c7995e1) -> proposals(09-08) -> substrate restore(event 10:22:15Z) -> erratum E1(13:30:45Z) -> D2 measured(13:50:09Z, base_sha c7995e1) -> selection frozen(14:00:52Z)"
+      ]
+    },
+    {
+      "id": "A7-2",
+      "item": "D2 AUDIT + ERRATUM E1 ADJUDICATION",
+      "status": "PASS",
+      "evidence": [
+        "determinism: byte_identical=true, passes=2, identical sha 6c719995... (d2_v13_novelty_feasibility.json determinism block)",
+        "five INELIGIBLE verdicts re-read from bytes: A4-P1 novelty FAIL 0.232 vs vol_level; A4-P2 FAIL 0.2402 vs vol_level (both with controls PASS - honest kill of the mandatory lane); A5-P1 identifiability BLOCKED_CONTROL_UNIDENTIFIABLE pooled rho 0.9059 vs DGS10 exposure form (novelty had passed 0.1376 - died exactly on its declared dependence); A5-P2 novelty FAIL 0.2667 vs wc_stock_intensity; A6-P2 fail-closed with 0/15 vetoes measured (vetoes_measured=0, never inferred pass)",
+        "A6-P1: novelty PASS max|rho| 0.0752 (argmax depletion_interaction), identifiability PASS pooled 0.0257 / per-date mean 0.0117 with share_dates<=gate 1.0 on 27/27 dates, feasibility 22818 pairs / 897 entities / 27 scored dates - ALL match the freeze prose",
+        "veto set: 15 measured entries (13 V12-module + chain-structure + death-event forms), conservative superset of the plan's 14; no_pnl_no_outcomes=true; pin_verdicts cohort_v9/panel/v10_revision/v10_timing all MATCH",
+        "erratum E1 ADJUDICATED LEGITIMATE: A1 authority per handbook 14.1; scrivener's-error finding is internally evidenced ('(A/D code G)' contradicts the contract's own A/D direction rule one bullet below); applied PRE-SELECTION (13:30:45Z < freeze 14:00:52Z) and PRE-PNL (no scored outcome existed); disclosed in the erratum artifact + event log + D2 freeze record; owner override option recorded; IT KILLED NOTHING - A4 was measured under the corrected {P,S}x{A,D} observable and still died on novelty"
+      ]
+    },
+    {
+      "id": "A7-3",
+      "item": "RUNNER SPEC FIDELITY (research/assets/stocks/v13_a6p1_family_runner.py vs proposal + p3 freeze + Q1-Q7)",
+      "status": "PASS",
+      "evidence": [
+        "LOOKAHEAD: none found. Eligibility reads only bars strictly before D (bisect_left on D; ADV63 = median dvol[j-63:j]; raw close at j-1); exposure windows [D-365,D) and [D-730,D-365) are strictly < D; fill = union-calendar session STRICTLY AFTER D; leg return adj[ei]/adj[fi] starts AT the fill close (tradeable). Fixture test_no_lookahead_mutation_exactly_one_period pins the one-period-lag mutation contract",
+        "COSTS: charged EXACTLY once per side (entry_cost at fill via kernel.resolve_band_bps, exit_cost at exit via resolve_exit_band_bps C-rate ceiling); linear in |w|; return_net = sum(w*ret) - cost_total == sum of leg pnl_contrib; stress = multiplier 2.0 on BOTH sides (fixture hand-computes 20/40 bps and 0.048/0.046 nets exactly)",
+        "FOLD BOUNDARY: exit index capped at min(last own-session bar <= fold_end, series end) with cost; a fill session beyond fold_end voids the whole period (FILL_BEYOND_FOLD_END) - books flat at every boundary since 63 >> 21",
+        "DEAD LEG: series-end-inside-hold exits at the LAST recorded close (DEAD_LEG), delisting return carried by the series, no post-series price read or synthesized (code comment + fixture test_dead_leg_exit_at_last_close)",
+        "BENCHMARK: SPY scaled EX ANTE by frozen gross 1.0 (spy_excess = return_net - 1.0*spy, line ~742); exact-bar joins only, no interpolation (missing counted); sector-EW 11-SPDR reported not gated; union-calendar twin window documented as an ambiguity resolution",
+        "SHAM DETERMINISM: within_sector_hash_permutation_sham = sha256 hex-sort of cycle|{hyp}|{cik}|{decision_index}, no RNG library, no PYTHONHASHSEED dependence; preserves the exact within-(date,sector) state multiset (fixture re-derives the assignment independently; run artifact permutation_audit.identical_to_sham=true)",
+        "GATE ARITHMETIC: expectancy>0 is rule-order-FIRST; PF>=1.10 with +inf documented pass (Q7); folds_positive>=2/3; MDD BOTH rows - 0.20 carried AND 0.15 proposal row (Q1: 0.15 BINDS; the stricter row is present and margin-live, adjudication surface returned to A1 as the row note states); stress rows read the STRESS rerun's metrics; drop-one computed EXACTLY from persisted legs (Q4); ADV63 median (Q5); leg floor per-date pooled (Q3); weight-scale cancellation (Q2) implemented as xd/sum|xd| with counted MAD=0 identity fallback",
+        "P-11: EVERY scored date persisted in per_period_series - 27/27 periods per arm x 6 files verified in the committed dry-run; floor-abstained dates emit a period row (return_net 0.0 when scored / structure-only in dry-run); the 2025-05-23 all-void date also persists (honest zero-fill)",
+        "NON-VACUITY: ledger counters scheduled_exits=47444, dead_leg_exits=330, void_entry_orders=2474, floor_abstain_leg=12, missing_price_series=39 - re-derived from the per-file artifacts and all consistent"
+      ]
+    },
+    {
+      "id": "A7-4",
+      "item": "FIXTURES (tests/assets/stocks/test_v13_a6p1_runner.py)",
+      "status": "PASS",
+      "command": "/Users/hoangminhlong/.venv/bin/python -m pytest tests/assets/stocks/test_v13_a6p1_runner.py -q (from the audit worktree root)",
+      "result": "20 passed in 2.87s, exit 0",
+      "evidence": [
+        "the suite pins the spec, not the implementation: no-lookahead mutation (exactly-one-period), STRICT_NEXT_BAR fill-at-next-session (jump-on-decision-date earns zero), cost-once-per-side base+stress with hand-computed bps, band B/C 15/25 bps, fold force-flat, dead-leg exit-at-last-close, sham determinism + independent hash-order re-derivation + multiset preservation, self-subsumption/control-ratio arithmetic incl. negative-anchor case, malformed price fail-closed, end-to-end reconciliation + distinct IDs, SPY-excess/sector-EW, full gate/margin arithmetic (MDD 0.15 AND 0.20 rows with exact margins, stress reads STRESS rerun, drop-one from legs, PF+inf), scored/dry-run write hygiene + leak scan, dry-run/scored structure equality, price-manifest sample verify, LockBusy exit-3 single-attempt, scored refusal without two keys (lock untouched before authorization)"
+      ]
+    },
+    {
+      "id": "A7-5",
+      "item": "DATA SUBSTRATE (read-only re-verification against the INTEGRATION worktree)",
+      "status": "PASS_WITH_FINDINGS",
+      "findings": ["F-1", "F-2"],
+      "evidence": [
+        "FULL local manifest re-hashed: /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v13/integration/research/control/stocks_free_v13_run/substrate_manifest.json -> 78c4fb1a5aceb8fe1fbd233f3193072bc6d8248ccf9c9524441c374333358742 == substrate_manifest_digest.full_manifest_sha256 (MATCH)",
+        "form4 XMLs: manifest count 345150 == files 345150; seeded sample of 5 (random.Random(20260910)) re-hashed: 5/5 MATCH",
+        "eodhd_div: 2168 files; seeded sample of 5 re-hashed: 5/5 MATCH (2168 == selection_freeze data_authority count)",
+        "form4_stream: PIN STALE -> finding F-1 (pinned 427096 rows / sha 784414de... vs live 546039 rows / sha 6ac2cd5b...)",
+        "PRICES: p0d_v13_price_manifest.json FULLY verified via the runner's own verify_price_manifest() (no limit): checked=2153, mismatches=0, missing=0; independent 8-file sample (5 eod + 3 benchmarks) 8/8 MATCH",
+        "coverage gate: inherited 2178 -> restored 2140, missing 0, invalid 38 (all NAMED thin/invalid series), ratio 0.9826, manifest gate verdict string FAIL_COVERAGE -> finding F-2",
+        "INC-V13-11 provenance disclosure VERIFIED PROMINENT: event_log SUBSTRATE_RESTORED_PATH_A (10:22:15Z, 'price cache unrecoverable... NOT a named pin in the V13 P3 freeze... A1-authority re-stage... P-3'), selection_freeze data_authority field, restage script docstring ('ordinary re-staging of an unpinned input'); A1-adjudicated as unpinned-input re-stage, single substrate for D2 vetoes and books",
+        "cohort sha in dry-run ledger 6a95401ff84bff21... == p3 freeze cohort_v9 pin == cycle_state bootstrap pin (MATCH); dry-run ledger price_manifest_sha256 273a568f... == committed manifest bytes (the dry-run ran on exactly the committed inputs)"
+      ]
+    },
+    {
+      "id": "A7-6",
+      "item": "DRY-RUN ARTIFACTS",
+      "status": "PASS",
+      "evidence": [
+        "sanitized: mode=dry_run, scored=false, real_pnl=false, published=false in ledger AND family_verdicts; gates = WITHHELD_DRY_RUN_SANITIZED for all three arms; recursive scan: 0 non-null PnL-class fields across all 6 series files + 6 leg files (period rows carry only structure: realized_gross is abs-weight exposure, not a return); every leg ret=null",
+        "record_ids_pairwise_distinct=true in the ledger AND independently recomputed (162 schedule records, all unique); the writer fail-closes (RuntimeError) on any collision BEFORE emitting the ledger claim",
+        "27/27 periods per arm per variant x 6 per_period_series files (anchor includes its 6 LEG_FLOOR abstain rows and 1 all-void date)",
+        "non-vacuity counters match the claims: 47444 scheduled exits, 330 dead-legs (34x2+64x2+67x2 re-derived from the leg files), 2474 void entry orders",
+        "P-11 abstain fix: git diff 02664fc f3fc176 on the runner is EXACTLY the 15-line abstain-row persistence block (comment: 'EVERY scored date appears in the per-period series... otherwise terminal DSR is action-conditional'); dry-run re-executed after the fix (Q_COMPLETE event 15:01:16Z, twin r-twin-1 @ f3fc176 smoke OK)"
+      ]
+    },
+    {
+      "id": "A7-7",
+      "item": "BUDGET / AUTHORIZATION / NEGATIVE PATHS",
+      "status": "PASS",
+      "evidence": [
+        "budget: 3/6 bound BY THE SELECTION FREEZE (exactly-3-arms x 1 family); 3 slots dead forever (never reassigned); cycle_state bootstrap budget 0 -> freeze used_by_this_freeze 3; runner hardcodes cells=3",
+        "GO phrase REGISTERED_NOT_CONSUMED in cycle_state.json + plans/CYCLE_REGISTRY.json (lines 222-223) + p3 two_key_gate_E ('A7 fresh-context prelaunch verdict FIRST; then owner types FRESH GO ... no GO carries from any earlier context')",
+        "no scored cell has run: zero mode=scored artifacts anywhere in run/ (all dry_run)",
+        "s1: SEALED_UNTOUCHED",
+        "LIVE negative probe 1: scored GO phrase WITHOUT env flag -> stderr 'SCORED EXECUTION REFUSED: ... two-key; P-8', exit 2, lock never touched, tree clean",
+        "LIVE negative probe 2: env flag STOCKS_V13_LAUNCH_AUTHORIZED=1 with WRONG phrase -> exit 2 refused",
+        "LIVE negative probe 3: env value 'true' (not exactly '1') with exact phrase -> exit 2 refused (strict string equality both keys)",
+        "LIVE LockBusy probe: real machine flock HELD by this audit process (role A7_PRELAUNCH_AUDIT_LOCKPROBE), runner invoked in a subprocess -> stderr 'NOT_RUN_RESOURCE_CONFLICT: machine-wide heavy lock busy: held by STOCKS-FREE-V13/A7_PRELAUNCH_AUDIT_LOCKPROBE pid 84713', exit 3, single attempt, no writes; probe lock released FINISHED"
+      ]
+    },
+    {
+      "id": "A7-8",
+      "item": "S1 SEALED / NO-NETWORK / MACHINE LOCK",
+      "status": "PASS",
+      "evidence": [
+        "S1 sealed: cycle_state.s1 = SEALED_UNTOUCHED; p3 budget_and_arms.s1 = 'SEALED_UNTOUCHED until an owner-authorized plan opens it'; no S1 artifacts exist in the tree",
+        "no network on any runner path: imports are bisect/hashlib/json/os/statistics/subprocess/sys/datetime/pathlib only; subprocess used solely for 'git rev-parse HEAD' (code freeze id); all inputs staged (dividends 2168 files, prices 2153 manifest-verified files, cohort, benchmarks)",
+        "machine lock: research/governance/heavy_lock.py flock + canonical registry with stale-row classification and fail-closed CONTROL_STATE_DRIFT on anything unrecoverable; runner acquires once, releases FINISHED / FAILED-with-note, LockBusy -> exit 3 single attempt (exercised live)"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "MEDIUM",
+      "title": "substrate_manifest_digest form4_stream section is STALE vs the live reparsed stream (the digest's own SUBSTRATE_DRIFT rule is currently violated and was not flagged)",
+      "evidence": "pinned: 427096 rows / sha256 784414de2450fabc8c58665405f951c63e6d90340bbec4f44b20af60e0da477e (substrate_manifest.json sections.form4_stream, itself pinned at 78c4fb1a...); live: integration/.staging_sec_v13/form4_stream.jsonl = 546039 rows / sha256 6ac2cd5bdd62566efe106b46de715030e9a8a940cb90f5a991df5f05ba6742b2 (mtime Sep 10 20:49 +0700). The digest file (committed at 5b0f48e and byte-identical in the integration worktree) still says counts.form4_stream=427096. The delta is the INC-V13-12/13 deterministic reparse (commit 446dd72: 'tcode element-text parser fix (attribute fallback), reparse acceptance-join (0 rows missing PIT stamp)') over the UNCHANGED XML bytes (345150 docs, sampled 5/5 MATCH against the pin). PROVEN benign for the audit decision: the E1 erratum's quoted code histogram (S=137150 A=122524 F=103239 M=87531 P=37305 D=22182 J=13385 G=12236) matches the LIVE stream EXACTLY (all eight counts re-computed row-by-row by this audit), so D2 + E1 verifiably measured the new vintage; the SELECTED family's scored path does NOT read the stream at all (eodhd_div 2168 MATCH is its substrate). NOT flagged anywhere: no INC-V13-12/13 event in event_log.jsonl, no re-pin, no re-hash record; disclosure exists ONLY in the 446dd72 commit message",
+      "required_remediation": "before ANY future lane that consumes form4_stream (S1 or successor): re-pin the stream (new manifest generation + digest update) and append the missing INC-V13-12/13 event-log entry; until then the digest's 'any drift = SUBSTRATE_DRIFT fail-closed' contract is formally violated on this section",
+      "why_not_blocking": "the scored family SFV13-A6-P1 consumes eodhd_div + prices + cohort only; the authoritative XML bytes match the pin; D2 verdict reproducibility is intact (histogram proof)"
+    },
+    {
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "title": "selection_freeze.json (a FROZEN artifact) states 'coverage gate PASS 2178/2178 + 12 benchmarks' but the cited manifest's own coverage_gate.verdict is 'FAIL_COVERAGE' (2140/2178 restored, 0 missing, 38 named thin/invalid, ratio 0.9826)",
+      "evidence": "p0d_v13_price_manifest.json coverage_gate: gate='FAIL_COVERAGE' per the restage script's strict rule ('PASS' iff restored==targets AND no invalid; p0d_price_restage_v13.py); the SUBSTRATE_RESTORED_PATH_A event also phrases the gate as '2178 eod + 12 benchmarks, every inherited symbol required' while the manifest holds 2140 eod + 13 benchmark files (SPY + 11 SPDR + VCR). Downstream truth is unaffected: D2 measured the REAL restored set (priced_files_bookable 2140, ge63_bars 2139 in the D2 audit input_integrity); the runner treats missing series as measured exclusions (ledger missing_price_series=39) and never reads the gate string; the 38 invalid names are thin warrant/preferred/when-issued series that cannot pass the 63-bar/ADV/raw-close gates; every staged byte sha-verifies (2153/2153)",
+      "required_remediation": "A1 erratum (E1 precedent) correcting the freeze's data_authority prose to the artifact's actual verdict BEFORE the next freeze-consuming step; keep the manifest untouched (it is the honest record)",
+      "why_not_blocking": "no eligibility verdict, gate evaluation, or scored path consumed the false claim; the evidence layer is complete and honest; the selection outcome is provably unchanged"
+    },
+    {
+      "id": "F-3",
+      "severity": "LOW",
+      "title": "scored path does not call verify_price_manifest() at run time",
+      "evidence": "the function exists in the runner (v13_a6p1_family_runner.py:430) and is exercised only by a fixture (limit=5). This audit ran the FULL verification: 2153 checked / 0 mismatches / 0 missing. The ledger does pin price_manifest_sha256 (input_digests), enabling post-hoc detection, but a post-restage mutation of a price byte would flow into a scored run unflagged at run time. Given the INC-V13-11 history (this exact cache was lost once), wiring a full verify (2153 files, seconds) into the scored path pre-execution is cheap insurance",
+      "required_remediation": "recommended at scored execution; not required for authorization"
+    },
+    {
+      "id": "F-4",
+      "severity": "LOW",
+      "title": "LOCK_ROLE hardcoded 'A8_DRYRUN' - a scored run would register the machine lock under the dry-run role",
+      "evidence": "v13_a6p1_family_runner.py:251 LOCK_ROLE='A8_DRYRUN' is passed to heavy_lock.acquire in BOTH modes; Q6 adjudication prescribes role E_SCORED_EXECUTION for the scored phase and explicitly downgrades the role string to bookkeeping ('authorization is the two-key gate, not the role string' - live-verified here). Bookkeeping-fidelity gap only",
+      "required_remediation": "role = 'E_SCORED_EXECUTION' when not dry_run; recommended before scored execution"
+    },
+    {
+      "id": "F-5",
+      "severity": "NOTE",
+      "title": "code_freeze_sha() is dead code",
+      "evidence": "defined at v13_a6p1_family_runner.py:1423, never called; the ledger records input digests but no code freeze sha (the Q_FREEZE_SHA=f3fc176 discipline lives at the commit level only)"
+    }
+  ],
+  "negative_path_probes": [
+    {"probe": "scored phrase, no env flag (LIVE)", "expected": "refuse, exit 2, lock untouched", "observed": "stderr 'SCORED EXECUTION REFUSED: the exact owner GO phrase ... AND STOCKS_V13_LAUNCH_AUTHORIZED=1 are both required (two-key; P-8)', exit 2, tree clean", "verdict": "PASS"},
+    {"probe": "env flag =1, wrong phrase (LIVE)", "expected": "refuse, exit 2", "observed": "exit 2, same refusal message", "verdict": "PASS"},
+    {"probe": "env flag ='true' (case-variant), exact phrase (LIVE)", "expected": "refuse, exit 2 (strict equality)", "observed": "exit 2", "verdict": "PASS"},
+    {"probe": "LockBusy with REAL machine flock held by auditor (LIVE subprocess)", "expected": "exit 3, stderr NOT_RUN_RESOURCE_CONFLICT, single attempt", "observed": "exit 3, stderr 'NOT_RUN_RESOURCE_CONFLICT: machine-wide heavy lock busy: held by STOCKS-FREE-V13/A7_PRELAUNCH_AUDIT_LOCKPROBE pid 84713', no writes, probe released lock FINISHED", "verdict": "PASS"}
+  ],
+  "commands_and_exit_codes": [
+    {"cmd": "git worktree add --detach /Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v13/q-a7-prelaunch 5b0f48e", "exit": 0},
+    {"cmd": "git merge-base --is-ancestor c7995e1 f23421b | 5063762 | a53ec4d; ... 2517835 4ab3294; ... a53ec4d 4ab3294", "exit": "0 x5"},
+    {"cmd": "shasum -a 256 research/control/stocks_free_v13_run/d1/proposals/proposal_A6_P1.json", "exit": 0, "result": "c5958b96cb6fa5dec334f60020155dee08b7a73993429e6743aaeae48f55ef7d (MATCH freeze)"},
+    {"cmd": "shasum -a 256 research/control/stocks_free_v13_run/audits/d2_v13_novelty_feasibility.json", "exit": 0, "result": "06d9e0e0... (MATCH freeze record)"},
+    {"cmd": "shasum -a 256 <integration>/research/control/stocks_free_v13_run/substrate_manifest.json", "exit": 0, "result": "78c4fb1a5aceb8fe1fbd233f3193072bc6d8248ccf9c9524441c374333358742 (MATCH digest)"},
+    {"cmd": "/Users/hoangminhlong/.venv/bin/python -m pytest tests/assets/stocks/test_v13_a6p1_runner.py -q", "exit": 0, "result": "20 passed in 2.87s"},
+    {"cmd": "/Users/hoangminhlong/.venv/bin/python -m py_compile research/assets/stocks/v13_a6p1_family_runner.py", "exit": 0},
+    {"cmd": "python -m research.assets.stocks.v13_a6p1_family_runner 'GO STOCKS V13 SCORED EXECUTION' (no env)", "exit": 2, "result": "REFUSED (P-8 two-key)"},
+    {"cmd": "STOCKS_V13_LAUNCH_AUTHORIZED=1 python -m ... 'go stocks v13 scored execution'", "exit": 2, "result": "REFUSED (phrase mismatch)"},
+    {"cmd": "STOCKS_V13_LAUNCH_AUTHORIZED=true python -m ... 'GO STOCKS V13 SCORED EXECUTION'", "exit": 2, "result": "REFUSED (env value mismatch)"},
+    {"cmd": "live LockBusy probe (real flock held, runner subprocess)", "exit": 0, "result": "runner exit 3, stderr NOT_RUN_RESOURCE_CONFLICT"},
+    {"cmd": "runner verify_price_manifest() full", "exit": 0, "result": "checked 2153, mismatches 0, missing 0"},
+    {"cmd": "form4 XML sample x5 + eodhd_div sample x5 re-hash vs full manifest (seed 20260910)", "exit": 0, "result": "10/10 MATCH"},
+    {"cmd": "form4_stream row count + sha + transaction_code histogram", "exit": 0, "result": "546039 rows / 6ac2cd5b... / histogram == E1 quote exactly (F-1)"}
+  ],
+  "handoff": {
+    "verdict": "STOCKS_V13_S0_LAUNCH_AUTHORIZED",
+    "next_step_per_p8": "the OWNER must now type the FRESH phrase 'GO STOCKS V13 SCORED EXECUTION' AND set STOCKS_V13_LAUNCH_AUTHORIZED=1 for the scored path to proceed; no GO carries from any earlier context; the three dead budget slots (3/6) are never reassigned",
+    "open_remediations": ["F-1 re-pin + event before any form4_stream lane", "F-2 A1 erratum on freeze prose", "F-3/F-4 recommended before scored execution"],
+    "test_rerun": "20 passed / 0 failed / 0 errors, exit 0",
+    "commit_sha": "this artifact cannot contain its own commit sha; the verdict commit is the branch tip of orca/v13-q-a7-prelaunch2 (single commit, parent = audited commit 5b0f48e); resolve via: git rev-parse orca/v13-q-a7-prelaunch2",
+    "branch": "orca/v13-q-a7-prelaunch2",
+    "branch_name_collision_note": "the prescribed name orca/v13-q-a7-prelaunch was already taken by a FOREIGN, older repo generation (tip a7595cb authored 2026-09-04, diverged at b8876ef 2026-08-31, 'W1 freeze c0d0673 / 1966 tests / 6 arms' — a different program entirely; not an ancestor of this audited lineage, no artifact at this path, published on origin). Per this repo's own precedent (forex-free-v3-q-a7-prelaunch2/3) the audit lane uses the suffix -2; the foreign branch was left untouched",
+    "tree_state": "clean apart from the two audit artifacts (a7_prelaunch_v13.json + a7_prelaunch_v13_README.md)"
+  }
+}
