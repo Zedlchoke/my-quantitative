@@ -233,7 +233,14 @@ def _is_g_stream_row(r, diag):
     Direction '.' or missing => FAIL-CLOSED to the defect table."""
     if str(r.get("table", "")).strip().lower() != "nonderivative":
         return False
-    if str(r.get("transaction_code", "")).strip() != "G":
+    # D2 ERRATUM E1 (A1 adjudication, pre-selection pre-PnL, disclosed): the frozen
+    # contract's "(A/D code G)" parenthetical was a scrivener's error — 'G' is the
+    # bona-fide-GIFT transactionCode, internally inconsistent with the contract's own
+    # direction rule (transactionAcquiredDisposedCode A=buy / D=sell). The operative
+    # open-market observable: transactionCode in {P (open-market purchase),
+    # S (open-market sale)} with A/D direction present — the Seyhun/Lakonishok-Lee/
+    # CMP open-market class the lane cites.
+    if str(r.get("transaction_code", "")).strip() not in ("P", "S"):
         return False
     if r.get("direction") not in ("A", "D"):
         diag["direction_defect_rows_excluded"] += 1
