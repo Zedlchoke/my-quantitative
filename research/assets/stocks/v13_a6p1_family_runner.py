@@ -791,6 +791,21 @@ def run_arm(arm_id, exposure, prices, cohort, global_days, day_pos,
                     "eligible": len(elig),
                     "scoreable": len(exposure_at_d),
                 })
+                # P-11 diagnostic contract: EVERY scored date appears in the
+                # per-period series (an abstained date is a 0.0 net return
+                # when scored; dry-run keeps structure only). Otherwise the
+                # terminal DSR is computed on an action-conditional subset.
+                periods.append({
+                    "record_id": f"{arm_id}|{variant}|D|{D}",
+                    "decision_date": D, "fold": fold["fold_id"],
+                    "abstained": reason,
+                    "return_net": None if dry_run else 0.0,
+                    "spy_return": None if dry_run else None,
+                    "sector_ew_return": None,
+                    "spy_excess": None,
+                    "legs_long": 0, "legs_short": 0,
+                    "cost_bps_paid": 0.0,
+                })
                 continue
             period, legs = execute_decision(
                 book_w, prices, bands, D, fold, global_days, day_pos,
