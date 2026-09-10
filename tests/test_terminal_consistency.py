@@ -555,6 +555,24 @@ def test_declared_identity_evidence_only_descendant_is_not_head_stale():
     assert _call_declared(b, identity_result=identity) == []
 
 
+def test_declared_row_with_foreign_scope_successor_commits_is_not_head_stale():
+    """A4-r2 scoped semantics: a declared row whose live tip carries
+    FOREIGN-SCOPE successor commits (e.g. the next cycle's implementation
+    above an OLD anchor, plan §12.2) keeps head==anchor binding — zero
+    findings; the foreign paths ride along in the identity result for
+    operator visibility without becoming consistency findings."""
+    b = _consistent_bundle()
+    b["registry_row"] = _declared_row()
+    b["branch_tip"] = DESCENDANT_TIP
+    identity = {"findings": [], "branch_tip": DESCENDANT_TIP,
+                "terminal_anchor_sha": ANCHOR,
+                "descendant_commits": ["c" * 40, "d" * 40],
+                "foreign_scope_paths": [
+                    "research/governance/terminal_identity.py",
+                    "tests/test_terminal_identity.py"]}
+    assert _call_declared(b, identity_result=identity) == []
+
+
 def test_declared_identity_head_mismatch_is_registry_head_stale():
     """head != terminal_anchor_sha on a declared row IS registry staleness —
     with or without repo context (identity_result)."""
