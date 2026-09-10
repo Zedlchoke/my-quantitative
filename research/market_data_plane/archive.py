@@ -24,6 +24,21 @@ Implements the frozen ``archive_protocol`` from
 stdlib only (event-stream hot-path import isolation rule). Events are plain
 dicts per the parallel-lane rule; A2's models.py does not exist in this
 worktree and is never imported here.
+
+V2 (finding F2, MDP-V2 architecture freeze
+``research/control/market_data_plane_v2_run/architecture_freeze_v2.json``)
+hardening, applied without changing the V1 layout for valid IDs:
+- content-ID grammar: caller-supplied chunk sha256 and manifest_id path
+  arguments must match ``^[0-9a-f]{64}$`` exactly or the path builders raise
+  ArchiveError before any filesystem access;
+- path confinement: the resolved absolute target of chunk_path/manifest_path
+  must remain strictly below ``Path(root).resolve()`` (symlink escapes fail
+  closed) -- enforced before ANY filesystem read or write on the
+  write_chunk/publish_manifest/load_manifest/verify_chunk paths;
+- filename/body binding: load_manifest raises ManifestValidationError unless
+  the validated body's manifest_id equals the requested manifest_id;
+- verify_chunk raises ArchiveError for a grammar-violating ID (pinned
+  choice): malicious IDs are rejected loudly, never probed, never written.
 """
 from __future__ import annotations
 
@@ -38,6 +53,7 @@ from .manifest import (
     ManifestValidationError,
     build_manifest,
     canonical_manifest_bytes,
+    is_hex64,
     sha256_hex,
     validate_manifest,
 )
@@ -126,16 +142,61 @@ def scan_payload(data: bytes) -> Dict[str, Any]:
     }
 
 
+def _confine(root: Path, target: Path) -> None:
+    """V2 F2 path confinement: fail closed unless target is strictly below root.
+
+    The resolved absolute ``target`` must remain strictly below
+    ``Path(root).resolve()``. Verified BEFORE any filesystem read or write;
+    a violation (``..`` traversal, absolute escape, or a symlink at a
+    directory boundary pointing outside the root) raises ArchiveError and no
+    fallback path is ever taken.
+    """
+    root_resolved = Path(root).resolve()
+    target_resolved = target.resolve()
+    if target_resolved == root_resolved or not target_resolved.is_relative_to(root_resolved):
+        raise ArchiveError(
+            f"path escapes archive root: {target} resolves to {target_resolved}, "
+            f"which is not strictly below {root_resolved}"
+        )
+
+
 def chunk_path(root: Path, sha256: str) -> Path:
-    """Frozen layout: <root>/chunks/<h2>/<h2b>/<sha256>.jsonl."""
-    if len(sha256) < 4:
-        raise ArchiveError(f"invalid sha256 for chunk path: {sha256!r}")
-    return Path(root) / "chunks" / sha256[:2] / sha256[2:4] / f"{sha256}.jsonl"
+    """Frozen layout: <root>/chunks/<h2>/<h2b>/<sha256>.jsonl.
+
+    V2 F2: ``sha256`` must match the content-ID grammar ``^[0-9a-f]{64}$``
+    exactly -- empty, short (<64), 63/65-length, overlong, uppercase,
+    non-hex, traversal/separator/absolute and non-string (pathlike) inputs
+    raise ArchiveError. The resolved target must additionally remain
+    strictly below the resolved root (symlink escapes raise ArchiveError).
+    Both checks run BEFORE any filesystem access. For valid 64-hex IDs the
+    returned path and the on-disk V1 layout are unchanged (byte-compatible).
+    """
+    if not is_hex64(sha256):
+        raise ArchiveError(
+            "invalid sha256 for chunk path "
+            f"(must match ^[0-9a-f]{{64}}$ exactly): {sha256!r}"
+        )
+    target = Path(root) / "chunks" / sha256[:2] / sha256[2:4] / f"{sha256}.jsonl"
+    _confine(root, target)
+    return target
 
 
 def manifest_path(root: Path, manifest_id: str) -> Path:
-    """Frozen layout: <root>/manifests/<manifest_id>.json."""
-    return Path(root) / "manifests" / f"{manifest_id}.json"
+    """Frozen layout: <root>/manifests/<manifest_id>.json.
+
+    V2 F2: ``manifest_id`` must match ``^[0-9a-f]{64}$`` exactly and the
+    resolved target must remain strictly below the resolved root; violations
+    raise ArchiveError before any filesystem access (previously this builder
+    validated nothing).
+    """
+    if not is_hex64(manifest_id):
+        raise ArchiveError(
+            "invalid manifest_id for manifest path "
+            f"(must match ^[0-9a-f]{{64}}$ exactly): {manifest_id!r}"
+        )
+    target = Path(root) / "manifests" / f"{manifest_id}.json"
+    _confine(root, target)
+    return target
 
 
 def write_chunk(
@@ -246,7 +307,15 @@ def publish_manifest(root: Path, manifest: Mapping[str, Any]) -> Path:
 
 
 def load_manifest(root: Path, manifest_id: str) -> Dict[str, Any]:
-    """Load and fully validate one manifest by id."""
+    """Load and fully validate one manifest by id.
+
+    V2 F2 filename/body binding: after parse and full validation, the
+    validated body's ``manifest_id`` must equal the requested (filename)
+    ``manifest_id`` -- valid manifest bytes stored under a different valid
+    64-hex filename raise ManifestValidationError (fail closed, file never
+    rewritten). The path grammar and root confinement are enforced by
+    ``manifest_path`` before any read.
+    """
     path = manifest_path(root, manifest_id)
     try:
         raw = path.read_bytes()
@@ -258,7 +327,15 @@ def load_manifest(root: Path, manifest_id: str) -> Dict[str, Any]:
         raise ManifestValidationError(
             f"manifest {manifest_id} is not valid JSON: {exc}"
         ) from exc
-    return validate_manifest(manifest)
+    validated = validate_manifest(manifest)
+    if validated["manifest_id"] != manifest_id:
+        raise ManifestValidationError(
+            f"manifest filename/body binding mismatch at {path}: requested "
+            f"{manifest_id!r} but validated body carries manifest_id "
+            f"{validated['manifest_id']!r}",
+            code="HASH_DISAGREEMENT",
+        )
+    return validated
 
 
 def _time_bounds(events: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
@@ -338,9 +415,13 @@ def verify_chunk(
 ) -> Dict[str, Any]:
     """Recompute and compare one chunk; returns a diagnostic report.
 
-    Never raises for findings (unlike the write path): the report lists every
-    mismatch so callers (and ``scan_orphans``) can route corruption visibly
-    instead of guessing completeness.
+    Never raises for content findings (unlike the write path): the report
+    lists every mismatch so callers (and ``scan_orphans``) can route
+    corruption visibly instead of guessing completeness. Pinned V2 F2
+    exception: a sha256 argument violating the content-ID grammar, or a
+    target escaping the archive root, raises ArchiveError BEFORE any
+    filesystem access -- a malicious ID is rejected loudly, never probed
+    and never written.
     """
     path = chunk_path(root, sha256)
     report: Dict[str, Any] = {
