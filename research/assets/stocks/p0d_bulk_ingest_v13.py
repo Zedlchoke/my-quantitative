@@ -180,7 +180,10 @@ def parse_form4_xml(xml_bytes, cik, accession, acceptance, filing_date):
     for txn in (ndt.findall("nonDerivativeTransaction") if ndt is not None else []):
         tdate = txt(txn.find("transactionDate"), "value") if txn.find("transactionDate") is not None else None
         tcode_el = txn.find("transactionCoding/transactionCode")   # INC-V13-9: lives in <transactionCoding>
-        tcode = txt(tcode_el, "value") if tcode_el is not None else None
+        # INC-V13-12: the code is the ELEMENT TEXT (<transactionCode>G</transactionCode>),
+        # not a <value> child; attribute form kept as legacy fallback
+        tcode = ((tcode_el.text.strip() if tcode_el is not None and tcode_el.text else None)
+                 or (tcode_el.get("value") if tcode_el is not None else None))
         ad_el = txn.find("transactionAmounts/transactionAcquiredDisposedCode")  # INC-V13-9: nested in <transactionAmounts>
         ad = txt(ad_el, "value") if ad_el is not None else None
         shares_el = txn.find(".//transactionShares/value")
