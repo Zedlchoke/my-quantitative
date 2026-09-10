@@ -1,0 +1,198 @@
+{
+  "schema": "forex_free_v9_d1_proposal_v1",
+  "cycle": "FOREX-FREE-V9",
+  "lane": "a5-open",
+  "wave_sha": "8b99412d46774e7dadd0d30b3bed0050390fec03",
+  "hypothesis_id": "FXFV9-A5-P2",
+  "title": "Cross-economy inflation-differential MOMENTUM conditioning (63-day rate-of-change of the y/y gap -- the change of the gap, never its level; zero spot content in the driver)",
+  "outcome_blind": true,
+  "no_scored_results_used": true,
+  "pnl_anywhere": false,
+
+  "mechanism": "WHO IS FORCED/SLOW: trend-allocating macro books, reserve managers and insurance/pension currency-hedge committees review RELATIVE inflation performance on periodic clocks (monthly to quarterly), and policy rates respond to inflation paths at meeting cadence with explicit lags -- so a change in the realized inflation differential is absorbed into rate-path pricing and positioning over weeks, not minutes. WHY: inflation is a persistent process (Fuhrer) -- once the home-minus-US y/y gap has moved over a quarter, its sign tends to persist, and the Taylor-rule response (Molodtsova-Papell: relative-inflation terms carry out-of-sample exchange-rate predictability) keeps repricing in the direction of the gap's change for as long as the change persists; Rogoff's measured multi-year PPP adjustment half-life guarantees the real side cannot neutralize the move quickly. The mechanism is therefore about the RATE-OF-CHANGE of the differential -- a first difference, NOT the gap's level (the level form appears ONLY inside the control arm, mirroring the V8 AX2-C8 discipline). OBSERVABLE, TO FIELD LEVEL: for pair p with home economy h, define gap_p(x) = pi_h(latest print as-of x) - pi_US(latest print as-of x), each leg's chained y/y (rebase-safe AX2-C3) read under a SINGLE as-of snapshot at instant x; driver M(t) = gap_p(t) - gap_p(t-63 calendar days), where BOTH snapshots use as-bound vintaged values available at their own instants (no current-vintage pulls, no retrospective recomputation of the earlier gap). Units: pp per quarter-scale window. DIRECTION: M(t) >= +0.15pp => long home currency; M(t) <= -0.15pp => short home currency (per-pair home_sign_map); dead/exit band |M| <= 0.10pp; state persists on the universal daily grid -- no release window, no k-day post-release hold. WHEN IT MUST FAIL: (i) if gap changes are fully impounded at the print instant (no continuation), post-state drift is zero and expectancy dies at 6.0 bps round trips; (ii) if the gap's LEVEL, not its change, is what spot prices -- the differential-LEVEL control reproduces the anchor (R1) and the momentum identity is words; (iii) if the edge is a release-schedule artifact (quarterly step function timing rather than content), the +7d sham neighbour out-earns (R2); (iv) if momentum is y/y base-effect arithmetic with no policy content, the frozen sign inverts spuriously and gate 1 rejects.",
+
+  "literature_anchors": [
+    "Fuhrer (1997) 'The (New) Keynesian Economics and the Output-Inflation Trade-Off' (BPEQ) -- inflation persistence: changes in realized inflation differentials keep their sign, making the rate-of-change a state, not noise",
+    "Molodtsova & Papell (2009) 'Out-of-sample exchange rate predictability with Taylor rule fundamentals' (JIMF) -- relative-inflation terms in policy rules carry exchange-rate predictability; the transmission channel for gap-change conditioning",
+    "Rogoff (1996) 'The Purchasing Power Parity Puzzle' (JEL) -- multi-year real-adjustment half-lives: fast offsetting flows cannot erase a realized inflation-differential shock within the holding horizon",
+    "Hong & Stein (1999) gradual information diffusion (JPE) -- the slow-diffuser class that turns a persistent macro state into weeks-scale spot drift",
+    "Taylor (1993) discretional policy-response lags -- policy moves at meeting cadence behind realized inflation, leaving repricing incomplete at any instant (why the slow window exists at all)"
+  ],
+
+  "universe": {
+    "pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "note": "Funded pairs ONLY (P0/P2 census). Each pair conditioned by the 63-day change of its home-vs-US y/y inflation differential. Monthly-home pairs (GB, CA) update ~13x/yr; quarterly-home pairs (AU, NZ) update 4x/yr with monthly US-leg motion between home prints.",
+    "home_sign_map": {
+      "GBPUSD": {"home": "GB", "long_home": "long_pair"},
+      "USDCAD": {"home": "CA", "long_home": "short_pair"},
+      "AUDUSD": {"home": "AU", "long_home": "long_pair"},
+      "NZDUSD": {"home": "NZ", "long_home": "long_pair"}
+    }
+  },
+
+  "conditioning_fields": [
+    {
+      "series_id": "GBRCPIALLMINMEI + ONS D7BT continuation",
+      "class": "realized_cpi_index_yy_GB (P2 census leg)",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 4737 rows; GB_cal pin aad19697, 88 in-S0 dates; ONS continuation flagged for the post-2025-03 tail)",
+      "transform": "chained y/y log step; home leg of gap_p(x) at both snapshot instants x in {t, t-63d}",
+      "as_of_rule": "AX2-C4: binds at first daily 16:00-NY clock strictly after the announcement instant"
+    },
+    {
+      "series_id": "CANCPIALLMINMEI + StatCan 18100004 continuation",
+      "class": "realized_cpi_index_yy_CA (P2 census leg)",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 5091 rows; CA_v3 pin 0f1a9328, 105 in-S0 dates)",
+      "transform": "as GB leg",
+      "as_of_rule": "AX2-C4 as GB leg"
+    },
+    {
+      "series_id": "AUSCPIALLQINMEI + ABS 640101 continuation",
+      "class": "realized_cpi_index_yy_AU (P2 census leg)",
+      "freq": "quarterly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 1551 rows; rebase INSIDE S0 at vintage 2018-10-09 captured; AU_cal pin 42a4e4a3, 23 in-S0 dates)",
+      "transform": "quarterly chained y/y; rebase-splice mandatory across the in-S0 vintage",
+      "as_of_rule": "AX2-C4 as GB leg"
+    },
+    {
+      "series_id": "NZLCPIALLQINMEI + Infoshare continuation (P0-remaining)",
+      "class": "realized_cpi_index_yy_NZ (P2 census leg)",
+      "freq": "quarterly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 1958 rows; NZ_cal pin 62f82c23, 30 in-S0 dates)",
+      "transform": "as AU leg",
+      "as_of_rule": "AX2-C4 as GB leg"
+    },
+    {
+      "series_id": "CPIAUCSL (FRED vintaged)",
+      "class": "realized_cpi_index_yy_US (P2 census leg)",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: 1962 realtime rows / 942 obs to 2025-06; V8 dense audit inherited)",
+      "transform": "US leg of gap_p(x) at both snapshot instants",
+      "as_of_rule": "binds at first daily 16:00-NY clock strictly after the vintaged realtime_start date"
+    }
+  ],
+  "transform_semantics": {
+    "gap": "gap_p(x) = pi_h(latest print as-of x) - pi_US(latest print as-of x); computed under a SINGLE as-of parameter x per snapshot (AX2-C2); each leg truncated at its own availability instant under that parameter.",
+    "momentum": "M(t) = gap_p(t) - gap_p(t - 63 calendar days); BOTH snapshots as-bound at their own instants (the earlier gap is never recomputed at current vintage); no interpolation between prints -- the state is piecewise constant in both snapshots.",
+    "rebase_safety": "y/y steps chained across rebase segments via overlap splice (AU in-S0 vintage 2018-10-09, AX2-C3); a 63d window straddling a rebase uses the spliced chain, never raw level differences.",
+    "zero_spot_content": "the driver M(t) is a function of realized CPI series ONLY; spot is solely the traded instrument; no FX return/range/session/reaction quantity enters any conditioning variable.",
+    "first_difference_not_level": "the gap LEVEL appears nowhere in the anchor; it exists only inside the control arm, where it belongs (V8 AX2-C8 discipline applied to this family's own exposure form).",
+    "lags": "no discretionary lags; AX2-C4 availability structurally; I-Q mutation binding: a print arriving k periods late shifts the consumed decision exactly k periods in BOTH snapshots."
+  },
+
+  "decision_clock": {
+    "instant": "daily 16:00 America/New_York (DST-correct); FX 24/5",
+    "rule": "AX2-C4 on both snapshot legs; one decision per clock per pair; state persists between prints (quarterly-home pairs move only at US-leg prints between home quarters)",
+    "calendar_conditioning": "print instants condition the STATE (only times the driver changes); no trade window opens/closes at releases and no hold is anchored to release proximity -- +7d sham MANDATORY (declared into the neighbour slot)"
+  },
+
+  "warmup": {
+    "in_S0_burn_clocks": 0,
+    "description": "Requires y/y chain (12 print periods) + a 63-day earlier snapshot => >= ~16 print periods of per-leg history before the first binding decision; staged vintaged archives provide decades of pre-S0 depth, so warmup is satisfied from staged bytes: usable grid = full S0 2018-04-04..2025-07-24 (~1905 weekday clocks per pair).",
+    "data_requirements_declared": "staged vintaged archives + pinned calendars only (P0/P2 census fields). Spot leg = TD re-acquisition (SAMPLE_DEMONSTRATED); full re-staging is the I-phase prerequisite -- failure closes the family BLOCKED_DATA_OR_SELECTION."
+  },
+
+  "entry_exit_fills": {
+    "activation": "enter at the decision clock when flat and in-region: M >= +0.15pp => long home (per home_sign_map); M <= -0.15pp => short home",
+    "exit": "exit on sign flip of M or |M| <= 0.10pp hysteresis, evaluated after a 5-binding-clock minimum hold; hard max hold 63 binding clocks with immediate re-entry next clock if still in-region",
+    "reentry": "allowed at the next clock if activation re-fires; max one position per pair",
+    "fills": "at the decision-instant price (daily 16:00-NY snapshot); no intraday actions; no stops/targets beyond frozen exits",
+    "sizing": "fixed notional 1 unit per pair; per-trade return in bps of notional"
+  },
+
+  "costs": {
+    "ladder": "1.5 bps/side x {1.0, 1.5, 2.0}",
+    "tier_primary": 2.0,
+    "round_trip_primary_bps": 6.0,
+    "books": "dual book mandatory: price-only and financing-adjusted; gates on financing-adjusted at tier 2.0 primary; price-only must not invert sign (p3 rule 6)",
+    "cost_sanity": "dwell ~20-60 binding clocks against 6.0 bps round trip => required gross drift ~0.1-0.3 bps/clock; break_even_bps_le_1.5 floor gate applies (p3 rule 5)"
+  },
+
+  "arms": [
+    {
+      "slot": "anchor",
+      "name": "63-day inflation-differential momentum state book",
+      "driver": "M(t) = gap_p(t) - gap_p(t-63cd) as defined in transform_semantics",
+      "activation": "|M| >= 0.15pp in, |M| <= 0.10pp out, min hold 5 clocks, max hold 63 clocks, direction per home_sign_map",
+      "mechanism_bearing_component": "the FIRST DIFFERENCE (rate-of-change) of the home-vs-US realized-inflation differential"
+    },
+    {
+      "slot": "neighbour",
+      "name": "+7d sham-calendar variant (MANDATORY sham; declared into the neighbour slot per d1 packet)",
+      "driver": "identical rule, with every print's binding instant (pinned calendars and US realtime_start dates) shifted +7 calendar days in BOTH snapshots when constructing the state path",
+      "delta_vs_anchor": "state timing relative to true availability ONLY; thresholds, holds, universe, costs, sign map identical",
+      "expected_behaviour": "content-driven momentum must not survive a uniform one-week schedule displacement; a sham matching or out-earning the anchor falsifies (R2)"
+    },
+    {
+      "slot": "control",
+      "name": "differential-LEVEL control (relative-inflation level form; momentum removed)",
+      "driver": "gap_p(t) alone; activation |gap| >= 0.50pp in, |gap| <= 0.35pp out (level-scale thresholds, frozen), same min/max holds, clock, sign map, costs",
+      "delta_vs_anchor": "ONLY the mechanism-bearing component (the first difference) is replaced by the level form; everything else identical",
+      "expected_behaviour": "if spot prices the gap's level rather than its change, the control reproduces or out-earns the anchor (R1) and the momentum identity is words; the control is ALSO the arm that measures any kinship with pure relative-inflation-level exposure (disclosed D2 rho channel vs lane-A4 territory)"
+    }
+  ],
+  "control_identifiability": "Control differs from anchor ONLY in driver order (first difference -> level) with level-scale thresholds frozen ex ante; neighbour differs ONLY in the +7d schedule displacement; universe, clock grid, holds' shape, fills, sizing and costs identical across arms. No arm subsumes another: a level state is not a function of its 63-day change (both can move independently), and the sham's driver is time-displaced content -- three distinct conditioning paths, rho-measured pairwise and against forbidden ancestry at D2.",
+
+  "falsification_rule": {
+    "preregistered": true,
+    "evaluation_book": "financing-adjusted, tier 2.0 primary, pooled S0 usable grid",
+    "rules": [
+      "R1 momentum-content kill: control (differential LEVEL) fin-adj expectancy > 0 AND >= 0.5 x anchor fin-adj expectancy => FAMILY DIES (the rate-of-change identity is words over generic relative-inflation-level exposure).",
+      "R2 sham-calendar kill: neighbour (+7d sham) fin-adj expectancy >= anchor fin-adj expectancy AND > 0 => the print schedule, not momentum content, drives the book => FAMILY DIES.",
+      "R3 fragility kill: anchor fin-adj expectancy > 0 AND neighbour fin-adj expectancy <= 0 while R1 clear is the ONLY passing neighbour configuration; anchor <= 0 => gate 1 mechanical reject.",
+      "survival requires: anchor > 0 AND R1..R3 clear AND all ten p3 baseline gates pass (tier-2.0 expectancy positive; pf >= 1.10; >= 2/3 populated folds positive STRICT; pair concentration <= 0.40; break-even <= 1.5 bps; dual-book no inversion; LOPO sign-robust; stress tier 2.0 non-negative margin; USD-drift diagnostic; mechanism sanity -- control must NOT reproduce anchor)."
+    ],
+    "sham_calendar": {
+      "applicability": "MANDATORY, PRESENT -- print instants condition the state path (quarterly step function especially), so the +7d sham is required and occupies the neighbour slot (declared)",
+      "artifact": "artifacts/sham_control_calendar.jsonl per the p3 diagnostic contract conditional"
+    }
+  },
+
+  "expected_failure_interpretation": "If R1 fires: the 'differential momentum' PnL was relative-inflation-level exposure in first-difference clothing -- record under E.2 cluster discipline, no descendants, no sign flips; the level form itself is NOT thereby promoted (it failed as control; any future level-form family needs its own preregistration and D2 rho measurement vs lane-A4 territory). If R2 fires: quarterly/monthly print-schedule timing, not inflation content, produced the book -- the V5 sham-shadow class, closed. If gates kill on costs/folds/stress while R1-R2 clear: gap-change content is real but too slow or too small after 6.0 bps round trips. If D2 novelty pools |rho| > 0.20 vs any forbidden ancestry exposure: family withdrawn pre-scoring without comment. Every failure falsifies the mechanism family, not the parameterization: no window, threshold, lag or sign may be re-entered; unused slots never reassigned.",
+
+  "fold_structure": {
+    "n_folds": 3,
+    "rule": "equal thirds of the usable decision grid (2018-04-04..2025-07-24), split mechanically at run time",
+    "approx_bounds": {
+      "F1": "2018-04-04 .. 2020-09-19",
+      "F2": "2020-09-20 .. 2022-10-05",
+      "F3": "2022-10-06 .. 2025-07-24"
+    },
+    "gate_binding": "positive populated folds >= 2 of 3 (p3 rule 3, STRICT margin > 0); each fold independently populated or family closes VACUOUS pre-scoring"
+  },
+
+  "expected_decision_count_sanity": {
+    "usable_clocks_S0": "~1905 per pair (full S0 weekday grid; warmup satisfied pre-S0)",
+    "expected_activation_share": "0.25-0.60 of clocks (momentum sign persists for quarters; 0.15/0.10 hysteresis on a pp-scale driver)",
+    "expected_entries_pooled": "~70-150 anchor entries across 4 pairs (sign crossings at ~13 monthly / 4 quarterly updates per year with the 2021-2023 inflation regime providing the densest crossings, plus 63-clock max-hold refreshes)",
+    "non_vacuity_floor": ">= 60 pooled anchor entries AND >= 10 anchor entries in each of the 3 folds; unmet floors => VACUOUS closure pre-scoring (data-adequacy closure; unused slots never reassigned; not a rescue path)",
+    "cost_viability_note": "at 6.0 bps round trip the family needs gross per-trade drift > 6 bps; arithmetically checkable before scoring"
+  },
+
+  "lane_boundary_note": "Lane A4 owns the deviation-from-anchor construction (spot ratio minus cumulative relative CPI). This proposal's driver is the RATE-OF-CHANGE of the pure-CPI differential -- a first difference with ZERO spot content -- structurally disjoint from A4's level-of-misalignment axis; the gap LEVEL appears only inside this family's control arm (V8 AX2-C8 discipline: the exposure-form shadow lives where it belongs, in the control). The lane-1 nominal-exposure mandate is not imported; the control serves this family's own identifiability. The V9 self-referential veto (nominal-price-trend in new words) cannot bind by construction -- no price series enters any driver -- but pooled |rho| <= 0.20 vs the V8 nominal-LEVEL shadow, the carry region and lane-A4 exposures is MEASURED at D2, never asserted.",
+
+  "ancestry_distinctness": {
+    "vs_session_momentum_fade_V1V2": "no session/open/range observables; no price data in the driver; daily-or-slower only",
+    "vs_policy_rate_carry_V3R_and_relabels": "no policy rates, no vol gating, no yield differential; 'carry' appears nowhere in the rule; D2 rho vs the carry region measured, not argued",
+    "vs_commodity_bloc_risk_off_V4": "no event baskets, no risk-off conditioning",
+    "vs_release_window_avoidance_V5": "no windows avoided or entered; book holds through prints; +7d sham measures schedule kinship rather than asserting absence",
+    "vs_reaction_direction_V6_V7": "STRUCTURAL: V6/V7 read FX reaction signs after releases. This driver never reads an FX quantity -- it reads the 63-day change of a realized-CPI differential; holds are calendar-independent (5/63 binding clocks); because the state still updates AT print instants, pooled |rho| vs V6/V7 WILL be measured at D2 -- the sham arm plus the zero-reaction-data construction are the registered differentiators",
+    "vs_eurusd_lead_lag_V7": "no cross-pair price lead-lag; drivers are macro-leg constructs per pair",
+    "vs_V8_breakeven_dispersion": "no TIPS/breakeven series; realized official CPI only",
+    "vs_V8_nominal_yield_LEVEL_shadow": "no yields anywhere; D2 pooled rho vs the shadow measured on conditioning exposures",
+    "vs_FRED_real_rate_lane": "no real-rate construction; CPI index levels only",
+    "vs_A4_ppp_deviation_and_V9_nominal_trend": "A4's conditioning embeds spot (deviation-from-anchor); this driver's first-difference form contains no spot and no price trend; distinctness is structural, with D2 rho measured against both shadows regardless"
+  },
+
+  "ax2_compliance": {
+    "AX2_C1": "as-of pulls only from staged vintaged archives; continuations (ONS/StatCan/ABS/Infoshare) used ONLY as flagged tail legs where the vintaged channel ends inside S0",
+    "AX2_C2": "single-snapshot per instant: both legs of a gap read under one as-of parameter; the two momentum snapshots are two separate as-of parameters, each internally consistent; no vintage mixing within a snapshot",
+    "AX2_C3": "rebase-safe chaining via overlap splice across rebase events (AU in-S0 vintage 2018-10-09); 63d windows straddling a rebase use the spliced chain",
+    "AX2_C4": "both snapshot legs bind at first daily 16:00-NY clock strictly after pinned announcement instants (GB aad19697 / CA 0f1a9328 / AU 42a4e4a3 / NZ 62f82c23; US at vintaged realtime_start); mutation-test binding in BOTH snapshots at I/Q",
+    "AX2_C5": "no truncated legs on the usable grid",
+    "AX2_C6": "no JP/CH/EZ legs (not funded)",
+    "AX2_C7": "full provenance per conditioning row (source_id, series_id, event/effective/available/vintage/retrieved times, raw_sha256, license_id, normalizer_version)",
+    "AX2_C8": "no lane-1 mandate on this lane; the differential-LEVEL control serves this family's identifiability and is rho-measured at D2 like every arm"
+  }
+}

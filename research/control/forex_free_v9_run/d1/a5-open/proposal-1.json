@@ -1,0 +1,197 @@
+{
+  "schema": "forex_free_v9_d1_proposal_v1",
+  "cycle": "FOREX-FREE-V9",
+  "lane": "a5-open",
+  "wave_sha": "8b99412d46774e7dadd0d30b3bed0050390fec03",
+  "hypothesis_id": "FXFV9-A5-P1",
+  "title": "Realized-inflation SURPRISE differential conditioning (home print-vs-trailing-trend gap minus US leg, announcement-instant as-of, zero spot content in the driver)",
+  "outcome_blind": true,
+  "no_scored_results_used": true,
+  "pnl_anywhere": false,
+
+  "mechanism": "WHO IS FORCED/SLOW: discretionary macro funds, reserve managers and IPS-bound hedging committees reprice currency exposures only on periodic review cycles (quarterly mandate rebalances, monthly allocation meetings), and the central banks themselves revise policy-path pricing at meeting cadence -- none can act inside the announcement minute. WHY: realized CPI is a lagging, official, unrevisable-in-real-time quantity; when a home y/y print clears its own trailing 24-month trend, the surprise is news about the FUTURE policy-path differential (Clarida-Waldman: in inflation-targeting regimes an above-trend inflation print is tightening news, which appreciates the currency), and that repricing propagates into spot only as slow flow transacts it over days-to-weeks. OBSERVABLE, TO FIELD LEVEL: for economy e with chained y/y log-CPI series pi_e (GB/CA/US monthly, AU/NZ quarterly; rebase-safe AX2-C3 chaining), trend_e = OLS linear fit of pi_e over the trailing 24 calendar months of prints (24 obs monthly legs, 8 obs quarterly legs) evaluated at the latest print's period; surprise_e = pi_e(latest print) - trend_e, bound as-of the print's pinned announcement instant (GB_cal aad19697 / CA_v3 0f1a9328 / AU_cal 42a4e4a3 / NZ_cal 62f82c23; US leg binds at its FRED vintaged realtime_start date). Driver D(t) = surprise_home(latest as-of t) - surprise_US(latest as-of t), both legs read inside ONE as-of snapshot per decision clock. DIRECTION: D >= +0.25pp => long home currency; D <= -0.25pp => short home currency (per-pair home_sign_map); dead/exit band |D| <= 0.15pp; the state persists on the universal daily grid -- NO window opens or closes at any release instant and NO hold is anchored to release proximity. WHEN IT MUST FAIL: (i) if the announcement-minute market fully impounds the surprise (no slow-flow residual), post-instant drift is zero/negative and expectancy goes non-positive at 6.0 bps round trips; (ii) if surprise content is dominated by the USD leg alone, the home-only control reproduces the anchor (R1) and the differential mechanism is words; (iii) if the book's edge is a release-schedule artifact rather than surprise content, the +7d sham neighbour out-earns (R2); (iv) if prints are trend-noise with no policy-path content, the frozen sign inverts spuriously and gate 1 rejects.",
+
+  "literature_anchors": [
+    "Clarida & Waldman (2008) 'Is Bad News About Inflation Good News for the Exchange Rate?' (NBER/Asset Prices and Monetary Policy) -- in inflation-targeting regimes, above-expectation inflation prints appreciate the currency via tightening news; the per-economy surprise is the mechanism-bearing variable",
+    "Andersen, Bollerslev, Diebold & Vega (2003) 'Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange' (AER) -- announcement surprises carry exchange-rate content; names both the fast-impoundment failure mode and the drift residual this family tests",
+    "Faust, Rogers, Wang & Wright (2007) 'The high-frequency response of exchange rates and interest rates to macroeconomic announcements' (JME) -- surprise component (not release sign) is the identified driver; also documents incomplete impoundment at daily horizons",
+    "Hong & Stein (1999) 'A Unified Theory of Underreaction, Momentum Trading, and Gradual Information Diffusion' (JPE) -- slow diffuser class justifies days-to-weeks post-state drift among heterogeneous agents",
+    "Fuhrer (1997) inflation persistence -- trailing-trend gap is a persistent state, not a one-day event, supporting state-following (not k-day-window) holds"
+  ],
+
+  "universe": {
+    "pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "note": "Funded pairs ONLY (P0 census: GB/CA/AU/NZ + US all PASS_PIT_EVIDENCED; EURUSD/USDJPY/USDCHF not funded this cycle -- EZ/JP/CH legs not censused). Each pair is conditioned by its home economy's surprise minus the US surprise.",
+    "home_sign_map": {
+      "GBPUSD": {"home": "GB", "long_home": "long_pair"},
+      "USDCAD": {"home": "CA", "long_home": "short_pair"},
+      "AUDUSD": {"home": "AU", "long_home": "long_pair"},
+      "NZDUSD": {"home": "NZ", "long_home": "long_pair"}
+    }
+  },
+
+  "conditioning_fields": [
+    {
+      "series_id": "GBRCPIALLMINMEI + ONS D7BT continuation",
+      "class": "realized_cpi_index_yy_GB (P2 census leg)",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 4737 rows, lag med 42d, 5 rebase-class events + revisions mapped; announcement instants GB_cal pin aad19697, 88 in-S0 dates; ONS current table covers the post-2025-03 vintaged tail, unrevised-policy claim recorded)",
+      "transform": "y/y log step of vintaged index (chained across rebase events per AX2-C3); leg of surprise differential",
+      "as_of_rule": "AX2-C4: value binds at the first daily 16:00 America/New_York clock strictly after its announcement instant"
+    },
+    {
+      "series_id": "CANCPIALLMINMEI + StatCan 18100004 continuation",
+      "class": "realized_cpi_index_yy_CA (P2 census leg)",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 5091 rows, lag med 42d, 5 rebase-class + 216 revision events mapped; CA_v3 pin 0f1a9328, 105 in-S0 dates)",
+      "transform": "as GB leg",
+      "as_of_rule": "AX2-C4 as GB leg"
+    },
+    {
+      "series_id": "AUSCPIALLQINMEI + ABS 640101 continuation",
+      "class": "realized_cpi_index_yy_AU (P2 census leg)",
+      "freq": "quarterly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 1551 rows, lag med 41d, REBASE INSIDE S0 measured and captured at vintage 2018-10-09; AU_cal pin 42a4e4a3, 23 in-S0 dates; ABS current table carries measured revisions -> vintaged is the qualifying channel)",
+      "transform": "y/y log step, quarterly; trend window = trailing 8 quarters; rebase-splice mandatory across the 2018-10-09 vintage",
+      "as_of_rule": "AX2-C4 as GB leg"
+    },
+    {
+      "series_id": "NZLCPIALLQINMEI + Infoshare continuation (P0-remaining)",
+      "class": "realized_cpi_index_yy_NZ (P2 census leg)",
+      "freq": "quarterly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: vintaged 1958 rows, lag med 41d, REVISED-class samples measured; NZ_cal pin 62f82c23, 30 in-S0 dates; official continuation = P0-remaining note, vintaged channel qualifies)",
+      "transform": "as AU leg",
+      "as_of_rule": "AX2-C4 as GB leg"
+    },
+    {
+      "series_id": "CPIAUCSL (FRED vintaged)",
+      "class": "realized_cpi_index_yy_US (P2 census leg)",
+      "freq": "monthly",
+      "verdict": "PASS_PIT_EVIDENCED (p0_census_v9.json: 1962 realtime rows / 942 obs 1947-01..2025-06; V8 dense audit inherited, publication lag 10-14d, revisions captured)",
+      "transform": "as GB leg; trend window = trailing 24 months",
+      "as_of_rule": "value binds at the first daily 16:00-NY clock strictly after its vintaged realtime_start date (conservative availability; no US release calendar is consumed)"
+    }
+  ],
+  "transform_semantics": {
+    "surprise": "surprise_e = pi_e(latest print) - OLS-linear-trend_e(trailing 24 calendar months of prints, evaluated at latest print period), computed ONLY from as-bound print values available at the decision's as-of instant; trend recomputed only at print instants; between prints the state is piecewise constant.",
+    "differential": "D(t) = surprise_home - surprise_US; both legs pulled under ONE as-of parameter per decision clock (AX2-C2 single-snapshot; no vintage mixing within a decision).",
+    "rebase_safety": "y/y log steps computed only within contiguous same-rebase segments; across rebase events (AU vintage 2018-10-09 inside S0) the series is spliced via the overlap ratio (AX2-C3 class); trend windows are composed of chained y/y values only -- never raw level differences across a rebase.",
+    "zero_spot_content": "the driver D(t) is a function of realized CPI series ONLY; spot prices enter solely as the traded instrument. No FX return, range, session or reaction quantity enters any conditioning variable.",
+    "lags": "no discretionary lags; availability is carried structurally by AX2-C4; I-Q mutation binding: a print arriving k periods late must shift the consumed decision exactly k periods."
+  },
+
+  "decision_clock": {
+    "instant": "daily 16:00 America/New_York (DST-correct); FX 24/5",
+    "rule": "AX2-C4: a print's value is consumable at the first daily clock strictly after its announcement instant; one decision per clock per pair; the state persists between prints so decisions occur on the universal daily grid, NOT clustered at release instants",
+    "calendar_conditioning": "print instants condition the STATE (they are the only times the driver changes); no trade window is opened/closed and no hold is anchored to any release -- sham-calendar variant therefore MANDATORY (occupies the neighbour slot, declared below)"
+  },
+
+  "warmup": {
+    "in_S0_burn_clocks": 0,
+    "description": "Requires 24 calendar months of prints + 12 months for the y/y chain => >= 36 print periods of per-leg history before the first binding decision. All five staged vintaged archives provide decades of pre-S0 depth (GB <=2011, CA 1914, AU/NZ/US pre-1948 class), so warmup is satisfied from staged bytes with no unstaged data: usable grid = full S0 2018-04-04..2025-07-24 (~1905 weekday clocks per pair).",
+    "data_requirements_declared": "staged vintaged archives + pinned calendars only (P0/P2 census fields). Spot leg = TD re-acquisition (SAMPLE_DEMONSTRATED); full re-staging is the I-phase prerequisite per p3 d1_lane_shape -- if re-staging fails the family closes BLOCKED_DATA_OR_SELECTION."
+  },
+
+  "entry_exit_fills": {
+    "activation": "enter at the decision clock when the state is in-region and flat: D >= +0.25pp => long home (per home_sign_map); D <= -0.25pp => short home",
+    "exit": "exit when the state leaves the region: sign flip of D, or |D| <= 0.15pp hysteresis, evaluated after a 5-binding-clock minimum hold; hard max hold 63 binding clocks, on which exit + immediate re-entry next clock if still in-region",
+    "reentry": "allowed at the next clock after exit if activation re-fires; max one position per pair at any time",
+    "fills": "at the decision-instant price (daily 16:00-NY snapshot); no intraday actions; no stops/targets beyond the frozen exits",
+    "sizing": "fixed notional 1 unit per pair; per-trade return recorded in bps of notional"
+  },
+
+  "costs": {
+    "ladder": "1.5 bps/side x {1.0, 1.5, 2.0}",
+    "tier_primary": 2.0,
+    "round_trip_primary_bps": 6.0,
+    "books": "dual book mandatory: price-only and financing-adjusted; all gates on the financing-adjusted book at tier 2.0 primary; price-only book must not invert sign (p3 rule 6)",
+    "cost_sanity": "state dwells of ~20-60 binding clocks against 6.0 bps round trip => required gross drift ~0.1-0.3 bps/clock; break_even_bps_le_1.5 floor gate applies (p3 rule 5)"
+  },
+
+  "arms": [
+    {
+      "slot": "anchor",
+      "name": "home-minus-US surprise differential state book",
+      "driver": "D(t) = surprise_home - surprise_US as defined in transform_semantics",
+      "activation": "|D| >= 0.25pp in, |D| <= 0.15pp out, min hold 5 clocks, max hold 63 clocks, direction per home_sign_map",
+      "mechanism_bearing_component": "the CROSS-ECONOMY comparison of realized-inflation surprises (differential content)"
+    },
+    {
+      "slot": "neighbour",
+      "name": "+7d sham-calendar variant (MANDATORY sham; declared into the neighbour slot per d1 packet)",
+      "driver": "identical rule, but every print's binding instant shifted +7 calendar days when constructing the state path (pinned calendars shifted +7d; US realtime_start dates shifted +7d)",
+      "delta_vs_anchor": "the state's timing relative to true availability ONLY; thresholds, holds, universe, costs, sign map identical",
+      "expected_behaviour": "if the anchor's edge is surprise CONTENT assimilated by slow flow, the sham (whose state is stale by exactly one week and whose schedule is decorrelated from true availability) must NOT reproduce it; a sham that matches or out-earns falsifies the family (R2)"
+    },
+    {
+      "slot": "control",
+      "name": "home-only surprise control (differential content removed)",
+      "driver": "surprise_home alone; same thresholds (0.25 in / 0.15 out), holds, clock, sign map, costs",
+      "delta_vs_anchor": "ONLY the mechanism-bearing component (the US-leg comparison) is removed; everything else identical",
+      "expected_behaviour": "isolates whether the cross-economy differential carries information beyond generic home-inflation-state exposure; a same-sign control >= 0.5x anchor expectancy falsifies (R1)"
+    }
+  ],
+  "control_identifiability": "Control differs from anchor ONLY in the removed US leg; neighbour differs ONLY in the +7d state-timing shift; universe, clock grid, thresholds' shape, min/max holds, fills, sizing and costs are identical across all three arms. No arm subsumes another: the anchor's driver requires both legs, the control contains one, and the neighbour's driver is identical but time-displaced -- the three exposures are pairwise distinct conditioning paths to be rho-measured against each other and against forbidden ancestry at D2.",
+
+  "falsification_rule": {
+    "preregistered": true,
+    "evaluation_book": "financing-adjusted, tier 2.0 primary, pooled S0 usable grid",
+    "rules": [
+      "R1 differential-content kill: control (home-only) fin-adj expectancy > 0 AND >= 0.5 x anchor fin-adj expectancy => FAMILY DIES (the differential is words over generic home-surprise exposure).",
+      "R2 sham-calendar kill: neighbour (+7d sham) fin-adj expectancy >= anchor fin-adj expectancy AND > 0 => the schedule, not the surprise content, drives the book => FAMILY DIES.",
+      "R3 fragility kill: anchor fin-adj expectancy > 0 AND neighbour fin-adj expectancy <= 0 while R1 clear is the ONLY passing neighbour configuration; any anchor <= 0 => gate 1 mechanical reject.",
+      "survival requires: anchor > 0 AND R1..R3 clear AND all ten p3 baseline gates pass (expectancy positive at tier 2.0; pf >= 1.10; >= 2/3 populated folds positive with STRICT margin > 0; pair concentration <= 0.40; break-even <= 1.5 bps; dual-book no inversion; LOPO sign-robust on all subsets; stress tier 2.0 non-negative margin; USD-drift diagnostic; mechanism sanity -- control must NOT reproduce anchor)."
+    ],
+    "sham_calendar": {
+      "applicability": "MANDATORY, PRESENT -- print instants condition the state path, so the +7d sham is required and occupies the neighbour slot (declared)",
+      "artifact": "artifacts/sham_control_calendar.jsonl per the p3 diagnostic contract conditional"
+    }
+  },
+
+  "expected_failure_interpretation": "If R1 fires: the 'cross-economy surprise transmission' PnL was home-inflation-state exposure in differential clothing -- record as a shadow effect under E.2 cluster discipline, no descendants, no sign flips. If R2 fires (sham reproduces/out-earns): the family is a release-schedule artifact -- the V5 sham-shadow class, closed, never rescuable by calendar jiggling. If gates kill on costs/folds/stress while R1-R2 are clear: surprise content is real but too slow or too small against 6.0 bps round trips -- information exists, after-cost monetization does not. If D2 novelty measurement pools |rho| > 0.20 against any forbidden ancestry exposure (esp. V6/V7 reaction-direction or the V5 avoidance shadow): the family never reaches scoring and is withdrawn without comment -- no prose stands in lieu of measurement. Every failure falsifies the mechanism family, not the parameterization: no threshold, hold or sign may be re-entered; unused slots never reassigned.",
+
+  "fold_structure": {
+    "n_folds": 3,
+    "rule": "equal thirds of the usable decision grid (2018-04-04..2025-07-24), split mechanically at run time",
+    "approx_bounds": {
+      "F1": "2018-04-04 .. 2020-09-19",
+      "F2": "2020-09-20 .. 2022-10-05",
+      "F3": "2022-10-06 .. 2025-07-24"
+    },
+    "gate_binding": "positive populated folds >= 2 of 3 (p3 rule 3, STRICT margin > 0); each fold independently populated or family closes VACUOUS pre-scoring"
+  },
+
+  "expected_decision_count_sanity": {
+    "usable_clocks_S0": "~1905 per pair (full S0 weekday grid; warmup satisfied pre-S0)",
+    "expected_activation_share": "0.20-0.60 of clocks (piecewise-constant state with 0.25/0.15 hysteresis on a pp-scale differential)",
+    "expected_entries_pooled": "~80-160 anchor entries across 4 pairs (sign crossings at ~12-13 monthly / 4 quarterly state updates per year, plus 63-clock max-hold refreshes)",
+    "non_vacuity_floor": ">= 60 pooled anchor entries AND >= 10 anchor entries in each of the 3 folds; unmet floors => VACUOUS closure pre-scoring (data-adequacy closure; unused slots never reassigned; not a rescue path)",
+    "cost_viability_note": "at 6.0 bps round trip the family needs gross per-trade drift > 6 bps; arithmetically checkable before scoring"
+  },
+
+  "lane_boundary_note": "Lane A4 owns the PPP-deviation class: misalignment-from-realized-CPI STATES, i.e. log(spot[t]/spot[t-36m]) minus cumulative relative CPI -- a construction that EMBEDS SPOT. This proposal's driver contains ZERO spot content (realized CPI legs only; spot is solely the traded instrument), so the exposure is structurally disjoint from A4's deviation-from-anchor axis, not a parameterization of it. The nominal-exposure control is a lane-1 mandate and is NOT imported here; the control arm serves this family's own identifiability (differential vs home-only). The V9 self-referential veto (PPP reducing to nominal-price-trend) cannot bind by construction -- no price trend enters the driver -- but the pooled |rho| <= 0.20 vs the V8 nominal-LEVEL shadow is nonetheless MEASURED at D2, not asserted.",
+
+  "ancestry_distinctness": {
+    "vs_session_momentum_fade_V1V2": "no session/open/range observables; daily-or-slower only; driver has no price data",
+    "vs_policy_rate_carry_V3R_and_relabels": "no policy rates, no vol gating, no yield differential anywhere; the word carry appears nowhere in the rule -- the book is a state bet on surprise content, not yield harvesting; D2 rho vs the carry region is measured, not argued",
+    "vs_commodity_bloc_risk_off_V4": "no event baskets, no risk-off conditioning",
+    "vs_release_window_avoidance_V5": "no window is avoided or entered by calendar; the book holds through prints; the +7d sham measures any residual schedule kinship rather than asserting its absence",
+    "vs_reaction_direction_V6_V7": "STRUCTURAL: V6/V7 conditioned on the SIGN/DIRECTION of FX moves after releases (own- or cross-economy) and held k days. This driver never reads an FX move -- direction is the print's level-vs-trailing-trend content; holds are calendar-independent (5/63 binding clocks on the universal grid), not k-day post-release windows. Deliberate differentiation declared: because the state updates AT print instants, its schedule correlates with release instants and pooled |rho| vs V6/V7 WILL be measured at D2 -- the sham arm plus the zero-reaction-data construction are the registered differentiators",
+    "vs_eurusd_lead_lag_V7": "no cross-pair price lead-lag; per-pair drivers are macro-leg constructs, not diffusion of prices",
+    "vs_V8_breakeven_dispersion": "no TIPS/breakeven series consumed; realized official CPI only",
+    "vs_V8_nominal_yield_LEVEL_shadow": "no yields of any kind; D2 pooled rho vs the shadow measured on conditioning exposures",
+    "vs_FRED_real_rate_lane": "no real-rate construction; the forbidden lane's data verdict is not touched (CPI index levels, not indexed-bond yields)",
+    "vs_V9_nominal_trend_and_A4_ppp_deviation": "driver contains no spot ratio and no price trend; the 36m nominal/PPP fields are not consumed; distinctness is structural (zero-spot driver), with D2 rho measured against both shadows regardless"
+  },
+
+  "ax2_compliance": {
+    "AX2_C1": "as-of pulls only from staged vintaged archives; current-vintage pulls forbidden in scored paths; ONS/StatCan/ABS/Infoshare continuations used ONLY as flagged tail legs where the vintaged archive ends inside S0 (GB post-2025-03), with provenance flags",
+    "AX2_C2": "single-snapshot: both legs of a differential read under one as-of parameter per decision clock; no vintage mixing within a decision",
+    "AX2_C3": "rebase-safe: y/y steps chained across rebase events via overlap splice (AU vintage 2018-10-09 inside S0); trend windows composed of chained y/y only",
+    "AX2_C4": "state binds at first daily 16:00-NY clock strictly after the pinned announcement instant (GB aad19697 / CA 0f1a9328 / AU 42a4e4a3 / NZ 62f82c23; US at vintaged realtime_start date); mutation-test binding at I/Q",
+    "AX2_C5": "no truncated legs: every consumed leg spans the usable grid (vintaged channel + flagged continuations)",
+    "AX2_C6": "no JP/CH/EZ legs (not funded)",
+    "AX2_C7": "full provenance per conditioning row (source_id, series_id, event/effective/available/vintage/retrieved times, raw_sha256, license_id, normalizer_version)",
+    "AX2_C8": "no nominal-exposure control mandated on this lane; the home-only control serves the family's own identifiability and is rho-measured at D2 like every arm"
+  }
+}
