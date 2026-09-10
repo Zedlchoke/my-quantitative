@@ -8,14 +8,24 @@ require a repin commit — repeated runs at the same tip are idempotent.
 Frozen required behavior (§12.1):
   - a TERMINAL row declares TERMINAL_ANCHOR identity (head == anchor) and the
     live branch tip is resolved per-run — no self-referential repin loop;
-  - evidence-only descendants on the frozen allowlist PASS; code/tests/
-    fixtures/plans(non-registry)/ledger/results changes FAIL HIGH; historical
-    event lines are append-only (deletions/reorderings FAIL);
+  - evidence-only descendants on the frozen allowlist PASS; own-scope paths
+    outside the allowlist FAIL HIGH; historical event lines are append-only
+    (deletions/reorderings FAIL);
+  - SCOPED semantics (A4-r2): the row polices ITS OWN evidence — paths in its
+    control/audit dirs + registry surfaces are OWN-SCOPE and must match the
+    allowlist; research/wayfinder/HYPOTHESIS_LEDGER.md and
+    research/wayfinder/SURVIVORS.md are PROTECTED-GLOBAL and fail HIGH for
+    every row; everything else (other cycles' code/tests/plans — e.g. the
+    successor cycle's implementation above an OLD anchor, plan §12.2) is
+    FOREIGN-SCOPE: never a finding, only listed in foreign_scope_paths;
+  - the audits tree carries NO "_run" suffix (research/audits/<cycle>/),
+    unlike the control tree (research/control/<cycle>_run/);
   - legacy TERMINAL rows without the declaration get a visible MEDIUM
     compatibility finding — never silently normalized, never auto-passed.
 """
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -27,8 +37,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "research"))
 from governance import terminal_identity as ti  # noqa: E402
 
 CYCLE_ID = "TEST-CYCLE-V1"
-CYCLE_DIR = ti.derive_cycle_dir(CYCLE_ID)  # test_cycle_v1_run
+CYCLE_DIR = ti.derive_cycle_dir(CYCLE_ID)  # test_cycle_v1_run (control tree)
+CYCLE_AUDIT_DIR = ti.derive_audit_dir(CYCLE_ID)  # test_cycle_v1 (audits tree)
 CYCLE_CONTROL = f"research/control/{CYCLE_DIR}"
+CYCLE_AUDITS = f"research/audits/{CYCLE_AUDIT_DIR}"
 JOURNAL = "plans/CYCLE_REGISTRY.events.jsonl"
 
 
@@ -121,7 +133,8 @@ def test_terminal_anchor_equals_tip_passes_with_zero_findings(repo, anchor):
     result = _validate(repo, _row(anchor), anchor)
     assert result == {"findings": [], "branch_tip": anchor,
                       "terminal_anchor_sha": anchor,
-                      "descendant_commits": []}
+                      "descendant_commits": [],
+                      "foreign_scope_paths": []}
 
 
 def test_anchor_ancestor_plus_allowed_addendum_commit_passes(repo, anchor):
@@ -143,6 +156,7 @@ def test_anchor_ancestor_plus_registry_journal_commit_passes(repo, anchor):
         tip = _commit(repo, rel, body, "registry writer output")
     result = _validate(repo, _row(anchor), tip)
     assert result["findings"] == []
+    assert result["foreign_scope_paths"] == []
     assert len(result["descendant_commits"]) == 3
     assert result["descendant_commits"][-1] == tip
 
@@ -165,68 +179,239 @@ def test_real_world_v2_shape_registry_plus_appended_cycle_event_log_passes(
 
 
 def test_audit_surface_descendant_passes(repo, anchor):
-    tip = _commit(repo, f"research/audits/{CYCLE_DIR}/a7_verdict.json",
+    """The audits tree carries NO _run suffix: research/audits/test_cycle_v1/
+    is the row's own audit evidence (own-scope, allowlisted)."""
+    tip = _commit(repo, f"{CYCLE_AUDITS}/a7_verdict.json",
                   '{"high": 0}\n', "audit artifact")
-    assert _validate(repo, _row(anchor), tip)["findings"] == []
+    result = _validate(repo, _row(anchor), tip)
+    assert result["findings"] == []
+    assert result["foreign_scope_paths"] == []
 
 
-# ---------------------------------------------------------------- FAIL: paths
+# ------------------------------------------------------- scoped path semantics
 
 @pytest.mark.parametrize("relpath", [
-    "research/governance/terminal_identity.py",      # implementation
-    "tests/test_terminal_identity.py",               # tests
-    "tests/fixtures/bars.parquet",                   # fixtures
-    "plans/foo.md",                                  # non-registry plan
-    f"research/control/other_cycle_v2_run/state.json",  # another cycle's dir
-    "research/audits/other_cycle_v2_run/verdict.json",  # another cycle's audit
-    "results/survivors.csv",                         # research results
-    "research/control/HYPOTHESIS_LEDGER.md",         # ledger/denominator class
+    "research/wayfinder/HYPOTHESIS_LEDGER.md",
+    "research/wayfinder/SURVIVORS.md",
 ])
-def test_forbidden_descendant_paths_fail_high(repo, anchor, relpath):
-    tip = _commit(repo, relpath, "tamper\n", "post-terminal change")
-    result = _validate(repo, _row(anchor), tip)
+def test_protected_global_paths_fail_high_for_any_row(repo, anchor, relpath):
+    """PROTECTED-GLOBAL: the hypothesis ledger and the survivor denominator
+    can never be touched after ANY terminal anchor — HIGH regardless of any
+    allowlist override."""
+    tip = _commit(repo, relpath, "tamper\n", "post-terminal ledger edit")
+    for allowlist_override in (None, ["**"]):
+        result = _validate(repo, _row(anchor), tip,
+                           allowlist=allowlist_override)
+        assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH"], \
+            allowlist_override
+        finding = result["findings"][0]
+        assert finding["severity"] == "HIGH"
+        assert relpath in finding["detail"]
+
+
+def test_protected_global_touch_covered_by_successor_anchor_is_informational(
+        repo):
+    """SUCCESSOR-ANCHOR RULE (plan §12.2): a ledger touch already covered by
+    a SUCCESSOR's declared terminal anchor is the successor row's business —
+    informational (listed) for the old row, still a HIGH for uncovered
+    tampering at every row, and the guard fails closed (no exemption) when
+    the canonical registry is unreadable."""
+    ledger = "research/wayfinder/HYPOTHESIS_LEDGER.md"
+    _commit(repo, ledger, "row: v0\n", "pre-anchor ledger seed")
+    anchor_old = _commit(repo, "research/impl.py", "VERSION = 1\n",
+                         "old audited anchor")
+    touch = _commit(repo, ledger, "row: v0\nrow: v1\n",
+                    "successor-cycle close-sync")
+    anchor_new = _commit(repo, "research/impl2.py", "VERSION = 2\n",
+                         "successor audited anchor")
+    plans = repo / "plans"
+    plans.mkdir(exist_ok=True)
+    registry = {
+        "schema": "cycle_registry@1",
+        "cycles": [
+            {"cycle_id": "OLD", "lifecycle": "TERMINAL",
+             "head_semantics": ti.HEAD_SEMANTICS,
+             "terminal_anchor_sha": anchor_old},
+            {"cycle_id": "NEW", "lifecycle": "TERMINAL",
+             "head_semantics": ti.HEAD_SEMANTICS,
+             "terminal_anchor_sha": anchor_new},
+        ],
+    }
+    (plans / "CYCLE_REGISTRY.json").write_text(json.dumps(registry))
+    # the old row's range contains the ledger touch, but it is covered by
+    # the successor anchor -> zero findings, listed informationally
+    # (alongside the successor's own implementation, also foreign)
+    result = _validate(repo, _row(anchor_old), anchor_new)
+    assert result["findings"] == []
+    assert result["foreign_scope_paths"] == sorted(
+        ["research/impl2.py", ledger])
+    # uncovered tampering above the frontier fires for EVERY row
+    later = _commit(repo, ledger, "row: v0\nrow: v1\nrow: v2\n",
+                    "uncovered tamper")
+    for anchor in (anchor_old, anchor_new):
+        result = _validate(repo, _row(anchor), later)
+        assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH"], anchor
+        assert result["findings"][0]["severity"] == "HIGH"
+    # fail closed: an unreadable registry means NO exemptions at all
+    (plans / "CYCLE_REGISTRY.json").write_text("{oops")
+    result = _validate(repo, _row(anchor_old), anchor_new)
     assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH"]
-    finding = result["findings"][0]
-    assert finding["severity"] == "HIGH"
-    assert relpath in finding["detail"]
+
+
+def test_own_scope_violation_still_fires_high(repo, anchor):
+    """OWN-SCOPE paths (the row's own control/audit dirs + registry surfaces)
+    MUST match the allowlist: with the default allowlist evidence-only
+    additions pass, but with an allowlist that does not sanction the path the
+    HIGH fires exactly as before (here: an implementation-looking file under
+    the row's own control and audit scope, plus a tampered registry
+    surface)."""
+    impl = _commit(repo, f"{CYCLE_CONTROL}/impl.py", "VERSION = 2\n",
+                   "own-scope implementation-looking change")
+    restricted = [f"{CYCLE_CONTROL}/event_log.jsonl"]
+    result = _validate(repo, _row(anchor), impl, allowlist=restricted)
+    assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH"]
+    assert result["findings"][0]["severity"] == "HIGH"
+    assert f"{CYCLE_CONTROL}/impl.py" in result["findings"][0]["detail"]
+
+    audit_impl = _commit(repo, f"{CYCLE_AUDITS}/impl.py", "VERSION = 2\n",
+                         "own-scope audit-dir change")
+    result = _validate(repo, _row(anchor), audit_impl,
+                       allowlist=[f"{CYCLE_CONTROL}/**"])
+    assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH"]
+
+    registry_tamper = _commit(repo, "plans/CYCLE_REGISTRY.json",
+                              '{"schema": "cycle_registry@1", "tampered": 1}\n',
+                              "registry surface tamper")
+    result = _validate(repo, _row(anchor), registry_tamper,
+                       allowlist=[f"{CYCLE_CONTROL}/**"])
+    # the diff since the anchor spans all three own-scope changes; the
+    # control-dir impl is sanctioned, the audit-dir impl and the tampered
+    # registry surface are not
+    assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH",
+                              "TERMINAL_IDENTITY_FORBIDDEN_PATH"]
+    details = "\n".join(f["detail"] for f in result["findings"])
+    assert f"{CYCLE_AUDITS}/impl.py" in details
+    assert "plans/CYCLE_REGISTRY.json" in details
+    # ...while the DEFAULT allowlist sanctions plain own-scope evidence
+    assert _validate(repo, _row(anchor), impl)["findings"] == []
+
+
+def test_foreign_scope_descendant_paths_are_not_findings_for_this_row(
+        repo, anchor):
+    """FOREIGN-SCOPE (the real-lineage shape): other cycles' code/tests/
+    plans and shared implementation above an OLD anchor are the successor's
+    own row+anchor business (plan §12.2, forward-only migration) — ZERO
+    findings for this row, but the paths are listed in foreign_scope_paths
+    for operator visibility."""
+    foreign = [
+        "research/governance/terminal_identity.py",      # implementation
+        "tests/test_terminal_identity.py",               # tests
+        "tests/fixtures/bars.parquet",                   # fixtures
+        "plans/foo.md",                                  # non-registry plan
+        "research/control/other_cycle_v2_run/state.json",   # another cycle
+        "research/audits/other_cycle_v2_run/verdict.json",  # another cycle
+        "results/survivors.csv",                         # research results
+    ]
+    tip = anchor
+    for rel in foreign:
+        tip = _commit(repo, rel, "successor work\n", "foreign-scope change")
+    result = _validate(repo, _row(anchor), tip)
+    assert result["findings"] == []
+    assert result["foreign_scope_paths"] == sorted(foreign)
+    assert len(result["descendant_commits"]) == len(foreign)
+    assert result["branch_tip"] == tip
+
+
+def test_foreign_scope_paths_empty_for_own_scope_only_changes(repo, anchor):
+    tip = _commit(repo, f"{CYCLE_CONTROL}/terminal_addendum.json", "{}\n",
+                  "evidence only")
+    assert _validate(repo, _row(anchor), tip)["foreign_scope_paths"] == []
 
 
 def test_default_allowlist_freeze():
     """The frozen §12.2 default: cycle evidence + audits + registry surfaces
-    ONLY — never code/tests/plans-docs/ledgers/results."""
+    ONLY — never code/tests/plans-docs/ledgers/results. Convention (A4-r2):
+    the control tree carries the _run suffix, the audits tree does NOT."""
     allowed = ti.default_allowlist(CYCLE_DIR)
     assert set(allowed) == {
         f"research/control/{CYCLE_DIR}/**",
-        f"research/audits/{CYCLE_DIR}/**",
+        f"research/audits/{CYCLE_AUDIT_DIR}/**",
         "plans/CYCLE_REGISTRY.json",
         "plans/CYCLE_REGISTRY.events.jsonl",
         "plans/ACTIVE_CYCLES.json",
     }
     assert not any(p.endswith(".py") or p.endswith(".md")
                    for p in allowed if not p.startswith("research/"))
+    # explicit audit_dir wins; single-arg call falls back to dropping _run
+    assert ti.default_allowlist("market_data_plane_v2r1_run") == \
+        ti.default_allowlist("market_data_plane_v2r1_run",
+                             audit_dir="market_data_plane_v2r1")
+    assert f"research/audits/market_data_plane_v2r1/**" in \
+        ti.default_allowlist("market_data_plane_v2r1_run")
+    assert ti.default_allowlist("x", audit_dir="y") == (
+        "research/control/x/**", "research/audits/y/**") + \
+        ti.REGISTRY_SURFACE_PATHS
+
+
+def test_dir_derivations_are_two_distinct_conventions():
+    """derive_cycle_dir keeps the frozen _run control convention; the new
+    derive_audit_dir matches the audits tree WITHOUT the suffix."""
+    assert ti.derive_cycle_dir("MARKET-DATA-PLANE-V2R1") == \
+        "market_data_plane_v2r1_run"
+    assert ti.derive_audit_dir("MARKET-DATA-PLANE-V2R1") == \
+        "market_data_plane_v2r1"
+    assert ti.derive_audit_dir("MARKET-DATA-PLANE-V2") == \
+        "market_data_plane_v2"
 
 
 def test_explicit_allowlist_override_param(repo, anchor):
-    """An explicit allowlist param replaces the default entirely."""
-    tip = _commit(repo, "research/governance/terminal_identity.py",
-                  "tamper\n", "override-sanctioned change")
-    result = _validate(repo, _row(anchor), tip, allowlist=["**"])
-    assert result["findings"] == []
-    # ...and the override is not sticky: default still fails the same tip
-    assert _kinds(_validate(repo, _row(anchor), tip)) == \
-        ["TERMINAL_IDENTITY_FORBIDDEN_PATH"]
+    """An explicit allowlist param replaces the default entirely: the same
+    own-scope evidence path that the default sanctions fails once the
+    allowlist is replaced — and the override is not sticky."""
+    tip = _commit(repo, f"{CYCLE_CONTROL}/addendum.json", "{}\n", "evidence")
+    assert _validate(repo, _row(anchor), tip)["findings"] == []
+    result = _validate(repo, _row(anchor), tip,
+                       allowlist=["research/other_run/**"])
+    assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH"]
+    # ...and the override is not sticky: a fresh default run passes again
+    assert _validate(repo, _row(anchor), tip)["findings"] == []
 
 
 def test_cycle_dir_override_param(repo, anchor):
-    """cycle_dir explicitly overrides the derived <cycle_id>_run scope."""
-    tip = _commit(repo, f"{CYCLE_CONTROL}/addendum.json", "{}\n", "evidence")
+    """cycle_dir explicitly overrides the derived <cycle_id>_run scope: the
+    overridden dir becomes the row's OWN scope, while without the override
+    the same path is FOREIGN scope (listed, not a finding)."""
+    tip = _commit(repo, f"{CYCLE_CONTROL}/impl.py", "tamper\n",
+                  "own-scope impl under the overridden dir")
+    restricted = [f"{CYCLE_CONTROL}/event_log.jsonl"]
+    # override: the row's scope IS test_cycle_v1_run -> own-scope -> HIGH
     result = ti.validate_terminal_identity(
         _row(anchor), tip, repo, cycle_id="TOTALLY-OTHER-CYCLE",
-        cycle_dir=CYCLE_DIR)
-    assert result["findings"] == []
-    # without the override the derived dir (totally_other_cycle_run) fails
-    result = _validate(repo, _row(anchor), tip, cycle_id="TOTALLY-OTHER-CYCLE")
+        cycle_dir=CYCLE_DIR, allowlist=restricted)
     assert _kinds(result) == ["TERMINAL_IDENTITY_FORBIDDEN_PATH"]
+    # without the override the derived dirs (totally_other_cycle_run /
+    # totally_other_cycle) do not cover the path -> foreign scope
+    result = ti.validate_terminal_identity(
+        _row(anchor), tip, repo, cycle_id="TOTALLY-OTHER-CYCLE",
+        allowlist=restricted)
+    assert result["findings"] == []
+    assert result["foreign_scope_paths"] == [f"{CYCLE_CONTROL}/impl.py"]
+
+
+def test_audit_dir_override_param(repo, anchor):
+    """audit_dir explicitly overrides the derived (no-_run) audits scope:
+    the overridden dir becomes own-scope evidence, the derived dir's files
+    become foreign-scope (listed only)."""
+    tip = _commit(repo, f"{CYCLE_AUDITS}/a7_verdict.json", '{"high": 0}\n',
+                  "audit artifact")
+    result = ti.validate_terminal_identity(
+        _row(anchor), tip, repo, cycle_id=CYCLE_ID, audit_dir="custom_audit")
+    assert result["findings"] == []
+    assert result["foreign_scope_paths"] == [f"{CYCLE_AUDITS}/a7_verdict.json"]
+    # default derivation: the file is own-scope, not foreign
+    result = _validate(repo, _row(anchor), tip)
+    assert result["findings"] == []
+    assert result["foreign_scope_paths"] == []
 
 
 # ---------------------------------------------------- FAIL: event log history
@@ -453,7 +638,8 @@ def test_live_branch_tip_surfaced_in_every_result(repo, anchor):
 def test_result_shape_is_frozen(repo, anchor):
     result = _validate(repo, _row(anchor), anchor)
     assert set(result) == {"findings", "branch_tip", "terminal_anchor_sha",
-                           "descendant_commits"}
+                           "descendant_commits", "foreign_scope_paths"}
+    assert result["foreign_scope_paths"] == []
     for f in result["findings"]:
         assert set(f) == {"kind", "severity", "detail"}
 
