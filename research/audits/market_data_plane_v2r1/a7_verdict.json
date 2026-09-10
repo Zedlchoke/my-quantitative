@@ -1,0 +1,167 @@
+{
+  "schema": "a7_verdict@1",
+  "cycle": "MARKET-DATA-PLANE-V2R1",
+  "auditor": "A7 (independent adversarial auditor)",
+  "audited_utc": "2026-09-10",
+  "audited_candidate_sha": "9aa9fd9b0bb7f7242b80354852f4d57aa343a43b",
+  "diff_base_sha": "597e74c085e29fa5dd4632c942a0291ecccd25d1",
+  "audit_branch": "orca/v2r1-a7-audit",
+  "commits_base_to_candidate": 6,
+  "base_is_ancestor_of_candidate": true,
+  "verdict": "A7_AUTHORIZE_V2R1_CLOSURE",
+  "high_critical_count": 0,
+  "independence_statement": "A7 authored zero implementation/production/test changes. All mutations were throwaway edits in the working tree or /tmp sandboxes and were fully reverted before commit (verified: git status porcelain-clean except this audit directory; mutated fixture bytes restored via git checkout after the C5b experiment). A7 wrote only research/audits/market_data_plane_v2r1/**. A7 did not acquire or wait on the heavy lock, ran no network calls, killed no processes, and never ran the full tests/ battery.",
+  "checklist": [
+    {
+      "id": "C1",
+      "name": "Full diff inventory + ownership",
+      "result": "PASS",
+      "command": "git diff --name-status 597e74c085e29fa5dd4632c942a0291ecccd25d1..9aa9fd9b0bb7f7242b80354852f4d57aa343a43b",
+      "observed": "73 files, every one inside the claimed ownership: plans cycle infra + PLAN_market_data_plane_v2r1.md; research/control/market_data_plane_v2r1_run/** (7 files); research/governance/{cycle_registry,fixture_manifest,legacy_adapters,terminal_consistency,terminal_identity}.py; scripts/{v9_universe_audit,legacy_state_tier_r_check,v9_universe_audit_tier_r}.py; tests/{test_legacy_adapters,test_fixture_manifest,test_v9_universe_audit,test_terminal_identity,test_terminal_consistency,test_cycle_registry}.py; tests/fixtures/** (4 legacy JSON + 54-entry v9 fixture bundle). ZERO touches to strategy/scored code, HYPOTHESIS_LEDGER/SURVIVORS/denominators/S1, other cycles' PLAN_*, active asset cycles, research/market_data_plane/**, research/data_fusion/**, provider payloads, secrets."
+    },
+    {
+      "id": "C2",
+      "name": "Historical immutability",
+      "result": "PASS",
+      "command": "git diff 597e74c..9aa9fd9b -- research/control/market_data_plane_v2_run/ research/audits/market_data_plane_v2/ research/control/market_data_plane_v1_run/ data/v9_manifests/universe_selection_v9.json data/v8x_manifests/crypto_universe_selection.json research/audits/v9p/{data_audit_v9,t02_gate_v9}.json scripts/v8x_crypto_universe_selection.py; shasum -a 256 scripts/v8x_crypto_universe_selection.py data/v8x_manifests/crypto_universe_selection.json",
+      "observed": "All diffs EMPTY. scripts/v8x_crypto_universe_selection.py sha256 = 709b40c229d733aa08df867a3e207da46d5c86a111c54c0d502d2b809beda406 (exact match). v8x manifest sha256 prefix = e73c703f. T1/T2/R1/R2 bytes unchanged."
+    },
+    {
+      "id": "C3",
+      "name": "Fixture authority review",
+      "result": "PASS",
+      "command": "python -c 'from research.governance.fixture_manifest import validate_fixture_manifest; print(validate_fixture_manifest(<worktree>))' + independent sha256 recompute over all 54 entries + regex secret scan + parquet/funding/legacy fixture byte inspection",
+      "observed": "Validator: 0 problems. 54 entries = 50 SYNTHETIC_HAND_COMPUTED + 4 SCHEMA_MINIMAL (canonical 4 + fragment 50); every digest recomputed and matched; contains_real_provider_payload=false and contains_secret=false on all entries. Secret scan: no hits. Content inspection: bars carry constant round volumes (250.5/290.5/500.5), funding rows constant rates (0.0001/0.00005) at exact 8h spacing, legacy fixtures carry placeholder heads (5555.../dddd.../prose); BTCUSDT appears only as a pure symbol label. license_authority classes: 'repo-authored synthetic' (50) and 'repo-owner-authored synthetic fixture; hand-computed placeholder values' (4). NO REDISTRIBUTABLE_PINNED / DERIVED_NON_REVERSIBLE class present."
+    },
+    {
+      "id": "C4",
+      "name": "Tier-H hermeticity proof",
+      "result": "PASS",
+      "command": "pytest (6 suites) from worktree; grep for filesystem reads outside tmp/fixtures; absence probes for real paths; cd /tmp pytest run; PYTHONHASHSEED=7 vs 123",
+      "observed": "Six suites: 145 passed, 0 failed, 0 skipped in 21.52s (test_legacy_adapters 13, test_fixture_manifest 8, test_v9_universe_audit 27, test_terminal_identity 45, test_terminal_consistency 30, test_cycle_registry 22). Real data absence verified by A7: catalog_live_crypto and funding_data/scan_2026 ABSENT; .worktrees/forex-free-v8 and .worktrees/stocks-free-v12 exist as empty husks (no cycle_state files, no .git) so the declared legacy sources are ABSENT; CRYPTO-V17 state_v17.json is present but the suites never read it. Code inspection: remediated tests read only committed fixtures and tmp_path. PYTHONHASHSEED=7 vs 123: 40 passed == 40 passed. cd /tmp variant: 8 failed/5 passed — root cause is PRE-EXISTING production behavior (normalize_legacy_state computes integration_worktree via main_repo_root(), whose git rev-parse fails outside any repo), not introduced by this candidate; the prescribed fallback (hashseed invariance) passes. See finding F3."
+    },
+    {
+      "id": "C5a",
+      "name": "Fixture digest tamper detection",
+      "result": "PASS",
+      "command": "Copy tests/fixtures to tmp repo_root, set one manifest digest to 000...0, run validate_fixture_manifest",
+      "observed": "Validator returned 1 problem: 'sha256 mismatch for tests/fixtures/legacy_adapters/v17_state.json' — tamper caught."
+    },
+    {
+      "id": "C5b",
+      "name": "Legacy byte-preservation assertion strength",
+      "result": "PASS",
+      "command": "(1) inject byte-mutating write into build_registry_from_legacy -> run suite; (2) revert production, remove 'assert before == after' from test -> re-inject production bug -> run suite; (3) revert both, git checkout fixtures",
+      "observed": "(1) 1 failed (test_real_legacy_files_are_read_without_byte_mutation), 12 passed — assertion bites. (2) 13 passed — the weakened test no longer catches the same bug, proving the assertion is the sole guard. (3) worktree restored clean; semantic assertion text present after revert. Suite back to 13 passed."
+    },
+    {
+      "id": "C5c",
+      "name": "V9 mutation tests really execute",
+      "result": "PASS",
+      "command": "pytest tests/test_v9_universe_audit.py -v -k 'mutation or invariant'",
+      "observed": "5 passed, 22 deselected, 0 skipped: btc_in_selected_breaks_btc_gate, removed_bar_creates_unexplained_gap, missing_funding_settlement_fails_completeness, altered_pinned_volume_string_drifts, output_invariant_across_cwd_and_hashseed."
+    },
+    {
+      "id": "C5d",
+      "name": "Novel adversarial mutations (A7-devised)",
+      "result": "PASS_WITH_FINDINGS",
+      "command": "tmp fixture copies + load_inputs/run_audit_from_bundle: (M1) swap two FFFUSDT funding rows; (M2) duplicate one IIIUSDT scored-window bar row; (M3/M3b) duplicate one / every EEEUSDT pre-window bar row",
+      "observed": "M1 reordered funding: gate PASS — by-design order-independence (analyze_funding sorts timestamps; settlement SET unchanged); benign, finding F5. M2 scored-window duplicate bar: gate PASS — audit scope is missing-data completeness; extra rows outside declared semantics; finding F4 (LOW). M3b every pre-window bar duplicated (daily totals doubled): gate PASS — root cause is a PRE-EXISTING zip-truncation bug in the immutable v8x script's median_daily_quote_volume_pre_window (slot_opens_from_ts_event returns np.unique opens; zip(opens, qv) truncates to unique count); the drift gate catches ALTERED values (shipped mutation proves) but is blind to INJECTED duplicate rows; finding F1 (MEDIUM, pre-existing, out of cycle scope)."
+    },
+    {
+      "id": "C6",
+      "name": "Tier-R truthfulness",
+      "result": "PASS",
+      "command": "python scripts/legacy_state_tier_r_check.py; echo EXIT=$?; python scripts/v9_universe_audit_tier_r.py; echo EXIT=$?; grep tier_r tests/",
+      "observed": "legacy_state_tier_r_check.py: verdict NOT_RUN_DATA_UNAVAILABLE, exit 3, availability census {expected 3, present 1, absent 2, unreadable 0}, zero-mutation proof for the one present source (CRYPTO-V17 sha 43ceb158... before==after), exact absent paths for FOREX/STOCKS, offline_no_secret assertion. v9_universe_audit_tier_r.py: verdict NOT_RUN_DATA_UNAVAILABLE, exit 3, availability artifact with expected_inputs (catalog_live_crypto, funding_data/scan_2026 — both verified absent by A7), census zeros, offline assertion network_access_used=false. No fabricated PASS anywhere. Neither CLI imported by the unit suite (only string references in fixture manifest consumer declarations)."
+    },
+    {
+      "id": "C7",
+      "name": "V9 scientific semantics preserved + engine-computed gates + expected artifact authenticity",
+      "result": "PASS",
+      "command": "git show 597e74c:tests/test_v9_universe_audit.py vs new (AST assertion-body comparison); read run_audit_from_bundle gate assembly; independent engine rerun over committed bundle vs expected/*.json",
+      "observed": "All 20 old test names present in the new suite (0 dropped); 7 tests added; asserts 71 -> 126. AST comparison: zero old assertions lost — BTC exclusion incl. benchmark-context role fields, zero unexplained gaps + documented capture-boundary classes only, per-symbol census, window contract containment, funding f1/f2/f3 + corroboration, deterministic byte-identical rerun, reproduce-committed-artifacts, gate shape/unique ids/status PASS all still asserted; the real-data constants (gaps_found_total==57) were replaced by hand-computed fixture constants with STRICTER per-symbol/btc-totals assertions (strengthened, not weakened). Gate checks computed by the engine: drifts (recomputed census vs pinned), btc_in_selected, unexplained_total (gap census), failed_ages (listing_age_check), funding_all_complete (analyze_funding), pit flags; status derived via typed fail tags — nothing hardcoded to pass (the two structural ok:True checks are enforced earlier: load_inputs refuses wrong-sha manifests, proven by test_load_pinned_selection_rejects_wrong_sha). EXPECTED ARTIFACTS AUTHENTIC: A7 independently re-ran the engine over the committed bundle — manifest.json, audit.json, gate.json all BYTE-IDENTICAL to committed expected/."
+    },
+    {
+      "id": "C8",
+      "name": "Legacy semantics preserved",
+      "result": "PASS",
+      "command": "AST compare git show 597e74c:tests/test_legacy_adapters.py vs new; diff legacy_adapters.py warning strings; behavioral default-path probe",
+      "observed": "0 old tests dropped, 0 old assertions missing (the verbatim assertion check across all 9 old tests found nothing lost); 4 tests added (typed error matrix + determinism). Warning wordings byte-identical base vs candidate: stale-head, prose-head, and 'drift recorded-not-normalized per sec2'. Production default (source_paths=None) still resolves LEGACY_SOURCES under main_repo_root() and fails CLOSED: behavioral probe on this host returned LegacySourceUnavailable 'FOREX-FREE-V8: legacy source unavailable at ...' with cycle_id + exact path."
+    },
+    {
+      "id": "C9",
+      "name": "Adversarial terminal identity matrix (synthetic repos)",
+      "result": "PASS",
+      "command": "/tmp/a7_matrix synthetic git repos, 23 initial checks + 5 corrected re-checks (script bugs in A7's own matrix fixed and re-run on clean state)",
+      "observed": "PASS: anchor==tip zero findings; branch_tip always surfaced; control addendum PASS; registry-surface PASS; code change -> FORBIDDEN_PATH HIGH; test change -> HIGH; plans/PLAN edit -> HIGH; HYPOTHESIS_LEDGER edit -> HIGH; event-log append PASS, delete FAIL, reorder FAIL; canonical journal rewrite FAIL (non-vacuous base); non-ancestor/orphan tip -> NOT_ANCESTOR HIGH; malformed sha -> MALFORMED_SHA HIGH; head!=anchor -> ROW_MALFORMED HIGH; undeclared TERMINAL row -> exactly one visible TERMINAL_IDENTITY_UNDECLARED MEDIUM (never silent pass); idempotent double validation at an evidence-only tip: zero findings both runs, tip byte-stable, NO repin commit (THE core anti-self-reference property). CAS: wrong prev_sha -> ControlStateDrift raised; non-TERMINAL row -> ValueError; head mismatch -> ValueError; correct prev_sha applies; identical re-declare is a no-op write; different re-declaration raises (declared identity immutable). One matrix artifact initially read as a journal-rewrite miss was A7's own polluted scenario; the clean re-run exposed the genuinely vacuous-absent-base edge recorded as finding F2 (LOW)."
+    },
+    {
+      "id": "C10",
+      "name": "Self-referential repin detection on REAL repo history",
+      "result": "PASS",
+      "command": "validate_terminal_identity on the audit worktree (repo_root=worktree, plans/CYCLE_REGISTRY.json MDP-V2 row head=41bf9b151e30c42b6cc7928752a7d027bb0f474f); git diff --name-status 41bf9b1..597e74c; journal byte-prefix cmp",
+      "observed": "Undeclared real row: exactly [TERMINAL_IDENTITY_UNDECLARED / MEDIUM], branch_tip surfaced (9aa9fd9b). Hypothetical declared row (anchor 41bf9b1) at branch_tip=597e74c (the V2 terminal diff base): ZERO findings; descendants exactly [98a1b780..., 597e74c...]; verified by A7 that 41bf9b1..597e74c touches ONLY plans/ACTIVE_CYCLES.json, plans/CYCLE_REGISTRY.events.jsonl, plans/CYCLE_REGISTRY.json (and, at intermediate commits, research/control/market_data_plane_v2_run/event_log.jsonl) — all inside the V2 cycle allowlist; journal 39->43 lines with the anchor version a strict byte-prefix; cycle event_log 14->15 lines, also byte-prefix append-only. Against the CURRENT audit tip (9aa9fd9b) the same hypothetical V2 row correctly flags the V2R1 cycle's own new paths (research/control/market_data_plane_v2r1_run/**, plans/PLAN_market_data_plane_v2r1.md) as FORBIDDEN for the V2 row — strict, correct scoping; V2's own closure evidence must be re-validated or re-anchored through its own lane, which the V2R1 plan's G9 (terminal consistency at live post-closure tip) covers."
+    },
+    {
+      "id": "C11",
+      "name": "Allowlist breadth",
+      "result": "PASS",
+      "command": "read terminal_identity default_allowlist + REGISTRY_SURFACE_PATHS; matrix checks 4-7",
+      "observed": "default_allowlist(cycle_dir) = (research/control/<cycle_dir>/**, research/audits/<cycle_dir>/**) + exactly 3 registry surfaces (plans/CYCLE_REGISTRY.json, plans/CYCLE_REGISTRY.events.jsonl, plans/ACTIVE_CYCLES.json). Code (research/governance/*.py), tests, fixtures, plans docs (PLAN_*.md), ledgers (HYPOTHESIS_LEDGER.md), research results are NOT allowlisted — proven by HIGH failures in C9. Legacy/ACTIVE rows keep the historical head==tip rule in terminal_consistency (additive hook only; identity-scoped branch requires head==anchor and fails otherwise; identity_result=None preserves historical behavior exactly). Validator surfaces the live branch tip in every result."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "disposition": "NO-BLOCK (pre-existing, outside cycle ownership)",
+      "title": "v8x pinned-volume drift gate is blind to injected duplicate bar rows (zip-truncation)",
+      "detail": "scripts/v8x_crypto_universe_selection.py median_daily_quote_volume_pre_window(): slot_opens_from_ts_event returns np.unique() slot opens, then zip(opens, qv) pairs unique opens with per-ROW volumes, truncating to the unique count. A7 proved: duplicating EVERY pre-window bar of a symbol (192 rows in, daily totals nominally doubled) still yields median_daily_quote_volume_usdt_exact == '24048.0' and gate PASS. The drift gate catches ALTERED volume values (shipped mutation test passes) but not injected rows. This file is sha-verified UNTOUCHED by the candidate (709b40c2...); repairing it would violate the cycle's historical-immutability contract.",
+      "recommendation": "Follow-up cycle: compute per-row slot opens without dedup (or assert len(opens)==len(qv)) before summing, and add a duplicate-ts_event integrity assertion to the v9 census."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "disposition": "NO-BLOCK (edge case; real usage safe)",
+      "title": "EVENT_LOG_REWRITTEN check is vacuous when the log file is absent at the anchor",
+      "detail": "_is_line_prefix([], tip_lines) is True for ANY tip content, so a journal/event log CREATED after the anchor can be arbitrarily rewritten without detection. A7 reproduced this in a synthetic repo (journal absent at anchor, appended then rewritten -> no finding). Real-world exposure is nil for the audited anchors: A7 verified plans/CYCLE_REGISTRY.events.jsonl and research/control/market_data_plane_v2_run/event_log.jsonl both EXIST at 41bf9b1 and satisfy the byte-prefix property at 597e74c.",
+      "recommendation": "Raise a finding when an append-only log path is absent at the anchor but present at the tip (creation-after-anchor should itself be an explicit, allowlist-judged event)."
+    },
+    {
+      "id": "F3",
+      "severity": "LOW",
+      "disposition": "NO-BLOCK (pre-existing base behavior; prescribed fallback proof used)",
+      "title": "Remediated legacy suites are data-hermetic but not cwd-independent in the strict sense",
+      "detail": "Running tests/test_legacy_adapters.py with cwd=/tmp fails 8 tests: normalize_legacy_state derives the integration_worktree display field via main_repo_root(), whose 'git rev-parse --git-common-dir' fails outside any repository. Both mechanisms exist verbatim at base 597e74c (not introduced by this cycle). Within any git worktree (the supported context) the suites pass at PYTHONHASHSEED=7 and 123 identically (40==40 passed).",
+      "recommendation": "Optional hardening: cache main_repo_root() resolution failure into a typed error or allow explicit injection, so suites are fully cwd-free."
+    },
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "disposition": "NO-BLOCK (outside declared audit semantics)",
+      "title": "Scored-window duplicate bar row passes the v9 audit",
+      "detail": "Duplicating a scored-window bar row (same ts_event) leaves gate PASS: the gap census dedups by slot (no gap created), and the pinned-volume drift contract is pre-window-only by design (mirroring the selection rule). The v9 audit's declared semantics are missing-data completeness + pinned revalidation; extra-row injection is an integrity concern for downstream consumers, not this auditor.",
+      "recommendation": "Fold into the F1 follow-up: assert per-window row-count == expected slot count (dedup-free) in the census."
+    },
+    {
+      "id": "F5",
+      "severity": "LOW",
+      "disposition": "NO-BLOCK (by-design order-independence)",
+      "title": "Reordered funding rows pass the completeness gates",
+      "detail": "analyze_funding sorts fundingTime values before analysis, so array order carries no scientific weight; a reorder changes no settlement. Benign miss; recorded for completeness of the mutation record.",
+      "recommendation": "None required."
+    },
+    {
+      "id": "F6",
+      "severity": "LOW",
+      "disposition": "NO-BLOCK (mid-cycle bookkeeping; no false closure claim)",
+      "title": "Controller state.json shows all gates open while G0/G1 gate JSONs carry verdict PASS",
+      "detail": "research/control/market_data_plane_v2r1_run/state.json has completed_gates={}, open_gates=[G0..G9], verdict=None, while gates/V2R1-G0_intake.json and V2R1-G1_characterization.json carry verdict PASS (event log has only R0_INTAKE_MEASURED + R0_BOOTSTRAP lines). The plan's G6 explicitly requires this A7 authorization and G7-G9 are post-audit; nothing claims closure ahead of evidence. Noted so the controller reconciles the ledger as gates discharge.",
+      "recommendation": "Controller: append GATE_MEASURED/DISCHARGED events and move gate ids from open_gates to completed_gates as each gate is actually discharged."
+    }
+  ],
+  "host_observation": "The D1 narrative says the legacy paths were 'cleaned': A7 verified .worktrees/forex-free-v8 and .worktrees/stocks-free-v12 exist as empty husks (no cycle_state files, no .git) while .worktrees/crypto/v17/integration/.../state_v17.json is present and hashes 43ceb158... — exactly matching the Tier-R census (1 present / 2 absent).",
+  "zero_repairs_confirmation": "A7 changed zero implementation files. Every mutation was reverted before commit; fixture bytes touched by the C5b experiment were restored via git checkout and re-verified (13 passed). The Tier-R CLI's own artifact output under research/audits/v9_tier_r/ was deleted before committing so the branch contains ONLY research/audits/market_data_plane_v2r1/**.",
+  "heavy_lock": "not acquired, not waited on (FREE_PROVEN at audit time; left free)"
+}
