@@ -435,7 +435,7 @@ def test_run_real_historical_audit_absent_data_writes_availability_artifact(
 # --------------------------------------------------------------------------- #
 def test_fixture_entries_cover_every_committed_file():
     entries = json.loads((FIXTURE_DIR / "fixture_entries.json").read_text())
-    by_path = {e["path"]: e for e in entries["entries"]}
+    by_path = {e["path"]: e for e in entries["fixtures"]}
     seen = set()
     for p in sorted(FIXTURE_DIR.rglob("*")):
         if not p.is_file() or p.name == "fixture_entries.json":

@@ -104,15 +104,15 @@ def test_fixture_entries_fragment_is_infrastructure_not_violation(tmp_path):
     own fixture_entries.json fragment validates clean — the fragment file
     itself never needs an entry, and the scan finds the fragment's files."""
     root = _make_tmp_repo(tmp_path)
-    frag_dir = root / "tests" / "fixtures" / "v9_universe_audit"
-    frag_dir.mkdir(parents=True)
+    frag_dir = root / "tests" / "fixtures" / "fragment_probe"
+    frag_dir.mkdir(parents=True, exist_ok=True)
     sample = frag_dir / "sample.json"
     sample.write_text('{"schema": "x"}\n', encoding="utf-8")
     fragment = {
         "schema": "governance_fixture_manifest@1",
         "fixtures": [{
-            "fixture_id": "fx-v9-audit-sample",
-            "path": "tests/fixtures/v9_universe_audit/sample.json",
+            "fixture_id": "fx-fragment-probe-sample",
+            "path": "tests/fixtures/fragment_probe/sample.json",
             "class": "SYNTHETIC_HAND_COMPUTED",
             "purpose": "tmp-repo fragment entry proving the fragment pattern",
             "sha256": hashlib.sha256(sample.read_bytes()).hexdigest(),
