@@ -1,0 +1,46 @@
+{
+  "schema": "mdp_v1_g9_resumption_verdict@1",
+  "cycle": "MARKET-DATA-PLANE-V2",
+  "purpose": "P1 closure of finding F1: attempt the V1 MARKET-DATA-PLANE-V1 G9 full-suite resumption exactly once per V2 plan section 9 P1, without contention",
+  "measured_utc": "2026-09-10T02:05:00Z",
+  "host": "hoangminhlong @ /Users/hoangminhlong/my-quantitative/.worktrees/market-data-plane-v2/integration",
+  "lock_inspection": {
+    "tool": "research/researchctl.py locks inspect",
+    "verdict": "HELD_PROVEN",
+    "reason": "pid 49521 alive, process-start token matches the registry row, and the flock is held (STOCKS-FREE-V13/P0D_BULK_INGEST)",
+    "evidence": {
+      "pid": 49521,
+      "pid_alive": true,
+      "lstart": "ps:Thu Sep 10 03:50:49 2026",
+      "registry_process_start_token": "ps:Thu Sep 10 03:50:49 2026",
+      "token_match": true,
+      "flock_state": "held",
+      "registry_path": "/Users/hoangminhlong/.my-quantitative-governance/heavy_runtime/heavy_worker.registry.json",
+      "lock_path": "/Users/hoangminhlong/.my-quantitative-governance/heavy_runtime/heavy_worker.lock"
+    },
+    "inspections_this_phase": 1,
+    "poll_policy": "no aggressive polling per plan P1; job remains enqueued with the scheduler"
+  },
+  "full_suite_attempt": {
+    "command": null,
+    "exit_code": null,
+    "stdout_stderr_digest": null,
+    "duration_seconds": null,
+    "sha_under_test": null,
+    "clean_tree": null,
+    "verdict": "NOT_RUN_RESOURCE_CONFLICT",
+    "basis": "machine-wide heavy lock HELD_PROVEN by the foreign STOCKS-FREE-V13 P0D_BULK_INGEST worker; plan P1 forbids contention and forbids running the full suite while a foreign heavy worker exists"
+  },
+  "scheduler_job": {
+    "job_id": "MARKET-DATA-PLANE-V1/FULL_SUITE_REGRESSION/20545b514b91",
+    "status": "WAITING",
+    "verdict": "NOT_RUN_RESOURCE_CONFLICT",
+    "attempt": 0,
+    "max_attempts": 3,
+    "last_classification": {"kind": "RESOURCE_BUSY", "detail": "heavy lock held at admission"},
+    "action_taken": "left WAITING untouched; no attempt consumed"
+  },
+  "historical_bytes_preserved": true,
+  "historical_bytes_note": "V1 terminal_report.json, state.json, heartbeat.json, worktree_manifest.json, gates/ and event_log.jsonl prior lines are untouched; this file and the appended event line are pure additions",
+  "resumption_contract": "when a future measurement returns FREE_PROVEN: acquire the machine-wide lock, run the full repo pytest alone from the exact V1 terminal tip 917b8749c6e61887d0e1046a3b99a1f1cf53dca6 (or an explicitly frozen reproduction tree with a fresh A7 wave if the branch has advanced), record command/exit/digest/duration/host/SHA/lock/clean-tree, flip V1 G9's full-suite component and enqueue consumption through the scheduler journal"
+}
