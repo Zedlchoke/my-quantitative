@@ -291,3 +291,21 @@ promise.
 - [Define the TradFi perpetual research contract](tickets/tradfi-research-contract.md) — blocked by the future holdout.
 - [Set shared-capital and portfolio promotion rules](tickets/portfolio-promotion-gate.md) — blocked by candidate decisions.
 - [Approve the controlled forward-test handoff](tickets/forward-test-handoff.md) — blocked by portfolio and execution decisions.
+
+## CRYPTO-V17 (CLOSED 2026-09-10) — the intraday microstructure frontier, closed at the prelaunch gate
+
+- Verdict `V17_BLOCKED_DATA_OR_SELECTION`: zero scored cells, budget 0/6, S1 SEALED. Both
+  mandatory-lane-1 proposals (intraday BTC/ETH) died by their own frozen rules — SILRES
+  rule-4 coverage (duty 0.81%/0.99% vs [5%,60%]) and WKNDLIQ G12 novelty (0.5628 corrected
+  after a measurement-defect catch); the cross-lane survivors ATTN-PHASE and OICASCADE then
+  died at A7 prelaunch v3 (G1 measured dead via the cycle's own smoke pipeline; OICASCADE
+  also K1 control-out-earns + K2 fold-negative-majority). Owner decision A closed on the
+  frozen-rule kills with smoke exposure disclosed.
+- Governance arc: A7 refused three times, each refusal produced a real fix (rule
+  enforcement wired fail-closed; a D2 measurement defect corrected; the endpoint
+  alignment hints) — the first cycle where every refusal was a measurement or enforcement
+  defect, never a threshold argument. INC-V17-1 (commit message vs content) recorded.
+- Durable assets: the UTC-H1 panel (1.391B rows, 3 symbols, sha-pinned), the
+  family-agnostic driver with fail-closed frozen-rule enforcement, the warmup-extended
+  per-symbol-distinct OI authority (1,452-file manifest). Lane 1 re-opens only via a
+  future owner plan. Registry 61 entries. Denominators unchanged 155/158, 233/236.
