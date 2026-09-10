@@ -1,0 +1,143 @@
+{
+  "schema": "forex_free_v9_d1_proposal_v1",
+  "cycle": "FOREX-FREE-V9",
+  "lane": "a4-ppp",
+  "lane_role": "MANDATORY axis: realized-inflation PPP-deviation misalignment, outcome-blind proposal 2 of 2 (preregistered variant of the census class: 12m horizon + z-standardization)",
+  "hypothesis_id": "FXFV9-A4-P2",
+  "wave_sha": "8b99412d46774e7dadd0d30b3bed0050390fec03",
+  "outcome_blind": true,
+  "title": "12m realized-inflation PPP-deviation state, z-standardized hysteresis: the fast band of the mandate-cycle reversion on the funded pairs",
+
+  "mechanism": "Who is slow/forced: the same valuation-motivated cohort as proposal-1 (reserve managers, sovereign funds, corporate treasurers), but sampled at the FASTER band of their mandate cycle: fiscal-year hedge-ratio resets are set off 1-year realized purchasing-power gaps, quarterly reserve-flow valuation marks flag 1-year real misalignments, and monthly mandate reviews act on the deviation scaled by its own recent dispersion (a 1-sigma move in the gap is a review trigger, a raw 36m gap is not). Why the effect exists: over 12 months, the spot return minus the 12m relative-CPI change measures how far spot has drifted from the price-level anchor within one budget cycle; when that gap is extreme relative to its own trailing dispersion, budget-cycle flow (hedge-ratio resets, valuation-mark rebalancing) pushes back over the following 1-2 print cycles. The mechanism is MEAN-REVERSION IN THE DEVIATION, not trend-following: the traded signal is z(m) where m = 12m nominal spot return MINUS 12m relative CPI — when the inflation differential explains the nominal trend, m ~= 0 and z(m) ~= 0 and NO trade fires even though a large nominal trend exists; the standardization is computed on the DEVIATION stream, never on the trend stream, so the anchor cannot collapse onto the V8 nominal-LEVEL shadow (PF 1.2268) by construction. Observable: per pair, m_p(t) = log(S_p(t)/S_p(t-12m)) - [cumulative 12m log CPI change of the non-US leg minus the US leg] (one y/y log step per leg per snapshot), each leg consumed as-of the decision instant from the vintaged channel at pinned announcement instants; z over the trailing 8 decision-event snapshots of the pair's own deviation stream (min 6 valid). When it MUST fail: (i) if the identical geometry on the nominal 12m trend alone (misalignment removed — the mandatory control) reproduces the anchor's expectancy (same sign, >= 0.5x), the state is nominal-trend exposure in new words — the V8 death (F2-a); (ii) if pooled |rho| of the anchor state vs the V8 d2 schedules or the nominal-trend field exceeds 0.20 at D2, it dies before scoring; (iii) if the +7d sham-calendar reproduces the anchor (same sign, >= 0.5x), the print timing carries no information (F2-b); (iv) if the 12m gap is a random walk at the decision horizon (no 1-2-cycle reversion), the fade expectancy is non-positive and the frozen gates fail; (v) if the z-window's min-6-valid rule voids too many eligible decision instants (thin quarterly streams), the cell is BLOCKED_SELECTION — a selection failure, not mechanism evidence (F2-c); (vi) if trade counts are too thin to clear the 6 bps round-trip tier-2.0 cost, the break-even gate fails structurally.",
+
+  "universe": {
+    "pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "funding_note": "funded pairs ONLY; EURUSD/USDJPY/USDCHF NOT funded this cycle (EZ/JP/CH CPI legs not censused per p0_census_v9.json) and are never entered",
+    "cpi_leg_map_per_p2_census": {
+      "GBPUSD": {"legs": ["GB", "US"], "cpi_legs": "monthly + monthly", "cal_pin": "GB_cal aad19697; US leg availability = vintaged realtime_start instant (V8 dense audit inherited: lag 10-14d)"},
+      "USDCAD": {"legs": ["CA", "US"], "cpi_legs": "monthly + monthly", "cal_pin": "CA_v3 0f1a9328"},
+      "AUDUSD": {"legs": ["AU", "US"], "cpi_legs": "quarterly + monthly", "cal_pin": "AU_cal 42a4e4a3"},
+      "NZDUSD": {"legs": ["NZ", "US"], "cpi_legs": "quarterly + monthly", "cal_pin": "NZ_cal 62f82c23"}
+    },
+    "position_convention": "pair-instrument convention, uniform in the deviation: m_p > 0 (base currency real-overvalued on 12m) -> SHORT the pair instrument; m_p < 0 -> LONG. GBPUSD base GBP; USDCAD base USD (m = USD real appreciation vs CAD); AUDUSD base AUD; NZDUSD base NZD. Equal risk unit per pair, no pair weighting, no cross-pair structure"
+  },
+
+  "conditioning": {
+    "data_authority": "p2_conditioning_clocks_v9.json fields ONLY, exercised through the PREREGISTERED VARIANT axes explicitly permitted by the D1 lane mandate ('different horizon, band form, or z-standardization'): horizon 12m (variant axis 1) + z-standardization (variant axis 2); same census CPI legs, same vintaged channel, same as-of machinery, same pinned announcement instants; p0_census_v9.json verdicts PASS_PIT_EVIDENCED x5 (kill test PASSED); official current-tables = continuation/tail legs only; term_structure_breakeven_slope FORBIDDEN (V8 veto (a)); NO market-expectations series, NO policy rate — realized CPI index levels ONLY; the spot leg appears only inside the misalignment construct",
+    "fields": [
+      {
+        "field": "ppp_misalignment_12m_variant (preregistered 12m-horizon derivative of the census ppp_misalignment_36m class: same legs, same y/y-chain machinery, window 36m -> 12m)",
+        "role": "anchor mechanism-bearing state (the z-standardized DEVIATION, never the trend)",
+        "pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"]
+      },
+      {
+        "field": "nominal_12m_trend (horizon-matched analog of the census nominal_36m_trend_control field; variant axis declared)",
+        "role": "MANDATORY causal-control input (plan 2(b)): log(spot[t]/spot[t-12m]) alone — the misalignment removed; D2 measures this control DIRECTLY against the V8 nominal-LEVEL shadow (PF 1.2268) and the nominal-trend field"
+      }
+    ],
+    "transforms": {
+      "as_of_single_snapshot": "each decision consumes ONE as-of snapshot per leg: the vintaged observation whose available_time <= the decision instant; no splicing across snapshots/vintages; the 12m relative CPI is ONE y/y log step per leg (log CPI[m]/CPI[m-12], 12 quarterly steps telescoped analogously for AU/NZ legs) computed inside that one snapshot",
+      "rebase_safety": "the y/y ratio is invariant to index rebasing within a vintage; cross-rebase pairs guarded by the inherited V8 rebase/revision event map (GB 5 rebase-class; CA 5 rebase-class + 216 revision events; AU rebase inside S0 at vintage 2018-10-09; NZ revised-class samples)",
+      "z_standardization": "z_p(t) = m_p(t) / stdev(m_p over the pair's own trailing 8 DECISION-EVENT snapshots, min 6 valid, else NO-DECISION that instant); the window contains only strictly-past decision-instant values of the DEVIATION stream (PIT-clean); the standardization is never computed on the nominal-trend stream for the anchor",
+      "thresholds_frozen": {"z_entry_abs": 1.00, "z_exit_abs": 0.50, "z_window_decision_events": 8, "z_min_valid": 6, "max_hold_decision_events": 2},
+      "lags_policy": "each CPI leg consumed at its own availability instant; the binding instant for a pair is the LATER of (non-US leg instant, US leg instant); I/Q availability-lag mutation must move the consumed decision exactly one period per field"
+    }
+  },
+
+  "decision_clock": {
+    "rule": "p2_conditioning_clocks_v9.json decision_clock (verbatim)",
+    "spec": "per pair: the FIRST daily 16:00 America/New_York (DST-correct) clock STRICTLY AFTER the LATER leg availability instant of the binding CPI print pair (pinned calendars GB aad19697 / CA_v3 0f1a9328 / AU 42a4e4a3 / NZ 62f82c23; US leg availability = vintaged realtime_start instant); FX 24/5; the book is event-driven on this per-pair grid — entries, hysteresis exits and forced exits evaluated ONLY at these instants (daily-or-slower satisfied); fills at that instant's 16:00-NY close"
+  },
+
+  "warmup": {
+    "reserved_lookback": "12 months of spot history for the state + 8 decision-event snapshots (min 6) for the z-window",
+    "derivation": "spot coverage begins 2020-01-30 (V1 snapshot manifest class) -> first well-defined 12m deviation state ~2021-01-30; monthly print pairs accumulate 6-8 decision events by ~2021-08..2021-10 (first decisions ~2021-10); quarterly print pairs accumulate 6-8 events by ~2022-08..2023-02 (first decisions ~2023-02); per-pair grids are first-feasible (a pair trades only from its own warmup completion)",
+    "usable_grid": "approximately 2021-10-01..2025-07-24 pooled (per-pair first-feasible; S0 tail-capped); exact decision counts bind at runner runtime (spot-dependent; census counts_note)"
+  },
+
+  "entry_exit_fills": {
+    "entry": "at a per-pair decision instant, when no position is open in that pair, z_p is valid (>= 6 window values) and |z_p| >= 1.00: SHORT the pair instrument if z_p > 0, LONG if z_p < 0; fill = that instant's 16:00-NY close",
+    "exit": "hysteresis close at the first subsequent decision instant with |z_p| <= 0.50; otherwise forced close at the 2nd decision instant after entry (max_hold_decision_events = 2); no discretionary exits; positions never overlap within a pair",
+    "fills": "same-instant market fill at the daily 16:00-NY close; no intrabar logic; no slippage model beyond the cost ladder",
+    "dual_book": "price-only book and financing-adjusted book carried per frozen invariant 6 (sign non-inversion {0,1} vs 0.0)"
+  },
+
+  "costs": {
+    "ladder": "1.5 bps/side x {1.0, 1.5, 2.0}",
+    "primary_tier": 2.0,
+    "note": "tier 2.0 PRIMARY for all gate evaluation (inherited V6/V7/V8); round-trip tier-2.0 cost = 6 bps; frozen rule 5: break_even_bps <= 1.5 floor"
+  },
+
+  "arms": {
+    "count": 3,
+    "anchor": {
+      "id": "FXFV9-A4-P2-anchor",
+      "spec": "12m deviation z-hysteresis fade on all 4 funded pairs: at each per-pair decision instant, |z| >= 1.00 triggers SHORT instrument (z > 0) or LONG instrument (z < 0); hysteresis exit |z| <= 0.50; forced exit at the 2nd decision instant after entry; equal risk per pair; dual books",
+      "mechanism_bearing_component": "the z-standardized DEVIATION m = 12m spot return MINUS 12m relative CPI — standardized on the deviation stream itself, so a nominal trend fully explained by inflation cannot generate a trigger"
+    },
+    "neighbour": {
+      "id": "FXFV9-A4-P2-neighbour-sham7d",
+      "type": "MANDATORY +7d sham-calendar placebo, occupying the neighbour slot (print instants condition the book; 3-arm budget; V8 precedent FXFV8-A4-P2)",
+      "spec": "IDENTICAL rule in every field — same z thresholds (1.00/0.50), same 8-event window min 6, same 2-event forced hold, same direction convention, same universe, same dual books — except the per-pair decision calendar is shifted +7 calendar days: entries/exits evaluated at instants+7d, state and z re-computed as-of those shifted instants under identical availability semantics, fills at the shifted instants' 16:00-NY closes",
+      "tests": "whether the GENUINE print timing/values carry the information (falsification cluster #10/#12); the +7d shift also perturbs which leg is the binding later leg at calendar boundaries, so a reproducing sham is strong evidence the conditioning is generic"
+    },
+    "control": {
+      "id": "FXFV9-A4-P2-control-nominal-trend-exposure-form",
+      "type": "causal control — MANDATORY nominal-exposure form (plan 2(b), p3 mandatories_per_family)",
+      "spec": "identical rule geometry with the misalignment removed: input n_p(t) = log(S_p(t)/S_p(t-12m)) alone (horizon-matched analog of the census nominal_36m_trend_control field), z-standardized on its OWN trailing 8-decision-event stream (min 6 valid), same bands |z_n| >= 1.00 / exit <= 0.50, same fade direction convention (z_n > 0 -> SHORT instrument), same event grid, same 2-event forced hold, same universe and dual books",
+      "identifiability": "differs from the anchor ONLY in the mechanism-bearing input (the relative-CPI leg is deleted; the z-window then standardizes the bare trend stream); on decision instants where the CPI differential offsets the nominal trend the anchor stands aside while the control trades — that overlap asymmetry is exactly the refutation surface",
+      "refutes": "the convenient explanation 'this is just nominal price-trend / V8 nominal-LEVEL shadow exposure relabelled' — D2 measures this control DIRECTLY against the V8 shadow (PF 1.2268) and the nominal-trend field"
+    }
+  },
+
+  "falsification_rule": {
+    "preregistered": true,
+    "primary_numeric": "F2-a NOMINAL SHADOW: if the control arm's financing-adjusted expectancy per trade at tier 2.0 has the SAME SIGN as the anchor's AND |exp_control| >= 0.5 x |exp_anchor|, the family DIES as nominal-price-trend exposure in new words (V8 R1-class; falsification-by-control cluster instance)",
+    "secondary_numeric": [
+      "F2-b SHAM REPRODUCTION: if the +7d sham neighbour's fin-adj expectancy at tier 2.0 has the anchor's sign AND >= 0.5 x the anchor's, the genuine print timing carries no incremental information -> family DIES",
+      "F2-c DIRECTION REFUTATION: if anchor expectancy at tier 2.0 < 0 while the control expectancy > 0, the mean-reversion direction is refuted at the 12m horizon -> family DIES; a sign flip is FORBIDDEN as rescue",
+      "F2-d ANCESTRY VETO (measured at D2 pre-selection, before any PnL): pooled |rho| > 0.20 between the anchor's conditioning state and ANY forbidden-ancestry exposure — including the V8 d2 schedules AND the nominal-trend field — kills the anchor before scoring",
+      "F2-e SELECTION THINNESS: if the z-window min-6-valid rule voids > 50% of eligible decision instants on any leg class (monthly or quarterly), the cell closes BLOCKED_SELECTION — recorded as a selection failure, not mechanism evidence; unused slot never reassigned",
+      "F2-f INHERITED BASELINES: any arm failing the frozen rule_order 1..10 (p3_invariants_freeze_v9.json) fails; the family is promotable only if the anchor passes all gates AND no falsifier fires"
+    ],
+    "nonvacuity": "if anchor trades < 40 S0-wide, or any fold has 0 anchor trades, the cell is VOID as vacuous (BLOCKED_SELECTION-class), not evidence about the mechanism"
+  },
+
+  "expected_failure_interpretation": {
+    "F2-a_fire": "the realized-inflation deviation adds nothing beyond the nominal trend at the 12m horizon either — the misalignment class closes exactly as V8's expectation class closed (by its own mandatory control)",
+    "F2-b_fire": "a 7-day calendar shift is informationally empty -> generic slow valuation exposure, not print-anchored mechanism; recorded as negative information, not pursued",
+    "F2-c_fire": "nominal momentum dominates value-driven reversion within the budget cycle (Rogoff-consistent); the frozen fade direction is wrong and a sign flip is FORBIDDEN as rescue",
+    "F2-e_fire": "the quarterly-leg z streams are too thin on this spot history to test the variant at all — honest BLOCKED_SELECTION, feeding the next cycle's data-staging decision",
+    "gates_fail_no_falsifier": "genuine mechanism-specific reversion exists but not at tradeable margins — the most likely surfaces are the break-even gate (6 bps round trip) and stress tier 2.0; the thin-margin class per P-2, recorded with margins_to_fail scaffolding"
+  },
+
+  "fold_structure": {
+    "folds": 3,
+    "construction": "3 equal thirds of the usable decision grid, cut mechanically at runner runtime (per p2 census folds field); boundaries frozen before scoring and never moved after PnL is visible",
+    "indicative_thirds": [
+      {"fold": 1, "approx": "2021-10-01 .. 2023-01-31"},
+      {"fold": 2, "approx": "2023-02-01 .. 2024-05-31"},
+      {"fold": 3, "approx": "2024-06-01 .. 2025-07-24"}
+    ],
+    "gate_inherited": "positive_populated_folds >= 2 of 3 with STRICT margin > 0 per fold (owner option-1 ruling inherited from V8; frozen rule 3)"
+  },
+
+  "decision_count_sanity": {
+    "pooled_decision_events": "approximately 114 across the usable grid: GBPUSD ~45 and USDCAD ~45 (monthly print pairs 2021-10..2025-07), AUDUSD ~12 and NZDUSD ~12 (quarterly print pairs 2023-02..2025-07)",
+    "trigger_rate_assumption": "P(|z| >= 1.00) ~ 0.20-0.35 for a slow deviation state against its own 8-event dispersion; the 2-event forced hold caps overlap",
+    "expected_anchor_trades": "45-70 S0-wide (~15-23 per fold)",
+    "floor": 40,
+    "verdict": "non-vacuous: enough decisions for 3 populated folds; the quarterly-pair z streams remain the thin surface (F2-e guards it explicitly); the break-even gate stays a declared risk"
+  },
+
+  "novelty_attestation": {
+    "forbidden_packet_checked": "d1_packet_forbidden_inventory_v9.json read in full",
+    "not_entered_classes": "no session/open momentum or fade (event clocks and 16:00-NY closes only); no range structures; no policy-rate input anywhere; NO market-inflation-expectations series and no breakeven term-structure dispersion (V8 veto (a)) — realized CPI index levels ONLY; no vol gating; no commodity-bloc risk-off baskets; no release-window avoidance (the print instant is used for AVAILABILITY/decision timing, never for avoidance windows); no reaction-direction conditioning (the state is CPI index LEVELS and 12m spot-vs-CPI deviations, not post-print FX direction — V6/V7 class untouched); no EURUSD lead-lag (pair not funded); no USD-PC1 gating; no carry (front door closed, measured rho 0.997-1.000); V8 real-rate-FRED lane untouched (CPI index levels, not real-yield series)",
+    "v8_shadow_differentiation": "the V8 measured shadow is the nominal-yield-LEVEL/nominal-trend exposure (PF 1.2268); this anchor's traded signal is the z-standardized DEVIATION FROM the PPP anchor, standardized on the deviation stream itself — when inflation explains the trend, z(m) ~= 0 and the anchor does not trade while a nominal-trend book would; mechanism = mean-reversion (fade), not trend-following; the variant differs from proposal-1 in BOTH sanctioned axes (horizon 36m -> 12m; raw bands -> z-hysteresis) giving a distinct cell, grid and falsification surface; D2 measures pooled rho vs the V8 d2 schedules AND vs the nominal-trend field (bar |rho| <= 0.20), measured never argued; the mandatory nominal-exposure control plus falsifier F2-a stand guard",
+    "sham_calendar_discharge": "print instants condition the book (the decision grid IS the print-pair calendar), so the +7d sham-calendar variant is MANDATORY and occupies the neighbour slot (declared; V8 precedent)",
+    "spot_leg_disclosure": "V1 snapshot lost post-close (manifest fe2155c0 records the class); Twelve Data re-acquisition SAMPLE_DEMONSTRATED; full re-staging = I-phase prerequisite with manifest-class byte verification; if re-staging fails the cycle closes BLOCKED_DATA_OR_SELECTION — a data verdict, not a family verdict",
+    "s1": "SEALED_UNTOUCHED"
+  },
+
+  "pnl_anywhere": false
+}
