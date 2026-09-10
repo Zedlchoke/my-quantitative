@@ -133,3 +133,85 @@
 A7 authored zero implementation changes. All mutations were throwaway, in-tree edits or /tmp sandboxes, fully reverted
 (fixture bytes restored via git checkout and re-verified with 13 passed). The Tier-R CLI's stray artifact directory was
 deleted before committing. This branch contains ONLY research/audits/market_data_plane_v2r1/**. Heavy lock never acquired.
+
+---
+
+# A7-r2 — DELTA re-audit of the terminal-identity scope fix (2026-09-10)
+
+Scope: ONLY commit 011ef81e (cherry-picked identically as 85f39c3, tree b5cfb79f both —
+empty diff verified), the A4-r2 remediation of the G9 FAIL_TERMINAL_IDENTITY_CONTRACT
+refusal at d2416c3 (background read from bytes: gates/V2R1-G9_terminal_identity_FAIL_r1.json
++ the G9_FAIL_R1 event_log.jsonl line). The prior A7 sections above are untouched.
+
+## Delta checklist results (full evidence in a7_delta_verdict_r2.json)
+
+- **D1 diff inventory — PASS.** Exactly the 5 claimed files (2 governance + 3 tests),
+  748+/73−. Zero other files.
+- **D2 semantic preservation vs the prior C9 matrix — PASS.** Anchor grammar/missing/
+  ancestry/branch-missing, head!=anchor, row-shape malformations, report mismatch,
+  event-log delete/reorder (cycle log AND canonical journal) vs append, undeclared
+  legacy row (exactly one visible MEDIUM) — all unchanged; identity/consistency/registry
+  suites 104 passed. Intended semantic delta: foreign-scope successor changes above an
+  old anchor are LISTED (foreign_scope_paths) not HIGH — that is the §12.2 semantics the
+  G9 ruling prescribed for the 86/139 false HIGHs, not a defang.
+- **D3 scoped-path worst case — PASS.** Own control/audit evidence appends pass (G9
+  audits-dir defect fixed; pattern covers a7_verdict.json/audit_log.md/nested);
+  own-scope paths fire FORBIDDEN_PATH HIGH under a non-sanctioning explicit allowlist;
+  HYPOTHESIS_LEDGER.md fires HIGH with default AND ['**'] override (protected
+  classification is first and allowlist-independent); foreign code is not a finding and
+  is listed.
+- **D4 protected-global carve-out abuse — PASS_WITH_FINDING.** Fail-closed proven: no
+  successor declaration → HIGH; only-malformed successors → HIGH; corrupt/missing
+  registry → HIGH; non-ancestor (orphan) successor with no other cover → HIGH.
+  F-R2-1 (LOW): a forged successor row in the canonical registry (working tree or
+  committed) anchored ≥ the tamper suppresses the ledger HIGH for every row — registry
+  content is the contract's trust root, so this is an authority-forgery boundary, not a
+  classification bug; uncovered tampering always fires.
+- **D5 redeclare abuse — PASS 11/11.** Backward / unrelated-orphan / nonexistent /
+  malformed new anchors all refused with registry+journal bytes unchanged; undeclared,
+  non-TERMINAL, and head!=anchor rows raise; identical redeclare is a no-op; forward
+  migration moves head+terminal_anchor_sha together, touches nothing else, appends
+  TERMINAL_IDENTITY_REDECLARED (from/to anchors). Repin loops structurally impossible:
+  terminal_identity.py contains zero writer calls; a 3× validation loop at a moved tip
+  left tip/journal/registry bytes byte-identical. Real precondition: 9aa9fd9b IS an
+  ancestor of 85f39c3 — the sanctioned migration is forward-legal.
+- **D6 audits-dir convention — PASS.** default_allowlist(V2R1) == exactly
+  {control/market_data_plane_v2r1_run/**, audits/market_data_plane_v2r1/**, 3 registry
+  surfaces}; V2 pair likewise; explicit audit_dir= wins; real research/audits/ carries
+  no *_run directory; no pattern beyond the §12.2 minimal list.
+- **D7 real history at tip 85f39c3 — PASS.** The 3 declared rows (V2R1@9aa9fd9b,
+  V2@41bf9b1, V1@917b8749): ZERO findings each; foreign counts 5 / 90 / 143 (G9's 86/139
+  HIGHs now informational; +4 explained by the two commits after d2416c3); V2R1's foreign
+  list is exactly the 5 delta files; event-log prefix property holds on all three ranges;
+  idempotent re-run identical.
+- **D8 regression — PASS.** Six suites 152 passed / 0 failed (legacy_adapters 13,
+  fixture_manifest 8, v9_universe_audit 27, terminal_identity 45, terminal_consistency 31,
+  cycle_registry 28).
+- **D9 historical immutability — PASS.** git diff 597e74c..HEAD restricted to
+  research/control/market_data_plane_v2_run/, research/control/market_data_plane_v1_run/,
+  research/audits/market_data_plane_v2/ is EMPTY.
+
+## Findings
+
+- F-R2-1 LOW (NO-BLOCK): forged-successor-row suppression of the protected-global guard
+  (see D4); recommendation: resolve successor anchors from a pinned committed revision.
+- F-R2-2 LOW (NO-BLOCK, pre-fix-identical): own-scope pattern set == default allowlist
+  set, so under the default the own-scope HIGH can only surface via an explicit narrower
+  allowlist param (as the shipped test does).
+- F-R2-3 INFO (NO-BLOCK, prescribed): §12.3 "code change → FAIL HIGH" now holds through
+  scoped ownership; enforcement of the new-anchor-after-A7 rule for foreign changes is
+  procedural (this audit + the one forward-only redeclare).
+
+## Verdict
+
+**A7_AUTHORIZE_ANCHOR_MIGRATION** — high/critical count 0. The delta faithfully implements
+the G9-prescribed contract, preserves every previously-catching HIGH, and authorizes the
+single forward-only migration 9aa9fd9b → 85f39c3 via
+cycle_registry.redeclare_terminal_identity, recorded as TERMINAL_IDENTITY_REDECLARED in
+the canonical journal.
+
+## Independence
+
+A7-r2 wrote only research/audits/market_data_plane_v2r1/** (this section + the verdict
+JSON). All attacks ran in /tmp/a7r2_delta synthetic repos; no network; no full tests/
+run; heavy lock never acquired; worktree clean except this audit dir at commit.
