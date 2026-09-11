@@ -1,0 +1,75 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "forex-ng4-p0b-ez-ingest",
+ "cycle_id": "FOREX-NG4",
+ "role": "quant-implementer",
+ "lane": "p0b",
+ "dispatch_sha": "730aaafdfaf74c9e0734d8526dcc842200565c80",
+ "actual_start_sha": "730aaafdfaf74c9e0734d8526dcc842200565c80",
+ "commit_sha": "7d37f088c20f214b0b9b7d6d9221bf583b5dbef1",
+ "changed_paths": [
+  "research/assets/forex_ng4/ez_vintaged.py",
+  "research/control/forex_ng4_run/p0b_ez_ingest_run.py",
+  "research/control/forex_ng4_run/p0b_ez_vintages_manifest.json",
+  "research/control/forex_ng4_run/p0b_ez_hicp_census.json",
+  "research/control/forex_ng4_run/p0_gate.json",
+  "tests/test_forex_ng4_p0.py"
+ ],
+ "objective_summary": "EZ HICP vintaged re-ingest under the owner 2026-09-12 directive: 97 monthly ALFRED as-of snapshots of CP0000EZ19M086NEST (2017-12-01..2025-12-01, FRED_API_KEY from the root .env loaded programmatically and never echoed, etiquette <=1 req/1.2s + 2/4/8s exponential backoff max 3 retries, key/quota refusals stop fail-closed; raw bytes untracked under data_raw/forex_ng4_ez/vintages/ + committed sha manifest), realtime panel reconstruction to archive-shaped VintageRows (clamped monthly clock disclosed), ng2/ng3 restricted census machinery applied via unmodified import, p0_gate.json EZ section upgraded.",
+ "measurements": {
+  "ingest": {"status": "COMPLETE", "vintages": "97/97", "failures": 0},
+  "panel": {"rows": 701, "snapshots": 97, "obs_months": 358,
+            "versions": 701, "value_changes": 343,
+            "realtime_era_start": "2017-12-01"},
+  "ez_stream": {"events_all": 282, "usable": 280,
+                "first_print_era": 17, "backfill_history": 263,
+                "bulk_groups": 0, "restricted": 17},
+  "floors": {
+   "a4_ez_print_events": {"measured": 17, "floor": 30,
+                          "verdict": "FAIL"},
+   "a5_ez_us_differential_months": {"measured": 16, "floor": 12,
+                                    "verdict": "PASS"},
+   "q6_ez_recent": {"measured": 2,
+                    "verdict": "MEASURED_NO_FLOOR_FROZEN"}
+  },
+  "canaries": "5/5 PASS (2x fabricated obs month found=False, vintage grid exactness 97 dates, realtime monotonicity law, manifest verify-on-read)",
+  "substrate_reverification": "EURUSD pinned bytes vs committed p0 spot pin manifest verify-on-read PASS (no network)",
+  "gate_verdict": "BLOCKED_DATA",
+  "gate_verdict_reason": "A4 shortfall: 17 EZ print events measured < 30 floor on the mandated monthly-snapshot ingest; A5 PASS 16 >= 12; per plan sec 2 the gate is BLOCKED_DATA honest, never an inferred PASS"
+ },
+ "tests": [
+  {"command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng4/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_forex_ng4_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "40 passed (24 p0a + 16 new p0b: key law, vintage grid, fetch etiquette/backoff/fatal classes, evidence hygiene, ingest pacing + manifest roundtrip + fail-closed stop, response-integrity canaries, drift refusal, hand-computed 2-vintage panel, value-flip 3-version reconstruction, monotonicity fail-closed, fabricated-vintage refusal, EZ-US differential join)"}
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "Clamped monthly clock: version realtime days are the 1st-of-month snapshot days; the true intra-month FRED vintage day (~17th-23rd, OECD MEI cadence) is not recoverable from the mandated monthly ingest grid; a true version living entirely inside one inter-snapshot gap is invisible (measured 2018 cadence makes this rare). Disclosed in the census artifact reconstruction_law.",
+  "Era law consequence (ng2 frozen law, unmodified): era start = 2017-12-01 (first snapshot), so obs months < 2017-12 are backfill history -- including the 2017-11 obs month whose true first print (~2017-12-15) falls inside coverage; one disclosed month of loss from the mandated warmup choice.",
+  "v2 availability days are snapshot days; S0 opens 2018-04-04, so the obs-2018-01 event (v2=2018-04-01) is window-excluded by 3 days (1 of the 2 non-usable events).",
+  "A4 floor FAIL is a measured property of the feed (first-print +0.01 revisions cluster in early 2018; from mid-2018 the first published value is final), not an ingest defect: 263 of 280 usable events are history revisions of pre-2017-12 months, correctly excluded by the first-print-era restriction; bulk rule found 0 groups (the 2025=100 rebase did not materialise inside the snapshot window).",
+  "The 263 backfill events and 2 later value changes per recent month are recorded in the census restricted_report only as counts; individual event rows are not persisted in the committed artifact (reproducible from the pinned bytes via the committed manifest).",
+  "ALFRED semantics measured live 2026-09-12 (3 etiquette-spaced probe calls before the ingest): single-day realtime queries return binding values in force on the day with windows clamped to the query day."
+ ],
+ "incidents": [],
+ "tree_status": "clean except untracked data_raw/ (raw vintage bytes + EURUSD spot pin, UNTRACKED_NEVER_COMMITTED by design; committed manifests carry the sha256s)",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/assets/forex_ng4/ez_vintaged.py",
+   "sha256": "50a137145aa79184e8f40460172e7ed0971d380863a81e8357e16b82807b44e4"},
+  {"path": "research/control/forex_ng4_run/p0b_ez_ingest_run.py",
+   "sha256": "6925b8392420b975c9e594268b35c50ee03749b15b5d6f70eafe2a68e8980f61"},
+  {"path": "research/control/forex_ng4_run/p0b_ez_vintages_manifest.json",
+   "sha256": "4611e15fcb7a0730cf7df5df4c652df62cbc304bf04052bac0068c19c4f3a08c"},
+  {"path": "research/control/forex_ng4_run/p0b_ez_hicp_census.json",
+   "sha256": "14bd22d0252beb8eee3405bf6a7765548db7ed141e82d1e78859485f7984e3fb"},
+  {"path": "research/control/forex_ng4_run/p0_gate.json",
+   "sha256": "b4be890adecaa55df7bad25a197355e441cefc5ba148c0bf4c74f1535c05b01c"},
+  {"path": "tests/test_forex_ng4_p0.py",
+   "sha256": "d1095fe579c8bafe2fb3f05c8889da7cf26bdacef293604c177008fa6cc7dc5b"},
+  {"path": "data_raw/forex_ng4_ez/vintages/ (97 files, UNTRACKED)",
+   "sha256": "per-file sha256 in research/control/forex_ng4_run/p0b_ez_vintages_manifest.json (verify-on-read)"}
+ ],
+ "recommended_next_action": "Controller decision on the A4 shortfall: the EZ vintaged bytes are now re-acquired and pinned (manifest committed), the census is measured and reproducible, and the ng2/ng3 restricted first-print standard yields 17 EZ print events < 30 floor (A5 16 >= 12 PASS, Q-6 2). Options per plan sec 2: (a) owner/controller rules the A4 floor binding on this feed and closes the cycle BLOCKED_DATA honest (the EZ print-deviation lane A4 starves; the A5 differential floor alone does not fund the plane), or (b) owner explicitly re-scopes the EZ frontier to the differential form only (a floor change is an owner decision, never a lane one). No lane may retune the floor after this measurement."
+}
