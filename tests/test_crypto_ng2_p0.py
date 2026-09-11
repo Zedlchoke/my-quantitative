@@ -20,6 +20,11 @@ DST clock arithmetic (America/New_York, 8:30 print clock):
 - 08:30 EDT (UTC-4)  == 12:30Z   (summer / post-spring-forward)
 - 08:30 EST on 2026-11-06 == 13:30Z (after 2026-11-01 fall-back)
 - 12:30 p.m. ET == 17:30Z; 12:15 a.m. ET == 05:15Z (meridiem edges)
+
+P0b fold tests (controller-channel raw -> lane-parser-validated census)
+reuse the same hand-computed clock: fold fixtures carry verbatim-shaped
+rows for 2025-09-11 (EDT -> 12:30Z), 2025-11-20/2025-12-16/2025-12-18
+(EST -> 13:30Z) and 2026-03-11 (EDT -> 12:30Z).
 """
 from __future__ import annotations
 
@@ -384,3 +389,158 @@ def test_funding_probe_stubbed_blocked_is_non_blocking():
     out = bls_census.funding_probe(["BTCUSDT"], fetch_json=fetch_json)
     assert out["status"] == "BLOCKED_NOT_CONSUMED"
     assert out["probes"][0]["ok"] is False
+
+
+# --------------------------------------------------------------------- #
+# p0b: controller-channel raw fold (hand-computed expectations)           #
+# --------------------------------------------------------------------- #
+_FOLD_RAW = {
+    "schema": "crypto_ng2_controller_fetched_bls@1",
+    "fetched_by": "test fixture (hand-built, mirrors controller shape)",
+    "fetched_at_utc": "$ISO",
+    "sources": {
+        "cpi_schedule": {"url": "https://www.bls.gov/schedule/news_release/"
+                                "cpi.htm", "retrieved_utc": "$ISO"},
+        "cpi_archive": {"url": "https://www.bls.gov/bls/news-release/cpi.htm",
+                        "retrieved_utc": "$ISO"},
+        "empsit_schedule": {"url": "https://www.bls.gov/schedule/"
+                                   "news_release/empsit.htm",
+                            "retrieved_utc": "$ISO"},
+        "empsit_archive": {"url": "https://www.bls.gov/bls/news-release/"
+                                  "empsit.htm", "retrieved_utc": "$ISO"},
+    },
+    "cpi_schedule_verbatim": [
+        # Thursday 2025-12-18, EST -> 13:30Z (cross-validated with archive)
+        {"ref_month": "2025-11", "release": "2025-12-18", "time": "08:30 AM"},
+        # Wednesday 2026-03-11, EDT (post 2026-03-08 spring-forward) -> 12:30Z
+        {"ref_month": "2026-03", "release": "2026-03-11", "time": "08:30 AM"},
+        # release after window end 2026-08-21: outside, no instant
+        {"ref_month": "2026-08", "release": "2026-09-11", "time": "08:30 AM"},
+    ],
+    "cpi_archive_verbatim": [
+        # Thursday 2025-09-11, EDT -> 12:30Z (archive-only, plan print clock)
+        {"ref_month": "2025-08", "release": "2025-09-11",
+         "file": "cpi_09112025.htm"},
+        # non-published month: excluded_with_reason, never fabricated
+        {"ref_month": "2025-10", "release": None,
+         "note": "NOT PUBLISHED - 2025 lapse in federal government "
+                 "appropriations (page verbatim)"},
+        {"ref_month": "2025-11", "release": "2025-12-18",
+         "file": "cpi_12182025.htm"},
+    ],
+    "empsit_schedule_verbatim": [
+        # Tuesday 2025-12-16, EST -> 13:30Z (cross-validated with archive)
+        {"ref_month": "2025-11", "release": "2025-12-16", "time": "08:30 AM"},
+    ],
+    "empsit_archive_verbatim": [
+        # Thursday 2025-11-20, EST (after 2025-11-02 fall-back) -> 13:30Z
+        {"ref_month": "2025-09", "release": "2025-11-20",
+         "file": "empsit_11202025.htm", "note": "late release"},
+        {"ref_month": "2025-11", "release": "2025-12-16",
+         "file": "empsit_12162025.htm"},
+    ],
+}
+
+
+def test_fold_controller_raw_hand_computed():
+    out = bls_census.fold_controller_raw(
+        _FOLD_RAW, *WINDOW, verdict_fn=None,
+        fabricated_days=("2026-02-14", "2026-06-20"),
+        now_utc="2026-09-11T00:00:00+00:00")
+    assert out["schema"] == "crypto_ng2_run/p0_calendar_census_ng2@1"
+    # hand-computed instants in (instant_utc, series) order
+    got = [(i["instant_utc"], i["series"]) for i in out["instants"]]
+    assert got == [
+        ("2025-09-11T12:30:00+00:00", "CPI"),    # archive-only, EDT
+        ("2025-11-20T13:30:00+00:00", "NFP"),    # archive-only, EST
+        ("2025-12-16T13:30:00+00:00", "NFP"),    # schedule, cross-validated
+        ("2025-12-18T13:30:00+00:00", "CPI"),    # schedule, cross-validated
+        ("2026-03-11T12:30:00+00:00", "CPI"),    # schedule-only, EDT
+    ]
+    assert out["instant_count"] == 5
+    assert out["counts"] == {"CPI": 3, "NFP": 2}
+    by_key = {(i["series"], i["ref_month"]): i for i in out["instants"]}
+    arch = by_key[("CPI", "2025-08")]
+    assert arch["source"] == "archive" and arch["file"] == "cpi_09112025.htm"
+    assert arch["release_date"] == "2025-09-11"
+    assert arch["evidence"]["time_source"].startswith(
+        "plan_print_clock_default")
+    assert arch["evidence"]["archive_cross_validated"] is False
+    late = by_key[("NFP", "2025-09")]
+    assert late["source"] == "archive"
+    assert late["evidence"]["release_note"] == "late release"
+    merged = by_key[("CPI", "2025-11")]
+    assert merged["source"] == "schedule" and merged["file"] == \
+        "cpi_12182025.htm"
+    assert merged["evidence"]["archive_cross_validated"] is True
+    assert set(merged["evidence"]["row_verbatim"]) == {"schedule", "archive"}
+    assert merged["evidence"]["time_text"] == "08:30 AM"
+    sched_only = by_key[("CPI", "2026-03")]
+    assert sched_only["source"] == "schedule" and sched_only["file"] is None
+    assert sched_only["evidence"]["archive_cross_validated"] is False
+    # non-published month excluded with the verbatim reason
+    assert len(out["excluded_with_reason"]) == 1
+    exc = out["excluded_with_reason"][0]
+    assert (exc["series"], exc["ref_month"]) == ("CPI", "2025-10")
+    assert exc["release_date"] is None and "NOT PUBLISHED" in exc["reason"]
+    # out-of-window schedule row bookkeeping, zero fail-closed rows
+    assert out["outside_window_rows"] == [
+        {"series": "CPI", "channel": "schedule", "ref_month": "2026-08",
+         "release_date": "2026-09-11"}]
+    assert out["fail_closed"] == []
+    assert out["cross_validation"] == {
+        "CPI": {"matched": [{"series": "CPI", "ref_month": "2025-11",
+                             "release_date": "2025-12-18",
+                             "file": "cpi_12182025.htm"}],
+                "mismatched": []},
+        "NFP": {"matched": [{"series": "NFP", "ref_month": "2025-11",
+                             "release_date": "2025-12-16",
+                             "file": "empsit_12162025.htm"}],
+                "mismatched": []}}
+    # ng2-p0 canary set re-run on the fold path: fabricated days produce
+    # nothing, nonexistent series refused by the fold registry, honest
+    # NOT_RUN for the (optional) plane authority probe without verdict_fn
+    assert all(fc["verdict"] == "PASS" and "no instant produced" in
+               fc["observed"] for fc in out["canaries"]["fabricated_days"])
+    reg = out["canaries"]["fold_registry_series_probe"]
+    assert reg["series"] == "S9:bls-fabricated-release"
+    assert reg["refused"] is True and reg["verdict"] == "PASS"
+    assert out["canaries"]["authority_series_probe"]["verdict"] == "NOT_RUN"
+    assert out["verdict"] == "PASS"
+    # raw input timestamp placeholders are disclosed, never claimed
+    assert "$ISO" in out["input"]["timestamp_disclosure"]
+
+
+def test_fold_fail_closed_mismatch_duplicate_and_schema_refusal():
+    import copy
+
+    raw = copy.deepcopy(_FOLD_RAW)
+    # schedule/archive date disagreement for ref 2025-11 CPI
+    raw["cpi_archive_verbatim"][2]["release"] = "2025-12-17"
+    # ambiguous duplicate schedule row for a new in-window ref_month
+    raw["cpi_schedule_verbatim"].append(
+        {"ref_month": "2026-02", "release": "2026-02-13", "time": "08:30 AM"})
+    raw["cpi_schedule_verbatim"].append(
+        {"ref_month": "2026-02", "release": "2026-02-13", "time": "08:30 AM"})
+
+    out = bls_census.fold_controller_raw(
+        raw, *WINDOW, verdict_fn=None, fabricated_days=("2026-02-14",),
+        now_utc="2026-09-11T00:00:00+00:00")
+    by_month = {(i["series"], i["ref_month"]) for i in out["instants"]}
+    # the mismatched month yields NO instant from either channel
+    assert ("CPI", "2025-11") not in by_month
+    mismatch = [f for f in out["fail_closed"]
+                if f["channel"] == "cross_validation"]
+    assert len(mismatch) == 1 and "!=" in mismatch[0]["reason"]
+    assert mismatch[0]["ref_month"] == "2025-11"
+    # the duplicate row is refused; the month itself keeps one instant
+    dupes = [f for f in out["fail_closed"] if "duplicate" in f["reason"]]
+    assert len(dupes) == 1 and dupes[0]["ref_month"] == "2026-02"
+    assert ("CPI", "2026-02") in by_month
+    # any refused row makes the census fail-closed, never a silent PASS
+    assert out["verdict"] == "FAIL_CLOSED_ROWS"
+
+    # unknown raw schema: the fold refuses outright (no silent best-effort)
+    with pytest.raises(ValueError, match="refusing to fold"):
+        bls_census.fold_controller_raw({"schema": "not-the-raw-schema"},
+                                       *WINDOW)

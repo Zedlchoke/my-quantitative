@@ -406,6 +406,490 @@ def run_bls_census(window_start: date, window_end: date,
 
 
 # --------------------------------------------------------------------- #
+# p0b: controller-channel raw fold (lane-parser-validated)               #
+# --------------------------------------------------------------------- #
+#: schema of the controller-channel raw artifact committed by the A1 lead
+#: (main-agent WebFetch, browser-class) as the fold input
+CONTROLLER_RAW_SCHEMA = "crypto_ng2_controller_fetched_bls@1"
+FOLD_CENSUS_SCHEMA = "crypto_ng2_run/p0_calendar_census_ng2@1"
+
+#: controller raw verbatim section keys per release, plus the matching
+#: source-url keys inside ``raw["sources"]``
+_RAW_RELEASE_KEYS = {
+    "CPI": ("cpi_schedule_verbatim", "cpi_archive_verbatim"),
+    "NFP": ("empsit_schedule_verbatim", "empsit_archive_verbatim"),
+}
+_RAW_SOURCE_KEYS = {
+    "CPI": ("cpi_schedule", "cpi_archive"),
+    "NFP": ("empsit_schedule", "empsit_archive"),
+}
+
+_RAW_REF_MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+_RAW_TIME_RE = re.compile(r"^(\d{1,2}):(\d{2})\s*(a\.?m\.?|p\.?m\.?)$", re.I)
+
+
+def _fold_ref_month(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value if _RAW_REF_MONTH_RE.match(value) else None
+
+
+def _fold_time(value: Any) -> tuple[int, int, str] | None:
+    """Parse a controller-verbatim time-of-day (``08:30 AM``) into the
+    (hour, minute, meridiem) triple consumed by ``local_to_utc``."""
+    if not isinstance(value, str):
+        return None
+    m = _RAW_TIME_RE.match(value.strip())
+    if m is None:
+        return None
+    hour, minute = int(m.group(1)), int(m.group(2))
+    if not (1 <= hour <= 12 and 0 <= minute <= 59):
+        return None
+    return hour, minute, _meridiem(m.group(3))
+
+
+def _fold_iso_date(value: Any) -> date | None:
+    """Strict ``YYYY-MM-DD`` calendar date (a 2025-02-30 style text refuses)."""
+    if not isinstance(value, str):
+        return None
+    try:
+        day = date.fromisoformat(value.strip())
+    except ValueError:
+        return None
+    return day if day.isoformat() == value.strip() else None
+
+
+def _fold_instant_utc(day: date, hour: int, minute: int, meridiem: str) -> str:
+    """ET (plan print-clock zone standard) -> UTC, DST-aware, fail-closed
+    (reuses the inherited ng1 ``local_to_utc`` by import)."""
+    return local_to_utc(day, hour, minute, meridiem, "ET")
+
+
+def _fold_release(raw: dict, release_key: str, window_start: date,
+                  window_end: date) -> dict:
+    """Fold ONE release (CPI|NFP) from the controller raw verbatim rows.
+
+    Fail-closed: every malformed / weekend / duplicated row is recorded and
+    refused, never repaired; a schedule-vs-archive date disagreement for
+    the same ref_month refuses BOTH rows for that month.  Returns dict with
+    instants / fail_closed / excluded (non-published months) /
+    outside_window / cross_validation / urls / channels."""
+    if release_key not in _RAW_RELEASE_KEYS:
+        raise ValueError(
+            f"unknown release key {release_key!r}: not in the fold registry "
+            f"{sorted(_RAW_RELEASE_KEYS)} (fail-closed refusal)")
+    sched_key, arch_key = _RAW_RELEASE_KEYS[release_key]
+    src_sched, src_arch = _RAW_SOURCE_KEYS[release_key]
+
+    sources_meta = (raw.get("sources")
+                    if isinstance(raw.get("sources"), dict) else {})
+    urls = {k: (sources_meta.get(k) or {}).get("url")
+            for k in (src_sched, src_arch)}
+
+    instants: list[dict] = []
+    fail_closed: list[dict] = []
+    excluded: list[dict] = []
+    outside: list[dict] = []
+    sched_map: dict[str, dict] = {}
+    arch_map: dict[str, dict] = {}
+
+    def _row_base(channel: str, row: Any, ref_month: str | None,
+                  release_date: str | None) -> dict:
+        return {"series": release_key, "channel": channel,
+                "ref_month": ref_month, "release_date": release_date,
+                "row_verbatim": row}
+
+    schedule_rows = raw.get(sched_key)
+    if isinstance(schedule_rows, list):
+        for row in schedule_rows:
+            if not isinstance(row, dict):
+                fail_closed.append({**_row_base("schedule", row, None, None),
+                                    "reason": "schedule row is not an object "
+                                              "(dropped, never inferred)"})
+                continue
+            ref_month = _fold_ref_month(row.get("ref_month"))
+            if ref_month is None:
+                fail_closed.append({**_row_base("schedule", row, None, None),
+                                    "reason": "missing/invalid ref_month "
+                                              "(dropped, never inferred)"})
+                continue
+            day = _fold_iso_date(row.get("release"))
+            if day is None:
+                fail_closed.append({**_row_base("schedule", row, ref_month,
+                                                None),
+                                    "reason": "missing/invalid release date "
+                                              "(dropped, never inferred)"})
+                continue
+            if not (window_start <= day <= window_end):
+                outside.append({"series": release_key, "channel": "schedule",
+                                "ref_month": ref_month,
+                                "release_date": day.isoformat()})
+                continue
+            if ref_month in sched_map:
+                fail_closed.append({**_row_base("schedule", row, ref_month,
+                                                day.isoformat()),
+                                    "reason": f"duplicate schedule row for "
+                                              f"ref_month {ref_month} "
+                                              f"(ambiguous; dropped)"})
+                continue
+            t = _fold_time(row.get("time"))
+            if t is None:
+                fail_closed.append({**_row_base("schedule", row, ref_month,
+                                                day.isoformat()),
+                                    "reason": "no official time-of-day on the "
+                                              "schedule row (dropped, never "
+                                              "inferred)"})
+                continue
+            if day.weekday() >= 5:
+                fail_closed.append({**_row_base("schedule", row, ref_month,
+                                                day.isoformat()),
+                                    "reason": "calendar date falls on a weekend "
+                                              "(BLS print dates are weekdays; "
+                                              "dropped)"})
+                continue
+            hour, minute, meridiem = t
+            sched_map[ref_month] = {
+                "series": release_key,
+                "ref_month": ref_month,
+                "release_date": day.isoformat(),
+                "instant_utc": _fold_instant_utc(day, hour, minute, meridiem),
+                "source": "schedule",
+                "file": None,
+                "evidence": {
+                    "series_id": SERIES_BY_RELEASE[release_key],
+                    "time_text": row.get("time"),
+                    "time_source": "schedule_row",
+                    "zone": "ET",
+                    "zone_source": f"defaulted ({PLAN_PRINT_CLOCK} plan "
+                                   "standard; BLS schedule pages publish "
+                                   "Eastern times)",
+                    "archive_cross_validated": False,
+                    "release_note": row.get("note"),
+                    "schedule_url": urls[src_sched],
+                    "archive_url": None,
+                    "row_verbatim": row,
+                },
+            }
+    else:
+        fail_closed.append({"series": release_key, "channel": "schedule",
+                            "ref_month": None, "release_date": None,
+                            "row_verbatim": None,
+                            "reason": f"raw verbatim section {sched_key!r} "
+                                      "missing or not a list (no instants "
+                                      "fabricated)"})
+
+    archive_rows = raw.get(arch_key)
+    if isinstance(archive_rows, list):
+        for row in archive_rows:
+            if not isinstance(row, dict):
+                fail_closed.append({**_row_base("archive", row, None, None),
+                                    "reason": "archive row is not an object "
+                                              "(dropped, never inferred)"})
+                continue
+            ref_month = _fold_ref_month(row.get("ref_month"))
+            if ref_month is None:
+                fail_closed.append({**_row_base("archive", row, None, None),
+                                    "reason": "missing/invalid ref_month "
+                                              "(dropped, never inferred)"})
+                continue
+            if row.get("release") is None:
+                # non-published month (e.g. the 2025 appropriations lapse):
+                # recorded excluded_with_reason, NEVER fabricated
+                excluded.append({
+                    "series": release_key, "channel": "archive",
+                    "ref_month": ref_month, "release_date": None,
+                    "reason": row.get("note") or
+                              "no release published (archive row)",
+                    "row_verbatim": row})
+                continue
+            day = _fold_iso_date(row.get("release"))
+            if day is None:
+                fail_closed.append({**_row_base("archive", row, ref_month,
+                                                None),
+                                    "reason": "invalid release date on the "
+                                              "archive row (dropped, never "
+                                              "inferred)"})
+                continue
+            file_evidence = row.get("file")
+            if not isinstance(file_evidence, str) or not file_evidence.strip():
+                fail_closed.append({**_row_base("archive", row, ref_month,
+                                                day.isoformat()),
+                                    "reason": "archive row lacks file "
+                                              "evidence (dropped, never "
+                                              "inferred)"})
+                continue
+            if not (window_start <= day <= window_end):
+                outside.append({"series": release_key, "channel": "archive",
+                                "ref_month": ref_month,
+                                "release_date": day.isoformat()})
+                continue
+            if ref_month in arch_map:
+                fail_closed.append({**_row_base("archive", row, ref_month,
+                                                day.isoformat()),
+                                    "reason": f"duplicate archive row for "
+                                              f"ref_month {ref_month} "
+                                              f"(ambiguous; dropped)"})
+                continue
+            if day.weekday() >= 5:
+                fail_closed.append({**_row_base("archive", row, ref_month,
+                                                day.isoformat()),
+                                    "reason": "calendar date falls on a weekend "
+                                              "(BLS print dates are weekdays; "
+                                              "dropped)"})
+                continue
+            # the archive listing carries date + file only: the print clock
+            # is the plan's fixed 8:30 ET standard, disclosed as such (never
+            # a silent inference)
+            arch_map[ref_month] = {
+                "series": release_key,
+                "ref_month": ref_month,
+                "release_date": day.isoformat(),
+                "instant_utc": _fold_instant_utc(day, 8, 30, "a"),
+                "source": "archive",
+                "file": file_evidence,
+                "evidence": {
+                    "series_id": SERIES_BY_RELEASE[release_key],
+                    "time_text": None,
+                    "time_source": "plan_print_clock_default (archive "
+                                   "listing carries date + file only; plan "
+                                   f"section 3 fixes the {PLAN_PRINT_CLOCK} "
+                                   "print clock)",
+                    "zone": "ET",
+                    "zone_source": f"defaulted ({PLAN_PRINT_CLOCK} plan "
+                                   "standard)",
+                    "archive_cross_validated": False,
+                    "release_note": row.get("note"),
+                    "schedule_url": None,
+                    "archive_url": urls[src_arch],
+                    "row_verbatim": row,
+                },
+            }
+    else:
+        fail_closed.append({"series": release_key, "channel": "archive",
+                            "ref_month": None, "release_date": None,
+                            "row_verbatim": None,
+                            "reason": f"raw verbatim section {arch_key!r} "
+                                      "missing or not a list (no instants "
+                                      "fabricated)"})
+
+    # cross-validation: a ref_month present on BOTH channels must agree on
+    # the release date; a mismatch refuses both rows (fail-closed record)
+    cross: dict[str, list] = {"matched": [], "mismatched": []}
+    for ref_month in sorted(set(sched_map) & set(arch_map)):
+        s, a = sched_map[ref_month], arch_map[ref_month]
+        if s["release_date"] != a["release_date"]:
+            cross["mismatched"].append({
+                "series": release_key, "ref_month": ref_month,
+                "schedule_date": s["release_date"],
+                "archive_date": a["release_date"]})
+            fail_closed.append({
+                "series": release_key, "channel": "cross_validation",
+                "ref_month": ref_month, "release_date": s["release_date"],
+                "row_verbatim": {
+                    "schedule": s["evidence"]["row_verbatim"],
+                    "archive": a["evidence"]["row_verbatim"]},
+                "reason": f"schedule date {s['release_date']} != archive "
+                          f"date {a['release_date']} for ref_month "
+                          f"{ref_month} (fail-closed: both refused, neither "
+                          "inferred)"})
+            continue
+        merged = {
+            **s, "file": a["file"],
+            "evidence": {
+                **s["evidence"],
+                "archive_cross_validated": True,
+                "archive_url": a["evidence"]["archive_url"],
+                "release_note": (a["evidence"]["release_note"]
+                                 or s["evidence"]["release_note"]),
+                "row_verbatim": {
+                    "schedule": s["evidence"]["row_verbatim"],
+                    "archive": a["evidence"]["row_verbatim"]}}}
+        cross["matched"].append({
+            "series": release_key, "ref_month": ref_month,
+            "release_date": s["release_date"], "file": a["file"]})
+        instants.append(merged)
+    instants.extend(arch_map[rm] for rm in sorted(set(arch_map) - set(sched_map)))
+    instants.extend(sched_map[rm] for rm in sorted(set(sched_map) - set(arch_map)))
+
+    return {"instants": instants, "fail_closed": fail_closed,
+            "excluded": excluded, "outside_window": outside,
+            "cross_validation": cross, "urls": urls,
+            "channels": {"schedule": isinstance(schedule_rows, list),
+                         "archive": isinstance(archive_rows, list)}}
+
+
+def fold_controller_raw(raw: Any, window_start: date, window_end: date,
+                        verdict_fn: Callable[[str], str] | None = None,
+                        fabricated_days: tuple[str, ...] = (
+                            "2026-02-14", "2026-06-20"),
+                        now_utc: str | None = None,
+                        input_meta: dict | None = None) -> dict:
+    """Fold the controller-channel raw schedules into the P0b census.
+
+    The raw artifact (controller WebFetch verbatim) is INPUT ONLY: every
+    instant is re-derived in-lane by the fail-closed rules above (shapes,
+    weekday, duplicates, window intersection, schedule/archive agreement,
+    DST-correct 8:30 America/New_York -> UTC).  Non-published months are
+    recorded ``excluded_with_reason``; nothing is ever fabricated.  The
+    ng2-p0 canary set is re-run on the fold path: the 2 fabricated days
+    must produce no instant, and a nonexistent series must be refused by
+    the fold registry (plus the inherited plane authority probe when a
+    ``verdict_fn`` is supplied)."""
+    if not isinstance(raw, dict) or raw.get("schema") != CONTROLLER_RAW_SCHEMA:
+        raise ValueError("fail-closed: raw input schema is not "
+                         f"{CONTROLLER_RAW_SCHEMA!r} (refusing to fold)")
+    measured_utc = now_utc or datetime.now(timezone.utc).isoformat()
+
+    instants: list[dict] = []
+    fail_closed: list[dict] = []
+    excluded: list[dict] = []
+    outside: list[dict] = []
+    cross_validation: dict[str, dict] = {}
+    sources: dict[str, Any] = {}
+    for release_key in ("CPI", "NFP"):
+        out = _fold_release(raw, release_key, window_start, window_end)
+        instants.extend(out["instants"])
+        fail_closed.extend(out["fail_closed"])
+        excluded.extend(out["excluded"])
+        outside.extend(out["outside_window"])
+        cross_validation[release_key] = out["cross_validation"]
+        sources[release_key] = {"urls": out["urls"],
+                                "channels": out["channels"]}
+    instants.sort(key=lambda i: (i["instant_utc"], i["series"],
+                                 i["ref_month"]))
+
+    # ---- canaries (P-7, mandatory): ng2-p0 set on the fold path --------- #
+    fabricated_canaries = []
+    for fab in fabricated_days:
+        fab_day = date.fromisoformat(fab) if isinstance(fab, str) else fab
+        produced = [i for i in instants
+                    if i["instant_utc"].startswith(fab_day.isoformat())]
+        fabricated_canaries.append({
+            "fabricated_day": fab_day.isoformat(),
+            "weekday": ["monday", "tuesday", "wednesday", "thursday",
+                        "friday", "saturday", "sunday"][fab_day.weekday()],
+            "expected": ("FAIL (no instant may be produced for a fabricated "
+                         "day)"),
+            "observed": (f"instant produced for {produced[0]['series']} "
+                         f"ref {produced[0]['ref_month']}!" if produced
+                         else "no instant produced"),
+            "verdict": "FAIL" if produced else "PASS",
+        })
+
+    # nonexistent-series canary, fold-path form: a release key outside the
+    # fold registry must be REFUSED (raises), never silently folded
+    try:
+        _fold_release(raw, "S9:bls-fabricated-release", window_start,
+                      window_end)
+        registry_canary = {"series": "S9:bls-fabricated-release",
+                           "expected": "REFUSED (not in the fold registry)",
+                           "observed": "NO REFUSAL (folded!)", "refused": False,
+                           "verdict": "FAIL"}
+    except ValueError:
+        registry_canary = {"series": "S9:bls-fabricated-release",
+                           "expected": "REFUSED (not in the fold registry)",
+                           "observed": "refused (ValueError: not in the fold "
+                                       "registry)",
+                           "refused": True, "verdict": "PASS"}
+
+    # belt-and-suspenders: the inherited plane authority probe (same
+    # nonexistent series as the p0 census) when a verdict_fn is available
+    if verdict_fn is None:
+        plane_canary = {"series": "S9:bls-cpi-instants-fabricated",
+                        "expected": "REFUSED (not GRANTED; nonexistent series)",
+                        "observed": "NOT_RUN (no verdict_fn supplied)",
+                        "verdict": "NOT_RUN"}
+    else:
+        v = verdict_fn("S9:bls-cpi-instants-fabricated")
+        refused = v != "GRANTED"
+        plane_canary = {"series": "S9:bls-cpi-instants-fabricated",
+                        "expected": "REFUSED (not GRANTED; nonexistent series)",
+                        "observed": f"verdict={v!r}", "refused": refused,
+                        "verdict": "PASS" if refused else "FAIL"}
+
+    canaries_ok = (all(fc["verdict"] == "PASS" for fc in fabricated_canaries)
+                   and registry_canary["verdict"] == "PASS"
+                   and plane_canary["verdict"] in ("PASS", "NOT_RUN"))
+    any_channel = any(s["channels"]["schedule"] or s["channels"]["archive"]
+                      for s in sources.values())
+    if not any_channel:
+        verdict = "BLOCKED_PER_SOURCE"
+    elif not canaries_ok:
+        verdict = "FAIL_CANARIES"
+    elif fail_closed:
+        verdict = "FAIL_CLOSED_ROWS"
+    elif instants:
+        verdict = "PASS"
+    else:
+        verdict = "BLOCKED_NO_INSTANTS"
+
+    input_block = {
+        "schema": raw.get("schema"),
+        "fetched_by": raw.get("fetched_by"),
+        "fetched_at_utc_verbatim": raw.get("fetched_at_utc"),
+        "note": "RAW verbatim controller-channel input; every instant below "
+                "is re-derived by this lane's fail-closed fold, never copied "
+                "from controller conclusions",
+    }
+    if input_meta:
+        input_block.update(input_meta)
+    if "$ISO" in json.dumps(raw.get("sources", {})):
+        input_block["timestamp_disclosure"] = (
+            "controller raw carries '$ISO' placeholders for fetch "
+            "timestamps; recorded verbatim, no retrieval timestamps claimed")
+
+    counts = {k: sum(1 for i in instants if i["series"] == k)
+              for k in ("CPI", "NFP")}
+    return {
+        "schema": FOLD_CENSUS_SCHEMA,
+        "task_id": "crypto-ng2-p0b-fold",
+        "cycle_id": "CRYPTO-NG2",
+        "lane": "p0b",
+        "measured_utc": measured_utc,
+        "window": {"start": window_start.isoformat(),
+                   "end": window_end.isoformat(),
+                   "note": "panel hours 2025-08-22T00..2026-08-21T23 UTC; "
+                           "only instants inside the window are kept"},
+        "objective": "fold controller-fetched BLS CPI/NFP verbatim schedules "
+                     "through the lane fail-closed parser into census "
+                     "instants (reopen lane A4 per plan section 2)",
+        "input": input_block,
+        "method_chain": {
+            "controller_fetch": {
+                "status": "MEASURED_BY_CONTROLLER",
+                "note": "main-agent WebFetch (browser-class) verbatim rows "
+                        "committed as raw input "
+                        "(controller_fetch/bls_schedules_raw.json); "
+                        "disclosed channel, not re-fetched by this lane "
+                        "(network forbidden in-lane)",
+            },
+            "lane_parser_validation": {
+                "status": "MEASURED",
+                "note": "every row re-validated fail-closed in-lane: "
+                        "ref_month/date/time shapes, weekday rule, duplicate "
+                        "refusal, window intersection, schedule-vs-archive "
+                        "date agreement, DST-correct 8:30 America/New_York "
+                        "-> UTC via the inherited ng1 local_to_utc "
+                        "(import-only reuse)",
+            },
+        },
+        "sources": sources,
+        "instants": instants,
+        "instant_count": len(instants),
+        "counts": counts,
+        "excluded_with_reason": excluded,
+        "outside_window_rows": outside,
+        "fail_closed": fail_closed,
+        "cross_validation": cross_validation,
+        "canaries": {"fabricated_days": fabricated_canaries,
+                     "fold_registry_series_probe": registry_canary,
+                     "authority_series_probe": plane_canary},
+        "verdict": verdict,
+    }
+
+
+# --------------------------------------------------------------------- #
 # funding-settlement keyless availability probe (OPTIONAL, non-blocking)  #
 # --------------------------------------------------------------------- #
 def funding_probe(symbols: list[str],
