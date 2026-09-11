@@ -562,3 +562,24 @@ Binds here: this is our mission invariant discovered independently by a
 stranger's programme — 242 recorded noes are not 242 failures; they are the
 calibration that prices the first yes. Both programmes reached the same
 conclusion from opposite coasts: the trustworthy negative is the product.
+
+## P-18 — An authority ruling lives only where the machine reads it (FOREX-NG1, 2026-09-11)
+
+**Source:** FOREX-NG1 A7 prelaunch arc (two REFUSED rounds before AUTHORIZED).
+
+**Lesson:** A1 ruled the FX spot channel AUTHORIZED_INTERNAL_RESEARCH in the event
+log — but the fail-closed gate `require_scored_authority` reads a committed JSON
+block (`authority_status.scored_consumption`) and compares an exact string. A
+ruling recorded anywhere else (event log, prose, top-level key, paraphrased value)
+does not open the gate; worse, GO typed against an unopened gate auto-fails every
+cell and burns the one-shot run. The same arc caught a second variant: flipping
+the right concept at the WRONG KEY with the WRONG VALUE is indistinguishable from
+not fixing it — only an execution probe from committed bytes proves the gate open.
+
+**Consequence:** Authority decisions that must bind machine behavior are enforced
+by editing the exact bytes the enforcing reader reads (exact key, exact enum),
+committed BEFORE the dependent key (GO), and proven by executing the gate from a
+detached tree. Prose rulings are disclosure, never enforcement. (Also: quote your
+heredocs — an unquoted `EOF` let shell backtick-substitution corrupt three
+control-plane files in one close; caught by assert + inspection, repaired in the
+same commit window, disclosed here.)
