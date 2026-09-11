@@ -1,0 +1,180 @@
+{
+  "schema": "crypto_ng1_run/d1_proposal@1",
+  "task_id": "crypto-ng1-d1-a5-proposals",
+  "cycle_id": "CRYPTO_NG1",
+  "lane": "d1-a5",
+  "hypothesis_id": "CNG1-A5-P1",
+  "title": "Quarterly delivery-deadline roll drift: terminal pre-expiry positioning continuation on the deterministic last-Friday 08:00 UTC derivatives clock (H1)",
+  "blindness_statement": {
+    "outcome_blind": true,
+    "read_sources": [
+      "plans/PLAN_crypto_ng1.md (sections 1, 2, 6 only)",
+      "research/wayfinder/FAMILY_FAILURES.jsonl (dead-form avoidance only)",
+      "research/control/crypto_ng1_run/p0_gate.json (panel bounds)",
+      "research/control/crypto_ng1_run/p0_calendar_census.json (evidence-format reference only)",
+      "research/control/crypto_ng1_run/d1/proposals/proposal_A4_P1.json + proposal_A4_P2.json (mandated same-cycle field template; blind sibling lane)",
+      "official exchange contract-metadata endpoints, keyless, 3 URLs, no price data (see measured_facts_used_verbatim.spec_verification)"
+    ],
+    "not_done": [
+      "no result/scored/PnL/smoke file of any cycle read",
+      "no backtest run, no outcome number computed",
+      "no price data downloaded; only contract-spec metadata (symbol names, delivery/expiration epochs) retrieved"
+    ]
+  },
+  "measured_facts_used_verbatim": {
+    "panel": "H1 UTC, 3 symbols BTCUSDT/ETHUSDT/SOLUSDT, 8760 rows/symbol, window 2025-08-22T00..2026-08-21T23 (p0_gate.json panel_bounds PASS)",
+    "spec_rule_frozen": "Derivatives delivery/expiry instant E(m) = 08:00:00 UTC on the LAST FRIDAY of month m; quarterly futures months are Mar/Jun/Sep/Dec. This rule is deterministic calendar arithmetic on published contract specs; no price or outcome data enters the clock.",
+    "spec_verification": {
+      "binance": {
+        "url": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+        "retrieved_utc": "2026-09-11T13:08:44Z",
+        "evidence": "official fapi contract-metadata endpoint (keyless; symbols/status/contractType/deliveryDate fields; no price data): CURRENT_QUARTER BTCUSDT_260925 deliveryDate epoch 1790323200000 = 2026-09-25T08:00:00Z (last Friday of Sep 2026) and NEXT_QUARTER BTCUSDT_261225 deliveryDate epoch 1798185600000 = 2026-12-25T08:00:00Z (last Friday of Dec 2026) - quarterly delivery date AND time both confirm the rule; ETHUSDT quarterlies identical"
+      },
+      "deribit": {
+        "url": "https://www.deribit.com/api/v2/public/get_instruments?currency=BTC&kind=option&expired=false",
+        "retrieved_utc": "2026-09-11T13:08:55Z",
+        "evidence": "official public instrument-metadata endpoint (keyless; no price data): BTC-30OCT26 expiration_timestamp -> 2026-10-30T08:00:00Z (last Friday of Oct 2026), BTC-27NOV26 -> 2026-11-27T08:00:00Z, BTC-25DEC26 -> 2026-12-25T08:00:00Z, BTC-26MAR27 -> 2027-03-26T08:00:00Z, BTC-25JUN27 -> 2027-06-25T08:00:00Z - monthly and quarterly options expire last-Friday 08:00 UTC, coincident with Binance quarterly delivery instants on quarter months"
+      },
+      "verification_limitation": "a third retrieval (https://www.deribit.com/api/v2/public/get_instruments?currency=BTC&kind=future&expired=true, retrieved_utc 2026-09-11T13:09:56Z) returned only BTC-11SEP26 (weekly) - venue metadata prunes expired history, so IN-WINDOW events below are derived by applying the verified rule via calendar arithmetic; per plan section 3 fail-closed law, the P2/D2 lane MUST re-verify each in-window instant against venue historical records before any scored use, and drop (never infer) any instant that cannot be evidenced"
+    },
+    "quarterly_instants_utc": [
+      "2025-09-26T08:00:00Z",
+      "2025-12-26T08:00:00Z",
+      "2026-03-27T08:00:00Z",
+      "2026-06-26T08:00:00Z"
+    ],
+    "instant_derivation": "last Friday of each quarter month inside the panel window: Sep 26 2025, Dec 26 2025, Mar 27 2026, Jun 26 2026 (weekday checked: all Fridays); 4 events x 3 symbols = 12 anchor decisions",
+    "forbidden_conditioning": "no OI consumed (oi_series_reduced.json is in the frozen set but NOT read by this proposal); no funding settlements; no consensus/forecast/revised-narrative data; nothing conditions on price/OI/funding levels"
+  },
+  "mechanism": {
+    "forced_participant": "Holders of expiring quarterly delivery contracts - Binance USD(S)-M quarterlies (BTCUSDT_260925-class, deliveryDate-verified above) whose positions are force-closed against the delivery settlement at 08:00 UTC and who therefore MUST complete their roll/unwind before that instant - plus quarter-end options and futures expiring at the same 08:00 UTC instant on coincident venues (Deribit month/quarter-end expiries verified above) whose dealers must finish terminal gamma-hedge rebalancing by the same deadline. The coercion is the published delivery schedule, a deterministic public clock, not any endogenous price/OI/funding state.",
+    "late_participant": "Unhurried liquidity providers and post-deadline flow that only re-quote/re-engage after the delivery instant has passed and the forced population is gone.",
+    "why_effect_exists": "Roll and terminal-hedge flow is deadline-bound and one-sided: as 08:00 UTC approaches, the residual forced flow must transact in a shrinking window on the perp book (the deepest leg where quarter-roll hedges transmit), so accumulated pre-expiry taker pressure continues to push price into the deadline instead of instantly clearing. The observable is that terminal drift: the side of accumulated net pressure over the expiry-morning hours, held only across the final pre-delivery window and flat at the delivery instant.",
+    "when_it_must_fail": [
+      "If quarter-roll flow is two-sided/balanced (net terminal pressure ~ noise), anchor after-cost expectancy is statistically indistinguishable from zero.",
+      "If the drift is generic Friday H1 imbalance autocorrelation with no deadline content, the shifted-Friday sham reproduces the anchor (same-sign >= 0.5x) and the family is falsified as a re-clocking.",
+      "If the book is a bare last-Friday-clock artifact, the clock-only shadow out-earns the anchor or correlates > 0.20 with it.",
+      "If the book is a holiday-thin-liquidity-level exposure in disguise (2025-12-26 is Boxing Day), D2 pooled |rho| > 0.20 vs the dvol proxies (WKNDLIQ's killers) vetoes it before selection."
+    ],
+    "observable_pinned": {
+      "definition": "press(symbol, e) = (SUM buy_quote over bars A-8..A-3 - SUM sell_quote over bars A-8..A-3) / (SUM quote_total over bars A-8..A-3), a bounded net-pressure ratio in [-1, +1] computed on the 00:00..06:00 UTC bars of expiry day, fully closed and PIT at decision time (06:00 UTC)",
+      "panel_columns": ["buy_quote", "sell_quote", "quote_total", "last_price"],
+      "instant_source": "deterministic derivatives calendar: last Friday of Mar/Jun/Sep/Dec at 08:00 UTC, rule verified against Binance fapi deliveryDate and Deribit expiration_timestamp metadata (see spec_verification)"
+    }
+  },
+  "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+  "clock": {
+    "bar": "H1 UTC from the frozen S4 panels, bar hour_utc=T covers [T, T+1h)",
+    "expiry_bar": "A(e) = the bar whose hour_utc equals 08 on the expiry date (the delivery instant 08:00 UTC is the OPEN boundary of A and the CLOSE boundary of A-1; e.g. 2025-09-26T08:00:00Z -> bar '2025-09-26T08')",
+    "pressure_window": "bars A-8..A-3 = hours 00..05 UTC of expiry day (six closed bars)",
+    "decision": "at the CLOSE of bar A-3 = 06:00 UTC, when every pressure-window bar is point-in-time",
+    "exit_boundary": "at the CLOSE of bar A-1 = 08:00 UTC = the delivery instant itself; the anchor is FLAT at and after the delivery instant and never touches the expiry bar A",
+    "instant_alignment": "pure UTC arithmetic on the frozen H1 index; no DST anywhere in this clock (delivery epochs verified at 08:00:00Z exactly)"
+  },
+  "warmup": {
+    "rule": "an event is eligible only if every bar referenced by any arm of this family (deepest = neighbour's A-12 through exit bar A-1) exists inside the frozen panel bounds; no minimum-history convention beyond construction (features need <= 10 bars)",
+    "coverage": "panel starts 2025-08-22T00; first event 2025-09-26 needs bars from 2025-09-25T20 - exists; therefore ALL 4 quarterly events x 3 symbols are eligible; no event dropped",
+    "signal_history": "none required beyond the pressure window itself (no threshold fitting exists)"
+  },
+  "features_lags": {
+    "columns_from_panel": {
+      "buy_quote": "USD notional of buy-taker flow in bar",
+      "sell_quote": "USD notional of sell-taker flow in bar",
+      "quote_total": "buy_quote + sell_quote (bar total taker notional)",
+      "last_price": "last traded price in bar, used as the bar-close fill price"
+    },
+    "lag_structure": "windowed feature at lags -8..-3 relative to the expiry bar (anchor); neighbour deepens to lags -12..-3; decision lag -3 close (06:00 UTC); exit lag -1 close (08:00 UTC). Volume enters only as a bounded ratio denominator; no volume LEVEL is used anywhere; no other lags, no rolling windows, no fitted parameters."
+  },
+  "entry_exit_fills": {
+    "direction": "d = sign(press) = sign((SUM buy_quote - SUM sell_quote)/(SUM quote_total)) over bars A-8..A-3; tie (numerator exactly 0) -> decision recorded UNFUNDED_SKIP (counted, not silently dropped)",
+    "entry": "at close of bar A-3 (06:00 UTC), fill price = last_price of bar A-3, unit notional 1.0 per decision per symbol, no leverage parameter, no sizing conditioning",
+    "exit": "at close of bar A-1 (08:00 UTC, the delivery instant), fill price = last_price of bar A-1; no stop, no early exit",
+    "fills_per_funded_decision": "2 (entry + exit), each charged cost exactly once (L-V14-0)"
+  },
+  "costs": {
+    "authority": "measured taker + spread schedule at stress tier 2.0 as PRIMARY (Q-2/Q-8), inherited from the V17 scored-driver kernel adoption at this cycle's P1 phase; cost exactly once per fill",
+    "invention_disclaimer": "NO cost constant is stated or invented in this proposal; the measured tier numbers come from the kernel's measured schedule at execution time. Measured beats stated everywhere."
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "CNG1-A5-P1-ANCHOR",
+      "rule": "direction = sign(press over A-8..A-3); entry close of A-3; exit close of A-1; H = 2 bars (exposure spans 06:00..08:00 UTC, the terminal pre-delivery window)",
+      "decisions": "4 quarterly events x 3 symbols = 12 funded decisions (minus exact-tie skips, expected 0)"
+    },
+    "neighbour": {
+      "arm_id": "CNG1-A5-P1-NEIGH-W10",
+      "count": "exactly 1 neighbour",
+      "rule": "identical decision instant, entry and exit; pressure window deepened to A-12..A-3 (10 bars, 20:00 UTC previous day .. 06:00 UTC expiry day)",
+      "mechanism_support": "if deadline-bound roll flow is real, a deeper accumulation window captures more of the forced flow and must move the same direction; an unstable or sign-flipping deeper window contradicts the mechanism (different parameterization, same mechanism)"
+    },
+    "causal_placebo_control": {
+      "arm_id": "CNG1-A5-P1-CTL-SHIFTMINUS7D",
+      "count": "exactly 1 causal/placebo control",
+      "rule": "sham expiry clock: each quarterly instant shifted -7 calendar days (same 08:00 UTC bar arithmetic): 2025-09-19, 2025-12-19, 2026-03-20, 2026-06-19 - all real in-panel Fridays, none a delivery/expiry date of any venue rule, none a FOMC instant",
+      "decisions": "4 sham events x 3 symbols = 12 decisions; everything else identical to anchor (window A'-8..A'-3, entry close of A'-3, exit close of A'-1)",
+      "identifiability": "the sham lands on real alternate Fridays with real microstructure, one week before the true deadline; it CAN move the signal (Q-11 satisfied; a control that cannot move the signal would be INVALID NULL)"
+    },
+    "clock_only_shadow": {
+      "arm_id": "CNG1-A5-P1-SHADOW-CLOCKLONG",
+      "count": "exactly 1 clock-only shadow (Q-7)",
+      "rule": "identical decision grid, holds (entry close of A-3, exit close of A-1), costs and books; direction = +1 at EVERY decision (pure quarterly-Friday clock exposure carrying zero panel information)",
+      "purpose": "isolates what the bare deterministic clock yields; if the anchor is subsumed by this exposure the mechanism claim is empty"
+    },
+    "pairwise_distinctness": "the four arms differ by (direction rule, pressure-window depth, instant map) and will carry distinct arm_config_digests at D2/I time; no two arms share all three"
+  },
+  "representation_identity": {
+    "p12_statement": "This block IS the representation D2 must measure pooled |rho| <= 0.20 on. Representation identity = measurement identity (FXFV9 lesson: no undisclosed variant grids).",
+    "grid": "H1 rows keyed (symbol, hour_utc) from the three frozen S4 panels (digests pinned in p0_gate.json s4_repin); decision grid = 12 rows keyed (symbol, quarterly_instant) over the 4 deterministic instants 2025-09-26/2025-12-26/2026-03-27/2026-06-26 at 08:00 UTC",
+    "signal_computation": "per decision row: press = (SUM_{A-8..A-3} buy_quote - SUM sell_quote) / SUM quote_total; d = sign(press); entry = last_price(A-3) filled 06:00 UTC; exit = last_price(A-1) filled 08:00 UTC (delivery instant)",
+    "per_decision_return": "r = d * (exit/entry - 1), gross; after-cost r_net = r - 2 * fill_cost_tier2.0 / unit_notional",
+    "series_d2_measures": [
+      "the 12-row per-decision after-cost return vector of ANCHOR (primary)",
+      "its daily-aggregated (symbol-day) projection",
+      "the same vectors for NEIGH-W10 for the ancestry panel"
+    ],
+    "books": "per-symbol books and the pooled 3-symbol book; equal unit notional per decision; no cross-sectional ranking, no normalization across symbols",
+    "no_hidden_variants": "no alternate window depth, no monthly-grid variant, no sign-flipped re-computation exists or may be substituted at D2; any re-measure must use exactly this representation or be recorded as a NEW proposal"
+  },
+  "ancestry_defense": "WKNDLIQ was a Sat/Sun recurring weekday calendar whose book was measured to BE a low-liquidity-level exposure (pooled |rho| 0.5628 vs dvol proxies); P1's clock is 4 sparse FRIDAY instants with full weekday sessions, all fills land Friday 06:00-08:00 UTC (never into a weekend), and the observable is a bounded side-ratio in which the volume level cancels - the likeliest residual leakage path (2025-12-26 Boxing Day thin liquidity) is explicitly disclosed and the dvol_level_log/dvol_shock proxies are P1's named F3 kill. OICASCADE was an endogenous OI-collapse event book killed by its own randomized-event sham; P1 consumes NO OI anywhere, detects nothing endogenously, and carries a shifted-Friday sham of the same falsifying family. ATTN-PHASE was a daily recurring US-session phase on SOL; P1 has no session conditioning, treats all three symbols symmetrically, and reacts to flow direction, not to a time-of-day phase. FUNDJUMP still carried the funding LEVEL (rho 0.2439); P1 consumes no funding. CLOSE-DISPLACE-FADE and RUNPERSIST are endogenous UTC-day-boundary forms dead at any clock; P1's bars are anchored on 08:00 UTC delivery arithmetic, not the day boundary, and the anchor is flat before the delivery instant.",
+  "distinctness_vs_sibling": "P1's information source is PRE-instant accumulated taker pressure (00:00..06:00 UTC expiry-morning roll flow) on the QUARTERLY delivery clock, with a drift-into-deadline continuation reaction that is flat at 08:00 UTC. P2 (CNG1-A5-P2) uses the POST-settlement expiry-hour flow on the NON-QUARTERLY monthly options-expiry clock with an unwind-reversal reaction entered at 09:00 UTC. Different information-source layer, different reaction form, and disjoint event dates (quarterly vs non-quarterly last Fridays; FOMC instants of lane A4 also disjoint from both grids - checked). Cross-proposal collapse is tested by frozen rule F5.",
+  "feasibility_declaration": {
+    "expiry_events_in_window": "4 quarterly delivery events in the 13-month panel window (Sep/Dec/Mar/Jun quarter ends); monthly last-Friday count for reference: 12 (8 non-quarterly + these 4)",
+    "decision_count_anchor": "4 events x 3 symbols = 12 funded decisions per arm over the panel window",
+    "decision_count_horizon_bars": "12 decisions x 2 bars (anchor H) = 24 position-bars; neighbour 24; control 24; shadow 24",
+    "turnover_estimate": "2 fills per funded decision: anchor 24 fills/window, neighbour 24, control 24, shadow 24 (96 fills family-wide per year-equivalent; 8 fills/month) - far below any plausible turnover/cost ceiling kill (A9-F); exact ceiling adjudication is the P2/D2 lane's measured job, not asserted here",
+    "recent_window_note": "recent-window decision ceiling (Q-6) is a P2-phase MEASURED gate; declared estimate: last 6 months of panel = 2 events (2026-03-27, 2026-06-26) x 3 symbols = 6 anchor decisions - THIN, disclosed as the primary feasibility risk of this proposal",
+    "low_n_disclosure": "12 decisions is a very small sample by design (4 quarter ends/year); per-period DSR will exercise on N=12 and PBO stays NOT_RUN fail-closed (< 8 cells). This is disclosed, not hidden."
+  },
+  "falsification_rule": {
+    "frozen": true,
+    "no_rescue": "no window depth, boundary, or direction rule may change after any scored/smoke number is visible (P-15); any violation is a new hypothesis",
+    "rules": [
+      {
+        "id": "F1-calendar-artifact",
+        "condition": "CTL-SHIFTMINUS7D after-cost expectancy same sign as ANCHOR with |CTL| >= 0.5 x |ANCHOR|",
+        "consequence": "FALSIFIED - the quarterly deadline clock adds nothing beyond generic Friday H1 pressure autocorrelation (falsification-by-control cluster semantics)"
+      },
+      {
+        "id": "F2-clock-artifact",
+        "condition": "SHADOW-CLOCKLONG out-earns ANCHOR on after-cost expectancy, OR |pooled Spearman rho(anchor per-decision returns, shadow per-decision returns)| > 0.20",
+        "consequence": "FALSIFIED - the book is the bare last-Friday clock, not the mechanism"
+      },
+      {
+        "id": "F3-ancestry-veto",
+        "condition": "D2 pooled |rho| > 0.20 vs ANY inventory proxy including the H0 hygiene rows, measured on the exact representation_identity above",
+        "consequence": "D2 VETO recorded with margin (P-2); especially the dvol_level_log / dvol_shock proxies that killed WKNDLIQ (calendar-conditioned liquidity is this lane's named risk) and the tsmom proxy that killed TICKET-BREADTH"
+      },
+      {
+        "id": "F4-mechanical",
+        "condition": "ANCHOR after-cost expectancy <= 0 at measured tier 2.0",
+        "consequence": "DEAD (mechanical reject); negative-first verdict stands, no re-parameterization"
+      },
+      {
+        "id": "F5-sibling-collapse",
+        "condition": "pooled |rho| between P1-ANCHOR and CNG1-A5-P2-ANCHOR per-decision return series (daily-aggregated projection, D2 measurement on both declared representations) > 0.20",
+        "consequence": "the two proposals are ONE bet; only the stronger-evidenced mechanism advances to selection, the other is withdrawn - never both scored"
+      }
+    ]
+  },
+  "expected_failure_interpretation": "If F1 fires, the quarterly delivery clock carries no incremental information beyond generic Friday imbalance continuation and the roll-drift mechanism is dead on this substrate - it must NOT be re-clocked to other expiry series (the monthly clock is already P2's separate test; re-parameterizing windows after seeing that would be rescue). If F3 fires on the dvol proxies, the family was secretly a calendar-conditioned liquidity exposure - exactly the WKNDLIQ death the lane pre-disclosed, and an honest kill. If F4 fires with controls coherent (anchor loses, sham/shadow also lose), it is a plain negative: quarter-roll terminal flow is either balanced noise at H1 granularity or fully eaten by measured tier-2.0 costs. Any of these outcomes feeds CRYPTO_NG1_REJECT_ALL, which the plan registers as a successful research run."
+}
