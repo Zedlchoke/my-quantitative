@@ -212,7 +212,8 @@ All three ng1 GO phrases are DEAD: `GO FOREX NG1 SCORED EXECUTION` was
 CONSUMED at its own gate 2026-09-11 (two-key: A7 v3 AUTHORIZED + Lead exercising
 the owner standing delegation verbatim; 6/6 scored cells ran → FOREX_NG1_REJECT_ALL);
 `GO CRYPTO NG1 SCORED EXECUTION` and `GO STOCKS NG1 SCORED EXECUTION` died UNCONSUMED
-with their cycles' TERMINAL closes (BLOCKED_DATA_OR_SELECTION at 0/6 each).
+with their cycles' TERMINAL closes (BLOCKED_DATA_OR_SELECTION at 0/6 each);
+`GO FOREX NG2 SCORED EXECUTION` died UNCONSUMED with FOREX-NG2's P0-floor close.
 
 Historical dispositions (P-8; TERMINAL is absorbing):
 

@@ -29,6 +29,14 @@
   program 245/248** (P-9). Detail:
   `.worktrees/forex-ng1/integration/research/control/forex_ng1_run/terminal_report_ng1.json`.
 
+- **FOREX-NG2 CLOSED → `FOREX_NG2_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, terminal $N2T, A7 AUTHORIZED 0
+  HIGH/CRITICAL) — opened under P-19; died at P0 by its own frozen floor (AU 26<30
+  revision events; method-robust). 0 proposals / 0 cells / 0/6; GO died UNCONSUMED.
+  Banked: GB bulk re-referencing artifact (first-print 8); CA first-print stream
+  ALIVE (72/30 recent); successor FOREX-NG3 (CA-anchored) opens under P-19
+  recursion. **forex 48/48; program 245/248** (P-9). Detail:
+  `.worktrees/forex-ng2/integration/research/control/forex_ng2_run/terminal_report_ng2.json`.
+
 - **CRYPTO-NG1 CLOSED → `CRYPTO_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
   `orca/crypto-ng1-integration`, terminal 0cfb9ac, A7 AUTHORIZED 0 HIGH/CRITICAL with
   detached recompute full-match) — first ng1-generation close, first crypto cycle on
