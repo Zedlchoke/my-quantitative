@@ -2,14 +2,14 @@
  "schema": "forex_ng4_run/p0_gate@1",
  "gate": "FOREX-NG4-P0",
  "cycle_id": "FOREX-NG4",
- "task_id": "forex-ng4-p0-census",
- "measured_utc": "2026-09-11T21:24:58.305941+00:00",
+ "task_id": "forex-ng4-p0b-ez-ingest",
+ "measured_utc": "2026-09-11T21:44:13.873497+00:00",
  "git": {
   "branch": "orca/forex-ng4-integration",
-  "head_sha": "330a6cd0c829082d03f2658e2cebe63ef1205b2d",
-  "clean_except_owned_new_files": "?? data_raw/\n?? research/assets/forex_ng4/\n?? research/control/forex_ng4_run/\n?? tests/test_forex_ng4_p0.py"
+  "head_sha": "730aaafdfaf74c9e0734d8526dcc842200565c80",
+  "clean_except_owned_new_files": "M research/control/forex_ng4_run/p0_gate.json\n M tests/test_forex_ng4_p0.py\n?? data_raw/\n?? research/assets/forex_ng4/ez_vintaged.py\n?? research/control/forex_ng4_run/p0b_ez_hicp_census.json\n?? research/control/forex_ng4_run/p0b_ez_ingest_run.py\n?? research/control/forex_ng4_run/p0b_ez_vintages_manifest.json"
  },
- "dispatch_base_sha": "330a6cd0c829082d03f2658e2cebe63ef1205b2d",
+ "dispatch_base_sha": "730aaafdfaf74c9e0734d8526dcc842200565c80",
  "base_match": true,
  "pin_reverification": {
   "granted_check": {
@@ -295,32 +295,91 @@
   "verdict": "PASS"
  },
  "ez_hicp_census": {
-  "artifact": "research/control/forex_ng4_run/p0_ez_hicp_census.json",
-  "sha256": "19b84a4413db95a8c286036ec2877b4b73c727c7fa06fce09ab5e28cb8ff1a37",
+  "artifact": "research/control/forex_ng4_run/p0b_ez_hicp_census.json",
+  "sha256": "14bd22d0252beb8eee3405bf6a7765548db7ed141e82d1e78859485f7984e3fb",
   "series_identification": {
    "ez_series_id": "CP0000EZ19M086NEST",
    "ez_series_kind": "ez_hicp monthly (Euro area 19 HICP all-items index, FRED/OECD MEI-derived)",
    "dispatch_suggested_series_id": "EZCPIALLMINMEI",
-   "dispatch_id_correction": "EZCPIALLMINMEI appears in NO manifest or census artifact anywhere in the repo (measured); the EZ HICP series the V8 evidence pinned and the ng4 plane needs is CP0000EZ19M086NEST"
+   "dispatch_id_correction": "EZCPIALLMINMEI appears in NO manifest or census artifact anywhere in the repo (p0a measured); the EZ HICP series the V8 evidence pinned and this lane re-ingests is CP0000EZ19M086NEST",
+   "p0a_history": "the p0a census measured the V8 manifest pin 886f0afe... against NO resolvable bytes (BLOCKED_DATA); the owner directive 2026-09-12 authorized this re-ingest under the existing FRED entitlement"
   },
-  "status": "VINTAGED_BYTES_NOT_IN_PINNED_SET",
-  "bytes_search_resolvable": false,
+  "bytes_source": "P0B_REINGEST_ALFRED_MONTHLY_VINTAGES: 97 as-of snapshots 2017-12-01..2025-12-01 (untracked raw bytes under data_raw/forex_ng4_ez/vintages/ + committed sha manifest p0b_ez_vintages_manifest.json, verify-on-read)",
+  "ingest_status": "COMPLETE",
+  "manifest_sha256": "4611e15fcb7a0730cf7df5df4c652df62cbc304bf04052bac0068c19c4f3a08c",
+  "panel": {
+   "rows": 701,
+   "snapshots": 97,
+   "obs_months": 358,
+   "versions": 701,
+   "value_changes": 343,
+   "realtime_era_start": "2017-12-01"
+  },
+  "streams": {
+   "events_all_count": 282,
+   "restricted_events": 17
+  },
   "floors": {
    "a4_ez_print_events": {
-    "measured": null,
+    "measured": 17,
     "floor": 30,
-    "verdict": "NOT_RUN",
-    "law": "EZ print events with full realtime availability windows inside S0 (ng2/ng3 restricted first-print standard); requires vintaged bytes"
+    "margin": -13,
+    "verdict": "FAIL",
+    "law": "EZ print events (ng2/ng3 restricted first-print standard: v1->v2 version gap, full availability windows, S0-usable, first-print era, non-bulk) on the re-ingested monthly ALFRED panel"
    },
    "a5_ez_us_differential_months": {
-    "measured": null,
+    "measured": 16,
     "floor": 12,
-    "verdict": "NOT_RUN",
-    "law": "obs months carrying BOTH an EZ restricted event and a US restricted event (US leg measurable on pinned bytes; EZ leg requires vintaged bytes)"
+    "margin": 4,
+    "verdict": "PASS",
+    "law": "obs months carrying BOTH an EZ restricted event and a US restricted event (US leg: pinned CADS CPIAUCSL realtime archive, ng3 restricted standard)"
+   },
+   "q6_ez_recent_measured": {
+    "measured": 2,
+    "window": [
+     "2023-05-01",
+     "2025-04-30"
+    ],
+    "floor": null,
+    "verdict": "MEASURED_NO_FLOOR_FROZEN",
+    "law": "Q-6 law on the EZ restricted stream (last 24 calendar months of S0, matched on v2 availability days); measured and disclosed -- NO floor was ever frozen for the EZ recent window (the ng3 >= 15 floor was CA-specific), so no verdict is inferred"
    }
   },
+  "canaries": [
+   {
+    "kind": "fabricated_obs_month_lookup",
+    "obs_month": "2013-07-01",
+    "found": false,
+    "verdict": "PASS"
+   },
+   {
+    "kind": "fabricated_obs_month_lookup",
+    "obs_month": "2026-05-01",
+    "found": false,
+    "verdict": "PASS"
+   },
+   {
+    "kind": "vintage_grid_exactness",
+    "expected": {
+     "first": "2017-12-01",
+     "last": "2025-12-01",
+     "count": 97
+    },
+    "verdict": "PASS"
+   },
+   {
+    "kind": "realtime_monotonicity",
+    "verdict": "PASS",
+    "law": "ng2 vintages_by_month STRICT realtime-monotonicity law executed on the panel inside build_restricted_stream (a violation raises VintageMonotonicityError and NOTHING is built); the panel self-check additionally asserts strictly-increasing version starts and valid windows per obs month"
+   },
+   {
+    "kind": "manifest_verify_on_read",
+    "verdict": "PASS",
+    "law": "load_pinned_vintages re-hashed every vintage file against the committed manifest sha256 and re-ran the response-integrity canaries (clamped as-of windows, count truncation, monthly obs grid) before the panel was built"
+   }
+  ],
   "us_side_context": {
-   "series": "CPIAUCSL (US/fred_cpiaucsl_rt.json, pinned via CADS 7f18ec98...)",
+   "series": "CPIAUCSL (US/fred_cpiaucsl_rt.json, pinned via CADS 7f18ec98..., verify-on-read address == sha256 of bytes)",
    "restricted_events": 84,
    "restricted_months": [
     "2018-01-01",
@@ -409,12 +468,11 @@
     "2024-12-01"
    ],
    "recent_24m_count": 24,
-   "law": "ng2/ng3 restricted first-print standard on pinned bytes; measured as the US leg of the A5 EZ-vs-US differential -- the join itself is NOT_RUN without EZ vintaged bytes",
+   "law": "ng2/ng3 restricted first-print standard on pinned bytes; measured as the US leg of the A5 EZ-vs-US differential",
    "verdict": "MEASURED_CONTEXT_ONLY"
   },
   "blockers": [
-   "vintaged EZ HICP bytes (CP0000EZ19M086NEST.json) are NOT in the pinned set: the V8 staged-manifest sha256 entry 886f0afee88ac916a9aaeaabc57874ece6615b905c045b83a45551c3e72d5735 cannot be verified against any resolvable bytes (exhaustive search recorded); every PIT/vintage measurement on EZ is NOT_RUN; EZ vintaged ingest needs an owner / A3-lane decision",
-   "no current-vintage DOI file for the EZ series is resolvable either: the RETROSPECTIVE_ONLY fallback measurement is NOT_RUN (honest, not skipped silently)"
+   "EZ floors not reached on the re-ingested panel: {\"a4_ez_print_events\": {\"measured\": 17, \"floor\": 30, \"margin\": -13, \"verdict\": \"FAIL\", \"law\": \"EZ print events (ng2/ng3 restricted first-print standard: v1->v2 version gap, full availability windows, S0-usable, first-print era, non-bulk) on the re-ingested monthly ALFRED panel\"}, \"a5_ez_us_different"
   ],
   "verdict": "BLOCKED_DATA"
  },
@@ -423,27 +481,38 @@
    "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng4/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_forex_ng4_p0.py -q",
    "verdict": "PASS",
    "exit_code": 0,
-   "output_tail": "........................                                                 [100%]\n24 passed in 0.21s\n"
+   "output_tail": "........................................                                 [100%]\n40 passed in 0.30s\n"
   }
  ],
  "evidence_paths": {
   "cads_store_root": "/Users/hoangminhlong/my-quantitative/.runtime/v3_cads_store (READ-ONLY)",
-  "v9_read_only_root": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v9/integration",
   "ng1_adapter_reused_unmodified": "research/assets/forex_ng1/plane_adapter.py",
-  "ng1_spot_reused_unmodified": "research/assets/forex_ng1/spot_series.py",
-  "ng3_module_reused_unmodified": "research/assets/forex_ng3/revision_series.py",
+  "ng3_module_reused_unmodified": "research/assets/forex_ng3/revision_series.py (imports the ng2 machinery unmodified)",
   "ng4_modules": [
    "research/assets/forex_ng4/td_probe.py",
-   "research/assets/forex_ng4/ez_census.py"
+   "research/assets/forex_ng4/ez_census.py",
+   "research/assets/forex_ng4/ez_vintaged.py"
   ],
   "eurusd_pinned_bytes": "data_raw/forex_ng4_spot/EURUSD.json (UNTRACKED; committed manifest carries the sha256)",
+  "ez_vintaged_bytes": "data_raw/forex_ng4_ez/vintages/ (UNTRACKED; committed manifest p0b_ez_vintages_manifest.json carries the sha256 per file)",
+  "p0a_ez_census_artifact_retained": "research/control/forex_ng4_run/p0_ez_hicp_census.json",
   "tests": "tests/test_forex_ng4_p0.py"
  },
  "blockers": [
-  "EZ HICP vintaged census BLOCKED_DATA: vintaged EZ HICP bytes (CP0000EZ19M086NEST.json) are NOT in the pinned set: the V8 staged-manifest sha256 entry 886f0afee88ac916a9aaeaabc57874ece6615b905c045b83a45551c3e72d5735 cannot be verified against any resolvable bytes (exhaustive search recorded); every PIT/vintage measurement on EZ is NOT_RU",
-  "EZ HICP vintaged census BLOCKED_DATA: no current-vintage DOI file for the EZ series is resolvable either: the RETROSPECTIVE_ONLY fallback measurement is NOT_RUN (honest, not skipped silently)",
-  "EZ vintaged ingest needs an owner / A3-lane decision (next action: re-ingest CP0000EZ19M086NEST vintaged bytes under the V8 retrieval window and re-run this gate) -- floors A4 (>= 30 EZ print events) and A5 (>= 12 EZ-vs-US differential months) are NOT_RUN until then"
+  "EZ HICP vintaged census: EZ floors not reached on the re-ingested panel: {\"a4_ez_print_events\": {\"measured\": 17, \"floor\": 30, \"margin\": -13, \"verdict\": \"FAIL\", \"law\": \"EZ print events (ng2/ng3 restricted first-print standard: v1->v2 version gap, full availability windows, S0-usable, first-print era, non-bulk) on the re-inge"
  ],
  "verdict": "BLOCKED_DATA",
- "verdict_law": "plan sec 2-3: EURUSD not servable by the entitlement => BLOCKED_DATA honest with the owner action named; EZ HICP vintaged bytes absent from the pinned set => the EZ floors (A4 >= 30 print events; A5 >= 12 EZ-vs-US differential months) are NOT_RUN and the gate is BLOCKED_DATA with the EZ ingest decision escalated to the owner / A3 lane; the inherited-pin section and any measurable census rows remain PASS/NOT_RUN exactly as measured -- never inferred"
+ "verdict_law": "plan sec 2-3 (upgraded by task forex-ng4-p0b-ez-ingest): the gate is PASS iff the inherited-pin substrate and the EURUSD probe (p0a, carried forward with the pinned bytes re-verified) hold AND the EZ HICP floors are reached on the re-ingested vintaged bytes (A4 >= 30 EZ print events; A5 >= 12 EZ-vs-US differential months); ingest failure, floor shortfall or any canary failure => BLOCKED_DATA honest -- never an inferred PASS",
+ "prior_task_id": "forex-ng4-p0-census",
+ "p0a_base_sha": "330a6cd0c829082d03f2658e2cebe63ef1205b2d",
+ "section_provenance": {
+  "pin_reverification": "measured by task forex-ng4-p0-census at 330a6cd0c829082d03f2658e2cebe63ef1205b2d (carried forward VERBATIM; read-only evidence roots unchanged on disk)",
+  "eurusd_td_probe": "measured by task forex-ng4-p0-census at 330a6cd0c829082d03f2658e2cebe63ef1205b2d (carried forward VERBATIM; the pinned-bytes substrate is re-verified by THIS task -- see substrate_reverification)",
+  "ez_hicp_census": "REPLACED by task forex-ng4-p0b-ez-ingest: measured on the re-ingested monthly ALFRED vintages (owner directive 2026-09-12); the p0a artifact p0_ez_hicp_census.json remains on disk untouched as the BLOCKED_DATA evidence of the lost V8 bytes"
+ },
+ "substrate_reverification": {
+  "check": "EURUSD pinned bytes vs the committed p0 spot pin manifest (verify-on-read, no network)",
+  "copy_sha256": "01cb862bf260682c995debaf9322d38c4803b265ad0a4bbb66aea78770c43c02",
+  "verdict": "PASS"
+ }
 }

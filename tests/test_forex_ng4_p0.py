@@ -453,3 +453,397 @@ def test_pin_manifest_verify_drift_refuses(tmp_path):
         fh.write(body + b" ")
     with pytest.raises(ss.SpotIntegrityError):
         ss.verify_spot_file(manifest, "EURUSD", data_dir=data_dir)
+
+
+# --------------------------------------------------------------------------- #
+# 8. P0b EZ vintaged ingest law (etiquette, key hygiene, fail-closed)
+# --------------------------------------------------------------------------- #
+
+from research.assets.forex_ng2 import revision_series as ng2     # noqa: E402
+from research.assets.forex_ng3 import revision_series as rs      # noqa: E402
+from research.assets.forex_ng4 import ez_vintaged as ezv         # noqa: E402
+
+FAKE_KEY = "TESTKEY_NEVER_REAL"
+
+
+class _Resp:
+    def __init__(self, body: bytes, status: int = 200):
+        self._body, self.status = body, status
+
+    def read(self) -> bytes:
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _snapshot_payload(vd: str, month_values: dict) -> bytes:
+    """An ALFRED as-of snapshot response: rows clamped rs=re=vd."""
+    obs = [{"realtime_start": vd, "realtime_end": vd,
+            "date": m, "value": v}
+           for m, v in sorted(month_values.items())]
+    return json.dumps({"count": len(obs), "observations": obs}).encode()
+
+
+def test_p0b_key_law(tmp_path):
+    env = tmp_path / "env"
+    env.write_text(f"OTHER=1\n{ezv.KEY_NAME}={FAKE_KEY}\n")
+    assert ezv.load_fred_key(str(env)) == FAKE_KEY
+    env2 = tmp_path / "env2"
+    env2.write_text("OTHER=1\n")
+    assert ezv.load_fred_key(str(env2)) is None
+    assert ezv.load_fred_key(str(tmp_path / "absent")) is None
+
+
+def test_p0b_vintage_grid():
+    grid = ezv.vintage_dates()
+    assert len(grid) == 97                       # 96 + the 2017-12 warmup
+    assert grid[0] == "2017-12-01" and grid[-1] == "2025-12-01"
+    assert all(d[8:10] == "01" for d in grid)
+    assert grid == sorted(grid) and len(set(grid)) == len(grid)
+
+
+def test_p0b_fetch_ok_evidence_hygiene():
+    body = _snapshot_payload("2018-03-01", {"2018-01-01": "101.77"})
+    seen_urls = []
+
+    def transport(url, timeout=30):
+        seen_urls.append(url)
+        return _Resp(body)
+
+    rec = ezv.fetch_vintage("2018-03-01", FAKE_KEY, transport=transport,
+                            sleep_fn=lambda s: None)
+    assert rec["status"] == "OK"
+    assert rec["observations_count"] == 1
+    assert rec["count_declared"] == 1
+    assert "api_key=" + FAKE_KEY in seen_urls[0]      # the real URL keys it
+    blob = json.dumps(rec, default=lambda o: repr(o))
+    assert FAKE_KEY not in blob                       # evidence never does
+    assert "apikey" not in json.dumps(
+        rec["params_recorded_without_apikey"])        # params record is keyless
+    assert rec["endpoint"] == ezv.ENDPOINT            # name only, no query
+
+
+def test_p0b_fetch_backoff_retry_then_ok():
+    import io
+    import urllib.error
+    body = _snapshot_payload("2018-03-01", {"2018-01-01": "101.77"})
+    calls = {"n": 0}
+    sleeps = []
+
+    def transport(url, timeout=30):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise urllib.error.HTTPError(
+                url, 500, "Server Error", {}, io.BytesIO(b"{}"))
+        return _Resp(body)
+
+    rec = ezv.fetch_vintage("2018-03-01", FAKE_KEY, transport=transport,
+                            sleep_fn=sleeps.append)
+    assert rec["status"] == "OK"
+    assert [a["outcome"] for a in rec["attempts"]] == \
+        ["http_error", "http_error", "responded"]
+    assert sleeps == [2.0, 4.0]                       # exponential backoff
+
+
+def test_p0b_fetch_key_invalid_fatal_no_retry():
+    import io
+    import urllib.error
+    err = json.dumps({
+        "error_code": 400,
+        "error_message": "The value for api_key is invalid. You must "
+                         "register for a key."}).encode()
+    calls = {"n": 0}
+
+    def transport(url, timeout=30):
+        calls["n"] += 1
+        raise urllib.error.HTTPError(
+            url, 400, "Bad Request", {}, io.BytesIO(err))
+
+    rec = ezv.fetch_vintage("2018-03-01", FAKE_KEY, transport=transport,
+                            sleep_fn=lambda s: pytest.fail("no retry"))
+    assert rec["status"] == "FATAL_KEY_INVALID"
+    assert calls["n"] == 1
+    assert FAKE_KEY not in json.dumps(rec)
+
+
+def test_p0b_fetch_quota_fatal_no_retry():
+    import io
+    import urllib.error
+    err = json.dumps({
+        "error_code": 429,
+        "error_message": "Resource limit is exceeded. Requests per "
+                         "minute quota."}).encode()
+    calls = {"n": 0}
+
+    def transport(url, timeout=30):
+        calls["n"] += 1
+        raise urllib.error.HTTPError(
+            url, 429, "Too Many Requests", {}, io.BytesIO(err))
+
+    rec = ezv.fetch_vintage("2018-03-01", FAKE_KEY, transport=transport,
+                            sleep_fn=lambda s: pytest.fail("no retry"))
+    assert rec["status"] == "FATAL_QUOTA_EXCEEDED"
+    assert calls["n"] == 1
+
+
+def test_p0b_fetch_no_key_refuses_without_call():
+    def transport(url, timeout=30):
+        pytest.fail("no network call may happen without a key")
+
+    rec = ezv.fetch_vintage("2018-03-01", None, transport=transport,
+                            sleep_fn=lambda s: None)
+    assert rec["status"] == "FATAL_NO_KEY"
+    assert rec["attempts"] == []
+
+
+def _valid_snapshots():
+    return [
+        ("2018-03-01", _snapshot_payload("2018-03-01", {
+            "2018-01-01": "101.77", "2018-02-01": ".",
+            "2018-03-01": "100.0"})),
+        ("2018-04-01", _snapshot_payload("2018-04-01", {
+            "2018-01-01": "101.78", "2018-02-01": "103.0",
+            "2018-03-01": "100.5"})),
+        ("2018-05-01", _snapshot_payload("2018-05-01", {
+            "2018-01-01": "101.78", "2018-02-01": "103.0",
+            "2018-03-01": "100.5", "2018-04-01": "101.0"})),
+    ]
+
+
+def test_p0b_ingest_paces_writes_manifest_and_roundtrips(tmp_path):
+    snaps = _valid_snapshots()
+    calls = {"n": 0}
+    sleeps = []
+    mono = {"t": 0.0}
+
+    def transport(url, timeout=30):
+        calls["n"] += 1
+        return _Resp(snaps[calls["n"] - 1][1])
+
+    manifest_path = str(tmp_path / "manifest.json")
+    ev = ezv.ingest_all(
+        FAKE_KEY, manifest_path, vintages_dir=str(tmp_path / "vintages"),
+        transport=transport, sleep_fn=sleeps.append,
+        monotonic_fn=lambda: mono["t"],
+        vintage_list=[vd for vd, _ in snaps])
+    assert ev["status"] == "COMPLETE" and ev["vintage_count_fetched"] == 3
+    # pacing: >= 1.2 s enforced before every request after the first
+    assert sleeps == [1.2, 1.2]
+    # raw bytes pinned untracked-side + manifest sha round trip
+    for vd, body in snaps:
+        p = tmp_path / "vintages" / ezv.vintage_file_name(vd)
+        assert p.read_bytes() == body
+        assert ev["files"][vd]["sha256"] == \
+            __import__("hashlib").sha256(body).hexdigest()
+    with open(manifest_path, "r", encoding="utf-8") as fh:
+        on_disk = json.load(fh)
+    assert on_disk["status"] == "COMPLETE"
+    assert on_disk["raw_bytes_policy"].startswith("UNTRACKED")
+    out = ezv.load_pinned_vintages(manifest_path,
+                                   vintages_dir=str(tmp_path / "vintages"))
+    assert [vd for vd, _ in out] == [vd for vd, _ in snaps]
+
+
+def test_p0b_ingest_stops_fail_closed_on_fatal(tmp_path):
+    import io
+    import urllib.error
+    err = json.dumps({"error_code": 400, "error_message":
+                      "The value for api_key is not valid."}).encode()
+    snaps = _valid_snapshots()
+    calls = {"n": 0}
+
+    def transport(url, timeout=30):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return _Resp(snaps[0][1])
+        raise urllib.error.HTTPError(
+            url, 400, "Bad Request", {}, io.BytesIO(err))
+
+    manifest_path = str(tmp_path / "manifest.json")
+    ev = ezv.ingest_all(
+        FAKE_KEY, manifest_path, vintages_dir=str(tmp_path / "vintages"),
+        transport=transport, sleep_fn=lambda s: None,
+        monotonic_fn=lambda: 0.0,
+        vintage_list=[vd for vd, _ in snaps])
+    assert ev["status"] == "FAILED"
+    assert calls["n"] == 2                       # stopped at the refusal
+    assert ev["failures"][0]["status"] == "FATAL_KEY_INVALID"
+    with pytest.raises(ezv.PinnedBytesError):
+        ezv.load_pinned_vintages(manifest_path,
+                                 vintages_dir=str(tmp_path / "vintages"))
+
+
+def test_p0b_validate_response_canaries():
+    ok = json.loads(_snapshot_payload("2018-03-01",
+                                      {"2018-01-01": "101.77"}))
+    assert len(ezv.validate_vintage_response("2018-03-01", ok)) == 1
+    # fabricated vintage: a row whose window is NOT clamped to VD
+    doctored = {"count": 1, "observations": [
+        {"realtime_start": "2018-02-15", "realtime_end": "9999-12-31",
+         "date": "2018-01-01", "value": "101.77"}]}
+    with pytest.raises(ezv.VintageResponseError):
+        ezv.validate_vintage_response("2018-03-01", doctored)
+    # truncated response (count != observations returned)
+    truncated = {"count": 5, "observations": ok["observations"]}
+    with pytest.raises(ezv.VintageResponseError):
+        ezv.validate_vintage_response("2018-03-01", truncated)
+    # non-monthly obs date
+    offgrid = {"count": 1, "observations": [
+        {"realtime_start": "2018-03-01", "realtime_end": "2018-03-01",
+         "date": "2018-01-15", "value": "101.77"}]}
+    with pytest.raises(ezv.VintageResponseError):
+        ezv.validate_vintage_response("2018-03-01", offgrid)
+    # unsorted obs dates
+    unsorted = {"count": 2, "observations": [
+        {"realtime_start": "2018-03-01", "realtime_end": "2018-03-01",
+         "date": "2018-02-01", "value": "103.0"},
+        {"realtime_start": "2018-03-01", "realtime_end": "2018-03-01",
+         "date": "2018-01-01", "value": "101.77"}]}
+    with pytest.raises(ezv.VintageResponseError):
+        ezv.validate_vintage_response("2018-03-01", unsorted)
+
+
+def test_p0b_load_pinned_drift_refuses(tmp_path):
+    snaps = _valid_snapshots()
+    vdir = tmp_path / "vintages"
+    vdir.mkdir()
+    files = {}
+    for vd, body in snaps:
+        (vdir / ezv.vintage_file_name(vd)).write_bytes(body)
+        files[vd] = {"file": ezv.vintage_file_name(vd),
+                     "sha256": __import__("hashlib").sha256(
+                         body).hexdigest(),
+                     "bytes": len(body), "observations": 3, "count": 3}
+    manifest_path = str(tmp_path / "manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump({"schema": ezv.MANIFEST_SCHEMA, "status": "COMPLETE",
+                   "vintage_count_planned": len(snaps),
+                   "files": files}, fh)
+    assert len(ezv.load_pinned_vintages(manifest_path,
+                                        vintages_dir=str(vdir))) == 3
+    # drift one byte -> verify-on-read refuses
+    p = vdir / ezv.vintage_file_name(snaps[0][0])
+    p.write_bytes(snaps[0][1] + b" ")
+    with pytest.raises(ezv.PinnedBytesError):
+        ezv.load_pinned_vintages(manifest_path, vintages_dir=str(vdir))
+
+
+# --------------------------------------------------------------------------- #
+# 9. P0b realtime panel + census law (hand-computed fixtures)
+# --------------------------------------------------------------------------- #
+
+def test_p0b_panel_two_vintage_hand_computed():
+    panel = ezv.build_realtime_panel([
+        ("2018-03-01", json.loads(_snapshot_payload("2018-03-01", {
+            "2018-01-01": "101.77", "2018-02-01": ".",
+            "2018-03-01": "100.0"}))),
+        ("2018-04-01", json.loads(_snapshot_payload("2018-04-01", {
+            "2018-01-01": "101.78", "2018-02-01": "103.0",
+            "2018-03-01": "100.5"}))),
+    ])
+    rows = {(r.obs_date, r.realtime_start): r for r in panel["rows"]}
+    # hand-computed reconstruction:
+    # 2018-01: 101.77 [2018-03-01, 2018-03-31] then 101.78 open
+    assert rows[("2018-01-01", "2018-03-01")].realtime_end == "2018-03-31"
+    assert rows[("2018-01-01", "2018-03-01")].value == "101.77"
+    assert rows[("2018-01-01", "2018-04-01")].realtime_end == "9999-12-31"
+    assert rows[("2018-01-01", "2018-04-01")].value == "101.78"
+    # 2018-02: "." then 103.0 (first print at the second snapshot)
+    assert rows[("2018-02-01", "2018-03-01")].value == "."
+    assert rows[("2018-02-01", "2018-04-01")].value == "103.0"
+    # 2018-03: 100.0 -> 100.5
+    assert rows[("2018-03-01", "2018-04-01")].value == "100.5"
+    assert panel["rows_count"] == 6 and panel["versions"] == 6
+    assert panel["value_changes"] == 3
+
+    stream = rs.build_restricted_stream(
+        "EZ", panel["rows"], window=("2018-01-01", "2018-12-31"))
+    events = {e.obs_month: e for e in stream["events_all"]}
+    # hand-computed events: two v1->v2 gaps with differing values
+    assert set(events) == {"2018-01-01", "2018-03-01"}
+    e1, e3 = events["2018-01-01"], events["2018-03-01"]
+    assert e1.v1_value == "101.77" and e1.v2_value == "101.78"
+    assert e1.ratio == pytest.approx(0.01 / 101.77)
+    assert e1.first_print_in_realtime_era is False   # obs < era start
+    assert e3.v1_value == "100.0" and e3.v2_value == "100.5"
+    assert e3.ratio == pytest.approx(0.005)
+    assert e3.first_print_in_realtime_era is True    # obs >= era start
+    assert e3.v2_realtime_start == "2018-04-01"      # availability day
+    # restricted stream: era-eligible, non-bulk, S0-window-usable
+    assert len(stream["restricted"]) == 1
+    assert stream["restricted"][0].obs_month == "2018-03-01"
+    # fabricated month canary
+    assert rs.lookup_restricted(
+        {"EZ": stream["restricted"]}, "EZ", "2018-06-01")["found"] is False
+
+
+def test_p0b_panel_value_flip_makes_three_versions():
+    panel = ezv.build_realtime_panel([
+        ("2018-03-01", json.loads(_snapshot_payload("2018-03-01",
+                                                    {"2018-01-01": "10.0"}))),
+        ("2018-04-01", json.loads(_snapshot_payload("2018-04-01",
+                                                    {"2018-01-01": "10.5"}))),
+        ("2018-05-01", json.loads(_snapshot_payload("2018-05-01",
+                                                    {"2018-01-01": "10.0"}))),
+    ])
+    versions = sorted(panel["rows"], key=lambda r: r.realtime_start)
+    assert [(v.realtime_start, v.realtime_end, v.value) for v in versions] == [
+        ("2018-03-01", "2018-03-31", "10.0"),
+        ("2018-04-01", "2018-04-30", "10.5"),
+        ("2018-05-01", "9999-12-31", "10.0")]
+    # the first-to-second-version event is 10.0 -> 10.5 (ratio 0.05)
+    stream = rs.build_restricted_stream(
+        "EZ", panel["rows"], window=("2018-01-01", "2018-12-31"))
+    assert len(stream["events_all"]) == 1
+    assert stream["events_all"][0].ratio == pytest.approx(0.05)
+
+
+def test_p0b_realtime_window_law_monotonicity_fail_closed():
+    # realtime-window law: conflicting vintages with the SAME
+    # realtime_start (a same-day correction) raise and NOTHING is built
+    rows = [
+        pa.VintageRow(obs_date="2020-01-01", realtime_start="2020-02-15",
+                      realtime_end="2020-03-14", value="104.0"),
+        pa.VintageRow(obs_date="2020-01-01", realtime_start="2020-02-15",
+                      realtime_end="2020-03-20", value="104.5"),
+        pa.VintageRow(obs_date="2020-01-01", realtime_start="2020-03-15",
+                      realtime_end="9999-12-31", value="104.6"),
+    ]
+    with pytest.raises(ng2.VintageMonotonicityError):
+        rs.build_restricted_stream("EZ", rows)
+
+
+def test_p0b_panel_refuses_fabricated_vintage_payloads():
+    doctored = ("2018-04-01", {"count": 1, "observations": [
+        {"realtime_start": "2018-04-01", "realtime_end": "2018-04-01",
+         "date": "2018-01-01", "value": "101.78"},
+        # a row whose window is NOT clamped to the snapshot day
+        {"realtime_start": "2018-02-15", "realtime_end": "9999-12-31",
+         "date": "2018-02-01", "value": "103.0"}]})
+    with pytest.raises(ezv.VintageResponseError):
+        ezv.build_realtime_panel([doctored])
+
+
+def _mk_event(economy, obs_month, ratio):
+    return ng2.RevisionEvent(
+        economy=economy, obs_month=obs_month,
+        v1_realtime_start="2018-06-01", v1_realtime_end="2018-06-30",
+        v1_value="100.0", v2_realtime_start="2018-07-01",
+        v2_realtime_end="9999-12-31", v2_value="100.5", ratio=ratio,
+        first_print_in_realtime_era=True)
+
+
+def test_p0b_ez_us_differential_join_hand_computed():
+    ez_events = [_mk_event("EZ", "2018-05-01", 0.001),
+                 _mk_event("EZ", "2018-06-01", 0.002),
+                 _mk_event("EZ", "2019-01-01", 0.003)]
+    us_events = [_mk_event("US", "2018-06-01", 0.004),
+                 _mk_event("US", "2019-01-01", 0.005),
+                 _mk_event("US", "2019-02-01", 0.006)]
+    diff = ezv.ez_us_differential_months(ez_events, us_events)
+    assert diff["differential_months"] == ["2018-06", "2019-01"]
+    assert diff["total"] == 2
