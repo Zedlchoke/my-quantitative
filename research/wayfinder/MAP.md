@@ -41,6 +41,8 @@
 
 - **CRYPTO-NG2 CLOSED → `CRYPTO_NG2_BLOCKED_DATA_OR_SELECTION`** (2026-09-12, terminal 71a29b1, A7 AUTHORIZED 0 HIGH/CRITICAL, byte-identical recompute) — owner new-sources cycle #1: BLS instants RECOVERED via controller-WebFetch (22 instants; Oct-2025 shutdown months excluded), funding grid 1094x3 verified; 4 blind proposals; D2 4/4 VETO vs dead-FOMC-form shadows (settlement forms clean on 29-panel, killed by dead-form envelope). 0 cells / 0/6; GO died UNCONSUMED. **crypto 155/158; program 245/248** (P-9). Detail: `.worktrees/crypto-ng2/integration/research/control/crypto_ng2_run/audits/a7_terminal_ng2.json`.
 
+- **FOREX-NG4 CLOSED → `FOREX_NG4_BLOCKED_DATA_OR_SELECTION`** (2026-09-12, terminal a4ca659, A7v2 AUTHORIZED 0 HIGH/CRITICAL) — owner new-sources cycle #2: EURUSD pinned (TD entitlement), EZ HICP vintaged re-ingested (A7-F1 arc: as-of BLOCKED → wide-window PASS 37/16); 4 blind proposals; D2 4/4 VETO (Friday-v2-day geometry 0.89 + PPP 0.44 over-determined). 0 cells / 0/6; GO died UNCONSUMED. **EZ CPI frontier measured-closed. forex 48/48; program 245/248** (P-9). Detail: `.worktrees/forex-ng4/integration/research/control/forex_ng4_run/audits/a7_terminal_ng4_v2.json`.
+
 - **CRYPTO-NG1 CLOSED → `CRYPTO_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
   `orca/crypto-ng1-integration`, terminal 0cfb9ac, A7 AUTHORIZED 0 HIGH/CRITICAL with
   detached recompute full-match) — first ng1-generation close, first crypto cycle on
