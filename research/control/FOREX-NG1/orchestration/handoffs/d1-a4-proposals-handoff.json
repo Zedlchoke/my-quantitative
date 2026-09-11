@@ -1,0 +1,50 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "forex-ng1-d1-a4-proposals",
+  "cycle_id": "FOREX-NG1",
+  "role": "quant-implementer",
+  "lane": "d1-a4",
+  "dispatch_sha": "4d8727b0ec3685d9b1b5e7bb9585e88960d207d9",
+  "actual_start_sha": "4d8727b0ec3685d9b1b5e7bb9585e88960d207d9",
+  "commit_sha": "a22b2677ef8d92ad16c9734e91650a06d8833d0f",
+  "changed_paths": [
+    "research/control/forex_ng1_run/d1/proposals/proposal_A4_P1.json",
+    "research/control/forex_ng1_run/d1/proposals/proposal_A4_P2.json"
+  ],
+  "tests": [
+    {
+      "command": "n/a (proposal-only lane)",
+      "exit_code": null,
+      "verdict": "NOT_RUN"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Proposal-only blind lane: no code, no backtest, no scored/smoke/novelty numbers consumed or produced; all thresholds (tau1=0.10pp, tau2=0.15pp, |z|>=1.0, H=5) are blind frozen priors, explicitly not tuned.",
+    "Feasibility decision-day counts (GB 84, CA 84, AU 22, NZ 27, US 85 = 302 events, 557 pair-decisions pre-threshold) were computed on a Mon-Fri approximation of the FX grid from census timing fields only; the exact FX trading calendar is owned by the staged spot series and must be re-measured at P2/D2 (Q-6 recent-window floor applies).",
+    "Kênh vintaged chứng minh giá trị print trung bình 24-26 ngày SAU công bố cho GB/CA/NZ (15 AU, 0 US nhưng date-only); mọi entry phi-US là bắt buộc muộn (median entry 25-26 ngày sau publication). Cơ chế được khai báo đúng là late-window drift; làn này KHÔNG quan sát được reaction tại publication instant.",
+    "FX spot daily 16:00-NY series và Q-8 cost constants là DECLARED DEPENDENCIES (P1/D2 thẩm quyền; Q-8 NOT_YET_MEASURED => cost verdict fail-closed NOT_RUN nếu P1 chưa publish).",
+    "1 NZ first-release instant (ref 2019-04, archive_led_bulletin pit_notes) excluded fail-closed; AU evidence starts 2019-10-30; 16 CA WDS correction instants (ordinals 2-4) are not conditioning events."
+  ],
+  "incidents": [],
+  "tree_status": "clean at commit a22b2677ef8d92ad16c9734e91650a06d8833d0f (branch orca/fng1-d1-a4); handoff file itself committed in a second commit on the same branch",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/forex_ng1_run/d1/proposals/proposal_A4_P1.json",
+      "sha256": "240af78dfbf2c1c92ad9122e5317a4d33e31a8e8f99ed84d898315159f7d8234",
+      "description": "FXNG1-A4-P1: seasonal-naive CPI print-deviation late-window drift (surprise = vintaged print vs I(m-1)*I(m-12)/I(m-13); anchor tau 0.10pp H5, neighbour MAD24-normalized |z|>=1.0, CTL-DGS10LEVEL nominal-exposure control, Q-7 clock-only shadow, +7d sham-calendar placebo; frozen rule order R1-R5 + D2 ancestry rho gate; representation_identity forex_ng1_a4_p1_daily1600ny_vintaged_cpi_seasonalnaive_deviation_v1)"
+    },
+    {
+      "path": "research/control/forex_ng1_run/d1/proposals/proposal_A4_P2.json",
+      "sha256": "b1208b83879c46d51a1394c92c23850379ca31116a69b371d7a6711d7747f63f",
+      "description": "FXNG1-A4-P2: trailing-YoY extrapolation CPI print-deviation late-window drift (surprise = vintaged print vs I(m-12)*(1+trailing YoY) = acceleration deviation; anchor tau 0.15pp H5, neighbour two-window smoothed trend prior, same mandatory control battery; representation_identity forex_ng1_a4_p2_daily1600ny_vintaged_cpi_trailingyoy_deviation_v1). Distinct information source from P1 (trend continuation vs seasonal shape), not a re-parameterization."
+    }
+  ],
+  "recommended_next_action": "A1 controller: await lane A5 (release-order information structure) from the same wave SHA, then run D2 measured novelty (pooled |rho| <= 0.20 vs full inventory incl. V8 nominal-level shadow + V9 vetoes) and feasibility (Q-6 recent-window print counts vs frozen decision floor, cost ceiling kill) on BOTH A4 proposals; P1 must publish Q-8 constants and authoritate the FX spot staging dependency before any D2/implementation number is cited (P-12: code + representation committed before numbers).",
+  "notes": {
+    "outcome_blindness": "maintained throughout: only plan, FAMILY_FAILURES ledger, P0 census/gate timing/coverage fields were read; no results/scored/PnL/smoke artifacts opened; no backtest; no keyed FRED API calls.",
+    "clock_facts_measured_from_census": "323 instants (307 first releases); availability binds entries: entry_day - pub_day median GB 26 / CA 26 / AU 16 / NZ 25 / US 1; same-day 16:00-NY decision never sees a same-day print (16:00-NY = 20:00/21:00Z < 23:59:59Z conservative bound) - declared in both proposals' clock sections.",
+    "census_sha_remeasured": "e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe (matches p0_gate pin); p0_gate sha256 ec2722857220b475dc5b18221c7c20123e543c3dda17313dd96ab0d053fb8cab."
+  }
+}
