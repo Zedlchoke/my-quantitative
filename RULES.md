@@ -47,8 +47,11 @@ ran correctly, artifact  -> PASS
   SEALED everywhere.**
 - S0 is screening, NOT untouched OOS. **S1 stays SEALED_UNTOUCHED** until a
   future owner-authorized plan opens it — sealed data AND criteria (Q-9:
-  half a seal protects nothing). Opening S1, pushing, merging to main,
-  purchases and any keyed signup are OWNER-ONLY actions.
+  half a seal protects nothing). Opening S1, merging to main, purchases and
+  any keyed signup are OWNER-ONLY actions. **Push carries a standing Lead
+  authorization** (owner delegation 2026-09-11, "Bạn tự do push"): the Lead
+  session in the root checkout pushes and verifies the remote tip; lane
+  worktrees NEVER push (hook-enforced, scoped to `.worktrees/`).
 - One cycle = one A1 thread. **One live Lead session per cycle** (P-17);
   mid-flight is not abandoned — check activity before writing to a surface
   another authority may own. Heavy cap 1 machine-wide; full pytest runs
@@ -200,7 +203,7 @@ next stocks plan writes fresh; standing constraints:
 | **A9 (A9-F)** | Feasibility auditor | Decision counts, warmup coverage, turnover/cost ceilings, control identifiability — measured BEFORE selection, no PnL anywhere. |
 | **quant-explorer / quant-implementer / quant-reproducer / quant-auditor** | Orchestrated dispatch surface (plugin, optional per cycle) | The plugin's four role types map onto the roster above (explorer≈A3/A9-read, implementer≈A2/A8, reproducer≈reproduction lane, auditor=A7). Dispatch via MCP task store; forward-only state machine; structured handoff mandatory; hooks enforce the deny-list on every lane. |
 | **Lead Engineer** | The referee (this file's maintainer) | Reviews every handoff against artifacts, adjudicates disputes, enforces discipline and the P/Q lessons, lands the control-plane half of every close (P-16), maintains ledger/lessons/MAP, prepares owner decisions but never takes them. One live session per cycle. |
-| **Owner** | The only human authority | Decides via cards/imperative phrases: purchases, signups, push/merge, S1 opening, every GO. Questions are probes, not authority; silence is not authorization; a GO is consumed only at its own gate. |
+| **Owner** | The only human authority | Decides via cards/imperative phrases: purchases, signups, merge-to-main, S1 opening, every GO (push delegated to the Lead 2026-09-11). Questions are probes, not authority; silence is not authorization; a GO is consumed only at its own gate. |
 
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 

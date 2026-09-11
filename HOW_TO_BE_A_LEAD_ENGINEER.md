@@ -390,9 +390,11 @@ từ chối handoff không hợp lệ.
 
 ### 9.4 Guards (hooks) — deny tuyệt đối
 
-SessionStart snapshot; PreToolUse chặn tuyệt đối (trong worktree lane VÀ
-root): push, `reset --hard`, `clean -f`, history rewrite, đọc secret
-(.env cat/printenv SECRET), merge/checkout main; PostAgent chặn handoff
+SessionStart snapshot; PreToolUse chặn tuyệt đối (lane VÀ root):
+`reset --hard`, `clean -f`, history rewrite, đọc secret (.env cat/
+printenv SECRET), merge/checkout main; **push chặn theo scope LANE**
+(`.worktrees/` trong lệnh hoặc cwd — root-Lead được push theo ủy quyền
+owner 2026-09-11, §27.5); PostAgent chặn handoff
 invalid; Stop continuation. Danh sách deny nằm trong plugin; **câu chữ
 command chứa trigger phrase cũng bị chặn** (kể cả trong heredoc tài liệu —
 đã xảy ra) — viết tài liệu bằng cách diễn đạt khác.
@@ -879,11 +881,15 @@ Cập nhật khi: bắt đầu phase; phát hiện blocker/incident; gate quan t
 hoàn tất; job dài vẫn khỏe; cần owner authority. Không cập nhật rỗng "vẫn
 đang làm".
 
-### 27.5 Push là việc của owner-terminal
+### 27.5 Push: Lead được ủy quyền đứng (owner 2026-09-11)
 
-Hook chặn agent push tuyệt đối (kể cả khi được owner nhờ bằng lời — hãy trả
-lời "em bị hook chặn, anh push từ terminal giúp em"). Lead liệt kê các
-commit đang chờ push; owner xem và push.
+Owner cấp standing delegation ("Bạn tự do push", 2026-09-11): phiên Lead ở
+root checkout TỰ push được. Kỷ luật khi push: đúng branch đã xác minh;
+kiểm tra remote tip sau khi push; báo SHA đã push trong status. Lane
+worktrees KHÔNG BAO GIỜ push — hook scoping deny khi lệnh hoặc cwd trỏ
+`.worktrees/`. Merge-main, S1, mua sắm, keyed signup vẫn OWNER-ONLY. Khi
+hook chặn một lệnh của chính mình: đọc lý do nó ghi (đó là luật mới nhất
+đang chạy), không circumvent; muốn đổi luật thì đổi qua commit.
 
 ## 28. Git, commit, push và merge
 
@@ -896,8 +902,8 @@ commit ATOMIC, không để index bẩn qua thao tác dài.
 
 ### 28.2 Push boundary
 
-Push chỉ khi owner/plan cho phép (và qua terminal của owner — §27.5). Không
-coi push branch là merge `main`.
+Lead push dưới ủy quyền đứng của owner (2026-09-11, §27.5); đúng branch,
+verify remote tip sau push. Không coi push branch là merge `main`.
 
 ### 28.3 Main boundary
 
@@ -1193,7 +1199,8 @@ minh thứ đang cầm là vàng, hoặc dũng cảm ghi đúng rằng nó khôn
 - §2.6 guards-là-luật (SHV1 + orchestration).
 - Phần II mới: researchctl (§7), heavy lock + yielding (§8), orchestration
   v3 (§9), platform v3 data plane (§10).
-- §11.4 archive-then-delete + inherited pins (P-13); §28 push-owner-terminal;
+- §11.4 archive-then-delete + inherited pins (P-13); §27.5/§28.2 push
+  delegation (owner standing grant 2026-09-11, hook scoped to lanes);
   §30 thêm 5 lỗi tư duy mới; §32 two-half close (P-16); §34.4 structured
   handoff; §36 thêm 2 bài tập; §37 checklist thêm 4 câu.
 - Dệt P-12..P-17 và Q-1..Q-16 (QuantPulse dossier, nhập theo chỉ thị owner

@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """PreToolUse hook (plan sec 6.2): ownership + destructive/credential/S1 guards.
 
-Absolute denies (context-independent): git push, hard reset/clean, main-merge
+Push policy (owner standing delegation 2026-09-11, "Bạn tự do push"): the
+Lead session in the ROOT checkout may push; lane worktrees NEVER push —
+`git push` is denied when the command or the session cwd references a lane
+worktree (.worktrees/).
+
+Absolute denies (context-independent): hard reset/clean, main-merge
 destruction, .env/credential echo, S1 path reads via cat.
 Context-dependent (only when a dispatch is active, i.e.
 .runtime/orchestrator_v3/current_dispatch.json exists): Edit/Write target
@@ -26,8 +31,8 @@ _env_rt = os.environ.get("ZCODE_ORCH_RUNTIME_DIR")
 RUNTIME = Path(_env_rt).resolve() if _env_rt else \
     REPO / ".runtime" / "orchestrator_v3"
 
+GIT_PUSH = re.compile(r"\bgit\b[^|;&\n]*\bpush\b")
 ABSOLUTE_BASH_DENY = (
-    (re.compile(r"\bgit\s+push\b"), "push requires explicit owner authority (plan sec 13)"),
     (re.compile(r"\bgit\s+reset\s+--hard\b"), "destructive reset is forbidden"),
     (re.compile(r"\bgit\s+clean\s+-[a-z]*f"), "destructive clean is forbidden"),
     (re.compile(r"\bgit\s+filter-branch\b|\bgit\s+rebase\b.*--onto\s+main\b"),
@@ -95,6 +100,11 @@ def main() -> int:
 
     if tool == "Bash":
         cmd = tool_input.get("command", "") if isinstance(tool_input, dict) else blob
+        cwd = str(payload.get("cwd") or "")
+        if GIT_PUSH.search(cmd) and (".worktrees" in cmd or "/.worktrees/" in cwd):
+            return _deny("lanes never push (plan sec 13); push from the root "
+                         "checkout only (owner standing delegation 2026-09-11 "
+                         "covers the Lead session, not lane agents)")
         for rx, why in ABSOLUTE_BASH_DENY:
             if rx.search(cmd):
                 return _deny(why)
