@@ -1,0 +1,18 @@
+{
+ "schema": "zcode_orch_v3_canary_result@1",
+ "gate": "Z3-G7",
+ "canary": "P8 reproduction + A7 + bad-handoff refusal",
+ "measured_at_utc": "2026-09-11T02:15:00Z",
+ "reproduction": {
+  "verdict": "ALL_MATCH",
+  "detail": "quant-reproducer on detached worktree at c4d6d17: pytest 6/6 exit 0; sha256 4/4 MATCH (module_a/test_a vs original handoff pins; module_b/test_b vs git blobs at frozen SHA); full store cycle REGISTERED->INTEGRATED clean via the P6 return-pattern (no file collision)",
+ },
+ "bad_handoff_negative_control": {
+  "expected": "REFUSED (plan P8 case: 'one deliberately bad handoff (dispatch_sha mismatch) must be REFUSED')",
+  "measured": "ACCEPTED END-TO-END: publish_handoff accepted dispatch_sha=commit_sha=deadbeef... (fabricated), validate_handoff passed it to VALIDATING, mark_integrated accepted integrated_commit_sha=deadbeef... — task reached INTEGRATED with zero connection to reality",
+  "defect": "STORE-FLOW-3 (HIGH): no cross-check of handoff.dispatch_sha vs the task record's dispatch context, no commit_sha existence/resolution check, at any of publish/validate/integrate",
+  "fix": "publish_handoff must refuse handoff.dispatch_sha != recorded dispatch/base SHA; mark_integrated must resolve the commit SHA in the named repo/branch before transitioning; add fixture tests for both (the P2 battery covered digest tampering but not sha-consistency)"
+ },
+ "disposition": "Z3-G7 is NOT passable as designed until STORE-FLOW-3 is fixed: the positive reproduction half PASSes; the refusal half measured a missing guard. Plugin v3.1 remediation required (STORE-FLOW-1/2/3) before a PASS-class terminal is claimable — the A7 auditor weighs this. Interim protection: the Lead's independent git verification of every commit before integration (practiced in P7: real commits on real branches verified).",
+ "task_states": "canary-p8-repro INTEGRATED (clean); canary-p8-bad-handoff INTEGRATED (deliberate negative — its store row is evidence of the gap)"
+}
