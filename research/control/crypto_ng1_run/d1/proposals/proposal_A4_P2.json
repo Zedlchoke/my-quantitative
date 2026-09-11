@@ -1,0 +1,166 @@
+{
+  "schema": "crypto_ng1_run/d1_proposal@1",
+  "task_id": "crypto-ng1-d1-a4-proposals",
+  "cycle_id": "CRYPTO_NG1",
+  "lane": "d1-a4",
+  "hypothesis_id": "CNG1-A4-P2",
+  "title": "FOMC-instant forced pre-completion: pre-print accumulated taker-pressure realization drift (H1)",
+  "blindness_statement": {
+    "outcome_blind": true,
+    "read_sources": [
+      "plans/PLAN_crypto_ng1.md (sections 1, 2, 6 only)",
+      "research/wayfinder/FAMILY_FAILURES.jsonl (dead-form avoidance only)",
+      "research/control/crypto_ng1_run/p0_calendar_census.json (instants + evidence)",
+      "research/control/crypto_ng1_run/p0_gate.json (panel bounds)",
+      "S4 panel CSV header row via plane adapter (schema declaration only; first 2 data rows inspected for column semantics; no outcome measured)"
+    ],
+    "not_done": [
+      "no result/scored/PnL/smoke file of any cycle read",
+      "no backtest run, no outcome number computed"
+    ]
+  },
+  "measured_facts_used_verbatim": {
+    "panel": "H1 UTC, 3 symbols BTCUSDT/ETHUSDT/SOLUSDT, 8760 rows/symbol, window 2025-08-22T00..2026-08-21T23 (p0_gate.json panel_bounds PASS)",
+    "instants": "8 FOMC decision instants, 2025-09-17..2026-07-29, official publication timestamps DST-correct (p0_calendar_census.json, verdict PASS_WITH_BLS_BLOCKED)",
+    "fomc_instants_utc_chronological": [
+      "2025-09-17T18:00:00Z",
+      "2025-10-29T18:00:00Z",
+      "2025-12-10T19:00:00Z",
+      "2026-01-28T19:00:00Z",
+      "2026-03-18T18:00:00Z",
+      "2026-04-29T18:00:00Z",
+      "2026-06-17T18:00:00Z",
+      "2026-07-29T18:00:00Z"
+    ],
+    "forbidden_conditioning": "CPI/NFP instants DO NOT EXIST in evidence (BLS blocked 403); this proposal conditions on NOTHING except the 8 evidenced FOMC instants"
+  },
+  "mechanism": {
+    "forced_participant": "Accounts under event-mandated flat-through-print policies (prop-desk risk limits, mandate clauses that forbid holding through scheduled US macro prints) that MUST complete their desired flow in the k bars BEFORE the instant. Their deadline is the public FOMC schedule; the coercion is the clock, not any endogenous market state.",
+    "late_participant": "Post-print discretionary flow that only re-engages after uncertainty resolves; the pre-print pressure direction realizes (is confirmed and extended, or the announcement-bar counter-move retraces) against this late crowd.",
+    "why_effect_exists": "Deadline flow is informed-but-urgent: it transacts in the hours while quote providers are still present (before their own print withdrawal), accumulating one-sided taker pressure in the pre-window. When the decision lands and uncertainty resolves, price drifts toward the direction of that accumulated pressure over the following hours - the pre-window pressure is a measure of who was forced to act early, and the post-print market slowly prices what they knew.",
+    "when_it_must_fail": [
+      "If pre-print flow is uninformed de-risking (noise around a deadline), post-print drift toward it is statistically zero: anchor after-cost expectancy indistinguishable from zero.",
+      "If the effect is generic H1 imbalance autocorrelation with no clock content, the sham-instant placebo reproduces the anchor (same-sign >= 0.5x).",
+      "If the book is really the sibling P1 bet (announcement-bar side), the cross-representation pooled |rho| > 0.20 collapses the pair (F5).",
+      "If the observable secretly encodes a liquidity/VOLUME level rather than a bounded pressure ratio, D2 pooled |rho| > 0.20 vs the dvol proxies (WKNDLIQ's killers) vetoes it."
+    ],
+    "observable_pinned": {
+      "definition": "press(symbol, s, k) = (sum of buy_quote over bars A-k..A-1 - sum of sell_quote over bars A-k..A-1) / (sum of quote_total over bars A-k..A-1), a bounded net-pressure ratio in [-1, +1] computed BEFORE the instant on bars that are fully closed PIT",
+      "panel_columns": ["buy_quote", "sell_quote", "quote_total", "last_price"],
+      "instant_source": "p0_calendar_census.json instants (series US-MACRO/FOMC_DECISION), DST-correct UTC per official 'For release at 2:00 p.m. EST/EDT' evidence"
+    }
+  },
+  "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+  "clock": {
+    "bar": "H1 UTC from the frozen S4 panels, bar hour_utc=T covers [T, T+1h)",
+    "announcement_bar": "A(s) = the bar whose hour_utc equals the instant's UTC hour on the instant's date (the release lands on A's open boundary; e.g. 2026-01-28T19:00:00Z -> bar '2026-01-28T19')",
+    "pre_window": "bars A-k..A-1 (the k bars immediately before the announcement bar, same UTC day for k <= 6 at these instants)",
+    "decision": "at the CLOSE of bar A(s): the full pre-window AND the full announcement bar are point-in-time at decision time; entry is deliberately AFTER the print so the trade tests post-resolution realization, not the print itself",
+    "instant_alignment": "UTC, DST-correct from census evidence (14:00 EDT = 18:00Z; 14:00 EST = 19:00Z); no CPI/NFP instants exist and none are used"
+  },
+  "warmup": {
+    "rule": "an instant is eligible only if the symbol has >= 500 prior H1 bars in the panel before the instant's date AND all k pre-window bars exist",
+    "coverage": "panel starts 2025-08-22T00; first instant 2025-09-17 has 624 bars >= 500 and pre-window bars 14:00..17:00Z exist; therefore ALL 8 instants x 3 symbols are eligible; no instant dropped",
+    "signal_history": "none required beyond the k-bar pre-window itself (no threshold fitting exists)"
+  },
+  "features_lags": {
+    "columns_from_panel": {
+      "buy_quote": "USD notional of buy-taker flow in bar",
+      "sell_quote": "USD notional of sell-taker flow in bar",
+      "quote_total": "buy_quote + sell_quote (bar total taker notional)",
+      "last_price": "last traded price in bar, used as the bar-close fill price"
+    },
+    "lag_structure": "windowed feature at lags -1..-k relative to the announcement bar (anchor k=4, i.e. bars A-4..A-1); decision lag 0 (close of A); exit price at lag +H (close of A+H). Volume enters only as a bounded ratio denominator; no volume LEVEL is used anywhere."
+  },
+  "entry_exit_fills": {
+    "direction": "d = sign(press) = sign((SUM buy_quote - SUM sell_quote)/(SUM quote_total)) over bars A-k..A-1; tie (numerator exactly 0) -> decision recorded UNFUNDED_SKIP (counted, not silently dropped)",
+    "entry": "at close of A(s), fill price = last_price of bar A(s), unit notional 1.0 per decision per symbol, no leverage parameter, no sizing conditioning",
+    "exit": "at close of A(s)+H, fill price = last_price of bar A(s)+H; no stop, no early exit",
+    "fills_per_funded_decision": "2 (entry + exit), each charged cost exactly once (L-V14-0)"
+  },
+  "costs": {
+    "authority": "measured taker + spread schedule at stress tier 2.0 as PRIMARY (Q-2/Q-8), inherited from the V17 scored-driver kernel adoption at this cycle's P1 phase; cost exactly once per fill",
+    "invention_disclaimer": "NO cost constant is stated or invented in this proposal; the measured tier numbers come from the kernel's measured schedule at execution time. Measured beats stated everywhere."
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "CNG1-A4-P2-ANCHOR",
+      "rule": "direction = sign(press over A-4..A-1); H = 8 bars",
+      "decisions": "8 instants x 3 symbols = 24 funded decisions (minus exact-tie skips, expected 0)"
+    },
+    "neighbour": {
+      "arm_id": "CNG1-A4-P2-NEIGH-K8",
+      "count": "exactly 1 neighbour",
+      "rule": "identical decision grid and H = 8; pre-window deepened to k = 8 bars (A-8..A-1)",
+      "mechanism_support": "if forced pre-completion pressure is real, a deeper accumulation window must capture more of the deadline flow and move the same direction; an unstable or sign-flipping deeper window contradicts the mechanism (different parameterization, same mechanism)"
+    },
+    "causal_placebo_control": {
+      "arm_id": "CNG1-A4-P2-CTL-SHIFTMINUS1",
+      "count": "exactly 1 causal/placebo control",
+      "rule": "sham FOMC clock: each instant shifted -1 FOMC session index (session i date -> session i-1 date, same DST-correct release hour); session 1 has no predecessor -> dropped fail-closed",
+      "decisions": "7 sessions x 3 symbols = 21 decisions; everything else identical to anchor (k = 4, H = 8)",
+      "identifiability": "the sham recomputes the pre-window pressure around real alternate trading hours with real microstructure; it CAN move the signal (Q-11 satisfied; a control that cannot move the signal would be INVALID NULL)"
+    },
+    "clock_only_shadow": {
+      "arm_id": "CNG1-A4-P2-SHADOW-CLOCKPARITY",
+      "count": "exactly 1 clock-only shadow (Q-7)",
+      "rule": "identical decision grid, holds (H = 8), costs and books; direction = +1 on odd chronological session index, -1 on even (deterministic from the calendar alone, carries zero panel information)",
+      "purpose": "isolates what the bare exogenous clock yields including its sign-alternating structure; if the anchor is subsumed by this exposure the mechanism claim is empty"
+    },
+    "pairwise_distinctness": "the four arms differ by (direction rule, pre-window k, H, instant map) and will carry distinct arm_config_digests at D2/I time; no two arms share all four"
+  },
+  "representation_identity": {
+    "p12_statement": "This block IS the representation D2 must measure pooled |rho| <= 0.20 on. Representation identity = measurement identity (FXFV9 lesson: no undisclosed variant grids).",
+    "grid": "H1 rows keyed (symbol, hour_utc) from the three frozen S4 panels (digests pinned in p0_gate.json s4_repin); decision grid = 24 rows keyed (symbol, instant) over the 8 census instants",
+    "signal_computation": "per decision row: press = (SUM_{A-4..A-1} buy_quote - SUM sell_quote) / SUM quote_total; d = sign(press); entry = last_price(A); exit = last_price(A+8)",
+    "per_decision_return": "r = d * (exit/entry - 1), gross; after-cost r_net = r - 2 * fill_cost_tier2.0 / unit_notional",
+    "series_d2_measures": [
+      "the 24-row per-decision after-cost return vector of ANCHOR (primary)",
+      "its daily-aggregated (symbol-day) projection",
+      "the same vectors for NEIGH-K8 for the ancestry panel"
+    ],
+    "books": "per-symbol books and the pooled 3-symbol book; equal unit notional per decision; no cross-sectional ranking, no normalization across symbols",
+    "no_hidden_variants": "no alternate pre-window definition, no span variant, no sign-flipped re-computation exists or may be substituted at D2; any re-measure must use exactly this representation or be recorded as a NEW proposal"
+  },
+  "ancestry_defense": "WKNDLIQ died because its weekend book WAS a low-liquidity-level exposure (pooled |rho| 0.5628 vs dvol proxies); P2's observable is a bounded net-pressure RATIO whose numerator is a side difference and whose denominator cancels the volume level - no liquidity level conditions anything, and the 8 exogenous instants are not a recurring weekday. FUNDJUMP's announced-change form still carried the funding LEVEL (rho 0.2439); P2 consumes no funding, no OI, no announcement content - only the census clock and panel flow columns. ATTN-PHASE was a daily recurring US-session phase on SOL; P2's clock is 8 non-recurring scheduled decision instants and its reaction window starts after the print, not at a session boundary. OICASCADE was an endogenous OI-collapse event book killed by its own randomized-event sham; P2 uses no OI and carries an instant-shifted sham of the same falsifying family. The generic-imbalance-continuation interpretation (the RUNPERSIST/taker-saturation neighborhood) is exactly what the sham-instant and clock-only controls are built to falsify.",
+  "distinctness_vs_sibling": "P2's information source is the PRE-instant accumulated taker pressure over A-4..A-1 (deadline-forced flow while quotes still stand); P1 (CNG1-A4-P1) uses the POST-instant announcement-bar taker side (drained-book under-reaction). Different information-source layer AND different reaction form (realization drift vs continuation), not a parameter swap. Cross-proposal collapse is tested by frozen rule F5.",
+  "feasibility_declaration": {
+    "decision_count_anchor": "8 instants x 3 symbols = 24 funded decisions per arm over the panel window",
+    "decision_count_horizon_bars": "24 decisions x 8 bars (anchor H) = 192 position-bars; neighbour 24 x 8 = 192 (k=8); control 21 x 8 = 168; shadow 24 x 8 = 192",
+    "turnover_estimate": "2 fills per funded decision: anchor 48 fills/window, neighbour 48, control 42, shadow 48 (192 fills family-wide per year-equivalent; ~16 fills/month) - far below any plausible turnover/cost ceiling kill (A9-F); exact ceiling adjudication is the P2/D2 lane's measured job, not asserted here",
+    "recent_window_note": "recent-window decision ceiling (Q-6) is a P2-phase MEASURED gate; declared estimate: last 6 months of panel = 4 instants x 3 symbols = 12 anchor decisions",
+    "low_n_disclosure": "24 decisions is a small sample by design (8 scheduled prints/year); per-period DSR will exercise on N=24 and PBO stays NOT_RUN fail-closed (< 8 cells). This is disclosed, not hidden."
+  },
+  "falsification_rule": {
+    "frozen": true,
+    "no_rescue": "no pre-window depth, horizon, or direction rule may change after any scored/smoke number is visible (P-15); any violation is a new hypothesis",
+    "rules": [
+      {
+        "id": "F1-calendar-artifact",
+        "condition": "CTL-SHIFTMINUS1 after-cost expectancy same sign as ANCHOR with |CTL| >= 0.5 x |ANCHOR|",
+        "consequence": "FALSIFIED - the FOMC clock adds nothing beyond generic H1 pressure autocorrelation (falsification-by-control cluster semantics)"
+      },
+      {
+        "id": "F2-clock-artifact",
+        "condition": "SHADOW-CLOCKPARITY out-earns ANCHOR on after-cost expectancy, OR |pooled Spearman rho(anchor per-decision returns, shadow per-decision returns)| > 0.20",
+        "consequence": "FALSIFIED - the book is the bare calendar, not the mechanism"
+      },
+      {
+        "id": "F3-ancestry-veto",
+        "condition": "D2 pooled |rho| > 0.20 vs ANY inventory proxy including the H0 hygiene rows, measured on the exact representation_identity above",
+        "consequence": "D2 VETO recorded with margin (P-2); especially the dvol_level_log / dvol_shock proxies that killed WKNDLIQ and the tsmom proxy that killed TICKET-BREADTH"
+      },
+      {
+        "id": "F4-mechanical",
+        "condition": "ANCHOR after-cost expectancy <= 0 at measured tier 2.0",
+        "consequence": "DEAD (mechanical reject); negative-first verdict stands, no re-parameterization"
+      },
+      {
+        "id": "F5-sibling-collapse",
+        "condition": "pooled |rho| between P2-ANCHOR and CNG1-A4-P1-ANCHOR per-decision return series > 0.20 (D2 measurement on both declared representations)",
+        "consequence": "the two proposals are ONE bet; only the stronger-evidenced mechanism advances to selection, the other is withdrawn - never both scored"
+      }
+    ]
+  },
+  "expected_failure_interpretation": "If F1 fires, pre-print pressure carries no scheduled-clock information beyond generic H1 imbalance autocorrelation and the forced-pre-completion mechanism is dead on this substrate - it must not be re-clocked to other announcement series (CPI/NFP are BLOCKED, so no other legal clock exists in evidence). If F5 fires, the lane effectively produced one mechanism twice and the weaker is withdrawn before selection - an honest lane-level thinning, not a rescue. If F4 fires with coherent controls, it is a plain negative: deadline flow is noise at H1 granularity on these three books, or realization drift is smaller than measured tier-2.0 costs. Any of these outcomes feeds CRYPTO_NG1_REJECT_ALL, which the plan registers as a successful research run."
+}
