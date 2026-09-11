@@ -1,0 +1,109 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "stocks-ng1-d2-measurement",
+ "cycle_id": "STOCKS-NG1",
+ "role": "quant-implementer",
+ "lane": "d2",
+ "dispatch_sha": "47cb0ce05362452ba0aed3b4bce910e592096a8c",
+ "actual_start_sha": "47cb0ce05362452ba0aed3b4bce910e592096a8c",
+ "commit_sha": "33ebc72898eb262d3a0833c588d9943474d44937",
+ "changed_paths": [
+  "research/assets/stocks_ng1/d2/__init__.py",
+  "research/assets/stocks_ng1/d2/core.py",
+  "research/assets/stocks_ng1/d2/exposures.py",
+  "research/assets/stocks_ng1/d2/vetoes.py",
+  "research/assets/stocks_ng1/d2/measure.py",
+  "research/control/stocks_ng1_run/d2/run_d2_measurement.py",
+  "research/control/stocks_ng1_run/d2/d2_novelty_feasibility_ng1.json",
+  "research/control/stocks_ng1_run/d1/feasibility/feasibility_summary.json",
+  "tests/test_stocks_ng1_d2.py"
+ ],
+ "tests": [
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_stocks_ng1_d2.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "14 tests: hand-computed rho pair (incl. tie closed form), fail-closed unmeasured veto case, fold-population vs frozen floor case, fdens/planshare window math, sham marginal preservation + seed determinism, drawdown and own_z known answers"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/stocks_ng1_run/d2/run_d2_measurement.py 2026-09-11T00:00:00Z",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "full measurement, two in-process passes byte-identical (sha256 529ea7e1108ceecb99f1f6de35de702dd2c3c65f91b810b1e44265a2c3ad4fa2); artifacts written"
+  }
+ ],
+ "authority_claims": [],
+ "measured_results": {
+  "SFNG1-A4-P1": {
+   "verdict_novelty": "VETO(argmax=goodwill_bloat,rho=-0.3547,margin_to_020=-0.1547)",
+   "vetoes_measured": "15/15 (n=72445 pairs, 293 entities, 548/600 dates)",
+   "runner_up_entries": "wc_stock_intensity 0.1890 (margin 0.0110), own_z_characteristic_form 0.1934 (margin 0.0066)",
+   "identifiability": "sham pooled rho 0.6712, arrival shadow 0.3709, both < 0.98 self-subsumption bound -> no pre-score kill"
+  },
+  "SFNG1-A4-P2": {
+   "verdict_novelty": "VETO(argmax=goodwill_bloat,rho=-0.384,margin_to_020=-0.184)",
+   "vetoes_measured": "15/15 (n=251539 pairs, 694 entities, 600/600 dates)",
+   "runner_up_entries": "revision_direction_breadth_form 0.1565 (margin 0.0435)",
+   "identifiability": "sham pooled rho 0.3901, arrival shadow 0.1034, both < 0.98 -> no pre-score kill"
+  },
+  "feasibility": {
+   "unique_flagged_issuers": 328,
+   "census_a_crosscheck": "MATCH (flagged transactions post-2023: 22622 measured == census)",
+   "bookable_windows": "835 entities / 24487 pairs / dead-share 0.2554 (compliance-window re-measure of the V13 census method)",
+   "q6_2025_bookable_decisions": "98 vs frozen floor 30 MET (both proposals)",
+   "folds": "F1/F2/F3 = 162/218/162 (P1) and 220/218/162 (P2) vs frozen floor 20 MET",
+   "turnover_ceiling": "quarterly cost at bands: 10/15/25 bps base 83.06/124.59/207.60, stress x2 166.12/249.18/519.00 bps/qtr; 25bps base and 15/25bps stress exceed the referenced 200 bps/qtr ceiling (recorded pre-selection input; both proposals are novelty-vetoed regardless)"
+  }
+ },
+ "known_limitations": [
+  "The 15 veto entries carry V13 NAMES and V13 pooled-Spearman fail-closed METHOD, but the constructions are GENERIC family forms rebuilt on this cycle's consumption surfaces (EODHD prices + pinned stream) because the V9 accounting panel / V10 timing and revision layers are outside the NG1 frozen consumption set; the full construction register is in the artifact (veto_set.constructions). Rho magnitudes are therefore not numerically comparable to the V13 audit's.",
+  "Construction incident (disclosed in artifact, construction_incidents): goodwill_bloat's first generic form (derivative-table share) had provably EMPTY support (the pinned stream carries zero derivative-table rows: 546039 of 546039 rows are table=nonDerivative; the derivative table is a separate unstaged stream per the frozen parse contract); it was replaced BEFORE any rho for that entry existed with the non-open-market P/S share form. The replacement is the measured argmax killer of BOTH proposals - the outcome is anti-shopping by construction, and the incident is recorded, not hidden.",
+  "substrate_end frozen at the pinned stream's last acceptance session 2025-05-23 (not the V13 final-close reference 2025-07-24): every measured exposure state is fully evidenced by the pinned substrate and post-substrate refreshes of the inherited alive price files cannot enter any measured window; recorded with rationale in the artifact.",
+  "Prices read from the inherited V9 staging surface (2140 cohort files + SPY benchmark) - the same read-only surface the V13 D2 machine consumed; not part of the NG1 CADS plane's frozen 3-series consumption set; per-file digests not pinned (living files) - mitigated by the grid freeze at 2025-05-23.",
+  "P2 anchor values use the declared fallback shares x raw close at the acceptance date (the stream carries no value field); 93 unparseable-shares rows and 14446 close-lookup-miss rows excluded from VALUE sums only (counted in stream_aggregation_diag, never guessed).",
+  "Sham support = (acceptance-session, sector) cells over cohort docs in the compliance window (sector matching built into the cell); the full (sector, size-class, window-mass stratum) matched-cohort book-level sham remains a scoring-phase construction - the D2 rho check only tests self-subsumption, and a quiet sham does NOT prove the mechanism (Q-11 note recorded).",
+  "v12_death_event_form adapted to the daily grid as the trailing-800d ACCUMULATED net leg weight (the V13 exact-date form had event-date-only support; adaptation documented) - n_per_veto 54923/188969 measured.",
+  "Turnover accounting is an upper-bound event-mass normalization (documented formula), not a booked-fill measurement; the operative A9-F evaluation remains with the selection phase."
+ ],
+ "incidents": [
+  "goodwill_bloat veto construction replaced pre-rho for empty support (see known_limitations[1] and artifact construction_incidents).",
+  "veto_own_z prior-block indexing bug found and fixed BY THE TEST SUITE before the measurement ran (blocks initially overlapped the current window; corrected to strictly-prior non-overlapping [gi-125-63k, gi-63-63k])."
+ ],
+ "tree_status": "clean",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/stocks_ng1_run/d2/d2_novelty_feasibility_ng1.json",
+   "sha256": "c8a5c5519fd89a28b3d485eb512c1e27e4cac7a3c46ce63d11ce72246475fca0"
+  },
+  {
+   "path": "research/control/stocks_ng1_run/d1/feasibility/feasibility_summary.json",
+   "sha256": "5484598c7c026496316823166521da271dc14831cfd816f236ea36148841c9d8"
+  },
+  {
+   "path": "research/assets/stocks_ng1/d2/core.py",
+   "sha256": "dd703cccb0981c42f6f0c7bc95d0d5ae3c0df0c449f919089711582b7570d76c"
+  },
+  {
+   "path": "research/assets/stocks_ng1/d2/exposures.py",
+   "sha256": "8529c6ee815a75396bb6c341286e3cc2d7e095503e42cef4c7eb435a785bdfb6"
+  },
+  {
+   "path": "research/assets/stocks_ng1/d2/vetoes.py",
+   "sha256": "2b545cd5360568d13657564493992bf6dc0e7e927915a875c915605e32016fce"
+  },
+  {
+   "path": "research/assets/stocks_ng1/d2/measure.py",
+   "sha256": "0f365deb8101ee577e8f02e7ed5afbb6750c1b2e5ade971e15a1fa388128810d"
+  },
+  {
+   "path": "research/control/stocks_ng1_run/d2/run_d2_measurement.py",
+   "sha256": "71fd2cb462e6d6be35fe0013aa5526c49cd6ef2d37c91ee0f236d7427ada8ec8"
+  },
+  {
+   "path": "tests/test_stocks_ng1_d2.py",
+   "sha256": "a2ea34850976bc876732146bec18fd29642c25701d8f13e643c5fb2011c9f0b3"
+  }
+ ],
+ "recommended_next_action": "Controller: both D1-A4 proposals are VETOED pre-score (goodwill_bloat rho -0.3547 / -0.384 > 0.20 bar, all 15 entries measured, margins recorded; P1 additionally sits 0.007-0.011 from the bar on own_z/wc_stock_intensity). Under the frozen negative-first rubric the A4 lane closes BLOCKED_NOVELTY - a successful preregistered outcome, not a rescue target (NO RESCUE rule: no threshold, universe, cost, gate, window or fold change after any PnL is visible; none is visible). Feasibility ancillaries recorded for the cycle record (Q-6 MET 98>=30, folds MET, 328 unique flagged issuers, 24487 bookable windows, turnover breaches at 25bps base / stress tiers). If the owner wishes to adjudicate the goodwill_bloat construction incident (generic-form substitution), the decision point is documented in the artifact's construction_incidents block with the empty-support evidence; any re-adjudication belongs to the owner/controller, never to this lane. Selection (S phase) proceeds with an EMPTY A4 candidate set unless the controller adjudicates otherwise."
+}
