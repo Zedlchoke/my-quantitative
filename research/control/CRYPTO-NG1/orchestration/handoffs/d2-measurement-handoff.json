@@ -1,0 +1,102 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "crypto-ng1-d2-measurement",
+  "cycle_id": "CRYPTO-NG1",
+  "role": "quant-implementer",
+  "lane": "d2",
+  "dispatch_sha": "8f8aa3fa4ff4e64f030aae8f7cbf3474d0f7ccb7",
+  "actual_start_sha": "8f8aa3fa4ff4e64f030aae8f7cbf3474d0f7ccb7",
+  "commit_sha": "e8227080430d3d04b85f2f1e30d7f3f716653e8d",
+  "changed_paths": [
+    "research/assets/crypto_ng1/d2/__init__.py",
+    "research/assets/crypto_ng1/d2/measure.py",
+    "research/control/crypto_ng1_run/d2/run_d2_measurement.py",
+    "research/control/crypto_ng1_run/d2/d2_novelty_panel_ng1.json",
+    "research/control/crypto_ng1_run/d2/d2_feasibility_ng1.json",
+    "research/control/crypto_ng1_run/d1/feasibility/feasibility_summary.json",
+    "tests/test_crypto_ng1_d2.py"
+  ],
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_crypto_ng1_d2.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "18 passed (hand-computed rho fixtures incl. tie-averaging, fail-closed unmeasured-veto behaviour, holiday-rule calendar cases incl. venue epochs, synthetic-panel grid arithmetic for all four signal builders)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/crypto_ng1_run/d2/run_d2_measurement.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "measurement runner: grids complete, all 29 veto shadows built (0 build failures), artifacts written"
+    }
+  ],
+  "authority_claims": [],
+  "summary": {
+    "novelty": {
+      "bar": 0.2,
+      "CNG1-A4-P1": "VETO_MEASURED worst=generic_dvol_shock |rho|=0.440870 margin=-0.240870 (10 pairs over bar)",
+      "CNG1-A4-P2": "VETO_MEASURED worst=v16_close_displace_fade |rho|=0.398776 margin=-0.198776 (10 pairs over bar)",
+      "CNG1-A5-P1": "VETO_MEASURED worst=v17proxy_amihud |rho|=0.748252 margin=-0.548252 (12 pairs over bar)",
+      "CNG1-A5-P2": "VETO_MEASURED worst=v17_oi_level |rho|=0.390435 margin=-0.190435 (6 pairs over bar)",
+      "verification": "deciding pairs independently re-computed with a separate pandas implementation; exact agreement to 6 decimal places (d2 spot-check of A4-P1/dvol_shock, A4-P1/funding_level, A4-P2/cdf_disp, A5-P1/amihud, A5-P1/tsmom28, A5-P2/oi_level, F5 A4)"
+    },
+    "feasibility": {
+      "declared_counts_match": "24/24/12/24 funded decisions, 0 tie-skips, 0 blocked bars",
+      "q6_recent_window": "2026-02-21..2026-08-21: A4-P1 12>=8 PASS; A4-P2 12 PASS; A5-P1 6<8 FAIL (pre-disclosed by the lane); A5-P2 12 PASS",
+      "a9f": "2 fills/decision; 48/48/24/48 anchor fills per window; referenced tier-2.0 24bps round-trip from the V17 kernel inheritance (d2_a9f_feasibility_v17.json); cost-vs-gross-move adjudication deferred to scoring (outcome-leak ban)"
+    },
+    "expiry_reverification": "MATCH: last-Friday 08:00 UTC arithmetic reproduces all pinned instants (4 quarterly + 8 non-quarterly) and both Binance venue epochs; holiday dates 2025-11-28/2025-12-26 retained per declaration with the dvol veto as the declared leak detector",
+    "cross_proposal": {
+      "F5_A4_P1_vs_A4_P2": "MEASURED |rho|=0.289565 > 0.20 -> COLLAPSED (one bet; both are novelty-vetoed anyway)",
+      "F5_A5": "NOT_COMPUTABLE_GRID_DISJOINT (quarterly vs non-quarterly last Fridays, 0 shared dates)",
+      "A4_vs_A5_disjoint": true
+    },
+    "combined_verdicts": {
+      "CNG1-A4-P1": "VETO(margin=-0.2409)",
+      "CNG1-A4-P2": "VETO(margin=-0.1988)",
+      "CNG1-A5-P1": "VETO(margin=-0.5483); additionally Q6 floor FAIL 6<8 recorded",
+      "CNG1-A5-P2": "VETO(margin=-0.1904)"
+    }
+  },
+  "known_limitations": [
+    "Small-N grids (12/24 rows BY DECLARATION of the representation_identity): rho point estimates are wide; the frozen 0.20 bar was applied mechanically as the law requires. V17's 30-pair minimum cannot apply to these declared series; the D2 guard was set to the cycle's own floor of 8 aligned pairs (recorded in the artifact method; the 0.20 bar unchanged).",
+    "FUNDJUMP funding-LEVEL veto covers BTCUSDT+ETHUSDT rows only (16/24 A4 rows, 8/12 A5-P1 rows, 16/24 A5-P2 rows): the inherited V17 family spec pools BTC/ETH and never had SOL; SOL rows are excluded from that pair and never imputed (coverage recorded per pair).",
+    "Daily veto values are dated D = the decision's UTC date per the inherited V17 exposure-vs-proxy convention; tsmom28/daily-ret proxies dated D include day-D price action that partially overlaps the proposal hold, biasing |rho| upward (conservative, kill-direction bias for a veto gate).",
+    "Calendar/session dummies, the weekend flag, the WKNDLIQ flag and (on A4 grids) the SILRES trigger are constant on the decision grids: recorded DEGENERATE_ZERO_VARIANCE / UNMEASURED, never inferred PASS; the liquidity-level content they proxy for is measured by the varying dvol_level_log/dvol_shock rows, which vetoed all four proposals.",
+    "oi_series_reduced.json assumed complete H4 coverage 2025-04-25T00Z..2026-08-21T20Z (2904 = 484d x 6 snapshots, V17 pull geometry); CADS digest is the authority but per-bucket timestamps are not embedded in the reduced series.",
+    "No expectancy/PF/PnL was computed anywhere (outcome-leak ban); raw per-decision return vectors are deliberately NOT embedded in the artifacts and are reproducible from the committed code plus the digest-pinned frozen panels."
+  ],
+  "incidents": [
+    "Inherited-artifact discrepancy observed (read-only): the V17 d2 OICASCADE code paints its event exposure with sign -1 while the frozen family spec says +1; the NG1 veto was rebuilt per the SPEC and the discrepancy disclosed in the artifact (|rho| is sign-invariant).",
+    "Inherited-artifact context honoured: the V17 WKNDLIQ D2 bug (date string compared to weekday names; Sat/Sun arm never fired; corrected re-measure 0.5628) -- the NG1 WKNDLIQ veto computes weekday() from the date and the corrected semantics are unit-tested."
+  ],
+  "tree_status": "clean at commit e8227080430d3d04b85f2f1e30d7f3f716653e8d on branch orca/cng1-d2 after the substance commit; handoff committed separately after this file is written",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/crypto_ng1_run/d2/d2_novelty_panel_ng1.json",
+      "sha256": "e690fbcd16e30972df42e3877e08ad42e293fe3daf14cfdcd50d55f3e403b54c"
+    },
+    {
+      "path": "research/control/crypto_ng1_run/d2/d2_feasibility_ng1.json",
+      "sha256": "cd6a6ce520ad4ad99153bb417b6f1494368629f9e8605a4d9edb1114999336e7"
+    },
+    {
+      "path": "research/control/crypto_ng1_run/d1/feasibility/feasibility_summary.json",
+      "sha256": "2baab2b651d8621950850957858fd0968bc729a627237905e104b89f1e72f625"
+    },
+    {
+      "path": "research/assets/crypto_ng1/d2/measure.py",
+      "sha256": "6dc21748c8a99ada05c3226b86559d21a728f7e9b61fb395efd79083dcf61405"
+    },
+    {
+      "path": "research/control/crypto_ng1_run/d2/run_d2_measurement.py",
+      "sha256": "29852cb65fae3b11a3cc210cb1b7957822c99525fa7117a3d975e7481acc25bf"
+    },
+    {
+      "path": "tests/test_crypto_ng1_d2.py",
+      "sha256": "97908bec1741c0da14fc2deaaa46c3b9ae0f7a5a145913644c87360159438bbf"
+    }
+  ],
+  "recommended_next_action": "All four D1 proposals are measured-dead at the frozen D2 novelty bar (mechanical VETO with recorded margins; A4-P1/P2 additionally F5-collapsed into one bet; A5-P1 also fails the Q-6 floor). Controller should accept the D2 kills, record them in the cycle evidence, and route CRYPTO-NG1 toward its preregistered negative terminal CRYPTO_NG1_REJECT_ALL (a successful research run per plan section 2). Any post-hoc re-parameterization of windows/thresholds after these numbers would be rescue under P-15; if the controller instead disputes the measurement contract itself (alignment convention or MIN_PAIRS adaptation), that is a contract change to be decided and recorded by the controller, not by this lane."
+}
