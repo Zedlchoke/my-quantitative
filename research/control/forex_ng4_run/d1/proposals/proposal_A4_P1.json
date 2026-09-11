@@ -1,0 +1,200 @@
+{
+  "schema": "forex_ng4_run/d1_proposal@1",
+  "cycle_id": "FOREX-NG4",
+  "task_id": "forex-ng4-d1-a4-proposals",
+  "lane": "d1-a4",
+  "hypothesis_id": "FXNG4-A4-P1",
+  "title": "Seasonal-naive EZ HICP print-deviation late-window drift on EURUSD (vintaged first prints, v2-day PIT-gated entry, daily 16:00-NY grid)",
+  "blindness_declaration": {
+    "outcome_blind": true,
+    "statement": "Written with ZERO outcome exposure: no scored/PnL/smoke/novelty numbers for THIS cycle were read; no backtest executed. Only timing, availability, coverage and count evidence from the pinned P0 censuses/gate (p0c wide-window census, EURUSD integrity census, spot pin manifest, p0_gate) and the frozen cross-cycle failure inventory (research/wayfinder/FAMILY_FAILURES.jsonl + ng2/ng3 terminal reports) was consumed.",
+    "frozen_before_any_outcome": true
+  },
+  "mechanism": {
+    "story": "The public's zero-cost expectation proxy for next month's Euro-area HICP index is the publicly computable seasonal-naive continuation of the vintaged index: apply last year's same-month seasonal ratio to the latest vintaged level. An EZ first print that deviates from that continuation is EZ inflation NEWS relative to the adaptive-expectations anchor that households, corporates and slow real money actually use.",
+    "forced_or_late_participant": "Forced/late participants: (i) adaptive-expectation agents anchor on naive continuations and reprice the ECB policy path only gradually when the print breaks the continuation; (ii) benchmark/tracking books and calendar-fixing corporate hedgers rebalance on scheduled windows after the repricing; (iii) THIS LANE ITSELF is a declared late participant: entry is gated at the v2 availability day -- the earliest instant at which BOTH the first-print value AND its first-print identity (the v1->v2 version gap that defines a restricted event under the ng2/ng3 standard) are PIT-provable from the evidenced archive. On this feed that instant is weeks-to-years after publication (20 of the 37 events belong to the 2015-03..2017-11 publication cohort whose v2 availability days land inside S0). The hypothesis is that seasonal-shape deviation repricing survives the PIT-provable availability lag plus the holding horizon, after costs.",
+    "why_ez_economy_info_is_new": "The EZ economy was NEVER anchored in program history: V6/V7 books were GB/CA (+cross-pair), V8/V9 forms were US-inflation/nominal-yield constructions, ng1 print-deviation ran on GB/CA/AU/NZ/US, and ng2/ng3 revision dynamics ran on CA/GB/AU/NZ/US -- no EZ conditioning variable and no EURUSD leg exists anywhere in the inventory. EURUSD is the deepest FX pair, the ECB path responds to EZ HICP, and this cycle is the first with a pinned vintaged EZ feed (CP0000EZ19M086NEST wide-window true vintages) plus P0-pinned EURUSD spot on the frozen 16:00-NY plane. P1 conditions on the within-year SEASONAL shape (month-to-month seasonal ratio); P2 conditions on the 12-month TREND level -- different surprise constructions, not re-parameterizations.",
+    "when_it_must_fail": "It must fail (expectancy <= 0 after costs) if the late window is efficient, i.e. deviation repricing completes well before the v2 availability day. It must die by falsification if the identical book is reproduced by the sign-only release-reaction form (CTL-V7RECAP, the plan sec1 MANDATORY control because EZ prints are reaction forms), by a nominal-yield-level exposure (V8 law), by a clock-only shadow, or by a non-print-day placebo. It dies at D2 if pooled ancestry |rho| > 0.20 vs the full failure inventory -- INCLUDING the dead ng1 print-deviation/acceleration books (the same FORM on GB/CA/AU/NZ/US, falsified cluster #15): a new-economy re-clock of a dead form dies at D2, accepted in advance (plan sec1 law)."
+  },
+  "information_source_and_surprise_construction": {
+    "information_source": "realized vintaged EZ HICP first-print index levels (CP0000EZ19M086NEST, p0c wide-window true-vintage archive) vs a frozen seasonal-naive predictor computed from the same vintaged archive; NO consensus/forecast data anywhere.",
+    "predictor": "I_hat_sn(m) = I(m-1) * ( I(m-12) / I(m-13) ), where I(k) is the vintaged EZ HICP index level for calendar month k in the vintage in force at the decision instant (point-in-time read of the vintaged series, never a later revision).",
+    "predictor_name": "seasonal-naive one-step (last-year same-month seasonal ratio applied to the latest vintaged level)",
+    "surprise": "s1 = 100 * ( I_print(m) / I_hat_sn(m) - 1 ), in percentage points of index deviation.",
+    "i_print_source": "the FIRST-PRINT (v1) value of obs month m: the index value carried by the archive version whose realtime window opened at the v1 availability day (date-only evidence). This is the value as first carried by the evidenced vintaged channel; the Eurostat flash-estimate feed is NOT represented and NOT claimed (declared identity, ng1 channel law).",
+    "pit_rule": "All predictor inputs I(m-1), I(m-12), I(m-13) are calendar months relative to the obs month m, read as-of the decision instant D(e) in the vintage in force then. I_print is the frozen v1 value, knowable at D(e) because v1 day < D(e). No value that entered its vintage after D(e) may be read (P-1..P-6 chain; ONE_EVENT_LAG impossible by construction). DECLARED ASYMMETRY: the surprise deliberately compares a frozen historical first print against the predictor recomputable from the vintaged state at D(e) -- for the long-lag cohort events (v2 years after v1) the baseline months may carry later revisions; that mixing IS the frozen PIT-honest identity.",
+    "frozen_parameters": {
+      "anchor_threshold_pp": 0.10,
+      "anchor_holding_grid_days": 5,
+      "neighbour_parameterization": "rolling-MAD normalized: z1 = s1 / MAD24, MAD24 = 1.4826 * median(|s1,k - median(s1)|) over the EZ stream's prior first-release surprises, expanding window, minimum 8 prior surprises required to fire; fire iff |z1| >= 1.0; holding 5 grid days",
+      "neighbour_threshold": 1.0,
+      "threshold_selection_basis": "blind frozen priors chosen before any outcome (family convention carried from the ng1 A4 forms); no tuning permitted after any number is seen (P-15)"
+    }
+  },
+  "universe": {
+    "pairs": ["EURUSD"],
+    "funded_economy_map": {
+      "EZ": {"pair": "EURUSD", "quoting": "CCY/USD, long = long EUR vs USD"}
+    },
+    "direction_law": "s1 >= +threshold => long EUR vs USD (long EURUSD): an EZ inflation print above the naive seasonal continuation reprices the ECB path hawkish. s1 <= -threshold => the mirror (short EURUSD). |s1| < threshold => no position. Two-sided by construction: no static currency or dollar bias in the anchor."
+  },
+  "clock": {
+    "decision_grid": "daily 16:00 America/New_York (zoneinfo, DST-correct; 16:00-NY = 20:00Z EDT / 21:00Z EST) on FX trading days; the frozen 5-pair EXTENDED grid recomputed with EURUSD at P0 (1842 weekday grid days 2018-04-04..2025-04-30, no days removed by EURUSD; p0_gate grid_extension_5pair law); frozen V9 representation",
+    "event_set": "the p0c wide-window restricted first-print stream: 37 events (v1->v2 version gap, full true realtime windows, strict monotonicity fail-closed, v2 availability day inside S0, first-print era (era start 2015-02-24), non-bulk), census sha256 6471b8bed8ccf04c9163318fd27b8c4bc407d57d6d3fd6cdc10acd768250cdeb",
+    "pit_anomaly_policy": "the ng2/ng3 restricted-stream laws are the fail-closed exclusions and are already enforced inside build_restricted_stream on the true-window rows: strict realtime monotonicity (a violation raises and NOTHING is built), full availability windows, bulk re-referencing groups (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature) removed -- measured bulk_group_events_total = 0 on this stream. No further pit_notes mechanism exists on this feed.",
+    "availability_bound": "A(e) = 23:59:59Z on the v2 availability day (v2.realtime_start). Rationale (two disclosed laws): (i) ALFRED realtime windows are DATE-ONLY, so the conservative end-of-day rule binds on both value legs; (ii) the event's OWN identity -- that a second vintage followed the first print -- is only provable at the v2 day; conditioning on restricted-stream membership at the v1 day would read the archive's future. The v2-day bound is therefore the earliest PIT-provable instant for this event set, and it is the SAME instant the frozen census usable filter used (usable = v2 availability day inside S0).",
+    "entry_rule": "decision day D(e) = first 16:00-NY grid instant strictly AFTER A(e). CONSEQUENCE DECLARED: a same-day 16:00-NY decision NEVER sees a value whose availability bound is that same date (16:00-NY = 20:00/21:00Z < 23:59:59Z).",
+    "clamped_monthly_clock_disclosure": "BASIS IDENTITY DISCLOSED: the p0b census (sha256 14bd22d0252beb8eee3405bf6a7765548db7ed141e82d1e78859485f7984e3fb) measured the same feed under a monthly as-of snapshot ingest whose realtime windows were CLAMPED to the snapshot days (A4 17 FAIL, margin -13); the A7-F1 audit (research/control/forex_ng4_run/audits/a7_terminal_ng4.json, HIGH finding) ruled that FAIL an ingest-shape artifact and prescribed ONE wide-window true-vintage pull; the p0c census (this lane's ONLY basis) carries TRUE archive vintage days (first 2015-02-24, last 2026-08-19, 134 distinct vintages, NOT-single-day-clamped canary PASS) and re-decided the frozen floor A4 = 37 >= 30 PASS. The clamped-clock artifact is retained as superseded evidence, never a basis.",
+    "per_economy_alignment_measured": {
+      "EZ": {
+        "publication_evidence": "ALFRED realtime archive first-appearance, date-only -> conservative end-of-day UTC on both the v1 and v2 legs",
+        "event_count_basis": "37 restricted events over 37 obs months 2016-01..2024-02 (20 in the re-admitted 2015-03..2017-11 publication cohort whose v2 days land inside S0; 11 in obs months 2018-02..2018-12; 6 later: 2020-09, 2020-10, 2023-01, 2023-04, 2024-02)",
+        "v1_to_v2_gap_shape": "heterogeneous by construction: the cohort events carry multi-year v1->v2 gaps (v2 day >= 2018-04-04 by the usable filter); exact per-event v1/v2 days are pinned in the census restricted months and re-measured at D2 from the pinned manifest bytes"
+      }
+    },
+    "dst_rule": "zoneinfo America/New_York local->UTC conversion with DST fixtures; date-only ALFRED evidence gets 23:59:59Z",
+    "window": {"s0_start": "2018-04-04", "s0_end": "2025-04-30", "basis": "inherited plane S0 window (ng1-ng3 law; EURUSD grid recompute measured the same window: 1842 weekday bars, 4 classified missing weekdays of 1846, 0 unclassified); tail-trim law respected, no current-vintage backfill"}
+  },
+  "warmup": {
+    "requirement": "vintaged EZ index history of at least 13 months before each obs month (I(m-1), I(m-12), I(m-13) must exist in the vintage in force at the decision instant); the neighbour's MAD24 normalization additionally requires >= 8 prior EZ first-release surprises",
+    "structural_status": "satisfied: the archive carries obs months from 1996-01 and the realtime era starts 2015-02-24; the earliest event obs month is 2016-01, and every event's D(e) vintage carries 1996-01 onward. Warmup is a per-event data-window rule, not a burn-in period. NEIGHBOUR COVERAGE NOTE: with 37 events total the MAD24 neighbour can fire at most 29 times (events 9..37); declared, never repaired."
+  },
+  "features_and_lags": {
+    "features": ["s1 (or z1 for the neighbour) is the ONLY signal feature; no yield, momentum, or price feature enters the signal"],
+    "lags": "vintaged index months m-1, m-12, m-13 relative to obs month m (m-2, m-14 NOT used in P1)",
+    "explicit_non_features": "no consensus/forecast data (no authority exists); no nominal yield level in the signal (yield level appears ONLY inside the mandatory control arm); no US-side variable anywhere (this is the EZ print-deviation lane, not the A5 differential lane)"
+  },
+  "entry_exit_fills": {
+    "entry": "at the D(e) 16:00-NY grid price of the P0-pinned EURUSD spot series (sha256 01cb862bf260682c995debaf9322d38c4803b265ad0a4bbb66aea78770c43c02, verify-on-read via the committed pin manifest), iff |s1| >= threshold at that instant; 1 unit notional per fired event (single pair, single pair-decision)",
+    "exit": "at the grid instant H = 5 grid days after entry (next grid day if that instant is not a trading day); forced exit at the 2025-04-30 grid instant for positions whose horizon extends past window end (declared tail convention)",
+    "fills": "entry fill and exit fill each executed once at grid prices; positions from different events are held independently (no netting), each exiting at its own horizon",
+    "no_lookback_guards": "signals computed only from information PIT-available at D(e); the frozen validator refuses any fill whose conditioning value postdates the decision instant (V3 lesson encoded)"
+  },
+  "costs": {
+    "model": "measured EURUSD spread at stress tier, charged once per fill (entry and exit are separate fills); never vendor-stated",
+    "authority": "EURUSD is NEW to the frozen plane -- the ng1 Q-8 measured constants covered the four funded pairs only; EURUSD constants NOT_YET_MEASURED at proposal time => declared dependency; if absent at D2/implementation, cost verdict is NOT_RUN (fail-closed), never an assumed spread",
+    "reference": "plans/PLAN_forex_ng4.md sec3 (frozen plane inherited; grid/DGS10/evaluators); V8/V9 dual-book kernel inherited"
+  },
+  "arm_battery": [
+    {
+      "arm": "anchor",
+      "name": "FXNG4-A4-P1-ANCHOR",
+      "config": "s1 seasonal-naive deviation, |s1| >= 0.10 pp, direction per direction_law (long EURUSD on positive deviation), H = 5 grid days",
+      "role": "the hypothesis"
+    },
+    {
+      "arm": "neighbour",
+      "name": "FXNG4-A4-P1-NEIGH-MAD24",
+      "config": "z1 = s1 / MAD24 (expanding over the EZ stream's prior surprises, min 8, 1.4826-consistent MAD), |z1| >= 1.0, same direction law, H = 5 grid days",
+      "role": "different parameterization of the surprise (scale-free thresholding vs raw pp); if the neighbour out-earns the anchor the frozen parameterization is not mechanism-bearing (V8 R2 standard)"
+    },
+    {
+      "arm": "v7_ancestry_control",
+      "name": "FXNG4-A4-P1-CTL-V7RECAP",
+      "config": "MANDATORY (plan sec1: EZ prints are reaction forms): identical event set, entry clock (D(e) from the v2 availability day), pair, horizon and 1-unit magnitudes as the anchor battery, but the magnitude structure is REMOVED -- ALL 37 restricted events fire regardless of |s1|, direction = sign(s1) (the sign of the release surprise, the V6/V7 reaction-direction form); no naive-predictor threshold anywhere",
+      "role": "reaction-direction re-clock control (V6/V7 class at the v2-PIT-late entry): if this sign-only book's same-sign per-trade expectancy >= 0.5x the anchor's, the magnitude threshold carries NOTHING and the anchor is the dead reaction-direction form re-clocked onto a new clock => family dead by law + D2 VETO recorded (the plan sec1 closure test)"
+    },
+    {
+      "arm": "nominal_exposure_control",
+      "name": "FXNG4-A4-P1-CTL-DGS10LEVEL",
+      "config": "identical fired anchor book (same event days, pair, horizons, 1-unit magnitudes), but direction carries ONLY a nominal-yield-level exposure with print conditioning removed: sign = +1 (long EURUSD, USD-weak) iff the DGS10 level as-of D(e) (vintaged S2, staged bytes sha256 03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0) is below its trailing 252-grid-day median, else -1",
+      "role": "V8 LAW MANDATE: if this control reproduces the anchor (same-sign expectancy >= 0.5x anchor), the EZ CPI-deviation book is a nominal-yield-level exposure in new words => family dead (falsification-by-control cluster #14 law)"
+    },
+    {
+      "arm": "clock_only_shadow",
+      "name": "FXNG4-A4-P1-SHADOW-CLOCK",
+      "config": "identical fired anchor book (same event days, pair, horizons, magnitudes), but direction = constant +1 (always long EURUSD); zero information content",
+      "role": "Q-7 clock-only shadow: isolates pure calendar-clock + static-drift exposure; reproduces the anchor (same-sign >= 0.5x) => the clock explains it => dead"
+    },
+    {
+      "arm": "placebo_non_print_days",
+      "name": "FXNG4-A4-P1-PLACEBO-SHAM7D",
+      "config": "sham calendar = every fired anchor event day shifted +7 calendar days; if the shifted day collides with a real fired event day, shift again +7 (max 4 attempts, else drop); direction = the SAME surprise sign as the source event (stale information, no new print occurs); same horizon, magnitude, fills and costs",
+      "role": "V5/V6 house-standard sham-calendar placebo on non-print days; reproduces the anchor (same-sign >= 0.5x) => entry timing carries no print information => dead"
+    }
+  ],
+  "representation_identity": {
+    "p12_statement": "representation identity is measurement identity (P-12, V9 origin); this table is the frozen identity from which the arm_config_digest is derived; code AND representation commit before any number is cited",
+    "representation_id": "forex_ng4_a4_p1_daily1600ny_vintaged_ez_hicp_seasonalnaive_deviation_v1",
+    "identity_fields": {
+      "grid": "daily 16:00 America/New_York FX-trading-day grid extended with EURUSD (1842 weekday days 2018-04-04..2025-04-30), zoneinfo DST",
+      "event_set": "p0c restricted first-print stream, 37 events; census sha256 6471b8bed8ccf04c9163318fd27b8c4bc407d57d6d3fd6cdc10acd768250cdeb",
+      "availability": "A(e) = EOD(v2 availability day); D(e) = first grid instant strictly after A(e); the v2-day law is load-bearing PIT discipline (restricted-stream membership is only provable at v2 day)",
+      "surprise": "s1 = 100*( I_print_v1 / ( I(m-1)*I(m-12)/I(m-13) ) - 1 ), I_print = frozen v1 value, predictor inputs vintaged as-of D(e)",
+      "anchor_rule": "|s1| >= 0.10 pp; direction law two-sided; 1 unit per fired event",
+      "exit_rule": "H = 5 grid days; forced exit at 2025-04-30 grid instant",
+      "costs": "EURUSD measured stress-tier spread once per fill (NOT_YET_MEASURED dependency; fail-closed NOT_RUN if absent)",
+      "window": "2018-04-04..2025-04-30",
+      "series_pins": {
+        "CP0000EZ19M086NEST_wide_window": "manifest sha256 47e4d642f0568f9b4cd774508700862d08e40a8109b81a65f1262fb15f4d39f8 (UNTRACKED bytes, verify-on-read)",
+        "EURUSD_spot": "01cb862bf260682c995debaf9322d38c4803b265ad0a4bbb66aea78770c43c02 (p0_spot_pin_manifest sha256 3949445abf5ec882884715aeccce459ee26987a60227331dea85482e2e92918d)",
+        "DGS10": "03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0 (S2 granted vintaged class via the CADS run-contract pin chain c8ae78777102ab45cec433f5da6c786355b57c884be5f15c39c1fc18ca328e7c; control arm only)"
+      }
+    }
+  },
+  "ancestry_defense": {
+    "v7_reaction_direction_closed_MANDATORY": "V7 closed the reaction-direction class (sign-of-release continuation, both sides of the economy boundary; V7-A4-P1 additionally died by falsification-by-control #12 -- the +7d sham reproduced it). Plan sec1 declares EZ prints are reaction forms, making the V7-ancestry falsification control MANDATORY on this lane; carried as CTL-V7RECAP (sign-only, no magnitude gate, every event fires). This lane differs structurally: (i) conditioning is a magnitude-bearing deviation vs a frozen naive predictor, NOT the sign of the release; (ii) entry is strictly after the v2 availability day (weeks-to-years after publication), a horizon V6/V7 never represented; (iii) two-sided thresholded, no static direction. The distinction is ALSO measured, twice: CTL-V7RECAP kill at >= 0.5x same-sign per-trade, and D2 pooled |rho| <= 0.20 vs the full inventory including both V7 books; over the bar => lane dies at D2 (accepted in advance).",
+    "ng1_print_deviation_falsified_15": "ng1 A4 print-deviation/acceleration is a NAMED kill-candidate (plan sec1, falsification cluster #15): the SAME surprise constructions on GB/CA/AU/NZ/US are dead. This proposal is deliberately the family-form EZ transplant and accepts the plan sec1 law in advance: if the EZ book fails to decorrelate from the ng1 A4 books at D2 (pooled |rho| > 0.20), it is a new-economy re-clock of a dead form and dies at D2. The EZ claim is NOT 'the form is new' -- it is 'the EZ economy was never anchored and the EZ information stream (OECD-MEI-mirrored vintaged HICP with multi-year revision lags + the deepest FX pair) is new to the inventory'. D2 measures it.",
+    "ng2_ng3_revision_dynamics_measured_closed": "ng2 blocked at its frozen per-economy floor (AU 26 < 30; FOREX_NG2_BLOCKED_DATA_OR_SELECTION) and ng3's four revision-dynamics proposals all died measured (FXNG3-A4-P1 rho 0.2138 vs release-order shadow; FXNG3-A4-P2 rho 1.0 vs commodity bloc; FXNG3-A5-P1 CONTROL_SELF_SUBSUMPTION CTL-V7NODIFF 1.0 -- a V7 re-clock; FXNG3-A5-P2 rho 0.8932 vs day-of-week). This lane conditions on the FIRST PRINT's deviation, not on revision dynamics -- but it consumes the SAME restricted-stream machinery, so every ng2/ng3 book is a kill-candidate inside the D2 pooled-rho gate, accepted in advance.",
+    "dead_ng3_differential_release_shadows_declared": "KILL-CANDIDATES DECLARED per dispatch: the dead ng3 differential/release shadows -- FXNG3-A5-P1 (CA differential sign conditioning; died by V7-re-clock self-subsumption), FXNG3-A5-P2 (CA-leg revision transfer; died rho 0.8932) -- enter the D2 ancestry inventory against this lane. This lane carries NO differential construction (no US leg, no EZ-vs-US join) and no release-shadow state; the EZ-vs-US differential lane is A5, a separate lane with its own battery.",
+    "v8_nominal_level_law": "V8 falsification-by-control #14 made a nominal-exposure control MANDATORY on every yield/inflation lane. Carried as CTL-DGS10LEVEL on the identical clock; no nominal yield level enters the signal. If the control reproduces the anchor, the family is dead by law.",
+    "v9_ppp_vetoes": "V9 A5-P1/P2 died as PPP/real-rate LEVEL-misalignment books (rho 0.3034/0.3119 vs the V8 anchor). This proposal carries no PPP, real-rate, or level-misalignment state anywhere; conditioning is event-time, two-sided, deviation-based. D2 rho gate vs the V9 veto books applies.",
+    "v5_sham_calendar_standard": "sham-calendar placebo mandatory for calendar mechanisms; carried as PLACEBO-SHAM7D.",
+    "v3_pit_chain": "P-1..P-6 incident chain honored: conservative end-of-day availability bounds on BOTH value legs (v1 for the print, v2 for the event identity), as-of vintage reads, fill validator refuses any conditioning value that postdates the decision instant.",
+    "vintaged_only_ez_law": "the EZ leg comes ONLY from the pinned p0c wide-window vintaged archive (manifest sha256 above, verify-on-read); current-vintage revised-in-place tables are FORBIDDEN for the EZ leg; the p0b clamped-monthly as-of basis is superseded and never consumed (A7-F1)."
+  },
+  "feasibility_declaration": {
+    "census_event_counts": {"restricted_first_print_events": 37, "floor": 30, "margin": 7, "verdict": "PASS (p0c floors.a4_ez_print_events)", "obs_months_span": "2016-01..2024-02 over 37 months"},
+    "cohort_structure": {"re_admitted_publication_cohort_2015_03_2017_11": 20, "obs_2018_02_2018_12": 11, "obs_2017_12": 1, "later": "2020-09, 2020-10, 2023-01, 2023-04, 2024-02 (5 events)", "note": "all 37 v2 availability days measured inside S0 2018-04-04..2025-04-30 by the frozen usable filter"},
+    "q6_recent_window": {"window": "2023-05-01..2025-04-30 (last 24 calendar months of S0, matched on v2 availability days)", "measured": 2, "floor": null, "census_verdict": "MEASURED_NO_FLOOR_FROZEN", "thin_declaration": "THIN, declared: 2 events in the recent window. NO floor was ever frozen for the EZ recent window (the ng3 >= 15 floor was CA-specific and is not inferred). If D2 freezes an ng1-style recent-decision floor (ng1 used 8), this lane likely dies at feasibility -- accepted in advance; it dies cheap per plan rubric"},
+    "event_time_concentration_declared": "blind structural fact from the census months: 32 of 37 events have v2 days <= 2019 (the 2016-2018 obs cohorts); the book's event mass is front-loaded in S0 -- fold-concentration and recent-window vacuity risks are declared, never repaired by re-parameterization",
+    "pair_decisions_pre_threshold": 37,
+    "expected_fired_entries_estimate": "19-30 anchor entries at a 50-80% threshold pass rate (BLIND prior on 37 events); the MAD24 neighbour fires at most 29; the CTL-V7RECAP control fires all 37",
+    "known_gaps_declared": [
+      "ALFRED realtime windows are DATE-ONLY: the true intra-day publication time (Eurostat flash ~10:00 CET) is NOT represented and never claimed; EOD conservative bounds bind on both value legs",
+      "the feed is the OECD MEI-derived FRED/ALFRED mirror CP0000EZ19M086NEST, NOT the Eurostat flash-estimate feed: 'first print' means the value as first carried by THIS evidenced channel (may differ from the Eurostat flash; the hypothesis is tested only on this channel's information)",
+      "the dispatch-suggested series id EZCPIALLMINMEI resolves nowhere in the repo; the V8-pinned and re-ingested series is CP0000EZ19M086NEST (p0b series_identification id_correction)",
+      "the p0b clamped-monthly as-of census (17 events, A4 FAIL) is superseded evidence; p0c true vintages (37 events, PASS) are the sole basis (A7-F1)",
+      "EURUSD weekday hole 2019-05-22 (UNEXPLAINED_DATA_HOLE, same provider hole the ng1 GBPUSD census recorded) is recorded, not repaired; 2025-01-01 / 2025-04-18 / 2025-04-21 are classified FX closures",
+      "long-lag cohort events compare a frozen v1 first print against a D(e)-vintaged predictor baseline (declared PIT asymmetry, see pit_rule)"
+    ],
+    "dependencies_for_feasibility": ["EURUSD P0-pinned spot bytes (pinned, verify-on-read -- NOT a declared dependency)", "EURUSD Q-8 cost constants (NOT_YET_MEASURED dependency; fail-closed NOT_RUN if absent)", "DGS10 vintaged S2 for the control arm (pinned via CADS chain, verify-on-read)"]
+  },
+  "falsification_rule": {
+    "frozen_rule_order": [
+      "R1 MECHANICAL: anchor after-cost expectancy at stress tier <= 0 => family dead (plain negative); remaining rules moot",
+      "R2 V7_ANCESTRY (MANDATORY, plan sec1): CTL-V7RECAP same-sign per-trade expectancy >= 0.5x anchor => the magnitude threshold carries nothing; the book is the dead reaction-direction form re-clocked onto the v2-PIT-late clock => dead + D2 VETO recorded",
+      "R3 NOMINAL_EXPOSURE (V8 law): CTL-DGS10LEVEL same-sign expectancy >= 0.5x anchor => dead (nominal-yield-level exposure in new words)",
+      "R4 CLOCK_ONLY (Q-7): SHADOW-CLOCK same-sign expectancy >= 0.5x anchor => dead (calendar drift explains it)",
+      "R5 PLACEBO: PLACEBO-SHAM7D same-sign expectancy >= 0.5x anchor => dead (timing-inspecific stale-sign exposure)",
+      "R6 NEIGHBOUR_PARAMETERIZATION: NEIGH-MAD24 expectancy > anchor expectancy => frozen parameterization not mechanism-bearing => dead (V8 z504 standard)"
+    ],
+    "external_gate": "D2 ancestry pooled |rho| <= 0.20 vs full inventory -- including the ng1 A4 print-deviation books (same form, dead economies), the ng2/ng3 revision-dynamics books, the dead ng3 differential/release shadows, the V6 reaction book, both V7 books, the V8 nominal-level shadow and the V9 vetoes -- margin recorded (P-2); over the bar => D2 VETO (the new-economy re-clock law, accepted in advance)",
+    "no_threshold_moves": "no rule, threshold, or horizon changes after any scored number is seen (P-15); smoke numbers kill + disclose, never select",
+    "expected_failure_interpretation": {
+      "R1_with_clean_controls": "the v2-PIT-late window carries no net deviation drift after costs: seasonal-shape repricing is complete long before the event is provable on this channel. CONSISTENT WITH (not contradicting) the V7 closure and the ng1 falsification -- V7 closed entry-at-publication reaction-direction and ng1 closed the same surprise forms on GB/CA/AU/NZ/US publication clocks; a null here licenses NO claim about either.",
+      "R2_fires": "the thresholded EZ deviation book is the dead reaction-direction form re-clocked onto the v2-PIT-late clock -- the plan sec1 law fires on this lane's own control; the family dies by its declared ancestry, exactly as designed.",
+      "R3_fires": "the EZ CPI-deviation book is a nominal-yield-level exposure in new words; the V8 law re-fires on the EZ lane exactly as designed.",
+      "R4_fires": "calendar-frequency drift, not print information.",
+      "R5_fires": "stale-sign exposure on wrong days; entry timing carries nothing (V5/V6 standard).",
+      "R6_fires": "the raw-pp thresholding is not mechanism-bearing; scale-free normalization is, and the family still dies (no rescue by re-ranking arms)."
+    }
+  },
+  "data_dependencies": [
+    {"name": "EZ HICP vintaged wide-window archive", "authority": "P0-proven pinned bytes (research/control/forex_ng4_run/p0c_wide_window_manifest.json sha256 47e4d642f0568f9b4cd774508700862d08e40a8109b81a65f1262fb15f4d39f8; UNTRACKED raw bytes, verify-on-read; canaries 5/5 PASS incl. NOT-single-day-clamped and realtime monotonicity)", "series": ["CP0000EZ19M086NEST"]},
+    {"name": "EZ restricted-stream census", "authority": "research/control/forex_ng4_run/p0c_wide_window_census.json sha256 6471b8bed8ccf04c9163318fd27b8c4bc407d57d6d3fd6cdc10acd768250cdeb (re-measured at this checkout: match)"},
+    {"name": "EURUSD spot pinned bytes", "authority": "p0_spot_pin_manifest.json sha256 3949445abf5ec882884715aeccce459ee26987a60227331dea85482e2e92918d; bytes sha256 01cb862bf260682c995debaf9322d38c4803b265ad0a4bbb66aea78770c43c02; integrity census sha256 5e22d3237791319de81a36c1d961fb6d94518cc0171c214cff20da115ea447a1 (5000 bars, dst all gaps explained, 1842 weekday bars in S0)"},
+    {"name": "DGS10 vintaged S2", "authority": "staged bytes sha256 03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0 via the CADS run-contract pin chain (p0_gate dgs10_ctl_pin_chain PASS); control arm only"},
+    {"name": "EURUSD Q-8 cost constants", "authority": "NOT_YET_MEASURED at proposal time (EURUSD is new to the plane); fail-closed NOT_RUN if absent at implementation"}
+  ],
+  "provenance": {
+    "dispatch_sha": "48936ca955d4b1896bca1f2e09dae8a308e806e4",
+    "actual_start_sha": "48936ca955d4b1896bca1f2e09dae8a308e806e4",
+    "branch": "orca/fng4-d1-a4",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng4/d1-a4",
+    "written_utc": "2026-09-11",
+    "plan_read_disclosure": "plans/PLAN_forex_ng4.md read from the MAIN checkout, read-only (sha256 64ea89b929b26d42b4487a76e4b91e79e0fa72ab8f1361a6519dd905a8785fd2); the file is absent from this worktree's tree at the dispatch base",
+    "constraints_honored": ["no consensus/forecast data anywhere", "EZ leg only from the pinned p0c wide-window vintaged archive (verify-on-read)", "V7-ancestry falsification control mandatory (plan sec1) carried as CTL-V7RECAP", "nominal-exposure control mandatory (V8 law) carried as CTL-DGS10LEVEL", "dead ng3 differential/release shadows declared kill-candidates in the D2 gate", "no backtest executed in this lane", "no keyed API calls (P0 pins consumed verify-on-read)"],
+    "distinct_from_P2": "different surprise construction: P1 = within-year seasonal-shape deviation (I(m-1)*I(m-12)/I(m-13) predictor); P2 = 12-month trend-continuation deviation (I(m-12)*(1+trailing YoY) predictor; equivalently YoY acceleration). Not a re-parameterization of the same surprise."
+  }
+}
