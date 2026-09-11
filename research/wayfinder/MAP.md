@@ -2,12 +2,21 @@
 
 ## Sprint state (synced at the ng1-generation open, 2026-09-11)
 
-- **NG1 GENERATION OPENED → CRYPTO-NG1 / FOREX-NG1 / STOCKS-NG1**
-  (`PLANNED_NOT_STARTED`, registry 2026-09-11; plans
-  `plans/PLAN_crypto_ng1.
+- **NG1 GENERATION OPENED → CRYPTO-NG1 / FOREX-NG1 / STOCKS-NG1** (2026-09-11)
+  (`PLANNED_NOT_STARTED` at open, registry 2026-09-11; plans `plans/PLAN_crypto_ng1.md`
+  / `plans/PLAN_forex_ng1.md` / `plans/PLAN_stocks_ng1.md`) — first asset cycles on
+  the platform v3 data plane (CADS/AuthorityRegistry/QueryPlane `consume_via_plane`,
+  per-asset adoption commits; frozen sets: S4 Binance H1 panels + OI / S2 FRED
+  vintaged + S3 CPI archives + calendars / S1 Form-4 substrate + stream + EODHD
+  corp-actions). New-mechanism lanes: crypto exogenous announcement +
+  derivatives-calendar clocks; forex CPI print-deviation + release-order structure
+  (vintaged GB/CA channel binding); stocks declared-plan (10b5-1) +
+  amendment/revision observables. GO standing delegation to Lead per owner
+  directive 2026-09-11 (RULES §7). All prior cycles TERMINAL (see closed-history
+  bullets below; ledger authority P-9).
 
-- **FOREX-NG1 CLOSED → ** (2026-09-11, branch
-  , terminal e19c0a4, A7 AUTHORIZED 0 HIGH/CRITICAL,
+- **FOREX-NG1 CLOSED → `FOREX_NG1_REJECT_ALL`** (2026-09-11, branch
+  `orca/forex-ng1-integration`, terminal e19c0a4, A7 AUTHORIZED 0 HIGH/CRITICAL,
   third independent recompute match; reproduction ALL_MATCH) — the ng1 generation's
   only scored cycle and first full pipeline on the platform v3 plane end-to-end.
   4/4 proposals ELIGIBLE at D2 (first non-empty ng1 selection); freeze d0992d1 with
@@ -18,17 +27,7 @@
   **falsification-by-control #15** (CTL-DGS10LEVEL +4.13 out-earns — nominal-level
   exposure again); 0 survivors; budget 6/6; S1 SEALED. **forex 48/48;
   program 245/248** (P-9). Detail:
-  .md` / `plans/PLAN_forex_ng1.md` /
-  `plans/PLAN_stocks_ng1.md`) — first asset cycles on the platform v3 data
-  plane (CADS/AuthorityRegistry/QueryPlane `consume_via_plane`, per-asset
-  adoption commits; frozen sets: S4 Binance H1 panels + OI / S2 FRED
-  vintaged + S3 CPI archives + calendars / S1 Form-4 substrate + stream +
-  EODHD corp-actions). New-mechanism lanes: crypto exogenous announcement
-  + derivatives-calendar clocks; forex CPI print-deviation +
-  release-order structure (vintaged GB/CA channel binding); stocks
-  declared-plan (10b5-1) + amendment/revision observables. GO standing
-  delegation to Lead per owner directive 2026-09-11 (RULES §7). All prior
-  cycles TERMINAL (see closed-history bullets below; ledger authority P-9).
+  `.worktrees/forex-ng1/integration/research/control/forex_ng1_run/terminal_report_ng1.json`.
 
 - **CRYPTO-NG1 CLOSED → `CRYPTO_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
   `orca/crypto-ng1-integration`, terminal 0cfb9ac, A7 AUTHORIZED 0 HIGH/CRITICAL with
