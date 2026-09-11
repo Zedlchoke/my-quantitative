@@ -16,6 +16,18 @@
   delegation to Lead per owner directive 2026-09-11 (RULES §7). All prior
   cycles TERMINAL (see closed-history bullets below; ledger authority P-9).
 
+- **CRYPTO-NG1 CLOSED → `CRYPTO_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
+  `orca/crypto-ng1-integration`, terminal 0cfb9ac, A7 AUTHORIZED 0 HIGH/CRITICAL with
+  detached recompute full-match) — first ng1-generation close, first crypto cycle on
+  the platform v3 plane (S4 consume_via_plane 5/5 digests, shadow parity identical).
+  P0: 8 FOMC instants PIT-evidenced; BLS blocked (CPI/NFP unavailable). D1: 4 blind
+  proposals (FOMC-instant reaction x2, derivatives-calendar x2). D2: 4/4 VETO —
+  0.4409 generic_dvol_shock / 0.3988 v16_close_displace_fade / 0.7483
+  v17proxy_amihud (+Q-6 6<8) / 0.3904 v17_oi_level; selection empty; budget 0/6;
+  GO died UNCONSUMED. Exogenous-clock crypto frontier measured-dead ancestry.
+  **crypto 155/158; program 239/242** (P-9). Detail:
+  `.worktrees/crypto-ng1/integration/research/control/crypto_ng1_run/terminal_report_ng1.json`.
+
 ## Sprint state (synced at the FOREX-V9 close, 2026-09-10)
 
 - **FOREX V9 CLOSED → `FOREX_FREE_V9_BLOCKED_DATA_OR_SELECTION`** (0 cells,
