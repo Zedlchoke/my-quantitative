@@ -1,0 +1,118 @@
+{
+ "schema": "zcode_orch_v3_a7_audit@1",
+ "audited_at_utc": "2026-09-11T03:05:00Z",
+ "auditor": "A7 fresh-context independent auditor (read-only; no Bash/git/pytest execution)",
+ "verdict": "AUTHORIZED",
+ "overall": "PASS_WITH_FINDINGS",
+ "unresolved_high_critical_count": 0,
+ "claims": [
+  {
+   "id": "C1",
+   "verdict": "CONFIRMED",
+   "evidence": "Recomputed from /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/tasks.json: exactly 8 task objects. INTEGRATED (4): canary-p6-a-ledger-totals (tasks.json:15), canary-p6-b-failures-lock (:63), canary-p8-repro (:216), canary-p8-bad-handoff (:270). BLOCKED (4): canary-p7-a-impl (:110), canary-p7-b-impl (:163), negctl-v31-refusal (:315), negctl-mcp-v31 (:355). No task in REGISTERED/READY/DISPATCHED/RUNNING/HANDOFF_READY/VALIDATING (waiting_summary-level inflight = 0). updated_at_utc = 2026-09-11T02:38:18Z (tasks.json:4). All 8 attempt handoff_sha256 values match the 8 TASK_HANDOFF_PUBLISHED events in events.jsonl (lines 10,13,28,29,35,43,52,59) exactly. Store statuses agree with events.jsonl terminal events for every task.",
+   "contradictions_found": [
+    "Semantic nuance, not a refutation: the claim's 'terminal states' is plan-level. The store's own code defines TERMINAL_STATES={'TERMINAL'} only (orchestrator_store.py:63,625-635), so terminal_check() would report all_terminal=false until each INTEGRATED/BLOCKED task is moved to TERMINAL (a lawful transition per TRANSITIONS map). See finding F4."
+   ]
+  },
+  {
+   "id": "C2",
+   "verdict": "CONFIRMED",
+   "evidence": "p6_result.json: gate Z3-G5, result PASS, both tasks INTEGRATED with digests 7012acc8... and 0bca3e09... matching tasks.json:45,92 and events.jsonl:10,13. Both dispatches auto-returned 01:41:15Z/01:41:52Z and were integrated 01:42:19Z (events.jsonl:16-17). Both inbox files exist (canary-p6-a-ledger-totals-handoff.json, canary-p6-b-failures-lock-handoff.json) with task_id/dispatch_sha matching the store rows; dispatch_sha fa3d017... == task base_sha. Real defect: FOREX-FREE-V8 row absent (p6_result.json:19-23; p6-a handoff outputs: 'forex section-D V8 row ABSENT (defect found)'); repair commit 321e387 corroborated by dual_controller_incident.json:9 ('already repaired by 321e387') and p6_result 'committed locally on main'.",
+   "contradictions_found": [
+    "Sub-items LEAD_ATTESTED_NOT_INDEPENDENTLY_VERIFIABLE: (a) sha256(file bytes) == recorded digest cannot be recomputed without executing a hash (no Bash); (b) commit 321e387 being on main is a git fact (no git access). Both are corroborated by two independent artifacts each."
+   ]
+  },
+  {
+   "id": "C3",
+   "verdict": "CONFIRMED",
+   "evidence": "p7_result.json documents exactly the two claimed defects: STORE-FLOW-1 (publish records digest of submitted object, does not overwrite agent-pre-written inbox file; severity HIGH) and STORE-FLOW-2 (HANDOFF_READY dead state, no lawful exit; severity MEDIUM). Closure: events.jsonl:46-47 TASK_BLOCKED for canary-p7-a-impl and canary-p7-b-impl at 2026-09-11T02:28:36Z with reasons citing substance commits a55d5e6/bc9511e and 85bdcd4/c4d6d17, matching tasks.json:152,205 blockers and p7_result.json lanes. Fix commit 2ebf5c28e88b33bb18e82191b7929e7622766b32 attested in v31_verification.json:6 and p9_recovery_result.json:27; the fixes are present in the checked-out code (orchestrator_store.py:55 HANDOFF_READY->{'VALIDATING','BLOCKED'}; :483-486 publish atomically writes the submitted object; 7 store-flow tests in tests/test_orchestrator_v3_store_flows.py). p7 inbox handoffs carry commit_sha a55d5e62.../85bdcd4-family values consistent with p7_result.json.",
+   "contradictions_found": [
+    "Git facts (existence/ancestry of a55d5e6, 85bdcd4, bc9511e, c4d6d17, 2ebf5c2) are LEAD_ATTESTED_NOT_INDEPENDENTLY_VERIFIABLE (no git access), but are cross-corroborated across tasks.json blockers, events.jsonl, p7_result.json, p8_result.json and p9_recovery_result.json."
+   ]
+  },
+  {
+   "id": "C4",
+   "verdict": "CONFIRMED",
+   "evidence": "Pre-fix failure evidence exists exactly as claimed: tasks.json:296-299 attempt outcome HANDOFF_PUBLISHED + integrated_commit_sha deadbeefdeadbeefdeadbeefdeadbeefdeadbeef for canary-p8-bad-handoff, and events.jsonl:45 TASK_INTEGRATED commit_sha deadbeef... at 2026-09-11T02:12:39Z; the inbox bad handoff declares dispatch_sha/commit_sha deadbeef with 'REFUSE ME'. Reproduction half: p8_result.json reproduction verdict ALL_MATCH (pytest 6/6 exit 0, sha 4/4) at c4d6d17602129a3c0f90dda0dff5743544f3d932, with per-file pins in canary-p8-repro-handoff.json (91cb45fb..., ea350394..., fee9d7b9..., 844b2992...) consistent with the p7-a handoff pins. Re-verification: negctl-v31-refusal blocked 02:29:52Z (events.jsonl:53, tasks.json:344) and negctl-mcp-v31 blocked 02:38:18Z (events.jsonl:60, tasks.json:388); v31_verification.json:11 live_negative_control_v31 PASS; p9_recovery_result.json:33 live refusal through the running MCP. STORE-FLOW-3 guard verified in source: plugins/quant-research-orchestrator/scripts/orchestrator_store.py:452-473 (publish refuses handoff.dispatch_sha != recorded base_sha, HandoffEvidenceRefused) and :543-561 (mark_integrated resolves commit via git cat-file before transitioning). tests/test_orchestrator_v3_store_flows.py covers STORE-FLOW-1 (2 tests), STORE-FLOW-2 (2 tests), STORE-FLOW-3 (3 tests).",
+   "contradictions_found": [
+    "The two live refusal runs are Lead-attested, not machine-logged: refusals raise exceptions without appending events (by design, state untouched), and events.jsonl only shows the subsequent legitimate report handoffs (whose dispatch_sha c4d6d17/6cd33db correctly equal the tasks' base_sha, which is behaviorally consistent with the guard). See finding F5."
+   ]
+  },
+  {
+   "id": "C5",
+   "verdict": "CONFIRMED",
+   "evidence": "Counted by reading source (grep 'def test_' across the four files): tests/test_orchestrator_v3_state.py = 15, tests/test_orchestrator_v3_hooks.py = 15, tests/test_orchestrator_v3_mcp.py = 6, tests/test_orchestrator_v3_store_flows.py = 7. Total = 43, matching the claim. Internally consistent with v31_verification.json:9 ('36 prior + 7 new') and terminal_reconciliation.json:17-19,28 ('21 state/MCP' = 15+6, '15 hook fixture').",
+   "contradictions_found": [
+    "The 43/43 PASS re-run at main HEAD at 2026-09-11T02:41Z is LEAD_ATTESTED_NOT_INDEPENDENTLY_VERIFIABLE (pytest cannot be executed by this auditor); only the COUNT was independently verified, and it matches."
+   ]
+  },
+  {
+   "id": "C6",
+   "verdict": "CONFIRMED",
+   "evidence": "Spot-checked 3 file pairs repo vs /Users/hoangminhlong/.zcode/cli/plugins/cache/my-quantitative-local/quant-research-orchestrator/0.1.0: (1) scripts/orchestrator_store.py — module head (lines 1-80) and the STORE-FLOW guard region (publish_handoff/validate_handoff/_git_commit_resolves/mark_integrated, lines 440-572) content-identical, including the STORE-FLOW-1/2/3 comments and HandoffEvidenceRefused text; (2) hooks/hooks.json — identical (4 hook entries, same commands/timeouts, both canonical to repo paths per design constraint C1); (3) agents/quant-auditor.md — identical frontmatter and body. No divergence found.",
+   "contradictions_found": [
+    "Full-tree byte-identity (diff -r exit 0 at 2026-09-11T02:40Z, p9_recovery_result.json:32) is LEAD_ATTESTED; the auditor's 3-file spot-check found zero divergence."
+   ]
+  },
+  {
+   "id": "C7",
+   "verdict": "CONFIRMED",
+   "evidence": "p9_recovery_result.json: gate Z3-G8 verdict PASS; reconstruction store_census total 8 / INTEGRATED 4 / BLOCKED 4 / non_terminal 0 — independently matches tasks.json recomputation; re_dispatch_needed 0; double_integration_risk 'none'. Events corroborate zero re-dispatch: last TASK_DISPATCHED in events.jsonl is negctl-mcp-v31 at 02:37:36Z (line 56); no task was re-run after terminal closure. Cherry-pick pattern (bc9511e then c4d6d17 on orca/orch-canary-p7-int; lane commits a55d5e6/85bdcd4 not ancestors, expected for pick-not-merge) is documented in p9_recovery_result.json:28 and is consistent with p7_result.json sequential_integration.",
+   "contradictions_found": [
+    "Git ancestry facts (merge-base --is-ancestor results, main HEAD 6cd33db = owner merge of v3.1) are LEAD_ATTESTED_NOT_INDEPENDENTLY_VERIFIABLE (no git access); the store/events side of the claim is independently confirmed. Note: p9 recovery ran BEFORE this A7 audit, so 'independent A7' listed in v31_verification remaining_for_terminal was still pending then — it is this audit."
+   ]
+  },
+  {
+   "id": "C8",
+   "verdict": "PARTIAL",
+   "evidence": "Supported: Z3-G5 PASS (p6_result.json), Z3-G6 PASS-substance with disclosed defects (p7_result.json), Z3-G7 repro PASS + refusal half fixed-then-reverified (p8_result.json, v31_verification.json, events 02:12:39/02:29:52/02:38:18), Z3-G8 PASS (p9_recovery_result.json), Z3-G0/G1/G2 PASS (integration_events.jsonl:2-4, terminal_reconciliation.json:15-17). STOP-CAP-1 open observation matches stop_hook_observation.json (LOW/MEDIUM). Stale registry row confirmed by direct read: plans/CYCLE_REGISTRY.json:364-371 still has phase 'P5_OWNER_INSTALL_BOUNDARY (P0-P4,P10 done; P6-P9 NOT_RUN pending plugin install)', head baf08cfd..., lifecycle BLOCKED — exactly the staleness C8 describes.",
+   "contradictions_found": [
+    "(1) terminal_reconciliation.json is itself an undisclosed stale/conflicting terminal artifact: written_at_utc 2026-09-11T02:45:00Z (after the last store event 02:38:18Z and after p9 at 02:42:47Z) yet its gate matrix says Z3-G5/G6/G7 NOT_RUN, Z3-G8 PARTIAL, terminal_verdict ZCODE_ORCHESTRATION_V3_BLOCKED_PLUGIN_TRUST_INSTALL, and 36-test evidence (pre-store_flows). Its content corresponds to the registry state already stale at 01:43:02Z (p6_intake_first_report_A1_session2.json:13). C8's 'only recorded open observations are STOP-CAP-1 and a stale registry row' under-reports this. See finding F1.",
+    "(2) C8's blanket 'Z3-G0..Z3-G8 evidenced PASS' overstates Z3-G3/G4: the only formal gate grading is PASS_SCHEMA_LEVEL / PASS_SCRIPT_LEVEL with live-load NOT_RUN (terminal_reconciliation.json:18-19); live evidence exists (session2 report 'PARTIAL PASS evidence' for G3/G4-live; p6_result machinery_proven_live; negctl-mcp through the running MCP) but no artifact re-grades either gate to full live PASS. See finding F2."
+   ]
+  }
+ ],
+ "findings": [
+  {
+   "severity": "MEDIUM",
+   "finding": "F1: Undisclosed stale terminal artifact with impossible timestamp. research/control/ZCODE-ORCHESTRATION-V3/orchestration/terminal_reconciliation.json declares terminal_verdict ZCODE_ORCHESTRATION_V3_BLOCKED_PLUGIN_TRUST_INSTALL and grades Z3-G5/G6/G7 NOT_RUN / Z3-G8 PARTIAL / G3-G4 live NOT_RUN, with written_at_utc 2026-09-11T02:45:00Z — which postdates every canary completion (store last event 02:38:18Z; p9_recovery_result.json 02:42:47Z G8 PASS). The content is provably pre-canary (it matches the registry row already stale at 01:43:02Z and a 36-test battery without store_flows). Whether mislabeled by a day or forward-stamped, the artifact as frozen contradicts the claim set's terminal narrative and is NOT among the staleness items C8 discloses (it discloses only the registry row and STOP-CAP-1). It must be explicitly superseded/rewritten at close.",
+   "evidence": "terminal_reconciliation.json:4-25,27-32; p6_intake_first_report_A1_session2.json:13; p9_recovery_result.json:5,40; .runtime/orchestrator_v3/events.jsonl:60"
+  },
+  {
+   "severity": "MEDIUM",
+   "finding": "F2: Z3-G3/Z3-G4 live halves were never formally re-graded. The only gate matrix entry grading them says PASS_SCHEMA_LEVEL / PASS_SCRIPT_LEVEL with 'live-load NOT_RUN' / 'live-ZCode NOT_RUN'. Live functional evidence does exist in canary artifacts (SessionStart snapshot observed, PostAgent/PreToolUse/Stop hooks firing, 11 MCP tools live in a fresh session, negctl-mcp-v31 refused by the running MCP), but the artifacts themselves phrase G3/G4-live as 'PARTIAL PASS evidence'. C8's 'gates Z3-G0..Z3-G8 are evidenced PASS' is therefore an overclaim for G3/G4 until an artifact records the live grade.",
+   "evidence": "terminal_reconciliation.json:18-19; p6_intake_first_report_A1_session2.json:30-33; p6_result.json:12-17; p9_recovery_result.json:31-34"
+  },
+  {
+   "severity": "LOW",
+   "finding": "F3: Timestamp integrity defects in frozen evidence. v31_verification.json carries measured_at_utc 02:55:00Z together with store_census_after {INTEGRATED:4, BLOCKED:3} = 7 tasks, which was only true before negctl-mcp-v31 registered at 02:37:30Z and blocked at 02:38:18Z (8 tasks, 4 BLOCKED); the census contradicts the artifact's own stamp. p9_recovery_result.json:38 discloses this as writer clock skew (12-25 min ahead of file mtimes) for v31_verification.json and stop_hook_observation.json — same class as F1 but disclosed. Additionally integration_events.jsonl events carry no date field at all (times only), leaving the P0-P10 build timeline undated and forcing inference to reconcile it with the 2026-09-11 canary timeline.",
+   "evidence": "v31_verification.json:4,13; events.jsonl:54-60; p9_recovery_result.json:38; integration_events.jsonl:1-8"
+  },
+  {
+   "severity": "LOW",
+   "finding": "F4: 'Zero tasks in non-terminal states' is true in plan semantics but false under the store's own machine readout. orchestrator_store.py defines TERMINAL_STATES={'TERMINAL'} and terminal_check() counts INTEGRATED/BLOCKED as non_terminal, so terminal_check() on the current store returns all_terminal=false with 8 non_terminal tasks. The lawful INTEGRATED->TERMINAL / BLOCKED->TERMINAL transitions were never materialized. /lead-close should either materialize TERMINAL statuses or the machine readout will publicly disagree with the terminal claim.",
+   "evidence": "plugins/quant-research-orchestrator/scripts/orchestrator_store.py:55-63,625-635; .runtime/orchestrator_v3/tasks.json (all 8 statuses INTEGRATED/BLOCKED, terminal_reason null)"
+  },
+  {
+   "severity": "LOW",
+   "finding": "F5: The two live refusal re-verifications (negctl-v31-refusal, negctl-mcp-v31) leave no machine trace — refusals raise HandoffEvidenceRefused without appending any event, so events.jsonl only records the subsequent legitimate report handoff (dispatch_sha correctly equal to base_sha: c4d6d17... and 6cd33db...). The refusal occurrences themselves rest on Lead-authored text (handoff outputs, blocker strings, v31_verification, p9). Mitigation verified by this audit: the guard code exists in both repo and installed cache, and 4 of the 7 store-flow tests exercise exactly these refusals. Consider logging refused publishes as events in a future revision.",
+   "evidence": ".runtime/orchestrator_v3/inbox/negctl-v31-refusal-handoff.json:7,20; negctl-mcp-v31-handoff.json:7,15; events.jsonl:52,59; orchestrator_store.py:467-473; tests/test_orchestrator_v3_store_flows.py:159-198"
+  },
+  {
+   "severity": "LOW",
+   "finding": "F6: Dispatch-packet defect (disclosed at the time): canary-p6-b-failures-lock's objective required reading /Users/hoangminhlong/.my-quantitative-governance/heavy_runtime/heavy_worker.registry.json, but allowed_paths listed only research/wayfinder/FAMILY_FAILURES.jsonl, and the registry file was in fact absent (directory contains heavy_worker.lock/history/scheduler_jobs instead). The explorer honestly reported NOT_FOUND; no gate outcome hinged on it, but the packet referenced an unreachable input.",
+   "evidence": "tasks.json:59,70-72; .runtime/orchestrator_v3/inbox/canary-p6-b-failures-lock-handoff.json:13,23-27"
+  },
+  {
+   "severity": "INFO",
+   "finding": "F7: C6 cache spot-check result: no divergence found between repo plugins/quant-research-orchestrator and the installed cache at ~/.zcode/cli/plugins/cache/my-quantitative-local/quant-research-orchestrator/0.1.0 for scripts/orchestrator_store.py (head + full guard region), hooks/hooks.json, agents/quant-auditor.md. Full-tree byte-identity remains Lead-attested (diff -r exit 0 recorded in p9_recovery_result.json:32).",
+   "evidence": "plugins/quant-research-orchestrator/scripts/orchestrator_store.py vs cache copy lines 1-80 and 440-572; hooks/hooks.json both locations; agents/quant-auditor.md both locations"
+  },
+  {
+   "severity": "INFO",
+   "finding": "F8: The registry hygiene write promised in p9_recovery_result.json:40 ('Registry hygiene write follows this artifact') has not landed as of this audit: plans/CYCLE_REGISTRY.json still shows the stale P5_OWNER_INSTALL_BOUNDARY row (head baf08cf). This is consistent with C8's characterization of the stale row as an open observation; it must be updated (canonical CAS path) at close so the only writable cycle authority reflects measured truth.",
+   "evidence": "p9_recovery_result.json:40; plans/CYCLE_REGISTRY.json:364-371"
+  }
+ ],
+ "terminal_readiness": "ZCODE-ORCHESTRATION-V3 is substantively ready for a /lead-close terminal verdict subject to owner authority: the store census, digest cross-checks (store vs events for all 8 tasks), deadbeef pre-fix evidence, STORE-FLOW-2 closure events, STORE-FLOW-1/2/3 guard code in both repo and installed cache, the 43-test count, and the G5-G8 canary artifacts all reconcile, and zero HIGH/CRITICAL observations remain open (STOP-CAP-1 is LOW/MEDIUM and disclosed). However, four reconciliation items should be completed as part of the close rather than after it: (1) supersede or rewrite terminal_reconciliation.json, whose frozen state (verdict BLOCKED_PLUGIN_TRUST_INSTALL, G5-G8 NOT_RUN/PARTIAL, 36-test battery) contradicts the canary record while its 2026-09-11T02:45:00Z stamp postdates it (F1); (2) record a formal live grade for Z3-G3/G4, which currently top out at PASS_SCHEMA_LEVEL/SCRIPT_LEVEL with live halves evidenced only as 'PARTIAL PASS evidence' (F2); (3) land the registry hygiene write so CYCLE_REGISTRY.json reflects the measured P6-P9 state instead of the stale P5 row (F8); (4) materialize the lawful INTEGRATED/BLOCKED -> TERMINAL transitions (or explicitly note the convention) so the store's own terminal_check() agrees with the 'all terminal' claim (F4). None of these overturns a measured gate result; they are evidence-hygiene prerequisites for a defensible terminal verdict. Git-fact sub-items (commit existence/ancestry: 321e387, 2ebf5c2, a55d5e6, 85bdcd4, bc9511e, c4d6d17, main HEAD 6cd33db) were cross-corroborated across multiple frozen artifacts but could not be independently recomputed without git access and remain Lead-attested."
+}

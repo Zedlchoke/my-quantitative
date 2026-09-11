@@ -1,0 +1,43 @@
+{
+ "schema": "zcode_orch_v3_canary_result@1",
+ "gate": "Z3-G8 (restart recovery, zero duplicate integration)",
+ "canary": "P9 interruption recovery via /lead-resume in a fresh Lead session",
+ "measured_at_utc": "2026-09-11T02:42:47Z",
+ "session": "A1 Lead session #3 (fresh session after owner merge 6cd33db + plugin reinstall + restart; writer of this artifact: resuming Lead controller)",
+ "drill": "Owner invoked /lead-resume. Reconstruction used ONLY durable artifacts (.runtime/orchestrator_v3/tasks.json + events.jsonl + inbox handoffs), MCP waiting_summary, real git state and the heavy lock. Zero pasted chat history was used; zero store mutations were needed.",
+ "reconstruction": {
+  "store_census": {"total": 8, "INTEGRATED": 4, "BLOCKED": 4, "non_terminal": 0, "ready": [], "inflight": [], "awaiting_validation": []},
+  "tasks": [
+   "canary-p6-a-ledger-totals INTEGRATED (attempt 1, handoff 7012acc8...)",
+   "canary-p6-b-failures-lock INTEGRATED (attempt 1, handoff 0bca3e09...)",
+   "canary-p7-a-impl BLOCKED-closed via v3.1 STORE-FLOW-2 exit (substance in git: lane commit a55d5e6, pick bc9511e, 3/3 tests)",
+   "canary-p7-b-impl BLOCKED-closed via v3.1 STORE-FLOW-2 exit (substance in git: lane commit 85bdcd4, pick c4d6d17, 6/6 tests)",
+   "canary-p8-repro INTEGRATED (ALL_MATCH 6/6 pytest + 4/4 sha)",
+   "canary-p8-bad-handoff INTEGRATED (deliberate negative control; its acceptance WAS the STORE-FLOW-3 defect evidence, pre-fix)",
+   "negctl-v31-refusal BLOCKED-consumed (fabricated dispatch_sha REFUSED at publish by fixed module, 2026-09-11T02:29:52Z)",
+   "negctl-mcp-v31 BLOCKED-consumed (same refusal through the RUNNING reinstalled MCP, 2026-09-11T02:38:18Z)"
+  ],
+  "re_dispatch_needed": 0,
+  "validation_pending": 0,
+  "double_integration_risk": "none: nothing to integrate; no terminal task was re-run or re-integrated during recovery"
+ },
+ "git_truth_measured": {
+  "main_head": "6cd33db193b1506c85cb75a90318dc5d059c02d1 (owner merge of v3.1)",
+  "dirty": ".zcode/ untracked only (ZCode-internal, benign)",
+  "v31_fix_ancestry": "2ebf5c28e88b33bb18e82191b7929e7622766b32 IS an ancestor of main HEAD (verified merge-base --is-ancestor, exit 0)",
+  "p7_integration_pattern": "cherry-pick, NOT merge: orca/orch-canary-p7-int carries bc9511e (p7-a pick) then c4d6d17 (p7-b pick) linearly; lane originals a55d5e6/85bdcd4 remain on orca/orch-canary-p7-a/b (merge-base --is-ancestor exit 1 is EXPECTED for pick-pattern, not a defect); content equality lane-vs-pick was sha256-verified 4/4 by the P8 reproducer at c4d6d17 (p8_result.json ALL_MATCH); fixtures module_a/module_b + tests present at p7-int",
+  "heavy_lock": "FREE_PROVEN (no registry row, lock not flocked)"
+ },
+ "new_mcp_verification": {
+  "installed_cache_diff": "diff -r plugins/quant-research-orchestrator ~/.zcode/cli/plugins/cache/my-quantitative-local/quant-research-orchestrator/0.1.0 (excluding __pycache__/.DS_Store/.zcode-plugin) -> exit 0, byte-identical",
+  "live_refusal_through_running_mcp": "negctl-mcp-v31 (02:37:36Z-02:38:18Z): fabricated dispatch_sha REFUSED at publish by the live MCP with HandoffEvidenceRefused - behavioral proof the running MCP is v3.1",
+  "battery_rerun": "43/43 PASS at main HEAD 6cd33db in THIS fresh session (.venv pytest tests/test_orchestrator_v3_{state,hooks,mcp,store_flows}.py, 2.74s)"
+ },
+ "observations": [
+  "SessionStart snapshot showed inflight=[negctl-mcp-v31 RUNNING] while the store's final write (02:38:18Z) closed it BLOCKED - benign point-in-time race: the snapshot read the store before the close-out write landed. Re-measurement via waiting_summary confirmed empty queues.",
+  "Evidence files v31_verification.json/stop_hook_observation.json carry measured_at_utc stamps 12-25min ahead of their file mtimes (writer clock rounding); store events and mtimes are consistent with each other, so event ordering used in evidence follows events.jsonl.",
+  "STOP-CAP-1 (stop-hook continuation bound not self-enforced, LOW/MEDIUM) remains OPEN as recorded observation - below the HIGH/CRITICAL bar of Z3-G9, carried on the fix list, not terminal-blocking.",
+  "CYCLE_REGISTRY row for this cycle was stale at resume (still P5_OWNER_INSTALL_BOUNDARY / P6-P9 NOT_RUN, head baf08cf); measured truth supersedes: owner actions 1-3 done (merge 6cd33db, plugin reinstall verified live, fresh session resumed). Registry hygiene write follows this artifact."
+ ],
+ "verdict": "Z3-G8 PASS: /lead-resume reconstructed the full cycle state from durable files + real git/lock state with zero re-dispatch, zero double integration, and zero authority violations; the recovery path is proven live, not fixture-only."
+}
