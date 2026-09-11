@@ -1,0 +1,68 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "forex-ng1-p0-adoption",
+ "cycle_id": "FOREX-NG1",
+ "role": "quant-implementer",
+ "lane": "p0",
+ "dispatch_sha": "f165cac5622c424ae3150e1373eeb7942b29979d",
+ "actual_start_sha": "f165cac5622c424ae3150e1373eeb7942b29979d",
+ "commit_sha": "251dd4822fa7d683e4f33057c24618c7ab2965d3",
+ "handoff_sha_note": "this handoff file is committed in a second commit on the same branch",
+ "changed_paths": [
+  "research/assets/forex_ng1/__init__.py",
+  "research/assets/forex_ng1/plane_adapter.py",
+  "research/control/forex_ng1_run/p0_run.py",
+  "research/control/forex_ng1_run/p0_gate.json",
+  "research/control/forex_ng1_run/p0_announcement_census.json",
+  "tests/test_forex_ng1_p0.py",
+  "research/control/FOREX-NG1/orchestration/handoffs/p0-adoption-handoff.json"
+ ],
+ "summary": {
+  "gate": "PASS",
+  "verdict_path": "research/control/forex_ng1_run/p0_gate.json",
+  "sections": {
+   "s2_repin": "PASS - CADS 07d1e0d5... resolved+re-hashed clean; 5-file FRED vintaged manifest verified byte-for-byte (US leg via its CADS object 7f18ec98..., GB/CA/AU/NZ legs via V9 staging bytes)",
+   "s3_repin": "PASS - all 5 entries (GB ONS csv, CA tidy csv, CA statcan zip, AU abs xlsx, US fred rt json) consumed through consume_via_plane: registry GRANTED + GA4 cross-check -> CADS resolve verify-on-read -> manifest-verified frozen query (CSV) / resolve+verify (non-tabular)",
+   "vintaged_gb_ca_proof": "PASS - GB GBRCPIALLMINMEI 4737 rows / 100% rows carry realtime windows / 96 vintages / 763 months with >1 distinct value; CA CANCPIALLMINMEI 5091 / 100% / 96 / 780. Contrast read: ONS D7BT csv = single release-date header (19-08-2026), StatCan 18100004 zip = Archive Status CURRENT, no vintage dimension -> both CURRENT_VINTAGE_SNAPSHOT, continuation only. Binding V9 HIGH finding honored: GB/CA PIT legs come from the vintaged archives, no current-vintage backfill",
+   "shadow_parity": "PASS - plane-read digest == V9 staging digest on 5/5 S3 files (full-file sha256, no sampling fallback needed; largest file 15.3MB) + CA tidy window-overlap row parity (2018-04..2025-07) + S2-manifest pin parity on the 4 FRED vintaged legs",
+   "tail_trim": "PASS - effective coverage end months: GB/CA 2025-03, AU/NZ 2025-03 (quarter end of 2025-01 first-month obs), US 2025-06; all within the 2025-03..2025-06 law",
+   "announcement_census": "PASS - 323 instants in the measured S0 window 2018-04-04..2025-04-30 (first releases: GB 85, CA 85, AU 23, NZ 29, US 85; CA lists 16 additional WDS correction releases flagged by release ordinal); every instant carries publication-timestamp evidence (GB/AU date-only -> conservative 23:59:59Z; CA true-UTC archived; NZ 10:45 Pacific/Auckland DST-correct; US FRED realtime first-appearance); canary 2/2 fabricated instants FAILed lookup as required"
+  }
+ },
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_forex_ng1_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "16 passed (fail-closed 1-byte digest flip on tmp CADS store; refusal paths for non-granted/GA4-missing/absent-pin; vintage parser 2-vintages-of-same-month hand-computed fixture; current-vintage table fails structurally; ONS snapshot structure; NZ/CA DST boundaries incl. exact 1h DST shift; conservative end-of-day vs 16:00-NY grid; census PIT fields, ordinals, canary)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/forex_ng1_run/p0_run.py --pytest-exit 0 --pytest-log /tmp/forex_ng1_p0_pytest.log",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "gate verdict PASS, zero blockers; command + exit recorded inside p0_gate.json commands[]"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "AU calendar evidence starts 2019-10-30 (V9: ABS past-release pulls network-failed): pre-2019-10 AU prints have no publication-timestamp evidence and are not counted (AU census = 23 quarters)",
+  "US instants carry date-only evidence (FRED realtime bytes have no time-of-day): conservative end-of-day UTC bound; a same-day 16:00-NY decision cannot see the print",
+  "GB/AU publication times are date-only in the pinned calendars: same conservative end-of-day treatment",
+  "3 instants recorded with pit_notes archive_led_bulletin (2 CA WDS correction events 2018-05-28/29, 1 NZ 2019-07-16 where FRED first-realtime 2019-07-11 preceded the bulletin): included with conservative operative availability max(publication, first_realtime), anomaly recorded not dropped",
+  "CA reference-month mapping uses the StatCan monthly convention (ref = release month - 1); the WDS calendar rows do not carry an explicit reference month; convention validated by non-negative realtime lags on included instants",
+  "FRED vintaged GB/CA/AU/NZ leg bytes live in the V9 worktree staging (gitignored there); their authority for this cycle is the S2 CADS manifest pin (07d1e0d5...) whose sha256 entries were re-verified against those bytes; a future cycle should register the leg bytes themselves as CADS objects",
+  "AU/NZ quarterly feeds are represented at quarter first month (V9 law); tail-trim measured at quarter end for the 2025-03..2025-06 law comparison"
+ ],
+ "incidents": [],
+ "tree_status": "clean after commit 251dd4822fa7d683e4f33057c24618c7ab2965d3 (this handoff committed separately)",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/assets/forex_ng1/__init__.py", "sha256": "ab3ca5eceeda6aeeba54211aaeda315d0bab3d3702e50a55cce158ffd6b670d6"},
+  {"path": "research/assets/forex_ng1/plane_adapter.py", "sha256": "b7c3a6df61ce302ce091444a60ccbfe01673d761d672045f155f833e44042c65"},
+  {"path": "research/control/forex_ng1_run/p0_run.py", "sha256": "bf0e671af49a6c182227a38089e84e4bc806dee9d1307d4184499da761264915"},
+  {"path": "research/control/forex_ng1_run/p0_gate.json", "sha256": "ec2722857220b475dc5b18221c7c20123e543c3dda17313dd96ab0d053fb8cab"},
+  {"path": "research/control/forex_ng1_run/p0_announcement_census.json", "sha256": "e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe"},
+  {"path": "tests/test_forex_ng1_p0.py", "sha256": "8bb7c4227232c4e5c4f5eb0748bdb9a78db4deb93467caef0661669693264118"}
+ ],
+ "recommended_next_action": "P0 PASS with zero blockers: proceed to P1 (kernel/accounting inheritance per plan section 4) with the frozen S0 window 2018-04-04..2025-04-30, the p0_announcement_census.json instants as the PIT clock, and consumption strictly via research.assets.forex_ng1.plane_adapter.consume_via_plane; AU evidence gap and the 3 recorded pit anomalies are documented limitations, not blockers"
+}
