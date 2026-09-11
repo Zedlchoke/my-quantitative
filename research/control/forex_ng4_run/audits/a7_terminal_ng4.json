@@ -1,0 +1,96 @@
+{
+ "schema": "a7_terminal_ng4@1",
+ "verdict": "REJECTED_FINDINGS",
+ "audited_claim": "FOREX-NG4 closed terminal FOREX_NG4_BLOCKED_DATA_OR_SELECTION (plan sec 2): P0a EURUSD TD probe PASS (5000 bars, existing entitlement, 1 call, 0 key leak; 5-pair grid still 1842); P0b ALFRED re-ingest CP0000EZ19M086NEST 97/97 (etiquette kept, 0 errors, 0 leak) => census feed-level truth: only 17 first-print era-in events (A4 >=30 FAIL, margin -13); from mid-2018 first-published-is-final so the rest of the panel is pre-2017-12 historical revisions correctly era-excluded; A5 16 >=12 PASS but A4 leg dies per plan; 0 proposals, 0 cells, budget 0/6, GO died UNCONSUMED.",
+ "cycle": {
+  "cycle_id": "FOREX-NG4",
+  "plan": "plans/PLAN_forex_ng4.md (committed 68e40c6, 2026-09-12 04:12:04 +0700, before bootstrap and all measurements)",
+  "chain": "bootstrap 330a6cd (04:12:22) -> P0a substance d7a8c56 (04:25:28) -> P0a handoff 730aaaf (04:26:09) -> P0b substance 7d37f08 (04:44:32) -> P0b handoff a65206d (04:45:07)",
+  "audited_tip": "a65206df175457f9d481fde8e70c7cf118058df4",
+  "freeze_before_measurement": "PASS: floors A4>=30 / A5>=12 derive from the plan's incorporated ng2/ng3 frozen standards (PLAN_forex_ng2.md sec 2/5, PLAN_forex_ng3.md sec 3/5, committed in the plan generation before the cycle opened); the constants were written at P0a (EZ_PRINT_EVENT_FLOOR=30, EZ_US_DIFFERENTIAL_FLOOR=12 in p0_run.py, floors recorded NOT_RUN there because bytes were absent) and were never moved after any measurement (P0b used identical constants).",
+  "governance": {
+   "budget": "0/6 used (state.json budget_used=0; registry budget used=0/max=6)",
+   "go": "REGISTERED_NOT_CONSUMED (state.json go_phrase_state; correct: gate never reached PASS, GO legitimately never typed)",
+   "s1": "SEALED_UNTOUCHED",
+   "proposals_cells_outcomes": "0 proposals, 0 cells, 0 scored outcomes (only 2 handoffs: p0-census, p0b-ez-ingest; 5 commits on orca/forex-ng4-integration; census carries the no-outcome law; outcome scan clean)",
+   "key_leak_scan": "clean (no key-shaped material in any committed ng4 artifact; keys recorded as key_present booleans only)"
+  }
+ },
+ "findings": [
+  {
+   "id": "NG4-A7-F1",
+   "severity": "HIGH",
+   "title": "The A4 floor FAIL (17/30) is an artifact of the as-of snapshot ingest shape, not a feed property; on the plan's own frozen V8 basis the ng2/ng3 census yields >= 50 era-in usable first-print events (A4 PASS) and the terminal BLOCKED_DATA close is unsupported",
+   "evidence": [
+    "Plan sec 2 freezes the EZ basis as 'pinned vintaged EZ HICP (V8-measured FULL S0 coverage)' and sec 3 requires 'first-print vs revision streams per ng2/ng3 standards'. The committed V8 staged manifest (forex-free-v8_run/staged_vintaged_manifest.json, EZ entry sha 886f0afee88ac916a9aaeaabc57874ece6615b905c045b83a45551c3e72d5735) pins 696 binding rows, obs 1996-01-01..2025-06-01, retrieval window 2018-01-01..2025-08-01 with semantics 'rows = (obs_date, value) binding periods intersecting the window' -- i.e. rows carry TRUE vintage windows. Committed V8 evidence p0_earliest_vintage_v8.json: CP0000EZ19M086NEST earliest_vintage_upper_bound = 2015-02-27 (HTTP 200 at that as-of date), quoted by the cycle's own committed p0a census ('earliest vintage <= 2015-02-27').",
+    "Recompute on the detached tree (pinned bytes, value-identical census): the reconstructed panel contains EXACTLY 696 versions for obs 1996-01-01..2025-06-01 == V8's 696 binding rows. The re-ingest therefore recovered exactly the V8 version multiset (the mandated warmup month 2017-12 compensates the window edge); both V8 and the panel see the same versions.",
+    "The p0b ingest queries ALFRED as-of (realtime_start=realtime_end=vintage_day); the lane's own measured semantics (census reconstruction_law): every returned row's window is CLAMPED to the query day. The reconstructed panel's realtime_starts are therefore all 1st-of-month clamped days, so ng2's frozen era law (era_start = min realtime_start over rows, applied unmodified) collapses to 2017-12-01. On the V8 true-window rows the SAME law yields era_start <= 2015-02-27. The era_start -- and hence the first-print-era restriction -- is a function of the query shape, not the feed.",
+    "Consequence, measured from the recomputed panel: the obs 2015-03..2017-11 cohort (33 obs months) carries exactly 2 versions each -- the value in force at the panel start, changed at the 2019-04-01 re-publication (v2 clamped day 2019-04-01 for all 33, inside S0 2018-04-04..2025-04-30). On the V8 true-window basis these months are >= era_start (2015-03-01 >= 2015-02-27 bound), their v1->v2 gaps are genuine first-print revision events with v2 availability days in S0 (PIT-usable on the frozen grid), and their true v1 days are distinct per month so the bulk signature rule (>=10 identical (v1 day, v2 day, ratio) signatures) does not collapse them -- the same reason the panel measured 0 bulk groups. A4 >= 17 (measured restricted) + 33 (cohort) = 50 >= 30 => PASS; larger still if the true archive zero predates the 2015-02-27 upper bound.",
+    "Decision impact: p0_gate.json verdict BLOCKED_DATA rests solely on the EZ A4 FAIL (P0a substrate and EURUSD probe PASS; A5 16>=12 PASS; canaries 5/5). With A4 PASS on the plan-conformant basis the P0 gate is PASS, both lanes live, and the cycle belongs at D1 -- not closed FOREX_NG4_BLOCKED_DATA_OR_SELECTION.",
+    "The p0b handoff known_limitations assertion 'A4 floor FAIL is a measured property of the feed ... not an ingest defect' is thereby refuted for the pre-2018 cohort: the shortfall is a property of the mandated clamped as-of query shape (a dispatch/lane design choice), which no plan text freezes and which was never reconciled against the plan's frozen V8 basis. By the handoff's own law ('a floor change is an owner decision, never a lane one'), the effective re-scoping of the measurement basis (true-window archive => clamped snapshot panel) was not an authorized floor/standard change."
+   ],
+   "why_not_lower": "The A4 verdict is the sole blocker of the terminal close and decides PASS-vs-BLOCKED for the whole cycle; a plan-conformant measurement using the same entitlement (one wide-window ALFRED pull, fewer calls than 97, feeding the same unmodified rs.build_restricted_stream) flips the gate to PASS on committed-evidence arithmetic. Evidence-first law: a profitable (here: terminal) conclusion is not valid unless identity, data and gates reconcile -- they do not."
+  },
+  {
+   "id": "NG4-A7-F2",
+   "severity": "MEDIUM",
+   "title": "Evidence-integrity wording overstates the census as 'feed-level truth'; the clamped-clock disclosure exists but its era-law consequence is mis-assessed",
+   "evidence": [
+    "The census artifact honestly labels itself MEASURED_ON_REINGESTED_VINTAGES and discloses the clamped clock and the 2017-11 warmup loss. But the p0b handoff and the audited claim generalize from it: 'census feed-level truth', 'from mid-2018 first-published-is-final' and '263 of 280 usable events are history revisions of pre-2017-12 months, correctly excluded by the first-print-era restriction'. Per NG4-A7-F1, the pre-2017-12 exclusion is an ingest-shape artifact of the era_start collapse: on the plan's V8 basis those transitions are first-print-era revision events with S0-usable v2 days, not merely 'historical revisions'.",
+    "'From mid-2018 first-published-is-final' is itself only established on the clamped monthly grid (one sampled value per obs month from 2017-12 onward); the committed 696==696 equality shows no hidden versions inside the V8 window, so the characterization is fair for 2018+ obs months, but it does not extend to the pre-2018 first-print question that decides A4."
+   ],
+   "why_not_higher": "No additional decision rests on the wording beyond F1; the disclosure duties (clamped clock, warmup loss, monthly-grid identity) were met verbatim in the committed artifacts."
+  },
+  {
+   "id": "NG4-A7-F3",
+   "severity": "LOW",
+   "title": "Registry head stale at bootstrap",
+   "evidence": "plans/CYCLE_REGISTRY.json still records FOREX-NG4 head=330a6cd / phase REGISTERED while the branch tip is a65206d (5 commits). Pre-close lag; the Lead updates the registry at close. No evidence-path violation (the worktree chain is intact and dispatch/base matches are recorded in both gates)."
+  }
+ ],
+ "unresolved_high_critical_count": 1,
+ "recompute": {
+  "detached_tree": "/tmp/a7t_forex_ng4 (git worktree --detach a65206df175457f9d481fde8e70c7cf118058df4; removed after audit)",
+  "method": "HEAD reset to the P0b dispatch base 730aaaf with the 7d37f08 working files restored untracked (ez_vintaged.py, p0b_ez_ingest_run.py, p0b_ez_vintages_manifest.json, p0b_ez_hicp_census.json, p0_gate.json, tests/test_forex_ng4_p0.py) -- the working-tree git status then matches the original gate record verbatim; data_raw copied read-only from the integration worktree (97 vintage files + EURUSD.json); ng2/ng3 machinery consumed via unmodified import; CADS US archive verify-on-read (address == sha256) PASS",
+  "command": ".venv/bin/python research/control/forex_ng4_run/p0b_ez_ingest_run.py --mode pinned  (FRED key NOT needed; zero network)",
+  "results": {
+   "ingest": "COMPLETE 97/97 vintages, 0 failures (manifest verify-on-read re-hashed every file)",
+   "panel": "701 rows / 97 snapshots / 358 obs months / 343 value changes",
+   "census": {"events_all": 282, "usable": 280, "first_print_era_restricted": 17, "bulk_groups": 0},
+   "floors": {"a4_ez_print_events": "17/30 FAIL (margin -13)", "a5_ez_us_differential_months": "16/12 PASS", "q6_ez_recent": "2 (2023-05-01..2025-04-30), no floor frozen -- correct"},
+   "canaries": "5/5 PASS", "substrate_eurusd": "re-verify PASS", "tests": "40/40 PASS (24 p0a + 16 p0b)"
+  },
+  "diff_vs_committed": "recomputed p0b_ez_hicp_census.json value-identical to the committed artifact modulo measured_utc; p0b_ez_vintages_manifest.json byte-identical",
+  "cross_checks": {
+   "v8_fidelity": "panel versions for obs 1996-01..2025-06 == 696, EXACTLY equal to the committed V8 staged-manifest binding_rows for the same span",
+   "era_start": "clamped as-of basis: 2017-12-01 (measured); plan V8 true-window basis: <= 2015-02-27 (committed p0_earliest_vintage_v8.json)",
+   "counterfactual_cohort": "obs 2015-03..2017-11 = 33 months, each exactly 2 versions, v2 = 2019-04-01 (in S0) => A4 >= 50 >= 30 PASS on the plan basis",
+   "p0a_spread": "EURUSD pin 01cb862b, 5000 bars, 2007-10-18..2026-09-12, integrity census clean (0 duplicate dates, 0 OHLC cross, DST gaps explained, 4 missing days classified incl. the recorded 2019-05-22 provider hole), 5-pair grid 1842 days with 0 days removed (verified in p0_gate.json); the 'exactly 1 network call' figure is handoff-recorded only and not independently re-verifiable offline (noted, not a finding)"
+  }
+ },
+ "verified_claims": [
+  "P0a EURUSD TD probe PASS on the owner's existing Twelve Data entitlement with ng1 authority cross-ref: VERIFIED (gate sections carried verbatim with provenance; pinned bytes re-verified PASS)",
+  "P0b ingest 97/97, etiquette law (1req/1.2s + 2/4/8s backoff, fail-closed fatal classes), 0 key leaks, untracked bytes + committed sha manifest: VERIFIED (recompute; leak scan clean)",
+  "Census numbers 282/280/17/0, A5 16, Q-6 2: VERIFIED (recompute value-identical)",
+  "Tests 40/40: VERIFIED",
+  "Budget 0/6, GO unconsumed, S1 sealed, 0 proposals/0 cells/0 outcomes: VERIFIED",
+  "Chain and freeze-before-measurement: VERIFIED",
+  "RETRACTED by this audit: 'census feed-level truth', 'A4 shortfall is a measured property of the feed', 'the rest of the panel is pre-2017-12 historical revisions correctly excluded by the era-bound' (see NG4-A7-F1/F2)"
+ ],
+ "label_adjudication": "The 5-shape label set is preregistered via plan sec 2 ('same 5-shape set' = ng1 sec 2: REJECT_ALL | ONE_OR_MORE_STAGE_A_SURVIVORS_LOCKED_FOR_FUTURE_S1 | BLOCKED_DATA_OR_SELECTION | BLOCKED_PRELAUNCH | INCOMPLETE_NOT_PROMOTABLE), so FOREX_NG4_BLOCKED_DATA_OR_SELECTION is a legal shape. Plan sec 2's explicit sentence ('EURUSD not servable by the entitlement => BLOCKED_DATA honest with the owner action named') names one trigger and is not exclusive: plan sec 3 incorporates the EZ census 'per ng2/ng3 standards', and the incorporated law makes a P0 census floor failure a cycle-death => BLOCKED_DATA before any proposal (ng2 sec 2: 'the cycle dies in P0 before any proposal is requested'; ng2 sec 5 P0: '>=30 ... >=12 ...; else BLOCKED_DATA'; ng3 sec 5 P0: 'floors above; BLOCKED_DATA if any fails'). REJECT_ALL is factually unavailable here (0 proposals, 0 cells). So IF the A4 FAIL stood, the label would be correct (FOREX-NG2 closed identically at P0). A5-only: PLAN_forex_ng4.md contains NO A5-only continuation clause; the crypto-ng2 plan explicitly has one ('the A4 lane dies BLOCKED ..., cycle may still run the A5 lane') and that authorization is plan-specific, not generational law -- so under THIS plan an A5-only continuation would have violated the incorporated any-fail-kills law; the claim's 'both-must-live' phrasing is not plan text but its operative conclusion is right. HOWEVER, the label is not earned: per NG4-A7-F1 the A4 FAIL does not stand on the plan's own frozen basis (A4 >= 50 >= 30 PASS on V8-basis semantics), the P0 gate should be PASS with both lanes live, and the cycle belongs at D1. A terminal close on the current evidence would be an INCOMPLETE-shaped close, not a BLOCKED one; the current BLOCKED_DATA close is REJECTED.",
+ "required_owner_action": "Re-run the P0 EZ census on a vintage-day-preserving basis before any terminal close: one wide-window ALFRED pull (fred/series/observations, realtime_start <= 2015-02-27 .. realtime_end = 9999-12-31, same existing entitlement, single etiquette-paced request -- fewer calls than the 97-snapshot ingest), parse to VintageRows (true windows), feed UNMODIFIED to rs.build_restricted_stream, and let the frozen floors (A4 >= 30, A5 >= 12) decide; the 696==696 equality guarantees value-level continuity with the pinned snapshots. Alternatively the owner may explicitly re-scope the measurement standard to the clamped monthly-snapshot shape (an owner decision per the handoff's own law) -- but the terminal BLOCKED_DATA close as claimed is not authorized by the plan text.",
+ "audit_meta": {
+  "auditor": "A7 terminal, fresh context, detached recompute",
+  "audited_commit": "a65206df175457f9d481fde8e70c7cf118058df4",
+  "audited_utc": "2026-09-12",
+  "artifacts_read": [
+   "plans/PLAN_forex_ng4.md", "plans/PLAN_forex_ng1.md", "plans/PLAN_forex_ng2.md", "plans/PLAN_forex_ng3.md", "plans/PLAN_crypto_ng2.md",
+   "plans/CYCLE_REGISTRY.json", "plans/CYCLE_REGISTRY.events.jsonl",
+   "research/control/forex_ng4_run/{p0_gate.json,p0_run.py,p0b_ez_ingest_run.py,p0b_ez_hicp_census.json,p0b_ez_vintages_manifest.json,p0_ez_hicp_census.json,p0_spot_pin_manifest.json,p0_eurusd_integrity_census.json}",
+   "research/control/FOREX_NG4/{state.json,event_log.jsonl}",
+   "research/control/FOREX-NG4/orchestration/handoffs/{p0-census-handoff.json,p0b-ez-ingest-handoff.json}",
+   "research/assets/forex_ng4/{ez_vintaged.py,ez_census.py,td_probe.py}", "research/assets/forex_ng3/revision_series.py", "research/assets/forex_ng2/revision_series.py",
+   "forex-free-v8_run/staged_vintaged_manifest.json (EZ entry)", "forex-free-v8_run/p0_earliest_vintage_v8.json"
+  ]
+ }
+}
