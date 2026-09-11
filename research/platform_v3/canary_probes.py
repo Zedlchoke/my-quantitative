@@ -27,8 +27,10 @@ import urllib.request
 from datetime import datetime, timezone
 
 SCHEMA = "research_platform_v3_run/pa4_canary@1"
-UA = ("my-quantitative-research/1.0 (evidence-first research; "
-      "contact: local-operator@localhost)")
+# The one contact UA this repository's crawlers already operate with
+# (V13 form4 census: 345k+ SEC files fetched with it).  data.sec.gov and
+# www.bis.org both reject anonymous/generic UAs with 403/404 bot rules.
+UA = "Research my-quantitative@example.com"
 TIMEOUT = 30
 
 
@@ -63,12 +65,18 @@ def probe_edgar() -> dict:
 
 
 def probe_binance_vision() -> dict:
-    alive = fetch("https://data.binance.vision/?prefix=data/futures/um/"
-                  "monthly/klines/BTCUSDT/")
-    dead = fetch("https://data.binance.vision/?prefix=data/futures/um/"
-                 "monthly/klines/BOGUSNOPE/")
-    alive_ok = alive.get("http_status") == 200 and (
-        "Binance" in alive.get("content_sample", ""))
+    # Direct monthly-object URLs, the exact pattern V16/V17 machinery used
+    # for its pinned censuses.  klines objects live under an interval
+    # subdirectory (data/futures/um/monthly/klines/<SYMBOL>/1h/<SYM>-1h-<YM>.zip);
+    # a bogus symbol-month is a clean 404 -- existence vs absence is
+    # distinguishable at HTTP level (the ?prefix= listing page is a JS shell
+    # whose body is identical for present and absent prefixes, so it cannot
+    # serve as the dead-name evidence).
+    alive = fetch("https://data.binance.vision/data/futures/um/monthly/"
+                  "klines/BTCUSDT/1h/BTCUSDT-1h-2025-01.zip")
+    dead = fetch("https://data.binance.vision/data/futures/um/monthly/"
+                 "klines/BOGUSNOPE/1h/NOPE-1h-2025-01.zip")
+    alive_ok = alive.get("http_status") == 200
     dead_distinct = dead.get("http_status") in (403, 404)
     return {"channel": "binance-vision", "alive": alive, "dead": dead,
             "verdict": "PASS" if alive_ok and dead_distinct else "FAIL"}
