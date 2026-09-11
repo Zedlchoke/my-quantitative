@@ -273,19 +273,21 @@ orchestrator plugin v3.1             IMPLEMENTED + TESTED + CANARY-VERIFIED
                                      bound not enforced — LOW; mark_terminal
                                      MCP exposure pending). Available for
                                      adoption by future orchestrated cycles
-research platform v3                 TERMINAL 2026-09-11 (verdict
+research platform v3                 TERMINAL 2026-09-11, MERGED to the
+                                     trunk 9024812 (owner imperative
+                                     'hãy merge'; verdict
                                      RESEARCH_PLATFORM_V3_PASS_CORE_PARTIAL_
-                                     ASSET_PILOTS @45561a1; 18/18 gates
-                                     adjudicated — core+authority lanes PASS,
-                                     asset pilots NOT_APPLICABLE (MDP-V2
-                                     adoption packets absent); full battery
-                                     1868 PASS, reproduction ALL_MATCH,
-                                     in-process 39-check audit 0 HIGH/CRIT
-                                     with disclosed independence limitation;
-                                     fresh-context A7 re-audit dispatched at
-                                     close; branch awaits owner merge
-                                     decision; capabilities adopt per future
-                                     asset commits)
+                                     ASSET_PILOTS @45561a1; 18/18 gates —
+                                     core+authority lanes PASS, asset pilots
+                                     NOT_APPLICABLE (MDP-V2 adoption packets
+                                     absent); full battery 1868 PASS,
+                                     reproduction ALL_MATCH; fresh-context A7
+                                     re-audit returned CONFIRM_WITH_FINDINGS
+                                     — 0 CRITICAL/HIGH, 1 MEDIUM traceability
+                                     defect repaired-by-addendum
+                                     (V3-G8_a7_fresh_context_addendum.json),
+                                     8 LOW recorded; capabilities adopt per
+                                     future asset commits)
 dashboard                            BUILT (stdlib collector, self-contained
                                      HTML, purity G5: refresh leaves
                                      git status unchanged)
