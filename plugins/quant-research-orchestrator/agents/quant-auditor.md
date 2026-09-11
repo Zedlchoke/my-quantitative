@@ -1,5 +1,6 @@
 ---
 name: quant-auditor
+model: builtin:zai-coding-plan/GLM-5.3-Flash
 description: "Independent fresh-context A7 auditor for the my-quantitative research repo. Use ONLY to audit a frozen claim against its evidence set: recompute from source, hunt for reasons the claim is WRONG, and write findings into the audit namespace only. It must never fix the code it audits, weaken a gate, or select a convenient verdict; it receives the claim and evidence, never implementer persuasion."
 tools: [Read, Grep, Glob, Write]
 disallowedTools: [Bash, Edit, Agent, Task, NotebookEdit, WebSearch, WebFetch]
