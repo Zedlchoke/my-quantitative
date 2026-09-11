@@ -1,93 +1,40 @@
-# CONTINUE.md — program checkpoint (Lead-synced 2026-09-09 midday)
+# CONTINUE.md — program checkpoint (Lead-synced 2026-09-11 morning)
 
 Read the LIVE plan of the cycle you serve (highest version per asset in
 `plans/`); the canonical registry (`plans/CYCLE_REGISTRY.json` via
-`researchctl cycle list`) is the router authority. Measured 2026-09-09
-~12:50 VN:
+`researchctl cycle list`) is the router authority. Measured 2026-09-11
+~07:30 VN:
 
-- **FOREX-FREE-V8: TERMINAL.** `FOREX_FREE_V8_REJECT_ALL`
-  (falsification-by-control #14 — DGS10-level control out-earns the anchor
-  4.0116x; DSR N=42 0.341/0.406/0.540). Registry TERMINAL. Ledger 236/239
-  (forex 42/42), failure registry 56/0.
-- **FOREX-FREE-V9: TERMINAL — `FOREX_FREE_V9_BLOCKED_DATA_OR_SELECTION`**
-  (0 cells, budget 0/6). All 4 proposals D2-killed measured: A4-P1 0.2599 /
-  A4-P2 0.4842 vetoes; A5-P1/A5-P2 passed the A1 monthly-grid measurement
-  but **A7 prelaunch re-measured on the frozen daily-grid representation:
-  0.3034/0.3119 vs the V8-A5-P1 anchor — both vetoed; the selection was
-  invalid as measured** and the cycle closed honestly. Lesson: D2 novelty
-  rho must be measured on the runner's own decision-grid representation,
-  committed and reproducible. GB/CA current-vintage deviation recorded as a
-  binding disclosure for future cycles.
-- **CRYPTO-V17: selection RE-FROZEN v3** (`74781fb`) after A7 v2
-  REFUSED (WKNDLIQ D2 novelty was buggy — day-string vs weekday-names;
-  re-measured |rho| 0.5628 → VETO_MEASURED; both lane-1 proposals dead
-  by frozen rules). R3 branch applies: ATTN-PHASE + OICASCADE selected
-  (mandatory-lane MISS disclosed — lane-1 re-opens only in a future
-  owner plan). Next: OICASCADE implementation lane → Q v3 → fresh A7 v3
-  → owner GO. One transient FAILED lock row during Q-job relaunch
-  (stderr json.loads) — A1 active on the arc.
-- **STOCKS-FREE-V13: speed experiment LIVE (owner-ordered max speed).**
-  Measured 12:42 VN: 24,502/345,152 docs at **6.48 doc/s** (~15x the
-  morning's 0.44/s); ETA ~overnight (~02:30 VN 2026-09-10). Census
-  contract untouched; byte cross-verify per the pre-authorized
-  experiment shape; D2 still BLOCKED until substrate complete. Two
-  transient FAILED lock rows during experiment relaunches (NameError
-  subprocess / json.loads) disclosed. Heartbeat-stuck-at-acquire
-  hygiene item carried for the A1.
-- Machine: one heavy lane machine-wide (NOT_RUN_RESOURCE_CONFLICT,
-  never contention); V13 yields on SEC 503 windows; the 12:45 courtesy-
-  yield automation fired and found NO yield needed (both waiters had
-  completed/died before 12:45). Root commits atomic pathspec only
-  (P-10).
-
-## Measured program state
-
-- CLOSED 2026-09-09: `FOREX_FREE_V8_REJECT_ALL` (terminal 07de93c + closeout
-  4018884; A7 terminal CONFIRM 0 HIGH/CRITICAL) — falsification-by-control
-  #14: the mandated DGS10-LEVEL control out-earns the FXFV8-A5-P1 anchor
-  4.01x same-sign; lane 1 BLOCKED_DATA measured (US-only keyed-catalog
-  funding, owner PATH A); budget 3/6, 3 slots dead; reproduction ALL_MATCH.
-  Forex 42/42; program 236/239 (ledger authority, P-9). S1 SEALED.
-- CLOSED 2026-09-07 evening: `FOREX_FREE_V7_REJECT_ALL` (terminal f59ea0c) +
-  `STOCKS_FREE_V11_REJECT_ALL` (9d3a061) — both A7-confirmed, reproduced
-  byte-identical.
-- CLOSED 2026-09-08 07:45 VN: `V16_REJECT_ALL` (terminal `46db31d` +
-  canonical close `9d62d5c`; first governance-native cycle — gate + lock
-  + registry exercised end-to-end; aggTrades frontier measured-exhausted
-  at the daily clock on BTC/ETH; sub-daily untested).
-- Program totals (ledger authority, P-9): **233 published / 236 observed,
-  0 survivors; S1 SEALED everywhere** (crypto 155/158, stocks 39/39,
-  forex 39/39). Failure registry 55 entries --verify PASS.
-- CRYPTO-V16 A7T ADDENDUM (2026-09-08 08:12 VN): the terminal A7 audit
-  ran 27 min after canonical close → `V16_TERMINAL_APPROVED_0_FAIL`
-  (`2762cd7`, a7_terminal_v16.json; anchors' gates recomputed
-  exact-to-r12; the margins-misattribution defect adjudicated
-  verdict-neutral). The V16 close chain is now A7-terminal-complete.
-- RUNNING (ACTIVE_LIGHT): CRYPTO-V17 (A1 bootstrap `ff33929`; first
-  report GO for P0; no scored cell — A7 prelaunch NOT_RUN, owner GO
-  absent per P-8) and STOCKS-V12 (A1 bootstrap `02b4ac2`, first report
-  `e0dcb0f` GO for P0, census-only P0 lane dispatched `ac06951`; both
-  lanes pre-checked fundable; GO phrase registered, unconsumed). Still
-  awaiting owner dispatch: forex `PLAN_forex_v8.md` (real-rate frontier
-  under the FRED key).
-
-## Owner-keyed doors (Lead-measured current state)
-
-- 2026-09-07 ~18:05 VN: **FRED_API_KEY PRESENT in `.env`** (owner placed
-  it; length 32, value never read into repo/chat). Functional probe by
-  Lead: one public GET to api.stlouisfed.org (series DFF, limit 1) ->
-  HTTP 200, observation (2026-09-03, 3.63). Frozen plans keep their
-  as-measured-at-freeze wording (handbook §3.1); this file carries
-  current state. Effect: the FRED real-rate lane is preregistered by
-  `plans/PLAN_forex_v8.md` (mandatory lane 1, full license/PIT/vintage
-  audit in P0 before any proposal). Key presence is not data authority.
-
-## Standing owner items
-
-- F-A7-T-1 kernel debt (gate-equality quirk, verdict-neutral, carried
-  from forex V6 close).
-- EODHD $19.99/mo: keep active — STOCKS-V12 is dispatched and running.
-- Dashboard: BUILT, merged to main (`effbe42` + logo), pushed; app opens
-  via `LabDashboard.command`; registry `plans/ACTIVE_CYCLES.json`
-  regenerates on each collector run (worktree-existence semantics —
-  closed-cycle wording is the known follow-up).
+- **NO asset research cycle is running.** All three assets closed their
+  latest cycles:
+  - FOREX-FREE-V8 TERMINAL `REJECT_ALL` 3/6 (falsification #14 — DGS10
+    control out-earns 4.0116x; DSR N=42 all ~0).
+  - FOREX-FREE-V9 TERMINAL `BLOCKED_DATA_OR_SELECTION` 0/6 — A7 prelaunch
+    CRITICAL: D2 novelty PASSes were measured on the wrong (monthly-grid)
+    representation; re-measured on the frozen daily books 0.3034/0.3119 vs
+    the V8 ancestor — all 4 proposals dead, selection invalid (P-12).
+  - STOCKS-FREE-V13 TERMINAL `REJECT_ALL` (mechanical qualifier F-A7T-1)
+    3/6, GO consumed at gate; A7 terminal CONFIRM 158/158 exact;
+    substrate 345,150 XMLs sha-pinned; SFV13-A6-P1 dividend-transition
+    folds 1/3.
+  - CRYPTO-V17 TERMINAL `BLOCKED_DATA_OR_SELECTION` 0/6 by owner decision
+    A — all six families dead pre-authorization by frozen rules (SILRES
+    rule-4 coverage; WKNDLIQ/TICKET-BREADTH/FUNDJUMP ancestry rho
+    0.5628/0.475/0.2439; ATTN-PHASE expectancy; OICASCADE
+    control-out-earns). Smoke kills disclosed (P-15); DSR/PBO NOT_RUN
+    fail-closed (0 scored trials).
+- **Program: 239 published / 242 observed logical, 0 survivors; S1
+  SEALED everywhere** (stocks 42/42, forex 42/42, crypto 155/158).
+  Failure registry 61 entries --verify PASS. Lessons P-1..P-16 recorded
+  (P-12 representation binding, P-13 inherited pins + archive-then-delete,
+  P-14 transport-vs-identity, P-15 smoke kill-only, P-16 two-half close).
+- Infra: MARKET-DATA-PLANE-V1 TERMINAL; **MDP-V2R1 remediation complete
+  on branch** (G9 PASS zero findings at live tip, A7-r2 delta authorize;
+  owner-ordered merge to main 2026-09-11). MDP-V2 science verdict
+  unchanged `MARKET_DATA_PLANE_V2_BLOCKED_DATA_AUTHORITY`.
+- **ZCODE-ORCHESTRATION-V3** (`plans/PLAN_zcode_orchestration_v3.md`)
+  written, PLANNED_NOT_STARTED — owner dispatched activation 2026-09-11
+  (Lead-session subagent orchestration; owner stops copy-pasting between
+  threads).
+- Machine: heavy lock free; V13 crawl/monitor automations retired with
+  their cycle. Root commits atomic pathspec only (P-10).

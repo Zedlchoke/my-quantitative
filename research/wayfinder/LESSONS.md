@@ -212,3 +212,122 @@ Cite: `research/wayfinder/FAMILY_PIPELINE.md` §8.1 and §11.
 - Cycle-level registers: stocks L1–L9, crypto L-V11-1..7 and L-V14-0
   (cost-kernel per-fill fix), forex per-cycle — remain the authoritative
   detail records.
+
+## P-12 — A measured PASS binds to the representation it was computed on
+
+Source: Forex V9 prelaunch (2026-09-10). A7 fresh-context CRITICAL: the D2
+novelty PASSes (0.1062/0.0580) had been measured on undisclosed monthly-grid
+1917..2026 state maps — not the frozen daily 16:00-NY decision-grid books the
+contract binds. Recomputed on the frozen representation: pooled |rho|
+0.3034/0.3119 vs the forbidden V8 ancestor (bar 0.20) — all four proposals
+dead, selection freeze invalid, cycle closed BLOCKED at 0 cells. The A1's own
+measurement used the wrong representation and was irreproducible from
+committed state.
+
+Lesson: representation identity (grid, books, decision clock) is part of
+measurement identity. A gate number computed on a different representation
+than the one the frozen contract names is not a PASS — it is an unverified
+number wearing a PASS label.
+
+Consequence: D2/feasibility measurements must commit the code AND the
+representation they ran on; A7 prelaunch recomputes every measured gate on the
+frozen representation by default. Generalizes P-3 (control semantics) to
+measurement semantics.
+
+## P-13 — An inherited pin is a cross-cycle dependency; archive-then-delete is what made it survivable
+
+Source: Stocks V13 (2026-09-10). V13's D2 builders consumed V9's panel/prices
+and V10's observables through inherited hash pins. The owner-ordered worktree
+cleanup deleted the sibling worktrees — correctly, archive-first: tarballs +
+SHA256SUMS in ~/staging_backups. The A1 still hit 0B paths, blocked
+fail-closed (constraint 2) and requested an owner decision; Option A
+(restore-from-backup) recovered byte-exact bytes, pins held, P3 needed no
+amendment, D2 proceeded to a 3-cell REJECT_ALL.
+
+Lesson: a pin into another cycle's staging survives that cycle's TERMINAL —
+cleanup of any pinned artifact must either migrate it into the inheriting
+cycle or record the archive location where sibling cycles can resolve it.
+Fail-closed blocking was correct; the missing piece was discovery (the A1
+could not know the bytes were archived).
+
+Consequence: hash-pin manifests now record the backup/archive location
+(SHA256SUMS pattern) so the next inherited-pin consumer resolves drift without
+owner adjudication.
+
+## P-14 — Transport speed is an operator variable; data identity is not
+
+Source: Stocks V13 SEC crawl (2026-09-09/10). The owner-ordered speed
+experiment (adaptive pacing ladder + parallel workers within the 10 req/s SEC
+policy) moved the Form-4 crawl from 0.44 to ~6.5-7 doc/s — ETA from ~9 days to
+under one day — with the census contract untouched, byte cross-verification
+against cached docs, and a zero-unexplained reconciliation at the finish
+(345,150/345,152 with two named-reason docs).
+
+Lesson: pacing, transport, and scheduling are operator-tunable at any time
+WITHOUT preregistration because they do not touch score-affecting identity —
+provided byte-identity is re-verified and the manifest re-pins identical
+content. Identity changes (bytes, universe, window) are science decisions and
+follow plan law.
+
+Consequence: transport/pacing changes are pre-authorized operator class;
+any change that alters pinned bytes is a new-science decision requiring a
+preregistered amendment.
+
+## P-15 — Smoke-namespace numbers may kill but never select — and only with disclosure
+
+Source: Crypto V17 terminal (2026-09-10). The cycle closed at the prelaunch
+gate with ZERO scored cells: all six families died pre-authorization by
+frozen rules or measured gates (coverage, ancestry rho 0.5628/0.475/0.2439,
+expectancy-nonpositive, control-out-earns-anchor). Two of those kills used
+T2.0 books measured in the smoke (dry-run) namespace — disclosed as SMOKE
+EXPOSURE, used strictly as selection-phase kill evidence, never counted in
+any denominator, budget 0/6 intentionally unconsumed.
+
+Lesson: an unscored evidence namespace (dry-run/smoke) may legitimately SEE
+outcome-shaped numbers before authorization, but its evidentiary use is
+one-directional: it can kill a family, never rescue or select one, and every
+use must be disclosed at terminal. The cheapest correct close in program
+history (a full six-family cycle at zero scored cost) came from exactly this
+discipline.
+
+Consequence: smoke-namespace kills are admissible selection-phase evidence
+when disclosed; a smoke number may never appear on the selecting side of any
+rubric; denominators never move without scored execution.
+
+## P-16 — TERMINAL on the branch is not closed until the registry and root ledger say so
+
+Source: The 2026-09-09/10 triple close (V8, V9, V13, V17). Cycles closed
+cleanly on their branches with A7 confirmations, but the canonical registry
+rows stayed ACTIVE_LIGHT and the root ledger stayed two closes behind until
+the Lead sync — and one close (V8) briefly produced a duplicate ledger row
+because the A1 and the Lead both synced in parallel (deduped same day).
+
+Lesson: closeout has TWO halves — the branch-side terminal chain (A1) and the
+control-plane landing (registry flip + root ledger/MAP/failure-registry, one
+writer: the Lead). Until both land, the router misleads the next dispatch and
+cross-asset denominators undercount.
+
+Consequence: the Lead close-sync is a required checklist item of every
+TERMINAL close (registry lifecycle + head + budget, ledger totals + row,
+failure registry, MAP); A1s append on their own branches only. The sync
+itself is verified (validator --verify + cycle doctor) before the commit.
+
+## Related program-level records (2026-09-09..11 window)
+
+- Falsification-by-control cluster: forex V8 DGS10-level control out-earns
+  its anchor 4.0116x (cluster #14) — the owner-mandated control killed a
+  whisper-positive anchor (PF 1.0531) exactly as designed; crypto V17's
+  OICASCADE control-out-earns kill is the same doctrine on the selection
+  side.
+- P-8 reinforced twice: the owner typed the exact V9 GO phrase at P0; the A1
+  refused the wrong-form phrase, recorded the exact one as standing intent,
+  and the intent died unconsumed with the cycle's BLOCKED close.
+- P-6 reinforced: V17's six families died by their OWN frozen rules (rule-4
+  coverage, ancestry vetoes, falsification) — no threshold was argued,
+  because none could be.
+- P-11 delivered end-to-end: V8's DSR computed at terminal from persisted
+  per-period series (N=42); V13/V17 DSR/PBO NOT_RUN fail-closed with zero
+  scored trials — both correct under the contract.
+- Secrets hygiene: a pre-factory .env (Binance key pair) was found committed
+  in early git history and already published on origin; owner informed and
+  accepted (repo private). Standing rule stands: keys are environment-only.
