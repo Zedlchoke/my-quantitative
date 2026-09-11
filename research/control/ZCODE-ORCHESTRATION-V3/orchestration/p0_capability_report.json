@@ -1,0 +1,89 @@
+{
+  "artifact": "p0_capability_report",
+  "schema": "zcode_orchestration_v3_p0@1",
+  "measured_at_utc": "2026-09-11T01:05:00Z",
+  "host": "darwin 24.4.0 arm64, 8GB",
+  "zcode_app": {
+    "version": "3.10.2",
+    "build": "3.10.2.6414",
+    "evidence_command": "defaults read /Applications/ZCode.app/Contents/Info CFBundleShortVersionString / CFBundleVersion"
+  },
+  "capabilities": [
+    {
+      "capability": "subagents: foreground + background with automatic return",
+      "verdict": "SUPPORTED",
+      "evidence": "docs https://zcode.z.ai/en/docs/subagents (background: 'the result comes back to the main conversation on its own'); empirical: THIS controller session is itself a background subagent dispatched by the Lead session and returns via the coordinator channel; Lead-session measurement 2026-09-11 concurs"
+    },
+    {
+      "capability": "nested subagents",
+      "verdict": "NOT_SUPPORTED (by design)",
+      "evidence": "docs: 'a subagent cannot spawn subagents of its own'; plan forbids nested design; architecture stays one level under the primary Lead"
+    },
+    {
+      "capability": "custom subagent definition files",
+      "verdict": "SUPPORTED_WITH_DELTA",
+      "delta": "user-level path is ~/.zcode/agents/<name>.md (Beta, user-level only); frontmatter is camelCase and case-sensitive: name, description (both required), model, thoughtLevel (exact spelling; not reasoningEffort), color, tools, disallowedTools, maxTurns, injectAgentsMd (default on), mcpServers; unrecognized keys silently ignored; loads on next run, no hot reload",
+      "evidence": "docs /en/docs/subagents; plugin-bundled agents proven by installed cache: /Users/hoangminhlong/.zcode/cli/plugins/cache/zcode-plugins-official/*/0.*/agents/*.md (frontmatter name/description/tools/color)"
+    },
+    {
+      "capability": "AGENTS.md injection into subagents",
+      "verdict": "SUPPORTED",
+      "evidence": "docs: since v3.7.1 user-level ~/.zcode/AGENTS.md + workspace AGENTS.md injected by default; injectAgentsMd:false opts out; built-in Explore NEVER injects (dispatch packets must carry its boundary)"
+    },
+    {
+      "capability": "hooks: events, JSON stdin, exit-code protocol",
+      "verdict": "SUPPORTED",
+      "evidence": "docs /en/docs/hooks: 7 events (SessionStart, UserPromptSubmit, PreToolUse, PermissionRequest, PostToolUse, PostToolUseFailure, Stop); one-line JSON stdin (session_id, cwd, hook_event_name, tool_name, tool_input, tool_response, stop_hook_active, ...); exit 0 success + stdout JSON parsed, exit 2 blocking shortcut, other non-zero recoverable failure; PreToolUse permissionDecision allow/ask/deny + updatedInput; additionalContext injection; timeoutMs (default 60000, stdout cap 32768 bytes); async:true fire-and-forget; hooks NEVER call the model"
+    },
+    {
+      "capability": "Stop-hook continuation bound",
+      "verdict": "SUPPORTED",
+      "evidence": "docs: Stop decision:block continues the loop AT MOST 3 consecutive times, then force-end; durable recovery stays in MCP/task state + /lead-resume, never an infinite hook loop"
+    },
+    {
+      "capability": "project-level hook config",
+      "verdict": "NOT_SUPPORTED (ignored by ZCode)",
+      "evidence": "docs: workspace .zcode config hooks are discarded regardless of hooks.enabled (logged config_project_hooks_ignored); distributable hooks must ship inside an installed plugin (hooks/hooks.json auto-discovered) or user-level config; legacy .agents/.claude settings.json displayed but NOT executed"
+    },
+    {
+      "capability": "plugin: layout, bundling, auto-discovery",
+      "verdict": "SUPPORTED",
+      "evidence": "docs /en/docs/plugin: only required file is .zcode-plugin/plugin.json (.claude-plugin accepted as fallback); optional commands/, skills/<name>/SKILL.md, agents/, hooks/hooks.json (auto-discovered), MCP servers; one plugin can bundle all of them; proven live by 9 installed official plugins (skills+commands+MCP appear in this very session's tool inventory)"
+    },
+    {
+      "capability": "plugin MCP declaration",
+      "verdict": "SUPPORTED_WITH_DELTA",
+      "delta": "PLAN section 2.3 prescribes a .mcp.json file in the plugin dir; ZCode v3.10.2 docs state plugins declare MCP via the mcpServers key INSIDE .zcode-plugin/plugin.json, and project MCP config lives in .zcode/config.json / .agents/mcp.json (compat) — there is NO .mcp.json mechanism",
+      "evidence": "docs /en/docs/mcp-services ('ZCode does not use .mcp.json'); official plugin write-research/0.1.1 declares 8 MCP servers under .zcode-plugin/plugin.json mcpServers and they are live in this session; stdio schema command/args/env; servers connect automatically at session start, no approval prompt"
+    },
+    {
+      "capability": "plugin/workspace MCP for a stdio local server",
+      "verdict": "SUPPORTED",
+      "evidence": "docs: workspace .zcode/config.json mcp.servers {name: {command, args, env}}; user config wins name conflicts; a subagent only sees MCP servers connected at the primary session's start, so the orchestrator MCP must be enabled before the Lead session starts"
+    },
+    {
+      "capability": "plugin install path",
+      "verdict": "SUPPORTED_WITH_OWNER_UI_BOUNDARY (expected P5 stop)",
+      "evidence": "docs + measured registry files: install happens in Settings > Plugins UI; Personal marketplace accepts a local directory (validated before adding); install = click, 'newly installed plugins are enabled by default'; enabling IS the trust action ('enabling a plugin grants code-execution trust'); no CLI install binary found on PATH (which zcode empty); hand-editing ~/.zcode/cli/plugins/installed_plugins.json + config.json is undocumented internal state manipulation and is forbidden by the plan"
+    },
+    {
+      "capability": "session config snapshot semantics",
+      "verdict": "SUPPORTED",
+      "evidence": "docs: hook and plugin/MCP config is snapshotted at session start; running sessions do not hot-reload; a new session is REQUIRED after install (plan P5 already requires this)"
+    },
+    {
+      "capability": "Automations (scheduled/idle)",
+      "verdict": "SUPPORTED",
+      "evidence": "docs /en/docs/automations: scheduled + idle tasks, chat-created tasks can be session-bound (results return to the SAME session); 20-task cap machine-wide; computer/app must be awake; missed one-time runs are skipped not replayed; Lead-session empirical: an automation has run on this machine"
+    }
+  ],
+  "design_deltas_from_plan": [
+    "D1: MCP server declared under mcpServers in .zcode-plugin/plugin.json (plan's .mcp.json file is not a ZCode mechanism); .mcp.json intentionally not shipped",
+    "D2: subagent frontmatter uses camelCase keys (maxTurns, injectAgentsMd, disallowedTools, thoughtLevel) — frozen in P1 contract",
+    "D3: hooks/hook scripts use exit-0 + JSON stdout protocol with permissionDecision/additionalContext; Stop continuation capped at 3 — recovery authority stays in durable task state",
+    "D4: install requires one owner UI action (Personal marketplace add + install click) — the plan's single P5 stop point, pre-declared here"
+  ],
+  "capability_blockers": [],
+  "z3_g0_verdict": "PASS",
+  "notes": "All plan section-1 claims reverified against v3.10.2 docs on 2026-09-11. No capability requires simulating anything via internal database writes. Fixture hook behavior tests are deferred to P4 where hook scripts are exercised as local subprocesses with the documented JSON stdin/stdout protocol."
+}

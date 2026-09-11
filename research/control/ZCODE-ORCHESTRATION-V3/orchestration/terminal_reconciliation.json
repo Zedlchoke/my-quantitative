@@ -1,0 +1,48 @@
+{
+  "artifact": "terminal_reconciliation",
+  "schema": "zcode_orch_v3_terminal@1",
+  "written_at_utc": "2026-09-11T02:45:00Z",
+  "cycle_id": "ZCODE-ORCHESTRATION-V3",
+  "terminal_verdict": "ZCODE_ORCHESTRATION_V3_BLOCKED_PLUGIN_TRUST_INSTALL",
+  "verdict_meaning": "All install-independent phases are complete with passing tests; the next phase requires ONE explicit owner trust/install action in the ZCode UI (the plan's single P5 stop point), which cannot be self-performed: there is no zcode CLI binary, and hand-editing ZCode internal plugin registries is forbidden internal-state manipulation.",
+  "version_pins": {
+    "zcode_app": "3.10.2 (build 3.10.2.6414)",
+    "repo_head_at_report": "see registry record head / branch tip",
+    "python": ".venv/bin/python (repo venv)",
+    "plugin": "quant-research-orchestrator 0.1.0"
+  },
+  "gate_matrix": {
+    "Z3-G0": "PASS — capabilities remeasured (p0_capability_report.json, commit 356ceb1)",
+    "Z3-G1": "PASS — contract frozen (p1_contract_freeze.json, commit 4f97cf6)",
+    "Z3-G2": "PASS — 21 state/MCP tests incl. CAS concurrent writer, tampered handoff, restart recovery (commit 375649f)",
+    "Z3-G3": "PASS_SCHEMA_LEVEL / live-load NOT_RUN — manifest+frontmatter validated; actual loading needs install + fresh session (commit 171c200)",
+    "Z3-G4": "PASS_SCRIPT_LEVEL / live-ZCode NOT_RUN — 15 hook fixture tests; live hook firing needs install (commit 478efa2)",
+    "Z3-G5": "NOT_RUN — canary 1 needs live Lead session",
+    "Z3-G6": "NOT_RUN — canary 2 needs live Lead session",
+    "Z3-G7": "NOT_RUN — canary 3 needs live Lead session",
+    "Z3-G8": "PARTIAL — store-level restart recovery PASS (unit); full session restart NOT_RUN",
+    "Z3-G9": "PARTIAL — 36 orchestrator + 89 governance tests PASS, compileall OK, secret scan 0 hits; independent fresh-context A7 NOT_RUN (no subagent dispatch from a background session)",
+    "Z3-G10": "PENDING — runs at final closeout after canaries"
+  },
+  "test_evidence": [
+    {"command": ".venv/bin/python -m pytest tests/test_orchestrator_v3_state.py tests/test_orchestrator_v3_mcp.py tests/test_orchestrator_v3_hooks.py -q", "exit_code": 0, "result": "36 passed in 9.19s"},
+    {"command": ".venv/bin/python -m pytest tests/test_atomic_io.py tests/test_cycle_registry.py tests/test_heavy_lock.py tests/test_doctor_waivers.py -q", "exit_code": 0, "result": "89 passed in 12.64s"},
+    {"command": ".venv/bin/python -m compileall -q research plugins tests", "exit_code": 0, "result": "ALL OK"},
+    {"command": "grep -rIn secret-pattern plugins/quant-research-orchestrator/", "exit_code": 0, "result": "0 hits"}
+  ],
+  "incidents": [
+    {"what": "concurrent control-plane writer on main while this session measured (Lead session committed fea0196 between my status reads)", "impact": "none on outcome; my staged commit became a no-op", "repair": "re-measured; adopted the concurrent commit as base", "prevention": "CAS re-measure before every control-plane write (already enforced by governance writers)"},
+    {"what": "initial test run hung: MCP test client blocked reading stderr pipe inside a timeout assert path; server _err reference NameError crashed error-path calls", "impact": "test-session only, no repo state touched", "repair": "select-based timeout + kill on timeout; restored _err; sent fix commits", "prevention": "hermetic timeout guards in subprocess test harness"}
+  ],
+  "workers": 0,
+  "trees": {
+    "integration": {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/zcode-orchestration-v3/integration", "branch": "orca/zcode-orchestration-v3-integration", "status": "clean after commits"}
+  },
+  "owner_actions_required_in_order": [
+    "1. Review + merge orca/zcode-orchestration-v3-integration to main (constraint C1: plugin absolute paths are canonical to the main checkout; merge to main is owner authority)",
+    "2. ZCode Settings > Plugins > Create > Add marketplace > /Users/hoangminhlong/my-quantitative/plugins; install + enable quant-research-orchestrator (enabling IS the code-execution trust action — review hooks/hooks.json + scripts/ first)",
+    "3. Start a NEW Lead session (config snapshot at session start) and run /lead-start; canaries P6-P8 then gates Z3-G3live/G4live/G5-G8, then /lead-resume recovery drill (P9), independent A7 (Z3-G9), /lead-close (P11)"
+  ],
+  "resume_command": "/lead-resume (durable state: .runtime/orchestrator_v3/ + research/control/ZCODE-ORCHESTRATION-V3/orchestration/)",
+  "boundaries_kept": "no S1, no scoring, no GO, no push, no merge to main, no ZCode internal DB writes, no nested subagents, no foreign workers touched; registry writes only via canonical CAS path"
+}
