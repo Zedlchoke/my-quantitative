@@ -1,0 +1,75 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "forex-ng1-p1-spot-authority",
+ "cycle_id": "FOREX-NG1",
+ "role": "quant-implementer",
+ "lane": "p1-spot",
+ "dispatch_sha": "9c90ab8c9d4479295bd1bec902ee49c01a6d2f2e",
+ "actual_start_sha": "9c90ab8c9d4479295bd1bec902ee49c01a6d2f2e",
+ "commit_sha": "6daef22fb90fe312b9f58fbaf65c7a264b4edf13",
+ "handoff_commit_note": "this handoff file is committed in a second commit on the same branch",
+ "changed_paths": [
+  "research/assets/forex_ng1/spot_series.py",
+  "research/control/forex_ng1_run/p1_spot/build_artifacts.py",
+  "research/control/forex_ng1_run/p1_spot/spot_pin_manifest.json",
+  "research/control/forex_ng1_run/p1_spot/spot_authority_proof.json",
+  "research/control/forex_ng1_run/p1_spot/spot_integrity_census.json",
+  "research/control/forex_ng1_run/p1_spot/spot_grid_census.json",
+  "tests/test_forex_ng1_p1spot.py",
+  "research/control/FOREX-NG1/orchestration/handoffs/p1-spot-handoff.json"
+ ],
+ "untracked_paths": [
+  "data_raw/forex_ng1_spot/GBPUSD.json",
+  "data_raw/forex_ng1_spot/USDCAD.json",
+  "data_raw/forex_ng1_spot/AUDUSD.json",
+  "data_raw/forex_ng1_spot/NZDUSD.json"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python -m pytest tests/test_forex_ng1_p1spot.py -v",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "16/16 passed (hand-computed /tmp fixture: 16:00-NY close selection, 73h fall-back / 71h spring-forward gaps, fall-back 2x-hour location at 01:30 not 16:00, one-byte sha drift fail-closed, duplicate-timestamp fail-closed, status/interval refusals, fabricated-date canaries found=False, nonexistent-pair refusal, authority gate CANDIDATE_NOT_AUTHORIZED)"
+  },
+  {
+   "command": ".venv/bin/python -m pytest tests/test_forex_ng1_p0.py -v",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "16/16 passed (P0 regression proof: plane_adapter untouched and still green)"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "CHANNEL AUTHORITY FINAL STATUS: DOCUMENTED_CANDIDATE / scored_consumption CANDIDATE_NOT_AUTHORIZED. Channel identified from V9 evidence as Twelve Data time_series 1day under the OWNER existing entitlement (keyed; V9 p2 spot_leg + p3 spot_leg_disclosure + run_contract data_pins.spot_reacquired quoted verbatim in the proof). NO license/terms text exists anywhere in V9 evidence (V9-era source_registry.py SourceSpec TWELVE_DATA carries terms_url=None, AuthorityStatus.CANDIDATE_NOT_AUTHORIZED): scored consumption stays refused until the owner / this cycle's authority lane grants it WITH recorded terms (edit spot_authority_proof.json authority_status.scored_consumption=AUTHORIZED together with the terms evidence; the adapter gate reads that artifact and never self-promotes).",
+  "No keyless endpoint exists for the canary (api.twelvedata.com is keyed) so the dispatch's endpoint probe (2 nonexistent pairs + 1 future date) was executed STRUCTURALLY against the serving layer and pinned bytes; network was not used by this lane.",
+  "V9 itself never scored a cell on this channel (closed BLOCKED_DATA_OR_SELECTION with budget 0/6): there is NO scored-consumption precedent to inherit, only staging/dry-run precedent.",
+  "Representation identity inherited verbatim from V9 family_common (P-12): the provider daily bar dated D is served as the decision close at the 16:00-NY instant of day D; V1 ECB crosscheck recorded the TD daily close basis as last-UTC-day quote -- a recorded basis difference, not reconciled to a true 16:00 snapshot; any re-representation must be a new preregistered identity.",
+  "Data quality recorded, not blocking: NZDUSD/USDCAD each carry 6 OHLC cross-violations (provider open/close-vs-range rounding, max 5.6 bps of close; grid consumes close only, all closes finite-positive); provider calendar carries weekend bars (72-144/pair) which the weekday grid excludes; GBPUSD has 3 known-closure missing weekdays in the S0 window (2025-01-01 New Year, 2025-04-18 Good Friday, 2025-04-21 Easter Monday UK) plus 1 unexplained provider hole 2019-05-22 (AUDUSD/NZDUSD/USDCAD cover 1846/1846 weekdays; the common 1842-day grid binds on GBPUSD).",
+  "S0 window used: 2018-04-04..2025-04-30 per this dispatch; the V9 run contract carried 2018-04-04..2025-07-24 -- both recorded in the census; NG1's binding window must come from the cycle's own P0/P2 freeze.",
+  "data_raw/ is NOT gitignored in this worktree, so the pinned raw bytes remain UNTRACKED (never committed, per dispatch); the committed pin manifest records their sha256 (byte-identical to the READ-ONLY V9 source worktree). A fresh checkout must re-run build_artifacts.py to re-pin the bytes."
+ ],
+ "incidents": [],
+ "tree_status": "clean after the substance commit except this handoff path and the intentionally-untracked data_raw/ raw bytes; branch orca/fng1-p1-spot, substance commit 6daef22fb90fe312b9f58fbaf65c7a264b4edf13 on base 9c90ab8c9d4479295bd1bec902ee49c01a6d2f2e (base verified, no mismatch)",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/assets/forex_ng1/spot_series.py", "sha256": "73374c3b1112eea1847f65899b2b98ef21fb3cc6127b32a42f79c2eeebba6bf6", "note": "fail-closed spot series adapter: sha256 verify-on-read, strict schema, duplicate refusal, DST-correct 16:00-NY clock, authority gate"},
+  {"path": "research/control/forex_ng1_run/p1_spot/build_artifacts.py", "sha256": "52c8a023a83c1aa1fc78a6558a0380b7faea75d667fbc8658f04d90c9eed5385", "note": "single-shot builder for all four artifacts (re-runnable to re-pin raw bytes)"},
+  {"path": "research/control/forex_ng1_run/p1_spot/spot_pin_manifest.json", "sha256": "e80b468b4d2070586ff110bca104f6fd7838697e0bee57f5a0f94a1149180d53", "note": "THE PIN: per-pair absolute source+copy paths, sha256 (identical), bars, first/last bar dates"},
+  {"path": "research/control/forex_ng1_run/p1_spot/spot_authority_proof.json", "sha256": "20602089ee26902a3003dc4b1f80b2c801ed956e5fe6f5169d99e8d4b255c62a", "note": "honest authority proof: channel identification, verbatim V9 evidence quotes, DOCUMENTED_CANDIDATE/CANDIDATE_NOT_AUTHORIZED, owner blocker, structural canary results"},
+  {"path": "research/control/forex_ng1_run/p1_spot/spot_integrity_census.json", "sha256": "f3bf8e5bbd83f49f07aa20852787c1c81d166f28037bfd5372a3cfe5dfbf5125", "note": "schema/duplicate/monotonic/OHLC/DST/coverage census per pair"},
+  {"path": "research/control/forex_ng1_run/p1_spot/spot_grid_census.json", "sha256": "42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6", "note": "16:00-NY decision grid census: common grid 1842 days 2018-04-04..2025-04-30, per-pair coverage, 14 DST edge weekends (71h/73h)"},
+  {"path": "tests/test_forex_ng1_p1spot.py", "sha256": "31f61c5942e04552f1b2a08357d213af8293737841d3b5c724033e508dfcea1a", "note": "16 hand-computed tests"},
+  {"path": "data_raw/forex_ng1_spot/GBPUSD.json", "sha256": "e3e4c519f4c36b394ad08c1e52ed16ae087030372febfdb5558ebcdbee83e4a7", "note": "UNTRACKED pinned bytes; byte-identical to V9 source"},
+  {"path": "data_raw/forex_ng1_spot/USDCAD.json", "sha256": "4b988c4487b2ff0284ca0ecd04b6118c23516a89a147dd87cbab3b1bbf52ec2f", "note": "UNTRACKED pinned bytes; byte-identical to V9 source"},
+  {"path": "data_raw/forex_ng1_spot/AUDUSD.json", "sha256": "097cfe59cd702c3dd2479f37abeae5fd751fdf53cbe305ffa0ea3820e17e5e17", "note": "UNTRACKED pinned bytes; byte-identical to V9 source"},
+  {"path": "data_raw/forex_ng1_spot/NZDUSD.json", "sha256": "7dff32999bdb38c5d972bd1ed4ff93a8807057ffb7120621f83b146dc0b79d5b", "note": "UNTRACKED pinned bytes; byte-identical to V9 source"}
+ ],
+ "recommended_next_action": "Owner/controller decision required on the recorded blocker: grant Twelve Data as FOREX-NG1 scored-consumption authority WITH terms evidence (edit spot_authority_proof.json authority_status.scored_consumption to AUTHORIZED) or keep the channel staging-only and let downstream lanes consume the pinned grid through spot_series.resolve_spot_series (verify-on-read) with scored gates still refusing. Downstream (P1 kernel / P2 feasibility) can proceed on the pinned 1842-day 16:00-NY grid for census/feasibility NOW since staging consumption is allowed through the pinned bytes.",
+ "summary": {
+  "pin": "PASS - 4 pairs x 5000 bars byte-identical to the V9 'spot_reacquired' staging (sha256 source==copy per pair; 2007-11..2026-09-10 span); raw untracked, manifest committed",
+  "authority": "DOCUMENTED_CANDIDATE / CANDIDATE_NOT_AUTHORIZED for scored consumption (honest fail-closed: no license/terms evidence exists in V9; structural canary PASS on pinned bytes; owner blocker recorded)",
+  "integrity": "PASS - strict schema, 0 duplicates, storage monotone, all closes finite-positive, every 16:00-NY instant gap explained by calendar+DST, OHLC crosses recorded (max 5.6 bps, non-blocking)",
+  "grid": "PASS - 1842 common decision days 2018-04-04..2025-04-30 (binds on GBPUSD calendar: 4 classified missing weekdays), DST-correct instants, 14 transition edges (71h/73h) hand-checkable",
+  "tests": "PASS - 16/16 new + 16/16 P0 regression"
+ }
+}
