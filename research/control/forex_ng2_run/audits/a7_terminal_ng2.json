@@ -1,0 +1,69 @@
+{
+ "schema": "a7_terminal_ng2@1",
+ "auditor": "A7 (independent fresh-context terminal auditor)",
+ "audit_utc": "2026-09-11T18:10:00Z",
+ "cycle_id": "FOREX-NG2",
+ "audited_head": "2a484b4c2d83e1dcb77a28b58c7446c8d6b50c4d",
+ "audited_branch": "orca/forex-ng2-integration",
+ "method": "detached worktree /tmp/a7t_forex_ng2 at branch tip 2a484b4; committed artifacts read via git objects; full re-run of research/control/forex_ng2_run/p0_run.py and tests/test_forex_ng2_p0.py from the detached tree; governance read from root registry / plans / orchestrator store (read-only); no writes by the auditor except this audit file",
+ "verdict": "AUTHORIZED",
+ "unresolved_high_critical_count": 0,
+ "findings": [
+  {
+   "id": "A7NG2-T1",
+   "severity": "LOW",
+   "kind": "PRE_CLOSE_BOOKKEEPING_LAG",
+   "detail": "Registry row FOREX-NG2 (root, read-only) is still lifecycle ACTIVE_LIGHT, phase 'REGISTERED (planned)', head c5e52bb (the bootstrap/dispatch base); in-tree state.json still 'BOOTSTRAP_COMPLETE_P0_PENDING'; orchestrator store records forex-ng2-p0-census only through TASK_DISPATCHED (2026-09-11T16:58:58Z) with no terminal event. All three are pre-close lag, not evidence conflicts: the two descendant commits (65a113e substance, 2a484b4 handoff) are disclosed and sha-pinned, the committed gate + census + handoff are mutually consistent (handoff output pins 6/6 match git blobs), and flipping registry/state to TERMINAL FOREX_NG2_BLOCKED_DATA_OR_SELECTION at 2a484b4 is exactly the close action this audit feeds. Also consistent with plan sec6's disclosed store-level cycle mislabel (store cycle_id ZCODE-ORCHESTRATION-V3)."
+  },
+  {
+   "id": "A7NG2-T2",
+   "severity": "LOW",
+   "kind": "HUNT_RESOLVED_NO_BIAS",
+   "detail": "AU floor-fail robustness: with the disclosed quarterly lag mapping (AUSCPIALLQINMEI, reference month = quarter first month, V9 law; one v1->v2 event per reference month), the S0 window 2018-04-04..2025-04-30 contains at most 29 distinct quarter-first-month reference keys, so the theoretical AU ceiling is 29 < floor 30. No plausible undercount in the census method (measured 26 = 24 first-print-era + 2 backfill) could flip the verdict; the bias question is a disclosed interpretation, not a candidate HIGH. GB origin mix (60/68 usable events from one 2018 bulk re-referencing transition, only 8 genuine first-print months; US 481 byte-identical duplicate rows deduped) is disclosed inside the committed census and does not affect the AU floor that killed the cycle."
+  }
+ ],
+ "recompute": {
+  "detached_tree": "/tmp/a7t_forex_ng2 (git worktree add --detach 2a484b4c2d83e1dcb77a28b58c7446c8d6b50c4d; removed after audit)",
+  "commit_chain_verified": "c5e52bb (bootstrap, parent == e19c0a46917e61346e8ec6521a4d2faa1a65c088 = FOREX-NG1 terminal) -> 65a113e (P0 census + gate) -> 2a484b4 (handoff zcode_orch_v3_handoff@1, dispatch_sha == actual_start_sha == c5e52bb)",
+  "pins_rerun": {
+   "granted_check": "PASS",
+   "s2_repin": "PASS (CADS 07d1e0d5 resolve + 5/5 file digests)",
+   "s3_repin": "PASS (5/5 entries via consume_via_plane)",
+   "spot_repin": "PASS (4 pairs verify-on-read + 1842-day grid recompute, window 2018-04-04..2025-04-30)",
+   "scored_authority_read": "PASS (committed proof P-18 reads scored_consumption AUTHORIZED)",
+   "dgs10_ctl_pin_chain": "PASS (run-contract c8ae7877 -> staged manifest -> DGS10 03dde429)",
+   "ng1_census_pin": "PASS (e8a35d23)"
+  },
+  "tests": "cd detached_tree && pytest tests/test_forex_ng2_p0.py -q -> 17 passed",
+  "runner": "p0_run.py exit 0; fresh census/gate science sections byte-identical to committed except measured_utc and env-only path fields (worktree-root-dependent journal paths); all verdicts PASS/BLOCKED_DATA reproduced",
+  "census_counts_match_committed": {
+   "usable_events_by_economy": {"GB": 68, "CA": 85, "AU": 26, "NZ": 44, "US": 84},
+   "cross_economy_differential_months": 102,
+   "gb_origin_mix": {"first_print_era_usable": 8, "backfill_history_usable": 60, "bulk_group": "2018-04-06->2018-05-24 ratio 0.9359% = 60 events"},
+   "ca_origin_mix": {"first_print_era_usable": 72, "backfill_history_usable": 13, "recent_24m": 30},
+   "us_dedupe": {"exact_duplicate_rows_removed": 481, "measured_violations_after_dedupe": 0},
+   "monotonicity": "PASS (fail-closed, 0 violations after dedupe)",
+   "canaries": "PASS (fabricated GB 2019-06 / AU 2030-02 fail-lookup; real CA 1956-08 found)"
+  },
+  "floor_logic": "evaluate_floors: own-economy >=30 for every pair-anchor economy (GB,CA,AU,NZ), cross >=12; single shortfall is a shortfall, no post-hoc exclusion. Reproduced: AU 26 < 30 margin -4 FAIL, GB/CA/NZ PASS, cross 102 >= 12 PASS -> gate verdict BLOCKED_DATA with blocker 'own-economy floor NOT met for AU: 26 < 30 (margin -4)'",
+  "artifact_pins": {
+   "committed_census_sha256": "8e8357865592a3efa4c1ab8ce811d24b1a16f76bd1586249a3dfcbea8fdbc295 (matches gate pin)",
+   "handoff_output_pins": "6/6 match git blobs at 2a484b4 (gate 72b8d9c7, census 8e835786, revision_series d522c18c, __init__ 00899686, p0_run c8921a49, tests 750cfbc7)"
+  },
+  "freeze_before_measurement": "plan commit 962ce4b (plans/PLAN_forex_ng2.md, floors >=30/>=12 in sec2+sec5) at 2026-09-11T16:58:30Z == bootstrap c5e52bb instant; P0 task registered 16:58:54Z, dispatched 16:58:58Z (orchestrator events.jsonl); gate measured_utc 17:16:59Z; census commit 65a113e 17:17:07Z. Floors were frozen in committed plan text before the P0 task existed; no committed artifact contains census counts predating the plan."
+ },
+ "governance": {
+  "registry_row_root_readonly": {
+   "budget": "0/6 (no scored cell ever ran)",
+   "go_phrase_state": "REGISTERED_NOT_CONSUMED",
+   "go_phrase": "GO FOREX NG2 SCORED EXECUTION",
+   "s1": "SEALED_UNTOUCHED",
+   "head": "c5e52bb (bootstrap/dispatch base, ancestor of tip; see A7NG2-T1)"
+  },
+  "proposals_exist": false,
+  "scored_computation_ran": false,
+  "evidence": "git ls-files of ng2 namespaces contains only p0_run.py, p0_revision_census.json, p0_gate.json, revision_series.py, __init__.py, tests, state.json, event_log.jsonl; grep for survivor/outcome_row/net_tier/expectancy/pnl/scored_cell hits only the no_outcome_law disclosure strings; orchestrator store has exactly one ng2 task (forex-ng2-p0-census, LIGHT) and zero D1/proposal/scored tasks; committed handoff states D1 must NOT be dispatched under the failed frozen floor"
+ },
+ "label_adjudication": "FOREX_NG2_BLOCKED_DATA_OR_SELECTION is the correct terminal label. REJECT_ALL is wrong because no proposal was ever requested and no cell ran (plan sec2: 'the cycle dies in P0 before any proposal is requested'; plan sec5 phase table: D1 exists only if P0 floors pass). INCOMPLETE_NOT_PROMOTABLE is wrong because nothing is missing: P0 executed in full (all inherited pins re-verified PASS, census measured over the full S0 window, canaries + monotonicity enforced, 17/17 tests) and produced a measured, deterministic outcome. BLOCKED_PRELAUNCH is wrong because the prelaunch gate was never reached (it presupposes D1/D2/S/I/Z/A7 phases). The plan's own sec2 definition of BLOCKED_DATA -- census cannot evidence >= the frozen floor of usable revision events per economy -- is exactly what was measured (AU 26 < 30, margin -4), the gate verdict BLOCKED_DATA was produced by the frozen floor evaluator without post-hoc renegotiation, and the handoff's recommended action (register the terminal; owner may re-scope floors only in a NEW registered decision, not a lane call) stays inside the lane boundary. The terminal close on this label is plan-allowed and evidence-complete.",
+ "closing_recommendation": "Register FOREX-NG2 terminal FOREX_NG2_BLOCKED_DATA_OR_SELECTION at branch head 2a484b4c2d83e1dcb77a28b58c7446c8d6b50c4d with budget 0/6, GO phrase extinguished unconsumed, S1 untouched; flip registry/state rows in the same close; no D1 dispatch, no proposals, no scored work. Any floor re-scoping (e.g. quarterly-aware own-economy floors) is an owner decision in a NEW registered cycle/plan, never a lane action on this branch."
+}
