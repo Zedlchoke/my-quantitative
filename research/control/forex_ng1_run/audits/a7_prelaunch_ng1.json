@@ -1,0 +1,177 @@
+{
+  "schema": "a7_prelaunch_ng1@1",
+  "verdict": "REFUSED",
+  "cycle_id": "FOREX-NG1",
+  "audited_head": "ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3",
+  "audit_utc": "2026-09-11",
+  "auditor": "A7 fresh-context prelaunch auditor (independent; detached tree /tmp/a7p_forex_ng1 at ffdc128; all numbers recomputed from bytes)",
+  "summary": "Technical chain is the strongest this office has audited: selection freeze -> code freeze -> dry-run -> adjudication ordering verified by git ancestry on both trunk and lane branch; all 6 arm digests recompute; the full dry-run RE-RUN from the detached tree reproduces DRY_RUN_CLEAN with all 7 output files byte-identical to the committed artifacts and all 9 structural counts exact; no outcome number exists anywhere pre-E; DGS10/CPI/spot pins verified to source bytes; adjudication is a faithful restoration of the selection-freeze control designation done pre-E. REFUSED for exactly one HIGH: the spot scored-execution authority gate is not executed at the audited bytes -- the committed authority proof (the declared source of truth that require_scored_authority reads, fail-closed) still records scored_consumption=CANDIDATE_NOT_AUTHORIZED, the AUTHORIZED_INTERNAL_RESEARCH ruling exists only in the event log, and the proof's own prescribed remedy ('set authority_status.scored_consumption=AUTHORIZED in this committed artifact together with the recorded terms') was never executed and the terms text was never recorded anywhere. As the bytes stand, GO -> E deterministically refuses all six budget cells (fail-closed NOT_RUN), burning the one-shot; and flipping the artifact after GO but mid-E would be authorization-after-peeking. The precondition must be completed as a committed artifact update (with terms recorded) BEFORE the GO key is typed, then re-presented.",
+  "findings": [
+    {
+      "id": "A7-NG1-H1",
+      "severity": "HIGH",
+      "description": "Spot scored-execution authority gate inconsistent with the A1 ruling at the audited bytes. (1) research/control/forex_ng1_run/p1_spot/spot_authority_proof.json -- the declared gate source of truth, read fail-closed by research/assets/forex_ng1/spot_series.py::require_scored_authority (raises unless authority_status.scored_consumption == 'AUTHORIZED') -- records scored_consumption='CANDIDATE_NOT_AUTHORIZED' at ffdc128. (2) The ruling AUTHORIZED_INTERNAL_RESEARCH exists ONLY as event SPOT_AUTHORITY_RULING in research/control/FOREX_NG1/event_log.jsonl (13:37:24Z); no committed artifact was updated. (3) The proof artifact itself prescribes the remedy: 'To authorize: set authority_status.scored_consumption=AUTHORIZED in this committed artifact together with the recorded terms' -- not executed, and the terms text does not exist anywhere in evidence (terms_url=None disclosed; no Twelve Data entry in the platform-v3 GA4 authority table or registry journal). (4) accounting.compute_outcomes independently refuses any spot_authority string != 'AUTHORIZED', and the ruling string 'AUTHORIZED_INTERNAL_RESEARCH' would also be refused. Consequence: a GO typed on the current bytes makes E deterministically NOT_RUN all six cells (wasted one-shot), and any post-GO flip of the gate would occur after outcome-visible code paths are armed. Launch-blocking state; claim of scored-execution readiness is false in this one mechanical respect. FIX BEFORE GO (not by A7, which does not modify evidence): commit the proof update per the artifact's own remedy WITH recorded terms/entitlement evidence, then re-present for the gate; no re-run of the technical chain is required by this finding.",
+      "evidence_paths": [
+        "research/control/forex_ng1_run/p1_spot/spot_authority_proof.json",
+        "research/assets/forex_ng1/spot_series.py",
+        "research/assets/forex_ng1/run/accounting.py",
+        "research/control/FOREX_NG1/event_log.jsonl",
+        "research/control/research_platform_v3_run/gates/V3-GA4_authority_table.json"
+      ],
+      "shas": ["ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3"]
+    },
+    {
+      "id": "A7-NG1-M1",
+      "severity": "MEDIUM",
+      "description": "Operative budget-cell mapping vs pinned arm identities not yet reconciled. The A1 adjudication (ffdc128, committed only into event_log.jsonl + run_contract.json a1_adjudication block) remaps the A5 scored control cell to CTL-V7RECAP and demotes CTL-DGS10LEVEL to non-scored; but run_contract.json 'arms' (the 6 pinned arm_config_digests), config.py BUDGET_ARMS, and z_dryrun_report.json budget_cell_mapping_basis still describe the pre-adjudication mapping (CTL-DGS10LEVEL on both families). The arm_config_digest of FXNG1-A5-P1-CTL-V7RECAP is recorded in NO committed artifact (A7 recompute from frozen code+proposal bytes: 5d11a0c98523f942cc734674a51eb7f1102e6d466012aab0c2b5ab30f1b40513; the ARM itself exists as BATTERY_ONLY with its book implemented). Risk: E dispatched from code/contract arm list would score the wrong third A5 cell and violate the adjudication. Required before E dispatch: committed contract addendum naming the final six budget-cell identities incl. the CTL-V7RECAP digest; E must consume the adjudication block, not the stale arms list. Not refusal-grade: remap is contract-only, pre-E, pre-registered with basis, and consistent with the freeze (which lists A5 control as 'CTL-V7RECAP ... + DGS10-level nominal ...' first), and no scored number exists (budget 0/6, S1 SEALED).",
+      "evidence_paths": [
+        "research/control/forex_ng1_run/run_contract.json",
+        "research/control/forex_ng1_run/i/z_dryrun_report.json",
+        "research/assets/forex_ng1/run/config.py",
+        "research/control/FOREX_NG1/event_log.jsonl"
+      ],
+      "shas": ["ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3", "a493ec3be7b1866c3935fd23b22e195a09699ea9"]
+    },
+    {
+      "id": "A7-NG1-M2",
+      "severity": "MEDIUM",
+      "description": "Plan sec5 cost mandate ('measured spreads per pair at stress tier (Q-8: FX spread measured, never vendor-stated)') is unmet: Q-8 measured constants are NOT_YET_MEASURED and the frozen cost contract is the REFERENCED V2/V8 proxy ladder (1.5 bps/side x {1.0,1.5,2.0}, tier 2.0 PRIMARY), disclosed in selection_freeze.cost_contract_frozen ('referenced-not-remeasured ... remeasurement from executable quotes NOT_RUN -- no quote bytes in frozen set') and run_contract.known_disclosures. Graded MEDIUM, not HIGH: the proxy is conservative relative to the V8-measured 1.05bp FX spread, so it cannot manufacture a false PASS on R1/R5 (only false negatives), R1/R5 cost verdicts remain honestly NOT_RUN-until-measured, and the deviation was preregistered before D1. Must be surfaced in the terminal report and P-2 margin recording.",
+      "evidence_paths": [
+        "plans/PLAN_forex_ng1.md",
+        "research/control/forex_ng1_run/selection_freeze.json",
+        "research/control/forex_ng1_run/run_contract.json"
+      ],
+      "shas": ["d0992d17df8e2dfde57c9a0806a5798f14021a4f"]
+    },
+    {
+      "id": "A7-NG1-L1",
+      "severity": "LOW",
+      "description": "Bookkeeping drift, non-blocking: (a) research/control/FOREX_NG1/state.json is stale (phase BOOTSTRAP_COMPLETE_P0_PENDING, updated_at 12:25:18Z) and carries go_phrase with underscores 'GO FOREX_NG1 SCORED EXECUTION' vs the registered exact phrase 'GO FOREX NG1 SCORED EXECUTION' (registry + RULES sec7 are correct and are the authority); (b) root registry row phase text 'REGISTERED (planned)' alongside lifecycle ACTIVE_LIGHT, and integration_worktree field empty (actual worktree .worktrees/forex-ng1/integration is known via state.json and dispatch packets). Registry head/budget/s1/go fields verified correct and committed (b900cd2).",
+      "evidence_paths": [
+        "research/control/FOREX_NG1/state.json",
+        "plans/CYCLE_REGISTRY.json",
+        "RULES.md"
+      ],
+      "shas": []
+    },
+    {
+      "id": "A7-NG1-L2",
+      "severity": "LOW",
+      "description": "Selection-freeze timestamp bookkeeping: selection_freeze.json frozen_at_utc=2026-09-11T15:05:00Z was already inside the file at its commit d0992d1 (14:32:40Z), i.e. the declared freeze instant postdates the commit; and the SELECTION_FROZEN event (15:05:00Z) was logged 49s AFTER the code-freeze commit 2d1989a (15:04:11Z). Ordering authority for the chain is git ancestry (verified: d0992d1 < 2d1989a/f6c1788 < abbee115/a493ec3 < ffdc128 on the lane branch and trunk respectively), and the substantive law holds -- no scored number existed at any point (budget 0/6, S1 SEALED, recursive outcome scans clean, no Stage-A artifacts, compute_outcomes never invoked in scored mode). No validity impact; recorded for hygiene.",
+      "evidence_paths": [
+        "research/control/forex_ng1_run/selection_freeze.json",
+        "research/control/FOREX_NG1/event_log.jsonl"
+      ],
+      "shas": ["d0992d17df8e2dfde57c9a0806a5798f14021a4f", "2d1989adb353ccb1ec1a5e9fd36724bce0bf7375"]
+    },
+    {
+      "id": "A7-NG1-L3",
+      "severity": "LOW",
+      "description": "Code-freeze provenance uses lane-branch shas: run_contract.code_freeze_sha=2d1989a and the claimed dry-run commit abbee115 live on orca/fng1-i, not in the integration branch ancestry, which carries tree-identical duplicates f6c1788/a493ec3 (empty git diff verified both pairs; identical subjects/timestamps). A7 resolved content identity by tree equality. Recommendation: future run contracts pin shas reachable from the integration branch, or record the duplication explicitly.",
+      "evidence_paths": ["research/control/forex_ng1_run/run_contract.json"],
+      "shas": ["2d1989adb353ccb1ec1a5e9fd36724bce0bf7375", "f6c17886c32025242fdf21ffb8565666d64cbaec", "abbee115dc020cc4e1f729357044d9a0050e5345", "a493ec3be7b1866c3935fd23b22e195a09699ea9"]
+    },
+    {
+      "id": "A7-NG1-L4",
+      "severity": "LOW",
+      "description": "The pinned DGS10 copy lives inside a disclosed nested worktree (.../.worktrees/forex-ng1/integration/.worktrees/forex-ng1/i-runners/data_raw/forex_ng1_ctl/DGS10.json) -- the 'lane-I nested-worktree incident' recorded at ffdc128. Bytes verified against the full pin chain (source==copy==manifest entry==V8 manifest witness), so integrity holds; fragility note only (the copy path is nonstandard and re-derivable from the V8 source if pruned).",
+      "evidence_paths": ["research/control/forex_ng1_run/i/ctl_dgs10_pin.json"],
+      "shas": ["ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3"]
+    }
+  ],
+  "unresolved_high_critical_count": 1,
+  "recompute": {
+    "commit_chain": {
+      "trunk_ancestry": "d0992d1 < f6c1788 < a493ec3 < ffdc128 (verified via parent chain + merge-base)",
+      "lane_branch_orca_fng1_i": "d0992d1 < 2d1989a < abbee115 (verified; trees byte-identical to trunk copies f6c1788/a493ec3: empty git diff)",
+      "commit_times_utc": {
+        "d0992d1_selection_freeze": "2026-09-11T14:32:40Z (git ci 21:32:40 +0700)",
+        "2d1989a_code_freeze": "2026-09-11T15:04:11Z (22:04:11 +0700)",
+        "abbee115_dry_run": "2026-09-11T15:06:38Z (22:06:38 +0700)",
+        "ffdc128_adjudication": "2026-09-11T15:08:54Z (22:08:54 +0700)"
+      },
+      "selection_freeze_file_sha256": "5d7eb5793e02e7919d59ba16a9fa8c3041e3d7e23274c605fbec639c81d2c8ee (matches run_contract.selection_freeze_sha256)",
+      "proposal_sha256": {
+        "FXNG1-A5-P1": "33c0ad74e618df944f6d54422d6651be912f7cfdda443b38df7db48b5ff65020 MATCH",
+        "FXNG1-A4-P2": "b1208b83879c46d51a1394c92c23850379ca31116a69b371d7a6711d7747f63f MATCH"
+      }
+    },
+    "arm_config_digests": {
+      "method": "research.assets.forex_ng1.run.config.budget_arm_digests() re-run from detached tree at ffdc128 (proposal bytes committed)",
+      "FXNG1-A5-P1-ANCHOR": "62a4fb6c94a05c4afc8b1c58bceb6900f6ddb996c0e964fde878bda9cb921386 MATCH",
+      "FXNG1-A5-P1-NEIGH-COOPEN": "6bea2efdf9a1187710479dda8ada93b3314871bd976bd4614ea477b4574b90a6 MATCH",
+      "FXNG1-A5-P1-CTL-DGS10LEVEL": "eeb0763976d82181380c60e3ac5ceb4fb51dd2db5df8d936eb0e56ab7b819058 MATCH",
+      "FXNG1-A4-P2-ANCHOR": "8282baa103587f805e569442bcaf948a8ffdcfeb430faa57440685e527f5fa62 MATCH",
+      "FXNG1-A4-P2-NEIGH-SMOOTH2": "3ed530106115748cb70c0ebc801c90b6f2370eba3ddccaf3290cb8f2296a42cc MATCH",
+      "FXNG1-A4-P2-CTL-DGS10LEVEL": "b549e17178991e08b971d5924df423a8cf7dc9a6657c0a1363d4d6916c5a585f MATCH",
+      "pairwise_distinct": true,
+      "A5_CTL_V7RECAP_digest_recomputed_by_A7_not_recorded_in_artifacts": "5d11a0c98523f942cc734674a51eb7f1102e6d466012aab0c2b5ab30f1b40513"
+    },
+    "dry_run_rerun": {
+      "from": "detached tree /tmp/a7p_forex_ng1 @ ffdc128; DGS10 bytes passed from verified pin copy; all other roots default (tracked) or pin-manifest-resolved",
+      "verdict": "DRY_RUN_CLEAN",
+      "scored": false,
+      "real_pnl": false,
+      "decision_ids_total": 1292,
+      "decision_ids_pairwise_distinct": true,
+      "arm_digests_pairwise_distinct": true,
+      "anchors_nonvacuous": {"FXNG1-A5-P1": true, "FXNG1-A4-P2": true},
+      "internal_replay_byte_identical": true,
+      "per_arm_decisions": {
+        "FXNG1-A5-P1-ANCHOR": 37,
+        "FXNG1-A5-P1-NEIGH-COOPEN": 79,
+        "FXNG1-A5-P1-CTL-DGS10LEVEL": 36,
+        "FXNG1-A4-P2-ANCHOR": 380,
+        "FXNG1-A4-P2-NEIGH-SMOOTH2": 409,
+        "FXNG1-A4-P2-CTL-DGS10LEVEL": 351
+      },
+      "rerun_vs_committed_files": "7/7 byte-identical (6 decisions_*.json + manifest.json, sha256 equality vs committed dryrun/manifest.json entries)",
+      "structural_counts_vs_d2": {
+        "publication_months": "85 == 85 OK",
+        "us_anchored_months": "77 == 77 OK",
+        "non_anchored_months": "8 == 8 OK",
+        "unique_of_months": "50 == 50 OK",
+        "no_unique_of_months": "27 == 27 OK",
+        "coopen_events_total": "104 == 104 OK",
+        "v7recap_events_total": "202 == 202 OK",
+        "first_release_events": "306 == 306 OK",
+        "grid_days": "1842 == 1842 OK"
+      }
+    },
+    "leak_scans": {
+      "independent_recursive_key_scan_committed_control_tree": "24 JSON files scanned at every depth for pnl/expectancy/profit_factor/drawdown/breakeven/stress/sharpe/win_rate/payoff/gross/net/return keys: 4 hits, ALL benign declarations (run_contract real_pnl=false, pnl_anywhere=false; z_dryrun_report real_pnl=false; d2 no_expectancy_law)",
+      "independent_recursive_key_scan_A7_rerun_outputs": "0 hits at every depth; decision records carry identity/timing/direction/units/fold/cost constants only",
+      "dryrun_builtin_scanner": "0 findings across all emitted files (re-run)",
+      "stage_a_artifacts_search": "no Stage-A/evaluator/survivor artifact for FOREX-NG1 exists anywhere pre-E (SURVIVORS.md has no ng1 rows)",
+      "evaluator_usage": "R1-R6 evaluator exercised ONLY by tests on in-memory fixture dicts (tests/test_forex_ng1_runners.py sec 8, tmp_path fixtures); compute_outcomes call sites = tests of the two refusing paths only (scored=False; scored=True with spot_authority=None)",
+      "tests": "52 passed (test_forex_ng1_runners.py + d2 + p1spot), fixtures in tmp_path"
+    },
+    "data_pins": {
+      "spot_pin_manifest_4_pairs": "GBPUSD/USDCAD/AUDUSD/NZDUSD copy sha256 verified byte-exact 4/4 vs manifest",
+      "census_e8a35d23": "MATCH (p0_announcement_census.json)",
+      "grid_census_42612576": "MATCH (spot_grid_census.json, 1842 days)",
+      "dgs10_chain": "V8 staged_vintaged_manifest witness c8ae7877 == bytes at v9 integration copy == pin; manifest DGS10 entry 03dde429 == source bytes == worktree copy (all sha256-verified by A7); 16592 binding rows obs 1962-01-02..2025-07-31",
+      "cpi_s2_s3": "CADS object 07d1e0d5 == pinned digest MATCH; S3 US/fred_cpiaucsl_rt 7f18ec98 MATCH; GBRCPIALLMINMEI/CANCPIALLMINMEI/AUSCPIALLQINMEI local bytes MATCH pinned sha256"
+    },
+    "governance": {
+      "registry_row_root": "FOREX-NG1 lifecycle=ACTIVE_LIGHT head=ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3 budget 0/6 s1=SEALED_UNTOUCHED go_phrase='GO FOREX NG1 SCORED EXECUTION' go_phrase_state=REGISTERED_NOT_CONSUMED (root plans/CYCLE_REGISTRY.json, committed b900cd2; worktree copies are stale lane snapshots -- root is the writable authority)",
+      "rules_sec7": "3 ng1 phrases registered-not-consumed; owner standing GO delegation scope recorded (no S1, no push/merge-main, no purchases/signups, no live/paper); A7 gate required before Lead GO",
+      "plan_sec0_delegation": "verbatim standing GO delegation present; scope exclusions not violated by any committed action"
+    },
+    "adjudication_legality": {
+      "verdict": "CONSISTENT_PRE_E",
+      "basis": "selection_freeze (d0992d1, frozen before implementation) lists A5 control='CTL-V7RECAP ... + DGS10-level nominal ...' and A4 control='CTL-DGS10LEVEL (exact-spec ...)'; plan sec6 lane mandates (A5 MUST carry V7-ancestry falsification control; A4 MANDATORY nominal-exposure) + sec9 (nominal mandatory on yield/inflation lanes). The ffdc128 adjudication RESTORES the freeze designation after lane I's broader reading (DGS10 on both) and is recorded pre-E with basis, no scored number existing (budget 0/6, S1 SEALED). Not a rescue. Residual: see A7-NG1-M1 (identity reconciliation)."
+    }
+  },
+  "authority_assessment": {
+    "question": "Is the Twelve Data terms-documentation gap (terms_url=None, no terms text anywhere in evidence, owner existing entitlement) a refusal-grade HIGH for scored spot consumption?",
+    "independent_position": "NO on the substance; the refusal driver is the unexecuted gate, not the terms gap itself. My independent reasoning: (1) The channel is a paid commercial API consumed under the owner's EXISTING entitlement -- no new purchase or signup occurred or is required, so none of the plan sec0 delegation exclusions (purchases, signups, credentials) is touched; the owner's own act of placing the API key in a prior cycle is affirmative evidence of entitlement and of owner awareness of the channel. (2) Use pattern is internal research, bytes pinned (UNTRACKED_NEVER_COMMITTED, sha-verified by me), no redistribution path exists in the factory; this is the canonical permitted use of a subscriber's own market-data pulls, and the missing terms TEXT is a documentation gap, not evidence of out-of-scope access. (3) Data identity/integrity -- the thing that determines whether results are valid -- is proven independently of license terms: 4/4 byte-pinned pairs, deterministic double-pull precedent, sample-proven provenance vs the V1 snapshot class that V8 scored on. (4) The gap was self-disclosed by the lane in the proof artifact and the ruling event, explicitly flagged for this audit and for the owner terminal report -- the opposite of concealment. (5) The standing delegation grants full Lead autonomy for the one-shot run; authorizing an internally-entitled data source is within that autonomy. HOWEVER two obligations follow and are NOT yet satisfied: (a) the gate's declared source of truth must actually record the authorization WITH recorded terms before GO -- that is finding A7-NG1-H1 (mechanical, blocking, trivially fixable: commit the proof update together with the Twelve Data terms URL/text and entitlement evidence); (b) Twelve Data sits OUTSIDE plan sec3's frozen S2/S3 plane set ('exactly GRANTED S2/S3 series, nothing else ... Every series outside the frozen set stays BLOCKED_DATA') -- the spot channel rests on the p1_spot proof + A1 ruling + run-contract data_pins instead of a GA4 grant. I judge this tension resolved IN SUBSTANCE by the delegation and by the plan's own phase design (honest CANDIDATE proof first, ruling second, fail-closed adapter throughout), but it is a plan-text deviation that MUST be carried into the terminal report, and any future cycle should route the spot channel through the platform authority table the same way S2/S3 are. Had the entitlement itself been doubtful, or had raw bytes been committed/redistributed, I would have graded the terms gap HIGH and refused on it independently.",
+    "grading": "terms gap itself: MEDIUM (documentation/compliance, disclosed, does not affect result validity); gate-not-executed: HIGH (A7-NG1-H1, the refusal driver)"
+  },
+  "assumption_audit": "Fresh-context audit; no implementer input accepted or sought. Every load-bearing number was recomputed from bytes, not trusted from artifacts: commit ordering from git ancestry on two branches (not from messages), file/pin/manifest digests with my own sha256 calls, arm digests by re-running the frozen digest function on committed proposal bytes, the full dry-run by re-executing it from the detached ffdc128 tree with independently-verified DGS10 bytes (7/7 output files byte-identical to committed), leak detection by my own recursive full-depth key scan in addition to the built-in scanner, and governance from the ROOT registry (I initially flagged head=0000/PLANNED_NOT_STARTED from the stale worktree copy before correcting to the root authority row -- the registry's own commit history b900cd2/fc61d18 settles it). Assumptions I could NOT verify and therefore did not rely on: (1) that the E-phase controller will read the adjudication mapping rather than the stale contract arms list -- hence M1; (2) that the owner entitlement genuinely covers programmatic daily-bars pulls at this volume -- bytes and precedent say the channel works, only a human/owner record can say the license does, hence the terms recording obligation in the authority assessment; (3) that no outcome computation ever ran outside committed evidence -- I verified absence in the tree, tests, and call sites, but a computation on an untracked scratch cannot be excluded by construction anywhere in any repo; the heavy-lock registry and budget counter show 0/6 used and no Stage-A artifacts exist, which is the strongest attainable evidence. What would change my verdict: executing A7-NG1-H1's committed gate flip with recorded terms resolves the only HIGH; no other finding blocks launch. One file was written by this audit (this one); the detached tree /tmp/a7p_forex_ng1 and A7 scratch dirs are removed after writing.",
+  "required_for_authorized": [
+    "1. Commit the authority flip per the proof artifact's own remedy: set authority_status.scored_consumption=AUTHORIZED in research/control/forex_ng1_run/p1_spot/spot_authority_proof.json WITH the recorded terms (Twelve Data terms URL/text + entitlement evidence) -- BEFORE the GO key is typed, never after; append the matching event.",
+    "2. Commit the adjudication reconciliation addendum (A7-NG1-M1): final six budget-cell identities incl. FXNG1-A5-P1-CTL-V7RECAP arm_config_digest 5d11a0c98523f942cc734674a51eb7f1102e6d466012aab0c2b5ab30f1b40513, and mark run_contract.arms/z_dryrun_report mapping basis as superseded; E dispatch must bind to the adjudication block.",
+    "3. Surface in the terminal report: TD-outside-plan-sec3 tension (authority_assessment), Q-8 cost proxy deviation (A7-NG1-M2), LOW bookkeeping items (state.json phrase variant, lane/trunk duplicate shas, frozen_at bookkeeping, nested worktree path)."
+  ]
+}
