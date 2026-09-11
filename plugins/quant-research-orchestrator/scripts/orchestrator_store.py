@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -48,7 +49,10 @@ TRANSITIONS = {
     "READY": {"DISPATCHED"},
     "DISPATCHED": {"RUNNING"},
     "RUNNING": {"HANDOFF_READY"},
-    "HANDOFF_READY": {"VALIDATING"},
+    # STORE-FLOW-2: a HANDOFF_READY task whose validation fails (digest
+    # mismatch etc.) must have a lawful FORWARD exit - BLOCKED with the
+    # failure recorded in blocker/reason. No backward transition is added.
+    "HANDOFF_READY": {"VALIDATING", "BLOCKED"},
     "VALIDATING": {"INTEGRATED", "REJECTED", "BLOCKED", "TECHABORT"},
     "INTEGRATED": {"TERMINAL"},
     "REJECTED": {"TERMINAL"},
@@ -88,6 +92,16 @@ class ForeignTaskRefused(ValueError):
 
 class DependencyCycle(ValueError):
     pass
+
+
+class HandoffEvidenceRefused(ValueError):
+    """Handoff evidence does not reconcile with the recorded dispatch context.
+
+    STORE-FLOW-3: a handoff whose dispatch_sha differs from the task's
+    registered base_sha, or an integrated commit_sha that does not resolve
+    to a git commit object in the task's recorded worktree, is refused -
+    never accepted into the store.
+    """
 
 
 def now_utc() -> str:
@@ -433,19 +447,43 @@ class OrchestratorStore:
     def publish_handoff(self, *, task_id: str, handoff: dict,
                         handoff_path: Optional[os.PathLike | str] = None,
                         writer: str = "primary-lead") -> dict:
-        """RUNNING -> HANDOFF_READY with the digest recorded on the attempt."""
+        """RUNNING -> HANDOFF_READY with the digest recorded on the attempt.
+
+        STORE-FLOW-3: handoff.dispatch_sha must equal the dispatch context
+        recorded for the task (its registered base_sha) - a fabricated sha is
+        refused before any state changes. STORE-FLOW-1: the submitted object
+        is always atomically WRITTEN to the inbox path (replacing any
+        agent-pre-written draft), so the file on disk equals the recorded
+        digest by construction.
+        """
         validate_handoff(handoff)
         if handoff["task_id"] != task_id:
             raise ForeignTaskRefused(
                 f"handoff declares task {handoff['task_id']!r}, store call was {task_id!r}")
         digest = handoff_digest(handoff)
         store = self.load()
+        task = self._resolve(store, task_id)
+        self._check_cycle(task)
+        base_sha = task.get("base_sha") or ""
+        declared_sha = handoff.get("dispatch_sha") or ""
+        if declared_sha != base_sha:
+            raise HandoffEvidenceRefused(
+                f"{task_id}: handoff.dispatch_sha {declared_sha[:12] or '<empty>'} "
+                f"does not match the recorded dispatch context base_sha "
+                f"{base_sha[:12] or '<empty>'} - publish refused")
         self._transition(store, task_id, "HANDOFF_READY", writer=writer)
         task = self._resolve(store, task_id)
         open_attempt = next((a for a in reversed(task["attempts"])
                              if a["returned_utc"] is None), None)
         if open_attempt is None:
             raise IllegalTransition(f"{task_id}: no open attempt to bind the handoff to")
+        path = Path(handoff_path) if handoff_path else \
+            self.inbox / f"{task_id}-handoff.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # STORE-FLOW-1: the store OWNS the artifact bytes - always write the
+        # submitted object, never keep a pre-existing draft at the same path.
+        atomic_io.atomic_write_json(
+            path, handoff, schema_validator=validate_handoff)
         if open_attempt["handoff_sha256"] == digest:
             self._event({"event": "TASK_HANDOFF_DUPLICATE_IGNORED", "task_id": task_id,
                          "digest": digest[:16]})
@@ -453,12 +491,6 @@ class OrchestratorStore:
         open_attempt["returned_utc"] = now_utc()
         open_attempt["outcome"] = "HANDOFF_PUBLISHED"
         open_attempt["handoff_sha256"] = digest
-        path = Path(handoff_path) if handoff_path else \
-            self.inbox / f"{task_id}-handoff.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if not path.exists():
-            atomic_io.atomic_write_json(
-                path, handoff, schema_validator=validate_handoff)
         task["handoff_path"] = str(path)
         store["updated_at_utc"] = task["updated_utc"]
         prev = atomic_io.sha256_file(self.tasks_path)
@@ -489,14 +521,47 @@ class OrchestratorStore:
         self._event({"event": "TASK_VALIDATING", "task_id": task_id})
         return task
 
+    def _git_commit_resolves(self, worktree: str, commit_sha: str) -> tuple:
+        """STORE-FLOW-3 helper: does commit_sha resolve to a git COMMIT object
+        in the given worktree? `git cat-file -t` is the arbiter. Fail closed:
+        non-zero rc, a non-commit object type, timeout or a missing git binary
+        all count as unresolved (never as verified)."""
+        try:
+            proc = subprocess.run(
+                ["git", "-C", worktree, "cat-file", "-t", commit_sha],
+                capture_output=True, text=True, timeout=15)
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            return False, f"git cat-file failed in {worktree}: {exc}"
+        if proc.returncode != 0:
+            detail = proc.stderr.strip() or f"rc={proc.returncode}"
+            return False, f"git cat-file -t {commit_sha[:12]} failed in {worktree}: {detail}"
+        obj_type = proc.stdout.strip()
+        if obj_type != "commit":
+            return False, f"{commit_sha[:12]} is {obj_type!r} in {worktree}, not a commit"
+        return True, "commit"
+
     def mark_integrated(self, *, task_id: str, commit_sha: str = "",
                         writer: str = "primary-lead") -> dict:
+        """VALIDATING -> INTEGRATED. STORE-FLOW-3: a provided commit_sha must
+        resolve to a real git commit object in the task's recorded worktree
+        (its absolute_worktree, else the store's repo root) BEFORE the
+        transition is applied - a fabricated sha is refused with the state
+        left untouched on disk."""
         store = self.load()
-        self._transition(store, task_id, "INTEGRATED", writer=writer)
         task = self._resolve(store, task_id)
+        self._check_cycle(task)
         if commit_sha:
             if not _HEX40.match(commit_sha):
                 raise ValueError(f"mark_integrated: commit_sha must be 40-hex")
+            worktree = task.get("absolute_worktree") or str(self.repo_root)
+            ok, detail = self._git_commit_resolves(worktree, commit_sha)
+            if not ok:
+                raise HandoffEvidenceRefused(
+                    f"{task_id}: integrated commit unresolvable - {detail} "
+                    f"(INTEGRATED refused)")
+        self._transition(store, task_id, "INTEGRATED", writer=writer)
+        task = self._resolve(store, task_id)
+        if commit_sha:
             task["attempts"][-1]["integrated_commit_sha"] = commit_sha
         store["updated_at_utc"] = task["updated_utc"]
         prev = atomic_io.sha256_file(self.tasks_path)

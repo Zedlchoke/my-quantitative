@@ -76,13 +76,27 @@ def test_initialize_and_tools_list(client):
     client.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
 
-def test_full_lifecycle_through_mcp(client):
+def test_full_lifecycle_through_mcp(client, tmp_path):
+    repo = tmp_path / "fixturerepo"
+    repo.mkdir()
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email",
+                    "fixture@example.invalid"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name",
+                    "fixture"], check=True)
+    (repo / "f.txt").write_text("fixture\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "f.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "fixture"],
+                   check=True)
+    real_sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                              check=True, capture_output=True,
+                              text=True).stdout.strip()
     r = client.result(client.call("orchestrator_intake", {}, mid=1))
     assert r["schema"] == "zcode_orch_v3_tasks@1"
     r = client.result(client.call("orchestrator_register_task", {
         "task_id": "m1", "role": "quant-explorer", "objective": "mcp fixture",
         "base_sha": "a" * 40, "branch": "orca/fixture",
-        "absolute_worktree": "/tmp/fixture",
+        "absolute_worktree": str(repo),
         "allowed_paths": ["/tmp/fixture"]}, mid=2))
     assert r["status"] == "REGISTERED"
     r = client.result(client.call("orchestrator_list_ready", {}, mid=3))
@@ -95,8 +109,8 @@ def test_full_lifecycle_through_mcp(client):
     assert r["status"] == "RUNNING"  # live heartbeat materializes DISPATCHED->RUNNING
     handoff = {"task_id": "m1", "cycle_id": "ZCODE-ORCHESTRATION-V3",
                "role": "quant-explorer", "lane": "fixture",
-               "dispatch_sha": "b" * 40, "actual_start_sha": "b" * 40,
-               "commit_sha": "c" * 40, "changed_paths": [],
+               "dispatch_sha": "a" * 40, "actual_start_sha": "a" * 40,
+               "commit_sha": real_sha, "changed_paths": [],
                "tests": [{"command": "true", "exit_code": 0, "verdict": "PASS"}],
                "authority_claims": [], "known_limitations": [], "incidents": [],
                "tree_status": "clean", "workers": 0, "outputs": [],
@@ -108,7 +122,7 @@ def test_full_lifecycle_through_mcp(client):
                                   {"task_id": "m1"}, mid=7))
     assert r["status"] == "VALIDATING"
     r = client.result(client.call("orchestrator_mark_integrated",
-                                  {"task_id": "m1", "commit_sha": "c" * 40}, mid=8))
+                                  {"task_id": "m1", "commit_sha": real_sha}, mid=8))
     assert r["status"] == "INTEGRATED"
     r = client.result(client.call("orchestrator_terminal_check", {}, mid=9))
     assert r["non_terminal_tasks"] == ["m1"] and not r["all_terminal"]
