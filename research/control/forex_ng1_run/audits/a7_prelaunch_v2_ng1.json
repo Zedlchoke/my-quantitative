@@ -1,0 +1,156 @@
+{
+  "schema": "a7_prelaunch_v2_ng1@1",
+  "verdict": "REFUSED",
+  "cycle_id": "FOREX-NG1",
+  "audited_head": "4be2e1d2d1716bc4c15a0d5260ab4bf7c86f8e30",
+  "audit_utc": "2026-09-11",
+  "auditor": "A7 fresh-context prelaunch auditor, ATTEMPT-2 post-remediation (independent; detached tree /tmp/a7p2_forex_ng1 at 4be2e1d; every load-bearing number recomputed from bytes)",
+  "summary": "Attempt-1 refused on exactly one HIGH (A7-NG1-H1: the spot scored-authority gate not enforced at the audited bytes). The remediation commit 4be2e1d is well-scoped, honestly based, correctly timed (committed BEFORE any GO key, event log consistent, GO still unconsumed, budget 0/6, S1 SEALED) and records a genuine delegation quote and a correct CTL-V7RECAP digest -- but it is MECHANICALLY INEFFECTIVE: it added scored_consumption='AUTHORIZED_INTERNAL_RESEARCH' as a TOP-LEVEL key of spot_authority_proof.json, while require_scored_authority reads the authority_status BLOCK's scored_consumption field, which is UNCHANGED at 'CANDIDATE_NOT_AUTHORIZED'; and even the new value would fail, because both require_scored_authority (spot_series.py:368) and accounting.compute_outcomes (accounting.py:74) require the exact string 'AUTHORIZED'. A7 re-executed the gate from the detached tree at 4be2e1d on committed bytes alone: SpotAuthorityError -- the gate still FAILS. Consequence identical to attempt-1: a GO typed on these bytes deterministically NOT_RUNs all six budget cells and burns the one-shot. The artifact is now also internally contradictory (verdict + authority_status say NOT authorized; the new top-level key says authorized), and its a7_prelaunch_finding_addressed note misdescribes the flip as the prescribed remedy. REFUSED for one HIGH (new id A7-NG1-H2; A7-NG1-H1 remains unresolved at byte level). No other new HIGH/CRITICAL found; the technical chain re-verification is fully clean.",
+  "findings": [
+    {
+      "id": "A7-NG1-H2",
+      "severity": "HIGH",
+      "description": "REMEDIATION INEFFECTIVE: commit 4be2e1d flips a key the gate does not read, with a value the gate would refuse anyway, so the spot scored-execution authority gate REMAINS FAIL-CLOSED at the audited bytes. (1) WRONG LOCATION: require_scored_authority (research/assets/forex_ng1/spot_series.py:341-373) calls spot_authority_status(), which returns proof['authority_status'], and then reads block.get('scored_consumption') -- i.e. authority_status.scored_consumption, which 4be2e1d left at 'CANDIDATE_NOT_AUTHORIZED'. The remediation instead added a TOP-LEVEL 'scored_consumption' key; a repo-wide grep shows NO code reads the top-level key (the only readers are spot_series.py and build_artifacts.py:581, both of the authority_status block). (2) WRONG VALUE: spot_series.py:368 requires scored == 'AUTHORIZED' exactly and accounting.compute_outcomes (research/assets/forex_ng1/run/accounting.py:74) requires spot_authority == 'AUTHORIZED' exactly -- the recorded 'AUTHORIZED_INTERNAL_RESEARCH' fails both even if relocated (attempt-1 had already flagged this for the ruling string; the remediation reused it). (3) EXECUTED PROOF: A7 ran require_scored_authority() from detached tree /tmp/a7p2_forex_ng1 at 4be2e1d (root .venv, cwd=tree, default proof path resolving INSIDE the tree -- committed bytes, no env/session state): raises SpotAuthorityError \"spot channel scored_consumption='CANDIDATE_NOT_AUTHORIZED': scored consumption refused (fail-closed...)\". The test at tests/test_forex_ng1_p1spot.py:313 shows the intended flip shape: authority_status.scored_consumption == 'AUTHORIZED'. (4) CONSEQUENCE: identical to A7-NG1-H1 -- GO on these bytes deterministically refuses all six budget cells in E (wasted one-shot); a later mid-E flip would be authorization-after-peeking. (5) AGGRAVATING HYGIENE: the artifact is now internally contradictory (verdict line still '...NOT AUTHORIZED FOR SCORED CONSUMPTION: DOCUMENTED_CANDIDATE / CANDIDATE_NOT_AUTHORIZED'; authority_status.scored_consumption='CANDIDATE_NOT_AUTHORIZED'; new top-level key='AUTHORIZED_INTERNAL_RESEARCH'), and authority_enforcement.a7_prelaunch_finding_addressed claims the flip 'is the mechanical remedy A7 prescribed' -- it is not: attempt-1 and the artifact's own owner_decision_required field both prescribe setting authority_status.scored_consumption. A later reader could mistake the top-level key for an effective authorization. FIX BEFORE GO (not by A7): inside the SAME committed artifact, set authority_status.scored_consumption to the exact string 'AUTHORIZED' (per the artifact's own prescription and the code contract), keep the authority_enforcement block and basis, and resolve the contradiction explicitly (supersede or update the verdict/status wording); commit BEFORE the GO key is typed; append the matching event. No re-run of the technical chain is required by this finding.",
+      "evidence_paths": [
+        "research/control/forex_ng1_run/p1_spot/spot_authority_proof.json",
+        "research/assets/forex_ng1/spot_series.py",
+        "research/assets/forex_ng1/run/accounting.py",
+        "research/control/forex_ng1_run/p1_spot/build_artifacts.py",
+        "tests/test_forex_ng1_p1spot.py",
+        "research/control/FOREX_NG1/event_log.jsonl"
+      ],
+      "shas": ["4be2e1d2d1716bc4c15a0d5260ab4bf7c86f8e30", "ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3"]
+    },
+    {
+      "id": "A7-NG1-M1R",
+      "severity": "MEDIUM",
+      "description": "Carried from attempt-1 A7-NG1-M1, NARROWED but not closed. The remediation's run_contract.json addendum 'a7_recomputed_control_digests' now records FXNG1-A5-P1-CTL-V7RECAP arm_config_digest = 5d11a0c98523f942cc734674a51eb7f1102e6d466012aab0c2b5ab30f1b40513 -- A7 re-ran config.arm_config_digest('FXNG1-A5-P1-CTL-V7RECAP') from the detached tree at 4be2e1d and it MATCHES exactly (previously recorded in NO committed artifact). Residual: run_contract.arms and z_dryrun_report budget_cell_mapping_basis still describe the pre-adjudication mapping (CTL-DGS10LEVEL on both families); the addendum note discloses this ('lane digest list to be reconciled at reproduction') but does not mark the arms list superseded, and nothing mechanical forces the E dispatch to consume the a1_adjudication block rather than the stale arms list. Still not refusal-grade by attempt-1's grading (contract-only, pre-E, pre-registered with basis, no scored number exists). Required before E dispatch: E must bind to the adjudication mapping; mark the stale arms list superseded in the reproduction pass.",
+      "evidence_paths": [
+        "research/control/forex_ng1_run/run_contract.json",
+        "research/control/forex_ng1_run/i/z_dryrun_report.json",
+        "research/assets/forex_ng1/run/config.py"
+      ],
+      "shas": ["4be2e1d2d1716bc4c15a0d5260ab4bf7c86f8e30"]
+    },
+    {
+      "id": "A7-NG1-M2",
+      "severity": "MEDIUM",
+      "description": "Carried UNCHANGED from attempt-1 (re-examined against the run contract and proposals at 4be2e1d; nothing in the remediation touches the cost contract). Plan sec5 Q-8 mandate (measured spreads) unmet: cost contract is the REFERENCED V2/V8 proxy ladder (1.5 bps/side x {1.0,1.5,2.0}, tier 2.0 PRIMARY), disclosed in selection_freeze.cost_contract_frozen and run_contract.known_disclosures. Conservative relative to the V8-measured 1.05bp FX spread (false negatives only, cannot manufacture a false PASS); R1/R5 cost verdicts remain honestly NOT_RUN-until-measured. Must be surfaced in the terminal report and P-2 margin recording.",
+      "evidence_paths": [
+        "plans/PLAN_forex_ng1.md",
+        "research/control/forex_ng1_run/selection_freeze.json",
+        "research/control/forex_ng1_run/run_contract.json"
+      ],
+      "shas": ["d0992d17df8e2dfde57c9a0806a5798f14021a4f"]
+    },
+    {
+      "id": "A7-NG1-L5",
+      "severity": "LOW",
+      "description": "NEW, hygiene only: the remediation's authority_enforcement.owner_standing_delegation_verbatim cites '(owner directive 2026-09-11, plans/PLAN_forex_ng1.md sec0)' but the quoted Vietnamese text physically lives in plans/PLAN_crypto_ng1.md sec0 (lines 15-19); PLAN_forex_ng1.md sec0 incorporates it by reference ('Owner instruction, verbatim (2026-09-11): identical standing directive as plans/PLAN_crypto_ng1.md sec0'). A7 verified the quote IS a verbatim substring of the crypto plan's owner directive block ('Bạn có toàn quyền tự quyết GO SCORED. Tôi muốn bạn là người quyết định mọi thứ và prompt này chạy 1 lần không hỏi lại.' -- final sentence 'output tôi muốn là terminal cuối cùng của các plan.' omitted, immaterial). Quote genuine, citation imprecise. Note also plan sec0 conditions GO typing on 'AFTER independent A7 publishes FOREX_NG1_S0_LAUNCH_AUTHORIZED' -- correctly NOT yet exercised (GO unconsumed); the 15:30:00Z data ruling rests on the broader full-Lead-autonomy standing directive, which attempt-1's authority assessment already judged to cover data-source authorization.",
+      "evidence_paths": [
+        "research/control/forex_ng1_run/p1_spot/spot_authority_proof.json",
+        "plans/PLAN_forex_ng1.md",
+        "plans/PLAN_crypto_ng1.md"
+      ],
+      "shas": ["4be2e1d2d1716bc4c15a0d5260ab4bf7c86f8e30"]
+    },
+    {
+      "id": "A7-NG1-L1",
+      "severity": "LOW",
+      "description": "Carried UNCHANGED from attempt-1: research/control/FOREX_NG1/state.json still stale (phase BOOTSTRAP_COMPLETE_P0_PENDING, updated_at 12:25:18Z, go_phrase with underscores vs the registered exact phrase -- registry + RULES sec7 are the authority). Root registry row still carries phase text 'REGISTERED (planned)' with empty integration_worktree field (worktree known via dispatch packets); head/budget/s1/go fields verified correct.",
+      "evidence_paths": ["research/control/FOREX_NG1/state.json", "plans/CYCLE_REGISTRY.json", "RULES.md"],
+      "shas": []
+    },
+    {
+      "id": "A7-NG1-L2",
+      "severity": "LOW",
+      "description": "Carried UNCHANGED from attempt-1: selection_freeze frozen_at_utc bookkeeping (freeze instant postdates its commit; SELECTION_FROZEN event logged 49s after code-freeze commit). Ordering authority is git ancestry, re-verified this attempt; no validity impact.",
+      "evidence_paths": ["research/control/forex_ng1_run/selection_freeze.json", "research/control/FOREX_NG1/event_log.jsonl"],
+      "shas": ["d0992d17df8e2dfde57c9a0806a5798f14021a4f", "2d1989adb353ccb1ec1a5e9fd36724bce0bf7375"]
+    },
+    {
+      "id": "A7-NG1-L3",
+      "severity": "LOW",
+      "description": "Carried UNCHANGED from attempt-1: code-freeze provenance uses lane-branch shas (2d1989a/abbee115 on orca/fng1-i) whose trunk copies are tree-identical duplicates (f6c1788/a493ec3) -- re-verified this attempt: trees 086af11f and 869e5012 respectively, empty diffs, and abbee115 is NOT a git ancestor of ffdc128 (parallel duplicate); the claimed chain d0992d1<2d1989a<abbee115<ffdc128<4be2e1d holds via lane ancestry + tree identity + timestamps. Content identity is sound; pin-reachable shas recommendation stands.",
+      "evidence_paths": ["research/control/forex_ng1_run/run_contract.json"],
+      "shas": ["2d1989adb353ccb1ec1a5e9fd36724bce0bf7375", "f6c17886c32025242fdf21ffb8565666d64cbaec", "abbee115dc020cc4e1f729357044d9a0050e5345", "a493ec3be7b1866c3935fd23b22e195a09699ea9"]
+    },
+    {
+      "id": "A7-NG1-L4",
+      "severity": "LOW",
+      "description": "Carried UNCHANGED from attempt-1: pinned DGS10 copy lives in the disclosed nested worktree path (lane-I incident, recorded at ffdc128); integrity verified to source bytes in attempt-1 and untouched by 4be2e1d (diff = 4 control files only); pin references 03dde429/CADS 07d1e0d5 re-confirmed present in committed run_contract + ctl_dgs10_pin at 4be2e1d.",
+      "evidence_paths": ["research/control/forex_ng1_run/i/ctl_dgs10_pin.json"],
+      "shas": ["ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3"]
+    }
+  ],
+  "unresolved_high_critical_count": 1,
+  "h1_remediation_verification": {
+    "remediation_commit": "4be2e1d2d1716bc4c15a0d5260ab4bf7c86f8e30",
+    "parent_verified": "ffdc1284e9fcbbdcaad95aabaa1d4759051f47a3",
+    "committed_before_go": true,
+    "before_go_evidence": "commit time 2026-09-11T15:34:58Z; event A7_H1_REMEDIATION logged at 15:34:58Z; event log has 5 events total and contains NO GO event; root registry (updated_at 15:35:09Z) go_phrase_state=REGISTERED_NOT_CONSUMED, budget 0/6, s1=SEALED_UNTOUCHED, head=4be2e1d. Timing is NOT the problem.",
+    "scope_clean": true,
+    "scope_detail": "git diff ffdc128..4be2e1d = exactly 4 files: event_log.jsonl (+1 event), audits/a7_prelaunch_ng1.json (attempt-1 artifact, committed byte-identical to the worktree copy, sha256 03a6b6ff9085775fceebc1de861ca7699b10d419903a9f04631d7771b9e783cf), p1_spot/spot_authority_proof.json, run_contract.json (+4 lines addendum). NO code, NO plans, NO proposals, NO data, NO freeze/dry-run artifacts touched -- attempt-1's full dry-run re-run (DRY_RUN_CLEAN, 7/7 byte-identical, structural counts exact) therefore carries over to 4be2e1d.",
+    "semantic_content_change_of_proof": "parsed-JSON diff ffdc128 -> 4be2e1d = exactly two ADDED top-level keys (scored_consumption, authority_enforcement); the \\u2014 escape-to-literal changes in two existing strings are JSON-escape-form only (parsed values identical). No pre-existing evidence was altered or removed.",
+    "recorded_basis_genuine": true,
+    "basis_verification": "owner_standing_delegation_verbatim verified verbatim against plans/PLAN_crypto_ng1.md sec0 (incorporated into PLAN_forex_ng1.md sec0 by reference) -- see A7-NG1-L5; existing-entitlement / V8-V9 precedent / pinned-integrity basis items match attempt-1's independently verified facts and are unchanged; terms disclosure honestly records that NO written terms text exists anywhere (not fabricated -- consistent with attempt-1's authority assessment).",
+    "gate_effective": false,
+    "gate_rerun_from_committed_bytes": "A7 executed research.assets.forex_ng1.spot_series.require_scored_authority() with cwd = detached tree /tmp/a7p2_forex_ng1 at 4be2e1d, root .venv interpreter, DEFAULT_AUTHORITY_PROOF resolving inside the tree (no env/session state): RAISED SpotAuthorityError: \"spot channel scored_consumption='CANDIDATE_NOT_AUTHORIZED': scored consumption refused (fail-closed; owner/authority-lane decision recorded in the authority proof, never here)\". Proof file sha256 at 4be2e1d: 27bce7d119678cf4c8b6cde2af3bb571866d03dc6b5ebfc30dcb9c94bcf9e6f7.",
+    "root_cause": "flip written to top-level 'scored_consumption' (read by no code) instead of authority_status.scored_consumption (read by spot_series.py:367); value 'AUTHORIZED_INTERNAL_RESEARCH' instead of the exact 'AUTHORIZED' required by spot_series.py:368 AND accounting.py:74 (compute_outcomes). The artifact's own owner_decision_required field and attempt-1's required action both prescribed the authority_status block; tests/test_forex_ng1_p1spot.py:313 shows the intended passing shape.",
+    "remediation_verdict": "INEFFECTIVE -- A7-NG1-H1 remains unresolved at the byte level; re-graded as new finding A7-NG1-H2. The honest, correctly-timed basis recorded by the remediation is NOT in dispute; only the mechanical flip location/value is wrong."
+  },
+  "recompute": {
+    "commit_chain": {
+      "trunk_orca_forex_ng1_integration": "d0992d1 < f6c1788 < a493ec3 < ffdc128 < 4be2e1d (verified via parent rev-parse chain)",
+      "lane_branch_orca_fng1_i": "d0992d1 < 2d1989a < abbee115 (verified via parent chain); 2d1989a tree == f6c1788 tree (086af11f...), abbee115 tree == a493ec3 tree (869e5012...) -- empty diffs; abbee115 NOT a git ancestor of ffdc128 (parallel duplicate, attempt-1 L3 re-confirmed)",
+      "commit_times_utc": {
+        "d0992d1": "2026-09-11T14:32:40Z",
+        "2d1989a": "2026-09-11T15:04:11Z",
+        "abbee115": "2026-09-11T15:06:38Z",
+        "ffdc128": "2026-09-11T15:08:54Z",
+        "4be2e1d": "2026-09-11T15:34:58Z"
+      },
+      "verdict": "chain d0992d1<2d1989a<abbee115<ffdc128<4be2e1d HOLDS (lane ancestry + tree identity + timestamps)"
+    },
+    "arm_digests_rerun_from_detached_tree_4be2e1d": {
+      "FXNG1-A5-P1-ANCHOR": "62a4fb6c94a05c4afc8b1c58bceb6900f6ddb996c0e964fde878bda9cb921386 MATCH",
+      "FXNG1-A5-P1-NEIGH-COOPEN": "6bea2efdf9a1187710479dda8ada93b3314871bd976bd4614ea477b4574b90a6 MATCH",
+      "FXNG1-A5-P1-CTL-DGS10LEVEL": "eeb0763976d82181380c60e3ac5ceb4fb51dd2db5df8d936eb0e56ab7b819058 MATCH",
+      "FXNG1-A4-P2-ANCHOR": "8282baa103587f805e569442bcaf948a8ffdcfeb430faa57440685e527f5fa62 MATCH",
+      "FXNG1-A4-P2-NEIGH-SMOOTH2": "3ed530106115748cb70c0ebc801c90b6f2370eba3ddccaf3290cb8f2296a42cc MATCH",
+      "FXNG1-A4-P2-CTL-DGS10LEVEL": "b549e17178991e08b971d5924df423a8cf7dc9a6657c0a1363d4d6916c5a585f MATCH",
+      "FXNG1-A5-P1-CTL-V7RECAP_now_recorded_in_run_contract": "5d11a0c98523f942cc734674a51eb7f1102e6d466012aab0c2b5ab30f1b40513 RECOMPUTED BY A7 == RECORDED (attempt-1 M1 digest-recording gap closed)",
+      "pairwise_distinct": true
+    },
+    "dry_run": "NOT re-executed this attempt; carried from attempt-1 full re-run (DRY_RUN_CLEAN at ffdc128, 7/7 output files byte-identical to committed, 9/9 structural counts exact) on the proven basis that git diff ffdc128..4be2e1d touches NO dry-run input (code/config/proposals/pins) and NO dry-run output artifact.",
+    "freeze_before_outcome": {
+      "recursive_key_scan_committed_control_tree": "172 JSON files scanned at every depth for pnl/expectancy/profit_factor/drawdown/sharpe/win_rate/payoff/gross/net/breakeven/stress key families: 9 hits, ALL benign negative declarations (run_contract real_pnl=false + pnl_anywhere=false; attempt-1 audit real_pnl=false; z_dryrun_report real_pnl=false; d2 no_expectancy_law; v2 shadow pnl_leak_scan declaration; v3 terminal scored_pnl=0 boundary; v16 audit no_pnl_fields=true). No outcome number exists anywhere pre-E at 4be2e1d.",
+      "evaluator_and_gate_call_sites": "compute_outcomes and require_scored_authority exercised ONLY by tests of the refusing paths (plus one synthetic-proof PASS test at tests/test_forex_ng1_p1spot.py:313 using scored_consumption == 'AUTHORIZED') -- no scored invocation anywhere in the tree."
+    },
+    "data_pins": {
+      "spot_pin_manifest": "4/4 pairs re-verified byte-exact against copy_path_absolute bytes: GBPUSD/USDCAD/AUDUSD/NZDUSD, copy sha256 == source sha256 == manifest entry, 5000 bars each",
+      "announcement_census": "p0_announcement_census.json sha256 e8a35d23... MATCH",
+      "grid_census": "spot_grid_census.json sha256 42612576... MATCH (1842 days)",
+      "dgs10_chain_and_cpi": "pin references 03dde429 (DGS10 manifest chain c8ae7877->03dde429) and 07d1e0d5 (CPI CADS object) present in committed run_contract + ctl_dgs10_pin + z_dryrun_report at 4be2e1d; bytes themselves verified to source in attempt-1 and untouched by the 4-file remediation diff"
+    },
+    "governance": {
+      "registry_row_root": "FOREX-NG1 lifecycle=ACTIVE_LIGHT head=4be2e1d2d1716bc4c15a0d5260ab4bf7c86f8e30 budget 0/6 s1=SEALED_UNTOUCHED go_phrase='GO FOREX NG1 SCORED EXECUTION' go_phrase_state=REGISTERED_NOT_CONSUMED updated_at_utc=2026-09-11T15:35:09Z (root plans/CYCLE_REGISTRY.json -- writable authority)",
+      "event_log": "5 events: CYCLE_BOOTSTRAP 12:25:18Z, SPOT_AUTHORITY_RULING 13:37:24Z, SELECTION_FROZEN 15:05:00Z, A1_ADJUDICATION 15:08:54Z, A7_H1_REMEDIATION 15:34:58Z; NO GO event; remediation event timestamp == commit timestamp",
+      "plan_sec0": "standing GO delegation present and conditioned on THIS audit publishing FOREX_NG1_S0_LAUNCH_AUTHORIZED with zero unresolved HIGH/CRITICAL; A7 REFUSED => no GO (correctly not yet consumed)"
+    },
+    "attempt1_audit_integrity": "the attempt-1 artifact committed at 4be2e1d is byte-identical to the file in the integration worktree (sha256 03a6b6ff9085775fceebc1de861ca7699b10d419903a9f04631d7771b9e783cf); integration worktree clean at 4be2e1d prior to this audit's file write"
+  },
+  "new_blocker_hunt": {
+    "terms_fabrication": "NONE -- remediation honestly records terms_url=None / no written terms anywhere, preserving attempt-1's disclosure",
+    "authorization_after_peeking": "NO -- flip committed 15:34:58Z, before GO (unconsumed), before E; only dry-run (sanitized) and no scored number exist",
+    "evidence_mutation": "NO -- parsed-JSON diff of the proof shows only two ADDED keys; no pre-existing field altered",
+    "gate_bypass_path": "NONE FOUND -- no code reads the new top-level key; both fail-closed layers (require_scored_authority, compute_outcomes) still refuse; the failure mode is remaining-locked, not unlocked",
+    "medium_low_escalation_check": "A7-NG1-M1 examined against the remediated run contract: digest now recorded and verified correct (escalation ground removed); residual stale-arms-list risk stays MEDIUM. A7-NG1-M2 re-read against run contract + proposals at 4be2e1d: cost contract untouched, proxy conservative, stays MEDIUM. No LOW escalates."
+  },
+  "assumption_audit": "Fresh-context attempt-2; no implementer input accepted or sought. Recomputed from bytes: the gate itself was EXECUTED from the detached tree (not inferred from reading), arm digests re-run including CTL-V7RECAP, spot pins re-hashed 4/4, census digests re-hashed, outcome-key scan re-run over 172 files, registry/event-log/state read directly, delegation quote grepped to its physical source in PLAN_crypto_ng1.md sec0, proof diff checked at parsed-JSON level, and attempt-1's committed artifact hash-verified. Where attempt-1's full byte-verification is carried over (DGS10/CPI source bytes, dry-run outputs), the carry-over is justified by the 4-file diff being disjoint from those paths -- verified by --name-only, not assumed. What would change my verdict: a committed artifact update setting authority_status.scored_consumption (the block the gate reads) to the exact string 'AUTHORIZED' -- with the recorded basis retained and the internal contradiction resolved -- would leave zero unresolved HIGH/CRITICAL and this office would authorize without a technical-chain re-run. One file was written by this audit (this one); detached tree /tmp/a7p2_forex_ng1 removed after writing.",
+  "required_for_authorized": [
+    "1. Re-execute the H1 flip WHERE THE GATE READS: in research/control/forex_ng1_run/p1_spot/spot_authority_proof.json set authority_status.scored_consumption = 'AUTHORIZED' (exact string, inside the authority_status block, per spot_series.py:367-368 and the artifact's own owner_decision_required prescription), keeping the authority_enforcement block/basis/terminal-disclosure obligations; resolve the internal contradiction (verdict line + status fields still say NOT authorized) explicitly; commit BEFORE the GO key is typed and append the matching event. No re-run of the technical chain required.",
+    "2. Confirm the E path derives compute_outcomes' spot_authority from require_scored_authority()'s returned block (== 'AUTHORIZED' after fix 1) -- compute_outcomes' exact-match check (accounting.py:74) fails otherwise; with fix 1 in place this is satisfied by construction, but E must actually pass it rather than a literal.",
+    "3. Carry attempt-1 required items 2-3 into E and terminal: E dispatch binds to the a1_adjudication mapping (arms list superseded at reproduction, M1 residual); terminal report surfaces TD-outside-plan-sec3 tension, Q-8 cost proxy deviation, and the LOW bookkeeping items (state.json phrase variant, lane/trunk duplicate shas, frozen_at bookkeeping, nested worktree path, L5 quote citation)."
+  ]
+}
