@@ -1,0 +1,83 @@
+{
+  "artifact": "p1_contract_freeze",
+  "schema": "zcode_orchestration_v3_contract@1",
+  "frozen_at_utc": "2026-09-11T01:20:00Z",
+  "base_sha": "356ceb1",
+  "references": ["plans/PLAN_zcode_orchestration_v3.md", "research/control/ZCODE-ORCHESTRATION-V3/orchestration/p0_capability_report.json"],
+  "plugin_layout": {
+    "root": "plugins/quant-research-orchestrator/",
+    "manifest": ".zcode-plugin/plugin.json (ONLY required file; mcpServers declared here — design delta D1, no .mcp.json)",
+    "agents": ["agents/quant-explorer.md", "agents/quant-implementer.md", "agents/quant-reproducer.md", "agents/quant-auditor.md"],
+    "commands": ["commands/lead-start.md", "commands/lead-status.md", "commands/lead-resume.md", "commands/lead-close.md"],
+    "skills": ["skills/controller-loop/SKILL.md", "skills/dispatch-packet/SKILL.md", "skills/structured-handoff/SKILL.md"],
+    "hooks": "hooks/hooks.json (auto-discovered; plugin enable state governs execution)",
+    "scripts": ["scripts/orchestrator_store.py", "scripts/mcp_server.py", "scripts/hook_session_start.py", "scripts/hook_pre_tool.py", "scripts/hook_post_agent.py", "scripts/hook_stop.py"]
+  },
+  "runtime_vs_committed": {
+    "gitignored_runtime": ".runtime/orchestrator_v3/ (tasks.json, events.jsonl, heartbeats/, inbox/, current_dispatch.json)",
+    "committed_evidence": "research/control/ZCODE-ORCHESTRATION-V3/orchestration/ (dispatch_manifest.json, handoffs/*.json, integration_events.jsonl, terminal_reconciliation.json, phase reports)"
+  },
+  "task_schema": "zcode_orch_v3_tasks@1",
+  "task_fields": ["task_id", "cycle_id", "role", "objective", "created_utc", "updated_utc", "parent_controller_id", "status", "dependencies", "priority", "workload_class", "base_sha", "branch", "absolute_worktree", "allowed_paths", "forbidden_paths", "required_inputs", "required_outputs", "test_commands", "stop_conditions", "background_allowed", "zcode_invocation_id", "heartbeat_utc", "pid", "attempts", "max_attempts", "handoff_path", "blocker", "terminal_reason"],
+  "task_states": ["REGISTERED", "READY", "DISPATCHED", "RUNNING", "HANDOFF_READY", "VALIDATING", "INTEGRATED", "REJECTED", "BLOCKED", "TECHABORT", "TERMINAL"],
+  "transitions": {
+    "REGISTERED": ["READY"],
+    "READY": ["DISPATCHED"],
+    "DISPATCHED": ["RUNNING"],
+    "RUNNING": ["HANDOFF_READY"],
+    "HANDOFF_READY": ["VALIDATING"],
+    "VALIDATING": ["INTEGRATED", "REJECTED", "BLOCKED", "TECHABORT"],
+    "INTEGRATED": ["TERMINAL"],
+    "REJECTED": ["TERMINAL"],
+    "BLOCKED": ["TERMINAL"],
+    "TECHABORT": ["TERMINAL"],
+    "TERMINAL": []
+  },
+  "transition_rules": [
+    "no backward transition, ever",
+    "retry = a NEW attempt record on the same task (task status does not move backward); a full re-dispatch after terminal failure = a NEW task_id",
+    "every applied transition appends one event to .runtime/orchestrator_v3/events.jsonl (append-only, never rewritten)",
+    "every write goes through governance.atomic_io.atomic_write_json (validate -> tmp -> fsync -> rename -> read-back) with a CAS on the previous content sha256"
+  ],
+  "handoff_schema": "zcode_orch_v3_handoff@1",
+  "handoff_fields": ["task_id", "cycle_id", "role", "lane", "dispatch_sha", "actual_start_sha", "commit_sha", "changed_paths", "tests", "authority_claims", "known_limitations", "incidents", "tree_status", "workers", "outputs", "recommended_next_action"],
+  "handoff_rules": [
+    "chat prose is advisory; the handoff JSON + git state are the only authority",
+    "a handoff whose dispatch_sha != actual_start_sha is INVALID (refused at validation)",
+    "validation re-measures git (commit exists, changed paths within allowed_paths) and test evidence; missing evidence is NOT_RUN, never inferred PASS"
+  ],
+  "agent_role_permissions": {
+    "quant-explorer": {"tools": ["Read", "Grep", "Glob", "WebSearch", "WebFetch"], "notes": "no edits, no Bash, no git mutation, no authority decisions; Explore does NOT inject AGENTS.md so its packet carries the boundary inline"},
+    "quant-implementer": {"tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"], "notes": "one worktree, one ownership manifest, one focused commit; never merge/rebase/push/ledger/registry/other lanes; publishes structured handoff before return"},
+    "quant-reproducer": {"tools": ["Read", "Grep", "Glob", "Bash"], "notes": "detached tree + frozen inputs only; cannot repair or reinterpret tolerances; emits ALL_MATCH|MISMATCH|NOT_RUN"},
+    "quant-auditor": {"tools": ["Read", "Grep", "Glob", "Write"], "notes": "fresh-context A7; reads frozen claim/evidence; writes audit namespace only; cannot fix code, weaken gates or select a convenient verdict"}
+  },
+  "frontmatter_contract": "camelCase, case-sensitive: name, description (required), tools, disallowedTools, maxTurns, model (omit = inherit), injectAgentsMd (default true), color",
+  "mcp_contract": {
+    "transport": "stdio JSON-RPC 2.0, declared under mcpServers in .zcode-plugin/plugin.json (D1)",
+    "server_name": "orchestrator",
+    "tools": ["orchestrator_intake", "orchestrator_register_task", "orchestrator_list_ready", "orchestrator_mark_dispatched", "orchestrator_heartbeat", "orchestrator_publish_handoff", "orchestrator_validate_handoff", "orchestrator_mark_integrated", "orchestrator_record_blocker", "orchestrator_waiting_summary", "orchestrator_terminal_check"],
+    "rules": [
+      "MCP never calls a model and never spawns ZCode agents; only the primary Lead invokes the Agent tool",
+      "wraps governance.atomic_io + governance.cycle_registry + governance.heavy_lock (never clones them)",
+      "idempotent by task/attempt/digest",
+      "missing/malformed runtime state is CONTROL_STATE_DRIFT, never an empty queue"
+    ]
+  },
+  "hook_contract": {
+    "protocol": "one-line JSON on stdin; exit 0 = success (stdout JSON parsed); exit 2 = deny/block; other non-zero = recoverable failure; timeoutMs strict per hook",
+    "session_start": "inject compact generated snapshot (cwd/branch/HEAD/dirty, canonical active cycles, heavy lock, pending handoffs, next ready task, S1/GO boundary); read-only; failure visible, never invents clean state",
+    "pre_tool": "deny destructive/credential/S1/ledger/registry/push/main-merge patterns regardless of context; enforce allowed/forbidden paths only against the active dispatch context in .runtime/orchestrator_v3/current_dispatch.json; require ownership manifest before writable dispatch",
+    "post_agent": "after an Agent/Task tool returns, verify the handoff artifact exists; missing handoff is injected as HANDOFF_INVALID, never inferred success",
+    "stop": "if owned active tasks / unvalidated handoffs / unrun gates remain, decision:block with ONE compact next action; ZCode bounds continuation at 3 — durable recovery remains /lead-resume + task state",
+    "timeout_policy": "session_start 10s, pre_tool 5s, post_agent 5s, stop 5s"
+  },
+  "retry_policy": "max_attempts default 3; a failed attempt appends an attempt record; no automatic infinite retry; TECHABORT after max_attempts",
+  "notification_boundaries": ["owner notified ONLY for: credential/account/license/purchase, S1/scored GO, push/main-merge/deploy, irreconcilable ownership choice, repeated blocker, terminal verdict", "ordinary PASS/FAIL handoffs never require owner relay"],
+  "install_boundary": "single P5 stop point: ZCode UI requires the owner to add the Personal marketplace and click install/enable (enable = code-execution trust). No headless install exists (no zcode CLI on PATH); hand-editing ~/.zcode internal registries is forbidden.",
+  "canary_cases_frozen": {
+    "P6": "two parallel read-only explorer tasks on fixture paths; automatic return; combined report without owner relay",
+    "P7": "two disjoint fixture worktrees, implementer dispatch, sequential integration, targeted tests",
+    "P8": "reproducer then independent auditor; one deliberately bad handoff (dispatch_sha mismatch) must be REFUSED; valid handoff closes"
+  }
+}
