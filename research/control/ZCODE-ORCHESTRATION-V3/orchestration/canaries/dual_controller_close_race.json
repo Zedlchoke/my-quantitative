@@ -1,0 +1,20 @@
+{
+ "schema": "zcode_orch_v3_canary_result@1",
+ "gate": "architecture guard (plan sec 2.1 one-primary-Lead) - SECOND live occurrence, during /lead-close",
+ "measured_at_utc": "2026-09-11T03:12:00Z",
+ "incident": "DUAL_LIVE_CONTROLLER_CLOSE_RACE",
+ "narrative": "The owner invoked /lead-close in the fresh resume session (this one) while the ORIGINAL Lead session (writer of the 01:34-02:38Z canary campaign, self-identified in terminal_close.json as 'Lead (original session)') executed the same close-out items in parallel. Foreign commits: e5d67ed (09:38:18 local, plugin 0.1.0->0.1.1 label bump), d59421f (10:04:02, orchestration/terminal_close.json), 6c27f3b (10:04:23, registry -> TERMINAL @ head 8efc5f4). This session's commits: 8efc5f4 (10:00:07, P9+A7 evidence; message mis-cited 'e5d67ed' for A7 due to this session misreading the foreign bump as its own prior commit - correction recorded in terminal_reconciliation.json) and c102d84 (10:07:39, full close evidence bundle + store TERMINAL transitions materialized 03:03:09Z).",
+ "collision_analysis": {
+  "store": "single writer for the TERMINAL transitions (this session, 03:03:09Z); a second mark_terminal pass would have failed IllegalTransition TERMINAL->TERMINAL - none occurred",
+  "registry": "transitioned to TERMINAL exactly once (6c27f3b, foreign); this session's pending registry write was ABORTED on detection; head re-pinned canonically afterwards to the final evidence commit",
+  "files": "disjoint - foreign wrote terminal_close.json (new file) + registry; this session wrote terminal_reconciliation.json (supersede), handoffs/ + MANIFEST, dispatch_manifest.json, integration_events.jsonl; zero overwrites in either direction",
+  "verdicts": "CONVERGED - both closes independently recorded ZCODE_ORCHESTRATION_V3_PASS_AUTONOMOUS_HANDOFF_CANARY with all gates Z3-G0..G10 PASS and the same disclosed limitations (STOP-CAP-1, remediation arc)"
+ },
+ "residuals_reconciled_by_this_session": [
+  "registry head 8efc5f4 -> final close-evidence commit (canonical researchctl re-pin)",
+  "terminal_reconciliation.json repo_head_at_report corrected: e5d67ed (foreign plugin-bump, mis-cited) -> 8efc5f4 (this session's P9/A7 evidence commit)",
+  "terminal_close.json 'supersedes terminal_reconciliation.json' pointer now resolves to the superseding terminal version committed in c102d84 (both files retained as concurrent evidence of the same verdict)"
+ ],
+ "root_cause_and_prevention": "Same as occurrence #1 (canaries/dual_controller_incident.json): two live Lead sessions, owner-invoked close in the fresh session while the original session completed its pending close-out list. Prevention remains owner-side: exactly one live Lead session per cycle. The plugin's store/registry CAS kept both convergent closes from corrupting anything; nothing below the architecture guard was relied upon.",
+ "disposition": "recorded; cycle closes TERMINAL with this incident disclosed in terminal_reconciliation.json incidents[]"
+}
