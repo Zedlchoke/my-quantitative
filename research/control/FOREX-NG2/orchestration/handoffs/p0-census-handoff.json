@@ -1,0 +1,105 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "forex-ng2-p0-census",
+ "cycle_id": "FOREX-NG2",
+ "role": "quant-implementer",
+ "lane": "p0",
+ "dispatch_sha": "c5e52bbfedfcd3b2f9d99f3c1466290283b45902",
+ "actual_start_sha": "c5e52bbfedfcd3b2f9d99f3c1466290283b45902",
+ "commit_sha": "65a113e98db1085e694691efa5f12d1748d6bff6",
+ "changed_paths": [
+  "research/assets/forex_ng2/__init__.py",
+  "research/assets/forex_ng2/revision_series.py",
+  "research/control/forex_ng2_run/p0_run.py",
+  "research/control/forex_ng2_run/p0_revision_census.json",
+  "research/control/forex_ng2_run/p0_gate.json",
+  "tests/test_forex_ng2_p0.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_forex_ng2_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "17 passed (revision detection hand-computed; third-vintage non-event; no-evidence v2 excluded; strict monotonicity fail-closed incl. conflicting same-day rows; exact-duplicate dedupe vs conflict; fabricated-month canaries; window usability; first-print-era flag; cross-economy differential months; magnitude quartiles; floor evaluation honest-fail/boundary; Q-6 recent bounds; /tmp synthetic vintage file end-to-end; non-positive index fail-closed)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/forex_ng2_run/p0_run.py --pytest-exit 0 --pytest-log /tmp/forex_ng2_p0_pytest.log",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "gate runner exit 0; verdict field BLOCKED_DATA (honest floor outcome, not a runner error): all inherited pin re-verification sections PASS, revision census built, canaries PASS, own-economy floor FAIL for AU"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "GATE VERDICT IS BLOCKED_DATA: the frozen plan section 5 floor (>=30 usable own-economy revision events per pair-anchor economy) is NOT met for AU (26 usable events, margin -4). Per plan section 2 ('the cycle dies in P0 before any proposal is requested') this is the honest terminal; floors were frozen before measurement and were not renegotiated post-hoc.",
+  "Origin mix disclosure (census bulk_re_referencing_disclosure): GB's 68 usable events include 60 from ONE 2018-04-06->2018-05-24 re-referencing multiplier (identical ratio across months); GB's first-print-era usable stream is only 8 events and 0 in the Q-6 recent 24 months. CA is the strongest live stream (72 first-print usable, 30 in recent-24m, 13 bulk); NZ 24 first-print usable, 25 recent-24m, 20 bulk; AU 24 first-print + 2 backfill = 26.",
+  "US realtime archive measured NOT a structural zero: 84 usable events with small magnitudes clustered on archive re-pull days (12/year 2019-2025). US is the quote leg of every funded pair (no own pair) and is disclosed non-anchor; it still participates in the cross-economy differential month count.",
+  "Cross-economy differential months = 102 (>=2 economies with usable events on the obs-month key per the frozen packet definition); 28 of these are ancient reference months (1955-1959) whose v2 availability fell inside the S0 window during the 2018 feed warm-up; recent-era differential months (obs month 2017+) = 74.",
+  "US archive carried 481 byte-identical duplicate vintage rows (106 months, final-vintage double-listing): deduplicated as a disclosed ingest artifact; CONFLICTING same-realtime_start rows (different window/value) still raise fail-closed (zero measured). GB/CA/AU/NZ carried zero duplicates.",
+  "Plan section 3 said '96 vintages' for GB/CA; measured 97 distinct realtime_starts (incl. 2017-01-01 and 2017-01-03) -- recorded as a plan-text approximation; the pin law (CADS address + manifest digests) verified exactly.",
+  "Dispatch said 'address 07d1e0d5 + 3 archive legs'; the pinned S3 ledger carries FIVE entries and all five were re-verified via consume_via_plane (superset, nothing skipped).",
+  "Spot raw bytes are UNTRACKED pinned copies in the ng1 pin-lane dir (.worktrees/forex-ng1/p1-spot/data_raw/forex_ng1_spot/); the runner derives that data_dir from the committed manifest's copy_path_absolute entries; file names and sha256s always come from the committed manifest (verify-on-read).",
+  "DGS10 chain verified across V8 run-contract witnesses (c8ae7877), staged manifest witnesses, manifest DGS10 entry (03dde429), V8 source bytes, and the ng1 untracked copy -- all bytes identical.",
+  "Plan section 6 carried disclosures: single-cycle MCP store carries cycle_id ZCODE-ORCHESTRATION-V3 at store level for FOREX-NG2 tasks (store-level cycle mislabel disclosed); subagent Flash pin 35ce190 disclosed.",
+  "No PnL, no outcome, no scoring, no outcome-leaking computation anywhere in this lane (P0 census law); magnitude distributions are descriptive only."
+ ],
+ "incidents": [],
+ "tree_status": "clean at commit 65a113e98db1085e694691efa5f12d1748d6bff6 (branch orca/forex-ng2-integration); handoff file itself committed in a second commit on the same branch",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/forex_ng2_run/p0_gate.json",
+   "sha256": "72b8d9c73f3619433d9897a173ab429bdf02006563b70af7950c683d7ef73bf8",
+   "note": "FOREX-NG2-P0 gate: verdict BLOCKED_DATA; all inherited pin re-verification sections PASS; blocker = AU own-economy floor 26 < 30"
+  },
+  {
+   "path": "research/control/forex_ng2_run/p0_revision_census.json",
+   "sha256": "8e8357865592a3efa4c1ab8ce811d24b1a16f76bd1586249a3dfcbea8fdbc295",
+   "note": "revision-event census artifact (per-leg counts/splits/by-year/recent-24m/magnitudes, cross-economy differential, bulk re-referencing disclosure, canaries, floors)"
+  },
+  {
+   "path": "research/assets/forex_ng2/revision_series.py",
+   "sha256": "d522c18c36fc25505b77cc2252c93eb188f47b4b3c2f40cd562ebf992178fa38",
+   "note": "new NG2 module: first-to-second-vintage revision event builder (reused by D2/D1 later); ng1 assets untouched"
+  },
+  {
+   "path": "research/assets/forex_ng2/__init__.py",
+   "sha256": "008996869dcd161887cb98bfcefaa2454a92601adb47ba8a7a728a6fcf7394df",
+   "note": "NG2 assets namespace (new modules only; inheritance law docstring)"
+  },
+  {
+   "path": "research/control/forex_ng2_run/p0_run.py",
+   "sha256": "c8921a49ee09b1397611b40ce3843925d1901fa65c1d7120b97a6fecc70af79e",
+   "note": "P0 runner: inherited pin re-verification + census + canaries + frozen floors + gate publish"
+  },
+  {
+   "path": "tests/test_forex_ng2_p0.py",
+   "sha256": "750cfbc75dcad4e158a46be8a51a7e6b99a13d54d72a57410bbfe8f1c5ce4f96",
+   "note": "17 hand-computed fixture tests (in-memory + /tmp synthetic vintage file)"
+  }
+ ],
+ "recommended_next_action": "Controller/owner: P0 measured the frozen floor NOT met for AU (26 usable events < 30; GB/CA/NZ pass; cross floor passes 102 >= 12). Per plan section 2 the honest terminal is FOREX_NG2_BLOCKED_DATA_OR_SELECTION -- register it, do NOT dispatch D1 under a failed frozen floor. Any continuation (e.g. re-freezing floors with a different AU construction, cumulative multi-vintage events, or dropping AU from the anchor set) is an OWNER decision in a NEW registered plan amendment, not a lane call. Evidence for that decision: even ignoring AU, GB's usable stream is one bulk 2018 re-referencing transition (recent-24m count 0), so own-economy lane feasibility concentrates on CA (72 first-print usable, 30 recent-24m) and NZ (24 first-print, 25 recent-24m); the cross-economy stream is recent-era-alive (74 differential months with obs month >= 2017).",
+ "notes": {
+  "gate_verdict": "BLOCKED_DATA",
+  "blockers": [
+   "own-economy floor NOT met for AU: 26 < 30 (margin -4)"
+  ],
+  "pin_reverification": {
+   "granted_check": "PASS",
+   "s2_repin": "PASS",
+   "s3_repin": "PASS (5/5 entries)",
+   "spot_repin": "PASS (4 pairs + 1842-day grid recompute)",
+   "scored_authority_read": "PASS (AUTHORIZED from committed proof, P-18)",
+   "dgs10_ctl_pin_chain": "PASS",
+   "ng1_census_pin": "PASS (e8a35d23 full-sha match)"
+  },
+  "usable_events_by_economy": {
+   "GB": 68,
+   "CA": 85,
+   "AU": 26,
+   "NZ": 44,
+   "US": 84
+  },
+  "cross_economy_differential_months": 102
+ }
+}
