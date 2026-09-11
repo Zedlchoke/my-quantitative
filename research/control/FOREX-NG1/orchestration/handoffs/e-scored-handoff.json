@@ -1,0 +1,89 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "forex-ng1-e-scored",
+ "cycle_id": "FOREX-NG1",
+ "role": "quant-implementer (lane E scored execution)",
+ "lane": "e",
+ "dispatch_sha": "3dfd278150fa20c0646336b1e5430cf432d903c0",
+ "actual_start_sha": "3dfd278150fa20c0646336b1e5430cf432d903c0",
+ "base_match": true,
+ "commit_sha": "a869a5a5066bc92d590f75f511c6e19a68ee3844",
+ "changed_paths": [
+  "research/control/forex_ng1_run/e/run_scored.py",
+  "research/control/forex_ng1_run/e/cell_FXNG1-A5-P1-ANCHOR.json",
+  "research/control/forex_ng1_run/e/cell_FXNG1-A5-P1-NEIGH-COOPEN.json",
+  "research/control/forex_ng1_run/e/cell_FXNG1-A5-P1-CTL-V7RECAP.json",
+  "research/control/forex_ng1_run/e/cell_FXNG1-A4-P2-ANCHOR.json",
+  "research/control/forex_ng1_run/e/cell_FXNG1-A4-P2-NEIGH-SMOOTH2.json",
+  "research/control/forex_ng1_run/e/cell_FXNG1-A4-P2-CTL-DGS10LEVEL.json",
+  "research/control/forex_ng1_run/e/family_verdicts.json",
+  "research/control/forex_ng1_run/e/execution_ledger.json"
+ ],
+ "tests": [
+  {
+   "command": "scored execution (no unit tests in lane): .venv/bin/python research/control/forex_ng1_run/e/run_scored.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "attempt-2 clean run; per-cell exit codes all 0 (execution.exit_code in each cell artifact); attempt-1 TECHABORT exit 2 recorded in incidents with no outcome influence"
+  },
+  {
+   "command": "digest gate: arm_config_digest of all 6 adjudicated cells vs run_contract.arm_config_digests + a7_recomputed_control_digests.CTL-V7RECAP (verified BEFORE any PnL)",
+   "exit_code": 0,
+   "verdict": "PASS"
+  },
+  {
+   "command": "kernel reconciliation: lane per-trade aggregates vs accounting.compute_outcomes(scored=True, spot_authority from committed proof) -- gross total, net-tier2 total, net-tier2 expectancy exact match on all 6 cells",
+   "exit_code": 0,
+   "verdict": "PASS"
+  },
+  {
+   "command": "structural reconciliation vs committed dry-run record counts: 37/79/380/409/351 exact match (A5 CTL-V7RECAP 154 observed, no committed dry-run count by design; A4 CTL warmup drops 29/380 match ratified disclosure)",
+   "exit_code": 0,
+   "verdict": "PASS"
+  },
+  {
+   "command": "determinism cross-check: attempt-1 vs attempt-2 cell artifacts substantively identical (canonical JSON minus execution timestamps) on all 6 cells",
+   "exit_code": 0,
+   "verdict": "PASS"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "M2 Q-8 COST LADDER DISCLOSURE: all net books use the frozen selection_freeze proxy ladder (1.5 bps/side x {1.0,1.5,2.0}, tier 2.0 PRIMARY, charged once per fill); Q-8 remeasurement from executable quotes is NOT_RUN (no quote bytes in the frozen set); the ladder is conservative vs the V8-measured 1.05bp FX spread, so cost error can only push toward false negatives -- given every anchor expectancy is negative at GROSS as well as net, no cost assumption changes any verdict; must still be surfaced at terminal + P-2 margin recording",
+  "R6 max_single_event_gross_share is NOT_RUN on both anchor books (total gross <= 0 makes the signed share undefined; fail-closed per freeze, reason recorded; an |event|/total variant is disclosed in each cell artifact) -- this does not affect the terminal outcome since R1/R3/R4/R5 are hard FAILs on both anchors, and the frozen evaluator verdict shows NOT_RUN accordingly",
+  "A5 CTL-DGS10LEVEL was NOT computed (adjudication: non-scored, no PnL) -- the A5 R2/R2' control slots both carry the CTL-V7RECAP scored expectancy, documented in family_verdicts.json r2_mapping",
+  "lane-fixed metric conventions are disclosed in every cell artifact: PnL realized at exit grid day; PF signed-sum with NOT_RUN on zero losers; drop-one-fold = remaining net-tier2 total > 0; event share signed with absolute variant disclosed",
+  "pinned raw bytes live outside this worktree (spot copies at .worktrees/forex-ng1/p1-spot/data_raw, DGS10 at the disclosed nested i-runners worktree path, vintaged CPI staged read-only in the forex-free-v9 integration worktree) -- all sha-verified on read through the frozen loaders; A7-NG1-M3 stale verdict prose in the authority proof carries no mechanical effect",
+  "no unit tests were run in this lane by design (dispatch: scored execution only); the frozen-code test suite belongs to the I lane"
+ ],
+ "incidents": [
+  {
+   "id": "E-DRIVER-ROLE-SWAP-ATTEMPT1",
+   "when_utc": "2026-09-11T16:08:53Z",
+   "detail": "attempt-1 TECHABORT: lane driver bug (family-verdicts per_arm loop bound the ROLE string where the ARM id was expected, KeyError 'anchor'). All 6 cell computations and cell artifacts completed before the crash; family_verdicts + final ledger were not written; heavy lock released with status TECHABORT (history row present). No outcome number influenced the failure; no rescue, no threshold change, no frozen-code edit. Remediation: driver tuple fixed; attempt-2 full deterministic recompute (exit 0, lock FINISHED); attempt-1 cell files preserved under /tmp/forex_ng1_e_attempt1 and cross-checked substantively identical to attempt-2 outputs (determinism evidence in execution_ledger.determinism_cross_check)."
+  }
+ ],
+ "tree_status": "clean after substance commit a869a5a (this handoff adds the second commit)",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/control/forex_ng1_run/e/cell_FXNG1-A5-P1-ANCHOR.json", "sha256": "745778d0305dbd60feac07ef08ac6a6f3b6d93a6a9fe22bfac55eca90dd95ccb"},
+  {"path": "research/control/forex_ng1_run/e/cell_FXNG1-A5-P1-NEIGH-COOPEN.json", "sha256": "88783bbfd343b2aeb4c4fc519219d3d88fde0c6594bb415a5b5ad2c1863cada0"},
+  {"path": "research/control/forex_ng1_run/e/cell_FXNG1-A5-P1-CTL-V7RECAP.json", "sha256": "2aa52275e48fb50462f5af378c117959dc73c6c4537c4f80a9b520659c7f127e"},
+  {"path": "research/control/forex_ng1_run/e/cell_FXNG1-A4-P2-ANCHOR.json", "sha256": "268948f3f6aea778479dbdb3149d149040dee801eab2bfe6bb9b679fa2351985"},
+  {"path": "research/control/forex_ng1_run/e/cell_FXNG1-A4-P2-NEIGH-SMOOTH2.json", "sha256": "f2b5c709478ac9fefe70f0af19017a12132bd589824df1fb1a381e1ad16b34ce"},
+  {"path": "research/control/forex_ng1_run/e/cell_FXNG1-A4-P2-CTL-DGS10LEVEL.json", "sha256": "056b6642fe4de5d19dd7aea665bb12fe55eb1b71b490e575dea04e311ca6fc37"},
+  {"path": "research/control/forex_ng1_run/e/family_verdicts.json", "sha256": "dd92fc624fa46dce611710d6afaa37674a22c7f0b8e339c743a0beacf5cc7785"},
+  {"path": "research/control/forex_ng1_run/e/execution_ledger.json", "sha256": "9e524f4ffa5f6896ce7f14c359cc57253de5616e20a46e97acf0233fbfbdd755"},
+  {"path": "research/control/forex_ng1_run/e/run_scored.py", "sha256": "bb3242f3625becf18e2af13917b209162c011a6a4d9173e616063c26b84461f7"}
+ ],
+ "result_summary": {
+  "budget": "6/6 adjudicated cells scored and published; observed 6 == expected 6; unused slots never reassigned",
+  "FXNG1-A5-P1": "STAGE A DEAD: anchor net-tier2 expectancy -9.81 USD/trade (PF 0.827, folds +118.40/-13.93/-47.57); R1/R3/R4/R5 FAIL; R2 PASS (CTL-V7RECAP -11.05 does not reproduce the anchor); R6 NOT_RUN (total gross <= 0); neighbour COOPEN -23.67 worse",
+  "FXNG1-A4-P2": "STAGE A DEAD: anchor net-tier2 expectancy -6.63 USD/trade (PF 0.883, folds -8.02/-14.98/+2.67); R1/R2/R3/R4/R5 FAIL -- R2 falsification confirmed: CTL-DGS10LEVEL nominal control +4.13/trade OUT-EARNS the anchor (V8 law); R6 NOT_RUN; neighbour SMOOTH2 -3.92 also fails",
+  "survivor_determination": "NO family passes all R1-R6 -> NO PROVISIONAL_STAGE_A_SURVIVOR; S1 stays SEALED_UNTOUCHED; no rescue attempted (GO consumed, numbers final)",
+  "cost_sensitivity_note": "both anchors are negative at GROSS (A5 -140.85 USD total, A4 -2519.69 USD total), so no admissible cost assumption alters any verdict"
+ },
+ "recommended_next_action": "Controller: record FOREX-NG1 Stage-A terminal state (both families dead, 0 survivors, budget 6/6 consumed, GO consumed at 3dfd278) and route to the terminal/consistency pass -- surface at terminal: A7-NG1-M2 Q-8 cost-ladder disclosure (verdicts gross-negative, cost-independent), A7-NG1-M1R stale arms-list prose now superseded by this lane's adjudication-bound artifacts, A7-NG1-M3 authority-proof prose, and the attempt-1 driver TECHABORT incident chain (determinism proven). No further scored computation on this cycle; do not re-open S1.",
+ "s1": "SEALED_UNTOUCHED",
+ "lock": "machine-wide heavy lock acquired (FOREX-NG1/E_SCORED), heartbeats between cells, released FINISHED after the run; workers 0 at handoff time"
+}
