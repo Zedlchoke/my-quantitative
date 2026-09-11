@@ -1,0 +1,190 @@
+{
+  "schema": "forex_ng1_run/d1_proposal@1",
+  "cycle_id": "FOREX-NG1",
+  "task_id": "forex-ng1-d1-a4-proposals",
+  "lane": "d1-a4",
+  "hypothesis_id": "FXNG1-A4-P1",
+  "title": "Seasonal-naive CPI print-deviation late-window drift (vintaged first prints, PIT-gated entry, daily 16:00-NY grid)",
+  "blindness_declaration": {
+    "outcome_blind": true,
+    "statement": "Written with ZERO outcome exposure: no scored/PnL/smoke/novelty numbers for this cycle were read; no backtest executed. Only timing, availability, coverage and count evidence from the pinned P0 census/gate was consumed.",
+    "frozen_before_any_outcome": true
+  },
+  "mechanism": {
+    "story": "A CPI first print that deviates from the publicly computable seasonal-naive continuation of the vintaged index carries fresh inflation news. Policy-path repricing for small-open-economy CPI (GB/CA/AU/NZ) and for US CPI is not completed instantly by the marginal dealer; it diffuses through real-money accounts, benchmark rebalancers and corporate hedgers whose dealing windows are periodic, and through market-maker inventory absorption that unwinds over days to weeks.",
+    "forced_or_late_participant": "Forced/late participants: (i) benchmark- and index-tracking FX books that must rebalance after the rate-path repricing only at their scheduled dealing windows; (ii) corporate hedgers with standing calendar-based fixings; (iii) THIS LANE ITSELF is a declared late participant: the vintaged channel only proves the print value a median of 26 days (GB), 26 (CA), 16 (AU), 25 (NZ), 1 (US) AFTER publication, so every non-US entry is necessarily weeks late. The hypothesis is specifically that a measurable fraction of the deviation-conditioned repricing SURVIVES the PIT-provable availability lag plus the holding horizon, after costs.",
+    "why_it_might_exist": "Seasonal-shape deviations are the least-salient form of inflation news: the public's free continuation (apply last year's same-month seasonal ratio to the latest index) is computed by almost nobody in real time, and the vintaged archive itself ingests non-US CPI weeks late. Slow diffusion of low-salience, magnitude-bearing information is the claimed edge source; it is NOT the sign of the release (that class is closed, see ancestry_defense).",
+    "when_it_must_fail": "It must fail (expectancy <= 0 after costs) if the late window is efficient, i.e. if deviation repricing completes within days of publication. It must die by falsification if the identical book is reproduced by a nominal-yield-level exposure (V8 law), by a clock-only (calendar drift) shadow, or by a non-print-day placebo. It dies at D2 if pooled ancestry |rho| > 0.20 vs the full failure inventory (accepted in advance)."
+  },
+  "information_source_and_surprise_construction": {
+    "information_source": "realized vintaged CPI first-print index levels vs a frozen seasonal-naive predictor computed from the same vintaged archive; NO consensus/forecast data anywhere (plan \u00a79).",
+    "predictor": "I_hat_sn(m) = I(m-1) * ( I(m-12) / I(m-13) ), where I(k) is the vintaged index level for month k in the vintage in force at the decision instant (point-in-time read of the vintaged series, never a later revision).",
+    "predictor_name": "seasonal-naive one-step (last-year same-month seasonal ratio applied to the latest vintaged level)",
+    "surprise": "s1 = 100 * ( I_print(m) / I_hat_sn(m) - 1 ), in percentage points of index deviation.",
+    "i_print_source": "vintaged_first_value of the pinned census first-release instant (the value as first carried by the evidenced vintaged channel).",
+    "pit_rule": "All predictor inputs I(m-1), I(m-12), I(m-13) are read as-of the decision instant (the vintage in force then). I_print is the first-release vintaged value. No value that entered its vintage after the decision instant may be read (P-1..P-6 chain; ONE_EVENT_LAG impossible by construction).",
+    "frozen_parameters": {
+      "anchor_threshold_pp": 0.10,
+      "anchor_holding_grid_days": 5,
+      "neighbour_parameterization": "rolling-MAD normalized: z1 = s1 / MAD24, MAD24 = 1.4826 * median(|s1,k - median(s1)|) over the economy's previous first-release surprises, expanding window, minimum 8 prior surprises required to fire; fire iff |z1| >= 1.0; holding 5 grid days",
+      "neighbour_threshold": 1.0,
+      "threshold_selection_basis": "blind frozen priors chosen before any outcome; no tuning permitted after any number is seen (P-15)"
+    }
+  },
+  "universe": {
+    "pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "funded_economy_map": {
+      "GB": {"pair": "GBPUSD", "quoting": "CCY/USD, long = long GBP vs USD"},
+      "CA": {"pair": "USDCAD", "quoting": "USD/CAD, long = long USD vs CAD, therefore long CAD = short USDCAD"},
+      "AU": {"pair": "AUDUSD", "quoting": "CCY/USD, long = long AUD vs USD"},
+      "NZ": {"pair": "NZDUSD", "quoting": "CCY/USD, long = long NZD vs USD"},
+      "US": {"pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"], "quoting": "US print conditions the USD leg of all four pairs; 4 pair-decisions per US event, 1 unit each"}
+    },
+    "direction_law": "s1 >= +threshold => long the funded-economy currency vs USD (GB: long GBPUSD; CA: short USDCAD; AU: long AUDUSD; NZ: long NZDUSD; US: long USD => short GBPUSD/AUDUSD/NZDUSD and long USDCAD). s1 <= -threshold => the mirror. |s1| < threshold => no position. Two-sided by construction: no static currency or dollar bias in the anchor."
+  },
+  "clock": {
+    "decision_grid": "daily 16:00 America/New_York (zoneinfo, DST-correct; 16:00-NY = 20:00Z EDT / 21:00Z EST) on FX trading days; frozen V9 representation",
+    "event_set": "census instants with is_first_release_of_period == true (307 rows), pinned census sha256 e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe; the 16 CA WDS correction instants (ordinals 2-4) are NOT conditioning events",
+    "pit_anomaly_policy": "EXCLUDE first-release instants carrying pit_notes (fail-closed): 1 event, NZ ref 2019-04 pub 2019-07-16 'archive_led_bulletin'. Event set after exclusion: 306.",
+    "availability_bound": "A(e) = 23:59:59Z on operative_vintaged_available_from. Rationale: the print value's evidenced availability is date-granular (FRED/ALFRED realtime_start is a date) even where the publication timestamp is exact (CA 12:30Z evidenced, NZ 10:45 Auckland evidenced), so the conservative end-of-day rule binds on the VALUE leg for every economy.",
+    "entry_rule": "decision day D(e) = first 16:00-NY grid instant strictly AFTER A(e). CONSEQUENCE DECLARED: a same-day 16:00-NY decision NEVER sees a print whose availability bound is that same date (16:00-NY = 20:00/21:00Z < 23:59:59Z) - in particular the same-day 16:00-NY decision does NOT see a US print published that day.",
+    "per_economy_alignment_measured": {
+      "GB": {"publication_evidence": "date-only ONS bulletin calendar -> conservative end-of-day UTC", "value_availability_lag_days_pub_to_operative": {"min": 1, "median": 24, "max": 119}, "entry_day_minus_pub_day": {"min": 2, "median": 26, "max": 120}},
+      "CA": {"publication_evidence": "WDS calendar v3 true-UTC per row (08:30 America/Toronto -> 12:30Z typical)", "value_availability_lag_days_pub_to_operative": {"min": 3, "median": 24, "max": 120}, "entry_day_minus_pub_day": {"min": 4, "median": 26, "max": 121}, "note": "exact publication time is recorded but the date-granular value availability binds the entry clock"},
+      "AU": {"publication_evidence": "date-only ABS release calendar -> conservative end-of-day UTC", "value_availability_lag_days_pub_to_operative": {"min": 13, "median": 15, "max": 105}, "entry_day_minus_pub_day": {"min": 14, "median": 16, "max": 106}},
+      "NZ": {"publication_evidence": "Stats NZ calendar 10:45 Pacific/Auckland -> DST-corrected exact UTC", "value_availability_lag_days_pub_to_operative": {"min": 0, "median": 24, "max": 119}, "entry_day_minus_pub_day": {"min": 1, "median": 25, "max": 120}},
+      "US": {"publication_evidence": "FRED realtime archive first-appearance, date-only -> conservative end-of-day UTC", "value_availability_lag_days_pub_to_operative": {"min": 0, "median": 0, "max": 0}, "entry_day_minus_pub_day": {"min": 1, "median": 1, "max": 3}, "note": "US legs are the freshest entries (next FX grid day); the same-day 16:00-NY decision never conditions on a same-day US print"}
+    },
+    "dst_rule": "zoneinfo America/New_York local->UTC conversion with DST fixtures; NZ/AU publication instants converted with zoneinfo Pacific/Auckland; date-only evidence gets 23:59:59Z",
+    "window": {"s0_start": "2018-04-04", "s0_end": "2025-04-30", "basis": "census s0_window (V9 start inherited; end = last calendar-evidenced non-US print publication with a vintaged realized value); tail-trim law respected, no current-vintage backfill"}
+  },
+  "warmup": {
+    "requirement": "vintaged index history of at least 13 months before each reference month (I(m-1), I(m-12), I(m-13) must exist in the vintage in force at the decision instant)",
+    "neighbour_extra": "MAD24 normalization requires >= 8 prior first-release surprises of the same economy (expanding); earlier events of an economy do not fire the neighbour arm (declared coverage note)",
+    "structural_status": "satisfied: vintaged feeds start 1948-1955, far before the 2018-04 S0 start; warmup is a per-event data-window rule, not a burn-in period"
+  },
+  "features_and_lags": {
+    "features": ["s1 (or z1 for the neighbour) is the ONLY signal feature; no yield, momentum, or price feature enters the signal"],
+    "lags": "vintaged index months m-1, m-12, m-13 relative to reference month m (m-2, m-14 NOT used in P1)",
+    "explicit_non_features": "no consensus/forecast data (no authority exists); no nominal yield level in the signal (yield level appears ONLY inside the mandatory control arm)"
+  },
+  "entry_exit_fills": {
+    "entry": "at the D(e) 16:00-NY grid price of the staged spot series (declared dependency), iff |s1| >= threshold at that instant; 1 unit notional per fired pair-decision (US events: 4 pair-decisions x 1 unit)",
+    "exit": "at the grid instant H = 5 grid days after entry (next grid day if that instant is not a trading day); forced exit at the 2025-04-30 grid instant for positions whose horizon extends past window end (declared tail convention)",
+    "fills": "entry fill and exit fill each executed once at grid prices; positions in the same pair from different events are held independently (no netting), each exiting at its own horizon",
+    "no_lookback_guards": "signals computed only from information PIT-available at D(e); the frozen validator refuses any fill whose conditioning value postdates the decision instant (V3 lesson encoded)"
+  },
+  "costs": {
+    "model": "measured FX spread per pair at stress tier, charged once per fill (entry and exit are separate fills); never vendor-stated",
+    "authority": "Q-8 re-measured constants to be published by the P1 lane in this cycle; at proposal time NOT_YET_MEASURED => declared dependency; if P1 constants are absent at D2/implementation, cost verdict is NOT_RUN (fail-closed), never an assumed spread",
+    "reference": "plans/PLAN_forex_ng1.md \u00a75 (Q-8: FX spread measured); V8/V9 dual-book kernel inherited at P1"
+  },
+  "arm_battery": [
+    {
+      "arm": "anchor",
+      "name": "FXNG1-A4-P1-ANCHOR",
+      "config": "s1 seasonal-naive deviation, |s1| >= 0.10 pp, direction per direction_law, H = 5 grid days",
+      "role": "the hypothesis"
+    },
+    {
+      "arm": "neighbour",
+      "name": "FXNG1-A4-P1-NEIGH-MAD24",
+      "config": "z1 = s1 / MAD24 (expanding, min 8 prior surprises, 1.4826-consistent MAD), |z1| >= 1.0, same direction law, H = 5 grid days",
+      "role": "different parameterization of the surprise (scale-free thresholding vs raw pp); if the neighbour out-earns the anchor the frozen parameterization is not mechanism-bearing (V8 R2 standard)"
+    },
+    {
+      "arm": "nominal_exposure_control",
+      "name": "FXNG1-A4-P1-CTL-DGS10LEVEL",
+      "config": "identical event days, pairs, horizons and 1-unit magnitudes as the fired anchor book, but direction carries ONLY a nominal-yield-level exposure with print conditioning removed: sign = +1 (long funded currency vs USD; for US events long USD in all four pairs) iff the DGS10 level as-of D(e) (vintaged S2) is below its trailing 252-grid-day median, else -1",
+      "role": "V8 LAW MANDATE: if this control reproduces the anchor (same-sign expectancy >= 0.5x anchor), the CPI-deviation book is a nominal-yield-level exposure in new words => family dead (falsification-by-control cluster #14 law)"
+    },
+    {
+      "arm": "clock_only_shadow",
+      "name": "FXNG1-A4-P1-SHADOW-CLOCK",
+      "config": "identical event days, pairs, horizons, magnitudes as the fired anchor book, but direction = constant +1 (always long the funded currency vs USD; for US events always long USD in all four pairs); zero information content",
+      "role": "Q-7 clock-only shadow: isolates pure calendar-clock + static-drift exposure; reproduces the anchor (same-sign >= 0.5x) => the clock explains it => dead"
+    },
+    {
+      "arm": "placebo_non_print_days",
+      "name": "FXNG1-A4-P1-PLACEBO-SHAM7D",
+      "config": "sham calendar = every fired anchor event day shifted +7 calendar days; if the shifted day collides with a real fired event day of the same pair, shift again +7 (max 4 attempts, else drop); direction = the SAME surprise sign as the source event (stale information, no new print occurs); same horizon, magnitude, fills and costs",
+      "role": "V5/V6 house-standard sham-calendar placebo on non-print days; reproduces the anchor (same-sign >= 0.5x) => entry timing carries no print information => dead"
+    }
+  ],
+  "representation_identity": {
+    "p12_statement": "representation identity is measurement identity (P-12, V9 origin); this table is the frozen identity from which the arm_config_digest is derived; code AND representation commit before any number is cited",
+    "representation_id": "forex_ng1_a4_p1_daily1600ny_vintaged_cpi_seasonalnaive_deviation_v1",
+    "identity_fields": {
+      "grid": "daily 16:00 America/New_York FX-trading-day grid, zoneinfo DST",
+      "event_set": "census first releases (is_first_release_of_period) minus pit_notes rows; census sha256 e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe",
+      "availability": "A(e) = EOD(operative_vintaged_available_from); D(e) = first grid instant strictly after A(e)",
+      "surprise": "s1 = 100*(I_print / (I(m-1)*I(m-12)/I(m-13)) - 1), all inputs vintaged as-of D(e)",
+      "anchor_rule": "|s1| >= 0.10 pp; direction law two-sided; 1 unit per pair-decision; US events 4 pair-decisions",
+      "exit_rule": "H = 5 grid days; forced exit at 2025-04-30 grid instant",
+      "costs": "Q-8 measured stress-tier spread once per fill (P1 dependency)",
+      "window": "2018-04-04..2025-04-30",
+      "series_pins": {
+        "GBRCPIALLMINMEI": "102e027d7b8ac621c7aab0f34a7fc99644d2f676692565f2b119b4b0e502e827",
+        "CANCPIALLMINMEI": "7b225d9f724bd15ca309c1085d5c3812da19b5f7c20f28bbe2e1eb583d9cb2d6",
+        "AUSCPIALLQINMEI": "a42184a0310c0fba7e9243e431047d17753348af53945b1f65d94b715c704e7b",
+        "NZLCPIALLQINMEI": "a06a44eae0a071c807aa65a372b1cab6f786ceb0ce7f5094bb60c8b622455cd5",
+        "CPIAUCSL_rt": "7f18ec982374ce4dfb235f53f001327793df8e1c0077d31206de25aa3455ac94",
+        "DGS10": "S2 granted vintaged class (p0_gate s2_repin; control arm only)"
+      }
+    }
+  },
+  "ancestry_defense": {
+    "v7_reaction_direction_closed": "V7 closed the reaction-direction class (sign-of-release continuation, entry at publication horizon, both sides of the economy boundary). This lane differs structurally: (i) conditioning is a magnitude-bearing deviation vs a frozen naive predictor, NOT the sign of the release; (ii) entry is strictly after PIT-provable vintaged availability (median 26/26/16/25/1 days after publication for GB/CA/AU/NZ/US), a horizon V6/V7 never represented; (iii) two-sided thresholded, no static direction. The distinction is ALSO measured: D2 pooled |rho| <= 0.20 vs the full inventory including the V6 anchor book and V7 books; over the bar => lane dies at D2 (accepted in advance).",
+    "v8_nominal_level_law": "V8 falsification-by-control #14 made a nominal-exposure control MANDATORY on every yield/inflation lane. Carried as CTL-DGS10LEVEL on the identical clock; no nominal yield level enters the signal. If the control reproduces the anchor, the family is dead by law.",
+    "v9_ppp_vetoes": "V9 A5-P1/P2 died as PPP/real-rate LEVEL-misalignment books (rho 0.3034/0.3119 vs the V8 anchor). This proposal carries no PPP, real-rate, or level-misalignment state anywhere; conditioning is event-time, two-sided, deviation-based. D2 rho gate vs the V9 veto books applies.",
+    "v5_sham_calendar_standard": "sham-calendar placebo mandatory for calendar mechanisms; carried as PLACEBO-SHAM7D.",
+    "v3_pit_chain": "P-1..P-6 incident chain honored: conservative end-of-day availability bounds, as-of vintage reads, fill validator refuses any conditioning value that postdates the decision instant.",
+    "v9_high_finding_binding": "non-US legs come ONLY from the vintaged channel (pinned sha256s above); current-vintage revised-in-place tables are FORBIDDEN for GB/CA legs (and all non-US legs)."
+  },
+  "feasibility_declaration": {
+    "census_event_counts": {"GB": 85, "CA": 85, "AU": 23, "NZ": 29, "US": 85, "total_first_releases": 307, "after_pit_exclusion": 306},
+    "in_window_eligible_decision_days": {"GB": 84, "CA": 84, "AU": 22, "NZ": 27, "US": 85, "total_events": 302, "counted_under": "decision day = first Mon-Fri day strictly after operative date, <= 2025-04-30; approximate grid, exact FX calendar owned by the staged series and re-measured at P2/D2"},
+    "pair_decisions_pre_threshold": 557,
+    "expected_fired_entries_estimate": "280-450 anchor entries at a 50-80% threshold pass rate (BLIND prior; P2/Q-6 measures the actual recent-window counts and the frozen decision floor; under floor => lane dies cheap per plan rubric #3)",
+    "known_gaps_declared": [
+      "AU calendar evidence starts 2019-10-30 (pre-2019-10 AU prints have no publication-timestamp evidence and are not counted)",
+      "US instants carry date-only evidence (FRED realtime bytes have no time-of-day)",
+      "CA WDS corrections (ordinals 2-4) exist for some reference months; only ordinal 1 is a conditioning event",
+      "1 NZ first-release instant (ref 2019-04) carries pit_notes archive_led_bulletin and is excluded fail-closed"
+    ],
+    "dependencies_for_feasibility": ["FX spot daily 16:00-NY staged series (DECLARED DEPENDENCY, V9-class keyless; authority proven at P1/D2)", "Q-8 cost constants (P1)", "DGS10 vintaged S2 for the control arm"]
+  },
+  "falsification_rule": {
+    "frozen_rule_order": [
+      "R1 MECHANICAL: anchor after-cost expectancy at stress tier <= 0 => family dead (plain negative); remaining rules moot",
+      "R2 NOMINAL_EXPOSURE (V8 law): CTL-DGS10LEVEL same-sign expectancy >= 0.5x anchor => dead (nominal-yield-level exposure in new words)",
+      "R3 CLOCK_ONLY (Q-7): SHADOW-CLOCK same-sign expectancy >= 0.5x anchor => dead (calendar drift explains it)",
+      "R4 PLACEBO: PLACEBO-SHAM7D same-sign expectancy >= 0.5x anchor => dead (timing-inspecific stale-sign exposure)",
+      "R5 NEIGHBOUR_PARAMETERIZATION: NEIGH-MAD24 expectancy > anchor expectancy => frozen parameterization not mechanism-bearing => dead (V8 z504 standard)"
+    ],
+    "external_gate": "D2 ancestry pooled |rho| <= 0.20 vs full inventory (incl. V8 nominal-level shadow and V9 vetoes), margin recorded (P-2); over the bar => D2 VETO",
+    "no_threshold_moves": "no rule, threshold, or horizon changes after any scored number is seen (P-15); smoke numbers kill + disclose, never select",
+    "expected_failure_interpretation": {
+      "R1_with_clean_controls": "the PIT-late window carries no net deviation drift after costs: the late-participant repricing is complete by the time the print is provably observable. CONSISTENT WITH (not contradicting) the V7 closure - V7 closed entry-at-publication reaction-direction, and this lane could not observe that horizon; a null here licenses NO claim about the publication-instant reaction.",
+      "R2_fires": "the CPI-deviation book is a nominal-yield-level exposure in new words; the V8 law re-fires on the inflation lane exactly as designed.",
+      "R3_fires": "calendar-frequency drift, not print information.",
+      "R4_fires": "stale-sign exposure on wrong days; entry timing carries nothing (V5/V6 standard).",
+      "R5_fires": "the raw-pp thresholding is not mechanism-bearing; scale-free normalization is, and the family still dies (no rescue by re-ranking arms)."
+    }
+  },
+  "data_dependencies": [
+    {"name": "vintaged CPI channels", "authority": "P0-proven vintaged channel (p0_gate.json vintaged_channel_proof PASS; sha256 ec2722857220b475dc5b18221c7c20123e543c3dda17313dd96ab0d053fb8cab)", "series": ["GBRCPIALLMINMEI", "CANCPIALLMINMEI", "AUSCPIALLQINMEI", "NZLCPIALLQINMEI", "CPIAUCSL_rt"]},
+    {"name": "announcement census", "authority": "research/control/forex_ng1_run/p0_announcement_census.json sha256 e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe (re-measured at this checkout)"},
+    {"name": "DGS10 vintaged S2", "authority": "S2 granted class (mandatory control series); control arm only"},
+    {"name": "FX spot daily 16:00-NY", "authority": "DECLARED DEPENDENCY - V9-class keyless spot staging, daily 16:00-NY; P1/D2 will authoritate; this proposal does NOT assert a source"},
+    {"name": "Q-8 cost constants", "authority": "P1 lane re-measured spreads at stress tier; NOT_YET_MEASURED at proposal time"}
+  ],
+  "provenance": {
+    "dispatch_sha": "4d8727b0ec3685d9b1b5e7bb9585e88960d207d9",
+    "actual_start_sha": "4d8727b0ec3685d9b1b5e7bb9585e88960d207d9",
+    "branch": "orca/fng1-d1-a4",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/d1-a4",
+    "written_utc": "2026-09-11",
+    "constraints_honored": ["no consensus/forecast data anywhere", "vintaged-only non-US legs", "nominal-exposure control mandatory", "no backtest executed in this lane", "no keyed FRED API calls"]
+  }
+}
