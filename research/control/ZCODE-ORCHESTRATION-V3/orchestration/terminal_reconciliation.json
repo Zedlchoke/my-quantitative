@@ -1,48 +1,64 @@
 {
   "artifact": "terminal_reconciliation",
   "schema": "zcode_orch_v3_terminal@1",
-  "written_at_utc": "2026-09-11T02:45:00Z",
+  "written_at_utc": "2026-09-11T03:10:00Z",
   "cycle_id": "ZCODE-ORCHESTRATION-V3",
-  "terminal_verdict": "ZCODE_ORCHESTRATION_V3_BLOCKED_PLUGIN_TRUST_INSTALL",
-  "verdict_meaning": "All install-independent phases are complete with passing tests; the next phase requires ONE explicit owner trust/install action in the ZCode UI (the plan's single P5 stop point), which cannot be self-performed: there is no zcode CLI binary, and hand-editing ZCode internal plugin registries is forbidden internal-state manipulation.",
+  "supersedes": "the P5-era report of the same name (verdict BLOCKED_PLUGIN_TRUST_INSTALL, gates G5-G8 NOT_RUN) — superseded because the owner completed all three install actions (merge 6cd33db, plugin reinstall verified live, fresh-session resume) and phases P6-P11 ran to completion. The superseded text remains in git history at its original commit.",
+  "terminal_verdict": "ZCODE_ORCHESTRATION_V3_PASS_AUTONOMOUS_HANDOFF_CANARY",
+  "verdict_meaning": "Every phase P0-P11 executed. The live canary campaign proved the full autonomous loop end-to-end: parallel read-only dispatch with automatic return (P6), disjoint implementation lanes with sequential validated integration (P7), byte-level reproduction plus bad-handoff refusal (P8), and restart recovery from durable state with zero double integration (P9). The canaries caught three real store defects (STORE-FLOW-1/2/3) and one real production race (dual live controller); all were fixed in 2ebf5c2 and re-verified live through the reinstalled MCP. Independent fresh-context A7: PASS_WITH_FINDINGS, zero HIGH/CRITICAL. Remaining limitations are LOW/MEDIUM and disclosed below; none is gate-blocking.",
   "version_pins": {
     "zcode_app": "3.10.2 (build 3.10.2.6414)",
-    "repo_head_at_report": "see registry record head / branch tip",
-    "python": ".venv/bin/python (repo venv)",
-    "plugin": "quant-research-orchestrator 0.1.0"
+    "plugin": "quant-research-orchestrator 0.1.0 — source plugins/quant-research-orchestrator at this commit; installed cache ~/.zcode/cli/plugins/cache/my-quantitative-local/quant-research-orchestrator/0.1.0 verified byte-identical (diff -r exit 0, 2026-09-11T02:40Z)",
+    "python": ".venv/bin/python (repo venv, 3.12)",
+    "store_fix_commit": "2ebf5c28e88b33bb18e82191b7929e7622766b32 (ancestor of main HEAD, verified)",
+    "repo_head_at_report": "e5d67ed9a2d647ceb0e961f18026e2da76fd18bf (pre-close evidence head; this report ships in the immediately following close-out commit)"
   },
+  "install_instructions": "Marketplace: /Users/hoangminhlong/my-quantitative/plugins (plugins/marketplace.json). ZCode Settings > Plugins > Add marketplace > install + enable quant-research-orchestrator. Enabling is the code-execution trust action: review hooks/hooks.json and scripts/ first. Configuration (agents/hooks/MCP) is snapshotted at session start — always begin work in a NEW session after install/update. Plugin absolute paths are canonical to the main checkout (constraint C1).",
   "gate_matrix": {
-    "Z3-G0": "PASS — capabilities remeasured (p0_capability_report.json, commit 356ceb1)",
-    "Z3-G1": "PASS — contract frozen (p1_contract_freeze.json, commit 4f97cf6)",
-    "Z3-G2": "PASS — 21 state/MCP tests incl. CAS concurrent writer, tampered handoff, restart recovery (commit 375649f)",
-    "Z3-G3": "PASS_SCHEMA_LEVEL / live-load NOT_RUN — manifest+frontmatter validated; actual loading needs install + fresh session (commit 171c200)",
-    "Z3-G4": "PASS_SCRIPT_LEVEL / live-ZCode NOT_RUN — 15 hook fixture tests; live hook firing needs install (commit 478efa2)",
-    "Z3-G5": "NOT_RUN — canary 1 needs live Lead session",
-    "Z3-G6": "NOT_RUN — canary 2 needs live Lead session",
-    "Z3-G7": "NOT_RUN — canary 3 needs live Lead session",
-    "Z3-G8": "PARTIAL — store-level restart recovery PASS (unit); full session restart NOT_RUN",
-    "Z3-G9": "PARTIAL — 36 orchestrator + 89 governance tests PASS, compileall OK, secret scan 0 hits; independent fresh-context A7 NOT_RUN (no subagent dispatch from a background session)",
-    "Z3-G10": "PENDING — runs at final closeout after canaries"
+    "Z3-G0": "PASS — capabilities remeasured (artifact orchestration/p0_capability_report.json, commit 356ceb1)",
+    "Z3-G1": "PASS — contract frozen (orchestration/p1_contract_freeze.json, commit 4f97cf6)",
+    "Z3-G2": "PASS — state/MCP tests incl. CAS concurrent-writer, tampered handoff, restart recovery; originally 21 tests @375649f, re-run at close inside the 43/43 battery (exit 0)",
+    "Z3-G3": "PASS — schema-level @171c200 (manifest/frontmatter validation ALL OK) AND live: plugin commands executed in production (/lead-resume and /lead-close ran from the installed cache in the closing sessions), plugin-bundled agent quant-auditor dispatched live (A7 audit, 38 tool uses, returned structured artifact), 11 MCP tools invoked live (waiting_summary, terminal_check et al.), 3 skills present in session skill list",
+    "Z3-G4": "PASS — script-level @478efa2 (15 hook fixture tests) AND live: SessionStart snapshot injected at the resume session's start; PreToolUse push-deny fired live twice during P6 (commit 5bad699, one trip from a trigger-phrase inside documentation text); PostAgent HANDOFF_INVALID fired live on prose-only returns (P6); Stop hook fired live (observation recorded). Limitation STOP-CAP-1 disclosed below.",
+    "Z3-G5": "PASS — canary P6 read-only: two parallel quant-explorer dispatches auto-returned, schema-validated, integrated through the full state machine; caught + repaired a real ledger defect (FOREX-FREE-V8 row, repair 321e387) (artifact orchestration/canaries/p6_result.json, evidence commit 5bad699)",
+    "Z3-G6": "PASS — canary P7 isolated implementation: two disjoint worktrees, two implementer agents, sequential cherry-pick integration bc9511e then c4d6d17 with tests re-run after each pick (3/3 then 6/6). Two store defects (STORE-FLOW-1/2) disclosed at the time, fixed in 2ebf5c2, tasks lawfully closed via the v3.1 STORE-FLOW-2 exit (artifact orchestration/canaries/p7_result.json)",
+    "Z3-G7": "PASS — reproduction half: ALL_MATCH, 6/6 pytest + 4/4 sha256 at c4d6d17 (orchestration/canaries/p8_result.json). Refusal half: initially FAILED by design-exposure on pre-fix code (deadbeef SHAs accepted end-to-end = the STORE-FLOW-3 defect, event log 02:12:39Z); fixed in 2ebf5c2 and re-verified live TWICE: negctl-v31-refusal 02:29:52Z (fixed module vs live store) and negctl-mcp-v31 02:38:18Z (through the running reinstalled MCP) — fabricated dispatch_sha REFUSED at publish",
+    "Z3-G8": "PASS — restart recovery: /lead-resume in a fresh session reconstructed all 8 tasks from durable files + real git/lock state; zero re-dispatch, zero double integration; battery 43/43 re-run at main HEAD in the recovering session (artifact orchestration/canaries/p9_recovery_result.json, commit e5d67ed)",
+    "Z3-G9": "PASS — full battery + A7 at close: 43/43 orchestrator + 89/89 governance tests PASS (exit 0, this closing session, commands below); compileall exit 0; secret-pattern scan grep exit 1 (zero hits); independent fresh-context A7 verdict PASS_WITH_FINDINGS with 0 HIGH/CRITICAL (artifact research/control/ZCODE-ORCHESTRATION-V3/audit/a7_v31_terminal_audit.json, commit e5d67ed); the A7's two MEDIUM close-out items are discharged by this close (stale reconciliation superseded; live G3/G4 grades recorded above; TERMINAL transitions materialized)",
+    "Z3-G10": "PASS — this report: orchestrator_terminal_check all_terminal=true (8/8 TERMINAL after canonical mark_terminal transitions, events 03:03:09Z), workers 0, heavy lock FREE_PROVEN, this cycle's trees reconciled below, committed evidence reconciled (dispatch_manifest + handoffs/MANIFEST.json with store-digest comparison + integration_events.jsonl + this file)"
   },
   "test_evidence": [
-    {"command": ".venv/bin/python -m pytest tests/test_orchestrator_v3_state.py tests/test_orchestrator_v3_mcp.py tests/test_orchestrator_v3_hooks.py -q", "exit_code": 0, "result": "36 passed in 9.19s"},
-    {"command": ".venv/bin/python -m pytest tests/test_atomic_io.py tests/test_cycle_registry.py tests/test_heavy_lock.py tests/test_doctor_waivers.py -q", "exit_code": 0, "result": "89 passed in 12.64s"},
-    {"command": ".venv/bin/python -m compileall -q research plugins tests", "exit_code": 0, "result": "ALL OK"},
-    {"command": "grep -rIn secret-pattern plugins/quant-research-orchestrator/", "exit_code": 0, "result": "0 hits"}
+    {"command": ".venv/bin/python -m pytest tests/test_orchestrator_v3_state.py tests/test_orchestrator_v3_hooks.py tests/test_orchestrator_v3_mcp.py tests/test_orchestrator_v3_store_flows.py -q", "exit_code": 0, "result": "43 passed in 2.93s", "run_at": "close, 2026-09-11T03:04Z"},
+    {"command": ".venv/bin/python -m pytest tests/test_atomic_io.py tests/test_cycle_registry.py tests/test_heavy_lock.py tests/test_doctor_waivers.py -q", "exit_code": 0, "result": "89 passed in 4.79s", "run_at": "close, 2026-09-11T03:04Z"},
+    {"command": ".venv/bin/python -m compileall -q research plugins tests", "exit_code": 0, "result": "silent success", "run_at": "close"},
+    {"command": "grep -rInE \"(api[_-]?key|secret|password|token)\\s*[:=]\\s*['\\\"][A-Za-z0-9+/]{16,}\" plugins/quant-research-orchestrator/", "exit_code": 1, "result": "zero hits (grep exit 1)", "run_at": "close"}
+  ],
+  "canary_digests": "See orchestration/handoffs/MANIFEST.json — 6/8 inbox handoffs digest-match their store records exactly; the 2 P7 divergences are preserved evidence of the STORE-FLOW-1 defect (file = agent original, store = Lead-submitted object), disclosed and fixed.",
+  "recovery_proof": "orchestration/canaries/p9_recovery_result.json (Z3-G8 PASS): reconstruction from .runtime/orchestrator_v3/{tasks.json,events.jsonl,inbox/} + MCP readouts + git/lock measurement only; the session-start snapshot race (inflight showed a task RUNNING that the store had already closed) was detected and resolved by re-measurement — the recovery path handles partial writes correctly.",
+  "limitations": [
+    "STOP-CAP-1 (LOW/MEDIUM, OPEN): the Stop hook announces a 3-continuation stand-down but is not observed to self-enforce it (5+ firings observed). Recorded in canaries/stop_hook_observation.json; future fix: continuation counter in the hook payload. Below the Z3-G9 HIGH/CRITICAL bar; not gate-blocking.",
+    "MCP tool surface gap (LOW, FIXED-BY-WORKAROUND): no mark_terminal MCP tool exists; the final INTEGRATED/BLOCKED->TERMINAL transitions were materialized at close by calling the store module's canonical OrchestratorStore.mark_terminal API directly (same authority implementation the MCP wraps; CAS save + TASK_TERMINAL events emitted, 03:03:09Z). Follow-up: expose mark_terminal as an MCP tool.",
+    "Evidence-file timestamp skew (LOW): v31_verification.json and stop_hook_observation.json carry written measured_at_utc stamps 12-25+ min ahead of their file mtimes (writer clock rounding). events.jsonl is the authoritative ordering and is self-consistent; noted in p9_recovery_result.json.",
+    "SessionStart snapshot is a point-in-time read (INFO): during the P9 resume it showed a task RUNNING that the store had closed seconds earlier — benign TOCTOU, resolved by re-measurement via waiting_summary.",
+    "Superseded-report stamp (INFO): the P5-era terminal_reconciliation.json carried written_at 02:45:00Z while its content predated the canary campaign; superseded by this report rather than silently rewritten."
   ],
   "incidents": [
-    {"what": "concurrent control-plane writer on main while this session measured (Lead session committed fea0196 between my status reads)", "impact": "none on outcome; my staged commit became a no-op", "repair": "re-measured; adopted the concurrent commit as base", "prevention": "CAS re-measure before every control-plane write (already enforced by governance writers)"},
-    {"what": "initial test run hung: MCP test client blocked reading stderr pipe inside a timeout assert path; server _err reference NameError crashed error-path calls", "impact": "test-session only, no repo state touched", "repair": "select-based timeout + kill on timeout; restored _err; sent fix commits", "prevention": "hermetic timeout guards in subprocess test harness"}
+    "DUAL_LIVE_CONTROLLER (caught by the plan sec 2.1 one-primary-Lead guard, 2026-09-11T01:43Z): both controllers behaved correctly — the newer session halted with zero mutations and committed one report (790be57); owner resolved by closing it. Artifact canaries/dual_controller_incident.json.",
+    "STORE-FLOW-1/2/3 (found by canaries P7/P8, fixed in 2ebf5c2, battery extended 36->43 tests, refusals re-verified live twice).",
+    "P2 test-harness hang (stderr pipe + _err NameError in error path; fixed with select-based timeout; test-session only)."
   ],
   "workers": 0,
+  "heavy_lock": "FREE_PROVEN at close (researchctl locks inspect: no registry row, lock not flocked)",
   "trees": {
-    "integration": {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/zcode-orchestration-v3/integration", "branch": "orca/zcode-orchestration-v3-integration", "status": "clean after commits"}
+    "main": "clean at close-out commit (this commit's parent e5d67ed); only .zcode/ untracked (ZCode-internal)",
+    "integration": ".worktrees/zcode-orchestration-v3/integration @ 2ebf5c2 clean (fully merged to main via owner 6cd33db)",
+    "canary_lanes": [".worktrees/orch-canary/p7-a @ a55d5e6 (orca/orch-canary-p7-a)", ".worktrees/orch-canary/p7-b @ 85bdcd4 (orca/orch-canary-p7-b)", ".worktrees/orch-canary/p7-int @ c4d6d17 (orca/orch-canary-p7-int, holds picks bc9511e+c4d6d17)", ".worktrees/orch-canary/p8-repro @ c4d6d17 detached"],
+    "other_worktrees": "the remaining ~30 worktrees belong to other cycles (crypto/v17, forex-free-v9, stocks-free-v13, market-data-plane, research-platform-v3) and are out of scope here"
   },
-  "owner_actions_required_in_order": [
-    "1. Review + merge orca/zcode-orchestration-v3-integration to main (constraint C1: plugin absolute paths are canonical to the main checkout; merge to main is owner authority)",
-    "2. ZCode Settings > Plugins > Create > Add marketplace > /Users/hoangminhlong/my-quantitative/plugins; install + enable quant-research-orchestrator (enabling IS the code-execution trust action — review hooks/hooks.json + scripts/ first)",
-    "3. Start a NEW Lead session (config snapshot at session start) and run /lead-start; canaries P6-P8 then gates Z3-G3live/G4live/G5-G8, then /lead-resume recovery drill (P9), independent A7 (Z3-G9), /lead-close (P11)"
+  "store_final_state": "8 tasks TERMINAL (4 integrated-class: p6-a, p6-b, p8-repro, p8-bad-handoff[negative]; 4 closed-class: p7-a, p7-b [STORE-FLOW-2 exits], negctl-v31-refusal, negctl-mcp-v31 [consumed controls]); terminal_check all_terminal=true at 2026-09-11T03:03Z",
+  "owner_actions_remaining": [
+    "1. Remote push of the local main commits (fa3d017..close-out) — push is owner-only authority (the plugin's own guard enforces this).",
+    "2. Optionally: keep the plugin installed for future cycles (it is verified byte-identical to source); remove the orch-canary worktrees when convenient (substance preserved in git)."
   ],
-  "resume_command": "/lead-resume (durable state: .runtime/orchestrator_v3/ + research/control/ZCODE-ORCHESTRATION-V3/orchestration/)",
-  "boundaries_kept": "no S1, no scoring, no GO, no push, no merge to main, no ZCode internal DB writes, no nested subagents, no foreign workers touched; registry writes only via canonical CAS path"
+  "boundaries_kept": "no S1, no scoring, no GO (go_phrase_state NOT_REGISTERED — nothing to kill at TERMINAL), no push, no merge to main by lanes, no ZCode internal DB writes, no nested subagents, no foreign workers touched; store mutations only through the store's canonical API; registry writes only via researchctl CAS"
 }
