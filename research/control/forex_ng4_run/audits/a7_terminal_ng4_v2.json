@@ -1,0 +1,107 @@
+{
+ "schema": "a7_terminal_ng4_v2@1",
+ "verdict": "AUTHORIZED",
+ "audited_claim": "FOREX-NG4 closes terminal FOREX_NG4_BLOCKED_DATA_OR_SELECTION (selection empty after D2; 0 cells; budget 0/6; GO died UNCONSUMED). P0 arc: EURUSD TD PASS + EZ as-of census BLOCKED (17/30) -> A7-F1 REFUSED (query-shape artifact) -> P0c wide-window remediation PASS (A4 37>=30, A5 16>=12; era 2015-02-24) -> D1 4 blind proposals -> D2 (substance 676a988): 4/4 VETO — all 4 max|rho| ~0.888-0.891 vs generic_dow_tue (EZ books stack onto v2-day bursts laid across day-of-week — same death cause as ng3-A5-P2 0.8932, cross-cycle consistency verified); A5 anchors add 0.4429 vs the V9 PPP-deviation rebuild (kill-candidate #1, self-exceeding the bar); 32-shape panel (25 ng1 + EURUSD leader/spillover on the true V7 plane + 6 kill-candidates); identifiability kills none >= 0.98 (DGS10 exact 0.200/0.333).",
+ "cycle": {
+  "cycle_id": "FOREX-NG4",
+  "plan": "plans/PLAN_forex_ng4.md (committed 68e40c6f, 2026-09-12 04:12:04 +0700, 18s before bootstrap and before every measurement)",
+  "chain": "plan 68e40c6f (04:12:04) -> bootstrap 330a6cd (04:12:22) -> P0a d7a8c56/730aaaf -> P0b 7d37f08/a65206d -> A7 v1 audit eafc2fe (REJECTED_FINDINGS, NG4-A7-F1) -> P0c wide-window remediation 473292c6 + handoff 48936ca (base eafc2fe, match) -> D1-a4 00a41f0 / lane tip 89353f3 -> D1-a5 547ceac / lane tip 4323a52 -> D2 substance 676a988 / lane tip 7fd97c9 -> integration pick 12b9a4e3 + handoff 6447defb (audited tip). Tree identity proven: 7fd97c9f^{tree} == 6447defb^{tree} (git tree 1ecef27a), so the pick reproduced the D2 measurement content byte-exactly.",
+  "audited_tip": "6447defbc144b7937d767dd6362077c49abd9534",
+  "freeze_before_outcome": "PASS: plan precedes bootstrap precedes all measurement; D1 proposals are sha256-pinned measurement contracts (4 ng4 + 5 ng1/ng3 shadow authorities) enforced fail-closed by the D2 runner (SystemExit on drift — re-verified by this audit's rerun); fired-count priors declared BLIND at D1 and measured first at D2 (A4-P1 23 in 19-30; A4-P2 19 at the 19-30 boundary; A5-P1 7 in 2-10; A5-P2 14 one ABOVE the 6-13 prior — disclosed honestly, never re-fitted); the D2 bars (novelty 0.20 / identifiability 0.98) are the inherited ng1/ng3 frozen constants declared in the dispatch packet; no floor, threshold or bar moved after any measurement (P-15).",
+  "governance": {
+   "budget": "0/6 (state.json budget_used=0; CYCLE_REGISTRY budget used=0/max=6) — 0 scored cells, selection empty pre-score",
+   "go": "REGISTERED_NOT_CONSUMED in both state.json and the registry; the gate for scored execution was never reached, GO legitimately never typed",
+   "s1": "SEALED_UNTOUCHED",
+   "proposals_cells_outcomes": "4 D1 proposals (blind), 0 scored cells, 0 scored outcomes; no e/scored artifacts exist under research/control/forex_ng4_run (measured); D2 handoff incidents empty; changed paths of the D2 commits are owned paths only",
+   "key_leak_scan": "clean (keys recorded as key_present booleans only; no network call in the D2 lane at all)"
+  }
+ },
+ "findings": [
+  {
+   "id": "NG4-A7V2-F1",
+   "severity": "LOW",
+   "title": "Pre-close bookkeeping lag: state.json phase still BOOTSTRAP_COMPLETE_P0_PENDING and registry phase still 'REGISTERED (planned)' at the audited tip while the cycle is post-D2",
+   "evidence": "research/control/FOREX_NG4/state.json at 6447defb carries phase=BOOTSTRAP_COMPLETE_P0_PENDING and updated_at_utc 2026-09-11T21:12:22Z (bootstrap) — never advanced through P0b/P0c/D1/D2; plans/CYCLE_REGISTRY.json carries lifecycle ACTIVE_LIGHT / phase 'REGISTERED (planned)' but with the CURRENT head 6447defb, budget 0/6, GO REGISTERED_NOT_CONSUMED, S1 SEALED_UNTOUCHED, and a write_token documenting 'update:FOREX-NG4:D2 integrated: 4/4 VETO'. The authoritative chain lives in the six orchestration handoffs (all dispatch_sha == actual_start_sha, base matches verified) and the registry head/write_token. Same class as the v1 audit's NG4-A7-F3; the Lead updates state.json + registry to TERMINAL in the close commit (ng2/ng3 precedent).",
+   "why_not_higher": "No decision rests on the stale phase fields; head, budget, GO and S1 fields are correct; the terminal close commit is exactly where these are required to advance."
+  },
+  {
+   "id": "NG4-A7V2-F2",
+   "severity": "LOW",
+   "title": "The v1 audit's counterfactual arithmetic overestimated the true-window A4 count (claimed >= 50; the p0c measurement yields 37, margin +7) — direction and gate decision unchanged",
+   "evidence": "a7_terminal_ng4.json NG4-A7-F1 argued 'A4 >= 17 + 33 = 50 >= 30 => PASS' by assuming every obs month of the 2015-03..2017-11 cohort yields a usable first-print event. The measured wide-window basis (p0c, era start 2015-02-24, 1388 true-vintage rows) yields 20 cohort events + 17 non-cohort = 37 >= 30: the cohort conversion under the strict ng2/ng3 machinery is 20/33, not 33/33. The v1 verdict (query-shape artifact; the as-of basis MUST not stand; gate should PASS) is fully vindicated — the FAIL->PASS decision is identical — but the loose bound should not be carried forward as measured evidence.",
+   "why_not_higher": "The decision impact is nil: both the v1 prescription and the executed remediation were validated by the actual frozen-machinery measurement (37 >= 30 PASS), and the P0c gate recorded the measured number, not the estimate."
+  },
+  {
+   "id": "NG4-A7V2-F3",
+   "severity": "LOW",
+   "title": "Interpretation guard: the dow-generic 0.89 row is a count-geometry property of the frozen union-active variant on burst-stacked sparse books — correctly applied here, but it must not be read as form-specific ancestry evidence in future cycles",
+   "evidence": "Measured in this audit's recompute: the four anchors net to 15-25 active cells, ALL sign -1, on 3-5 burst entry days x 5-day holds (weekday-balanced); vs each dow dummy the union-active vector has n=388/389 with joint_active_cells=5 and rho identical to the 4th decimal across mon/wed/fri (0.8883301) and tue/thu (0.8883467) — a signature that the statistic depends only on the sparse/dense count geometry, not on which weekday. The kill is nonetheless CORRECT as applied: (a) the machinery is the frozen ng1/ng3 law reused unmodified (the identical death mode killed FXNG3-A5-P2 at 0.8932 and that close was A7-authorized); (b) the burst structure is a measured DATA property — 33 of 37 EZ restricted v2 days are Fridays (3 Wed, 1 Thu; 30 of 37 in 2019 alone, the 2019-03-15 re-referencing vintage), so the entry schedule is publication-calendar-conditioned = a dead ancestry class, exactly the hunt's own adjudication rule; (c) the cycle disclosed the geometry verbatim in the handoff known_limitations; and (d) the vetoes are OVER-DETERMINED — the V9 PPP-deviation shadow alone measures 0.4105/0.3948/0.4429/0.4429 vs the four anchors, all over the 0.20 bar, so no VETO rests on the dummy row alone.",
+   "why_not_higher": "No decision impact this cycle (over-determined kills, honest disclosure); recorded as an interpretation guard for the ledger."
+  }
+ ],
+ "unresolved_high_critical_count": 0,
+ "recompute": {
+  "detached_tree": "/tmp/a7t_fng4 (git -C /Users/hoangminhlong/my-quantitative worktree add /tmp/a7t_fng4 --detach 6447defbc144b7937d767dd6362077c49abd9534; removed after audit)",
+  "method": "Detached tree at the audited tip; code sha256 of the four D2 code files in the tree match the committed code_sha256 pins exactly (0e4a1170 __init__, c44dc9af books.py, 27d7b3f9 d2_run.py, 70c82baa tests) BEFORE any patch. Environment-only delta, disclosed: the single hard-coded WORKTREE constant (line 65 of d2_run.py, line 29 of tests/test_forex_ng4_d2.py) re-pointed from the forex-ng4/d2 worktree to /tmp/a7t_fng4 so imports, pin reads and output writes stay inside the detached tree and no lane artifact is touched. Untracked pinned bytes consumed at their committed absolute pin dirs (integration data_raw/forex_ng4_ez wide pages + merged; data_raw/forex_ng4_spot/EURUSD.json) and independently re-hashed against the committed manifests (page_000 97a10289, page_001 f69b07ef, merged 3206fd09, EURUSD 01cb862b — all match; manifest shas 47e4d642 / 3949445a match). ng1 funded spot, CADS US archive (address==sha256), V9 vintaged staging, V8/V7 committed evidence and DGS10 (03dde429) consumed read-only at their pinned paths. Zero network, zero keys needed. Heavy lock inspected FREE before the run.",
+  "command": ".venv/bin/python research/control/forex_ng4_run/d2/d2_run.py  (from /tmp/a7t_fng4) ;  .venv/bin/python -m pytest tests/test_forex_ng4_d2.py -q",
+  "results": {
+   "verdicts": {
+    "FXNG4-A4-P1": "VETO(ANCESTRY_VETO rho=0.8883 margin=-0.6883)  worst=generic_dow_tue  MATCH",
+    "FXNG4-A4-P2": "VETO(ANCESTRY_VETO rho=0.8908 margin=-0.6908)  worst=generic_dow_tue  MATCH",
+    "FXNG4-A5-P1": "VETO(ANCESTRY_VETO rho=0.8896 margin=-0.6896)  worst=generic_dow_tue  MATCH",
+    "FXNG4-A5-P2": "VETO(ANCESTRY_VETO rho=0.8896 margin=-0.6896)  worst=generic_dow_tue  MATCH"
+   },
+   "argmax_and_margins": "pooled max|rho| and worst shape value-identical for all four anchors incl. full per-veto rows (32 shapes) and all three variants; PPP-deviation shadow 0.4105/0.3948/0.4429/0.4429 MATCH; identifiability: CTL-V7RECAP 0.7918/0.6113, CTL-PPPANCESTRY 0.4971 both A5, CTL-V7NODIFF 0.8930/0.4971, DGS10 exact-spec 0.19999/0.33333 — all MATCH, no kill >= 0.98",
+   "ez_stream": "EZ restricted rebuilt 37/37 and US 84/84 vs the pinned p0c census (sha 6471b8be re-verified) with the unmodified ng3 machinery; EZ-US differential join 16/16 months (2018-02..2018-12 x11, 2020-09, 2020-10, 2023-01, 2023-04, 2024-02) matching the census and the D1 by-year declarations; era start 2015-02-24, rows 1388 confirmed",
+   "tests": "12/12 PASS (pytest tests/test_forex_ng4_d2.py in the detached tree)",
+   "floors": "A4 37/30 PASS margin +7; A5 16/12 PASS margin +4 (re-measured by the runner from pinned bytes, matching the p0c gate)"
+   },
+  "diff_vs_committed": "All three output artifacts (d2_novelty_panel_ng4.json, d2_feasibility_ng4.json, d1/feasibility/feasibility_summary.json) VALUE-IDENTICAL to the committed artifacts modulo exactly three audit-delta classes: measured_utc timestamps, code_sha256 of the two WORKTREE-patched files, and provenance path strings (/tmp/a7t_fng4 vs the d2 worktree path). Every scientific number — 128 pooled rows x 4 anchors, verdicts, margins, identifiability, feasibility totals, cross-proposal collapse (A5-P1_vs_A5-P2 rho=1.0, A4-P1_vs_A4-P2 0.7719, A4-P1_vs_A5-P1 0.7746) — is identical.",
+  "hunt_adjudications": {
+   "hunt1_dow_tue_kill": "DATA PROPERTY, kill correct. Measured: 33/37 EZ restricted v2 days are Fridays (30/37 in 2019 — the 2019-03-15 re-referencing vintage burst), calendar next-weekday entries land 33x Monday; 5-day holds make the books weekday-balanced (joint=5 per dow dummy), which is why all five dow rhos coincide to the 4th decimal. The entry schedule is publication-calendar-conditioned — per the hunt's own rule, a calendar-conditioned schedule is a dead ancestry class; the frozen machinery is applied unmodified and reproduces the ng3-A5-P2 0.8932 death mode exactly (0.8932111099603058 confirmed in the committed ng3 panel). Additionally the all-(-1) sign structure (every anchor cell short EURUSD: frozen-v1 print vs D(e)-vintage revised baseline) means the books carry no sign information beyond the burst calendar. Over-determined anyway: the V9 PPP shadow (0.39-0.44) alone vetoes all four anchors over the 0.20 bar.",
+   "hunt2_v7_plane": "VERIFIED on committed evidence. FXFV7-A4-P1_anchor_k4 (committed V7 rerun evidence, sha-pinned) carries EURUSD cells natively on its 7-pair plane (pairs incl. EURUSD, 2052 cells) — EURUSD was a true spillover DESTINATION, so the ng4 rebuild 'EURUSD restored as a destination' is MORE faithful than ng1's 4-pair adaptation. FXFV7-A6-P2_anchor_q80's follower set is the 7-pair plane MINUS EURUSD (6 followers) — i.e. the committed V7 lead-lag anchor IS the EURUSD-leader book (leader never trades), confirming 'EURUSD lead-lag la leader that'. In the ng4 panel the EURUSD-leader rebuild therefore correctly yields NO_SHARED_PAIRS vs the EURUSD-only anchors (its cells sit on the funded followers), while the funded-leader rebuilds measure against EURUSD follower cells. The V8 committed books all carry EURUSD (7-pair), so all 8 FXFV8 rows measured.",
+   "hunt3_ppp_rebuild": "VERIFIED to the V9 spec. FAMILY_FAILURES rows FXFV9-A5-P1/P2 pin the form ('real-rate deviation from evidenced vintaged CPI index levels', frozen daily 16:00-NY decision grid, ancestry 0.3034/0.3119) and carry NO threshold/hold — the rebuild is the disclosed THRESHOLD-FREE form-level rebuild. The state definition matches the committed V9 P2 clocks census ppp_misalignment_36m verbatim: log(S[t]/S[t-36m]) minus cumulative relative CPI (sum of y/y log steps EZ minus US, read within the SINGLE as-of vintage in force at the decision instant, rebase-safe AX2-C3 class); decision clock = first frozen daily-grid day strictly after the later leg's v1 availability; reversion-traded; fail-closed on unreadable legs. Measured 0.4429 vs both A5 anchors (> 0.20 bar, kill-candidate #1 self-exceeding) and 0.4105/0.3948 vs the A4 anchors — value-identical on recompute.",
+   "hunt4_label": "See label_adjudication — BLOCKED_DATA_OR_SELECTION is earned and legal."
+  },
+  "cross_checks": {
+   "chain_reconciliation": "All twelve claimed chain shas located and consistent: plan 68e40c6 (04:12:04 +0700) precedes bootstrap 330a6cd (04:12:22); P0c handoff base == eafc2fe (the v1 audit commit) with base_match true; D1 lane handoffs dispatch==start (48936ca) with substance commits 00a41f0/547ceac and lane tips 89353f3/4323a52; D2 handoff commit 676a988 with lane tip 7fd97c9 and dispatch base 8213abb (the d1-a5 handoff); integration pick 12b9a4e3+6447defb with PROVEN tree identity to the d2 lane (git tree 1ecef27a for both tips)",
+   "blindness": "All four D1 proposals carry blindness_declaration outcome_blind=true ('zero outcome exposure'); committed 05:52:38, first measured 06:17:39; the D2 runner enforces the 9 proposal sha pins fail-closed (rerun passed)",
+   "no_expectancy_law": "Code scan of books.py + d2_run.py: no PnL/expectancy/profit computation anywhere (only the no_expectancy_law statements); the only cross-book quantities are Spearman rho, counts and referenced cost ceilings (cost verdict stays NOT_RUN fail-closed — EURUSD Q-8 constants NOT_YET_MEASURED, honestly disclosed)",
+   "v1_remediation_legitimacy": "The P0c lane executed the v1 audit's required_owner_action verbatim (ONE wide-window ALFRED pull realtime 2015-01-01..9999-12-31 — conservative vs the prescribed <= 2015-02-27 — true vintage windows, UNMODIFIED build_restricted_stream, floors unchanged 30/12); no standard was moved, so no owner re-scope was needed; the p0b as-of evidence is retained in the gate verbatim as superseded evidence"
+  }
+ },
+ "label_adjudication": "FOREX_NG4_BLOCKED_DATA_OR_SELECTION is LEGAL and EARNED. Legality: plan sec 2 preregisters 'FOREX_NG4_{REJECT_ALL | ... | INCOMPLETE_NOT_PROMOTABLE} (same 5-shape set)' — ng1 sec 2's set includes BLOCKED_DATA_OR_SELECTION, and the plan sanctions exactly this death ('a new-economy re-clock of a dead form dies at D2'; 'a correct FOREX_NG4_REJECT_ALL is a successful research run'). Earning: at D2 all four proposals are VETO(ANCESTRY_VETO) PRE-SCORE (rule order frozen in books.proposal_verdict: empty-book -> unmeasurable -> novelty > 0.20 -> identifiability >= 0.98); the S selection is therefore empty before any scored cell, making REJECT_ALL factually unavailable (0 cells) and BLOCKED_DATA_OR_SELECTION the honest terminal — the identical, previously A7-authorized shape of FOREX-NG2 and FOREX-NG3 closes (ng3: '4/4 D2 VETO pre-score, selection empty, budget 0/6, GO died UNCONSUMED'). Governance reconciles: budget 0/6 (registry + state.json), GO REGISTERED_NOT_CONSUMED (never typed because the scored gate was never reached), S1 SEALED_UNTOUCHED, 0 proposals scored / 0 cells / 0 outcomes. Unlike the v1 audit's objection (the BLOCKED_DATA close then rested on an ingest-shape artifact), this close rests on a gate that PASSed on the plan-conformant basis, four blind proposals, and ancestry evidence that is measured, over-determined (dow 0.888-0.891 AND PPP 0.39-0.44 both over the 0.20 bar), cross-cycle-consistent with the committed ng3 panel, and value-identical under this audit's detached recompute. The terminal close as claimed is AUTHORIZED.",
+ "verified_claims": [
+  "P0c wide-window remediation PASS (A4 37>=30, A5 16>=12, era 2015-02-24, canaries 5/5): VERIFIED (artifact chain + D2 re-measurement from pinned bytes)",
+  "D1 4 blind proposals with sha-pinned contracts and blind fired priors: VERIFIED",
+  "D2 4/4 VETO(ANCESTRY_VETO) 0.8883/0.8908/0.8896/0.8896 vs generic_dow_tue: VERIFIED (detached recompute, value-identical incl. argmax and margins)",
+  "Cross-cycle consistency with ng3-A5-P2 0.8932 (0.8932111099603058 committed): VERIFIED",
+  "A5 anchors 0.4429 vs V9 PPP-deviation rebuild, self-exceeding the 0.20 bar: VERIFIED (0.4105/0.3948 for A4 too)",
+  "32-shape panel (25 ng1 + EURUSD leader + spillover/leadlag on the true V7 plane + 6 kill-candidate shadows): VERIFIED (panel_names = 32; V7 plane verified against committed V7 evidence)",
+  "Identifiability no kill >= 0.98 (max CTL-V7NODIFF 0.8930 disclosed; DGS10 exact-spec 0.19999/0.33333): VERIFIED",
+  "EZ stream 37/37 + US 84/84 + differential 16/16 vs the pinned p0c manifest: VERIFIED (independent rebuild)",
+  "Tests 12/12: VERIFIED (detached tree)",
+  "Budget 0/6, GO died UNCONSUMED, S1 sealed, 0 cells, no scored artifacts: VERIFIED",
+  "Freeze-before-outcome (plan -> bootstrap -> measurement; bars/floors never moved; BLIND priors measured first at D2): VERIFIED",
+  "no expectancy/PnL anywhere in the D2 lane: VERIFIED (code scan)"
+ ],
+ "required_owner_action": "None blocking. The Lead may commit the terminal close FOREX_NG4_BLOCKED_DATA_OR_SELECTION at (or after) 6447defb with this audit attached, and MUST in the close commit advance state.json phase and the CYCLE_REGISTRY lifecycle/phase to TERMINAL (closing NG4-A7V2-F1); FAMILY_FAILURES/HYPOTHESIS_LEDGER updates per the ng2/ng3 close pattern (EZ economy frontier measured-dead at D2: calendar-conditioned v2-day burst ancestry + V9 PPP-deviation self-overlap; EZ HICP pinned wide-window bytes banked for any future EZ cycle).",
+ "audit_meta": {
+  "auditor": "A7 terminal v2, fresh context, detached recompute at the audited tip",
+  "audited_commit": "6447defbc144b7937d767dd6362077c49abd9534",
+  "audited_utc": "2026-09-11",
+  "prior_audit": "research/control/forex_ng4_run/audits/a7_terminal_ng4.json (v1, REJECTED_FINDINGS at a65206d; NG4-A7-F1 remediated by P0c and closed out by this audit; NG4-A7-F3 class persists as NG4-A7V2-F1)",
+  "artifacts_read": [
+   "plans/PLAN_forex_ng4.md", "plans/PLAN_forex_ng1.md (label set)", "plans/CYCLE_REGISTRY.json",
+   "research/control/forex_ng4_run/{p0_gate.json,p0c_wide_window_census.json,p0c_wide_window_manifest.json,p0b_ez_vintages_manifest.json}",
+   "research/control/forex_ng4_run/d2/{d2_run.py,d2_feasibility_ng4.json,d2_novelty_panel_ng4.json}",
+   "research/control/forex_ng4_run/d1/{proposals/proposal_A4_P1.json,feasibility/feasibility_summary.json}",
+   "research/control/FOREX_NG4/{state.json,event_log.jsonl}",
+   "research/control/FOREX-NG4/orchestration/handoffs/{p0c-wide-window-handoff.json,d1-a4-proposals-handoff.json,d1-a5-proposals-handoff.json,d2-measurement-handoff.json}",
+   "research/assets/forex_ng4/d2/books.py", "research/assets/forex_ng1/d2/{rho.py,books.py,events.py}",
+   "research/wayfinder/FAMILY_FAILURES.jsonl (FXFV9-A5-P1/P2 rows)",
+   "forex-free-v9 worktree: forex_free_v7_run a7_prelaunch_evidence_r2 schedule_cells_proposals_v7.json, forex_free_v8_run d2/evidence schedule_cells_proposals_v8.json, forex_free_v9_run p2_conditioning_clocks_v9.json (ppp_misalignment_36m)",
+   "forex-ng3 worktree: d2_novelty_panel_ng3.json + d2_feasibility_ng3.json (cross-cycle 0.8932)"
+  ]
+ }
+}
