@@ -1,0 +1,595 @@
+
+
+The QuantPulse Dossier
+
+The QuantPulse Dossier
+
+Research retrospective · QuantPulse · 15–26 August 2026 · rev. 4 Sep 2026
+
+The QuantPulse Dossier
+
+Twelve days from a Gemini-built A/B toy to a full quantitative research programme: ~52,000 lines of engine and probes, a third-of-a-billion-bar archive, ten research programmes opened — and every venue cell closed by a pre-registered verdict. This is the complete record, benchmarked against the field, with the map of what's still open.
+
+12 days
+Aug 15 → Aug 26, 2026
+
+~51.8k
+lines of TypeScript + Python
+
+326M
+1-minute bars archived (120 tickers incl. FX + crypto)
+
+342M
+FX bid/ask ticks (Dukascopy, 12 pairs)
+
+30
+research probes & oracle runs
+
+0
+open research cells — IF2 closed the last one, 4 Sep 2026
+
+§0
+The verdict, up frontwhat twelve days of honest measurement concluded
+
+No tradable edge survives retail taker economics in anything probed — liquid US equities, crypto spot, crypto perpetuals, and FX majors, at every horizon from one minute to four hours. That sentence is cheap to say and was expensive to earn: it rests on measured venue costs (not vendor-stated ones), worst-fill grading, null feeds, delay tests, and one spent one-look holdout read. It is not "nothing works"; it is this works: the programme found real, statistically solid predictive skill at least four separate times — and each signal died on measurement rather than on opinion: most because collecting it costs 2–4× what it earns, one because its value lives in an un-executable first bar, and one because it failed to generalize past its own window.
+
+Three things emerged that are worth more than a trading edge would have been. First, a validation discipline that exceeds published academic practice in several dimensions — cryptographically sealed holdouts, pre-registration with salvage clauses, oracle-ceiling capture arithmetic — verified against the literature in this review. Second, a cost-measurement toolkit no open-source framework ships: every mainstream backtester defaults to zero or guessed slippage; this stack measured its spreads from tick data and caught its own bugs doing it. Third, a map: the closures are precise enough that the remaining openings are legible — and they are different games, not different parameters.
+
+"Where the signal is real the economics are shut; where the economics are open the signal doesn't survive."The programme's one-sentence law, established across seven horizons and three asset classes
+
+If every cell closed, how does a profession of traders exist? §8, added 4 Sep 2026, reconciles this verdict with them — the bill read from the collecting side.
+
+§1
+What was builtplatform · research engine · data estate
+
+The product: QuantPulse
+
+A React 19 / TypeScript live trading simulator with four bots — Strategy A/B (momentum & mean-reversion) plus C/D ported from the Capital Duel project (FSM crossover controller; Omega ridge-regression atlas). Trading Deck with real archive replay, N-way Arena leaderboard, historical range backtester, algorithm customizer, audit export, webhook gateway, AI copilot. An Express server (826 lines) serves the local archives with an ET market clock, bad-tick sanitizer, and session filtering.
+
+The research engine
+
+87 TypeScript files under training/ — 12 run-* sweeps and oracles, 18 probe-* experiments, a shared fill model pricing every order at worst/base/optimistic, an O(n) streaming evaluator proven bit-identical to the reference, deterministic seeded searches, and 157 report files. 10 test files, ~217 assertions, zero test frameworks — all custom, all pinned to reports on disk.
+
+The data estate — 6.6 GB, all verified
+
+EODHD 1-minute equities/ETF/FX archive: 120 tickers including 14 FX pairs, 2004–2026, ~316M bars with splits/dividends and a hashed manifest. Binance BTC/ETH 1m (9.4M bars incl. the holdout years) + funding rates. Dukascopy bid/ask ticks: 12 FX pairs, 65,384 hours, 342.5M ticks. EDGAR: 421,556 filings (19,771 8-Ks) + XBRL earnings. 67,854 news articles scored by two independent sentiment methods. Every backfill has a verification suite and every gap is documented, not silent.
+
+The fill model — the load-bearing wall
+
+One shared execution model both engines price through: WORST crosses the full measured spread plus ATR-scaled impact; BASE takes 35% of that; OPTIMISTIC fills at mid and still pays fees. Grading always runs on WORST. Venue profiles are measured: equity spread 2.5 bp + one-tick floor (three estimators), per-pair FX spreads from ticks (1.05 bp median, not the stated 0.3), crypto perp book exactly one tick wide. Stops grade on bar ranges, not closes. Intrabar risk resolution alone flipped a champion's sign.
+
+Provenance: 39 docs in docs/ including 5 pre-registrations and a sealed-holdout commitment; 55 memory files; every number in this dossier traces to a report file or verdict doc in the repo.
+
+§2
+The research arcten programmes, twelve days, every closure on the record
+
+Aug 15–16 · Foundation
+
+Four bots, one honest arena
+
+Capital Duel's FSM and Omega controllers ported in as Strategies C/D; Arena rebuilt N-way; per-bot toggles everywhere. A bug sweep found inverted short-side P&L, server crash vectors, and confidence-gating defects — the first evidence that the toy's numbers couldn't be trusted yet.
+
+Platform
+
+Aug 17–18 · Data
+
+Real tape replaces synthetic
+
+EODHD paid plan probed and characterized; deep 1-minute backfill lands 97.5M bars across 36 tickers (2004–2026), wired into the Deck and Backtester; ET market clock and bad-tick sanitizer fix three classes of wrong prices. The shared worst/base/optimistic fill model ships — correcting, among others, a crypto commission understated 21,000× and per-strategy slippage constants that had made the Arena rank execution assumptions instead of strategies.
+
+Archive v1Verified
+
+Aug 18–19 · First hypotheses
+
+Clusters, pairs, seasons — the priors die
+
+Cluster-rotation spec (drift-neutral scoring, sealed holdout ceremony) built and run: the validated relationships were mostly ETFs lagging their own constituents — arithmetic, not signal. Clusters retired as a search input. The full-universe sweep (1,210 pairs × 20 years, corrected bar) left 13 survivors against 0 on the null — of which the three actionable ones collapse into one hypothesis (AMD follows the chip complex), and every survivor peaks at one minute. Seasonality: nothing beats the month-block null; demand folklore comes out wrong-signed. The intraday clock and event calendar, by contrast, showed huge real structure — in variance, not direction.
+
+ClustersSeasonalityVariance structure
+
+Aug 19–20 · Evolution
+
+The genetic search and its lessons
+
+All four bots searched on a pre-registered 12-window panel, worst-fill median fitness, 9 gates. All fail. The optimizer's preferred move was to stop trading (position size pinned to floor). Beta v2's lone positive (+0.120%) was dissected to death: intrabar risk grading flipped it, and a pre-committed 117-window breadth test showed the entire "edge" was the fill assumption (+$20k optimistic, −$118k worst). Structural, not tunable.
+
+Evolution v1Beta v2
+
+Aug 20–21 · Moving out
+
+Seven horizons, one anti-correlation
+
+Decision cadence H built (bit-identical at H=1); a 382-window v3 panel; null feeds; a turnover-matched control that found real timing skill in Beta at 1m/5m — significant, validated out of sample, and worth 0.26–0.62× its own cost. Spread floor corrected to one tick, spread fraction measured three ways (2.5 bp), time-of-day probed: the open's movement is 3.33× midday and its spread is 3.35× midday. The cost wall survived every correction.
+
+Skill realSub-cost
+
+Aug 21–22 · The oracle
+
+Perfect knowledge, priced honestly
+
+A DP computes the hindsight-optimal bot under house rules: $18,102/day per $25k at 1-minute cadence — and even the oracle pays 19.4% of gross to costs. Ceiling decays as 1/√H. The follower analysis: continuing the oracle's pattern needs ~20% capture of its per-trip gross; the best causal models deliver ~1%. The one nominal pass (MSTR at 1m) died on the one-bar-delay test — the standard artifact detector from here on. Peel decomposition later showed the whole tape holds only 6.15× the single best path.
+
+CeilingFollower
+
+Aug 22–24 · Alternative signals
+
+News, filings, BTC lead-lag
+
+BTC→MSTR lead is real (5σ at 1m) and dies under one bar of delay. News direction: vendor sentiment and Loughran-McDonald both 0/96 settings positive — two independent scorers, same coin flip. EDGAR: 19,771 8-Ks and 2,646 XBRL earnings surprises show no tradable direction at 30m–2h (the open already prices the naive surprise 55.7% of the time) — but a clean variance-escalation ladder: news 0.97× → 8-K 2.53× → earnings 4.42×.
+
+DirectionVariance ladder
+
+Aug 22–24 · FX programme
+
+F0 → F1 → F3a → F-M1: closed at taker and maker
+
+Forex oracle honest bars 5.1%/2.9% (1h/4h) — friendliest taker arithmetic anywhere. F1 ridge fails; the 1h signal is real but front-loaded in the first minute. F3a (one pre-registered salvage) improves and still fails. Spread measured from ticks: 1.05 bp, not 0.3 — and a toFixed(4) quantum had been zeroing spread on 7 of 12 pairs. F-M1 then tested the maker door on 342M real ticks with a conservative fill sim: fills carry −2.44 bp adverse selection against ≤1.64 bp saved; recovery −6.8% vs a ≥50% bar. Closed for good.
+
+TakerMakerHoldout sealed
+
+Aug 25–26 · Crypto perpetuals
+
+CP0 → CP4: the closest call, and the cleanest death
+
+CP0 arithmetic: 4h perp-taker bar 6.2%, the friendliest ever. CP1 measures the venue: the book is exactly one tick wide in every era; the stated spread was 23× too wide and the wrong shape; maker branch closed at 29–41× adverse selection. CP2: the H=60 cell passes V1+V2 — $17.85/day, CI clear of zero, null beaten. CP3 execution probe on real prints: ρ=0.995 vs a 0.5 bar — the model's costs were honest. CP4 opens the committed 2024–26 holdout once: −$3.83/day, null not beaten, firing rate collapsed. The 2022–23 edge was real in its window and did not generalize. Programme closed; holdout spent.
+
+CP2·CP3CP4 holdoutSpent
+
+Aug 27 – Sep 4 · After this dossier
+
+Five more programmes, all closed — and the openings map spent two of its own entries
+
+The retrospective above ends 26 Aug; everything since is recorded here rather than left to drift. Equity maker (EM0–EM3) measured adverse selection directly on 650M prints and closed at −$91.31/day against a +$107.87 bar, at $0. The oracle ladder (Rungs 1, 2, 6) — a new line, not one of the openings — priced foresight itself: one bar of lookahead is 97.8% of the entire ceiling, copying the oracle's schedule one bar late is −23.2%, and the ρ-door it produced (what correlation a signal must carry) became the instrument the futures programme was later judged with; Rung 2 priced the house rules, Rung 6 priced the counterparty. A dedupe found 1.61M duplicated bars in the archive (CVX doubled 2004–2019). Slow trading (S0–S4) chartered a daily-cadence cross-section, produced one apparent survivor at S3, and its own adversarial review showed the pass did not hold; S4 failed, and the record was then squared — #3 recorded FAIL on P1, the S4 run logged as a deviation, and the screen's three unfixed defects logged with it. Index futures (IF0→IF1→IF2) ran the openings map's first entry to completion for $19.22 and closed it. And the variance ladder (entry 6) was built, which is the one item here that shipped code rather than a verdict.
+
+EM3Rungs 1·2·6Slow S4IF2Ladder shipped
+
+The closed-doors registry
+
+The flat list a future session needs before proposing anything — each cell closed by a named instrument, with its stated reopening condition. Re-litigating one by accident is the failure mode this table exists to prevent.
+
+CellClosed byReopens only if
+
+Equity intraday taker (1m–1d, all four bot families)Evolution results + breadth test + moving-out programme (TIME_OF_DAY closes it)A signal that works past 5 minutes, or a fill model that stops crossing the spread
+
+Hand-drawn clusters as a search inputPhase 0b decomposition + amendment A1Never — candidate sets come from data, not priors
+
+Seasonality / weatherMonth-block permutation probeNever as a standalone; calendar flags as free conditioning only
+
+News direction at hourly (vendor + lexicon)NEWS_DIRECTION probe, 0/96 twiceA better text score beating the sign-shuffle null (LLM rung, §6)
+
+EDGAR 8-K / earnings direction, 30m–2hEDGAR_8K probe, both familiesConsensus-based surprise at daily (§6), never content-free hourly
+
+Oracle-following on bar dataORACLE_FOLLOWER trip economics + delay testQuote-level data changing the execution question (§6, Tier 1)
+
+Crypto spot takerCrypto Perfect Run arithmetic (35% bar)Never at retail spot fees
+
+Crypto perp — taker and maker, all horizonsCP0–CP4; holdout read spent 2026-08-26A fresh prereg on genuinely 2027+ data
+
+FX taker (F1 + F3a) and FX maker (F-M1)Pre-registered verdicts, 2026-08-22/24Future OOS years settling the 1h CI (waiting, not research)
+
+Equity maker — posting the 1m reversal (MSTR, COIN, TSLA)EM3 print-through probe, one look spent 2026-08-29: −$91.31/day against a +$107.87 bar at an 84.1% fill rateNot on foreseeable evidence — the pre-declared failure shape was "the edge isn't there", not "the queue ate it"
+
+Slow daily-cadence cross-sectional signalsS1–S4, 2026-09-03: the one survivor is a carry filter, not a timing signal, and fails on its registered vehicleA signal whose permutation null actually moves the signal
+
+Index futures, causal signal (MNQ, full session, two-sided, H=30)IF2, one look spent 2026-09-04: validation IC −0.0046 and negative gross — the cheapest venue reachable, and no signal to pay forNot on a cost argument of any kind; only a genuinely new information source, judged on the same registered vehicle
+
+§3
+What the tape taughtnine findings that transfer to any future work
+
+The capture wall: break-even capture of the oracle's motion, by venue and horizon
+
+Fraction of hindsight-optimal per-trip gross a causal trader must capture just to pay measured round-trip costs
+
+Crypto spot taker 1 minute
+
+35.2%
+
+Crypto perp taker 1 minute · measured
+
+28.4%
+
+FX ECN taker 1 minute · stated ~1 bp cost
+
+23.1%+
+
+US equity taker 1 minute
+
+19.4%
+
+FX ECN taker 1 hour · measured spread
+
+9.5%
+
+Crypto perp taker 1 hour · measured
+
+9.4%
+
+Crypto perp taker 4 hours · measured
+
+5.5%
+
+FX ECN taker 4 hours · measured spread
+
+5.5%
+
+— — best causal capture ever delivered by any model in the programme: 3.36% (FX F3a, 1h). Typical: 1–2%.
+
+Sources: ORACLE_FOLLOWER (equity trip economics), ORACLE_CRYPTO + CP1 (perp, measured venue), ORACLE_FOREX + FX_SPREAD_MEASURED (FX 1h/4h recomputed at the measured 1.05 bp; the FX 1m bar was never recomputed and would be higher at measured cost — hence "+"). Even the friendliest cell asks for ~1.6× more capture than anything ever evidenced.
+
+LAW 1Central
+Skill was found; the market kept it
+Four real signals, each decisively beating its null, each dying a different measured death: Beta's 1m/5m timing cost 2–4× its own value to collect; FX's 1h signal (+$77/day undelayed) lives in the un-executable first minute; BTC→MSTR carried the biggest per-bar margin ever measured here (11.1 bp vs 3.76 bp cost) and still died on the one-bar delay; and CP2's H=60 cell cleared its costs in-window, then failed to generalize on the holdout. The failure mode was never "no signal" — it was the bill, the clock, or the calendar.
+
+LAW 2
+The spread is priced off the volatility you want
+At the open, per-minute movement is 3.33× midday and the measured spread is 3.35× midday — they cancel to two decimals. A maker quoting volatile minutes charges for the variance a strategy wants to harvest. You cannot get paid for volatility by crossing a spread quoted off that volatility.
+
+Extended 3 Sep 2026 — it is not only the spread. The slow programme's S4 book pays $13.80/day, ~11 bp a night, on an auction venue that crosses no spread at all, against a predicted <$3. The charge is the $0.0050-per-share commission, and it bites because the signal selects names with high overnight premium, which are cheap and volatile — the same vol ladder, arriving through the per-share term instead of the quote. Any per-share cost is a tax on low prices, and any signal that likes volatility will find them.
+
+LAW 3
+Skill and feasibility anti-correlate
+Across seven horizons: significant skill at 1m and 5m where cost gates are shut (0/382 and 6/142 windows open); gates open at 15m–1d where validation-mean skill is negative. Categorical, and it survived correcting the tick floor, re-measuring the spread three ways, removing the commission, and per-band spreads. Not a cost-model artifact.
+
+LAW 4
+The delay signature is the artifact detector
+Every minute-scale "edge" must be quoted at delay-0 and delay-1 next to a clairvoyant control run through the same delay. Close-of-bar information that evaporates one bar later — the MSTR pass, the FX 1h signal, BTC lead-lag — is market-maker compensation you'd have to be the maker to collect.
+
+LAW 5
+Maker fills are adversely selected, measured
+FX: joining the touch saves 0.34–1.64 bp; fills arrive with −2.44 bp of adverse drift, and the unfilled 46% concentrate in the trades the signal got right. Crypto perp: 29–41× the half-tick saved. Through-vs-touch was a wash, so no queue model rescues it. The 2025 literature independently measured the same mechanism on the same venue.
+
+LAW 6
+With no edge, the optimizer stops trading
+Seven of eight evolution champions pinned position size to its floor — smallest-allowed is optimal when expected value is negative. The one that sized up, Beta v2, proved the companion law: its entire "edge" lived inside the fill assumption (+$20k optimistic, −$118k worst across 117 fresh windows). Grade on WORST, and treat optimistic-only profit as an execution claim, not a strategy.
+
+LAW 7
+The ceiling is small, and it decays twice
+Perfect foresight under house rules: $18.1k/day per $25k at 1m, decaying as 1/√H — 46% at 5m, 10.8% at 1h. The peel decomposition: the whole tape holds 6.15× the best single path, 90% in the first 24 disjoint layers. And ceilings decay in calendar time too: crypto's compressed ~5× since 2018 as the tape matured — judge any idea against the most recent year's ceiling, never the archive average.
+
+LAW 8
+Variance is predictable; direction is not
+The clock stamps (9:30, 10:00, 8:30 macro, 13:01 auctions, 14:00 FOMC), earnings-gap clustering, and the event ladder — news 0.97×, 8-K 2.53×, earnings 4.42× conditional variance — are real, large, and free. Direction at those same moments: 0/96 news settings, 0 EDGAR families, twice. Predictable direction gets arbitraged; predictable variance doesn't, because conditioning on it isn't competing for alpha.
+
+Corrected 4 Sep 2026 by building it (entry 6). The raw ratios reproduce (8-K 2.57× vs the 2.53× above), but most of the "event" variance was the clock: 91.7% of 8-K windows open at the 09:30 bar, and once clock-adjusted a non-earnings 8-K adds only 1.05× and an earnings 8-K 1.74× (composing with the open to 5.8×). The law holds and its halves swap weight — the clock is doing the work the event was credited with. 13:01 turned out flat on equities (it was a TLT effect) and is not carried.
+
+LAW 9
+Measured beats stated, every single time
+Every constant the programme ever measured was wrong as stated: FX spread 0.3→1.05 bp (with a rounding bug zeroing 7 pairs), crypto perp spread 23× too wide and the wrong shape, impact cap 40× too high, a 21,000× fee error, two ticks of equity floor where one belonged. The most dangerous number in a backtest is the one nobody ever measured.
+
+§4
+The disciplineand how it compares to published best practice
+
+The methodology answers one fear: a solo researcher with no adversarial reviewer will silently adjust every degree of freedom left adjustable after seeing a result. The answer is to convert judgment into dated, hashed commitments made before the look — and to make every look at fresh data a one-time, spendable event.
+
+The seal ceremony
+SHA-256 over every holdout file and over the criteria file — sealing data without sealing thresholds is half a seal. Reseals append to a superseded-seals ledger; tick data too rich to hash is sealed by prohibition of existence. The equity/FX 2024+ holdout (358 files, 120 symbols) has never been opened. The crypto holdout was opened once, under a pre-registered ceremony, and spent on a failure — published as-is.
+
+Gates, not tiebreakers
+Worst-fill profitability, 60% window consistency, earns-its-keep on windows where buy-and-hold lost, cost ≤ 40% of gross, worst ≥ 50% of optimistic, sample floors, drawdown ceiling, parameter plateau, out-of-sample recomputation, and a pre-search feasibility gate (implied accuracy ≤ 60%) that can kill a programme before a dollar of compute. Later programmes compress to V1 (CI clear + null beaten) / V2 (L* ≤ 10, survives 2× costs).
+
+The control battery
+Three null feeds compared against the policy's own null score (the drift-neutral score isn't zero-mean under no skill — measured, ±4 bp of pure policy-shape bias); turnover-matched random controls on the real tape; one-bar delay + clairvoyant validity pair; 2× cost sensitivity; conservative maker fills where missing data throws rather than silently not-filling.
+
+Pre-registration with salvage clauses
+Every decision-bearing probe fixes model class, splits, gates, and the routing for both outcomes before running; one look per report window; at most one pre-named salvage escalation (FX's F3a) triggered only by a pre-specified partial signal. Closures state their reopening conditions once, then a standing closed-doors list forbids re-litigation. The ledger also records its own worst moment rather than hiding it: the FX 2022–23 window was ultimately read three times (the pre-registered F3a run, then two cost-model corrections), with the third read explicitly labeled "not a reopening" — disclosed as the exception, which is what makes the rule checkable.
+
+Against the literature
+
+PracticeField standardThis programmeStanding
+
+Holdout disciplineArnott–Harvey–Markowitz protocol asks for sacrosanct holdouts; enforcement is honor-systemCryptographic seal over data + criteria, spent-once semantics, superseded-seal ledgerExceeds
+
+Pre-registrationExotic in finance (one journal track); deviations handled ad hocEvery probe pre-registered; salvage clauses pre-specify the one allowed deviationExceeds
+
+Cost realismMidpoint + cost estimates typical; Frazzini-Israel-Moskowitz for institutionsWorst-fill grading over measured spreads; adverse selection measured, not modeledExceeds
+
+Null / random controlsWhite's Reality Check bootstrap nulls; Burns' random portfoliosThree null feeds + turnover-matched controls; sharper on isolating timing skillMatches+
+
+Delay / lookahead testsStandard "lag your signal" robustnessAdds the clairvoyant positive control — a power check on the test itself, rare in printMatches+
+
+Oracle ceiling as a gateKearns et al. 2010 computed omniscient-trader bounds descriptivelyUsed as a pre-search kill criterion (required capture vs ~1% evidenced); peel decomposition appears novelAhead
+
+Multiple-testing statisticsDeflated Sharpe, PBO/CSCV, Hansen SPA, FDR controlBonferroni-style scaled |t| bars only — blunter than DSR/SPA/FDRGap
+
+Cross-validationCPCV with purging/embargo generates many OOS paths per tapeSingle sealed holdouts — one draw, spent forever; no multi-path evaluationGap
+
+Dependence-preserving nullsStationary/block bootstrap preserves vol clusteringShuffles/IID destroy autocorrelation — null slightly too easy for variance-shaped edges. And the converse, found twice in Sep 2026: a block or index permutation applied to a slow signal barely moves it, so the null keeps the effect and scores above the real result (week-block mean IC 0.0504 and 0.1207 against real 0.0328 and 0.0319). A permutation is only a null if it moves the signal — check autocorrelation at whatever the null permutes.Gap
+
+Effect-size shrinkageBayesian hierarchical shrinkage across candidate clusters (Jensen–Kelly–Pedersen)Binary gates discard magnitude informationGap
+
+Decay-discounted hurdlesEdges decay ~26% OOS / ~58% post-publication (McLean–Pontiff); bars should price it inGates require surviving costs, not surviving decayGap
+
+Bootstrap CIs on headline metricsBCa bootstrap (PyBroker-style) suits stop-loss-shaped, skewed P&LPlain CIs on trade aggregatesGap
+
+The gaps share a theme: the programme's statistics are maximally conservative (FWER-flavored, binary), which costs power on large sweeps — the overnight sweep's "0 survivors" was partly a bar-calibration outcome (its bar demanded r ≥ 0.31 where the real structure lives at 0.05–0.27). DSR, SPA, FDR bars, and block-bootstrap nulls are cheap to add on top of already-logged trial ledgers.
+
+§5
+Against the fieldseven open-source frameworks, surveyed Aug 2026
+
+FrameworkFill / cost realism (default)Validation toolingLive path
+
+QuantConnect LEANC#/Python · commercial-backedRichest architecture, but default slippage model is literally zero; complete fills, no queueWalk-forward is DIY guidance; no CPCV, no holdoutsBest-in-class (~12 brokerages)
+
+NautilusTraderRust/Python · most activeScales to L2/L3 book replay; defaults fill every touch at zero slippage; queue heuristics new in 2026None shippedStrong, core design goal
+
+vectorbt / PROPython/NumbaWeakest: close fills, flat % slippage default 0Leads the field: CPCV, purged k-fold, walk-forward, parameter surfacesNone — research only
+
+backtraderPython · unmaintained ~2020User-set constants; zero defaultOptimizer onlyRotting
+
+zipline-reloadedPython · communityVolume-participation partial fills — the field's one honest capacity model; no spreadNone shippedNone
+
+FreqtradePython · cryptoFills at requested price by design (docs say so)Novel: automated lookahead-detection + recursive-analysisIts whole point (100+ exchanges)
+
+HftBacktestRust · the serious newcomerThe realism reference: L2/L3 replay, feed + order latency, explicit queue-position modelsNoneBinance/Bybit futures
+
+WHERE THIS STACK LEADSAhead
+Measured costs — no framework ships costs measured from data; every default is zero or a guess. Worst-fill grading — nothing in the field prices fill uncertainty as an interval, let alone grades on its pessimistic edge; "the edge was the fill assumption" is an error class the field is structurally blind to. Sealed pre-registered holdouts — nothing remotely comparable exists anywhere in open source. Measured adverse selection — HftBacktest models it; this stack measured it and closed a door on evidence.
+
+WORTH IMPORTINGGaps
+CPCV + PBO/DSR statistics (vectorbt PRO's orbit) — many pseudo-OOS paths per tape would let programmes reach verdicts with fewer irreversible holdout spends. Automated lookahead diffing (Freqtrade) — mechanical regression test for a bug class currently guarded only by discipline. Volume-participation caps (zipline, ~20 lines) — the first binding constraint if capital ever scales. Vectorized search cores — the speed tier beyond the repo's O(n) streaming evaluator (the original path measured 18s/eval), if searching ever resumes. A live execution layer (NautilusTrader / Freqtrade) — years of connector engineering not worth rebuilding if anything ever passes the gates.
+
+§6
+The map of openingsranked by evidence-to-effort, grounded in the closures
+
+The closures are precise, so the openings are legible. Web research for this review (execution costs, documented edges 2023–26, and the microstructure literature) confirms the through-line: the surviving games are different games — slower cadence, the maker/structural side of the book, or venues where the competition is amateurs. Nothing below re-litigates a closed cell.
+
+Two honest framings before the list. Against the reward bar: only the Tier 1 experiments could conceivably reach the standing 1%-per-week bar; Tier 3 pays roughly 5–25% of it — pursuing those is a decision to revise the bar, and it should be made explicitly, not drift. The NZ filter: the US open — where the equity-maker and futures experiments live — is the middle of the night in NZ, so those need automation; crypto's 24/7 tape and event-driven venues fit NZ hours natively; any latency-sensitive venue work needs a ~$10–40/mo APAC VPS (home-server RTT to every crypto hub is 130–180 ms); and trading profits are assessable income for NZ traders, with the FIF regime looming over foreign holdings — an accountant before any of it earns money.
+
+The 2026 cost ladder: all-in round-trip cost by route, bp of notional
+
+Liquid instruments, solo-reachable accounts · taker unless noted · researched Aug 2026
+
+IBKR equity maker rebate-routed · explicit cost only
+
+~0.2 + adverse selection ?
+
+IBKR IdealPro FX taker · commission + spread
+
+~0.5–0.7
+
+CME micro MNQ futures taker · measured book, IF1
+
+0.75
+
+US equity taker, IBKR tiered high-priced liquid names
+
+~0.7–1.0
+
+FX true ECN IC Markets Raw / Pepperstone
+
+~0.8–1.0
+
+CME micro MES futures taker · IF1, stated 1-tick book
+
+1.30
+
+Crypto perp taker base tier, any major venue
+
+~9–10
+
+PFOF retail broker effective, Schwarz et al. 2025
+
+7–46
+
+Revised 3 Sep 2026 from measurement, not vendor arithmetic. IF1 priced MNQ through the grading path on the real CME tape at 0.75 bp round trip at H=5 and MES at 1.30 bp — not the ~0.4–0.5 / ~0.85 this ladder first carried. The spread half is now measured too: 11.2M BBO updates show the MNQ book is one tick wide on only 79.8% of RTH updates and 64.5% of RTH time, and a one-lot marketable order pays 0.61 ticks per side, not 0.50. Micros remain the cheapest taker venue reachable — still ~13× cheaper than crypto perp — but the "1-tick book" that made them look cheaper still was an assumption, and it was wrong.
+
+The shared instrument: a queue-level data estate (Databento)Direction, not a single experiment
+
+A pattern runs through the closures: the programme's verdicts kept ending at "quote data is the only decisive instrument" — the BTC→MSTR lead-lag, the oracle-follower maker door, and every question the OHLCV archive structurally cannot answer (true spread at the signal's instant, queue position, fill probability). The FX and crypto maker doors could only be closed honestly because tick archives existed for them; equities, futures, and options never got theirs. Databento is the one solo-priced vendor whose catalog covers all three rungs venue-natively, with queue depth rather than just the touch: XNAS.ITCH (Nasdaq TotalView full book — the equity maker test and the MSTR/COIN/TSLA retests), GLBX.MDP3 (CME/CBOT/NYMEX/COMEX futures with MBO→OHLCV schemas — the futures oracle re-run), OPRA.PILLAR (consolidated US options trades + NBBO across all 17 exchanges, history from Mar 2023, ~2M active option tickers — the first-ever data path to the options/VRP rung), and US equities to L3 granularity since 2018 across 15 exchanges + 30 ATSs. Nanosecond venue timestamps also upgrade the delay test from 0-vs-1-bars to a real latency distribution — the HftBacktest-grade resolution §5 flagged.
+
+Economics: metered per-GB pulls (with a $125 starting credit) suit the one-shot experiments here; the $199/mo Standard tier caps top-of-book history at the trailing 12 months, so 2022–23 pulls need the metered route — price the exact slice in their estimator before committing. The point of naming this as a direction: every Tier 1 experiment below, plus the options rung, draws on the same instrument, so the data estate is one investment decision, not four.
+
+Covers: openings 1, 2, the BTC→MSTR retest, and the options/VRP data gapCost shape: per-GB one-shots first; subscription only if a door opens
+
+Tier 1
+Decisive next experiments — new venue economics, existing machinery
+
+1 · Index futures — ran to completion (IF0 → IF1 → IF2, closed)Closed 4 Sep 2026
+
+IF0 (30 Aug, $0 spent) computed the bars on SPY/QQQ proxies and passed. IF1 (3 Sep, $19.22 spent of the $125 credit) bought the real CME tape — MES + MNQ one-minute bars, 2019-05 → 2023-12, plus a one-day quote sample — and re-ran the arithmetic on it. All six gates passed, and the first headline is methodological: the proxy predicted the real futures tape to within 2–4% (real/proxy ceiling 0.970× at H=5 and 0.959× at H=30; 0.984/0.977 on matched full-length sessions), with the by-year series reproducing to ~3% a year. IF0's method was confirmed rather than corrected — the first time this programme has paid for data and had the free answer hold.
+
+The registered gate passed at H=5 and only H=5 (+$50/day bar 9.87% ≤ 10%, ρ-door 0.0776 ≤ 0.10, pessimistic break-even 6.29% ≤ 10%) — by 0.13 of a percentage point, which is narrower than the measurement error of its own venue: re-priced at the measured book the same cell reads 10.11% and fails. So the gate cell is a coin flip. What carries the phase is what the proxy could not see. The overnight Globex session is worth +104% at H=1 and +141% at H=30 (predicted +30–60% / +40–80%), and the short side is worth ×1.99 (predicted ×1.30–1.45 — the borrowed equity shorting penalty does not exist on futures). Registered two-sided RTH at H=5 gives a 6.96% reward bar; the unregistered configuration a futures bot would actually trade — full session, two-sided — prices at 6.07–7.51% with a ρ-door of 0.0396. Rung 1 puts evidenced causal signals at ρ ≈ 0.06–0.07: the first cell in this programme's history whose required correlation sits below the evidenced one.
+
+IF2 ran on 4 Sep and failed at V1, and the way it failed is the most useful thing the programme has produced. The cell was the one IF1 pointed at — MNQ, full Globex session, two-sided, H=30, at the measured session-aware book (the overnight book was measured first and is 22% wider than RTH). Fourteen features from the tape itself, ridge, λ and θ fixed on train, delayed execution as the primary rather than a robustness check, one look at 2022-07 → 2023-12. Train IC +0.0634 — sitting exactly on the ρ-door it needed — collapsed to −0.0046 out of sample. Net −$7.36/day per $25k, CI [−$23.60, +$8.95], below the p95 of both nulls. The λ search was degenerate before the look: identical error across six orders of magnitude, which is what "nothing to regularise" looks like.
+
+The gross was negative — −$1.99/day before a cent of cost. Set every fee and every tick of spread to zero and the model still loses. That makes IF2 the first closure in this programme's history where cost was not the binding constraint. Equity intraday, FX taker, FX maker, crypto spot, crypto perp and the equity maker all died the same death — a real, null-beating signal that measured costs ate. IF2 was handed the cheapest venue the programme ever reached, the friendliest bar it ever computed, and a required correlation below the band its own evidenced signals occupy, and the signal was not there. "Real signal, too-expensive venue" was never the whole story. Cheapness was necessary and nowhere near sufficient.
+
+Two controls make that a statement about the tape rather than the code: the clairvoyant transmitted 102.2% of the delayed oracle through the identical feature → prediction → position → accounting path, and the causality guard fired 49,048 times with zero violations. And the delay law needed information to kill — the undelayed diagnostic was worse (−$12.72), because close-of-bar information has to exist before one bar of delay can destroy it. The 2024+ holdout was never opened.
+
+Total spent across IF0+IF1+IF2: $19.22 of $125 · $105.78 left, holdout unspent, seal intactVerdicts: INDEX_FUTURES_IF1_PREREG.md §7, IF2_PREREG.md §11Reopens: not on a cheaper-cost argument — that argument has now been run to completion and failed on the numerator
+
+2 · The equity maker question, settled with real quotesClosed 29 Aug 2026
+
+The 1m reversal signal is market-maker compensation — the follower verdict said collecting it means being the maker. IBKR tiered routing makes posting real at retail (~0.15–0.2 bp explicit round trip, rebates passed through, Nasdaq add-credit $0.0013/share). MSTR/COIN/TSLA 2022–23 NBBO history costs ~$199 (Massive) or a metered Databento ITCH pull with queue depth. The F-M1 through/touch simulator ports directly. The honest prior from F-M1 physics and the Moallemi–Yuan queue literature is failure — back-of-queue fills eat the edge — but this is the single most decisive $200 experiment available. And the same tape settles a second closed door for free: the BTC→MSTR lead-lag verdict named quote-level data as "the only decisive instrument" for its real-but-delay-killed signal — one purchase, two re-tests.
+
+Ran, and the prior held. EM0–EM3 bought the trade prints on a 7-day trial ($0 spent), measured adverse selection directly on 650M prints (1.14 / 2.60 / 2.97 bp, flat from 1 s to 300 s), and spent the one look on 2026-08-29: M = −$91.31/day (CI [−126.58, −54.83], t = −5.04) against a recovery bar of +$107.87 — −42.3% recovery where ≥50% was required, negative at every latency bound and under 2× costs. It beats its own null, so the information is real; it is not profit. Fill rate was 84.1%, so this is not a queue story: §8's pre-declared "high fill rate, negative result" shape means the edge is not there, and quote-level data was therefore not licensed. A process error rides with it on the record — three staleness runs shared one output path, and the first write-up quoted the 10 s sensitivity (−$210/day) as the primary. Door closed for good; the equity holdout stays sealed.
+
+Spent: $0 — trial data, sealed before the pullVerdict: docs/EM3_PREREG.mdReopens: not on foreseeable evidence
+
+3 · Prediction markets (Kalshi / Polymarket)Open · documented
+
+The one arena where the maker/taker asymmetry runs the right way for a solo: Kalshi maker fees ≈ 0 on most markets, taker capped ~1.75¢/contract. On-chain research measured ~$40M of realized arbitrage on Polymarket alone (Apr 2024–Apr 2025); weather markets settle on specific NWS stations against forecastable physics; the marginal price-setter is often uninformed flow. This is a forecasting-and-engineering game, not a latency game — exactly this skill set. Both platforms are standing up internal market-making desks, so the window is years, not decades. Risks: resolution ambiguity, capital lockup, legging risk, platform/regulatory status for NZ residents needs checking first.
+
+Cost: engineering time; small stakeEvidence: academic + on-chain-verified — the strongest of any opening here
+
+4 · Crypto funding / basis carryBTC/ETH: premium goneAlt-perp tier: still open
+
+Delta-neutral funding capture (spot long vs perp short) is a carry trade: no directional forecast, 8-hour cadence, entry cost tiny (CP1: the book is one tick). It was listed here at "8–20% APY in positive-funding regimes and ~0 in chop". No probe was ever built — but the funding archive was already on disk, so on 4 Sep 2026 the premium itself was simply read off it. BTC and ETH, 7,212 eight-hourly stamps each, annualised:
+
+gross carry, annualised2020202120222023202420252026 →Jul
+
+BTC+17.2%+30.6%+4.2%+7.9%+11.9%+5.1%+1.9%
+
+ETH+27.4%+37.5%+0.8%+8.3%+13.0%+4.9%+1.0%
+
+The "8–20%" was accurate for 2020–24 and is not accurate now. Both legs in and out costs ≈0.30% round trip, so at 2026's BTC rate you hold a full year to net ~1.6% — against T-bills at 4–5%, while carrying venue/counterparty risk (the FTX lesson), liquidation wicks on the perp leg, and NZ assessable-income treatment. Through 2025–26 the rate is mostly pinned at Binance's 0.01%/8h default, which is what "no basis" looks like. The BTC/ETH version is closed on arithmetic: the premium has compressed to at or below the risk-free rate.
+
+Two things keep the entry alive rather than dead. The alt-perp tier — the sub-case originally flagged, where funding runs far higher and small size is an advantage — is genuinely untested and has no data on disk; it is now the whole of this opening. And note what does not bear on it: IF2's "no signal on the cheapest venue" finding is about forecasting, and carry forecasts nothing. The reason for scepticism here is different and now measured — the premium itself decayed.
+
+Status: BTC/ETH closed on measurement 4 Sep 2026; alt-perp tier open, needs a new data pullCaveat on the numbers: 2024–26 comes from the spent crypto holdout — descriptive accounting on seen data, not a fresh test, and any prereg must declare itInfrastructure: funding archive and fee model exist; only one price leg is on disk, so basis convergence is unmodelled
+
+Tier 2
+Research rungs left open on existing rails
+
+5 · LLM news scoring, daily horizon, judged live-forwardStill open — and now the only news cell that is
+
+The news verdict closed vendor sentiment and lexicons at hourly. The literature's surviving claim (López-Lira & Tang line) lives in a different cell: GPT-class scoring, next-day horizon, small-cap names, long side. The trap is memorization contamination — every current model's weights contain 2021–23 outcomes — so the only honest judge is post-cutoff or live data. FinBERT (2019 weights) is the backtest-clean rung.
+
+Why the arrival-lag measurement does not close this — stated explicitly, because it closes everything next to it. The poller ran 22 Aug → 4 Sep and was stopped once it had answered: n = 678 usable observations, median 29.5 min, p75 66 min, p90 189.5 min. That is fatal to any sub-hourly news trade and it is immaterial at a next-day horizon — a decision taken at or after the close, for the following session, does not care that the article landed half an hour late. The measurement kills the cell this entry never claimed and leaves the one it does.
+
+What it does impose is a design requirement, and it is not optional. The tail is long enough to leak: 49.1% of articles arrive more than 30 minutes after their own publish stamp, 26.0% more than an hour, 11.1% more than three hours, and the slowest observed took 23.5 hours. Any live-forward test must therefore gate on arrival time, not the publish stamp, and drop every article whose arrival lands after its own decision point — otherwise the test quietly consumes information it would not have held, which is exactly the provenance problem the poller was built to expose. And with the poller stopped, a live-forward run has to stamp its own arrivals: the historical archive cannot supply them retrospectively.
+
+Cost: API pennies + a prereg with live-forward judging and arrival-time gatingPrior: weak-positive gross in literature; net-of-cost unproven anywhereLatency question: answered and retired — median 29.5 min (n=678); no longer a reason to defer this
+
+6 · Wire the variance ladder into the botsBUILT · 4 Sep 2026
+
+Done, and the only entry on this map that shipped code rather than a verdict. src/lib/varianceLadder.ts composes one unit multiplicatively — clock × event × shock, each the mean 1-minute move under the condition over a baseline — and is wired into the Backtester, the live Deck (so the Arena) and the C/D training policies, with three controls on by product default and a 55-assertion suite. It is inert unless an engine is handed a ladder input, and exits are never gated. Spread shape scales only the proportional term, so tick-floor venues (MNQ/MES, perps) are untouched by construction.
+
+Measured on the 364-window panel, ON−OFF per window: A +$53 (t 7.4), B +$54 (t 1.7), C +$41 (t 5.5), D +$60 (t 4.7) — every bot loses less. But the decomposition is the honest part, and it is not a discovery of toxic minutes: all of the gain comes from the gate, spread shape alone makes every bot pay more (B worse on 339 of 339 windows — the bots' fills cluster at the open, where the flat 2.5 bp had been under-charging them), and the refused trades are not worse per trade than the kept ones. The mechanism is "decline expensive trades on behalf of a bot with no edge." Do not search the threshold — it would drive straight to "never trade", which is Law 6 wearing a new hat.
+
+Shipped: docs/VARIANCE_LADDER.md, npm run train:calibrate-ladder / train:measure-ladder / train:test-ladderSide effect: corrected Law 8 — most "8-K variance" was the open (see §3)Also fixed: the evaluator equivalence snapshot had silently diverged since the 23 Aug spread unrounding and was re-baselined with the reason recorded
+
+7 · A properly-powered overnight pre-registrationOpen, honest low prior
+
+The overnight sweep's bar demanded r ≥ 0.31 per-year; the real structure sits at r 0.05–0.27 with 0 on the null — genuinely there, never properly tested. A pooled-across-years design with year blocks is a fresh ceremony, not an edit. Temper it with the literature: the Fed's own follow-up finds the famous overnight drift ≈ zero since 2021, and Elm Wealth showed even 1 bp/trade roughly erases the long–short version. The defensible target is conditioning (hold-through vs flatten decisions on positions held anyway), not a standalone strategy that pays two spreads a day at the day's worst prices.
+
+Update, 3 Sep 2026 — the standalone version now has direct negative evidence. The slow-trading programme (S0–S4) chartered a daily-cadence cross-section and its S3 screen produced one apparent survivor on an overnight-only vehicle (MOC in, MOO out, max one night). Its own adversarial review found the pass did not hold: an overnight-only gross had been paired with a cost netted across rebalances, and on the registered vehicle every consistent accounting nets negative (−$11.48/day). The cross-sectional signal is real (IC 0.0328, t 5.36, 5/5 years) and does not survive contact with the vehicle that would trade it. The conditioning target this entry actually recommends — hold-through vs flatten on positions held anyway — is still untested, and is now the only live half of it.
+
+Second update, 3 Sep 2026 — the live half gained positive evidence, and the record was squared. S4 ran the registered vehicle anyway, under a deviation logged after the fact, and failed V1, V2 and the risk gate. But its controls decompose the cell in a way that speaks directly to this half. Against random names the book is worth +$32.38/day; against the same signal taken from a random other day of the same year it is −$15.51/day; a one-day-late signal retains 98% of the net. The name selection is real and large; the timing is absent. That is the exact shape a hold-or-flatten rule needs and a standalone entry cannot use — you do not need to know when, only which. The review adds the other half of the mechanism: the same book's next-day intraday leg is −$9.23/day (IC −0.0147, t −2.73) against a close-to-close IC of −0.0002, so the signal separates "carries overnight" from "gives it back in the session" with opposite signs.
+
+Two things keep this honest rather than promising. The conditioning version still has to beat always holding, which is not free: the unconditional carry is 5.06 bp a night and the night-matched random-name control ran $13.77/day. And it is not a strategy but a modifier — it needs a host book that already holds overnight for independent reasons, and this programme does not have one, because every candidate closed. Record squared 3 Sep: cell #3 is now recorded FAIL on P1 criterion 2 with the −$11.48, the S4 deviation is logged in the trial ledger, and three unfixed screen defects (a universe leak that put three feature-only FX pairs in the cross-section, a block null that wraps within the year, and a permutation null equal to the naive t-test) are logged with it.
+
+Cost: one prereg + computePrior: standalone overnight has a measured failure behind it; the conditioning half now has a measured mechanism in front of itBlocked on: a host strategy that already holds overnight — none exists here
+
+8 · Consensus-estimate earnings surprise, daily cadenceOpen, needs paid data
+
+The EDGAR earnings rung tested the free ceiling (seasonal-random-walk SUE) and found the open already agrees with the naive surprise 55.7% of the time. The unexplored rung is analyst-consensus surprise at daily horizons — but the 2024 friction literature finds costs consume 70–100% of PEAD paper profits, with the residue in illiquid names. Worth one probe only if estimate data arrives cheaply; must beat the 55.7% priced-in baseline, at daily cadence, long side, liquid names.
+
+Cost: paid estimates feedPrior: weak — the front of this trade is crowded and the back is illiquid
+
+9 · Hyperliquid maker rebates / HLP — the one reachable maker venueOpen, heavy burden of proof
+
+The edges research surfaced exactly one venue class where maker execution is genuinely accessible to a solo trader: Hyperliquid (0.015% maker at base, on-chain-verified HLP vault returns of ~15–30% APR historically — and the JELLY attack, a $12–13M vault drawdown in an hour, as the tail-risk exhibit). The dossier's own physics stands against it: CP1 measured 29–41× adverse selection on Binance's one-tick perp book, and any Hyperliquid probe must first show why that arithmetic doesn't transfer. Named here so it's dismissed visibly rather than silently — the burden is on the venue, not the closure.
+
+Prior: CP1/F-M1 physics expected to transferRisks: JELLY-shaped manipulation, venue centralization, bridge risk
+
+Tier 3
+Structural income — returns without forecasts
+
+10 · The structural shelf: SPAC trusts, CEF discounts, index VRPCapital, not alpha
+
+Three documented, capacity-appropriate, slow-cadence returns that are not forecasting edges: SPAC trust yield (buy below trust, redeem at NAV — T-bills +150–300 bp, near-contractual, practitioner-verified); CEF discount baskets (10–15%+ discounts, free-riding activist campaigns; lumpy, carries the underlying beta); monthly index put-writing (the volatility risk premium — decades of index data, equity-like returns at 0.6 beta, real tail risk that must be sized to survive a 2020, and the April 2025 vol spike is the canonical warning). A fourth for completeness: microcap long-only tilts — the one equity corner where $50k is a structural advantage (the anomaly literature's surviving juice lives in names institutions can't trade), at weekly+ cadence, spread- and fraud-limited. All are places capital can sit and earn structure while research continues — with eyes open that they are risk premia, not alpha, and that this whole tier pays a fraction of the 1%/week bar.
+
+Evidence: practitioner-verified / index-verified / academicHonest expectation: mid-single to low-double-digit %/yr, drawdowns included
+
+11 · Ship the instrument itselfThis review's own recommendation
+
+Both research passes reached the same independent conclusion: sealed pre-registered holdouts exist nowhere in open-source backtesting, and the oracle-capture-bar gate plus the peel decomposition "would itself be publishable methodology." If no trading door opens, the one output the field demonstrably lacks is already built: a registered-report-style methods write-up, or an open-source seal/prereg/worst-fill validation toolkit extracted from training/. This is the only conclusion of the review that maps to zero market risk.
+
+Cost: writing and packaging timeValue: reputation, portfolio, and the discipline survives beyond this repo
+
+Tier 4
+Waiting rooms and standing upgrades
+
+12 · The patient listClosed unless conditions change
+
+FX: the 1h CI re-check as sealed years age out is waiting, not research; any reopening should execute on IdealPro or LMAX (0.4–0.6 bp commission on real books), not CFD LP feeds. Crypto: a fresh prereg on genuinely 2027+ data is the only conceivable reopening; the spent holdout can never be reused. Capital routes for a verified edge — none exists yet to bring: funded accounts (FTMO/Topstep-class) rent ~9× capital per dollar risked but their trailing-drawdown and consistency rules are a cost layer to simulate like any venue; Darwinex is the fee-based alternative (investor capital tracks the strategy for a 20% performance cut). Methodology upgrades (from §4): DSR on sweep ledgers, SPA per family, FDR bars for wide sweeps, block-bootstrap nulls, CPCV, decay-discounted hurdles, bootstrap CIs — each extends holdout life or adds power on data already logged. Platform: split/dividend adjustment, a volume-participation capacity cap, Freqtrade-style lookahead diffing, and — should anything ever pass — a live paper path via NautilusTrader rather than hand-built connectors. Before any search at H>1: rescale genome bounds, restate gate-6 floors for coarser cadence, and reseal criteria (docs/DECISION_CADENCE.md carries the debts).
+
+Standing state — what is actually running todayNeeds a decision
+
+Two operational loose ends as of 26 Aug 2026. The news arrival-lag poller is a live nohup process (~24k of the 100k daily EODHD units, hard 30k stop) that dies on any reboot — restart by hand or install a launchd job — and reaches its decision point after ~2 weeks of data (~early September): read --summary and settle which latency column live news actually lives in. And the paid EODHD subscription (~$30/mo) now has only two prospective consumers — the poller and the earnings-calendar endpoint — so a keep/cancel decision is due once the poller's fortnight is read; the archives on disk don't need it.
+
+Read 4 Sep 2026 — the decision point is reached, the answer is unfriendly, and the poller has been stopped. It carried n = 678 usable observations (against the 67 weekend-heavy rows the first read had): live vendor news arrives a median 29.5 minutes after its own publish stamp, p90 189.5 minutes, and the per-symbol medians run 22 min (AAPL) to 97 min (CRDO) with maxima past 24 hours. Nothing sub-hourly can be traded on this feed, which is the same conclusion the news-direction closure reached by a different route. That settles the latency column — but note precisely what it does not settle: a 30-minute arrival lag is immaterial at a next-day horizon, so it leaves entry 5 (LLM scoring, daily, judged live-forward) untouched. The subscription therefore still has two prospective consumers, not one: the news feed for entry 5 and the earnings-calendar endpoint for entry 8.
+
+The poller itself has a fault, found 4 Sep and worth recording as a pattern rather than a footnote. It has run continuously since 22 Aug and is still polling — but its visible log froze on 28 Aug at 01:03 UTC, and it kept writing for seven days into an orphaned inode: the process holds fd 4 on inode 13927973 (393,707 bytes) while the file at that path is inode 14515761 (145,652 bytes). Something replaced the file on disk at exactly the timestamp of the last visible observation, and a persistent append handle does not follow. Roughly 1,400 observations existed only in that unlinked inode; the poller was stopped on 4 Sep — gracefully, releasing its own pid file — and they went with it, an accepted trade because the 678 already in hand answer the question thirty times over. Two latent defects behind it: the log handle is opened once and never re-checked against the path's inode, and the fetch loop silently discards any response that is not a JSON list (rows if isinstance(rows, list) else []) — so a lapsed plan or an error payload would look exactly like "no news today". Any long-running collector needs an inode check on its append handle and a loud failure on an unexpected payload shape.
+
+§7
+The honest bottom linewhat the twelve days are worth
+
+The stated bar — 1% of account per week, earlier hundreds of dollars a day on $25k — is market-maker economics, and the programme now owns the measurement showing why: the required capture of hindsight-optimal motion exceeds anything any causal model has evidenced, at every taker venue, and passive execution buys adverse selection instead of spread. The literature reviewed for this dossier lands on the same side on every major plank: minute-scale predictability exists and sits under the spread (consensus); maker fills on fast signals are structurally picked off (measured on the same Binance venue by independent researchers, same sign, same severity); the firms that do capture sub-spread signals are speed-tier market-making franchises. The conclusion was not pessimism. It was arithmetic, done early, on measured numbers.
+
+Honesty requires naming the three published results that push back. Liu & Stentoft claim after-cost intraday ML Sharpe ~4 — resting on modeled costs in illiquid names, unreproduced with queue-aware fills. The crypto cost-aware-filtering literature would read CP4 as a firing-rate regime result rather than a refutation of the filter principle. And Frazzini–Israel–Moskowitz warn that academic cost estimates overstate patient institutional execution ~10× — for multi-day horizons, which is not where this programme's cells died. None survives contact with measured fills at this capital scale, but they are the strongest standing objections, and a discipline built on pre-registration should display them rather than tidy them away.
+
+What stands at the end: a research instrument whose negative results are trustworthy — which is the property that makes future positive results worth anything. The two decisive experiments this document named have both now been run. The equity maker test closed (−$91.31/day against a +$107.87 bar, at $0). The futures programme ran to completion for $19.22: IF0's free arithmetic passed, IF1 bought the real CME tape and found the proxy had been right to 2–4%, and IF2 took the causal shot on the cheapest venue the programme could reach — and failed with negative gross, holdout unspent.
+
+That last result revises this bottom line rather than confirming it. Until now the programme's one-sentence law was "where the signal is real the economics are shut; where the economics are open the signal doesn't survive" — and every closure was of the first kind, a genuine edge eaten by measured cost. IF2 was the first test with the economics genuinely open: a 6.38% reward bar, a required correlation below the band the programme's own evidenced signals occupy, and a venue ~25× cheaper than the perp cells that came closest to passing. There was nothing there to pay for. The corrected law is narrower and more useful: cheapness was necessary and nowhere near sufficient — and the programme had never before been in a position to learn that.
+
+What remains are not cheaper venues. They are different games: one arena where the counterparty is uninformed rather than the cost low (prediction markets — the distinction IF2 sharpened, and the opening with the strongest external evidence), one carry structure that forecasts nothing, a defensive wiring job with validated signals behind it, and the instrument itself. None of them are "try more parameters." All of them are reachable from here.
+
+And one more thing the review surfaced: the methodology itself — seal ceremonies, capture-bar gates, the peel decomposition — is ahead of published practice in places. If none of the doors above open, the instrument is the asset: it is exactly what the field's own reproducibility literature says is missing.
+
+§8
+Why the profession existsreconciling §0 with the people who trade for a living
+
+The verdict invites a question that deserves an answer on the same page: if every cell closed, how can there be people whose profession is trading? The short answer is that §0 proved something narrower than "trading cannot pay." It proved that a solo retail taker with one $25k slot, public one-minute bars and a 1%-a-week bar cannot out-predict the market by more than the market charges to let them try. Read from the other side of each trade, the same measurements say where the profession's money is. The bots kept paying it.
+
+What §0 actually proved — the four walls of the result
+
+One slot, house rules
+Long-only in most cells, all-or-nothing in one symbol, flat at the close, graded on worst fills. Rung 2 priced the rules: long-only forgoes 28% of the two-sided ceiling and forced-flat 69% of the half-day ceiling. No desk runs under them.
+
+Price bars as the only information
+Bar features, ridge, four bot families, vendor sentiment, 8-K text. IF2 then handed tape-only features the cheapest venue reachable and found no signal at all — whatever the profession knows, most of it is not in the bars.
+
+A bar most professionals never clear
+1% a week compounds to roughly 68% a year. Medallion, the field's famous exception, averaged about that gross over three decades while closed to outsiders and capped in size. A desk earning 10–20% a year at a Sharpe of one to two calls that a career; §7 already names the bar as market-maker economics.
+
+Intraday, until the slow programme
+And when cadence moved to daily, S1 found equal-weight buy-and-hold on the archive universe paid 2.2× the reward bar with zero skill. That universe was picked on 2026 dollar volume, so the level is flattered — but the shape holds: the passive risk premium cleared the bar before any forecasting began.
+
+The bill, read from the collecting side
+
+Every closure of the "real signal, bill too high" kind is a bill someone collected. The programme measured the payer; these rows name the payee.
+
+What the programme measuredWhat it cost the botsWho collects it
+
+Even the oracle pays 19.4% of gross to costs at 1 mORACLE_FOLLOWER trip economicsA fifth of perfect foresight, before a single forecasting errorMakers, exchanges and brokers, on each of its 301 trips a day
+
+Beta's timing skill is real and costs 2–4× what it earns to collectTURNOVER_CONTROL · Law 1Skill of 0.03–0.17 pp a window against drag of 0.08–0.28 ppThe spread quoted off the volatility the bot wanted — Law 2's maker
+
+The wholesaler keeps roughly the full effective spread on retail flow, and retail flow is uninformed at 30 sRung 6 · 650M printsThe only positive passive ledger ever measured here, and it requires being the wholesalerThe internalizer that payment for order flow routes the retail order to — a seat, not a signal
+
+One bar of foresight is 97.8% of the ceiling; the hot-name ceiling rises monotonically to $42–45k/day at one secondRungs 1 and 2An archive whose floor is one minute cannot stand where the money isWhoever holds the book inside the bar
+
+Adverse selection is flat from 1 s to 300 s; the undelayed 1 m edge inverts within a quarter secondEM2 · EM3Every edge found was alive at delay 0 and dead at delay 1Speed-tier makers that quote, get hit and cancel inside the first second
+
+PFOF retail brokers' effective round trip runs 7–46 bp§6 cost ladder · Schwarz et al. 2025What the population usually called "traders" actually paysThe same wholesaler seat, from the other end of the pipe
+
+Equal-weight buy-and-hold pays $109.69/day per $25k on the slow universeS1 · hindsight-selected universeThe passive line a long-only cell had to beat, and could notAnyone holding — and the managers charging a fee on the capital that holds
+
+The seats — what each kind of professional is actually paid for
+
+"Trader" covers at least nine different jobs, and only one of them is the job this programme tried to do. The last column is whether the seat is reachable from a $25k retail account.
+
+SeatPaid forWhat this programme measured about itFrom $25k
+
+Wholesaler / internalizerThe effective spread on retail orders routed to it by contract — flow that is uninformed by constructionRung 6: +3.9 / +1.6 / +0.8 bp per dollar one-way on MSTR / COIN / TSLA, against lit makers at +1.2 / +0.5 / −0.04; two-thirds to three-quarters of the oracle's own entry prints were off-exchangeSeat, not signal
+
+Speed-tier market makerThe spread in every minute the flow is uninformed, cancelling inside the minutes it is notLit makers lose 4–16% of the oracle's gross inside its minutes and earn outside them; information impounds inside the first second (EM2); the seat §7's literature names for sub-spread captureBelow the bar floor
+
+Sell-side flow traderThe bid-ask on client orders, hedging the residual — salary and bonus, not own P&LNot tested; the institutional face of the same ledger the wholesaler sits onNot a retail seat
+
+Agency / execution traderExecution quality on someone else's decision — beating the fill model, not the tapeThe worst / base / optimistic interval is the thing they are paid to narrow; no forecast requiredNot a forecasting job
+
+Fund managerA management fee on capital whether or not the year is up, a performance fee on top; returns mostly risk premia harvested at institutional costS1's passive line beat the reward bar 2.2× with zero skill; Frazzini–Israel–Moskowitz put patient institutional costs ~10× below academic estimates at multi-day horizons — which is not where this programme's cells diedFee on capital, not P&L
+
+Structural-income deskCarry, SPAC trust yield, closed-end fund discounts, index put-writing — returns without forecasts§6 Tier 3, labelled capital not alpha; BTC/ETH funding carry read off the archive and found decayed below T-bills (entry 4)Reachable, below the bar
+
+Informational trader, daily and slowerInformation the tape does not carry — consensus surprise, filings read properly, forecasting where the counterparty is an amateurUntested by design: openings 3, 5 and 8 are exactly this, and IF2 showed tape-only features carry nothing even where cost is not bindingOpen, unproven
+
+Retail day traderThe word's usual meaning — and the paying side of every ledger aboveRung 6's retail flow: uninformed and non-predictive at 10–30 s. Outside the programme: 97% of Brazilian day traders who persisted past 300 days lost money and ~1% out-earned the minimum wage (Chague et al.); Taiwan's predictably profitable share is under 1%, and individual traders' aggregate losses there ran ~2% of GDP a year, collected by institutions (Barber, Lee, Liu, Odean)The paying side
+
+Prop-evaluation firms, brokers, educatorsEvaluation fees, spreads and order-flow payments from people trying to enter the profession§6 entry 12: funded accounts rent ~9× capital behind trailing-drawdown rules that are a cost layer like any venue; the PFOF row above is the broker's side of the same flowAspirants fund it
+
+Three things then account for the population, not only the income. Scale flips the arithmetic: a tiny per-dollar edge times very large capital at very low per-dollar cost is a business, and the same edge on $25k at retail cost is this dossier. The 2021 Counterfactual priced these twelve days at roughly $1.16M in fund-grade person-months — a research bill that only pays back on nine-figure capital. Beta's skill-to-drag ratio of 0.26–0.62 becomes 2.6–6.2 if per-dollar cost falls by ten, and the programme measured the retail end of that inequality. Survivorship does most of the rest: the profitable few earn largely from the losing many, and the retail ledger in Rung 6 is that flow seen from the winning side. Aspirants fund it: a good deal of what looks like a profession from outside is a product sold to people trying to join it.
+
+One honest limit on the reconciliation. IF2 says the profession is not simply "the same bots with cheaper fills": on the cheapest venue the programme reached, tape-only features carried nothing to pay for. Whatever the desks collect at that venue comes from information the bars do not hold — order flow, cross-asset leads, sub-second book state — or from not forecasting at all. Cheap execution is the profession's precondition, not its edge.
+
+So the reconciliation is this. The programme proved that a solo retail forecaster cannot out-predict the market by more than the market charges for the attempt. The profession is mostly the people doing the charging, the people paid by fee rather than by forecast, and the survivor tail of a very large losing population. Nothing in this dossier contradicts their existence.
+
+"The programme measured the profession's income — from the paying side."The §8 reconciliation: every cost line in §3 is a revenue line for a seat listed here
+
+ Compiled 26 Aug 2026 · from 55 memory files, 39 repo docs, 157 report files, and a 7-agent research pass (frameworks, methodology literature, retail edges, execution economics, microstructure).
+ Every number traces to a verdict doc or report in the QuantPulse repo.
+ Rev. 4 Sep 2026 (fifth pass) — §8 added: why the profession exists — the four walls of the §0 result, the bill read from the collecting side, and the seats table of what each kind of trader is actually paid for. Rev. 3 Sep 2026 (fourth pass) — entry 7's live half given S4's decomposition (+$32.38/day of name selection against −$15.51/day of timing) and the record-squaring; Law 2 extended to the per-share commission; the §4 nulls gap sharpened by two instruments failing the same way. Rev. 4 Sep 2026 (third pass) — the news poller was read out and stopped; entry 5 given the reason the latency result leaves it open and the arrival-gating requirement it now carries. Second pass — post-dossier arc added to §2; Law 8 corrected (most 8-K variance was the open); entry 6 marked BUILT; entry 4's funding premium priced off the archive and closed for BTC/ETH; entry 7 given the slow programme's negative evidence; the news-lag poller read out at n=678. Earlier 4 Sep — IF2 closed the last open cell. Rev. 3 Sep — EM3 closed, IF0/IF1 passed, cost ladder re-priced from IF1's measured book.
+

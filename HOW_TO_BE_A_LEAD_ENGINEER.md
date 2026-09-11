@@ -1,11 +1,24 @@
-# HOW TO BE A LEAD ENGINEER
+# HOW TO BE A LEAD ENGINEER — phiên bản 2 (kỷ nguyên orchestrated + platform)
 
 > Sổ tay điều hành dành cho Lead Engineer và A1 Controller của
 > `my-quantitative`.
 >
 > Mục tiêu không phải tạo ra nhiều backtest đẹp. Mục tiêu là tạo ra các kết
 > luận đúng, có thể kiểm tra lại, không làm mất lịch sử, và không gọi một kết
-> quả là “edge” khi bằng chứng chưa cho phép.
+> quả là "edge" khi bằng chứng chưa cho phép.
+>
+> **Phiên bản 2 (2026-09-11)** thay phiên bản 1 (bản 35 mục, giữ nguyên
+> trong git history như evidence). Nội dung cốt lõi của v1 được giữ nguyên;
+> những gì thay đổi: canonical registry + `researchctl` thay ACTIVE_CYCLES
+> làm router duy nhất (§3.1, §7); orchestration v3 — lane có plugin điều
+> phối, structured handoff bắt buộc, guards là luật (§9); platform v3 —
+> CADS/authority registry làm data plane (§10); two-half close (§32,
+> P-16); one-live-session (§3.2, P-17); bài học P-12..P-17 và doctrine nhập
+> ngoài Q-1..Q-16 (QuantPulse dossier) được dệt vào đúng chỗ.
+
+---
+
+# PHẦN I — NỀN TẢNG
 
 ## 1. Vai trò của Lead Engineer
 
@@ -23,8 +36,12 @@ cho năm thứ:
 5. **Đúng kết luận** — `REJECT`, `BLOCKED` và `NOT RUN` đều là kết quả hợp lệ;
    không ép dự án phải có survivor.
 
-Lead tối ưu **thời gian tới một kết luận đáng tin**, không tối ưu số lượng code,
-số agent hay số cell chạy được.
+Lead tối ưu **thời gian tới một kết luận đáng tin**, không tối ưu số lượng
+code, số agent hay số cell chạy được.
+
+Trong kỷ nguyên orchestrated, Lead thêm một vai trò: **người giữ đúng một
+phiên sống** (§3.2) và **người đọc máy móc thay vì đoán nó** — registry,
+task store, lock, hook đều có thể hỏi; hỏi trước khi viết.
 
 ## 2. Các nguyên tắc không được thương lượng
 
@@ -40,7 +57,7 @@ Không thể tiếp tục an toàn        -> BLOCKED
 Đã chạy đúng, có artifact         -> PASS
 ```
 
-Không được đổi `NOT RUN` thành `PASS` vì “code trông đúng”. Không được đổi
+Không được đổi `NOT RUN` thành `PASS` vì "code trông đúng". Không được đổi
 `UNAVAILABLE` thành `AUTHORIZED` vì API trả HTTP 200.
 
 ### 2.2 Preserve history
@@ -55,7 +72,9 @@ Không được đổi `NOT RUN` thành `PASS` vì “code trông đúng”. Kh�
 ### 2.3 Fail closed
 
 Khi identity, data, license, timestamp, cost, SHA hoặc authority chưa rõ, mặc
-định là đóng. Lead không lấp khoảng trống bằng suy đoán thuận tiện.
+định là đóng. Lead không lấp khoảng trống bằng suy đoán thuận tiện. Trạng
+thái máy móc méo mó (registry malformed/truncated/stale) là
+`CONTROL_STATE_DRIFT` — từ chối, không "sửa nhanh".
 
 ### 2.4 Separate research stages
 
@@ -66,16 +85,20 @@ S1 = vùng chưa mở, dùng để kiểm tra ngoài mẫu sau khi khóa
 
 S0 không bao giờ được gọi là untouched OOS. S1 chỉ được mở bởi một plan và chỉ
 thị owner mới, sau khi strategy, data contract và tiêu chí đánh giá đã khóa.
+Niêm phong phải kín cả hai nửa: **data VÀ criteria** — seal data mà không
+seal thresholds chỉ là nửa seal (Q-9).
 
 ### 2.5 Owner words are literal authority
 
 Lead chỉ được coi một hành động là owner-authorized khi có chỉ thị rõ ràng,
-đúng đối tượng và đúng phạm vi.
+đúng đối tượng và đúng phạm vi. **Câu hỏi là thăm dò, mệnh lệnh là quyền
+hạn**: "đã merge chưa?" không phải "merge đi". Trả lời câu hỏi, chỉ thi hành
+mệnh lệnh.
 
 Ví dụ:
 
 ```text
-“Nếu prelaunch PASS thì chạy cells”
+"Nếu prelaunch PASS thì chạy cells"
 ```
 
 chỉ cho phép chạy cells sau prelaunch. Nó **không** cho phép:
@@ -87,82 +110,86 @@ chỉ cho phép chạy cells sau prelaunch. Nó **không** cho phép:
 - mở S1;
 - push hoặc merge `main`.
 
-Không ghi “owner supplied evidence” nếu owner không thực sự cung cấp evidence
+Không ghi "owner supplied evidence" nếu owner không thực sự cung cấp evidence
 đó. Giả định do agent tạo phải được ghi là `AGENT_ASSUMPTION_UNAUTHORIZED`.
+
+### 2.6 Guards là luật, không phải gợi ý (MỚI v2)
+
+Từ SYSTEM-HARDENING-V1 và orchestration v3, kỷ luật được thi hành bởi máy:
+CAS writes, heavy lock, hook deny-list, task-store transitions, schema
+validator. Nguyên tắc:
+
+- **Một hook/máy từ chối = luật đã hoạt động**, không phải lỗi cần vòng
+  qua. Muốn đổi luật: đổi qua commit/plan, không circumvent trong phiên.
+- Máy không có rule cho tình huống mới thì dùng rule của tài liệu này;
+  không dùng "máy cho phép" làm bằng chứng "được phép".
+- Khi máy từ chối một thứ đúng (ví dụ hook chặn push), cảm ơn nó và ghi
+  nhận vào report — đó là guard làm việc.
 
 ## 3. Thứ tự authority
 
 Khi hai nguồn hướng dẫn mâu thuẫn, dùng thứ tự:
 
-1. Chỉ thị owner mới nhất và rõ ràng nhất.
-2. Plan hiện hành của đúng cycle.
+1. Chỉ thị owner mới nhất và rõ ràng nhất (mệnh lệnh, không phải câu hỏi).
+2. Plan hiện hành của đúng cycle (cao nhất trong số các plan đã register).
 3. `CLAUDE.md` và repository operating contract.
 4. Frozen manifests, selection, run contract và gate definitions.
 5. Historical plans và terminal reports.
 6. README, NOTES và diễn giải trong chat.
 
-Historical artifact là bằng chứng về quá khứ, không tự động là trạng thái hiện
-tại. Luôn đo lại checkout.
+Historical artifact là bằng chứng về quá khứ, không tự động là trạng thái
+hiện tại. Luôn đo lại checkout.
 
-### 3.1 Active-cycle registry là router duy nhất
+### 3.1 Canonical registry là router duy nhất — qua `researchctl`
 
-Không suy ra cycle đang chạy chỉ từ tên file có version cao nhất. Một plan có
-thể đã được viết nhưng vẫn là `PLANNED_NOT_STARTED`; một worktree có thể tồn tại
-nhưng đang `PAUSED_RESOURCE_CONFLICT`; một version thấp hơn có thể chỉ còn là
-evidence lịch sử.
+(Thay thế §3.1 v1: `plans/ACTIVE_CYCLES.json` giờ **chỉ là projection sinh
+ra**, read-only.)
 
-Repository phải có một registry máy đọc được, mặc định:
-
-```text
-plans/ACTIVE_CYCLES.json
-```
-
-Mỗi asset/cycle tối thiểu ghi:
-
-```json
-{
-  "cycle_id": "CRYPTO_V15",
-  "asset": "crypto",
-  "plan": "plans/PLAN_crypto_v15.md",
-  "status": "ACTIVE_LIGHT",
-  "phase": "D1_PROPOSALS",
-  "integration_worktree": "/absolute/path",
-  "branch": "orca/v15-integration",
-  "head": "40-char-sha",
-  "budget_used": 0,
-  "budget_max": 6,
-  "go_phrase": "GO CRYPTO V15 SCORED EXECUTION",
-  "s1": "SEALED_UNTOUCHED"
-}
-```
-
-Allowed lifecycle statuses:
-
-```text
-PLANNED_NOT_STARTED
-ACTIVE_LIGHT
-ACTIVE_HEAVY
-PAUSED_RESOURCE_CONFLICT
-BLOCKED
-TERMINAL
-```
+- `plans/CYCLE_REGISTRY.json` (schema `cycle_registry@1`) là **authority
+  ghi-được duy nhất** cho trạng thái cycle. Mọi ghi đi qua
+  `research/researchctl.py` (transactional: validate → tmp → fsync → atomic
+  rename → read-back → append event journal `plans/CYCLE_REGISTRY.events.jsonl`;
+  parallel writers fail closed bằng flock + CAS trên previous content sha).
+  Không bao giờ hand-edit registry hay projection.
+- Cycle ID chỉ resolve qua registry — không suy ra từ tên file version cao
+  nhất, không suy ra từ worktree còn tồn tại.
+- `TERMINAL` là trạng thái hấp thụ: cycle đã đóng không mở lại qua registry;
+  GO phrase của nó chết (consumed hoặc extinguished-unconsumed).
+- `cycle resume` mặc định dry-run; `--execute-live` chỉ lật lifecycle —
+  scored execution vẫn cần gate của cycle + **GO mới của owner** (P-8: không
+  GO nào sống sót qua một đợt maintenance pause).
+- Registry dirty là hygiene violation: không bao giờ để registry state
+  uncommitted qua một thao tác dài (P-10 mở rộng cho control plane).
 
 `CLAUDE.md`, `RULES.md`, `CONTINUE.md`, plan path và GO registry phải đồng
-thuận với registry. Nếu version, phase, GO phrase hoặc worktree khác nhau, đó là
-`ROUTER_DRIFT`: **STOP trước dispatch/scoring**, đo lại và để Lead/A1 sửa bằng
-một commit chỉ chứa router/control-plane files. Không chọn nguồn thuận tiện nhất.
+thuận với registry. Nếu khác nhau, đó là `ROUTER_DRIFT`: **STOP trước
+dispatch/scoring**, đo lại và sửa bằng một commit chỉ chứa router/control-plane
+files. Không chọn nguồn thuận tiện nhất.
 
-`CONTINUE.md` là checkpoint ngắn được dẫn xuất từ registry, không phải authority
-lịch sử và không được chỉ tới một `PLAN.md` không tồn tại. Frozen cycle contract
-không bị viết lại khi global state đổi; registry ghi trạng thái hiện tại riêng.
+`CONTINUE.md` là checkpoint ngắn được dẫn xuất, không phải authority lịch sử.
+
+### 3.2 Một Lead session sống cho mỗi cycle (P-17)
+
+Hai Lead session cùng quyền sẽ đua nhau — đã xảy ra 2 lần, cả hai lần may mắn
+không hư hại vì CAS/single-writer hấp thụ hết các ghi, nhưng máy không hấp
+thụ được hai bộ não phân kỳ.
+
+Luật:
+
+- **Một cycle, một phiên Lead sống.** Owner mở thread /lead-resume mới thì
+  phiên cũ dừngcan thiệp vào surface của cycle đó.
+- **Mid-flight ≠ abandoned.** Trước khi viết lên một surface mà authority
+  khác có thể đang giữ, phải loại trừ "đang chạy" TRƯỚC (activity check:
+  process, heartbeat, store state, commits mới) — một session đang giữa
+  lệnh trông giống hệt một session bỏ hoang.
+- Hai close hội tụ về cùng verdict là evidence song song, cái sau không
+  âm thầm thay cái trước.
 
 ## 4. Intake: 15 phút đầu tiên
 
 Không sửa file trước khi intake hoàn tất.
 
 ### 4.1 Xác định checkout
-
-Chạy từ đúng repository:
 
 ```bash
 pwd
@@ -173,54 +200,35 @@ git remote -v
 git worktree list --porcelain
 ```
 
-Ghi lại:
-
-```text
-absolute cwd
-branch
-full 40-character HEAD SHA
-dirty/untracked paths
-remote relationship
-worktree owner
-```
-
-Không dùng short SHA làm authority nếu có thể tránh. Full SHA là tên duy nhất
-của một trạng thái Git cụ thể.
+Ghi lại absolute cwd, branch, **full 40-char SHA**, dirty/untracked paths,
+remote relationship, worktree owner. Không dùng short SHA làm authority.
+Không bao giờ đoán/gõ tay SHA — luôn `git rev-parse` (đã có 2 lần bị validator
+bắt vì SHA chế).
 
 ### 4.2 Đọc đúng tài liệu
 
-Tối thiểu:
+Tối thiểu: `CLAUDE.md`, `RULES.md`, plan hiện hành của cycle (theo registry),
+`research/wayfinder/MAP.md`, terminal report của cycle trước, state/
+heartbeat/event_log, worktree manifest, và `research/wayfinder/LESSONS.md`
+(P-1..P-17, Q-1..Q-16).
 
-```text
-CLAUDE.md
-plan hiện hành của cycle
-NOTES.md nếu liên quan research
-research/wayfinder/MAP.md
-terminal report của cycle trước
-state.json / heartbeat.json / event_log.jsonl
-worktree_manifest.json
+### 4.3 Đo process, lock và control plane
+
+```bash
+.venv/bin/python research/researchctl.py cycle list
+.venv/bin/python research/researchctl.py cycle doctor --json
+.venv/bin/python research/researchctl.py locks inspect
 ```
 
-Không mặc định `PLAN.md` là plan mới nhất. Tìm `PLAN_crypto_v*.md`,
-`PLAN_stocks_v*.md`, `PLAN_forex_v*.md` và xác định cycle đang active bằng Git
-state và control artifacts.
+Cộng với orchestrator (nếu cycle orchestrated): task store state,
+`orchestrator_waiting_summary`, `tail -20 .runtime/orchestrator_v3/events.jsonl`.
 
-### 4.3 Đo process và tài nguyên
-
-Kiểm tra:
-
-- scored/backtest/download/parser/full-pytest worker đang chạy;
-- RAM và dung lượng đĩa;
-- machine/host phù hợp;
-- data archive hoặc staged snapshot có thật;
-- agent/worktree nào đang sở hữu process.
-
-Không giết process của cycle khác. Nếu full suite xung đột với heavy worker,
-ghi `NOT_RUN_RESOURCE_CONFLICT` và chờ thời điểm an toàn.
+Kiểm tra: scored/backtest/download/parser/full-pytest worker đang chạy; RAM
+và đĩa; data archive/staged snapshot có thật; agent/worktree nào sở hữu
+process. Không giết process của cycle khác. Nếu full suite xung đột heavy
+worker, ghi `NOT_RUN_RESOURCE_CONFLICT` và chờ.
 
 ### 4.4 Phân loại dirty tree
-
-Mọi file bẩn thuộc một trong bốn loại:
 
 ```text
 OWNER_CHANGE            thay đổi của owner, phải giữ nguyên
@@ -233,14 +241,12 @@ Không tự reset file bẩn. Không gom thay đổi của owner vào commit c�
 
 ### 4.5 First report
 
-First report phải có:
-
 ```text
 measured UTC/local time
 cwd / branch / full HEAD
 dirty state
-active workers
-cycle phase
+active workers + lock owner
+cycle phase (từ registry)
 budget observed/published
 S1 status
 authority blockers
@@ -249,37 +255,21 @@ GO / NO_GO cho bước kế tiếp
 
 ## 5. Hiểu yêu cầu trước khi hành động
 
-Lead phân loại request:
-
-### 5.1 Read-only request
-
-Ví dụ: giải thích, audit, review, xem trạng thái.
-
-Cho phép đo và đọc. Không tự sửa code, push, merge, tải dữ liệu hoặc mở cycle
-mới.
-
-### 5.2 Change/build request
-
-Ví dụ: viết plan, implement adapter, sửa bug.
-
-Cho phép thay đổi trong phạm vi được giao, chạy verification tương xứng và
-commit khi workflow yêu cầu. Không tự mở rộng sang deployment hoặc provider.
-
-### 5.3 External-state request
-
-Ví dụ: push, tạo account, mua data, gửi email, live trade.
-
-Cần authority rõ ràng cho đúng hành động và đúng target. “Làm xong” không mặc
-định bao gồm push hoặc merge `main`.
-
-### 5.4 Destructive request
-
-Resolve target bằng read-only check trước. Ưu tiên thao tác có thể khôi phục.
-Nếu scope mơ hồ, dừng và hỏi owner.
+- **Read-only** (giải thích, audit, review): được đo và đọc; không tự sửa,
+  push, merge, tải dữ liệu, mở cycle mới.
+- **Change/build** (viết plan, implement, sửa bug): thay đổi trong phạm vi
+  được giao + verification tương xứng; không tự mở rộng sang deployment hoặc
+  provider.
+- **External-state** (push, account, mua data, email, live trade): cần
+  authority rõ ràng cho đúng hành động VÀ đúng target. "Làm xong" không mặc
+  định bao gồm push hoặc merge `main`.
+- **Destructive**: resolve target bằng read-only check trước; ưu tiên thao
+  tác hồi phục được (archive-then-delete, không delete-trước); scope mơ hồ
+  thì dừng và hỏi owner.
 
 ## 6. Cách Lead ra quyết định
 
-Mỗi quyết định nên đi qua sáu câu hỏi:
+Sáu câu hỏi:
 
 1. **Objective** — outcome cụ thể là gì?
 2. **Evidence** — dữ liệu nào chứng minh nó?
@@ -287,8 +277,6 @@ Mỗi quyết định nên đi qua sáu câu hỏi:
 4. **Reversibility** — nếu sai có khôi phục được không?
 5. **Contamination** — hành động có làm lộ S1, PnL hoặc ảnh hưởng cycle khác?
 6. **Stopping rule** — điều kiện nào buộc dừng?
-
-Ma trận quyết định:
 
 | Evidence | Authority | Hành động |
 |---|---|---|
@@ -303,67 +291,183 @@ Ma trận quyết định:
 correctness > provenance > reproducibility > speed > convenience
 ```
 
-## 7. Viết một PLAN có thể thực thi
+---
 
-Plan không phải danh sách mong muốn. Plan là contract quyết định trước khi kết
-quả xuất hiện.
+# PHẦN II — MÁY MÓC ĐIỀU HÀNH (control plane + data plane)
 
-### 7.1 Các phần bắt buộc
+## 7. researchctl và canonical registry (SHV1, đã trên main)
 
-Một research plan tốt gồm:
+Một bề mặt lệnh duy nhất cho điều khiển cycle. Đọc `docs/RESEARCHCTL.md`
+trước khi dùng. Lõi:
 
-1. Frozen starting point.
-2. Điều đã đóng và không được rescue.
-3. Mission, câu hỏi và terminal outcomes.
-4. Branch/worktree topology.
-5. Agent roles và ownership.
-6. Concurrency/resource policy.
-7. Data authority và PIT contract.
-8. Accounting/cost/publication contract.
-9. Blind proposal phase.
-10. Novelty và feasibility audit.
-11. Selection rubric và freeze.
-12. Implementation phase.
-13. Exact-arm dry-run.
-14. Code/data freeze.
-15. Independent prelaunch audit.
-16. Scored execution budget.
-17. Stage-A gates.
-18. Reproduction và terminal audit.
-19. S1/deployment boundary.
-20. Required commands và reporting format.
-21. Hard forbidden actions.
-22. First-report template.
-
-### 7.2 Plan phải có terminal outcomes âm
-
-Ví dụ:
-
-```text
-REJECT_ALL
-BLOCKED_DATA_AUTHORITY
-BLOCKED_SELECTION_INSUFFICIENT
-BLOCKED_PRELAUNCH
-INCOMPLETE_NOT_PROMOTABLE
-ONE_OR_MORE_STAGE_A_SURVIVORS_LOCKED_FOR_S1
+```bash
+PY=.venv/bin/python
+$PY research/researchctl.py cycle list             # bảng registry + drift warnings
+$PY research/researchctl.py cycle doctor --json    # chẩn đoán consistency
+$PY research/researchctl.py cycle pause <CYCLE> --reason "..."
+$PY research/researchctl.py cycle resume <CYCLE>   # DRY-RUN mặc định
+$PY research/researchctl.py locks inspect          # heavy lock machine-wide
+$PY research/researchctl.py program counters       # denominators (P-9)
+$PY research/governance/doctor.py                 # 10 detection classes
 ```
 
-Không có terminal âm sẽ tạo áp lực làm yếu gate để tìm survivor.
+Semantics ràng buộc:
 
-### 7.3 Không dùng phần trăm thay gate
+- Ghi registry chỉ qua `researchctl`/`governance.cycle_registry` — atomic,
+  CAS, journal. Viết tay = `CONTROL_STATE_DRIFT`.
+- Legacy records không bao giờ được viết lại; adapter normalize trong bộ nhớ
+  và drift hiện thành warning.
+- **Retry taxonomy**: lỗi `CODE_OR_SCHEMA_ERROR` không bao giờ auto-retry;
+  resource-conflict retry có backoff; mọi retry được ghi.
+- **Monitoring purity**: dashboard/doctor/collector không bao giờ ghi file
+  tracked; refresh lặp lại phải để `git status --porcelain` không đổi.
+- Merge/conflict trên `CYCLE_REGISTRY.json` + events journal: giải theo ngữ
+  nghĩa (union rows + journal-union theo `write_token`), tái sinh projection
+  bằng `write_projection`, chạy `--verify` trước khi commit.
 
-“80% xong” không có nghĩa rõ. Báo:
+## 8. Global heavy lock
+
+Giới hạn "một heavy job" là **machine-wide**, không phải per cycle (mỗi A1
+tự đếm worker của mình là chưa đủ vì hai cycle có thể cùng nhìn thấy máy
+rảnh).
+
+- Lock: `fcntl.flock` + registry PID + process-start token. Reclaim chỉ khi
+  CHỨNG MINH pid-dead hoặc token mismatch — không đoán.
+- Không lấy được lock → `NOT_RUN_RESOURCE_CONFLICT`; không spin/retry vô hạn,
+  không chạy chen.
+- Worker kết thúc ghi `FINISHED/FAILED/TECHABORT` và giải phóng lock trong
+  `finally`. Registry nói `workers=0` mà process còn sống là
+  `CONTROL_STATE_DRIFT`.
+- **Yielding pattern (V13)**: crawl dài chạy theo etiquette window (ví dụ
+  SEC silence windows) chủ động NHẢ lock trong lúc im lặng để cycle khác
+  dùng — giữ pattern này cho mọi job dài có pha idle.
+
+## 9. Orchestration v3 — điều phối lane bằng plugin (MỚI v2)
+
+Plugin `quant-research-orchestrator` (v3.1) là bề mặt chuẩn để điều phối
+lane từ phiên Lead. Plan: `plans/PLAN_zcode_orchestration_v3.md`; verdict
+canary: `PASS_AUTONOMOUS_HANDOFF_CANARY` — đọc lại artifact, không trích
+từ trí nhớ.
+
+### 9.1 Bốn role, map sang roster A
 
 ```text
-P0 PASS
-P1 PASS
-P2 BLOCKED_DATA_AUTHORITY
-P3 NOT RUN
+quant-explorer    đọc/evidence lane   ≈ A3/A9 phía đọc — chỉ trả paths + facts
+quant-implementer MỘT task, MỘT worktree có sẵn, base SHA đóng — ≈ A2/A8
+quant-reproducer  re-run detached tại exact SHA, verdict byte-level — ≈ reproduction lane
+quant-auditor     fresh-context, chỉ được viết audit namespace — = A7
 ```
 
-## 8. Thiết kế tổ chức agent
+Controller (A1/Lead) là người duy nhất ghi registry/ledger và merge.
 
-### 8.1 Vai trò chuẩn
+### 9.2 Task store — state machine tiến-tuyến
+
+```text
+REGISTERED → READY → DISPATCHED → RUNNING → HANDOFF_READY
+    → VALIDATING → INTEGRATED | REJECTED | BLOCKED | TECHABORT   (TERMINAL)
+HANDOFF_READY → BLOCKED (khi validation fail)  [v3.1]
+```
+
+Quy tắc đã trả giá (STORE-FLOW-1/2/3, đã fix trong v3.1):
+
+- `publish_handoff` ghi ATOMIC object submitter đưa vào inbox + digest;
+  từ chối `dispatch_sha` ≠ `base_sha` đã ghi.
+- `mark_integrated` resolve commit thật bằng `git cat-file` — không tin SHA
+  tự khai.
+- `record_outcome` chỉ nhận REJECTED|BLOCKED|TECHABORT; muốn thoát giữa
+  chừng phải đi đường hợp pháp (publish handoff → HANDOFF_READY → BLOCKED).
+- RUNNING không nhảy thẳng HANDOFF_READY — heartbeat trước.
+
+### 9.3 Structured handoff là bắt buộc
+
+Mọi task điều phối kết thúc bằng handoff JSON schema
+`zcode_orch_v3_handoff@1` (xem skill `structured-handoff` của plugin) ghi
+đúng `handoff_path` trong dispatch packet: task_id, cycle_id, role, lane,
+dispatch_sha, actual_start_sha, commit_sha, changed_paths, tests (LIST),
+authority_claims, known_limitations, incidents, tree_status, workers,
+outputs. **Chat prose là advisory; artifact là authority.** Hook PostAgent
+từ chối handoff không hợp lệ.
+
+### 9.4 Guards (hooks) — deny tuyệt đối
+
+SessionStart snapshot; PreToolUse chặn tuyệt đối (trong worktree lane VÀ
+root): push, `reset --hard`, `clean -f`, history rewrite, đọc secret
+(.env cat/printenv SECRET), merge/checkout main; PostAgent chặn handoff
+invalid; Stop continuation. Danh sách deny nằm trong plugin; **câu chữ
+command chứa trigger phrase cũng bị chặn** (kể cả trong heredoc tài liệu —
+đã xảy ra) — viết tài liệu bằng cách diễn đạt khác.
+
+### 9.5 Vòng đời phiên Lead
+
+`/lead-start` (bootstrap + snapshot) → `/lead-status` (đo trạng thái) →
+`/lead-resume` (tiếp tục cycle đang chạy, precondition check) →
+`/lead-close` (terminal reconciliation). Owner chạy các lệnh này trong
+thread mới; Lead hiện tại tuân thủ §3.2 (một phiên sống).
+
+Lanes không bao giờ: merge, rebase, push, đụng ledgers/registries, đụng lane
+khác, edit ngoài `allowed_paths`.
+
+## 10. Platform v3 — data plane (MỚI v2)
+
+`RESEARCH-PLATFORM-V3` (plan `plans/PLAN_research_platform_v3.md`) đang dựng
+data plane cho các cycle sau. Khi đạt GA, cycle tiêu dùng qua các capability:
+
+- **CADS** — content-addressed store: verify-on-read, atomic journals,
+  restore; dữ liệu nguyên liệu niêm phong theo content digest.
+- **AuthorityRegistry** — per-series authority rows, state machine
+  tiến-tuyến `GRANTED | BLOCKED`, grant fail-closed; doctrine §13 (PIT)
+  vẫn là luật, registry là máy móc thi hành.
+- **QueryPlane** — DuckDB read-only, manifest-verified; SessionManifest
+  builder với official cross-check fail-closed.
+- **exchange_calendars + telemetry (OTel)** — lịch phiên chuẩn hóa; trace có
+  redaction denylist.
+- **Frozen S1–S4 target set** (không đụng khi migrate): Form-4 substrate
+  345,150 XMLs (digest `5d351623…`), FRED pinned series, GB/CA/AU/NZ
+  calendars, Binance panels + OI.
+
+Boundary: cycle đã data/selection freeze không retrofit platform (giữ quy
+tắc §33); adoption qua commit riêng từng asset.
+
+---
+
+# PHẦN III — VÒNG ĐỜI CYCLE
+
+## 11. Worktree, branch và archive hygiene
+
+### 11.1 Mỗi agent một worktree
+
+```text
+.worktrees/<cycle>/integration
+.worktrees/<cycle>/<lane-name>
+```
+
+Không checkout cùng branch ở hai worktree. Không cho hai agent sửa chung
+worktree. Dispatch từ exact base: `BASE_SHA="$(git rev-parse HEAD)"` rồi
+verify ba giá trị (HEAD, branch, porcelain) khớp manifest trước khi agent
+bắt đầu.
+
+### 11.2 Ownership manifest
+
+Mỗi lane ghi worktree/branch/base_sha/owner/allowed_paths/forbidden_paths/
+status (SPAWNED → MERGED | REJECTED | BLOCKED_WITH_EVIDENCE).
+
+### 11.3 Không dùng cwd ngầm
+
+Mọi git command quan trọng: `git -C <absolute path>` (đã có lần merge chạy
+nhầm worktree vì cwd trôi). Trước commit: kiểm tra lại pwd/branch/HEAD.
+
+### 11.4 Archive-then-delete (P-13)
+
+Xóa worktree/file lớn phải theo thứ tự: ghi manifest (đường dẫn + sha256 +
+ngày) → nén vào `~/staging_backups/` → xóa. Restore phải verify pin theo
+manifest trước khi dùng. Đã cứu V13: staging "biến mất" sau cleanup được
+restore byte-exact từ tarball vì manifest còn. **Inherited pin là
+cross-cycle dependency** — archive trước khi xóa bất kể nhận định "không ai
+dùng".
+
+## 12. Tổ chức agent
+
+### 12.1 Vai trò chuẩn
 
 ```text
 A1  controller, integrator, freezer, publisher, counter owner
@@ -377,221 +481,46 @@ A8  implementation hoặc reproduction specialist
 A9  independent feasibility/resource auditor
 ```
 
-Tên có thể đổi theo cycle, nhưng separation of duties không đổi.
+Tên đổi theo cycle; separation of duties không đổi. Khi điều phối qua
+orchestrator, map theo §9.1.
 
-### 8.2 A1 là authority duy nhất cho integration
+### 12.2 A1 là authority duy nhất cho integration
 
-A1:
+A1 tạo worktree manifest, dispatch lane từ exact wave SHA, nhận handoff,
+cherry-pick tuần tự + gate sau từng pick, freeze, append canonical ledger,
+cập nhật denominator, đóng cycle. Lane agent không merge, rebase, push, sửa
+central ledger hay state của integration.
 
-- tạo và ghi worktree manifest;
-- dispatch lane từ exact wave SHA;
-- nhận handoff;
-- cherry-pick tuần tự;
-- chạy gate sau từng pick;
-- freeze;
-- append canonical ledger;
-- cập nhật denominator;
-- đóng cycle.
+### 12.3 A7 phải độc lập
 
-Lane agent không merge, rebase, push, sửa central ledger hoặc cập nhật state của
-integration.
+Branch từ SHA cần audit; chỉ viết audit artifact; không repair
+implementation; không thay gate; không hỏi implementer cách PASS; recompute
+từ bytes và source; tìm lý do bác bỏ claim. A7-thread của A1 không bao giờ
+audit chính A1. A7 REFUSED là kết quả bình thường — remediation loop là
+arc dự kiến (V15/V16/V8 precedent), không phải sự cố.
 
-### 8.3 A7 phải độc lập
+### 12.4 Khi nào nên dùng nhiều agent
 
-A7:
+Song song khi: nhiệm vụ độc lập; ownership file không giao nhau; cùng frozen
+base SHA; tích hợp tuần tự được; máy đủ tài nguyên. Không song song khi:
+nhiều agent phải sửa cùng core interface; plan chưa khóa; integration tree
+bẩn; scoring đang chạy trên máy yếu; câu hỏi nhỏ hơn chi phí coordination.
 
-- branch từ SHA cần audit;
-- chỉ viết audit artifact;
-- không repair implementation;
-- không thay gate;
-- không hỏi implementer cách làm cho PASS;
-- recompute từ bytes và source code;
-- tìm lý do để bác bỏ claim.
+### 12.5 Context packet theo vai trò
 
-Nếu A7 phát hiện lỗi, trả finding cho A1. A1 mở remediation lane mới. Sau sửa,
-A7 audit lại delta hoặc toàn bộ theo mức rủi ro.
+Mỗi dispatch packet tự đủ dùng và chỉ chứa: cycle/role/objective; exact base
+SHA + absolute worktree + branch; allowed/forbidden paths; frozen
+data/clock/cost identity liên quan; forbidden ancestry hoặc audit criteria;
+required inputs/outputs; test commands; stop conditions; commit + handoff
+format; `handoff_path`. A4/A5/A6 không nhận scored outcome files. A7 nhận
+evidence để audit, không nhận chỉ dẫn "làm sao PASS". A8 nhận frozen
+implementation contract. A9 nhận feasibility inputs không có PnL.
 
-### 8.4 Khi nào nên dùng nhiều agent
-
-Dùng song song khi:
-
-- nhiệm vụ độc lập;
-- ownership file không giao nhau;
-- cùng một frozen base SHA;
-- kết quả có thể tích hợp tuần tự;
-- máy đủ tài nguyên.
-
-Không dùng song song khi:
-
-- nhiều agent phải sửa cùng core interface;
-- plan chưa khóa;
-- integration tree còn bẩn;
-- scoring đang chạy trên máy yếu;
-- câu hỏi nhỏ hơn chi phí coordination.
-
-### 8.5 Context packet theo vai trò
-
-Lead/A1 đọc toàn bộ handbook. Không bắt mọi lane agent nạp toàn bộ lịch sử nếu
-nhiệm vụ chỉ cần một lát cắt nhỏ; việc đó tốn token và làm loãng ownership.
-
-Mỗi dispatch packet phải tự đủ dùng và chỉ chứa:
-
-```text
-cycle/role/objective
-exact base SHA + absolute worktree + branch
-allowed/forbidden paths
-frozen data/clock/cost identity liên quan
-forbidden ancestry hoặc audit criteria liên quan
-required inputs/outputs
-test commands
-stop conditions
-commit and handoff format
-```
-
-A4/A5/A6 proposal lanes không nhận scored outcome files. A7 nhận evidence cần
-audit nhưng không nhận chỉ dẫn “làm sao để PASS”. A8 nhận frozen implementation
-contract, không được diễn giải lại hypothesis. A9 nhận feasibility inputs không
-có PnL. Packet phải dẫn tới authority đầy đủ để tra cứu khi có ambiguity, nhưng
-không sao chép hàng nghìn dòng không liên quan.
-
-## 9. Worktree và branch discipline
-
-### 9.1 Mỗi agent một worktree
-
-```text
-.worktrees/<cycle>/integration
-.worktrees/<cycle>/<lane-name>
-```
-
-Không checkout cùng một branch ở hai worktree. Không cho hai agent sửa chung
-worktree.
-
-### 9.2 Dispatch từ exact base
-
-```bash
-BASE_SHA="$(git rev-parse HEAD)"
-git worktree add -b <lane-branch> <absolute-lane-path> "$BASE_SHA"
-```
-
-Sau khi tạo:
-
-```bash
-git -C <lane-path> rev-parse HEAD
-git -C <lane-path> branch --show-current
-git -C <lane-path> status --porcelain=v1
-```
-
-Ba giá trị phải khớp manifest trước khi agent bắt đầu.
-
-### 9.3 Ownership manifest
-
-Mỗi lane ghi:
-
-```json
-{
-  "lane": "a3-data",
-  "worktree": "/absolute/path",
-  "branch": "orca/cycle-a3-data",
-  "base_sha": "40-char-sha",
-  "owner": "A3",
-  "allowed_paths": ["..."],
-  "forbidden_paths": ["..."],
-  "status": "SPAWNED"
-}
-```
-
-Khi merge, cập nhật `MERGED`; khi reject, `REJECTED`; khi blocked,
-`BLOCKED_WITH_EVIDENCE`.
-
-### 9.4 Không dùng cwd ngầm
-
-Mọi command quan trọng phải có `cd` hoặc `workdir` tường minh. Trước commit và
-cherry-pick, kiểm tra lại `pwd`, branch và HEAD.
-
-Repo đã từng có commit rơi nhầm worktree vì shell cwd trôi. Đừng tin cwd từ
-command trước.
-
-## 10. Concurrency và resource scheduling
-
-Agent slot không đồng nghĩa worker slot.
-
-### 10.1 Phân loại workload
-
-```text
-LIGHT   đọc file, viết docs, unit test nhỏ, proposal
-MEDIUM  targeted pytest, compile, parser fixture
-HEAVY   full pytest, data download, bulk parse, scored cell, reproduction
-```
-
-Trên máy 8 GB, mặc định:
-
-- A1 + tối đa 3 lane nhẹ;
-- một heavy job tại một thời điểm;
-- scored cells serial trong family;
-- full pytest chạy một mình;
-- không download lớn cùng scoring.
-
-Trên strong host, phải probe RAM/CPU/disk trước; không dùng cấu hình máy cũ làm
-bằng chứng cho máy mới.
-
-### 10.2 Lead là scheduler
-
-Lead ghi:
-
-- process owner;
-- PID hoặc execution identity;
-- started time;
-- expected output;
-- cap đã đo;
-- điều kiện stop/retry.
-
-Không “sleep rồi hy vọng”. Theo dõi log, heartbeat, artifact growth và process
-health.
-
-### 10.3 Global heavy-worker lock
-
-Giới hạn “một heavy job” là **machine-wide**, không phải per cycle. Mỗi A1 tự
-đếm worker của mình là chưa đủ vì hai cycle có thể cùng nhìn thấy máy rảnh.
-
-Heavy worker phải lấy exclusive OS lock trước khi chạy, ví dụ bằng Python
-`fcntl.flock` trên:
-
-```text
-.runtime/heavy_worker.lock
-```
-
-Runtime file là local/gitignored. Registry đi kèm tối thiểu ghi:
-
-```text
-cycle_id / role / PID / process-start token
-absolute worktree / command digest
-started_at / last_heartbeat / expected artifacts / status
-```
-
-Nếu không lấy được lock, trả `NOT_RUN_RESOURCE_CONFLICT`; không spin/retry vô
-hạn và không chạy chen. Lock stale chỉ được thu hồi sau khi kiểm tra cả PID lẫn
-process-start token để tránh nhầm một PID đã được hệ điều hành tái sử dụng.
-
-Worker kết thúc phải ghi `FINISHED`, `FAILED` hoặc `TECHABORT` và giải phóng
-lock trong `finally`. State/heartbeat nói `workers=0` trong khi process còn sống
-là `CONTROL_STATE_DRIFT`, không được launch job tiếp theo cho đến khi reconcile.
-
-### 10.4 Nhiều cycle cùng tồn tại
-
-Cho phép proposal/docs/audit nhẹ chạy song song khi ownership không giao nhau.
-Chỉ một cycle có thể mang `ACTIVE_HEAVY` tại một thời điểm. Các cycle khác ghi
-`ACTIVE_LIGHT` hoặc `PAUSED_RESOURCE_CONFLICT` trong active-cycle registry.
-
-Worktree được tạo không tự động có nghĩa cycle đã được launch. Bootstrap phải có
-manifest/state/event-log commit sạch. Worktree có control files chưa commit là
-`BOOTSTRAP_INCOMPLETE`; hoặc A1 commit đúng pathspec, hoặc park nó rõ ràng. Không
-dispatch lane mới từ một integration tree bẩn.
-
-## 11. Data authority và PIT
+## 13. Data authority và PIT
 
 Đây là nơi một backtest đúng code vẫn có thể sai khoa học.
 
-### 11.1 Ba thời gian khác nhau
+### 13.1 Ba thời gian khác nhau
 
 ```text
 event_time       sự kiện xảy ra
@@ -599,834 +528,512 @@ effective_time   giá trị bắt đầu có hiệu lực
 available_time   thị trường/người nghiên cứu có thể biết giá trị
 ```
 
-`retrieved_time` là thời điểm agent tải file, không thay thế historical
-`available_time`.
+`retrieved_time` không thay thế historical `available_time`.
 
-### 11.2 Record tối thiểu
+### 13.2 Record tối thiểu
 
-```text
-source_id
-dataset_id
-entity_id
-field/value/unit
-event_time_utc
-effective_time_utc
-available_time_utc
-vintage_time_utc
-retrieved_time_utc
-raw_path/raw_sha256
-license_id/entitlement_id
-normalizer_version
-```
+source_id, dataset_id, entity_id, field/value/unit, event/effective/
+available/vintage/retrieved_time_utc, raw_path + raw_sha256, license/
+entitlement_id, normalizer_version. Với platform v3: những row này sống
+trong AuthorityRegistry (GRANTED|BLOCKED, fail-closed) — doctrine không
+đổi, chỉ được máy hóa.
 
-### 11.3 Effective không đồng nghĩa available
+### 13.3 Effective không đồng nghĩa available
 
-Một policy rate có thể hiệu lực ngày X nhưng:
+Một policy rate có thể hiệu lực ngày X nhưng được công bố trước/trong/sau
+X, hoặc chỉ xuất hiện trong dataset tổng hợp sau X, hoặc bị sửa lịch sử.
+Không tự đặt `available_time` nếu không có release evidence. **Measured
+beats stated, every single time (Q-8)**: hằng số vendor-stated (spread,
+fee, coverage) là giả thuyết — phải đo từ bytes (đã có 21,000× fee error,
+23× spread error trong một chương trình ngoài; P-7 hai kill trong chương
+trình mình).
 
-- được công bố trước X;
-- được công bố trong ngày X;
-- chỉ xuất hiện trong dataset tổng hợp sau X;
-- bị sửa lịch sử về sau.
+### 13.4 Free không đồng nghĩa authorized
 
-Không được tự đặt `available_time = end_of_effective_date` nếu không có release
-evidence. Nếu dùng thông báo ngân hàng trung ương, phải lưu URL, timestamp,
-content hash và mapping tới đúng rate change.
+Statuses: `DOCUMENTED_CANDIDATE → CANDIDATE_NOT_AUTHORIZED →
+AUTHORIZED_INTERNAL_RESEARCH | UNAVAILABLE_FAIL_CLOSED | REJECTED_LICENSE`.
 
-### 11.4 Free không đồng nghĩa authorized
+### 13.5 Primary và cross-check
 
-Một nguồn miễn phí vẫn có thể:
+Nguồn `CROSS_CHECK` không âm thầm vá gap của `PRIMARY`. Không trộn nguồn
+thành dataset mới nếu chưa freeze conflict policy + provenance từng row.
+Proxy-first (Q-15): đo bằng nguồn free/canary trước khi đề nghị owner mua;
+khi dữ liệu trả phí về, cross-verify proxy-vs-paid và ghi hệ số khớp.
 
-- cần account hoặc API key;
-- có click-through terms;
-- cấm lưu trữ;
-- cấm redistribution;
-- chỉ cho non-commercial use;
-- không có historical PIT.
+### 13.6 Data gate trước proposal/scoring
 
-Statuses nên dùng:
+License/entitlement; coverage + missing intervals; timezone/calendar/DST;
+identity/delisting/symbol changes; corporate actions; vintages/revisions;
+raw hashes + deterministic retrieval; source schema drift. Adapter PASS chỉ
+chứng minh parser hoạt động. **Bundle ≠ endpoint (P-7)**: một vendor có
+nhiều kênh (bulk bundle, per-symbol, API) với universe khác nhau — canary
+(dead names + never-existed controls) bắt buộc cho mỗi kênh, chạy lại mỗi
+lần đổi kênh.
+
+### 13.7 Archive bị rewrite và retrospective-only data
 
 ```text
-DOCUMENTED_CANDIDATE
-CANDIDATE_NOT_AUTHORIZED
-AUTHORIZED_INTERNAL_RESEARCH
-UNAVAILABLE_FAIL_CLOSED
-REJECTED_LICENSE
+publication lag      file xuất hiện trễ bao lâu sau event?
+revision integrity   byte/value lịch sử có bị thay về sau không?
 ```
 
-### 11.5 Primary và cross-check
+Thêm lag bảo thủ không chứng minh revision integrity. Hard gate:
+`PASS_PIT_EVIDENCED | RETROSPECTIVE_ONLY | BLOCKED_DATA`. SEC/multi-vintage:
+`available_time` của mỗi vintage = accepted/submission timestamp của đúng
+accession; amendment tạo vintage mới; mutation test chứng minh filing đến
+muộn làm signal dịch đúng decision period.
 
-Nguồn `CROSS_CHECK` không được âm thầm vá gap của `PRIMARY`. Không trộn nhiều
-nguồn thành dataset mới nếu không freeze conflict policy và provenance cho mỗi
-row.
+## 14. Scientific research protocol
 
-### 11.6 Data gate trước proposal/scoring
+### 14.1 Mechanism before parameter
 
-Kiểm tra:
+Proposal trả lời: ai bị ép mua/bán hoặc chậm phản ứng? Tại sao hiệu ứng tồn
+tại? Observable nào đo được cơ chế? Khi nào cơ chế phải thất bại? Control
+nào bác bỏ cách giải thích thuận tiện? Không bắt đầu bằng grid tham số.
 
-- license/entitlement;
-- coverage và missing intervals;
-- timezone/calendar/DST;
-- identity/delisting/symbol changes;
-- corporate actions;
-- vintages/revisions;
-- raw hashes và deterministic retrieval;
-- source schema drift.
+### 14.2 Outcome-blind proposal
 
-Adapter tests PASS chỉ chứng minh parser hoạt động; không chứng minh dataset đủ
-để scoring.
+Proposal agent không được xem scored outcome. Proposal khóa: hypothesis ID,
+mechanism, universe, clock, warmup, features/lags, entry/exit/fills, costs,
+anchor, một neighbour hỗ trợ, một causal/placebo control, falsification
+rule, expected failure interpretation.
 
-### 11.7 Archive bị rewrite và retrospective-only data
+### 14.3 Novelty và ancestry veto
 
-Publication lag và revision integrity là hai câu hỏi khác nhau:
+Family mới không được là family đã reject đổi timeframe/threshold/vài
+symbol/phí/tên/hướng dấu/session nhỏ. Cơ chế + information source + causal
+control không mới ⇒ reject trước scoring. Cross-horizon rescue cũng là
+ancestry violation (Q-3).
+
+### 14.4 Feasibility trước selection (không dùng PnL)
+
+Số decision dự kiến; warmup coverage; turnover/cost ceiling; missing data;
+fold population; compute/runtime; khả năng tạo control khác anchor. Đo
+ceiling của **cửa sổ gần nhất**, không phải trung bình cả archive (Q-6).
+Đừng mất sáu giờ implement một family mà data gate đã biết sẽ fail. Một
+family cận-kề-dương phải bị phân tích thành bill/clock/calendar trước khi
+viết plan kế thừa (Q-1).
+
+### 14.5 Controls phải là null hợp lệ (P-3 + Q-11)
+
+Control phải chạy dưới evidenced semantics; đổi semantics ⇒ recompute
+controls. **Hơ nữa: một permutation chỉ là null nếu nó LÀM CHO signal dịch**
+— đo autocorrelation ở đúng chiều control điều kiện; control tái tạo anchor
+có khi là kill, có khi là null vô hiệu (phân biệt trong verdict, không gán
+nhầm). Conditioning theo sự kiện phải mang clock-only shadow (Q-7: phần lớn
+"event variance" là clock).
+
+### 14.6 Selection freeze
+
+Rubric tồn tại trước khi proposals về. Freeze ghi: selected family IDs,
+proposal hashes, arm IDs, arm_config_digest, mọi field ảnh hưởng score,
+trial budget, Stage-A gates, data/code base SHA. Không chọn vì agent đã
+thấy PnL. Threshold đặt theo effect-scale đo được + log exclusion zone của
+bar (Q-12).
+
+## 15. Trial identity và denominator
+
+### 15.1 Trial identity
+
+Mỗi scored arm: cycle_id, family_id, arm_id, arm_config_digest,
+data_snapshot_digest, code_freeze_sha, cost_tier, fold contract. Exact-arm
+dry-run chứng minh record IDs pairwise distinct.
+
+### 15.2 Hai denominator
 
 ```text
-publication lag: file xuất hiện trễ bao lâu sau event?
-revision integrity: byte/value lịch sử có bị thay đổi về sau không?
+observed_scored_denominator    mọi outcome đã tính, kể cả publication fail
+published_ledger_denominator   đã publish thành công
 ```
 
-Thêm một lag bảo thủ không chứng minh revision integrity. Nếu kho dữ liệu cho
-thấy historical span được upload/ghi lại về sau và không có original listing,
-checksum hoặc independent snapshot tại thời điểm lịch sử, Lead phải mở hard
-gate trước proposal selection/scoring:
+### 15.3 Global trial history
+
+Lead duy trì program-level history để đánh giá multiple testing. Một
+survivor sau hàng trăm cells chưa phải edge thật.
+
+### 15.4 Intake snapshot ≠ current total
+
+Checkpoint/terminal phân biệt `intake_snapshot` và `current_ledger_snapshot`;
+current total chỉ lấy từ canonical ledger (P-9).
+
+## 16. Implementation discipline
+
+### 16.1 Implement từ frozen spec
+
+Không "cải thiện" proposal; ambiguity trả về A1 trước scoring.
+
+### 16.2 Test bằng hand-computed fixtures
+
+Tối thiểu: feature golden; one-event/one-bar lag; no-lookahead mutation;
+timezone/DST boundary; fold force-flat; costs exactly once; cash không bị
+tính như instrument; turnover/concentration; control khác anchor;
+deterministic double generation; malformed/missing data fail-closed.
+**Equivalence baselines đi ngầm theo thời gian (Q-14)**: fixture
+bit-identical phải được re-run khi semantics nó mã hóa đổi (cost kernel,
+spread model); baseline cũ PASS = false PASS.
+
+### 16.3 Không dùng production outcome trong unit test
+
+### 16.4 Daemon/collector hygiene (Q-13)
+
+Mọi process dài (crawl, poller): heartbeat mang bytes-written + đếm
+payload-shape; inode-check trên append handle (log file bị thay dưới tay
+làm handle ghi vào inode mồ côi); payload sai shape → fail LOUD, không nuốt
+im lặng thành "không có gì hôm nay".
+
+## 17. Integration protocol
+
+### 17.1 Handoff trước cherry-pick
+
+Lane trả: role/lane, base SHA, commit SHA, changed files, tests với exact
+commands, PASS/FAIL/NOT RUN, known limitations, tree status, workers —
+trong artifact handoff (§9.3) khi orchestrated, hoặc YAML template (§34)
+khi không.
+
+### 17.2 Cherry-pick tuần tự
+
+Verify integration clean → verify lane ancestry/base → inspect diff →
+pick MỘT lane → targeted tests → inspect status → record event → pick kế
+tiếp. Không pick ba lane rồi mới test.
+
+### 17.3 Conflict resolution
+
+Hai lane đụng file: không chọn bên tiện; quay về ownership contract; A1
+quyết định semantic result (registry/journal conflict: giải theo union ngữ
+nghĩa, §7); chạy lại tests của cả hai lane; ghi resolution vào event log.
+
+## 18. Gate evidence
+
+Mỗi gate artifact ghi: gate_id, measured_at, cwd/host, full HEAD, command,
+exit_code, stdout/stderr path-or-digest, expected, observed, input/output
+hashes, tree state, verdict, blocker.
+
+### 18.1 Test routing
+
+Syntax/import → targeted unit → adjacent compatibility → protocol → asset
+suite → full suite MỘT MÌNH → `git diff --check` → clean-tree verify.
+
+### 18.2 PASS có phạm vi
+
+`unit tests PASS` không có nghĩa `data authority PASS` hay `OOS PASS`. Luôn
+ghi phạm vi. **Margin-to-fail (P-2)**: mỗi gate ghi khoảng cách tới ngưỡng
+fail; pass mỏng được ghi là mỏng. Kèm exclusion-zone của bar (Q-12): "không
+gì qua" phải kèm chiều cao của bar.
+
+## 19. Freeze và prelaunch
+
+### 19.1 Các SHA quan trọng
 
 ```text
-PASS_PIT_EVIDENCED
-RETROSPECTIVE_ONLY
-BLOCKED_DATA
+BASE_SHA → WAVE_SHA → SELECTION_SHA → CODE_FREEZE_SHA → DATA_MANIFEST_SHA
+→ AUDIT_SHA → TERMINAL_SHA
 ```
 
-- `PASS_PIT_EVIDENCED`: có bằng chứng đủ mạnh rằng row/value đã available với
-  nội dung đó tại decision time.
-- `RETROSPECTIVE_ONLY`: được dùng để sinh hypothesis hoặc nghiên cứu mô tả,
-  nhưng không đủ điều kiện Stage A/S1 và không được quảng bá như PIT backtest.
-- `BLOCKED_DATA`: không được tính scored result.
+### 19.2 Exact-arm dry-run
 
-Các đường sửa hợp lệ: giới hạn về đoạn có archived snapshots độc lập; xây
-forward-only snapshot từ hiện tại; hoặc tìm publication/checksum evidence lịch
-sử. Owner có thể authorize nghiên cứu retrospective, nhưng authorization không
-biến retrospective bytes thành historical PIT evidence.
+`scored=false`, `real_pnl=false`, `published=false`; không lộ PnL/PF/stress/
+break-even ở BẤT KỲ độ sâu record nào (đã từng rò stress PnL ở field lồng);
+record IDs pairwise distinct; replay zero denominator delta. Empty book /
+zero-decision = fail, không phải pass (non-vacuous).
 
-Với SEC/multi-vintage data, `available_time` của mỗi vintage phải là accepted/
-submission timestamp của đúng accession. Amendment tạo vintage mới chỉ từ lúc
-amendment available; không được đưa restated value lùi về filing gốc. Mutation
-test phải chứng minh filing/vintage đến muộn làm signal dịch đúng decision period.
+### 19.3 Independent prelaunch A7 + two-key launch (P-8)
 
-## 12. Scientific research protocol
+A7 kiểm: hashes chain; exact-arm identity; data/PIT authority; accounting;
+dry-run hygiene; S1 seal; no post-freeze drift; denominator seed; twin
+integrity; zero unresolved HIGH/CRITICAL. Sau đó — và CHỈ sau đó — owner
+nhìn thấy verdict A7 rồi gõ **GO phrase đúng nguyên văn, mới, tại gate của
+chính nó**. GO gõ sớm = intent, chết unconsumed; phrase sai form bị từ chối
+và ghi nhận; GO không mang qua cycle, không sống qua pause.
 
-### 12.1 Mechanism before parameter
+## 20. Scored execution
 
-Proposal trả lời:
+### 20.1 Hard launch gate
+
+Không cell nào chạy cho tới khi: code freeze + data manifest + selection
+digests verified; prelaunch authorized; ledger seed verified; resource cap
+measured; S1 sealed; owner GO present khi plan yêu cầu.
+
+### 20.2 TECHABORT
 
 ```text
-Ai bị ép mua/bán hoặc chậm phản ứng?
-Tại sao hiệu ứng tồn tại?
-Observable nào đo được cơ chế?
-Khi nào cơ chế phải thất bại?
-Control nào bác bỏ cách giải thích thuận tiện?
-```
-
-Không bắt đầu bằng grid RSI/SMA và tìm tham số có PnL đẹp.
-
-### 12.2 Outcome-blind proposal
-
-Proposal agent không được xem scored outcome của proposal mình đang tạo.
-Proposal phải khóa:
-
-- hypothesis ID;
-- mechanism;
-- universe;
-- clock;
-- warmup;
-- features và lags;
-- entry/exit/fills;
-- costs;
-- anchor;
-- một neighbour hỗ trợ;
-- một causal/placebo control;
-- falsification rule;
-- expected failure interpretation.
-
-### 12.3 Novelty và ancestry veto
-
-Một family mới không được là family đã reject nhưng đổi:
-
-- timeframe;
-- threshold;
-- vài symbol;
-- phí;
-- tên gọi;
-- hướng dấu;
-- session nhỏ.
-
-Nếu cơ chế, information source và causal control không mới, reject proposal
-trước scoring.
-
-### 12.4 Feasibility trước selection
-
-Đo không dùng PnL:
-
-- số decision dự kiến;
-- warmup coverage;
-- turnover/cost ceiling;
-- missing data;
-- fold population;
-- compute/runtime;
-- khả năng tạo control khác anchor.
-
-Đừng mất sáu giờ implement một family mà data gate đã biết sẽ fail.
-
-### 12.5 Selection freeze
-
-Selection rubric phải tồn tại trước khi proposals về. Freeze ghi:
-
-```text
-selected family IDs
-proposal hashes
-arm IDs
-arm_config_digest
-all score-affecting fields
-trial budget
-Stage-A gates
-data/code base SHA
-```
-
-Không chọn vì agent đã lén thấy PnL.
-
-## 13. Trial identity và denominator
-
-### 13.1 Trial identity
-
-Mỗi scored arm cần identity đủ mạnh:
-
-```text
-cycle_id
-family_id
-arm_id
-arm_config_digest
-data_snapshot_digest
-code_freeze_sha
-cost_tier
-fold contract
-```
-
-Không dùng một field chung khiến Anchor và Neighbour đụng key. Exact-arm dry-run
-phải chứng minh mọi record ID pairwise distinct.
-
-### 13.2 Hai denominator
-
-```text
-observed_scored_denominator
-published_ledger_denominator
-```
-
-Khi computation hoàn tất và outcome đã được thấy, observed tăng dù publication
-thất bại. Sau khi sửa publisher, replay không tạo một trial khoa học mới nếu
-input/config/code computation identity không đổi; nhưng lịch sử sự cố phải giữ.
-
-### 13.3 Global trial history
-
-Không chỉ đếm cell trong sprint. Lead duy trì program-level history để đánh giá
-multiple testing. Một survivor sau hàng trăm cells chưa phải edge thật.
-
-### 13.4 Intake snapshot không phải current total
-
-Frozen contract giữ denominator tại thời điểm intake và không được sửa ngược.
-Nhưng mọi checkpoint/terminal phải phân biệt rõ:
-
-```json
-{
-  "intake_snapshot": {
-    "published": 197,
-    "observed": 200,
-    "as_of_commit": "..."
-  },
-  "current_ledger_snapshot": {
-    "published": 200,
-    "observed": 203,
-    "as_of_commit": "..."
-  }
-}
-```
-
-Current total lấy từ canonical global ledger, không cộng tay terminal reports.
-Chênh lệch hợp lệ do cycle khác đóng sau intake phải được giải thích; không gọi
-snapshot cũ là trạng thái hiện tại và không rewrite frozen contract để làm đẹp.
-
-## 14. Implementation discipline
-
-### 14.1 Implement từ frozen spec
-
-Implementation agent không được “cải thiện” proposal. Mọi ambiguity phải trả về
-A1 trước scoring.
-
-### 14.2 Test bằng hand-computed fixtures
-
-Tối thiểu:
-
-- feature golden;
-- one-event/one-bar lag;
-- no-lookahead mutation;
-- timezone/DST boundary;
-- fold force-flat;
-- costs exactly once;
-- cash không bị tính như instrument;
-- turnover/concentration;
-- control khác anchor;
-- deterministic double generation;
-- malformed/missing data fail-closed.
-
-### 14.3 Không dùng production outcome trong unit test
-
-Unit tests dùng synthetic fixture hoặc fixed hand-computed values. Không pin
-profitability của real S0 trong implementation test trước scoring.
-
-## 15. Integration protocol
-
-### 15.1 Handoff trước cherry-pick
-
-Lane trả:
-
-```text
-role/lane
-base SHA
-commit SHA
-changed files
-tests with exact commands
-PASS/FAIL/NOT RUN
-known limitations
-dirty/clean status
-workers
-```
-
-### 15.2 Cherry-pick tuần tự
-
-```text
-verify integration clean
-verify lane commit ancestry/base
-inspect diff
-cherry-pick one lane
-run targeted tests
-inspect status
-record event
-then pick next lane
-```
-
-Không cherry-pick ba lane rồi mới test. Khi lỗi xuất hiện, phải biết lane nào gây
-ra.
-
-### 15.3 Conflict resolution
-
-Nếu hai lane sửa cùng file:
-
-- không chọn bên tiện hơn;
-- quay về ownership contract;
-- A1 quyết định semantic result;
-- chạy lại tests của cả hai lane;
-- ghi conflict resolution vào handoff/event log.
-
-## 16. Gate evidence
-
-Mỗi gate artifact ghi:
-
-```text
-gate_id
-measured_at
-cwd / host
-full HEAD
-command
-exit_code
-stdout/stderr path or digest
-expected
-observed
-input hashes
-output hashes
-tree state
-verdict
-blocker
-```
-
-### 16.1 Test routing
-
-Thứ tự:
-
-1. Syntax/import/compile.
-2. Targeted unit tests.
-3. Adjacent compatibility tests.
-4. Protocol tests.
-5. Asset suite.
-6. Full suite một mình.
-7. `git diff --check`.
-8. Clean-tree verification.
-
-Không chạy full suite để thay cho targeted diagnosis.
-
-### 16.2 PASS có phạm vi
-
-```text
-unit tests PASS
-```
-
-không có nghĩa:
-
-```text
-data authority PASS
-visual QA PASS
-OOS PASS
-live readiness PASS
-```
-
-Lead luôn ghi phạm vi của PASS.
-
-## 17. Freeze và prelaunch
-
-### 17.1 Các SHA quan trọng
-
-```text
-BASE_SHA          điểm bắt đầu cycle
-WAVE_SHA          base chung cho proposal/implementation lanes
-SELECTION_SHA     family/arms đã khóa
-CODE_FREEZE_SHA   code được phép scoring
-DATA_MANIFEST_SHA snapshot được phép scoring
-AUDIT_SHA         artifact audit độc lập
-TERMINAL_SHA      closeout cuối cycle
-```
-
-### 17.2 Exact-arm dry-run
-
-Dry-run đi qua toàn bộ pipeline nhưng:
-
-- `scored=false`;
-- `real_pnl=false`;
-- `published=false`;
-- không để lộ PnL, PF, stress PnL, break-even hoặc metric kết quả;
-- record IDs phải pairwise distinct;
-- replay phải zero denominator delta.
-
-Repo đã từng có dry-run ghi `scored=false` nhưng rò stress PnL. Lead phải scan
-đệ quy toàn record, không chỉ bốn field top-level.
-
-### 17.3 Independent prelaunch A7
-
-A7 kiểm:
-
-- selection/proposal/code/data hashes;
-- exact-arm identity;
-- data/PIT authority;
-- accounting và costs;
-- dry-run hygiene;
-- S1 seal;
-- no post-freeze code drift;
-- denominator seed;
-- execution/reproduction twin integrity;
-- zero unresolved HIGH/CRITICAL.
-
-Audit không chỉ chứng minh code chạy đúng như code; audit phải hỏi giả định đầu
-vào có đúng không.
-
-## 18. Scored execution
-
-### 18.1 Hard launch gate
-
-Không cell nào chạy cho tới khi:
-
-```text
-code freeze verified
-data manifest verified
-selection digests verified
-prelaunch authorized
-ledger seed verified
-resource cap measured
-S1 sealed
-owner GO present when plan requires it
-```
-
-### 18.2 TECHABORT
-
-Phân biệt:
-
-```text
-SCIENTIFIC_FAIL  cell chạy đúng và không qua gate
+SCIENTIFIC_FAIL  cell chạy đúng, không qua gate
 TECHABORT        computation không hợp lệ/kết thúc kỹ thuật
 ```
 
-TECHABORT không được biến thành “không tính” tùy tiện nếu outcome đã bị lộ.
-Ghi mức độ outcome exposure và denominator theo run contract.
+TECHABORT không thành "không tính" tùy tiện nếu outcome đã lộ — ghi mức
+exposure + denominator theo run contract.
 
-### 18.3 Sau mỗi cell
+### 20.3 Sau mỗi cell
 
-Báo:
+Báo identity, exit code, runtime, observed/published delta, budget used,
+record/ledger digest, gate verdict, workers, S1 status. Không đợi hết cycle
+mới phát hiện denominator lệch.
 
-```text
-cell/arm identity
-exit code
-runtime
-observed delta
-published delta
-budget used
-record/ledger digest
-gate verdict
-workers
-S1 status
-```
+## 21. Stage-A interpretation
 
-Không đợi hết cycle mới phát hiện denominator lệch.
+Sau-cost expectancy dương; PF qua ngưỡng; ≥2/3 folds dương; drawdown dưới
+ceiling; không tập trung một fold/instrument; stress costs vẫn sống;
+drop-one survival; incremental alpha vs benchmark; neighbour hỗ trợ; causal
+control không tái tạo; reproduction exact; zero unresolved high/critical.
+Gate cụ thể theo plan của cycle. Một Stage-A survivor chỉ là **ứng viên đáng
+mở S1**, không phải strategy deploy.
 
-## 19. Stage-A interpretation
+## 22. Reproduction và terminal audit
 
-Một family thường cần:
+### 22.1 Reproduction
 
-- after-cost expectancy dương;
-- PF qua ngưỡng;
-- ít nhất 2/3 folds dương;
-- drawdown dưới ceiling;
-- không tập trung vào một fold/instrument;
-- stress costs vẫn sống;
-- drop-one survival;
-- incremental alpha so với benchmark;
-- neighbour hỗ trợ;
-- causal control không tái tạo;
-- reproduction exact;
-- zero unresolved high/critical.
+Detached tree tại exact code freeze; snapshot + manifest độc lập nhưng
+byte-identical; so sánh record IDs, schedules/fills, costs/funding, folds/
+stress, metrics, verdicts, ledger bytes. `ALL_MATCH` chứng minh
+self-consistency, KHÔNG chứng minh truth (P-4) — reproduction tái tạo cả
+bug lẫn kết quả.
 
-Gate cụ thể phải theo plan của cycle, không lấy danh sách này thay frozen
-contract.
+### 22.2 Terminal A7
 
-Một Stage-A survivor chỉ là **ứng viên đáng mở S1**, không phải strategy deploy.
+Recompute ancestry/freeze chain; ledger digest; gates từ source; trade/
+accounting reconciliation (gross/net pairing đúng vehicle — Q-14); control
+coherence; denominators; data/S1/deployment boundaries; strongest allowed
+terminal label. **Positive audit nghiêm hơn negative** (incentive xác nhận
+cao hơn). Số smoke-namespace chỉ được dùng kill + disclosure, không bao giờ
+select (P-15).
 
-## 20. Reproduction và terminal audit
+### 22.3 Terminal closeout — xem §32 (two-half close)
 
-### 20.1 Reproduction
+## 23. Xử lý survivor
 
-Reproduction chạy từ detached tree tại exact code freeze, với snapshot và
-manifest độc lập nhưng byte-identical.
-
-So sánh:
-
-- record IDs;
-- schedules/fills;
-- costs/funding;
-- folds/stress;
-- metrics;
-- verdicts;
-- ledger bytes hoặc normalized canonical bytes.
-
-Các field như timestamp chạy hoặc PID có thể được loại khỏi comparison nếu
-contract đã định trước.
-
-### 20.2 Terminal A7
-
-A7 recompute:
-
-- ancestry và freeze chain;
-- ledger digest;
-- gates từ source;
-- trade/accounting reconciliation;
-- control coherence;
-- denominators;
-- data/S1/deployment boundaries;
-- strongest allowed terminal label.
-
-Positive result cần audit nghiêm hơn negative result vì incentive xác nhận cao
-hơn.
-
-### 20.3 Terminal closeout
-
-A1 đồng bộ:
-
-```text
-state.json
-heartbeat.json
-event_log.jsonl
-terminal_report.json
-worktree_manifest.json
-MAP.md
-HYPOTHESIS_LEDGER.md
-SURVIVORS.md nếu thực sự đủ điều kiện
-```
-
-Workers phải về zero. Không xóa worktree bằng chứng nếu owner chưa cho phép.
-
-## 21. Xử lý survivor
-
-Trước khi ghi `SURVIVOR`, hỏi bốn tầng:
+Bốn tầng trước khi ghi `SURVIVOR`:
 
 | Tầng | Câu hỏi |
 |---|---|
-| Mechanical | Code, ledger, hashes, reproduction có đúng không? |
-| Data | PIT, license, identity, coverage có thật không? |
-| Statistical | Multiple testing, folds, controls có đủ không? |
-| Economic | Costs, financing, capacity có giao dịch được không? |
+| Mechanical | Code, ledger, hashes, reproduction đúng không? |
+| Data | PIT, license, identity, coverage thật không? |
+| Statistical | Multiple testing, folds, controls đủ không? |
+| Economic | Costs, financing, capacity giao dịch được không? |
 
-Nếu mechanical PASS nhưng PIT chưa chứng minh, dùng:
+Mechanical PASS + PIT chưa chứng minh → `PROVISIONAL_STAGE_A_SURVIVOR_
+PENDING_PIT_AUTHORITY`. Không mở S1 để chữa lỗi S0 — sửa data authority bằng
+remediation plan, giữ nguyên strategy, audit lại.
 
-```text
-PROVISIONAL_STAGE_A_SURVIVOR_PENDING_PIT_AUTHORITY
-```
+## 24. Xử lý bug sau freeze
 
-Không mở S1 để chữa một lỗi S0. Sửa data authority bằng một remediation plan,
-giữ nguyên strategy, rồi audit lại.
+- **Trước scoring**: freeze cũ thành `SUPERSEDED_BLOCKED`; remediation lane
+  từ đúng SHA; scope nhỏ nhất; regression; freeze mới; A7 delta audit; chỉ
+  chạy khi audit mới authorize.
+- **Sau scoring**: stop workers; không overwrite ledger; ghi incident +
+  exposure; giữ observed denominator; phân loại invalid/indeterminate/
+  repairable; chạy lại cần owner-approved remediation plan + identity mới
+  khi khoa học yêu cầu. Không sửa code rồi replay giữ nhãn cũ.
 
-## 22. Xử lý bug sau freeze
+## 25. Xử lý blocker
 
-### 22.1 Trước scoring
-
-Nếu A7 tìm bug trước cell đầu tiên:
-
-1. Giữ freeze cũ làm bằng chứng `SUPERSEDED_BLOCKED`.
-2. Mở remediation lane từ đúng SHA.
-3. Sửa phạm vi nhỏ nhất.
-4. Chạy regression.
-5. Tạo freeze mới.
-6. A7 delta audit.
-7. Chỉ chạy khi audit mới authorize.
-
-### 22.2 Sau scoring
-
-Nếu bug có thể ảnh hưởng outcome:
-
-1. Stop workers.
-2. Không overwrite ledger.
-3. Ghi incident và mức exposure.
-4. Giữ observed denominator.
-5. Xác định result invalid, indeterminate hay repairable theo plan.
-6. Muốn chạy lại phải có owner-approved remediation plan và identity mới khi
-   khoa học yêu cầu.
-
-Không sửa code rồi replay để giữ nhãn cũ.
-
-## 23. Xử lý blocker
-
-Lead không idle-spin. Khi blocked:
-
-1. Chứng minh blocker bằng read-only evidence.
-2. Exhaust các đường an toàn trong scope.
-3. Tách blocker thật khỏi việc chưa thử.
-4. Nêu một hoặc vài owner actions cụ thể.
-5. Giải phóng workers/resources.
-6. Đóng trạng thái trung thực.
-
-Một blocker report tốt:
+Không idle-spin: chứng minh blocker bằng read-only evidence; exhaust đường
+an toàn trong scope; tách blocker thật khỏi việc chưa thử; nêu owner action
+cụ thể (một hoặc vài); giải phóng resources; đóng trạng thái trung thực.
 
 ```text
 BLOCKED ON
-evidence
-what passed
-what did not run
-what was not attempted and why
+evidence / what passed / what did not run / what was not attempted and why
 single next owner action
 state/branch/SHA/tree/workers
 ```
 
-## 24. Incident transparency
+## 26. Incident transparency
 
-Các incident phải được ghi, kể cả đã sửa:
+Ghi kể cả đã sửa: cwd drift; commit nhầm worktree; unexpected dirty tree;
+branch sai; identity collision; denominator mismatch; dry-run leak; stale
+metadata; newline drift; missing archive; process chết/timeout; đụng
+forbidden path. Cộng lớp mới (v2): **dual-controller race** (P-17 — ai, hai
+session nào, surface gì); **registry/CONTROL_STATE_DRIFT** (đã reconcile
+chưa, bằng gì); **hook denial** (bị chặn gì, có circumvent không — câu
+trả lời phải là không); **fabricated/typo SHA** (validator bắt ở đâu).
 
-- cwd drift;
-- commit nhầm worktree;
-- unexpected dirty tree;
-- branch checked out sai;
-- identity collision;
-- denominator mismatch;
-- dry-run PnL leak;
-- stale metadata;
-- host newline/autocrlf drift;
-- missing archive;
-- process chết hoặc timeout;
-- accidental access tới forbidden path.
+Report: what happened / scope / outcome-data exposure? / repair / evidence
+preserved / vì sao kết luận còn valid hay invalid / prevention added.
 
-Report:
+---
 
-```text
-what happened
-scope of impact
-whether outcome/data was exposed
-repair performed
-evidence preserved
-why conclusion remains valid or becomes invalid
-prevention added
-```
+# PHẦN IV — ĐIỀU HÀNH & GIAO TIẾP
 
-Không giấu incident vì “đã sửa rồi”.
+## 27. Giao tiếp với owner
 
-## 25. Communication với owner
+### 27.1 Lead with outcome
 
-### 25.1 Lead with outcome
+Nói trước: PASS/FAIL/BLOCKED — ý nghĩa — owner cần làm gì không. Chi tiết
+sau.
 
-Nói trước:
+### 27.2 Không bắt owner thay placeholder kỹ thuật
 
-```text
-PASS / FAIL / BLOCKED
-ý nghĩa
-có cần owner làm gì không
-```
+Agent tự đo SHA, paths, counts, commands. Chỉ hỏi owner quyết định repo
+không suy ra được: mua data; account/terms; mở S1; push/merge/deploy;
+trade-off sản phẩm.
 
-Sau đó mới đưa chi tiết.
+### 27.3 Hai tầng, và "giải thích như 5 tuổi" khi được yêu cầu
 
-### 25.2 Không bắt owner thay placeholder kỹ thuật
+(1) Một giải thích đơn giản: đã làm / đang làm / còn thiếu. (2) Phần kỹ
+thuật với SHA, paths, gates cho audit. Khi owner yêu cầu đơn giản — cho một
+dòng thật sự đơn giản trước, kỹ thuật sau; không đổ thuật ngữ vào tầng một.
 
-Agent tự đo full SHA, paths, counts và commands. Chỉ hỏi owner về quyết định mà
-repo không thể suy ra:
+### 27.4 Commentary trong lúc chạy
 
-- có mua data không;
-- có tạo account/accept terms không;
-- có mở S1 không;
-- có push/merge/deploy không;
-- chọn trade-off sản phẩm nào.
+Cập nhật khi: bắt đầu phase; phát hiện blocker/incident; gate quan trọng
+hoàn tất; job dài vẫn khỏe; cần owner authority. Không cập nhật rỗng "vẫn
+đang làm".
 
-### 25.3 Giải thích hai tầng
+### 27.5 Push là việc của owner-terminal
 
-Cho owner:
+Hook chặn agent push tuyệt đối (kể cả khi được owner nhờ bằng lời — hãy trả
+lời "em bị hook chặn, anh push từ terminal giúp em"). Lead liệt kê các
+commit đang chờ push; owner xem và push.
 
-1. Một giải thích đơn giản: “đã làm / đang làm / còn thiếu”.
-2. Một phần kỹ thuật với SHA, paths, gates cho audit.
+## 28. Git, commit, push và merge
 
-### 25.4 Commentary trong lúc chạy
+### 28.1 Commit hygiene
 
-Không để owner im lặng quá lâu trong job dài. Cập nhật khi:
+Trước commit: pwd, branch, `status --short`, `diff --check`, `diff --stat`.
+Commit một semantic unit; **stage bằng pathspec, không bao giờ `git add
+-A`** (root checkout chứa artifact untracked của owner — P-10); stage +
+commit ATOMIC, không để index bẩn qua thao tác dài.
 
-- bắt đầu phase;
-- phát hiện blocker/incident;
-- gate quan trọng hoàn tất;
-- job dài vẫn khỏe;
-- cần owner authority.
+### 28.2 Push boundary
 
-Không gửi cập nhật rỗng kiểu “vẫn đang làm”; phải có evidence mới.
+Push chỉ khi owner/plan cho phép (và qua terminal của owner — §27.5). Không
+coi push branch là merge `main`.
 
-## 26. Git, commit, push và merge
+### 28.3 Main boundary
 
-### 26.1 Commit hygiene
+`main` là owner/bootstrap space. Không research trực tiếp trên main. Merge
+main là external state change riêng cần authority riêng. Merge orchestration/
+platform: conflict registry giải theo union ngữ nghĩa (§7); file tracked
+mất khỏi working tree sau merge → `git checkout -- <path>` theo pathspec,
+không `add -A`.
 
-Trước commit:
+## 29. Security và deployment boundary
 
-```bash
-pwd
-git branch --show-current
-git status --short
-git diff --check
-git diff --stat
-```
+- Không ghi API key trong prompt, command log, JSON, Git. Environment/
+  keychain/secret manager. Không in secret để "kiểm tra".
+- Key đã lỡ nằm trong git history thì: thông báo owner ngay, đánh giá exposure,
+  thu hồi/rotate — authorization owner không biến secret đã lộ thành secret
+  an toàn (bài học Binance .env trong history).
+- Không tạo account/accept terms thay owner. Paper/testnet/live là ba trạng
+  thái khác nhau. Live cần broker adapter, reconciliation, risk limits, kill
+  switch, idempotency, monitoring, owner deployment plan riêng.
 
-Commit chỉ chứa một semantic unit và không nuốt file của owner.
+## 30. Những lỗi tư duy Lead phải tránh
 
-### 26.2 Push boundary
+1. **"Tests xanh nên data đúng"** — tests có thể nhất quán với giả định sai.
+2. **"Reproduction exact nên edge thật"** — nó tái tạo hoàn hảo cả look-ahead
+   bug (P-4).
+3. **"Control âm nên mechanism đã chứng minh"** — control loại bỏ MỘT cách
+   giải thích, không phải mọi confounder; và control vô hiệu thì verdict
+   khác kill (Q-11).
+4. **"Miễn phí nên dùng được"** — còn license, account, PIT, coverage.
+5. **"Nhiều agent luôn nhanh hơn"** — ownership chồng nhau có khi chậm hơn.
+6. **"Survivor đầu tiên là chiến thắng"** — nó chỉ mở quyền lập kế hoạch S1.
+7. **"Owner không phản đối nghĩa là cho phép"** — im lặng không phải
+   authorization; câu hỏi không phải mệnh lệnh.
+8. **"Máy chặn tức là máy lỗi"** — guard làm việc là luật (§2.6).
+9. **"Không có commit mới tức là bị bỏ rơi"** — mid-flight ≠ abandoned
+   (P-17); đo activity trước khi kết luận.
+10. **"Số smoke đẹp có thể dùng để chọn"** — smoke namespace chỉ kill +
+    disclosure (P-15).
+11. **"TERMINAL trên branch là đã đóng"** — chưa, cho tới khi registry +
+    root ledger nói vậy (P-16, §32).
+12. **"Hằng số vendor là hằng số"** — measured beats stated, mọi lần (Q-8);
+    con số nguy hiểm nhất là con số chưa ai đo.
 
-Push chỉ khi owner hoặc plan cho phép. Push đúng branch, kiểm tra remote tip sau
-push. Không coi push branch là merge `main`.
+---
 
-### 26.3 Main boundary
+# PHẦN V — PLAYBOOK & TEMPLATE
 
-`main` thường là owner/bootstrap space. Không research trực tiếp trên main.
-Merge main là external state change riêng, cần authority riêng.
-
-## 27. Security và deployment boundary
-
-- Không ghi API key trong prompt, command log, JSON hoặc Git.
-- Dùng environment variable, keychain hoặc secret manager.
-- Không in secret để “kiểm tra”.
-- Không tạo account hay accept terms thay owner.
-- Paper/testnet/live là ba trạng thái khác nhau.
-- Xóa một hard guard không tự biến research system thành live-safe system.
-- Live cần broker adapter, reconciliation, risk limits, kill switch,
-  idempotency, monitoring và owner deployment plan riêng.
-
-## 28. Những lỗi tư duy Lead phải tránh
-
-### 28.1 “Tests xanh nên data đúng”
-
-Sai. Tests có thể chỉ chứng minh code nhất quán với một giả định sai.
-
-### 28.2 “Reproduction exact nên edge thật”
-
-Sai. Reproduction exact có thể tái tạo hoàn hảo một look-ahead bug.
-
-### 28.3 “Control âm nên mechanism đã chứng minh”
-
-Control âm loại bỏ một cách giải thích, không loại bỏ tất cả confounder.
-
-### 28.4 “Miễn phí nên dùng được”
-
-Sai. Còn license, account, storage, PIT và coverage.
-
-### 28.5 “Nhiều agent luôn nhanh hơn”
-
-Sai. Ownership chồng nhau và integration conflict có thể chậm hơn một agent.
-
-### 28.6 “Survivor đầu tiên là chiến thắng”
-
-Sai. Sau nhiều trials, survivor đầu tiên có thể là winner may mắn. Nó chỉ mở
-quyền lập kế hoạch S1.
-
-### 28.7 “Owner không phản đối nghĩa là owner cho phép”
-
-Sai. Im lặng không phải authorization.
-
-## 29. Playbook: mở một research cycle mới
+## 31. Playbook: mở một research cycle mới
 
 ```text
-1. Reconcile terminal cycle trước.
-2. Reconcile ACTIVE_CYCLES, router docs, processes và global heavy lock.
-3. Freeze starting SHA, counters, S1 và forbidden inventory.
-4. Viết plan với terminal outcomes âm.
-5. Bootstrap integration worktree; commit manifest/state/event log sạch.
-6. Register cycle status + exact GO phrase; validate router consistency.
-7. Pass accounting/data/PIT factory gates, gồm rewrite/revision gate nếu có.
-8. Freeze baseline invariants.
-9. Dispatch blind proposal lanes từ một wave SHA bằng role-specific packets.
-10. Audit novelty và feasibility.
-11. Apply frozen selection rubric.
-12. Freeze selected proposal hashes và six-arm identities.
-13. Implement trong isolated lanes.
-14. Integrate tuần tự và run gates.
-15. Create code/data freeze và detached twins.
-16. Exact-arm sanitized dry-run.
-17. Independent A7 prelaunch.
-18. Owner GO nếu plan yêu cầu.
-19. Acquire global heavy lock; run bounded scored cells.
-20. Reproduce independently dưới cùng resource discipline.
+ 1. Reconcile terminal cycle trước (hai nửa đều land — §32).
+ 2. Reconcile canonical registry, projection, router docs, heavy lock.
+ 3. Freeze starting SHA, counters, S1, forbidden inventory.
+ 4. Viết plan với terminal outcomes âm + GO phrase nguyên văn.
+ 5. Bootstrap THROUGH researchctl: cycle register + worktree + manifest/
+    state/event-log commit sạch (BOOTSTRAP_INCOMPLETE nếu control files
+    chưa commit).
+ 6. (Orchestrated) orchestrator intake → register tasks → dispatch qua
+    packet chuẩn; ngược lại dispatch lane thủ công theo §12.
+ 7. Pass accounting/data/PIT factory gates (kể cả rewrite/revision gate).
+ 8. Freeze baseline invariants.
+ 9. Dispatch blind proposal lanes từ một wave SHA (packet theo vai trò).
+10. Audit novelty + feasibility (đo ceiling cửa sổ gần — Q-6).
+11. Apply frozen selection rubric (+ exclusion-zone của bar — Q-12).
+12. Freeze selected hashes + arm identities.
+13. Implement trong lanes cô lập.
+14. Integrate tuần tự + gates.
+15. Code/data freeze + detached twins.
+16. Exact-arm sanitized dry-run (non-vacuous, scan đệ quy).
+17. A7 prelaunch độc lập (two-key thứ nhất).
+18. Owner GO tại gate của cycle (two-key thứ hai — fresh, đúng form).
+19. Acquire heavy lock; scored cells bounded.
+20. Reproduce độc lập cùng resource discipline.
 21. Terminal A7.
-22. Close state, ledger, Wayfinder, registry, workers và release lock.
+22. Close: hai nửa (A1 branch chain + Lead control-plane landing — §32).
 ```
 
-## 30. Playbook: Data Fusion hoặc shared core
+## 32. Playbook: đóng cycle — two-half close (P-16) (MỚI v2)
 
-Shared core không được retrofit vào frozen cycle.
+TERMINAL trên branch CHƯA phải là closed. Close có hai nửa:
+
+**Nửa 1 — branch-side terminal chain (A1):** terminal artifacts + A7
+terminal verdict + terminal commit trên integration branch; registry append
+trên branch nếu cycle có governance-native.
+
+**Nửa 2 — control-plane landing (Lead, MỘT writer):**
+
+```text
+[ ] registry: lifecycle → TERMINAL + head (đo từ branch, không gõ tay)
+    + budget_used đúng (qua researchctl/canonical save, CAS)
+[ ] projection tái sinh; cycle doctor + validator --verify PASS
+[ ] HYPOTHESIS_LEDGER: row của cycle + denominators mới (P-9: đây là
+    authority cross-asset duy nhất)
+[ ] FAMILY_FAILURES: append các kill + validator --verify
+[ ] MAP.md: mục cycle mới
+[ ] LESSONS: bài học mới (nếu có) — source → lesson → consequence
+[ ] SURVIVORS.md chỉ khi thực sự đủ điều kiện
+[ ] workers = 0, lock released, worktree evidence giữ (hoặc archive-
+    then-delete theo §11.4 khi owner cho phép dọn)
+[ ] router docs (RULES/CONTINUE) đồng thuận registry
+```
+
+Cho tới khi cả hai nửa land: router sẽ dẫn hướng sai dispatch kế tiếp và
+denominators undercount. Sync được verify trước commit; A1 chỉ append trên
+branch của chính nó.
+
+## 33. Playbook: shared core / platform adoption
+
+Shared core không retrofit vào frozen cycle:
 
 ```text
 1. Xây core ở branch/worktree riêng.
-2. Unit-test offline interfaces.
+2. Unit-test offline interfaces (+ negative matrices).
 3. Adapter lanes có ownership riêng.
-4. Ghi source registry và authority status.
+4. Ghi source registry + authority status (platform v3: AuthorityRegistry).
 5. Independent audit core.
-6. Freeze MULTISOURCE_DATA_CORE_SHA.
-7. Mỗi asset có adoption commit riêng.
-8. Chạy compatibility tests.
-9. Chỉ cycle chưa data/selection freeze mới được adopt.
-10. Cycle đã freeze chờ vòng sau.
+6. Freeze MULTISOURCE_DATA_CORE_SHA (hoặc platform GA gate).
+7. Mỗi asset một adoption commit riêng + compatibility tests.
+8. Chỉ cycle CHƯA data/selection freeze được adopt; cycle đã freeze chờ
+   vòng sau.
 ```
 
 Parser PASS không tự nâng nguồn thành research-authorized.
 
-## 31. Templates
+## 34. Templates
 
-### 31.1 Agent dispatch
+### 34.1 Agent dispatch (packet)
 
 ```text
-ROLE
-OBJECTIVE
-ABSOLUTE WORKTREE
-BRANCH
-EXPECTED BASE SHA
-ALLOWED PATHS
-FORBIDDEN PATHS
-REQUIRED INPUTS
-DELIVERABLES
-TEST COMMANDS
-STOP CONDITIONS
-COMMIT/PUSH RULES
-HANDOFF FORMAT
+ROLE / OBJECTIVE / ABSOLUTE WORKTREE / BRANCH / EXPECTED BASE SHA
+ALLOWED PATHS / FORBIDDEN PATHS / REQUIRED INPUTS / DELIVERABLES
+TEST COMMANDS / STOP CONDITIONS / COMMIT-PUSH RULES
+HANDOFF FORMAT + HANDOFF_PATH (structured handoff khi orchestrated)
 ```
 
-### 31.2 Checkpoint
+### 34.2 Checkpoint
 
 ```yaml
 phase: P2_DATA_AUTHORITY
@@ -1434,17 +1041,13 @@ verdict: PASS | FAIL | NOT_RUN | BLOCKED
 head: <full SHA>
 tree: clean | dirty-with-listed-paths
 workers: 0
-commands:
-  - command: ...
-    exit_code: 0
-    result: ...
-artifacts:
-  - path: ...
+commands: [{command: ..., exit_code: 0, result: ...}]
+artifacts: [path]
 remaining_blockers: []
 next_safe_action: ...
 ```
 
-### 31.3 Handoff
+### 34.3 Handoff (không orchestrated)
 
 ```yaml
 agent: A3
@@ -1452,17 +1055,28 @@ lane: data
 base_sha: ...
 commit_sha: ...
 changed_files: []
-tests:
-  passed: []
-  failed: []
-  not_run: []
+tests: {passed: [], failed: [], not_run: []}
 authority_claims: []
 known_limitations: []
+incidents: []
 tree_clean: true
 workers: 0
 ```
 
-### 31.4 Owner decision request
+### 34.4 Structured handoff (orchestrated) — trường bắt buộc
+
+```json
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "...", "cycle_id": "...", "role": "...", "lane": "...",
+  "dispatch_sha": "...", "actual_start_sha": "...", "commit_sha": "...",
+  "changed_paths": [], "tests": [], "authority_claims": [],
+  "known_limitations": [], "incidents": [],
+  "tree_status": "clean", "workers": 0, "outputs": []
+}
+```
+
+### 34.5 Owner decision request
 
 ```text
 Decision required:
@@ -1474,96 +1088,114 @@ Exact action that becomes authorized:
 Actions that remain forbidden:
 ```
 
-### 31.5 Terminal report
+### 34.6 Terminal report
 
 ```text
-terminal verdict
-full integration SHA
-freeze/data/selection/audit SHAs
-observed/published denominators
-budget used
-family verdicts
-reproduction status
-S1 status
-data authority status
-incidents and impact
-tests/gates
-workers/tree
-completed vs not completed
-next owner-authorized path
+terminal verdict / full integration SHA / freeze-data-selection-audit SHAs
+observed-published denominators / budget used / family verdicts
+reproduction status / S1 status / data authority status
+incidents and impact / tests-gates / workers-tree
+completed vs not completed / next owner-authorized path
 ```
 
-## 32. Definition of done cho Lead
+## 35. Definition of done cho Lead
 
-Một cycle chỉ “done” khi:
+Một cycle chỉ "done" khi:
 
-- câu hỏi đã có terminal verdict hợp lệ;
-- mọi computed outcome được đếm;
+- terminal verdict hợp lệ; mọi computed outcome được đếm;
 - state/heartbeat/event log/ledger đồng thuận;
-- reproduction và audit có verdict rõ;
-- S1/deployment boundary được giữ;
-- incidents được ghi;
-- không còn worker sở hữu;
-- tree ở trạng thái đã báo;
+- reproduction + audit có verdict rõ; S1/deployment boundary giữ;
+- incidents được ghi; workers = 0; tree đúng như báo;
+- **cả hai nửa close đã land + verify** (registry/projection/ledger/
+  failures/MAP/LESSONS — §32);
+- một phiên Lead sống duy nhất, không session ma;
 - owner biết chính xác điều gì đã làm và chưa làm.
 
-`BLOCKED_DATA_AUTHORITY` với evidence đầy đủ có thể là done. Một survivor thiếu
-PIT evidence thì chưa done dù PnL đẹp.
+`BLOCKED_DATA_AUTHORITY` với evidence đầy đủ có thể là done. Một survivor
+thiếu PIT evidence thì chưa done dù PnL đẹp.
 
-## 33. Cách huấn luyện một Lead Engineer mới
+## 36. Huấn luyện một Lead Engineer mới
 
-Agent mới nên hoàn thành lần lượt:
+Hoàn thành lần lượt:
 
-1. Audit read-only một terminal cycle và tìm SHA chain.
-2. Reconcile observed/published denominator.
-3. Tạo một worktree lane và manifest không chỉnh code.
+1. Audit read-only một terminal cycle + truy SHA chain (kể cả hai nửa
+   close trong registry).
+2. Reconcile observed/published denominator từ ledger.
+3. Tạo worktree lane + manifest không chỉnh code.
 4. Integrate một fixture-only change với targeted tests.
-5. Audit một PIT dataset và phân biệt effective/available/retrieved.
-6. Viết một proposal có anchor/neighbour/control.
-7. Review một exact-arm dry-run để tìm leak.
+5. Audit một PIT dataset; phân biệt effective/available/retrieved.
+6. Viết proposal có anchor/neighbour/control (+ tự kiểm null hợp lệ Q-11).
+7. Review một exact-arm dry-run để tìm leak (scan đệ quy).
 8. Reproduce một historical cell từ detached tree.
 9. Viết terminal report không phóng đại claim.
-10. Xử lý một giả định “owner-authorized” không có chỉ thị owner thật.
+10. Xử lý một giả định "owner-authorized" không có chỉ thị owner thật.
+11. (v2) Đi một task qua orchestrator: register → dispatch → heartbeat →
+    publish handoff → validate → integrate; đọc store state phát hiện
+    mid-flight (P-17).
+12. (v2) Giải một conflict CYCLE_REGISTRY bằng union ngữ nghĩa + tái sinh
+    projection + `--verify`.
 
-Chỉ sau các bài tập này mới giao quyền A1 publisher/freezer.
+Chỉ sau các bài này mới giao quyền A1 publisher/freezer.
 
-## 34. Checklist cuối cùng của Lead
-
-Trước mọi quyết định quan trọng, hỏi:
+## 37. Checklist cuối cùng của Lead
 
 ```text
-[ ] Tôi đang ở đúng cwd/branch/worktree/HEAD?
-[ ] Dirty files đã được giải thích?
-[ ] Tôi đã đọc đúng plan hiện hành?
-[ ] ACTIVE_CYCLES, CLAUDE, RULES, CONTINUE và GO phrase có đồng thuận?
-[ ] Cycle này là ACTIVE_LIGHT, ACTIVE_HEAVY hay PAUSED_RESOURCE_CONFLICT?
-[ ] Global heavy lock và worker registry có khớp process thật?
-[ ] Authority này đến từ owner hay do agent suy luận?
-[ ] Dữ liệu có PIT và license evidence thật?
-[ ] Có historical rewrite/restatement nào chỉ được che bằng lag giả định?
-[ ] Cycle khác và S1 có bị ảnh hưởng?
-[ ] Trial identity và denominator có đầy đủ?
-[ ] Intake snapshot và current ledger total có được phân biệt?
-[ ] Gate đã thực sự chạy hay chỉ được mô tả?
-[ ] A7 có độc lập và có kiểm giả định đầu vào?
-[ ] Positive claim có mạnh hơn evidence không?
-[ ] Có đường dừng trung thực nếu kết quả âm?
-[ ] Report có full SHA, commands, artifacts, tree và workers?
+[ ] Đúng cwd/branch/worktree/HEAD (git -C absolute)?
+[ ] Dirty files đã giải thích? Index không bẩn qua thao tác dài?
+[ ] Đọc đúng plan hiện hành (theo registry, không theo tên file)?
+[ ] Registry / projection / RULES / CONTINUE / GO phrase đồng thuận?
+[ ] Cycle này ACTIVE_LIGHT / ACTIVE_HEAVY / PAUSED? Một phiên Lead sống?
+[ ] Surface tôi sắp ghi có authority khác đang in-flight không (P-17)?
+[ ] Heavy lock + worker registry khớp process thật?
+[ ] Authority từ owner hay do agent suy luận? (câu hỏi ≠ mệnh lệnh)
+[ ] Dữ liệu PIT + license evidence thật? Hằng số đo được hay stated (Q-8)?
+[ ] Có rewrite/restatement chỉ che bằng lag giả định?
+[ ] Cycle khác và S1 bị ảnh hưởng?
+[ ] Trial identity + denominator đầy đủ? Intake ≠ current đã phân biệt?
+[ ] Gate chạy thật hay chỉ được mô tả? Margin-to-fail đã ghi?
+[ ] A7 độc lập + kiểm giả định đầu vào? Two-key đủ (A7 → GO fresh)?
+[ ] Positive claim mạnh hơn evidence? Smoke chỉ kill (P-15)?
+[ ] Report có full SHA, commands, artifacts, tree, workers?
+[ ] Handoff artifact (không phải chat prose) đã ghi đúng handoff_path?
 ```
 
-Nếu một câu chưa trả lời được, chưa nên bấm chạy scored cell.
+Một câu chưa trả lời được ⇒ chưa bấm chạy scored cell.
 
-## 35. Mô hình tinh thần đơn giản
+## 38. Mô hình tinh thần đơn giản
 
-Hãy tưởng tượng Lead là người quản lý một phòng thí nghiệm:
+Tưởng tượng Lead là người quản lý một phòng thí nghiệm:
 
-- Plan là công thức được viết trước.
-- Worktree là bàn thí nghiệm riêng của từng người.
-- SHA là niêm phong chống tráo mẫu.
-- Data manifest là nhãn trên nguyên liệu.
-- Ledger là sổ ghi mọi lần thử, kể cả thất bại.
-- A7 là người kiểm nghiệm độc lập.
-- S1 là hộp mẫu cuối cùng chưa được mở.
+- Plan là công thức viết trước; terminal outcomes âm là quyết định làm
+  trước cho ngày kết quả đẹp mà sai.
+- Worktree là bàn thí nghiệm riêng từng người; SHA là niêm phong chống tráo
+  mẫu; data manifest là nhãn nguyên liệu.
+- Ledger là sổ ghi mọi lần thử, kể cả thất bại — 242 lần "không" là tài
+  sản định giá lần "có" đầu tiên (Q-16).
+- A7 là người kiểm nghiệm độc lập; S1 là hộp mẫu cuối cùng chưa mở — niêm
+  phong cả dữ liệu lẫn tiêu chí (Q-9).
+- Registry + researchctl là biên bản của phòng thí nghiệm: ai cũng đọc
+  được, không ai sửa được lén, đã đóng thì không mở lại.
+- Orchestrator là phi công tự động có khóa: mỗi lane là một toa tàu đi
+  đúng ray (task store), về tới nơi phải nộp phiếu (handoff), không có
+  phiếu thì không rời ga.
+- Guards/hooks là luật pháp trong nhà máy: chặn lại là nó làm việc.
 
 Lead giỏi không phải người luôn tìm ra vàng. Lead giỏi là người có thể chứng
 minh thứ đang cầm là vàng, hoặc dũng cảm ghi đúng rằng nó không phải vàng.
+
+---
+
+## Phụ lục: changelog v2 (2026-09-11)
+
+- §3.1 canonical registry + researchctl thay ACTIVE_CYCLES (projection);
+  registry hygiene; resume dry-run; TERMINAL absorbing.
+- §3.2 one-live-session + mid-flight ≠ abandoned (P-17).
+- §2.6 guards-là-luật (SHV1 + orchestration).
+- Phần II mới: researchctl (§7), heavy lock + yielding (§8), orchestration
+  v3 (§9), platform v3 data plane (§10).
+- §11.4 archive-then-delete + inherited pins (P-13); §28 push-owner-terminal;
+  §30 thêm 5 lỗi tư duy mới; §32 two-half close (P-16); §34.4 structured
+  handoff; §36 thêm 2 bài tập; §37 checklist thêm 4 câu.
+- Dệt P-12..P-17 và Q-1..Q-16 (QuantPulse dossier, nhập theo chỉ thị owner
+  2026-09-11) vào các mục tương ứng; bản dịch đầy đủ trong
+  `research/wayfinder/LESSONS.md`.

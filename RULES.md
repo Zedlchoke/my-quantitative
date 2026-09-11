@@ -2,18 +2,22 @@
 
 > Reinforcement layer, read by every agent at dispatch. This file summarizes
 > and points to the authorities; it never overrides them. Order of authority
-> (handbook §3): (1) latest clear owner instruction, (2) the live plan of the
-> running cycle, (3) `CLAUDE.md`, (4) frozen manifests/selections/run
-> contracts/gate definitions, (5) historical plans and terminal reports,
-> (6) README/NOTES/chat prose.
+> (handbook §3): (1) latest clear owner instruction — an imperative, not a
+> question, (2) the live plan of the running cycle, (3) `CLAUDE.md`, (4)
+> frozen manifests/selections/run contracts/gate definitions, (5) historical
+> plans and terminal reports, (6) README/NOTES/chat prose.
 >
 > Companion authorities: `CLAUDE.md` (operating contract),
-> `HOW_TO_BE_A_LEAD_ENGINEER.md` (§1–35), `research/wayfinder/LESSONS.md`
-> (P-1..P-9, each paid for), `research/wayfinder/HYPOTHESIS_LEDGER.md`
-> (every family ever tried + forbidden ancestry; the ONLY cross-asset
-> denominator authority per P-9), `research/wayfinder/SURVIVORS.md`.
-> All plans live in `plans/` — highest version per asset is live; every
-> lower version is a closed historical authority, never rewritten.
+> `HOW_TO_BE_A_LEAD_ENGINEER.md` v2 (§1–38, orchestrated+platform era),
+> `docs/RESEARCHCTL.md` (control-plane entrypoint), `research/wayfinder/
+> LESSONS.md` (P-1..P-17 program lessons + Q-1..Q-16 imported doctrine —
+> all binding), `research/wayfinder/HYPOTHESIS_LEDGER.md` (every family
+> ever tried + forbidden ancestry; the ONLY cross-asset denominator
+> authority per P-9), `research/wayfinder/SURVIVORS.md`. All plans live in
+> `plans/`; cycle state resolves ONLY through the canonical registry
+> `plans/CYCLE_REGISTRY.json` (schema `cycle_registry@1`, written only via
+> `researchctl`/governance — `plans/ACTIVE_CYCLES.json` is a generated
+> read-only projection).
 
 ## 1. Universal law (every asset, every cycle)
 
@@ -28,40 +32,53 @@ ran correctly, artifact  -> PASS
 ```
 
 - Gates report `PASS/FAIL/NOT_RUN/BLOCKED` with command, exit code, SHA,
-  tree state and evidence paths. A missing artifact is never an inferred PASS.
+  tree state and evidence paths. A missing artifact is never an inferred
+  PASS.
 - Fail closed: unclear identity, data, license, timestamp, cost, SHA or
-  authority defaults to STOP, never to a convenient assumption.
+  authority defaults to STOP. Malformed/stale control state is
+  `CONTROL_STATE_DRIFT` — refuse, never repair in place.
 - History is append-only: scored artifacts, ledgers, terminal reports,
   historical worktrees and lessons are evidence. Never reset, rewrite or
   "improve" a recorded number. Publication is append-only (F-A7T-1).
-- Two denominators per program: `observed` (every computed outcome, even if
-  publication failed) and `published`. Cross-asset totals come ONLY from the
-  Lead-maintained ledger; terminal-report sums are as-of-intake (P-9).
+- Two denominators per program: `observed` and `published`. Cross-asset
+  totals come ONLY from the Lead-maintained ledger; terminal-report sums
+  are as-of-intake (P-9). Program state 2026-09-11: **239 published / 242
+  observed, 0 survivors; stocks 42/42, forex 42/42, crypto 155/158; S1
+  SEALED everywhere.**
 - S0 is screening, NOT untouched OOS. **S1 stays SEALED_UNTOUCHED** until a
-  future owner-authorized plan opens it. Opening S1, pushing, merging to
-  main, purchases and any keyed signup are OWNER-ONLY actions.
-- One cycle = one A1 thread. Heavy cap 1 machine-wide; full pytest runs
-  alone; conflicts with sibling cycles are `NOT_RUN_RESOURCE_CONFLICT`,
-  never contention. `pwd` before every `git worktree add`; never one branch
-  in two worktrees; **never `git add -A`** — stage files by name only
-  (the root checkout carries the owner's untracked artifacts).
-- Availability evidence is absolute (P-1): every conditioning row carries an
-  EVIDENCED stamp or the conservative LATER bound; asserted-without-evidence
-  timestamps are never authorized. The forex V3 survivor died for exactly
-  this.
-- Margin-to-fail is reported per gate (P-2): a pass says nothing about how
-  close it was; thin margins get recorded as thin.
-- A control's verdict binds only under the data semantics it was computed
-  with (P-3); any semantics change recomputes controls too.
-- Reproduction `ALL_MATCH` certifies self-consistency, never truth (P-4);
-  exact reproduction reproduces the bug as well as the result.
+  future owner-authorized plan opens it — sealed data AND criteria (Q-9:
+  half a seal protects nothing). Opening S1, pushing, merging to main,
+  purchases and any keyed signup are OWNER-ONLY actions.
+- One cycle = one A1 thread. **One live Lead session per cycle** (P-17);
+  mid-flight is not abandoned — check activity before writing to a surface
+  another authority may own. Heavy cap 1 machine-wide; full pytest runs
+  alone; sibling conflicts are `NOT_RUN_RESOURCE_CONFLICT`, never
+  contention. `git -C <absolute path>` for every repo command; `pwd` before
+  every `git worktree add`; never one branch in two worktrees; **never
+  `git add -A`** — stage by pathspec only.
+- **Structured handoff is mandatory** for every orchestrated task
+  (schema `zcode_orch_v3_handoff@1` at the exact `handoff_path`); chat
+  prose is advisory, the artifact is authority.
+- **Guards are law, not suggestions** (handbook §2.6): CAS writes, heavy
+  lock, task-store transitions, hook deny-lists (push, history rewrite,
+  secrets, main-merge). A guard refusing is the system working; route
+  around it only through owner authority and a commit, never in-session.
+- Availability evidence is absolute (P-1): asserted-without-evidence
+  timestamps are never authorized. **Measured beats stated, every time
+  (Q-8)**: a vendor-stated constant is a hypothesis until measured from
+  bytes.
+- Margin-to-fail is reported per gate (P-2), with the bar's exclusion zone
+  (Q-12). A control's verdict binds only under the data semantics it was
+  computed with (P-3); a control is itself checked for null validity before
+  it can kill (Q-11). Reproduction `ALL_MATCH` certifies self-consistency,
+  never truth (P-4).
 - Launch is two-key (P-8): fresh-context A7 publishes
   `<CYCLE>_S0_LAUNCH_AUTHORIZED` (0 unresolved HIGH/CRITICAL) AND the owner
-  types the exact GO phrase AFTER seeing that verdict. A GO typed before
-  its gate exists is intent, never a key; the frozen phrase gate adjudicates
-  form; GO phrases never carry across cycles.
+  types the exact GO phrase AFTER seeing that verdict, at that cycle's own
+  gate. GO typed early is intent and dies unconsumed; phrases never carry
+  across cycles or pauses; TERMINAL is absorbing.
 
-## 2. The anti-overfitting doctrine (why 197 cells produced 0 survivors)
+## 2. The anti-overfitting doctrine (why 242 cells produced 0 survivors)
 
 1. **Preregistration**: hypothesis, mechanism, universe, clock, arms, costs,
    gates, falsification rule and failure interpretation are frozen BEFORE
@@ -74,26 +91,39 @@ ran correctly, artifact  -> PASS
 3. **Falsification controls**: every family carries a placebo/causal control
    that must RUN under evidenced semantics. If the control reproduces the
    anchor (>= 0.5x, same sign), the family dies — the falsification-by-
-   control cluster has killed 9 families and every kill was real
-   information (exposure-form shadows are now measured veto entries).
+   control cluster has killed 14 families (latest #14: forex V8's
+   DGS10-level control out-earned its anchor 4.0116x) and every kill was
+   real information. A control that barely moves the signal may be an
+   INVALID NULL, not a kill — adjudicate explicitly (Q-11).
 4. **Ancestry veto**: a proposal is a relabelled ancestor if pooled
-   |rho| > 0.20 vs any forbidden family or shadow (nine-entry veto set in
-   stocks; equivalent sets per asset in the ledger). Measured, never argued.
-5. **Multiple testing is priced in**: one survivor after ~200 cells is a
-   candidate, not an edge. DSR is computed in crypto terminals over the
-   cumulative trial count; PBO stays fail-closed below 8 configurations;
-   "best-of-many" without deflation is never claimed.
+   |rho| > 0.20 vs any forbidden family or shadow (eleven-entry veto set in
+   stocks, equivalents per asset in the ledger). Measured, never argued.
+   Cross-horizon rescue of a dead family is the same violation (Q-3).
+5. **Multiple testing is priced in**: one survivor after ~240 cells is a
+   candidate, not an edge. DSR is computed in terminals over the cumulative
+   trial count; PBO stays fail-closed below 8 configurations.
 6. **Marginal gates are load-bearing**: fold concentration 0.5110 > 0.50
    killed a PF-1.36 family. Do not weaken a gate to let a beautiful number
    through; report the margin instead.
 7. **Knife-edge awareness**: at PF 1.2–1.3 there is no room for ANY optimism
-   anywhere in the chain — data timing, costs, fills, financing (P-2).
+   anywhere in the chain (P-2). Cost models are conditional, never flat
+   constants (Q-2); feasibility ceilings are measured on the recent window,
+   never the archive average (Q-6).
 8. **Dry-runs must be non-vacuous**: empty books and zero-decision passes
-   are failures (V8's F-A7-1 nearly burned a whole budget on vacuous
-   cells); recursive leak scans check every record depth for outcome-shaped
-   fields.
+   are failures; recursive leak scans check every record depth for
+   outcome-shaped fields.
+9. **Closed doors stay closed (Q-10)**: every closure names the instrument
+   that closed it and its reopening condition; re-litigating a closed cell
+   by accident is what the failure registry + forbidden ancestry exist to
+   prevent. A near-miss positive is decomposed into bill / clock / calendar
+   before any successor plan exists (Q-1).
 
-## 3. FOREX rules (live plan: `plans/PLAN_forex_v9.md`)
+## 3. FOREX rules (no live plan — V8 and V9 both TERMINAL)
+
+Forex V8 closed `FOREX_FREE_V8_REJECT_ALL` (2026-09-09, budget 3/6, GO
+consumed at its own gate); V9 closed 0/6 without scored cells (its GO died
+unconsumed). The next forex plan writes fresh; the standing constraints
+below bind any future forex cycle.
 
 - Data: keyless official sources ONLY (BIS WS_CBPOL, ECB SDMX, official
   release-calendar pages, ALFRED if evidenced). No signup, no key, no
@@ -106,10 +136,18 @@ ran correctly, artifact  -> PASS
   USD-drift gate; placebo controls runnable.
 - Forbidden: session momentum/fade, Tokyo/London range structures, the
   invalidated vol-gated carry region (front door CLOSED by V4's measured
-  rho 0.997–1.000), commodity-bloc risk-off. The V3R economic observation
-  (PF 1.2825 under honest availability) stays recorded — it is not a license.
+  rho 0.997–1.000), commodity-bloc risk-off, the V8 term-structure
+  dispersion family and its DGS10-level control. The V3R economic
+  observation (PF 1.2825 under honest availability) stays recorded — it is
+  not a license.
 
-## 4. CRYPTO rules (live plan: `plans/PLAN_crypto_v17.md`)
+## 4. CRYPTO rules (no live plan — V17 TERMINAL)
+
+Crypto V17 closed 0/6: all six blind families died by their OWN frozen
+rules BEFORE any scored cell (WKNDLIQ/TICKET-BREADTH/FUNDJUMP ancestry
+vetoes, ATTN-PHASE non-positive expectancy, OICASCADE control-out-earns,
+SILRES duty-coverage) — its GO died unconsumed. The next crypto plan
+writes fresh; standing constraints:
 
 - Data: keyless Binance public endpoints + the data.binance.vision bulk
   repository ONLY. Coverage-first: a source that cannot fund the S0 window
@@ -117,13 +155,19 @@ ran correctly, artifact  -> PASS
 - Kernel: cost charged exactly once per fill (L-V14-0 fixtures); stress
   multipliers applied to booked PnL; costs broken out by fills vs holding.
 - Forbidden: OI term-structure (OITD + duplicates), liquidity episodicity
-  (LIQEPIS + duplicates), OILEV-V2 and its inverted shadow (the §1.1 front
-  door was exercised by OICYC and closed), basis-level fade (PREMFADE),
-  BAB, carry families. ILLIQ replication remains owner-data-gated.
+  (LIQEPIS + duplicates), OILEV-V2 and its inverted shadow, basis-level
+  fade (PREMFADE), BAB, carry families, weekend-liquidity structures
+  (WKNDLIQ), ticket-breadth (V17), attention-phase (V17). ILLIQ replication
+  remains owner-data-gated.
 - Terminals: DSR over the cumulative crypto trial count; confirmatory
   status, where declared, is bound in every cell and the ledger.
 
-## 5. STOCKS rules (live plan: `plans/PLAN_stocks_v13.md`)
+## 5. STOCKS rules (no live plan — V13 TERMINAL)
+
+Stocks V13 closed (budget 3/6; its GO consumed at its own gate). The V13
+Form-4 substrate is a durable asset: 345,150 XMLs, digest `5d351623…`
+(the `78c4fb1a` vintage is pre-F-1 evidence, not the current pin). The
+next stocks plan writes fresh; standing constraints:
 
 - Data: EODHD is owner-entitled (subscription owner-held; key in gitignored
   `.env`, environment-only, redacted from error strings, never in
@@ -134,92 +178,106 @@ ran correctly, artifact  -> PASS
   dead names). Survivorship claims are scoped to what the cohort proves —
   never claim a delisted leg the data does not contain (M-I1).
 - Publication is append-only (F-A7T-1); band resolution fails closed (L-I3).
-- Forbidden: all prior stocks families plus the measured shadows (momentum,
-  semivariance, vol-level, WC-stock intensity, Goodwill/bloat, F1 accrual
-  flow, depletion interaction, cash-level, V10's deseasonalized-timing
-  characteristic form, V10's revision-correction direction/breadth form) —
-  the eleven-entry veto set.
+- Forbidden: the V13-measured chain-structure shadows join the eleven-entry
+  veto set (momentum, semivariance, vol-level, WC-stock intensity,
+  Goodwill/bloat, F1 accrual flow, depletion interaction, cash-level,
+  V10's deseasonalized-timing form, V10's revision-correction form, V13
+  chain-structure/death-event forms).
+- Substrate integrity: external drift against the pinned digest is a
+  hard blocker (byte-restore from `~/staging_backups/` per manifest is the
+  sanctioned repair — P-13).
 
 ## 6. The agent roster (who gets spawned, and what each one is)
 
 | Agent | Spawned as | Description and hard boundaries |
 |---|---|---|
-| **A1** | Cycle controller, one per cycle, one thread per cycle | The ONLY integrator/freezer/publisher/counter-owner. Creates the worktree + manifest, dispatches lanes from exact SHAs, cherry-picks serially with tests after each pick, freezes, appends the ledger, closes the cycle. Never repairs what it audits; never pushes (Lead/owner does); never stages with `git add -A`. |
-| **A2** | Accounting/kernel lane | Cost-once fixtures, publication regression, dual books, stress tiers, ledger serialization. Owns the accounting contract of the cycle. |
-| **A3** | Data-authority lane | PIT discipline (event/effective/available/retrieved), coverage censuses, availability-evidence tables, provider probes, staging with hash manifests. Kills unfundable sources BEFORE proposals exist. |
-| **A4 / A5 / A6** | Blind proposal lanes (one axis each) | Write exactly two proposals per lane from the wave SHA under full packet discipline; receive the forbidden packet and NO outcome files; sign outcome-blind attestations; never see scored results. |
-| **A7** | Independent auditor — **fresh context, mandatory at prelaunch and terminal** | Recomputes from bytes, hunts reasons to REFUTE claims, audits positives stricter than negatives (§20.2), proves refusal paths, never repairs code, never asks the implementer how to pass. Lead-dispatched or owner-dispatched separately — the A1's own thread may never audit itself (V8 lesson). |
-| **A8** | Implementation lane | Builds the frozen family runner + scored driver from the selection freeze; synthetic-fixture tests; never "improves" a frozen spec — ambiguities go back to A1. |
-| **A9 (A9-F)** | Feasibility auditor | Measures decision counts, warmup coverage, turnover/cost ceilings, control identifiability and runnability BEFORE selection — no PnL anywhere. |
-| **Lead Engineer** | The referee (this file's maintainer) | Reviews every handoff against artifacts, adjudicates disputes, enforces discipline and the P-lessons, maintains ledger/lessons/MAP at every close, prepares owner decisions but never takes them. |
-| **Owner** | The only human authority | Decides via cards/phrases: purchases, signups, push/merge, S1 opening, and every GO phrase. Silence is not authorization; a GO is consumed only at its own gate. |
+| **A1** | Cycle controller, one per cycle, one thread per cycle | The ONLY integrator/freezer/publisher/counter-owner. Worktree + manifest, dispatch from exact SHAs, serial cherry-picks with tests, freeze, ledger append, cycle close. Never repairs what it audits; never pushes; never `git add -A`. |
+| **A2** | Accounting/kernel lane | Cost-once fixtures, publication regression, dual books, stress tiers, ledger serialization. |
+| **A3** | Data-authority lane | PIT discipline (event/effective/available/retrieved), coverage censuses, availability evidence, provider probes, staging manifests. Kills unfundable sources BEFORE proposals exist. |
+| **A4 / A5 / A6** | Blind proposal lanes (one axis each) | Two proposals per lane from the wave SHA; forbidden packet, NO outcome files; outcome-blind attestations; never see scored results. |
+| **A7** | Independent auditor — **fresh context, mandatory at prelaunch and terminal** | Recomputes from bytes, hunts reasons to REFUTE, audits positives stricter than negatives, proves refusal paths, never repairs code, never asks the implementer how to pass. The A1's own thread may never audit itself (V8 lesson). |
+| **A8** | Implementation lane | Frozen family runner + scored driver; synthetic fixtures; never "improves" a frozen spec. |
+| **A9 (A9-F)** | Feasibility auditor | Decision counts, warmup coverage, turnover/cost ceilings, control identifiability — measured BEFORE selection, no PnL anywhere. |
+| **quant-explorer / quant-implementer / quant-reproducer / quant-auditor** | Orchestrated dispatch surface (plugin, optional per cycle) | The plugin's four role types map onto the roster above (explorer≈A3/A9-read, implementer≈A2/A8, reproducer≈reproduction lane, auditor=A7). Dispatch via MCP task store; forward-only state machine; structured handoff mandatory; hooks enforce the deny-list on every lane. |
+| **Lead Engineer** | The referee (this file's maintainer) | Reviews every handoff against artifacts, adjudicates disputes, enforces discipline and the P/Q lessons, lands the control-plane half of every close (P-16), maintains ledger/lessons/MAP, prepares owner decisions but never takes them. One live session per cycle. |
+| **Owner** | The only human authority | Decides via cards/imperative phrases: purchases, signups, push/merge, S1 opening, every GO. Questions are probes, not authority; silence is not authorization; a GO is consumed only at its own gate. |
 
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 
-```text
-GO CRYPTO V17 SCORED EXECUTION     (live plan plans/PLAN_crypto_v17.md;
-                                    paused with its cycle at SHV1 — needs
-                                    fresh use at its own gate per plan §10)
-GO STOCKS V13 SCORED EXECUTION     (live plan plans/PLAN_stocks_v13.md)
-GO FOREX V9 SCORED EXECUTION       (live plan plans/PLAN_forex_v9.md;
-                                    written 2026-09-09 owner-requested —
-                                    activates only after the V8 close
-                                    chain lands; bootstrap precondition
-                                    per plan §0)
-```
+**No live GO phrases.** No scored-capable cycle is active (registry
+2026-09-11: every asset cycle TERMINAL; RESEARCH-PLATFORM-V3 is ACTIVE_LIGHT
+and carries no GO). The next plan registers its own phrase.
 
-The forex V8 phrase was consumed at its own gate 2026-09-09 (two-key
-complete at `720decb`) and is dead. The stocks V12 phrase died
-unconsumed with its closed cycle (BLOCKED_DATA_OR_SELECTION, 0 cells —
-2026-09-08). The crypto V16, stocks V11 and forex V7 phrases were
-consumed at their own gates and are dead. Expired/consumed phrases never
-carry forward (V6 ruling; P-8).
+Historical dispositions (P-8; TERMINAL is absorbing):
+
+```text
+GO FOREX V8 SCORED EXECUTION    consumed at its own gate 2026-09-09
+                                (two-key complete 720decb) — DEAD
+GO STOCKS V13 SCORED EXECUTION  consumed at its own gate (3/6 scored cells
+                                ran) — DEAD
+GO FOREX V9 SCORED EXECUTION    died UNCONSUMED with V9's TERMINAL close
+                                (0 cells; close chain landed 2026-09-10)
+GO CRYPTO V17 SCORED EXECUTION  died UNCONSUMED with V17's TERMINAL close
+                                (0 cells; all six families killed
+                                pre-authorization by their own rules)
+GO STOCKS V12 SCORED EXECUTION  died UNCONSUMED (BLOCKED_DATA_OR_SELECTION,
+                                0 cells — 2026-09-08)
+GO CRYPTO V16 / STOCKS V11 / FOREX V7 (and earlier) — consumed at their
+own gates, DEAD. Expired/consumed phrases never carry forward (V6 ruling;
+P-8).
+```
 
 ## 8. The one-paragraph spirit
 
 This factory does not optimize for beautiful backtests; it optimizes for
 **trustworthy conclusions, cheaply reached and permanently recorded**. A
-negative result with full evidence is a success. A thin survivor with
-unevidenced assumptions is the most expensive failure the program knows
-(forex V3 paid for P-1..P-6). Freeze the rules while calm — they are the
-only thing that holds when the number is beautiful and wrong (P-6).
+negative result with full evidence is a success — 242 recorded noes are the
+calibration that prices the first yes, not 242 failures (Q-16). A thin
+survivor with unevidenced assumptions is the most expensive failure the
+program knows (forex V3 paid for P-1..P-6). Freeze the rules while calm —
+they are the only thing that holds when the number is beautiful and wrong
+(P-6).
 
 ## 9. Mechanism status ladder (governance; see `research/wayfinder/FAMILY_PIPELINE.md`)
 
 Ladder: `DOCUMENTED -> IMPLEMENTED -> TESTED -> ADOPTED_BY_ACTIVE_CYCLE`.
-A mechanism reaches IMPLEMENTED/TESTED only after its code and tests
-pass; ADOPTED only when a cycle's live plan preregisters it. Frozen and
-running cycles are never retrofitted (adoption boundary: crypto V16+,
-forex V7+, stocks V12+).
+Frozen and running cycles are never retrofitted (adoption boundary: crypto
+V16+, forex V7+, stocks V12+; platform capabilities adopt per asset commit).
 
 ```text
-FAMILY_PIPELINE protocol              DOCUMENTED (merge candidate on branch
-                                      orca/governance-family-pipeline — standing
-                                      standard only upon owner merge to main)
-FAMILY_FAILURES registry + validator  IMPLEMENTED + TESTED (54 governance tests green;
-                                      50 entries, git --verify PASS); adopted only at
-                                      the first cycle close that appends under it
-diagnostic persistability gate        IMPLEMENTED + TESTED, round-2 hardened (canon
-                                      CATEGORY_REQUIRED_FIELDS — contracts cannot pick
-                                      field lists; schema_id must resolve to the
-                                      registered diag/<category>@1; relative-path-only
-                                      artifacts; smoke runs in a fresh empty sandbox so
-                                      stale artifacts can never PASS; BLOCKED_PRELAUNCH
-                                      on any gap; runs BEFORE A7 launch authorization
-                                      when adopted); adopted only at the first
-                                      prelaunch that runs it
-global heavy lock                     IMPLEMENTED + TESTED, round-2 hardened (machine-
-                                      wide = this user on this host; home runtime
-                                      outside every repository; fcntl.flock; registry
-                                      PID+process-start-token; malformed registry or
-                                      live-pid-with-missing/unrecoverable token =
-                                      CONTROL_STATE_DRIFT fail closed; reclaim only on
-                                      PROVEN pid-dead or DEFINITE token mismatch;
-                                      cleanup holds the flock). Round-1 lock was
-                                      ADOPTED by CRYPTO-V16 P0 (2026-09-07, runtime
-                                      history 2 FAILED + 1 FINISHED); round-2 re-adopts
-                                      on next acquisition
-ADOPTED_BY_ACTIVE_CYCLE              heavy lock: round-1 yes (V16 P0 evidence);
-                                      round-2 pending. gate/registry: not yet —
-                                      marked adopted only when actually used
+canonical registry + researchctl     ADOPTED (SYSTEM_HARDENING_V1_PASS on
+                                     main 4e71261; every cycle since boots
+                                     through it — V8/V9/V13/V17, MDP-V2/
+                                     V2R1, orchestration, platform. Atomic
+                                     CAS writes + event journal + retry
+                                     taxonomy + monitoring purity)
+FAMILY_FAILURES registry + validator ADOPTED (61 entries, --verify PASS;
+                                     V17/V13/V8 closes appended under it)
+diagnostic persistability gate       ADOPTED (first delivery forex V7 — DSR
+                                     computed at terminal from persisted
+                                     per-period series, N=39; V8 N=42;
+                                     V13/V17 NOT_RUN fail-closed with zero
+                                     scored trials — correct under contract)
+global heavy lock                    ADOPTED (round-1 by CRYPTO-V16 P0;
+                                     round-2 hardened, machine-wide flock +
+                                     PID/token registry; V13 substrate
+                                     exercised the silence-window YIELDING
+                                     pattern — release during idle windows)
+orchestrator plugin v3.1             IMPLEMENTED + TESTED + CANARY-VERIFIED
+                                     (PASS_AUTONOMOUS_HANDOFF_CANARY; store
+                                     8/8 TERMINAL; STORE-FLOW-1/2/3 fixed
+                                     @2ebf5c2; known-open: STOP-CAP-1 hook
+                                     bound not enforced — LOW; mark_terminal
+                                     MCP exposure pending). Available for
+                                     adoption by future orchestrated cycles
+research platform v3                 IN FLIGHT (cycle ACTIVE_LIGHT; P0..P3
+                                     + PA0..PA2 committed on
+                                     orca/research-platform-v3-integration;
+                                     PA3 migration + PA4 canary probes under
+                                     way under the owner PA-dispatch waiver;
+                                     CADS/AuthorityRegistry/QueryPlane land
+                                     per V3-G/V3-GA gates)
+dashboard                            BUILT (stdlib collector, self-contained
+                                     HTML, purity G5: refresh leaves
+                                     git status unchanged)
 ```

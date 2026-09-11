@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The QuantPulse Dossier</title>
+</head>
+<body>
+<title>The QuantPulse Dossier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Public+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-2: #F2F1EC;
+    --ink: #1C2126;
+    --ink-2: #4A5560;
+    --ink-3: #737E88;
+    --line: #E4E2DB;
+    --line-strong: #C9C7BF;
+    --accent: #96343B;
+    --accent-ink: #7E2B31;
+    --accent-tint: rgba(150, 52, 59, 0.08);
+    --pass: #1E7A4D;
+    --pass-tint: rgba(30, 122, 77, 0.10);
+    --open: #A66B1F;
+    --open-tint: rgba(166, 107, 31, 0.11);
+    --fail: #96343B;
+    --fail-tint: rgba(150, 52, 59, 0.09);
+    --data: #1F639E;
+    --data-soft: rgba(31, 99, 158, 0.14);
+    --shadow: 0 1px 2px rgba(28, 33, 38, 0.05), 0 8px 24px rgba(28, 33, 38, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15181C;
+      --surface: #1D2126;
+      --surface-2: #23282E;
+      --ink: #E8E6E1;
+      --ink-2: #A9B1B9;
+      --ink-3: #7B848D;
+      --line: #2C3138;
+      --line-strong: #3B424A;
+      --accent: #D4737A;
+      --accent-ink: #E08B91;
+      --accent-tint: rgba(212, 115, 122, 0.12);
+      --pass: #4CAF7D;
+      --pass-tint: rgba(76, 175, 125, 0.13);
+      --open: #D19A4F;
+      --open-tint: rgba(209, 154, 79, 0.13);
+      --fail: #D4737A;
+      --fail-tint: rgba(212, 115, 122, 0.12);
+      --data: #6FB2F2;
+      --data-soft: rgba(111, 178, 242, 0.16);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15181C;
+    --surface: #1D2126;
+    --surface-2: #23282E;
+    --ink: #E8E6E1;
+    --ink-2: #A9B1B9;
+    --ink-3: #7B848D;
+    --line: #2C3138;
+    --line-strong: #3B424A;
+    --accent: #D4737A;
+    --accent-ink: #E08B91;
+    --accent-tint: rgba(212, 115, 122, 0.12);
+    --pass: #4CAF7D;
+    --pass-tint: rgba(76, 175, 125, 0.13);
+    --open: #D19A4F;
+    --open-tint: rgba(209, 154, 79, 0.13);
+    --fail: #D4737A;
+    --fail-tint: rgba(212, 115, 122, 0.12);
+    --data: #6FB2F2;
+    --data-soft: rgba(111, 178, 242, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 0 24px; }
+  .prose { max-width: 72ch; }
+
+  h1, h2, h3 { font-family: "Newsreader", Georgia, serif; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.6rem, 6vw, 4.2rem); font-weight: 600; line-height: 1.04; letter-spacing: -0.01em; }
+  h2 { font-size: 1.9rem; font-weight: 600; line-height: 1.15; }
+  h3 { font-size: 1.22rem; font-weight: 600; line-height: 1.3; }
+  p { margin: 0 0 1em; }
+  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--data); outline-offset: 2px; border-radius: 2px; }
+  strong { font-weight: 600; }
+  .mono, td.num, .num { font-family: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .eyebrow .sig { color: var(--accent-ink); }
+
+  /* ---------- hero ---------- */
+  header.hero { padding: 72px 0 40px; border-bottom: 1px solid var(--line); }
+  .hero .dek {
+    font-family: "Newsreader", Georgia, serif; font-size: 1.32rem; line-height: 1.45;
+    color: var(--ink-2); max-width: 62ch; margin-top: 20px; font-weight: 400;
+  }
+  .statband {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    margin: 44px 0 0; border-radius: 8px; overflow: hidden;
+  }
+  .stat { background: var(--surface); padding: 16px 16px 14px; }
+  .stat .v { font-family: "Spline Sans Mono", monospace; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 0.75rem; color: var(--ink-3); margin-top: 2px; line-height: 1.35; }
+
+  /* ---------- sections ---------- */
+  section { padding: 56px 0 8px; }
+  .sechead { display: flex; align-items: baseline; gap: 16px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 28px; }
+  .sechead .mark {
+    font-family: "Newsreader", Georgia, serif; font-size: 1.7rem; font-weight: 500;
+    color: var(--accent-ink); min-width: 2.2ch;
+  }
+  .sechead h2 { flex: 1; }
+  .sechead .thread { font-size: 0.78rem; color: var(--ink-3); text-align: right; max-width: 220px; line-height: 1.35; }
+
+  /* ---------- chips ---------- */
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: "Spline Sans Mono", monospace; font-size: 0.66rem; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 3px; white-space: nowrap;
+  }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.fail { color: var(--fail); background: var(--fail-tint); }
+  .chip.pass { color: var(--pass); background: var(--pass-tint); }
+  .chip.open { color: var(--open); background: var(--open-tint); }
+  .chip.info { color: var(--data); background: var(--data-soft); }
+  .chip.seal { color: var(--accent-ink); background: var(--accent-tint); }
+  .chip.seal::before { border-radius: 1px; }
+
+  /* ---------- cards ---------- */
+  .cards { display: grid; gap: 14px; margin: 0 0 28px; }
+  .cards.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 20px 22px 16px; box-shadow: var(--shadow);
+  }
+  .card h3 { margin-bottom: 8px; }
+  .card p { font-size: 0.92rem; color: var(--ink-2); }
+  .card p:last-child { margin-bottom: 0; }
+  .card .kicker { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .card .kicker .n { font-family: "Spline Sans Mono", monospace; font-size: 0.72rem; color: var(--ink-3); letter-spacing: 0.1em; }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin: 0 0 28px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-3); background: var(--surface-2); border-bottom: 1px solid var(--line-strong);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { white-space: nowrap; font-size: 0.84rem; }
+  td .sub { display: block; font-size: 0.78rem; color: var(--ink-3); margin-top: 1px; }
+
+  /* ---------- timeline ---------- */
+  .timeline { border-left: 2px solid var(--line-strong); margin: 4px 0 28px 7px; padding: 4px 0 4px 0; }
+  .tl { position: relative; padding: 0 0 26px 28px; }
+  .tl:last-child { padding-bottom: 6px; }
+  .tl::before {
+    content: ""; position: absolute; left: -6px; top: 7px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--bg); border: 2px solid var(--ink-3);
+  }
+  .tl.hot::before { border-color: var(--accent); background: var(--accent); }
+  .tl .date { font-family: "Spline Sans Mono", monospace; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; color: var(--ink-3); text-transform: uppercase; }
+  .tl h3 { margin: 3px 0 6px; }
+  .tl p { font-size: 0.92rem; color: var(--ink-2); max-width: 78ch; margin-bottom: 6px; }
+  .tl .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* ---------- bar charts (bar-list form) ---------- */
+  .chart {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 22px 24px 18px; margin: 0 0 12px; box-shadow: var(--shadow);
+  }
+  .chart .title { font-weight: 600; font-size: 0.98rem; margin-bottom: 2px; }
+  .chart .subtitle { font-size: 0.8rem; color: var(--ink-3); margin-bottom: 16px; }
+  .barrow { display: grid; grid-template-columns: minmax(150px, 210px) 1fr; gap: 12px; align-items: center; padding: 4px 0; }
+  .barrow .lbl { font-size: 0.82rem; color: var(--ink-2); line-height: 1.25; }
+  .barrow .lbl .sub { display: block; font-size: 0.72rem; color: var(--ink-3); }
+  .bartrack { position: relative; height: 18px; }
+  .barfill {
+    position: absolute; inset: 0 auto 0 0; background: var(--data);
+    border-radius: 0 4px 4px 0; min-width: 2px;
+  }
+  .barfill.dim { background: var(--data-soft); }
+  .barval {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    font-family: "Spline Sans Mono", monospace; font-size: 0.76rem; font-weight: 600;
+    color: var(--ink-2); white-space: nowrap; padding-left: 8px; font-variant-numeric: tabular-nums;
+  }
+  .chartbody { position: relative; }
+  .refline {
+    position: absolute; top: -4px; bottom: -4px; width: 0;
+    border-left: 2px dashed var(--accent); opacity: 0.85;
+  }
+  .refnote { font-size: 0.76rem; color: var(--accent-ink); margin-top: 12px; }
+  .chart .foot { font-size: 0.76rem; color: var(--ink-3); margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+  /* ---------- callouts ---------- */
+  .pull {
+    border-left: 3px solid var(--accent); background: var(--accent-tint);
+    padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 0 0 24px;
+    font-family: "Newsreader", Georgia, serif; font-size: 1.14rem; line-height: 1.45; color: var(--ink);
+    max-width: 72ch;
+  }
+  .pull .attr { display: block; font-family: "Public Sans", sans-serif; font-size: 0.74rem; color: var(--ink-3); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  .note { font-size: 0.8rem; color: var(--ink-3); max-width: 78ch; }
+
+  /* ---------- tier blocks ---------- */
+  .tier { margin-bottom: 34px; }
+  .tierhead { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .tierhead .t { font-family: "Spline Sans Mono", monospace; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-ink); }
+  .tierhead h3 { font-size: 1.35rem; }
+  .opening { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .op {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 20px 14px; box-shadow: var(--shadow);
+  }
+  .op .head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .op .head h3 { flex: 1; min-width: 200px; }
+  .op p { font-size: 0.92rem; color: var(--ink-2); margin-bottom: 6px; max-width: 90ch; }
+  .op .meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.76rem; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  .op .meta b { color: var(--ink-2); font-weight: 600; }
+
+  footer { border-top: 1px solid var(--line); margin-top: 64px; padding: 28px 0 56px; font-size: 0.8rem; color: var(--ink-3); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 32px; justify-content: space-between; }
+
+  details { margin: 0 0 16px; }
+  summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; color: var(--ink-2); }
+  details[open] summary { margin-bottom: 10px; }
+
+  @media (max-width: 640px) {
+    .barrow { grid-template-columns: 1fr; gap: 2px; padding: 7px 0; }
+    .sechead .thread { display: none; }
+    .chip { white-space: normal; text-align: left; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="sig">Research retrospective</span> · QuantPulse · 15–26 August 2026 · <span class="sig">rev. 4 Sep 2026</span></div>
+    <h1>The QuantPulse Dossier</h1>
+    <p class="dek">Twelve days from a Gemini-built A/B toy to a full quantitative research programme: ~52,000 lines of engine and probes, a third-of-a-billion-bar archive, ten research programmes opened — and every venue cell closed by a pre-registered verdict. This is the complete record, benchmarked against the field, with the map of what's still open.</p>
+    <div class="statband">
+      <div class="stat"><div class="v">12 days</div><div class="k">Aug 15 → Aug 26, 2026</div></div>
+      <div class="stat"><div class="v">~51.8k</div><div class="k">lines of TypeScript + Python</div></div>
+      <div class="stat"><div class="v">326M</div><div class="k">1-minute bars archived (120 tickers incl. FX + crypto)</div></div>
+      <div class="stat"><div class="v">342M</div><div class="k">FX bid/ask ticks (Dukascopy, 12 pairs)</div></div>
+      <div class="stat"><div class="v">30</div><div class="k">research probes &amp; oracle runs</div></div>
+      <div class="stat"><div class="v">0</div><div class="k">open research cells — IF2 closed the last one, 4 Sep 2026</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= §0 VERDICT ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§0</span><h2>The verdict, up front</h2><span class="thread">what twelve days of honest measurement concluded</span></div>
+    <div class="prose">
+      <p><strong>No tradable edge survives retail taker economics in anything probed</strong> — liquid US equities, crypto spot, crypto perpetuals, and FX majors, at every horizon from one minute to four hours. That sentence is cheap to say and was expensive to earn: it rests on measured venue costs (not vendor-stated ones), worst-fill grading, null feeds, delay tests, and one spent one-look holdout read. It is not "nothing works"; it is <em>this</em> works: the programme found real, statistically solid predictive skill at least four separate times — and each signal died on measurement rather than on opinion: most because collecting it costs 2–4× what it earns, one because its value lives in an un-executable first bar, and one because it failed to generalize past its own window.</p>
+      <p>Three things emerged that are worth more than a trading edge would have been. First, <strong>a validation discipline that exceeds published academic practice</strong> in several dimensions — cryptographically sealed holdouts, pre-registration with salvage clauses, oracle-ceiling capture arithmetic — verified against the literature in this review. Second, <strong>a cost-measurement toolkit no open-source framework ships</strong>: every mainstream backtester defaults to zero or guessed slippage; this stack measured its spreads from tick data and caught its own bugs doing it. Third, <strong>a map</strong>: the closures are precise enough that the remaining openings are legible — and they are different games, not different parameters.</p>
+    </div>
+    <div class="pull">"Where the signal is real the economics are shut; where the economics are open the signal doesn't survive."<span class="attr">The programme's one-sentence law, established across seven horizons and three asset classes</span></div>
+    <p class="note" style="margin-top: -8px;">If every cell closed, how does a profession of traders exist? §8, added 4 Sep 2026, reconciles this verdict with them — the bill read from the collecting side.</p>
+  </div>
+</section>
+
+<!-- ================= §1 WHAT WAS BUILT ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§1</span><h2>What was built</h2><span class="thread">platform · research engine · data estate</span></div>
+    <div class="cards two">
+      <div class="card">
+        <h3>The product: QuantPulse</h3>
+        <p>A React 19 / TypeScript live trading simulator with four bots — Strategy A/B (momentum &amp; mean-reversion) plus C/D ported from the Capital Duel project (FSM crossover controller; Omega ridge-regression atlas). Trading Deck with real archive replay, N-way Arena leaderboard, historical range backtester, algorithm customizer, audit export, webhook gateway, AI copilot. An Express server (826 lines) serves the local archives with an ET market clock, bad-tick sanitizer, and session filtering.</p>
+      </div>
+      <div class="card">
+        <h3>The research engine</h3>
+        <p>87 TypeScript files under <span class="mono">training/</span> — 12 <span class="mono">run-*</span> sweeps and oracles, 18 <span class="mono">probe-*</span> experiments, a shared fill model pricing every order at worst/base/optimistic, an O(n) streaming evaluator proven bit-identical to the reference, deterministic seeded searches, and 157 report files. 10 test files, ~217 assertions, zero test frameworks — all custom, all pinned to reports on disk.</p>
+      </div>
+      <div class="card">
+        <h3>The data estate — 6.6 GB, all verified</h3>
+        <p>EODHD 1-minute equities/ETF/FX archive: 120 tickers including 14 FX pairs, 2004–2026, ~316M bars with splits/dividends and a hashed manifest. Binance BTC/ETH 1m (9.4M bars incl. the holdout years) + funding rates. Dukascopy bid/ask ticks: 12 FX pairs, 65,384 hours, 342.5M ticks. EDGAR: 421,556 filings (19,771 8-Ks) + XBRL earnings. 67,854 news articles scored by two independent sentiment methods. Every backfill has a verification suite and every gap is documented, not silent.</p>
+      </div>
+      <div class="card">
+        <h3>The fill model — the load-bearing wall</h3>
+        <p>One shared execution model both engines price through: WORST crosses the full measured spread plus ATR-scaled impact; BASE takes 35% of that; OPTIMISTIC fills at mid and still pays fees. Grading always runs on WORST. Venue profiles are <em>measured</em>: equity spread 2.5 bp + one-tick floor (three estimators), per-pair FX spreads from ticks (1.05 bp median, not the stated 0.3), crypto perp book exactly one tick wide. Stops grade on bar ranges, not closes. Intrabar risk resolution alone flipped a champion's sign.</p>
+      </div>
+    </div>
+    <p class="note">Provenance: 39 docs in <span class="mono">docs/</span> including 5 pre-registrations and a sealed-holdout commitment; 55 memory files; every number in this dossier traces to a report file or verdict doc in the repo.</p>
+  </div>
+</section>
+
+<!-- ================= §2 THE ARC ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§2</span><h2>The research arc</h2><span class="thread">ten programmes, twelve days, every closure on the record</span></div>
+    <div class="timeline">
+      <div class="tl">
+        <div class="date">Aug 15–16 · Foundation</div>
+        <h3>Four bots, one honest arena</h3>
+        <p>Capital Duel's FSM and Omega controllers ported in as Strategies C/D; Arena rebuilt N-way; per-bot toggles everywhere. A bug sweep found inverted short-side P&amp;L, server crash vectors, and confidence-gating defects — the first evidence that the toy's numbers couldn't be trusted yet.</p>
+        <div class="chips"><span class="chip info">Platform</span></div>
+      </div>
+      <div class="tl">
+        <div class="date">Aug 17–18 · Data</div>
+        <h3>Real tape replaces synthetic</h3>
+        <p>EODHD paid plan probed and characterized; deep 1-minute backfill lands 97.5M bars across 36 tickers (2004–2026), wired into the Deck and Backtester; ET market clock and bad-tick sanitizer fix three classes of wrong prices. The shared worst/base/optimistic fill model ships — correcting, among others, a crypto commission understated <strong>21,000×</strong> and per-strategy slippage constants that had made the Arena rank execution assumptions instead of strategies.</p>
+        <div class="chips"><span class="chip info">Archive v1</span><span class="chip pass">Verified</span></div>
+      </div>
+      <div class="tl hot">
+        <div class="date">Aug 18–19 · First hypotheses</div>
+        <h3>Clusters, pairs, seasons — the priors die</h3>
+        <p>Cluster-rotation spec (drift-neutral scoring, sealed holdout ceremony) built and run: the validated relationships were mostly ETFs lagging their own constituents — arithmetic, not signal. Clusters retired as a search input. The full-universe sweep (1,210 pairs × 20 years, corrected bar) left 13 survivors against 0 on the null — of which the three <em>actionable</em> ones collapse into one hypothesis (AMD follows the chip complex), and every survivor peaks at one minute. Seasonality: nothing beats the month-block null; demand folklore comes out wrong-signed. The intraday clock and event calendar, by contrast, showed huge real structure — <strong>in variance, not direction</strong>.</p>
+        <div class="chips"><span class="chip fail">Clusters</span><span class="chip fail">Seasonality</span><span class="chip pass">Variance structure</span></div>
+      </div>
+      <div class="tl hot">
+        <div class="date">Aug 19–20 · Evolution</div>
+        <h3>The genetic search and its lessons</h3>
+        <p>All four bots searched on a pre-registered 12-window panel, worst-fill median fitness, 9 gates. All fail. The optimizer's preferred move was to stop trading (position size pinned to floor). Beta v2's lone positive (+0.120%) was dissected to death: intrabar risk grading flipped it, and a pre-committed 117-window breadth test showed the entire "edge" was the fill assumption (+$20k optimistic, −$118k worst). Structural, not tunable.</p>
+        <div class="chips"><span class="chip fail">Evolution v1</span><span class="chip fail">Beta v2</span></div>
+      </div>
+      <div class="tl">
+        <div class="date">Aug 20–21 · Moving out</div>
+        <h3>Seven horizons, one anti-correlation</h3>
+        <p>Decision cadence H built (bit-identical at H=1); a 382-window v3 panel; null feeds; a turnover-matched control that found <strong>real timing skill</strong> in Beta at 1m/5m — significant, validated out of sample, and worth 0.26–0.62× its own cost. Spread floor corrected to one tick, spread fraction measured three ways (2.5 bp), time-of-day probed: the open's movement is 3.33× midday and its spread is 3.35× midday. The cost wall survived every correction.</p>
+        <div class="chips"><span class="chip pass">Skill real</span><span class="chip fail">Sub-cost</span></div>
+      </div>
+      <div class="tl hot">
+        <div class="date">Aug 21–22 · The oracle</div>
+        <h3>Perfect knowledge, priced honestly</h3>
+        <p>A DP computes the hindsight-optimal bot under house rules: <strong>$18,102/day per $25k at 1-minute cadence</strong> — and even the oracle pays 19.4% of gross to costs. Ceiling decays as 1/√H. The follower analysis: continuing the oracle's pattern needs ~20% capture of its per-trip gross; the best causal models deliver ~1%. The one nominal pass (MSTR at 1m) died on the one-bar-delay test — the standard artifact detector from here on. Peel decomposition later showed the whole tape holds only 6.15× the single best path.</p>
+        <div class="chips"><span class="chip info">Ceiling</span><span class="chip fail">Follower</span></div>
+      </div>
+      <div class="tl">
+        <div class="date">Aug 22–24 · Alternative signals</div>
+        <h3>News, filings, BTC lead-lag</h3>
+        <p>BTC→MSTR lead is real (5σ at 1m) and dies under one bar of delay. News direction: vendor sentiment and Loughran-McDonald both 0/96 settings positive — two independent scorers, same coin flip. EDGAR: 19,771 8-Ks and 2,646 XBRL earnings surprises show no tradable direction at 30m–2h (the open already prices the naive surprise 55.7% of the time) — but a clean <strong>variance-escalation ladder</strong>: news 0.97× → 8-K 2.53× → earnings 4.42×.</p>
+        <div class="chips"><span class="chip fail">Direction</span><span class="chip pass">Variance ladder</span></div>
+      </div>
+      <div class="tl hot">
+        <div class="date">Aug 22–24 · FX programme</div>
+        <h3>F0 → F1 → F3a → F-M1: closed at taker and maker</h3>
+        <p>Forex oracle honest bars 5.1%/2.9% (1h/4h) — friendliest taker arithmetic anywhere. F1 ridge fails; the 1h signal is real but front-loaded in the first minute. F3a (one pre-registered salvage) improves and still fails. Spread measured from ticks: 1.05 bp, not 0.3 — and a <span class="mono">toFixed(4)</span> quantum had been zeroing spread on 7 of 12 pairs. F-M1 then tested the maker door on 342M real ticks with a conservative fill sim: fills carry <strong>−2.44 bp adverse selection against ≤1.64 bp saved</strong>; recovery −6.8% vs a ≥50% bar. Closed for good.</p>
+        <div class="chips"><span class="chip fail">Taker</span><span class="chip fail">Maker</span><span class="chip seal">Holdout sealed</span></div>
+      </div>
+      <div class="tl hot">
+        <div class="date">Aug 25–26 · Crypto perpetuals</div>
+        <h3>CP0 → CP4: the closest call, and the cleanest death</h3>
+        <p>CP0 arithmetic: 4h perp-taker bar 6.2%, the friendliest ever. CP1 measures the venue: the book is <em>exactly one tick wide</em> in every era; the stated spread was 23× too wide and the wrong shape; maker branch closed at 29–41× adverse selection. CP2: the H=60 cell <strong>passes V1+V2</strong> — $17.85/day, CI clear of zero, null beaten. CP3 execution probe on real prints: ρ=0.995 vs a 0.5 bar — the model's costs were honest. CP4 opens the committed 2024–26 holdout once: <strong>−$3.83/day, null not beaten, firing rate collapsed</strong>. The 2022–23 edge was real in its window and did not generalize. Programme closed; holdout spent.</p>
+        <div class="chips"><span class="chip pass">CP2·CP3</span><span class="chip fail">CP4 holdout</span><span class="chip seal">Spent</span></div>
+      </div>
+      <div class="tl hot">
+        <div class="date">Aug 27 – Sep 4 · After this dossier</div>
+        <h3>Five more programmes, all closed — and the openings map spent two of its own entries</h3>
+        <p>The retrospective above ends 26 Aug; everything since is recorded here rather than left to drift. <strong>Equity maker (EM0–EM3)</strong> measured adverse selection directly on 650M prints and closed at −$91.31/day against a +$107.87 bar, at $0. <strong>The oracle ladder (Rungs 1, 2, 6)</strong> — a new line, not one of the openings — priced foresight itself: one bar of lookahead is 97.8% of the entire ceiling, copying the oracle's schedule one bar late is −23.2%, and the <em>ρ-door</em> it produced (what correlation a signal must carry) became the instrument the futures programme was later judged with; Rung 2 priced the house rules, Rung 6 priced the counterparty. A dedupe found <strong>1.61M duplicated bars</strong> in the archive (CVX doubled 2004–2019). <strong>Slow trading (S0–S4)</strong> chartered a daily-cadence cross-section, produced one apparent survivor at S3, and its own adversarial review showed the pass did not hold; S4 failed, and the record was then squared — #3 recorded FAIL on P1, the S4 run logged as a deviation, and the screen's three unfixed defects logged with it. <strong>Index futures (IF0→IF1→IF2)</strong> ran the openings map's first entry to completion for $19.22 and closed it. And <strong>the variance ladder (entry 6) was built</strong>, which is the one item here that shipped code rather than a verdict.</p>
+        <div class="chips"><span class="chip fail">EM3</span><span class="chip info">Rungs 1·2·6</span><span class="chip fail">Slow S4</span><span class="chip fail">IF2</span><span class="chip pass">Ladder shipped</span></div>
+      </div>
+    </div>
+
+    <h3 style="margin: 10px 0 12px;">The closed-doors registry</h3>
+    <p class="note" style="margin-bottom: 14px;">The flat list a future session needs before proposing anything — each cell closed by a named instrument, with its stated reopening condition. Re-litigating one by accident is the failure mode this table exists to prevent.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Cell</th><th>Closed by</th><th>Reopens only if</th></tr></thead>
+        <tbody>
+          <tr><td>Equity intraday taker (1m–1d, all four bot families)</td><td>Evolution results + breadth test + moving-out programme (TIME_OF_DAY closes it)</td><td>A signal that works past 5 minutes, or a fill model that stops crossing the spread</td></tr>
+          <tr><td>Hand-drawn clusters as a search input</td><td>Phase 0b decomposition + amendment A1</td><td>Never — candidate sets come from data, not priors</td></tr>
+          <tr><td>Seasonality / weather</td><td>Month-block permutation probe</td><td>Never as a standalone; calendar flags as free conditioning only</td></tr>
+          <tr><td>News direction at hourly (vendor + lexicon)</td><td>NEWS_DIRECTION probe, 0/96 twice</td><td>A better text score beating the sign-shuffle null (LLM rung, §6)</td></tr>
+          <tr><td>EDGAR 8-K / earnings direction, 30m–2h</td><td>EDGAR_8K probe, both families</td><td>Consensus-based surprise at daily (§6), never content-free hourly</td></tr>
+          <tr><td>Oracle-following on bar data</td><td>ORACLE_FOLLOWER trip economics + delay test</td><td>Quote-level data changing the execution question (§6, Tier 1)</td></tr>
+          <tr><td>Crypto spot taker</td><td>Crypto Perfect Run arithmetic (35% bar)</td><td>Never at retail spot fees</td></tr>
+          <tr><td>Crypto perp — taker and maker, all horizons</td><td>CP0–CP4; holdout read spent 2026-08-26</td><td>A fresh prereg on genuinely 2027+ data</td></tr>
+          <tr><td>FX taker (F1 + F3a) and FX maker (F-M1)</td><td>Pre-registered verdicts, 2026-08-22/24</td><td>Future OOS years settling the 1h CI (waiting, not research)</td></tr>
+          <tr><td>Equity maker — posting the 1m reversal (MSTR, COIN, TSLA)</td><td>EM3 print-through probe, one look spent 2026-08-29: −$91.31/day against a +$107.87 bar at an 84.1% fill rate</td><td>Not on foreseeable evidence — the pre-declared failure shape was "the edge isn't there", not "the queue ate it"</td></tr>
+          <tr><td>Slow daily-cadence cross-sectional signals</td><td>S1–S4, 2026-09-03: the one survivor is a carry filter, not a timing signal, and fails on its registered vehicle</td><td>A signal whose permutation null actually moves the signal</td></tr>
+          <tr><td>Index futures, causal signal (MNQ, full session, two-sided, H=30)</td><td>IF2, one look spent 2026-09-04: validation IC −0.0046 and <b>negative gross</b> — the cheapest venue reachable, and no signal to pay for</td><td>Not on a cost argument of any kind; only a genuinely new information source, judged on the same registered vehicle</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §3 LAWS ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§3</span><h2>What the tape taught</h2><span class="thread">nine findings that transfer to any future work</span></div>
+
+    <div class="chart">
+      <div class="title">The capture wall: break-even capture of the oracle's motion, by venue and horizon</div>
+      <div class="subtitle">Fraction of hindsight-optimal per-trip gross a causal trader must capture just to pay measured round-trip costs</div>
+      <div class="chartbody">
+        <div class="refline" style="left: calc(3.36% * 2.55);"></div>
+        <div class="barrow"><span class="lbl">Crypto spot taker <span class="sub">1 minute</span></span><div class="bartrack"><div class="barfill" style="width: calc(35.2% * 2.55);"></div><span class="barval" style="left: calc(35.2% * 2.55);">35.2%</span></div></div>
+        <div class="barrow"><span class="lbl">Crypto perp taker <span class="sub">1 minute · measured</span></span><div class="bartrack"><div class="barfill" style="width: calc(28.4% * 2.55);"></div><span class="barval" style="left: calc(28.4% * 2.55);">28.4%</span></div></div>
+        <div class="barrow"><span class="lbl">FX ECN taker <span class="sub">1 minute · stated ~1 bp cost</span></span><div class="bartrack"><div class="barfill" style="width: calc(23.1% * 2.55);"></div><span class="barval" style="left: calc(23.1% * 2.55);">23.1%+</span></div></div>
+        <div class="barrow"><span class="lbl">US equity taker <span class="sub">1 minute</span></span><div class="bartrack"><div class="barfill" style="width: calc(19.4% * 2.55);"></div><span class="barval" style="left: calc(19.4% * 2.55);">19.4%</span></div></div>
+        <div class="barrow"><span class="lbl">FX ECN taker <span class="sub">1 hour · measured spread</span></span><div class="bartrack"><div class="barfill" style="width: calc(9.5% * 2.55);"></div><span class="barval" style="left: calc(9.5% * 2.55);">9.5%</span></div></div>
+        <div class="barrow"><span class="lbl">Crypto perp taker <span class="sub">1 hour · measured</span></span><div class="bartrack"><div class="barfill" style="width: calc(9.4% * 2.55);"></div><span class="barval" style="left: calc(9.4% * 2.55);">9.4%</span></div></div>
+        <div class="barrow"><span class="lbl">Crypto perp taker <span class="sub">4 hours · measured</span></span><div class="bartrack"><div class="barfill" style="width: calc(5.5% * 2.55);"></div><span class="barval" style="left: calc(5.5% * 2.55);">5.5%</span></div></div>
+        <div class="barrow"><span class="lbl">FX ECN taker <span class="sub">4 hours · measured spread</span></span><div class="bartrack"><div class="barfill" style="width: calc(5.5% * 2.55);"></div><span class="barval" style="left: calc(5.5% * 2.55);">5.5%</span></div></div>
+      </div>
+      <div class="refnote">— — best causal capture ever delivered by any model in the programme: 3.36% (FX F3a, 1h). Typical: 1–2%.</div>
+      <div class="foot">Sources: ORACLE_FOLLOWER (equity trip economics), ORACLE_CRYPTO + CP1 (perp, measured venue), ORACLE_FOREX + FX_SPREAD_MEASURED (FX 1h/4h recomputed at the measured 1.05 bp; the FX 1m bar was never recomputed and would be higher at measured cost — hence "+"). Even the friendliest cell asks for ~1.6× more capture than anything ever evidenced.</div>
+    </div>
+
+    <div class="cards two">
+      <div class="card"><div class="kicker"><span class="n">LAW 1</span><span class="chip info">Central</span></div><h3>Skill was found; the market kept it</h3><p>Four real signals, each decisively beating its null, each dying a different measured death: Beta's 1m/5m timing cost 2–4× its own value to collect; FX's 1h signal (+$77/day undelayed) lives in the un-executable first minute; BTC→MSTR carried the biggest per-bar margin ever measured here (11.1 bp vs 3.76 bp cost) and still died on the one-bar delay; and CP2's H=60 cell cleared its costs in-window, then failed to generalize on the holdout. The failure mode was never "no signal" — it was the bill, the clock, or the calendar.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 2</span></div><h3>The spread is priced off the volatility you want</h3><p>At the open, per-minute movement is 3.33× midday and the measured spread is 3.35× midday — they cancel to two decimals. A maker quoting volatile minutes charges for the variance a strategy wants to harvest. You cannot get paid for volatility by crossing a spread quoted off that volatility.</p>
+      <p style="font-size:0.86rem;color:var(--ink-3);border-top:1px solid var(--line);padding-top:9px;margin-bottom:0"><b>Extended 3 Sep 2026 — it is not only the spread.</b> The slow programme's S4 book pays <b>$13.80/day, ~11 bp a night</b>, on an <em>auction</em> venue that crosses no spread at all, against a predicted &lt;$3. The charge is the <b>$0.0050-per-share</b> commission, and it bites because the signal selects names with high overnight premium, which are cheap and volatile — the same vol ladder, arriving through the per-share term instead of the quote. Any per-share cost is a tax on low prices, and any signal that likes volatility will find them.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 3</span></div><h3>Skill and feasibility anti-correlate</h3><p>Across seven horizons: significant skill at 1m and 5m where cost gates are shut (0/382 and 6/142 windows open); gates open at 15m–1d where validation-mean skill is negative. Categorical, and it survived correcting the tick floor, re-measuring the spread three ways, removing the commission, and per-band spreads. Not a cost-model artifact.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 4</span></div><h3>The delay signature is the artifact detector</h3><p>Every minute-scale "edge" must be quoted at delay-0 and delay-1 next to a clairvoyant control run through the same delay. Close-of-bar information that evaporates one bar later — the MSTR pass, the FX 1h signal, BTC lead-lag — is market-maker compensation you'd have to <em>be</em> the maker to collect.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 5</span></div><h3>Maker fills are adversely selected, measured</h3><p>FX: joining the touch saves 0.34–1.64 bp; fills arrive with −2.44 bp of adverse drift, and the unfilled 46% concentrate in the trades the signal got right. Crypto perp: 29–41× the half-tick saved. Through-vs-touch was a wash, so no queue model rescues it. The 2025 literature independently measured the same mechanism on the same venue.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 6</span></div><h3>With no edge, the optimizer stops trading</h3><p>Seven of eight evolution champions pinned position size to its floor — smallest-allowed is optimal when expected value is negative. The one that sized up, Beta v2, proved the companion law: its entire "edge" lived inside the fill assumption (+$20k optimistic, −$118k worst across 117 fresh windows). Grade on WORST, and treat optimistic-only profit as an execution claim, not a strategy.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 7</span></div><h3>The ceiling is small, and it decays twice</h3><p>Perfect foresight under house rules: $18.1k/day per $25k at 1m, decaying as 1/√H — 46% at 5m, 10.8% at 1h. The peel decomposition: the whole tape holds 6.15× the best single path, 90% in the first 24 disjoint layers. And ceilings decay in calendar time too: crypto's compressed ~5× since 2018 as the tape matured — judge any idea against the most recent year's ceiling, never the archive average.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 8</span></div><h3>Variance is predictable; direction is not</h3><p>The clock stamps (9:30, 10:00, 8:30 macro, 13:01 auctions, 14:00 FOMC), earnings-gap clustering, and the event ladder — news 0.97×, 8-K 2.53×, earnings 4.42× conditional variance — are real, large, and free. Direction at those same moments: 0/96 news settings, 0 EDGAR families, twice. Predictable direction gets arbitraged; predictable variance doesn't, because conditioning on it isn't competing for alpha.</p>
+      <p style="font-size:0.86rem;color:var(--ink-3);border-top:1px solid var(--line);padding-top:9px;margin-bottom:0"><b>Corrected 4 Sep 2026 by building it (entry 6).</b> The raw ratios reproduce (8-K 2.57× vs the 2.53× above), but <b>most of the "event" variance was the clock</b>: <b>91.7%</b> of 8-K windows open at the 09:30 bar, and once clock-adjusted a non-earnings 8-K adds only <b>1.05×</b> and an earnings 8-K <b>1.74×</b> (composing with the open to 5.8×). The law holds and its halves swap weight — the <em>clock</em> is doing the work the <em>event</em> was credited with. 13:01 turned out flat on equities (it was a TLT effect) and is not carried.</p></div>
+      <div class="card"><div class="kicker"><span class="n">LAW 9</span></div><h3>Measured beats stated, every single time</h3><p>Every constant the programme ever measured was wrong as stated: FX spread 0.3→1.05 bp (with a rounding bug zeroing 7 pairs), crypto perp spread 23× too wide and the wrong shape, impact cap 40× too high, a 21,000× fee error, two ticks of equity floor where one belonged. The most dangerous number in a backtest is the one nobody ever measured.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §4 METHODOLOGY ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§4</span><h2>The discipline</h2><span class="thread">and how it compares to published best practice</span></div>
+    <div class="prose">
+      <p>The methodology answers one fear: a solo researcher with no adversarial reviewer will silently adjust every degree of freedom left adjustable after seeing a result. The answer is to convert judgment into <strong>dated, hashed commitments made before the look</strong> — and to make every look at fresh data a one-time, spendable event.</p>
+    </div>
+    <div class="cards two">
+      <div class="card"><h3>The seal ceremony</h3><p>SHA-256 over every holdout file <em>and</em> over the criteria file — sealing data without sealing thresholds is half a seal. Reseals append to a superseded-seals ledger; tick data too rich to hash is sealed by prohibition of existence. The equity/FX 2024+ holdout (358 files, 120 symbols) has <strong>never been opened</strong>. The crypto holdout was opened once, under a pre-registered ceremony, and spent on a failure — published as-is.</p></div>
+      <div class="card"><h3>Gates, not tiebreakers</h3><p>Worst-fill profitability, 60% window consistency, earns-its-keep on windows where buy-and-hold lost, cost ≤ 40% of gross, worst ≥ 50% of optimistic, sample floors, drawdown ceiling, parameter plateau, out-of-sample recomputation, and a pre-search feasibility gate (implied accuracy ≤ 60%) that can kill a programme before a dollar of compute. Later programmes compress to V1 (CI clear + null beaten) / V2 (L* ≤ 10, survives 2× costs).</p></div>
+      <div class="card"><h3>The control battery</h3><p>Three null feeds compared against <em>the policy's own null score</em> (the drift-neutral score isn't zero-mean under no skill — measured, ±4 bp of pure policy-shape bias); turnover-matched random controls on the real tape; one-bar delay + clairvoyant validity pair; 2× cost sensitivity; conservative maker fills where missing data throws rather than silently not-filling.</p></div>
+      <div class="card"><h3>Pre-registration with salvage clauses</h3><p>Every decision-bearing probe fixes model class, splits, gates, and <em>the routing for both outcomes</em> before running; one look per report window; at most one pre-named salvage escalation (FX's F3a) triggered only by a pre-specified partial signal. Closures state their reopening conditions once, then a standing closed-doors list forbids re-litigation. The ledger also records its own worst moment rather than hiding it: the FX 2022–23 window was ultimately read three times (the pre-registered F3a run, then two cost-model corrections), with the third read explicitly labeled "not a reopening" — disclosed as the exception, which is what makes the rule checkable.</p></div>
+    </div>
+
+    <h3 style="margin: 26px 0 12px;">Against the literature</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Practice</th><th>Field standard</th><th>This programme</th><th>Standing</th></tr></thead>
+        <tbody>
+          <tr><td>Holdout discipline</td><td>Arnott–Harvey–Markowitz protocol <em>asks</em> for sacrosanct holdouts; enforcement is honor-system</td><td>Cryptographic seal over data + criteria, spent-once semantics, superseded-seal ledger</td><td><span class="chip pass">Exceeds</span></td></tr>
+          <tr><td>Pre-registration</td><td>Exotic in finance (one journal track); deviations handled ad hoc</td><td>Every probe pre-registered; salvage clauses pre-specify the one allowed deviation</td><td><span class="chip pass">Exceeds</span></td></tr>
+          <tr><td>Cost realism</td><td>Midpoint + cost estimates typical; Frazzini-Israel-Moskowitz for institutions</td><td>Worst-fill grading over measured spreads; adverse selection measured, not modeled</td><td><span class="chip pass">Exceeds</span></td></tr>
+          <tr><td>Null / random controls</td><td>White's Reality Check bootstrap nulls; Burns' random portfolios</td><td>Three null feeds + turnover-matched controls; sharper on isolating timing skill</td><td><span class="chip pass">Matches+</span></td></tr>
+          <tr><td>Delay / lookahead tests</td><td>Standard "lag your signal" robustness</td><td>Adds the clairvoyant positive control — a power check on the test itself, rare in print</td><td><span class="chip pass">Matches+</span></td></tr>
+          <tr><td>Oracle ceiling as a gate</td><td>Kearns et al. 2010 computed omniscient-trader bounds <em>descriptively</em></td><td>Used as a pre-search kill criterion (required capture vs ~1% evidenced); peel decomposition appears novel</td><td><span class="chip pass">Ahead</span></td></tr>
+          <tr><td>Multiple-testing statistics</td><td>Deflated Sharpe, PBO/CSCV, Hansen SPA, FDR control</td><td>Bonferroni-style scaled |t| bars only — blunter than DSR/SPA/FDR</td><td><span class="chip open">Gap</span></td></tr>
+          <tr><td>Cross-validation</td><td>CPCV with purging/embargo generates many OOS paths per tape</td><td>Single sealed holdouts — one draw, spent forever; no multi-path evaluation</td><td><span class="chip open">Gap</span></td></tr>
+          <tr><td>Dependence-preserving nulls</td><td>Stationary/block bootstrap preserves vol clustering</td><td>Shuffles/IID destroy autocorrelation — null slightly too easy for variance-shaped edges. <b>And the converse, found twice in Sep 2026:</b> a block or index permutation applied to a <em>slow</em> signal barely moves it, so the null keeps the effect and scores <em>above</em> the real result (week-block mean IC 0.0504 and 0.1207 against real 0.0328 and 0.0319). <b>A permutation is only a null if it moves the signal</b> — check autocorrelation at whatever the null permutes.</td><td><span class="chip open">Gap</span></td></tr>
+          <tr><td>Effect-size shrinkage</td><td>Bayesian hierarchical shrinkage across candidate clusters (Jensen–Kelly–Pedersen)</td><td>Binary gates discard magnitude information</td><td><span class="chip open">Gap</span></td></tr>
+          <tr><td>Decay-discounted hurdles</td><td>Edges decay ~26% OOS / ~58% post-publication (McLean–Pontiff); bars should price it in</td><td>Gates require surviving costs, not surviving decay</td><td><span class="chip open">Gap</span></td></tr>
+          <tr><td>Bootstrap CIs on headline metrics</td><td>BCa bootstrap (PyBroker-style) suits stop-loss-shaped, skewed P&amp;L</td><td>Plain CIs on trade aggregates</td><td><span class="chip open">Gap</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">The gaps share a theme: the programme's statistics are maximally conservative (FWER-flavored, binary), which costs power on large sweeps — the overnight sweep's "0 survivors" was partly a bar-calibration outcome (its bar demanded r ≥ 0.31 where the real structure lives at 0.05–0.27). DSR, SPA, FDR bars, and block-bootstrap nulls are cheap to add on top of already-logged trial ledgers.</p>
+  </div>
+</section>
+
+<!-- ================= §5 AGAINST THE FIELD ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§5</span><h2>Against the field</h2><span class="thread">seven open-source frameworks, surveyed Aug 2026</span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Framework</th><th>Fill / cost realism (default)</th><th>Validation tooling</th><th>Live path</th></tr></thead>
+        <tbody>
+          <tr><td><strong>QuantConnect LEAN</strong><span class="sub">C#/Python · commercial-backed</span></td><td>Richest architecture, but default slippage model is literally <em>zero</em>; complete fills, no queue</td><td>Walk-forward is DIY guidance; no CPCV, no holdouts</td><td>Best-in-class (~12 brokerages)</td></tr>
+          <tr><td><strong>NautilusTrader</strong><span class="sub">Rust/Python · most active</span></td><td>Scales to L2/L3 book replay; defaults fill every touch at zero slippage; queue heuristics new in 2026</td><td>None shipped</td><td>Strong, core design goal</td></tr>
+          <tr><td><strong>vectorbt / PRO</strong><span class="sub">Python/Numba</span></td><td>Weakest: close fills, flat % slippage default 0</td><td><strong>Leads the field</strong>: CPCV, purged k-fold, walk-forward, parameter surfaces</td><td>None — research only</td></tr>
+          <tr><td><strong>backtrader</strong><span class="sub">Python · unmaintained ~2020</span></td><td>User-set constants; zero default</td><td>Optimizer only</td><td>Rotting</td></tr>
+          <tr><td><strong>zipline-reloaded</strong><span class="sub">Python · community</span></td><td>Volume-participation partial fills — the field's one honest <em>capacity</em> model; no spread</td><td>None shipped</td><td>None</td></tr>
+          <tr><td><strong>Freqtrade</strong><span class="sub">Python · crypto</span></td><td>Fills at requested price by design (docs say so)</td><td>Novel: automated lookahead-detection + recursive-analysis</td><td>Its whole point (100+ exchanges)</td></tr>
+          <tr><td><strong>HftBacktest</strong><span class="sub">Rust · the serious newcomer</span></td><td><strong>The realism reference</strong>: L2/L3 replay, feed + order latency, explicit queue-position models</td><td>None</td><td>Binance/Bybit futures</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cards two">
+      <div class="card"><div class="kicker"><span class="n">WHERE THIS STACK LEADS</span><span class="chip pass">Ahead</span></div><p><strong>Measured costs</strong> — no framework ships costs measured from data; every default is zero or a guess. <strong>Worst-fill grading</strong> — nothing in the field prices fill uncertainty as an interval, let alone grades on its pessimistic edge; "the edge was the fill assumption" is an error class the field is structurally blind to. <strong>Sealed pre-registered holdouts</strong> — nothing remotely comparable exists anywhere in open source. <strong>Measured adverse selection</strong> — HftBacktest models it; this stack measured it and closed a door on evidence.</p></div>
+      <div class="card"><div class="kicker"><span class="n">WORTH IMPORTING</span><span class="chip open">Gaps</span></div><p><strong>CPCV + PBO/DSR statistics</strong> (vectorbt PRO's orbit) — many pseudo-OOS paths per tape would let programmes reach verdicts with fewer irreversible holdout spends. <strong>Automated lookahead diffing</strong> (Freqtrade) — mechanical regression test for a bug class currently guarded only by discipline. <strong>Volume-participation caps</strong> (zipline, ~20 lines) — the first binding constraint if capital ever scales. <strong>Vectorized search cores</strong> — the speed tier beyond the repo's O(n) streaming evaluator (the original path measured 18s/eval), if searching ever resumes. <strong>A live execution layer</strong> (NautilusTrader / Freqtrade) — years of connector engineering not worth rebuilding if anything ever passes the gates.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §6 THE MAP ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§6</span><h2>The map of openings</h2><span class="thread">ranked by evidence-to-effort, grounded in the closures</span></div>
+    <div class="prose">
+      <p>The closures are precise, so the openings are legible. Web research for this review (execution costs, documented edges 2023–26, and the microstructure literature) confirms the through-line: <strong>the surviving games are different games</strong> — slower cadence, the maker/structural side of the book, or venues where the competition is amateurs. Nothing below re-litigates a closed cell.</p>
+      <p>Two honest framings before the list. <strong>Against the reward bar:</strong> only the Tier 1 experiments could conceivably reach the standing 1%-per-week bar; Tier 3 pays roughly 5–25% of it — pursuing those is a decision to revise the bar, and it should be made explicitly, not drift. <strong>The NZ filter:</strong> the US open — where the equity-maker and futures experiments live — is the middle of the night in NZ, so those need automation; crypto's 24/7 tape and event-driven venues fit NZ hours natively; any latency-sensitive venue work needs a ~$10–40/mo APAC VPS (home-server RTT to every crypto hub is 130–180 ms); and trading profits are assessable income for NZ traders, with the FIF regime looming over foreign holdings — an accountant before any of it earns money.</p>
+    </div>
+
+    <div class="chart">
+      <div class="title">The 2026 cost ladder: all-in round-trip cost by route, bp of notional</div>
+      <div class="subtitle">Liquid instruments, solo-reachable accounts · taker unless noted · researched Aug 2026</div>
+      <div class="chartbody">
+        <div class="barrow"><span class="lbl">IBKR equity maker <span class="sub">rebate-routed · explicit cost only</span></span><div class="bartrack"><div class="barfill" style="width: calc(0.2% * 2.0);"></div><span class="barval" style="left: calc(0.2% * 2.0);">~0.2 + adverse selection ?</span></div></div>
+        <div class="barrow"><span class="lbl">IBKR IdealPro FX <span class="sub">taker · commission + spread</span></span><div class="bartrack"><div class="barfill" style="width: calc(0.6% * 2.0);"></div><span class="barval" style="left: calc(0.6% * 2.0);">~0.5–0.7</span></div></div>
+        <div class="barrow"><span class="lbl">CME micro MNQ <span class="sub">futures taker · <b>measured</b> book, IF1</span></span><div class="bartrack"><div class="barfill" style="width: calc(0.75% * 2.0);"></div><span class="barval" style="left: calc(0.75% * 2.0);">0.75</span></div></div>
+        <div class="barrow"><span class="lbl">US equity taker, IBKR tiered <span class="sub">high-priced liquid names</span></span><div class="bartrack"><div class="barfill" style="width: calc(0.85% * 2.0);"></div><span class="barval" style="left: calc(0.85% * 2.0);">~0.7–1.0</span></div></div>
+        <div class="barrow"><span class="lbl">FX true ECN <span class="sub">IC Markets Raw / Pepperstone</span></span><div class="bartrack"><div class="barfill" style="width: calc(0.9% * 2.0);"></div><span class="barval" style="left: calc(0.9% * 2.0);">~0.8–1.0</span></div></div>
+        <div class="barrow"><span class="lbl">CME micro MES <span class="sub">futures taker · IF1, stated 1-tick book</span></span><div class="bartrack"><div class="barfill" style="width: calc(1.3% * 2.0);"></div><span class="barval" style="left: calc(1.3% * 2.0);">1.30</span></div></div>
+        <div class="barrow"><span class="lbl">Crypto perp taker <span class="sub">base tier, any major venue</span></span><div class="bartrack"><div class="barfill" style="width: calc(9.5% * 2.0);"></div><span class="barval" style="left: calc(9.5% * 2.0);">~9–10</span></div></div>
+        <div class="barrow"><span class="lbl">PFOF retail broker <span class="sub">effective, Schwarz et al. 2025</span></span><div class="bartrack"><div class="barfill" style="width: calc(26% * 2.0);"></div><span class="barval" style="left: calc(26% * 2.0);">7–46</span></div></div>
+      </div>
+      <div class="foot"><b>Revised 3 Sep 2026 from measurement, not vendor arithmetic.</b> IF1 priced MNQ through the grading path on the real CME tape at <b>0.75 bp round trip</b> at H=5 and MES at <b>1.30 bp</b> — not the ~0.4–0.5 / ~0.85 this ladder first carried. The spread half is now measured too: 11.2M BBO updates show the MNQ book is one tick wide on only <b>79.8% of RTH updates and 64.5% of RTH time</b>, and a one-lot marketable order pays <b>0.61 ticks per side, not 0.50</b>. Micros remain the cheapest taker venue reachable — still ~13× cheaper than crypto perp — but the "1-tick book" that made them look cheaper still was an assumption, and it was wrong.</div>
+    </div>
+
+    <div class="op" style="margin-bottom: 34px;">
+      <div class="head"><h3>The shared instrument: a queue-level data estate (Databento)</h3><span class="chip info">Direction, not a single experiment</span></div>
+      <p>A pattern runs through the closures: the programme's verdicts kept ending at "quote data is the only decisive instrument" — the BTC→MSTR lead-lag, the oracle-follower maker door, and every question the OHLCV archive structurally cannot answer (true spread at the signal's instant, queue position, fill probability). The FX and crypto maker doors could only be <em>closed honestly</em> because tick archives existed for them; equities, futures, and options never got theirs. <a href="https://databento.com/">Databento</a> is the one solo-priced vendor whose catalog covers all three rungs venue-natively, with queue depth rather than just the touch: <span class="mono">XNAS.ITCH</span> (Nasdaq TotalView full book — the equity maker test and the MSTR/COIN/TSLA retests), <span class="mono">GLBX.MDP3</span> (CME/CBOT/NYMEX/COMEX futures with MBO→OHLCV schemas — the futures oracle re-run), <span class="mono">OPRA.PILLAR</span> (consolidated US options trades + NBBO across all 17 exchanges, history from Mar 2023, ~2M active option tickers — the first-ever data path to the options/VRP rung), and US equities to L3 granularity since 2018 across 15 exchanges + 30 ATSs. Nanosecond venue timestamps also upgrade the delay test from 0-vs-1-bars to a real latency distribution — the HftBacktest-grade resolution §5 flagged.</p>
+      <p>Economics: metered per-GB pulls (with a $125 starting credit) suit the one-shot experiments here; the $199/mo Standard tier caps top-of-book history at the trailing 12 months, so 2022–23 pulls need the metered route — price the exact slice in their estimator before committing. The point of naming this as a direction: every Tier 1 experiment below, plus the options rung, draws on the same instrument, so the data estate is one investment decision, not four.</p>
+      <div class="meta"><span><b>Covers:</b> openings 1, 2, the BTC→MSTR retest, and the options/VRP data gap</span><span><b>Cost shape:</b> per-GB one-shots first; subscription only if a door opens</span></div>
+    </div>
+
+    <div class="tier">
+      <div class="tierhead"><span class="t">Tier 1</span><h3>Decisive next experiments — new venue economics, existing machinery</h3></div>
+      <div class="opening">
+        <div class="op">
+          <div class="head"><h3>1 · Index futures — ran to completion (IF0 → IF1 → <b>IF2, closed</b>)</h3><span class="chip fail">Closed 4 Sep 2026</span></div>
+          <p><b>IF0 (30 Aug, $0 spent)</b> computed the bars on SPY/QQQ proxies and passed. <b>IF1 (3 Sep, $19.22 spent of the $125 credit)</b> bought the real CME tape — MES + MNQ one-minute bars, 2019-05 → 2023-12, plus a one-day quote sample — and re-ran the arithmetic on it. All six gates passed, and the first headline is methodological: <strong>the proxy predicted the real futures tape to within 2–4%</strong> (real/proxy ceiling 0.970× at H=5 and 0.959× at H=30; 0.984/0.977 on matched full-length sessions), with the by-year series reproducing to ~3% a year. IF0's method was confirmed rather than corrected — the first time this programme has paid for data and had the free answer hold.</p>
+          <p>The registered gate passed at <b>H=5 and only H=5</b> (+$50/day bar 9.87% ≤ 10%, ρ-door 0.0776 ≤ 0.10, pessimistic break-even 6.29% ≤ 10%) — by 0.13 of a percentage point, which is <em>narrower than the measurement error of its own venue</em>: re-priced at the measured book the same cell reads 10.11% and fails. So the gate cell is a coin flip. <strong>What carries the phase is what the proxy could not see.</strong> The overnight Globex session is worth +104% at H=1 and +141% at H=30 (predicted +30–60% / +40–80%), and the short side is worth <b>×1.99</b> (predicted ×1.30–1.45 — the borrowed equity shorting penalty does not exist on futures). Registered two-sided RTH at H=5 gives a <b>6.96% reward bar</b>; the unregistered configuration a futures bot would actually trade — full session, two-sided — prices at <b>6.07–7.51%</b> with a ρ-door of <b>0.0396</b>. Rung 1 puts evidenced causal signals at ρ ≈ 0.06–0.07: <strong>the first cell in this programme's history whose required correlation sits below the evidenced one.</strong></p>
+          <p><b>IF2 ran on 4 Sep and failed at V1, and the way it failed is the most useful thing the programme has produced.</b> The cell was the one IF1 pointed at — MNQ, full Globex session, two-sided, H=30, at the measured session-aware book (the overnight book was measured first and is 22% wider than RTH). Fourteen features from the tape itself, ridge, λ and θ fixed on train, delayed execution as the <em>primary</em> rather than a robustness check, one look at 2022-07 → 2023-12. Train IC +0.0634 — sitting exactly on the ρ-door it needed — collapsed to <b>−0.0046</b> out of sample. Net <b>−$7.36/day per $25k</b>, CI [−$23.60, +$8.95], <em>below</em> the p95 of both nulls. The λ search was degenerate before the look: identical error across six orders of magnitude, which is what "nothing to regularise" looks like.</p>
+          <p><strong>The gross was negative — −$1.99/day before a cent of cost.</strong> Set every fee and every tick of spread to zero and the model still loses. That makes IF2 the <strong>first closure in this programme's history where cost was not the binding constraint</strong>. Equity intraday, FX taker, FX maker, crypto spot, crypto perp and the equity maker all died the same death — a real, null-beating signal that measured costs ate. IF2 was handed the cheapest venue the programme ever reached, the friendliest bar it ever computed, and a required correlation <em>below</em> the band its own evidenced signals occupy, and the signal was not there. <b>"Real signal, too-expensive venue" was never the whole story.</b> Cheapness was necessary and nowhere near sufficient.</p>
+          <p>Two controls make that a statement about the tape rather than the code: the clairvoyant transmitted <b>102.2%</b> of the delayed oracle through the identical feature → prediction → position → accounting path, and the causality guard fired 49,048 times with zero violations. And the delay law needed information to kill — the undelayed diagnostic was <em>worse</em> (−$12.72), because close-of-bar information has to exist before one bar of delay can destroy it. <b>The 2024+ holdout was never opened.</b></p>
+          <div class="meta"><span><b>Total spent across IF0+IF1+IF2:</b> $19.22 of $125 · <b>$105.78 left, holdout unspent, seal intact</b></span><span><b>Verdicts:</b> <span class="mono">INDEX_FUTURES_IF1_PREREG.md §7</span>, <span class="mono">IF2_PREREG.md §11</span></span><span><b>Reopens:</b> not on a cheaper-cost argument — that argument has now been run to completion and failed on the numerator</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>2 · The equity maker question, settled with real quotes</h3><span class="chip fail">Closed 29 Aug 2026</span></div>
+          <p>The 1m reversal signal <em>is</em> market-maker compensation — the follower verdict said collecting it means being the maker. IBKR tiered routing makes posting real at retail (~0.15–0.2 bp explicit round trip, rebates passed through, Nasdaq add-credit $0.0013/share). MSTR/COIN/TSLA 2022–23 NBBO history costs ~$199 (Massive) or a metered Databento ITCH pull with queue depth. The F-M1 through/touch simulator ports directly. The honest prior from F-M1 physics and the Moallemi–Yuan queue literature is <strong>failure</strong> — back-of-queue fills eat the edge — but this is the single most decisive $200 experiment available. And the same tape settles a second closed door for free: the BTC→MSTR lead-lag verdict named quote-level data as "the only decisive instrument" for its real-but-delay-killed signal — one purchase, two re-tests.</p>
+          <p><b>Ran, and the prior held.</b> EM0–EM3 bought the trade prints on a 7-day trial (<b>$0 spent</b>), measured adverse selection directly on 650M prints (1.14 / 2.60 / 2.97 bp, flat from 1 s to 300 s), and spent the one look on 2026-08-29: <b>M = −$91.31/day</b> (CI [−126.58, −54.83], t = −5.04) against a recovery bar of <b>+$107.87</b> — −42.3% recovery where ≥50% was required, negative at every latency bound and under 2× costs. It beats its own null, so the information is real; it is not profit. Fill rate was 84.1%, so this is not a queue story: §8's pre-declared "high fill rate, negative result" shape means the edge is not there, and quote-level data was therefore <em>not</em> licensed. A process error rides with it on the record — three staleness runs shared one output path, and the first write-up quoted the 10 s sensitivity (−$210/day) as the primary. <b>Door closed for good; the equity holdout stays sealed.</b></p>
+          <div class="meta"><span><b>Spent:</b> $0 — trial data, sealed before the pull</span><span><b>Verdict:</b> <span class="mono">docs/EM3_PREREG.md</span></span><span><b>Reopens:</b> not on foreseeable evidence</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>3 · Prediction markets (Kalshi / Polymarket)</h3><span class="chip open">Open · documented</span></div>
+          <p>The one arena where the maker/taker asymmetry runs the right way for a solo: Kalshi maker fees ≈ 0 on most markets, taker capped ~1.75¢/contract. On-chain research measured ~$40M of realized arbitrage on Polymarket alone (Apr 2024–Apr 2025); weather markets settle on specific NWS stations against forecastable physics; the marginal price-setter is often uninformed flow. This is a forecasting-and-engineering game, not a latency game — exactly this skill set. Both platforms are standing up internal market-making desks, so the window is years, not decades. Risks: resolution ambiguity, capital lockup, legging risk, platform/regulatory status for NZ residents needs checking first.</p>
+          <div class="meta"><span><b>Cost:</b> engineering time; small stake</span><span><b>Evidence:</b> academic + on-chain-verified — the strongest of any opening here</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>4 · Crypto funding / basis carry</h3><span class="chip fail">BTC/ETH: premium gone</span><span class="chip open">Alt-perp tier: still open</span></div>
+          <p>Delta-neutral funding capture (spot long vs perp short) is a <em>carry</em> trade: no directional forecast, 8-hour cadence, entry cost tiny (CP1: the book is one tick). It was listed here at "8–20% APY in positive-funding regimes and ~0 in chop". <b>No probe was ever built — but the funding archive was already on disk, so on 4 Sep 2026 the premium itself was simply read off it.</b> BTC and ETH, 7,212 eight-hourly stamps each, annualised:</p>
+          <div class="tablewrap" style="margin:0 0 12px">
+            <table>
+              <thead><tr><th>gross carry, annualised</th><th class="num">2020</th><th class="num">2021</th><th class="num">2022</th><th class="num">2023</th><th class="num">2024</th><th class="num">2025</th><th class="num">2026 →Jul</th></tr></thead>
+              <tbody>
+                <tr><td>BTC</td><td class="num">+17.2%</td><td class="num">+30.6%</td><td class="num">+4.2%</td><td class="num">+7.9%</td><td class="num">+11.9%</td><td class="num">+5.1%</td><td class="num"><b>+1.9%</b></td></tr>
+                <tr><td>ETH</td><td class="num">+27.4%</td><td class="num">+37.5%</td><td class="num">+0.8%</td><td class="num">+8.3%</td><td class="num">+13.0%</td><td class="num">+4.9%</td><td class="num"><b>+1.0%</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>The "8–20%" was accurate for 2020–24 and is <strong>not</strong> accurate now. Both legs in and out costs ≈0.30% round trip, so at 2026's BTC rate you hold a full year to net ~1.6% — against T-bills at 4–5%, while carrying venue/counterparty risk (the FTX lesson), liquidation wicks on the perp leg, and NZ assessable-income treatment. Through 2025–26 the rate is mostly pinned at Binance's 0.01%/8h default, which is what "no basis" looks like. <b>The BTC/ETH version is closed on arithmetic: the premium has compressed to at or below the risk-free rate.</b></p>
+          <p>Two things keep the entry alive rather than dead. The <strong>alt-perp tier</strong> — the sub-case originally flagged, where funding runs far higher and small size is an advantage — is <em>genuinely untested and has no data on disk</em>; it is now the whole of this opening. And note what does <em>not</em> bear on it: IF2's "no signal on the cheapest venue" finding is about forecasting, and carry forecasts nothing. The reason for scepticism here is different and now measured — the premium itself decayed.</p>
+          <div class="meta"><span><b>Status:</b> BTC/ETH closed on measurement 4 Sep 2026; alt-perp tier open, needs a new data pull</span><span><b>Caveat on the numbers:</b> 2024–26 comes from the <em>spent</em> crypto holdout — descriptive accounting on seen data, not a fresh test, and any prereg must declare it</span><span><b>Infrastructure:</b> funding archive and fee model exist; only one price leg is on disk, so basis convergence is unmodelled</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier">
+      <div class="tierhead"><span class="t">Tier 2</span><h3>Research rungs left open on existing rails</h3></div>
+      <div class="opening">
+        <div class="op">
+          <div class="head"><h3>5 · LLM news scoring, daily horizon, judged live-forward</h3><span class="chip open">Still open — and now the only news cell that is</span></div>
+          <p>The news verdict closed vendor sentiment and lexicons <em>at hourly</em>. The literature's surviving claim (López-Lira &amp; Tang line) lives in a different cell: GPT-class scoring, next-day horizon, small-cap names, long side. The trap is memorization contamination — every current model's weights contain 2021–23 outcomes — so the only honest judge is post-cutoff or live data. FinBERT (2019 weights) is the backtest-clean rung.</p>
+          <p><b>Why the arrival-lag measurement does not close this — stated explicitly, because it closes everything next to it.</b> The poller ran 22 Aug → 4 Sep and was stopped once it had answered: <b>n = 678</b> usable observations, <b>median 29.5 min</b>, p75 66 min, p90 189.5 min. That is fatal to any sub-hourly news trade and it is <em>immaterial at a next-day horizon</em> — a decision taken at or after the close, for the following session, does not care that the article landed half an hour late. The measurement kills the cell this entry never claimed and leaves the one it does.</p>
+          <p><b>What it does impose is a design requirement, and it is not optional.</b> The tail is long enough to leak: <b>49.1%</b> of articles arrive more than 30 minutes after their own publish stamp, <b>26.0%</b> more than an hour, <b>11.1%</b> more than three hours, and the slowest observed took 23.5 hours. Any live-forward test must therefore gate on <b>arrival time, not the publish stamp</b>, and drop every article whose arrival lands after its own decision point — otherwise the test quietly consumes information it would not have held, which is exactly the provenance problem the poller was built to expose. And with the poller stopped, a live-forward run has to stamp its own arrivals: the historical archive cannot supply them retrospectively.</p>
+          <div class="meta"><span><b>Cost:</b> API pennies + a prereg with live-forward judging and arrival-time gating</span><span><b>Prior:</b> weak-positive gross in literature; net-of-cost unproven anywhere</span><span><b>Latency question:</b> answered and retired — median 29.5 min (n=678); no longer a reason to defer this</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>6 · Wire the variance ladder into the bots</h3><span class="chip pass">BUILT · 4 Sep 2026</span></div>
+          <p><b>Done, and the only entry on this map that shipped code rather than a verdict.</b> <span class="mono">src/lib/varianceLadder.ts</span> composes one unit multiplicatively — <span class="mono">clock × event × shock</span>, each the mean 1-minute move under the condition over a baseline — and is wired into the Backtester, the live Deck (so the Arena) and the C/D training policies, with three controls on by product default and a 55-assertion suite. It is inert unless an engine is handed a ladder input, and exits are never gated. Spread shape scales only the proportional term, so tick-floor venues (MNQ/MES, perps) are untouched by construction.</p>
+          <p>Measured on the 364-window panel, ON−OFF per window: <b>A +$53 (t 7.4), B +$54 (t 1.7), C +$41 (t 5.5), D +$60 (t 4.7)</b> — every bot loses less. But the decomposition is the honest part, and it is not a discovery of toxic minutes: <strong>all of the gain comes from the gate</strong>, spread shape alone makes every bot pay <em>more</em> (B worse on 339 of 339 windows — the bots' fills cluster at the open, where the flat 2.5 bp had been under-charging them), and the refused trades are <em>not</em> worse per trade than the kept ones. The mechanism is "decline expensive trades on behalf of a bot with no edge." <b>Do not search the threshold</b> — it would drive straight to "never trade", which is Law 6 wearing a new hat.</p>
+          <div class="meta"><span><b>Shipped:</b> <span class="mono">docs/VARIANCE_LADDER.md</span>, <span class="mono">npm run train:calibrate-ladder / train:measure-ladder / train:test-ladder</span></span><span><b>Side effect:</b> corrected Law 8 — most "8-K variance" was the open (see §3)</span><span><b>Also fixed:</b> the evaluator equivalence snapshot had silently diverged since the 23 Aug spread unrounding and was re-baselined with the reason recorded</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>7 · A properly-powered overnight pre-registration</h3><span class="chip open">Open, honest low prior</span></div>
+          <p>The overnight sweep's bar demanded r ≥ 0.31 per-year; the real structure sits at r 0.05–0.27 with 0 on the null — genuinely there, never properly tested. A pooled-across-years design with year blocks is a fresh ceremony, not an edit. Temper it with the literature: the Fed's own follow-up finds the famous overnight drift ≈ zero since 2021, and Elm Wealth showed even 1 bp/trade roughly erases the long–short version. The defensible target is <em>conditioning</em> (hold-through vs flatten decisions on positions held anyway), not a standalone strategy that pays two spreads a day at the day's worst prices.</p>
+          <p><b>Update, 3 Sep 2026 — the standalone version now has direct negative evidence.</b> The slow-trading programme (S0–S4) chartered a daily-cadence cross-section and its S3 screen produced one apparent survivor on an <em>overnight-only</em> vehicle (MOC in, MOO out, max one night). Its own adversarial review found the pass did not hold: an overnight-only gross had been paired with a cost netted across rebalances, and on the registered vehicle every consistent accounting nets negative (−$11.48/day). The cross-sectional signal is real (IC 0.0328, t 5.36, 5/5 years) and does not survive contact with the vehicle that would trade it. <b>The <em>conditioning</em> target this entry actually recommends — hold-through vs flatten on positions held anyway — is still untested, and is now the only live half of it.</b></p>
+          <p><b>Second update, 3 Sep 2026 — the live half gained positive evidence, and the record was squared.</b> S4 ran the registered vehicle anyway, under a deviation logged after the fact, and failed V1, V2 and the risk gate. But its controls decompose the cell in a way that speaks directly to <em>this</em> half. Against random names the book is worth <b>+$32.38/day</b>; against the same signal taken from a random other day of the same year it is <b>−$15.51/day</b>; a one-day-late signal retains <b>98%</b> of the net. <strong>The name selection is real and large; the timing is absent.</strong> That is the exact shape a hold-or-flatten rule needs and a standalone entry cannot use — you do not need to know <em>when</em>, only <em>which</em>. The review adds the other half of the mechanism: the same book's next-day intraday leg is <b>−$9.23/day</b> (IC −0.0147, t −2.73) against a close-to-close IC of −0.0002, so the signal separates "carries overnight" from "gives it back in the session" with opposite signs.</p>
+          <p>Two things keep this honest rather than promising. The conditioning version still has to beat <em>always holding</em>, which is not free: the unconditional carry is 5.06 bp a night and the night-matched random-name control ran $13.77/day. And it is <b>not a strategy but a modifier</b> — it needs a host book that already holds overnight for independent reasons, and this programme does not have one, because every candidate closed. <b>Record squared 3 Sep:</b> cell #3 is now recorded FAIL on P1 criterion 2 with the −$11.48, the S4 deviation is logged in the trial ledger, and three unfixed screen defects (a universe leak that put three feature-only FX pairs in the cross-section, a block null that wraps within the year, and a permutation null equal to the naive t-test) are logged with it.</p>
+          <div class="meta"><span><b>Cost:</b> one prereg + compute</span><span><b>Prior:</b> standalone overnight has a measured failure behind it; the conditioning half now has a measured <em>mechanism</em> in front of it</span><span><b>Blocked on:</b> a host strategy that already holds overnight — none exists here</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>8 · Consensus-estimate earnings surprise, daily cadence</h3><span class="chip open">Open, needs paid data</span></div>
+          <p>The EDGAR earnings rung tested the free ceiling (seasonal-random-walk SUE) and found the open already agrees with the naive surprise 55.7% of the time. The unexplored rung is analyst-consensus surprise at daily horizons — but the 2024 friction literature finds costs consume 70–100% of PEAD paper profits, with the residue in illiquid names. Worth one probe only if estimate data arrives cheaply; must beat the 55.7% priced-in baseline, at daily cadence, long side, liquid names.</p>
+          <div class="meta"><span><b>Cost:</b> paid estimates feed</span><span><b>Prior:</b> weak — the front of this trade is crowded and the back is illiquid</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>9 · Hyperliquid maker rebates / HLP — the one reachable maker venue</h3><span class="chip open">Open, heavy burden of proof</span></div>
+          <p>The edges research surfaced exactly one venue class where maker execution is genuinely accessible to a solo trader: Hyperliquid (0.015% maker at base, on-chain-verified HLP vault returns of ~15–30% APR historically — and the JELLY attack, a $12–13M vault drawdown in an hour, as the tail-risk exhibit). The dossier's own physics stands against it: CP1 measured 29–41× adverse selection on Binance's one-tick perp book, and any Hyperliquid probe must first show why that arithmetic doesn't transfer. Named here so it's dismissed visibly rather than silently — the burden is on the venue, not the closure.</p>
+          <div class="meta"><span><b>Prior:</b> CP1/F-M1 physics expected to transfer</span><span><b>Risks:</b> JELLY-shaped manipulation, venue centralization, bridge risk</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier">
+      <div class="tierhead"><span class="t">Tier 3</span><h3>Structural income — returns without forecasts</h3></div>
+      <div class="opening">
+        <div class="op">
+          <div class="head"><h3>10 · The structural shelf: SPAC trusts, CEF discounts, index VRP</h3><span class="chip info">Capital, not alpha</span></div>
+          <p>Three documented, capacity-appropriate, slow-cadence returns that are not forecasting edges: <strong>SPAC trust yield</strong> (buy below trust, redeem at NAV — T-bills +150–300 bp, near-contractual, practitioner-verified); <strong>CEF discount baskets</strong> (10–15%+ discounts, free-riding activist campaigns; lumpy, carries the underlying beta); <strong>monthly index put-writing</strong> (the volatility risk premium — decades of index data, equity-like returns at 0.6 beta, real tail risk that must be sized to survive a 2020, and the April 2025 vol spike is the canonical warning). A fourth for completeness: <strong>microcap long-only tilts</strong> — the one equity corner where $50k is a structural advantage (the anomaly literature's surviving juice lives in names institutions can't trade), at weekly+ cadence, spread- and fraud-limited. All are places capital can sit and earn structure while research continues — with eyes open that they are risk premia, not alpha, and that this whole tier pays a fraction of the 1%/week bar.</p>
+          <div class="meta"><span><b>Evidence:</b> practitioner-verified / index-verified / academic</span><span><b>Honest expectation:</b> mid-single to low-double-digit %/yr, drawdowns included</span></div>
+        </div>
+        <div class="op">
+          <div class="head"><h3>11 · Ship the instrument itself</h3><span class="chip pass">This review's own recommendation</span></div>
+          <p>Both research passes reached the same independent conclusion: sealed pre-registered holdouts exist nowhere in open-source backtesting, and the oracle-capture-bar gate plus the peel decomposition "would itself be publishable methodology." If no trading door opens, the one output the field demonstrably lacks is already built: a registered-report-style methods write-up, or an open-source seal/prereg/worst-fill validation toolkit extracted from <span class="mono">training/</span>. This is the only conclusion of the review that maps to zero market risk.</p>
+          <div class="meta"><span><b>Cost:</b> writing and packaging time</span><span><b>Value:</b> reputation, portfolio, and the discipline survives beyond this repo</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier">
+      <div class="tierhead"><span class="t">Tier 4</span><h3>Waiting rooms and standing upgrades</h3></div>
+      <div class="opening">
+        <div class="op">
+          <div class="head"><h3>12 · The patient list</h3><span class="chip seal">Closed unless conditions change</span></div>
+          <p><strong>FX:</strong> the 1h CI re-check as sealed years age out is waiting, not research; any reopening should execute on IdealPro or LMAX (0.4–0.6 bp commission on real books), not CFD LP feeds. <strong>Crypto:</strong> a fresh prereg on genuinely 2027+ data is the only conceivable reopening; the spent holdout can never be reused. <strong>Capital routes for a verified edge</strong> — none exists yet to bring: funded accounts (FTMO/Topstep-class) rent ~9× capital per dollar risked but their trailing-drawdown and consistency rules are a cost layer to simulate like any venue; Darwinex is the fee-based alternative (investor capital tracks the strategy for a 20% performance cut). <strong>Methodology upgrades</strong> (from §4): DSR on sweep ledgers, SPA per family, FDR bars for wide sweeps, block-bootstrap nulls, CPCV, decay-discounted hurdles, bootstrap CIs — each extends holdout life or adds power on data already logged. <strong>Platform:</strong> split/dividend adjustment, a volume-participation capacity cap, Freqtrade-style lookahead diffing, and — should anything ever pass — a live paper path via NautilusTrader rather than hand-built connectors. Before any search at H&gt;1: rescale genome bounds, restate gate-6 floors for coarser cadence, and reseal criteria (<span class="mono">docs/DECISION_CADENCE.md</span> carries the debts).</p>
+        </div>
+        <div class="op">
+          <div class="head"><h3>Standing state — what is actually running today</h3><span class="chip open">Needs a decision</span></div>
+          <p>Two operational loose ends as of 26 Aug 2026. The <strong>news arrival-lag poller</strong> is a live nohup process (~24k of the 100k daily EODHD units, hard 30k stop) that <em>dies on any reboot</em> — restart by hand or install a launchd job — and reaches its decision point after ~2 weeks of data (~early September): read <span class="mono">--summary</span> and settle which latency column live news actually lives in. And the <strong>paid EODHD subscription</strong> (~$30/mo) now has only two prospective consumers — the poller and the earnings-calendar endpoint — so a keep/cancel decision is due once the poller's fortnight is read; the archives on disk don't need it.</p>
+          <p><b>Read 4 Sep 2026 — the decision point is reached, the answer is unfriendly, and the poller has been stopped.</b> It carried <b>n = 678</b> usable observations (against the 67 weekend-heavy rows the first read had): live vendor news arrives a <b>median 29.5 minutes</b> after its own publish stamp, p90 <b>189.5 minutes</b>, and the per-symbol medians run 22 min (AAPL) to 97 min (CRDO) with maxima past 24 hours. <b>Nothing sub-hourly can be traded on this feed</b>, which is the same conclusion the news-direction closure reached by a different route. That settles the latency column — but note precisely what it does <em>not</em> settle: a 30-minute arrival lag is immaterial at a next-day horizon, so it leaves <b>entry 5 (LLM scoring, daily, judged live-forward) untouched</b>. The subscription therefore still has two prospective consumers, not one: the news feed for entry 5 and the earnings-calendar endpoint for entry 8.</p>
+          <p><b>The poller itself has a fault, found 4 Sep and worth recording as a pattern rather than a footnote.</b> It has run continuously since 22 Aug and is still polling — but its visible log froze on 28 Aug at 01:03 UTC, and it kept writing for seven days into an orphaned inode: the process holds fd 4 on inode 13927973 (393,707 bytes) while the file at that path is inode 14515761 (145,652 bytes). Something replaced the file on disk at exactly the timestamp of the last visible observation, and a persistent append handle does not follow. Roughly 1,400 observations existed only in that unlinked inode; the poller was stopped on 4 Sep — gracefully, releasing its own pid file — and they went with it, an accepted trade because the 678 already in hand answer the question thirty times over. Two latent defects behind it: the log handle is opened once and never re-checked against the path's inode, and the fetch loop silently discards any response that is not a JSON list (<span class="mono">rows if isinstance(rows, list) else []</span>) — so a lapsed plan or an error payload would look exactly like "no news today". <b>Any long-running collector needs an inode check on its append handle and a loud failure on an unexpected payload shape.</b></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §7 BOTTOM LINE ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§7</span><h2>The honest bottom line</h2><span class="thread">what the twelve days are worth</span></div>
+    <div class="prose">
+      <p>The stated bar — 1% of account per week, earlier hundreds of dollars a day on $25k — is market-maker economics, and the programme now owns the measurement showing why: the required capture of hindsight-optimal motion exceeds anything any causal model has evidenced, at every taker venue, and passive execution buys adverse selection instead of spread. The literature reviewed for this dossier lands on the same side on every major plank: minute-scale predictability exists and sits under the spread (consensus); maker fills on fast signals are structurally picked off (measured on the same Binance venue by independent researchers, same sign, same severity); the firms that do capture sub-spread signals are speed-tier market-making franchises. The conclusion was not pessimism. It was arithmetic, done early, on measured numbers.</p>
+      <p>Honesty requires naming the three published results that push back. Liu &amp; Stentoft claim after-cost intraday ML Sharpe ~4 — resting on modeled costs in illiquid names, unreproduced with queue-aware fills. The crypto cost-aware-filtering literature would read CP4 as a firing-rate regime result rather than a refutation of the filter principle. And Frazzini–Israel–Moskowitz warn that academic cost estimates overstate patient institutional execution ~10× — for multi-day horizons, which is not where this programme's cells died. None survives contact with measured fills at this capital scale, but they are the strongest standing objections, and a discipline built on pre-registration should display them rather than tidy them away.</p>
+      <p>What stands at the end: a research instrument whose <em>negative results are trustworthy</em> — which is the property that makes future positive results worth anything. The two decisive experiments this document named have both now been run. <b>The equity maker test closed</b> (−$91.31/day against a +$107.87 bar, at $0). <b>The futures programme ran to completion</b> for $19.22: IF0's free arithmetic passed, IF1 bought the real CME tape and found the proxy had been right to 2–4%, and IF2 took the causal shot on the cheapest venue the programme could reach — and failed with <em>negative gross</em>, holdout unspent.</p>
+      <p>That last result revises this bottom line rather than confirming it. Until now the programme's one-sentence law was "where the signal is real the economics are shut; where the economics are open the signal doesn't survive" — and every closure was of the first kind, a genuine edge eaten by measured cost. IF2 was the first test with the economics genuinely open: a 6.38% reward bar, a required correlation below the band the programme's own evidenced signals occupy, and a venue ~25× cheaper than the perp cells that came closest to passing. <strong>There was nothing there to pay for.</strong> The corrected law is narrower and more useful: <em>cheapness was necessary and nowhere near sufficient — and the programme had never before been in a position to learn that.</em></p>
+      <p>What remains are not cheaper venues. They are different games: one arena where the counterparty is uninformed rather than the cost low (prediction markets — the distinction IF2 sharpened, and the opening with the strongest external evidence), one carry structure that forecasts nothing, a defensive wiring job with validated signals behind it, and the instrument itself. None of them are "try more parameters." All of them are reachable from here.</p>
+      <p>And one more thing the review surfaced: the methodology itself — seal ceremonies, capture-bar gates, the peel decomposition — is ahead of published practice in places. If none of the doors above open, <strong>the instrument is the asset</strong>: it is exactly what the field's own reproducibility literature says is missing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §8 THE PROFESSION ================= -->
+<section>
+  <div class="wrap">
+    <div class="sechead"><span class="mark">§8</span><h2>Why the profession exists</h2><span class="thread">reconciling §0 with the people who trade for a living</span></div>
+    <div class="prose">
+      <p>The verdict invites a question that deserves an answer on the same page: if every cell closed, how can there be people whose profession is trading? The short answer is that §0 proved something narrower than "trading cannot pay." It proved that <strong>a solo retail taker with one $25k slot, public one-minute bars and a 1%-a-week bar cannot out-predict the market by more than the market charges to let them try.</strong> Read from the other side of each trade, the same measurements say where the profession's money is. The bots kept paying it.</p>
+    </div>
+
+    <h3 style="margin: 10px 0 12px;">What §0 actually proved — the four walls of the result</h3>
+    <div class="cards two">
+      <div class="card"><h3>One slot, house rules</h3><p>Long-only in most cells, all-or-nothing in one symbol, flat at the close, graded on worst fills. Rung 2 priced the rules: long-only forgoes 28% of the two-sided ceiling and forced-flat 69% of the half-day ceiling. No desk runs under them.</p></div>
+      <div class="card"><h3>Price bars as the only information</h3><p>Bar features, ridge, four bot families, vendor sentiment, 8-K text. IF2 then handed tape-only features the cheapest venue reachable and found no signal at all — whatever the profession knows, most of it is not in the bars.</p></div>
+      <div class="card"><h3>A bar most professionals never clear</h3><p>1% a week compounds to roughly 68% a year. Medallion, the field's famous exception, averaged about that gross over three decades while closed to outsiders and capped in size. A desk earning 10–20% a year at a Sharpe of one to two calls that a career; §7 already names the bar as market-maker economics.</p></div>
+      <div class="card"><h3>Intraday, until the slow programme</h3><p>And when cadence moved to daily, S1 found equal-weight buy-and-hold on the archive universe paid <b>2.2× the reward bar</b> with zero skill. That universe was picked on 2026 dollar volume, so the level is flattered — but the shape holds: the passive risk premium cleared the bar before any forecasting began.</p></div>
+    </div>
+
+    <h3 style="margin: 26px 0 12px;">The bill, read from the collecting side</h3>
+    <p class="note" style="margin-bottom: 14px;">Every closure of the "real signal, bill too high" kind is a bill someone collected. The programme measured the payer; these rows name the payee.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>What the programme measured</th><th>What it cost the bots</th><th>Who collects it</th></tr></thead>
+        <tbody>
+          <tr><td>Even the oracle pays <b>19.4%</b> of gross to costs at 1 m<span class="sub">ORACLE_FOLLOWER trip economics</span></td><td>A fifth of perfect foresight, before a single forecasting error</td><td>Makers, exchanges and brokers, on each of its 301 trips a day</td></tr>
+          <tr><td>Beta's timing skill is real and costs <b>2–4×</b> what it earns to collect<span class="sub">TURNOVER_CONTROL · Law 1</span></td><td>Skill of 0.03–0.17 pp a window against drag of 0.08–0.28 pp</td><td>The spread quoted off the volatility the bot wanted — Law 2's maker</td></tr>
+          <tr><td>The wholesaler keeps roughly the <b>full effective spread</b> on retail flow, and retail flow is uninformed at 30 s<span class="sub">Rung 6 · 650M prints</span></td><td>The only positive passive ledger ever measured here, and it requires being the wholesaler</td><td>The internalizer that payment for order flow routes the retail order to — a seat, not a signal</td></tr>
+          <tr><td>One bar of foresight is <b>97.8%</b> of the ceiling; the hot-name ceiling rises monotonically to <b>$42–45k/day</b> at one second<span class="sub">Rungs 1 and 2</span></td><td>An archive whose floor is one minute cannot stand where the money is</td><td>Whoever holds the book inside the bar</td></tr>
+          <tr><td>Adverse selection is <b>flat from 1 s to 300 s</b>; the undelayed 1 m edge <b>inverts within a quarter second</b><span class="sub">EM2 · EM3</span></td><td>Every edge found was alive at delay 0 and dead at delay 1</td><td>Speed-tier makers that quote, get hit and cancel inside the first second</td></tr>
+          <tr><td>PFOF retail brokers' effective round trip runs <b>7–46 bp</b><span class="sub">§6 cost ladder · Schwarz et al. 2025</span></td><td>What the population usually called "traders" actually pays</td><td>The same wholesaler seat, from the other end of the pipe</td></tr>
+          <tr><td>Equal-weight buy-and-hold pays <b>$109.69/day per $25k</b> on the slow universe<span class="sub">S1 · hindsight-selected universe</span></td><td>The passive line a long-only cell had to beat, and could not</td><td>Anyone holding — and the managers charging a fee on the capital that holds</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin: 26px 0 12px;">The seats — what each kind of professional is actually paid for</h3>
+    <p class="note" style="margin-bottom: 14px;">"Trader" covers at least nine different jobs, and only one of them is the job this programme tried to do. The last column is whether the seat is reachable from a $25k retail account.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Seat</th><th>Paid for</th><th>What this programme measured about it</th><th>From $25k</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Wholesaler / internalizer</strong></td><td>The effective spread on retail orders routed to it by contract — flow that is uninformed by construction</td><td>Rung 6: +3.9 / +1.6 / +0.8 bp per dollar one-way on MSTR / COIN / TSLA, against lit makers at +1.2 / +0.5 / −0.04; two-thirds to three-quarters of the oracle's own entry prints were off-exchange</td><td><span class="chip fail">Seat, not signal</span></td></tr>
+          <tr><td><strong>Speed-tier market maker</strong></td><td>The spread in every minute the flow is uninformed, cancelling inside the minutes it is not</td><td>Lit makers lose 4–16% of the oracle's gross inside its minutes and earn outside them; information impounds inside the first second (EM2); the seat §7's literature names for sub-spread capture</td><td><span class="chip fail">Below the bar floor</span></td></tr>
+          <tr><td><strong>Sell-side flow trader</strong></td><td>The bid-ask on client orders, hedging the residual — salary and bonus, not own P&amp;L</td><td>Not tested; the institutional face of the same ledger the wholesaler sits on</td><td><span class="chip info">Not a retail seat</span></td></tr>
+          <tr><td><strong>Agency / execution trader</strong></td><td>Execution quality on someone else's decision — beating the fill model, not the tape</td><td>The worst / base / optimistic interval is the thing they are paid to narrow; no forecast required</td><td><span class="chip info">Not a forecasting job</span></td></tr>
+          <tr><td><strong>Fund manager</strong></td><td>A management fee on capital whether or not the year is up, a performance fee on top; returns mostly risk premia harvested at institutional cost</td><td>S1's passive line beat the reward bar 2.2× with zero skill; Frazzini–Israel–Moskowitz put patient institutional costs ~10× below academic estimates at multi-day horizons — which is not where this programme's cells died</td><td><span class="chip open">Fee on capital, not P&amp;L</span></td></tr>
+          <tr><td><strong>Structural-income desk</strong></td><td>Carry, SPAC trust yield, closed-end fund discounts, index put-writing — returns without forecasts</td><td>§6 Tier 3, labelled capital not alpha; BTC/ETH funding carry read off the archive and found decayed below T-bills (entry 4)</td><td><span class="chip open">Reachable, below the bar</span></td></tr>
+          <tr><td><strong>Informational trader, daily and slower</strong></td><td>Information the tape does not carry — consensus surprise, filings read properly, forecasting where the counterparty is an amateur</td><td>Untested by design: openings 3, 5 and 8 are exactly this, and IF2 showed tape-only features carry nothing even where cost is not binding</td><td><span class="chip open">Open, unproven</span></td></tr>
+          <tr><td><strong>Retail day trader</strong></td><td>The word's usual meaning — and the paying side of every ledger above</td><td>Rung 6's retail flow: uninformed and non-predictive at 10–30 s. Outside the programme: 97% of Brazilian day traders who persisted past 300 days lost money and ~1% out-earned the minimum wage (Chague et al.); Taiwan's predictably profitable share is under 1%, and individual traders' aggregate losses there ran ~2% of GDP a year, collected by institutions (Barber, Lee, Liu, Odean)</td><td><span class="chip fail">The paying side</span></td></tr>
+          <tr><td><strong>Prop-evaluation firms, brokers, educators</strong></td><td>Evaluation fees, spreads and order-flow payments from people trying to enter the profession</td><td>§6 entry 12: funded accounts rent ~9× capital behind trailing-drawdown rules that are a cost layer like any venue; the PFOF row above is the broker's side of the same flow</td><td><span class="chip info">Aspirants fund it</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <p><strong>Three things then account for the population, not only the income.</strong> <em>Scale flips the arithmetic:</em> a tiny per-dollar edge times very large capital at very low per-dollar cost is a business, and the same edge on $25k at retail cost is this dossier. The 2021 Counterfactual priced these twelve days at roughly $1.16M in fund-grade person-months — a research bill that only pays back on nine-figure capital. Beta's skill-to-drag ratio of 0.26–0.62 becomes 2.6–6.2 if per-dollar cost falls by ten, and the programme measured the retail end of that inequality. <em>Survivorship does most of the rest:</em> the profitable few earn largely from the losing many, and the retail ledger in Rung 6 is that flow seen from the winning side. <em>Aspirants fund it:</em> a good deal of what looks like a profession from outside is a product sold to people trying to join it.</p>
+      <p><strong>One honest limit on the reconciliation.</strong> IF2 says the profession is not simply "the same bots with cheaper fills": on the cheapest venue the programme reached, tape-only features carried nothing to pay for. Whatever the desks collect at that venue comes from information the bars do not hold — order flow, cross-asset leads, sub-second book state — or from not forecasting at all. Cheap execution is the profession's precondition, not its edge.</p>
+      <p>So the reconciliation is this. The programme proved that a solo retail forecaster cannot out-predict the market by more than the market charges for the attempt. The profession is mostly the people doing the charging, the people paid by fee rather than by forecast, and the survivor tail of a very large losing population. Nothing in this dossier contradicts their existence.</p>
+    </div>
+    <div class="pull">"The programme measured the profession's income — from the paying side."<span class="attr">The §8 reconciliation: every cost line in §3 is a revenue line for a seat listed here</span></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Compiled 26 Aug 2026 · from 55 memory files, 39 repo docs, 157 report files, and a 7-agent research pass (frameworks, methodology literature, retail edges, execution economics, microstructure).</span>
+    <span>Every number traces to a verdict doc or report in the QuantPulse repo.</span>
+    <span>Rev. 4 Sep 2026 (fifth pass) — §8 added: why the profession exists — the four walls of the §0 result, the bill read from the collecting side, and the seats table of what each kind of trader is actually paid for. Rev. 3 Sep 2026 (fourth pass) — entry 7's live half given S4's decomposition (+$32.38/day of name selection against −$15.51/day of timing) and the record-squaring; Law 2 extended to the per-share commission; the §4 nulls gap sharpened by two instruments failing the same way. Rev. 4 Sep 2026 (third pass) — the news poller was read out and stopped; entry 5 given the reason the latency result leaves it open and the arrival-gating requirement it now carries. Second pass — post-dossier arc added to §2; Law 8 corrected (most 8-K variance was the open); entry 6 marked BUILT; entry 4's funding premium priced off the archive and closed for BTC/ETH; entry 7 given the slow programme's negative evidence; the news-lag poller read out at n=678. Earlier 4 Sep — IF2 closed the last open cell. Rev. 3 Sep — EM3 closed, IF0/IF1 passed, cost ladder re-priced from IF1's measured book.</span>
+  </div>
+</footer>
+</body>
+</html>

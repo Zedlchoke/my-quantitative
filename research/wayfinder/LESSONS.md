@@ -4,6 +4,8 @@
 > (stocks L1–L9, crypto L-V11-*, L-V14-0, forex per-cycle) into lessons that
 > generalize across assets. Each entry: source incident → lesson →
 > consequence (where it is encoded). Append-only; never rewrite history.
+> 2026-09-11: Q-series added — external doctrine imported at owner direction
+> from the QuantPulse dossier (§ "External lineage" at the end of this file).
 
 ## P-1 — A plausible-sounding assumption passes every review
 
@@ -355,3 +357,208 @@ other window); before writing to a surface another authority may own, a Lead
 must first rule out "in flight" (activity check or one waiting cycle), and a
 completed close supersedes nothing silently — both closes here are retained
 as convergent evidence.
+
+## External lineage — QuantPulse dossier (imported 2026-09-11)
+
+Imported at owner direction from the QuantPulse retrospective (12-day solo
+programme, ten research programmes, every cell closed by a pre-registered
+verdict, zero tradable edges) —
+https://www.informationism.org/artifacts/quantpulse-dossier.html, rev 4 Sep
+2026. Source preserved in-repo:
+`research/wayfinder/external/quantpulse_dossier.html`
+(sha256 `014a9aec42aa79570fffb5006a234896cd7c2a84d39b10177ff00261760c50f4`)
+plus an extracted-text copy. Q-entries are external doctrine, numbered apart
+from program-internal P-entries; where a Q-lesson already binds in our
+machinery the cross-reference is given. Both series are binding.
+
+## Q-1 — Skill is found; the market keeps it
+
+Source: dossier §0/§3 Law 1. Four real, null-beating signals, each dying a
+different measured death: timing skill costing 2–4× its own value to
+collect; an hourly signal whose value lived in the un-executable first bar; a
+lead-lag edge with the largest per-bar margin ever measured there, killed by
+one bar of delay; an in-window survivor that failed to generalize on the
+spent holdout. The failure mode was never "no signal" — it was the bill, the
+clock, or the calendar.
+
+Binds here: a near-miss positive is decomposed into bill / clock / calendar
+BEFORE any successor plan is written (which of the three killed it names the
+next question); feasibility arithmetic before selection (handbook §14.4) is
+the same doctrine bought earlier.
+
+## Q-2 — The spread is priced off the volatility you want
+
+Source: Law 2. At the open, per-minute movement ran 3.33× midday and the
+measured spread 3.35× midday — they cancel to two decimals; a maker quoting
+volatile minutes charges for the variance the strategy wants to harvest.
+Extended: any per-share commission is a tax on low prices, and any
+volatility-seeking signal drifts into exactly the cheap, volatile names
+where per-unit costs bite.
+
+Binds here: cost models are conditional (time-of-day, price level, name
+liquidity), never flat constants; a cost tier that does not condition on the
+signal's own trading distribution is an accounting gap, not a conservative
+choice.
+
+## Q-3 — Skill and feasibility anti-correlate across horizons
+
+Source: Law 3. Significant skill at 1m/5m where cost gates are shut; gates
+open at 15m+ where measured skill is negative. Categorical, and it survived
+every correction of the cost model.
+
+Binds here: cadence is part of family identity (frozen clock contract); a
+cost-gate failure at one cadence is NOT evidence about another, and a
+cross-horizon rescue of a dead family is an ancestry veto (§12.3 equivalent
+here).
+
+## Q-4 — The delay signature is the artifact detector
+
+Source: Law 4. Every minute-scale "edge" must be quoted at delay-0 AND
+delay-1 next to a clairvoyant control run through the same delay; information
+that evaporates one bar later is market-maker compensation (three independent
+edges died exactly this way).
+
+Binds here: our PIT mutation tests (§11.7) are the same instrument at event
+granularity; for any sub-hour cadence family, the delay pair + clairvoyant
+control is standard battery, not optional robustness.
+
+## Q-5 — With no edge, the optimizer stops trading; grade on WORST
+
+Source: Law 6. Seven of eight evolution champions pinned position size to
+the floor — smallest-allowed is optimal when expected value is negative. The
+one that sized up had its entire "edge" living inside the fill assumption
+(+$20k optimistic, −$118k worst across 117 fresh windows).
+
+Binds here: size-collapse under search is INFORMATION (report it, do not
+"fix" it); optimistic-fill profit is an execution claim, never a strategy
+claim; grading always on the worst fill is our stress-tier doctrine stated
+independently.
+
+## Q-6 — The ceiling is small, and it decays twice
+
+Source: Law 7. Perfect-foresight ceilings decay as 1/√H in horizon AND in
+calendar time as the tape matures (crypto compressed ~5× since 2018).
+
+Binds here: feasibility gates measure the RECENT window's ceiling, never the
+full-archive average; judging an idea against a stale ceiling understates
+the bar by exactly the amount the tape has matured.
+
+## Q-7 — Variance is predictable, direction is not — and the clock did the work
+
+Source: Law 8 + its correction. Event-conditioned variance ladders were
+real; direction at the same moments scored 0/96 twice. And after
+decomposition, most "event" variance was the CLOCK: 91.7% of 8-K windows
+open at the 09:30 bar; clock-adjusted, a plain 8-K adds only 1.05× (earnings
+8-K 1.74×) against the 2.53× originally credited.
+
+Binds here: every event-conditioning proposal carries a clock-only shadow
+control; the event gets credit only for what remains above the clock (the
+exposure-form shadow discipline, same shape).
+
+## Q-8 — Measured beats stated, every single time
+
+Source: Law 9. Every constant the programme ever measured was wrong as
+stated: FX spread 0.3→1.05 bp (with a rounding bug zeroing 7 of 12 pairs),
+perp spread 23× too wide, impact cap 40× too high, a 21,000× fee error.
+"The most dangerous number in a backtest is the one nobody ever measured."
+
+Binds here: this is our data-authority doctrine (§11) and P-7 channel
+canaries stated from the cost side; every cost/coverage/spread constant
+carries a measured source or dies conservative — a vendor-stated number is
+a hypothesis, not a constant.
+
+## Q-9 — Seal the criteria, not just the data: half a seal protects nothing
+
+Source: §4 seal ceremony. SHA-256 over every holdout file AND over the
+criteria file; reseals append to a superseded-seals ledger; a spent holdout
+is published as-is, failure included; deviations are disclosed as the
+exception that makes the rule checkable (their FX window read three times,
+the third explicitly labeled "not a reopening").
+
+Binds here: S1 + our freeze chain (BASE→WAVE→SELECTION→CODE_FREEZE→DATA→
+AUDIT→TERMINAL) is the same ceremony; gates frozen before proposals exist
+(P-6) is "seal the criteria"; our deviation class is the incident register.
+
+## Q-10 — A closed door states its reopening condition once
+
+Source: §2 closed-doors registry. "Re-litigating one by accident is the
+failure mode this table exists to prevent" — every closure names the
+instrument that closed it and the only condition that reopens it.
+
+Binds here: FAMILY_FAILURES + forbidden ancestry ARE our closed-doors
+registry; adopting their practice — state the reopening condition at close,
+so the next blind-proposal packet forbids by condition, not just by name.
+
+## Q-11 — A permutation is only a null if it moves the signal
+
+Source: §4 dependence-preserving-nulls gap. A block or index permutation
+applied to a slow signal barely moves it, so the null KEEPS the effect and
+scores above the real result (their week-block nulls: 0.0504 / 0.1207
+against real 0.0328 / 0.0319 — the null out-scored the signal twice).
+
+Binds here: extends P-3 — a control's validity is itself measured before it
+can kill: check autocorrelation at whatever the control permutes/conditions;
+a control that reproduces the anchor is not always a mechanism kill, it may
+be an INVALID NULL (distinguish explicitly in the verdict).
+
+## Q-12 — A conservative bar can read real structure as zero
+
+Source: §4 gaps note. An overnight sweep's "0 survivors" was partly a
+bar-calibration outcome: the bar demanded r ≥ 0.31 per-year where the real
+structure lives at 0.05–0.27 (with 0 on the null).
+
+Binds here: thresholds are set against measured effect-scale evidence
+(neighbour families, shadows, literature) and the bar's exclusion zone is
+logged in the plan; "nothing passed" must always be quotable with the bar's
+height attached (the margin-to-fail discipline, P-2, applied to the gate
+itself).
+
+## Q-13 — Long-running collectors need an inode check and a loud payload failure
+
+Source: §6 standing-state note. A 7-day poller kept "running" while writing
+into an orphaned inode (its log file had been replaced under it; ~1,400
+observations lost), and its fetch loop silently discarded every non-list
+JSON payload — a lapsed plan or error payload looked exactly like "no news
+today".
+
+Binds here: every daemon/crawler (V13-class substrate crawls, pollers)
+checks its append handle against the path's inode and fails LOUD on
+unexpected payload shape; "quiet" is never accepted as "healthy" — heartbeat
+must carry bytes-written and payload-shape counters.
+
+## Q-14 — Gross and net must pair on the same vehicle; equivalence baselines go stale silently
+
+Source: §2 slow-programme record + §6 entry 6. One apparent survivor died
+when its overnight-only gross was found paired with costs netted across
+rebalances — on the registered vehicle every consistent accounting nets
+negative. Separately: a bit-identical evaluator snapshot had silently
+diverged after a spread-semantics change, caught only by re-verification and
+re-baselined with the reason recorded.
+
+Binds here: dual-book/accounting identity is per-vehicle and per-rebalance-
+boundary (our trial identity, §15); every equivalence/baseline fixture is
+re-run when the semantics it encodes changes — a passing stale baseline is
+a false PASS.
+
+## Q-15 — Proxy arithmetic first; pay only to confirm
+
+Source: §6 IF0/IF1. The free proxy predicted the paid tape to 2–4% — the
+first time that programme paid for data and had the free answer hold.
+
+Binds here: probe/canary before purchase is already law (P-7); add the
+confirmation half — when paid data DOES arrive, cross-verify the proxy
+against the paid bytes and record the agreement factor, so the next proxy's
+credibility is measured, not assumed.
+
+## Q-16 — The instrument is the asset
+
+Source: §7. "A research instrument whose negative results are trustworthy —
+which is the property that makes future positive results worth anything";
+the methodology itself (seal ceremonies, capture-bar gates, peel
+decompositions) was judged ahead of published practice and worth shipping
+even with zero trading edges.
+
+Binds here: this is our mission invariant discovered independently by a
+stranger's programme — 242 recorded noes are not 242 failures; they are the
+calibration that prices the first yes. Both programmes reached the same
+conclusion from opposite coasts: the trustworthy negative is the product.
