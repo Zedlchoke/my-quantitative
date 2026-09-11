@@ -1,0 +1,191 @@
+{
+  "schema": "forex_ng3_run/d1_proposal@1",
+  "cycle_id": "FOREX-NG3",
+  "task_id": "forex-ng3-d1-a4-proposals",
+  "lane": "d1-a4",
+  "hypothesis_id": "FXNG3-A4-P2",
+  "title": "CA CPI revision-magnitude regime drift (restricted |R| material-tail regime, volatility-form longer horizon, USDCAD, daily 16:00-NY grid)",
+  "blindness_declaration": {
+    "outcome_blind": true,
+    "statement": "Written with ZERO outcome exposure: no scored/PnL/smoke/novelty numbers for this cycle were read; no backtest executed. Only timing, availability, coverage, count and the census's descriptive magnitude quartiles from the pinned P0 restricted census/gate were consumed. CRITICALLY: the count of events passing the material-magnitude threshold was NOT measured (the census publishes quartiles/min/max only) -- the threshold below is a blind frozen prior, not a fitted one.",
+    "frozen_before_any_outcome": true
+  },
+  "mechanism": {
+    "story": "The census shows the TYPICAL CA restricted revision is numerically negligible (quartiles of R round to 0.00%: sub-bps index differences), while the tail is material (min -7.979984%). A MATERIAL revision -- the agency moving the measured CA inflation path by >= 0.01% of index level -- is a different object from the routine micro-edit: it reveals the measurement process materially mis-estimated the month, forces recomputation of every derived statistic consuming that month, and is as much an UNCERTAINTY shock as a direction shock. Elevated belief dispersion after a large correction slows and widens the repricing: risk-budget-constrained desks scale in gradually, benchmark mandates re-stripe calendars late, and the drift extends over a longer horizon than a routine correction would.",
+    "forced_or_late_participant": "Forced/late participants: (i) stale-belief agents whose first-print anchor survives small corrections but breaks only on material ones -- and then requires weeks of slow re-underwriting; (ii) uncertainty-bound books (risk limits, tracking error budgets) that scale into the post-revision level gradually rather than at once; (iii) THIS LANE ITSELF is a declared late participant: availability evidence is date-only on the v2 vintage day, the conservative bound is end-of-day UTC, and entry is the first 16:00-NY grid instant strictly after -- months after the original print.",
+    "why_it_might_exist": "Distinct information axis from P1 (and from every dead ancestor): P1 conditions on the SIGN of every revision; THIS proposal conditions on the MAGNITUDE REGIME -- only the material tail carries forced-repricing force, and the volatility form of that force (slower, wider assimilation) is expressed as a LONGER horizon (H = 10 vs 5). The census proves the tail exists (min -7.979984%) while the bulk is noise-scale, which is exactly the separation the regime construction exploits. ng1's dead CPI class (FXNG1-A4-P2, cluster #15) conditioned on print-vs-trend acceleration, never on vintage-gap magnitude.",
+    "when_it_must_fail": "It must fail (after-cost expectancy <= 0 at tier 2.0) if the material-tail regime carries no residual drift by the PIT-late entry, or if the regime is too thin to support a book (dies at D2 feasibility, honestly, no threshold moves). It must die by falsification if the identical book is reproduced by a nominal-yield-level exposure (CTL-DGS10LEVEL, the FXNG1-A4-P2 killer), by a constant-direction clock shadow (Q-7), or by the same stale signs on non-revision vintage dates (placebo). It dies at D2 if pooled ancestry |rho| > 0.20 vs the full inventory, or by cross-proposal collapse onto FXNG3-A4-P1 (accepted in advance)."
+  },
+  "information_source_and_surprise_construction": {
+    "information_source": "the CA first-print RESTRICTED revision stream built by research/assets/forex_ng3/revision_series.py (build_restricted_stream) on the pinned vintaged CANCPIALLMINMEI archive; NO consensus/forecast data anywhere; NO later-vintage (v3+) reads anywhere; NO cross-economy conditioning (own-economy lane).",
+    "prior": "the first print I_v1(m) is the naive prior; the revision R = I_v2(m)/I_v1(m) - 1 is the correction; the surprise variable of THIS proposal is the MAGNITUDE M(e) = |R(e)| -- a regime state, not a direction estimate.",
+    "surprise": "R(e) = I_v2(m)/I_v1(m) - 1 (fraction, ng2-frozen semantics inherited via import); regime variable M(e) = |R(e)|; MATERIAL regime iff M(e) >= 1e-4 (0.01% of index level); direction polarity = sign(R(e)) carried only as execution polarity.",
+    "i_v1_i_v2_source": "values read strictly within their own realtime windows (the vintage in force for each leg); never a later vintage, never a current-vintage table (v9_high_finding_binding).",
+    "pit_rule": "R(e) is knowable only at A(e) = 23:59:59Z on v2.realtime_start (date-only evidence, conservative end-of-day bound). Decision day D(e) = first 16:00-NY grid instant strictly AFTER A(e); a same-day 16:00-NY decision NEVER sees a vintage whose availability bound is that same date. The frozen validator refuses any fill whose conditioning value postdates the decision instant (P-1..P-6 chain; ONE_EVENT_LAG impossible by construction).",
+    "stream_integrity_policy": "STRICT vintage monotonicity fail-closed (a single violation raises and NOTHING is built); byte-identical duplicate rows deduplicated first; conflicting same-realtime_start rows raise (month unmeasurable, never guessed); bulk re-referencing groups (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature) excluded by the restricted-stream law.",
+    "frozen_parameters": {
+      "material_threshold": 1e-04,
+      "material_threshold_basis": "BLIND frozen prior, chosen from the census's published descriptive points only (typical |R| rounds to 0.00%; tail min -7.979984%): 0.01% of index level sits far above the noise scale and far below the tail extreme; the pass COUNT is unmeasured and the threshold may NEVER move after any number is seen (P-15)",
+      "anchor_holding_grid_days": 10,
+      "horizon_basis": "volatility form: material corrections elevate belief dispersion, so forced/late repricing is claimed to persist ~2 weeks, double P1's H = 5; blind frozen prior",
+      "neighbour_parameterization": "alternative MAGNITUDE construction (relative-outlier form): fire iff |R(e)| >= 100 x (median |R| over the trailing 12 restricted events by v2-day order + 1e-12) AND |R(e)| >= 1e-6; same polarity, same H = 10 -- a scale-free outlier detector instead of the absolute 1e-4 cut",
+      "threshold_selection_basis": "blind frozen priors; no measured pass rate exists or was consulted; no tuning permitted after any number is seen (P-15)"
+    }
+  },
+  "universe": {
+    "pairs": ["USDCAD"],
+    "funded_economy_map": {
+      "CA": {"pair": "USDCAD", "quoting": "USD/CAD, long = long USD vs CAD, therefore long CAD = short USDCAD"}
+    },
+    "anchor_law": "plan section 3: CA is the ONLY anchor economy of this cycle (CA->USDCAD); US is the quote leg, measured and disclosed, never anchored; GB/AU/NZ are excluded as anchor and appear only as A5 non-anchor differential legs (not used in this own-economy lane)",
+    "direction_law": "polarity = sign(R) of the material-regime event: R < 0 (CA index revised DOWN materially) => LONG USDCAD (short CAD); R > 0 => SHORT USDCAD (long CAD); exact-zero => no position, disclosed. Two-sided by construction (the rule carries no static bias); the census-disclosed tail distribution (max +3.7e-05% vs min -7.979984%) implies every MATERIALLY-sized event is R<0 in the measured stream -- the realized material book is expected one-sided long-USDCAD, DISCLOSED, and adversarially tested by the clock shadow and the DGS10 control. A pure unsigned magnitude book is not implementable on linear spot; the polarity is execution-only, the hypothesis is the magnitude regime."
+  },
+  "clock": {
+    "decision_grid": "daily 16:00 America/New_York (zoneinfo, DST-correct; 16:00-NY = 20:00Z EDT / 21:00Z EST) on FX trading days; the pinned staged spot calendars' common grid, 1842 days (V9 build_grid law inherited; ng3 p0_gate spot_repin re-measured 2018-04-04..2025-04-30)",
+    "event_set": "the 72 CA first-print restricted revision events measured by the pinned P0 census (research/control/forex_ng3_run/p0_revision_census.json sha256 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f); the anchor fires the material-threshold SUBSET (count BLIND, bounded by 72); rebuilt at implementation from the pinned bytes by the ng3 builder",
+    "availability_bound": "A(e) = 23:59:59Z on v2.realtime_start. Rationale: the v2 vintage's availability evidence is date-granular (realtime_start is a date), so the conservative end-of-day rule binds on the VALUE leg for every event.",
+    "entry_rule": "decision day D(e) = first 16:00-NY grid instant strictly AFTER A(e). CONSEQUENCE DECLARED: a same-day 16:00-NY decision NEVER sees a v2 vintage whose availability bound is that same date.",
+    "v2_day_alignment_measured": {
+      "restricted_events": 72,
+      "v2_availability_day_year_clusters": {"2018": 8, "2022": 47, "2024": 17},
+      "cluster_disclosure": "vintage pulls cluster in 2018/2022/2024 bursts; NO restricted v2 availability days in 2019-2021, 2023 or 2025; the material subset inherits whatever burst structure it has -- declared concentration risk (see feasibility_declaration.known_gaps_declared)",
+      "recent_window_q6": {"window": ["2023-05-01", "2025-04-30"], "count": 17, "law": "Q-6: last 24 calendar months of the S0 window matched on the RESTRICTED stream's v2 availability days; the MATERIAL-subset recent count is BLIND and is re-measured at D2 feasibility"}
+    },
+    "dst_rule": "zoneinfo America/New_York local->UTC conversion with DST fixtures; date-only evidence gets 23:59:59Z",
+    "window": {"s0_start": "2018-04-04", "s0_end": "2025-04-30", "basis": "inherited S0 window (16:00-NY grid coverage, 1842 common weekday grid days; ng3 p0_gate spot_repin grid_recompute PASS)"}
+  },
+  "warmup": {
+    "requirement": "anchor: none beyond the event's own full availability evidence (both realtime windows present by the restricted-event definition; the absolute threshold needs no trailing state); neighbour: median |R| over the trailing 12 restricted events by v2-day order must exist (the first 12 events of the stream serve only as state, disclosed); CTL-DGS10LEVEL: 252 grid days of DGS10 before D(e)",
+    "structural_status": "anchor satisfied for every material event by construction; neighbour loses at most 12 stream events of state; DGS10 obs run from 1962-01-02 so the 252-grid-day median is available at every D(e) in S0 (warmup is a per-event data-window rule, not a burn-in period)"
+  },
+  "features_and_lags": {
+    "features": ["M(e) = |R(e)| vs the 1e-4 material threshold is the ONLY signal feature (sign(R) is execution polarity only); no yield, momentum, or price feature enters the signal"],
+    "lags": "current restricted event only (neighbour adds the trailing 12 restricted events' |R| values, ordered by v2 availability day)",
+    "explicit_non_features": "no consensus/forecast data (no authority exists); no nominal yield level in the signal (yield level appears ONLY inside the mandatory control arm); no cross-economy revision or print conditioning; no later-vintage (v3+) information; no price-volatility feature (the volatility form is expressed through the horizon and the regime, not through realized-vol inputs)"
+  },
+  "entry_exit_fills": {
+    "entry": "at the D(e) 16:00-NY grid price of the staged USDCAD spot series (declared dependency), for every restricted event in the material regime (|R| >= 1e-4) with sign(R) != 0; 1 unit notional per fired event; same-day multiple events stack as independent 1-unit books (no netting)",
+    "exit": "at the grid instant H = 10 grid days after entry (next grid day if that instant is not a trading day); forced exit at the 2025-04-30 grid instant for positions whose horizon extends past window end (declared tail convention)",
+    "fills": "entry fill and exit fill each executed once at grid prices; positions from different events are held independently, each exiting at its own horizon",
+    "no_lookback_guards": "signals computed only from information PIT-available at D(e) (v1/v2 values inside their own realtime windows, both windows closed by A(e) < D(e)); the frozen validator refuses any fill whose conditioning value postdates the decision instant (V3 lesson encoded)"
+  },
+  "costs": {
+    "model": "1.5 bps/side x {1.0, 1.5, 2.0} ladder; tier 2.0 PRIMARY (3.0 bps round trip); charged exactly ONCE per fill (2 fills per round trip); identical to ng1's frozen set per plan section 5; the longer H = 10 horizon does NOT change per-fill charging",
+    "authority": "referenced proxy ladder (V2/V8 precedent, ng1 selection_freeze.cost_contract_frozen); Q-8 measured constants NOT_YET_MEASURED in this cycle -- if absent at D2/implementation, scored cost verdict is NOT_RUN (fail-closed), never an assumed vendor spread (Q-8 M2 disclosure)",
+    "reference": "plans/PLAN_forex_ng3.md section 5; research/control/forex_ng1_run/run_contract.json cost_ladder"
+  },
+  "arm_battery": [
+    {
+      "arm": "anchor",
+      "name": "FXNG3-A4-P2-ANCHOR",
+      "config": "material-regime book: fire iff |R| >= 1e-4; polarity sign(R) (R<0 long USDCAD; R>0 short USDCAD); H = 10 grid days; 1 unit per fired event",
+      "role": "the hypothesis (magnitude regime / volatility form)"
+    },
+    {
+      "arm": "neighbour",
+      "name": "FXNG3-A4-P2-NEIGH-RELOUT12",
+      "config": "alternative MAGNITUDE construction: fire iff |R(e)| >= 100 x (median |R| over the trailing 12 restricted events by v2-day order + 1e-12) AND |R(e)| >= 1e-6 (scale-free relative-outlier detector with an absolute noise floor); same polarity, same H = 10 grid days",
+      "role": "different construction of the surprise (relative-outlier regime vs absolute 0.01% cut); if the neighbour out-earns the anchor the frozen absolute threshold is not mechanism-bearing (V8 R2 standard)"
+    },
+    {
+      "arm": "nominal_exposure_control",
+      "name": "FXNG3-A4-P2-CTL-DGS10LEVEL",
+      "config": "identical event days, pair, horizons and 1-unit magnitudes as the FIRED anchor book, but direction carries ONLY a nominal-yield-level exposure with revision conditioning removed: sign = +1 (long USDCAD) iff the DGS10 level as-of D(e) (vintaged S2) is below its trailing 252-grid-day median, else -1 (short USDCAD)",
+      "role": "V8 LAW MANDATE carried from falsification clusters #14 AND #15 (the exact control class that killed FXNG1-A4-P2): if this control reproduces the anchor (same-sign expectancy >= 0.5x anchor), the revision-magnitude book is a nominal-yield-level exposure in new words => family dead"
+    },
+    {
+      "arm": "clock_only_shadow",
+      "name": "FXNG3-A4-P2-SHADOW-CLOCK",
+      "config": "identical event days, pair, horizons, magnitudes as the fired anchor book, but direction = constant +1 = ALWAYS LONG USDCAD; zero information content. CONSTANT CHOSEN ADVERSARIALLY from census descriptive evidence only (no outcome): the measured material tail is R<0 (max +3.7e-05% vs min -7.979984%), so the anchor is expected long-USDCAD and the shadow matches its dominant side",
+      "role": "Q-7 clock-only shadow: isolates pure calendar-clock + static short-CAD drift exposure on the anchor's own dominant side; reproduces the anchor (same-sign >= 0.5x) => the clock explains it => dead"
+    },
+    {
+      "arm": "placebo_non_revision_vintage_dates",
+      "name": "FXNG3-A4-P2-PLACEBO-NONREVVINT",
+      "config": "sham calendar = NON-REVISION VINTAGE DATES of the same pinned CA archive: for each fired anchor event (ordered by D(e)), take the NEAREST SUBSEQUENT distinct realtime_start day of the pinned CANCPIALLMINMEI archive that (a) is NOT the v2 availability day of any restricted event, (b) is not already used by an earlier pairing, (c) yields a D(sham) inside the S0 grid; if none exists through window end, DROP the event from the placebo book (count disclosed). Direction = the SAME sign(R) polarity as the source event (stale information, no revision occurs); same horizon, 1-unit magnitude, fills and costs",
+      "role": "plan section 5 A4 placebo law (non-revision vintage dates, same distribution family: archive pull days without revision news); reproduces the anchor (same-sign >= 0.5x) => entry timing carries no revision information => dead; if no sham day is constructible the placebo verdict is NOT_RUN (fail-closed disclosure, never silently skipped)"
+    }
+  ],
+  "representation_identity": {
+    "p12_statement": "representation identity is measurement identity (P-12, V9 origin: A7 measures novelty on THIS representation, never on a coarser state map); this table is the frozen identity from which the arm_config_digest is derived; code AND representation commit before any number is cited",
+    "representation_id": "forex_ng3_a4_p2_daily1600ny_ca_restricted_revision_magnitude_regime_v1",
+    "identity_fields": {
+      "grid": "daily 16:00 America/New_York FX-trading-day grid, zoneinfo DST; 1842 common days 2018-04-04..2025-04-30",
+      "event_set": "CA first-print restricted revision events from build_restricted_stream (pinned bytes); P0 census sha256 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f; 72 events, material subset fired",
+      "availability": "A(e) = EOD(v2.realtime_start); D(e) = first grid instant strictly after A(e)",
+      "surprise": "R = I_v2/I_v1 - 1, both values inside their own realtime windows; regime M = |R| >= 1e-4; polarity sign(R); no later vintage read",
+      "anchor_rule": "|R| >= 1e-4 regime, polarity sign(R) (R<0 long USDCAD; R>0 short USDCAD; exact-zero no-position); 1 unit per fired event; no netting",
+      "exit_rule": "H = 10 grid days; forced exit at 2025-04-30 grid instant",
+      "costs": "1.5 bps/side ladder {1.0, 1.5, 2.0}, tier 2.0 PRIMARY, once per fill; Q-8 M2 disclosure (NOT_RUN fail-closed if measured constants absent)",
+      "window": "2018-04-04..2025-04-30",
+      "series_pins": {
+        "CANCPIALLMINMEI": "7b225d9f724bd15ca309c1085d5c3812da19b5f7c20f28bbe2e1eb583d9cb2d6",
+        "USDCAD_spot_staged": "4b988c4487b2ff0284ca0ecd04b6118c23516a89a147dd87cbab3b1bbf52ec2f",
+        "DGS10": "03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0 (control arm only; P-13 pin chain via V8 run-contract manifest c8ae78777102ab45cec433f5da6c786355b57c884be5f15c39c1fc18ca328e7c)"
+      }
+    }
+  },
+  "ancestry_defense": {
+    "fxng1_a4_p2_cluster_15": "FXNG1-A4-P2 (trailing-YoY CPI acceleration late-window drift) died falsified-by-control #15: CTL-DGS10LEVEL +4.134114/trade out-earned its anchor, and the family also failed R1/R3/R4/R5. THIS lane is structurally distinct on the information object: ng1 conditioned on the FIRST PRINT vs a frozen naive trend predictor (print-vs-expectation acceleration deviation); THIS lane conditions on the v1->v2 VINTAGE-GAP MAGNITUDE REGIME of the CA restricted stream -- the SIZE of the agency's correction, an axis the ng1 class never observed (ng1 read first prints only). The distinction is ALSO measured: D2 pooled |rho| <= 0.20 vs the full inventory INCLUDING the FXNG1-A4-P2 books; over the bar => lane dies at D2 (accepted in advance). And the #15 killer is embedded here by law as CTL-DGS10LEVEL on the identical clock: if the magnitude book is again a nominal-yield-level exposure in new words, it dies by its own mandated control.",
+    "v7_reaction_direction_closed": "V7 closed the reaction-direction class (sign-of-release continuation at publication horizon). This lane differs structurally: (i) conditioning is the vintage-gap magnitude regime, not the sign of a scheduled release; (ii) entry is strictly after PIT-provable v2 availability (months after publication, date-only conservative bounds); (iii) the stream excludes bulk re-referencing transitions by the restricted law.",
+    "v8_nominal_level_law": "V8 falsification-by-control #14 (and ng1 #15) makes a nominal-exposure control MANDATORY on every yield/inflation lane. Carried as CTL-DGS10LEVEL on the identical clock, days, pair, horizons and magnitudes; no nominal yield level enters the signal. If the control reproduces the anchor, the family is dead by law.",
+    "v9_inventory_and_rho_vetoes": "V9 A4-P1/A4-P2 died at D2 on pooled |rho| 0.2599/0.4842 vs the V8 inventory (daily 16:00-NY CPI-conditioned event books are ancestry-contaminated terrain). The risk is pre-declared: D2 re-measures pooled |rho| on THIS frozen daily 16:00-NY representation vs the full inventory including V8 shadows and V9 vetoes; over the bar => D2 VETO accepted in advance.",
+    "v3_style_regime_gating_precedent": "FXFV3-A6 (realized-vol regime-gated carry) taught that regime-gated books die at stress tier when the gate is inferred rather than evidenced. THIS regime gate is fully evidenced (vintage-window PIT on both legs, date-only conservative) and the falsification battery (clock shadow on the identical fired days, DGS10 control, non-revision-vintage placebo) is exactly the V5-V8 house standard.",
+    "fxng1_a5_release_order": "FXNG1-A5-P1 (release-order drift) died R1-negative. This lane carries no cross-economy ordering, no multi-pair decisions, no within-month relative timing: single pair, single economy, vintage-gap magnitude conditioning only.",
+    "q7_clock_and_placebo_law": "Q-7 clock-only shadow carried as SHADOW-CLOCK with the adversarial constant (+1 always long USDCAD) chosen from census descriptive evidence; plan section 5 A4 placebo carried as PLACEBO-NONREVVINT on non-revision vintage dates of the same archive (V5/V6 house sham standard, ng3-specific date family).",
+    "p12_representation_identity": "V9 A5 died because A1's novelty was computed on an undisclosed monthly-grid state map; THIS proposal freezes the daily 16:00-NY representation identity above and D2/A7 must measure novelty on exactly it (P-12: representation identity is measurement identity).",
+    "cross_proposal_collapse_disclosure": "CNG1 measured cross-proposal collapse (F5, rho 0.2896) as a live kill mode. P1 of this lane uses a DIFFERENT surprise construction (directional sign on every event, H = 5); the P2 book is the material-magnitude subset at H = 10 -- genuinely different conditioning and horizon, but partially overlapping events: if D2 measures cross-proposal collapse between FXNG3-A4-P2 and FXNG3-A4-P1, at most one advances per the selection rubric -- accepted in advance."
+  },
+  "feasibility_declaration": {
+    "census_event_counts": {"CA_restricted": 72, "CA_restricted_recent_24m": 17, "floors": {"a4_own": ">=30 (measured 72, margin 42)", "a4_recent_q6": ">=15 (measured 17, margin 2 -- THIN per P-2)"}, "authority": "p0_revision_census.json sha256 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f"},
+    "in_window_eligible_decision_days": {"expected": "BLIND: the material-subset count is NOT measured (census publishes quartiles/min/max only; median/q1/q3 round to 0.00%, min -7.979984%, max +3.7e-05%); bounded above by 72; every fired event's v2 day is inside the S0 window by the usable filter; events with v2 day near 2025-04-30 fall to the forced-exit convention"},
+    "expected_fired_entries_estimate": "BLIND prior only: a small material tail (the 2018-10-09 re-referencing chain visible in the census sample and any 2022/2024 outliers) -- the exact count is a D2 feasibility re-measure; if the material regime fires 0 events the anchor is an EMPTY BOOK (declared verdict: lane dies at D2 feasibility, no threshold moves, P-15); if it fires very few, fold/concentration gates fail-closed honestly",
+    "known_gaps_declared": [
+      "the material-threshold pass count is BLIND (unmeasured by the census descriptive statistics): empty-book and thin-book risks are live; both resolve at D2 feasibility, never by moving the 1e-4 threshold",
+      "CA v2 availability days cluster in 2018/2022/2024 bursts (8/47/17): NO decision days in 2019-2021, 2023, 2025; the material subset inherits whatever burst structure it has; fold populations under the ng1-inherited 3-fold calendar split may be degenerate -- R6 fold/concentration rules may be NOT_RUN fail-closed; disclosed, never renegotiated",
+      "Q-6 recent margin is 2 events (17 vs floor 15) on the FULL restricted stream -- the material subset's recent count is BLIND and can be far below 17; disclosed",
+      "one-sided realized polarity: the census magnitude distribution (max +3.7e-05% vs min -7.979984%) implies every materially-sized event is R<0, so the anchor is expected long-USDCAD-only; disclosed and adversarially tested (SHADOW-CLOCK constant chosen on the anchor's dominant side)",
+      "date-only availability evidence on every v2 vintage (FRED realtime archive): conservative EOD bounds bind on every entry",
+      "placebo non-revision vintage date supply is NOT pre-measured: eligible sham days = distinct pinned-archive realtime_start days in S0 that are not any restricted v2 day; partial coverage drops disclosed; empty => placebo NOT_RUN fail-closed"
+    ],
+    "dependencies_for_feasibility": ["staged USDCAD daily 16:00-NY spot series (P-18 committed proof, scored consumption AUTHORIZED; pinned sha256 4b988c44...)", "DGS10 vintaged S2 for the control arm (pin chain verified at P0)", "Q-8 cost constants (P1-class lane; NOT_YET_MEASURED -> referenced proxy ladder, cost verdict NOT_RUN until published)", "D2 feasibility re-measure of the material-subset count (empty/thin => honest death, no threshold moves)"]
+  },
+  "falsification_rule": {
+    "frozen_rule_order": [
+      "R0 EMPTY/THIN BOOK (feasibility, pre-score): the material regime fires 0 in-window events => EMPTY BOOK, lane dies at D2 feasibility; a fired count too small to populate folds => fold gates fail-closed (R6) -- in both cases the 1e-4 threshold NEVER moves (P-15)",
+      "R1 MECHANICAL: anchor after-cost expectancy at tier 2.0 <= 0 => family dead (plain negative); remaining rules moot",
+      "R2 NOMINAL_EXPOSURE (V8 law, clusters #14/#15): CTL-DGS10LEVEL same-sign expectancy >= 0.5x anchor => dead (nominal-yield-level exposure in new words -- the exact FXNG1-A4-P2 kill)",
+      "R3 CLOCK_ONLY (Q-7): SHADOW-CLOCK same-sign expectancy >= 0.5x anchor => dead (static short-CAD drift on the anchor's dominant side explains it)",
+      "R4 PLACEBO: PLACEBO-NONREVVINT same-sign expectancy >= 0.5x anchor => dead (stale-sign exposure on non-revision vintage days; entry timing carries nothing)",
+      "R5 NEIGHBOUR_PARAMETERIZATION: NEIGH-RELOUT12 expectancy > anchor expectancy => frozen absolute 1e-4 threshold not mechanism-bearing => dead (V8 z504 standard; no rescue by re-ranking arms)",
+      "R6 STAGE-A REMAINDER: ng1-frozen fold/concentration/robustness rules inherited verbatim; fold gates NOT_RUN fail-closed on degenerate fold populations (declared risk given the bursty availability calendar and the thin material subset)"
+    ],
+    "external_gate": "D2 ancestry pooled |rho| <= 0.20 vs the full failure inventory (incl. FXNG1-A4-P2 books, V8 nominal-level shadows, V9 vetoes) measured on THIS frozen daily 16:00-NY representation; margin recorded (P-2); over the bar => D2 VETO; cross-proposal collapse vs FXNG3-A4-P1 measured the same way",
+    "no_threshold_moves": "no rule, threshold, or horizon changes after any scored number is seen (P-15); smoke numbers kill + disclose, never select; the 1e-4 material threshold is frozen BLIND and dies with the lane rather than moving",
+    "expected_failure_interpretation": {
+      "R0_fires": "the material tail of the CA restricted stream is too thin to trade on this grid: an honest feasibility death that also closes the magnitude-regime axis for this cycle (no re-thresholding).",
+      "R1_with_clean_controls": "the PIT-late window carries no material-revision drift after costs: whatever repricing a material correction forces is complete by the first grid instant after provable availability, or the fired subset is too small for the drift to survive costs. CONSISTENT WITH (not contradicting) the V7 closure, the ng1-A4-P2 kill and any P1 null -- different information object and horizon.",
+      "R2_fires": "the revision-magnitude book is a nominal-yield-level exposure in new words; the V8/#15 law re-fires on the revision lane exactly as designed.",
+      "R3_fires": "static short-CAD drift on a bursty calendar, not revision information.",
+      "R4_fires": "stale-sign exposure on wrong (non-revision) archive days; entry timing carries nothing (V5/V6 standard).",
+      "R5_fires": "the absolute 0.01% cut is not the mechanism-bearing construction (the scale-free outlier form is); the family still dies (no rescue by re-ranking arms).",
+      "D2_veto": "the daily 16:00-NY CPI-conditioned terrain is ancestry-contaminated as V9 measured, or P1/P2 collapse into one book; the lane dies pre-score, cheap."
+    }
+  },
+  "data_dependencies": [
+    {"name": "vintaged CA CPI channel", "authority": "P0 s2_repin CADS-address 07d1e0d5adc8fb124f8d9246b8ab0fdeea79e5be20fa99ea0a8fe81cd96aad12; CANCPIALLMINMEI sha256 7b225d9f724bd15ca309c1085d5c3812da19b5f7c20f28bbe2e1eb583d9cb2d6 (verify-on-read)", "series": ["CANCPIALLMINMEI"]},
+    {"name": "restricted revision stream builder", "authority": "research/assets/forex_ng3/revision_series.py (ng2 semantics reused VIA IMPORT, never edited; strict monotonicity fail-closed; bulk groups excluded)"},
+    {"name": "staged USDCAD daily 16:00-NY spot", "authority": "P-18 committed proof research/control/forex_ng1_run/p1_spot/spot_authority_proof.json; scored_consumption AUTHORIZED; pinned sha256 4b988c4487b2ff0284ca0ecd04b6118c23516a89a147dd87cbab3b1bbf52ec2f"},
+    {"name": "DGS10 vintaged S2", "authority": "P-13 pin chain: V8 run-contract c8ae78777102ab45cec433f5da6c786355b57c884be5f15c39c1fc18ca328e7c -> staged manifest -> DGS10.json sha256 03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0 (mandatory control series; control arm only)"},
+    {"name": "Q-8 cost constants", "authority": "NOT_YET_MEASURED; frozen proxy ladder 1.5 bps/side x {1.0, 1.5, 2.0}, tier 2.0 PRIMARY referenced per plan section 5 (identical to ng1's frozen set)"}
+  ],
+  "provenance": {
+    "dispatch_sha": "e1c17981f2e6946d88b852d7b2b8af111f654a67",
+    "actual_start_sha": "e1c17981f2e6946d88b852d7b2b8af111f654a67",
+    "branch": "orca/fng3-d1-a4",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/d1-a4",
+    "written_utc": "2026-09-11",
+    "constraints_honored": ["no consensus/forecast data anywhere", "vintaged-only CA legs (no current-vintage tables, no v3+ reads)", "anchor universe CA only (plan section 3)", "nominal-exposure control mandatory (V8/#14/#15 law)", "clock shadow + non-revision-vintage-date placebo mandatory (Q-7 / plan section 5)", "no backtest executed in this lane", "no threshold selected from any measured pass rate (the 1e-4 material count is BLIND by declaration)"],
+    "distinct_from_P1": "different surprise construction as required: P2 = revision MAGNITUDE regime / volatility form (material-|R| tail at 1e-4, H = 10, relative-outlier neighbour); P1 = DIRECTIONAL revision sign drift (sign(R) on every restricted event, H = 5, revision-momentum neighbour). Not a re-parameterization of the same surprise."
+  }
+}
