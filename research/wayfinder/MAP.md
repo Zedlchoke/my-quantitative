@@ -4,7 +4,21 @@
 
 - **NG1 GENERATION OPENED → CRYPTO-NG1 / FOREX-NG1 / STOCKS-NG1**
   (`PLANNED_NOT_STARTED`, registry 2026-09-11; plans
-  `plans/PLAN_crypto_ng1.md` / `plans/PLAN_forex_ng1.md` /
+  `plans/PLAN_crypto_ng1.
+
+- **FOREX-NG1 CLOSED → ** (2026-09-11, branch
+  , terminal e19c0a4, A7 AUTHORIZED 0 HIGH/CRITICAL,
+  third independent recompute match; reproduction ALL_MATCH) — the ng1 generation's
+  only scored cycle and first full pipeline on the platform v3 plane end-to-end.
+  4/4 proposals ELIGIBLE at D2 (first non-empty ng1 selection); freeze d0992d1 with
+  R1-R6 + cost contract frozen pre-implementation; GO consumed at own gate
+  (A7 v3 AUTHORIZED after a 2-round authority-gate remediation arc + Lead under
+  owner standing delegation). E 6/6 cells: A5-P1 −9.81/trade PF 0.827
+  (R1/R3/R4/R5 FAIL; NOT a V7 re-clock); A4-P2 −6.63 PF 0.883 +
+  **falsification-by-control #15** (CTL-DGS10LEVEL +4.13 out-earns — nominal-level
+  exposure again); 0 survivors; budget 6/6; S1 SEALED. **forex 48/48;
+  program 245/248** (P-9). Detail:
+  .md` / `plans/PLAN_forex_ng1.md` /
   `plans/PLAN_stocks_ng1.md`) — first asset cycles on the platform v3 data
   plane (CADS/AuthorityRegistry/QueryPlane `consume_via_plane`, per-asset
   adoption commits; frozen sets: S4 Binance H1 panels + OI / S2 FRED
