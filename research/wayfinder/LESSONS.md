@@ -583,3 +583,20 @@ detached tree. Prose rulings are disclosure, never enforcement. (Also: quote you
 heredocs — an unquoted `EOF` let shell backtick-substitution corrupt three
 control-plane files in one close; caught by assert + inspection, repaired in the
 same commit window, disclosed here.)
+
+## P-19 — Owner throughput directive: one more cycle when a generation yields <= 6 scored cells (2026-09-11)
+
+**Source:** owner instruction verbatim: "nếu mà tổng scored cell không quá 6 cells(2
+family) thì ghi chú lại lesson, ledger,... và làm lại thêm 1 cycle lại từ đầu nữa
+nhé. Quyền GO vẫn thuộc về bạn."
+
+**Lesson:** Standing directive — when a cycle generation ends with no more than 6
+scored cells (<= 2 families), the factory records the lessons/ledger (done as part
+of the two-half close) and immediately opens ONE more full cycle from scratch
+(new plan, new registry row, preregistered negative outcomes, fresh D1/D2/E),
+with the GO key standing-delegated to the Lead under the same two-key structure
+(A7 first). ng1 measured exactly 6 cells / 2 families → FOREX-NG2 opens under
+this directive.
+
+**Consequence:** Cycle throughput is an owner-set dial, not a Lead inference;
+the scientific gates do not loosen (D2 ancestry bar, R1-R6, no-rescue all stand).
