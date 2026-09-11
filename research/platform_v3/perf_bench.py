@@ -148,6 +148,8 @@ def main() -> int:
         "schema": "research_platform_v3_run/p6_perf@1",
         "gate": "V3-G6",
         "measured_utc": datetime.now(timezone.utc).isoformat(),
+        "heavy_lock": os.environ.get("V3_HEAVY_LOCK",
+                                     "not-recorded-in-environment"),
         "host": {"node": platform.node(), "cpu": platform.processor(),
                  "machine": platform.machine(),
                  "python": platform.python_version()},
