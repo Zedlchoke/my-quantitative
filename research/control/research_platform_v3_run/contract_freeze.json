@@ -1,0 +1,114 @@
+{
+  "schema": "research_platform_v3_run/contract_freeze@1",
+  "gate": "V3-G2 + V3-GA1",
+  "frozen_utc": "2026-09-11T02:40:00Z",
+  "frozen_by": "A1",
+  "commit_note": "frozen before any lane branch (no lanes dispatched; A1-direct work only)",
+  "query_contract": {
+    "schema_version": "v3_query_plane@1",
+    "input_surface": "explicit ordered manifest-ID list -> ManifestEntry{manifest_id, absolute path, sha256}; duplicates rejected; no glob/discovery",
+    "verification": "bytes re-hashed and compared to pin BEFORE duckdb sees them; drift => NOT_EVALUABLE(MANIFEST_HASH_DRIFT)",
+    "sql_surface": "single statement over registered views; bound parameters for values; ORDER BY mandatory and must contain frozen order columns",
+    "forbidden_sql_tokens": [
+      "read_csv_auto", "read_json_auto", "read_text", "read_blob", "glob(",
+      "http://", "https://", "s3://", "gs://", "azure://", "install ",
+      "load ", "attach ", "pragma ", "copy ", "export "
+    ],
+    "forbidden_sql_literals": "direct file literals (.csv/.parquet/.json/.duckdb/.jsonl) and absolute-path literals rejected: verified views are the only file surface",
+    "connection_policy": "SET autoinstall_known_extensions=false; SET autoload_known_extensions=false; derived databases opened read_only=True; httpfs never installed/loaded",
+    "identity": {
+      "fields": [
+        "schema_version", "duckdb_version", "frozen_query_name",
+        "sql_canonical", "params_digest", "ordered_manifest_ids"
+      ],
+      "digest": "sha256 over canonical JSON (sorted keys, compact)"
+    },
+    "output_enforcement": {
+      "schema": "exact column names + canonical duckdb types (aliases: TIMESTAMPTZ == TIMESTAMP WITH TIME ZONE); arity drift => NOT_EVALUABLE",
+      "order": "frozen order columns required in ORDER BY; row-order drift changes result_digest",
+      "census": "row_count, per-column null census, clock_min/clock_max canonicalized to UTC ISO-8601, result_digest over row bytes"
+    },
+    "evidence_rule": "missing manifest / hash drift / malformed db / schema drift => NOT_EVALUABLE with reason; never an empty-success substitution",
+    "negative_matrix": [
+      "manifest absent", "manifest hash drift", "path escape (non-absolute or '..')",
+      "unordered query without frozen order", "read_csv_auto/remote URL/extension/network attempts",
+      "query text change after freeze (new identity)", "duplicate input manifest IDs",
+      "output row-order drift (digest change)", "timestamp/decimal coercion loss (exact type enforcement)",
+      "newer file present but not named (invisible)", "malformed DuckDB cache/database (duckdb error => NOT_EVALUABLE)"
+    ]
+  },
+  "calendar_contract": {
+    "schema_version": "v3_calendar_engine@1",
+    "package_pin": "exchange_calendars version + content digest hashed per install (package_upgrade => digest change => gate blocks)",
+    "manifest_fields": [
+      "schema_version", "calendar_name", "asset_class", "calendar_package{name,version,source_digest}",
+      "requested_range{start,end}", "timezone", "sessions[{session,open_utc,close_utc,break_start_utc,break_end_utc,early_close}]",
+      "official_cross_check{status,source_id,evidence_digest,exceptions}", "generated_at_utc (EXCLUDED from identity)",
+      "canonical_content_digest"
+    ],
+    "official_cross_check_rule": "MATCH => PASS; ABSENT => PASS_ABSENT_RECORDED (honest absence); DISAGREEMENT => fail closed at build + BLOCKED_OFFICIAL_DISAGREEMENT at verify",
+    "asset_class_gate": "forex and crypto REFUSE equity-calendar routing (EquityRoutingRefused)",
+    "zero_session_ranges": "a request range with zero sessions is an honestly-empty manifest, not an error",
+    "negative_matrix": [
+      "package upgrade changes digest and gate blocks",
+      "official discrepancy fails closed",
+      "forex/crypto refuse accidental equity-calendar routing",
+      "early close flagged", "weekend/non-session ranges empty", "lunch-break market fixture (JPX)",
+      "release-to-next-valid-session mapping", "US federal vs exchange holiday differences"
+    ]
+  },
+  "telemetry_contract": {
+    "schema_version": "v3_telemetry@1",
+    "identifiers": ["trace_id", "cycle_id", "phase_id", "lane_id", "job_id", "run_id", "dataset_id", "gate_id"],
+    "default": "no-op (no SDK configured, no files, zero output); SDK injected only at controller boundary",
+    "exporter": "LOCAL JSONL only (gitignored runtime dir); NO network exporter exists in this contract",
+    "disable_switch": "V3_TELEMETRY_DISABLE=1 makes JSONL behave exactly as no-op; noninterference test proves scientific bytes equal on/off",
+    "key_denylist": [
+      "api_key", "apikey", "authorization", "cookie", "password", "secret", "token",
+      "credential", "private_key", "pnl", "profit", "sharpe", "drawdown", "expectancy",
+      "profit_factor", "stress_pnl", "breakeven", "outcome", "prompt", "transcript"
+    ],
+    "value_redaction": "URLs with query secrets => [REDACTED_URL_SECRET]; S1 path fragments (/s1/, s1_sealed, sealed_s1) => [REDACTED_S1_PATH]; >512-char values => [REDACTED_LONG_VALUE]; env-map-shaped payloads (all-caps keys or env/environ names) => [REDACTED_MAP]; >64-element lists => [REDACTED_LIST]; recursion applies at every depth"
+  },
+  "cads_contract": {
+    "schema_version": "v3_cads@1",
+    "layout": "store_root/objects/<2-hex-prefix>/<sha256> + pins.jsonl + events.jsonl (append-only journals, atomic temp+replace writes)",
+    "apis": ["register (idempotent)", "pin", "resolve (verify-on-read)", "verify", "restore (verify-before-restore)"],
+    "invariants": [
+      "address IS the integrity proof (sha256)",
+      "corruption => CADSIntegrityError: incident + fail-closed, never auto-fixed",
+      "restore refuses a backup whose bytes do not hash to the address",
+      "malformed journal line => ControlStateDrift",
+      "concurrent register of identical bytes converges to one object"
+    ]
+  },
+  "authority_contract": {
+    "schema_version": "v3_authority@1",
+    "state_machine": "REGISTERED -> INGESTED -> VERIFIED -> GRANTED | BLOCKED (forward only; retries are new attempt records)",
+    "row_fields": ["series_id", "source", "channel", "license_status", "entitlement_status", "pit_verdict", "canary_probes{channel:status}", "cads_pins", "granted_at", "granted_by", "blocked_reason"],
+    "pit_verdicts": ["PASS_PIT_EVIDENCED", "RETROSPECTIVE_ONLY", "BLOCKED_DATA"],
+    "grant_rule": "GRANTED requires ALL of PIT=PASS_PIT_EVIDENCED, license=AUTHORIZED, entitlement=AUTHORIZED, >=1 verified CADS pin, canary[own channel]=PASS; anything else => BLOCKED with reason (no partial credit)",
+    "target_set_frozen": [
+      "S1:form4-xml-substrate", "S1:form4-stream", "S1:eodhd-corp-actions",
+      "S2:fred-keyed-vintage-classes", "S3:forex-print-calendars",
+      "S3:forex-announcement-ledger", "S4:binance-daily-h1-panels",
+      "S4:binance-open-interest"
+    ],
+    "default_rule": "any series outside the frozen target set stays BLOCKED_DATA (including un-probed channels); additions need a plan amendment"
+  },
+  "asset_pilot_manifests": {
+    "status": "NOT_APPLICABLE_NO_ELIGIBLE_ASSETS",
+    "basis": "P0 remeasure: adoption packets absent (MDP-V2 V2-G6 NOT_APPLICABLE_NO_PASS_ASSETS; crypto/forex/stocks shadow BLOCKED) => three assets NOT_ELIGIBLE per plan section 1; V3-G5-C/F/S will be recorded NOT_APPLICABLE_NO_ELIGIBLE_ASSETS, not failed"
+  },
+  "ownership": {
+    "A1": "all shared components + integration + control artifacts (no lanes dispatched this cycle; A1-direct under manual dispatch pattern per plan section 1 amendment)",
+    "lanes": "A2/A3/A4 scopes absorbed by A1; PA-lane dispatch mechanism stays reserved for the orchestration-v3 stop-point rule"
+  },
+  "commands": {
+    "targeted": ".venv/bin/python -m pytest tests/platform_v3/ -q",
+    "full_battery": ".venv/bin/python -m pytest tests/ -q (heavy lock, alone)",
+    "reproduction": "detached tree at freeze SHA, varied cwd + PYTHONHASHSEED"
+  },
+  "performance_criteria": "no fixed speedup promised; a candidate >20% slower end-to-end without a measured correctness benefit is rejected or kept optional (plan P6)",
+  "terminal_criteria": "plan sections 9-10 gates/verdicts; V3-G5-C/F/S recorded NOT_APPLICABLE given zero eligible assets"
+}
