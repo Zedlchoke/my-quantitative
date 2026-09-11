@@ -1,0 +1,71 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "crypto-ng2-p0b-fold",
+ "cycle_id": "CRYPTO-NG2",
+ "role": "quant-implementer",
+ "lane": "p0b",
+ "dispatch_sha": "8308cdf3f7f29ada0cea413490ffb65a5fa7886b",
+ "actual_start_sha": "8308cdf3f7f29ada0cea413490ffb65a5fa7886b",
+ "commit_sha": "40de8c396f27bb8dbed70c2eca9e6680b732240d",
+ "changed_paths": [
+  "research/assets/crypto_ng2/bls_census.py",
+  "research/control/crypto_ng2_run/run_p0b_fold.py",
+  "research/control/crypto_ng2_run/p0_calendar_census_ng2.json",
+  "research/control/crypto_ng2_run/p0_gate.json",
+  "tests/test_crypto_ng2_p0.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/crypto-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_crypto_ng2_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "19 passed in 0.19s (17 p0 tests unchanged + 2 new fold tests: hand-computed DST instants/cross-validation/excluded-month/canaries, and fail-closed mismatch + duplicate + raw-schema refusal)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/crypto-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/crypto_ng2_run/run_p0b_fold.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "P0b fold runner: census PASS with 22 instants (CPI 11 + NFP 11); excluded Oct-2025 CPI+empsit lapse months; cross-validation 4/4 matched 0 mismatched; canaries (2 fabricated days + fold-registry series refusal + live plane authority refusal) all PASS; gate sections.p0b PASS, gate verdict PASS, lane A4 REOPENED"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "NFP measured 11 instants vs the dispatch's approximate expectation of 13: the two candidate extras (a release inside the 2025-08 window-start span; a late-Sept 2025 release) do not exist in the controller raw verbatim -- the empsit archive starts at ref 2025-08 released 2025-09-05 (counted) and the Sept-2025 late release was 2025-11-20 (counted). No row was fabricated to close the gap; reconciliation recorded in gate sections.p0b.expectation_reconciliation. CPI measured 11 == expectation 11 exactly.",
+  "The controller raw carries literal '$ISO' placeholders for fetch timestamps (fetched_at_utc and per-source retrieved_utc); recorded verbatim in the census input block with a timestamp_disclosure, no retrieval timestamps claimed. The census measured_utc is the lane's own fold time.",
+  "4 of the 22 instants are archive-only (CPI 2025-09-11, CPI 2025-10-24, NFP 2025-09-05, NFP 2025-11-20): the archive listing carries date + file only, so their 8:30 America/New_York clock is the plan's fixed print-clock standard applied with time_source='plan_print_clock_default' (disclosed per-instant, never a silent inference); their dates are all weekdays and the 2 late shutdown releases carry the verbatim note.",
+  "14 of the 22 instants rest on the controller WebFetch verbatim of the BLS schedule pages (network forbidden in-lane, so no independent re-fetch); where the archive overlaps the schedule (4 ref_months) the dates matched exactly (0 mismatches); 8 schedule rows after the window end (2026-09..2026-12) are bookkept as outside_window, not instants.",
+  "Fold verdict semantics: any refused row (malformed shape, weekend, duplicate ref_month, or schedule/archive date mismatch) yields FAIL_CLOSED_ROWS with both conflicting rows refused; this run had 0 refused rows.",
+  "Gate p0_gate.json git.head_sha still records the p0 run's head (561a802d) by design (old sections untouched); sections.p0b carries its own measured_at_head_sha = 8308cdf (pre-commit HEAD at measurement); the substance commit is 40de8c3 recorded here."
+ ],
+ "incidents": [],
+ "tree_status": "clean after the substance commit (40de8c3); this handoff file is the only change in the second (handoff) commit; only owned paths touched; ng1 machinery reused by import only, unmodified",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/crypto_ng2_run/p0_calendar_census_ng2.json",
+   "sha256": "70083296a9f03e01d209e105960e3aacc84ce98d3c86d9f5b57e3d016833b453",
+   "note": "P0b census (schema crypto_ng2_run/p0_calendar_census_ng2@1): 22 instants (CPI 11 + NFP 11) each {series, ref_month, release_date, instant_utc DST-correct 8:30 America/New_York, source schedule|archive, file evidence}; excluded_with_reason for the 2 non-published Oct-2025 months; 8 outside-window rows; 0 fail-closed rows; cross_validation 4 matched / 0 mismatched; canaries all PASS; input sha256 38bc3c94669cb70ea42c02cd7451c5438b7eccd901f12faeb7ef89077df1e34d"
+  },
+  {
+   "path": "research/control/crypto_ng2_run/p0_gate.json",
+   "sha256": "36a2f48c039503e1b6338a0e186a755a3628f243123254b86e1f9126532b541d",
+   "note": "Gate updated additively: new sections.p0b (census PASS 22 instants, lane_a4_status REOPENED, method_chain controller-fetch MEASURED_BY_CONTROLLER + lane_parser_validation MEASURED, expectation_reconciliation, tests 19 passed); all 7 p0 sections byte-identical; verdict_basis appended; top-level verdict PASS_WITH_BLS_BLOCKED -> PASS (BLS-blocked condition superseded by the p0b fold census)"
+  },
+  {
+   "path": "research/assets/crypto_ng2/bls_census.py",
+   "sha256": "856da5f4adba245fcb58adcb9939bd22ff0c83034fe974cd6dd398b6e679d838",
+   "note": "Parser module extended with the p0b fold layer only (CONTROLLER_RAW_SCHEMA/fold_controller_raw/_fold_release + helpers): strict ref_month/date/time shapes, weekend + duplicate refusal, window intersection, schedule-vs-archive date agreement (mismatch refuses both), archive rows time via the disclosed plan print-clock default; existing p0 functions unmodified"
+  },
+  {
+   "path": "research/control/crypto_ng2_run/run_p0b_fold.py",
+   "sha256": "01828313cde1b4ecb9519808571afef6976d70db1ca8b96ca225019b6eeacab0",
+   "note": "P0b runner: folds the committed controller raw (sha256-pinned into the census input block), re-runs the ng2-p0 canary set (2 fabricated days + fold-registry series refusal + read-only inherited plane authority probe), runs the targeted pytest file, updates the gate additively with old-section integrity checks"
+  },
+  {
+   "path": "tests/test_crypto_ng2_p0.py",
+   "sha256": "4ea5126357edab33ed7d7dd04440b29c08306c6c271b4b96dd086117719fe574",
+   "note": "17 p0 tests unchanged + 2 new fold tests (hand-computed DST instants across EDT/EST boundaries, archive-only vs cross-validated vs schedule-only sources, excluded non-published month, outside-window bookkeeping, canary set; fail-closed mismatch/duplicate/raw-schema refusal)"
+  }
+ ],
+ "recommended_next_action": "Lane A4 (BLS announcement-instant event study) is REOPENED with a PASS calendar census: dispatch A4 against research/control/crypto_ng2_run/p0_calendar_census_ng2.json (22 instants, panel window 2025-08-22T00..2026-08-21T23 UTC), treating the 4 archive-only instants' plan-print-clock time_source and the NFP 11-vs-approx-13 reconciliation as disclosed caveats; lane A5 continues unaffected."
+}
