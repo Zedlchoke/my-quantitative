@@ -1,0 +1,85 @@
+{
+ "schema": "a7_prelaunch_v3_ng1@1",
+ "verdict": "FOREX_NG1_S0_LAUNCH_AUTHORIZED",
+ "audited_commit": "4861691f2f8eb04858aa502155a59ccedf4a58c3",
+ "audited_parent": "4be2e1d2d1716bc4c15a0d5260ab4bf7c86f8e30",
+ "audited_utc": "2026-09-11T16:20:00Z",
+ "attempt": "A7 attempt-3 NARROW (attempt-1 REFUSED: A7-NG1-H1 gate not in committed bytes; attempt-2 REFUSED: A7-NG1-H2 flip at wrong key/value)",
+ "gate_check_detached": "Detached worktree /tmp/a7p3_forex_ng1 created from 4861691f2f8eb04858aa502155a59ccedf4a58c3 (clean status, HEAD verified). EXECUTED under root .venv with cwd=/tmp, sys.path rooted at the detached tree; module identity asserted: research.assets.forex_ng1.spot_series resolved to /tmp/a7p3_forex_ng1/research/assets/forex_ng1/spot_series.py and DEFAULT_AUTHORITY_PROOF resolved INSIDE the tree (/tmp/a7p3_forex_ng1/research/control/forex_ng1_run/p1_spot/spot_authority_proof.json) -- committed bytes only, no live-worktree or env/session state. (1) require_scored_authority() from those committed bytes: PASS -- returns the authority_status block with scored_consumption=='AUTHORIZED' (exact string compared at spot_series.py:368 'if scored != \"AUTHORIZED\":', line verified in committed bytes). (2) compute_outcomes gate (research/assets/forex_ng1/run/accounting.py, resolved under the detached tree): with scored=True and spot_authority=None raises AccountingRefused ('spot channel authority None != AUTHORIZED', comparison at accounting.py:74, line verified); with spot_authority fed from the SAME committed artifact's authority_status.scored_consumption the gate PASSES (executed with decisions=[] -- no pinned series consumed). Both gates therefore read the identical artifact key authority_status.scored_consumption against the identical string 'AUTHORIZED', and the committed artifact records exactly that value with the A1 ruling recorded in status_note + authority_enforcement. Gate proven passing from committed path BEFORE any GO: event log's last event is A7_H2_REMEDIATION at 2026-09-11T15:50:38Z, equal to the commit instant (2026-09-11T22:50:38+07:00 == 15:50:38Z), and no GO event/key exists anywhere in the committed control tree (go_phrase_state REGISTERED_NOT_CONSUMED, budget_used 0/6, s1 SEALED_UNTOUCHED).",
+ "diff_scope": [
+  "M research/control/FOREX_NG1/event_log.jsonl",
+  "A research/control/forex_ng1_run/audits/a7_prelaunch_v2_ng1.json",
+  "M research/control/forex_ng1_run/p1_spot/spot_authority_proof.json"
+ ],
+ "diff_scope_compliant": true,
+ "diff_scope_note": "git diff --name-status 4be2e1d..4861691 lists EXACTLY the three permitted artifacts; single commit between them (4861691). No code, freeze, proposals, data, or run_contract bytes touched. Proof-artifact diff is precisely the H2 remedy: authority_status.scored_consumption CANDIDATE_NOT_AUTHORIZED -> AUTHORIZED (exact key+string the gates read), wrong top-level 'scored_consumption': 'AUTHORIZED_INTERNAL_RESEARCH' key REMOVED, status_note added recording the A1 15:30:00Z elevation, a7_prelaunch_finding_addressed updated to the H1->H2 chain. The artifact's own cited gate lines (spot_series.py:368, accounting.py:74) verified accurate in committed bytes.",
+ "go_event_absent": true,
+ "go_event_absent_note": "Committed event log carries exactly 6 events: CYCLE_BOOTSTRAP, SPOT_AUTHORITY_RULING, SELECTION_FROZEN, A1_ADJUDICATION_BUDGET_CONTROL_CELLS, A7_H1_REMEDIATION (15:34:58Z), A7_H2_REMEDIATION (15:50:38Z). No GO event. Live worktree event log is byte-identical (same 6 events). A7_H2_REMEDIATION is recorded INSIDE the committed bytes and its timestamp precedes-or-equals the commit instant (same second, 15:50:38Z); it is the final event -- nothing after remediation, no GO key consumed.",
+ "prior_high_resolved": {
+  "id": "A7-NG1-H2",
+  "severity_was": "HIGH",
+  "resolved_by_commit": "4861691f2f8eb04858aa502155a59ccedf4a58c3",
+  "resolution": "All three v2 defect elements fixed at the audited bytes: (1) right LOCATION -- authority_status.scored_consumption, the exact block require_scored_authority/spot_authority_status reads; (2) right VALUE -- exact string 'AUTHORIZED' satisfying both spot_series.py:368 and accounting.py:74; (3) executed proof -- A7 attempt-3 re-ran require_scored_authority() from the detached tree at 4861691: PASS (v2 ran the same proof at 4be2e1d: raised SpotAuthorityError on CANDIDATE_NOT_AUTHORIZED). Wrong top-level key removed, removing the misleading pseudo-authorization. Committed BEFORE any GO key with matching event A7_H2_REMEDIATION."
+ },
+ "findings": [
+  {
+   "id": "A7-NG1-M3",
+   "severity": "MEDIUM",
+   "status": "NEW (residual of the H2 fix)",
+   "description": "Stale verdict prose in the committed authority artifact: spot_authority_proof.json top-level 'verdict' still reads '...BUT NOT AUTHORIZED FOR SCORED CONSUMPTION: DOCUMENTED_CANDIDATE / CANDIDATE_NOT_AUTHORIZED -- fail-closed...' while the operative authority_status.scored_consumption='AUTHORIZED' (elevated, status_note + authority_enforcement). v2's fix prescription asked to 'supersede or update the verdict/status wording'; the status wording was updated (status_note) but the verdict prose was not -- the commit message's 'contradiction resolved' overstates this element. Zero mechanical effect: no code reads the verdict field (only readers of the artifact are spot_series.py and build_artifacts.py, both of the authority_status block; gates verified by execution). Risk is a human reader mistaking the prose for current state. Resolve the wording at reproduction/terminal; do not re-run the technical chain.",
+   "evidence_paths": ["research/control/forex_ng1_run/p1_spot/spot_authority_proof.json"]
+  },
+  {
+   "id": "A7-NG1-M1R",
+   "severity": "MEDIUM",
+   "status": "CARRIED UNCHANGED from a7_prelaunch_v2_ng1@1 (files tree-identical across 4be2e1d..4861691 outside the three diff-scoped artifacts)",
+   "description": "run_contract.arms and z_dryrun_report budget_cell_mapping_basis still describe the pre-adjudication mapping (CTL-DGS10LEVEL on both families); the a7_recomputed_control_digests addendum (arm_config_digest 5d11a0c9... for FXNG1-A5-P1-CTL-V7RECAP, re-verified matching at 4be2e1d) discloses but does not mark the arms list superseded, and nothing mechanical forces E dispatch to consume the a1_adjudication block. Required before E dispatch: E must bind to the adjudication mapping; mark the stale arms list superseded in the reproduction pass.",
+   "evidence_paths": ["research/control/forex_ng1_run/run_contract.json", "research/control/forex_ng1_run/z_dryrun_report.json"]
+  },
+  {
+   "id": "A7-NG1-M2",
+   "severity": "MEDIUM",
+   "status": "CARRIED UNCHANGED from a7_prelaunch_v2_ng1@1",
+   "description": "Plan sec5 Q-8 mandate (measured spreads) unmet: cost contract is the REFERENCED V2/V8 proxy ladder (1.5 bps/side x {1.0,1.5,2.0}, tier 2.0 PRIMARY), disclosed in selection_freeze.cost_contract_frozen and run_contract.known_disclosures. Conservative relative to the V8-measured 1.05bp FX spread (false negatives only, cannot manufacture a false PASS); R1/R5 cost verdicts remain honestly NOT_RUN-until-measured. Must be surfaced in the terminal report and P-2 margin recording.",
+   "evidence_paths": ["research/control/forex_ng1_run/selection_freeze.json", "research/control/forex_ng1_run/run_contract.json"]
+  },
+  {
+   "id": "A7-NG1-L1",
+   "severity": "LOW",
+   "status": "CARRIED UNCHANGED from a7_prelaunch_v2_ng1@1 (re-confirmed at 4861691: state.json phase BOOTSTRAP_COMPLETE_P0_PENDING, updated_at 12:25:18Z; go_phrase_state REGISTERED_NOT_CONSUMED is CORRECT)",
+   "description": "research/control/FOREX_NG1/state.json still stale (phase field, updated_at); go_phrase underscore form vs registered exact phrase -- registry + RULES sec7 are the authority. Root registry row still carries phase text 'REGISTERED (planned)' with empty integration_worktree field (worktree known via dispatch packets); head/budget/s1/go fields verified correct.",
+   "evidence_paths": ["research/control/FOREX_NG1/state.json", "plans/CYCLE_REGISTRY.json", "RULES.md"]
+  },
+  {
+   "id": "A7-NG1-L2",
+   "severity": "LOW",
+   "status": "CARRIED UNCHANGED from a7_prelaunch_v2_ng1@1",
+   "description": "selection_freeze frozen_at_utc bookkeeping (freeze instant postdates its commit; SELECTION_FROZEN event logged 49s after code-freeze commit). Ordering authority is git ancestry; no validity impact.",
+   "evidence_paths": ["research/control/forex_ng1_run/selection_freeze.json", "research/control/FOREX_NG1/event_log.jsonl"]
+  },
+  {
+   "id": "A7-NG1-L3",
+   "severity": "LOW",
+   "status": "CARRIED UNCHANGED from a7_prelaunch_v2_ng1@1",
+   "description": "Code-freeze provenance uses lane-branch shas (2d1989a/abbee115 on orca/fng1-i) whose trunk copies are tree-identical duplicates (f6c1788/a493ec3); claimed chain d0992d1<2d1989a<abbee115<ffdc128<4be2e1d holds via lane ancestry + tree identity + timestamps. Content identity sound; pin-reachable shas recommendation stands.",
+   "evidence_paths": ["research/control/forex_ng1_run/code_freeze.json"]
+  },
+  {
+   "id": "A7-NG1-L4",
+   "severity": "LOW",
+   "status": "CARRIED UNCHANGED from a7_prelaunch_v2_ng1@1 (untouched by 4861691 per diff scope)",
+   "description": "Pinned DGS10 copy lives in the disclosed nested worktree path (lane-I incident, recorded at ffdc128); integrity verified to source bytes in attempt-1; pin references 03dde429/CADS 07d1e0d5 present in committed run_contract + ctl_dgs10_pin.",
+   "evidence_paths": ["research/control/forex_ng1_run/i/ctl_dgs10_pin.json"]
+  },
+  {
+   "id": "A7-NG1-L5",
+   "severity": "LOW",
+   "status": "CARRIED UNCHANGED from a7_prelaunch_v2_ng1@1",
+   "description": "authority_enforcement.owner_standing_delegation_verbatim cites '(owner directive 2026-09-11, plans/PLAN_forex_ng1.md sec0)' but the quoted Vietnamese text physically lives in plans/PLAN_crypto_ng1.md sec0 (incorporated by reference; quote verified verbatim substring). Quote genuine, citation imprecise. Standing-delegation basis for the 15:30:00Z data ruling judged valid by attempt-1 authority assessment.",
+   "evidence_paths": ["research/control/forex_ng1_run/p1_spot/spot_authority_proof.json", "plans/PLAN_forex_ng1.md", "plans/PLAN_crypto_ng1.md"]
+  }
+ ],
+ "unresolved_high_critical_count": 0,
+ "verdict_basis": "All four narrow checks PASS at the committed bytes: (1) detached tree clean at 4861691; (2) require_scored_authority() PASS + compute_outcomes gate consistent with the same artifact key/value, proven by execution; (3) diff 4be2e1d..4861691 scoped to exactly the three permitted artifacts; (4) no GO event anywhere, A7_H2_REMEDIATION precedes/accompanies the commit as the final event. No new HIGH/CRITICAL. Open findings: 3 MEDIUM (M3 new-residual; M1R, M2 carry-over) + 5 LOW carry-over -- none refusal-grade. Launch authorized per plan sec0: GO key may now be typed by the Lead (owner standing delegation), with M1R's E-dispatch binding requirement and M2/L-items surfaced at terminal.",
+ "method_note": "A7 attempt-3 executed entirely from detached worktree /tmp/a7p3_forex_ng1 (removed after audit); the only write was this audit file at the designated path in the live integration worktree."
+}
