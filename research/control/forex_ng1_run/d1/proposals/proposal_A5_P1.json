@@ -1,0 +1,236 @@
+{
+  "schema": "forex_ng1_run/d1_proposal@1",
+  "cycle_id": "FOREX-NG1",
+  "task_id": "forex-ng1-d1-a5-proposals",
+  "lane": "d1-a5",
+  "hypothesis_id": "FXNG1-A5-P1",
+  "title": "Release-order opening-follower print drift (US-anchored monthly print sequence, order-state conditioned on the early-printing economy's own pair, vintaged first prints, PIT-gated entry, daily 16:00-NY grid)",
+  "blindness_declaration": {
+    "outcome_blind": true,
+    "statement": "Written with ZERO outcome exposure: no scored/PnL/smoke/novelty numbers for this cycle were read; no backtest executed. Only timing, availability, coverage and count evidence from the pinned P0 census, the P1 spot grid census and the family-failure inventory was consumed; all order-state counts above were measured from publication instants only (never from print values).",
+    "frozen_before_any_outcome": true
+  },
+  "mechanism": {
+    "story": "Each calendar month the same-coverage CPI print set publishes in a sequence: the US benchmark print first (measured: strictly first in 77 of 85 months), then the non-US prints over the following ~2-3 weeks. The FIRST non-US print of the month - the OPENING FOLLOWER - is the market's first same-coverage cross-check of the month's US anchor. With only two datapoints in the month's inflation state (US anchor + opener), conservative slow money under-reacts at arrival and waits for the confirming follower prints before implementing; their delayed implementation lands weeks later, inside the window this lane can provably observe. Later follower prints arrive into an increasingly triangulated state (3+ same-coverage datapoints); their naive-predictor deviations are dominated by the already-priced common component and their late windows are informationally thin. The ORDER of release, not the print event itself, allocates the persistent diffusion across pairs.",
+    "forced_or_late_participant": "Forced/late participants: (i) monthly dealing-cycle benchmark rebalancers and calendar-fixing corporate hedgers implement inflation-view updates only at scheduled windows - structurally late relative to the intra-month release sequence; (ii) THIS LANE ITSELF is a declared late participant: the evidenced value availability (vintaged channel) is median 24 days after publication for GB/CA/NZ (15-16 for AU), and the measured entry is median 28 days after the opening print's publication, so every entry is necessarily weeks late. The hypothesis is specifically that the opening-order-conditioned repricing SURVIVES the PIT-provable availability lag plus the holding horizon, after costs.",
+    "why_it_might_exist": "Information SEQUENCING is not priced efficiently at the slow horizon: the same print deviation is more informative when it is first in the monthly release sequence than when it is third or fourth, but slow participants' attention and dealing calendars are not order-sensitive. That mismatch creates order-dependent diffusion lags. The claimed edge source is the relative ORDER of releases (a calendar-invisible-to-slow-money structure), NOT the sign of the release (that class is closed on both sides of the economy boundary, see ancestry_defense) and NOT any yield or price level (V8 law).",
+    "when_it_must_fail": "It must fail (after-cost per-trade expectancy <= 0) if opening-follower months' late windows are as empty as everyone else's. It must die by falsification if the SAME reaction-direction form fired WITHOUT the order-state (the mandatory V7-ancestry control: all non-US prints, own pair, same clock) reproduces the anchor - then the order filter carries nothing and the book is V7 re-clocked; if a nominal-yield-level exposure reproduces it (V8 law); if a constant-direction calendar shadow reproduces it (Q-7); if a randomly shuffled order-state selection reproduces it (placebo); or at D2 if pooled ancestry |rho| > 0.20 vs the full failure inventory (accepted in advance)."
+  },
+  "information_source_and_surprise_construction": {
+    "information_source": "(a) evidenced monthly print PUBLICATION ORDER from the pinned announcement census (census sha256 e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe, re-measured at this checkout); (b) realized vintaged CPI first-print index levels vs a frozen seasonal-naive predictor computed from the same vintaged archive (identical formula class as lane A4-P1, frozen independently here). NO consensus/forecast data anywhere (plan section 9).",
+    "order_construction": {
+      "month_grouping": "calendar month of the evidenced (local) publication date - the release-calendar month; all prints of a month cover the same inflation window: GB/CA monthly prints cover reference month M-1, AU/NZ quarterly prints cover the quarter ENDING M-1 (census reference_period label = the quarter's first month)",
+      "interval_order_rule": "ordering uses P-1-evidenced publication instants ONLY: exact-time instants (CA 12:30Z, NZ Auckland 10:45 DST-corrected) are points; DATE_ONLY evidence (GB, AU, US) is a full-day uncertainty interval [00:00Z, 23:59:59Z]; X strictly-precedes Y iff X's latest possible instant < Y's earliest possible instant; anything else is UNPROVABLE ORDER and fails closed",
+      "us_anchored_month": "a month is US-ANCHORED iff the US same-coverage print strictly precedes EVERY non-US print of that month under the interval rule; non-anchored months are excluded (no state)",
+      "opening_follower": "the OPENING FOLLOWER (OF) is the unique non-US print that strictly precedes every other non-US print of a US-anchored month; months without a provable unique OF are NO-STATE and excluded (fail-closed)",
+      "measured_order_census": {
+        "publication_months_total": 85,
+        "span": "2018-04..2025-04",
+        "us_anchored_months": 77,
+        "non_anchored_months_excluded": 8,
+        "non_anchored_detail": "2 months with a CA print before the US print (2018-10, 2019-03); 6 months with a GB print tying the US date (date-only evidence both sides, order unprovable)",
+        "unique_OF_months": 50,
+        "unique_OF_by_economy": {"CA": 29, "GB": 12, "NZ": 9, "AU": 0},
+        "AU_note": "AU never opens: it publishes day 25-31, after every other same-coverage print (measured US-to-AU gap 13-20 days)",
+        "no_unique_OF_months_excluded": 27,
+        "no_unique_OF_cause": "CA exact-time instants fall INSIDE GB date-only windows (same local date) - order unprovable, fail-closed",
+        "binary_vs_US_degeneracy_disclosed": "the naive binary 'non-US prints before US' clock is measured DEGENERATE (2 events in 7 years); the viable order structure is the post-US release sequence, of which the opening follower is the first element"
+      }
+    },
+    "predictor": "I_hat_sn(m) = I(m-1) * ( I(m-12) / I(m-13) ), where I(k) is the vintaged index level for month k in the vintage in force at the decision instant (point-in-time read of the vintaged series, never a later revision).",
+    "predictor_name": "seasonal-naive one-step (last-year same-month seasonal ratio applied to the latest vintaged level)",
+    "surprise": "s1 = 100 * ( I_print(m) / I_hat_sn(m) - 1 ), in percentage points of index deviation, of the OPENING print only.",
+    "i_print_source": "vintaged_first_value of the pinned census first-release instant (the value as first carried by the evidenced vintaged channel).",
+    "pit_rule": "All predictor inputs I(m-1), I(m-12), I(m-13) are read as-of the decision instant (the vintage in force then); I_print is the first-release vintaged value; the order state (US-anchored + unique OF) is determined exclusively by publication-instant evidence dated at or before the opening print's publication - public calendar information provably known before entry; no value that entered its vintage after the decision instant may be read (P-1..P-6 chain; ONE_EVENT_LAG impossible by construction).",
+    "frozen_parameters": {
+      "anchor_threshold_pp": 0.10,
+      "anchor_holding_grid_days": 5,
+      "neighbour_parameterization": "opener-or-co-opener order construction: fires additionally on ALL provable co-earliest prints of the 27 no-unique-OF months (54 extra events; same |s1| >= 0.10 gate, same direction law, H = 5; total 104 events)",
+      "threshold_selection_basis": "blind frozen priors chosen before any outcome; no tuning permitted after any number is seen (P-15)"
+    }
+  },
+  "universe": {
+    "pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "funded_economy_map": {
+      "GB": {"pair": "GBPUSD", "quoting": "CCY/USD, long = long GBP vs USD"},
+      "CA": {"pair": "USDCAD", "quoting": "USD/CAD, long = long USD vs CAD, therefore long CAD = short USDCAD"},
+      "AU": {"pair": "AUDUSD", "quoting": "CCY/USD, long = long AUD vs USD (measured: AU never opens; retained for completeness and for control arms)"},
+      "NZ": {"pair": "NZDUSD", "quoting": "CCY/USD, long = long NZD vs USD"},
+      "US": {"pairs": [], "quoting": "the US print generates NO position in this lane - it is the anchor/state variable only (declared distinct from lane A4, where US events fire 4 pair-decisions)"}
+    },
+    "event_instrument_law": "each OF event of economy X fires on X's OWN pair only (1 pair-decision per event); later follower prints of the month generate no position anywhere in this proposal.",
+    "direction_law": "s1 >= +0.10 => long the funded-economy currency vs USD (GB: long GBPUSD; CA: short USDCAD; AU: long AUDUSD; NZ: long NZDUSD). s1 <= -0.10 => the mirror. |s1| < 0.10 => no position. Two-sided by construction: no static currency or dollar bias."
+  },
+  "clock": {
+    "decision_grid": "daily 16:00 America/New_York (zoneinfo, DST-correct; 16:00-NY = 20:00Z EDT / 21:00Z EST) on FX trading days; frozen V9 representation; common grid 1842 days 2018-04-04..2025-04-30 (spot_grid_census.json sha256 42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6)",
+    "event_set": "the 50 unique-OF events (from 306 census first-releases after the pit_notes exclusion; census sha256 e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe); the 8 non-anchored months and 27 no-unique-OF months contribute NO conditioning state",
+    "pit_anomaly_policy": "EXCLUDE first-release instants carrying pit_notes (fail-closed): 1 event, NZ ref 2019-04 pub 2019-07-16 'archive_led_bulletin'; its month (2019-07) becomes a no-unique-OF tie month under the interval rule",
+    "availability_bound": "A(x) = 23:59:59Z on operative_vintaged_available_from (date-granular evidenced availability binds the VALUE leg, same law as lane A4).",
+    "entry_rule": "decision day D(e) = first 16:00-NY grid instant strictly AFTER max( A(e_OF), EOD(P_us_same_month) ) - the opener's vintaged value must be provably available AND the month's US anchor print must have published. CONSEQUENCE DECLARED (inherited): a same-day 16:00-NY decision never sees a print whose availability bound is that same date.",
+    "per_economy_alignment_measured": {
+      "order": "US strictly precedes the opener in 77/85 months (median gap GB 7d [1..14], CA 7d [1..12], NZ 7d [2..15], AU 15d [13..20])",
+      "value_availability_lag_days_pub_to_operative": {"GB": {"min": 1, "median": 24, "max": 119}, "CA": {"min": 3, "median": 24, "max": 120}, "AU": {"min": 13, "median": 15, "max": 105}, "NZ": {"min": 0, "median": 24, "max": 119}, "US": {"min": 0, "median": 0, "max": 0}},
+      "entry_day_minus_opener_pub_day": {"min": 5, "median": 28, "max": 121, "note": "A(e_OF) binds almost always; the US-publication bound is slack by the US-to-opener gap"}
+    },
+    "dst_rule": "zoneinfo America/New_York local->UTC with DST fixtures; NZ/CA exact instants DST-corrected per census; date-only evidence gets the [00:00Z, 23:59:59Z] interval",
+    "window": {"s0_start": "2018-04-04", "s0_end": "2025-04-30", "basis": "census s0_window (V9 start inherited; end = last calendar-evidenced non-US print publication with a vintaged realized value); tail-trim law respected, no current-vintage backfill"}
+  },
+  "warmup": {
+    "requirement": "vintaged index history of at least 13 months of the OPENING economy before its reference month (I(m-1), I(m-12), I(m-13) must exist in the vintage in force at the decision instant); no expanding-window normalization anywhere in this proposal (no MAD term)",
+    "structural_status": "satisfied: vintaged feeds start 1948-1955, far before the 2018-04 S0 start; warmup is a per-event data-window rule, not a burn-in period"
+  },
+  "features_and_lags": {
+    "features": ["s1 of the opening print is the ONLY signal feature; the order state (US-anchored + unique opening follower) is a conditioning clock on WHICH events may fire, never a priced feature"],
+    "lags": "vintaged index months m-1, m-12, m-13 of the opener economy relative to reference month m",
+    "explicit_non_features": "no follower-print deviation enters the signal in any form (later prints of the month are not computed, not gated on, not netted); no consensus/forecast data (no authority exists); no nominal yield level in the signal (yield level appears ONLY inside the mandatory control arm); no cross-pair transfer (that is proposal A5-P2's construction, distinct by design)"
+  },
+  "entry_exit_fills": {
+    "entry": "at the D(e) 16:00-NY grid price of the staged spot series (declared dependency), iff |s1| >= 0.10 pp at that instant; 1 unit notional per fired event on the opener's own pair",
+    "exit": "at the grid instant H = 5 grid days after entry (next grid day if that instant is not a trading day); forced exit at the 2025-04-30 grid instant for positions whose horizon extends past window end (declared tail convention); events whose D(e) falls after the window end cannot enter and are dropped (measured: 1 of 50)",
+    "fills": "entry fill and exit fill each executed once at grid prices; positions from different events are held independently (no netting), each exiting at its own horizon",
+    "no_lookback_guards": "signals computed only from information PIT-available at D(e); the frozen validator refuses any fill whose conditioning value OR conditioning publication instant postdates the decision instant (V3 lesson encoded)"
+  },
+  "costs": {
+    "model": "measured FX spread per pair at stress tier, charged once per fill (entry and exit are separate fills); never vendor-stated",
+    "authority": "Q-8 re-measured constants to be published by the P1 kernel lane of this cycle; at proposal time NOT_YET_MEASURED => declared dependency; if Q-8 constants are absent at D2/implementation, cost verdict is NOT_RUN (fail-closed), never an assumed spread",
+    "reference_ladder": "referenced precedent (not an invention, not an assertion): frozen proxy 1.5 bps per side with stress multipliers, tier 2.0 PRIMARY verdict book (plans/PLAN_forex_v2.md frozen proxy cost + V8 binding rule 'stress tier 2.0 primary'); Q-8 measured constants supersede the proxy ladder everywhere",
+    "reference": "plans/PLAN_forex_ng1.md section 5 (Q-8: FX spread measured); V8/V9 dual-book kernel inherited at P1"
+  },
+  "arm_battery": [
+    {
+      "arm": "anchor",
+      "name": "FXNG1-A5-P1-ANCHOR",
+      "config": "50 unique-OF events, opener's own pair, |s1| >= 0.10 pp, direction per direction_law, H = 5 grid days, 1 unit per event",
+      "role": "the hypothesis: order-state conditioned opening-follower drift"
+    },
+    {
+      "arm": "neighbour",
+      "name": "FXNG1-A5-P1-NEIGH-COOPEN",
+      "config": "opener-or-co-opener order construction: additionally fires on all 54 provable co-earliest prints of the 27 no-unique-OF months (104 events total), same gate |s1| >= 0.10, same direction law, same own-pair instrument, H = 5",
+      "role": "ORDER-CONSTRUCTION parameterization (the V8 R2 standard applied to the order axis, not the threshold axis): if the tie-inclusive construction out-earns the anchor, the strict unique-opener parameterization is not mechanism-bearing => dead"
+    },
+    {
+      "arm": "v7_ancestry_control",
+      "name": "FXNG1-A5-P1-CTL-V7RECAP",
+      "config": "MANDATORY (plan section 6 lane A5): identical signal form WITHOUT any order-state: ALL 202 non-US first-release events of the 77 US-anchored months (openers, co-earliest ties, later followers alike), each on its OWN pair, direction = sign(s1) with the same |s1| >= 0.10 gate, identical entry-clock form D(e) = first grid instant strictly after max(A(e), EOD(P_us_same_month)), H = 5, 1 unit per event",
+      "role": "reaction-direction re-clock control (V6/V7 class at the PIT-late entry): if this no-order book's same-sign per-trade expectancy >= 0.5x the anchor's, the order filter carries NOTHING and the anchor is V7 re-clocked => family dead by law, D2 VETO recorded"
+    },
+    {
+      "arm": "nominal_exposure_control",
+      "name": "FXNG1-A5-P1-CTL-DGS10LEVEL",
+      "config": "identical fired anchor book (same event days, pairs, horizons, 1-unit magnitudes), but direction carries ONLY a nominal-yield-level exposure with print conditioning removed: sign = +1 (long the funded currency vs USD) iff the DGS10 level as-of D(e) (vintaged S2) is below its trailing 252-grid-day median, else -1",
+      "role": "V8 LAW MANDATE: if this control reproduces the anchor (same-sign expectancy >= 0.5x), the order-conditioned book is a nominal-yield-level exposure in new words => dead (falsification-by-control cluster #14 law)"
+    },
+    {
+      "arm": "clock_only_shadow",
+      "name": "FXNG1-A5-P1-SHADOW-CLOCK",
+      "config": "identical fired anchor book, direction = constant +1 (always long the funded currency vs USD); zero information content",
+      "role": "Q-7 clock-only shadow: isolates pure calendar-clock + static-drift exposure; reproduces the anchor (same-sign >= 0.5x) => the clock explains it => dead"
+    },
+    {
+      "arm": "placebo_order_shuffle",
+      "name": "FXNG1-A5-P1-PLACEBO-ORDSHUF",
+      "config": "order-state shuffle preserving the marginal distribution: draw uniformly at random (without replacement) exactly n* events - n* = the anchor's fired count - from the pool of threshold-passing (|s1| >= 0.10) non-US first-release events of the 77 US-anchored months; each drawn event fires on its own pair with its own sign(s1) at its own clock, same H and magnitudes; RNG frozen: numpy default_rng(20260911), single draw, identities committed with the frozen representation before any outcome (P-12/P-15)",
+      "role": "order-state placebo: same marginal fired-count and sign-form, destroyed order-state selection; reproduces the anchor (same-sign >= 0.5x) => WHICH months opened the sequence carries nothing => dead"
+    }
+  ],
+  "representation_identity": {
+    "p12_statement": "representation identity is measurement identity (P-12, V9 origin); this table is the frozen identity from which the arm_config_digest is derived; code AND representation commit before any number is cited",
+    "representation_id": "forex_ng1_a5_p1_daily1600ny_releaseorder_openingfollower_ownpair_v1",
+    "identity_fields": {
+      "grid": "daily 16:00 America/New_York FX-trading-day grid, zoneinfo DST; common grid 1842 days (spot grid census sha256 42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6)",
+      "order_rule": "months = publication calendar months; interval-strict-before ordering on evidenced publication instants (exact = point; date-only = [00:00Z,23:59:59Z]); US-anchored month required; unique opening follower required; unprovable order fails closed",
+      "event_set": "50 unique-OF events; census sha256 e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe; pit_notes rows excluded (306 first-release base)",
+      "availability": "A(x) = EOD(operative_vintaged_available_from); D(e) = first grid instant strictly after max(A(e_OF), EOD(P_us_same_month))",
+      "surprise": "s1 = 100*(I_print / (I(m-1)*I(m-12)/I(m-13)) - 1), opener economy, all inputs vintaged as-of D(e)",
+      "anchor_rule": "|s1| >= 0.10 pp; direction law two-sided; opener's own pair; 1 unit per event; US print generates no position",
+      "exit_rule": "H = 5 grid days; forced exit at 2025-04-30 grid instant; post-window entries dropped (1 of 50)",
+      "costs": "Q-8 measured stress-tier spread once per fill (P1 dependency); referenced proxy ladder 1.5 bps/side, tier 2.0 PRIMARY (V2/V8 precedent)",
+      "window": "2018-04-04..2025-04-30",
+      "placebo_rng": "numpy default_rng(20260911), single frozen draw",
+      "series_pins": {
+        "GBRCPIALLMINMEI": "102e027d7b8ac621c7aab0f34a7fc99644d2f676692565f2b119b4b0e502e827",
+        "CANCPIALLMINMEI": "7b225d9f724bd15ca309c1085d5c3812da19b5f7c20f28bbe2e1eb583d9cb2d6",
+        "AUSCPIALLQINMEI": "a42184a0310c0fba7e9243e431047d17753348af53945b1f65d94b715c704e7b",
+        "NZLCPIALLQINMEI": "a06a44eae0a071c807aa65a372b1cab6f786ceb0ce7f5094bb60c8b622455cd5",
+        "CPIAUCSL_rt": "7f18ec982374ce4dfb235f53f001327793df8e1c0077d31206de25aa3455ac94",
+        "DGS10": "S2 granted vintaged class (p0_gate s2_repin; control arm only)"
+      }
+    }
+  },
+  "ancestry_defense": {
+    "v7_reaction_direction_closed_SPECIFIC": "FOREX-FREE-V7 closed the reaction-direction class 'on both sides of the economy boundary': FXFV7-A4-P1 (cross-economy release-sign spillover on non-reporting pairs) died mechanically AND by falsification-by-control cluster #12 (the +7d sham reproduced the anchor, so the calendar conditioning carried no incremental information); FXFV7-A6-P2 (cross-pair lead-lag diffusion) died with the own-lag control OUT-earning it; FOREX-FREE-V6's own-economy reaction-direction died on robustness. This lane differs STRUCTURALLY: (i) direction is a magnitude-bearing naive-predictor DEVIATION, not the sign of the release; (ii) entry is strictly after PIT-provable vintaged availability (measured median 28 days after the opening print's publication) - a horizon V6/V7 never represented (they entered at publication); (iii) LOAD-BEARING: every fill is selected by the ORDER STATE (US-anchored month + provably-unique opening follower), a variable that does not exist in any V6/V7 construction. The distinction is ALSO measured, twice: the mandatory CTL-V7RECAP runs the identical form with the order-state removed (kill at >= 0.5x same-sign per-trade), and D2 pooled |rho| <= 0.20 applies vs the full inventory including the V6 anchor book and both V7 books; over the bar => lane dies at D2 (accepted in advance).",
+    "v8_nominal_level_law": "V8 falsification-by-control #14 made a nominal-exposure control MANDATORY on every yield/inflation lane. Carried as CTL-DGS10LEVEL on the identical clock; no nominal yield level enters the signal. If the control reproduces the anchor, the family is dead by law.",
+    "v9_ppp_vetoes": "V9 A5-P1/P2 died as PPP/real-rate LEVEL-misalignment books (rho 0.3034/0.3119 vs the V8 anchor). This proposal carries no PPP, real-rate, or level-misalignment state anywhere; conditioning is event-time order structure, two-sided, deviation-gated. D2 rho gate vs the V9 veto books applies.",
+    "v5_sham_calendar_standard": "order-state placebo carried (PLACEBO-ORDSHUF), the V5-era house standard adapted to the order axis: marginal fired-count preserved, order information destroyed.",
+    "v3_pit_chain": "P-1..P-6 incident chain honored: interval-aware ordering asserts 'before' ONLY when provable (date-only evidence = full-day uncertainty; same-date exact-vs-date-only = fail-closed), conservative end-of-day availability bounds, as-of vintage reads, fill validator refuses any conditioning instant or value that postdates the decision.",
+    "v9_high_finding_binding": "non-US legs come ONLY from the vintaged channel (pinned sha256s above); current-vintage revised-in-place tables are FORBIDDEN for GB/CA legs (and all non-US legs)."
+  },
+  "feasibility_declaration": {
+    "order_state_events_per_month": "0.59 opener events per publication month (50/85); 0.66 within US-anchored months (50/77)",
+    "census_event_counts": {"publication_months": 85, "us_anchored_months": 77, "unique_OF_months": 50, "unique_OF_by_economy": {"CA": 29, "GB": 12, "NZ": 9}, "no_unique_OF_months_excluded": 27, "non_anchored_months_excluded": 8, "first_release_base_after_pit_exclusion": 306},
+    "in_window_eligible_decision_days": {"events_total": 50, "in_window_entries": 49, "dropped_tail_entries": 1, "counted_under": "D(e) = first weekday strictly after max(A(e_OF), P_us); <= 2025-04-30; approximate grid, exact FX calendar owned by the staged series and re-measured at P2/D2"},
+    "pair_decisions_pre_threshold": 50,
+    "expected_fired_entries_estimate": "25-40 anchor entries at a 50-80% threshold pass rate (BLIND prior; P2/Q-6 measures the actual recent-window counts against the frozen decision floor; under floor => lane dies cheap per plan rubric #3, accepted)",
+    "recent_window_counts": {"recent_24m_2023-05_2025-04": 21, "recent_36m_2022-05_2025-04": 31, "by_economy_recent_24m": {"CA": 18, "GB": 2, "NZ": 1}},
+    "thinness_disclosed": "the order-state exclusions (27 no-unique-OF + 8 non-anchored months) leave a thin 50-event book concentrated on CA openers - this is the honest cost of P-1 fail-closed ordering on date-only evidence and is disclosed, not patched; the NEIGH-COOPEN arm doubles the book (104) as the declared inclusive parameterization",
+    "grid_days_available": 1842,
+    "known_gaps_declared": [
+      "27 months have NO provable unique opening follower (CA exact-time instants inside GB date-only windows): excluded fail-closed; 54 co-opener events reachable only by the neighbour arm",
+      "8 non-anchored months excluded (2 CA-before-US: 2018-10, 2019-03; 6 GB-US same-date ties with date-only evidence both sides)",
+      "AU never opens (publishes day 25-31 after all same-coverage prints): AU openers = 0 by schedule structure, not by data gap",
+      "1 NZ first-release instant (ref 2019-04) carries pit_notes archive_led_bulletin and is excluded fail-closed (its month 2019-07 demotes to no-unique-OF)",
+      "US instants carry date-only evidence (FRED realtime bytes have no time-of-day); GB and AU publication dates are date-only",
+      "1 event's entry day falls after 2025-04-30 and cannot enter (tail convention)"
+    ],
+    "dependencies_for_feasibility": [
+      "FX spot daily 16:00-NY staged series (DECLARED DEPENDENCY, V9-class keyless; pin manifest sha256 e80b468b4d2070586ff110bca104f6fd7838697e0bee57f5a0f94a1149180d53; the scored-consumption authority decision is an OPEN owner/controller item per the p1-spot handoff)",
+      "Q-8 cost constants (P1 kernel lane)",
+      "DGS10 vintaged S2 for the control arm"
+    ]
+  },
+  "falsification_rule": {
+    "frozen_rule_order": [
+      "R1 MECHANICAL: anchor after-cost per-trade expectancy at stress tier 2.0 <= 0 => family dead (plain negative); remaining rules moot",
+      "R2 V7_ANCESTRY (MANDATORY, lane-specific): CTL-V7RECAP same-sign per-trade expectancy >= 0.5x anchor => the order filter carries nothing; the book is reaction-direction re-clocked onto the PIT-late clock => dead + D2 VETO recorded (this is the plan section 6 lane-A5 closure test)",
+      "R3 NOMINAL_EXPOSURE (V8 law): CTL-DGS10LEVEL same-sign expectancy >= 0.5x anchor => dead (nominal-yield-level exposure in new words)",
+      "R4 CLOCK_ONLY (Q-7): SHADOW-CLOCK same-sign expectancy >= 0.5x anchor => dead (calendar drift explains it)",
+      "R5 PLACEBO: PLACEBO-ORDSHUF same-sign expectancy >= 0.5x anchor => dead (any threshold-passing subset of the same pool does as well; the order selection carries nothing)",
+      "R6 NEIGHBOUR_ORDER_PARAMETERIZATION: NEIGH-COOPEN expectancy > anchor expectancy => the strict unique-opener construction is not mechanism-bearing => dead (V8 z504 standard on the order axis)"
+    ],
+    "external_gate": "D2 ancestry pooled |rho| <= 0.20 vs full inventory (incl. V6 reaction book, both V7 books, V8 nominal-level shadow and V9 vetoes), margin recorded (P-2); over the bar => D2 VETO",
+    "no_threshold_moves": "no rule, threshold, horizon, or the placebo RNG seed changes after any scored number is seen (P-15); smoke numbers kill + disclose, never select",
+    "expected_failure_interpretation": {
+      "R1_with_clean_controls": "opening-follower months' late windows carry no net drift after costs: the monthly print sequence's information ordering does not survive to the PIT-provable horizon. CONSISTENT WITH (not contradicting) the V7 closure - V7 closed entry-at-publication reaction-direction; a null here licenses NO claim about the publication-instant reaction.",
+      "R2_fires": "the anchor is a V6/V7-class reaction-direction book wearing an order mask; the lane-level closure re-fires exactly as the plan mandated. The most likely failure mode of this family and the reason the control is lane-mandatory.",
+      "R3_fires": "the order-conditioned book is a nominal-yield-level exposure in new words; the V8 law re-fires on the order lane exactly as designed.",
+      "R4_fires": "calendar-frequency drift on opener days, not order information.",
+      "R5_fires": "the fired-count and sign-form alone explain it; which months opened carries nothing.",
+      "R6_fires": "the strict unique-opener parameterization is not mechanism-bearing (the tie-inclusive construction is, or neither is); the family still dies (no rescue by re-ranking arms)."
+    }
+  },
+  "data_dependencies": [
+    {"name": "vintaged CPI channels", "authority": "P0-proven vintaged channel (p0_gate.json sha256 ec2722857220b475dc5b18221c7c20123e543c3dda17313dd96ab0d053fb8cab; vintaged_channel_proof PASS)", "series": ["GBRCPIALLMINMEI", "CANCPIALLMINMEI", "AUSCPIALLQINMEI", "NZLCPIALLQINMEI", "CPIAUCSL_rt"]},
+    {"name": "announcement census (publication-order evidence)", "authority": "research/control/forex_ng1_run/p0_announcement_census.json sha256 e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe (re-measured at this checkout)"},
+    {"name": "spot grid census (decision-grid identity)", "authority": "research/control/forex_ng1_run/p1_spot/spot_grid_census.json sha256 42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6 (common grid 1842 days)"},
+    {"name": "DGS10 vintaged S2", "authority": "S2 granted class (mandatory control series); control arm only"},
+    {"name": "FX spot daily 16:00-NY staged series", "authority": "DECLARED DEPENDENCY - V9-class keyless spot staging (pin manifest sha256 e80b468b4d2070586ff110bca104f6fd7838697e0bee57f5a0f94a1149180d53); scored-consumption authority decision OPEN per p1-spot handoff; this proposal does NOT assert a source"},
+    {"name": "Q-8 cost constants", "authority": "P1 kernel lane re-measured spreads at stress tier; NOT_YET_MEASURED at proposal time; referenced precedent ladder 1.5 bps/side, tier 2.0 PRIMARY (V2/V8)"}
+  ],
+  "provenance": {
+    "dispatch_sha": "8e837cd2a3e80b616b9355a9ef4b48ad4b959055",
+    "actual_start_sha": "8e837cd2a3e80b616b9355a9ef4b48ad4b959055",
+    "branch": "orca/fng1-d1-a5",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/d1-a5",
+    "written_utc": "2026-09-11",
+    "constraints_honored": [
+      "no consensus/forecast data anywhere",
+      "vintaged-only non-US legs (V9 HIGH finding)",
+      "nominal-exposure control mandatory (V8 law)",
+      "V7-ancestry falsification control mandatory (plan section 6 lane A5)",
+      "interval-strict-before ordering; unprovable order fails closed (P-1)",
+      "no backtest executed in this lane; no keyed API calls",
+      "order-state counts measured from publication instants only, never from print values or any outcome"
+    ]
+  }
+}
