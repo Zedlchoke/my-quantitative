@@ -1,0 +1,84 @@
+{
+ "gate": "V2-G7-RESUMPTION",
+ "measured_utc": "2026-09-10T16:18:40Z (host local; run 16:00:21-16:18:40)",
+ "lock": "FREE_PROVEN measured at resumption start (V13 done per owner; no registry row, flock free); acquired via heavy_lock.acquire(cycle_id=MARKET-DATA-PLANE-V2, role=FULL_SUITE_REGRESSION_RESUME, pid row 97998); released FINISHED-after-failure-accounting (driver counted 3 nonzero steps) \u2014 see failures accounting below",
+ "run_tree": ".worktrees/market-data-plane-v2/resume-v2 (detached @ 2c8b900345b2396cedcb1f80d1629d8454671bea, the terminal tip; code identical to audited candidate 70620a05 \u2014 post-candidate commits touched only control/audit artifacts)",
+ "battery": [
+  {
+   "step": "compileall market_data_plane+data_fusion+governance",
+   "exit": 0
+  },
+  {
+   "step": "targeted battery (31 files: MDP core/security/bars/bridges/adapters/data_fusion/governance/protocol/compatibility)",
+   "exit": 1,
+   "result": "2 failed / 782 passed",
+   "failures": "tests/test_legacy_adapters.py::test_real_legacy_files_are_read_without_byte_mutation + test_registry_composition_validates_and_carries_warnings"
+  },
+  {
+   "step": "FULL pytest tests/ -q (ALONE, under lock)",
+   "exit": 1,
+   "result": "2 failed, 1722 passed, 6 errors in 80.0s"
+  },
+  {
+   "step": "V1 G9 flip: FULL pytest tests/ -q at V1 tip 917b8749 (fresh detached tree resume-g9, ALONE, under same lock)",
+   "exit": 1,
+   "result": "2 failed, 1480 passed, 6 errors in 69.1s \u2014 IDENTICAL failure signature"
+  },
+  {
+   "step": "perf_bench_v2.py (mdp_perf_run@2)",
+   "exit": 0,
+   "artifact": "research/control/market_data_plane_v2_run/perf_run_v2.json"
+  },
+  {
+   "step": "git diff --check (both trees)",
+   "exit": 0
+  }
+ ],
+ "failure_accounting": {
+  "total_failing": "2 failed + 6 errors, reproduced BYTE-IDENTICALLY (same counts, same tests) at the untouched V1 tip 917b8749 which contains ZERO V2 code -> not attributable to MARKET-DATA-PLANE-V2",
+  "legacy_adapters_2_failed": {
+   "root_cause": "FileNotFoundError: .worktrees/forex-free-v8/integration/research/control/forex_free_v8_run/state.json \u2014 the owner's post-terminal worktree cleanup emptied .worktrees/forex-free-v8/ and .worktrees/stocks-free-v12/; tests/test_legacy_adapters.py reads REAL legacy state files from main-root worktree paths (measured: both dirs are now empty)",
+   "classification": "ENVIRONMENTAL_HOST_DRIFT \u2014 repo-level fixture regression introduced outside this cycle; affects ANY tree on this host including the historical V1 tip"
+  },
+  "v9_universe_audit_6_errors": {
+   "root_cause": "TypeError: 'NoneType' object is not a mapping at scripts/v9_universe_audit.py:567 inside the module-scoped rerun_pair fixture \u2014 the audit script's funding revaluation input at main-root no longer resolves to a mapping (host data drift since the forex V9 era)",
+   "classification": "ENVIRONMENTAL_HOST_DRIFT \u2014 same signature at the V1 tip; pre-existing, outside this cycle's code"
+  },
+  "code_attributable_failures": 0
+ },
+ "performance": {
+  "artifact": "perf_run_v2.json (mdp_perf_run@2)",
+  "event_path": {
+   "median_eps": 5950.1,
+   "p95_eps": 6320.5,
+   "runs7_s": [
+    18.2,
+    31.6,
+    33.6,
+    35.6,
+    57.4,
+    55.4,
+    33.5
+   ]
+  },
+  "bar_path": {
+   "median_bps": 3035.0,
+   "p95_bps": 3510.0,
+   "note": "reported separately, no cross-host comparison"
+  },
+  "rss_portable": {
+   "peak_rss_raw": 1377124352,
+   "unit": "bytes (darwin)",
+   "mib": 1313.328125
+  },
+  "ruling": "HOST CLASS MISMATCH: V1 baseline was measured on host 192.168.0.20; this run on 192.168.0.3. The frozen rule (architecture_freeze_v2 performance_procedure, plan section 9 P8) forbids comparing unlike hosts: the bench's ratio_to_baseline 0.5141 / gate flag FALSE is a cross-host artifact and is NOT accepted as a regression finding. Per the freeze: NEW BASELINE RECORDED for host .3 = 5950.1 eps median (event) and 3035.0 bps (bar); the 20% ceiling stays armed for FUTURE same-host (.3) comparisons. No HFT claim.",
+  "baseline_registered": {
+   "host_node": "192.168.0.3",
+   "event_median_eps": 5950.1,
+   "bar_median_bps": 3035.0,
+   "measured_utc": "2026-09-10"
+  }
+ },
+ "verdict": "PASS_WITH_ROOT_CAUSED_ENVIRONMENTAL_RESIDUALS",
+ "verdict_basis": "every code-bearing battery step passes (compileall, 1722-test full suite with ZERO code-attributable failures, perf benchmark executes cleanly with portable RSS, diff-check, clean trees); the 8 failing tests are affirmatively root-caused as host-environment drift (owner worktree/data cleanup) by the identical-signature-at-V1-tip proof and the missing-path evidence; per the fail-closed rule this is NOT recorded as a silent PASS \u2014 the residuals are owner-visible repo fixture regressions requiring either fixture restoration or an authorized fixture-remediation lane (fresh A7 wave if code changes; NOT performed by this resumption)"
+}

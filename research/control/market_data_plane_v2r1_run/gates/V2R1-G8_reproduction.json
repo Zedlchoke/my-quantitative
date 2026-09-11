@@ -1,0 +1,37 @@
+{
+  "gate": "V2R1-G8",
+  "verdict": "PASS",
+  "measured_utc": "2026-09-10T15:25:00Z (attempt 1 ~14:55, attempt 2 ~15:22)",
+  "method": "fresh detached worktree at the authorized run SHA 86353a83f39236d627b3a545841b6905f77e0d07 (same SHA the G7 battery executed), no test-cache reuse (-p no:cacheprovider), different cwd (repro-detached tree), PYTHONHASHSEED=424242 (battery used interpreter default), canonical heavy lock acquired for the heavy steps (role DETACHED_REPRODUCTION_A9), released FINISHED overall_exit=0",
+  "attempt_2_results": {
+    "fixture_manifest_validation": "exit 0 — 'fixture manifest valid'",
+    "targeted_a2_a3_a4": "exit 0 / exit 0 / exit 0",
+    "full_suite": "exit 0 — 1809 passed, 16 warnings, 0 failed, 0 errors in 83.87s (battery: 1809 passed, 16 warnings, 85.03s) — EXACT verdict/count match",
+    "terminal_identity_matrix_suite": "exit 0 (45 tests)",
+    "secret_path_scan": "0 pattern hits over base..HEAD diff",
+    "git diff --check": "exit 0",
+    "tree": "clean before and after"
+  },
+  "equality_statement": "verdict/count equality holds for every step; stdout digests differ because pytest -q output embeds durations and host paths — counts, exit codes and warning counts are the declared comparison fields per the run contract",
+  "incidents": [
+    {
+      "id": "V2R1-INC-3",
+      "severity": "LOW",
+      "what": "reproduction attempt 1 full suite 1 failed (tests/test_dashboard.py::test_render_contains_key_sections_and_no_none) with exit 1",
+      "root_cause": "harness contamination, not a repo defect: governance.dashboard_collect.collect_running samples live `ps ax -o pid,etime,command` python process rows, and this controller's background bash wrapper (whose argv embedded the driver heredoc containing the literal text 'None') was alive during the run and got sampled into the rendered HTML; test_dashboard is thereby environment-sensitive to live process argv — pre-existing latent flake outside V2R1's diff (dashboard files untouched; zero repo code impact)",
+      "outcome_exposure": "none (no scored/scientific surface)",
+      "repair": "attempt 2 relaunched from a clean-argv foreground harness on a freshly recreated detached tree -> full suite exit 0",
+      "prevention": "harness launched with minimal argv; follow-up recommendation recorded: make collect_running's ps sampling injectable/mockable so test_dashboard cannot observe foreign process argv (candidate for a future governance-hardening lane)"
+    },
+    {
+      "id": "V2R1-INC-4",
+      "severity": "LOW",
+      "what": "A1 removed the first repro worktree while the session shell cwd sat inside it, poisoning shell spawn (spawn /bin/zsh ENOENT) for the whole session including a subagent",
+      "root_cause": "cwd lifecycle error by the controller",
+      "outcome_exposure": "none",
+      "repair": "directory recreated via the non-shell file-write tool to restore the cwd, then shell recovered, placeholder removed, worktree state pruned and re-created fresh",
+      "prevention": "always cd to a stable path before git worktree remove; recorded per incident-transparency rule"
+    }
+  ],
+  "fresh_tree_provenance": "recreated after INC-3/INC-4; git worktree add --detach at 86353a8, porcelain-clean at start (verified in driver: HEAD match + detached + clean assertions)"
+}

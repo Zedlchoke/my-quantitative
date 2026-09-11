@@ -21,6 +21,21 @@ MDP-V1 M0 additions (PLAN_market_data_plane_v1 sec3.2):
 - A transition to TERMINAL kills the cycle's GO phrase state (P-8: no GO
   survives its cycle's close) — the terminal-GO-death invariant is enforced
   by the writer, not by convention.
+
+MDP-V2R1 A4 addition (PLAN_market_data_plane_v2r1 §12):
+- :func:`declare_terminal_identity` writes the additive TERMINAL_ANCHOR
+  semantics onto a TERMINAL row through the SAME atomic CAS + journal path
+  (event TERMINAL_IDENTITY_DECLARED). The fields are additive: rows without
+  them stay valid legacy rows and validate_registry accepts both shapes.
+  Once declared the identity is immutable; an identical re-declaration is an
+  idempotent no-op (no write, no journal event).
+- :func:`redeclare_terminal_identity` is the ONE sanctioned way to move an
+  already-declared row to a new anchor (A4-r2): FORWARD-ONLY migration — the
+  old anchor must be a git ancestor of the new one — updating head and
+  terminal_anchor_sha together (event TERMINAL_IDENTITY_REDECLARED). An
+  identical re-declaration is a no-op; backward or unrelated moves are
+  refused. Validation never causes a migration, so a repin loop is
+  structurally impossible.
 """
 from __future__ import annotations
 
@@ -28,10 +43,11 @@ import datetime
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Optional
 
-from governance import atomic_io
+from governance import atomic_io, terminal_identity
 
 SCHEMA_ID = "cycle_registry@1"
 REGISTRY_REL = "plans/CYCLE_REGISTRY.json"
@@ -503,3 +519,183 @@ def reconcile_registry(path: os.PathLike | str, registry: dict, *, prev_sha: Opt
     report["mode"] = "EXECUTED"
     report["registry_sha256"] = new_sha
     return report, new_sha
+
+
+# --------------------------------------- declare_terminal_identity (MDP-V2R1)
+
+def declare_terminal_identity(path: os.PathLike | str, registry: dict, *,
+                              prev_sha: Optional[str], cycle_id: str,
+                              terminal_anchor_sha: str,
+                              post_terminal_policy: str = terminal_identity.POST_TERMINAL_POLICY,
+                              reason: str = "declare terminal identity") -> tuple:
+    """Declare the additive TERMINAL_ANCHOR semantics on a TERMINAL row.
+
+    MDP-V2R1 §12.1: a commit cannot contain its own SHA, so a TERMINAL row
+    binds ``head`` to the terminal ANCHOR (the last commit the auditor
+    audited) instead of the live branch tip; post-terminal descendants are
+    judged by governance.terminal_identity against the frozen allowlist.
+
+    Writes ONLY the three additive fields (+ updated_at_utc bookkeeping)
+    through the atomic CAS + journal path; the row's head and every other
+    field are never modified here. Fails closed (no write) unless:
+
+    - the row lifecycle is TERMINAL;
+    - terminal_anchor_sha is 40-hex AND row head is 40-hex AND they are equal;
+    - post_terminal_policy equals the frozen
+      ALLOWLISTED_APPEND_ONLY_DESCENDANTS value;
+    - the identity is not already declared (an identical re-declaration is
+      an idempotent no-op returning (record, current file sha256) with NO
+      write and NO journal event; a different re-declaration raises — the
+      declared identity is immutable).
+
+    Every applied declaration is recorded as a TERMINAL_IDENTITY_DECLARED
+    journal event. Returns (record, new_registry_sha256) — new_registry_sha256
+    is the current file sha on the idempotent no-op path.
+    """
+    rec = resolve(registry, cycle_id)
+    if rec["lifecycle"] != "TERMINAL":
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} lifecycle is "
+            f"{rec['lifecycle']!r}, TERMINAL required — identity semantics "
+            "apply only to closed cycles")
+    if not _HEX40.match(terminal_anchor_sha or ""):
+        raise ValueError(
+            f"declare_terminal_identity: terminal_anchor_sha must be a 40-hex "
+            f"sha, got {terminal_anchor_sha!r}")
+    if not _HEX40.match(rec.get("head", "") or ""):
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} head "
+            f"{rec.get('head')!r} is not a 40-hex sha")
+    if rec["head"] != terminal_anchor_sha:
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} head {rec['head']!r} != "
+            f"terminal_anchor_sha {terminal_anchor_sha!r} — under "
+            f"{terminal_identity.HEAD_SEMANTICS!r} the row head IS the "
+            "terminal anchor (re-anchor first via CAS update, never by "
+            "hand-editing)")
+    if post_terminal_policy != terminal_identity.POST_TERMINAL_POLICY:
+        raise ValueError(
+            f"declare_terminal_identity: post_terminal_policy must be "
+            f"{terminal_identity.POST_TERMINAL_POLICY!r}, got "
+            f"{post_terminal_policy!r}")
+
+    wanted = {
+        "head_semantics": terminal_identity.HEAD_SEMANTICS,
+        "terminal_anchor_sha": terminal_anchor_sha,
+        "post_terminal_policy": post_terminal_policy,
+    }
+    already = {k: rec[k] for k in terminal_identity.IDENTITY_FIELDS if k in rec}
+    if already:
+        if already == wanted:
+            # idempotent re-declaration: no write, no journal event
+            return rec, atomic_io.sha256_file(path)
+        raise ValueError(
+            f"declare_terminal_identity: {cycle_id} already declares terminal "
+            f"identity {already} — the declared identity is immutable; "
+            "re-declaration with different values is refused")
+    rec.update(wanted)
+    now = now_utc()
+    rec["updated_at_utc"] = now
+    registry["updated_at_utc"] = now
+    registry["write_token"] = f"declare_terminal_identity:{cycle_id}:{reason[:60]}"
+    new_sha = save(path, registry, expect_prev_sha=prev_sha)
+    journal_event(path, {
+        "event": "TERMINAL_IDENTITY_DECLARED",
+        "cycle_id": cycle_id,
+        "head": rec["head"],
+        "terminal_anchor_sha": terminal_anchor_sha,
+        "post_terminal_policy": post_terminal_policy,
+        "reason": reason,
+    })
+    return rec, new_sha
+
+
+def redeclare_terminal_identity(path: os.PathLike | str, registry: dict, *,
+                                prev_sha: Optional[str], cycle_id: str,
+                                terminal_anchor_sha: str, repo_root,
+                                reason: str = "redeclare terminal anchor") -> tuple:
+    """Move an ALREADY-DECLARED terminal row to a new anchor — FORWARD-ONLY.
+
+    MDP-V2R1 A4-r2 (plan §12.2): the cure for a substantive post-anchor
+    change inside a cycle's own evidence scope is a NEW anchor after A7
+    re-audit, written ONCE through this writer — never by hand-editing the
+    registry and never because a validation run demands it. Repin loops are
+    structurally impossible: validation is read-only/idempotent and this
+    migration can only move FORWARD.
+
+    Allowed ONLY when:
+
+    - the row lifecycle is TERMINAL;
+    - the row ALREADY carries a declaration (head_semantics
+      TERMINAL_ANCHOR with terminal_anchor_sha present) and its invariant
+      head == terminal_anchor_sha still holds;
+    - the new terminal_anchor_sha is a 40-hex sha and a DIFFERENT one
+      (an identical re-declaration is an idempotent no-op: no write, no
+      journal event; returns (record, current file sha256));
+    - ``git -C repo_root merge-base --is-ancestor <old_anchor>
+      <new_anchor>`` succeeds: the OLD anchor is an ANCESTOR of the new one.
+      Backward or unrelated moves raise without writing (this also refuses
+      anchors that do not exist under repo_root).
+
+    head and terminal_anchor_sha are updated TOGETHER (they stay bound under
+    TERMINAL_ANCHOR semantics); every other field is untouched. The applied
+    migration is recorded as a TERMINAL_IDENTITY_REDECLARED journal event
+    with from_anchor/to_anchor. Returns (record, new_registry_sha256).
+    """
+    rec = resolve(registry, cycle_id)
+    if rec["lifecycle"] != "TERMINAL":
+        raise ValueError(
+            f"redeclare_terminal_identity: {cycle_id} lifecycle is "
+            f"{rec['lifecycle']!r}, TERMINAL required — identity semantics "
+            "apply only to closed cycles")
+    old_anchor = rec.get("terminal_anchor_sha")
+    if rec.get("head_semantics") != terminal_identity.HEAD_SEMANTICS \
+            or not old_anchor:
+        raise ValueError(
+            f"redeclare_terminal_identity: {cycle_id} carries no "
+            f"{terminal_identity.HEAD_SEMANTICS!r} declaration — use "
+            "declare_terminal_identity first; only a declared row can "
+            "migrate its anchor")
+    if not (_HEX40.match(old_anchor) and _HEX40.match(rec.get("head", "") or "")):
+        raise ValueError(
+            f"redeclare_terminal_identity: {cycle_id} declared identity is "
+            f"malformed (head={rec.get('head')!r}, "
+            f"terminal_anchor_sha={old_anchor!r})")
+    if rec["head"] != old_anchor:
+        raise ValueError(
+            f"redeclare_terminal_identity: {cycle_id} head {rec['head']!r} != "
+            f"terminal_anchor_sha {old_anchor!r} — the declared row is "
+            "malformed; fix the row before migrating (never by hand-editing)")
+    if not _HEX40.match(terminal_anchor_sha or ""):
+        raise ValueError(
+            f"redeclare_terminal_identity: terminal_anchor_sha must be a "
+            f"40-hex sha, got {terminal_anchor_sha!r}")
+    if terminal_anchor_sha == old_anchor:
+        # identical redeclare: structurally a no-op (no write, no event)
+        return rec, atomic_io.sha256_file(path)
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "merge-base", "--is-ancestor",
+         old_anchor, terminal_anchor_sha], capture_output=True)
+    if proc.returncode != 0:
+        raise ValueError(
+            f"redeclare_terminal_identity: {cycle_id} forward-only migration "
+            f"refused — old anchor {old_anchor} is NOT a git ancestor of the "
+            f"proposed anchor {terminal_anchor_sha} under repo_root "
+            f"{repo_root} (backward or unrelated moves are never written; "
+            "migrations only move forward, plan §12.2)")
+
+    rec["head"] = terminal_anchor_sha
+    rec["terminal_anchor_sha"] = terminal_anchor_sha
+    now = now_utc()
+    rec["updated_at_utc"] = now
+    registry["updated_at_utc"] = now
+    registry["write_token"] = f"redeclare_terminal_identity:{cycle_id}:{reason[:60]}"
+    new_sha = save(path, registry, expect_prev_sha=prev_sha)
+    journal_event(path, {
+        "event": "TERMINAL_IDENTITY_REDECLARED",
+        "cycle_id": cycle_id,
+        "from_anchor": old_anchor,
+        "to_anchor": terminal_anchor_sha,
+        "reason": reason,
+    })
+    return rec, new_sha

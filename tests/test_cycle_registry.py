@@ -22,7 +22,9 @@ writer (they never hard-code cycle names).
 """
 from __future__ import annotations
 
+import copy
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -262,3 +264,331 @@ def test_live_registry_invariants_hold_for_whatever_is_committed():
     assert active.isdisjoint(closed)
     for cid in ids:
         assert cycle_registry.resolve(reg, cid)["cycle_id"] == cid
+
+
+# ------------------ MDP-V2R1 A4 additive: declare_terminal_identity ---------
+
+ANCHOR = "a" * 40
+EVENTS = "CYCLE_REGISTRY.events.jsonl"
+
+
+def _terminal_registry():
+    return _minimal_registry(_cycle_record(
+        lifecycle="TERMINAL", go_phrase_state="DEAD (consumed at its close)",
+        heartbeat_utc=""))
+
+
+def _saved_terminal_registry(tmp_path):
+    reg = _terminal_registry()
+    p = tmp_path / "CYCLE_REGISTRY.json"
+    return p, cycle_registry.save(p, reg)
+
+
+def _events(tmp_path):
+    return atomic_io.read_events(tmp_path / EVENTS)
+
+
+def test_declare_terminal_identity_happy_path_writes_row_and_journal(tmp_path):
+    p, saved = _saved_terminal_registry(tmp_path)
+    n_events = len(_events(tmp_path))
+    rec, new_sha = cycle_registry.declare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=saved, cycle_id="TEST-C1",
+        terminal_anchor_sha=ANCHOR)
+    assert rec["head"] == ANCHOR
+    assert rec["head_semantics"] == "TERMINAL_ANCHOR"
+    assert rec["terminal_anchor_sha"] == ANCHOR
+    assert rec["post_terminal_policy"] == \
+        "ALLOWLISTED_APPEND_ONLY_DESCENDANTS"
+    events = _events(tmp_path)
+    # the CAS save appends REGISTRY_SAVED, then the typed declaration event
+    assert len(events) == n_events + 2
+    declared = events[-1]
+    assert declared["event"] == "TERMINAL_IDENTITY_DECLARED"
+    assert declared["cycle_id"] == "TEST-C1"
+    assert declared["terminal_anchor_sha"] == ANCHOR
+    assert len([e for e in events
+                if e["event"] == "TERMINAL_IDENTITY_DECLARED"]) == 1
+    # the registry reloads schema-valid with the additive fields on board
+    reloaded = cycle_registry.load(p)
+    assert cycle_registry.resolve(reloaded, "TEST-C1")["head_semantics"] == \
+        "TERMINAL_ANCHOR"
+    cycle_registry.validate_registry(reloaded)
+    assert new_sha == atomic_io.sha256_file(p)
+
+
+def test_declare_terminal_identity_only_adds_the_three_fields(tmp_path):
+    p, saved = _saved_terminal_registry(tmp_path)
+    before = copy.deepcopy(cycle_registry.load(p))
+    rec, _ = cycle_registry.declare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=saved, cycle_id="TEST-C1",
+        terminal_anchor_sha=ANCHOR, reason="audit-anchored closure")
+    added = {k for k in rec if k not in before["cycles"][0]}
+    assert added == {"head_semantics", "terminal_anchor_sha",
+                     "post_terminal_policy"}
+    # nothing pre-existing was rewritten (head/lifecycle untouched);
+    # updated_at_utc is the writer's bookkeeping and is allowed to move
+    for k, v in before["cycles"][0].items():
+        if k == "updated_at_utc":
+            continue
+        assert rec[k] == v, k
+
+
+def test_declare_terminal_identity_cas_mismatch_fails_closed(tmp_path):
+    p, _saved = _saved_terminal_registry(tmp_path)
+    stale_prev = "0" * 64
+    with pytest.raises(atomic_io.ControlStateDrift):
+        cycle_registry.declare_terminal_identity(
+            p, cycle_registry.load(p), prev_sha=stale_prev, cycle_id="TEST-C1",
+            terminal_anchor_sha=ANCHOR)
+    # nothing declared, nothing journaled
+    rec = cycle_registry.load(p)["cycles"][0]
+    assert "head_semantics" not in rec
+    assert not [e for e in _events(tmp_path)
+                if e["event"] == "TERMINAL_IDENTITY_DECLARED"]
+
+
+def test_declare_terminal_identity_non_terminal_row_raises(tmp_path):
+    reg = _minimal_registry(_cycle_record())  # ACTIVE_LIGHT default
+    with pytest.raises(ValueError):
+        cycle_registry.declare_terminal_identity(
+            tmp_path / "CYCLE_REGISTRY.json", reg, prev_sha=None,
+            cycle_id="TEST-C1", terminal_anchor_sha=ANCHOR)
+
+
+def test_declare_terminal_identity_head_mismatch_raises(tmp_path):
+    reg = _terminal_registry()
+    with pytest.raises(ValueError):
+        cycle_registry.declare_terminal_identity(
+            tmp_path / "CYCLE_REGISTRY.json", reg, prev_sha=None,
+            cycle_id="TEST-C1", terminal_anchor_sha="b" * 40)
+
+
+def test_declare_terminal_identity_malformed_anchor_raises(tmp_path):
+    reg = _terminal_registry()
+    with pytest.raises(ValueError):
+        cycle_registry.declare_terminal_identity(
+            tmp_path / "CYCLE_REGISTRY.json", reg, prev_sha=None,
+            cycle_id="TEST-C1", terminal_anchor_sha="41bf9b1")
+
+
+def test_declare_terminal_identity_unknown_policy_raises(tmp_path):
+    reg = _terminal_registry()
+    with pytest.raises(ValueError):
+        cycle_registry.declare_terminal_identity(
+            tmp_path / "CYCLE_REGISTRY.json", reg, prev_sha=None,
+            cycle_id="TEST-C1", terminal_anchor_sha=ANCHOR,
+            post_terminal_policy="ANYTHING_GOES")
+
+
+def test_declare_terminal_identity_idempotent_redeclare_writes_nothing(tmp_path):
+    """Documented rule: an identical re-declaration is an idempotent no-op —
+    NO write, NO journal event; the returned sha is the CURRENT file sha."""
+    p, saved = _saved_terminal_registry(tmp_path)
+    cycle_registry.declare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=saved, cycle_id="TEST-C1",
+        terminal_anchor_sha=ANCHOR)
+    bytes_before = p.read_bytes()
+    n_events = len(_events(tmp_path))
+    rec, sha = cycle_registry.declare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+        cycle_id="TEST-C1", terminal_anchor_sha=ANCHOR)
+    assert p.read_bytes() == bytes_before, "idempotent no-op must not write"
+    assert len(_events(tmp_path)) == n_events, "no duplicate journal event"
+    assert sha == atomic_io.sha256_file(p)
+    assert rec["terminal_anchor_sha"] == ANCHOR
+
+
+def test_declare_terminal_identity_conflicting_redeclare_raises(tmp_path):
+    """The declared identity is immutable: a different anchor (or policy) is
+    refused, never silently rewritten."""
+    p, saved = _saved_terminal_registry(tmp_path)
+    cycle_registry.declare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=saved, cycle_id="TEST-C1",
+        terminal_anchor_sha=ANCHOR)
+    with pytest.raises(ValueError):
+        cycle_registry.declare_terminal_identity(
+            p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+            cycle_id="TEST-C1", terminal_anchor_sha="c" * 40)
+
+
+def test_validate_registry_accepts_declared_and_legacy_terminal_rows():
+    """The additive fields are schema-neutral: rows WITH and WITHOUT the
+    declaration are both valid cycle_registry@1."""
+    declared = _cycle_record(cycle_id="TEST-DECLARED", lifecycle="TERMINAL",
+                             go_phrase_state="DEAD (x)", heartbeat_utc="",
+                             head=ANCHOR,
+                             head_semantics="TERMINAL_ANCHOR",
+                             terminal_anchor_sha=ANCHOR,
+                             post_terminal_policy=
+                             "ALLOWLISTED_APPEND_ONLY_DESCENDANTS")
+    legacy = _cycle_record(cycle_id="TEST-LEGACY", lifecycle="TERMINAL",
+                           go_phrase_state="DEAD (x)", heartbeat_utc="")
+    cycle_registry.validate_registry(_minimal_registry(declared, legacy))
+
+
+# --------------- MDP-V2R1 A4-r2 additive: redeclare_terminal_identity -------
+#
+# FORWARD-ONLY anchor migration (plan §12.2): the old anchor must be a git
+# ANCESTOR of the new one under repo_root; head and terminal_anchor_sha move
+# together; validation never causes a migration, so repin loops are
+# structurally impossible.
+
+def _git_run(repo, *args, check=True):
+    proc = subprocess.run(["git", "-C", str(repo), *args],
+                          capture_output=True, text=True)
+    if check and proc.returncode != 0:
+        raise AssertionError(f"git {args} failed: {proc.stderr.strip()}")
+    return proc
+
+
+def _git_commit(repo, relpath, content, msg):
+    path = Path(repo) / relpath
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+    _git_run(repo, "add", relpath)
+    _git_run(repo, "-c", "user.name=A4 Test", "-c", "user.email=a4@test.invalid",
+             "commit", "-q", "-m", msg)
+    return _git_run(repo, "rev-parse", "HEAD").stdout.strip()
+
+
+@pytest.fixture
+def lineage(tmp_path):
+    """A synthetic git repo: anchor_old -> evidence child -> fix child."""
+    r = tmp_path / "repo"
+    r.mkdir()
+    _git_run(r, "-c", "init.defaultBranch=main", "init", "-q")
+    _git_commit(r, "README.md", "seed\n", "seed")
+    anchor_old = _git_commit(r, "research/impl.py", "VERSION = 1\n",
+                             "audited anchor")
+    evidence = _git_commit(r, "research/control/cycle_run/event_log.jsonl",
+                           '{"event": "P9_TERMINAL"}\n', "evidence append")
+    fix = _git_commit(r, "research/control/cycle_run/addendum.json", "{}\n",
+                      "post-audit fix")
+    return r, anchor_old, evidence, fix
+
+
+def _declared_terminal(tmp_path, lineage, anchor):
+    """A saved registry with TEST-C1 TERMINAL, declared at `anchor`."""
+    repo, anchor_old, _evidence, _fix = lineage
+    reg = _minimal_registry(_cycle_record(
+        lifecycle="TERMINAL", go_phrase_state="DEAD (consumed at its close)",
+        heartbeat_utc="", head=anchor))
+    p = tmp_path / "CYCLE_REGISTRY.json"
+    saved = cycle_registry.save(p, reg)
+    cycle_registry.declare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=saved, cycle_id="TEST-C1",
+        terminal_anchor_sha=anchor)
+    return p
+
+
+def test_redeclare_terminal_identity_forward_happy_path(tmp_path, lineage):
+    """anchor_old -> fix (a descendant): head AND terminal_anchor_sha move
+    together, head_semantics stays bound, one TERMINAL_IDENTITY_REDECLARED
+    journal event records from_anchor/to_anchor, registry reloads valid."""
+    repo, anchor_old, _evidence, fix = lineage
+    p = _declared_terminal(tmp_path, lineage, anchor_old)
+    n_events = len(_events(tmp_path))
+    rec, new_sha = cycle_registry.redeclare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+        cycle_id="TEST-C1", terminal_anchor_sha=fix, repo_root=repo,
+        reason="A7 delta re-audit (A4-r2)")
+    assert rec["head"] == fix
+    assert rec["terminal_anchor_sha"] == fix
+    assert rec["head_semantics"] == "TERMINAL_ANCHOR"
+    assert rec["post_terminal_policy"] == \
+        "ALLOWLISTED_APPEND_ONLY_DESCENDANTS"
+    events = _events(tmp_path)
+    redecl = [e for e in events
+              if e["event"] == "TERMINAL_IDENTITY_REDECLARED"]
+    assert len(redecl) == 1
+    assert redecl[0]["cycle_id"] == "TEST-C1"
+    assert redecl[0]["from_anchor"] == anchor_old
+    assert redecl[0]["to_anchor"] == fix
+    assert redecl[0]["reason"] == "A7 delta re-audit (A4-r2)"
+    # head and anchor stay bound under TERMINAL_ANCHOR semantics
+    reloaded = cycle_registry.load(p)
+    row = cycle_registry.resolve(reloaded, "TEST-C1")
+    assert row["head"] == row["terminal_anchor_sha"] == fix
+    cycle_registry.validate_registry(reloaded)
+    assert new_sha == atomic_io.sha256_file(p)
+
+
+def test_redeclare_terminal_identity_backward_refused(tmp_path, lineage):
+    """A proposed anchor that is NOT a descendant of the old one (orphan
+    branch root) is refused WITHOUT writing — no registry change, no journal
+    event."""
+    repo, anchor_old, _evidence, _fix = lineage
+    p = _declared_terminal(tmp_path, lineage, anchor_old)
+    _git_run(repo, "checkout", "-q", "--orphan", "stray")
+    _git_run(repo, "add", "-A")
+    _git_run(repo, "-c", "user.name=A4 Test", "-c", "user.email=a4@test.invalid",
+             "commit", "-q", "-m", "unrelated root")
+    stray = _git_run(repo, "rev-parse", "HEAD").stdout.strip()
+    _git_run(repo, "checkout", "-q", "main")
+    assert stray != anchor_old
+    bytes_before = p.read_bytes()
+    n_events = len(_events(tmp_path))
+    with pytest.raises(ValueError) as ei:
+        cycle_registry.redeclare_terminal_identity(
+            p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+            cycle_id="TEST-C1", terminal_anchor_sha=stray, repo_root=repo)
+    assert "forward-only" in str(ei.value)
+    assert anchor_old in str(ei.value) and stray in str(ei.value)
+    assert p.read_bytes() == bytes_before, "refused migration must not write"
+    assert len(_events(tmp_path)) == n_events, "refused migration must not journal"
+
+
+def test_redeclare_terminal_identity_undeclared_row_raises(tmp_path, lineage):
+    """Only an ALREADY-DECLARED row can migrate: a legacy TERMINAL row
+    (head==anchor but no head_semantics) raises without writing."""
+    repo, anchor_old, _evidence, fix = lineage
+    reg = _minimal_registry(_cycle_record(
+        lifecycle="TERMINAL", go_phrase_state="DEAD (x)", heartbeat_utc="",
+        head=anchor_old))
+    p = tmp_path / "CYCLE_REGISTRY.json"
+    cycle_registry.save(p, reg)
+    bytes_before = p.read_bytes()
+    with pytest.raises(ValueError):
+        cycle_registry.redeclare_terminal_identity(
+            p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+            cycle_id="TEST-C1", terminal_anchor_sha=fix, repo_root=repo)
+    assert p.read_bytes() == bytes_before
+
+
+def test_redeclare_terminal_identity_non_terminal_row_raises(tmp_path,
+                                                             lineage):
+    repo, _anchor_old, _evidence, fix = lineage
+    reg = _minimal_registry(_cycle_record())  # ACTIVE_LIGHT, no declaration
+    p = tmp_path / "CYCLE_REGISTRY.json"
+    cycle_registry.save(p, reg)
+    with pytest.raises(ValueError):
+        cycle_registry.redeclare_terminal_identity(
+            p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+            cycle_id="TEST-C1", terminal_anchor_sha=fix, repo_root=repo)
+
+
+def test_redeclare_terminal_identity_malformed_anchor_raises(tmp_path,
+                                                             lineage):
+    repo, anchor_old, _evidence, _fix = lineage
+    p = _declared_terminal(tmp_path, lineage, anchor_old)
+    with pytest.raises(ValueError):
+        cycle_registry.redeclare_terminal_identity(
+            p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+            cycle_id="TEST-C1", terminal_anchor_sha="41bf9b1",
+            repo_root=repo)
+
+
+def test_redeclare_terminal_identity_identical_is_a_noop(tmp_path, lineage):
+    """Identical redeclare: no write, no journal event, current file sha
+    returned — migration cannot even re-emit its own event."""
+    repo, anchor_old, _evidence, _fix = lineage
+    p = _declared_terminal(tmp_path, lineage, anchor_old)
+    bytes_before = p.read_bytes()
+    n_events = len(_events(tmp_path))
+    rec, sha = cycle_registry.redeclare_terminal_identity(
+        p, cycle_registry.load(p), prev_sha=atomic_io.sha256_file(p),
+        cycle_id="TEST-C1", terminal_anchor_sha=anchor_old, repo_root=repo)
+    assert p.read_bytes() == bytes_before, "identical redeclare must not write"
+    assert len(_events(tmp_path)) == n_events, "no duplicate journal event"
+    assert sha == atomic_io.sha256_file(p)
+    assert rec["terminal_anchor_sha"] == anchor_old

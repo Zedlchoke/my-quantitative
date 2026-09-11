@@ -41,6 +41,7 @@ __all__ = [
     "SEQUENCE_SEMANTICS",
     "REASON_CODES",
     "ManifestValidationError",
+    "is_hex64",
     "sha256_hex",
     "compute_manifest_id",
     "build_manifest",
@@ -131,6 +132,20 @@ _SECRET_KEY_PATTERN = re.compile(
 )
 
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def is_hex64(value: Any) -> bool:
+    """True iff ``value`` is a str matching the frozen content-ID grammar.
+
+    The grammar ``^[0-9a-f]{64}$`` (exactly 64 lowercase hex chars) is the
+    V2 (finding F2) contract for caller-supplied content-ID path arguments
+    (chunk sha256 and manifest_id). Empty, short, 63/65-length, overlong,
+    uppercase, non-hex, traversal/separator/absolute, trailing-newline and
+    non-string (pathlike/bytes) inputs all fail; the archive path builders
+    reject them fail-closed before any filesystem access. Implemented with
+    ``re.fullmatch`` because ``$`` would also accept a trailing newline.
+    """
+    return isinstance(value, str) and bool(re.fullmatch(r"[0-9a-f]{64}", value))
 
 
 class ManifestValidationError(ValueError):

@@ -1,0 +1,197 @@
+{
+  "schema": "mdp_v2_architecture_freeze@1",
+  "cycle": "MARKET-DATA-PLANE-V2",
+  "frozen_utc": "2026-09-10T02:20:00Z",
+  "frozen_by": "A1",
+  "authority": "plans/PLAN_market_data_plane_v2.md @ 8f5ee9c4e7c26416732a3b2c31957e58546d45df (sole fresh-cycle authority); owner dispatch executing plan section 17",
+  "exact_shas": {
+    "integration_base_sha": "8f5ee9c4e7c26416732a3b2c31957e58546d45df",
+    "v1_terminal_tip": "917b8749c6e61887d0e1046a3b99a1f1cf53dca6",
+    "v1_a7_audited_source": "42981b1b1f66ed03e0a933db0a5ef7041220d80e",
+    "v1_merge_to_origin_main": "9ecf48e8081f3e8e51c6a917d0de2925bc3d3037",
+    "p2_freeze_commit": "THIS_COMMIT",
+    "p3_wave_sha": "THIS_COMMIT",
+    "p5_wave_sha": "PENDING_P4 (MDP_V2_CORE_SHA)",
+    "mdp_v2_core_sha": "PENDING_P4"
+  },
+  "findings_and_negative_matrices": {
+    "F1": {
+      "closure": "P1 executed 2026-09-10: lock inspected once, HELD_PROVEN (foreign STOCKS-FREE-V13 pid 49521); full suite NOT_RUN_RESOURCE_CONFLICT recorded append-only at research/control/market_data_plane_v1_run/v1_g9_resumption_verdict.json; scheduler job 20545b514b91 remains WAITING 0/3; re-attempt permitted only at a later phase boundary measurement returning FREE_PROVEN",
+      "negative_cases": ["attempt while lock held is forbidden (verified: not attempted)"]
+    },
+    "F2_identifier_and_path_confinement": {
+      "target_files": ["research/market_data_plane/archive.py", "research/market_data_plane/manifest.py"],
+      "frozen_grammar": "content IDs (chunk sha256 and manifest_id path arguments) must match ^[0-9a-f]{64}$ exactly",
+      "frozen_rules": [
+        "chunk_path(root, sha) raises ArchiveError unless sha is exactly 64 lowercase hex",
+        "manifest_path(root, manifest_id) raises ArchiveError unless manifest_id is exactly 64 lowercase hex",
+        "load_manifest(root, manifest_id) raises ManifestValidationError unless validated body manifest_id == requested manifest_id (filename/body binding)",
+        "path confinement: the resolved absolute target of chunk_path/manifest_path and the caller-visible read/write targets must remain strictly below Path(root).resolve(); verified before ANY filesystem read or write in write_chunk/publish_manifest/load_manifest/verify_chunk paths",
+        "failure mode: fail closed BEFORE any filesystem access outside root; explicit ArchiveError or ManifestValidationError, never a silent fallback",
+        "verify_chunk with a malicious ID returns a report whose errors include the grammar/conf confinement failure, or raises ArchiveError per the frozen rule (A2 freezes which, tests pin it)",
+        "valid historical 64-hex IDs remain byte-compatible: the V1 layout <root>/chunks/<h2>/<h2b>/<sha256>.jsonl and <root>/manifests/<id>.json is unchanged for valid IDs"
+      ],
+      "mandatory_negative_tests": [
+        "empty, short (<64), 63/65-length, uppercase, non-hex and overlong IDs rejected for chunk and manifest paths",
+        "'../' traversal, absolute path, separator and encoded/pathlike variants rejected",
+        "valid manifest bytes stored under a different valid 64-hex filename: load_manifest fails closed (filename/body mismatch)",
+        "symlink escape at a chunk directory boundary and at the manifest directory boundary: target resolves outside root -> fail closed before read/write",
+        "verify_chunk with a malicious ID: visible failure, no filesystem write",
+        "replay with a malicious or filename/body-mismatched manifest ID: fail closed (CorruptReplayInput or ReplayInputError family), never silent acceptance",
+        "all pre-existing valid-ID archive fixtures still pass byte-identically (no historical fixture changes)"
+      ]
+    },
+    "F3_terminal_reconciliation": {
+      "stale_fields_measured_at_intake": {
+        "state_json": "phase P8_A7_AUDIT_IN_FLIGHT, head '35492e6' (short), G11 IN FLIGHT, G12 PENDING — contradicts terminal_report P9 closed",
+        "heartbeat_json": "phase P8_A7_AUDIT_IN_FLIGHT @ 2026-09-09T13:14:37Z",
+        "worktree_manifest_json": "planned[] still lists completed a8-nautilus and a7-audit lanes",
+        "canonical_registry": "MARKET-DATA-PLANE-V1 row head 6643359826f8ef25dea0c29b58994241d905a9ea (early M0 pick), integration_worktree empty — vs branch/worktree tip 917b8749c6e61887d0e1046a3b99a1f1cf53dca6"
+      },
+      "closure_sequence": [
+        "A3 delivers a terminal-consistency validator (research/governance/terminal_consistency.py) + tests: compares terminal report, state(+addendum), heartbeat(+addendum), worktree manifest(+addendum), registry row, branch tip, workers, gates and event log; must FAIL on the exact V1 stale fixture and PASS only when the addendum is supplied",
+        "A1 (integration, not A7, not lanes) appends research/control/market_data_plane_v1_run/v1_post_terminal_reconciliation.json naming every stale field and its corrected value",
+        "A1 appends an event-log correction line to research/control/market_data_plane_v1_run/event_log.jsonl (append-only; prior events untouched)",
+        "A1 updates the MARKET-DATA-PLANE-V1 registry row ONLY via researchctl cycle update (CAS+journal): head -> 917b8749c6e61887d0e1046a3b99a1f1cf53dca6, worktree -> historical path, workers 0, lifecycle TERMINAL, GO dead, G9 resumption status per F1",
+        "A1 regenerates the ACTIVE_CYCLES.json projection through the canonical writer"
+      ],
+      "historical_bytes_rule": "V1 state.json/heartbeat.json/worktree_manifest.json/terminal_report.json bad bytes stay visible and unmodified; the addendum is the correction layer the validator consumes"
+    },
+    "F4_portable_resource_metrics": {
+      "target_files": ["research/control/market_data_plane_v2_run/perf_bench_v2.py", "tests/test_mdp_perf_portable.py"],
+      "schema_bump": {
+        "schema": "mdp_perf_run@2",
+        "new_fields": ["platform (darwin|linux|...)", "peak_rss_raw (int)", "peak_rss_raw_unit (bytes|kib|unknown)", "peak_rss_bytes (int)", "peak_rss_mib (float)"],
+        "conversion": "unit bytes -> bytes=raw; unit kib -> bytes=raw*1024; unknown -> peak_rss_bytes null and a visible UNMEASURABLE note; mib = bytes/1048576 (float)",
+        "tests": "monkeypatch both macOS (bytes) and Linux (KiB) resource.getrusage values and assert conversions exactly"
+      },
+      "v1_erratum": "research/control/market_data_plane_v1_run/perf_v1_unit_erratum.json (A1, append-only): explains that V1 field name peak_rss_kb held DARWIN BYTES; 1293058048 on the V1 Darwin host = 1293058048/1048576 = 1233.21... MiB (~1233.2 MiB); V1 baseline bytes are not rewritten"
+    },
+    "F5_doctor_waivers": {
+      "target_files": ["research/governance/doctor_waivers.py", "tests/test_doctor_waivers.py"],
+      "waiver_fields": ["finding identity (kind + detail digest)", "severity", "exact affected digest (sha256 of the exact finding detail string the waiver applies to)", "classification", "evidence reference", "approver authority", "created_utc", "expiry_utc or terminal event reference", "status ACTIVE|EXPIRED|SUPERSEDED|RESOLVED"],
+      "doctor_behavior": [
+        "unwaived HIGH remains HIGH",
+        "mismatched digest or expired waiver does NOT suppress the finding",
+        "active exact-digest waiver emits a visible WAIVED_HIGH label (never PASS, never silent suppression)",
+        "terminal/resumed-cycle evolution may supersede a historical pause pin only via an append-only transition record referenced by the waiver",
+        "monitoring stays read-only; dashboard refresh never writes tracked files (existing behavior preserved and tested)"
+      ],
+      "waiver_store": "research/control/doctor_waivers/*.json; loader validates schema; V2 ships the mechanism and tests but creates NO waiver for foreign-cycle findings (no authority)"
+    }
+  },
+  "bar_contract": {
+    "schema_name": "mdp.market_bar@2",
+    "schema_version_string": "mdp.market_bar@2",
+    "does_not_mutate": "mdp.market_event@1 stays byte-frozen; to_bar in nautilus_bridge gains its real mapping; the BAR_NOT_MAPPED_IN_V1 constant message is retired by the @2 implementation without editing @1 event semantics",
+    "exact_field_list_31": ["schema_version", "bar_id", "raw_id", "source_id", "provider_id", "venue", "instrument_id", "asset_class", "bar_type", "interval_ns", "open_time_utc_ns", "close_time_utc_ns", "available_time_utc_ns", "open", "high", "low", "close", "volume", "quote_volume", "trade_count", "taker_buy_base", "taker_buy_quote", "price_precision", "size_precision", "adjustment_mode", "corporate_action_ref", "completeness_status", "quality_status", "reason_codes", "raw_sha256", "manifest_sha256", "normalizer_version"],
+    "field_rules": {
+      "ohlv_values": "open/high/low/close/volume/quote_volume/taker_buy_base/taker_buy_quote persist as exact decimal strings (canonical fixed-point); null only where the rule allows NOT_EVALUABLE",
+      "time_order": "open_time_utc_ns < close_time_utc_ns <= available_time_utc_ns unless a provider-specific evidenced publication rule proves later availability (frozen per-asset rule only; no generic relaxation)",
+      "no_microstructure": "a bar may never create BBO, depth, spread or TCA evidence; no bar field may be consumed by bbo/depth/tca modules (test-enforced)",
+      "raw_vs_adjusted": "adjustment_mode in {RAW, CORP_ACTION_ADJUSTED}; adjusted bars carry a non-null corporate_action_ref and are a DIFFERENT identity from raw (bar_id includes adjustment_mode)",
+      "missing_data": "volume/quote_volume/trade_count/taker_buy_base/taker_buy_quote missing -> null with completeness_status NOT_EVALUABLE contribution; NEVER zero",
+      "interval_disjointness": "duplicate or non-disjoint bar intervals for the same (instrument_id, bar_type, interval_ns, adjustment_mode) fail closed at build/stream time (BarIntervalError family), not quarantine",
+      "clock_identity": "crypto continuous-clock; forex session/DST and stocks exchange calendars are asset-specific adapter rules, never bar-model rules"
+    },
+    "identity_rules": {
+      "bar_id": "sha256 of canonical_json of the frozen identity tuple {schema_version, source_id, provider_id, venue, instrument_id, asset_class, bar_type, interval_ns, open_time_utc_ns, adjustment_mode}",
+      "raw_id": "64-hex; row-addressable raw content id; frozen to equal raw_sha256 for row-derived bars in @2",
+      "raw_sha256": "sha256 of the exact raw provider record bytes the bar was normalized from (required 64-hex)",
+      "manifest_sha256": "the upstream retrieval manifest id from which the bar was normalized (required 64-hex; mirrors A3_Q4 event ruling: upstream retrieval manifest, NOT the archive storage manifest)"
+    },
+    "bar_reason_codes_extension": "mdp.bar_reason_codes@2 extends (never mutates) reason_codes@1 with: BAR_OHLC_ORDER_VIOLATION, BAR_NONPOSITIVE_PRICE, BAR_INTERVAL_OVERLAP, BAR_INTERVAL_DUPLICATE, BAR_VOLUME_NOT_EVALUABLE, BAR_OUTSIDE_CALENDAR, BAR_PRECISION_LOSS; quality_status vocabulary reuses the existing quality module status function",
+    "new_modules": ["research/market_data_plane/bars.py (model + validation + build)", "research/market_data_plane/bar_stream.py (disjointness/order enforcement over bar sequences)"],
+    "extensions": ["archive.put_bar_records + bar manifest builder (mdp.bar_chunk_manifest@2 with bar-class statistics)", "replay support for bar streams (structural checks: disjointness, order, no-lookahead available_time gate)", "nautilus_bridge.to_bar lossless-or-raise to pinned nautilus_trader 1.230.0 Bar (fails closed on precision/identity mismatch)"]
+  },
+  "adapters": {
+    "namespace": "research/market_data_plane/adapters/<crypto|forex|stocks>/ only; shared exports and __init__.py belong to A1 integration",
+    "frozen_interface": {
+      "normalize_bar(raw_record: Mapping, context: AdapterContext) -> dict": "one raw provider record -> one validated canonical mdp.market_bar@2 dict; raises on any violation (fail closed)",
+      "normalize_stream(raw_records: Iterable[Mapping], context) -> AdapterResult": "ordered normalization + interval disjointness enforcement + coverage diagnostics; quarantined/invalid rows are counted with reason codes, never silently dropped",
+      "check_coverage(result, context) -> CoverageReport": "asset calendar semantics: expected-vs-observed intervals, gaps classified expected (session/weekend/holiday) vs unexplained",
+      "project_decision_schedule(result, context) -> list[dict]": "schedule-only decision rows with one-bar (or declared) availability lag; NO PnL, NO signals beyond schedule, NO selection"
+    },
+    "network_rule": "no network calls in any unit test; fixtures are synthetic or already-authorized redistributable",
+    "crypto": {
+      "identity": "venue 'BINANCE_USDM'; instrument_id = raw symbol (e.g. 'BTCUSDT'); asset_class 'crypto_perpetual'; perpetual contract identity asserted via the adapter context table",
+      "clock": "continuous 24/7; kline open_time ms -> ns exactly once at the frozen conversion helper",
+      "close_time_rule": "close_time_ns = open_time_ns + interval_ns - 1_000_000 (Binance kline inclusive-close ms rule)",
+      "availability_rule": "available_time = close_time (close-time availability); decision schedule enforces exactly one completed-bar lag",
+      "aggtrades_event_path": "OPTIONAL synthetic-only TRADE event adapter (aggTrades ID sequence duplicate/gap semantics) — does not gate V2-G4",
+      "interval_aggregation": "1m->2m aggregation only from two complete adjacent 1m bars with the frozen boundary rule; direct Binance 2m is NOT claimed",
+      "legacy_parity_target": "15m research schedule parity on an S0 subset"
+    },
+    "forex": {
+      "identity": "canonical pair identity base/quote from provider symbol; instrument_id 'EUR/USD' form; venue from adapter context",
+      "clock": "provider timezone -> UTC with explicit DST fixtures; session/weekend gaps classified EXPECTED, distinguished from unexplained missing data",
+      "macro_boundary": "date-only macro observations keep next-day-exclusive availability bounds (Data Fusion PIT rule); macro rows are NOT bars and never fabricated as market events",
+      "microstructure_rule": "OHLCV never creates bid/ask, spread, swap or rollover evidence",
+      "legacy_parity_target": "legacy hourly decision schedule parity on an authorized S0 subset (SYNTHETIC ONLY in V2 — no authorized stored FX OHLCV exists)"
+    },
+    "stocks": {
+      "identity": "permanent entity id distinct from ticker (adapter context table); ticker changes never change entity identity",
+      "calendar": "exchange calendar, holidays, early closes from frozen synthetic calendar fixtures",
+      "adjustment": "raw vs adjusted OHLCV separate identities; split/dividend factors with exact availability timestamps; corporate-action evidence referenced (corporate_action_ref), never erased",
+      "delisting": "no forward-filled price after delisting (fail closed); dead-name coverage census is a declared adapter diagnostic",
+      "total_return": "total-return use declared separately from raw execution prices via adjustment_mode",
+      "legacy_parity_target": "legacy daily decision schedule parity on an authorized S0 subset (SYNTHETIC ONLY in V2 — no eligible authorized stocks OHLCV snapshot)"
+    }
+  },
+  "dual_read_shadow": {
+    "scope": "per asset, one bounded predeclared S0/open-window snapshot; legacy reader and MDP adapter consume the SAME raw bytes (same raw SHA set)",
+    "comparator_dimensions_10": ["input raw SHA set equality", "instrument universe and identity mapping", "row/event/bar count", "min/max exchange/open/close/available clocks", "coverage gaps and duplicates", "exact OHLCV/price/quantity/volume values after declared representation", "adjustment and corporate-action mode", "feature-ready ordering", "decision timestamps and schedule-only target/signals", "diagnostics/quarantine counts and reasons"],
+    "tolerances_frozen": "identifiers, timestamps, counts, missingness, schedules, and decimal prices/volumes: EXACT after canonical decimal conversion; derived floating indicators: exact Decimal or a named absolute/relative tolerance justified by the legacy implementation; zero unexplained differences required for PASS",
+    "forbidden_outputs": ["PnL, PF, Sharpe, drawdown, break-even cost, stress PnL", "family ranking or selection", "observed/published trial records", "S1 results"],
+    "leak_scan": "recursive PnL-field leak scan over every emitted artifact record (all nested keys, not top-level only)",
+    "replay": "shadow run replay must produce zero scientific denominator delta",
+    "denominator_rule": "zero scored results; observed/published denominators untouched; this is an engineering cycle with scored budget 0"
+  },
+  "s0_snapshot_manifests": {
+    "crypto": {
+      "status": "AVAILABLE_CANDIDATE",
+      "snapshot": "existing crypto-cycle S0 catalog at <main_root>/catalog/data/binance_bar (gitignored host data; ETHUSDT 15m klines used by the live crypto cycles; crypto S0 OPEN under CRYPTO-V17)",
+      "entitlement_basis": "Binance public market data already authorized for research by the active crypto cycles; internal derived use only (dual-read parity); raw payloads stay gitignored; only hashes/schemas/manifests/census/diagnostics may be committed",
+      "bound": "BOUNDED subset frozen at P6 time: a single symbol, a single contiguous window of at most 5000 consecutive 15m bars, hand-recorded raw SHA set before any comparison",
+      "s1_exclusion": "S1 is SEALED and never captured program-wide (holdout never opened per wayfinder ledger); recursive input-manifest scan must prove inputs intersect no S1 path/date; frozen scan artifact required",
+      "schedule_parity": "vs the legacy 15m research schedule (Nautilus bar clock) — schedule-only rows"
+    },
+    "forex": {
+      "status": "UNAVAILABLE_BLOCKED_DATA_AUTHORITY",
+      "basis": "no stored authorized FX OHLCV/bid-ask snapshot exists (V3 sprint measured bid/ask 0/7 pairs; FOREX-FREE-V9 P0 data authority is a separate owner action not yet taken); FRED/official macro rows are Data Fusion observables, not bars; V2 does not infer authority and does not read S1 or foreign staged data beyond directory census",
+      "consequence": "crypto-style real shadow proof IMPOSSIBLE in V2; synthetic adapter tests only; V2-G5-F records BLOCKED_DATA_AUTHORITY"
+    },
+    "stocks": {
+      "status": "UNAVAILABLE_BLOCKED_DATA_AUTHORITY",
+      "basis": "the only live stocks S0 (STOCKS-FREE-V13, P0D bulk ingest) contains SEC form-4/filings and EODHD corporate-action staging, not an authorized daily-OHLCV snapshot; historical EODHD price panels belong to terminal cycles with S0 CLOSED; V2 does not infer internal-derived-use authority over an active foreign cycle's staging (plan section 4)",
+      "consequence": "real shadow proof IMPOSSIBLE in V2; synthetic adapter tests only; V2-G5-S records BLOCKED_DATA_AUTHORITY"
+    }
+  },
+  "performance_procedure": {
+    "bench": "research/control/market_data_plane_v2_run/perf_bench_v2.py extends the V1 procedure (200k-event synthetic fixture, warmups 2, 7 runs, median/p95 eps) with: separate BAR-path throughput report, mdp_perf_run@2 portable RSS fields, host_node + platform recorded",
+    "gates": "V1 TRADE/QUOTE throughput within the frozen 20 percent regression ceiling on the same host class; BAR throughput reported separately with no cross-host comparison; no HFT claim",
+    "weight": "HEAVY (requires FREE_PROVEN + machine-wide lock, exclusive)"
+  },
+  "ownership_and_merge_order": {
+    "concurrency_cap": "A1 + at most 3 light lanes concurrently (plan 5.3); heavy work queues on the machine-wide lock",
+    "p3_wave": "A2 (F2 archive/manifest confinement + security tests) -> integrate FIRST; A3 (F3 validator + F5 waivers + governance tests) -> integrate SECOND; A4 (F4 portable perf + mdp.market_bar@2 + bridge) -> integrate THIRD; targeted tests after each pick; shared-export patches are A1-owned with their own test",
+    "p5_wave": "from MDP_V2_CORE_SHA: A5 crypto -> A6 forex -> A8 stocks, same pick order; after each pick: compile/import, adapter targeted tests, core MDP tests, corresponding legacy asset parsing/calendar tests, status + diff check, event-log record",
+    "p9": "A7 independent from the exact candidate SHA; audit artifacts only; never repairs",
+    "lane_contract": "each lane: one worktree, one branch from the exact wave SHA, disjoint ownership manifest, one focused clean commit, handoff format per HOW_TO_BE_A_LEAD_ENGINEER 15.1; lanes never merge, rebase, push, or touch unspecified files"
+  },
+  "gate_map": {
+    "V2-G0": "PASS evidence at research/control/market_data_plane_v2_run/p0_first_report.json + registry row (bootstrap commit 9bcb17b)",
+    "V2-G1": "PASS evidence at research/control/market_data_plane_v1_run/v1_g9_resumption_verdict.json (NOT_RUN_RESOURCE_CONFLICT recorded; re-attempt at later FREE_PROVEN)",
+    "V2-G2": "F2-F5 remediation merged; all negative cases fail closed; historical valid fixtures byte-identical",
+    "V2-G3": "detached-tree core reproduction ALL_MATCH; V1 TRADE/QUOTE compatibility PASS",
+    "V2-G4": "three adapter suites PASS without changing active-cycle files or scientific counters",
+    "V2-G5-C": "authorized crypto S0 shadow exact parity OR the frozen blocked record if authority evidence fails",
+    "V2-G5-F": "BLOCKED_DATA_AUTHORITY record (measured UNAVAILABLE at freeze)",
+    "V2-G5-S": "BLOCKED_DATA_AUTHORITY record (measured UNAVAILABLE at freeze)",
+    "V2-G6": "packets/blocked-records validate; cannot apply to a forbidden active cycle",
+    "V2-G7": "HEAVY: full battery + portable perf when lock FREE_PROVEN; else NOT_RUN_RESOURCE_CONFLICT and no global PASS",
+    "V2-G8": "independent A7 from the candidate SHA, zero unresolved HIGH/CRITICAL",
+    "V2-G9": "terminal metadata/registry/workers/trees reconcile (terminal-consistency validator run against V2 itself)"
+  },
+  "forbidden": "plan section 14 in full: no V1 byte rewrite, no active-cycle retrofit, no S1, no PnL, no denominator increment, no authority from adapter success, no microstructure synthesis from OHLCV, no credentials/payloads in Git, no network unit tests, no lock contention, no hand-editing the registry, no A7 repairs, no push/merge/history rewrite/destructive cleanup"
+}
