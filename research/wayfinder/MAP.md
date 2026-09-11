@@ -1,5 +1,21 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced at the ng1-generation open, 2026-09-11)
+
+- **NG1 GENERATION OPENED → CRYPTO-NG1 / FOREX-NG1 / STOCKS-NG1**
+  (`PLANNED_NOT_STARTED`, registry 2026-09-11; plans
+  `plans/PLAN_crypto_ng1.md` / `plans/PLAN_forex_ng1.md` /
+  `plans/PLAN_stocks_ng1.md`) — first asset cycles on the platform v3 data
+  plane (CADS/AuthorityRegistry/QueryPlane `consume_via_plane`, per-asset
+  adoption commits; frozen sets: S4 Binance H1 panels + OI / S2 FRED
+  vintaged + S3 CPI archives + calendars / S1 Form-4 substrate + stream +
+  EODHD corp-actions). New-mechanism lanes: crypto exogenous announcement
+  + derivatives-calendar clocks; forex CPI print-deviation +
+  release-order structure (vintaged GB/CA channel binding); stocks
+  declared-plan (10b5-1) + amendment/revision observables. GO standing
+  delegation to Lead per owner directive 2026-09-11 (RULES §7). All prior
+  cycles TERMINAL (see closed-history bullets below; ledger authority P-9).
+
 ## Sprint state (synced at the FOREX-V9 close, 2026-09-10)
 
 - **FOREX V9 CLOSED → `FOREX_FREE_V9_BLOCKED_DATA_OR_SELECTION`** (0 cells,

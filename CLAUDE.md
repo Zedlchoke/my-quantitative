@@ -7,13 +7,14 @@ gates and reproduction all reconcile.
 ## Start every task
 
 1. Read the applicable plan in full before changing files. All plans live in
-   `plans/`; the highest version per asset is the live one (see `RULES.md`
-   for the law summary and the agent roster):
-   - crypto live: `plans/PLAN_crypto_v17.md`
-   - stocks live: `plans/PLAN_stocks_v13.md`
-   - forex live: `plans/PLAN_forex_v9.md` (V8 scored-complete
-     `REJECT_ALL`; close chain in flight — V9 bootstrap blocked until it
-     lands, per plan §0)
+   `plans/`; resolve the live plan per asset through `plans/CYCLE_REGISTRY.json`
+   (the ONLY writable cycle authority), not filename guesses:
+   - crypto live: `plans/PLAN_crypto_ng1.md` (CRYPTO-NG1; V17 and earlier are
+     TERMINAL historical evidence)
+   - stocks live: `plans/PLAN_stocks_ng1.md` (STOCKS-NG1; V13 and earlier are
+     TERMINAL historical evidence)
+   - forex live: `plans/PLAN_forex_ng1.md` (FOREX-NG1; V9 and earlier are
+     TERMINAL historical evidence)
 2. Read `NOTES.md` and `research/wayfinder/MAP.md` when the task touches research.
 3. Run `/repo-intake`. Re-measure the checkout; historical plan snapshots are
    evidence, not current truth.

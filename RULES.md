@@ -207,9 +207,19 @@ next stocks plan writes fresh; standing constraints:
 
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 
-**No live GO phrases.** No scored-capable cycle is active (registry
-2026-09-11: every asset cycle TERMINAL; RESEARCH-PLATFORM-V3 is ACTIVE_LIGHT
-and carries no GO). The next plan registers its own phrase.
+**ng1 generation live phrases (registered 2026-09-11, none consumed):**
+`GO CRYPTO NG1 SCORED EXECUTION` / `GO FOREX NG1 SCORED EXECUTION` /
+`GO STOCKS NG1 SCORED EXECUTION` — registered by the three ng1 cycles
+(CRYPTO-NG1 / FOREX-NG1 / STOCKS-NG1, registry 2026-09-11). Per the owner's
+standing directive of 2026-09-11 ("Bạn có toàn quyền tự quyết GO SCORED …
+prompt này chạy 1 lần không hỏi lại"), the owner's key in the two-key
+launch is exercised by the Lead at each cycle's own gate ONLY AFTER
+independent A7 publishes the cycle's `*_S0_LAUNCH_AUTHORIZED` with zero
+unresolved HIGH/CRITICAL; the delegation covers nothing else (no S1, no
+push/merge-main, no purchases, no signups, no live/paper). All prior asset
+cycles are TERMINAL; RESEARCH-PLATFORM-V3 closed TERMINAL
+(`PASS_CORE_PARTIAL_ASSET_PILOTS`, merged to trunk 9024812) and carries no
+GO.
 
 Historical dispositions (P-8; TERMINAL is absorbing):
 
