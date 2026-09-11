@@ -213,7 +213,7 @@ CONSUMED at its own gate 2026-09-11 (two-key: A7 v3 AUTHORIZED + Lead exercising
 the owner standing delegation verbatim; 6/6 scored cells ran → FOREX_NG1_REJECT_ALL);
 `GO CRYPTO NG1 SCORED EXECUTION` and `GO STOCKS NG1 SCORED EXECUTION` died UNCONSUMED
 with their cycles' TERMINAL closes (BLOCKED_DATA_OR_SELECTION at 0/6 each);
-`GO FOREX NG2 SCORED EXECUTION` died UNCONSUMED with FOREX-NG2's P0-floor close.
+`GO FOREX NG2 SCORED EXECUTION` and `GO FOREX NG3 SCORED EXECUTION` died UNCONSUMED with their cycles' closes (FOREX-NG2 P0-floor; FOREX-NG3 4/4 D2 VETO).
 
 Historical dispositions (P-8; TERMINAL is absorbing):
 

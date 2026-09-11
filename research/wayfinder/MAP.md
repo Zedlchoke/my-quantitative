@@ -37,6 +37,8 @@
   recursion. **forex 48/48; program 245/248** (P-9). Detail:
   `.worktrees/forex-ng2/integration/research/control/forex_ng2_run/terminal_report_ng2.json`.
 
+- **FOREX-NG3 CLOSED → `FOREX_NG3_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, terminal b3786a2, A7 AUTHORIZED 0 HIGH/CRITICAL, detached recompute value-identical) — P-19 recursion #2: CA-anchored revision-dynamics, census-informed floors all PASS at P0, then 4/4 D2 VETO pre-score (sign = release-order re-clock 0.2138; magnitude = commodity 1.0; differential = V7-re-clock CTL 1.0; transfer = day-of-week 0.8932). 0 cells / 0/6; GO died UNCONSUMED. **CA revision-dynamics frontier measured-closed; with ng1-ng3 the CPI-information family on the pinned plane is measured-exhausted — re-entry needs a new evidenced information source (owner data decision).** **forex 48/48; program 245/248** (P-9). Detail: `.worktrees/forex-ng3/integration/research/control/forex_ng3_run/terminal_report_ng3.json`.
+
 - **CRYPTO-NG1 CLOSED → `CRYPTO_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
   `orca/crypto-ng1-integration`, terminal 0cfb9ac, A7 AUTHORIZED 0 HIGH/CRITICAL with
   detached recompute full-match) — first ng1-generation close, first crypto cycle on
