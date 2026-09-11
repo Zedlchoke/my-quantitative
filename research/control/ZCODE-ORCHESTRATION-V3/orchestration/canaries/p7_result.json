@@ -1,0 +1,35 @@
+{
+ "schema": "zcode_orch_v3_canary_result@1",
+ "gate": "Z3-G6",
+ "canary": "P7 isolated implementation + sequential integration",
+ "measured_at_utc": "2026-09-11T02:10:00Z",
+ "verdict": "PASS (substance) with TWO store defects disclosed",
+ "substance": {
+  "lanes": [
+    {"task": "canary-p7-a-impl", "worktree": ".worktrees/orch-canary/p7-a", "branch": "orca/orch-canary-p7-a", "commit": "a55d5e62c093972fe79d42db576459860edb24a2", "tests": "3/3 PASS (position-weighted checksum fixtures)"},
+    {"task": "canary-p7-b-impl", "worktree": ".worktrees/orch-canary/p7-b", "branch": "orca/orch-canary-p7-b", "commit": "85bdcd48d0532b03114c4d58bb0a72e2944e33aa", "tests": "3/3 PASS (reversed-uppercase fixtures)", "disjoint": true}
+  ],
+  "sequential_integration": {
+   "branch": "orca/orch-canary-p7-int",
+   "pick_1": "bc9511e (p7-a) -> tests/test_orch_canary_a.py 3 passed",
+   "pick_2": "c4d6d17 (p7-b) -> both files 6 passed",
+   "tree": "clean after each pick; tests re-run after EACH pick per protocol"
+  },
+  "dispatch_pattern": "two quant-implementer agents in parallel foreground from disjoint worktrees; both auto-returned with commits + tests + self-written handoff files"
+ },
+ "defects_found": [
+  {
+   "id": "STORE-FLOW-1",
+   "severity": "HIGH",
+   "finding": "publish_handoff records the digest of the SUBMITTED object but does not overwrite an agent-pre-written file at the same inbox path; validate_handoff re-reads the file and fails closed (CONTROL_STATE_DRIFT digest mismatch)",
+   "fix": "publish must atomically WRITE the submitted object to the inbox path, replacing any draft, so file bytes == recorded digest by construction"
+  },
+  {
+   "id": "STORE-FLOW-2",
+   "severity": "MEDIUM",
+   "finding": "a handoff at HANDOFF_READY with a mismatched digest is a DEAD STATE: validate refuses, re-publish refuses (HANDOFF_READY->HANDOFF_READY illegal), record_blocker refuses (HANDOFF_READY->BLOCKED illegal) - no lawful exit",
+   "fix": "allow BLOCKED (or re-publish) from HANDOFF_READY on validation failure, as a forward transition with the failure recorded"
+  }
+ ],
+ "disposition": "both tasks left at HANDOFF_READY in the store as visible evidence (no lawful mutation available); substance fully evidenced in git (integration branch + this artifact); P8 will use the P6 return-pattern (agent text -> Lead publish) which avoids the collision; plugin v3.1 fix list carries STORE-FLOW-1/2"
+}
