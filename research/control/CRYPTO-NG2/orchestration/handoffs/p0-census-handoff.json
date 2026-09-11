@@ -1,0 +1,76 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "crypto-ng2-p0-census",
+ "cycle_id": "CRYPTO-NG2",
+ "role": "quant-implementer",
+ "lane": "p0",
+ "dispatch_sha": "561a802d9b384384cc40d900abc838e94e5e057a",
+ "actual_start_sha": "561a802d9b384384cc40d900abc838e94e5e057a",
+ "commit_sha": "40941e9d2cd88731d0bfe7fd970bb1f07e90a5df",
+ "changed_paths": [
+  "research/assets/crypto_ng2/__init__.py",
+  "research/assets/crypto_ng2/bls_census.py",
+  "research/control/crypto_ng2_run/run_p0_census.py",
+  "research/control/crypto_ng2_run/p0_bls_census.json",
+  "research/control/crypto_ng2_run/p0_funding_probe.json",
+  "research/control/crypto_ng2_run/p0_gate.json",
+  "tests/test_crypto_ng2_p0.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/crypto-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_crypto_ng2_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "17 passed (parser instants DST hand-computed, canary-negative, fail-closed, offline funding-probe stubs; fixtures self-created under /tmp; network-free)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/crypto-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/crypto_ng2_run/run_p0_census.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "P0 runner: s4_repin/panel_bounds/shadow_parity/bls_census/funding_probe/series_name_canaries/tests all recorded in p0_gate.json; gate verdict PASS_WITH_BLS_BLOCKED"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "BLS CPI/NFP instants: ZERO retrieved. Official schedule pages (bls.gov/schedule/news_release/cpi.htm and empsit.htm, plus the /bls/news-release/cpi.htm alternate) return Akamai 403 for curl-class fetch from this environment (re-measured this run, 1 attempt each in-script + 3 pre-run manual probes). The dispatch's browser-class chain was NOT executable in this lane: the WebFetch tool is not present in this subagent's toolset, and the browser-use control-browser skill's own contract states 'subagents must not load this skill or use Browser Use' (this lane is a subagent; no node_repl js tool exposed). Recorded BLOCKED_PER_SOURCE with no fabricated instants; per plan section 2 lane A4 dies at P0 and lane A5 may continue (gate verdict PASS_WITH_BLS_BLOCKED).",
+  "The fabricated-day canaries (2026-02-14, 2026-06-20, both Saturdays) PASS vacuously against the blocked source (no instant can exist); the honest note is attached in p0_bls_census.json. Their non-vacuous proof exists only in the offline unit tests (test_run_census_stubbed_live_sources). A main-agent WebFetch/browser retry could revive lane A4 before D1 if the owner chooses.",
+  "The BLS schedule-page parser is built against hand-modeled fixtures of the public schedule-table shape (Day | Date | Time | Release) because no live page was retrievable to validate against; it was never run on real BLS HTML. Parser correctness is proven only on fixtures; if a live source appears, re-run the census and re-validate row shapes before trusting instants.",
+  "Gate p0_gate.json git.head_sha records the pre-commit HEAD (561a802d...); the substance commit SHA is 40941e9d... recorded here. Query identities/result digests in panel_bounds match ng1's exactly (same frozen query over unchanged S4 objects)."
+ ],
+ "incidents": [],
+ "tree_status": "clean after both commits (substance 40941e9, then handoff commit); only owned paths touched; ng1 machinery reused by import only, unmodified",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/crypto_ng2_run/p0_gate.json",
+   "sha256": "d9ec10117a73e50e6483c8b1c3f81d8b5aa3cf7f1db5814fdd7afcba8833b228",
+   "note": "P0 gate: verdict PASS_WITH_BLS_BLOCKED; sections s4_repin(5/5 exact digests)/panel_bounds(8760h x3)/shadow_parity(2 identical)/bls_census(BLOCKED_PER_SOURCE, 0 instants)/funding_probe(KEYLESS_ENDPOINT_PROVEN)/series_name_canaries(2 refused)/tests(17 passed)"
+  },
+  {
+   "path": "research/control/crypto_ng2_run/p0_bls_census.json",
+   "sha256": "d3273f1bcbbb55c69e684e218b4c8c529bc1f2d102270da895af090ae16b27cd",
+   "note": "BLS census evidence: CPI+NFP BLOCKED (403), method chain (curl MEASURED / webfetch_tool NOT_RUN / browser_use_skill NOT_RUN with reasons), canaries, zero instants"
+  },
+  {
+   "path": "research/control/crypto_ng2_run/p0_funding_probe.json",
+   "sha256": "3faa94b0aa55e3e3674e6c56e52ca9f2519c6549584b29ba253131dcfe8fd661",
+   "note": "Keyless fapi fundingRate probe: BTCUSDT/ETHUSDT/SOLUSDT all HTTP 200, 500 rows each, funding times on 8h boundaries (mod-8 hour set {0}); not consumed"
+  },
+  {
+   "path": "research/assets/crypto_ng2/bls_census.py",
+   "sha256": "b022bb283f990784844e65cdc14ddda4d131ae8824b8f083c2dfd7cbc068a913",
+   "note": "NG2 census module (parser + fail-closed runner + funding probe); reuses ng1 fetch_url/local_to_utc/month_number by import only"
+  },
+  {
+   "path": "research/control/crypto_ng2_run/run_p0_census.py",
+   "sha256": "58eae39f5226e41425fdbaa689a3cee2abb3a1f3935e9f1739e8265c61bd06b1",
+   "note": "P0 runner: consumes the frozen S4 set through CryptoNG1Plane (unmodified ng1 adapter) and assembles the gate"
+  },
+  {
+   "path": "tests/test_crypto_ng2_p0.py",
+   "sha256": "cf3067d131964f8a1d0ee2ed365c8923fae92a8e62ede5d4d3942648c630f577",
+   "note": "17 targeted tests: DST instants hand-computed (13:30Z winter / 12:30Z summer across the 2026-03-08 spring-forward), canary-negative, fail-closed, offline funding stubs"
+  }
+ ],
+ "recommended_next_action": "Owner/lead decision per plan section 2: gate is PASS_WITH_BLS_BLOCKED, so lane A4 (inflation/labor clock) is dead at P0 with zero fabricated instants and lane A5 (funding-settlement micro-timing; KEYLESS_ENDPOINT_PROVEN) may proceed to D1. Optional before D1: a MAIN-AGENT (not subagent) WebFetch/browser-use attempt on the two official BLS schedule URLs could revive A4; if it succeeds, re-run run_p0_census.py and re-validate the parser against the real page shape. Otherwise dispatch D1 for the A5 lane only."
+}
