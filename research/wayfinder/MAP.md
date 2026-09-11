@@ -39,6 +39,8 @@
 
 - **FOREX-NG3 CLOSED → `FOREX_NG3_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, terminal b3786a2, A7 AUTHORIZED 0 HIGH/CRITICAL, detached recompute value-identical) — P-19 recursion #2: CA-anchored revision-dynamics, census-informed floors all PASS at P0, then 4/4 D2 VETO pre-score (sign = release-order re-clock 0.2138; magnitude = commodity 1.0; differential = V7-re-clock CTL 1.0; transfer = day-of-week 0.8932). 0 cells / 0/6; GO died UNCONSUMED. **CA revision-dynamics frontier measured-closed; with ng1-ng3 the CPI-information family on the pinned plane is measured-exhausted — re-entry needs a new evidenced information source (owner data decision).** **forex 48/48; program 245/248** (P-9). Detail: `.worktrees/forex-ng3/integration/research/control/forex_ng3_run/terminal_report_ng3.json`.
 
+- **CRYPTO-NG2 CLOSED → `CRYPTO_NG2_BLOCKED_DATA_OR_SELECTION`** (2026-09-12, terminal 71a29b1, A7 AUTHORIZED 0 HIGH/CRITICAL, byte-identical recompute) — owner new-sources cycle #1: BLS instants RECOVERED via controller-WebFetch (22 instants; Oct-2025 shutdown months excluded), funding grid 1094x3 verified; 4 blind proposals; D2 4/4 VETO vs dead-FOMC-form shadows (settlement forms clean on 29-panel, killed by dead-form envelope). 0 cells / 0/6; GO died UNCONSUMED. **crypto 155/158; program 245/248** (P-9). Detail: `.worktrees/crypto-ng2/integration/research/control/crypto_ng2_run/audits/a7_terminal_ng2.json`.
+
 - **CRYPTO-NG1 CLOSED → `CRYPTO_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
   `orca/crypto-ng1-integration`, terminal 0cfb9ac, A7 AUTHORIZED 0 HIGH/CRITICAL with
   detached recompute full-match) — first ng1-generation close, first crypto cycle on
