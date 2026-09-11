@@ -28,6 +28,17 @@
   **crypto 155/158; program 239/242** (P-9). Detail:
   `.worktrees/crypto-ng1/integration/research/control/crypto_ng1_run/terminal_report_ng1.json`.
 
+- **STOCKS-NG1 CLOSED → `STOCKS_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
+  `orca/stocks-ng1-integration`, terminal 65e447e, A7 AUTHORIZED 0 HIGH/CRITICAL,
+  detached recompute exact, veto-shopping ruled out) — first stocks cycle on the
+  platform v3 plane (S1 full re-pin 0 drift). Lane A5 (amendment/revision) P2-killed
+  by frozen floor (0 docs 4/A in pinned substrate — coverage property). Lane A4:
+  10b5-1 census floor MET (22,622 flagged txs); 2 blind proposals; D2 2/2 VETO
+  (goodwill_bloat -0.3547 / -0.384, 15/15 measured, feasibility floors PASS).
+  Selection empty; budget 0/6; GO died UNCONSUMED. Declared-intent frontier
+  measured-dead ancestry. **stocks 42/42; program 239/242** (P-9). Detail:
+  `.worktrees/stocks-ng1/integration/research/control/stocks_ng1_run/terminal_report_ng1.json`.
+
 ## Sprint state (synced at the FOREX-V9 close, 2026-09-10)
 
 - **FOREX V9 CLOSED → `FOREX_FREE_V9_BLOCKED_DATA_OR_SELECTION`** (0 cells,
