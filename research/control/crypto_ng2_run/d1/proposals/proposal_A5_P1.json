@@ -1,0 +1,178 @@
+{
+ "schema": "crypto_ng2_run/d1_proposal@1",
+ "task_id": "crypto-ng2-d1-a5-proposals",
+ "cycle_id": "CRYPTO-NG2",
+ "lane": "d1-a5",
+ "hypothesis_id": "CNG2-A5-P1",
+ "title": "Pre-settlement funding-dodge positioning: continuation with the terminal forced flow INTO and ACROSS the deterministic 8h funding-settlement boundary (00/08/16 UTC grid, H1)",
+ "blindness_statement": {
+  "outcome_blind": true,
+  "read_sources": [
+   "plans/PLAN_crypto_ng2.md (sections 2 and 3 lane A5 only; read from the root checkout at main 68e40c6 because the file postdates this worktree base SHA)",
+   "research/control/crypto_ng2_run/p0_funding_probe.json (descriptive keyless availability probe only; explicitly NOT consumed by any scored lane)",
+   "research/control/crypto_ng2_run/p0_gate.json (panel bounds + s4_repin digests)",
+   "research/control/crypto_ng1_run/d1/proposals/proposal_A5_P1.json + proposal_A5_P2.json (mandated field template of the previous generation's sibling lane; read for FORMAT only)",
+   "research/wayfinder/FAMILY_FAILURES.jsonl (dead-form avoidance only)",
+   "frozen H1 panel CSV header row (column-name schema verification only; zero data rows read)"
+  ],
+  "not_done": [
+   "no result/scored/PnL/smoke file of any cycle read, including the CRYPTO-NG1 outcome of the template proposals",
+   "no backtest run, no outcome number computed, no signal evaluated on data",
+   "no funding data pulled by this lane; only the pre-existing p0_funding_probe.json descriptive fields (rows_observed, boundary_hours_mod8_observed, funding_time bounds) are quoted verbatim"
+  ]
+ },
+ "measured_facts_used_verbatim": {
+  "panel": "H1 UTC, 3 symbols BTCUSDT/ETHUSDT/SOLUSDT, 8760 rows/symbol, window 2025-08-22T00..2026-08-21T23, 365 populated days/symbol, zero empty hours (crypto_ng2_run/p0_gate.json panel_bounds + s4_repin PASS; panel digests BTC 111c1a2d..., ETH ebd487a6..., SOL c4ca0b6e... pinned in s4_repin)",
+  "panel_columns_verified": "CSV header of the frozen panels contains buy_quote, sell_quote, quote_total, last_price (plus symbol, hour_utc and microstructure columns not used here)",
+  "settlement_grid_rule_frozen": "HYPOTHESIS (frozen, to be evidenced): Binance USD(S)-M perpetual funding settlements for all three symbols occur at instants S on the 8h grid 00:00/08:00/16:00 UTC. At a settlement, every open position is a compelled counterparty to the transfer: longs pay shorts when the funding rate is positive, shorts pay longs when negative. This rule is deterministic public venue mechanics; no price or outcome data enters the clock. Per the plan's fail-closed law, every in-window grid instant MUST be evidenced by the pulled settlement series before any scored use (see data_dependency); an unevidenced instant is dropped, never inferred.",
+  "funding_probe_facts": "p0_funding_probe.json (measured 2026-09-11T21:21Z, status KEYLESS_ENDPOINT_PROVEN): for each of BTCUSDT/ETHUSDT/SOLUSDT the keyless endpoint fapi/v1/fundingRate returned http 200 with 500 rows against a requested limit of 1000 (observed per-response cap 500, do NOT assume 1000); ALL observed funding_time values lie on the mod-8h grid (boundary_hours_mod8_observed [0]); span 2026-03-29T08:00:00.001Z..2026-09-11T16:00:00Z (499 x 8h intervals = 500 rows). The probe therefore evidences the grid only for 2026-03-29..2026-08-21 inside the panel window; the earlier window months are UNPROBED and remain hypothesis until the full-window pull.",
+  "grid_instants_in_window": "1,095 grid instants per symbol (365 days x 3); after warmup exclusion of 2025-08-22T00:00Z (pre-panel feature bars), 1,094 eligible instants per symbol; the last in-window grid instant is 2026-08-21T16:00:00Z",
+  "forbidden_conditioning": "NO funding LEVEL enters the direction rule of any anchor/neighbour/shadow/placebo arm - the funding series enters this family ONLY as (i) settlement-instant evidence, (ii) a per-decision cash transfer booked at settlement (economic accounting, see costs.funding_transfer_booking), and (iii) the direction of the declared FUNDJUMP-LEVEL decorrelation control arm, which exists precisely so D2 can measure that leakage separately. No OI consumed (oi_series_reduced.json is in the frozen set but NOT read by this proposal); no price/OI/funding LEVEL conditions anything; the observable is a bounded flow ratio in which the volume level cancels."
+ },
+ "mechanism": {
+  "forced_participant": "Every open position at the settlement snapshot S is a compelled counterparty to the funding transfer (longs pay shorts when the rate is positive; the payment is not optional and cannot be negotiated). Among them the PAYING side carries the coercion: to dodge the payment it must flatten BEFORE the snapshot and may re-enter only AFTER it - a hard deadline set by the published venue settlement schedule, not by any endogenous market state. The receiving side faces no deadline (it is paid to wait). This urgency asymmetry is the engine.",
+  "late_participant": "Unhurried liquidity providers and post-payment flow that re-quote and re-engage only after the transfer has cleared and the dodging population has finished transacting.",
+  "why_effect_exists": "The dodge deadline is one-sided and shrinking: paying-side holders who exit must sell into the final pre-boundary hours with rising urgency, so accumulated terminal taker pressure on the paying side continues to push price INTO the boundary instead of instantly clearing, and the dislocation is only resolved once the payment has been made and the coercion switches off. The anchor holds WITH that terminal forced flow: entered one hour before S (after the last feature bar closes), carried THROUGH the snapshot (booking the transfer it is owed or charged), exited one hour after S. The trade is a bet on coerced flow, not on the size or sign of the payment itself.",
+  "when_it_must_fail": [
+   "If dodge flow is negligible relative to ordinary flow (typical payments are small versus the round-trip cost of dodging), the pre-boundary pressure ratio is noise and the anchor's after-cost expectancy is statistically indistinguishable from zero (F4).",
+   "If the terminal pre-boundary imbalance is informative continuation that the book prices efficiently across the boundary, holding through the payment earns nothing and loses costs (F4).",
+   "If the effect is generic hour-of-day flow autocorrelation on the {07-09}/{15-17}/{23-01} UTC slots rather than settlement mechanics, the SHIFTMINUS2H placebo (same rule shape, boundary moved 2h off-grid) reproduces the anchor at same-sign >= 0.5x (F1).",
+   "If the book is the bare 3x/day clock (including its transfer stream), the always-long clock shadow out-earns the anchor or correlates > 0.20 with it (F2).",
+   "If the anchor's returns are the funding carry transfer in disguise (mechanism-active decisions put the anchor on the receiving side of the payment), the in-family FUNDJUMP-LEVEL control reproduces it or D2's external funding-LEVEL proxy vetoes it at pooled |rho| > 0.20 (F3) - the named FUNDJUMP death (V17, rho 0.2439).",
+   "If the 00:00 UTC leg is secretly the dead UTC-day-boundary exposure (CLOSE-DISPLACE-FADE / RUNPERSIST ancestry), D2's day-boundary shadows veto it (F3)."
+  ],
+  "observable_pinned": {
+   "definition": "press(symbol, S) = (SUM buy_quote - SUM sell_quote) / (SUM quote_total) over the three closed bars B-4..B-2 = [S-4h, S-1h), a bounded net-pressure ratio in [-1, +1] fully point-in-time at the decision instant (close of bar B-2 = S-1h); the volume level cancels in the ratio",
+   "panel_columns": ["buy_quote", "sell_quote", "quote_total", "last_price"],
+   "instant_source": "deterministic 8h funding-settlement grid 00:00/08:00/16:00 UTC (hypothesis verified against the full-window settlement pull at P2/D2 per data_dependency; grid instants map to hour bars, tolerant of the observed boundary+1ms funding_time quirk)"
+  }
+ },
+ "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+ "clock": {
+  "bar": "H1 UTC from the frozen S4 panels, bar hour_utc=T covers [T, T+1h)",
+  "boundary_bar": "B(S) = the bar whose open equals the settlement instant S (e.g. S=08:00:00Z -> bar 'dateT08'); the settlement instant is the OPEN boundary of B and the CLOSE boundary of B-1; the snapshot transfer occurs at S on positions open at S",
+  "decision": "at the CLOSE of bar B-2 = S-1h, one full hour BEFORE the boundary, when every feature bar (B-4..B-2) is point-in-time; the position opened at S-1h is definitively open at the S snapshot and therefore experiences the transfer",
+  "exit_boundary": "at the CLOSE of bar B = S+1h, one full hour AFTER the payment; the anchor holds THROUGH the settlement (bars B-1 and B) and books the S transfer",
+  "instant_alignment": "pure UTC arithmetic on the frozen H1 index; the 8h grid has no DST and no calendar dependence (every day, weekends included - crypto trades continuously and settles continuously)"
+ },
+ "warmup": {
+  "rule": "a grid instant S is eligible only if every bar referenced by any arm of this family (deepest = neighbour's B-7 through anchor exit B) exists inside the frozen panel bounds AND S is evidenced by the pulled settlement series; no minimum-history convention beyond construction (features need <= 6 bars)",
+  "coverage": "deepest backward reference = neighbour feature bar B-7 (for S=08:00Z: the 01:00 bar of the same day); the first grid instant satisfying this is 2025-08-22T08:00Z (the 2025-08-22T00:00Z instant needs 2025-08-21 bars that predate the panel - INELIGIBLE_WARMUP, not an outcome-driven drop); last instant 2026-08-21T16:00Z needs exit bar close 17:00 - exists; therefore 1,094 eligible instants/symbol before settlement-evidence filtering (evidence filter applied fail-closed at P2/D2; unevidenced instants recorded UNFUNDED_SKIP_NO_SETTLEMENT, counted, never silently dropped)",
+  "signal_history": "none required beyond the feature window itself (no threshold fitting exists - sign is the only operator)"
+ },
+ "features_lags": {
+  "columns_from_panel": {
+   "buy_quote": "USD notional of buy-taker flow in bar",
+   "sell_quote": "USD notional of sell-taker flow in bar",
+   "quote_total": "buy_quote + sell_quote (bar total taker notional)",
+   "last_price": "last traded price in bar, used as the bar-close fill price"
+  },
+  "lag_structure": "windowed feature at lags -4..-2 relative to the boundary bar B (anchor); neighbour deepens to -7..-2; decision at lag -2 close (S-1h); exit at lag 0 close (S+1h); volume enters only as a bounded ratio denominator; no volume LEVEL is used anywhere; no other lags, no rolling windows, no fitted parameters"
+ },
+ "entry_exit_fills": {
+  "direction": "d = sign(press) = sign((SUM buy_quote - SUM sell_quote)/SUM quote_total) over bars B-4..B-2; tie (numerator exactly 0) -> decision recorded UNFUNDED_SKIP (counted, not silently dropped)",
+  "entry": "at close of bar B-2 (S-1h, BEFORE the boundary), fill price = last_price of bar B-2, unit notional 1.0 per decision per symbol, no leverage parameter, no sizing conditioning",
+  "exit": "at close of bar B (S+1h, AFTER the payment), fill price = last_price of bar B; no stop, no early exit; the position is open at the S snapshot and books the transfer (see costs)",
+  "fills_per_funded_decision": "2 (entry + exit), each charged cost exactly once (L-V14-0); the settlement transfer is a cash exchange, NOT a fill and NOT charged taker cost"
+ },
+ "costs": {
+  "authority": "measured taker + spread schedule at stress tier 2.0 as PRIMARY (Q-2/Q-8), inherited from the V17 scored-driver kernel adoption; cost exactly once per fill",
+  "invention_disclaimer": "NO cost constant is stated or invented in this proposal; the measured tier numbers come from the kernel's measured schedule at execution time. Measured beats stated everywhere.",
+  "funding_transfer_booking": "every arm whose position is open at a grid instant S books transfer = -d * rate(S) per unit notional at S (long d=+1 pays rate>0, short receives), rate taken VERBATIM from the pulled settlement series. The transfer is economic accounting (the hold-through-settlement trade genuinely pays/receives it), never a direction input. If the series cannot be pulled, transfers are NOT assumed zero - the arm is BLOCKED_DATA (zero fabrication)."
+ },
+ "arms": {
+  "anchor": {
+   "arm_id": "CNG2-A5-P1-ANCHOR",
+   "rule": "direction = sign(press over B-4..B-2); entry close of B-2 (S-1h); exit close of B (S+1h); H = 2 bars (exposure spans the boundary hour and the settlement bar); transfer at S booked",
+   "decisions": "1,094 grid instants x 3 symbols = 3,282 funded decisions per arm (minus exact-tie and no-evidence skips, both counted)"
+  },
+  "neighbour": {
+   "arm_id": "CNG2-A5-P1-NEIGH-W6",
+   "count": "exactly 1 neighbour",
+   "rule": "identical decision instant, entry, exit and transfer booking; feature window deepened to B-7..B-2 (6 bars, [S-7h, S-1h))",
+   "mechanism_support": "if the terminal forced dodge flow is real, a deeper accumulation window captures more of it and must move the same direction; an unstable or sign-flipping deeper window contradicts the mechanism (different parameterization, same mechanism)"
+  },
+  "causal_placebo_control": {
+   "arm_id": "CNG2-A5-P1-CTL-SHIFTBOUNDMINUS2H",
+   "count": "exactly 1 causal/placebo control",
+   "rule": "sham boundary clock: the whole rule shifted -2h off-grid, S' = S-2h (grid {22:00, 06:00, 14:00} UTC): feature B'-4..B'-2 = [S-6h, S-3h), entry close of B'-2 (S-3h), exit close of B' (S-1h); every sham trade sits entirely BEFORE the true boundary - no true-settlement bar in its feature or hold, no transfer booked",
+   "identifiability": "-2h is chosen over +1h/+2h because those shifts place the sham feature window ON the true settlement bar (contaminated by construction); -2h keeps zero overlap with the settlement bar B and the anchor hold [S-1h, S+1h), at the price of one shared feature bar ([S-4h, S-3h)) with the anchor window - disclosed. The sham lands on real off-grid hours with real microstructure; it CAN move the signal (Q-11 satisfied; a control that cannot move the signal would be INVALID NULL). If the anchor is settlement mechanics, a rule whose hold never spans a payment must not reproduce it.",
+   "decisions": "1,094 sham instants x 3 symbols = 3,282 decisions; everything else identical to anchor"
+  },
+  "clock_only_shadow": {
+   "arm_id": "CNG2-A5-P1-SHADOW-CLOCK8HGRID",
+   "count": "exactly 1 clock-only shadow (Q-7)",
+   "rule": "identical decision grid and holds (entry close of B-2, exit close of B), costs and transfer booking; direction = +1 at EVERY decision (pure 3x/day 8h-grid clock exposure carrying zero panel information; its return stream includes the always-long transfer stream - otherwise it would not be the same book)",
+   "purpose": "isolates what the bare deterministic settlement clock (with its day-boundary leg and its transfer stream) yields; if the anchor is subsumed by this exposure the mechanism claim is empty"
+  },
+  "fundjump_level_decorrelation_control": {
+   "arm_id": "CNG2-A5-P1-CTL-FUNDLEVEL",
+   "count": "exactly 1 FUNDJUMP-level decorrelation control (cycle-mandated)",
+   "rule": "identical decision grid, holds, costs and transfer booking as the anchor; direction = -sign(rate(S)) from the pulled series (short when longs pay, long when shorts pay - the classic funding-LEVEL carry form that killed FUNDJUMP at rho 0.2439)",
+   "purpose_and_status": "a deliberately level-formed signal ON THE SAME CLOCK so D2 can measure the anchor's decorrelation from the level form separately from the external proxy panel; this arm is the known-dead ancestry form rendered explicit - it is NOT promotable under any outcome and exists only for measurement"
+  },
+  "pairwise_distinctness": "the five arms differ by (direction rule, feature-window depth, boundary map) and will carry distinct arm_config_digests at D2/I time; no two arms share all three; exactly one arm (CTL-FUNDLEVEL) consumes the funding level, by declared design"
+ },
+ "representation_identity": {
+  "p12_statement": "This block IS the representation D2 must measure pooled |rho| <= 0.20 on. Representation identity = measurement identity (FXFV9 lesson: no undisclosed variant grids).",
+  "grid": "H1 rows keyed (symbol, hour_utc) from the three frozen S4 panels (digests pinned in crypto_ng2_run/p0_gate.json s4_repin); decision grid = 3,282 rows keyed (symbol, instant) over the 1,094 eligible grid instants 2025-08-22T08:00Z..2026-08-21T16:00Z per symbol on the 00/08/16 UTC 8h settlement grid, minus unevidenced instants dropped fail-closed after the pull",
+  "signal_computation": "per decision row: press = (SUM_{B-4..B-2} buy_quote - SUM sell_quote) / SUM quote_total; d = sign(press); entry = last_price(B-2) filled S-1h; exit = last_price(B) filled S+1h; transfer = -d * rate(S) booked at S",
+  "per_decision_return": "r = d * (exit/entry - 1) + transfer, gross; after-cost r_net = r - 2 * fill_cost_tier2.0 / unit_notional",
+  "series_d2_measures": [
+   "the 3,282-row per-decision after-cost return vector of ANCHOR (primary)",
+   "its daily-aggregated (symbol-day) projection",
+   "the same vectors for NEIGH-W6 for the ancestry panel",
+   "the per-decision after-cost return vector of CTL-FUNDLEVEL as the in-family level-form reference for the mandated FUNDJUMP-level decorrelation measurement"
+  ],
+  "books": "per-symbol books and the pooled 3-symbol book; equal unit notional per decision; no cross-sectional ranking, no normalization across symbols",
+  "no_hidden_variants": "no alternate window depth, no off-grid instant set, no sign-flipped re-computation, no rate-magnitude conditioning exists or may be substituted at D2; any re-measure must use exactly this representation or be recorded as a NEW proposal"
+ },
+ "ancestry_defense": "FUNDJUMP (V17) was killed because its announced-change event book still carried the funding LEVEL (pooled |rho| 0.2439 vs the carry proxy): P1's direction is the sign of a bounded pre-boundary taker-flow ratio computed purely from the frozen panels - the level enters NO direction rule; the level form exists only in the declared CTL-FUNDLEVEL arm (unpromotable by construction) and in the transfer booking (accounting, not conditioning); F3 measures exactly this leakage in-family and D2 measures it against the external FUNDJUMP shadow. CARRY-1D/3D/7D (V6) and OITD (V13) are dead rate/OI term-structure and carry forms: P1 consumes no rate term structure and no OI (oi_series_reduced.json frozen but NOT read). CLOSE-DISPLACE-FADE and RUNPERSIST (V16) are dead endogenous UTC-day-boundary forms: only 1 of the 3 daily boundary legs touches 00:00 UTC, the observable is a bounded side-ratio (not displacement/persistence), and the always-long SHADOW-CLOCK8HGRID plus D2's day-boundary shadows are the designed kills if day-boundary exposure leaks. WKNDLIQ (V17) died as a calendar-conditioned liquidity LEVEL (rho 0.5628 vs dvol proxies): the volume level cancels in P1's ratio denominator, settlements occur every single day (weekends included - no weekday conditioning exists), and the dvol proxies remain P1's named F3 kill. ATTN-PHASE (V17) was a daily US-session phase on SOL: P1 has no session conditioning and treats all three boundary hours (00/08/16) symmetrically in one frozen grid. TICKET-BREADTH (V17) died on the tsmom proxy: P1 reacts to a bounded flow-ratio sign, not to returns momentum, and the full proxy panel incl. tsmom28 is measured at D2. The CRYPTO-NG1 A5 expiry-clock forms (quarterly delivery / monthly options last-Friday 08:00 UTC) are a different clock (4-8 sparse expiry instants/year vs 1,095 settlement instants/year) with a different forced population (delivery holders and options dealers vs funding payers); this lane is blind to their outcomes by design and D2 measures pooled |rho| vs whatever ng1 shapes the inventory holds.",
+ "distinctness_vs_sibling": "P1's information source is the PRE-boundary terminal taker pressure over [S-4h, S-1h) with a CONTINUATION reaction that enters before the boundary and holds THROUGH the payment (transfer booked). CNG2-A5-P2 uses the boundary-CROSSING flow over [S-1h, S+1h) with a REVERSAL reaction entered only AFTER the payment has cleared (flat at every snapshot, no transfer). Different information-source layer, opposite reaction form, different entry side of the boundary, and disjoint hold windows ([S-1h, S+1h) vs [S+1h, S+4h)) - P1 exits exactly where P2 enters. Cross-proposal collapse is tested by frozen rule F5.",
+ "data_dependency": {
+  "series": "full-window funding settlement series (fundingTime + fundingRate rows) for BTCUSDT/ETHUSDT/SOLUSDT covering 2025-08-22T00:00Z..2026-08-21T23:59Z (expected ~1,095 rows/symbol)",
+  "method": "keyless GET fapi/v1/fundingRate (endpoint PROVEN at P0: http 200 x 3 symbols; observed per-response cap 500 rows -> paginate by startTime, >= 3 pages/symbol); pulled by the P2/D2 pre-score lane under the plan's retrieval etiquette; THIS lane pulls nothing",
+  "uses": "(i) evidence every grid instant (fail-closed drop of unevidenced instants, tolerance = same hour bar, absorbing the observed boundary+1ms quirk); (ii) transfer booking -d*rate(S) for every arm holding through a snapshot; (iii) CTL-FUNDLEVEL direction and D2 level-form reference series",
+  "failure_modes": "pull failure or rate field unavailable -> transfers and CTL-FUNDLEVEL are BLOCKED_DATA (never invented, never assumed zero); off-grid settlements discovered in-window (e.g. a historical 4h-interval period) -> recorded as a clock-defect incident, disclosed to the owner; the frozen 8h-grid representation is NOT re-derived (re-clocking after evidence would be rescue)"
+ },
+ "feasibility_declaration": {
+  "settlement_events_in_window": "3 boundaries/day x 365 days = 1,095 grid instants/symbol; 1,094 eligible after warmup (the packet-scale feasibility basis: 3 biên/ngày x 3 symbol x 365)",
+  "decision_count_anchor": "1,094 instants x 3 symbols = 3,282 funded decisions per arm over the panel window",
+  "decision_count_horizon_bars": "3,282 decisions x 2 bars (anchor H) = 6,564 position-bars; neighbour 6,564; control 6,564; shadow 6,564; level control 6,564",
+  "turnover_estimate": "2 fills per funded decision: 6,564 fills/arm; 32,820 fills family-wide (5 arms) per window (~90 fills/day family-wide) - two orders of magnitude above the ng1 A5 expiry-clock families (96 fills); exact turnover/cost-ceiling adjudication (A9-F) is the P2/D2 lane's measured job, not asserted here",
+  "recent_window_note": "recent-window decision ceiling (Q-6) is a P2-phase MEASURED gate; declared estimate: last 6 months of panel = 181 days x 3 boundaries x 3 symbols = 1,629 anchor decisions - ample, unlike the ng1 sparse expiry clocks",
+  "primary_risk_disclosed": "the opposite of thin-N: COST DOMINANCE - a 2-bar hold paying two tier-2.0 taker+spread fills every decision is exposed to the cost ladder by design; the funding transfer booked per decision is typically an order of magnitude smaller than tier-2.0 round-trip cost but is booked, not hidden. DSR exercisable on N=3,282; PBO stays NOT_RUN fail-closed if the execution cell count remains < 8 (cells are arms, not decisions)"
+ },
+ "falsification_rule": {
+  "frozen": true,
+  "no_rescue": "no feature-window depth, boundary definition, entry/exit placement, or direction rule may change after any scored/smoke number is visible (P-15); any violation is a new hypothesis",
+  "rules": [
+   {
+    "id": "F1-clock-artifact",
+    "condition": "CTL-SHIFTBOUNDMINUS2H after-cost expectancy same sign as ANCHOR with |CTL| >= 0.5 x |ANCHOR|",
+    "consequence": "FALSIFIED - the settlement boundary adds nothing beyond generic off-grid hour-of-day flow autocorrelation on the same rule shape (falsification-by-control cluster semantics)"
+   },
+   {
+    "id": "F2-clock-artifact",
+    "condition": "SHADOW-CLOCK8HGRID out-earns ANCHOR on after-cost expectancy, OR |pooled Spearman rho(anchor per-decision returns, shadow per-decision returns)| > 0.20",
+    "consequence": "FALSIFIED - the book is the bare 8h-grid clock (including its transfer stream), not the mechanism"
+   },
+   {
+    "id": "F3-ancestry-veto",
+    "condition": "in-family: |pooled rho(anchor, CTL-FUNDLEVEL per-decision returns)| > 0.20 OR CTL-FUNDLEVEL same-sign with |CTL| >= 0.5 x |ANCHOR|; external: D2 pooled |rho| > 0.20 vs ANY inventory proxy including the H0 hygiene rows, measured on the exact representation_identity above",
+    "consequence": "FALSIFIED / D2 VETO recorded with margin (P-2); the named shadows are the funding-LEVEL carry proxy (the FUNDJUMP killer), the dvol_level_log/dvol_shock proxies (WKNDLIQ's killers), the day-boundary shadows (CLOSE-DISPLACE-FADE/RUNPERSIST) and tsmom28 (TICKET-BREADTH)"
+   },
+   {
+    "id": "F4-mechanical",
+    "condition": "ANCHOR after-cost expectancy (transfers booked) <= 0 at measured tier 2.0",
+    "consequence": "DEAD (mechanical reject); negative-first verdict stands, no re-parameterization"
+   },
+   {
+    "id": "F5-sibling-collapse",
+    "condition": "pooled |rho| between CNG2-A5-P1-ANCHOR and CNG2-A5-P2-ANCHOR per-decision return series (daily-aggregated projection, D2 measurement on both declared representations) > 0.20",
+    "consequence": "the two proposals are ONE bet; only the stronger-evidenced mechanism advances to selection, the other is withdrawn - never both scored"
+   }
+  ]
+ },
+ "expected_failure_interpretation": "If F1 fires, the pre-boundary flow shape is generic hour-of-day autocorrelation and the funding-settlement clock adds no incremental information - the dodge mechanism is dead on this substrate and must NOT be re-clocked to other grids (4h/1h funding intervals would be a new preregistered hypothesis, never a rescue). If F3 fires in-family, P1 was a re-skinned carry: the flow sign is just the level sign in disguise, exactly the FUNDJUMP death (0.2439) this lane was mandated to pre-disclose, and an honest kill. If F2 fires, the always-long 3x/day book (with its transfer stream) subsumes the anchor: there is no flow information, only calendar. If F4 fires with controls coherent (anchor loses, sham/shadow/level also lose), it is a plain negative: either typical payments are too small to coerce dodge flow at H1 granularity, or the coerced move is smaller than measured tier-2.0 costs - one more instance of settlement-hour flow being balanced noise. Any of these outcomes feeds CRYPTO_NG2_REJECT_ALL, which the plan registers as a successful research run."
+}
