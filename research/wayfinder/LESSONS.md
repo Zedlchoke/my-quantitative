@@ -331,3 +331,27 @@ itself is verified (validator --verify + cycle doctor) before the commit.
 - Secrets hygiene: a pre-factory .env (Binance key pair) was found committed
   in early git history and already published on origin; owner informed and
   accepted (repo private). Standing rule stands: keys are environment-only.
+
+## P-17 — Two live Lead sessions will eventually race; mid-flight is not abandoned
+
+Source: ZCODE-ORCHESTRATION-V3 close (2026-09-11). Dual-controller occurrence
+#2: while a fresh session executed /lead-close (batteries mid-run, store
+TERMINAL transitions at 03:03Z not yet committed), the original Lead session
+measured "no new commits", read the close-out items as abandoned, and landed
+its own registry/artifact writes at 03:04Z. Occurrence #1 (same day) was the
+mirror: a fresh /lead-start session detected the original's writes and halted
+cleanly. Damage across both: zero — CAS/single-writer semantics absorbed every
+collision, both closes independently reached the identical verdict on all
+eleven gates.
+
+Lesson: the recurring root cause is TWO live sessions holding the same
+authority, and the trigger is interpreting a measurement gap as abandonment —
+a session mid-turn shows exactly the "incomplete and silent" signature of a
+parked one. Machinery (CAS, single-writer transitions, convergent gates)
+absorbs the writes; it cannot absorb two reasoners diverging on judgment.
+
+Consequence: one live Lead session per cycle is the real guard (close the
+other window); before writing to a surface another authority may own, a Lead
+must first rule out "in flight" (activity check or one waiting cycle), and a
+completed close supersedes nothing silently — both closes here are retained
+as convergent evidence.
