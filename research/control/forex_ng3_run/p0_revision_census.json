@@ -1,0 +1,1274 @@
+{
+ "schema": "forex_ng3_run/p0_revision_census@1",
+ "measured_utc": "2026-09-11T17:44:33.119152+00:00",
+ "cycle_id": "FOREX-NG3",
+ "task_id": "forex-ng3-p0-census",
+ "method": {
+  "restricted_definition": "first-print restricted event = ng2 revision event (v1->v2 index gap with full realtime windows, strict monotonicity fail-closed), usable in the S0 window, with first_print_in_realtime_era=True AND not a member of any bulk re-referencing group (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature)",
+  "event_definition": "per economy and reference month m: v1 = first vintage publishing m (earliest realtime_start with non-missing value), v2 = immediately following vintage; REVISION EVENT iff I_v2(m) != I_v1(m) with full available-time evidence (realtime windows on both vintages); ratio R = I_v2/I_v1 - 1 (ng2 section 4 frozen semantics, inherited via import)",
+  "usability": "v2 availability day within the S0 window 2018-04-04..2025-04-30 (16:00-NY grid coverage); PIT at v2.realtime_start, date-only evidence -> conservative same-day bound in consumers",
+  "monotonicity": "v2.realtime > v1.realtime STRICT (fail-closed); byte-identical duplicate vintage rows are deduplicated first (disclosed ingest artifact; conflicting same-day rows still raise)",
+  "bulk_re_referencing_law": "identical (v1 day, v2 day, ratio-to-1e-6) across >= 10 months = one bulk re-referencing transition excluded from the first-print stream (ng2 census disclosure law, frozen)",
+  "restricted_differential_join": "CA-anchored: an obs month counts iff CA carries a restricted event AND >= 1 other economy (GB/AU/NZ/US non-anchor legs) carries a restricted event in the same obs month; quarter-first month keys for AU/NZ (ng2 join law); months with multi-economy overlap but no CA event are disclosed, never counted",
+  "au_nz_lag_mapping": {
+   "AU": "AUSCPIALLQINMEI quarterly vintaged feed; reference month = quarter first month (V9 law); vintages arrive ~quarterly (15th-ish of Feb/May/Aug/Nov + occasional extra pulls); revision = quarter-over-quarter vintage gap on quarter-first-month keys",
+   "NZ": "NZLCPIALLQINMEI quarterly vintaged feed; reference month = quarter first month (V9 law); vintages arrive ~quarterly; revision = quarter-over-quarter vintage gap on quarter-first-month keys"
+  },
+  "recent_window": {
+   "law": "Q-6: last 24 calendar months of the S0 window, matched on the RESTRICTED stream's v2 availability days",
+   "bounds": [
+    "2023-05-01",
+    "2025-04-30"
+   ]
+  },
+  "anchor_universe_law": "anchor universe = {CA} only (CA->USDCAD); GB/AU/NZ excluded as anchor with disclosed reasons (bulk re-referencing / sub-floor streams) and appear ONLY as non-anchor differential legs; US is the quote leg, measured and disclosed, never anchored; re-including any excluded economy as anchor is forbidden in this cycle (plan section 3)",
+  "no_outcome_law": "NO PnL, NO outcome, NO scoring anywhere in this census"
+ },
+ "legs": {
+  "AU": {
+   "series": "AUSCPIALLQINMEI",
+   "cadence": "quarterly vintaged (quarter-first-month representation)",
+   "lag_mapping": "AUSCPIALLQINMEI quarterly vintaged feed; reference month = quarter first month (V9 law); vintages arrive ~quarterly (15th-ish of Feb/May/Aug/Nov + occasional extra pulls); revision = quarter-over-quarter vintage gap on quarter-first-month keys",
+   "exact_duplicate_rows_removed": 0,
+   "rows": 1551,
+   "rows_input": 1551,
+   "distinct_vintages": 37,
+   "months_carried": 307,
+   "months_with_second_vintage": 257,
+   "events_all": 257,
+   "usable_events": 26,
+   "first_print_era_events": 24,
+   "backfill_history_events": 2,
+   "first_print_era_in_bulk_groups": 0,
+   "bulk_groups_ge_min": {},
+   "bulk_group_events_total": 0,
+   "restricted_events": 24,
+   "law": "first-print restricted event = ng2 revision event (v1->v2 index gap with full realtime windows, strict monotonicity fail-closed), usable in the S0 window, with first_print_in_realtime_era=True AND not a member of any bulk re-referencing group (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature)",
+   "restricted_by_year": {
+    "2018": 3,
+    "2022": 16,
+    "2024": 5
+   },
+   "restricted_recent_24m": {
+    "window": [
+     "2023-05-01",
+     "2025-04-30"
+    ],
+    "count": 5,
+    "law": "Q-6: last 24 calendar months of the S0 window, matched on the RESTRICTED stream's v2 availability days"
+   },
+   "magnitude_pct_restricted": {
+    "n": 24,
+    "median_pct": -0.0,
+    "q1_pct": -0.0,
+    "q3_pct": 0.0,
+    "min_pct": -10.749942,
+    "max_pct": 3.6e-05,
+    "abs_median_pct": 0.0,
+    "law": "descriptive only (plan section 5 P0 (d)); no outcome, no threshold, no decision use"
+   },
+   "sample_restricted_events": [
+    {
+     "obs_month": "2017-10-01",
+     "v1": [
+      "2018-03-09",
+      "116.649323621228"
+     ],
+     "v2": [
+      "2018-10-09",
+      "104.109589041096"
+     ],
+     "ratio_pct": -10.749942,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-01-01",
+     "v1": [
+      "2018-04-24",
+      "117.169614984391"
+     ],
+     "v2": [
+      "2018-10-09",
+      "104.573949384723"
+     ],
+     "ratio_pct": -10.749942,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-04-01",
+     "v1": [
+      "2018-07-26",
+      "117.585848074922"
+     ],
+     "v2": [
+      "2018-10-09",
+      "104.945437659624"
+     ],
+     "ratio_pct": -10.749942,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-07-01",
+     "v1": [
+      "2018-11-13",
+      "105.409798003251"
+     ],
+     "v2": [
+      "2022-08-10",
+      "105.409798"
+     ],
+     "ratio_pct": -0.0,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-10-01",
+     "v1": [
+      "2019-02-13",
+      "105.967030415602"
+     ],
+     "v2": [
+      "2022-08-10",
+      "105.9670304"
+     ],
+     "ratio_pct": -0.0,
+     "first_print_era": true
+    }
+   ]
+  },
+  "CA": {
+   "series": "CANCPIALLMINMEI",
+   "cadence": "monthly MINMEI realtime",
+   "lag_mapping": null,
+   "exact_duplicate_rows_removed": 0,
+   "rows": 5091,
+   "rows_input": 5091,
+   "distinct_vintages": 97,
+   "months_carried": 1335,
+   "months_with_second_vintage": 780,
+   "events_all": 779,
+   "usable_events": 85,
+   "first_print_era_events": 72,
+   "backfill_history_events": 13,
+   "first_print_era_in_bulk_groups": 0,
+   "bulk_groups_ge_min": {
+    "2018-04-20->2024-05-15 ratio -7.9800%": 13
+   },
+   "bulk_group_events_total": 13,
+   "restricted_events": 72,
+   "law": "first-print restricted event = ng2 revision event (v1->v2 index gap with full realtime windows, strict monotonicity fail-closed), usable in the S0 window, with first_print_in_realtime_era=True AND not a member of any bulk re-referencing group (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature)",
+   "restricted_by_year": {
+    "2018": 8,
+    "2022": 47,
+    "2024": 17
+   },
+   "restricted_recent_24m": {
+    "window": [
+     "2023-05-01",
+     "2025-04-30"
+    ],
+    "count": 17,
+    "law": "Q-6: last 24 calendar months of the S0 window, matched on the RESTRICTED stream's v2 availability days"
+   },
+   "magnitude_pct_restricted": {
+    "n": 72,
+    "median_pct": -0.0,
+    "q1_pct": -0.0,
+    "q3_pct": 0.0,
+    "min_pct": -7.979984,
+    "max_pct": 3.7e-05,
+    "abs_median_pct": 0.0,
+    "law": "descriptive only (plan section 5 P0 (d)); no outcome, no threshold, no decision use"
+   },
+   "sample_restricted_events": [
+    {
+     "obs_month": "2017-11-01",
+     "v1": [
+      "2018-01-02",
+      "112.736119061248"
+     ],
+     "v2": [
+      "2018-10-09",
+      "103.739794574664"
+     ],
+     "ratio_pct": -7.979984,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2017-12-01",
+     "v1": [
+      "2018-03-09",
+      "112.306811677161"
+     ],
+     "v2": [
+      "2018-10-09",
+      "103.344745851988"
+     ],
+     "ratio_pct": -7.979984,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-01-01",
+     "v1": [
+      "2018-03-09",
+      "113.079564968517"
+     ],
+     "v2": [
+      "2018-10-09",
+      "104.055833552805"
+     ],
+     "ratio_pct": -7.979984,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-02-01",
+     "v1": [
+      "2018-03-26",
+      "113.766456783057"
+     ],
+     "v2": [
+      "2018-10-09",
+      "104.687911509086"
+     ],
+     "ratio_pct": -7.979984,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-03-01",
+     "v1": [
+      "2018-04-24",
+      "114.109902690326"
+     ],
+     "v2": [
+      "2018-10-09",
+      "105.003950487227"
+     ],
+     "ratio_pct": -7.979984,
+     "first_print_era": true
+    }
+   ]
+  },
+  "GB": {
+   "series": "GBRCPIALLMINMEI",
+   "cadence": "monthly MINMEI realtime",
+   "lag_mapping": null,
+   "exact_duplicate_rows_removed": 0,
+   "rows": 4737,
+   "rows_input": 4737,
+   "distinct_vintages": 97,
+   "months_carried": 843,
+   "months_with_second_vintage": 763,
+   "events_all": 762,
+   "usable_events": 68,
+   "first_print_era_events": 8,
+   "backfill_history_events": 60,
+   "first_print_era_in_bulk_groups": 0,
+   "bulk_groups_ge_min": {
+    "2018-04-06->2018-05-24 ratio 0.9359%": 60
+   },
+   "bulk_group_events_total": 60,
+   "restricted_events": 8,
+   "law": "first-print restricted event = ng2 revision event (v1->v2 index gap with full realtime windows, strict monotonicity fail-closed), usable in the S0 window, with first_print_in_realtime_era=True AND not a member of any bulk re-referencing group (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature)",
+   "restricted_by_year": {
+    "2018": 8
+   },
+   "restricted_recent_24m": {
+    "window": [
+     "2023-05-01",
+     "2025-04-30"
+    ],
+    "count": 0,
+    "law": "Q-6: last 24 calendar months of the S0 window, matched on the RESTRICTED stream's v2 availability days"
+   },
+   "magnitude_pct_restricted": {
+    "n": 8,
+    "median_pct": -0.692652,
+    "q1_pct": -9.9,
+    "q3_pct": -0.645227,
+    "min_pct": -9.9,
+    "max_pct": -0.644842,
+    "abs_median_pct": 0.692652,
+    "law": "descriptive only (plan section 5 P0 (d)); no outcome, no threshold, no decision use"
+   },
+   "sample_restricted_events": [
+    {
+     "obs_month": "2017-11-01",
+     "v1": [
+      "2018-01-02",
+      "116.958628401044"
+     ],
+     "v2": [
+      "2018-05-24",
+      "116.204217536071"
+     ],
+     "ratio_pct": -0.645024,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2017-12-01",
+     "v1": [
+      "2018-03-09",
+      "117.294073797987"
+     ],
+     "v2": [
+      "2018-05-24",
+      "116.5371809101"
+     ],
+     "ratio_pct": -0.645295,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-01-01",
+     "v1": [
+      "2018-03-09",
+      "116.734998136414"
+     ],
+     "v2": [
+      "2018-05-24",
+      "115.982241953385"
+     ],
+     "ratio_pct": -0.644842,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-02-01",
+     "v1": [
+      "2018-03-21",
+      "117.294073797987"
+     ],
+     "v2": [
+      "2018-05-24",
+      "116.426193118757"
+     ],
+     "ratio_pct": -0.739919,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-03-01",
+     "v1": [
+      "2018-04-20",
+      "117.405888930302"
+     ],
+     "v2": [
+      "2018-05-24",
+      "116.648168701443"
+     ],
+     "ratio_pct": -0.645385,
+     "first_print_era": true
+    }
+   ]
+  },
+  "NZ": {
+   "series": "NZLCPIALLQINMEI",
+   "cadence": "quarterly vintaged (quarter-first-month representation)",
+   "lag_mapping": "NZLCPIALLQINMEI quarterly vintaged feed; reference month = quarter first month (V9 law); vintages arrive ~quarterly; revision = quarter-over-quarter vintage gap on quarter-first-month keys",
+   "exact_duplicate_rows_removed": 0,
+   "rows": 1958,
+   "rows_input": 1958,
+   "distinct_vintages": 37,
+   "months_carried": 444,
+   "months_with_second_vintage": 275,
+   "events_all": 275,
+   "usable_events": 44,
+   "first_print_era_events": 24,
+   "backfill_history_events": 20,
+   "first_print_era_in_bulk_groups": 0,
+   "bulk_groups_ge_min": {
+    "2018-03-09->2024-05-15 ratio -7.3588%": 20
+   },
+   "bulk_group_events_total": 20,
+   "restricted_events": 24,
+   "law": "first-print restricted event = ng2 revision event (v1->v2 index gap with full realtime windows, strict monotonicity fail-closed), usable in the S0 window, with first_print_in_realtime_era=True AND not a member of any bulk re-referencing group (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature)",
+   "restricted_by_year": {
+    "2018": 3,
+    "2022": 16,
+    "2024": 5
+   },
+   "restricted_recent_24m": {
+    "window": [
+     "2023-05-01",
+     "2025-04-30"
+    ],
+    "count": 5,
+    "law": "Q-6: last 24 calendar months of the S0 window, matched on the RESTRICTED stream's v2 availability days"
+   },
+   "magnitude_pct_restricted": {
+    "n": 24,
+    "median_pct": -0.0,
+    "q1_pct": -4e-06,
+    "q3_pct": 0.0,
+    "min_pct": -7.358766,
+    "max_pct": 2.9e-05,
+    "abs_median_pct": 0.0,
+    "law": "descriptive only (plan section 5 P0 (d)); no outcome, no threshold, no decision use"
+   },
+   "sample_restricted_events": [
+    {
+     "obs_month": "2017-10-01",
+     "v1": [
+      "2018-03-09",
+      "111.013141308886"
+     ],
+     "v2": [
+      "2018-10-09",
+      "102.843944123559"
+     ],
+     "ratio_pct": -7.358766,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-01-01",
+     "v1": [
+      "2018-04-20",
+      "111.564896484377"
+     ],
+     "v2": [
+      "2018-10-09",
+      "103.355096927354"
+     ],
+     "ratio_pct": -7.358766,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-04-01",
+     "v1": [
+      "2018-07-23",
+      "112.00630062477"
+     ],
+     "v2": [
+      "2018-10-09",
+      "103.76401917039"
+     ],
+     "ratio_pct": -7.358766,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-07-01",
+     "v1": [
+      "2018-11-13",
+      "104.684094217221"
+     ],
+     "v2": [
+      "2022-08-10",
+      "104.6840942"
+     ],
+     "ratio_pct": -0.0,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-10-01",
+     "v1": [
+      "2019-02-13",
+      "104.78632477798"
+     ],
+     "v2": [
+      "2022-08-10",
+      "104.7863248"
+     ],
+     "ratio_pct": 0.0,
+     "first_print_era": true
+    }
+   ]
+  },
+  "US": {
+   "series": "CPIAUCSL",
+   "cadence": "US fred realtime archive (measured: small index-level vintage updates)",
+   "lag_mapping": null,
+   "exact_duplicate_rows_removed": 481,
+   "rows": 1481,
+   "rows_input": 1962,
+   "distinct_vintages": 111,
+   "months_carried": 942,
+   "months_with_second_vintage": 156,
+   "events_all": 156,
+   "usable_events": 84,
+   "first_print_era_events": 84,
+   "backfill_history_events": 0,
+   "first_print_era_in_bulk_groups": 0,
+   "bulk_groups_ge_min": {},
+   "bulk_group_events_total": 0,
+   "restricted_events": 84,
+   "law": "first-print restricted event = ng2 revision event (v1->v2 index gap with full realtime windows, strict monotonicity fail-closed), usable in the S0 window, with first_print_in_realtime_era=True AND not a member of any bulk re-referencing group (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature)",
+   "restricted_by_year": {
+    "2019": 12,
+    "2020": 12,
+    "2021": 12,
+    "2022": 12,
+    "2023": 12,
+    "2024": 12,
+    "2025": 12
+   },
+   "restricted_recent_24m": {
+    "window": [
+     "2023-05-01",
+     "2025-04-30"
+    ],
+    "count": 24,
+    "law": "Q-6: last 24 calendar months of the S0 window, matched on the RESTRICTED stream's v2 availability days"
+   },
+   "magnitude_pct_restricted": {
+    "n": 84,
+    "median_pct": -0.011055,
+    "q1_pct": -0.044034,
+    "q3_pct": 0.03478,
+    "min_pct": -0.217766,
+    "max_pct": 0.29452,
+    "abs_median_pct": 0.037814,
+    "law": "descriptive only (plan section 5 P0 (d)); no outcome, no threshold, no decision use"
+   },
+   "sample_restricted_events": [
+    {
+     "obs_month": "2018-01-01",
+     "v1": [
+      "2018-02-14",
+      "249.245"
+     ],
+     "v2": [
+      "2019-02-11",
+      "248.884"
+     ],
+     "ratio_pct": -0.144837,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-02-01",
+     "v1": [
+      "2018-03-13",
+      "249.619"
+     ],
+     "v2": [
+      "2019-02-11",
+      "249.369"
+     ],
+     "ratio_pct": -0.100153,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-03-01",
+     "v1": [
+      "2018-04-11",
+      "249.462"
+     ],
+     "v2": [
+      "2019-02-11",
+      "249.498"
+     ],
+     "ratio_pct": 0.014431,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-04-01",
+     "v1": [
+      "2018-05-10",
+      "250.013"
+     ],
+     "v2": [
+      "2019-02-11",
+      "249.956"
+     ],
+     "ratio_pct": -0.022799,
+     "first_print_era": true
+    },
+    {
+     "obs_month": "2018-05-01",
+     "v1": [
+      "2018-06-12",
+      "250.535"
+     ],
+     "v2": [
+      "2019-02-11",
+      "250.646"
+     ],
+     "ratio_pct": 0.044305,
+     "first_print_era": true
+    }
+   ]
+  }
+ },
+ "restricted_differential": {
+  "months": {
+   "2018-01": [
+    "CA",
+    "AU",
+    "GB",
+    "NZ",
+    "US"
+   ],
+   "2018-04": [
+    "CA",
+    "AU",
+    "GB",
+    "NZ",
+    "US"
+   ],
+   "2018-10": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2019-01": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2019-04": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2019-07": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2019-10": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2020-01": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2020-04": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2020-07": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2020-10": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2021-01": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2021-04": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2021-07": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2021-10": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2022-01": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2022-04": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2022-07": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2022-10": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2023-01": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2023-04": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2023-07": [
+    "CA",
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2017-11": [
+    "CA",
+    "GB"
+   ],
+   "2017-12": [
+    "CA",
+    "GB"
+   ],
+   "2018-02": [
+    "CA",
+    "GB",
+    "US"
+   ],
+   "2018-03": [
+    "CA",
+    "GB",
+    "US"
+   ],
+   "2018-05": [
+    "CA",
+    "GB",
+    "US"
+   ],
+   "2018-06": [
+    "CA",
+    "GB",
+    "US"
+   ],
+   "2018-08": [
+    "CA",
+    "US"
+   ],
+   "2018-09": [
+    "CA",
+    "US"
+   ],
+   "2018-11": [
+    "CA",
+    "US"
+   ],
+   "2018-12": [
+    "CA",
+    "US"
+   ],
+   "2019-02": [
+    "CA",
+    "US"
+   ],
+   "2019-03": [
+    "CA",
+    "US"
+   ],
+   "2019-05": [
+    "CA",
+    "US"
+   ],
+   "2019-06": [
+    "CA",
+    "US"
+   ],
+   "2019-08": [
+    "CA",
+    "US"
+   ],
+   "2019-09": [
+    "CA",
+    "US"
+   ],
+   "2019-11": [
+    "CA",
+    "US"
+   ],
+   "2019-12": [
+    "CA",
+    "US"
+   ],
+   "2020-02": [
+    "CA",
+    "US"
+   ],
+   "2020-03": [
+    "CA",
+    "US"
+   ],
+   "2020-05": [
+    "CA",
+    "US"
+   ],
+   "2020-06": [
+    "CA",
+    "US"
+   ],
+   "2020-08": [
+    "CA",
+    "US"
+   ],
+   "2020-09": [
+    "CA",
+    "US"
+   ],
+   "2020-11": [
+    "CA",
+    "US"
+   ],
+   "2020-12": [
+    "CA",
+    "US"
+   ],
+   "2021-02": [
+    "CA",
+    "US"
+   ],
+   "2021-03": [
+    "CA",
+    "US"
+   ],
+   "2021-05": [
+    "CA",
+    "US"
+   ],
+   "2021-06": [
+    "CA",
+    "US"
+   ],
+   "2021-08": [
+    "CA",
+    "US"
+   ],
+   "2021-09": [
+    "CA",
+    "US"
+   ],
+   "2021-11": [
+    "CA",
+    "US"
+   ],
+   "2021-12": [
+    "CA",
+    "US"
+   ],
+   "2022-02": [
+    "CA",
+    "US"
+   ],
+   "2022-03": [
+    "CA",
+    "US"
+   ],
+   "2022-05": [
+    "CA",
+    "US"
+   ],
+   "2022-06": [
+    "CA",
+    "US"
+   ],
+   "2022-08": [
+    "CA",
+    "US"
+   ],
+   "2022-09": [
+    "CA",
+    "US"
+   ],
+   "2022-11": [
+    "CA",
+    "US"
+   ],
+   "2022-12": [
+    "CA",
+    "US"
+   ],
+   "2023-02": [
+    "CA",
+    "US"
+   ],
+   "2023-03": [
+    "CA",
+    "US"
+   ],
+   "2023-05": [
+    "CA",
+    "US"
+   ],
+   "2023-06": [
+    "CA",
+    "US"
+   ],
+   "2023-08": [
+    "CA",
+    "US"
+   ],
+   "2023-09": [
+    "CA",
+    "US"
+   ],
+   "2023-10": [
+    "CA",
+    "US"
+   ],
+   "2023-11": [
+    "CA",
+    "US"
+   ]
+  },
+  "sorted_month_keys": [
+   "2017-11",
+   "2017-12",
+   "2018-01",
+   "2018-02",
+   "2018-03",
+   "2018-04",
+   "2018-05",
+   "2018-06",
+   "2018-08",
+   "2018-09",
+   "2018-10",
+   "2018-11",
+   "2018-12",
+   "2019-01",
+   "2019-02",
+   "2019-03",
+   "2019-04",
+   "2019-05",
+   "2019-06",
+   "2019-07",
+   "2019-08",
+   "2019-09",
+   "2019-10",
+   "2019-11",
+   "2019-12",
+   "2020-01",
+   "2020-02",
+   "2020-03",
+   "2020-04",
+   "2020-05",
+   "2020-06",
+   "2020-07",
+   "2020-08",
+   "2020-09",
+   "2020-10",
+   "2020-11",
+   "2020-12",
+   "2021-01",
+   "2021-02",
+   "2021-03",
+   "2021-04",
+   "2021-05",
+   "2021-06",
+   "2021-07",
+   "2021-08",
+   "2021-09",
+   "2021-10",
+   "2021-11",
+   "2021-12",
+   "2022-01",
+   "2022-02",
+   "2022-03",
+   "2022-04",
+   "2022-05",
+   "2022-06",
+   "2022-07",
+   "2022-08",
+   "2022-09",
+   "2022-10",
+   "2022-11",
+   "2022-12",
+   "2023-01",
+   "2023-02",
+   "2023-03",
+   "2023-04",
+   "2023-05",
+   "2023-06",
+   "2023-07",
+   "2023-08",
+   "2023-09",
+   "2023-10",
+   "2023-11"
+  ],
+  "total": 72,
+  "anchor": "CA",
+  "anchor_restricted_months": 72,
+  "non_anchor_event_months_without_anchor": {
+   "2017-10": [
+    "AU",
+    "NZ"
+   ],
+   "2018-07": [
+    "AU",
+    "NZ",
+    "US"
+   ],
+   "2023-12": [
+    "US"
+   ],
+   "2024-01": [
+    "US"
+   ],
+   "2024-02": [
+    "US"
+   ],
+   "2024-03": [
+    "US"
+   ],
+   "2024-04": [
+    "US"
+   ],
+   "2024-05": [
+    "US"
+   ],
+   "2024-06": [
+    "US"
+   ],
+   "2024-07": [
+    "US"
+   ],
+   "2024-08": [
+    "US"
+   ],
+   "2024-09": [
+    "US"
+   ],
+   "2024-10": [
+    "US"
+   ],
+   "2024-11": [
+    "US"
+   ],
+   "2024-12": [
+    "US"
+   ]
+  },
+  "non_anchor_months_without_anchor_count": 15,
+  "join_key_law": "obs month key (quarter-first month for AU/NZ); restricted (first-print) membership; a differential month requires the anchor (CA) AND >= 1 other economy in the same obs month",
+  "law": "CA-anchored: months carrying non-anchor restricted events but NO CA restricted event are disclosed in non_anchor_event_months_without_anchor and never count toward the A5 floor",
+  "by_year": {
+   "2017": 2,
+   "2018": 11,
+   "2019": 12,
+   "2020": 12,
+   "2021": 12,
+   "2022": 12,
+   "2023": 11
+  },
+  "non_anchor_legs_by_month_sample": {
+   "2017-11": [
+    "GB"
+   ],
+   "2017-12": [
+    "GB"
+   ],
+   "2018-01": [
+    "AU",
+    "GB",
+    "NZ",
+    "US"
+   ],
+   "2018-02": [
+    "GB",
+    "US"
+   ],
+   "2018-03": [
+    "GB",
+    "US"
+   ],
+   "2018-04": [
+    "AU",
+    "GB",
+    "NZ",
+    "US"
+   ],
+   "2018-05": [
+    "GB",
+    "US"
+   ],
+   "2018-06": [
+    "GB",
+    "US"
+   ],
+   "2018-08": [
+    "US"
+   ],
+   "2018-09": [
+    "US"
+   ]
+  }
+ },
+ "ng2_census_reconciliation": {
+  "baseline": "research/control/forex_ng2_run/p0_revision_census.json (committed ng2 census, A7-audited at the FOREX-NG2 close)",
+  "law": "same pinned bytes, same first-print-era split (first_print_in_realtime_era); the ng3 restricted stream additionally removes bulk re-referencing groups (>= 10 identical (v1 day, v2 day, ratio) signatures), so ng3_restricted_first_print may be < ng2_first_print_era_usable; any era-split mismatch is a disclosed incident, never patched",
+  "rows": {
+   "AU": {
+    "ng2_first_print_era_usable": 24,
+    "ng3_first_print_era_usable": 24,
+    "ng3_restricted_first_print": 24,
+    "ng2_era_split_match": true,
+    "bulk_exclusion_removed_further": 0
+   },
+   "CA": {
+    "ng2_first_print_era_usable": 72,
+    "ng3_first_print_era_usable": 72,
+    "ng3_restricted_first_print": 72,
+    "ng2_era_split_match": true,
+    "bulk_exclusion_removed_further": 0
+   },
+   "GB": {
+    "ng2_first_print_era_usable": 8,
+    "ng3_first_print_era_usable": 8,
+    "ng3_restricted_first_print": 8,
+    "ng2_era_split_match": true,
+    "bulk_exclusion_removed_further": 0
+   },
+   "NZ": {
+    "ng2_first_print_era_usable": 24,
+    "ng3_first_print_era_usable": 24,
+    "ng3_restricted_first_print": 24,
+    "ng2_era_split_match": true,
+    "bulk_exclusion_removed_further": 0
+   },
+   "US": {
+    "ng2_first_print_era_usable": 84,
+    "ng3_first_print_era_usable": 84,
+    "ng3_restricted_first_print": 84,
+    "ng2_era_split_match": true,
+    "bulk_exclusion_removed_further": 0
+   }
+  },
+  "verdict": "PASS"
+ },
+ "monotonicity_check": {
+  "law": "v2.realtime > v1.realtime STRICT per month; a single violation raises VintageMonotonicityError and NO events are built (fail-closed; ng2 law inherited verbatim via build_restricted_stream)",
+  "exact_duplicate_rows_removed": {
+   "GB": 0,
+   "CA": 0,
+   "AU": 0,
+   "NZ": 0,
+   "US": 481
+  },
+  "dedupe_law": "byte-identical duplicate rows only (same obs_date + realtime window + value: ingest artifact, zero ambiguity); conflicting same-realtime_start rows still raise fail-closed (a genuine same-day correction makes the month unmeasurable, never guessed)",
+  "measured_violations_after_dedupe": 0,
+  "verdict": "PASS",
+  "note": "planted-violation behavior exercised in tests/test_forex_ng3_p0.py"
+ },
+ "canary": [
+  {
+   "economy": "GB",
+   "obs_month": "2019-06-01",
+   "found": false,
+   "event_count": 0,
+   "expected_found": false,
+   "verdict": "PASS",
+   "basis": "fabricated: June-2019 must not be a GB revision-event month in the pinned archives (if it coincides with a real event the canary reports FAIL and the controller is informed, not patched)",
+   "stream": "all-events (ng2 law)"
+  },
+  {
+   "economy": "AU",
+   "obs_month": "2030-02-01",
+   "found": false,
+   "event_count": 0,
+   "expected_found": false,
+   "verdict": "PASS",
+   "basis": "fabricated: far-future month cannot exist in the pinned realtime archives (lookup must FAIL)",
+   "stream": "all-events (ng2 law)"
+  },
+  {
+   "economy": "CA",
+   "obs_month": "1956-08-01",
+   "found": true,
+   "event_count": 1,
+   "expected_found": true,
+   "verdict": "PASS",
+   "basis": "positive control: a measured CA event month (taken from the built events) must be found",
+   "stream": "all-events (ng2 law)"
+  },
+  {
+   "economy": "CA",
+   "obs_month": "1956-08-01",
+   "found": false,
+   "event_count": 0,
+   "expected_found": false,
+   "verdict": "PASS",
+   "stream": "restricted (first-print)",
+   "basis": "restriction canary: CA 1956-08-01 is a real usable event (backfill history) measured on the pinned bytes; the first-print restriction MUST exclude it from the restricted stream (if it leaks, the restriction is a no-op and the canary FAILs)"
+  },
+  {
+   "economy": "GB",
+   "obs_month": "1955-01-01",
+   "found": false,
+   "event_count": 0,
+   "expected_found": false,
+   "verdict": "PASS",
+   "stream": "restricted (first-print)",
+   "basis": "restriction canary: GB 1955-01-01 is a real usable event (backfill history / bulk re-referencing) measured on the pinned bytes; the first-print restriction MUST exclude it from the restricted stream (if it leaks, the restriction is a no-op and the canary FAILs)"
+  }
+ ],
+ "floors": {
+  "a4_ca_own_economy": {
+   "measured": 72,
+   "floor": 30,
+   "margin": 42,
+   "verdict": "PASS"
+  },
+  "a4_ca_recent_q6": {
+   "measured": 17,
+   "floor": 15,
+   "margin": 2,
+   "verdict": "PASS"
+  },
+  "a5_restricted_differential": {
+   "measured": 72,
+   "floor": 12,
+   "margin": 60,
+   "verdict": "PASS"
+  },
+  "verdict": "PASS",
+  "law": "plan section 3 frozen floors: >= 30 CA first-print restricted events with full availability windows; Q-6 recent >= 15; >= 12 restricted differential months (CA AND >= 1 other economy); anchor universe CA only; else BLOCKED_DATA",
+  "usability_definition": "restricted event = ng2 revision event (v1->v2 index gap with full realtime windows on both vintages) whose v2 availability day (v2.realtime_start; date-only evidence, conservative) is inside the S0 window 2018-04-04..2025-04-30, with first_print_in_realtime_era=True and no bulk re-referencing group membership; events outside the window are counted in events_all but never toward a floor",
+  "recent_window_definition": "Q-6 on the RESTRICTED stream: v2 availability day inside [2023-05-01, 2025-04-30] (last 24 calendar months of the S0 window)",
+  "ng2_wider_definition_comparison": "ng2's all-usable differential measured 102 months; this cycle re-measures under the first-print restricted, CA-anchored definition (A5 floor >= 12) and fails closed if short -- frozen floor, never renegotiated"
+ },
+ "anchor_universe_verification": {
+  "anchor": "CA",
+  "anchor_pair": "USDCAD",
+  "anchor_law": "anchor universe = {CA} only (CA->USDCAD); GB/AU/NZ excluded as anchor with disclosed reasons (bulk re-referencing / sub-floor streams) and appear ONLY as non-anchor differential legs; US is the quote leg, measured and disclosed, never anchored; re-including any excluded economy as anchor is forbidden in this cycle (plan section 3)",
+  "excluded_as_anchor": {
+   "GB": "8 first-print events; 60/68 usable events are one bulk 2018 re-referencing coefficient -- EXCLUDED as anchor, disclosed; usable only as a non-anchor differential leg",
+   "AU": "26 usable events < 30 (the ng2 P0 kill) -- EXCLUDED as anchor, disclosed; usable only as a non-anchor differential leg",
+   "NZ": "24 first-print events < 30 -- EXCLUDED as anchor, disclosed; usable only as a non-anchor differential leg"
+  },
+  "non_anchor_legs": {
+   "AU": {
+    "restricted_events": 24,
+    "role": "non-anchor differential leg (excluded as anchor: 26 usable events < 30 (the ng2 P0 kill) -- EXCLUDED as anchor, disclosed; usable only as a non-anchor differential leg"
+   },
+   "GB": {
+    "restricted_events": 8,
+    "role": "non-anchor differential leg (excluded as anchor: 8 first-print events; 60/68 usable events are one bulk 2018 re-referencing coefficient -- EXCLUDED as anchor, disclosed; usable only as a non-anchor differential leg"
+   },
+   "NZ": {
+    "restricted_events": 24,
+    "role": "non-anchor differential leg (excluded as anchor: 24 first-print events < 30 -- EXCLUDED as anchor, disclosed; usable only as a non-anchor differential leg"
+   },
+   "US": {
+    "restricted_events": 84,
+    "role": "quote leg of every funded pair; measured and disclosed, never anchored"
+   }
+  },
+  "problems": [],
+  "verdict": "PASS"
+ },
+ "census_error": null
+}
