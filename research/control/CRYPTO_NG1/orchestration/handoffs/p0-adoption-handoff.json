@@ -1,0 +1,57 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "crypto-ng1-p0-adoption",
+ "cycle_id": "CRYPTO-NG1",
+ "role": "quant-implementer",
+ "lane": "p0",
+ "dispatch_sha": "724c3116febf0c694e69b4aa5e52530a8847fded",
+ "actual_start_sha": "724c3116febf0c694e69b4aa5e52530a8847fded",
+ "commit_sha": "0f474bee72633e0eab5f268b47687b7a49a77d16",
+ "changed_paths": [
+  "research/assets/crypto_ng1/__init__.py",
+  "research/assets/crypto_ng1/plane_adapter.py",
+  "research/assets/crypto_ng1/calendar_census.py",
+  "research/control/crypto_ng1_run/run_p0_adoption.py",
+  "research/control/crypto_ng1_run/p0_calendar_census.json",
+  "research/control/crypto_ng1_run/p0_funding_reproof.json",
+  "research/control/crypto_ng1_run/p0_gate.json",
+  "tests/test_crypto_ng1_p0.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/crypto-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_crypto_ng1_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "13 passed (adapter fail-closed incl. one-byte digest flip, unknown-series refusal, manifest-verified query, shadow parity; calendar DST-boundary instants hand-computed; offline census stub incl. canary-negative and all-sources-blocked)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/crypto-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/crypto_ng1_run/run_p0_adoption.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "p0_gate.json verdict PASS: s4_repin 5/5 exact digests, panel_bounds SUCCESS x3, shadow_parity identical (BTC+SOL), calendar_census PASS_WITH_BLS_BLOCKED (8 FOMC instants), series canaries PASS, embedded pytest PASS"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "BLS web denied all retrieval (Akamai 403, definitive 4xx): CPI and NFP announcement instants are NOT collected; census records the source BLOCKED with zero fabricated instants. The census therefore carries FOMC decision instants only (8, all with official 'For release at h:mm a.m./p.m. EST/EDT' publication timestamps taken from the Federal Reserve statement pages, DST-correct UTC). If lane A4 needs CPI/NFP instants, BLS must be retrieved from an environment with browser-class TLS or supplied by the owner; never inferred.",
+  "Pre-run exploration probes (not part of the recorded census artifact): 3 attempts against https://www.bls.gov/schedule/news_release/cpi.htm (all 403) plus single probes of the FOMC calendar page, one statement page and the fapi fundingRate endpoint were made while designing the parser; the recorded artifacts measure only the runner's own fetches (etiquette: definitive 4xx recorded immediately, no hammering).",
+  "Funding re-proof is an availability PROBE only (KEYLESS_ENDPOINT_PROVEN for BTCUSDT/ETHUSDT/SOLUSDT, 500 rows observed each, nothing stored in CADS, nothing consumed by D1 lanes).",
+  "oi_series_reduced.json is CADS-pinned under series S4:binance-daily-h1-panels in the store journal; the adapter resolves it for series S4:binance-open-interest via the pa4_pa5 stage-prefix pin-match shape (disclosed in gate s4_repin entry pin_series).",
+  "The committed research/control/CRYPTO_NG1/orchestration/dispatch_manifest.json (pre-existing) lists lanes: [] and base_sha 69ab491a...; the dispatch packet (base 724c3116) is the authority for this lane and matched the measured checkout exactly.",
+  "Calendar statement URLs follow the monetary{YYYYMMDD}a.htm pattern; if the Federal Reserve changes its press-release URL scheme, the census fails closed per-meeting (dropped with reason), never inferred."
+ ],
+ "incidents": [],
+ "tree_status": "clean after commit 0f474bee72633e0eab5f268b47687b7a49a77d16 (this handoff file is the second and final commit's only change; __pycache__ dirs are gitignored)",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/assets/crypto_ng1/__init__.py", "sha256": "fb71f2a151741a0d7901aab9dfcd5fff1f2fc21dbddbed992595da2128f5fdb0"},
+  {"path": "research/assets/crypto_ng1/plane_adapter.py", "sha256": "01f9934e694a183cea270c671dda2d39f36d8a922223f3f878dd9005c5add657"},
+  {"path": "research/assets/crypto_ng1/calendar_census.py", "sha256": "df036e00502aa9b5a3c0772df1234971857ed42874b5640e88f8727828df4ca4"},
+  {"path": "research/control/crypto_ng1_run/run_p0_adoption.py", "sha256": "8a0458fb56552cdc0a3fc3ea3e526c9a2dcec6e208defd7b3c820339f83eb94d"},
+  {"path": "research/control/crypto_ng1_run/p0_calendar_census.json", "sha256": "9e677e9002952a5412d2622b729c93ff86784b3691b131bc0c4d120dc832a83f"},
+  {"path": "research/control/crypto_ng1_run/p0_funding_reproof.json", "sha256": "be24bf3d4d139e75be8f70be4b2c95d2bfdff943c71118bcec09dafcb5742f17"},
+  {"path": "research/control/crypto_ng1_run/p0_gate.json", "sha256": "d095a0ec85e91d3ea0b1a84ae8c184c240999c8fc826d639de56a9b10097e0dd"},
+  {"path": "tests/test_crypto_ng1_p0.py", "sha256": "0a24eb1c31cc6436d1b8e5c79cf01ebd367e7ca7e3e1eee510b226036f849915"}
+ ],
+ "recommended_next_action": "Controller validates this handoff, then P0_GATE stands PASS (BLS sources BLOCKED per-source, allowed): dispatch P1 kernel/accounting inheritance (V17 scored driver adapted) on top of the adopted plane; D1 lane A4 proposal scope must treat CPI/NFP announcement instants as unavailable until BLS is retrievable (FOMC-only instants are PIT-evidenced)."
+}
