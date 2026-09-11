@@ -847,3 +847,319 @@ def test_p0b_ez_us_differential_join_hand_computed():
     diff = ezv.ez_us_differential_months(ez_events, us_events)
     assert diff["differential_months"] == ["2018-06", "2019-01"]
     assert diff["total"] == 2
+
+
+# --------------------------------------------------------------------------- #
+# 10. P0c wide-window pull (A7-F1 remediation): query shape, paging,
+#     pure merge + pure adapter, pin/verify-on-read, era comparison
+# --------------------------------------------------------------------------- #
+
+from research.assets.forex_ng4 import wide_pull as wp          # noqa: E402
+
+
+def test_p0c_wide_query_shape_matches_the_a7_prescription():
+    # realtime_start must predate the committed V8 earliest-vintage
+    # bound 2015-02-27 so the pull captures the archive from its
+    # true beginning; realtime_end open
+    assert wp.WIDE_REALTIME_START <= "2015-02-27"
+    assert wp.WIDE_REALTIME_START == "2015-01-01"
+    assert wp.WIDE_REALTIME_END == "9999-12-31"
+    assert wp.PAGE_LIMIT == 1000
+
+
+def _wide_obs(date, rs_, re_, value):
+    return {"date": date, "realtime_start": rs_, "realtime_end": re_,
+            "value": value}
+
+
+def _wide_page_payload(offset, observations, count=None, limit=None):
+    return {"realtime_start": wp.WIDE_REALTIME_START,
+            "realtime_end": wp.WIDE_REALTIME_END,
+            "count": count if count is not None else offset + len(
+                observations),
+            "limit": limit if limit is not None else wp.PAGE_LIMIT,
+            "offset": offset,
+            "observations": observations}
+
+
+#: hand-computed true-archive mini-world (5 obs months, true windows):
+#: the 2015-01 print (2015-02-27) is the archive clock zero; the three
+#: early months revise together at the 2019-03-20 re-publication.
+_WIDE_TRUTH = [
+    _wide_obs("2015-01-01", "2015-02-27", "2019-03-19", "99.0"),
+    _wide_obs("2015-01-01", "2019-03-20", "9999-12-31", "99.4"),
+    _wide_obs("2015-03-01", "2015-04-15", "2019-03-19", "100.0"),
+    _wide_obs("2015-03-01", "2019-03-20", "9999-12-31", "100.5"),
+    _wide_obs("2015-04-01", "2015-05-15", "2019-03-19", "100.8"),
+    _wide_obs("2015-04-01", "2019-03-20", "9999-12-31", "101.1"),
+    _wide_obs("2018-05-01", "2018-06-15", "2018-07-15", "102.0"),
+    _wide_obs("2018-05-01", "2018-07-16", "9999-12-31", "102.3"),
+    _wide_obs("2018-08-01", "2018-09-15", "2019-03-19", "103.0"),
+    _wide_obs("2018-08-01", "2019-03-20", "9999-12-31", "103.2"),
+]
+
+
+def _wide_fixture_payload():
+    return _wide_page_payload(0, list(_WIDE_TRUTH), count=10)
+
+
+def test_p0c_adapter_hand_computed(tmp_path):
+    path = _w(f"{TEST_ROOT}/wide/wide_window.json", _wide_fixture_payload())
+    with open(path, "r", encoding="utf-8") as fh:
+        payload = json.load(fh)
+    rows = wp.validate_wide_response(payload)
+    # exact hand-computed VintageRows (the pure input adapter)
+    assert [(r.obs_date, r.realtime_start, r.realtime_end, r.value)
+            for r in rows] == [
+        (r["date"], r["realtime_start"], r["realtime_end"], r["value"])
+        for r in _WIDE_TRUTH]
+    stats = wp.open_version_stat(rows)
+    assert stats["open_version_rows"] == 5    # one open version per month
+
+
+def test_p0c_adapter_refuses_wrong_shapes():
+    # as-of CLAMPED shape (all rows one single day) = wrong query shape
+    clamped = _wide_page_payload(0, [
+        _wide_obs("2018-01-01", "2018-03-01", "2018-03-01", "101.77")],
+        count=1)
+    with pytest.raises(wp.WideResponseError):
+        wp.validate_wide_response(clamped)
+    # truncated response (count != observations)
+    truncated = _wide_page_payload(0, list(_WIDE_TRUTH), count=99)
+    with pytest.raises(wp.WideResponseError):
+        wp.validate_wide_response(truncated)
+    # non-monthly obs date
+    offgrid = _wide_page_payload(0, [
+        _wide_obs("2018-01-15", "2018-02-15", "9999-12-31", "101.0")],
+        count=1)
+    with pytest.raises(wp.WideResponseError):
+        wp.validate_wide_response(offgrid)
+    # invalid realtime window
+    bad_window = _wide_page_payload(0, [
+        _wide_obs("2018-01-01", "2018-03-15", "2018-02-01", "101.0")],
+        count=1)
+    with pytest.raises(wp.WideResponseError):
+        wp.validate_wide_response(bad_window)
+    # current-vintage table (no realtime keys) refuses structurally
+    with pytest.raises(pa.VintageStructureError):
+        wp.validate_wide_response({"count": 1, "observations": [
+            {"date": "2018-01-01", "value": "101.0"}]})
+
+
+def test_p0c_merge_pages_hand_computed():
+    pages = [
+        _wide_page_payload(0, _WIDE_TRUTH[:3], count=10, limit=3),
+        _wide_page_payload(3, _WIDE_TRUTH[3:6], count=10, limit=3),
+        _wide_page_payload(6, _WIDE_TRUTH[6:9], count=10, limit=3),
+        _wide_page_payload(9, _WIDE_TRUTH[9:], count=10, limit=3),
+    ]
+    merged = wp.merge_wide_pages(pages, limit=3)
+    assert merged["count"] == 10 == len(merged["observations"])
+    assert merged["observations"] == list(_WIDE_TRUTH)
+    # deterministic serialization round-trips
+    again = wp.serialize_merged(
+        json.loads(wp.serialize_merged(merged).decode("utf-8")))
+    assert again == wp.serialize_merged(merged)
+    # declared count changing across pages refuses
+    with pytest.raises(wp.WideResponseError):
+        wp.merge_wide_pages([pages[0], dict(pages[1], count=11)], limit=3)
+    # offset gap refuses
+    with pytest.raises(wp.WideResponseError):
+        wp.merge_wide_pages([pages[0], dict(pages[1], offset=2)], limit=3)
+    # merged total != declared count refuses (truncation/missing pages)
+    with pytest.raises(wp.WideResponseError):
+        wp.merge_wide_pages([pages[0], pages[1]], limit=3)
+
+
+def test_p0c_fetch_paging_pacing_and_evidence_hygiene():
+    obs = [_wide_obs(f"2018-{m:02d}-01", f"2018-{m:02d}-15",
+                     "9999-12-31", "100.0") for m in range(1, 6)]
+    full = json.dumps(_wide_page_payload(0, obs[:3], count=5,
+                                         limit=3)).encode()
+    last = json.dumps(_wide_page_payload(3, obs[3:], count=5,
+                                         limit=3)).encode()
+    seen_urls, sleeps, mono = [], [], {"t": 0.0}
+
+    def transport(url, timeout=30):
+        seen_urls.append(url)
+        return _Resp(full if len(seen_urls) == 1 else last)
+
+    ev = wp.fetch_wide_window(
+        FAKE_KEY, transport=transport, sleep_fn=sleeps.append,
+        monotonic_fn=lambda: mono["t"], limit=3)
+    assert ev["status"] == "COMPLETE"
+    assert ev["rows_total"] == 5 and ev["count_declared"] == 5
+    assert len(ev["pages"]) == 2                       # paged, then short
+    assert sleeps == [1.2]                             # inter-page pacing
+    assert "api_key=" + FAKE_KEY in seen_urls[0]       # the real URL keys it
+    assert "realtime_start=2015-01-01" in seen_urls[0]
+    assert "realtime_end=9999-12-31" in seen_urls[0]
+    blob = json.dumps({k: v for k, v in ev.items()
+                       if k != "page_payloads"}, default=repr)
+    assert FAKE_KEY not in blob                        # evidence never does
+    assert len(ev["page_payloads"]) == 2
+
+
+def test_p0c_fetch_backoff_retry_then_ok():
+    obs = [_wide_obs("2018-01-01", "2018-02-15", "9999-12-31", "100.0")]
+    body = json.dumps(_wide_page_payload(0, obs, count=1, limit=3)).encode()
+    import io
+    import urllib.error
+    calls = {"n": 0}
+    sleeps = []
+
+    def transport(url, timeout=30):
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise urllib.error.HTTPError(
+                url, 500, "Server Error", {}, io.BytesIO(b"{}"))
+        return _Resp(body)
+
+    ev = wp.fetch_wide_window(
+        FAKE_KEY, transport=transport, sleep_fn=sleeps.append,
+        monotonic_fn=lambda: 0.0, limit=3)
+    assert ev["status"] == "COMPLETE"
+    assert [a["outcome"] for a in ev["pages"][0]["attempts"]] == \
+        ["http_error", "http_error", "responded"]
+    assert sleeps[:2] == [2.0, 4.0]                    # exponential backoff
+
+
+def test_p0c_fetch_key_invalid_fatal_stops_fail_closed():
+    import io
+    import urllib.error
+    err = json.dumps({
+        "error_code": 400,
+        "error_message": "The value for api_key is invalid. You must "
+                         "register for a key."}).encode()
+    calls = {"n": 0}
+
+    def transport(url, timeout=30):
+        calls["n"] += 1
+        raise urllib.error.HTTPError(
+            url, 400, "Bad Request", {}, io.BytesIO(err))
+
+    ev = wp.fetch_wide_window(
+        FAKE_KEY, transport=transport, sleep_fn=lambda s: None,
+        monotonic_fn=lambda: 0.0)
+    assert ev["status"] == "FATAL_KEY_INVALID"
+    assert calls["n"] == 1                    # deterministic refusal: no retry
+    assert FAKE_KEY not in json.dumps(
+        {k: v for k, v in ev.items() if k != "page_payloads"})
+
+
+def test_p0c_fetch_no_key_refuses_without_call():
+    def transport(url, timeout=30):
+        pytest.fail("no network call may happen without a key")
+
+    ev = wp.fetch_wide_window(None, transport=transport,
+                              sleep_fn=lambda s: None)
+    assert ev["status"] == "FATAL_NO_KEY"
+    assert ev["pages"][0]["status"] == "FATAL_NO_KEY"
+    assert ev["pages"][0]["attempts"] == []
+
+
+def test_p0c_pin_roundtrip_and_drift_refuses(tmp_path):
+    pages = [
+        _wide_page_payload(0, _WIDE_TRUTH[:6], count=10, limit=6),
+        _wide_page_payload(6, _WIDE_TRUTH[6:], count=10, limit=6),
+    ]
+    raw_pages = [json.dumps(p).encode() for p in pages]
+    pin_dir = str(tmp_path / "ez")
+    manifest_path = str(tmp_path / "manifest.json")
+    manifest = wp.pin_wide_window(raw_pages, manifest_path, pin_dir=pin_dir)
+    assert manifest["status"] == "COMPLETE"
+    assert manifest["merged"]["observations"] == 10
+    payload, rows = wp.load_pinned_wide(manifest_path, pin_dir=pin_dir)
+    assert len(rows) == 10
+    # drift the merged document -> verify-on-read refuses
+    wide_path = os.path.join(pin_dir, wp.WIDE_FILE_NAME)
+    with open(wide_path, "wb") as fh:
+        fh.write(wp.serialize_merged(payload)[:-1] + b" \n")
+    with pytest.raises(wp.PinnedWideBytesError):
+        wp.load_pinned_wide(manifest_path, pin_dir=pin_dir)
+    # drift a page -> refuses
+    wp.pin_wide_window(raw_pages, manifest_path, pin_dir=pin_dir)
+    page_path = os.path.join(pin_dir, wp.PAGES_DIR_NAME, "page_000.json")
+    with open(page_path, "wb") as fh:
+        fh.write(raw_pages[0] + b" ")
+    with pytest.raises(wp.PinnedWideBytesError):
+        wp.load_pinned_wide(manifest_path, pin_dir=pin_dir)
+    # doctored merged document whose sha is ALSO updated in the manifest
+    # (both drift together) still refuses: merged must BE merge(pages)
+    wp.pin_wide_window(raw_pages, manifest_path, pin_dir=pin_dir)
+    doctored = _wide_page_payload(0, list(_WIDE_TRUTH), count=10)
+    doctored["observations"][0]["value"] = "999.9"
+    doctored_bytes = wp.serialize_merged(doctored)
+    with open(wide_path, "wb") as fh:
+        fh.write(doctored_bytes)
+    with open(manifest_path, "r", encoding="utf-8") as fh:
+        m = json.load(fh)
+    m["merged"]["sha256"] = __import__("hashlib").sha256(
+        doctored_bytes).hexdigest()
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump(m, fh)
+    with pytest.raises(wp.PinnedWideBytesError):
+        wp.load_pinned_wide(manifest_path, pin_dir=pin_dir)
+
+
+def test_p0c_era_comparison_wide_vs_clamped_hand_computed():
+    """The A7-F1 mechanism on one hand-computed mini-world: the SAME
+    truth measured under the two query shapes.  Wide TRUE windows:
+    era start = the archive clock zero (2015-02-27); the as-of
+    CLAMPED snapshots of the same truth: era start = the first
+    snapshot day (2018-07-01) -- the pre-snapshot cohort (2015-03,
+    2015-04) is era-excluded by the frozen law, an ingest-shape
+    artifact, never feed truth."""
+    window = ("2018-01-01", "2019-12-31")
+
+    # wide basis: true-window rows fed UNMODIFIED to the machinery
+    wide_rows = wp.validate_wide_response(_wide_fixture_payload())
+    wide = rs.build_restricted_stream("EZ", wide_rows, window=window)
+    wide_era = min(r.realtime_start for r in wide_rows)
+    wide_months = sorted(e.obs_month for e in wide["restricted"])
+    assert wide_era == "2015-02-27"
+    assert wide["events_all_count"] == 5          # every month v1->v2
+    assert wide["report"]["usable_events"] == 5   # v2 days inside window
+    assert wide["report"]["first_print_era_events"] == 4   # 2015-01 backfill
+    assert len(wide["restricted"]) == 4
+    assert wide_months == ["2015-03-01", "2015-04-01", "2018-05-01",
+                           "2018-08-01"]
+
+    # clamped basis: monthly 1st-of-month as-of snapshots of the SAME
+    # truth (values in force at each snapshot day)
+    snapshots = [
+        ("2018-07-01", _snapshot_payload("2018-07-01", {
+            "2015-01-01": "99.0", "2015-03-01": "100.0",
+            "2015-04-01": "100.8", "2018-05-01": "102.0"})),
+        ("2018-10-01", _snapshot_payload("2018-10-01", {
+            "2015-01-01": "99.0", "2015-03-01": "100.0",
+            "2015-04-01": "100.8", "2018-05-01": "102.3",
+            "2018-08-01": "103.0"})),
+        ("2019-04-01", _snapshot_payload("2019-04-01", {
+            "2015-01-01": "99.4", "2015-03-01": "100.5",
+            "2015-04-01": "101.1", "2018-05-01": "102.3",
+            "2018-08-01": "103.2"})),
+        ("2019-05-01", _snapshot_payload("2019-05-01", {
+            "2015-01-01": "99.4", "2015-03-01": "100.5",
+            "2015-04-01": "101.1", "2018-05-01": "102.3",
+            "2018-08-01": "103.2"})),
+    ]
+    panel = ezv.build_realtime_panel(
+        [(vd, json.loads(body)) for vd, body in snapshots])
+    clamped = rs.build_restricted_stream("EZ", panel["rows"],
+                                         window=window)
+    clamped_era = min(r.realtime_start for r in panel["rows"])
+    clamped_months = sorted(e.obs_month for e in clamped["restricted"])
+    assert clamped_era == "2018-07-01"           # the first snapshot day
+    assert clamped["events_all_count"] == 5      # same five transitions
+    assert clamped["report"]["first_print_era_events"] == 1
+    assert len(clamped["restricted"]) == 1       # ONLY the post-snapshot
+    assert clamped_months == ["2018-08-01"]      # first print survives
+
+    # the cohort analog: restricted on wide, era-excluded on clamped
+    cohort = ("2015-03-01", "2015-04-01")
+    assert all(m in wide_months for m in cohort)
+    assert all(m not in clamped_months for m in cohort)
+    # and the archive clock zero itself is the mechanism, not the feed
+    assert wide_era < clamped_era
+
