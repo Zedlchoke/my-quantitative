@@ -1,0 +1,77 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "forex-ng3-p0-census",
+ "cycle_id": "FOREX-NG3",
+ "role": "quant-implementer",
+ "lane": "p0",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration",
+ "branch": "orca/forex-ng3-integration",
+ "dispatch_sha": "fe485137069c9186dee2213aa2fe6a3ddba43fc3",
+ "actual_start_sha": "fe485137069c9186dee2213aa2fe6a3ddba43fc3",
+ "commit_sha": "4fc66fa1a2ae102ef715ddc4a9a47ac16c539859",
+ "changed_paths": [
+  "research/assets/forex_ng3/__init__.py",
+  "research/assets/forex_ng3/revision_series.py",
+  "research/control/forex_ng3_run/p0_run.py",
+  "research/control/forex_ng3_run/p0_revision_census.json",
+  "research/control/forex_ng3_run/p0_gate.json",
+  "tests/test_forex_ng3_p0.py",
+  "research/control/FOREX-NG3/orchestration/handoffs/p0-census-handoff.json"
+ ],
+ "summary": "FOREX-NG3 P0 complete: inherited pin re-verification 7/7 PASS (grid 1842, scored-authority AUTHORIZED); CA first-print RESTRICTED revision census measured 72 events / 17 Q-6 recent / 72 CA-anchored differential months; floors A4 (>=30) PASS, A4-recent (>=15) PASS, A5 (>=12) PASS; anchor universe CA-only verified; p0_gate.json verdict PASS.",
+ "measurements": {
+  "pin_reverification": {
+   "granted_check": "PASS",
+   "s2_repin_cads_07d1e0d5": "PASS",
+   "s3_repin_all_five": "PASS",
+   "spot_repin_grid_1842": "PASS",
+   "scored_authority_read": "PASS (AUTHORIZED, P-18)",
+   "dgs10_ctl_pin_chain": "PASS",
+   "ng1_census_pin_e8a35d23": "PASS"
+  },
+  "restricted_first_print_events": {"GB": 8, "CA": 72, "AU": 24, "NZ": 24, "US": 84},
+  "ca_restricted_recent_24m": {"count": 17, "window": ["2023-05-01", "2025-04-30"], "floor": 15, "verdict": "PASS"},
+  "restricted_differential_months": {"total": 72, "floor": 12, "non_anchor_months_without_ca_disclosed": 15, "by_year": {"2017": 2, "2018": 11, "2019": 12, "2020": 12, "2021": 12, "2022": 12, "2023": 11}},
+  "ng2_census_reconciliation": "era split matches 5/5 economies (CA 72, GB 8, AU 24, NZ 24, US 84); bulk-group exclusion removed 0 additional events on top of the era rule (every measured bulk group is backfill-era) -- verdict PASS",
+  "floors": {"a4_ca_own_economy": {"measured": 72, "floor": 30, "verdict": "PASS"}, "a4_ca_recent_q6": {"measured": 17, "floor": 15, "verdict": "PASS"}, "a5_restricted_differential": {"measured": 72, "floor": 12, "verdict": "PASS"}},
+  "anchor_universe_verification": "PASS (CA only anchor -> USDCAD; GB/AU/NZ excluded-as-anchor with plan-disclosed reasons, appear only as non-anchor differential legs; US quote leg)",
+  "canaries": "5/5 PASS (2 fabricated not-found, 1 positive control, 2 restriction canaries: backfill/bulk months FAIL the restricted stream)",
+  "monotonicity": "0 violations after dedupe (planted violation exercised fail-closed in tests)",
+  "gate_verdict": "PASS",
+  "no_outcome_law": "NO PnL, NO outcome, NO scoring anywhere in this lane"
+ },
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_forex_ng3_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "15 passed (hand-computed fixtures: first-print vs backfill classification; bulk re-referencing exclusion with 9-vs-10 threshold boundary; CA-anchored restricted differential counting incl. non-anchor-without-CA disclosure; floor fail-cases and exact-boundary margins; anchor-universe verification incl. unknown-economy FAIL; fabricated + restriction canaries; monotonicity fail-closed through the ng3 builder; Q-6 bounds and restricted-stream recent counting; /tmp synthetic vintage archive end-to-end)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/forex_ng3_run/p0_run.py --pytest-exit 0 --pytest-log /tmp/forex_ng3_p0_pytest.log",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "P0 runner: pins + restricted census + floors + gate artifacts published; embedded tests row PASS"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "CA Q-6 recent measured 17, not the plan-section-3 parenthetical 'of the 30 measured': the 30 is ng2's ALL-USABLE recent count which includes 13 backfill events whose v2 day 2024-05-15 falls inside the recent window; the honest RESTRICTED-stream measure is 30-13=17, still above the frozen floor 15 (PASS, no renegotiation needed). Disclosed in the census artifact.",
+  "The bulk re-referencing exclusion (>=10 identical (v1 day, v2 day, ratio) signatures) removed 0 additional events on top of the first_print_in_realtime_era rule on the pinned bytes: every measured bulk group is entirely backfill-era. The rule is still active and tested (9-vs-10 boundary fixture) -- on this archive the two criteria coincide, which is itself the reconciliation evidence.",
+  "plans/PLAN_forex_ng3.md is NOT present in this worktree at base fe48513 (it lives in the root checkout, read-only); floors were read from the root-copy plan text and cross-checked against the frozen constants asserted in tests/test_forex_ng3_p0.py.",
+  "The restricted differential join is on the OBS MONTH key (ng2 law inherited): a differential month means co-revision of the same reference month, not same-DAY availability; D1/D2 consumers must respect each leg's own v2 availability day for PIT ordering.",
+  "15 non-anchor restricted months without a CA event are disclosed (research/control/forex_ng3_run/p0_revision_census.json, restricted_differential.non_anchor_event_months_without_anchor) and never counted toward the A5 floor.",
+  "The FOREX_NG3 state.json base_sha (5f822a5f) is the bootstrap-time record; this lane dispatched and started at fe48513 (verified: actual_start_sha == dispatch_sha == worktree HEAD at start)."
+ ],
+ "incidents": [],
+ "tree_status": "clean after substance commit 4fc66fa1a2ae102ef715ddc4a9a47ac16c539859 (this handoff file commits separately per the two-commit law)",
+ "workers": 0,
+ "outputs": [
+  {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration/research/control/forex_ng3_run/p0_gate.json", "sha256": "267f7d42c1a1e0dd5a649109ef092b525c74b0244b8c31516236b84db956f40a", "note": "P0 gate: verdict PASS, blockers [], pins 7/7, floors PASS"},
+  {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration/research/control/forex_ng3_run/p0_revision_census.json", "sha256": "0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f", "note": "restricted census artifact (schema forex_ng3_run/p0_revision_census@1)"},
+  {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration/research/assets/forex_ng3/revision_series.py", "sha256": "0aceaf9e15dcb1da9413237a27f886fb77dcadbd94c24836529e227aae1cb1c3", "note": "restricted builder for D2/D1: build_restricted_stream / restricted_differential_months / evaluate_floors / verify_anchor_universe"},
+  {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration/research/control/forex_ng3_run/p0_run.py", "sha256": "6a9b5f7caa895ff727fd2efaacc3f398e0c2b809dad9927d204bbfba7c3d5307", "note": "P0 runner (pins + restricted census + gate)"},
+  {"path": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/integration/tests/test_forex_ng3_p0.py", "sha256": "2576b89e1344252475f4e27151153b15fe5d7fce10c7ceca781d9f120d19bca1", "note": "15 hand-computed tests, all PASS"}
+ ],
+ "recommended_next_action": "P0 gate PASS with zero blockers: dispatch D1 (2 blind lanes x 2 proposals) per plan section 5 -- A4 own-economy CA revision drift on USDCAD (nominal-exposure control DGS10-level + clock shadow + placebo on non-revision vintage dates + neighbour) and A5 revision differential CA-vs-(GB/AU/NZ/US non-anchor legs) (V7-style no-differential falsification control + nominal control + clock shadow + order-preserving placebo + neighbour). D1/D2 lanes consume research/assets/forex_ng3/revision_series.py build_restricted_stream() and must respect per-leg v2 availability days (PIT) with the obs-month join law disclosed above."
+}
