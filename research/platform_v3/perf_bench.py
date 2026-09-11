@@ -95,6 +95,25 @@ def main() -> int:
     legacy_scan = timed(legacy)
     legacy_rows = legacy()
 
+    # feature-ready projection: a frozen window-function projection over the
+    # same verified view (plan section 8 P6 item 4)
+    feat = FrozenQuery(
+        "bench_feature_projection",
+        "SELECT mid, val, avg(val) OVER (ORDER BY mid ROWS BETWEEN 9 "
+        "PRECEDING AND CURRENT ROW) AS roll10 FROM v_bench WHERE val >= 500 "
+        "ORDER BY mid",
+        ["mid"],
+        [OutputColumn("mid", "BIGINT"), OutputColumn("val", "BIGINT"),
+         OutputColumn("roll10", "DOUBLE")],
+    )
+    feature_projection_cold = timed(lambda: plane.run(feat, ["m:bench"]),
+                                    repeats=1)
+
+    def feature_warm():
+        r = plane.run(feat, ["m:bench"])
+        assert r.verdict == "SUCCESS"
+    feature_projection_warm = timed(feature_warm)
+
     pin = package_pin()
     builder = SessionManifestBuilder(pin)
     calendar_gen = timed(lambda: builder.build(
@@ -119,6 +138,12 @@ def main() -> int:
 
     plane.close()
 
+    # peak RSS of this process, macOS reports bytes / Linux reports KiB
+    import resource
+    ru_maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    rss_note = ("macOS: bytes" if platform.system() == "Darwin"
+                else "Linux: KiB (multiply by 1024 for bytes)")
+
     artifact = {
         "schema": "research_platform_v3_run/p6_perf@1",
         "gate": "V3-G6",
@@ -136,9 +161,12 @@ def main() -> int:
         "duckdb_cold": duckdb_cold,
         "duckdb_warm": duckdb_warm,
         "legacy_pandas_scan": legacy_scan,
+        "feature_projection_cold": feature_projection_cold,
+        "feature_projection_warm": feature_projection_warm,
         "calendar_generation_7y": calendar_gen,
         "telemetry_jsonl": telemetry_on,
         "telemetry_noop": telemetry_off,
+        "peak_rss": {"ru_maxrss": ru_maxrss, "unit": rss_note},
         "honesty_note": ("no speedup promised; legacy baseline is a plain "
                          "pandas read_csv+filter+sort on the same bytes"),
     }
