@@ -273,13 +273,19 @@ orchestrator plugin v3.1             IMPLEMENTED + TESTED + CANARY-VERIFIED
                                      bound not enforced — LOW; mark_terminal
                                      MCP exposure pending). Available for
                                      adoption by future orchestrated cycles
-research platform v3                 IN FLIGHT (cycle ACTIVE_LIGHT; P0..P3
-                                     + PA0..PA2 committed on
-                                     orca/research-platform-v3-integration;
-                                     PA3 migration + PA4 canary probes under
-                                     way under the owner PA-dispatch waiver;
-                                     CADS/AuthorityRegistry/QueryPlane land
-                                     per V3-G/V3-GA gates)
+research platform v3                 TERMINAL 2026-09-11 (verdict
+                                     RESEARCH_PLATFORM_V3_PASS_CORE_PARTIAL_
+                                     ASSET_PILOTS @45561a1; 18/18 gates
+                                     adjudicated — core+authority lanes PASS,
+                                     asset pilots NOT_APPLICABLE (MDP-V2
+                                     adoption packets absent); full battery
+                                     1868 PASS, reproduction ALL_MATCH,
+                                     in-process 39-check audit 0 HIGH/CRIT
+                                     with disclosed independence limitation;
+                                     fresh-context A7 re-audit dispatched at
+                                     close; branch awaits owner merge
+                                     decision; capabilities adopt per future
+                                     asset commits)
 dashboard                            BUILT (stdlib collector, self-contained
                                      HTML, purity G5: refresh leaves
                                      git status unchanged)
