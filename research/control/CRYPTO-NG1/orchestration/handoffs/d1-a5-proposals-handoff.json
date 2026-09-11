@@ -1,0 +1,47 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "crypto-ng1-d1-a5-proposals",
+  "cycle_id": "CRYPTO-NG1",
+  "role": "quant-implementer",
+  "lane": "d1-a5",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto-ng1/d1-a5",
+  "branch": "orca/cng1-d1-a5",
+  "dispatch_sha": "584470f2b371b368a0ef425794f32dd0ee8450f7",
+  "actual_start_sha": "584470f2b371b368a0ef425794f32dd0ee8450f7",
+  "commit_sha": "c2d504a27fe10df449734c24aab3e6f5fe281975",
+  "changed_paths": [
+    "research/control/crypto_ng1_run/d1/proposals/proposal_A5_P1.json",
+    "research/control/crypto_ng1_run/d1/proposals/proposal_A5_P2.json",
+    "research/control/CRYPTO-NG1/orchestration/handoffs/d1-a5-proposals-handoff.json"
+  ],
+  "objective": "Write exactly 2 outcome-blind lane-A5 proposal JSONs: deterministic derivatives-calendar structure (quarterly futures settlement + last-Friday options-expiry clocks) on the frozen BTC/ETH/SOL H1 panels.",
+  "summary": "Both proposals written and committed. Clock rule frozen as 'delivery/expiry instant = 08:00:00 UTC on the LAST FRIDAY of the month (quarterly months Mar/Jun/Sep/Dec for futures delivery)', verified keyless from official exchange contract metadata only (3 URLs, no price data): Binance fapi exchangeInfo CURRENT_QUARTER BTCUSDT_260925 deliveryDate epoch 1790323200000 = 2026-09-25T08:00:00Z and BTCUSDT_261225 = 2026-12-25T08:00:00Z (retrieved_utc 2026-09-11T13:08:44Z); Deribit public get_instruments monthly/quarterly options expiries at last-Friday 08:00 UTC (retrieved_utc 2026-09-11T13:08:55Z); a third retrieval (expired futures metadata) showed venue prunes history, so in-window instants are derived by calendar arithmetic with a fail-closed re-verification requirement on the P2/D2 lane (retrieved_utc 2026-09-11T13:09:56Z). P1 = CNG1-A5-P1 pre-expiry QUARTERLY roll drift: bounded taker-pressure ratio over expiry-morning bars A-8..A-3, entry 06:00 UTC, exit at the 08:00 UTC delivery instant (flat at settlement), 4 events (2025-09-26, 2025-12-26, 2026-03-27, 2026-06-26) x 3 symbols = 12 anchor decisions; neighbour W10 deeper window; sham = Fridays shifted -7d; clock-only long shadow. P2 = CNG1-A5-P2 post-settlement monthly options-expiry unwind fade on NON-quarterly last Fridays: fade of the settlement-hour imbalance bar A, entry 09:00 UTC, exit 21:00 UTC same Friday, 8 events (2025-08-29..2026-07-31) x 3 symbols = 24 anchor decisions; neighbour H4; sham = Fridays shifted +7d; clock-only long shadow. Event sets disjoint from each other and from lane A4's 8 FOMC instants (checked). Full field parity with the A4 template: mechanism with forced-participant identity, warmup, features from panel columns (buy_quote/sell_quote/quote_total/last_price only), Q-8 tier-2.0 cost authority with no stated constants, P-12 representation_identity, WKNDLIQ/OICASCADE/ATTN-PHASE/FUNDJUMP ancestry defense, frozen F1-F5 falsification rules, expected_failure_interpretation.",
+  "tests": [
+    {
+      "command": "n/a (proposal-only lane)",
+      "exit_code": null,
+      "verdict": "NOT_RUN"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "In-window expiry instants (2025-08-29..2026-07-31) are derived by applying the venue-verified rule via calendar arithmetic; venue metadata endpoints prune expired contracts, so the P2/D2 lane must re-verify each in-window instant fail-closed before any scored use (disclosed in both proposals' spec_verification.verification_limitation).",
+    "P1 has only 12 anchor decisions (4 quarterly events/year); recent-6-month estimate is 6 decisions - primary feasibility risk, disclosed; the Q-6 floor is a P2-phase measured gate and may kill P1 for infeasibility before selection.",
+    "Holiday-adjacent event dates (2025-11-28 post-Thanksgiving for P2, 2025-12-26 Boxing Day for P1) are the likeliest calendar-conditioned-liquidity leakage path (WKNDLIQ family); the F3 dvol-proxy veto is the designed kill and the hazard is pre-disclosed in both proposals.",
+    "Verification URLs were contract-metadata endpoints (no price data); Binance's delivery-time evidence covers current/next quarter contracts only - the 08:00 UTC delivery TIME for the in-window Binance quarterlies is rule-derived, coincident with Deribit expiry epochs which were directly verified at 08:00:00Z."
+  ],
+  "incidents": [],
+  "tree_status": "clean after substance commit c2d504a27fe10df449734c24aab3e6f5fe281975 (this handoff file commits separately)",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/crypto_ng1_run/d1/proposals/proposal_A5_P1.json",
+      "sha256": "6c681cbac6d5ab84dfefbbe240f7e34a6afcfbcc7452d55cdae031b33cc1a440"
+    },
+    {
+      "path": "research/control/crypto_ng1_run/d1/proposals/proposal_A5_P2.json",
+      "sha256": "398dcba8d6e7e12d1d901f65dc63b17eb1415e679ef546388f9c907b6fd3a9ca"
+    }
+  ],
+  "recommended_next_action": "Controller validates this handoff, then dispatches D2 (novelty + feasibility MEASURED on the exact representation_identity blocks of both proposals, measurement code committed before the number is cited per P-12): pooled |rho| <= 0.20 vs the full inventory including WKNDLIQ dvol proxies, plus the fail-closed re-verification of the in-window expiry instants against venue historical records; selection then applies the frozen rubric section 6 (P-15: smoke may kill + disclose only)."
+}
