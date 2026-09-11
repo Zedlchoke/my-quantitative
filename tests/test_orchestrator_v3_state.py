@@ -6,6 +6,7 @@ The canonical cycle registry is never touched.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -28,17 +29,37 @@ def make_store(tmp_path, cycle_id="ZCODE-ORCHESTRATION-V3"):
     return store
 
 
+def make_git_repo(tmp_path, name="fixturerepo"):
+    """A real tiny git repo (STORE-FLOW-3 needs resolvable commits)."""
+    repo = tmp_path / name
+    repo.mkdir(parents=True, exist_ok=True)
+
+    def git(*args):
+        return subprocess.run(["git", "-C", str(repo), *args], check=True,
+                              capture_output=True, text=True)
+    git("init", "-q")
+    git("config", "user.email", "fixture@example.invalid")
+    git("config", "user.name", "fixture")
+    (repo / "f.txt").write_text("fixture\n", encoding="utf-8")
+    git("add", "f.txt")
+    git("commit", "-q", "-m", "fixture commit")
+    sha = git("rev-parse", "HEAD").stdout.strip()
+    return repo, sha
+
+
 def register_probe(store, task_id="t1", **kw):
     return store.register_task(
         task_id=task_id, role="quant-explorer", objective="probe fixture",
-        base_sha="a" * 40, branch="orca/fixture", absolute_worktree="/tmp/fixture",
+        base_sha="a" * 40, branch="orca/fixture",
+        absolute_worktree=kw.pop("absolute_worktree", "/tmp/fixture"),
         **kw)
 
 
 def handoff_for(task_id="t1", cycle="ZCODE-ORCHESTRATION-V3"):
+    # dispatch_sha == the recorded dispatch context base_sha ("a"*40)
     return {"task_id": task_id, "cycle_id": cycle, "role": "quant-explorer",
-            "lane": "fixture", "dispatch_sha": "b" * 40,
-            "actual_start_sha": "b" * 40, "commit_sha": "c" * 40,
+            "lane": "fixture", "dispatch_sha": "a" * 40,
+            "actual_start_sha": "a" * 40, "commit_sha": "c" * 40,
             "changed_paths": [], "tests": [{"command": "true", "exit_code": 0,
                                             "verdict": "PASS"}],
             "authority_claims": [], "known_limitations": [], "incidents": [],
@@ -49,7 +70,8 @@ def handoff_for(task_id="t1", cycle="ZCODE-ORCHESTRATION-V3"):
 # ------------------------------------------------------------------ lifecycle
 def test_full_happy_path(tmp_path):
     s = make_store(tmp_path)
-    register_probe(s)
+    repo, real_sha = make_git_repo(tmp_path)
+    register_probe(s, absolute_worktree=str(repo))
     assert s.tasks_path.exists()
     t = s.mark_dispatched(task_id="t1")
     assert t["status"] == "DISPATCHED" and len(t["attempts"]) == 1
@@ -57,7 +79,7 @@ def test_full_happy_path(tmp_path):
     t = s.publish_handoff(task_id="t1", handoff=handoff_for())
     assert t["status"] == "HANDOFF_READY"
     s.validate_handoff(task_id="t1")
-    s.mark_integrated(task_id="t1", commit_sha="c" * 40)
+    s.mark_integrated(task_id="t1", commit_sha=real_sha)
     s.mark_terminal(task_id="t1", terminal_reason="fixture done")
     chk = s.terminal_check()
     assert chk["all_terminal"] and chk["tasks_terminal"] == 1
@@ -94,7 +116,7 @@ def test_duplicate_dispatch_is_idempotent(tmp_path):
 def test_retry_appends_attempt_and_max_attempts_enforced(tmp_path):
     s = make_store(tmp_path)
     s.register_task(task_id="t2", role="quant-implementer", objective="x",
-                    max_attempts=2)
+                    base_sha="a" * 40, max_attempts=2)
     s.mark_dispatched(task_id="t2")
     s.mark_running(task_id="t2")
     s.publish_handoff(task_id="t2", handoff=handoff_for("t2"))
@@ -146,7 +168,8 @@ def test_dependency_cycle_refused(tmp_path):
 
 def test_ready_requires_dependencies_done(tmp_path):
     s = make_store(tmp_path)
-    s.register_task(task_id="dep", role="quant-explorer", objective="x")
+    s.register_task(task_id="dep", role="quant-explorer", objective="x",
+                    base_sha="a" * 40)
     s.register_task(task_id="child", role="quant-implementer", objective="y",
                     dependencies=["dep"])
     ready = {t["task_id"] for t in s.list_ready()}
@@ -238,6 +261,7 @@ def test_heartbeat_only_for_live_work(tmp_path):
 def test_dispatch_context_written_and_cleared(tmp_path):
     s = make_store(tmp_path)
     s.register_task(task_id="t3", role="quant-implementer", objective="x",
+                    base_sha="a" * 40,
                     allowed_paths=["/tmp/fixture/src"], forbidden_paths=["/etc"])
     s.mark_dispatched(task_id="t3")
     ctx = json.loads(s.current_dispatch.read_text(encoding="utf-8"))
