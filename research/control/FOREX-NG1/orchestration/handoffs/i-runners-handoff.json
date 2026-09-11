@@ -1,0 +1,92 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "forex-ng1-i-runners",
+ "cycle_id": "FOREX-NG1",
+ "role": "quant-implementer",
+ "lane": "i",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/integration/.worktrees/forex-ng1/i-runners",
+ "branch": "orca/fng1-i",
+ "dispatch_sha": "d0992d17df8e2dfde57c9a0806a5798f14021a4f",
+ "actual_start_sha": "d0992d17df8e2dfde57c9a0806a5798f14021a4f",
+ "base_match": true,
+ "commit_sha": "2d1989adb353ccb1ec1a5e9fd36724bce0bf7375",
+ "changed_paths": [
+  "research/assets/forex_ng1/run/__init__.py",
+  "research/assets/forex_ng1/run/config.py",
+  "research/assets/forex_ng1/run/data.py",
+  "research/assets/forex_ng1/run/dgs10.py",
+  "research/assets/forex_ng1/run/arms.py",
+  "research/assets/forex_ng1/run/accounting.py",
+  "research/assets/forex_ng1/run/evaluator.py",
+  "research/assets/forex_ng1/run/scanner.py",
+  "research/assets/forex_ng1/run/ctlpin.py",
+  "research/assets/forex_ng1/run/dryrun.py",
+  "research/control/forex_ng1_run/i/ctl_dgs10_pin.json",
+  "research/control/forex_ng1_run/i/z_dryrun_report.json",
+  "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A5-P1-ANCHOR.json",
+  "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A5-P1-NEIGH-COOPEN.json",
+  "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A5-P1-CTL-DGS10LEVEL.json",
+  "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A4-P2-ANCHOR.json",
+  "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A4-P2-NEIGH-SMOOTH2.json",
+  "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A4-P2-CTL-DGS10LEVEL.json",
+  "research/control/forex_ng1_run/i/dryrun/manifest.json",
+  "research/control/forex_ng1_run/run_contract.json",
+  "tests/test_forex_ng1_runners.py"
+ ],
+ "summary": {
+  "objective": "Implement the FOREX-NG1 I-phase cell runners from the frozen spec (selection_freeze + proposal_A5_P1/A4_P2) for the 6 budget cells (2 families x anchor/neighbour/control), pin the DGS10 control evidence (P-13), and run the Z exact-arm sanitized dry-run (scored=false, real_pnl=false, published=false).",
+  "runner": "research/assets/forex_ng1/run/: canonical arm configs derived at load time from the committed proposal bytes with sha256 arm_config_digest (P-12); verify-on-read environment (census e8a35d23, spot pin manifest + 1842-day grid recompute cross-check, vintaged CPI legs via the D2 CADS consume path, DGS10 ctl bytes pinned); 16:00-NY PIT entry clocks (A5: max(A(e), EOD(P_us)); A4: A(e)), H=5 exits, fold force-flat at the 3 frozen boundaries, direction laws incl. CA inversion and US 4-pair events, CTL-DGS10LEVEL z252-median nominal-level state (V8 as-of law, bound-at-own-clock), SHADOW-CLOCK, seeded placebo ORDSHUF (numpy default_rng(20260911), single draw, canonical pool order) and SHAM7D; dual-book accounting with 1.5 bps/side x {1.0,1.5,2.0} tier 2.0 PRIMARY charged exactly ONCE per fill, outcome computation refused unless scored AND spot authority AUTHORIZED; Stage-A R1-R6 evaluator fail-closed (missing metric = NOT_RUN, never inferred PASS), exercised on fixtures only.",
+  "dgs10_pin": "P-13 inherited pin chain verified: every surviving staged_vintaged_manifest.json witness hashes to the V8 run-contract pin c8ae78777102ab45cec433f5da6c786355b57c884be5f15c39c1fc18ca328e7c; its DGS10 entry 03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0 == the V8 worktree staged bytes == the byte-identical worktree copy (untracked; only ctl_dgs10_pin.json commits).",
+  "dry_run": "DRY_RUN_CLEAN: 6 budget arms emit 37/79/36 (A5-P1 anchor/neigh/control) and 380/409/351 (A4-P2) decision records; 1292 decision IDs pairwise distinct; arm_config_digests pairwise distinct; both anchors non-vacuous; recursive leak scanner (case/underscore-normalized, every depth) 0 findings across all emitted files with a planted-leak negative test proving detection; full rebuild replay byte-identical; structural counts reproduce D2 exactly (85/77/8/50/27 months, 104 coopen, 202 v7recap pool, 306 first releases, 1842 grid days).",
+  "run_contract": "research/control/forex_ng1_run/run_contract.json with code_freeze_sha 2d1989adb353ccb1ec1a5e9fd36724bce0bf7375 (substance commit), selection_freeze_sha256 5d7eb5793e02e7919d59ba16a9fa8c3041e3d7e23274c605fbec639c81d2c8ee, 6 arm identities + digests, budget 6/6 bound used 0, folds, cost contract, data pins."
+ },
+ "tests": [
+  {
+   "command": ".venv/bin/python -m pytest tests/test_forex_ng1_runners.py -q (cwd .worktrees/forex-ng1/integration/.worktrees/forex-ng1/i-runners)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "24 passed; hand-computed fixtures only (no pinned series consumed): one-event lag + as-of vintage read (s1=-8.909091pp with the 06-23 revision visible at the 06-24 decision), same-day-decision impossibility, US 4-pair-decision signs, SMOOTH2 two-window prior, cost-once-per-fill (3.00/fill at tier 2.0, 2 fills), outcome-computation refusal, tier-outside-ladder refusal, fold force-flat at 2020-06-30 and fold_of_day boundaries, DST 16:00-NY instants across spring/fall changes, placebo seed determinism + seed sensitivity + marginal fired-count preservation, control distinct from anchor (same clock/pair/horizon, opposite direction, distinct digests), budget digests pairwise distinct + deterministic, scanner planted-leak negative test + spelling variants + null-is-absent, R1-R6 one pass + one fail (+NOT_RUN) per rule and full Stage-A verdicts"
+  },
+  {
+   "command": ".venv/bin/python -m research.assets.forex_ng1.run.dryrun (cwd .worktrees/forex-ng1/integration/.worktrees/forex-ng1/i-runners)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "exit 0 with verdict DRY_RUN_CLEAN; replay byte-identical; structural all-match"
+  },
+  {
+   "command": ".venv/bin/python -m research.assets.forex_ng1.run.ctlpin (cwd .worktrees/forex-ng1/integration/.worktrees/forex-ng1/i-runners)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "pin manifest written with source==copy==manifest-entry verification"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "BUDGET-CELL MAPPING IS AN INTERPRETED READING (controller should confirm before E): each proposal carries a wider falsification battery than the 6 budget cells allow. The control cell was mapped to CTL-DGS10LEVEL on BOTH families from three frozen texts (selection_freeze R2 '(V8 law; for A5 ADDITIONALLY the V7-recap kill R2')' + plan sec1 nominal-exposure mandate on every yield/inflation lane + V8 run-contract precedent control_dgs10_level_z252_21bd). The alternative reading (A5 control cell = CTL-V7RECAP, listed first in the freeze's A5 control enumeration) was NOT taken because it makes R2's 'additionally R2'' vacuous. BOTH candidates plus shadows and placebos are implemented and buildable; a controller re-map before E is a run_contract edit, not a code change.",
+  "CTL-DGS10LEVEL warmup boundary: the pinned vintaged DGS10 realtime evidence begins 2018-01-01, so control entries whose trailing 252-grid-day window extends earlier fail closed (A5 1 of 37; A4-P2 29 of 380 dropped, counted in meta.records_dropped_state_unavailable); disclosed in run_contract.known_disclosures and the z report.",
+  "Q-8 measured cost constants remain NOT_YET_MEASURED; the 1.5 bps/side tier-2.0 ladder is the referenced V2/V8 proxy per the frozen cost contract; scored cost verdicts stay NOT_RUN until the P1 lane publishes measured constants.",
+  "Spot channel scored-consumption authority remains CANDIDATE_NOT_AUTHORIZED: the dry-run consumed the pinned grid via verify-on-read staging (allowed); scored consumption through spot_series still refuses by construction.",
+  "The R1-R6 evaluator is exercised ONLY on synthetic fixtures in this lane (no scored run exists); it emits NOT_RUN on missing metrics and never infers PASS. The RA namespace is entered only when a scored run exists.",
+  "Raw bytes (data_raw/forex_ng1_spot/*.json, data_raw/forex_ng1_ctl/DGS10.json) are machine-local UNTRACKED copies (data_raw/ is not gitignored in this worktree; nothing under data_raw/ was staged); the DGS10 source is the V8 worktree's surviving staged bytes plus manifest witnesses in the V9 worktrees (the V8 worktree's own manifest file no longer exists there; all witnesses hash to the run-contract pin).",
+  "Vintaged CPI legs are consumed from the machine-local CADS store + the V9 integration staging root (read-only inherited bytes), exactly as the D2 lane did; the runner is injectable for tests but the production path depends on those machine-local roots."
+ ],
+ "incidents": [
+  "WORKTREE PATH DISCREPANCY (identity verified, no impact): the dispatch packet named /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/i-runners, but the registered worktree for branch orca/fng1-i lives at the nested path /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/integration/.worktrees/forex-ng1/i-runners. Branch and HEAD (d0992d17df8e2dfde57c9a0806a5798f14021a4f) matched the packet exactly, so the lane proceeded on the identity match; recorded here per the mismatch-report rule."
+ ],
+ "tree_status": "commit 1 substance 2d1989adb353ccb1ec1a5e9fd36724bce0bf7375 (12 files: runner package + tests + ctl pin manifest); commit 2 adds run_contract.json (code_freeze_sha=2d1989a) + z_dryrun_report.json + dryrun/ outputs + this handoff; data_raw/ stays untracked",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/control/forex_ng1_run/run_contract.json", "sha256": "1a90b57fbd72328b657471992e92ad20fb4c93f6d3228adf756b7e6ae8bdfbb3"},
+  {"path": "research/control/forex_ng1_run/i/ctl_dgs10_pin.json", "sha256": "ca3fd87f1b8218b426e3d2a27ddac91cda83a581c2bce74614e0123628952f55"},
+  {"path": "research/control/forex_ng1_run/i/z_dryrun_report.json", "sha256": "a8eca084980611dd0cb119acbbdc2aad081eea3a2d16e9a42766264436afe9cf"},
+  {"path": "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A5-P1-ANCHOR.json", "sha256": "4d30b9e50e0f4971851b2a21a59bb60058427d5442b5fad292b5e95a62b08061"},
+  {"path": "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A5-P1-NEIGH-COOPEN.json", "sha256": "d9d3a50d01521e26f205149f5d2dcd3e04b11c48060e5bfa0d1072c4ac955068"},
+  {"path": "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A5-P1-CTL-DGS10LEVEL.json", "sha256": "b71c7dc9d5297d1411d001133be6ec09ce245f60c2e8673cdbf794dc7b2f7fe3"},
+  {"path": "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A4-P2-ANCHOR.json", "sha256": "0d4beb28230f6b5e0c5d55051bd7b6bfbfe608891cf70b4e968556e0ad25589a"},
+  {"path": "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A4-P2-NEIGH-SMOOTH2.json", "sha256": "ba91ac2273deeec7707de0c22519e70fbfce81a56a5e3faf4a4e03fdf2dc19d0"},
+  {"path": "research/control/forex_ng1_run/i/dryrun/decisions_FXNG1-A4-P2-CTL-DGS10LEVEL.json", "sha256": "5af3c921e065dd1ad068edc868ff641a2a0a6a2088cb585d086daf92048a2eb0"},
+  {"path": "research/control/forex_ng1_run/i/dryrun/manifest.json", "sha256": "ecc1e51cf4102e9472ed4d520f2a8c81428d7e3f781abf8c78042e4b541b4881"},
+  {"path": "tests/test_forex_ng1_runners.py", "sha256": "c38498a1883282b768e756a7539524d849538a89a68ac613a5ca8415c0e2f5d3"}
+ ],
+ "recommended_next_action": "Controller: (1) CONFIRM the recorded budget-cell mapping (control cell = CTL-DGS10LEVEL on both families; A5 CTL-V7RECAP, shadows and seeded placebos implemented as battery books, not budget cells) or re-map via a run_contract edit before E; (2) A7 prelaunch then E-phase scored cells under the machine-wide heavy lock, contingent on the three open dependencies: Q-8 measured cost constants, the owner spot scored-consumption authority decision, and the DGS10 warmup-boundary adjudication for early-window control events; (3) reproduction twin per plan sec7. The I lane is complete: runners + contract + DGS10 pin + DRY_RUN_CLEAN dry-run, no scored computation anywhere."
+}

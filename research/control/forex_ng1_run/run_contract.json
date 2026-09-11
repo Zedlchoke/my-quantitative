@@ -1,0 +1,112 @@
+{
+ "schema": "forex_ng1_run_contract@1",
+ "cycle_id": "FOREX-NG1",
+ "task_id": "forex-ng1-i-runners",
+ "authority": "plans/PLAN_forex_ng1.md sec6 rubric #5 (max 2 families x 3 arms = 6 cells; budget 6; pairwise distinct arm_config_digest) + research/control/forex_ng1_run/selection_freeze.json (frozen before implementation)",
+ "selection_freeze_sha256": "5d7eb5793e02e7919d59ba16a9fa8c3041e3d7e23274c605fbec639c81d2c8ee",
+ "code_freeze_sha": "2d1989adb353ccb1ec1a5e9fd36724bce0bf7375",
+ "families": [
+  "FXNG1-A5-P1",
+  "FXNG1-A4-P2"
+ ],
+ "arm_selection_basis": "per family: anchor / neighbour / control. The control budget cell is the V8-law nominal-exposure control CTL-DGS10LEVEL on BOTH families, per (i) selection_freeze R2 'control out-earns anchor same-sign >= 0.5x per-trade (V8 law; for A5 ADDITIONALLY the V7-recap kill R2' if CTL-V7RECAP reproduces anchor)' -- the standard control is the V8-law nominal kill and CTL-V7RECAP an additional check; (ii) plan sec1 'a nominal-exposure control is MANDATORY on every yield/inflation lane'; (iii) V8 run-contract precedent control_dgs10_level_z252_21bd. The remaining proposal battery books (A5 CTL-V7RECAP, both SHADOW-CLOCK, both seeded placebos) are implemented in research/assets/forex_ng1/run/arms.py as E-phase falsification inputs and are NOT budget cells; controller may re-map before E without code change.",
+ "arms": {
+  "anchor": [
+   "FXNG1-A5-P1-ANCHOR",
+   "FXNG1-A4-P2-ANCHOR"
+  ],
+  "neighbour": [
+   "FXNG1-A5-P1-NEIGH-COOPEN",
+   "FXNG1-A4-P2-NEIGH-SMOOTH2"
+  ],
+  "control": [
+   "FXNG1-A5-P1-CTL-DGS10LEVEL",
+   "FXNG1-A4-P2-CTL-DGS10LEVEL"
+  ]
+ },
+ "arm_config_digests": {
+  "FXNG1-A5-P1-ANCHOR": "62a4fb6c94a05c4afc8b1c58bceb6900f6ddb996c0e964fde878bda9cb921386",
+  "FXNG1-A5-P1-NEIGH-COOPEN": "6bea2efdf9a1187710479dda8ada93b3314871bd976bd4614ea477b4574b90a6",
+  "FXNG1-A5-P1-CTL-DGS10LEVEL": "eeb0763976d82181380c60e3ac5ceb4fb51dd2db5df8d936eb0e56ab7b819058",
+  "FXNG1-A4-P2-ANCHOR": "8282baa103587f805e569442bcaf948a8ffdcfeb430faa57440685e527f5fa62",
+  "FXNG1-A4-P2-NEIGH-SMOOTH2": "3ed530106115748cb70c0ebc801c90b6f2370eba3ddccaf3290cb8f2296a42cc",
+  "FXNG1-A4-P2-CTL-DGS10LEVEL": "b549e17178991e08b971d5924df423a8cf7dc9a6657c0a1363d4d6916c5a585f"
+ },
+ "digest_law": "arm_config_digest = sha256(canonical JSON (sort_keys, tight separators) of the arm's frozen config derived from the committed proposal bytes at load time; recompute via research.assets.forex_ng1.run.config.budget_arm_digests -- P-12 representation identity)",
+ "budget": {
+  "planned_scored_cells": 6,
+  "bound_by_selection": 6,
+  "used": 0,
+  "unused_slots_never_reassigned": true
+ },
+ "decision_clock": "daily 16:00 America/New_York (zoneinfo DST-correct; 16:00-NY = 20:00Z EDT / 21:00Z EST) on the pinned staged spot calendars; common grid 1842 days 2018-04-04..2025-04-30 (spot_grid_census sha256 42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6)",
+ "entry_clocks": {
+  "FXNG1-A5-P1": "D(e) = first 16:00-NY grid instant strictly after max(EOD(operative_vintaged_available_from), EOD(P_us_same_month))",
+  "FXNG1-A4-P2": "D(e) = first 16:00-NY grid instant strictly after EOD(operative_vintaged_available_from)"
+ },
+ "exit_rule": "H = 5 grid days; fold force-flat at the frozen fold boundaries; forced exit at the 2025-04-30 grid instant; post-window entries dropped",
+ "cost_ladder": "1.5 bps/side x {1.0, 1.5, 2.0}; tier 2.0 PRIMARY; charged exactly ONCE per fill (2 fills per round trip); basis: referenced V2/V8 proxy ladder per selection_freeze.cost_contract_frozen (Q-8 measured constants NOT_YET_MEASURED -> scored cost verdict NOT_RUN until published, never an assumed spread)",
+ "folds": {
+  "1": "2018-04..2020-06",
+  "2": "2020-07..2022-10",
+  "3": "2022-11..2025-04",
+  "force_flat_law": "positions never span a fold boundary; forced exit at the fold's last grid day"
+ },
+ "stage_a_rule_order_frozen": [
+  "R1 EXPECTANCY: after-cost expectancy > 0 (tier 2.0 PRIMARY)",
+  "R2 CONTROL_KILL: control out-earns anchor same-sign >= 0.5x per-trade (V8 law; for A5 additionally the V7-recap kill R2' if CTL-V7RECAP reproduces anchor)",
+  "R3 FOLDS: >= 2/3 temporal folds positive",
+  "R4 PF: >= 1.10 with margin recorded (P-2)",
+  "R5 STRESS: stress tier 2.0 expectancy still > 0",
+  "R6 NON_CONCENTRATION: drop-one-fold survival + no single event > 50% of gross",
+  "survivor := passes ALL rules -> PROVISIONAL_STAGE_A_SURVIVOR (S1 stays SEALED)"
+ ],
+ "s0_window": {
+  "start": "2018-04-04",
+  "end": "2025-04-30"
+ },
+ "data_pins": {
+  "census": {
+   "path": "research/control/forex_ng1_run/p0_announcement_census.json",
+   "sha256": "e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe"
+  },
+  "spot_pin_manifest": "research/control/forex_ng1_run/p1_spot/spot_pin_manifest.json",
+  "spot_grid_census": {
+   "path": "research/control/forex_ng1_run/p1_spot/spot_grid_census.json",
+   "sha256": "42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6"
+  },
+  "dgs10_control_pin": {
+   "path": "research/control/forex_ng1_run/i/ctl_dgs10_pin.json",
+   "dgs10_sha256": "03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0",
+   "v8_staged_vintaged_manifest_sha256": "c8ae78777102ab45cec433f5da6c786355b57c884be5f15c39c1fc18ca328e7c",
+   "pin_law": "P-13 inherited pin from V8 committed vintaged evidence"
+  },
+  "vintaged_cpi_legs": "S2 manifest via the plane adapter at the pinned CADS address 07d1e0d5... + S3 US/fred_cpiaucsl_rt.json (the D2 consume path, verify-on-read)"
+ },
+ "dry_run": {
+  "report": "research/control/forex_ng1_run/i/z_dryrun_report.json",
+  "verdict": "DRY_RUN_CLEAN",
+  "scored": false,
+  "real_pnl": false,
+  "published": false,
+  "decision_records_dir": "research/control/forex_ng1_run/i/dryrun/",
+  "record_counts": {
+   "FXNG1-A5-P1-ANCHOR": 37,
+   "FXNG1-A5-P1-NEIGH-COOPEN": 79,
+   "FXNG1-A5-P1-CTL-DGS10LEVEL": 36,
+   "FXNG1-A4-P2-ANCHOR": 380,
+   "FXNG1-A4-P2-NEIGH-SMOOTH2": 409,
+   "FXNG1-A4-P2-CTL-DGS10LEVEL": 351
+  },
+  "structural_counts_match_d2": true,
+  "replay_byte_identical": true,
+  "leak_scan": "0 findings across all emitted files (recursive scanner; negative control in tests)"
+ },
+ "known_disclosures": {
+  "ctl_dgs10_warmup_boundary": "the CTL-DGS10LEVEL books are the identical fired anchor books EXCEPT entries whose trailing 252-grid-day DGS10 window is not provably covered (the pinned vintaged DGS10 realtime evidence begins 2018-01-01): those fail closed (A5 1 of 37; A4-P2 29 of 380) and are counted in each arm's meta.records_dropped_state_unavailable",
+  "q8_cost_constants": "NOT_YET_MEASURED at this lane; the frozen proxy ladder is referenced (V2/V8 precedent) per selection_freeze.cost_contract_frozen; scored cost verdicts stay NOT_RUN until the P1 lane publishes Q-8 measured constants",
+  "spot_scored_authority": "CANDIDATE_NOT_AUTHORIZED (p1_spot/spot_authority_proof.json); dry-run consumed the pinned grid through verify-on-read staging which IS allowed; scored consumption still refused"
+ },
+ "pnl_anywhere": false,
+ "s1": "SEALED_UNTOUCHED"
+}
