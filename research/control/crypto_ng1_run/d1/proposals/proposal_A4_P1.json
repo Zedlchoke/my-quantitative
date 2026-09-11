@@ -1,0 +1,165 @@
+{
+  "schema": "crypto_ng1_run/d1_proposal@1",
+  "task_id": "crypto-ng1-d1-a4-proposals",
+  "cycle_id": "CRYPTO_NG1",
+  "lane": "d1-a4",
+  "hypothesis_id": "CNG1-A4-P1",
+  "title": "FOMC-instant drained-liquidity under-reaction: announcement-bar taker-side continuation on the exogenous decision clock (H1)",
+  "blindness_statement": {
+    "outcome_blind": true,
+    "read_sources": [
+      "plans/PLAN_crypto_ng1.md (sections 1, 2, 6 only)",
+      "research/wayfinder/FAMILY_FAILURES.jsonl (dead-form avoidance only)",
+      "research/control/crypto_ng1_run/p0_calendar_census.json (instants + evidence)",
+      "research/control/crypto_ng1_run/p0_gate.json (panel bounds)",
+      "S4 panel CSV header row via plane adapter (schema declaration only; first 2 data rows inspected for column semantics; no outcome measured)"
+    ],
+    "not_done": [
+      "no result/scored/PnL/smoke file of any cycle read",
+      "no backtest run, no outcome number computed"
+    ]
+  },
+  "measured_facts_used_verbatim": {
+    "panel": "H1 UTC, 3 symbols BTCUSDT/ETHUSDT/SOLUSDT, 8760 rows/symbol, window 2025-08-22T00..2026-08-21T23 (p0_gate.json panel_bounds PASS)",
+    "instants": "8 FOMC decision instants, 2025-09-17..2026-07-29, official publication timestamps DST-correct (p0_calendar_census.json, verdict PASS_WITH_BLS_BLOCKED)",
+    "fomc_instants_utc_chronological": [
+      "2025-09-17T18:00:00Z",
+      "2025-10-29T18:00:00Z",
+      "2025-12-10T19:00:00Z",
+      "2026-01-28T19:00:00Z",
+      "2026-03-18T18:00:00Z",
+      "2026-04-29T18:00:00Z",
+      "2026-06-17T18:00:00Z",
+      "2026-07-29T18:00:00Z"
+    ],
+    "forbidden_conditioning": "CPI/NFP instants DO NOT EXIST in evidence (BLS blocked 403); this proposal conditions on NOTHING except the 8 evidenced FOMC instants"
+  },
+  "mechanism": {
+    "forced_participant": "Passive quote/liquidity providers on the three USD-perp books who withdraw or widen quotes into the scheduled FOMC decision instant because carrying inventory through a known macro print violates their inventory/VaR limits. They are forced by the SCHEDULE (a public, exogenous, PIT-evidenced instant), not by any endogenous price/OI/funding state.",
+    "late_participant": "Discretionary post-print followers (US-afternoon systematic re-riskers, late manual flow) who execute over the hours after the print rather than at it.",
+    "why_effect_exists": "At the print, one-sided informed taker flow meets a deliberately thinned book, so the initial repricing is partial. As providers re-quote and late participants execute over the following hours, the announcement-bar direction continues instead of instantly clearing. The book trades the residual continuation of the announcement bar's taker side, which exists only because the print instant drained liquidity first.",
+    "when_it_must_fail": [
+      "If crypto participants fully pre-position before the instant, the announcement bar's taker side carries no residual information: anchor after-cost expectancy is statistically indistinguishable from zero.",
+      "If H1 taker-side direction is generically autocorrelated with no clock needed, the sham-instant placebo reproduces the anchor (same-sign >= 0.5x) and the family is falsified as a re-clocking.",
+      "If the book is a bare clock artifact, the clock-only shadow out-earns the anchor or correlates > 0.20 with it.",
+      "If the book is a low-liquidity-LEVEL exposure in disguise (the WKNDLIQ trap), D2 pooled |rho| > 0.20 vs the dvol proxies kills it before selection."
+    ],
+    "observable_pinned": {
+      "definition": "imb(symbol, s) = (buy_quote - sell_quote) / quote_total computed on the announcement bar A(s) of the frozen S4 panel",
+      "panel_columns": ["buy_quote", "sell_quote", "quote_total", "last_price"],
+      "instant_source": "p0_calendar_census.json instants (series US-MACRO/FOMC_DECISION), DST-correct UTC per official 'For release at 2:00 p.m. EST/EDT' evidence"
+    }
+  },
+  "universe": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+  "clock": {
+    "bar": "H1 UTC from the frozen S4 panels, bar hour_utc=T covers [T, T+1h)",
+    "announcement_bar": "A(s) = the bar whose hour_utc equals the instant's UTC hour on the instant's date (the release lands on A's open boundary; e.g. 2025-09-17T18:00:00Z -> bar '2025-09-17T18')",
+    "decision": "at the CLOSE of bar A(s), the first bar close at which the full announcement bar is point-in-time",
+    "instant_alignment": "UTC, DST-correct from census evidence (14:00 EDT = 18:00Z; 14:00 EST = 19:00Z); no CPI/NFP instants exist and none are used"
+  },
+  "warmup": {
+    "rule": "an instant is eligible only if the symbol has >= 500 prior H1 bars in the panel before the instant's date",
+    "coverage": "panel starts 2025-08-22T00; first instant 2025-09-17 has 26 days x 24 = 624 bars >= 500, therefore ALL 8 instants x 3 symbols are eligible; no instant dropped",
+    "signal_history": "none required (anchor direction uses bar A only; no threshold fitting exists)"
+  },
+  "features_lags": {
+    "columns_from_panel": {
+      "buy_quote": "USD notional of buy-taker flow in bar (quote units)",
+      "sell_quote": "USD notional of sell-taker flow in bar",
+      "quote_total": "buy_quote + sell_quote (bar total taker notional)",
+      "last_price": "last traded price in bar, used as the bar-close fill price"
+    },
+    "lag_structure": "single-bar feature at lag 0 relative to the decision (bar A itself); exit price at lag +H bars (A+H close). No other lags, no rolling windows, no fitted parameters."
+  },
+  "entry_exit_fills": {
+    "direction": "d = sign(imb) = sign((buy_quote - sell_quote)/quote_total) on bar A; tie buy_quote == sell_quote exactly -> decision recorded UNFUNDED_SKIP (counted, not silently dropped)",
+    "entry": "at close of A(s), fill price = last_price of bar A(s), unit notional 1.0 per decision per symbol, no leverage parameter, no sizing conditioning",
+    "exit": "at close of A(s)+H, fill price = last_price of bar A(s)+H; no stop, no early exit",
+    "fills_per_funded_decision": "2 (entry + exit), each charged cost exactly once (L-V14-0)"
+  },
+  "costs": {
+    "authority": "measured taker + spread schedule at stress tier 2.0 as PRIMARY (Q-2/Q-8), inherited from the V17 scored-driver kernel adoption at this cycle's P1 phase; cost exactly once per fill",
+    "invention_disclaimer": "NO cost constant is stated or invented in this proposal; the measured tier numbers come from the kernel's measured schedule at execution time. Measured beats stated everywhere."
+  },
+  "arms": {
+    "anchor": {
+      "arm_id": "CNG1-A4-P1-ANCHOR",
+      "rule": "direction = sign(imb(bar A)); H = 6 bars",
+      "decisions": "8 instants x 3 symbols = 24 funded decisions (minus exact-tie skips, expected 0)"
+    },
+    "neighbour": {
+      "arm_id": "CNG1-A4-P1-NEIGH-H12",
+      "count": "exactly 1 neighbour",
+      "rule": "identical direction rule and grid; H = 12 bars",
+      "mechanism_support": "if the drained-liquidity continuation is real, the longer horizon must retain the sign with graceful decay; a horizon cliff or sign flip contradicts the mechanism (different parameterization, same mechanism)"
+    },
+    "causal_placebo_control": {
+      "arm_id": "CNG1-A4-P1-CTL-SHIFTPLUS1",
+      "count": "exactly 1 causal/placebo control",
+      "rule": "sham FOMC clock: each instant shifted +1 FOMC session index (session i date -> session i+1 date, same DST-correct release hour); session 8's shifted instant falls beyond the panel end -> dropped fail-closed",
+      "decisions": "7 sessions x 3 symbols = 21 decisions; everything else identical to anchor (H = 6)",
+      "identifiability": "the sham moves instants to real alternate trading days with real microstructure; it CAN move the signal (Q-11 satisfied; a control that cannot move the signal would be INVALID NULL)"
+    },
+    "clock_only_shadow": {
+      "arm_id": "CNG1-A4-P1-SHADOW-CLOCKLONG",
+      "count": "exactly 1 clock-only shadow (Q-7)",
+      "rule": "identical decision grid, holds (H = 6), costs and books; direction = +1 at EVERY decision (pure clock-long exposure carrying zero panel information)",
+      "purpose": "isolates what the bare exogenous clock yields; if the anchor is subsumed by this exposure the mechanism claim is empty"
+    },
+    "pairwise_distinctness": "the four arms differ by (direction rule, H, instant map) and will carry distinct arm_config_digests at D2/I time; no two arms share all three"
+  },
+  "representation_identity": {
+    "p12_statement": "This block IS the representation D2 must measure pooled |rho| <= 0.20 on. Representation identity = measurement identity (FXFV9 lesson: no undisclosed variant grids).",
+    "grid": "H1 rows keyed (symbol, hour_utc) from the three frozen S4 panels (digests pinned in p0_gate.json s4_repin); decision grid = 24 rows keyed (symbol, instant) over the 8 census instants",
+    "signal_computation": "per decision row: imb = (buy_quote - sell_quote)/quote_total on bar A; d = sign(imb); entry = last_price(A); exit = last_price(A+H)",
+    "per_decision_return": "r = d * (exit/entry - 1), gross; after-cost r_net = r - 2 * fill_cost_tier2.0 / unit_notional",
+    "series_d2_measures": [
+      "the 24-row per-decision after-cost return vector of ANCHOR (primary)",
+      "its daily-aggregated (symbol-day) projection",
+      "the same vectors for NEIGH-H12 for the ancestry panel"
+    ],
+    "books": "per-symbol books and the pooled 3-symbol book; equal unit notional per decision; no cross-sectional ranking, no normalization across symbols",
+    "no_hidden_variants": "no monthly-grid variant, no alternate span, no sign-flipped re-computation exists or may be substituted at D2; any re-measure must use exactly this representation or be recorded as a NEW proposal"
+  },
+  "ancestry_defense": "WKNDLIQ was a recurring weekday calendar whose book was measured to BE a low-liquidity-level exposure (pooled |rho| 0.5628 vs dvol proxies); P1 conditions on no liquidity LEVEL at all - the only conditioning variable is the SIGN of taker-side imbalance on 8 exogenous, PIT-evidenced instants, with volume appearing only inside a bounded ratio. FUNDJUMP consumed the funding series and its announced-change form still carried the funding LEVEL (rho 0.2439); P1 consumes no funding, no OI, and no announcement content - only the census clock and panel flow columns. ATTN-PHASE was a daily recurring US-session attention phase on SOL; P1's clock is 8 non-recurring exogenous decision instants and the reaction is imbalance-directed, not session-conditioned. CLOSE-DISPLACE-FADE and RUNPERSIST are dead at ANY clock as endogenous boundary forms; P1 neither fades a displacement nor persists a run - it takes the announcement bar's taker side from an exogenous instant, and the sham-instant + clock-only controls exist precisely to falsify any re-clocking interpretation.",
+  "distinctness_vs_sibling": "P1's information source is the POST-instant announcement-bar taker side; P2 (CNG1-A4-P2) uses the PRE-instant accumulated taker pressure over A-4..A-1 with a different reaction form (deadline-flow realization, not under-reaction continuation). Different information-source layer AND different reaction form, not a parameter swap. Cross-proposal collapse is tested by frozen rule F5.",
+  "feasibility_declaration": {
+    "decision_count_anchor": "8 instants x 3 symbols = 24 funded decisions per arm over the panel window",
+    "decision_count_horizon_bars": "24 decisions x 6 bars (anchor H) = 144 position-bars; neighbour 24 x 12 = 288; control 21 x 6 = 126; shadow 24 x 6 = 144",
+    "turnover_estimate": "2 fills per funded decision: anchor 48 fills/window, neighbour 48, control 42, shadow 48 (192 fills family-wide per year-equivalent; ~16 fills/month) - far below any plausible turnover/cost ceiling kill (A9-F); exact ceiling adjudication is the P2/D2 lane's measured job, not asserted here",
+    "recent_window_note": "recent-window decision ceiling (Q-6) is a P2-phase MEASURED gate; declared estimate: last 6 months of panel = 4 instants x 3 symbols = 12 anchor decisions",
+    "low_n_disclosure": "24 decisions is a small sample by design (8 scheduled prints/year); per-period DSR will exercise on N=24 and PBO stays NOT_RUN fail-closed (< 8 cells). This is disclosed, not hidden."
+  },
+  "falsification_rule": {
+    "frozen": true,
+    "no_rescue": "no threshold, horizon, or direction rule may change after any scored/smoke number is visible (P-15); any violation is a new hypothesis",
+    "rules": [
+      {
+        "id": "F1-calendar-artifact",
+        "condition": "CTL-SHIFTPLUS1 after-cost expectancy same sign as ANCHOR with |CTL| >= 0.5 x |ANCHOR|",
+        "consequence": "FALSIFIED - the FOMC clock adds nothing beyond generic H1 taker-side continuation (falsification-by-control cluster semantics)"
+      },
+      {
+        "id": "F2-clock-artifact",
+        "condition": "SHADOW-CLOCKLONG out-earns ANCHOR on after-cost expectancy, OR |pooled Spearman rho(anchor per-decision returns, shadow per-decision returns)| > 0.20",
+        "consequence": "FALSIFIED - the book is the bare clock, not the mechanism"
+      },
+      {
+        "id": "F3-ancestry-veto",
+        "condition": "D2 pooled |rho| > 0.20 vs ANY inventory proxy including the H0 hygiene rows, measured on the exact representation_identity above",
+        "consequence": "D2 VETO recorded with margin (P-2); especially the dvol_level_log / dvol_shock proxies that killed WKNDLIQ"
+      },
+      {
+        "id": "F4-mechanical",
+        "condition": "ANCHOR after-cost expectancy <= 0 at measured tier 2.0",
+        "consequence": "DEAD (mechanical reject); negative-first verdict stands, no re-parameterization"
+      },
+      {
+        "id": "F5-sibling-collapse",
+        "condition": "pooled |rho| between P1-ANCHOR and CNG1-A4-P2-ANCHOR per-decision return series > 0.20 (D2 measurement on both declared representations)",
+        "consequence": "the two proposals are ONE bet; only the stronger-evidenced mechanism advances to selection, the other is withdrawn - never both scored"
+      }
+    ]
+  },
+  "expected_failure_interpretation": "If F1 fires, the FOMC clock carries no incremental information beyond generic H1 imbalance continuation and the scheduled-announcement reaction family is dead on this substrate - it must NOT be re-clocked to other announcement series (CPI/NFP are BLOCKED anyway, so the next legal clock does not exist in evidence). If F4 fires with controls coherent (anchor loses, sham/shadow also lose), it is a plain negative: drained-liquidity under-reaction either does not exist at H1 granularity on these three books or is fully eaten by measured tier-2.0 costs. Either outcome feeds CRYPTO_NG1_REJECT_ALL, which the plan registers as a successful research run."
+}
