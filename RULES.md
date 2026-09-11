@@ -208,8 +208,10 @@ next stocks plan writes fresh; standing constraints:
 ## 7. GO phrase registry (exact strings; frozen phrase gates adjudicate form)
 
 **ng1 generation live phrases (registered 2026-09-11, none consumed):**
-`GO CRYPTO NG1 SCORED EXECUTION` / `GO FOREX NG1 SCORED EXECUTION` /
-`GO STOCKS NG1 SCORED EXECUTION` — registered by the three ng1 cycles
+`GO FOREX NG1 SCORED EXECUTION` / `GO STOCKS NG1 SCORED EXECUTION` —
+registered by the ng1 cycles
+(`GO CRYPTO NG1 SCORED EXECUTION` died UNCONSUMED with CRYPTO-NG1's TERMINAL
+close 2026-09-11: BLOCKED_DATA_OR_SELECTION at 0/6, 0 scored cells)
 (CRYPTO-NG1 / FOREX-NG1 / STOCKS-NG1, registry 2026-09-11). Per the owner's
 standing directive of 2026-09-11 ("Bạn có toàn quyền tự quyết GO SCORED …
 prompt này chạy 1 lần không hỏi lại"), the owner's key in the two-key
