@@ -1,0 +1,170 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "stocks-ng2-p0-census",
+  "cycle_id": "STOCKS-NG2",
+  "role": "quant-implementer",
+  "lane": "p0",
+  "dispatch_sha": "400048457ed453a9cc824d35a83c76259ad94e47",
+  "actual_start_sha": "400048457ed453a9cc824d35a83c76259ad94e47",
+  "commit_sha": "ff283e2db98857650eda8a84751d41fdac28a0ee",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng2/integration",
+  "branch": "orca/stocks-ng2-integration",
+  "changed_paths": [
+    "research/assets/stocks_ng2/__init__.py",
+    "research/assets/stocks_ng2/form4a_ingest.py",
+    "research/assets/stocks_ng2/extended_census.py",
+    "research/assets/stocks_ng2/eodhd_probe.py",
+    "research/control/stocks_ng2_run/p0_gate_run.py",
+    "research/control/stocks_ng2_run/p0_gate.json",
+    "research/control/stocks_ng2_run/p0_fetch_canaries.json",
+    "research/control/stocks_ng2_run/p0_fetch_summary.json",
+    "research/control/stocks_ng2_run/p0_s1_repverify.json",
+    "research/control/stocks_ng2_run/p0_form4a_reingest.json",
+    "research/control/stocks_ng2_run/p0_form4a_ingest_manifest.json",
+    "research/control/stocks_ng2_run/p0_census_b_amendments_extended.json",
+    "research/control/stocks_ng2_run/p0_eodhd_short_interest.json",
+    "tests/test_stocks_ng2_p0.py"
+  ],
+  "objective_summary": {
+    "edgar_4a_reingest": {
+      "targets_from_pinned_submissions_metadata": 3062,
+      "unique_accessions": 3062,
+      "fetched_ok": 3062,
+      "not_found": 0,
+      "failed": 0,
+      "fetched_non_xml_primary": 3,
+      "files_on_disk": 6123,
+      "blocked_partial": false,
+      "user_agent": "Research my-quantitative@example.com",
+      "etiquette": "single global limiter, request starts spaced >= 0.55s (< 2 req/s) including during 2-worker latency-overlap mode; backoff 10/30/60s, max 4 attempts/URL; abort rule 10 consecutive failures (never triggered)",
+      "resume_sessions": [
+        {"session": 1, "outcome": "crashed on an unhandled raw TimeoutError during canaries; 0 accessions fetched"},
+        {"session": 2, "outcome": "externally killed at 1,247/3,062; resumed cleanly"},
+        {"session": 3, "outcome": "resumed 1,247 + fetched 1,815 = 3,062 OK, 2,629s"}
+      ]
+    },
+    "amendment_census_extended": {
+      "amendment_docs": 3059,
+      "amendments_with_resolvable_original": 1877,
+      "floor": 200,
+      "floor_met": true,
+      "match_key": "(issuerCik, rptOwnerCik, periodOfReport)",
+      "malformed_xml_docs": 0,
+      "unexpected_doc_types": {},
+      "well_formed_sample_5": "all well-formed"
+    },
+    "s1_repverify_full": {
+      "form4_xml_files_ok": 345150,
+      "drift": 0,
+      "missing": 0,
+      "doc_type_distribution": {"4": 345150},
+      "aux_eodhd_div": "2168 OK",
+      "aux_eodhd_splits": "2168 OK",
+      "aux_submissions_alive": "410 OK",
+      "direct_manifest_sha256_matches_pin": true,
+      "direct_stream_sha256_matches_pin": true,
+      "originals_index_size": 342801
+    },
+    "p7_canaries": {
+      "fabricated_accessions_404": 2,
+      "dead_cik_404": 1,
+      "all_failed_as_expected": true
+    },
+    "eodhd_family2_probe": {
+      "family": "short-interests",
+      "entitlement_control": "GET /api/eod/AAPL.US -> 200 (key valid)",
+      "family_endpoint": "404 on both symbol forms for all 5 probed symbols (A, COIN, GSAT, MSFG, SGB)",
+      "verdict": "CANDIDATE_NOT_AUTHORIZED",
+      "lane_consequence": "lane A5 dies at P2 (plan section 3b); cycle proceeds A4-only"
+    },
+    "gate": {
+      "verdict": "PASS",
+      "lane_verdicts": {
+        "A4_amendment_reingest": "PASS",
+        "A5_eodhd_family2": "CANDIDATE_NOT_AUTHORIZED"
+      },
+      "blocking": []
+    }
+  },
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_stocks_ng2_p0.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "24 passed"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/stocks_ng2_run/p0_gate_run.py --stage gate",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "gate verdict PASS, 85.8s"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng2/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/stocks_ng2_run/p0_gate_run.py --stage fetch",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "3,062/3,062 accessions OK across resumed sessions; canaries first, all failed as expected"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "3 of 3,062 fetched accessions carry non-XML primary docs (EDGAR vintage .txt / no usable XML in the dir listing); fetched and recorded honestly, NOT counted as amendments (hence 3,059 amendment docs)",
+    "original-vs-amendment matching is bounded by the pinned originals cohort: an amendment whose original lies outside the pinned 345,150-doc substrate is unresolvable-by-construction (1,877/3,059 = 61.4% resolvable)",
+    "p0_fetch_summary.json records only the final resumed fetch session (resumed 1,247 + fetched 1,815); full-substrate truth lives in data_raw/form4a_fetch_state.jsonl + the committed ingest manifest (3,062 OK)",
+    "data_raw/form4a/** (6,123 files) is intentionally UNTRACKED per dispatch; reproducibility rides on the committed per-file sha256 manifest (aggregate 53daea6172ff5538c279970d7a1d1ea85c8294c637b7b2de3102ffc2ad05f062) -- the controller should adopt/pin it as substrate before lane A4 runs",
+    "EODHD CANDIDATE_NOT_AUTHORIZED rests on control-alive + family-404 evidence over 5 symbols (both symbol forms); the 50-symbol coverage probe was NOT run (gate law: only run when authorized); the >= 500-entity floor therefore remains UNMEASURED, not failed",
+    "EDGAR sustained request rate ~1.6 req/s observed under the 0.55s start-spacing limiter; no 403/429 encountered, abort rule never triggered"
+  ],
+  "incidents": [
+    {
+      "what": "First fetch stage crashed (exit 1) on an unhandled raw TimeoutError escaping urllib during the canary requests",
+      "resolution": "real_transport now catches TimeoutError/OSError, retries with backoff, and reports status 0 (FAILED) instead of crashing; canaries fail-closed on transport errors; re-run clean"
+    },
+    {
+      "what": "Second fetch background process was killed externally (harness reaped it, not this lane) at 1,247/3,062 accessions",
+      "resolution": "relaunched with crash-safe resume; no data loss, no etiquette violation (single fetcher at any time)"
+    },
+    {
+      "what": "One accession row (0001048911-26-000086) was recorded OK without index_sha256 (no-primary-doc code path bug) causing a manifest cross-check MISMATCH",
+      "resolution": "bug fixed (branch now records index_sha256); the single row was surgically removed from state, its dir deleted, and the accession cleanly re-fetched; manifest cross-check now 0 mismatches"
+    }
+  ],
+  "tree_status": "clean except intentionally untracked data_raw/ (fetched EDGAR 4/A bytes + fetch state, 6,123 files + state jsonl); handoff commit follows this one",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/stocks_ng2_run/p0_gate.json",
+      "sha256": "138636ccad57092249a012f9a5db6d8cafa752562ab836d6e36787db39776d8f"
+    },
+    {
+      "path": "research/control/stocks_ng2_run/p0_census_b_amendments_extended.json",
+      "sha256": "ee58aead8e71db1196c4015134552a23e0b14d5351bce771a836fef94600e837"
+    },
+    {
+      "path": "research/control/stocks_ng2_run/p0_form4a_ingest_manifest.json",
+      "sha256": "d06a6342e0e5b576f84e7f3ae205de69464b40bf2ea4824ab211c3f41b03172a",
+      "note": "contains per-file sha256 for all 6,123 data_raw/form4a files + aggregate 53daea6172ff5538c279970d7a1d1ea85c8294c637b7b2de3102ffc2ad05f062"
+    },
+    {
+      "path": "research/control/stocks_ng2_run/p0_eodhd_short_interest.json",
+      "sha256": "61d797ff46446f0554d3d0fa3019ca94912f5c6afa942dec9ce8ccdbcd4dbf11"
+    },
+    {
+      "path": "research/control/stocks_ng2_run/p0_s1_repverify.json",
+      "sha256": "171eaef7a6343c2087558e3e7089c4be567cdfde59b9a3e7cc4a94c2579404ca"
+    },
+    {
+      "path": "research/control/stocks_ng2_run/p0_fetch_canaries.json",
+      "sha256": "59bdaad4a8a26ef6542459dc7f66247f4ee26e513b2d0da93a527c5ee4618a3a"
+    },
+    {
+      "path": "research/control/stocks_ng2_run/p0_form4a_reingest.json",
+      "sha256": "5ee722be8c26e6d3364b94de6f6c60f150c202dc6ff296b31954475e7157f5c0"
+    },
+    {
+      "path": "research/control/stocks_ng2_run/p0_fetch_summary.json",
+      "sha256": "332657096f20a83e4c47320d0492b9aedb9619ac6d2ae740eedecbd1e599b047"
+    }
+  ],
+  "recommended_next_action": "Controller: (1) adopt/pin data_raw/form4a via the committed ingest manifest (aggregate 53daea61...) as the amendment substrate extension, then dispatch lane A4 (amendment-revision structure; 200-floor funded at 9.4x margin, 1,877 resolvable pairs). (2) Lane A5 is dead at P2 with CANDIDATE_NOT_AUTHORIZED (control endpoint alive, short-interests family 404 under the current EODHD entitlement) -- proceed A4-only per plan unless the owner upgrades the entitlement, in which case re-run only the EODHD probe."
+}
