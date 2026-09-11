@@ -1,0 +1,239 @@
+{
+  "schema": "forex_ng3_run/d1_proposal@1",
+  "cycle_id": "FOREX-NG3",
+  "task_id": "forex-ng3-d1-a5-proposals",
+  "lane": "d1-a5",
+  "hypothesis_id": "FXNG3-A5-P2",
+  "title": "CA<->leg bilateral restricted revision-differential transfer onto the leg pairs GBPUSD/AUDUSD/NZDUSD (vintaged first-print revision gaps, CA-anchored obs-month join, per-leg PIT-gated max-v2 availability entry, daily 16:00-NY grid)",
+  "blindness_declaration": {
+    "outcome_blind": true,
+    "statement": "Written with ZERO outcome exposure: no scored/PnL/smoke/novelty numbers for this cycle were read; no backtest executed. Only timing, availability, coverage and count evidence from the pinned ng3 P0 restricted revision census (sha256 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f, re-measured at this checkout), the P0 pin re-verification gate and the family-failure inventory was consumed; the census magnitude blocks are descriptive-only by their own law and were not used to set, move or justify any threshold or direction decision.",
+    "frozen_before_any_outcome": true
+  },
+  "mechanism": {
+    "story": "Each CA-anchored differential month pairs Canada's restricted CPI revision with the contemporaneous restricted revision of at least one non-anchor leg (GB/AU/NZ/US). The bilateral differential D_L = R_CA - R_L reprices CAD relative to leg L's currency. Slow G10 participants - monthly dealing-cycle benchmark rebalancers and calendar-fixing corporate hedgers - do not hold CAD-cross books; they hold USD pairs and implement relative-inflation views as baskets. Long-CAD-versus-L decomposes on that instrument set into SHORT USDCAD plus LONG L-vs-USD. Proposal P1 trades the first decomposition leg on the anchor pair; THIS proposal trades the second: the CA-anchored differential TRANSFERRED onto the leg's own pair, in exactly the months where that leg carries a restricted event (so its revision is readable and the differential is bilateral). The leg-side implementation is the slow one: it happens at scheduled dealing windows, after both v2 vintages are evidenced-available - inside the horizon this lane can provably observe.",
+    "forced_or_late_participant": "Forced/late participants: (i) monthly dealing-cycle real-money accounts implement bloc relative-inflation updates only after the month's revision evidence completes and only at scheduled windows - structurally late relative to the v2 availability sequence; (ii) THIS LANE ITSELF is a declared late participant: entry requires the evidenced vintaged availability of BOTH sides of the bilateral differential - CA's v2 AND leg L's v2 - and the pinned census shows v2 vintage days arriving weeks-to-months after the obs month (census samples: CA obs 2017-11 v2 2018-10-09; AU/NZ quarter-vintaged feeds arrive on the ~quarterly vintage calendar). The hypothesis is specifically that the differential-keyed leg-pair repricing SURVIVES the PIT-provable max-v2 availability lag plus the 5-grid-day holding horizon, after costs.",
+    "why_differential_not_absolute": "On the LEG's own pair (e.g. GBPUSD), the leg-side inflation path is the first-order pricing term: the relevant state is how CA's revision moved RELATIVE TO the leg's own revision, not CA's revision alone. The bilateral differential nets the leg's revision out of the CA signal: a GB revision of the same sign and size as CA's cancels the relative move (D_GB = 0, no position); a GB revision of opposite sign doubles it. The absolute-CA form cannot distinguish these months - it fires both identically - which is exactly the V7 re-clock surface, and why the no-differential control is lane-mandatory. The differential is also the honest use of the restricted streams' asymmetry: CA's stream is the genuinely-alive anchor (72 events; plan section 3), while GB/AU/NZ/US revisions are measured only to DIFFERENCE OUT the common component - no leg ever anchors an event.",
+    "when_it_must_fail": "It must fail (after-cost per-trade expectancy <= 0) if the leg pairs' late windows after joint v2 availability carry no differential-signed drift. It must die by falsification if the SAME cross-pair book fired on the ABSOLUTE CA revision sign without any leg revision (the mandatory CTL-V7NODIFF - V7 cross-economy reaction-direction re-clocked onto the revision clock) reproduces the anchor; if a nominal-yield-level exposure reproduces it (V8 law; ng1-A4-P2 cluster #15 proved the DGS10-level shadow the most lethal control in this program); if a constant-direction calendar shadow reproduces it (Q-7); if a sign-permuted leg book reproduces it (order-preserving placebo); if the quote-differential source parameterization out-earns the bilateral form (neighbour, V8 R2 standard); or at D2 if pooled ancestry |rho| > 0.20 vs the full inventory including both V7 cross-pair books and the FXNG1-A5-P1 anchor (accepted in advance)."
+  },
+  "information_source_and_surprise_construction": {
+    "information_source": "REALIZED vintaged CPI revision gaps from the pinned ng3 restricted (first-print) revision census only - no announcement-calendar, no publication-order, no consensus/forecast data anywhere (this lane reads NO release-order state: that ancestor is dead, see ancestry_defense). Per economy X and obs month m: v1 = first vintage publishing m, v2 = immediately following vintage (strict monotonicity, fail-closed), R_X(m) = 100 * ( I_v2(m) / I_v1(m) - 1 ) in percentage points (ng2 section 4 frozen semantics, inherited via the census import).",
+    "differential_construction": {
+      "stream": "RESTRICTED stream only, both sides of every differential: first_print_in_realtime_era=True AND no bulk re-referencing group membership (>= 10 events sharing an identical (v1 day, v2 day, ratio-to-1e-6) signature excluded by census law)",
+      "join_law": "CA-anchored obs-month join, verbatim from the census: an obs month m (quarter-first-month keys for AU/NZ, V9 law) counts iff CA carries a restricted event AND >= 1 other economy (GB/AU/NZ/US non-anchor legs) carries a restricted event in the same obs month; months with non-anchor overlap but NO CA event are disclosed (15 measured, incl. the 2023-12..2024-12 US-only run) and NEVER counted; they are unreachable by every arm of this proposal (fail-closed, no patch)",
+      "event_unit": "a TRANSFER EVENT is a pair (m, L) with L in {GB, AU, NZ}: leg L carries a restricted event in differential month m. USDCAD NEVER fires in this proposal (that is A5-P1's construction, distinct by design); the US revision is never a transfer destination (quote leg of every funded pair, never anchored by law)",
+      "bilateral_form": "D_L(m) = R_CA(m) - R_L(m) for each transfer event (m, L)",
+      "measured_join_census": {
+        "differential_months_total": 72,
+        "floor": 12,
+        "transfer_events_total": 52,
+        "transfer_events_by_leg": {"GB": 8, "AU": 22, "NZ": 22},
+        "transfer_events_by_year": {"2017": 2, "2018": 12, "2019": 8, "2020": 8, "2021": 8, "2022": 8, "2023": 6},
+        "gb_era_disclosure": "all 8 GB transfer events sit in obs months 2017-11..2018-06 (GB restricted stream ends there by measurement); GB never appears later",
+        "quarterly_leg_disclosure": "AU/NZ transfer events sit exclusively on quarter-first months (2018-01, 2018-04, 2018-10, then every Jan/Apr/Jul/Oct through 2023-07)",
+        "tail_disclosure": "no CA-anchored differential month after 2023-11 exists in the census join; US events in 2023-12..2024-12 all land in the disclosed non-anchor-without-CA set and are unreachable",
+        "non_anchor_months_without_ca_disclosed": 15
+      }
+    },
+    "pit_rule": "Every revision gap is read from the PINNED vintaged archives as-of the decision instant; the v2 index level that carries the revision is only readable after v2.realtime_start (date-only evidence => conservative same-day end-of-day bound); no vintage value that entered its archive after the decision instant may be read; the join state (which legs are active in m) is determined exclusively by restricted-event membership whose v2 evidence dates at or before the entry bound (P-1..P-6 chain; ONE_EVENT_LAG impossible by construction).",
+    "frozen_parameters": {
+      "anchor_threshold_pp": 0.02,
+      "anchor_holding_grid_days": 5,
+      "neighbour_parameterization": "quote-differential source: D*_L(m) = R_CA(m) - R_US(m) transferred onto every present non-USD leg L of US-active differential months (50 of 52 transfer events - drops the 2 CA+GB-only months 2017-11/2017-12); same gate, same direction law, same H = 5",
+      "threshold_selection_basis": "BLIND frozen prior set before any outcome: identical to A5-P1's 0.02 pp prior (one order of magnitude below the ng1 house 0.10 pp first-print surprise gate, on the scale logic that a revision is a correction of already-published information); the census magnitude blocks are descriptive-only by their own law and were NOT consumed for this choice; no tuning permitted after any number is seen (P-15)"
+    }
+  },
+  "universe": {
+    "pairs": ["GBPUSD", "AUDUSD", "NZDUSD"],
+    "funded_economy_map": {
+      "GB": {"pair": "GBPUSD", "quoting": "CCY/USD, long = long GBP vs USD; TRANSFER DESTINATION only in GB-active differential months (8 events) - GB is NOT an anchor (excluded as anchor: 8 first-print events, 60/68 usable events are one bulk 2018 re-referencing coefficient; plan section 3)"},
+      "AU": {"pair": "AUDUSD", "quoting": "CCY/USD, long = long AUD vs USD; transfer destination only (excluded as anchor: 26 usable events < 30, the ng2 P0 kill); quarter-first-month keys; 22 events"},
+      "NZ": {"pair": "NZDUSD", "quoting": "CCY/USD, long = long NZD vs USD; transfer destination only (excluded as anchor: 24 first-print events < 30); quarter-first-month keys; 22 events"},
+      "CA": {"pair": null, "quoting": "the ANCHOR ECONOMY (sole member of the anchor universe; CA->USDCAD by law): its restricted revision anchors every transfer event and enters every D_L; USDCAD itself NEVER fires in this proposal (A5-P1's construction, distinct by design)"},
+      "US": {"pair": null, "quoting": "QUOTE leg of every funded pair (never anchored); its revision enters only the NEIGHBOUR's quote-differential source D*; never a transfer destination"}
+    },
+    "event_instrument_law": "each transfer event (m, L) fires exactly ONE pair-decision, on leg L's OWN pair (GB->GBPUSD, AU->AUDUSD, NZ->NZDUSD); the CA and US revisions are SIGNAL INPUTS ONLY (vintaged channel, V9 HIGH finding binding - current-vintage revised-in-place tables FORBIDDEN for every non-US leg and for CA); no leg economy anchors any event (anchoring = whose stream defines the event state: that is CA alone).",
+    "direction_law": "D_L(m) >= +0.02 pp => CAD's inflation path revised up relative to leg L => the bloc expression of long-CAD-vs-L fires its leg-pair component => LONG the leg currency vs USD (long GBPUSD / AUDUSD / NZDUSD). D_L(m) <= -0.02 pp => the mirror (SHORT the leg currency vs USD). |D_L(m)| < 0.02 pp => no position on that leg pair. Two-sided by construction: no static currency or dollar bias."
+  },
+  "clock": {
+    "decision_grid": "daily 16:00 America/New_York (zoneinfo, DST-correct; 16:00-NY = 20:00Z EDT / 21:00Z EST) on FX trading days; frozen V9 representation; common grid 1842 days 2018-04-04..2025-04-30 (P0 spot repin, grid recompute PASS, binding_pair_days 1842)",
+    "event_set": "the 52 transfer events (m, L) over the 72 CA-anchored restricted differential months of the pinned census (research/control/forex_ng3_run/p0_revision_census.json sha256 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f, re-measured at this checkout); the 15 disclosed non-anchor-without-CA months contribute no state",
+    "availability_bound": "per leg: A_X(m) = 23:59:59Z on v2_X.realtime_start (date-only evidenced availability, conservative same-day bound - the census usability law). Transfer-event availability A(m, L) = max( A_CA(m), A_L(m) ) - BOTH sides of the bilateral differential must be provably readable before the differential exists. CONSEQUENCE DECLARED (inherited): a same-day 16:00-NY decision (20:00/21:00Z) never sees a v2 whose availability bound (23:59:59Z) is that same date.",
+    "entry_rule": "decision day D(e; m, L) = first 16:00-NY grid instant strictly AFTER A(m, L). The per-event max-v2 bound is the binding clock; no publication-instant, order or announcement state is read anywhere; two legs of the same month may enter on different grid days (their v2 bounds differ) - each transfer event is clocked independently.",
+    "v2_availability_by_leg_disclosed": {
+      "CA": "monthly MINMEI realtime (CANCPIALLMINMEI); v2 days measured spread across the S0 window (census samples show v1->v2 gaps from weeks to ~9 months, e.g. obs 2017-11 v1 2018-01-02 -> v2 2018-10-09)",
+      "GB": "monthly MINMEI realtime (GBRCPIALLMINMEI); v2 days cluster 2018 (restricted stream ends 2018-06 obs)",
+      "AU": "quarterly vintaged feed (AUSCPIALLQINMEI); vintages arrive ~quarterly (15th-ish of Feb/May/Aug/Nov + occasional extra pulls); quarter-over-quarter vintage gaps on quarter-first-month keys",
+      "NZ": "quarterly vintaged feed (NZLCPIALLQINMEI); same cadence law as AU",
+      "US": "fred realtime archive CPIAUCSL (date-only evidence; small index-level vintage updates, 12/year 2019-2025; enters only the NEIGHBOUR source D*)",
+      "law": "exact per-event v2 bounds are re-measured at P2/D2 on the pinned bytes (the census stores v1/v2 days for every restricted event); this proposal freezes only the bound LAW, never ad-hoc bounds"
+    },
+    "dst_rule": "zoneinfo America/New_York local->UTC with DST fixtures; all availability evidence is date-only and gets the 23:59:59Z conservative bound",
+    "window": {"s0_start": "2018-04-04", "s0_end": "2025-04-30", "basis": "census s0_window (usability law: v2 availability day inside the window); every restricted event's v2 day is <= 2025-04-30 by construction, so only boundary cases can drop at the tail; tail-trim law respected, no current-vintage backfill"}
+  },
+  "warmup": {
+    "requirement": "each revision event needs only its v1 and v2 vintages with full realtime windows (no predictor lags); the restricted-stream builder requires the pinned vintaged history (feeds start 1948-1955); no expanding-window normalization anywhere in this proposal",
+    "structural_status": "satisfied by the P0 census construction itself (the 52-event leg join was measured on the pinned bytes); warmup is a per-event vintage-window rule, not a burn-in period"
+  },
+  "features_and_lags": {
+    "features": ["D_L(m) = R_CA(m) - R_L(m) is the ONLY signal feature; the join state (CA + active leg set) is a conditioning clock on WHICH (month, leg) events may fire, never a priced feature"],
+    "lags": "v1 and v2 vintaged index levels of CA and leg L for obs month m (quarter-first-month keys for AU/NZ)",
+    "explicit_non_features": ["no absolute single-economy revision enters the signal (that form exists ONLY inside the mandatory CTL-V7NODIFF control)", "no USDCAD position (that is A5-P1's construction - the two proposals share the information source, never the instrument)", "no release-order or publication-sequence state anywhere (FXNG1-A5-P1's axis - dead, never re-read)", "no consensus/forecast data (no authority exists)", "no nominal yield level in the signal (yield level appears ONLY inside the mandatory control arm)"]
+  },
+  "entry_exit_fills": {
+    "entry": "at the D(e; m, L) 16:00-NY grid price of the leg's staged spot series, iff |D_L(m)| >= 0.02 pp at that instant; 1 unit notional per transfer event; multiple legs of the same month enter independently at their own clocked instants",
+    "exit": "at the grid instant H = 5 grid days after entry (next grid day if that instant is not a trading day); forced exit at the 2025-04-30 grid instant for positions whose horizon extends past window end (declared tail convention); events whose D(e) falls after the window end cannot enter and are dropped (bounded small by the usability law; exact count re-measured at P2/D2)",
+    "fills": "entry fill and exit fill each executed once at grid prices; positions from different transfer events are held independently (no netting), each exiting at its own horizon",
+    "no_lookback_guards": "signals computed only from vintaged information PIT-readable at D(e; m, L); the frozen validator refuses any fill whose conditioning v2 instant or value postdates the decision instant (V3 lesson encoded)"
+  },
+  "costs": {
+    "model": "measured FX spread per pair at stress tier, charged once per fill (entry and exit are separate fills); never vendor-stated",
+    "authority": "Q-8 re-measured constants to be published by the P1 kernel lane of this cycle; at proposal time NOT_YET_MEASURED => declared dependency; if Q-8 constants are absent at D2/implementation, cost verdict is NOT_RUN (fail-closed), never an assumed spread",
+    "reference_ladder": "referenced precedent (not an invention, not an assertion): frozen proxy 1.5 bps per side with stress multipliers, tier 2.0 PRIMARY verdict book (plans/PLAN_forex_v2.md frozen proxy cost + V8 binding rule 'stress tier 2.0 primary'); Q-8 measured constants supersede the proxy ladder everywhere",
+    "reference": "plans/PLAN_forex_ng3.md section 5 (identical to ng1's frozen cost contract); V8/V9 dual-book kernel inherited at P1"
+  },
+  "arm_battery": [
+    {
+      "arm": "anchor",
+      "name": "FXNG3-A5-P2-ANCHOR",
+      "config": "52 transfer events (GB 8 on GBPUSD / AU 22 on AUDUSD / NZ 22 on NZDUSD), bilateral differential D_L = R_CA - R_L, gate |D_L| >= 0.02 pp, direction per direction_law (long leg currency vs USD iff D_L >= +gate), per-event max-v2 clock, H = 5 grid days, 1 unit per transfer event",
+      "role": "the hypothesis: CA-anchored bilateral revision-differential transferred onto the leg's own pair"
+    },
+    {
+      "arm": "neighbour",
+      "name": "FXNG3-A5-P2-NEIGH-QUOTESRC",
+      "config": "information-source parameterization: identical transfer construction (same leg pairs, same per-leg clock form, same 0.02 pp gate, same direction law, H = 5) but the differential source is the QUOTE differential D*_L(m) = R_CA(m) - R_US(m) - CA versus the US quote leg, transferred onto every present non-USD leg; fires on the 50 transfer events of US-active months (drops the 2 CA+GB-only months 2017-11/2017-12); the leg's own revision is never read",
+      "role": "V8 R2 standard applied to the DIFFERENTIAL SOURCE: if the quote-differential transfer out-earns the bilateral anchor, the leg's own revision (the <-> bidirectional part of the differential) carries nothing and the bilateral parameterization is not mechanism-bearing => dead"
+    },
+    {
+      "arm": "v7_ancestry_control",
+      "name": "FXNG3-A5-P2-CTL-V7NODIFF",
+      "config": "MANDATORY (plan section 5 lane A5): identical fired anchor book (same 52 transfer events, same per-event max-v2 clock computed from CA and leg L even though L is not read, same horizons, 1-unit magnitudes) but the direction carries ONLY the ABSOLUTE CA revision exposure with the differential removed: direction = +sign(R_CA(m)) on the leg pair (R_CA >= +0.02 => long the leg currency vs USD; R_CA <= -0.02 => short; |R_CA| < 0.02 => no position); the leg revisions are NEVER read for direction or gate",
+      "role": "no-differential falsification control (V7 cross-economy reaction-direction re-clock): the control carries absolute-revision exposure transferred cross-pair, not differential. If this book's same-sign per-trade expectancy >= 0.5x the anchor's, the bilateral differential carries NOTHING and the anchor is the FXFV7-A4-P1 spillover class re-clocked onto the revision clock => family dead by law, D2 VETO recorded"
+    },
+    {
+      "arm": "nominal_exposure_control",
+      "name": "FXNG3-A5-P2-CTL-DGS10LEVEL",
+      "config": "identical fired anchor book (same event days, leg pairs, horizons, 1-unit magnitudes), but direction carries ONLY a nominal-yield-level exposure with revision conditioning removed: sign = +1 (long the leg currency vs USD) iff the DGS10 level as-of D(e) (vintaged S2) is below its trailing 252-grid-day median, else -1",
+      "role": "V8 LAW MANDATE (falsification-by-control #14; ng1-A4-P2 cluster #15 proved this the most lethal control in the forex program): if this control reproduces the anchor (same-sign expectancy >= 0.5x), the transfer book is a nominal-yield-level exposure in new words => dead"
+    },
+    {
+      "arm": "clock_only_shadow",
+      "name": "FXNG3-A5-P2-SHADOW-CLOCK",
+      "config": "identical fired anchor book, direction = constant +1 (always long the leg currency vs USD); zero information content",
+      "role": "Q-7 clock-only shadow: isolates pure per-leg max-v2 calendar-clock + static-drift exposure on the leg-pair basket; reproduces the anchor (same-sign >= 0.5x) => the clock explains it => dead"
+    },
+    {
+      "arm": "placebo_order_preserving",
+      "name": "FXNG3-A5-P2-PLACEBO-DIFFPERM",
+      "config": "the IDENTICAL anchor book (same 52 transfer events, same entry days, same pair destinations, same magnitudes, same H) but the differential SIGNS are permuted across the 52 transfer events by a single frozen-seed permutation (numpy default_rng(20261102); permutation committed with the frozen representation before any outcome, P-12/P-15); the marginal distribution of signs is preserved exactly and every event keeps its own clock position and pair destination (ORDER-PRESERVING: the temporal and cross-pair structure of the book is untouched); only the event-to-differential-sign alignment is destroyed",
+      "role": "order-preserving placebo: same book, same sign marginals, same calendar and pair structure, destroyed sign information; reproduces the anchor (same-sign >= 0.5x) => WHICH events carried which differential sign is irrelevant => dead"
+    }
+  ],
+  "representation_identity": {
+    "p12_statement": "representation identity is measurement identity (P-12, V9 origin); this table is the frozen identity from which the arm_config_digest is derived; code AND representation commit before any number is cited",
+    "representation_id": "forex_ng3_a5_p2_daily1600ny_cadiff_legtransfer_v1",
+    "identity_fields": {
+      "grid": "daily 16:00 America/New_York FX-trading-day grid, zoneinfo DST; common grid 1842 days 2018-04-04..2025-04-30 (P0 spot repin binding_pair_days 1842)",
+      "join_rule": "CA-anchored restricted differential obs-month join, census law verbatim: CA restricted event AND >= 1 non-anchor leg restricted event in the same obs month; quarter-first-month keys for AU/NZ; non-anchor-without-CA months (15) disclosed and never counted; transfer events = (month, leg) with leg in {GB, AU, NZ}",
+      "event_set": "52 transfer events (GB 8 / AU 22 / NZ 22); census sha256 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f (re-measured at this checkout); restricted stream only (first-print era, no bulk groups)",
+      "availability": "A_X(m) = 23:59:59Z on v2_X.realtime_start per leg; A(m, L) = max( A_CA(m), A_L(m) ); D(e; m, L) = first grid instant strictly after A(m, L)",
+      "differential": "D_L(m) = R_CA(m) - R_L(m); R_X(m) = 100*(I_v2/I_v1 - 1) on pinned vintaged bytes, restricted events only",
+      "anchor_rule": "|D_L| >= 0.02 pp; direction two-sided on the LEG's own pair (D_L >= +gate => long leg vs USD; <= -gate => short); 1 unit per transfer event; USDCAD never fires; CA/US are signal inputs only",
+      "exit_rule": "H = 5 grid days; forced exit at 2025-04-30 grid instant; post-window entries dropped (count re-measured at P2/D2)",
+      "costs": "Q-8 measured stress-tier spread once per fill (P1 dependency); referenced proxy ladder 1.5 bps/side, tier 2.0 PRIMARY (V2/V8 precedent)",
+      "window": "2018-04-04..2025-04-30",
+      "placebo_rng": "numpy default_rng(20261102), single frozen sign permutation across the 52 transfer events",
+      "series_pins": {
+        "CANCPIALLMINMEI": "7b225d9f724bd15ca309c1085d5c3812da19b5f7c20f28bbe2e1eb583d9cb2d6",
+        "GBRCPIALLMINMEI": "102e027d7b8ac621c7aab0f34a7fc99644d2f676692565f2b119b4b0e502e827",
+        "AUSCPIALLQINMEI": "a42184a0310c0fba7e9243e431047d17753348af53945b1f65d94b715c704e7b",
+        "NZLCPIALLQINMEI": "a06a44eae0a071c807aa65a372b1cab6f786ceb0ce7f5094bb60c8b622455cd5",
+        "CPIAUCSL_rt": "7f18ec982374ce4dfb235f53f001327793df8e1c0077d31206de25aa3455ac94",
+        "DGS10": "S2 granted vintaged class (manifest pin c8ae78777102ab45cec433f5da6c786355b57c884be5f15c39c1fc18ca328e7c; DGS10.json sha256 03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0; control arm only)",
+        "GBPUSD_spot_staged": "e3e4c519f4c36b394ad08c1e52ed16ae087030372febfdb5558ebcdbee83e4a7 (P0 spot repin PASS; scored consumption AUTHORIZED per the committed P-18 spot_authority_proof.json)",
+        "AUDUSD_spot_staged": "097cfe59cd702c3dd2479f37abeae5fd751fdf53cbe305ffa0ea3820e17e5e17 (P0 spot repin PASS; scored consumption AUTHORIZED per the committed P-18 spot_authority_proof.json)",
+        "NZDUSD_spot_staged": "7dff32999bdb38c5d972bd1ed4ff93a8807057ffb7120621f83b146dc0b79d5b (P0 spot repin PASS; scored consumption AUTHORIZED per the committed P-18 spot_authority_proof.json)"
+      }
+    }
+  },
+  "ancestry_defense": {
+    "v7_reaction_direction_closed_SPECIFIC": "FOREX-FREE-V7 closed the reaction-direction class 'on both sides of the economy boundary', and this TRANSFER form is the closest living relative of that closure's cross-economy side: FXFV7-A4-P1 (cross-economy release-sign spillover onto non-reporting pairs) died mechanically AND by falsification-by-control cluster #12; FXFV7-A6-P2 (cross-pair lead-lag diffusion) died with its own-lag control OUT-earning it - the specific reason this proposal's control battery keeps the transfer form itself under the no-differential control rather than trusting the rho gate alone. DECLARED KILL CANDIDATE. This lane differs STRUCTURALLY on four axes: (i) the transferred object is a DIFFERENTIAL-OF-REVISIONS (v1->v2 vintage gaps between two economies), not a release sign at publication - an object that does not exist in any V6/V7 construction; (ii) the transfer is BILATERAL - the destination leg's own revision is read and netted out (a same-signed leg revision cancels the position; the V7 spillover form has no such term); (iii) entry is strictly after the max-v2 PIT-provable availability of BOTH sides - V7 entered at publication instants; (iv) LOAD-BEARING: every fill is selected by the CA-anchored restricted join, a vintage-gap state that does not exist in any V6/V7/ng1 construction. The distinction is ALSO carried as a mandatory measurement: CTL-V7NODIFF runs the absolute-CA cross-pair transfer on the identical fired book (kill at >= 0.5x same-sign per-trade, accepted in advance), and D2 pooled |rho| <= 0.20 applies vs the full inventory including both V7 books; over the bar => lane dies at D2.",
+    "fxng1_a5_p1_release_order_closed_SPECIFIC": "FOREX-NG1 A5-P1 (opening-follower release-order own-pair rollout) is measured-dead (anchor -9.806836/trade net tier 2.0, PF 0.827161; R1/R3/R4/R5 FAIL; notably R2 PASSED - it was NOT a V7 re-clock; 'release-order frontier measured-dead on this grid'). DECLARED KILL CANDIDATE. This proposal reads NO publication order, no announcement calendar, no first-release instants and no release sequence state anywhere: its state is the census obs-month JOIN of restricted revision events, its values are v1->v2 gaps, and its clock is v2 vintaged availability. The axes are disjoint (order-of-release vs differential-of-revision); nevertheless the D2 pooled |rho| <= 0.20 gate applies vs the FXNG1-A5-P1 anchor book, and the shared grid/hold plus overlapping pair set (GBPUSD/AUDUSD/NZDUSD were ng1-A5 destinations' pairs) makes that rho measurement genuinely binding rather than nominal - accepted in advance.",
+    "v8_nominal_level_law": "V8 falsification-by-control #14 made a nominal-exposure control MANDATORY on every yield/inflation lane, and FOREX-NG1 A4-P2 (cluster #15) was killed by exactly this control (CTL-DGS10LEVEL +4.13/trade out-earned a -6.63/trade anchor) - the DGS10-level shadow is the most lethal control in the forex program. Carried as CTL-DGS10LEVEL on the identical per-leg clock; no nominal yield level enters the signal. If the control reproduces the anchor, the family is dead by law.",
+    "v9_ppp_vetoes": "V9 A5-P1/P2 died as PPP/real-rate LEVEL-misalignment books (rho 0.3034/0.3119 vs the V8 anchor). This proposal carries no PPP, real-rate, or level-misalignment state anywhere: the differential is a CHANGE-gap between two revision ratios, not a level; conditioning is event-time join structure, two-sided, magnitude-gated. D2 rho gate vs the V9 veto books applies.",
+    "v5_sham_calendar_standard": "order-preserving placebo carried (PLACEBO-DIFFPERM), the V5-era house standard adapted to the differential-sign axis: book, calendar structure, pair destinations and sign marginals preserved exactly, sign information destroyed.",
+    "v3_pit_chain": "P-1..P-6 incident chain honored: date-only v2 evidence gets the conservative 23:59:59Z same-day bound; as-of vintaged reads only; the fill validator refuses any conditioning v2 instant or value that postdates the decision instant; the 15 non-anchor-without-CA months fail closed and are never patched into the join.",
+    "v9_high_finding_binding": "non-US legs come ONLY from the pinned vintaged channel (sha256s above); current-vintage revised-in-place tables are FORBIDDEN for GB/CA/AU/NZ legs (and the US realtime archive is pinned bytes, never a live re-pull).",
+    "ng2_bulk_re_referencing_law": "the differential uses the RESTRICTED stream only: bulk re-referencing groups (>= 10 identical (v1 day, v2 day, ratio) signatures) are excluded by the census law on BOTH sides of every D_L; GB/AU/NZ appear ONLY as transfer destinations and differential inputs (8/24/24 restricted events; anchor exclusion reasons disclosed) - no excluded economy is re-included as anchor anywhere in this proposal (plan section 3); trading a leg's pair on CA-anchored information does NOT make that leg an anchor (anchoring is defined by whose stream defines the event state: CA alone)."
+  },
+  "feasibility_declaration": {
+    "census_event_counts": {"differential_months": 72, "floor": 12, "margin": 60, "transfer_events": 52, "transfer_events_by_leg": {"GB": 8, "AU": 22, "NZ": 22}, "transfer_events_by_year": {"2017": 2, "2018": 12, "2019": 8, "2020": 8, "2021": 8, "2022": 8, "2023": 6}, "non_anchor_months_without_ca_disclosed": 15, "restricted_events_by_economy": {"CA": 72, "GB": 8, "AU": 24, "NZ": 24, "US": 84}},
+    "leg_distribution": {"GB": "8 transfer events on GBPUSD, obs months 2017-11..2018-06 only (entirely early-window; zero Q-6 weight)", "AU": "22 transfer events on AUDUSD, quarter-first months 2018-01..2023-07", "NZ": "22 transfer events on NZDUSD, quarter-first months 2018-01..2023-07", "US": "0 transfer events by law (quote leg, never a destination); active as census-join leg in 70/72 months and as the NEIGHBOUR source in 50 of 52 transfer events"},
+    "recent_window_counts": {"obs_months_in_q6_window_2023_05_2025_04": 7, "q6_transfer_events": 2, "q6_detail": "only 2023-07 carries non-USD legs (AU + NZ); the other 6 Q-6 differential months are CA+US only and are P1's territory, unreachable here", "q6_note": "the Q-6 window is structurally VERY thin for this proposal (2 transfer events; GB 0) - the plan's D2 Q-6 feasibility gate re-measures on its own frozen law and the lane dies cheap if under floor (accepted, rubric #3)"},
+    "in_window_eligible_decision_days": {"transfer_events_total": 52, "in_window_entries": "re-measured at P2/D2", "dropped_tail_events": "bounded by the usability law (every v2 day <= 2025-04-30); only boundary cases can drop; declared tail convention identical to ng1"},
+    "pair_decisions_pre_threshold": 52,
+    "expected_fired_entries_estimate": "21-42 anchor entries at a 40-80% threshold pass rate (BLIND prior; P2/Q-6 measures the actual recent-window counts against the frozen decision floor; under floor => lane dies cheap per plan rubric #3, accepted)",
+    "thinness_disclosed": "52 transfer events is an honest thin book: the GB leg exists only in 2017-11..2018-06 (8 events), AU/NZ fire quarterly (11 quarter-months x 2 legs), and nothing exists after 2023-07 - this is the cost of the restricted CA-anchored join intersected with non-USD legs and is disclosed, not patched; the NEIGH-QUOTESRC arm widens to 50 of the same 52 events but does not create new months",
+    "grid_days_available": 1842,
+    "known_gaps_declared": [
+      "15 non-anchor months without CA (incl. 2023-12..2024-12 US-only) are unreachable by every arm: disclosed, never counted (census join law)",
+      "GB restricted stream ends 2018-06 obs: no GBPUSD transfer event after that; GB carries zero Q-6 weight",
+      "no CA-anchored differential month after 2023-11 and no non-USD leg after 2023-07: the Q-6 window contains only 2 transfer events (AU/NZ 2023-07)",
+      "AU/NZ legs use quarter-first-month keys (V9 law): their revision evidence is quarterly-vintaged and arrives on the ~quarterly vintage calendar (15th-ish of Feb/May/Aug/Nov + occasional extra pulls)",
+      "all v2 availability evidence is date-only: every leg bound is the conservative 23:59:59Z same-day bound; a 16:00-NY decision never sees same-date v2 availability",
+      "2017-10 (AU/NZ-only) and 2018-07 (AU/NZ/US-only) are non-anchor months: excluded fail-closed by the join law"
+    ],
+    "dependencies_for_feasibility": [
+      "FX spot daily 16:00-NY staged series, GBPUSD/AUDUSD/NZDUSD (P0 spot repin PASS for all four funded pairs; pin manifest committed; scored consumption AUTHORIZED per the committed P-18 spot_authority_proof.json read at P0)",
+      "Q-8 cost constants (P1 kernel lane)",
+      "DGS10 vintaged S2 for the control arm (pin chain verified at P0)"
+    ]
+  },
+  "falsification_rule": {
+    "frozen_rule_order": [
+      "R1 MECHANICAL: anchor after-cost per-trade expectancy at stress tier 2.0 <= 0 => family dead (plain negative); remaining rules moot",
+      "R2 NO_DIFFERENTIAL_V7_REClock (MANDATORY, lane-specific): CTL-V7NODIFF same-sign per-trade expectancy >= 0.5x anchor => the bilateral differential carries nothing; the book is the FXFV7-A4-P1 absolute-revision cross-economy spillover class re-clocked onto the max-v2 availability clock => dead + D2 VETO recorded (this is the plan section 5 lane-A5 closure test)",
+      "R3 NOMINAL_EXPOSURE (V8 law): CTL-DGS10LEVEL same-sign expectancy >= 0.5x anchor => dead (nominal-yield-level exposure in new words; cluster #14/#15 law)",
+      "R4 CLOCK_ONLY (Q-7): SHADOW-CLOCK same-sign expectancy >= 0.5x anchor => dead (per-leg max-v2 calendar drift on the leg basket explains it)",
+      "R5 PLACEBO: PLACEBO-DIFFPERM same-sign expectancy >= 0.5x anchor => dead (the book, its calendar/pair structure and its sign marginals explain it; the differential-sign alignment carries nothing)",
+      "R6 NEIGHBOUR_SOURCE_PARAMETERIZATION: NEIGH-QUOTESRC expectancy > anchor expectancy => the bilateral (leg-netting) differential is not mechanism-bearing (the quote-differential form is, or neither is) => dead (V8 R2 standard on the differential source)"
+    ],
+    "external_gate": "D2 ancestry pooled |rho| <= 0.20 vs full inventory (incl. both V7 cross-pair books, the V8 nominal-level shadow, the V9 vetoes AND the FXNG1-A5-P1 release-order anchor book), margin recorded (P-2); over the bar => D2 VETO",
+    "no_threshold_moves": "no rule, threshold, horizon, or the placebo RNG seed changes after any scored number is seen (P-15); smoke numbers kill + disclose, never select",
+    "expected_failure_interpretation": {
+      "R1_with_clean_controls": "the leg pairs' post-joint-availability windows carry no differential-signed drift after costs: the CA-anchored bilateral revision transfer does not survive to the PIT-provable max-v2 horizon. CONSISTENT WITH (not contradicting) the V7 and FXNG1-A5-P1 closures - those closed publication-instant spillover and release-order; a null here licenses NO claim about either horizon.",
+      "R2_fires": "the anchor is the V7 cross-economy spillover book wearing a differential mask; the lane-level closure re-fires exactly as the plan mandated. The most likely failure mode of this family and the reason the no-differential control is lane-mandatory.",
+      "R3_fires": "the transfer book is a nominal-yield-level exposure in new words; the V8 law re-fires on the revision lane exactly as it did on ng1-A4-P2 (cluster #15).",
+      "R4_fires": "per-leg calendar-frequency drift on transfer-event days, not relative-revision information.",
+      "R5_fires": "the fired-count, calendar and pair structure plus the sign marginals alone explain it; which events carried which differential sign carries nothing.",
+      "R6_fires": "the bilateral source is not mechanism-bearing (the quote-differential form is, or neither is); the family still dies (no rescue by re-ranking arms)."
+    }
+  },
+  "data_dependencies": [
+    {"name": "ng3 restricted revision census (join + restricted stream authority)", "authority": "research/control/forex_ng3_run/p0_revision_census.json sha256 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f (re-measured at this checkout; P0 gate verdict PASS)"},
+    {"name": "vintaged CPI channels (restricted revision gaps)", "authority": "S2 CADS repin PASS at P0 (CADS address 07d1e0d5adc8fb124f8d9246b8ab0fdeea79e5be20fa99ea0a8fe81cd96aad12); series sha256s in representation_identity.series_pins", "series": ["CANCPIALLMINMEI", "GBRCPIALLMINMEI", "AUSCPIALLQINMEI", "NZLCPIALLQINMEI", "CPIAUCSL_rt"]},
+    {"name": "GBPUSD/AUDUSD/NZDUSD staged spot 16:00-NY series", "authority": "P0 spot repin PASS (GBPUSD e3e4c519f4c36b394ad08c1e52ed16ae087030372febfdb5558ebcdbee83e4a7 / AUDUSD 097cfe59cd702c3dd2479f37abeae5fd751fdf53cbe305ffa0ea3820e17e5e17 / NZDUSD 7dff32999bdb38c5d972bd1ed4ff93a8807057ffb7120621f83b146dc0b79d5b, 5000 bars each); scored consumption AUTHORIZED per the committed P-18 spot_authority_proof.json"},
+    {"name": "DGS10 vintaged S2", "authority": "S2 granted class (mandatory control series); P0 pin-chain PASS (manifest c8ae78777102ab45cec433f5da6c786355b57c884be5f15c39c1fc18ca328e7c; DGS10.json 03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0); control arm only"},
+    {"name": "Q-8 cost constants", "authority": "P1 kernel lane re-measured spreads at stress tier; NOT_YET_MEASURED at proposal time; referenced precedent ladder 1.5 bps/side, tier 2.0 PRIMARY (V2/V8)"}
+  ],
+  "provenance": {
+    "dispatch_sha": "e1c17981f2e6946d88b852d7b2b8af111f654a67",
+    "actual_start_sha": "e1c17981f2e6946d88b852d7b2b8af111f654a67",
+    "branch": "orca/fng3-d1-a5",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng3/d1-a5",
+    "written_utc": "2026-09-11",
+    "constraints_honored": [
+      "no consensus/forecast data anywhere",
+      "no release-order / publication-sequence state anywhere (FXNG1-A5-P1 axis dead and unread)",
+      "restricted (first-print) stream only on both sides of every differential; bulk re-referencing excluded by census law",
+      "anchor universe CA only; GB/AU/NZ appear only as transfer destinations and differential inputs; US is the quote leg, never anchored; trading a leg's pair never anchors that leg",
+      "vintaged-only legs (V9 HIGH finding); current-vintage revised-in-place tables forbidden",
+      "nominal-exposure control mandatory (V8 law; ng1-A4-P2 cluster #15)",
+      "no-differential V7-re-clock falsification control mandatory (plan section 5 lane A5)",
+      "order-preserving seeded placebo; clock shadow; neighbour on the differential-source axis",
+      "conservative date-only v2 availability bounds; fail-closed join (15 non-anchor months never counted)",
+      "no backtest executed in this lane; no keyed API calls; census magnitude blocks never used for decisions"
+    ]
+  }
+}
