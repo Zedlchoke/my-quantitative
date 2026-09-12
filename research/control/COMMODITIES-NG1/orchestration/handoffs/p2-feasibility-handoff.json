@@ -1,0 +1,61 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "commodities-ng1-p2-feasibility",
+  "cycle_id": "COMMODITIES-NG1",
+  "role": "quant-implementer",
+  "lane": "p2-feasibility (invocation lead-bg-comm-p2)",
+  "dispatch_sha": "0b86830228943af7d570970d086c134830927949",
+  "actual_start_sha": "0b86830228943af7d570970d086c134830927949",
+  "commit_sha": "SELF_REFERENTIAL_NOTE: this committed copy sits inside the substance commit itself; the authoritative SHA is carried by the inbox copy at .runtime/orchestrator_v3/inbox/commodities-ng1-p2-feasibility-handoff.json and by git log of this path",
+  "changed_paths": [
+    "research/assets/commodities_ng1/feasibility.py",
+    "research/control/commodities_ng1_run/measure_p2.py",
+    "research/control/commodities_ng1_run/p2_gate.json",
+    "tests/test_commodities_ng1_p2.py",
+    "research/control/COMMODITIES-NG1/orchestration/handoffs/p2-feasibility-handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_commodities_ng1_p2.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "25 passed (packet test command, run verbatim)"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_commodities_ng1_p0.py tests/test_commodities_ng1_p1.py tests/test_commodities_ng1_p2.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "83 passed (26 P0 + 32 P1 regression + 25 P2)"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Q-6 feasibility only (NO proposals, NO signal design, NO scoring, NO PnL/outcome numbers anywhere).",
+    "All 20 P0 qualifying market-pairs (incl. the dispatch-declared DBA basket triple) PASS both frozen floors on the declared window: 454 window instants post-2018-01-01, 52-instant warmup carve-out (last warmup release 2018-12-28), 402 counted expected releases, 401 grid-eligible (>= 300 floor: PASS), release-to-session coverage 0.997512 (>= 0.90 floor: PASS). Bookable set = 20/20 for lanes A4 AND A5; zero pairs excluded; zero BLOCKED paths.",
+    "Single unmapped release per pair: as-of Tue 2026-09-08 releases Fri 2026-09-11 15:30 ET, and Fri 2026-09-11 is the ETP calendars' final measured session, so no session exists STRICTLY after it (clock law, not a data gap).",
+    "Measured substrate contains 6 holiday-shifted MONDAY CFTC as-of dates which the P0 release rule (Tuesday-anchored) cannot evaluate; declared convention (frozen in feasibility.py BEFORE measurement): Monday as-of dates take the same week-anchor rule (Friday 15:30 America/New_York of the Mon-Sun week containing the as-of date); identity with the P0 rule is asserted for all 552 Tuesday reports and the 6 Monday shifts are hand-listed in tests. Any other weekday is refused fail-closed.",
+    "Cost ceilings: worst-case round-trip = 2 fills x CS p90 half-spread (+ measured expense accrued linearly over the DECLARED 10-trading-day horizon where expense status MEASURED_OFFICIAL_PAGE). 11/20 pair-legs carry full ceilings (max 067651/DBO 125.656736 bps round trip); 9/20 pair-legs are TRANSACTION-ONLY fail-closed (BAR, CPER, PALL, PPLT, SGOL, SIVR, UNG, USL, USO expense NOT_MEASURED; max tx-only 023651/UNG 186.519158 bps) and are explicitly listed for downstream lanes to treat conservatively or exclude. Constants cited by sha256 in p2_gate.json substrate_pins (p1_cost_contract.json, fee_facts.json, per-leg expense page digests)."
+  ],
+  "incidents": [],
+  "tree_status": "clean after commit (5 owned paths staged by explicit pathspec; no foreign files touched)",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/commodities_ng1_run/p2_gate.json",
+      "sha256": "ee32c9df86c3f33126d3899fad62f74cb880f654970791cf260e59e4652b973c"
+    },
+    {
+      "path": "research/assets/commodities_ng1/feasibility.py",
+      "sha256": "29a993a713618de1c491633ef0e2396cb63049c1d87bddc37ccb1a69207e3bd6"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/measure_p2.py",
+      "sha256": "7cd04eac872bba27d8918a8f9d3b3b0483d7f03cc539245fb64a38a573c5a6cf"
+    },
+    {
+      "path": "tests/test_commodities_ng1_p2.py",
+      "sha256": "d1344946d80dae7367bfaf7e30848117d9b9e15438ee03fcfaed12d9a20c079d"
+    }
+  ],
+  "recommended_next_action": "Proceed to D1 blind lanes A4/A5 on the 20-pair bookable set; lanes consume the decision grid via research/assets/commodities_ng1/feasibility.py + clock.py on the same pinned substrate and carry the per-leg ceilings from p2_gate.json item3 (fail-closed legs conservative-or-exclude)."
+}
