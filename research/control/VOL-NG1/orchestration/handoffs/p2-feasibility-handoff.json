@@ -1,0 +1,103 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "vol-ng1-p2-feasibility",
+ "cycle_id": "VOL-NG1",
+ "role": "quant-implementer",
+ "lane": "p2 (invocation lead-bg-vol-p2; orchestrator store task vol-ng1-p2-feasibility)",
+ "dispatch_sha": "b3537f6beb97a9a18c603826aa4cb0dfeee1dca8",
+ "actual_start_sha": "b3537f6beb97a9a18c603826aa4cb0dfeee1dca8",
+ "commit_sha": null,
+ "commit_sha_note": "self-referential: this file is committed inside the single P2 commit it describes; the authoritative commit_sha is recorded in the orchestrator-inbox copy at /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/vol-ng1-p2-feasibility-handoff.json and equals `git -C <worktree> rev-parse HEAD` after that commit",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/vol-ng1/integration",
+ "branch": "orca/vol-ng1-integration",
+ "base_verified": {
+  "pwd_ok": true,
+  "branch_ok": true,
+  "head_equals_base": true
+ },
+ "objective": "P2 feasibility (Q-6, no-PnL): measure the FROZEN floors exactly, fail-closed per lane. NO proposals, NO signal design, NO scoring, NO PnL/outcome numbers anywhere.",
+ "changed_paths": [
+  "research/assets/vol_ng1/feasibility.py",
+  "research/control/vol_ng1_run/p2_run.py",
+  "research/control/vol_ng1_run/p2_gate.json",
+  "research/control/VOL-NG1/orchestration/handoffs/p2-feasibility-handoff.json",
+  "tests/test_vol_ng1_p2.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/vol-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_vol_ng1_p2.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "17 passed (hand-computed census assertions on synthetic fixtures + committed-artifact hash checks + independent re-measure of the committed gate through the plane)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/vol-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/vol_ng1_run/p2_run.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "p2_gate verdict=PASS (A4 PASS, A5 FEASIBLE, costs PASS, tests PASS); zero network reads, zero store writes"
+  }
+ ],
+ "authority_claims": [],
+ "frozen_floor_results": {
+  "A4_term_structure_slope": {
+   "floor_bookable_instants": 1500,
+   "measured_bookable_instants": 1914,
+   "verdict": "PASS",
+   "floor_coverage": 0.90,
+   "measured_coverage_primary": 0.960843,
+   "verdict_coverage": "PASS",
+   "grid_definition": "strict intersection of VIX9D x VIX x VIX3M x event-adjusted closes of ALL SIX living ETP legs (VXX, UVXY, SVXY, VIXY, VIXM, VXZ)",
+   "grid_sessions_total": 2167,
+   "grid_first_session": "2018-01-18",
+   "grid_last_session": "2026-09-11",
+   "grid_binding_constraint": "VXZ/VXX served EOD coverage starts 2018-01-18, so the post-2015 window IS the full common grid",
+   "warmup_carveout_declared": "first 252 common-grid sessions (2018-01-18 .. 2019-01-23)",
+   "first_bookable_instant": "2019-01-24",
+   "last_bookable_instant": "2026-09-10",
+   "v7_tail_refused": ["2026-09-11 (no next readable bar: V7 close+1 law)"],
+   "coverage_convention": "primary = bookable / Mon-Fri dates in [first_bookable, last_common_grid_session] = 1914/1992; a full-window secondary variant (0.848028, denominator 2257 incl. warmup span) is disclosed in the gate and never gated",
+   "consumption_law": "ETP legs consumed ONLY through corp_actions.event_adjusted_closes (P0 inventory + dispatch-packet named events; 27 steps, zero uncovered, max mechanical continuity residual < 1e-4); never raw, never vendor-adjusted"
+  },
+  "A5_risk_premium": {
+   "floor_computable_instants": 1000,
+   "measured_computable_instants": 1914,
+   "verdict": "FEASIBLE (lane proceeds to D1)",
+   "implied_series": "S7:cboe-vol-index-histories VIX close (GRANTED)",
+   "realized_proxy_declared": "trailing 21-common-grid-session realized volatility of the event-adjusted VXX close, annualized x sqrt(252)",
+   "all_inputs_granted": true,
+   "first_bookable_computable_instant": "2019-01-24",
+   "structural_limitation_recorded": "an ETP-leg realized vol is NOT S&P realized vol -- it is implied-complex realized vol (leveraged, fee-bearing VIX-futures-complex instrument whose realized path embeds roll and decay); the implied-vs-realized state computed from it is an implied-vs-implied-complex proxy, never the classic implied-vs-spot-realized variance risk premium",
+   "no_state_values_recorded": true
+  },
+  "cost_ceilings_round_trip_bps_tier_2_0": {
+   "formula": "2 x CS-p90 execution spread per fill + expense bps/day x declared H + max(|path p10|, |path p90|) daily bps x H; H = the leg's own measured path day_gap (SHORT 21, MID 90); a COST BOUND, not an expectation, not PnL",
+   "VXX": 2194.610602,
+   "UVXY": 2196.5882,
+   "VIXY": 2165.557663,
+   "SVXY": 1955.8082,
+   "VIXM": 1556.02086,
+   "VXZ": 1517.50397,
+   "constants_cited_by_sha256": {
+    "p1_cost_contract.json": "c8529b888c5c92e04802ddda8006a74b3f94d099cb14c4dd6d64a1df1ce2d1a4",
+    "expense_source_digests": "per-leg source_sha256 recorded verbatim from the frozen contract inside p2_gate.json"
+   }
+  }
+ },
+ "known_limitations": [
+  "A5's realized proxy is implied-complex realized vol, NOT S&P 500 realized vol (structural limitation recorded in p2_gate.json verbatim); any later A5 lane result must carry this limitation",
+  "the common grid is bounded at 2018-01-18 by VXX/VXZ served EOD coverage, so all post-2015 floors are effectively evaluated on an 8.65-year window, not from 2015-01-01 itself",
+  "coverage denominator assumes no holiday calendar (Mon-Fri only); measured grid completeness 0.960843 is consistent with ~9 US market holidays/year",
+  "V7 close+1 law refuses the final grid session (2026-09-11) as a decision instant: 1 session excluded from the bookable count"
+ ],
+ "incidents": [],
+ "tree_status": "clean after commit except two PRE-EXISTING untracked foreign dirs left untouched: research/control/vol_ng1_run/p1_feefacts_untracked/ and research/control/vol_ng1_run/raw_untracked/",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/assets/vol_ng1/feasibility.py", "sha256": "59f3d9cb5b9d88b501283013582361c146304ea51db9038b5286afae83b3a5fa"},
+  {"path": "research/control/vol_ng1_run/p2_run.py", "sha256": "3b5e486bad661ad0ab593a006d7c961ddd2569c7fd088cdb8a373082b6b816e5"},
+  {"path": "research/control/vol_ng1_run/p2_gate.json", "sha256": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3"},
+  {"path": "research/control/VOL-NG1/orchestration/handoffs/p2-feasibility-handoff.json", "sha256": "sha256_recorded_in_inbox_copy"},
+  {"path": "tests/test_vol_ng1_p2.py", "sha256": "487a3b83abeccabbec1b862691d31d4c289c1645e31e12078c2a03bd7f8df253"}
+ ],
+ "recommended_next_action": "proceed to D1 blind lanes with BOTH lanes alive: A4 (term-structure slope) and A5 (risk-premium state, carrying the implied-complex realized-vol limitation); mechanisms declared blind at D1 with forced/late participant per plan section 6"
+}
