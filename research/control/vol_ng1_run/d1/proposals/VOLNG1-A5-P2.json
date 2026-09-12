@@ -1,0 +1,135 @@
+{
+ "schema": "vol_ng1_run/d1_proposal@1",
+ "cycle_id": "VOL-NG1",
+ "proposal_id": "VOLNG1-A5-P2",
+ "lane": "A5_risk_premium_state",
+ "title": "Premium-state asymmetry between short (front) and mid (back) vol ETP buckets",
+ "authored_utc": "2026-09-12T03:25:29Z",
+ "author": {"role": "quant-implementer", "task_id": "vol-ng1-d1-proposals", "invocation": "lead-bg-vol-d1"},
+ "blindness_declaration": {
+  "law": "D1 outcome-blind proposal: no outcome measurement, no returns conditional on states, no expectancies, no signal arithmetic on prices or indices beyond structural facts already committed in P0/P1/P2 artifacts. Every numeric leaf below is a committed structural fact cited from a sha256-pinned P0/P1/P2 artifact and appears only under committed_citations, representation_identity or feasibility_citation.",
+  "no_measurement_performed": true,
+  "no_computation_on_series_performed": true,
+  "parameters_symbolic_until": "D2/S (frozen before any scored number is seen; no threshold may move after any scored number)"
+ },
+ "mechanism": {
+  "narrative": "Two different forced participants live on the two segments of the vol curve. The front segment (the SHORT-bucket legs, whose committed path formula tracks the near-term spread) carries the roll-payment flow of maturity-hedgers and crowded premium sellers; the mid segment (the MID-bucket legs, whose committed path formula tracks the multi-month spread) carries longer-dated institutional protection and maturity-seeking hedgers. The premium state measured on the short-leg proxy can therefore disagree with the mid-curve state for extended intervals. When the two segments' states diverge persistently, exactly one participant class is currently FORCED (the one whose segment's state is extreme) while the other segment still prices choice; the asymmetry state names the forced side.",
+  "forced_participant": "Whichever segment's premium state is extreme: on a short-segment extreme it is the maturity-hedger / crowded-seller complex of the front bucket, forced to roll or unwind at the front; on a mid-segment extreme it is the institutional protection buyer of the mid bucket, forced to keep paying for dated protection. The asymmetry state itself is what identifies WHICH side is forced, session by session.",
+  "late_participant": "Rotation flow between short and mid ETPs that chases the divergence only after it is public -- ETP rotation lags the state divergence, arriving after the forced side has already been identified by the curve, which is the late-entrant footprint this proposal declares.",
+  "claim_declared_blind": "A persistent asymmetry between the short-leg premium state (the P2-declared implied-vs-implied-complex proxy) and the mid-curve premium-state extension identifies which segment's forced flow is being paid; whether conditioning the two ETP buckets on that asymmetry survives the full measured cost ladder is exactly what D2 measures. Nothing is measured now.",
+  "economic_magnitude_honesty": "Declared honestly: the P2 worst-case round-trip cost ceilings at the primary stress tier (cited under feasibility_citation) are on the order of two thousand basis points on the SHORT-bucket legs and roughly fifteen hundred on the MID-bucket legs. A two-bucket rotation rule pays costs on both sides of the asymmetry; only large, persistent, one-sided asymmetry states can plausibly clear such bounds, and the family dies cheap if the asymmetry is small or flickering."
+ },
+ "structural_limitation_p2_gate_c8_verbatim": "STRUCTURAL LIMITATION (declared, C8): the realized proxy is the realized volatility of the event-adjusted VXX close.  An ETP-leg realized vol is NOT S&P 500 realized vol -- it is implied-complex realized vol: a leveraged, fee-bearing VIX-futures-complex instrument whose realized path embeds roll and decay.  The implied-vs-realized state computed from it is an implied-vs-implied-complex proxy, never the classic implied-vs-spot-realized variance risk premium.",
+ "structural_limitation_consequence": "The frozen P2 declaration builds the proxy on the SHORT leg (event-adjusted VXX close); the mid-bucket arm of this proposal extends the SAME declared proxy family symbolically to the mid leg's own event-adjusted close, to be frozen at D2/S BEFORE any scored number. Every conclusion is an implied-vs-implied-complex statement; any wording as the classic spot variance risk premium is invalid-null (identity violation). The limitation travels with every downstream artifact of this proposal.",
+ "decision_rule_family": {
+  "family_id": "premium_state_asymmetry_short_vs_mid",
+  "state_definition_symbolic": "SPREAD_short_t = the declared spread functional on the short-bucket proxy (implied VIX close vs the P2-declared realized proxy of the event-adjusted VXX close); SPREAD_mid_t = the SAME symbolic functional extended to the mid bucket's event-adjusted close (frozen at D2/S). ASYM_t = a fixed symbolic functional of the pair; STATE_t in {aligned, short-extreme, mid-extreme} at symbolic thresholds with a symbolic persistence latch.",
+  "action_map_symbolic": "Each asymmetry state maps to a symbolic bucket allocation {front bucket, mid bucket, flat} across the living event-adjusted ETP legs (front bucket from the SHORT-bucket legs, mid bucket from the MID-bucket legs), with a symbolic hysteresis latch and minimum-holding convention limiting round trips.",
+  "parameters": ["spread_functional_form", "asymmetry_functional_form", "short_extreme_threshold", "mid_extreme_threshold", "persistence_latch", "hysteresis", "bucket_map"],
+  "parameter_law": "ALL parameters symbolic until D2/S; frozen before any scored number; no numeric thresholds are declared at D1.",
+  "arm_law": "Arms must respect the frozen rubric cell budget (families x arms bounded, pairwise distinct arm_config_digest); arms must remain pairwise distinct from VOLNG1-A5-P1 configurations."
+ },
+ "representation_identity": {
+  "p12_note": "Representation identity per P-12: the decision grid, series consumption law and decision-instant law are all committed pre-D2, sha256-cited; code AND representation are committed before any number is cited.",
+  "common_grid": {
+   "definition": "the P2 common grid: strict intersection of the VIX9D x VIX x VIX3M index closes with the event-adjusted closes of ALL living vol ETP legs, exactly as committed in the P2 gate; the A5 state is computable on every bookable grid instant per the P2 computability census",
+   "grid_sessions_total": 2167,
+   "grid_window": ["2018-01-18", "2026-09-11"],
+   "warmup_carveout_sessions": 252,
+   "warmup_window": ["2018-01-18", "2019-01-23"],
+   "first_bookable_instant": "2019-01-24",
+   "last_bookable_instant": "2026-09-10",
+   "v7_tail_refused_sessions": ["2026-09-11"],
+   "bookable_instants": 1914,
+   "coverage_primary": 0.960843,
+   "coverage_primary_denominator": 1992,
+   "coverage_convention": "primary coverage is the gated convention; the full-window secondary variant disclosed in the P2 gate is never gated"
+  },
+  "state_input_law": {
+   "implied_side": "S7:cboe-vol-index-histories VIX close (GRANTED), consumed only through the plane against its frozen digest under committed_citations",
+   "realized_side_short_bucket": "the P2-declared realized proxy ONLY: trailing realized volatility of the EVENT-ADJUSTED VXX close over the committed proxy lookback (twenty-one common-grid sessions), annualized by the committed factor -- computed through corp_actions.event_adjusted_closes, never raw, never vendor-adjusted",
+   "realized_side_mid_bucket_extension": "the SAME symbolic proxy family extended to the mid bucket's own event-adjusted close (VIXM/VXZ legs); the extension's exact form is frozen at D2/S BEFORE any scored number and is declared here as symbolic only",
+   "proxy_declaration_citation": "p2_gate.json sections.a5_risk_premium (realized_proxy_declared, proxy_lookback_sessions, C7), sha256-cited under feasibility_citation",
+   "all_inputs_granted": "P2 gate records all three consumed series verdicts GRANTED (EODHD-F1:eodhd-vol-etp-delisted, EODHD-F1:eodhd-vol-etp-eod, S7:cboe-vol-index-histories)",
+   "computability": "P2 gate: first computable instant 2018-02-16, first bookable computable instant 2019-01-24, bookable instants state-computable 1914, frozen floor 1000 met (computability census only -- the gate recorded no state values, no distribution statistics, no outcomes)"
+  },
+  "series_law": {
+   "etp_legs": "ALL ETP legs (both buckets, including the realized-proxy legs) consumed ONLY through the P1 event-adjusted layer corp_actions.event_adjusted_closes -- never raw, never vendor-adjusted",
+   "event_layer_citation": "research/assets/vol_ng1/corp_actions.py (sha256 under committed_citations) driven by the committed P0 step inventory: twenty-seven inventoried steps, zero uncovered, worst mechanical continuity residual 1.1121916654310837e-07 (P2 gate, event_adjusted_layer)"
+  },
+  "decision_instant_law": {
+   "law": "V7 close+1: the state is computed from session closes; execution is possible only at the NEXT readable session; the final grid session is refused as a decision instant (no next readable bar), never same-bar",
+   "clock": "session close 16:00 America/New_York; UTC close instants DST-measured with committed fixtures (P1 gate, clocks section, all boundary matches true)",
+   "committed_examples_cited": "P1 gate clocks.close_plus_1_pairs (decision_close 2018-01-24 -> executable 2018-01-25, through 2026-09-10 -> 2026-09-11, all MEASURED)"
+  }
+ },
+ "ancestry_risk_statement": {
+  "kill_candidate_shadows": ["v16_close_displace_fade", "v17_oi_level", "dvol_shock", "momentum_63s", "generic_dow_tue"],
+  "why_information_differs": {
+   "v16_close_displace_fade": "the shadow fades a first-difference displacement of one instrument's close; this proposal's state is a BETWEEN-SEGMENT asymmetry of two implied-vs-implied-complex spread states -- a relative variance-state object across curve segments, not a price displacement of any single instrument. D2 tests the claim at the frozen ancestry margin.",
+   "v17_oi_level": "the shadow is a derivative open-interest LEVEL form; the frozen consumption set contains no options chain and no open-interest series (EODHD family-2 explicitly not entitled), so no OI re-clock is possible. D2 tests the claim by ancestry pooling.",
+   "dvol_shock": "the shadow is a realized derivative-shock form on a different asset complex; this proposal's realized sides are trailing realized-volatility proxies of event-adjusted ETP closes inside the frozen consumption set. The specific risk that roll/decay contamination makes the asymmetry behave like a disguised ETP shock form is NAMED and pooled at D2, not assumed away.",
+   "momentum_63s": "the shadow is long-horizon single-series price momentum; this proposal's state is a short-memory relative state across two curve segments computed on index and event-adjusted proxy series. The index-only shadow separates spread-state information from any ETP-NAV trend. D2 tests the claim.",
+   "generic_dow_tue": "the shadow is a calendar day-of-week effect; the calendar-clock shadow forces the rule to survive a weekday re-clock and the placebo destroys temporal structure while matching marginals."
+  },
+  "d2_test_of_claim": "pooled ancestry |rho| within the frozen rubric margin against the full pooled inventory INCLUDING every shadow named above; margin recorded per rubric; failure is a D2 VETO, recorded, never argued away."
+ },
+ "control_battery_spec": {
+  "battery_law": "the battery must be runnable on the frozen representation with the invalid-null distinction recorded (frozen rubric); the mandatory controls are vetoes, not suggestions (plan section 1 a+b).",
+  "index_only_shadow": {
+   "mandatory": true,
+   "spec": "the identical asymmetry rule with the ETP legs removed from the information set: BOTH spread sides are proxied from the vol INDEX series alone (trailing realized volatility of the VIX close itself, and of a longer lookback variant of the same index series, over the same committed lookbacks), the placement re-clocked onto the ETP buckets -- no ETP price anywhere in the shadow's state. If the ETP-proxy placement is not distinct from its index-proxy re-clock, the ETP legs add nothing and the proposal dies as an index re-clock."
+  },
+  "cost_path_control": {
+   "mandatory": true,
+   "spec": "the rule must survive the measured path-cost ladder on BOTH buckets: measured execution spreads scaled through the committed tier ladder (primary tier at the top), cost once per fill, and the Q-16 roll/decay path component carried explicitly at every tier (SHORT-bucket path formula on the near spread, MID-bucket path formula on the multi-month spread, adverse tails as committed in the frozen cost contract and the P2 gate). A rotation rule pays both sides; kill before selection if either bucket's arm fails the ladder."
+  },
+  "calendar_clock_shadow": {
+   "spec": "the same rule re-clocked to a fixed weekday shift (symbolic shift k sessions, frozen at D2/S): a generic_dow_tue detector. A placement that survives the re-clock unchanged is a calendar artefact and dies."
+  },
+  "placebo": {
+   "spec": "the asymmetry-state series is time-shuffled with matched marginals and destroyed temporal ordering; the placement induced by the placebo must be indistinguishable from chance. A significant differential placement under the placebo kills the proposal."
+  },
+  "invalid_null_distinction": "an uncomputable state (warmup before either proxy lookback fills, refused tail, missing session) is INVALID and refused fail-closed; it is never coerced to NULL/aligned and never scored as a decision (Q-11)."
+ },
+ "feasibility_citation": {
+  "source": "research/control/vol_ng1_run/p2_gate.json, sections.a5_risk_premium",
+  "p2_gate_json_sha256": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3",
+  "lane_verdict": "FEASIBLE",
+  "measured_bookable_computable_instants": 1914,
+  "frozen_floor_min_bookable_computable_instants": 1000,
+  "structural_limitation_verbatim_ref": "carried VERBATIM above under structural_limitation_p2_gate_c8_verbatim, equality-checked by tests against p2_gate.json",
+  "worst_case_round_trip_cost_ceiling_bps_by_leg": {
+   "VXX": 2194.610602,
+   "UVXY": 2196.5882,
+   "VIXY": 2165.557663,
+   "SVXY": 1955.8082,
+   "VIXM": 1556.0208599999999,
+   "VXZ": 1517.5039699999998
+  },
+  "ceiling_note": "worst-case COST CEILINGS at the primary stress tier; bounds, not expectations, not PnL numbers (Q-6 no-PnL law). Declared honestly: a two-bucket rotation pays costs on both sides, so any surviving asymmetry mechanism must be economically LARGE, one-sided and persistent."
+ },
+ "falsification_rule": {
+  "rule": "PREREGISTERED KILL (one concrete condition): at D2, if this proposal's asymmetry placement is NOT DISTINCT from its own single-segment marginals -- i.e. the asymmetry state collapses into one of the two bucket placements and the placement is within the frozen rubric ancestry margin of either marginal (or of the lane's sibling spread-state proposal) -- the proposal is killed as NON-NOVEL and recorded as VOL_NG1_REJECT_ALL evidence. Distinctness is the claim; its absence is the kill. No threshold moves after any scored number is seen."
+ },
+ "committed_citations": {
+  "p0_gate_json_sha256": "c81b4ca624e845bdd7c732d2cc31d46e6e45797c9319f27478c242e3aa603a7d",
+  "p1_gate_json_sha256": "80049a636f2251345e02fab60f76675b3257d891ae864de2912e45f58a3409a5",
+  "p1_cost_contract_json_sha256": "c8529b888c5c92e04802ddda8006a74b3f94d099cb14c4dd6d64a1df1ce2d1a4",
+  "p2_gate_json_sha256": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3",
+  "corp_actions_py_sha256": "33fa349b589109e255738b3a51a732dd7fd0fd72b166130503d1e7ebf83ca547",
+  "plane_adapter_py_sha256": "1a7caba4a9fdc53e79730984b47fa23ce702420cc1382c9de92616bb3aade3e8",
+  "series_digests_consumed_via_plane": {
+   "VIX": "cb3515efe5577d39df5c59ab44fb69171e28927e0fd01b50ce101076e7951e93",
+   "VIX9D": "7b3db3ecfa3d4e4506c540f82358e8d726daa76572f3ba4a5dc2bf41a4a32aea",
+   "VIX3M": "519408c5638f731eb47177ef7bcfbdd315a376ec353df52cd92ea67c9a51be65",
+   "VXX": "128bb58923d70e0f9c28a9b72924b32920cbc6ea382808f1785d2319c28f6bb7",
+   "UVXY": "22121044ed86ee64d2c2ea4ab79d74e09759eb2e8ff13dcda380bc175d908c63",
+   "SVXY": "5d2e17b8dc41da41329130b30ad5a5858d122710f0e4d8f4a406401eacb9561c",
+   "VIXY": "51719dde8ba4def1e3c4a14d5d99c37a8e621079660bcec66b2ba3c00b1276da",
+   "VIXM": "ad28db0e6eedb5484253cf6b41f85c6421ac80889ca3de247961417ed34f4d54",
+   "VXZ": "3a5e5e3f37c61420a09fadac16c25931b9441c797e180125fcb6ab6f9079e1d1"
+  },
+  "citation_law": "every digest above is a committed artifact digest; tests recompute the file digests at HEAD and refuse any drift"
+ }
+}
