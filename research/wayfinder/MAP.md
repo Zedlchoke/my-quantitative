@@ -1,5 +1,30 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced at the new-assets generation open, 2026-09-12)
+
+- **NEW-ASSETS GENERATION OPENED → RATES-NG1 / COMMODITIES-NG1 / VOL-NG1**
+  (2026-09-12, owner directive verbatim: "mở cycle 3 assets mới suwt dụng
+  những nguồn dữ liệu mới và hướng mới bạn đề xuất. Nguồn dữ liệu phải là
+  miễn phí hoặc có trong gói EODO gì đó tôi mua."; plans
+  `plans/PLAN_rates_ng1.md` / `plans/PLAN_commodities_ng1.md` /
+  `plans/PLAN_vol_ng1.md`; registry 2026-09-12) — three FIRST-EVER asset
+  families (rates / commodities / vol): same-asset ancestry inventories
+  empty by construction. New information sources, all free-official or
+  EODHD-entitled (Lead probe 2026-09-12): Treasury.gov daily par yield
+  curve (live), CFTC CoT positioning archives (live — a positioning
+  information type never used by any family), CBOE official VIX/VIX9D/
+  VIX3M histories (live from 1990); tradeable legs via EODHD family-1 US
+  ETP EOD (entitled: VXX/TLT/GLD fresh to 2026-09-11; indices .IND 404,
+  futures .COMEX 404, Stooq curl JS-blocked → browser-class CANDIDATE
+  only, never primary). Directions: rates = curve-shape + auction clocks
+  (DGS10-level nominal-exposure shadow is the named kill-candidate — it
+  killed two FX generations as a control); commodities = official
+  positioning extremes/flows with mandatory price-only shadow;
+  vol = term-structure slope carry + VRP states with mandatory
+  index-only shadow and cost-path control (Q-16). Standing GO delegation
+  continues (ng structure; A7 `*_S0_LAUNCH_AUTHORIZED` first). Program
+  totals at open: 245 published / 248 observed, 0 survivors (P-9).
+
 ## Sprint state (synced at the ng1-generation open, 2026-09-11)
 
 - **NG1 GENERATION OPENED → CRYPTO-NG1 / FOREX-NG1 / STOCKS-NG1** (2026-09-11)
