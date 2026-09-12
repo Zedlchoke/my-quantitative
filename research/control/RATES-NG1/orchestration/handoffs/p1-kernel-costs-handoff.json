@@ -1,0 +1,79 @@
+{
+ "actual_start_sha": "1d3a10084d79781098541a1603c65ff1ab3b3eaf",
+ "authority_claims": [],
+ "changed_paths": [
+  "research/assets/rates_ng1/kernel.py",
+  "research/assets/rates_ng1/cost_model.py",
+  "research/assets/rates_ng1/clock.py",
+  "research/control/rates_ng1_run/p1_run.py",
+  "research/control/rates_ng1_run/p1_cost_contract.json",
+  "research/control/rates_ng1_run/p1_gate.json",
+  "research/control/rates_ng1_run/p1_evidence/.gitignore",
+  "tests/test_rates_ng1_p1.py"
+ ],
+ "commit_sha": "675f7147bb9f891cb85db0b1b31c0410b477ab84",
+ "cycle_id": "RATES-NG1",
+ "dispatch_sha": "1d3a10084d79781098541a1603c65ff1ab3b3eaf",
+ "incidents": [
+  "DISPATCH NOTE (no stop): packet cited precedent at research/assets/forex_ng1/ + research/control/forex_ng1_run/ 'at BASE'; those paths do NOT exist at BASE 1d3a100 (they live on branches orca/fng1-d2 and orca/fng1-d1-a4). Consulted READ-ONLY via git show; the binding inheritance target research/accounting.py DOES exist at BASE and is imported, not forked (forked=false recorded in the gate).",
+  "MEASUREMENT BUG FIXED MID-TASK: Roll estimator initially converted 2*sqrt(-cov) price units directly to bps (implausible ~5100 bps medians); fixed to the window-mean-close fraction basis and cross-check basis moved CS-p50 -> CS-p90 (p50=0 after flooring). Both fixes predate the final measured run, the committed contract and the substance commit.",
+  "TRANSIENT: p1_run KeyError on nested F5-F7 verdicts (first run) and 4 fee-fact test KeyError (stale key names) - both fixed before the final run; final recorded state is 7/7 floors PASS, 25/25 tests PASS."
+ ],
+ "known_limitations": [
+  "CS p50 is 0.0 bps on ALL FOUR legs (58-60% of two-day pairs floor to alpha<0, normal for liquid ETPs on EOD bars): the Roll cross-check ratio is therefore declared against the CS p90 STRESS TIER (roll/CS-p90 in [0, 4], measured 0.942-1.115), not against p50; declared at this P1 gate, never to be moved retroactively.",
+  "Stress tiers measured on the FULL pinned window (TLT/IEF/SHY 2002-07-26..2026-09-11, IEI 2007-01-11..2026-09-11) on RAW unadjusted EOD bars; no sub-window constant is frozen (full-series distribution is the declared basis).",
+  "Auction census announcementDate is day-granular (no evidenced intraday timestamp): PIT anchoring uses the conservative LATER bound (end of announced NY day, 23:59:59.999999 America/New_York); the same-day 16:00 close is refused by construction.",
+  "ER evidence: fetched issuer pages are machine-local under p1_evidence/ (gitignored, P-13 law); sha256 pins + URLs + titles recorded in p1_gate.json/p1_cost_contract.json; all four ERs measured 0.15%/yr, page-embedded as-of 06/30/2025.",
+  "p1_gate.json git.head_sha records the BASE sha (gate written pre-commit, P0 precedent); the authoritative commit is recorded in this handoff."
+ ],
+ "lane": "p1-kernel-costs",
+ "outputs": [
+  {
+   "path": "research/assets/rates_ng1/kernel.py",
+   "sha256": "4f9e218a13ca0af876389a03f791761b657610562ff161aafa69073573f54746"
+  },
+  {
+   "path": "research/assets/rates_ng1/cost_model.py",
+   "sha256": "5bf64bf85c5981d0f6d4de9c73d3bd7103819d3e1ef8e7a2525f1d4e9c51d5e4"
+  },
+  {
+   "path": "research/assets/rates_ng1/clock.py",
+   "sha256": "b667d84c92caf1d7d781bb0ac6d1430376acfe52fab16b44e7ae42d8e6dea630"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p1_run.py",
+   "sha256": "e00e3d464394dcd1d7cb84df5d0d79f46573e7b81522affbe02d35f727871d72"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p1_cost_contract.json",
+   "sha256": "e7db0eef3cf40e334d519fb7dc92cefa0c5913994eb55ffc9d03f69dd936c67c"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p1_gate.json",
+   "sha256": "8a0283530e3e07d7a0ad4d21206eef6d78cb7e2b31e81921a5fa332bad358c83"
+  },
+  {
+   "path": "tests/test_rates_ng1_p1.py",
+   "sha256": "d3aaff92379e44e970babeaa18203a761b6eae64dcf11e18fb5184a41651a42f"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p1_evidence/.gitignore",
+   "sha256": "1b64847a58c5b4374889d6def15ac6b37ca4b24cc17aff66902e3970d298a0e5"
+  }
+ ],
+ "recommended_next_action": "Controller: orchestrator_validate_handoff then integrate; proceed to RATES-NG1 P2 (Q-6 recent-window feasibility floors) consuming the frozen tier-2.0 constants in research/control/rates_ng1_run/p1_cost_contract.json (CS p90 stress tiers: TLT 49.18, IEF 22.71, IEI 12.74, SHY 5.98 bps; ER drag 0.0015/365 per day; cost once per fill) and the decision-clock/PIT rules in research/assets/rates_ng1/clock.py.",
+ "role": "quant-implementer",
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "rates-ng1-p1-kernel-costs",
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_rates_ng1_p1.py -q",
+   "detail": "25/25 passed, hand-computed assertions: kernel degenerate dual-book case (one fill F1 BUY 100@100 spread_cost 5.00, one drag cost event 15/365, one mark 101 -> price book +100.00 exact, cost book +94.958904109589..., dual-book equality_ok, cost-once replay refused, map_to_canonical/AccountingFieldError inherited); CS constant-bracket synthetic recovers 2h = 0.001 exactly (10 bps); flat-bar + negative-alpha floor cases; Roll alternating series cov=-1 -> spread_price exactly 2.0 -> 199.0049751243781 bps on the mean-close fraction basis; percentile interpolation 3.7; ACT/365F drag exact; four 2026 DST boundary decision instants (Mar 6 21:00Z / Mar 9 20:00Z / Oct 30 20:00Z / Nov 2 21:00Z); V7 bar-readable close+1 session; auction day-event PIT anchoring refuses the same-day close (PIT bound 2026-03-07T04:59:59.999999Z, first eligible decision Mon 2026-03-09T20:00:00Z); contract stress tiers reproduce from plane-read RAW bars; fee facts issuer-official with exact conversion.",
+   "exit_code": 0,
+   "log_digest": "ddf71aba2dbba1bd72f4fdeba3082ee823be49f32ecf3ca75eabc93da603984c",
+   "verdict": "PASS"
+  }
+ ],
+ "tree_status": "clean on orca/rates-ng1-integration after substance commit 675f7147bb9f891cb85db0b1b31c0410b477ab84; a handoff-mirror commit (this file at research/control/RATES-NG1/orchestration/handoffs/) follows the substance commit per FOREX-NG1/CRYPTO-NG1 precedent; fetched ER page bytes are intentionally untracked (gitignored, P-13).",
+ "workers": 0
+}
