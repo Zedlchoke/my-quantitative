@@ -1,0 +1,100 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "commodities-ng1-p1-kernel-costs",
+  "cycle_id": "COMMODITIES-NG1",
+  "role": "quant-implementer",
+  "lane": "p1-kernel-costs (invocation lead-bg-comm-p1)",
+  "dispatch_sha": "ddd1126c3c798960683d378b3e140b2ad6fa1f72",
+  "actual_start_sha": "ddd1126c3c798960683d378b3e140b2ad6fa1f72",
+  "commit_sha": "SELF_REFERENTIAL_NOTE: this committed copy sits inside the substance commit itself; the authoritative SHA is carried by the inbox copy at .runtime/orchestrator_v3/inbox/commodities-ng1-p1-kernel-costs-handoff.json and by git log of this path",
+  "changed_paths": [
+    "research/assets/commodities_ng1/kernel.py",
+    "research/assets/commodities_ng1/costs.py",
+    "research/assets/commodities_ng1/clock.py",
+    "research/control/commodities_ng1_run/measure_p1.py",
+    "research/control/commodities_ng1_run/fee_facts.json",
+    "research/control/commodities_ng1_run/p1_cost_contract.json",
+    "research/control/commodities_ng1_run/p1_gate.json",
+    "tests/test_commodities_ng1_p1.py",
+    "research/control/COMMODITIES-NG1/orchestration/handoffs/p1-kernel-costs-handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_commodities_ng1_p1.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "32 passed (packet test command, run verbatim)"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_commodities_ng1_p0.py tests/test_commodities_ng1_p1.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "58 passed (26 P0 regression + 32 P1)"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Expense-ratio fee facts MEASURED for 11/22 eligible legs (GLD/IAU/SLV via SSGA+iShares anchors; DBO/DBC/PDBC/DBA via Invesco JSON; CORN/SOYB/WEAT/CANE via Teucrium JSON-LD). 11 legs NOT_MEASURED fail-closed (BAR, GCC, SGOL, SIVR, PPLT, PALL: issuer pages 404/403 for non-browser clients; USO/USL/UNG/UGA/CPER: USCF official pages HTTP 200 but fee cell empty in static HTML, client-side injected). Every attempt is recorded with URL+status+sha256 in fee_facts.json; no value guessed, no third-party aggregator substituted.",
+    "Roll (1984) cross-check not identifiable (cov >= 0) on 7/22 legs and recorded as None with the measured covariance (DBC, GCC, PALL, PDBC, SIVR, SLV, USO) -- disclosed, never fabricated.",
+    "Tracking-divergence proxy exists only where SAME-UNDERLYING pairs exist in the P0 census: 9 legs (gold BAR/GLD/IAU/SGOL, silver SLV/SIVR, crude DBO/USL/USO); 13 legs fail-closed WITHOUT the proxy (no same-underlying pair).",
+    "Dispatch hint 'gold: GLD/IAU/SGOL/SIVR' was corrected by the measured census: SIVR is a SILVER leg (cot code 084691); the fourth GOLD leg is BAR (cot code 088691). Groups are derived programmatically from p0_market_pairs.json (equal cot_market_code, purity pure, both legs ETP-eligible), never hardcoded.",
+    "Share-base (reverse-split) boundaries exist in the RAW vendor series (IAU 2010+2021, BAR 2019, SLV 2008, USO 2020, plus GCC/PDBC/UNG/PALL/PPLT/WEAT/DBC events). CS windows straddling a boundary are excluded; Roll deltas across a boundary are excluded; cross-sectional divergence is measured on the split-continuous adj_close reconstruction surface (RAW close remains the trading surface). Without this, GLD/IAU divergence would have reported a +7.8%/yr split artifact; with it, -12.4bp/yr vs a 15bp/yr stated fee gap (economic sanity anchor pinned in tests).",
+    "CS daily estimates clip at zero on a majority of windows (median full-spread 0.0 bps on all legs) -- documented Corwin-Schultz behavior on EOD data under overnight gaps; the STRESS constant (p90) is the contract constant per plan section 5.",
+    "Instrument drag (expense + measured tracking proxy) is booked as a tier-independent daily accrual on the NET books; the stress tier scales only the transaction component. Semantics are pinned by hand-computed tests; tier-2.0 is PRIMARY.",
+    "No scored computation, no expectancy/outcome numbers, no proposals anywhere in P1 (kernel book_metrics deliberately exposes count/total only)."
+  ],
+  "incidents": [
+    "CLOCK_BUG_FIXED_IN_LANE: weekly_decision_grid initially anchored the decision session on the Tuesday report date (yielding 2026-06-10 instead of the Monday after the Friday release). Caught by the real-calendar anchor test against committed GLD sessions before commit; fixed to anchor on the release instant's calendar day; decision session for report 2026-06-09 is 2026-06-15.",
+    "DIVERGENCE_SURFACE_FAULT_FOUND_AND_FIXED: first measurement run reported GLD/IAU tracking divergence +7.8%/yr (RAW closes corrupted by IAU reverse splits) and USO Roll corrupted by the 2020 share reconstitution. Root-caused to share-base discontinuities in RAW closes; added split_events boundary detection (adj/close factor-level change >= 5%), boundary-excluded CS windows and Roll deltas, and moved cross-sectional divergence to the split-continuous adjusted surface. GLD/IAU now -12.4bp/yr, SIVR/SLV +20.3bp/yr (both match stated-fee-gap expectations)."
+  ],
+  "tree_status": "CLEAN (only owned paths dirty before commit; raw/feefacts pages are gitignored sha-pinned evidence per the P0 raw-bytes convention)",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/assets/commodities_ng1/kernel.py",
+      "sha256": "f2b5c2a43731a977d9d99c8adf92fc3aa980ba5dbf67aba9e3bd551640eab394",
+      "role": "dual-book accounting kernel; imports root research/accounting.py (never forked); cost once per fill; tier ladder {1.0,1.5,2.0} PRIMARY 2.0; ledger reconciled through root build_accounting_reconciliation"
+    },
+    {
+      "path": "research/assets/commodities_ng1/costs.py",
+      "sha256": "c9f902f79b905a7924ccd680b7fed5bf5f37a37253eb6720ec075b62c075999b",
+      "role": "Corwin-Schultz p90 stress constant + Roll cross-check + split-boundary detection + same-underlying tracking divergence (grouped from the measured P0 census)"
+    },
+    {
+      "path": "research/assets/commodities_ng1/clock.py",
+      "sha256": "a9baababb31942d0191edc8bb1266917f517e89661a533ac230b8c1c3226599a",
+      "role": "weekly decision grid (release Friday 15:30 ET -> next measured ETP session; V7 close+1 readability) + kernel-side PIT guard delegating to the P0 cot_census rule"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/measure_p1.py",
+      "sha256": "06dd4104e9ac7f6087cf338297c108babc306b13ce81cc20c65758cdca74e67c",
+      "role": "offline measurement runner: prices via P0 plane adapter (digest-verified etp_eod), fee facts from committed evidence, contract + gate assembly"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/fee_facts.json",
+      "sha256": "7897be1680a4ed2000b4f905251ae098b044f4aa50bcbf9ba3f6068ff067eff2",
+      "role": "official fee-fact evidence: 11 MEASURED (URL+sha256+fetched_utc+extractor+snippet) + 11 NOT_MEASURED fail-closed with per-leg attempt records"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/p1_cost_contract.json",
+      "sha256": "5929ed4300246d0dad4335995d39415454313dd5ef47edf5380fb529fa154631",
+      "role": "tier-2.0 cost contract: 22 eligible legs (CS p90 + Roll + expense fact + tracking proxy), 10 tracking pairs with per-constant provenance"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/p1_gate.json",
+      "sha256": "98aed1f0b00a2568884b1bc767e8e7067fbd061fda11e0eea8f321cedc7696cc",
+      "role": "P1 gate: 4 items (kernel inheritance, cost constants, clock fixtures, PIT guard) all PASS with measured values + provenance"
+    },
+    {
+      "path": "tests/test_commodities_ng1_p1.py",
+      "sha256": "a7a41cd45bb333efbf2ecb6d96e940566ed15838707aa44c163f4ea3394d76c8",
+      "role": "32 hand-computed/committed-artifact tests: exact CS algebra (2/19 anchor), synthetic divergence literals, degenerate dual-book ledger (1 fill/1 cost event/1 mark), root-module compatibility, DST boundary instants, PIT withholding at second granularity, split-boundary handling, real-calendar grid anchor"
+    },
+    {
+      "path": "research/control/COMMODITIES-NG1/orchestration/handoffs/p1-kernel-costs-handoff.json",
+      "sha256": "SELF",
+      "role": "this handoff (committed copy)"
+    }
+  ],
+  "recommended_next_action": "Proceed to P2 (Q-6 floors) on this base: the tier-2.0 cost contract is consumable via research/assets/commodities_ng1/kernel.py; proposal lanes must consume costs only through the committed contract constants; keep the fail-closed expense-fact legs disclosed in every downstream cost verdict."
+}
