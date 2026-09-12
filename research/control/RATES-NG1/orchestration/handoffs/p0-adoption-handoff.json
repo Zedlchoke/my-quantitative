@@ -1,0 +1,109 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "rates-ng1-p0-adoption",
+ "cycle_id": "RATES-NG1",
+ "role": "quant-implementer",
+ "lane": "p0",
+ "measured_utc": "2026-09-12T09:05:00+07:00",
+ "dispatch_sha": "bf576df8e0458dffc286c48b209a31dc25062022",
+ "actual_start_sha": "bf576df8e0458dffc286c48b209a31dc25062022",
+ "base_match": true,
+ "commit_sha": "e4806490eda711aebe4af5808c6859a648d1c065",
+ "branch": "orca/rates-ng1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration",
+ "objective_summary": "P0 data authority + platform-v3 adoption for RATES-NG1 (first-ever rates family): Treasury.gov per-year par-yield curve pull + sha-pin + census, FRED granted-set re-pin with CPIAUCSL 0-drift overlap verify vs inherited CADS pin, EODHD family-1 Treasury ETP census (RAW primary + corp-actions cross-check + delisted probe), TreasuryDirect TA_WS auction-calendar PIT census, consume_via_plane adoption + bounded shadow parity, P-7 canaries, p0_gate.json. No proposals, no signal design, no scoring, no outcome numbers.",
+ "verdict": "PASS",
+ "floors": {
+  "treasury_curve_coverage": {
+   "frozen": "coverage >= 90% of expected business days 2005..2026",
+   "measured": "5429/5660 Mon-Fri days on [2005-01-01, 2026-09-11] = 0.959187; 37/37 year files pulled",
+   "verdict": "PASS"
+  },
+  "auction_calendar_events": {
+   "frozen": ">= 150 events since 2018-01-01",
+   "measured": "3555 official announcement events 2018-01-04..2026-09-10 (Bill 2637 / Note 716 / Bond 202), per-event cusip+dates+announcement-filename evidence",
+   "verdict": "PASS"
+  },
+  "treasury_etp_census": {
+   "frozen": "TLT/IEF/IEI/SHY full EOD through 2026-09",
+   "measured": "TLT 6071 rows 2002-07-26..2026-09-11 (exact reproduction of Lead live probe), IEF 6071 2002-07-26.., IEI 4948 2007-01-11.., SHY 6071 2002-07-26..; 0 split steps all four (adjusted cross-check); delisted-channel probe census: 60075 symbols, 146 names containing TREASUR (census item, not a floor)",
+   "verdict": "PASS"
+  },
+  "fred_granted_repin": {
+   "frozen": "7-series granted set re-pinned, CADS-style 0-drift vs pins found in-tree",
+   "measured": "7/7 pinned; CPIAUCSL vintaged pull value-identical on ALL 1962 rows of the inherited platform-v3 CADS pin 7f18ec98... (1121 exact-key + 841 clip-edge-vintage matches); DGS10 V8 committed pin chain cited (03dde429...); DGS2/DFII10/DFII5/T10YIE/T5YIE had no prior pins: first pins recorded",
+   "verdict": "PASS"
+  }
+ },
+ "canaries": {
+  "expected": "each fabricated access must FAIL (be refused)",
+  "results": [
+   {"canary": "fabricated_curve_date", "probe": "2025-11-31", "observed": "UnknownCurveDate refusal", "verdict": "REFUSED_AS_EXPECTED"},
+   {"canary": "fabricated_tenor_column", "probe": "13 Mo", "observed": "UnknownTenor refusal", "verdict": "REFUSED_AS_EXPECTED"},
+   {"canary": "never_existed_ticker", "probe": "ZZTREASURYNOPE9.US", "observed": "EODHD HTTP 404, no series", "verdict": "REFUSED_AS_EXPECTED"}
+  ],
+  "verdict": "PASS"
+ },
+ "adoption": {
+  "consume_via_plane": "research/assets/rates_ng1/plane_adapter.py: frozen 63-entry set -> authority gate (platform-v3 S2 GRANTED required for CPIAUCSL; frozen-cycle-set basis for rates-native series) -> sha256 verify-on-read -> manifest-verified QueryPlane for curve CSVs / resolve+verify for JSON",
+  "entries_consumed_via_plane": "63/63 PASS",
+  "shadow_parity": "9/9 bounded pilot entries: plane_sha256 == manifest_pin == direct file sha256, plus row-count/window equality; cads store used READ-ONLY (no new pins written into the shared store from this lane)"
+ },
+ "changed_paths": [
+  "research/assets/rates_ng1/.gitignore",
+  "research/assets/rates_ng1/__init__.py",
+  "research/assets/rates_ng1/plane_adapter.py",
+  "research/assets/rates_ng1/substrate.py",
+  "research/control/rates_ng1_run/p0_run.py",
+  "research/control/rates_ng1_run/substrate_manifest.json",
+  "research/control/rates_ng1_run/p0_gate.json",
+  "research/control/rates_ng1_run/p0_treasury_census.json",
+  "research/control/rates_ng1_run/p0_fred_repin.json",
+  "research/control/rates_ng1_run/p0_etp_census.json",
+  "research/control/rates_ng1_run/p0_auction_census.json",
+  "research/control/rates_ng1_run/p0_canaries.json",
+  "research/control/rates_ng1_run/p0_shadow_parity.json",
+  "tests/test_rates_ng1_p0.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_rates_ng1_p0.py -q",
+   "exit": 0,
+   "verdict": "PASS",
+   "log_digest": "ed24e0b40a5a76dc65af8aab8a5aace5b679b5dedc5ced61dba5b23d61784e94",
+   "detail": "35 passed: hand-computed census numbers + manifest hashes + tmp-fixture fail-closed adapter behavior"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "DGS10 prior pin (V8 staged_vintaged 03dde429..., manifest c8ae7877...) has no surviving bytes: the owner-ordered 2026-09-12 worktree cleanup (P-13 archive-then-delete) removed them, so the fresh pull is pinned under a NEW substrate digest with the committed digest chain cited; no byte-level continuity claim is inferred",
+  "DGS2/DFII10/DFII5/T10YIE/T5YIE had no prior pins anywhere in-tree: these are FIRST pins (fresh 2026-09-12 substrate), not re-pins",
+  "TreasuryDirect TA_WS 'announced' endpoint ignores date windows and is hard-capped at the latest 250 records (measured 2026-09-12); the auction census therefore uses the TA_WS per-year 'search' windows (2017..2026) with announcementDate filtering and (cusip, announcementDate, auctionDate) dedupe",
+  "fiscaldata.treasury.gov API returns 404 for every probed path in 2026 (recorded as a dead candidate, fail-closed)",
+  "coverage convention disclosed: expected business days = Mon-Fri grid (no holiday adjustment); the frozen 90% floor is met with margin either way (measured 95.92%)",
+  "raw substrate bytes (32MB, incl. the 60075-symbol delisted list) are machine-local and untracked by construction; the committed substrate_manifest.json sha256-pins all 63 files",
+  "census measured_utc anchors the auction window end at 2026-09-12 and the 2026 curve window end at the last published curve date 2026-09-11; a re-run on a later day re-measures within the recorded convention"
+ ],
+ "incidents": [
+  "ENV: the gitignored .env lives only in the ROOT checkout (/Users/hoangminhlong/my-quantitative/.env), not in the worktree; keys were loaded programmatically (os.environ first, then a line-wise parser that never surfaces values) per the V13 law; a credential scan over all 17 committed files found 0 leaks; recorded URLs carry only api_key=REDACTED/api_token=REDACTED",
+  "TECHFIX: first overlap verify read FAIL — root cause was a matching artifact (the 2025 pin clipped the first vintage's realtime_start to its requested window start 2017-01-01, so those rows had no exact-key match in the fresh pull); value comparison was already 1121/1121 equal; fixed with a clip-edge-aware vintage comparison (vintage live at the pin window start), after which all 1962 rows compare value-identical, drift 0; no data was altered",
+  "TECHFIX: curve row-parse was gated on the scratch-dir parameter so lookups returned an empty row list; fixed (structural parse always runs for curve entries) and the fabricated-tenor canary then refuses at the tenor stage as designed"
+ ],
+ "tree_status": "clean after handoff commit; substance commit e4806490eda711aebe4af5808c6859a648d1c065 + handoff commit; untracked raw_substrate/ is gitignored by construction inside research/assets/rates_ng1/",
+ "workers": 0,
+ "outputs": {
+  "research/control/rates_ng1_run/p0_gate.json": "ba504a3024c3ae5cd6dbefb90671bc811050e88c16bdcd98d9edde6ef3d7061b",
+  "research/control/rates_ng1_run/substrate_manifest.json": "1f30ae46bd17f4172b20def7c14b6488c8a9171e6787c70adb943fb26d868e50",
+  "research/control/rates_ng1_run/p0_treasury_census.json": "d52b7d0afdd20fa718a9f26d1cb3b01df4979efd9b84901d547fc73eaa6572ed",
+  "research/control/rates_ng1_run/p0_fred_repin.json": "3880e3cd8d947a960bb85a52bea7137b061bc190008d693bd32f818c4d273ce8",
+  "research/control/rates_ng1_run/p0_etp_census.json": "208388e05233f6db09c327b6c9240ebd2ff95df0a9993f68d42917d605949886",
+  "research/control/rates_ng1_run/p0_auction_census.json": "de129dd574b84995c48cc99305ef17f0e52c47c912578db3d9d5027c8fa1bd1a",
+  "research/control/rates_ng1_run/p0_canaries.json": "9ebc7b1081706e993cd14ecd7062c914d7a01294b1556bb1561ee100020e70c6",
+  "research/control/rates_ng1_run/p0_shadow_parity.json": "aab010ae2c0cbc48eeeeebf29a268526e0596620239d3dc8079b8b9378a57ce7",
+  "research/assets/rates_ng1/plane_adapter.py": "d83e1f0fe8456971e75fe120ec74692b1aab78e6d21020c880c1ebdfac7f27e7",
+  "research/assets/rates_ng1/substrate.py": "d6bb5040d3587de32e0b3badef894f969df0dfe1c78e2a21eda7d7ca12851f26",
+  "research/control/rates_ng1_run/p0_run.py": "10a329855d311c4b76f71f5eaf1fa09a075f10392dd5355d54284080681f628b",
+  "tests/test_rates_ng1_p0.py": "597ca5e113740e56f3417df9704bafdee13fdc523aa2c0883de035de8f3d2729"
+ },
+ "recommended_next_action": "P0 gate PASS — proceed to P1 (kernel/accounting inheritance + ETP cost constants re-measured Q-8) per plans/PLAN_rates_ng1.md phase ladder; floors and evidence are frozen in research/control/rates_ng1_run/p0_gate.json"
+}
