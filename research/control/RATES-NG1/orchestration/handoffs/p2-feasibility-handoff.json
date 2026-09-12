@@ -1,0 +1,85 @@
+{
+ "actual_start_sha": "923c0ca61bcbeba83496f004558ad71d3a52d0e4",
+ "authority_claims": [],
+ "changed_paths": [
+  "research/assets/rates_ng1/feasibility.py",
+  "research/control/rates_ng1_run/p2_run.py",
+  "research/control/rates_ng1_run/p2_gate.json",
+  "research/control/rates_ng1_run/p2_grid_census.json",
+  "research/control/rates_ng1_run/p2_auction_eligibility.json",
+  "tests/test_rates_ng1_p2.py"
+ ],
+ "commit_sha": "16012c10a834f3c667167ca17812a2d53e108508",
+ "cycle_id": "RATES-NG1",
+ "dispatch_sha": "923c0ca61bcbeba83496f004558ad71d3a52d0e4",
+ "incidents": [
+  "DISPATCH NOTE (no stop): packet said 'one focused commit'; the substance IS one focused commit (16012c10, exact packet message, pathspec staging only). The structured handoff artifact itself is committed as the sole follow-up handoff commit carrying commit_sha=16012c10, exactly the P0->P1 precedent on this branch (e4806490+1d3a1008, 675f7147+923c0ca6); a handoff cannot contain its own commit's SHA.",
+  "BUG FIXED PRE-MEASUREMENT (no data impact): the auction clock-authority cross-check initially passed ISO strings to research/assets/rates_ng1/clock.py::first_decision_after_pit, which expects date objects (AttributeError on s.isoformat()); fixed by converting the grid to date objects for the authority call. The bisection fast path and every materialized PIT instant were unaffected; the deterministic cross-check (17-sample stride 500 + edges) then agreed 17/17.",
+  "TRANSIENT: f-string syntax error in a p2_run.py print (format spec split across string literals) - fixed before any measured run."
+ ],
+ "known_limitations": [
+  "Q-6 no-PnL law held everywhere: the gate, census artifacts and tests contain NO PnL, no expectancy, no outcome number, no proposal and no signal design; cost values are COST PROJECTIONS ONLY.",
+  "Declared measurement conventions (frozen with research/assets/rates_ng1/feasibility.py, never to move retroactively): common grid = dates with an official curve-CSV row AND an EOD bar for ALL FOUR frozen legs (strictest all-legs intersection); trading days = the grid's own sessions; the 252-trading-day warmup carve-out = the FIRST 252 in-window grid sessions (history only, no decisions counted; first post-warmup decision session is 2019-01-07); coverage denominator = Mon-Fri weekday grid (P0 disclosed convention, holidays not enumerated) = 2270.",
+  "Bookable decision instant = the 16:00 America/New_York close of a common-grid session at index >= 252, with the V7-readable bar dated the previous common-grid session (close+1 law; DST via zoneinfo).",
+  "Auction lane: all 3555 P0 census events survived grid-eligibility (ineligible=0) - Treasury announcement dates precede a later common-grid session for every event in the window; the P1 PIT later-bound law (end of announced NY day) is materialized per event and the same-day close is refused by construction; re-verified from the RAW pinned TA_WS windows via consume_via_plane with count equality against the committed P0 artifact (3555=3555, fail-closed otherwise).",
+  "Cost ceilings: worst-case round trip = 2 x CS p90 stress tier (charged once per fill on BOTH fills; cost_frequency=once_per_fill) + 7 calendar days of ACT/365F ER drag for the declared 5-trading-day holding convention. Per leg (bps): TLT 98.6460, IEF 45.7081, IEI 25.7644, SHY 12.2473. Constants cited by the FROZEN contract sha256 e7db0eef3cf40e334d519fb7dc92cefa0c5913994eb55ffc9d03f69dd936c67c (unchanged from P1).",
+  "The census window ends at the substrate edge 2026-09-11; grid sessions span 2018-01-02..2026-09-11 (2170 sessions). NO network access was used at any point in P2; all consumption was verify-on-read through the plane adapter.",
+  "p2_gate.json git.head_sha records the BASE sha (gate written pre-commit, P0/P1 precedent); the authoritative commit is recorded in this handoff."
+ ],
+ "lane": "p2-feasibility",
+ "outputs": [
+  {
+   "path": "research/assets/rates_ng1/feasibility.py",
+   "sha256": "421c4945cfae25ce4e54552800ac6b5da22a993035d9134a94fdde8dbc1d5b96"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p2_run.py",
+   "sha256": "c7d432876ad0affec5417a7a1ae998ab5975f437124774266d9ab719f6691a79"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p2_gate.json",
+   "sha256": "dc342b71b811ea829702019bbc5ab25b5b0508e0f13c3eb50b382f34d22680c9"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p2_grid_census.json",
+   "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8"
+  },
+  {
+   "path": "research/control/rates_ng1_run/p2_auction_eligibility.json",
+   "sha256": "71411ace6061848f988f63d790c20352835a53f62fc688159b54748c35d7b48b"
+  },
+  {
+   "path": "tests/test_rates_ng1_p2.py",
+   "sha256": "b56ad43bbf068f8896430cfc307f3ef2d9ee6bc45ea2818c173f1d4494627ae3"
+  }
+ ],
+ "recommended_next_action": "Controller: orchestrator_validate_handoff then integrate. Both lanes are FEASIBLE under their frozen Q-6 floors (A5: 1918 bookable instants >= 1500 AND coverage 0.955947 >= 0.90; A4: 3555 grid-eligible events >= 150) and the projected worst-case round-trip cost ceilings are documented per leg (TLT 98.65, IEF 45.71, IEI 25.76, SHY 12.25 bps). Proceed to D1 blind proposal lanes (A4, A5) from one wave SHA, consuming the frozen census sidecars (p2_grid_census.json, p2_auction_eligibility.json), the P1 clock/PIT rules and the tier-2.0 cost contract; keep the level-vs-shape decomposition control mandatory for A5 per plan section 1.",
+ "role": "quant-implementer",
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "rates-ng1-p2-feasibility",
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_rates_ng1_p2.py -q",
+   "detail": "16/16 passed (post-commit standalone re-run). Hand-computed synthetic fixtures: January-2018 common grid = 20 sessions (23 weekdays - 3 missing dates), coverage round(20/23,6), warmup-3 carve-out leaves 17 bookable with first decision session 2018-01-05 at 21:00Z EST; 2026 DST boundary instants 2026-03-06T21:00Z (EST) / 2026-03-09T20:00Z (EDT); auction PIT mapping: announcement 2018-01-03 -> PIT 2018-01-04T04:59:59.999999Z (end of announced NY day, EST), same-day close refused, decision 2018-01-04T21:00Z; announcement on the last session -> ineligible (NO_LATER_GRID_SESSION); cost ceiling fixture 2 x 10 bps + 7 x (0.0015/365) x 1e4 = 20 + 105/365 = 20.287671232876713 bps exact. Committed-artifact checks: gate/sidecar sha256 pins re-hashed and matched; all 1918 bookable instants re-derived through the P1 clock; all 3555 auction mappings PIT re-materialized; P0 census re-verified count 3555; frozen floors re-evaluated frozen-vs-measured; TLT verify-on-read pin chain manifest==measured==P0 census.",
+   "exit_code": 0,
+   "log_digest": "825c05f5502a5c7e2a42779447b9a47758b55672285cdad29fdacfe8c5acf677",
+   "verdict": "PASS"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_rates_ng1_p1.py -q",
+   "detail": "25/25 passed - P1 regression guard (P2 imports clock/cost_model/plane_adapter from P1; no P1 module modified).",
+   "exit_code": 0,
+   "log_digest": "ddf71aba2dbba1bd72f4fdeba3082ee823be49f32ecf3ca75eabc93da603984c",
+   "verdict": "PASS"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/rates_ng1_run/p2_run.py",
+   "detail": "Measured run that produced the committed artifacts (in-run pytest slice recorded in p2_gate.json tests: exit_code 0, 16 passed). VERDICT: PASS; lanes A5=FEASIBLE A4=FEASIBLE; floors frozen-vs-measured: 1500>=1918 instants PASS, 0.90<=0.955947 coverage PASS, 150>=3555 eligible events PASS.",
+   "exit_code": 0,
+   "log_digest": null,
+   "verdict": "PASS"
+  }
+ ],
+ "tree_status": "clean at substance commit 16012c10a834f3c667167ca17812a2d53e108508 (6 files, pathspec staged); this handoff artifact is the sole change in the follow-up handoff commit (cycle precedent P0/P1)",
+ "workers": 0
+}
