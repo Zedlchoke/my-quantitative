@@ -1,0 +1,164 @@
+{
+ "blockers": [],
+ "census_artifacts": {
+  "auction_eligibility": {
+   "eligible_count": 3555,
+   "events_total": 3555,
+   "path": "research/control/rates_ng1_run/p2_auction_eligibility.json",
+   "sha256": "71411ace6061848f988f63d790c20352835a53f62fc688159b54748c35d7b48b"
+  },
+  "grid_census": {
+   "bookable_count": 1918,
+   "coverage_fraction": 0.955947,
+   "grid_session_count": 2170,
+   "path": "research/control/rates_ng1_run/p2_grid_census.json",
+   "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8"
+  }
+ },
+ "cost_ceilings": {
+  "contract": {
+   "constants_cited_by_sha256": true,
+   "cost_frequency": "once_per_fill",
+   "cost_ladder_tier": 2.0,
+   "path": "research/control/rates_ng1_run/p1_cost_contract.json",
+   "sha256": "e7db0eef3cf40e334d519fb7dc92cefa0c5913994eb55ffc9d03f69dd936c67c",
+   "stress_tier_quantile": 0.9
+  },
+  "formula": "worst_case_round_trip_ceiling_bps = 2.0 x cs_p90_stress_tier_bps + 7 x drag_per_day_fraction x 1e4",
+  "holding_convention": {
+   "calendar_days_charged": 7,
+   "drag_basis": "ACT/365F (frozen P1 contract: drag_per_day_fraction = er_annual / 365)",
+   "holding_trading_days": 5,
+   "note": "5 trading days held ~= 7 calendar days of expense drag; declared convention, never moved retroactively"
+  },
+  "no_pnl_note": "cost projection only; this census computes no PnL, no expectancy and no outcome number (Q-6 no-PnL law)",
+  "per_leg": {
+   "IEF": {
+    "cs_p90_stress_tier_bps": 22.710222433052532,
+    "er_drag_round_trip_bps": 0.28767123287671237,
+    "round_trip_spread_bps": 45.420444866105065,
+    "worst_case_round_trip_ceiling_bps": 45.708116098981776
+   },
+   "IEI": {
+    "cs_p90_stress_tier_bps": 12.738355852451367,
+    "er_drag_round_trip_bps": 0.28767123287671237,
+    "round_trip_spread_bps": 25.476711704902733,
+    "worst_case_round_trip_ceiling_bps": 25.764382937779445
+   },
+   "SHY": {
+    "cs_p90_stress_tier_bps": 5.979816345415081,
+    "er_drag_round_trip_bps": 0.28767123287671237,
+    "round_trip_spread_bps": 11.959632690830162,
+    "worst_case_round_trip_ceiling_bps": 12.247303923706875
+   },
+   "TLT": {
+    "cs_p90_stress_tier_bps": 49.17915491263504,
+    "er_drag_round_trip_bps": 0.28767123287671237,
+    "round_trip_spread_bps": 98.35830982527008,
+    "worst_case_round_trip_ceiling_bps": 98.6459810581468
+   }
+  },
+  "schema": "rates_ng1/feasibility@1:cost_ceilings",
+  "spread_convention": {
+   "basis": "stress tier (CS p90) charged once per fill on BOTH fills of the round trip; cost_frequency = once_per_fill (frozen P1 contract law); worst case = the stress tier on every fill",
+   "round_trip_multiplier": 2.0
+  }
+ },
+ "cycle_id": "RATES-NG1",
+ "evidence_paths": {
+  "auction_eligibility": "research/control/rates_ng1_run/p2_auction_eligibility.json",
+  "gate": "research/control/rates_ng1_run/p2_gate.json",
+  "grid_census": "research/control/rates_ng1_run/p2_grid_census.json",
+  "p0_auction_census": "research/control/rates_ng1_run/p0_auction_census.json",
+  "p1_cost_contract": "research/control/rates_ng1_run/p1_cost_contract.json",
+  "tests": "tests/test_rates_ng1_p2.py"
+ },
+ "floors": {
+  "A4_F1_grid_eligible_auction_events": {
+   "definition": "grid-eligible auction announcement events post-2018-01-01 after PIT later-bound mapping (end-of-announced-NY-day conservative bound; same-day close refused)",
+   "detail": {
+    "events_total": 3555,
+    "ineligible_count": 0,
+    "p0_raw_census_reverified": 3555
+   },
+   "frozen": 150,
+   "lane": "A4_auction_clock",
+   "measured": 3555,
+   "name": "A4_F1_grid_eligible_auction_events",
+   "operator": ">=",
+   "verdict": "PASS"
+  },
+  "A5_F1_bookable_decision_instants": {
+   "definition": "bookable daily decision instants post-2018-01-01 on the common curve-CSV x ETP-EOD grid AFTER the declared 252-trading-day warmup carve-out",
+   "detail": {
+    "first_decision_session": "2019-01-07",
+    "grid_session_count": 2170,
+    "last_decision_session": "2026-09-11",
+    "warmup_sessions": 252
+   },
+   "frozen": 1500,
+   "lane": "A5_curve_shape",
+   "measured": 1918,
+   "name": "A5_F1_bookable_decision_instants",
+   "operator": ">=",
+   "verdict": "PASS"
+  },
+  "A5_F2_common_grid_coverage": {
+   "definition": "grid coverage of common NY business days (Mon-Fri weekday grid, P0 disclosed convention) 2018-01-01..2026-09-11",
+   "detail": {
+    "convention": "Mon-Fri weekday grid (P0 disclosed convention; holidays not enumerated)",
+    "covered_weekdays": 2170,
+    "expected_weekdays_window": 2270
+   },
+   "frozen": 0.9,
+   "lane": "A5_curve_shape",
+   "measured": 0.955947,
+   "name": "A5_F2_common_grid_coverage",
+   "operator": ">=",
+   "verdict": "PASS"
+  }
+ },
+ "frozen_floor_provenance": {
+  "declared": "dispatch packet rates-ng1-p2-feasibility, BEFORE measurement",
+  "floor_values": {
+   "A4_F1_grid_eligible_auction_events": 150,
+   "A5_F1_bookable_decision_instants": 1500,
+   "A5_F2_common_grid_coverage": 0.9
+  },
+  "warmup_carveout_sessions": 252
+ },
+ "gate": "RATES-NG1-P2",
+ "git": {
+  "branch": "orca/rates-ng1-integration",
+  "head_sha": "923c0ca61bcbeba83496f004558ad71d3a52d0e4"
+ },
+ "lanes": {
+  "A4_auction_clock": {
+   "blocked_path": null,
+   "feasibility": "FEASIBLE",
+   "floors": [
+    "A4_F1_grid_eligible_auction_events"
+   ]
+  },
+  "A5_curve_shape": {
+   "blocked_path": null,
+   "feasibility": "FEASIBLE",
+   "floors": [
+    "A5_F1_bookable_decision_instants",
+    "A5_F2_common_grid_coverage"
+   ]
+  }
+ },
+ "measured_utc": "2026-09-12T03:05:21.475529+00:00",
+ "phase_objective": "Q-6 feasibility, NO PnL: census floors only; no proposals, no signal design, no scoring, no outcome numbers anywhere in this gate",
+ "schema": "rates_ng1_run/p2_gate@1",
+ "task_id": "rates-ng1-p2-feasibility",
+ "tests": {
+  "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_rates_ng1_p2.py -q",
+  "exit_code": 0,
+  "summary_tail": "16 passed in 0.31s",
+  "verdict": "PASS"
+ },
+ "verdict": "PASS",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/rates-ng1/integration"
+}
