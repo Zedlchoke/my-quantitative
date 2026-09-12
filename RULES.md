@@ -216,6 +216,10 @@ with their cycles' TERMINAL closes (BLOCKED_DATA_OR_SELECTION at 0/6 each);
 `GO FOREX NG2 SCORED EXECUTION` and `GO FOREX NG3 SCORED EXECUTION` died UNCONSUMED with their cycles' closes (FOREX-NG2 P0-floor; FOREX-NG3 4/4 D2 VETO).
 `GO CRYPTO NG2 SCORED EXECUTION` died UNCONSUMED with CRYPTO-NG2's close (4/4 D2 VETO at 0/6; 2026-09-12).
 `GO FOREX NG4 SCORED EXECUTION` died UNCONSUMED with FOREX-NG4's close (4/4 D2 VETO at 0/6; 2026-09-12).
+`GO STOCKS NG2 SCORED EXECUTION` died UNCONSUMED with STOCKS-NG2's close (2/2 D2 fail-closed at 0/6; 2026-09-12).
+
+No live GO phrases. All eight ng-generation cycles (ng1 x3, ng2, ng3, ng2-gen x3) are TERMINAL;
+program 245/248, 0 survivors.
 
 Historical dispositions (P-8; TERMINAL is absorbing):
 

@@ -43,6 +43,8 @@
 
 - **FOREX-NG4 CLOSED → `FOREX_NG4_BLOCKED_DATA_OR_SELECTION`** (2026-09-12, terminal a4ca659, A7v2 AUTHORIZED 0 HIGH/CRITICAL) — owner new-sources cycle #2: EURUSD pinned (TD entitlement), EZ HICP vintaged re-ingested (A7-F1 arc: as-of BLOCKED → wide-window PASS 37/16); 4 blind proposals; D2 4/4 VETO (Friday-v2-day geometry 0.89 + PPP 0.44 over-determined). 0 cells / 0/6; GO died UNCONSUMED. **EZ CPI frontier measured-closed. forex 48/48; program 245/248** (P-9). Detail: `.worktrees/forex-ng4/integration/research/control/forex_ng4_run/audits/a7_terminal_ng4_v2.json`.
 
+- **STOCKS-NG2 CLOSED → `STOCKS_NG2_BLOCKED_DATA_OR_SELECTION`** (2026-09-12, terminal 4e483bb, A7 AUTHORIZED 0 HIGH/CRITICAL) — owner new-sources cycle #3: the ng1 amendment-reopening condition EXECUTED (EDGAR 4/A re-ingest 3,062 docs; 1,877 pairs — floor funded 9.4x); EODHD short-interests NOT ENTITLED (404; lane A5 dead). 2 blind proposals; D2 2/2 fail-closed: P1 16/17 vetoes CLEAN but v11 unmeasurable (zero-variance — structurally cannot express the shadow on this cohort); P2 16/17 CLEAN but own Q-6 fails (0 bookable 2025). **The amendment observables were NOT ancestry-dead — they died on data structure; that is the honest boundary of this substrate.** 0 cells / 0/6; GO died UNCONSUMED. **stocks 42/42; program 245/248** (P-9). Detail: `.worktrees/stocks-ng2/integration/research/control/stocks_ng2_run/audits/a7_terminal_ng2.json`.
+
 - **CRYPTO-NG1 CLOSED → `CRYPTO_NG1_BLOCKED_DATA_OR_SELECTION`** (2026-09-11, branch
   `orca/crypto-ng1-integration`, terminal 0cfb9ac, A7 AUTHORIZED 0 HIGH/CRITICAL with
   detached recompute full-match) — first ng1-generation close, first crypto cycle on
