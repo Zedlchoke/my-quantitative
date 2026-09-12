@@ -1,0 +1,138 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "vol-ng1-p0-adoption",
+ "cycle_id": "VOL-NG1",
+ "role": "quant-implementer",
+ "lane": "p0-adoption (invocation lead-bg-vol-p0; orchestrator store task vol-ng1-p0-adoption)",
+ "dispatch_sha": "bf576df8e0458dffc286c48b209a31dc25062022",
+ "actual_start_sha": "bf576df8e0458dffc286c48b209a31dc25062022",
+ "commit_sha": null,
+ "commit_sha_note": "self-referential: this file is committed inside the single P0 commit it describes; the authoritative commit_sha is recorded in the orchestrator-inbox copy at /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/vol-ng1-p0-adoption-handoff.json and equals `git -C <worktree> rev-parse HEAD` after that commit",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/vol-ng1/integration",
+ "branch": "orca/vol-ng1-integration",
+ "base_verified": {
+  "pwd_ok": true,
+  "branch_ok": true,
+  "head_equals_base": true
+ },
+ "changed_paths": [
+  "research/assets/vol_ng1/__init__.py",
+  "research/assets/vol_ng1/ingest.py",
+  "research/assets/vol_ng1/census.py",
+  "research/assets/vol_ng1/plane_adapter.py",
+  "research/assets/vol_ng1/raw/cboe/VIX_History.csv",
+  "research/assets/vol_ng1/raw/cboe/VIX9D_History.csv",
+  "research/assets/vol_ng1/raw/cboe/VIX3M_History.csv",
+  "research/assets/vol_ng1/raw/cboe/VIX6M_History.csv",
+  "research/assets/vol_ng1/raw/eodhd/VXX.US_eod.json",
+  "research/assets/vol_ng1/raw/eodhd/UVXY.US_eod.json",
+  "research/assets/vol_ng1/raw/eodhd/SVXY.US_eod.json",
+  "research/assets/vol_ng1/raw/eodhd/VIXY.US_eod.json",
+  "research/assets/vol_ng1/raw/eodhd/VIXM.US_eod.json",
+  "research/assets/vol_ng1/raw/eodhd/VXZ.US_eod.json",
+  "research/control/vol_ng1_run/p0_run.py",
+  "research/control/vol_ng1_run/p0_gate.json",
+  "research/control/vol_ng1_run/p0_census.json",
+  "research/control/vol_ng1_run/p0_delisted_census.json",
+  "research/control/vol_ng1_run/p0_ingest_manifest.json",
+  "research/control/vol_ng1_run/authority_registry_journal.jsonl",
+  "research/control/vol_ng1_run/cads_store/ (11 content-addressed objects + pins.jsonl + events.jsonl)",
+  "research/control/VOL-NG1/orchestration/handoffs/p0-adoption-handoff.json",
+  "tests/test_vol_ng1_p0.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/vol-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_vol_ng1_p0.py -q",
+   "exit": 0,
+   "verdict": "PASS",
+   "log_digest": "c3ae8d756859b23acaca6d1a3e8a909d3c6ff1f25585871438a8917e7d1a46d2",
+   "detail": "25 passed in 0.36s (sandboxed adapter + hand-computed census + committed-manifest hash checks + read-only committed-store plane tests)"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/vol_ng1_run/p0_run.py ingest",
+   "exit": 0,
+   "verdict": "PASS",
+   "detail": "bounded live pulls: 4 keyless CBOE files (all frozen digests reproduced), 6 EODHD family-1 legs, XIV plain-eod negative probe (HTTP 200, 0 bars), US delisted channel (60,075 symbols, one bounded request); key loaded programmatically from .env, never echoed"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/vol_ng1_run/p0_run.py adopt",
+   "exit": 0,
+   "verdict": "PASS",
+   "detail": "cycle authority adjudicated GRANTED (3 series, full inherited state machine), 11 CADS pins, census re-derived from plane-consumed bytes equals committed census, shadow parity digest-identical on all 11 entries, plane ticker canaries refused, p0_gate.json verdict PASS"
+  }
+ ],
+ "authority_claims": [],
+ "floors": {
+  "F1_common_term_structure_coverage_years": {
+   "floor": 8.0,
+   "measured": 15.6851,
+   "first_common_date": "2011-01-04",
+   "last_common_date": "2026-09-11",
+   "verdict": "PASS"
+  },
+  "F2_term_structure_instants_post_2015": {
+   "floor": 1000,
+   "measured": 2940,
+   "verdict": "PASS"
+  },
+  "F3_living_etp_legs_with_6y_eod": {
+   "floor": ">=2 legs with >=6.0y EOD",
+   "measured": {
+    "VXX": 8.6461,
+    "UVXY": 14.9377,
+    "SVXY": 14.9377,
+    "VIXY": 15.6851,
+    "VIXM": 15.6851,
+    "VXZ": 8.6461
+   },
+   "qualifying_legs": ["SVXY", "UVXY", "VIXM", "VIXY", "VXX", "VXZ"],
+   "verdict": "PASS"
+  },
+  "F4_delisted_vol_etp_proven": {
+   "required": ">=1 dead vol ETP proven via the EODHD US delisted channel with clean never-existed controls",
+   "measured": "TVIX + ZIV present (full records pinned); XIV and XVIX ABSENT from the delisted channel; XIV plain-eod endpoint returns HTTP 200 with 0 bars (Lead probe reproduced); controls ZZZVIX/QVIXX absent (negative semantics clean)",
+   "verdict": "PASS"
+  },
+  "gate_verdict": "PASS"
+ },
+ "cboe_census": {
+  "pattern": "https://cdn.cboe.com/api/global/us_indices/daily_prices/{NAME}_History.csv",
+  "served": {
+   "VIX": "cb3515efe5577d39df5c59ab44fb69171e28927e0fd01b50ce101076e7951e93",
+   "VIX9D": "7b3db3ecfa3d4e4506c540f82358e8d726daa76572f3ba4a5dc2bf41a4a32aea",
+   "VIX3M": "519408c5638f731eb47177ef7bcfbdd315a376ec353df52cd92ea67c9a51be65",
+   "VIX6M": "090544e05ee19151df4a8a12544c9b9c376b81034de51b3295b6b04c4bc314f5"
+  },
+  "note": "VIX3M and VIX6M CONFIRMED SERVED under the same pattern (dispatch question answered; no alternates invented); all four end 2026-09-11; per-leg rows VIX 9271 / VIX9D 3945 / VIX3M 4271 / VIX6M 4703"
+ },
+ "p7_canaries": {
+  "fabricated_date": "PASS (2026-09-12, 2099-01-01 absent from every series and the intersection)",
+  "never_existed_index_column": "PASS (VIX2M refused by parser AND name census; plane refuses the entry pre-request)",
+  "fabricated_etp_ticker": "PASS (XVXX/ZZZVIX/BOGUS entries refused at the plane; never-existed controls absent from the delisted channel)"
+ },
+ "known_limitations": [
+  "XIV is unprovable on EODHD: absent from BOTH the plain eod endpoint (HTTP 200, 0 bars) and the US delisted channel. The frozen floor is met by TVIX + ZIV (>=1 dead vol ETP), but any future lane wanting XIV-specific bars has no lawful EODHD route (recorded fail-closed).",
+  "The delisted-channel response is NOT byte-deterministic across pulls (60,075 symbols; response bytes changed between two same-day pulls). The committed census (sha e35a9ae5...) pins ONE measured snapshot; a re-pull is a NEW snapshot, not a repair.",
+  "Corp-action inventory (measured, NON_BLOCKING, P1 input): 29 raw split-magnitude steps across the 6 legs; 27 ADJUSTED_CONTINUOUS / ADJUSTED_TRACKS_RAW, 2 RESIDUAL with EXACT implied split factors (VXX 2024-07-24 factor 4.0; UVXY 2025-11-20 factor 5.0). VXX 2018-01-25 carries a 64.0x step present in BOTH raw and adjusted series (uncompensated reorg step), SVXY 2018-02-06 the -83% Volmageddon price event. RAW-primary consumption (V8 convention) with explicit event handling at every inventoried step is mandatory for any later lane.",
+  "VXZ showed one transient digest instability during the session; stable at 3a5e5e3f... across two consecutive verification pulls (the frozen digest).",
+  "VXX and VXZ vendor-served EOD windows start 2018-01-18 (8.65y); the 6y leg floor is met regardless (UVXY/SVXY/VIXY/VIXM ~14.9-15.7y).",
+  "EODHD serves no indices (.IND 404, Lead-measured): CBOE official files are the index authority, EODHD only the ETP legs (plan-consistent). No options-chain (family-2) data was touched (NOT entitled)."
+ ],
+ "incidents": [
+  "Delisted extraction bug (fixed pre-commit): first pull matched the record key 'code' while the channel serves 'Code', producing an all-absent artifact; caught by direct sink inspection (V8-proven TWTR also absent = impossible), key handling made case-insensitive, re-measured. No artifact from the buggy run was committed.",
+  "Frozen bounds query initially called strptime on a DuckDB DATE-sniffed column (InvalidInputException); fixed with COALESCE(TRY_CAST(...)) so the query is stable under either sniffing outcome."
+ ],
+ "tree_status": "clean after commit except research/control/vol_ng1_run/raw_untracked/delisted_us_symbols.json (8.1MB full delisted response, INTENTIONALLY UNTRACKED per the forex-ng4 untracked-raw + committed-sha-manifest convention; full-response sha256 2352bb9f0af131a01f4f6523ab1dfba2758f9b9e025f262f5ff62487fd9142e1 recorded in the committed p0_delisted_census.json; local verify-on-read possible)",
+ "workers": 0,
+ "outputs": {
+  "p0_gate.json": "c81b4ca624e845bdd7c732d2cc31d46e6e45797c9319f27478c242e3aa603a7d",
+  "p0_census.json": "900aa59c9c5acccf5d2af2c970e670ab4a3e4cbaca1eccffdc56372f589ca740",
+  "p0_delisted_census.json": "e35a9ae5442b0ba6a46ca2f0746a70c1cdf59c13975a8b1fb13ca5cbbdb32fc9",
+  "p0_ingest_manifest.json": "9ac3fc4e35c4a544bfefdcb88e081dec037a394fef55fbdb837420377481810b",
+  "plane_adapter.py": "1a7caba4a9fdc53e79730984b47fa23ce702420cc1382c9de92616bb3aade3e8",
+  "test_vol_ng1_p0.py": "b8be47966e155167765d8cbbcb09c7f54c5354c40e4d5839c11bbddf780877d5",
+  "authority_journal": "research/control/vol_ng1_run/authority_registry_journal.jsonl (3 series GRANTED: S7:cboe-vol-index-histories, EODHD-F1:eodhd-vol-etp-eod, EODHD-F1:eodhd-vol-etp-delisted)",
+  "cads_store": "research/control/vol_ng1_run/cads_store (11 objects, committed; read-only after adoption)"
+ },
+ "recommended_next_action": "P0 gate verdict PASS -> proceed to P1 (kernel/costs) under plans/PLAN_vol_ng1.md section 4: consumption ONLY via research.assets.vol_ng1.plane_adapter.VolNg1Plane.consume_via_plane; carry the corp-action step inventory as mandatory event handling (RAW primary); ETP spreads at stress tier (Q-8) + measured roll/decay path-cost ladder (tier 2.0, Q-16); mandatory index-only shadow and cost-path control per plan section 1; no proposals/scoring before D1."
+}
