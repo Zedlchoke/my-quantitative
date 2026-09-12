@@ -1,0 +1,965 @@
+{
+ "schema": "vol_ng1_run/d2_novelty_panel@1",
+ "task_id": "vol-ng1-d2-novelty",
+ "cycle_id": "VOL-NG1",
+ "lane": "d2",
+ "invocation": "lead-bg-vol-d2",
+ "question": "D2 NOVELTY selection gate: does any ancestry kill-shadow decision-state correlate with a proposal's own frozen-default decision-state beyond the frozen margin on the proposal's own declared representation?",
+ "measured_utc": "2026-09-12T04:06:13.821462+00:00",
+ "published_utc": "2026-09-12T04:06:15.388574+00:00",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/vol-ng1/integration",
+ "git": {
+  "branch": "orca/vol-ng1-integration",
+  "head_sha_code_commit": "474c967cebd4a797140f14ba3afb526393fe1a60"
+ },
+ "law": {
+  "p12_two_commits": "commit-1 = code + frozen parameters + shadow definitions (NO numbers); commit-2 = this panel",
+  "margin": 0.2,
+  "margin_law": "pooled |rho| <= 0.20 == ELIGIBLE, else VETO",
+  "pooled_law": "per shadow pooled = max(|spearman|, |pearson|); proposal pooled = max over shadows",
+  "fail_closed_law": "an unmeasurable shadow makes the proposal VETO_PENDING unless provably inapplicable (documented); absence is never PASS; an uncomputable state is INVALID and refused, never coerced (Q-11)",
+  "no_pnl_law": "decision-STATE series correlation only; no scored outcomes, no PnL numbers anywhere (Q-6)",
+  "freeze_law": "all D1-symbolic parameters frozen at declared neutral defaults in the code commit BEFORE any rho was computed; the A5-P2 mid-bucket extension froze in the same commit"
+ },
+ "frozen_parameter_freeze": {
+  "frozen_in": "commit-1 (research/control/vol_ng1_run/d2/d2_novelty.py)",
+  "head_sha_at_measurement": "474c967cebd4a797140f14ba3afb526393fe1a60",
+  "defaults": {
+   "slope_functional_form": "S_t = 0.5*(ln(VIX_t/VIX9D_t) + ln(VIX3M_t/VIX_t))",
+   "theta_1": 0.02,
+   "theta_2": 0.05,
+   "bucket_action_map": {
+    "steep": 1.0,
+    "mild": 1.0,
+    "flat": 0.0,
+    "inverted": -1.0
+   },
+   "h_min_sessions": 5,
+   "second_difference_form": "D_t = S_t - 2*S_(t-1) + S_(t-2)",
+   "a4p2_d_threshold": 0.0,
+   "a4p2_latch_m_sessions": 3,
+   "a4p2_regime_action_map": {
+    "accelerating_steepening": 1.0,
+    "decelerating": 0.0,
+    "accelerating_flattening": -1.0
+   },
+   "standardization_form": "expanding z-score over the common grid up to and including t (ddof=0)",
+   "standardization_min_history": 63,
+   "a5p2_mid_reference_leg": "VXZ",
+   "a5p1_spread_threshold": 0.5,
+   "a5p1_hysteresis_sessions": 2,
+   "a5p1_state_action_map": {
+    "expanded": 1.0,
+    "neutral": 0.0,
+    "compressed": -1.0
+   },
+   "a5p2_asym_threshold": 0.5,
+   "a5p2_latch_sessions": 2,
+   "a5p2_state_action_map": {
+    "short_extreme": 1.0,
+    "aligned": 0.0,
+    "mid_extreme": -1.0
+   },
+   "v16_window_sessions": 5,
+   "v16_z_threshold": 1.0,
+   "v17_level_low": 20.0,
+   "v17_level_high": 30.0,
+   "dvol_jump_threshold": 0.05,
+   "dvol_hold_sessions": 3,
+   "momentum_lookback_sessions": 63,
+   "dow_tue_weekday": 1,
+   "margin_abs_rho": 0.2,
+   "min_valid_overlap_instants": 200
+  },
+  "shadow_mappings": {
+   "v16_close_displace_fade": "short-horizon close-displacement fade: per event-adjusted leg, z = (close_t - mean(trailing {w} closes)) / stdev(trailing {w} closes, ddof=0); position +1 (short-vol pole) if z >= +{zthr}, -1 (long-vol pole) if z <= -{zthr}, else flat; INVALID inside the window or when the window stdev is 0",
+   "v17_oi_level": "position-level conditioning on vol-complex LEVEL states mapped to the granted VIX index close: +1 (short-vol pole) when VIX_t < {lo}, -1 (long-vol pole) when VIX_t > {hi}, else flat",
+   "dvol_shock": "large-jump reaction mapped to VIX index jump events: when |VIX_t/VIX_(t-1) - 1| >= {jthr}, hold position -sign(jump) for {hold} grid sessions (buy protection after a vol spike, sell vol after a vol collapse); later shocks refresh the window; flat outside reaction windows; INVALID before the first previous session",
+   "momentum_63s": "trailing {lb}-common-grid-session return sign on the event-adjusted legs, chase form: position -sign(c_t/c_(t-{lb}) - 1) (positive leg momentum -> long the leg == long-vol pole), 0 at exactly zero; INVALID inside the lookback",
+   "generic_dow_tue": "calendar-clock position: +1 (short-vol pole) on Tuesday sessions (weekday == {dow}), flat otherwise; always computable on any grid session"
+  },
+  "leg_subsets": {
+   "VOLNG1-A4-P1": [
+    "SVXY",
+    "UVXY",
+    "VIXY",
+    "VXX"
+   ],
+   "VOLNG1-A4-P2": [
+    "SVXY",
+    "UVXY",
+    "VIXY",
+    "VXX"
+   ],
+   "VOLNG1-A5-P1": [
+    "SVXY",
+    "UVXY",
+    "VIXY",
+    "VXX"
+   ],
+   "VOLNG1-A5-P2": [
+    "SVXY",
+    "UVXY",
+    "VIXY",
+    "VXX",
+    "VIXM",
+    "VXZ"
+   ]
+  },
+  "axis_encodings": {
+   "VOLNG1-A4-P1": "short_vol_pos_long_vol_neg",
+   "VOLNG1-A4-P2": "short_vol_pos_long_vol_neg",
+   "VOLNG1-A5-P1": "short_vol_pos_long_vol_neg",
+   "VOLNG1-A5-P2": "front_bucket_pos_mid_bucket_neg"
+  }
+ },
+ "consumed_via_plane": {
+  "etp_digests": {
+   "VXX": "128bb58923d70e0f9c28a9b72924b32920cbc6ea382808f1785d2319c28f6bb7",
+   "UVXY": "22121044ed86ee64d2c2ea4ab79d74e09759eb2e8ff13dcda380bc175d908c63",
+   "SVXY": "5d2e17b8dc41da41329130b30ad5a5858d122710f0e4d8f4a406401eacb9561c",
+   "VIXY": "51719dde8ba4def1e3c4a14d5d99c37a8e621079660bcec66b2ba3c00b1276da",
+   "VIXM": "ad28db0e6eedb5484253cf6b41f85c6421ac80889ca3de247961417ed34f4d54",
+   "VXZ": "3a5e5e3f37c61420a09fadac16c25931b9441c797e180125fcb6ab6f9079e1d1"
+  },
+  "index_digests": {
+   "VIX": "cb3515efe5577d39df5c59ab44fb69171e28927e0fd01b50ce101076e7951e93",
+   "VIX9D": "7b3db3ecfa3d4e4506c540f82358e8d726daa76572f3ba4a5dc2bf41a4a32aea",
+   "VIX3M": "519408c5638f731eb47177ef7bcfbdd315a376ec353df52cd92ea67c9a51be65"
+  },
+  "network_reads": 0,
+  "store_write_ops": 0
+ },
+ "artifact_hashes_cited": {
+  "p0_gate_json_sha256": "c81b4ca624e845bdd7c732d2cc31d46e6e45797c9319f27478c242e3aa603a7d",
+  "p1_gate_json_sha256": "80049a636f2251345e02fab60f76675b3257d891ae864de2912e45f58a3409a5",
+  "p1_cost_contract_json_sha256": "c8529b888c5c92e04802ddda8006a74b3f94d099cb14c4dd6d64a1df1ce2d1a4",
+  "p2_gate_json_sha256": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3",
+  "d1_gate_json_sha256": "d1438860bc493f801ae6851f3226c2e377a621dde3a018f324e12eb982688334",
+  "corp_actions_py_sha256": "33fa349b589109e255738b3a51a732dd7fd0fd72b166130503d1e7ebf83ca547"
+ },
+ "representation_checks": {
+  "definition": "the P2 common grid: strict intersection of VIX9D x VIX x VIX3M with the event-adjusted closes of ALL SIX living ETP legs",
+  "consumption_law": "ETP legs consumed ONLY through corp_actions.event_adjusted_closes (never raw, never vendor-adjusted)",
+  "event_layer_max_abs_mechanical_residual": 1.1121916654310837e-07,
+  "inventory_total_steps": 27,
+  "grid_sessions_total": 2167,
+  "window_sessions_post_2015": 2167,
+  "warmup_carveout_sessions": 252,
+  "first_bookable_instant": "2019-01-24",
+  "last_bookable_instant": "2026-09-10",
+  "v7_tail_refused_sessions": [
+   "2026-09-11"
+  ],
+  "bookable_instants": 1914,
+  "a4_lane_verdict": "PASS",
+  "a5_lane_verdict": "FEASIBLE",
+  "matches_p2_census": true,
+  "granted_series_verdicts": {
+   "EODHD-F1:eodhd-vol-etp-delisted": "GRANTED",
+   "EODHD-F1:eodhd-vol-etp-eod": "GRANTED",
+   "S7:cboe-vol-index-histories": "GRANTED"
+  }
+ },
+ "proposals": [
+  {
+   "proposal_id": "VOLNG1-A4-P1",
+   "path": "research/control/vol_ng1_run/d1/proposals/VOLNG1-A4-P1.json",
+   "sha256": "15ea94c3c7a5c572518c2d542d4b03a9fa7b3f5a1f823c4664677b77fcf1b57b",
+   "lane": "A4_term_structure_slope",
+   "family_id": "slope_state_bucket_conditioning",
+   "decision_axis": "short_vol_pos_long_vol_neg",
+   "axis_encoding_note": "short-vol pole +1 / flat 0 / long-vol pole -1; for VOLNG1-A5-P2 the bucket-allocation axis is encoded on the same poles by its own declared semantics (front bucket = the short-vol roll-carry pole, mid bucket = the protection pole)",
+   "frozen_defaults_used": {
+    "leg_subset": [
+     "SVXY",
+     "UVXY",
+     "VIXY",
+     "VXX"
+    ],
+    "proxy_leg": "VXX",
+    "proxy_lookback_sessions": 21,
+    "mid_reference_leg": null,
+    "law": "all parameters frozen at the declared neutral defaults in the code commit BEFORE any rho was computed; no threshold moves after any number"
+   },
+   "structural_limitation_verbatim_match_p2": null,
+   "n_bookable_instants": 1914,
+   "decision_state_distribution": {
+    "-1.0": 242,
+    "1.0": 1461,
+    "0.0": 211
+   },
+   "feasibility_renote": {
+    "instants_exist": true,
+    "note": "measurement-window instants exist at D2: the frozen P2 bookable grid carries a valid decision instant at every measured point of this proposal's representation",
+    "n_bookable_instants_remeasured": 1914,
+    "d2_measurement_window": [
+     "2019-01-24",
+     "2026-09-10"
+    ],
+    "p2_census_citation": {
+     "source": "research/control/vol_ng1_run/p2_gate.json sections.a4_term_structure_slope",
+     "p2_gate_json_sha256_remeasured": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3",
+     "p2_lane_verdict": "PASS",
+     "p2_bookable_instants": 1914,
+     "p2_first_bookable_instant": "2019-01-24",
+     "p2_last_bookable_instant": "2026-09-10",
+     "p2_coverage_primary": 0.960843,
+     "frozen_floor_min_bookable_instants": 1500,
+     "frozen_floor_min_coverage": 0.9
+    },
+    "matches_p2_census": true
+   },
+   "shadows": [
+    {
+     "shadow_id": "v16_close_displace_fade",
+     "mapped_form": "short-horizon close-displacement fade: per event-adjusted leg, z = (close_t - mean(trailing {w} closes)) / stdev(trailing {w} closes, ddof=0); position +1 (short-vol pole) if z >= +{zthr}, -1 (long-vol pole) if z <= -{zthr}, else flat; INVALID inside the window or when the window stdev is 0",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.210309931349,
+     "pearson": -0.218374644773,
+     "pooled_abs_max": 0.218374644773,
+     "margin_to_gate": -0.018374644773,
+     "shadow_state_distribution": {
+      "0.0": 650,
+      "-0.75": 22,
+      "-0.5": 767,
+      "0.5": 348,
+      "-0.25": 92,
+      "0.25": 33,
+      "-1.0": 1,
+      "0.75": 1
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "v17_oi_level",
+     "mapped_form": "position-level conditioning on vol-complex LEVEL states mapped to the granted VIX index close: +1 (short-vol pole) when VIX_t < {lo}, -1 (long-vol pole) when VIX_t > {hi}, else flat",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": 0.408774247707,
+     "pearson": 0.443428686441,
+     "pooled_abs_max": 0.443428686441,
+     "margin_to_gate": -0.243428686441,
+     "shadow_state_distribution": {
+      "1.0": 1201,
+      "0.0": 564,
+      "-1.0": 149
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "dvol_shock",
+     "mapped_form": "large-jump reaction mapped to VIX index jump events: when |VIX_t/VIX_(t-1) - 1| >= {jthr}, hold position -sign(jump) for {hold} grid sessions (buy protection after a vol spike, sell vol after a vol collapse); later shocks refresh the window; flat outside reaction windows; INVALID before the first previous session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": 0.030515116898,
+     "pearson": 0.034099671862,
+     "pooled_abs_max": 0.034099671862,
+     "margin_to_gate": 0.165900328138,
+     "shadow_state_distribution": {
+      "1.0": 757,
+      "-1.0": 650,
+      "0.0": 507
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "momentum_63s",
+     "mapped_form": "trailing {lb}-common-grid-session return sign on the event-adjusted legs, chase form: position -sign(c_t/c_(t-{lb}) - 1) (positive leg momentum -> long the leg == long-vol pole), 0 at exactly zero; INVALID inside the lookback",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": 0.188835715201,
+     "pearson": 0.225554324537,
+     "pooled_abs_max": 0.225554324537,
+     "margin_to_gate": -0.025554324537,
+     "shadow_state_distribution": {
+      "-0.5": 294,
+      "0.5": 1301,
+      "0.0": 93,
+      "0.75": 1,
+      "1.0": 225
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "generic_dow_tue",
+     "mapped_form": "calendar-clock position: +1 (short-vol pole) on Tuesday sessions (weekday == {dow}), flat otherwise; always computable on any grid session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.004721567397,
+     "pearson": -0.007118478841,
+     "pooled_abs_max": 0.007118478841,
+     "margin_to_gate": 0.192881521159,
+     "shadow_state_distribution": {
+      "0.0": 1517,
+      "1.0": 397
+     },
+     "note": null,
+     "documented_inapplicability": null
+    }
+   ],
+   "pooled_abs_max": 0.443428686441,
+   "margin_to_gate": -0.243428686441,
+   "verdict": "VETO",
+   "veto_reasons": [
+    "pooled |rho| 0.443428686441 > margin 0.2"
+   ]
+  },
+  {
+   "proposal_id": "VOLNG1-A4-P2",
+   "path": "research/control/vol_ng1_run/d1/proposals/VOLNG1-A4-P2.json",
+   "sha256": "4ee9a299fed526226cc76c211acd23565fda3522149b7b357907cdb5ebb409d1",
+   "lane": "A4_term_structure_slope",
+   "family_id": "slope_second_difference_regime",
+   "decision_axis": "short_vol_pos_long_vol_neg",
+   "axis_encoding_note": "short-vol pole +1 / flat 0 / long-vol pole -1; for VOLNG1-A5-P2 the bucket-allocation axis is encoded on the same poles by its own declared semantics (front bucket = the short-vol roll-carry pole, mid bucket = the protection pole)",
+   "frozen_defaults_used": {
+    "leg_subset": [
+     "SVXY",
+     "UVXY",
+     "VIXY",
+     "VXX"
+    ],
+    "proxy_leg": "VXX",
+    "proxy_lookback_sessions": 21,
+    "mid_reference_leg": null,
+    "law": "all parameters frozen at the declared neutral defaults in the code commit BEFORE any rho was computed; no threshold moves after any number"
+   },
+   "structural_limitation_verbatim_match_p2": null,
+   "n_bookable_instants": 1914,
+   "decision_state_distribution": {
+    "0.0": 1782,
+    "1.0": 72,
+    "-1.0": 60
+   },
+   "feasibility_renote": {
+    "instants_exist": true,
+    "note": "measurement-window instants exist at D2: the frozen P2 bookable grid carries a valid decision instant at every measured point of this proposal's representation",
+    "n_bookable_instants_remeasured": 1914,
+    "d2_measurement_window": [
+     "2019-01-24",
+     "2026-09-10"
+    ],
+    "p2_census_citation": {
+     "source": "research/control/vol_ng1_run/p2_gate.json sections.a4_term_structure_slope",
+     "p2_gate_json_sha256_remeasured": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3",
+     "p2_lane_verdict": "PASS",
+     "p2_bookable_instants": 1914,
+     "p2_first_bookable_instant": "2019-01-24",
+     "p2_last_bookable_instant": "2026-09-10",
+     "p2_coverage_primary": 0.960843,
+     "frozen_floor_min_bookable_instants": 1500,
+     "frozen_floor_min_coverage": 0.9
+    },
+    "matches_p2_census": true
+   },
+   "shadows": [
+    {
+     "shadow_id": "v16_close_displace_fade",
+     "mapped_form": "short-horizon close-displacement fade: per event-adjusted leg, z = (close_t - mean(trailing {w} closes)) / stdev(trailing {w} closes, ddof=0); position +1 (short-vol pole) if z >= +{zthr}, -1 (long-vol pole) if z <= -{zthr}, else flat; INVALID inside the window or when the window stdev is 0",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.087851777312,
+     "pearson": -0.091315266819,
+     "pooled_abs_max": 0.091315266819,
+     "margin_to_gate": 0.108684733181,
+     "shadow_state_distribution": {
+      "0.0": 650,
+      "-0.75": 22,
+      "-0.5": 767,
+      "0.5": 348,
+      "-0.25": 92,
+      "0.25": 33,
+      "-1.0": 1,
+      "0.75": 1
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "v17_oi_level",
+     "mapped_form": "position-level conditioning on vol-complex LEVEL states mapped to the granted VIX index close: +1 (short-vol pole) when VIX_t < {lo}, -1 (long-vol pole) when VIX_t > {hi}, else flat",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.012701883443,
+     "pearson": -0.023804083876,
+     "pooled_abs_max": 0.023804083876,
+     "margin_to_gate": 0.176195916124,
+     "shadow_state_distribution": {
+      "1.0": 1201,
+      "0.0": 564,
+      "-1.0": 149
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "dvol_shock",
+     "mapped_form": "large-jump reaction mapped to VIX index jump events: when |VIX_t/VIX_(t-1) - 1| >= {jthr}, hold position -sign(jump) for {hold} grid sessions (buy protection after a vol spike, sell vol after a vol collapse); later shocks refresh the window; flat outside reaction windows; INVALID before the first previous session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": 0.087527286622,
+     "pearson": 0.089154683544,
+     "pooled_abs_max": 0.089154683544,
+     "margin_to_gate": 0.110845316456,
+     "shadow_state_distribution": {
+      "1.0": 757,
+      "-1.0": 650,
+      "0.0": 507
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "momentum_63s",
+     "mapped_form": "trailing {lb}-common-grid-session return sign on the event-adjusted legs, chase form: position -sign(c_t/c_(t-{lb}) - 1) (positive leg momentum -> long the leg == long-vol pole), 0 at exactly zero; INVALID inside the lookback",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.051315122549,
+     "pearson": -0.056466617178,
+     "pooled_abs_max": 0.056466617178,
+     "margin_to_gate": 0.143533382822,
+     "shadow_state_distribution": {
+      "-0.5": 294,
+      "0.5": 1301,
+      "0.0": 93,
+      "0.75": 1,
+      "1.0": 225
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "generic_dow_tue",
+     "mapped_form": "calendar-clock position: +1 (short-vol pole) on Tuesday sessions (weekday == {dow}), flat otherwise; always computable on any grid session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.066353301343,
+     "pearson": -0.066206468288,
+     "pooled_abs_max": 0.066353301343,
+     "margin_to_gate": 0.133646698657,
+     "shadow_state_distribution": {
+      "0.0": 1517,
+      "1.0": 397
+     },
+     "note": null,
+     "documented_inapplicability": null
+    }
+   ],
+   "pooled_abs_max": 0.091315266819,
+   "margin_to_gate": 0.108684733181,
+   "verdict": "ELIGIBLE",
+   "veto_reasons": []
+  },
+  {
+   "proposal_id": "VOLNG1-A5-P1",
+   "path": "research/control/vol_ng1_run/d1/proposals/VOLNG1-A5-P1.json",
+   "sha256": "9e3366b29fc7bbe6e6cd8df9cf63c0563b2316c3359cc9d40f55c9794812ddb5",
+   "lane": "A5_risk_premium_state",
+   "family_id": "spread_state_compression_expansion",
+   "decision_axis": "short_vol_pos_long_vol_neg",
+   "axis_encoding_note": "short-vol pole +1 / flat 0 / long-vol pole -1; for VOLNG1-A5-P2 the bucket-allocation axis is encoded on the same poles by its own declared semantics (front bucket = the short-vol roll-carry pole, mid bucket = the protection pole)",
+   "frozen_defaults_used": {
+    "leg_subset": [
+     "SVXY",
+     "UVXY",
+     "VIXY",
+     "VXX"
+    ],
+    "proxy_leg": "VXX",
+    "proxy_lookback_sessions": 21,
+    "mid_reference_leg": null,
+    "law": "all parameters frozen at the declared neutral defaults in the code commit BEFORE any rho was computed; no threshold moves after any number"
+   },
+   "structural_limitation_verbatim_match_p2": true,
+   "n_bookable_instants": 1914,
+   "decision_state_distribution": {
+    "1.0": 565,
+    "0.0": 985,
+    "-1.0": 364
+   },
+   "feasibility_renote": {
+    "instants_exist": true,
+    "note": "measurement-window instants exist at D2: the frozen P2 bookable grid carries a valid decision instant at every measured point of this proposal's representation",
+    "n_bookable_instants_remeasured": 1914,
+    "d2_measurement_window": [
+     "2019-01-24",
+     "2026-09-10"
+    ],
+    "p2_census_citation": {
+     "source": "research/control/vol_ng1_run/p2_gate.json sections.a4_term_structure_slope",
+     "p2_gate_json_sha256_remeasured": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3",
+     "p2_lane_verdict": "PASS",
+     "p2_bookable_instants": 1914,
+     "p2_first_bookable_instant": "2019-01-24",
+     "p2_last_bookable_instant": "2026-09-10",
+     "p2_coverage_primary": 0.960843,
+     "frozen_floor_min_bookable_instants": 1500,
+     "frozen_floor_min_coverage": 0.9
+    },
+    "p2_a5_census_citation": {
+     "source": "research/control/vol_ng1_run/p2_gate.json sections.a5_risk_premium",
+     "p2_lane_verdict": "FEASIBLE",
+     "p2_bookable_instants_state_computable": 1914,
+     "frozen_floor_min_bookable_computable_instants": 1000
+    },
+    "matches_p2_census": true
+   },
+   "shadows": [
+    {
+     "shadow_id": "v16_close_displace_fade",
+     "mapped_form": "short-horizon close-displacement fade: per event-adjusted leg, z = (close_t - mean(trailing {w} closes)) / stdev(trailing {w} closes, ddof=0); position +1 (short-vol pole) if z >= +{zthr}, -1 (long-vol pole) if z <= -{zthr}, else flat; INVALID inside the window or when the window stdev is 0",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": 0.15409361256,
+     "pearson": 0.154081753928,
+     "pooled_abs_max": 0.15409361256,
+     "margin_to_gate": 0.04590638744,
+     "shadow_state_distribution": {
+      "0.0": 650,
+      "-0.75": 22,
+      "-0.5": 767,
+      "0.5": 348,
+      "-0.25": 92,
+      "0.25": 33,
+      "-1.0": 1,
+      "0.75": 1
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "v17_oi_level",
+     "mapped_form": "position-level conditioning on vol-complex LEVEL states mapped to the granted VIX index close: +1 (short-vol pole) when VIX_t < {lo}, -1 (long-vol pole) when VIX_t > {hi}, else flat",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.541553596965,
+     "pearson": -0.511872553366,
+     "pooled_abs_max": 0.541553596965,
+     "margin_to_gate": -0.341553596965,
+     "shadow_state_distribution": {
+      "1.0": 1201,
+      "0.0": 564,
+      "-1.0": 149
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "dvol_shock",
+     "mapped_form": "large-jump reaction mapped to VIX index jump events: when |VIX_t/VIX_(t-1) - 1| >= {jthr}, hold position -sign(jump) for {hold} grid sessions (buy protection after a vol spike, sell vol after a vol collapse); later shocks refresh the window; flat outside reaction windows; INVALID before the first previous session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.030289025442,
+     "pearson": -0.034789906383,
+     "pooled_abs_max": 0.034789906383,
+     "margin_to_gate": 0.165210093617,
+     "shadow_state_distribution": {
+      "1.0": 757,
+      "-1.0": 650,
+      "0.0": 507
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "momentum_63s",
+     "mapped_form": "trailing {lb}-common-grid-session return sign on the event-adjusted legs, chase form: position -sign(c_t/c_(t-{lb}) - 1) (positive leg momentum -> long the leg == long-vol pole), 0 at exactly zero; INVALID inside the lookback",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.075860453664,
+     "pearson": -0.078154334311,
+     "pooled_abs_max": 0.078154334311,
+     "margin_to_gate": 0.121845665689,
+     "shadow_state_distribution": {
+      "-0.5": 294,
+      "0.5": 1301,
+      "0.0": 93,
+      "0.75": 1,
+      "1.0": 225
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "generic_dow_tue",
+     "mapped_form": "calendar-clock position: +1 (short-vol pole) on Tuesday sessions (weekday == {dow}), flat otherwise; always computable on any grid session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": 0.000740596757,
+     "pearson": 0.000577712031,
+     "pooled_abs_max": 0.000740596757,
+     "margin_to_gate": 0.199259403243,
+     "shadow_state_distribution": {
+      "0.0": 1517,
+      "1.0": 397
+     },
+     "note": null,
+     "documented_inapplicability": null
+    }
+   ],
+   "pooled_abs_max": 0.541553596965,
+   "margin_to_gate": -0.341553596965,
+   "verdict": "VETO",
+   "veto_reasons": [
+    "pooled |rho| 0.541553596965 > margin 0.2"
+   ]
+  },
+  {
+   "proposal_id": "VOLNG1-A5-P2",
+   "path": "research/control/vol_ng1_run/d1/proposals/VOLNG1-A5-P2.json",
+   "sha256": "b1a0a1e2ebf6e705c1788639731d6e880958fd945c319bcc55a3d4d2ef8924b4",
+   "lane": "A5_risk_premium_state",
+   "family_id": "premium_state_asymmetry_short_vs_mid",
+   "decision_axis": "front_bucket_pos_mid_bucket_neg",
+   "axis_encoding_note": "short-vol pole +1 / flat 0 / long-vol pole -1; for VOLNG1-A5-P2 the bucket-allocation axis is encoded on the same poles by its own declared semantics (front bucket = the short-vol roll-carry pole, mid bucket = the protection pole)",
+   "frozen_defaults_used": {
+    "leg_subset": [
+     "SVXY",
+     "UVXY",
+     "VIXY",
+     "VXX",
+     "VIXM",
+     "VXZ"
+    ],
+    "proxy_leg": "VXX",
+    "proxy_lookback_sessions": 21,
+    "mid_reference_leg": "VXZ",
+    "law": "all parameters frozen at the declared neutral defaults in the code commit BEFORE any rho was computed; no threshold moves after any number"
+   },
+   "structural_limitation_verbatim_match_p2": true,
+   "n_bookable_instants": 1914,
+   "decision_state_distribution": {
+    "0.0": 1669,
+    "1.0": 122,
+    "-1.0": 123
+   },
+   "feasibility_renote": {
+    "instants_exist": true,
+    "note": "measurement-window instants exist at D2: the frozen P2 bookable grid carries a valid decision instant at every measured point of this proposal's representation",
+    "n_bookable_instants_remeasured": 1914,
+    "d2_measurement_window": [
+     "2019-01-24",
+     "2026-09-10"
+    ],
+    "p2_census_citation": {
+     "source": "research/control/vol_ng1_run/p2_gate.json sections.a4_term_structure_slope",
+     "p2_gate_json_sha256_remeasured": "306dba305021ae3e95924d82060ba5b70bcb19e4757281bef69e71f8e26717e3",
+     "p2_lane_verdict": "PASS",
+     "p2_bookable_instants": 1914,
+     "p2_first_bookable_instant": "2019-01-24",
+     "p2_last_bookable_instant": "2026-09-10",
+     "p2_coverage_primary": 0.960843,
+     "frozen_floor_min_bookable_instants": 1500,
+     "frozen_floor_min_coverage": 0.9
+    },
+    "p2_a5_census_citation": {
+     "source": "research/control/vol_ng1_run/p2_gate.json sections.a5_risk_premium",
+     "p2_lane_verdict": "FEASIBLE",
+     "p2_bookable_instants_state_computable": 1914,
+     "frozen_floor_min_bookable_computable_instants": 1000
+    },
+    "matches_p2_census": true
+   },
+   "shadows": [
+    {
+     "shadow_id": "v16_close_displace_fade",
+     "mapped_form": "short-horizon close-displacement fade: per event-adjusted leg, z = (close_t - mean(trailing {w} closes)) / stdev(trailing {w} closes, ddof=0); position +1 (short-vol pole) if z >= +{zthr}, -1 (long-vol pole) if z <= -{zthr}, else flat; INVALID inside the window or when the window stdev is 0",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX",
+      "VIXM",
+      "VXZ"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.023440665943,
+     "pearson": -0.027457393281,
+     "pooled_abs_max": 0.027457393281,
+     "margin_to_gate": 0.172542606719,
+     "shadow_state_distribution": {
+      "0.0": 451,
+      "-0.8333333333333334": 6,
+      "-0.6666666666666666": 552,
+      "-0.3333333333333333": 186,
+      "0.6666666666666666": 308,
+      "-0.5": 88,
+      "0.3333333333333333": 138,
+      "-0.16666666666666666": 84,
+      "0.16666666666666666": 69,
+      "0.5": 31,
+      "0.8333333333333334": 1
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "v17_oi_level",
+     "mapped_form": "position-level conditioning on vol-complex LEVEL states mapped to the granted VIX index close: +1 (short-vol pole) when VIX_t < {lo}, -1 (long-vol pole) when VIX_t > {hi}, else flat",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX",
+      "VIXM",
+      "VXZ"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.023069443063,
+     "pearson": -0.033231363806,
+     "pooled_abs_max": 0.033231363806,
+     "margin_to_gate": 0.166768636194,
+     "shadow_state_distribution": {
+      "1.0": 1201,
+      "0.0": 564,
+      "-1.0": 149
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "dvol_shock",
+     "mapped_form": "large-jump reaction mapped to VIX index jump events: when |VIX_t/VIX_(t-1) - 1| >= {jthr}, hold position -sign(jump) for {hold} grid sessions (buy protection after a vol spike, sell vol after a vol collapse); later shocks refresh the window; flat outside reaction windows; INVALID before the first previous session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX",
+      "VIXM",
+      "VXZ"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.006667364122,
+     "pearson": -0.006731983005,
+     "pooled_abs_max": 0.006731983005,
+     "margin_to_gate": 0.193268016995,
+     "shadow_state_distribution": {
+      "1.0": 757,
+      "-1.0": 650,
+      "0.0": 507
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "momentum_63s",
+     "mapped_form": "trailing {lb}-common-grid-session return sign on the event-adjusted legs, chase form: position -sign(c_t/c_(t-{lb}) - 1) (positive leg momentum -> long the leg == long-vol pole), 0 at exactly zero; INVALID inside the lookback",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX",
+      "VIXM",
+      "VXZ"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": 0.070225218007,
+     "pearson": 0.0529707364,
+     "pooled_abs_max": 0.070225218007,
+     "margin_to_gate": 0.129774781993,
+     "shadow_state_distribution": {
+      "-0.6666666666666666": 289,
+      "0.3333333333333333": 160,
+      "0.0": 212,
+      "0.5": 2,
+      "0.6666666666666666": 1079,
+      "0.8333333333333334": 2,
+      "1.0": 83,
+      "-0.3333333333333333": 83,
+      "0.16666666666666666": 4
+     },
+     "note": null,
+     "documented_inapplicability": null
+    },
+    {
+     "shadow_id": "generic_dow_tue",
+     "mapped_form": "calendar-clock position: +1 (short-vol pole) on Tuesday sessions (weekday == {dow}), flat otherwise; always computable on any grid session",
+     "leg_subset": [
+      "SVXY",
+      "UVXY",
+      "VIXY",
+      "VXX",
+      "VIXM",
+      "VXZ"
+     ],
+     "status": "MEASURED",
+     "n_bookable_instants": 1914,
+     "n_invalid_dropped": 0,
+     "n_used": 1914,
+     "spearman": -0.010058045318,
+     "pearson": -0.010057872361,
+     "pooled_abs_max": 0.010058045318,
+     "margin_to_gate": 0.189941954682,
+     "shadow_state_distribution": {
+      "0.0": 1517,
+      "1.0": 397
+     },
+     "note": null,
+     "documented_inapplicability": null
+    }
+   ],
+   "pooled_abs_max": 0.070225218007,
+   "margin_to_gate": 0.129774781993,
+   "verdict": "ELIGIBLE",
+   "veto_reasons": []
+  }
+ ],
+ "summary": {
+  "verdicts": {
+   "VOLNG1-A4-P1": "VETO",
+   "VOLNG1-A4-P2": "ELIGIBLE",
+   "VOLNG1-A5-P1": "VETO",
+   "VOLNG1-A5-P2": "ELIGIBLE"
+  },
+  "eligible": [
+   "VOLNG1-A4-P2",
+   "VOLNG1-A5-P2"
+  ],
+  "veto": [
+   "VOLNG1-A4-P1",
+   "VOLNG1-A5-P1"
+  ],
+  "veto_pending": []
+ },
+ "test_command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/vol-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_vol_ng1_d2.py -q",
+ "test_verdict_note": "the packet test command (tests/test_vol_ng1_d2.py) is run against the committed panel after the results commit; its authoritative exit_code is recorded in the D2 structured handoff (the panel cannot embed its own post-commit test run)",
+ "no_pnl_note": "this panel contains decision-state correlations only: no returns conditional on states, no expectancies, no scoring, no PnL numbers (Q-6)"
+}
