@@ -1,0 +1,101 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "commodities-ng1-d2-novelty",
+  "cycle_id": "COMMODITIES-NG1",
+  "role": "quant-implementer",
+  "lane": "D2 measured novelty (invocation lead-bg-comm-d2; store task commodities-ng1-d2-novelty)",
+  "dispatch_sha": "5cb5a010d1086bd9e672e5c2616360bf81ae21b0",
+  "actual_start_sha": "5cb5a010d1086bd9e672e5c2616360bf81ae21b0",
+  "commit_sha": "PENDING_COMMIT_2_FILLED_IN_INBOX_COPY",
+  "p12_two_commit_law": {
+    "commit_1_sha": "36e31db2c9def500488e4d67e9f48d38e178a01c",
+    "commit_1_subject": "COMMODITIES-NG1 D2 code: shadow reconstructions + representation mapping (P-12, no numbers)",
+    "commit_1_law": "measurement code + shadow-reconstruction definitions + representation mapping + frozen default parameters; NO rho numbers in any commit-1 file (enforced by tests/test_commodities_ng1_d2.py negative scans, incl. an AST scan and a targeted-regex scan tested against violating fixtures)",
+    "commit_2_sha_committed_copy_note": "SELF_REFERENTIAL_NOTE: this committed copy sits inside the substance commit itself; the authoritative SHA is carried by the inbox copy at .runtime/orchestrator_v3/inbox/commodities-ng1-d2-novelty-handoff.json and by git log of this path",
+    "commit_2_subject": "COMMODITIES-NG1 D2 results: novelty panel (pooled rho, margins, verdicts)"
+  },
+  "changed_paths": [
+    "research/control/commodities_ng1_run/d2/measure_novelty.py",
+    "research/control/commodities_ng1_run/d2/feasibility_renote.json",
+    "research/control/commodities_ng1_run/d2/d2_novelty_panel.json",
+    "tests/test_commodities_ng1_d2.py",
+    "research/control/COMMODITIES-NG1/orchestration/handoffs/d2-novelty-handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_commodities_ng1_d2.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "run 1 at commit-1: 34 passed, 8 skipped (panel-schema tests skip by design before the panel exists); run 2 at commit-2: 42 passed, 0 skipped, exit 0"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_commodities_ng1_p0.py tests/test_commodities_ng1_p1.py tests/test_commodities_ng1_p2.py tests/test_commodities_ng1_d1.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "102 passed (P0/P1/P2/D1 regression; upstream artifacts untouched)"
+    }
+  ],
+  "authority_claims": [],
+  "measurement_summary": {
+    "law": "decision-STATE series correlation ONLY; NO returns, NO PnL, NO scored outcomes anywhere; pooled = max(|spearman|, |pearson|) per shadow on the pooled pairwise-complete observation set stacked across the 11 bookable pairs; proposal pooled = max over shadows; pooled |rho| <= 0.20 = ELIGIBLE else VETO (dispatch packet); margin to 0.20 recorded per P-2",
+    "parameters_frozen": "neutral/median defaults frozen at commit-1 BEFORE any rho (documented in-code with rationale): percentile window 104 weekly reports (incl. current), symmetric 10% tails, A4-P1 holding 4 instants, A4-P2 carry bound 13 + opposing-flow trigger tau 0.02 (OI-normalized geometry) + price analogue tau 0.02, A5-P2 accel window 4 reports + holding 4, momentum_63s = 63 sessions, v16 = 5 sessions; anchor sign conventions frozen and documented (verdicts invariant to global sign flips)",
+    "representation": "per-proposal OWN declared representation: P2 counted weekly decision grid (release >= 2018-01-01, 52-instant warmup carve-out, mapped decision sessions only; 401 instants per pair), re-derived from the committed P2 code and asserted IDENTICAL to p2_gate per_pair_census fail-closed; CoT facts PIT-visible only (P0 rule imported); price facts = RAW ETP closes strictly before the decision session; 11 bookable pairs = the D1-declared fully-costed set (9 transaction-only legs excluded as declared)",
+    "results": {
+      "COMMNG1-A4-P1": {
+        "verdict": "VETO",
+        "proposal_pooled_abs_rho": 0.365819493644,
+        "driving_shadow": "price_only_shadow",
+        "margin_to_ceiling": -0.165819493644
+      },
+      "COMMNG1-A4-P2": {
+        "verdict": "ELIGIBLE",
+        "proposal_pooled_abs_rho": 0.109559271631,
+        "driving_shadow": "momentum_63s",
+        "margin_to_ceiling": 0.090440728369
+      },
+      "COMMNG1-A5-P1": {
+        "verdict": "VETO",
+        "proposal_pooled_abs_rho": 0.634461186619,
+        "driving_shadow": "price_only_shadow",
+        "margin_to_ceiling": -0.434461186619
+      },
+      "COMMNG1-A5-P2": {
+        "verdict": "VETO",
+        "proposal_pooled_abs_rho": 0.284737541673,
+        "driving_shadow": "price_only_shadow",
+        "margin_to_ceiling": -0.084737541673
+      }
+    },
+    "per_shadow_detail": "all 16 (proposal x shadow) cells MEASURED at n=4411 observations each (11 pairs x 401 counted instants; zero degeneracy, zero UNMEASURABLE cells); per-pair Spearman/Pearson, worst-pair disclosures and margins in d2_novelty_panel.json",
+    "headline": "3 of 4 proposals VETOED at the D2 novelty gate, each driven by its OWN price-only re-clock (A4-P1 0.366, A5-P1 0.634 - which is additionally v16-class at 0.630, A5-P2 0.285); A4-P2 (crowd-carry persistence) survives with pooled 0.110, margin +0.090; the release-clock shadow is negligible everywhere (max 0.037 pooled)"
+  },
+  "known_limitations": [
+    "Decision-STATE correlation only: the gate measures whether the anchors' position series are reproducible by dead ancestry families; it does NOT score any outcome. Survivability at D2 (A4-P2 ELIGIBLE) is a novelty verdict, not an expectancy claim; all downstream gates (S freeze, I, E under the heavy lock) still apply.",
+    "Parameters were frozen at declared neutral/median defaults (documented per-parameter in measure_novelty.py), not tuned; the A4-P2 ELIGIBLE margin (+0.090) is parameter-set-specific by construction of the freeze law (no post-hoc parameter search was run, per P-12/P-2).",
+    "The generic_dow_tue mapping on a weekly grid is the calendar clock's only admissible form: fixed side +1 on canonical post-Friday-release Monday sessions, -1 on holiday-shifted sessions; its near-degeneracy is inherent to the weekly representation and it measured MEASURED (non-zero variance) with negligible pooled rho everywhere (max 0.037).",
+    "Price-side warmup chains extend to the full measured substrate from 2016 while the MEASURED set is only the P2 counted window; the A4 price-only shadows' displacement-percentile coordinate needs ~4y of weekly history, so their per-pair observation counts start later inside the counted window (pairwise-complete pooling; exact n per shadow/pair recorded in the panel).",
+    "Pairs sharing a CoT market (001602 x DBA/WEAT, 002602 x CORN/DBA, 005602 x DBA/SOYB, 088691 x GLD/IAU) share the same CoT-side anchor geometry; pooling across the 11 declared bookable pairs follows the dispatch formula and the D1 bookable-set declaration."
+  ],
+  "incidents": [],
+  "tree_status": "clean after commit-2 (owned paths staged by explicit pathspec only)",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/commodities_ng1_run/d2/d2_novelty_panel.json",
+      "sha256": "991905eb886af91607a6a7f80f632c788c73aa6fb006c045c83088f5cc8e9969"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/d2/measure_novelty.py",
+      "sha256": "82becd890393a9f512cba6edd052f5f86d0052dec8a3b37a426b6c54db255450"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/d2/feasibility_renote.json",
+      "sha256": "dc18fcff19fe640c1ac88416a40651994796aebee50e8615b9e8a92896b41c7a"
+    },
+    {
+      "path": "tests/test_commodities_ng1_d2.py",
+      "sha256": "5a3c7cbf26ada4505583f880dd9abb2f3d1b1752938efc3641a1d125e9b171fa"
+    }
+  ],
+  "recommended_next_action": "Carry the D2 verdicts to S freeze per the frozen rubric (plan section 6): COMMNG1-A4-P2 is the only novelty-ELIGIBLE proposal (pooled 0.110, margin +0.090 vs the 0.20 ceiling) and proceeds to its own control battery / parameter freeze at S under the A4 family budget; A4-P1, A5-P1, A5-P2 are D2-VETOED (price-only re-clock reproduces them beyond the ceiling) and must be recorded as killed-by-ancestry, never selected; a correct COMMODITIES_NG1_REJECT_ALL remains a successful research run."
+}
