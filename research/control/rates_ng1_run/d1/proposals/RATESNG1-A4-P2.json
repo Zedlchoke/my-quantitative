@@ -1,0 +1,214 @@
+{
+  "schema": "rates_ng1_run/d1_proposal@1",
+  "cycle_id": "RATES-NG1",
+  "task_id": "rates-ng1-d1-proposals",
+  "proposal_id": "RATESNG1-A4-P2",
+  "lane": "A4",
+  "lane_name": "auction-supply clock",
+  "title": "Auction-pipeline sequencing: announcement-to-settlement stage clock with forced primary-dealer warehousing",
+  "authored_utc": "2026-09-12T03:21:28+00:00",
+  "base_sha": "59b8de30c435bb44e1a3d93c6b2cc41e04cb8217",
+  "blindness_declaration": {
+    "status": "OUTCOME_BLIND",
+    "law": "This document is authored before anyone measures anything for this lane. It declares a mechanism, a rule FAMILY and a representation identity. It contains no outcome numbers, no price/yield signal arithmetic, no conditioning of any price series on any state, and no measurement that the D2/I stages will run. Structural facts cited here are read from committed P0/P1/P2 artifacts only."
+  },
+  "mechanism": {
+    "narrative": "Every auctioned security travels a fixed, pre-announced pipeline: announcement (terms known at once: cusip, securityType, securityTerm, auction date, issue date), then the auction itself, then issue/settlement, then seasoning. The pipeline has zero surprise content by construction: every date is published at the announcement. What is stage-dependent is the RISK the forced participant must carry. The primary dealer must pre-position hedges the day terms are announced, must bid at the auction, and must then warehouse the new security from settlement until it seasons into eligible indexes; the warehousing interval is a forced inventory carry whose length is set by the official calendar (issueDate relative to announcementDate), not chosen by the dealer. A decision instant therefore sits in an identifiable stage of a known event's pipeline, and the dealer's forced flow (pre-positioning versus post-settlement warehousing) differs by stage. This proposal conditions on the pipeline stage at each decision instant, derived by date arithmetic from the PIT census fields relative to the decision session. It differs from the dead policy-clock forms at the mechanism level: an FOMC-style clock conditions on an information RELEASE with unknown content; the auction pipeline carries no release surprise at all, only dated, pre-announced supply mechanics.",
+    "forced_participant": {
+      "who": "the primary dealer warehousing the newly issued security between settlement and index seasoning",
+      "why_forced": "must bid at the auction and must carry the new security from its official issueDate; the carry length is set by the published calendar; balance-sheet and risk limits bind during the carry, so any adjustment flow the carry forces is timed by the pipeline, not by the dealer",
+      "late_participant": "index and mandate-bound funds that can only make room for the seasoned security at index-add dates, after the dealer's carry window has already run"
+    },
+    "information_source": "official Treasury auction announcement calendar only (PIT census fields: announcementDate, auctionDate, issueDate, securityType, securityTerm, cusip); no prices, no yields, no survey or consensus data",
+    "state_definition_symbolic": "stage bucket s(t, e) = which of {announcement-era, auction-era, settlement-era} contains decision session t relative to event e's official dates, for the nearest eligible event(s); stage boundaries and the nearest-event rule are SYMBOLIC here and freeze at D2/S selection, never after"
+  },
+  "decision_rule_family": "event-window position with state-conditioned direction by frozen sign convention; state = auction-pipeline stage bucket at the decision instant (announcement-era / auction-era / settlement-era), derived from PIT date arithmetic on the committed auction census; executed on the frozen ETP leg set; holding = fixed event window symbolic until D2/S; direction sign and all stage boundaries frozen at selection, never tuned after any measurement",
+  "representation_identity": {
+    "law": "P-12: code AND representation are committed before any number is cited; this declaration names the exact representation and cites every committed artifact by sha256; nothing here is measured",
+    "grid": {
+      "definition": "16:00 America/New_York close decision grid on the P2 common grid (intersection of an official S5 curve-CSV row and an EOD bar for ALL FOUR frozen legs), 252-session warmup carve-out, bookable instants only",
+      "decision_instant": "the 16:00 NY close of each bookable session (21:00Z in EST, 20:00Z in EDT; DST via zoneinfo)",
+      "bookable_count": 1918,
+      "grid_session_count": 2170,
+      "warmup_sessions": 252,
+      "coverage_fraction": 0.955947,
+      "bookable_window": ["2019-01-07", "2026-09-11"],
+      "path": "research/control/rates_ng1_run/p2_grid_census.json",
+      "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8"
+    },
+    "series": {
+      "curve": {
+        "source": "S5 Treasury daily par-yield curve, per-year official CSVs (keyless)",
+        "census_pin": {
+          "path": "research/control/rates_ng1_run/p0_treasury_census.json",
+          "sha256": "d52b7d0afdd20fa718a9f26d1cb3b01df4979efd9b84901d547fc73eaa6572ed"
+        },
+        "years_pulled": 37,
+        "raw_bytes_manifest_pin": {
+          "path": "research/control/rates_ng1_run/substrate_manifest.json",
+          "sha256": "1f30ae46bd17f4172b20def7c14b6488c8a9171e6787c70adb943fb26d868e50"
+        },
+        "consumption": "ONLY via consume_via_plane; P0 shadow-parity (digest equality of plane-read vs raw bytes) PASSED",
+        "shadow_parity_pin": {
+          "path": "research/control/rates_ng1_run/p0_shadow_parity.json",
+          "sha256": "aab010ae2c0cbc48eeeeebf29a268526e0596620239d3dc8079b8b9378a57ce7"
+        }
+      },
+      "etp_legs": {
+        "legs": ["TLT", "IEF", "IEI", "SHY"],
+        "channel": "EODHD family-1 RAW primary EOD (unadjusted), adj-channel cross-check equal (zero corp-action steps), per the P0 census",
+        "census_pin": {
+          "path": "research/control/rates_ng1_run/p0_etp_census.json",
+          "sha256": "208388e05233f6db09c327b6c9240ebd2ff95df0a9993f68d42917d605949886"
+        },
+        "rows_per_leg": [
+          { "leg": "TLT", "rows": 6071 },
+          { "leg": "IEF", "rows": 6071 },
+          { "leg": "IEI", "rows": 4948 },
+          { "leg": "SHY", "rows": 6071 }
+        ],
+        "series_digests_of": "RAW EOD series digests recorded inside the P0 census (cited, not re-pinned here)",
+        "series_digests": {
+          "TLT": "a2f307e862e6692a57269e33adbddc5a22e5f23bf4b986e92c54ea0f069720c4",
+          "IEF": "81126064b6073495db2ff1143df9c6fccb5088b10e378ca730a957f6605392b1",
+          "IEI": "4112f64bfa525e75bda968b0b892e3d2315e11c1ebe4d2bcf9c53e5563d5eae0",
+          "SHY": "9916ea8e60370b67176004f5d7f0fd3d003007afeae47d17f72e4d25eb6a3dae"
+        }
+      }
+    },
+    "event_mapping": {
+      "law": "PIT later-bound (P1 clock semantics, materialized at P2): the PIT instant is the end of the announced NY day; the same-day close is REFUSED; the decision session is the FIRST common-grid session STRICTLY AFTER the PIT instant; stage arithmetic additionally uses auctionDate and issueDate from the same census records, always compared to decision sessions that are STRICTLY AFTER the announcement PIT instant",
+      "path": "research/control/rates_ng1_run/p2_auction_eligibility.json",
+      "sha256": "71411ace6061848f988f63d790c20352835a53f62fc688159b54748c35d7b48b",
+      "upstream_census_pin": {
+        "path": "research/control/rates_ng1_run/p0_auction_census.json",
+        "sha256": "de129dd574b84995c48cc99305ef17f0e52c47c912578db3d9d5027c8fa1bd1a"
+      },
+      "event_count": 3555,
+      "events_bill": 2637,
+      "events_note": 716,
+      "events_bond": 202,
+      "announcement_window": ["2018-01-04", "2026-09-10"],
+      "clock_authority_cross_check": "all_agree=true: research/assets/rates_ng1/clock.py::first_decision_after_pit vs the deterministic fast path, per the committed P2 artifact",
+      "state_derivation": "at D2/I the stage state uses ONLY the census calendar fields by date arithmetic; never prices"
+    },
+    "decision_instant_law": {
+      "law": "V7 close+1: the EOD bar dated the previous common-grid session is first readable at the 16:00 NY close of each bookable session; no same-day reads; curve facts of calendar day d are PIT-available only from the first decision instant at/after the close+1 session of d",
+      "authority": "research/assets/rates_ng1/clock.py (P1) materialized per bookable instant in p2_grid_census.json (bookable_instants list)"
+    }
+  },
+  "ancestry_risk_statement": {
+    "declaration": "This proposal names the pooled kill-candidate shadows it must be novel against (plan section 1; D2 pooled |rho| screen) and states, per shadow, why its information differs. This is the claim D2 will test; if any claim is false, the proposal dies at D2 by the screen or by its own battery.",
+    "named_kill_candidates": [
+      {
+        "shadow": "DGS10-level nominal-exposure forms (falsification-by-control #14 FX-V8; #15 FOREX-NG1 CTL-DGS10LEVEL)",
+        "why_different": "the conditioning state is the event-relative pipeline STAGE from official calendar dates, a categorical clock position with no level, no level change and no price input at declaration time; if the stage buckets secretly rank sessions by prevailing yield level (e.g. because long-lag events cluster in certain rate regimes), the DGS10-level control class in the D2 veto set plus the A5-family decomposition control kills the proposal, and this statement is honestly flagged as the first thing D2 should test"
+      },
+      {
+        "shadow": "FX 16:00-NY reaction-direction and release-order forms (V7/V8/V9/FOREX-NG1)",
+        "why_different": "release-order forms trade ORDERING of information releases with unknown content; every date in this pipeline is published at announcement, so there is no release, no surprise and no reaction direction to order; the state is pure pre-announced supply staging"
+      },
+      {
+        "shadow": "momentum_63s",
+        "why_different": "momentum_63s is a time-series price-momentum clock; the stage state is event-relative calendar position with no price input whatsoever at declaration time, and momentum_63s sits in the D2 pooled novelty veto set"
+      },
+      {
+        "shadow": "generic_dow_tue",
+        "why_different": "generic_dow_tue is a bare weekday clock; the stage state is anchored to each event's own announcement/auction/issue dates, which move across weekdays across the window; the clock-only shadow arm (all events pooled, no stages) is the designated executioner if the bare calendar explains everything"
+      }
+    ]
+  },
+  "control_battery_spec": {
+    "law": "lane A4 battery per plan section 6: delay-pair, clairvoyant (Q-4), clock-only shadow, shifted-calendar placebo; every arm reports invalid vs null DISTINCTLY (Q-11): an arm with fewer eligible instants than the frozen minimum is NOT_RUN/invalid, never zero; all arms run on the identical bookable grid and identical frozen cost treatment (tier 2.0, once per fill)",
+    "arms": [
+      {
+        "role": "ANCHOR",
+        "name": "stage-conditioned event-window arm",
+        "spec": "the declared rule family: event-window position on the frozen ETP legs, direction by frozen sign convention, state = pipeline stage bucket from PIT date arithmetic",
+        "kill_semantics": "anchor; killed by any designated KILLER control out-earning it (see falsification_rule)"
+      },
+      {
+        "role": "DELAY_PAIR",
+        "name": "two-delay placement pair",
+        "spec": "the identical rule evaluated at two declared delays: D0 = the P2 later-bound decision session, D1 = the next common-grid session after D0; both arms reported side by side",
+        "kill_semantics": "diagnostic for clock-placement artifacts; informs the D2 report, does not kill alone"
+      },
+      {
+        "role": "CLAIRVOYANT",
+        "name": "clairvoyant upper-bound arm (Q-4)",
+        "spec": "same event windows, but the stage-to-direction mapping and leg selection are granted full-sample knowledge no live process could have; ceiling reference only",
+        "kill_semantics": "NEVER selectable at S (P-15 smoke kills-never-selects); bounds how much a perfect oracle of this state could earn; invalid vs null recorded (Q-11)"
+      },
+      {
+        "role": "CLOCK_ONLY_SHADOW",
+        "name": "bare pipeline-clock shadow (no stages)",
+        "spec": "identical event windows and holding, fixed direction sign, all eligible events pooled with NO stage distinction",
+        "kill_semantics": "DESIGNATED KILLER: if the pooled calendar out-earns the stage-conditioned anchor, the stage structure adds nothing over a generic event clock and the proposal dies"
+      },
+      {
+        "role": "SHIFTED_CALENDAR_PLACEBO",
+        "name": "shifted-calendar placebo",
+        "spec": "the identical stage machinery evaluated on the auction calendar shifted by a fixed offset (symbolic N, frozen at selection, chosen to break stage alignment with the true settlement dates without creating a new one)",
+        "kill_semantics": "DESIGNATED KILLER: if the placebo out-earns the anchor, the staging effect is calendar-structure-independent and the proposal dies"
+      }
+    ]
+  },
+  "feasibility_citation": {
+    "floors": { "min_bookable_instants": 1500, "min_grid_eligible_events": 150 },
+    "measured": { "bookable_count": 1918, "event_count": 3555 },
+    "verdict_basis": "P2 gate verdict PASS for lane A4: 3555 grid-eligible events >= 150 and 1918 bookable instants >= 1500 (Q-6 feasibility floors; cost projections only, no outcome content in any floor artifact)",
+    "floor_artifacts": [
+      {
+        "path": "research/control/rates_ng1_run/p2_auction_eligibility.json",
+        "sha256": "71411ace6061848f988f63d790c20352835a53f62fc688159b54748c35d7b48b",
+        "role": "auction PIT grid-eligibility census (3555 events, floor 150)"
+      },
+      {
+        "path": "research/control/rates_ng1_run/p2_grid_census.json",
+        "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8",
+        "role": "bookable-instant census (1918 instants, floor 1500)"
+      },
+      {
+        "path": "research/control/rates_ng1_run/p2_gate.json",
+        "sha256": "dc342b71b811ea829702019bbc5ab25b5b0508e0f13c3eb50b382f34d22680c9",
+        "role": "P2 feasibility gate (lane A4 FEASIBLE)"
+      }
+    ],
+    "cost_ceilings_cited": {
+      "contract": {
+        "path": "research/control/rates_ng1_run/p1_cost_contract.json",
+        "sha256": "e7db0eef3cf40e334d519fb7dc92cefa0c5913994eb55ffc9d03f69dd936c67c",
+        "role": "FROZEN tier-2.0 cost contract (once per fill; CS p90 stress tiers; ACT/365F ER drag)"
+      },
+      "holding_trading_days": 5,
+      "calendar_days_charged": 7,
+      "per_leg_stress_tier_bps": [
+        { "leg": "TLT", "stress_tier_bps": 49.17915491263504 },
+        { "leg": "IEF", "stress_tier_bps": 22.710222433052532 },
+        { "leg": "IEI", "stress_tier_bps": 12.738355852451367 },
+        { "leg": "SHY", "stress_tier_bps": 5.979816345415081 }
+      ],
+      "per_leg_worst_case_round_trip_ceiling_bps": [
+        { "leg": "TLT", "worst_case_round_trip_ceiling_bps": 98.6459810581468 },
+        { "leg": "IEF", "worst_case_round_trip_ceiling_bps": 45.708116098981776 },
+        { "leg": "IEI", "worst_case_round_trip_ceiling_bps": 25.764382937779445 },
+        { "leg": "SHY", "worst_case_round_trip_ceiling_bps": 12.247303923706875 }
+      ],
+      "note": "COST PROJECTIONS ONLY, cited from the committed P1/P2 artifacts; no outcome content"
+    }
+  },
+  "falsification_rule": {
+    "statement": "KILL if, at D2/I on the identical bookable grid and window under the identical frozen cost treatment, EITHER designated KILLER control (the shifted-calendar placebo or the pooled bare-pipeline-clock shadow) earns a strictly greater after-cost per-decision edge than the stage-conditioned ANCHOR arm. A placebo matching the anchor means the staging effect is calendar-structure-independent; a pooled shadow matching the anchor means the stage structure adds nothing over a generic event clock. Declared now, outcome-blind; measurable later from the committed arms alone.",
+    "declared_at": "D1, before any measurement",
+    "measurable_at": "D2/I",
+    "killer_controls": ["SHIFTED_CALENDAR_PLACEBO", "CLOCK_ONLY_SHADOW"]
+  },
+  "selection_rubric_note": {
+    "rubric": "plan section 6, frozen BEFORE D1 dispatch: mechanism; pooled |rho| <= ceiling vs inventory incl. named shadows with margin recorded (P-2); Q-6 feasibility (no outcome content); control battery runnable with invalid-null distinction (Q-11); budget cells; distinct arm_config_digest; preregistered ranking; smoke kills-never-selects (P-15)",
+    "novelty_abs_rho_ceiling": 0.2,
+    "families_max": 2,
+    "arms_per_family_max": 3,
+    "cell_budget": 6,
+    "constraint": "the two lane-A4 proposals share the A4 family budget of at most 3 selectable arms x distinct arm_config_digest; how the budget is allocated across sibling proposals is a D2/S decision, never moved after a scored number"
+  }
+}

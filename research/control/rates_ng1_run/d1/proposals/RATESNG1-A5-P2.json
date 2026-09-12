@@ -1,0 +1,203 @@
+{
+  "schema": "rates_ng1_run/d1_proposal@1",
+  "cycle_id": "RATES-NG1",
+  "task_id": "rates-ng1-d1-proposals",
+  "proposal_id": "RATESNG1-A5-P2",
+  "lane": "A5",
+  "lane_name": "curve-shape structure",
+  "title": "Front-end versus belly dislocation with delayed carry-financing rebalancing",
+  "authored_utc": "2026-09-12T03:21:28+00:00",
+  "base_sha": "59b8de30c435bb44e1a3d93c6b2cc41e04cb8217",
+  "blindness_declaration": {
+    "status": "OUTCOME_BLIND",
+    "law": "This document is authored before anyone measures anything for this lane. It declares a mechanism, a rule FAMILY and a representation identity. It contains no outcome numbers, no price/yield signal arithmetic, and no measurement that the D2/I stages will run. The front-end-versus-belly residual named here is a DECLARATION of what D2/I will compute from the committed curve rows; it is not computed in this file, and no descriptive statistic of any curve series appears here. Structural facts cited are read from committed P0/P1/P2 artifacts only."
+  },
+  "mechanism": {
+    "narrative": "Condition on the front-end versus belly residual of the official curve (the bill/2-year class against the interpolated belly), with the level coordinate removed. The declared participant is late for an institutional reason: leveraged carry traders financing curve positions in the repo market face financing terms that reset on maintenance and term cadences, so when a front-belly dislocation appears, the carry response cannot act immediately; it is delayed until the next financing reset. Until that reset the dislocation is not fully arbitraged and can extend, which is exactly the interval the proposal conditions on. The economic claim: front-belly dislocation states, once the level factor is removed, carry information that a pure funding or level view does not, because their resolution is timed by an institutional financing calendar, late and mechanical, rather than by continuous arbitrage. Execution is a paired-leg ETP spread (a front-duration bucket against a belly bucket, mapping symbolic until D2/S), deliberately hedging the residual duration so the position is a shape position rather than a nominal-level position. Honest admission: front-end dislocations often coincide with policy-adjacent dates and with shifts in the general yield level; the clock-only shadow kills the policy-clock disguise and the mandatory level-vs-shape decomposition control kills the level disguise, both declared here as executioners.",
+    "forced_participant": {
+      "who": "the leveraged carry trader financing front-end versus belly curve positions in the repo market (the LATE participant)",
+      "why_late": "financing terms reset on maintenance and term cadences, so the position that the dislocation calls for can only be established or unwound at the next financing reset; until then the trader is constrained to hold through the dislocation",
+      "forced_counterparty_flow": "dealers intermediating repo must absorb the collateral imbalance between resets, transmitting the dislocation into the paired-leg pricing the proposal conditions on"
+    },
+    "information_source": "the official S5 par-yield curve's front-end versus belly SHAPE residual (level-orthogonalized, computed at D2/I from the committed curve rows); no policy or survey data, no ETP price input inside the state",
+    "state_definition_symbolic": "dislocation bucket d(t) = bucket of the level-orthogonalized front-versus-belly residual of the official curve at the state session; residual definition (which front tenors against which belly interpolation), bucket cuts and leg-pair mapping are SYMBOLIC here and freeze at D2/S selection, never after"
+  },
+  "decision_rule_family": "cross-sectional curve-shape state bucketing with fixed thresholds to be frozen at selection; state = level-orthogonalized front-end versus belly residual bucket; position = paired-leg ETP spread across duration buckets with direction by frozen sign convention; all parameters (residual definition, bucket thresholds, leg pairs, holding) symbolic until D2/S, never tuned after any measurement",
+  "representation_identity": {
+    "law": "P-12: code AND representation are committed before any number is cited; this declaration names the exact representation and cites every committed artifact by sha256; nothing here is measured",
+    "grid": {
+      "definition": "16:00 America/New_York close decision grid on the P2 common grid (intersection of an official S5 curve-CSV row and an EOD bar for ALL FOUR frozen legs), 252-session warmup carve-out, bookable instants only",
+      "decision_instant": "the 16:00 NY close of each bookable session (21:00Z in EST, 20:00Z in EDT; DST via zoneinfo)",
+      "bookable_count": 1918,
+      "grid_session_count": 2170,
+      "warmup_sessions": 252,
+      "coverage_fraction": 0.955947,
+      "bookable_window": ["2019-01-07", "2026-09-11"],
+      "path": "research/control/rates_ng1_run/p2_grid_census.json",
+      "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8"
+    },
+    "series": {
+      "curve": {
+        "source": "S5 Treasury daily par-yield curve, per-year official CSVs (keyless), full tenor set per the committed per-year census (3 Mo through 30 Yr; the front-versus-belly residual uses only the short/belly tenor columns)",
+        "census_pin": {
+          "path": "research/control/rates_ng1_run/p0_treasury_census.json",
+          "sha256": "d52b7d0afdd20fa718a9f26d1cb3b01df4979efd9b84901d547fc73eaa6572ed"
+        },
+        "years_pulled": 37,
+        "raw_bytes_manifest_pin": {
+          "path": "research/control/rates_ng1_run/substrate_manifest.json",
+          "sha256": "1f30ae46bd17f4172b20def7c14b6488c8a9171e6787c70adb943fb26d868e50"
+        },
+        "consumption": "ONLY via consume_via_plane; P0 shadow-parity (digest equality of plane-read vs raw bytes) PASSED",
+        "shadow_parity_pin": {
+          "path": "research/control/rates_ng1_run/p0_shadow_parity.json",
+          "sha256": "aab010ae2c0cbc48eeeeebf29a268526e0596620239d3dc8079b8b9378a57ce7"
+        },
+        "residual_derivation": "at D2/I: the front-versus-belly residual is computed from the committed curve rows at the state session with the LEVEL coordinate removed (definitions symbolic); nothing is computed in this file"
+      },
+      "etp_legs": {
+        "legs": ["TLT", "IEF", "IEI", "SHY"],
+        "channel": "EODHD family-1 RAW primary EOD (unadjusted), adj-channel cross-check equal (zero corp-action steps), per the P0 census",
+        "census_pin": {
+          "path": "research/control/rates_ng1_run/p0_etp_census.json",
+          "sha256": "208388e05233f6db09c327b6c9240ebd2ff95df0a9993f68d42917d605949886"
+        },
+        "rows_per_leg": [
+          { "leg": "TLT", "rows": 6071 },
+          { "leg": "IEF", "rows": 6071 },
+          { "leg": "IEI", "rows": 4948 },
+          { "leg": "SHY", "rows": 6071 }
+        ],
+        "series_digests_of": "RAW EOD series digests recorded inside the P0 census (cited, not re-pinned here)",
+        "series_digests": {
+          "TLT": "a2f307e862e6692a57269e33adbddc5a22e5f23bf4b986e92c54ea0f069720c4",
+          "IEF": "81126064b6073495db2ff1143df9c6fccb5088b10e378ca730a957f6605392b1",
+          "IEI": "4112f64bfa525e75bda968b0b892e3d2315e11c1ebe4d2bcf9c53e5563d5eae0",
+          "SHY": "9916ea8e60370b67176004f5d7f0fd3d003007afeae47d17f72e4d25eb6a3dae"
+        }
+      }
+    },
+    "event_mapping": {
+      "law": "no auction events are consumed on lane A5; the PIT later-bound law adapts to the curve facts themselves: the official curve row of calendar day d is PIT-available only from the first decision instant at/after the close+1 session of d (plan section 5: curve facts same-day official CSV with the V7 bar-readable close+1 availability convention)",
+      "path": "research/control/rates_ng1_run/p2_grid_census.json",
+      "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8"
+    },
+    "decision_instant_law": {
+      "law": "V7 close+1: the EOD bar dated the previous common-grid session is first readable at the 16:00 NY close of each bookable session; no same-day reads; the dislocation state at a decision instant is formed ONLY from curve rows PIT-available under the same law",
+      "authority": "research/assets/rates_ng1/clock.py (P1) materialized per bookable instant in p2_grid_census.json (bookable_instants list)"
+    }
+  },
+  "ancestry_risk_statement": {
+    "declaration": "This proposal names the pooled kill-candidate shadows it must be novel against (plan section 1; D2 pooled |rho| screen) and states, per shadow, why its information differs. This is the claim D2 will test; if any claim is false, the proposal dies at D2 by the screen or by its own battery.",
+    "named_kill_candidates": [
+      {
+        "shadow": "DGS10-level nominal-exposure forms (falsification-by-control #14 FX-V8; #15 FOREX-NG1 CTL-DGS10LEVEL)",
+        "why_different": "the anchor's state is a front-versus-belly residual with the LEVEL coordinate removed, and its execution is a paired-leg spread that hedges residual duration, so a 30-year-level view is explicitly outside the declared information set; the level factor itself is traded as a paired KILLER control. Honest admission: front-end residuals correlate with the level when policy moves shift the whole curve; if the orthogonalization at D2/I fails, the level control out-earns the anchor and this proposal dies by its own mandatory control"
+      },
+      {
+        "shadow": "FX 16:00-NY reaction-direction and release-order forms (V7/V8/V9/FOREX-NG1)",
+        "why_different": "those forms trade reaction DIRECTIONS to releases at fixed clock times; this proposal consumes no release and no reaction window: its state is a cross-tenor shape residual of an official daily curve evaluated on the ordinary P2 grid closes"
+      },
+      {
+        "shadow": "momentum_63s",
+        "why_different": "momentum_63s is a time-series price-momentum form on a single series; the state here is a cross-sectional (across tenors) level-orthogonal residual, not a history of any traded price, and momentum_63s sits in the D2 pooled novelty veto set"
+      },
+      {
+        "shadow": "generic_dow_tue",
+        "why_different": "generic_dow_tue is a bare weekday clock with no state; this proposal trades only when the dislocation bucket is declared and holds a paired-leg structure a weekday clock cannot reproduce; the clock-only shadow (which here includes a policy-calendar proximity clock with no curve input) is the designated executioner if the state is secretly a calendar"
+      }
+    ]
+  },
+  "control_battery_spec": {
+    "law": "lane A5 battery per plan sections 1 and 6: MANDATORY level-vs-shape decomposition control (V8 law adapted: the state must survive orthogonalization against the level factor or the family is a re-clocked level and dies), clock-only shadow, placebo, one falsification rule; every arm reports invalid vs null DISTINCTLY (Q-11); all arms run on the identical bookable grid and identical frozen cost treatment (tier 2.0, once per fill)",
+    "arms": [
+      {
+        "role": "ANCHOR",
+        "name": "front-versus-belly dislocation arm",
+        "spec": "the declared rule family: paired-leg ETP spread with direction by frozen sign convention, state = level-orthogonalized front-end versus belly residual bucket",
+        "kill_semantics": "anchor; killed by any designated KILLER control out-earning it (see falsification_rule)"
+      },
+      {
+        "role": "LEVEL_VS_SHAPE_DECOMPOSITION_CONTROL",
+        "name": "level-factor control (V8 law adapted, MANDATORY)",
+        "spec": "the decomposition's LEVEL coordinate, traded on the identical grid with the identical paired-leg machinery and cost treatment; the anchor trades only the orthogonalized residual",
+        "kill_semantics": "DESIGNATED KILLER and the lane's mandatory control: if the level arm out-earns the anchor after costs, the state did not survive orthogonalization against the level factor, the mechanism is a re-clocked DGS10-level form (ancestry #14/#15 class) and the proposal dies"
+      },
+      {
+        "role": "CLOCK_ONLY_SHADOW",
+        "name": "policy-calendar proximity clock shadow",
+        "spec": "the identical paired-leg machinery driven by a pure time clock (policy-calendar proximity / session-of-week clock with NO curve input)",
+        "kill_semantics": "DESIGNATED KILLER: if the bare clock out-earns the anchor, the dislocation state is secretly a policy/calendar clock (generic_dow_tue class) and the proposal dies"
+      },
+      {
+        "role": "PLACEBO",
+        "name": "misaligned-state placebo",
+        "spec": "the identical dislocation state evaluated with a fixed k-session misalignment between state session and decision session (k symbolic, frozen at selection), so state and decision are no longer lawfully paired",
+        "kill_semantics": "DESIGNATED KILLER: if the misaligned placebo out-earns the anchor, the effect is not a property of the lawful state-decision pairing and the proposal dies"
+      }
+    ]
+  },
+  "feasibility_citation": {
+    "floors": { "min_bookable_instants": 1500, "min_coverage_fraction": 0.9 },
+    "measured": { "bookable_count": 1918, "coverage_fraction": 0.955947 },
+    "verdict_basis": "P2 gate verdict PASS for lane A5: 1918 bookable instants >= 1500 and coverage 0.955947 >= 0.90 on the strictest all-legs common grid (Q-6 feasibility floors; cost projections only, no outcome content in any floor artifact)",
+    "floor_artifacts": [
+      {
+        "path": "research/control/rates_ng1_run/p2_grid_census.json",
+        "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8",
+        "role": "bookable-instant census (1918 instants, floor 1500; coverage 0.955947, floor 0.90)"
+      },
+      {
+        "path": "research/control/rates_ng1_run/p0_treasury_census.json",
+        "sha256": "d52b7d0afdd20fa718a9f26d1cb3b01df4979efd9b84901d547fc73eaa6572ed",
+        "role": "S5 curve depth census (37 years, full tenor set) backing the front-versus-belly residual's inputs"
+      },
+      {
+        "path": "research/control/rates_ng1_run/p0_etp_census.json",
+        "sha256": "208388e05233f6db09c327b6c9240ebd2ff95df0a9993f68d42917d605949886",
+        "role": "ETP leg census (TLT/IEF/IEI/SHY RAW primary + adj cross-check) backing execution"
+      },
+      {
+        "path": "research/control/rates_ng1_run/p2_gate.json",
+        "sha256": "dc342b71b811ea829702019bbc5ab25b5b0508e0f13c3eb50b382f34d22680c9",
+        "role": "P2 feasibility gate (lane A5 FEASIBLE)"
+      }
+    ],
+    "cost_ceilings_cited": {
+      "contract": {
+        "path": "research/control/rates_ng1_run/p1_cost_contract.json",
+        "sha256": "e7db0eef3cf40e334d519fb7dc92cefa0c5913994eb55ffc9d03f69dd936c67c",
+        "role": "FROZEN tier-2.0 cost contract (once per fill; CS p90 stress tiers; ACT/365F ER drag)"
+      },
+      "holding_trading_days": 5,
+      "calendar_days_charged": 7,
+      "per_leg_stress_tier_bps": [
+        { "leg": "TLT", "stress_tier_bps": 49.17915491263504 },
+        { "leg": "IEF", "stress_tier_bps": 22.710222433052532 },
+        { "leg": "IEI", "stress_tier_bps": 12.738355852451367 },
+        { "leg": "SHY", "stress_tier_bps": 5.979816345415081 }
+      ],
+      "per_leg_worst_case_round_trip_ceiling_bps": [
+        { "leg": "TLT", "worst_case_round_trip_ceiling_bps": 98.6459810581468 },
+        { "leg": "IEF", "worst_case_round_trip_ceiling_bps": 45.708116098981776 },
+        { "leg": "IEI", "worst_case_round_trip_ceiling_bps": 25.764382937779445 },
+        { "leg": "SHY", "worst_case_round_trip_ceiling_bps": 12.247303923706875 }
+      ],
+      "note": "COST PROJECTIONS ONLY, cited from the committed P1/P2 artifacts; no outcome content; paired-leg arms carry BOTH legs' costs at D2/I"
+    }
+  },
+  "falsification_rule": {
+    "statement": "KILL if, at D2/I on the identical bookable grid and window under the identical frozen cost treatment, the paired LEVEL-factor control arm (the V8-law-adapted mandatory level-vs-shape decomposition control) earns a strictly greater after-cost per-decision edge than the orthogonalized-dislocation ANCHOR arm, i.e. the declared front-versus-belly state fails to survive orthogonalization against the level factor and the mechanism is a re-clocked DGS10-level form (ancestry #14/#15 class). Declared now, outcome-blind; measurable later from the committed arms alone; the policy-calendar clock shadow and misaligned-state placebo carry the same out-earning kill semantics as secondary battery executioners.",
+    "declared_at": "D1, before any measurement",
+    "measurable_at": "D2/I",
+    "killer_controls": ["LEVEL_VS_SHAPE_DECOMPOSITION_CONTROL", "CLOCK_ONLY_SHADOW", "PLACEBO"]
+  },
+  "selection_rubric_note": {
+    "rubric": "plan section 6, frozen BEFORE D1 dispatch: mechanism; pooled |rho| <= ceiling vs inventory incl. named shadows with margin recorded (P-2); Q-6 feasibility (no outcome content); control battery runnable with invalid-null distinction (Q-11); budget cells; distinct arm_config_digest; preregistered ranking; smoke kills-never-selects (P-15)",
+    "novelty_abs_rho_ceiling": 0.2,
+    "families_max": 2,
+    "arms_per_family_max": 3,
+    "cell_budget": 6,
+    "constraint": "the two lane-A5 proposals share the A5 family budget of at most 3 selectable arms x distinct arm_config_digest; how the budget is allocated across sibling proposals is a D2/S decision, never moved after a scored number"
+  }
+}

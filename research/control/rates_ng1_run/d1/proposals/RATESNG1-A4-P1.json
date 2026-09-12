@@ -1,0 +1,214 @@
+{
+  "schema": "rates_ng1_run/d1_proposal@1",
+  "cycle_id": "RATES-NG1",
+  "task_id": "rates-ng1-d1-proposals",
+  "proposal_id": "RATESNG1-A4-P1",
+  "lane": "A4",
+  "lane_name": "auction-supply clock",
+  "title": "Issuance-supply calendar concentration: settlement-glut versus quiet-week conditioning on the official auction clock",
+  "authored_utc": "2026-09-12T03:21:28+00:00",
+  "base_sha": "59b8de30c435bb44e1a3d93c6b2cc41e04cb8217",
+  "blindness_declaration": {
+    "status": "OUTCOME_BLIND",
+    "law": "This document is authored before anyone measures anything for this lane. It declares a mechanism, a rule FAMILY and a representation identity. It contains no outcome numbers, no price/yield signal arithmetic, no conditioning of any price series on any state, and no measurement that the D2/I stages will run. Structural facts cited here are read from committed P0/P1/P2 artifacts only."
+  },
+  "mechanism": {
+    "narrative": "US Treasury primary dealers are obligated counterparties of the official financing calendar: they must bid in every auction and absorb their pro-rata share of each security offered, and they can neither refuse nor re-time that obligation. Issuance is not spread evenly over calendar weeks: bill cycles and coupon cycles cluster, so some settlement weeks concentrate many dated supply commitments while neighbouring weeks are quiet. In a settlement-glut week the dealer's aggregate warehouse of newly absorbed supply peaks inside a finite balance-sheet and risk-limit envelope, so the hedging that the obligation forces must be pushed into the surrounding market BEFORE the settlement dates, when the dealer has the least discretion. In quiet weeks the same participant is unconstrained. The proposal conditions exclusively on the official announcement calendar: for each decision instant, the concentration state is a count of auction events whose official issue (settlement) dates fall inside a fixed window around that instant, derived by pure date arithmetic from the PIT census fields. No yield, no price and no policy-release content enters the state. The state is known to every participant weeks in advance: it is supply mechanics, not news.",
+    "forced_participant": {
+      "who": "the primary dealer carrying the auction underwriting obligation",
+      "why_forced": "obligated to bid and absorb pro-rata supply at each auction; cannot refuse or re-time; when settlement commitments concentrate, risk limits force pre-settlement hedging into the market rather than at the auction",
+      "late_participant": "index-tracking and mandate-bound funds that adjust holdings only at period boundaries after settlement weights change; they absorb the dealer's forced hedge with a lag"
+    },
+    "information_source": "official Treasury auction announcement calendar only (PIT census fields: announcementDate, auctionDate, issueDate, securityType, securityTerm, cusip); no prices, no yields, no survey or consensus data",
+    "state_definition_symbolic": "concentration bucket b(t) = f(count of census events with issueDate inside a fixed k1/k2 business-day window around decision session t, possibly crossed with securityType mix); k1, k2 and the bucket cuts are SYMBOLIC here and freeze at D2/S selection, never after"
+  },
+  "decision_rule_family": "event-window position with state-conditioned direction by frozen sign convention; state = issuance-supply concentration bucket of the decision instant's settlement week, derived from the committed PIT auction census; executed on the frozen ETP leg set; holding = fixed event window symbolic until D2/S; direction sign and all thresholds frozen at selection, never tuned after any measurement",
+  "representation_identity": {
+    "law": "P-12: code AND representation are committed before any number is cited; this declaration names the exact representation and cites every committed artifact by sha256; nothing here is measured",
+    "grid": {
+      "definition": "16:00 America/New_York close decision grid on the P2 common grid (intersection of an official S5 curve-CSV row and an EOD bar for ALL FOUR frozen legs), 252-session warmup carve-out, bookable instants only",
+      "decision_instant": "the 16:00 NY close of each bookable session (21:00Z in EST, 20:00Z in EDT; DST via zoneinfo)",
+      "bookable_count": 1918,
+      "grid_session_count": 2170,
+      "warmup_sessions": 252,
+      "coverage_fraction": 0.955947,
+      "bookable_window": ["2019-01-07", "2026-09-11"],
+      "path": "research/control/rates_ng1_run/p2_grid_census.json",
+      "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8"
+    },
+    "series": {
+      "curve": {
+        "source": "S5 Treasury daily par-yield curve, per-year official CSVs (keyless)",
+        "census_pin": {
+          "path": "research/control/rates_ng1_run/p0_treasury_census.json",
+          "sha256": "d52b7d0afdd20fa718a9f26d1cb3b01df4979efd9b84901d547fc73eaa6572ed"
+        },
+        "years_pulled": 37,
+        "raw_bytes_manifest_pin": {
+          "path": "research/control/rates_ng1_run/substrate_manifest.json",
+          "sha256": "1f30ae46bd17f4172b20def7c14b6488c8a9171e6787c70adb943fb26d868e50"
+        },
+        "consumption": "ONLY via consume_via_plane; P0 shadow-parity (digest equality of plane-read vs raw bytes) PASSED",
+        "shadow_parity_pin": {
+          "path": "research/control/rates_ng1_run/p0_shadow_parity.json",
+          "sha256": "aab010ae2c0cbc48eeeeebf29a268526e0596620239d3dc8079b8b9378a57ce7"
+        }
+      },
+      "etp_legs": {
+        "legs": ["TLT", "IEF", "IEI", "SHY"],
+        "channel": "EODHD family-1 RAW primary EOD (unadjusted), adj-channel cross-check equal (zero corp-action steps), per the P0 census",
+        "census_pin": {
+          "path": "research/control/rates_ng1_run/p0_etp_census.json",
+          "sha256": "208388e05233f6db09c327b6c9240ebd2ff95df0a9993f68d42917d605949886"
+        },
+        "rows_per_leg": [
+          { "leg": "TLT", "rows": 6071 },
+          { "leg": "IEF", "rows": 6071 },
+          { "leg": "IEI", "rows": 4948 },
+          { "leg": "SHY", "rows": 6071 }
+        ],
+        "series_digests_of": "RAW EOD series digests recorded inside the P0 census (cited, not re-pinned here)",
+        "series_digests": {
+          "TLT": "a2f307e862e6692a57269e33adbddc5a22e5f23bf4b986e92c54ea0f069720c4",
+          "IEF": "81126064b6073495db2ff1143df9c6fccb5088b10e378ca730a957f6605392b1",
+          "IEI": "4112f64bfa525e75bda968b0b892e3d2315e11c1ebe4d2bcf9c53e5563d5eae0",
+          "SHY": "9916ea8e60370b67176004f5d7f0fd3d003007afeae47d17f72e4d25eb6a3dae"
+        }
+      }
+    },
+    "event_mapping": {
+      "law": "PIT later-bound (P1 clock semantics, materialized at P2): the PIT instant is the end of the announced NY day; the same-day close is REFUSED; the decision session is the FIRST common-grid session STRICTLY AFTER the PIT instant",
+      "path": "research/control/rates_ng1_run/p2_auction_eligibility.json",
+      "sha256": "71411ace6061848f988f63d790c20352835a53f62fc688159b54748c35d7b48b",
+      "upstream_census_pin": {
+        "path": "research/control/rates_ng1_run/p0_auction_census.json",
+        "sha256": "de129dd574b84995c48cc99305ef17f0e52c47c912578db3d9d5027c8fa1bd1a"
+      },
+      "event_count": 3555,
+      "events_bill": 2637,
+      "events_note": 716,
+      "events_bond": 202,
+      "announcement_window": ["2018-01-04", "2026-09-10"],
+      "clock_authority_cross_check": "all_agree=true: research/assets/rates_ng1/clock.py::first_decision_after_pit vs the deterministic fast path, per the committed P2 artifact",
+      "state_derivation": "at D2/I the concentration state uses ONLY the census calendar fields by date arithmetic; never prices"
+    },
+    "decision_instant_law": {
+      "law": "V7 close+1: the EOD bar dated the previous common-grid session is first readable at the 16:00 NY close of each bookable session; no same-day reads; curve facts of calendar day d are PIT-available only from the first decision instant at/after the close+1 session of d",
+      "authority": "research/assets/rates_ng1/clock.py (P1) materialized per bookable instant in p2_grid_census.json (bookable_instants list)"
+    }
+  },
+  "ancestry_risk_statement": {
+    "declaration": "This proposal names the pooled kill-candidate shadows it must be novel against (plan section 1; D2 pooled |rho| screen) and states, per shadow, why its information differs. This is the claim D2 will test; if any claim is false, the proposal dies at D2 by the screen or by its own battery.",
+    "named_kill_candidates": [
+      {
+        "shadow": "DGS10-level nominal-exposure forms (falsification-by-control #14 FX-V8; #15 FOREX-NG1 CTL-DGS10LEVEL)",
+        "why_different": "the conditioning state is a COUNT of dated official supply commitments in a settlement window, computable from the announcement calendar before any yield observation and independent of the yield level; nothing in the state is a level, a level change, or a level-contingent quantity. Honest admission: if in-sample the concentration bucket turns out to proxy a seasonal yield-level drift, that is exactly the DGS10-level control class in the D2 veto set plus the A5-family decomposition control, and the proposal dies"
+      },
+      {
+        "shadow": "FX 16:00-NY reaction-direction and release-order forms (V7/V8/V9/FOREX-NG1)",
+        "why_different": "those forms trade the market's DIRECTION OF REACTION to a release with unknown content at a fixed clock time; here there is no release surprise at all: the auction calendar is pre-announced, content-free supply mechanics, and the decision instants are the P2 grid closes, not a reaction window around a release"
+      },
+      {
+        "shadow": "momentum_63s",
+        "why_different": "momentum_63s is a time-series price-momentum clock; this proposal's state is a cross-sectional calendar count with no price input whatsoever at declaration time, and the momentum_63s form sits in the D2 pooled novelty veto set"
+      },
+      {
+        "shadow": "generic_dow_tue",
+        "why_different": "generic_dow_tue is a bare weekday clock; the state here is event-derived from official announcements (settlement-date concentration), not a fixed weekday grid; the clock-only shadow arm in the battery is the designated executioner if the bare calendar explains everything"
+      }
+    ]
+  },
+  "control_battery_spec": {
+    "law": "lane A4 battery per plan section 6: delay-pair, clairvoyant (Q-4), clock-only shadow, shifted-calendar placebo; every arm reports invalid vs null DISTINCTLY (Q-11): an arm with fewer eligible instants than the frozen minimum is NOT_RUN/invalid, never zero; all arms run on the identical bookable grid and identical frozen cost treatment (tier 2.0, once per fill)",
+    "arms": [
+      {
+        "role": "ANCHOR",
+        "name": "concentration-conditioned event-window arm",
+        "spec": "the declared rule family: event-window position on the frozen ETP legs, direction by frozen sign convention, state = settlement-week concentration bucket from the PIT census",
+        "kill_semantics": "anchor; killed by any designated KILLER control out-earning it (see falsification_rule)"
+      },
+      {
+        "role": "DELAY_PAIR",
+        "name": "two-delay placement pair",
+        "spec": "the identical rule evaluated at two declared delays: D0 = the P2 later-bound decision session, D1 = the next common-grid session after D0; both arms reported side by side",
+        "kill_semantics": "diagnostic for clock-placement artifacts; informs the D2 report, does not kill alone"
+      },
+      {
+        "role": "CLAIRVOYANT",
+        "name": "clairvoyant upper-bound arm (Q-4)",
+        "spec": "same event windows, but the state sign and leg mapping are granted full-sample knowledge no live process could have; ceiling reference only",
+        "kill_semantics": "NEVER selectable at S (P-15 smoke kills-never-selects); bounds how much a perfect oracle of this state could earn; invalid vs null recorded (Q-11)"
+      },
+      {
+        "role": "CLOCK_ONLY_SHADOW",
+        "name": "bare auction-clock shadow",
+        "spec": "identical event windows and holding, fixed direction sign, NO concentration state (all eligible events pooled)",
+        "kill_semantics": "DESIGNATED KILLER: if the bare calendar out-earns the anchor, the state adds nothing over a generic event clock (generic_dow_tue / momentum_63s class) and the proposal dies"
+      },
+      {
+        "role": "SHIFTED_CALENDAR_PLACEBO",
+        "name": "shifted-calendar placebo",
+        "spec": "the identical state machinery evaluated on the auction calendar shifted by a fixed offset (symbolic N, frozen at selection, chosen to break settlement-week alignment without creating a new one)",
+        "kill_semantics": "DESIGNATED KILLER: if the placebo out-earns the anchor, the effect is calendar-structure-independent and the proposal dies"
+      }
+    ]
+  },
+  "feasibility_citation": {
+    "floors": { "min_bookable_instants": 1500, "min_grid_eligible_events": 150 },
+    "measured": { "bookable_count": 1918, "event_count": 3555 },
+    "verdict_basis": "P2 gate verdict PASS for lane A4: 3555 grid-eligible events >= 150 and 1918 bookable instants >= 1500 (Q-6 feasibility floors; cost projections only, no outcome content in any floor artifact)",
+    "floor_artifacts": [
+      {
+        "path": "research/control/rates_ng1_run/p2_auction_eligibility.json",
+        "sha256": "71411ace6061848f988f63d790c20352835a53f62fc688159b54748c35d7b48b",
+        "role": "auction PIT grid-eligibility census (3555 events, floor 150)"
+      },
+      {
+        "path": "research/control/rates_ng1_run/p2_grid_census.json",
+        "sha256": "5cb9bdb02d4b065e8062a9619a4b56302d281dede3bb49f51a3e0539e2e108a8",
+        "role": "bookable-instant census (1918 instants, floor 1500)"
+      },
+      {
+        "path": "research/control/rates_ng1_run/p2_gate.json",
+        "sha256": "dc342b71b811ea829702019bbc5ab25b5b0508e0f13c3eb50b382f34d22680c9",
+        "role": "P2 feasibility gate (lane A4 FEASIBLE)"
+      }
+    ],
+    "cost_ceilings_cited": {
+      "contract": {
+        "path": "research/control/rates_ng1_run/p1_cost_contract.json",
+        "sha256": "e7db0eef3cf40e334d519fb7dc92cefa0c5913994eb55ffc9d03f69dd936c67c",
+        "role": "FROZEN tier-2.0 cost contract (once per fill; CS p90 stress tiers; ACT/365F ER drag)"
+      },
+      "holding_trading_days": 5,
+      "calendar_days_charged": 7,
+      "per_leg_stress_tier_bps": [
+        { "leg": "TLT", "stress_tier_bps": 49.17915491263504 },
+        { "leg": "IEF", "stress_tier_bps": 22.710222433052532 },
+        { "leg": "IEI", "stress_tier_bps": 12.738355852451367 },
+        { "leg": "SHY", "stress_tier_bps": 5.979816345415081 }
+      ],
+      "per_leg_worst_case_round_trip_ceiling_bps": [
+        { "leg": "TLT", "worst_case_round_trip_ceiling_bps": 98.6459810581468 },
+        { "leg": "IEF", "worst_case_round_trip_ceiling_bps": 45.708116098981776 },
+        { "leg": "IEI", "worst_case_round_trip_ceiling_bps": 25.764382937779445 },
+        { "leg": "SHY", "worst_case_round_trip_ceiling_bps": 12.247303923706875 }
+      ],
+      "note": "COST PROJECTIONS ONLY, cited from the committed P1/P2 artifacts; no outcome content"
+    }
+  },
+  "falsification_rule": {
+    "statement": "KILL if, at D2/I on the identical bookable grid and window under the identical frozen cost treatment, EITHER designated KILLER control (the shifted-calendar placebo or the bare auction-clock shadow) earns a strictly greater after-cost per-decision edge than the concentration-conditioned ANCHOR arm. A placebo matching the anchor means the effect is calendar-structure-independent; a clock-only shadow matching the anchor means the concentration state adds nothing over a generic event clock. Declared now, outcome-blind; measurable later from the committed arms alone.",
+    "declared_at": "D1, before any measurement",
+    "measurable_at": "D2/I",
+    "killer_controls": ["SHIFTED_CALENDAR_PLACEBO", "CLOCK_ONLY_SHADOW"]
+  },
+  "selection_rubric_note": {
+    "rubric": "plan section 6, frozen BEFORE D1 dispatch: mechanism; pooled |rho| <= ceiling vs inventory incl. named shadows with margin recorded (P-2); Q-6 feasibility (no outcome content); control battery runnable with invalid-null distinction (Q-11); budget cells; distinct arm_config_digest; preregistered ranking; smoke kills-never-selects (P-15)",
+    "novelty_abs_rho_ceiling": 0.2,
+    "families_max": 2,
+    "arms_per_family_max": 3,
+    "cell_budget": 6,
+    "constraint": "the two lane-A4 proposals share the A4 family budget of at most 3 selectable arms x distinct arm_config_digest; how the budget is allocated across sibling proposals is a D2/S decision, never moved after a scored number"
+  }
+}
