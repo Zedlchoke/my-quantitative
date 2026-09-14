@@ -2,6 +2,26 @@
 
 ## Sprint state (synced at the new-assets generation open, 2026-09-12)
 
+- **VOL-NG1 CLOSED → `VOL_NG1_REJECT_ALL`** (2026-09-14, branch
+  `orca/vol-ng1-integration`, terminal 04da4374, A7 AUTHORIZED 0 HIGH/CRITICAL,
+  reproduction 6/6 ALL_MATCH) — first vol-family cycle in program history on the
+  platform v3 data plane: CBOE official VIX/VIX9D/VIX3M/VIX6M term structure +
+  EODHD vol ETP legs (6 living, delisted TVIX+ZIV; XIV unprovable fail-closed);
+  P0 floors all PASS (term-structure 15.69y, 2940 instants; Q-16 path-ladder
+  cost contract). D2 2/4 ELIGIBLE (A4-P2 slope-acceleration 0.091; A5-P2
+  premium-state asymmetry 0.070; 2 VETO as disguised vol-level). E NO SURVIVOR
+  6/6 CELL_FAIL: A4 **cost-ceiling family kill fired at the R1/R5 binding site**
+  — all arms <= 0 after the full Q-16 path ladder + expense (ANCHOR −55.83 PF
+  0.292 n 424 / NEIGH-PERSIST −49.13 PF 0.310 n 92 / NEIGH-FAST −54.64 PF 0.312
+  n 1780; R2 PASS via books_distinct per M-A binding); A5 dies R1/R3/R4/R5
+  under the dominant decay path (ANCHOR −89.76 PF 0.484 n 204 / NEIGH-STRICT
+  −84.99 PF 0.496 n 84 / NEIGH-FAST −72.13 PF 0.550 n 462; R2 PASS via frozen
+  three-limb evaluator with the C8 implied-complex limitation verbatim; R6
+  NOT_RUN honest gross <= 0). R 6/6 ALL_MATCH; T AUTHORIZED; budget 6/6; S1
+  SEALED. **vol 6/6; program 254/257** (P-9). COMMODITIES-NG1 remains in flight
+  at E scored (3 cells, 11 pairs). Detail:
+  `.worktrees/vol-ng1/integration/research/control/vol_ng1_run/terminal_report_vol_ng1.json`.
+
 - **RATES-NG1 CLOSED → `RATES_NG1_REJECT_ALL`** (2026-09-14, branch
   `orca/rates-ng1-integration`, terminal b14085e9, A7 AUTHORIZED 0 HIGH/CRITICAL,
   reproduction 3/3 ALL_MATCH) — first rates-family cycle in program history and the
