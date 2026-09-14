@@ -1,0 +1,187 @@
+{
+  "schema": "commodities_ng1_run/a7_prelaunch_audit@1",
+  "cycle_id": "COMMODITIES-NG1",
+  "task_id": "commodities-ng1-a7-prelaunch",
+  "role": "quant-auditor (A7, independent fresh context)",
+  "audited_tree": "/tmp/a7pre_comm_ng1",
+  "frozen_sha_verification": {
+    "required_sha": "935391d86e94e2b6f0d7a28efc77a7945050dbcd",
+    "measured_source": "/Users/hoangminhlong/my-quantitative/.git/worktrees/a7pre_comm_ng1/HEAD",
+    "measured_sha": "935391d86e94e2b6f0d7a28efc77a7945050dbcd",
+    "match": true
+  },
+  "verdict": "AUTHORIZED",
+  "verdict_key": "COMM_NG1_S0_LAUNCH_AUTHORIZED",
+  "unresolved_high_critical_count": 0,
+  "scope_and_method": {
+    "method": "static recomputation from frozen artifacts + source reading only; no execution available in this audit role",
+    "execution_bound_checks_not_run": [
+      "pytest tests/test_commodities_ng1_i.py (packet command): NOT_RUN_EXECUTION_REQUIRED here; statically 43 test functions counted (39 pre-existing + 4 ZR1 section-13), matching the Lead-verified 43/43 and the ZR1 handoff '43 passed'",
+      "sha256 recomputation of artifacts/files: NOT_RUN_EXECUTION_REQUIRED; digests verified by cross-artifact consistency and by the drivers' own fail-closed digest-measurement code paths (load_evidence refuses on any pinned-digest mismatch; assemble_booked_arms recomputes arm digests and refuses mismatch)",
+      "git history walk 52a5e2ec..935391d8: NOT_RUN_EXECUTION_REQUIRED (no shell); mitigated by digest pins below"
+    ]
+  },
+  "checks": {
+    "1_remediation_chain": {
+      "verdict": "VERIFIED",
+      "detail": "Z FAIL report (6 incidents: RELEASE_CLOCK_SHADOW TypeError at booking on 001602/WEAT + 088691/IAU, all 3 arms; overall FAIL; blocked_prelaunch true) -> Z-R1 fix (commit 0f0d1c667a852082c94006356e5b092ce674195d; execute.book_ledger empty-population short-circuit + control_verdict_row/rows wiring + freeze addendum) -> Z-R2 structural re-pass: overall PASS, incident_count 0. I independently extracted the 6 original incident coordinates from z_report.json and the 6 declared coordinates from zr2_report.json: set equality holds (coordinate_match true recomputed), declared_count 6 = original 6, missing_declarations [], new_declarations []. Z ARM-1 manifest row level confirms the mechanism: every pair's RELEASE_CLOCK_SHADOW books exactly 1 trade (fills=2, fold-1) and only WEAT/IAU rows FAIL with the TypeError; ZR2 manifests carry the declared rows (booked_trades 0, excluded_trades 1, kernel_book_invoked false, root_reconciliation_invoked false) at exactly those coordinates. Mechanism cross-checked against committed boundary facts: WEAT boundary 2025-11-25 and IAU boundary 2021-05-24 inside the counted window; GLD (and DBA/CORN/DBO/SOYB/CANE) have no share_base_events - exactly why only WEAT/IAU shadow scopes declare.",
+      "evidence": [
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/z/z_report.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/z/cell_COMMNG1-A4-P2-ARM1-NEUTRAL.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_report.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/cell_COMMNG1-A4-P2-ARM1-NEUTRAL.json",
+        "/tmp/a7pre_comm_ng1/research/control/COMMODITIES-NG1/orchestration/handoffs/zr1-remediation-handoff.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/p1_cost_contract.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/i/i_gate.json"
+      ],
+      "shas": {
+        "z_substance_commit": "8dd9527fe964bb29c057832d7dcad9f5c459caef",
+        "z_report_sha256_pinned": "1d5ee96dd85bb73b3af32122c976d783f98ea16ab4c6cb294e28511b110da79e",
+        "zr1_fix_commit": "0f0d1c667a852082c94006356e5b092ce674195d",
+        "zr2_run_base": "52a5e2ec5be5cef0f98145f79d8fbb2e4b9168cd",
+        "zr2_evidence_tree_head": "935391d86e94e2b6f0d7a28efc77a7945050dbcd"
+      }
+    },
+    "2_selection_freeze_chain": {
+      "verdict": "VERIFIED",
+      "detail": "D1 proposal f7fac936 (outcome-blind; falsification rule declared; 11-pair bookable set; flip convention left symbolic) -> D2 panel 991905eb (frozen neutral defaults w=104, tail_cut=0.10, tau=0.02, h_max=13; NO-flip convention pinned in committed measure_novelty.py::state_a4p2 lines 583-584) -> freeze ecde47ef. The 3 arm_config_digests are pairwise distinct and BYTE-IDENTICAL across all five artifacts I compared: S freeze, ZR1 addendum, Z report config_assembly, ZR2 report config_assembly, I gate structural plumbing. R1-R6 thresholds, folds (2019-01-04..2021-08-31 / 2021-09-01..2024-04-30 / 2024-05-01..2026-09-11), shifted k=4, Q-11 minima 300/3300, tier ladder {1.0,1.5,2.0} with primary 2.0 are identical across freeze section3, ZR1 addendum affirmations, stage_a.py (FOLDS_FROZEN, PF_FLOOR 1.10, cap 0.50), battery.py (SHIFTED_RELEASE_K_FROZEN=4, Q11 300/3300) and kernel.py (COST_TIER_LADDER, PRIMARY_TIER=2.0). PBO fail-closed NOT_RUN_CELLS_LT_8 (3 < 8) with the FOREX-NG1 precedent git d0992d17df8e2dfde57c9a0806a5798f14021a4f cited in freeze section3 law_sources, stage_a.py and the I gate. Rule semantics D2->runners parity: rule.py _run_carry_state_machine is a verbatim re-statement of measure_novelty.py::state_a4p2 (trigger/left-tail/bound -> terminate to flat; fresh opposite-tail transition re-arms); no threshold drift D1->D2->S->I->Z->Z-R2 found.",
+      "evidence": [
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/d1/proposals/COMMNG1-A4-P2.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/d1/d1_gate.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/d2/d2_novelty_panel.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/d2/measure_novelty.py",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/s/selection_freeze.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/s/selection_freeze_addendum_zr1.json",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/stage_a.py",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/battery.py",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/kernel.py"
+      ],
+      "shas": {
+        "d1_proposal_A4P2": "f7fac936b29439680a981b4a8bc99f0c2070fac7108ec157e7e7c846eb1b18b9",
+        "d2_panel": "991905eb886af91607a6a7f80f632c788c73aa6fb006c045c83088f5cc8e9969",
+        "freeze": "ecde47ef17fae531d3c89899685baf485db305c67e1f43e782875a623166c108",
+        "addendum": "e9a380062b89d1f3a8d0588ad2ddc359154dfa20ad0496a4b4713d7a2addff25",
+        "arm_digests": {
+          "ARM1-NEUTRAL": "6c12044f88e5284297f50560587e041ccac3012454e9659340b348eb5d6e67d8",
+          "ARM2-TAILWIDE": "f7cabf47612b612586ebf702ccd33e6212bce92421faa399f8e241262f5e3623",
+          "ARM3-WINDOWSHORT": "ab57e6db76e23ae61733e3b85f54a1e7ee02b27a871ab0789cf1503a1530577e"
+        },
+        "forex_ng1_precedent_git": "d0992d17df8e2dfde57c9a0806a5798f14021a4f"
+      }
+    },
+    "3_representation_identity": {
+      "verdict": "VERIFIED",
+      "detail": "Census 11 bookable pairs x 401 counted instants = 4411 pooled identical across P2 floor_evaluation (402 counted_expected - 1 unmapped 2026-09-11 = 401; coverage 0.997512), D1 census_facts, I-gate structural plumbing dry run, Z report grid, ZR2 report grid. PIT rule: Friday 15:30 America/New_York of the as-of week, DST-correct UTC-normalized; Tuesday as-of -> P0 rule verbatim with week-anchor identity asserted; the 6 measured holiday-shifted Monday as-of dates per pair take the same week anchor (66 pooled Monday-shift rule-source rows in BOTH Z and ZR2 = 6 x 11, consistent); any other weekday refused fail-closed (feasibility.release_instant_for_report). Release monotonicity asserted; decision session = first measured session strictly after release date; the single unmapped counted release per pair is 2026-09-11 (clock law, recorded in both reports' unmapped_counted_release_dates_union). Folds: freeze folds_frozen == stage_a.FOLDS_FROZEN == ZR1 addendum (2019-01-04..2026-09-11 anchors). Chain-structure digests per pair: ZR2 == original Z ARM-1 manifest for all 11 pairs (all 8e07419a2ec4b2e44f8b44c9d6946ae295acdff6ed002ed2cf7a10aeeef30700), asserted fail-closed by chain_digest_parity in the driver and verified by census identity (verify_pair_census raises on any divergence from the committed P2 census).",
+      "evidence": [
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/p2_gate.json",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/feasibility.py",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/chain.py",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/i/i_gate.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/z/z_report.json",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_report.json"
+      ]
+    },
+    "4_sanitization": {
+      "verdict": "VERIFIED",
+      "detail": "Committed scanners are fail-closed in code (sanitize_artifact: outcome-vocabulary keys banned, float VALUES banned outright, float literals in strings banned; write path re-parses and re-scans the written bytes; exception text float-suppressed). My own independent grep scan over the committed Z and ZR2 JSON artifacts: zero float literals, zero outcome-vocabulary keys. Across every JSON in commodities_ng1_run the only outcome-vocabulary key match is a NEGATION statement in p2_gate.json ('no_pnl': 'cost documentation only; no PnL/outcome numbers anywhere in this gate'). The declared-row key naming (kernel_book to avoid the scanner-tripping 'ledger' substring) is documented in code and pinned by test. The declared rows carry no outcome number and explicitly disclaim inference.",
+      "evidence": [
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_run.py",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/z/z_run.py",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/dry_run.py"
+      ]
+    },
+    "5_critical_hunt_declared_rows_wiring": {
+      "verdict": "VERIFIED_WITH_NOTES",
+      "detail": "Hunted for any path where a declared NOT_EXECUTABLE verdict is dropped, coerced to a kill/pass, or bypassed. (a) book_ledger short-circuits ONLY on len(trades)==0; non-empty path is the unchanged kernel path and the test pins the exact {schema, ledger, reconciliation} shape. (b) control_verdict_row: declared row returned verbatim (verdict stays NOT_EXECUTABLE, declared true); executed book PASS iff identity_ok else FAIL - no coercion branch exists. (c) battery.control_verdict_rows maps per role; both functions exported in runners/__init__.py. (d) ZR2 driver validate_declared_row refuses (fail-closed, before any artifact) a declared row lacking verdict/declared/outcome_class/reason/disclosure, carrying a kernel book or reconciliation, or booked_trades != 0. (e) The 4 section-13 tests pin: kernel monkeypatched to REFUSE invocation on the empty path; end-to-end release-clock single-lifetime-trade boundary exclusion declaring without exception; non-empty shape unchanged; propagation + fail-closed identity FAIL. (f) A declared anchor cannot become a survivor: R1/R5 return NOT_RUN on undefined edge and evaluate_stage_a requires all hard rules PASS. (g) test_commodities_ng1_z.py never calls book_ledger and uses no split boundaries (docstring mention only), so it cannot reach the changed branch - the ZR1 known-limitation claim is statically consistent. Findings F1/F2 below are the residual risks found.",
+      "evidence": [
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/execute.py",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/battery.py",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/__init__.py",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_run.py",
+        "/tmp/a7pre_comm_ng1/tests/test_commodities_ng1_i.py",
+        "/tmp/a7pre_comm_ng1/tests/test_commodities_ng1_z.py"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "description": "Latent E-phase gap: stage_a.evaluate_stage_a's survivor gate does not consume falsification_eval.coverage_complete / missing_killers. If a future E harness OMITS a declared/insufficient designated-killer scope from killer_metrics (instead of propagating it via execute.control_verdict_row / battery.control_verdict_rows), R2 becomes vacuously non-killing for that killer while survivor could still fire - contrary to the Q-11 law (a control that cannot move the signal is INVALID NULL, never a pass). No E run exists yet and the committed wiring + ZR1 handoff instruction point the right way, so this changes nothing today; the E-phase dispatch/gate MUST require coverage_complete == true (all three killers present with executed-or-declared rows propagated) before any survivor is recognized.",
+      "evidence_paths": [
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/stage_a.py",
+        "/tmp/a7pre_comm_ng1/research/assets/commodities_ng1/runners/battery.py",
+        "/tmp/a7pre_comm_ng1/research/control/COMMODITIES-NG1/orchestration/handoffs/zr1-remediation-handoff.json"
+      ],
+      "shas": ["935391d86e94e2b6f0d7a28efc77a7945050dbcd"]
+    },
+    {
+      "id": "F2",
+      "severity": "MEDIUM",
+      "description": "zr2_run.py::_book_one hardcodes the declared-row reason prose 'every booked trade was excluded by the split-boundary law (N excluded)' for ANY empty booked population, regardless of the actual cause. On this re-pass all 6 declared rows are genuinely split-boundary exclusions (excluded_trades=1, mechanism verified against committed boundary facts), so the committed record is accurate; but a future empty population from a different cause (e.g. an all-flat series) would carry a factually false reason string next to its truthful '(0 excluded)' count. Owner-lane repair suggestion: derive the reason from the actual exclusion evidence rather than hardcoding the split-boundary attribution.",
+      "evidence_paths": [
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_run.py"
+      ],
+      "shas": ["935391d86e94e2b6f0d7a28efc77a7945050dbcd"]
+    },
+    {
+      "id": "N1",
+      "severity": "LOW",
+      "description": "Cell totals counter split_boundary_excluded_trades_all_roles accumulates PASS rows only; declared-row exclusions are disclosed in the separate counter excluded_trades_disclosed_on_declared_rows (2 per cell in ZR2) and on each declared row. No silent drop (disclosure is complete when both counters are summed), and the ZR2-vs-Z totals parity is coherent under exactly this scope rule (crashed scopes in Z contributed nothing to the counter either; ARM2's 1 is a real exclusion on a PASS row). Note for E consumers: total exclusions per cell = PASS-row counter + declared-row disclosure counter.",
+      "evidence_paths": [
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_run.py",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/z/z_run.py",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_report.json"
+      ],
+      "shas": ["935391d86e94e2b6f0d7a28efc77a7945050dbcd"]
+    },
+    {
+      "id": "N2",
+      "severity": "LOW",
+      "description": "Provenance nuance: the Z-R2 run executed at base 52a5e2ec5be5cef0f98145f79d8fbb2e4b9168cd (pinned in zr2_report provenance and in the driver's PACKET_BASE_SHA); the audited tree head is 935391d8 (the ZR2 evidence + test carrier commits land in between). The remediated-runner digests pinned inside zr2_report (execute.py 147ccdd0..., battery.py 3809c74f..., __init__.py 20161fec...) equal the ZR1 handoff outputs byte-for-byte, so the report describes exactly the remediated machinery. Byte-level digest recomputation on the current tree is NOT_RUN_EXECUTION_REQUIRED in this audit role; the chain is otherwise digest-consistent end to end.",
+      "evidence_paths": [
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_report.json",
+        "/tmp/a7pre_comm_ng1/research/control/COMMODITIES-NG1/orchestration/handoffs/zr1-remediation-handoff.json"
+      ],
+      "shas": [
+        "52a5e2ec5be5cef0f98145f79d8fbb2e4b9168cd",
+        "935391d86e94e2b6f0d7a28efc77a7945050dbcd",
+        "147ccdd05f27f7dd7e7651ca28778219d4d3042712c5e6e8f4547f7c5ca45383",
+        "3809c74f08ec85f2d61fbf7b90f2d7ed62de7bdeab23ed6493d6a24132486de7",
+        "20161fecf77275e2e312b8df6f2be693404a44fb09fabe372a7865ac41e366d8"
+      ]
+    },
+    {
+      "id": "N3",
+      "severity": "LOW",
+      "description": "NOT_RUN (execution) items recorded honestly: packet pytest command, byte-level sha256 recomputation of artifacts, and the git walk 52a5e2ec..935391d8 were all NOT_RUN_EXECUTION_REQUIRED in this role. Static substitutes performed: 43 test functions counted (39+4); digest pins cross-verified across >=4 independent artifacts each; the drivers' own fail-closed digest-measurement code read and confirmed. tests/test_commodities_ng1_z.py and tests/test_commodities_ng1_zr2.py are outside the packet test contract and were not executed by anyone in this audit; the ZR2 driver ships its own synthetic-mode tests.",
+      "evidence_paths": [
+        "/tmp/a7pre_comm_ng1/tests/test_commodities_ng1_i.py",
+        "/tmp/a7pre_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_run.py"
+      ],
+      "shas": ["935391d86e94e2b6f0d7a28efc77a7945050dbcd"]
+    }
+  ],
+  "law": "audit-only artifact: written by the A7 auditor into the audit namespace; nothing repaired, nothing else touched; the artifact is left uncommitted for the Lead to integrate",
+  "recomputed_values": {
+    "frozen_head_match": true,
+    "original_incidents": 6,
+    "declared_not_executable_rows": 6,
+    "coordinate_match_recomputed": true,
+    "missing_declarations": 0,
+    "new_declarations": 0,
+    "zr2_incident_count": 0,
+    "zr2_overall_verdict": "PASS",
+    "pass_row_parity_all_match": true,
+    "chain_digest_parity_pairs": 11,
+    "arm_digests_pairwise_distinct": true,
+    "arm_digest_identical_across_S_addendum_Z_ZR2_I": true,
+    "census_pairs_x_instants": "11 x 401 = 4411",
+    "monday_shift_rule_rows_pooled": 66,
+    "unmapped_counted_release_union": ["2026-09-11"],
+    "folds": ["2019-01-04..2021-08-31", "2021-09-01..2024-04-30", "2024-05-01..2026-09-11"],
+    "test_functions_counted_statically": 43,
+    "outcome_vocabulary_key_hits_in_run_jsons": 0,
+    "float_literals_in_z_zr2_artifacts": 0
+  }
+}
