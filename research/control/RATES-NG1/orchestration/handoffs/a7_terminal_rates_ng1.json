@@ -1,0 +1,177 @@
+{
+  "schema": "rates_ng1_a7_terminal_audit@1",
+  "cycle_id": "RATES-NG1",
+  "task_id": "rates-ng1-t-terminal",
+  "role": "quant-auditor (A7 behavior, fresh context)",
+  "audit_target": "terminal claim RATES_NG1_REJECT_ALL (family_has_survivor == false)",
+  "frozen_tree": {
+    "path": "/tmp/a7t_rates_ng1",
+    "required_sha": "cf5134bc31c625cabc10bf9096383da8388f2f40",
+    "verified_sha_source": "/Users/hoangminhlong/my-quantitative/.git/worktrees/a7t_rates_ng1/HEAD (read directly; no shell)",
+    "verified_sha": "cf5134bc31c625cabc10bf9096383da8388f2f40",
+    "match": true,
+    "frozen_sha_mismatch_stop_triggered": false
+  },
+  "verdict": "AUTHORIZED",
+  "verdict_map": "AUTHORIZED = the terminal claim RATES_NG1_REJECT_ALL survived independent fresh-context attack; zero unresolved HIGH/CRITICAL findings",
+  "unresolved_high_critical_count": 0,
+  "recomputed_checks": [
+    {
+      "id": "RC-1",
+      "check": "Frozen tree SHA == dispatch base",
+      "method": "read worktree HEAD file directly (audit role has no shell)",
+      "recomputed": "cf5134bc31c625cabc10bf9096383da8388f2f40",
+      "expected": "cf5134bc31c625cabc10bf9096383da8388f2f40",
+      "result": "MATCH"
+    },
+    {
+      "id": "RC-2",
+      "check": "family_verdicts.json terminal claim vs 3 cell artifacts and packet numbers",
+      "evidence": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/family_verdicts.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/cell_RATESNG1-A5-P1-ARM-NEUTRAL.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/cell_RATESNG1-A5-P1-ARM-CONSERVATIVE.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/cell_RATESNG1-A5-P1-ARM-AGGRESSIVE.json"
+      ],
+      "recomputed": {
+        "family_has_survivor": false,
+        "survivor_arm_ids": [],
+        "NEUTRAL": {"verdict": "KILL(R1,R2,R3,R4,R5,R6)", "expectancy": -11.918698430361266, "pf": 0.8193124977547744, "n_defined": 195},
+        "CONSERVATIVE": {"verdict": "KILL(R1,R2,R3,R4,R5,R6)", "expectancy": -192.2271210238454, "pf": 0.0, "n_defined": 3},
+        "AGGRESSIVE": {"verdict": "KILL(R2)", "expectancy": 78.08177123969458, "pf": 6.8449008378321885, "n_defined": 1855}
+      },
+      "packet_consistent": true,
+      "survivor_law_consistency": "survivor requires ALL of R1-R6 pass; AGGRESSIVE passes R1,R3,R4,R5,R6 but fails R2; NEUTRAL and CONSERVATIVE fail R1 (negative expectancy) outright; PBO honestly NOT_RUN_FAIL_CLOSED_CELLS_LT_8 (3 < 8, frozen plan law)",
+      "result": "MATCH"
+    },
+    {
+      "id": "RC-3",
+      "check": "AGGRESSIVE R2 (decisive kill): margin arithmetic recomputed from frozen cell comparator rows",
+      "evidence": "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/cell_RATESNG1-A5-P1-ARM-AGGRESSIVE.json (comparator_full.comparisons)",
+      "recomputed": {
+        "CLOCK_ONLY_SHADOW": {"anchor": 72.41939523274648, "control": 94.16047991545709, "margin_recomputed": 21.74108468271061, "margin_artifact": 21.741084682710607, "n_pairs": 386, "kill": true},
+        "PLACEBO": {"anchor": 78.03360945727258, "control": 78.59000426574264, "margin_recomputed": 0.55639480847006, "margin_artifact": 0.5563948084700598, "n_pairs": 1850, "kill": true},
+        "LEVEL_VS_SHAPE_DECOMPOSITION_CONTROL": {"anchor": 78.09403382032468, "control": 2.118726098194072, "margin_recomputed": -75.97530772213061, "n_pairs": 1850, "kill": false},
+        "killed_by": ["CLOCK_ONLY_SHADOW", "PLACEBO"]
+      },
+      "pair_count_internal_consistency": "1918 instants, per-side undefined drops counted per q11 (never inferred zero): CLOCK 1918-63-1519+50(overlap)=386 OK; PLACEBO 1918-68=1850 OK; LEVEL 1918-63-5=1850 OK",
+      "result": "MATCH — both declared secondary executioners strictly out-earn the arm; the packet margins (+94.16 vs +72.42 over 386; +78.59 vs +78.03 over 1850) reproduce exactly"
+    },
+    {
+      "id": "RC-4",
+      "check": "CLOCK_ONLY_SHADOW is a LAWFUL comparator per the freeze battery",
+      "evidence": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/d1/proposals/RATESNG1-A5-P1.json (control_battery_spec lines 111-136; falsification_rule lines 189-193: killer_controls = [LEVEL_VS_SHAPE_DECOMPOSITION_CONTROL, CLOCK_ONLY_SHADOW, PLACEBO]; CLOCK_ONLY_SHADOW kill_semantics 'DESIGNATED KILLER: if the bare clock out-earns the anchor ... the proposal dies')",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/s/selection_freeze.json (section_6_control_battery_binding lines 337-372; falsification_rule.declared_at 'D1, before any measurement'; statement carries identical secondary-executer semantics)"
+      ],
+      "result": "LAWFUL — declared outcome-blind pre-measurement, sha-pinned into the freeze; the 'dies as clock re-clock' D1 falsification fired exactly as declared; margin +21.74 is material (~30% above the arm), not a rounding edge"
+    },
+    {
+      "id": "RC-5",
+      "check": "A7-R1 binding applied lawfully (CONSERVATIVE PLACEBO NOT_EXECUTABLE, neither kill nor pass)",
+      "evidence": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/audits/lead_adjudication_a7.json (A7-R1 BOUND pre-scored, adjudicated_utc 2026-09-14T03:09:00Z)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/cell_RATESNG1-A5-P1-ARM-CONSERVATIVE.json (battery.a7_r1_binding: PLACEBO n_pairs_used 0 NOT_EXECUTABLE; family_kill decided on executable limbs LEVEL+CLOCK, both kill=true: +24.211491988296416 and +372.74611070492614)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/e_gate.json (a7_r1_binding.rows_recorded_not_executable)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/audits/a7_prelaunch_rates_ng1.json (finding 1: fail-open surface disclosed pre-GO; residual note: CONSERVATIVE barred by R3 independently)"
+      ],
+      "timing_check": "adjudication 03:09:00Z precedes E run start 03:27:38Z (e_gate.started_utc) — binding was BOUND BEFORE any scored number existed",
+      "binding_direction_check": "binding removes the 0-pair row from BOTH sides: it created no kill (LEVEL+CLOCK killed CONSERVATIVE on executable limbs) and credited no pass (a NOT_EXECUTABLE row can never be a pass limb) — no rescue, no wrongful kill",
+      "result": "LAWFUL"
+    },
+    {
+      "id": "RC-6",
+      "check": "R comparisons: 3/3 ALL_MATCH with P-4 framing",
+      "evidence": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/r/repro_report.json (reproduction_verdict ALL_MATCH; cells 3/3 ALL_MATCH; family_verdicts byte-equal ba0c91a3d8ecdd2934a7b6a13f24b756fb4768e49474b8716d96baa6f8b67759; e_gate ALL_MATCH)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/r/cell_comparison_RATESNG1-A5-P1-ARM-NEUTRAL.json (ALL_MATCH)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/r/cell_comparison_RATESNG1-A5-P1-ARM-CONSERVATIVE.json (ALL_MATCH)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/r/cell_comparison_RATESNG1-A5-P1-ARM-AGGRESSIVE.json (ALL_MATCH; per-role control series SHAs equal, incl. CLOCK f88f90d22542a1a838f48446f09a21326806de76b948881c4f9dc951e56cb55a; per_period_series SHAs equal)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/r/family_comparison.json (byte-equal ALL_MATCH)"
+      ],
+      "framing_check": "repro_report.framing.law records P-4 verbatim: ALL_MATCH proves SELF-CONSISTENCY ONLY, strategy validity lives solely in the committed E verdicts; no tolerance applied anywhere; inputs staged byte-exact vs substrate_manifest before use",
+      "result": "MATCH"
+    },
+    {
+      "id": "RC-7",
+      "check": "Governance: GO at gate, budget 3/6 with 3 unbooked, S1 SEALED, P-11 persistence, P-15 no post-score move",
+      "evidence": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/e_gate.json (authority.go_phrase 'GO RATES NG1 SCORED EXECUTION', P-8 at this cycle's own gate; budget planned 6 / booked 3 / unbooked 3 / unused_slots_never_reassigned true; integrity.s1 'SEALED_UNTOUCHED'; p11 per-period series persisted; incidents: attempt-1 TECHABORT E-DRIVER-SELF-PIN-ATTEMPT1 before any PnL, no rescue/no threshold change, disclosed)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/s/selection_freeze.json (budget_law: never padded with new families/siblings/re-runs/threshold variants; provenance_note: 'No threshold was moved: 0 / 2-of-3 / 1.10 / 50% carry over unchanged from the precedent')",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/family_verdicts.json (rule_bounds_frozen provenance; survivor_law P-15 clause)",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/audits/lead_execution_evidence.json (Z 46 + I 72 = 118 passed exit 0 at 1041d3bf632073efe8e9b8f0aa9dd8bf0c0f0e4a; Z suite 46/46 live-verified in the frozen twin)"
+      ],
+      "result": "RECONCILED — no rescue, no threshold move, no variant addition after any scored number was visible"
+    },
+    {
+      "id": "RC-8",
+      "check": "R4/R6 margin arithmetic spot-recompute (static)",
+      "recomputed": {
+        "AGGRESSIVE_pf": "169622.54843384342 / 24780.862784209985 = 6.8449008378321... vs artifact 6.8449008378321885 OK; margin 6.8449008378321885-1.1=5.744900837832189 OK",
+        "NEUTRAL_pf": "10538.648216542762 / 12862.794410463208 = 0.8193124977547... vs artifact 0.8193124977547744 OK",
+        "CONSERVATIVE_pf": "0 / 576.6813630715362 = 0.0 OK, margin -1.1 OK",
+        "AGGRESSIVE_r6": "0.5 - 0.42527207515631277 = 0.07472792484368723 OK; drop-one-fold means all positive OK",
+        "AGGRESSIVE_r3": "3/3 positive folds (76.24874129829116, 69.61353563507109, 88.19480038191831) >= 2 OK",
+        "NEUTRAL_r2_rows": "CLOCK 102.24283268565519-22.295630785407454=79.94720190024773 kill=true OK; LEVEL -11.8026908617363 no kill OK; PLACEBO -3.246961064817704 no kill OK; killed_by=[CLOCK_ONLY_SHADOW] correct"
+      },
+      "result": "MATCH"
+    }
+  ],
+  "hunt_results": {
+    "wrongful_kill_search": "No survivor was wrongfully killed. NEUTRAL and CONSERVATIVE fail R1 outright (negative after-cost expectancy) independent of any comparator or binding. AGGRESSIVE fails R2 on TWO independent, pre-declared, sha-pinned killers (CLOCK_ONLY_SHADOW margin +21.741084682710607; PLACEBO margin +0.5563948084700598); the kill law is strict inequality with tie-not-kill, and no tie occurs.",
+    "wrongful_binding_search": "The A7-R1 binding is direction-neutral by construction (removes a 0-pair row from both kill and pass sides) and was bound pre-score (03:09Z before 03:27:38Z). It flipped no verdict: CONSERVATIVE is killed on executable limbs alone and is independently barred by R3 (all 3 events in fold 2).",
+    "comparator_lawfulness_search": "CLOCK_ONLY_SHADOW and PLACEBO are DESIGNATED KILLERS in the D1 proposal control_battery_spec (pre-measurement, sha-pinned into the freeze section_6_control_battery_binding). No comparator outside the frozen battery was used.",
+    "post_score_tuning_search": "Rule bounds 0 / 2-of-3 / 1.10 / 50% carried unchanged from the FOREX-NG1 precedent ('never moved'); budget slots unbooked and never reassigned; the single mid-lane incident (TECHABORT attempt-1) preceded any PnL, is disclosed, and its remediation was pin bookkeeping only.",
+    "missing_survivor_search": "No 4th arm or unbooked-slot survivor exists to find: exactly one family ELIGIBLE at S; 3 booked cells are the whole booked budget; PBO fail-closed honestly recorded."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "description": "AGGRESSIVE PLACEBO kill margin is thin (+0.5563948084700598 USD/decision over 1850 pairs, ~0.7%). Does not change the conclusion: R2 is independently decided by CLOCK_ONLY_SHADOW (+21.741084682710607 over 386 pairs), both lawful pre-declared killers, and the frozen kill law is strict inequality with no materiality threshold (inventing one post-score would itself be a P-15 violation).",
+      "evidence_paths": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/cell_RATESNG1-A5-P1-ARM-AGGRESSIVE.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/s/selection_freeze.json"
+      ],
+      "exact_shas": ["frozen tree cf5134bc31c625cabc10bf9096383da8388f2f40"]
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "description": "The CLOCK_ONLY_SHADOW comparator aligns on 386 of 1855 defined anchor instants (~21% of the book), so its mean is subset-sensitive in principle. Lawful per the frozen q11 aligned-pair semantics declared outcome-blind, and independently confirmed by the PLACEBO kill on essentially the full book (1850 pairs). No conclusion change.",
+      "evidence_paths": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/cell_RATESNG1-A5-P1-ARM-AGGRESSIVE.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/r/cell_comparison_RATESNG1-A5-P1-ARM-AGGRESSIVE.json"
+      ],
+      "exact_shas": ["clock series sha f88f90d22542a1a838f48446f09a21326806de76b948881c4f9dc951e56cb55a (equal committed vs fresh)"]
+    },
+    {
+      "id": "F3",
+      "severity": "LOW",
+      "description": "Closed observation: the R2 comparator surface was fail-open for 0-pair rows before scoring (prelaunch audit finding 1). CLOSED by adjudication A7-R1 binding BOUND pre-scored and applied in every E artifact row; residual impact nil this cycle (CONSERVATIVE barred by R3 independently). Recorded so no future variant can inherit the fail-open.",
+      "evidence_paths": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/audits/a7_prelaunch_rates_ng1.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/audits/lead_adjudication_a7.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/e/e_gate.json"
+      ],
+      "exact_shas": ["audit_commit e449e329766421bd47415e68aa12a72d013d3898", "adjudication base f4a5ba0dc52d67f938726d9de440da8d41f4b0b8"]
+    },
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "description": "NOT_RUN_EXECUTION_REQUIRED (auditor, honestly recorded): the auditor has no shell, so (1) the packet test command (pytest tests/test_rates_ng1_z.py tests/test_rates_ng1_i.py -q), (2) sha256 recomputation of pinned artifacts, and (3) the Z byte-for-byte replay were NOT executed by the auditor and are NOT inferred PASS. Mitigating evidence (not the auditor's own): Lead execution rows 118 passed exit 0 at 1041d3bf632073efe8e9b8f0aa9dd8bf0c0f0e4a; the R lane's independent ALL_MATCH reproduction from the frozen twin 438da32766614f57260fcf200509e48fd26d4f74 with byte-exact staged inputs (0 mismatches).",
+      "evidence_paths": [
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/audits/lead_execution_evidence.json",
+        "/tmp/a7t_rates_ng1/research/control/rates_ng1_run/r/repro_report.json"
+      ],
+      "exact_shas": ["lead evidence tree 1041d3bf632073efe8e9b8f0aa9dd8bf0c0f0e4a", "repro twin 438da32766614f57260fcf200509e48fd26d4f74"]
+    }
+  ],
+  "authority": {
+    "adjudication_artifact": "research/control/rates_ng1_run/audits/lead_adjudication_a7.json",
+    "adjudication_base_sha": "f4a5ba0dc52d67f938726d9de440da8d41f4b0b8",
+    "audit_verdict_key": "RATES_NG1_T_TERMINAL_AUDIT_AUTHORIZED",
+    "claimed_terminal_conclusion": "RATES_NG1_REJECT_ALL (family_has_survivor false) is CORRECT: NEUTRAL and CONSERVATIVE fail R1 outright; AGGRESSIVE fails R2 on two lawful pre-declared killers with strictly positive recomputed margins"
+  },
+  "audit_artifact_commit_status": "left uncommitted per packet COMMIT RULES (Lead commits at integration)"
+}
