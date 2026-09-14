@@ -668,3 +668,190 @@ def test_tick_mapping_unmapped_symbol_uses_recorded_default(tmp_path):
     assert fills[ETH]["slippage_amount"] == pytest.approx(22.5 * 0.0005)
     assert fills[BTC]["slippage_amount"] == pytest.approx(0.9 * 0.01)
     assert record["slippage"] == pytest.approx(0.9 * 0.01 + 22.5 * 0.0005)
+
+
+# ----------------------------------------------------------------------
+# SIZING_AND_CAP_BASIS: start_of_rebalance_equity (Q-14 gross-basis fix)
+# ----------------------------------------------------------------------
+# Hand-computed reference for both gross-1.0 tests below. Flat 100,000-
+# USDT sleeve, one decision targeting a dollar-neutral gross-1.0 book
+# (4 longs +0.125, 4 shorts -0.125), every ref chosen so qty * ref is a
+# clean 12,500 USDT (0.125 x 100,000); scalar tick 0.01, primary book
+# CURRENT_CONSERVATIVE_COST (fee 0.0005 on REF notional, 1 tick slip):
+#   per-leg qty   = 0.125 * 100_000 / ref          (qty * ref = 12,500)
+#   per-leg fee   = 12,500 * 0.0005 = 6.25         (8 legs -> 50.0)
+#   per-leg slip  = qty * 0.01                     (8 legs -> 42.1875:
+#       0.125 + 0.25 + 1.25 + 12.5 + 0.0625 + 0.5 + 2.5 + 25.0)
+#   equity after  = 100,000 - 50.0 - 42.1875 = 99,907.8125
+#   cash after    = 99,909.0625 (long marks +50,000, short marks
+#                   -50,000 net to zero)
+# Sized gross-after across ALL 8 legs = 100,000 == the start-of-
+# rebalance equity exactly, so every leg fits the cap measured on that
+# basis (pre-fix the last leg was refused: 100,000 > 100,000 - costs).
+G10_PRICES = {
+    "AAAUSDT": 1_000.0,
+    "BBBUSDT": 500.0,
+    "CCCUSDT": 100.0,
+    "DDDUSDT": 10.0,
+    "EEEUSDT": 2_000.0,
+    "FFFUSDT": 250.0,
+    "GGGUSDT": 50.0,
+    "HHHUSDT": 5.0,
+}
+G10_LONGS = ["AAAUSDT", "BBBUSDT", "CCCUSDT", "DDDUSDT"]
+G10_SHORTS = ["EEEUSDT", "FFFUSDT", "GGGUSDT", "HHHUSDT"]
+
+
+def make_g10_feed():
+    feed = InMemoryFeed()
+    start_open = parse("2026-05-28T00:00:00Z")
+    count = int(
+        (parse(D3) + dt.timedelta(hours=2) - start_open).total_seconds() // 900
+    )
+    for sym, price in G10_PRICES.items():
+        feed.add_bar_series(sym, start_open, count + 8, price)
+    return feed
+
+
+def g10_script(longs, shorts):
+    target = {sym: 0.125 for sym in longs}
+    target.update({sym: -0.125 for sym in shorts})
+    return target
+
+
+def make_g10_executor(script, tmp_path, **overrides):
+    return make_executor(
+        script,
+        tmp_path,
+        feed=make_g10_feed(),
+        snapshot_spec={
+            "bars": {
+                "symbols": sorted(G10_PRICES),
+                "interval": "15m",
+                "lookback_seconds": 2 * 86400,
+            }
+        },
+        **overrides,
+    )[0]
+
+
+def test_gross10_multileg_book_with_fees_completes_all_legs(tmp_path):
+    exec_ = make_g10_executor({D1: g10_script(G10_LONGS, G10_SHORTS)}, tmp_path)
+    result = exec_.run_due(shift(D1, minutes=16))
+    assert result["emitted"] == 1
+    assert result["accounting_fail_closed"] == 0
+    record = ledger.scan_events(ledger_file(tmp_path))[0]
+    assert record["accounting_status"] == events.ACCOUNTING_STATUS_OK
+    fills = record["virtual_fill_events"]
+    # ALL 8 legs completed (pre-fix the last opening short was refused)
+    assert [f["symbol"] for f in fills] == G10_LONGS + G10_SHORTS
+    # hand-computed per-leg arithmetic: qty = 0.125 * 100_000 / ref,
+    # fee = qty * ref * 0.0005 = 6.25, slip = qty * 0.01, adverse tick
+    total_ref_notional = 0.0
+    for f in fills:
+        ref = G10_PRICES[f["symbol"]]
+        side = "buy" if f["symbol"] in G10_LONGS else "sell"
+        assert f["side"] == side
+        assert f["qty"] == pytest.approx(12_500.0 / ref, rel=1e-12)
+        assert f["ref_price"] == pytest.approx(ref)
+        assert f["fee"] == pytest.approx(6.25)
+        assert f["slippage_amount"] == pytest.approx((12_500.0 / ref) * 0.01)
+        assert f["fill_price"] == pytest.approx(
+            ref + 0.01 if side == "buy" else ref - 0.01
+        )
+        total_ref_notional += f["qty"] * ref
+    # sized gross == start-of-rebalance equity exactly (the basis)
+    assert total_ref_notional == pytest.approx(100_000.0, rel=1e-12)
+    # hand-computed aggregates: fee 8 x 6.25 = 50.0, slippage 42.1875
+    assert record["fee"] == pytest.approx(50.0)
+    assert record["slippage"] == pytest.approx(42.1875)
+    assert record["equity"] == pytest.approx(99_907.8125)
+    assert record["cash"] == pytest.approx(99_907.8125)
+    # measured gross sits at sized-gross / post-cost equity: 100,000 /
+    # 99,907.8125 — above 1.0 by exactly the booked-cost residual, the
+    # documented SIZING_AND_CAP_BASIS convention (measured honestly)
+    assert record["gross"] == pytest.approx(100_000.0 / 99_907.8125)
+    # sleeve quantities match the sizing-basis targets (shorts negative)
+    for sym in G10_LONGS + G10_SHORTS:
+        sign = 1.0 if sym in G10_LONGS else -1.0
+        want = sign * 0.125 * 100_000.0 / G10_PRICES[sym]
+        assert exec_.sleeve.positions[sym].qty == pytest.approx(want, rel=1e-12)
+
+
+def test_rehearsal_class_eight_leg_gross10_books_fill_all_legs(tmp_path):
+    # The replay-rehearsal defect class (ILLIQ-AMIHUD / BASISLV-PREMFADE):
+    # quintile/tercile-shaped 8-leg gross-1.0 books completed only 7/8
+    # legs with UNAVAILABLE_FAIL_CLOSED because the last short leg was
+    # measured against equity already reduced by this rebalance's own
+    # booked fees/slippage. Both the initial deployment AND a full shift
+    # to a different 8-leg book must now complete every leg.
+    exec_ = make_g10_executor(
+        {
+            D1: g10_script(G10_LONGS, G10_SHORTS),
+            D2: g10_script(["BBBUSDT", "CCCUSDT", "DDDUSDT", "EEEUSDT"],
+                           ["AAAUSDT", "FFFUSDT", "GGGUSDT", "HHHUSDT"]),
+        },
+        tmp_path,
+    )
+    result1 = exec_.run_due(shift(D1, minutes=16))
+    assert result1["emitted"] == 1
+    assert result1["accounting_fail_closed"] == 0
+    result2 = exec_.run_due(shift(D2, minutes=16))
+    assert result2["emitted"] == 1
+    assert result2["accounting_fail_closed"] == 0  # pre-fix: 1 here
+    records = ledger.scan_events(ledger_file(tmp_path))
+    assert len(records) == 2
+    d1, d2 = records
+    assert d1["accounting_status"] == events.ACCOUNTING_STATUS_OK
+    assert len(d1["virtual_fill_events"]) == 8  # 8/8 legs
+    assert d2["accounting_status"] == events.ACCOUNTING_STATUS_OK
+    assert d2["risk_status"] == events.RISK_STATUS_OK
+    # D2 re-trades every symbol: 4 trims/cover legs + 10 phase legs total
+    # (AAA: trim+short, EEE: cover+long, BBB/CCC/DDD trims, FFF/GGG/HHH
+    # short increases) — the LAST open-short leg completes too
+    assert len(d2["virtual_fill_events"]) == 10
+    assert {f["symbol"] for f in d2["virtual_fill_events"]} == set(G10_PRICES)
+    # D2 sized on the D1 post-cost equity (start-of-rebalance basis):
+    e1 = d1["equity"]
+    assert e1 == pytest.approx(99_907.8125)
+    for sym, ref in G10_PRICES.items():
+        assert abs(exec_.sleeve.positions[sym].qty) * ref == pytest.approx(
+            0.125 * e1, rel=1e-9
+        )
+    # the full book still carries sized gross == the sizing basis
+    sized_gross = sum(
+        abs(exec_.sleeve.positions[sym].qty) * G10_PRICES[sym]
+        for sym in G10_PRICES
+    )
+    assert sized_gross == pytest.approx(e1, rel=1e-9)
+
+
+def test_target_above_hard_gross_cap_blocks_prefill_with_pre_post_recorded(tmp_path):
+    # Genuine leverage is unchanged: a target gross meaningfully above
+    # the hard cap blocks at risk.check_and_apply BEFORE any fill, with
+    # the pre target and the (empty) post target recorded on the block.
+    caps = risk.FamilyRiskCaps(
+        family_id=ScriptedAdapter.FAMILY_ID,
+        target_gross=1.0,
+        hard_gross_cap=1.0,
+        hard_abs_net_cap=1.0,
+    )
+    proposed = {BTC: 0.75, ETH: -0.5}  # gross 1.25: meaningfully above 1.0
+    approved, block = risk.check_and_apply(proposed, caps)
+    assert not approved
+    assert block.blocked
+    assert block.pre_target == proposed
+    assert block.post_target == {}
+    assert any(v.startswith("hard_gross_cap") for v in block.violations)
+    exec_ = make_executor({D1: dict(proposed)}, tmp_path, caps=caps)[0]
+    result = exec_.run_due(shift(D1, minutes=16))
+    assert result["risk_blocked"] == 1
+    assert result["emitted"] == 0
+    record = ledger.scan_events(ledger_file(tmp_path))[0]
+    assert record["risk_status"] == events.RISK_STATUS_BLOCKED
+    assert record["target_weights"] == {}
+    assert record["virtual_fill_events"] == []
+    assert record["eligible_symbols"] == [BTC, ETH]  # the intent existed
+    assert exec_.sleeve.fill_count == 0
+    assert exec_.sleeve.positions == {}
+    assert exec_.sleeve.decision_count == 1  # recorded, blocked pre-fill
