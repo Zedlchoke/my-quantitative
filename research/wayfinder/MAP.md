@@ -2,6 +2,22 @@
 
 ## Sprint state (synced at the new-assets generation open, 2026-09-12)
 
+- **COMMODITIES-NG1 CLOSED → `COMMODITIES_NG1_REJECT_ALL`** (2026-09-14, branch
+  `orca/commodities-ng1-integration`, terminal 9abb88ae, A7 AUTHORIZED 0 HIGH/CRITICAL,
+  reproduction 3/3 ALL_MATCH) — the first commodities-family cycle in program history on
+  the platform v3 data plane: CFTC CoT positioning archives + EODHD commodity ETP legs
+  (20 market-pairs, 11 fully-costed bookable); F1 coverage gate complete. D2 1/4 ELIGIBLE
+  (A4-P2 crowd-carry 0.1096; 3 VETO by own price-only shadow). E NO SURVIVOR 3/3 KILL
+  (NEUTRAL −2.0601 PF 0.568 n 249 / TAILWIDE −2.6360 PF 0.623 n 315 / WINDOWSHORT −4.1836
+  PF 0.452 n 319): **the D1 falsification law fired — the bare release-clock control (no
+  positioning input) out-earned every anchor after costs; the ARM3 window-short placebo
+  also out-earned; kills overdetermined R1/R3/R4/R5/R6** — the edge belonged to the CoT
+  release-calendar geometry, not positioning information. R 3/3 ALL_MATCH; T AUTHORIZED;
+  budget 3/6 (3 unbooked, never reassigned); S1 SEALED. **the new-assets generation
+  (rates/vol/commodities) is now fully closed: 3/3 REJECT_ALL, 12 cells scored,
+  0 survivors, program 257/260** (P-9). Detail:
+  `.worktrees/commodities-ng1/integration/research/control/commodities_ng1_run/terminal_report_comm_ng1.json`.
+
 - **VOL-NG1 CLOSED → `VOL_NG1_REJECT_ALL`** (2026-09-14, branch
   `orca/vol-ng1-integration`, terminal 04da4374, A7 AUTHORIZED 0 HIGH/CRITICAL,
   reproduction 6/6 ALL_MATCH) — first vol-family cycle in program history on the
