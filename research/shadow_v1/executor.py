@@ -165,7 +165,11 @@ class ForwardExecutor:
         The family this executor runs; must match the adapter identity.
     config:
         Frozen run configuration. Required keys (fail closed):
-        ``code_freeze_sha`` (str), ``tick_size`` (float > 0),
+        ``code_freeze_sha`` (str), ``tick_size`` (a positive number, OR
+        a Mapping of symbol -> positive number paired with a REQUIRED
+        positive ``tick_size_default`` used for fill symbols absent
+        from the mapping — plan section 6 per-symbol tick/slippage
+        model; each fill is priced and records its resolved tick),
         ``cost_books`` ({name: {fee_rate, slippage_ticks}}),
         ``caps`` (a risk.FamilyRiskCaps for this family),
         ``snapshot_spec`` (see :func:`_validate_snapshot_spec`),
@@ -234,12 +238,38 @@ class ForwardExecutor:
         self.code_freeze_sha = str(config["code_freeze_sha"])
         _require(bool(self.code_freeze_sha), "code_freeze_sha must be non-empty")
 
-        tick = config["tick_size"]
-        _require(
-            isinstance(tick, (int, float)) and float(tick) > 0,
-            "tick_size must be a positive number",
-        )
-        self.tick_size = float(tick)
+        tick_cfg = config["tick_size"]
+        if isinstance(tick_cfg, Mapping):
+            # Plan section 6 per-symbol tick/slippage model: a mapping of
+            # symbol -> positive tick. A positive ``tick_size_default`` is
+            # REQUIRED (fail closed at construction) so a fill symbol
+            # absent from the mapping still prices fail-closed rather
+            # than inheriting a foreign symbol's tick.
+            _require(len(dict(tick_cfg)) >= 1, "tick_size mapping must be non-empty")
+            per_symbol: Dict[str, float] = {}
+            for sym, t in dict(tick_cfg).items():
+                _require(
+                    isinstance(t, (int, float)) and float(t) > 0,
+                    f"tick_size[{str(sym)!r}] must be a positive number",
+                )
+                per_symbol[str(sym)] = float(t)
+            self.tick_size_map: Optional[Dict[str, float]] = per_symbol
+            default = config.get("tick_size_default")
+            _require(
+                isinstance(default, (int, float)) and float(default) > 0,
+                "tick_size mapping requires config 'tick_size_default' "
+                "to be a positive number (fail closed)",
+            )
+            self.tick_size_default: Optional[float] = float(default)
+            self.tick_size: Optional[float] = None
+        else:
+            _require(
+                isinstance(tick_cfg, (int, float)) and float(tick_cfg) > 0,
+                "tick_size must be a positive number",
+            )
+            self.tick_size = float(tick_cfg)
+            self.tick_size_map = None
+            self.tick_size_default = None
 
         offset = config["feature_cutoff_offset_seconds"]
         _require(
@@ -365,7 +395,14 @@ class ForwardExecutor:
                     "primary_book": self.primary_book,
                     "schedule": self.schedule,
                     "snapshot_spec": self.snapshot_spec,
-                    "tick_size": self.tick_size,
+                    "tick_size": (
+                        self.tick_size
+                        if self.tick_size_map is None
+                        else {
+                            "per_symbol": dict(sorted(self.tick_size_map.items())),
+                            "default": self.tick_size_default,
+                        }
+                    ),
                     "btc_betas": self.btc_betas,
                 },
             }
@@ -723,7 +760,9 @@ class ForwardExecutor:
             events.RISK_STATUS_BLOCKED if block.blocked else events.RISK_STATUS_OK
         )
         final_weights: Dict[str, float] = {}
-        fills: List[accounting.VirtualFillEvent] = []
+        # (fill event, resolved per-symbol tick) pairs: one resolved tick
+        # prices BOTH cost books of that fill (shared quantities).
+        fills: List[Tuple[accounting.VirtualFillEvent, float]] = []
         accounting_status = events.ACCOUNTING_STATUS_OK
         outcome = "emitted"
         if block.blocked:
@@ -732,14 +771,18 @@ class ForwardExecutor:
             final_weights = dict(approved)
             try:
                 for symbol, side, qty in self._rebalance_steps(approved, fill_refs):
+                    tick = self._resolve_tick(symbol)
                     fills.append(
-                        sleeve.apply_fill(
-                            symbol,
-                            side,
-                            qty,
-                            fill_refs[symbol],
-                            self.tick_size,
-                            decision_utc,
+                        (
+                            sleeve.apply_fill(
+                                symbol,
+                                side,
+                                qty,
+                                fill_refs[symbol],
+                                tick,
+                                decision_utc,
+                            ),
+                            tick,
                         )
                     )
             except accounting.AccountingError:
@@ -786,7 +829,12 @@ class ForwardExecutor:
             signal_values=dict(proposal.signal_values),
             target_weights=final_weights,
             previous_weights=previous_weights,
-            virtual_fill_events=[f.as_dict() for f in fills],
+            virtual_fill_events=[
+                # record the RESOLVED per-fill tick for that symbol
+                # (== tick_size_default when the default was used)
+                dict(f.as_dict(), tick_size=tick)
+                for f, tick in fills
+            ],
             fee=book.fee - fee_before,
             slippage=book.slippage - slippage_before,
             funding_cashflow=funding_delta,
@@ -831,6 +879,22 @@ class ForwardExecutor:
             cost_regime_digest=self.cost_regime_digest,
             blocked_reason=str(exc),
         )
+
+    def _resolve_tick(self, symbol: str) -> float:
+        """Plan section 6 per-symbol tick resolution for ONE fill symbol.
+
+        Mapping config: exact symbol lookup, else the mandatory
+        ``tick_size_default`` for a fill symbol absent from the mapping
+        (the tick recorded on that fill IS the default in that case).
+        Scalar config: the frozen scalar for every symbol (behavior
+        unchanged).
+        """
+        if self.tick_size_map is None:
+            return self.tick_size
+        tick = self.tick_size_map.get(symbol)
+        if tick is not None:
+            return tick
+        return float(self.tick_size_default)
 
     # ------------------------------------------------------------------
     # funding + rebalance

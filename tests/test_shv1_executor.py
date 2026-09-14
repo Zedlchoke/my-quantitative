@@ -577,3 +577,94 @@ def test_run_due_after_start_executes_boundary_decision(tmp_path):
     )
     result = exec_.run_due(shift(D2, minutes=16))
     assert result["emitted"] == 1  # decision == shadow_start is allowed
+
+
+# ----------------------------------------------------------------------
+# plan section 6 per-symbol tick_size mapping (remediation: tick model)
+# ----------------------------------------------------------------------
+# Hand-computed reference for both mapping tests below (script D1:
+# {BTC: 0.45, ETH: 0.45} from a flat 100,000-USDT sleeve; the fill bar
+# closes at BTC_PRICE / ETH_PRICE; both cost books carry
+# slippage_ticks = 1.0; fills are symbol-sorted opens):
+#   BTC qty = 0.45 * 100_000 / 50_000 = 0.9,  notional 45_000 USDT
+#   ETH qty = 0.45 * 100_000 /  2_000 = 22.5, notional 45_000 USDT
+# EQUAL notionals, DIFFERENT resolved ticks -> DIFFERENT USDT slippage:
+#   BTC: 0.9  * 1.0 * tick(BTC) ; ETH: 22.5 * 1.0 * tick(ETH)
+TICK_MAP_DIFFERENT = {BTC: 0.01, ETH: 0.0001}
+
+
+def test_tick_mapping_equal_notionals_different_per_fill_slippage(tmp_path):
+    exec_ = make_executor(
+        {D1: {BTC: 0.45, ETH: 0.45}},
+        tmp_path,
+        tick_size=dict(TICK_MAP_DIFFERENT),
+        tick_size_default=0.01,
+    )[0]
+    result = exec_.run_due(shift(D1, minutes=16))
+    assert result["emitted"] == 1
+    record = ledger.scan_events(ledger_file(tmp_path))[0]
+    assert record["accounting_status"] == events.ACCOUNTING_STATUS_OK
+    fills = record["virtual_fill_events"]
+    assert [f["symbol"] for f in fills] == [BTC, ETH]
+    btc_fill, eth_fill = fills
+    # each fill records ITS resolved per-symbol tick
+    assert btc_fill["tick_size"] == 0.01
+    assert eth_fill["tick_size"] == 0.0001
+    # hand-computed exact slippage USDT per fill (equal 45_000 notionals):
+    assert btc_fill["slippage_amount"] == pytest.approx(0.9 * 0.01)  # 0.009
+    assert eth_fill["slippage_amount"] == pytest.approx(22.5 * 0.0001)  # 0.00225
+    assert btc_fill["slippage_amount"] != pytest.approx(
+        eth_fill["slippage_amount"]
+    )
+    # buy fills move by the RESOLVED tick per symbol (price units)
+    assert btc_fill["fill_price"] == pytest.approx(BTC_PRICE + 0.01)
+    assert eth_fill["fill_price"] == pytest.approx(ETH_PRICE + 0.0001)
+    assert record["slippage"] == pytest.approx(0.009 + 0.00225)
+    assert record["fee"] == pytest.approx(0.9 * BTC_PRICE * 0.0005 + 22.5 * ETH_PRICE * 0.0005)
+    # the SAME resolved tick priced BOTH cost books (shared quantities:
+    # equal book slippage despite the differing fee rates)
+    sleeve = exec_.sleeve
+    assert sleeve.books["LINEAGE_COST"].slippage == pytest.approx(0.01125)
+    assert sleeve.books["CURRENT_CONSERVATIVE_COST"].slippage == pytest.approx(
+        0.01125
+    )
+
+
+def test_tick_mapping_missing_default_refuses_fail_closed_zero_ledger(tmp_path):
+    script = {D1: {BTC: 0.45, ETH: 0.45}}
+    bad_configs = [
+        {"tick_size": {BTC: 0.01}},  # ETH unmapped AND no tick_size_default
+        {"tick_size": dict(TICK_MAP_DIFFERENT)},  # complete but no default
+        {"tick_size": dict(TICK_MAP_DIFFERENT), "tick_size_default": 0.0},
+        {"tick_size": dict(TICK_MAP_DIFFERENT), "tick_size_default": -0.01},
+        {"tick_size": dict(TICK_MAP_DIFFERENT), "tick_size_default": "x"},
+        {"tick_size": {BTC: 0.0}, "tick_size_default": 0.01},  # bad tick value
+        {"tick_size": {}, "tick_size_default": 0.01},  # empty mapping
+    ]
+    for overrides in bad_configs:
+        with pytest.raises(executor_module.ExecutorError):
+            make_executor(script, tmp_path, **overrides)
+    # fail closed BEFORE any run: zero ledger bytes written
+    assert ledger.read_raw_bytes(ledger_file(tmp_path)) is None
+
+
+def test_tick_mapping_unmapped_symbol_uses_recorded_default(tmp_path):
+    exec_ = make_executor(
+        {D1: {BTC: 0.45, ETH: 0.45}},
+        tmp_path,
+        tick_size={BTC: 0.01},  # ETHUSDT deliberately unmapped
+        tick_size_default=0.0005,
+    )[0]
+    result = exec_.run_due(shift(D1, minutes=16))
+    assert result["emitted"] == 1
+    record = ledger.scan_events(ledger_file(tmp_path))[0]
+    assert record["accounting_status"] == events.ACCOUNTING_STATUS_OK
+    fills = {f["symbol"]: f for f in record["virtual_fill_events"]}
+    # mapped symbol keeps its own tick; the unmapped one used the default
+    assert fills[BTC]["tick_size"] == 0.01
+    assert fills[ETH]["tick_size"] == 0.0005
+    # hand-computed: default tick drives both the fill price and slippage
+    assert fills[ETH]["fill_price"] == pytest.approx(ETH_PRICE + 0.0005)
+    assert fills[ETH]["slippage_amount"] == pytest.approx(22.5 * 0.0005)
+    assert fills[BTC]["slippage_amount"] == pytest.approx(0.9 * 0.01)
+    assert record["slippage"] == pytest.approx(0.9 * 0.01 + 22.5 * 0.0005)
