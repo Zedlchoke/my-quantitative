@@ -1,0 +1,180 @@
+{
+  "schema": "shv1_a7_prelaunch_g8@1",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "audited_at_utc": "2026-09-14T15:26:13Z",
+  "audited_tip": "02aa29b6fa4dd66409ccef26283a85a3f9ac1c5a",
+  "detached_head": "02aa29b6fa4dd66409ccef26283a85a3f9ac1c5a",
+  "detached_tree": "/tmp/a7g8_shv1",
+  "auditor": "independent fresh-context A7 (no repair, no gate weakening, read-only except this artifact)",
+  "commands_and_results": [
+    {"step": "checkout", "command": "git -C /tmp/a7g8_shv1 rev-parse HEAD; git -C <integration> rev-parse HEAD", "exit_code": 0, "result": "both 02aa29b6fa4dd66409ccef26283a85a3f9ac1c5a; detached tree clean; equals audited tip"},
+    {"step": "G0", "command": ".venv/bin/python research/researchctl.py cycle list (root, read-only)", "exit_code": 0, "result": "PROSPECTIVE-SHADOW-V1 PLANNED_NOT_STARTED budget 0/0 head df5b1d2; all other rows TERMINAL"},
+    {"step": "G0", "command": ".venv/bin/python research/researchctl.py locks inspect", "exit_code": 0, "result": "verdict FREE_PROVEN (pid null, flock free); history shows R_REPRODUCTION runs released FINISHED 2026-09-14T14:55-14:56Z"},
+    {"step": "G0", "command": ".venv/bin/python research/researchctl.py cycle doctor --json", "exit_code": 0, "result": "24 findings fresh (11 HIGH / 9 MEDIUM / 4 LOW); all 11 HIGH belong to historical TERMINAL cycles (PAUSE_CRYPTO_V17, PAUSE_FOREX_V8, V12_CLOSEOUT_VERIFICATION); exactly one finding names this cycle: LOW HEAD_MISMATCH 'branch 02aa29b vs registry df5b1d2'"},
+    {"step": "G0", "command": "read plans/CYCLE_REGISTRY.json row + git merge-base --is-ancestor df5b1d2 02aa29b", "exit_code": 0, "result": "lifecycle PLANNED_NOT_STARTED, s1 SEALED_UNTOUCHED, go_phrase_state REGISTERED_NOT_CONSUMED, workers 0, budget 0/0; registered head df5b1d2 IS ancestor of audited tip (12 legitimate commits, no rewrite)"},
+    {"step": "G1", "command": "shasum -a 256 research/control/prospective_shadow_v1/identity/identity_recovery.json", "exit_code": 0, "result": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8 MATCHES required digest"},
+    {"step": "G1", "command": "python: recompute sha256+git-blob-sha+byte_len for 3 files per family vs manifest entries", "exit_code": 0, "result": "9/9 byte-exact: family1 (v11 selection_freeze_specs A8-V11-ILLIQ-AMIHUD.json, research/v11/families/illiq_amihud/plugin.py, tests/test_v11i_illiq_amihud_identity.py) and family2 (selection_freeze_v14.json, basislv gate_runner.py, strategy.py) via 'git show <commit>:<path>' at pinned commits c97283e0/183554ad; family3 files are WORKING_TREE_TRACKED by design (candidate.yaml, v6-closure addendum, v6 final_transition.json) and verify byte-exact against clean detached HEAD"},
+    {"step": "G1", "command": "grep verdict labels in research/shadow_v1/families/ + read usage", "exit_code": 0, "result": "HISTORICAL_VERDICT_LABEL = 'V11_FAMILY_REJECT' / 'V14_FAMILY_REJECT' / 'CANDIDATE_FAIL' as literal class constants in all three adapters; consumed read-only (dashboard snapshot, families __init__ event fields); no dynamic assignment path exists; tests/test_shv1_families_identity.py pins the exact 3-label set and cross-checks manifest entries"},
+    {"step": "G2", "command": "python: sample 5 archived raw fetches from data_manifest.json (28 total), recompute sha256+byte_len", "exit_code": 0, "result": "5/5 byte-exact (BTCUSDT klines p1, SOLUSDT klines p1, basis BTCUSDT p1/p5, basis ETHUSDT p1)"},
+    {"step": "G2", "command": "shasum exchangeInfo_fapi.json + read data_manifest.unavailable_evidence", "exit_code": 0, "result": "055202f6b50b635e6be516f32cc1ac1fbdcbba9b8d284b6f66496b12d6aefb85 matches manifest; 3 WAF-block fee-page probes archived with genuine evidence (HTTP 202/0-byte, sha e3b0c442... = empty bytes)"},
+    {"step": "G2", "command": "read research/shadow_v1/data_feed.py + tests/test_shv1_pit.py; run pytest tests/test_shv1_pit.py", "exit_code": 0, "result": "27 passed (with accounting). PIT rules real: get_completed_bars excludes bars whose canonical close > cutoff; feature_eligible_bucket requires open+interval strictly < decision; select_fill_bar takes first close strictly > decision; settled funding requires fundingTime <= cutoff and books only within ts_opened <= ft < ts_closed; require_complete_bars fails closed on gaps. Mutation tests are NOT vacuous: bar shifted 16min late is excluded AND gap blocks; mutating decision-bar close leaves fill price unchanged (invariance) AND mutating fill-bar close changes it (positive control); duplicate funding booking refused; non-allowlisted endpoint refused; transport failure raises DataBlocked"},
+    {"step": "G3", "command": "python one-liner independent recompute of the hand fixture chain (no project imports)", "exit_code": 0, "result": "T0 buy 0.5@80k ref: fee 20.0, slip 0.05, fill 80000.1, cash 59979.95, equity 99979.95 (== docstring); T2 funding equity 100475.9 (== docstring); T3 flat equity 100455.6 (== docstring); no-funding variant 100459.65 and lineage view 100467.60 verified by hand from test file; matches tests/test_shv1_accounting.py exactly"},
+    {"step": "G3", "command": "read accounting.py: two-book construction, per-fill cost booking, funding dedup/side rule", "exit_code": 0, "result": "CostBook holds only name+params+costs; positions/cash mutated once per apply_fill and shared across books (same quantities); fee+slippage added exactly once per fill per book (accounting.py:408-411); funding keyed (symbol, funding_time) dedup already_booked, window ts_opened <= ft < ts_closed, LONG_PAYS_POSITIVE_RATE: cashflow=-rate*notional*sign; equity identity asserted on every mutation (IDENTITY_MISMATCH fail-closed)"},
+    {"step": "G3/A3", "command": "read InsufficientCashError guards (accounting.py:362-386) and executor sell path", "exit_code": 0, "result": "sell guard computes gross_notional_after as pre-fill positions' |qty|*mark PLUS the sell notional (no subtraction of the reduction) -> overcounts true post-trade gross; reducing sells in a fully-invested gross-1.0 book can be refused (fail-closed direction); headroom-aware sell slicing + 0.5% cost buffer exist ONLY in tests/test_shv1_engine_smoke.py SmokeExecutor, not in research/shadow_v1/ (see F1/F3)"},
+    {"step": "G4", "command": "python -c 'from research.shadow_v1.no_order import assert_no_order_surface; assert_no_order_surface(\"research/shadow_v1\")'", "exit_code": 0, "result": "files_scanned 22 (families/ + dashboard/ included), hits 0, verdict NO_ORDER_SURFACE_CLEAN"},
+    {"step": "G4", "command": "grep ccxt/binance/api_key/api_secret/requests.post/create_order/place_order/submit_order/cancel_order/os.environ over research/shadow_v1/", "exit_code": 0, "result": "only hits are the scanner's own assembled rule fragments in no_order.py; urllib usage is GET-only with frozen endpoint allowlist in data_feed.py; no credential read; no .env/S1 access anywhere in the package"},
+    {"step": "G4", "command": "start dashboard: python -m research.shadow_v1.dashboard --ledgers /tmp/a7g8_empty_ledgers --port 18771 (empty ledgers dir, from detached tree)", "exit_code": 0, "result": "GET / = 200; GET snapshot/export.csv/export.json = 200; GET /api/trade/x.json = 404 (correct); POST/PUT/DELETE/PATCH x all 5 routes = 405 on every request (20/20); snapshot on empty ledgers renders counters as None (NOT_RUN semantics, never fabricated 0s), exposes per-family blocked_decisions field; server killed after test"},
+    {"step": "G4", "command": "read no_order.py emit_target_intent + ALLOWED_ACTION_TYPES + adversarial tests", "exit_code": 0, "result": "only TARGET_INTENT action type can be emitted; event contract refuses any other action type; adversarial scratch-module tests (venue SDK import, order verbs, credential reads) all fail closed"},
+    {"step": "G5", "command": "read tests/test_shv1_scheduler.py + run pytest tests/test_shv1_scheduler.py", "exit_code": 0, "result": "8 passed (within battery). Assertions are real: exact weekly-Monday/daily-00Z clocks incl. year boundary; duplicate launch -> emitted 0, skipped 3, ledger digest+byte count unchanged, executor not re-invoked; late-data -> DATA_BLOCKED record under deterministic event_id, retry with working data emits 0 and never re-executes; heartbeat carries last_scheduled/last_completed/byte_count; rogue executor event_id mismatch rejected with nothing committed"},
+    {"step": "G6", "command": "read risk.py check_and_apply + tests/test_shv1_risk.py + smoke wiring", "exit_code": 0, "result": "all caps (hard gross, hard |net|, per-symbol max/min, dollar-neutral, btc-beta-neutral) evaluated on proposed weights BEFORE any fill; violations -> empty approved weights + BlockRecord{pre_target, post_target, violations, caps}; missing config key fail-closed; carry caps 0.80/1.00/0.10/0.20 built from verbatim identity YAML lines; smoke executor calls check_and_apply before _rebalance; no margin/leverage path (weights are equity fractions + cash/gross guards in accounting)"},
+    {"step": "G7", "command": "shasum -a 256 research/control/prospective_shadow_v1/r/handoff_shv1_r_repro.json", "exit_code": 0, "result": "e63984d790eca3f0321702cabb3f3fc471b342ea5014de6ec9b620a953563d6e MATCHES required digest"},
+    {"step": "G7", "command": "re-run full 13-file shv1 battery from /tmp/a7g8_shv1: pytest tests/test_shv1_{accounting,eventstore,noorder,pit,scheduler,combined,risk,identity_recovery,data_cost,families,families_identity,engine_smoke,dashboard}.py -q", "exit_code": 0, "lock": "NOT taken by A7: battery is small/fast (27.85s), lock verified FREE_PROVEN immediately before, machine idle; recorded per audit-dispatch allowance", "result": "162 passed / 0 failed / 0 errors in 27.85s — matches the cycle's 162 expectation"},
+    {"step": "G7 scope", "command": "read handoff_shv1_r_repro.json + q_gate.json + grep executor suppliers", "exit_code": 0, "result": "reproduction item 2 imports SmokeExecutor from tests/test_shv1_engine_smoke.py (disclosed in known_limitations); scheduler.run_once takes a caller-supplied executor; NO production executor exists anywhere in research/shadow_v1/ (see F1)"},
+    {"step": "FULL_SUITE", "command": "root main: git rev-parse HEAD; git merge-base --is-ancestor 41d1da6d HEAD; diff test file vs audited tip", "exit_code": 0, "result": "root main HEAD now 0ee9582b (advanced past cited 41d1da6d, which IS an ancestor); tests/test_family_failures.py unchanged since before 41d1da6d and byte-identical between main tip and audited tip"},
+    {"step": "FULL_SUITE", "command": "root main read-only: pytest tests/test_family_failures.py -q", "exit_code": 0, "result": "7 failed / 11 passed — identical failure set to the cycle's claim: test_real_registry_validates + 6 parametrized test_real_registry_uses_core_signatures"},
+    {"step": "FULL_SUITE root cause", "command": "python scan of research/wayfinder/FAMILY_FAILURES.jsonl entry shapes + grep for claimed enum strings", "exit_code": 0, "result": "actual cause: secondary_failures entries are plain strings (not dicts) at lines 98-109 (RATES-NG1 x3, VOL-NG1 x6, COMMODITIES-NG1 x3 terminal closes) -> test line 184 raises TypeError 'string indices must be integers'; validator reports 48 errors. The dispatch's claimed mechanism (SCORED_REJECTION/NEGATIVE_EXPECTANCY enum absent from test enum) is FALSE — those strings exist nowhere in tests/ or research/governance/ and no commit ever added them to the test file. Conclusion (pre-existing, byte-identical, not introduced by this cycle) stands; stated mechanism does not (F5)"},
+    {"step": "VACUOUS hunt", "command": "grep skip/xfail/assert-True over 13 test files; count tests per file; pytest --collect-only dashboard", "exit_code": 0, "result": "zero skips/xfails/vacuous asserts; 140 test functions + 22 collected dashboard unittest tests = 162; dashboard tests are real unittest classes incl. TestSeparateCounters.two_decisions_three_intents_four_fills_one_closed; PIT tests carry positive controls against invariance-vacuity"},
+    {"step": "LEAKAGE hunt", "command": "grep REPLAY_NOT_PROSPECTIVE / backfill in research/shadow_v1/ + read ledger.py write paths + scheduler resume defaults", "exit_code": 0, "result": "REPLAY_NOT_PROSPECTIVE appears in identity_recovery.json (replay_label_rule) and is asserted declared by tests/test_shv1_identity_recovery.py, but appears in NO engine code; no replay/backfill code path exists at all in the audited tip (leak impossible by absence, not by guard); ledger.py append-only O_APPEND with atomic write + read-back; scheduler default window never backfills (no records -> from_utc=window_end). See F2"},
+    {"step": "ADJ checks", "command": "curl dashboard snapshot on empty ledgers; grep snapshot.py counter/blocked derivation; grep render.py labels; read cost_regime_manifest + qa/browser_render_check.json + p1_gate.json + a7_identity_crosscheck sha", "exit_code": 0, "result": "blocked_decisions surfaced per family + blocked chart markers; order_intent_count derived as len(target_weights) summed over data_status=OK events with UI legend 'symbol-level TARGET_INTENT entries emitted across decided events (an intent is NOT a fill)'; a7_identity_crosscheck.json sha 0c164ee494df802d9b27176cf09acb4a4856d26e31b8c28d9bbfbf6cacff8d93 matches R handoff; browser render check PASS with 3 hashed screenshots + honest empty state + disclosed click-through limitation"}
+  ],
+  "gate_verdicts": {
+    "G0": {"verdict": "PASS", "evidence": "registry row PLANNED_NOT_STARTED / 0-0 / S1 SEALED_UNTOUCHED / go_phrase REGISTERED_NOT_CONSUMED / workers 0; lock FREE_PROVEN; all 11 HIGH doctor findings belong to historical TERMINAL cycles; registered head is ancestor of audited tip. Noted: fresh doctor count 24 vs 22 in p0_control_plane.json, plus one LOW HEAD_MISMATCH on this cycle (legitimate branch advance) — F4 LOW"},
+    "G1": {"verdict": "PASS", "evidence": "identity_recovery.json sha matches required digest; 9/9 spot-recomputed file hashes byte-exact (6 via pinned commits c97283e0/183554ad, 3 family-3 WORKING_TREE_TRACKED files == clean HEAD); all three verdict labels verbatim as immutable class constants + pinned by exact-set test; no relabel code path exists"},
+    "G2": {"verdict": "PASS", "evidence": "5/5 sampled archived raw sha256 byte-exact + exchangeInfo verified; PIT rules implemented and mutation-tested with positive controls (completed-bar cutoff, strictly-before eligibility, strictly-after fill lag invariance, funding settlement window/once, gap fail-closed, allowlist refusal)"},
+    "G3": {"verdict": "PASS", "evidence": "independent plain-python recompute reproduces the hand fixture to the cent (99979.95 / 100475.90 / 100455.60; no-funding 100459.65; lineage view 100467.60); equity identity asserted every mutation; fee+slippage once per fill; funding once per settlement with dedup + side rule; two cost books share quantities, differ only in BookCostParams. Noted: sell-guard overcount for reducing sells — F3"},
+    "G4": {"verdict": "PASS", "evidence": "package scanner 22 files 0 hits; independent greps clean; GET-only allowlisted urllib client; live server test: GET 200, POST/PUT/DELETE/PATCH 405 on all 5 routes, unknown trade 404; only TARGET_INTENT emitted; adversarial fail-closed tests; no credential/.env/S1 access"},
+    "G5": {"verdict": "PASS", "evidence": "exact decision clocks (incl. year boundary); duplicate launch -> zero new events, byte-identical ledger, executor not re-invoked; late-data DATA_BLOCKED under deterministic event_id, retry never re-executes; heartbeat fields present; rogue event_id rejected, nothing committed"},
+    "G6": {"verdict": "PASS", "evidence": "caps evaluated strictly before fills; violation blocks event and records pre/post target + caps; caps built from identity-manifest verbatim params, missing keys fail closed; no margin/leverage path (equity-fraction weights + cash/gross refusal guards)"},
+    "G7": {"verdict": "PASS_WITH_SCOPE", "evidence": "R handoff sha matches; A7 independently re-ran the 13-file battery at the audited tip: 162 passed / 0 failed (no heavy lock taken — small fast battery, lock FREE_PROVEN pre-check, recorded). SCOPE CAVEAT folded into F1: the reproduced end-to-end composition is the test-local SmokeExecutor; the monthly live-interval reproduction is correctly deferred to phase E/R and the q_gate labels G7 'PASS (pre-activation analogue)'"}
+  },
+  "adjudications": [
+    {
+      "id": "ADJ1_DATA_BLOCKED_semantics",
+      "question": "blocked decision consumes event_id and is never re-executed when data arrives late",
+      "call": "ACCEPTABLE — not a finding",
+      "rationale": "Verified in code and by a real test: test_late_data_emits_data_blocked_and_retry_resumes_same_event_id asserts the retry emits 0 and the ledger digest is unchanged. The decision is recorded (never skipped silently), no price is synthesized, no stale rank reused, and the deterministic event_id makes re-execution structurally impossible. For a forward observation this is the PIT-honest direction: re-executing on late data would create look-ahead. Completeness is representable because the blocked record exists and the dashboard surfaces blocked_decisions per family plus blocked chart markers — those must stay visible (condition C5). Loss of one slot is the conservative cost of honesty."
+    },
+    {
+      "id": "ADJ2_order_intent_count_derivation",
+      "question": "order_intent_count derived as symbol-level target_weights entries across data_status=OK events",
+      "call": "ACCEPTABLE with labeling condition already satisfied",
+      "rationale": "The four counters remain distinct and a dedicated dashboard test proves non-conflation (two decisions / three intents / four fills / one closed). The derivation is disclosed in the UI legend ('symbol-level TARGET_INTENT entries emitted across decided events (an intent is NOT a fill)') — render.py:1103. Residual nuance: it counts symbol entries on no-change rebalances and counts zero on risk-blocked events whose intent existed; acceptable because the label does not claim 'orders that would be sent'. target_weights never contains zero-weight entries (verified in all three adapters), so there is no inflation path. Condition C6 keeps the label binding."
+    },
+    {
+      "id": "ADJ3_insufficient_cash_reducing_sell",
+      "question": "A2 sell guard counts reducing-sell notional against gross; executor slices via headroom; safe+honest or remediation before activation?",
+      "call": "SAFE AND HONEST in direction, but the workaround is test-local — remediation/productionization REQUIRED before activation; folded into F1/F3",
+      "rationale": "The guard is fail-closed: it can refuse valid trades, never permit leverage; fills that do occur are recorded exactly as they occur. But the headroom-aware slicing algorithm and the 0.5% notional buffer live only in tests/test_shv1_engine_smoke.py; if carried into production unchanged, the gross-1.0 sleeves would systematically execute ~0.5% under target and fragment fills into slices, biasing fill-level statistics — and if re-implemented ad hoc, the new code would be un-audited. The production executor work mandated by F1 must either fix the guard for reducing sells (subtract the reduction) or freeze the slicing+buffer as disclosed production bytes inside the scanned surface."
+    },
+    {
+      "id": "ADJ4_conservative_fee_fallback",
+      "question": "CURRENT_CONSERVATIVE_COST taker fee 0.0005 declared fallback because fee page WAF-blocked; freeze pre-activation or require measured bytes first?",
+      "call": "ACCEPTABLE to freeze with the honest label; measured fee bytes are NOT a safety precondition for SHADOW_START_UTC (owner may still demand them)",
+      "rationale": "The fallback is honestly labeled UNAVAILABLE_FAIL_CLOSED_FALLBACK_DECLARED with archived probes (HTTP 202/0-byte WAF challenges verified as genuine empty-body bytes) and no beyond-measured claim; tick sizes ARE measured per symbol from archived exchangeInfo bytes (hash verified by this audit). The direction is safe for a shadow of three REJECTED families: 0.05% taker is the documented regular-tier rate and errs pessimistic, so the primary reality check can only understate, never overstate, family performance — it cannot manufacture a promotion argument. If measured bytes later differ, plan section 6 already mandates a dated cost-regime boundary with a new frozen hash, never an in-place rewrite (condition C3)."
+    },
+    {
+      "id": "ADJ5_browser_clickthrough",
+      "question": "real-row visual click-through impossible pre-activation (empty ledgers); DOM click-through tested on synthetic fixtures",
+      "call": "ACCEPTABLE with the noted 7-day-checkpoint follow-up",
+      "rationale": "Logistically true: no trade row can exist before GO without violating the forward-only rule, so an empty-ledger render is the only honest pre-activation state and it was screenshotted (3 hashed screenshots, honest NOT_RUN/NO_TRADES_YET/UNAVAILABLE_FAIL_CLOSED states, verdict labels visible). The click-through contract (plan 9.8) is covered at DOM level on synthetic fixtures by tests/test_shv1_dashboard.py TestDetailLookup (including unknown-id 404). The visual real-row click-through is correctly deferred and recorded as a 7-day-checkpoint item (condition C4)."
+    }
+  ],
+  "vacuous_test_findings": [
+    "NONE FOUND. All 13 shv1 test files contain substantive assertions: zero skips, zero xfails, zero assert-True placeholders, zero mocks that bypass the code under test (the scheduler's synthetic executor is the by-design injection point, and the smoke executor drives the real decide/risk/accounting paths). The PIT suite includes positive controls (mutating the fill bar DOES change the fill reference) that guard its own invariance tests against vacuity; the identity and data-cost suites re-hash every listed manifest file rather than trusting the manifest; the no-order suite runs adversarial scratch modules through the real scanner."
+  ],
+  "leakage_findings": [
+    {
+      "id": "LEAK1",
+      "severity": "MEDIUM",
+      "description": "The forward-only rule is declared in manifests but not enforced in code. REPLAY_NOT_PROSPECTIVE appears in identity_recovery.json (replay_label_rule) and is tested as declared, but no engine code implements a replay namespace guard; symmetrically, no replay/backfill code path exists at all in the audited tip, so prospective contamination is currently impossible only by absence. When the phase-E runner is written (F1), nothing in the current code would stop a replay loop from writing historical-window events into the prospective ledger directory, nor is there a code-level SHADOW_START_UTC lower bound on PnL/fills.",
+      "evidence": "grep REPLAY_NOT_PROSPECTIVE research/shadow_v1/ -> 0 hits; grep backfill -> 0 hits; ledger.py has no namespace guard; scheduler.run_once has no start-time floor parameter; identity_recovery.json replay_label_rule declares the requirement",
+      "required_by": "condition C2"
+    }
+  ],
+  "full_suite_debt_adjudication": {
+    "failure_set": "7 failed / 11 passed in tests/test_family_failures.py on root main (HEAD 0ee9582b; file byte-identical to the audited tip and unchanged since before cited main tip 41d1da6d, which is an ancestor): test_real_registry_validates + 6 parametrized test_real_registry_uses_core_signatures",
+    "actual_root_cause": "secondary_failures entries are plain strings instead of {code,...} dicts at research/wayfinder/FAMILY_FAILURES.jsonl lines 98-109 (RATES-NG1 x3 commit 0a2e1105, VOL-NG1 x6 commit aa78e7c3, COMMODITIES-NG1 x3 commit e8f55c24 — all TERMINAL cycles); test line 184 raises TypeError. The cycle's claimed mechanism (SCORED_REJECTION/NEGATIVE_EXPECTANCY enum absent from a test enum at lines 98+) is factually wrong — those strings exist nowhere in the repo's tests or governance code (F5) — but its conclusion is correct",
+    "severity": "MEDIUM control-plane debt",
+    "blocks_this_cycle": false,
+    "rationale": "The debt lives in the program-wide failure-memory registry written by three closed historical cycles. PROSPECTIVE-SHADOW-V1 neither introduced it nor may edit registry/ledger files within its allowed paths (lanes never touch ledgers/registries). It touches no shv1 gate evidence, no engine code, and no shadow accounting. It degrades the program's failure-memory tooling, not this launch. Owner should ticket a registry repair lane (normalize lines 98-109 to dict-shaped secondary_failures or update the validator contract) — outside this cycle."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "HIGH",
+      "description": "The audited tip contains NO production forward executor. scheduler.run_once requires a caller-supplied executor, and the only complete decision->PIT-snapshot->risk-check->fill->funding->plan-section-8-record composition is the SmokeExecutor class inside tests/test_shv1_engine_smoke.py, carrying rehearsal-only execution parameters (COST_BUFFER=0.005 notional scale-down labeled 'Not an identity parameter', DUST_USDT=1.0, 60-iteration headroom sell slicing). No module under research/shadow_v1/ composes these steps, so the claim that the engine is 'ready for forward observation' is overstated: activating after GO would require writing new composition code that this G8 audit has never seen, outside the no-order scan surface discipline that production code would be held to. The gap is disclosed (R handoff known_limitations; q_gate G7 'PASS (pre-activation analogue)' with phase-E scope note), which preserves honesty but does not close it.",
+      "evidence": "grep run_once/executor over research/ --include=*.py excluding tests: only scheduler.py definition and portfolio_engine.py (legacy, different engine); tests/test_shv1_engine_smoke.py:231-538 SmokeExecutor incl. _sell_with_headroom:331 and COST_BUFFER:101; handoff_shv1_r_repro.json known_limitations[0]",
+      "resolution_required": "condition C1"
+    },
+    {
+      "id": "F2",
+      "severity": "MEDIUM",
+      "description": "Forward-only / REPLAY_NOT_PROSPECTIVE rule enforced by absence, not by code (see LEAK1). Must be code-enforced inside the phase-E runner before SHADOW_START_UTC.",
+      "evidence": "as in leakage_findings LEAK1",
+      "resolution_required": "condition C2"
+    },
+    {
+      "id": "F3",
+      "severity": "MEDIUM",
+      "description": "InsufficientCashError sell guard overcounts reducing sells (gross_after = pre-fill gross + sell notional, reduction not subtracted), so rebalance sells in fully-invested gross-1.0 sleeves can be refused; the only working sell path is the test-local headroom slicing with a 0.5% execution buffer. Fail-closed direction is safe and fill recording is honest, but the production rebalance semantics are undecided: fix the guard or freeze the slicing+buffer as disclosed production code. Biased execution statistics (systematic under-target gross, fragmented fills) would contaminate the shadow's evidentiary value if adopted silently.",
+      "evidence": "accounting.py:376-386; tests/test_shv1_engine_smoke.py:98-101, 331-375; A8-family handoffs describe the workaround",
+      "resolution_required": "condition C1 (same production-executor deliverable)"
+    },
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "description": "Control-plane measurement drift vs the p0 artifact: fresh cycle doctor reports 24 findings (11 HIGH / 9 MEDIUM / 4 LOW), not the 22 recorded in p0_control_plane.json, and one LOW finding names this cycle (HEAD_MISMATCH branch 02aa29b vs registered df5b1d2). Ancestry verified (df5b1d2 is an ancestor of the audited tip; 12 legitimate commits), so this is registration-head pinning mechanics, not drift. All 11 HIGH findings remain confined to historical TERMINAL cycles. G0 unaffected; p0_control_plane.json should be treated as a point-in-time measurement.",
+      "evidence": "cycle doctor --json fresh run; git merge-base --is-ancestor df5b1d2 02aa29b -> true",
+      "resolution_required": "none for this cycle (disclosure)"
+    },
+    {
+      "id": "F5",
+      "severity": "LOW",
+      "description": "The launch packet's stated root cause for the 7 full-suite failures is factually wrong (no SCORED_REJECTION/NEGATIVE_EXPECTANCY enum exists anywhere; actual cause is string-shaped secondary_failures in FAMILY_FAILURES.jsonl lines 98-109). The audit-relevant conclusion (pre-existing, byte-identical on main, not introduced by this cycle, does not block prelaunch) was re-proven independently and stands.",
+      "evidence": "see full_suite_debt_adjudication",
+      "resolution_required": "owner registry repair ticket (outside this cycle)"
+    },
+    {
+      "id": "F6",
+      "severity": "LOW",
+      "description": "Boundary inconsistency between the feed-level cutoff and the eligibility helper: get_completed_bars includes a bar whose canonical close equals the cutoff (close > cutoff excluded), while feature_eligible_bucket requires open+interval strictly BEFORE the decision (close == decision NOT eligible). No look-ahead results — the smoke harness shifts the bars cutoff one interval earlier and the fill rule is strictly-after — but the production executor must pin one convention explicitly so the two definitions cannot diverge under future edits.",
+      "evidence": "data_feed.py:230-231 vs data_feed.py:393-398; tests/test_shv1_pit.py:71-96",
+      "resolution_required": "fold into condition C1 (document/pin convention in the production executor)"
+    }
+  ],
+  "unresolved_high_critical_count": 1,
+  "verdict": "REFUSED_FORWARD_EXECUTOR_ABSENT_IN_AUDITED_TIP",
+  "conditions": [
+    {
+      "id": "C1",
+      "binding_on": "before SHADOW_START_UTC; resolves F1/F3/F6",
+      "text": "Implement the production forward executor INSIDE research/shadow_v1/ (inside the no-order scan surface), composing data_feed -> adapter.decide -> risk.check_and_apply -> SleeveAccount fills -> events.build_event; explicitly decide and pin the reducing-sell policy (fix the A2 guard to subtract the reduction, or freeze the headroom-slicing + execution-buffer as disclosed production bytes recorded in the event records) and pin the feature-cutoff convention (F6). Re-run the full 13-file shv1 battery plus new executor tests at the new tip; a fresh-context A7 delta-audit of the executor must precede activation."
+    },
+    {
+      "id": "C2",
+      "binding_on": "before SHADOW_START_UTC; resolves F2/LEAK1",
+      "text": "Code-enforce the forward-only rule in the runner: a REPLAY_NOT_PROSPECTIVE namespace guard separating any historical replay outputs from results/prospective_shadow_v1/, and a hard SHADOW_START_UTC lower bound refusing any prospective event whose PnL interval or feature window could predate it."
+    },
+    {
+      "id": "C3",
+      "binding_on": "at activation, if fee bytes are later measured; resolves ADJ4",
+      "text": "CURRENT_CONSERVATIVE_COST is frozen at taker 0.0005 under UNAVAILABLE_FAIL_CLOSED_FALLBACK_DECLARED. If measured fee-schedule bytes are obtained before or during the run and differ, they create a dated cost-regime boundary with a new frozen hash per plan section 6 — never an in-place rewrite of the frozen regime."
+    },
+    {
+      "id": "C4",
+      "binding_on": "7-day checkpoint; resolves ADJ5",
+      "text": "Perform the visual click-through of a real trade row (detail drawer resolving immutable event, cost rows, N/A SL/TP, true exit policy) once real fills exist, and record it under qa/ at the 7-day operational checkpoint."
+    },
+    {
+      "id": "C5",
+      "binding_on": "continuous during phase E; guards ADJ1",
+      "text": "DATA_BLOCKED decisions remain permanently recorded under their deterministic event_id, never re-executed, never backfilled; dashboard blocked_decisions counters and blocked markers stay visible and data-completeness figures must be reported as emitted/(emitted+blocked)."
+    },
+    {
+      "id": "C6",
+      "binding_on": "continuous during phase E; guards ADJ2",
+      "text": "Keep the four counters (decision_count, order_intent_count, fill_count, closed_position_count) separate and keep the UI legend wording that order_intent_count is symbol-level TARGET_INTENT entries across decided events, not a count of orders or fills."
+    }
+  ],
+  "recommended_next_action": "Do not consume the owner GO yet. Land condition C1/C2: implement and test the production forward executor (with an explicit reducing-sell policy and replay/start-time guards) inside research/shadow_v1/ at a new tip, then re-run this A7 prelaunch audit (delta scope is sufficient) before SHADOW_START_UTC is written. The owner registry repair ticket for tests/test_family_failures.py (MEDIUM, outside this cycle) and the p0 doctor-count refresh (LOW) proceed in parallel. All other gate evidence (G0-G6 fully; G7 within its disclosed scope) is verified and stands at the audited tip."
+}
