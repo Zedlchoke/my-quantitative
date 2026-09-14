@@ -1,0 +1,850 @@
+{
+ "schema": "shv1_data_manifest_v1",
+ "cycle_id": "PROSPECTIVE-SHADOW-V1",
+ "task_id": "shv1-p2-data-cost-freeze",
+ "role": "quant-implementer",
+ "lane": "p2-data-cost",
+ "generated_utc": "2026-09-14T12:04:56Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/data-cost",
+ "branch": "orca/shv1-data-cost",
+ "base_head_sha": "999d23e3800b9d40e2512be686d950de4519336c",
+ "access_class": "INTERNAL_PAPER_ONLY_KEYLESS_PUBLIC_GETS",
+ "no_api_key_no_account_no_orders": true,
+ "authority": {
+  "identity_manifest": "research/control/prospective_shadow_v1/identity/identity_recovery.json",
+  "identity_manifest_sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+  "plan": "plans/PLAN_prospective_shadow_v1.md sections 2, 3, 6, 7, 8",
+  "fetch_index": "raw/_fetch_index.json",
+  "fetch_index_sha256": "53d80f269ce23318ccaefb6a9e93e654e02d6256c6ab4e6f870e4cad0e95262f"
+ },
+ "unavailable_evidence": [
+  {
+   "id": "unavail-001-fee-schedule-page",
+   "item": "public fee schedule page (https://www.binance.com/en/fee/futuresFee)",
+   "evidence_class": "UNAVAILABLE_FAIL_CLOSED",
+   "probe": {
+    "record": "probe_fee_futuresFee_page",
+    "file": "raw/cross/probe_fee_futuresFee_page.bin",
+    "url": "https://www.binance.com/en/fee/futuresFee",
+    "http_status": 202,
+    "fetched_at_utc": "2026-09-14T11:59:44Z",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "byte_len": 0
+   },
+   "reason": "WAF challenge: HTTP 202 with 0-byte body from this environment"
+  },
+  {
+   "id": "unavail-002-fee-developers-docs",
+   "item": "official developer docs general-info page (https://developers.binance.com/docs/derivatives/usds-margined-futures/general-info)",
+   "evidence_class": "UNAVAILABLE_FAIL_CLOSED",
+   "probe": {
+    "record": "probe_fee_developers_general_info",
+    "file": "raw/cross/probe_fee_developers_general_info.bin",
+    "url": "https://developers.binance.com/docs/derivatives/usds-margined-futures/general-info",
+    "http_status": 202,
+    "fetched_at_utc": "2026-09-14T11:59:45Z",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "byte_len": 0
+   },
+   "reason": "WAF challenge after redirect: HTTP 202 with 0-byte body"
+  },
+  {
+   "id": "unavail-003-fee-bapi-path",
+   "item": "bapi public fee-page data path (https://www.binance.com/bapi/composite/v1/public/promo/cms/common/fee-page/detail)",
+   "evidence_class": "UNAVAILABLE_FAIL_CLOSED",
+   "probe": {
+    "record": "probe_bapi_fee_page_detail",
+    "file": "raw/cross/probe_bapi_fee_page_detail.json",
+    "url": "https://www.binance.com/bapi/composite/v1/public/promo/cms/common/fee-page/detail?language=en&pageType=futuresFee",
+    "http_status": 404,
+    "fetched_at_utc": "2026-09-14T11:59:46Z",
+    "sha256": "39b58239fd3050ce0b4bf6c2cdac199e8465c27fce013abd96e3278c1c2ff1d3",
+    "byte_len": 146
+   },
+   "reason": "bapi plane reachable but this path is 404; no guessable public fee path exists; guessing article IDs would not be evidence-first"
+  },
+  {
+   "id": "unavail-004-terms-page",
+   "item": "Binance terms page (https://www.binance.com/en/terms)",
+   "evidence_class": "UNAVAILABLE_FAIL_CLOSED",
+   "probe": {
+    "record": "probe_terms_page",
+    "file": "raw/cross/probe_terms_page.bin",
+    "url": "https://www.binance.com/en/terms",
+    "http_status": 202,
+    "fetched_at_utc": "2026-09-14T11:59:46Z",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "byte_len": 0
+   },
+   "reason": "WAF challenge: HTTP 202 with 0-byte body from this environment"
+  }
+ ],
+ "families": [
+  {
+   "family_id": "ILLIQ-AMIHUD-28D-W",
+   "sleeve": "sleeve_illiq_amihud",
+   "historical_family_id": "A8-V11-ILLIQ-AMIHUD",
+   "identity_source": {
+    "manifest": "research/control/prospective_shadow_v1/identity/identity_recovery.json",
+    "manifest_sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+    "historical_source_commit_sha": "c97283e0d1681c24ee9a637a4fb1628d0334b7e1"
+   },
+   "universe": {
+    "identity_manifest_verbatim": "20 staged binance_bar symbols; PIT eligibility by listing + DV filter; quintile buckets as specced",
+    "exact_symbols_frozen_here": null,
+    "enumeration_status": "NOT_ENUMERATED_IN_IDENTITY_MANIFEST: the frozen authority pins the 20-symbol convention and the PIT listing+DV eligibility rule, not a literal symbol list; the forward engine resolves the eligible set at each decision from measured data. This lane invents no symbol list.",
+    "instrument_plane": "USDT-margined Binance perpetual futures, 15-minute klines"
+   },
+   "data_requirements": {
+    "forward_spec": "completed 15-minute close + quote-volume (quoteAssetVolume) bars over a trailing 28-day window for its universe",
+    "kline_fields_used": [
+     "close (field 4)",
+     "quoteAssetVolume (field 7)"
+    ],
+    "historical_decision_clock_verbatim": "Mondays 00:00:00Z; features from completed 15m bars + last COMPLETED OI 5m row strictly before stamp; one declared execution lag after availability",
+    "historical_open_interest_note": "the historical feature also used a COMPLETED OI 5m row; this freeze's forward data requirement per the dispatch is close + quote-volume bars; any future OI re-introduction requires a new frozen data requirement, never a silent add"
+   },
+   "endpoints": [
+    {
+     "name": "GET https://fapi.binance.com/fapi/v1/klines",
+     "purpose": "completed 15m close + quoteAssetVolume bars",
+     "keyless": true,
+     "evidence_class": "MEASURED_PUBLIC_BYTES",
+     "archived_fetches": [
+      {
+       "record": "f1_klines_BTCUSDT_p1",
+       "file": "raw/family1_illiq_amihud/klines_BTCUSDT_15m_p1.json",
+       "url": "https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=15m&startTime=1786967960203&limit=1500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:20Z",
+       "sha256": "ac2f6afffc34eaf27ecb17041f6b9d5193e69719219b91b1fe8e7568580a1b49",
+       "byte_len": 209148
+      },
+      {
+       "record": "f1_klines_BTCUSDT_p2",
+       "file": "raw/family1_illiq_amihud/klines_BTCUSDT_15m_p2.json",
+       "url": "https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=15m&startTime=1788317100001&limit=1500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:21Z",
+       "sha256": "442f47a893a205408637ea73d9a85d79b0c127ecb8042836a9da353beafc924b",
+       "byte_len": 164781
+      },
+      {
+       "record": "f1_klines_ETHUSDT_p1",
+       "file": "raw/family1_illiq_amihud/klines_ETHUSDT_15m_p1.json",
+       "url": "https://fapi.binance.com/fapi/v1/klines?symbol=ETHUSDT&interval=15m&startTime=1786967960203&limit=1500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:22Z",
+       "sha256": "abede89e495bd2081ec4d711974f557983f8722b2a681f707c3b4a7c3c81fedb",
+       "byte_len": 207273
+      },
+      {
+       "record": "f1_klines_ETHUSDT_p2",
+       "file": "raw/family1_illiq_amihud/klines_ETHUSDT_15m_p2.json",
+       "url": "https://fapi.binance.com/fapi/v1/klines?symbol=ETHUSDT&interval=15m&startTime=1788317100001&limit=1500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:23Z",
+       "sha256": "0dbcbc89587d25bcbdc0b191150f0944cb43da6f1d8f136eaf1c535c6b316e87",
+       "byte_len": 163479
+      },
+      {
+       "record": "f1_klines_SOLUSDT_p1",
+       "file": "raw/family1_illiq_amihud/klines_SOLUSDT_15m_p1.json",
+       "url": "https://fapi.binance.com/fapi/v1/klines?symbol=SOLUSDT&interval=15m&startTime=1786967960203&limit=1500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:24Z",
+       "sha256": "8bf3558f61f74bc98ad3eb01d50167eadf5d82214be4d463130071e80642768f",
+       "byte_len": 210004
+      },
+      {
+       "record": "f1_klines_SOLUSDT_p2",
+       "file": "raw/family1_illiq_amihud/klines_SOLUSDT_15m_p2.json",
+       "url": "https://fapi.binance.com/fapi/v1/klines?symbol=SOLUSDT&interval=15m&startTime=1788317100001&limit=1500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:25Z",
+       "sha256": "74b6f080b4e04ddcd56d79bb92b72657c7265e3a15f0dd4341e6cfe1f0e707e6",
+       "byte_len": 167405
+      }
+     ],
+     "measured_parse_summaries": [
+      {
+       "symbol": "BTCUSDT",
+       "bars_p1": 1500,
+       "bars_p2": 1188,
+       "bars_total_measured": 2688,
+       "full_28d_bar_target": 2688,
+       "first_open_ms": 1786968000000,
+       "last_open_ms": 1789386300000
+      },
+      {
+       "symbol": "BTCUSDT",
+       "bars_p1": 1500,
+       "bars_p2": 1188,
+       "bars_total_measured": 2688,
+       "full_28d_bar_target": 2688,
+       "first_open_ms": 1786968000000,
+       "last_open_ms": 1789386300000
+      },
+      {
+       "symbol": "ETHUSDT",
+       "bars_p1": 1500,
+       "bars_p2": 1188,
+       "bars_total_measured": 2688,
+       "full_28d_bar_target": 2688,
+       "first_open_ms": 1786968000000,
+       "last_open_ms": 1789386300000
+      },
+      {
+       "symbol": "ETHUSDT",
+       "bars_p1": 1500,
+       "bars_p2": 1188,
+       "bars_total_measured": 2688,
+       "full_28d_bar_target": 2688,
+       "first_open_ms": 1786968000000,
+       "last_open_ms": 1789386300000
+      },
+      {
+       "symbol": "SOLUSDT",
+       "bars_p1": 1500,
+       "bars_p2": 1188,
+       "bars_total_measured": 2688,
+       "full_28d_bar_target": 2688,
+       "first_open_ms": 1786968000000,
+       "last_open_ms": 1789386300000
+      },
+      {
+       "symbol": "SOLUSDT",
+       "bars_p1": 1500,
+       "bars_p2": 1188,
+       "bars_total_measured": 2688,
+       "full_28d_bar_target": 2688,
+       "first_open_ms": 1786968000000,
+       "last_open_ms": 1789386300000
+      }
+     ]
+    }
+   ],
+   "pit_rule": {
+    "decision_clock": "weekly Monday 00:00:00Z",
+    "feature_eligibility": "ONLY bars/buckets fully completed STRICTLY BEFORE the decision timestamp: feature bar with open_time T is eligible iff T + 15m < decision_utc; no intra-bar optimism is permitted anywhere in the engine",
+    "virtual_fill_rule": "families 1-2: virtual fill at the first completed 15-minute bar STRICTLY AFTER the decision timestamp (its close is the fill reference); latency is frozen in cost_regime_manifest.current_conservative_cost.latency_assumption",
+    "no_intra_bar_optimism": true,
+    "funding_role": "funding is an accounting cost/credit booked while held; it is NEVER a signal input"
+   },
+   "warmup_coverage": {
+    "requirement": "endpoint must serve >= 28 days of completed 15m bars per needed symbol (28*96 = 2688 bars)",
+    "requirement_days": 28,
+    "measured_spotcheck": [
+     {
+      "symbol": "BTCUSDT",
+      "bars_measured": 2688,
+      "full_28d_bar_target": 2688,
+      "covers_28d": true
+     },
+     {
+      "symbol": "ETHUSDT",
+      "bars_measured": 2688,
+      "full_28d_bar_target": 2688,
+      "covers_28d": true
+     },
+     {
+      "symbol": "SOLUSDT",
+      "bars_measured": 2688,
+      "full_28d_bar_target": 2688,
+      "covers_28d": true
+     }
+    ],
+    "spotcheck_note": "2-3 symbols spot-checked per dispatch; BTCUSDT/ETHUSDT/SOLUSDT are REPRESENTATIVES for endpoint capability, not a frozen universe",
+    "verdict": "MEASURED_CAPABLE_28D"
+   },
+   "license_evidence": {
+    "evidence_class": "MEASURED_PUBLIC_BYTES_FOR_MARKET_ENDPOINTS",
+    "keyless_gets_measured_working": [
+     "https://fapi.binance.com/fapi/v1/klines -> HTTP 200",
+     "https://fapi.binance.com/fapi/v1/time -> HTTP 200",
+     "https://fapi.binance.com/fapi/v1/exchangeInfo -> HTTP 200"
+    ],
+    "terms_page": {
+     "url": "https://www.binance.com/en/terms",
+     "evidence_class": "UNAVAILABLE_FAIL_CLOSED",
+     "probe": {
+      "record": "probe_terms_page",
+      "file": "raw/cross/probe_terms_page.bin",
+      "url": "https://www.binance.com/en/terms",
+      "http_status": 202,
+      "fetched_at_utc": "2026-09-14T11:59:46Z",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_len": 0
+     },
+     "consequence": "terms text unreachable in this environment; NO claim of authorized-beyond-measured is made; use stays limited to the keyless public GETs measured working"
+    },
+    "claim_limit": "no authorized-beyond-measured claim"
+   }
+  },
+  {
+   "family_id": "BASISLV-PREMFADE-28D",
+   "sleeve": "sleeve_basislv_premfade",
+   "historical_family_id": "A14-V14-A5-BASISLV-PREMFADE",
+   "identity_source": {
+    "manifest": "research/control/prospective_shadow_v1/identity/identity_recovery.json",
+    "manifest_sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+    "historical_source_commit_sha": "183554add4db82444d3e71beb24fb247c6b420b2"
+   },
+   "universe": {
+    "identity_manifest_verbatim": "signal_route: /futures/data/basis contractType=PERPETUAL period=15m pair=<SYM>; fields futuresPrice/indexPrice (+ basis/basisRate identity cross-check); side_rule: ... min 12 eligible names ...; benchmark_symbols_excluded: BTCUSDT",
+    "exact_symbols_frozen_here": null,
+    "enumeration_status": "NOT_ENUMERATED_IN_IDENTITY_MANIFEST: the frozen authority pins the per-pair basis route, the BTCUSDT exclusion and min_eligible=12, not a literal pair list; the eligible pair set is resolved at each decision from measured data (>= 12 eligible names required). This lane invents no pair list.",
+    "instrument_plane": "USDT-margined Binance perpetual futures vs index, 15-minute basis buckets"
+   },
+   "data_requirements": {
+    "forward_spec": "completed 15-minute perp-vs-index premium (basis) buckets (futuresPrice vs indexPrice), trailing 28-day window, minimum 12 eligible names at decision, BTCUSDT excluded",
+    "signal_route_verbatim": "/futures/data/basis contractType=PERPETUAL period=15m pair=<SYM>; fields futuresPrice/indexPrice (+ basis/basisRate identity cross-check)",
+    "min_eligible_names": 12,
+    "fill_rule_verbatim": "fills at the close of the first completed 15m bar strictly after the decision stamp (Monday 00:15:00Z close); stress +1 event delay fills at the Monday 00:30:00Z close"
+   },
+   "endpoints": [
+    {
+     "name": "GET https://fapi.binance.com/futures/data/basis",
+     "purpose": "completed 15m perp-vs-index premium buckets (futuresPrice/indexPrice/basis)",
+     "keyless": true,
+     "evidence_class": "MEASURED_PUBLIC_BYTES",
+     "archived_fetches": [
+      {
+       "record": "f2_basis_BTCUSDT_p1",
+       "file": "raw/family2_basislv_premfade/basis_BTCUSDT_15m_p1.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=BTCUSDT&contractType=PERPETUAL&period=15m&startTime=1786967960203&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:26Z",
+       "sha256": "ff8f488f8550604d368fbcdebfafe9d900e5e342f009d592241bd0d6aeccace2",
+       "byte_len": 98856
+      },
+      {
+       "record": "f2_basis_BTCUSDT_p2",
+       "file": "raw/family2_basislv_premfade/basis_BTCUSDT_15m_p2.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=BTCUSDT&contractType=PERPETUAL&period=15m&startTime=1787417100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:27Z",
+       "sha256": "6d45c4611482e903e52639b4746703723f3a8a3078b21d1ff46a8477b705b93d",
+       "byte_len": 98768
+      },
+      {
+       "record": "f2_basis_BTCUSDT_p3",
+       "file": "raw/family2_basislv_premfade/basis_BTCUSDT_15m_p3.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=BTCUSDT&contractType=PERPETUAL&period=15m&startTime=1787867100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:28Z",
+       "sha256": "32f31b77f41fc2bd63c6f08d87a5cb2eaf085b1588b76f1a60487a04ab7ed406",
+       "byte_len": 98996
+      },
+      {
+       "record": "f2_basis_BTCUSDT_p4",
+       "file": "raw/family2_basislv_premfade/basis_BTCUSDT_15m_p4.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=BTCUSDT&contractType=PERPETUAL&period=15m&startTime=1788317100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:28Z",
+       "sha256": "792fef198bfc141d01b3dafc765112c601feec6a7575bb02905842e5b1333d91",
+       "byte_len": 98996
+      },
+      {
+       "record": "f2_basis_BTCUSDT_p5",
+       "file": "raw/family2_basislv_premfade/basis_BTCUSDT_15m_p5.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=BTCUSDT&contractType=PERPETUAL&period=15m&startTime=1788767100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:29Z",
+       "sha256": "e240365437103c3f95719eb83fe3fbfbcaf2ba6d0d79e003bf13c75d6e7ba3fe",
+       "byte_len": 98996
+      },
+      {
+       "record": "f2_basis_BTCUSDT_p6",
+       "file": "raw/family2_basislv_premfade/basis_BTCUSDT_15m_p6.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=BTCUSDT&contractType=PERPETUAL&period=15m&startTime=1789217100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:30Z",
+       "sha256": "c7b67e34537ac70483a33c0ea43d124183d1cd1a2eb2b834624fa0a56ef041d0",
+       "byte_len": 37224
+      },
+      {
+       "record": "f2_basis_ETHUSDT_p1",
+       "file": "raw/family2_basislv_premfade/basis_ETHUSDT_15m_p1.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=ETHUSDT&contractType=PERPETUAL&period=15m&startTime=1786967960203&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:31Z",
+       "sha256": "e06bcec6aa1165b47f646b49748cd6f6bdf001a9ce4e7bc0514d209a79436140",
+       "byte_len": 97444
+      },
+      {
+       "record": "f2_basis_ETHUSDT_p2",
+       "file": "raw/family2_basislv_premfade/basis_ETHUSDT_15m_p2.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=ETHUSDT&contractType=PERPETUAL&period=15m&startTime=1787417100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:32Z",
+       "sha256": "65080e93b223f0aefabfb1f3f9e40f7167b2fbca90773d966c15e883259b083b",
+       "byte_len": 97489
+      },
+      {
+       "record": "f2_basis_ETHUSDT_p3",
+       "file": "raw/family2_basislv_premfade/basis_ETHUSDT_15m_p3.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=ETHUSDT&contractType=PERPETUAL&period=15m&startTime=1787867100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:32Z",
+       "sha256": "eb8a2bde2db8e1b8a2e83fde898ef552559213e4a5ada72c56718e9b11ad60df",
+       "byte_len": 97499
+      },
+      {
+       "record": "f2_basis_ETHUSDT_p4",
+       "file": "raw/family2_basislv_premfade/basis_ETHUSDT_15m_p4.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=ETHUSDT&contractType=PERPETUAL&period=15m&startTime=1788317100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:33Z",
+       "sha256": "4996303bbf2fceab6209916583b6df2fb7d64bb8e7d0a858675fef94719b651b",
+       "byte_len": 97495
+      },
+      {
+       "record": "f2_basis_ETHUSDT_p5",
+       "file": "raw/family2_basislv_premfade/basis_ETHUSDT_15m_p5.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=ETHUSDT&contractType=PERPETUAL&period=15m&startTime=1788767100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:34Z",
+       "sha256": "7fd143ba16016913bd1c2113c9fb67d132ea9a69ca68b42e49c037c89eea66fd",
+       "byte_len": 97494
+      },
+      {
+       "record": "f2_basis_ETHUSDT_p6",
+       "file": "raw/family2_basislv_premfade/basis_ETHUSDT_15m_p6.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=ETHUSDT&contractType=PERPETUAL&period=15m&startTime=1789217100001&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:35Z",
+       "sha256": "7adab9bbba1a5871e68a5b6cb9cc742dd28c9a805b2be24aff3b20f09a7ce4eb",
+       "byte_len": 36660
+      },
+      {
+       "record": "f2_basis_SOLUSDT_p1",
+       "file": "raw/family2_basislv_premfade/basis_SOLUSDT_15m_p1.json",
+       "url": "https://fapi.binance.com/futures/data/basis?pair=SOLUSDT&contractType=PERPETUAL&period=15m&startTime=1786967960203&endTime=1789387160203&limit=500",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:36Z",
+       "sha256": "168455bfd02a91a65c270032e8a6a9295d11e5a8a57301157d45b842c7e43be0",
+       "byte_len": 96302
+      }
+     ],
+     "measured_parse_summaries": [
+      {
+       "pair": "BTCUSDT",
+       "page": 1,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "BTCUSDT",
+       "page": 2,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "BTCUSDT",
+       "page": 3,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "BTCUSDT",
+       "page": 4,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "BTCUSDT",
+       "page": 5,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "BTCUSDT",
+       "page": 6,
+       "buckets_this_page": 188
+      },
+      {
+       "pair": "ETHUSDT",
+       "page": 1,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "ETHUSDT",
+       "page": 2,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "ETHUSDT",
+       "page": 3,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "ETHUSDT",
+       "page": 4,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "ETHUSDT",
+       "page": 5,
+       "buckets_this_page": 500
+      },
+      {
+       "pair": "ETHUSDT",
+       "page": 6,
+       "buckets_this_page": 188
+      },
+      {
+       "pair": "SOLUSDT",
+       "page": 1,
+       "buckets_this_page": 500
+      }
+     ]
+    },
+    {
+     "name": "GET https://fapi.binance.com/fapi/v1/premiumIndex",
+     "purpose": "supplementary current mark/index snapshot (endpoint inventory only; NOT a historical bucket source)",
+     "keyless": true,
+     "evidence_class": "MEASURED_PUBLIC_BYTES",
+     "archived_fetches": [
+      {
+       "record": "f2_premiumIndex_BTCUSDT",
+       "file": "raw/family2_basislv_premfade/premiumIndex_BTCUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:36Z",
+       "sha256": "df8f0e094f2c8d403bfcf0a3f9177ce45ecfb7dd300070bc20e1959c4fc36d67",
+       "byte_len": 231
+      }
+     ]
+    }
+   ],
+   "pit_rule": {
+    "decision_clock": "weekly Monday 00:00:00Z",
+    "feature_eligibility": "ONLY bars/buckets fully completed STRICTLY BEFORE the decision timestamp: feature bar with open_time T is eligible iff T + 15m < decision_utc; no intra-bar optimism is permitted anywhere in the engine",
+    "virtual_fill_rule": "families 1-2: virtual fill at the first completed 15-minute bar STRICTLY AFTER the decision timestamp (its close is the fill reference); latency is frozen in cost_regime_manifest.current_conservative_cost.latency_assumption",
+    "no_intra_bar_optimism": true,
+    "funding_role": "funding is an accounting cost/credit booked while held; it is NEVER a signal input"
+   },
+   "warmup_coverage": {
+    "requirement": "endpoint must serve >= 28 days of completed 15m basis buckets per needed pair (28*96 = 2688 buckets)",
+    "requirement_days": 28,
+    "measured_spotcheck": [
+     {
+      "symbol": "BTCUSDT",
+      "buckets_measured": 2688,
+      "full_28d_bucket_target": 2688,
+      "covers_28d": true
+     },
+     {
+      "symbol": "ETHUSDT",
+      "buckets_measured": 2688,
+      "full_28d_bucket_target": 2688,
+      "covers_28d": true
+     },
+     {
+      "symbol": "SOLUSDT",
+      "buckets_measured": 500,
+      "full_28d_bucket_target": 2688,
+      "covers_28d": false,
+      "note": "single-page spot-check only; endpoint measured capable of >= 28d via pagination on BTCUSDT/ETHUSDT"
+     }
+    ],
+    "spotcheck_note": "BTCUSDT/ETHUSDT walked page-by-page across the full 28d window; SOLUSDT is a single-page spot-check proving the route answers for alt pairs",
+    "verdict": "MEASURED_CAPABLE_28D"
+   },
+   "license_evidence": {
+    "evidence_class": "MEASURED_PUBLIC_BYTES_FOR_MARKET_ENDPOINTS",
+    "keyless_gets_measured_working": [
+     "https://fapi.binance.com/futures/data/basis -> HTTP 200",
+     "https://fapi.binance.com/fapi/v1/premiumIndex -> HTTP 200"
+    ],
+    "terms_page": {
+     "url": "https://www.binance.com/en/terms",
+     "evidence_class": "UNAVAILABLE_FAIL_CLOSED",
+     "probe": {
+      "record": "probe_terms_page",
+      "file": "raw/cross/probe_terms_page.bin",
+      "url": "https://www.binance.com/en/terms",
+      "http_status": 202,
+      "fetched_at_utc": "2026-09-14T11:59:46Z",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_len": 0
+     },
+     "consequence": "terms text unreachable in this environment; NO claim of authorized-beyond-measured is made; use stays limited to the keyless public GETs measured working"
+    },
+    "claim_limit": "no authorized-beyond-measured claim"
+   }
+  },
+  {
+   "family_id": "XSECT-FUND-CARRY-7D",
+   "sleeve": "sleeve_xsect_fund_carry",
+   "historical_family_id": "H-XSECT-FUNDING-CARRY-v1",
+   "identity_source": {
+    "manifest": "research/control/prospective_shadow_v1/identity/identity_recovery.json",
+    "manifest_sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+    "historical_source": "research/hypotheses/H-XSECT-FUNDING-CARRY-v1/candidate.yaml@WORKING_TREE_TRACKED"
+   },
+   "universe": {
+    "identity_manifest_verbatim_traded_universe": "traded_universe: [ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, DOGEUSDT, LINKUSDT, ADAUSDT]",
+    "identity_manifest_verbatim_benchmark": "benchmark_context: BTCUSDT",
+    "exact_symbols_frozen_here": [
+     "ETHUSDT",
+     "SOLUSDT",
+     "BNBUSDT",
+     "XRPUSDT",
+     "DOGEUSDT",
+     "LINKUSDT",
+     "ADAUSDT"
+    ],
+    "benchmark_context_symbols": [
+     "BTCUSDT"
+    ],
+    "enumeration_status": "EXACT_ENUMERATED_IN_IDENTITY_MANIFEST",
+    "instrument_plane": "USDT-margined Binance perpetual futures funding-rate settlements"
+   },
+   "data_requirements": {
+    "forward_spec": "settled funding-rate history for ETH/SOL/BNB/XRP/DOGE/LINK/ADA perpetuals + BTC as benchmark context",
+    "feature_verbatim": "feature: trailing_mean_of_published_settled_funding_only",
+    "signal_clock_verbatim": "signal_clock: daily_00_00_utc"
+   },
+   "endpoints": [
+    {
+     "name": "GET https://fapi.binance.com/fapi/v1/fundingRate",
+     "purpose": "settled funding-rate history (fundingTime + fundingRate + markPrice)",
+     "keyless": true,
+     "evidence_class": "MEASURED_PUBLIC_BYTES",
+     "archived_fetches": [
+      {
+       "record": "f3_funding_ETHUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_ETHUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=ETHUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:37Z",
+       "sha256": "870c1f46ee6153ed01b638fafd86570cca98a6c4473cbbcb6e48d3f31f7bb81a",
+       "byte_len": 62628
+      },
+      {
+       "record": "f3_funding_SOLUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_SOLUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=SOLUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:38Z",
+       "sha256": "71789bbf3ed95f40bed7082add5f4128c4ea495663a4ec14d8e7cb4f14e69ed8",
+       "byte_len": 61774
+      },
+      {
+       "record": "f3_funding_BNBUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_BNBUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BNBUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:39Z",
+       "sha256": "bcd6c0bead9b851fc52f184765f7af44da469ad0b61eedacd2e0248a02e295b6",
+       "byte_len": 62001
+      },
+      {
+       "record": "f3_funding_XRPUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_XRPUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=XRPUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:39Z",
+       "sha256": "4a74baf9f3712082698f7cbfa2097db98f8bdc948b6d6ea552ecadf554eb82e3",
+       "byte_len": 61217
+      },
+      {
+       "record": "f3_funding_DOGEUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_DOGEUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=DOGEUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:40Z",
+       "sha256": "be74868b1ff56fa7bf26528271f6f51f67d4b543d952867e4973d6d6a85f9955",
+       "byte_len": 61622
+      },
+      {
+       "record": "f3_funding_LINKUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_LINKUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=LINKUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:41Z",
+       "sha256": "6b61ddabde5f786c4cb33483e74cd2e2907ce9b2715eae1cc5b6505f68d9268b",
+       "byte_len": 61690
+      },
+      {
+       "record": "f3_funding_ADAUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_ADAUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=ADAUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:42Z",
+       "sha256": "7d43e00a7a6d6563d801750be10cc7fe687f7db6891b14425790d99d499ddb37",
+       "byte_len": 61187
+      },
+      {
+       "record": "f3_funding_BTCUSDT",
+       "file": "raw/family3_xsect_fund_carry/fundingRate_BTCUSDT.json",
+       "url": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1000",
+       "http_status": 200,
+       "fetched_at_utc": "2026-09-14T11:59:42Z",
+       "sha256": "7d69ff52715b3b4a73f06978e7ab897111922a9f3a55d3f52359cebadd2fb441",
+       "byte_len": 63109
+      }
+     ],
+     "measured_parse_summaries": [
+      {
+       "symbol": "ETHUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      },
+      {
+       "symbol": "SOLUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      },
+      {
+       "symbol": "BNBUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      },
+      {
+       "symbol": "XRPUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      },
+      {
+       "symbol": "DOGEUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      },
+      {
+       "symbol": "LINKUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      },
+      {
+       "symbol": "ADAUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      },
+      {
+       "symbol": "BTCUSDT",
+       "settlements_returned": 500,
+       "first_fundingTime_ms": 1775001600000,
+       "last_fundingTime_ms": 1789372800000,
+       "history_days_covered": 166.33,
+       "covers_7d_warmup": true
+      }
+     ]
+    }
+   ],
+   "pit_rule": {
+    "decision_clock": "daily 00:00:00Z",
+    "feature_eligibility": "ONLY settlements fully settled STRICTLY BEFORE the decision timestamp: settled funding event is feature-eligible iff fundingTime < decision_utc; the trailing mean uses published settled funding only",
+    "funding_settlement_semantics": {
+     "event_time": "fundingTime (venue-published ms timestamp of the nominal settlement instant)",
+     "effective_scope": "a settlement cashflow applies to a virtual position iff ts_opened <= fundingTime < ts_closed; each settlement is booked ONCE while held",
+     "available_time": "a settled rate becomes feature-available only after its settlement event: usable as a feature iff fundingTime < decision_utc (strictly); no intra-event or projected funding is ever used as a feature",
+     "sign_convention": "positive rate: long pays, short receives; negative rate inverted"
+    },
+    "no_intra_bar_optimism": true,
+    "latency": "current_conservative_cost.latency_assumption: virtual fill at the first completed 15-minute bar strictly after the decision timestamp"
+   },
+   "warmup_coverage": {
+    "requirement": "endpoint must serve >= 7 days of settled funding history per needed symbol (21 settlements at 8h cadence)",
+    "requirement_days": 7,
+    "measured_spotcheck": [
+     {
+      "symbol": "ETHUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     },
+     {
+      "symbol": "SOLUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     },
+     {
+      "symbol": "BNBUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     },
+     {
+      "symbol": "XRPUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     },
+     {
+      "symbol": "DOGEUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     },
+     {
+      "symbol": "LINKUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     },
+     {
+      "symbol": "ADAUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     },
+     {
+      "symbol": "BTCUSDT",
+      "settlements_returned": 500,
+      "history_days_covered": 166.33,
+      "covers_7d": true
+     }
+    ],
+    "spotcheck_note": "all 7 traded symbols + BTC benchmark context measured individually",
+    "verdict": "MEASURED_CAPABLE_7D"
+   },
+   "license_evidence": {
+    "evidence_class": "MEASURED_PUBLIC_BYTES_FOR_MARKET_ENDPOINTS",
+    "keyless_gets_measured_working": [
+     "https://fapi.binance.com/fapi/v1/fundingRate -> HTTP 200 (8 symbols)"
+    ],
+    "terms_page": {
+     "url": "https://www.binance.com/en/terms",
+     "evidence_class": "UNAVAILABLE_FAIL_CLOSED",
+     "probe": {
+      "record": "probe_terms_page",
+      "file": "raw/cross/probe_terms_page.bin",
+      "url": "https://www.binance.com/en/terms",
+      "http_status": 202,
+      "fetched_at_utc": "2026-09-14T11:59:46Z",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byte_len": 0
+     },
+     "consequence": "terms text unreachable in this environment; NO claim of authorized-beyond-measured is made; use stays limited to the keyless public GETs measured working"
+    },
+    "claim_limit": "no authorized-beyond-measured claim"
+   },
+   "forward_warmup_policy": {
+    "family3_condition": "fresh forward fill/warmup declared: the forward engine's warmup is built ONLY from newly measured keyless public bytes; historical V6-window realizations must NOT seed the forward book",
+    "historical_seed_prohibited": true,
+    "replay_label": "REPLAY_NOT_PROSPECTIVE",
+    "replay_label_rule_verbatim_from_identity": "REPLAY_NOT_PROSPECTIVE — any replay of the historical windows (V11 2025-08-22..2026-08-21, V14 2025-08-22..2026-08-21, V6 scored trials) by the forward shadow engine MUST be labelled REPLAY_NOT_PROSPECTIVE."
+   }
+  }
+ ]
+}

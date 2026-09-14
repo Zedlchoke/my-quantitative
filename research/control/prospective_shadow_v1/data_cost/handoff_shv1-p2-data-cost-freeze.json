@@ -1,0 +1,90 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "shv1-p2-data-cost-freeze",
+ "cycle_id": "PROSPECTIVE-SHADOW-V1",
+ "role": "quant-implementer",
+ "lane": "p2-data-cost",
+ "dispatch_sha": "999d23e3800b9d40e2512be686d950de4519336c",
+ "actual_start_sha": "999d23e3800b9d40e2512be686d950de4519336c",
+ "commit_sha": null,
+ "commit_sha_note": "self-reference: this handoff is committed inside the commit it describes; see git log for the final SHA",
+ "branch": "orca/shv1-data-cost",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/data-cost",
+ "changed_paths": [
+  "research/control/prospective_shadow_v1/data_cost/raw/",
+  "research/control/prospective_shadow_v1/data_cost/data_manifest.json",
+  "research/control/prospective_shadow_v1/data_cost/cost_regime_manifest.json",
+  "research/control/prospective_shadow_v1/data_cost/handoff_shv1-p2-data-cost-freeze.json",
+  "tests/test_shv1_data_cost.py"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/data-cost && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_data_cost.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "11 passed in 0.22s"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/data-cost && git diff --check",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "no whitespace errors"
+  }
+ ],
+ "authority_claims": [],
+ "summary": {
+  "access_class": "INTERNAL_PAPER_ONLY_KEYLESS_PUBLIC_GETS; no API key, no account, no orders, no signed endpoints",
+  "per_family": {
+   "ILLIQ-AMIHUD-28D-W": {
+    "endpoint": "GET https://fapi.binance.com/fapi/v1/klines (interval=15m)",
+    "coverage": "BTCUSDT/ETHUSDT/SOLUSDT each measured 2688/2688 bars over the trailing 28-day window (full coverage)",
+    "universe": "identity manifest pins the 20-symbol + PIT listing/DV convention but does NOT enumerate symbols; no symbol list invented by this lane"
+   },
+   "BASISLV-PREMFADE-28D": {
+    "endpoint": "GET https://fapi.binance.com/futures/data/basis (contractType=PERPETUAL, period=15m) + supplementary /fapi/v1/premiumIndex",
+    "coverage": "BTCUSDT/ETHUSDT walked page-by-page: 2688/2688 buckets over full 28d; SOLUSDT single-page spot-check 500 buckets (route answers for alt pairs)",
+    "universe": "identity manifest pins the per-pair route, BTCUSDT exclusion and min_eligible=12 but does NOT enumerate pairs; no pair list invented"
+   },
+   "XSECT-FUND-CARRY-7D": {
+    "endpoint": "GET https://fapi.binance.com/fapi/v1/fundingRate",
+    "coverage": "all 7 traded symbols (ETH/SOL/BNB/XRP/DOGE/LINK/ADA) + BTC benchmark context: 500 settled funding events each = 166.3 days (>= 7d required)",
+    "universe": "exact enumerated universe from identity manifest; family-3 fresh-forward-fill condition + REPLAY_NOT_PROSPECTIVE labeling frozen in data_manifest"
+   }
+  },
+  "cost_freeze": {
+   "cost_regime_digest": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65",
+   "canonicalization": "sha256 over UTF-8 bytes of json.dumps(current_conservative_cost, sort_keys=True, separators=(',', ':'), ensure_ascii=False)",
+   "tick_sizes": "measured from /fapi/v1/exchangeInfo for all 7 family-3 symbols + BTCUSDT benchmark (family-1/2 universes not enumerated -> resolved at decision time from the same archived bytes)",
+   "slippage": "frozen 1 tick adverse per virtual fill against the fill bar's price",
+   "funding": "8h settlements booked once while held with ts_opened <= fundingTime < ts_closed; positive rate: long pays, short receives; negative inverted",
+   "latency": "virtual fill at the first completed 15-minute bar strictly after the decision timestamp",
+   "immutability": "costs cannot move during the run; a genuine venue fee change creates a dated cost-regime boundary + new frozen hash, never an in-place rewrite"
+  },
+  "unavailable_evidence": [
+   "unavail-001 fee page https://www.binance.com/en/fee/futuresFee: HTTP 202, 0-byte body (WAF) -> UNAVAILABLE_FAIL_CLOSED",
+   "unavail-002 developers.binance.com general-info: HTTP 202 after redirect, 0-byte body -> UNAVAILABLE_FAIL_CLOSED",
+   "unavail-003 bapi fee-page path: reachable plane but 404; no guessable public fee path -> UNAVAILABLE_FAIL_CLOSED",
+   "unavail-004 terms page https://www.binance.com/en/terms: HTTP 202, 0-byte body (WAF) -> UNAVAILABLE_FAIL_CLOSED; no authorized-beyond-measured claim is made anywhere"
+  ],
+  "taker_fee_fallback": "public fee bytes unreachable -> declared conservative regular-user USDT-M tier 0.0005 taker / 0.0002 maker, evidence_class UNAVAILABLE_FAIL_CLOSED_FALLBACK_DECLARED, errs pessimistic"
+ },
+ "known_limitations": [
+  "fee schedule and terms text are not measurable from this environment (WAF-challenged); fee tier is a declared conservative fallback, and license evidence is limited to the keyless endpoints measured working (HTTP 200)",
+  "families 1-2 universes are not symbol-enumerated in the frozen identity manifest (PIT eligibility rule instead); tick sizes for their eligible sets resolve at decision time from the archived exchangeInfo bytes",
+  "family-2 SOLUSDT basis coverage is a single-page spot-check; full 28d pagination capability was proven on BTCUSDT/ETHUSDT",
+  "handoff commit_sha is null by self-reference; see branch orca/shv1-data-cost for the commit"
+ ],
+ "incidents": [
+  "first basis fetch attempt returned 400 (endpoint requires endTime); fixed with endTime and re-fetched; the transient 400 body was overwritten by the successful refetch and does not survive in the archive",
+  "MCP tool mcp__plugin_quant-research-orchestrator_orchestrator__orchestrator_publish_handoff is NOT in this lane's toolset; relying on the committed handoff copy + final message, per dispatch fallback"
+ ],
+ "tree_status": "clean after commit (only owned paths staged by explicit pathspec)",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/control/prospective_shadow_v1/data_cost/data_manifest.json", "sha256": "2b6c009af695e7e263eda0eae2396425ee29a5f27b0469b3e15c0c8c078ed8b1"},
+  {"path": "research/control/prospective_shadow_v1/data_cost/cost_regime_manifest.json", "sha256": "8826bf96b357e5794b171ca013d4e9e80dd6d8c193dfe379ada2722b6170afc7"},
+  {"path": "research/control/prospective_shadow_v1/data_cost/raw/_fetch_index.json", "sha256": "53d80f269ce23318ccaefb6a9e93e654e02d6256c6ab4e6f870e4cad0e95262f"},
+  {"path": "tests/test_shv1_data_cost.py", "sha256": "63c4614d1bddd2b02f0885341528ec64172cbc33be8cf761cbdbf763d7e47399"}
+ ],
+ "recommended_next_action": "prelaunch audit lane should verify the frozen cost_regime_digest and the four UNAVAILABLE_FAIL_CLOSED registrations; owner decision needed on whether the declared 0.05% taker fallback is acceptable for activation or whether measured fee bytes must be obtained from a WAF-capable environment before SHADOW_START_UTC"
+}

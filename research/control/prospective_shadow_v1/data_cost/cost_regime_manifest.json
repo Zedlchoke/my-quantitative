@@ -1,0 +1,132 @@
+{
+ "schema": "shv1_cost_regime_manifest_v1",
+ "cycle_id": "PROSPECTIVE-SHADOW-V1",
+ "task_id": "shv1-p2-data-cost-freeze",
+ "role": "quant-implementer",
+ "lane": "p2-data-cost",
+ "generated_utc": "2026-09-14T12:04:56Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/data-cost",
+ "branch": "orca/shv1-data-cost",
+ "base_head_sha": "999d23e3800b9d40e2512be686d950de4519336c",
+ "lineage_cost": {
+  "source": "research/control/prospective_shadow_v1/identity/identity_recovery.json (frozen; sha256 845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8)",
+  "per_family": {
+   "ILLIQ-AMIHUD-28D-W": {
+    "pointer": "identity_recovery.json -> families[0].score_affecting_parameters.costs_and_funding",
+    "upstream_file": "research/control/v11_run/selection_freeze_specs/A8-V11-ILLIQ-AMIHUD.json@c97283e0d1681c24ee9a637a4fb1628d0334b7e1",
+    "verbatim_quote": "generic adapter fees/slippage; native funding while held; stress = fee x1.5, +2 ticks, +1 event delay"
+   },
+   "BASISLV-PREMFADE-28D": {
+    "pointer": "identity_recovery.json -> families[1].score_affecting_parameters.funding_sign_convention and .fill_rule",
+    "upstream_file": "research/control/v14_run/selection_freeze_v14.json@183554add4db82444d3e71beb24fb247c6b420b2",
+    "verbatim_quotes": [
+     "LONG_PAYS_POSITIVE_RATE",
+     "fills at the close of the first completed 15m bar strictly after the decision stamp (Monday 00:15:00Z close); stress +1 event delay fills at the Monday 00:30:00Z close"
+    ]
+   },
+   "XSECT-FUND-CARRY-7D": {
+    "pointer": "identity_recovery.json -> families[2].score_affecting_parameters.feature, .signal_clock, .rebalance",
+    "upstream_file": "research/hypotheses/H-XSECT-FUNDING-CARRY-v1/candidate.yaml@WORKING_TREE_TRACKED",
+    "verbatim_quotes": [
+     "feature: trailing_mean_of_published_settled_funding_only",
+     "signal_clock: daily_00_00_utc",
+     "rebalance: 24h"
+    ]
+   }
+  },
+  "role": "diagnostic continuity ledger only; CURRENT_CONSERVATIVE_COST is the primary shadow reality check (plan section 6)"
+ },
+ "current_conservative_cost": {
+  "taker_fee": {
+   "taker_fee_rate": 0.0005,
+   "maker_fee_rate": 0.0002,
+   "tier_basis": "declared conservative regular-user (VIP0-equivalent) USDT-margined futures tier",
+   "evidence_class": "UNAVAILABLE_FAIL_CLOSED_FALLBACK_DECLARED",
+   "fallback_rationale": "public fee-schedule pages are UNAVAILABLE_FAIL_CLOSED in this environment (see data_manifest.unavailable_evidence unavail-001..003); per dispatch, the most conservative documented tier is used: 0.05% taker / 0.02% maker, which errs pessimistic if a cheaper tier applies",
+   "measured_bytes": null,
+   "no_authorized_beyond_measured_claim": true,
+   "frozen": true
+  },
+  "tick_sizes_usdt_perp": {
+   "ETHUSDT": "0.01",
+   "SOLUSDT": "0.0100",
+   "BNBUSDT": "0.010",
+   "XRPUSDT": "0.0001",
+   "DOGEUSDT": "0.000010",
+   "LINKUSDT": "0.001",
+   "ADAUSDT": "0.00010",
+   "BTCUSDT": "0.10"
+  },
+  "tick_size_roles": {
+   "family3_traded": [
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "LINKUSDT",
+    "ADAUSDT"
+   ],
+   "benchmark_context": [
+    "BTCUSDT"
+   ],
+   "family1_family2": "universes NOT enumerated in the identity manifest; tick sizes for their PIT-eligible sets are resolved at decision time from the same archived exchangeInfo bytes (values are verbatim strings as published)"
+  },
+  "tick_size_evidence": {
+   "endpoint": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+   "evidence_class": "MEASURED_PUBLIC_BYTES",
+   "archived_fetch": {
+    "record": "exchangeInfo",
+    "file": "raw/cross/exchangeInfo_fapi.json",
+    "url": "https://fapi.binance.com/fapi/v1/exchangeInfo",
+    "http_status": 200,
+    "fetched_at_utc": "2026-09-14T11:59:43Z",
+    "sha256": "055202f6b50b635e6be516f32cc1ac1fbdcbba9b8d284b6f66496b12d6aefb85",
+    "byte_len": 1113532
+   },
+   "measured_parse_summary": {
+    "tickSize_by_symbol": {
+     "BTCUSDT": "0.10",
+     "ETHUSDT": "0.01",
+     "XRPUSDT": "0.0001",
+     "LINKUSDT": "0.001",
+     "ADAUSDT": "0.00010",
+     "BNBUSDT": "0.010",
+     "DOGEUSDT": "0.000010",
+     "SOLUSDT": "0.0100"
+    },
+    "serverTime_ms": 1789378907467
+   }
+  },
+  "slippage_model": {
+   "model": "frozen fixed slippage: 1 tick per virtual fill, adverse direction",
+   "ticks_per_virtual_fill": 1,
+   "direction": "adverse_to_side",
+   "reference_price": "the fill bar's price (close of the first completed 15m bar strictly after the decision)",
+   "fill_price_rule": "long: fill_bar_close + 1 tick; short: fill_bar_close - 1 tick",
+   "frozen": true
+  },
+  "funding_settlement_convention": {
+   "cadence": "8h settlements (3/day nominal)",
+   "booking": "each settlement booked ONCE while held, with rule ts_opened <= fundingTime < ts_closed",
+   "sign_convention": "positive rate: long pays, short receives; negative rate inverted (short pays, long receives)",
+   "source": "settled rates only, from keyless GET https://fapi.binance.com/fapi/v1/fundingRate",
+   "frozen": true
+  },
+  "latency_assumption": {
+   "rule": "virtual fill at the first completed 15-minute bar strictly after the decision timestamp",
+   "decision_clocks": {
+    "families_1_2": "weekly Monday 00:00:00Z",
+    "family_3": "daily 00:00:00Z"
+   },
+   "no_intra_bar_optimism": true,
+   "frozen": true
+  },
+  "immutability": {
+   "costs_cannot_move_during_run": true,
+   "venue_fee_change_protocol": "a genuine venue fee change creates a dated cost-regime boundary and a NEW frozen cost_regime hash; never an in-place rewrite of this block"
+  }
+ },
+ "cost_regime_digest_canonicalization": "sha256 over UTF-8 bytes of json.dumps(current_conservative_cost, sort_keys=True, separators=(',', ':'), ensure_ascii=False)",
+ "cost_regime_digest": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65"
+}
