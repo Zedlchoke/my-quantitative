@@ -1,0 +1,84 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "shv1-remediation-c1c2",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-implementer (isolated remediation lane)",
+  "lane": "remediation-c1c2",
+  "branch": "orca/shv1-remediation-c1c2",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/remediation-c1c2",
+  "dispatch_sha": "1d621e0231cc9028449f06d70362246cf9d80640",
+  "actual_start_sha": "1d621e0231cc9028449f06d70362246cf9d80640",
+  "commit_sha": null,
+  "commit_sha_note": "self-reference: this handoff is committed inside the single commit it describes; see git log orca/shv1-remediation-c1c2 for the final SHA",
+  "summary": "Lands conditions C1+C2 of the A7 prelaunch G8 refusal (research/control/prospective_shadow_v1/audits/a7_prelaunch_g8.json, verdict REFUSED_FORWARD_EXECUTOR_ABSENT_IN_AUDITED_TIP). C1: new PRODUCTION forward executor research/shadow_v1/executor.py (ForwardExecutor) composing start-guard -> deterministic event_id -> ledger idempotency -> PIT fetch via data_feed (DATA_BLOCKED on gaps) -> adapter.decide -> risk.check_and_apply BEFORE any fill -> SleeveAccount virtual fills at the frozen fill rule -> settled funding once while held -> ONE plan-8 event with TARGET_INTENT-only action types and the no_order_proof digest. Explicit REDUCING_SELL_NETS_POSITION policy: the A7-confirmed gross overcount for reducing sells is fixed minimally in accounting.apply_fill (a sell that reduces/closes an existing long nets against the position, position-size check only, proceeds credit cash after fees/slippage; opening/increasing sells incl. flip-through-zero keep the UNCHANGED cash and gross checks). F6 feature-cutoff convention pinned as a required config value (feature_cutoff_offset_seconds; bars/buckets fetched with cutoff = decision - offset so only bars closing strictly before the decision enter the snapshot). No execution buffer, no sell slicing, no dust in production. C2: new research/shadow_v1/start_guard.py code-enforcing the forward-only rule (StartGuardError on any decision before SHADOW_START_UTC in the PROSPECTIVE namespace; missing SHADOW_START_UTC refuses everything in PROSPECTIVE; explicit REPLAY_NOT_PROSPECTIVE opt-in) with physically separated ledger roots (runtime_root/ledgers vs runtime_root/replay_not_prospective) and prospective_ledger_root() for callers/dashboard. INTERNAL PAPER ONLY throughout: no keys, no network in the executor, TARGET_INTENT + virtual fills only.",
+  "changed_paths": [
+    {"path": "research/shadow_v1/executor.py", "status": "new", "purpose": "C1 production forward executor (ForwardExecutor, run_due, scheduler.run_once-compatible __call__)"},
+    {"path": "research/shadow_v1/start_guard.py", "status": "new", "purpose": "C2 forward-only start guard + namespace-separated ledger roots"},
+    {"path": "research/shadow_v1/accounting.py", "status": "edited-minimal", "purpose": "F3 fix: POLICY REDUCING_SELL_NETS_POSITION in apply_fill sell branch (reducing sells net against the long; opening shorts keep unchanged guards) + module docstring policy block; no other behavior touched"},
+    {"path": "research/shadow_v1/scheduler.py", "status": "edited-minimal", "purpose": "pending_decisions gains optional `schedule` kwarg (default None -> frozen FAMILY_SCHEDULES lookup exactly as before; backward compatible, existing callers unaffected)"},
+    {"path": "research/shadow_v1/__init__.py", "status": "edited", "purpose": "module list + __all__ gained executor and start_guard"},
+    {"path": "tests/test_shv1_executor.py", "status": "new", "purpose": "32-test file shared with replay guard suite: production-path executor tests on a synthetic in-memory feed (no test-local executor)"},
+    {"path": "tests/test_shv1_replay_guard.py", "status": "new", "purpose": "C2 guard + namespace separation tests incl. end-to-end replay-root isolation"},
+    {"path": "research/shadow_v1/handoff_shv1-remediation-c1c2.json", "status": "new", "purpose": "this handoff (scanned-surface clean, see no-order row in tests)"}
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/remediation-c1c2 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_executor.py tests/test_shv1_replay_guard.py tests/test_shv1_accounting.py tests/test_shv1_eventstore.py tests/test_shv1_noorder.py tests/test_shv1_pit.py tests/test_shv1_scheduler.py tests/test_shv1_combined.py tests/test_shv1_risk.py tests/test_shv1_identity_recovery.py tests/test_shv1_data_cost.py tests/test_shv1_families.py tests/test_shv1_families_identity.py tests/test_shv1_engine_smoke.py tests/test_shv1_dashboard.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "194 passed in 28.32s = 162 pre-existing (unchanged expectation) + 32 new (23 executor + 9 replay guard); zero failures, zero skips"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/remediation-c1c2 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_executor.py tests/test_shv1_replay_guard.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "32 passed in 0.93s (new tests in isolation)"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/remediation-c1c2 && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m compileall -q research/shadow_v1",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "package compiles clean"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/remediation-c1c2 && git diff --check",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "no whitespace/conflict markers"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -c \"from research.shadow_v1.no_order import assert_no_order_surface; assert_no_order_surface('research/shadow_v1')\" (from the worktree root)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "files_scanned 24 (was 22; +executor.py +start_guard.py, plus lane handoff JSONs), hits 0, verdict NO_ORDER_SURFACE_CLEAN; also asserted inside tests/test_shv1_executor.py::test_no_order_scanner_stays_zero_hits_over_package"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "NO existing test file was edited: all 13 pre-existing shv1 test files are byte-untouched and the battery passes unmodified (162 pre-existing tests). No tests/test_shv1_engine_smoke_edited_justification.md is therefore needed. The smoke's SmokeExecutor (COST_BUFFER/DUST_USDT/headroom slicing) remains rehearsal-only bytes in tests/test_shv1_engine_smoke.py, exactly as the R-reproduction handoff disclosed it; the production path no longer needs or uses those parameters (audit ADJ3 resolution: guard fixed, not slicing frozen).",
+    "accounting.py edit is confined to the sell branch of apply_fill plus a docstring block; the buy branch, funding, identity assertions, counters and both cost books are untouched (identical quantities across books preserved).",
+    "scheduler.py edit is one optional kwarg on pending_decisions; run_once/heartbeat semantics unchanged (test_shv1_scheduler.py passes unmodified).",
+    "The executor is tested end-to-end with a scripted FamilyAdapter over an in-memory feed (the constraint was NO test-local EXECUTOR); the three frozen family decide() paths are covered by the existing families/smoke suites. Driving a frozen adapter through ForwardExecutor is straightforward for the phase-E runner but not duplicated here.",
+    "Pending-fill-bar semantics: a due decision whose first post-decision bar has not completed yet (now < decision + interval) is left pending WITHOUT consuming its event_id; a genuine completed-bar gap raises DataBlocked and consumes the event_id as DATA_BLOCKED (audit ADJ1 semantics). The phase-E runner should invoke run_due only once the last decision's fill bar has completed.",
+    "A decision executed after a ledger loss would differ from the original only in observed_at_utc (idempotency is by deterministic event_id on the existing ledger); ledger bytes are otherwise reproducible from the frozen inputs.",
+    "Condition C1 explicitly requires a fresh-context A7 delta-audit of the executor at this new tip BEFORE SHADOW_START_UTC is written; this lane does not claim that audit.",
+    "Phase-E runner work remains: multi-family composition, process-restart sleeve rebuild, and heartbeat wiring are not part of this lane's deliverable.",
+    "Runtime ledgers default under runtime_root/ledgers (gitignored runtime area); no runtime ledger bytes are committed by this lane."
+  ],
+  "incidents": [
+    "MCP tool mcp__plugin_quant-research-orchestrator_orchestrator__orchestrator_publish_handoff is NOT available in this subagent's toolset (available tools: Bash, Edit, Read, Write, RespondToCoordinator); the committed handoff JSON at research/shadow_v1/handoff_shv1-remediation-c1c2.json is the authoritative artifact. Same condition was recorded by lane shv1-i-a2-accounting.",
+    "Two mid-implementation bugs were caught by the new tests before commit (fixed in the same lane): require_complete_bars was initially called with a close-time boundary instead of an open-time boundary, and final_weights was not populated for approved (non-blocked) events; a funding-booking fetch initially depended on the snapshot spec containing a funding entry and now also covers currently held positions."
+  ],
+  "tree_status": "clean after commit (verified: git status --porcelain=v1 empty; branch orca/shv1-remediation-c1c2)",
+  "workers": 0,
+  "outputs": {
+    "research/shadow_v1/executor.py": "7f329bb060e09017e77249765969006d3712689c3c35da2edd896b942dec3505",
+    "research/shadow_v1/start_guard.py": "24275b3ad005f3326816119a1b040b81a7613b39eb4c6269ffbb462d739fa859",
+    "research/shadow_v1/accounting.py": "d3e826e9630d05743a02eb6672492af8cc47ccf6ed62d15fd8a784c8d84626f3",
+    "research/shadow_v1/scheduler.py": "c7788a137732943e3852281589a9e45c0d6cac2b6ec2701d3aed123b72bfe134",
+    "research/shadow_v1/__init__.py": "19938cfc4919453ddf7d0120dae1806fc954e0fce7377e1c8e12f34e5a8ad931",
+    "tests/test_shv1_executor.py": "8bc2494fcb1df9abb9396a4e607dd5d18a8c4330a6d53fa60cfded0e379d36b6",
+    "tests/test_shv1_replay_guard.py": "578261a305f8c2402966f3665da69a9b50a216ad620bec488be2a9b7ddf6901c"
+  },
+  "recommended_next_action": "Dispatch a fresh-context A7 delta-audit (scope: research/shadow_v1/executor.py, research/shadow_v1/start_guard.py, the accounting.py reducing-sell fix, and the two new test files) at the tip of orca/shv1-remediation-c1c2. If the delta-audit passes, conditions C1 and C2 of the G8 refusal are landed and SHADOW_START_UTC may be written once only after the owner GO; the phase-E runner then composes the three families' ForwardExecutors over the keyless public feed behind the global heavy-job lock."
+}

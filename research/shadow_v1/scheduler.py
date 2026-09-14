@@ -81,9 +81,21 @@ def _first_decision_at_or_after(schedule: str, from_utc: dt.datetime) -> dt.date
     raise SchedulerError(f"unknown schedule {schedule!r}")
 
 
-def pending_decisions(family_id: str, from_utc: str, to_utc: str) -> List[str]:
-    """Pure: exact decision timestamps with from inclusive, to exclusive."""
-    schedule = schedule_for(family_id)
+def pending_decisions(
+    family_id: str,
+    from_utc: str,
+    to_utc: str,
+    schedule: Optional[str] = None,
+) -> List[str]:
+    """Pure: exact decision timestamps with from inclusive, to exclusive.
+
+    ``schedule`` explicitly overrides the frozen family schedule map
+    (used by the production executor for manifest-driven families);
+    by default the frozen ``FAMILY_SCHEDULES`` entry applies, exactly as
+    before (unchanged behavior for existing callers).
+    """
+    if schedule is None:
+        schedule = schedule_for(family_id)
     start = parse_iso_z(from_utc)
     end = parse_iso_z(to_utc)
     if end < start:
