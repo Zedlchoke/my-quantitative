@@ -600,3 +600,111 @@ this directive.
 
 **Consequence:** Cycle throughput is an owner-set dial, not a Lead inference;
 the scientific gates do not loosen (D2 ancestry bar, R1-R6, no-rescue all stand).
+
+## P-20 — A control that shares its state source with the arm is tautological, not a test (VOL-NG1, 2026-09-14)
+
+**Source:** VOL-NG1 H1 arc — the index-only shadow proposed for the index-state
+volatility family read the same index state as the arm, so control == arm by
+construction; the degeneracy was refuted at terminal A7, not by the shadow
+itself.
+
+**Lesson:** A control drawn from the identical state variable as its arm can
+never diverge from it — it is a mirror, not a measurement, and scoring it would
+have manufactured a fake "distinct" verdict. The fix that survived audit: score
+the control on a different instrument expression of the same state (a
+hypothetical index-point book), and MEASURE books_distinct instead of assuming
+it — `None` fail-closed when both books are empty, never an inferred PASS (the
+NEIGH-PERSIST dry-run cell where the arm never leaves FLAT produced
+distinct == None and carried fail-closed NOT_RUN into E, disclosed).
+
+**Consequence:** Distinctness of control from arm is a structural check that is
+knowable outcome-blind at S: it must be measurable from book geometry alone,
+with an explicit fail-closed value when unmeasurable. A control whose state
+source equals the arm's is rejected at D1 battery review — not discovered dead
+at A7.
+
+## P-21 — Preregistered cost ceilings kill novel families honestly (VOL-NG1, 2026-09-14)
+
+**Source:** VOL-NG1 A4-P2 — novel at D2 (rho 0.091), dead at E: every arm <= 0
+after the measured Q-16 path ladder + expense (expectancies -55.83 / -49.13 /
+-54.64 USD/RT, PF 0.292-0.312); the preregistered family kill fired exactly as
+frozen at D1.
+
+**Lesson:** The worst-case round-trip cost ceiling measured at P2 (~2,200bps at
+the worst legs: spread + expense + Q-16 path components, pinned pre-score in
+the D1 feasibility citation) did its job before any money was risked — the
+family died at the only gate that mattered, on frozen text. Realized all-in
+costs (~345bps/RT) were irrelevant to the verdict because the Q-16 path ladder
+dominated the book; the ceiling was conservative in the right direction.
+
+**Consequence:** Novel families get a measured, preregistered cost ceiling at
+P2 (not a guess at D1), and the E-stage kill law is written so the ceiling (or
+its expectancy equivalence) fires mechanically. A cheap-to-trade appearance at
+realized costs never rescues a family whose preregistered ceiling already
+killed it — and no ceiling is ever re-derived after numbers exist (P-15).
+
+## P-22 — Subagent pool exhaustion is an operational hazard with a designed recovery (new-assets generation, 2026-09-14)
+
+**Source:** generation-closeout operations — 3 lanes died mid-generation on
+[1310] (model pool exhaustion); the owner pinned a different model; a probe
+lane verified the pin via runtime metadata BEFORE any re-dispatch.
+
+**Lesson:** Lane death is an operational hazard with a designed recovery path,
+not an ad-hoc scramble: (1) owner authority pins the replacement model;
+(2) a probe lane verifies the pin from runtime metadata before real dispatches
+trust it; (3) retries review the attempt-1 partials — kept, never erased — and
+fix the latent defects they reveal (7 defects fixed in the vol retry alone).
+
+**Consequence:** Every retry must (a) verify its runtime assumptions with a
+cheap probe before spending lanes, (b) preserve and mine the dead attempt's
+partials for defects, and (c) disclose the attempt history in the cycle
+artifacts. Pool exhaustion costs throughput; skipping the probe or erasing
+partials costs evidence.
+
+## P-23 — Fail-closed Z rehearsals catch crash classes before scored money (COMMODITIES-NG1, 2026-09-14)
+
+**Source:** commodities empty-booked-population TypeError — the bare release
+clock booked one lifetime trade spanning a split-boundary; the split-boundary
+law excluded it; the exclusion left an empty booked population and the kernel
+reconcile crashed (Z FAIL).
+
+**Lesson:** The Z rehearsal caught a whole crash CLASS, not a one-off bug: a
+control can correctly book zero surviving trades, and "empty book" must be a
+first-class verdict, not an exception. Z-R1 remediated by short-circuiting an
+empty booked population to DECLARED NOT_EXECUTABLE rows with explicit
+disclosures (6 rows: WEAT/IAU x 3 arms — no kernel book, no root
+reconciliation, no outcome number defined or inferred); Z-R2 re-passed with
+coordinate_match true and pass_row_parity, proving the remediation changed
+only the empty-population path.
+
+**Consequence:** Every degenerate-population class (empty book, zero pairs,
+undefined share) gets an explicit fail-closed verdict row with a disclosure
+string at Z time — before any scored cell exists. A crash in rehearsal is the
+system succeeding; the same crash at E would have burned scored budget.
+
+## P-24 — Falsification-by-control keeps compounding (new-assets generation, 2026-09-14)
+
+**Source:** #16 RATES-NG1 AGGRESSIVE — the clock-shadow control out-earned the
+arm +94.16 vs +72.42 (margin +21.74 over 386 aligned pairs): the edge belonged
+to release-calendar geometry, not curve-shape. #17 COMMODITIES-NG1 — the
+crowd-carry release-clock control out-earned every arm: positioning
+information added nothing over the CoT release calendar.
+
+**Lesson:** Controls are not a one-cycle tax; each kill localizes where the
+money actually is, and the localization transfers. 3/4 commodities D1
+proposals had already died by their own price-only shadows at D2 — the same
+instrument, declared outcome-blind at D1, executed its falsification before
+any kernel ran. The compounding is cumulative across families: a
+release-calendar-geometry falsification in rates reappeared as the executioner
+in commodities.
+
+**Consequence:** Every D1 battery declares its killers before measurement, and
+the verdicts feed the cross-family failure registry (FAMILY_FAILURES +
+forbidden ancestry), so the next generation's proposals are forbidden by
+condition, not surprised by control. A generation with 0 survivors and sharp,
+pre-declared kills is a profitable generation of knowledge (Q-16).
+
+New-assets generation tally (closed 2026-09-14): 3/3 REJECT_ALL
+(RATES_NG1_REJECT_ALL / VOL_NG1_REJECT_ALL / COMMODITIES_NG1_REJECT_ALL),
+12 cells scored, 0 survivors, program 257/260; every surviving-candidate path
+was falsified by its own pre-declared controls, which is the system working.
