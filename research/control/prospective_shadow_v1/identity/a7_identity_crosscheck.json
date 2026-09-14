@@ -1,0 +1,190 @@
+{
+ "schema": "shv1_a7_identity_crosscheck@1",
+ "cycle_id": "PROSPECTIVE-SHADOW-V1",
+ "audited_at_utc": "2026-09-14T11:45:04Z",
+ "audited_tip_sha": "41f4f2274dc5f144b911e11fcfa2337af98af9c0",
+ "manifest_sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+ "auditor_role": "A7 independent fresh-context identity crosscheck (audit-only; no implementation edits, no gate changes, no git mutations)",
+ "audit_inputs": {
+  "manifest": "research/control/prospective_shadow_v1/identity/identity_recovery.json (integration worktree, read as-is)",
+  "detached_checkout": "/tmp/a7x_shv1 @ 41f4f2274dc5f144b911e11fcfa2337af98af9c0 (verified same tip; git bytes read via git -C /tmp/a7x_shv1 show/ls-tree/cat-file)",
+  "plan_contract": "plans/PLAN_prospective_shadow_v1.md sections 3 and 12-P1 (read from tip bytes)"
+ },
+ "commands_and_results": [
+  {
+   "step": "manifest integrity",
+   "command": "shasum -a 256 identity_recovery.json",
+   "result": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8; valid JSON; 3 families in plan order; quoting_convention/verdict_labels_policy/replay_label_rule present",
+   "exit_code": 0
+  },
+  {
+   "step": "1. byte-level re-verification of every manifest file entry",
+   "command": "python3: for each of 28 unique entries (families[].files + verdict_evidence.files, deduped): raw = git -C /tmp/a7x_shv1 show <commit>:<path> (or direct read for WORKING_TREE_TRACKED); hashlib.sha256 + len; blob via git ls-tree <commit> -- <path> / git hash-object",
+   "result": "28/28 OK: sha256_of_content, byte_len, git_blob_sha all match manifest exactly. F1: 10 entries (8 @c97283e0 + 2 verdict @df18f53d). F2: 11 entries @183554add4. F3: 7 WORKING_TREE_TRACKED entries",
+   "exit_code": 0
+  },
+  {
+   "step": "1b. family-3 working-tree drift check",
+   "command": "git -C /tmp/a7x_shv1 diff --stat bd5e3437dd90384f7754cc8e33acb96337500f2d 41f4f2274dc5f144b911e11fcfa2337af98af9c0 -- <7 family-3 paths>; git merge-base --is-ancestor bd5e3437 41f4f227",
+   "result": "empty diff (family-3 bytes identical at recovery base and audited tip); bd5e3437 is a verified commit and ancestor of the tip; the 'WORKING_TREE_TRACKED' hashes therefore pin committed, reachable bytes",
+   "exit_code": 0
+  },
+  {
+   "step": "2. verbatim quote/substring verification",
+   "command": "python3: for every historical_failure_metric_verbatim quote and every verbatim_source_checks substring: assert quote.encode() in git-show bytes",
+   "result": "88/88 OK (19 failure-metric quotes + 69 substrings). Additional independent drilling of family-2 parameters beyond the manifest's own check list: strategy_id hyp_a14_v14_basislv_premfade, arm_config_ids (28D-PREMIUM-LEVEL / 56D-PREMIUM-LEVEL / 28D-PREMIUM-LEVEL-INVERTED), signal_name mean_15m_perp_index_premium_level, signal_route /futures/data/basis, 0.125, 0.30, price-only clause, 2026-04-20 purge stamp, 52 scheduled / 51 effective Mondays, DECISION_CLOCK (exact byte-for-byte match to strategy.py), FILL_RULE (exact match after Python multi-line literal concatenation), tie-break ('ranks ascend by (b_i, symbol id); exact score ties break by symbol id ascending') — all trace to producer bytes",
+   "exit_code": 0
+  },
+  {
+   "step": "3a. V11 verdict label vs producer bytes",
+   "command": "git -C /tmp/a7x_shv1 show df18f53dba30291065f9be157cae04bdcf15bf50:research/control/v11_run/family_verdict_illiq.json (full read)",
+   "result": "verdict V11_FAMILY_REJECT byte-exact, unsoftened; 13 gates listed, exactly one false: no_positive_fold_gt_50pct_of_positive_pnl 'largest positive-fold share=0.7055'; position_pf 1.35484101084; max_drawdown 0.091821657373; symbol_contribution_le_40pct gate TRUE at 0.2981 (BOMEUSDT); terminal_report_v11.json '12/13 gates PASS ... SOLE FAIL: largest positive fold = 0.7055' confirmed. Manifest label and metrics match producer bytes without alteration",
+   "exit_code": 0
+  },
+  {
+   "step": "3b. V14 verdict label vs producer bytes",
+   "command": "git -C /tmp/a7x_shv1 show 183554add4db82444d3e71beb24fb247c6b420b2:research/control/v14_run/terminal_report_v14.json (grep + full-read of relevant sections)",
+   "result": "V14_FAMILY_REJECT byte-exact for A14-V14-A5-BASISLV-PREMFADE; concentration 0.511023793543565362815881161202 > 0.50 'fails by 0.0110237935435654, no rounding in the survivor's favor'; PF 1.360046671971 PASS; MDD 0.11585342564 PASS; dsr 0.0022396171023272293 at n_trials 146. Manifest label and metrics match producer bytes without alteration",
+   "exit_code": 0
+  },
+  {
+   "step": "3c. V6 verdict label vs producer bytes",
+   "command": "cat candidate.yaml status.yaml v6-closure-addendum-20260825.{json,md} research/audits/v6/{final_transition,scientific_audit}.json (working-tree bytes, verified identical at tip)",
+   "result": "verdict CANDIDATE_FAIL byte-exact in status.yaml; FG3 concentration fail 51.66% (top_fold_share=0.5165701411874007 on F1) in status.yaml + addendum; V6P_PASS_V6_CANDIDATE_FAIL in addendum/final_transition/scientific_audit; MDD 0.08835025043410369 = 8.84% PASS with the 28.85% claim refuted (A7 F-1) — all quoted without alteration; net 20580.87 / pf 1.157 / mdd_pct 8.84 / folds 10866.1/10169.0/-454.21 / funding_total 2277.23 all present in addendum bytes",
+   "exit_code": 0
+  },
+  {
+   "step": "4. family-1 concentration provenance (disclosure check)",
+   "command": "git -C /tmp/a7x_shv1 show df18f53dba30291065f9be157cae04bdcf15bf50:research/audits/v11p/a7_terminal/w2_illiq_raw_output.json | grep -E 'largest_share|match_4dp'; git merge-base --is-ancestor c97283e0 df18f53d; git cat-file -e c97283e0:research/control/v11_run/family_verdict_illiq.json",
+   "result": "w2 recompute largest_share=0.7022573519976983 with match_4dp:false confirmed at df18f53d (manifest note accurate); c97283e0 IS a git ancestor of df18f53d (exit 0); verdict files genuinely absent at c97283e0 (cat-file exit 128) — manifest lineage note verified. Plan prose 0.705497 is consistent with producer 4dp 0.7055; wave-2 recompute 0.7022574 differs at 4dp but both exceed the 0.50 gate (verdict-invariant). Manifest pins producer bytes and arbitrates nothing — disclosure-only",
+   "exit_code": 0
+  },
+  {
+   "step": "5. family-3 ambiguity adjudication inputs",
+   "command": "full read of candidate.yaml, status.yaml, hypothesis.md, v6-closure-addendum-20260825.{md,json}",
+   "result": "All 7 placeholder fields verified as literal TO_FREEZE_AT_AUTHORIZATION in candidate.yaml bytes; locked_by: none + state: SPEC_DRAFT in candidate.yaml; draft: FROZEN_FOR_EXECUTION in status.yaml; hypothesis.md enumerates the same placeholder set and pins the funding-publication convention mechanism-side ('Only funding observations settled AND published at or before the daily 00:00 UTC signal clock enter the feature — no lookahead, no forward-fill beyond the last settled timestamp') plus the full gate set (sec 4 invalidation conditions). Addendum checksums_sha256 block pins 15 artifacts incl. results/portfolio_v6/XSECT-FUND-CARRY-7D/{canonical_metrics,gate_result}.json by sha256",
+   "exit_code": 0
+  },
+  {
+   "step": "6. identity-drift hunt vs plan sec3",
+   "command": "plan section 3 read from tip; every mechanism statement cross-checked against manifest score_affecting_parameters and producer bytes (incl. V11 strategy.py docstring 'equal weight, dollar-neutral, beta-neutral via the frozen 90d daily BTC beta', QUINTILES=5, BETA_WINDOW_DAYS=90; V14 tercile/gross-1.0/min-12/00:15Z fill; V6 caps 0.80/1.00/0.10/0.20 and universe of 7 + BTC benchmark-only)",
+   "result": "No mechanism-level drift. Two plan-prose imprecisions found (both NOT manifest defects; see identity_drift_findings): plan 3.1 mislabels the failing gate as 'symbol concentration' (producer bytes: FOLD concentration failed 0.7055, symbol gate passed 0.2981) and calls c97283e0 the 'terminal commit' (actual V11 TERMINAL is df18f53d, a verified descendant). MDD 8.835% (plan) vs 8.84% (addendum) is the same pinned value 0.08835025043410369 at different rounding",
+   "exit_code": 0
+  },
+  {
+   "step": "7. lane's own byte-verification suite",
+   "command": "cd integration && PYTHONDONTWRITEBYTECODE=1 /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_identity_recovery.py -p no:cacheprovider -q",
+   "result": "11 passed in 2.32s (hash recomputation, blob ids, verdict labels, verbatim quotes, ambiguity disclosure, replay-rule declaration — all green)",
+   "exit_code": 0
+  },
+  {
+   "step": "audit hygiene",
+   "command": "git -C integration rev-parse HEAD; git status --short",
+   "result": "HEAD = 41f4f2274dc5f144b911e11fcfa2337af98af9c0 (same as audited tip); tree clean before this artifact; no git mutations performed; only this audit file written",
+   "exit_code": 0
+  }
+ ],
+ "per_family": [
+  {
+   "family_id": "ILLIQ-AMIHUD-28D-W",
+   "verdict": "IDENTITY_RECOVERED_UNAMBIGUOUS",
+   "evidence": "10/10 file entries hash-verified (sha256+byte_len+blob) against c97283e0/df18f53d bytes; 24 verbatim quotes/substrings found; verdict V11_FAMILY_REJECT byte-exact in producer family_verdict_illiq.json@df18f53d (sole failing gate no_positive_fold_gt_50pct_of_positive_pnl, share=0.7055; PF 1.35484101084; MDD 0.091821657373; 13 gates, 12 pass); terminal_report '12/13 gates PASS ... SOLE FAIL' confirmed; lineage c97283e0 -> df18f53d verified (merge-base --is-ancestor exit 0; verdict files absent at c97283e0). Mechanism matches plan sec3.1: 28d Amihud |r|/dollar-volume, weekly Monday 00:00Z, long illiquid/short liquid quintiles, equal-weight/dollar-neutral/beta-neutral (strategy.py bytes), holding 7d, 56D neighbour + 28D-INV control pinned as diagnostics only",
+   "findings": [
+    "A7X-1 (LOW): concentration digit provenance disclosed, not arbitrated — see findings[]"
+   ]
+  },
+  {
+   "family_id": "BASISLV-PREMFADE-28D",
+   "verdict": "IDENTITY_RECOVERED_UNAMBIGUOUS",
+   "evidence": "11/11 file entries hash-verified @183554add4 (identity and verdict share the V14 TERMINAL commit, subject confirmed 'V14 TERMINAL: V14_REJECT_ALL ...'); 40 verbatim quotes/substrings found incl. all three frozen arm_config_digests in frozen_identity.py; verdict V14_FAMILY_REJECT byte-exact in terminal_report_v14.json; concentration 0.511023793543565362815881161202 > 0.50 with explicit 'no rounding in the survivor's favor'; PF 1.360046671971; MDD 0.11585342564; DSR 0.0022396171023272293 @ n_trials 146 — all match producer bytes. Mechanism matches plan sec3.2: 28d mean perp-index premium, Monday 00:00Z, tercile long-low/short-high, equal weight, gross 1.0, min 12 eligible, fill at Monday 00:15:00Z close (first completed 15m bar strictly after stamp), holding 7d, price-only failure clause, LONG_PAYS_POSITIVE_RATE",
+   "findings": []
+  },
+  {
+   "family_id": "XSECT-FUND-CARRY-7D",
+   "verdict": "IDENTITY_RECOVERED_UNAMBIGUOUS",
+   "evidence": "7/7 working-tree-tracked entries hash-verified and proven byte-identical between recovery base bd5e3437 and audited tip (empty git diff; base verified ancestor). Verdict CANDIDATE_FAIL byte-exact in status.yaml; FG3 concentration fail 51.66% (0.5165701411874007 on F1) byte-exact in status.yaml + addendum; MDD correction (0.08835025043410369 = 8.84% PASS; 28.85% refuted per A7 F-1) byte-exact; V6P_PASS_V6_CANDIDATE_FAIL + lineage fbd2e9d + audit sha256 prefix 34859a64 cross-check confirmed in final_transition.json/scientific_audit.json. Mechanism matches plan sec3.3 verbatim (universe 7 perps + BTC benchmark-only, daily 00:00Z, 7D member of {1,3,7}, bottom-2 long/top-2 short, 24h rebalance, 0.80/1.00/0.10/0.20 caps, folds chronological_3fold + 24h purge). identity_ambiguity is non-null and accurate; adjudicated BOUNDED_BENIGN — see family3_ambiguity_adjudication",
+   "findings": [
+    "A7X-4 (LOW): lock-status attribution — see findings[]"
+   ]
+  }
+ ],
+ "family3_ambiguity_adjudication": {
+  "classification": "BOUNDED_BENIGN",
+  "placeholder_fields": [
+   "effective_window: TO_FREEZE_AT_AUTHORIZATION (candidate.yaml; execution-time S0 common window)",
+   "data_hashes: TO_FREEZE_AT_AUTHORIZATION (candidate.yaml; data/funding/metadata provenance hashes)",
+   "folds_clocks_warmup_contract: TO_FREEZE_AT_AUTHORIZATION (candidate.yaml; warmup and signal/fill clock details — mechanism-level parts folds=chronological_3fold, purge_embargo=24h, signal_clock=daily_00_00_utc ARE pinned elsewhere in the same file)",
+   "funding_publication_convention: TO_FREEZE_AT_AUTHORIZATION (candidate.yaml; missing-settlement policy detail — core convention pinned by feature=trailing_mean_of_published_settled_funding_only and hypothesis.md sec1 'settled AND published at or before the daily 00:00 UTC signal clock ... no forward-fill beyond the last settled timestamp')",
+   "pipeline_versions: TO_FREEZE_AT_AUTHORIZATION (candidate.yaml; cost/latency/terminal/risk/accounting/metric versions — infra bookkeeping)",
+   "trial_ledger_and_dsr_estimator: TO_FREEZE_AT_AUTHORIZATION (candidate.yaml; DSR unavailable at V6 anyway, n=3 folds; trial budget itself IS pinned: scored_candidates 3 + negative_controls 1, and status.yaml records 4/4 consumed)",
+   "gates_scorecard_tiebreak_limits_seeds: TO_FREEZE_AT_AUTHORIZATION (candidate.yaml; hard gates ARE pinned by hypothesis.md sec4 invalidation conditions + addendum FG3 record; seeds/tolerances are execution-time; funding ranks are continuous so tie-breaks are measure-zero)",
+   "supporting lock-status fields: locked_by: none, locked_at_utc: null, state: SPEC_DRAFT (candidate.yaml) and draft: FROZEN_FOR_EXECUTION, locked_candidate: none (status.yaml) — the spec never reached A1 SPEC_LOCKED, exactly as the manifest states"
+  ],
+  "reasoning": "The mechanism's score-affecting identity — universe [ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,DOGEUSDT,LINKUSDT,ADAUSDT], BTC benchmark-only, signal clock daily_00_00_utc, ranking variable (trailing mean of published settled funding only), lookbacks {1,3,7} with the 7D anchor identified by the verdict/metrics bytes (status.yaml '7D FG3 concentration fail', addendum row XSECT-FUND-CARRY-7D), directions (long bottom-2 / short top-2), rebalance/holding 24h, risk caps target_gross 0.80 / hard_gross_cap 1.00 / hard_abs_net_cap 0.10 / max_abs_weight 0.20, folds chronological_3fold + 24h purge, negative control reverse_funding_rank_3d, and the hard-gate set — is fully recoverable verbatim from the named authorities (candidate.yaml + hypothesis.md + addendum + status.yaml) with zero inference. The remaining placeholders split into (a) non-mechanism bookkeeping (data_hashes, pipeline_versions, trial_ledger/DSR estimator, seeds/tolerances) and (b) execution-time realizations (window dates, warmup/fill-clock details, missing-settlement policy) whose V6 realizations are not readable in-lane but ARE pinned immutably: the addendum's checksums_sha256 block fixes results/portfolio_v6/XSECT-FUND-CARRY-7D/{canonical_metrics.json,gate_result.json} and 13 sibling artifacts by sha256. A sha256-pinned immutable artifact is a deterministic pointer, not a guess; therefore no score-affecting parameter is genuinely unrecoverable. The historical scoring is also terminal (4/4 scored trials consumed, CANDIDATE_FAIL, locked_candidate: none), so no selection decision remains that unknown seeds/tiebreaks could contaminate. The manifest neither infers nor substitutes any placeholder value — the recovery stays honest. BLOCKING is not warranted under plan P1: BLOCKED_IDENTITY is for identities that cannot be recovered unambiguously; here the sleeve form is unambiguous and the residual ambiguity is bounded, disclosed, and pointer-resolvable.",
+  "consequences_for_shadow_lane": [
+   "The XSECT-FUND-CARRY-7D sleeve proceeds as a named independent observation; it must NOT be replaced (plan P1: no replacement after freeze).",
+   "Forward re-expression must use ONLY the pinned contract fields above; no placeholder value may be guessed or back-filled from prose (manifest's own rule, endorsed).",
+   "The forward fill rule and warmup must be declared fresh at the P2 data/PIT + cost freeze (A3) and I-phase adapter freeze — presented as new declared parameters, never as recovered historical values, because the historical fill-clock realization lives only in the sha256-pinned results artifacts.",
+   "Any historical replay over the V6 window is identity-only and MUST be labelled REPLAY_NOT_PROSPECTIVE (manifest replay_label_rule); before such a replay the fill/warmup/window realizations must be read from the sha256-pinned results/portfolio_v6/* artifacts in PRIMARY and their hashes re-verified against the addendum checksum block.",
+   "The sleeve retains CANDIDATE_FAIL; plan sec13 re-applies the original gates (FG3 50% fold concentration among them) with no relaxation."
+  ]
+ },
+ "identity_drift_findings": [
+  {
+   "id": "A7X-2",
+   "severity": "LOW",
+   "location": "plans/PLAN_prospective_shadow_v1.md sec 3.1 vs producer bytes (manifest NOT at fault)",
+   "description": "Plan prose calls the family-1 failure 'symbol concentration 0.705497'. Producer bytes show the failing gate is FOLD concentration (no_positive_fold_gt_50pct_of_positive_pnl, largest positive-fold share=0.7055) while the symbol-contribution gate PASSED (max symbol share=0.2981, BOMEUSDT). The manifest pins the producer's fold-concentration terminology correctly; shadow-lane reports must say 'fold concentration', not the plan's 'symbol concentration' mislabel.",
+   "evidence": "family_verdict_illiq.json@df18f53d: gate symbol_contribution_le_40pct verdict=true detail='max symbol share=0.2981 (BOMEUSDT)'; gate no_positive_fold_gt_50pct_of_positive_pnl verdict=false detail='largest positive-fold share=0.7055'"
+  },
+  {
+   "id": "A7X-3",
+   "severity": "LOW",
+   "location": "plans/PLAN_prospective_shadow_v1.md sec 3.1 vs git lineage (manifest NOT at fault)",
+   "description": "Plan prose calls c97283e0 the 'terminal commit' for family 1. The actual V11 TERMINAL (where the sprint verdict bytes live) is df18f53d, of which c97283e0 is a verified git ancestor; family_verdict_illiq.json and terminal_report_v11.json do not exist at c97283e0 (git cat-file exit 128). The manifest recovers identity from c97283e0 (exactly the authority the plan names) plus verdict bytes from df18f53d, and discloses this lineage — strictly more accurate than the plan prose.",
+   "evidence": "git merge-base --is-ancestor c97283e0 df18f53d -> exit 0; git cat-file -e c97283e0:research/control/v11_run/family_verdict_illiq.json -> exit 128; commit subjects match manifest claims verbatim"
+  },
+  {
+   "id": "A7X-5",
+   "severity": "LOW",
+   "location": "plan sec 3.3 vs addendum (rounding only; no action)",
+   "description": "Plan prose states family-3 MDD 8.835%; addendum/status state 8.84%. Both are roundings of the same pinned value 0.08835025043410369; no substantive drift.",
+   "evidence": "v6-closure-addendum-20260825.json: 'mdd': 0.08835025043410369, 'mdd_pct': 8.84"
+  }
+ ],
+ "findings": [
+  {
+   "id": "A7X-1",
+   "severity": "LOW",
+   "description": "Family-1 largest-positive-fold-share digit provenance: plan prose cites 0.705497, producer verdict bytes state 0.7055 (4dp — consistent, 0.705497 rounds to 0.7055), and the A7 terminal wave-2 audit independently recomputed 0.7022573519976983 with an explicit match_4dp:false disclosure. The manifest pins the producer bytes verbatim, cites the wave-2 recompute in its note, and arbitrates nothing. All candidate values (0.7055 and 0.7022574) exceed the 0.50 gate, so the V11_FAMILY_REJECT verdict is invariant to the discrepancy; the recovered identity (spec+code+tests) is unaffected. Disclosure-only; no severity above LOW is warranted.",
+   "evidence": "family_verdict_illiq.json@df18f53d 'largest positive-fold share=0.7055'; terminal_report_v11.json@df18f53d 'SOLE FAIL: largest positive fold = 0.7055 of positive PnL > 0.50 frozen concentration gate'; w2_illiq_raw_output.json@df18f53d lines 296-298 'largest_share: 0.7022573519976983, match_4dp: false'; manifest notes field discloses all three sources"
+  },
+  {
+   "id": "A7X-2",
+   "severity": "LOW",
+   "description": "Plan-prose mislabel (fold vs symbol concentration) — see identity_drift_findings A7X-2. Manifest correctly pins producer terminology; carries as a reporting-hygiene requirement on the shadow lane.",
+   "evidence": "producer gate list @df18f53d"
+  },
+  {
+   "id": "A7X-3",
+   "severity": "LOW",
+   "description": "Plan-prose 'terminal commit' naming for c97283e0 — see identity_drift_findings A7X-3. Manifest lineage handling verified correct.",
+   "evidence": "merge-base/cat-file results above"
+  },
+  {
+   "id": "A7X-4",
+   "severity": "LOW",
+   "description": "Cosmetic attribution imprecision in the manifest's family-3 identity_ambiguity text: it says 'status.yaml records draft: FROZEN_FOR_EXECUTION, locked_by: none', but locked_by: none (and state: SPEC_DRAFT) live in candidate.yaml while status.yaml carries draft: FROZEN_FOR_EXECUTION and locked_candidate: none. The substantive claim — the spec never reached A1 SPEC_LOCKED — is verified correct in BOTH files' bytes. No effect on identity or verdict; fix optional and non-blocking.",
+   "evidence": "candidate.yaml lines 'locked_by: none', 'state: SPEC_DRAFT'; status.yaml line 'draft: FROZEN_FOR_EXECUTION', 'locked_candidate: none'"
+  },
+  {
+   "id": "A7X-5",
+   "severity": "LOW",
+   "description": "Family-3 MDD rounding difference between plan prose (8.835%) and addendum (8.84%) — same pinned underlying value; no action.",
+   "evidence": "addendum mdd 0.08835025043410369"
+  }
+ ],
+ "unresolved_high_critical_count": 0,
+ "overall_verdict": "PASS",
+ "recommended_next_action": "Accept the identity recovery as-is and proceed to P2 (data/PIT and cost freeze) with all three named sleeves ILLIQ-AMIHUD-28D-W, BASISLV-PREMFADE-28D, XSECT-FUND-CARRY-7D — none is BLOCKED_IDENTITY and no replacement is permitted. Binding conditions carried forward: (1) shadow-lane reporting must describe family-1's historical failure as FOLD concentration 0.7055 (producer bytes), not plan prose's 'symbol concentration 0.705497'; (2) family-3 forward fill/warmup rules must be declared fresh at P2/I freeze, and any V6-window replay must read realizations from the addendum's sha256-pinned results/portfolio_v6/* artifacts and carry the REPLAY_NOT_PROSPECTIVE label; (3) all three historical verdict labels V11_FAMILY_REJECT / V14_FAMILY_REJECT / CANDIDATE_FAIL remain frozen and non-rewritable. Optionally (non-blocking) correct the A7X-4 attribution wording in a future manifest revision."
+}
