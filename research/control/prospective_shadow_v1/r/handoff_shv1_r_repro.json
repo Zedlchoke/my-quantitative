@@ -1,0 +1,114 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "shv1-g7-reproduction",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-reproducer",
+  "lane": "g7-detached-reproduction",
+  "dispatch_sha": "6bb90b5ae9d17f4544a88c2ef35de0b6adc8448c",
+  "actual_start_sha": "6bb90b5ae9d17f4544a88c2ef35de0b6adc8448c",
+  "commit_sha": null,
+  "commit_note": "detached read-only reproduction at the dispatch SHA; no lane commit created, nothing written to any repo worktree",
+  "changed_paths": [],
+  "tests": [
+    {
+      "name": "item1_full_shv1_battery_under_heavy_lock",
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_accounting.py tests/test_shv1_eventstore.py tests/test_shv1_noorder.py tests/test_shv1_pit.py tests/test_shv1_scheduler.py tests/test_shv1_combined.py tests/test_shv1_risk.py tests/test_shv1_identity_recovery.py tests/test_shv1_data_cost.py tests/test_shv1_families.py tests/test_shv1_families_identity.py tests/test_shv1_engine_smoke.py tests/test_shv1_dashboard.py -q",
+      "cwd": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/r-repro",
+      "lock": "acquired via research.governance.heavy_lock.acquire(cycle_id='PROSPECTIVE-SHADOW-V1', role='R_REPRODUCTION', worktree=<detached tree>, command=<pytest argv>); pre-check heavy_lock.inspect() = FREE_PROVEN; released FINISHED; post-check FREE_PROVEN",
+      "exit_code": 0,
+      "result": "162 passed in 29.95s (runner elapsed 30.5s), 0 failed, 0 errors",
+      "expected": "162 passed / 0 failed",
+      "verdict": "ALL_MATCH"
+    },
+    {
+      "name": "item2_deterministic_double_run_engine_smoke",
+      "command": "/tmp/shv1_repro_out/driver_ledgers.py <out_root> run twice via /tmp/shv1_repro_out/run_driver_locked.py, each under the heavy lock; run_a: cwd=/tmp/shv1_repro_out/run_a PYTHONHASHSEED=1; run_b: cwd=/tmp/shv1_repro_out/run_b PYTHONHASHSEED=99",
+      "method": "driver imports the detached tree's tests/test_shv1_engine_smoke.py SmokeExecutor (real decide paths, frozen A2 risk caps, SleeveAccount, scheduler.run_once) and writes per-family JSONL ledgers over the frozen smoke window 2026-03-02T00:00:00Z..2026-03-10T00:00:00Z; independent byte-compare + recursive field-level diff between run_a and run_b",
+      "exit_code": 0,
+      "result": {
+        "ILLIQ-AMIHUD-28D-W": {
+          "records": 2,
+          "sha256_run_a": "d97cf42297c3891ec60986284cfcb0abf551006e7e8de8e06da89e1b14cc0773",
+          "sha256_run_b": "d97cf42297c3891ec60986284cfcb0abf551006e7e8de8e06da89e1b14cc0773",
+          "byte_identical": true,
+          "differing_paths": 0,
+          "verdict": "ALL_MATCH"
+        },
+        "BASISLV-PREMFADE-28D": {
+          "records": 2,
+          "sha256_run_a": "d64ab3474c11b45b1f95e24c936281a806362732cf50d562eff7f791dc7e3338",
+          "sha256_run_b": "d64ab3474c11b45b1f95e24c936281a806362732cf50d562eff7f791dc7e3338",
+          "byte_identical": true,
+          "differing_paths": 0,
+          "verdict": "ALL_MATCH"
+        },
+        "XSECT-FUND-CARRY-7D": {
+          "records": 8,
+          "sha256_run_a": "e7c87878d9506ae0dfe6606a368f53162e5d72e407cb4146098b3a15a1b54dbf",
+          "sha256_run_b": "e7c87878d9506ae0dfe6606a368f53162e5d72e407cb4146098b3a15a1b54dbf",
+          "byte_identical": true,
+          "differing_paths": 0,
+          "verdict": "ALL_MATCH"
+        }
+      },
+      "wall_clock_fields_excluded": [],
+      "wall_clock_exclusion_note": "EXCLUSION LIST IS EMPTY: no field was excluded. A recursive diff over every JSON path in every record found ZERO differing paths, and a key scan found only 'observed_at_utc' as timestamp-like — in this scenario it is the synthetic decision stamp (equal to scheduled_decision_utc), not a wall-clock value, and it was identical across runs anyway. event records carry no generated_at/observed_at/heartbeat wall-clock stamps (verified by source inspection of research/shadow_v1/{events,no_order,accounting}.py: no datetime.now/utcnow/time.time usage; no_order_proof is a deterministic source-byte digest).",
+      "verdict": "ALL_MATCH"
+    },
+    {
+      "name": "item3_digest_recomputation",
+      "command": "sha256 over detached-tree bytes; cost_regime_digest recomputed exactly per the manifest's documented recipe cost_regime_digest_canonicalization = sha256 over UTF-8 bytes of json.dumps(current_conservative_cost, sort_keys=True, separators=(',', ':'), ensure_ascii=False) (recipe unambiguous, asserted in the verifier before use)",
+      "exit_code": 0,
+      "result": {
+        "identity_recovery.json": {
+          "sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+          "expected": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+          "verdict": "ALL_MATCH"
+        },
+        "cost_regime_digest": {
+          "recomputed": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65",
+          "manifest_claim": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65",
+          "expected": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65",
+          "verdict": "ALL_MATCH"
+        },
+        "a7_identity_crosscheck.json": {
+          "sha256": "0c164ee494df802d9b27176cf09acb4a4856d26e31b8c28d9bbfbf6cacff8d93",
+          "expected": "0c164ee494df802d9b27176cf09acb4a4856d26e31b8c28d9bbfbf6cacff8d93",
+          "verdict": "ALL_MATCH"
+        }
+      },
+      "verdict": "ALL_MATCH"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Item 2 replicates the smoke scenario by importing the detached tree's own SmokeExecutor from tests/test_shv1_engine_smoke.py (importlib file load) rather than re-implementing the formulas by hand — the scenario is byte-for-byte the frozen smoke scenario, executed outside pytest under two PYTHONHASHSEED values and two distinct cwds; the pytest smoke file itself also passed inside item 1's battery.",
+    "Item 1 and item 2 each acquired the machine-wide heavy lock separately (role R_REPRODUCTION); all acquisitions verified FREE_PROVEN before and after, releases recorded FINISHED in ~/.my-quantitative-governance/heavy_runtime/heavy_worker.history.jsonl.",
+    "Reproduction is single-host, single-venv (/Users/hoangminhlong/my-quantitative/.venv/bin/python, pytest 9.1.1); no cross-machine determinism claim is made."
+  ],
+  "incidents": [],
+  "tree_status": "detached clean",
+  "workers": 0,
+  "outputs": {
+    "overall_verdict": "ALL_MATCH",
+    "item1_battery": "ALL_MATCH — 162 passed / 0 failed (exit 0), matches the controller's 162 expectation",
+    "item2_double_run": "ALL_MATCH — 3/3 family ledgers byte-identical across PYTHONHASHSEED 1 vs 99 and distinct cwds (0 differing JSON paths; wall-clock exclusion list empty)",
+    "item3_digests": "ALL_MATCH — 3/3 digests equal to frozen expectations",
+    "artifacts": [
+      "/tmp/shv1_repro_out/pytest_battery.log",
+      "/tmp/shv1_repro_out/driver_a.log",
+      "/tmp/shv1_repro_out/driver_b.log",
+      "/tmp/shv1_repro_out/run_battery_locked.py",
+      "/tmp/shv1_repro_out/run_driver_locked.py",
+      "/tmp/shv1_repro_out/driver_ledgers.py",
+      "/tmp/shv1_repro_out/compare_ledgers.py",
+      "/tmp/shv1_repro_out/run_a/ILLIQ-AMIHUD-28D-W.jsonl",
+      "/tmp/shv1_repro_out/run_a/BASISLV-PREMFADE-28D.jsonl",
+      "/tmp/shv1_repro_out/run_a/XSECT-FUND-CARRY-7D.jsonl",
+      "/tmp/shv1_repro_out/run_b/ILLIQ-AMIHUD-28D-W.jsonl",
+      "/tmp/shv1_repro_out/run_b/BASISLV-PREMFADE-28D.jsonl",
+      "/tmp/shv1_repro_out/run_b/XSECT-FUND-CARRY-7D.jsonl"
+    ]
+  },
+  "recommended_next_action": "No repair needed and no follow-up reproducer run required: every frozen computation reproduces exactly at dispatch SHA 6bb90b5ae9d17f4544a88c2ef35de0b6adc8448c (battery 162/162, ledgers byte-deterministic, all three control digests match). Controller may integrate this handoff as the g7 detached-reproduction evidence for PROSPECTIVE-SHADOW-V1."
+}

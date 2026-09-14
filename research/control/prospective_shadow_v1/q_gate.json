@@ -1,0 +1,53 @@
+{
+  "gate_id": "Q_VERIFICATION_PRELAUNCH_BATTERY",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "measured_at_utc": "2026-09-14T15:02:00Z",
+  "integration_tip": "6bb90b5ae9d17f4544a88c2ef35de0b6adc8448c",
+  "gates": {
+    "G2_DATA_PIT": {
+      "verdict": "PASS",
+      "evidence": "research/control/prospective_shadow_v1/data_cost/data_manifest.json (per-family endpoints measured keyless, sha256-archived sample bytes, warmup coverage measured 28d/28d/7d, PIT rules frozen, family-3 fresh-forward condition declared); tests/test_shv1_data_cost.py 11 passed; PIT mutation tests in tests/test_shv1_pit.py passed"
+    },
+    "G3_ACCOUNTING_CURRENT_COSTS": {
+      "verdict": "PASS",
+      "evidence": "tests/test_shv1_accounting.py hand-computed fixtures: equity identity asserted every mutation; fee+slippage exactly once per fill (fixture 20.00/0.05); funding once per settlement with side rule; TWO cost books (CURRENT_CONSERVATIVE_COST primary, LINEAGE_COST diagnostic) same quantities different fee books; cost_regime_digest ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65 frozen pre-activation; combined view reconciles strictly (tests/test_shv1_combined.py)"
+    },
+    "G4_NO_ORDER_BOUNDARY": {
+      "verdict": "PASS",
+      "evidence": "adversarial tests fail closed (tests/test_shv1_noorder.py); recursive package scanner 0 forbidden surfaces (10 files, re-verified with families/ + dashboard/); only TARGET_INTENT action type emitted; live server boundary check GET 200 / POST 405 during the browser QA; no credential read anywhere in the package"
+    },
+    "G5_SCHEDULER_RESTART": {
+      "verdict": "PASS",
+      "evidence": "exact weekly-Monday/daily-00Z decision generation tests; duplicate launch -> zero duplicate event ids; second run byte-identical ledgers; late-data DataBlocked fixture -> DATA_BLOCKED event, no synthesized price (semantics: blocked decision consumes its event_id, never re-executed on late data — conservative PIT-honest, DISCLOSED to A7); heartbeat fields (last scheduled, last completed, byte count)"
+    },
+    "G6_VIRTUAL_RISK": {
+      "verdict": "PASS",
+      "evidence": "frozen caps applied BEFORE each virtual fill via risk.check_and_apply from identity-manifest verbatim params (carry 0.80/1.00/0.10/0.20; premfade gross 1.0 weights 0.125-0.30; illiq equal-weight dollar+beta neutral); cap violation blocks event + records pre/post target; no margin/leverage path (InsufficientCashError guard); combined exposure measured read-only only (tests/test_shv1_risk.py)"
+    },
+    "G7_DETERMINED_REPRODUCTION": {
+      "verdict": "PASS (pre-activation analogue)",
+      "evidence": "research/control/prospective_shadow_v1/r/handoff_shv1_r_repro.json sha256 e63984d790eca3f0321702cabb3f3fc471b342ea5014de6ec9b620a953563d6e: detached tree at 6bb90b5a, 162/162 shv1 tests under heavy lock role R_REPRODUCTION; deterministic double-run byte-identical 3/3 family ledgers with EMPTY wall-clock exclusion list; identity manifest sha 845c3e87..., cost_regime_digest ab524d0e..., A7 audit sha 0c164ee4... recomputed 3/3 MATCH; store task shv1-g7-reproduction INTEGRATED",
+      "scope_note": "monthly live-interval reproduction activates in phase E/R after owner GO"
+    },
+    "BROWSER_RENDER_9_7": {
+      "verdict": "PASS",
+      "evidence": "research/control/prospective_shadow_v1/qa/browser_render_check.json + 3 screenshots (desktop fullpage, UTC toggle, mobile 390px) of the honest pre-activation empty state"
+    }
+  },
+  "FULL_SUITE": {
+    "command": ".venv/bin/python -m pytest tests/ -q (canonical scope used by prior cycles) from the integration worktree, alone under the machine-wide heavy lock (role Q_FULL_SUITE)",
+    "result": "2070 passed / 7 failed / 0 errors in 132.48s",
+    "shv1_tests": "162 passed / 0 failed (all cycle tests green)",
+    "failures": {
+      "list": "tests/test_family_failures.py::test_real_registry_validates + 6 parametrized test_real_registry_uses_core_signatures cases",
+      "classification": "PRE_EXISTING_ON_MAIN",
+      "proof": "byte-identical failure set reproduced read-only at root main tip 41d1da6d130b8320ccf95a5ed64a2ce6d78ff456 (same 7 failed / 11 passed in that file)",
+      "root_cause": "FAMILY_FAILURES.jsonl lines 98+ (VOL-NG1 entries appended at the 2026-09-14 ng-generation close) use verdict_class 'SCORED_REJECTION' and signature 'NEGATIVE_EXPECTANCY' which the enum in tests/test_family_failures.py does not admit; the closes' own validator --verify used a different code path (P-18 two-readers class)",
+      "scope": "control-plane hygiene debt of the ng-generation close landing, OUTSIDE this cycle's allowed paths (lanes forbidden from research/wayfinder/ and registry files); this cycle introduced no failure",
+      "owner_action_required": "repair on main in a dedicated control-plane commit (extend the enum/validator to admit the ng-generation kill classes, or re-map the entries) — NOT doable from this cycle's branch without crossing forbidden paths"
+    }
+  },
+  "verdict": "PASS_WITH_DISCLOSED_PREEXISTING_MAIN_DEBT",
+  "unresolved_high_critical_this_cycle": 0,
+  "next_gate": "G8_INDEPENDENT_PRELAUNCH_AUDIT"
+}
