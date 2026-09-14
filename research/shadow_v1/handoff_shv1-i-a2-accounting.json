@@ -1,0 +1,111 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "shv1-i-a2-accounting",
+ "cycle_id": "PROSPECTIVE-SHADOW-V1",
+ "role": "quant-implementer",
+ "lane": "i-a2-accounting",
+ "dispatch_sha": "1e977c9c2c82cc3d2e23c74bdc1135fe993d8a25",
+ "actual_start_sha": "1e977c9c2c82cc3d2e23c74bdc1135fe993d8a25",
+ "commit_sha": null,
+ "commit_sha_note": "self-reference: this handoff is committed inside the commit it describes; see git log orca/shv1-a2-accounting for the final SHA",
+ "branch": "orca/shv1-a2-accounting",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a2-accounting",
+ "changed_paths": [
+  "research/shadow_v1/__init__.py",
+  "research/shadow_v1/events.py",
+  "research/shadow_v1/ledger.py",
+  "research/shadow_v1/accounting.py",
+  "research/shadow_v1/risk.py",
+  "research/shadow_v1/scheduler.py",
+  "research/shadow_v1/data_feed.py",
+  "research/shadow_v1/no_order.py",
+  "research/shadow_v1/combined.py",
+  "tests/test_shv1_accounting.py",
+  "tests/test_shv1_eventstore.py",
+  "tests/test_shv1_pit.py",
+  "tests/test_shv1_noorder.py",
+  "tests/test_shv1_scheduler.py",
+  "tests/test_shv1_combined.py",
+  "tests/test_shv1_risk.py",
+  "research/shadow_v1/handoff_shv1-i-a2-accounting.json"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a2-accounting && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_accounting.py tests/test_shv1_eventstore.py tests/test_shv1_noorder.py tests/test_shv1_pit.py tests/test_shv1_scheduler.py tests/test_shv1_combined.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "62 passed in 0.41s (packet verification command)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a2-accounting && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_accounting.py tests/test_shv1_eventstore.py tests/test_shv1_noorder.py tests/test_shv1_pit.py tests/test_shv1_scheduler.py tests/test_shv1_combined.py tests/test_shv1_risk.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "67 passed (same six files plus additional tests/test_shv1_risk.py locking caps to the frozen identity manifest)"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a2-accounting && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m compileall -q research/shadow_v1",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "package compiles clean"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a2-accounting && git diff --check",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "no whitespace errors"
+  },
+  {
+   "command": "python -c \"no_order.assert_no_order_surface('research/shadow_v1')\"",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "recursive no-order self-scan: 9 files, 0 hits, NO_ORDER_SURFACE_CLEAN"
+  }
+ ],
+ "authority_claims": [],
+ "summary": {
+  "access_class": "INTERNAL_PAPER_ONLY_KEYLESS_PUBLIC_GETS; no API key, no account, no order routing; the only emitted action type is TARGET_INTENT plus internal virtual fills",
+  "modules": {
+   "events.py": "plan section 8 record contract; strict validate (all 32 required fields, no extras); event_id = first 32 lowercase hex of sha256(\"PROSPECTIVE-SHADOW-V1|family_id|arm_id|scheduled_decision_utc\"); DATA_BLOCKED event builder consumes the same deterministic id",
+   "ledger.py": "append-only JSONL per sleeve under runtime root (default results/prospective_shadow_v1/, gitignored); O_APPEND single write + fsync + mandatory read-back verification; duplicate event_id skipped idempotently; partial/garbled line raises LedgerCorruptError and is NEVER truncated; ledger_digest = sha256 over raw bytes",
+   "accounting.py": "SleeveAccount: isolated 100,000-USDT sleeve; equity == cash + sum(qty x mark) asserted on every mutation (fill conservation = mark-to-market on pre-fill qty + fee once + slippage once); two cost books LINEAGE_COST and CURRENT_CONSERVATIVE_COST per plan section 6 over identical quantities (primary book drives cash/equity; equity_view(book) exposes other books); funding booked ONCE while held with ts_opened <= fundingTime < ts_closed, positive rate long pays / short receives; missing mark => UNAVAILABLE_FAIL_CLOSED mark-gap state, never interpolated; no margin/leverage: fills exceeding sleeve cash or gross-above-equity raise InsufficientCashError and refuse pre-mutation; decision/order_intent/fill/closed_position counters separate; fill convention: buy ref + ticks*tick, sell ref - ticks*tick, fee on reference notional",
+   "risk.py": "caps passed as config parsed from identity manifest verbatim parameters (numbers or raw YAML lines); CARRY 0.80/1.00/0.10/0.20 and PREMFADE 0.125..0.30 built directly from the frozen manifest; ILLIQ dollar/beta-neutral rule requires numeric tolerances from config (fail-closed RiskConfigError otherwise); check_and_apply blocks the whole event on any violation and records pre/post target",
+   "scheduler.py": "weekly Monday 00:00Z (illiq_amihud, basislv_premfade) and daily 00:00Z (xsect_fund_carry); pending_decisions pure (start inclusive, end exclusive); run_once idempotency loop skips event_ids already in the ledger, executes chronologically, converts DataBlocked into DATA_BLOCKED records under the SAME deterministic event_id; heartbeat returns last_scheduled_event / last_completed_event / ledger_byte_count",
+   "data_feed.py": "PIT interface + keyless GET-only urllib client restricted to the data-manifest allowlist (/fapi/v1/klines, /futures/data/basis, /fapi/v1/fundingRate, /fapi/v1/time, /fapi/v1/exchangeInfo); feature bar eligible iff open+interval < decision; virtual fill = first completed bar strictly after decision (mutating the decision bar's own close cannot change the fill); late/missing/failed fetch raises DataBlocked; every fetch records {url, fetched_at_utc, response_sha256} and compose_data_snapshot_digest folds them deterministically",
+   "no_order.py": "TARGET_INTENT dataclass + pure emit_target_intent; assert_no_order_surface recursively scans package source for forbidden literals (venue SDKs, order verbs, credential reads, environment secret reads) and raises fail-closed; forbidden literals are assembled from fragments so the scanner's own source stays clean; no_order_proof = {emitted_action_types: [TARGET_INTENT], scan_digest}",
+   "combined.py": "read-only equal-capital view over plain snapshots (no mutable references); strict sum at valid marks; any sleeve gap or missing point => combined gap UNAVAILABLE_FAIL_CLOSED with no interpolation; pairwise return correlation fails closed on gaps/misalignment/short windows; same-symbol/same-direction overlap; additive gross/net/btc_beta (no cross-sleeve netting)"
+  },
+  "key_design_decisions": [
+   "event_id rule: sha256 over 'PROSPECTIVE-SHADOW-V1|{family_id}|{arm_id}|{scheduled_decision_utc}', first 32 lowercase hex; enforced by the record validator itself, so a record whose id does not derive from its identity fields is invalid",
+   "DATA_BLOCKED records consume the deterministic event_id; a retry after data arrives finds the id present and skips - the blocked decision is never re-executed on late data (PIT-honest) and never duplicated",
+   "fill conservation invariant: equity_after - equity_before == mark_to_market(pre-fill qty, ref vs old mark) - fee - slippage, asserted on every fill; funding asserts cf pass-through; a failed assert raises IDENTITY_MISMATCH",
+   "primary cost book (CURRENT_CONSERVATIVE_COST) drives the sleeve's cash/equity reality per plan section 6; LINEAGE_COST tracks identical quantities with lineage fee/slippage/funding parameters and is exposed via equity_view",
+   "ledger crash residue (torn trailing line or invalid JSON) refuses all further reads AND appends; committed bytes are never rewritten or truncated"
+  ]
+ },
+ "known_limitations": [
+  "runtime ledgers default under results/prospective_shadow_v1/ (gitignored); no runtime ledger is committed by this lane",
+  "family adapters (research/shadow_v1/families/) and dashboard are other lanes' deliverables and were NOT created here; executors plumbed into scheduler.run_once come from those lanes",
+  "ILLIQ numeric risk tolerances (btc_beta_tolerance etc.) are not numerically pinned by the identity manifest; risk.py deliberately requires them from the cycle config and fails closed without them",
+  "combined equity view aligns sleeves on exact timestamps; a sleeve without a point at a timestamp is treated as a gap there (fail closed), not carried forward",
+  "single-writer ledger discipline assumes the serialized scheduler of plan section E; no file locking is added inside the package"
+ ],
+ "incidents": [
+  "MCP tool mcp__plugin_quant-research-orchestrator_orchestrator__orchestrator_publish_handoff is NOT available in this subagent's toolset (available tools: Bash, Edit, Read, Write, RespondToCoordinator); the committed handoff JSON at research/shadow_v1/handoff_shv1-i-a2-accounting.json is the authoritative handoff artifact; coordinator should publish it via the orchestrator MCP if required",
+  "no other incidents; no guard refusals; base SHA matched dispatch packet exactly"
+ ],
+ "tree_status": "CLEAN after commit (only lane-owned paths staged by explicit pathspec)",
+ "workers": 0,
+ "outputs": {
+  "research/shadow_v1/__init__.py": "f865c0d55e7e5bfee6cdbf38bebcf6f648371b6fd0c8e6762cc412841b339313",
+  "research/shadow_v1/accounting.py": "11456bfb18ab20a8782332afb44ae3fe1705368354540fde63c20532d2b4b503",
+  "research/shadow_v1/combined.py": "77a7eaf97253d7f460ca1c1dcb36c8b0cdb2f788bd312ed6adfee951c80b7040",
+  "research/shadow_v1/data_feed.py": "2e68f907db792e4c154b672fe6bee412e6149f9a235a199efa6887228963693b",
+  "research/shadow_v1/events.py": "7b966cf3ed3c83202d822dedf46622138d1ade80733d30d90c0c796823ce7aa2",
+  "research/shadow_v1/ledger.py": "ab4070341bfe733742dac9f4bd692e225d136e461b1e2bb783c153094cbd4bc1",
+  "research/shadow_v1/no_order.py": "6d91b22d4aa63e120517c5d31aaff90036b6168796a8b114158c66f63dbf386f",
+  "research/shadow_v1/risk.py": "4833f310c533b4e5347452b4a2130a7d3a0fe3621f13b68366968327257cd4df",
+  "research/shadow_v1/scheduler.py": "e65024750feb1b7c9a3755e57a505d2538863eae1ff96d93cb4ab40461529249",
+  "note": "sha256 of exact file bytes at commit time; test files and this handoff JSON are listed in changed_paths"
+ },
+ "recommended_next_action": "A1 integrates this handoff with the family-adapter (A8) and dashboard lanes, then runs cross-lane reconciliation: executors from A8 plug into scheduler.run_once; SleeveAccount/ledger/no_order APIs are the contract surface for both; risk caps must be passed from a cycle config compiled from identity_manifest score_affecting_parameters"
+}
