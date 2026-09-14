@@ -1,0 +1,83 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "commodities-ng1-z-dryrun",
+  "cycle_id": "COMMODITIES-NG1",
+  "role": "quant-implementer",
+  "lane": "commodities-ng1-z-dryrun (orchestrator store task commodities-ng1-z-dryrun, invocation lead-bg-comm-z)",
+  "dispatch_sha": "0a6969c9f1c3ba87b523c7c9203147e6a16d2320",
+  "actual_start_sha": "0a6969c9f1c3ba87b523c7c9203147e6a16d2320",
+  "commit_sha": "8dd9527fe964bb29c057832d7dcad9f5c459caef",
+  "changed_paths": [
+    "research/control/commodities_ng1_run/z/z_run.py",
+    "research/control/commodities_ng1_run/z/z_report.json",
+    "research/control/commodities_ng1_run/z/cell_COMMNG1-A4-P2-ARM1-NEUTRAL.json",
+    "research/control/commodities_ng1_run/z/cell_COMMNG1-A4-P2-ARM2-TAILWIDE.json",
+    "research/control/commodities_ng1_run/z/cell_COMMNG1-A4-P2-ARM3-WINDOWSHORT.json",
+    "tests/test_commodities_ng1_z.py",
+    "research/control/COMMODITIES-NG1/orchestration/handoffs/z-dryrun-handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_commodities_ng1_z.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "15 passed (packet test command, run verbatim; committed-artifact sanitization scans + synthetic end-to-end + fail-closed refusal negatives)"
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/commodities-ng1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/commodities_ng1_run/z/z_run.py --run",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "the REAL-substrate dry-run executed end-to-end and wrote all sanitized artifacts; the RUN's own verdict is FAIL (fail-closed, BLOCKED_PRELAUNCH candidate) per z_report.json -- the honest rehearsal outcome, not a test failure"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "OVERALL Z VERDICT: FAIL (fail-closed) with blocked_prelaunch_candidate=true -- 6 localized machinery incidents; everything else structural-green (plane digests, ETP pins, arm digests, P2 census identity on all 11 pairs, Q-11 ELIGIBLE 401x11=4411).",
+    "SANITIZATION LAW implemented as: committed artifacts carry no outcome-vocabulary key, no float value, no float literal in any string (z_run.sanitize_artifact, fail-closed; independent scanner in tests). Fractional frozen parameters (tails 0.1/0.9/0.2/0.8, tau 0.02) are pinned by arm_config_digest and NOT echoed (an int() echo corrupted them once -- caught and fixed before commit).",
+    "Outcome internals (per-trade/per-decision edges, dual-book ledgers, pooled falsification_eval payloads) were computed in-memory to rehearse the full E-phase path and are committed ONLY as sha256 digests; no outcome number is persisted anywhere.",
+    "Booking uses the counted-grid projection mandated by the frozen execution law (decisions exist only on counted rows; execute.decision_trades refuses non-zero positions elsewhere); open legs close via the kernel terminal policy. Documented in z_run.py; no new convention invented.",
+    "The runner machinery and the freeze are READ-ONLY at BASE: no repair of the reported defect was attempted, per packet law."
+  ],
+  "incidents": [
+    {
+      "class": "MACHINERY_DEFECT_REPORTED_NOT_REPAIRED",
+      "defect": "execute.book_ledger crashes on an EMPTY trade population: kernel.reconcile_ledger feeds ledger['net'][tier]['total']=None (kernel.book_metrics of an empty book) into research.accounting.build_accounting_reconciliation -> TypeError: float() argument must be a string or a real number, not 'NoneType'",
+      "surface": "RELEASE_CLOCK_SHADOW x 001602/WEAT and x 088691/IAU, all 3 cells (6 incidents): the bare release clock books exactly ONE lifetime trade per pair, and on legs with committed share-base boundaries (WEAT 1, IAU 2) that trade spans a boundary and is EXCLUDED by the split-boundary law -> empty booked population -> reconciliation crash. Legs without boundaries book the single trade cleanly.",
+      "evidence": "z_report.json incidents[] (localized arm/pair/role rows) + z cell manifests cell_failures; overall_verdict FAIL, blocked_prelaunch_candidate true",
+      "disposition": "REPORTED, never repaired (runners READ-ONLY at BASE); BLOCKED_PRELAUNCH candidate for the cycle owner"
+    },
+    {
+      "class": "DRIVER_DEFECT_FIXED_IN_LANE",
+      "defect": "two z_run.py driver bugs were caught by the rehearsal loop before commit and fixed in-lane: (a) ANCHOR was missing from the booked role set; (b) book_ledger's wrapper return {ledger, reconciliation} was passed to arm_metrics which expects the inner ledger (KeyError 'trades'). Neither is a runner/freeze defect."
+    }
+  ],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "research/control/commodities_ng1_run/z/z_run.py",
+      "sha256": "45ded7066f5cf29f3f0ae60bae2ab7cb3f7e37e9ac8e19ced4f2bf6d4a73d38d"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/z/z_report.json",
+      "sha256": "1d5ee96dd85bb73b3af32122c976d783f98ea16ab4c6cb294e28511b110da79e"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/z/cell_COMMNG1-A4-P2-ARM1-NEUTRAL.json",
+      "sha256": "25f92730d9a2a84202298afe93dc957f722f71230b1a38daa2c1709e8a235747"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/z/cell_COMMNG1-A4-P2-ARM2-TAILWIDE.json",
+      "sha256": "063b5359bd90cf31380a48d5309fe8677f6bfecb91dcfb77934c0d8cc00d2ffc"
+    },
+    {
+      "path": "research/control/commodities_ng1_run/z/cell_COMMNG1-A4-P2-ARM3-WINDOWSHORT.json",
+      "sha256": "e7ba015f4d87ab5c0bd67912c722bdf86a0f45e6cac4c96f76fc5f1d9d80dcee"
+    },
+    {
+      "path": "tests/test_commodities_ng1_z.py",
+      "sha256": "c5fe42c76397adb1d75898784bcb30ab89fb23894500617e9442d48e78c94a08"
+    }
+  ],
+  "recommended_next_action": "Cycle owner rules on the BLOCKED_PRELAUNCH candidate: the incidents localize the empty-population book_ledger reconciliation crash (kernel.reconcile_ledger -> build_accounting_reconciliation ending_equity=None) to an owner-authorized repair lane; all other prelaunch plumbing is structural-green (digests, P2 census identity, Q-11, fold partitions, fills==2x trades). Z is otherwise complete as the E-phase pipeline rehearsal; no outcome number exists in any committed artifact (independently scanned)."
+}
