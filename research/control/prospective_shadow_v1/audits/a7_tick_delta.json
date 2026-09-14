@@ -1,0 +1,127 @@
+{
+  "schema": "shv1_a7_tick_delta@1",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "audited_at_utc": "2026-09-14T22:20:34Z",
+  "audited_tip": "062178220fe42d8fe8d975a00875e4ca789b227f",
+  "authorized_base": "04c94d8bd009bb163f7b08048373d53f010ca9a9",
+  "remediation_commit": "ddd41a5dcad870636ba24a99dd1a2c624a778275",
+  "commands_and_results": [
+    {
+      "step": "ENVIRONMENT",
+      "command": "git -C /tmp/a7t_shv1 rev-parse HEAD; git -C /tmp/a7t_shv1 status --short",
+      "exit_code": 0,
+      "result": "HEAD == 062178220fe42d8fe8d975a00875e4ca789b227f (expected tip); working tree clean"
+    },
+    {
+      "step": "LINEAGE",
+      "command": "git -C /tmp/a7t_shv1 log --format='%H parents:%P' -3; git -C /tmp/a7t_shv1 cat-file -p ddd41a5dcad870636ba24a99dd1a2c624a778275 | head -3; git -C /tmp/a7t_shv1 diff --stat ddd41a5..06217822",
+      "exit_code": 0,
+      "result": "06217822(parent 2bf79a1c, which has parent 04c94d8b). ddd41a5 is a real commit with the SAME remediation message and parent 04c94d8b; the tree diff ddd41a5..06217822 contains ONLY the two control artifacts (audits/a7_prelaunch_g8_delta.json +113, g8_gate.json +27) that landed via 2bf79a1c. Executor/test code content is byte-identical across both remediation commits: ddd41a5 = remediation branched from 04c94d8b, 06217822 = same remediation re-landed on top of the authorized-gate commit"
+    },
+    {
+      "step": "DIFF_SCOPE",
+      "command": "git -C /tmp/a7t_shv1 diff --name-only 04c94d8b..06217822; git -C /tmp/a7t_shv1 diff 04c94d8b..06217822 -- research/shadow_v1/executor.py | grep '^@@'",
+      "exit_code": 0,
+      "result": "Exactly 4 files changed in range: research/control/prospective_shadow_v1/audits/a7_prelaunch_g8_delta.json, research/control/prospective_shadow_v1/g8_gate.json (both from the previously-authorized 2bf79a1c), research/shadow_v1/executor.py, tests/test_shv1_executor.py. Executor hunks only at lines 165 (docstring), 234 (tick validation), 365 (config_digest tick_size entry), 723 (fills list typing), 732 (fill loop uses _resolve_tick), 786 (fill records serialize resolved tick), 832 (new _resolve_tick method). NO other code files changed: start_guard.py, events.py, accounting.py, data_feed.py, scheduler.py, ledger.py, families.py, risk.py, no_order.py all byte-IDENTICAL between the two commits. Frozen fill-bar rule (_fetch_fill_references, lines 639-721) is OUTSIDE all hunks; start-guard logic, event_id derivation, idempotency/skip, funding booking, caps ordering, fill rule (first completed bar strictly after decision; buy ref+ticks*tick / sell ref-ticks*tick in accounting._fill_economics, unchanged), adapters, scheduler, ledger append semantics, events.py schema: all UNTOUCHED"
+    },
+    {
+      "step": "SCALAR_PATH_IDENTITY",
+      "command": "Read executor.py validation branch + config_digest + _resolve_tick; grep -rn '\\.tick_size' across research/shadow_v1",
+      "exit_code": 0,
+      "result": "Scalar branch is unchanged code: same _require(isinstance(tick_cfg,(int,float)) and float(tick_cfg)>0), same self.tick_size=float(tick_cfg); adds only tick_size_map=None / tick_size_default=None sentinels. config_digest scalar branch serializes the same float ('tick_size': self.tick_size when tick_size_map is None) -> byte-identical digest. _resolve_tick returns self.tick_size on the scalar path -> identical tick into accounting.apply_fill. All other .tick_size readers are inside executor.py only and are guarded by the same tick_size_map-is-None check; no other module reads the attribute. Imports (Mapping/Optional/Tuple) already present at base — the diff adds no imports"
+    },
+    {
+      "step": "TEST_APPEND_ONLY",
+      "command": "git -C /tmp/a7t_shv1 diff --numstat 04c94d8b..06217822 -- tests/test_shv1_executor.py; git ... | grep '^@@'; git ... | grep -c '^-[^-]'",
+      "exit_code": 0,
+      "result": "91 insertions, 0 deletions; single hunk @@ -577,3 +577,94 @@ at end of file; zero removed lines. No existing test modified"
+    },
+    {
+      "step": "NEW_TESTS_CAN_FAIL",
+      "command": "Read tests/test_shv1_executor.py lines 580-670 (3 appended tests) against fixtures BTC_PRICE=50000, ETH_PRICE=2000, COST_BOOKS both slippage_ticks=1.0, fee 0.0004/0.0005",
+      "exit_code": 0,
+      "result": "(1) test_tick_mapping_equal_notionals_different_per_fill_slippage: script {BTC:0.45,ETH:0.45} from flat 100k -> qty 0.9/22.5, equal 45_000 notionals; asserts per-fill recorded tick (0.01 vs 0.0001), hand-computed slippage 0.9*0.01=0.009 vs 22.5*0.0001=0.00225 (matches the dispatch reference numbers exactly), fill prices BTC_PRICE+0.01 / ETH_PRICE+0.0001, record slippage 0.01125, primary-book fee 0.9*50000*0.0005+22.5*2000*0.0005, and BOTH cost books at 0.01125 (same resolved tick priced both books). Would fail if per-symbol resolution dropped (ETH would price at 22.5*0.01=0.225) or if recording dropped (KeyError). (2) test_tick_mapping_missing_default_refuses_fail_closed_zero_ledger: 7 bad configs (ETH unmapped + no default; complete map + no default; default 0.0 / -0.01 / 'x'; tick value 0.0; empty mapping) all raise ExecutorError AT CONSTRUCTION with zero ledger bytes. (3) test_tick_mapping_unmapped_symbol_uses_recorded_default: ETH unmapped uses tick_size_default=0.0005, recorded on the fill, fill price ETH_PRICE+0.0005, slippage 22.5*0.0005. All three are mutation-sensitive on the new behavior"
+    },
+    {
+      "step": "EVENT_CONTRACT",
+      "command": "Read events.py validate_event_record + compute_event_id; grep virtual_fill_events consumers",
+      "exit_code": 0,
+      "result": "event_id = sha256('PROSPECTIVE-SHADOW-V1|{family_id}|{arm_id}|{scheduled_decision_utc}') — content-independent, unaffected by the extra fill key. validate_event_record is strict on TOP-LEVEL fields only; virtual_fill_events interior is Any-typed; the additive per-fill 'tick_size' key passes the contract. The only package writer/reader of virtual_fill_events is executor.py itself"
+    },
+    {
+      "step": "SURFACE",
+      "command": "cd /tmp/a7t_shv1 && python -c \"from research.shadow_v1.no_order import assert_no_order_surface; assert_no_order_surface('research/shadow_v1'); print('CLEAN')\"; git diff 04c94d8b..06217822 -- research/shadow_v1/executor.py tests/test_shv1_executor.py | grep -in 'ccxt|api_key|secret|requests.post|create_order|place_order|submit_order|os.environ|urllib|socket'",
+      "exit_code": 0,
+      "result": "Package scanner: CLEAN (exit 0). Forbidden-string grep over the CODE diff: exit 1, ZERO hits. The only grep hit in the FULL range diff is one line INSIDE the previously-authorized control artifact audits/a7_prelaunch_g8_delta.json that quotes the prior audit's own grep command string — data, not code. Nothing in the delta fetches data differently, widens the feed, or introduces any order surface; the only emitted action type remains TARGET_INTENT (enforced by unchanged events.py + unchanged no_order.py)"
+    },
+    {
+      "step": "BATTERY",
+      "command": "cd /tmp/a7t_shv1 && python -m pytest tests/test_shv1_executor.py tests/test_shv1_replay_guard.py tests/test_shv1_accounting.py tests/test_shv1_eventstore.py tests/test_shv1_noorder.py tests/test_shv1_pit.py tests/test_shv1_scheduler.py tests/test_shv1_combined.py tests/test_shv1_risk.py tests/test_shv1_identity_recovery.py tests/test_shv1_data_cost.py tests/test_shv1_families.py tests/test_shv1_families_identity.py tests/test_shv1_engine_smoke.py tests/test_shv1_dashboard.py -q",
+      "exit_code": 0,
+      "result": "197 passed in 29.11s, 0 failed, 0 errors — exactly the expected count (194 prior + 3 new)"
+    },
+    {
+      "step": "DIGEST_IDENTITY_RECOVERY",
+      "command": "shasum -a 256 research/control/prospective_shadow_v1/identity/identity_recovery.json (from /tmp/a7t_shv1)",
+      "exit_code": 0,
+      "result": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8 — MATCHES the frozen value"
+    },
+    {
+      "step": "DIGEST_COST_REGIME",
+      "command": "python: json.dumps(manifest['current_conservative_cost'], sort_keys=True, separators=(',',':'), ensure_ascii=False) -> sha256, per the manifest's own cost_regime_digest_canonicalization recipe",
+      "exit_code": 0,
+      "result": "recomputed ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65 == manifest value == expected frozen value — MATCH"
+    }
+  ],
+  "diff_scope_confirmed": true,
+  "scalar_path_identity": true,
+  "new_tests_can_fail": true,
+  "surface_hunt_clean": true,
+  "battery_result": {
+    "command_exit_code": 0,
+    "passed": 197,
+    "failed": 0,
+    "errors": 0,
+    "duration_seconds": 29.11,
+    "expected": "197 passed / 0 failed",
+    "match": true
+  },
+  "digests_unchanged": {
+    "identity_recovery_json_sha256": {
+      "recomputed": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+      "expected": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+      "match": true
+    },
+    "cost_regime_digest": {
+      "recomputed_per_manifest_recipe": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65",
+      "expected": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65",
+      "match": true
+    }
+  },
+  "findings": [
+    {
+      "id": "TD1",
+      "severity": "INFO",
+      "scope": "record-content",
+      "finding": "In SCALAR mode too, each virtual_fill_events entry now carries an additive 'tick_size' key (dict(f.as_dict(), tick_size=tick)). Pricing, guards, event_id, and the scalar config_digest are byte-identical to before; only the record body gains one deterministic field. This is exactly what the remediation claims ('resolved per-fill tick recorded in fill records'), passes the unchanged events.py contract (top-level-strict, Any-typed interior), and cannot affect idempotency (event_id derives from family_id|arm_id|decision_utc only). Zero forward events exist. No action required; recorded for byte-diff awareness if any future control pins full record bytes.",
+      "action": "NONE"
+    },
+    {
+      "id": "TD2",
+      "severity": "INFO",
+      "scope": "lineage",
+      "finding": "The remediation exists as two commits with identical code content: ddd41a5 (parent 04c94d8b, created before the gate artifacts landed) and 06217822 (parent 2bf79a1c, the authorized-gate commit). git diff --stat ddd41a5..06217822 shows ONLY the two control artifacts (+113 a7_prelaunch_g8_delta.json, +27 g8_gate.json). Both SHAs quoted in the dispatch reconcile; tip 06217822 is the canonical remediation on the authorized lineage.",
+      "action": "NONE"
+    },
+    {
+      "id": "TD3",
+      "severity": "LOW",
+      "scope": "pre-existing",
+      "finding": "isinstance(tick, (int, float)) accepts bool (float(True)=1.0) — in BOTH the old scalar branch (base 04c94d8b) and the new per-symbol entries. Pre-existing behavior, not introduced or worsened by this delta; a bool tick in frozen operator config would fail downstream positivity/realism checks only at 1.0-vs-intent level. Noted so it is not mistaken for a delta regression.",
+      "action": "OPTIONAL hardening in a later lane; NOT a delta blocker"
+    }
+  ],
+  "unresolved_high_critical_count": 0,
+  "verdict": "DELTA_ACCEPTED_AUTHORIZED_EXTENDS_TO_06217822",
+  "recommended_next_action": "PROSPECTIVE_SHADOW_V1_START_AUTHORIZED extends to tip 062178220fe42d8fe8d975a00875e4ca789b227f. The two-key stop is unchanged and still binding: no forward observation may start until the fresh owner GO phrase is presented and consumed per P-8; zero PnL has run; budget remains 0/0; the tick_size mapping must enter the frozen run config with tick_size_default so config_digest pins the per-symbol model as built."
+}
