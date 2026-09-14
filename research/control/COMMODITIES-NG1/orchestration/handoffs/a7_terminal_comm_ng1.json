@@ -1,0 +1,121 @@
+{
+  "schema": "comm_ng1_a7_terminal_audit@1",
+  "cycle_id": "COMMODITIES-NG1",
+  "task_id": "commodities-ng1-t-terminal",
+  "role": "quant-auditor (fresh-context T terminal audit)",
+  "audited_tree_head_verified": "516a7ff03fbefc315aca171faa4f6c35f4476e38",
+  "terminal_claim_audited": "COMMODITIES_NG1_REJECT_ALL (3/3 KILL, zero survivors, S1 SEALED)",
+  "verdict": "AUTHORIZED",
+  "verdict_meaning": "The attempt to refute the terminal claim failed; the claim survives. Terminal close on COMMODITIES_NG1_REJECT_ALL is authorized.",
+  "unresolved_high_critical_count": 0,
+  "recomputed_values": {
+    "ARM1-NEUTRAL": {
+      "pooled_net_tier_2_0": -2.0601078173809997,
+      "profit_factor": 0.568115882871349,
+      "trades": 249,
+      "killed_by": ["R1", "R3", "R4", "R5", "R6", "R2(RELEASE_CLOCK_SHADOW)"],
+      "r2_falsification_delta_per_decision_recomputed": 0.0026297974107474223,
+      "recompute_note": "killer 0.0021627586854286738 - anchor (-0.0004670387253187485) = 0.0026297974107474223 > 0 -> clause fires; arithmetic independently recomputed and correct"
+    },
+    "ARM2-TAILWIDE": {
+      "pooled_net_tier_2_0": -2.6360247853559273,
+      "profit_factor": 0.622850714383122,
+      "trades": 315,
+      "killed_by": ["R1", "R3", "R4", "R5", "R6", "R2(RELEASE_CLOCK_SHADOW)"],
+      "r2_falsification_delta_per_decision_recomputed": 0.002760361221215554,
+      "recompute_note": "killer 0.0021627586854286738 - anchor (-0.00059760253578688) = 0.002760361221215554 > 0 -> clause fires; correct"
+    },
+    "ARM3-WINDOWSHORT": {
+      "pooled_net_tier_2_0": -4.183574428274633,
+      "profit_factor": 0.4520541430171716,
+      "trades": 319,
+      "killed_by": ["R1", "R3", "R4", "R5", "R6", "R2(RELEASE_CLOCK_SHADOW,SHIFTED_RELEASE_PLACEBO)"],
+      "r2_falsification_delta_per_decision_recomputed": {
+        "RELEASE_CLOCK_SHADOW": 0.0031111999523238524,
+        "SHIFTED_RELEASE_PLACEBO": 7.417164457489253e-05
+      },
+      "recompute_note": "double kill confirmed: placebo -0.000874269622320286 - anchor (-0.0009484412668951785) = +7.417164457489253e-05 > 0 -> fires; correct"
+    },
+    "release_clock_pooled_killer_per_trade_recomputed": 1.0599920623806533,
+    "release_clock_pooled_killer_per_trade_recompute_note": "sum of the 9 executable pair nets (WEAT/IAU declared empty) 9.53992856142588 / 9 trades = 1.0599920623806533; matches the artifacts' 1.0599920623806534",
+    "overdetermination_note": "Every arm independently fails R1 (negative pooled per-trade edge), R3 (ARM1 1/3 positive folds; ARM2/ARM3 0/3), R4 (PF 0.568/0.623/0.452 vs floor 1.10), R5 and R6. REJECT_ALL does not hinge on the R2 falsification clause; no reformulation of the R2 margin reverses the sign flip (anchor -2.06 pooled vs release-clock +9.54 pooled)."
+  },
+  "checklist": {
+    "1_terminal_claim_crosscheck": "PASS - all three headline triples appear verbatim in e/family_verdicts.json, e/cell_*.json (incl. per-cell ledger_net_total_tier_2_0), e/execution_ledger.json cells and the r/ comparisons; e_gate cells sha256 pins d79c37b2/eb650716/5e9f6151 match the committed_sha256_full_file in r/cell_comparison_*; family sha 45c8c979 pinned identically in e_gate, execution_ledger and repro_report; R verdicts 3/3 ALL_MATCH with value_diffs []",
+    "2_kill_logic": "PASS - D1 falsification rule declared outcome-blind at D1 (COMMNG1-A4-P2.json falsification_rule, authored 2026-09-12T05:05:00+00:00, declared_at 'D1, before any measurement'), frozen at S (selection_freeze.json:493 R2 CONTROL_KILL + falsification_rule_binding:666), implemented in frozen stage_a.py::r2_control_kill (kill = v8 OR strictly-greater clause); margins recomputed correct (see recomputed_values); ARM3 placebo double kill confirmed; 6 declared NOT_EXECUTABLE rows (WEAT/IAU x 3 arms) propagated verbatim: identical bytes in e/ cells, coordinate equality in zr2_report.original_incident_clearance (declared_count 6, missing_declarations [], new_declarations []), and 6-total disclosure in repro_report; freeze negative_law explicitly pre-blesses a correct REJECT_ALL",
+    "3_governance": "PASS - GO consumed at E: e_gate.go + execution_ledger.authority cite lead_adjudication_a7.json (sha 798072a2e754fadef10c564669eda9bdbf103565dd95c289a628cf78bea7a299, audit commit 821f641aea4fac8bacf76f1bb2b4d9975b146272, ancestor check true); F1 binding BOUND pre-scored in the adjudication and enforced in e_gate.f1_coverage_enforcement (enforced true; per-cell coverage_complete true / missing_killers [] / 'coverage verified BEFORE any R1-R6 verdict recorded'), also per-cell in family_verdicts; fail-closed branch implemented per e-scored handoff; budget 3/6 observed + scored, 3 unbooked never padded, unused_slots_never_reassigned true; S1 SEALED_UNTOUCHED; P-11 per-period series persisted (per_period_series_p11 digests committed==fresh in r/cell comparisons; structural_invariants.p11_series_reconciles_with_kernel_book true); no rescue/no tuning: no_tuning declaration with arm digests re-verified pre-PnL and pairwise distinct; attempt history disclosed (4 TECHABORTs before any committed outcome; attempt-5 superseded by a P-11 grid-metadata fix with attempt-6 reproducing attempt-5 books to machine precision, corroborated by the R byte-level reproduction from frozen runner bytes)",
+    "4_chain": "PASS - D1 f7fac936b29439680a981b4a8bc99f0c2070fac7108ec157e7e7c846eb1b18b9 (selection_freeze.json:83, d2_novelty_panel.json:55), D2 991905eb886af91607a6a7f80f632c788c73aa6fb006c045c83088f5cc8e9969 (selection_freeze.json:103), freeze ecde47ef17fae531d3c89899685baf485db305c67e1f43e782875a623166c108 (e_gate/ledger measured==pinned, zr2, repro), Z-R1 commit 0f0d1c667a852082c94006356e5b092ce674195d (zr2_run.py header, a7_prelaunch), Z-R2 tree 935391d86e94e2b6f0d7a28efc77a7945050dbcd (a7_prelaunch required==measured), A7 821f641aea4fac8bacf76f1bb2b4d9975b146272, dispatch/adjudication base deef2bb9c773332500f7e6474d4996ebb7717891, E 45356169d9d550582d44159fc9867a04afcbd42d (e-scored-handoff commit_sha, repro frozen_sha, git diff deef2bb9..4535616 touches only the 7 committed e/ files); digest gates: evidence pins 0 mismatches, arm digests all match + pairwise distinct, chain_digest_parity_vs_zr2_all_match true, 14 code_module_sha256 identical between execution_ledger and zr2_report; sanitization: pre-E phases (z_report, zr2_report, i_gate, D1 proposal) carry structural facts only - zr2 has a fail-closed float scanner, no outcome numbers outside E artifacts (post-E R artifacts quote E numbers by design); E-run bookable set = the D1 declared 11-pair fail-closed subset, 9 transaction-only legs excluded",
+    "5_hunt": "NO REFUTATION FOUND - no wrongful kill (kills overdetermined by R1/R3/R4/R5/R6; R2 sign-flip margins are orders of magnitude from borderline); no wrongful survivor (no cell passes even R1); no post-score tuning or rescue (frozen thresholds, one deterministic pass per attempt, all attempts disclosed, attempt-6 == attempt-5 books, R reproduction byte/value-exact from frozen bytes); released-clock kill is the D1-designated executioner for the generic_dow_tue class and was declared before any measurement"
+  },
+  "findings": [
+    {
+      "id": "T1",
+      "severity": "MEDIUM",
+      "description": "r/family_comparison.json records \"family_has_survivor\": true while the terminal state is zero survivors (3/3 KILL; fresh_run.family_survivors == []). The R comparison driver code that generated the r/*.json artifacts is not committed anywhere auditable (absent from the frozen tree at 516a7ff0 and from the integration worktree), so this field's semantics/computation cannot be verified from frozen source. Mitigations: family_verdicts.json compared byte-equal committed vs fresh with sha 45c8c979... pinned in three independent artifacts; cell comparisons and repro report are ALL_MATCH with value_diffs [] whose headline equalities were independently re-verified by this audit by reading both sides; the field cannot change any E verdict. Recorded as an integrity blemish on an auxiliary R artifact and as provenance debt for the uncommitted R driver.",
+      "evidence_paths": [
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/r/family_comparison.json",
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/r/repro_report.json",
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/e/family_verdicts.json"
+      ],
+      "exact_shas": [
+        "45c8c9793205f5dc04c716b7689c1a0a94a019b18b8a3212cb714bac4f60bd9a",
+        "516a7ff03fbefc315aca171faa4f6c35f4476e38"
+      ]
+    },
+    {
+      "id": "T2",
+      "severity": "LOW",
+      "description": "Packet chain labels 'I 0f0d1c66'; the artifacts pin the I phase at base 820a01ecf68bbad2eae447ffd04adba675db71fe (i_gate.json base_sha) with a self-referential commit note, and 0f0d1c667a852082c94006356e5b092ce674195d is the Z-R1 remediation commit. Label imprecision only; every load-bearing digest in the chain reconciles.",
+      "evidence_paths": [
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/i/i_gate.json",
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/zr2/zr2_run.py",
+        "/tmp/a7t_comm_ng1/research/control/COMMODITIES-NG1/orchestration/handoffs/a7_prelaunch_comm_ng1.json"
+      ],
+      "exact_shas": [
+        "0f0d1c667a852082c94006356e5b092ce674195d",
+        "820a01ecf68bbad2eae447ffd04adba675db71fe"
+      ]
+    },
+    {
+      "id": "T3",
+      "severity": "LOW",
+      "description": "E attempts 1-6: four TECHABORTs on lane-driver bugs (all before any committed outcome number), then attempt-5 ran FINISHED and was superseded before commit by a P-11 period-grid disclosure fix (402-release window -> frozen 401-instant grid, extra period a zero period). This is the one post-outcome re-execute in the chain. Accepted because: disclosed verbatim, no threshold/parameter/selection change, attempt-6 reproduced attempt-5's books to machine precision, and the independent R reproduction regenerated the committed artifacts byte/value-exact from the frozen runner bytes - so the committed numbers are the deterministic function of frozen code+inputs regardless of the attempt history.",
+      "evidence_paths": [
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/e/execution_ledger.json",
+        "/tmp/a7t_comm_ng1/research/control/COMMODITIES-NG1/orchestration/handoffs/e-scored-handoff.json",
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/r/repro_report.json"
+      ],
+      "exact_shas": [
+        "45356169d9d550582d44159fc9867a04afcbd42d",
+        "deef2bb9c773332500f7e6474d4996ebb7717891"
+      ]
+    },
+    {
+      "id": "T4",
+      "severity": "LOW",
+      "description": "R ledger_comparison discloses 'fresh run carries 1 disclosed R-REENTRY row; committed run carried []' and the repro ran at the frozen tip (not the pre-commit base) via a documented sanctioned re-entry path (git diff deef2bb9..tip touches only the 7 e/ files; runner machinery bytes proven identical via code_module_sha256 equality). Disclosed identity-of-run difference, no deterministic-field impact (ALL_MATCH, value_diffs []).",
+      "evidence_paths": [
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/r/ledger_comparison.json",
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/r/repro_report.json"
+      ],
+      "exact_shas": [
+        "45356169d9d550582d44159fc9867a04afcbd42d"
+      ]
+    },
+    {
+      "id": "T5",
+      "severity": "LOW",
+      "description": "NOT_RUN_EXECUTION_REQUIRED (this audit role has no shell): (a) pytest tests/test_commodities_ng1_zr2.py + tests/test_commodities_ng1_i.py not re-executed by the auditor; both files exist in the frozen tree and the R repro artifact records '70 passed', exit 0, for the same pair. (b) SHA-256 recomputation of artifacts not executable here; digest verification was done by cross-artifact pin consistency (e_gate/ledger/repro/cell_comparison sha records agree) plus direct value-level reads, not by recomputation. Both checks remain executable by the Lead at integration.",
+      "evidence_paths": [
+        "/tmp/a7t_comm_ng1/tests/test_commodities_ng1_zr2.py",
+        "/tmp/a7t_comm_ng1/tests/test_commodities_ng1_i.py",
+        "/tmp/a7t_comm_ng1/research/control/commodities_ng1_run/r/repro_report.json"
+      ],
+      "exact_shas": [
+        "516a7ff03fbefc315aca171faa4f6c35f4476e38"
+      ]
+    }
+  ],
+  "frozen_tree_verified": "worktree HEAD /Users/hoangminhlong/my-quantitative/.git/worktrees/a7t_comm_ng1/HEAD == 516a7ff03fbefc315aca171faa4f6c35f4476e38 == packet detached SHA; no FROZEN_SHA_MISMATCH",
+  "recommended_next_action": "Terminal close authorized on COMMODITIES_NG1_REJECT_ALL: consume the 3 KILL verdicts verbatim, keep S1 SEALED, leave this audit artifact uncommitted for Lead integration; optionally commit the R-lane comparison driver and reconcile the T1 'family_has_survivor' field as follow-up hygiene (non-blocking)."
+}
