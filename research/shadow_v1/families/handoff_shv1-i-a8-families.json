@@ -1,0 +1,95 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "shv1-i-a8-families",
+ "cycle_id": "PROSPECTIVE-SHADOW-V1",
+ "role": "quant-implementer",
+ "lane": "i-a8-families",
+ "dispatch_sha": "916a482d2d58be06cbb07c62faaf045c5fd3ec19",
+ "actual_start_sha": "916a482d2d58be06cbb07c62faaf045c5fd3ec19",
+ "commit_sha": null,
+ "commit_sha_note": "self-reference: this handoff is committed inside the commit it describes; see git log orca/shv1-a8-families for the final SHA",
+ "branch": "orca/shv1-a8-families",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a8-families",
+ "changed_paths": [
+  "research/shadow_v1/families/__init__.py",
+  "research/shadow_v1/families/illiq_amihud.py",
+  "research/shadow_v1/families/basislv_premfade.py",
+  "research/shadow_v1/families/xsect_fund_carry.py",
+  "tests/test_shv1_families.py",
+  "tests/test_shv1_families_identity.py",
+  "tests/test_shv1_engine_smoke.py",
+  "research/shadow_v1/families/handoff_shv1-i-a8-families.json"
+ ],
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a8-families && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_families.py tests/test_shv1_families_identity.py tests/test_shv1_engine_smoke.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "51 passed in ~24s (packet verification command): 30 family unit tests, 16 identity tests, 5 smoke tests"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a8-families && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m compileall -q research/shadow_v1",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "package compiles clean including families/ subpackage"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/a8-families && git diff --check",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "no whitespace errors"
+  },
+  {
+   "command": "smoke-embedded: no_order.assert_no_order_surface('research/shadow_v1') (tests/test_shv1_engine_smoke.py::test_smoke_no_order_scanner_covers_families_package)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "recursive no-order self-scan over research/shadow_v1/ now including families/: 0 hits, NO_ORDER_SURFACE_CLEAN, and the scan provably includes families/ files"
+  }
+ ],
+ "authority_claims": [],
+ "summary": {
+  "access_class": "INTERNAL_PAPER_ONLY: adapters are pure functions over an in-memory PIT snapshot; no network, no credentials, no third-party imports; the only action type in the pipeline is TARGET_INTENT plus A2 virtual fills",
+  "modules": {
+   "__init__.py": "FAMILY_REGISTRY mapping family_id -> adapter class; FamilySnapshot (bars / basis_buckets / funding_settlements / btc_betas / listing_utc) and DecisionProposal contracts; FamilyAdapter base with verbatim identity pinning and manifest validation (validate_config refuses to start on any disagreement: pinned strings vs manifest entry, frozen numbers vs fresh derivation from score_affecting_parameters, required engine keys fail closed); verbatim parameter parsers (numbers with unit suffixes such as the 24h rebalance line, YAML lists, bare symbol strings, leading-int prose); DataBlocked re-exported from the A2 data surface",
+   "illiq_amihud.py": "ILLIQ-AMIHUD-28D-W / A8-V11-ILLIQ-AMIHUD / V11_FAMILY_REJECT: trailing 28-day mean daily Amihud abs(daily return)/daily dollar volume aggregated from completed 15m bars per UTC day (96 bars/day; the last calendar day before a Monday 00:00Z stamp has 95 completed bars because the 23:45 bar closes exactly at the stamp; one extra base day supplies the prior close so the formation window yields exactly 28 daily returns); weekly Monday 00:00Z; long most-illiquid quintile / short most-liquid quintile with quintile size floor(n/5), equal weight 1/(2q) giving exact long-notional == short-notional dollar neutrality; universe eligibility encodes the manifest prose '20 staged binance_bar symbols; PIT eligibility by listing + DV filter; quintile buckets as specced' with the numeric thresholds (min_listing_age_days, min_daily_dollar_volume) as required engine config because the manifest pins the rule as prose only; BTC-beta book value reported as a diagnostic and enforced by the engine via risk.check_and_apply with the btc_beta_tolerance engine key; counterfactual arms (ILLIQ-AMIHUD-56D-W, ILLIQ-AMIHUD-28D-W-INV) reserved as strings, never built",
+   "basislv_premfade.py": "BASISLV-PREMFADE-28D / A14-V14-A5-BASISLV-PREMFADE / V14_FAMILY_REJECT: trailing 2688 completed 15m perp-vs-index premium buckets (futures/index - 1) per symbol - the trailing-count reading reconciles the frozen anchor_formation_buckets=2688 with the strict A2 PIT completion rule (a strict calendar grid gives 2687 at Monday 00:00Z); weekly Monday 00:00Z; ascending ranks by (premium, symbol) with the manifest tie_break; long floor(n/3) lowest-premium tier, short floor(n/3) highest tier, equal weight 1/(2k), gross 1.0, middle flat; min 12 eligible else DataBlocked; per-name weight clamped to designed_max_abs_weight 0.125 (<= adapter_weight_cap_max 0.30) fail-closed; BTCUSDT excluded as benchmark; fill reference rule declared verbatim (first completed 15m bar strictly after the decision) with execution left to the A2 convention; funding never read (price-only mechanism clause)",
+   "xsect_fund_carry.py": "XSECT-FUND-CARRY-7D / H-XSECT-FUNDING-CARRY-v1 / CANDIDATE_FAIL: trailing 7-day mean of published settled funding (7D anchor of the frozen {1D,3D,7D} set parsed from the anchor_variant_recovered verbatim line); daily 00:00Z; long bottom-2, short top-2 funding names (side counts parsed from the long_rule/short_rule YAML lines); per-name weight target_gross/4 = 0.20 == max_abs_weight_per_symbol by construction; caps 0.80/1.00/0.10/0.20 declared in frozen config and enforced by the engine through risk.check_and_apply (verified approving the book); universe exactly ETH/SOL/BNB/XRP/DOGE/LINK/ADA perpetuals, BTCUSDT benchmark context only and never traded (rejected as benchmark_context_not_traded); >=1 settled funding strictly before the stamp inside the trailing window per eligible name, < 4 eligible names fails closed; reverse_funding_rank_3d control reserved, never built"
+  },
+  "smoke_results": {
+   "events_per_family": {"ILLIQ-AMIHUD-28D-W": 2, "BASISLV-PREMFADE-28D": 2, "XSECT-FUND-CARRY-7D": 8},
+   "determinism": "event_ids reproduce sha256('PROSPECTIVE-SHADOW-V1|family|arm|stamp')[:32]; second run adds ZERO events and every ledger is byte-identical (raw-bytes comparison, not just digest)",
+   "records": "every record passes events.validate_event_record with data/accounting/risk statuses OK, only TARGET_INTENT in no_order_proof, non-empty target_weights and virtual_fill_events (empty book = LOUD RuntimeError in the executor, never a silent pass)",
+   "combined_view": "combined.combined_equity_series over the three sleeves equals the per-timestamp sum of sleeve equities at every valid mark; each sleeve baseline 100,000 USDT (300,000 total)",
+   "scanner": "no_order.assert_no_order_surface over research/shadow_v1/ including families/: 0 hits"
+  },
+  "key_design_decisions": [
+   "config layout {frozen, engine}: 'frozen' is derived at validate time from the manifest's verbatim score-affecting parameters and must equal a fresh derivation (any tampering of either side raises IdentityConfigError); 'engine' carries the numeric run parameters the manifest does not pin (illiq listing-age/DV thresholds, beta tolerance, hard gross/net caps) and fails closed when keys are missing",
+   "price-only mechanism clause is test-enforced: feeding two different funding sets to illiq/premfade produces dataclass-identical proposals (funding is booked by the engine, never a signal)",
+   "previous_weights is a verbatim passthrough into DecisionProposal; the smoke executor feeds sleeve exposure weights back in each decision",
+   "smoke execution harness (not identity): targets sized on fresh equity times a 0.5% cost buffer; 4-phase rebalance order (trim longs, cover shorts, open longs, open shorts); sells sliced within equity-minus-gross headroom because the frozen A2 sell guard conservatively computes gross_before + fill_notional even for reducing sells"
+  ]
+ },
+ "known_limitations": [
+  "The smoke cost regime (fee 4/5 bps, 1-tick slippage, funding convention) is a representative synthetic rehearsal set, NOT the plan section 6 frozen measured schedules; the cost freeze belongs to the data/cost lane and cost_regime_digest here pins only the smoke's own values",
+  "observed_at_utc equals the scheduled decision stamp in the rehearsal for byte-determinism; the production engine stamps observed_at at actual run time",
+  "ILLIQ numeric eligibility thresholds are engine config by necessity (the manifest pins the listing+DV rule as prose); a future manifest revision that pins numbers must move them into frozen config",
+  "The premfade trailing-2688-completed-buckets reading of the formation window is documented in code; if the Q lane's historical replay requires a different bucket alignment, that replay - not the adapter identity - must disclose the difference",
+  "Counterfactual diagnostic arms (56d neighbours, inverted books, reverse funding control) are name-reserved only, per plan section 3"
+ ],
+ "incidents": [
+  "MCP tool orchestrator_publish_handoff is not available in this lane's toolset; the structured handoff is delivered as this committed JSON artifact instead (chat note: publishing should be done by the coordinator)",
+  "Development-only: initial smoke hit the frozen A2 InsufficientCashError guard twice (gross-vs-equity friction for gross-1.0 books and the guard's conservative reduce accounting); resolved inside the test harness with realistic funding magnitudes and headroom-aware sell slicing - no A2 module was modified"
+ ],
+ "tree_status": "clean after commit; only the eight owned paths changed; branch orca/shv1-a8-families at base 916a482d2d58be06cbb07c62faaf045c5fd3ec19 plus exactly one commit",
+ "workers": 0,
+ "outputs": {
+  "research/shadow_v1/families/__init__.py": "6cd66482595e7ec7354afe391e0d0c04c0802c89fe28d54a8409c134ace849d9",
+  "research/shadow_v1/families/illiq_amihud.py": "d9e490b948bd8ac8b93df4236081e9b197febfd27e6432715f41a9d261746b78",
+  "research/shadow_v1/families/basislv_premfade.py": "cccade14a5f611c32298ab7225c9ecb3e2b875f1dfebb9be64bdc30426f75fa8",
+  "research/shadow_v1/families/xsect_fund_carry.py": "707cded86e655e24693b5811022f39183e277b5ceb696c84a72f6dbf6d74266e",
+  "tests/test_shv1_families.py": "a527c757af9d724a4517743f6c669fb9116b9f955ed828a0391cb8215b1372f5",
+  "tests/test_shv1_families_identity.py": "2f3dbd75a375a28e482bb583f7cc2b9775387220078aea4c4f32c043b9bead9c",
+  "tests/test_shv1_engine_smoke.py": "51a2c17598f43b00e87434d9bc0f2309a3f423f8f227aa76d88598c5f90f11ce"
+ },
+ "recommended_next_action": "Coordinator may dispatch the Q-lane targeted verification (families + A2 suites together in a single worktree) and the identity-replay rehearsal; the dashboard lane can consume FAMILY_REGISTRY plus the smoke ledger layout for the owner UI read models"
+}
