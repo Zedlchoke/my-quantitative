@@ -2,6 +2,23 @@
 
 ## Sprint state (synced at the new-assets generation open, 2026-09-12)
 
+- **RATES-NG1 CLOSED → `RATES_NG1_REJECT_ALL`** (2026-09-14, branch
+  `orca/rates-ng1-integration`, terminal b14085e9, A7 AUTHORIZED 0 HIGH/CRITICAL,
+  reproduction 3/3 ALL_MATCH) — first rates-family cycle in program history and the
+  first scored close of the new-assets generation: Treasury.gov daily par-yield
+  curve + FRED granted set (DGS10/DGS2/DFII10/DFII5/T10YIE/T5YIE/CPIAUCSL) +
+  EODHD family-1 ETP legs (TLT/IEF/IEI/SHY); P0 floors all PASS. D2 1/4 ELIGIBLE
+  (A5-P1 curvature-gated slope rho 0.139; auction lanes + A5-P2 VETO by
+  momentum/calendar shadows). E NO SURVIVOR 3/3 KILL: NEUTRAL −11.92 PF 0.819
+  (n 195); CONSERVATIVE −192.23 PF 0.0 (n=3, R3-barred); AGGRESSIVE +78.08
+  PF 6.845 KILL(R2) — clock-only shadow +94.16 and placebo out-earn:
+  **falsification-by-control #16**, the edge belonged to the release-calendar
+  geometry, not curve-shape information. Budget 3/6; S1 SEALED. **rates 3/3;
+  program 248/251** (P-9). Sibling cycles remain in flight at their own gates
+  (VOL-NG1 E scored NO SURVIVOR, on its terminal path R then T; COMMODITIES-NG1
+  GO consumed at its own gate, E scored next). Detail:
+  `.worktrees/rates-ng1/integration/research/control/rates_ng1_run/terminal_report_rates_ng1.json`.
+
 - **NEW-ASSETS GENERATION OPENED → RATES-NG1 / COMMODITIES-NG1 / VOL-NG1**
   (2026-09-12, owner directive verbatim: "mở cycle 3 assets mới suwt dụng
   những nguồn dữ liệu mới và hướng mới bạn đề xuất. Nguồn dữ liệu phải là
