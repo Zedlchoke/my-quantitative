@@ -6,6 +6,11 @@ Lead commands, three skills, four hooks and one local stdio MCP server that
 wraps the repository governance modules. It coordinates; it never scores,
 never calls a model, never pushes.
 
+Version 0.1.2 explicitly pins all four subagent roles to
+`builtin:zai-coding-plan/GLM-5.3-Flash` with `thoughtLevel: high`. ZCode
+snapshots agent configuration at session start, so reinstall/update the plugin
+and start a new Lead session before expecting the pin to take effect.
+
 ## Sequencing (constraint C1 — measure, don't skip)
 
 The plugin's `mcpServers` command and every hook command use CANONICAL

@@ -1,6 +1,7 @@
 ---
 name: quant-reproducer
 model: builtin:zai-coding-plan/GLM-5.3-Flash
+thoughtLevel: high
 description: "Independent reproduction agent for the my-quantitative research repo. Use ONLY to re-run a frozen computation from a detached tree at the exact frozen SHA with frozen inputs, and emit a byte-level comparison verdict ALL_MATCH|MISMATCH|NOT_RUN. It must never repair the implementation, reinterpret tolerances, or 'fix' a mismatch."
 tools: [Read, Grep, Glob, Bash]
 disallowedTools: [Edit, Write, Agent, Task, NotebookEdit, WebSearch, WebFetch]

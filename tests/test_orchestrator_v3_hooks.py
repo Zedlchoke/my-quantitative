@@ -58,10 +58,21 @@ def write_tasks(runtime: Path, statuses):
 
 
 # ------------------------------------------------------------------ pre_tool
-def test_pre_tool_denies_push():
+def test_pre_tool_allows_root_lead_push_under_standing_delegation():
     rc, out = run_hook("hook_pre_tool.py",
                        {"tool_name": "Bash",
                         "tool_input": {"command": "git push origin main"}},
+                       repo_root=REAL_REPO)
+    assert rc == 0
+    assert out == {}
+
+
+def test_pre_tool_denies_lane_push():
+    rc, out = run_hook("hook_pre_tool.py",
+                       {"tool_name": "Bash",
+                        "tool_input": {
+                            "command": "git -C /tmp/repo/.worktrees/lane push origin lane"
+                        }},
                        repo_root=REAL_REPO)
     assert rc == 0
     assert out["hookSpecificOutput"]["permissionDecision"] == "deny"

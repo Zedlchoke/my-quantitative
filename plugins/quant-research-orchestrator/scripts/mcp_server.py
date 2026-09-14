@@ -25,7 +25,7 @@ from orchestrator_store import (  # noqa: E402
 )
 
 PROTOCOL_VERSION = "2024-11-05"
-SERVER_INFO = {"name": "quant-research-orchestrator", "version": "0.1.0"}
+SERVER_INFO = {"name": "quant-research-orchestrator", "version": "0.1.2"}
 
 TOOLS = [
     ("orchestrator_intake", "Create this cycle's runtime task store (idempotent; refuses to overwrite an existing valid store).",
