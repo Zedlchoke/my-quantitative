@@ -1,0 +1,114 @@
+{
+  "schema": "shv1_a7_gross_delta@1",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "audited_at_utc": "2026-09-14T23:46:07Z",
+  "audited_tip": "0e8aa462a7105f27f5347ef65dc1591e161214a3",
+  "prior_authorized_tip": "062178220fe42d8fe8d975a00875e4ca789b227f",
+  "remediation_commit": "abb705ac1eed3011cd3b89ee21ccb45b3ecbe5ee",
+  "commands_and_results": [
+    {
+      "step": 0,
+      "command": "git -C /tmp/a7g_shv1 rev-parse HEAD && git -C /tmp/a7g_shv1 status --short",
+      "result": "HEAD = 0e8aa462a7105f27f5347ef65dc1591e161214a3; working tree clean (no output)",
+      "exit_code": 0
+    },
+    {
+      "step": 0,
+      "command": "git -C /tmp/a7g_shv1 log --oneline 06217822..0e8aa462",
+      "result": "exactly 2 commits: 4894214a (shadow-v1 E worker: production ForwardExecutor trio + paced keyless loop, REPLAY_NOT_PROSPECTIVE rehearsal executed, 11 offline config tests) and 0e8aa462 (shadow-v1 remediation gross-basis, SIZING_AND_CAP_BASIS: start_of_rebalance_equity, Q-14 fix)",
+      "exit_code": 0
+    },
+    {
+      "step": 1,
+      "command": "git -C /tmp/a7g_shv1 diff 06217822..0e8aa462 --stat  (and --name-only)",
+      "result": "16 files, +2307/-7. Engine (research/shadow_v1/): ONLY accounting.py (+53/-7 shown as 53 +/-) and executor.py (39 +/-). All other paths: research/control/prospective_shadow_v1/ (audits/a7_tick_delta.json, e/handoff_shv1-e-worker.json, e/replay_rehearsal.py, e/replay_rehearsal/rehearsal_evidence.json, e/replay_rehearsal/runtime/replay_not_prospective/*.jsonl + *.REPLAY_NOT_PROSPECTIVE.label x3, e/shadow_worker.py) and tests/ (test_shv1_accounting.py, test_shv1_executor.py, test_shv1_worker_config.py). ZERO changes to start_guard, events, data_feed, scheduler, ledger, families, risk, no_order.",
+      "exit_code": 0
+    },
+    {
+      "step": 1b,
+      "command": "git -C /tmp/a7g_shv1 show --stat 4894214a",
+      "result": "E-worker commit 4894214a touches ONLY control-dir files + tests/test_shv1_worker_config.py (11 files, +1842, 0 engine edits) — confirms claim (1).",
+      "exit_code": 0
+    },
+    {
+      "step": 2,
+      "command": "git -C /tmp/a7g_shv1 diff 06217822..0e8aa462 -- research/shadow_v1/accounting.py",
+      "result": "apply_fill gains keyword-only gross_cap_equity (after explicit '*'); validation: not (int,float), bool excluded, not math.isfinite, <= 0 -> AccountingError 'must be a finite positive number (fail closed)'; fallback cap_equity = self.equity_snapshot().equity (same pre-mutation snapshot the old code read into equity_before); opening-short gross comparison now 'gross_notional_after > cap_equity + _EPS' using the supplied basis; error message reports the basis actually used; CASH subchecks untouched; SIZING_AND_CAP_BASIS documented in module invariant docstring and method docstring; 'import math' pre-existing (line 60).",
+      "exit_code": 0
+    },
+    {
+      "step": 3,
+      "command": "git -C /tmp/a7g_shv1 diff 06217822..0e8aa462 -- research/shadow_v1/executor.py",
+      "result": "In the non-risk-blocked branch: sizing_equity = sleeve.equity_snapshot().equity captured ONCE after risk approval (equivalent point to the old capture at the top of _rebalance_steps — after marks + settled-funding booking, before any fill of this rebalance); passed as 3rd arg to _rebalance_steps (sizing) and as gross_cap_equity=sizing_equity to EVERY apply_fill; _rebalance_steps signature gains sizing_equity: Optional[float], body 'equity = sizing_equity' with None -> MarkGapError fail-closed (unchanged semantics); SIZING_AND_CAP_BASIS documented in module docstring; NO other hunks — fill rule, event ids, idempotency, funding booking, marks, risk ordering all untouched.",
+      "exit_code": 0
+    },
+    {
+      "step": 4,
+      "command": "grep over test diffs + sed of new test bodies; grep -c legacy test name in diff",
+      "result": "(a) test_target_above_hard_gross_cap_blocks_prefill_with_pre_post_recorded: risk.check_and_apply blocks pre-fill, block.pre_target == proposed, block.post_target == {}, violations start with 'hard_gross_cap', ledger record risk_status=RISK_STATUS_BLOCKED, target_weights={}, virtual_fill_events=[], fill_count 0, decision_count 1. (b) test_opening_short_without_cash_backing_still_refuses_despite_basis: opening short with 0 cash and fee_rate 2.0 raises InsufficientCashError even though supplied basis 50,000 leaves exact gross headroom; fill_count 0, cash unchanged, no positions. (c) test_gross_cap_basis_invalid_value_refuses_fail_closed: 0.0/-1.0/nan/inf/'100000' all raise AccountingError, no mutation. (d) legacy test_opening_short_still_fails_cash_checks_when_headroom_insufficient exists at tests/test_shv1_executor.py:347 and its name appears 0 times in the diff => UNCHANGED. Partial-fill honesty: no NEW dedicated test, but preserved by the unchanged exact-delta (no-slicing) leg planner plus unchanged fail-closed refusal accounting exercised by the unchanged legacy suite.",
+      "exit_code": 0
+    },
+    {
+      "step": 5,
+      "command": "cd /tmp/a7g_shv1 && python -c \"from research.shadow_v1.no_order import assert_no_order_surface; assert_no_order_surface('research/shadow_v1'); print('CLEAN')\"",
+      "result": "CLEAN",
+      "exit_code": 0
+    },
+    {
+      "step": 6,
+      "command": "cd /tmp/a7g_shv1 && python -m pytest tests/test_shv1_executor.py tests/test_shv1_replay_guard.py tests/test_shv1_accounting.py tests/test_shv1_eventstore.py tests/test_shv1_noorder.py tests/test_shv1_pit.py tests/test_shv1_scheduler.py tests/test_shv1_combined.py tests/test_shv1_risk.py tests/test_shv1_identity_recovery.py tests/test_shv1_data_cost.py tests/test_shv1_families.py tests/test_shv1_families_identity.py tests/test_shv1_engine_smoke.py tests/test_shv1_dashboard.py tests/test_shv1_worker_config.py -q",
+      "result": "214 passed in 28.93s (208 baseline + 6 new), 0 failed, 0 errors",
+      "exit_code": 0
+    },
+    {
+      "step": 7,
+      "command": "sha256(identity_recovery.json) directly; cost digest = sha256(json.dumps(current_conservative_cost, sort_keys=True, separators=(',',':'), ensure_ascii=False).encode('utf-8')) per cost_regime_manifest.cost_regime_digest_canonicalization",
+      "result": "identity_recovery.json = 845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8 MATCH; cost_regime_digest = ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65 MATCH declared value",
+      "exit_code": 0
+    },
+    {
+      "step": 8,
+      "command": "git -C /tmp/a7g_shv1 rev-parse --verify 50997657^{commit}; git -C /tmp/a7g_shv1 merge-base --is-ancestor 50997657 0e8aa462; git -C /tmp/a7g_shv1 diff --stat 50997657 4894214a",
+      "result": "dispatch-referenced hash 50997657e77eaa932fbab565492491ffbb42d64b resolves to a commit with the SAME message and an IDENTICAL tree to in-lineage E commit 4894214a (empty diff) but is NOT an ancestor of the audited tip — a duplicate commit of the same content on another ref. Informational only; audit bounds are the tips, so the verdict is unaffected.",
+      "exit_code": 0
+    }
+  ],
+  "diff_scope_confirmed": true,
+  "basis_convention_documented": true,
+  "refusal_semantics_survive": true,
+  "surface_hunt_clean": true,
+  "battery_result": {
+    "passed": 214,
+    "failed": 0,
+    "errors": 0,
+    "expected": "214 passed / 0 failed",
+    "match": true
+  },
+  "digests_unchanged": {
+    "identity_recovery_json_sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8",
+    "identity_match": true,
+    "cost_regime_digest": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65",
+    "cost_match": true
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "finding": "Diff-scope hygiene exact: engine delta is confined to research/shadow_v1/accounting.py + executor.py; every other changed path is control-dir or tests. No edits to start_guard, events, data_feed, scheduler, ledger, families, risk, or no_order."
+    },
+    {
+      "severity": "INFO",
+      "finding": "accounting.apply_fill fallback path (gross_cap_equity omitted) is behaviorally equivalent to the prior code: the same pre-mutation equity_snapshot is read; only its compute site moved earlier (before the mark-gap check and now also computed on buy fills, where it is unused) — a pure read with no mutation and no observable behavior change."
+    },
+    {
+      "severity": "LOW",
+      "finding": "No NEW dedicated test asserts partial-fill honesty under the gross-basis change; the property is preserved only via unchanged exact-delta leg planning and unchanged fail-closed refusal accounting (legacy suite unmodified and green). Acceptable for this delta because no partial-fill code path changed; recommend a dedicated partial-fill test before any future slicing/buffer feature."
+    },
+    {
+      "severity": "LOW",
+      "finding": "Dispatch packet cites E-phase commit 50997657, but the E-worker commit in the audited lineage 06217822..0e8aa462 is 4894214a. 50997657 has an identical tree and message but is not an ancestor of the tip (duplicate commit on another ref). No content risk; note for handoff-record hygiene."
+    }
+  ],
+  "unresolved_high_critical_count": 0,
+  "verdict": "DELTA_ACCEPTED",
+  "recommended_next_action": "A7 authorization extends from 06217822 to 0e8aa462a7105f27f5347ef65dc1591e161214a3 (SIZING_AND_CAP_BASIS: start_of_rebalance_equity; frozen gross-1.0 books complete all legs with fees > 0). Proceed with the cycle's next authorized gate; E-phase remains REPLAY_NOT_PROSPECTIVE (labeled artifacts in control dir, zero PnL, nothing prospective has run). Re-anchor any future dispatch packets to 0e8aa462 and drop the duplicate 50997657 hash reference."
+}
