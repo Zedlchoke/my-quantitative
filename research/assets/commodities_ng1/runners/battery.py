@@ -128,6 +128,21 @@ def r2_single(anchor_metrics: dict, killer_metrics: dict) -> dict:
     return r2_control_kill(anchor_metrics, killer_metrics)
 
 
+def control_verdict_rows(books: dict) -> dict:
+    """Per-role control verdict rows for one cell's booked populations
+    (``role -> execute.book_ledger`` result).  Z-R1 remediation wiring:
+    a DECLARED ``NOT_EXECUTABLE`` book (empty booked population, e.g.
+    every trade excluded by the split-boundary law) propagates its
+    declared verdict row -- never a crash, never a silent pass; an
+    executed book verdicts PASS iff its reconciliation identity holds
+    (fail-closed FAIL otherwise)."""
+    from research.assets.commodities_ng1.runners.execute import (
+        control_verdict_row,
+    )
+    return {role: control_verdict_row(book)
+            for role, book in books.items()}
+
+
 def q11_eligibility(eligible_per_pair: dict[str, int],
                     pooled: int | None = None) -> dict:
     """Q-11 invalid-null law: fewer eligible instants than the frozen

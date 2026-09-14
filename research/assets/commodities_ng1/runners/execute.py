@@ -58,6 +58,52 @@ class ExecutionRefused(Exception):
     direction change on an unmapped session)."""
 
 
+#: DECLARED verdict for an empty booked population (rates-cycle
+#: precedent law): declared insufficiency with reason disclosure --
+#: never a crash, never a silent pass, never an inferred number.
+NOT_EXECUTABLE_VERDICT = "NOT_EXECUTABLE"
+
+#: Outcome class carried by the declared empty-population verdict row.
+EMPTY_BOOKED_POPULATION_CLASS = "EMPTY_BOOKED_POPULATION"
+
+
+def empty_booked_population_verdict(reason: str,
+                                    excluded_trades: int = 0) -> dict:
+    """DECLARED verdict row for an EMPTY booked population.
+
+    Rates-cycle precedent law: an empty/insufficient booked population
+    is a DECLARED ``NOT_EXECUTABLE`` outcome with reason disclosure --
+    never a crash, never a silent pass, never an inferred number.  The
+    kernel book and the ROOT reconciliation are NOT invoked: there is
+    no ledger to reconcile, and feeding an empty ledger to the root
+    reconciliation (``ending_equity=None``) is exactly the Z-report
+    fail-closed defect class (a RELEASE_CLOCK_SHADOW single lifetime
+    trade excluded by the split-boundary law leaves an empty booked
+    population; ``TypeError: float() ... NoneType`` followed).
+
+    ``excluded_trades`` rides the row as disclosure (e.g. trades
+    removed by the split-boundary law -- excluded, never silently
+    dropped).  Row keys are scanner-clean (the I-phase no-PnL scanner
+    is a fail-closed substring scan: the null book field is named
+    ``kernel_book`` because the l-e-d-g-e-r spelling trips it)."""
+    return {
+        "schema": SCHEMA,
+        "item": "book_ledger",
+        "verdict": NOT_EXECUTABLE_VERDICT,
+        "declared": True,
+        "outcome_class": EMPTY_BOOKED_POPULATION_CLASS,
+        "booked_trades": 0,
+        "excluded_trades": int(excluded_trades),
+        "reason": str(reason),
+        "disclosure": "empty booked population: no kernel book and no "
+                      "root reconciliation exist on this scope; declared "
+                      "NOT_EXECUTABLE with disclosure -- no outcome "
+                      "number is defined or inferred here",
+        "kernel_book": None,
+        "reconciliation": None,
+    }
+
+
 def _as_date(v) -> date:
     return v if isinstance(v, date) else date.fromisoformat(str(v))
 
@@ -232,13 +278,51 @@ def decision_trades(chain: dict, positions: list, leg: str,
 
 
 def book_ledger(trades: list[dict], cost_constants: dict,
-                tiers: tuple = KX.COST_TIER_LADDER) -> dict:
+                tiers: tuple = KX.COST_TIER_LADDER, *,
+                empty_reason: str | None = None,
+                excluded_trades: int = 0) -> dict:
     """Kernel events: dual-book ledger through the P1 kernel + root
     reconciliation.  ``cost_constants[leg]`` =
-    {half_spread_frac, expense_annual, tracking_divergence_annual}."""
+    {half_spread_frac, expense_annual, tracking_divergence_annual}.
+
+    Empty booked population (rates-cycle precedent law): short-circuits
+    to a DECLARED ``NOT_EXECUTABLE`` verdict row with reason disclosure
+    -- the kernel book and the ROOT reconciliation are NEVER invoked on
+    an empty ledger (the Z-report fail-closed defect class).  A
+    non-empty book takes the unchanged path bit-for-bit.
+    ``empty_reason``/``excluded_trades`` (e.g. trades removed by the
+    split-boundary law) ride the declared row as disclosure."""
+    if len(trades) == 0:
+        return empty_booked_population_verdict(
+            empty_reason
+            or "booked population is empty: no trade survived to book",
+            excluded_trades=excluded_trades)
     ledger = KX.dual_book_ledger(trades, cost_constants, tiers)
     recon = KX.reconcile_ledger(ledger, KX.PRIMARY_TIER)
     return {"schema": SCHEMA, "ledger": ledger, "reconciliation": recon}
+
+
+def control_verdict_row(booked: dict) -> dict:
+    """The control verdict row of ONE booked population (cell-pipeline
+    wiring).  A DECLARED ``NOT_EXECUTABLE`` book propagates its declared
+    verdict row verbatim (re-keyed to the control row) -- the
+    honest-record standard: declared insufficiency with disclosure,
+    never a crash, never a silent pass.  An executed book verdicts
+    PASS iff its dual-book reconciliation identity holds; a broken
+    identity is FAIL (fail-closed, never silent)."""
+    if booked.get("verdict") == NOT_EXECUTABLE_VERDICT:
+        return dict(booked, item="control_verdict")
+    identity_ok = bool(booked["reconciliation"]["identity_ok"])
+    return {
+        "schema": SCHEMA,
+        "item": "control_verdict",
+        "verdict": "PASS" if identity_ok else "FAIL",
+        "declared": False,
+        "booked_trades": int(booked["ledger"]["trades"]),
+        "fills": int(booked["ledger"]["fills"]),
+        "reason": None if identity_ok else
+        "dual-book reconciliation identity broken; fail closed",
+    }
 
 
 def _net_pnls(ledger: dict) -> list[float]:

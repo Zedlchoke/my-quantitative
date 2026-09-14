@@ -43,7 +43,9 @@ from research.assets.commodities_ng1.cot_census import (
 from research.assets.commodities_ng1.clock import KernelPitRefused
 from research.assets.commodities_ng1.runners import (
     battery_position_series, chain as CH, decision_trades, arm_metrics,
-    book_ledger, crowd_carry_positions, percentile_tail, price_only_positions,
+    book_ledger, control_verdict_row, control_verdict_rows,
+    crowd_carry_positions, empty_booked_population_verdict,
+    percentile_tail, price_only_positions,
     release_clock_positions, shifted_release_positions,
     clairvoyant_positions, trades_to_folds, falsification_eval,
     q11_eligibility, evaluate_stage_a, pbo_verdict, fold_of, sign,
@@ -952,3 +954,124 @@ def test_freeze_battery_binding_present():
               ["folds_frozen"]]
     assert frozen == [(f["fold_id"], f["release_date_start"],
                        f["release_date_end"]) for f in FOLDS_FROZEN]
+
+
+# ----------------------------------------------------------------------- #
+# 13. Z-R1 remediation: empty booked population -> DECLARED NOT_EXECUTABLE
+# ----------------------------------------------------------------------- #
+
+def test_book_ledger_empty_population_declared_not_executable(monkeypatch):
+    """The Z-report defect class: an empty booked population must be a
+    DECLARED NOT_EXECUTABLE verdict row -- the kernel book and the ROOT
+    reconciliation are never invoked on an empty ledger (invoking them
+    crashed with TypeError ending_equity=None at the Z dry-run: the
+    RELEASE_CLOCK_SHADOW single lifetime trade excluded by the
+    split-boundary law left an EMPTY booked population)."""
+    def _refuse(*a, **k):
+        raise AssertionError("kernel invoked on an empty booked population")
+    monkeypatch.setattr(KX, "dual_book_ledger", _refuse)
+    monkeypatch.setattr(KX, "reconcile_ledger", _refuse)
+    booked = book_ledger([], leg_constants(),
+                         empty_reason="all booked trades excluded by the "
+                                      "split-boundary law",
+                         excluded_trades=1)
+    assert booked["verdict"] == "NOT_EXECUTABLE"
+    assert booked["declared"] is True
+    assert booked["outcome_class"] == "EMPTY_BOOKED_POPULATION"
+    assert booked["booked_trades"] == 0
+    assert booked["excluded_trades"] == 1
+    assert "split-boundary" in booked["reason"]
+    assert booked["kernel_book"] is None
+    assert booked["reconciliation"] is None
+    assert booked["disclosure"]      # reason disclosure present
+    # the no-PnL key law holds on the declared row
+    assert_structural(booked)
+    # the constructor itself declares (never a silent pass either way)
+    d = empty_booked_population_verdict("synthetic reason",
+                                        excluded_trades=0)
+    assert d["verdict"] == "NOT_EXECUTABLE" and d["declared"] is True
+    assert d["excluded_trades"] == 0
+
+
+def test_book_ledger_nonempty_path_shape_unchanged():
+    """Non-empty booking path unchanged: the same
+    {schema, ledger, reconciliation} shape with a reconciled identity."""
+    sessions = weekday_sessions(date(2019, 12, 2), 8)
+    closes = dict(synthetic_closes(sessions))
+    closes[date(2020, 1, 6)] = 100.0
+    closes[date(2020, 1, 20)] = 90.0
+    chain = counted_chain(MONDAYS, RELEASES)
+    res = decision_trades(chain, [1.0, 1.0, 0.0, 0.0], "TESTLEG",
+                          sessions, closes)
+    assert len(res["trades"]) == 1
+    booked = book_ledger(res["trades"], leg_constants())
+    assert set(booked) == {"schema", "ledger", "reconciliation"}
+    assert booked["reconciliation"]["identity_ok"] is True
+    assert booked["ledger"]["trades"] == 1
+
+
+def test_release_clock_single_trade_boundary_exclusion_declares_not_executable():
+    """The Z-incident scenario end-to-end on synthetic data: a fixed-sign
+    RELEASE_CLOCK_SHADOW books exactly ONE lifetime trade; it spans a
+    committed share-base boundary and the split-boundary law excludes it
+    -- the empty booked population declares NOT_EXECUTABLE (no crash)
+    and the verdict propagates to the control verdict row."""
+    sessions = weekday_sessions(date(2019, 12, 2), 8)
+    closes = dict(synthetic_closes(sessions))
+    closes[date(2020, 1, 6)] = 100.0
+    closes[date(2020, 1, 27)] = 95.0
+    chain = counted_chain(MONDAYS, RELEASES)
+    clock = release_clock_positions(len(chain["rows"]))  # fixed +1 forever
+    res = decision_trades(chain, clock, "TESTLEG", sessions, closes,
+                          split_boundary_dates={date(2020, 1, 15)})
+    assert res["trades"] == []              # the EMPTY booked population
+    assert len(res["split_boundary_excluded"]) == 1
+    booked = book_ledger(
+        res["trades"], leg_constants(),
+        empty_reason="every booked trade excluded by the split-boundary "
+                     "law (the single lifetime clock trade spans a "
+                     "share-base boundary)",
+        excluded_trades=len(res["split_boundary_excluded"]))
+    assert booked["verdict"] == "NOT_EXECUTABLE"   # declared, no exception
+    assert booked["excluded_trades"] == 1
+    row = control_verdict_row(booked)
+    assert row["verdict"] == "NOT_EXECUTABLE"      # propagates verbatim
+    assert row["declared"] is True
+    assert row["reason"] == booked["reason"]
+    assert_structural(row)
+
+
+def test_control_verdict_rows_propagation_and_fail_closed():
+    """Control verdict rows: an executed book PASSes on a reconciled
+    identity; a broken identity FAILs (fail-closed, never silent); the
+    DECLARED NOT_EXECUTABLE book propagates through the battery-level
+    per-role rows."""
+    sessions = weekday_sessions(date(2019, 12, 2), 8)
+    closes = dict(synthetic_closes(sessions))
+    closes[date(2020, 1, 6)] = 100.0
+    closes[date(2020, 1, 20)] = 90.0
+    chain = counted_chain(MONDAYS, RELEASES)
+    res = decision_trades(chain, [1.0, 1.0, 0.0, 0.0], "TESTLEG",
+                          sessions, closes)
+    executed = book_ledger(res["trades"], leg_constants())
+    ok_row = control_verdict_row(executed)
+    assert ok_row["verdict"] == "PASS" and ok_row["declared"] is False
+    assert ok_row["booked_trades"] == 1
+    # a broken reconciliation identity is FAIL -- never silent
+    broken = {"schema": executed["schema"],
+              "ledger": executed["ledger"],
+              "reconciliation": dict(executed["reconciliation"],
+                                     identity_ok=False)}
+    assert control_verdict_row(broken)["verdict"] == "FAIL"
+    # per-role rows: an executed role and a declared role side by side
+    declared = empty_booked_population_verdict(
+        "synthetic: no trade survived the split-boundary exclusion",
+        excluded_trades=1)
+    rows = control_verdict_rows({"ANCHOR": executed,
+                                 "RELEASE_CLOCK_SHADOW": declared})
+    assert rows["ANCHOR"]["verdict"] == "PASS"
+    assert rows["RELEASE_CLOCK_SHADOW"]["verdict"] == "NOT_EXECUTABLE"
+    assert rows["RELEASE_CLOCK_SHADOW"]["excluded_trades"] == 1
+    assert rows["RELEASE_CLOCK_SHADOW"]["declared"] is True
+    for r in rows.values():
+        assert_structural(r)

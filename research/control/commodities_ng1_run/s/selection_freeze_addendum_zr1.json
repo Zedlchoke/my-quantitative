@@ -1,0 +1,93 @@
+{
+  "schema": "commodities_ng1_run/selection_freeze_addendum@1",
+  "item": "selection_freeze_addendum_zr1",
+  "cycle_id": "COMMODITIES-NG1",
+  "task_id": "commodities-ng1-zr1-remediation",
+  "phase": "pre-scored plumbing-robustness amendment (0 cells scored; no outcome number on real data anywhere)",
+  "amended_artifact": {
+    "path": "research/control/commodities_ng1_run/s/selection_freeze.json",
+    "sha256": "ecde47ef17fae531d3c89899685baf485db305c67e1f43e782875a623166c108",
+    "frozen_at_utc": "2026-09-12T04:49:00Z",
+    "binding": true,
+    "amendment_class": "PLUMBING_ROBUSTNESS_ONLY (the freeze file itself is NOT modified; this addendum declares the amendment beside it)"
+  },
+  "citations": {
+    "z_report": {
+      "path": "research/control/commodities_ng1_run/z/z_report.json",
+      "sha256": "1d5ee96dd85bb73b3af32122c976d783f98ea16ab4c6cb294e28511b110da79e",
+      "z_substance_commit_sha": "8dd9527fe964bb29c057832d7dcad9f5c459caef",
+      "commit_citation_note": "8dd9527f is the Z dry-run substance commit whose committed products include the Z report; the sha256 is the Z report file digest as measured at the remediation BASE",
+      "z_report_overall_verdict": "FAIL",
+      "z_report_incident_count": 6,
+      "z_report_authority": "READ-ONLY evidence (the Z lane repairs nothing; repair belongs to this owner-authorized remediation lane)"
+    },
+    "remediation_base_commit_sha": "a6f3b01f3d72a379dd62331d029c856db7e5f153",
+    "branch": "orca/commodities-ng1-integration"
+  },
+  "defect_class": {
+    "failure_class": "TypeError",
+    "failure_detail": "float() argument must be a string or a real number, not 'NoneType'",
+    "failure_stage": "booking",
+    "incident_count": 6,
+    "localized_pairs": ["001602/WEAT", "088691/IAU"],
+    "localized_role": "RELEASE_CLOCK_SHADOW",
+    "crash_chain": "execute.book_ledger -> kernel.reconcile_ledger -> research.accounting.build_accounting_reconciliation (ending_equity=None)",
+    "mechanism": "the fixed-sign release-clock shadow books exactly ONE lifetime trade on such a pair; that trade spans a committed share-base boundary and the split-boundary law excludes it (excluded, never silently dropped); the resulting EMPTY booked population was then fed to the root reconciliation, which crashed"
+  },
+  "fix": {
+    "law": "rates-cycle precedent: an empty/insufficient booked population is a DECLARED NOT_EXECUTABLE/INSUFFICIENT outcome with reason disclosure -- never a crash, never a silent pass, never an inferred number",
+    "summary": "execute.book_ledger short-circuits an empty booked population to a DECLARED NOT_EXECUTABLE verdict row (reason + exclusion disclosure) WITHOUT invoking the kernel book or the root reconciliation; execute.control_verdict_row and battery.control_verdict_rows propagate the declared verdict to the control verdict rows; non-empty booking paths are unchanged bit-for-bit",
+    "modules": [
+      "research/assets/commodities_ng1/runners/execute.py",
+      "research/assets/commodities_ng1/runners/battery.py",
+      "research/assets/commodities_ng1/runners/__init__.py"
+    ],
+    "tests": "tests/test_commodities_ng1_i.py (hand-computed synthetic fixtures only, added section on the empty-booked-population declared verdict)"
+  },
+  "affirmations": {
+    "arm_digests_unchanged": true,
+    "booked_arm_config_digests": {
+      "COMMNG1-A4-P2-ARM1-NEUTRAL": "6c12044f88e5284297f50560587e041ccac3012454e9659340b348eb5d6e67d8",
+      "COMMNG1-A4-P2-ARM2-TAILWIDE": "f7cabf47612b612586ebf702ccd33e6212bce92421faa399f8e241262f5e3623",
+      "COMMNG1-A4-P2-ARM3-WINDOWSHORT": "ab57e6db76e23ae61733e3b85f54a1e7ee02b27a871ab0789cf1503a1530577e"
+    },
+    "r1_r6_bounds_unchanged": true,
+    "r1_r6_bounds": {
+      "R1": "after-cost expectancy > 0 at tier 2.0 PRIMARY (unchanged)",
+      "R2": "V8 same-sign >= 0.5x per-trade kill AND the D1 falsification clause: ANY strictly greater after-cost per-decision edge by a designated killer kills (unchanged)",
+      "R3": ">= 2/3 frozen folds positive; fold-1 2019-01-04..2021-08-31, fold-2 2021-09-01..2024-04-30, fold-3 2024-05-01..2026-09-11 (unchanged)",
+      "R4": "profit factor >= 1.10, margin above 1.10 recorded (unchanged)",
+      "R5": "stress tier 2.0 expectancy > 0 (unchanged)",
+      "R6": "drop-one-fold survival AND no single event carrying > 50% of gross (unchanged)"
+    },
+    "no_parameter_tuning": true,
+    "frozen_parameters_unchanged": {
+      "arms": {
+        "COMMNG1-A4-P2-ARM1-NEUTRAL": {"percentile_window_weeks_w": 104, "tail_q_lo": 0.1, "tail_q_hi": 0.9, "trigger_tau_geometry": 0.02, "carry_bound_weeks_h_max": 13},
+        "COMMNG1-A4-P2-ARM2-TAILWIDE": {"percentile_window_weeks_w": 104, "tail_q_lo": 0.2, "tail_q_hi": 0.8, "trigger_tau_geometry": 0.02, "carry_bound_weeks_h_max": 13},
+        "COMMNG1-A4-P2-ARM3-WINDOWSHORT": {"percentile_window_weeks_w": 52, "tail_q_lo": 0.1, "tail_q_hi": 0.9, "trigger_tau_geometry": 0.02, "carry_bound_weeks_h_max": 13}
+      },
+      "shifted_release_k_frozen": 4,
+      "q11_minima_unchanged": {"per_pair": 300, "pooled": 3300},
+      "stress_tier_ladder_unchanged": [1.0, 1.5, 2.0],
+      "primary_tier_unchanged": 2.0
+    },
+    "no_d1_d2_s_substance_change": true,
+    "trial_accounting_unchanged": {"booked_cells": 3, "unbooked_cells": 3, "trial_budget_cells": 6},
+    "cost_contract_unchanged": {
+      "path": "research/control/commodities_ng1_run/p1_cost_contract.json",
+      "sha256": "5929ed4300246d0dad4335995d39415454313dd5ef47edf5380fb529fa154631"
+    },
+    "p2_gate_unchanged": {
+      "path": "research/control/commodities_ng1_run/p2_gate.json",
+      "sha256": "ee32c9df86c3f33126d3899fad62f74cb880f654970791cf260e59e4652b973c"
+    }
+  },
+  "scope": {
+    "scored_cells": 0,
+    "outcome_numbers_on_real_data": 0,
+    "changed_substance": "I-phase runner machinery robustness only (declared-insufficiency handling); no arm, rule, fold, cost or clock change",
+    "real_substrate_access": "digests and structural facts only (identical to the I-phase law)"
+  },
+  "law": "pre-scored amendment recorded BEFORE any scored execution: declared insufficiency is the honest record (never a crash, never a silent pass, never an inferred number); the frozen substance cited by digest above is affirmed UNCHANGED by this remediation"
+}

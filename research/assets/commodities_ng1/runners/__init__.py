@@ -41,6 +41,7 @@ from research.assets.commodities_ng1.runners.battery import (  # noqa: F401
     KILLER_ROLES,
     SHIFTED_RELEASE_K_FROZEN,
     battery_position_series,
+    control_verdict_rows,
     falsification_eval,
     q11_eligibility,
 )
@@ -52,6 +53,8 @@ from research.assets.commodities_ng1.runners.execute import (  # noqa: F401
     decision_trades,
     arm_metrics,
     book_ledger,
+    control_verdict_row,
+    empty_booked_population_verdict,
     trades_to_folds,
 )
 from research.assets.commodities_ng1.runners.rule import (  # noqa: F401
@@ -79,8 +82,11 @@ __all__ = [
     "battery_position_series",
     "book_ledger",
     "build_pair_chain",
+    "control_verdict_row",
+    "control_verdict_rows",
     "crowd_carry_positions",
     "decision_trades",
+    "empty_booked_population_verdict",
     "evaluate_stage_a",
     "falsification_eval",
     "fold_of",
