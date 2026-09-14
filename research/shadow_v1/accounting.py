@@ -18,6 +18,18 @@ Invariants enforced here:
   UNAVAILABLE_FAIL_CLOSED (mark-gap state). No interpolation, ever;
 - no margin, no leverage: a fill that would exceed available cash (or
   push gross notional above equity) raises and refuses;
+- POLICY: REDUCING_SELL_NETS_POSITION (condition C1, audit finding F3):
+  a sell that reduces or closes an existing LONG nets against that
+  position — the only requirement is the position-size check (sell qty
+  <= current long qty); the proceeds credit cash after fees/slippage.
+  A reducing sell is NOT required to carry full sell-notional cash/gross
+  headroom (the prior guard overcounted post-trade gross by the
+  reduction and could refuse valid rebalance sells in fully-invested
+  gross-1.0 books). Opening or increasing sells (new shorts), including
+  sells that flip through zero (qty > current long qty), still pass the
+  UNCHANGED no-margin/no-leverage cash and gross checks. Both cost
+  books always keep identical quantities (positions/cash are mutated
+  once and shared across books);
 - decision_count / order_intent_count / fill_count /
   closed_position_count are SEPARATE counters, never conflated.
 
@@ -368,22 +380,36 @@ class SleeveAccount:
                     f"has {self.cash:.10f}; no margin/leverage permitted"
                 )
         else:
-            cash_after = self.cash + qty * primary_fill - primary_fee
-            if cash_after < -_EPS:
-                raise InsufficientCashError(
-                    "short fee exceeds available cash; refusing"
-                )
-            gross_notional_after = sum(
-                abs(p.qty) * float(p.last_mark)
-                for p in self.positions.values()
-                if p.qty != 0.0
-            ) + qty * ref_price
-            equity_before = self.equity_snapshot().equity
-            if equity_before is not None and gross_notional_after > equity_before + _EPS:
-                raise InsufficientCashError(
-                    f"short would push gross notional {gross_notional_after:.10f} "
-                    f"above equity {equity_before:.10f}; no leverage permitted"
-                )
+            pos_probe = self.positions.get(symbol)
+            pre_sell_qty = pos_probe.qty if pos_probe is not None else 0.0
+            if pre_sell_qty > 0.0 and qty <= pre_sell_qty + _EPS:
+                # POLICY: REDUCING_SELL_NETS_POSITION — a sell that reduces
+                # or closes an existing LONG nets against the position:
+                # the position-size check above (qty <= current long qty)
+                # is the only requirement; proceeds credit cash after
+                # fees/slippage below. No full sell-notional cash/gross
+                # headroom is required (the previous guard overcounted
+                # post-trade gross by the reduction). Opening/increasing
+                # sells — including flips through zero — fall through to
+                # the unchanged checks below.
+                pass
+            else:
+                cash_after = self.cash + qty * primary_fill - primary_fee
+                if cash_after < -_EPS:
+                    raise InsufficientCashError(
+                        "short fee exceeds available cash; refusing"
+                    )
+                gross_notional_after = sum(
+                    abs(p.qty) * float(p.last_mark)
+                    for p in self.positions.values()
+                    if p.qty != 0.0
+                ) + qty * ref_price
+                equity_before = self.equity_snapshot().equity
+                if equity_before is not None and gross_notional_after > equity_before + _EPS:
+                    raise InsufficientCashError(
+                        f"short would push gross notional {gross_notional_after:.10f} "
+                        f"above equity {equity_before:.10f}; no leverage permitted"
+                    )
 
         # Capture pre-fill quantity and mark: the fill itself carries the
         # new mark (ref) for its symbol, and any gap between the previous

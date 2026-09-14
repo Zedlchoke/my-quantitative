@@ -9,6 +9,9 @@ Scope (plan PLAN_prospective_shadow_v1.md, phase I / lane A2):
 - data_feed.py  PIT data interface + keyless public REST client
 - no_order.py   TARGET_INTENT emission + forbidden-surface scanner
 - combined.py   read-only equal-capital combined view
+- executor.py   PRODUCTION forward executor (condition C1)
+- start_guard.py forward-only start guard + ledger namespace
+                separation (condition C2)
 
 This engine is INTERNAL_PAPER_ONLY: no API key, no account, no order
 routing. The only emitted action type is TARGET_INTENT plus internal
@@ -25,4 +28,6 @@ __all__ = [
     "data_feed",
     "no_order",
     "combined",
+    "executor",
+    "start_guard",
 ]
