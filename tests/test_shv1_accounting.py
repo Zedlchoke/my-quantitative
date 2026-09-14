@@ -247,3 +247,69 @@ def test_invalid_inputs_rejected():
         acct.apply_fill("BTCUSDT", "hoist", 0.5, 80_000.0, TICK, T0)
     with pytest.raises(AccountingError):
         acct.apply_fill("BTCUSDT", "buy", -0.5, 80_000.0, TICK, T0)
+
+
+# ----------------------------------------------------------------------
+# SIZING_AND_CAP_BASIS: start_of_rebalance_equity (Q-14 gross-basis fix)
+# ----------------------------------------------------------------------
+def test_gross_cap_basis_matches_sizing_basis_exact_boundary_completes():
+    # Q-14 in miniature: leg 1 books costs (equity drops to 99,979.95);
+    # leg 2 is an opening short sized on the START equity so gross-after
+    # lands EXACTLY at 100,000. It completes on the supplied
+    # start_of_rebalance_equity basis and refuses on the running
+    # (cost-reduced) equity — exactly what the pre-fix guard measured.
+    acct = make_account()
+    acct.apply_fill("BTCUSDT", "buy", 0.5, 80_000.0, TICK, T0)
+    approx(acct.equity_snapshot().equity, 100_000.0 - 20.0 - 0.05)  # 99,979.95
+    fill = acct.apply_fill(
+        "ETHUSDT", "sell", 20.0, 3_000.0, 0.01, T0, gross_cap_equity=100_000.0
+    )
+    approx(fill.fee, 30.0)  # 20 * 3,000 * 0.0005 (reference notional)
+    approx(fill.fill_price, 2_999.99)  # ref - 1 tick (0.01), adverse
+    assert acct.fill_count == 2
+    approx(acct.positions["ETHUSDT"].qty, -20.0)
+    # gross-after == the sizing basis exactly: BTC 40,000 + ETH 60,000
+    approx(
+        acct.exposure_snapshot()["gross"] * acct.equity_snapshot().equity,
+        100_000.0,
+    )
+    # the SAME short WITHOUT the basis (current-equity fallback) refuses:
+    acct2 = make_account()
+    acct2.apply_fill("BTCUSDT", "buy", 0.5, 80_000.0, TICK, T0)
+    with pytest.raises(InsufficientCashError):
+        acct2.apply_fill("ETHUSDT", "sell", 20.0, 3_000.0, 0.01, T0)
+    assert acct2.fill_count == 1
+    assert "ETHUSDT" not in acct2.positions
+
+
+def test_opening_short_without_cash_backing_still_refuses_despite_basis():
+    # The basis fix must NOT weaken the ACTUAL-cash no-margin check:
+    # fee_rate 2.0 -> fee = 1.0 * 50,000 * 2.0 = 100,000 while the short
+    # proceeds credit only 49,999.90; cash_after = -50,000.10 < 0, so the
+    # opening short refuses even though the supplied basis (50,000)
+    # leaves exact gross headroom.
+    acct = SleeveAccount(
+        sleeve_id="sleeve_no_cash",
+        starting_cash=0.0,
+        books={"ONLY_BOOK": BookCostParams(fee_rate=2.0, slippage_ticks=1.0)},
+        primary_book="ONLY_BOOK",
+    )
+    with pytest.raises(InsufficientCashError):
+        acct.apply_fill(
+            "BTCUSDT", "sell", 1.0, 50_000.0, TICK, T0, gross_cap_equity=50_000.0
+        )
+    assert acct.fill_count == 0
+    approx(acct.cash, 0.0)
+    assert acct.positions == {}
+
+
+def test_gross_cap_basis_invalid_value_refuses_fail_closed():
+    acct = make_account()
+    for bad in (0.0, -1.0, float("nan"), float("inf"), "100000"):
+        with pytest.raises(AccountingError):
+            acct.apply_fill(
+                "BTCUSDT", "sell", 0.1, 80_000.0, TICK, T0, gross_cap_equity=bad
+            )
+    assert acct.fill_count == 0
+    approx(acct.cash, 100_000.0)
+    assert acct.positions == {}

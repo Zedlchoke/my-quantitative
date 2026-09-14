@@ -30,6 +30,22 @@ Invariants enforced here:
   UNCHANGED no-margin/no-leverage cash and gross checks. Both cost
   books always keep identical quantities (positions/cash are mutated
   once and shared across books);
+- SIZING_AND_CAP_BASIS: start_of_rebalance_equity (Q-14 fix): the
+  rebalance sizes every leg at the equity snapshot taken at the START
+  of the rebalance (executor._rebalance_steps), so the no-leverage
+  gross cap for each fill of that rebalance measures gross-after
+  against that SAME start-of-rebalance equity — supplied per fill via
+  ``apply_fill(..., gross_cap_equity=...)`` — and NOT against the
+  running equity already reduced by this rebalance's own booked
+  fees/slippage. At a target gross of exactly 1.0 the post-cost book
+  sits marginally above 1.0 when measured on post-cost equity (by
+  exactly the booked cost) and every leg completes; a fill WITHOUT the
+  supplied basis still measures on the current equity snapshot and
+  refuses exactly as before, and a gross meaningfully above the basis
+  still refuses pre-mutation. The CASH subchecks (a buy needs cash on
+  hand; short proceeds must keep cash >= 0) remain on ACTUAL cash —
+  real money, never a basis-adjusted value — so an opening short
+  without cash backing still refuses;
 - decision_count / order_intent_count / fill_count /
   closed_position_count are SEPARATE counters, never conflated.
 
@@ -350,8 +366,20 @@ class SleeveAccount:
         tick_size: float,
         ts_utc: str,
         fill_id: Optional[str] = None,
+        *,
+        gross_cap_equity: Optional[float] = None,
     ) -> VirtualFillEvent:
-        """Apply one virtual fill; fee and slippage charged exactly once."""
+        """Apply one virtual fill; fee and slippage charged exactly once.
+
+        ``gross_cap_equity`` (SIZING_AND_CAP_BASIS:
+        start_of_rebalance_equity): when the rebalancing executor
+        supplies it, the no-leverage gross cap for an opening short
+        measures gross-after against this START-OF-REBALANCE equity —
+        the same basis the sizing used — instead of the running equity
+        already reduced by this rebalance's own booked costs. Omitted
+        (default), the current equity snapshot is used, exactly as
+        before. The cash subchecks are unaffected (actual cash).
+        """
         if side not in ("buy", "sell"):
             raise AccountingError(f"invalid side {side!r}")
         qty = float(qty)
@@ -359,6 +387,20 @@ class SleeveAccount:
         tick_size = float(tick_size)
         if qty <= 0 or ref_price <= 0 or tick_size <= 0:
             raise AccountingError("qty/ref_price/tick_size must be positive")
+        if gross_cap_equity is not None:
+            if (
+                not isinstance(gross_cap_equity, (int, float))
+                or isinstance(gross_cap_equity, bool)
+                or not math.isfinite(gross_cap_equity)
+                or gross_cap_equity <= 0
+            ):
+                raise AccountingError(
+                    f"invalid gross_cap_equity basis {gross_cap_equity!r}; "
+                    "must be a finite positive number (fail closed)"
+                )
+            cap_equity = float(gross_cap_equity)
+        else:
+            cap_equity = self.equity_snapshot().equity
 
         if self._mark_gap is not None:
             # Fail closed: no-leverage guard needs valid equity.
@@ -404,11 +446,14 @@ class SleeveAccount:
                     for p in self.positions.values()
                     if p.qty != 0.0
                 ) + qty * ref_price
-                equity_before = self.equity_snapshot().equity
-                if equity_before is not None and gross_notional_after > equity_before + _EPS:
+                # SIZING_AND_CAP_BASIS: start_of_rebalance_equity when the
+                # rebalancing executor supplies the sizing basis
+                # (gross_cap_equity); the current equity snapshot otherwise
+                # (unchanged fallback for direct callers).
+                if cap_equity is not None and gross_notional_after > cap_equity + _EPS:
                     raise InsufficientCashError(
                         f"short would push gross notional {gross_notional_after:.10f} "
-                        f"above equity {equity_before:.10f}; no leverage permitted"
+                        f"above equity {cap_equity:.10f}; no leverage permitted"
                     )
 
         # Capture pre-fill quantity and mark: the fill itself carries the

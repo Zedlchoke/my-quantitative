@@ -34,6 +34,22 @@ POLICY: REDUCING_SELL_NETS_POSITION (condition C1, audit finding F3)
     rehearsal-only COST_BUFFER/DUST/slicing parameters of the smoke
     harness are deliberately not carried over (audit F1/ADJ3).
 
+SIZING_AND_CAP_BASIS: start_of_rebalance_equity (Q-14 fix)
+    Rebalance sizing and the no-leverage gross cap share ONE equity
+    snapshot: the equity at the START of the rebalance (after marks and
+    settled-funding booking, before any fill of this rebalance). Every
+    leg is sized at ``w * start_equity / ref`` and every leg's opening
+    gross check measures gross-after against the SAME start equity
+    (accounting.apply_fill ``gross_cap_equity``), so a frozen gross-1.0
+    identity completes ALL legs when fees > 0 — previously the last leg
+    was always refused because the cap was measured on equity already
+    reduced by this rebalance's own booked fees/slippage. Genuine
+    leverage is unchanged: a target meaningfully above the hard cap
+    still blocks at risk.check_and_apply BEFORE any fill (pre/post
+    recorded); the cash subchecks stay on actual cash, so an opening
+    short without cash backing still refuses; partial fills stay
+    recorded honestly when a leg truly cannot fit.
+
 FEATURE-CUTOFF CONVENTION (F6 pin)
     Bars/basis buckets are fetched with ``cutoff = decision_utc -
     feature_cutoff_offset_seconds`` so only bars whose canonical close
@@ -769,8 +785,15 @@ class ForwardExecutor:
             outcome = "risk_blocked"
         else:
             final_weights = dict(approved)
+            # SIZING_AND_CAP_BASIS (start_of_rebalance_equity, Q-14 fix):
+            # ONE snapshot sizes every leg AND caps every leg's
+            # no-leverage gross check — never the running equity already
+            # reduced by this rebalance's own booked fees/slippage.
+            sizing_equity = sleeve.equity_snapshot().equity
             try:
-                for symbol, side, qty in self._rebalance_steps(approved, fill_refs):
+                for symbol, side, qty in self._rebalance_steps(
+                    approved, fill_refs, sizing_equity
+                ):
                     tick = self._resolve_tick(symbol)
                     fills.append(
                         (
@@ -781,6 +804,7 @@ class ForwardExecutor:
                                 fill_refs[symbol],
                                 tick,
                                 decision_utc,
+                                gross_cap_equity=sizing_equity,
                             ),
                             tick,
                         )
@@ -929,7 +953,10 @@ class ForwardExecutor:
         return total
 
     def _rebalance_steps(
-        self, approved_weights: Mapping[str, float], fill_refs: Mapping[str, float]
+        self,
+        approved_weights: Mapping[str, float],
+        fill_refs: Mapping[str, float],
+        sizing_equity: Optional[float],
     ) -> Iterator[Tuple[str, str, float]]:
         """Deterministic rebalance plan toward the approved target book.
 
@@ -939,8 +966,14 @@ class ForwardExecutor:
         new-short sells reach the unchanged no-leverage guards in
         accounting.apply_fill. There is NO execution buffer and NO
         slicing: every step trades the exact delta.
+
+        ``sizing_equity`` is the START-OF-REBALANCE equity snapshot
+        (SIZING_AND_CAP_BASIS: start_of_rebalance_equity) — the same
+        value the caller passes to accounting.apply_fill as
+        ``gross_cap_equity`` so sizing and the no-leverage gross cap
+        share one basis. ``None`` (mark gap) refuses fail-closed.
         """
-        equity = self.sleeve.equity_snapshot().equity
+        equity = sizing_equity
         if equity is None:
             raise accounting.MarkGapError(
                 "equity unavailable (mark gap); rebalance refused"
