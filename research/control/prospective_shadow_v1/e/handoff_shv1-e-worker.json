@@ -1,0 +1,158 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "shv1-e-worker",
+ "cycle_id": "PROSPECTIVE-SHADOW-V1",
+ "role": "quant-implementer (isolated E-phase worker lane)",
+ "lane": "e-worker",
+ "branch": "orca/shv1-e-worker",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/e-worker",
+ "dispatch_sha": "bb0a134b26314f617fb3bd1b975e74e135940e72",
+ "actual_start_sha": "bb0a134b26314f617fb3bd1b975e74e135940e72",
+ "commit_sha": null,
+ "commit_sha_note": "self-reference: this handoff is committed inside the single commit it describes; see git log orca/shv1-e-worker for the final SHA",
+ "summary": "Lands the phase-E forward worker (INTERNAL PAPER ONLY, keyless public reads, TARGET_INTENT + virtual fills only). research/control/prospective_shadow_v1/e/shadow_worker.py: build_executors() constructs the three production ForwardExecutors (ILLIQ-AMIHUD-28D-W, BASISLV-PREMFADE-28D, XSECT-FUND-CARRY-7D) from the REAL identity manifest through the FAMILY_REGISTRY build_config/validate_config identity-pinning path; per-symbol tick mapping resolved from the sha256-verified archived exchangeInfo (055202f6b50b635e6be516f32cc1ac1fbdcbba9b8d284b6f66496b12d6aefb85, verified at every load, fail closed on mismatch) with tick_size_default=0.10 (BTCUSDT tick) as the fail-closed fallback ONLY for symbols outside the declared candidates; two cost books (CURRENT_CONSERVATIVE_COST 0.0005/1 tick primary; LINEAGE_COST per family: ILLIQ realizes the verbatim stress convention fee x1.5 +2 ticks -> 0.00075/2.0, PREMFADE/CARRY pin no numeric lineage fee so their LINEAGE book mirrors the current book, disclosed); frozen caps mirroring the smoke _caps_for derivation (CARRY 0.80/1.00/0.10/0.20 and PREMFADE gross 1.0 weights 0.125..0.30 via risk.caps_from_identity_params; ILLIQ equal-weight dollar+beta neutral from the engine config the adapter requires); snapshot_spec per executor contract (ILLIQ bars/15m over 20 declared candidates, PREMFADE basis_buckets/15m over 13 declared candidates, both lookback 29d+1h because the identity's 28d is a TRAILING COUNT of 2688 completed buckets and a literal 28d window is mathematically 10 buckets short after the C6 cutoff; CARRY funding_settlements/7d over the verbatim 7 traded symbols + explicit fill_symbols); feature_cutoff_offset_seconds=900.0 (G8 condition C6); schedules weekly_monday_0000z x2 + daily_0000z; namespace PROSPECTIVE; ledgers under start_guard.prospective_ledger_root. Main loop: every --interval (default 300s) runs run_due(now) per family in FIXED order (ILLIQ, PREMFADE, CARRY), never takes the heavy lock, records unexpected exceptions in heartbeat last_error and continues, writes <runtime_root>/runtime/heartbeat.json every loop with pid/loop_count/last_loop_utc/next_decision_per_family/last_completed/ledger_byte_counts/heartbeat_inode_vs_path_check (Q-13: os.fstat of the open handle vs os.stat of the path)/last_error; SIGTERM/SIGINT write a final heartbeat and exit 0. CLI: --shadow-start REQUIRED (absent => refuse, exit 2), --runtime-root (default results/prospective_shadow_v1), --once, --interval. PacedFetch (worker-lane transport injected through the frozen client's official fetch_fn injection point): min request gap + bounded 429/418 backoff honouring Retry-After, because a transient rate limit would otherwise burn a weekly event_id forever (DATA_BLOCKED records consume their deterministic event_id, ADJ1). replay_rehearsal.py: REPLAY_NOT_PROSPECTIVE rehearsal under e/replay_rehearsal/runtime/ (root-disjointness asserted), weekly families replay the most recent Monday 00:00:00Z, CARRY yesterday 00:00:00Z, run_due at decision+16m with from_utc=decision so exactly one decision executes with its fill bar complete; per-family evidence + loud UNAVAILABLE_FAIL_CLOSED blocks + REPLAY labels on every ledger file; ran for real against fapi.binance.com. tests/test_shv1_worker_config.py: 11 offline tests, all passing.",
+ "executor_construction": {
+  "ILLIQ-AMIHUD-28D-W": {
+   "adapter": "IlliqAmihudAdapter via FAMILY_REGISTRY + identity manifest entry (validate_config passed: identity pinning active)",
+   "schedule": "weekly_monday_0000z",
+   "snapshot": "bars/15m/29d+1h over 20 declared USDT-M candidates (historical 20-symbol convention; existence as TRADING PERPETUAL verified against the archived exchangeInfo at build)",
+   "caps": "target_gross 1.0 (gross_by_construction), hard_gross_cap 1.0, hard_abs_net_cap 0.0, dollar_neutral, btc_beta_neutral (tolerance 1e-6)",
+   "cost_books": {"CURRENT_CONSERVATIVE_COST": "0.0005 / 1 tick", "LINEAGE_COST": "0.00075 / 2.0 ticks (verbatim stress: fee x1.5, +2 ticks)"}
+  },
+  "BASISLV-PREMFADE-28D": {
+   "adapter": "BasislvPremfadeAdapter via FAMILY_REGISTRY + identity manifest entry",
+   "schedule": "weekly_monday_0000z",
+   "snapshot": "basis_buckets/15m/29d+1h over 13 declared pairs (12 designed eligible + BTCUSDT exclusion exercised)",
+   "caps": "gross 1.0, dollar_neutral, min_abs_weight 0.125, max_abs_weight 0.30 (caps_from_identity_params verbatim)",
+   "cost_books": {"CURRENT_CONSERVATIVE_COST": "0.0005 / 1 tick", "LINEAGE_COST": "0.0005 / 1 tick (no numeric lineage convention pinned; mirrored, disclosed)"}
+  },
+  "XSECT-FUND-CARRY-7D": {
+   "adapter": "XsectFundCarryAdapter via FAMILY_REGISTRY + identity manifest entry",
+   "schedule": "daily_0000z",
+   "snapshot": "funding_settlements/7d over the verbatim 7 traded symbols; fill_symbols = the same 7",
+   "caps": "target_gross 0.80, hard_gross_cap 1.00, hard_abs_net_cap 0.10, max_abs_weight 0.20 (caps_from_identity_params verbatim)",
+   "cost_books": {"CURRENT_CONSERVATIVE_COST": "0.0005 / 1 tick", "LINEAGE_COST": "0.0005 / 1 tick (no numeric lineage convention pinned; mirrored, disclosed)"}
+  }
+ },
+ "tick_mapping_coverage": {
+  "source": "research/control/prospective_shadow_v1/data_cost/raw/cross/exchangeInfo_fapi.json",
+  "archive_sha256_verified": "055202f6b50b635e6be516f32cc1ac1fbdcbba9b8d284b6f66496b12d6aefb85",
+  "CARRY": "7/7 traded symbols resolved to verbatim archive ticks (ETHUSDT 0.01, SOLUSDT 0.0100, BNBUSDT 0.010, XRPUSDT 0.0001, DOGEUSDT 0.000010, LINKUSDT 0.001, ADAUSDT 0.00010)",
+  "FAMILIES_1_2": "covering mapping for all 20 declared candidates resolved to verbatim archive ticks (superset of the cost-regime manifest's 8 measured pins), per cost_regime_manifest tick_size_roles.family1_family2 ('resolved at decision time from the same archived exchangeInfo bytes')",
+  "fallback": "tick_size_default 0.10 (BTCUSDT tick) for a fill symbol outside the declared candidates (never expected); 0.10 is NOT used as the primary tick for sub-dollar candidates (first rehearsal run measured OPUSDT at ~0.095 pricing 13,191 USDT one-tick slippage on a 12.5k fill - economically absurd, rejected)"
+ },
+ "rehearsal": {
+  "namespace": "REPLAY_NOT_PROSPECTIVE",
+  "runtime_root": "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/",
+  "evidence_file": "research/control/prospective_shadow_v1/e/replay_rehearsal/rehearsal_evidence.json",
+  "network": "real, keyless (fapi.binance.com public endpoints only)",
+  "overall_verdict": "PASS_WITH_FINDINGS",
+  "families": {
+   "ILLIQ-AMIHUD-28D-W": {
+    "decision_utc": "2026-09-14T00:00:00Z",
+    "records_written": 1,
+    "data_status": "OK",
+    "risk_status": "OK",
+    "accounting_status": "UNAVAILABLE_FAIL_CLOSED",
+    "fills": "7/8 target names filled; the 8th (XRPUSDT short) refused by the frozen no-leverage guard",
+    "ledger_sha256": "6f67013b2b316c8b6742f5353762196eeeb7d9dc5659221128f2f1090ca12578",
+    "ledger_bytes": 3732,
+    "verdict": "EXECUTED_WITH_FAIL_CLOSED_STATUS"
+   },
+   "BASISLV-PREMFADE-28D": {
+    "decision_utc": "2026-09-14T00:00:00Z",
+    "records_written": 1,
+    "data_status": "OK",
+    "risk_status": "OK",
+    "accounting_status": "UNAVAILABLE_FAIL_CLOSED",
+    "fills": "7/8 target names filled; the 8th (SOLUSDT short) refused by the frozen no-leverage guard",
+    "ledger_sha256": "db9a0527a41e797dfb864358e943dd04fc6b88f27b909d82d9be98aba023e5dd",
+    "ledger_bytes": 3451,
+    "verdict": "EXECUTED_WITH_FAIL_CLOSED_STATUS"
+   },
+   "XSECT-FUND-CARRY-7D": {
+    "decision_utc": "2026-09-13T00:00:00Z",
+    "records_written": 1,
+    "data_status": "OK",
+    "risk_status": "OK",
+    "accounting_status": "OK",
+    "fills": "4/4 (gross 0.80 books fit the guard)",
+    "ledger_sha256": "8f99fe9287b4d2b6b6db1f89120901f8e7b61230b69037871a1c8e9d080a6c30",
+    "ledger_bytes": 2399,
+    "verdict": "EXECUTED_OK"
+   }
+  },
+  "record_validation": "all three ledger records pass events.validate_event_record; no_order_proof emitted_action_types == [TARGET_INTENT]; cycle_id pinned PROSPECTIVE-SHADOW-V1",
+  "labels": "every ledger file carries a sibling *.REPLAY_NOT_PROSPECTIVE.label file; the evidence JSON is labeled at top level and per family"
+ },
+ "changed_paths": [
+  "research/control/prospective_shadow_v1/e/shadow_worker.py",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal.py",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/rehearsal_evidence.json",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/ILLIQ-AMIHUD-28D-W.jsonl",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/ILLIQ-AMIHUD-28D-W.jsonl.REPLAY_NOT_PROSPECTIVE.label",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/BASISLV-PREMFADE-28D.jsonl",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/BASISLV-PREMFADE-28D.jsonl.REPLAY_NOT_PROSPECTIVE.label",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/XSECT-FUND-CARRY-7D.jsonl",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/XSECT-FUND-CARRY-7D.jsonl.REPLAY_NOT_PROSPECTIVE.label",
+  "research/control/prospective_shadow_v1/e/handoff_shv1-e-worker.json",
+  "tests/test_shv1_worker_config.py"
+ ],
+ "tests": [
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_worker_config.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "11 passed (build_executors over the real identity manifest; PROSPECTIVE refusal without shadow start; tick mapping from sha256-verified archive + unknown-symbol default 0.10; archive-mismatch fail-closed; schedule constants 2 weekly + 1 daily; --once heartbeat keys + zero prospective ledger events; PacedFetch retry/exhaustion/default-feed injection; identity verdict labels pinned)"
+  },
+  {
+   "command": "research/control/prospective_shadow_v1/e/replay_rehearsal.py (real keyless network)",
+   "exit_code": 0,
+   "verdict": "PASS_WITH_FINDINGS",
+   "detail": "3/3 families executed exactly one replay decision each against live fapi.binance.com data; CARRY fully OK; ILLIQ + PREMFADE executed with honest accounting UNAVAILABLE_FAIL_CLOSED tail (see known_limitations[1]); overall verdict and per-family evidence in rehearsal_evidence.json"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m compileall -q research/control/prospective_shadow_v1/e",
+   "exit_code": 0,
+   "verdict": "PASS"
+  },
+  {
+   "command": "git diff --check",
+   "exit_code": 0,
+   "verdict": "PASS"
+  },
+  {
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_engine_smoke.py -q (insurance: frozen engine untouched)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "detail": "5 passed"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "HEADLINE FINDING (frozen engine semantics, needs an owner decision): the two gross-1.0 books (ILLIQ, PREMFADE) deterministically leave their LAST short unfilled in the production executor. The frozen no-leverage guard (accounting.apply_fill: opening sell refused when gross_after > equity + 1e-9) compares against equity already reduced by this rebalance's fee/slippage (~30-60 USDT on 100k), while the book sizes on start-of-rebalance equity at gross exactly 1.0. Result: 7/8 fills, accounting_status UNAVAILABLE_FAIL_CLOSED, gross ~0.8755. This is the executor's DESIGNED, TESTED behavior (tests/test_shv1_executor.py::test_opening_short_still_fails_cash_checks_when_headroom_insufficient) and the G8 remediation explicitly froze 'no execution buffer, no sell slicing' (ADJ3). This lane cannot and does not modify the frozen engine; the E phase would observe this tail-refusal every weekly decision unless an owner-authorized engine remediation lane (e.g. cost-aware sizing or a declared tolerance) is dispatched. CARRY (gross 0.80) is unaffected.",
+  "F1/F2 candidate universes are declared by this worker (20 ILLIQ bars candidates; 13 PREMFADE basis pairs): the identity manifests deliberately do NOT enumerate the historical staged symbol lists (P2 data manifest: 'This lane invents no symbol list'). Composition mirrors the Q-smoke candidates plus major deep USDT-M perps, all verified TRADING PERPETUAL in the archived exchangeInfo; PIT listing+DV eligibility is still resolved per decision by the adapters. PREMFADE is sized to the frozen eligibility band (min_eligible 12; the min_abs_weight 0.125 cap admits only n_eligible 12-14, so a larger universe would be risk-blocked by the frozen caps).",
+  "ILLIQ engine numeric thresholds (identity pins the rules, not numbers): min_listing_age_days 27.0 (largest whole-day value decidable from the fetch window; any threshold >= the window auto-rejects every symbol because listing evidence is the first bar in the snapshot), min_daily_dollar_volume 10,000,000 USDT trailing mean, btc_beta_tolerance 1e-6. ILLIQ btc_betas use the STRUCTURAL-BETA convention (unit betas: the frozen btc_beta_neutral cap verifies the equal-count long/short mirror, book beta exactly 0); no measured 90d daily beta surface exists in this lane's scope - an owner tightening before/at activation.",
+  "Snapshot fetch lookbacks are 29d+1h for the two 28d families: the identity's 28d is the formation COUNT (2688 = 28x96 trailing completed buckets; 28 daily returns + 1 base day) and a literal 28d window yields only 2678 completed buckets after the C6 cutoff - every decision would be DATA_BLOCKED. The adapters re-enforce the exact trailing-2688/29-date identity and 29d max span; the extra window is transport only. Same sizing as the Q-lane smoke (29 days).",
+  "PREMFADE/CARRY LINEAGE_COST books mirror CURRENT_CONSERVATIVE_COST: their identity entries pin no numeric lineage fee/slippage (verbatim conventions are structural: the fill rule and the funding sign/cadence). ILLIQ's LINEAGE book realizes its verbatim stress convention (fee x1.5, +2 ticks) on the frozen 0.0005 base.",
+  "PacedFetch adds transport pacing/retry (min gap 0.25s, <= 6 attempts, Retry-After honoured) through the frozen client's official fetch_fn injection point only; endpoints, bytes, allowlist and PIT semantics are untouched. After the retry cap a failure still surfaces honestly as DATA_BLOCKED (a consumed event_id).",
+  "The rehearsal evidence and the three replay ledgers committed under e/replay_rehearsal/ are REPLAY_NOT_PROSPECTIVE bytes: evidence of engine rehearsal, NOT prospective observations. They are labeled as such (sidecar label files + evidence fields)."
+ ],
+ "incidents": [
+  "Rehearsal run 1: PREMFADE recorded DATA_BLOCKED - HTTP 429 on /futures/data/basis (unpaced transport). Root cause: burst of ~78 basis pages with no pacing. Fix: PacedFetch in the worker lane (frozen client's fetch_fn injection point). Consequence avoided in production: an unpaced transient 429 would burn the weekly event_id permanently (ADJ1). Rehearsal re-run from a clean runtime: data OK.",
+  "Rehearsal run 1: ILLIQ sleeve lost 16.3% equity to pseudo-slippage - the packet's tick_size_default 0.10 was initially used as the covering price for sub-dollar candidates (OPUSDT ~0.095: one tick = 13,191 USDT on a 12.5k fill; plus APT/ATOM/ETC), which also cascaded into extra no-leverage refusals. Fix: covering mapping resolved from the verified archive for all declared candidates, per cost_regime_manifest.tick_size_roles.family1_family2 and the packet's own statement that the archive is 'the per-symbol tick source for ALL symbols'; 0.10 remains the fallback for symbols outside the declared candidates. Tests updated to pin this. Rehearsal re-run: sane costs (fee 43.75 / slippage 14.36 on ILLIQ).",
+  "orchestrator MCP publish tool (mcp__plugin_quant-research-orchestrator_orchestrator__orchestrator_publish_handoff) is not available in this lane's function set; the handoff is delivered as the committed JSON artifact per the packet's fallback instruction."
+ ],
+ "tree_status": "clean after commit (only the declared changed_paths staged by explicit pathspec; __pycache__ gitignored; branch orca/shv1-e-worker; no prospective ledger bytes exist anywhere - results/prospective_shadow_v1 untouched by this lane)",
+ "workers": 0,
+ "outputs": {
+  "research/control/prospective_shadow_v1/e/shadow_worker.py": "e556d30ba0c05ec68ad09cb844088a8b7cbb837ab60c8c393ec7aa3addcfe03b",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal.py": "08c69b6588d0dfdf197c0c0d7ae682dd2a558d72438ffe44a3174d3430fad634",
+  "tests/test_shv1_worker_config.py": "0759b6477d86a10365373b44024f82a13376cf08f7d57afc53b920d9eba261f1",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/rehearsal_evidence.json": "4b5ade00b83dbaa8c926ea91198946c5bf03e00c1d1af19cddc79eeefe3a2573",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/ILLIQ-AMIHUD-28D-W.jsonl": "6f67013b2b316c8b6742f5353762196eeeb7d9dc5659221128f2f1090ca12578",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/BASISLV-PREMFADE-28D.jsonl": "db9a0527a41e797dfb864358e943dd04fc6b88f27b909d82d9be98aba023e5dd",
+  "research/control/prospective_shadow_v1/e/replay_rehearsal/runtime/replay_not_prospective/XSECT-FUND-CARRY-7D.jsonl": "8f99fe9287b4d2b6b6db1f89120901f8e7b61230b69037871a1c8e9d080a6c30"
+ },
+ "recommended_next_action": "Surface the gross-1.0 tail-short finding (known_limitations[1]) to the owner with the rehearsal records as evidence: either accept the deterministic 7/8 fill + UNAVAILABLE_FAIL_CLOSED weekly status as shadow-reality observation, or dispatch an owner-authorized engine remediation lane BEFORE writing SHADOW_START_UTC. Then, after the owner types the fresh GO phrase (two-key rule, G8), write SHADOW_START_UTC once and launch the worker as a supervised process (e.g. --once under a supervisor loop or a long-running process with --interval 300) from the worktree root with --runtime-root results/prospective_shadow_v1; heartbeat monitoring watches results/prospective_shadow_v1/runtime/heartbeat.json (staleness > ~2 intervals = crashed loop); the dashboard lane reads only start_guard.prospective_ledger_root(runtime_root)."
+}
