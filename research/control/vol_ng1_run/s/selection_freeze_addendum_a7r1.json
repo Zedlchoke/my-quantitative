@@ -1,0 +1,226 @@
+{
+ "schema": "vol_ng1_selection_freeze_addendum@1",
+ "addendum_id": "selection_freeze_addendum_a7r1",
+ "cycle_id": "VOL-NG1",
+ "task_id": "vol-ng1-a7r1-remediation",
+ "role": "quant-implementer (A7-R1 remediation lane)",
+ "invocation": "lead-bg-vol-a7r1",
+ "authored_utc": "2026-09-14T03:02:36.292989+00:00",
+ "base_commit": "57d5d639ffed946bb1ea640a215d67f86c5289c0",
+ "branch": "orca/vol-ng1-integration",
+ "pre_scored_declaration": {
+  "scored_cells": 0,
+  "outcome_numbers_on_real_data": "NONE anywhere in this remediation (structural re-pass on synthetic bars only; sanitized facts: decision counts and control-executable verdicts)",
+  "lawfulness": "pre-scored, disclosed amendment authored OUTCOME-BLIND: zero cells scored, no outcome evidence exists, so re-freezing the control-battery semantics cannot have been fitted to any result. This executes the audit's own recommended owner action for H1 ('re-freeze ... explicitly') via a disclosed addendum; the frozen freeze bytes are left byte-identical."
+ },
+ "authority": {
+  "audit_artifact": {
+   "path": "research/control/vol_ng1_run/audits/a7_prelaunch_vol_ng1.json",
+   "committed_at_commit": "57d5d639ffed946bb1ea640a215d67f86c5289c0",
+   "sha256_as_committed": "db1896e15c39b23f51f9e4de33b2cbeb5c4fa4f065660a5773a64054b406aeab",
+   "verdict": "REFUSED (VOL_NG1_S0_LAUNCH_REFUSED)",
+   "findings_remediated": [
+    "H1",
+    "M1"
+   ],
+   "status": "READ-ONLY: the audit artifact was not modified by this lane"
+  },
+  "base_freeze": {
+   "path": "research/control/vol_ng1_run/s/selection_freeze.json",
+   "sha256_unchanged": "dd910bcb9f5282f7f0e3bf8b8551ece1e46b7b24e9a39506af05d77ed6abf5cc",
+   "bytes_modified_by_this_addendum": false,
+   "amendment_mechanism": "this addendum only; consumers must read freeze + addendum together"
+  }
+ },
+ "amendments": [
+  {
+   "amendment_id": "A1",
+   "finding_id": "H1",
+   "severity": "HIGH",
+   "title": "index-only shadow (A4-P2) re-specified as the hypothetical index-point book; the degenerate same-book control is abolished",
+   "defect": "battery.index_only_shadow for FAMILY_A4_P2 re-ran the arm's own ETP book with the same index-only state, so control == arm by construction and the evaluator's control_reproduces veto fired tautologically exactly when R1 passed: 3 of 6 booked cells could not produce a survivor regardless of outcomes.",
+   "amended_semantics": "the A4-P2 index-only shadow scores HYPOTHETICAL positions on the index series itself: `state` units of the VIX close marked in INDEX POINTS at the V7 close+1 re-clock sessions, NO ETP leg anywhere in the book and NO ETP costs (an index is not a tradable instrument).  The shadow's DECISION STATE remains the arm's frozen rule on the same index inputs (state_source_law unchanged); only the CONTROL BOOK convention is amended.  Plan section 1a semantics restored: 'the same rule driven by the vol index series alone with no ETP leg -- is the ETP decision beating its own index re-clock?'",
+   "declared_convention": {
+    "mark_series": "VIX",
+    "unit": "index points of the VIX close (1 unit = 1.0 point)",
+    "costs": "NONE: no ETP leg, no ETP costs; the index-point control book carries no cost lines",
+    "distinct_from_arm": "MEASURED at the book level (ordered round-trip identity rows including the instrument): True whenever either book is non-empty, for ANY input; None when both books are empty (disclosed unmeasurable; R2 limb (a) is then uncomputable at E: fail-closed NOT_RUN, never an inferred PASS)"
+   },
+   "effect": "the control book is a genuinely DIFFERENT book from the arm's ETP book for every cell, so the frozen R2 out-earning limb is a meaningful, non-tautological falsification test; the D1 A4-P2 kill clause ('not distinct from its own index re-clock -> the family dies') stays binding as a REAL test at E instead of firing by construction.  The 6-cell budget stands; no cell is re-booked or pre-dead.",
+   "unchanged_invariants": [
+    "evaluator.control_reproduces and evaluate_r2 semantics UNCHANGED (threshold 0.5x per round trip; the threshold becomes meaningful against a non-degenerate control)",
+    "arm configs and arm_config_digests UNCHANGED (recomputed, match)",
+    "the A4-P2 decision-state rule (slope second difference + latch) UNCHANGED",
+    "A5-P2 index-only shadow UNCHANGED per the freeze's a5_p2_spec"
+   ],
+   "implementation_binding": [
+    "research/assets/vol_ng1/runners/battery.py: index_point_book, books_distinct, index_only_shadow (arm_result parameter)",
+    "research/assets/vol_ng1/runners/config.py: SHADOW_MARK_SERIES",
+    "tests/test_vol_ng1_i.py: hand-computed index-point book fixtures"
+   ]
+  },
+  {
+   "amendment_id": "A2",
+   "finding_id": "M1",
+   "severity": "MEDIUM",
+   "title": "expense-cost convention pinned: the R5 stress net INCLUDES the expense drag, matching the frozen P2 cost ceilings",
+   "defect": "net_stress_usd_total excluded the explicit expense line while the frozen P2 round-trip cost ceilings INCLUDE expense: the two A4-P2 kill routes (R1/R5 ceiling clearance vs R5 stress net) used inconsistent expense conventions and could disagree for a marginal arm; the anti-double-count rationale appeared nowhere in the freeze or cost contract.",
+   "amended_semantics": "net_stress_usd_total = gross - execution - Q-16 path - EXPENSE at every tier (battery.EXPENSE_IN_NET_STRESS = True).  The expense line stays a tier-invariant mechanism line (never re-scaled); the binding convention is the frozen P2 ceilings' convention (expense included).",
+   "effect": "both A4-P2 kill routes share ONE expense convention before any R5/family-kill verdict at E; the convention is pinned in code, in this addendum, and hand-computed in the test suite.",
+   "unchanged_invariants": [
+    "the P1 kernel books are UNCHANGED (execution cost once per fill only; path/expense remain explicit mechanism lines, never folded into fills)",
+    "the frozen P2 cost ceilings and the cost contract bytes UNCHANGED"
+   ],
+   "implementation_binding": [
+    "research/assets/vol_ng1/runners/battery.py: EXPENSE_IN_NET_STRESS, cost_path_control totals",
+    "tests/test_vol_ng1_i.py: hand-computed ladder (expense 1.2 on the 10_000 fixture; nets 738.8/638.8/538.8) + full-cell property"
+   ]
+  }
+ ],
+ "unchanged_affirmations": {
+  "freeze_bytes": {
+   "sha256": "dd910bcb9f5282f7f0e3bf8b8551ece1e46b7b24e9a39506af05d77ed6abf5cc",
+   "modified": false
+  },
+  "arm_config_digests_recomputed_unchanged": {
+   "VOLNG1-A4-P2-ANCHOR": {
+    "budget_cell": 1,
+    "role": "ANCHOR",
+    "arm_config_digest_recomputed": "ddc4358bb869b69208a1a96eefc65796f9acdd5cfb5e25b0cb8bb3d039070412",
+    "recorded_in_freeze": "ddc4358bb869b69208a1a96eefc65796f9acdd5cfb5e25b0cb8bb3d039070412",
+    "match": true
+   },
+   "VOLNG1-A4-P2-NEIGH-PERSIST": {
+    "budget_cell": 2,
+    "role": "NEIGHBOUR_CONSERVATIVE",
+    "arm_config_digest_recomputed": "0175347e349e64f1ed65f15c7531b886c0ae08bb7a75fbf6ca3fd6191c70d827",
+    "recorded_in_freeze": "0175347e349e64f1ed65f15c7531b886c0ae08bb7a75fbf6ca3fd6191c70d827",
+    "match": true
+   },
+   "VOLNG1-A4-P2-NEIGH-FAST": {
+    "budget_cell": 3,
+    "role": "NEIGHBOUR_AGGRESSIVE",
+    "arm_config_digest_recomputed": "af90ee2fef8f55e98bbd183c2d43a0151bf6df044103e63977f59669af073a36",
+    "recorded_in_freeze": "af90ee2fef8f55e98bbd183c2d43a0151bf6df044103e63977f59669af073a36",
+    "match": true
+   },
+   "VOLNG1-A5-P2-ANCHOR": {
+    "budget_cell": 4,
+    "role": "ANCHOR",
+    "arm_config_digest_recomputed": "c3beee1fb66583fe64deb1919845a967563bb79ed1c251c934370419ae23c4c5",
+    "recorded_in_freeze": "c3beee1fb66583fe64deb1919845a967563bb79ed1c251c934370419ae23c4c5",
+    "match": true
+   },
+   "VOLNG1-A5-P2-NEIGH-STRICT": {
+    "budget_cell": 5,
+    "role": "NEIGHBOUR_CONSERVATIVE",
+    "arm_config_digest_recomputed": "66ae890a9d966de7b88a478a73371f8b20981ce22cd13c784b0d64b9ff6a84db",
+    "recorded_in_freeze": "66ae890a9d966de7b88a478a73371f8b20981ce22cd13c784b0d64b9ff6a84db",
+    "match": true
+   },
+   "VOLNG1-A5-P2-NEIGH-FAST": {
+    "budget_cell": 6,
+    "role": "NEIGHBOUR_AGGRESSIVE",
+    "arm_config_digest_recomputed": "7fcec69ba29516c7e808684b629bcbbcb8bdf9e3819132288f560f133c484941",
+    "recorded_in_freeze": "7fcec69ba29516c7e808684b629bcbbcb8bdf9e3819132288f560f133c484941",
+    "match": true
+   }
+  },
+  "r1_r6_bounds_unchanged": {
+   "rule_order": [
+    "R1 EXPECTANCY: after-cost expectancy > 0 on the PRIMARY NET book at cost tier 2.0 (Q-16 path component included; cost charged once per fill)",
+    "R2 CONTROL_KILL: the arm's index-only re-clock control out-earns the arm same-sign at >= 0.5x per round trip (falsification-by-control law), OR the calendar-clock shadow placement is not distinct from the arm placement, OR the seeded placebo produces a significant differential placement -- each is a VETO. This is the binding site of the VOLNG1-A5-P2 D1 falsification rule (non-distinctness kill).",
+    "R3 FOLDS: >= 2/3 frozen temporal folds with positive after-cost expectancy (folds frozen below; no fold boundary moves after any scored number)",
+    "R4 PROFIT_FACTOR: profit factor >= 1.10 on the PRIMARY NET book with margin recorded (P-2)",
+    "R5 STRESS: after-cost expectancy still > 0 under the stress convention -- the FULL measured path-cost ladder at tier 2.0 PRIMARY including every leg's Q-16 roll/decay path component, the A4-P2 forced-rebalance multiplier and the A5-P2 both-bucket rotation costs. This is the binding site of the VOLNG1-A4-P2 D1 falsification rule (cost-ceiling family kill).",
+    "R6 NON_CONCENTRATION: drop-one-fold survival AND no single round trip > 50% of the cell's gross"
+   ],
+   "pf_bar": 1.1,
+   "control_kill_ratio": 0.5,
+   "min_positive_folds": 2,
+   "folds_total": 3,
+   "max_single_round_trip_gross_share": 0.5,
+   "frozen_folds": [
+    {
+     "fold": "F1",
+     "window": [
+      "2019-01-24",
+      "2021-09-30"
+     ]
+    },
+    {
+     "fold": "F2",
+     "window": [
+      "2021-10-01",
+      "2024-02-29"
+     ]
+    },
+    {
+     "fold": "F3",
+     "window": [
+      "2024-03-01",
+      "2026-09-10"
+     ]
+    }
+   ],
+   "survivor_law": "survivor := an arm passes ALL of R1..R6 -> PROVISIONAL_STAGE_A_SURVIVOR (S1 stays SEALED; no rescue after scored numbers are visible)"
+  },
+  "battery_constants_unchanged": {
+   "calendar_shift_k_sessions": 5,
+   "placebo_seed": 20260912
+  },
+  "no_parameter_tuning": "no frozen parameter was moved: the amendments touch ONLY the control-book convention (A1) and the expense aggregation convention (A2); every threshold, lookback, axis, seed, fold and bound is byte-identical",
+  "no_d1_d2_s_substance_change": "D1 proposals, the D2 novelty panel and the S freeze substance are UNCHANGED; the freeze file bytes are untouched (sha above); this addendum is the only new S-side artifact",
+  "budget_unchanged": "6/6 cells stand; no re-booking"
+ },
+ "structural_re_pass_synthetic": {
+  "law": "sanitized structural facts ONLY (counts/booleans); NO outcome numbers on real data anywhere",
+  "substrate": "deterministic synthetic bars + explicit event tables (dryrun.synthetic_universe(180)); NOT real data",
+  "cells": {
+   "VOLNG1-A4-P2-ANCHOR": {
+    "budget_cell": 1,
+    "decisions": 175,
+    "invalid_instants": 4,
+    "refused_tail": 1,
+    "arm_round_trips": 108,
+    "index_point_book_round_trips": 27,
+    "index_point_book_fills": 54,
+    "distinct_from_arm": true
+   },
+   "VOLNG1-A4-P2-NEIGH-PERSIST": {
+    "budget_cell": 2,
+    "decisions": 174,
+    "invalid_instants": 5,
+    "refused_tail": 1,
+    "arm_round_trips": 0,
+    "index_point_book_round_trips": 0,
+    "index_point_book_fills": 0,
+    "distinct_from_arm": "None (both books empty on the synthetic universe: the arm never leaves FLAT; disclosed unmeasurable, fail-closed NOT_RUN at E)"
+   },
+   "VOLNG1-A4-P2-NEIGH-FAST": {
+    "budget_cell": 3,
+    "decisions": 176,
+    "invalid_instants": 3,
+    "refused_tail": 1,
+    "arm_round_trips": 292,
+    "index_point_book_round_trips": 73,
+    "index_point_book_fills": 146,
+    "distinct_from_arm": true
+   },
+   "VOLNG1-A5-P2-ANCHOR": {
+    "budget_cell": 4,
+    "distinct_from_arm": true
+   },
+   "VOLNG1-A5-P2-NEIGH-STRICT": {
+    "budget_cell": 5,
+    "distinct_from_arm": true
+   },
+   "VOLNG1-A5-P2-NEIGH-FAST": {
+    "budget_cell": 6,
+    "distinct_from_arm": true
+   }
+  },
+  "tests": "tests/test_vol_ng1_i.py: 45 passed (hand-computed index-point book fixtures, ANY-input distinctness proofs, M1 expense convention, all prior invariants re-run)"
+ },
+ "scope_note": "this addendum amends ONLY the i_phase_control_battery execution semantics for the A4-P2 index-only shadow and the cost_path_control stress-net aggregation.  The A5-P2 a5_p2_spec, the placebo, calendar-clock and invalid-null controls, the representation freeze, the cost binding and the R1-R6 rule set are untouched."
+}

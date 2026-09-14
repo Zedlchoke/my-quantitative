@@ -14,7 +14,12 @@ Hand-computed fixtures:
   40 -> 44, 2.0% stress spread) with exact per-tier NET books;
 - the cost-path control's per-tier ladder on a single hand-built round
   trip (execution scaled by tier, Q-16 path line explicit and
-  tier-invariant);
+  tier-invariant) with the M1 expense-convention pin (net stress
+  INCLUDES the expense line, matching the frozen P2 cost ceilings);
+- the A4-P2 index-only shadow's HYPOTHETICAL index-point book (audit
+  H1 remediation, addendum selection_freeze_addendum_a7r1.json): exact
+  hand-worked round trips on the VIX close, no ETP leg, no ETP costs,
+  book-level distinctness from the arm book for ANY input;
 - the placebo law (matched marginals, destroyed ordering, seed
   determinism);
 - R1-R6 per-rule PASS/FAIL/NOT_RUN fixtures.
@@ -516,10 +521,13 @@ def test_runner_kernel_events_cost_once_per_fill(syn_ctx6, syn_universe):
 # --------------------------------------------------------------------------- #
 def test_cost_path_control_hand_computed_ladder():
     """One hand-built VXX round trip: notional 10_000, 40 -> 44,
-    spread 2.0%, path adverse tail 12 bps/day, held 5 sessions.
-      execution(t) = 2 fills x notional x 1% x t  = 200/300/400
-      path line    = 10_000/1e4 x 12 bps x 5      = 60 (tier-invariant)
-      net stress   = 1_000 - exec(t) - 60         = 740/640/540
+    spread 2.0%, path adverse tail 12 bps/day, expense 0.24 bps/day,
+    held 5 sessions (M1 convention pin: the expense drag IS in the
+    net, matching the frozen P2 round-trip cost ceilings).
+      execution(t) = 2 fills x notional x 1% x t   = 200/300/400
+      path line    = 10_000/1e4 x 12 bps x 5       = 60 (tier-invariant)
+      expense line = 10_000/1e4 x 0.24 bps x 5     =  1.2 (tier-inv.)
+      net stress   = 1_000 - exec(t) - 60 - 1.2    = 738.8/638.8/538.8
     """
     rt = {"leg": "VXX", "direction": 1, "entry_session": "d0",
           "entry_price": 40.0, "exit_session": "d5", "exit_price": 44.0,
@@ -543,11 +551,47 @@ def test_cost_path_control_hand_computed_ladder():
     for t in ("1.0", "1.5", "2.0"):
         assert tiers[t]["q16_path_line_usd_total_explicit"] == \
             pytest.approx(60.0)
-    assert tiers["1.0"]["net_stress_usd_total"] == pytest.approx(740.0)
-    assert tiers["1.5"]["net_stress_usd_total"] == pytest.approx(640.0)
-    assert tiers["2.0"]["net_stress_usd_total"] == pytest.approx(540.0)
+        assert tiers[t]["expense_line_usd_total_explicit"] == \
+            pytest.approx(1.2)          # tier-invariant mechanism line
+    assert tiers["1.0"]["net_stress_usd_total"] == pytest.approx(738.8)
+    assert tiers["1.5"]["net_stress_usd_total"] == pytest.approx(638.8)
+    assert tiers["2.0"]["net_stress_usd_total"] == pytest.approx(538.8)
+    # the M1 pin is disclosed on the artifact itself
+    assert bat.EXPENSE_IN_NET_STRESS is True
+    assert cpc["expense_in_net_stress"] is True
+    assert "expense" in cpc["q16_law"]
     assert cpc["n_fills"] == 2 and cpc["n_round_trips"] == 1
     assert cpc["buckets_present"] == ["SHORT"]
+
+
+def test_m1_expense_convention_net_includes_expense_full_cell(syn_ctx6,
+                                                              syn_universe):
+    """M1 property on a full synthetic A4 cell: for EVERY tier,
+    net_stress_usd_total == gross - execution - Q-16 path - expense,
+    and the expense line re-derives exactly from the frozen per-leg
+    bps x notional x held sessions.  Both A4-P2 kill routes (P2
+    ceiling clearance and the R5 stress net) now share ONE expense
+    convention."""
+    assert bat.EXPENSE_IN_NET_STRESS is True
+    runner = ar.runner_for_arm(cfg.assemble_arm_configs()[
+        "VOLNG1-A4-P2-ANCHOR"])
+    res = ar.run_cell(runner, syn_ctx6, syn_universe["cost_source"])
+    cpc = bat.cost_path_control(res, syn_universe["cost_source"])
+    assert cpc["n_round_trips"] == len(res.round_trips) > 0
+    gross = sum(e["book"]["gross_pnl_usd"] for e in res.kernel_events)
+    expenses = set()
+    for tot in cpc["totals_by_tier"].values():
+        assert tot["net_stress_usd_total"] == pytest.approx(
+            gross - tot["execution_cost_usd_total"]
+            - tot["q16_path_line_usd_total_explicit"]
+            - tot["expense_line_usd_total_explicit"])
+        expenses.add(tot["expense_line_usd_total_explicit"])
+    assert len(expenses) == 1                 # tier-invariant
+    src = syn_universe["cost_source"]
+    want_expense = sum(rt["notional_usd"] / 1e4
+                       * src[rt["leg"]]["expense_bps_per_day"]
+                       * rt["held_sessions"] for rt in res.round_trips)
+    assert expenses.pop() == pytest.approx(want_expense)
 
 
 def test_cost_path_control_pays_both_buckets_on_rotations(syn_ctx6,
@@ -568,14 +612,17 @@ def test_cost_path_control_pays_both_buckets_on_rotations(syn_ctx6,
 
 
 # --------------------------------------------------------------------------- #
-# index-only shadow
+# index-only shadow (audit H1 remediation: hypothetical index-point book)
 # --------------------------------------------------------------------------- #
-def test_a5_index_only_shadow_consumes_no_etp_price(syn_ctx6):
+def test_a5_index_only_shadow_consumes_no_etp_price(syn_ctx6,
+                                                    syn_universe):
     runner = ar.runner_for_arm(cfg.assemble_arm_configs()[
         "VOLNG1-A5-P2-ANCHOR"])
-    shadow = bat.index_only_shadow(runner, syn_ctx6)
+    res = ar.run_cell(runner, syn_ctx6, syn_universe["cost_source"])
+    shadow = bat.index_only_shadow(runner, syn_ctx6, arm_result=res)
     assert shadow.notes["no_etp_price_in_state"] is True
     assert shadow.distinct_from_arm is True     # arm consumes ETP sides
+    assert shadow.book == {}    # scored control book at E (freeze spec)
     # invariance proof: destroying the ETP series cannot move the shadow
     ctx2 = dict(syn_ctx6)
     ctx2["adj"] = {leg: {d: 1.0 for d in syn_ctx6["grid"]}
@@ -584,11 +631,178 @@ def test_a5_index_only_shadow_consumes_no_etp_price(syn_ctx6):
         ctx2, 0.5, 2) == shadow.decision_state
 
 
-def test_a4_index_only_shadow_is_the_arm_state_by_law(syn_ctx6):
+def test_a4_index_shadow_state_is_arm_state_but_book_is_index_points(
+        syn_ctx6, syn_universe):
+    """Post-H1 law (addendum selection_freeze_addendum_a7r1.json): the
+    shadow's DECISION STATE is still the arm's rule on the same index
+    inputs (the frozen state_source_law), but the CONTROL is the
+    hypothetical index-point book -- NOT the arm's ETP book.  The
+    pre-remediation control re-ran the ETP book with the same state,
+    so control == arm and R2's control_reproduces veto fired
+    tautologically."""
     runner = ar.SlopeAccelerationRunner("VOLNG1-A4-P2-m3", _a4_arm(3))
-    shadow = bat.index_only_shadow(runner, syn_ctx6)
+    res = ar.run_cell(runner, syn_ctx6, syn_universe["cost_source"])
+    shadow = bat.index_only_shadow(runner, syn_ctx6, arm_result=res)
     assert shadow.decision_state == runner.build_state(syn_ctx6)
     assert shadow.notes["no_etp_price_in_state"] is True
+    assert shadow.notes["no_etp_price_in_book"] is True
+    assert shadow.book["control_book"] == "index_point_book"
+    assert shadow.book["mark_series"] == cfg.SHADOW_MARK_SERIES == "VIX"
+    assert shadow.book["n_round_trips"] > 0
+    assert shadow.book["n_fills"] == 2 * shadow.book["n_round_trips"]
+    assert shadow.distinct_from_arm is True
+    # without the arm result the distinctness is honestly NOT measured
+    # (disclosed None, never an assumed value)
+    unmeasured = bat.index_only_shadow(runner, syn_ctx6)
+    assert unmeasured.distinct_from_arm is None
+
+
+def test_a4_index_point_book_hand_computed():
+    """Hand-worked hypothetical index-point book on the m=2 hand state
+    (expected states [N,N,N,+1,+1,0,-1,-1,-1,-1]) with VIX closes
+      v = [20.0, 20.1, 20.2, 20.3, 21.0, 21.5, 20.8, 19.5, 19.0, 18.5]
+    V7 decisions: d3->d4 +1, d4->d5 +1, d5->d6 0, d6->d7 -1, d7->d8 -1,
+    d8->d9 -1; the d9 decision is refused (final grid session).
+    Book: open +1 unit at d4@21.0; hold; state -> 0 closes at d6@20.8
+    (signal_flat; gross = 20.8 - 21.0 = -0.2 index points, held 2);
+    open -1 unit at d7@19.5; hold; window-tail close at d9@18.5
+    (gross = -(18.5 - 19.5) = +1.0, held 2).  No cost lines exist."""
+    vix = [20.0, 20.1, 20.2, 20.3, 21.0, 21.5, 20.8, 19.5, 19.0, 18.5]
+    runner = ar.SlopeAccelerationRunner("VOLNG1-A4-P2-m2", _a4_arm(2))
+    ctx = _a4_hand_ctx(vix_path=vix)
+    shadow = bat.index_only_shadow(runner, ctx)
+    assert [shadow.decision_state[d] for d in ctx["grid"]] == \
+        A4_EXPECTED[2]
+    assert shadow.refused_tail_decisions == 1
+    assert shadow.invalid_instants == 3
+    book = shadow.book
+    assert book["control_book"] == "index_point_book"
+    assert book["mark_series"] == "VIX"
+    assert book["n_round_trips"] == 2 and book["n_fills"] == 4
+    rt1, rt2 = book["round_trips"]
+    assert rt1["instrument"] == "VIX_index_close"
+    assert rt1["units"] == 1.0 and rt1["direction"] == 1
+    assert rt1["entry_session"] == ctx["grid"][4]
+    assert rt1["entry_close"] == pytest.approx(21.0)
+    assert rt1["exit_session"] == ctx["grid"][6]
+    assert rt1["exit_close"] == pytest.approx(20.8)
+    assert rt1["exit_reason"] == "signal_flat"
+    assert rt1["held_sessions"] == 2
+    assert rt1["gross_index_points"] == pytest.approx(-0.2)
+    assert rt2["instrument"] == "VIX_index_close"
+    assert rt2["units"] == -1.0 and rt2["direction"] == -1
+    assert rt2["entry_session"] == ctx["grid"][7]
+    assert rt2["entry_close"] == pytest.approx(19.5)
+    assert rt2["exit_session"] == ctx["grid"][9]
+    assert rt2["exit_close"] == pytest.approx(18.5)
+    assert rt2["exit_reason"] == "forced_window_end"
+    assert rt2["held_sessions"] == 2
+    assert rt2["gross_index_points"] == pytest.approx(1.0)
+    assert "no ETP" in book["cost_lines"]
+
+
+def test_index_point_book_refuses_missing_mark_close():
+    """Fail-closed: no positive VIX close at a needed marking session
+    refuses the whole shadow book (never inferred, never coerced)."""
+    runner = ar.SlopeAccelerationRunner("VOLNG1-A4-P2-m2", _a4_arm(2))
+    ctx = _a4_hand_ctx()
+    state = runner.build_state(ctx)
+    closes = dict(ctx["index"]["VIX"])
+    closes[_a4_hand_grid()[4]] = None       # the first exec session
+    with pytest.raises(bat.BatteryError):
+        bat.index_point_book(ctx["grid"], state, closes)
+
+
+def test_a4_index_shadow_book_differs_from_arm_for_any_input():
+    """Adversarial input: every ETP leg's event-adjusted close is set
+    EXACTLY equal to the VIX closes at every session, so even the
+    marking prices coincide.  The books STILL differ: the shadow marks
+    one index-point instrument with no cost lines; the arm marks
+    per-leg ETP books through the cost kernel."""
+    dates = _a4_hand_grid()
+    vix = [20.0, 20.1, 20.2, 20.3, 21.0, 21.5, 20.8, 19.5, 19.0, 18.5]
+    ctx = _a4_hand_ctx(vix_path=vix)
+    ctx["adj"] = {leg: dict(zip(dates, vix))
+                  for leg in ("SVXY", "UVXY", "VIXY", "VXX")}
+    cost_source = {leg: {"stress_spread_frac": 0.02, "bucket": "SHORT",
+                         "expense_bps_per_day": 0.24,
+                         "path_formula": "ln(VIX9D/VIX)/21",
+                         "path_day_gap": 21.0,
+                         "path_adverse_tail_daily_bps": 12.0}
+                   for leg in ctx["adj"]}
+    runner = ar.SlopeAccelerationRunner("VOLNG1-A4-P2-m2", _a4_arm(2))
+    res = ar.run_cell(runner, ctx, cost_source)
+    assert res.meta["round_trips"] > 0       # arm book non-empty
+    shadow = bat.index_only_shadow(runner, ctx, arm_result=res)
+    assert shadow.distinct_from_arm is True
+    assert res.meta["round_trips"] > shadow.book["n_round_trips"]
+    # and the row-level identity is instrument-disjoint by construction
+    assert bat._shadow_book_rows(shadow.book["round_trips"]) != \
+        bat._arm_book_rows(res.round_trips)
+
+
+def test_a4_index_shadow_book_is_invariant_to_etp_prices(syn_ctx6,
+                                                         syn_universe):
+    """The shadow book is a function of the INDEX series alone: any
+    mutation of the ETP closes leaves it byte-identical while the
+    arm's book changes -- the two books cannot coincide for any input
+    that moves an ETP price."""
+    runner = ar.SlopeAccelerationRunner("VOLNG1-A4-P2-m3", _a4_arm(3))
+    base = bat.index_only_shadow(runner, syn_ctx6)
+    ctx2 = dict(syn_ctx6)
+    ctx2["adj"] = {leg: {d: v * 7.7 + 3.1 for d, v in series.items()}
+                   for leg, series in syn_ctx6["adj"].items()}
+    mutated = bat.index_only_shadow(runner, ctx2)
+    assert mutated.book["round_trips"] == base.book["round_trips"]
+    assert mutated.decision_state == base.decision_state
+    arm_a = ar.run_cell(runner, syn_ctx6, syn_universe["cost_source"])
+    arm_b = ar.run_cell(runner, ctx2, syn_universe["cost_source"])
+    assert arm_a.round_trips != arm_b.round_trips   # the arm book moves
+
+
+@pytest.mark.parametrize("n_sessions", [90, 130, 180])
+def test_a4_shadow_distinct_from_arm_across_universes(n_sessions):
+    """Any input: for every deterministic synthetic universe the A4
+    shadow book differs from the (non-empty) arm book."""
+    syn = dr.synthetic_universe(n_sessions)
+    ctx = ar.build_context_from_raw(syn["index"], syn["raw_bars"],
+                                    syn["events_by_leg"],
+                                    ("SVXY", "UVXY", "VIXY", "VXX"))
+    ctx["grid"] = ar.grid_of(ctx)
+    runner = ar.runner_for_arm(cfg.assemble_arm_configs()[
+        "VOLNG1-A4-P2-ANCHOR"])
+    res = ar.run_cell(runner, ctx, syn["cost_source"])
+    assert res.meta["round_trips"] > 0
+    shadow = bat.index_only_shadow(runner, ctx, arm_result=res)
+    assert shadow.distinct_from_arm is True
+    assert shadow.book["n_round_trips"] > 0
+
+
+def test_all_six_cells_index_shadow_distinct_and_runnable(syn_ctx6,
+                                                          syn_universe):
+    """The non-degeneracy law holds for EVERY booked cell: the
+    index-only shadow is runnable and its book/decision series differs
+    from the arm's (A4 by instrument, A5 by measured state
+    distinctness).  The ONLY admitted exception is the disclosed
+    both-books-empty case (arm never trades on this synthetic
+    universe): distinct None, fail-closed NOT_RUN at E."""
+    for aid, arm in cfg.assemble_arm_configs().items():
+        runner = ar.runner_for_arm(arm)
+        res = ar.run_cell(runner, syn_ctx6, syn_universe["cost_source"])
+        shadow = bat.index_only_shadow(runner, syn_ctx6, arm_result=res)
+        if arm["family_key"] == cfg.FAMILY_A4_P2:
+            assert shadow.book["mark_series"] == "VIX", aid
+            if res.round_trips:
+                assert shadow.distinct_from_arm is True, aid
+                assert shadow.book["n_round_trips"] > 0, aid
+            else:
+                # both books empty: unmeasurable, never an assumed value
+                assert shadow.book["n_round_trips"] == 0, aid
+                assert shadow.distinct_from_arm is None, aid
+        else:
+            assert shadow.distinct_from_arm is True, aid
+            assert shadow.decision_state != \
+                runner.build_state(syn_ctx6), aid
 
 
 # --------------------------------------------------------------------------- #

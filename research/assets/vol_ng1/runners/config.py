@@ -122,6 +122,18 @@ A5_ARM_AXES = {           # arm_id -> (asym_threshold, latch_sessions)
 A5_SHADOW_SHORT_LOOKBACK = 21
 A5_SHADOW_MID_LOOKBACK = 90
 
+#: Index-only A4 shadow BOOK convention (audit
+#: a7_prelaunch_vol_ng1.json finding H1, remediated pre-scored by the
+#: addendum selection_freeze_addendum_a7r1.json): the A4-P2 index-only
+#: shadow scores HYPOTHETICAL positions on the index series itself --
+#: `state` units of the VIX close marked in INDEX POINTS, V7 close+1
+#: re-clock, NO ETP leg and NO ETP costs (an index is not a tradable
+#: instrument; PLAN_vol_ng1.md section 1a: "the same rule driven by the
+#: vol index series alone with no ETP leg -- is the ETP decision
+#: beating its own index re-clock?").  The shadow book is therefore a
+#: genuinely different book from the arm's ETP book for every cell.
+SHADOW_MARK_SERIES = "VIX"
+
 
 class ConfigError(Exception):
     """Fail-closed frozen-config error: nothing inferred, nothing

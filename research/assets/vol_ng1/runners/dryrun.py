@@ -366,7 +366,7 @@ def run_all_cells(arms: dict, syn: dict) -> dict:
         arm = arms[aid]
         runner = ar.runner_for_arm(arm)
         res = ar.run_cell(runner, ctx, syn["cost_source"])
-        shadow_i = bat.index_only_shadow(runner, ctx)
+        shadow_i = bat.index_only_shadow(runner, ctx, arm_result=res)
         shadow_c = bat.calendar_clock_shadow(runner, ctx)
         sh_pl = bat.placebo(runner, ctx)
         inv = bat.invalid_null_audit(res)
@@ -413,8 +413,13 @@ def run_all_cells(arms: dict, syn: dict) -> dict:
                     "runnable": True,
                     "decisions": len(shadow_i.decisions),
                     "distinct_from_arm": shadow_i.distinct_from_arm,
+                    "control_book": shadow_i.notes.get("control_book"),
                     "no_etp_price_in_state":
                         shadow_i.notes.get("no_etp_price_in_state"),
+                    "index_point_book_round_trips":
+                        shadow_i.book.get("n_round_trips"),
+                    "index_point_book_fills":
+                        shadow_i.book.get("n_fills"),
                 },
                 "calendar_clock_shadow": {
                     "runnable": True,
@@ -533,8 +538,23 @@ def build_gate(fz: dict, step_a: dict, step_b: dict, step_c: dict,
         and c["structural_counts"]["kernel_events"]
         == c["structural_counts"]["round_trips"]
         for c in step_c["cells"].values())
+    def _idx_distinct_ok(c: dict) -> bool:
+        """H1 remediation law: the index-only shadow's book-level
+        distinctness must be MEASURED True on every cell -- except the
+        disclosed degenerate-empty case (the arm never trades on the
+        synthetic universe: both books empty, distinct_from_arm None;
+        fail-closed NOT_RUN at E, never an inferred PASS)."""
+        io = c["controls"]["index_only_shadow"]
+        d = io["distinct_from_arm"]
+        if d is True:
+            return True
+        return (d is None
+                and io["index_point_book_round_trips"] == 0
+                and c["structural_counts"]["round_trips"] == 0)
+
     battery_ok = all(
         c["controls"]["index_only_shadow"]["runnable"]
+        and _idx_distinct_ok(c)
         and c["controls"]["calendar_clock_shadow"]["runnable"]
         and c["controls"]["calendar_clock_shadow"]["k_sessions"] == 5
         and c["controls"]["placebo"]["runnable"]
@@ -555,7 +575,18 @@ def build_gate(fz: dict, step_a: dict, step_b: dict, step_c: dict,
         "calendar_shift_k_sessions": cfg.CALENDAR_SHIFT_K_SESSIONS,
         "placebo_seed": cfg.PLACEBO_SEED,
         "placebo_rng_kind": cfg.PLACEBO_RNG_KIND,
-        "per_cell_runnable": battery_ok})
+        "per_cell_runnable": battery_ok,
+        "index_shadow_distinct_from_arm_all_cells": battery_ok,
+        "index_shadow_note": "A4-P2 control is the hypothetical "
+                             "index-point book on the VIX close (no ETP "
+                             "leg, no ETP costs); distinct_from_arm is "
+                             "MEASURED at the book level on every cell "
+                             "(audit H1 remediation, addendum "
+                             "selection_freeze_addendum_a7r1.json); "
+                             "the only admitted exception is the "
+                             "disclosed both-books-empty case (arm "
+                             "never trades on the synthetic universe: "
+                             "distinct None, fail-closed NOT_RUN at E)"})
     item("r1_r6_scaffolding_fail_closed", True, {
         "rule_order": fz["rule_set_r1_r6"]["rule_order"],
         "frozen_folds": fz["rule_set_r1_r6"]["frozen_folds"],

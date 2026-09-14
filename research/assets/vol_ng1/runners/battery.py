@@ -7,8 +7,17 @@ cell NOT_RUN fail-closed (Q-11), never skipped; controls run on the
 SAME frozen representation as their arm.
 
 - ``index_only_shadow``  : A4-P2 -- the identical acceleration-regime
-  rule driven by the vol index series ALONE, placement re-clocked onto
-  the ETP legs, no ETP price anywhere in the state.  A5-P2 -- the
+  rule driven by the vol index series ALONE (no ETP price anywhere in
+  the state), scored as a HYPOTHETICAL INDEX-POINT BOOK on the VIX
+  close itself (``index_point_book``): `state` units of the index,
+  marked in index points at the V7 re-clock sessions, NO ETP leg and
+  NO ETP costs.  The control is "is the ETP decision beating its own
+  index re-clock?" (PLAN_vol_ng1.md section 1a) -- a genuinely
+  different book from the arm's ETP book for every cell (audit H1
+  remediation, pre-scored addendum
+  ``selection_freeze_addendum_a7r1.json``; the pre-remediation
+  control re-ran the arm's own ETP book, so control == arm and R2's
+  control_reproduces veto fired tautologically).  A5-P2 -- the
   identical asymmetry rule with BOTH spread sides proxied from the vol
   INDEX series alone (trailing realized volatility of the VIX close for
   the short side and of a longer-lookback variant of the same index
@@ -33,9 +42,9 @@ SAME frozen representation as their arm.
   coerced to flat/aligned and never scored as a decision (Q-11).
 
 NO scoring, NO outcome numbers on real data: every function here emits
-structural series/lines/counts only.  USD cost lines exist ONLY on
-synthetic fixtures (unit-tested); scored verdicts consume externally
-supplied metrics at E.
+structural series/lines/counts only.  USD cost lines and index-point
+book lines exist ONLY on synthetic fixtures (unit-tested); scored
+verdicts consume externally supplied metrics at E.
 """
 
 from __future__ import annotations
@@ -57,6 +66,17 @@ from research.assets.vol_ng1.runners import config as cfg         # noqa: E402
 from research.control.vol_ng1_run.d2 import d2_novelty as dn      # noqa: E402
 
 SCHEMA = "vol_ng1_runners/battery@1"
+
+#: EXPENSE CONVENTION PIN (audit a7_prelaunch_vol_ng1.json finding M1,
+#: committed at 57d5d639; pre-scored addendum
+#: ``selection_freeze_addendum_a7r1.json``): ``net_stress_usd_total``
+#: INCLUDES the explicit expense line -- net = gross - execution
+#: - Q-16 path - expense -- matching the FROZEN P2 round-trip cost
+#: ceilings, which include expense in ``round_trip_cost_ceiling_bps``.
+#: Both A4-P2 kill routes (R1/R5 ceiling clearance and the R5 stress
+#: net) therefore share ONE expense convention; the expense line stays
+#: tier-invariant and is never re-scaled.
+EXPENSE_IN_NET_STRESS = True
 
 
 class BatteryError(Exception):
@@ -119,29 +139,197 @@ class ShadowResult:
     invalid_instants: int = 0
     distinct_from_arm: bool | None = None
     notes: dict = field(default_factory=dict)
+    book: dict = field(default_factory=dict)
 
 
-def index_only_shadow(runner, ctx: dict) -> ShadowResult:
+#: Distinctness law (accurate-disclosure text shared by the notes):
+#: book-level distinctness is measured whenever the arm's cell result
+#: is supplied; the two books are compared as ordered round-trip
+#: identity rows INCLUDING the instrument, so the shadow (index-point
+#: instrument) differs from the arm (ETP-leg instrument) for ANY input
+#: while either book is non-empty.  Two EMPTY books are unmeasurable
+#: (nothing exists to distinguish; disclosed None) and R2 limb (a) is
+#: then uncomputable at E: fail-closed NOT_RUN, never an inferred PASS.
+_DISTINCT_LAW = (
+    "measured at the BOOK level when the arm cell result is supplied: "
+    "ordered round-trip identity rows (instrument, entry/exit "
+    "sessions, direction, marking prices); the instrument differs for "
+    "ANY input (index points vs ETP legs), so a non-empty arm book is "
+    "always distinct from its index-only shadow; two empty books are "
+    "unmeasurable (None, disclosed)")
+
+
+def _shadow_book_rows(round_trips: list) -> list:
+    return [("index_point_book", rt["mark_series"], rt["entry_session"],
+             rt["exit_session"], rt["direction"], rt["entry_close"],
+             rt["exit_close"]) for rt in round_trips]
+
+
+def _arm_book_rows(round_trips: list) -> list:
+    return [("etp_leg_book", rt["leg"], rt["entry_session"],
+             rt["exit_session"], rt["direction"], rt["entry_price"],
+             rt["exit_price"]) for rt in round_trips]
+
+
+def books_distinct(shadow_round_trips: list,
+                   arm_round_trips: list) -> bool | None:
+    """The H1-remediated distinctness measure: True iff the shadow
+    book and the arm book differ as ordered identity-row lists (the
+    instrument field makes any non-empty pair differ for ANY input);
+    None when BOTH books are empty (unmeasurable: no book exists on
+    either side; at E the R2 limb (a) metrics are then missing and
+    fail-closed NOT_RUN applies)."""
+    if not shadow_round_trips and not arm_round_trips:
+        return None
+    return _shadow_book_rows(shadow_round_trips) != \
+        _arm_book_rows(arm_round_trips)
+
+
+def index_point_book(grid: list[str], state: dict[str, float | None],
+                     index_closes: dict[str, float],
+                     mark_series: str = cfg.SHADOW_MARK_SERIES) -> dict:
+    """The A4-P2 index-only shadow's HYPOTHETICAL book (audit
+    a7_prelaunch_vol_ng1.json finding H1 remediation, pre-scored
+    addendum ``selection_freeze_addendum_a7r1.json``): the decision
+    state placed as ``state`` units of the marked index series itself
+    and marked in INDEX POINTS -- entry/exit at the index closes of the
+    V7 close+1 re-clock execution sessions, NO ETP leg anywhere and NO
+    ETP costs (an index is not a tradable instrument; the control
+    answers PLAN_vol_ng1.md section 1a: is the ETP decision beating its
+    own index re-clock?).  Structural plumbing only: no scored metric
+    is computed here."""
+    grid_index = {d: i for i, d in enumerate(grid)}
+    decisions, refused = ar.decisions_to_executions(grid, state)
+    round_trips: list[dict] = []
+    fills: list[dict] = []
+    open_pos: dict | None = None
+
+    def _close(session: str, price: float, reason: str) -> None:
+        nonlocal open_pos
+        fills.append({"session": session, "units": -open_pos["units"],
+                      "kind": "exit_or_rebalance"})
+        round_trips.append({
+            "instrument": f"{mark_series}_index_close",
+            "mark_series": mark_series,
+            "units": open_pos["units"],
+            "direction": 1 if open_pos["units"] > 0 else -1,
+            "entry_session": open_pos["session"],
+            "entry_close": open_pos["price"],
+            "exit_session": session,
+            "exit_close": price,
+            "exit_reason": reason,
+            "held_sessions": grid_index[session]
+                             - grid_index[open_pos["session"]],
+            "gross_index_points": open_pos["units"]
+                                  * (price - open_pos["price"]),
+        })
+        open_pos = None
+
+    for row in decisions:
+        session = row["exec_session"]
+        price = index_closes.get(session)
+        if price is None or price <= 0:
+            raise BatteryError(
+                f"index-only shadow book: no positive {mark_series} "
+                f"close at execution session {session} (fail-closed)")
+        desired = float(row["state"])
+        if open_pos is not None and desired != open_pos["units"]:
+            _close(session, price,
+                   "rebalance" if desired != 0.0 else "signal_flat")
+        if open_pos is None and desired != 0.0:
+            open_pos = {"units": desired, "session": session,
+                        "price": price}
+            fills.append({"session": session, "units": desired,
+                          "kind": "entry_or_rebalance"})
+    if open_pos is not None:
+        last = grid[-1]
+        price = index_closes.get(last)
+        if price is None or price <= 0:
+            raise BatteryError(
+                f"index-only shadow book: no {mark_series} close at "
+                f"the window tail {last} (fail-closed)")
+        _close(last, price, "forced_window_end")
+    if len(fills) != 2 * len(round_trips):
+        raise BatteryError("index shadow book fills != 2x round trips "
+                           "(fail-closed)")
+    return {
+        "control_book": "index_point_book",
+        "mark_series": mark_series,
+        "decisions": decisions,
+        "refused_tail_decisions": refused,
+        "invalid_instants": sum(1 for d in grid if state.get(d) is None),
+        "fills": fills,
+        "round_trips": round_trips,
+        "n_round_trips": len(round_trips),
+        "n_fills": len(fills),
+        "cost_lines": ("NONE: an index is not a tradable instrument; "
+                       "the shadow book carries no ETP leg and no ETP "
+                       "costs (declared convention, addendum "
+                       "selection_freeze_addendum_a7r1.json)"),
+    }
+
+
+def index_only_shadow(runner, ctx: dict,
+                      arm_result: "ar.CellResult | None" = None
+                      ) -> ShadowResult:
     """The mandatory index-only shadow on the SAME frozen
-    representation as the arm.  A4-P2: the arm's state source is
-    index-only by the frozen state_source_law, so the shadow state is
-    the identical rule on the identical inputs; the falsification
-    content at R2 is the out-earning comparison (E-phase, scored) and
-    the structural identity is DISCLOSED here rather than hidden.
-    A5-P2: the shadow replaces BOTH realized sides with index-only
-    proxies; its state MUST differ from the arm's (which consumes the
-    event-adjusted ETP realized sides) -- distinctness is measured."""
+    representation as the arm (audit H1 remediation, pre-scored
+    addendum ``selection_freeze_addendum_a7r1.json``).
+
+    A4-P2: the arm's state source is index-only by the frozen
+    state_source_law, so the shadow's DECISION STATE is the identical
+    rule on the identical index inputs; the CONTROL is no longer the
+    arm's own ETP book re-run (that degenerate control made R2's
+    control_reproduces veto tautological -- audit H1 at 57d5d639): the
+    control is the HYPOTHETICAL INDEX-POINT BOOK from
+    ``index_point_book`` -- ``state`` units of the VIX close, marked in
+    index points, V7 re-clock, NO ETP leg, NO ETP costs.  The control
+    book is a genuinely different book from the arm's ETP book for
+    every cell; ``distinct_from_arm`` is MEASURED at the book level
+    whenever the arm's cell result is supplied (``arm_result``), and
+    None otherwise (disclosed as not-measured, never assumed).
+
+    A5-P2: UNCHANGED from the freeze's a5_p2_spec -- the shadow
+    replaces BOTH realized sides with index-only proxies and its
+    decision series is re-clocked onto the ETP buckets; its state MUST
+    differ from the arm's (which consumes the event-adjusted ETP
+    realized sides) -- distinctness is measured on the state, and the
+    books then differ by the same construction."""
     family = runner.family_key
     if family == cfg.FAMILY_A4_P2:
         state = runner.build_state(ctx)
+        book = index_point_book(ctx["grid"], state,
+                                ctx["index"][cfg.SHADOW_MARK_SERIES])
+        if arm_result is None:
+            distinct = None    # arm book not supplied: not measured here
+        else:
+            distinct = books_distinct(book["round_trips"],
+                                      arm_result.round_trips)
+        decisions = book["decisions"]
+        refused = book["refused_tail_decisions"]
         notes = {
             "state_source_law": ("index-only by the arm's own frozen "
-                                 "state_source_law; shadow == arm state "
-                                 "by construction (disclosed, per the "
-                                 "freeze's a4_p2_spec)"),
+                                 "state_source_law; the shadow's "
+                                 "decision state equals the arm's state "
+                                 "series by that law, but the shadow "
+                                 "scores the HYPOTHETICAL index-point "
+                                 "book, NOT the arm's ETP book (audit "
+                                 "H1 remediation, addendum "
+                                 "selection_freeze_addendum_a7r1.json)"),
+            "control_book": ("hypothetical index-point book on the "
+                             f"{cfg.SHADOW_MARK_SERIES} close (no ETP "
+                             "leg, no ETP costs)"),
             "no_etp_price_in_state": True,
+            "no_etp_price_in_book": True,
+            "distinct_from_arm_law": _DISTINCT_LAW,
+            "empty_book_note": ("if the arm book is empty the shadow "
+                                "book is empty too (same decision "
+                                "series): distinct_from_arm is then "
+                                "None (unmeasurable, disclosed) and R2 "
+                                "limb (a) is uncomputable at E: "
+                                "fail-closed NOT_RUN, never an "
+                                "inferred PASS"),
         }
-        distinct = None   # measured at E via the scored out-earning limb
     elif family == cfg.FAMILY_A5_P2:
         state = a5_index_only_state(ctx, runner.asym_threshold,
                                     runner.latch_sessions)
@@ -156,6 +344,9 @@ def index_only_shadow(runner, ctx: dict) -> ShadowResult:
                 "A5 index-only shadow depends on ETP data (fail-closed)")
         arm_state = runner.build_state(ctx)
         distinct = arm_state != state
+        book = {}
+        decisions, refused = ar.decisions_to_executions(ctx["grid"],
+                                                        state)
         notes = {
             "short_side": f"realized_vol(VIX close, "
                           f"{cfg.A5_SHADOW_SHORT_LOOKBACK}) -- committed "
@@ -164,11 +355,21 @@ def index_only_shadow(runner, ctx: dict) -> ShadowResult:
                         f"{cfg.A5_SHADOW_MID_LOOKBACK}) -- the committed "
                         "MID day gap (longer-lookback variant of the "
                         "same index series)",
+            "control_book": ("decision series re-clocked onto the ETP "
+                             "buckets per the freeze's a5_p2_spec "
+                             "(unchanged by the A7-R1 addendum; the "
+                             "scored control book is built at E under "
+                             "scored authority)"),
             "no_etp_price_in_state": True,
+            "distinct_from_arm_law": ("state-level: the shadow state "
+                                      "MUST differ from the arm state "
+                                      "(which consumes the "
+                                      "event-adjusted ETP realized "
+                                      "sides); the books then differ by "
+                                      "the same construction"),
         }
     else:
         raise BatteryError(f"family {family!r} has no index-only shadow")
-    decisions, refused = ar.decisions_to_executions(ctx["grid"], state)
     return ShadowResult(
         control="index_only_shadow",
         decision_state=state,
@@ -178,6 +379,7 @@ def index_only_shadow(runner, ctx: dict) -> ShadowResult:
                              if state.get(d) is None),
         distinct_from_arm=distinct,
         notes=notes,
+        book=book,
     )
 
 
@@ -315,6 +517,11 @@ def cost_path_control(result: ar.CellResult, cost_source: dict,
     bucket formulas because every leg carries its own bucket line).
     Path/expense are MECHANISM lines: tier-invariant, never re-scaled.
 
+    EXPENSE CONVENTION (audit M1 pin, EXPENSE_IN_NET_STRESS):
+    ``net_stress_usd_total`` = gross - execution - Q-16 path - EXPENSE,
+    matching the frozen P2 round-trip cost ceilings which INCLUDE the
+    expense drag -- the two A4-P2 kill routes share ONE convention.
+
     Emits structural lines + per-tier totals on the SUPPLIED books
     (synthetic fixtures in I; real scored books only at E under
     authority)."""
@@ -371,7 +578,10 @@ def cost_path_control(result: ar.CellResult, cost_source: dict,
             "execution_cost_usd_total": exec_total,
             "q16_path_line_usd_total_explicit": path_total,
             "expense_line_usd_total_explicit": expense_total,
-            "net_stress_usd_total": gross_total - exec_total - path_total,
+            # M1 convention pin: the expense drag IS included, matching
+            # the frozen P2 round-trip cost ceilings (EXPENSE_IN_NET_STRESS).
+            "net_stress_usd_total": gross_total - exec_total - path_total
+            - expense_total,
             "primary": t == cfg.PRIMARY_TIER,
         }
     buckets = sorted({p["bucket"] for p in per_trip})
@@ -389,6 +599,11 @@ def cost_path_control(result: ar.CellResult, cost_source: dict,
         "totals_by_tier": totals,
         "tier_ladder": list(tiers),
         "primary_tier": cfg.PRIMARY_TIER,
+        "expense_in_net_stress": EXPENSE_IN_NET_STRESS,
         "q16_law": "path component explicit at every tier; tier ladder "
-                   "scales execution frictions only (frozen contract)",
+                   "scales execution frictions only (frozen contract); "
+                   "net stress includes the explicit expense line, "
+                   "matching the frozen P2 cost ceilings (audit M1 "
+                   "convention pin, addendum "
+                   "selection_freeze_addendum_a7r1.json)",
     }
