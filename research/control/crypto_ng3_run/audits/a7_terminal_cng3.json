@@ -1,0 +1,110 @@
+{
+  "schema": "a7_terminal_audit@1",
+  "task_id": "cng3-a7-terminal",
+  "cycle_id": "CRYPTO-NG3",
+  "role": "a7-terminal auditor (audit ONLY; hunt reasons the terminal close is WRONG)",
+  "audited_utc": "2026-09-15T22:05:00Z",
+  "audited_head": "d10b4f80af94a1d260165036be6788808d315ab6",
+  "audited_branch": "orca/crypto-ng3-integration",
+  "verdict": "AUTHORIZED",
+  "audited_claim": "CRYPTO-NG3 closed TERMINAL CRYPTO_NG3_BLOCKED_DATA_OR_SELECTION at budget 0/6; P0 census PASS C1-C11; two outcome-blind D1 proposals; D2 VETO_ALL (A4 killed by X1+X3+X4, A5 by X1+X2+X3+X4+fold1-population); X5 nulls VALID both; funding legs NOT_RUN_BLOCKED fail-closed; selection empty per plan sec6.",
+  "checks": [
+    {
+      "id": "CH1_head_branch",
+      "check": "Worktree HEAD, branch, base identity",
+      "result": "PASS",
+      "evidence": "git rev-parse HEAD = d10b4f80af94a1d260165036be6788808d315ab6 (== expected base), branch orca/crypto-ng3-integration; tree clean except pre-existing untracked chunks/ (never staged)."
+    },
+    {
+      "id": "CH2_d2_internal_consistency",
+      "check": "Recompute every d2_verdict.json margin/status/verdict from committed bytes (programmatic)",
+      "result": "PASS",
+      "evidence": "margin_to_bar == 0.20 - rho for every measured shape; worst_measured picks equal max over their families; every X1 A4 vetoed shape genuinely over bar (11/28: dvol_level_log .240841, dvol_shock .402494, taker_sat .224207, ret .22221, avg_ticket .237369, elite .309711, attn_phase .362451, ticket_breadth .261427, dow_2 .203129, wkndliq .326033, session_us .253906); X1 A5 11 vetoed of 25 measured (3 UNMEASURED_ZERO_VARIANCE dow_5/dow_6/weekend_flag, honest); X2 A5 oi_level .204191 margin -.004191 KILL vs X2 A4 .177247 margin +.022753 NOT_RUN_BLOCKED_PARTIAL (no improper kill); X3 both renderings over bar on both anchors (A4 .224808/.546609, A5 .26202/.209225) with BOTH-must-clear rule honored; X4 worst A4 wkndliq .326033 / A5 session_asia .626003; X5 nulls .910653/.912767 < .98 -> VALID_NULL_SURVIVE margins .069347/.067233; A5 fold1 2<4 -> NOT_POPULATED verdict string matches; sums: A4 weekday 17+16+19+22+24+23+22=143=eligible_decisions, A5 weekday 2+2+2+2+3=11=traded_episodes=fold1+fold2+fold3 (2+4+5); pooled_rho_table cross-checked field-by-field against X1/X4 veto families (mismatch count 0)."
+    },
+    {
+      "id": "CH3_key_bars_vs_claim",
+      "check": "Terminal-claim numbers vs d2_verdict bytes",
+      "result": "PASS",
+      "evidence": "A4 X1 dvol_shock .402 (11/28 over bar), X3 tape native .546609~.547, X4 wkndliq .326033~.326; A5 X1 margin -.426003, X2 oi_level .204191~.204, X3 state-held .26202~.262, X4 session_asia .626003~.626, fold1 2<4; X5 .910653/.912767 <.98. Every number in terminal_verdict_crypto_ng3.json traces to d2_verdict.json exactly; no rounding flips any verdict (nearest margin to bar: A5 X2 -.004191, still decisive)."
+    },
+    {
+      "id": "CH4_preregistration_plan",
+      "check": "Veto bars frozen in plan BEFORE any D2 number",
+      "result": "PASS",
+      "evidence": "plans/PLAN_crypto_ng3.md committed 7919224d (battery: X1 pooled |rho|<=0.20 incl NG2 29-shape triad, X2 OI/funding dead forms, X3 tape-fitted issuance NEW mandatory shadow, X4 clock/calendar, X5 Q-11 nulls, F1 P-21; sec6 D2 kill = expected modal terminal, selection empty -> close at 0/6) and amended eebf771b (plan-audit remediations), both ancestors of P0 8cd0d593 and D2 27c18f34. git diff eebf771b..HEAD on the plan is EMPTY (no post-hoc threshold change); 7919224d->eebf771b diff adds only the NG2 29-shape naming to X1 (bar stays 0.20), A7 launch key, gate-to-terminal mapping, license clause - no bar weakened or moved."
+    },
+    {
+      "id": "CH5_x3_rule_ordering",
+      "check": "X3 proxy fitting rule declared before rho measurement (git-history evidence)",
+      "result": "PASS_WITH_NOTE",
+      "evidence": "orca/cng3-d2 has exactly two commits, substance ac76aef5 (+handoff 1ebb9bdb); its parent ffdf741d is the D1-A5 proposal - NO measurement artifact exists anywhere on the branch chain before ac76aef5. Inside ac76aef5 the rule is code: module constant X3_RULE_DECLARED (measure.py:79) whose text is reproduced verbatim in d2_verdict.json method.x3_rule_declared_before_measurement, and build_x3_proxy implements exactly sign(ret)*dvol/median(dvol, prior 60 panel days strictly before d), P[d]=mean_s; runner (run_d2_measurement.py:86-90) builds the proxy before measuring X3 books. The X3 CONCEPT and 0.20 kill semantics were frozen in-plan at 7919224d, before P0 and D2. See FIND-1 for the single-commit evidentiary limit."
+    },
+    {
+      "id": "CH6_outcome_blindness",
+      "check": "No scored outcome anywhere in the branch chain 94e1bded..HEAD",
+      "result": "PASS",
+      "evidence": "Files changed 94e1bded..HEAD enumerated (9: proposal_a4/a5, d2 measure+runner+verdict, d2 handoff, terminal verdict, tests, __init__) - no S/I/Z/E artifact exists; research/control/crypto_ng3_run contains only audits/chunks/d1/d2/handoffs dirs. grep -ri 'sharpe|pnl|profit_factor|drawdown' over cycle artifacts hits ONLY ban statements (d2 pnl_ban, D1 PROPOSED_OUTCOME_BLIND lines, plan-audit no-returns note); the only return vectors materialized in measure.py are the declared same-bet rho diagnostics (explicitly allowed). D1 proposals contain no returns/PnL and declare a priori thresholds (0.75 z-bar; P95 burst theta)."
+    },
+    {
+      "id": "CH7_p0_census_spot",
+      "check": "Recompute P0 census claims from committed bytes",
+      "result": "PASS",
+      "evidence": "day_rows_usdc_ethereum.json: 366 rows; units-corrected identity net == (mint_sum - burn_sum)/1e6 exact on 366/366 rows, identity_ok all true, 0 breaks; sum(net) = 5,685,573,042.135038 == C9 window_net_usdc exactly. Folds by calendar arithmetic: fold1 2025-08-22..2026-01-14 = 146, fold2 ..2026-05-03 = 109, fold3 ..2026-08-22 = 111, sum 366 = days. C1: 3 windows (2025-10-15 / 2026-02-21 / 2026-06-29) n_mine=n_theirs 254/140/113, canonical digests equal, nets identical. C3 1464/1464 exact partition. sha256 of p0_census.json (d7b3dd91...), day_rows (c142ed46...), minter_table.json (9f82b582...) recomputed and match the pins in BOTH D1 proposals and D2 inputs_consumed - the D2 lane consumed the same bytes."
+    },
+    {
+      "id": "CH8_registry_budget",
+      "check": "Budget 0/6, S1 sealed, GO unconsumed (root registry, read-only)",
+      "result": "PASS",
+      "evidence": "plans/CYCLE_REGISTRY.json cycles[CRYPTO-NG3]: budget used 0 / max 6; s1 SEALED_UNTOUCHED; go_phrase_state REGISTERED_NOT_CONSUMED. Registry head still pinned 94e1bded / lifecycle PLANNED_NOT_STARTED / phase 'D1 dispatches next' - consistent with a two-half close in progress (TERMINAL registry close-sync is the second half, precedent 74f64135 STOCKS-NG4); see FIND-2."
+    },
+    {
+      "id": "CH9_funding_not_run",
+      "check": "Funding NOT_RUN_BLOCKED neither turned into a kill nor into a pass",
+      "result": "PASS",
+      "evidence": "Funding series bytes genuinely absent: no cng2_funding/funding_history.json in this worktree or root data_raw (NG2 d2 worktree cleaned). d2_verdict records X1/X2 funding legs and F1 financing-adjusted book NOT_RUN_BLOCKED with the expected digest 38ad6faf... and reason; A4 X2 verdict NOT_RUN_BLOCKED_PARTIAL (margin +.022753 - NOT counted as a kill for A4); overall fail-closed note says no proposal can be certified SURVIVE - the NOT_RUN direction favors the close, never the opposite."
+    },
+    {
+      "id": "CH10_tests",
+      "check": "Offline test suites re-run by auditor",
+      "result": "PASS",
+      "evidence": "pytest tests/test_crypto_ng3_d2.py tests/test_crypto_ng3_p0.py: 46 passed (25 d2 + 21 p0), exit 0; suite includes frozen-constants-match-plan (0.20/0.98/floors 20/4/24bps), X3 declared-rule hand case, veto kill/blocked semantics, fail-closed loaders."
+    }
+  ],
+  "findings": [
+    {
+      "id": "FIND-1",
+      "severity": "LOW",
+      "finding": "X3-rule 'declared BEFORE measurement' is evidenced by (a) plan-preregistration of the X3 concept + 0.20 bar at 7919224d (pre-P0, pre-D2), (b) absence of any measurement artifact on orca/cng3-d2 before ac76aef5, and (c) in-commit code order (rule as module constant consumed by the measurement). A single-commit lane cannot prove within-commit temporal ordering of rule text vs interactive runs from git alone. Residual risk is immaterial: the kill does not hinge on the X3 rule's exact form (X1 alone kills both anchors with 11 over-bar shapes each; A5 also dies on X2/X4/population), and the rule is mechanical and reproduced in a test hand case.",
+      "disposition": "RECORDED - no action; does not weaken the close."
+    },
+    {
+      "id": "FIND-2",
+      "severity": "LOW",
+      "finding": "Root registry entry for CRYPTO-NG3 still pins head 94e1bded, lifecycle PLANNED_NOT_STARTED, phase 'P0 PASS ... D1 dispatches next'. Expected at this stage: the terminal registry/ledger close-sync is the second half of the two-half close and must re-pin HEAD to the final integration commit and record the TERMINAL lifecycle.",
+      "disposition": "RECORDED - close-sync must complete after this audit; not a close defect."
+    },
+    {
+      "id": "FIND-3",
+      "severity": "INFO",
+      "finding": "Honesty disclosures verified as disclosures, not defects: A4 first-decidable discrepancy resolved conservatively (pinned index 70 governs; can only remove decisions); A5 measured 11 episodes vs declared 12-18 RT/yr band recorded in d2_verdict + commit message (corroboration of the fold-population kill, not itself a declared bar); C9 archive totalSupply tie-out recorded NOT_RUN_KEYLESS_BLOCKED with cause; 3 A5 clock shapes UNMEASURED_ZERO_VARIANCE reported with reason rather than silently dropped.",
+      "disposition": "RECORDED."
+    }
+  ],
+  "verdict_rationale": "The terminal close stands. Every number in terminal_verdict_crypto_ng3.json recomputes exactly from committed d2_verdict.json bytes; every margin/status/verdict is internally consistent; veto bars and the X3 concept were frozen in-plan before P0 and D2 with no later plan edit (empty eebf771b..HEAD plan diff); no measurement artifact predates the D2 lane commit; the chain contains zero scored outcomes (S/E stages never existed on disk; scored-vocabulary hits are ban statements only); P0 census claims recompute from bytes (366/366 exact conservation, exact year net, calendar-exact folds, canonical cross-transport identity, byte-identical pinned digests consumed by D1/D2); budget 0/6, S1 sealed, GO unconsumed; funding NOT_RUN_BLOCKED is honest, genuinely absent, and fail-closed in the direction that favors the close. Unresolved HIGH/CRITICAL findings: none. Verdict AUTHORIZED per the audit-only mandate; nothing repaired, no gate weakened.",
+  "evidence": {
+    "terminal_verdict_crypto_ng3.json": "research/control/crypto_ng3_run/terminal_verdict_crypto_ng3.json",
+    "d2_verdict.json": "research/control/crypto_ng3_run/d2/d2_verdict.json",
+    "p0_census.json_sha256": "d7b3dd91cb39de63306cda1f191ec01c20736c12206db4abbf1f2d2e5f09c16a",
+    "day_rows_usdc_ethereum.json_sha256": "c142ed46134b4e6973b31aa737c8d6911bbe4a2911933b1880db1ff7a45970ef",
+    "minter_table.json_sha256": "9f82b582acad0afb7afa6fd01c24d558597f3a78d5c76ca4b0f0de5fa0386450",
+    "plan_commits": ["7919224da1551ccb51a539f9445e18ce174d2c77", "eebf771b4b79a1e5c82fc35d223f82363e9ec6a2"],
+    "p0_commit": "8cd0d593",
+    "d1_commits": ["225282c0", "ffdf741d"],
+    "d2_substance_commit": "ac76aef5ee914445fa44145c1e3b4cd6f5b9e369",
+    "d2_branch": "orca/cng3-d2",
+    "integration_head_audited": "d10b4f80af94a1d260165036be6788808d315ab6",
+    "pytest_log_sha256": "9eb411b9c29e759d6f9df7ff681a394a3e34f23e4aec0ac571ed8734798de9f3"
+  },
+  "authority_claims": [],
+  "scope_note": "Audit-only: no repairs, no gate weakened, no file outside the allowed write path touched; registry read-only; no network fetches; no heavy lock."
+}
