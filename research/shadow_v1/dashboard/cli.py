@@ -16,7 +16,12 @@ from typing import List, Optional
 
 from .render import generate_html
 from .server import serve
-from .snapshot import build_dashboard_snapshot, resolve_ledger_paths, snapshot_json
+from .snapshot import (
+    build_dashboard_snapshot,
+    resolve_ledger_paths,
+    resolve_valuation_mark_paths,
+    snapshot_json,
+)
 
 __all__ = ["main"]
 
@@ -56,9 +61,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--out", default=None,
         help="write the HTML page to this path instead of serving",
     )
+    parser.add_argument(
+        "--valuation-dir", default=None,
+        help="directory holding <FAMILY_ID>.jsonl near-real valuation mark "
+        "ledgers (default: the valuation_marks/ sibling of --ledgers)",
+    )
     args = parser.parse_args(argv)
 
     ledger_paths = resolve_ledger_paths(args.ledgers)
+    valuation_paths = resolve_valuation_mark_paths(
+        args.valuation_dir if args.valuation_dir else args.ledgers
+    )
     now_iso = args.now or _now_iso()
 
     if args.port is not None:
@@ -68,6 +81,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             bind=args.bind,
             identity_manifest_path=args.identity,
             shadow_start_utc=args.shadow_start,
+            valuation_marks_by_family=valuation_paths,
         )
         return 0
 
@@ -76,6 +90,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         now_iso,
         identity_manifest_path=args.identity,
         shadow_start_utc=args.shadow_start,
+        valuation_marks_by_family=valuation_paths,
     )
     if args.out:
         with open(args.out, "wb") as fh:

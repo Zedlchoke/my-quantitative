@@ -355,6 +355,7 @@ _TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
 <title>PROSPECTIVE-SHADOW-V1 — read-only owner dashboard</title>
 <style>
 :root {
@@ -486,6 +487,12 @@ footer { margin: 30px 0 10px; color: var(--muted); font-size: 12px; border-top: 
     <span><span class="sw" style="background:var(--red)"></span>gap: UNAVAILABLE_FAIL_CLOSED (line broken — không nội suy)</span>
     <span>▲ entry</span><span>▼ exit</span><span>■ blocked</span><span>◆ cost-regime boundary</span><span>● incident</span>
   </div>
+
+  <h2>2b. Định giá near-real (mark 5 phút — chỉ quan sát, không phải lệnh)</h2>
+  <p class="muted">Equity gần-thực từ các mark mark-to-market 5 phút (nguồn giá đã đóng băng:
+  premiumIndex markPrice — keyless). Combined là tổng nghiêm ngặt tại mốc chung hợp lệ mới nhất.
+  Tái tươi 30 giây lấy lại snapshot; KHÔNG bao giờ bịa mark giữa các mark; tuổi dữ liệu luôn hiển thị.</p>
+  __VALUATION__
 
   <h2>3. Thẻ họ chiến lược + bảng so sánh</h2>
   <p class="muted">Không xếp hạng theo lợi nhuận, không nhãn ăn mừng: bảng chỉ báo cáo
@@ -1070,6 +1077,73 @@ function miniPriceChart(det) {
   svg += "<p class='muted'>entry ● teal · exit ● grey · blocked ■ amber (mini series từ fill prices trong ledger)</p>";
   return svg;
 }
+/* ---------------- near-real valuation chart (5-min marks) ---------------- */
+function drawValuationChart() {
+  var box = document.getElementById("valuation-chart-box");
+  if (!box) return;
+  box.innerHTML = "";
+  var view = PAYLOAD.valuation || {};
+  var combinedPts = ((view.combined || {}).series) || [];
+  if (!combinedPts.length) {
+    box.innerHTML = "<div class='empty-state'>NO_MARKS — chưa có mark định giá nào "
+      + "(worker chưa ghi mark; mọi giá trị NOT_RUN/UNAVAILABLE, không có điểm 0 giả).</div>";
+    return;
+  }
+  var W = 1160, H = 300, padL = 74, padR = 16, padT = 16, padB = 36;
+  var times = combinedPts.map(function (p) { return parseTs(p.ts).getTime(); });
+  var tMin = Math.min.apply(null, times), tMax = Math.max.apply(null, times);
+  if (tMax === tMin) tMax = tMin + 1;
+  var base = 300000;
+  var vals = combinedPts.filter(function (p) { return p.equity != null; })
+                        .map(function (p) { return p.equity; });
+  if (!vals.length) vals = [base - 1, base + 1];
+  var vMin = Math.min.apply(null, vals), vMax = Math.max.apply(null, vals);
+  vMin = Math.min(vMin, base); vMax = Math.max(vMax, base);
+  if (vMax === vMin) { vMax += 1; vMin -= 1; }
+  var pad = (vMax - vMin) * 0.06; vMin -= pad; vMax += pad;
+  function X(t) { return padL + (t - tMin) / (tMax - tMin) * (W - padL - padR); }
+  function Y(v) { return padT + (vMax - v) / (vMax - vMin) * (H - padT - padB); }
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img",
+    "aria-label": "near-real valuation equity chart from 5-minute marks" });
+  for (var g = 0; g <= 4; g++) {
+    var v = vMin + (vMax - vMin) * g / 4;
+    svg.appendChild(el("line", { x1: padL, x2: W - padR, y1: Y(v), y2: Y(v), stroke: "#2a3441" }));
+    var lbl = el("text", { x: padL - 6, y: Y(v) + 4, "text-anchor": "end", fill: "#8fa1b3", "font-size": 11 });
+    lbl.textContent = num(v, 0);
+    svg.appendChild(lbl);
+  }
+  svg.appendChild(el("line", { x1: padL, x2: W - padR, y1: Y(base), y2: Y(base),
+    stroke: "#8fa1b3", "stroke-dasharray": "6 5" }));
+  // combined valuation line (strict sum at common valid marks)
+  var d = "", down = false;
+  combinedPts.forEach(function (p) {
+    if (p.equity != null) {
+      d += (down ? " L " : " M ") + X(parseTs(p.ts).getTime()).toFixed(1) + " " + Y(p.equity).toFixed(1);
+      down = true;
+    } else down = false;
+  });
+  svg.appendChild(el("path", { d: d, fill: "none", stroke: "#4c8dff", "stroke-width": 2 }));
+  // per-sleeve lines from their own mark series (valid points only)
+  var fams = Object.keys((view.families) || {}).sort();
+  fams.forEach(function (fid, i) {
+    var pts = (view.families[fid].series || []);
+    var d2 = "", down2 = false;
+    pts.forEach(function (p) {
+      if (p.status === "OK" && p.equity != null) {
+        d2 += (down2 ? " L " : " M ") + X(parseTs(p.ts).getTime()).toFixed(1) + " " + Y(p.equity).toFixed(1);
+        down2 = true;
+      } else down2 = false;
+    });
+    svg.appendChild(el("path", { d: d2, fill: "none", stroke: SLEEVE_COLORS[i % 3],
+      "stroke-width": 1, opacity: 0.8 }));
+  });
+  box.appendChild(svg);
+}
+
+/* ---------------- 30s auto-refresh (refetch snapshot only) ---------------- */
+var AUTO_REFRESH_MS = 30000;
+setInterval(function () { location.reload(); }, AUTO_REFRESH_MS);
+
 document.addEventListener("click", function (ev) {
   var drawer = document.getElementById("drawer");
   if (drawer.classList.contains("open") && !drawer.contains(ev.target)) {
@@ -1088,6 +1162,7 @@ document.querySelectorAll("[data-range]").forEach(function (b) {
   b.classList.toggle("active", b.getAttribute("data-range") === "ALL");
 });
 drawChart();
+drawValuationChart();
 renderTable();
 applyTz();
 </script>
@@ -1109,11 +1184,128 @@ def _counters_html(snapshot: Mapping[str, Any]) -> str:
         f"<td class='muted'>{_esc(desc)}</td></tr>"
         for key, desc in rows
     )
+    # NEW observation counter, rendered BESIDE the four strategy
+    # counters — it never moves, re-labels or conflates them.
+    valuation_counters = ((snapshot.get("valuation") or {}).get("counters") or {})
+    if valuation_counters:
+        html_rows += (
+            f"<tr class='valuation-counter'><td><code>valuation_mark_count</code></td>"
+            f"<td><b>{_value_or_unavailable(valuation_counters.get('valuation_mark_count'), 'int')}</b></td>"
+            f"<td class='muted'>NEAR-REAL 5-minute MTM marks appended by the valuation "
+            f"worker (observation counter — separate from the four strategy counters "
+            f"above, which it never moves)</td></tr>"
+            f"<tr class='valuation-counter'><td><code>valuation_seed_count</code></td>"
+            f"<td><b>{_value_or_unavailable(valuation_counters.get('valuation_seed_count'), 'int')}</b></td>"
+            f"<td class='muted'>CAPITAL_SEED_NO_MARK records (the 100,000-USDT starting "
+            f"seed per sleeve — NOT a market mark, NEVER performance)</td></tr>"
+        )
     return (
         "<table class='compare'><tbody>" + html_rows + "</tbody></table>"
         "<p class='muted'>Bốn số này KHÔNG được dán nhãn chung là “số lệnh” — "
-        "chúng đo bốn sự kiện khác nhau (plan section 9.4).</p>"
+        "chúng đo bốn sự kiện khác nhau (plan section 9.4). "
+        "valuation_mark_count là bộ đếm QUAN SÁT mới, tách biệt hoàn toàn.</p>"
     )
+
+
+def _valuation_html(snapshot: Mapping[str, Any]) -> str:
+    """Server-rendered near-real valuation section (marks are read-only
+    observations; the seed renders as seed, never as performance)."""
+    view = snapshot.get("valuation") or {}
+    if not view:
+        return "<div class='empty-state'>valuation view: NOT_RUN (no valuation payload)</div>"
+    combined = view.get("combined") or {}
+    counters = view.get("counters") or {}
+    status = _esc(combined.get("status") or "NO_MARKS")
+    equity = combined.get("equity")
+    as_of = combined.get("as_of_utc")
+    reason = combined.get("reason")
+
+    today_hcm = (combined.get("today") or {}).get(LOCAL_TZ_NAME, {})
+    today_utc = (combined.get("today") or {}).get("UTC", {})
+
+    def today_txt(block: Mapping[str, Any]) -> str:
+        if block.get("status") == "OK":
+            return f"{_usdt(block.get('pnl_usdt'))} USDT ({_pct(block.get('pnl_pct'))})"
+        return "<span class='gap-text'>UNAVAILABLE_FAIL_CLOSED</span>"
+
+    head = (
+        "<tr><th>family</th><th>status</th><th>latest mark equity</th>"
+        "<th>realized</th><th>unrealized</th><th>fees</th><th>slippage</th><th>funding</th>"
+        "<th>mark ts (UTC)</th><th>data age (s)</th><th>open positions (mark / uPnL)</th></tr>"
+    )
+    rows = []
+    for fid, block in sorted((view.get("families") or {}).items()):
+        latest = block.get("latest_valid_mark") or block.get("latest_mark") or {}
+        positions = block.get("positions") or []
+        pos_txt = (
+            "; ".join(
+                f"{_esc(p.get('symbol'))} qty {p.get('qty'):g} @ "
+                f"{_usdt(p.get('mark_price'))} ({_usdt(p.get('unrealized_pnl'))})"
+                if p.get("mark_price") is not None
+                else f"{_esc(p.get('symbol'))} qty {p.get('qty'):g} @ UNAVAILABLE"
+                for p in positions
+            )
+            or "flat"
+        )
+        age = block.get("data_age_seconds")
+        rows.append(
+            "<tr>"
+            f"<td>{_esc(fid)}</td>"
+            f"<td>{_esc(block.get('status') or 'NO_MARKS')}</td>"
+            f"<td>{_usdt(latest.get('equity'))}</td>"
+            f"<td>{_usdt(latest.get('realized_pnl'))}</td>"
+            f"<td>{_usdt(latest.get('unrealized_pnl'))}</td>"
+            f"<td>{_usdt(latest.get('fees'))}</td>"
+            f"<td>{_usdt(latest.get('slippage'))}</td>"
+            f"<td>{_usdt(latest.get('funding'))}</td>"
+            f"<td><span class='ts' data-ts='{_esc(latest.get('mark_timestamp_utc') or '')}'>"
+            f"{_esc(latest.get('mark_timestamp_utc') or 'UNAVAILABLE')}</span></td>"
+            f"<td>{_value_or_unavailable(age)}</td>"
+            f"<td>{_esc(pos_txt)}</td>"
+            "</tr>"
+        )
+    seeds_html = ""
+    seed_rows = []
+    for fid, block in sorted((view.get("families") or {}).items()):
+        for seed in block.get("seeds") or []:
+            seed_rows.append(
+                f"<div><code>{_esc(fid)}</code>: <b>{_esc(seed.get('record_type'))}</b> "
+                f"{_usdt(seed.get('equity'))} USDT @ {_esc(seed.get('ts_utc'))} "
+                f"<span class='muted'>seed_id <code>{_esc(seed.get('seed_id'))}</code> — "
+                f"không phải mark thị trường, KHÔNG BAO GIỜ là hiệu suất.</span></div>"
+            )
+    if seed_rows:
+        seeds_html = (
+            "<div class='honesty' id='valuation-seeds'><b>Capital seeds "
+            "(CAPITAL_SEED_NO_MARK — not a market mark, never performance)</b>"
+            + "".join(seed_rows) + "</div>"
+        )
+    return f"""
+    <div class="kv" id="valuation-combined">
+      <div class='kv-row'><div class='kv-label'>Combined valuation equity (strict sum at newest COMMON valid mark)</div>
+        <div class='kv-value'><b>{_usdt(equity)}</b> USDT
+          <span class='chip chip-{status}'>{status}</span>
+          <span class='muted'>as of <span class='ts' data-ts='{_esc(as_of or '')}'>{_esc(as_of or 'UNAVAILABLE')}</span></span>
+          {f"<div class='muted'>{_esc(reason or '')}</div>" if reason else ""}
+        </div></div>
+      <div class='kv-row'><div class='kv-label'>Valuation today PnL (00:00 {LOCAL_TZ_NAME} / 00:00 UTC — marks at/after boundary)</div>
+        <div class='kv-value'>{today_txt(today_hcm)} · {today_txt(today_utc)}</div></div>
+      <div class='kv-row'><div class='kv-label'>Valuation total PnL since seed</div>
+        <div class='kv-value'><b>{_usdt(combined.get('total_pnl_usdt'))}</b> USDT ({_pct(combined.get('total_pnl_pct'))})</div></div>
+      <div class='kv-row'><div class='kv-label'>Valuation mark / seed counters</div>
+        <div class='kv-value'>marks <b>{_value_or_unavailable(counters.get('valuation_mark_count'), 'int')}</b> ·
+          seeds <b>{_value_or_unavailable(counters.get('valuation_seed_count'), 'int')}</b>
+          <span class='muted'>staleness rule: newest valid mark older than
+          {_esc(view.get('staleness_rule_seconds'))}s => STALE (fail-closed)</span></div></div>
+    </div>
+    <div class="table-scroll"><table class="compare" id="valuation-table"><thead>{head}</thead>
+      <tbody>{''.join(rows)}</tbody></table></div>
+    {seeds_html}
+    <div class="muted" id="auto-refresh" data-refresh-seconds="30">auto-refresh: the page refetches
+      the snapshot every 30s (meta refresh + JS reload). Refresh NEVER fakes a mark between marks:
+      the series only grows at real 5-minute marks, and data age is always shown.</div>
+    <div id="valuation-chart-box"></div>
+    """
 
 
 def generate_html(snapshot: Mapping[str, Any]) -> str:
@@ -1138,6 +1330,7 @@ def generate_html(snapshot: Mapping[str, Any]) -> str:
         "__LOCAL_TZ__": _esc(LOCAL_TZ_NAME),
         "__BANNERS__": _banners_html(snapshot),
         "__TOP_VIEW__": _top_view_html(snapshot),
+        "__VALUATION__": _valuation_html(snapshot),
         "__CARDS__": cards,
         "__COMPARE__": _comparison_html(snapshot),
         "__COUNTERS__": _counters_html(snapshot),
