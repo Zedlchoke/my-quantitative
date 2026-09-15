@@ -1,0 +1,91 @@
+{
+ "schema": "crypto_ng3_d1_proposal@1",
+ "proposal_id": "SCNG3-A5-P1",
+ "family_id": "CNG3-FLOAT-STATE",
+ "cycle_id": "CRYPTO-NG3",
+ "lane": "d1-a5 (construction B, event/transition-based; lane A4's outputs NOT read by design)",
+ "construction": {
+  "name": "mint_burn_burst_episode_transition",
+  "form": "EVENT/TRANSITION-BASED. The conditioning state is OFF except at discrete transition instants: an episode STARTS on the first panel day d whose burst statistic first crosses an extreme trailing threshold, and the trade book exists ONLY for the fixed holding window that begins at that crossing. There is NO persistent aggregate state: no cumulative net-flow level, no multi-day rolling z-score, no regime mean — between transitions the book is flat and the signal is definitionally absent. This is what distinguishes construction B from an aggregate multi-day z-state: the scored object is the crossing event (a transition), not a state level. A refractory rule (no new trigger until the prior episode's holding window has fully exited) makes each episode an atom and bounds exposure to one position at a time.",
+  "transition_event": "b_d >= theta_d on panel day d, with no open position and days_since_last_trigger > H",
+  "direction_rule": "s_d = +1 if net_d < 0 (net-burn/redemption burst episode), s_d = -1 if net_d > 0 (net-mint/issuance burst episode). The sign is a FROZEN, FALSIFIABLE hypothesis, not a mechanism claim.",
+  "episode_grain": "one USDC_ETHEREUM issuer-chain day; issuer chains are never summed into a cross-chain total (C4/C5 frozen rule)",
+  "declared_diagnostic_strata": [
+   "Each episode is decomposed by minter class using ONLY the frozen minter_table.json: CCTP_TOKEN_MINTER-dominant (0xfd78ee919681417d192449715b2594ab58f5d002, frozen class), PRIMARY_REDEMPTION-dominant, UNCLASSIFIED-dominant, where day-d dominance is by that class's signed contribution to net_d.",
+   "PRIMARY_REDEMPTION label declared HERE, outcome-blind, for address 0x55fe002aeff02f77364de339a1292923a15844b8 under the frozen rule: 'strictly largest full-window burned value in frozen minter_table.json AND zero minted value in the window' (measured: burn 155,547,002,051.641664 / mint 0; C5 rule TREASURY_MEASURED_DOMINANT did not fire and is NOT amended). This label is used for the X2/X3 diagnostic decomposition only, never to alter the primary series (per netting_and_folds_frozen.txt).",
+   "USDT_ETHEREUM (event-starved: 27 days with events, 339 zero-event days per C6) and USDT_TRON (count+sum grade, confirmed channel) are declared SEPARATE strata, excluded from the anchor; a class-differential variant on them would consume its own declared trial identity at D2 and is not claimed here."
+  ]
+ },
+ "mechanism": "CONDITIONING-ONLY (no forcing claim): issuer-contract settlement logs are the issuer's own primary-market actions (treasury redemption vs issuance bursts) observed at event time on the settlement layer. The proposal claims ONLY that burst-crossing transitions in this measured float-state carry incremental conditioning information about the distribution of frozen-panel returns over the following fixed window, measurable as incremental over the declared shadow set (X1-X5). NO claim that net issuance is 'money entering crypto', new dollars that must buy, or buying/selling pressure; those interpretations are invalid per plan sec 4/5 and are not made, repaired or implied. Reverse causality (price moves eliciting issuance/redemption) is declared NOT fully identifiable; the design survives only as a conditioning form whose D2 claim is incremental information, and X3 (tape-fitted issuance shadow) is the dedicated killer for the reverse-causality confound. Direction is a falsifiable sign hypothesis, not an assumed mechanism.",
+ "formula": {
+  "net_d": "net_d = SUM(Mint|Issue values with finalized block_ts in UTC day d) - SUM(Burn|Redeem values with finalized block_ts in UTC day d), USDC_ETHEREUM issuer chain only, finalized logs only (C7-pinned address 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 + topic pairs; C9 conservation identity must hold per day)",
+  "scale_d": "scale_d = median( |net_j| : j in the L=60 panel days strictly before d ) [trailing only, no contemporaneous or future data]",
+  "burst_d": "b_d = |net_d| / scale_d",
+  "theta_d": "theta_d = empirical 0.95 quantile of { b_j : j in the L=60 panel days strictly before d } [trailing only]",
+  "trigger_d": "trigger_d = ( b_d >= theta_d ) AND (no open position) AND (days_since_last_trigger > H)",
+  "sign_d": "s_d = +1 if net_d < 0 else -1",
+  "book": "for each frozen-panel symbol i: w_i = s_d * (1.0 / N_active) with SUM(|w_i|) = gross 1.0 and |w_i| <= 0.10 (symbol cap); N_active = count of executable panel symbols on the entry bar",
+  "decision_time_d": "decision_time(d) = MAX( last_event_block_ts(d), day_end_block_ts(d) ) + 768 seconds [C8: >= 2 epochs of 12s blocks post event time; measured census serving p95 = 4.5s << 768s so serving latency is absorbed]",
+  "holding": "hold H = 5 panel days from the entry bar; exit at the close of the 5th executable panel bar after entry, OR at the fold boundary (force-flat), whichever is first"
+ },
+ "decision_rule_per_C8": "An episode on panel day d is actionable only after decision_time(d) = MAX(last_event_block_ts(d), day_end_block_ts(d)) + 768s (C8 availability convention: event_time = finalized block timestamp; decision_time conservative at event_time + 64 blocks x 12s). Entry occurs at the FIRST executable frozen-Binance-panel bar whose close_ts is STRICTLY GREATER than decision_time(d) — no intrabar anticipation, no same-bar entry, no pre-finality byte is ever consumed. Exit at the close of the 5th executable panel bar after entry or at the fold boundary, whichever comes first. Costs: frozen crypto band schedule charged once per fill + funding, financing-inclusive worst-case ceiling measured at P2 (F1); gross cap 1.0, symbol cap 0.10, stress tier 2.0 + break-even margin is an E-stage-only tier. All triggers are evaluated on the primary scored issuer USDC_ETHEREUM.",
+ "lookback": {
+  "L_panel_days": 60,
+  "min_valid_trailing_days": 20,
+  "warmup": "no trigger may fire before 20 valid trailing panel days exist (panel start of fold1 warms up silently; zero-flow days are VALID observations because the C9-verified census means zero events = exactly zero net flow, NOT missing data)"
+ },
+ "holding_window": {
+  "H_panel_days": 5,
+  "concurrency": "one position at a time (refractory = H); no overlapping episodes, no pyramiding",
+  "boundary": "force-flat at every fold boundary (C10 folds: fold1 2025-08-22..2026-01-14 / fold2 2026-01-15..2026-05-03 / fold3 2026-05-04..2026-08-22); scored decisions scope to panel days 2025-08-22..2026-08-21 only; census margin day 2026-08-22 is coverage, not scored"
+ },
+ "universe": "Frozen Binance panels (the existing S4 target set) ONLY — no additions, no rescreens, no off-panel symbols. Equal-weight within the book at entry, symbol cap 0.10, gross cap 1.0 (plan sec 7).",
+ "turnover_estimate": {
+  "point_estimate_gross_round_trips_per_year": 15,
+  "range": "12-18",
+  "derivation": "PARAMETRIC, not measured on outcomes: the trailing-P95 threshold pins the unconditioned crossing rate at ~5% of evaluable days by construction (~18 candidate days across 365 panel days), the H=5 refractory caps concurrency at 1, and deductions for C6-excluded trigger days (4 frozen NET_EXTREME days), fold-boundary voids and the 20-day warmup give the 12-18 band. Each traded episode costs exactly 2 fills (entry + exit) at gross 1.0, i.e. ~30 gross turns/year ~= 0.08x average daily gross turnover. F1 at P2 must price ~15 worst-case financing-inclusive round trips per year on the frozen band schedule.",
+  "outcome_blindness_note": "No day-row counts, no flow distribution, and no outcome data were consulted to set theta, L or H; the trigger rate is fixed by the quantile construction, and D2 re-measures realized frequency."
+ },
+ "missing_data_rule": [
+  "USDC_ETHEREUM zero-event day: VALID observation with net_d = 0 exactly (C9 per-day conservation identity verified over 100% of chunks); enters the lookback; it can never itself trigger (b_d = 0).",
+  "Lookback with fewer than 20 valid trailing panel days: NO_TRIGGER (state OFF); never imputed, never carried forward.",
+  "Trigger day flagged NET_EXTREME by the frozen C6 P99 rule (2025-08-28, 2025-09-18, 2025-10-14, 2025-10-16): episode VOIDED before entry (counted EXCLUDED_BY_C6); an excluded day falling INSIDE an open holding window does not force liquidation, and D2 reports per-fold eligible counts both including and excluding those in-window days.",
+  "Fold-boundary collision (entry would leave fewer than H executable bars before force-flat): episode VOIDED (counted BOUNDARY_VOID).",
+  "Missing/halted entry bar on the panel: roll to the next executable bar; if none within decision_time(d) + 1 day, the episode is VOID_ENTRY — counted, never silently dropped.",
+  "USDT_ETHEREUM sparse stratum (339/366 zero-event days per C6) and USDT_TRON stratum: never zero-imputed, never merged into the anchor or any cross-chain total.",
+  "Minter-field flip check (C6 in-window upgrade detector: cardinality(topic1) must stay <= cardinality(topic2)) failing mid-window: the arm HALTS fail-closed pending re-freeze — no partial reclassification."
+ ],
+ "falsifier": [
+  "F1-COST: financing-inclusive worst-case round-trip cost measured at P2 on the frozen funding/cost bands exceeds the per-episode gross edge band attributable at D2 -> dead (P-21 ceiling breach).",
+  "X1-ANCESTRY: pooled |rho| > 0.20 vs the full crypto inventory, explicitly including the NG2 dead-form 29-shape panel triad -> dead.",
+  "X2-DEAD-FORM: measured (not asserted) indistinguishability from OILEV-V2 / NG2 OI-funding dead-form shadows (e.g. the burst book is a relabelled OI/funding state) -> dead.",
+  "X3-TAPE-FIT: an issuance proxy fitted from price/tape alone explains the episode calendar or the anchor's conditioning value -> the on-chain census adds nothing -> dead.",
+  "X4-CLOCK: a clock-only / day-of-week shadow (Q-7) reproduces the episode calendar or the conditioning value -> dead (NG1 killer class).",
+  "X5-NULL: delayed-state and shuffled nulls do NOT move the signal (INVALID-NULL verdicts not explicit) -> dead.",
+  "POPULATION: fewer than 4 traded episodes in any fold after voids -> that fold is not populated -> D2 infeasible per plan sec 6.",
+  "SIGN-STABILITY: the mint-burst vs burn-burst differential is not sign-stable across folds 1-3 -> the directional form is dead; a sign-free episode-incidence conditioning form is NOT auto-claimed and would require a new declared trial identity.",
+  "REPRO: the construction is not exactly reproducible from the frozen census digests + frozen panels by a detached rerun -> dead (C11 law)."
+ ],
+ "declared_controls": {
+  "X1_ANCESTRY_RHO": "pooled |rho| <= 0.20 vs the full crypto inventory including the complete NG2 dead-form 29-shape panel triad; measured at D2 on this anchor's episode book vs every shadow shape",
+  "X2_OI_FUNDING_DEAD_FORMS": "OILEV-V2 + the NG2 dead-form shadow set; the anchor must measurably differ, not merely be asserted different; the declared PRIMARY_REDEMPTION / CCTP strata decomposition is the designated diagnostic for whether episodes are OI/funding events in disguise",
+  "X3_TAPE_FITTED_ISSUANCE": "NEW mandatory shadow: issuance proxy fitted from price/tape alone (e.g. lags of panel returns/volatility predicting net_d direction and burst incidence); if it explains the anchor, the on-chain census adds nothing and the anchor dies",
+  "X4_CLOCK_CALENDAR": "Q-7 clock-only conditioning shadow + day-of-week geometry (NG1 killer class); the episode calendar must not be reproducible by calendar structure alone",
+  "X5_NULL_VALIDITY": "Q-11: delayed-state null (trigger delayed past decision_time + k days) and shuffled-episode null must MOVE the signal; INVALID-NULL verdicts recorded explicitly",
+  "F1_COST_CEILING": "P-21: financing-inclusive worst-case round-trip ceiling measured at P2 on the frozen funding/cost bands, priced against ~15 gross round trips/year at gross 1.0; no claim may rely on gross or pre-funding performance"
+ },
+ "representation_identity": "P-12 frozen representation: scored decisions consume ONLY (i) the committed P0 census artifacts by digest — p0_census.json, day_rows_usdc_ethereum.json, minter_table.json, netting_and_folds_frozen.txt, day_boundaries.json (digests in the P0 handoff / digest_manifest.json); (ii) frozen Binance S4 panel bars for execution; (iii) the C8 decision-time convention (+768s post event/finality); (iv) C10 folds and C6 strata/exclusions as frozen text. No aggregate API (DefiLlama, Coin Metrics Community), no revised-in-place series, no alternative netting, no minter relabel beyond the outcome-blind rules declared in this proposal may enter the scored representation; all input hashes are pinned at D2/S freeze.",
+ "trial_identity": "ONE proposal = ONE anchor arm: SCNG3-A5-P1, family CNG3-FLOAT-STATE, construction B (event/transition). The minter-class decomposition is a declared diagnostic stratum inside this arm, not an additional anchor; any minter-class-differential variant or sign-free incidence form consumes its own declared trial identity at D2. Budget: consumes at most 1 of the 6 scored cells / 1 of the 2 families if selected.",
+ "p0_inputs_consumed": {
+  "census_schema": "crypto_ng3_p0_census@1 (overall P0_CENSUS_PASS, generated 2026-09-15T19:41:20Z)",
+  "primary_issuer": "USDC_ETHEREUM (per frozen netting rule: primary scored issuer; chains never summed)",
+  "days_total": 366,
+  "panel_days": 365,
+  "folds": { "fold1": 146, "fold2": 109, "fold3": 111 },
+  "c8_availability": "decision = event_time + 768s; finality lag 88 blocks measured; serving p50 2985.5ms / p95 4515.8ms over 1466 requests",
+  "c6_strata": "4 NET_EXTREME excluded days; CCTP stratum present; USDT-ETH sparse stratum 339 zero-event days; no in-window composition break"
+ },
+ "author": "d1-a5 outcome-blind proposal lane (zcode subagent, GLM; construction B; no outcome data read)",
+ "utc": "2026-09-15T19:52:09Z",
+ "proposal_status": "PROPOSED_OUTCOME_BLIND — no returns, PnL, PF, Sharpe, drawdown or rho computed or read anywhere in this lane"
+}
