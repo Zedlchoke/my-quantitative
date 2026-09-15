@@ -1,5 +1,24 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced at the STOCKS-NG3 open-and-close, 2026-09-15)
+
+- **STOCKS-NG3 CLOSED → `STOCKS_NG3_BLOCKED_DATA_OR_SELECTION`** (2026-09-15,
+  branch `orca/stocks-ng3-integration`, terminal 0d4b8352, A7 plan audit
+  AUTHORIZED_WITH_FINDINGS 0 HIGH + A7 terminal AUTHORIZED 0 HIGH/CRITICAL,
+  budget 0/6, GO died UNCONSUMED, S1 SEALED) — the earnings-surprise drift
+  direction (consensus-free SUE, PEAD class, death-inclusive cohort) chosen by
+  the owner-directed discovery mission as the highest-value surviving frontier,
+  then killed by its own PREREGISTERED P0 census gate before any proposal lane:
+  the EODHD "All World" entitlement (token alive, eod 200 frozen-transcript)
+  does NOT serve the earnings-history channel (`/api/fundamentals` 403 Forbidden
+  on 3/3 canaries, calendar 403, legacy /api/earnings 404). Reopening condition
+  recorded in the terminal verdict + ledger row: an owner entitlement serving
+  realized earnings history reopens the direction probe-first, with A7 LOW
+  findings T3/T4 fixed in the standing census. Zero cells; denominators
+  unchanged stocks 42/42, program 257/260 (P-9). PROSPECTIVE-SHADOW-V1 ran
+  through the whole arc untouched (ACTIVE_LIGHT). Detail:
+  `.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/terminal_verdict_stocks_ng3.json`.
+
 ## Sprint state (synced at the new-assets generation open, 2026-09-12)
 
 - **COMMODITIES-NG1 CLOSED → `COMMODITIES_NG1_REJECT_ALL`** (2026-09-14, branch
