@@ -133,7 +133,9 @@ every veto below has run measured and the anchor survives** (the NG2 dead-
 form-envelope law: panel-clean anchors still die to dead-form shadows).
 
 ```text
-X1 ANCESTRY RHO          pooled |rho| <= 0.20 vs the full crypto inventory
+X1 ANCESTRY RHO          pooled |rho| <= 0.20 vs the full crypto inventory,
+                         explicitly including the NG2 dead-form 29-shape
+                         panel triad (the complete NG2 declared shadow set)
 X2 OI/FUNDING DEAD FORMS OILEV-V2 and the NG2 dead-form shadow set — the
                          anchor must not be a relabelled OI/funding state
 X3 TAPE-FITTED ISSUANCE  NEW mandatory shadow: an issuance proxy fitted from
@@ -179,7 +181,8 @@ D2  X1-X5 + F1 measurement, no scored outcomes
 S   selection + exact arm/data/fold/config hash freeze
 I   isolated implementation lanes; A1 integrates one handoff at a time
 Z   sanitized exact-arm dry-run + recursive leak scan
-A7  fresh-context prelaunch audit; zero unresolved HIGH/CRITICAL
+A7  fresh-context prelaunch audit; zero unresolved HIGH/CRITICAL; the A7
+    launch key is `CRYPTO_NG3_S0_LAUNCH_AUTHORIZED`
 GO  owner types exact phrase at its own gate; early GO dies unconsumed
 E   at most 6 scored cells under the machine-wide heavy lock
 R   detached reproduction; T terminal audit + two-half close
@@ -203,9 +206,14 @@ CRYPTO_NG3_BLOCKED_SOURCE_OR_SCHEMA
 CRYPTO_NG3_BLOCKED_DATA_OR_SELECTION
 CRYPTO_NG3_BLOCKED_PRELAUNCH
 CRYPTO_NG3_REJECT_ALL
+CRYPTO_NG3_SURVIVORS_LOCKED_FOR_FUTURE_S1
 CRYPTO_NG3_INCOMPLETE_NOT_PROMOTABLE
 CRYPTO_NG3_TECHABORT_PRESERVED
 ```
+
+Gate-to-terminal mapping: any C1-C9 miss at P0 closes under
+`BLOCKED_SOURCE_OR_SCHEMA`; a C10 fold-freeze or C11 reproducibility miss
+closes under `BLOCKED_DATA_OR_SELECTION`.
 
 ## 11. Boundaries
 
@@ -213,7 +221,10 @@ CRYPTO_NG3_TECHABORT_PRESERVED
   keyless transports only; Etherscan v2 / The Graph gateway / publicnode
   archive remain NOT_ENTITLED.
 - Coin Metrics Community and DefiLlama are CROSS-CHECK only, zero scored
-  weight (PIT-revised + license), never a sole authority.
+  weight (PIT-revised + license), never a sole authority. If any enforcing
+  stage would need CC BY-NC bytes beyond cross-check display, that leg is
+  DROPPED (zero scored weight) or routed to an explicit frozen owner license
+  decision (P-18/P-25); no license term is ever auto-accepted.
 - No S1 access and no paper/testnet/live orders.
 - No pushes or writes to `.zcode/`; registry only via `researchctl`.
 - One heavy job machine-wide; never kill a foreign worker; blockscout 429
