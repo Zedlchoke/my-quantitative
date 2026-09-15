@@ -24,6 +24,7 @@ from pathlib import Path
 
 from research.shadow_v1 import events as shv1_events
 from research.shadow_v1 import ledger as shv1_ledger
+from research.shadow_v1 import valuation as shv1_valuation
 from research.shadow_v1.dashboard import (
     build_dashboard_snapshot,
     generate_html,
@@ -706,6 +707,110 @@ class TestRenderSmoke(ShV1DashboardTestBase):
         self.assertIn("ACCOUNTING_MISMATCH", codes)
         html = generate_html(snap)
         self.assertIn("ACCOUNTING_MISMATCH", html)
+
+
+# ----------------------------------------------------------------------
+# 10. near-real valuation view (shv1-mtm-valuation lane, additive)
+# ----------------------------------------------------------------------
+class TestValuationView(ShV1DashboardTestBase):
+    """The valuation section renders beside (never over) the strategy
+    view; auto-refresh refetches the snapshot only; strategy ledgers are
+    byte-identical across refreshes."""
+
+    def _scaffold_with_marks(self):
+        fid = FAMILY_IDS[0]
+        append_record(self.tmp, fid, "2026-09-07T00:00:00Z", equity=100000.0,
+                      fills=[make_fill(virtual_trade_id="VT-V1")],
+                      targets={"BTCUSDT": 0.5})
+        # production layout: <runtime>/ledgers + <runtime>/valuation_marks
+        runtime = Path(self.tmp).parent / ("valuation-runtime-" + fid)
+        if runtime.exists():
+            shutil.rmtree(runtime)
+        ledgers = runtime / "ledgers"
+        shutil.copytree(self.tmp, ledgers)
+        valuation_paths = {
+            other: str(runtime / "valuation_marks" / f"{other}.jsonl")
+            for other in FAMILY_IDS
+        }
+        ledger_file = ledgers / f"{fid}.jsonl"
+        for stamp, price in (
+            ("2026-09-13T00:00:00Z", 50000.0),
+            ("2026-09-13T00:05:00Z", 50500.0),
+        ):
+            mark = shv1_valuation.build_valuation_mark(
+                fid, str(ledger_file), {"BTCUSDT": price}, stamp, stamp,
+                "binance_fapi_premium_index_bulk", stamp, "vg" * 32,
+            )
+            shv1_valuation.append_valuation_mark(str(runtime), mark)
+        seed = shv1_valuation.capital_seed_record(fid, "2026-09-07T00:00:00Z")
+        shv1_valuation.append_valuation_mark(str(runtime), seed)
+        ledger_paths = {f: str(ledgers / f"{f}.jsonl") for f in FAMILY_IDS}
+        return fid, ledger_paths, valuation_paths, runtime
+
+    def test_valuation_section_renders_with_auto_refresh_marker(self):
+        fid, ledger_paths, valuation_paths, runtime = self._scaffold_with_marks()
+        snap = build_dashboard_snapshot(
+            ledger_paths, NOW, valuation_marks_by_family=valuation_paths
+        )
+        view = snap["valuation"]
+        self.assertEqual(view["counters"]["valuation_mark_count"], 2)
+        self.assertEqual(view["counters"]["valuation_seed_count"], 1)
+        vblock = view["families"][fid]
+        self.assertEqual(vblock["mark_count"], 2)
+        # fill: buy 0.01 @ 50005 -> cash 100000 - 0.01*50005 - 0.5 = 99499.45
+        self.assertEqual(vblock["latest_valid_mark"]["equity"], 99499.45 + 0.01 * 50500.0)
+        html = generate_html(snap)
+        # auto-refresh markers (meta + JS hook), 30s
+        self.assertIn('http-equiv="refresh" content="30"', html)
+        self.assertIn('id="auto-refresh"', html)
+        self.assertIn("valuation_mark_count", html)
+        self.assertIn("CAPITAL_SEED_NO_MARK", html)
+        # the four strategy counters still render (never moved/relabelled)
+        self.assertIn("decision_count", html)
+        self.assertIn("closed_position_count", html)
+        shutil.rmtree(runtime, ignore_errors=True)
+
+    def test_refresh_leaves_strategy_ledgers_byte_identical(self):
+        fid, ledger_paths, valuation_paths, runtime = self._scaffold_with_marks()
+        digests_before = {
+            f: shv1_ledger.ledger_digest(p) for f, p in ledger_paths.items()
+        }
+        marks_before = {
+            f: shv1_valuation.valuation_digest(p) if p else None
+            for f, p in valuation_paths.items()
+        }
+        # "refresh": rebuild snapshot + page twice; nothing is rewritten
+        for _ in range(2):
+            snap = build_dashboard_snapshot(
+                ledger_paths, NOW, valuation_marks_by_family=valuation_paths
+            )
+            generate_html(snap)
+        digests_after = {
+            f: shv1_ledger.ledger_digest(p) for f, p in ledger_paths.items()
+        }
+        marks_after = {
+            f: shv1_valuation.valuation_digest(p) if p else None
+            for f, p in valuation_paths.items()
+        }
+        self.assertEqual(digests_before, digests_after)
+        self.assertEqual(marks_before, marks_after)
+        # the four STRATEGY counters never move and never gain the
+        # valuation counter (which lives in its own namespace)
+        counters = snap["families"][fid]["counters"]
+        self.assertEqual(counters["decision_count"], 1)
+        self.assertNotIn("valuation_mark_count", counters)
+        self.assertNotIn("valuation_mark_count", snap["counters"])
+        shutil.rmtree(runtime, ignore_errors=True)
+
+    def test_no_marks_render_no_marks_not_fake_zero(self):
+        fid = FAMILY_IDS[0]
+        append_record(self.tmp, fid, "2026-09-07T00:00:00Z", equity=100000.0)
+        snap = build_dashboard_snapshot({fid: shv1_ledger.ledger_path(self.tmp, fid)}, NOW)
+        view = snap["valuation"]
+        self.assertEqual(view["counters"]["valuation_mark_count"], 0)
+        self.assertEqual(view["families"][fid]["status"], "NO_MARKS")
+        html = generate_html(snap)
+        self.assertIn("NO_MARKS", html)
 
 
 if __name__ == "__main__":

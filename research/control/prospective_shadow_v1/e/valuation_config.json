@@ -1,0 +1,62 @@
+{
+  "schema": "shv1_valuation_config@1",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "task_id": "shv1-mtm-valuation",
+  "role": "quant-implementer",
+  "lane": "mtm-valuation",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/mtm-valuation",
+  "branch": "orca/shv1-mtm-valuation",
+  "base_head_sha": "599f70179c2689d982291d01f25506bff3b41762",
+  "generated_utc": "2026-09-15T01:01:55Z",
+  "purpose": "FROZEN mark-price source for the near-real MTM valuation lane (observation/accounting only; no strategy identity change)",
+  "chosen_source": {
+    "name": "binance_fapi_premium_index_bulk",
+    "endpoint": "https://fapi.binance.com/fapi/v1/premiumIndex",
+    "method": "GET (no symbol parameter => ONE bulk response covering ALL symbols)",
+    "fields_used": {
+      "markPrice": "the venue mark price — the exact price class at which funding settles (contract-aligned for a funding-carry observation)",
+      "time": "per-symbol server timestamp (ms since epoch UTC); recorded per mark as source_timestamp_utc (max over used symbols, ISO-8601 Z)"
+    },
+    "batch_plan": "ONE bulk call per 300s valuation loop for ALL families and ALL open-position symbols; per-symbol prices are extracted from the single response array; a symbol absent from the response is a MISSING price => that sleeve's mark is UNAVAILABLE_FAIL_CLOSED (never stale reuse, never interpolation)",
+    "keyless_statement": "keyless public read; NO API keys are read, stored or required; no accounts, no orders; emitted action stays TARGET_INTENT"
+  },
+  "rationale": [
+    "premiumIndex markPrice is the venue's own mark-of-record for funding settlement — the economically correct mark for MTM valuation of perpetual positions of a funding-carry family",
+    "the no-symbol variant returns EVERY symbol in ONE response (measured 199740 bytes, ~0.5s), so the ACTIVE_LIGHT worker makes exactly ONE network read per loop regardless of how many sleeves/symbols are open",
+    "markPrice is a point-in-time mark carrying its own server timestamp; it has NO bar-completeness ambiguity (see the rejected klines candidate below)",
+    "the klines candidate was MEASURED to return the currently-open (uncompleted) 1m bar at limit=1 (row open_time 1789434120000, close_time 1789434179999, fetched at 1789434144543 < close_time): marking on its close would violate the frozen completeness rule, and the completed-bar workaround needs one call PER SYMBOL per loop, breaking the single-read batch plan"
+  ],
+  "explicit_no_uncompleted_bar_rule": "valuation NEVER marks on an uncompleted bar. The frozen source is premiumIndex markPrice (not a bar). Any future bar-derived mark must use bars whose canonical close time is strictly in the past at fetch time; an uncompleted bar is UNAVAILABLE, never 'close so far'.",
+  "frozen_measurements": {
+    "measured_at_utc": "2026-09-15T01:01:55Z",
+    "network_reachable": true,
+    "premiumIndex_BTCUSDT": {
+      "url": "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT",
+      "sha256": "2f7a5ecc6eec3d62099aafdbe03563e33219710f53b95d2610a658a0241b8a81",
+      "bytes": 231,
+      "fetched_at_utc": "2026-09-15T01:01:55Z",
+      "markPrice_sample": "77844.50000000",
+      "server_time_ms": 1789434115000
+    },
+    "premiumIndex_ALL": {
+      "url": "https://fapi.binance.com/fapi/v1/premiumIndex",
+      "sha256": "ec3f5cd6e251ad625c4d274ec46f2a09eb6b22c5c9f627aaf7839eaee63b8b35",
+      "bytes": 199740,
+      "fetched_at_utc": "2026-09-15T01:01:56Z",
+      "latency_s": 0.538,
+      "covers_all_symbols": true
+    },
+    "klines_BTCUSDT_1m_limit1_REJECTED": {
+      "url": "https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1m&limit=1",
+      "sha256": "72b051d325b881cd64db840d6897edd350cd40bebac57e7f3b9524c6109bd545",
+      "bytes": 134,
+      "fetched_at_utc": "2026-09-15T01:02:24Z",
+      "row_open_time_ms": 1789434120000,
+      "row_close_time_ms": 1789434179999,
+      "fetch_epoch_ms": 1789434144543,
+      "bar_was_still_open_at_fetch": true,
+      "verdict": "REJECTED — limit=1 returns the IN-PROGRESS bar; its close is not a completed mark"
+    }
+  },
+  "unavailable_fail_closed": "if the network read fails or any open-position symbol is missing from the bulk response, the mark for that sleeve is recorded with accounting_status UNAVAILABLE_FAIL_CLOSED and equity=null; the previous mark is never reused and no price is ever interpolated"
+}

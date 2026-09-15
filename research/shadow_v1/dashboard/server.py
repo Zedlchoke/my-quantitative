@@ -20,6 +20,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Mapping, Optional, Tuple
@@ -29,6 +30,7 @@ from .render import generate_html
 from .snapshot import (
     build_dashboard_snapshot,
     resolve_ledger_paths,
+    resolve_valuation_mark_paths,
 )
 
 __all__ = ["ROUTES", "DashboardApp", "DashboardRequestHandler", "make_server", "serve"]
@@ -52,10 +54,23 @@ class DashboardApp:
         ledger_paths_by_family: Mapping[str, Optional[str]],
         identity_manifest_path: Optional[str] = None,
         shadow_start_utc: Optional[str] = None,
+        valuation_marks_by_family: Optional[Mapping[str, Optional[str]]] = None,
     ):
         self.ledger_paths_by_family = dict(ledger_paths_by_family)
         self.identity_manifest_path = identity_manifest_path
         self.shadow_start_utc = shadow_start_utc
+        self.valuation_marks_by_family = (
+            dict(valuation_marks_by_family)
+            if valuation_marks_by_family is not None
+            else resolve_valuation_mark_paths(
+                next(
+                    (os.path.dirname(p) for p in ledger_paths_by_family.values() if p),
+                    "",
+                )
+                if any(ledger_paths_by_family.values())
+                else ""
+            )
+        )
 
     def snapshot(self) -> Dict[str, Any]:
         from datetime import datetime, timezone
@@ -66,6 +81,7 @@ class DashboardApp:
             now_iso,
             identity_manifest_path=self.identity_manifest_path,
             shadow_start_utc=self.shadow_start_utc,
+            valuation_marks_by_family=self.valuation_marks_by_family,
         )
 
     def page_html(self) -> str:
@@ -253,12 +269,23 @@ def make_server(
     bind: str = "127.0.0.1",
     identity_manifest_path: Optional[str] = None,
     shadow_start_utc: Optional[str] = None,
+    valuation_marks_by_family: Optional[Mapping[str, Optional[str]]] = None,
 ) -> ThreadingHTTPServer:
-    """Bind the read-only dashboard server (caller decides how to run it)."""
+    """Bind the read-only dashboard server (caller decides how to run it).
+
+    The near-real valuation mark ledgers are derived from the
+    ``valuation_marks/`` sibling of ``read_only_root`` unless pinned
+    explicitly.
+    """
     app = DashboardApp(
         resolve_ledger_paths(read_only_root),
         identity_manifest_path=identity_manifest_path,
         shadow_start_utc=shadow_start_utc,
+        valuation_marks_by_family=(
+            valuation_marks_by_family
+            if valuation_marks_by_family is not None
+            else resolve_valuation_mark_paths(read_only_root)
+        ),
     )
 
     handler = type(
@@ -275,6 +302,7 @@ def serve(
     bind: str = "127.0.0.1",
     identity_manifest_path: Optional[str] = None,
     shadow_start_utc: Optional[str] = None,
+    valuation_marks_by_family: Optional[Mapping[str, Optional[str]]] = None,
 ) -> None:
     """Serve the dashboard for the ledgers in ``read_only_root`` (GET/HEAD only)."""
     httpd = make_server(
@@ -283,6 +311,7 @@ def serve(
         bind=bind,
         identity_manifest_path=identity_manifest_path,
         shadow_start_utc=shadow_start_utc,
+        valuation_marks_by_family=valuation_marks_by_family,
     )
     try:
         httpd.serve_forever()

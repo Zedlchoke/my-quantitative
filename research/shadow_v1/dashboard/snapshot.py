@@ -52,6 +52,7 @@ from research.shadow_v1 import combined as combined_view
 from research.shadow_v1 import events as shv1_events
 from research.shadow_v1 import ledger as shv1_ledger
 from research.shadow_v1 import scheduler as shv1_scheduler
+from research.shadow_v1 import valuation as shv1_valuation
 
 SCHEMA = "shv1_dashboard_snapshot_v1"
 CYCLE_ID = "PROSPECTIVE-SHADOW-V1"
@@ -71,6 +72,15 @@ STATUS_DATA_BLOCKED = "DATA_BLOCKED"
 STATUS_RISK_BLOCKED = "RISK_BLOCKED"
 STATUS_STOPPED = "STOPPED"
 STATUS_NOT_RUN = "NOT_RUN"
+
+# ---- near-real valuation view (additive; marks from shv1_valuation_mark@1)
+VALUATION_VIEW_SCHEMA = "shv1_valuation_view@1"
+VALUATION_STALE_AFTER_SECONDS = 900.0  # 15 minutes at the 5-minute cadence
+VALUATION_STATUS_NO_MARKS = "NO_MARKS"
+VALUATION_STATUS_FLAT_OK = shv1_valuation.STATUS_FLAT_OK
+VALUATION_STATUS_RUNNING = shv1_valuation.STATUS_RUNNING
+VALUATION_STATUS_UNAVAILABLE = shv1_valuation.STATUS_UNAVAILABLE
+SEED_RECORD_TYPE = shv1_valuation.SEED_RECORD_TYPE
 
 SL_NA = "N/A — frozen family has no native fixed stop"
 TP_NA = "N/A — frozen family has no native fixed target"
@@ -1243,6 +1253,502 @@ def _heartbeat_block(
 
 
 # ----------------------------------------------------------------------
+# near-real valuation view (additive read-only view over mark ledgers)
+# ----------------------------------------------------------------------
+def resolve_valuation_mark_paths(ledgers_dir: str) -> Dict[str, Optional[str]]:
+    """Map each known family to its valuation mark ledger.
+
+    Mark ledgers live in the ``valuation_marks/`` sibling of the
+    strategy ``ledgers/`` directory under the same runtime root. The
+    path is returned whether or not the file exists yet (the view
+    reports ``marks_present`` honestly).
+    """
+    from research.shadow_v1.families import FAMILY_REGISTRY
+
+    if not ledgers_dir:
+        return {fid: None for fid in sorted(FAMILY_REGISTRY)}
+    abs_dir = os.path.abspath(ledgers_dir).rstrip(os.sep)
+    # ledgers dir is <runtime_root>/ledgers => marks live in the
+    # <runtime_root>/valuation_marks sibling (same runtime root)
+    runtime_root = (
+        os.path.dirname(abs_dir)
+        if os.path.basename(abs_dir) == "ledgers"
+        else abs_dir
+    )
+    out: Dict[str, Optional[str]] = {}
+    for fid in sorted(FAMILY_REGISTRY):
+        out[fid] = shv1_valuation.valuation_marks_path(runtime_root, fid)
+    return out
+
+
+def _valuation_today_block(
+    points: List[Dict[str, Any]],
+    boundary_dt: dt.datetime,
+    now_dt: dt.datetime,
+    tz_name: str,
+) -> Dict[str, Any]:
+    """Valuation-window PnL: a mark AT OR AFTER the boundary starts the
+    window (the 5-minute cadence naturally produces boundary marks at
+    00:00Z and 17:00Z). Missing input => UNAVAILABLE_FAIL_CLOSED."""
+    boundary_iso = fmt_ts(boundary_dt)
+    valid = sorted(
+        (
+            p
+            for p in points
+            if p.get("status") == "OK"
+            and p.get("equity") is not None
+            and parse_ts(p.get("ts")) is not None
+            and boundary_iso <= str(p["ts"]) <= fmt_ts(now_dt)
+        ),
+        key=lambda p: str(p["ts"]),
+    )
+    block: Dict[str, Any] = {
+        "tz": tz_name,
+        "window_start_utc": boundary_iso,
+        "window_start_local": boundary_dt.astimezone(LOCAL_TZ).isoformat(),
+        "window_end_utc": fmt_ts(now_dt),
+        "boundary_mark_ts": None,
+        "end_mark_ts": None,
+        "pnl_usdt": None,
+        "pnl_pct": None,
+        "status": GAP_STATUS,
+        "reason": None,
+    }
+    if not valid:
+        block["reason"] = (
+            f"no valid valuation mark at or after the boundary {boundary_iso} "
+            "(UNAVAILABLE_FAIL_CLOSED; never computed from a convenient "
+            "earlier point)"
+        )
+        return block
+    first = valid[0]
+    last = valid[-1]
+    start_equity = float(first["equity"])
+    end_equity = float(last["equity"])
+    pnl = end_equity - start_equity
+    block.update(
+        {
+            "boundary_mark_ts": first["ts"],
+            "end_mark_ts": last["ts"],
+            "pnl_usdt": pnl,
+            "pnl_pct": (pnl / start_equity * 100.0) if start_equity else None,
+            "status": "OK",
+            "reason": (
+                "window open == window end (only the boundary mark exists so far)"
+                if last is first
+                else None
+            ),
+        }
+    )
+    return block
+
+
+def _build_valuation_family(
+    family_id: str,
+    marks_path: Optional[str],
+    now_dt: dt.datetime,
+) -> Dict[str, Any]:
+    """Read-only valuation view for ONE family (marks + seeds)."""
+    block: Dict[str, Any] = {
+        "family_id": family_id,
+        "marks_path": os.path.abspath(marks_path) if marks_path else None,
+        "marks_present": bool(marks_path and os.path.exists(marks_path)),
+        "marks_digest": None,
+        "mark_count": 0,
+        "seed_count": 0,
+        "status": VALUATION_STATUS_NO_MARKS,
+        "status_note": "no valuation mark ledger (worker not writing yet)",
+        "latest_mark": None,
+        "latest_valid_mark": None,
+        "data_age_seconds": None,
+        "stale": False,
+        "positions": [],
+        "today": {
+            "Asia/Ho_Chi_Minh": {},
+            "UTC": {},
+        },
+        "total_pnl_usdt": None,
+        "total_pnl_pct": None,
+        "seeds": [],
+        "series": [],
+        "corruption": None,
+    }
+    if not marks_path:
+        return block
+    digest = shv1_valuation.valuation_digest(marks_path)
+    block["marks_digest"] = digest
+    try:
+        records = shv1_valuation.read_valuation_records(marks_path)
+    except shv1_valuation.ValuationError as exc:
+        block["corruption"] = f"{type(exc).__name__}: {exc}"
+        block["status"] = VALUATION_STATUS_UNAVAILABLE
+        block["status_note"] = "mark ledger corrupt: refusing (never truncated)"
+        return block
+
+    marks: List[Dict[str, Any]] = []
+    for rec in records:
+        if rec.get("record_type") == SEED_RECORD_TYPE:
+            block["seeds"].append(
+                {
+                    "seed_id": rec.get("seed_id"),
+                    "ts_utc": rec.get("ts_utc"),
+                    "equity": rec.get("equity"),
+                    "record_type": SEED_RECORD_TYPE,
+                    "note": rec.get("note"),
+                }
+            )
+            continue
+        try:
+            shv1_valuation.validate_valuation_mark(rec)
+        except shv1_valuation.ValuationError as exc:
+            block["corruption"] = f"MARK_CONTRACT_VIOLATION: {exc}"
+            block["status"] = VALUATION_STATUS_UNAVAILABLE
+            block["status_note"] = "a mark violated its contract: refusing"
+            return block
+        marks.append(rec)
+
+    block["mark_count"] = len(marks)
+    block["seed_count"] = len(block["seeds"])
+    if not marks:
+        block["status_note"] = (
+            "capital seed present, no market marks yet"
+            if block["seeds"]
+            else "no valuation marks yet"
+        )
+        return block
+
+    series: List[Dict[str, Any]] = []
+    valid_points: List[Dict[str, Any]] = []
+    for rec in marks:
+        ok = (
+            rec.get("accounting_status") == shv1_events.ACCOUNTING_STATUS_OK
+            and rec.get("equity") is not None
+        )
+        point = {
+            "ts": rec.get("mark_timestamp_utc"),
+            "equity": rec.get("equity") if ok else None,
+            "status": "OK" if ok else GAP_STATUS,
+            "mark_id": rec.get("mark_id"),
+            "family_status": rec.get("status"),
+        }
+        series.append(point)
+        if ok:
+            valid_points.append(point)
+    series.sort(key=lambda p: str(p["ts"]))
+    valid_points.sort(key=lambda p: str(p["ts"]))
+    block["series"] = series
+
+    newest = max(marks, key=lambda r: str(r["mark_timestamp_utc"]))
+    newest_valid = valid_points[-1] if valid_points else None
+    newest_valid_rec = next(
+        (
+            r
+            for r in reversed(marks)
+            if r["mark_id"] == (newest_valid or {}).get("mark_id")
+        ),
+        None,
+    )
+
+    def _mark_view(rec: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if rec is None:
+            return None
+        return {
+            "mark_id": rec.get("mark_id"),
+            "mark_timestamp_utc": rec.get("mark_timestamp_utc"),
+            "observed_at_utc": rec.get("observed_at_utc"),
+            "status": rec.get("status"),
+            "accounting_status": rec.get("accounting_status"),
+            "equity": rec.get("equity"),
+            "realized_pnl": rec.get("realized_pnl"),
+            "unrealized_pnl": rec.get("unrealized_pnl"),
+            "fees": rec.get("fees"),
+            "slippage": rec.get("slippage"),
+            "funding": rec.get("funding"),
+            "cash": rec.get("cash"),
+            "gross": rec.get("gross"),
+            "net": rec.get("net"),
+            "btc_beta": rec.get("btc_beta"),
+            "price_source": rec.get("price_source"),
+            "source_timestamp_utc": rec.get("source_timestamp_utc"),
+            "source_digest": rec.get("source_digest"),
+            "positions_digest": rec.get("positions_digest"),
+        }
+
+    block["latest_mark"] = _mark_view(newest)
+    block["latest_valid_mark"] = _mark_view(newest_valid_rec)
+
+    # data age from the newest VALID mark (an UNAVAILABLE mark proves a
+    # gap, not freshness)
+    if newest_valid is not None:
+        age = (
+            now_dt - parse_ts(newest_valid["ts"])
+        ).total_seconds()
+        block["data_age_seconds"] = age
+        block["stale"] = age > VALUATION_STALE_AFTER_SECONDS
+
+    newest_invalid = (
+        newest.get("accounting_status") != shv1_events.ACCOUNTING_STATUS_OK
+        or newest.get("equity") is None
+    )
+    if newest_invalid:
+        block["status"] = VALUATION_STATUS_UNAVAILABLE
+        block["status_note"] = (
+            "newest mark is UNAVAILABLE_FAIL_CLOSED (missing price for an "
+            "open position); no equity is shown, never stale reuse"
+        )
+    elif newest_valid_rec is None:
+        block["status"] = VALUATION_STATUS_UNAVAILABLE
+        block["status_note"] = "no valid mark exists"
+    elif block["stale"]:
+        block["status"] = STATUS_STALE
+        block["status_note"] = (
+            f"newest valid mark is older than "
+            f"{VALUATION_STALE_AFTER_SECONDS:.0f}s (fail-closed freshness)"
+        )
+    else:
+        block["status"] = newest_valid_rec.get("status")
+        block["status_note"] = (
+            "flat at seed capital (no open positions)"
+            if block["status"] == VALUATION_STATUS_FLAT_OK
+            else "marked from the frozen price source"
+        )
+
+    # per-position view from the newest valid mark
+    if newest_valid_rec is not None:
+        block["positions"] = [
+            {
+                "symbol": p.get("symbol"),
+                "qty": p.get("qty"),
+                "avg_price": p.get("avg_price"),
+                "mark_price": p.get("mark_price"),
+                "notional": p.get("notional"),
+                "unrealized_pnl": p.get("unrealized_pnl"),
+                "ts_opened": p.get("ts_opened"),
+            }
+            for p in (newest_valid_rec.get("positions") or [])
+        ]
+
+    equity_now = (
+        float(newest_valid["equity"]) if newest_valid is not None else None
+    )
+    if equity_now is not None:
+        block["total_pnl_usdt"] = (
+            equity_now - STARTING_SLEEVE_EQUITY_USDT
+        )
+        block["total_pnl_pct"] = (
+            block["total_pnl_usdt"] / STARTING_SLEEVE_EQUITY_USDT * 100.0
+        )
+    hcm_boundary = now_dt.astimezone(LOCAL_TZ).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).astimezone(UTC_TZ)
+    utc_boundary = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    block["today"] = {
+        "Asia/Ho_Chi_Minh": _valuation_today_block(
+            series, hcm_boundary, now_dt, LOCAL_TZ_NAME
+        ),
+        "UTC": _valuation_today_block(series, utc_boundary, now_dt, "UTC"),
+    }
+    return block
+
+
+def _build_valuation_combined(
+    val_families: Mapping[str, Dict[str, Any]],
+    now_dt: dt.datetime,
+) -> Dict[str, Any]:
+    """Combined valuation: strict sum at the newest COMMON valid mark.
+
+    - sleeves with different latest mark times combine at the newest
+      timestamp where ALL sleeves have valid marks;
+    - with no common valid stamp the combined is UNAVAILABLE and the
+      newest per-sleeve marks are shown with explicit ages;
+    - NEVER mixes stale+fresh silently: if any sleeve's newest mark is
+      UNAVAILABLE_FAIL_CLOSED (an open position without a price), the
+      combined current equity is UNAVAILABLE_FAIL_CLOSED too.
+    """
+    combined: Dict[str, Any] = {
+        "schema": VALUATION_VIEW_SCHEMA,
+        "status": VALUATION_STATUS_NO_MARKS,
+        "equity": None,
+        "as_of_utc": None,
+        "contributions": None,
+        "reason": "no valuation marks exist for any sleeve",
+        "per_sleeve_latest": {},
+        "total_pnl_usdt": None,
+        "total_pnl_pct": None,
+        "today": {
+            "Asia/Ho_Chi_Minh": {},
+            "UTC": {},
+        },
+        "series": [],
+        "note": (
+            "combined = strict sum of isolated sleeve equities at the newest "
+            "common valid valuation mark; no interpolation, no partial sums; "
+            "a sleeve whose newest mark is UNAVAILABLE_FAIL_CLOSED makes the "
+            "combined UNAVAILABLE_FAIL_CLOSED"
+        ),
+    }
+    sleeve_points = {
+        fid: block.get("series", [])
+        for fid, block in sorted(val_families.items())
+    }
+    any_marks = any(pts for pts in sleeve_points.values())
+    # per-sleeve newest + age (always surfaced)
+    for fid, block in sorted(val_families.items()):
+        latest = block.get("latest_mark")
+        per: Dict[str, Any] = {
+            "mark_timestamp_utc": (latest or {}).get("mark_timestamp_utc"),
+            "status": block.get("status"),
+            "equity": (latest or {}).get("equity"),
+            "data_age_seconds": block.get("data_age_seconds"),
+            "stale": block.get("stale"),
+        }
+        combined["per_sleeve_latest"][fid] = per
+
+    if not any_marks:
+        return combined
+
+    common = shv1_valuation.combine_at_common_mark(sleeve_points)
+    common_series: List[Dict[str, Any]] = []
+    stamps = sorted(
+        set.intersection(
+            *(
+                {str(p["ts"]) for p in pts if p.get("status") == "OK"}
+                for pts in sleeve_points.values()
+                if pts
+            )
+        )
+    ) if all(pts for pts in sleeve_points.values()) else []
+    for ts in stamps:
+        pts = {
+            fid: next(
+                p for p in sleeve_points[fid]
+                if str(p["ts"]) == ts and p.get("status") == "OK"
+            )
+            for fid in sleeve_points
+        }
+        common_series.append(
+            {
+                "ts": ts,
+                "status": "OK",
+                "equity": sum(float(p["equity"]) for p in pts.values()),
+            }
+        )
+    combined["series"] = common_series
+
+    # fail-closed override: a sleeve whose NEWEST mark is invalid
+    # (open position, missing price) blocks the combined current equity
+    any_newest_invalid = any(
+        block.get("latest_mark") is not None
+        and (
+            block["latest_mark"].get("accounting_status")
+            != shv1_events.ACCOUNTING_STATUS_OK
+            or block["latest_mark"].get("equity") is None
+        )
+        for block in val_families.values()
+    )
+    if any_newest_invalid:
+        combined.update(
+            {
+                "status": VALUATION_STATUS_UNAVAILABLE,
+                "equity": None,
+                "as_of_utc": None,
+                "contributions": None,
+                "reason": (
+                    "at least one sleeve's newest mark is "
+                    "UNAVAILABLE_FAIL_CLOSED (open position without a "
+                    "price); combined current equity refused"
+                ),
+            }
+        )
+    elif common.get("status") != "OK":
+        combined.update(
+            {
+                "status": VALUATION_STATUS_UNAVAILABLE,
+                "equity": None,
+                "as_of_utc": None,
+                "contributions": None,
+                "reason": common.get("reason"),
+            }
+        )
+    else:
+        equity = float(common["equity"])
+        combined.update(
+            {
+                "status": "OK",
+                "equity": equity,
+                "as_of_utc": common.get("ts"),
+                "contributions": common.get("contributions"),
+                "reason": None,
+                "total_pnl_usdt": equity - STARTING_COMBINED_EQUITY_USDT,
+                "total_pnl_pct": (
+                    (equity - STARTING_COMBINED_EQUITY_USDT)
+                    / STARTING_COMBINED_EQUITY_USDT
+                    * 100.0
+                ),
+            }
+        )
+
+    hcm_boundary = now_dt.astimezone(LOCAL_TZ).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).astimezone(UTC_TZ)
+    utc_boundary = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    combined["today"] = {
+        "Asia/Ho_Chi_Minh": _valuation_today_block(
+            common_series, hcm_boundary, now_dt, LOCAL_TZ_NAME
+        ),
+        "UTC": _valuation_today_block(common_series, utc_boundary, now_dt, "UTC"),
+    }
+    return combined
+
+
+def _valuation_block(
+    family_ids: List[str],
+    valuation_marks_by_family: Optional[Mapping[str, Optional[str]]],
+    ledger_paths_by_family: Mapping[str, Optional[str]],
+    now_dt: dt.datetime,
+) -> Dict[str, Any]:
+    derived = resolve_valuation_mark_paths(
+        next(
+            (
+                os.path.dirname(p)
+                for p in ledger_paths_by_family.values()
+                if p
+            ),
+            "",
+        )
+        if any(ledger_paths_by_family.values())
+        else ""
+    )
+    explicit = dict(valuation_marks_by_family) if valuation_marks_by_family else {}
+
+    families: Dict[str, Dict[str, Any]] = {}
+    mark_count = 0
+    seed_count = 0
+    for fid in family_ids:
+        path = explicit.get(fid, derived.get(fid))
+        block = _build_valuation_family(fid, path, now_dt)
+        families[fid] = block
+        mark_count += block["mark_count"]
+        seed_count += block["seed_count"]
+    combined = _build_valuation_combined(families, now_dt)
+    return {
+        "schema": VALUATION_VIEW_SCHEMA,
+        "staleness_rule_seconds": VALUATION_STALE_AFTER_SECONDS,
+        "families": families,
+        "combined": combined,
+        "counters": {
+            "valuation_mark_count": mark_count,
+            "valuation_seed_count": seed_count,
+        },
+        "counters_note": (
+            "valuation_mark_count is a NEW separate counter rendered beside "
+            "the four strategy counters; it never moves or re-labels them"
+        ),
+    }
+
+
+
+# ----------------------------------------------------------------------
 # public entry point
 # ----------------------------------------------------------------------
 def resolve_ledger_paths(ledgers_dir: str) -> Dict[str, Optional[str]]:
@@ -1262,6 +1768,7 @@ def build_dashboard_snapshot(
     *,
     shadow_start_utc: Optional[str] = None,
     identity_manifest_path: Optional[str] = None,
+    valuation_marks_by_family: Optional[Mapping[str, Optional[str]]] = None,
 ) -> Dict[str, Any]:
     """Build the read-only dashboard snapshot from append-only ledger files.
 
@@ -1269,6 +1776,12 @@ def build_dashboard_snapshot(
     through; the server passes the current time). The builder NEVER
     writes to the ledgers and NEVER fabricates values: missing inputs
     are ``UNAVAILABLE_FAIL_CLOSED`` / ``NOT_RUN``.
+
+    ``valuation_marks_by_family`` optionally pins the near-real mark
+    ledgers explicitly; when omitted, the ``valuation_marks/`` sibling
+    of each strategy ``ledgers/`` directory is derived (additive view:
+    absent marks render as NO_MARKS and never touch the four strategy
+    counters).
     """
     now_dt = parse_ts(now_utc)
     if now_dt is None:
@@ -1384,6 +1897,13 @@ def build_dashboard_snapshot(
     else:
         system_status = STATUS_RUNNING
 
+    valuation_view = _valuation_block(
+        family_ids,
+        valuation_marks_by_family,
+        ledger_paths_by_family,
+        now_dt,
+    )
+
     snapshot: Dict[str, Any] = {
         "schema": SCHEMA,
         "cycle_id": CYCLE_ID,
@@ -1400,6 +1920,7 @@ def build_dashboard_snapshot(
         "identity": identity_block,
         "families": families,
         "combined": combined,
+        "valuation": valuation_view,
         "counters": combined["counters"],
         "counters_note": (
             "decision_count / order_intent_count / fill_count / "

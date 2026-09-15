@@ -1,0 +1,126 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "shv1-mtm-valuation",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-implementer",
+  "lane": "mtm-valuation",
+  "dispatch_sha": "599f70179c2689d982291d01f25506bff3b41762",
+  "actual_start_sha": "599f70179c2689d982291d01f25506bff3b41762",
+  "commit_sha": null,
+  "commit_sha_note": "self-referential inside the single lane commit (precedent: handoff_shv1-e-worker.json in 4894214a); the real commit SHA of this lane is published in the orchestrator handoff publication and the lane final message",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/mtm-valuation",
+  "branch": "orca/shv1-mtm-valuation",
+  "changed_paths": [
+    "research/shadow_v1/valuation.py",
+    "research/shadow_v1/dashboard/snapshot.py",
+    "research/shadow_v1/dashboard/render.py",
+    "research/shadow_v1/dashboard/server.py",
+    "research/shadow_v1/dashboard/cli.py",
+    "research/control/prospective_shadow_v1/e/valuation_config.json",
+    "research/control/prospective_shadow_v1/e/valuation_worker.py",
+    "research/control/prospective_shadow_v1/e/carry_ledger_frozen_XSECT-FUND-CARRY-7D.jsonl",
+    "research/control/prospective_shadow_v1/e/valuation_rehearsal/rehearsal_evidence.json",
+    "research/control/prospective_shadow_v1/e/valuation_rehearsal/runtime/",
+    "tests/test_shv1_valuation.py",
+    "tests/test_shv1_dashboard.py"
+  ],
+  "untouched_proof": {
+    "command": "git diff 599f70179c2689d982291d01f25506bff3b41762 -- research/control/prospective_shadow_v1/e/shadow_worker.py research/shadow_v1/accounting.py research/shadow_v1/executor.py research/shadow_v1/events.py research/shadow_v1/ledger.py",
+    "result": "EMPTY (0 bytes)",
+    "results_ledgers_note": "results/prospective_shadow_v1/ledgers/ in the integration worktree (where the live strategy worker runs) was only ever READ; sha256 before/after the full valuation rehearsal: 7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068 (unchanged, 2445 bytes, 1 event, 4 fills)"
+  },
+  "price_source_freeze": {
+    "decision": "binance_fapi_premium_index_bulk — GET https://fapi.binance.com/fapi/v1/premiumIndex WITHOUT symbol parameter (ONE bulk response covering ALL symbols)",
+    "frozen_at": "research/control/prospective_shadow_v1/e/valuation_config.json",
+    "rationale": [
+      "markPrice is the venue mark-of-record for funding settlement — the contract-aligned price class for a funding-carry family",
+      "bulk call measured 199740 bytes / ~0.5s covering every symbol => exactly ONE network read per 300s loop for all three sleeves (ACTIVE_LIGHT)",
+      "markPrice is a point-in-time mark with its own server timestamp; no bar-completeness ambiguity",
+      "klines candidate REJECTED on measured evidence: limit=1 returned the IN-PROGRESS 1m bar (close_time 1789434179999 > fetch 1789434144543) and a completed-bar workaround needs one call PER symbol per loop"
+    ],
+    "keyless": "keyless public reads only; no keys read/stored/required; no accounts; no orders; emitted action stays TARGET_INTENT",
+    "network_was_reachable": true
+  },
+  "ledger_digest_proof": {
+    "expected_sha256": "7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068",
+    "bytes": 2445,
+    "events": 1,
+    "fills": 4,
+    "frozen_evidence_copy": "research/control/prospective_shadow_v1/e/carry_ledger_frozen_XSECT-FUND-CARRY-7D.jsonl (byte-identical, sha256 pinned in tests)",
+    "before_rehearsal": "7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068",
+    "after_rehearsal": "7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068",
+    "live_prefix_proof": "live ledger bytes start with the frozen copy bytes (append-only) and are digest-unchanged across a full valuation pass"
+  },
+  "reconciliation_numbers": {
+    "replayed_cash": 99954.17251398179,
+    "recorded_cash": 99954.17251398179,
+    "cash_match": "EXACT (bit-for-bit float replay of the 4 fills + settled funding)",
+    "fees": 40.0,
+    "slippage": 5.827486018214466,
+    "funding": 0.0,
+    "positions": {
+      "SOLUSDT": "+195.08388607101054 @ 102.53",
+      "XRPUSDT": "+14066.676044450696 @ 1.4219",
+      "DOGEUSDT": "-239034.3014222541 @ 0.08366",
+      "ETHUSDT": "-7.963653883674908 @ 2511.3999999999996"
+    },
+    "equity_at_test_prices_SOL105_XRP1.40_DOGE0.08_ETH2600": 100303.08280233378,
+    "independent_recompute": 100303.08280233378,
+    "to_the_cent": true,
+    "unrealized_at_fill_prices": 0.0,
+    "sign_checks": "long +price up => +20 exact; short +price down => +5 exact"
+  },
+  "tests": [
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_valuation.py tests/test_shv1_dashboard.py tests/test_shv1_executor.py tests/test_shv1_replay_guard.py tests/test_shv1_accounting.py tests/test_shv1_eventstore.py tests/test_shv1_noorder.py tests/test_shv1_pit.py tests/test_shv1_scheduler.py tests/test_shv1_combined.py tests/test_shv1_risk.py tests/test_shv1_identity_recovery.py tests/test_shv1_data_cost.py tests/test_shv1_families.py tests/test_shv1_families_identity.py tests/test_shv1_engine_smoke.py tests/test_shv1_worker_config.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "counts": "245 passed (214 baseline across the 16 pre-existing files + 28 new test_shv1_valuation.py + 3 appended test_shv1_dashboard.py)"
+    },
+    {
+      "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m compileall -q research/shadow_v1 research/control/prospective_shadow_v1/e && git diff --check",
+      "exit_code": 0,
+      "verdict": "PASS"
+    },
+    {
+      "command": "git diff 599f7017 -- research/control/prospective_shadow_v1/e/shadow_worker.py research/shadow_v1/accounting.py research/shadow_v1/executor.py research/shadow_v1/events.py research/shadow_v1/ledger.py",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "output EMPTY: strategy scheduler and all imported engine modules have ZERO diff"
+    },
+    {
+      "command": "valuation_worker.py --shadow-start 2026-09-14T23:48:01Z --runtime-root <e>/valuation_rehearsal/runtime --once (real keyless fetch, sandbox writes only)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "note": "heavy_lock_verdict FREE_PROVEN; 6 marks written (seed+mark x 3 families); CARRY RUNNING at live premiumIndex marks; second identical run: 6 skipped_existing, all mark ledgers byte-identical; evidence at research/control/prospective_shadow_v1/e/valuation_rehearsal/rehearsal_evidence.json"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "btc_beta is None on every mark by design: BTC marks are not in the frozen premiumIndex-per-symbol set actually used; honest UNAVAILABLE, never a fabricated zero",
+    "combined valuation equity requires a timestamp where ALL sleeves have valid marks; before the strategy worker's first events the combined is UNAVAILABLE/NO_MARKS by construction (per-sleeve FLAT_OK marks still shown)",
+    "the live strategy ledger byte-preservation proof runs against the first existing candidate path (integration worktree, then this worktree); if neither exists the test skips honestly (the frozen copy pins the bytes)",
+    "valuation risk_status is NOT_EVALUATED on every mark: the valuation lane evaluates no risk caps (risk is owned by the strategy lane); marks are observations",
+    "no_order_proof.scan_digest on NEW marks reflects the package WITH valuation.py added (old strategy ledger events keep their original digests; strategy identity/bytes untouched)"
+  ],
+  "incidents": [
+    "orchestrator MCP tool mcp__plugin_quant-research-orchestrator_orchestrator__orchestrator_publish_handoff not available in this lane's toolset; handoff published as this committed artifact only",
+    "pre-existing failures OUTSIDE the packet battery observed in the wider suite: tests/test_family_failures.py (7 failed) — verified failing identically on the BASE commit via git stash (unrelated to this lane; files untouched)"
+  ],
+  "tree_status": "CLEAN after commit (owned paths only staged by explicit pathspec; no git add -A; no push/merge/rebase/reset)",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/shadow_v1/valuation.py", "sha256": "9e343336622623177a174c95f57a82daaa23478f96133016b87b7639b41996bd"},
+    {"path": "research/shadow_v1/dashboard/snapshot.py", "sha256": "6f80e33351be367e849bf34a0f23bd9feff412b51086f44ee8f90a4fb65fdc56"},
+    {"path": "research/shadow_v1/dashboard/render.py", "sha256": "b311bfa6aea538de8d788022af75be553c949cf8dfaa387a942df0cae1416922"},
+    {"path": "research/shadow_v1/dashboard/server.py", "sha256": "b019d1ea19d946463ca530ab383898eedfb1b08dcf1752e24ea0a59528baa336"},
+    {"path": "research/shadow_v1/dashboard/cli.py", "sha256": "0171a4cd498639535a4b92448e939486ce6ae2a8caf0e576a087a8b77ea0ac02"},
+    {"path": "research/control/prospective_shadow_v1/e/valuation_config.json", "sha256": "77008235276bc01fee85713cbf03b5f364b54630adfc8bb4f941590daad311a4"},
+    {"path": "research/control/prospective_shadow_v1/e/valuation_worker.py", "sha256": "e9733a24f80ba32c15d3ead231ef1f0a666c6072eeaabcb822d78ff576e32b0f"},
+    {"path": "research/control/prospective_shadow_v1/e/carry_ledger_frozen_XSECT-FUND-CARRY-7D.jsonl", "sha256": "7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068"},
+    {"path": "research/control/prospective_shadow_v1/e/valuation_rehearsal/rehearsal_evidence.json", "sha256": "a45a39e6093326a552eb1869d8bb3624a82527802fa003837dd355d4e5c172e8"},
+    {"path": "tests/test_shv1_valuation.py", "sha256": "16ebbb58a2f37aa3f31092871971df892351a2ba20a4566d362c7edb039ec161"},
+    {"path": "tests/test_shv1_dashboard.py", "sha256": "784d23d65a769fc94b5b599138e8ddf049bb3900f9c2e49d09fb3cb507476c80"}
+  ],
+  "recommended_next_action": "at cutover, launch the valuation worker as a separate process beside the strategy scheduler: research/control/prospective_shadow_v1/e/valuation_worker.py --shadow-start 2026-09-14T23:48:01Z --runtime-root results/prospective_shadow_v1 (300s aligned cadence; ACTIVE_LIGHT: never holds the heavy lock; heartbeat at results/prospective_shadow_v1/runtime/valuation_heartbeat.json must keep heavy_lock_verdict FREE_PROVEN); then open the dashboard to verify the valuation section renders the three sleeves as the CARRY sleeve starts RUNNING"
+}
