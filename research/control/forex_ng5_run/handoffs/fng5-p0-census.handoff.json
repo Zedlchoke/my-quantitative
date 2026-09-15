@@ -1,0 +1,97 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "fng5-p0-census",
+  "cycle_id": "FOREX-NG5",
+  "role": "quant-implementer",
+  "lane": "p0-census",
+  "dispatch_sha": "8993e73e8acdbeb48c6a012aeadb2de1a18b3c3b",
+  "actual_start_sha": "8993e73e8acdbeb48c6a012aeadb2de1a18b3c3b",
+  "commit_sha": "c5f00fb10d970d8b323670f6756bc47464c8a1c3",
+  "commit_note": "census commit c5f00fb1 (20 files, exact pathspec, p0: prefix, on orca/forex-ng5-integration, not pushed); handoff copy committed separately with the same p0: prefix; commit_sha in this field is the substantive census commit",
+  "changed_paths": [
+    "research/assets/__init__.py",
+    "research/assets/forex_ng5/__init__.py",
+    "research/assets/forex_ng5/cot_parser.py",
+    "research/assets/forex_ng5/release_clock.py",
+    "research/assets/forex_ng5/p0_census_run.py",
+    "tests/test_forex_ng5_p0.py",
+    "research/control/forex_ng5_run/p0_census.json",
+    "research/control/forex_ng5_run/per_year_code_table.json",
+    "research/control/forex_ng5_run/a2_availability.json",
+    "research/control/forex_ng5_run/a3_corrections_census.json",
+    "research/control/forex_ng5_run/schema_report.json",
+    "research/control/forex_ng5_run/coverage_census.json",
+    "research/control/forex_ng5_run/mapping_td_legs.json",
+    "research/control/forex_ng5_run/a6_fold_freeze.json",
+    "research/control/forex_ng5_run/raw_request_manifest.json",
+    "research/control/forex_ng5_run/digest_manifest.json",
+    "research/control/forex_ng5_run/evidence/cot_index.snapshot.html",
+    "research/control/forex_ng5_run/evidence/compressed_index.snapshot.html",
+    "research/control/forex_ng5_run/evidence/release_schedule.snapshot.html",
+    "research/control/forex_ng5_run/evidence/special_announcements.snapshot.html",
+    "research/control/forex_ng5_run/handoffs/fng5-p0-census.handoff.json"
+  ],
+  "tests": [
+    {
+      "command": ".venv/bin/python -m pytest tests/test_forex_ng5_p0.py -q (worktree cwd)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "25 passed in 0.19s (final run after census; suite covers Decimal exactness incl integer-valued decimal notation, fail-closed unknown schema, malformed value/date/code rejection, wide-row fail-closed, alpha-suffix and trailing-plus codes, dedupe/revision-conflict, merge precedence, redigest determinism, release-clock convention/holiday/schedule-as-of cases, frozen runner constants)"
+    },
+    {
+      "command": "heavy-locked census run: research/assets/forex_ng5/p0_census_run.py (3 runs total: run1/run2 kills diagnosed and fixed in code, run3 final)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "run3 VERDICT P0_CENSUS_PASS; gate_verdicts A1-A7 all PASS; KILLED=[]; heavy lock released FINISHED with note 'p0_census verdict=P0_CENSUS_PASS'"
+    },
+    {
+      "command": "researchctl locks inspect before start and after release",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "FREE_PROVEN before start; FREE_PROVEN after run (registry row terminal FINISHED, released_at recorded)"
+    }
+  ],
+  "authority_claims": [
+    "A1 PASS: full legacy-year zips 1986..2026 pulled (41 files) + disagg (hist 2006-2016 + 2010..2026) + TFF (hist + 2010..2026); per-year market-code validation table for the 4 used pairs + USD index; codes are NOT era-stable — measured: GBP 096741 (1986-88) -> 096742; CAD 090741 in 1999 AND 2026 (090601 is an adjacent-era code, never the CME CAD in measured files); NZD renamed 'NEW ZEALAND DOLLARS' -> 'NZ DOLLAR' (2023+); pair identity therefore anchored by market-NAME regexes with per-era code timelines frozen in per_year_code_table.json",
+    "A1 controls: dead control = DEUTSCHE MARK 094741, present pre-euro, terminal year 2000, absent 2001+ (calibrated); never-existed controls (999999/000001/123456/096743/090602/096748/090609) = zero rows everywhere; deep-dive pre-2016 year = 1999 (euro transition)",
+    "A1 finding: NZD absent from legacy files in 2001-2002 (genuine source gap, pre-scored-span, recorded as coverage fact per the frozen structural-gap rule: kills only within scored span 2006..2026)",
+    "A2 PASS: rolling release-schedule page pinned (48 rows in window, 48 checked, 15 future-scheduled beyond the 2026-09-08 freeze excluded as not-yet-publishable, 0 bytes-exist failures); convention model (Fri 15:30 ET, federal holiday -> next business day, decision = first 16:00-NY grid strictly after) applied to 1035 pre-window report dates, 23 holiday-shifted, ALL marked convention-based; 2025 federal-appropriations republication window (15 report dates) uses EVIDENCED actual publish dates from the Historical Special Announcements page; freshness HEAD on deacot2026.zip recorded",
+    "A3 PASS: Historical Special Announcements censused (16 items, 2023-2025 sections; page covers 2023-2025 only, boundary declared): classes {publication_delay_recovery, publication_delay_other, label_change}; ZERO value-correction items touching used codes; FAQ-6 no-revision needle verified verbatim on the cot_index snapshot; handling preregistered in a3_corrections_census.json (annotate-and-keep for delay/label; exclude-window only for value corrections naming a used code)",
+    "A4 PASS: legacy long (1986-2026, 288903 rows), disaggregated (240585 rows), TFF (58677 rows) parsed as separate regimes; 0 rejects, 0 identity mismatches on non-consolidated rows (identity law measured and frozen: longs+spreads==TotRept per side, OI==TotRept+NonRept per side); Consolidated rows (7100 across regimes, incl. 3048 TFF identity mismatches BY CONSTRUCTION of combined contracts) counted and excluded per preregistered margin; exact Decimal contract incl integer-valued decimal notation ('93212.000000') accepted without binary float; fail-closed SchemaUnknownError offline-tested",
+    "A5 PASS: per-year coverage, missing-report census (pre-1992 era is SEMI-MONTHLY cadence — the >14d gap rows 1986-1992 are cadence, not missing reports), 0 duplicates, 0 revision conflicts; mapping frozen: GBPUSD<-POUND STERLING/BRITISH POUND 096742, USDCAD<-CANADIAN DOLLAR 090741-era (inverted orientation), AUDUSD<-AUSTRALIAN DOLLAR(S) 232741, NZDUSD<-NEW ZEALAND/NZ DOLLAR 112741; USD index 098662 = context only, no TD leg; EUR/JPY/CHF declared OUT OF SCOPE (no entitled TD leg)",
+    "A6 FROZEN: folds F1 2006-06-13..2013-06-30 / F2 2013-07-01..2020-06-30 / F3 2020-07-01..2026-09-08 (last measured report date); decision counts per fold per pair (F1 368/368/368/365, F2 366 x4, F3 323 x4); X1 exclusion rule (C7-analog) frozen textually in a6_fold_freeze.json — regime boundary, revision conflicts, A3 corrections, availability basis, publication gaps, point-in-time clause",
+    "A7 PASS: raw_request_manifest (82 requests: URL/status/bytes/sha256/last-modified each), digest_manifest (81 files; 2026 rolling files classed separately from frozen archives), deterministic redigest double-run match on all staging files; census is a point-in-time freeze at commit c5f00fb1",
+    "P0 verdict P0_CENSUS_PASS; no returns/PnL/PF/Sharpe/drawdown computed anywhere; S1 SEALED_UNTOUCHED; Socrata never used; no orders; budget consumed 0/6 scored cells"
+  ],
+  "known_limitations": [
+    "TD spot-leg digest pin = NOT_RUN (declared inside gate A5 which still PASSES on mapping+census): the V9-inherited TD daily bytes (GBPUSD/USDCAD/AUDUSD/NZDUSD, data_raw/forex_free_v9_spot/) were gitignored staging lost at the 2026-09-12 worktree cleanup; committed authority for the entitlement is orca/forex-free-v9-integration run_contract.json data_pins.spot_reacquired + family_common.load_spot_daily. D1/prelaunch MUST re-stage the four legs under the owner TD entitlement and pin fresh digests BEFORE any scored cell",
+    "pre-window availability is convention-based (documented convention shifted to the 16:00-NY grid), not per-release bytes-exist evidence — frozen as the plan's amended A2 substitution and marked per-row in a2_availability.json",
+    "release-schedule page is a rolling ~13-month window: per-cycle re-pin required (recorded in a2_availability.json)",
+    "announcements page serves 2023-2025 sections only; no older corrections archive exists at that URL (boundary declared, not assumed)",
+    "coverage_census.json gap rows >14d for 1986-1992 reflect the source's SEMI-MONTHLY reporting cadence of that era (measured fact; interpretation recorded here and in the lane report)"
+  ],
+  "incidents": [
+    "run1 P0_CENSUS_BLOCKED: 8 kills — all diagnosed to lane-side causes fixed in code before run3 (legacy 'Spreading' header spelling, wrong identity law — corrected to source-truth law verified on real files, alpha/embedded-plus contract codes 13874A/022A13/12460+, pair naming (POUND STERLING / AUSTRALIAN DOLLARS / NZ DOLLAR / U.S. DOLLAR INDEX), never-control 096741 turned out to be a REAL 1986-88 GBP code (replaced), TFF hist integer-valued decimal notation, A1 gap scope refined to the scored span with NZD 2001-2002 recorded as coverage fact, disagg regime found to carry zero currency markets (CFTC commodity/financial split) — validation moved to legacy+tff with the disagg finding frozen in the artifact, A2 future-scheduled rows beyond freeze excluded)",
+    "dispatch packet referenced TD spot files at .worktrees/forex-free-v9/integration/data_raw/forex_free_v9_spot/ — directory empty on disk (2026-09-12 cleanup); recorded as the NOT_RUN limitation above instead of fabricating digests"
+  ],
+  "tree_status": "clean after census commit c5f00fb1; handoff copy committed as a second p0: commit; no untracked artifacts outside allowed paths; raw zips NOT in git (staging /tmp/forex_ng5_p0_raw with digests recorded; ~100MB)",
+  "workers": 0,
+  "outputs": {
+    "p0_census": "research/control/forex_ng5_run/p0_census.json (verdict P0_CENSUS_PASS)",
+    "folds": "research/control/forex_ng5_run/a6_fold_freeze.json",
+    "code_eras": "research/control/forex_ng5_run/per_year_code_table.json",
+    "availability": "research/control/forex_ng5_run/a2_availability.json",
+    "corrections": "research/control/forex_ng5_run/a3_corrections_census.json",
+    "schema": "research/control/forex_ng5_run/schema_report.json",
+    "coverage": "research/control/forex_ng5_run/coverage_census.json",
+    "mapping": "research/control/forex_ng5_run/mapping_td_legs.json",
+    "request_manifest": "research/control/forex_ng5_run/raw_request_manifest.json",
+    "digest_manifest": "research/control/forex_ng5_run/digest_manifest.json",
+    "evidence_snapshots": "research/control/forex_ng5_run/evidence/ (4 page snapshots)",
+    "parser": "research/assets/forex_ng5/cot_parser.py",
+    "release_clock": "research/assets/forex_ng5/release_clock.py",
+    "runner": "research/assets/forex_ng5/p0_census_run.py",
+    "tests": "tests/test_forex_ng5_p0.py (25 offline tests)"
+  },
+  "recommended_next_action": "Proceed to D1: dispatch two outcome-blind proposal lanes that consume ONLY the P0 census artifacts (schema/coverage/folds/X1 rule/mapping); fold decision counts per pair are in coverage_census.json; before any scored cell, re-stage the four TD legs and pin digests (A5 NOT_RUN item); D2 must run the full G-D2-1 veto battery (clock book, generic day-of-week, policy-rate-differential, DGS10 level, momentum/ancestry) on the frozen 16:00-NY representation; pre-1992 semi-monthly source cadence is inside the excluded legacy era and needs no D2 handling"
+}
