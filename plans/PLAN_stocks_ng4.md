@@ -1,9 +1,15 @@
 # PLAN STOCKS-NG4 — off-exchange short-sale-volume pressure
 
-> Status: `PLANNED_NOT_STARTED` (2026-09-15). This cycle follows the measured
-> STOCKS-NG3 P0 data-entitlement close. It uses no purchased data and starts
-> with a source/meaning census. A P0 close with zero scored cells is a valid
-> result. Nothing in this plan is evidence of profitability.
+> Status: `PLANNED_NOT_STARTED` (2026-09-15; amendment A1 same day — A7
+> fresh-context plan audit REFUSED on one HIGH finding and remediated; see §3
+> and gate F1). Authority: LESSONS.md P-19 (owner verbatim 2026-09-11: a
+> generation ending <= 6 scored cells / <= 2 families opens ONE more full
+> cycle from scratch) fired by the STOCKS-NG3 terminal close at 0 cells /
+> budget 0/6 (`plans/CYCLE_REGISTRY.json` STOCKS-NG3 row, `TERMINAL
+> STOCKS_NG3_BLOCKED_DATA_OR_SELECTION`). This cycle uses no purchased data
+> and starts with a source/meaning census whose FIRST gate is a
+> clause-by-clause terms-compatibility verdict. A P0 close with zero scored
+> cells is a valid result. Nothing in this plan is evidence of profitability.
 
 ## 0. Cycle identity
 
@@ -63,9 +69,29 @@ Officially documented facts to re-capture in committed evidence:
 - publication is no later than 18:00 ET on the trade date;
 - rare later updates can occur and must be represented as revisions;
 - data is off-exchange publicly disseminated activity, not a consolidated
-  all-venue picture and not short interest;
-- FINRA describes the data as free for non-commercial use, subject to its
-  current terms and attribution requirements.
+  all-venue picture and not short interest.
+
+A7 web verification pinned 2026-09-15
+(`research/control/stocks_ng4_run/audits/evidence/finra_terms_snapshot_2026-09-15.txt`):
+
+- anonymous free download of the CDN files is real (two canary dates HTTP 200
+  text/plain, no key or login, raw SHA-256 pinned in the evidence file);
+- the operative FINRA Website Terms of Use (finra.org/terms-of-use, last
+  modified 2023-11-09) permit "your own non-commercial personal or
+  professional use" SUBJECT TO Restrictions that on plain reading reach this
+  cycle: (d) no developing or creating a database of data from the FINRA
+  Website; (e) no bulk copying, data mining, scraping or extraction tools;
+  (g) no voluminous, excessive, or repetitive requests; (m) no use of any
+  portion of the FINRA Website in conjunction with a model, algorithm, or
+  process designed to predict trades for or within an individual portfolio —
+  which is this cycle's stated scientific purpose;
+- NO permissive data-specific terms were locatable: finra.org/
+  finra-data/terms-of-use returns 404; the only "non-commercial use"
+  sentence published on finra.org is scoped to saved-views / Bond-Watchlist
+  login features, not bulk file download;
+- the earlier draft's "attribution requirements" phrase is DROPPED as an
+  unverified claim; whether any attribution obligation exists is a F1
+  evidence item, never a premise.
 
 The existing adapter is **known stale and must not be trusted**. The current
 official URL differs from its discovery URL. Real files use compact dates and
@@ -76,10 +102,24 @@ proposal lane opens.
 P0 passes only if all gates below pass:
 
 ```text
-F1 AUTHORITY
-   Pin current official documentation, terms, attribution and a written
-   internal-research compatibility verdict. Ambiguous or incompatible terms
-   => terminal close, not an inferred PASS.
+F1 AUTHORITY (gates every other gate; runs before any bulk retrieval)
+   Pin current official documentation and the operative FINRA Website Terms
+   of Use bytes, then write a clause-by-clause compatibility verdict quoting
+   Restrictions (d), (e), (f), (g) and (m) against exactly two uses: (i)
+   census-scale programmatic daily-file retrieval and census database
+   construction; (ii) building predictive models of later returns.
+   Preregistered verdict categories:
+     COMPATIBLE    proceed to F2 only with retrieval scoped and paced
+                   (throttled, session-bounded, low volume per session)
+     INCOMPATIBLE  terminal close STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA,
+                   budget 0/6; no bulk retrieval ever runs in-cycle
+     AMBIGUOUS     terminal close by the fail-closed doctrine; reopening
+                   requires a frozen, explicit OWNER decision or a FINRA
+                   data license — both owner-only actions outside cycle
+                   scope. No term is accepted on the owner's behalf.
+   The F1 verdict artifact is committed under research/control/
+   stocks_ng4_run/ BEFORE any F2/F5 dispatch. Attribution obligations are
+   evidence items here, not assumptions.
 
 F2 LIVENESS + HISTORY
    Fetch real non-holiday canaries at the beginning, middle and recent end of
@@ -117,14 +157,22 @@ F6 MEANING + DENOMINATOR
 F7 POPULATION
    Freeze three chronological folds before return measurement. Each fold must
    have >= 250 eligible entity-decisions in each proposed family and the most
-   recent 24 months must contain >= 100 unique eligible symbols. Failure means
-   `STOCKS_NG4_BLOCKED_DATA_OR_SELECTION`, budget 0/6.
+   recent 24 months must contain >= 100 unique eligible symbols. The C7
+   facility-composition exclusion rule is frozen textually in the same P0
+   commit as the fold boundaries, before any D2 composition diagnostic
+   exists. Failure means `STOCKS_NG4_BLOCKED_DATA_OR_SELECTION`, budget 0/6.
 
 F8 REPRODUCIBILITY
    Commit the census code, raw-request manifest, digest manifest, schema
-   report, availability contract, cohort mapping and frozen fold boundaries
-   under research/control/stocks_ng4_run/. A detached rerun must reproduce
-   census counts and digests or explicitly identify a source revision.
+   report, availability contract, cohort mapping, the frozen C7 exclusion
+   rule and frozen fold boundaries under research/control/stocks_ng4_run/.
+   The census is a point-in-time freeze as of its commit: a later source
+   revision NEVER re-opens fold boundaries or F7 counts; a revision-cutoff
+   is declared before S, and any detected revision is annotated-and-kept
+   with its affected window handled by the frozen exclusion rule. A detached
+   rerun must reproduce census counts and digests or explicitly identify a
+   source revision; a deterministic re-digest pass over already-captured raw
+   bytes is part of the pass evidence.
 ```
 
 P0 is source engineering and census only. It may inspect price/cohort metadata
@@ -167,7 +215,9 @@ C12 NULL VALIDITY         autocorrelation and population of each null reported
 
 If a price/volume/liquidity shadow explains the anchor, the FINRA family dies.
 If facility composition cannot be compared consistently across schema regimes,
-the affected window is excluded by the preregistered rule or the family dies.
+the affected window is excluded by the C7 exclusion rule that P0 freezes
+textually alongside the fold boundaries (before any D2 diagnostic exists), or
+the family dies.
 
 ## 6. D2 feasibility and novelty gate
 
