@@ -1,0 +1,58 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "cxf-researcher-frontier-1",
+  "cycle_id": "CRYPTO-PRECYCLE-SURVEY",
+  "role": "RESEARCHER",
+  "lane": "c",
+  "dispatch_sha": "53d2d152c5c5ad61a772c81e3437d1dfd22a0d05",
+  "actual_start_sha": "53d2d152c5c5ad61a772c81e3437d1dfd22a0d05",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/crypto_frontier_2026-09/survey_report.md",
+    "research/control/crypto_frontier_2026-09/handoff_researcher_cxf-researcher-frontier-1.handoff.json",
+    "research/control/crypto_frontier_2026-09/probes/ (53 probe fetches: raw bytes + .meta.json sidecars with url/UTC/sha256/bytes/http_status)",
+    "research/control/crypto_frontier_2026-09/tools/ (fetch_probe.py, keccak_probe.py, jobs_*.json — probe tooling, no repo dependencies installed)"
+  ],
+  "tests": [
+    "keccak256 pure-python self-test PASS on 4 vectors (empty string, 'abc', 'The quick brown fox...', canonical Transfer(address,address,uint256) topic 0xddf252ad...)",
+    "probe transport verification: every fetch saved with sha256 + UTC timestamp sidecar; no silent payload discard",
+    "UTC-day conservation-census completeness: blocks_covered 7182/7182 over [25962689, 25969871), boundary blocks timestamp-verified (2026-09-13T00:00:11Z / 2026-09-14T00:00:11Z)",
+    "identity cross-check executed: on-chain exact-day net +28,746,185.02 USDC vs DefiLlama day-label delta +75,868,652 (MISMATCH measured -> llama cross-check-grade only); blockscout head total_supply 50.497B vs llama ETH-chain 47.166B (3.33B definitional gap measured)",
+    "no returns/PnL computed anywhere in this task (probe arithmetic is supply census only)"
+  ],
+  "authority_claims": [
+    "Coin Metrics Community API keyless DOCUMENTED_CANDIDATE (community-api.coinmetrics.io/v4/timeseries/asset-metrics, start_time/end_time, 10req/6s; daily SplyCur+IssTotNtv+IssTotUSD for usdt/usdc from 2014; NO redemption metric in community set; license CC BY-NC 4.0) — CROSS-CHECK-GRADE ONLY: IssTot is gross and CCTP/bridge-contaminated (measured: usdc 2026-09-14 IssTot $2.293B while total supply fell $44.5M)",
+    "DefiLlama stablecoins API keyless DOCUMENTED_CANDIDATE (stablecoins.llama.fi; chain-filtered series 2018-09-11 to 2026-09-15; fields date/totalCirculating.peggedUSD/totalUnreleased/totalCirculatingUSD/totalMintedUSD/totalBridgedToUSD; chain_breakdown on per-asset chart) — CROSS-CHECK-GRADE ONLY (measured day-delta and head-level identity breaks; no vintage channel; no surfaced license)",
+    "On-chain issuer-contract Mint/Burn census keyless PIT-CLEAN PRIMARY CANDIDATE: Ethereum USDT 0xdAC17F... Issue(uint256)/Redeem(uint256), USDC 0xA0b869... Mint(address,address,uint256)/Burn(address,uint256); topics self-computed (self-tested keccak) + 4byte cross-check (27 collisions recorded -> pin by contract address + topic pair); transports measured keyless: eth.blockscout.com getLogs (GET, hard 429 ban after ~4MB), rpc.mevblocker.io eth_getLogs (full 7182-block day scanned), api.trongrid.io events (keyless, rate-limited, required for USDT chain-completeness)",
+    "The Graph gateway requires API key (docs pages 404 on this host -> NOT_ENTITLED / UNVERIFIED-THIS-HOST, fail-closed); Etherscan API v2 requires key -> NOT_ENTITLED; publicnode archive eth_call requires paid-style personal token -> NOT_ENTITLED; ankr/1rpc keyless tiers rejected; 8-host RPC zoo tested, only mevblocker served getLogs"
+  ],
+  "known_limitations": [
+    "Reverse causality NOT identifiable: stablecoin issuance is demand-following; Direction 1's claim is incremental-information-under-D2-decorrelation (rho <= 0.20 vs 32-row dead inventory), never causal identification — stated in the report for the critic",
+    "USDT chain-completeness UNPROVEN at depth (Tron majority; trongrid multi-year rate limits unmeasured) — census coverage gate may kill at P0, fail-closed",
+    "Full-history log census is a HEAVY job and was NOT probed (forbidden this survey); keyless transport ceiling measured only at ~1 UTC-day scale",
+    "Exact conservation tie-out requires archive eth_call (keyless-blocked on all tested RPCs) -> P0 gate design uses log-census vs pinned head supply instead, partially evidenced",
+    "No D2 rho measured anywhere (proposal-side only): decorrelation vs the dead inventory is the designed executioner, not yet run",
+    "minter-class netting layer (CCTP TokenMinter 0xfd78ee.../Circle burner 0x55fe002a...) is an identity assumption dependent on proxy-upgrade pinning at P0",
+    "CM community license is CC BY-NC 4.0 (non-commercial) — owner adjudication required before any scored use; llama API has no surfaced license"
+  ],
+  "incidents": [
+    "INC-CXF1-1: eth.blockscout.com issued a persistent 429 ban after ~4MB of cumulative pulls; first day-census attempt (8 chunks) failed 0/8; recovered via rpc.mevblocker.io keyless JSON-RPC — transport fragility recorded as a first-class feasibility risk",
+    "INC-CXF1-2: 'GETs only' constraint deviation disclosed — 6 small POST JSON-RPC bodies (publicnode eth_getBlockByNumber x4 + archive eth_call x2 [403], mevblocker eth_getLogs) were required by the task-mandated conservation-identity check; payloads <= a few hundred bytes, sequential; archive calls returned 403 NOT_ENTITLED and were recorded, never retried with a key",
+    "INC-CXF1-3: DefiLlama /stablecoin/{id} charts exceed 9MB — two capped fetches truncated at 2.5MB/9MB, truncated raw bytes kept as schema evidence and disclosed; chain-filtered endpoints (C3/C4) fetched complete instead",
+    "INC-CXF1-4: shared root checkout HEAD advanced mid-flight 53d2d152... -> 3a3032f3... (Lead registry commit 'STOCKS-NG4 registered', 2026-09-15 18:33 +0700, plans/ registry files only; foreign sibling lane research/control/forex_frontier_2026-09/ also present untracked) — P-17 shared-stage event; this lane made zero git writes and its artifacts are untracked files confined to research/control/crypto_frontier_2026-09/",
+    "INC-CXF1-5: trongrid /v1/contracts/{addr} contract-info path 404s keyless (events path works) — recorded, census unaffected"
+  ],
+  "tree_status": "root checkout main @ 3a3032f320ad443b333dfe7e36e075648e59be27 (advanced from dispatch sha 53d2d152... by Lead registry commit mid-flight, disclosed in INC-CXF1-4); this task wrote NO git objects; untracked additions confined to research/control/crypto_frontier_2026-09/ (allowed dir); pre-existing untracked .zcode/ and foreign research/control/forex_frontier_2026-09/ untouched; S1 SEALED_UNTOUCHED; no registry/ledger writes; no keys, signups, or paid endpoints",
+  "workers": 0,
+  "outputs": {
+    "survey_report": "research/control/crypto_frontier_2026-09/survey_report.md",
+    "probes_dir": "research/control/crypto_frontier_2026-09/probes/",
+    "dead_family_inventory": "32 crypto registry rows (FAMILY_FAILURES.jsonl) + ~8 pre-factory ledger B families; NG1/NG2 exogenous-clock classes measured-dead ancestry",
+    "directions_ranked": [
+      "1. Issuer-contract net-flow census -> float-contraction conditioning (keyless PIT-clean primary; status: PROPOSED, weakest point = reverse-causality + Tron completeness + transport ceiling)",
+      "2. Aggregate-supply regime conditioning via CM Community + DefiLlama (keyless but CROSS-CHECK-GRADE ONLY; status: PROPOSED secondary/fallback, PIT-primary-fail by design)",
+      "3. Depeg-stress forced-redemption episodes (cleanest causal story; status: PROPOSED WITH EXPECTED KILL — fails Q-6 feasibility floors at census, zero-budget pre-score death)"
+    ],
+    "rank1_rationale": "Direction 1 is the only expression where the information source (settlement-layer dollar float from issuer-contract logs) is materially new vs every dead crypto family, PIT-clean at event time (block timestamps), keyless-measurable end-to-end today (full UTC-day census ran at probe scale), and equipped with its own census falsifier (conservation identity) — while Directions 2-3 are either PIT-degraded by design or feasibility-dead by design"
+  }
+}
