@@ -1,0 +1,45 @@
+CRYPTO-NG3 P0 CENSUS — FROZEN RULES (committed 2026-09-16)
+
+C5 NETTING RULE (frozen):
+  Primary per-issuer per-UTC-day flow = SUM(Mint|Issue) - SUM(Burn|Redeem) over
+  ALL events of that issuer-chain. No class is excluded from the primary series.
+  Minter classes are MEASURED full-window over the FiatToken indexed minter
+  field (topic1), whose position is validated by the flip check
+  (cardinality(topic1) <= cardinality(topic2)); measured at P0:
+  topic1_distinct=5, topic2_distinct=117953.
+  Class rules (frozen BEFORE the labels were read as fired/not-fired):
+    CCTP_TOKEN_MINTER  = 0xfd78ee919681417d192449715b2594ab58f5d002 — assigned only because
+        eth_getCode shows contract code at that address (on-chain-verifiable).
+        MEASURED FIRED: this class is present in the window.
+    TREASURY_MEASURED_DOMINANT = 0x55fe002aeff02f77364de339a1292923a15844b8 — rule: top-1 burner by
+        value AND >=25% of minted value in the window.
+        MEASURED OUTCOME: rule DID NOT fire
+        (mint_share=0,
+        burn_share=0.748709).
+        The address is a measured pure-redemption burner (74.87% of all burned
+        value) with ZERO measured mints in this window, so the two-sided
+        dominance rule as frozen leaves it UNCLASSIFIED. No post-hoc rule
+        amendment is permitted at P0; if D1 needs this address labelled
+        (e.g. "primary-market redemption"), it must DECLARE that rule
+        outcome-blind in its proposal, consuming the frozen minter_table.json.
+    All other addresses = UNCLASSIFIED. Exchange hot-wallet labels: NONE
+        (no PIT-evidenced labels exist; heuristic labels forbidden).
+  CCTP share is carried as a declared stratum enabling a CCTP-netted variant
+  downstream; it is never silently netted in or out of the primary series.
+  Issuer chains are NEVER summed into a silent stablecoin total: USDC-ETHEREUM
+  is the primary scored issuer; USDT-ETHEREUM (full-window, event-starved) and
+  USDT-TRON (full-year count+sum grade via the confirmed channel) are separate
+  declared strata.
+
+C10 FOLD FREEZE (frozen):
+  Census window W = [2025-08-22T00:00:00Z, 2026-08-23T00:00:00Z), 366 UTC days —
+  the frozen S0 panel span (2025-08-22..2026-08-21 inclusive) plus one
+  1-day margin (2026-08-22). D1/D2 scored decisions must scope to the panel
+  days; the margin day is census coverage, not panel.
+  fold1 = first 40% of days = 2025-08-22 .. 2026-01-14 (146 days)
+  fold2 = next 30%       = 2026-01-15 .. 2026-05-03 (109 days)
+  fold3 = last 30%       = 2026-05-04 .. 2026-08-22 (111 days)
+  Exclusion rule: days flagged NET_EXTREME (C6 P99 rule) are excluded from D2
+  training/validation but retained in the census; excluded days:
+  ['2025-08-28', '2025-09-18', '2025-10-14', '2025-10-16']
+  No legacy depeg window (UST-2022-05, USDC-2023-03) intersects W.
