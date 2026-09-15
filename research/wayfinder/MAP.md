@@ -1,6 +1,28 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced at the STOCKS-NG4 close, 2026-09-15)
+## Sprint state (synced at the FOREX-NG5 close, 2026-09-15)
+
+- **FOREX-NG5 CLOSED → `FOREX_NG5_BLOCKED_DATA_OR_SELECTION`** (2026-09-15,
+  branch `orca/forex-ng5-integration`, terminal 663a5ad6, A7 plan audit
+  round-1 AUTHORIZED_WITH_FINDINGS 0 HIGH + A7 terminal AUTHORIZED 0
+  HIGH/CRITICAL, budget 0/6, GO died UNCONSUMED, S1 SEALED) — the CFTC CoT
+  positioning-state cycle: P0 census PASS A1-A7 (attempt-1 code-table defect
+  corrected, both runs evidenced; codes not era-stable), 2 outcome-blind
+  proposals, then D2 VETO_ALL pre-score: A4 killed by V1 clock-out-earn +
+  V5 momentum 0.230 + S2 floor + E1 ceiling 18.07 bps; A5 by V5 0.353 + E1.
+  V2 day-of-week survived here (0.036/0.029). The P-24 clock lesson fired a
+  third time across planes; the E1 financing ceiling is the new weekly-hold
+  killer. TD spot legs recovered byte-exact from the P-13 archive.
+  Denominators unchanged forex 48/48, program 257/260 (P-9). Detail:
+  `.worktrees/forex-ng5/integration/research/control/forex_ng5_run/terminal_verdict_forex_ng5.json`.
+
+- **CRYPTO-NG3 OPENED → `PLANNED_NOT_STARTED` → P0 census running** (2026-09-15,
+  registered; plan `plans/PLAN_crypto_ng3.md`) — issuer-contract stablecoin
+  net-flow census (USDT Issue/Redeem, USDC Mint/Burn finalized logs, keyless
+  transports) as float-state conditioning; plan audit round-1
+  AUTHORIZED_WITH_FINDINGS (4 MEDIUM+1 LOW remediated pre-registration);
+  C1-C11 gates pinned (Tron only_confirmed mandatory; full-window measured
+  minter netting; X3 tape-fitted-issuance shadow).
 
 - **STOCKS-NG4 CLOSED → `STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA`** (2026-09-15,
   branch `orca/stocks-ng4-integration`, terminal 5fd712e, A7 plan-audit loop
@@ -18,17 +40,6 @@
   preregistered source). Denominators unchanged stocks 42/42, program 257/260
   (P-9). Detail:
   `.worktrees/stocks-ng4/integration/research/control/stocks_ng4_run/terminal_verdict_stocks_ng4.json`.
-
-- **FOREX-NG5 OPENED → `PLANNED_NOT_STARTED`** (2026-09-15, registered in
-  canonical registry; plan `plans/PLAN_forex_ng5.md`) — CFTC CoT weekly
-  currency-futures positioning state on the 16:00-NY grid over existing TD
-  spot legs; new evidenced information source per the NG3/NG4 recorded
-  reopening condition; frontier evidence
-  `research/control/forex_frontier_2026-09/` (researcher 3 directions;
-  critic: D1 CFTC-CoT PASS both gates, D2 CB-text FAIL population/source,
-  D3 TIC FAIL revisions/staleness, closures + Q-10 conditions recorded).
-  Plan pins the G-D2-1 five named vetoes + the no-scored-cell-before-vetoes
-  law. Plan audit round 1 in flight at sync time.
 
 - **STOCKS-NG3 CLOSED → `STOCKS_NG3_BLOCKED_DATA_OR_SELECTION`** (2026-09-15,
   branch `orca/stocks-ng3-integration`, terminal 0d4b8352, A7 plan audit
