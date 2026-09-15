@@ -1,0 +1,93 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "fxf-researcher-frontier-1",
+  "cycle_id": "FOREX-PRECYCLE-SURVEY",
+  "role": "RESEARCHER",
+  "lane": "f",
+  "dispatch_sha": "53d2d152c5c5ad61a772c81e3437d1dfd22a0d05",
+  "actual_start_sha": "53d2d152c5c5ad61a772c81e3437d1dfd22a0d05",
+  "commit_sha": null,
+  "commit_note": "no git writes performed (forbidden for this lane); artifacts left uncommitted in the allowed path for the Lead to commit",
+  "changed_paths": [
+    "research/control/forex_frontier_2026-09/survey_report.md",
+    "research/control/forex_frontier_2026-09/probes/PROBE_MANIFEST.json",
+    "research/control/forex_frontier_2026-09/probes/probe_cftc_cot_latest_403_defaultUA.bin",
+    "research/control/forex_frontier_2026-09/probes/probe_cftc_cot_latest_403_declaredUA.bin",
+    "research/control/forex_frontier_2026-09/probes/probe_cftc_deacot2025_head2kb.bin",
+    "research/control/forex_frontier_2026-09/probes/probe_fed_statement_20250730.html.trunc16k",
+    "research/control/forex_frontier_2026-09/probes/probe_fed_statement_20250730_body_slice2k.html",
+    "research/control/forex_frontier_2026-09/probes/probe_fed_statement_20160127.html.trunc16k",
+    "research/control/forex_frontier_2026-09/probes/probe_tic_main_page.trunc16k",
+    "research/control/forex_frontier_2026-09/probes/probe_tic_release_dates.trunc16k",
+    "research/control/forex_frontier_2026-09/probes/probe_tic_release_dates_canonical.trunc16k",
+    "research/control/forex_frontier_2026-09/probes/probe_ecb_press_index.trunc16k",
+    "research/control/forex_frontier_2026-09/probes/probe_boe_mpc_landing.trunc16k",
+    "research/control/forex_frontier_2026-09/handoff_researcher_fxf-researcher-frontier-1.handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -c 'json.load(...PROBE_MANIFEST.json); assert schema==forex_frontier_probe_manifest@1'",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: probe manifest JSON parses, schema asserted"
+    },
+    {
+      "command": "python3 sha256+size re-verification of all 11 probe byte files against PROBE_MANIFEST.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: probe sha/size check PASS (0 mismatches)"
+    },
+    {
+      "command": "python3 recount of forex rows in research/wayfinder/FAMILY_FAILURES.jsonl",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: 29 forex family rows recounted, matches survey_report.md table"
+    },
+    {
+      "command": "handoff JSON self-validation (this file parses, schema field asserted by validator)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: json.loads succeeds; schema zcode_orch_v3_handoff@1"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Proposal-side survey only; an independent critic owns the kill attempt; nothing herein is self-certified and NO returns/PnL/rho values were computed anywhere in this task.",
+    "CFTC Socrata publicreporting.cftc.gov returns 403 from this host on both scripted and controller channels; the measured-live CoT door is the bulk-file channel www.cftc.gov/files/dea/history/ (HEAD 200 recent+old year, 2KB ranged GET zip-magic verified).",
+    "ECB and BoE statement channels UNVERIFIED from this host (404s / bot-challenge title) — cross-CB breadth for direction D2 is a named P0 evidence item, not a PASS.",
+    "Pre-2016 CoT depth, FOMC statement time-of-day (14:00 ET), TIC CSV formats, TIC history depth, and non-Fed CB archives are ASSERTED-from-official-documentation, each recorded as a per-P0 evidence requirement (P-1: no asserted bounds authorized).",
+    "The MAP.md-referenced .worktrees/forex-ng*/... terminal paths no longer exist on disk (owner-ordered 2026-09-12 cleanup); terminal evidence was read from git branches orca/forex-ng{1,3,4}-integration per WORKTREE_CLEANUP_2026-09-12.json. MAP paths are stale (flagged, not fixed — outside this lane's write scope).",
+    "Probe payloads truncated to <=16KB per GET (or 2KB ranged/slice), truncation disclosed per-row in PROBE_MANIFEST.json."
+  ],
+  "incidents": [
+    {
+      "id": "INC-SURVEY-F1-1",
+      "severity": "LOW",
+      "detail": "CFTC Socrata 403 on default curl UA; a single disclosed retry with a declared browser UA also 403'd; controller-WebFetch channel 403 on the same URL. Recorded as evidence (probe files retained), consistent with the V9 declared-UA disclosure precedent. No key, account, or paid endpoint touched."
+    },
+    {
+      "id": "INC-SURVEY-F1-2",
+      "severity": "LOW",
+      "detail": "Two guessed treasury.gov TIC release-date URLs 404'd before the canonical URL was discovered from the main-page menu; both recorded as evidence, canonical page verified with official lag text (11th business day +0-3d; 1.5-month as-of lag since 2021-03-15)."
+    }
+  ],
+  "tree_status": "CLEAN_EXCEPT_LANE_ARTIFACTS (untracked files only under research/control/forex_frontier_2026-09/; no modified tracked files, no git operations performed)",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/forex_frontier_2026-09/survey_report.md", "sha256": "007b9dc324cc3eccb4c0d7a7dd8084f76565294bf9500cb15fa77d4822690f05"},
+    {"path": "research/control/forex_frontier_2026-09/probes/PROBE_MANIFEST.json", "sha256": "26c4b53cd7a72e32d381edac5e886ed3a2dd06fa5f1dfd4601f33ee36fb09e5c"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_cftc_cot_latest_403_defaultUA.bin", "sha256": "58bf2215b395dcac74c009aa98701854e43cbe54a1cd3a95fee6a647ca9910d4"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_cftc_cot_latest_403_declaredUA.bin", "sha256": "8b73b6ccd7091d6d9d23adaab2baae3c4abf6de06df8efdd03215ee9376fa035"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_cftc_deacot2025_head2kb.bin", "sha256": "6cda8b0bd2ff3f2a64a31f0fcc105a8101801a206215291a94fb60972a5d5a39"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_fed_statement_20250730.html.trunc16k", "sha256": "7fbe558c19903d224d8707ca599c5bac350791e99b4692b40d72575531cfba2f"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_fed_statement_20250730_body_slice2k.html", "sha256": "4345dbaf1836c8eeac02a4dc39d42465b8b7069feec81208db8b4eae6ffaaf2e"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_fed_statement_20160127.html.trunc16k", "sha256": "d8c277b7fe5136f244c976ece1228f3838c8719f536ee62a0e381371e5465ded"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_tic_main_page.trunc16k", "sha256": "39da95f5684fe62dbdfd43829e55fb474777a567f83fb3ce132e662041f72718"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_tic_release_dates.trunc16k", "sha256": "f59773610cad0f98283aead5c0ecb1cd5e8ffabede6582c5c779c8c32b6b5958"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_tic_release_dates_canonical.trunc16k", "sha256": "841da365d92e70bbee50931062d424828f6e69822a279db5840d11114636d203"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_ecb_press_index.trunc16k", "sha256": "20f99352db643375af01d1985fdf25ff9374e35a975c8d6a6b73f198d381463b"},
+    {"path": "research/control/forex_frontier_2026-09/probes/probe_boe_mpc_landing.trunc16k", "sha256": "c0482a418d0e333671927b1a2708d4de80569f4361b0036a82f667fbf700fc5c"},
+    {"path": "research/control/forex_frontier_2026-09/handoff_researcher_fxf-researcher-frontier-1.handoff.json", "sha256": "SELF (sha computed post-write by the Lead validator; self-reference impossible)"}
+  ],
+  "recommended_next_action": "Dispatch the independent critic lane against research/control/forex_frontier_2026-09/survey_report.md, requiring it to attempt kills of D1 (CFTC CoT positioning on TD spot; named kill-candidate: cross-asset #17 release-clock shadow), D2 (CB statement text-shift; named kill-candidates: V6/V7 reaction-direction ancestry + NG4 dow geometry), and D3 (TIC flow; staleness sham expected fatal). Any resulting FOREX-NG5 registration and the cross-asset-ancestry-binding owner decision remain owner/Lead authority."
+}

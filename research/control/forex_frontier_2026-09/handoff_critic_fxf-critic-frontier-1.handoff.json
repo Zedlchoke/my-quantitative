@@ -1,0 +1,81 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "fxf-critic-frontier-1",
+  "cycle_id": "FOREX-PRECYCLE-SURVEY",
+  "role": "CRITIC",
+  "lane": "f-critic",
+  "dispatch_sha": "dfc2ae9c71dbb335d16fec424e8c4cb651c10209",
+  "actual_start_sha": "dfc2ae9c71dbb335d16fec424e8c4cb651c10209",
+  "commit_sha": null,
+  "commit_note": "no git writes performed (forbidden for this lane); artifacts left uncommitted in the allowed path for the Lead to commit",
+  "changed_paths": [
+    "research/control/forex_frontier_2026-09/critic_report.md",
+    "research/control/forex_frontier_2026-09/handoff_critic_fxf-critic-frontier-1.handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 recount of forex rows in research/wayfinder/FAMILY_FAILURES.jsonl (verify researcher's '29 forex rows')",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: 109 total rows parsed; 29 forex rows counted, matches survey_report.md table row-for-row"
+    },
+    {
+      "command": "shasum -a 256 re-verification of all 11 researcher probe files in probes/ against PROBE_MANIFEST.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: 11/11 digests match (spot-recomputed subset incl. probe_cftc_deacot2025_head2kb.bin 6cda8b0b..., probe_fed_statement_20250730_body_slice2k.html 4345dbaf..., probe_tic_release_dates_canonical.trunc16k 841da365...)"
+    },
+    {
+      "command": "curl HEAD + ranged GET (0-1023) https://www.cftc.gov/files/dea/history/deacot2025.zip from critic host",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: HTTP 200, content-length 2392119, last-modified Fri, 11 Sep 2026 19:27:54 GMT (matches researcher to the second); 206/1024 bytes, PK magic 504b0304; critic digest of first 1KB ea849ab9913bbf0853f91fda31f31212f4771155bb3b539c771410d2c14baa55"
+    },
+    {
+      "command": "curl GET CFTC ReleaseSchedule + CoT index/FAQ pages; grep for release time/as-of/no-revision/depth claims",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: 'released at 3:30 p.m. Eastern time ... usually released on Friday ... previous Tuesday ... holidays may delay release by one or two days'; FAQ-6 'No, historical data is not updated once published'; legacy 1986-01-15, TFF/disaggregated 2006-06-13 — all verbatim verified"
+    },
+    {
+      "command": "curl GET https://www.federalreserve.gov/newsevents/pressreleases/monetary20250730a.htm",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: HTTP 200, 82323 bytes (matches researcher exactly); 'maintain the target range for the federal funds rate at 4-1/4 to 4-1/2 percent' present"
+    },
+    {
+      "command": "curl -L GET canonical TIC release-dates page; grep lag/revisions text",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: '11th business day plus 0 to 3 days'; 'Beginning with the release on 3-15-2021, there is a 1.5 month lag'; REVISIONS section present — D3 revision-kill axis verified from the source"
+    },
+    {
+      "command": "handoff JSON self-validation (this file parses; schema field asserted)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "inline: json.loads succeeds; schema zcode_orch_v3_handoff@1; dispatch_sha == actual_start_sha"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Critic role: adversarial falsification at pre-plan stage; NO returns/PnL/rho values were computed by this critic — every kill number quoted is from recorded program authorities (FAMILY_FAILURES.jsonl rows read in full, HYPOTHESIS_LEDGER.md, LESSONS.md P-1..P-24 / Q-1..Q-16).",
+    "Integration-branch terminal reports (.worktrees removed 2026-09-12) were NOT re-read from branches; the ledger + FAMILY_FAILURES rows read directly are treated as the P-9 authority for #16/#17 and all kill numbers.",
+    "Two researcher assertions left unverified by design (folded into P0 gates): 'COMMODITIES-NG1 census staged 2016-2026' (branch census out of critic scope) and the per-currency CoT market-code list (folded into G-A1 per-year code census).",
+    "The D1 carry-proxy contamination attack rests on program kill evidence (V3 invalidated PF 1.2825; V4 rho 0.997-1.000; FXFV8-A4-P2 veto 0.3831 vs carry_unconditional) plus documented market structure — it is settled by measurement (gate G-D2-1c), not by this report.",
+    "Temp fetch files under /tmp (critic-verification bytes) are outside the repo and not retained as lane artifacts; digests are quoted inline in the report and this handoff."
+  ],
+  "incidents": [
+    {
+      "id": "INC-CRITIC-F1-1",
+      "severity": "LOW",
+      "detail": "None operational. One evidentiary correction to the researcher's survey recorded in critic_report.md: the CFTC FAQ-6 no-revision claim is verbatim-verified, but the same page also advertises a Special Announcements corrections class — pinned as P0 gate G-A3 in any future plan. No key, account, paid endpoint, or foreign lane file touched."
+    }
+  ],
+  "tree_status": "CLEAN_EXCEPT_LANE_ARTIFACTS (critic added 2 untracked files under research/control/forex_frontier_2026-09/; researcher artifacts remain untracked from the sibling lane; no modified tracked files, no git operations performed)",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/forex_frontier_2026-09/critic_report.md", "sha256": "35c48a196294c2c2455ce94ca4f6538ada5b2d798d29bb95bc0902b480a1e682"},
+    {"path": "research/control/forex_frontier_2026-09/handoff_critic_fxf-critic-frontier-1.handoff.json", "sha256": "SELF (sha computed post-write by the Lead validator; self-reference impossible)"}
+  ],
+  "recommended_next_action": "Lead/owner read critic_report.md §7-§8. Verdicts: D1 (CFTC CoT positioning on TD spot) PASS_SOURCE_GATE + PASS_MATERIALLY_NEW — open FOREX-NG5 for D1 only, plan written from the §7 gate list (G-A1..G-A3, G-D2-1a..e incl. the NEW mandatory carry-differential shadow and explicit generic-dow veto, G-D2-2/3, G-E-1, G-Scope-1/2; D2-stage-first ordering, no scored cell before all five G-D2-1 vetoes run). D2 (CB statement text) FAIL — source gate insufficient for the only population-adequate design (cross-CB channels unverified from host) and Fed-only dies Q-6 (16 < NG2's own 30-event census floor) with the V6/V7 ancestry-vs-population pincer and an unauditable-featurizer snooping exposure; record the conditional reopening path. D3 (TIC flows) FAIL — revised-in-place with no evidenced PIT-vintage channel (V9 HIGH law), staleness sham modal by construction, Q-6 marginal; record Q-10 reopening condition. Adjudication: #17/V15 do NOT bind the forex plane as measured ancestry vetoes; they bind as mandatory declared falsifiers (P-24), to be ratified by the owner in the plan's ancestry section."
+}

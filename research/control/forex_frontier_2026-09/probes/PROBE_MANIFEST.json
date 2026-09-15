@@ -1,0 +1,135 @@
+{
+  "schema": "forex_frontier_probe_manifest@1",
+  "task_id": "fxf-researcher-frontier-1",
+  "cycle_id": "FOREX-PRECYCLE-SURVEY",
+  "recorded_utc": "2026-09-15T18:12:00Z",
+  "recorded_by": "RESEARCHER (forex frontier lane)",
+  "probe_policy": "light canary only: HEAD requests and ranged/truncated GETs, sequential, no full-history crawls, no keyed endpoints, no accounts, no registrations. Truncation to <=16KB per GET except the 2KB ranged/byte-slice probes, disclosed per row.",
+  "probes": [
+    {
+      "file": "probe_cftc_cot_latest_403_defaultUA.bin",
+      "bytes": 118,
+      "sha256": "58bf2215b395dcac74c009aa98701854e43cbe54a1cd3a95fee6a647ca9910d4",
+      "url": "https://publicreporting.cftc.gov/resource/6dca-aqww.json?%24limit=2&%24order=report_date_as_yyyy_mm_dd%20DESC",
+      "method": "GET, curl default UA",
+      "fetched_utc": "2026-09-15T18:03Z",
+      "result": "HTTP 403 Forbidden (Akamai-class HTML error page)",
+      "note": "Socrata public-reporting API blocked from this host via scripted channel, default UA."
+    },
+    {
+      "file": "probe_cftc_cot_latest_403_declaredUA.bin",
+      "bytes": 520,
+      "sha256": "8b73b6ccd7091d6d9d23adaab2baae3c4abf6de06df8efdd03215ee9376fa035",
+      "url": "https://publicreporting.cftc.gov/resource/6dca-aqww.json?%24limit=2&%24order=report_date_as_yyyy_mm_dd%20DESC",
+      "method": "GET, declared browser UA (precedent: V9 SEC declared-UA patch, disclosed)",
+      "fetched_utc": "2026-09-15T18:03Z",
+      "result": "HTTP 403 Forbidden with declared browser UA; controller-WebFetch channel also 403 (same URL)",
+      "note": "publicreporting.cftc.gov API door is 403-blocked from this environment on both channels as of this probe. EVIDENCE, not assumed."
+    },
+    {
+      "file": "probe_cftc_deacot2025_head2kb.bin",
+      "bytes": 2048,
+      "sha256": "6cda8b0bd2ff3f2a64a31f0fcc105a8101801a206215291a94fb60972a5d5a39",
+      "url": "https://www.cftc.gov/files/dea/history/deacot2025.zip",
+      "method": "HEAD + ranged GET bytes 0-2047",
+      "fetched_utc": "2026-09-15T18:04:52Z",
+      "result": "HEAD 200; content-length 2392119; last-modified Fri, 11 Sep 2026 19:27:54 GMT (weekly-fresh); accept-ranges bytes; ranged GET 2048 bytes starts with PK\\x03\\x04 zip magic",
+      "note": "Bulk legacy CoT archive channel (the channel COMMODITIES-NG1 consumed 2026-09-12) is LIVE and fresh. A same-channel HEAD on deacot2016.zip also returned 200, content-length 1710723 (old-year canary; bytes not saved, headers quoted in survey_report.md)."
+    },
+    {
+      "file": "probe_fed_statement_20250730.html.trunc16k",
+      "bytes": 16384,
+      "sha256": "7fbe558c19903d224d8707ca599c5bac350791e99b4692b40d72575531cfba2f",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20250730a.htm",
+      "method": "GET full (82323 bytes served), first 16384 bytes retained, truncation disclosed",
+      "fetched_utc": "2026-09-15T18:05Z",
+      "result": "HTTP 200; <title>Federal Reserve Board - Federal Reserve issues FOMC statement</title>",
+      "note": "Recent FOMC statement (2025-07-30 decision, per the official FOMC calendar) servable keyless with stable URL pattern."
+    },
+    {
+      "file": "probe_fed_statement_20250730_body_slice2k.html",
+      "bytes": 2050,
+      "sha256": "4345dbaf1836c8eeac02a4dc39d42465b8b7069feec81208db8b4eae6ffaaf2e",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20250730a.htm",
+      "method": "GET full, 2KB slice around first occurrence of 'federal funds rate' retained, truncation disclosed",
+      "fetched_utc": "2026-09-15T18:05Z",
+      "result": "Statement text verified present at byte offset 69236; snippet quotes 'the Committee decided to maintain the target range for the federal funds rate at 4-1/4 to 4-1/2 percent'",
+      "note": "Machine-extractable statement TEXT confirmed, not just page existence."
+    },
+    {
+      "file": "probe_fed_statement_20160127.html.trunc16k",
+      "bytes": 16384,
+      "sha256": "d8c277b7fe5136f244c976ece1228f3838c8719f536ee62a0e381371e5465ded",
+      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20160127a.htm",
+      "method": "GET full (83480 bytes served), first 16384 bytes retained, truncation disclosed",
+      "fetched_utc": "2026-09-15T18:05Z",
+      "result": "HTTP 200; same title; correct page for the 2016-01-27 FOMC decision",
+      "note": "Old-date canary: same URL pattern serves 10-year-old statements. Depth beyond this date asserted from Fed's documented press-release archive, UNMEASURED here (P-1 discipline: per-event P0 evidence required in any future cycle)."
+    },
+    {
+      "file": "probe_tic_main_page.trunc16k",
+      "bytes": 16384,
+      "sha256": "39da95f5684fe62dbdfd43829e55fb474777a567f83fb3ce132e662041f72718",
+      "url": "https://home.treasury.gov/data/treasury-international-capital-tic-system",
+      "method": "GET full (78130 bytes served), first 16384 bytes retained, truncation disclosed",
+      "fetched_utc": "2026-09-15T18:06Z",
+      "result": "HTTP 200; page documents Monthly Transactions in Long-term Securities (forms B, C, D, SLT), press-release archive, CSLT dataset announced 2026-05-21",
+      "note": "TIC system page live, keyless."
+    },
+    {
+      "file": "probe_tic_release_dates.trunc16k",
+      "bytes": 4674,
+      "sha256": "f59773610cad0f98283aead5c0ecb1cd5e8ffabede6582c5c779c8c32b6b5958",
+      "url": "https://home.treasury.gov/data/treasury-international-capital-tic-system-home-page/release-dates-of-tic-data-0/",
+      "method": "GET",
+      "fetched_utc": "2026-09-15T18:09Z",
+      "result": "HTTP 200; redirect stub pointing to canonical /data/treasury-international-capital-tic-system/release-dates-of-tic-data/",
+      "note": "URL-discovery artifact (two guessed release-date URLs 404'd before this one was found from the main page menu)."
+    },
+    {
+      "file": "probe_tic_release_dates_canonical.trunc16k",
+      "bytes": 16384,
+      "sha256": "841da365d92e70bbee50931062d424828f6e69822a279db5840d11114636d203",
+      "url": "https://home.treasury.gov/data/treasury-international-capital-tic-system/release-dates-of-tic-data/",
+      "method": "GET full (111180 bytes served), first 16384 bytes retained, truncation disclosed",
+      "fetched_utc": "2026-09-15T18:10Z",
+      "result": "HTTP 200; official text: monthly data 'updated each month on the 11th business day plus 0 to 3 days' and 'Beginning with the release on 3-15-2021, there is a 1.5 month lag between the release date and the as-of date for the data'; release-date table present",
+      "note": "TIC publication timing now EVIDENCED from the official page (11th business day +0-3d; 1.5-month as-of lag)."
+    },
+    {
+      "file": "probe_ecb_press_index.trunc16k",
+      "bytes": 16384,
+      "sha256": "20f99352db643375af01d1985fdf25ff9374e35a975c8d6a6b73f198d381463b",
+      "url": "https://www.ecb.europa.eu/press/pr/html/index.en.html",
+      "method": "GET full (99653 bytes served), first 16384 bytes retained, truncation disclosed",
+      "fetched_utc": "2026-09-15T18:10Z",
+      "result": "HTTP 200 (page serves) but anchor extraction found no monetary-policy press-release items in the retained bytes; two further ECB archive URL guesses (press/pr/date/2026/html/index.en.html, press/govdec/html/index.en.html) returned 404 via the controller channel",
+      "note": "ECB channel UNVERIFIED from this host in this survey — recorded as evidence, NOT assumed; cross-CB breadth is a named P0 item for any future cycle."
+    },
+    {
+      "file": "probe_boe_mpc_landing.trunc16k",
+      "bytes": 16384,
+      "sha256": "c0482a418d0e333671927b1a2708d4de80569f4361b0036a82f667fbf700fc5c",
+      "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes",
+      "method": "GET full (60121 bytes served), first 16384 bytes retained, truncation disclosed",
+      "fetched_utc": "2026-09-15T18:10Z",
+      "result": "HTTP 200 but <title>Page not found | Bank of England</title> — bot-challenge-class response, no MPC content",
+      "note": "BoE channel UNVERIFIED from this host — recorded as evidence, NOT assumed."
+    }
+  ],
+  "head_only_probes_no_bytes_saved": [
+    {
+      "url": "https://www.cftc.gov/files/dea/history/deacot2016.zip",
+      "method": "HEAD",
+      "fetched_utc": "2026-09-15T18:04:53Z",
+      "result": "HTTP 200; content-length 1710723; last-modified Thu, 04 Jan 2018 18:03:22 GMT; accept-ranges bytes",
+      "note": "Old-year bulk CoT archive exists and is servable."
+    }
+  ],
+  "coverage_gaps_declared": [
+    "publicreporting.cftc.gov Socrata API 403 on both channels from this host; bulk-file channel on www.cftc.gov is the measured-live door (2 HEADs + 2KB ranged GET).",
+    "ECB and BoE statement pages not verifiable from this host in this survey (404s / bot-challenge title). Per-P0 event evidence required before any cross-CB lane is proposed.",
+    "CoT depth pre-2016 (legacy back to 1986) asserted from CFTC's documented FAQ, not probed (bulk-year zips are multi-MB; out of probe budget).",
+    "FOMC statement time-of-day (14:00 ET convention) asserted, not per-event evidenced — P0 item (P-1)."
+  ]
+}
