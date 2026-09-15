@@ -1,0 +1,116 @@
+{
+ "schema": "a7_terminal_audit@1",
+ "cycle_id": "FOREX-NG5",
+ "auditor_role": "a7-terminal auditor (fng5-a7-terminal), fresh context, audit-only",
+ "audited_utc": "2026-09-15T15:56:34Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng5/integration",
+ "branch": "orca/forex-ng5-integration",
+ "base_head_verified": "8783a076b4056eb9d750aeeb41ae6dc43f19b625",
+ "verdict": "AUTHORIZED",
+ "subject": "terminal close TERMINAL FOREX_NG5_BLOCKED_DATA_OR_SELECTION at budget 0/6 (terminal_verdict_forex_ng5.json, commit 8783a076)",
+ "checks": [
+  {
+   "id": "C1",
+   "name": "d2_verdict per-veto verdicts + margins recomputed from committed bytes",
+   "result": "PASS",
+   "detail": "E1 ceiling recompute: 6.0 (2 sides x 1.5 bps x stress 2.0) + 0.0623 (max NZDUSD policy differential) x 7.07 mean interval days / 365 x 1e4 = 18.067 vs recorded 18.071 (unrounded internals; consistent). Margins: A4 -18.652/-18.653, A5 -16.545/-16.546 reconcile. Kill direction ceil_mean > raw coded in d2_measure.py:1131, consistent with P-21 (LESSONS.md 'preregistered cost ceilings kill novel families honestly'). E1 kill robust: even the zero-financing 6.0 bps floor exceeds both gross spreads (+1.525 / -0.582). V1 margins = anchor - clock (-0.113 / +1.62) reconcile; books distinct 2060/3844 = 0.5359. V5 max|rho| 0.2302 (A4 mom_260d) and 0.3532 (A5 mom_260d) > 0.20 bar -> KILL. S2 A4 F3 short AUDUSD 1 / NZDUSD 3 < floor 10 -> KILL; A5 min bucket 40 -> SURVIVE. Per-proposal killed_by lists and D2_VETO_ALL consistent with all recorded values."
+  },
+  {
+   "id": "C2",
+   "name": "preregistration ordering: veto bars frozen before D2 numbers existed",
+   "result": "PASS",
+   "detail": "Plan blob byte-identical root vs worktree (sha256 7d2660cbec2d29e1...). Plan commit 8993e73e (2026-09-15T19:08:51+07) precedes P0 census (21:01+07), D1 (21:18+07) and D2 (measured_at 2026-09-15T15:27:09Z = 22:27+07; committed 22:33+07). V2/V5 numeric bar 0.20 pinned in plan sec5 (F4 fix at 8993e73e, pre-measurement). E1 convention preregistered in plan sec5/sec7 (P-21, stress tier 2.0 + break-even margin); 1.5 bps/side has authority chain (NG1 frozen set, Q-8 measured, cited in d2_measure.py constants). D2 commits (97dead0d, 6be7de2d) touch only d2 assets/control/tests - no plan file; lane branch commits 5f8491e8/4799ec46 are tree-identical cherry-picks (diff empty), matching the terminal verdict's own description."
+  },
+  {
+   "id": "C3",
+   "name": "outcome-blindness of the chain",
+   "result": "PASS",
+   "detail": "Both D1 proposals carry explicit outcome_blindness declarations and contain no computed returns/PnL/PF/Sharpe (keyword hits are declarations and the pnl_identity_declaration spec only). Branch adds no scored/equity/outcome artifact: full since-base file inventory is census/control/plan/registry/wayfinder only. d2_verdict book means (anchor/clock bps, gross conditional spreads) are control-book diagnostics allowed by plan sec6 'non-scored diagnostics only' and the audit charter. S selection, I, Z, A7-prelaunch, E never ran; registry s1 SEALED_UNTOUCHED, go_phrase REGISTERED_NOT_CONSUMED, ledger denominators untouched by this cycle."
+  },
+  {
+   "id": "C4",
+   "name": "TD re-pin digest verification",
+   "result": "PASS",
+   "detail": "Tarball sha256 be11bcf417f043c8e15ea235449b42b8a6f5dc88856fe166381a371bab9deff3 matches /Users/hoangminhlong/staging_backups/cleanup_2026-09-12/SHA256SUMS.txt and the live archive bytes. All four restored per-file sha256+bytes in td_digest_pin.json / d2_verdict.td_repin independently re-hashed from the committed td_spot_restored/ files: 4/4 exact match (GBPUSD e3e4c519..., USDCAD 4b988c44..., AUDUSD 097cfe59..., NZDUSD 7dff3299...). V9 per-file digest manifest honestly declared ABSENT with structural verification (5000 unique newest-first dates, 2007-08..2026-09-10 per V9 run_contract). P0's NOT_RUN re-pin precondition was honored before any scored cell (none existed)."
+  },
+  {
+   "id": "C5",
+   "name": "budget/denominators/terminal honesty",
+   "result": "PASS",
+   "detail": "Registry FOREX-NG5 budget used 0 / max 6; terminal claims scored_cells 0 and 'used 0 / max 6' - consistent; every cross-checked number in terminal_verdict_forex_ng5.json (-0.131 vs -0.244 margin -0.113, 53.6%, 0.230, 0.353, AUDUSD 1 / NZDUSD 3 floor 10, 18.07 vs -0.58 / +1.53, V2 0.036/0.029, V3 0.063/-0.098, V4 0.048/0.025) matches d2_verdict.json to disclosed rounding. spec_tension_disclosed present in terminal verdict (TFF-era NC state sourced from LEGACY rows; tff_no_legacy_nc_by_pair all 0) and mirrored in d2_verdict.state_source_resolution. folds 12/12 fold x pair match coverage_census.folds_decision_counts. P0_CENSUS_PASS at c5f00fb1 verified in history."
+  },
+  {
+   "id": "C6",
+   "name": "hunt: hidden scored outcomes, verdict/margin inconsistencies, post-hoc threshold changes",
+   "result": "PASS",
+   "detail": "No scored outcome file anywhere in the chain (targeted find + grep over control/assets; stray hits are pre-existing base-tree fixtures unrelated to FOREX-NG5). No veto verdict contradicts its own recorded margins. No post-hoc threshold change: the only in-plan bar edit (V2 0.20) landed at 8993e73e before any measurement; the two D2 measurement commits are byte-identical (cherry-picks); plan untouched after 8993e73e. S1 SURVIVE direction and Q-11 invalid_null=false consistent with plan sec5. E1 max-days ceiling 180.099 implies a 102-day max decision interval consistent in magnitude with the 15-report-date 2025 shutdown republication window (a2_availability shutdown_override_rows=15); kill uses ceil_mean and is insensitive to this (see F4)."
+  }
+ ],
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "LOW",
+   "title": "S2 numeric floor (10) was D2-derived, not census-frozen",
+   "detail": "Plan sec5 says S2 'recent-window floors frozen from census', but the census froze decision counts only (p0_census.json/a6_fold_freeze.json contain no numeric floor); d2_measure.py sets S2_FLOOR=10 and the artifact discloses this honestly ('the census froze decision counts but no numeric floor'). Terminal's negative_outcome_integrity sentence 'Veto floors were frozen in-plan before D2' is therefore imprecise for S2 (the 0.20 bar was in-plan; the S2 floor was lane-derived).",
+   "materiality": "NON_DECISIVE: S2 KILL hits only A4, independently killed by V1+V5+E1; A5's minimum bucket count is 40 and survives any floor >= 1 while A5 dies via V5+E1 regardless. The omission is in the fail-closed direction (could only add kills, never rescue). Same 'referenced-not-numeric' class that plan-audit F4 fixed for V2 - the S2 floor was missed. Carried to the two-half close."
+  },
+  {
+   "id": "F2",
+   "severity": "LOW",
+   "title": "S1 reproduction bars (0.90/0.90) are D2-preregistered in code, not in plan",
+   "detail": "Plan sec5 pins S1 qualitatively ('must NOT reproduce the anchor'); the numeric 0.90/0.90 bars live in d2_measure.py. A4 +1w values 0.873/0.884 sit close to the bars and are honestly disclosed in the terminal verdict.",
+   "materiality": "NON_DECISIVE: both proposals SURVIVE S1 and die via other vetoes; terminal outcome invariant to any plausible bar choice."
+  },
+  {
+   "id": "F3",
+   "severity": "LOW",
+   "title": "V3 pooled-primary convention not explicitly pinned in plan",
+   "detail": "Plan sec5 defines V2/V5 as 'pooled |rho|' but V3 only as a shadow with FXFV8 template; D2 applied pooled-primary uniform truncation (A4 0.0632, A5 -0.098 SURVIVE) and disclosed per-pair full-span sensitivity (A4: GBP 0.2198/USDCAD 0.2248/AUD -0.3651 would KILL per-pair; A5: USDCAD -0.2314, NZD -0.2117 would KILL per-pair).",
+   "materiality": "NON_DECISIVE: under the strictest per-pair reading both proposals gain one additional KILL veto; terminal D2_VETO_ALL unchanged. Sensitivity disclosed in the terminal verdict's vetoes_that_survived."
+  },
+  {
+   "id": "F4",
+   "severity": "INFO",
+   "title": "E1 ceiling_bps_max_days implies a 102-day max decision interval",
+   "detail": "(180.099-6.0)*365/(0.0623*1e4) = 102.0 days, plausibly the 2025 federal-appropriations republication window (15 overridden report dates, a2_availability.json). The recorded E1 kill uses ceiling_bps_mean_days=18.071 with mean interval 7.07 days.",
+   "materiality": "NON_DECISIVE: even a zero-financing 6.0 bps round-trip floor exceeds both proposals' gross conditional spreads (+1.525 / -0.582), so E1 kills under any financing convention."
+  },
+  {
+   "id": "F5",
+   "severity": "INFO",
+   "title": "Terminal label class choice: BLOCKED_DATA_OR_SELECTION vs D2 handoff's REJECT_ALL suggestion",
+   "detail": "The D2 handoff recommended closing toward FOREX_NG5_REJECT_ALL; the Lead recorded FOREX_NG5_BLOCKED_DATA_OR_SELECTION. Program precedent: REJECT_ALL in HYPOTHESIS_LEDGER is reserved for cycles that consumed scored cells (V4/V5/V13-V16); pre-score frozen-rule kills with zero cells closed BLOCKED_* (V17 BLOCKED_DATA_OR_SELECTION; NG3/NG4). The plan lists both classes without a mapping rule.",
+   "materiality": "NONE: the Lead's label follows the established program semantics for pre-score measured kills; recorded so the two-half close cites the right precedent."
+  },
+  {
+   "id": "F6",
+   "severity": "INFO",
+   "title": "Duplicate-commit (cherry-pick) pattern is content-identical",
+   "detail": "Lane branch commits 5f8491e8/4799ec46 (D2), ee7153a4/7f2bac02 and ff532976/4d06d260 (D1) were cherry-picked onto integration as 97dead0d/6be7de2d, 7f2bac02, 4d06d260; pairwise tree diffs are empty. Disclosed in the terminal verdict ('cherry-picked ... onto integration').",
+   "materiality": "NONE: excludes a post-hoc content change between lane and integration; bookkeeping note only."
+  },
+  {
+   "id": "F7",
+   "severity": "INFO",
+   "title": "A4 F1 S2 bucket sums do not tie to fold decision counts (~52/pair undefined-state exclusions)",
+   "detail": "A4 F1 long+short+mid sums to 316/316/316/313 vs fold decision counts 368/368/368/365; F2 and F3 tie exactly. Cause visible in d2_measure.py (state None excluded, decile warmup over the first ~52 weekly decisions of the TFF era).",
+   "materiality": "NONE for the terminal: S2 floors apply to active buckets only; no gate consumed the F1 undefined-state cells."
+  }
+ ],
+ "verdict_rationale": "The terminal close is correct and honest. Both outcome-blind proposals were killed by their own preregistered G-D2-1 battery before any scored cell; every veto verdict reconciles with its recorded margins under independent recompute; the veto bars and E1 convention were frozen in-plan (8993e73e) before measurement and the measurement lane could not and did not alter them; TD data provenance is digest-verified end-to-end; budget is honestly 0/6 with zero scored cells machine-wide; spec tension (legacy-NC state channel), the marginal S1 numbers and the V3 per-pair sensitivity are all disclosed rather than buried. Terminal class BLOCKED_DATA_OR_SELECTION matches the V17/NG3/NG4 pre-score precedent. Findings F1-F3 are LOW and non-decisive (removing any or all of them leaves D2_VETO_ALL standing); F4-F7 informational. 0 unresolved HIGH/CRITICAL.",
+ "audited_artifacts": {
+  "research/control/forex_ng5_run/d2/d2_verdict.json": "sha256:62e6f00673477d261e5b8e32b2cfc5648b9bc0790e7bbb1c15455abdee874be6",
+  "research/control/forex_ng5_run/terminal_verdict_forex_ng5.json": "sha256:47a0fe46f9483c742b914571fa562b494b3a37ca3d5e2070e2aa079c42646d78",
+  "research/control/forex_ng5_run/d2/handoffs/fng5-d2-measurement.handoff.json": "sha256:1ebe8c86d60d48f2b49a9b5831b3a2850f3ad66d554245fc88c65e514b4c52f8",
+  "research/control/forex_ng5_run/d2/td_spot_restored/td_digest_pin.json": "sha256:e3caa9e5d55a3a5b77478299e262994b5a45b332eb054a4350edb84c868671a4",
+  "plans/PLAN_forex_ng5.md": "sha256:7d2660cbec2d29e1c6b7b48442b3c522794a631e715dae0fc24aea22202259b4 (root == worktree, commit 8993e73e)",
+  "TD tarball (read-only)": "sha256:be11bcf417f043c8e15ea235449b42b8a6f5dc88856fe166381a371bab9deff3 vs /Users/hoangminhlong/staging_backups/cleanup_2026-09-12/SHA256SUMS.txt"
+ },
+ "tests": [
+  {
+   "command": ".venv/bin/python inline re-verification (27 assertions: E1 ceiling+margins+zero-financing robustness, V1 margins+distinct share, V5 bars, S2 violations+min, killed_by lists, folds vs census 12/12, TD tarball + 4 per-file digests, D1 blind declarations, terminal 0/6 + spec-tension, plan byte identity)",
+   "exit_code": 0,
+   "verdict": "PASS"
+  }
+ ]
+}
