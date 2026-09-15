@@ -1,0 +1,129 @@
+{
+  "schema": "a7_terminal_audit@1",
+  "cycle_id": "STOCKS-NG3",
+  "audit_class": "A7 terminal (fresh context, adversarial — hunt reasons the BLOCKED close is dishonest or premature)",
+  "audited_terminal_commit": "87314385c1cdf61ddae0e7101c63d8bc37282c49",
+  "audited_parent_commit": "08fd4f3cf74128e2a57eda96f539f6405fa5f2ef",
+  "branch": "orca/stocks-ng3-integration",
+  "verdict": "AUTHORIZED",
+  "unresolved_high_critical_count": 0,
+  "recompute": {
+    "method_limit": "This audit context has NO execution tool (no Bash): independent HTTP re-probe was not runnable. Recompute below is from committed bytes read line-by-line + machine-side frozen records (git worktree reflog, machine-wide heavy-lock history written by research/governance/heavy_lock.py — independent of the census script).",
+    "channels": {
+      "api_eod_price_200": {
+        "status_claimed": 200,
+        "recomputed": "NOT_RUN_EXECUTION_REQUIRED (own re-probe); frozen corroboration: all-3-canary 403 (not 401/402) on fundamentals at 02:33:40-42Z is entitlement-shaped for an authenticated token, recorded machine-side; raw eod-200 measurement itself survives only in verdict prose + commit message (finding F1)"
+      },
+      "api_fundamentals_403": {
+        "status_claimed": 403,
+        "recomputed": "CORROBORATED by frozen machine-side lock history (heavy_worker.history.jsonl line 148, released 2026-09-15T02:33:42Z, status FAILED): killed reasons 'KO.US fundamentals status=403 history=0', 'GE.US ... 403 ... 0', 'AAPL.US ... 403 ... 0' — byte-identical to p0_census.json killed[] and produced by the committed code path (p0_census_run.py line 106 E1 canary loop)"
+      },
+      "api_calendar_earnings_403": {
+        "status_claimed": 403,
+        "recomputed": "NOT_RUN_EXECUTION_REQUIRED (own re-probe); attested in channel_map prose + commit message only; probe_endpoints.py has the calendar-earnings raw probe but its stdout transcript is unfrozen (finding F1)"
+      },
+      "api_earnings_404": {
+        "status_claimed": 404,
+        "recomputed": "CORROBORATED by frozen machine-side lock history line 147 (attempt-1, 02:27:48Z): all 3 canaries status=404 events=0 on the legacy /api/earnings/ shape, archived honestly as p0_census_attempt1_legacy_endpoint.json"
+      },
+      "different_ticker_microsoft": {
+        "status": "NOT_RUN_EXECUTION_REQUIRED — no execution tool in this audit context; MSFT.US re-probe not runnable. Mitigation: 403 is a per-token entitlement response, not per-ticker; three independent canaries (KO/GE/AAPL) recorded machine-side all 403 in the same run."
+      }
+    },
+    "census_manifest_consistency": {
+      "verdict_field": "P0_CENSUS_BLOCKED — matches write_out code path for killed non-empty",
+      "killed_reasons": "3/3 match lock history + manifest",
+      "folds_frozen": "F1 2019-01-01..2021-08-31 / F2 2021-09-01..2024-01-31 / F3 2024-02-01..2026-08-31 — identical in attempt-1, attempt-2, and consistent with plan §3 fold contract (boundaries frozen at census per amended plan E6, A7-plan-F3 remediation); identical across attempts = no boundary shopping",
+      "floors_vs_plan": [
+        "E1: plan 'per-ticker earnings history reachable under EXISTING entitlement' == code kill on status!=200 OR history==0 — MATCH",
+        "E2: plan '>=400 usable SUE events recent 24 months of S0, >=150 entities' == code 400/150, RECENT_24M_START=2024-09-01 (24m back from S0_END 2026-08-31) — MATCH",
+        "E3: plan '>=2 dead canaries (TWTR, SIVB) pre-death records; 3/3 never-existed controls absent' == code E3_FLOOR_CANARIES=2, DEAD_CANARY_LAST_SESSION TWTR 2022-10-27 / SIVB 2023-03-09, 3 never-controls — MATCH",
+        "E4: plan 'uniform fallback to ALL events unless evidenced timing covers 100%' == code 'UNIFORM next-open-after-report-date (all events) unless share==1.0' — MATCH",
+        "E5: NOT_RUN at census by construction, pinned via E4 — matches plan text and manifest e5_note",
+        "E6: manifest exists at the exact preregistered path; raw_sha256/per-fold counts legitimately absent because the sample pull never ran (fail-closed on E1)"
+      ],
+      "s0_window_pull_from": "2019-01-01..2026-08-31 / pull_from 2016-01-01 — matches plan §3"
+    },
+    "timeline_machine_side": [
+      "2026-09-15T02:21:39Z worktree branch bootstrapped at 08fd4f3c (reflog)",
+      "2026-09-15T02:22:25Z registry P0-open write_token, head 08fd4f3c, phase 'P0 census starting ... amendment 08fd4f3c = A7 F1-F7 remediation pre-P0' (CYCLE_REGISTRY.json)",
+      "2026-09-15T02:27:48Z census attempt-1 (legacy /api/earnings/) FAILED E1 404x3 (lock history + archived manifest)",
+      "2026-09-15T02:33:42Z census attempt-2 (/api/fundamentals filter=Earnings) FAILED E1 403x3 (lock history + authoritative manifest)",
+      "2026-09-15T02:34:27Z terminal commit 87314385 (reflog), message = the exact claim under audit; no later branch movement — plan not edited after measurement on this branch"
+    ],
+    "legality": {
+      "budget": "0/6 with 0 scored cells — no E-phase/lane execution exists anywhere in lock history for STOCKS-NG3 (exactly 2 entries, both P0_CENSUS); registry row budget.used=0 max=6; GO REGISTERED_NOT_CONSUMED (never reached its gate)",
+      "s1": "SEALED_UNTOUCHED — census + probe scripts contain no S1 paths; only reads are root .env key + eodhd.com GETs; only writes are p0_census.json and (never reached) staging",
+      "orders": "NONE — no order/broker paths in any cycle file; HTTP GET to eodhd.com only",
+      "credentials": "grep over all 6 committed control-dir files for api_token=<literal>, EODHD_API_KEY=<value>, and bare 32-char alnum tokens: ZERO matches; key loaded programmatically from root .env only",
+      "shadow_non_interference": "PROSPECTIVE-SHADOW-V1 untouched — cycle files reference it in prose only; no code path touches shadow state; shadow registry row last updated 2026-09-14T23:51:53Z (pre-cycle), unchanged",
+      "registry_row": "STOCKS-NG3 still PLANNED_NOT_STARTED at head 08fd4f3c — control-plane landing intentionally sequenced after this audit per dispatch packet"
+    },
+    "preregistration": {
+      "plan_text_present": "plans/PLAN_stocks_ng3.md §3 E1 kill text present in BOTH the worktree copy and the root copy (read in full, identical); §8 prewrites STOCKS_NG3_BLOCKED_DATA_OR_SELECTION = 'census E1-E3 miss, entitlement gap' — the exact terminal label used",
+      "before_measurement": "Plan audit artifact audits/a7_plan_ng3.json (audited_utc 2026-09-15T00:00:00Z) already describes the E1-E6 fail-closed floors incl. E2 400/150 and E3 2-dead-canary — i.e., the kill design is attested ~2.5h BEFORE the 02:27/02:33Z census; registry records the 08fd4f3c amendment as pre-P0",
+      "not_edited_after": "Worktree reflog shows zero branch movement after the 02:34:27Z terminal commit; root plan copy is identical to the worktree copy",
+      "sha_verification_limit": "git show 9d7ba544:plans/PLAN_stocks_ng3.md and full-40-char registration SHAs not runnable here (no git execution); plan-content-at-registration verified instead via the frozen plan-audit artifact + root/worktree file identity + reflog immutability"
+    }
+  },
+  "findings": [
+    {
+      "id": "T1",
+      "severity": "MEDIUM",
+      "description": "Token-liveness sub-claim ('eod 200 in the same window') and the calendar-403 measurement are NOT frozen anywhere: probe_endpoints.py prints to stdout only, the orchestrator event log (.runtime/orchestrator_v3/events.jsonl) contains ZERO STOCKS-NG3 entries (only FOREX-NG3), and the control dir holds no transcript file. The eod-200 and calendar-403 survive only in verdict prose, census channel_map prose, and the commit message — all Lead-authored.",
+      "evidence": [
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/probe_endpoints.py (stdout-only, no artifact write)",
+        "/Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/events.jsonl (no STOCKS-NG3 rows)",
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/terminal_verdict_stocks_ng3.json (channel_map prose)"
+      ],
+      "exact_shas": ["87314385c1cdf61ddae0e7101c63d8bc37282c49"],
+      "why_not_high": "The terminal conclusion is robust under the dead-token hypothesis too: E1's preregistered kill fires on status!=200 regardless, so BLOCKED at 0 cells stands either way; and the machine-side frozen 403s (entitlement-shaped, vs 401 for an unauthenticated token) on 3 independent canaries corroborate an authenticated token. Only the diagnosis wording ('not served under entitlement' vs 'credential dead') rests on unfrozen evidence, which changes the reopening-condition text, not the verdict.",
+      "recommendation": "Freeze probe transcripts as committed JSON artifacts (status + content-type + body class per channel) in every future probe-first cycle; add /api/eod liveness to the census manifest's own measured fields."
+    },
+    {
+      "id": "T2",
+      "severity": "LOW",
+      "description": "E1 preregistration wording says 'entitlement gap => 404-class CANDIDATE_NOT_AUTHORIZED'; the measured gap class is 403 Forbidden. The fired terminal label itself is correctly taken from §8 ('census E1-E3 miss, entitlement gap' => STOCKS_NG3_BLOCKED_DATA_OR_SELECTION), so the close matches the preregistered outcome set; only the in-line '404-class' example is imprecise.",
+      "evidence": [
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/plans/PLAN_stocks_ng3.md §3 E1 line and §8",
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/p0_census.json"
+      ],
+      "exact_shas": ["08fd4f3cf74128e2a57eda96f539f6405fa5f2ef"]
+    },
+    {
+      "id": "T3",
+      "severity": "LOW",
+      "description": "Two same-entitlement EODHD channels were never probed and are absent from the channel map: /api/bulk-fundamentals/{exchange}?filter=Earnings (bulk variant of the same Fundamentals add-on — expected to 403 identically) and /api/earnings-trend/{symbol} (analyst ESTIMATES trend, not realized EPS history — cannot supply SUE numerators). Neither plausibly rescues the kill (bulk shares the fundamentals entitlement gate; trend is not realized history), so 'the ONLY per-ticker earnings-history channel' is materially true for realized EPS history, but the reopening probe set should name both so a future cycle re-measures them rather than trusting this inference.",
+      "evidence": [
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/terminal_verdict_stocks_ng3.json (reopening_condition)",
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/probe_endpoints.py (probed set: raw-earnings-noslash, raw-eod, calendar-earnings, fundamentals)"
+      ],
+      "exact_shas": ["87314385c1cdf61ddae0e7101c63d8bc37282c49"]
+    },
+    {
+      "id": "T4",
+      "severity": "LOW",
+      "description": "Latent fail-closed-direction bug in the committed standing census: E3's dead-canary and never-existed-control probes still point at the absent legacy /api/earnings/ endpoint (lines 137/146/164) even though attempt-1 proved that endpoint 404-absent. Had E1 passed, E3 would have killed on a known-absent channel — a false-BLOCKED risk, never a false-PASS risk. Unreachable in this close (E1 killed first); must be fixed before any reopened cycle re-runs the standing E1-E6 census.",
+      "evidence": [
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/p0_census_run.py lines 137, 146, 164",
+        "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng3/integration/research/control/stocks_ng3_run/p0_census_attempt1_legacy_endpoint.json"
+      ],
+      "exact_shas": ["87314385c1cdf61ddae0e7101c63d8bc37282c49"]
+    },
+    {
+      "id": "T5",
+      "severity": "LOW",
+      "description": "Byte-binding of the two census runs is inferential, not cryptographic: the heavy-lock history's command_digest covers argv (script path), not file bytes, and the file content changed between attempt-1 (02:27:48Z, legacy endpoint) and attempt-2 (02:33:42Z, fundamentals) under the same digest. Both attempts are frozen and both independently produce BLOCKED, so no outcome shopping occurred; the authoritative code+manifest pair is bound only by the terminal commit 45s later. Additionally, this audit read working-tree bytes; blob-level identity to 87314385 was not verifiable without git execution.",
+      "evidence": [
+        "/Users/hoangminhlong/.my-quantitative-governance/heavy_runtime/heavy_worker.history.jsonl lines 147-148 (identical command_digest 61908ab7df2a4fc5d2f5acc2f34531e10b8392bc021486c91778c7974e5bd27e, different killed-reason formats)",
+        "/Users/hoangminhlong/my-quantitative/.git/worktrees/integration4/logs/HEAD"
+      ],
+      "exact_shas": ["87314385c1cdf61ddae0e7101c63d8bc37282c49", "08fd4f3cf74128e2a57eda96f539f6405fa5f2ef"],
+      "recommendation": "Lead's integration step: run git status/diff on the worktree and verify the 5 committed control files are clean at 87314385 before landing the registry row."
+    }
+  ],
+  "hunting_summary": "Attacked the claim from five angles. (1) Reproduction: could NOT re-execute probes (no execution tool — recorded per channel above); instead verified the kill through the machine-side heavy-lock history, which is written by research/governance, not by the audited script: exactly two STOCKS-NG3 runs exist machine-wide, both P0_CENSUS, both FAILED, killed-reasons byte-identical to the manifests (404x3 attempt-1, 403x3 attempt-2) — no lane, E-phase, or any other execution ever ran, so 0 cells / budget 0/6 is corroborated, not just asserted. (2) Prematurity: the implementers did hunt alternatives before closing — after the legacy /api/earnings/ 404'd (attempt-1), they re-pointed E1 at /api/fundamentals (attempt-2) and probed calendar-earnings; both blocked; both attempts independently yield BLOCKED so there is no channel-shopping that could have rescued a PASS; the two unprobed residual channels are recorded as T3 and do not carry realized EPS history under the same gate. (3) Preregistration: E1 kill text is present in both root and worktree plan copies, attested pre-measurement by the frozen plan-audit artifact (00:00:00Z vs census 02:27/02:33Z), registry records the amendment as pre-P0, and the reflog shows no branch movement after the terminal commit; floors E1/E2/E3/E4 and fold boundaries in the manifest match plan §3 exactly and are identical across attempts (no boundary shopping). Terminal label matches the preregistered §8 outcome set. (4) Legality: no order paths, no S1 paths, no credential in any committed control file (pattern grep clean), key programmatic from root .env, shadow row untouched, GO unconsumed, registry row correctly still PLANNED_NOT_STARTED pending this audit. (5) Dishonesty hunt: the only soft spots found are evidence-freeze hygiene (T1), wording (T2), an unreachable fail-closed bug (T4), and argv-only command digests (T5) — none flips the conclusion. The BLOCKED close is honest: the kill fired exactly as preregistered, on a token that was authenticated but not entitled, with zero budget consumed and nothing adjusted to rescue the direction.",
+  "verdict_rationale": "AUTHORIZED with 0 HIGH/CRITICAL. The preregistered E1 kill test fired on measurement (fundamentals 403 on 3/3 living canaries, machine-side frozen), after an honest first attempt on the legacy channel (404x3, archived); the terminal label, budget 0/6 with dead slots, S1 seal, no-orders, credential hygiene, and shadow non-interference all reconcile against frozen artifacts and independent machine-side records; the plan text carrying the kill was frozen before measurement and unchanged after. The MEDIUM finding (unfrozen probe transcript for the eod-200/calendar-403 sub-claims) does not change the conclusion because the kill condition is status!=200-independent and the frozen 403-shape corroborates liveness; it tightens the reopening-condition diagnosis only.",
+  "audited_utc": "2026-09-15T00:00:00Z",
+  "artifact_note": "Uncommitted by design — left for the Lead to integrate (dispatch packet instruction). Commit NOTHING from this audit."
+}
