@@ -1,0 +1,112 @@
+{
+  "schema": "shv1_a7_mtm_delta@1",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "audited_at_utc": "2026-09-15T02:05:54Z",
+  "audited_tip": "0691dab776396456ef1333bf180d3e3db31e6ab0",
+  "prior_tip": "599f70179c2689d982291d01f25506bff3b41762",
+  "remediation_commit": "2d70664d",
+  "auditor": "A7 independent fresh-context MTM delta audit",
+  "detached_checkout": {
+    "path": "/tmp/a7m_shv1",
+    "head_verified": "0691dab776396456ef1333bf180d3e3db31e6ab0",
+    "working_tree_clean": true,
+    "real_ledger_read_from": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration/results/prospective_shadow_v1/ledgers/XSECT-FUND-CARRY-7D.jsonl (READ-ONLY; digest re-verified 3x during audit, always 7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068)"
+  },
+  "commands_and_results": [
+    {"cmd": "git -C /tmp/a7m_shv1 rev-parse HEAD", "exit": 0, "result": "0691dab776396456ef1333bf180d3e3db31e6ab0 (matches audited_tip); git status --short empty"},
+    {"cmd": "git -C /tmp/a7m_shv1 diff 599f7017..0691dab7 --name-status", "exit": 0, "result": "19 files, +3023/-3: A valuation.py, A e/valuation_worker.py, A e/valuation_config.json + rehearsal/handoff/ledger-freeze artifacts, M dashboard/{cli,render,server,snapshot}.py, A tests/test_shv1_valuation.py, M tests/test_shv1_dashboard.py"},
+    {"cmd": "per-file diff line counts for shadow_worker.py accounting.py executor.py events.py ledger.py start_guard.py data_feed.py scheduler.py risk.py no_order.py and families/", "exit": 0, "result": "ALL 0 diff lines — strategy engine and families/ untouched"},
+    {"cmd": "read valuation.py (739 lines) + valuation_worker.py (380 lines) + snapshot.py (1966 lines) + server/render/cli diffs + valuation_config.json end-to-end", "exit": 0, "result": "math semantics, fail-closed paths, counter isolation, GET/HEAD-only server, route table unchanged (5 routes; do_POST/do_PUT/do_DELETE = _reject_method) all confirmed in code"},
+    {"cmd": "independent hand replay of the real CARRY ledger (own Python, no lane code) vs valuation.rebuild_positions", "exit": 0, "result": "cash 99954.17251398179 (bit-for-bit == hand == claim), fees 40.0, slippage 5.827486018214466, funding 0.0; positions SOL +195.08388607101054@102.53, XRP +14066.676044450696@1.4219, DOGE -239034.3014222541@0.08366, ETH -7.963653883674908@2511.4 — lane == hand on all four books and all 4 positions"},
+    {"cmd": "build_valuation_mark at auditor-chosen marks {SOL 105.25, XRP 1.3855, DOGE 0.0809, ETH 2498.5} vs hand equity/unrealized", "exit": 0, "result": "equity 100741.06696911997 diff 0.0; unrealized 781.0669691199677 diff 0.0; fees/slippage cumulative NOT recharged (40.0 / 5.827486018214466 carried as-is); status RUNNING; sign checks: long SOL mark>avg pnl>0 TRUE, short DOGE mark<avg pnl>0 TRUE; mark_ts 01:22:07Z floored to 01:20:00Z and mark_id == sha256('PROSPECTIVE-SHADOW-V1|XSECT-FUND-CARRY-7D|2026-09-15T01:20:00Z')[:32]"},
+    {"cmd": "fail-closed probe: DOGE price removed from prices map", "exit": 0, "result": "status UNAVAILABLE_FAIL_CLOSED, equity=None, unrealized=None, gross=None, net=None, accounting_status UNAVAILABLE_FAIL_CLOSED; no stale reuse or interpolation possible from code (prices only from the caller-supplied map)"},
+    {"cmd": "append idempotency + byte preservation in /tmp/a7_recon scratch (real ledger copied in)", "exit": 0, "result": "seed+mark appended once; second pass returned skipped_existing x2; 4 append calls -> 2 ledger records; strategy ledger sha256 before == after == 7ea6b502..."},
+    {"cmd": "valuation_worker.py --shadow-start 2026-09-14T23:48:01Z --runtime-root /tmp/a7_worker_scratch --once (REAL keyless fetch)", "exit": 0, "result": "exit 0, heavy_lock_verdict FREE_PROVEN, last_error null; flat sleeves FLAT_OK equity exactly 100000.0; CARRY RUNNING equity 99854.55802435051 at live premiumIndex marks — hand recompute from recorded prices_by_symbol diff 0.0; marks_written 6"},
+    {"cmd": "two further worker runs inside the same 5-min window; sha256 of all three mark ledgers compared", "exit": 0, "result": "BYTE-IDENTICAL mark files; heartbeat marks_written 0 / skipped_existing 6 (crossing a 5-min boundary in an earlier pair legitimately produced new-stamp marks — same-window idempotency separately proven)"},
+    {"cmd": "shasum -a 256 real integration ledger (before audit, mid, after all passes)", "exit": 0, "result": "7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068 every time — live strategy ledger byte-preserved throughout the audit"},
+    {"cmd": "curl keyless klines?symbol=BTCUSDT&interval=1m&limit=1 at fetch_epoch_ms 1789437213272", "exit": 0, "result": "row open_time 1789437180000 close_time 1789437239999; fetch 33.3s into bar, 26.7s BEFORE close => limit=1 returns the IN-PROGRESS bar, independently reproducing the freeze rationale's rejection measurement"},
+    {"cmd": "curl keyless fapi/v1/premiumIndex (no symbol)", "exit": 0, "result": "one call, 900 entries, 199735 bytes (~0.5s) — single bulk keyless coverage claim reproduced"},
+    {"cmd": "assert_no_order_surface over research/shadow_v1 (26 files incl. valuation.py) and over research/control/prospective_shadow_v1/e (9 files incl. valuation_worker.py)", "exit": 0, "result": "hits=0, verdict NO_ORDER_SURFACE_CLEAN on both"},
+    {"cmd": "grep new files for heavy_lock usage / .acquire / forbidden strings / backtest-history scans", "exit": 0, "result": "heavy_lock imported inspect-only (no .acquire anywhere); no api_key/secret/order-placement strings; only 'backtest' mention is the docstring 'No backtests, no history scans'"},
+    {"cmd": "battery: pytest 17 files from /tmp/a7m_shv1 (bare tree)", "exit": 0, "result": "244 passed, 1 skipped — skip is tests/test_shv1_valuation.py:301 live-ledger test, honest env skip (live ledger not at a WORKTREE-relative candidate path in /tmp)"},
+    {"cmd": "symlink /tmp/integration -> integration worktree (candidate path 2) and re-run the skipped test alone, then full battery", "exit": 0, "result": "live-ledger test PASSED over the REAL live ledger (prefix-stability + read-only + digest-stable proof); full battery then 245 passed in 29.79s, exit 0; real ledger sha unchanged after"},
+    {"cmd": "shasum identity_recovery.json; recompute cost_regime_digest per manifest's own canonicalization rule", "exit": 0, "result": "identity_recovery.json sha256 == 845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8 (exact match); canonical sha256(current_conservative_cost) == ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65 (exact match); note cost_regime_digest is a canonical-content digest, not the file-bytes digest (raw file bytes 8826bf96...)"},
+    {"cmd": "frozen control-dir copy carry_ledger_frozen_XSECT-FUND-CARRY-7D.jsonl digest", "exit": 0, "result": "7ea6b502... == live ledger bytes (frozen copy byte-identical to the live ledger at audit time)"}
+  ],
+  "additivity_confirmed": true,
+  "additivity_evidence": "diff 599f7017..0691dab7 touches ONLY: research/shadow_v1/valuation.py (NEW), research/shadow_v1/dashboard/{cli,render,server,snapshot} (additive view layer), research/control/prospective_shadow_v1/e/* (lane control artifacts + valuation_worker.py), tests (new valuation suite + dashboard appends). Zero diffs on shadow_worker.py, accounting.py, executor.py, events.py, ledger.py, start_guard.py, data_feed.py, scheduler.py, risk.py, no_order.py, families/.",
+  "valuation_math_verified": true,
+  "valuation_math_evidence": "Signed-qty replay (buy +/sell -), weighted-avg entries, cash replay bit-for-bit; equity = cash + sum(signed_qty x mark) reproduced by auditor hand math with diff 0.0 (exact float equality, tighter than the 0.005 cent tolerance); long-up/short-down signs verified; fees 40.0 and slippage 5.827486018214466 are cumulative books carried unchanged into marks (never recharged); funding enters only via recorded per-event funding_cashflow (settled contract, 0.0 on the real ledger); missing open-position price -> UNAVAILABLE_FAIL_CLOSED with equity/unrealized/gross/net all None (no stale reuse or interpolation path exists in code); flat sleeve FLAT_OK equity exactly 100000.0 (observed live on both flat sleeves); mark_id = sha256('PROSPECTIVE-SHADOW-V1|family|round-5-min-UTC-stamp')[:32] deterministic (off-boundary input floored, id reproduced); O_APPEND single-write + fsync + read-back verify + skip-on-existing idempotency proven at append level and at whole-worker level (same-window double run byte-identical).",
+  "real_reconciliation": {
+    "verified": true,
+    "ledger": "results/prospective_shadow_v1/ledgers/XSECT-FUND-CARRY-7D.jsonl",
+    "ledger_sha256": "7ea6b5023677082b5246826bcd044ef643ae66c3c91990f1c01d3296635f6068",
+    "bytes": 2445,
+    "independent_recompute": {
+      "cash": 99954.17251398179,
+      "fees": 40.0,
+      "slippage": 5.827486018214466,
+      "funding": 0.0,
+      "positions": {"SOLUSDT": 195.08388607101054, "XRPUSDT": 14066.676044450696, "DOGEUSDT": -239034.3014222541, "ETHUSDT": -7.963653883674908},
+      "lane_vs_hand": "exact equality on cash/fees/slippage/funding; MTM equity diff 0.0 at auditor-chosen marks; live-marked equity 99854.55802435051 hand-recomputed diff 0.0"
+    },
+    "fail_closed_probe": "removing one open-position price yields UNAVAILABLE_FAIL_CLOSED with equity=None",
+    "byte_preservation": "real ledger digest re-verified unchanged after: hand replay, lane replay, mark build, scratch append pass, 4 worker --once runs, and the live-ledger pytest"
+  },
+  "ledger_byte_preservation": true,
+  "dashboard_counter_isolation": true,
+  "dashboard_evidence": "The four strategy counters (decision_count, order_intent_count, fill_count, closed_position_count) are computed inside _build_family exclusively from strategy-ledger records; valuation marks enter only via _build_valuation_family/_valuation_block under the separate snapshot['valuation'] key carrying its own valuation_mark_count/valuation_seed_count with an explicit counters_note; snapshot['counters'] = combined['counters'] built from the four strategy counters only. Server diff adds no routes (ROUTES unchanged: /, /api/snapshot.json, /api/trade/, /api/export.csv, /api/export.json) and remains GET/HEAD-only (do_POST/do_PUT/do_DELETE bound to _reject_method). Auto-refresh is <meta refresh 30> + setInterval(location.reload, 30000) — refetch of the read-only snapshot only. No marks are fabricated between marks: the combined series sums only at stamps where ALL sleeves have OK marks, per-sleeve data_age_seconds/stale displayed; valuation today-PnL uses at-or-after-boundary marks (disclosed in code docstring and UI label; conservative direction vs the strategy-side exact-boundary rule).",
+  "isolation_no_heavy_lock": true,
+  "isolation_evidence": "valuation_worker.py is a separate process (zero-diff shadow_worker.py); imports heavy_lock solely for inspect() each loop (verdict recorded in heartbeat, expected FREE_PROVEN — observed FREE_PROVEN in my own live run); zero .acquire calls in any new file (grep + full read); per-family and fetch exceptions are caught into heartbeat last_error and never propagate; pre-SHADOW_START loops are quiet no-ops (pre_activation_quiet_noop); writes confined to runtime_root/valuation_marks/ + runtime/valuation_heartbeat.json.",
+  "price_freeze_evidence_honest": true,
+  "price_freeze_evidence": "valuation_config.json freezes fapi premiumIndex BULK with recorded measurements and explicitly rejects klines limit=1 as the in-progress bar. I reproduced both claims myself, keyless: klines limit=1 fetched at 1789437213272 returned open_time 1789437180000 / close_time 1789437239999 (bar still open, 26.7s to close) — the rejection is measured-true; bulk premiumIndex returned 900 symbols / 199735 bytes in one call (~0.5s), confirming the single-read batch plan. markPrice is the funding-settlement price class — economically aligned for a funding-carry observation. No uncompleted bar is ever used (the frozen source is a point-in-time mark, not a bar).",
+  "surface_hunt_clean": true,
+  "surface_hunt_evidence": "assert_no_order_surface: research/shadow_v1 26 files 0 hits; research/control/prospective_shadow_v1/e 9 files 0 hits (NO_ORDER_SURFACE_CLEAN both). Only action type anywhere remains TARGET_INTENT (also enforced inside validate_valuation_mark via no_order_proof). No backtest/history scan in the worker loop (sole 'backtest' mention is the docstring denying it). No look-ahead: marks come from point-in-time premiumIndex marks with source timestamps; no uncompleted bars; capital seeds are CAPITAL_SEED_NO_MARK and rendered as seed lines, never performance.",
+  "battery_result": {
+    "passed": 245,
+    "failed": 0,
+    "skipped": 0,
+    "command_exit": 0,
+    "note": "In the bare detached tree the battery reports 244 passed + 1 skipped: tests/test_shv1_valuation.py:301 (live-ledger read-only/prefix-stability test) honestly skips when no LIVE_CARRY_CANDIDATES path exists. With the live integration worktree ledger reachable at its candidate path (symlink /tmp/integration -> worktree integration dir), that test PASSES over the REAL live ledger and the full battery is 245 passed / 0 failed / 0 skipped (measured).",
+    "bare_tree_result": "244 passed, 1 skipped in 29.79s"
+  },
+  "digests_unchanged": true,
+  "digest_evidence": {
+    "identity_recovery_json_sha256": "845c3e872fcea59d417e83878be79ec8112c197a61663173f24bf58e0cedbcd8 (exact match)",
+    "cost_regime_digest": "ab524d0ef974ef3ee23236ec89ba1df50ba52c37d5de973429349291aef44d65 (recomputed from the manifest's own canonicalization rule sha256(json.dumps(current_conservative_cost, sort_keys=True, separators=(',',':'), ensure_ascii=False)) — exact match; it is a canonical-content digest, distinct from raw file bytes 8826bf96b357e5794b171ca013d4e9e80dd6d8c193dfe379ada2722b6170afc7)"
+  },
+  "findings": [
+    {
+      "severity": "LOW",
+      "id": "A7-MTM-1",
+      "title": "Equity identity guard is tautological as written",
+      "detail": "valuation.py build_valuation_mark assigns equity = cash + pos_value and on the next lines checks abs(equity - (cash + pos_value)) > 0.005 — the check compares the value to the exact expression it was just computed from, so it can never fire. It functions only as a tripwire against future refactors that decouple the assignment. No correctness impact in the audited code: the auditor's independent recomputation reproduced the published equity with diff 0.0 and the dashboard-side identity checks on strategy events are separate and live.",
+      "recommendation": "Optional future hardening: derive equity through an independent path (e.g. recompute from the emitted position_rows) so the guard has discriminating power."
+    },
+    {
+      "severity": "INFO",
+      "id": "A7-MTM-2",
+      "title": "Valuation equity and strategy event equity use different price classes — delta equals cumulative slippage by design",
+      "detail": "Measured on the real ledger: strategy event equity (99954.17251398179) = cash + sum(signed_qty x decision-ref closes) where target weights +/-0.2 x start-of-rebalance equity net the ref-price book to exactly 0; valuation entries are the slipped fill prices, so valuation equity at entry marks = cash + 5.827486018214466. The difference is exactly the cumulative slippage book — economically consistent (entry unrealized on each leg shows the slippage drag), cash is bit-for-bit identical in both surfaces, and the dashboard renders strategy equity and valuation equity in separate sections with their own disclosed identities. No conflation found.",
+      "recommendation": "None required; documentation already discloses the identity. Optionally state the price-class difference in the dashboard valuation section note."
+    },
+    {
+      "severity": "INFO",
+      "id": "A7-MTM-3",
+      "title": "Battery skip nuance in bare detached trees",
+      "detail": "In a detached checkout without the live ledger at a LIVE_CARRY_CANDIDATES path, the battery reports 244 passed + 1 honest skip (the live-ledger read-only/prefix test), while the lane's claim of 245 holds only when the live ledger is reachable. Measured both ways; with reachability the test passes over the real ledger and the real ledger bytes are unchanged after.",
+      "recommendation": "None required — the skip message is honest and the frozen copy covers the pinned bytes; noted so future auditors do not misread 244+1 as a regression."
+    },
+    {
+      "severity": "INFO",
+      "id": "A7-MTM-4",
+      "title": "Boundary-crossing worker runs legitimately append new marks",
+      "detail": "Two worker runs separated by a 5-minute boundary produce different mark files because the new round stamp derives a new mark_id (by design). Same-window idempotency was separately proven at append level (skip-on-existing) and at whole-worker level (two rapid runs: mark files byte-identical, marks_written 0, skipped_existing 6).",
+      "recommendation": "None."
+    }
+  ],
+  "unresolved_high_critical_count": 0,
+  "verdict": "DELTA_ACCEPTED",
+  "verdict_rationale": "The delta 599f7017..0691dab7 is purely additive: the engine AUTHORIZED chain (strategy semantics, ledgers, scheduling, risk, no-order surface) is byte-unchanged, and the valuation layer is a read-only observation/accounting surface whose math reconciles to the cent (in fact to exact float equality) against an independent hand recomputation of the REAL live CARRY ledger (cash 99954.17251398179, fees 40.0, slippage 5.827486018214466, funding 0.0). Marks never move trade counters, the worker never acquires the heavy lock (inspect-only, FREE_PROVEN observed live), exceptions are contained, fail-closed semantics hold (UNAVAILABLE_FAIL_CLOSED with equity absent; no stale reuse or interpolation), the price-source freeze rationale was independently re-measured (klines limit=1 is the in-progress bar; premiumIndex bulk is one keyless call), the surface scanner is clean on both new-code locations, digests are unchanged, and the battery is 245 passed / 0 failed with the live ledger reachable. The live strategy ledger's sha256 was verified unchanged across every audit interaction. valuation_worker cutover onto the live runtime remains NOT authorized by this audit: starting the worker on results/prospective_shadow_v1 still requires the owner's explicit GO phrase.",
+  "recommended_next_action": "Record DELTA_ACCEPTED so the AUTHORIZED chain extends to 0691dab776396456ef1333bf180d3e3db31e6ab0 (engine chain through 0e8aa462 + activation 599f7017 + additive valuation layer). Hold valuation_worker cutover on the live runtime until the owner issues the GO phrase; optionally schedule the LOW finding (tautological equity guard) as a non-blocking future hardening item."
+}
