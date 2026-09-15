@@ -1,6 +1,34 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced at the STOCKS-NG3 open-and-close, 2026-09-15)
+## Sprint state (synced at the STOCKS-NG4 close, 2026-09-15)
+
+- **STOCKS-NG4 CLOSED → `STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA`** (2026-09-15,
+  branch `orca/stocks-ng4-integration`, terminal 5fd712e, A7 plan-audit loop
+  round-1 REFUSED → amendment A1 → round-2 AUTHORIZED_WITH_FINDINGS + A7
+  terminal AUTHORIZED 0 HIGH/CRITICAL, budget 0/6, GO died UNCONSUMED,
+  S1 SEALED) — the FINRA consolidated NMS daily off-exchange short-sale-volume
+  direction (new information set, zero failure-registry ancestry) killed at
+  P0 gate F1 AUTHORITY, the cycle's FIRST gate: operative FINRA Website ToU
+  Restrictions (d)/(e)/(g) bar census-scale programmatic retrieval + database
+  construction, (m) bars predictive-model use — no permissive data-specific
+  terms locatable; the contrary reading (cdn bytes outside "FINRA Website")
+  lands AMBIGUOUS = equally terminal (fail-closed). Anonymous free download is
+  real; authorized research use is not. Zero bulk retrieval, zero adapter
+  repair, zero cells. Reopening owner-only (FINRA data license or a different
+  preregistered source). Denominators unchanged stocks 42/42, program 257/260
+  (P-9). Detail:
+  `.worktrees/stocks-ng4/integration/research/control/stocks_ng4_run/terminal_verdict_stocks_ng4.json`.
+
+- **FOREX-NG5 OPENED → `PLANNED_NOT_STARTED`** (2026-09-15, registered in
+  canonical registry; plan `plans/PLAN_forex_ng5.md`) — CFTC CoT weekly
+  currency-futures positioning state on the 16:00-NY grid over existing TD
+  spot legs; new evidenced information source per the NG3/NG4 recorded
+  reopening condition; frontier evidence
+  `research/control/forex_frontier_2026-09/` (researcher 3 directions;
+  critic: D1 CFTC-CoT PASS both gates, D2 CB-text FAIL population/source,
+  D3 TIC FAIL revisions/staleness, closures + Q-10 conditions recorded).
+  Plan pins the G-D2-1 five named vetoes + the no-scored-cell-before-vetoes
+  law. Plan audit round 1 in flight at sync time.
 
 - **STOCKS-NG3 CLOSED → `STOCKS_NG3_BLOCKED_DATA_OR_SELECTION`** (2026-09-15,
   branch `orca/stocks-ng3-integration`, terminal 0d4b8352, A7 plan audit

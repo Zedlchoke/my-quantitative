@@ -708,3 +708,29 @@ New-assets generation tally (closed 2026-09-14): 3/3 REJECT_ALL
 (RATES_NG1_REJECT_ALL / VOL_NG1_REJECT_ALL / COMMODITIES_NG1_REJECT_ALL),
 12 cells scored, 0 survivors, program 257/260; every surviving-candidate path
 was falsified by its own pre-declared controls, which is the system working.
+
+## P-25 — Free download is not research authorization: the publisher's terms can name your exact use (2026-09-15)
+
+**Source:** STOCKS-NG4 — FINRA consolidated NMS daily short-sale-volume files
+download anonymously and free (CDN canaries HTTP 200, sha256-pinned), but the
+operative FINRA Website Terms of Use Restrictions bar, on plain reading: (d)
+building a database from the site, (e)/(g) bulk copying and voluminous
+repetitive requests (the census itself), and (m) use "in conjunction with a
+model, algorithm, or process that is designed to predict trades" — which is
+what a scored research cycle is. No permissive data-specific terms existed at
+any locatable URL, and the contrary interpretive reading (cdn.finra.org bytes
+are not "the FINRA Website") lands in AMBIGUOUS, which is equally terminal
+under fail-closed doctrine.
+
+**Lesson:** Entitlement has three independent layers — reachable (canary
+200), permitted (terms compatible with the USE, not just the download), and
+served (the channel returns the observable). STOCKS-NG2 died on layer 3,
+STOCKS-NG3 on layer 3 again, STOCKS-NG4 on layer 2. An authority gate must
+therefore (1) run FIRST, before any bulk retrieval or engineering investment;
+(2) quote the operative restrictions clause-by-clause against the declared
+research use; (3) preregister INCOMPATIBLE / AMBIGUOUS => terminal so the
+close costs zero cells. The whole NG4 cycle cost exactly 5 light GETs and
+zero scored slots. Writing the false premise ("described as free for
+non-commercial use") into a plan is how this class of kill gets missed — the
+round-1 A7 audit REFUSED the plan for exactly that sentence, and the amended
+plan then died safely at its own gate instead of after a 2,000-file crawl.
