@@ -53,9 +53,9 @@ causal language — such a proposal is invalid, not repairable by wording.
 
 - The 29 forex rows in `research/wayfinder/FAMILY_FAILURES.jsonl` consume no
   positioning census: not a relabel, lookback change or re-parameterization
-  of any dead family. Nearest ancestors are cross-plane: crypto #17/V15
-  positioning/clock kills and the same-source COMMODITIES-NG1 lineage. Per
-  the program's own P-12/ancestry law (critic report §3), cross-plane
+  of any dead family. Nearest ancestors are cross-plane: commodities #17
+  (COMMNG1-A4-P2 release-clock kill) and crypto V15 positioning metrics.
+  Per the program's own P-12/ancestry law (critic report §3), cross-plane
   closures transfer as MANDATORY CONTROL TEMPLATES, never as automatic
   measured vetoes; this plan adopts them as the G-D2-1 battery below.
 - The source is new to this plane, free and official: cftc.gov bulk zips
@@ -84,6 +84,12 @@ A2 AVAILABILITY (P-1)
    Per-release bytes-exist evidence incl. holiday-delayed weeks (release
    can slip 1-2 days). The release-schedule page is a rolling ~13-month
    window: per-cycle re-pin item. Exact or conservative decision times only.
+   Conservative substitution frozen NOW for pre-window years: where no
+   per-release bytes-exist evidence is constructible, decisions use the
+   documented release convention (Friday 15:30 ET, next business day if a
+   federal holiday) shifted to the next 16:00-NY grid point, marked as
+   convention-based in the census, and the affected windows are declared in
+   the A6 freeze commit.
 A3 CORRECTIONS CENSUS
    CFTC Special Announcements corrections class censused and classified
    against the FAQ-6 no-revision claim; handling preregistered
@@ -132,7 +138,8 @@ V1 CLOCK BOOK         bare CoT release-clock book, same grid/hold/cost
 V2 GENERIC DAY-OF-WEEK named explicit veto — the CoT calendar is
                       Friday-clustered by construction (holiday-delayed weeks
                       push Mon/Tue); FOREX-NG4's rho 0.8883 class is the
-                      exact killer; kill at the frozen ancestry bar
+                      exact killer; kill bar is the numeric V5 bar, pooled
+                      |rho| > 0.20 on the frozen representation
 V3 POLICY-RATE-DIFFERENTIAL DIRECTION shadow — a DGS10-LEVEL control does
                       not cover the differential form; FXFV8-A4-P2's
                       carry_unconditional veto (0.3831) is the template
