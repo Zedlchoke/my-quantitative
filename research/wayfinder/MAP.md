@@ -1,6 +1,22 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
-## Sprint state (synced at the FOREX-NG5 close, 2026-09-15)
+## Sprint state (synced at the CRYPTO-NG3 close, 2026-09-15)
+
+- **CRYPTO-NG3 CLOSED → `CRYPTO_NG3_BLOCKED_DATA_OR_SELECTION`** (2026-09-15,
+  branch `orca/crypto-ng3-integration`, terminal 9b1cccc3, A7 plan audit
+  round-1 AUTHORIZED_WITH_FINDINGS 0 HIGH (fixed pre-registration) + A7
+  terminal AUTHORIZED 0 HIGH/CRITICAL, budget 0/6, GO died UNCONSUMED,
+  S1 SEALED) — the issuer-contract stablecoin net-flow census cycle:
+  P0 census PASS C1-C11 (keyless finalized logs, 1.78M events, conservation
+  366/366 EXACT, cross-transport byte-identity, Tron only_confirmed, folds
+  146/109/111, minter netting measured with treasury honestly UNCLASSIFIED),
+  2 outcome-blind proposals, then D2 VETO_ALL pre-score: **X3 — the new
+  mandatory tape-fitted issuance proxy — reached 0.547/0.262: the tape alone
+  explains the anchors**; X1 tape-liquidity relabel 0.402/0.426; X4 clock
+  0.326/0.626; X5 nulls valid both. The 0.20 bar has now killed 10/10
+  NG1/NG2/NG3 proposals. Census machinery survives as the standing probe.
+  Denominators unchanged crypto 155/158, program 257/260 (P-9). Detail:
+  `.worktrees/crypto-ng3/integration/research/control/crypto_ng3_run/terminal_verdict_crypto_ng3.json`.
 
 - **FOREX-NG5 CLOSED → `FOREX_NG5_BLOCKED_DATA_OR_SELECTION`** (2026-09-15,
   branch `orca/forex-ng5-integration`, terminal 663a5ad6, A7 plan audit
