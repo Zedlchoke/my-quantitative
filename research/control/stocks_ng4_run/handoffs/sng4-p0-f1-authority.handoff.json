@@ -1,0 +1,63 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "sng4-p0-f1-authority",
+  "cycle_id": "STOCKS-NG4",
+  "role": "quant-implementer",
+  "lane": "p0-f1",
+  "dispatch_sha": "19360f18d4aa66a53dcda38e8d235cbd471b843b",
+  "actual_start_sha": "19360f18d4aa66a53dcda38e8d235cbd471b843b",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/stocks_ng4_run/p0_f1_tou_verdict.json",
+    "research/control/stocks_ng4_run/p0_f1_evidence/finra_terms_of_use_raw.html",
+    "research/control/stocks_ng4_run/p0_f1_evidence/finra_data_terms_of_use_404_raw.html",
+    "research/control/stocks_ng4_run/p0_f1_evidence/finra_daily_short_sale_volume_page_raw.html",
+    "research/control/stocks_ng4_run/p0_f1_evidence/DailyShortSaleVolumeFileLayout.pdf",
+    "research/control/stocks_ng4_run/p0_f1_evidence/finra_data_root_raw.html",
+    "research/control/stocks_ng4_run/p0_f1_evidence/fetch_log.txt",
+    "research/control/stocks_ng4_run/p0_f1_evidence/MANIFEST.json",
+    "research/control/stocks_ng4_run/handoffs/sng4-p0-f1-authority.handoff.json"
+  ],
+  "tests": [
+    {
+      "command": "python: json.load verdict + MANIFEST; assert verdict schema/category; re-hash all 5 pinned evidence artifacts and compare to MANIFEST sha256; cross-check verdict pinned_evidence digests vs MANIFEST",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": "b5bb2a7dccc0951b83093c1cea52db9fe52874ad25f78575324a5ef41b1f4946"
+    },
+    {
+      "command": "curl -w HTTP_CODE for finra.org/terms-of-use (200, 92381B), finra-data/terms-of-use (404), daily-short-sale-volume-files page (200, 101780B), DailyShortSaleVolumeFileLayout.pdf (200, 296409B, application/pdf), finra-data root (200, 85494B)",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null
+    },
+    {
+      "command": "git -C <worktree> rev-parse HEAD == 19360f18d4aa66a53dcda38e8d235cbd471b843b; branch == orca/stocks-ng4-integration; status clean after commit",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "log_digest": null
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "F1 VERDICT: INCOMPATIBLE — terminal close STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA, budget 0/6, no bulk retrieval in-cycle. Clauses (d),(e),(g) plainly reach use (i) census-scale programmatic retrieval + census database construction; clause (m) plainly reaches use (ii) building predictive models of later returns. Recorded interpretive question (does 'FINRA Website' reach cdn.finra.org bytes) does not rescue: contrary reading leaves the data under NO locatable terms, which is AMBIGUOUS => equally terminal under fail-closed doctrine.",
+    "commit_sha in this committed copy is null by lane convention (a lane cannot know its own commit sha before committing); the published inbox copy at .runtime/orchestrator_v3/inbox/sng4-p0-f1-authority-handoff.json carries the real commit_sha and is the authority artifact.",
+    "No CDN canary re-fetched this session; verdict rests solely on the pinned terms documents, not on data-file bytes.",
+    "Terms pinned as of 2026-09-15 fetch timestamps in MANIFEST.json; FINRA may change terms thereafter.",
+    "No legal advice sought or given; plain-reading engineering verdict on public terms only; no term accepted on the owner's behalf."
+  ],
+  "incidents": [],
+  "tree_status": "clean",
+  "workers": 0,
+  "outputs": [
+    {"path": "research/control/stocks_ng4_run/p0_f1_tou_verdict.json", "sha256": "e6a12353039a82f430a76b72d9896e0e3934d639c42889487768472ddb086b85"},
+    {"path": "research/control/stocks_ng4_run/p0_f1_evidence/MANIFEST.json", "sha256": "dba8645d1032ce3df7a8da0f382b51472ed127bf11576669a07dadac12a9c078"},
+    {"path": "research/control/stocks_ng4_run/p0_f1_evidence/fetch_log.txt", "sha256": "622dba6855eda4434dffc145931aa2f700d2236f011c1beec29ac0b55766a984"},
+    {"path": "research/control/stocks_ng4_run/p0_f1_evidence/finra_terms_of_use_raw.html", "sha256": "1e4e76342d27082a09142c4dd45fb28f7facbf051552aafb5f31fac0ae9a69f5"},
+    {"path": "research/control/stocks_ng4_run/p0_f1_evidence/finra_data_terms_of_use_404_raw.html", "sha256": "76fece82294c4a401e22b68fa767298c232cf74183cf2f2cdd19ab742afd6fe4"},
+    {"path": "research/control/stocks_ng4_run/p0_f1_evidence/finra_daily_short_sale_volume_page_raw.html", "sha256": "a64f850036be7cca689500fd76523d0e7a75037acd90e07b6187920d0b8f4d39"},
+    {"path": "research/control/stocks_ng4_run/p0_f1_evidence/DailyShortSaleVolumeFileLayout.pdf", "sha256": "2649bf4204bf57e7c47285f6915d918310f5061a6313c9a0577aac73269bc6cc"},
+    {"path": "research/control/stocks_ng4_run/p0_f1_evidence/finra_data_root_raw.html", "sha256": "95b9c1076585af913d57311ca56e1eeea2f52183a477b30f5d2f57e9aa33561b"}
+  ],
+  "recommended_next_action": "Lead records terminal close STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA via researchctl (budget 0/6); F2-F8 do not dispatch; no adapter repair; reopening requires frozen explicit OWNER decision or a FINRA data license, both owner-only."
+}
