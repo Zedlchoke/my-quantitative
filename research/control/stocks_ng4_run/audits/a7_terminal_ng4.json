@@ -1,0 +1,119 @@
+{
+  "schema": "a7_terminal_audit@1",
+  "task_id": "sng4-a7-terminal",
+  "cycle_id": "STOCKS-NG4",
+  "role": "quant-auditor (A7 terminal audit — audit ONLY, never repair, never weaken a gate)",
+  "audited_utc": "2026-09-15",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng4/integration",
+  "branch": "orca/stocks-ng4-integration",
+  "dispatch_sha": "d6a81a7ceb533074031dd8b7f2558e8b9ae2f952",
+  "audited_head": "d6a81a7ceb533074031dd8b7f2558e8b9ae2f952",
+  "verdict": "AUTHORIZED",
+  "verdict_rationale": "The terminal close STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA at budget 0/6 is correct and fully evidenced. P0 gate F1 fired exactly as preregistered in the amended plan before any bulk retrieval: the verdict lands in exactly one preregistered category (INCOMPATIBLE), quotes the operative ToU clauses verbatim (15/15 decisive phrases independently located in the pinned raw HTML visible text), and the INCOMPATIBLE category is supported by the quoted text on plain reading: (d) bars database construction subject to a carve-out with no locatable referent (finra-data/terms-of-use is 404; only site-wide ToU is linked from the data pages), (e) bars bulk copying/any data-gathering process which a full-population census is by construction, (g) bars voluminous requests for data inherent to a 2018-08-01-to-present census, and (m) expressly bars use in conjunction with a process designed to predict trades for a portfolio — this cycle's stated purpose. The interpretive-question fallback (contrary 'FINRA Website' reading) lands in AMBIGUOUS, which the plan preregisters as equally terminal, so both readings close the cycle. Every hash recomputed matches MANIFEST.json (5/5). The branch chain contains only the two declared commits over base 19360f18 with zero census code, zero adapter edits, zero bulk data. Zero unresolved HIGH/CRITICAL findings. The auditor independently hunted for a permissive FINRA data license the lane might have missed (developer.finra.org API Terms of Service) and confirmed it is restrictive and registration-gated, not permissive — the close is unaffected.",
+  "checks": [
+    {
+      "what": "Worktree, branch and HEAD identity",
+      "how": "git -C worktree rev-parse HEAD; branch --show-current; status --short",
+      "result": "PASS — HEAD d6a81a7ceb533074031dd8b7f2558e8b9ae2f952 matches the dispatch expectation exactly; branch orca/stocks-ng4-integration; working tree clean before this audit"
+    },
+    {
+      "what": "Branch chain scope discipline (audit claim 3)",
+      "how": "git log --stat 19360f18..HEAD; git diff 19360f18..HEAD --name-only; diff of research/data_fusion/ vs base",
+      "result": "PASS — exactly two commits on base 19360f18: 56a6393a (F1 verdict + 5 pinned evidence files + MANIFEST + fetch log + handoff) and d6a81a7c (terminal verdict, 1 file, 28 lines). Changed files are only 10 paths under research/control/stocks_ng4_run/. No census code, no research/data_fusion/ changes (research/data_fusion/adapters/finra.py byte-identical to base), no plans/, no wayfinder/, no bulk data"
+    },
+    {
+      "what": "F1 verdict structure and category landing (audit claim 1)",
+      "how": "Read research/control/stocks_ng4_run/p0_f1_tou_verdict.json; compare against the F1 gate text in plans/PLAN_stocks_ng4.md §3 lines 105-122",
+      "result": "PASS — verdict schema stocks_ng4_p0_f1_tou_verdict@1; category INCOMPATIBLE is exactly one of the three preregistered categories (COMPATIBLE/INCOMPATIBLE/AMBIGUOUS) whose definitions the verdict quotes verbatim from the plan; clause-by-clause analysis covers all five plan-required clauses (d)(e)(f)(g)(m) against exactly two declared uses (census-scale retrieval + database construction; predictive models of later returns); consequence statement matches the plan's INCOMPATIBLE consequence word-for-word (terminal close STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA, budget 0/6, no bulk retrieval ever in-cycle); clause (f) honestly recorded as non-decisive; the interpretive question (does 'FINRA Website' reach cdn.finra.org bytes) is recorded with both readings terminating the cycle (INCOMPATIBLE or AMBIGUOUS fail-closed)"
+    },
+    {
+      "what": "Plain-reading support of INCOMPATIBLE from quoted text (audit claim 1)",
+      "how": "Independent reading of the verbatim clause texts against the two uses, without relying on the lane's reasoning",
+      "result": "PASS — (d) 'develop or create a database of data using the FINRA Website, except as expressly permitted by any other terms of use' squarely names the census database; the carve-out has no referent (verified: no data-specific terms page or link exists, see check on 404 and link scan); (e) 'monitor or copy the FINRA Website in bulk... or any similar data-gathering or extraction tools' names census-scale programmatic retrieval; (g) 'voluminous, excessive, or repetitive requests for data' reaches the census design independent of pacing; (m) expressly includes 'in conjunction with a model, algorithm, or process that is designed to predict trades for or within an individual portfolio' — the plan's own stated purpose (scored, cost-charged books with entry/exit and caps). The Permitted Uses grant is 'Subject to Restrictions' and cannot rescue a forbidden use. No reading was found that makes the category wrong"
+    },
+    {
+      "what": "Evidence re-hash vs MANIFEST.json (audit claim 2)",
+      "how": "shasum -a 256 over all 5 files in p0_f1_evidence/, compared byte-for-byte against MANIFEST.json sha256 fields",
+      "result": "PASS 5/5 — finra_terms_of_use_raw.html 1e4e7634...a69f5; finra_data_terms_of_use_404_raw.html 76fece82...d6fe4; finra_daily_short_sale_volume_page_raw.html a64f8500...4d39; DailyShortSaleVolumeFileLayout.pdf 2649bf42...b6cc; finra_data_root_raw.html 95b9c107...33561b — all identical to MANIFEST.json and to the digests repeated inside p0_f1_tou_verdict.json pinned_evidence"
+    },
+    {
+      "what": "Verbatim clause text present in the pinned raw HTML (audit claim 2)",
+      "how": "Tag-stripped visible-text probe of finra_terms_of_use_raw.html for 15 decisive phrases: scope definition, permitted-uses grant, 'In no case may you' preamble, clauses (d) incl. carve-out, (e) both limbs, (f), (g) both limbs, (m) both limbs, (o), and 'Last modified: November 9, 2023'",
+      "result": "PASS 15/15 — every phrase the verdict presents as verbatim exists in the pinned evidence HTML"
+    },
+    {
+      "what": "No permissive data-specific terms on the pinned data pages (audit claim, lane's central search)",
+      "how": "Regex scan of href attributes in all three pinned HTML pages for terms/licen/agree/permiss/usage/polic patterns",
+      "result": "PASS — the daily short-sale-volume page and the /finra-data root link only /index.php/terms-of-use (site-wide) and /index.php/privacy-policy; the /finra-data/terms-of-use 404 body is pinned as proof of non-existence; the only 'non-commercial use' sentence on the pages is the site-template FINRA DATA login blurb scoped to saved-views/Bond-Watchlist"
+    },
+    {
+      "what": "Plan preregistration fidelity (audit claim 4)",
+      "how": "Compare verdict category_definition_from_plan, consequence_from_plan and the terminal verdict's close_class against plans/PLAN_stocks_ng4.md §3 F1 and §10 outcome codes",
+      "result": "PASS — category definitions and consequence quoted verbatim from plan lines 111-119; STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA is one of the six preregistered §10 terminal codes; the plan's F1 precondition (verdict artifact committed under research/control/stocks_ng4_run/ BEFORE any F2/F5 dispatch) is satisfied by commit 56a6393a, and no F2-F8 dispatch exists in the chain"
+    },
+    {
+      "what": "Round-2 plan audit residuals R1-R4 honestly reflected (audit claim 4)",
+      "how": "Read audits/a7_plan_ng4_v2.json (AUTHORIZED_WITH_FINDINGS, 4 LOW) and check each residual against the F1 and terminal verdicts",
+      "result": "PASS — R2 (named F1 verdict-writer) honored: verdict carries verdict_writer 'sng4-p0-f1-authority (named F1 verdict-writer; audit-v2 residual R2)'; R3 (verbatim carve-out of (d)) remediated: the verdict quotes (d) including 'except as expressly permitted...' and analyzes the carve-out's missing referent; R1 (AMBIGUOUS-branch terminal code unpinned) moot: the INCOMPATIBLE branch fired and its code is pinned in the plan; R4 (legacy doctor-findings disclosure convention) is a registration-time execution residual, not a terminal-close item. Terminal verdict names all four dispositions consistently"
+    },
+    {
+      "what": "Terminal verdict honesty (audit claim 5)",
+      "how": "Field-by-field read of terminal_verdict_stocks_ng4.json; cross-check budget/denominators against plans/CYCLE_REGISTRY.json via researchctl and the NG3 close-sync evidence",
+      "result": "PASS — schema stocks_ng4_run/terminal_verdict@1; budget 'used 0 / max 6' matches the registry row (STOCKS-NG4 0/6, PLANNED_NOT_STARTED — registry transition to TERMINAL is the post-A7 close step, mirroring NG3's registered TERMINAL row); denominators claim 'stocks UNCHANGED 42/42; program UNCHANGED 257/260' matches the NG3 close-sync commit 7ea1ddfa language; reopening is owner-only with no self-authorization path; scored_cells 0; S1 SEALED_UNTOUCHED; shadow untouched; incidents array includes the aed4a871 mislabel"
+    },
+    {
+      "what": "aed4a871 mislabel incident verified from root (audit claim 5)",
+      "how": "git -C root show aed4a871 --stat",
+      "result": "PASS (disclosed, not hidden) — commit message describes the round-1 audit REFUSED while the diff content is the 84-line remediation amendment of plans/PLAN_stocks_ng4.md; the mislabel is disclosed in commit dfc2ae9c's message and in terminal_verdict incidents; no history rewrite performed"
+    },
+    {
+      "what": "Independent hunt for a permissive FINRA data license the lane missed (audit claim 6)",
+      "how": "The pinned data pages link developer.finra.org ('Equity API', 'FINRA API Developer Center'); 2 light GETs (within the 3-GET budget): developer.finra.org/ (sha256 90c3abfa74dd7b928b3e1beb7c24794edc3336456f9c18683ffe35373d965ef9, HTTP 200, 43858B) and developer.finra.org/finra-api-terms-service (sha256 c21136ffbe765ddacf920e68f043f2e5e634d7536ff52942b07abe5534214e86, HTTP 200, 64583B)",
+      "result": "PASS — the FINRA API Terms of Service grants only a 'nonexclusive, non-transferable, non-sublicensable, limited license' to access FINRA's own Licensed APIs after a developer registration procedure, and itself bans 'use any process other than the Licensed APIs to monitor or copy the Licensed Materials in bulk, or use any data mining, scraping, or harvesting tools' plus 'any purposes for which Developer has not been granted written permission by FINRA'. It does not cover cdn.finra.org census retrieval, and the API path requires signup/API-key credentials that plan §11 boundary forbids. NOT a permissive license; the close is unaffected"
+    },
+    {
+      "what": "Unauthorized writes / stray state",
+      "how": "git status --short in worktree; changed-file list vs the allowed set; handoff presence",
+      "result": "PASS — only the 10 declared control files differ from base; no writes to plans/, research/wayfinder/, research/data_fusion/, registries, .zcode/; the F1 handoff zcode_orch_v3_handoff@1 is committed inside 56a6393a at research/control/stocks_ng4_run/handoffs/sng4-p0-f1-authority.handoff.json"
+    }
+  ],
+  "findings": [
+    {
+      "id": "A7-T-1",
+      "severity": "LOW",
+      "finding": "The F1 verdict's permissive-terms search statement ('NO permissive data-specific terms exist anywhere locatable on finra.org') does not mention developer.finra.org, which the pinned data pages themselves link via the 'Equity API' button.",
+      "disposition": "Informational only — auditor independently fetched developer.finra.org/finra-api-terms-service and confirmed it is restrictive (limited nonexclusive API license, bulk-copy/scraping ban, written-permission clause, registration-gated access; plan §11 forbids signup/API key regardless). Verdict outcome unchanged. No repair requested; recorded for any reopened cycle."
+    },
+    {
+      "id": "A7-T-2",
+      "severity": "LOW",
+      "finding": "The committed copy of sng4-p0-f1-authority.handoff.json carries commit_sha: null because the handoff was written before its own integrating commit.",
+      "disposition": "Bookkeeping nit inherent to self-referential commit ordering; the terminal verdict cites the store record (task sng4-p0-f1-authority INTEGRATED at 56a6393a) as the authoritative pairing. No effect on the close."
+    }
+  ],
+  "zero_unresolved_high_critical": true,
+  "budget_and_denominators": {
+    "budget": "0/6 (registry STOCKS-NG4 row confirms 0/6; all six slots dead forever per terminal verdict)",
+    "denominators": "stocks 42/42 and program 257/260 unchanged (consistent with NG3 close-sync commit 7ea1ddfa and P-9 authority)"
+  },
+  "evidence_digests": {
+    "pinned_by_lane_manifest": {
+      "finra_terms_of_use_raw.html": "1e4e76342d27082a09142c4dd45fb28f7facbf051552aafb5f31fac0ae9a69f5",
+      "finra_data_terms_of_use_404_raw.html": "76fece82294c4a401e22b68fa767298c232cf74183cf2f2cdd19ab742afd6fe4",
+      "finra_daily_short_sale_volume_page_raw.html": "a64f850036be7cca689500fd76523d0e7a75037acd90e07b6187920d0b8f4d39",
+      "DailyShortSaleVolumeFileLayout.pdf": "2649bf4204bf57e7c47285f6915d918310f5061a6313c9a0577aac73269bc6cc",
+      "finra_data_root_raw.html": "95b9c1076585af913d57311ca56e1eeea2f52183a477b30f5d2f57e9aa33561b"
+    },
+    "auditor_independent_fetches_2026-09-15": {
+      "https://developer.finra.org/": "90c3abfa74dd7b928b3e1beb7c24794edc3336456f9c18683ffe35373d965ef9",
+      "https://developer.finra.org/finra-api-terms-service": "c21136ffbe765ddacf920e68f043f2e5e634d7536ff52942b07abe5534214e86"
+    },
+    "audited_artifacts": {
+      "p0_f1_tou_verdict.json_at_56a6393a": "committed content re-read from worktree at HEAD d6a81a7",
+      "terminal_verdict_stocks_ng4.json_at_d6a81a7": "committed content re-read from worktree at HEAD d6a81a7",
+      "plans_PLAN_stocks_ng4.md": "amended A1 text re-read from worktree at HEAD d6a81a7 (blob 42adde74 per v2 audit, verified identical at aed4a871/dfc2ae9c by the round-2 auditor)"
+    }
+  },
+  "light_fetch_budget_used": "2 of 3 allowed verification GETs (developer.finra.org x2); all other checks were local",
+  "recommended_next_action": "Close stands. Lead proceeds with the two-half close: register STOCKS-NG4 TERMINAL STOCKS_NG4_BLOCKED_SOURCE_OR_SCHEMA via researchctl, close-sync ledger row + MAP entry, denominators unchanged 42/42 and 257/260. Reopening remains owner-only (FINRA data license / written permission covering census-scale retrieval and predictive-research use, or a different preregistered source under P-19)."
+}
