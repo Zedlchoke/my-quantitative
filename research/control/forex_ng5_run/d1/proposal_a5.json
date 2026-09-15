@@ -1,0 +1,101 @@
+{
+  "schema": "forex_ng5_d1/proposal@1",
+  "proposal_id": "SFNG5-A5-P1",
+  "family_id": "FXNG5-POS-STATE",
+  "cycle_id": "FOREX-NG5",
+  "lane": "d1-a5",
+  "outcome_blind_declaration": "This lane proposes construction only. No returns, PnL, profit factor, Sharpe, drawdown, correlation, or any price series was read or computed here. Measurement happens in D2 under controls this lane does not control.",
+  "construction": {
+    "name": "build-vs-fade decile-boundary transition book",
+    "type": "TRANSITION/FLOW (state-boundary crossing), NOT a static decile-level design",
+    "state_variable": "Per pair p and COT report index k: speculative net position ratio n_{p,k} = (noncommercial_long - noncommercial_short) / open_interest, and its causal time-series decile state d_{p,k} within a trailing 104-report window.",
+    "flow_variable": "f_{p,k} = d_{p,k} - d_{p,k-13} over a 13-report (one quarter) transition window. A 'state-boundary crossing' is |f_{p,k}| >= 3 (the reported state has moved at least three decile bands over the transition window at the latest available report).",
+    "build_vs_fade_branches": {
+      "fade": "The crossing's destination state is an extreme decile band (f>0 and d_{p,k}>=9, or f<0 and d_{p,k}<=2): the position OPPOSES the transition direction (-sign(f)).",
+      "build": "Any other qualifying crossing (destination in interior bands 3..8): the position FOLLOWS the transition direction (+sign(f)).",
+      "hold": "No qualifying crossing at report k: the previous position carries into the next grid interval (no re-trade)."
+    },
+    "distinctness_from_static_design": "Deciles are used only as the state space through which a TRANSITION is measured (boundary crossings over a 13-report window); positions are keyed to crossing events and their destination band, never to a static decile level. The static decile-level book is a different lane (S2 decile-state books); this proposal's evaluated object is the crossing-conditional book.",
+    "preconditions_from_census": [
+      "D2/prelaunch MUST re-stage the four TD legs under the owner entitlement and pin fresh digests BEFORE any scored cell (p0_census.json not_run_declared / mapping_td_legs.json td_digest_pin verdict NOT_RUN).",
+      "Fold assignment by as-of report_date into F1 (2006-06-13..2013-06-30), F2 (2013-07-01..2020-06-30), F3 (2020-07-01..2026-09-08); force-flat at fold boundary (p0_census.json folds_frozen).",
+      "X1 exclusion frozen: a used code absent in any year first-seen..freeze => BLOCKED_SOURCE (p0_census.json exclusion_rule_X1_frozen)."
+    ]
+  },
+  "mechanism": "State-conditioning only. This proposal asserts no causal channel from reported positioning to price; it conditions the return distribution on the reported state, exactly as any conditional-moment estimator would. The mechanism is distributional: conditional on a pair's reported speculative-position decile state and on the direction of its recent state transition, the conditional distribution of the next grid-interval return is allowed to differ from the unconditional distribution. The evaluated question is strictly conditional: given that the reported state has just crossed a decile boundary (a transition regime) and given whether the destination band is extreme or interior, is the conditional mean of the holding-interval return measurably different from zero and from the declared calendar/staleness/policy/momentum controls? Build (follow the transition) versus fade (oppose it at extreme destination bands) are competing conditional-mean hypotheses about the same state variable; both are statements about where in the state space conditional drift is concentrated, not about what causes price to move. The S1 staleness sham, the S2 decile-state books, and controls V1-V5 adjudicate whether any conditional structure survives generic conditioning.",
+  "formula": {
+    "variables": "For pair p, report index k (weekly COT report, as-of Tuesday per census): L_k, S_k = noncommercial long/short; OI_k = open interest; window W_d = 104 reports (indices k-103..k); transition window W_f = 13 reports.",
+    "net_ratio": "n_{p,k} = (L_k - S_k) / OI_k",
+    "decile_state": "R_{p,k} = #{ j in [k-103, k], j != k : n_{p,j} < n_{p,k} } / 103 ;  d_{p,k} = 1 + min(9, floor(10 * R_{p,k}))  (causal trailing-window decile, d in {1..10}; ties resolve to the lower decile because strict '<' counts)",
+    "flow": "f_{p,k} = d_{p,k} - d_{p,k-13}",
+    "action_condition": "crossing_{p,k} = 1 iff |f_{p,k}| >= 3, else 0",
+    "signal_futures_orientation": "s_{p,k} = 0 if crossing_{p,k} = 0 ; s_{p,k} = -sign(f_{p,k}) if crossing_{p,k} = 1 AND ((f_{p,k} > 0 AND d_{p,k} >= 9) OR (f_{p,k} < 0 AND d_{p,k} <= 2)) ; s_{p,k} = +sign(f_{p,k}) if crossing_{p,k} = 1 otherwise",
+    "leg_orientation_map": "sigma_p = +1 for GBPUSD, AUDUSD, NZDUSD (direct per mapping_td_legs.json); sigma_p = -1 for USDCAD (inverted per census: futures quotes CAD/USD, leg quotes USD/CAD)",
+    "position": "w_{p,g_k} = sigma_p * s_{p,k} on grid interval [g_k, g_{k+1}) ; if s_{p,k} = 0, w_{p,g_k} = w_{p,g_{k-1}} (hold) ; w = 0 before the first report at which both windows (104 and 13) are fully available and after any reset event in missing_data_rule",
+    "all_units": "w is a unitless direction in {-1,0,+1} per pair; equal notional across the four pairs at each grid point; no sizing, no leverage modeling proposed here."
+  },
+  "decision_rule": {
+    "grid": "16:00 America/New_York daily decision grid (P-12). A decision for report k is taken at g_k = the first 16:00-NY grid point STRICTLY AFTER the report's release instant, per census availability: scheduled rows use release_date/grid_date from a2_availability.json schedule_rows; pre-window scored-span report dates use the census convention model (release Friday 15:30 ET, as-of previous Tuesday; federal holiday -> next business day; decision = first 16:00-NY grid point strictly after the release instant; census-marked convention-based, NOT per-release evidence); 2025 shutdown republications follow a2_availability.json shutdown_override actual_publish dates.",
+    "action": "At each g_k, for each pair p: if a crossing fires, set w to the fade or build branch value; if no crossing fires, hold the previous w; if availability/reset rules bind, set w = 0. Positions are never changed between release grid points.",
+    "no_peeking": "Only reports with as_of report_date strictly on or before the report feeding g_k enter d and f; the release instant precedes g_k by construction (strictly-after rule), so no decision uses information not yet published."
+  },
+  "lookback": {
+    "decile_window": "104 reports (indices k-103..k), report-indexed not calendar-indexed, so holiday/shutdown shifts do not distort the window",
+    "transition_window": "13 reports (~one quarter)",
+    "warmup": "First eligible decision for pair p is at the first release grid point whose report index k satisfies k-103 within available data and k-13 available (>= 104 available consecutive reports per pair; fewer => flat per missing_data_rule)"
+  },
+  "holding_window": {
+    "definition": "One report week: grid interval [g_k, g_{k+1}), where g_{k+1} is the next release's decision grid point per census availability.",
+    "typical_length": "~5 NY trading days (4-11 calendar days under holiday shifts; extended under the 2025 shutdown override republication dates)",
+    "event_based_exits": "Force-flat at fold boundary (folds_frozen); force-flat on reset events (missing_data_rule); no stop-loss, no take-profit, no intra-interval rebalancing."
+  },
+  "universe": {
+    "pairs": ["GBPUSD", "USDCAD", "AUDUSD", "NZDUSD"],
+    "orientations": {
+      "GBPUSD": "direct",
+      "USDCAD": "inverted (futures quotes CAD/USD; leg quotes USD/CAD) per mapping_td_legs.json",
+      "AUDUSD": "direct",
+      "NZDUSD": "direct"
+    },
+    "scope_notes": "Pair identity anchored by market-NAME regex per mapping_td_legs.json join_rule (codes are NOT stable across eras; per-year era tables govern used codes under X1). USD index futures are state context only, not traded. EUR, JPY, CHF and all cross-rate pairs are out of scope per mapping_td_legs.json out_of_scope_declared. Equal notional across the four pairs; no pair weighting."
+  },
+  "turnover_estimate": {
+    "estimate": "Structural estimate only (outcome-blind; not measured): crossings can fire at most once per pair per report week (~50 eligible release weeks/pair/year after holidays). With the assumed crossing frequency P(|f|>=3) ~ 0.30-0.40 per pair-week and persistence (hold when no crossing), expected position changes ~ 10-20 flips/pair/year, i.e. ~0.2-0.4 of report weeks have a rebalance; annualized one-sided notional turnover ~ 10-40x per pair relative to always-in-market. Fade/build branch flips account for roughly half of changes.",
+    "assumptions": "Crossing probability is an assumption, not a computed statistic; actual turnover is measured in D2 on the P-12 grid.",
+    "cost_interface": "Turnover is declared so E1 (financing-inclusive cost ceiling) can be applied in D2; this proposal does not compute costs."
+  },
+  "missing_data_rule": {
+    "availability_gate": "A report k's decisions exist only if the census availability row for that release shows bytes_exist_used_pairs true for ALL FOUR pairs (a2_availability.json schedule_rows) and the used codes for that release year appear in the frozen per-year era tables (per_year_code_table.json) under the X1 rule; a used code absent in any year first-seen..freeze => BLOCKED_SOURCE => that report's decision is NOT_RUN for the affected pair (flat), with no substitution.",
+    "pair_partial_failure": "If one pair's bytes are unavailable at a release, that pair is flat for [g_k, g_{k+1}); other pairs trade normally; no cross-pair inference, no backfill.",
+    "gap_reset": "If >= 2 consecutive available reports are missing for a pair, the decile and flow windows are declared broken: the pair goes flat and stays flat until 104 consecutive available reports refill the decile window and 13 refill the flow window. A single missing report also breaks window consecutiveness and triggers the same reset (windows require consecutive available reports).",
+    "state_carry": "No interpolation, no forward-fill of n or d, never across a missing report.",
+    "td_restage_gate": "The four TD legs are NOT currently staged (census td_digest_pin NOT_RUN): no scored cell may run in D2 until prelaunch re-stages them under the owner entitlement and pins fresh digests. This proposal binds all decision counts to the frozen report-date grid regardless of the re-staging.",
+    "fold_boundary": "Force-flat at F1/F2/F3 boundaries per folds_frozen; positions never span folds."
+  },
+  "falsifier": {
+    "primary": "FALSIFIED if, measured in D2 on the P-12 grid with all declared controls applied, the crossing-conditional book's per-fold decision-conditioned mean return fails to separate from BOTH the S1 staleness sham (same rule on staleness-shifted inputs) AND the V2 generic day-of-week book at the numeric 0.20 bar. Survival of neither comparison means the observed conditional structure is generic calendar/staleness conditioning, not state-transition conditioning.",
+    "construction_specific": "FALSIFIED AS A TRANSITION CONSTRUCTION if the fade and build branches do not differ in sign or magnitude of conditional mean beyond the control bar, i.e. if a pooled always-follow-the-flow book (no destination-band distinction) performs equivalently: the boundary-crossing distinction would then carry no information and the static/pure-flow design, not this transition design, would deserve the follow-up.",
+    "fold_discipline": "Separation must hold fold-wise (F1, F2, F3) under the census fold rule; a single-fold artifact does not rescue the proposal.",
+    "not_a_falsifier": "Low absolute profitability after E1 costs is a cost verdict, not a mechanism falsifier; the falsifier is about conditional structure surviving controls."
+  },
+  "declared_controls": [
+    "V1 clock-book: release-instant to decision-grid clock alignment verified against census availability; no decision precedes its release instant",
+    "V2 generic day-of-week control, numeric 0.20 bar",
+    "V3 policy-rate-differential direction control",
+    "V4 DGS10 level control",
+    "V5 momentum+ancestry control, 0.20 pool",
+    "S1 staleness sham (SEALED_UNTOUCHED per p0_census.json; lane did not touch it)",
+    "S2 decile-state books only (this lane is the transition book; static decile-state books are the comparison class)",
+    "E1 financing-inclusive cost ceiling"
+  ],
+  "representation_identity": "P-12 grid representation D2 measures on: daily 16:00 America/New_York close grid. Decision timestamps are exactly the census grid dates (a2_availability.json schedule_rows grid_date for the rolling window; convention-model dates for pre-window scored spans: first 16:00-NY grid point strictly after the release instant, holiday -> next business day; shutdown_override actual_publish for the 2025 republications). The measured object is the grid-point return series of w_{p,g} in {-1,0,+1} per pair, constant over [g_k, g_{k+1}), computed on the four entitled TD daily legs aligned to 16:00-NY, with the USDCAD leg sign-inverted to the leg orientation (sigma_USDCAD = -1). Signal inputs are exclusively report-indexed COT states with as_of report_date strictly before the decision grid point's release chain; no price input enters the signal. Decisions are assigned to folds by as-of report_date and force-flat at fold boundaries. Identity is exact: same timestamps, same leg orientation, same fold assignment for every scored cell in D2.",
+  "author": "lane d1-a5 (outcome-blind proposal lane A5), cycle FOREX-NG5",
+  "utc": "2026-09-15T14:13:51Z",
+  "known_limitations": [
+    "Outcome-blind by design: no returns, PnL, PF, Sharpe, drawdown, or rho computed or read in this lane; all performance claims are deferred to D2.",
+    "TD legs absent machine-wide (census NOT_RUN); all decision counts bind to the frozen report-date grid until prelaunch re-stages and pins digests.",
+    "Pre-window scored-span grid dates are convention-based per census (NOT per-release evidence); only the rolling ~13-month schedule window is release-evidenced.",
+    "Decile window (104), transition window (13), crossing threshold (>=3), and fade band (d>=9 / d<=2) are proposed construction parameters, chosen a priori; no data-driven tuning was performed in this lane.",
+    "Turnover figure is a structural estimate with stated assumptions, not a measurement."
+  ]
+}
