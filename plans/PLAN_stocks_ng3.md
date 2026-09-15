@@ -1,8 +1,14 @@
 # PLAN STOCKS-NG3 — earnings-surprise drift (consensus-free SUE) on the death-inclusive cohort
 
 > Status: `PLANNED_NOT_STARTED` (2026-09-15, Lead discovery under the owner's
-> standing directive to open the highest-value surviving cycle; PROSPECTIVE-
-> SHADOW-V1 continues ACTIVE_LIGHT untouched). A correct
+> 2026-09-15 live instruction to open the highest-value surviving cycle,
+> standing on the frozen P-19 authority: a generation that ends with <= 6
+> scored cells / <= 2 families opens ONE more full cycle from scratch — the
+> new-assets generation closed 12 cells / 3 families at 0 survivors and
+> STOCKS-NG2 closed 0/6 with the reopening condition recorded at the V8
+> next_owner_path and the V12 close: "next stocks re-entry needs a materially
+> new information set". PROSPECTIVE-SHADOW-V1 continues ACTIVE_LIGHT
+> untouched). A correct
 > `STOCKS_NG3_BLOCKED_DATA_OR_SELECTION` at any pre-scored gate is a successful
 > research run. This plan authorizes NO scored cell until its own prelaunch
 > gate passes both keys (A7 `AUTHORIZED`, then the owner's fresh exact phrase,
@@ -46,8 +52,11 @@ class is a relabelled ancestor and dies pre-score.
 ## 2. Ancestry position and novelty claim
 
 - 109-family failure registry contains **no earnings event family**: no SUE,
-  no PEAD, no announcement-date observable has ever been measured on any
-  asset. This is a materially new information set on the stocks plane — the
+  no PEAD, no actual-EPS surprise observable has ever been measured on any
+  asset (announcement-*clock* classes exist and are dead — CPI/FOMC/NFP
+  instants, release windows, day-of-week — but none conditions on realized
+  earnings surprise magnitude). This is a materially new information set on
+  the stocks plane — the
   recorded STOCKS-NG2 reopening condition ("next stocks re-entry needs a
   materially new information set") is satisfied by the information source,
   not by a re-parameterization.
@@ -83,14 +92,21 @@ E3  delisted-capability canary: >= 2 dead canaries (TWTR, SIVB class from
     before their evidenced death dates; 3/3 never-existed controls absent.
     0/2 => survivorship-blocked => terminal BLOCKED.
 E4  availability semantics: per-event timing field (BMO/AMC) coverage is
-    MEASURED and pinned; events without evidenced timing take the frozen
-    conservative fallback (decide at the first session open strictly after
-    the report date's close) applied uniformly — never selectively.
+    MEASURED and the evidenced-timing share is PINNED in the census manifest;
+    the uniform-fallback decision rule is FIXED IN THIS PLAN ex ante — if
+    evidenced timing covers < 100% of sampled events, the conservative
+    fallback (decide at the first session open strictly after the report
+    date's close) applies to ALL events uniformly, never selectively
+    (no selective-optimism channel exists by construction).
 E5  PIT mutation battery: shifting a decision one session earlier must
     change the book (no-lookahead proof), BMO/AMC boundaries tested.
 E6  sha-pinned census manifest (entity list, event list, floors measured,
-    entitlement verdict) committed under
-    research/control/stocks_ng3_run/p0_census.json.
+    entitlement verdict, AND the frozen chronological fold boundaries with
+    per-fold event counts) committed under
+    research/control/stocks_ng3_run/p0_census.json. Fold boundaries freeze
+    HERE, at the census, before any D2 measurement runs (P-15/P-21: nothing
+    re-derived after numbers exist; the per-fold >= 60 floor of §3 is thus
+    not boundary-shoppable).
 ```
 
 Floors E1/E2/E3 are kill tests: any miss => registry phase
@@ -197,6 +213,7 @@ cap; slots unused are dead, never reassigned.
 ```text
 STOCKS_NG3_BLOCKED_DATA_OR_SELECTION   census E1-E3 miss, entitlement gap,
                                        D2 all-veto, or selection empty
+STOCKS_NG3_BLOCKED_PRELAUNCH           A7 prelaunch REFUSED past remediation
 STOCKS_NG3_REJECT_ALL                  scored, no survivor (SUCCESS class:
                                        a correct falsification)
 STOCKS_NG3_INCOMPLETE_NOT_PROMOTABLE   partial execution, verdict-defective
