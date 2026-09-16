@@ -1,0 +1,33 @@
+{
+ "schema": "fng7_p0_repull_contract@1",
+ "cycle_id": "FOREX-NG7",
+ "lane": "p0-census",
+ "gate": "F1(iii) bounded TD re-pull cross-check",
+ "frozen_before_pull": true,
+ "authority_basis": "plans/PLAN_forex_ng7.md §4 F1(iii): fail-closed re-pull contract frozen BEFORE the pull; byte-identity or honest divergence disclosure; divergence => archive vintage declared THE cycle authority, never silently merged",
+ "scope": {
+  "legs": ["EURUSD", "NZDUSD"],
+  "bars_per_leg": 60,
+  "interval": "1day",
+  "order": "desc",
+  "endpoint_path": "https://api.twelvedata.com/time_series",
+  "total_requests_bound": 2,
+  "entitlement": "owner TD entitlement (V8/V9/NG5 precedent; F2), key TWELVE_DATA_API_KEY from environment only"
+ },
+ "comparison_basis": {
+  "sample": "the archive vintage's NEWEST 60 staged bars per leg (the staged member files are THE pinned authority)",
+  "identity_definition": "field-level strict string equality on (datetime, open, high, low, close) for every datetime present in BOTH the vendor payload and the staged newest-60 sample; no numeric coercion; values compared as archived strings",
+  "min_overlap_datetimes": 55,
+  "rationale": "the vendor serves bars NEWER than the archive vintage tail (archive newest 2026-09-10/12 vs retrieval 2026-09-16), so identity is asserted on the OVERLAP; overlap below 55 of 60 => NOT_RUN_INSUFFICIENT_OVERLAP, no conclusion either way"
+ },
+ "outcomes": {
+  "BYTE_IDENTITY": "every overlapping row field-identical and overlap >= 55 => re-pull PASS; archive vintage remains authority",
+  "DIVERGENCE": "any overlapping row differs (or schema/meta mismatch) => archive vintage is DECLARED THE cycle authority; divergence recorded verbatim (field, staged value, vendor value); vendor bytes NEVER merged into staged data",
+  "NOT_RUN_KEY_ABSENT": "TWELVE_DATA_API_KEY not in environment => record, archive remains authority",
+  "NOT_RUN_NETWORK": "request failure => redacted error only (key value scrubbed, URL never stored beyond scheme+host+path), archive remains authority",
+  "NOT_RUN_INSUFFICIENT_OVERLAP": "overlap < 55 => no conclusion; archive remains authority"
+ },
+ "secrets_law": "key value NEVER echoed, logged, or written to any artifact; all error text scrubbed of the key value before recording",
+ "no_merge_law": "under NO outcome are vendor bytes written into data_raw/forex_ng7_spot/ or any staged file",
+ "redaction": "artifacts store endpoint path (no query string), HTTP status class, exception type, redacted message <= 300 chars"
+}
