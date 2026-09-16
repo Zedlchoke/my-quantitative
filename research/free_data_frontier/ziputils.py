@@ -43,6 +43,25 @@ def inspect_zip(
     return {"entries": len(infos), "total_uncompressed_bytes": total, "members": members}
 
 
+def list_zip_members(zip_path: Path, *, max_entries: int) -> Dict[str, Any]:
+    """List members without extraction; refuses entry-count and unsafe paths,
+    but never refuses on total size (listing reads no member bytes)."""
+    with zipfile.ZipFile(zip_path) as archive:
+        infos = archive.infolist()
+        if len(infos) > max_entries:
+            raise ZipSafetyRefusal(f"{len(infos)} entries exceeds cap {max_entries}")
+        members = []
+        for info in infos:
+            pure = PurePosixPath(info.filename)
+            if pure.is_absolute() or ".." in pure.parts:
+                raise ZipSafetyRefusal(f"unsafe member path: {info.filename!r}")
+            if info.filename.endswith("/"):
+                continue
+            members.append({"name": info.filename, "size": info.file_size})
+    return {"entries": len(infos), "total_uncompressed_bytes": sum(m["size"] for m in members),
+            "members": members}
+
+
 def extract_members(
     zip_path: Path,
     dest_dir: Path,

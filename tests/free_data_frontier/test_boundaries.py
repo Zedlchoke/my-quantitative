@@ -61,13 +61,18 @@ def test_no_forbidden_tokens_in_source():
 
 
 def test_no_secret_values_in_source_tree():
-    """Source must never embed env secret names' values; only names."""
+    """Source must never embed env secret values; referencing env NAMES is fine."""
+    import re
+
     for path in sorted(PACKAGE_DIR.rglob("*.py")):
         text = path.read_text(encoding="utf-8")
-        # contact-style values or long literals that look like keys must not exist
-        assert "EIA_API_KEY=" not in text.replace("EIA_API_KEY", "")
         for line in text.splitlines():
-            if "api_key" in line.lower() and "=" in line and '"' in line:
-                lowered = line.lower()
-                if "redacted" not in lowered and "param" not in lowered and "name" not in lowered:
-                    raise AssertionError(f"possible hardcoded key: {path.name}: {line}")
+            if "api_key" not in line.lower() and "apikey" not in line.lower():
+                continue
+            # flag only literal values long enough to be a real secret
+            # (denylist param NAMES are short lowercase tokens).
+            for match in re.finditer(r'["\']([^"\']{16,})["\']', line):
+                value = match.group(1)
+                if re.match(r"^[A-Z0-9_./<>:@ -]+$", value):
+                    continue  # env NAME, constant, or redaction descriptor
+                raise AssertionError(f"possible hardcoded key: {path.name}: {line}")

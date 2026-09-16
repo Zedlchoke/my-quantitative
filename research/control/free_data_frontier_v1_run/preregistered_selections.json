@@ -1,0 +1,64 @@
+{
+  "schema": "free_data_frontier_preregistration@1",
+  "cycle_id": "FREE-DATA-FRONTIER-V1",
+  "frozen_utc": "2026-09-16T08:20:00Z",
+  "note": "Curated selections frozen BEFORE any live retrieval of the selected objects. Selection is metadata/keyword/identity-based; never PnL-based. FTD is settlement-stress data only.",
+  "ofr_stfm": {
+    "api_root": "https://data.financialresearch.gov/v1",
+    "curation_keywords": ["repo", "repurchase", "sofr", "funding", "money market", "commercial paper", "certificate of deposit", "treasury collateral", "lending"],
+    "bounds": {"max_metadata_scans": 400, "max_series": 12, "series_limit": "last 120 observations"}
+  },
+  "nyfed_markets": {
+    "api_root": "https://markets.newyorkfed.org/api/",
+    "reference_rates": ["sofr", "bgcr", "tgcr", "effr", "obfr"],
+    "inventory_surfaces": ["rates/secured", "rates/unsecured", "rp", "pdm", "api docs page"],
+    "bounds": {"rows_per_rate": "last 10"}
+  },
+  "sec_ftd": {
+    "official_page": "https://www.sec.gov/data-research/sec-markets-data/fails-deliver-data",
+    "sample_months": 2,
+    "rate_cap_requests_per_second": 8,
+    "full_archive_gate": "canary PASS + disk guard (15 GiB floor) + authority census PASS; downloader parameterized with resume-by-hash",
+    "interpretation_guard": "settlement stress only; never short-selling or manipulation attribution"
+  },
+  "sec_nport": {
+    "official_page": "https://www.sec.gov/data-research/sec-markets-data/form-n-port-data-sets",
+    "quarter_cap_v1": 1,
+    "target_fund_ciks": {
+      "0000884395": "SPDR_S&P_500_ETF_TRUST",
+      "0001065279": "INVESCO_QQQ_TRUST_1",
+      "0001066658": "SPDR_GOLD_SHARES"
+    },
+    "extraction_caps": {"max_total_uncompressed_bytes": 536870912, "max_target_members": 9},
+    "note": "quarterly regulatory filings, not real-time; amendment identity preserved"
+  },
+  "eia_open_data": {
+    "api_root": "https://api.eia.gov/v2",
+    "route_walk": ["petroleum", "natural-gas", "electricity", "total-energy"],
+    "data_probes": ["petroleum/stve/data weekly x60", "natural-gas/stor/data monthly x60", "electricity/rto/data hourly x48"],
+    "bulk_probe": "HEAD https://api.eia.gov/bulk/EBA.zip (no download in V1 without separate preflight)"
+  },
+  "nws_observations": {
+    "api_root": "https://api.weather.gov",
+    "stations": {
+      "KOKC": "Oklahoma City OK — natural-gas/energy demand hub",
+      "KDDC": "Dodge City KS — wheat-belt agriculture",
+      "KBIS": "Bismarck ND — spring-wheat agriculture + energy state",
+      "KLBB": "Lubbock TX — cotton/wheat agriculture near Permian energy"
+    },
+    "bounds": {"observations_per_station": 24},
+    "mirror_guard": "no NOAA mirroring; raw weather is not a trading signal"
+  },
+  "usda_wasde": {
+    "api": "https://esmis.nal.usda.gov/server/api (DSpace 7)",
+    "bounds": {"max_items_inventoried": 40, "recent_acquired": 6, "historical_samples_2010_plus": 2},
+    "identity_rule": "each release/revision is a distinct item; revised vs originally-published never merged"
+  },
+  "streams": {
+    "coinbase": {"endpoint": "wss://advanced-trade-ws.coinbase.com", "channels": ["ticker", "market_trades", "heartbeats", "level2(auth-gated; refusal recorded, not worked around)"], "products": ["BTC-USD", "ETH-USD"]},
+    "kraken_futures": {"endpoint": "wss://futures.kraken.com/ws/v1", "feeds": ["ticker", "trade", "book", "heartbeat"], "products": ["PF_XBTUSD", "PF_ETHUSD"]},
+    "deribit": {"endpoint": "wss://www.deribit.com/ws/api/v2", "channels": ["book.{BTC,ETH}-PERPETUAL.raw", "ticker.{BTC,ETH}-PERPETUAL.raw", "volatility_index.{btc,eth}_volatility"]},
+    "capture_minutes": "3-5 per source, run concurrently, one process",
+    "history_guard": "captures are prospective history starting at collector start; no historical order-book coverage implied"
+  }
+}

@@ -216,6 +216,7 @@ class RetrievalResult:
     attempts: int = 1
     notes: List[str] = field(default_factory=list)
     error: Optional[str] = None
+    payload: Optional[bytes] = None  # in-memory results only (bounded by max_bytes)
 
 
 def retrieve(
@@ -313,6 +314,7 @@ def retrieve(
                     bytes_written=len(payload),
                     response_headers_redacted=redact_headers(dict(response.headers)),
                     attempts=attempt,
+                    payload=payload,
                 )
             guard.assert_download_fits(
                 _ensure_dir(dest.parent),
