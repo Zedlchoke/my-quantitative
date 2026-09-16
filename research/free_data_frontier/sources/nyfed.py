@@ -27,8 +27,8 @@ CENSUS = {
     "publication_semantics": "Reference rates published ~09:00 ET on T+1 business day "
     "(documented on the rates page); per-row publication timestamp not served by the API "
     "-> available_time NOT evidenced from API alone",
-    "revision_semantics": "Rates include re-stated flags in documentation; API rows carry "
-    "percent rates for the stated operating date (revision indicator not machine-served)",
+    "revision_semantics": "MEASURED: rows carry a revisionIndicator field (empty = original, "
+    "flagged when re-stated) plus effectiveDate — revision status IS machine-served per row",
 }
 
 # Preregistered acquisition set: reference rates (documented endpoint patterns).
@@ -61,13 +61,19 @@ def run(ctx: SourceContext) -> SourceRun:
             max_bytes=32 * 1024 * 1024, timeout=TIMEOUT, disk_guard=ctx.disk_guard,
         )
         ok = result.http_status == 200 and not result.error and result.payload
-        status = "PASS_INVENTORY_ONLY"
         notes = ["inventory surface reachable"]
+        status = "PASS_INVENTORY_ONLY"
         if not ok:
-            status = "BLOCKED_NETWORK" if result.error else "BLOCKED_SCHEMA"
-            if result.http_status == 404:
-                notes = ["endpoint not served at this path (documented inventory keeps probe evidence)"]
-                status = "PASS_INVENTORY_ONLY"  # probe evidence is itself the inventory
+            if result.error:
+                status = "BLOCKED_NETWORK"
+                notes = [f"probe failed: {result.error}"]
+            else:
+                status = "BLOCKED_NETWORK"
+                notes = [
+                    f"HTTP {result.http_status} measured on this surface (400 on /get/ search "
+                    "and /api/ index from programmatic client, browser-like headers too — "
+                    "edge-scoped); documented /last/ channel remains the working surface (P-7: verdict names the channel)",
+                ]
         if ok and spec["dataset"] != "api_docs_page":
             try:
                 strict_json_probe(result.payload, [], f"nyfed {spec['dataset']}")
@@ -116,8 +122,9 @@ def run(ctx: SourceContext) -> SourceRun:
                 authority_status="PASS_SAMPLE",
                 available_time_utc=None,
                 notes=[
-                    "recent rows; T+1 ~09:00 ET publication is documented-not-machine-served "
-                    "-> retrieval-time evidence only (revision/restatement flag unverified)",
+                    "recent rows; rows carry effectiveDate + measured revisionIndicator field; "
+                    "T+1 ~09:00 ET publication is documented-not-machine-served "
+                    "-> retrieval-time evidence only",
                 ],
             )
             record["raw_path"] = str(dest)

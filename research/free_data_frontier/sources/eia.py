@@ -41,13 +41,13 @@ ROUTE_WALK: List[Dict[str, Any]] = [
 ]
 
 DATA_PROBES: List[Dict[str, str]] = [
-    {"dataset": "petroleum_stve_weekly", "route": "petroleum/stve/data",
+    {"dataset": "petroleum_stocks_weekly", "route": "petroleum/stoc/wstk/data",
      "params": {"frequency": "weekly", "data[0]": "value", "sort[0][column]": "period",
                 "sort[0][direction]": "desc", "offset": 0, "length": 60}},
-    {"dataset": "natural_gas_storage_monthly", "route": "natural-gas/stor/data",
-     "params": {"frequency": "monthly", "data[0]": "value", "sort[0][column]": "period",
+    {"dataset": "natural_gas_storage_weekly", "route": "natural-gas/stor/wkly/data",
+     "params": {"frequency": "weekly", "data[0]": "value", "sort[0][column]": "period",
                 "sort[0][direction]": "desc", "offset": 0, "length": 60}},
-    {"dataset": "electricity_rto_hourly_sample", "route": "electricity/rto/data",
+    {"dataset": "electricity_rto_region_hourly", "route": "electricity/rto/region-data/data",
      "params": {"frequency": "hourly", "data[0]": "value", "sort[0][column]": "period",
                 "sort[0][direction]": "desc", "offset": 0, "length": 48}},
 ]

@@ -70,13 +70,24 @@ def extract_members(
     max_total_uncompressed_bytes: int,
     max_entries: int,
 ) -> List[Path]:
-    """Extract selected (or all safe) members under caps; refusal otherwise."""
+    """Extract selected (or all safe) members under caps; refusal otherwise.
+
+    With explicit member_names the byte cap applies to the SUM OF THE SELECTED
+    members' declared sizes (selective extraction from a large archive stays
+    bounded); the whole-archive cap applies when extracting everything.
+    """
     inspection = inspect_zip(
         zip_path,
         max_total_uncompressed_bytes=max_total_uncompressed_bytes,
         max_entries=max_entries,
-    )
+    ) if member_names is None else list_zip_members(zip_path, max_entries=max_entries)
     wanted = set(member_names) if member_names is not None else None
+    if wanted is not None:
+        selected_total = sum(m["size"] for m in inspection["members"] if m["name"] in wanted)
+        if selected_total > max_total_uncompressed_bytes:
+            raise ZipSafetyRefusal(
+                f"selected members total {selected_total} exceeds cap {max_total_uncompressed_bytes}"
+            )
     extracted: List[Path] = []
     dest_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_path) as archive:

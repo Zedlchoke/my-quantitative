@@ -35,6 +35,16 @@ SOURCE_TABLE: Dict[str, str] = {
     "usda": "usda_wasde",
 }
 
+MODULE_TABLE: Dict[str, str] = {
+    "ofr": "ofr",
+    "nyfed": "nyfed",
+    "sec_ftd": "sec_bulk",
+    "sec_nport": "sec_bulk",
+    "eia": "eia",
+    "nws": "nws",
+    "usda": "usda",
+}
+
 
 def worktree_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -58,8 +68,13 @@ def make_ctx() -> SourceContext:
 
 
 def _run_source(name: str, ctx: SourceContext) -> Dict[str, Any]:
-    module = getattr(source_modules, name)
-    state = module.run(ctx)
+    module = getattr(source_modules, MODULE_TABLE[name])
+    if name == "sec_ftd":
+        state = module.run_ftd(ctx)
+    elif name == "sec_nport":
+        state = module.run_nport(ctx)
+    else:
+        state = module.run(ctx)
     phase_dir = control_dir() / "f3_canaries" if name in ("nws",) else control_dir() / "f4_acquisition"
     phase_dir.mkdir(parents=True, exist_ok=True)
     manifest_dir = control_dir() / "manifests"

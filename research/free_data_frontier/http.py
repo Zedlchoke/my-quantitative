@@ -250,7 +250,8 @@ def retrieve(
         head = sess.head(url, headers=headers, timeout=timeout, allow_redirects=True)
         length_header = head.headers.get("Content-Length")
         guard.assert_download_fits(
-            dest.parent, int(length_header) if length_header else None
+            _ensure_dir(dest.parent),
+            int(length_header) if length_header else None,
         )
 
     for attempt in range(1, retry.max_attempts + 1):

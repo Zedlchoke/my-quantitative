@@ -60,22 +60,32 @@ NPORT_CENSUS = {
     "amendment/repost identity preserved per member file",
 }
 
-# Preregistered fund identity filter (identity evidence from zip member names
-# only; no extraction without an explicit member match).
-TARGET_FUND_CIKS = {
-    "0000884395": "SPDR_S&P_500_ETF_TRUST",
-    "0001065279": "INVESCO_QQQ_TRUST_1",
-    "0001066658": "SPDR_GOLD_SHARES",
+# Preregistered fund identity filter, SERIES_NAME-keyed. Measured during the
+# 2026q2 run: accession prefix identifies the FILING AGENT CIK, not the fund;
+# and GLD is structurally out of N-PORT scope (non-1940-Act commodity trust),
+# while SPY measured-absent from the 2026q2 FUND_REPORTED_INFO — both recorded
+# as measured coverage facts, not extraction failures.
+TARGET_FUNDS = {
+    "SPY": "SPDR S&P 500 ETF Trust",
+    "QQQ": "Invesco QQQ Trust, Series 1",
+    "GLD": "SPDR Gold Shares",
 }
 
-ZIP_URL_RE = re.compile(r'href="(https://www\.sec\.gov/[^"]+?\.zip)"', re.IGNORECASE)
+ZIP_URL_RE = re.compile(r'href="([^"]+?\.zip)"', re.IGNORECASE)
+
+
+def _absolute_sec_url(url: str) -> str:
+    if url.startswith("http"):
+        return url
+    return f"https://www.sec.gov{url}"
 
 
 def _sec_headers(ctx: SourceContext) -> Dict[str, str]:
+    """Raw declared UA is SENT (SEC policy requires contact in UA); redaction
+    happens at record/storage time inside http.retrieve, never at send time."""
     name = ctx.require_present("SEC_CONTACT_NAME")
     email = ctx.require_present("SEC_CONTACT_EMAIL")
-    ua = f"{name} {email} my-quantitative-research"
-    return redact_headers({"User-Agent": ua, "Accept": "*/*"})
+    return {"User-Agent": f"{name} {email} my-quantitative-research", "Accept": "*/*"}
 
 
 def _list_page_zips(
@@ -95,7 +105,13 @@ def _list_page_zips(
         return []
     dest = ctx.source_dir(state.source_id) / f"{page_dataset}.html"
     dest.write_bytes(result.payload)
-    urls = sorted(set(m.group(1) for m in ZIP_URL_RE.finditer(result.payload.decode("utf-8", errors="replace"))))
+    urls = sorted(
+        set(
+            _absolute_sec_url(m.group(1))
+            for m in ZIP_URL_RE.finditer(result.payload.decode("utf-8", errors="replace"))
+        ),
+        reverse=True,
+    )
     record = build_record(
         result, source_id=state.source_id, dataset_id=page_dataset,
         authority_status="PASS_INVENTORY_ONLY",
@@ -221,7 +237,9 @@ def run_nport(ctx: SourceContext) -> SourceRun:
     record = build_record(
         result, source_id="sec_nport", dataset_id=dataset,
         authority_status="PASS_SAMPLE",
-        notes=["one-quarter cap honored; extracted bytes never committed to Git"],
+        notes=["one-quarter cap honored; extracted bytes never committed to Git; "
+               "SUBMISSION.tsv FILING_DATE gives per-filing day-granularity publication "
+               "evidence (hour not measured -> available_time stays NULL)"],
     )
     record["raw_path"] = str(dest)
     record["raw_sha256"] = result.raw_sha256
@@ -235,42 +253,99 @@ def run_nport(ctx: SourceContext) -> SourceRun:
     state.event("zip_listing", {"members": members_report["entries"],
                                 "uncompressed": members_report["total_uncompressed_bytes"]})
 
-    wanted = [
-        member["name"]
-        for member in members_report["members"]
-        if _member_matches_targets(member["name"])
-    ][:9]
-    if not wanted:
-        state.notes.append(
-            "no preregistered fund CIK matched in zip member names; no extraction performed"
-        )
-        return state
-    extract_dir = ctx.source_dir("sec_nport") / "extracted_target_members"
-    extracted = extract_members(
-        dest, extract_dir, wanted,
-        max_total_uncompressed_bytes=512 * 1024 * 1024,
+    # Relational TSV layout: extract small schema tables, then stream-scan the
+    # giant holdings table for the preregistered fund accessions (CIK prefix).
+    small_dir = ctx.source_dir("sec_nport") / "extracted_target_members"
+    small_tables = extract_members(
+        dest, small_dir,
+        ["nport_metadata.json", "nport_readme.htm", "SUBMISSION.tsv", "FUND_REPORTED_INFO.tsv"],
+        max_total_uncompressed_bytes=64 * 1024 * 1024,
         max_entries=2_000_000,
     )
-    state.event("target_extraction", {"members": wanted, "count": len(extracted)})
-    for path in extracted[:3]:
-        schema = _probe_nport_xml(path)
-        state.event("nport_xml_schema", {"file": path.name, "schema": schema})
+    state.event("schema_tables_extracted", {"files": [p.name for p in small_tables]})
+    try:
+        targets = _target_accessions(small_dir / "FUND_REPORTED_INFO.tsv")
+    except FileNotFoundError:
+        state.notes.append("FUND_REPORTED_INFO.tsv missing inside archive; scan skipped")
+        return state
+    if not targets:
+        state.notes.append("no preregistered fund matched in FUND_REPORTED_INFO; scan skipped")
+        return state
+    absent = sorted(k for k in targets if k.startswith("MEASURED_ABSENT:"))
+    present = {acc: t for acc, t in targets.items() if not acc.startswith("MEASURED_ABSENT:")}
+    if absent:
+        state.event("measured_absent_targets", {
+            "tickers": [t for k, t in targets.items() if k.startswith("MEASURED_ABSENT:")],
+            "note": "GLD: non-1940-Act commodity trust, out of N-PORT scope (structural); "
+            "SPY: not present in 2026q2 FUND_REPORTED_INFO by exact SERIES_NAME (measured)",
+        })
+    if not present:
+        state.notes.append("all preregistered funds measured-absent this quarter; holdings scan skipped")
+        return state
+    holdings = _scan_holdings_stream(
+        dest, "FUND_REPORTED_HOLDING.tsv", present,
+        out_path=ctx.source_dir("sec_nport") / "target_holdings_filtered.tsv",
+        max_rows=200_000,
+    )
+    state.event("target_holdings_scan", {
+        "target_accessions": len(targets),
+        "rows_kept": holdings["rows_kept"],
+        "cap_reached": holdings["cap_reached"],
+        "note": "streamed from zip; full table never materialized",
+    })
+    for path in small_dir.glob("nport_metadata.json"):
+        state.event("metadata_probe", {"content": path.read_text()[:400]})
     return state
 
 
-def _member_matches_targets(name: str) -> bool:
-    upper = name.upper()
-    return any(cik in upper for cik in TARGET_FUND_CIKS)
+def _target_accessions(fund_info_tsv: Path) -> Dict[str, str]:
+    """Map preregistered SERIES_NAME -> ACCESSION_NUMBER by exact measured
+    name match; also report preregistered funds measured-absent this quarter."""
+    targets: Dict[str, str] = {}
+    matched_names: set = set()
+    with fund_info_tsv.open("r", encoding="utf-8", errors="replace") as handle:
+        header = handle.readline().strip().split("\t")
+        acc_idx = header.index("ACCESSION_NUMBER") if "ACCESSION_NUMBER" in header else 0
+        name_idx = header.index("SERIES_NAME") if "SERIES_NAME" in header else 1
+        for line in handle:
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) <= max(acc_idx, name_idx):
+                continue
+            for ticker, name in TARGET_FUNDS.items():
+                if cols[name_idx].strip() == name:
+                    targets[cols[acc_idx]] = ticker
+                    matched_names.add(ticker)
+    for ticker in TARGET_FUNDS:
+        if ticker not in matched_names:
+            targets[f"MEASURED_ABSENT:{ticker}"] = ticker
+    return targets
 
 
-def _probe_nport_xml(path: Path) -> Dict[str, Any]:
-    head = path.read_bytes()[:65536].decode("utf-8", errors="replace")
-    root = re.search(r"<([\w:]+)[\s>]", head)
-    amendment = re.search(r'amendmentNo="([^"]+)"', head)
-    accession = re.search(r'accessionNo="([^"]+)"', head)
-    return {
-        "root_tag": root.group(1) if root else None,
-        "accession_no": accession.group(1) if accession else None,
-        "amendment_no": amendment.group(1) if amendment else None,
-        "probe": "header-only schema probe (parser_version %s)" % PARSER_VERSION,
-    }
+def _scan_holdings_stream(
+    zip_path: Path,
+    member: str,
+    targets: Dict[str, str],
+    *,
+    out_path: Path,
+    max_rows: int,
+) -> Dict[str, Any]:
+    """Stream-scan one archive member without materializing it fully."""
+    import zipfile as _zipfile
+
+    rows_kept = 0
+    cap_reached = False
+    with _zipfile.ZipFile(zip_path) as archive:
+        with archive.open(member) as raw:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            with out_path.open("wb") as out:
+                header = raw.readline()
+                out.write(header)
+                for line in raw:
+                    if rows_kept >= max_rows:
+                        cap_reached = True
+                        break
+                    accession = line.split(b"\t", 1)[0]
+                    if accession in {k.encode() for k in targets}:
+                        out.write(line)
+                        rows_kept += 1
+    return {"rows_kept": rows_kept, "cap_reached": cap_reached}

@@ -81,3 +81,21 @@ def test_extract_refuses_member_larger_than_declared(tmp_path):
         extract_members(
             z, tmp_path / "out", ["f.txt"], max_total_uncompressed_bytes=10**6, max_entries=10
         )
+
+
+def test_selective_extraction_ignores_archive_total_but_caps_selection(tmp_path):
+    z = tmp_path / "big.zip"
+    _make_zip(z, [("small.txt", b"keep"), ("huge.bin", b"0" * 5_000_000)])
+    out = tmp_path / "out"
+    got = extract_members(
+        z, out, ["small.txt"],
+        max_total_uncompressed_bytes=1024,  # below archive total, above selection
+        max_entries=10,
+    )
+    assert (out / "small.txt").read_bytes() == b"keep"
+    assert len(got) == 1
+    with pytest.raises(ZipSafetyRefusal):
+        extract_members(
+            z, tmp_path / "out2", ["small.txt", "huge.bin"],
+            max_total_uncompressed_bytes=1024, max_entries=10,
+        )
