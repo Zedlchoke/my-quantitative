@@ -1,0 +1,157 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "A7_STOCKS_NG5_TERMINAL",
+  "cycle_id": "STOCKS-NG5",
+  "role": "a7_terminal_auditor_fresh_context",
+  "lane": "a7",
+  "dispatch_sha": "63ea9f121a24e630202496edb5bbca7587e20509",
+  "actual_start_sha": "f429782f31e2c9e64e451168ff5a866b95caa332",
+  "start_sha_verified": "Root main HEAD read from /Users/hoangminhlong/my-quantitative/.git/refs/heads/main = 63ea9f121a24e630202496edb5bbca7587e20509. Worktree HEAD read from ref bytes: /Users/hoangminhlong/my-quantitative/.git/refs/heads/orca/stocks-ng5-integration = f429782f31e2c9e64e451168ff5a866b95caa332 (worktree /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration, branch orca/stocks-ng5-integration via /Users/hoangminhlong/my-quantitative/.git/worktrees/integration/HEAD) — matches the dispatch packet's terminal chain HEAD f429782f.",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/stocks_ng5_run/audits/a7_terminal_ng5.json"
+  ],
+  "tests": [
+    {
+      "command": "measure git refs by bytes (no shell): root main HEAD; worktree branch ref",
+      "verdict": "PASS",
+      "note": "main=63ea9f121a24e630202496edb5bbca7587e20509; worktree branch head=f429782f31e2c9e64e451168ff5a866b95caa332 as dispatched. Commit-OBJECT inspection (history order, 55f211aa attempt-1 supersession message, 5422460d detached tree, push state) NOT_RUN_EXECUTION_REQUIRED — git objects are zlib-compressed and this thread has no execution capability."
+    },
+    {
+      "command": "veto-rule application in run_d2_measurement.py vs frozen kill_rule",
+      "verdict": "PASS",
+      "note": "Code read: verdict CLEAN iff pooled <= 0.20 else ANCESTRY_VETO; veto list appended strictly when pooled > BAR (BAR=0.20 hardcoded = G9 program bar). No path can pass a shadow above the bar or veto one below it. UNMEASURABLE (<60 overlap) would fail closed into the veto set; in this run zero UNMEASURABLE rows exist (17/17 measured, overlaps 909-948), so the branch is moot."
+    },
+    {
+      "command": "metric implementations in m0_contract.py vs M0 frozen primary vector",
+      "verdict": "PASS",
+      "note": "Code read: _pearson is textbook Pearson; _rank is exact 1-based average-tie (midrank) via stable mergesort; _spearman = Pearson of midranks; pooled_abs_correlation = max(|weight-Pearson|, |weight-Spearman|, |signal-rank-Spearman|) — exactly the pin's pooled_rho definition. No returns argument exists anywhere in primary_comparisons/pooled_abs_correlation (G4)."
+    },
+    {
+      "command": "internal arithmetic consistency of d2_measurement_verdict.json (attempt-2)",
+      "verdict": "PASS",
+      "note": "17 shadow rows; pooled = max of the three |metrics| in every row; every margin_to_bar = 0.20 - pooled (checked on all veto rows: -0.310673, -0.226172, -0.005353, -0.79935, -0.04375); overlap arithmetic consistent with warmup law: anchor decisions 948 = 1064 - 116 (104 z-window + 13 lag), 52w shadows overlap 909 = 1064 - 155 (52 lag NaNs consume rolling-window completeness, first valid row 156) — matches pin's '104 COMPLETE observations' convention; fold decisions 237+354+357 = 948 = anchor decisions; skipped weeks = all pre-QQEW weeks + exactly one in-window hole (ISO week of 2008-11-28) per representation v2."
+    },
+    {
+      "command": "veto independence from the attempt-1 macro reindex fix (55f211aa supersession)",
+      "verdict": "PASS",
+      "note": "Code read: the macro fix (pd.Series(ms.values, index=avail).reindex(d, method='ffill')) carries VALUES onto the +1-day availability index; it affects only SH-A8a/A8b, measured CLEAN at 0.115718 / 0.052196 with wide margins. All FIVE vetoed shadows (SH-A1, SH-A1b, SH-A2b, SH-A9-DIV-DECOMP-PRICEONLY, SH-A9b) are built exclusively from price/volume staging series — the veto does not depend on the fix. The fix itself is sound: reindexing the availability index against observation dates with ffill is the correct AX2 as-of construction (attempt-1 reindexed availability dates directly, yielding all-NaN -> UNMEASURABLE overlap=0)."
+    },
+    {
+      "command": "pre-rho freeze ordering (inventory v2 -> pin -> first rho) from artifact timestamps",
+      "verdict": "PASS",
+      "note": "Artifact-level: inventory v2 frozen 12:00:32Z (same instant as representation v2, both pre-rho) -> d2_open_preconditions 12:27:54Z records inventory v2 self_hash recompute PASS + M0 rerun 11/11 with contract sha 8b5ee44b unchanged + both FRED digests PASS (BC3 executed) -> pre-rho pin frozen 12:41:21Z, PIN-R1 amendment 12:42:19Z explicitly 'no rho seen' -> measurement 12:53:33Z -> detached verification 12:54:00Z. Commit-object-level order NOT_RUN_EXECUTION_REQUIRED (see limitation). Direction-safe regardless: A7-F2 under-enumeration invalidates a PASS, never a VETO, and all five vetoed shadows are plan §7-mandated killers (A1/A1b relative momentum; A2b absolute momentum 252d; A9 price-only is the MANDATORY SFV13 dividend decomposition 'or the family dies as a dividend artifact'; A9b SFV2-A5 book geometry), so inventory manipulation could not have manufactured this veto."
+    },
+    {
+      "command": "recompute d2_shadow_inventory_freeze_v2.json self_hash (self_hash='') f3c33831c6b15315b8a7c3f7e44e1b382902ad283baa9da3889ee2de0b0b705b",
+      "verdict": "NOT_RUN_EXECUTION_REQUIRED",
+      "note": "No execution capability in this thread. Compensated: (a) D2-open preconditions artifact (controller-executed, 12:27:54Z, before the rho) records recompute PASS; (b) the empty-field convention + self_hash_note present and correct; (c) VETO direction does not hinge on this hash."
+    },
+    {
+      "command": "recompute d2_pre_rho_formula_pin.json self_hash 88851364d31091b0f93ba61d5bb9e1d65d57259c232899af4a4953796c7a048e",
+      "verdict": "NOT_RUN_EXECUTION_REQUIRED",
+      "note": "No execution capability. Compensated: the D2 runner ITSELF asserts this self-hash at runtime before any measurement (assert at run_d2_measurement.py line 49) in BOTH the main run and the detached rerun at a different commit; the verdict records the same value displayed in the current file bytes."
+    },
+    {
+      "command": "independent rho recomputation from staging for SH-A1 / SH-A9-PRICEONLY / SH-A9b (mandated confirm-3-of-5)",
+      "verdict": "NOT_RUN_EXECUTION_REQUIRED",
+      "note": "No execution capability (no shell tool in this thread). Compensating verification: (1) full code read — metric math standard, veto rule exact, pairwise-overlap convention as pinned; (2) all 17 rows internally arithmetically consistent (pooled=max, margins exact, warmup counts exact); (3) detached re-run artifact at detached HEAD 5422460d records VALUE-IDENTICAL reproduction of all five veto values with 6/6 input digests re-verified; (4) structural corroboration: SH-A9-PRICEONLY 0.99935 is near-mechanically certain (the adjusted combined spread's 13w change is dominated by its price-only component because dividend accrual is smooth — the plan §7 A9 mandatory decomposition fires exactly as designed), and SH-A1/A1b (0.5107/0.4262) are the D1 pre-registered 'single most likely death' (expected_failure_modes: breadth-is-momentum reduction plausibly exceeds the 0.20 bar -> pre-score veto) — the outcome MATCHES the preregistration, the opposite of an outcome-fished result. Three of five vetoes (A1 0.511, A1b 0.426, A9-PO 0.9994) clear the bar by margins no plausible recomputation error could close."
+    },
+    {
+      "command": "staging digest verification (QQQ/SPY/QQEW/RSP/FRED_DGS10/FRED_DFII10) vs p0 pins",
+      "verdict": "NOT_RUN_EXECUTION_REQUIRED",
+      "note": "SHA-256 not computable without execution. Cross-consistency verified: p0_census_verdict.json pins four ETF pull digests with row counts/first-last dates (QQEW 5129 rows 2006-04-25..2026-09-15; SPY 8464 from 1993-01-29); p0_extension_macro_shadows.json pins both FRED files (bytes 527158/528103); D2-open preconditions records digest PASS; detached artifact records 6/6 MATCH before its rerun."
+    },
+    {
+      "command": "zero scored exposure: grep control dir for computed PnL/returns/PF/Sharpe; S/I/E artifacts; budget/GO/S1 state",
+      "verdict": "PASS",
+      "note": "All pnl/sharpe/drawdown/expectancy/future_return hits are D1 kill-rule DECLARATIONS, M0's two documented synthetic wrong-implementation probes, no_returns/no_pnl flags, and audit text — zero computed candidate returns anywhere; run_d2_measurement.py computes correlations/turnover/cost-ceiling only and writes no return series. No {s,i,e,r,t,s1}*/ artifact directories exist. Registry row (read from /Users/hoangminhlong/my-quantitative/plans/CYCLE_REGISTRY.json): STOCKS-NG5 lifecycle PLANNED_NOT_STARTED, budget 0/3 used, s1 SEALED_UNTOUCHED, go_phrase_state REGISTERED_NOT_CONSUMED, workers 0, head 4739c287 (pre-landing phase 'D2 OPEN (non-scored)'). no_returns_computed:true in the D2 verdict is consistent with the code."
+    },
+    {
+      "command": "key-leak scan on committed files",
+      "verdict": "PASS",
+      "note": "Only env-var lookups (root .env read at runtime, key never written to any artifact; URLs interpolate the runtime variable) and status/bytes/sha256 records. No literal secrets: no -----BEGIN, sk-, AKIA, ghp_, or quoted api_token literals anywhere under research/control/stocks_ng5_run/."
+    },
+    {
+      "command": "closure label vs plan §11 prewritten terminal set",
+      "verdict": "PASS",
+      "note": "STOCKS_NG5_BLOCKED_DATA_OR_SELECTION is in the plan's prewritten set; the D2 ancestry veto emptied selection pre-score (zero proposals selected, zero scored cells, budget 0/3) — the D2-selection class per §7 ('Otherwise selection is empty and the cycle closes at 0/3'). REJECT_ALL would require measured-and-rejected scored proposals; none exist. Matches the registry's own precedent class (CRYPTO-V17 'BLOCKED_DATA_OR_SELECTION ... 0 scored cells')."
+    },
+    {
+      "command": "M0 gate + gate order verification (artifact level)",
+      "verdict": "PASS",
+      "note": "m0_verdict.json: 11/11 PASS (G1-G10+G4N), exit 0, contract sha 8b5ee44bf615... = contract_frozen.json content (aggregation max_abs_correlation, rho_bar 0.2, sign bars) exactly as json.dumps(CONTRACT_FIELDS, sort_keys=True, indent=1) would render; D2-open preconditions rerun records contract sha unchanged; m0_contract module sha 2e744579c818... recorded IDENTICALLY in m0_verdict.json and d2_measurement_verdict.json (byte-level recompute of today's file NOT_RUN_EXECUTION_REQUIRED, but the two independent artifacts pin the same value). D1 outcome-blind freeze present (dossier sha a59af382..., frozen 05:06:06Z) with gate_order M0 -> P0 -> D1 -> D2; fold_freeze frozen 04:59:17Z before any D2 diagnostic (F8)."
+    }
+  ],
+  "workers": 0,
+  "authority_claims": [],
+  "known_limitations": [
+    "NO EXECUTION CAPABILITY in this audit thread (no shell): all SHA-256 recomputes (inventory v2 self_hash, pin self_hash, staging digests, m0 module/contract hashes), the mandated independent rho recomputation from staging, and git commit-object inspection (commit order in history, 55f211aa attempt-1 supersession message, 5422460d detached tree, remote push state) are NOT_RUN_EXECUTION_REQUIRED. Compensating static verification is documented per test row. Per P-4, ALL_MATCH artifacts prove self-consistency, not truth; the audit rests on code reading + internal arithmetic + layered independent attestations (controller preconditions run, detached rerun at a different commit, runner's own in-process pin assertion).",
+    "Commit-message-level evidence (attempt history) is accepted from the dispatch packet + artifact timestamps, not from git objects."
+  ],
+  "incidents": [],
+  "tree_status": "Auditor wrote exactly ONE file: this handoff at the dispatched audits/ path. No other writes; no repairs; no gate/ledger/registry edits; no git commands (none possible).",
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "unresolved_high_critical_count": 0,
+  "findings": [
+    {
+      "id": "A7T-F1",
+      "severity": "MEDIUM",
+      "title": "G8 contract-hash refusal and the inventory v2 self-hash are not asserted inside the D2 runner's own execution path — immovability rests on layered pins, not a single fail-closed runtime check",
+      "evidence": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/run_d2_measurement.py (asserts the PIN self-hash at line 49 but never loads m0/contract_frozen.json via load_contract, never asserts the 8b5ee44b contract hash, and never reads/asserts d2_shadow_inventory_freeze_v2.json — the measured shadow set is hardcoded); /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/d2_open_preconditions.json (BC3 executed: contract sha 8b5ee44b unchanged + inventory self_hash PASS at 12:27:54Z, before the 12:53:33Z rho); m0_verdict.json vs d2_measurement_verdict.json (identical module sha 2e744579c818...)",
+      "required_action_or_note": "Could NOT have changed this verdict: the bar is hardcoded to the immovable program value in both runner and module, both artifacts pin the same module sha, preconditions re-verified the contract hash pre-rho, and the veto direction is fail-closed. Record at close; recommended hardening in any future D2-shaped run: assert contract_frozen.json sha256 == 8b5ee44b... and inventory v2 self_hash inside the runner itself, and derive the shadow id list from the inventory file with a count assert."
+    },
+    {
+      "id": "A7T-F2",
+      "severity": "LOW",
+      "title": "Macro AX2 availability implemented one day less conservative than the pin text: code admits a decision at t == obs_date+1; pin says 'strictly after d+1'",
+      "evidence": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/run_d2_measurement.py lines 119-129 (avail = ms.index + 1 day; reindex ffill admits last obs with d+1 <= t) vs /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/d2_pre_rho_formula_pin.json conventions.ax2_as_of",
+      "required_action_or_note": "Affects only SH-A8a/A8b, both CLEAN with wide margins (0.116/0.052 vs 0.20 bar); a stricter convention could only nudge these values and could not remove any of the five vetoes (all price-series-based). Verdict-invariant; record only."
+    },
+    {
+      "id": "A7T-F3",
+      "severity": "LOW",
+      "title": "SH-A5c MONTHEND series is the exact negation of the pin's signed-distance definition (code: positive before month-end; pin: negative before)",
+      "evidence": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/run_d2_measurement.py month_end_dist (lines 157-165) vs pin shadows entry 'SH-A5c-MONTHEND'",
+      "required_action_or_note": "Verdict-invariant: signal and weights derive from the same series, so the negation flips both; Pearson/Spearman signs flip, |rho| identical (measured 0.00865, far under the bar either way). Pin-fidelity note for the record."
+    },
+    {
+      "id": "A7T-F4",
+      "severity": "LOW",
+      "title": "D1 state_formula z-denominator (sample stdev ddof=1) and 0.5 scale factor differ from the pre-rho pin (population std ddof=0, no 0.5)",
+      "evidence": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d1/d1_proposal_freeze.json state_formula vs /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/d2_pre_rho_formula_pin.json conventions.zscore_104",
+      "required_action_or_note": "Measurement-invariant: ddof difference over a fixed 104-window is a constant positive factor and the 0.5 is a constant scale; sign weights, Pearson and midrank-Spearman are all invariant to positive rescaling. The pin governed D2 as intended. Documented divergence only."
+    },
+    {
+      "id": "A7T-F5",
+      "severity": "LOW",
+      "title": "SH-A9b pooled rho rendered 0.24375 in d2_measurement_verdict.json vs 0.243753 in d2_detached_verification.json (~3e-6 rendering discrepancy)",
+      "evidence": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/d2_measurement_verdict.json shadow_measurements[SH-A9b-TRENDDEF-GEOM] vs /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/d2_detached_verification.json result.vetoed_shadows",
+      "required_action_or_note": "Both values exceed the 0.20 bar by margin 0.0437; the veto and the VALUE-IDENTICAL claim are unaffected at any decision-relevant tolerance. Cosmetic; note at close."
+    },
+    {
+      "id": "A7T-F6",
+      "severity": "LOW",
+      "title": "Execution-required verifications NOT_RUN by this auditor (no shell): self-hash/digest recomputes, independent staging rho recomputation, git commit-object order + 55f211aa supersession message + push state",
+      "evidence": "This handoff's tests[] rows marked NOT_RUN_EXECUTION_REQUIRED; compensations: code read of runner + M0 module, full arithmetic consistency sweep of the verdict, controller-executed preconditions (BC3), detached VALUE-IDENTICAL rerun artifact at 5422460d, runner's own in-process pin self-hash assertion",
+      "required_action_or_note": "Carry into the two-half close: an execution-capable lane (R-stage or controller) should run the recomputes once at close if program law demands; the terminal conclusion does not wait on them because three of five vetoes clear the bar by unbeatable margins and the kill class was preregistered."
+    },
+    {
+      "id": "A7T-F7",
+      "severity": "LOW",
+      "title": "Carried inventory completeness nits: vol-SHOCK sub-form of plan §7 A3 and the V4 semivariance sub-form of §7 A9 are not separately enumerated (level forms + not-constructible register cover the declared units); D1 grid-start 2006-04-21 superseded by representation v2 (2006-04-28) pre-rho",
+      "evidence": "/Users/hoangminhlong/my-quantitative/plans/PLAN_stocks_ng5.md §7; /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/d2/d2_shadow_inventory_freeze_v2.json; /Users/hoangminhlong/my-quantitative/.worktrees/stocks-ng5/integration/research/control/stocks_ng5_run/p0/p0_addendum_representation_reconciliation_v2.json; predecessor audit findings A7R3-F4/F5 (binding carries)",
+      "required_action_or_note": "Direction-safe for this close: A7-F2 under-enumeration invalidates a PASS, never a VETO — additional shadows could only add vetoes. The 17-shadow inventory covers every unit actually DECLARED by D1/dossier/plan (predecessor A7 verified against four binding authorities); the substitution XLK/SPY -> QQQ/SPY rolling-beta was D1-sanctioned verbatim and is disclosed in the verdict's data_authority. Record at close; no action."
+    }
+  ],
+  "checklist_results": {
+    "check1_veto_legitimate_under_frozen_law": "PASS — kill_rule 'ANY shadow pooled |rho| > 0.20 => ANCESTRY_VETO, selection empty, 0/3' applied exactly (strict >, immovable bar); five shadows over the bar (0.510673, 0.426172, 0.205353, 0.999350, 0.24375), three by unbeatable margins; zero UNMEASURABLE; verdict D2_VETO_ALL is the mandated terminal path",
+    "check2_inventory_frozen_before_rho": "PASS at artifact level (inventory v2 12:00:32Z + preconditions self-hash PASS 12:27:54Z + pin 12:41:21Z/12:42:19Z pre-measurement -> rho 12:53:33Z); commit-object order NOT_RUN (execution); direction-safe (under-enumeration cannot invalidate a VETO; all five killers are plan §7-mandated)",
+    "check3_zero_scored_exposure": "PASS — no computed returns/PnL anywhere (grep + code read + no_returns flags); no S/I/E-stage artifacts exist; budget 0/3; go REGISTERED_NOT_CONSUMED; S1 SEALED_UNTOUCHED; shadow valuation untouched; workers 0; no push evidence (remote not independently verifiable read-only)",
+    "check4_closure_label_correct": "PASS — STOCKS_NG5_BLOCKED_DATA_OR_SELECTION is prewritten (§11), matches the D2-selection class (selection empty pre-score, 0/3) and the registry's own V17 precedent; REJECT_ALL inapplicable (nothing scored)",
+    "check5_key_leak_scan": "PASS — runtime env-var use only; zero literal secrets in committed files",
+    "check6_attempt_history_sound": "PASS — attempt-1 macro reindex bug (A8a/A8b all-NaN -> UNMEASURABLE overlap=0) and its attempt-2 fix are code-visible and the fix is the correct AX2 construction; A8a/A8b measured CLEAN (0.115718/0.052196) in attempt-2; the veto is fully independent of the fix (all five vetoed shadows price-series-only)",
+    "check7_m0_gate_and_contract_stability": "PASS at artifact level — 11/11 PASS, contract sha 8b5ee44b unchanged across M0 -> D2-open rerun; m0 module sha 2e744579 identical in m0_verdict.json and d2_measurement_verdict.json; G8 runner-level gap recorded as A7T-F1 (MEDIUM, verdict-safe)"
+  },
+  "recommended_next_action": "AUTHORIZED_WITH_FINDINGS (0 HIGH/CRITICAL): the terminal close STOCKS_NG5_BLOCKED_DATA_OR_SELECTION stands — STOCKS-NG5 closes at budget 0/3, zero scored cells, zero proposals selected, on the D2 ancestry veto of the single frozen family (dominant killers: SH-A9-DIV-DECOMP-PRICEONLY 0.9994 — the plan-mandated SFV13 dividend decomposition; SH-A1/A1b relative momentum 0.5107/0.4262 — the D1 pre-registered most-likely death). The controller may land TERMINAL through researchctl at this cycle's registry row, carrying findings A7T-F1..F7 (0 HIGH) into the two-half close notes; optionally have an execution-capable lane run the A7T-F6 recomputes at close."
+}
