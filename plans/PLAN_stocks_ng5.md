@@ -74,6 +74,13 @@ fill, force-flat or rotate strictly per the frozen weekly rule.
   earnings entitlement, FINRA terms) — no measured kill exists for this
   observable, and none is assumed. Novelty is a proposal claim until the
   exact D2 ancestry measurement passes.
+- **A7-F3 remediation (closest book-geometry ancestor, disclosed):**
+  STOCKS-FREE-V2 `A5-SFV2-TREND-DEFENSIVE` — TSM12 + vol-target defensive
+  rotation between ETF and cash, a weekly binary index-ETF book — died on
+  MDD 23.22% > 15% and fold-positive-share 60.7% > 50%. The anchor shares
+  its two-book weekly rotation geometry; Stage-A MDD/fold-share and the
+  R2 beta-dominance kill bind this cycle; no additional gate is required,
+  but this disclosure must travel with every D2 measurement.
 - Cross-plane control template: the QuantPulse IF1/IF2 rows
   (`research/wayfinder/external/quantpulse_dossier_extracted.txt`) recorded
   that an index-futures causal/tape mechanism (MNQ) with train IC +0.063
@@ -107,11 +114,14 @@ G4 NO PAYOFF-CORRELATION PRIMARY   structural novelty verdicts must not use
                            frozen primary vector is exactly the six
                            comparisons of G5. A code path that feeds payoff
                            correlation into the primary verdict must fail.
-G5 PRIMARY COMPARISONS     target-weight Pearson AND Spearman; signal-rank
-                           correlation; sign agreement; active-set Jaccard
-                           overlap; decision overlap; exposure cosine
-                           similarity — each with a hand-computed fixture
-                           asserting the exact expected value.
+G5 PRIMARY COMPARISONS     six comparison families, seven named metrics
+                           (A7-F5: Pearson and Spearman counted
+                           separately): target-weight Pearson AND
+                           Spearman; signal-rank correlation; sign
+                           agreement; active-set Jaccard overlap;
+                           decision overlap; exposure cosine similarity —
+                           each with a hand-computed fixture asserting
+                           the exact expected value.
 G6 CLUSTERING OF SHARED INSTANTS   samples sharing a decision date (or a
                            macro release) are one observation: a synthetic
                            N-symbol same-date panel must collapse to
@@ -167,7 +177,10 @@ F3 RAW/ADJUSTED + ACTIONS  raw and adjusted channels separated; the
                            exists in these four instruments to reconcile
                            fresh — recorded honestly; total-return
                            reconstruction contract frozen (which channel
-                           is TR-authoritative and why).
+                           is TR-authoritative and why; A7-F6: the TR
+                           series is frozen once at the P0 substrate
+                           freeze and later re-pulls never restate
+                           history — annotate-and-keep).
 F4 COMMON HISTORY          common window across all four symbols; measured
                            earliest served: QQEW 2006-04-25 (binding),
                            RSP 2003-04-30, QQQ 1999-03-10, SPY 1993-01-29;
@@ -181,8 +194,12 @@ F5 CLOCK + EXECUTION       timezone/DST fixtures; ONE frozen weekly decision
                            (V7 law).
 F6 COSTS                   frozen measured band schedule
                            `BAND_BPS = {A:10, B:15, C:25}` bps/fill (ADV
-                           bands 50M/10M/2M, fail-closed, exits never
-                           cheaper than C; `research/assets/stocks/
+                           bands 50M/10M/2M, fail-closed; A7-F1 remediated
+                           quote of the pinned kernel: exit fills are
+                           charged the instrument's OWN measured band via
+                           `resolve_exit_band_bps`, and the C ceiling is
+                           applied only to exits that cannot be rated —
+                           `research/assets/stocks/
                            kernel_band_cost_v9.py` lineage, TRACKED_CLEAN
                            at f1fba3c4); P0 must measure the ADV band of
                            QQQ/SPY per window fail-closed (band A is a
@@ -237,7 +254,11 @@ spread level) with a preregistered self-subsumption rho <= 0.98 check
 next session open, fail-closed skip rule; per-fold force-flat; per-period
 series persisted (P-11). Sign (rising breadth -> QQQ) is declared
 hypothesis, both directions economically arguable ex ante. Variants are
-arms consuming declared trial identities; total scored cells <= 3.
+arms consuming declared trial identities; total scored cells <= 3
+(A7-F7: the budget counts declared scored arm identities only — the
+allocation across anchor/arms is frozen at selection, and the mandatory
+controls are falsification comparison books that consume no scored
+slots).
 
 ## 6. Mandatory controls and killers
 
@@ -279,11 +300,14 @@ A6 SPY BETA decomposition — does the book just hold more QQQ when QQQ is hot
 A7 TECH-SECTOR BETA — breadth vs sector-tilt separation control
 A8 RATES/REAL-YIELD STATE shadows (cross-plane template from RATES-NG1)
 A9 STOCK TREND/REVERSAL FAMILIES — V2 relative momentum, V4 semivariance
-   (vol-level control +53.14% class), momentum_63s (killed both stocks D2
-   mandatory lanes at 0.219-0.2402); MANDATORY SFV13 dividend-policy
-   decomposition — the QQEW/QQQ ratio embeds dividend policy, so the
-   spread must be decomposed into price-only and distribution-only
-   components, or the family dies as a dividend artifact.
+   (vol-level control +53.14% class), SFV2-A5 TREND-DEFENSIVE
+   book-geometry; momentum_63s (A7-F4 corrected attribution: it killed
+   the V11 mandatory filing-event lanes at 0.219/0.2192, while the V13
+   mandatory lane died vs vol_level at 0.232/0.2402); MANDATORY SFV13
+   dividend-policy decomposition — the QQEW/QQQ ratio embeds dividend
+   policy, so the spread must be decomposed into price-only and
+   distribution-only components, or the family dies as a dividend
+   artifact.
 A10 MNQ CAUSAL/TAPE FAILURE class (QuantPulse IF1/IF2 template)
 ```
 
@@ -291,7 +315,11 @@ D2 PASS requires: pooled |rho| <= 0.20 against the full same-plane shape
 inventory and all ten templates; folds populated under F8; turnover
 chargeable under F6 bands; no family identity that is a relabelled
 momentum/clock/beta family (M0 battery adjudicates); proposal + arm
-hashes frozen. Otherwise selection is empty and the cycle closes at 0/3.
+hashes frozen. A7-F2 remediation: the same-plane shadow inventory is
+ENUMERATED AND FROZEN as a committed list BEFORE any rho computation
+(P-12); measuring against an under-enumerated inventory is an invalid
+PASS and fails D2 fail-closed. Otherwise selection is empty and the
+cycle closes at 0/3.
 
 ## 8. Trading, costs and risk contract
 
