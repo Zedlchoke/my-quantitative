@@ -90,6 +90,18 @@ fill, force-flat or rotate strictly per the frozen weekly rule.
 
 ## 3. M0 — methodology contract gate (before D1; owner-mandated)
 
+> Forward-only amendment 2026-09-16 (owner directive round 2 + A2 review):
+> the golden suite now runs ELEVEN gates — G4's dead `or True` form is
+> replaced by an AST purity proof (`verify_verdict_purity`: exact signature
+> + frozen name whitelist, closing the optional-param and module-global
+> bypass shapes demonstrated by the A2 reviewer) and **G4N** is added as a
+> negative control proving a payoff-contaminated verdict variant FAILS the
+> fixture. The binding suite is G1–G10 + G4N = 11/11 PASS. The M0
+> machinery hash and the D2 shadow inventory v2
+> (`d2_shadow_inventory_freeze_v2.json`, self-hashed pre-rho, with the
+> fail-closed UNMEASURABLE clause and the not-constructible register) are
+> the binding D2 inputs.
+
 M0 builds and runs synthetic/golden tests for the D2 structural-novelty
 machinery this cycle (and, by shared contract, FOREX-NG6) will use. Code
 and fixtures live under `research/control/stocks_ng5_run/m0/` in the
