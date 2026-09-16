@@ -50,9 +50,19 @@ def _pearson(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def _rank(x: np.ndarray) -> np.ndarray:
+    """Average-rank (MIDRANK) transform — A2R-F6: ordinal ranks without tie
+    correction are not the Spearman statistic on tied (binary) books."""
+    x = np.asarray(x, dtype=float)
     order = np.argsort(x, kind="mergesort")
     ranks = np.empty(x.size, dtype=float)
-    ranks[order] = np.arange(1, x.size + 1, dtype=float)
+    sx = x[order]
+    i = 0
+    while i < x.size:
+        j = i
+        while j + 1 < x.size and sx[j + 1] == sx[i]:
+            j += 1
+        ranks[order[i:j + 1]] = (i + j) / 2.0 + 1.0  # 1-based average of ties
+        i = j + 1
     return ranks
 
 
@@ -217,6 +227,63 @@ def load_contract(path: str | Path, expected_sha256: str) -> dict:
 
 def measure_with_contract(metrics: dict, path: str | Path, expected_sha256: str) -> str:
     return family_verdict(metrics, load_contract(path, expected_sha256))
+
+
+# ------------------------------------------- G4 purity proof (A2R-F2 hardening)
+
+def verify_verdict_purity(source_text: str) -> None:
+    """G4 purity proof, hardened per A2R-F2: NAME-BASED CHECKS ARE POROUS
+    (optional defaulted params and module-global payoff state both dodge
+    them).  Static closure instead: parse family_verdict's AST and allow
+    ONLY its exact declared signature (metrics, contract) — no optional,
+    defaulted, vararg or kwarg parameters — and ONLY Name references from a
+    frozen whitelist.  Any payoff/outcome parameter, any module-global read
+    inside the function, and any out-of-whitelist helper reference raises:
+    the verdict is impure and the golden suite fails.  The ONLY way to pass
+    while contaminating would be to compute payoff from the whitelisted
+    names alone — impossible by data flow (metrics/contract carry no
+    returns)."""
+    import ast
+
+    tree = ast.parse(source_text)
+    fn = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "family_verdict":
+            fn = node
+            break
+    if fn is None:
+        raise AssertionError("family_verdict not found")
+    a = fn.args
+    names = [x.arg for x in a.args + a.kwonlyargs]
+    if names != ["metrics", "contract"] or a.vararg or a.kwarg \
+            or a.defaults or a.kw_defaults:
+        raise AssertionError(
+            "G4: family_verdict signature must be exactly (metrics, contract), "
+            "no optional/defaulted/vararg parameters — got %r" % (names,)
+        )
+    allowed_names = {
+        "metrics", "contract",
+        "SAME_MECHANISM_DIFFERENT_DIRECTION", "SAME_FAMILY", "DIFFERENT_FAMILY",
+        "pooled_abs_correlation", "abs",
+        "AGGREGATION",  # frozen module constant, not state
+        "str", "dict",  # return/annotation types only — not runtime state
+    }
+    locals_defined = {
+        n.id for n in ast.walk(fn)
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)
+    }
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            if node.id not in allowed_names and node.id not in locals_defined:
+                raise AssertionError(
+                    "G4: verdict references non-whitelisted name %r — "
+                    "payoff/outcome contamination class (locals allowed: %r)"
+                    % (node.id, sorted(locals_defined))
+                )
+        if isinstance(node, ast.Attribute):
+            raise AssertionError(
+                "G4: verdict uses attribute access — out-of-contract state"
+            )
 
 
 # ------------------------------------------- G10 wrong-implementation probe

@@ -23,7 +23,20 @@ VERDICT_PATH = HERE / "m0_verdict.json"
 
 
 def main() -> int:
-    contract_sha = M.freeze_contract(CONTRACT_PATH)
+    # A2R-F8: no silent self-refreeze — if a contract already exists it must
+    # hash-match the frozen fields, or the run refuses (fail-closed).
+    import hashlib as _h
+    import json as _j
+    expected_blob = _j.dumps(M.CONTRACT_FIELDS, sort_keys=True, indent=1).encode()
+    expected_sha = _h.sha256(expected_blob).hexdigest()
+    if CONTRACT_PATH.exists():
+        actual_sha = _h.sha256(CONTRACT_PATH.read_bytes()).hexdigest()
+        if actual_sha != expected_sha:
+            print(f"REFUSED: existing contract sha {actual_sha[:12]} != frozen {expected_sha[:12]}")
+            return 2
+        contract_sha = actual_sha
+    else:
+        contract_sha = M.freeze_contract(CONTRACT_PATH)
     contract = M.load_contract(CONTRACT_PATH, contract_sha)  # G8+G9 live check
     test_file = HERE / "test_m0_golden.py"
     proc = subprocess.run(

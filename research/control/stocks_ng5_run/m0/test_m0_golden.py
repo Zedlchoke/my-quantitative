@@ -102,11 +102,13 @@ def g4():
     params = inspect.signature(M.family_verdict).parameters
     banned = {"returns", "pnl", "payoff", "outcome", "future_returns", "shared_returns"}
     assert not (set(params) & banned), params
-    # REAL source assertion (INC-NG5-3: the prior `or True` made this dead):
-    # the verdict path must not reference any payoff/outcome identifier.
-    src = inspect.getsource(M.family_verdict)
-    for ident in ("pnl", "payoff", "shared_return", "future_return"):
-        assert ident not in src, f"verdict source references banned identifier {ident!r}"
+    # HARDENED G4 (A2R-F2): name-based checks are porous (optional defaulted
+    # params, module-global payoff state). The AST purity proof closes both
+    # demonstrated bypass shapes: exact signature (metrics, contract) with
+    # no optional/defaulted/vararg params, and a frozen whitelist of load
+    # names inside the function body — any payoff parameter, global read or
+    # out-of-whitelist helper reference raises here and fails the suite.
+    M.verify_verdict_purity(inspect.getsource(M.family_verdict))
     # primary_comparisons takes no outcome argument either
     params2 = inspect.signature(M.primary_comparisons).parameters
     assert not (set(params2) & banned), params2
@@ -118,7 +120,12 @@ def g4():
 def g4n():
     """NEGATIVE control for G4 (A7-STOCKS round-2 requirement): an
     implementation that lets payoff/PnL/outcome into the verdict path must
-    FAIL this suite — demonstrably wrong on the G3 fixture."""
+    FAIL this suite — demonstrably wrong on the G3 fixture.  SCOPE (A2R-F2
+    corrected claim): the contaminated-kernel probe proves the FIXTURE
+    separates payoff-contaminated from clean verdicts; the hardened G4
+    purity check is the gate that FAILS edits which smuggle payoff into
+    family_verdict itself (optional params, globals, extra names).  Both
+    layers together are the sensitivity proof; either alone is not."""
     # the contaminated kernel exists only as the wrong-implementation probe
     assert hasattr(M, "family_verdict_payoff_contaminated")
     params = inspect.signature(M.family_verdict_payoff_contaminated).parameters
@@ -130,13 +137,37 @@ def g4n():
         contract=dict(M.CONTRACT_FIELDS),
     )
     assert contaminated == M.SAME_FAMILY, contaminated
-    # …while the clean contract keeps them distinct.  Any future edit that
-    # routes payoff into family_verdict flips this fixture to SAME_FAMILY
-    # and G3/G4 then FAIL the suite: the gate is proven sensitive.
+    # …while the clean contract keeps them distinct.
     clean = M.family_verdict(
         _metrics(SIG_E, SIG_F, weights=(SIG_E, SIG_F)), dict(M.CONTRACT_FIELDS)
     )
     assert clean == M.DIFFERENT_FAMILY, clean
+    # the purity gate rejects both A2-demonstrated contamination shapes
+    # outright (optional defaulted param; module-global payoff read)
+    adversarial_optional_param = (
+        "def family_verdict(metrics, contract, agreement_index=None):\n"
+        "    if agreement_index is not None and abs(agreement_index) > contract['rho_bar']:\n"
+        "        return SAME_FAMILY\n"
+        "    return DIFFERENT_FAMILY\n"
+    )
+    try:
+        M.verify_verdict_purity(adversarial_optional_param)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("purity check failed to reject optional-param contamination")
+    adversarial_global_read = (
+        "def family_verdict(metrics, contract):\n"
+        "    if EXTERNAL_PAYOFF_STATE is not None:\n"
+        "        return SAME_FAMILY\n"
+        "    return DIFFERENT_FAMILY\n"
+    )
+    try:
+        M.verify_verdict_purity(adversarial_global_read)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("purity check failed to reject module-global contamination")
 
 
 def g5():
