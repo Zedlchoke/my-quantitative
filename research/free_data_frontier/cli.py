@@ -167,12 +167,40 @@ def cmd_streams(args) -> None:
         loop.close()
     out_dir = control_dir() / "f3_canaries"
     out_dir.mkdir(parents=True, exist_ok=True)
+    manifest_dir = control_dir() / "manifests"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
     payload = []
+    manifest_records = []
     for summary in summaries:
-        blob = json.dumps(summary.to_dict(), sort_keys=True, indent=2) + "\n"
+        d = summary.to_dict()
+        blob = json.dumps(d, sort_keys=True, indent=2) + "\n"
         path = out_dir / f"stream_{summary.source_id}_summary.json"
         path.write_text(blob)
-        payload.append({k: summary.to_dict()[k] for k in ("source_id", "connect_ok", "total_messages", "disconnects")})
+        payload.append({k: d[k] for k in ("source_id", "connect_ok", "total_messages", "disconnects")})
+        if d.get("raw_path") and d.get("raw_sha256"):
+            manifest_records.append({
+                "source_id": summary.source_id,
+                "dataset_id": "ws_capture_bounded_sample",
+                "canonical_request_id": f"WS_CAPTURE:{summary.endpoint}",
+                "source_url_redacted": summary.endpoint,
+                "retrieved_time_utc": d["started_utc"],
+                "http_status": None,
+                "content_type": "application/x-ndjson",
+                "content_length": d["total_bytes"],
+                "raw_path": d["raw_path"],
+                "raw_sha256": d["raw_sha256"],
+                "parser_version": "free_data_frontier@1",
+                "authority_status": "PASS_SAMPLE" if d["connect_ok"] and d["total_messages"] > 0 else "BLOCKED_NETWORK",
+                "event_time_utc": None,
+                "effective_time_utc": None,
+                "available_time_utc": None,
+                "available_time_evidence": None,
+                "vintage": None,
+                "retrieval_time_only": True,
+                "notes": ["prospective history starting at capture start; no historical order-book coverage"],
+            })
+    if manifest_records:
+        write_manifest(manifest_dir / "streams_manifest.json", manifest_records)
     print(json.dumps(payload, indent=2))
 
 

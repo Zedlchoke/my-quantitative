@@ -20,11 +20,13 @@ class KrakenFuturesCapture(WsCapture):
         super().__init__(SOURCE_ID, ENDPOINT, ["ticker", "trade", "book", "heartbeat"], raw_path)
 
     def subscribe_messages(self) -> List[Dict[str, Any]]:
+        # MEASURED wire format: Futures v1 rejects {"op": ...} with
+        # "Bad websocket message"; {"event": "subscribe"} is accepted.
         return [
-            {"op": "subscribe", "feed": "ticker", "product_ids": PRODUCTS},
-            {"op": "subscribe", "feed": "trade", "product_ids": PRODUCTS},
-            {"op": "subscribe", "feed": "book", "product_ids": PRODUCTS},
-            {"op": "subscribe", "feed": "heartbeat"},
+            {"event": "subscribe", "feed": "ticker", "product_ids": PRODUCTS},
+            {"event": "subscribe", "feed": "trade", "product_ids": PRODUCTS},
+            {"event": "subscribe", "feed": "book", "product_ids": PRODUCTS},
+            {"event": "subscribe", "feed": "heartbeat"},
         ]
 
     def classify(self, payload: Dict[str, Any]) -> str:

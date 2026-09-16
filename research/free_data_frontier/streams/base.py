@@ -156,7 +156,7 @@ class WsCapture:
         stats = self.summary.per_channel.setdefault(channel, ChannelStats())
         seq = self.sequence_of(payload)
         if seq is not None and stats.last_sequence is not None:
-            if seq != stats.last_sequence + 1:
+            if self.is_gap(stats.last_sequence, seq):
                 stats.gaps += 1
         if seq is not None:
             stats.last_sequence = seq
@@ -174,6 +174,12 @@ class WsCapture:
             self._handle.write(line + b"\n")
 
     # -- subclass hooks -------------------------------------------------
+    def is_gap(self, previous: int, current: int) -> bool:
+        """Default continuity rule: next must be previous+1. Subclasses may
+        override for sequence spaces with different semantics (e.g. Deribit
+        change_id is a global monotonic counter — only regressions are gaps)."""
+        return current != previous + 1
+
     def subscribe_messages(self) -> List[Dict[str, Any]]:
         return []
 

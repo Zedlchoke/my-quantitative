@@ -91,14 +91,36 @@ def test_kraken_classifier_groups_book_feeds(tmp_path):
 def test_deribit_classifier_and_change_id(tmp_path):
     capture = DeribitCapture(tmp_path / "d.jsonl")
     assert capture.classify(
-        {"params": {"channel": "book.BTC-PERPETUAL.raw", "data": {"change_id": 7}}}
-    ) == "book"
+        {"params": {"channel": "book.BTC-PERPETUAL.100ms", "data": {"change_id": 7}}}
+    ) == "book.BTC-PERPETUAL.100ms"
     assert capture.classify(
         {"params": {"channel": "volatility_index.btc_volatility", "data": {}}}
-    ) == "volatility_index"
+    ) == "volatility_index.btc_volatility"
     assert capture.sequence_of(
-        {"params": {"channel": "book.BTC-PERPETUAL.raw", "data": {"change_id": 41}}}
+        {"params": {"channel": "book.BTC-PERPETUAL.100ms", "data": {"change_id": 41}}}
     ) == 41
     subs = capture.subscribe_messages()
     assert subs[0]["method"] == "public/subscribe"
     assert any("BTC-PERPETUAL" in ch for ch in subs[0]["params"]["channels"])
+
+
+def test_deribit_change_id_regression_only_gap(tmp_path):
+    capture = DeribitCapture(tmp_path / "d2.jsonl")
+    for cid in (100, 250, 251, 900):
+        capture._on_text(
+            '{"params": {"channel": "book.BTC-PERPETUAL.100ms", '
+            '"data": {"change_id": %d}}}' % cid
+        )
+    stats = capture.summary.per_channel["book.BTC-PERPETUAL.100ms"]
+    assert stats.messages == 4
+    assert stats.gaps == 0  # irregular increments are by design, not gaps
+
+
+def test_deribit_regression_counts_as_gap(tmp_path):
+    capture = DeribitCapture(tmp_path / "d3.jsonl")
+    for cid in (500, 400):  # regression breaks continuity
+        capture._on_text(
+            '{"params": {"channel": "book.ETH-PERPETUAL.100ms", '
+            '"data": {"change_id": %d}}}' % cid
+        )
+    assert capture.summary.per_channel["book.ETH-PERPETUAL.100ms"].gaps == 1
