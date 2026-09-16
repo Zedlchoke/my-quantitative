@@ -121,8 +121,12 @@ def main() -> int:
         md = pd.to_datetime([r["date"] for r in rows])
         mv = pd.to_numeric([r["value"] for r in rows], errors="coerce")
         ms = pd.Series(mv, index=md).dropna()
+        # AX2 as-of: availability = obs_date + 1 conservative day; carry the
+        # VALUES onto the availability index (attempt-1 reindexed by the
+        # availability dates against the observation index -> all-NaN bug)
         avail = ms.index + pd.Timedelta(days=1)
-        return ms.reindex(avail).reindex(d, method="ffill")
+        sa = pd.Series(ms.values, index=avail)
+        return sa.reindex(d, method="ffill")
 
     dgs10 = macro_weekly("DGS10")
     dfii10 = macro_weekly("DFII10")
