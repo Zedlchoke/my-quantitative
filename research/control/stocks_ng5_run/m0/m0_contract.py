@@ -221,6 +221,28 @@ def measure_with_contract(metrics: dict, path: str | Path, expected_sha256: str)
 
 # ------------------------------------------- G10 wrong-implementation probe
 
+def family_verdict_payoff_contaminated(metrics: dict, payoff_correlation: float, contract: dict) -> str:
+    """Deliberately WRONG verdict variant (G4 negative control).
+
+    Identical to the frozen rule EXCEPT it lets the candidates' shared
+    payoff correlation act as a merge trigger — exactly the implementation
+    class the golden suite must catch (owner directive 2026-09-16, lane A
+    blocker 1-2).  NEVER use in measurement; exists so the suite can prove
+    payoff contamination flips the G3 fixture and fails the gates.
+    """
+    assert contract["aggregation"] == AGGREGATION
+    if (
+        metrics["target_weight_pearson"] <= contract["sign_neg_bar"]
+        and metrics["sign_agreement"] <= contract["sign_agreement_bar"]
+    ):
+        return SAME_MECHANISM_DIFFERENT_DIRECTION
+    if abs(payoff_correlation) > contract["rho_bar"]:
+        return SAME_FAMILY
+    if pooled_abs_correlation(metrics) > contract["rho_bar"]:
+        return SAME_FAMILY
+    return DIFFERENT_FAMILY
+
+
 def wrong_verdict_signal_times_shared_return(
     signals_a: np.ndarray,
     signals_b: np.ndarray,

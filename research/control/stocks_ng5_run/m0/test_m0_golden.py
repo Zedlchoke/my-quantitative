@@ -102,14 +102,41 @@ def g4():
     params = inspect.signature(M.family_verdict).parameters
     banned = {"returns", "pnl", "payoff", "outcome", "future_returns", "shared_returns"}
     assert not (set(params) & banned), params
+    # REAL source assertion (INC-NG5-3: the prior `or True` made this dead):
+    # the verdict path must not reference any payoff/outcome identifier.
     src = inspect.getsource(M.family_verdict)
-    assert "return" not in src.replace("returns:", "").replace("_return", "") or True
+    for ident in ("pnl", "payoff", "shared_return", "future_return"):
+        assert ident not in src, f"verdict source references banned identifier {ident!r}"
     # primary_comparisons takes no outcome argument either
     params2 = inspect.signature(M.primary_comparisons).parameters
     assert not (set(params2) & banned), params2
     # payoff correlation between candidate PnLs is never an input
     m = _metrics(SIG_C, SIG_D)
     assert "payoff" not in m and "pnl" not in m
+
+
+def g4n():
+    """NEGATIVE control for G4 (A7-STOCKS round-2 requirement): an
+    implementation that lets payoff/PnL/outcome into the verdict path must
+    FAIL this suite — demonstrably wrong on the G3 fixture."""
+    # the contaminated kernel exists only as the wrong-implementation probe
+    assert hasattr(M, "family_verdict_payoff_contaminated")
+    params = inspect.signature(M.family_verdict_payoff_contaminated).parameters
+    assert any("payoff" in p for p in params), params  # it takes payoff in
+    # on the shared-payoff trap it merges two genuinely different signals…
+    contaminated = M.family_verdict_payoff_contaminated(
+        _metrics(SIG_E, SIG_F, weights=(SIG_E, SIG_F)),
+        payoff_correlation=M._pearson(SIG_E * SHARED_RET, SIG_F * SHARED_RET),
+        contract=dict(M.CONTRACT_FIELDS),
+    )
+    assert contaminated == M.SAME_FAMILY, contaminated
+    # …while the clean contract keeps them distinct.  Any future edit that
+    # routes payoff into family_verdict flips this fixture to SAME_FAMILY
+    # and G3/G4 then FAIL the suite: the gate is proven sensitive.
+    clean = M.family_verdict(
+        _metrics(SIG_E, SIG_F, weights=(SIG_E, SIG_F)), dict(M.CONTRACT_FIELDS)
+    )
+    assert clean == M.DIFFERENT_FAMILY, clean
 
 
 def g5():
@@ -206,6 +233,7 @@ def main() -> int:
     gate("G2", "sign inversion = same mechanism, different direction", g2)
     gate("G3", "shared-payoff trap does not merge different signals", g3)
     gate("G4", "no payoff/outcome argument in the verdict path", g4)
+    gate("G4N", "NEGATIVE: payoff-contaminated verdict FAILS the fixture", g4n)
     gate("G5", "primary comparisons hand-computed fixtures", g5)
     gate("G6", "same-day/same-release clustering to one observation", g6)
     gate("G7", "price-only controls classed E_FALSIFICATION", g7)
