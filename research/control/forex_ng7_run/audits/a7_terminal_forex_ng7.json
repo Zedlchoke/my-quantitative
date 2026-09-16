@@ -1,0 +1,78 @@
+{
+  "schema": "forex_ng7_a7_terminal_audit@1",
+  "cycle_id": "FOREX-NG7",
+  "audited_commit": "646d0989e5c77dc3947b935edef7a6f2713b0040",
+  "audited_branch": "orca/forex-ng7-integration",
+  "audited_terminal_label": "FOREX_NG7_BLOCKED_SOURCE_OR_SCHEMA",
+  "verdict": "CONFIRM_FOREX_NG7_BLOCKED_SOURCE_OR_SCHEMA",
+  "measured_at": "2026-09-16T16:35:00Z",
+  "auditor": "A7 fresh-context terminal auditor (one audit artifact only; no repairs)",
+  "checks": {
+    "1_digests_and_census": {
+      "worktree_head_verified": "git rev-parse HEAD == 646d0989e5c77dc3947b935edef7a6f2713b0040; branch orca/forex-ng7-integration; status clean except the untracked terminal_verdict_forex_ng7.json",
+      "archive_digests": "P-13 ~/staging_backups/cleanup_2026-09-12/ re-hashed by auditor: 7/7 archives match SHA256SUMS.txt (incl. all 5 forex archives)",
+      "member_digests": "staged data_raw/forex_ng7_spot/*.json re-hashed: 5/5 match SHA256SUMS.txt AND the A2 dossier member_sha256 pins (EURUSD 01cb862b.., GBPUSD e3e4c519.., USDCAD 4b988c44.., AUDUSD 097cfe59.., NZDUSD 7dff3299..)",
+      "census_recomputation": "heavy lock was HELD_PROVEN (STOCKS-NG6 P0_CENSUS_HEAVY pid 13709) so the census script (network re-pull + writes) was NOT rerun per lock law; instead the auditor implemented an independent read-only recomputation of build_folds + anchor_firings + trigger_census from the staged bytes (script at /tmp/fng7_a7_audit/recompute_census.py replicating p0_census_run.py logic verbatim): REPRODUCED EXACTLY - folds 2008-01-31..2014-06-17 (1641) / 2014-06-18..2020-10-05 (1641) / 2020-10-06..2026-09-10 (1642), per-fold totals 721/802/674, LONG 1126 / SHORT 1071, all 2197, intersection 4924 sessions, rate 2197/(5*4924)=0.089236/leg/day - byte-equal to committed census.json/folds.json (CENSUS_RECOMPUTATION_MATCH: True)",
+      "f6_repro": "p0_repro_digest.txt == SHA256SUMS.txt trio == p0_verdict F6.current (census 7a120bf9.., folds 873a3a12.., staging_manifest 7886956b..) - internally consistent double-run claim",
+      "golden_tests": "pytest tests/test_forex_ng7_p0.py -> 17 passed in 0.29s (re-run by auditor at HEAD)",
+      "f1_iii_repull": "repull_contract.json frozen_before_pull=true with fail-closed outcome enum; repull_result.json records DIVERGENCE on EURUSD (3 field mismatches, all 2026-09-12) and NZDUSD (2, all 2026-09-10) - i.e. only each archive's final still-forming bar; archive vintage declared authority, vendor bytes never merged; internally consistent"
+    },
+    "2_independent_financing_band_hunt": {
+      "result": "NO citable measured financing/swap/spread band for EURUSD/GBPUSD/USDCAD/AUDUSD/NZDUSD found anywhere in the searched space; the F4 ruling stands",
+      "searched": [
+        "main tree git grep (swap points/swap long/short/financing band): only authority documents ASSERTING absence (PROBE_INDEX.json 'TD is a data vendor, NOT a broker: the served schema carries NO spread, swap, commission or financing fields (measured)'; data_cost_critic.json X2 'COSTS_UNMEASURABLE'; A7 plan audits; A4 dossier; HYPOTHESIS_LEDGER FOREX-NG6 row) - none carries a numeric FX-majors band",
+        "all orca/forex-* and forex-free-* cycle branches: research/assets/forex/rollover.py = mechanism-only module (requires caller-supplied schedule, docstring: 'no default carry and no implicit zero-cost assumption', 'All schedules used in tests are SYNTHETIC_TEST_ONLY; no broker schedule is fabricated anywhere'); NOT on main (P-13-deleted); cot_parser.py 'swap' hits are CFTC CoT positioning fields, not financing",
+        "P-13 archives extracted read-only and swept (forex-v8/v9, ng1 x2, ng4): FX payloads carry exactly {datetime, open, high, low, close}; zero matches for swap/swap_points/swap_long/swap_short/financing/funding_rate/commission/spread/rollover/tom_next (positive control 'datetime' matched 13 files, so the sweep was live)",
+        "dossier evidence (fng7-a2/a3/a4 committed): A2 marks XAUUSD cost_authority BLOCKED and cost band values NOT_MEASURED; A4 axis-5 binding requirement verbatim mandates the fail-closed NOT_MEASURABLE branch the P0 executed",
+        "NG5 E1 18.07 bps re-adjudicated: a WEEKLY-hold financing-inclusive ceiling computed from a central-bank rate differential (stress 6, NZ-US 6.23%) - binding A4 says 'precedent CLASS ONLY and NOT a citable band'; the ~5.1 bps/3-nights figure is likewise an arithmetic differential bound, and a rate-differential mid cannot pin SIGNED long/short swap bands (broker swap adjustments absent), so adopting it as 'the band' would itself be non-conservative for the receive side - the P0's refusal to cite it is correct, not convenient",
+        "FOREX-NG6 precedent verified in situ: .worktrees/forex-ng6/integration/research/control/forex_ng6_run/p0/p0_census_verdict.json contains F4_COST_AUTHORITY, verdict P0_F4_BLOCKED, terminal FOREX_NG6_BLOCKED_SOURCE_OR_COST - the claimed same-entitlement class precedent EXISTS"
+      ],
+      "refusal_trigger": "none fired - no citable band was found that the P0 lane missed"
+    },
+    "3_close_honesty": {
+      "preregistration": "dual-books fail-closed clause (plan §6 row + §4 F4 FINANCING AUTHORITY) added at a6a0da54afe27d2c9c16c8f67812e4b3dac82fdd 2026-09-16T21:47:21+07:00 (=14:47:21Z) in response to A7-r1 HIGH F-A7PL-NG7-1 (verified verbatim in a7-plan-audit-forex-ng7-audit.json); a6a0da54 is a git ancestor of HEAD; chronology: remediation 14:47:21Z -> M0 817cf8cb 15:18:13Z -> P0 verdict measured_at 15:59:47Z - the clause PREDATES the P0 result, not a post-hoc invention",
+      "clause_text_at_head": "plan §6 dual-books row: 'if no financing authority exists at the D1 freeze, the financed book is NOT_MEASURABLE and the family closes BLOCKED, never scored on a silent zero' - present at 646d0989; terminal label matches plan §8 FOREX_NG7_BLOCKED_SOURCE_OR_SCHEMA",
+      "zero_scored_cells_zero_pnl": "P0 verdict scope_law: 'no candidate PnL/PF/Sharpe/drawdown/S1 evidence'; grep of research/control/forex_ng7_run: the only PnL-string match is m0/test_m0_golden.py where 'pnl' appears in negative-control assertions (banned-parameter gate G4; assert 'pnl' not in metrics) - synthetic law-enforcement, not scored PnL; branch diff vs main adds only m0/p0 artifacts, tests, .gitignore",
+      "go_phrase": "commit-message scan of branch: 0 hits for 'GO FOREX NG7'; the phrase string exists only as the plan's preregistered definition and in the two A7 plan-audit references - never typed at any gate; no scored-execution artifact exists anywhere in the branch",
+      "budget": "0/3 consumed per verdict; consistent with P0-gate close (no D1 ever opened)"
+    },
+    "4_boundaries": {
+      "s1": "branch diff vs main contains no S1 paths; verdict s1=SEALED_UNTOUCHED consistent with observed diff",
+      "orders": "no order/paper/testnet/live artifacts anywhere in the cycle tree",
+      "prospective_shadow_v1": "no PROSPECTIVE-SHADOW-V1 paths touched in the branch diff; no reads evidenced",
+      "tws_ibkr": "no TWS/IBKR paths or artifacts in the branch; NG6R1 XAU probe untouched (PROBE_PAUSED_NOT_RUN_TWS_UNAVAILABLE claim consistent)",
+      "sibling_cycles": "no budget/GO/rescue sharing with STOCKS-NG6 or CRYPTO-NG4 evidenced; the machine-wide heavy lock correctly left the foreign STOCKS-NG6 job alone",
+      "f2_citations": "all four git-main citation files existence-verified by auditor via git cat-file; A3 dossier sha256 re-computed = 1e05d07e990824f6ba3e15fca3096bd14d0454ee6c997aa478f831ce0de8f203 matching the script's fail-closed pin, byte-identical worktree vs main"
+    },
+    "5_reopening_and_durable_assets": {
+      "reopening_condition": "recorded honestly: owner broker-grade cost authority for the TD majors (measured venue spread/commission/swap points), same class as NG6 P0-F4; outcome-blind construction (FNG7-A2-P1 anchor + k=10 neighbour + CTL-EXTREMEONLY complement) stays preregistered and binding",
+      "durable_assets": "recorded: sha-pinned 5-major staging chain + fail-closed re-pull contract, 16:00-NY clock/t+1/exit-mapping fixtures, trigger census machinery + met floors, M0 golden suite + G11 dual-books fixture, NY Fed/OFR control class rulings - all verified to exist at HEAD",
+      "ledger": "no FOREX-NG7 ledger row yet - denominators 48/48 and 257/260 untouched pending the control-plane half (correct sequencing, matches recommended_next_action)"
+    }
+  },
+  "findings": [
+    {
+      "id": "F-A7T-NG7T-1",
+      "severity": "MEDIUM",
+      "title": "Full P0 census script not rerun under the machine-wide heavy lock; independent read-only recomputation used instead",
+      "evidence": "locks inspect returned HELD_PROVEN (STOCKS-NG6 P0_CENSUS_HEAVY, pid 13709, flock held) at audit time; rerunning p0_census_run.py (network TD re-pull + writes into P0_DIR) would have violated the one-heavy-job law. Mitigation: auditor's independent /tmp recomputation of fold construction + anchor firing census from the A2-pinned staged bytes reproduced folds, 721/802/674, 1126/1071/2197 and rate 0.089236 exactly; pytest 17/17 re-run PASS; F6 digest trio internally consistent. Residual: the F1(iii) DIVERGENCE re-pull was not re-executed (contract + result artifacts read and verified internally consistent only).",
+      "disposition": "does not block the close; census arithmetic is the load-bearing part for the population floors and it reproduces byte-exactly"
+    },
+    {
+      "id": "F-A7T-NG7T-2",
+      "severity": "LOW",
+      "title": "FX rollover machinery survives on legacy branches with no band embedded",
+      "evidence": "research/assets/forex/rollover.py exists on ~90 legacy orca/forex-* branches (deleted from main by P-13); it implements swap-points/triple-roll mechanics but hard-requires a caller-supplied schedule and fabricates none (SYNTHETIC_TEST_ONLY). Its existence does not contradict the F4 'no citable band' ruling.",
+      "disposition": "recorded so a reopening (with an owner broker-grade authority) knows the carrier module already exists on branches and need not be rewritten"
+    },
+    {
+      "id": "F-A7T-NG7T-3",
+      "severity": "LOW",
+      "title": "GO phrase string present in plan and audits by design",
+      "evidence": "'GO FOREX NG7 SCORED EXECUTION' appears in PLAN_forex_ng7.md (preregistered definition) and inside the two A7 plan-audit JSONs (quoting it); 0 occurrences in any commit message; no gate ever consumed it.",
+      "disposition": "cosmetic; DEAD UNCONSUMED state in the terminal verdict is accurate"
+    }
+  ],
+  "blocking_findings": [],
+  "conclusion": "The P0 evidence base reproduces from bytes (digests, census, tests); the decisive F4 financing ruling is correct on an independently hunted evidence space (no citable band exists; the only candidate numbers are binding-ruled non-citable arithmetic differential bounds); the dual-books BLOCKED branch was preregistered before the P0 ran in response to the A7-r1 HIGH finding; the close consumes 0/3, scores nothing, types no GO, and records honest reopening conditions and durable assets. Verdict CONFIRMED."
+}
