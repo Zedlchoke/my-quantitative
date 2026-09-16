@@ -1,5 +1,47 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced at the NG5/NG6 twin dispatch, 2026-09-16)
+
+- **FOREX-NG6 CLOSED → `FOREX_NG6_BLOCKED_SOURCE_OR_COST`** (2026-09-16,
+  branch `orca/forex-ng6-integration`, terminal 3b13d1da, A7 plan audit
+  AUTHORIZED_WITH_FINDINGS 0 HIGH/CRITICAL 4 LOW carry + A7 terminal
+  AUTHORIZED_WITH_FINDINGS 0 HIGH/CRITICAL, budget 0/3, 0 cells, 0
+  proposals, GO died UNCONSUMED, S1 SEALED) — the XAUUSD real-yield / USD
+  dislocation cycle (owner-directive dispatch, asset forex subtype
+  metal_fx_quote; the program's FIRST M0 D2-methodology golden gate, G1-G10
+  PASS 10/10). P0: price side F1-F3 PASS banked — TD XAU/USD 1day full
+  depth 12,268 rows (1979-12-26 → 2026-09-16), 0 OHLC violations, weekend
+  bars 155/154 non-flat measured, double-pull identical, canary 404 — then
+  **F4 COST AUTHORITY fail-closed BLOCKED: TD is a vendor, not a broker —
+  spread/commission/min-size/tick/swap/triple-swap/margin UNMEASURABLE
+  from the entitled channel; zero citable band in the authorized evidence
+  space (Q-8 refuses stated third-party pages); no GLD fallback in-cycle.**
+  The outcome-blind lane's construction-B direction (mean-reversion of the
+  macro-implied residual) stays preregistered and binding for a reopening.
+  Durable assets: sha-pinned XAU/USD price authority + frozen clock
+  convention + the shared M0 contract. REOPENING CONDITION: an owner
+  broker-specific XAUUSD cost authority (measured venue evidence).
+  Denominators unchanged forex 48/48, program 257/260 (P-9). Detail:
+  `.worktrees/forex-ng6/integration/research/control/forex_ng6_run/p0/p0_census_verdict.json`.
+
+- **STOCKS-NG5 IN FLIGHT → `PLANNED_NOT_STARTED` advanced to D2-pending**
+  (2026-09-16, branch `orca/stocks-ng5-integration` at d7d21899, budget
+  0/3) — the QQQ/SPY relative-breadth rotation (owner-directive dispatch):
+  A7 plan audit round-1 AUTHORIZED_WITH_FINDINGS (0 HIGH/CRITICAL; 3
+  MEDIUM remediated pre-registration at 6b0f12ef, 5 LOW fixed/carry); M0
+  golden gate PASS 10/10 (a6964136); P0 census F1-F9 PASS with one flagged
+  gap (e553b4df — QQEW missing the 2008-11-28 half-day session, non-anchor,
+  prior-close handling frozen; common window 2006-04-25..2026-09-15 =
+  5,128 XNYS sessions; ADV bands A measured 31B/44.6B; distributions
+  censused 89/135/62/93 steps); D1 outcome-blind proposal freeze committed
+  (d7d21899) bound to the frontier dossier sha a59af382: anchor L=13w z104
+  (arms L4/L52), LEVEL neighbour (self-subsumption ≤ 0.98), inverted/
+  delayed controls, R0-R6+K6 ordered kills, 11 controls. NEXT: D2
+  non-scored (enumerated frozen shadow inventory, pooled |rho| ≤ 0.20
+  immovable, cost ceiling) → S freeze → I → Z → A7 prelaunch → owner GO
+  `GO STOCKS NG5 SCORED EXECUTION`. Denominators unchanged stocks 42/42,
+  program 257/260 (P-9). PROSPECTIVE-SHADOW-V1 untouched throughout.
+
 ## Sprint state (synced at the CRYPTO-NG3 close, 2026-09-15)
 
 - **CRYPTO-NG3 CLOSED → `CRYPTO_NG3_BLOCKED_DATA_OR_SELECTION`** (2026-09-15,
