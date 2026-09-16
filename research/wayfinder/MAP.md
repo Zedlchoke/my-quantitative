@@ -1,5 +1,27 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced at the FREE-DATA-FRONTIER-V1R1 close, 2026-09-16)
+
+- **FREE-DATA-FRONTIER-V1R1 CLOSED → `FREE_DATA_FRONTIER_V1R1_PASS_OFR_ACQUIRED`**
+  (2026-09-16, branch `orca/free-data-frontier-v1r1-integration`, terminal
+  66c12a2f, A7 fresh-context AUTHORIZED 0 HIGH/CRITICAL — cross-source
+  authenticity 13/13 OFR-vs-NYFed exact date+value matches; budget 0/0, 0
+  cells, S1 SEALED) — **append-only correction to terminal V1: the V1 OFR
+  `BLOCKED_NETWORK` verdict was a FALSE blocker caused by the wrong
+  endpoint.** V1 called `/v1/mnemonics/` and read the API-gateway 403
+  "Missing Authentication Token" (route-not-mapped body, 43 bytes) as
+  provider edge/TLS/IP blocking; the official routes
+  `/v1/metadata/mnemonics/` and `/v1/series/full/?mnemonic=...` return 200
+  on the same host. V1 artifacts remain byte-identical and TERMINAL; V1R1
+  supersedes the claim only. Acquired: inventory 442 mnemonics + 5
+  preregistered reference-rate series (SOFR 2111 rows 2018-04-02→
+  2026-09-14; BGCR/TGCR 2111 from 2018-04-02; EFFR/OBFR 2648 from
+  2016-03-01) — 6/6 raw re-hash ALL_MATCH, 67 targeted tests, OFR data is
+  RETRIEVAL_TIME_ONLY/prospective (no per-row publication timestamps;
+  "current vintage"), NOT authorized for historical scored joins.
+  Denominators unchanged program 257/260 (P-9). Detail:
+  `.worktrees/free-data-frontier-v1r1/integration/research/control/free_data_frontier_v1r1_run/terminal_correction.json`.
+
 ## Sprint state (synced at the FREE-DATA-FRONTIER-V1 close, 2026-09-16)
 
 - **FREE-DATA-FRONTIER-V1 CLOSED → `FREE_DATA_FRONTIER_V1_PASS_PARTIAL`**

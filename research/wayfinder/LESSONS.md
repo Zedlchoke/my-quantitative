@@ -740,3 +740,24 @@ plan then died safely at its own gate instead of after a 2,000-file crawl.
 Source: FREE-DATA-FRONTIER-V1 (2026-09-16). Two live-run defect classes surfaced during canaries, then A7 round-1 REFUSED the terminal for two verdict-text defects that had drifted from the frozen evidence. (1) The SEC declared-contact User-Agent was redacted BEFORE sending — SEC received "<redacted:contact:len=57>" and answered 403; redaction belongs at RECORD/storage time, requests must go out with the real declared identity. (2) The preregistered N-PORT fund filter assumed accession-prefix == fund CIK; the served schema uses the FILING AGENT's CIK in that position — the filter silently matched nothing until re-keyed on the measured identity (exact SERIES_NAME). (3) A7 caught two terminal-verdict sentences (USDA "wasde0512 PASS" vs measured 404; FTD span "2008-01" vs measured 2009-07 start) that asserted more than the frozen artifacts say — the report had started writing the story instead of the evidence.
 
 **Lesson:** Transport identity and record identity are different layers with different rules — declare truthfully on the wire, redact only what is stored. Every filter key that touches an external dataset is a hypothesis until verified against the served schema (Q-8 again, at the field-name level). And a terminal verdict is evidence like any other artifact: every number in it must be re-readable from a frozen file, because the independent auditor WILL re-read it from exactly those files.
+
+## P-19 — A gateway 403 "Missing Authentication Token" is a wrong-route signature, not a provider block
+
+Source: FREE-DATA-FRONTIER-V1R1 (2026-09-16). V1 called the undocumented
+route `data.financialresearch.gov/v1/mnemonics/`, got HTTP 403 with the
+body `{"message":"Missing Authentication Token"}` on three User-Agent
+variants, and classified OFR as edge/TLS/IP-blocked. The remediation cycle
+showed the documented route `/v1/metadata/mnemonics/` returns 200 on the
+same host from the same machine, and the "403" is the standard AWS API
+Gateway route-not-mapped response — 43 bytes of JSON, not a WAF page.
+
+**Lesson:** (1) A 403 "Missing Authentication Token" from a JSON API is a
+WRONG ROUTE signal, never by itself evidence of IP/TLS/provider blocking —
+host-level blocking would also refuse the correct route, so the cheap test
+is to probe the documented route before classifying a blocker. (2) Always
+census the EXACT official endpoint from the provider's own documentation
+before writing a BLOCKED_* verdict; a canary against an invented URL
+measures the invented URL, not the provider. (3) Corrections are
+append-only: V1's terminal artifacts stay byte-identical, and the
+successor cycle (V1R1) supersedes the false claim explicitly with its own
+evidence chain — never rewrite a closed verdict in place.
