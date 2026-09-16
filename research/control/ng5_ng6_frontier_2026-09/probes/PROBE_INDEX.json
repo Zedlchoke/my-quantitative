@@ -1,0 +1,136 @@
+{
+ "schema": "ng5_ng6_precritic_probe_index@1",
+ "task_id": "DATA_COST_CRITIC-A1",
+ "measured_utc_date": "2026-09-16",
+ "http_request_budget": {
+  "limit": 40,
+  "used": 16,
+  "breakdown": {
+   "eodhd_api": 11,
+   "twelvedata_api": 3,
+   "vendor_official_docs_fetches": 2
+  }
+ },
+ "heavy_lock": "FREE_PROVEN at start; never taken; no bulk census; no full-history download (largest single pull 486 bars)",
+ "probe_report": {
+  "S1_liveness": {
+   "verdict": "PASS",
+   "requests": 4,
+   "finding": "QQQ.US/SPY.US/QQEW.US/RSP.US all HTTP 200 application/json under EODHD_API_KEY /eod channel, 31 bars each 2026-08-03..2026-09-15 (fresh through prior session), fields date/open/high/low/close/adjusted_close/volume",
+   "evidence": [
+    "ng5_s1_liveness_QQQ.json",
+    "ng5_s1_liveness_SPY.json",
+    "ng5_s1_liveness_QQEW.json",
+    "ng5_s1_liveness_RSP.json"
+   ]
+  },
+  "S2_never_existed_canary": {
+   "verdict": "PASS",
+   "requests": 1,
+   "finding": "ZZZQQQNG5.US -> HTTP 404, content-type text/html; charset=utf-8, 17-byte body 'Ticker Not Found.' Distinct from valid-symbol-empty-window semantics (HTTP 200 body '[]' measured at S4). Matches V8-era negative-control semantics class",
+   "evidence": [
+    "ng5_s2_never_existed_canary.json"
+   ]
+  },
+  "S3_adjusted_channel": {
+   "verdict": "PASS",
+   "requests": 1,
+   "finding": "QQQ 2026-06-01..07-31: adjusted_close == close for all dates >= 2026-06-22; close - adjusted_close ~= +0.82 (quarterly-distribution magnitude) for every date before -> backward dividend adjustment with measured ex-date 2026-06-22; adjusted channel exists and distributes dividends. Split handling: no split event exists in QQQ/SPY/QQEW/RSP histories to reconcile fresh; channel split handling carries V8 SEC-reconciled precedent (CMG 50:1 2024-06-26 raw 0.0201/adj 1.0030; TJX 2:1) - fresh re-measure only if a split occurs",
+   "evidence": [
+    "ng5_s3_qqq_adjusted_div_window.json"
+   ],
+   "precedent_citation": "research/control/stocks_free_v8_probe/eodhd_probe_verdict.json G4"
+  },
+  "S4_history_depth": {
+   "verdict": "PASS",
+   "requests": 5,
+   "finding": "Earliest served bars via bounded unbounded-from windows: QQQ 1999-03-10, SPY 1993-01-29, QQEW 2006-04-25, RSP 2003-04-30 (all consistent with fund inception). Caveat: earliest-served-in-window, full-depth census is P0 F4; first corrected window (to=2004-12-31) predated QQEW inception and returned HTTP 200 '[]' - the empty-window negative semantic is itself recorded evidence",
+   "evidence": [
+    "ng5_s4_depth_QQQ.json",
+    "ng5_s4_depth_SPY.json",
+    "ng5_s4_depth_QQEW.json",
+    "ng5_s4_depth_QQEW_corrected.json",
+    "ng5_s4_depth_RSP.json"
+   ]
+  },
+  "S5_costs_channel": {
+   "verdict": "PASS_DOCUMENTED",
+   "requests": 0,
+   "finding": "EODHD /eod serves OHLC+volume only - no spread/quote/cost fields in the measured served schema. Charge basis is the frozen stocks band-cost schedule: BAND_BPS {A:10.0, B:15.0, C:25.0} bps per fill, ADV63 bands 50M/10M/2M USD, fail-closed resolution (missing band = hard error, L-I3), exits never cheaper than C (V9-R1), linear-in-fills (L-V14-0), stress multiplier per fill. Weekly-rotation turnover MUST be charged from measured bands computed at P0; break-even arithmetic deferred to P0 per dispatch",
+   "evidence": [],
+   "source_path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-free-v13/integration/research/assets/stocks/kernel_band_cost_v9.py",
+   "source_provenance": "committed f1fba3c4 on the preserved stocks-free-v13 integration worktree branch, status TRACKED_CLEAN; referenced by plans/PLAN_stocks_ng3.md:132 ('band-cost schedule pinned from the V8-V13 stocks cycles') and plans/PLAN_stocks_ng5.md section 4 F6"
+  },
+  "X1_td_xauusd": {
+   "verdict": "PASS",
+   "requests": 2,
+   "finding": "/time_series 1day XAU/USD under existing TWELVE_DATA_API_KEY: HTTP 200, 45 bars 2026-08-01..2026-09-14, meta {symbol XAU/USD, interval 1day, currency_base 'Gold Spot', currency_quote 'US Dollar', type 'Precious Metal'}; fields datetime/open/high/low/close (NO volume). Bars served for ALL 45 calendar days incl. 11 weekend bars, 11/11 with non-flat closes (thin Sunday-reopen prints, H-L ~1.3 on ~4300) -> the weekly-close convention (Fri vs Sun bar) must be frozen at P0. Last bar T-1 (2026-09-14 vs 2026-09-16 probe date) -> ~1-session availability lag; exact publication clock UNMEASURED. Datetime convention: vendor docs state daily bars are exchange-local, FX/metals default location UTC (docs citation, Q-8 hypothesis class); meta itself declares no timezone. Never-existed pair canary ZZW/ZZQ -> HTTP 404 JSON {code:404, message:'**symbol** or **figi** parameter is missing or invalid...', status:error}",
+   "evidence": [
+    "ng6_x1_xauusd_1day_window.json",
+    "ng6_x1_never_existed_pair_canary.json"
+   ]
+  },
+  "X2_td_depth_and_costs": {
+   "verdict": "PASS_MEASURED_DEPTH + COSTS_UNMEASURABLE",
+   "requests": 1,
+   "finding": "History start MEASURED via cheap metadata endpoint /earliest_timestamp: XAU/USD 1day -> 1979-12-26 (provider metadata; bar-level depth census deferred to P0). TD docs page documents NO metals depth figure (NOT DOCUMENTED). TD is a data vendor, NOT a broker: the served schema carries NO spread, swap, commission or financing fields (measured). UNMEASURABLE without a broker-specific authority: spread, overnight swap points, triple-swap weekday, commission, minimum size, tick value, margin",
+   "evidence": [
+    "ng6_x2_xauusd_earliest_timestamp.json"
+   ]
+  },
+  "X3_fred_real_yield_pit": {
+   "verdict": "PASS_FROM_REPO_ARTIFACTS",
+   "requests": 0,
+   "finding": "DFII10/DFII5 are inside the already-granted S2 FRED keyed set re-pinned by RATES-NG1 (plans/PLAN_rates_ng1.md section 3: DGS10/DGS2/DFII10/DFII5/T10YIE/T5YIE/CPIAUCSL; 'FRED_API_KEY presence is not authority (V9 law)'). As-of staging precedent: FOREX-FREE-V8 staged vintaged T10YIE/T5YIE/DGS10 'AX2 as-of' (HYPOTHESIS_LEDGER V8 row + FAMILY_FAILURES.jsonl row 56); availability convention bar-readable close+1 (plans/PLAN_rates_ng1.md:125). ALFRED stands BLOCKED_DATA_AUTHORITY on this host (FOREX-FREE-V5: CSV hang 12+/13, api keyless 400, license text unreachable -> fail-closed; owner unblock options recorded) - NOT retried per dispatch",
+   "evidence": [],
+   "citations": [
+    "plans/PLAN_rates_ng1.md section 3",
+    "research/wayfinder/HYPOTHESIS_LEDGER.md rows V5/V8(FOREX)/RATES-NG1",
+    "research/wayfinder/FAMILY_FAILURES.jsonl:56"
+   ]
+  },
+  "X4_usd_index": {
+   "verdict": "CANDIDATE_NOT_AUTHORIZED",
+   "requests": 0,
+   "finding": "Zero repo pins for DXY/TWEXB/DTWEX/any broad-USD index (grep across research/wayfinder + plans = null). Official keyless option for P0 to probe: FRED DTWEXBGS - page facts measured 2026-09-16: 'Nominal Broad U.S. Dollar Index', Daily, Index Jan 2006=100, Not Seasonally Adjusted, source Board of Governors via H.10; last obs 2026-09-11 (Fri) published 2026-09-14 (Mon) with next release 2026-09-21 -> daily values arrive on Monday H.10 releases, up-to-~1-week publication cadence (a Friday-close decision CANNOT read that Friday's index); obs 2026-09-07 missing '.'; only revision statement 'All data are subject to revision'. Vintage/revision-series availability (ALFRED class) UNMEASURED and ALFRED host-blocked -> PIT clarity not established; remains candidate only, gated at P0",
+   "evidence": [],
+   "docs_fetch": "https://fred.stlouisfed.org/series/DTWEXBGS (1 request, facts recorded verbatim in this index)"
+  },
+  "F1_stocks_weekly_rotation_ceiling": {
+   "verdict": "ARITHMETIC_DOCUMENTED",
+   "requests": 0,
+   "formula": "annual_cost_bps = R * (|dw_sell|*b_sell + |dw_buy|*b_buy) * m, R<=52 full rotations/yr, |dw|=1.0 per side on a full QQQ<->SPY rotation, b = band bps per fill, m = stress multiplier (base 1.0, stress 2.0)",
+   "inputs": {
+    "band_bps": {
+     "A": 10.0,
+     "B": 15.0,
+     "C": 25.0
+    },
+    "adv_bands_usd": {
+     "A": 50000000,
+     "B": 10000000,
+     "C": 2000000
+    },
+    "source": ".worktrees/stocks-free-v13/integration/research/assets/stocks/kernel_band_cost_v9.py (commit f1fba3c4, TRACKED_CLEAN); referenced plans/PLAN_stocks_ng3.md:132, plans/PLAN_stocks_ng5.md F6/F8"
+   },
+   "worst_case": {
+    "expected_band_A_hypothesis_pending_P0_ADV_computation": "52 * (10+10) bps = 1,040 bps/yr base; 2,080 bps/yr at stress 2.0",
+    "absolute_worst_band_C": "52 * (25+25) bps = 2,600 bps/yr base; 5,200 bps/yr at stress 2.0"
+   },
+   "notes": "band A for QQQ/SPY is a LIQUIDITY HYPOTHESIS (ADV far above 50M) - P0 must compute measured ADV63 bands fail-closed before costing; force-flat at fold boundary adds <=2 fills/fold (bounded, negligible vs 52); break-even margin definition left to P0 per dispatch"
+  },
+  "F2_xauusd_cost_authority": {
+   "verdict": "FAIL_CLOSED_PREDICATED_BLOCKED_SOURCE_OR_COST",
+   "requests": 0,
+   "ruling_inputs": [
+    "TD serves no spread/swap/commission/financing for XAUUSD (measured served schema, X1/X2)",
+    "no broker-specific cost authority exists in-repo; .env entitlements are TD/EODHD/FRED only (names only)",
+    "owner fail-closed law: a weekly-hold XAUUSD family cannot pass a cost gate on measured data today"
+   ],
+   "consequence": "terminal BLOCKED_SOURCE_OR_COST, budget 0/3, no GLD fallback in-cycle - UNLESS P0 evidences a conservative preregistered swap/spread band from a citable source AND the family survives the stress tier 2.0",
+   "precedent_risk_note": "VOL-NG1 Q-16 path-ladder: a preregistered ~2,200bps worst-case rollover/expense ladder KILLED the whole vol family (ledger row VOL-NG1) - recorded as precedent risk, NOT as a number for gold",
+   "numbers": "every candidate cost number UNMEASURED; none invented"
+  }
+ },
+ "key_leak_scan": "CLEAN - no entitlement value present in any probes file (programmatic scan)"
+}
