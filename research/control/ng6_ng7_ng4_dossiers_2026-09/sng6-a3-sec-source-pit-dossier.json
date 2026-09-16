@@ -1,0 +1,139 @@
+{
+  "schema": "sng6_a3_sec_source_pit_dossier@1",
+  "task_id": "sng6-a3-sec-source-pit",
+  "cycle_id": "STOCKS-NG6",
+  "role": "A3-source-pit",
+  "lane": "sec-source-pit",
+  "measured_utc": "2026-09-16T18:05:00Z",
+  "frozen_sha_verified": {
+    "expected": "938f7043fb791e4f7b5a94326633869e243b4ea9",
+    "measured_head": "938f7043fb791e4f7b5a94326633869e243b4ea9",
+    "branch": "main",
+    "verdict": "MATCH"
+  },
+  "upstream_evidence_base": {
+    "terminal_verdict": "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json",
+    "manifests": [
+      "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/manifests/sec_ftd_manifest.json",
+      "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/manifests/sec_ftd_archive_manifest.json",
+      "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/manifests/sec_nport_manifest.json"
+    ],
+    "acquisition_summaries": [
+      "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/f4_acquisition/sec_ftd_summary.json",
+      "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/f4_acquisition/sec_ftd_archive_summary.json",
+      "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/f4_acquisition/sec_nport_summary.json"
+    ],
+    "raw_bytes_root": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/",
+    "manifest_status": "ALL_MATCH (verdict, re-verified in f5_terminal/manifest_verification.json)",
+    "frozen_pit_posture": "every FTF-V1 record RETRIEVAL_TIME_ONLY at acquisition time; available_time_utc NULL on all sec_ftd / sec_nport records with evidence notes (P-1)"
+  },
+  "sources": [
+    {
+      "source_id": "sec_ftd",
+      "name": "SEC Fails-to-Deliver (NSCC CNS aggregate equity fails), served half-month archive",
+      "official_page": "https://www.sec.gov/data-research/sec-markets-data/fails-deliver-data",
+      "archived_page_evidence": {
+        "path": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_ftd_archive/official_page_inventory.html",
+        "sha256": "e811f192181b4a0d64dd3c6c6887890c6f7577c3e75ee34f9a60a0bb2a305b61",
+        "retrieved_utc": "2026-09-16T08:49:08Z",
+        "note": "sha re-computed by this audit and matches the sha pinned in sec_ftd_manifest.json exactly"
+      },
+      "semantics": {
+        "event_time": "SETTLEMENT DATE column (YYYYMMDD) = date as of which the fails balance is outstanding. Page text (measured in archived HTML): 'The values of total fails-to-deliver shares represent the aggregate net balance of shares that failed to be delivered as of a particular settlement date'; 'a cumulative number of all fails outstanding until that day, plus new fails that occur that day, less fails that settle that day'. It is a per-settlement-date STOCK (net balance), not a daily flow; age of fails is not determinable from it.",
+        "effective_time": "Same as event_time for the fails quantity (CNS end-of-day aggregate balance as of the settlement date). PRICE column is prior-day close per page text: 'The price field includes the closing price of the security on the previous day' ('.' when unavailable or < 1 cent) - so PRICE trails the settlement date by one trading day.",
+        "available_time": "NOT machine-served per file. Page-stated posting cadence (exact quote from archived page): 'Starting July 2009, each month is contained in two files. The first half of a given month is available at the end of the month. The second half of a given month is available at about the 15th of the next month. We cannot guarantee that the data will be posted by a particular date.' => earliest-plausible posting is ~15-16 calendar days after the covered settlement half-month ends, with no guaranteed posting date. Per-file exact posting timestamps: NOT_MEASURED (HTTP header probes this audit returned SEC fair-access 403, see audit_probes).",
+        "retrieved_time": "Per-file retrieved_time_utc pinned in sec_ftd_archive_manifest.json (e.g. samples 2026-09-16T08:49:10Z/12Z); local archive = as-published bytes at retrieval; two_pull_equality verdict IDENTICAL for cnsfails202004b.zip (sha256 0c76d404fbd48726c22ea031092ec208fbf42fb41ca4128adaccfa493d6259e7 both pulls)."
+      },
+      "raw_bytes_measurements_this_audit": {
+        "archive_inventory": "434/434 zips local in /Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_ftd_archive/ matching the page listing exactly. Composition measured from the page's own zip listing JSON: 410 half-month files cnsfails{YYYYMM}{a,b}.zip spanning 200907..202608 (206 months), 22 quarterly files cnsp_sec_fails_{YYYY}q{N}.zip spanning 2004q1..2009q2, and 2 repost variants (cnsfails202308b_0.zip, cnsfails201910a_0.zip). The verdict's '434 full served archive 2009-07..2026-08' reconciles as: half-month series starts 2009-07; earlier coverage is the 22 quarterly FOIA-document files.",
+        "column_schema": "6 pipe-delimited columns, IDENTICAL across all 6 files opened spanning 2009, 2019, 2020, 2026 and the quarterly zip: SETTLEMENT DATE | CUSIP | SYMBOL | QUANTITY (FAILS) | DESCRIPTION | PRICE. Files end with a non-data trailer row 'Trailer total quantity of shares N' (must be excluded by parsers; N reconciles to the sum of the quantity column only if de-duplicated at CUSIP-settlement level - parser guard required).",
+        "row_counts_measured": {
+          "cnsfails202608b.zip": 61552,
+          "cnsfails202608a.zip": 59956,
+          "cnsfails200907a.zip": 57539,
+          "cnsfails202004a.zip": 45442,
+          "cnsfails201910a_0.zip": 34129,
+          "cnsp_sec_fails_2009q2.zip": "136589 data rows across 3 monthly members (cnsp_sec_fails_200904/200905/200906.txt); same 6-column schema"
+        },
+        "filename_encodes_settlement_half_month_cycle": "MEASURED TRUE. Settlement-date min/max per file: cnsfails202607a = 20260701..20260714; cnsfails202607b = 20260715..20260731; cnsfails202608a = 20260803..20260814; cnsfails202608b = 20260817..20260831 (gaps = weekends/holidays). 'a' = first settlement half-month, 'b' = second.",
+        "cross_file_overlap_test": "MEASURED ZERO: all 6 pairwise intersections of settlement-date sets across cnsfails202607a/b and cnsfails202608a/b are empty. Later files do NOT re-include earlier settlement dates - the half-month files partition the settlement calendar with no date-level restatement channel inside one archive vintage."
+      },
+      "revisions_handling": {
+        "within_archive_vintage": "MEASURED: settlement dates partition exactly across consecutive half-month files (zero overlap, 6 files sampled Jul-Aug 2026); no in-vintage restatement of earlier settlement weeks observed.",
+        "across_vintages": "NOT_MEASURED: row-level quantity restatement between an original posting and any later re-download requires a second vintage; this audit holds one vintage only. Page disclaims accuracy twice ('We cannot guarantee the accuracy of the data'), and the page itself lists 2 '_0'-suffix repost variants - corrections do occur as reposted zip objects. Mitigation: the local archive pins exact-URL identity and sha256 per file; a future vintage can be diffed file-by-file against the pinned hashes.",
+        "quarterly_to_monthly_series_splice": "2004q1..2009q2 quarterly files (monthly members inside) share the identical 6-column schema; pre-2008-09-16 rows include only balances >= 10,000 shares (page text) - threshold change must be flagged in any series splice."
+      },
+      "coverage_bound": "Half-month series 2009-07..2026-08 complete (410 files); quarterly series 2004q1..2009q2 (22 files, <=10k-share threshold before 2008-09-16); equities only; NSCC CNS aggregate over all members; page explicitly: fails 'are not necessarily the result of short selling, and are not evidence of abusive short selling or naked short selling'.",
+      "license_evidence": {
+        "keyless": true,
+        "terms_pinned_in_census": "https://www.sec.gov/terms-of-use (sec_ftd_summary.json census: 'US-government work, public domain; SEC terms page pinned')",
+        "read_evidence": "archived official page sha-pinned (e811f192...) retrieved 2026-09-16T08:49:08Z, read in full this audit; no signup/purchase; no bulk download",
+        "fair_access": "acquisition ran declared UA at 8 req/s (< published 10 req/s); this audit's 6 live probes hit SEC 'Request Rate Threshold Exceeded' 403 block page and STOPPED (no retry) - consistent with the FTF-V1 UA-throttle incident class"
+      },
+      "evidence_class": "PIT_EVIDENCED",
+      "evidence_class_qualifier": "PIT ruling holds UNDER THE CONSERVATIVE RULE ONLY. The publication BOUND is evidenced by the sha-pinned official page cadence text; per-file exact posting timestamps are NOT_MEASURED (HTTP probes blocked). Any use that assumes availability earlier than the bound is RETROSPECTIVE_ONLY by definition.",
+      "d2_usability_ruling": {
+        "permitted": "State-conditioning control use: at decision time t, a file is usable only if posting_bound(file) <= t, where posting_bound = (settlement half-month end date + 15 calendar days) as the measured earliest-plausible posting; recommend a >=16-day conditioning guard (+1 day over the bound, because the page guarantees no posting date). Use as a settlement-stress LEVEL (net balance) control only; CUSIP-level joins require a CUSIP-history guard (CUSIPs are re-used over decades).",
+        "forbidden": "(1) treating SETTLEMENT DATE as availability; (2) any short-selling/manipulation attribution (page-explicit interpretation guard); (3) historical scored joins on the 2009-2026 archive without labeling them RETROSPECTIVE_ONLY until a per-file publication-timestamp evidence pass runs (successor pass: capture posting dates, e.g. via EDGAR-full-text-free periodic snapshots of the page listing); (4) splicing the pre-2008-09-16 quarterly rows without the 10k-share-threshold flag."
+      }
+    },
+    {
+      "source_id": "sec_nport",
+      "name": "SEC Form N-PORT (DERA quarterly data sets), 2026q2 single-quarter sample",
+      "official_page": "https://www.sec.gov/data-research/sec-markets-data/form-n-port-data-sets",
+      "archived_page_evidence": {
+        "path": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_nport/official_page_inventory.html",
+        "sha256": "1d22082f198b2bd28a0af838978417ae21411aa4897cccce8c85756fcf76434a",
+        "retrieved_utc": "2026-09-16T09:11:12Z"
+      },
+      "semantics": {
+        "event_time": "REPORT_DATE = 'Date as of which information is reported' (nport_readme.htm A.3.b; readme sha-pinned inside 2026q2_nport.zip, member listing quarterly_2026q2_nport_members.json). Measured distinct REPORT_DATEs in SUBMISSION.tsv are month-ends (e.g. 28-FEB-2026, 31-MAR-2026) plus fiscal year-ends - the monthly NPORT-P reporting regime. Holdings are portfolio positions as of the report period end.",
+        "effective_time": "Same as event_time for holdings (positions as of report period end). No intramonth effective dating exists in the dataset.",
+        "available_time": "Two documented bounds, both day-granularity: (1) SUBMISSION.tsv FILING_DATE = EDGAR filing DATE only ('Filing date DATE', readme) - no acceptance time in the DERA set; measured filing lag FILING_DATE - REPORT_DATE: min 12d, p50 57d, p95 62d, max 1225d, 92.1% within 60d (n=14,416). (2) Dataset inclusion rule quoted from nport_readme.htm: 'Data contained in documents filed after 5:30pm EST on the last business day of the quarter will be included in the next quarterly posting.' Per-zip posting timestamp: NOT machine-served. Strict available_time stays NULL (frozen manifests); conservative D2 rule: available_time = FILING_DATE end-of-day + 1 day guard, or the quarterly-posting bound, never REPORT_DATE.",
+        "retrieved_time": "2026q2 zip retrieved 2026-09-16T09:18:23Z, sha256 077cc836a978a593b29012219395fbe9c303d5e930f5be3b5f4353c3b02296fc (440,699,889 bytes, 32 members, 1.55 GiB uncompressed listing). Two-pull equality NOT_APPLIED_LARGE (440 MB object; recorded in verdict not_run)."
+      },
+      "raw_bytes_measurements_this_audit": {
+        "submission_tsv": "n=14,416 filings; columns measured: ACCESSION_NUMBER, FILING_DATE (DD-MON-YYYY, day granularity), FILE_NUM, SUB_TYPE, REPORT_ENDING_PERIOD, REPORT_DATE, IS_LAST_FILING. SUB_TYPE distribution: NPORT-P 14,064 / NPORT-P/A 352 (2.44%) / (NT NPORT-P documented in readme, none in this quarter). IS_LAST_FILING: N=14,364 / Y=52.",
+        "fund_reported_info_tsv": "14,416 rows, 1:1 with SUBMISSION on ACCESSION_NUMBER; identity keys measured: SERIES_NAME, SERIES_ID, SERIES_LEI.",
+        "holdings_member": "FUND_REPORTED_HOLDING.tsv = 910,272,312 bytes (never materialized; streamed). QQQ 'Invesco QQQ Trust, Series 1' accession 0001067839-26-000024 -> 102 holding rows (target_holdings_filtered.tsv sha256 9d393b2fc09cf7c5a30dbf0e7e161eb524f9d7824ada066dc0ca7e28ff1a81cd, 103 lines = header + 102). Holding columns measured: ACCESSION_NUMBER, HOLDING_ID, ISSUER_NAME/LEI/TITLE/CUSIP, BALANCE, UNIT, CURRENCY_CODE, CURRENCY_VALUE, EXCHANGE_RATE, PERCENTAGE, PAYOFF_PROFILE, ASSET_CAT, ISSUER_TYPE, INVESTMENT_COUNTRY, IS_RESTRICTED_SECURITY, FAIR_VALUE_LEVEL, DERIVATIVE_CAT.",
+        "filing_date_span_in_2026q2_dataset": "01-APR-2026 .. 30-JUN-2026 (consistent with the 5:30pm-EST last-business-day-of-quarter inclusion cutoff)."
+      },
+      "amendments_handling": {
+        "flag": "SUB_TYPE distinguishes original NPORT-P from amendment NPORT-P/A (352 measured this quarter). Same-registrant+period resubmissions appear as distinct ACCESSION_NUMBERs - accession is the immutable filing identity.",
+        "supersession_rule": "IS_LAST_FILING is NOT a revision flag: readme defines it as 'Does the Fund anticipate that this will be its final filing on Form N-PORT' (A.4) - i.e., wind-down anticipation. Latest-vintage resolution must be computed as: per (SERIES_ID/CIK, REPORT_DATE), keep max(FILING_DATE) accession; never blindly overwrite.",
+        "not_in_dataset": "EDGAR acceptance datetime (intraday) is not in the DERA set; obtaining it requires per-accession EDGAR index fetches - NOT acquired this cycle (intraday acceptance NOT_MEASURED)."
+      },
+      "coverage_bound": "ONE quarter (2026q2) - the V1 acquisition cap. Therefore any long-history crowding/ownership claim is INSUFFICIENT_COVERAGE by construction. Measured absences: SPY absent from 2026q2 FUND_REPORTED_INFO by exact SERIES_NAME; GLD structurally out of N-PORT scope (non-1940-Act commodity trust). Current-quarter holdings must NEVER be used to reconstruct historical holdings - each filing covers a single report period; history requires back-acquisition of earlier quarterly datasets (not acquired).",
+      "license_evidence": {
+        "keyless": true,
+        "terms_pinned_in_census": "https://www.sec.gov/terms-of-use (sec_nport_summary.json census: 'US-government work, public domain; SEC terms page pinned')",
+        "read_evidence": "archived official page sha-pinned (1d22082f...) retrieved 2026-09-16T09:11:12Z; readme read from inside the acquired zip; no signup/purchase; single 440 MB dataset pull only (no bulk download beyond the capped quarter)"
+      },
+      "evidence_class": "PIT_EVIDENCED",
+      "evidence_class_qualifier": "Day-granularity availability only (FILING_DATE + documented 5:30pm-EST quarterly cutoff); intraday acceptance NOT_MEASURED; coverage cap makes long-history claims INSUFFICIENT_COVERAGE regardless of PIT class.",
+      "d2_usability_ruling": {
+        "permitted": "Prospective state-conditioning with available_time = FILING_DATE + 1 day guard (p50 lag 57d, p95 62d - so any conditioning window must be >= ~63 days after report period end; 60 days is NOT a safe bound, p95 exceeds it). Within-2026q2 cross-sectional controls (e.g. current crowding proxy) are permitted as a snapshot; amendment-safe joins must apply the supersession rule (max FILING_DATE per series+REPORT_DATE).",
+        "forbidden": "(1) long-history crowding/ownership panels - INSUFFICIENT_COVERAGE (one quarter); (2) reconstructing historical holdings from the current snapshot; (3) real-time positioning inference (never faster than the measured ~57-62d filing lag); (4) assuming SPY/GLD coverage (measured absent); (5) using IS_LAST_FILING as a revision flag."
+      }
+    }
+  ],
+  "audit_probes": {
+    "declared_ua": "my-quantitative-research-audit/0.1 (evidence audit; contact: repository OWNER via GitHub issues)",
+    "requests": "6 total (5 HEAD on FTD zip URLs incl. the not-yet-due cnsfails202609a.zip, 1 GET terms-of-use)",
+    "outcome": "ALL returned HTTP 403 with SEC 'Request Rate Threshold Exceeded' block page (1924-1925 bytes). Probes STOPPED immediately - no retry, no bypass, no bulk download. Consequence: HTTP Last-Modified publication timestamps remain NOT_MEASURED; the FTD availability bound rests on the sha-pinned archived page cadence text; the terms citation rests on the archived pages + pinned census terms URL.",
+    "boundary_compliance": "read-only lane; only the dossier file written; no .zcode/, plans/CYCLE_REGISTRY.json, research/wayfinder/*, .worktrees/* writes; PROSPECTIVE-SHADOW-V1 and S1 never accessed"
+  },
+  "known_limitations": [
+    "FTD per-file publication timestamps NOT_MEASURED (sec.gov probes 403-throttled this audit); availability bound is page-text cadence, not per-file evidence",
+    "FTD cross-vintage row-level restatement NOT_MEASURED (single archive vintage held); '_0' repost variants prove a corrections channel exists",
+    "N-PORT intraday EDGAR acceptance datetime NOT_MEASURED (DERA set is day-granularity)",
+    "N-PORT coverage capped at 2026q2 (one quarter) - all long-history ownership claims INSUFFICIENT_COVERAGE",
+    "N-PORT two-pull equality NOT_APPLIED_LARGE (verdict not_run); zip integrity rests on sha256 pin only",
+    "FTD trailer row must be excluded by parsers; quantity column is a de-duplicated balance, not additive across raw rows"
+  ],
+  "incidents": [],
+  "headline_rulings": {
+    "ftd": "PIT_EVIDENCED under the conservative rule only: available_time = file posting bound = settlement-half-month end + 15 days measured earliest-plausible (page cadence 'first half at end of month, second half about the 15th of next month, no guaranteed posting date'); recommend >=16-day conditioning guard; settlement date is NEVER availability; historical scored joins on the 2009-07..2026-08 archive stay RETROSPECTIVE_ONLY until a per-file publication-timestamp evidence pass; settlement dates partition exactly across half-month files (zero overlap measured) - no in-vintage restatement channel.",
+    "nport": "PIT_EVIDENCED at day granularity: available_time = FILING_DATE (+1 day guard), never REPORT_DATE; measured lag p50 57d / p95 62d (60 days is not a safe bound); amendments flagged by SUB_TYPE=NPORT-P/A (352/14,416) with supersession = max FILING_DATE per (series, REPORT_DATE); IS_LAST_FILING is a final-filing flag, not a revision flag; one-quarter coverage cap -> any long-history crowding claim INSUFFICIENT_COVERAGE; current holdings never reconstruct historical holdings."
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "schema": "fng7_a3_source_pit_dossier@1",
+  "task_id": "fng7-a3-nyfed-ofr-pit",
+  "cycle_id": "FOREX-NG7",
+  "role": "A3-source-pit",
+  "lane": "nyfed-ofr-pit",
+  "measured_utc": "2026-09-16T13:40:00Z/13:42:00Z",
+  "frozen_state": {
+    "head_sha_verified": "938f7043fb791e4f7b5a94326633869e243b4ea9",
+    "branch": "main",
+    "match": true,
+    "tree_note": "only untracked .zcode/ present; lane wrote nothing to the working tree except this dossier"
+  },
+  "inputs_read": [
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/",
+      "what": "NY Fed /last/10.json samples: rate_sofr.json, rate_effr.json, rate_bgcr.json, rate_tgcr.json, rate_obfr.json",
+      "hash_verification": "5/5 MATCH vs manifests/nyfed_markets_manifest.json (sha256 42649efe86d25a272638cc3296926aa87235349281c841e68484e49775d9d8cf)"
+    },
+    {
+      "path": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/",
+      "what": "V1R1 OFR store: inventory_mnemonics.json + series/{FNYR-SOFR-A,FNYR-EFFR-A,FNYR-BGCR-A,FNYR-TGCR-A,FNYR-OBFR-A}.json",
+      "hash_verification": "6/6 MATCH vs manifests/ofr_stfm_v1r1_manifest.json (sha256 441aaabdfc343b3e388799d0f089316434655b5300ac69eca29f0a8af2312d1e)"
+    },
+    {
+      "path": ".worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json",
+      "what": "FDF-V1 terminal verdict: NY Fed PASS_SAMPLE via /last/{n}.json; OFR BLOCKED_NETWORK (later corrected in V1R1)"
+    },
+    {
+      "path": ".worktrees/free-data-frontier-v1r1/integration/research/control/free_data_frontier_v1r1_run/terminal_correction.json",
+      "what": "V1R1 terminal: FREE_DATA_FRONTIER_V1R1_PASS_OFR_ACQUIRED; V1 OFR 403 root-caused to wrong endpoint (/v1/mnemonics/ vs official /v1/metadata/mnemonics/); pit_status RETRIEVAL_TIME_ONLY"
+    },
+    {
+      "path": ".worktrees/free-data-frontier-v1r1/integration/research/control/free_data_frontier_v1r1_run/ofr_v1r1_summary.json",
+      "what": "6 records, all available_time_utc null, retrieved_time_utc 2026-09-16T10:38:26-30Z; independent A7 audit 13/13 OFR-vs-NYFed cross matches"
+    }
+  ],
+  "global_findings": {
+    "observation_vs_publication_vs_retrieval": {
+      "observation_date": "machine-served in BOTH stores: NY Fed rows carry effectiveDate; OFR rows are [YYYY-MM-DD, value] pairs. Values are prior-business-day (T) aggregations.",
+      "publication_time": "NOT machine-served by EITHER API. Raw bytes carry zero publication timestamps. T+1 next-morning schedule (~08:40-09:00 ET per task statement; '~09:00 ET T+1' pinned in FDF-V1 nyfed census) is DOCUMENTED, not per-row evidenced. DIRECT BRACKET MEASURED this cycle: SOFR row effectiveDate=2026-09-15 ABSENT from NY Fed /last/10.json at retrieval 2026-09-16T09:18:59Z (05:18:59 ET, stored V1 manifest) and PRESENT (3.64, revisionIndicator=\"\") at declared-UA probe 2026-09-16T13:40Z (09:40 ET, HTTP 200) => published in (05:19, 09:40] ET on T+1, consistent with the documented ~08:40-09:00 ET window. Per-row publication timestamps remain unevidenced; every stored row is RETRIEVAL_TIME_ONLY.",
+      "retrieval_time": "the ONLY machine-evidenced time. NY Fed: manifest retrieved_time_utc 2026-09-16T09:18:59-09:19:01Z. OFR: 2026-09-16T10:38:26-30Z."
+    },
+    "revision_evidence": {
+      "nyfed_channel": "revisionIndicator IS machine-served per row (measured: field present in 50/50 rows across 5 files). Census from local bytes: 0/50 rows flagged (all empty strings). Value-change magnitude distribution NOT computable from local bytes: single retrieval vintage per series, zero flagged rows to diff. Overnight stability observation: rows 2026-09-14 and 2026-09-11 value-identical between 05:19 ET store and 09:40 ET probe (single window, not a revision-rate estimate).",
+      "ofr_store": "ZERO revision evidence. Wire schema is {mnemonic:{timeseries:{aggregation:[[date,value],...]}}} - no revision field, no timestamps. OFR census pinned: 'OFR publishes revised STFM data; per-row revision indicator not assumed'. Same-day diff probe at 2026-09-16T13:41Z vs 10:38Z store: HTTP 200, 47848 bytes, 2111 rows, 0 added / 0 removed / 0 value-changed (single ~3h window; does not establish revision rates)."
+    },
+    "units_and_basis": {
+      "values": "percentRate in PERCENT (2 decimal places), business-day aggregation of USD overnight money-market transactions; OFR percentiles p1/p25/p75/p99 also percent; NY Fed EFFR rows carry targetRateFrom/targetRateTo = 3.50/3.75 (FOMC target range, percent).",
+      "volume": "volumeInBillions = USD billions of daily transaction volume (e.g. SOFR ~2861 => ~$2.861T; EFFR ~91-114; BGCR ~1173-1210; TGCR ~1153-1181; OBFR ~189-252 in the samples).",
+      "calendar": "US business-day calendar (Mon-Fri minus US federal holidays). Weekend absence is calendar structure, not missingness. OFR range measured: SOFR 0.01..5.40, EFFR 0.04..5.33, BGCR 0.01..5.35, TGCR 0.01..5.35, OBFR 0.03..5.33."
+    },
+    "gap_pattern_and_no_fill_boundary": {
+      "pattern": "Every mid-series absence in the OFR series is an ISOLATED SINGLE-WEEKDAY absence (longest gap = 1 business day) matching the US federal-holiday pattern (Jan 15 / Nov 15 / Dec 9 / Jul 9 per 8-9yr span; ZERO absences in August, which has no federal holiday). No multi-day mid-series gaps, no duplicate dates, no nulls, no non-numeric values. NY Fed 10-row samples show the same shape: weekends absent, single holiday absence 2026-09-07 (Labor Day).",
+      "boundary": "NO-FORWARD-FILL: holiday/release-gap absences are never synthesized in either store. An as-of join must match on effectiveDate and treat an absent business day as ABSENT, never carried forward, unless the FOREX-NG7 plan explicitly allows a named fill rule. Retrieval-time-only stores NEVER get PIT gaps filled: there is no evidence when an earlier-missing value later appeared."
+    },
+    "identity_ruling": "SOFR (secured overnight financing rate, broad Treasury repo), BGCR (broad general collateral rate), TGCR (tri-party general collateral rate), EFFR (effective federal funds rate), OBFR (overnight bank funding rate) are ALL USD money-market funding/reference rates. They are NEVER an FX signal and carry no FX identity. In FOREX-NG7 D2 they may be used ONLY as funding/liquidity regime controls (e.g., stress/regime gating, cost-of-carry context); any derived FX-swap-implied funding construct is out of scope of this dossier and would need its own identity audit."
+  },
+  "series": [
+    {
+      "rate": "SOFR",
+      "stores": {
+        "nyfed_channel": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_sofr.json",
+          "url": "https://markets.newyorkfed.org/api/rates/secured/sofr/last/10.json",
+          "coverage_in_store": "10 rows 2026-08-31..2026-09-14 (bounded recent sample, descending)",
+          "available_time_evidence_class": "RETRIEVAL_TIME_ONLY",
+          "revision_evidence": "revisionIndicator field machine-served, 0/10 flagged in store; publication bracket measured (2026-09-15 row absent 05:19 ET, present 09:40 ET on T+1)",
+          "gap_census": "weekends absent by calendar; 1 single-weekday holiday absence (2026-09-07 Labor Day) in window",
+          "d2_usability_ruling": "FUNDING/LIQUIDITY CONTROL, PROSPECTIVE-ELIGIBLE: usable as a D2 USD funding control once a daily-fetch collector with retrieval timestamps runs after the ~09:00 ET publication window (PIT by construction going forward). Current 10-row store is a connectivity/authenticity sample only - NOT usable for historical controls, same-day values, or any PIT join. Never forward-fill across holidays."
+        },
+        "ofr_mirror": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/series/FNYR-SOFR-A.json",
+          "url": "https://data.financialresearch.gov/v1/series/full/?mnemonic=FNYR-SOFR-A",
+          "coverage_in_store": "2111 rows 2018-04-02..2026-09-14",
+          "available_time_evidence_class": "RETROSPECTIVE_ONLY",
+          "revision_evidence": "none - wire schema has no revision field; same-day re-pull diff showed 0 changes (single window)",
+          "gap_census": "served 2111 of 2206 weekdays in span; 95 isolated single-weekday absences (US holiday pattern); longest gap = 1 business day; 0 duplicates; 0 nulls",
+          "d2_usability_ruling": "RETROSPECTIVE STATE DESCRIPTION ONLY for the D2 narrative (funding-regime history). FORBIDDEN: historical PIT joins; any claim a D2 control state was knowable at decision time; historical scored joins. Newest served row lags the NY Fed feed (still 2026-09-14 at 13:41Z while NY Fed already served 2026-09-15) - measured mirror lag, do not use for same-day controls."
+        }
+      }
+    },
+    {
+      "rate": "EFFR",
+      "stores": {
+        "nyfed_channel": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_effr.json",
+          "url": "https://markets.newyorkfed.org/api/rates/unsecured/effr/last/10.json",
+          "coverage_in_store": "10 rows 2026-08-31..2026-09-14; carries targetRateFrom/To 3.50/3.75",
+          "available_time_evidence_class": "RETRIEVAL_TIME_ONLY",
+          "revision_evidence": "revisionIndicator field machine-served, 0/10 flagged in store; same T+1 publication bracket applies (measured on SOFR channel same host/channel family)",
+          "gap_census": "weekends absent; 1 single-weekday holiday absence (2026-09-07) in window",
+          "d2_usability_ruling": "FUNDING/LIQUIDITY CONTROL, PROSPECTIVE-ELIGIBLE on the same terms as SOFR; current store is sample only; no historical PIT use."
+        },
+        "ofr_mirror": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/series/FNYR-EFFR-A.json",
+          "url": "https://data.financialresearch.gov/v1/series/full/?mnemonic=FNYR-EFFR-A",
+          "coverage_in_store": "2648 rows 2016-03-01..2026-09-14",
+          "available_time_evidence_class": "RETROSPECTIVE_ONLY",
+          "revision_evidence": "none - no revision field in wire schema",
+          "gap_census": "served 2648 of 2750 weekdays in span; 102 isolated single-weekday absences; longest gap = 1 business day; 0 duplicates; 0 nulls",
+          "d2_usability_ruling": "RETROSPECTIVE STATE DESCRIPTION ONLY; same prohibitions as SOFR OFR mirror."
+        }
+      }
+    },
+    {
+      "rate": "BGCR",
+      "stores": {
+        "nyfed_channel": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_bgcr.json",
+          "url": "https://markets.newyorkfed.org/api/rates/secured/bgcr/last/10.json",
+          "coverage_in_store": "10 rows 2026-08-31..2026-09-14",
+          "available_time_evidence_class": "RETRIEVAL_TIME_ONLY",
+          "revision_evidence": "revisionIndicator field machine-served, 0/10 flagged in store",
+          "gap_census": "weekends absent; 1 single-weekday holiday absence (2026-09-07) in window",
+          "d2_usability_ruling": "FUNDING/LIQUIDITY CONTROL, PROSPECTIVE-ELIGIBLE on the same terms as SOFR; current store is sample only."
+        },
+        "ofr_mirror": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/series/FNYR-BGCR-A.json",
+          "url": "https://data.financialresearch.gov/v1/series/full/?mnemonic=FNYR-BGCR-A",
+          "coverage_in_store": "2111 rows 2018-04-02..2026-09-14",
+          "available_time_evidence_class": "RETROSPECTIVE_ONLY",
+          "revision_evidence": "none - no revision field in wire schema",
+          "gap_census": "served 2111 of 2206 weekdays; 95 isolated single-weekday absences; longest gap = 1 business day; 0 duplicates; 0 nulls",
+          "d2_usability_ruling": "RETROSPECTIVE STATE DESCRIPTION ONLY; same prohibitions as SOFR OFR mirror."
+        }
+      }
+    },
+    {
+      "rate": "TGCR",
+      "stores": {
+        "nyfed_channel": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_tgcr.json",
+          "url": "https://markets.newyorkfed.org/api/rates/secured/tgcr/last/10.json",
+          "coverage_in_store": "10 rows 2026-08-31..2026-09-14",
+          "available_time_evidence_class": "RETRIEVAL_TIME_ONLY",
+          "revision_evidence": "revisionIndicator field machine-served, 0/10 flagged in store",
+          "gap_census": "weekends absent; 1 single-weekday holiday absence (2026-09-07) in window",
+          "d2_usability_ruling": "FUNDING/LIQUIDITY CONTROL, PROSPECTIVE-ELIGIBLE on the same terms as SOFR; current store is sample only."
+        },
+        "ofr_mirror": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/series/FNYR-TGCR-A.json",
+          "url": "https://data.financialresearch.gov/v1/series/full/?mnemonic=FNYR-TGCR-A",
+          "coverage_in_store": "2111 rows 2018-04-02..2026-09-14",
+          "available_time_evidence_class": "RETROSPECTIVE_ONLY",
+          "revision_evidence": "none - no revision field in wire schema",
+          "gap_census": "served 2111 of 2206 weekdays; 95 isolated single-weekday absences; longest gap = 1 business day; 0 duplicates; 0 nulls",
+          "d2_usability_ruling": "RETROSPECTIVE STATE DESCRIPTION ONLY; same prohibitions as SOFR OFR mirror."
+        }
+      }
+    },
+    {
+      "rate": "OBFR",
+      "stores": {
+        "nyfed_channel": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_obfr.json",
+          "url": "https://markets.newyorkfed.org/api/rates/unsecured/obfr/last/10.json",
+          "coverage_in_store": "10 rows 2026-08-31..2026-09-14",
+          "available_time_evidence_class": "RETRIEVAL_TIME_ONLY",
+          "revision_evidence": "revisionIndicator field machine-served, 0/10 flagged in store",
+          "gap_census": "weekends absent; 1 single-weekday holiday absence (2026-09-07) in window",
+          "d2_usability_ruling": "FUNDING/LIQUIDITY CONTROL, PROSPECTIVE-ELIGIBLE on the same terms as SOFR; current store is sample only."
+        },
+        "ofr_mirror": {
+          "raw": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/series/FNYR-OBFR-A.json",
+          "url": "https://data.financialresearch.gov/v1/series/full/?mnemonic=FNYR-OBFR-A",
+          "coverage_in_store": "2648 rows 2016-03-01..2026-09-14",
+          "available_time_evidence_class": "RETROSPECTIVE_ONLY",
+          "revision_evidence": "none - no revision field in wire schema",
+          "gap_census": "served 2648 of 2750 weekdays; 102 isolated single-weekday absences; longest gap = 1 business day; 0 duplicates; 0 nulls",
+          "d2_usability_ruling": "RETROSPECTIVE STATE DESCRIPTION ONLY; same prohibitions as SOFR OFR mirror."
+        }
+      }
+    }
+  ],
+  "direct_probes_this_cycle": [
+    {
+      "endpoint": "https://markets.newyorkfed.org/api/rates/secured/sofr/last/3.json",
+      "ua": "my-quantitative-evidence-audit/1.0 (FOREX-NG7 A3 PIT source audit; read-only research)",
+      "when_utc": "2026-09-16T13:40Z (09:40 ET)",
+      "http_status": 200,
+      "finding": "row effectiveDate=2026-09-15 served (3.64, revisionIndicator=\"\"); publication bracket for T+1 rows measured: absent at 09:18:59Z, present by 13:40Z on the following business day"
+    },
+    {
+      "endpoint": "https://data.financialresearch.gov/v1/series/full/?mnemonic=FNYR-SOFR-A",
+      "ua": "my-quantitative-evidence-audit/1.0 (FOREX-NG7 A3 PIT source audit; read-only research)",
+      "when_utc": "2026-09-16T13:41Z",
+      "http_status": 200,
+      "finding": "47848 bytes identical to 10:38Z store: 0 added/0 removed/0 value-changed (single window, no revision-rate claim); OFR newest row still 2026-09-14 vs NY Fed 2026-09-15 => measured mirror lag"
+    }
+  ],
+  "cross_source_authenticity": "50/50 overlapping date+value pairs match exactly across the OFR store and NY Fed samples (all 5 rates, last 10 rows each); independently re-measured this cycle, extending the V1R1 A7 audit's 13/13.",
+  "boundary_compliance": {
+    "writes": "exactly one file: this dossier",
+    "not_written": [".zcode/", "plans/CYCLE_REGISTRY.json", "research/wayfinder/*", ".worktrees/*"],
+    "not_read": ["PROSPECTIVE-SHADOW-V1 outcomes", "S1"],
+    "purchases": "none; no signup; probes were light GETs to official endpoints with declared UA"
+  },
+  "known_limitations": [
+    "No per-row publication timestamp exists in any stored byte or API response; the (05:19, 09:40] ET T+1 bracket is a single-day measurement, and the ~08:40-09:00 ET schedule remains documented-not-served.",
+    "Revision-rate statistics (how often values change after first publication, and by how much) are NOT computable from existing stores: single vintage per series, zero flagged rows in the 50-row NY Fed sample, and the OFR wire schema carries no revision field. Establishing revision evidence requires prospective multi-vintage collection.",
+    "NY Fed historical depth in hand is 10 rows/rate; full history would need the documented /get/ time-range channel, which FDF-V1 measured HTTP 400 from the programmatic client (P-7: only the /last/ channel is named by that verdict).",
+    "OFR STFM mirror lag measured on one day only; treat freshness lag as >= ~4h on 2026-09-16, unquantified generally."
+  ],
+  "incidents": []
+}

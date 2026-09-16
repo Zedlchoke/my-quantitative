@@ -1,0 +1,242 @@
+{
+  "schema": "cng4_a3_prospective_contract@1",
+  "cycle_id": "CRYPTO-NG4",
+  "role": "A3-collection-contract",
+  "lane": "prospective-contract",
+  "authored_utc": "2026-09-16T20:45:00Z",
+  "frozen_sha_verification": {
+    "expected_sha": "938f7043fb791e4f7b5a94326633869e243b4ea9",
+    "measured_sha": "938f7043fb791e4f7b5a94326633869e243b4ea9",
+    "branch": "main",
+    "verdict": "PASS",
+    "working_tree_note": "clean except pre-existing untracked .zcode/; this lane wrote nothing outside the inbox dossier"
+  },
+  "decision_clock": {
+    "a2_dossier_path": "/Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/cng4-a2-mechanism-proposal-dossier.json",
+    "a2_dossier_exists": true,
+    "a2_landed_after_initial_check": "initial check at lane start found no cng4-a2 file; the A2 dossier was published while this lane ran and its decision clock was read and incorporated BEFORE handoff",
+    "a2_decision_grain_quoted": "UTC H1 on the frozen panels; decision evaluated at bar close on last_price; state-triggered at ARBITRARY hours (no calendar/session/settlement conditioning anywhere in the signal — X4-honest by construction)",
+    "a2_fold_structure_quoted": "4 contiguous temporal folds of the 366-day panel (approximately 82-92 panel days each, boundaries frozen pre-D1 in the cycle plan; margin day 2026-08-22 never a decision or holding day; every full holding window inside a single fold). MANDATORY KILL: any fold with < 4 anchor decisions per cell kills the family pre-selection (population floor 4 per fold, per the NG3-A5 2<4 precedent)",
+    "decision_clock": "H1 confirmed: 24 decision bars per UTC day",
+    "fold_alignment": "prospective window is partitioned to the A2 fold COUNT (4 folds); prospective folds are 15 days each (60/4) — shorter than A2's historical 82-92 day folds because the prospective window is new time; the >= 4 decisions/cell/fold floor is preserved by fold-count alignment, not fold-length imitation",
+    "parametric_note": "all floor arithmetic below is stated as functions of bars/day and fold count; the frozen floors (60 days, 90% valid-triad fraction, >= 4 cells/control/fold) are invariant to either"
+  },
+
+  "freeze_fields": {
+    "1_venue_and_instrument_identity": {
+      "coinbase": {
+        "source_id": "coinbase_advanced_trade_ws",
+        "endpoint": "wss://advanced-trade-ws.coinbase.com",
+        "instruments": ["BTC-USD", "ETH-USD"],
+        "identity_field": "payload.events[*].tickers[*].product_id / trades[*].product_id",
+        "evidence": "FDF census 10,353 msgs over 238s; product_id BTC-USD/ETH-USD measured in raw lines"
+      },
+      "kraken": {
+        "source_id": "kraken_futures_ws",
+        "endpoint": "wss://futures.kraken.com/ws/v1",
+        "instruments": ["PF_XBTUSD", "PF_ETHUSD"],
+        "identity_field": "payload.product_id (ticker/book), payload.trades[*].product_id (trade/trade_snapshot)",
+        "evidence": "FDF census 111,465 msgs over 239s; PF_XBTUSD/PF_ETHUSD measured"
+      },
+      "deribit": {
+        "source_id": "deribit_public_ws",
+        "endpoint": "wss://www.deribit.com/ws/api/v2",
+        "instruments": ["BTC-PERPETUAL", "ETH-PERPETUAL"],
+        "identity_field": "payload.params.channel + payload.params.data.instrument_name",
+        "evidence": "FDF census 228 msgs over 21.5s; instrument_name measured"
+      },
+      "no_substitution_rule": "instrument identity is frozen to these exact venue-native symbols; any delisting/symbol change closes the affected shard set and is a declared incident, never a silent rename"
+    },
+    "2_channel_and_schema_per_venue": {
+      "envelope_all_venues": "one JSON object per raw line: {recv_utc (local receive, ISO-8601 UTC, microsecond), channel, seq (collector-level; equals Deribit change_id where served, else null), payload (venue bytes decoded verbatim)} — the FDF census wire shape, reused unchanged",
+      "coinbase": {
+        "channels": ["ticker", "market_trades", "l2_data", "heartbeats", "subscriptions"],
+        "schema_measured": "payload = {channel, timestamp (exchange, ns ISO-8601), sequence_num (int, per-connection), events[]}; market_trades events carry trade_id (per-product int), time (exchange), price, size, side; l2_data events carry product_id + updates[] each with event_time, price_level, new_quantity, side",
+        "census_counts": {"ticker": 1272, "market_trades": 703, "l2_data": 8135, "heartbeats": 239, "subscriptions": 4}
+      },
+      "kraken": {
+        "channels": ["ticker", "trade", "trade_snapshot", "book", "heartbeat", "event_info"],
+        "schema_measured": "ticker payload = {time (ms epoch), product_id, funding_rate, funding_rate_prediction, relative_funding_rate, next_funding_rate_time, bid, ask, markPrice, index, ...}; trade inner objects = {product_id, feed:'trade', uid (UUID), side, type:'fill', time (ms), qty, price, seq (per-product int)}; book update = {feed:'book', product_id, side, seq (per product+side int), price, qty, timestamp (ms)}",
+        "census_counts": {"ticker": 1200, "trade": 239, "trade_snapshot": 2, "book": 109998, "heartbeat": 25, "event_info": 1}
+      },
+      "deribit": {
+        "channels": ["ticker.BTC-PERPETUAL.100ms", "ticker.ETH-PERPETUAL.100ms", "book.BTC-PERPETUAL.100ms", "book.ETH-PERPETUAL.100ms", "volatility_index"],
+        "schema_measured": "JSON-RPC 2.0; payload.params.data = {timestamp (ms epoch), type:'snapshot'|'change', change_id (per-instrument int), instrument_name, bids/asks [[action,price,qty],...]}; ticker data adds best_bid/ask_price+amount, mark_price, index_price, current_funding, funding_8h, open_interest; rpc_response carries usIn/usOut/usDiff",
+        "census_counts": {"book.BTC-PERPETUAL.100ms": 63, "book.ETH-PERPETUAL.100ms": 63, "ticker.BTC-PERPETUAL.100ms": 60, "ticker.ETH-PERPETUAL.100ms": 39, "rpc_heartbeat": 1, "rpc_response": 2}
+      },
+      "schema_lock": "collector writes the measured fields verbatim; NO field renaming, NO unit conversion, NO reordering at capture; derivation-level normalization is separate and versioned"
+    },
+    "3_timestamp_fields": {
+      "rule": "every raw line carries BOTH clocks; derivations must record which clock they consume",
+      "exchange_timestamp": {
+        "coinbase": "payload.timestamp (ns ISO-8601, message-level) + events event_time / trades time",
+        "kraken": "payload.time / payload.timestamp (ms epoch) / trades time (ms)",
+        "deribit": "payload.params.data.timestamp (ms epoch) + rpc usIn/usOut (micros)"
+      },
+      "local_receive_timestamp": {
+        "all": "recv_utc stamped at socket read on the collection host, monotonic-clock offset recorded at connection start for drift audit",
+        "clock_audit": "per-shard records recv_utc vs exchange-timestamp offset distribution (P50/P99) so venue-vs-local drift is measured, not assumed"
+      }
+    },
+    "4_sequence_semantics_per_venue": {
+      "coinbase": "payload.sequence_num: per-connection monotone counter across ALL channels, starts at 0 (measured 0,1,2,3,...,8). Resets on reconnect -> sequence epochs are (connection_epoch, sequence_num). Cross-reconnect continuity is checked instead on per-product market_trades trade_id (monotone per product; measured 1093565225...)",
+      "kraken": "book feed: per (product_id, side) seq, consecutive increments expected (measured seq 296370912); trade feed: per-product seq (measured 595016) with non-monotone UUID uid (uid is an identity, NOT an ordering key); ticker: no sequence number — time (ms) only",
+      "deribit": "book channel: change_id per instrument, consecutive increments expected (measured ETH 135083969957 -> 135084001413, BTC 174318940803 -> 174318969050; collector already surfaces it in the seq envelope field); ticker: no sequence — timestamp (ms) only",
+      "consequence": "gap detection is venue-specific (see field 5); venues without full sequencing (tickers) are NEVER claimed complete — their bars inherit validity from the sequenced channels of the same venue"
+    },
+    "5_reconnect_and_gap_policy": {
+      "principle": "fail-loud, gap-marked, never silent; Deribit measured 1 disconnect in a 21.5s census window — reconnects are ROUTINE and must be engineered for, not treated as exceptional",
+      "on_gap": [
+        "detect: CB sequence_num delta > 1 across consecutive messages; KR book seq delta > 1 per (product, side); KR trade seq delta > 1 per product; DB change_id delta != 1 per instrument",
+        "record: append an explicit gap record line {type:'gap', venue, channel, instrument, from_seq, to_seq, missing_count, first_recv_utc} to the raw shard — the gap is DATA, never dropped",
+        "recover: immediately re-subscribe and take a fresh venue snapshot (CB re-subscribe; KR new book/trade_snapshot; DB new book snapshot with type:'snapshot'); never interpolate, never reuse a stale snapshot",
+        "invalidate: any derived H1 bar whose inputs span a gap interval is marked invalid_gapped in the derived panel with the gap record ids attached"
+      ],
+      "on_disconnect": [
+        "exponential backoff reconnect (1s, 2s, 4s, ... capped 60s), new connection_epoch assigned, snapshot taken before deltas resume",
+        "connection_epoch boundaries recorded in shard manifest; no cross-epoch sequence stitching anywhere in derivations"
+      ],
+      "silent_data_never": "a message that fails parse/schema is written raw to a shard-rejected subrecord with reason; nothing is dropped unlogged"
+    },
+    "6_heartbeat_policy": {
+      "coinbase": "subscribe heartbeats channel (measured ~1 Hz, 239 msgs/238s); absence > 15s -> probe then reconnect",
+      "kraken": "subscribe heartbeat feed (measured ~10s cadence, 25 msgs/236s); absence > 60s -> reconnect",
+      "deribit": "public/set_heartbeat 30s + test_request on silence (measured 1 rpc_heartbeat at connect+10s in the truncated census window); absence > 45s -> reconnect",
+      "local_watchdog": "per-venue wall-clock watchdog + TCP keepalive; heartbeat events counted per shard in the manifest so liveness is auditable"
+    },
+    "7_raw_byte_hashing_and_manifest_conventions": {
+      "layout": "content-addressed, append-only under the NEW prospective root /Users/hoangminhlong/.my-quantitative-data/crypto-ng4-ws/raw/<venue>/<YYYY>/<MM>/<DD>/<conn_epoch>.jsonl (this dossier creates nothing; it fixes the convention)",
+      "shard_rule": "one shard per (venue, UTC day, connection_epoch); written append-only via temp+atomic rename; a closed shard is NEVER rewritten (any post-close defect = new correction shard + incident record)",
+      "hashing": "sha256 over the full closed shard file; manifest row per shard: {venue, connection_epoch, path, sha256, bytes, lines, per_channel_counts, gap_count, dup_count, heartbeat_count, first_recv_utc, last_recv_utc, closed_utc}",
+      "manifest": "append-only JSONL manifest at the root; hash-of-manifest-head chained into each new row (prev_manifest_sha256) so truncation/tamper is detectable",
+      "precedent": "same conventions as FDF raw capture: raw_sha256 + total_bytes + per_channel counts recorded per stream (streams_manifest.json, free_data_frontier_v1_run)"
+    },
+    "8_duplicate_and_out_of_order_policy": {
+      "duplicates": "raw capture is verbatim and NEVER deduplicated; derivation-level dedupe key = (venue, connection_epoch, venue sequence/trade id, sha256 of raw line); duplicates counted per shard (dup_count) and dropped only at derivation, never silently (dedupe counts land in derived-panel metadata)",
+      "out_of_order": "raw lines are kept in arrival (recv_utc) order, never reordered; derived bars assign events by EXCHANGE event timestamp within [bar_start - 300s, bar_close + 10s close-delay]; events later than the close-delay are counted late_late_count and excluded from that bar (they are preserved raw, never backfilled into an older bar)",
+      "snapshot_descending_note": "trade snapshots arrive newest-first (measured Coinbase trade_id descending in snapshot) — descending order inside a snapshot is NOT out-of-order; ordering keys are per-product exchange ids, not arrival order"
+    },
+    "9_minimum_coverage_duration": {
+      "frozen_floor": "60 consecutive UTC calendar days from the declared start date, all three venues simultaneously",
+      "calendar_arithmetic": "60 days = 1440 H1 decision bars (24/day); any 60-day window contains >= floor(60/7)*2 = 16 weekend days (>= 384 weekend H1 bars)"
+    },
+    "10_minimum_complete_observation_count": {
+      "valid_triad_definition": "an H1 bar is a VALID TRIAD iff all three venues contributed at least one non-stale sequenced message inside [bar_start-300s, bar_close+10s] and no gap record intersects the bar's input interval",
+      "frozen_floors": {
+        "total_valid_triads": ">= 1296 of 1440 (90%)",
+        "per_fold_valid_triads": ">= 324 of 360 (90%) per chronological fold (4 folds x 15 days, aligned to the A2 fold count)",
+        "per_control_cell": ">= 4 valid triads per control cell per fold (the NG3 population falsifier floor, restated as A2's MANDATORY KILL: any fold with < 4 anchor decisions per cell kills the family)"
+      }
+    },
+    "11_weekend_coverage_rule": {
+      "rule": "the market is 24/7: collection runs every UTC calendar day including weekends; no weekday schedule exists; collection presence is verified per weekend day",
+      "ng3_x4_binding": "CRYPTO-NG3 X4 (CLOCK/CALENDAR, 'Q-7 clock-only conditioning shadow + day-of-week geometry (the NG1 killer class)') is the binding lesson: NG3 A4 was killed by X4 wkndliq rho 0.326 and A5 by session_asia 0.626 — calendar-conditioned structure is a live killer class, so weekend cells must be POPULATED, not assumed",
+      "measured_weekend_share": "S4 panels: 2496/8760 = 0.285 of H1 rows are Sat/Sun (exactly 2/7) — 24/7 clock confirmed on 365 days x 3 symbols",
+      "hard_requirement": "any weekend UTC day with zero valid triads makes the coverage floor UNMET (missing = missing); the window is then invalid until the stopping rule (field 14) is satisfied"
+    },
+    "12_preregistered_regime_definitions": {
+      "panel_identity": {
+        "series_id": "S4:binance-daily-h1-panels (CADS S4, V3-GA4 GRANTED)",
+        "panel_BTCUSDT_h1.csv": "sha256 111c1a2d6d62e26c1874bb428c10216e4926ae37ab0102ca098849ca25f5e7b1 (re-measured byte-exact in .runtime/v3_cads_store/objects/11/ at authoring time, 2,445,780 bytes)",
+        "panel_ETHUSDT_h1.csv": "sha256 ebd487a69404a1104d9123584c93af044a2796c338185d8466599b9f34bb440b",
+        "panel_SOLUSDT_h1.csv": "sha256 c4ca0b6eb719122054abec2a03fcac20d3f7794c5bf6d3c546ee6db1cb6e2107",
+        "panel_manifest.json": "sha256 761190a52e6504a74e12748efdb232dba03b40fa3065d35820b025283122e08b",
+        "span": "2025-08-22 .. 2026-08-21, 365 days, 8760 hourly rows per symbol"
+      },
+      "vol_regime_estimator": "for each prospective H1 bar t: r_t = ln(median cross-venue mid_t / median cross-venue mid_{t-1}) on the instrument's asset (BTC instruments: CB BTC-USD / KR PF_XBTUSD / DB BTC-PERPETUAL; ETH likewise); RV24(t) = sqrt(sum of r_i^2 over the trailing 24 bars) — the same estimand as the S4 daily RV (24h sum of hourly squared log returns), computable every H1 bar",
+      "frozen_constants_from_s4": {
+        "BTC": {"LOW_below": 0.0171, "MID_below": 0.0299, "STRESS_above": 0.0542, "source": "daily-RV P33.3 / P66.7 / P90 of 365 S4 BTCUSDT days"},
+        "ETH": {"LOW_below": 0.0331, "MID_below": 0.0571, "STRESS_above": 0.1042, "source": "daily-RV P33.3 / P66.7 / P90 of 365 S4 ETHUSDT days"}
+      },
+      "labels": "LOW: RV24 < LOW_below; MID: LOW_below <= RV24 < MID_below; HIGH: RV24 >= MID_below; STRESS (overlapping flag): RV24 > STRESS_above",
+      "outcome_independence": "constants are fixed today from the closed historical S4 panel bytes; labels are mechanical functions of prospective prices; no outcome, anchor, or strategy result enters the estimator",
+      "event_regime_second_definition": "VOLATILITY_EVENT bar: RV24 crosses above STRESS_above from below within the bar — this is the preregistered 'event regime' cell used by the D2 controls' fold partition"
+    },
+    "13_missing_is_missing_no_synthetic_backfill": {
+      "rule": "missing bars/cells stay missing and are COUNTED; no interpolation, no forward-fill, no carry-forward, no venue-cross substitution for a missing venue, no synthetic reconstruction from any other source — ever, for any purpose",
+      "prospective_only": "WebSocket data is prospective-only from collector start: it can NEVER backfill history and NEVER adjusts the historical family; the S4/CADS frozen set and all prior cycle panels are untouched (separate content-addressed root; zero writes outside this dossier by this lane)",
+      "floor_interplay": "coverage floors are evaluated over VALID triads only; missing bars reduce the valid count and can only fail the floor, never be papered over"
+    },
+    "14_stopping_rule_outcome_independent": {
+      "rule": "stop = earliest UTC date D such that D >= start_date + 60 days AND every floor of fields 9-11 is met at D; if floors are unmet at start+60, collection CONTINUES (never restarts) until the earliest date they are met or the Lead declares terminal BLOCKED/INCOMPLETE per plan",
+      "calendar_binding": "the stopping date is a pure function of (declared start date, measured coverage); no outcome, signal, PnL, or analysis result can move it; start_date itself is declared by the Lead in the plan BEFORE any collector process starts",
+      "no_peeking": "no interim analysis consumes the stream before the stop date is reached; interim reads are limited to the coverage/liveness audit (shard manifests, gap counts, valid-triad counts)"
+    }
+  },
+
+  "d2_control_cell_definitions_and_floor_arithmetic": {
+    "frozen_event_constants_from_fdf_census_bytes": {
+      "spread_wide_threshold_per_venue_rel": {"coinbase": 5e-06, "kraken": 6.5e-05, "deribit": 3.5e-05, "definition": "spread/mid >= 5x venue census P50 (census P50 measured: CB ~1e-6 [0.1-tick], KR 1.3e-5, DB 7e-6)"},
+      "divergence_event_thresholds_rel": {"cb-kr": 0.000586, "cb-db": 0.000908, "kr-db": 0.00031, "definition": "pairwise |mid_a - mid_b| / midmean >= 2x census P90 (census P90: 2.93e-4 / 4.54e-4 / 1.55e-4)"},
+      "basis_event_threshold_rel": 0.001,
+      "funding_state_partitions": {"sign": "positive vs non-positive hourly funding rate (KR funding_rate / DB current_funding)", "magnitude": "|relative_funding_rate| >= 1.377e-5 (KR PF_XBTUSD census value, frozen)"},
+      "provenance": "all constants computed from the already-collected FDF census raw bytes (coinbase/kraken_futures/deribit_sample.jsonl, sha256 pinned in streams_manifest.json); no new collection was performed to derive them"
+    },
+    "decision_frequency_arithmetic_H1": {
+      "bars_per_day": 24,
+      "window_days": 60,
+      "total_H1_bars": 1440,
+      "folds": "4 chronological folds x 15 days = 360 H1 bars/fold (fold count aligned to A2's 4-fold family structure)",
+      "validity_floor": "90% -> >= 324 valid triads/fold, >= 1296 total",
+      "population_requirement": ">= 4 valid bars per control cell per fold (NG3 falsifier: fold1 population 2 < 4 killed A5 — 'fewer than 4 traded episodes in any fold -> that fold not populated -> D2 infeasible', research/control/crypto_ng3_run/audits/a7_d2_methodology_cng3.json Q4; restated as A2's MANDATORY KILL)",
+      "min_cell_share_for_population": "4 / 324 = 1.235% of a fold's valid bars"
+    },
+    "per_control_cells": [
+      {"control": "venue_divergence", "dense_cell": "bar where NO pair exceeds its frozen divergence threshold (calm)", "sparse_cell": "bar where ANY pair exceeds its frozen threshold", "census_scale": "census P50 1.35e-4..4.28e-4, max 4.6e-4; thresholds sit at 5.9e-4..9.1e-4", "expected_sparse_share": "several % in normal regimes, concentrated in stress", "fold_cells_at_share": "share s gives 324*s cells/fold; s >= 1.235% satisfies the floor; at s=5% -> 16.2 cells/fold (4.05x margin)"},
+      {"control": "basis_spot_perp", "dense_cell": "|basis|/mid < 1e-3 (frozen)", "sparse_cell": "|basis|/mid >= 1e-3", "census_scale": "cross-venue mids agree to <= 4.6e-4 in census; 1e-3 basis is a stress event", "fold_cells_at_share": "same s-arithmetic as divergence; dense cell ~>=99% -> >=321/fold guaranteed"},
+      {"control": "spread_proxy", "dense_cell": "bar where all venues tight (below frozen 5xP50 thresholds)", "sparse_cell": "bar where ANY venue spread >= its frozen threshold", "census_scale": "KR/DB P50 thresholds fire on ~half of census bars by construction; CB fires rarely in calm", "fold_cells_at_share": "sparse cell share at/above census construction ~>= 40% -> >= 129/fold (32x margin)"},
+      {"control": "weekend_liquidity", "cell_def": "weekend cell = bar in Sat/Sun UTC; weekday cell otherwise", "calendar_guarantee": "any 15-day fold contains >= 4 weekend days = 96 weekend H1 bars; at 90% validity >= 86 >= 4 (21.5x margin); 60 days guarantee >= 16 weekend days overall", "ng3_binding": "X4 killer class (wkndliq 0.326 killed NG3 A4; session_asia 0.626 killed A5) — this control's cells MUST exist and are calendar-guaranteed to"},
+      {"control": "funding_state", "dense_cell": "|relative_funding_rate| >= 1.377e-5 (frozen KR census value) — 'funding-active'", "sparse_cell_2": "funding sign partition (positive vs non-positive)", "measured_state": "census: KR PF_XBTUSD funding_rate +1.042, relative 1.377e-5; DB current_funding 7.781e-5 — both positive at capture", "fold_cells_at_share": "magnitude cell ~50% by construction -> >= 162/fold (40x); sign cell is regime-dependent and is a MEASURED population property: an all-one-sign fold leaves the minority sign cell at 0 -> declared floor failure (fail-loud), never threshold-tuned away"}
+    ],
+    "floor_meaningfulness_statement": "the floor is not decorative: (a) NG3 died on exactly this falsifier (fold1 = 2 < 4) and A2 restates it as a MANDATORY KILL; (b) every control carries at least one partition whose frozen constant makes the >= 4 cells/fold requirement hold with >= 21.5x margin under mere 90% validity, so a floor PASS is informative about the market, not the threshold; (c) sparse event cells are frozen absolute constants — if realized frequencies underpopulate them, that is a declared terminal floor failure (fail-loud), and retuning thresholds post hoc is forbidden; (d) weekend cells are guaranteed by calendar arithmetic alone, honoring the NG3 X4 lesson that clock/calendar structure is a measured killer class"
+  },
+
+  "coverage_floor_summary": {
+    "min_duration_days": 60,
+    "decision_clock": "H1, confirmed from the cng4-a2 dossier (24 bars/day)",
+    "total_bars": 1440,
+    "min_valid_triads_total": 1296,
+    "min_valid_triads_per_fold": 324,
+    "folds": "4 folds x 15 days (count aligned to A2)",
+    "min_cells_per_control_per_fold": 4,
+    "weekend_rule": "every UTC day collected; weekend days >= 16 in any 60-day window; a fully-missing weekend day fails the floor",
+    "regime_constants": "S4-frozen BTC 0.0171/0.0299/0.0542, ETH 0.0331/0.0571/0.1042 (daily-RV P33.3/P66.7/P90)"
+  },
+
+  "collection_not_started_attestation": {
+    "attestation": "This lane is DESIGN ONLY. No collector process, socket, network stream, subscription, or account creation was started, and no byte was written to any data root. All quantitative constants were derived from (a) already-collected FDF census bytes on local disk and (b) already-frozen S4 CADS panel objects read via their content addresses.",
+    "sockets_opened_by_this_lane": 0,
+    "files_written_by_this_lane": ["only /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/cng4-a3-prospective-contract-dossier.json"],
+    "s1_accessed": false,
+    "prospective_shadow_v1_outcomes_read": false,
+    "historical_family_modified": false
+  },
+
+  "evidence_citations": {
+    "fdf_census_summaries": [
+      ".worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/f3_canaries/stream_coinbase_advanced_trade_ws_summary.json (10,353 msgs)",
+      ".worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/f3_canaries/stream_kraken_futures_ws_summary.json (111,465 msgs)",
+      ".worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/f3_canaries/stream_deribit_public_ws_summary.json (228 msgs; 1 disconnect measured)"
+    ],
+    "fdf_raw_manifests": ".worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/manifests/streams_manifest.json — raw_sha256: coinbase_sample.jsonl 64308a2843ecab8fc73d1852d1c26e410b0de7e1eb62a9daf22b1e64b9aab4ae; kraken_futures_sample.jsonl 51981a1a4500faec07cd6fd7708d03e1b48082c40b2c8fa54df42c22e30c76c1; deribit_sample.jsonl 746baa3f49a1694d71a757f1adead63b6a12fd0b7f9fc7e1533a6ec2e0072700",
+    "fdf_raw_subtree": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/streams/{coinbase,kraken_futures,deribit}_sample.jsonl (wire formats quoted in field 2 measured from these bytes)",
+    "s4_panels": "S4:binance-daily-h1-panels objects in .runtime/v3_cads_store/objects/ (BTC object re-verified byte-exact against pin 111c1a2d...); registry evidence research/control/research_platform_v3_run/authority_registry_journal.jsonl line 39",
+    "ng3_lessons": [
+      "plans/PLAN_crypto_ng3.md section 5: X4 CLOCK/CALENDAR = 'Q-7 clock-only conditioning shadow + day-of-week geometry (the NG1 killer class)'",
+      "research/control/crypto_ng3_run/audits/a7_d2_methodology_cng3.json Q4/Q6: fold1 population 2 < 4 is the proposal's own preregistered POPULATION falsifier (fold not populated -> D2 infeasible); NG3 A4 killed by X4 wkndliq 0.326, A5 by session_asia 0.626 and fold-population"
+    ]
+  },
+  "known_limitations": [
+    "FDF census windows are 21.5s (Deribit) to 239s (Coinbase/Kraken) — tail constants (2xP90 divergence, wide-spread thresholds) are frozen from short windows and are deliberately conservative; underpopulation is a declared fail-loud terminal, not a tuning input",
+    "Deribit trade channel was NOT in the census subscription set (0 trade messages measured); per-instrument trade-id sequencing for Deribit is therefore NOT frozen from evidence and the contract excludes Deribit trades from sequenced-channel validity until a pre-start protocol census extends the evidence",
+    "prospective folds (15 days) are shorter than A2's historical fold scale (82-92 days); floor is preserved by fold-count alignment and the >= 4 cells/cell-share arithmetic, not by fold-length imitation",
+    "census divergence/spread constants are BTC-scale; ETH thresholds reuse the same relative thresholds (no ETH-pair constants derivable from the BTC-heavy census) — same fail-loud semantics apply"
+  ],
+  "incidents": [],
+  "boundaries_honored": {
+    "wrote_only": "this dossier (+ handoff next)",
+    "never_wrote": [".zcode/", "plans/CYCLE_REGISTRY.json", "research/wayfinder/*", ".worktrees/*"],
+    "never_read": ["PROSPECTIVE-SHADOW-V1 outcomes", "S1"],
+    "no_sockets_no_collection_no_signup_no_purchase": true
+  }
+}
