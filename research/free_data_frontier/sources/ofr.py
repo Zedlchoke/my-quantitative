@@ -6,8 +6,7 @@ Selection is keyword-based on preregistered metadata terms; never PnL-based.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import List
+from urllib.parse import urlencode
 
 from ..contract import SchemaRefusal
 from ..http import build_record, redact_headers, retrieve
@@ -16,32 +15,31 @@ from .base import SourceContext, SourceRun, strict_json_probe
 SOURCE_ID = "ofr_stfm"
 BASE_URL = "https://data.financialresearch.gov/v1"
 TIMEOUT = (10.0, 60.0)
-MAX_METADATA_SCANS = 400
-MAX_SERIES = 12
+CURATED_MNEMONICS = (
+    "FNYR-SOFR-A",
+    "FNYR-EFFR-A",
+    "FNYR-BGCR-A",
+    "FNYR-TGCR-A",
+    "FNYR-OBFR-A",
+)
 
 CENSUS = {
     "official_api_root": BASE_URL + "/",
     "documentation": "https://www.financialresearch.gov/short-term-funding-monitor/",
     "terms": "https://www.financialresearch.gov/data/",
-    "api_shape": "GET /v1/mnemonics/, GET /v1/metadata/{mnemonic}, GET /v1/timeseries/{mnemonic}",
+    "api_shape": "GET /v1/metadata/mnemonics/, GET /v1/series/full/?mnemonic=...",
     "key_required": False,
     "account_required": False,
     "redistribution": "US-government-authored data; OFR data disclaimers pinned at census",
     "revision_semantics": "OFR publishes revised STFM data; per-row revision indicator not assumed",
 }
 
-# Preregistered keyword curation over mnemonic metadata (no PnL involvement).
-FUNDING_KEYWORDS = [
-    "repo",
-    "repurchase",
-    "sofr",
-    "funding",
-    "money market",
-    "commercial paper",
-    "certificate of deposit",
-    "treasury collateral",
-    "lending",
-]
+def mnemonics_url() -> str:
+    return f"{BASE_URL}/metadata/mnemonics/"
+
+
+def full_series_url(mnemonic: str) -> str:
+    return f"{BASE_URL}/series/full/?{urlencode({'mnemonic': mnemonic})}"
 
 
 def run(ctx: SourceContext) -> SourceRun:
@@ -50,7 +48,7 @@ def run(ctx: SourceContext) -> SourceRun:
     headers = redact_headers({"Accept": "application/json"})
 
     inv = retrieve(
-        "GET", f"{BASE_URL}/mnemonics/", headers=headers, session=ctx.session,
+        "GET", mnemonics_url(), headers=headers, session=ctx.session,
         limiter=limiter, max_bytes=8 * 1024 * 1024, timeout=TIMEOUT,
         disk_guard=ctx.disk_guard,
     )
@@ -58,7 +56,7 @@ def run(ctx: SourceContext) -> SourceRun:
         state.add(build_record(
             inv, source_id=SOURCE_ID, dataset_id="inventory_mnemonics",
             authority_status="BLOCKED_NETWORK" if inv.error else "BLOCKED_SCHEMA",
-            notes=["GET /v1/mnemonics/ failed"],
+            notes=["GET /v1/metadata/mnemonics/ failed"],
         ))
         return state
     try:
@@ -89,32 +87,22 @@ def run(ctx: SourceContext) -> SourceRun:
     run_state_set_raw(record, inv.raw_sha256, inv.bytes_written)
     state.add(record)
 
-    # Bounded metadata scan for the preregistered funding/liquidity keywords.
-    selected: List[str] = []
-    scanned = 0
-    for mnemonic in mnemonics:
-        if scanned >= MAX_METADATA_SCANS:
-            state.notes.append(f"metadata scan bounded at {MAX_METADATA_SCANS}")
-            break
-        meta = retrieve(
-            "GET", f"{BASE_URL}/metadata/{mnemonic}", headers=headers,
-            session=ctx.session, limiter=limiter, max_bytes=512 * 1024,
-            timeout=TIMEOUT, disk_guard=ctx.disk_guard,
-        )
-        scanned += 1
-        if meta.error or meta.http_status != 200 or not meta.payload:
-            continue
-        text = meta.payload.decode("utf-8", errors="replace").lower()
-        if any(keyword in text for keyword in FUNDING_KEYWORDS):
-            selected.append(mnemonic)
-
-    state.event("curated_selection", {"scanned": scanned, "count": len(selected),
-                                      "mnemonics": selected})
+    missing = sorted(set(CURATED_MNEMONICS) - set(mnemonics))
+    if missing:
+        state.notes.append(f"curated mnemonics absent from inventory: {missing}")
+    selected = [m for m in CURATED_MNEMONICS if m in set(mnemonics)]
+    state.event("curated_selection", {
+        "selection_basis": "preregistered reference-rate identities; no outcomes",
+        "inventory_count": len(mnemonics),
+        "count": len(selected),
+        "mnemonics": selected,
+    })
 
     series_dir = ctx.source_dir(SOURCE_ID) / "series"
-    for mnemonic in selected[:MAX_SERIES]:
+    series_dir.mkdir(parents=True, exist_ok=True)
+    for mnemonic in selected:
         ts = retrieve(
-            "GET", f"{BASE_URL}/timeseries/{mnemonic}?format=json&limit=120",
+            "GET", full_series_url(mnemonic),
             headers=headers, session=ctx.session, limiter=limiter,
             max_bytes=8 * 1024 * 1024, timeout=TIMEOUT, disk_guard=ctx.disk_guard,
         )
@@ -132,7 +120,7 @@ def run(ctx: SourceContext) -> SourceRun:
             record = build_record(
                 ts, source_id=SOURCE_ID, dataset_id=f"series_{mnemonic}",
                 authority_status="PASS_SAMPLE",
-                notes=["bounded recent sample; revisions unverified: retrieval-time evidence only"],
+                notes=["full series response; revisions unverified: retrieval-time evidence only"],
             )
             record["raw_path"] = str(dest)
             run_state_set_raw(record, ts.raw_sha256, ts.bytes_written)
