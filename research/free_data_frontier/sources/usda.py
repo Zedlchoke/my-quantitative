@@ -93,7 +93,9 @@ def run(ctx: SourceContext) -> SourceRun:
     listing.write_text(json.dumps({"page": OCE_PAGE, "artifacts": urls}, indent=2) + "\n")
     state.event("artifact_inventory", {"count": len(urls), "recent": urls[:8]})
 
-    # Bounded acquisition: 2 most recent releases (xml/txt/xls) + historical samples.
+    # Bounded acquisition: one artifact per type from the earliest
+    # release-month in the listing (measured A7-R5: this takes 0826, the
+    # earliest month the page serves), plus direct historical probes.
     selected: List[str] = []
     for suffix in (".xml", ".txt", ".xls"):
         for url in urls:

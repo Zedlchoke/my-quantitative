@@ -1,182 +1,153 @@
 {
   "schema": "a7_terminal_audit@1",
   "cycle_id": "FREE-DATA-FRONTIER-V1",
-  "audited_sha": "f4076f47f7bbd6c99e521afa973aabb97696536b",
+  "audited_sha_round1": "f4076f47f7bbd6c99e521afa973aabb97696536b",
+  "audited_sha_round2": "f8b09afa886852c936b41c2cecb44fe19f0b247b",
   "audited_branch": "orca/free-data-frontier-v1-integration",
-  "measured_utc": "2026-09-16T00:00:00Z",
-  "measured_utc_note": "audit sandbox has no wall clock; date from workspace context. All checks below are read-only file inspections by the A7 auditor; the auditor toolset has NO execution capability, so hash recomputation, pytest, and git porcelain checks are NOT_RUN_EXECUTION_REQUIRED.",
-  "claim_under_audit": {
-    "file": "/Users/hoangminhlong/my-quantitative/.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json",
-    "terminal_verdict": "FREE_DATA_FRONTIER_V1_PASS_PARTIAL"
-  },
-  "step_results": {
-    "step1_raw_hash_recompute": {
-      "status": "NOT_RUN_EXECUTION_REQUIRED",
-      "detail": "Auditor cannot execute sha256. Partial substitute performed: raw-file EXISTENCE verified by directory listing for every record of the small manifests (nyfed 5/5, nws 8/8, eia 7/7, usda 4/4, sec_ftd 3/3, sec_nport 2/2 core + extracted members present, streams 3/3) and archive members incl. cnsfails200907a/b, 200908a/b, 2017xx-2021xx (listing), 201910a_0, 202607a/b, 202608a/b. All pinned raw_sha256 strings are exactly 64 hex chars (regex over all 8 manifests, 467 records). Hash-vs-bytes equality remains UNVERIFIED by this audit; ALL_MATCH rests on the cycle's own verifier (manifest.py verify_manifest), which is correct code but whose runs were not persisted.",
-      "evidence": [
-        "research/free_data_frontier/manifest.py (recompute_sha256 + ALL_MATCH logic)",
-        "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/ (existence checks)"
-      ]
-    },
-    "step2_manifest_records": {
-      "status": "PASS_WITH_SAMPLING_NOTE",
-      "detail": "All records read in full for 7 manifests (nyfed 5, sec_nport 2, usda 4, eia 7, nws 8, sec_ftd 3, streams 3). sec_ftd_archive (435 records) verified by structure: 434 dataset_id monthly_* + 1 official_page_inventory, all 467 raw_sha256 across manifests exactly 64-hex, earliest record cnsfails200907a (manifest sorted by dataset_id). All plan-mandated fields present in every record read: source_id, dataset_id, canonical_request_id, source_url_redacted, retrieved_time_utc, http_status, content_type, content_length, raw_path, raw_sha256, parser_version, authority_status, event/effective/available_time_utc + available_time_evidence, vintage, retrieval_time_only, notes. P-1 hunt: regex over the ENTIRE control dir found ZERO non-null available_time_utc; therefore no available_time without evidence and no retrieved_time->available_time copy is possible. contract.validate_record enforces both rules in code (lines 111-120).",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/manifests/*.json (8 files, 467 records)",
-        "research/free_data_frontier/contract.py"
-      ]
-    },
-    "step3_redaction_hunt": {
-      "status": "PASS",
-      "detail": "Regex hunts over all control JSONs: no email-shaped strings (only parser_version 'free_data_frontier@1'), no api_key=<value> with a value (EIA URLs carry api_key=<redacted>), no EIA_API_KEY= value, no Bearer tokens, no credential-length opaque strings. env.py is presence-only by construction; boundary test test_no_secret_values_in_source_tree enforces source tree. Contact values do not appear anywhere in control artifacts (redact_headers '<redacted:contact:len=N>' form not even needed since response headers are not persisted in summaries). No leak found.",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/ (all *.json)",
-        "research/free_data_frontier/env.py",
-        "research/free_data_frontier/http.py (redact_query/redact_headers)"
-      ]
-    },
-    "step4_git_no_raw_bytes": {
-      "status": "PARTIAL_NOT_RUN_EXECUTION_REQUIRED",
-      "detail": "git ls-files / status --porcelain / commit-stat of f4076f4, 9671048, f6be0c6, 4ae2f1d CANNOT be run (no execution). Filesystem substitute: zero *.zip anywhere under the integration worktree; raw root is outside the repo (/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw, f0_evidence raw_root_inside_git=false); all manifest raw_path values under that external root; worktree .git HEAD = refs/heads/orca/free-data-frontier-v1-integration as claimed. Dirty-state and per-commit surface checks remain NOT_RUN.",
-      "evidence": [
-        ".git/worktrees/integration2/HEAD",
-        "research/control/free_data_frontier_v1_run/f0_bootstrap/f0_evidence.json"
-      ]
-    },
-    "step5_code_guards": {
-      "status": "PASS",
-      "detail": "(a) SEC rate limiter: contract.SEC_MAX_REQUESTS_PER_SECOND=8.0; sec_bulk.SEC_MIN_INTERVAL=1.0/8.0, passed to ctx.limiter_for for every SEC request. (b) DiskGuard floor 15 GiB (contract.DISK_FLOOR_BYTES=15*1024**3); unknown-size fail-closed via UNKNOWN_SIZE_REFUSE_ABOVE_BYTES=50MiB margin (http.py assert_download_fits); floor re-checked at AtomicSink.commit and aborts. (c) RetryPolicy bounded max_attempts=3, retryable_status only 429 or 5xx; network path catches only ConnectionError/Timeout. (d) build_record sets retrieval_time_only=(available_time is None) and validate_record refuses retrieval_time_only=True with available_time set, and refuses available_time without evidence; retrieved_time is never assigned to available_time anywhere. Declared UA is SENT raw (SEC policy) while redacted copies are stored (canonical_request_identity operates on copies).",
-      "evidence": [
-        "research/free_data_frontier/contract.py",
-        "research/free_data_frontier/http.py",
-        "research/free_data_frontier/sources/sec_bulk.py"
-      ]
-    },
-    "step6_stream_summaries": {
-      "status": "PASS_WITH_FINDING_F3",
-      "detail": "Internal consistency verified: coinbase 239+8135+703+4+1272=10353 msgs, total_bytes 15973858 == manifest content_length; kraken 109998+1+25+1200+239+2=111465, 23412232 == manifest; deribit 63+63+1+2+60+39=228, 257810 == manifest. raw_sha256 in each summary == streams_manifest pinned digest (64308a28..., 51981a1a..., 746baa3f...). Disconnects 0/0/1 match verdict. BUT gap accounting for Coinbase and Kraken is vacuous (finding F3). Auditor re-hash of the 3 JSONLs NOT_RUN_EXECUTION_REQUIRED.",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/f3_canaries/stream_*_summary.json",
-        "research/control/free_data_frontier_v1_run/manifests/streams_manifest.json",
-        "research/free_data_frontier/streams/kraken.py (sequence_of returns None unconditionally)",
-        "research/free_data_frontier/streams/coinbase.py"
-      ]
-    },
-    "step7_boundary": {
-      "status": "PASS_READ_ONLY",
-      "detail": "No strategy/scoring/order imports or tokens in research/free_data_frontier (grep clean; only docstring mentions of what the cycle must NOT do). tests/free_data_frontier/test_boundaries.py enforces forbidden modules/tokens/secrets via AST. S1-untouched by cycle commits NOT_RUN_EXECUTION_REQUIRED (no git). Worktree branch verified. 63-test claim statically consistent: 61 'def test_' + 1 parametrize x3 cases = 63.",
-      "evidence": [
-        "research/free_data_frontier/**/*.py",
-        "tests/free_data_frontier/test_boundaries.py",
-        ".git/worktrees/integration2/HEAD"
-      ]
-    },
-    "step8_full_suite_honesty": {
-      "status": "STATIC_CONSISTENT_EXECUTION_NOT_RUN",
-      "detail": "full_suite_gate.json failed_tests list matches exactly the 7 real failing candidates in root tests/test_family_failures.py (test_real_registry_validates + 6 parametrized core-signature codes, ids match line 170-180 verbatim). File has 13 defs = 12 + 6 params = 18 tests; 7 failed + 11 passed = 18 as claimed. Independent pytest re-run NOT_RUN_EXECUTION_REQUIRED (both root replication and targeted 63-test suite).",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/f5_terminal/full_suite_gate.json",
-        "/Users/hoangminhlong/my-quantitative/tests/test_family_failures.py"
-      ]
-    }
-  },
-  "findings": [
-    {
-      "id": "F1",
-      "severity": "HIGH",
-      "finding": "Terminal verdict USDA live_canary contradicts its own evidence. Verdict states 'historical probes wasde0512/wasde0115 (0512 PASS, 0115 measured 404 recorded honestly)' but usda_wasde_summary.json records wasde0512 as BLOCKED_NETWORK http_status 404, raw_sha256 NOT_APPLIED (no success anywhere in summary/manifest/disk). Verdict's 'current releases (0926/0826 xml/txt/xls)' and 'recent 2 releases' imply two releases acquired; manifest + raw root contain ONLY wasde0826 (txt/xls/xml, 3 artifacts) - wasde0926 links are inventoried, never downloaded. 2010s samples: both probes (0512, 0115) measured 404, zero acquired. Underlying artifacts are honest; the verdict narrative overstates measured coverage.",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json (sources[usda_wasde].live_canary + historical_coverage)",
-        "research/control/free_data_frontier_v1_run/f4_acquisition/usda_wasde_summary.json (records: wasde0512 404, wasde0115 404)",
-        "research/control/free_data_frontier_v1_run/manifests/usda_wasde_manifest.json (4 records, 0826 only)"
-      ],
-      "digests": {
-        "wasde0512_http_status": 404,
-        "wasde0512_raw_sha256": "NOT_APPLIED",
-        "manifest_records": 4
-      }
-    },
-    {
-      "id": "F2",
-      "severity": "HIGH",
-      "finding": "Terminal verdict SEC FTD inventory claim '434 zip archives cnsfails{YYYYMM}{a,b}.zip 2008-01 -> 2026-08' is wrong on the start bound. The manifest (sorted by dataset_id) begins at monthly_cnsfails200907a; regex finds NO monthly_cnsfails2008xx and no 2009-01..2009-06 records; the raw directory contains no cnsfails2008*.zip and the earliest bytes are cnsfails200907a.zip. Actual acquired coverage starts 2009-07, ~18 months later than the frozen claim. The count 434 is correct (434 monthly_ records + 1 inventory = 435 manifest records).",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json (sources[sec_ftd].inventory)",
-        "research/control/free_data_frontier_v1_run/manifests/sec_ftd_archive_manifest.json (first record monthly_cnsfails200907a; no 2008/2009H1 matches)",
-        "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_ftd_archive/ (glob cnsfails2008*.zip = none; earliest = cnsfails200907a.zip)"
-      ],
-      "digests": {
-        "earliest_manifest_record": "monthly_cnsfails200907a",
-        "earliest_raw_file": "cnsfails200907a.zip",
-        "monthly_records": 434
-      }
-    },
-    {
-      "id": "F3",
-      "severity": "MEDIUM",
-      "finding": "'0 sequence gaps' (Coinbase) and '0 gaps' (Kraken) in the verdict and stream summaries are vacuous metrics, not measured continuity. kraken.py sequence_of() returns None unconditionally (comment: crc continuity 'judged at analysis time, not capture time'); coinbase.py sequence_of() never matched (every channel in the Coinbase summary has last_sequence null across 10353 messages, so no sequence was ever extracted). Only Deribit book channels had real sequence accounting (change_id, regression-only gap rule). The verdict presents gap-free capture for Coinbase/Kraken as if measured.",
-      "evidence": [
-        "research/free_data_frontier/streams/kraken.py (sequence_of -> None)",
-        "research/free_data_frontier/streams/base.py (_on_text gap accounting gated on seq is not None)",
-        "research/control/free_data_frontier_v1_run/f3_canaries/stream_coinbase_advanced_trade_ws_summary.json (last_sequence null on all channels)",
-        "terminal_verdict sources[coinbase].live_canary, sources[kraken].live_canary"
-      ]
-    },
-    {
-      "id": "F4",
-      "severity": "MEDIUM",
-      "finding": "EIA data probes silently deviate from the frozen preregistration. preregistered_selections.json eia_open_data.data_probes = ['petroleum/stve/data weekly x60', 'natural-gas/stor/data monthly x60', 'electricity/rto/data hourly x48']; measured/manifest surfaces are petroleum/stoc/wstk weekly x60, natural-gas/stor/wkly WEEKLY x60, electricity/rto/region-data hourly x48. No amendment entry exists for EIA (unlike the recorded NPORT and streams amendments). Prereg integrity breach; bounded metadata-based sampling, no scoring involved, so it does not corrupt any inference, but the frozen selection and the run disagree without documentation.",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/preregistered_selections.json (eia_open_data.data_probes)",
-        "research/control/free_data_frontier_v1_run/manifests/eia_open_data_manifest.json (source_url_redacted values)"
-      ]
-    },
-    {
-      "id": "F5",
-      "severity": "LOW",
-      "finding": "'resume-by-hash' label (prereg sec_ftd.full_archive_gate, verdict gates, sec_bulk docstring) is inaccurate: download_ftd_archive resumes on dest.is_file() and st_size>0 without any hash check. Safe in practice only because AtomicSink publishes files via os.replace after full write+fsync, but a corrupted post-hoc file would be skipped, not re-verified.",
-      "evidence": [
-        "research/free_data_frontier/sources/sec_bulk.py (download_ftd_archive resume_skip branch)",
-        "research/control/free_data_frontier_v1_run/preregistered_selections.json (sec_ftd.full_archive_gate)"
-      ]
-    },
-    {
-      "id": "F6",
-      "severity": "LOW",
-      "finding": "WsCapture declares max_bytes (default 256 MiB) but never enforces it during capture; at close it hashes the whole file via raw_path.read_bytes() (full in-memory read). Not triggered at V1 sizes (max 23.4 MB).",
-      "evidence": [
-        "research/free_data_frontier/streams/base.py (run() finally block, _on_text has no cap check)"
-      ]
-    },
-    {
-      "id": "F7",
-      "severity": "LOW",
-      "finding": "Coinbase level2 outcome not reconciled with preregistration: prereg and module docstring expected level2 to be auth-gated with 'refusal recorded, not worked around'; measured l2_data was accepted as public (8135 msgs) and the verdict says so honestly, but no amendment records the deviation and per-channel subscription acks were not captured (subscriptions: {}).",
-      "evidence": [
-        "research/control/free_data_frontier_v1_run/preregistered_selections.json (streams.coinbase)",
-        "research/free_data_frontier/streams/coinbase.py (docstring)",
-        "research/control/free_data_frontier_v1_run/f3_canaries/stream_coinbase_advanced_trade_ws_summary.json"
-      ]
-    },
-    {
-      "id": "F8",
-      "severity": "LOW",
-      "finding": "The '8/8 manifests ALL_MATCH from raw bytes' gate has no persisted verification artifact: cli.cmd_verify prints reports to stdout and writes nothing; ALL_MATCH appears only as asserted text in the terminal verdict. The verifier code is correct and summary manifest_sha256/records blocks are self-consistent, but the check's execution is unevidenced (and was not independently repeatable by this audit).",
-      "evidence": [
-        "research/free_data_frontier/cli.py (cmd_verify prints only)",
-        "research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json (gates.manifest_verification)"
-      ]
-    }
+  "measured_utc_round1": "2026-09-16T00:00:00Z",
+  "measured_utc_round2": "2026-09-16T00:00:00Z (second pass, same workspace date)",
+  "sandbox_note": "A7 toolset has NO execution capability in either round. All checks are read-only file inspections (Read/Glob/Grep). pytest runs, verify-manifests execution, and git object inspection are NOT_RUN_EXECUTION_REQUIRED; branch SHA was verified by direct read of the loose ref file .git/refs/heads/orca/free-data-frontier-v1-integration.",
+  "current_verdict": "CONFIRM_WITH_FINDINGS",
+  "current_a7_status": "AUTHORIZED_WITH_FINDINGS",
+  "unresolved_high_critical_count": 0,
+  "verdict_history": [
+    {"round": 1, "head": "f4076f47f7bbd6c99e521afa973aabb97696536b", "verdict": "REFUSED (REJECTED_FINDINGS)", "unresolved_high_critical_count": 2},
+    {"round": 2, "head": "f8b09afa886852c936b41c2cecb44fe19f0b247b", "verdict": "CONFIRM_WITH_FINDINGS", "unresolved_high_critical_count": 0}
   ],
-  "not_run_execution_required": [
-    "sha256 recomputation of raw bytes vs pinned raw_sha256 for all 467 manifest records (auditor has no execution; existence checks all passed)",
-    "pytest tests/free_data_frontier (claimed 63 passed; statically consistent: 61 defs + 2 parametrize-extra cases)",
-    "pytest tests/test_family_failures.py in root checkout to replicate '7 failed / 11 passed' at main@961cc354 (static id match confirmed)",
-    "git -C integration ls-files / status --porcelain (raw-bytes-in-git and dirty-state checks)",
-    "git show --stat of f4076f47f7bbd6c99e521afa973aabb97696536b, 96710485105e770f5bddafa3d53ca8db3321740a, f6be0c648ad23f73a1674e48e0e0519adbacadd9, 4ae2f1d9 (per-commit cycle-surface/S1-untouched verification)"
-  ],
-  "verdict": "REFUSED",
-  "a7_verdict": "REJECTED_FINDINGS",
-  "verdict_rationale": "The cycle's artifacts (8 manifests, 467 records, summaries, code guards, redaction, P-1 discipline, boundaries) survived every check this auditor could execute by reading, but the frozen terminal verdict file itself contains two HIGH-severity factual misstatements of measured results: (F1) USDA '0512 PASS' vs recorded 404 and '2 releases' vs 1 acquired; (F2) SEC FTD archive claimed to start 2008-01 vs measured 2009-07. A terminal claim that misstates its own evidence cannot be authorized as written; the underlying PASS_PARTIAL may be restorable by correcting the verdict text to match the honest artifacts.",
-  "unresolved_high_critical_count": 2
+  "round_1": {
+    "summary": "Round 1 refused the terminal claim on two HIGH verdict-text defects (F1 USDA '0512 PASS' vs recorded 404 / '2 releases' vs 1 acquired; F2 FTD span claimed 2008-01 vs measured 2009-07), plus MEDIUM F3 (vacuous Coinbase/Kraken gap metrics), MEDIUM F4 (unamended EIA prereg deviation) and LOWs F5-F8. Full findings preserved below.",
+    "step_results": {
+      "step1_raw_hash_recompute": {
+        "status": "NOT_RUN_EXECUTION_REQUIRED",
+        "detail": "Auditor cannot execute sha256. Partial substitute: raw-file EXISTENCE verified for every record of the small manifests (nyfed 5/5, nws 8/8, eia 7/7, usda 4/4, sec_ftd 3/3, sec_nport 2/2 core + extracted members, streams 3/3) and archive members incl. cnsfails200907a/b, 200908a/b, 2017xx-2021xx, 201910a_0, 202607a/b, 202608a/b. All 467 pinned raw_sha256 exactly 64 hex chars. Hash-vs-bytes equality rests on the cycle's own verifier (manifest.py verify_manifest, correct code).",
+        "evidence": ["research/free_data_frontier/manifest.py", "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/"]
+      },
+      "step2_manifest_records": {
+        "status": "PASS_WITH_SAMPLING_NOTE",
+        "detail": "All records read in full for 7 manifests (5,2,4,7,8,3,3); sec_ftd_archive verified structurally: 434 monthly_* + 1 official_page_inventory = 435, earliest record cnsfails200907a (sorted by dataset_id). All plan-mandated fields present. P-1 hunt: ZERO non-null available_time_utc across the entire control tree; validate_record enforces evidence requirement and retrieval_time_only consistency.",
+        "evidence": ["research/control/free_data_frontier_v1_run/manifests/*.json", "research/free_data_frontier/contract.py"]
+      },
+      "step3_redaction_hunt": {"status": "PASS", "detail": "No emails, api_key values, bearer tokens, or EIA_API_KEY values in any control JSON; EIA URLs carry api_key=<redacted>; env.py presence-only; boundary test forbids hardcoded secrets."},
+      "step4_git_no_raw_bytes": {"status": "PARTIAL_NOT_RUN_EXECUTION_REQUIRED", "detail": "git ls-files/status/commit-stat not runnable. Filesystem substitute: zero *.zip in the worktree; raw root outside repo; f0 raw_root_inside_git=false; branch symref verified."},
+      "step5_code_guards": {"status": "PASS", "detail": "SEC 8 req/s limiter; 15 GiB DiskGuard floor with 50 MiB unknown-size fail-closed margin + commit-time re-check; bounded retry (3 attempts, 429/5xx/ConnectionError/Timeout only); build_record/validate_record make retrieved->available impossible; declared UA sent, redaction at record time."},
+      "step6_stream_summaries": {"status": "PASS_WITH_FINDING_F3", "detail": "Message totals sum exactly (10353/111465/228), summary hashes/bytes == streams_manifest, disconnects 0/0/1 match verdict; Coinbase/Kraken gap accounting vacuous (F3)."},
+      "step7_boundary": {"status": "PASS_READ_ONLY", "detail": "No strategy/scoring/order vocabulary; AST boundary tests enforce; 63-test claim statically consistent (61 defs + parametrize)."},
+      "step8_full_suite_honesty": {"status": "STATIC_CONSISTENT_EXECUTION_NOT_RUN", "detail": "gate failed_tests match root tests/test_family_failures.py exactly (12 defs + 6 params = 18 = 7+11)."}
+    },
+    "findings": [
+      {"id": "F1", "severity": "HIGH", "finding": "USDA verdict text claimed '0512 PASS' (evidence: wasde0512 measured HTTP 404, raw_sha256 NOT_APPLIED) and implied 0926+0826 / 'recent 2 releases' acquired (evidence: only wasde0826 x3 in manifest + raw root).", "evidence": ["terminal_verdict_free_data_frontier_v1.json", "f4_acquisition/usda_wasde_summary.json", "manifests/usda_wasde_manifest.json"], "status_round2": "REMEDIATED_VERIFIED"},
+      {"id": "F2", "severity": "HIGH", "finding": "FTD archive span claimed 2008-01 -> 2026-08; measured earliest is cnsfails200907a (2009-07); no 2008/2009H1 records or bytes exist.", "evidence": ["terminal_verdict_free_data_frontier_v1.json", "manifests/sec_ftd_archive_manifest.json", "raw/sec_ftd_archive/"], "status_round2": "REMEDIATED_VERIFIED"},
+      {"id": "F3", "severity": "MEDIUM", "finding": "Coinbase '0 sequence gaps' and Kraken '0 gaps' vacuous: coinbase sequence_of never matched (last_sequence null on all channels), kraken sequence_of returns None unconditionally.", "evidence": ["streams/kraken.py", "streams/base.py", "f3_canaries/stream_coinbase_advanced_trade_ws_summary.json"], "status_round2": "REMEDIATED_VERIFIED"},
+      {"id": "F4", "severity": "MEDIUM", "finding": "EIA data probes silently deviated from frozen preregistration (stve/stor-monthly/rto-data vs stoc/wstk/stor-wkly/rto-region-data) with no amendment.", "evidence": ["preregistered_selections.json", "manifests/eia_open_data_manifest.json"], "status_round2": "REMEDIATED_WITH_RESIDUAL_R1"},
+      {"id": "F5", "severity": "LOW", "finding": "'resume-by-hash' label inaccurate: downloader resumes on existence + nonzero size (safe only via atomic replace).", "evidence": ["sources/sec_bulk.py", "preregistered_selections.json"], "status_round2": "REMEDIATED_VERIFIED"},
+      {"id": "F6", "severity": "LOW", "finding": "WsCapture max_bytes declared but never enforced; final hash via full in-memory read.", "evidence": ["streams/base.py"], "status_round2": "REMEDIATED_VERIFIED"},
+      {"id": "F7", "severity": "LOW", "finding": "Coinbase level2 prereg expectation (auth-gated refusal) vs measured accepted-public not reconciled.", "evidence": ["preregistered_selections.json", "streams/coinbase.py"], "status_round2": "REMEDIATED_WITH_RESIDUAL_R2"},
+      {"id": "F8", "severity": "LOW", "finding": "'8/8 ALL_MATCH' had no persisted verification artifact (cmd_verify prints to stdout only).", "evidence": ["cli.py", "terminal_verdict_free_data_frontier_v1.json"], "status_round2": "REMEDIATED_VERIFIED"}
+    ],
+    "not_run_execution_required": [
+      "sha256 recomputation of raw bytes vs pinned raw_sha256 (existence checks all passed)",
+      "pytest tests/free_data_frontier (claimed 63; static count 63 consistent)",
+      "pytest tests/test_family_failures.py root replication",
+      "git ls-files / status --porcelain / commit-stat of cycle commits"
+    ]
+  },
+  "round_2": {
+    "claimed_head": "f8b09afa886852c936b41c2cecb44fe19f0b247b",
+    "head_verification": {
+      "method": "direct read of /Users/hoangminhlong/my-quantitative/.git/refs/heads/orca/free-data-frontier-v1-integration (plain-text loose ref)",
+      "result": "f8b09afa886852c936b41c2cecb44fe19f0b247b — matches claimed remediation HEAD exactly",
+      "commit_object_inspection": "NOT_RUN_EXECUTION_REQUIRED (no git plumbing); material substitute: the remediated file contents are present in the working tree as claimed"
+    },
+    "delta_adjudication": [
+      {
+        "delta": "HIGH-1 USDA verdict text",
+        "status": "REMEDIATED_VERIFIED",
+        "detail": "Verdict now states ACQUIRED = wasde0826 xml/txt/xls only (3 objects, ALL_MATCH), 0512/0115 measured 404 with raw_sha256 NOT_APPLIED, 0926 inventoried-not-acquired. Matches usda_wasde_summary.json (both probes BLOCKED_NETWORK 404, NOT_APPLIED), manifests/usda_wasde_manifest.json (4 records: 1 inventory + 3 artifacts of 0826), and raw directory (only 0826 artifacts). The new claim 'selection ordering took the earliest of each suffix' verified TRUE against sources/usda.py run(): urls sorted ascending, first match per (.xml,.txt,.xls) suffix = wasde0826.*.",
+        "evidence": ["research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json (sources[usda_wasde])", "research/control/free_data_frontier_v1_run/f4_acquisition/usda_wasde_summary.json", "research/control/free_data_frontier_v1_run/manifests/usda_wasde_manifest.json", "research/free_data_frontier/sources/usda.py"]
+      },
+      {
+        "delta": "HIGH-2 FTD span",
+        "status": "REMEDIATED_VERIFIED",
+        "detail": "Verdict now says 'MEASURED span 2009-07 -> 2026-08 (the SEC page does not serve 2008-01..2009-06 files — A7-corrected)' and 'resume: existence-based skip'. Matches manifest first record monthly_cnsfails200907a (sorted), last records cnsfails202608a/b, 434 monthly records, raw listing (no cnsfails2008*.zip), and the captured page inventory of 434 links.",
+        "evidence": ["terminal_verdict_free_data_frontier_v1.json (sources[sec_ftd])", "manifests/sec_ftd_archive_manifest.json", "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_ftd_archive/"]
+      },
+      {
+        "delta": "MEDIUM-3 vacuous gaps",
+        "status": "REMEDIATED_VERIFIED",
+        "detail": "Coinbase live_canary now reads 'Continuity accounting NOT_MEASURED ... last_sequence null on every channel; per-channel message counts are measured, sequence gaps are not claimed'. Kraken block now NOT_MEASURED with correct crc32 rationale. Deribit block unchanged ('0 continuity regressions' — real change_id accounting). not_run[] updated accordingly. Matches round-1 technical reality exactly.",
+        "evidence": ["terminal_verdict_free_data_frontier_v1.json (sources[coinbase], sources[kraken], sources[deribit], not_run)"]
+      },
+      {
+        "delta": "MEDIUM-4 EIA prereg deviation",
+        "status": "REMEDIATED_WITH_RESIDUAL_R1",
+        "detail": "amendment_2026_09_16T09Z added to eia_open_data in preregistered_selections.json documenting the route re-pointing. The re-pointing itself is evidenced (manifest URLs measured 200). RESIDUAL R1: the amendment's rationale asserts '(stve/stor-data/rto-data returned 400/404 as preregistered)' but eia_open_data_summary.json contains ZERO 400/404 records for those routes — its only non-200 is the bulk_probe 406; all 7 records are 200. The failing-probe measurements are unevidenced in the frozen control artifacts. Coinbase level2 outcome reconciled in the same file (streams.coinbase.measured_outcome_2026_09_16) but introduces RESIDUAL R2.",
+        "evidence": ["preregistered_selections.json (eia_open_data.amendment_2026_09_16T09Z)", "f4_acquisition/eia_open_data_summary.json (http_status values: one 406 bulk probe, seven 200s)"]
+      },
+      {
+        "delta": "MEDIUM-4b Coinbase level2 reconciliation",
+        "status": "REMEDIATED_WITH_RESIDUAL_R2",
+        "detail": "The prereg streams.coinbase block now records the measured-accepted outcome honestly (auth-gate assumption wrong, no credentials involved) — the reconciliation itself is the right fix. RESIDUAL R2: it cites '7,909 msgs' for l2_data, but the persisted summary says l2_data messages = 8,135 (bytes 14,215,062). No reconciliation exists; the amendment misquotes its own evidence (understates by 226).",
+        "evidence": ["preregistered_selections.json (streams.coinbase.measured_outcome_2026_09_16: '7,909 msgs')", "f3_canaries/stream_coinbase_advanced_trade_ws_summary.json (l2_data messages: 8135)"]
+      },
+      {
+        "delta": "LOW WsCapture max_bytes + truncation test",
+        "status": "REMEDIATED_VERIFIED_STATIC",
+        "detail": "_on_text now enforces the cap before writing (total_bytes + len(text) + 1 > max_bytes -> truncated flag + 'capture_truncated at max_bytes' note, line dropped), and total_bytes is incremented by written line length; truncated field + notes serialized in to_dict. New test test_capture_truncates_at_max_bytes_and_flags present (tests/free_data_frontier/test_ws_accounting.py line 129, max_bytes=50). Suite arithmetic: 62 test defs + 3-case parametrize = 64 collected, consistent with the claimed '64 passed'.",
+        "evidence": ["research/free_data_frontier/streams/base.py lines 174-184", "tests/free_data_frontier/test_ws_accounting.py line 129"]
+      },
+      {
+        "delta": "LOW manifest verification persisted",
+        "status": "REMEDIATED_VERIFIED_STATIC",
+        "detail": "f5_terminal/manifest_verification.json now exists: 8 entries, all ALL_MATCH, verified==records=={7,8,5,435,3,2,3,4} totaling 467 — exactly matching this auditor's independent round-1 record counts per manifest. Shape matches cli.cmd_verify output. Auditor's own re-execution of verify-manifests remains NOT_RUN_EXECUTION_REQUIRED.",
+        "evidence": ["research/control/free_data_frontier_v1_run/f5_terminal/manifest_verification.json"]
+      },
+      {
+        "delta": "incidents[] disclosure",
+        "status": "VERIFIED",
+        "detail": "incidents[] discloses the round-1 REFUSED with both HIGH defects described accurately ('zero data-corruption ... no bytes or manifests changed' — consistent with unchanged manifest/summary contents and record counts), plus the MEDIUM and LOW remediations. Cross-checked against the artifacts: manifests still 467 records with identical per-manifest counts; summary values (l2_data 8135, probe 404s) unchanged.",
+        "evidence": ["terminal_verdict_free_data_frontier_v1.json (incidents[0..2])"]
+      }
+    ],
+    "residual_findings": [
+      {
+        "id": "R1",
+        "severity": "MEDIUM",
+        "finding": "EIA prereg amendment asserts the preregistered probe routes '(stve/stor-data/rto-data returned 400/404 as preregistered)' but no such failing-probe records exist anywhere in the persisted evidence — eia_open_data_summary.json contains only the bulk_probe 406 and seven 200 records. An unevidenced measurement assertion inside a frozen control artifact. Does not change the acquired-data conclusions (the re-pointed routes' 200s are evidenced).",
+        "evidence": ["preregistered_selections.json line 41", "f4_acquisition/eia_open_data_summary.json (http_status values)"]
+      },
+      {
+        "id": "R2",
+        "severity": "MEDIUM",
+        "finding": "Coinbase level2 reconciliation in preregistered_selections.json cites '7,909 msgs' for l2_data; the persisted stream summary and its streams_manifest content_length imply 8,135 messages. Misquote of the cycle's own frozen evidence (understates; no conclusion flips, but a wrong number in a control artifact must be corrected).",
+        "evidence": ["preregistered_selections.json streams.coinbase.measured_outcome_2026_09_16", "f3_canaries/stream_coinbase_advanced_trade_ws_summary.json (8135)"]
+      },
+      {
+        "id": "R3",
+        "severity": "LOW",
+        "finding": "Stale gate text: verdict gates.targeted_tests still says '63 passed' while the remediated suite is 64 tests (new truncation test). Original measurement was honest; the line is now stale at HEAD f8b09af.",
+        "evidence": ["terminal_verdict_free_data_frontier_v1.json (gates.targeted_tests)"]
+      },
+      {
+        "id": "R4",
+        "severity": "LOW",
+        "finding": "Verdict USDA text describes the 404 probes as 'recorded BLOCKED_SCHEMA/probe-404'; the summary records them as BLOCKED_NETWORK (404 sets error -> BLOCKED_NETWORK in usda.py). Label imprecision only; substance (404, NOT_APPLIED, not acquired) is correct.",
+        "evidence": ["terminal_verdict_free_data_frontier_v1.json sources[usda_wasde].live_canary", "f4_acquisition/usda_wasde_summary.json (authority_status BLOCKED_NETWORK)", "sources/usda.py line 137"]
+      },
+      {
+        "id": "R5",
+        "severity": "LOW",
+        "finding": "Stale code comment in sources/usda.py ('Bounded acquisition: 2 most recent releases') vs actual logic of 1 artifact per suffix (= 1 release). Behavior is correct and honestly described in the verdict; comment is leftover.",
+        "evidence": ["sources/usda.py line 96-103"]
+      }
+    ],
+    "not_run_execution_required": [
+      "pytest tests/free_data_frontier -q from the integration worktree (claimed 64 passed; static count 64 consistent: 62 defs + 2 extra parametrize cases)",
+      ".venv/bin/python -m research.free_data_frontier.cli verify-manifests re-run (persisted report statically reconciles: 8/8 ALL_MATCH, 467/467 matching auditor's independent counts)",
+      "git commit-object inspection of f8b09af / delta-vs-f4076f4 diff (ref file read confirms HEAD sha; working-tree contents confirm the claimed remediations)"
+    ]
+  },
+  "verdict": "CONFIRM_WITH_FINDINGS",
+  "a7_verdict": "AUTHORIZED_WITH_FINDINGS",
+  "verdict_rationale": "Both round-1 HIGH defects are remediated and verified against the frozen evidence: the verdict text now matches what the manifests, summaries, raw directory, and source code actually show (USDA 0826-only with honest 404s; FTD measured 2009-07 -> 2026-08 with existence-based resume; Coinbase/Kraken continuity honestly NOT_MEASURED; Deribit unchanged). Zero HIGH/CRITICAL findings remain open. Residuals: two MEDIUM evidence-fidelity defects introduced by the remediation text itself (R1 unevidenced EIA 400/404 rationale; R2 l2_data 7,909 vs persisted 8,135) and three LOW staleness nits (R3-R5). None changes the PASS_PARTIAL substance: 467 manifest records verified count-wise against raw existence, P-1 discipline intact (zero non-null available_time_utc), redaction clean, code guards verified, boundaries held, and the persisted manifest_verification.json reconciles 8/8 ALL_MATCH with this auditor's independent counts. Recommended: fix R1/R2 text and R3 stale count in a follow-up commit; no re-audit gate required for those text-only fixes beyond a spot check.",
+  "unresolved_high_critical_count": 0
 }
