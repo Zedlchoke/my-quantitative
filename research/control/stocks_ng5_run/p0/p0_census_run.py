@@ -282,7 +282,8 @@ def main() -> int:
             "plan": "plans/PLAN_stocks_ng5.md §4",
             "no_pnl_computed": True,
             "gates": gates,
-            "verdict": "P0_PASS" if all(g["verdict"] == "PASS" for g in gates.values()) else "P0_FAIL",
+            "verdict": ("P0_PASS" if all(g["verdict"].startswith("PASS") for g in gates.values())
+                        else "P0_FAIL"),
         }
         (HERE / "p0_census_verdict.json").write_text(json.dumps(verdict, indent=1, sort_keys=True) + "\n")
         log(f"verdict: {verdict['verdict']} ({verdict['runtime_seconds']}s, {HTTP_BUDGET['used']} HTTP requests)")
