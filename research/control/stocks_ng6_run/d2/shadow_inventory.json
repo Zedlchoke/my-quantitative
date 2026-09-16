@@ -1,0 +1,134 @@
+{
+ "schema": "stocks_ng6_d2_shadow_inventory@1",
+ "cycle_id": "STOCKS-NG6",
+ "law": "G8 freeze-before-measurement / A7-F2 P-12 law: this ENUMERATED + HASHED inventory is committed BEFORE any rho exists. The D2 measurement loads this file, verifies its sha256 against the constant pinned in the measurement code, and REFUSES (fail-closed) on any mismatch. Measuring against an under-enumerated inventory is an invalid PASS. The 0.20 bar is immovable (G9, no-threshold-rescue).",
+ "authority": [
+  "plans/PLAN_stocks_ng6.md §6 R0 + §7",
+  "research/control/stocks_ng6_run/d1/d1_freeze.json (r0_shadow_inventory_note)",
+  "research/control/ng6_ng7_ng4_dossiers_2026-09/sng6-a4-hostile-critic-dossier.json (BINDING axes 1/2/3/4: event-conditional forms, vol tercile + vol-restricted, dvol-shock at the event-conditional population, calendar-geometry state maps)"
+ ],
+ "frozen_utc": "2026-09-16 (before any rho; D1 freeze already committed; no return of the anchor computed anywhere in this cycle)",
+ "representation": "ONE adjusted-EOD single representation (P-12): per-session factor f_t = adjusted_close_t/close_t; adjusted OHLC = raw x f_t; every shadow state below is computed on the SAME adjusted series, per-name SERVED-session basis (trailing windows run over served sessions, identical to the anchor identity basis), on the frozen SPY-served-session decision grid of folds.json (2943 sessions, 2015-01-02..2026-09-16). All shadow features are TRAILING (session-t close information); NO forward return of any book is computed anywhere in D2.",
+ "targets": {
+  "anchor_book_state": "SNG6-A2-P1-ANCHOR-TRAP-RECLAIM book state per the d1_freeze construction: BOOKABLE anchor events only; position held on served sessions [t+1 .. t+10] (entry t+1 open, exit t+11 open, H=10); force-flat at fold boundary (footprint limited to the ENTRY session's fold) and at name death (sessions beyond the last served session do not exist)",
+  "neighbour_book_state": "SNG6-A2-P1-NEIGH-CONFIRM-2S book state: bookable anchor events with the 2-session confirmation (adj_close_{t+1} > the broken prior 252-session low), entry t+2 open, held [t+2 .. t+11], same fold/death truncation"
+ },
+ "rho_form": "pooled Pearson AND pooled Spearman (tie-averaged ranks) between the shadow state series and each target book state on the frozen grid; cohort-wide form = all (name, served-session) pairs where the shadow is finite; EVENT-CONDITIONAL form (BINDING where marked) = the same pairs restricted to the union of BOOKABLE anchor event windows [t_ev .. t_ev+10]; A4: a cohort-wide rho understates a sparse event book, so the conditional forms are the applicable ones where marked BINDING",
+ "bar": "pooled |rho| > 0.20 vs ANY applicable shadow -> R0 pre-score ancestry veto (immovable; margin-to-bar = 0.20 - |rho| reported for every applicable rho)",
+ "entries": [
+  {
+   "name": "momentum_63s_generic",
+   "plan_item": "momentum_63s generic",
+   "construction": "mom63_{i,t} = adj_close_t / adj_close_{t-62} - 1 (63 served sessions inclusive; needs i >= 62)",
+   "representation": "adjusted, served-session basis, continuous state",
+   "applicable_form": "cohort_wide",
+   "computed_on": true
+  },
+  {
+   "name": "momentum_12_1_xsec",
+   "plan_item": "12-1mo cross-sectional momentum",
+   "construction": "mom12_1_{i,t} = (adj_close_t/adj_close_{t-251} - 1) - (adj_close_t/adj_close_{t-20} - 1) (252-session trailing minus 21-session trailing); cross-sectionally z-scored per grid session over names with a finite value (z preserved in the verdict; Spearman is invariant to the monotone per-session standardization)",
+   "representation": "adjusted, served-session basis, cross-sectional z state",
+   "applicable_form": "cohort_wide",
+   "computed_on": true
+  },
+  {
+   "name": "reversal_5d_21d_eventconditional",
+   "plan_item": "EVENT-CONDITIONAL 5d/21d trailing-return reversal states (A4 axis 1 BINDING)",
+   "construction": "rev5_{i,t} = adj_close_t/adj_close_{t-4} - 1; rev21_{i,t} = adj_close_t/adj_close_{t-20} - 1; BOTH the cohort-wide pooled rho AND the BINDING event-conditional rho are measured and reported",
+   "representation": "adjusted, served-session basis, continuous states",
+   "applicable_form": "event_conditional (BINDING per A4 axis 1)",
+   "computed_on": true
+  },
+  {
+   "name": "drawdown_depth_252_eventconditional",
+   "plan_item": "EVENT-CONDITIONAL drawdown-depth state (A4 axis 1 BINDING)",
+   "construction": "dd252_{i,t} = 1 - adj_close_t / max(adj_close over served sessions t-251..t) (A4 formula verbatim: 1 - close/252-session-max); cohort-wide AND BINDING event-conditional forms both reported",
+   "representation": "adjusted, served-session basis, continuous state in [0,1)",
+   "applicable_form": "event_conditional (BINDING per A4 axis 1)",
+   "computed_on": true
+  },
+  {
+   "name": "dvol_shock_eventconditional",
+   "plan_item": "EVENT-CONDITIONAL dollar-volume-shock state (A4 axis 3 BINDING; CNG1 generic_dvol_shock analog, V4 A5-H2 class)",
+   "construction": "dvolshock_{i,t} = dvol_t / median(dvol over served sessions t-60..t-1), dvol_t = adj_close_t * volume_t (the anchor's own participation observable); cohort-wide AND BINDING event-conditional forms both reported",
+   "representation": "adjusted, served-session basis, positive continuous state",
+   "applicable_form": "event_conditional (BINDING per A4 axis 3)",
+   "computed_on": true
+  },
+  {
+   "name": "vol_tercile_and_vol_restricted_event",
+   "plan_item": "EVENT-CONDITIONAL vol-tercile + vol-restricted event states (A4 axis 2 BINDING; 20d/60d both declared ex ante)",
+   "construction": "rv20_{i,t}/rv60_{i,t} = sample stdev (ddof=1) of the trailing 20/60 served-session daily adjusted close-to-close returns. Four BINDING forms: (a) voltercile20_book / voltercile60_book: grid book state, 1 iff rv is in the TOP cross-sectional tercile among names with a finite rv at that grid session (else 0), pooled vs target on the grid; (b) volrestricted20_event / volrestricted60_event: footprint book state of ONLY those BOOKABLE anchor events whose rv20/rv60 at the event session is in the top cross-sectional tercile at that session, pooled vs target on the grid",
+   "representation": "adjusted, served-session basis, tercile book states + event-restricted footprints",
+   "applicable_form": "event_conditional + book-vs-book (BINDING per A4 axis 2)",
+   "computed_on": true
+  },
+  {
+   "name": "realized_vol_level",
+   "plan_item": "realized-vol level",
+   "construction": "rv20_{i,t} and rv60_{i,t} as defined above, measured as LEVEL states (not terciles); cohort-wide pooled rho",
+   "representation": "adjusted, served-session basis, continuous states",
+   "applicable_form": "cohort_wide",
+   "computed_on": true
+  },
+  {
+   "name": "semivariance_share",
+   "plan_item": "semivariance share (V4 lineage)",
+   "construction": "svshare_{i,t} = sum(min(r,0)^2) / sum(r^2) over the trailing 60 served-session daily adjusted returns r; cohort-wide AND event-conditional forms both reported",
+   "representation": "adjusted, served-session basis, continuous state in [0,1]",
+   "applicable_form": "event_conditional (BINDING per A4 axis 2c)",
+   "computed_on": true
+  },
+  {
+   "name": "rolling_beta_state",
+   "plan_item": "rolling-beta state",
+   "construction": "beta63_{i,t} = rolling OLS beta of the name's daily adjusted return on SPY's daily adjusted return over the trailing 63 GRID sessions aligned to the name's served sessions; requires >= 40 of the 63 sessions served by the name, else undefined; cohort-wide pooled rho",
+   "representation": "adjusted, grid-aligned served basis, continuous state",
+   "applicable_form": "cohort_wide",
+   "computed_on": true
+  },
+  {
+   "name": "dgs10_level_state",
+   "plan_item": "DGS10-LEVEL state (cross-plane template)",
+   "construction": "a 10-year Treasury yield LEVEL state. NOT constructible from the P0 price/volume cache: the cache contains no rates/bond series (evidence: full symbol scan recorded in the verdict), and this cycle's P0 staged no exogenous rates authority (unlike STOCKS-NG5, whose FRED staging belongs to that cycle's authority). Recorded UNMEASURABLE fail-closed, never skipped silently.",
+   "representation": "cross-plane template; no in-cycle representation exists",
+   "applicable_form": "none (UNMEASURABLE -> NOT_ADJUDICABLE disposition, recorded)",
+   "computed_on": false
+  },
+  {
+   "name": "event_calendar_geometry",
+   "plan_item": "event DOW/month-end geometry (P-24 class; A4 axis 4b state maps)",
+   "construction": "three deterministic grid state maps, all declared ex ante: (a) dow_state_t = observed share of BOOKABLE anchor events whose decision-session weekday == weekday(t) (5-valued deterministic event-histogram map); (b) monthstart_state_t = 1 iff t is the first SPY-grid session of its calendar month; (c) monthend_state_t = 1 iff t is the last SPY-grid session of its calendar month; each pooled vs each target; EVERY applicable rho under this entry is subject to the 0.20 bar",
+   "representation": "frozen grid, deterministic calendar states",
+   "applicable_form": "cohort_wide (three sub-measurements)",
+   "computed_on": true
+  },
+  {
+   "name": "v13_death_event_proximity",
+   "plan_item": "V13 death-event proximity",
+   "construction": "per dead cohort member: death_idx = last served session with date <= the member's death_filing_date_evidence; state = 1 on served sessions [death_idx-10 .. death_idx], else 0; cohort-wide pooled rho",
+   "representation": "adjusted served-session basis, binary state",
+   "applicable_form": "cohort_wide",
+   "computed_on": true
+  },
+  {
+   "name": "ng5_relative_breadth_rotation_state",
+   "plan_item": "STOCKS-NG5 relative-breadth rotation state",
+   "construction": "NG5's own frozen anchor ANCHOR-TREND-L13 (research/control/stocks_ng5_run/d1/d1_proposal_freeze.json): s_t = 0.5*(ln(P_qqew/P_qqq) + ln(P_rsp/P_spy)) at the last session of each ISO week; m_t = s_t - s_{t-13}; z_t = m_t / stdev(trailing 104 weekly m, ddof=1); z_t >= 0 -> hold QQQ, z_t < 0 -> hold SPY for the coming week; undefined z carries the prior leg (NG5's own fail-closed rule). The weekly leg is mapped onto the frozen grid (QQQ-leg = 1, SPY-leg = 0). Data: NG5's sha-pinned P0 staging (QQEW/QQQ/RSP/SPY), each file re-hashed at measurement time against the committed pins in NG5's P0 verdict F9 block (28119258…, ff204ad3…, c27a1c2f…, 7a66f450…) — prior-cycle committed evidence, cited as P-1 prior evidence by this cycle's plan §4; mismatch = refusal",
+   "representation": "NG5 sha-verified adjusted ETF staging mapped to the frozen grid; binary leg state",
+   "applicable_form": "cohort_wide",
+   "computed_on": true
+  },
+  {
+   "name": "dividend_decomposition_divergence",
+   "plan_item": "dividend-decomposition divergence (non-scored, fail-closed if distribution-dominated)",
+   "construction": "the anchor event census is recomputed IDENTICALLY on the RAW (unadjusted) price basis (raw OHLC; dvol = raw close * volume; floors on raw close). Check: (a) event-set overlap fractions |A∩R|/|A| and |R∩A|/|R| keyed by (symbol, decision date); (b) pooled Pearson+Spearman rho between the adjusted-basis and raw-basis anchor book states on the grid. DECLARED EX ANTE flag (frozen here, before any measurement): DISTRIBUTION_DOMINATED (fail-closed contamination flag, non-scored) iff min(|A∩R|/|A|, |R∩A|/|R|) < 0.80. The flag is recorded either way; this entry consumes no scored slot and carries no 0.20 bar",
+   "representation": "adjusted vs raw representation of the SAME construction",
+   "applicable_form": "non-scored diagnostic (no bar)",
+   "computed_on": false,
+   "computed_on_note": "flipped by the measurement only in the verdict artifact; this frozen file is never edited after commit"
+  }
+ ],
+ "inventory_hash_law": "the measurement code pins the sha256 of THIS file as committed at HEAD; on mismatch the measurement refuses before loading any market data (fail-closed)"
+}
