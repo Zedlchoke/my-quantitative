@@ -80,11 +80,18 @@
   0/3) — the QQQ/SPY relative-breadth rotation (owner-directive dispatch):
   A7 plan audit round-1 AUTHORIZED_WITH_FINDINGS (0 HIGH/CRITICAL; 3
   MEDIUM remediated pre-registration at 6b0f12ef, 5 LOW fixed/carry); M0
-  golden gate PASS 10/10 (a6964136); P0 census F1-F9 PASS with one flagged
-  gap (e553b4df — QQEW missing the 2008-11-28 half-day session, non-anchor,
-  prior-close handling frozen; common window 2006-04-25..2026-09-15 =
-  5,128 XNYS sessions; ADV bands A measured 31B/44.6B; distributions
-  censused 89/135/62/93 steps); D1 outcome-blind proposal freeze committed
+  golden gate PASS 10/10 (a6964136; re-run 11/11 at 1bc2f19b after the
+  owner-directive remediation — G4 dead assertion fixed + G4N negative
+  control added, INC-NG5-3); P0 census F1-F9 PASS with one flagged
+  gap (e553b4df — QQEW missing the 2008-11-28 half-day session, non-anchor;
+  representation reconciled forward-only at 1bc2f19b: SKIP-AND-HOLD frozen
+  as the single missing-close rule, superseding the P0 prior-close
+  annotation; common window 2006-04-25..2026-09-15 =
+  5,130 XNYS sessions, 5,129 with all four symbols — INC-NG5-3 prose
+  correction, artifacts were always correct; ADV bands A measured 31B/44.6B;
+  distributions censused 89/135/62/93 steps; D2 shadow inventory
+  enumerated+frozen at 1bc2f19b: 13 shadow series + 1 template rule);
+  D1 outcome-blind proposal freeze committed
   (d7d21899) bound to the frontier dossier sha a59af382: anchor L=13w z104
   (arms L4/L52), LEVEL neighbour (self-subsumption ≤ 0.98), inverted/
   delayed controls, R0-R6+K6 ordered kills, 11 controls. NEXT: D2
