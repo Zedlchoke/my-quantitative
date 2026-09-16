@@ -1,0 +1,121 @@
+{
+  "schema": "a7_plan_audit@2",
+  "cycle_id": "FOREX-NG7",
+  "role": "A7-plan-auditor (fresh-context adversarial; independent; audit-only)",
+  "measured_at": "2026-09-16T14:38:49Z",
+  "audited_commit": "ee6fb9dcc3d419424214348899858344c7a3f1f2",
+  "audited_branch": "main",
+  "head_verified": true,
+  "tree_note": "HEAD == ee6fb9dc on main; only untracked .zcode/ present; plan + 9 dossiers integrated in this single commit; dossiers authored at frozen HEAD~1 938f7043 (outcome-blind ordering intact: dossiers committed before plan froze, no returns exist)",
+  "inputs_verified": {
+    "plan": "plans/PLAN_forex_ng7.md read in full (sha256 fb97eec0bd35c02c9ff183e4e4e31b2b5f5e9e89593dfd50cb3c6e6230cc85d4)",
+    "dossiers": {
+      "fng7-a2": "72284c8ffd35946375d1c89e348c616621898e0f456ba36acc45b1b5b026df0f OK vs SHA256SUMS.txt (shasum -c 9/9 OK)",
+      "fng7-a3": "1e05d07e990824f6ba3e15fca3096bd14d0454ee6c997aa478f831ce0de8f203 OK",
+      "fng7-a4": "52f735e43507bc2b1dd07b81c22ca467c3ae28fadf08962d0c40080f1a37ffa5 OK"
+    },
+    "rules": "RULES.md §3 (forex standing constraints) and §7 (GO phrase registry) read",
+    "ledger": "research/wayfinder/HYPOTHESIS_LEDGER.md section D (forex) read in full; all numbers cited by the plan cross-checked"
+  },
+  "verdict": "REFUSED",
+  "verdict_rationale": "Plan is construction-clean, outcome-blind ordering is intact, and the A2/A3/A4 evidence chain verifies byte-exact. But two BINDING A4 control requirements were dropped in translation into the plan text; both open concrete invalid-PASS paths (diluted-ancestry-PASS and implicit-zero-financing-PASS). Both are one-sentence amendments adoptable verbatim from the frozen A4 contract; REFUSED here is the cheap failure. Remediate, then re-audit with a NEW fresh-context A7 (plan §13.3).",
+  "findings": [
+    {
+      "id": "F-A7PL-NG7-1",
+      "severity": "HIGH",
+      "registration_blocking": true,
+      "title": "Financing authority unnamed; financed-book NOT_MEASURABLE fail-closed branch missing",
+      "evidence": "Plan §4 F4 and §8 require financing 'adjudicated per arm x leg x fold BEFORE merge' and dual-books sign non-inversion, but name NO citable swap/financing band source for the 5 TD majors. A2 inventory_gaps_honest states TD daily payloads carry OHLC only (no swap points). A4 axis-5 binding_requirements #2 (verbatim): 'the plan must name its financing authority BEFORE D1; if none exists in the authorized evidence space, the financed book is NOT_MEASURABLE and the cycle must say so rather than assume zero financing' — citing NG6 P0-F4 (cost authority unmeasurable -> fail-closed family kill, ledger FOREX-NG6 row). The plan adopts the A4 cost-floor contract but omits this financing clause entirely.",
+      "attack_path": "An implementer scores a 'financed' book with implicit zero financing; financing==0 makes the financed book a cost-only clone of the price-only book; the dual-books inversion gate becomes near-tautological and the ~5.1bps-over-3-nights NZD sign-flip exposure the plan itself cites goes unmeasured. Invalid-PASS path.",
+      "remediation": "Amend F4/§8: pin the conservative financing band + its authority at P0 (or in D1 freeze), and add the fail-closed branch: no citable band in the authorized evidence space => financed book NOT_MEASURABLE, declared per NG6 P0-F4 class, never silently zero."
+    },
+    {
+      "id": "F-A7PL-NG7-2",
+      "severity": "HIGH",
+      "registration_blocking": true,
+      "title": "R0 ancestry battery and USD-drift gate specified pooled-only; per-leg measurement omitted",
+      "evidence": "Plan §6 R0: 'pooled |rho| > 0.20 vs the frozen shadow inventory ... (fng7_a2_p1_daily16NY_v1: pooled daily position series x log returns per leg)'; USD-DRIFT GATE given as a single pooled correlation. A4 axis-1 binding_controls (verbatim): 'Per-leg AND pooled rho both measured on the frozen P12 representation ...; pooled-only measurement dilutes and is not accepted as PASS evidence.' A4 axis-6: 'USD-DRIFT GATE ... <= 0.20, pooled + per-leg.' The plan text would accept a pooled-only PASS.",
+      "attack_path": "A strong per-leg ancestry rho on one leg (e.g. NZDUSD vs carry/momentum shadows) dilutes below the 0.20 bar when pooled across five legs; family survives R0 on a diluted measurement and proceeds to score. Invalid-PASS path of exactly the class A4 enumerated.",
+      "remediation": "Amend R0 and the USD-DRIFT GATE to require BOTH per-leg AND pooled |rho| vs the 0.20 bar; pooled-only results are NOT_RUN, never PASS."
+    },
+    {
+      "id": "F-A7PL-NG7-3",
+      "severity": "MEDIUM",
+      "registration_blocking": false,
+      "title": "Firing-census concentration floor unpinned",
+      "evidence": "Plan §6 CLOCK-ONLY includes the 'fresh-extreme FIRING CENSUS (DOW/month/release-day overlay)' and calls the grid existential (NG4 0.888-0.891 correctly cited), but pins no numeric max-weekday-share floor. A4 axis-3 requires 'a pre-pinned concentration floor (max weekday share of firings); breach => the state IS a calendar condition and is adjudicated under the NG4 dead-ancestry class.' Without a pinned threshold the census adjudicates post-hoc.",
+      "remediation": "Pin the floor in the P0/D2 control manifest before any census is read (any reasonable conservative value frozen pre-measurement satisfies A4)."
+    },
+    {
+      "id": "F-A7PL-NG7-4",
+      "severity": "MEDIUM",
+      "registration_blocking": false,
+      "title": "Fold-population sub-gate numeric floor and serial-clustering declaration unpinned",
+      "evidence": "Plan R2 references 'fold-population sub-gate' and F5 makes the trigger-rate floor fail-closed if unpopulated, but no S2-class per-state per-fold minimum value is pinned (A4 axis-4: 'pre-pin the population floor (S2 class ... NG5 killed a family at 1/3)'), and the required serial-clustering declaration (consecutive fresh-extreme bars fire overlapping states; PF/trade-count independence assumptions declared) is absent.",
+      "remediation": "Pin the per-state per-fold floor and add the trade-independence/serial-clustering declaration at the P0 manifest freeze."
+    },
+    {
+      "id": "F-A7PL-NG7-5",
+      "severity": "LOW",
+      "registration_blocking": false,
+      "title": "F1(i) member-digest authority wording",
+      "evidence": "Plan F1(i) says 'archive + member sha256 verification vs SHA256SUMS.txt', but the staging SHA256SUMS.txt carries 7 archive lines only (A4 axis 7); member digests' authority is the A2 dossier pins (inline in plan §4). Verification targets exist; only the citation is imprecise.",
+      "remediation": "Wording: archives vs staging SHA256SUMS.txt; members vs A2 dossier member pins (plan §4)."
+    },
+    {
+      "id": "F-A7PL-NG7-6",
+      "severity": "LOW",
+      "registration_blocking": false,
+      "title": "Exit-fill convention not explicitly frozen",
+      "evidence": "F3 freezes the entry fill (next-bar first bookable price; open-vs-close choice frozen pre-score; no same-bar signal-fill) but exit triggers ('first opposite absorption state OR first confirmed-extreme-against-position', knowable only at bar close) do not state same-bar-close vs next-open execution mapping. Extend the F3 pre-score freeze to exit fills to pre-empt the V7 F-A7-PL-1 lookahead class.",
+      "remediation": "One sentence in §8: exit executes at <frozen mapping>, frozen before scoring."
+    },
+    {
+      "id": "F-A7PL-NG7-7",
+      "severity": "LOW",
+      "registration_blocking": false,
+      "title": "A2 dossier internal sign-wording hazard (plan text controls)",
+      "evidence": "A2 observable literally reads 'Position s_t = -1 on bullish state, +1 on bearish state (toward absorption direction)' while its own gloss and the plan §5 unambiguously define fresh 20-bar close LOW + divergent rising slope -> LONG, fresh HIGH -> SHORT. The plan's statement is correct and unambiguous; the dossier's literal sign assignment contradicts its own parenthetical.",
+      "remediation": "None required in the plan. Implementation must derive signs from the plan §5 / A2 mechanism_statement ('drift back through the broken level'), not the dossier's literal s_t sentence; note it in the D1 freeze."
+    }
+  ],
+  "checks": {
+    "1_directive_completeness": {
+      "verdict": "PASS",
+      "evidence": "One frozen family 'SWING-EXTREME ABSORPTION (DIVERGENT CLV)'; budget 3 cells/1 family (matches owner directive); immutable numeric bars (R0 |rho|>0.20, PF>=1.10, 1.5bps floor, stress 2.0 PRIMARY, USD gate 0.20, self-subsumption 0.98, trigger form [0.02,0.10] measured-fail-closed, 3 folds frozen pre-D2, warmup 60/first bar 61); ancestry inventory committed as hashed list before any rho (§7, P-12/A7-F2); costs+stress (F4,§6,§8); missing-data fail-closed (F1(v), F7 no-ffill); trial identities (§10, observed vs published separated, forex 48/48 + program 257/260 match ledger); kill rules R0-R6 + dual-books; 7 prewritten terminals (§11); exact GO phrase 'GO FOREX NG7 SCORED EXECUTION' text-only with P-8 early-GO death (§0,§9; form matches RULES §7 registry convention); S0 'OPEN — screening only'; S1 SEALED_UNTOUCHED; orders NONE. Registry check: no FOREX-NG7 entry exists yet — pre-registration audit correctly ordered."
+    },
+    "2_plan_vs_dossier_consistency": {
+      "verdict": "PASS_WITH_NOTES",
+      "evidence": "CLV_t=((C-L)-(H-C))/(H-L), P_t=20-bar CLV sum, slope P_t vs P_{t-5} identical plan §5 vs A2 observable; anchor k=5 / neighbour k=10 with |rho|<=0.98 self-subsumption; exit rule (fixed 3-bar OR opposite state OR confirmed-against, whichever first) identical; warmup 60 both; five legs with digests/rows/spans match A2 exactly (EURUSD 01cb862b 5000 rows 2007-10-18..2026-09-12; GBP e3e4c519 / CAD 4b988c44 / AUD 097cfe59 / NZD 7dff3299 ..2026-09-10; ng1==v9 byte-identity claimed and A4-verified); close-vs-HL fingerprint mismatch disclosed in §2(3) with no-H/L-retrofit rule; XAU EXCLUDED under NG6 P0-F4 and NG6R1 non-interference verified real (plans/PLAN_forex_ng6r1.md carries NOT_RUN_TWS_UNAVAILABLE; probe commit 938f7043 is HEAD~1). Notes: F-A7PL-NG7-7 (dossier sign wording) and §2(3) 'measured at D2' is loose language — the operative guards (complement control + no retrofit) are present."
+    },
+    "3_ancestry_honesty": {
+      "verdict": "PASS_WITH_FINDINGS",
+      "evidence": "A2 distinct_by_design_vs_every_closed_ancestor enumerates twelve closed frontiers (FXFV1..V8, NG1-NG4 CPI class, NG5 positioning, NG6 XAU, FXFV7 lead-lag, FXFV6-A6-P2 USD PC1, V5 veto class) — cross-checked against ledger section D, all twelve exist and are correctly characterized. Reversal-by-construction: BINDING MOM20/MOM63 + REV1/REV5 frozen (§6) with 'large NEGATIVE rho vs momentum is still the killed ancestry, not novelty' — exactly the A4 axis-1 rule; V5 precedent 0.230/0.353 correctly cited and matches ledger. Clock-shadow existential: plan correctly identifies the DAILY grid as NG4-lethal (measured 0.888-0.891, ledger-verified) and P-24's three firings; CLOCK-ONLY BINDING with R5 kill. CTL-TRENDONLY present with R4 (>=0.5x same-sign >=2/3 folds). USD-drift gate <=0.20 present (V6/V7 precedent |corr|<=0.072 correctly cited). Findings F-A7PL-NG7-2 (pooled-only) and -3 (census floor) qualify this check."
+    },
+    "4_nyfed_ofr_compliance": {
+      "verdict": "PASS",
+      "evidence": "§4 F7 + §12: SOFR/EFFR/BGCR/TGCR/OBFR/OFR are funding/reference rates, NEVER an FX signal (A3 identity ruling adopted); NY Fed = RETRIEVAL_TIME_ONLY, OFR = RETROSPECTIVE_ONLY with the asymmetric kill-never-rescue scoping rule frozen in §6; no forward-fill across holiday/release gaps anywhere (matches A3 gap_pattern boundary: isolated single-weekday holiday absences stay ABSENT); observation vs publication vs retrieval kept distinct with 'no retrieval-time-only evidence claims historical PIT' (§7); NY Fed /get/ HTTP-400 (P-7) and 10-rows/rate depth limitation honored verbatim ('deeper history only via a future evidenced acquisition') — matches A3 known_limitations. A3's PROSPECTIVE-ELIGIBLE-goes-forward condition for the NY Fed channel is covered fail-closed by §7 'used only where their class permits; a use that would require knowability is forbidden'."
+    },
+    "5_staging_chain_fail_closed": {
+      "verdict": "PASS_WITH_NOTE",
+      "evidence": "Archive-only single vintage frozen (A2 inventory_gaps_honest: worktrees ng1-ng5 gone, root data_raw empty — A4 independently re-verified archive + 5 member digests reproducible 2026-09-16); 5-step chain present: (i) digest verification, (ii) structural census incl. 16:00-NY stamp convention, (iii) fresh re-pull cross-check with the fail-closed contract frozen BEFORE the pull ('archive vintage is declared THE authority ... never silently merged' — matches A4 P0-4), (iv) manifest pin into research/control/forex_ng7_run/, (v) intersecting 5-leg calendar census, no ffill. Note F-A7PL-NG7-5 on member-digest citation wording."
+    },
+    "6_cost_financing_gates": {
+      "verdict": "PASS_WITH_FINDINGS",
+      "evidence": "1.5 bps/fill floor immutable + measured-at-P0 band (measured beats stated, Q-8) with the honest vendor-band-unmeasurable fallback carrying the gate via floor+stress — no decorative floor acceptance; stress 2.0 PRIMARY on all kill rules; break-even bps per round trip per arm (V6 razor 3.0 bps hurdle named; A2's explicit BE-kill is subsumed by R1@stress2.0 when the charged band >= floor, with BE still reported — acceptable); NZD financing sign-flip adjudicated per arm x leg x fold before merge (A4 5.1 bps figure cited) but authority gap = F-A7PL-NG7-1; Q-11 rule frozen complete: valid null requires identical representation/cost/stress semantics with floors frozen at P0 (N1), KILL iff complement >= anchor including exact tie (tie kills), self-failing complement still kills (V15 precedent), degenerate complement => R3 NOT_RUN in BOTH directions, never inferred PASS — matches A4 axis-8 N1-N3 + kill/invalid-null semantics."
+    },
+    "7_invalid_pass_paths": {
+      "verdict": "TWO_OPEN_PATHS",
+      "evidence": "Hunted and found exactly two residual invalid-PASS paths, both filed as blocking HIGHs: (a) F-A7PL-NG7-2 diluted pooled-only ancestry PASS; (b) F-A7PL-NG7-1 implicit zero-financing dual-books tautology. No rescue use of RETROSPECTIVE_ONLY data anywhere (§6 scoping + §12); floors are measured-and-fail-closed (F5), not decorative; inventory is pre-frozen (§7) and matches A4's binding set in substance (R4/R6 encode the V8 exposure-form 0.5x rule; LOPO and drop-one live in the Stage-A survivor gates)."
+    }
+  },
+  "non_blocking_observations": [
+    "M0 reference 'G1-G10 + G4N = 11/11' verified real: G4N negative-control gate exists in the STOCKS-NG5 M0 lineage (m0/test_m0_golden.py, a7_m0_implementation_ng5.json); NG6 introduced G1-G10; re-inheritance BYTE-EXACT is coherent.",
+    "RULES §3 forbidden inventory respected: no session windows, no range breakout, no carry input, no bloc risk-off; DGS10-LEVEL appears strictly control-only ('the program's most lethal control lineage'), consistent with the FXFV8/NG1 precedent reading; TD scored source rests on the standing owner entitlement (V8/V9/NG5 precedent, key environment-only) per §12 keyless-or-entitled boundary — no new signup.",
+    "Trial denominators 48/48 forex and 257/260 program match the ledger's latest P-9 stamps (NG6/STOCKS-NG5 rows).",
+    "Terminals list and budget language match the house pattern; GO phrase never typed pre-gate; early/paraphrased GO dies unconsumed (P-8)."
+  ],
+  "registration_blocking": true,
+  "registration_blocking_reasons": ["F-A7PL-NG7-1", "F-A7PL-NG7-2"],
+  "recommended_next_action": "Lead remediate then register: adopt F-A7PL-NG7-1 and F-A7PL-NG7-2 verbatim from the frozen A4 contract (one sentence each), optionally fold in the MEDIUM/LOW pins, commit by exact pathspec, and re-audit with a NEW fresh-context A7 before researchctl registration."
+}
