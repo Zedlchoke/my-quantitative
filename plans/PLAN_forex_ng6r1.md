@@ -54,9 +54,14 @@ provenance       twsapi_macunix.1045.01.zip, sha256
                  (provenance string ONLY — the ZIP is never committed)
 contract         conId 69067924; symbol/localSymbol/tradingClass XAUUSD;
                  secType CMDTY; exchange SMART; currency USD; minTick 0.01
-                 (MEASURED from the live contract; the stated $0.001 on a
-                 2022 Campus page is a flagged DISCREPANCY — measured beats
-                 stated, Q-8); longName "London Gold"; timezone US/Eastern
+                 (A7R3-M3 wording: OWNER-ATTESTED from the owner's live
+                 sample 2026-09-16 — the controller light check found the
+                 API unresponsive so the owner measurement is UNPERSISTED;
+                 the FIRST live probe session must persist and pin the
+                 contractDetails bytes before any further use; the stated
+                 $0.001 on a 2022 Campus page is a flagged DISCREPANCY —
+                 measured beats stated, Q-8, at that first live session);
+                 longName "London Gold"; timezone US/Eastern
 law              the cycle trades THIS contract or does not run. It is NOT
                  the Twelve Data composite XAU/USD and must never be
                  presented as such. No XAUUSDT, no generic gold index, no
