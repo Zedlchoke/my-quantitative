@@ -1,0 +1,142 @@
+{
+  "schema": "a7_v1r1_audit@1",
+  "cycle_id": "FREE-DATA-FRONTIER-V1R1",
+  "auditor": "A7 fresh-context (independent; execution-capability-limited agent: no Bash/network; all re-derivations done by reading frozen artifacts and byte-level Grep offset probes)",
+  "audited_sha": "394703b9028c483e9d48612e182870df46f6a84b",
+  "audited_sha_provenance": "dispatch packet; independent git HEAD confirmation NOT_RUN_EXECUTION_REQUIRED (registry V1R1 row still at registration-time head 839b6c0640ec0f5af88493d10498179e6026a97f, terminal update pending this audit — expected pre-terminal state, not a defect)",
+  "measured_utc": "2026-09-16T00:00:00Z",
+  "measured_utc_note": "date-granular: no clock available to this agent; all checks executed 2026-09-16",
+  "claim_under_audit": "terminal_correction.json verdict FREE_DATA_FRONTIER_V1R1_PASS_OFR_ACQUIRED — V1 OFR BLOCKED_NETWORK was a false blocker (wrong endpoint); V1R1 corrected the adapter and acquired OFR data",
+  "steps": {
+    "step1_live_endpoints": {
+      "status": "NOT_RUN_EXECUTION_REQUIRED",
+      "detail": "No network/Bash capability in this audit agent; live GETs of /v1/mnemonics/ (expect 403 Missing Authentication Token), /v1/metadata/mnemonics/ (expect 200), /v1/series/full/?mnemonic=FNYR-SOFR-A (expect 200) were not re-executed.",
+      "judgment_from_frozen_evidence": "The 403 'Missing Authentication Token' body supports 'wrong route at an API gateway', NOT 'provider edge/TLS/IP blocking': (a) V1's own frozen record (research/control/free_data_frontier_v1_run/f4_acquisition/ofr_stfm_summary.json) shows an HTTP-level 403 with content_length 43 and content_type application/json — a 43-byte JSON body matches the AWS API Gateway route-not-mapped error {'message':'Missing Authentication Token'}; TLS/IP-level blocks produce handshake failures/resets or non-JSON WAF bodies, and the same kernel records those as error=ConnectionError, not status 403; (b) V1R1's frozen 200 bytes on the SAME HOST through the SAME kernel (inventory 63cf5e2a..., series 209551ca...) conclusively refute host-level IP/TLS blocking — a blocked host cannot serve 200 to anything; (c) the corrected route /v1/metadata/mnemonics/ is the documented STFM API inventory route. V1's BLOCKED_NETWORK classification is therefore a false blocker caused by the wrong endpoint, as claimed."
+    },
+    "step2_obsolete_route_scan": {
+      "status": "PASS",
+      "detail": "Worktree-wide scan for /v1/mnemonics/, /metadata/{mnemonic}, /timeseries/{mnemonic}, mnemonics?, series/timeseries. ZERO occurrences in research/free_data_frontier/**. All occurrences are allowed: tests/free_data_frontier/test_ofr_routes.py:11 (negative test), research/control/free_data_frontier_v1r1_run/terminal_correction.json:12 (correction documentation), plans/PLAN_free_data_frontier_v1r1.md:9,37 (preregistered documentation of V1's wrong call + route alternatives), and frozen V1 artifacts (f4_acquisition/ofr_stfm_summary.json census/notes/source_url; terminal_verdict line 13) which MUST retain the wrong-route history under append-only."
+    },
+    "step3_manifest_recheck": {
+      "status": "PASS_WITH_NOT_RUN_RESIDUAL",
+      "verified_by_auditor": [
+        "exactly 6 records; no extras, no .tmp residue",
+        "all http_status 200; all available_time_utc null; all retrieval_time_only true; all vintage null",
+        "all raw_path absolute under /Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ (outside every Git worktree) and contain '/raw/' per contract.py validate_record",
+        "record-by-record equality between manifests/ofr_stfm_v1r1_manifest.json and ofr_v1r1_summary.json.records (all 6 raw_sha256/content_length/canonical_request_id pairs match)",
+        "manifest structure consistent with manifest.py write_manifest deterministic writer (alphabetically sorted keys, records sorted by source_id/dataset_id/raw_path: inventory_mnemonics < series_FNYR-BGCR-A < EFFR < OBFR < SOFR < TGCR)",
+        "all 6 raw files exist at pinned paths (filesystem glob)"
+      ],
+      "not_run": [
+        "independent sha256 re-derivation of the 6 raw objects from bytes (no execution capability)",
+        "independent recomputation of manifest file digest 441aaabdfc343b3e388799d0f089316434655b5300ac69eca29f0a8af2312d1e"
+      ],
+      "corroboration": "run-time verify_manifest output persisted in ofr_v1r1_summary.json.verification: verified 6, failed 0, missing 0, ALL_MATCH; plus 13/13 cross-source byte-content match vs V1's independently acquired NY Fed samples (see step4)."
+    },
+    "step4_series_parse": {
+      "status": "PASS",
+      "sofr_rows": "exactly 2111 aggregation rows (Grep offset probes: offset 2110 -> 1 match, offset 2111 -> 0 matches)",
+      "sofr_first_last": "first [2018-04-02, 1.8]; last [2026-09-14, 3.62] — matches claimed coverage 2018-04-02..2026-09-14",
+      "per_row_publication_timestamp": "NONE: rows are [date, value] pairs only; metadata carries vintage_approach='Current vintage, as of last update', vintage='', and a series-level schedule.last_update='2026-09-15 12:05:03' only; OFR metadata explicitly warns data may be revised after retrieval. Retrieval-time-only classification with available_time_utc=null is CORRECT for all six records.",
+      "timeline_consistency": "last_update 2026-09-15 12:05:03 (UTC ~= 08:05 ET, the T+1 morning publication slot) covering 2026-09-14; retrieval 2026-09-16T10:38:27Z precedes the next publication slot, so last row 2026-09-14 is exactly right.",
+      "cross_source_authenticity": "13/13 exact date+value matches between V1R1 OFR raw bytes and V1's independently acquired NY Fed raw bytes (different provider channel, different cycle, ~2h earlier): SOFR /Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_sofr.json 2026-08-31..2026-09-14 all 10 rows (3.68,3.66,3.65,3.66,3.65,3.62,3.62,3.62,3.64,3.64) vs FNYR-SOFR-A tail identical; EFFR rate_effr.json 2026-09-10/11/14 = 3.63/3.63/3.63 vs FNYR-EFFR-A tail identical. Strong evidence OFR bytes are genuine provider data, not fabricated."
+    },
+    "step5_inventory_count": {
+      "status": "PASS",
+      "detail": "inventory_mnemonics.json is a flat JSON list; separator probes (', ' at offset 440 -> 1 match, offset 441 -> 0 matches) prove exactly 441 separators -> exactly 442 mnemonics. Matches claimed 442."
+    },
+    "step6_gates": {
+      "status": "NOT_RUN_EXECUTION_REQUIRED",
+      "static_corroboration": [
+        "test collection count: 65 test defs across 9 files + one @pytest.mark.parametrize with 3 cases (test_zip_safety.py:42) = 67 collected tests — matches '67 passed' count-wise and V1's '64 passed' + 3 new test_ofr_routes tests = 67",
+        "tests/free_data_frontier/__pycache__/*.pyc compiled by pytest 9.1.1 and research/**/*.pyc present — execution occurred in this tree at some point",
+        ".gitignore covers __pycache__/ and *.pyc, so pycache does not dirty the tree"
+      ],
+      "not_run": ["live pytest run", "compileall", "git diff --check", "git status --porcelain"]
+    },
+    "step7_v1_immutability": {
+      "status": "PASS_WITH_NOT_RUN_RESIDUAL",
+      "file_level_evidence": [
+        "V1 worktree (.worktrees/free-data-frontier-v1/integration) still exists; its terminal_verdict_free_data_frontier_v1.json head section is identical to the V1R1 worktree copy (same FREE_DATA_FRONTIER_V1_PASS_PARTIAL verdict, same OFR 'BLOCKED_NETWORK ... TLS-fingerprint/IP-level gate' text) — V1 still carries its original (now-falsified) conclusion, i.e. NOT rewritten",
+        "f4_acquisition/ofr_stfm_summary.json identical in both trees (45/45 lines, canonical_request_id 4782f522..., status BLOCKED_NETWORK)",
+        "plans/CYCLE_REGISTRY.json V1 row TERMINAL at head 4e49b3e7a820dfdabfaddb268d2a224bc4a46b60 with phase text still claiming the OFR edge gate — unchanged",
+        "V1R1 scope: new control dir free_data_frontier_v1r1_run/, new tests in test_ofr_routes.py, modified sources/ofr.py — consistent with packet scope"
+      ],
+      "not_run": ["exhaustive git diff 4e49b3e7..394703b9 --name-only (no git execution); residual risk that some non-load-bearing V1-scope file changed undetected is LOW given spot checks of the decisive artifacts"]
+    },
+    "step8_incident_truthfulness": {
+      "status": "PASS",
+      "incident_a_script_path_import_failure": "plausible and disclosed: research.* absolute imports require python -m from the worktree root; run_ofr.py docstring prescribes 'python -m research.control.free_data_frontier_v1r1_run.run_ofr'. No persisted log evidence — LOW note.",
+      "incident_b_missing_mkdir": "regression guard PRESENT: sources/ofr.py lines 101-102 series_dir = ctx.source_dir(SOURCE_ID)/'series'; series_dir.mkdir(parents=True, exist_ok=True). (source_dir itself mkdirs at base.py lines 32-35.)",
+      "incident_c_stray_control_files": "cleanup VERIFIED: /Users/hoangminhlong/my-quantitative/research/control/ contains NO free_data_frontier* entry (glob 'free_data_frontier*' -> no files); raw bytes live outside all worktrees and all 6 pinned files present; current REPO=Path(__file__).resolve().parents[3] in run_ofr.py resolves to the worktree root (correct parent count)."
+    },
+    "step9_secret_scan": {
+      "status": "PASS",
+      "detail": "No emails, AKIA/SK-style keys, BEGIN blocks, Bearer tokens, or credential-value literals in research/free_data_frontier/**, tests/free_data_frontier/**, research/control/free_data_frontier_v1r1_run/**, or PLAN_free_data_frontier_v1r1.md. Only matches: synthetic redaction fixture someone@example.gov in test_redaction_identity.py (test data, asserted absent after redaction) and '<redacted...>' descriptors. env.py is presence-only (values parsed and discarded); http.py redacts credential query params, credential headers, and contact-style UA values (length descriptor only)."
+    },
+    "step10_boundary": {
+      "status": "PASS_STATIC",
+      "detail": "Keyword scan (pnl|score|backtest|order|strategy|signal|position|sharpe|drawdown) over research/free_data_frontier: only negative/docstring mentions ('no PnL', 'never PnL-based', 'no strategy scoring'). run_ofr.py is acquisition+manifest+summary only; terminal_correction boundaries: scored_cells 0, pnl NOT_RUN, s1 SEALED_UNTOUCHED, orders NOT_RUN. Full git-diff keyword scan NOT_RUN_EXECUTION_REQUIRED (partial static scan clean)."
+    }
+  },
+  "findings": [
+    {
+      "id": "A7-V1R1-1",
+      "severity": "MEDIUM",
+      "finding": "Live-endpoint re-probe NOT_RUN_EXECUTION_REQUIRED: auditor could not re-execute the three GETs (403 wrong-route / 200 metadata / 200 series). Verdict does not rest on this gap: V1's own frozen 403 record (content_length 43, application/json — the API-gateway route-not-mapped body) plus V1R1's frozen 200 bytes on the same host through the same kernel are mutually conclusive on the false-blocker root cause.",
+      "evidence": [
+        "research/control/free_data_frontier_v1_run/f4_acquisition/ofr_stfm_summary.json",
+        "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/inventory_mnemonics.json",
+        "research/control/free_data_frontier_v1r1_run/terminal_correction.json"
+      ]
+    },
+    {
+      "id": "A7-V1R1-2",
+      "severity": "MEDIUM",
+      "finding": "Independent sha256 re-derivation of the 6 raw objects and of manifest digest 441aaabdfc343b3e388799d0f089316434655b5300ac69eca29f0a8af2312d1e NOT_RUN_EXECUTION_REQUIRED. Mitigated: run-time verify_manifest persisted ALL_MATCH 6/6 in ofr_v1r1_summary.json; manifest bytes are structurally consistent with the deterministic writer; summary and manifest records agree hash-for-hash; and 13/13 date+value cross-source matches against V1's independently stored NY Fed bytes (SOFR 10/10, EFFR 3/3) make undetected fabrication implausible.",
+      "evidence": [
+        "research/control/free_data_frontier_v1r1_run/manifests/ofr_stfm_v1r1_manifest.json",
+        "research/control/free_data_frontier_v1r1_run/ofr_v1r1_summary.json",
+        "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_sofr.json",
+        "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/nyfed_markets/rate_effr.json"
+      ]
+    },
+    {
+      "id": "A7-V1R1-3",
+      "severity": "MEDIUM",
+      "finding": "Gate re-execution NOT_RUN_EXECUTION_REQUIRED (pytest 67-passed, compileall, git diff --check, git status). Statically corroborated: 67 tests collected (65 defs + 3-case parametrize − 1 def), consistent with V1's 64 + 3 new OFR tests; pytest 9.1.1 pyc artifacts present; __pycache__ gitignored.",
+      "evidence": [
+        "tests/free_data_frontier",
+        "tests/free_data_frontier/test_zip_safety.py",
+        ".gitignore"
+      ]
+    },
+    {
+      "id": "A7-V1R1-4",
+      "severity": "LOW",
+      "finding": "Worktree HEAD 394703b9028c483e9d48612e182870df46f6a84b taken from the dispatch packet; independent git confirmation not possible (no git execution). Registry V1R1 row still shows registration-time head 839b6c0640ec0f5af88493d10498179e6026a97f — expected pre-terminal state; the post-audit terminal registry update must cite the measured 394703b9 head and this audit artifact.",
+      "evidence": ["/Users/hoangminhlong/my-quantitative/plans/CYCLE_REGISTRY.json"]
+    },
+    {
+      "id": "A7-V1R1-5",
+      "severity": "LOW",
+      "finding": "Incident 1 (script-path invocation import failure) is plausible and disclosed but has no persisted log artifact; accepted as disclosure-only.",
+      "evidence": ["research/control/free_data_frontier_v1r1_run/terminal_correction.json", "research/control/free_data_frontier_v1r1_run/run_ofr.py"]
+    },
+    {
+      "id": "A7-V1R1-6",
+      "severity": "LOW",
+      "finding": "Inventory duplicate-uniqueness verified only by full read + family accounting (FNYR 30, MMF 42, NYPD 194, REPO 132, TYLD 12 families sum near 442 with no observed duplicates); no mechanical dedup check run. Harmless: the runner tests membership via set().",
+      "evidence": ["/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1r1/raw/ofr_stfm/inventory_mnemonics.json", "research/free_data_frontier/sources/ofr.py"]
+    },
+    {
+      "id": "A7-V1R1-7",
+      "severity": "LOW",
+      "finding": "content_length values in manifest/summary (e.g. inventory 10045) not byte-verified against raw files (no stat/execution). Internally consistent: for in-memory retrieve() content_length equals len(payload) which equals bytes written and hashed.",
+      "evidence": ["research/free_data_frontier/http.py"]
+    }
+  ],
+  "unresolved_high_critical_count": 0,
+  "verdict": "AUTHORIZED",
+  "verdict_rationale": "The claim survives adversarial audit: (1) the false-blocker root cause is proven by frozen evidence — V1's own 403 record carries a 43-byte JSON API-gateway error body and V1R1's 200 bytes on the same host refute host-level blocking; (2) acquisition claims verified exactly from raw bytes: 442 mnemonics, 2111 SOFR rows 2018-04-02..2026-09-14, 6/6 records 200/null-available_time, raw outside Git; (3) data authenticity independently corroborated by 13/13 cross-source date+value matches vs V1's separately acquired NY Fed samples; (4) PIT classification retrieval-time-only is correct (provider serves current vintage, no per-row publication timestamps); (5) obsolete routes exist nowhere in the package; (6) incidents are truthful and regression guards present; (7) secrets clean; (8) boundaries held (0 scored cells, S1 sealed). Remaining gaps are execution-coverage items (MEDIUM, mitigated) that do not flip any conclusion."
+}
