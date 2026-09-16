@@ -734,3 +734,9 @@ zero scored slots. Writing the false premise ("described as free for
 non-commercial use") into a plan is how this class of kill gets missed — the
 round-1 A7 audit REFUSED the plan for exactly that sentence, and the amended
 plan then died safely at its own gate instead of after a 2,000-file crawl.
+
+## P-18 — Redact at record time, never at send time; measure identity keys before filtering on them
+
+Source: FREE-DATA-FRONTIER-V1 (2026-09-16). Two live-run defect classes surfaced during canaries, then A7 round-1 REFUSED the terminal for two verdict-text defects that had drifted from the frozen evidence. (1) The SEC declared-contact User-Agent was redacted BEFORE sending — SEC received "<redacted:contact:len=57>" and answered 403; redaction belongs at RECORD/storage time, requests must go out with the real declared identity. (2) The preregistered N-PORT fund filter assumed accession-prefix == fund CIK; the served schema uses the FILING AGENT's CIK in that position — the filter silently matched nothing until re-keyed on the measured identity (exact SERIES_NAME). (3) A7 caught two terminal-verdict sentences (USDA "wasde0512 PASS" vs measured 404; FTD span "2008-01" vs measured 2009-07 start) that asserted more than the frozen artifacts say — the report had started writing the story instead of the evidence.
+
+**Lesson:** Transport identity and record identity are different layers with different rules — declare truthfully on the wire, redact only what is stored. Every filter key that touches an external dataset is a hypothesis until verified against the served schema (Q-8 again, at the field-name level). And a terminal verdict is evidence like any other artifact: every number in it must be re-readable from a frozen file, because the independent auditor WILL re-read it from exactly those files.

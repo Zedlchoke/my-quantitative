@@ -1,5 +1,34 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced at the FREE-DATA-FRONTIER-V1 close, 2026-09-16)
+
+- **FREE-DATA-FRONTIER-V1 CLOSED → `FREE_DATA_FRONTIER_V1_PASS_PARTIAL`**
+  (2026-09-16, branch `orca/free-data-frontier-v1-integration`, terminal
+  4e49b3e7, A7 round-1 REFUSED (2 HIGH verdict-text defects, both A1
+  authoring errors, zero data corruption) → remediation → round-2
+  CONFIRM_WITH_FINDINGS 0 HIGH/CRITICAL; budget 0/0 — data-engineering
+  cycle, 0 scored cells, S1 SEALED, no orders; PROSPECTIVE-SHADOW-V1
+  untouched throughout) — the owner-directed free-source acquisition and
+  authority census: 10 sources, 9 acquired. **PASS:** SEC FTD full served
+  archive 434 zips (MEASURED span 2009-07→2026-08, two settlement
+  cycles/month) + N-PORT 2026q2 one-quarter cap (QQQ accession
+  0001067839-26-000024 → 102 holdings streamed from the 910 MB table,
+  SPY measured-absent, GLD structural-absent non-1940-Act) + NY Fed 5
+  reference rates (revisionIndicator MEASURED machine-served) + EIA route
+  walk + 3 data probes + NWS 4-station preregistered set + USDA OCE 0826
+  artifacts (esmis API measured 404, substitution disclosed) + 3/3 crypto
+  public WS streams prospective-only (Coinbase 10,353 / Kraken Futures
+  111,465 / Deribit 228 msgs; wire formats corrected by measurement). 8/8
+  manifests ALL_MATCH from raw bytes (467 records, ~1.0 GiB outside Git);
+  64 targeted tests; full suite 1971 passed + 7 failures all pre-existing
+  at main. **BLOCKED:** OFR Short-Term Funding Monitor — HTTP 403 to every
+  programmatic client incl. browser-UA (edge gate; no bypass per stop
+  rules). PIT line: every record RETRIEVAL_TIME_ONLY (available_time NULL
+  with evidence notes) — nothing here authorizes historical scored joins;
+  "usable now" = prospective collection + engineering. Denominators
+  unchanged program 257/260 (P-9). Detail:
+  `.worktrees/free-data-frontier-v1/integration/research/control/free_data_frontier_v1_run/terminal_verdict_free_data_frontier_v1.json`.
+
 ## Sprint state (synced at the NG5/NG6 twin dispatch, 2026-09-16)
 
 - **FOREX-NG6 CLOSED → `FOREX_NG6_BLOCKED_SOURCE_OR_COST`** (2026-09-16,
