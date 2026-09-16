@@ -106,10 +106,14 @@ F3 RAW/ADJUSTED + ACTIONS  adjusted (total-return) series is THE single
                            (SFV13 SH-A9 class; distribution-dominated
                            event identity = fail-closed contamination).
 F4 COHORT + COVERAGE       death-inclusive cohort census; per-name served-
-                           session census; bookability floors ($1.00
-                           adjusted close, $2M trailing 60-session median
-                           dollar volume) declared ex ante; warmup
-                           attrition CENSUSED, never silently dropped.
+                           session census; PER-FOLD IN-HORIZON DEATH
+                           CENSUS (BC-7a — every death landing inside an
+                           H=10 window, per fold, counted and reported
+                           BEFORE any scored computation); bookability
+                           floors ($1.00 adjusted close, $2M trailing
+                           60-session median dollar volume) declared ex
+                           ante; warmup attrition CENSUSED, never
+                           silently dropped.
 F5 CLOCK + EXECUTION       ONE frozen daily decision clock (decision at t
                            close; fills at t+1 and t+11 regular-session
                            opens); bar-readable close+1 availability (V7
@@ -125,7 +129,12 @@ F6 COSTS                   band schedule BAND_BPS = {A:10, B:15, C:25}
                            100bps x realized recent-window event turnover;
                            fills/yr = 2 x E_recent / window_years;
                            break-even bps per round trip reported per arm
-                           (A4 form: 30–50 bps tier-1, 60–100 stress-2.0).
+                           (A4 form: 30–50 bps tier-1, 60–100 stress-2.0);
+                           band-C fraction measured at P0 ON THE EVENT
+                           population (not the cohort average); if the
+                           event population is majority-band-C, the
+                           100 bps/round-trip ceiling is reported as the
+                           OPERATIVE stress number (A4 BC-6).
 F7 BENCHMARK CONSTRUCTION  SPY buy-and-hold exposure-matched; C-RANDOM-
                            TIMING clock twin; both total-return basis.
 F8 FOLD FREEZE (Q-6)       three chronological folds frozen BEFORE any D2
@@ -157,6 +166,16 @@ F10 SEC CONTROL SOURCES    SEC FTD + N-PORT enter ONLY as D2 non-scored
                            quarter cap means every long-history crowding
                            claim is INSUFFICIENT_COVERAGE; current
                            holdings never reconstruct historical holdings.
+                           A3 operational guards carry into every parser:
+                           (i) a row whose settlement date falls inside a
+                           later file's span is flagged, never silently
+                           merged (corrections channel exists); (ii) the
+                           N-PORT parser rejects any filing whose
+                           SUB_TYPE is neither NPORT-P nor NPORT-P/A and
+                           resolves supersession by max FILING_DATE per
+                           (series, REPORT_DATE); (iii) the pipe-schema
+                           trailer/column drift check fails closed on any
+                           header change (A4 F-6 guards enumerated).
                            A4 adjudication: with one quarter and a >=63-day
                            lag, N-PORT is INERT for historical event
                            conditioning in this cycle — recorded as such,
@@ -205,6 +224,12 @@ C-RANGE-ONLY         upper-range-close + volume, no level event
 C-DVOL-ONLY          volume-condition-only book (A4: >= 0.5x same-sign
                      reproduction -> REJECT)
 C-RANDOM-TIMING      every-63rd-session H-session clock twin
+C-CAL-HIST           deterministic calendar book matched to the event-date
+                     distribution (long every cohort name for H=10 sessions
+                     starting on the same day-of-week/month-position
+                     histogram as the observed events; deterministic rule
+                     declared ex ante BEFORE any measurement) — must NOT
+                     out-earn the anchor; R6 extends to it (A4 BC-4a)
 C-MARKET             SPY buy-and-hold, exposure-matched
 C-DELAY-H            identical anchor entering H=10 sessions late — Q-11
                      invalid-null class DECLARED IN ADVANCE: out-earning
@@ -221,8 +246,11 @@ against an under-enumerated inventory is an invalid PASS, fail-closed):
 momentum_63s generic; 12–1mo cross-sectional momentum; **event-conditional**
 5d/21d return and drawdown-depth short-term-reversal states (A4: cohort-wide
 rho understates a sparse event book — the conditional forms are BINDING);
-dollar-volume-shock state; realized-vol LEVEL + semivariance share states
-(A4: event-conditional vol-tercile + vol-restricted event shadows BINDING);
+dollar-volume-shock state (CNG1 generic_dvol_shock analog MEASURED
+EVENT-CONDITIONAL — tagged in the frozen hashed inventory per A4 BC-1;
+V4 A5-H2 abnormal-volume pre-selection block, rho 0.78-0.83 vs its
+control); realized-vol LEVEL + semivariance share states (A4:
+event-conditional vol-tercile + vol-restricted event shadows BINDING);
 rolling-beta state; DGS10-LEVEL state; event-calendar geometry (event
 day-of-week / month-end coincidence, P-24 class); V13 death-event proximity;
 STOCKS-NG5 relative-breadth rotation state; dividend-decomposition divergence
@@ -252,14 +280,23 @@ K6  slow-drift combination    {anchor, C-DELAY-H} x {trap, no-fail} books
                               (exact test frozen at S) -> REJECT
 ```
 
-Plus the frozen stocks Stage-A gates on any survivor: fold-positive-share
-<= 50%, largest-fold concentration <= 50%, MDD <= 15%, stress 2.0 net
-positive with break-even margin, drop-one sign stability, death-censoring
-invariance (excluding in-horizon deaths must not flip the verdict — a
-verdict coupled to death-censoring is unbookable, fail-closed; deaths
-inside H=10 force-flat at last served session and INCLUDED), PIT mutation,
-per-period series persisted (P-11) for DSR over the cumulative ~260
-observed trials, PBO fail-closed < 8 configurations.
+Plus the frozen stocks Stage-A gates on any survivor, in the A4 BC-5 kill
+form: fold-positive-share > 50% KILLS (V11 precedent: 0.5034 was a FAILING
+value); largest-fold PnL concentration > 50% KILLS; SPY-excess positive in
+>= 2/3 folds REQUIRED; MDD <= 15%; stress 2.0 net positive with break-even
+margin; drop-one sign stability; death contract per BC-7 in full — a P0
+per-fold in-horizon death census is mandatory; inside H=10 the exit fills
+at the death-session open when the name serves it, and a death without a
+served session is marked DEATH_CENSORED with its mark-to-last-served leg
+EXCLUDED from the expectancy numerator and reported in separate
+censored-leg accounting; death-censoring invariance binds on the VERDICT
+AND every Stage-A gate's pass/fail (a result coupled to death-censoring is
+unbookable, fail-closed); PIT mutation; per-period series persisted (P-11)
+for DSR over the cumulative ~260 observed trials, PBO fail-closed < 8
+configurations. Disposition rule (A4 BC-1): a control that is unpopulated
+or has an invalid null is recorded NOT_ADJUDICABLE and never silently
+skipped; the reversal exposure is then adjudicated solely by the
+event-conditional rho shadows.
 
 ## 7. D2 ancestry and feasibility gate (non-scored)
 

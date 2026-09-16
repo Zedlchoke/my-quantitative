@@ -106,23 +106,42 @@ F1 PANEL RE-PIN           S4 digests re-verified in the cycle worktree;
 F2 FUNDING AUTHORITY      keyless fapi funding settlements re-proved per
                           series at P0 (V17-measured class; CNG2 grid
                           1094x3); the COMPLETE two-leg accounting is
-                          re-proven fail-closed per A4 (sign convention,
-                          1:−β notional weighting, 8h cadence with 4h
-                          stress handling, settlement-boundary rule);
-                          unproven -> NOT_RUN_BLOCKED, never assumed.
+                          re-proven fail-closed per A4: sign convention
+                          per leg, 1:−β notional weighting, cadence read
+                          MEASURED per symbol per window (8h nominal;
+                          4h stress and any 1h adjustment are data, read
+                          from the re-proved series, never hardcoded),
+                          and the settlement-boundary rule is INCLUSIVE —
+                          a settlement timestamped exactly at entry or
+                          exit is charged; unproven -> NOT_RUN_BLOCKED,
+                          never assumed.
 F3 SYMBOL/PAIR CENSUS     BTC/ETH/SOL USDT perp panels; 3 pairs; SOL
                           venue-control gap recorded (§7); funding for
                           SOL re-proved like the others.
 F4 CLOCK + FOLDS          UTC H1 on the panels; decisions evaluated at
                           bar close on last_price; state-triggered at
                           ARBITRARY hours (no calendar/session/settlement
-                          conditioning in the signal); EXACT UTC fold
-                          boundaries frozen at S BEFORE any D2 diagnostic;
-                          the A2 "margin day 2026-08-22" is a PHANTOM
-                          (outside the window — A4) and is never a
-                          decision or holding day; every full holding
+                          conditioning in the signal); EXACT UTC FOLD
+                          BOUNDARIES FROZEN IN THIS PLAN, BEFORE D1
+                          (A7-F1): the panel window is 2025-08-22T00:00Z
+                          .. 2026-08-21T23:00Z (365x24 H1 bars; first
+                          decidable panel day index 61 = 2025-10-22T00:00Z);
+                          the four folds are contiguous and equal:
+                          FOLD-1 2025-10-22T00:00Z..2026-01-05T23:00Z,
+                          FOLD-2 2026-01-06T00:00Z..2026-03-22T23:00Z,
+                          FOLD-3 2026-03-23T00:00Z..2026-06-06T23:00Z,
+                          FOLD-4 2026-06-07T00:00Z..2026-08-21T23:00Z.
+                          P0 verifies the panel span census-EXACT against
+                          these timestamps; ANY mismatch ->
+                          CRYPTO_NG4_BLOCKED_SOURCE_OR_SCHEMA — the
+                          boundaries are never recomputed or shifted
+                          in-cycle. The A2 "margin day 2026-08-22" is a
+                          PHANTOM (outside the window — A4) and is never
+                          a decision or holding day; every full holding
                           window inside a single fold; force-flat
-                          truncations COUNTED, never dropped.
+                          truncations COUNTED, never dropped. The M0 fold
+                          fixture assigns against THESE frozen
+                          timestamps.
 F5 COSTS                  L-V14-0 cost-once-per-fill kernel; stress
                           multipliers applied to booked PnL; costs broken
                           out fills vs holding; funding as a cost line
@@ -157,22 +176,39 @@ return exists. At most THREE constructions enter D2:
                 dossier, binding); warmup 30 panel days beta + 30 panel
                 days residual history (first decidable panel day index
                 61); OI/funding/weekend/session in NO feature.
-1 neighbour     the A2 dossier's declared structural neighbour
-                construction, binding as written there (same family,
-                materially different construction, self-subsumption
-                |rho| <= 0.98, P-20).
+1 neighbour    NEIGHBOUR SELECTION RULE (A7-F7): the A2 dossier declares
+                TWO alternatives; the scored neighbour is A2's
+                z>=2.0-frequency construction; the OI-share-gated variant
+                is X2-exposed by A3/A4's own declaration and is NOT scored
+                (it dies with X2 by its own definition); both declarations
+                are frozen outcome-blind here. Anchor exit (A2 verbatim,
+                binding): H = 24 bars OR |z_AB| crossing 0 at a bar close,
+                whichever first. Same self-subsumption |rho| <= 0.98 vs
+                anchor (P-20).
 1 mandatory stale-beta causal control book (non-scored) — §6.
 ```
 
-Arms consume declared trial identities; controls consume none; total
-scored cells <= 3, never force-filled.
+Arms consume declared trial identities; controls consume none. CELL
+GRANULARITY (A7-F4, explicit): EACH SCORED PAIR-BOOK IS ONE SCORED CELL
+(a pair-book run at E consumes exactly one observed+published slot); the
+neighbour scores only within the remaining budget; total scored cells
+<= 3, never force-filled.
 
 ## 6. Mandatory controls and killers (A4 BINDING set)
 
 ```text
 VOL-SHOCK     generic_dvol_shock same-bet per leg AND on the pair
               residual; dvol_level_log; RV24 STRESS/VOLATILITY_EVENT
-              states (labels from §7 regime definition) — bar 0.20
+              states — HISTORICAL-leg labels are computed PANEL-NATIVELY
+              from S4 last_price H1 returns (the prospective cross-venue
+              median mid of §7 does not exist historically — A7-F2):
+              BTC/ETH use the §7 frozen constants; SOL constants are
+              frozen from the SOL panel's first 180 days by the same
+              percentile construction (LOW < P33.3 <= MID < P66.7 <=
+              HIGH; STRESS > P90), pinned at P0 BEFORE D1, outcome-
+              independent; the S4->cross-venue estimand transfer for the
+              prospective RV24 is DECLARED APPROXIMATION (A4 axis-8) and
+              never silently treated as identical — bar 0.20
 TAPE-PROXY    X3-native proxy per leg PLUS panel-native taker-imbalance
               (panels carry buy/sell qty — strictly better proxy),
               correlation-decay (24/72 bar), fill-clock clustering,
@@ -193,9 +229,13 @@ FOLD POP      any fold with < 4 decisions on an arm -> that arm dies
 Ordered kill rules (first binding kills; NET of full costs incl. funding):
 
 ```text
-R0  pre-score ancestry veto   pooled |rho| > 0.20 vs the re-pinned X1
-                              inventory + the §6 state set on the frozen
-                              P-12 representation -> dies pre-score
+R0  pre-score ancestry veto   per-pair-AND-pooled |rho| > 0.20 vs the
+                              re-pinned X1 inventory (dead-form envelope:
+                              the 32 crypto-adjacent FAMILY_FAILURES
+                              entries under the cycle_id predicate
+                              ^(CRYPTO|CNG|SCNG) — A7-F6) + the §6
+                              state set on the frozen P-12 representation
+                              -> dies pre-score
 R1  expectancy                anchor net expectancy <= 0 after full costs
 R2  robustness                PF gate + fold positivity + fold population
 R3  mechanism specificity     SHAM or STALE-BETA out-earns the anchor
@@ -226,9 +266,14 @@ raw-byte hashing + content-addressed append-only manifests; duplicate/
 out-of-order policy; minimum coverage = 60 CONSECUTIVE UTC days all 3
 venues; >= 1,296 valid triads (90% of 1,440 H1 bars); 4 x 15-day folds
 aligned to the family's fold count with >= 324 valid triads/fold and >= 4
-valid bars per control cell per fold (min population share 1.235%);
-weekend coverage: collect every UTC day, each 15-day fold >= 4 weekend
-days = >= 86 valid weekend bars, a missing weekend day = floor unmet;
+valid bars per control cell per fold (min population share 1.2346%);
+weekend coverage: collect every UTC day; the BINDING weekend guarantee is
+the CALENDAR guarantee — every 15-day fold contains >= 4 weekend days =
+96 raw weekend H1 bars, and the floor verifier asserts >= 4 VALID weekend
+cells per control per fold plus >= 16 weekend days per 60-day window; the
+"86 valid bars" figure from the A3 dossier is NOT the guarantee (it would
+presume 90% validity WITHIN weekend bars, which fold-global 90% does not
+imply — A4/A7-F3) and is not used; a missing weekend day = floor unmet;
 ONE preregistered regime: RV24(t) = sqrt of the trailing-24 hourly squared
 log returns of the cross-venue median mid, labels frozen from the S4
 panels (BTC LOW<0.0171<=MID<0.0299<=HIGH, STRESS>0.0542; ETH
@@ -245,8 +290,12 @@ A4 KO adopted into law: the floor covers ONLY the prospective control
 cells; the ANCHOR's own z-band decision/fold/pair population is
 NOT_MEASURED — the cycle is WAITING_PROSPECTIVE_COVERAGE on anchor
 decisions/fold/pair population, the funding P0 proof, and the anchor
-identity bytes until measured. An incomplete window is NEVER PASS and is
-never scored.
+identity bytes until measured. ANCHOR IDENTITY (A7-F8, named): NO
+prospective anchor z-band identity exists this cycle — the Coinbase legs
+are SPOT (BTC-USD/ETH-USD), no Binance venue is collected, and therefore
+no prospective perp z-band series may be claimed or silently substituted
+for the historical anchor identity; the item stays WAITING. An incomplete
+window is NEVER PASS and is never scored.
 
 Collector hygiene: collectors are LIGHT long-running daemons (never the
 machine-wide heavy lock), with Q-13 discipline — heartbeats carrying

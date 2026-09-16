@@ -97,8 +97,10 @@ FOREX-NG6 P0-F4; the NG6R1 construction-B preregistration stays binding and
 untouched).
 
 ```text
-F1 STAGING CHAIN (A4 5-step, all fail-closed)  (i) archive + member
-                           sha256 verification vs SHA256SUMS.txt; (ii)
+F1 STAGING CHAIN (A4 5-step, all fail-closed)  (i) archive sha256
+                           verification vs the staging SHA256SUMS.txt
+                           (archives only — member digests verify against
+                           the A2 dossier pins in §4); (ii)
                            structural census (rows, span, OHLC integrity,
                            16:00-NY stamp convention); (iii) a fresh TD
                            re-pull cross-check on a bounded sample —
@@ -117,7 +119,18 @@ F3 CLOCK + EXECUTION       one frozen 16:00-NY daily decision clock;
                            next-bar fill at the first bookable price; the
                            open-vs-close fill choice is frozen BEFORE
                            scoring (V6/V8 execution-freeze law); no
-                           same-bar signal-fill.
+                           same-bar signal-fill; EXIT MAPPING frozen
+                           before scoring: an exit condition that becomes
+                           knowable at bar-t close executes at bar t+1's
+                           first bookable price under the same convention
+                           (the V7 F-A7-PL-1 lookahead class pre-empted).
+F3b SIGN DERIVATION        implementation derives state signs from the
+                           mechanism statement (fresh 20-bar close LOW +
+                           divergent slope -> LONG toward absorption;
+                           fresh HIGH -> SHORT), never from the A2
+                           dossier's literal s_t sentence, which its own
+                           parenthetical contradicts (A7-F7 note; carried
+                           into the D1 freeze text).
 F4 COSTS                   A4 contract adopted: conservative 1.5 bps/fill
                            FLOOR band pending the P0-measured band (measured
                            beats stated, Q-8; the exact band is pinned at
@@ -126,12 +139,22 @@ F4 COSTS                   A4 contract adopted: conservative 1.5 bps/fill
                            unmeasurable the 1.5 bps floor + STRESS TIER 2.0
                            PRIMARY carries the gate, with the break-even
                            bps per round trip reported per arm; V6 razor
-                           class 3.0 bps hurdle named); financing:
-                           1–3 bar holds only; NZD-USD worst-differential
-                           exposure bounded by hold length and adjudicated
-                           per arm x leg x fold BEFORE merge (A4: ~5.1 bps
-                           over 3 nights can flip a sign vs a 3.0 bps
-                           hurdle).
+                           class 3.0 bps hurdle named); FINANCING
+                           AUTHORITY (A4 axis-5, binding): the plan must
+                           name its financing band + authority BEFORE D1;
+                           TD daily payloads are OHLC-only (no swap
+                           points), so if no citable band exists in the
+                           authorized evidence space at the D1 freeze,
+                           the financed book is NOT_MEASURABLE — declared
+                           per the FOREX-NG6 P0-F4 fail-closed class,
+                           NEVER silently zero (an implicit zero-
+                           financing book would make the dual-books gate
+                           tautological and is forbidden);
+                           financing: 1–3 bar holds only; NZD-USD
+                           worst-differential exposure bounded by hold
+                           length and adjudicated per arm x leg x fold
+                           BEFORE merge (A4: ~5.1 bps over 3 nights can
+                           flip a sign vs a 3.0 bps hurdle).
 F5 FOLDS (Q-6)             three chronological folds frozen BEFORE any D2
                            diagnostic; RECENT-window trigger-rate floor
                            measured at A9/P2 (A4 form: trigger rate
@@ -202,7 +225,9 @@ REV1 / REV5       short-horizon reversal shadows (the state IS reversal-
                   selected; large negative rho vs momentum is the killed
                   ancestry, never novelty evidence)
 USD-DRIFT GATE    |corr(anchor daily PnL, equal-weighted USD basket return
-                  built from the same five legs)| <= 0.20 (V6/V7 precedent)
+                  built from the same five legs)| <= 0.20, measured per-leg
+                  AND pooled (V6/V7 precedent); pooled-only is NOT_RUN,
+                  never PASS
 DGS10-LEVEL       the program's most lethal control lineage (#14/#15)
 REAL-YIELD        DFII10/DFII5 granted set, control-only
 CURVE-SHAPE       DGS2/DGS10 slope, control-only
@@ -220,25 +245,46 @@ Ordered kill rules (first binding kills; all NET, financed book, stress
 2.0 PRIMARY):
 
 ```text
-R0  pre-score ancestry veto   pooled |rho| > 0.20 vs the frozen shadow
-                              inventory on the P-12 representation
-                              (fng7_a2_p1_daily16NY_v1: pooled daily
-                              position series x log returns per leg)
+R0  pre-score ancestry veto   per-leg AND pooled |rho| > 0.20 vs the
+                              frozen shadow inventory on the P-12
+                              representation (fng7_a2_p1_daily16NY_v1:
+                              daily position series x log returns; BOTH
+                              the per-leg and the pooled measurements are
+                              required — pooled-only measurement DILUTES
+                              and is NOT accepted as PASS evidence; a
+                              pooled-only run is NOT_RUN, never PASS)
                               -> dies pre-score
 R1  expectancy                fin-adj net expectancy <= 0 at stress 2.0
-R2  robustness                PF < 1.10 OR fold positivity fails OR fold-
-                              population sub-gate fails
+R2  robustness                PF < 1.10 OR fold positivity fails OR the
+                              frozen per-state per-fold population floor
+                              fails (S2 class, pinned at the P0 manifest
+                              freeze below)
 R3  mechanism specificity     CTL-EXTREMEONLY out-earns or matches the
                               anchor (falsification-by-control, cluster
                               #17-class) — adjudicated under the Q-11 rule
 R4  trend/vol reduction       CTL-TRENDONLY or VOL-REGIME reproduces
                               >= 0.5x same-sign >= 2/3 folds -> REJECT
-R5  clock geometry            CLOCK-ONLY out-earns -> REJECT
-R6  usd/macro reduction       USD-drift gate fail, or DGS10/real-yield/
-                              curve/carry/SPY shadow reproduces the anchor
-                              (>= 0.5x same-sign) -> REJECT
+R5  clock geometry            CLOCK-ONLY out-earns, OR the FIRING CENSUS
+                              breaches the pre-pinned max weekday share
+                              floor of 0.35 (frozen HERE before any census
+                              is read; breach => the state IS a calendar
+                              condition, adjudicated under the NG4 dead-
+                              ancestry class) -> REJECT
+R6  usd/macro reduction       USD-drift gate fail (measured per-leg AND
+                              pooled, both vs the 0.20 bar), or DGS10/
+                              real-yield/curve/carry/SPY shadow reproduces
+                              the anchor (>= 0.5x same-sign) -> REJECT
+serial-clustering             consecutive fresh-extreme bars fire
+                              overlapping states: trade-independence is
+                              DECLARED NOT ASSUMED at the P0 manifest
+                              freeze; PF/trade-count reporting carries the
+                              clustering census (A4 axis-4)
 dual-books                    price-only book inverts sign vs financed book
-                              on any arm -> that arm fails, fail-closed
+                              on any arm -> that arm fails, fail-closed;
+                              and if no financing authority exists at the
+                              D1 freeze, the financed book is
+                              NOT_MEASURABLE and the family closes
+                              BLOCKED, never scored on a silent zero
 ```
 
 Plus the frozen forex Stage-A gates on any survivor (fold-positive-share,
