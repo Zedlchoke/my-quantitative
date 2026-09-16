@@ -1,0 +1,113 @@
+{
+  "artifact": "probe_contract_draft",
+  "artifact_id": "XAUUSD-BROKER-COST-PROBE-V1/probe_contract_draft",
+  "status": "DRAFT - MUST BE FROZEN BEFORE ANY LONG COLLECTION",
+  "freeze_rule": "This preregistration becomes FROZEN (status field flipped to FROZEN, file hashed and recorded by the owner) BEFORE the first long-collection sample is taken. After freeze: no edits. Changes require a new version with the old file preserved.",
+  "outcome_blindness": "This probe measures INSTRUMENT BEHAVIOR and TRADING COST INPUTS ONLY (bid/ask spread, fees, tick geometry). It must never touch, condition on, or be joined to any candidate returns, PnL, signal evaluation, or strategy outcome. The 2.0 stress multiplier and the vol-regime threshold RULE below were declared here before any spread distribution exists.",
+  "author": "A3_XAUUSD_IBKR_RESEARCHER",
+  "declared_utc": "2026-09-16",
+  "instrument_owner_frozen": {
+    "source": "owner-measured instrument record (frozen; re-verifiable via contractDetails at P0)",
+    "underlying": "London Gold spot",
+    "conId": 69067924,
+    "symbol": "XAUUSD",
+    "localSymbol": "XAUUSD",
+    "tradingClass": "XAUUSD",
+    "secType": "CMDTY",
+    "exchange": "SMART",
+    "currency": "USD",
+    "minTick": 0.01,
+    "timezone": "US/Eastern",
+    "marketDataType": 1,
+    "first_sample_note": "bid 4332.77 / ask 4333.17 is a SINGLE SAMPLE: connectivity proof ONLY. It is NEVER a historical cost model and MUST NOT be applied to any historical interval, with or without stress."
+  },
+  "sampling": {
+    "mode": "streaming reqMktData subscription on conId 69067924 (ONE market-data line)",
+    "why_streaming": "A single standing subscription uses 1 of the ~50 simultaneous-request pacing allowance; per-second reqMktData snapshot polling is the pacing-violation-prone pattern and is forbidden.",
+    "cadence": "1-second sampling grid in IBKR server time; the sampler writes every received bid/ask tick event event-driven (no interpolation), AND a per-second grid record marking grid cells WITH vs WITHOUT observations",
+    "no_forward_fill": "A grid cell with no tick observation is MISSING, never carried-forward from the previous cell",
+    "fields_logged_per_sample": ["server_time_tag", "bid", "ask", "tick_type", "marketDataType", "local_capture_wall_time (secondary, never authoritative)"],
+    "price_validity": "sample is valid iff bid>0 AND ask>0 AND ask>=bid; invalid samples are logged (never silently dropped), excluded from percentile aggregates, and counted"
+  },
+  "timestamp_source": {
+    "authoritative": "IBKR server time ONLY: reqCurrentTime() at session start and at least every 15 minutes, plus tick-level server timestamps where the API provides them",
+    "secondary": "local capture_wall_time is recorded for forensics but NEVER used as the sampling or alignment clock",
+    "drift_check": "server-local offset (ms) measured at connect, at each reqCurrentTime heartbeat, and at disconnect; offset changes > 250 ms are logged as events",
+    "never": "local clock alone may never define a sample timestamp or an interval boundary"
+  },
+  "minimum_sampling_window": {
+    "minimum_trading_days": 10,
+    "must_span": [
+      "a mid-month stretch (>=3 trading days between the 10th and 20th of the month)",
+      "a month-end stretch (>=3 trading days including the last trading day of the month)",
+      "at least ONE FOMC/CPI-class high-volatility event day: continuous coverage from 60 minutes BEFORE the scheduled release to 120 minutes AFTER (FOMC statement 14:00 ET, CPI 08:30 ET, NFP 08:30 ET class). If no such event falls inside the first 10 days, the window is EXTENDED until one is captured - this is MANDATORY, not optional."
+    ],
+    "session_coverage_rule": "every trading day's collection must include at least one bounded window in EACH of Asia, London, New York sessions, plus the low-liquidity rollover window"
+  },
+  "bounded_daily_windows_us_eastern": {
+    "rationale": "bounded windows (not 24h) respect TWS stability and API-session fragility observed 2026-09-16 (TCP open, API handshake dead)",
+    "windows": [
+      {"name": "asia", "et": "19:00-21:00", "purpose": "Asia session representative hours"},
+      {"name": "london_open", "et": "02:30-04:30", "purpose": "London session open, typically deepest liquidity"},
+      {"name": "us_data", "et": "08:20-09:20", "purpose": "covers 08:30 ET macro releases (high-volatility mandatory)"},
+      {"name": "london_fix_pm", "et": "09:55-10:15", "purpose": "10:00 London fix window"},
+      {"name": "ny_midday", "et": "12:30-13:45", "purpose": "COMEX close region"},
+      {"name": "ny_pm", "et": "14:00-16:00", "purpose": "NY afternoon incl. FOMC 14:00 ET on event days"},
+      {"name": "rollover", "et": "16:55-17:15", "purpose": "LOW-LIQUIDITY MANDATORY bucket; NY 17:00 ET roll; takes precedence over ny_pm bucket for 16:55-17:00 overlap"}
+    ],
+    "event_days": "on FOMC/CPI/NFP days the matching us_data or ny_pm window is extended to the pre/post rule in minimum_sampling_window"
+  },
+  "sessions_and_buckets": {
+    "session_boundaries_us_eastern_frozen": {
+      "asia": "17:00-02:00",
+      "london": "02:00-08:00",
+      "new_york": "08:00-17:00",
+      "rollover_low_liquidity": "16:55-17:15 (special bucket, precedence over the above)"
+    },
+    "hour_buckets": "all 24 hour-of-day buckets (US/Eastern) computed in addition to session buckets",
+    "mandatory": "low-liquidity hours (rollover) AND high-volatility hours (event windows, us_data window) are present in every collection day"
+  },
+  "regime_buckets": {
+    "grid": "session x {quiet, normal, high_vol}",
+    "rule_declared_BEFORE_collection": [
+      "RULE R1 (calendar-forced): any hour bucket overlapping FOMC statement/presser, CPI, or NFP release +/- 120 minutes is high_vol by construction",
+      "RULE R2 (threshold): let T = P95 of |1-minute mid log-returns| computed from the probe's own DAY-1 and DAY-2 samples only. Per hour bucket: max |1-min mid log-return| > T => high_vol; < T/2 => quiet; otherwise normal. T is frozen numerically at the end of day 2, BEFORE any regime-dependent analysis or any cost aggregation is run, and the frozen value is written into this contract's freeze record. If day 1-2 yields fewer than 200 one-minute returns, T is frozen from the first 200 available returns and the shortfall is documented.",
+      "RULE R2 rationale: the threshold RULE is declared ex ante here; its numeric value materializes from probe data at a frozen early cutoff, before any analysis that could be biased by it. The TD archive may NOT be used to set T (keeps the probe self-contained and outcome-blind)."
+    ],
+    "no_post_hoc_rebinning": "regime assignment is computed once from frozen rules; re-binning after seeing spread results is forbidden"
+  },
+  "stress_multiplier": {
+    "value": 2.0,
+    "frozen": "NOW, before any spread distribution exists (program stress tier standard)",
+    "application_rule": "any per-regime median spread carried into forward models is multiplied by 2.0 in the stress tier; the multiplier applies to the PER-REGIME MEDIAN spread from the frozen probe, never to the single connectivity sample",
+    "prohibition": "the current single live spread (bid 4332.77 / ask 4333.17) may NEVER be applied to history without the stress regime - i.e. never as a raw historical spread, and the stress tier itself is fed only by frozen probe medians"
+  },
+  "reconnect_disconnect_handling": {
+    "on_disconnect": "open a gap record {gap_id, last_good_server_ts, cause: DISCONNECT|API_DEAD|WINDOW_END, first_good_server_ts: null}",
+    "no_silent_resume": "on reconnect: (1) resync server time via reqCurrentTime BEFORE the first post-reconnect sample; (2) write first_good_server_ts into the gap; (3) emit an explicit RESUME event; the second containing the break is NEVER merged across it - no resume-mid-second",
+    "sequence_numbers": "monotonic, never reused across restarts",
+    "repeated_failure": "if the API handshake fails (as on 2026-09-16: TCP open, zero callbacks), the attempt is classified NOT_RUN_TWS_UNAVAILABLE, resumable, and logged - it never silently degrades to partial data"
+  },
+  "pacing_limits": {
+    "subscription_budget": "1 standing subscription (limit ~50 simultaneous market-data requests)",
+    "pacing_violation_handling": "IBKR pacing error codes (100/101/102 family) => halt the sampler immediately, log {code, server_time, message}, back off 600 s, record a pacing_violation event; 3 violations in one day => abort that day's remaining windows and classify the day PARTIAL",
+    "no_snapshot_spam": "per-second reqMktData snapshot requests forbidden (see sampling.mode)"
+  },
+  "missing_data_policy": {
+    "definition": "any expected-but-absent observation is MISSING",
+    "no_fabrication": "no interpolation, no forward-fill, no backfill, no synthetic reconstruction - ever",
+    "aggregation_impact": "every percentile/aggregate is reported WITH its observed-sample count and cell coverage; aggregators run on observed samples only"
+  },
+  "spread_recording": {
+    "spread_usd_oz": "ask - bid (USD per troy ounce)",
+    "mid": "(bid + ask) / 2",
+    "spread_bps": "spread_usd_oz / mid * 10000",
+    "both_units_mandatory": "every aggregate is reported in BOTH USD/oz and bps-of-mid"
+  },
+  "aggregation_contract": {
+    "levels": ["per-session", "per-hour-bucket", "per-regime (session x vol-regime)"],
+    "statistics_per_level": ["median", "p90", "p95", "p99", "max", "n_observed", "n_invalid", "coverage_fraction"],
+    "computed_for": ["spread_usd_oz", "spread_bps"],
+    "min_tick_audit": "all logged prices must be multiples of 0.01 (minTick); any deviation is an instrument-identity alarm: halt collection, do not resume until identity is re-verified via contractDetails"
+  }
+}

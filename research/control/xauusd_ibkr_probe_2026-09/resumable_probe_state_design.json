@@ -1,0 +1,74 @@
+{
+  "artifact": "resumable_probe_state_design",
+  "artifact_id": "XAUUSD-BROKER-COST-PROBE-V1/resumable_probe_state_design",
+  "declared_utc": "2026-09-16",
+  "author": "A3_XAUUSD_IBKR_RESEARCHER",
+  "motivation": "the 2026-09-16 TWS episode (TCP open, API handshake dead, classified NOT_RUN_TWS_UNAVAILABLE, resumable) proves a multi-day probe MUST survive session and app restarts without fabricating intervals.",
+  "files_layout": {
+    "state_file": "probes/state/probe_state.json (small, rewritten atomically: write tmp + fsync + rename)",
+    "data_files": "probes/data/samples_<yyyymmdd>.jsonl (append-only, one JSON object per observed tick sample)",
+    "events_file": "probes/data/events_<yyyymmdd>.jsonl (append-only: CONNECT, RESYNC, GAP_OPEN, GAP_CLOSE, RESUME, PACING_VIOLATION, HALT, SHUTDOWN)",
+    "heartbeats_file": "probes/data/heartbeats_<yyyymmdd>.jsonl (append-only, Q-13 heartbeats)"
+  },
+  "state_file_schema": {
+    "schema_id": "xauusd_probe_state@1",
+    "probe_id": "XAUUSD-BROKER-COST-PROBE-V1",
+    "instrument_fingerprint": {"conId": 69067924, "tradingClass": "XAUUSD", "secType": "CMDTY", "exchange": "SMART", "currency": "USD", "minTick": 0.01},
+    "contract_frozen_sha256": "sha256 of probe_contract_draft.json at freeze (written at freeze; mismatch on resume = HALT)",
+    "server_time_offset_ms": "last measured IBKR-server minus local wall clock",
+    "server_time_last_check_utc": null,
+    "sample_seq": "monotonic last assigned sequence number (never reset, never reused)",
+    "coverage_by_session": {
+      "<yyyymmdd>": {
+        "<window_name>": {
+          "expected_samples": "int (window_seconds, upper bound reference)",
+          "captured_samples": "int observed",
+          "invalid_samples": "int (bid<=0 | ask<=0 | ask<bid)",
+          "first_server_ts": null,
+          "last_server_ts": null,
+          "status": "PENDING | OPEN | COMPLETE | PARTIAL | ABORTED"
+        }
+      }
+    },
+    "gaps": [
+      {"gap_id": "int, monotonic", "opened_wall_utc": null, "closed_wall_utc": null, "last_good_server_ts": null, "first_good_server_ts": null, "cause": "DISCONNECT | API_DEAD | WINDOW_END | MANUAL"}
+    ],
+    "pacing_violations": [],
+    "day_classifications": {"<yyyymmdd>": "NOT_RUN | PARTIAL | COMPLETE | ABORTED"}
+  },
+  "byte_offsets": {
+    "tracked_files": {"samples": {"path": null, "committed_bytes": 0}, "events": {"path": null, "committed_bytes": 0}, "heartbeats": {"path": null, "committed_bytes": 0}},
+    "commit_protocol": "append line(s) -> flush -> fsync -> then update state_file byte offset -> atomic rename; the offset in state is ALWAYS <= true file size",
+    "why": "a crash between append and fsync leaves file longer than committed offset; the excess is UNCOMMITTED and must not be claimed as evidence"
+  },
+  "heartbeat_contract_Q13": {
+    "cadence": "every 60 s of sampler runtime and at every state transition (connect, gap open/close, window start/end, shutdown)",
+    "payload": {"hb_seq": "monotonic int", "ts_wall_utc": null, "ts_server": null, "bytes_written_per_file": {"samples": null, "events": null, "heartbeats": null}, "payload_shape": {"samples_line_fields": ["sample_seq", "server_ts", "bid", "ask", "tick_type", "marketDataType", "wall_time"], "samples_line_count_since_last_hb": null, "last_sample_seq": null}, "process_pid": null, "state_digest": "sha256 of state_file contents at hb time"},
+    "purpose": "an external watcher (or the successor) can verify liveness by (a) hb_seq monotonicity, (b) bytes_written growing, (c) payload_shape matching the declared schema - a heartbeat with wrong shape or frozen bytes is an alarm, not proof of life"
+  },
+  "stop_resume_algorithm": {
+    "clean_stop": [
+      "1. write SHUTDOWN event; 2. close current OPEN window with status; 3. fsync all jsonl files; 4. write final byte offsets; 5. atomic state rename"
+    ],
+    "resume": [
+      "1. read probe_state.json; verify schema_id and contract_frozen_sha256 (mismatch => HALT, do not collect)",
+      "2. verify instrument fingerprint via contractDetails (identity re-check; minTick must match frozen 0.01)",
+      "3. stat each data file: if file_size > committed_bytes, TRUNCATE back to committed_bytes (uncommitted tail from a crash is discarded, never claimed) - record a TRUNCATION event",
+      "4. resync server time via reqCurrentTime BEFORE first sample; log RESYNC with new offset",
+      "5. open a GAP record for the offline interval [last_good_server_ts, now] with cause = the shutdown/disconnect reason; the gap is RECORDED, never backfilled",
+      "6. write RESUME event; continue with a fresh sample_seq continuing the monotonic counter"
+    ],
+    "non_fabrication_invariants": [
+      "NO sample line may be synthesized for any interval the sampler was not observably running",
+      "any interval with zero samples because the app was down is a GAP record, not interpolated data",
+      "server_ts is authoritative; a resumed session never merges samples across a break within the same second",
+      "coverage_by_session counts only observed samples; expected-minus-observed is reported as missing, never filled"
+    ],
+    "crash_mid_write": "a torn final JSON line (< committed region) is detected by parse failure at the last offset and truncated with a TRUNCATION_TORN_LINE event"
+  },
+  "atomicity": {
+    "state_rewrites": "tmp file + fsync + atomic rename (no in-place mutation)",
+    "jsonl_appends": "single write() per line, flush + fsync before offset commit",
+    "lock": "single-writer only; probe takes the workspace heavy-job lock per AGENTS.md before any collection session"
+  }
+}

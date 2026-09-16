@@ -1,0 +1,115 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "A3_XAUUSD_IBKR_RESEARCHER",
+  "cycle_id": "XAUUSD-BROKER-COST-PROBE-V1",
+  "role": "blind instrument/data/cost researcher (XAUUSD IBKR broker-cost probe)",
+  "lane": "A3",
+  "dispatch_sha": "2b02e278bf0d48f549a75188363da462e7c6f41c",
+  "actual_start_sha": "2b02e278bf0d48f549a75188363da462e7c6f41c",
+  "commit_sha": null,
+  "changed_paths": [
+    "research/control/xauusd_ibkr_probe_2026-09/probe_contract_draft.json",
+    "research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json",
+    "research/control/xauusd_ibkr_probe_2026-09/td_archive_join_contract.json",
+    "research/control/xauusd_ibkr_probe_2026-09/resumable_probe_state_design.json",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetch_log.json",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/commissions-metals.html",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/us-products-metals.html",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/ie-products-metals.html",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/margin-requirements.html",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/margin-us-metals.html",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/us-metals-margin-form4024.pdf",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/us-metals-margin-form4024.txt",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/legacy-margin-f1337.html",
+    "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/campus-spot-gold-lesson.html",
+    "research/control/ng5r1_ng6r1_frontier_2026-09/handoffs/a3_xauusd_ibkr_researcher.json"
+  ],
+  "tests": [
+    {"command": "curl -sL https://www.interactivebrokers.com/en/pricing/commissions-metals.php (raw bytes saved + parsed)", "exit_code": 0, "verdict": "PASS", "log_digest": "e6f88e032c5094bc5fc92e4e0b0c4eb378b11df3404ae5c601703b0b08228297"},
+    {"command": "curl -sL https://www.interactivebrokers.com/en/trading/products-metals.php (raw bytes saved + parsed)", "exit_code": 0, "verdict": "PASS", "log_digest": "efd5c9997f3ef75b59c2c528723b71f31cf2dca9a40a55d7965b0208a2c9d0fd"},
+    {"command": "curl -sL https://www.interactivebrokers.ie/en/trading/products-metals.php (raw bytes saved + parsed)", "exit_code": 0, "verdict": "PASS", "log_digest": "e18c1b191c001fd954ce1e3be845ff775c58372268e7e770983f6451ac170d4e"},
+    {"command": "curl -sL https://www.interactivebrokers.com/en/trading/margin-requirements.php (margin numbers)", "exit_code": 0, "verdict": "NOT_RUN", "log_digest": "3aa7df33ff5118470c0130c90ef9fa836ac7bbb25d4c7459e619bf82f4d73d4a"},
+    {"command": "curl -sL https://ndcdyn.interactivebrokers.com/en/trading/margin-us-metals.php (margin numbers)", "exit_code": 0, "verdict": "NOT_RUN", "log_digest": "fab39db1044ae288a6f03a9df6c95e7191f0bac445ac082e32ed69b2e8d7760e"},
+    {"command": "curl -sL 'https://ndcdyn.interactivebrokers.com/Universal/servlet/Registration_v2.formSampleView?formdb=4024' (suspected margin VIEW target; document was the CRS PDF, not margin)", "exit_code": 0, "verdict": "NOT_RUN", "log_digest": "41f429340e13ec0f22608d629c259481ccec66d6931e9f3744d10e6145abf737"},
+    {"command": "curl -sL https://www.interactivebrokers.com/en/index.php?f=1337 (legacy margin page)", "exit_code": 0, "verdict": "FAIL", "log_digest": "9e1c66fd9b6a0a047ac66c6df9853483d22119c47b1c32819cf09724b9ad198d"},
+    {"command": "curl -sL https://www.interactivebrokers.com/campus/trading-lessons/trading-spot-gold-and-silver-using-ibkrs-tws/ (stated specs)", "exit_code": 0, "verdict": "PASS", "log_digest": "fa753c634a80df519e85cba7d604eaf116ad541c1f7259921d276ac4f2edbff8"},
+    {"command": ".venv/bin/python -c json.load over the 5 lane-authored JSON artifacts", "exit_code": 0, "verdict": "PASS", "log_digest": null}
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "TWS API unavailable 2026-09-16 (owner-measured NOT_RUN_TWS_UNAVAILABLE, TCP open / handshake dead): no new live samples collected; the single live spread (4332.77/4333.17 = 0.40 USD/oz = 0.923 bps-of-mid) remains n=1 connectivity proof only",
+    "margin requirement UNMEASURED: official IBKR margin pages are JS-rendered; static fetches returned shells only; reqMarginChangesForOrder (whatIf) is an order channel and FORBIDDEN under Read-Only rules, so margin cannot be API-measured inside this probe",
+    "price-increment discrepancy: MEASURED minTick 0.01 (owner contractDetails) vs STATED $0.001 (IBKR Campus educational page, fees as of Jan 2022) - unresolved; re-measure at P0",
+    "minimum order size / size increment: stated 1 oz (Jan 2022 educational page) only; UNMEASURED from live contractDetails pending TWS recovery",
+    "TD-archive basis-test acceptance thresholds deliberately carry NO numeric values in this draft - they are declared as named parameters to be frozen at P0 (outcome-blind rule; no overlap data exists yet)",
+    "7 early WebFetch-phase fetches (commissions-home, conid contract-details 404, two products-exchange 404s, f=26660 shell, spot-gold.php 404, f=1590 index) have approximate retrieval timestamps and no raw bytes saved; all substantive fee items were re-fetched raw via curl with exact timestamps",
+    "borrow-fee USD figures (4.63%/4.13%/3.93%) embed the page-snapshot Benchmark USD 5.08%; the schedule is BM+1%/+0.5%/+0.3% - BM floats and must be carried as an input, not the snapshot"
+  ],
+  "incidents": [
+    "servlet formdb=4024 (found as margin-us-metals VIEW target) turned out to be the Customer Relationship Summary PDF, not the metals margin table; extracted via PDFKit to confirm; kept as evidence of the attempt",
+    "one WebFetch re-query of commissions-metals.php timed out at 60s; superseded by successful raw curl fetch of the same page",
+    "fetch_log timestamps initially mislabeled local (UTC+7) times with a Z suffix; corrected to true UTC (verified against `date -u` at 2026-09-16T11:40:13Z)"
+  ],
+  "tree_status": "repo HEAD unchanged at 2b02e278bf0d48f549a75188363da462e7c6f41c (main); no commits made; all lane outputs are untracked files under research/control/xauusd_ibkr_probe_2026-09/ plus this handoff; no git commands other than read-only rev-parse/branch/status",
+  "workers": [],
+  "outputs": [
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probe_contract_draft.json", "sha256": "326cff717d490e3a907c9a51a4d580b44dd654d3eda234bf3c9267bf8b38cd3e"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json", "sha256": "03da7061d5712141e9150b8c689a4de13a13c91493fcb904e36dc71e7dae306d"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/td_archive_join_contract.json", "sha256": "40072f163e1fcc5ae272b79f614b1ef6596976143046fb975e8df0ff01a18bc6"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/resumable_probe_state_design.json", "sha256": "65e721c736070420f079d5bad39243510459b40378c2173b0d9ff9cdb62ebc85"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetch_log.json", "sha256": "6928c2c0d4a380dfbf8492b0c744e977e952bfa1b2c102745681974eaf3577f5"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/tws_light_check.json", "sha256": "552a122829cf3ae2a028eb0abf6883c34b6864dad6b1901c1c0a0f6a6199096f"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/commissions-metals.html", "sha256": "e6f88e032c5094bc5fc92e4e0b0c4eb378b11df3404ae5c601703b0b08228297"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/us-products-metals.html", "sha256": "efd5c9997f3ef75b59c2c528723b71f31cf2dca9a40a55d7965b0208a2c9d0fd"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/ie-products-metals.html", "sha256": "e18c1b191c001fd954ce1e3be845ff775c58372268e7e770983f6451ac170d4e"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/margin-requirements.html", "sha256": "3aa7df33ff5118470c0130c90ef9fa836ac7bbb25d4c7459e619bf82f4d73d4a"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/margin-us-metals.html", "sha256": "fab39db1044ae288a6f03a9df6c95e7191f0bac445ac082e32ed69b2e8d7760e"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/us-metals-margin-form4024.pdf", "sha256": "41f429340e13ec0f22608d629c259481ccec66d6931e9f3744d10e6145abf737"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/us-metals-margin-form4024.txt", "sha256": "a182e4a720fd56de931da710d8e3461f8ac613b8a4918aa0b44758f07338479b"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/legacy-margin-f1337.html", "sha256": "9e1c66fd9b6a0a047ac66c6df9853483d22119c47b1c32819cf09724b9ad198d"},
+    {"path": "research/control/xauusd_ibkr_probe_2026-09/probes/fetched/campus-spot-gold-lesson.html", "sha256": "fa753c634a80df519e85cba7d604eaf116ad541c1f7259921d276ac4f2edbff8"}
+  ],
+  "research": {
+    "deliverable_1_probe_contract_draft": {
+      "path": "research/control/xauusd_ibkr_probe_2026-09/probe_contract_draft.json",
+      "status": "DRAFT_UNTIL_FROZEN - must be frozen by owner before any long collection",
+      "key_terms": {
+        "sampling": "ONE streaming reqMktData subscription on conId 69067924 (1 of ~50 pacing budget); 1s sampling grid in IBKR server time; every received tick logged event-driven; empty grid cells are MISSING, never forward-filled; per-second snapshot polling forbidden",
+        "timestamp": "IBKR server time only (reqCurrentTime at connect + every 15 min + tick tags); local wall time recorded as secondary forensics only; drift checks at 250 ms threshold",
+        "minimum_window": ">= 10 trading days spanning mid-month AND month-end, plus >= 1 FOMC/CPI/NFP-class event day captured 60 min pre / 120 min post (window extended until an event day is captured - mandatory)",
+        "sessions": "Asia/London/NY in US/Eastern with frozen boundaries (17-02 / 02-08 / 08-17) + mandatory low-liquidity rollover bucket 16:55-17:15 ET; 7 bounded daily windows named",
+        "regimes": "session x {quiet, normal, high_vol}; R1 calendar-forced high-vol (event +/- 120 min); R2 threshold T = P95 |1-min mid log-return| from probe days 1-2, frozen at day-2 close before any analysis; no post-hoc rebinning; TD archive barred from setting T",
+        "stress": "2.0 multiplier on per-regime median spread, frozen NOW before any distribution exists (program stress tier standard); single live sample never applicable to history",
+        "spread": "recorded in USD/oz AND bps-of-mid; per-session and per-hour-bucket median/p90/p95/p99/max with n_observed/invalid/coverage; minTick=0.01 audit on every price with identity-alarm halt",
+        "reconnect": "gap records with last/first good server ts; no resume-mid-second; server resync before first post-reconnect sample; RESUME event mandatory",
+        "pacing": "streaming only; pacing error codes 100/101/102 => halt + 600 s backoff + log; 3 violations/day => day PARTIAL"
+      }
+    },
+    "deliverable_2_cost_authority_checklist": {
+      "path": "research/control/xauusd_ibkr_probe_2026-09/cost_authority_checklist.json",
+      "fetch_log": "research/control/xauusd_ibkr_probe_2026-09/probes/fetch_log.json",
+      "findings": {
+        "commission_london_gold": "STATED official (commissions-metals.php): tiered 1.5 bps (0-500k) / 1.0 bps (500k-1M) / 0.7 bps (>1M) of trade value; minimum USD 2.00 per order Tier 1 only; all exchange+regulatory fees included; commissions apply to all order types",
+        "long_storage": "STATED: London Gold storage 0.10% per annum (page example: 1900*500*0.1%/360 = USD 2.64/day)",
+        "short_borrow_financing": "STATED: BM+1% (<=1M), BM+0.5% (<=10M), BM+0.3% (>10M); page snapshot BM=5.08% => 4.63/4.13/3.93%; IE page corroborates 'borrow fee starting at Reference Benchmark USD + 1%' and 'Unallocated Carrying Fee of 10 basis points' + 'Settlement is T+2'",
+        "margin": "UNMEASURED - JS-rendered pages, shells only, no number invented; whatIf order channel forbidden under Read-Only rules",
+        "min_size_increment": "STATED 1 oz minimum / 1-oz units (Campus lesson, Jan 2022); size increment UNMEASURED from live contract",
+        "price_increment": "MEASURED minTick 0.01 vs STATED $0.001 (Jan 2022) - discrepancy flagged, re-measure at P0; measured API value is instrument authority",
+        "paper_fills": "RULE: simulated fills are NOT live slippage, zero evidential weight for execution cost, never merged into live evidence",
+        "instrument_warning": "USGOLD (US Spot Gold, US-only OTC) is a DIFFERENT instrument from London Gold XAUUSD CMDTY - fee rows were kept separated in the checklist"
+      }
+    },
+    "deliverable_3_td_archive_join_contract": {
+      "path": "research/control/xauusd_ibkr_probe_2026-09/td_archive_join_contract.json",
+      "td_archive_sha256_measured": "49c2684ebb045302acf0c452b5aa9a3b96dff73eb3bc6f5add1801d6817fb33d",
+      "td_archive_bytes_measured": 1347055,
+      "td_coverage_observed": "1979-12-26 .. 2026-09-16 daily; string-typed OHLC; includes weekend/holiday rows (not an exchange calendar)",
+      "design": "archive/reference ONLY; join requires gate 1 (PIT availability lag L, measured or declared-conservative-assumed), gate 2 (basis test: TD daily close vs IBKR probe mid close on >= 20 aligned IBKR trading days; metrics: bias, std, p50/p90/p95/p99 abs-basis in USD/oz and bps, return correlation, outlier rate, sign-flip rate, drift check, close-definition sensitivity) with acceptance thresholds as named parameters TO BE FROZEN AT P0 (no invented numbers), gate 3 (representation contract: TD never relabeled IBKR; no broker-cost use; frozen basis representation + 2.0 stress multiplier on any spread term; look-ahead and calendar guards; sha-pinned provenance)"
+    },
+    "deliverable_4_resumable_probe_state_design": {
+      "path": "research/control/xauusd_ibkr_probe_2026-09/resumable_probe_state_design.json",
+      "design": "schema xauusd_probe_state@1: instrument fingerprint + contract_frozen_sha256 guard, server_time_offset, monotonic sample_seq, coverage_by_session per window with status, gaps[] with cause, pacing_violations, day_classifications; append-only jsonl (samples/events/heartbeats) with fsync-then-offset-commit; atomic state rewrites; Q-13 heartbeats every 60 s carrying bytes_written per file + payload_shape + last_sample_seq + state_digest; restart algorithm: verify frozen-contract sha -> re-verify contractDetails identity -> truncate uncommitted tails (never claimed) -> server resync -> GAP record for offline interval -> RESUME event; non-fabrication invariants: no synthesized samples, gaps recorded never backfilled, no same-second merge across breaks"
+    }
+  },
+  "recommended_next_action": "Owner: (1) freeze probe_contract_draft.json (flip status to FROZEN, record its sha) before any long collection; (2) re-attempt TWS API connect (previous NOT_RUN_TWS_UNAVAILABLE is resumable) and at P0 re-measure contractDetails: minTick (resolve 0.01 vs stated 0.001), minSize, sizeIncrement; (3) obtain margin requirement from the official published metals margin table (API whatIf is forbidden under Read-Only); (4) start bounded-window collection per the frozen contract with the state design implemented."
+}

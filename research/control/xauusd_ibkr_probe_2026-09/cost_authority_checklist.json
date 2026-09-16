@@ -1,0 +1,110 @@
+{
+  "artifact": "cost_authority_checklist",
+  "artifact_id": "XAUUSD-BROKER-COST-PROBE-V1/cost_authority_checklist",
+  "declared_utc": "2026-09-16",
+  "author": "A3_XAUUSD_IBKR_RESEARCHER",
+  "method": "each item records: source | measured vs stated vs unmeasured | evidence path | and the stated-fee vs simulated-fee vs measured-live-execution distinction. UNMEASURED means no official number was retrievable - never an invented one.",
+  "items": [
+    {
+      "item": "instrument_identity",
+      "source": "owner-measured TWS contractDetails (frozen instrument record)",
+      "classification": "MEASURED",
+      "value": "conId 69067924, symbol/localSymbol/tradingClass XAUUSD, secType CMDTY, exchange SMART, currency USD, minTick 0.01, timezone US/Eastern, marketDataType=1 LIVE",
+      "evidence_path": "probes/tws_light_check.json",
+      "distinction": "measured-live (API contractDetails); identity must be re-verified via contractDetails at every probe session start"
+    },
+    {
+      "item": "observed_live_bid_ask_spread",
+      "source": "owner single live sample (marketDataType=1 LIVE) at probe freeze",
+      "classification": "MEASURED - SINGLE SAMPLE, connectivity proof ONLY",
+      "value": "bid 4332.77 / ask 4333.17 => spread 0.40 USD/oz, mid 4332.97, spread 0.923 bps-of-mid (0.40/4332.97*10000 = 0.9232)",
+      "evidence_path": "probes/tws_light_check.json",
+      "distinction": "measured-live, but n=1. It is NEVER a historical cost model, never an expected spread, never applicable to history. Distributional spread evidence comes only from the frozen probe (deliverable probe_contract_draft).",
+      "caveat": "sample taken before the 2026-09-16 TWS-unavailable episode; resumable"
+    },
+    {
+      "item": "commission_schedule_london_gold_CMDTY",
+      "source": "OFFICIAL ibkr.com metals commissions page (fetched, quoted from raw HTML)",
+      "classification": "STATED-FEE (published schedule, not measured execution)",
+      "value": "London Gold, US Spot Gold - Tiered, by Order Amount (USD): 0-500,000 => 1.5 bps * Trade Value; 500,000.01-1,000,000 => 1.0 bps; > 1,000,000 => 0.7 bps. Minimum Per Order: Tier 1 USD 2.00 (Tiers 2 and 3: N/A). Notes: '1 basis point=0.0001', 'Commissions apply to all order types.', 'All exchange and regulatory fees included.', modified orders treated as cancel+replace. Worked example on page: buy 500 oz XAUUSD @ USD 1900 => execution fee USD 120.",
+      "evidence_path": "probes/fetched/commissions-metals.html",
+      "distinction": "STATED-FEE. Simulated (paper) fills will realize commission rules but NOT prove them; measured-live-execution verification = commission line in real account reporting (owner scope, out of probe).",
+      "instrument_warning": "page covers BOTH 'London Gold, US Spot Gold' (same tier table) and USGOLD (US-only OTC retail product). The probe instrument is London Gold XAUUSD CMDTY; USGOLD residency restrictions (not available in AZ, MT, NH, RI) do not apply to it."
+    },
+    {
+      "item": "long_storage_fee",
+      "source": "OFFICIAL ibkr.com metals commissions page",
+      "classification": "STATED-FEE",
+      "value": "'London Gold, London Silver - Storage cost 0.10% per annum.' Page example: storage fee = (1900*500*0.1%/360) = USD 2.64 per day (annualized, /360 day-count). Corroborated by IBKR (IE) page: 'Unallocated Carrying Fee of 10 basis points charged for storage. Settlement is T+2.'",
+      "evidence_path": "probes/fetched/commissions-metals.html",
+      "secondary_evidence_path": "probes/fetched/ie-products-metals.html",
+      "distinction": "STATED-FEE on notional; accrues only while a LONG position is held overnight - the probe takes no positions, so this is schedule evidence only",
+      "comparison_only": "USGOLD storage is USD 0.15 per ounce per month - DIFFERENT product, do not mix"
+    },
+    {
+      "item": "short_borrow_financing_fee",
+      "source": "OFFICIAL ibkr.com metals commissions page (Borrow Fees table) + OFFICIAL ibkr.ie metals page",
+      "classification": "STATED-FEE (tiered, benchmark-linked; benchmark value moves daily)",
+      "value": "Balance cutoffs (USD): 0-1,000,000 => 4.63% (BM + 1%); 1,000,000.01-10,000,000 => 4.13% (BM + 0.5%); > 10,000,000 => 3.93% (BM + 0.3%). Page states these assume Benchmark USD = 5.08% (page snapshot value, NOT a live quote). Worked example: shortsell 500 oz XAUUSD @ 1900 => Borrow Fee = (1900*500*(5.08+1)%/360) = USD 160.44 per day.",
+      "evidence_path": "probes/fetched/commissions-metals.html",
+      "secondary_evidence_path": "probes/fetched/ie-products-metals.html",
+      "distinction": "STATED-FEE as of retrieval 2026-09-16; the BM component floats with the USD benchmark rate, so any forward cost model must carry BM as an input, not the snapshot 5.08%",
+      "prohibition_note": "short-side rates are schedule evidence only; the probe never opens a short"
+    },
+    {
+      "item": "margin_requirement",
+      "source": "OFFICIAL ibkr.com margin pages - ATTEMPTED, NOT RETRIEVABLE",
+      "classification": "UNMEASURED",
+      "value": null,
+      "attempts": [
+        "https://www.interactivebrokers.com/en/trading/margin-requirements.php - JS wizard shell, 'US METALS MARGIN REQUIREMENTS' behind VIEW link (probes/fetched/margin-requirements.html)",
+        "https://ndcdyn.interactivebrokers.com/en/trading/margin-us-metals.php - 339KB shell, zero margin numbers in static HTML (probes/fetched/margin-us-metals.html)",
+        "VIEW target servlet formdb=4024 - turned out to be the Customer Relationship Summary PDF, not margin (probes/fetched/us-metals-margin-form4024.pdf + .txt)",
+        "legacy https://www.interactivebrokers.com/en/index.php?f=1337 - HTTP 404 (probes/fetched/legacy-margin-f1337.html)"
+      ],
+      "evidence_path": "probes/fetch_log.json",
+      "distinction": "UNMEASURED - no number invented. Re-measure at P0 from the official published table. CONSTRAINT: reqMarginChangesForOrder (whatIf) is an ORDER channel and is FORBIDDEN under the probe's Read-Only rule; margin therefore cannot be measured through the API inside this probe."
+    },
+    {
+      "item": "minimum_order_size_and_size_increment",
+      "source": "OFFICIAL IBKR Campus lesson 'Trading Spot Gold and Silver using TWS' (educational; fees/params stated as of Jan 2022)",
+      "classification": "STATED (educational, dated) - treat as indicative only",
+      "value": "'US Spot Gold (symbol USGOLD) and London Spot Gold & Silver (symbols XAUUSD & XAGUSD) are traded in units of 1 troy ounce ... The minimum order size is 1 ounce, and the minimum price increment is $0.001 (one tenth of a penny).'",
+      "evidence_path": "probes/fetched/campus-spot-gold-lesson.html",
+      "distinction": "STATED (2022 educational page). Minimum size / size increment are UNMEASURED from the live contract; contractDetails minSize/sizeIncrement must be captured at P0 when the TWS API returns",
+      "discrepancy_flag": "same page states min price increment $0.001, conflicting with MEASURED minTick 0.01 - see price_increment item"
+    },
+    {
+      "item": "price_increment",
+      "source": "MEASURED: owner TWS contractDetails. STATED: IBKR Campus lesson (Jan 2022)",
+      "classification": "MEASURED WINS, discrepancy logged",
+      "value": "MEASURED minTick = 0.01 (USD/oz) vs STATED $0.001 - a 10x conflict between the live API contract and 2022 educational copy",
+      "evidence_path": "probes/fetched/campus-spot-gold-lesson.html (stated) + probes/tws_light_check.json context (measured)",
+      "distinction": "the measured API contractDetails value is the instrument authority for the probe; re-measure at P0 and if the API then returns 0.001, freeze the new measured value and flag the identity change",
+      "probe_safeguard": "every sampled price is checked to be a multiple of the frozen minTick; violation halts collection (identity alarm)"
+    },
+    {
+      "item": "paper_fill_limitations",
+      "source": "PROBE RULE (declared)",
+      "classification": "RULE",
+      "value": "simulated (paper) fills are NOT live slippage and carry ZERO evidential weight for execution cost. Paper fills realize stated commissions and simulated spread crossing, but they do not observe real queue/liquidity. Any paper-fill-derived number must be labeled 'simulated' and may never be merged into, or presented as, measured-live-execution cost evidence.",
+      "evidence_path": "probe_contract_draft.json",
+      "distinction": "this item exists to enforce the stated-fee vs simulated-fee vs measured-live-execution trichotomy across all other items"
+    }
+  ],
+  "fee_source_summary": {
+    "official_pages_fetched_and_quoted": [
+      "probes/fetched/commissions-metals.html (commissions + storage + borrow tiers - PRIMARY fee authority)",
+      "probes/fetched/ie-products-metals.html (borrow fee + carrying fee corroboration)",
+      "probes/fetched/us-products-metals.html (USGOLD product page - different instrument)",
+      "probes/fetched/campus-spot-gold-lesson.html (min size / minTick stated, dated Jan 2022)"
+    ],
+    "unreachable_or_shell": [
+      "probes/fetched/margin-requirements.html",
+      "probes/fetched/margin-us-metals.html",
+      "probes/fetched/us-metals-margin-form4024.pdf",
+      "probes/fetched/legacy-margin-f1337.html"
+    ],
+    "retrieval_log": "probes/fetch_log.json"
+  }
+}
