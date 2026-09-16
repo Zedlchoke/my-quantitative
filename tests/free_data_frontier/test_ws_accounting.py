@@ -124,3 +124,15 @@ def test_deribit_regression_counts_as_gap(tmp_path):
             '"data": {"change_id": %d}}}' % cid
         )
     assert capture.summary.per_channel["book.ETH-PERPETUAL.100ms"].gaps == 1
+
+
+def test_capture_truncates_at_max_bytes_and_flags(tmp_path):
+    capture = SeqCapture(tmp_path / "trunc.jsonl")
+    capture.max_bytes = 50  # tiny cap
+    capture.summary.started_utc = "2026-09-16T00:00:00.000Z"
+    capture._handle = capture.raw_path.open("wb")
+    for seq in range(10):
+        capture._on_text('{"seq": %d, "pad": "%s"}' % (seq, "x" * 20))
+    capture._handle.close()
+    assert capture.summary.truncated is True
+    assert any("truncated" in n for n in capture.summary.notes)

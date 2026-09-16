@@ -47,6 +47,8 @@ class CaptureSummary:
     per_channel: Dict[str, ChannelStats] = field(default_factory=dict)
     raw_path: Optional[str] = None
     raw_sha256: Optional[str] = None
+    truncated: bool = False
+    notes: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -74,6 +76,8 @@ class CaptureSummary:
             },
             "raw_path": self.raw_path,
             "raw_sha256": self.raw_sha256,
+            "truncated": self.truncated,
+            "notes": self.notes,
         }
 
 
@@ -167,11 +171,17 @@ class WsCapture:
         stats.last_recv_utc = now_iso()
         self.summary.total_messages += 1
         if self._handle is not None:
+            if self.summary.total_bytes + len(text) + 1 > self.max_bytes:
+                if not self.summary.truncated:
+                    self.summary.truncated = True
+                    self.summary.notes.append("capture_truncated at max_bytes")
+                return
             line = json.dumps(
                 {"recv_utc": now_iso(), "channel": channel, "seq": seq, "payload": payload},
                 separators=(",", ":"),
             ).encode("utf-8")
             self._handle.write(line + b"\n")
+            self.summary.total_bytes += len(line)
 
     # -- subclass hooks -------------------------------------------------
     def is_gap(self, previous: int, current: int) -> bool:

@@ -40,9 +40,9 @@
     },
     {
       "source": "SEC Fails-to-Deliver",
-      "inventory": "official page inventoried: 434 zip archives cnsfails{YYYYMM}{a,b}.zip 2008-01 → 2026-08 (two settlement cycles/month)",
+      "inventory": "official page inventoried: 434 zip archives cnsfails{YYYYMM}{a,b}.zip, MEASURED span 2009-07 → 2026-08 (two settlement cycles/month; the SEC page does not serve 2008-01..2009-06 files — A7-corrected)",
       "live_canary": "PASS_SAMPLE: 2 most recent monthly files + two-pull equality probe (verdict recorded in summary events)",
-      "historical_coverage": "FULL ARCHIVE acquired: 434/434 monthly-cycle zips (resume-by-hash downloader; 8 req/s < 10 cap; declared UA sent)",
+      "historical_coverage": "FULL SERVED ARCHIVE acquired: 434/434 monthly-cycle zips as listed by the official page (resume: existence-based skip; 8 req/s < 10 cap; declared UA sent)",
       "raw_bytes_path": "raw/sec_ftd/ + raw/sec_ftd_archive/",
       "sha256_manifest": "manifests/sec_ftd_manifest.json + manifests/sec_ftd_archive_manifest.json (ALL_MATCH)",
       "pit_status": "RETRIEVAL_TIME_ONLY (available_time NULL by P-1; publication is after month/cycle close — exact per-file timestamps unevidenced)",
@@ -71,7 +71,7 @@
     {
       "source": "Coinbase Advanced Trade public WS",
       "inventory": "channels: ticker/market_trades/heartbeats + l2_data (level2 accepted — measured public)",
-      "live_canary": "PASS_SAMPLE: 10,353 msgs / 4 min / BTC+ETH / 0 disconnects / 0 sequence gaps",
+      "live_canary": "PASS_SAMPLE: 10,353 msgs / 4 min / BTC+ETH / 0 disconnects. Continuity accounting NOT_MEASURED for these channels (A7-corrected: the captured Coinbase payloads did not expose a numeric sequence field — last_sequence null on every channel; per-channel message counts are measured, sequence gaps are not claimed)",
       "historical_coverage": "PROSPECTIVE ONLY — starts at collector start; no historical order-book coverage implied",
       "raw_bytes_path": "raw/streams/coinbase_sample.jsonl",
       "sha256_manifest": "manifests/streams_manifest.json (ALL_MATCH)",
@@ -86,7 +86,7 @@
     {
       "source": "Kraken Futures public WS",
       "inventory": "feeds: ticker/trade/book/heartbeat (wire format MEASURED: {event:subscribe}, op-form rejected)",
-      "live_canary": "PASS_SAMPLE: 111,465 msgs / 4 min / PF_XBTUSD+PF_ETHUSD / 0 disconnects / 0 gaps",
+      "live_canary": "PASS_SAMPLE: 111,465 msgs / 4 min / PF_XBTUSD+PF_ETHUSD / 0 disconnects. Continuity accounting NOT_MEASURED (A7-corrected: Kraken Futures book deltas carry crc32 checksums, not numeric sequences — crc continuity is an analysis-time check, not a capture-time one; message counts are measured)",
       "historical_coverage": "PROSPECTIVE ONLY",
       "raw_bytes_path": "raw/streams/kraken_futures_sample.jsonl",
       "sha256_manifest": "manifests/streams_manifest.json (ALL_MATCH)",
@@ -146,8 +146,8 @@
     {
       "source": "USDA WASDE",
       "inventory": "esmis.nal.usda.gov API measured 404 on all API paths (SPA fallback; probe recorded) → official USDA OCE page inventoried: machine-readable artifact links per release",
-      "live_canary": "PASS_SAMPLE: current releases (0926/0826 xml/txt/xls) + historical probes wasde0512/wasde0115 (0512 PASS, 0115 measured 404 recorded honestly)",
-      "historical_coverage": "recent 2 releases + 2010s samples; deeper historical archive needs the Cornell mirror pass (cross-check candidate pinned, not pulled in V1)",
+      "live_canary": "A7-corrected honest accounting: ACQUIRED = wasde0826 artifacts only (xml+txt+xls, 3 objects, ALL_MATCH); the two preregistered historical probes measured 404 (wasde0512.xml, wasde0115.xml — recorded BLOCKED_SCHEMA/probe-404 in the summary, raw_sha256 NOT_APPLIED); the 0926 release links were inventoried but NOT acquired (selection ordering took the earliest of each suffix)",
+      "historical_coverage": "single recent release (2026-08) acquired; deeper recent + 2010+ as-reported backfill NOT DONE in V1 (deferred; Cornell mirror cross-check candidate pinned, not pulled)",
       "raw_bytes_path": "raw/usda_wasde/",
       "sha256_manifest": "manifests/usda_wasde_manifest.json (ALL_MATCH)",
       "pit_status": "vintage = release month pinned from filename; dc.date.issued-equivalent day evidence noted; release hour documented-not-measured → available_time NULL (Q-8)",
@@ -162,21 +162,25 @@
   "gates": {
     "targeted_tests": "63 passed (tests/free_data_frontier)",
     "compileall": "PASS",
-    "manifest_verification": "8/8 manifests ALL_MATCH from raw bytes",
+    "manifest_verification": "8/8 manifests ALL_MATCH from raw bytes; re-run after remediation persisted to f5_terminal/manifest_verification.json (A7 LOW-4 remediated)",
     "two_pull_equality": "FTD probe IDENTICAL (events in sec_ftd summary)",
     "disk_floor": "held (15 GiB floor; pre + post measured)",
     "heavy_lock": "FREE_PROVEN at intake; full-suite run recorded separately",
     "secrets": "no credential value in any log/manifest/git; env presence only"
   },
   "incidents": [
-    "UA redaction bug: redact-at-send-time caused SEC 403 (fixed: redact at record time; declared UA sent per SEC policy)",
+    "A7 round-1 REFUSED (REJECTED_FINDINGS) — 2 HIGH verdict-text defects, both A1 authoring errors caught by the audit, zero data-corruption: (1) USDA verdict text said 'wasde0512 PASS' and implied 0926+0826 acquisitions while the evidence shows 0512=404 NOT_APPLIED and only 0826 x3 acquired; (2) FTD archive span stated 2008-01 but measured span is 2009-07 → 2026-08 (page does not serve earlier files). Verdict text corrected from the frozen evidence; no bytes or manifests changed.",
+    "A7 round-1 MEDIUM remediated: EIA preregistration silently deviated (probe routes re-pointed during measurement) — amendment now recorded in preregistered_selections.json; Coinbase level2 measured-accepted outcome reconciled in the same amendment",
+    "A7 round-1 LOW remediated: stream capture byte-cap was declared but never enforced — now enforced in WsCapture with truncation flag + test; 'resume-by-hash' renamed to existence-based resume (the truth); manifest verification report persisted as an artifact",
+    "UA redaction bug: redact-at-send-time caused SEC 403 (fixed earlier: redact at record time; declared UA sent per SEC policy)",
     "N-PORT identity key: preregistered CIK-prefix filter measured wrong (prefix = filing-agent CIK); re-keyed to exact SERIES_NAME, amendment recorded in preregistered_selections.json (no outcome data involved)",
     "Kraken/Deribit wire-format canary rejections measured and recorded; corrected via documented public formats, no auth bypass",
     "OFR 403: no bypass attempted (provider edge gate)"
   ],
   "not_run": [
-    "full repo pytest suite executed separately (see gate evidence)",
     "N-PORT two-pull equality NOT_APPLIED_LARGE (440 MB object; infeasible under V1 budget)",
-    "Cornell WASDE mirror cross-check pull (deferred successor pass)"
+    "Coinbase/Kraken stream sequence-continuity measurement (channels captured do not expose numeric sequence fields — recorded NOT_MEASURED, not zero)",
+    "Cornell WASDE mirror cross-check pull (deferred successor pass)",
+    "USDA 2010+ historical as-reported backfill (deferred successor pass)"
   ]
 }
