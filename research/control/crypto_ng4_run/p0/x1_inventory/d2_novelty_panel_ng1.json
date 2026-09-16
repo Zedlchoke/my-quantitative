@@ -1,0 +1,2741 @@
+{
+ "schema": "crypto_ng1_run/d2_novelty_panel@1",
+ "task_id": "crypto-ng1-d2-measurement",
+ "cycle_id": "CRYPTO-NG1",
+ "lane": "d2",
+ "generated_utc": "2026-09-11T13:35:45Z",
+ "method": {
+  "signal": "per-decision GROSS return vector of each ANCHOR (and NEIGH for the ancestry panel) built exactly per the proposal representation_identity on the frozen S4 H1 panels; pooled across the 3 symbols in symbol-major chronological order",
+  "cost_invariance": "r_net = r - 2c with constant c per arm: Pearson is invariant to additive shifts and Spearman to monotone transforms, so every rho below equals the after-cost rho at ANY tier constant; no cost constant invented",
+  "veto_alignment": "hourly vetoes evaluated on the decision bar (closed and PIT at the decision close); daily vetoes dated D = the decision's UTC date (the inherited V17 exposure-vs-proxy convention; level proxies describe the decision-day state)",
+  "statistics": "pooled Pearson + Spearman (average-rank ties); veto bar |rho| > 0.2; margin = bar - max|rho|; pairs need n >= 8 aligned rows and non-zero variance on both sides, else recorded UNMEASURED with a reason (V17 used a 30-pair guard on multi-thousand-point grids; the NG1 frozen D2 series are 12/24 rows by declaration, so the guard is the cycle's own floor of 8; the 0.20 bar is unchanged)",
+  "pnl_ban": "no expectancy, PF, PnL or any aggregate of returns is computed in this artifact; raw return vectors are NOT embedded (reproducible from code + frozen panels)"
+ },
+ "inputs": {
+  "panels": {
+   "staging_v17/panel_BTCUSDT_h1.csv": {
+    "cads_address": "111c1a2d6d62e26c1874bb428c10216e4926ae37ab0102ca098849ca25f5e7b1",
+    "sha256_measured": "111c1a2d6d62e26c1874bb428c10216e4926ae37ab0102ca098849ca25f5e7b1",
+    "bytes": 2445780,
+    "rows": 8760,
+    "first_hour": "2025-08-22T00",
+    "last_hour": "2026-08-21T23"
+   },
+   "staging_v17/panel_ETHUSDT_h1.csv": {
+    "cads_address": "ebd487a69404a1104d9123584c93af044a2796c338185d8466599b9f34bb440b",
+    "sha256_measured": "ebd487a69404a1104d9123584c93af044a2796c338185d8466599b9f34bb440b",
+    "bytes": 2519136,
+    "rows": 8760,
+    "first_hour": "2025-08-22T00",
+    "last_hour": "2026-08-21T23"
+   },
+   "staging_v17/panel_SOLUSDT_h1.csv": {
+    "cads_address": "c4ca0b6eb719122054abec2a03fcac20d3f7794c5bf6d3c546ee6db1cb6e2107",
+    "sha256_measured": "c4ca0b6eb719122054abec2a03fcac20d3f7794c5bf6d3c546ee6db1cb6e2107",
+    "bytes": 2414115,
+    "rows": 8760,
+    "first_hour": "2025-08-22T00",
+    "last_hour": "2026-08-21T23"
+   }
+  },
+  "oi_series": {
+   "entry": "oi_series_reduced.json",
+   "cads_address": "f26a61e45a0f79322140c66a1a8862b6d933e0a831d7559af459ef638fbefbd3",
+   "sha256_measured": "f26a61e45a0f79322140c66a1a8862b6d933e0a831d7559af459ef638fbefbd3",
+   "geometry": "2904 H4 snapshots from 2025-04-25T00:00:00+00:00 (V17 pull geometry, manifest in the inherited d2 dir)"
+  },
+  "funding_history": {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/crypto/v17/integration/research/control/v17_run/d2/funding_history.json",
+   "sha256": "efef01709da5dea1f3c83f3b23c97564f6e45e0057d487d844cb2e0ded13ea4e",
+   "role": "FUNDJUMP funding-LEVEL veto source (V17 endpoint pull, READ-ONLY inheritance; BTC/ETH only per the family spec)"
+  },
+  "fomc_instants": [
+   "2025-09-17T18:00:00Z",
+   "2025-10-29T18:00:00Z",
+   "2025-12-10T19:00:00Z",
+   "2026-01-28T19:00:00Z",
+   "2026-03-18T18:00:00Z",
+   "2026-04-29T18:00:00Z",
+   "2026-06-17T18:00:00Z",
+   "2026-07-29T18:00:00Z"
+  ],
+  "code_sha256": {
+   "research/assets/crypto_ng1/d2/measure.py": "6dc21748c8a99ada05c3226b86559d21a728f7e9b61fb395efd79083dcf61405",
+   "research/control/crypto_ng1_run/d2/run_d2_measurement.py": "29852cb65fae3b11a3cc210cb1b7957822c99525fa7117a3d975e7481acc25bf",
+   "research/assets/crypto_ng1/plane_adapter.py": "01f9934e694a183cea270c671dda2d39f36d8a922223f3f878dd9005c5add657"
+  }
+ },
+ "veto_panel": [
+  {
+   "veto_id": "v17_wkndliq_flag",
+   "family": "V17-A4-P1-WKNDLIQ",
+   "class": "v17_family",
+   "definition": "corrected frozen spec: -1 if (Friday and hour>=22) or Saturday or Sunday else 0, on the decision bar (weekday() Mon=0..Sun=6)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17_silres_event",
+   "family": "V17-A4-P2-SILRES",
+   "class": "v17_family",
+   "definition": "dir(b) * 1[entry_gap_s(b) >= Q90(prev 720 bars) and n_trades(b) >= 1.5 * median(prev 720 bars)] on the decision bar",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17_fundjump_funding_level",
+   "family": "V17-A6-P1-FUNDJUMP",
+   "class": "v17_family",
+   "definition": "funding LEVEL: rate of last settlement with fundingTime <= decision bar close (V17 funding_history.json); BTC/ETH rows only -- the family spec pools BTC/ETH and never had SOL (coverage recorded per pair, SOL rows excluded, never imputed)",
+   "build_status": "BUILT",
+   "coverage": "BTCUSDT+ETHUSDT rows; SOLUSDT rows unmeasured"
+  },
+  {
+   "veto_id": "v17_oi_level",
+   "family": "V17-A6-P2-OICASCADE",
+   "class": "v17_family",
+   "definition": "OI level (sum_open_interest) of the H4 snapshot containing the decision bar close, from the frozen CADS oi_series_reduced.json (V17 pull geometry: 484d x 6 H4 from 2025-04-25T00Z)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17_oicascade_event",
+   "family": "V17-A6-P2-OICASCADE",
+   "class": "v17_family",
+   "definition": "+1 for 24h following an H4 close whose 24h OI change <= P10 of the past 720 H4 closes AND 24h panel return < 0, else 0 (spec sign +1; the inherited V17 code painted -1 -- |rho| unaffected, discrepancy disclosed)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17_attn_phase",
+   "family": "V17-a5-P1-ATTN-PHASE",
+   "class": "v17_family",
+   "definition": "SOL US-session (14..21 UTC) trade-count share minus majors' share, day t-1 (single market-state series evaluated at every decision row's date; the V17 exposure was SOL-only)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17_ticket_breadth",
+   "family": "V17-a5-P2-TICKET-BREADTH",
+   "class": "v17_family",
+   "definition": "SOL avg-ticket / med60 ratio divided by majors' same ratio, day t-1 (single market-state series evaluated at every decision row's date)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v16_close_displace_fade",
+   "family": "CRYPTO-V16-A6-V16-F1",
+   "class": "v16_daily_form",
+   "definition": "daily (last_price - vwap)/vwap of the decision date (per symbol)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v16_runpersist",
+   "family": "CRYPTO-V16-A6-V16-F2",
+   "class": "v16_daily_form",
+   "definition": "daily (max_run_buy - max_run_sell)/(max_run_buy + max_run_sell) of the decision date (per symbol)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_tsmom28",
+   "family": "GENERIC",
+   "class": "generic",
+   "definition": "28-day cumulative daily log return through the decision date (per symbol; V17 tsmom28 definition)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dvol_level_log",
+   "family": "GENERIC",
+   "class": "generic",
+   "definition": "log dollar-volume of the decision date (per symbol) -- the WKNDLIQ killer proxy",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dvol_shock",
+   "family": "GENERIC",
+   "class": "generic",
+   "definition": "decision-date dollar-volume / median of the prior 21 days (per symbol)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17proxy_run_imb",
+   "family": "V17-D2-PROXY",
+   "class": "v17_d2_proxy_set",
+   "definition": "daily (buy_qty-sell_qty)/(buy_qty+sell_qty) (per symbol, decision date)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17proxy_taker_sat",
+   "family": "V17-D2-PROXY",
+   "class": "v17_d2_proxy_set",
+   "definition": "daily buy_count/n_trades (TAKER-SAT) (per symbol, decision date)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17proxy_ret",
+   "family": "V17-D2-PROXY",
+   "class": "v17_d2_proxy_set",
+   "definition": "daily log return of the decision date (per symbol, decision date)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17proxy_amihud",
+   "family": "V17-D2-PROXY",
+   "class": "v17_d2_proxy_set",
+   "definition": "daily |ret|/dollar-volume x 1e9 (ILLIQ class) (per symbol, decision date)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17proxy_avg_ticket_ratio",
+   "family": "V17-D2-PROXY",
+   "class": "v17_d2_proxy_set",
+   "definition": "avg ticket / median of prior 60 days (per symbol, decision date)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "v17proxy_elite",
+   "family": "V17-D2-PROXY",
+   "class": "v17_d2_proxy_set",
+   "definition": "daily sum of max_trade_quote (elite level) (per symbol, decision date)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dow_0",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if decision-date weekday()==0 (Mon)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dow_1",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if decision-date weekday()==1 (Tue)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dow_2",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if decision-date weekday()==2 (Wed)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dow_3",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if decision-date weekday()==3 (Thu)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dow_4",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if decision-date weekday()==4 (Fri)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dow_5",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if decision-date weekday()==5 (Sat)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_dow_6",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if decision-date weekday()==6 (Sun)",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_session_us",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if the decision bar hour is in [13,21] UTC else 0",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_session_eu",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if the decision bar hour is in [07,15] UTC else 0",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_session_asia",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if the decision bar hour is in [00,07] UTC else 0",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  },
+  {
+   "veto_id": "generic_weekend_flag",
+   "family": "GENERIC",
+   "class": "generic_dummy",
+   "definition": "1 if the decision bar lands on Saturday/Sunday else 0",
+   "build_status": "BUILT",
+   "coverage": "full grid"
+  }
+ ],
+ "veto_build_failures": {},
+ "proposals": {
+  "CNG1-A4-P1": {
+   "grid": {
+    "instants": [
+     "2025-09-17T18:00:00Z",
+     "2025-10-29T18:00:00Z",
+     "2025-12-10T19:00:00Z",
+     "2026-01-28T19:00:00Z",
+     "2026-03-18T18:00:00Z",
+     "2026-04-29T18:00:00Z",
+     "2026-06-17T18:00:00Z",
+     "2026-07-29T18:00:00Z"
+    ],
+    "decision_dates": [
+     "2025-09-17",
+     "2025-10-29",
+     "2025-12-10",
+     "2026-01-28",
+     "2026-03-18",
+     "2026-04-29",
+     "2026-06-17",
+     "2026-07-29"
+    ],
+    "rows_anchor": 24,
+    "funded_anchor": 24,
+    "unfunded_tie_skips_anchor": 0,
+    "blocked_missing_bar_anchor": 0,
+    "daily_projection_collapses_rows": false
+   },
+   "anchor": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 21,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 16,
+      "pearson": -0.225693,
+      "spearman": -0.35,
+      "max_abs_rho": 0.35,
+      "margin_to_bar": -0.15,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oi_level": {
+      "n_pairs": 24,
+      "pearson": -0.323738,
+      "spearman": -0.173043,
+      "max_abs_rho": 0.323738,
+      "margin_to_bar": -0.123738,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 24,
+      "pearson": 0.036211,
+      "spearman": 0.032303,
+      "max_abs_rho": 0.036211,
+      "margin_to_bar": 0.163789,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_session_us": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 24,
+      "pearson": -0.35558,
+      "spearman": -0.28372,
+      "max_abs_rho": 0.35558,
+      "margin_to_bar": -0.15558,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 21,
+      "pearson": 0.235501,
+      "spearman": 0.381405,
+      "max_abs_rho": 0.381405,
+      "margin_to_bar": -0.181405,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 24,
+      "pearson": -0.432014,
+      "spearman": -0.123478,
+      "max_abs_rho": 0.432014,
+      "margin_to_bar": -0.232014,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_runpersist": {
+      "n_pairs": 24,
+      "pearson": 0.162244,
+      "spearman": 0.198261,
+      "max_abs_rho": 0.198261,
+      "margin_to_bar": 0.001739,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 21,
+      "pearson": -0.251413,
+      "spearman": -0.416883,
+      "max_abs_rho": 0.416883,
+      "margin_to_bar": -0.216883,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 24,
+      "pearson": 0.031055,
+      "spearman": -0.045217,
+      "max_abs_rho": 0.045217,
+      "margin_to_bar": 0.154783,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 24,
+      "pearson": -0.317852,
+      "spearman": -0.44087,
+      "max_abs_rho": 0.44087,
+      "margin_to_bar": -0.24087,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 24,
+      "pearson": 0.168153,
+      "spearman": 0.227826,
+      "max_abs_rho": 0.227826,
+      "margin_to_bar": -0.027826,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 24,
+      "pearson": -0.067145,
+      "spearman": -0.026087,
+      "max_abs_rho": 0.067145,
+      "margin_to_bar": 0.132855,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 24,
+      "pearson": -0.244979,
+      "spearman": -0.113913,
+      "max_abs_rho": 0.244979,
+      "margin_to_bar": -0.044979,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 24,
+      "pearson": -0.08455,
+      "spearman": -0.171304,
+      "max_abs_rho": 0.171304,
+      "margin_to_bar": 0.028696,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 21,
+      "pearson": -0.314728,
+      "spearman": -0.331169,
+      "max_abs_rho": 0.331169,
+      "margin_to_bar": -0.131169,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 24,
+      "pearson": 0.064863,
+      "spearman": -0.065217,
+      "max_abs_rho": 0.065217,
+      "margin_to_bar": 0.134783,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_dow_0": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_fundjump_funding_level",
+      "v17_oi_level",
+      "v17_attn_phase",
+      "v17_ticket_breadth",
+      "v16_close_displace_fade",
+      "generic_tsmom28",
+      "generic_dvol_shock",
+      "v17proxy_run_imb",
+      "v17proxy_ret",
+      "v17proxy_avg_ticket_ratio"
+     ],
+     "worst_pair": "generic_dvol_shock",
+     "worst_abs_rho": 0.44087,
+     "margin_to_bar": -0.24087
+    }
+   },
+   "neighbour": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 21,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 16,
+      "pearson": -0.285576,
+      "spearman": -0.458824,
+      "max_abs_rho": 0.458824,
+      "margin_to_bar": -0.258824,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oi_level": {
+      "n_pairs": 24,
+      "pearson": -0.278289,
+      "spearman": -0.118261,
+      "max_abs_rho": 0.278289,
+      "margin_to_bar": -0.078289,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 24,
+      "pearson": 0.037394,
+      "spearman": 0.048454,
+      "max_abs_rho": 0.048454,
+      "margin_to_bar": 0.151546,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_session_us": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 24,
+      "pearson": -0.301861,
+      "spearman": -0.23906,
+      "max_abs_rho": 0.301861,
+      "margin_to_bar": -0.101861,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 21,
+      "pearson": 0.191069,
+      "spearman": 0.408929,
+      "max_abs_rho": 0.408929,
+      "margin_to_bar": -0.208929,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 24,
+      "pearson": -0.411086,
+      "spearman": -0.164348,
+      "max_abs_rho": 0.411086,
+      "margin_to_bar": -0.211086,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_runpersist": {
+      "n_pairs": 24,
+      "pearson": 0.051449,
+      "spearman": 0.102609,
+      "max_abs_rho": 0.102609,
+      "margin_to_bar": 0.097391,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 21,
+      "pearson": -0.202202,
+      "spearman": -0.437662,
+      "max_abs_rho": 0.437662,
+      "margin_to_bar": -0.237662,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 24,
+      "pearson": 0.035891,
+      "spearman": -0.069565,
+      "max_abs_rho": 0.069565,
+      "margin_to_bar": 0.130435,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 24,
+      "pearson": -0.346749,
+      "spearman": -0.533913,
+      "max_abs_rho": 0.533913,
+      "margin_to_bar": -0.333913,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 24,
+      "pearson": 0.09893,
+      "spearman": 0.192174,
+      "max_abs_rho": 0.192174,
+      "margin_to_bar": 0.007826,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 24,
+      "pearson": -0.051849,
+      "spearman": -0.082609,
+      "max_abs_rho": 0.082609,
+      "margin_to_bar": 0.117391,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 24,
+      "pearson": -0.245268,
+      "spearman": -0.175652,
+      "max_abs_rho": 0.245268,
+      "margin_to_bar": -0.045268,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 24,
+      "pearson": -0.041922,
+      "spearman": -0.110435,
+      "max_abs_rho": 0.110435,
+      "margin_to_bar": 0.089565,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 21,
+      "pearson": -0.212739,
+      "spearman": -0.345455,
+      "max_abs_rho": 0.345455,
+      "margin_to_bar": -0.145455,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 24,
+      "pearson": 0.030103,
+      "spearman": -0.093043,
+      "max_abs_rho": 0.093043,
+      "margin_to_bar": 0.106957,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_dow_0": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_fundjump_funding_level",
+      "v17_oi_level",
+      "v17_attn_phase",
+      "v17_ticket_breadth",
+      "v16_close_displace_fade",
+      "generic_tsmom28",
+      "generic_dvol_shock",
+      "v17proxy_ret",
+      "v17proxy_avg_ticket_ratio"
+     ],
+     "worst_pair": "generic_dvol_shock",
+     "worst_abs_rho": 0.533913,
+     "margin_to_bar": -0.333913
+    }
+   },
+   "representation": {
+    "hyp": "CNG1-A4-P1",
+    "series": "per-decision gross return vector of the arm per the frozen representation_identity (see proposal file proposal_A4_P1.json)",
+    "cost_invariance": "after-cost = gross - constant per decision; Pearson shift-invariant, Spearman monotone-invariant, so rho is identical at any tier constant; no cost constant is invented",
+    "proposal_file_sha256": "92717238db766fb05c30286a75878b6b6fe2e0bbc203ca8bd8e65fc0f7405ae4"
+   }
+  },
+  "CNG1-A4-P2": {
+   "grid": {
+    "instants": [
+     "2025-09-17T18:00:00Z",
+     "2025-10-29T18:00:00Z",
+     "2025-12-10T19:00:00Z",
+     "2026-01-28T19:00:00Z",
+     "2026-03-18T18:00:00Z",
+     "2026-04-29T18:00:00Z",
+     "2026-06-17T18:00:00Z",
+     "2026-07-29T18:00:00Z"
+    ],
+    "decision_dates": [
+     "2025-09-17",
+     "2025-10-29",
+     "2025-12-10",
+     "2026-01-28",
+     "2026-03-18",
+     "2026-04-29",
+     "2026-06-17",
+     "2026-07-29"
+    ],
+    "rows_anchor": 24,
+    "funded_anchor": 24,
+    "unfunded_tie_skips_anchor": 0,
+    "blocked_missing_bar_anchor": 0,
+    "daily_projection_collapses_rows": false
+   },
+   "anchor": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 21,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 16,
+      "pearson": 0.124169,
+      "spearman": 0.379412,
+      "max_abs_rho": 0.379412,
+      "margin_to_bar": -0.179412,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oi_level": {
+      "n_pairs": 24,
+      "pearson": -0.09371,
+      "spearman": -0.252174,
+      "max_abs_rho": 0.252174,
+      "margin_to_bar": -0.052174,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 24,
+      "pearson": 0.071029,
+      "spearman": 0.161515,
+      "max_abs_rho": 0.161515,
+      "margin_to_bar": 0.038485,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_session_us": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 24,
+      "pearson": -0.092006,
+      "spearman": 0.028897,
+      "max_abs_rho": 0.092006,
+      "margin_to_bar": 0.107994,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 21,
+      "pearson": -0.127505,
+      "spearman": -0.346017,
+      "max_abs_rho": 0.346017,
+      "margin_to_bar": -0.146017,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 24,
+      "pearson": -0.398776,
+      "spearman": -0.235652,
+      "max_abs_rho": 0.398776,
+      "margin_to_bar": -0.198776,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_runpersist": {
+      "n_pairs": 24,
+      "pearson": 0.249331,
+      "spearman": 0.286087,
+      "max_abs_rho": 0.286087,
+      "margin_to_bar": -0.086087,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 21,
+      "pearson": 0.042832,
+      "spearman": 0.396104,
+      "max_abs_rho": 0.396104,
+      "margin_to_bar": -0.196104,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 24,
+      "pearson": -0.127704,
+      "spearman": 0.066957,
+      "max_abs_rho": 0.127704,
+      "margin_to_bar": 0.072296,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 24,
+      "pearson": 0.094911,
+      "spearman": 0.241739,
+      "max_abs_rho": 0.241739,
+      "margin_to_bar": -0.041739,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 24,
+      "pearson": 0.08156,
+      "spearman": 0.069565,
+      "max_abs_rho": 0.08156,
+      "margin_to_bar": 0.11844,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 24,
+      "pearson": 0.001343,
+      "spearman": -0.027826,
+      "max_abs_rho": 0.027826,
+      "margin_to_bar": 0.172174,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 24,
+      "pearson": -0.366127,
+      "spearman": -0.37913,
+      "max_abs_rho": 0.37913,
+      "margin_to_bar": -0.17913,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 24,
+      "pearson": 0.007408,
+      "spearman": 0.032174,
+      "max_abs_rho": 0.032174,
+      "margin_to_bar": 0.167826,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 21,
+      "pearson": 0.120838,
+      "spearman": 0.248052,
+      "max_abs_rho": 0.248052,
+      "margin_to_bar": -0.048052,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 24,
+      "pearson": 0.014491,
+      "spearman": 0.230435,
+      "max_abs_rho": 0.230435,
+      "margin_to_bar": -0.030435,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dow_0": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_fundjump_funding_level",
+      "v17_oi_level",
+      "v17_ticket_breadth",
+      "v16_close_displace_fade",
+      "v16_runpersist",
+      "generic_tsmom28",
+      "generic_dvol_shock",
+      "v17proxy_ret",
+      "v17proxy_avg_ticket_ratio",
+      "v17proxy_elite"
+     ],
+     "worst_pair": "v16_close_displace_fade",
+     "worst_abs_rho": 0.398776,
+     "margin_to_bar": -0.198776
+    }
+   },
+   "neighbour": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 21,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 16,
+      "pearson": 0.223728,
+      "spearman": 0.220588,
+      "max_abs_rho": 0.223728,
+      "margin_to_bar": -0.023728,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oi_level": {
+      "n_pairs": 24,
+      "pearson": -0.50042,
+      "spearman": -0.534783,
+      "max_abs_rho": 0.534783,
+      "margin_to_bar": -0.334783,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 24,
+      "pearson": 0.028402,
+      "spearman": 0.080757,
+      "max_abs_rho": 0.080757,
+      "margin_to_bar": 0.119243,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_session_us": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 24,
+      "pearson": -0.11698,
+      "spearman": -0.021016,
+      "max_abs_rho": 0.11698,
+      "margin_to_bar": 0.08302,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 21,
+      "pearson": -0.149005,
+      "spearman": -0.334221,
+      "max_abs_rho": 0.334221,
+      "margin_to_bar": -0.134221,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 24,
+      "pearson": -0.290781,
+      "spearman": -0.028696,
+      "max_abs_rho": 0.290781,
+      "margin_to_bar": -0.090781,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_runpersist": {
+      "n_pairs": 24,
+      "pearson": 0.153612,
+      "spearman": 0.177391,
+      "max_abs_rho": 0.177391,
+      "margin_to_bar": 0.022609,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 21,
+      "pearson": 0.184875,
+      "spearman": 0.398701,
+      "max_abs_rho": 0.398701,
+      "margin_to_bar": -0.198701,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 24,
+      "pearson": 0.310158,
+      "spearman": 0.412174,
+      "max_abs_rho": 0.412174,
+      "margin_to_bar": -0.212174,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 24,
+      "pearson": 0.00458,
+      "spearman": 0.105217,
+      "max_abs_rho": 0.105217,
+      "margin_to_bar": 0.094783,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 24,
+      "pearson": -0.024348,
+      "spearman": -0.067826,
+      "max_abs_rho": 0.067826,
+      "margin_to_bar": 0.132174,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 24,
+      "pearson": -0.227662,
+      "spearman": -0.429565,
+      "max_abs_rho": 0.429565,
+      "margin_to_bar": -0.229565,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 24,
+      "pearson": -0.169614,
+      "spearman": -0.073043,
+      "max_abs_rho": 0.169614,
+      "margin_to_bar": 0.030386,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 24,
+      "pearson": -0.187006,
+      "spearman": -0.427826,
+      "max_abs_rho": 0.427826,
+      "margin_to_bar": -0.227826,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 21,
+      "pearson": -0.069851,
+      "spearman": 0.051948,
+      "max_abs_rho": 0.069851,
+      "margin_to_bar": 0.130149,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 24,
+      "pearson": 0.388638,
+      "spearman": 0.556522,
+      "max_abs_rho": 0.556522,
+      "margin_to_bar": -0.356522,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dow_0": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_fundjump_funding_level",
+      "v17_oi_level",
+      "v17_ticket_breadth",
+      "v16_close_displace_fade",
+      "generic_tsmom28",
+      "generic_dvol_level_log",
+      "v17proxy_taker_sat",
+      "v17proxy_amihud",
+      "v17proxy_elite"
+     ],
+     "worst_pair": "v17proxy_elite",
+     "worst_abs_rho": 0.556522,
+     "margin_to_bar": -0.356522
+    }
+   },
+   "representation": {
+    "hyp": "CNG1-A4-P2",
+    "series": "per-decision gross return vector of the arm per the frozen representation_identity (see proposal file proposal_A4_P2.json)",
+    "cost_invariance": "after-cost = gross - constant per decision; Pearson shift-invariant, Spearman monotone-invariant, so rho is identical at any tier constant; no cost constant is invented",
+    "proposal_file_sha256": "d9e4da7fc8273f86dfe0be251c3b044810745d05c85e9f113d14115ab8ec8ec5"
+   }
+  },
+  "CNG1-A5-P1": {
+   "grid": {
+    "instants": [
+     "2025-09-26T08:00:00Z",
+     "2025-12-26T08:00:00Z",
+     "2026-03-27T08:00:00Z",
+     "2026-06-26T08:00:00Z"
+    ],
+    "decision_dates": [
+     "2025-09-26",
+     "2025-12-26",
+     "2026-03-27",
+     "2026-06-26"
+    ],
+    "rows_anchor": 12,
+    "funded_anchor": 12,
+    "unfunded_tie_skips_anchor": 0,
+    "blocked_missing_bar_anchor": 0,
+    "daily_projection_collapses_rows": false
+   },
+   "anchor": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 8,
+      "pearson": 0.544104,
+      "spearman": 0.261905,
+      "max_abs_rho": 0.544104,
+      "margin_to_bar": -0.344104,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oi_level": {
+      "n_pairs": 12,
+      "pearson": 0.567247,
+      "spearman": 0.391608,
+      "max_abs_rho": 0.567247,
+      "margin_to_bar": -0.367247,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 12,
+      "pearson": 0.000807,
+      "spearman": 0.043671,
+      "max_abs_rho": 0.043671,
+      "margin_to_bar": 0.156329,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_session_us": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 12,
+      "pearson": -0.219556,
+      "spearman": -0.043183,
+      "max_abs_rho": 0.219556,
+      "margin_to_bar": -0.019556,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 9,
+      "pearson": 0.173828,
+      "spearman": -0.474342,
+      "max_abs_rho": 0.474342,
+      "margin_to_bar": -0.274342,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 12,
+      "pearson": 0.407433,
+      "spearman": 0.265734,
+      "max_abs_rho": 0.407433,
+      "margin_to_bar": -0.207433,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_runpersist": {
+      "n_pairs": 12,
+      "pearson": -0.000854,
+      "spearman": -0.13986,
+      "max_abs_rho": 0.13986,
+      "margin_to_bar": 0.06014,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 12,
+      "pearson": 0.173082,
+      "spearman": 0.356643,
+      "max_abs_rho": 0.356643,
+      "margin_to_bar": -0.156643,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 12,
+      "pearson": -0.457001,
+      "spearman": -0.342657,
+      "max_abs_rho": 0.457001,
+      "margin_to_bar": -0.257001,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 12,
+      "pearson": 0.53109,
+      "spearman": 0.167832,
+      "max_abs_rho": 0.53109,
+      "margin_to_bar": -0.33109,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 12,
+      "pearson": 0.125083,
+      "spearman": 0.06993,
+      "max_abs_rho": 0.125083,
+      "margin_to_bar": 0.074917,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 12,
+      "pearson": -0.074924,
+      "spearman": 0.083916,
+      "max_abs_rho": 0.083916,
+      "margin_to_bar": 0.116084,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 12,
+      "pearson": 0.481364,
+      "spearman": 0.335664,
+      "max_abs_rho": 0.481364,
+      "margin_to_bar": -0.281364,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 12,
+      "pearson": 0.737888,
+      "spearman": 0.748252,
+      "max_abs_rho": 0.748252,
+      "margin_to_bar": -0.548252,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 9,
+      "pearson": 0.424126,
+      "spearman": 0.5,
+      "max_abs_rho": 0.5,
+      "margin_to_bar": -0.3,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 12,
+      "pearson": -0.361117,
+      "spearman": -0.195804,
+      "max_abs_rho": 0.361117,
+      "margin_to_bar": -0.161117,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dow_0": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_fundjump_funding_level",
+      "v17_oi_level",
+      "v17_attn_phase",
+      "v17_ticket_breadth",
+      "v16_close_displace_fade",
+      "generic_tsmom28",
+      "generic_dvol_level_log",
+      "generic_dvol_shock",
+      "v17proxy_ret",
+      "v17proxy_amihud",
+      "v17proxy_avg_ticket_ratio",
+      "v17proxy_elite"
+     ],
+     "worst_pair": "v17proxy_amihud",
+     "worst_abs_rho": 0.748252,
+     "margin_to_bar": -0.548252
+    }
+   },
+   "neighbour": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 8,
+      "pearson": 0.176638,
+      "spearman": -0.119048,
+      "max_abs_rho": 0.176638,
+      "margin_to_bar": 0.023362,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17_oi_level": {
+      "n_pairs": 12,
+      "pearson": 0.440464,
+      "spearman": 0.083916,
+      "max_abs_rho": 0.440464,
+      "margin_to_bar": -0.240464,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 12,
+      "pearson": -0.031654,
+      "spearman": -0.043671,
+      "max_abs_rho": 0.043671,
+      "margin_to_bar": 0.156329,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_session_us": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 12,
+      "pearson": -0.084418,
+      "spearman": 0.215917,
+      "max_abs_rho": 0.215917,
+      "margin_to_bar": -0.015917,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 9,
+      "pearson": 0.047874,
+      "spearman": -0.158114,
+      "max_abs_rho": 0.158114,
+      "margin_to_bar": 0.041886,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 12,
+      "pearson": 0.017713,
+      "spearman": -0.356643,
+      "max_abs_rho": 0.356643,
+      "margin_to_bar": -0.156643,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v16_runpersist": {
+      "n_pairs": 12,
+      "pearson": 0.033177,
+      "spearman": 0.013986,
+      "max_abs_rho": 0.033177,
+      "margin_to_bar": 0.166823,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 12,
+      "pearson": 0.130256,
+      "spearman": 0.251748,
+      "max_abs_rho": 0.251748,
+      "margin_to_bar": -0.051748,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 12,
+      "pearson": -0.528663,
+      "spearman": -0.405594,
+      "max_abs_rho": 0.528663,
+      "margin_to_bar": -0.328663,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 12,
+      "pearson": 0.452938,
+      "spearman": -0.174825,
+      "max_abs_rho": 0.452938,
+      "margin_to_bar": -0.252938,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 12,
+      "pearson": 0.124655,
+      "spearman": 0.230769,
+      "max_abs_rho": 0.230769,
+      "margin_to_bar": -0.030769,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 12,
+      "pearson": 0.231335,
+      "spearman": 0.244755,
+      "max_abs_rho": 0.244755,
+      "margin_to_bar": -0.044755,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 12,
+      "pearson": 0.242182,
+      "spearman": -0.146853,
+      "max_abs_rho": 0.242182,
+      "margin_to_bar": -0.042182,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 12,
+      "pearson": 0.654212,
+      "spearman": 0.370629,
+      "max_abs_rho": 0.654212,
+      "margin_to_bar": -0.454212,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 9,
+      "pearson": 0.547389,
+      "spearman": 0.633333,
+      "max_abs_rho": 0.633333,
+      "margin_to_bar": -0.433333,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 12,
+      "pearson": -0.438361,
+      "spearman": -0.391608,
+      "max_abs_rho": 0.438361,
+      "margin_to_bar": -0.238361,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dow_0": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 12,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_oi_level",
+      "v17_attn_phase",
+      "v16_close_displace_fade",
+      "generic_tsmom28",
+      "generic_dvol_level_log",
+      "generic_dvol_shock",
+      "v17proxy_run_imb",
+      "v17proxy_taker_sat",
+      "v17proxy_ret",
+      "v17proxy_amihud",
+      "v17proxy_avg_ticket_ratio",
+      "v17proxy_elite"
+     ],
+     "worst_pair": "v17proxy_amihud",
+     "worst_abs_rho": 0.654212,
+     "margin_to_bar": -0.454212
+    }
+   },
+   "representation": {
+    "hyp": "CNG1-A5-P1",
+    "series": "per-decision gross return vector of the arm per the frozen representation_identity (see proposal file proposal_A5_P1.json)",
+    "cost_invariance": "after-cost = gross - constant per decision; Pearson shift-invariant, Spearman monotone-invariant, so rho is identical at any tier constant; no cost constant is invented",
+    "proposal_file_sha256": "6c681cbac6d5ab84dfefbbe240f7e34a6afcfbcc7452d55cdae031b33cc1a440"
+   }
+  },
+  "CNG1-A5-P2": {
+   "grid": {
+    "instants": [
+     "2025-08-29T08:00:00Z",
+     "2025-10-31T08:00:00Z",
+     "2025-11-28T08:00:00Z",
+     "2026-01-30T08:00:00Z",
+     "2026-02-27T08:00:00Z",
+     "2026-04-24T08:00:00Z",
+     "2026-05-29T08:00:00Z",
+     "2026-07-31T08:00:00Z"
+    ],
+    "decision_dates": [
+     "2025-08-29",
+     "2025-10-31",
+     "2025-11-28",
+     "2026-01-30",
+     "2026-02-27",
+     "2026-04-24",
+     "2026-05-29",
+     "2026-07-31"
+    ],
+    "rows_anchor": 24,
+    "funded_anchor": 24,
+    "unfunded_tie_skips_anchor": 0,
+    "blocked_missing_bar_anchor": 0,
+    "daily_projection_collapses_rows": false
+   },
+   "anchor": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 21,
+      "pearson": -0.127859,
+      "spearman": -0.258492,
+      "max_abs_rho": 0.258492,
+      "margin_to_bar": -0.058492,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 16,
+      "pearson": -0.194205,
+      "spearman": -0.020588,
+      "max_abs_rho": 0.194205,
+      "margin_to_bar": 0.005795,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17_oi_level": {
+      "n_pairs": 24,
+      "pearson": -0.355392,
+      "spearman": -0.390435,
+      "max_abs_rho": 0.390435,
+      "margin_to_bar": -0.190435,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 24,
+      "pearson": 0.051927,
+      "spearman": 0.13901,
+      "max_abs_rho": 0.13901,
+      "margin_to_bar": 0.06099,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_session_us": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 24,
+      "pearson": -0.02505,
+      "spearman": 0.007881,
+      "max_abs_rho": 0.02505,
+      "margin_to_bar": 0.17495,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 21,
+      "pearson": -0.052675,
+      "spearman": -0.07864,
+      "max_abs_rho": 0.07864,
+      "margin_to_bar": 0.12136,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 24,
+      "pearson": 0.170192,
+      "spearman": 0.03913,
+      "max_abs_rho": 0.170192,
+      "margin_to_bar": 0.029808,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v16_runpersist": {
+      "n_pairs": 24,
+      "pearson": 0.066408,
+      "spearman": 0.029565,
+      "max_abs_rho": 0.066408,
+      "margin_to_bar": 0.133592,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 21,
+      "pearson": -0.117567,
+      "spearman": -0.249351,
+      "max_abs_rho": 0.249351,
+      "margin_to_bar": -0.049351,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 24,
+      "pearson": 0.167152,
+      "spearman": 0.070435,
+      "max_abs_rho": 0.167152,
+      "margin_to_bar": 0.032848,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 21,
+      "pearson": 0.060971,
+      "spearman": 0.181818,
+      "max_abs_rho": 0.181818,
+      "margin_to_bar": 0.018182,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 24,
+      "pearson": -0.097224,
+      "spearman": 0.013913,
+      "max_abs_rho": 0.097224,
+      "margin_to_bar": 0.102776,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 24,
+      "pearson": -0.291351,
+      "spearman": -0.243478,
+      "max_abs_rho": 0.291351,
+      "margin_to_bar": -0.091351,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 24,
+      "pearson": 0.155158,
+      "spearman": 0.130435,
+      "max_abs_rho": 0.155158,
+      "margin_to_bar": 0.044842,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 24,
+      "pearson": -0.312407,
+      "spearman": -0.084348,
+      "max_abs_rho": 0.312407,
+      "margin_to_bar": -0.112407,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 21,
+      "pearson": -0.04894,
+      "spearman": -0.05974,
+      "max_abs_rho": 0.05974,
+      "margin_to_bar": 0.14026,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 24,
+      "pearson": 0.226757,
+      "spearman": 0.109565,
+      "max_abs_rho": 0.226757,
+      "margin_to_bar": -0.026757,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dow_0": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_silres_event",
+      "v17_oi_level",
+      "generic_tsmom28",
+      "v17proxy_taker_sat",
+      "v17proxy_amihud",
+      "v17proxy_elite"
+     ],
+     "worst_pair": "v17_oi_level",
+     "worst_abs_rho": 0.390435,
+     "margin_to_bar": -0.190435
+    }
+   },
+   "neighbour": {
+    "pairs": {
+     "v17_wkndliq_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_silres_event": {
+      "n_pairs": 21,
+      "pearson": -0.000759,
+      "spearman": 0.0,
+      "max_abs_rho": 0.000759,
+      "margin_to_bar": 0.199241,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17_fundjump_funding_level": {
+      "n_pairs": 16,
+      "pearson": -0.129154,
+      "spearman": 0.132353,
+      "max_abs_rho": 0.132353,
+      "margin_to_bar": 0.067647,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17_oi_level": {
+      "n_pairs": 24,
+      "pearson": -0.204519,
+      "spearman": -0.144348,
+      "max_abs_rho": 0.204519,
+      "margin_to_bar": -0.004519,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_oicascade_event": {
+      "n_pairs": 24,
+      "pearson": -0.227303,
+      "spearman": -0.166812,
+      "max_abs_rho": 0.227303,
+      "margin_to_bar": -0.027303,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_session_us": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_eu": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_session_asia": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_weekend_flag": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "v17_attn_phase": {
+      "n_pairs": 24,
+      "pearson": -0.116776,
+      "spearman": -0.288974,
+      "max_abs_rho": 0.288974,
+      "margin_to_bar": -0.088974,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17_ticket_breadth": {
+      "n_pairs": 21,
+      "pearson": 0.05359,
+      "spearman": 0.11796,
+      "max_abs_rho": 0.11796,
+      "margin_to_bar": 0.08204,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v16_close_displace_fade": {
+      "n_pairs": 24,
+      "pearson": 0.028979,
+      "spearman": -0.183478,
+      "max_abs_rho": 0.183478,
+      "margin_to_bar": 0.016522,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v16_runpersist": {
+      "n_pairs": 24,
+      "pearson": 0.197112,
+      "spearman": 0.290435,
+      "max_abs_rho": 0.290435,
+      "margin_to_bar": -0.090435,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_tsmom28": {
+      "n_pairs": 21,
+      "pearson": -0.134951,
+      "spearman": -0.466234,
+      "max_abs_rho": 0.466234,
+      "margin_to_bar": -0.266234,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_level_log": {
+      "n_pairs": 24,
+      "pearson": 0.401501,
+      "spearman": 0.465217,
+      "max_abs_rho": 0.465217,
+      "margin_to_bar": -0.265217,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dvol_shock": {
+      "n_pairs": 21,
+      "pearson": 0.054779,
+      "spearman": 0.054545,
+      "max_abs_rho": 0.054779,
+      "margin_to_bar": 0.145221,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_run_imb": {
+      "n_pairs": 24,
+      "pearson": -0.294765,
+      "spearman": -0.186087,
+      "max_abs_rho": 0.294765,
+      "margin_to_bar": -0.094765,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_taker_sat": {
+      "n_pairs": 24,
+      "pearson": -0.219772,
+      "spearman": -0.036522,
+      "max_abs_rho": 0.219772,
+      "margin_to_bar": -0.019772,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_ret": {
+      "n_pairs": 24,
+      "pearson": -0.090685,
+      "spearman": -0.163478,
+      "max_abs_rho": 0.163478,
+      "margin_to_bar": 0.036522,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_amihud": {
+      "n_pairs": 24,
+      "pearson": -0.453519,
+      "spearman": 0.06087,
+      "max_abs_rho": 0.453519,
+      "margin_to_bar": -0.253519,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "v17proxy_avg_ticket_ratio": {
+      "n_pairs": 21,
+      "pearson": -0.114143,
+      "spearman": -0.187013,
+      "max_abs_rho": 0.187013,
+      "margin_to_bar": 0.012987,
+      "status": "MEASURED",
+      "pair_verdict": "PASS"
+     },
+     "v17proxy_elite": {
+      "n_pairs": 24,
+      "pearson": 0.337268,
+      "spearman": 0.263478,
+      "max_abs_rho": 0.337268,
+      "margin_to_bar": -0.137268,
+      "status": "MEASURED",
+      "pair_verdict": "VETO"
+     },
+     "generic_dow_0": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_1": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_2": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_3": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_4": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_5": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     },
+     "generic_dow_6": {
+      "n_pairs": 24,
+      "pearson": null,
+      "spearman": null,
+      "max_abs_rho": null,
+      "margin_to_bar": null,
+      "status": "DEGENERATE_ZERO_VARIANCE",
+      "pair_verdict": "UNMEASURED"
+     }
+    },
+    "novelty": {
+     "novelty_verdict": "VETO_MEASURED",
+     "vetoed_pairs": [
+      "v17_oi_level",
+      "v17_oicascade_event",
+      "v17_attn_phase",
+      "v16_runpersist",
+      "generic_tsmom28",
+      "generic_dvol_level_log",
+      "v17proxy_run_imb",
+      "v17proxy_taker_sat",
+      "v17proxy_amihud",
+      "v17proxy_elite"
+     ],
+     "worst_pair": "generic_tsmom28",
+     "worst_abs_rho": 0.466234,
+     "margin_to_bar": -0.266234
+    }
+   },
+   "representation": {
+    "hyp": "CNG1-A5-P2",
+    "series": "per-decision gross return vector of the arm per the frozen representation_identity (see proposal file proposal_A5_P2.json)",
+    "cost_invariance": "after-cost = gross - constant per decision; Pearson shift-invariant, Spearman monotone-invariant, so rho is identical at any tier constant; no cost constant is invented",
+    "proposal_file_sha256": "398dcba8d6e7e12d1d901f65dc63b17eb1415e679ef546388f9c907b6fd3a9ca"
+   }
+  }
+ },
+ "cross_proposal": {
+  "F5_A4_P1_vs_A4_P2": {
+   "status": "MEASURED",
+   "shared_grid_keys": 24,
+   "n_a": 24,
+   "n_b": 24,
+   "max_abs_rho": 0.289565,
+   "margin_to_bar": -0.089565,
+   "f5_fired": true,
+   "rule": "pooled |rho| > 0.20 between the two sibling anchor per-decision return series collapses the pair"
+  },
+  "F5_A5_P1_vs_A5_P2": {
+   "status": "NOT_COMPUTABLE_GRID_DISJOINT",
+   "shared_grid_keys": 0,
+   "n_a": 12,
+   "n_b": 24,
+   "max_abs_rho": null,
+   "margin_to_bar": null,
+   "f5_fired": false,
+   "rule": "same, daily-aggregated projection; the declared grids are quarterly vs non-quarterly last Fridays"
+  },
+  "A5_P1_vs_A5_P2_date_disjointness": {
+   "n_a": 4,
+   "n_b": 8,
+   "intersection": [],
+   "disjoint": true
+  },
+  "A4_vs_A5_date_disjointness": {
+   "n_a": 8,
+   "n_b": 12,
+   "intersection": [],
+   "disjoint": true,
+   "declared": "FOMC instants disjoint from both derivatives grids",
+   "instant_level_check": "FOMC dates are Wednesdays; all A5 grids are Fridays (verified by set arithmetic above)"
+  }
+ },
+ "notes": [
+  "WKNDLIQ corrected construction: weekday computed from the date (the V17 D1 bug compared the date string to weekday names and the Sat/Sun arm never fired; corrected re-measure 0.5628 vs dvol_level_log). On the NG1 decision grids the flag (and the weekend/session/dow dummies) are constant by construction -- recorded DEGENERATE_ZERO_VARIANCE, and the liquidity-level content the flag proxied for is measured by the varying dvol_level_log / dvol_shock rows instead.",
+  "FUNDJUMP funding-LEVEL veto covers BTCUSDT+ETHUSDT rows only (the V17 family spec pools BTC/ETH and never had SOL); SOL rows are excluded from that pair, never imputed (coverage recorded per pair).",
+  "OICASCADE event exposure rebuilt with the SPEC sign (+1); the inherited V17 code painted -1 -- |rho| is sign-invariant, the discrepancy is disclosed.",
+  "NEIGH series measured for the ancestry panel per series_d2_measures; the F3 verdict is driven by the ANCHOR (primary) as declared."
+ ]
+}
