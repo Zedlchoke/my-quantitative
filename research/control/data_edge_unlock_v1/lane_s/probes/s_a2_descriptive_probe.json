@@ -1,0 +1,57 @@
+{
+  "schema": "deu_s_a2_descriptive_probe@1",
+  "task_id": "deu-s-a2",
+  "cycle_id": "DATA-EDGE-UNLOCK-V1",
+  "measured_utc": "2026-09-17T03:01:44Z",
+  "purpose": "descriptive statistics of the SEC FTD archive ONLY (allowed by dispatch): row counts, within-file settlement-date census, canary identity re-confirmation. NO price joins, NO return computation, NO backtest, NO scored anything. Zero network requests.",
+  "archive_root": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_ftd_archive (READ-ONLY honored; 436 local entries = 434 pinned zips + page inventory HTML + zip-listing JSON)",
+  "measurements": [
+    {
+      "file": "cnsfails200907a.zip",
+      "member": "cnsfails200907a.txt",
+      "data_rows": 57537,
+      "trailer_lines": 2,
+      "header": "SETTLEMENT DATE|CUSIP|SYMBOL|QUANTITY (FAILS)|DESCRIPTION|PRICE",
+      "note": "row count matches A3 F1 corrected count (trailer-declared record count, trailers excluded)"
+    },
+    {
+      "file": "cnsfails201606b.zip",
+      "member": "cnsfails201606b.txt",
+      "data_rows": 55247,
+      "trailer_lines": 2,
+      "header": "SETTLEMENT DATE|CUSIP|SYMBOL|QUANTITY (FAILS)|DESCRIPTION|PRICE"
+    },
+    {
+      "file": "cnsfails202608a.zip",
+      "member": "cnsfails202608a.txt",
+      "data_rows": 59954,
+      "trailer_lines": 2,
+      "distinct_settlement_dates": ["20260803","20260804","20260805","20260806","20260807","20260810","20260811","20260812","20260813","20260814"],
+      "distinct_cusips": 13255,
+      "note": "WITHIN-FILE PANEL STRUCTURE confirmed: one row per (settlement date, CUSIP) across the ~10 settlement dates of the half-month; identical CUSIP recurs with equal quantity across weekend/holiday-adjacent settlement dates (no settlement = balance carries)"
+    },
+    {
+      "canary": "FRC / CUSIP 33616C100 in cnsfails202305a.zip",
+      "rows_found": 10,
+      "evidence_rows": [
+        "20230501|33616C100|FRC|6953380|FIRST REP BK SAN FRANCISCO CAL|3.51",
+        "20230502|33616C100|FRC|21316602|FIRST REP BK SAN FRANCISCO CAL|3.51",
+        "20230503|33616C100|FRC|21285624|FIRST REP BK SAN FRANCISCO CAL|3.51",
+        "20230504|33616C100|FRCB|21116634|FIRST REP BK SAN FRANCISCO CAL|0.33",
+        "20230505|33616C100|FRCB|14151594|FIRST REP BK SAN FRANCISCO CAL|0.32"
+      ],
+      "note": "reproduces A3 F6 canary (21,316,602 sh @ 3.51 on 20230502) and shows LIVE within-file SYMBOL MUTATION FRC->FRCB at 20230504 while CUSIP+DESCRIPTION stay constant - the identity ruling (CUSIP+DESCRIPTION only, symbols unsafe) re-measured independently; PRICE column bytes read only inside these canary rows as published prior-day-close, never availability, never joined to anything"
+    },
+    {
+      "census": "top balances in cnsfails202608a.zip",
+      "top5_by_quantity": [
+        {"quantity": 68429379, "cusip": "379439102", "symbol": "NBND", "settlement_dates": ["20260804","20260805"]},
+        {"quantity": 65872763, "cusip": "379439102", "symbol": "NBND", "settlement_date": "20260806"},
+        {"quantity": 65862763, "cusip": "379439102", "symbol": "NBND", "settlement_date": "20260807"}
+      ],
+      "note": "descriptive only: large balances concentrate in a small number of names per half-month; no denominator, no price, no rank-of-anything scored claim"
+    }
+  ],
+  "network_requests": 0,
+  "boundaries_honored": "read-only access to the archive root; no writes outside research/control/data_edge_unlock_v1/lane_s/; no S1; no price source touched"
+}
