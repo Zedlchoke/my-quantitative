@@ -1,0 +1,70 @@
+{
+  "schema": "fxf_a2_canary_manifest@1",
+  "task_id": "fxf-a2",
+  "cycle_id": "FX-FUTURES-FRONTIER-V1",
+  "lane": "a2-cme-sources",
+  "dispatch_sha": "06af8ba508a9e886f81da100c02d595915329a69",
+  "frozen_at_utc": "2026-09-17T09:24:50Z",
+  "frozen_before_any_content_fetch": true,
+  "law": {
+    "source_scope": "OFFICIAL CME Group surfaces only: bytes served by hosts www.cmegroup.com and ftp.cmegroup.com that the official pages themselves reference or that are publicly served without authentication. The CmeWS/mvc JSON family is the transport the official JS-rendered pages themselves call on the same host; it is classified here, BEFORE any fetch, as 'official page as served' — not a third-party or undocumented endpoint. No third-party mirror, no scraping in violation of terms, no VPN/ECH/fronting/SNI games, no account creation, no terms acceptance, no new keys.",
+    "subject_instruments": ["M6E", "M6B", "M6A", "MCD", "MJY"],
+    "sampled_years_frozen": [2019, 2021, 2023, 2025, 2026],
+    "byte_cap_total_bytes": 300000000,
+    "byte_cap_rule": "cumulative bytes tracked after EVERY fetch; approaching cap -> STOP fetching, record honestly",
+    "head_census": {
+      "per_instrument_years": "sampled-years {2019,2021,2023,2025,2026} x >=8 stratified HEAD probes of the settlement/volume surface for that year (existence proofs)",
+      "total_probe_cap": 1000,
+      "etiquette": "sequential, >=1s spacing, <=2 retries with exponential backoff, no concurrency, single session",
+      "census_manifest": "the concrete URL template and probe list is frozen in census_manifest.json AFTER the canary fetches identify the official surface's own transport, BEFORE the first probe"
+    },
+    "determinism": "re-fetch >=5 already-fetched artifacts after all fetches; prove sha256 ALL_MATCH or document archive-immutability behavior with evidence",
+    "transcripts": "every HTTP interaction -> fetch_transcripts.jsonl (url, method, http_status, content_type, byte_size, sha256, fetched_at_utc)",
+    "block_law": "a connection-level or HTTP-level measured block is EVIDENCE (BLOCKED_TRANSPORT input). On a connection-level block: run the SNI/destination-IP discrimination experiment (DoH-verified authentic IP vs blocked hostname; same-IP different-SNI control; neutral control site), record all transcripts, NEVER bypass."
+  },
+  "canary_set_frozen": {
+    "per_instrument_product_pages": {
+      "M6E": "https://www.cmegroup.com/markets/fx/g10/micro-euro.html",
+      "M6B": "https://www.cmegroup.com/markets/fx/g10/micro-british-pound.html",
+      "M6A": "https://www.cmegroup.com/markets/fx/g10/micro-australian-dollar.html",
+      "MCD": "https://www.cmegroup.com/markets/fx/g10/micro-canadian-dollar.html",
+      "MJY": "https://www.cmegroup.com/markets/fx/g10/micro-japanese-yen.html",
+      "discovery_rule": "URLs above are frozen CANDIDATES reached from the official /markets/fx/ product family. On 404/redirect, the canonical page will be located ONLY by following official navigation links contained in already-fetched official cmegroup.com pages (in-bounds traversal), every hop recorded in transcripts."
+    },
+    "recent_daily_settlement": {
+      "rule": "ONE recent daily settlement fetch (a single recent trade date) per instrument, from the settlement surface the official page itself serves. tradeDate is chosen at fetch time = most recently completed trading day measured at that moment, recorded verbatim in the transcript."
+    },
+    "historical_sample": {
+      "rule": "ONE historical settlement or volume/OI sample from ONE of the sampled years {2019,2021,2023,2025,2026} per instrument, from the same official surface. The sampled year for the per-instrument canary is frozen per fetch in the transcript; the year GRID is exercised by the HEAD census."
+    },
+    "fees_documentation": {
+      "hub": "https://www.cmegroup.com/company/pricing-and-clearing-fees.html",
+      "rule": "official exchange + clearing fee documentation page(s); official fee-schedule PDFs reached by following links served in official pages are in scope"
+    },
+    "margin_documentation": {
+      "hub": "https://www.cmegroup.com/clearing/margins.html",
+      "rule": "official margin documentation (plan input, A7 r1 F-3); linked official margin/SPAN resources as publicly served are in scope"
+    },
+    "license_terms_pages": {
+      "candidates": [
+        "https://www.cmegroup.com/notices/legal.html",
+        "https://www.cmegroup.com/legal.html",
+        "https://www.cmegroup.com/market-data/license-agreement.html"
+      ],
+      "rule": "official legal/terms surfaces; hash EVERY page relied on; quote operative use/redistribution clauses VERBATIM"
+    }
+  },
+  "client_behavior_frozen": {
+    "user_agent": "honest default curl client, no disguise",
+    "concurrency": 1,
+    "inter_request_min_spacing_seconds": 1.0,
+    "max_retries": 2,
+    "retry_backoff_seconds": [1, 2],
+    "retry_on": ["network_error", "http_5xx", "http_429"],
+    "no_retry_on": ["http_403", "http_401", "http_404"],
+    "accept": "*/*",
+    "compression": "none requested (raw bytes hashed as served)"
+  },
+  "deliverables_root_in_worktree": "research/control/fx_futures_frontier_v1/lane-a2/",
+  "raw_bytes_root_outside_git": "/Users/hoangminhlong/.my-quantitative-data/fx-futures-frontier-v1/raw/lane-a2/"
+}
