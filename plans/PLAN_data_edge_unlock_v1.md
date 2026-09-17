@@ -155,7 +155,14 @@ must export/provide (document type, venue, fields) — no substitution of
 swap by 0, no unattached internet numbers, no FOREX-NG8.
 
 Lane F verdicts: `PASS_BROKER_COST_AUTHORITY` | `BLOCKED_BROKER_COST_AUTHORITY`.
-Only PASS permits FOREX-NG8. The IBKR preregistered probe contracts in
+PASS minimum (A7 F-C1, binding): the financing components — overnight
+financing/swap long AND short, triple-swap/weekend accrual, and rollover
+clock/timezone — must be MEASURED from account-bound bytes (API response,
+account report, or platform export) for a PASS; spread/commission/min-size/
+increment also require account-bound measurement unless explicitly declared
+stated-class AND covered by the frozen stress multiplier; ANY component left
+stated-class must be listed verbatim in the verdict with its stress
+coverage. Only PASS permits FOREX-NG8. The IBKR preregistered probe contracts in
 `research/control/xauusd_ibkr_probe_2026-09/` may be REUSED as design
 templates for an FX-majors probe (measured-component checklist), but the
 paused TWS handshake is NOT retried without a new specific preregistered
@@ -178,9 +185,11 @@ floors) with these cycle-level changes, frozen BEFORE any collection:
   WAITING_COVERAGE/PASS evaluation (the 60-day full floor of the CNG4
   contract remains the successor's bar and is restated in the contract;
   this cycle measures whether the plane is healthy, not whether it is
-  complete), with minimum complete samples ≥ 90% valid triads per the same
-  arithmetic restated at 14 days (≥ 302 of 336 H1 bars, folds 2×7d, ≥4
-  cells/control/fold), weekend days ≥ 4 all populated;
+  complete), with minimum complete samples at STRICT 90% valid triads
+  restated at 14 days: **≥ 303 of 336 H1 bars total and ≥ 152 of 168 per
+  7-day fold** (2 folds × 7d; 90% of 336 = 302.4 → 303, 90% of 168 =
+  151.2 → 152, per A7 F-D1), ≥ 4 cells/control/fold, weekend days ≥ 4 all
+  populated;
 - high-volatility/event requirement: ≥ 1 bar crossing the frozen STRESS
   threshold (BTC 0.0542 / ETH 0.1042 daily-RV S4 constants) must occur
   within the window OR the event cell is recorded NOT_RUN_COVERAGE
@@ -273,7 +282,12 @@ No PnL exists, so the successor rubric is evidence-shaped (owner directive,
 7 items): 1. information genuinely new; 2. PIT/availability demonstrable;
 3. historical/prospective coverage sufficient; 4. costs measurable; 5.
 identity stable; 6. tradable implementation possible; 7. strong
-falsification controls constructible. Successor structure per PASS lane:
+falsification controls constructible. Successor eligibility is per-lane
+EXACT (A7 F-A1): Lane S yields a successor ONLY on
+`PASS_DIRECT_SIGNAL_AUTHORITY` — `PASS_D2_CONTROL_ONLY` yields NO
+STOCKS-NG7; Lane F only on `PASS_BROKER_COST_AUTHORITY`; Lane C only on
+`PASS_PROSPECTIVE_CONTROL_AUTHORITY` (`WAITING_COVERAGE` yields no
+CRYPTO-NG5 this cycle). Successor structure per eligible lane:
 one family, max 3 scored cells, full ancestry battery carrying the latest
 killers (stocks: the NG5/NG6 17-shadow + event-conditional class; forex:
 DGS10-level #14/#15 + E1 financing ceiling + V1 clock class + NG4 Friday
