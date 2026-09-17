@@ -792,3 +792,31 @@ computed share of records affected by any residual gap, and (d) the guard
 that closes it — with a fresh-context adversarial pass on the arithmetic
 itself, not just the conclusion (encoded in the DATA-EDGE-UNLOCK-V1 lane
 verdicts and terminal addendum).
+
+## L-FIBV1-1 (2026-09-17, FOREX-INTRA-BIDASK-V1): a transport blocker is an environment measurement — prove it destination-independent, and never let it speak for the source
+
+Source: the FOREX-INTRA-BIDASK-V1 lane A2 run. The Dukascopy surface was
+unreachable, but the WHY mattered: a plain "connection refused" would have been
+ambiguous. The lane's discrimination experiments (local resolver returning
+127.0.0.1 for the domain; DoH-verified authentic origin IPs still resetting on
+dukascopy SNI/Host while the SAME IP with a non-dukascopy SNI completed TLS;
+example.com control clean) converted "no route" into a measured, root-caused
+environment finding — a domain-keyed network filter on the owner's side — while
+attempting zero circumvention. The A7 terminal audit then recounted the failure
+rows (36, not the prose "33") and confirmed the recount only strengthens the
+blocker. Separately, the unreachable transport silently co-blocked the license
+gate; the lane recorded it as UNAVAILABLE_FAIL_CLOSED — a distinct blocker —
+instead of letting a transport failure masquerade as a licensing judgment about
+Dukascopy.
+
+**Lesson:** when a source is unreachable, run destination-IP-independent
+discrimination experiments before labeling the blocker; count the failure rows
+from artifacts, not from prose; and keep an unreachable license gate as its own
+UNAVAILABLE_FAIL_CLOSED blocker — a blocked road says nothing about what lives
+at the end of it.
+
+**Consequence:** every future transport-blocked lane (a) runs the SNI/IP
+discriminator and commits the transcripts, (b) states its failure counts from
+the committed row counts (A7 recounts them), and (c) splits blockers into
+transport vs license/content so a reopen decision names exactly which one the
+owner's action removes.

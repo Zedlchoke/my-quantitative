@@ -737,3 +737,35 @@ promise.
   per-symbol-distinct OI authority (1,452-file manifest). Lane 1 re-opens only via a
   future owner plan. Registry 61 entries. Denominators unchanged 155/158, 233/236.
 - STOCKS-FREE-V13 (2026-09-10): REJECT_ALL (mechanical) — A6-P1 dividend-transition folds 1/3; Form-4 XML substrate 345,150 sha-pinned; incidents INC-V13-1..16; A7 terminal 0ce70f3.
+
+## FOREX-INTRA-BIDASK-V1 (CLOSED 2026-09-17) — intraday bid/ask foundation, blocked at transport
+
+- Verdict `FOREX_INTRA_BIDASK_V1_BLOCKED_TRANSPORT`: zero scored cells, budget 0/0,
+  no GO phrase ever registered, S1 SEALED, no orders, no PnL anywhere, denominators
+  unchanged 257/260 (P-9). Owner directive 2026-09-17: a Forex direction independent
+  of OANDA/MT5 that never assumes swap=0 — intraday bid/ask research with every
+  position force-closed before rollover; Dukascopy Historical Data as the priority
+  source. Identity is deliberately NOT FOREX-NG8 (that name is burned by
+  DATA-EDGE-UNLOCK-V1 Lane-F law and remains burned).
+- Chain: plan 79a21cc1 → A7 plan audit r1 AUTHORIZED_WITH_FINDINGS 0 HIGH/CRITICAL
+  (4 MEDIUM + 3 LOW, all remediated pre-registration) 74d0632c / 1a9936f5 →
+  registry bootstrap 094bbded → lane A2 (source/license/transport) d06ebce4 →
+  integration pick b31bb1c0 → A7 terminal CONFIRM_WITH_FINDINGS 0 HIGH/CRITICAL
+  8c4a563d → terminal 558b366c (worktree
+  `.worktrees/forex-intra-bidask-v1/integration`, branch `orca/fibv1-integration`).
+- Blockers: B1 transport — the official Dukascopy surface is unreachable from this
+  environment (local resolver 127.0.0.1 for *.dukascopy.com; SNI/Host-keyed TLS
+  resets regardless of destination IP; DoH-verified authentic origins reset;
+  36 connection failures; zero circumvention attempted). B2 license gate
+  UNAVAILABLE_FAIL_CLOSED — a co-blocker downstream of B1: Dukascopy licensing and
+  data quality are UNMEASURED; nothing about the source was adjudicated. Waves
+  A3/A4/A5 + the D2 battery were MOOT (input never existed) and stayed undispatched
+  (STOCKS-NG4 "F2-F8 never dispatched" precedent).
+- Durable assets: the frozen canary manifest + etiquette + decoder
+  (`research/control/forex_intra_bidask_v1/lane-a2/` on the integration branch) are
+  reusable as-is; the plan's preregistered contract (rollover-flat at T−300s,
+  fill sides, cost stresses 1.0/1.5/2.0, ancestry bar 0.20) is frozen text that any
+  reopening inherits unchanged.
+- Reopening: owner provides a network path where *.dukascopy.com is reachable,
+  then lane A2 re-runs from the frozen manifest; both blockers re-arm and are
+  decided by evidence, not assumption. Successor door CLOSED — no successor plan.
