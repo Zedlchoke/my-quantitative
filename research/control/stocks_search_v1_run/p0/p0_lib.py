@@ -234,11 +234,15 @@ def _dvol(adj_close: np.ndarray, volume: np.ndarray) -> np.ndarray:
 
 def _rolling_median(a: np.ndarray, window: int) -> np.ndarray:
     """out[i] = median(a[i-window:i]) (window sessions ENDING at i-1);
-    out[i] = NaN when i < window."""
+    out[i] = NaN when i < window.
+
+    r2: batched over a sliding view — np.median(axis=1) applies the identical
+    per-row algorithm, bit-equal to the r1 per-i loop (equivalence-gated)."""
     out = np.full(a.shape, np.nan)
     if a.shape[0] >= window:
-        for i in range(window, a.shape[0] + 1):
-            out[i - 1] = np.median(a[i - window:i])
+        from numpy.lib.stride_tricks import sliding_window_view
+        sw = sliding_window_view(a, window)          # sw[m] = a[m:m+window]
+        out[window - 1:] = np.median(sw, axis=1)     # out[i-1] = median(a[i-window:i])
     return out
 
 
@@ -254,7 +258,8 @@ def _rolling_max(a: np.ndarray, window: int) -> np.ndarray:
 
 
 def census_event_unwind(adj_open, adj_high, adj_low, adj_close, volume,
-                        K: int, first_i: int | None = None):
+                        K: int, first_i: int | None = None,
+                        med60: np.ndarray | None = None):
     """Fired iff BREAK AND RECLAIM AND RANGE AND PARTICIPATION (§5 family 1).
 
     Zero-range law: high==low -> RANGE undefined -> NOT FIRED (counted).
@@ -269,7 +274,8 @@ def census_event_unwind(adj_open, adj_high, adj_low, adj_close, volume,
         drops["warmup"] = n
         return fired, np.zeros(n, dtype=bool), drops
     dvol = _dvol(adj_close, volume)
-    med60 = _rolling_median(dvol, DVOL_WINDOW)
+    if med60 is None:
+        med60 = _rolling_median(dvol, DVOL_WINDOW)
     degenerate = adj_high <= adj_low
     for i in range(first_i, n):
         if i < K:
@@ -303,7 +309,8 @@ def census_event_unwind(adj_open, adj_high, adj_low, adj_close, volume,
 
 
 def census_gap(adj_open, adj_close, volume, pctl: int, direction: str,
-               first_i: int | None = None):
+               first_i: int | None = None,
+               med60: np.ndarray | None = None):
     """Fired iff gap_t on the chosen side of its trailing-252 percentile.
 
     gap_t = adj_open_t/adj_close_{t-1} - 1; history = the trailing 252
@@ -340,11 +347,12 @@ def census_gap(adj_open, adj_close, volume, pctl: int, direction: str,
             fired[i] = True
         else:
             drops["no_side"] += 1
-    return fired, _bookable(fired, adj_close, volume), drops
+    return fired, _bookable(fired, adj_close, volume, med60), drops
 
 
 def census_52w_high(adj_close, volume, band_pct: int,
-                    first_i: int | None = None):
+                    first_i: int | None = None,
+                    med60: np.ndarray | None = None):
     """Fired iff proximity to the rolling 252-session adjusted-close high
     (ending at and including t) is <= band_pct/100."""
     first_i = WARMUP_SESSIONS if first_i is None else first_i
@@ -364,11 +372,12 @@ def census_52w_high(adj_close, volume, band_pct: int,
             fired[i] = True
         else:
             drops["outside_band"] += 1
-    return fired, _bookable(fired, adj_close, volume), drops
+    return fired, _bookable(fired, adj_close, volume, med60), drops
 
 
 def census_clv_range(adj_high, adj_low, adj_close, volume, k: int,
-                     first_i: int | None = None):
+                     first_i: int | None = None,
+                     med60: np.ndarray | None = None):
     """P_t = sum of CLV over the trailing 20 completed bars; slope = P_t -
     P_{t-k}; FIRED iff slope > 0 (strict).  Zero-range law: a high==low bar
     makes CLV undefined -> P undefined on any window containing it -> NOT
@@ -400,11 +409,12 @@ def census_clv_range(adj_high, adj_low, adj_close, volume, k: int,
             fired[i] = True
         else:
             drops["slope_nonpos"] += 1
-    return fired, _bookable(fired, adj_close, volume), drops
+    return fired, _bookable(fired, adj_close, volume, med60), drops
 
 
 def census_dvol_shock(adj_close, volume, ratio: float, direction: str,
-                      first_i: int | None = None):
+                      first_i: int | None = None,
+                      med60: np.ndarray | None = None):
     """Shock iff dvol_t >= ratio * median(dvol over trailing 60 sessions
     ending at t-1).  confirm FIRED iff shock AND ret_t > 0; fade FIRED iff
     shock AND ret_t < 0; ret_t == 0 NOT FIRED (fail-closed neutral)."""
@@ -416,7 +426,8 @@ def census_dvol_shock(adj_close, volume, ratio: float, direction: str,
         drops["warmup"] = n
         return fired, np.zeros(n, dtype=bool), drops
     dvol = _dvol(adj_close, volume)
-    med60 = _rolling_median(dvol, DVOL_WINDOW)
+    if med60 is None:
+        med60 = _rolling_median(dvol, DVOL_WINDOW)
     with np.errstate(divide="ignore", invalid="ignore"):
         ret = np.full(n, np.nan)
         ret[1:] = adj_close[1:] / adj_close[:-1] - 1.0
@@ -436,7 +447,8 @@ def census_dvol_shock(adj_close, volume, ratio: float, direction: str,
 
 
 def census_vol_regime(adj_close, volume, L: int, direction: str,
-                      first_i: int | None = None):
+                      first_i: int | None = None,
+                      med60: np.ndarray | None = None):
     """sigma_j = std(ddof=1) of close-to-close log returns over the
     trailing L returns ending at and including j; boundaries = 1/3, 2/3
     quantiles (linear) of sigma over the trailing 252-session window
@@ -483,14 +495,180 @@ def census_vol_regime(adj_close, volume, L: int, direction: str,
                 drops["middle_tercile"] += 1
         else:
             raise ValueError(f"unknown VOL-REGIME direction {direction}")
-    return fired, _bookable(fired, adj_close, volume), drops
+    return fired, _bookable(fired, adj_close, volume, med60), drops
 
 
-def run_config_census(config: dict, adj_open, adj_high, adj_low, adj_close,
-                      volume, first_i: int | None = None):
-    """Dispatch ONE frozen configuration's census on ONE name (pure).
+# ----------------------------------------------------- r2 fast kernels ----
+# Batched re-expressions of the r1 census kernels with IDENTICAL semantics
+# (same drop-bucket priority, same thresholds, same nan/fail-closed laws).
+# Every full-census run must first pass equivalence_gate(): old vs new must
+# agree EXACTLY (fired mask, bookable mask, drop counts) on a deterministic
+# sample of real cached names, else the run TECHABORTs (fail-closed).
 
-    Returns (fired_mask, bookable_mask, drops)."""
+def census_event_unwind_fast(adj_open, adj_high, adj_low, adj_close, volume,
+                             K: int, first_i: int | None = None,
+                             med60: np.ndarray | None = None):
+    """Vectorized census_event_unwind (identical semantics)."""
+    from numpy.lib.stride_tricks import sliding_window_view
+    first_i = max(WARMUP_SESSIONS, K) if first_i is None else first_i
+    n = adj_close.shape[0]
+    fired = np.zeros(n, dtype=bool)
+    drops = {"warmup": 0, "break": 0, "break_no_reclaim": 0, "range_undefined": 0,
+             "range": 0, "dvol": 0, "floor_price": 0, "floor_dvol": 0}
+    if n <= first_i:
+        drops["warmup"] = n
+        return fired, np.zeros(n, dtype=bool), drops
+    dvol = _dvol(adj_close, volume)
+    if med60 is None:
+        med60 = _rolling_median(dvol, DVOL_WINDOW)
+    prior_lo = np.full(n, np.nan)
+    if n > K:
+        sw = sliding_window_view(adj_low, K)          # sw[m] = adj_low[m:m+K]
+        prior_lo[K:] = sw.min(axis=1)[:n - K]         # prior_lo[i] = min(low[i-K:i])
+    e = slice(first_i, n)
+    lo_e, pr_e = adj_low[e], prior_lo[e]
+    cl_e, hi_e = adj_close[e], adj_high[e]
+    dv_e, m_e = dvol[e], med60[e]
+    deg_e = hi_e <= lo_e
+    span_e = hi_e - lo_e
+    with np.errstate(divide="ignore", invalid="ignore"):
+        frac_e = np.where(span_e > 0, (cl_e - lo_e) / span_e, np.nan)
+    c_break = lo_e < pr_e
+    c_reclaim = c_break & (cl_e > pr_e)
+    c_range = c_reclaim & ~deg_e & (frac_e >= RANGE_MIN)
+    with np.errstate(invalid="ignore"):
+        dv_ok = np.isfinite(m_e) & (m_e > 0) & (dv_e >= DVOL_MULT * m_e)
+    c_fire = c_range & dv_ok
+    fired_idx = first_i + np.nonzero(c_fire)[0]
+    fired[fired_idx] = True
+    with np.errstate(invalid="ignore"):
+        drops["break"] = int((~c_break).sum())
+        drops["break_no_reclaim"] = int((c_break & ~c_reclaim).sum())
+        drops["range_undefined"] = int((c_reclaim & deg_e).sum())
+        drops["range"] = int((c_reclaim & ~deg_e & (frac_e < RANGE_MIN)).sum())
+        drops["dvol"] = int((c_range & ~dv_ok).sum())
+        drops["floor_price"] = int((c_fire & (cl_e < FLOOR_PRICE)).sum())
+        drops["floor_dvol"] = int((c_fire & (m_e < FLOOR_DVOL)).sum())
+    return fired, _bookable(fired, adj_close, volume, med60), drops
+
+
+def census_gap_fast(adj_open, adj_close, volume, pctl: int, direction: str,
+                    first_i: int | None = None,
+                    med60: np.ndarray | None = None):
+    """Vectorized census_gap (identical semantics; percentile batched over a
+    sliding view — nan-containing windows yield nan thresholds exactly like
+    the r1 all-finite check)."""
+    from numpy.lib.stride_tricks import sliding_window_view
+    first_i = WARMUP_SESSIONS if first_i is None else first_i
+    n = adj_close.shape[0]
+    fired = np.zeros(n, dtype=bool)
+    drops = {"warmup": 0, "history_undefined": 0, "no_side": 0}
+    if n <= first_i:
+        drops["warmup"] = n
+        return fired, np.zeros(n, dtype=bool), drops
+    with np.errstate(divide="ignore", invalid="ignore"):
+        gaps = np.full(n, np.nan)
+        gaps[1:] = adj_open[1:] / adj_close[:-1] - 1.0
+    sw = sliding_window_view(gaps, 252)               # sw[m] = gaps[m:m+252]
+    with np.errstate(invalid="ignore"):
+        thr_all = np.percentile(sw, pctl, axis=1, method=PERCENTILE_METHOD)
+    e = slice(first_i, n)                             # i >= first_i >= 252
+    thr_e = thr_all[e.start - 251:]
+    fin_e = np.isfinite(thr_e)
+    g_e = gaps[e]
+    if direction == "fade":
+        hit = fin_e & (g_e <= thr_e)
+    elif direction == "confirm":
+        hit = fin_e & (g_e >= thr_e)
+    else:
+        raise ValueError(f"unknown GAP direction {direction}")
+    fired[first_i + np.nonzero(hit)[0]] = True
+    drops["history_undefined"] = int((~fin_e).sum())
+    drops["no_side"] = int((fin_e & ~hit).sum())
+    return fired, _bookable(fired, adj_close, volume, med60), drops
+
+
+def census_dvol_shock_fast(adj_close, volume, ratio: float, direction: str,
+                           first_i: int | None = None,
+                           med60: np.ndarray | None = None):
+    """Vectorized census_dvol_shock (identical semantics)."""
+    first_i = WARMUP_SESSIONS if first_i is None else first_i
+    n = adj_close.shape[0]
+    fired = np.zeros(n, dtype=bool)
+    drops = {"warmup": 0, "no_shock": 0, "neutral_ret": 0}
+    if n <= first_i:
+        drops["warmup"] = n
+        return fired, np.zeros(n, dtype=bool), drops
+    dvol = _dvol(adj_close, volume)
+    if med60 is None:
+        med60 = _rolling_median(dvol, DVOL_WINDOW)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ret = np.full(n, np.nan)
+        ret[1:] = adj_close[1:] / adj_close[:-1] - 1.0
+    e = slice(first_i, n)
+    m_e, dv_e, r_e = med60[e], dvol[e], ret[e]
+    with np.errstate(invalid="ignore"):
+        shock = np.isfinite(m_e) & (m_e > 0) & (dv_e >= ratio * m_e)
+        if direction == "confirm":
+            hit = shock & (r_e > 0)
+        elif direction == "fade":
+            hit = shock & (r_e < 0)
+        else:
+            raise ValueError(f"unknown DVOL-SHOCK direction {direction}")
+    fired[first_i + np.nonzero(hit)[0]] = True
+    drops["no_shock"] = int((~shock).sum())
+    drops["neutral_ret"] = int((shock & ~hit).sum())
+    return fired, _bookable(fired, adj_close, volume, med60), drops
+
+
+def census_vol_regime_fast(adj_close, volume, L: int, direction: str,
+                           first_i: int | None = None,
+                           med60: np.ndarray | None = None):
+    """Vectorized census_vol_regime (identical semantics: causal sigma over
+    the trailing L returns, tercile boundaries over the trailing 252 sigma
+    window, same-bar assignment, nan windows fail closed)."""
+    from numpy.lib.stride_tricks import sliding_window_view
+    need = WARMUP_SESSIONS - 1 + L
+    first_i = need if first_i is None else first_i
+    n = adj_close.shape[0]
+    fired = np.zeros(n, dtype=bool)
+    drops = {"warmup": 0, "history_undefined": 0, "middle_tercile": 0}
+    if n <= first_i:
+        drops["warmup"] = n
+        return fired, np.zeros(n, dtype=bool), drops
+    with np.errstate(divide="ignore", invalid="ignore"):
+        lr = np.full(n, np.nan)
+        lr[1:] = np.log(adj_close[1:] / adj_close[:-1])
+    rets = lr[1:]                                     # rets[m] = return at session m+1
+    sigma = np.full(n, np.nan)
+    if n > L:
+        sw = sliding_window_view(rets, L)             # sw[m] = rets[m:m+L] -> session j=m+L
+        with np.errstate(invalid="ignore"):
+            sigma[L:] = np.std(sw, axis=1, ddof=1)    # nan window -> nan (fail-closed)
+    sw2 = sliding_window_view(sigma, 252)             # sw2[m] = sigma[m:m+252] -> session i=m+251
+    with np.errstate(invalid="ignore"):
+        q = np.percentile(sw2, [100.0 / 3.0, 200.0 / 3.0], axis=1,
+                          method=PERCENTILE_METHOD)   # (2, n-251)
+    e = slice(first_i, n)                             # i >= 251+L > 251
+    m0 = e.start - 251
+    q1_e, q2_e, s_e = q[0, m0:], q[1, m0:], sigma[e]
+    fin_e = np.isfinite(q1_e) & np.isfinite(q2_e)
+    with np.errstate(invalid="ignore"):
+        if direction == "low":
+            hit = fin_e & (s_e <= q1_e)
+        elif direction == "high":
+            hit = fin_e & (s_e >= q2_e)
+        else:
+            raise ValueError(f"unknown VOL-REGIME direction {direction}")
+    fired[first_i + np.nonzero(hit)[0]] = True
+    drops["history_undefined"] = int((~fin_e).sum())
+    drops["middle_tercile"] = int((fin_e & ~hit).sum())
+    return fired, _bookable(fired, adj_close, volume, med60), drops
+
+
+def run_config_census_r1(config: dict, adj_open, adj_high, adj_low, adj_close,
+                         volume, first_i: int | None = None):
+    """Dispatch to the r1 (reference) kernels — equivalence-gate baseline."""
     fam, p = config["family"], config["params"]
     if fam == "EVENT-UNWIND":
         return census_event_unwind(adj_open, adj_high, adj_low, adj_close,
@@ -509,6 +687,37 @@ def run_config_census(config: dict, adj_open, adj_high, adj_low, adj_close,
     if fam == "VOL-REGIME":
         return census_vol_regime(adj_close, volume, p["L"], p["direction"],
                                  first_i)
+    raise ValueError(f"unknown family {fam}")
+
+
+def run_config_census(config: dict, adj_open, adj_high, adj_low, adj_close,
+                      volume, first_i: int | None = None,
+                      med60: np.ndarray | None = None):
+    """Dispatch ONE frozen configuration's census on ONE name (pure).
+
+    Returns (fired_mask, bookable_mask, drops).  r2: dispatches to the
+    batched kernels (bit-equivalent to the r1 reference kernels, enforced
+    by the runner's equivalence gate on real data); the per-name med60
+    series is shared across configurations."""
+    fam, p = config["family"], config["params"]
+    if fam == "EVENT-UNWIND":
+        return census_event_unwind_fast(adj_open, adj_high, adj_low, adj_close,
+                                        volume, p["K"], first_i, med60)
+    if fam == "GAP":
+        return census_gap_fast(adj_open, adj_close, volume, p["pctl"],
+                               p["direction"], first_i, med60)
+    if fam == "52W-HIGH":
+        return census_52w_high(adj_close, volume, p["band_pct"], first_i,
+                               med60)
+    if fam == "CLV-RANGE":
+        return census_clv_range(adj_high, adj_low, adj_close, volume,
+                                p["k"], first_i, med60)
+    if fam == "DVOL-SHOCK":
+        return census_dvol_shock_fast(adj_close, volume, p["ratio"],
+                                      p["direction"], first_i, med60)
+    if fam == "VOL-REGIME":
+        return census_vol_regime_fast(adj_close, volume, p["L"], p["direction"],
+                                      first_i, med60)
     raise ValueError(f"unknown family {fam}")
 
 

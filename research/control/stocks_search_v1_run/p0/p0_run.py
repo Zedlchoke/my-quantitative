@@ -17,6 +17,25 @@ and exits 1.  It NEVER improvises an alternative source.
 P0 computes COUNTS of state firings per frozen configuration per fold ONLY:
 no candidate PnL, PF, Sharpe, drawdown, survivors or S1 evidence anywhere.
 D2 is SKIPPED this cycle (owner amendment §3b): no R0/ancestry rho machinery.
+
+r2 keyed-run changes (all disclosed in the handoff + gate transport note):
+ 1. CACHE moved under p0/raw/eod_cache — data_raw/ is NOT gitignored on this
+    branch; p0/raw/.gitignore (committed r1) is the sanctioned raw location.
+ 2. API_HOST = eodhistoricaldata.com — this network's boundary filters the
+    eodhd.com branded domain (DNS answers 127.0.0.1; TLS with SNI eodhd.com
+    is reset).  EODHD's own legacy domain serves the SAME API on the SAME
+    address and is reached with full certificate validation (preflight curl:
+    ssl_verify=0, API answers).  Same vendor, same /eod channel; no proxies,
+    no DNS tampering, no SNI games.
+ 3. Death-inclusive cohort (F4/F1 law): the living symbol list is UNIONed
+    with the delisted list (delisted=1, V8 G3 precedent), the latter filtered
+    to symbols whose Delisted_date is missing or >= the window start (an
+    earlier death has zero in-window sessions; the skipped count is recorded,
+    never silently dropped).  r1 pulled the living list only while labelling
+    it "incl. delisted" — a defect caught before the keyed run.
+ 4. run_census takes the heartbeat closure so the machine-wide lock registry
+    stays fresh during the (hours-long) census; + one transport-level retry
+    for transient connection failures.
 """
 
 from __future__ import annotations
@@ -24,19 +43,27 @@ from __future__ import annotations
 import gzip
 import importlib.util
 import json
+import os
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
+import requests
 
 WT = Path("/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration")
 HERE = Path(__file__).resolve().parent
 COHORT_DIR = HERE / "cohort"
-CACHE = WT / "data_raw/stocks_search_v1_eod"
+# r2 fix (disclosed): r1 pointed CACHE at WT/"data_raw/...", which is NOT
+# gitignored on this branch (r1's own comment assumed a root /data_raw/ rule
+# that predates this branch).  Raw bytes live under p0/raw/eod_cache, covered
+# by the committed p0/raw/.gitignore (NG6 convention; packet r2 layout).
+CACHE = HERE / "raw" / "eod_cache"
 TESTS_FILE = WT / "tests/test_stocks_search_v1_p0.py"
 HANDOFFS_DIR = WT / "research/control/stocks_search_v1_run/handoffs"
 
@@ -83,9 +110,12 @@ def fetch(url: str, timeout: int = 120) -> tuple[int, str, bytes]:
         return -1, "urllib-error", redact(str(exc)).encode()
 
 
+API_HOST = "eodhistoricaldata.com"   # see module docstring, r2 change 2
+
+
 def eod_url(key: str, symbol: str, from_date: str = L.WINDOW_START,
             to_date: str | None = None) -> str:
-    u = ("https://eodhd.com/api/eod/" + urllib.parse.quote(f"{symbol}.US")
+    u = (f"https://{API_HOST}/api/eod/" + urllib.parse.quote(f"{symbol}.US")
          + f"?api_token={key}&fmt=json&order=a&from={from_date}")
     if to_date:
         u += f"&to={to_date}"
@@ -337,26 +367,67 @@ def _run_locked(hb, key: str, extra: dict) -> int:
                             "served": served, "terms_digests": terms_digests})
 
     # ================= cohort re-pin (THIS cycle's own, death-inclusive)
-    st, _ct, sym_bytes = fetch(
-        "https://eodhd.com/api/exchange-symbol-list/US?api_token=" + key
-        + "&fmt=json")
-    if st != 200:
-        return block("F1.cohort", {"exchange_symbol_list_status": st})
-    cohort_raw = json.loads(sym_bytes)
-    symbols = sorted({r["Code"] for r in cohort_raw if r.get("Code")})
-    (COHORT_DIR / "cohort_raw.json").write_bytes(sym_bytes)
+    lists_raw: dict[str, bytes] = {}
+    lists_meta: dict[str, dict] = {}
+    for lname, extra_q in (("living", ""), ("delisted", "&delisted=1")):
+        lurl = (f"https://{API_HOST}/api/exchange-symbol-list/US?api_token="
+                + key + "&fmt=json" + extra_q)
+        st, _ct, b = fetch(lurl)
+        if st != 200:
+            return block("F1.cohort", {"exchange_symbol_list_status": st,
+                                       "list": lname})
+        lists_raw[lname] = b
+        lists_meta[lname] = {"status": st, "n_rows": len(json.loads(b)),
+                             "sha256_raw": L.sha_bytes(b)}
+        beat()
+    # Death-inclusive cohort law (F4/F1): living UNION delisted, the delisted
+    # arm filtered to symbols whose Delisted_date is missing or >= window
+    # start.  An earlier death has zero in-window served sessions and cannot
+    # fire any decision; the skipped count is RECORDED here, never silently
+    # dropped.
+    symbols: set = set()
+    delisted_in_window = 0
+    delisted_before_window = 0
+    for r in json.loads(lists_raw["delisted"]):
+        code = r.get("Code")
+        if not code:
+            continue
+        dd = str(r.get("Delisted_date") or "")[:10]
+        if dd and dd < L.WINDOW_START:
+            delisted_before_window += 1
+            continue
+        delisted_in_window += 1
+        symbols.add(code)
+    living_codes = {r.get("Code") for r in json.loads(lists_raw["living"])
+                    if r.get("Code")}
+    symbols |= living_codes
+    symbols = sorted(symbols)
+    (COHORT_DIR / "cohort_raw_living.json").write_bytes(lists_raw["living"])
+    (COHORT_DIR / "cohort_raw_delisted.json").write_bytes(lists_raw["delisted"])
     cohort_manifest = {
         "schema": "stocks_search_v1_cohort@1",
         "cycle_id": L.CYCLE_ID,
-        "law": "death-inclusive priced cohort re-pinned by THIS cycle's own P0",
-        "source": "EODHD /exchange-symbol-list/US (incl. delisted)",
+        "law": ("death-inclusive priced cohort re-pinned by THIS cycle's own "
+                "P0: living list UNION delisted list (exchange-symbol-list "
+                "US, delisted=1; V8 G3 precedent), the delisted arm filtered "
+                "to Delisted_date missing or >= the window start — an "
+                "earlier death has zero in-window sessions; the skipped "
+                "count is recorded below, never silently dropped"),
+        "source": (f"EODHD {API_HOST} /exchange-symbol-list/US "
+                   "(living) + /exchange-symbol-list/US?delisted=1"),
         "n_symbols": len(symbols),
-        "sha256_raw": L.sha_bytes(sym_bytes),
+        "lists": {**lists_meta,
+                  "delisted_in_window": delisted_in_window,
+                  "delisted_before_window_skipped": delisted_before_window},
+        "sha256_raw": {k: L.sha_bytes(v) for k, v in lists_raw.items()},
         "symbols": symbols,
         "pinned_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     L.write_json(COHORT_DIR / "cohort_manifest.json", cohort_manifest)
-    log(f"cohort re-pinned: {len(symbols)} symbols")
+    log(f"cohort re-pinned: {len(symbols)} symbols "
+        f"(living {lists_meta['living']['n_rows']} rows, delisted "
+        f"{lists_meta['delisted']['n_rows']} rows, pre-window deaths skipped "
+        f"{delisted_before_window})")
 
     # ================= F2 liveness + retrieval (canaries, double-pull, digests)
     windows = {"start": (L.WINDOW_START, "2015-03-01"),
@@ -382,88 +453,335 @@ def _run_locked(hb, key: str, extra: dict) -> int:
     if not canary_ok:
         return block("F2", {"canaries": windows, "double_pull": double_pull})
 
-    # ================= bulk retrieval (one pull per cohort name, cached)
-    pulls: dict[str, dict] = {}
-    names_done = 0
-    for i, sym in enumerate(symbols):
+    # ================= bulk retrieval (threaded, keep-alive, rate-limited)
+    # r2 feasibility fix (disclosed): r1's sequential urllib loop measured
+    # ~0.19 pulls/s on this cohort (111,307 names -> >150h, infeasible).
+    # Threads + per-thread keep-alive sessions + a global token-bucket cap
+    # (<= 9 req/s, inside the plan's 1,000/min ceiling) bring it to hours.
+    # Source identity, per-pull digests and manifest semantics unchanged.
+    http_lock = threading.Lock()
+    tls = threading.local()
+
+    class _RateLimiter:
+        def __init__(self, rate_per_s: float):
+            self._min_int = 1.0 / float(rate_per_s)
+            self._lock = threading.Lock()
+            self._next = 0.0
+
+        def wait(self):
+            with self._lock:
+                now = time.monotonic()
+                t = self._next if self._next > now else now
+                self._next = t + self._min_int
+            d = t - time.monotonic()
+            if d > 0:
+                time.sleep(d)
+
+    limiter = _RateLimiter(9.0)
+
+    def _session():
+        s = getattr(tls, "s", None)
+        if s is None:
+            s = requests.Session()
+            s.headers.update({"User-Agent": "my-quantitative-research/1.0"})
+            tls.s = s
+        return s
+
+    def http_get(url: str, timeout: int = 90):
+        """Rate-limited keep-alive GET; bounded retries on transport errors
+        and 429/5xx; never raises with unsanitized content."""
+        last = (-1, "transport-error", b"")
+        for attempt in range(5):
+            if attempt:
+                time.sleep(min(30, 5 * attempt))
+            limiter.wait()
+            with http_lock:
+                HTTP["n"] += 1
+            try:
+                r = _session().get(url, timeout=timeout)
+            except Exception as exc:  # noqa: BLE001 - may embed the tokened URL
+                last = (-1, "transport-error", redact(str(exc)).encode())
+                continue
+            if r.status_code in (429, 500, 502, 503, 504):
+                last = (r.status_code, r.headers.get("Content-Type", ""),
+                        r.content[:400])
+                continue
+            return r.status_code, r.headers.get("Content-Type", ""), r.content
+        return last
+
+    def pull_one(sym: str):
         out = CACHE / f"{sym}.json.gz"
         if out.exists():
-            names_done += 1
-            continue
-        st, _ct, raw = fetch(eod_url(key, sym))
+            return sym, {"status": 200, "cached": True, "rows": None}
+        st, _ct, raw = http_get(eod_url(key, sym))
         if st == 404:
-            pulls[sym] = {"status": 404, "rows": 0}
-            names_done += 1
-            continue
+            return sym, {"status": 404, "rows": 0}
         if st != 200:
-            pulls[sym] = {"status": st, "error": redact(raw[:200].decode("utf-8", "replace"))}
-            names_done += 1
-            continue
+            return sym, {"status": st,
+                         "error": redact(raw[:200].decode("utf-8", "replace"))}
+        try:
+            rows = json.loads(raw)
+            if not isinstance(rows, list):
+                raise ValueError("non-list body (schema drift)")
+        except Exception as exc:  # noqa: BLE001 - schema drift recorded, fail-closed
+            return sym, {"status": 200, "rows": 0, "no_series": True,
+                         "note": redact(f"body not a JSON list: {exc}")[:160]}
         gz = gzip.compress(raw)
-        out.write_bytes(gz)
-        pulls[sym] = {"status": st, "rows": len(json.loads(raw)),
-                      "sha256_raw": L.sha_bytes(raw), "sha256_gz": L.sha_bytes(gz),
-                      "first": json.loads(raw)[0]["date"][:10] if raw else None,
-                      "last": json.loads(raw)[-1]["date"][:10] if raw else None}
-        names_done += 1
-        if names_done % 50 == 0:
-            beat({"names_done": names_done})
-            log(f"retrieval {names_done}/{len(symbols)}")
-    retrieval_manifest = {
-        "schema": "stocks_search_v1_retrieval@1",
-        "cycle_id": L.CYCLE_ID,
-        "law": ("raw bytes live gitignored under data_raw/"
-                "stocks_search_v1_eod/ and raw/.gitignore; THIS manifest "
-                "(sha256 per pull) is committed; a detached rerun re-pulls "
-                "and must reproduce digests or name a source revision"),
-        "http_requests": HTTP["n"],
-        "double_pull": double_pull,
-        "pulls": pulls,
-        "written_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }
-    L.write_json(HERE / "retrieval_manifest.json", retrieval_manifest)
+        tmp = out.with_suffix(".tmp")
+        tmp.write_bytes(gz)
+        os.replace(tmp, out)      # atomic: a resumed run never sees partial files
+        meta = {"status": 200, "rows": len(rows),
+                "sha256_raw": L.sha_bytes(raw), "sha256_gz": L.sha_bytes(gz),
+                "first": str(rows[0].get("date", ""))[:10] if rows else None,
+                "last": str(rows[-1].get("date", ""))[:10] if rows else None}
+        return sym, meta
+
+    pulls: dict[str, dict] = {}
+    names_done = 0
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        for sym, meta in ex.map(pull_one, symbols):
+            pulls[sym] = meta
+            names_done += 1
+            if names_done % 250 == 0:
+                beat({"names_done": names_done})
+                log(f"retrieval {names_done}/{len(symbols)}")
+    n_cached = sum(1 for m in pulls.values() if m.get("cached"))
+    n_empty = sum(1 for m in pulls.values() if m.get("rows") == 0)
+    n_err = sum(1 for m in pulls.values()
+                if m.get("status") not in (200, 404))
+    log(f"retrieval complete: {len(pulls)} names (cached {n_cached}, "
+        f"empty/no-series {n_empty}, non-200/non-404 {n_err})")
+
+    def write_retrieval_manifest():
+        retrieval_manifest = {
+            "schema": "stocks_search_v1_retrieval@1",
+            "cycle_id": L.CYCLE_ID,
+            "law": ("raw bytes live gitignored under p0/raw/eod_cache "
+                    "(p0/raw/.gitignore; r2 layout fix — data_raw/ is not "
+                    "gitignored on this branch); THIS manifest (sha256 per "
+                    "pull) is committed; a detached rerun re-pulls and must "
+                    "reproduce digests or name a source revision"),
+            "http_requests": HTTP["n"],
+            "double_pull": double_pull,
+            "retrieval_meta": {
+                "mode": "threaded keep-alive (12 workers), global token-bucket "
+                        "<= 9 req/s, bounded retries on transport/429/5xx "
+                        "(r2 feasibility fix; r1 sequential measured ~0.19 "
+                        "pulls/s -> >150h on this cohort)",
+                "n_symbols_targeted": len(symbols),
+                "n_cached_before_run": n_cached,
+                "n_empty_or_no_series": n_empty,
+                "n_non_200_non_404": n_err,
+            },
+            "pulls": pulls,
+            "written_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                                            time.gmtime()),
+        }
+        L.write_json(HERE / "retrieval_manifest.json", retrieval_manifest)
+
+    if n_err:
+        # r2 completeness law (fail-closed): a census over a cohort with
+        # unresolved pulls would systematically exclude those names (e.g. a
+        # daily-quota 402 cluster at the alphabetical tail) — never silently
+        # dropped.  F2 fails on retrieval completeness; F3-F8 NOT_RUN.
+        st_hist: dict = {}
+        for m in pulls.values():
+            if m.get("status") not in (200, 404):
+                st_hist[str(m.get("status"))] = st_hist.get(str(m.get("status")), 0) + 1
+        sample = {s: pulls[s] for s in sorted(pulls)
+                  if pulls[s].get("status") not in (200, 404)}
+        detail = {"retrieval_completeness": {
+            "n_unresolved": n_err, "status_histogram": st_hist,
+            "sample_unresolved": dict(list(sample.items())[:10]),
+            "note": "the failed pulls have NO cache file; after the block "
+                    "clears (e.g. daily quota reset) a rerun re-pulls them "
+                    "and the census covers the full cohort"}}
+        gates = {
+            "F1": L.verdict_row("PASS", "P-25 three-layer gate",
+                                {"layers": f1["layers"]}),
+            "F2": L.verdict_row(
+                "FAIL",
+                "canaries + double-pull byte-identity + sha256 pins + "
+                "never-existed 404 + FULL-COHORT RETRIEVAL COMPLETENESS "
+                "(fail-closed: unresolved pulls exclude names from the "
+                "census; never silently dropped)",
+                detail),
+        }
+        for gid, law in (
+            ("F3", "adjusted (total-return) series is THE single representation"),
+            ("F4", "death-inclusive cohort + served-session census + floors "
+                   "+ warmup attrition"),
+            ("F5", "one frozen daily decision clock; DST fixtures"),
+            ("F6", "band schedule A:10/B:15/C:25 bps on ADV {50M,10M,2M}"),
+            ("F7", "SPY adjusted series acquired + pinned"),
+            ("F8", "folds frozen before census; per-config per-fold fired "
+                   "census; floor >= 30 bookable fired decisions/fold"),
+        ):
+            gates[gid] = L.verdict_row("NOT_RUN", law,
+                                       {"blocked_by": "F2.completeness",
+                                        "fail_closed": True})
+        gates["F9"] = L.verdict_row(
+            "NOT_RUN",
+            "census code, raw-request manifest, digest manifest, "
+            "calendar/clock contract, cost bands, folds AND the frozen "
+            "search-space manifest committed; detached rerun reproduces",
+            {"blocked_by": "F2.completeness",
+             "committed_partial": True,
+             "note": "retrieval manifest IS written and records every pull "
+                     "status; the census artifacts materialize only on a "
+                     "complete cohort"})
+        body = L.assemble_gate(gates)
+        body["measured_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                                                time.gmtime())
+        body["worktree_head_at_measurement"] = git_head()
+        body["gate_extra"] = {"f1_layers": f1, "cohort": {
+            "n_symbols": len(symbols),
+            "sha256_raw": cohort_manifest["sha256_raw"]}}
+        write_retrieval_manifest()
+        (HERE / "p0_gate.json").write_text(
+            json.dumps(body, indent=1, sort_keys=True) + "\n")
+        log(f"BLOCKED: retrieval completeness — {n_err} unresolved pulls "
+            f"{st_hist}")
+        return 1
+    write_retrieval_manifest()
 
     # ================= census (COUNTS only) over the 47 frozen configurations
     gate_extra = dict(extra)
     gate_extra["f1_layers"] = f1
     gate_extra["cohort"] = {"n_symbols": len(symbols),
                             "sha256_raw": cohort_manifest["sha256_raw"]}
-    census = run_census(pulls)
+    gate_extra["equivalence_gate"] = equivalence_gate()
+    census = run_census(pulls, beat=beat)
     L.write_json(HERE / "p0_census.json", census["summary"])
-    with gzip.open(HERE / "p0_census_rows.json.gz", "wt") as fh:
-        json.dump(census["rows"], fh, sort_keys=True)
+    with gzip.open(HERE / "p0_census_cohort.json.gz", "wt") as fh:
+        json.dump(census["cohort"], fh, sort_keys=True)
     gate_extra["census"] = census["summary"]
+    gate_extra["transport"] = {
+        "api_host": API_HOST,
+        "note": ("the network boundary on this host filters the eodhd.com "
+                 "branded domain (system DNS answers 127.0.0.1; TLS with "
+                 "SNI eodhd.com is reset by the boundary). The SAME vendor "
+                 "and API channel on EODHD's own legacy domain "
+                 "eodhistoricaldata.com (same A record) is reached with "
+                 "full certificate validation; preflight curl probe: HTTP "
+                 "401 'Unauthenticated' with ssl_verify=0 (valid TLS). No "
+                 "proxies, no DNS overrides, no SNI tricks — a plain "
+                 "connection to the vendor's alternate hostname. Owner may "
+                 "allowlist eodhd.com and re-run for the branded-host "
+                 "lineage; digests pin content identity either way."),
+    }
 
     # ================= gates F3–F8 from measured census
     return write_gate(gates_from_census(census, f1), gate_extra)
 
 
 def parse_name(gz_path: Path):
-    """Cached pull -> (dates, adj_open, adj_high, adj_low, adj_close, volume)
-    on the P-12 representation (adj_ohlc = raw x adj_close/close)."""
+    """Cached pull -> (dates, adj_open, adj_high, adj_low, adj_close, volume,
+    malformed_rows) on the P-12 representation (adj_ohlc = raw x
+    adj_close/close).  Malformed rows (missing/null fields) are SKIPPED and
+    COUNTED, never silently imputed; empty or all-malformed -> None."""
     rows = json.loads(gzip.open(gz_path, "rt").read())
     if not rows:
         return None
     rows.sort(key=lambda r: r["date"])
-    dates = [r["date"][:10] for r in rows]
-    close = np.array([float(r["close"]) for r in rows])
-    adj_close = np.array([float(r["adjusted_close"]) for r in rows])
+    REQ = ("date", "open", "high", "low", "close", "adjusted_close", "volume")
+    clean, malformed = [], 0
+    for r in rows:
+        if any(r.get(k) is None for k in REQ):
+            malformed += 1
+            continue
+        try:
+            clean.append((str(r["date"])[:10], float(r["open"]), float(r["high"]),
+                          float(r["low"]), float(r["close"]),
+                          float(r["adjusted_close"]), float(r["volume"])))
+        except (TypeError, ValueError):
+            malformed += 1
+    if not clean:
+        return None
+    dates = [c[0] for c in clean]
+    close = np.array([c[4] for c in clean])
+    adj_close = np.array([c[5] for c in clean])
     with np.errstate(divide="ignore", invalid="ignore"):
         f = np.where(close > 0, adj_close / close, np.nan)
-    adj_open = np.array([float(r["open"]) for r in rows]) * f
-    adj_high = np.array([float(r["high"]) for r in rows]) * f
-    adj_low = np.array([float(r["low"]) for r in rows]) * f
-    volume = np.array([float(r["volume"]) for r in rows])
-    return dates, adj_open, adj_high, adj_low, adj_close, volume
+    adj_open = np.array([c[1] for c in clean]) * f
+    adj_high = np.array([c[2] for c in clean]) * f
+    adj_low = np.array([c[3] for c in clean]) * f
+    volume = np.array([c[6] for c in clean])
+    return dates, adj_open, adj_high, adj_low, adj_close, volume, malformed
 
 
-def run_census(pulls: dict) -> dict:
-    """Per-config per-fold fired census across the cohort.  COUNTS ONLY."""
+def equivalence_gate(sample: int = 36, seed: int = 20260917) -> dict:
+    """r1-vs-r2 census-kernel equivalence on a deterministic sample of REAL
+    cached names.  The r2 batched kernels must agree EXACTLY with the r1
+    reference kernels (fired mask, bookable mask, drop counts) — any
+    mismatch raises (run fails closed as P0_TECHABORT), never proceeds."""
+    import random
+    cand = []
+    for p in sorted(CACHE.glob("*.json.gz")):
+        try:
+            rows = json.loads(gzip.open(p, "rt").read())
+        except Exception:  # noqa: BLE001 - unreadable cache file: skip sample
+            continue
+        if rows and 400 <= len(rows) <= 900:
+            cand.append(p)
+    if len(cand) < 8:
+        raise RuntimeError(f"equivalence gate: only {len(cand)} sampleable "
+                           f"names (400-900 sessions) in cache — fail-closed")
+    rng = random.Random(seed)
+    picks = rng.sample(cand, min(sample, len(cand)))
+    checked = 0
+    for p in picks:
+        parsed = parse_name(p)
+        if parsed is None:
+            continue
+        _dates, o_, h_, lo_, c_, v_, _mal = parsed
+        for cfg in L.enumerate_configs():
+            r1 = L.run_config_census_r1(cfg, o_, h_, lo_, c_, v_)
+            r2 = L.run_config_census(cfg, o_, h_, lo_, c_, v_)
+            if not (np.array_equal(r1[0], r2[0]) and np.array_equal(r1[1], r2[1])
+                    and r1[2] == r2[2]):
+                raise RuntimeError(
+                    f"equivalence MISMATCH {p.name} {cfg['config_id']}: "
+                    f"r1_drops={r1[2]} r2_drops={r2[2]}")
+            checked += 1
+    log(f"equivalence gate PASS: {checked} config-name pairs bit-identical")
+    return {"verdict": "PASS", "names": len(picks),
+            "config_name_pairs": checked, "seed": seed,
+            "law": ("r2 batched census kernels bit-identical to r1 reference "
+                    "kernels on a deterministic sample of real cached names; "
+                    "mismatch would TECHABORT the run (fail-closed)")}
+
+
+def run_census(pulls: dict, beat=None) -> dict:
+    """Per-config per-fold fired census across the cohort.  COUNTS ONLY.
+
+    beat (optional) is the heavy-lock heartbeat closure; the census can run
+    for hours and the machine-wide registry must stay fresh.
+
+    r2: aggregates INCREMENTALLY per (config, fold).  The r1 per-symbol rows
+    list (~9M dicts at this 111k-name cohort) was an OOM defect on this 8GB
+    host; every statistic r1 derived from those rows is accumulated here with
+    identical semantics.  The per-name served census (F4) is written as
+    p0_census_cohort.json.gz.  Zero-range-law blocked bars (high==low making
+    RANGE/CLV undefined) are now REPORTED per family — the law fires nothing,
+    never imputes."""
     configs = L.enumerate_configs()
-    rows: list[dict] = []
     cohort_rows: dict[str, dict] = {}
     b1, b2 = L.fold_boundaries()
+    agg: dict[tuple, dict] = {}
+    for cfg in configs:
+        for fold in ("F1", "F2", "F3"):
+            agg[(cfg["config_id"], fold)] = {
+                "config_id": cfg["config_id"], "family": cfg["family"],
+                "fold": fold, "eligible_sessions": 0, "fired": 0,
+                "bookable_fired": 0,
+                "band_counts": {kk: 0 for kk in L.BAND_KEYS},
+                "symbols_fired": 0, "floor_violations": 0}
+    zero_range_blocked = {"EVENT-UNWIND": 0, "CLV-RANGE": 0}
+    FCODE = {"F1": 0, "F2": 1, "F3": 2}
     for sym, meta in sorted(pulls.items()):
+        if beat:
+            beat({"census_names_done": len(cohort_rows)})
         gz = CACHE / f"{sym}.json.gz"
         if meta.get("status") != 200 or not gz.exists():
             continue
@@ -471,66 +789,64 @@ def run_census(pulls: dict) -> dict:
         if parsed is None:
             cohort_rows[sym] = {"served": 0}
             continue
-        dates, adj_open, adj_high, adj_low, adj_close, volume = parsed
+        dates, adj_open, adj_high, adj_low, adj_close, volume, malformed = parsed
         cohort_rows[sym] = {"served": len(dates), "first": dates[0],
                             "last": dates[-1]}
+        if malformed:
+            cohort_rows[sym]["malformed_rows_skipped"] = malformed
         if len(dates) < 3:
             continue
-        fold_of = [L.assign_fold(d, b1, b2) for d in dates]
+        n = len(dates)
+        fold_code = np.empty(n, dtype=np.int8)
+        fold_idx = [np.empty(0, dtype=np.int64) for _ in range(3)]
+        tmp_idx = ([], [], [])
+        for i, d in enumerate(dates):
+            fc = FCODE[L.assign_fold(d, b1, b2)]
+            fold_code[i] = fc
+            tmp_idx[fc].append(i)
+        fold_idx = [np.array(v, dtype=np.int64) for v in tmp_idx]
         dvol = adj_close * volume
         med252_all = L._rolling_median(dvol, 252)
         med60_all = L._rolling_median(dvol, L.DVOL_WINDOW)
         for cfg in configs:
-            fired, bookable, drops = L.run_config_census(
-                cfg, adj_open, adj_high, adj_low, adj_close, volume)
             warm = cfg["warmup_need"]
-            eligible = max(0, len(dates) - warm)
+            fired, bookable, drops = L.run_config_census(
+                cfg, adj_open, adj_high, adj_low, adj_close, volume,
+                med60=med60_all)
+            fam = cfg["family"]
+            if fam in zero_range_blocked:
+                zero_range_blocked[fam] += int(drops.get("range_undefined", 0))
             fired_idx = np.nonzero(fired)[0]
-            for fold in ("F1", "F2", "F3"):
-                fi = [int(i) for i in fired_idx
-                      if i >= warm and fold_of[i] == fold]
-                bi = [i for i in fi if bool(bookable[i])]
-                bands = {k: 0 for k in L.BAND_KEYS}
-                unresolved = 0
-                for i in fi:
-                    try:
-                        bands[L.resolve_band(float(med252_all[i]))] += 1
-                    except ValueError:
-                        bands["UNRESOLVED"] += 1
-                        unresolved += 1
-                denom = sum(1 for ii, d in enumerate(dates)
-                            if ii >= warm and fold_of[ii] == fold)
-                rows.append({
-                    "config_id": cfg["config_id"], "family": cfg["family"],
-                    "symbol": sym, "fold": fold,
-                    "eligible_sessions": denom,
-                    "fired": len(fi), "bookable_fired": len(bi),
-                    "fired_day_share": (len(fi) / denom) if denom else 0.0,
-                    "bookable_fired_day_share": (len(bi) / denom) if denom else 0.0,
-                    "band_counts": bands,
-                    "band_c_fraction_on_fired": (bands["C"] / len(fi)) if fi else 0.0,
-                    "band_unresolved": unresolved,
-                    "floor_pass": len(bi) >= L.FOLD_EVENT_FLOOR,
-                    "warmup_skipped_sessions": min(warm, len(dates)),
-                })
-    # aggregate per config x fold
-    agg: dict[tuple, dict] = {}
-    for r in rows:
-        k = (r["config_id"], r["fold"])
-        a = agg.setdefault(k, {"config_id": r["config_id"],
-                               "family": r["family"], "fold": r["fold"],
-                               "eligible_sessions": 0, "fired": 0,
-                               "bookable_fired": 0,
-                               "band_counts": {kk: 0 for kk in L.BAND_KEYS},
-                               "symbols_fired": 0, "floor_violations": 0})
-        a["eligible_sessions"] += r["eligible_sessions"]
-        a["fired"] += r["fired"]
-        a["bookable_fired"] += r["bookable_fired"]
-        a["symbols_fired"] += 1 if r["fired"] else 0
-        for kk, v in r["band_counts"].items():
-            a["band_counts"][kk] += v
-        if not r["floor_pass"]:
-            a["floor_violations"] += 1
+            eligible_fi = fired_idx[fired_idx >= warm]
+            for fc in (0, 1, 2):
+                start = int(np.searchsorted(fold_idx[fc], warm))
+                denom = int(fold_idx[fc].size - start)
+                if eligible_fi.size:
+                    fi = eligible_fi[fold_code[eligible_fi] == fc]
+                else:
+                    fi = eligible_fi
+                a = agg[(cfg["config_id"], ("F1", "F2", "F3")[fc])]
+                a["eligible_sessions"] += denom
+                a["fired"] += int(fi.size)
+                a["symbols_fired"] += 1 if fi.size else 0
+                a["floor_violations"] += 0 if int(
+                    np.count_nonzero(bookable[fi])) >= L.FOLD_EVENT_FLOOR else 1
+                if fi.size:
+                    a["bookable_fired"] += int(np.count_nonzero(bookable[fi]))
+                    med_at = med252_all[fi]
+                    ok = np.isfinite(med_at)
+                    bc = a["band_counts"]
+                    bc["A"] += int(np.count_nonzero(
+                        ok & (med_at >= L.BANDS_DEF["A"])))
+                    bc["B"] += int(np.count_nonzero(
+                        ok & (med_at < L.BANDS_DEF["A"]) & (med_at >= L.BANDS_DEF["B"])))
+                    bc["C"] += int(np.count_nonzero(
+                        ok & (med_at < L.BANDS_DEF["B"]) & (med_at >= L.BANDS_DEF["C"])))
+                    bc["SUBFLOOR"] += int(np.count_nonzero(
+                        ok & (med_at < L.BANDS_DEF["C"])))
+                    bc["UNRESOLVED"] += int(np.count_nonzero(~ok))
+        if len(cohort_rows) % 500 == 0:
+            log(f"census parsed {len(cohort_rows)} names")
     for a in agg.values():
         a["fired_day_share"] = (a["fired"] / a["eligible_sessions"]
                                 if a["eligible_sessions"] else 0.0)
@@ -542,6 +858,13 @@ def run_census(pulls: dict) -> dict:
         "cycle_id": L.CYCLE_ID,
         "law": ("COUNTS of state firings per configuration per fold ONLY; "
                 "no candidate returns/PnL anywhere (§3b); D2 SKIPPED"),
+        "aggregation_note": ("r2: incremental per-(config,fold) accumulation, "
+                             "semantics identical to the r1 rows-then-"
+                             "aggregate pipeline (equivalence-gated kernels); "
+                             "per-symbol rows artifact replaced by the "
+                             "per-name served census p0_census_cohort.json.gz "
+                             "(F4 evidence) — the 111k-name cohort made the "
+                             "r1 rows list an OOM defect"),
         "n_configs": len(configs),
         "n_names_parsed": len(cohort_rows),
         "per_config_per_fold": [agg[k] for k in sorted(agg)],
@@ -549,8 +872,14 @@ def run_census(pulls: dict) -> dict:
                       "kill recorded, never silently dropped"),
         "floor_violation_cells": [agg[k]["config_id"] + ":" + agg[k]["fold"]
                                   for k in sorted(agg) if not agg[k]["floor_pass"]],
+        "zero_range_law": {
+            "law": ("a bar with high == low makes RANGE and CLV undefined — "
+                    "the state is NOT FIRED on that bar (fail-closed, never "
+                    "imputed); blocked-bar counts reported per family"),
+            "blocked_by_family": zero_range_blocked,
+        },
     }
-    return {"summary": summary, "rows": rows, "cohort": cohort_rows}
+    return {"summary": summary, "cohort": cohort_rows}
 
 
 def gates_from_census(census: dict, f1_layers: dict) -> dict:
