@@ -1,0 +1,231 @@
+{
+  "schema": "deu_s_a3_pit_dossier@1",
+  "cycle_id": "DATA-EDGE-UNLOCK-V1",
+  "task_id": "deu-s-a3",
+  "role": "A3-PIT-data-license-auditor",
+  "lane": "lane-s",
+  "measured_utc": "2026-09-17T02:45:25Z",
+  "dispatch": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/data-edge-unlock-v1/lane-s",
+    "branch": "orca/deu-lane-s",
+    "base_sha": "082bb5e07d961fc44dc7d3427e4cbc0d67dc1999",
+    "base_sha_verified": "MATCH (git rev-parse HEAD == dispatch_sha before any commit)"
+  },
+  "upstream_base": {
+    "predecessor_dossier": "research/control/ng6_ng7_ng4_dossiers_2026-09/sng6-a3-sec-source-pit-dossier.json (read in full; this audit UPGRADES and CORRECTS it, marked below)",
+    "ftd_archive": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_ftd_archive (436 local files = 434 pinned zips + official_page_inventory.html + official_page_inventory_zip_listing.json; READ-ONLY honored)",
+    "nport_archive": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/raw/sec_nport/2026q2_nport.zip (local bytes only; no re-pull)",
+    "fdf_manifest_provenance": {
+      "branch": "orca/free-data-frontier-v1-integration",
+      "branch_head_commit": "4e49b3e7a820dfdabfaddb268d2a224bc4a46b60",
+      "manifest_blob": "19579a781cc338c7677c390e2c5e4e9774ddc391",
+      "path": "research/control/free_data_frontier_v1_run/manifests/sec_ftd_archive_manifest.json",
+      "entries": 434
+    }
+  },
+  "network_budget": {
+    "cap": 20,
+    "declared_ua": "my-quantitative-research-audit/0.1 (evidence audit; contact: repository OWNER via GitHub issues)",
+    "min_spacing_s": 5,
+    "ledger": "probes/network_budget_ledger.json",
+    "http_completed": 5,
+    "block_page_hits": 5,
+    "retry_storms": 0,
+    "stop_rule_invocations": ["www.sec.gov after 3x403", "all SEC hosts after data.sec.gov 2x403", "api.eodhd.com after TLS cert/hostname mismatch (fail-closed, no insecure retry)"]
+  },
+  "components": {
+    "F1_settlement_vs_publication": {
+      "verdict": "PASS",
+      "question": "SETTLEMENT DATE is event/effective time and is NOT availability; per-settlement-date net-balance stock; PRICE is prior-day close",
+      "commands": [
+        "python3 zipfile local read of raw bytes (header excluded, trailers parsed separately); see s_a3_verify.py checks B",
+        "grep of sha-pinned official_page_inventory.html (sha256 e811f192181b4a0d64dd3c6c6887890c6f7577c3e75ee34f9a60a0bb2a305b61)"
+      ],
+      "evidence": [
+        "probes/f1_f4_f8_ftd_byte_measurements.json",
+        "probes/f2_page_posting_scan.json",
+        "s_a3_verify.py check B + D (same CUSIP repeated across settlement dates with changing quantity)"
+      ],
+      "margin": "FULL: page quotes re-measured verbatim from archived HTML: 'aggregate net balance of shares that failed to be delivered as of a particular settlement date'; 'cumulative number of all fails outstanding until that day, plus new fails that occur that day, less fails that settle that day... not a daily amount'; 'The price field includes the closing price of the security on the previous day as long as the price is available and is greater than one penny' ('.' otherwise, measured 0.62-6.12 pct of rows across vintages 2009/2016/2020/2026); no per-file availability timestamp is served anywhere in the page HTML or its zip-listing JSON (measured: 0 datetime/time tags, 0 last-updated strings)",
+      "correction_to_sng6": "SNG6 row counts (e.g. 57539 for cnsfails200907a) counted the 2 trailer lines (57537 data rows + 2 trailers); this audit counts data rows == trailer-declared record count. No contradiction."
+    },
+    "F2_per_file_release_schedule": {
+      "verdict": "BLOCKED",
+      "question": "upgrade the page-cadence bound with per-file evidence",
+      "commands": [
+        "curl -sS -X HEAD -A <declared UA> https://www.sec.gov/files/data/fails-deliver-data/cnsfails202608b.zip  -> HTTP 403",
+        "curl -sS -X HEAD -A <declared UA> https://www.sec.gov/files/node/add/data_distribution/cnsfails202004b.zip  -> HTTP 403",
+        "curl -sS -X HEAD -A <declared UA> https://www.sec.gov/files/data/fails-deliver-data/cnsfails202609a.zip  -> HTTP 403; STOP rule invoked"
+      ],
+      "evidence": [
+        "probes/f2_www_sec_gov_403_transcript.json",
+        "probes/sec_datasec_403_transcript.json",
+        "probes/f2_page_posting_scan.json",
+        "probes/network_budget_ledger.json"
+      ],
+      "blocker": "SEC fair-access 'Request Rate Threshold Exceeded' 403 (1924-byte block page, same class SNG6-A3 recorded) on all 3 HEAD probes; archived page HTML and the page's own machine-readable zip-listing JSON contain ZERO posting timestamps (measured). Second consecutive audit window blocked (SNG6 2026-09-16, this 2026-09-17), different methods (HEAD/GET), both hosts. No retry storm.",
+      "consequence_frozen": "The +15-day conservative bound STANDS. Per-file posting timestamps NOT_MEASURED. Direct historical scored use of the 2009-07..2026-08 archive stays RETROSPECTIVE_ONLY. Successor owner action: capture posting evidence from a network window/route that passes SEC fair access (e.g. slow full-index-style periodic snapshots of the page listing JSON), never by retrying against a block page."
+    },
+    "F3_conservative_availability_rule": {
+      "verdict": "PASS",
+      "frozen_rule": {
+        "name": "FTD_CONSERVATIVE_AVAILABILITY@1",
+        "posting_bound": "posting_bound(file) = settlement_half_month_end(file) + 15 calendar days (page cadence: first half 'available at the end of the month', second half 'at about the 15th of the next month', 'We cannot guarantee that the data will be posted by a particular date')",
+        "constants": { "POSTING_BOUND_DAYS": 15, "MIN_CONDITIONING_GUARD_DAYS": 16 },
+        "conditioning": "at decision time t, a half-month file is usable only if posting_bound(file) + 1 day guard <= t; recommend >=16-day guard, 17 to be conservative across holiday drift",
+        "never": "SETTLEMENT DATE is NEVER availability; PRICE (prior-day close) is NEVER availability; retrieved_time_utc (2026-09-16) is NEVER availability",
+        "scored_use": "any join older than the guard is RETROSPECTIVE_ONLY until per-file publication timestamps are measured (F2)"
+      }
+    },
+    "F4_revisions_replacements": {
+      "verdict": "PASS",
+      "question": "what are the _0 repost variants: replace, supplement, or correct?",
+      "commands": [
+        "zip listing census vs page JSON; settlement-set overlap vs neighbors (python zipfile)",
+        "s_a3_verify.py checks C.nooverlap.* and E.*"
+      ],
+      "evidence": ["probes/f4_repost_census.json", "probes/f1_f4_f8_ftd_byte_measurements.json"],
+      "measured": [
+        "UPGRADE over SNG6: the base names cnsfails201910a.zip and cnsfails202308b.zip are ABSENT from BOTH the sha-pinned 434-url page listing AND the local archive - the _0 objects are the ONLY vintage for those two settlement half-months (the corrections channel REPLACES the listing position; it is not an extra variant)",
+        "_0 url paths differ from the canonical path (cnsfails202308b_0.zip under /files/data/other/fails-deliver-data/, cnsfails201910a_0.zip under /files/data/fails-deliver-data/) - repost identity preserved by exact-URL pinning",
+        "_0 members carry the SAME internal member names and the identical 6-column schema; both pass the full trailer guard (F8); zero settlement overlap with all 6 neighbors (no supplementation channel)",
+        "base-vs-_0 byte/value diff: NOT_MEASURABLE from held evidence (single vintage; base never served under the base name in the pinned listing)"
+      ],
+      "frozen_cross_vintage_diff_rule": "On any future archive vintage: (1) diff served url set vs pinned listing; (2) re-hash every file vs pin; (3) for changed/added objects, value-level diff keyed on (SETTLEMENT DATE,CUSIP) with counts of added/removed/quantity-changed rows and max |delta|; (4) treat any _0-position object change as a REPLACEMENT candidate and re-run trailer + partition guards; (5) never splice vintages silently."
+    },
+    "F5_cusip_ticker_entity_mapping": {
+      "verdict": "BLOCKED",
+      "question": "is any historical CUSIP->ticker/entity mapping keyless-available; does FTD SYMBOL match EDGAR mapping",
+      "commands": ["planned GET https://www.sec.gov/files/company_tickers.json - NOT_SENT (www.sec.gov stop rule after F2 403s)"],
+      "evidence": ["probes/network_budget_ledger.json", "probes/f6_dead_names.json"],
+      "measured_local": [
+        "FTD SYMBOL column MUTATES after death while CUSIP stays constant: FRC -> FRCB (measured: CUSIP 33616C100 rows as 'FRC' 2023-04/05, as 'FRCB' 2023-11 through 2026-08 with DESCRIPTION unchanged 'FIRST REP BK SAN FRANCISCO CAL')",
+        "FTD DESCRIPTION is a within-archive identity authority: all five canary CUSIPs confirmed from DESCRIPTION bytes, and they DIFFER from commonly remembered CUSIPs (TWTR is 90184L102, not 90214N103; LEHMQ estate is 524908100)"
+      ],
+      "blocker": "EDGAR company_tickers.json live fetch blocked (SEC 403 this window); its served schema (ticker->CIK+title only, NO CUSIP field; CURRENT state only) is STATED-DOCUMENTED, not re-measured live this audit - P-1/Q-8 label applies",
+      "identity_consequence": "FAIL-CLOSED: no keyless PIT authority for historical CUSIP->ticker/entity mapping exists in the measured set (CUSIP Global Services is licensed, not keyless; EDGAR mapping is current-state and CUSIP-less). CUSIPs are re-used over decades and symbols mutate - so historical joins must key on (CUSIP + DESCRIPTION-confirmed identity within the FTD archive itself); joins to external entities by symbol are UNSAFE; joins to external entities by CUSIP without an entitled historical mapping are RETROSPECTIVE_ONLY and survivorship-prone."
+    },
+    "F6_dead_name_treatment": {
+      "verdict": "PASS",
+      "commands": ["python zipfile scan of 202209b/202210a/202210b/202211a, 202302b/202303a/202303b, 201805b/201806a/201806b/201807a, 202304b/202305a/202305b, 200907a/200907b + 200908..201006 sweep for the estate", "s_a3_verify.py checks D.*"],
+      "evidence": ["probes/f6_dead_names.json"],
+      "measured": {
+        "TWTR": "CUSIP 90184L102: 25 rows to 20221028 (last trade day), 3 residual rows to 20221101, then ends; no symbol/CUSIP reuse in 202408/202608 scans",
+        "SIVB": "CUSIP 78486Q101: rows stop AT death settlement 20230310 (PRICE 267.39 -> 106.04); no post-death rows",
+        "TWX": "CUSIP 887317303: fails settle out ~11 days past the 20180614 close (last 20180625)",
+        "FRC": "CUSIP 33616C100: 21.3M-share residual balance at 3.51 on 20230502-03; SYMBOL MUTATED to FRCB post-death; residual fails persist 3+ YEARS (231,573 sh 20231117; FRCB 0.01-0.02 through 202408; 21 sh '.' on 20260810)",
+        "LEHMQ": "CUSIP 524908100: estate fails at 0.04-0.05 run from archive start 20090701 to LAST ROW 20100630 - 21.5 months post-bankruptcy",
+        "controls": "never-existed CUSIPs 000000000/999999999 and symbols NOTREAL/FAKESYM: 0 hits across all scanned files"
+      },
+      "ruling": "FTD rows do NOT vanish at death: they decay as residual balances settle (days for merger deaths; years for estate/failed-bank residuals). Rows are as-published historical fact; dead names are COVERED, not dropped. Identity must be CUSIP+DESCRIPTION; symbol-based historical joins are unsafe (mutation measured)."
+    },
+    "F7_denominator_authority": {
+      "verdict": "BLOCKED",
+      "question": "keyless/entitled shares-outstanding / float / ADV with PIT semantics",
+      "commands": [
+        "curl GET api.eodhd.com/api/fundamentals/AAPL.US?filter=General::SharesOutstanding with EODHD_API_KEY via X-API-TOKEN header (key from .env at runtime; variable name only in command text; key-leak grep count 0) -> curl(60) SSL cert/hostname mismatch, 0 bytes served",
+        "openssl s_client diagnostic -> no certificate retrieved; DNS api.eodhd.com -> 134.209.140.199 via local resolver 127.0.2.2 (interception/misrouting signature)",
+        "planned GET data.sec.gov/api/xbrl/companyconcept/.../dei/EntityCommonStockSharesOutstanding.json -> HTTP 403 (4819-byte threshold page)"
+      ],
+      "evidence": ["probes/f7_eodhd_tls_failure.json", "probes/sec_datasec_403_transcript.json", "probes/network_budget_ledger.json"],
+      "blocker": "all three denominator channels fail-closed this window: EODHD reachable-layer FAIL (TLS interception; prior STOCKS-NG3 measured /api/fundamentals 403), SEC dei companyconcept 403, nothing else keyless measured for float/ADV",
+      "ruling": "FAIL-CLOSED: NO PIT denominator authority is measured. SEC dei:EntityCommonStockSharesOutstanding is documented as filing-granularity (cover-page, per-filing, with acceptance semantics via N2 - itself unmeasured) and is NOT a daily denominator; float and ADV have NO keyless measured authority at all. Therefore NORMALIZED FTD FORMS (fails/shares, fails/ADV, fails/float) are UNMEASURABLE - raw share-balance (level) use only."
+    },
+    "F8_duplicate_missing_correction_policy": {
+      "verdict": "PASS",
+      "commands": ["s_a3_verify.py checks B.* (7 files incl. both _0), C.partition.* (4 new pairs 200907/201606/202004/202011), E.*", "expected-file census 200907..202608 vs manifest (python)"],
+      "evidence": ["probes/f1_f4_f8_ftd_byte_measurements.json"],
+      "measured": [
+        "TRAILER GUARD UPGRADED: each file ends with exactly TWO trailer rows - 'Trailer record count N' and 'Trailer total quantity of shares M' - and BOTH reconcile EXACTLY on all 7 files (N==data rows; M==raw quantity sum==deduped (settlement,cusip) sum; zero duplicate keys measured). SNG6's 'reconciles only if de-duplicated' caution is superseded by measurement: quantities are NOT double-counted; the only parser requirement is to EXCLUDE the two trailer lines and the one header line",
+        "zero-overlap partition re-confirmed on 4 NEW pairs (200907, 201606, 202004, 202011) plus all 6 _0-neighbor pairs",
+        "missing-file census: 412 expected half-month files 200907..202608; 410 base present; the 2 absent bases are EXACTLY the two _0 repost positions (coverage complete via reposts); 22/22 quarterly files 2004q1..2009q2 present; 434/434 manifest zips locally present (dir extra file = page zip-listing JSON, accounted)"
+      ]
+    },
+    "F9_no_current_membership_reconstruction": {
+      "verdict": "PASS",
+      "frozen_rule": {
+        "name": "FTD_AS_PUBLISHED_RULE@1",
+        "rule": "the archive is used AS-PUBLISHED per file: every row carries its file's posting_bound as earliest availability; no universe is reconstructed from current listings or from the current archive snapshot; no row is re-dated to settlement date for availability purposes; dead names are retained as measured residual balances (F6) and never filtered by current-membership; pre-2008-09-16 quarterly rows carry the >=10,000-share threshold flag in any splice"
+      }
+    },
+    "F10_manifest_detached_reproduction": {
+      "verdict": "PASS",
+      "commands": [
+        "python3 s_a3_verify.py (exit 0, ALL CHECKS PASS) - 13-zip deterministic sample spanning 2009/2016/2020/2026 + both _0 reposts + one quarterly re-hashed against probes/s_ftd_manifest_sample_pin.json (provenance: FDF branch manifest blob 19579a781cc338c7677c390e2c5e4e9774ddc391)",
+        "detached second checkout: git worktree add /tmp/deu_s3_repro <commit_sha>; python3 s_a3_verify.py --skip-nport from the detached tree (exit 0, identical hashes); tree removed after - see commit-time reproduction record in the handoff"
+      ],
+      "evidence": ["probes/s_ftd_manifest_sample_pin.json", "s_a3_verify.py"],
+      "margin": "13/13 re-hashes MATCH the pinned FDF manifest; parser guards + partition + canaries + N3 counts all deterministic and network-free"
+    },
+    "N1_nport_depth": {
+      "verdict": "PASS",
+      "commands": ["parse of sha-pinned raw/sec_nport/official_page_inventory.html (sha256 1d22082f198b2bd28a0af838978417ae21411aa4897cccce8c85756fcf76434a)", "planned HEAD 2019q4_nport.zip - NOT_SENT (stop rule)"],
+      "evidence": ["probes/n1_nport_census.json"],
+      "measured": "27 quarterly DERA N-PORT datasets listed 2019q4..2026q2, CONTIGUOUS (no gaps in the listing); posting rule text re-measured: 'Data contained in documents filed after 5:30 PM Eastern on the last business day of a quarter will be included in the subsequent quarterly posting.'",
+      "depth_limit": "any historical crowding/ownership claim is capped at 27 quarters (~6.75y) AND at the NPORT-P regime start (2019-04 phased rollout: earliest quarters have partial fund coverage); pre-2019 fund holdings are a different regime (N-30D) and are NOT constructible from this surface. Depth is INSUFFICIENT for any long-history ownership factor."
+    },
+    "N2_accepted_timestamps": {
+      "verdict": "BLOCKED",
+      "commands": [
+        "curl GET https://data.sec.gov/submissions/CIK0001067839.json (declared UA) -> HTTP 403, 4819-byte 'Request Rate Threshold Exceeded' page; STOP rule invoked for all SEC hosts"
+      ],
+      "evidence": ["probes/sec_datasec_403_transcript.json", "probes/network_budget_ledger.json"],
+      "blocker": "EDGAR submissions API blocked this audit window (second consecutive window with SEC-wide threshold blocks). daily-index / full-index alternative NOT attempted after the block (stop rule).",
+      "consequence": "intraday ACCEPTANCE DATETIME for NPORT-P accessions remains NOT_MEASURED. Exact availability and exact amendment ordering are NOT constructible for history from held evidence; day-granularity FILING_DATE semantics (SNG6) remain the operative bound. Successor: one light submissions-API or full-index fetch in an unblocked window decides this."
+    },
+    "N3_amendments": {
+      "verdict": "PASS",
+      "commands": ["local read of already-held 2026q2_nport.zip (no re-pull): zip sha256 re-computed 077cc836a978a593b29012219395fbe9c303d5e930f5be3b5f4353c3b02296fc == FDF manifest pin; SUBMISSION.tsv + FUND_REPORTED_INFO.tsv joined on ACCESSION_NUMBER", "s_a3_verify.py check N3.*"],
+      "evidence": ["probes/n3_supersession.json"],
+      "measured_upgrades": [
+        "SUB_TYPE re-confirmed: 14,064 NPORT-P / 352 NPORT-P/A of 14,416",
+        "SNG6 supersession rule (max FILING_DATE per (SERIES_ID, REPORT_DATE)) is INSUFFICIENT as stated: 92 multi-accession keys; max FILING_DATE resolves only 64 uniquely; 28 keys TIE on FILING_DATE",
+        "tie anatomy: ALL 28 ties are same filing-agent prefix with distinct monotonically increasing accession sequences -> deterministic tie-break (max agent-sequence within same agent); cross-agent same-day ties: 0 measured",
+        "identity gap measured: 729/14,416 FUND_REPORTED_INFO rows have BLANK SERIES_ID (must fall back to SERIES_NAME keying; name is not guaranteed unique)"
+      ],
+      "frozen_rule": "NPORT_SUPERSESSION@1: winner(series_or_name, REPORT_DATE) = argmax (FILING_DATE, then agent_prefix-grouped accession sequence); cross-agent same-day ties -> UNRESOLVED_DAY_GRANULARITY, flag and never guess; exact resolution requires EDGAR acceptance datetime (N2, BLOCKED). IS_LAST_FILING is a wind-down flag, not a revision flag (unchanged)."
+    }
+  },
+  "frozen_rulings_summary": {
+    "ftd_availability": "FTD_CONSERVATIVE_AVAILABILITY@1 (F3): posting_bound = half-month end + 15d; >=16-day conditioning guard; settlement date NEVER availability; historical scored use RETROSPECTIVE_ONLY",
+    "ftd_identity": "CUSIP+DESCRIPTION within-archive identity only (F5/F6): symbols mutate (FRC->FRCB), CUSIPs re-use over decades, no keyless historical mapping authority",
+    "ftd_normalization": "UNMEASURABLE (F7): no PIT denominator authority; raw net-balance level use only",
+    "ftd_policy": "as-published per file (F9); trailer guard = 2 reconciled trailer lines (F8); repost positions measured as replacement-only coverage (F4); cross-vintage diff rule frozen (F4)",
+    "nport": "27-quarter regime cap (N1); FILING_DATE day-granularity bound stands (N2 BLOCKED); NPORT_SUPERSESSION@1 with agent-sequence tie-break (N3)"
+  },
+  "recommended_lane_s_pit_posture": "CONTROL_ONLY",
+  "posture_rationale": "PIT bound evidenced and conservative (F1/F3), coverage and corrections policy measured (F4/F6/F8), but per-file publication timestamps are blocked (F2), no historical CUSIP mapping authority exists (F5), and no PIT denominator authority exists (F7): FTD is usable ONLY as a settlement-stress level control under the >=16-day conditioning guard; direct historical scored signal use stays RETROSPECTIVE_ONLY; normalized forms UNMEASURABLE. This maps to the plan's PASS_D2_CONTROL_ONLY lane verdict; the cycle Lead records the lane verdict.",
+  "known_limitations": [
+    "per-file FTD posting timestamps NOT_MEASURED (two consecutive audit windows 403-throttled; both hosts)",
+    "EODHD fundamentals channel NOT_REACHABLE from this environment (TLS cert/hostname mismatch signature; possible network interception); prior NG3 measurement 403",
+    "EDGAR submissions/dei channels NOT_RUN_BLOCKED this window (403); N-PORT intraday acceptance remains unmeasured",
+    "EDGAR company_tickers.json schema is STATED-DOCUMENTED (not re-measured live): ticker->CIK only, no CUSIP field, current state only",
+    "base-vs-_0 diff NOT_MEASURABLE (single vintage; base names never served in pinned listing)",
+    "N-PORT depth capped at 27 quarters 2019q4..2026q2 from a single sha-pinned page listing; live reachability of oldest quarter NOT_RUN (stop rule)",
+    "FTD archive holds ONE vintage; the _0 positions are the only coverage for the 201910a/202308b half-months (no base vintage held to diff against)",
+    "729 NPORT FRI rows have blank SERIES_ID (identity fallback to SERIES_NAME required)"
+  ],
+  "incidents": [
+    {
+      "kind": "SEC_FAIR_ACCESS_403",
+      "detail": "5 block-page hits (3 HEAD www.sec.gov FTD zips 1924B; 2 GET data.sec.gov 4819B, both 'Request Rate Threshold Exceeded'); stop rule invoked at each host; no retries; second consecutive audit window blocked (SNG6-A3 2026-09-16 was first). Second-window persistence across hosts suggests an IP- or network-path-level rate state rather than per-request pacing; owner action if per-file timestamps are ever needed: probe from an unblocked network window, slow cadence, HEAD-only, declared UA.",
+      "evidence": "probes/f2_www_sec_gov_403_transcript.json, probes/sec_datasec_403_transcript.json"
+    },
+    {
+      "kind": "TLS_INTERCEPTION_SIGNATURE_EODHD",
+      "detail": "api.eodhd.com served a certificate with no matching SAN (curl 60) or reset the handshake (openssl s_client); local resolver 127.0.2.2. Fail-closed, no insecure retry, no key exposure (grep 0).",
+      "evidence": "probes/f7_eodhd_tls_failure.json"
+    }
+  ],
+  "boundaries_honored": {
+    "writes": "only research/control/data_edge_unlock_v1/lane_s/** in the lane-s worktree (dossier, script, probes); /tmp used transiently for probe scratch and detached reproduction, cleaned after",
+    "read_only_roots": "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1 (never modified), plans/, research/wayfinder/, S1, other worktrees: read-only or untouched",
+    "network": "10 ledger entries, 5 HTTP completed, <=20 cap, declared UA on every request, >=5s spacing, stop rules honored",
+    "secrets": "EODHD_API_KEY referenced by name only; never printed, logged, or committed; leak-grep count 0 on all artifacts"
+  },
+  "outputs": [
+    "research/control/data_edge_unlock_v1/lane_s/s_a3_pit_dossier.json",
+    "research/control/data_edge_unlock_v1/lane_s/s_a3_verify.py",
+    "research/control/data_edge_unlock_v1/lane_s/probes/ (11 evidence files)"
+  ]
+}
