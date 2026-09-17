@@ -104,8 +104,10 @@ artifact prints BOTH the standing and relaxed values.
 NOT relaxed (mission invariant, non-negotiable): data identity and PIT
 class, cost bands and stress-2.0 primary, R1 net expectancy > 0, the full
 R2/R3/R4/R5/R6 control-out-earn and reduction rules (including the
-NG6-lineage C-REVERSAL-PLAIN reversal kill at R4), fold structure, per-fold
-population floors, death-censoring contract, drop-one stability, the PBO
+NG6-lineage C-REVERSAL-PLAIN reversal kill at R4), fold structure (incl.
+fold-positive-share > 50% KILLS), per-fold population floors,
+death-censoring contract, drop-one stability, PIT-mutation invariance, K6
+slow-drift combination, the PBO
 NOT_RUN-fail-closed disposition (§6), concentration <= 50%,
 MDD <= 15%, SPY-excess fold rule, reproduction, trial accounting, S1 seal,
 GO-at-gate. If a survivor exists it must clear the battery EXCEPT on the
@@ -213,8 +215,12 @@ families (6)      with FROZEN parameter sub-grids, all parameters declared
                   1/3 and 2/3 quantiles (linear interpolation) of the
                   trailing 252-session window ending at and including
                   t, refreshed daily, same-bar assignment — NEVER
-                  full-sample; long in the construction-favoured
-                  tercile, flat otherwise (long-only law)
+                  full-sample; BOTH directions enumerated as distinct
+                  configurations inside the cap, signs frozen at D1 from
+                  the enumeration: long-LOW-tercile (long in the lowest
+                  vol tercile, flat otherwise) and long-HIGH-tercile
+                  (long in the highest, flat otherwise) — 2 lookbacks x
+                  2 H x 2 directions = 8 configs (grid total 47 <= 120)
 long-only         no short leg (no borrow-cost authority — FOREX-NG6 F4
                   class); direction falsification by R1 + inversion-
                   SUBSTITUTE controls, honestly labelled.
@@ -261,7 +267,7 @@ and is a BLOCKED_METHOD_CONTRACT incident, not a do-over.
 The hashed manifest is REQUIRED to contain, fail-closed (a missing field
 is a D1 freeze failure): per-configuration full construction definitions
 (including EVENT-UNWIND component membership per the grid above); each
-family's C-COMPLEMENT and component-only (R4) book definitions; the
+family's C-COMPLEMENT and component-only (R5) book definitions; the
 C-CAL-HIST matching rule (§6); the warmup rule (§4 F4); each
 configuration's sign as frozen from construction logic (NG7 F3b pattern
 — R1 adjudicates the frozen sign, never selects it; where construction
@@ -269,7 +275,12 @@ logic admits both directions they are enumerated as distinct
 configurations inside the cap); per-family expected-DOA disclosure under
 the §6 R0 own-family-shadow convention; and the per-family
 ancestry-search basis for R0 shadow coverage (grep record against
-FAMILY_FAILURES.jsonl / the ledger).
+FAMILY_FAILURES.jsonl / the ledger); the R0 shadow inventory's own hash;
+the S0 window extent; and the percentile interpolation method (linear).
+The §6 event-conditional BINDING shadows are measured for every
+event-type family REGARDLESS of fired-day share; the §5 30% sparse-book
+trigger ADDS the fired-day-conditioned rho on top — both apply
+cumulatively, neither substitutes for the other.
 
 ## 6. Mandatory controls and killers
 
@@ -466,7 +477,7 @@ published as the search's multiple-testing universe. Stocks denominators
 currently 42/42; program 257/260 (P-9) — this cycle starts at budget 0/3.
 Any result language must carry the §3 relaxation disclosure verbatim:
 "accepted under owner-relaxed acceptance battery (R0 0.30 / DSR alpha 0.10
-at N = grid)".
+at N = grid) | PBO NOT_RUN fail-closed (<=3 cells, d0992d17 class)".
 
 ## 11. Prewritten terminal outcomes
 
@@ -476,8 +487,9 @@ STOCKS_SEARCH_V1_BLOCKED_SOURCE_OR_SCHEMA
 STOCKS_SEARCH_V1_BLOCKED_DATA_OR_SELECTION
 STOCKS_SEARCH_V1_BLOCKED_PRELAUNCH
 STOCKS_SEARCH_V1_REJECT_ALL
-STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY (only if Stage-A passes;
-    carries the §3 disclosure; never a profitability claim)
+STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_PBO_NOT_RUN (only if
+    Stage-A passes; carries the §3 disclosure AND the PBO NOT_RUN
+    fail-closed label; never a profitability claim)
 STOCKS_SEARCH_V1_INCOMPLETE_NOT_PROMOTABLE
 STOCKS_SEARCH_V1_TECHABORT_PRESERVED
 ```
