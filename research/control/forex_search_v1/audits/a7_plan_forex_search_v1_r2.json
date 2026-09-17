@@ -1,0 +1,122 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "FOREX-SEARCH-V1",
+  "auditing_task": "fsearch-a7-plan-audit-r2",
+  "audited_sha256": "5cbeb1883b119305d89f74ed0ae0057c431c5d304c4d68fc47861cf9bdf164fa",
+  "audited_sha256_verification_basis": "sha256 NOT independently recomputed (no execution tooling in this lane). Structural instruments per packet: file is exactly 431 numbered lines; line 1 title is exactly '# PLAN FOREX-SEARCH-V1 — bounded session-bounded strategy search on the TD majors (owner-relaxed acceptance)'; final line 431 is the closing fence of §13 'Immediate actions'; §13 enumerates the six immediate actions and names the five audit items. Descriptor satisfied; digest recorded from the dispatch packet under this basis.",
+  "base_sha": "ac9dae6720e52eb902d1039af4d246d38f4120c2",
+  "branch": "main",
+  "verdict": "REFUSED",
+  "verdict_rule": "REFUSED because one HIGH finding (F-1) stands. Remediate in plan bytes and re-audit with a NEW fresh-context A7 per plan §13 step 3. Do NOT register FOREX-SEARCH-V1 on this verdict.",
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "HIGH",
+      "section": "§5 D1 search-space contract — selection order",
+      "quote_bytes": "survivors of D2 are ranked by (i) ancestry-distance tier (min measured |rho| descending, applied mechanically), then (ii) P0 fired-population size descending, then (iii) lexicographic config ID; the top <= 3 become scored candidates.",
+      "why_wrong": "The selection key contradicts its own label and the plan's novelty doctrine. The R0 veto binds on the MAXIMUM measured |rho| across the shadow inventory (per-leg AND pooled; any measurement > 0.30 kills, lines 271-279). Survivors therefore all sit at or under 0.30 on their worst shadow. Ranking them by MIN measured |rho| DESCENDING prefers the survivors whose least-correlated shadow relation is highest — i.e., the configurations MOST entangled with killed ancestry, the ones nearest the veto line — which is the exact opposite of 'ancestry-distance' as the plan itself uses the concept everywhere else (§2: killed-ancestry rho is disqualifying, re-admission of the 0.230 class is a disclosed concession, not a preference; NG7 §2: 'Zero ledger ancestry on this observable' is the novelty claim). Every parse of 'min measured |rho| descending' (min across shadows, or min across per-leg/pooled measurements) selects the most ancestry-adjacent arm. This tier decides which <= 3 of up to 80 configurations consume the cycle's ENTIRE scored budget; executed as written it systematically spends cells on the arms most likely to be reduced at R4/R5/R6 and can flip the terminal outcome (REJECT_ALL vs SURVIVORS_UNDER_RELAXED_BATTERY) for selection-engineered reasons. Secondary defect in the same block: tier (ii) cites the 'P0 fired-population size', but the fired census is measured at D2 (§7), not P0 — the frozen contract's own phase labels disagree. Load-bearing, budget-determining, and would freeze the contradiction into the hashed D1 manifest.",
+      "required_remediation": "Rewrite tier (i) with one explicitly stated, direction-correct metric BEFORE D1 — e.g. 'max-over-shadows |rho| ascending (greatest minimum distance from every shadow)', or another novelty metric stated in full — fix the tier-(ii) phase label to the D2 fired census, and carry the corrected order verbatim into the D1 manifest freeze. Then re-audit with a NEW fresh-context A7."
+    },
+    {
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "section": "§4 F4 costs + financing",
+      "quote_bytes": "is charged exactly one conservative worst-night band of 1.7 bps (NG7-A4's own worst-differential arithmetic for NZD-USD, ~5.1 bps over 3 nights), marked STATED-CONSERVATIVE",
+      "why_wrong": "The resolution of the NG6/NG7 F4 fail-closed class is SOUND in structure (see audit_items_adjudicated.item_1) but the derivation is an extrapolation beyond the committed bytes: NG7 §4 F4 states '~5.1 bps over 3 nights' — an approximate, 3-night-CUMULATIVE, NZD-USD-only hurdle illustration ('can flip a sign vs a 3.0 bps hurdle'), not a full-sample worst-SINGLE-night census and not an all-legs bound. (a) A 3-night average does not bound the single worst night (5.1 over 3 nights is compatible with a worst night > 1.7). (b) NZD-USD-worst is generalized to all five legs without a committed per-leg differential census (none can exist — NG6 F4: overnight swap points UNMEASURABLE from TD). The band therefore satisfies NG6's law as citable-and-derived (5.1/3 = 1.7 exactly; 'no invented numbers' met), but its 'worst-night, all-legs' characterization is an inference the plan must carry as a disclosed caveat, not silently as fact.",
+      "required_remediation": "In the D1 manifest freeze, print the derivation verbatim (source bytes: NG7 §4 F4 '~5.1 bps over 3 nights'; arithmetic 5.1/3 = 1.7) plus the two caveats (3-night-cumulative source figure; single-night maxima may exceed the nightly average; NZD-USD named worst by NG7-A4 without a per-leg census). Keep the STATED-CONSERVATIVE label and stress-2.0-primary (operative 3.4 bps/night) attached to the band in every result artifact, as §4 already drafts."
+    },
+    {
+      "id": "F-3",
+      "severity": "MEDIUM",
+      "section": "§5 family 4 VOL-DRIFT",
+      "quote_bytes": "realized-vol tercile-conditional 1-session momentum and reversal, lookback {21, 63}",
+      "why_wrong": "The vol-tercile boundary construction is unfrozen: no estimator, no reference window, and — critically — no trailing-vs-full-sample declaration. Family 3 got an explicit causal pin ('trailing 252-bar gap distribution'); family 4 did not. A full-sample tercile assignment is a look-ahead-class construction: it would contaminate the D2 position series, the R0 rhos, the fired census, and the tier-(ii) selection input, all before S. The D1 manifest freeze precedes D2, so the defect is remediable at zero cost, but as written the plan permits a frozen-yet-leaky state definition.",
+      "required_remediation": "Pin the tercile formation in the plan or D1 manifest as causal/trailing (estimator, window, and assignment rule), symmetric in discipline to the 252-bar trailing gap pin."
+    },
+    {
+      "id": "F-4",
+      "severity": "MEDIUM",
+      "section": "§6 R2 robustness",
+      "quote_bytes": "PF < 1.10 OR fold positivity fails OR the frozen per-state per-fold population floor fails (S2 class)",
+      "why_wrong": "The per-state per-fold population floor is called 'frozen' but has neither a value nor a pinning site anywhere in the plan. F5 pins only the pooled '>= 30 fired decisions/fold' floor (a different quantity: all states pooled, not per-state). NG7's analogous rule said explicitly 'pinned at the P0 manifest freeze'. As written an implementer could pin this floor at any time — including after seeing D2 populations, which would be a self-serving freeze of a kill-rule parameter.",
+      "required_remediation": "Name the floor value and its pinning phase (e.g. pinned in the D1 hashed manifest, before any D2 measurement) in the plan bytes."
+    },
+    {
+      "id": "F-5",
+      "severity": "MEDIUM",
+      "section": "§5 direction / sign handling",
+      "quote_bytes": "direction         both directions economically arguable ex ante; sign\n                  carried by R1 per configuration",
+      "why_wrong": "Ambiguous between (a) the D1 manifest freezes each configuration's sign from construction logic and R1 merely adjudicates it (the NG7 F3b pattern), or (b) the sign is left open and effectively chosen by the scored outcome — which would be an undisclosed 2x widening of the search and an outcome-based construction choice, the exact class Q-12 and the S-freeze law exist to prevent. Q-12 ('all parameters declared from construction logic, never tuned') covers sign only if sign is explicitly declared a parameter.",
+      "required_remediation": "State explicitly: the D1 manifest freezes each configuration's sign from the mechanism statement (or enumerates both directions as distinct configurations counted inside the <= 80 cap); R1 adjudicates the frozen sign and never selects it."
+    },
+    {
+      "id": "F-6",
+      "severity": "MEDIUM",
+      "section": "§6 controls — missing P-20 self-subsumption",
+      "quote_bytes": "(absence) — §6 control inventory and §5 selection carry no self-subsumption law; predecessor NG7 §5 line: 'self-subsumption |rho| <= 0.98 vs anchor (P-20)'",
+      "why_wrong": "The grid deliberately contains near-duplicate configurations (CLV-DIVERGENCE K=10/k=5 vs K=20/k=5; EXTREME-FADE K=10 vs K=20 are adjacent by construction). With no P-20-class self-subsumption law, the frozen selection order can place two near-identical configurations in the <= 3 scored set, spending 2 of 3 cells on one mechanism and distorting the DSR deflation set's effective breadth. NG7 carried P-20 explicitly; this plan dropped it while multiplying the config count.",
+      "required_remediation": "Carry P-20 at S: a scored candidate whose position-series |rho| vs any higher-ranked already-selected candidate exceeds a frozen threshold (NG7 used 0.98; freeze the value) is skipped and the next candidate by the frozen order is taken."
+    },
+    {
+      "id": "F-7",
+      "severity": "LOW",
+      "section": "§4 F3 vs §5 family 3 OPEN-GAP",
+      "quote_bytes": "state on completed bar t; entry at bar t+1 open, exit at bar t+1 close — SINGLE-BAR HOLD LAW (§1); ... no same-bar signal-fill",
+      "why_wrong": "The OPEN-GAP state (gap of bar t+1's open vs prior close vs a threshold) is knowable only AT bar t+1's open, contradicting F3's blanket 'state on completed bar t', and the forced fill at that same open is literally a same-bar signal-fill. There is no look-ahead (the open is the first bookable price and the fill price itself), but a frozen execution law that one of five families cannot satisfy forces implementer improvisation — exactly what frozen contracts must not require.",
+      "required_remediation": "Add an explicit F3/D1 exception declaring OPEN-GAP's state timing (state formed from close(t) and open(t+1), filled at open(t+1)) and the forced open fill, frozen before scoring."
+    },
+    {
+      "id": "F-8",
+      "severity": "LOW",
+      "section": "§8 trading contract vs §5 VOL-DRIFT",
+      "quote_bytes": "decision        frozen 16:00-NY daily clock; warmup 60 bars; first\n                decision bar 61",
+      "why_wrong": "VOL-DRIFT's 63-bar lookback is not computable at decision bar 61 (needs 63 completed bars). As written the 63-lookback configurations either abort (fail-closed but unintended) or invite a silent partial-window computation. Mechanical internal inconsistency.",
+      "required_remediation": "Set warmup per family (or globally) to max(60, max lookback + 1), i.e. first decision bar 64 for the 63-lookback configs, frozen in the D1 manifest."
+    },
+    {
+      "id": "F-9",
+      "severity": "LOW",
+      "section": "§5 family 5 CLOCK-COND sub-grid",
+      "quote_bytes": "CLOCK-COND     day-of-week / month-position conditional drift\n                  (declared EXPECTED-TO-DIE at R5; included so the search\n                  is honest about what the clock explains)",
+      "why_wrong": "The CLOCK-COND parameter sub-grid is described but not numerically enumerated in the plan (families 1-4 enumerate to 6+3+6+4 = 19 configs, leaving <= 61 headroom under the hard <= 80 cap, so the cap cannot be breached and the D1 hashed manifest is the definitive enumeration — the architecture's standard delegation). Noted for completeness; not load-bearing given the hard cap and the D1 freeze.",
+      "required_remediation": "Enumerate the CLOCK-COND sub-grid (and the day-of-week / month-position state definitions) in the D1 manifest; declare the exact count so the frozen DSR N is unambiguous at freeze time."
+    },
+    {
+      "id": "F-10",
+      "severity": "LOW",
+      "section": "§6 R4 trend/vol reduction",
+      "quote_bytes": "R4  trend/vol reduction       VOL-REGIME or trend-only book reproduces\n                              >= 0.5x same-sign >= 2/3 folds -> REJECT",
+      "why_wrong": "R4 cites a 'trend-only book' that is not defined in the §6 control inventory (NG7 carried CTL-TRENDONLY = pressure-slope-only; this plan's grid has four families with no obvious trend-only analog). Per the plan's own fail-closed culture an undefined killer yields R4 NOT_RUN, never PASS — so no false acceptance is possible — but a named killer is unimplementable as written for most of the grid.",
+      "required_remediation": "Declare the per-family trend-only analog in the D1 manifest (e.g. slope/conditioning-variable-only book), or scope R4 explicitly to the families where it is defined."
+    },
+    {
+      "id": "F-11",
+      "severity": "LOW",
+      "section": "§2 reopening ancestry",
+      "quote_bytes": "STOCKS-NG6/CRYPTO-NG4 class clauses (\"materially new evidenced source or\n  owner plan naming a changed killer\"): satisfied on the second branch.",
+      "why_wrong": "Decorative analogy: STOCKS-NG6/CRYPTO-NG4 are non-forex closures and their 'owner plan naming a changed killer' branch is loosely mapped onto a plan whose operative forex authority is the disclosed owner-instruction override against the FOREX-NG5/NG1/NG7 reopening clauses (correctly exercised per AGENTS.md authority order 1, correctly NOT claiming a new information source, correctly NOT using the burned FOREX-NG8 name and NOT claiming the owner network path). The operative reasoning is faithful; the analogy adds nothing and slightly overstates.",
+      "required_remediation": "Optional: drop the STOCKS-NG6/CRYPTO-NG4 sentence or mark it analogy-only; keep the disclosed owner-override as the sole reopening authority."
+    }
+  ],
+  "audit_items_adjudicated": {
+    "item_1_f4_financing_resolution": "SOUND_IN_STRUCTURE, MEDIUM caveat filed (F-2). (a) No silent zero: the charge is named, nonzero, preregistered, always strictly negative, and charged uniformly regardless of sign, so no leg can ever benefit from an assumed favourable differential; NG6 F4's 'CITABLE, preregistered conservative band (source quoted bytes; no invented numbers)' branch is satisfied by derivation (NG7 §4 F4 committed bytes: '~5.1 bps over 3 nights'; 5.1/3 = 1.7), so the NOT_MEASURABLE fail-closed branch — which fires only when NO citable band exists at the D1 freeze — is not triggered. (b) Not a tautological dual-books: financed book = price book + uniform negative charge, so the books genuinely differ on every arm and sign inversion occurs exactly when a price edge is smaller than the charge — real discriminative power, fail-closed, with a dedicated degenerate M0 fixture (§9). (c) Single-session law is construction-complete: entry bar t+1 open to exit bar t+1 close crosses exactly one rollover, so exactly one night band is the correct charge; no grid family requires a multi-session hold (OPEN-GAP timing exception is F-7, not a hold violation). (d) Understatement direction: theoretically possible only where a single night's true |differential| exceeds 1.7 bps/night for a short-carry position; with stress-2.0 PRIMARY the operative band is 3.4 bps/night (~12.4%/yr), which dominates any realized G10 central-bank differential in the 2007-2026 window per public history, and the uniform-charge construction can never ADD P&L. Residual gap documented as F-2. Round-trip stress arithmetic verified: 2 x 1.5 x 2.0 + 1.7 x 2.0 = 9.4 bps; §8 'charged once per fill / once per session' is consistent with the single-session law.",
+    "item_2_reopening_legality": "FAITHFUL. The owner instruction of 2026-09-17 (verbatim quoted, explicitly naming forex) is authority order 1 under AGENTS.md and directly instructs opening the cycle; the plan exercises it as a DISCLOSED override of the FOREX-NG5/NG1 standing-law clauses instead of fabricating a new-source claim (NG5's own provenance shows those clauses are recorded reopening conditions, standing law, subordinate to a fresh owner instruction). FOREX-NG8 is correctly left burned: the plan claims no Dukascopy/CME network path, consistent with both transport-blocked closures whose successor door is tied to that path. No closure lacks an owner-override branch once authority order 1 is applied. F-11 notes a cosmetic overreach in the STOCKS/CRYPTO analogy.",
+    "item_3_boundedness_of_owner_grant": "WITHIN GRANT. Exactly four axes relaxed (R0 floor 0.20->0.30 with the per-leg-AND-pooled law itself retained; DSR N program-cumulative -> frozen grid size <= 80; DSR alpha 0.05 -> 0.10; breadth 1+1 -> <= 80), all frozen before any measurement, all printed alongside standing values, non-widenable in-cycle (§3, §12). The 0.30 arithmetic claims verify: re-admits NG5 0.230 and STOCKS-NG6 0.201-0.260 classes; does NOT re-admit the NG5 0.353 class. NOT-relaxed list covers the mission invariant: data identity/P-13, cost + financing bands with stress-2.0 primary, R1 net expectancy > 0, R3/R4/R5/R6, USD-drift 0.20, PIT classes, fold structure, population floors, weekday-share floor, serial-clustering census, dual-books, reproduction, trial accounting, S1 seal, GO-at-gate. Noted, not filed: the DSR N substitution (grid <= 80 replacing program-cumulative ~260) is the most aggressive axis — it shrinks the deflation set — but it is disclosed, the program-cumulative DSR at alpha 0.05 is still computed and reported (not gating), PBO < 8 is retained, and every result must carry the relaxation disclosure verbatim (§10).",
+    "item_4_grid_and_selection": "DEFECT — F-1 HIGH on the selection order; plus F-3, F-5, F-7, F-8, F-9. Enumeration: families 1-4 = 6 + 3 + 6 + 4 = 19 configurations; CLOCK-COND unspecified (F-9) with <= 61 headroom under the hard fail-closed <= 80 cap — cap arithmetic safe by construction. Grid frozen before measurement via the hashed D1 manifest; outcome-blindness law strong (NO performance statistic for ANY configuration before the S freeze; performance-based narrowing = BLOCKED_METHOD_CONTRACT). Holds: single-session by construction for all five families; no family secretly requires a multi-bar hold (slope windows and warmups are state-formation lookbacks, not holding periods).",
+    "item_5_battery_integrity": "RETAINED with findings F-4, F-6, F-10. CLV-DIVERGENCE ancestry honest: NG7 died at P0-F4 (financing authority), never reached a D2 rho, so re-admitting the class under the full R0 shadow inventory is properly framed ('died on cost authority, NOT on price data'); the V5 0.230/0.353 kills are correctly attributed to FOREX-NG5's D2 and the relaxed floor re-admits only the 0.230 class. EXTREME-FADE is reversal-selected and faces the binding MOM/REV shadows it deserves. OPEN-GAP faces CLOCK-ONLY + fired census + R5 (the NG4 0.888-0.891 clock class is cited as existential). CLOCK-COND declared EXPECTED-TO-DIE at R5 is honest disclosure, budget-bounded (and may pre-die at R0 if its CLOCK-ONLY rho breaches 0.30). R1-R6 and the dual-books rule are consistent with the NG7 lineage with only R0's threshold changed; pooled-only = NOT_RUN fail-closed retained; serial-clustering census retained; degenerate-complement R3 NOT_RUN retained. Missing pieces filed: per-state floor pinning site (F-4), P-20 self-subsumption (F-6), R4 trend-only definition (F-10).",
+    "item_6_frozenness_sweep": "References all verify. The five TD digest prefixes in §4 match NG7 §4 character-for-character (EURUSD 01cb862b / GBPUSD e3e4c519 / USDCAD 4b988c44 / AUDUSD 097cfe59 / NZDUSD 7dff3299; 5,000 rows each; spans as quoted; ng1 byte-identical to v9). Registry closures verified verbatim: FOREX-NG5 'reopening needs a new evidenced information source per standing law'; FOREX-NG6 TERMINAL BLOCKED_SOURCE_OR_COST and FOREX-NG7 TERMINAL BLOCKED_SOURCE_OR_SCHEMA with F4 decisive 'NO citable financing band' and 'died on cost authority, not data'; FOREX-INTRA-BIDASK-V1 and FX-FUTURES-FRONTIER-V1 BLOCKED_TRANSPORT with 'FOREX-NG8 remains burned'; DATA-EDGE-UNLOCK-V1 Lane F 'BLOCKED_BROKER_COST_AUTHORITY — zero account-bound bytes (third independent census, NG6-F4/NG7-F4 class)'; PROSPECTIVE-SHADOW-V1 ACTIVE_LIGHT. P-laws carried: P-8 (§9 GO), P-9 (§10 denominators 257/260, forex 48/48 — consistent with registry), P-11 (§6 Stage-A), P-12 (§7 hashed shadow list before any rho), P-13 (§4 archives), Q-6 (F5), Q-8 (F4 stated-conservative branch), Q-11 (C-NULL-VALIDITY), Q-12 (§5). Missing: P-20 (F-6). Pre-pins present: 0.35 weekday-share floor frozen in §6 bytes before any census read; folds frozen before D2 (F5); fired-rate form [0.02, 0.10] with measured replacement (arithmetic 0.02x252x5 = 25.2, 0.10x252x5 = 126 — checks); gap distribution trailing 252-bar; cost 1.5 bps + financing 1.7 bps + stress 2.0. Unfrozen items filed: vol-tercile formation (F-3), per-state per-fold floor value/site (F-4), sign freeze (F-5), CLOCK-COND enumeration (F-9). No language permits scored computation before the S freeze (§4 P0, §5, §7 all prohibit; selection tier is ancestry/population/lexicographic only)."
+  },
+  "recomputation_and_verification_notes": [
+    "No execution tooling in this lane; every check above is a direct read of source bytes (Read/Grep only).",
+    "FROZEN_SHA verification: structural only (431 lines, exact title, EOF fence at line 431, §13 content); the packet sha256 is recorded, not recomputed.",
+    "Cap arithmetic recomputed by hand: 6 + 3 + 6 + 4 = 19 (families 1-4), cap <= 80 hard fail-closed at D1.",
+    "Stress arithmetic recomputed by hand: 2 x 1.5 x 2.0 + 1.7 x 2.0 = 9.4 bps per round trip (§4 F4); financing-stress 1.7 x 2.0 = 3.4 bps/night.",
+    "Fired-rate floor arithmetic recomputed: [0.02, 0.10] bars/leg/day x 252 x 5 legs = 25.2 - 126 round trips/yr (plan says 25-125, within rounding).",
+    "0.230/0.353 vs 0.30 boundary check: re-admission claims correct.",
+    "Digest prefixes, cycle names, phase texts and reopening clauses cross-checked character-for-character against plans/PLAN_forex_ng7.md §4 and plans/CYCLE_REGISTRY.json.",
+    "r1 artifact and all handoff artifacts deliberately NOT read (anchoring isolation per packet); verdict independently derived.",
+    "Anchoring-isolation note: the INPUTS were audited, not just internal consistency — digest pins, registry closures, denominators (forex 48/48, program 257/260), and the NG6-F4/NG7-F4 fail-closed law text were verified against their committed sources."
+  ],
+  "unresolved_high_critical_count": 1,
+  "auditor_context_fresh": true
+}
