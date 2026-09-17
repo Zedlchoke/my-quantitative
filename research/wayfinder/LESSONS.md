@@ -761,3 +761,34 @@ measures the invented URL, not the provider. (3) Corrections are
 append-only: V1's terminal artifacts stay byte-identical, and the
 successor cycle (V1R1) supersedes the false claim explicitly with its own
 evidence chain — never rewrite a closed verdict in place.
+
+## P-26 — An availability bound derived from cadence TEXT must be re-derived per file class against the worst calendar month (DATA-EDGE-UNLOCK-V1, 2026-09-17)
+
+**Source:** Lane S of DATA-EDGE-UNLOCK-V1. A3 froze FTD_CONSERVATIVE_
+AVAILABILITY@1 as "half-month end + 15 days" with a 16-day advisory guard,
+from the page's cadence text ("first half available at end of month,
+second half about the 15th of next month"). A4's hostile pass then refuted
+the arithmetic: 'a' files promise END-OF-MONTH posting, so in 31-day
+months the real posting can land 17 days after the last covered
+settlement — the +15d bound undershoots by a day (and 'b' files land at
+M+1/15 after 30-day months). A7's terminal audit then corrected A4's own
+count of the affected share (~46% claimed → ~29% actual: only 'a'-files of
+31-day months leak at 16d) while CONFIRMING the fix: the binding ≥17-day
+guard closes the real class with a day of margin. Two independent
+adversarial passes were needed to get both the bound AND its blast radius
+right.
+
+**Lesson:** calendar-cadence availability rules are arithmetic objects,
+not vibes: derive them per file class, against the worst month length,
+and recompute the affected fraction separately from the fix — an adversary
+who refutes the number can still be wrong about the scope, and an author
+whose fix is right can still be wrong about how much it covers. Both the
+bound and its blast radius are measured claims (P-1/Q-8 applied to
+calendar arithmetic).
+
+**Consequence:** every future availability freeze states (a) the per-file-
+class posting rule, (b) the worst-month arithmetic explicitly, (c) the
+computed share of records affected by any residual gap, and (d) the guard
+that closes it — with a fresh-context adversarial pass on the arithmetic
+itself, not just the conclusion (encoded in the DATA-EDGE-UNLOCK-V1 lane
+verdicts and terminal addendum).
