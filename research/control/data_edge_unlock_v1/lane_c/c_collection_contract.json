@@ -1,0 +1,146 @@
+{
+  "schema": "deu_c_collection_contract@1",
+  "cycle_id": "DATA-EDGE-UNLOCK-V1",
+  "role": "lane-c-collection-contract",
+  "lane": "lane-c",
+  "authored_utc": "2026-09-17T00:00:00.000000Z",
+  "frozen_before_any_socket": "This contract was authored and committed BEFORE any collector socket was opened (plan section 4 ordering; dispatch step 2). The only socket opened before general collection is the ONE preregistered Deribit trades protocol census of freeze field 18, run after code+tests landed and its result recorded below before general collection started.",
+  "authority": {
+    "plan": "plans/PLAN_data_edge_unlock_v1.md section 4 (LANE C — crypto prospective data plane)",
+    "base_contract": {
+      "path": "/Users/hoangminhlong/my-quantitative/research/control/ng6_ng7_ng4_dossiers_2026-09/cng4-a3-prospective-contract-dossier.json",
+      "schema": "cng4_a3_prospective_contract@1",
+      "adoption": "ADOPTED verbatim wherever this cycle plan does not override: venue/instrument identity, wire envelope, per-venue channel sets + measured schemas, sequence/gap/reconnect/duplicate/snapshot rules, heartbeat policies, content-addressed shard layout + chained manifest, missing-is-missing, S4-frozen regime constants, valid-triad definition."
+    },
+    "lessons": ["research/wayfinder/LESSONS.md Q-13 (inode check, loud payload failure, heartbeat carries bytes+shape)", "research/wayfinder/LESSONS.md P-22 (attempt history disclosed in known_degradations)"],
+    "dispatch_sha": "082bb5e07d961fc44dc7d3427e4cbc0d67dc1999",
+    "branch": "orca/deu-lane-c",
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/data-edge-unlock-v1/lane-c"
+  },
+  "data_authority": "DATA-AUTHORITY cycle: budget 0 scored cells, S1 SEALED, NO orders (collectors are data-only, keyless, no trading endpoints, no auth), no PnL.",
+  "freeze_fields": {
+    "1_venue_and_instrument_identity": {
+      "adopted": "cng4-a3 freeze field 1 verbatim",
+      "coinbase": {"source_id": "coinbase_advanced_trade_ws", "endpoint": "wss://advanced-trade-ws.coinbase.com", "instruments": ["BTC-USD", "ETH-USD"], "identity_field": "payload.events[*].tickers[*].product_id / trades[*].product_id"},
+      "kraken": {"source_id": "kraken_futures_ws", "endpoint": "wss://futures.kraken.com/ws/v1", "instruments": ["PF_XBTUSD", "PF_ETHUSD"], "identity_field": "payload.product_id (ticker/book), payload.trades[*].product_id (trade/trade_snapshot)"},
+      "deribit": {"source_id": "deribit_public_ws", "endpoint": "wss://www.deribit.com/ws/api/v2", "instruments": ["BTC-PERPETUAL", "ETH-PERPETUAL"], "identity_field": "payload.params.channel + payload.params.data.instrument_name"},
+      "no_substitution_rule": "instrument identity is frozen to these exact venue-native symbols; any delisting/symbol change closes the affected shard set and is a declared incident, never a silent rename"
+    },
+    "2_channel_and_schema_per_venue": {
+      "envelope_all_venues": "one JSON object per raw line: {recv_utc (local receive, ISO-8601 UTC, microsecond), channel, seq, payload (venue bytes decoded verbatim)}",
+      "coinbase": {"channels": ["ticker", "market_trades", "l2_data", "heartbeats", "subscriptions"], "schema_measured": "cng4-a3 freeze field 2 verbatim (FDF census)", "cycle_note": "l2_data is RE-ATTEMPTED keyless this cycle (see freeze field 17)"},
+      "kraken": {"channels": ["ticker", "trade", "trade_snapshot", "book", "heartbeat", "event_info"], "schema_measured": "cng4-a3 freeze field 2 verbatim (FDF census)"},
+      "deribit": {"channels": ["ticker.BTC-PERPETUAL.100ms", "ticker.ETH-PERPETUAL.100ms", "book.BTC-PERPETUAL.100ms", "book.ETH-PERPETUAL.100ms", "volatility_index.btc_volatility", "volatility_index.eth_volatility"], "schema_measured": "cng4-a3 freeze field 2 verbatim (FDF census)", "cycle_extension": "trades.{instrument}.raw channels are admitted ONLY via freeze field 18 census evidence"},
+      "schema_lock": "collector writes the measured fields verbatim; NO field renaming, NO unit conversion, NO reordering at capture; derivation-level normalization is separate and versioned"
+    },
+    "3_timestamp_fields": {
+      "adopted": "cng4-a3 freeze field 3 verbatim: every raw line carries BOTH clocks; recv_utc stamped at socket read; per-shard recv_utc vs exchange-timestamp offset distribution (P50/P99) is a DERIVATION-stage audit record (clock drift audit, plan section 4)"
+    },
+    "4_sequence_semantics_per_venue": {
+      "adopted": "cng4-a3 freeze field 4 verbatim",
+      "coinbase": "payload.sequence_num: per-connection monotone counter across ALL channels; sequence epochs are (connection_epoch, sequence_num); cross-reconnect continuity checked on per-product market_trades trade_id",
+      "kraken": "book feed: per (product_id, side) seq; trade feed: per-product seq; ticker: no sequence number (time ms only)",
+      "deribit": "book channel: losslessness carried by prev_change_id chaining (MEASURED CNG4 on live wire: aggregated deltas 10^2..10^3 by design); ticker: no sequence",
+      "cycle_extension": "deribit trades.{inst}.raw (census-gated): per-instrument trade_seq; envelope seq = change_id (book) or trade_seq (trades raw) where served, else null"
+    },
+    "5_reconnect_and_gap_policy": {
+      "adopted": "cng4-a3 freeze field 5 verbatim: gap records {type:'gap', venue, channel, instrument, from_seq, to_seq, missing_count, first_recv_utc} appended INTO the raw shard (the gap is DATA, never dropped); exponential backoff reconnect 1s,2s,4s,... capped 60s; new connection_epoch per connection; fresh venue snapshot before deltas resume; no cross-epoch sequence stitching; parse/schema failures go raw to the shard-rejected subrecord LOUD (Q-13), never dropped"
+    },
+    "6_heartbeat_policy": {
+      "adopted": "cng4-a3 freeze field 6 verbatim: Coinbase heartbeats channel, absence > 15s -> probe then reconnect; Kraken heartbeat feed, absence > 60s -> reconnect; Deribit public/set_heartbeat 30s + test_request on silence, absence > 45s -> reconnect; per-venue wall-clock watchdog + WS ping keepalive; heartbeat events counted per shard in the manifest row (heartbeat_count)"
+    },
+    "7_data_root_shard_and_manifest_conventions": {
+      "data_root": "/Users/hoangminhlong/.my-quantitative-data/data-edge-unlock-v1/raw",
+      "layout": "<data_root>/<venue>/<YYYY>/<MM>/<DD>/<conn_epoch>.jsonl — content-addressed, append-only; NEW governed root owned by DATA-EDGE-UNLOCK-V1; NO write to any prior cycle's data root (crypto-ng4-ws and free-data-frontier-v1 are FORBIDDEN even for reads)",
+      "shard_rule": "one shard per (venue, UTC day, connection_epoch); written append-only via temp+atomic rename (created as <conn_epoch>.jsonl.open); a closed shard is NEVER rewritten (post-close defect = new correction shard + incident record); shard rotation at UTC midnight keeps the SAME connection epoch",
+      "manifest": "append-only JSONL at the raw root (manifest.jsonl); hash-of-manifest-head chained into each new row (prev_manifest_sha256 = sha256 of all prior manifest bytes) so truncation/tamper is detectable; flock-guarded re-chaining for the three sibling venue processes",
+      "manifest_row_fields_frozen": ["venue", "conn_epoch", "path", "sha256", "bytes", "lines", "per_channel_counts", "gap_count", "dup_count", "heartbeat_count", "first_recv_utc", "last_recv_utc", "closed_utc", "prev_manifest_sha256"],
+      "runtime_dir": "/Users/hoangminhlong/.my-quantitative-data/data-edge-unlock-v1/runtime — PID files, heartbeat files (bytes-written + payload-shape counters, Q-13), connection journals and logs live ONLY here; NEVER under research/ and NEVER committed (CNG4 tracked-PID-file incident)"
+    },
+    "8_duplicate_and_out_of_order_policy": {
+      "adopted": "cng4-a3 freeze field 8 verbatim: raw capture is verbatim and NEVER deduplicated (dup_count per shard in manifest; derivation-level dedupe key = (venue, connection_epoch, venue sequence/trade id, sha256 of raw line)); raw lines kept in arrival (recv_utc) order, never reordered; descending order inside a snapshot is NOT out-of-order"
+    },
+    "9_cycle_coverage_floor": {
+      "min_duration_days": "14 consecutive UTC days, all three venues simultaneously, from start_date (the UTC date the collectors start; recorded in the start manifest at the data root)",
+      "decision_clock": "H1, 24 bars/day (adopted)",
+      "total_H1_bars_14d": 336,
+      "total_valid_triads_min": 303,
+      "total_valid_triads_rule": "STRICT 90%: 0.9 * 336 = 302.4 -> 303",
+      "folds": "2 chronological folds x 7 days = 168 H1 bars/fold",
+      "per_fold_valid_triads_min": 152,
+      "per_fold_rule": "STRICT 90%: 0.9 * 168 = 151.2 -> 152",
+      "per_control_cell_min": 4,
+      "per_control_cell_rule": ">= 4 valid bars per control cell per fold (NG3 population falsifier)",
+      "weekend_rule": ">= 4 weekend UTC days all populated (calendar arithmetic: any 14-day window contains exactly 4 or 5 weekend days); a fully-missing weekend day FAILS the floor (missing = missing)",
+      "successor_note": "this is the CYCLE floor only; the CNG4 60-day full floor is the successor's requirement (freeze field 16)"
+    },
+    "10_valid_triad_definition": {
+      "adopted": "cng4-a3 freeze field 10 verbatim: an H1 bar is a VALID TRIAD iff all three venues contributed at least one non-stale sequenced message inside [bar_start-300s, bar_close+10s] and no gap record intersects the bar's input interval; venues without full sequencing are never claimed complete"
+    },
+    "11_weekend_coverage_rule": {
+      "adopted": "cng4-a3 freeze field 11 verbatim: the market is 24/7; collection runs every UTC calendar day including weekends; any weekend UTC day with zero valid triads makes the coverage floor UNMET (NG3 X4 killer-class binding)"
+    },
+    "12_preregistered_regime_definitions": {
+      "adopted": "cng4-a3 freeze field 12 verbatim, including the S4-frozen constants",
+      "frozen_constants_from_s4": {"BTC": {"LOW_below": 0.0171, "MID_below": 0.0299, "STRESS_above": 0.0542}, "ETH": {"LOW_below": 0.0331, "MID_below": 0.0571, "STRESS_above": 0.1042}, "source": "daily-RV P33.3 / P66.7 / P90 of 365 S4 days (S4-frozen, outcome-independent)"},
+      "vol_regime_estimator": "RV24(t) = sqrt(sum of trailing-24-H1 squared log returns of the median cross-venue mid; same estimand as the S4 daily RV)"
+    },
+    "13_missing_is_missing_no_synthetic_backfill": {
+      "adopted": "cng4-a3 freeze field 13 verbatim: missing bars/cells stay missing and are COUNTED; no interpolation, no forward-fill, no venue-cross substitution, no synthetic reconstruction — ever; WebSocket data is prospective-only from collector start and can NEVER backfill history; S1 and all prior cycle panels untouched"
+    },
+    "14_stopping_rule_outcome_independent": {
+      "rule": "stop = earliest UTC date D >= start_date + 14 days with every floor of freeze fields 9-11 AND the event-regime requirement of field 15 evaluated at D; if floors are unmet at D, collection CONTINUES (never restarts) until the earliest date they are met or the Lead declares terminal BLOCKED/INCOMPLETE per plan",
+      "calendar_binding": "the stopping date is a pure function of (start_date, measured coverage); no outcome, signal, PnL or analysis result can move it (none can exist in this cycle)",
+      "start_date": "the UTC date the collectors start; recorded in the start manifest at the data root runtime dir at start time",
+      "no_peeking": "no interim analysis consumes the stream before the stop date; interim reads are limited to coverage/liveness audits (shard manifests, gap counts, heartbeat files, valid-triad counts)"
+    },
+    "15_event_regime_requirement": {
+      "rule": ">= 1 H1 bar crossing the frozen STRESS threshold (BTC RV24 > 0.0542, ETH RV24 > 0.1042) must occur inside the window; if none occurs, the event cell is recorded NOT_RUN_COVERAGE fail-closed at review — never inferred, never threshold-tuned"
+    },
+    "16_successor_bar_60day": {
+      "restated_for_successor_only": "the CNG4 full floor is the SUCCESSOR's requirement, not this cycle's: 60 consecutive UTC days; >= 1296 of 1440 H1 valid triads total (90%); 4 folds x 15 days; >= 324 of 360 valid triads per fold; >= 4 valid bars per control cell per fold; >= 16 weekend days",
+      "status_this_cycle": "NOT REQUIRED for the DATA-EDGE-UNLOCK-V1 verdict; measured if the window happens to extend"
+    },
+    "17_known_degradations_policy": {
+      "attempt_history_disclosed_p22": "CRYPTO-NG4 lane A8 started with Coinbase l2_data REJECTED keyless, recorded STARTED_WITH_CHANNEL_DEGRADATION",
+      "policy": "this cycle ATTEMPTS l2_data again keyless; if it is rejected again, the channel is recorded DEGRADED (collector stderr + heartbeat file degraded_channels + start manifest), the other channels CONTINUE, and degraded channels lower the valid-triad count honestly (missing = missing); no retry storm, no silent dropping, no threshold tuning",
+      "verification_channel": "stats.degraded_channels in <runtime>/coinbase.heartbeat.json + start_manifest.json at the data root"
+    },
+    "18_deribit_trades_census_protocol": {
+      "limitation_inherited": "CNG4 known_limitation: the Deribit trade channel was NOT in the FDF census (0 trade messages measured); per-instrument trade-id sequencing is therefore not frozen from prior evidence and sequenced-channel validity excluded Deribit trades",
+      "protocol": "ONE short protocol census <= 120s at collector start, BEFORE general collection: subscribe trades.{BTC-PERPETUAL,ETH-PERPETUAL}.{raw,100ms}; capture raw envelope lines + measured-shape summary (per-channel counts, data container types, item key union, trade_seq continuity per instrument on the raw channel); census bytes live under the runtime dir, NOT the governed raw shards",
+      "result_recording": "the census result is recorded in the deribit_trades_census_result field of this contract BEFORE general collection starts",
+      "decision_rule": "if the census yields a structurally consistent measured shape (data is a LIST of trade objects each carrying integer trade_seq on the raw channel), trades.{inst}.raw joins the deribit general subscription with a measured-shape validator and trade_seq gap detection; otherwise Deribit trades stay excluded exactly as CNG4 (degradation recorded, no inference)"
+    }
+  },
+  "deribit_trades_census_result": {
+    "status": "MEASURED_REJECTED_KEYLESS",
+    "schema": "deu_deribit_trades_census@1",
+    "census_summary_path": "/Users/hoangminhlong/.my-quantitative-data/data-edge-unlock-v1/runtime/deribit_trades_census_summary.json",
+    "census_raw_path": "/Users/hoangminhlong/.my-quantitative-data/data-edge-unlock-v1/runtime/deribit_trades_census.jsonl",
+    "started_utc": "2026-09-17T02:47:02.774859Z",
+    "ended_utc": "2026-09-17T02:47:47.837701Z",
+    "duration_s": 45.0,
+    "channels_subscribed": ["trades.BTC-PERPETUAL.raw", "trades.BTC-PERPETUAL.100ms", "trades.ETH-PERPETUAL.raw", "trades.ETH-PERPETUAL.100ms"],
+    "measured": {
+      "messages_total": 1,
+      "subscribe_response_verbatim": {"jsonrpc": "2.0", "id": 909, "error": {"code": 13778, "message": "raw_subscriptions_not_available_for_unauthorized"}, "usIn": 1789613223842196, "usOut": 1789613223842336, "usDiff": 140, "testnet": false}
+    },
+    "decision_rule_applied": "The census did NOT yield a structurally consistent measured trades shape (the single message is the subscribe error response; 0 trade messages observable; the error rejected the whole subscribe call, so the 100ms trades channels were not subscribed either).",
+    "consequence": "Per the preregistered decision rule in freeze field 18, Deribit trades channels are EXCLUDED from general collection exactly as in CRYPTO-NG4 (known_limitation inherited); sequenced-channel validity for Deribit continues to rest solely on the book channel (change_id / prev_change_id). Recorded as a channel degradation, never inferred away; no further census runs (the protocol allows ONE)."
+  },
+  "collection_start_authorization": "collectors start ONLY after (a) this contract, (b) the collector package, and (c) tests/test_deu_collectors.py (all PASS) are committed as ONE commit on orca/deu-lane-c; start verdicts and start_utc are recorded in the start manifest at the data root",
+  "collection_not_started_attestation": {
+    "attestation": "At contract freeze time NO collector process, socket, network stream, subscription or account action had been started, and no byte had been written to any data root. S1 never accessed; PROSPECTIVE-SHADOW-V1 never read; no prior data root read or written.",
+    "sockets_opened_by_this_lane_at_freeze": 0,
+    "s1_accessed": false,
+    "orders_or_trading_endpoints": false,
+    "prior_cycle_data_roots_touched": false
+  },
+  "boundaries": {
+    "wrote_only": ["research/control/data_edge_unlock_v1/lane_c/", "research/assets/data_edge_unlock_v1/", "tests/test_deu_collectors.py", "/Users/hoangminhlong/.my-quantitative-data/data-edge-unlock-v1/"],
+    "never_written": [".zcode/", "plans/", "research/wayfinder/", "other research/control/ paths", "/Users/hoangminhlong/.my-quantitative-data/crypto-ng4-ws/", "/Users/hoangminhlong/.my-quantitative-data/free-data-frontier-v1/"],
+    "keyless_public_endpoints_only": true,
+    "no_credentials_in_prompts_logs_or_commits": true
+  }
+}
