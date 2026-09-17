@@ -1,0 +1,78 @@
+{
+  "schema": "stocks_ng6_a7_terminal_audit@1",
+  "cycle_id": "STOCKS-NG6",
+  "audited_commit": "627c1485116401c7e89a2bafec35ff4f21283e35",
+  "branch": "orca/stocks-ng6-integration",
+  "auditor": "A7 fresh-context terminal auditor",
+  "audited_object": "Lead-proposed close at D2 as STOCKS_NG6_BLOCKED_DATA_OR_SELECTION (0 scored cells, 0/3 budget, R0_VETO_ALL pre-score)",
+  "verdict": "CONFIRM_STOCKS_NG6_BLOCKED_DATA_OR_SELECTION",
+  "measured_at": "2026-09-17T00:06:30Z",
+  "checks": {
+    "1_independent_rho_recomputation": {
+      "method": "auditor's own construction from d1_freeze.json + shadow_inventory.json TEXT (own census implementation, own strided-window rolling std/median, own tie-averaged-rank Spearman; NOT a rerun of d2_run.py), on the same sha-verified P0 cache (2,169 symbols / 3,209,972 rows) + folds.json grid (2,943 SPY-served sessions)",
+      "results": {
+        "census_reproduced": "auditor's own census == committed events_census.json.gz set EXACTLY (5,841 events / 3,325 bookable / 0 off-grid; sha cc194c14... re-verified)",
+        "event_conditional_pairs_n": 32401,
+        "vol_restricted_event_20d": {"cohort_wide": 0.653643, "event_conditional": 0.259985, "verdict_values": [0.6536432573927267, 0.2599854305808955], "match": "exact to 6dp"},
+        "vol_restricted_event_60d": {"cohort_wide": 0.583771, "event_conditional": 0.218713, "verdict_values": [0.5837709929251909, 0.2187128250412481], "match": "exact to 6dp"},
+        "dvol_shock_ec": {"pearson": -0.086091, "spearman": -0.320415, "verdict_values": [-0.086091, -0.3204154765942852], "match": "exact to 6dp"},
+        "reversal_5d_ec": {"pearson": 0.007072, "spearman": 0.201323, "verdict_values": [0.007072, 0.20132254904387797], "match": "exact to 6dp"},
+        "neighbour_arm": {"vol_restricted_20d_cw": 0.534345, "vol_restricted_60d_cw": 0.473135, "dvol_shock_ec_spearman": -0.248494, "reversal_5d_ec_spearman": 0.264782, "verdict_values": [0.533929, 0.473240, -0.247556, 0.265009], "match": "within ~1e-3 (one boundary neighbour event, see finding F1)"},
+        "conclusion": "the 0.260 decisive killer (and all three other killers) are genuine properties of the data, not coding artifacts; four independent event-conditional killers over the immovable 0.20 bar confirmed"}
+    },
+    "margin_arithmetic": {
+      "law": "margin = 0.20 - |rho|; R0 fires iff margin < 0; bar immovable (G9)",
+      "verified": {
+        "vol_restricted_event_20d_ec": "0.20 - 0.259985 = -0.059985 (verdict -0.059985)",
+        "vol_restricted_event_60d_ec": "0.20 - 0.218713 = -0.018713 (verdict -0.018713)",
+        "dvol_shock_ec": "0.20 - 0.320415 = -0.120415 (verdict -0.120415)",
+        "reversal_5d_ec": "0.20 - 0.201323 = -0.001323 (verdict -0.001323)"
+      }
+    },
+    "2_G8_committed_inventory": {
+      "result": "PASS",
+      "evidence": "git: shadow_inventory.json created at 833641ed (2026-09-16 23:06:32Z) 'G8 commit-first ... before any rho'; sha256 b1e3c6d881d5b41d6d9fdfce76ba03f2ee4d3bee6346779adda44bc781571eb4 IDENTICAL at 833641ed, at HEAD 627c1485, and in the worktree; d2_run.py pins INV_SHA256 with fail-closed refusal before loading market data; d2_verdict measured_at 23:32:15Z (26 min AFTER the inventory commit); no post-hoc edits (single commit touches the file)"
+    },
+    "3_honesty": {
+      "result": "PASS",
+      "evidence": [
+        "scored cells 0 / PnL 0: no_pnl_computed=true in p0_verdict and d2_verdict; no_anchor_return_computed=true; grep of p0_census_run.py + d2_run.py finds no expectancy/PnL/Sharpe computation; control tree contains only d1/d2/m0/p0 artifacts, no E-stage/scored artifacts",
+        "timing: A4 BINDING event-conditional requirement + R0 (pooled |rho| > 0.20 vs ANY R0 shadow, immovable) present in plans/PLAN_stocks_ng6.md at a6a0da54 (14:47:21Z) and dossiers at ee6fb9dc (14:27:58Z); P0 measured 22:43:43Z; D2 measured 23:32:15Z - the standard predates the measurement by ~9 hours",
+        "A2 binding dossier sha 7ad37d70592103ba144e58532c2f063f6a173de83aab306a42c7e3f6ffd6d401 matches the d1_freeze pin byte-exactly",
+        "GO never typed: root registry authority rows show STOCKS-NG6 go_phrase_state REGISTERED_NOT_CONSUMED, budget {used:0,max:3}; grep of orchestrator events/tasks and the control tree finds no GO consumption record; the veto binds on the A4 BINDING event-conditional class ALONE (four ec killers), with the cohort-wide vol-restricted forms additional under the fail-closed reading law - the weaker forms are not load-bearing"
+      ]
+    },
+    "4_p0_spot_check": {
+      "result": "PASS",
+      "evidence": "auditor-reproduced EXACTLY from own census: events 5,841 / bookable 3,325; per-fold bookable 1,136/1,495/694; band schedule on the full event population A 1,589 / B 1,032 / C 808 / SUBFLOOR 2,412, band-C share 0.138332 (13.8%, NOT majority) - all equal p0_verdict F4/F6/F8; death census 1/9/6 (16 in-horizon) read from p0_verdict F4; cohort totals reconcile (2,178 members, 1,769 dead / 409 alive; death-date fold distribution consistent); F9 rerun-identical-digest recorded"
+    },
+    "5_boundaries": {
+      "result": "PASS",
+      "evidence": "S1 SEALED_UNTOUCHED in root registry; no S1/PROSPECTIVE-SHADOW-V1 references in any P0/D2 run code; orders none (no paper/testnet/live artifacts); root registry: FOREX-NG7 TERMINAL (go DEAD at its own close) and CRYPTO-NG4 REGISTERED with its own separate budget {used:0,max:3} - no budget/GO/rescue shared; STOCKS-NG6 budget untouched 0/3"
+    },
+    "6_artifact_risk_hunt": {
+      "result": "no CRITICAL/HIGH found",
+      "shadow_misconstruction": "eliminated for the decisive class by the auditor's independent rebuild (exact reproduction); the auditor's own first-draft footprint (row-wise rv test) accidentally reproduced the vol_tercile series instead of vol_restricted - demonstrating that a misconstruction is detectable and that the committed values correspond to the inventory formula",
+      "representation_drift": "none material: d1_freeze text (entry t+1 open, held [t+1..t+10], fold/death truncation, served-session basis, P-12 adjusted single representation) rebuilt independently reproduces every decisive anchor rho to >=6dp",
+      "incident_partial_state": "INC-SNG6-1 (TLS crash + resume 2101->2169) and INC-SNG6-2 (two mechanical repairs, disclosed) leave no contamination: F2 double-pull byte/value-identical, fail_rate 0.0; F9 rerun identical census digest; auditor's independent census from the final cache reproduces the committed census set exactly; no thresholds or gate definitions changed (floor/mult constants match plan)"
+    }
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "title": "Neighbour prior-low comparison uses the 6-dp rounded census value; one boundary event differs",
+      "evidence": "d2_run.py neighbour confirmation tests ac[i+1] > e['prior_low'] where the P0 census stores prior_low=round(min,6); auditor's exact-minimum reconstruction finds 2,463 neighbour events vs 2,462 in the verdict; neighbour killer rhos differ by ~1e-3 (e.g. rev5 ec 0.264782 vs 0.265009)",
+      "impact": "none on the close: both computations veto the neighbour arm by wide margins, and the close is carried by the anchor arm whose decisive rhos reproduce exactly"
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "title": "GO-extinguishing and TERMINAL registry row are pending the control-plane landing",
+      "evidence": "terminal_verdict_stocks_ng6.json is uncommitted (expected: Lead commits verdict+audit then lands the control-plane half); worktree registry lacks the STOCKS-NG6/FOREX-NG7/CRYPTO-NG4 rows (they live in the root authority), and the P-8 extinguishing of the GO phrase will only be recorded at that landing",
+      "impact": "process-timing only; the close's recommended_next_action already sequences this; registry currently shows REGISTERED_NOT_CONSUMED, consistent with 'never typed'"
+    }
+  ],
+  "audit_positives_stricter_than_negatives": "the decisive veto was reproduced from an independently written implementation rather than trusted; the committed census, folds, bands, and every decisive rho were re-measured, not re-read",
+  "decision": "R0_VETO_ALL is real, pre-score, binding on the A4 event-conditional class, measured against the G8-committed inventory, with 0 scored cells and 0 PnL ever; the proposed terminal close STOCKS_NG6_BLOCKED_DATA_OR_SELECTION at 0/3 is CONFIRMED"
+}
