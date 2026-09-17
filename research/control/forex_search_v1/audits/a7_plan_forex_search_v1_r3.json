@@ -1,0 +1,103 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "ZCODE-ORCHESTRATION-V3",
+  "audited_real_cycle": "FOREX-SEARCH-V1 (unregistered pending this audit)",
+  "audited_artifact": "plans/PLAN_forex_search_v1.md",
+  "audited_sha256": {
+    "value": "74995f0db4766a77997c7aa93bbf55cdc5e26bd6a2ce9f06f657280fde6c3f5a",
+    "verification_basis": "Auditor has no execution; digest NOT recomputed (NOT_RUN_EXECUTION_REQUIRED). Structural instruments applied to the frozen bytes at base f7547bb69bdf8fd5d0fd0cbb904d9e56fe2b2ca4: exactly 512 numbered lines; line 1 exactly '# PLAN FOREX-SEARCH-V1 — bounded session-bounded strategy search on the TD majors (owner-relaxed acceptance)'; §0–§13 structure complete; line 512 is the closing fence of §13 'Immediate actions' and is EOF. No FROZEN_SHA_MISMATCH."
+  },
+  "base_sha": "f7547bb69bdf8fd5d0fd0cbb904d9e56fe2b2ca4",
+  "verdict": "REFUSED",
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "HIGH",
+      "section": "§8 warmup rule vs §5 VOL-DRIFT/OPEN-GAP state formation (and D1 manifest required contents)",
+      "quote_bytes": "warmup = max(60, family max lookback) completed bars (64 for the 63-lookback VOL-DRIFT configs), first decision bar = warmup + 1",
+      "why_wrong": "The frozen warmup rule counts only the state estimator lookback and is contradicted by two of the five families whose states require 252-bar trailing windows. VOL-DRIFT's own §5 definition is 'boundaries from the TRAILING 252-bar window ending at and including bar t, refreshed daily'; with warmup 64 (explicitly pinned for the L=63 configs) at most ~2 estimator observations exist at the first decision bar, so tercile boundaries are undefined or degenerate. OPEN-GAP thresholds are percentiles of the 'trailing 252-bar gap distribution', which requires >=253 completed bars, while the same max(60, lookback) reading pins 60. The D1 manifest is REQUIRED to contain 'the warmup rule (§8)', so the contradiction is carried into the frozen contract verbatim; a byte-faithful implementation cannot form states for 10 of 33 configurations (6 OPEN-GAP + 4 VOL-DRIFT), and the only escape is an improvised expanding-window convention outside the freeze. That improvised convention changes which bars fire, hence fired censuses, R2 floors, fold populations, D2 survival, and therefore the scored selection. Conclusion-changing in a pre-registration freeze -> HIGH.",
+      "evidence_paths": [
+        "plans/PLAN_forex_search_v1.md (§5 VOL-DRIFT and OPEN-GAP family definitions; §5 required-manifest list; §8 decision row)",
+        "plans/PLAN_forex_ng7.md (§8 lineage: warmup 60 for a single-lookback family, no auxiliary 252-bar window)"
+      ],
+      "exact_SHAs": ["74995f0db4766a77997c7aa93bbf55cdc5e26bd6a2ce9f06f657280fde6c3f5a (audited bytes)", "f7547bb69bdf8fd5d0fd0cbb904d9e56fe2b2ca4 (base)"],
+      "required_remediation": "In plan bytes before D1: pin warmup per family INCLUDING auxiliary trailing windows — e.g. OPEN-GAP >= 253 completed bars (252 gaps), VOL-DRIFT >= 252 + L - 1 for the boundary window — or freeze an explicit causal expanding-window boundary contract (with a minimum-observation floor and disclosure) as the law; make the §8 parenthetical consistent with whichever is chosen, so the D1 manifest inherits an uncontradicted rule."
+    },
+    {
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "section": "§4 F4 financing band + §10 result language",
+      "quote_bytes": "marked STATED-CONSERVATIVE — charged uniformly across legs regardless of sign ... the D1 manifest prints source bytes, arithmetic and these caveats verbatim",
+      "why_wrong": "The 1.7 bps/night charge is 5.1/3 — a 3-night CUMULATIVE AVERAGE presented under the label 'conservative worst-night band'. The plan itself discloses the average does not bound the single worst night, so an adverse leg-night with a true debit above the stressed 3.4 bps (1.7 x 2.0) would be under-charged and could flip an R1 verdict on a survivor. This does NOT reopen the NG6/NG7 fail-closed class — the charge is nonzero, pre-frozen, uniform, sign-invariant, stress-2.0 primary, single-session-bounded, dual-books-fixture-guarded, with break-even bps reported per arm, and the caveats are DISCLOSED in the bytes — but the caveat's carriage requirement stops at the D1 manifest: §10's mandatory result language carries only the §3 relaxation disclosure, so a terminal SURVIVORS_UNDER_RELAXED_BATTERY outcome could propagate without the financing caveat adjacent to it. MEDIUM (disclosed, bounded residual; no result exists yet to flip).",
+      "evidence_paths": [
+        "plans/PLAN_forex_search_v1.md (§4 F4; §8 costs row; §10 result language)",
+        "plans/PLAN_forex_ng7.md (§4 F4: 'A4: ~5.1 bps over 3 nights can flip a sign vs a 3.0 bps hurdle')"
+      ],
+      "exact_SHAs": ["74995f0db4766a77997c7aa93bbf55cdc5e26bd6a2ce9f06f657280fde6c3f5a"],
+      "required_remediation": "Either (a) extend §10's mandatory verbatim result language to include the F4 stated-conservative financing caveat (and carry it in the SURVIVORS outcome name or its mandatory footer), or (b) replace the average-derived band with a disclosed worst-night construction (e.g. the full 5.1 bps as the single-night stressed band or a stated multiple), frozen before any measurement."
+    },
+    {
+      "id": "F-3",
+      "severity": "MEDIUM",
+      "section": "§5 grid — VOL-DRIFT estimator and OPEN-GAP percentile input under-pinned",
+      "quote_bytes": "estimator = close-to-close log-return std over the trailing lookback L; boundaries from the TRAILING 252-bar window ending at and including bar t, refreshed daily, same-bar assignment — NEVER full-sample",
+      "why_wrong": "The 'pinned' estimator leaves free parameters: (i) ddof (population vs sample std) unstated; (ii) construction of the 252-bar boundary sample unstated — 252 overlapping daily L-bar estimates vs non-overlapping 252/L sub-windows give materially different tercile boundaries for L in {21,63}; (iii) whether the current estimate E_t participates in its own boundary sample unstated (causal either way, but a convention that changes assignments); (iv) OPEN-GAP 'gap size threshold' does not state whether percentiles are taken over signed gaps or absolute gap size. All are resolved only at D1 manifest-writing time — outcome-blind, but unreviewed discretion entering before any gate: §9 places A7 at prelaunch, after D2 and S, so no independent check occurs between the D1 freeze and D2 measurement. This fails the plan's own 'frozen HERE' standard (the R2 floor value is frozen in-plan; these parameters are not). MEDIUM.",
+      "evidence_paths": [
+        "plans/PLAN_forex_search_v1.md (§5 families 3-4; §9 phase order)"
+      ],
+      "exact_SHAs": ["74995f0db4766a77997c7aa93bbf55cdc5e26bd6a2ce9f06f657280fde6c3f5a"],
+      "required_remediation": "Pin the exact formulas in plan bytes (ddof, boundary-sample construction, self-inclusion rule, signed-vs-absolute gap percentile input), or add a D1-manifest audit gate (fresh-context) between the D1 freeze and any D2 measurement so the frozen formulas are independently read before first use."
+    },
+    {
+      "id": "F-4",
+      "severity": "LOW",
+      "section": "§2 heading + §2 NG6/NG7 bullet + §4 F4 vs §13 step 2",
+      "quote_bytes": "## 2. Why this cycle is legal — reopening ancestry (audit item #1) ... A7 must rule this sufficient (audit item #1) ... FINANCING (this cycle's resolution of the NG6/NG7 F4 class, audit item #1)",
+      "why_wrong": "Two different audit subjects are labelled 'audit item #1' inside the frozen bytes: the §2 reopening legality (heading) and the §4 F4 financing resolution (bullet + §4 F4). §13's list of five audit items is unnumbered, so no in-byte enumeration disambiguates; under any consistent numbering one label points at the wrong item. Cross-reference hygiene defect in the remediated text; no gate is changed. LOW.",
+      "evidence_paths": ["plans/PLAN_forex_search_v1.md (§2; §4 F4; §13 step 2)"],
+      "exact_SHAs": ["74995f0db4766a77997c7aa93bbf55cdc5e26bd6a2ce9f06f657280fde6c3f5a"],
+      "required_remediation": "Number the five audit items in §13 step 2 and correct the two in-body labels to match."
+    },
+    {
+      "id": "F-5",
+      "severity": "LOW",
+      "section": "§4 source authority vs §4 F1(iii)",
+      "quote_bytes": "No Dukascopy, no CME, no network acquisition of FX data.",
+      "why_wrong": "Read literally, this flat sentence forbids F1(iii)'s mandatory 'fresh TD re-pull cross-check on a bounded sample', which is itself network acquisition of FX data from the entitled vendor. §0's phrasing ('ZERO network acquisition of Dukascopy/CME data') shows the intended scope, but the §4 sentence as written contradicts the plan's own P0 gate and could support a BLOCKED_SOURCE_OR_SCHEMA misreading at P0. LOW (intent unambiguous from §0 and F1(iii)).",
+      "evidence_paths": ["plans/PLAN_forex_search_v1.md (§4 preamble; §4 F1(iii); §0)"],
+      "exact_SHAs": ["74995f0db4766a77997c7aa93bbf55cdc5e26bd6a2ce9f06f657280fde6c3f5a"],
+      "required_remediation": "Rescope the sentence to: 'No Dukascopy, no CME, and no network acquisition beyond the entitled TD path.'"
+    },
+    {
+      "id": "F-6",
+      "severity": "LOW",
+      "section": "§6 PBO disposition — commit pointer",
+      "quote_bytes": "the frozen V17/FOREX-NG1 alternative, commit d0992d17",
+      "why_wrong": "The commit pointer d0992d17 is not verifiable from frozen bytes in an execution-free audit (NOT_RUN_EXECUTION_REQUIRED for the hash citation only). The substantive class IS independently confirmed in committed evidence: the CRYPTO-V14 ledger row records 'PBO NOT_RUN fail-closed (CSCV minimum 8 configurations unmet at the 6-cell cap)', and FOREX-NG7 §6 carries the same 'PBO fail-closed < 8' law, so the disposition's mechanics and lineage stand regardless of the pointer. LOW.",
+      "evidence_paths": [
+        "plans/PLAN_forex_search_v1.md (§6 PBO disposition)",
+        "research/wayfinder/HYPOTHESIS_LEDGER.md (CRYPTO-V14 row: PBO NOT_RUN fail-closed, CSCV minimum 8 unmet)"
+      ],
+      "exact_SHAs": ["74995f0db4766a77997c7aa93bbf55cdc5e26bd6a2ce9f06f657280fde6c3f5a"],
+      "required_remediation": "Lead-side only: confirm d0992d17 resolves in git history at registration time; no plan-byte change required."
+    }
+  ],
+  "audit_items_adjudicated": {
+    "item_1_f4_financing_resolution": "ADJUDICATED SOUND WITH DISCLOSED RESIDUAL (F-2 MEDIUM). Not a silent-zero class: the charge is nonzero, frozen before measurement, uniform across legs and invariant to sign (no leg can benefit from an assumed favourable differential), stress-2.0 PRIMARY applies to financing (operative worst case 2 x 1.5 x 2.0 + 1.7 x 2.0 = 9.4 bps — arithmetic verified), every hold is exactly one session so the multi-session compounding class that killed FOREX-NG6/NG7 F4 is removed by construction, the M0 dual-books degenerate fixture plus the §6 fail-closed sign-inversion gate are carried, and break-even bps is reported per arm. The derivation is from committed evidence (NG7 §4 F4's A4 illustration) with both caveats disclosed verbatim in the bytes. Understatement is possible only via worst-night concentration on a short-carry leg above the stressed 3.4 bps — bounded to a single night, disclosed, and gated by R1 at stress; the failure flagged is disclosure carriage into §10, not the construction itself. The dual-books gate is NOT tautological here: the financed book differs from the price book by a genuine uniform charge, unlike the forbidden implicit-zero book.",
+    "item_2_reopening_legality": "ADJUDICATED FAITHFUL. The owner instruction of 2026-09-17 is quoted verbatim with a frozen English reading; the override of the FOREX-NG5/NG1 reopening clauses is exercised under AGENTS.md authority order 1 and is DISCLOSED, not silently absorbed; FOREX-NG8 remains burned and unclaimed (registry: both FOREX-INTRA-BIDASK-V1 and FX-FUTURES-FRONTIER-V1 record 'successor door CLOSED — FOREX-NG8 remains burned'); zero Dukascopy/CME network acquisition is claimed; the DATA-EDGE Lane F third census ('zero broker-grade cost bytes') is accurately cited and the cycle runs stated-conservative only. Ancestry facts verified against the registry: NG5 V5 kills 0.230/0.353 (0.230 re-admitted at 0.30, 0.353 correctly not), NG4 clock rho 0.888-0.891 (via NG7 §2) making the clock-only control existential. Defect: F-5 (LOW) wording only.",
+    "item_3_boundedness_of_owner_grant": "ADJUDICATED FROZEN AND BOUNDED. Exactly five axes relaxed, this program only: R0 <= 0.30 (per-leg AND pooled law RETAINED; standing 0.20 printed alongside forever), DSR deflation N frozen to the D1 grid count (unambiguous at freeze time; bound <= 80), DSR alpha 0.10 (one notch), breadth <= 80 enumerated (actual enumeration 33). Re-admission claims match committed public history exactly (NG5 0.230 yes / 0.353 no; STOCKS-NG6 0.201/0.219/0.260 yes, dvol_shock -0.320 no). The NOT-relaxed list covers every mission invariant (data identity/P-13, cost/financing bands with stress-2.0 primary, R1, R3-R6, USD-drift 0.20, per-leg-AND-pooled measurement, folds, floors, weekday 0.35, serial-clustering census, dual-books sign invariance, reproduction, trial accounting, S1 seal, GO-at-gate). In-cycle widening forbidden in §3 and §12; a further relaxation requires a new owner instruction and a new cycle. The DSR-N relaxation is partially self-compensating: the 260-at-0.05 program-cumulative DSR is still computed and reported (non-gating), and N = full grid (33) is more deflationary than a survivors-only denominator.",
+    "item_4_grid_and_selection": "ADJUDICATED REPRODUCIBLE WITH TWO DEFECTS (F-1 HIGH, F-3 MEDIUM). CLOCK-COND arithmetic verified: (5 weekday + 2 month-position) x 2 directions = 14. Family arithmetic backs out exactly: CLV-DIVERGENCE 3K x 2k = 6, EXTREME-FADE 3 (single causal-complement direction), OPEN-GAP 2 directions x 3 thresholds = 6 (both directions enumerated per the §5 direction rule), VOL-DRIFT 2 directions x 2 lookbacks = 4 — total 19 + 14 = 33 <= 80. Selection is mechanical from bytes: W_c = max over frozen R0 shadows of max(per-leg worst, pooled) on the P-12 daily position-series x log-return representation; T_F = min over D2-surviving configs; families ASCENDING by T_F (most ancestry-distant first), within-family ascending W_c with lexicographic tie-break; family-stratified round-robin, <= 2 cells/family, 3 cells; P-20 0.98 self-subsumption with NOT_ADJUDICABLE fail-closed (§5 and §6 statements agree — duplication without conflict). Signs frozen from mechanism statements with R1 adjudicating and never selecting (NG7 F3b pattern). VOL-DRIFT tercile formation is causal (trailing window ending at t, same-bar assignment uses only <= t information, NEVER full-sample) but under-pinned (F-3). The OPEN-GAP timing exception is coherent: the state is formed from close(t) and open(t+1), both knowable exactly at open(t+1), and the fill AT open(t+1) is the first bookable price after signal formation — no look-ahead; the single-session exit at the scheduled bar t+1 close consumes no bar-close signal input, so the exit-mapping convention is not violated. Warmup is inconsistent with the 252-bar-window families (F-1 HIGH).",
+    "item_6_battery_integrity": "ADJUDICATED INTACT. Shadow inventory covers all five families' lethal ancestry (CTL-COMPLEMENT per family, CLOCK-ONLY, VOL-REGIME, MOM20/MOM63, REV1/REV5, DGS10-LEVEL, REAL-YIELD/CURVE, CARRY, SPY-RISK-OFF, C-PIT-MUTATION, C-NULL-VALIDITY), with the hashed shadow list committed BEFORE any rho (P-12/A7-F2 law). R1-R6 match NG7 lineage with exactly the disclosed swaps: R0 floor 0.30 (standing printed), R2 floor VALUE >= 10/state/fold pinned in the D1 hashed manifest before any D2 measurement (S2 class answered), R4 trend-only book defined as the conditioning-variable-only book with the NOT_ADJUDICABLE-for-that-family carve-out disclosed and never an inferred PASS. Serial clustering declared-not-assumed at the P0 manifest freeze; USD-drift 0.20 per-leg AND pooled with pooled-only NOT_RUN; RETROSPECTIVE controls may kill but never rescue. Stage-A: dual DSR reporting (N = frozen grid at alpha 0.10 gating; program-cumulative ~260 at 0.05 reported), P-20 at S, and the PBO NOT_RUN fail-closed disposition matches the committed V14 ledger class ('CSCV minimum 8 configurations unmet') and is unreachable by construction here (3-cell budget); the NOT_RUN label is carried into the terminal outcome name and §10 language, and no performance may be computed outside the <= 3 scored cells (§5 tripwire). A survivor is reachable and honestly labelled. Commit pointer F-6 (LOW) not verifiable execution-free.",
+    "item_5_note_on_numbering": "The dispatch packet's item numbering (#5 battery, #6 sweep) is addressed in audit_items_adjudicated.item_6_battery_integrity and frozenness_sweep below; the plan's own in-byte item labels are defective per F-4.",
+    "frozenness_sweep_and_contradiction_hunt": "Five TD digest prefixes verified character-for-character against PLAN_forex_ng7.md §4 (EURUSD 01cb862b, GBPUSD e3e4c519, USDCAD 4b988c44, AUDUSD 097cfe59, NZDUSD 7dff3299; 5,000 rows each; identical spans; identical ng1/v9 byte-identity note; XAUUSD excluded per NG6 P0-F4). All cited closures verified against plans/CYCLE_REGISTRY.json: FOREX-NG5 ('reopening needs a new evidenced information source per standing law'), FOREX-NG6 TERMINAL BLOCKED_SOURCE_OR_COST, FOREX-NG7 TERMINAL BLOCKED_SOURCE_OR_SCHEMA ('died on cost authority, not data'; trigger census feasible 721/802/674), FOREX-NG8 burned in both transport-blocked estates, DATA-EDGE Lane F BLOCKED_BROKER_COST_AUTHORITY (third census), PROSPECTIVE-SHADOW-V1 ACTIVE_LIGHT, FOREX-NG1 'forex re-entry needs materially new information sources', STOCKS-NG6 0.201-0.260 class. All required P-laws present and used consistently with wayfinder definitions: P-8 (exact GO phrase, early/paraphrased dies unconsumed; phrase unique vs registry), P-9 (§10 denominators 48/48 forex, 257/260 program — matches ledger 'Program total: 257 published / 260 observed'), P-11 (per-period series persisted for DSR), P-12 (frozen representation), P-13 (staging chain), P-20 (books-distinct 0.98); Q-6 (folds), Q-8 (measured-beats-stated, stated branch explicitly invoked), Q-11 (null validity), Q-12 (parameters from construction logic, never tuned). Cross-section consistency: §8 costs row equals §4 F4; §0/§9 budget 0/3 and <= 3 cells with never-force-filled (§10); force-flat at fold boundary holds by the single-session construction; §7 zero-survivor close honest; worktree/branch/GO-phrase unique in the registry. Findings from the sweep: F-1 (HIGH), F-3/F-4/F-5/F-6 (MEDIUM/LOW as filed). No mission-forbidden relaxation found; no S1/order/network/regedit leak found; no performance statistic can enter pre-S selection."
+  },
+  "verification_notes": [
+    "FROZEN_SHA_MISMATCH stop-condition check PASSED on structural instruments (512 lines; exact line-1 title; EOF at line 512 = closing fence of §13 'Immediate actions'); digest not recomputed — auditor has no execution; base accepted as f7547bb69bdf8fd5d0fd0cbb904d9e56fe2b2ca4 per packet.",
+    "Anchoring isolation maintained: research/control/forex_search_v1/audits/a7_plan_forex_search_v1_r1.json, ..._r2.json and all prior handoff artifacts were NOT read; verdict derived solely from the plan bytes at base plus NG7/registry/wayfinder evidence.",
+    "Arithmetic re-verified from bytes: 6+3+6+4=19 family configs; 7x2=14 CLOCK-COND; 19+14=33<=80; 2x1.5x2.0 + 1.7x2.0 = 9.4 bps; 0.02x252x5=25.2 and 0.10x252x5=126 ≈ 25-125 round trips/yr; 5.1/3 = 1.7.",
+    "NOT_RUN_EXECUTION_REQUIRED items: sha256 digest recomputation; commit pointer d0992d17 resolution; no checks requiring execution were performed or inferred.",
+    "Verdict rule applied: REFUSED because one HIGH (F-1) stands; per §13 step 3, remediate in plan bytes and re-audit with a NEW fresh-context A7 before researchctl registration."
+  ],
+  "auditor_context_fresh": true,
+  "unresolved_high_critical_count": 1
+}
