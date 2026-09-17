@@ -47,7 +47,7 @@ open, exit at bar t+1 close). This is a construction LAW, not a preference:
 it is the only way the FOREX-NG6-F4 / FOREX-NG7-F4 financing-authority
 fail-closed class is answered honestly (see §4 F4).
 
-## 2. Why this cycle is legal — reopening ancestry (audit item #1)
+## 2. Why this cycle is legal — reopening ancestry (audit item #2)
 
 The forex frontier's standing closures, quoted and adjudicated:
 
@@ -68,7 +68,7 @@ The forex frontier's standing closures, quoted and adjudicated:
   instruction of 2026-09-17 is exercised as the SUPERIOR authority
   (AGENTS.md authority order 1) to reopen with a named changed killer
   (§3). This override is DISCLOSED, not silently absorbed; A7 must
-  adjudicate its faithfulness (audit item #1).
+  adjudicate its faithfulness (audit item #2).
 - Cross-plane analogy (STOCKS-NG6/CRYPTO-NG4 "owner plan naming a changed
   killer" branches): analogy-only context, NOT an operative reopening
   authority for the forex plane; the sole operative authority is the
@@ -125,7 +125,9 @@ P-13 staging archives (`~/staging_backups/cleanup_2026-09-12/`, digests vs
 GBPUSD `e3e4c519…`, USDCAD `4b988c44…`, AUDUSD `097cfe59…`, NZDUSD
 `7dff3299…`, 5,000 rows each, spans 2007/2008..2026-09-10; ng1 copies
 byte-identical to v9 copies). XAUUSD EXCLUDED (cost authority BLOCKED,
-FOREX-NG6 P0-F4). No Dukascopy, no CME, no network acquisition of FX data.
+FOREX-NG6 P0-F4). No Dukascopy, no CME, and no network acquisition of FX
+data beyond the F1(iii) bounded TD re-pull cross-check under its
+fail-closed contract.
 
 ```text
 F1 STAGING CHAIN (NG7 A4 5-step, all fail-closed)  (i) archive sha256
@@ -229,15 +231,18 @@ families (5)      with FROZEN parameter sub-grids, all parameters declared
  2 EXTREME-FADE   fresh K-bar extreme faded, K in {10, 20, 60} — the
                   causal complement direction
  3 OPEN-GAP       opening-gap fade and confirm vs prior close, gap size
-                  threshold at {25th, 50th, 75th} percentile of trailing
-                  252-bar gap distribution
+                  threshold at {25th, 50th, 75th} percentile of the
+                  trailing 252-bar SIGNED-gap distribution (gap_t =
+                  open_t − close_{t−1}, SIGNED; the absolute-value
+                  reading is forbidden)
  4 VOL-DRIFT      realized-vol tercile-conditional 1-session momentum and
                   reversal, lookback {21, 63}; tercile formation CAUSAL,
-                  pinned: estimator = close-to-close log-return std over
-                  the trailing lookback L; boundaries from the TRAILING
-                  252-bar window ending at and including bar t, refreshed
-                  daily, same-bar assignment — NEVER full-sample (look-
-                  ahead class)
+                  pinned: estimator = close-to-close log-return SAMPLE
+                  std (ddof=1) over the trailing lookback L; boundaries
+                  = 1/3 and 2/3 quantiles (linear interpolation) of the
+                  TRAILING 252-bar window ending at and including bar t,
+                  refreshed daily, same-bar assignment — NEVER
+                  full-sample (look-ahead class)
  5 CLOCK-COND     day-of-week / month-position conditional drift,
                   ENUMERATED: 5 weekday states + 2 month-position states
                   (first-half / second-half of month), each in both
@@ -386,7 +391,8 @@ whose position-series |rho| vs any higher-ranked already-selected
 candidate exceeds 0.98 is SELF-SUBSUMED, skipped, next-in-order taken;
 unmeasurable = NOT_ADJUDICABLE, fail-closed. PBO disposition, prewritten
 for the <=3-cell regime (the frozen V17/FOREX-NG1 alternative, commit
-d0992d17; CRYPTO-V14/FOREX-FREE-V8 lineage): CSCV PBO requires >= 8
+d0992d17df8e2dfde57c9a0806a5798f14021a4f — Lead Bash-verifies the commit
+at registration; CRYPTO-V14/FOREX-FREE-V8 lineage): CSCV PBO requires >= 8
 performance-evaluated configurations — §5's freeze plus this cycle's
 3-cell budget make that unreachable BY CONSTRUCTION, so PBO is NOT_RUN,
 declared fail-closed and printed on every result; a survivor with PBO
@@ -407,9 +413,16 @@ configuration survives: selection empty -> close at 0/3.
 ## 8. Trading, costs and risk contract
 
 ```text
-decision        frozen 16:00-NY daily clock; warmup = max(60, family max
-                lookback) completed bars (64 for the 63-lookback
-                VOL-DRIFT configs), first decision bar = warmup + 1,
+decision        frozen 16:00-NY daily clock; warmup = max(60, the
+                family's LARGEST state-formation window INCLUDING
+                auxiliary trailing distributions): VOL-DRIFT = max(L,
+                252) = 252 and OPEN-GAP = 252 — tercile boundaries and
+                gap percentiles each consume a trailing 252-bar window —
+                so first decision bar 253 for both; CLV-DIVERGENCE,
+                EXTREME-FADE, CLOCK-COND = 60 (first decision bar 61);
+                a state that cannot be formed from COMPLETE windows is
+                NOT FIRED — fail-closed; no expanding-window or
+                partial-window convention exists anywhere in this cycle;
                 pinned per family in the D1 manifest
 entry/exit      bar t+1 open -> bar t+1 close (single session, §1 law);
                 force-flat at fold boundary by construction
@@ -461,7 +474,10 @@ published as the search's multiple-testing universe. Forex denominators
 currently 48/48; program 257/260 (P-9) — this cycle starts at budget 0/3.
 Any result language must carry the §3 relaxation disclosure verbatim:
 "accepted under owner-relaxed acceptance battery (R0 0.30 / DSR alpha 0.10
-at N = grid)".
+at N = grid)" AND the §4 F4 financing disclosure: "financing =
+stated-conservative nightly-average extrapolation (1.7 bps; worst single
+night may exceed it; no per-leg differential census exists — OHLC-only
+source)".
 
 ## 11. Prewritten terminal outcomes
 
@@ -499,11 +515,11 @@ A correct early close is success of governance. No predeclared survivor.
 
 ```text
 1. Commit this plan by exact pathspec.
-2. Independent fresh-context adversarial plan audit (A7) — audit items:
-   the §2 reopening override, the §3 boundedness of "tí xíu", the §4 F4
-   stated-conservative financing resolution of the NG6/NG7 fail-closed
-   class, the §5 grid and outcome-blind selection, the §6 battery
-   integrity under R0 0.30.
+2. Independent fresh-context adversarial plan audit (A7) — audit items,
+   numbered: (1) the §4 F4 stated-conservative financing resolution of
+   the NG6/NG7 fail-closed class; (2) the §2 reopening override; (3)
+   the §3 boundedness of "tí xíu"; (4) the §5 grid and outcome-blind
+   selection; (5) the §6 battery integrity under R0 0.30.
 3. Remediate every valid HIGH/CRITICAL; re-audit with a NEW fresh-context
    A7 if the verdict was REFUSED.
 4. Register FOREX-SEARCH-V1 through researchctl as PLANNED_NOT_STARTED.
