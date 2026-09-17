@@ -27,8 +27,10 @@ orders            NONE — no paper, testnet or live orders
 `PROSPECTIVE-SHADOW-V1` remains independent and ACTIVE_LIGHT; this cycle
 never reads its PnL, trades, marks or verdicts. FOREX-SEARCH-V1 is a sibling
 cycle under the same owner instruction; the two share NO budget, no GO and no
-rescue path. The name STOCKS-NG7 is deliberately NOT used: the DATA-EDGE-
-UNLOCK-V1 closure reserved it for an FTD-successor that this cycle is not.
+rescue path. The name STOCKS-NG7 is deliberately NOT used: the
+DATA-EDGE-UNLOCK-V1 closure records "NO STOCKS-NG7" for an
+FTD-successor; this cycle is not that successor and takes a different
+series name.
 
 ## 1. Question, in simple language
 
@@ -100,9 +102,11 @@ FOREX-NG5 momentum kill class (0.353). alpha 0.10 is one notch. Every result
 artifact prints BOTH the standing and relaxed values.
 
 NOT relaxed (mission invariant, non-negotiable): data identity and PIT
-class, cost bands and stress-2.0 primary, R1 net expectancy > 0, R2/R3/R5/
-R6 control-out-earn rules, fold structure, per-fold population floors,
-death-censoring contract, drop-one stability, PBO < 8, concentration <= 50%,
+class, cost bands and stress-2.0 primary, R1 net expectancy > 0, the full
+R2/R3/R4/R5/R6 control-out-earn and reduction rules (including the
+NG6-lineage C-REVERSAL-PLAIN reversal kill at R4), fold structure, per-fold
+population floors, death-censoring contract, drop-one stability, the PBO
+NOT_RUN-fail-closed disposition (§6), concentration <= 50%,
 MDD <= 15%, SPY-excess fold rule, reproduction, trial accounting, S1 seal,
 GO-at-gate. If a survivor exists it must clear the battery EXCEPT on the
 three relaxed axes. Being vetoed at 0.30 is not grounds to move the bar
@@ -188,16 +192,29 @@ families (6)      with FROZEN parameter sub-grids, all parameters declared
                   {25th, 50th, 75th} percentile of trailing 252-session
                   gap distribution, H in {1, 5}
  3 52W-HIGH       proximity-to-252-session-high drift, band in
-                  {2%, 5%, 10%} below the high, H in {5, 20}
+                  {2%, 5%, 10%} below the high, H in {5, 20}; high =
+                  rolling 252-session max of adjusted close (the SAME
+                  adjusted series as returns); band = percent below
+                  that high at t; long inside the band, flat outside
+                  (sign frozen from construction)
  4 CLV-RANGE      20-session CLV accumulation slope state — CLV_t =
                   ((C-L)-(H-C))/(H-L) per FOREX-NG7 §5
                   FNG7-A2-P1-ABSORB, cross-plane adaptation to equities
-                  DISCLOSED; slope window in {5, 10}, H in {5, 10}
+                  DISCLOSED; P_t = sum of CLV over the trailing 20
+                  completed bars; slope = P_t − P_{t−k}; slope window
+                  k in {5, 10}, H in {5, 10}
  5 DVOL-SHOCK     dollar-volume ratio vs trailing 60-session median,
                   ratio in {1.5x, 3.0x} x direction {fade, confirm},
                   H in {1, 5}
  6 VOL-REGIME     realized-vol tercile-conditional drift, lookback
-                  {21, 63}, H in {5, 20}
+                  {21, 63}, H in {5, 20}; terciles CAUSAL, pinned:
+                  estimator = close-to-close log-return sample std
+                  (ddof=1) over the trailing lookback L; boundaries =
+                  1/3 and 2/3 quantiles (linear interpolation) of the
+                  trailing 252-session window ending at and including
+                  t, refreshed daily, same-bar assignment — NEVER
+                  full-sample; long in the construction-favoured
+                  tercile, flat otherwise (long-only law)
 long-only         no short leg (no borrow-cost authority — FOREX-NG6 F4
                   class); direction falsification by R1 + inversion-
                   SUBSTITUTE controls, honestly labelled.
@@ -210,12 +227,21 @@ W_c = max over ALL frozen R0 shadows s of |pooled_rho(c, s)|, where
 pooled_rho(c, s) is the Pearson correlation of the full-S0-window daily
 book-return series of c against the daily return series of shadow s on
 the P-12 representation (per-fold rhos computed and REPORTED as
-disclosure only, never gating). Family tier value T_F = min over the
+disclosure only, never gating). SPARSE-BOOK CONVENTION (pinned): the
+primary pooled_rho aligns the candidate's daily book-return series
+(zero on non-fired days) against each shadow's daily series over the
+full S0 window; ADDITIONALLY, for any family whose fired-day share is
+below 30%, a fired-day-conditioned rho against the shadow's fired-day
+returns is computed (A4 sparse-book lesson: cohort-wide rho understates
+a sparse event book); the veto statistic consumes the MAX of the two
+|rho| values per shadow — fail-closed direction; the convention is a
+required D1-manifest field. Family tier value T_F = min over the
 family's D2-surviving configurations of W_c (the family's best-case
 distance from lethal ancestry). Ranking, applied mechanically: (i)
 families ASCENDING by T_F — most novel first; rationale: the scored
 budget goes to the greatest ancestry distance, the direction the
-novelty doctrine requires; (ii) within a family, configurations
+novelty doctrine requires; families tied on T_F break by lexicographic
+family name; (ii) within a family, configurations
 ascending by W_c, tie-break lexicographic config ID; (iii) selection is
 FAMILY-STRATIFIED round-robin over the tier-ordered families — one
 configuration per family per round, at most 2 scored cells per family,
@@ -256,6 +282,11 @@ C-COMPLEMENT        the family's own causal placebo (e.g. raw breakdown
                     without reclaim for EVENT-UNWIND; gap state without
                     direction for GAP; range-state without volume for
                     CLV-RANGE) — declared ex ante per family
+C-REVERSAL-PLAIN    worst-5-session-return equal-weight book re-formed
+                    every 5 sessions (SFV3-A5 ancestor class; NG6 R4
+                    re-inherited as BINDING — the 0.30 floor re-admits
+                    reversal-adjacent forms, so the scored reversal kill
+                    is mandatory, not optional)
 C-RANDOM-TIMING     every-63rd-session H-session clock twin
 C-CAL-HIST          deterministic calendar book matched to the fired-date
                     distribution on day-of-week x month-position buckets
@@ -264,7 +295,7 @@ C-CAL-HIST          deterministic calendar book matched to the fired-date
                     any measurement; minimum twin population 10 fired
                     decisions per bucket per fold — a sub-floor bucket is
                     NOT_ADJUDICABLE and disclosed, never silently
-                    skipped; must NOT out-earn the candidate (the R5
+                    skipped; must NOT out-earn the candidate (the R6
                     clock rule extends to it)
 C-MARKET            SPY buy-and-hold, exposure-matched
 C-DELAY-H           identical candidate entering H sessions late — Q-11
@@ -292,7 +323,9 @@ it a candidate AND a shadow for other families — both roles hashed);
 overnight-gap state (prior-session close-to-open gap, fade/confirm
 direction classes — added for the GAP family; the manifest records the
 ancestry-search basis: no dead stocks overnight-gap class found in
-FAMILY_FAILURES.jsonl / the ledger).
+FAMILY_FAILURES.jsonl / the ledger); close-location-value 20-bar
+accumulation state (own-class shadow for CLV-RANGE, adapted from
+FOREX-NG7 §5 with the cross-plane adaptation disclosed).
 
 Ordered kill rules (first binding kills; all NET, total-return basis;
 every control null-validated before it kills):
@@ -308,10 +341,13 @@ R0  pre-score ancestry veto   W_c > 0.30 (owner-relaxed, §3; W_c defined
                               rho is computed and REPORTED separately as
                               disclosure, never carved out. Families whose
                               state class IS a listed shadow (DVOL-SHOCK,
-                              VOL-REGIME, 52W-HIGH) are expected-DOA or
-                              survive only through construction distance —
-                              disclosed in the manifest, never silently
-                              dropped. Veto is STRICTLY > 0.30 (equality
+                              VOL-REGIME, 52W-HIGH, GAP — overnight-gap,
+                              EVENT-UNWIND — reversal-shadow territory)
+                              are expected-DOA or survive only through
+                              construction distance — disclosed in the
+                              manifest, never silently dropped; CLV-RANGE
+                              carries its own-class shadow (inventory).
+                              Veto is STRICTLY > 0.30 (equality
                               passes), measured to 6 decimal places; the
                               0.20 standing value is printed alongside
 R1  expectancy                net expectancy <= 0 at stress 2.0
@@ -322,17 +358,22 @@ R2  long-market reduction     candidate <= max(C-MARKET, C-RANDOM-TIMING)
                               fold PnL concentration <= 50%
 R3  mechanism specificity     C-COMPLEMENT out-earns OR reproduces
                               >= 0.5x same-sign in >= 2/3 folds -> REJECT
-R4  component placebo         the family's component-only book (declared
+R4  reversal reduction         C-REVERSAL-PLAIN out-earns OR reproduces
+                              >= 0.5x same-sign in >= 2/3 folds
+                              -> REJECT (NG6-R4 re-inherited; the floor
+                              relaxation makes this rule MORE load-
+                              bearing, not less)
+R5  component placebo         the family's component-only book (declared
                               per family in the D1 manifest: the
                               conditioning filter applied WITHOUT the
                               directional/trigger component — e.g.
                               range+participation filter-only for
                               EVENT-UNWIND, threshold-state-only for GAP)
                               reproduces >= 0.5x same-sign -> REJECT;
-                              where a family admits no such analog, R4 is
+                              where a family admits no such analog, R5 is
                               NOT_ADJUDICABLE for that family, disclosed,
                               never an inferred PASS
-R5  clock geometry            C-RANDOM-TIMING out-earns -> REJECT
+R6  clock geometry            C-RANDOM-TIMING out-earns -> REJECT
 K6  slow-drift combination    {candidate, C-DELAY-H} x {state, complement}
                               mutually indistinguishable within fold noise
                               (exact test frozen at S) -> REJECT
