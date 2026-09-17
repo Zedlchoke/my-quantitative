@@ -52,7 +52,17 @@ P0 = RUN / "p0"
 S = RUN / "s"
 
 MANIFEST_EXPECTED_SHA256 = (
-    "1b39aa6f726215df973833d1db5a8e3639aa226e62b7ce0f077c7e829c4d07b9")
+    "30e38a9935c3e2bc0080ef65709b998432e13db137280fc7134f397fd082bd65")
+# F-remediation r2 cascade re-pin (2026-09-17): the manifest was rebuilt by
+# d1/build_d1_manifest.py to add the plan §5 REQUIRED §4 F4 financing block
+# (F-1), the corrected MONTHPOS-SECOND state_formula (F-5), the §4 F5
+# fired-rate supersession pin (F-6) and the weekend-bars disclosure (F-7),
+# then rebuilt AGAIN after the F-4 correction of p0/f1_repull_result.json
+# propagated through the re-assembled p0_gate.json digest table (the D1
+# builder verifies every p0_gate artifact digest fail-closed). Prior frozen
+# digest: 1b39aa6f726215df973833d1db5a8e3639aa226e62b7ce0f077c7e829c4d07b9.
+# The walk is census-determined and MUST reproduce the same three arms in
+# the same order (WALK_DIVERGED stop otherwise).
 
 # plan §5 P-20 threshold: pooled |rho| STRICTLY EXCEEDING 0.98 subsumes.
 P20_THRESHOLD = 0.98
