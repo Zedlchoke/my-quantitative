@@ -117,6 +117,26 @@ invariance, reproduction, trial accounting, S1 seal, GO-at-gate. Being
 vetoed at 0.30 is not grounds to move the bar again in-cycle; a further
 relaxation is a NEW owner instruction and a NEW cycle.
 
+### 3b. Owner amendment 2026-09-17 #2 — D2 SKIPPED (verbatim intent:
+"chay tu dau toi GO cua toi, nhung khong chay buoc D2" — run from the
+start to the owner GO, but do not run the D2 step)
+
+Owner authority (AGENTS.md order 1) instructs the chain to run from the
+start to the owner GO gate with D2 skipped. Frozen effect: the D2 phase is
+NOT dispatched in this cycle; the R0 ancestry battery is therefore NOT
+MEASURED (NOT_RUN — never an inferred PASS); the §9 chain's D2 row reads
+SKIPPED. §5 selection tier (i) is replaced by the P0 fired-population
+census and tier (ii) loses its W_c term (both non-performance,
+outcome-blind properties retained); the fired census and feasibility
+floors are measured at P0 as a pure data census (fired counts only — no
+candidate returns, no PnL, no PF); P-20 books-distinct at S is UNCHANGED.
+Terminal survivor outcome names and §10 language carry `R0_NOT_RUN`
+alongside the standing 0.20/0.30 disclosure. This amendment is an
+owner-authority act recorded in the registry; it widens nothing by Lead
+initiative and everything skipped is printed on every result.
+
+
+
 ## 4. Source authority and P0 gates
 
 Scored source: TD 1day OHLC spot majors, single vintage, EXCLUSIVELY the
@@ -268,11 +288,7 @@ position-series x log-return representation (the R0 law's per-leg AND
 pooled requirement; per-fold rhos computed and REPORTED as disclosure
 only, never gating). Family tier value T_F = min over the family's
 D2-surviving configurations of W_c (the family's best-case distance from
-lethal ancestry). Ranking, applied mechanically: (i) families ASCENDING
-by T_F — most novel first (rationale: the scored budget goes to the
-greatest ancestry distance, the direction the novelty doctrine
-requires); (ii) within a family, configurations ascending by W_c,
-tie-break lexicographic config ID; (iii) selection is FAMILY-STRATIFIED
+lethal ancestry). Ranking, applied mechanically: (i) families DESCENDING by P0 fired-population census (family-level sum of fired decisions over the most recent fold; AMENDED per §3b — D2 skipped, T_F/W_c not computed); ties break by lexicographic family name; (ii) within a family, configurations DESCENDING by P0 fired-population census (config-level), tie-break lexicographic config ID (AMENDED per §3b); (iii) selection is FAMILY-STRATIFIED
 round-robin over the tier-ordered families — one configuration per
 family per round, at most 2 scored cells per family, until 3 cells are
 filled. P-20 books-distinct at S: a candidate whose pooled |rho| vs any
@@ -474,7 +490,7 @@ published as the search's multiple-testing universe. Forex denominators
 currently 48/48; program 257/260 (P-9) — this cycle starts at budget 0/3.
 Any result language must carry the §3 relaxation disclosure verbatim:
 "accepted under owner-relaxed acceptance battery (R0 0.30 / DSR alpha 0.10
-at N = grid) | PBO NOT_RUN fail-closed (<=3 cells, d0992d17 class)" AND
+at N = grid) | PBO NOT_RUN fail-closed (<=3 cells, d0992d17 class) | R0 NOT_RUN (D2 skipped by owner amendment §3b)" AND
 the §4 F4 financing disclosure: "financing =
 stated-conservative nightly-average extrapolation (1.7 bps; worst single
 night may exceed it; no per-leg differential census exists — OHLC-only
@@ -488,7 +504,7 @@ FOREX_SEARCH_V1_BLOCKED_SOURCE_OR_SCHEMA
 FOREX_SEARCH_V1_BLOCKED_DATA_OR_SELECTION
 FOREX_SEARCH_V1_BLOCKED_PRELAUNCH
 FOREX_SEARCH_V1_REJECT_ALL
-FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_PBO_NOT_RUN (only if
+FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN (only if
     Stage-A passes; carries the §3 + §4 F4 disclosures AND the PBO
     NOT_RUN fail-closed label; never a profitability claim)
 FOREX_SEARCH_V1_INCOMPLETE_NOT_PROMOTABLE
