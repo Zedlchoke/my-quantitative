@@ -1,0 +1,136 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "STOCKS-SEARCH-V1",
+  "audited_file": "plans/PLAN_stocks_search_v1.md",
+  "audited_sha256": "fb5cc72f777408fdb54dc3c7e999848b13fe2d75e9821c9ee4d05e93d1cf11e3",
+  "audited_sha256_verification": "NOT_RUN_EXECUTION_REQUIRED (no Bash in this audit lane; see F-6 and verification_notes)",
+  "base_sha": "bcbdb484155ef26c489d3263cee04394c9e8e462",
+  "branch": "main",
+  "measured_line_count": 385,
+  "packet_claimed_line_count": 396,
+  "verdict": "REFUSED",
+  "verdict_basis": "3 HIGH findings (F-1, F-2, F-3) stand; per the deliverable contract REFUSED is mandatory when any HIGH/CRITICAL stands. All three are pre-registration remediable with plan-text changes; a NEW fresh-context A7 (r2) is required after remediation per the plan's own section 13.3.",
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "HIGH",
+      "section": "5 (selection rule) / 1 (breadth premise) / missing P-20",
+      "quote_bytes": "survivors of D2 are ranked by (i) ancestry-distance tier (family's min measured |rho| descending — construction property of the measurement, applied mechanically), then (ii) P0 fired-population size descending, then (iii) lexicographic config ID; the top <= 3 become scored candidates.",
+      "why_wrong": "Three defects in the cycle's core artifact. (a) AMBIGUOUS STATISTIC: 'family's min measured |rho|' does not say whether the minimum runs over the family's configurations, over the shadow set, or over config-times-shadow pairs, and the pooling operator behind each rho is itself unpinned (see F-2); the ranking is therefore not reproducible from the plan bytes. (b) INVERTED DIRECTION: labeling 'min |rho| DESCENDING' as ancestry-distance means the scored budget is spent first on the surviving family with the HIGHEST correlation to lethal shadow states — the family grazing the 0.30 veto boundary, i.e. the LEAST ancestry-distinct survivor; no rationale for this direction is given, and the label contradicts itself (higher rho-to-shadow = smaller distance from dead ancestry). (c) BREADTH COLLAPSE + NO BOOKS-DISTINCT LAW: the family key dominates the lexicographic tuple, so unless the top-tier family has fewer than three surviving configurations, ALL <=3 scored cells go to configurations of a single family, contradicting section 1 ('This is a SEARCH cycle ... breadth is the point'); and the plan carries no P-20 books-distinct/self-subsumption rule anywhere, while every recent predecessor does (PLAN_stocks_ng6.md: 'preregistered self-subsumption |rho| <= 0.98 vs anchor (P-20 books-distinct), else SELF-SUBSUMED'; PLAN_forex_ng5.md: 'books_distinct is unmeasurable (P-20 fail-closed None)'; CRYPTO-V15 enforced 'control self-subsumption rho 0.9929' pre-score). As written, the three scored books may be mutually self-subsumed near-duplicates (e.g. EVENT-UNWIND K=21/H=5, K=21/H=10, K=63/H=5) that DSR N=grid-size and the terminal result language would count as independent search breadth. This changes the conclusion: which 3 of 43 configurations consume the entire irreversibly-spent scored budget, and what 'SURVIVORS' subsequently means.",
+      "required_remediation": "Pin in the plan text or as required fail-closed D1-manifest fields: (i) the exact tier-(i) statistic and the rho pooling operator it consumes; (ii) the tier direction with stated rationale; (iii) a per-family cap on scored candidates or a family-stratified selection order; (iv) a P-20 pairwise books-distinct rule among the selected scored candidates (NG6 0.98 class, fail-closed NOT_ADJUDICABLE when unmeasurable).",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (lines 189-197, 42-45)",
+        "plans/PLAN_stocks_ng6.md (lines 200-207)",
+        ".worktrees/data-edge-unlock-v1/integration/research/wayfinder/LESSONS.md (line 604, P-20 definition)",
+        "research/wayfinder/FAMILY_FAILURES.jsonl (CRYPTO-V15 A6-V15-F1-TAKER-SAT row: control self-subsumption rho 0.9929)"
+      ]
+    },
+    {
+      "id": "F-2",
+      "severity": "HIGH",
+      "section": "6 (R0 veto) / 3 (boundedness recital) / 2 (NG6 recital)",
+      "quote_bytes": "R0  pre-score ancestry veto   pooled |rho| > 0.30 (owner-relaxed, §3) vs ANY R0 shadow on the frozen decision grid -> configuration dies pre-score; ... it re-admits the STOCKS-NG6 measured class (0.201–0.260, public committed history) and does NOT re-admit the FOREX-NG5 momentum kill class (0.353).",
+      "why_wrong": "The pre-score mechanism that decides which configurations may ever be scored is indeterminate from the plan bytes. (a) SELF-SHADOW CONVENTION UNPINNED: the R0 inventory contains states that ARE the own conditioning class of three of the six candidate families — 'dollar-volume-shock state' (family 5 DVOL-SHOCK), 'realized-vol LEVEL + semivariance share states ... event-conditional vol-tercile' (family 6 VOL-REGIME), '52-week-high proximity generic' (family 3, acknowledged 'candidate AND a shadow for other families — both roles hashed'). Whether a configuration is rho-tested against its OWN family's shadow decides family survival (own-state rho is trivially ~1, killing 18 of 43 configurations across 3 families under the plain 'vs ANY R0 shadow' reading) versus testing only against OTHER families' shadows (where survival is an open empirical question). The only lineage precedent, NG6's 'self-subsumption 0.7996 moot', was anchor-vs-neighbour, not config-vs-own-shadow, so lineage does not answer it; in-cycle reinterpretation in either direction changes which configurations get scored. (b) 'POOLED' IS UNDEFINED: max, mean, or Fisher-combination across shadows give different verdicts at the 0.30 boundary; NG6's plan left the same word, but NG6's D2 contract carried the definition in its frozen run artifacts and SEARCH-V1 names no such carrier. (c) SELECTIVE RECITAL: section 2 recites NG6's kill set as 'measured event-conditional rho 0.260 / 0.219 / 0.201', omitting the fourth BINDING form dvol_shock at -0.320 recorded in the STOCKS-NG6 terminal registry row; consequently section 3's boundedness claim 're-admits the STOCKS-NG6 measured class (0.201–0.260)' misstates the re-admitted set — the 0.30 floor also does NOT re-admit NG6's own measured 0.320 dollar-volume class, while family 5 (DVOL-SHOCK) is placed in the grid with no disclosure of its expected dead-on-arrival status. Fail-closed in the strict direction, but the recital is what the owner grant's boundedness argument rests on and it is incomplete.",
+      "required_remediation": "Pin in plan text: (i) whether own-family shadows are included in each configuration's R0 test, or a preregistered P-20-class self-subsumption handling; (ii) the pooling operator and its fail-closed behavior at boundary values; (iii) corrected section 2/3 recitals including the -0.320 class; (iv) explicit disclosure of which families are expected to die at R0 under the pinned convention, so the six-family breadth premise is honest.",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (lines 225-260, 52-54, 88-92, 176-187)",
+        "plans/CYCLE_REGISTRY.json (STOCKS-NG6 row: 'vol_restricted_event_20d 0.260 / 60d 0.219 / dvol_shock -0.320 / reversal_5d 0.201')",
+        "plans/PLAN_stocks_ng6.md (lines 244-257 R0 inventory; line 283 'self-subsumption 0.7996 moot' is in the registry row)"
+      ]
+    },
+    {
+      "id": "F-3",
+      "severity": "HIGH",
+      "section": "6 (Stage-A PBO gate) vs 5 (freeze rule) and 0 (budget)",
+      "quote_bytes": "PBO fail-closed < 8 configurations. ... NO return, expectancy, PF, Sharpe or any performance statistic may be computed for ANY configuration before the S freeze ... budget            3 scored cells max",
+      "why_wrong": "The PBO gate is unsatisfiable as written for this cycle's own outcome space, making the prewritten terminal outcome STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY unreachable — the plan contradicts itself at exactly the outcome a search cycle exists to reach. Program precedent fixes the meaning of the phrase: CBO/CSCV PBO requires a performance matrix over >=8 configurations (CRYPTO-V14: 'PBO NOT_RUN fail-closed (CSCV minimum 8 configurations unmet at the 6-cell cap)'; FOREX-FREE-V8: 'PBO NOT_RUN fail-closed (3<8 CSCV)'). In SEARCH-V1: (a) computing grid-wide (43-configuration) performance is forbidden before S by section 5 and unbudgeted after S (3 cells), so the gate can never be computed over the grid; (b) with <=3 scored configurations PBO is NOT_RUN-fail-closed under the program's own frozen alternative (V17 contract / FOREX-NG1 precedent d0992d17, explicitly cited by RATES-NG1, COMMODITIES-NG1 and VOL-NG1), which SEARCH-V1 does not cite; and (c) under the plan's own disposition rule ('a control that is unpopulated or has an invalid null is NOT_ADJUDICABLE, never silently skipped') plus the workspace invariant that NOT_RUN is never inferred PASS, a fail-closed NOT_RUN PBO leaves Stage-A unpassable — no survivor can ever be declared under this plan as written.",
+      "required_remediation": "Prewrite the PBO disposition for the <=3-cell regime in the plan: cite the frozen V17/FOREX-NG1 d0992d17 alternative explicitly and state whether a survivor with PBO NOT_RUN is bookable (with the NOT_RUN printed on the result) or NOT_ADJUDICABLE; or redefine the PBO input set so the gate is computable within the 3-cell budget and the section 5 freeze rule. Any performance computed for PBO must itself be charged to the trial-accounting rules the plan adopts.",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (lines 262-273, 193-197, 20)",
+        "research/wayfinder/FAMILY_FAILURES.jsonl (CRYPTO-V14 row 'PBO NOT_RUN fail-closed (CSCV minimum 8 configurations unmet at the 6-cell cap)'; FOREX-FREE-V8 row 'PBO NOT_RUN fail-closed (3<8 CSCV)')",
+        ".runtime/orchestrator_v3/tasks.json (VOL-NG1 I-IMPLEMENTATION objective: 'PBO fail-closed when cells < 8 — ... the frozen alternative rule from the FOREX-NG1 precedent applies')"
+      ]
+    },
+    {
+      "id": "F-4",
+      "severity": "MEDIUM",
+      "section": "2 (reopening legality, audit item 1)",
+      "quote_bytes": "What changed is the killer: the owner instruction of 2026-09-17 names the acceptance battery as changed, per the reserved second branch of the reopening clause. [owner words, verbatim:] \"mở cycle tìm kiếm strategy overfit tí xíu cũng được Cho stocks và forex\"",
+      "why_wrong": "The verbatim owner words name a posture — open a strategy-search cycle, a little overfit is acceptable, for stocks and forex — and do not name NG6, the R0 floor, the DSR parameters, or 'the acceptance battery'. The reserved second branch requires an 'owner plan naming a changed killer'; here the killer-naming at axis/magnitude granularity is done by THIS plan (R0 0.30, DSR alpha 0.10, N=grid <=120, breadth <=120 are implementer instantiations of the grant), so section 2's sentence overstates the quoted bytes. Adjudication on substance: the reopening reading IS faithful — the grant targets exactly the overfit-sensitive acceptance statistics; the relaxation is loud, not silent (verbatim quote in the authority header, frozen English reading, section 3 standing values printed alongside, section 10 mandatory verbatim disclosure language, section 12 no-widening clause); and a strict-letter refusal would nullify an explicit owner authorization. This is therefore a characterization defect, not an illegality — but the overstatement must not travel into the registration record.",
+      "required_remediation": "Reword section 2 to attribute the specific axes and magnitudes to this plan's frozen instantiation under the owner grant, not to the owner's words; the researchctl registration must cite the verbatim instruction and the frozen English reading together.",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (lines 3-10, 47-59, 73-102, 359-371)",
+        "plans/CYCLE_REGISTRY.json (STOCKS-NG6 row, reopening clause text — exact match confirmed)"
+      ]
+    },
+    {
+      "id": "F-5",
+      "severity": "MEDIUM",
+      "section": "6 (controls) / 4 (F4 warmup) — freeze-burden gap on the D1 manifest",
+      "quote_bytes": "C-CAL-HIST          deterministic calendar book matched to the fired-date distribution; must NOT out-earn the candidate (R6 extends to it) ... R4  component placebo         family component-only book reproduces >= 0.5x same-sign -> REJECT ... warmup attrition CENSUSED",
+      "why_wrong": "Three specifications are weaker than the NG6 lineage this cycle claims to re-inherit, and the D1 manifest — which must carry the freeze burden ('this cycle's A2-equivalent dossier IS the manifest') — is not required by the plan to contain them. (a) C-CAL-HIST: NG6 pins 'the same day-of-week/month-position histogram as the observed events; deterministic rule declared ex ante BEFORE any measurement'; SEARCH-V1 keeps only 'matched to the fired-date distribution' — which moments, which buckets, and what minimum population per bucket are open, leaving the R6 calendar control researcher degrees of freedom (the packet's 'weekday-share-type floors' concern is exactly this). (b) R4's 'family component-only book' is declared nowhere: section 6 declares only per-family C-COMPLEMENT (NG6 carried distinct books for its R3 and R5); if R4's book is the complement, R3 and R4 are redundant; if it is not, the book is undefined and R4 can never be adjudicated. (c) Warmup: NG6's A4-corrected rule (252 served sessions; first eligible event no earlier than the 253rd) is not re-inherited — the sub-grids use lookbacks up to 252 (K=252, 252-session trailing gap distribution, 252-session high) plus a trailing-60-session bookability window whose interaction needs a pinned warmup length. Also folded here: the EVENT-UNWIND family description ('failed K-session-low breakdown w/ same-session reclaim') drops NG6's pinned construction components (RANGE >= 0.5 upper-half close, PARTICIPATION >= 1.5x dvol60, close-above-broken-level reclaim definition) without saying whether they are in or out of the grid-extended class.",
+      "required_remediation": "Enumerate required fail-closed D1-manifest fields in the plan: per-configuration full construction definitions (reclaim test, range/participation filter membership for EVENT-UNWIND), the C-CAL-HIST matching rule with per-bucket floors, the R4 book definition per family, and the warmup rule.",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (lines 122-127, 169-171, 206-213, 254-255)",
+        "plans/PLAN_stocks_ng6.md (lines 65-66, 113-116, 194-199, 226-232, 271-276)"
+      ]
+    },
+    {
+      "id": "F-6",
+      "severity": "MEDIUM",
+      "section": "frozen-claim verification (packet stop-condition check)",
+      "quote_bytes": "packet: 'it must be 396 lines, titled \"PLAN STOCKS-SEARCH-V1 — bounded construction-blind strategy search (owner-relaxed acceptance)\", sha256 fb5cc72f777408fdb54dc3c7e999848b13fe2d75e9821c9ee4d05e93d1cf11e3'",
+      "why_wrong": "This lane has no execution capability, so the sha256 could NOT be recomputed; the audited bytes are corroborated only by: exact title match (line 1); presence and coherence of every packet-named element (section 2 reopening, section 3 four-axis ledger with 0.30/0.10/<=120, section 5 six-family grid + outcome-blind selection, section 6 battery, section 13 audit items, PLANNED_NOT_STARTED 2026-09-17, exact GO phrase); and the frozen dispatch record (.runtime/orchestrator_v3/tasks.json:9201) carrying the same sha and base — while the packet's line-count claim (396) does NOT match the measured file (385 newline-terminated lines; the file ends at section 13's closing fence), and the frozen dispatch record carries no line count to adjudicate which figure is right. An 11-line delta is either a packet miscount or post-freeze drift; from this lane the two cannot be distinguished. If the on-disk bytes are not the frozen bytes, this entire audit is of the wrong artifact.",
+      "required_remediation": "Before registration (plan section 13.4), a Bash-capable party must run sha256 on the exact path and confirm fb5cc72f777408fdb54dc3c7e999848b13fe2d75e9821c9ee4d05e93d1cf11e3 and reconcile the line count. Any mismatch VOIDS this audit and requires a fresh A7 on the true bytes; if the sha matches, the 396-line figure is a packet error to correct in the dispatch record.",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (385 lines measured, title line 1 exact)",
+        ".runtime/orchestrator_v3/tasks.json (line 9201: same sha256, base bcbdb484, no line count)"
+      ]
+    },
+    {
+      "id": "F-7",
+      "severity": "LOW",
+      "section": "6 / 4-F8 / 5 / 2 — references and staleness bundle",
+      "quote_bytes": "the 0.2010 standing value is printed alongside ... >= 30 decisions/fold measured at P2 (fail-closed kill) ... 4 CLV-RANGE      20-session CLV accumulation slope state (NG7 class adapted) ... crypto ng 10/10 killed",
+      "why_wrong": "(a) 'the 0.2010 standing value' — the standing R0 floor is 0.20 (section 3 table); '0.2010' is a typo that could be misread as a different disclosed standing value. (b) 'measured at P2' — P2 is not a phase in section 9's M0/P0/D1/D2/S/I/Z/A7/GO/E/R/T chain (NG6's 'A9/P2' was carried over without its phase structure); the F8 floor's measurement gate is unnamed in this plan. (c) '(NG7 class adapted)' has no resolvable artifact: no stocks NG7 cycle exists (the name was burned by DATA-EDGE-UNLOCK-V1's 'NO STOCKS-NG7') and the only NG7 plan is forex — if the CLV class descends from the ng6_ng7_ng4_dossiers_2026-09 dossier material, cite the path/sha. (d) 'crypto ng 10/10 killed' re-inherits NG6 section 2 verbatim and is stale: CRYPTO-NG4's same-day terminal registry row records 11/11. (e) section 5's blanket 'NO ... performance statistic may be computed for ANY configuration before the S freeze' sits in unacknowledged tension with section 7's mandatory per-configuration D2 rho (a forward-outcome-touching statistic); lineage treats ancestry rho as non-scored, but without an explicit carve-out the section 5 BLOCKED_METHOD_CONTRACT tripwire could be invoked against the plan's own D2.",
+      "required_remediation": "Fix the typo; name the F8 measurement gate (P0-F8); cite the NG7 dossier artifact or drop the lineage label; update the crypto count to 11/11 with the NG4 citation; add one sentence to section 5 carving out the section 7 D2 rho as a non-scored ancestry measurement.",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (lines 143-147, 177-178, 242-245, 63-66)",
+        "plans/CYCLE_REGISTRY.json (CRYPTO-NG4 row: 'crypto ng proposals now 11/11 killed at the bar'; DATA-EDGE-UNLOCK-V1 row: 'NO STOCKS-NG7')"
+      ]
+    },
+    {
+      "id": "F-8",
+      "severity": "LOW",
+      "section": "6 (R0 inventory enumeration completeness)",
+      "quote_bytes": "R0 shadow inventory (ENUMERATED, hashed and committed BEFORE any rho; under-enumerated inventory = invalid PASS, fail-closed)",
+      "why_wrong": "The inventory adds a 52-week-high shadow because 52W-HIGH became a candidate family, but adds no overnight-gap state although GAP (family 2) enters the grid. This audit's greps of FAMILY_FAILURES.jsonl and HYPOTHESIS_LEDGER.md found no dead stocks overnight-gap ancestry, so the omission is defensible — but the plan's own rule makes an unjustified inventory an invalid PASS, and per-family enumeration-completeness justification is not a required manifest field.",
+      "required_remediation": "Require the D1 manifest to record, per family, the ancestry-search basis for its shadow coverage (grep result against FAMILY_FAILURES.jsonl/ledger), or add an overnight-gap state to the inventory.",
+      "evidence_paths": [
+        "plans/PLAN_stocks_search_v1.md (lines 225-236, 173-175)",
+        "research/wayfinder/FAMILY_FAILURES.jsonl (gap/52W/CLV/range greps: no dead stocks overnight-gap class found)"
+      ]
+    }
+  ],
+  "audit_items_adjudicated": {
+    "item_1_reopening_legality": "SUBSTANTIVELY_FAITHFUL_WITH_FINDING. The reserved second branch ('materially new evidenced source or owner plan naming a changed killer', verified exact in the STOCKS-NG6 registry row) is satisfied in substance by the owner instruction + frozen English reading + section 3 ledger: loud, bounded, non-widenable (sections 3/12), disclosed (sections 3/10). No new data source is claimed (branch 1 correctly NOT invoked). F-4 (MEDIUM): section 2's sentence 'names the acceptance battery as changed' overstates the verbatim words; axis/magnitude selection is the plan's instantiation of the grant.",
+    "item_2_relaxation_boundedness": "SOUND. All four axes frozen before any measurement, each with the standing value printed alongside and a frozen boundedness argument; non-widenable in-cycle (section 3 'not grounds to move the bar again in-cycle', section 12 'may not be widened in-cycle'; further relaxation = new owner instruction + new cycle). Nothing forbidden is relaxed: data identity/PIT (F1-F5 unchanged, adjusted-series P-12 single representation), costs (F6 bands + stress-2.0 PRIMARY + P-21 100bps ceiling unchanged), R1 net expectancy > 0, R2/R3/R5/R6, fold structure, per-fold floors, death contract BC-7/7a, drop-one, concentration, MDD, SPY-excess, reproduction F9, trial accounting section 10, S1 seal, GO-at-gate P-8 — all intact. The combined DSR double-axis loosening (N=grid AND alpha 0.10, with cumulative ~260@0.05 demoted to reported-only) is disclosed in the ledger and inside the grant; noted, not charged.",
+    "item_3_grid_and_selection": "FROZEN_BUT_NOT_REPRODUCIBLE. Grid is fully enumerable and frozen before measurement via the hashed search_space_manifest.json plus plan-frozen sub-grids; cap arithmetic holds (this audit's count: EVENT-UNWIND 9, GAP 12, 52W-HIGH 6, CLV-RANGE 4, DVOL-SHOCK 8, VOL-REGIME 4 = 43 <= 120; 37 if GAP is single-direction — both readings under cap). Selection is profitability-blind as designed (no return/PF/Sharpe term), but F-1 (HIGH): ambiguous tier statistic, inverted/unmotivated direction, family-dominant key collapsing breadth to one family, and no P-20 books-distinct rule among the <=3 scored candidates. Parameter sub-grids carry no tunable residue (percentile/tercile thresholds are construction rules, not tuned constants).",
+    "item_4_battery_integrity": "INHERITED_WITH_GAPS. R1-R6/K6/Stage-A match the NG6 battery with only the R0 floor and the DSR axes changed; no gate became tautological under 0.30 (0.30 still excludes the measured 0.320 and 0.353 classes; R2/R3/R5 retain out-earn/reproduce arms). 52W dual candidate/shadow role is explicitly hashed. But F-2 (HIGH): own-family-shadow convention and pooling operator unpinned, with the expected DOA of up to 3 families undisclosed and the section 2/3 recital omitting NG6's -0.320 form; F-3 (HIGH): the PBO gate is unsatisfiable in the plan's own outcome space; F-8 (LOW): no overnight-gap shadow for the GAP family (defensible, must be justified in the manifest).",
+    "item_5_frozenness_sweep": "GAPS_FOUND. Unpinned items that must be frozen pre-measurement: selection tier statistic + rho pooling operator (F-1/F-2); own-family-shadow convention (F-2); PBO disposition (F-3); C-CAL-HIST matching rule, R4 book definition, warmup length, EVENT-UNWIND construction components (F-5). K6 'exact test frozen at S' is lineage-consistent (NG6 identical) and lands before the A7 prelaunch audit — acceptable. No other 'pin later' value without a fail-closed gate was found; D1 manifest freeze precedes D2 and the plan bans performance-based narrowing on pain of BLOCKED_METHOD_CONTRACT.",
+    "item_6_contradictions_dead_refs_missing_laws": "F-3 (HIGH: PBO vs the prewritten survivor outcome). F-7 (LOW: '0.2010' typo; dangling 'P2' phase; unresolvable 'NG7 class adapted'; stale 'crypto ng 10/10' vs CRYPTO-NG4's 11/11; section 5/section 7 rho carve-out). P-law sweep: P-2, P-8, P-9, P-11, P-12, P-21, P-24, P-25, Q-6, Q-11, Q-12, BC-7, BC-7a, V7 all present and used consistently with NG6; P-20 is CONFIRMED ABSENT (folded into F-1/F-2) — the one predecessor law this plan needed and dropped. Pre-S scoring language is strong (section 5 tripwire, section 7 no-score-at-D2, A7 before GO, section 12). Registry citations all verified (see verification_notes)."
+  },
+  "recomputation_notes": [
+    "LINE COUNT: measured 385 newline-terminated lines (file ends at the section 13 closing fence) vs packet claim 396 — unresolvable in-lane, F-6.",
+    "SHA256: NOT_RUN_EXECUTION_REQUIRED — this lane has no Bash; corroborated by exact title, full section agreement with the packet description, and the frozen dispatch record .runtime/orchestrator_v3/tasks.json:9201 (same sha, same base, no line count). Mandatory Bash recheck at registration (F-6).",
+    "GRID COUNT: 9+12+6+4+8+4 = 43 configurations <= 120 cap (GAP counted as 2 directions x 3 thresholds x 2 holds). Cap arithmetic holds under either GAP reading.",
+    "NG6 NUMBERS: measured rhos 0.260/0.219/0.201 confirmed against the STOCKS-NG6 terminal registry row — which also records dvol_shock -0.320, omitted from the plan's recital (F-2); FOREX-NG5 0.353 confirmed; NG6 P0 census 2,169 symbols / 3.21M rows / folds 1,136/1,495/694 confirmed.",
+    "DENOMINATORS: stocks 42/42 and program 257/260 confirmed (HYPOTHESIS_LEDGER.md line 25 re-stamp + STOCKS-NG4 / FOREX-INTRA-BIDASK-V1 / FX-FUTURES-FRONTIER-V1 registry rows all carrying 257/260 unchanged as of 2026-09-17).",
+    "REGISTRY CLOSURES: STOCKS-NG6 TERMINAL STOCKS_NG6_BLOCKED_DATA_OR_SELECTION with the exact reopening clause; STOCKS-NG3 TERMINAL (EODHD /api/fundamentals 403); STOCKS-NG4 TERMINAL (FINRA ToU); DATA-EDGE-UNLOCK-V1 'NO STOCKS-NG7' + FTD/N-PORT RETROSPECTIVE_ONLY; PROSPECTIVE-SHADOW-V1 ACTIVE_LIGHT. Every closure the plan cites checks out; STOCKS-SEARCH-V1 is correctly absent from the registry (unregistered pending this audit).",
+    "P-20 EXISTENCE: research/wayfinder/LESSONS.md line 604 'A control that shares its state source with the arm is tautological, not a test' — carried by PLAN_stocks_ng5/ng6, PLAN_forex_ng5/ng7, PLAN_crypto_ng4; absent from PLAN_stocks_search_v1 (F-1/F-2).",
+    "PBO LINEAGE: CSCV minimum 8 configurations (CRYPTO-V14, FOREX-FREE-V8 rows) + frozen <8 alternative rule (FOREX-NG1 d0992d17, cited by RATES-NG1/COMMODITIES-NG1/VOL-NG1 tasks) — uncited by this plan (F-3).",
+    "FAMILY-FAILURES GAP/52W/CLV GREP: no dead stocks overnight-gap, 52-week-high, or CLV/accumulation class found; known stocks dead ancestry (SFV3-A5 reversal, NG5 breadth rotation, NG6 event class, V13 death proximity) is covered by the enumerated R0 inventory (F-8).",
+    "NOT_RUN items (execution required outside this lane): sha256 of the plan; git-level confirmation that the audited path at base bcbdb484 matches on-disk bytes; sha256 of this audit file for the handoff."
+  ],
+  "auditor_context_fresh": true
+}
