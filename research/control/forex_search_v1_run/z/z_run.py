@@ -764,6 +764,23 @@ WATCHED_ALLOW = {
         "METRIC_ON_PNL",
     ("adjudicate.py", "stage_a", "max(per_fold.values())"): "METRIC_ON_PNL",
     ("adjudicate.py", "stage_a", "fin_rest.mean()"): "METRIC_ON_PNL",
+    # F-2 remediation: DSR statistics live ENTIRELY in outcome space (the
+    # persisted P-11 per-period financed net returns of an already-built
+    # book) — never a state input; the state engines are untouched.
+    ("adjudicate.py", "deflated_sharpe_ratio",
+     "np.std(r, ddof=1)"): "METRIC_ON_PNL (DSR on the persisted P-11 "
+                           "per-period financed returns — outcome space)",
+    ("adjudicate.py", "deflated_sharpe_ratio",
+     "np.mean(r)"): "METRIC_ON_PNL (DSR on the persisted P-11 series)",
+    ("adjudicate.py", "deflated_sharpe_ratio",
+     "np.mean(z ** 3)"): "METRIC_ON_PNL (DSR skewness of the persisted "
+                         "P-11 series)",
+    ("adjudicate.py", "deflated_sharpe_ratio",
+     "np.mean(z ** 4)"): "METRIC_ON_PNL (DSR kurtosis of the persisted "
+                         "P-11 series)",
+    ("adjudicate.py", "p11_per_period_series",
+     "np.count_nonzero(daily)"): "CENSUS_COUNT (active-session census of "
+                                 "the persisted P-11 series)",
 }
 
 # len() is a SHAPE read (bounds checks), not a statistic — excluded.
