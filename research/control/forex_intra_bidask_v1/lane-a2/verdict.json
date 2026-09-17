@@ -1,0 +1,38 @@
+{
+  "schema": "zcode_orch_v3_handoff_per_check@1",
+  "lane": "a2",
+  "task_id": "fibv1-a2",
+  "cycle_id": "FOREX-INTRA-BIDASK-V1",
+  "generated_at_utc": "2026-09-17T08:20:00Z",
+  "per_checks": [
+    {"check": "worktree_state_frozen_sha", "verdict": "PASS", "evidence": "HEAD=74d0632cfe14a186fdedf7d9ff1666d9b596dc6c == dispatch_sha; branch orca/fibv1-a2; status --porcelain empty at start (verified in session log)"},
+    {"check": "canary_manifest_frozen_before_fetch", "verdict": "PASS", "evidence": "canary_manifest.json written before any content fetch; all dates/hours weekday-verified programmatically; frozen etiquette, 300MB cap, raw layout, fetch order recorded"},
+    {"check": "transport_reachability_of_official_surface", "verdict": "FAIL", "evidence": "33/33 dukascopy-bound attempts failed at connection level (ConnectionResetError) across verify/census/license, on both official hosts, on DoH-verified authentic origin IP (194.8.15.180) and Cloudflare IP (104.20.28.213), over HTTPS and plain-HTTP-with-Host-header, after full <=2-retry backoff etiquette. Controls: TLS to example.com OK; TLS to the SAME www.dukascopy.com IP with non-Dukascopy SNI OK. Failure is hostname-keyed (SNI/Host) network-path filtering, not a dead source."},
+    {"check": "local_dns_integrity", "verdict": "FAIL", "evidence": "system resolver returns 127.0.0.1 for datafeed.dukascopy.com and www.dukascopy.com (fetch_transcripts.jsonl verify/dns_system); authentic addresses obtained via DNS-over-HTTPS: datafeed -> CNAME chain -> 194.8.15.180; www -> 104.20.28.213/172.66.145.22 (saved under raw/_meta/dns/, hashed)"},
+    {"check": "url_pattern_verification", "verdict": "NOT_RUN", "evidence": "candidate pattern https://datafeed.dukascopy.com/datafeed/<pair>/<YYYY>/<MM-1>/<DD>/<HH>h_ticks.bi5 never confirmed: zero response bytes, zero official pages reachable; pattern remains an unconfirmed candidate"},
+    {"check": "availability_head_census_200_cells", "verdict": "BLOCKED", "evidence": "census_results.json: all 200 cells (5 pairs x 5 years x 8 stratified hours incl. DST-boundary, Friday-close, Sunday-open) UNREACHABLE_TRANSPORT; 5 representative probes (one per pair, 2026 DST-boundary cell) executed per frozen etiquette and all failed identically; remaining 185 probes withheld under the frozen no-escalation rule because the failure is URL-independent connection-level"},
+    {"check": "canary_fetch_dst_window_2026-03-07_20:00_to_2026-03-09_00:00", "verdict": "NOT_RUN", "evidence": "fetch_transcripts.jsonl canary/phase_gate record: SKIPPED_UNREACHABLE; zero DST-window bytes exist"},
+    {"check": "canary_fetch_historical_day_2019-10-30", "verdict": "NOT_RUN", "evidence": "same gate; zero bytes"},
+    {"check": "canary_fetch_recent_day_2026-09-09", "verdict": "NOT_RUN", "evidence": "same gate; zero bytes"},
+    {"check": "determinism_refetch_sha256_all_match", "verdict": "NOT_RUN", "evidence": "requires >=5 already-fetched files; zero files exist"},
+    {"check": "two_sided_quote_proof_from_bytes", "verdict": "NOT_RUN", "evidence": "decode_report.json: 0 source files decoded; stride/LZMA/field-layout/scale/two-sidedness/monotonicity all UNVERIFIED candidates; decoder validated on synthetic fixture only (selftest_report.json, 13/13 PASS, tool-only scope)"},
+    {"check": "hour_boundary_utc_semantics_quiet_vs_active", "verdict": "NOT_RUN", "evidence": "requires decoded ticks; none exist"},
+    {"check": "license_terms_classification", "verdict": "BLOCKED", "evidence": "license_evidence.json: UNAVAILABLE_FAIL_CLOSED; 0 pages hashed, 0 verbatim clauses; 3 candidate official pages x 3 attempts all reset; nothing accepted on owner's behalf; licensing substance UNMEASURED (co-blocker, same root cause)"},
+    {"check": "byte_cap_compliance_300MB", "verdict": "PASS", "evidence": "total downloaded bytes = 664 (two DoH JSON answers from cloudflare-dns.com; zero bytes from the source); cap 300000000; no breach possible; byte-cap guard armed but never triggered"},
+    {"check": "evidence_chain_integrity", "verdict": "PASS", "evidence": "43 transcript records (every DNS/TLS/HTTP interaction); resumable driver; raw bytes only under /Users/hoangminhlong/.my-quantitative-data/forex-intra-bidask-v1/raw/ (outside git); lane dir staged by pathspec only"}
+  ],
+  "lane_verdict": "BLOCKED_TRANSPORT",
+  "verdict_rule_applied": "Plan section 7 rule 2 (first matching rule): A2 transport fails -> BLOCKED_TRANSPORT. Rule 1 (license) NOT applied because the license gate did not fail on substance; it is UNAVAILABLE (UNAVAILABLE_FAIL_CLOSED) from the identical root cause, and is recorded as co-blocker B2. Two-sided proof was never reached (rule 3 not adjudicable).",
+  "blockers": [
+    "B1 (terminal, this lane): network-path filtering of dukascopy domains in this environment - local DNS poisoned to 127.0.0.1 for *.dukascopy.com AND TLS/HTTP resets keyed on SNI/Host regardless of destination IP. Blocks canary fetches, availability census, pattern verification and license-page hashing. No filter evasion (VPN/ECH/domain-fronting/SNI spoofing) was attempted; that would be unlawful circumvention.",
+    "B2 (co-blocker, must be re-cleared independently): license/terms class UNAVAILABLE_FAIL_CLOSED - zero official pages hashable, so no use/redistribution determination exists. Transport restoration alone does NOT clear this gate."
+  ],
+  "bytes_downloaded_total": 664,
+  "bytes_from_source": 0,
+  "byte_cap": 300000000,
+  "incidents": [
+    "INC-FIBV1-A2-1 (environment): command-sandbox DNS initially made ALL hosts resolve to 127.0.0.1; re-verification with sandbox disabled showed real addresses for example.com but 127.0.0.1 specifically for dukascopy domains, and TLS resets persisted unsandboxed -> genuine network-path filtering, not a sandbox artifact. Disclosed, not circumvented.",
+    "INC-FIBV1-A2-2 (self-caught defect, fixed in-session): fetch_driver.dukascopy_reachable() initially counted the dns_system record's result:'OK' (a poisoned 127.0.0.1 answer) as transport reachability, wrongly skipping census/license/canary on the first run; gate corrected to consider only http/tls_handshake successes and phases re-run. Verify phase not repeated (driver resumable).",
+    "INC-FIBV1-A2-3 (disclosure): pre-manifest ad-hoc reachability diagnostics (approx. 6 DNS lookups, 6 TCP/TLS probes, 1 curl control, all reset/OK, zero content) were run before canary_manifest.json was written, to verify the environment could reach the surface at all as the dispatch's VERIFY FIRST requires. All subsequent probing ran through the frozen manifest + driver."
+  ]
+}
