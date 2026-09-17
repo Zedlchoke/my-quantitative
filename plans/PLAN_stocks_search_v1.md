@@ -49,19 +49,26 @@ trial accounting.
 Standing law at the stocks frontier (STOCKS-NG6 terminal, 2026-09-17):
 "reopening: materially new evidenced source or owner plan naming a changed
 killer." STOCKS-NG6's family died at D2 R0_VETO_ALL with measured event-
-conditional rho 0.260 / 0.219 / 0.201 against the immovable 0.20 floor, on a
+conditional rho 0.260 / 0.219 / 0.201 AND the BINDING dvol_shock form at
+-0.320 (|rho| 0.320, registry row) against the immovable 0.20 floor, on a
 P0-proven feasible data plane (2,169 symbols, 3.21M rows, folds 1,136/1,495/
 694). Nothing about the data plane changed here — NO new source is claimed.
-What changed is the killer: the owner instruction of 2026-09-17 names the
-acceptance battery as changed, per the reserved second branch of the
-reopening clause. This is an owner-plan-named changed killer, DISCLOSED as
-such and never dressed up as new information. A7 must adjudicate that this
-reading is faithful to the reserved clause (audit item #1).
+What changed is the killer. The owner instruction of 2026-09-17 names a
+POSTURE (open a strategy search; a mild bounded amount of overfit is
+acceptable; stocks and forex) — it does not name the R0 floor, the DSR
+parameters or "the acceptance battery" in so many words. The specific axes
+and magnitudes of §3 are THIS PLAN's frozen instantiation of that grant,
+chosen by the Lead before any measurement and disclosed as such; the
+reserved second branch of the reopening clause is exercised by this
+owner-authorized plan naming the changed killer, never dressed up as new
+information or as literal owner words. A7 must adjudicate that this reading
+is faithful to the reserved clause (audit item #1).
 
 Other ancestry facts that must not travel silently:
 
 - The claim "the 0.20 bar killed every NG proposal" is FALSE as stated
-  (NG6 §2 correction re-inherited): crypto ng 10/10 killed, FXNG1 4/4,
+  (NG6 §2 correction re-inherited, count updated): crypto ng 11/11 killed
+  (CRYPTO-NG4 terminal; NG6's own 10/10 figure predates it), FXNG1 4/4,
   RATES 1/4, VOL 2/4, COMM 1/4 were eligible. The relaxed floor is not a
   response to a universal kill; it is a bounded owner grant.
 - STOCKS-NG3 (EODHD fundamentals 403) and STOCKS-NG4 (FINRA ToU) stay dead;
@@ -87,9 +94,10 @@ search breadth              1 family + 1 neighbour      <= 120 enumerated
 
 Boundedness argument, frozen: 0.30 is a 50% relative relaxation of the
 standing floor, chosen before any this-cycle rho exists; it re-admits the
-STOCKS-NG6 measured class (0.201–0.260, public committed history) and does
-NOT re-admit the FOREX-NG5 momentum kill class (0.353). alpha 0.10 is one
-notch. Every result artifact prints BOTH the standing and relaxed values.
+STOCKS-NG6 measured forms at 0.201–0.260 (public committed history) and does
+NOT re-admit NG6's own BINDING dvol_shock form (|rho| 0.320) nor the
+FOREX-NG5 momentum kill class (0.353). alpha 0.10 is one notch. Every result
+artifact prints BOTH the standing and relaxed values.
 
 NOT relaxed (mission invariant, non-negotiable): data identity and PIT
 class, cost bands and stress-2.0 primary, R1 net expectancy > 0, R2/R3/R5/
@@ -124,7 +132,10 @@ F4 COHORT + COVERAGE       death-inclusive cohort census; per-name served-
                            (BC-7a) counted BEFORE any scored computation;
                            bookability floors $1.00 adjusted close / $2M
                            trailing 60-session median dollar volume declared
-                           ex ante; warmup attrition CENSUSED.
+                           ex ante; warmup law (NG6 A4 re-inherited): 252
+                           served sessions, first eligible decision no
+                           earlier than the 253rd served session per name;
+                           warmup attrition CENSUSED.
 F5 CLOCK + EXECUTION       ONE frozen daily decision clock (decision at t
                            close; fills at t+1 open and t+1+H opens);
                            bar-readable close+1 availability (V7 law);
@@ -141,10 +152,10 @@ F7 BENCHMARK CONSTRUCTION  SPY buy-and-hold exposure-matched; C-RANDOM-
                            TIMING clock twin; total-return basis.
 F8 FOLD FREEZE (Q-6)       three chronological folds frozen BEFORE any D2
                            diagnostic; RECENT-window fired-population floor
-                           >= 30 decisions/fold measured at P2 (fail-closed
-                           kill); folds span at least one major
-                           deleveraging regime; 2008Q4–2009 and 2020-03
-                           never share a fold.
+                           >= 30 decisions/fold measured at the P0 census
+                           F8 output (fail-closed kill); folds span at
+                           least one major deleveraging regime; 2008Q4–2009
+                           and 2020-03 never share a fold.
 F9 REPRODUCIBILITY         census code, raw-request manifest, digest
                            manifest, calendar/clock contract, cost bands,
                            folds, AND the frozen search-space manifest
@@ -166,16 +177,22 @@ grid cap          <= 120 configurations total
 config ID         SSS-<FAMILY>-<PARAMKEY>, stable, lexicographic
 families (6)      with FROZEN parameter sub-grids, all parameters declared
                   from construction logic (Q-12), never tuned:
- 1 EVENT-UNWIND   failed K-session-low breakdown w/ same-session reclaim,
-                  K in {21, 63, 252} x hold H in {5, 10, 20}
-                  (NG6 anchor class, grid-extended)
+ 1 EVENT-UNWIND   NG6 anchor construction, grid-extended: (1) BREAK
+                  adj_low_t < min(adj_low_{t-K..t-1}); (2) RECLAIM
+                  adj_close_t > that prior K-session low; (3) RANGE
+                  (close_t - low_t)/(high_t - low_t) >= 0.5; (4)
+                  PARTICIPATION dollar_volume_t >= 1.5x trailing
+                  60-session median; K in {21, 63, 252} x hold
+                  H in {5, 10, 20}
  2 GAP            overnight-gap fade and confirm, gap threshold at
                   {25th, 50th, 75th} percentile of trailing 252-session
                   gap distribution, H in {1, 5}
  3 52W-HIGH       proximity-to-252-session-high drift, band in
                   {2%, 5%, 10%} below the high, H in {5, 20}
- 4 CLV-RANGE      20-session CLV accumulation slope state (NG7 class
-                  adapted), slope window in {5, 10}, H in {5, 10}
+ 4 CLV-RANGE      20-session CLV accumulation slope state — CLV_t =
+                  ((C-L)-(H-C))/(H-L) per FOREX-NG7 §5
+                  FNG7-A2-P1-ABSORB, cross-plane adaptation to equities
+                  DISCLOSED; slope window in {5, 10}, H in {5, 10}
  5 DVOL-SHOCK     dollar-volume ratio vs trailing 60-session median,
                   ratio in {1.5x, 3.0x} x direction {fade, confirm},
                   H in {1, 5}
@@ -186,15 +203,47 @@ long-only         no short leg (no borrow-cost authority — FOREX-NG6 F4
                   SUBSTITUTE controls, honestly labelled.
 ```
 
-Selection inside the grid (frozen BEFORE D2, outcome-blind): survivors of
-D2 are ranked by (i) ancestry-distance tier (family's min measured |rho|
-descending — construction property of the measurement, applied
-mechanically), then (ii) P0 fired-population size descending, then (iii)
-lexicographic config ID; the top <= 3 become scored candidates. NO
+Selection inside the grid (frozen BEFORE D2, outcome-blind; every
+statistic consumed below is a D2 ancestry/census measurement, never a
+performance statistic). Definitions, pinned: for each configuration c,
+W_c = max over ALL frozen R0 shadows s of |pooled_rho(c, s)|, where
+pooled_rho(c, s) is the Pearson correlation of the full-S0-window daily
+book-return series of c against the daily return series of shadow s on
+the P-12 representation (per-fold rhos computed and REPORTED as
+disclosure only, never gating). Family tier value T_F = min over the
+family's D2-surviving configurations of W_c (the family's best-case
+distance from lethal ancestry). Ranking, applied mechanically: (i)
+families ASCENDING by T_F — most novel first; rationale: the scored
+budget goes to the greatest ancestry distance, the direction the
+novelty doctrine requires; (ii) within a family, configurations
+ascending by W_c, tie-break lexicographic config ID; (iii) selection is
+FAMILY-STRATIFIED round-robin over the tier-ordered families — one
+configuration per family per round, at most 2 scored cells per family,
+until 3 cells are filled (breadth is the point). P-20 books-distinct at
+S: a candidate whose pooled |rho| vs any higher-ranked already-selected
+candidate exceeds 0.98 is SELF-SUBSUMED, skipped, and the next candidate
+by the frozen order is taken; an unmeasurable pairwise rho makes the
+slot NOT_ADJUDICABLE, fail-closed — never an inferred PASS. The
+corrected order above carries VERBATIM into the D1 manifest freeze. NO
 return, expectancy, PF, Sharpe or any performance statistic may be
-computed for ANY configuration before the S freeze; a performance-based
+computed for ANY configuration before the S freeze (the §7 D2 ancestry
+rho, feasibility floors and fired-population censuses are NON-SCORED
+diagnostics explicitly carved out of this ban); a performance-based
 narrowing at any point consumes scored cells for everything narrowed-on
 and is a BLOCKED_METHOD_CONTRACT incident, not a do-over.
+
+The hashed manifest is REQUIRED to contain, fail-closed (a missing field
+is a D1 freeze failure): per-configuration full construction definitions
+(including EVENT-UNWIND component membership per the grid above); each
+family's C-COMPLEMENT and component-only (R4) book definitions; the
+C-CAL-HIST matching rule (§6); the warmup rule (§4 F4); each
+configuration's sign as frozen from construction logic (NG7 F3b pattern
+— R1 adjudicates the frozen sign, never selects it; where construction
+logic admits both directions they are enumerated as distinct
+configurations inside the cap); per-family expected-DOA disclosure under
+the §6 R0 own-family-shadow convention; and the per-family
+ancestry-search basis for R0 shadow coverage (grep record against
+FAMILY_FAILURES.jsonl / the ledger).
 
 ## 6. Mandatory controls and killers
 
@@ -209,8 +258,14 @@ C-COMPLEMENT        the family's own causal placebo (e.g. raw breakdown
                     CLV-RANGE) — declared ex ante per family
 C-RANDOM-TIMING     every-63rd-session H-session clock twin
 C-CAL-HIST          deterministic calendar book matched to the fired-date
-                    distribution; must NOT out-earn the candidate (R6
-                    extends to it)
+                    distribution on day-of-week x month-position buckets
+                    (bucket = (weekday, {first-half, second-half of
+                    month})); deterministic rule declared ex ante BEFORE
+                    any measurement; minimum twin population 10 fired
+                    decisions per bucket per fold — a sub-floor bucket is
+                    NOT_ADJUDICABLE and disclosed, never silently
+                    skipped; must NOT out-earn the candidate (the R5
+                    clock rule extends to it)
 C-MARKET            SPY buy-and-hold, exposure-matched
 C-DELAY-H           identical candidate entering H sessions late — Q-11
                     invalid-null class: out-earning delay converts to a
@@ -233,16 +288,32 @@ beta state; DGS10-LEVEL state; event-calendar geometry (P-24 class); V13
 death-event proximity; STOCKS-NG5 relative-breadth rotation state;
 dividend-decomposition divergence (non-scored, fail-closed if
 distribution-dominated); 52-week-high proximity generic (this grid makes
-it a candidate AND a shadow for other families — both roles hashed).
+it a candidate AND a shadow for other families — both roles hashed);
+overnight-gap state (prior-session close-to-open gap, fade/confirm
+direction classes — added for the GAP family; the manifest records the
+ancestry-search basis: no dead stocks overnight-gap class found in
+FAMILY_FAILURES.jsonl / the ledger).
 
 Ordered kill rules (first binding kills; all NET, total-return basis;
 every control null-validated before it kills):
 
 ```text
-R0  pre-score ancestry veto   pooled |rho| > 0.30 (owner-relaxed, §3) vs
-                              ANY R0 shadow on the frozen decision grid
-                              -> configuration dies pre-score; the 0.2010
-                              standing value is printed alongside
+R0  pre-score ancestry veto   W_c > 0.30 (owner-relaxed, §3; W_c defined
+                              in §5) vs ANY R0 shadow on the frozen
+                              decision grid -> configuration dies
+                              pre-score. CONVENTIONS (pinned): every
+                              configuration is tested against the FULL
+                              frozen inventory INCLUDING its own family's
+                              shadow class — no exemptions; the own-class
+                              rho is computed and REPORTED separately as
+                              disclosure, never carved out. Families whose
+                              state class IS a listed shadow (DVOL-SHOCK,
+                              VOL-REGIME, 52W-HIGH) are expected-DOA or
+                              survive only through construction distance —
+                              disclosed in the manifest, never silently
+                              dropped. Veto is STRICTLY > 0.30 (equality
+                              passes), measured to 6 decimal places; the
+                              0.20 standing value is printed alongside
 R1  expectancy                net expectancy <= 0 at stress 2.0
                               -> REJECT_ALL
 R2  long-market reduction     candidate <= max(C-MARKET, C-RANDOM-TIMING)
@@ -251,8 +322,16 @@ R2  long-market reduction     candidate <= max(C-MARKET, C-RANDOM-TIMING)
                               fold PnL concentration <= 50%
 R3  mechanism specificity     C-COMPLEMENT out-earns OR reproduces
                               >= 0.5x same-sign in >= 2/3 folds -> REJECT
-R4  component placebo         family component-only book reproduces
-                              >= 0.5x same-sign -> REJECT
+R4  component placebo         the family's component-only book (declared
+                              per family in the D1 manifest: the
+                              conditioning filter applied WITHOUT the
+                              directional/trigger component — e.g.
+                              range+participation filter-only for
+                              EVENT-UNWIND, threshold-state-only for GAP)
+                              reproduces >= 0.5x same-sign -> REJECT;
+                              where a family admits no such analog, R4 is
+                              NOT_ADJUDICABLE for that family, disclosed,
+                              never an inferred PASS
 R5  clock geometry            C-RANDOM-TIMING out-earns -> REJECT
 K6  slow-drift combination    {candidate, C-DELAY-H} x {state, complement}
                               mutually indistinguishable within fold noise
@@ -268,9 +347,18 @@ from the numerator, reported separately; death-censoring invariance binds
 the verdict AND every Stage-A gate); PIT mutation; per-period series
 persisted (P-11) for DSR with N = frozen grid size at alpha 0.10
 (owner-relaxed) AND program-cumulative ~260 at alpha 0.05 (reported, not
-gating); PBO fail-closed < 8 configurations. Disposition rule: a control
-that is unpopulated or has an invalid null is NOT_ADJUDICABLE, never
-silently skipped.
+gating); PBO disposition, prewritten for the <=3-cell regime (the frozen
+V17/FOREX-NG1 alternative, commit d0992d17; CRYPTO-V14/FOREX-FREE-V8
+lineage): CSCV PBO requires >= 8 performance-evaluated configurations —
+§5's freeze plus this cycle's 3-cell budget make that unreachable BY
+CONSTRUCTION, so PBO is NOT_RUN, declared fail-closed and printed on
+every result; a survivor with PBO NOT_RUN is bookable ONLY with the
+NOT_RUN label carried into the terminal outcome name and the §10 result
+language; no performance may be computed for PBO outside the <=3 scored
+cells (any such computation is a §5 tripwire). The DSR-at-N=grid gate
+carries the selection-overfitting adjudication. Disposition rule: a
+control that is unpopulated or has an invalid null is NOT_ADJUDICABLE,
+never silently skipped.
 
 ## 7. D2 ancestry and feasibility gate (non-scored)
 
