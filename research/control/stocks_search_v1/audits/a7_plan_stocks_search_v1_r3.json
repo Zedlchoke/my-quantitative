@@ -1,0 +1,99 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "STOCKS-SEARCH-V1",
+  "audited_sha256": "216549cd8981d0696dd87cdb14589b920082d0d00e939d9acd81ca9cbbcff8c3",
+  "audited_sha256_basis": "STATED BASIS (Lead-measured 2026-09-17). In-lane instruments per packet: line count exactly 514 numbered lines verified; line 1 title byte-matches '# PLAN STOCKS-SEARCH-V1 — bounded construction-blind strategy search (owner-relaxed acceptance)'; §0–§13 structure present and ordered; line 514 is the §13 closing fence and is EOF. sha256 not recomputable in-lane (no Bash). No FROZEN_SHA_MISMATCH.",
+  "base_sha": "e353a78c9c305af9a2499da766ee3f5893ecc821",
+  "branch": "main",
+  "worktree": "/Users/hoangminhlong/my-quantitative",
+  "verdict": "REFUSED",
+  "verdict_rationale": "One HIGH finding (F-1): the PBO NOT_RUN survivor-label chain is internally contradictory across §6/§10/§11 — §6 makes the NOT_RUN label a bookability precondition carried into the terminal outcome name AND the §10 result language, but §11's frozen survivor token 'STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY' and §10's mandated verbatim disclosure string cannot carry it. A literal T-close yields a bookable survivor record missing a mandatory fail-closed NOT_RUN disclosure — conclusion-changing per the mission invariant that missing evidence is NOT_RUN and must be labelled. Per the packet rule, any HIGH forces REFUSED. The remaining findings (2 MEDIUM, 4 LOW) are byte-fixable and do not independently block.",
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "HIGH",
+      "section": "§6 (lines 391-402) vs §10 (lines 460-469) vs §11 (lines 471-483)",
+      "quote_bytes": "§6 lines 396-399: 'a survivor with PBO NOT_RUN is bookable ONLY with the NOT_RUN label carried into the terminal outcome name and the §10 result language'; §11 lines 479-481: 'STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY (only if Stage-A passes; carries the §3 disclosure; never a profitability claim)'; §10 lines 467-469: 'Any result language must carry the §3 relaxation disclosure verbatim: \"accepted under owner-relaxed acceptance battery (R0 0.30 / DSR alpha 0.10 at N = grid)\"'.",
+      "why_wrong": "§6 imposes a bookability precondition: the PBO NOT_RUN label must be carried into (a) the terminal outcome name and (b) the §10 result language. The §11 prewritten survivor token is frozen without any PBO_NOT_RUN marker and its parenthetical enumerates only the §3 disclosure; §10's mandated verbatim string likewise contains no PBO NOT_RUN clause. Three sections of the same frozen plan disagree on the mandatory content of the only positive terminal outcome. A terminal close that honors §11's exact token and §10's verbatim string satisfies their letter while omitting the §6-mandated label, producing a bookable-survivor record in which the fail-closed PBO NOT_RUN evidence state is unlabeled. This is a conclusion-changing disclosure defect in the exact space (NOT_RUN honesty) the program treats as a mission invariant, and it fits the audit-item-6 class 'anything the latest remediation newly broke': the §6 PBO paragraph reads as remediation text whose label requirement was never propagated into the §10/§11 language.",
+      "required_remediation": "Strengthen in the fail-closed direction: amend the §11 token to carry the label (e.g. STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_PBO_NOT_RUN) and extend §10's mandated disclosure string to include the PBO NOT_RUN clause (e.g. '; PBO NOT_RUN (fail-closed, <8 configurations)'), so §6's precondition is satisfiable verbatim by any compliant close."
+    },
+    {
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "section": "§5 (lines 261-272) vs §6 R4/R5 (lines 360-375)",
+      "quote_bytes": "§5 lines 263-265: 'each family's C-COMPLEMENT and component-only (R4) book definitions'; §6 R5 lines 366-372: 'R5 component placebo: the family's component-only book (declared per family in the D1 manifest: ...)'",
+      "why_wrong": "The D1 manifest's fail-closed required-fields list attributes the component-only book definitions to R4, but in the frozen §6 numbering R4 is the C-REVERSAL-PLAIN reversal reduction (a single global control book, not per-family) and R5 is the component placebo that consumes the per-family component-only books. The label is a wrong cross-reference (should be R5). Damage is contained because §6 R5 independently mandates the same per-family declaration in the D1 manifest, so the battery cannot silently lose R5; but a checklist validator honoring §5's letter demands an incoherent artifact ('per-family R4 definitions'), and the two authorities disagree inside a fail-closed freeze contract.",
+      "required_remediation": "Change '(R4)' to '(R5)' in the §5 required-fields list (and consider citing both R3's C-COMPLEMENT and R5's component-only books explicitly)."
+    },
+    {
+      "id": "F-3",
+      "severity": "MEDIUM",
+      "section": "§5 family 6 VOL-REGIME (lines 209-217)",
+      "quote_bytes": "§5 lines 209-210: 'realized-vol tercile-conditional drift, lookback {21, 63}, H in {5, 20}'; lines 216-217: 'long in the construction-favoured tercile, flat otherwise (long-only law)'",
+      "why_wrong": "The tercile ESTIMATOR is pinned (close-to-close log-return std ddof=1; 1/3 and 2/3 quantiles, linear interpolation, trailing 252-session window, causal, refreshed daily) but the SIGN-bearing parameter — WHICH tercile is 'construction-favoured' — is neither named nor given a construction derivation, unlike every other family's sign/direction treatment. This also contradicts the plan's own enumeration rule (§5 lines 266-269: 'where construction logic admits both directions they are enumerated as distinct configurations inside the cap'), which GAP and DVOL-SHOCK honor by enumerating fade AND confirm as distinct configurations; VOL-REGIME instead freezes a single unspecified 'favoured' tercile. The residual degree of freedom (long-low-vol vs long-high-vol) is outcome-adjacent: it is exactly the axis R1 adjudicates, and leaving it as an unnamed ex-ante label risks a literature-prior sign choice entering without disclosure. Mitigations that keep this below HIGH: the sign must be pinned in the hashed D1 manifest before any measurement ('each configuration's sign as frozen from construction logic', lines 266-268), and R1 + Stage-A still bind on whichever sign is frozen.",
+      "required_remediation": "Pin the favoured tercile per lookback (low/mid/high) with its construction-logic derivation in the plan, or enumerate both tercile-directions as distinct configurations inside the cap, symmetric with GAP/DVOL-SHOCK."
+    },
+    {
+      "id": "F-4",
+      "severity": "LOW",
+      "section": "§3 (lines 104-114) vs §6 K6 (lines 377-379) and Stage-A (lines 382-388)",
+      "quote_bytes": "§3 lines 105-111: 'NOT relaxed (mission invariant, non-negotiable): ... the full R2/R3/R4/R5/R6 control-out-earn and reduction rules ... drop-one stability, the PBO NOT_RUN-fail-closed disposition (§6), concentration <= 50%, MDD <= 15%, SPY-excess fold rule ...'",
+      "why_wrong": "The §3 not-relaxed enumeration omits K6 (slow-drift combination) and the Stage-A fold-positive-share > 50% kill (and the PIT-mutation control and long-only law). Because §3 frames the grant as relaxing EXACTLY the four tabulated axes, these omissions are cosmetic — K6 and fold-positive-share stand unchanged regardless — but the list is presented as the battery-complete non-negotiables and is not.",
+      "required_remediation": "Add K6 and the fold-positive-share gate (and PIT mutation) to the §3 not-relaxed enumeration."
+    },
+    {
+      "id": "F-5",
+      "severity": "LOW",
+      "section": "§5 sparse-book convention (lines 231-239) vs §6 R0 inventory (lines 311-315)",
+      "quote_bytes": "§6 lines 313-315: 'event-conditional 5d/21d return and drawdown-depth short-term-reversal states (BINDING — sparse books understate in cohort-wide rho)'; §5 lines 233-237: 'ADDITIONALLY, for any family whose fired-day share is below 30%, a fired-day-conditioned rho against the shadow's fired-day returns is computed'",
+      "why_wrong": "The R0 inventory tags the event-conditional reversal states BINDING, while §5's operational convention consumes the fired-day-conditioned form only for families whose fired-day share is below 30%. A family sitting at or above 30% fired-day share faces cohort-wide rho only against states whose own annotation says cohort-wide rho understates sparse books. The convention is fail-closed in direction (max of the two |rho| where triggered) and frozen pre-measurement, so this is a tension, not a hole, but the 30% boundary and the BINDING tag are not reconciled.",
+      "required_remediation": "State in §5 that for shadows tagged BINDING the fired-day-conditioned rho is computed and consumed for ALL families (or justify the 30% threshold against the BINDING annotation)."
+    },
+    {
+      "id": "F-6",
+      "severity": "LOW",
+      "section": "§5 required fields (lines 261-272) and §4 F9 (lines 163-168) vs §6 R0 (lines 311-328)",
+      "quote_bytes": "§6 lines 311-313: 'R0 shadow inventory (ENUMERATED, hashed and committed BEFORE any rho; under-enumerated inventory = invalid PASS, fail-closed)'; §5 required-fields list lines 261-272 does not name it",
+      "why_wrong": "The hashed R0 shadow inventory — the artifact the veto consumes — is not among the D1 manifest's fail-closed required fields, and its artifact home is not pinned (F9 pins 'the frozen search-space manifest' only). Missing shadows fail loudly (no rho computable; under-enumeration = invalid PASS), so this cannot pass silently, but the freeze contract should name where the hashed inventory and the S0 measurement-window extent live. Related minor unpins folded here: the GAP percentile interpolation method and the S0 window definition are not stated in-plan.",
+      "required_remediation": "Add to the §5 required-fields list (or F9): the hashed R0 shadow inventory with its ancestry-grep basis, the S0 window boundaries, and the percentile interpolation convention."
+    }
+  ],
+  "audit_items_adjudicated": {
+    "1_reopening_legality": {
+      "status": "FAITHFUL",
+      "note": "Standing law verified verbatim in the registry STOCKS-NG6 closure row: 'reopening: materially new evidenced source or owner plan naming a changed killer'. The plan exercises the reserved second branch and discloses precisely what it is: the owner instruction (2026-09-17, verbatim quoted) names a POSTURE (a search cycle; a mild bounded amount of overfit acceptable; stocks and forex), not literal killer words; §3's axes are declared as the plan's frozen instantiation, chosen by the Lead before any measurement, never dressed up as new information. No new source is claimed; the data plane is explicitly unchanged. NG3 (fundamentals 403), NG4 (FINRA ToU) and DATA-EDGE-UNLOCK-V1 (FTD/N-PORT RETROSPECTIVE_ONLY, 'NO STOCKS-NG7') closures are re-inherited and this cycle consumes only /eod. The name STOCKS-NG7 is deliberately avoided per the DATA-EDGE closure. The reading does not permit the Lead to move a killer bar unilaterally: any further in-cycle relaxation is precluded (§3, §12). Adjudicated legal under the reserved clause."
+    },
+    "2_grant_boundedness": {
+      "status": "BOUNDED",
+      "note": "Exactly four axes relaxed (R0 0.30; DSR N grid<=120; DSR alpha 0.10; breadth <=120 enumerated configs with scored budget still 3). 0.30 re-admits the registry-committed NG6 forms 0.201/0.219/0.260 and excludes the BINDING dvol_shock |0.320| and FOREX-NG5 0.353 (both registry-corroborated); both values print alongside standing values. Nothing mission-forbidden is relaxed: S1 seal, GO-at-gate, cost bands with stress-2.0 primary, R1, R2-R6, K6, Stage-A in full, folds, floors, death contract, reproduction, trial accounting all stand. Defect: the not-relaxed enumeration omits K6/fold-positive-share/PIT-mutation (F-4, LOW)."
+    },
+    "3_grid_and_selection_reproducibility": {
+      "status": "REPRODUCIBLE_WITH_FINDINGS",
+      "note": "Cap arithmetic verified: EVENT-UNWIND 9 (3 K x 3 H), GAP 12 (2 dir x 3 pct x 2 H), 52W-HIGH 6, CLV-RANGE 4, DVOL-SHOCK 8, VOL-REGIME 4 => 43 <= 120. W_c pinned (max |pooled rho| over ALL shadows incl. own-family, per-fold rhos disclosure-only); sparse-book convention fail-closed (max of cohort-wide vs fired-day-conditioned below 30% share) and itself a required manifest field; T_F = min W_c with ASCENDING order verified to actually put most-ancestry-distant families first (small W_c = far from ancestry); lexicographic tie-breaks; family-stratified round-robin <= 2 cells/family to 3 cells; P-20 books-distinct 0.98 at S with unmeasurable rho = NOT_ADJUDICABLE fail-closed; corrected order carries verbatim into the D1 freeze; performance-before-S ban with explicit D2 carve-out and BLOCKED_METHOD_CONTRACT tripwire. Findings F-2 (R4/R5 mislabel) and F-3 (VOL-REGIME favoured tercile unpinned, inconsistent with the direction-enumeration rule)."
+    },
+    "4_battery_integrity_under_R0_030": {
+      "status": "INTEGRITY_HELD_EXCEPT_F1",
+      "note": "R0 conventions: every configuration tested against the FULL hashed inventory INCLUDING its own family's shadow class, no exemptions, own-class rho additionally reported; expected-DOA disclosures for DVOL-SHOCK/VOL-REGIME/52W-HIGH/GAP/EVENT-UNWIND are manifest-mandatory, never silently dropped; CLV-RANGE carries its own-class shadow; veto strictly > 0.30 to 6dp with the 0.20 standing value printed. R1-R6 and K6 correctly re-inherited from the NG6 battery (R2 on the max of C-MARKET/C-RANDOM-TIMING; R3 generalized to per-family C-COMPLEMENT; R4 C-REVERSAL-PLAIN kept BINDING and correctly argued MORE load-bearing under the relaxed floor; R5 NOT_ADJUDICABLE path honest; R6 extended to C-CAL-HIST; C-DELAY-H stays Q-11 invalid-null, feeding K6). C-CAL-HIST bucket rule pinned ((weekday, month-half), ex-ante deterministic rule, min 10 twin decisions/bucket/fold, sub-floor NOT_ADJUDICABLE disclosed). Stage-A matches the remediated NG6 BC-7 form (censored legs excluded from numerator; invariance binds verdict AND every gate). PBO disposition: CSCV >= 8 law matches NG6/CRYPTO-V14 lineage; <=3 cells makes PBO NOT_RUN BY CONSTRUCTION, declared fail-closed and printed — the disposition itself is sound and commit d0992d17 is live (FOREX-NG1 dispatch/start SHA, cited as the PBO fail-closed precedent in independent commodities-ng1 and rates-ng1 lane artifacts). Defect F-1 (HIGH): the survivor label chain §6 vs §10/§11 is contradictory; minor tension F-5."
+    },
+    "5_frozenness_sweep": {
+      "status": "PRESENT_WITH_MINOR_GAPS",
+      "note": "Manifest required-fields list is fail-closed framed but misses the R0 shadow inventory artifact (F-6). Warmup law present (252 served sessions / 253rd decision, attrition censused). Cost bands BAND_BPS {A:10,B:15,C:25} on ADV {50M,10M,2M}, stress 2.0 PRIMARY, 100bps ceiling with majority-band-C operative rule — matches NG6 F6 and the kernel_band_cost_v9 lineage (present in the NG5/NG6 control space; RULES §9 is the adoption-boundary section, citation form matches NG6). Floors: $1.00/$2M bookability, >=30 fired decisions/fold at the F8 census, 10/bucket/fold C-CAL-HIST, CSCV >= 8. Estimator pins: VOL-REGIME fully pinned (F-3 covers the sign gap only); CLV pinned per FNG7-A2-P1-ABSORB (verified verbatim in plans/PLAN_forex_ng7.md §5, cross-plane adaptation disclosed); 52W high pinned to the same adjusted series; EVENT-UNWIND components verbatim from the NG6 anchor."
+    },
+    "6_contradictions_and_dead_references": {
+      "status": "DEFECTS_F1_F2_F4_F5_NO_DEAD_REFERENCES",
+      "note": "Dead-reference hunt clean: 'commit d0992d17' live; FNG7-A2-P1-ABSORB live in FOREX-NG7 §5 with the exact CLV/pressure definitions; BC-7 live in the A4 hostile-critic dossier (death contract), and the plan adopts the remediated BC-7 form; kernel_band_cost_v9 lineage and RULES §9 referents exist; LESSONS.md contains P-9/P-11/P-12/P-20/P-21/P-24/P-25/Q-6/Q-11/Q-12 as cited; §9 phase labels (M0 G1-G10+G4N=11/11, P0 F1-F9, D1/D2/S/GO/E/R/T) all have referents; C-CAL-HIST->R6 extension and §3-vs-§6 numbering otherwise consistent. Cross-reference defects: F-1 (HIGH, §6/§10/§11 PBO label), F-2 (§5 '(R4)'), F-4, F-5."
+    }
+  },
+  "verification_notes": [
+    "FROZEN_SHA gate: file read in full; exactly 514 numbered lines; line 1 title byte-matches the packet; line 514 is the §13 closing fence and EOF; §0-§13 ordered. sha256 not recomputable in-lane (no Bash); packet instruments all match, so no FROZEN_SHA_MISMATCH stop.",
+    "Registry citations verified against plans/CYCLE_REGISTRY.json: STOCKS-NG6 TERMINAL with 'vol_restricted_event_20d 0.260 / 60d 0.219 / dvol_shock -0.320 / reversal_5d 0.201 vs immovable 0.20', '2,169 symbols 3.21M rows', 'folds 1,136/1,495/694', and the reopening clause wording; CRYPTO-NG4 'crypto ng proposals now 11/11 killed at the bar'; STOCKS-NG3 '/api/fundamentals 403'; STOCKS-NG4 FINRA ToU; DATA-EDGE-UNLOCK-V1 'NO STOCKS-NG7' + RETROSPECTIVE_ONLY; PROSPECTIVE-SHADOW-V1 lifecycle ACTIVE_LIGHT; FOREX-NG5 'V5 0.353'; stocks 42/42 and program 257/260 (P-9) unchanged.",
+    "Ancestry negative claims independently reproduced: case-insensitive greps of research/wayfinder/FAMILY_FAILURES.jsonl and HYPOTHESIS_LEDGER.md surface NO dead stocks overnight-gap, 52-week-high, or CLV family (only incidental 'CONTRACT_GAP'/'acceptance gaps' text and the disclosed cross-plane FOREX-NG7 CLV row).",
+    "PLAN_stocks_ng6.md re-inheritance verified: NG6 §2 correction text ('0.20 bar ... FALSE as stated', FXNG1 4/4 / RATES 1/4 / VOL 2/4 / COMM 1/4) carried verbatim with the count honestly updated 10/10 -> 11/11 per CRYPTO-NG4; warmup law, F6 cost bands, Stage-A BC-7 remediated form, R4 C-REVERSAL-PLAIN all match.",
+    "Commit pointer d0992d17df8e2dfde57c9a0806a5798f14021a4f corroborated as the FOREX-NG1 dispatch/start SHA in lane artifacts, and as the 'FOREX-NG1 precedent' for PBO fail-closed <8 in independent commodities-ng1 and rates-ng1 artifacts; not verified via git show (no Bash).",
+    "Anchoring isolation maintained: research/control/stocks_search_v1/audits/a7_plan_stocks_search_v1_r1.json and _r2.json and any prior stocks_search handoffs were NOT opened. A repository-wide grep for 'd0992d17' incidentally surfaced single lines from OTHER cycles' inbox handoffs and the historical NG6 plan audit (in the dossiers namespace); those lines were used only to corroborate the liveness of the d0992d17 reference and BC-7's existence, never as authority on this plan's merits.",
+    "Assumption-audit (inputs, not self-consistency): data authority (/eod only, owner entitlement) consistent with NG3/NG6 closures; denominators cross-checked to the registry, not taken from the plan; NG6 rho values and fold/population figures taken from the registry row, not the plan's restatement; the 0.30 re-admission arithmetic recomputed; the 43-configuration grid size recomputed from §5 axes.",
+    "Prior-remediation blindness: this audit derives its verdict solely from the current bytes and frozen artifacts; no prior refusal's content was consulted."
+  ],
+  "auditor_context_fresh": true,
+  "unresolved_high_critical_count": 1
+}
