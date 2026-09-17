@@ -1,0 +1,109 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "FOREX-INTRA-BIDASK-V1",
+  "audited_plan": "plans/PLAN_forex_intra_bidask_v1.md",
+  "audited_sha": "79a21cc11d0c1bee90f3b204eaecf721c433d9f5",
+  "audited_utc": "2026-09-17 (session-date UTC; exact wall clock unavailable in the audit sandbox — this audit postdates the newest evidence timestamp observed, 2026-09-17T04:53:16Z in research/control/forex_mt5_cost_probe_2026-09/static_audit_result.json)",
+  "auditor": "A7 fresh-context",
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "blocking_count": 0,
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "MEDIUM",
+      "plan_section": "7 (terminal verdict mapping) with 5 (A5) and 6 (D2)",
+      "evidence": "PLAN_forex_intra_bidask_v1.md lines 245-272. The 'first matching rule wins' mapping is non-exhaustive. Unmapped state: data gates 1-4 PASS + D2-2 (rollover-flat property) or D2-4 (feasibility census) FAIL + at least one A4 candidate novelty-alive (D2-3 not all-fail) + D2-5 adjudicates VALID + zero NOT_RUN. Rule 5 needs DODGE or all-novelty-dead; rule 6 needs ALL of D2-2/D2-3/D2-4 PASS; rule 7 catches only NOT_RUN; rule 8 covers cost/execution-identity unsoundness only at A5/A7 discretion, not deterministically. Additionally rule 7 fires on 'any required proof ends NOT_RUN' but the set of 'required proofs' is never enumerated, and rule 7 is ordered AFTER rule 6, so a NOT_RUN outside rule 6's enumerated conditions could be argued either 'required' (rule 7) or 'non-blocking' (rule 6). Also line 218-219: 'a conceded attack that hits a binding floor feeds the verdict mapping §7' never names WHICH rule it feeds. No unmapped state can reach the promotable rule 6 (its conjunction is intact), so no false PASS is reachable by good-faith reading — but the cycle's terminal verdict is left undetermined in these states, which is a post-hoc invention surface in a plan whose own promise is a deterministic preregistered mapping.",
+      "required_fix": "Add an explicit fail-closed catch-all rule (e.g., rule 0 or rule 9): 'Any gate FAIL, conceded A5 binding-floor attack, or state not matched by rules 1-8 -> INCOMPLETE_NOT_PROMOTABLE (or PASS_DATA_CONTROL_ONLY with NO successor); never a PASS class; first match wins.' Enumerate the exact set of 'required proofs' whose NOT_RUN triggers rule 7, and name the specific §7 rule each class of conceded A5 binding-floor attack feeds (e.g., no-usage-rights -> BLOCKED_LICENSE_OR_TERMS; spread-unrepresentative -> BLOCKED_COST_OR_EXECUTION_IDENTITY; rollover-dodge -> rule 5)."
+    },
+    {
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "plan_section": "6 D2-5 (structural adjudication) and 9 G4",
+      "evidence": "Line 240-243: D2-5 is 'is rollover-flat intraday a valid structural change vs an ancestry dodge? Fail-closed' — with NO enumerated preregistered criteria distinguishing VALID from DODGE. Line 310: G4 lets the D2 battery run 'Lead-side or small lane', i.e., the central scientific adjudication (whether the owner-mandated structural change is real) defaults to the interested party. Backstops exist (A5's dodge attack at line 214-215; A7 terminal recompute at line 313; §7.5 maps DODGE to no-successor), which is why this is not HIGH, but the adjudication rubric being unfrozen means the VALID/DODGE line can be drawn after bytes are seen — exactly what this plan's §4.16 ('no floor renegotiation after bytes are seen') forbids elsewhere.",
+      "required_fix": "Freeze an enumerated DODGE checklist in §6 before registration, each item a concrete test, DODGE on any hit, e.g.: (a) any candidate's holding contract can be open within the 300 s buffer under any D2-2 fixture; (b) any candidate's declared representation is reconstructible from TD-daily-OHLC ± calendar/dead-panel proxies beyond pooled |rho| 0.20 (ties to D2-3); (c) any candidate's economics require a financing, overnight-exposure, or swap assumption to be stated; (d) any candidate is a rename/re-clock of a FAMILY_FAILURES forex class. Name A5 dispositions and A7 terminal as mandatory co-adjudicators (not optional backstops) of D2-5, matching the owner directive 'A4/A5/A7 must judge'."
+    },
+    {
+      "id": "F-3",
+      "severity": "MEDIUM",
+      "plan_section": "4 item 7 (sessions)",
+      "evidence": "Line 141-143: 'entries forbidden in the 30 minutes preceding the buffer window and across weekend gaps; finer session bounds are frozen at successor selection, within these outer bounds.' The owner directive requires 'allowed entry/exit sessions' preregistered before any outcome. Finer session bounds frozen at successor selection happen AFTER this cycle's A2/A3 bytes are fetched, and no mechanical rubric for choosing them is frozen now — so the effective entry window (which UTC hours trade) is inventable after data is seen. Mitigations: this cycle consumes 0 scored cells, the successor must preregister before its own scoring with a fresh A7 prelaunch, and the no-loosening law (line 137-139: tighten only) bounds the damage; hence MEDIUM, not HIGH.",
+      "required_fix": "Either freeze the full UTC entry/exit session windows per pair now (concrete hours), or freeze NOW the mechanical selection rubric that will pick the finer bounds (selection criteria, inputs limited to named preregistered observables, no-loosening vs outer bounds, applied before any successor scoring and audited by fresh-context A7 at the successor prelaunch)."
+    },
+    {
+      "id": "F-4",
+      "severity": "MEDIUM",
+      "plan_section": "4 items 5-7 (buffer / max-hold / sessions)",
+      "evidence": "Lines 136-143. The core scientific contract has a literal composition hole. §4.5 force-flats every position at rollover_instant − 300 s, so the buffer window is [rollover−300s, rollover). §4.7's entry ban covers only 'the 30 minutes preceding the buffer window' = [rollover−2100s, rollover−300s]. An entry at t inside the buffer window itself, e.g., rollover−100s, is not literally forbidden by §4.7, and §4.6's 'any entry whose forced exit would land inside the buffer window is forbidden by construction' is ambiguous for such t: no force-flat time exists at or after the window opens (rollover−300s is in the past), so the 'forced exit' of such an entry is undefined by the plan's own terms — it cannot be shown to close before rollover. This is the exact clause the rollover-flat structural claim (D2-2, §7.6) rides on. The directive's 'every position must close BEFORE rollover' would be violated by the literal text, not just by a buggy implementation.",
+      "required_fix": "Replace with a closed-form entry constraint, e.g.: 'An entry is permitted only at t such that t < rollover_instant − 300 s AND t + max_hold <= next rollover_instant − 300 s; entries at any t >= rollover_instant − 300 s are forbidden (the position could not be flat by the buffer boundary). D2-2 must include a fixture with an attempted entry inside the buffer window and must assert the contract rejects it.'"
+    },
+    {
+      "id": "F-5",
+      "severity": "LOW",
+      "plan_section": "6 D2-3 and 8 (successor ancestry battery)",
+      "evidence": "Lines 233-238 name the D2-3 shadow panel as FXFV1/FXFV2/FXFV5/FXFV7/FXNG1/FXFV8-DGS10 + FXNG4 day-of-week geometry. All verified real (FAMILY_FAILURES.jsonl lines 32-33, 34-35, 40, 51-52, 56, 83, 92-95). But the measured-dead forex set also includes FXFV3 (policy-rate-differential carry invalidated under evidenced availability, line 37), FXFV4 (commodity-bloc exposure, carry rho 0.997-1.000, line 38), FXFV6 (CPI release-direction near-miss whose measured_summary records GENUINE calendar information, line 49), FXNG3 (revision-sign/differential forms, lines 84-87), and the FOREX-NG5 D2 veto battery (SFNG5-A4-P1/A5-P1: V1 clock-out-earn, V5 momentum, E1 cost ceiling, registry row lines 845-873). §8's successor battery = '§6 D2-3 panel + the A4 shadow inventory', so completeness currently rests entirely on A4's inventory being complete — a single generation point.",
+      "required_fix": "State the floor as: the successor ancestry battery must include every forex row in research/wayfinder/FAMILY_FAILURES.jsonl (FXFV1..FXFV8, FXNG1, FXNG3, FXNG4) plus the FOREX-NG5 veto battery classes plus NG6/NG7-F4 cost-authority class; A4's shadow inventory is additive on top, never the sole completeness mechanism."
+    },
+    {
+      "id": "F-6",
+      "severity": "LOW",
+      "plan_section": "3 (canary cap, census, transport law)",
+      "evidence": "Lines 110-122. (a) The 300 MB cap is detective, not preventive: no pre-fetch byte-budget gate is specified — A2 self-disciplines, breach is discovered post-hoc from transcripts and maps retroactively to BLOCKED_TRANSPORT after the bulk bytes already landed (the exact harm the cap exists to prevent). The cap does hard-bound the damage at 300 MB (not bulk), so LOW. (b) The HEAD-census (>=8 hours x pair x year, plus deterministic re-fetch of all canaries) has no preregistered request budget, rate limit, user-agent, or retry/no-retry-storm etiquette for Dukascopy public surfaces — the DEU-V1 precedent (PLAN_data_edge_unlock_v1.md line 100: 'SEC fair-access 403 handling per declared-UA etiquette, no retry storms') shows the house standard is to freeze such etiquette.",
+      "required_fix": "Freeze in §3: (a) a committed running byte-ledger checked BEFORE each batch (hard stop if next batch would exceed remaining budget); (b) census/re-fetch etiquette: max request count, max rate, declared UA, bounded-retry with loud failure (Q-13) and no retry storms; 403/429 = BLOCKED_TRANSPORT input, never bypassed."
+    },
+    {
+      "id": "F-7",
+      "severity": "LOW",
+      "plan_section": "9 G7 (terminal close)",
+      "evidence": "Lines 292-320: G7 specifies two-half close, denominators unchanged, FAMILY_FAILURES discipline and the successor eligibility report, but omits the owner directive's final-handoff form: 'Final owner handoff must be ELI5 Vietnamese with PASS/FAIL/BLOCKED/NOT_RUN only; missing evidence never inferred PASS.' The substance exists elsewhere (missing evidence never PASS is in §1 and §7), but the mandated handoff language/vocabulary constraint is not carried into the closeout gate.",
+      "required_fix": "Add to G7: 'Final owner handoff is ELI5 Vietnamese; verdict vocabulary limited to PASS/FAIL/BLOCKED/NOT_RUN; missing evidence is never inferred PASS.'"
+    }
+  ],
+  "checks_passed": [
+    {
+      "id": "C-1",
+      "dimension": "1 authority chain",
+      "evidence": "Plan serves the owner directive faithfully: foundation/data-authority cycle with budget 0/0 scored cells, S1 SEALED_UNTOUCHED, orders NONE, no API key/account/purchase/license-acceptance (§1, §2); PnL/PF/Sharpe/MDD/break-even FORBIDDEN at every depth including diagnostic and smoke namespaces, and D2 explicitly measures 'observables and correlations, never PnL' (§1 line 61-65, §6 D2-3 line 238, D2-4 counts only). No GO phrase this cycle (§2 line 98-99, G2 line 302-303); successor GO phrase 'GO FOREX INTRA BIDASK V2 SCORED EXECUTION' is registered and typed ONLY by the owner at the successor's own prelaunch gate (§8 line 278-287), matching P-8/handbook §19.3. Rule 6 verdict is 'a RESEARCH authority only. It NEVER asserts executable or profitable authority' with §4.11 commission-UNKNOWN and §4.13 broker-mismatch limitations standing verbatim (lines 261-263) — PASS never means profitable; PASS_DATA_CONTROL_ONLY opens NO successor at all (§7.5, §8 line 289-290), stricter than the directive's 'must NOT open a scored successor'."
+    },
+    {
+      "id": "C-2",
+      "dimension": "4 verdict inventory",
+      "evidence": "All 8 directive-predeclared terminal verdicts present exactly once in §7, negative-first with evidence-gated rules: BLOCKED_LICENSE_OR_TERMS (r1), BLOCKED_TRANSPORT (r2), BLOCKED_SCHEMA_OR_IDENTITY (r3), BLOCKED_COVERAGE_OR_QUALITY (r4), PASS_DATA_CONTROL_ONLY (r5), PASS_INTRADAY_BIDASK_RESEARCH_AUTHORITY (r6, requires fresh-context A7 re-verification), INCOMPLETE_NOT_PROMOTABLE (r7), BLOCKED_COST_OR_EXECUTION_IDENTITY (r8). 'Missing evidence is never a PASS' stated (line 272). Gaps are filed as F-1, not inventory gaps."
+    },
+    {
+      "id": "C-3",
+      "dimension": "2 ancestry legality (registry + DEU-V1 Lane F law)",
+      "evidence": "CYCLE_REGISTRY.json FOREX-NG7 row (lines 1055-1083): TERMINAL FOREX_NG7_BLOCKED_SOURCE_OR_SCHEMA, 'NO citable financing band in the authorized evidence space', reopening 'owner broker-grade cost authority for TD majors' — matches plan §0 verbatim. DATA-EDGE-UNLOCK-V1 row (lines 1114-1143): TERMINAL, 'Lane F BLOCKED_BROKER_COST_AUTHORITY', 'NO FOREX-NG8'. PLAN_data_edge_unlock_v1.md §3 (lines 152-166): 'no substitution of swap by 0, no unattached internet numbers, no FOREX-NG8' and 'Only PASS permits FOREX-NG8'; Lane F did NOT PASS, so FOREX-NG8 is burned. The plan uses fresh identity FOREX-INTRA-BIDASK-V1, declares the NG8 slot burned 'regardless of this cycle's outcome' (§2 line 90-92, §8 line 290), and does not retry MT5/OANDA (§0 lines 32-35; probe verified standing: research/control/forex_mt5_cost_probe_2026-09/static_audit_result.json audit_round 2 + OWNER_RUN.md owner-pending F7/smoke)."
+    },
+    {
+      "id": "C-4",
+      "dimension": "2 structural-change vs dodge not pre-judged",
+      "evidence": "§0 lines 37-49 argue the author's case (exposure made impossible by the holding contract, impossibility itself tested at D2-2) but the BINDING law defers: D2-5 fail-closed adjudication (§6), §7.5 maps DODGE -> PASS_DATA_CONTROL_ONLY with NO successor, A5 must attack 'rollover avoidance is an ancestry dodge' (§5 line 214-215), A7 terminal recomputes D2 (G6). No financing/swap number is assumed or set to 0 anywhere in the plan; commission is UNKNOWN-never-0 (§4.11). Deficiencies in the adjudication's rubric and judge-naming are filed as F-2."
+    },
+    {
+      "id": "C-5",
+      "dimension": "2 dead-family panel真实性",
+      "evidence": "Every panel class the plan cites exists in research/wayfinder/FAMILY_FAILURES.jsonl: FXFV1-A3-P1 London-open continuation + FXFV1-A3-P2 late-NY fade (lines 32-33); FXFV2-A4-P1 Tokyo-range compression + FXFV2-A4-P2 London-AM range break (34-35); FXFV5-A6-P1 CPI/sham-calendar control (40); FXFV7-A4-P1 release-sign spillover + FXFV7-A6-P2 EURUSD lead-lag (51-52); FXFV8-A5-P1 DGS10-level control-out-earns falsification #14 (56); FXNG1-A4-P2 DGS10-level falsification #15 (83); FXNG4 day-of-week geometry kills (92-95). §0's 'what this cycle is NOT' and §6 D2-3 cite them accurately."
+    },
+    {
+      "id": "C-6",
+      "dimension": "3 preregistration completeness (directive item-by-item)",
+      "evidence": "Exactly 5 TD-major pairs, no XAUUSD (§3 line 103-104); real two-sided BID+ASK or BLOCKED_SCHEMA_OR_IDENTITY (§4.2); UTC logic with source timezone measured from bytes and DST frozen from measured canaries (§4.3); rollover clock 17:00 America/New_York = 22:00 UTC EST / 21:00 UTC EDT — arithmetic verified correct (§4.4); buffer 300 s frozen, tighten-only (§4.5); max hold 8 h (§4.6); long entry ASK / long exit BID, short entry BID / short exit ASK, midpoint forbidden (§4.8); spread read at exact decision timestamp from same series (§4.9); missing quote = NOT_RUN, no forward-fill/interpolation/backfill (§4.10); commission UNKNOWN, never 0, never inferred (§4.11); cost ladder 1.0x/1.5x/2.0x, survival required (§4.12); target-broker mismatch standing limitation (§4.13); 3 folds, embargo >= 5 trading days, P-9 trial accounting, pooled |rho| <= 0.20 ancestry bar (§4.14); byte-level quality floors incl. crossed=0, duplicates <=1%, monotonic violations=0, pip=1e-4 correct for all 5 pairs, >=3y history census, 95%-trading-days floor restated for the successor (§4.15); outcome-independent stopping rule, no re-scoping after bytes (§4.16). Deferred/weak items filed as F-3 and F-4."
+    },
+    {
+      "id": "C-7",
+      "dimension": "5 boundaries (bulk, bytes, equivalence, standing cycles)",
+      "evidence": "No bulk download before license AND transport AND schema gates PASS; census is HEAD-probe-based on a frozen stratified sample (§1 line 70-71, §3 lines 110-118) — HEAD carries no payload, so the census itself is bulk-safe by construction; census-inexpressible transport = BLOCKED_TRANSPORT input, not a bulk-fetch excuse (§3 line 116-118). Raw downloaded bytes never enter git; governed root /Users/hoangminhlong/.my-quantitative-data/forex-intra-bidask-v1/raw/ (§1 lines 72-74). 'No attribution of Dukascopy quotes as market-wide, executable, or OANDA/IBKR-equivalent — anywhere, by any lane, ever' (§3 lines 123-124) plus A3 duty to verify no equivalence claim (§5 lines 198-200). Measured-beats-stated for every Dukascopy property (§1 lines 83-86, Q-8). PROSPECTIVE-SHADOW-V1 (registry ACTIVE_LIGHT, registry lines 754-783) and FOREX-NG6R1 never read/disturbed (§1 lines 80-82). Cap enforcement gap filed as F-6."
+    },
+    {
+      "id": "C-8",
+      "dimension": "6 process legality",
+      "evidence": "Worktree/branch map well-formed and namespaced: .worktrees/forex-intra-bidask-v1/{integration,lane-a2,lane-a3,lane-a4,lane-a5} on orca/fibv1-* (§2 lines 94-97). Wave order A2 -> A3 (audits the exact fetched bytes) -> A4 (needs A2+A3 dossiers) -> A5 (reads A2-A4), all LIGHT lanes, sequential so the <=3 concurrent light-lane cap is respected with margin (G3 lines 306-309; §1 line 78-79). Structured handoffs zcode_orch_v3_handoff@1 at exact handoff_path (§1 lines 76-77); registry writes only via research/researchctl.py, registration AFTER this audit (§1 line 75-76, G2); integration by sequential cherry-picks with targeted tests (G5); two-half close per handbook §32 (G7); FAMILY_FAILURES appended only for measured D2 kills, no hypothesis-ledger family rows since nothing scored (G7 lines 316-318); store-level cycle_id mislabel pre-disclosed per NG1 precedent (G2, §10 INC-FIBV1-1). Denominators pinned 257/260 P-9 (header line 17-18, G7) — matches registry DEU-V1 row."
+    },
+    {
+      "id": "C-9",
+      "dimension": "audited SHA verification",
+      "evidence": "audited_sha 79a21cc11d0c1bee90f3b204eaecf721c433d9f5 byte-verified as the current tip of main by direct read of .git/refs/heads/main (content identical), and the object exists at .git/objects/79/a21cc11d0c1bee90f3b204eaecf721c433d9f5. Consistent with G0 'main@683ea65c measured' at intake followed by G1's plan commit advancing main to this SHA. Full 'git log --oneline -3' / 'git rev-parse HEAD' and working-tree-vs-committed-blob identity check were NOT_RUN_EXECUTION_REQUIRED (audit sandbox has no Bash); no git write commands were run."
+    }
+  ],
+  "notes": "Verdict AUTHORIZED_WITH_FINDINGS: 0 HIGH/CRITICAL, 4 MEDIUM (F-1..F-4) + 3 LOW (F-5..F-7), all repairable in the plan's own G1 remediation loop before registration (per P-8 doctrine and the DEU-V1 precedent of remediating MEDIUMs pre-registration). Decisive negatives hunted and not found: (a) no self-granted authority — the only promotable path (rule 6) requires fresh-context A7 re-verification and the successor's GO is owner-typed at its own gate; (b) the plan does not silently reopen FOREX-NG7 (different killer: owner-directed structural exclusion of financing exposure + new evidenced source, with the NG7 reopening condition left owner-only and untouched); (c) no swap-by-0 substitution exists in the text — no financing number is assumed anywhere and D2-5 fail-closed adjudicates the dodge question; (d) no PnL channel at any depth including D2; (e) the HEAD-census cannot constitute bulk download. Residual honesty limits of THIS audit: git log/rev-parse execution, working-tree cleanliness vs the audited commit, and the actual Dukascopy license/transport/schema facts were NOT_RUN here — they are exactly the cycle's own gated measurements (A2/A3) and the r2 terminal A7's recompute; this audit pre-registers nothing on their behalf and missing evidence there can only yield BLOCKED/INCOMPLETE under §7, never PASS. Registry/ledgers untouched; exactly one file written (this artifact)."
+}
