@@ -57,10 +57,17 @@ RUN = WT / "research/control/forex_search_v1_run"
 P0_DIR = RUN / "p0"
 S_DIR = RUN / "s"
 
-# FROZEN_SHA pin: s/selection_freeze.json as committed at df62d6f9
-# (verified byte-identical in this worktree at lane start). Any drift is
-# a FROZEN_SHA_MISMATCH stop condition for this lane.
-FREEZE_SHA256 = "0a93685758e0bb317633a9eb08f14ce66061314cc15a48bb262b6ae9b0130d74"
+# FROZEN_SHA pin: s/selection_freeze.json as re-frozen by the fsearch-
+# remediation-r2 lane (2026-09-17) after the D1 manifest re-freeze cascade
+# (A7 findings F-1/F-4/F-5/F-6/F-7: the F-4 correction of
+# p0/f1_repull_result.json propagated through the re-assembled p0_gate.json
+# digest table, so the cascade ran twice — final values recorded here); the
+# walk reproduced the same three arms in the same order with unchanged
+# positions digests (85c8f875/57eed8b9/7eee7cf0...). Prior frozen digest:
+# 0a93685758e0bb317633a9eb08f14ce66061314cc15a48bb262b6ae9b0130d74
+# (selection_freeze.json as committed at df62d6f9). Any drift is a
+# FROZEN_SHA_MISMATCH stop condition for this lane.
+FREEZE_SHA256 = "be83bbdf4f5dfee660cdacc42e41a882da535e9211954c6fd7bc3717acaafb8a"
 
 # §4 F4 cost + financing constants (STATED-CONSERVATIVE; printed on every
 # result alongside their derivation caveats — see adjudicate.DISCLOSURES).

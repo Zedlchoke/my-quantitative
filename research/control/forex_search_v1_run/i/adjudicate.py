@@ -25,13 +25,28 @@ Rules implemented (§6 order, first binding kills):
      every output; never an inferred PASS).
   dual-books sign invariance; P-20 books-distinct re-check; Stage-A
   (fold-positive-share > 50% required, concentration <= 50%, MDD <= 15%,
-  stress margin + break-even bps, drop-one stability, C-PIT-MUTATION);
-  PBO NOT_RUN disposition; R0 NOT_RUN labeling on EVERY output.
+  stress margin + break-even bps, drop-one stability, C-PIT-MUTATION,
+  P-11 per-period series persistence, DSR deflated Sharpe at
+  N = frozen grid size 33 / alpha 0.10 owner-relaxed — GATING;
+  program-cumulative N=260 / alpha 0.05 reported, never gating);
+  explicit scored-cell budget counter (F-8); PBO NOT_RUN disposition;
+  R0 NOT_RUN labeling on EVERY output.
+
+F-2 remediation (A7 a7_prelaunch_forex_search_v1.json): the terminal
+survivor outcome name FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_...
+is emitted ONLY after the DSR gate has COMPUTED (and passed) on every
+survivor; without a computed DSR the cycle is INCOMPLETE_NOT_PROMOTABLE.
+The Stage-A battery executes only at the scored E run behind the exact
+owner GO phrase; every number in this lane's tests is a synthetic fixture.
 
 Disclosures printed verbatim on every output (§3, §3b, §4 F4, §6).
 """
 
 from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
 
 import numpy as np
 
@@ -71,6 +86,31 @@ FOLD_POSITIVE_SHARE_LAW = (
     "arm is killed (the '> 50% kills' phrasing of the frozen battery).")
 SHADOW_LINEAGES = ["DGS10-LEVEL", "REAL-YIELD", "CURVE", "CARRY",
                    "SPY-RISK-OFF"]
+# F-2 (§6 Stage-A): DSR constants frozen by the D1 manifest / plan §3 + §5.
+DSR_FROZEN_GRID_N = 33          # §5: frozen grid size = DSR deflation set N
+DSR_ALPHA = 0.10                # §3: owner-relaxed DSR alpha (GATING)
+DSR_PROGRAM_CUMULATIVE_N = 260  # §6 P-9 program-cumulative count (REPORTED)
+DSR_PROGRAM_ALPHA = 0.05        # standing program alpha (REPORTED)
+EULER_GAMMA = 0.5772156649015329
+# F-8: explicit scored-cell budget counter (plan §0: 3 scored cells max).
+SCORED_CELL_BUDGET_MAX = 3
+DSR_LAW = (
+    "DSR (Bailey & López de Prado 2014) gates Stage-A: DSR = Phi((SR - SR0) "
+    "sqrt(T-1) / sqrt(1 - g3*SR + ((g4-1)/4)*SR^2)) >= 1 - alpha with "
+    "N = frozen grid size 33 (§5) and alpha = 0.10 owner-relaxed (§3); "
+    "SR0 = E[max SR] over N unit-variance standard-normal trials "
+    "(conservative convention, documented: the D1 freeze is outcome-blind, "
+    "so the other N-1 configurations' SR variance does not exist before "
+    "the scored run); SR is per-period on the persisted P-11 series "
+    "(financed stress-primary net returns over the frozen master calendar, "
+    "flat sessions contribute 0.0). Program-cumulative N=260 (P-9) at "
+    "alpha 0.05 is computed on the same series and REPORTED, never "
+    "gating (§6).")
+P11_LAW = (
+    "P-11: the per-period (per-session) financed stress-primary net bps "
+    "series on the frozen master calendar is PERSISTED inside this verdict "
+    "(and may be re-written via persist_p11_series at the scored E run) so "
+    "the DSR computation is reproducible without re-execution.")
 
 
 def verdict_labels() -> dict:
@@ -386,6 +426,134 @@ def p20_recheck(positions_by_arm: dict, legs_order: list,
     return {"rule": "P-20-RECHECK", "verdict": verdict, "detail": rows}
 
 
+# ------------------------------------------------------- Stage-A DSR / P-11
+
+def _norm_cdf(x: float) -> float:
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def _norm_ppf(p: float) -> float:
+    """Inverse standard normal CDF; deterministic bisection to 1e-12
+    (stdlib only — the harness stays scipy-free and reproducible)."""
+    if not 0.0 < p < 1.0:
+        raise ValueError("probability out of range")
+    lo, hi = -40.0, 40.0
+    while hi - lo > 1e-12:
+        mid = 0.5 * (lo + hi)
+        if _norm_cdf(mid) < p:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+def expected_max_sharpe(n_trials: int) -> float:
+    """E[max SR] over N independent trials (Bailey & López de Prado 2014,
+    'The Deflated Sharpe Ratio'): SR0 = (1 - gamma) Z(1 - 1/N) +
+    gamma Z(1 - 1/(N e)) with gamma the Euler-Mascheroni constant, for
+    unit-variance standard-normal trial SRs. Deterministic pure function
+    of N."""
+    z1 = _norm_ppf(1.0 - 1.0 / float(n_trials))
+    z2 = _norm_ppf(1.0 - 1.0 / (float(n_trials) * math.e))
+    return (1.0 - EULER_GAMMA) * z1 + EULER_GAMMA * z2
+
+
+def deflated_sharpe_ratio(returns, n_trials: int) -> dict:
+    """Bailey & López de Prado (2014) DSR from the candidate's per-period
+    returns and the trial count N — deterministic, documented:
+
+        DSR = Phi( (SR - SR0) sqrt(T - 1)
+                   / sqrt(1 - g3 SR + ((g4 - 1)/4) SR^2) )
+
+    with SR the per-period Sharpe, T the number of periods, g3/g4 the
+    skewness/kurtosis of the per-period returns and SR0 = E[max SR]."""
+    r = np.asarray(returns, dtype=np.float64)
+    if r.size < 2:
+        return {"computed": False,
+                "reason": "UNMEASURABLE: fewer than 2 per-period returns"}
+    sd = float(np.std(r, ddof=1))
+    if sd == 0.0:
+        return {"computed": False,
+                "reason": "UNMEASURABLE: zero per-period variance"}
+    sr = float(np.mean(r)) / sd
+    z = (r - float(np.mean(r))) / sd
+    g3 = float(np.mean(z ** 3))
+    g4 = float(np.mean(z ** 4))
+    denom_sq = 1.0 - g3 * sr + ((g4 - 1.0) / 4.0) * sr * sr
+    denom = math.sqrt(denom_sq) if denom_sq > 0.0 else 1e-300
+    sr0 = expected_max_sharpe(n_trials)
+    stat = ((sr - sr0) * math.sqrt(r.size - 1)) / denom
+    return {"computed": True, "n_trials": n_trials, "n_periods": int(r.size),
+            "sr_per_period": sr, "sr0_expected_max": sr0,
+            "skewness": g3, "kurtosis": g4, "psr_stat": stat,
+            "dsr_probability": _norm_cdf(stat)}
+
+
+def p11_per_period_series(ctx: dict) -> dict:
+    """P-11: the per-period (per-session) financed stress-primary net bps
+    series on the frozen master calendar, built from the arm's own trades
+    and persisted inside the verdict dict (P11_LAW)."""
+    trades = ctx["trades"]
+    if not trades:
+        return {"computed": False,
+                "reason": "empty book — no per-period series exists",
+                "n_periods": 0, "n_active_periods": 0, "series": [],
+                "per_period_returns": [], "series_digest": None}
+    _, financed = book_nets(trades, ctx["stress"])
+    daily = eng.daily_pnl_series(trades, financed, ctx["master"])
+    return {
+        "computed": True,
+        "convention": ("per decision session on the frozen master calendar; "
+                       "financed stress-primary net bps; flat sessions "
+                       "contribute 0.0"),
+        "n_periods": int(daily.size),
+        "n_active_periods": int(np.count_nonzero(daily)),
+        "series": [{"date": d, "financed_net_bps": round(float(x), 12)}
+                   for d, x in zip(ctx["master"], daily)],
+        "per_period_returns": [float(x) / 1e4 for x in daily],
+        "series_digest": eng.sha256_obj(
+            {"master": list(ctx["master"]),
+             "daily_bps": [float(x) for x in daily]}),
+    }
+
+
+def persist_p11_series(arm_verdicts: list, out_path) -> str:
+    """Write the persisted P-11 series of the given arm verdicts to
+    out_path (the scored E runner calls this after the owner GO). Returns
+    the file sha256."""
+    payload = {"schema": "fsearch_p11_per_period_series@1",
+               "law": P11_LAW,
+               "arms": {a["config_id"]: a["stage_a"]["subgates"]
+                        ["p11_per_period_series"]["series_persisted"]
+                        for a in arm_verdicts}}
+    blob = json.dumps(payload, indent=1, sort_keys=True) + "\n"
+    Path(out_path).write_text(blob)
+    import hashlib
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def dsr_gate(p11: dict, n_trials: int, alpha: float) -> dict:
+    """The Stage-A DSR subgate, computed on the persisted P-11 per-period
+    returns: pass = computed AND dsr_probability >= 1 - alpha (fail-closed:
+    an uncomputable DSR never passes)."""
+    row = {"n_trials": n_trials, "alpha": alpha, "bar": 1.0 - alpha,
+           "law": DSR_LAW}
+    if not p11.get("computed"):
+        row.update({"computed": False,
+                    "reason": p11.get("reason", "P-11 series unavailable"),
+                    "pass": False})
+        return row
+    res = deflated_sharpe_ratio(p11["per_period_returns"], n_trials)
+    if not res["computed"]:
+        res.update({"n_trials": n_trials, "alpha": alpha, "bar": 1.0 - alpha,
+                    "pass": False, "law": DSR_LAW})
+        return res
+    res.update({"alpha": alpha, "bar": 1.0 - alpha,
+                "pass": bool(res["dsr_probability"] >= 1.0 - alpha),
+                "law": DSR_LAW})
+    return res
+
+
 def stage_a(ctx: dict) -> dict:
     """Frozen forex Stage-A gates on a survivor (all must hold)."""
     out = {"rule": "STAGE-A", "subgates": {}, "verdict": "PASS"}
@@ -472,8 +640,33 @@ def stage_a(ctx: dict) -> dict:
         "breach_count": len(breaches),
         "law": "one-bar-earlier recomputation must change or refuse the "
                "book on EVERY fired decision (§6 C-PIT-MUTATION)"}
+    # F-2 remediation: P-11 persistence + DSR are Stage-A members (§6,
+    # "per-period series persisted (P-11) for DSR with N = frozen grid size
+    # at alpha 0.10"). DSR at N=33/alpha 0.10 GATES; the program-cumulative
+    # N=260 / alpha 0.05 DSR is computed on the same series and REPORTED
+    # only (never gating).
+    p11 = p11_per_period_series(ctx)
+    p11_pass = bool(p11["computed"]) and p11["n_periods"] > 1
+    out["subgates"]["p11_per_period_series"] = {
+        "computed": p11["computed"],
+        "reason": p11.get("reason"),
+        "convention": p11.get("convention"),
+        "n_periods": p11["n_periods"],
+        "n_active_periods": p11["n_active_periods"],
+        "series_digest": p11["series_digest"],
+        "series_persisted": p11["series"],
+        "law": P11_LAW,
+        "pass": p11_pass}
+    dsr = dsr_gate(p11, n_trials=DSR_FROZEN_GRID_N, alpha=DSR_ALPHA)
+    dsr["reported_program_cumulative"] = dsr_gate(
+        p11, n_trials=DSR_PROGRAM_CUMULATIVE_N, alpha=DSR_PROGRAM_ALPHA)
+    dsr["reported_program_cumulative"]["role"] = (
+        "REPORTED ONLY — never gating (§6: program-cumulative ~260 (P-9) "
+        "at alpha 0.05, reported not gating)")
+    out["subgates"]["dsr"] = dsr
+    dsr_pass = bool(dsr.get("computed")) and bool(dsr.get("pass"))
     if not all([fps_pass, conc_pass, mdd_pass, margin_pass, drop_pass,
-                drop_adjudicable, pit_pass]):
+                drop_adjudicable, pit_pass, p11_pass, dsr_pass]):
         out["verdict"] = "KILL"
     return out
 
@@ -556,10 +749,25 @@ def adjudicate_cycle(arm_ctxs: list, positions_by_arm: dict,
     p20 = p20_recheck(positions_by_arm, legs_order, frozen_matrix)
     survivors = [a["config_id"] for a in arms
                  if a["arm_verdict"] == "SURVIVOR_CANDIDATE"]
-    if p20["verdict"] != "PASS":
+    # F-8: explicit scored-cell budget counter on every cycle output.
+    budget = {"used": len(arm_ctxs), "max": SCORED_CELL_BUDGET_MAX,
+              "within_budget": len(arm_ctxs) <= SCORED_CELL_BUDGET_MAX,
+              "source": "plans/PLAN_forex_search_v1.md §0 (3 scored cells "
+                        "max) + s/selection_freeze.json walk.budget.max_cells"}
+    # F-2: the survivor outcome name is emitted ONLY after the DSR gate has
+    # COMPUTED (and passed) on every survivor. stage_a PASS already implies
+    # it; the explicit check makes the law structural — a harness change
+    # that drops DSR from Stage-A can no longer emit the relaxed-battery
+    # name.
+    dsr_computed_on_survivors = all(
+        a["stage_a"]["subgates"]["dsr"]["computed"] is True and
+        a["stage_a"]["subgates"]["dsr"]["pass"] is True
+        for a in arms if a["config_id"] in survivors)
+    if p20["verdict"] != "PASS" or not budget["within_budget"]:
         outcome = "FOREX_SEARCH_V1_INCOMPLETE_NOT_PROMOTABLE"
-    elif survivors and all(a["stage_a"]["verdict"] == "PASS" for a in arms
-                           if a["config_id"] in survivors):
+    elif survivors and dsr_computed_on_survivors and \
+            all(a["stage_a"]["verdict"] == "PASS" for a in arms
+                if a["config_id"] in survivors):
         outcome = ("FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_"
                    "R0_NOT_RUN_PBO_NOT_RUN")
     elif all(a["arm_verdict"] == "REJECTED" for a in arms) and \
@@ -573,6 +781,11 @@ def adjudicate_cycle(arm_ctxs: list, positions_by_arm: dict,
         "arms": arms,
         "p20_recheck": p20,
         "survivors": survivors,
+        "scored_cell_budget": budget,
+        "dsr_gate_on_survivors": {"survivor_count": len(survivors),
+                                  "computed_and_passed_on_every_survivor":
+                                  bool(survivors) and
+                                  dsr_computed_on_survivors},
         "incomplete_rules_by_arm": {a["config_id"]: a["incomplete_rules"]
                                     for a in arms},
         "proposed_outcome_name": outcome,
@@ -590,6 +803,10 @@ def build_verdict_skeleton(config_ids: list) -> dict:
         "phase": "I (isolated implementation lane; NO scored output)",
         "arms": [{"config_id": cid, "arm_verdict": None,
                   "ordered_rules": [], "stage_a": None} for cid in config_ids],
+        "scored_cell_budget": {"used": 0, "max": SCORED_CELL_BUDGET_MAX,
+                               "within_budget": True,
+                               "source": "pre-GO skeleton: no scored cell "
+                                         "consumed (plan §0 budget)"},
         "labels": verdict_labels(),
     }
 

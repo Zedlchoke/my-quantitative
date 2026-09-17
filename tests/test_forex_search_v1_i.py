@@ -16,6 +16,7 @@ Covers:
 
 from __future__ import annotations
 
+import json
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -512,7 +513,9 @@ def _two_leg(trades: list, n_master: int = 6) -> dict:
 
 
 def test_stage_a_fold_positive_share_and_concentration():
-    # all-positive, balanced book: EVERY Stage-A subgate passes
+    # all-positive, balanced book: the five structural subgates + P-11 pass,
+    # but the per-session Sharpe of this small fixture is below the frozen
+    # DSR deflation bar (N=33, alpha 0.10) -> Stage-A KILL (F-2 battery).
     trades = [t(500.0, fold=f, leg=ln, mi=f)
               for f in (1, 2, 3) for ln in SYNTH_LEGS for _ in range(10)]
     out = adj.stage_a(_two_leg(trades))
@@ -522,7 +525,10 @@ def test_stage_a_fold_positive_share_and_concentration():
     assert out["subgates"]["stress_margin"]["pass"] is True
     assert out["subgates"]["drop_one"]["pass"] is True
     assert out["subgates"]["pit_mutation"]["pass"] is True
-    assert out["verdict"] == "PASS"
+    assert out["subgates"]["p11_per_period_series"]["pass"] is True
+    assert out["subgates"]["dsr"]["computed"] is True
+    assert out["subgates"]["dsr"]["pass"] is False
+    assert out["verdict"] == "KILL"
     # folds +,-,- : share 1/3 <= 50% -> fps kills
     trades = ([t(500.0, fold=1, leg=ln, mi=1) for ln in SYNTH_LEGS
                for _ in range(10)] +
@@ -618,6 +624,129 @@ def test_pit_mutation_engine_consecutive_calendar_breach(ctx420):
     assert out["verdict"] == "KILL"
 
 
+# -------------------------------------- Stage-A DSR + P-11 (F-2 remediation)
+
+def test_norm_cdf_ppf_and_expected_max_sharpe():
+    assert adj._norm_cdf(0.0) == pytest.approx(0.5)
+    assert adj._norm_ppf(0.5) == pytest.approx(0.0, abs=1e-9)
+    # standard normal table anchors
+    assert adj._norm_ppf(0.975) == pytest.approx(1.959964, abs=1e-5)
+    assert adj._norm_cdf(1.959964) == pytest.approx(0.975, abs=1e-6)
+    # E[max SR] is monotone increasing in the trial count N (§5 N=33 grid,
+    # §6 P-9 program-cumulative ~260)
+    e5 = adj.expected_max_sharpe(5)
+    e33 = adj.expected_max_sharpe(adj.DSR_FROZEN_GRID_N)
+    e260 = adj.expected_max_sharpe(adj.DSR_PROGRAM_CUMULATIVE_N)
+    assert 0 < e5 < e33 < e260
+    assert e33 == pytest.approx(2.112401, abs=2e-6)   # N = frozen grid size
+    assert e260 == pytest.approx(2.850201, abs=2e-6)  # program-cumulative
+
+
+def test_deflated_sharpe_ratio_hand_recomputation():
+    """Independent in-test reimplementation of the documented Bailey/LdP
+    formula (Phi((SR - SR0) sqrt(T-1) / sqrt(1 - g3 SR + ((g4-1)/4) SR^2)))
+    must reproduce the harness value for arbitrary deterministic series."""
+    import math
+
+    def reference(returns, n):
+        r = np.asarray(returns, dtype=float)
+        sd = float(np.std(r, ddof=1))
+        sr = float(np.mean(r)) / sd
+        z = (r - float(np.mean(r))) / sd
+        g3 = float(np.mean(z ** 3))
+        g4 = float(np.mean(z ** 4))
+        sr0 = adj.expected_max_sharpe(n)
+        stat = ((sr - sr0) * math.sqrt(r.size - 1)) / \
+            math.sqrt(1.0 - g3 * sr + ((g4 - 1.0) / 4.0) * sr * sr)
+        return 0.5 * (1.0 + math.erf(stat / math.sqrt(2.0))), sr
+
+    rng = np.random.default_rng(20260917)
+    for series in (np.array([1.0, 1.0, 0.5]),
+                   np.array([0.02, 0.0025, -0.001, 0.03, 0.0] * 25),
+                   rng.normal(0.001, 0.01, size=400)):
+        for n in (5, adj.DSR_FROZEN_GRID_N, adj.DSR_PROGRAM_CUMULATIVE_N):
+            got = adj.deflated_sharpe_ratio(series, n)
+            want, sr = reference(series, n)
+            assert got["computed"] is True
+            assert got["dsr_probability"] == pytest.approx(want, abs=1e-12)
+            assert got["sr_per_period"] == pytest.approx(sr, abs=1e-12)
+    # zero-variance or degenerate series never PASS (fail-closed)
+    for bad in (np.array([1.0, 1.0, 1.0]), np.array([1.0])):
+        got = adj.deflated_sharpe_ratio(bad, 33)
+        assert got["computed"] is False
+
+
+def test_dsr_gate_alpha_bar_and_monotone_deflation():
+    # the same SR-2.0 series: more trials + lower alpha => strictly more
+    # deflation (probability ordering), and the gate bar is 1 - alpha
+    wave = np.sin(np.linspace(0.0, 50.0, 250))
+    wave = (wave - wave.mean()) / float(np.std(wave, ddof=1))
+    series = (0.002 + 0.001 * wave).tolist()
+    d5 = adj.deflated_sharpe_ratio(series, 5)["dsr_probability"]
+    d33 = adj.deflated_sharpe_ratio(series, 33)["dsr_probability"]
+    d260 = adj.deflated_sharpe_ratio(series, 260)["dsr_probability"]
+    assert d5 > d33 > d260
+    gate = adj.dsr_gate({"computed": True, "per_period_returns": series},
+                        n_trials=adj.DSR_FROZEN_GRID_N, alpha=adj.DSR_ALPHA)
+    assert gate["bar"] == pytest.approx(0.90)
+    assert gate["pass"] == (gate["dsr_probability"] >= 0.90)
+    assert gate["n_trials"] == 33 and gate["alpha"] == pytest.approx(0.10)
+    # program-cumulative gate rows are REPORTED ONLY by construction in
+    # stage_a: their bar is 1 - 0.05, never gating
+    assert adj.DSR_PROGRAM_ALPHA == 0.05
+    # uncomputable P-11 series -> gate fails closed
+    gate_bad = adj.dsr_gate({"computed": False, "reason": "empty book"},
+                            n_trials=33, alpha=0.10)
+    assert gate_bad["computed"] is False and gate_bad["pass"] is False
+
+
+def test_stage_a_p11_persistence_and_dsr_wiring():
+    master = synth_dates(30)
+    trades = [t(500.0, fold=1, leg=ln, mi=i) for i in range(5)
+              for ln in SYNTH_LEGS for _ in range(2)]
+    mut = {ln: np.zeros(30, dtype=np.int8) for ln in SYNTH_LEGS}
+    ctx = base_ctx("X", "OPEN-GAP", trades, master=master,
+                   mutated_positions=mut)
+    out = adj.stage_a(ctx)
+    p11 = out["subgates"]["p11_per_period_series"]
+    assert p11["computed"] is True and p11["pass"] is True
+    assert p11["n_periods"] == 30
+    # per-period series persisted IN the verdict: active days carry the
+    # financed net, flat days 0.0; digest deterministic
+    active = [s for s in p11["series_persisted"] if s["financed_net_bps"]]
+    assert len(active) == 5
+    assert all(s["financed_net_bps"] == pytest.approx(4 * 490.6)
+               for s in active)
+    out2 = adj.stage_a(base_ctx("X", "OPEN-GAP", trades, master=master,
+                                mutated_positions=mut))
+    assert out2["subgates"]["p11_per_period_series"]["series_digest"] == \
+        p11["series_digest"]
+    # DSR subgate rides on the persisted series; program-cumulative row is
+    # reported alongside and never gates
+    dsr = out["subgates"]["dsr"]
+    assert dsr["computed"] is True
+    assert dsr["n_trials"] == 33 and dsr["alpha"] == pytest.approx(0.10)
+    prog = dsr["reported_program_cumulative"]
+    assert prog["n_trials"] == 260 and prog["alpha"] == pytest.approx(0.05)
+    assert "REPORTED ONLY" in prog["role"]
+    # persistence round-trip via persist_p11_series (E-runner surface)
+    verdicts = [{"config_id": "X", "stage_a": out}]
+    p11_path = Path("/tmp") / "fsearch_test_p11_series.json"
+    sha = adj.persist_p11_series(verdicts, p11_path)
+    blob = json.loads(p11_path.read_text())
+    assert blob["schema"] == "fsearch_p11_per_period_series@1"
+    assert blob["arms"]["X"] == p11["series_persisted"]
+    import hashlib
+    assert sha == hashlib.sha256(p11_path.read_bytes()).hexdigest()
+    p11_path.unlink()
+
+
+def test_stage_a_empty_book_p11_and_dsr_fail_closed():
+    out = adj.stage_a(base_ctx("X", "OPEN-GAP", []))
+    assert out["verdict"] == "NOT_RUN"
+    assert out["subgates"]["empty_book"] == "NOT_RUN fail-closed"
+
+
 # -------------------------------------------------- engine series helpers
 
 def test_usd_basket_sign_convention_and_max_drawdown():
@@ -656,12 +785,49 @@ def test_serial_clustering_census():
 def _survivor_context(ctx420):
     """A hand-built PIT-sensitive, weekday-spread, profitable fixture for
     the REAL CLOCK-COND config id (books synthesized — no engine run on
-    real data)."""
+    real data). The book clears the FULL relaxed battery INCLUDING the F-2
+    DSR gate (N=33, alpha 0.10): every session fires on both legs with a
+    deterministic small/small-variance payoff, so the per-session Sharpe
+    clears the frozen E[max SR] deflation bar; losses-free variance comes
+    from the every-4th-session small-payoff pattern."""
     master = ctx420["master"]
     legs_order = SYNTH_LEGS
     n = len(master)
-    # sparse non-adjacent firings on both legs; step 6 rotates the ISO
-    # weekday so no weekday share can breach the 0.35 floor
+    positions = {ln: np.zeros(n, dtype=np.int8) for ln in legs_order}
+    trades = []
+    k = 0
+    for mi in range(n):
+        for ln in legs_order:
+            positions[ln][mi] = 1
+            fold = 1 if mi < 140 else (2 if mi < 280 else 3)
+            gross = 60.0 if k % 8 == 7 else 120.0
+            trades.append({"leg": ln, "mi_decision": mi,
+                           "decision_date": master[mi],
+                           "mi_exec": min(mi + 1, n - 1),
+                           "exec_date": master[min(mi + 1, n - 1)],
+                           "fold": fold, "side": 1, "entry": 1.0,
+                           "exit": 1.0, "gross_bps": gross,
+                           "state_key": "side+1"})
+            k += 1
+    complement = [t(20.0, fold=(1 if mi < 140 else (2 if mi < 280 else 3)),
+                    leg="GBPUSD", mi=mi) for mi in range(n)]
+    clock_only = [t(20.0, fold=(1 if mi < 140 else (2 if mi < 280 else 3)),
+                    leg="GBPUSD", mi=mi) for mi in range(n)]
+    mutated = {ln: np.zeros(n, dtype=np.int8) for ln in legs_order}
+    census = eng.weekday_share_of_firings(positions, master, legs_order)
+    return base_ctx("FSS-CLOCK-COND-MONTHPOS-SECOND-LONG", "CLOCK-COND",
+                    trades, master=master, complement_trades=complement,
+                    clock_only_trades=clock_only, mutated_positions=mutated,
+                    weekday_census=census, serial_clustering={})
+
+
+def _dsr_failing_context(ctx420):
+    """The pre-F-2 'survivor' fixture: passes every ordered rule and the
+    structural Stage-A subgates, but its sparse per-session series sits far
+    below the frozen DSR deflation bar — the arm must NOT be a survivor."""
+    master = ctx420["master"]
+    legs_order = SYNTH_LEGS
+    n = len(master)
     positions = {ln: np.zeros(n, dtype=np.int8) for ln in legs_order}
     mis = list(range(70, 394, 6))
     for ln in legs_order:
@@ -679,7 +845,7 @@ def _survivor_context(ctx420):
                            "state_key": "side+1"})
     complement = [t(20.0, fold=(1 if mi < 140 else (2 if mi < 280 else 3)),
                     leg="GBPUSD", mi=mi) for mi in mis]
-    clock_only = [t(30.0, fold=(1 if mi < 140 else (2 if mi < 280 else 3)),
+    clock_only = [t(20.0, fold=(1 if mi < 140 else (2 if mi < 280 else 3)),
                     leg="GBPUSD", mi=mi) for mi in mis]
     mutated = {ln: np.zeros(n, dtype=np.int8) for ln in legs_order}
     census = eng.weekday_share_of_firings(positions, master, legs_order)
@@ -703,8 +869,21 @@ def test_adjudicate_arm_survivor_and_ordered_kill(ctx420):
     assert set(verdict["incomplete_rules"]) == {"R4", "K6"}
     assert verdict["labels"]["r0_ancestry"] == "NOT_RUN"
     assert verdict["stage_a"]["verdict"] == "PASS"
+    # F-2: the DSR gate COMPUTED at N=33 / alpha 0.10 and PASSED; the
+    # program-cumulative row rides as REPORTED ONLY
+    dsr = verdict["stage_a"]["subgates"]["dsr"]
+    assert dsr["computed"] is True and dsr["pass"] is True
+    assert dsr["n_trials"] == 33 and dsr["alpha"] == pytest.approx(0.10)
+    assert dsr["reported_program_cumulative"]["n_trials"] == 260
     assert verdict["labels"]["r0_ancestry"] == "NOT_RUN"
     assert verdict["labels"]["pbo"] == "NOT_RUN"
+    # a DSR-failing book: ordered battery + structural subgates pass but
+    # the arm is NOT a survivor (fail-closed at the relaxed battery)
+    weak = adj.adjudicate_arm(_dsr_failing_context(ctx420))
+    assert weak["stage_a"]["subgates"]["dsr"]["computed"] is True
+    assert weak["stage_a"]["subgates"]["dsr"]["pass"] is False
+    assert weak["stage_a"]["verdict"] == "KILL"
+    assert weak["arm_verdict"] == "REJECTED"
     # ordered first-binding kill: R1 kill leaves later rules NOT_EVALUATED
     bad = base_ctx("FSS-VOL-DRIFT-MOM-L63", "VOL-DRIFT", [t(-500.0)],
                    usd={"per_leg_corr": {"EURUSD": 0.9, "GBPUSD": 0.9},
@@ -722,7 +901,7 @@ def test_adjudicate_cycle_outcomes_and_labels(ctx420):
     pos = {ctx["config_id"]: {ln: np.zeros(n, dtype=np.int8)
                               for ln in SYNTH_LEGS}}
     for ln in SYNTH_LEGS:
-        for mi in range(70, 394, 6):
+        for mi in range(n):
             pos[ctx["config_id"]][ln][mi] = 1
     out = adj.adjudicate_cycle([ctx], pos, SYNTH_LEGS)
     assert out["survivors"] == ["FSS-CLOCK-COND-MONTHPOS-SECOND-LONG"]
@@ -732,6 +911,35 @@ def test_adjudicate_cycle_outcomes_and_labels(ctx420):
     assert out["labels"]["r0_ancestry"] == "NOT_RUN"
     assert out["labels"]["pbo"] == "NOT_RUN"
     assert "owner-relaxed" in out["labels"]["relaxation_disclosure_verbatim"]
+    # F-2: the survivor outcome name is emitted ONLY after the DSR gate
+    # computed AND passed on every survivor
+    assert out["dsr_gate_on_survivors"] == {
+        "survivor_count": 1, "computed_and_passed_on_every_survivor": True}
+    # F-8: explicit scored-cell budget counter on the cycle output
+    assert out["scored_cell_budget"] == {
+        "used": 1, "max": 3, "within_budget": True,
+        "source": out["scored_cell_budget"]["source"]}
+    # a DSR-failing arm that clears every ordered rule must NOT yield the
+    # relaxed-battery survivor name (INCOMPLETE fail-closed instead)
+    weak = _dsr_failing_context(ctx420)
+    weak_pos = {weak["config_id"]: {ln: pos[ctx["config_id"]][ln].copy()
+                                    for ln in SYNTH_LEGS}}
+    for ln in SYNTH_LEGS:
+        weak_pos[weak["config_id"]][ln][:] = 0
+        for mi in range(70, 394, 6):
+            weak_pos[weak["config_id"]][ln][mi] = 1
+    out_weak = adj.adjudicate_cycle([weak], weak_pos, SYNTH_LEGS)
+    assert out_weak["survivors"] == []
+    assert out_weak["dsr_gate_on_survivors"] == {
+        "survivor_count": 0, "computed_and_passed_on_every_survivor": False}
+    assert out_weak["proposed_outcome_name"] == \
+        "FOREX_SEARCH_V1_INCOMPLETE_NOT_PROMOTABLE"
+    # budget breach is fail-closed (defensive; the freeze walk caps at 3)
+    out_budget = adj.adjudicate_cycle([ctx, weak], {**pos, **weak_pos},
+                                      SYNTH_LEGS)
+    assert out_budget["scored_cell_budget"]["within_budget"] is True
+    assert out_budget["proposed_outcome_name"] == \
+        "FOREX_SEARCH_V1_INCOMPLETE_NOT_PROMOTABLE"  # weak arm kills it
     # all-rejected cycle -> REJECT_ALL outcome name
     bad = base_ctx("FSS-VOL-DRIFT-MOM-L63", "VOL-DRIFT", [t(-500.0)])
     bad_pos = {"FSS-VOL-DRIFT-MOM-L63": {ln: np.zeros(n, dtype=np.int8)
@@ -754,6 +962,11 @@ def test_verdict_skeleton_labels():
     assert skel["labels"]["no_scored_output_this_lane"] is True
     assert [a["config_id"] for a in skel["arms"]] == FROZEN_IDS
     assert all(a["arm_verdict"] is None for a in skel["arms"])
+    # F-8: explicit scored-cell budget counter (pre-GO: nothing consumed)
+    assert skel["scored_cell_budget"] == {
+        "used": 0, "max": 3, "within_budget": True,
+        "source": skel["scored_cell_budget"]["source"]}
+    assert skel["scored_cell_budget"]["max"] == adj.SCORED_CELL_BUDGET_MAX
 
 
 # ------------------------------------------------------------ real-data gate
