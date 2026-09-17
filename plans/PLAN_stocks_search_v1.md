@@ -224,6 +224,10 @@ families (6)      with FROZEN parameter sub-grids, all parameters declared
 long-only         no short leg (no borrow-cost authority — FOREX-NG6 F4
                   class); direction falsification by R1 + inversion-
                   SUBSTITUTE controls, honestly labelled.
+zero-range law    a bar with high == low makes RANGE (component 3) and
+                  CLV undefined — the state is NOT FIRED on that bar
+                  (fail-closed, never imputed); degenerate bars are
+                  counted in a P0 census.
 ```
 
 Selection inside the grid (frozen BEFORE D2, outcome-blind; every
@@ -326,7 +330,11 @@ and drawdown-depth short-term-reversal states (BINDING — sparse books
 understate in cohort-wide rho); dollar-volume-shock state (event-
 conditional, tagged); realized-vol LEVEL + semivariance share states
 (event-conditional vol-tercile + vol-restricted shadows BINDING); rolling-
-beta state; DGS10-LEVEL state; event-calendar geometry (P-24 class); V13
+beta state; DGS10-LEVEL state (disposition pinned: NG6 recorded DGS10
+UNMEASURABLE on this plane — if no DGS10 authority is pinned at P0 this
+shadow is NOT_ADJUDICABLE, disclosed, never an inferred PASS; a P0
+authority pass may activate it control-only); event-calendar geometry
+(P-24 class); V13
 death-event proximity; STOCKS-NG5 relative-breadth rotation state;
 dividend-decomposition divergence (non-scored, fail-closed if
 distribution-dominated); 52-week-high proximity generic (this grid makes
