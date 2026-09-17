@@ -31,8 +31,9 @@
   futures **basis and roll structure** instead of a CFD swap line. This is
   a vehicle change, not a rename of any dead family; A5/A6/A7 adjudicate.
 - Standing ancestry carried into every mechanism design: the full forex
-  battery (FXFV1–FXFV7 session/clock/lead-lag/carry classes, FXNG1
-  DGS10-level falsifications #14/#15, FXNG3 revision forms, FXNG4
+  battery (FXFV1–FXFV7 session/clock/lead-lag/carry classes, FXFV8-A5-P1
+  DGS10-level control-out-earns falsification #14 and FXNG1-A4-P2 #15
+  (A7 r1 F-5 provenance fix), FXNG3 revision forms, FXNG4
   day-of-week geometry, NG5 veto battery), RATES-NG1 (clock-shadow
   falsification #16 — the AGGRESSIVE arm died because the release-calendar
   geometry out-earned the mechanism), COMMODITIES-NG1 (release-clock
@@ -91,7 +92,10 @@
 
 - **CME Group** (official): contract specifications; contract calendar;
   expiry and settlement rules; daily settlement files; volume/open
-  interest; exchange and clearing fee documentation.
+  interest; exchange and clearing fee documentation; **margin
+  requirement documentation (official margin pages / SPAN parameter
+  files as publicly served) — required input for the frozen capital
+  feasibility gate (A7 r1 F-3)**.
 - **CFTC**: Commitments of Traders (report calendar + correction policy;
   the COMMODITIES-NG1 release-clock lesson binds any CoT mechanism).
 - **NY Fed / OFR / FRED**: rate/liquidity/macro context, each with an
@@ -110,10 +114,11 @@
   transcript (url/method/status/content-type/bytes/sha256/fetched_at);
   deterministic re-fetch re-hash ALL_MATCH; HEAD-census with frozen
   etiquette (sequential, ≥1 s spacing, ≤2 retries exponential backoff,
-  census volume cap 5 × (5 instruments × sampled-years × 8) probes);
-  hard byte cap 300 MB total; on a connection-level block, run the
-  SNI/destination-IP discrimination experiment and record it — a measured
-  filter is a `BLOCKED_TRANSPORT` owner-action input, never bypassed.
+  census volume cap 5 × (5 instruments × 5 sampled-years {2019, 2021,
+  2023, 2025, 2026} — frozen (A7 r1 F-6) × 8) probes); hard byte cap
+  300 MB total; on a connection-level block, run the SNI/destination-IP
+  discrimination experiment and record it — a measured filter is a
+  `BLOCKED_TRANSPORT` owner-action input, never bypassed.
 
 ## 4. Preregistered measurement contract (frozen before any outcome)
 
@@ -132,14 +137,16 @@
    days-to-expiry rules; volume/OI usage restricted to PIT-declared
    windows — never future volume); roll date rule and guard rails
    (expiry/delivery guard: no position concept may extend into the last
-   K trading days before expiry — K frozen at selection time and never
-   loosened); actual dated contracts only; no synthetic fills; no
-   back-adjustment with future data; missing contract = `NOT_RUN`;
-   timezone/DST normalized from measured evidence; duplicate/gap/outlier
-   censuses with frozen definitions; settlement vs BBO/trade identity
-   kept distinct and labeled; deterministic reconstruction + detached
-   reproduction mandatory. **If only non-reproducible continuous series
-   are obtainable, the cycle is `BLOCKED_ACTUAL_CONTRACT_HISTORY`.**
+   K trading days before expiry; **K is frozen in the A3 roll-contract
+   freeze artifact, committed BEFORE any contract data is fetched, and
+   never loosened after bytes are seen — A7 r1 F-7**); actual dated
+   contracts only; no synthetic fills; no back-adjustment with future
+   data; missing contract = `NOT_RUN`; timezone/DST normalized from
+   measured evidence; duplicate/gap/outlier censuses with the §4.6 frozen
+   numeric definitions; settlement vs BBO/trade identity kept distinct
+   and labeled; deterministic reconstruction + detached reproduction
+   mandatory. **If only non-reproducible continuous series are
+   obtainable, the cycle is `BLOCKED_ACTUAL_CONTRACT_HISTORY`.**
 3. Cost stack (A4): per instrument — historical/current bid-ask authority
    (measured or classified with its evidence class); spread; exchange
    fee; clearing/regulatory fee; broker commission (UNKNOWN posture,
@@ -167,6 +174,29 @@
    that it is not momentum/reversal/carry/session-pattern renamed. No
    returns or PnL anywhere in any dossier.
 5. D2 battery (§6) runs before any successor and computes no PnL.
+6. **Frozen numeric floors and census definitions (frozen NOW, before any
+   fetch — A7 r1 F-1; no post-hoc tuning is lawful):**
+   - Coverage floors (per instrument, sampled-years {2019, 2021, 2023,
+     2025, 2026}): official daily-settlement records present for ≥ 90%
+     of the instrument's official trading days per sampled year;
+     volume/OI records present for ≥ 90% of those days; expiry coverage:
+     ≥ 8 consecutive quarterly expiries evidenced per instrument from
+     the official calendar/listings census.
+   - Liquidity census (from official volume/OI): median daily volume and
+     median open interest over the most recent 20 trading days — both
+     ≥ 5,000 contracts ⇒ `LIQUID_ELIGIBLE`; both ≥ 1,000 ⇒ `THIN`
+     (control-plane eligible only); either < 1,000 ⇒ `LIQUIDITY_DEAD`.
+   - Spread authority classes (exhaustive): `MEASURED` (from a reached
+     official instrument channel, hashed bytes) or `DOCUMENTED_CLASS`
+     (official published quote/fee documentation, hashed pages). An
+     inferred or third-party spread NEVER qualifies; if neither class is
+     reachable for an instrument, that instrument's cost gate FAILS.
+   - Data-quality censuses (frozen definitions): exact-duplicate
+     settlement rows ≤ 0.5% per instrument-year; calendar gaps must
+     reconcile to the official holiday calendar (any unexplained gap =
+     FAIL); outlier = |daily settlement change| > 10% — each flagged
+     outlier must reconcile to an official settlement correction or it
+     is a FAIL; monotonic file/record ordering violations = 0.
 
 ## 5. Lanes (independent, outcome-blind)
 
@@ -239,7 +269,9 @@ Required proofs R1–R15 = D2 items 1–15, each recorded PASS/FAIL/NOT_RUN/
 BLOCKED with evidence, plus (R16) per-instrument eligibility rows and
 (R17) A6 disposition table. Mapping, first matching rule wins:
 
-1. License/entitlement of an allowed source measured insufficient →
+1. License/entitlement of an allowed source measured insufficient, OR
+   left UNMEASURED at terminal with the co-blocker named verbatim (the
+   FOREX-INTRA-BIDASK-V1 B2 class — A7 r1 F-4) →
    **`BLOCKED_LICENSE_OR_ENTITLEMENT`**
 2. Transport fails under the frozen etiquette (with the L-FIBV1-1
    discrimination evidence attached) → **`BLOCKED_TRANSPORT`**
@@ -262,10 +294,13 @@ BLOCKED with evidence, plus (R16) per-instrument eligibility rows and
 10. Any of R1–R17 `NOT_RUN`/unresolved with no rule above fired →
     **`INCOMPLETE_NOT_PROMOTABLE`**
 11. R1–R15 PASS + ≥ 1 candidate `CANDIDATE_LISTED` passing D2-11/12/13 +
-    A6 binding attacks all dispositioned + A7 terminal independent
+    every A6 binding attack EVIDENCED_REFUTED + A7 terminal independent
     re-verification → **`PASS_FX_FUTURES_RESEARCH_AUTHORITY`** — a
     RESEARCH authority only; PASS never means profitable; limitations
-    stand verbatim in every artifact.
+    stand verbatim in every artifact. **A CONCEDED binding attack is
+    NEVER a disposition toward this rule (A7 r1 F-2): a conceded
+    data/cost-layer attack routes to the corresponding BLOCKED rule
+    (1–8); a conceded mechanism-layer attack routes to rule 12.**
 12. Data gates (rules 1–8 clean) but the mechanism layer fails
     non-fatally (fold population, timing-too-slow, or a binding A6 attack
     on the mechanism layer) → **`PASS_DATA_CONTROL_ONLY`** (data plane
@@ -314,7 +349,14 @@ G7  two-half close: terminal verdict per §7 on the integration branch;
     registry TERMINAL + MAP + lessons (if any); denominators unchanged
     257/260; FAMILY_FAILURES rows only for measured D2 kills of A5
     candidates; no hypothesis-ledger family rows (nothing scored);
-    ELI5 Vietnamese owner report (the ten questions of the directive)
+    ELI5 Vietnamese owner report answering, in order (A7 r1 F-8, the
+    directive's ten questions): (1) CME data có lấy được không;
+    (2) instrument nào đủ dữ liệu; (3) actual contracts hay synthetic;
+    (4) roll có PIT sạch không; (5) chi phí đã đầy đủ chưa; (6) $1,000
+    có khả thi không; (7) mechanism nào còn sống; (8) A7 verdict;
+    (9) có được viết successor không; (10) owner cần làm gì tiếp theo —
+    conclusion words ONLY PASS / FAIL / BLOCKED / NOT_RUN, no marketing
+    language, no profit promises
 ```
 
 ## 10. Incident transparency
