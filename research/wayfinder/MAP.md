@@ -1,5 +1,52 @@
 # Wayfinder map: evidence-led profitability research for my-quantitative
 
+## Sprint state (synced at the three-cycle program close, 2026-09-17)
+
+- **THREE-CYCLE PROGRAM CLOSED 0/9** (owner directive 2026-09-16:
+  STOCKS-NG6 / FOREX-NG7 / CRYPTO-NG4 — three independent cycles, separate
+  budgets/GOs/branches/ledgers; total max 9 scored cells; **0 consumed,
+  0 survivors, all TERMINAL, all GO phrases died UNCONSUMED, S1 SEALED
+  everywhere, no orders ever, PROSPECTIVE-SHADOW-V1 untouched throughout,
+  FOREX-NG6R1 XAU probe untouched**):
+  - **FOREX-NG7 → `FOREX_NG7_BLOCKED_SOURCE_OR_SCHEMA`** (branch
+    `orca/forex-ng7-integration` terminal 3af2de8c; A7 plan r1 REFUSED →
+    remediation a6a0da54 → r2 AUTHORIZED 0 blocking; M0 12/12 incl. G11
+    dual-books fixture; P0 F1-F3/F5-F7 PASS — trigger census FEASIBLE
+    721/802/674 per fold — then F4 decisive: NO citable financing band in
+    the authorized evidence space (TD=vendor OHLC-only; FOREX-NG6 P0-F4
+    precedent, second independent census) → the plan's preregistered
+    dual-books clause fired; A7 terminal CONFIRM 9ccc8d7f 0 blocking.
+    Reopening owner-only: broker-grade cost authority for TD majors).
+  - **STOCKS-NG6 → `STOCKS_NG6_BLOCKED_DATA_OR_SELECTION`** (branch
+    `orca/stocks-ng6-integration` terminal 77329ad8; A7 plan r1
+    AUTHORIZED_WITH_FINDINGS 2 HIGH remediated; M0 11/11; P0 PASS 10/10
+    AFTER a runtime-TLS crash + resumable-cache recovery (incident
+    disclosed): 2,169 symbols 3.21M rows, bear-trap event population
+    5,841/3,325 bookable, folds 1,136/1,495/694, band-C 13.8% — the
+    family was FEASIBLE; D2 R0_VETO_ALL pre-score on the A4-BINDING
+    event-conditional forms (vol_restricted_event_20d 0.260 / 60d 0.219 /
+    dvol_shock −0.320 / reversal_5d 0.201 vs the immovable 0.20); A7
+    terminal CONFIRM 204fc865 — independent rebuild reproduced all four
+    rhos to 6 dp. Durable methodological asset: event-conditional rho for
+    sparse event books).
+  - **CRYPTO-NG4 → `CRYPTO_NG4_BLOCKED_DATA_OR_SELECTION`** (branch
+    `orca/crypto-ng4-integration` terminal 535d802d; A7 plan r1 REFUSED →
+    r2 AUTHORIZED 0 blocking + FLOOR AUDIT PASS; M0 28 tests; P0 PASS
+    (panels/X1/funding/fold-span/SOL-RV24 all re-pinned); prospective
+    collectors ran per the frozen contract ~2.4h then stopped cleanly at
+    close (workers=0); D2 R0_VETO_ALL pre-score — 20 veto rows
+    (rev24 per-leg 0.310/0.221, v16 close-displace-fade, v17proxy
+    forms, pair spread-trend 0.207): the market-neutral pair book is
+    measured to be a short-horizon reversal/displaced-fade composite —
+    crypto ng proposals now 11/11 killed at the 0.20 bar; A7 terminal
+    CONFIRM dd2ef319 (independent rebuild to 6 dp; caught + fixed the
+    collector workers=0 gap pre-commit). Collection contract + collector
+    machinery survive as reusable assets).
+  - Program denominators UNCHANGED 257/260 (P-9). The falsification
+    apparatus killed every proposal BEFORE any scored cell existed in all
+    three cycles — 0/9 is the honest program result, cheaper than 9 cells
+    of false hope.
+
 ## Sprint state (synced at the FREE-DATA-FRONTIER-V1R1 close, 2026-09-16)
 
 - **FREE-DATA-FRONTIER-V1R1 CLOSED → `FREE_DATA_FRONTIER_V1R1_PASS_OFR_ACQUIRED`**
