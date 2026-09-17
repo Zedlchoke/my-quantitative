@@ -1,0 +1,73 @@
+{
+  "schema": "forex_mt5_cost_probe_contract@1",
+  "probe_id": "forex_mt5_cost_probe_2026-09",
+  "created_utc": "2026-09-17T05:20:00Z",
+  "created_by": "A1/Lead under owner directive 2026-09-17 (verbatim authority): continue the FOREX broker-cost blocker via account OANDA_Global-Demo-1 on MT5 macOS/Wine; NO new cycle; NO self-declared PASS; A7 alone concludes whether the data unlocks the FOREX cycle; stop at verdict, no scored cells without a valid gate",
+  "serves": "the recorded FOREX-NG7 / FOREX-NG6 reopening condition (owner broker-grade cost authority for the five TD majors: EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD) and Lane F owner_deliverable option (an account the owner already holds)",
+  "cycle_status": "NO cycle opened or modified; DATA-EDGE-UNLOCK-V1 and FOREX-NG7 remain TERMINAL (absorbing); this is an owner-directed data-engineering probe on main (stocks_free_v8_probe precedent); budget 0 scored cells; S1 SEALED; orders NONE",
+  "account_scope": {
+    "declared_account": "OANDA_Global-Demo-1 (owner-stated name)",
+    "platform": "MetaTrader 5 under the official macOS Wine wrapper (measured present: /Applications/MetaTrader 5.app + ~/Library/Application Support/net.metaquotes.wine.metatrader5/)",
+    "login_credentials": "NEVER handled, never requested, never stored; the collector is contract-banned from reading or writing ACCOUNT_LOGIN (redaction at source)",
+    "demo_caveat_flagged_for_A7": "the account is a DEMO; whether demo-served spread/swap properties qualify as broker-grade cost authority for a scored cycle is EXACTLY the question reserved to A7 — the Lead does not adjudicate it"
+  },
+  "read_only_guarantees": {
+    "no_trade_api": "the collector EA calls ZERO order/trade functions: no OrderSend/OrderClose/OrderCloseBy/OrderDelete/OrderModify, no PositionOpen/PositionClose/PositionModify/PositionCloseBy, no Buy()/Sell(), no CTrade/CPositionInfo trade actions, no OrderCalcMargin/OrderCalcProfit (margin deliberately excluded from scope), no requests to trade endpoints",
+    "static_audit": "grep-based forbidden-symbol audit is part of the committed evidence and must show zero matches before deployment (static_audit_result.json)",
+    "algo_trading": "owner instruction: the Algo Trading / AutoTrading button stays DISABLED; a read-only EA runs its timer without any trading permission; the EA additionally logs TERMINAL_TRADE_ALLOWED state every heartbeat so any deviation is visible in the raw record",
+    "orders": "NONE are placed, modified, closed or cancelled, ever, by anyone, in this probe"
+  },
+  "collected_fields": {
+    "per_tick_sample": ["recv_utc (TimeGMT, 1s granularity)", "symbol", "bid", "ask", "spread_points (platform-served SYMBOL_SPREAD)", "spread_computed (ask-bid in points)", "spread_pips", "digits", "venue_time_msc (tick.time_msc)", "trade_server_time"],
+    "per_symbol_static_spec_snapshot": ["digits", "point", "trade_tick_size", "trade_tick_value", "trade_contract_size", "volume_min", "volume_max", "volume_step", "spread (current points)", "swap_mode (enum text)", "swap_long", "swap_short", "swap_rollover3days (weekday name)", "trade_mode", "trade_sessions per weekday (start-end server-time HH:MM, all sessions enumerated)"],
+    "per_row_account_context": ["account_company", "account_server", "account_trade_mode (DEMO/CONTEST/REAL text)", "account_currency", "terminal_trade_allowed_flag (report-only)", "login REDACTED_BY_CONTRACT"],
+    "heartbeat": ["recv_utc", "terminal_connected", "symbols_ok", "symbols_stale", "rows_written_total", "parse_errors_total"],
+    "events": ["startup", "gap (missing = missing, on disconnect/reconnect)", "shutdown with final stats"]
+  },
+  "preregistration_frozen_before_any_observation": {
+    "smoke_test": {
+      "duration_minutes": 30,
+      "pass_criteria": [
+        "all 5 symbols emit >=1 tick sample per 5-minute bucket for the whole smoke window",
+        "heartbeat rows present at <= 60s cadence throughout",
+        "zero parse-error events",
+        "one complete static spec snapshot per symbol at smoke start and one at smoke end (any diff flagged, never silently accepted)",
+        "terminal_connected true for >= 28 of 30 minutes with any gap gap-recorded (missing = missing)"
+      ]
+    },
+    "full_window": {
+      "min_consecutive_utc_days": 7,
+      "start_definition": "first full UTC day AFTER smoke passes; declared by the Lead in the collection start manifest before data interpretation",
+      "coverage_floors": [
+        "F1 per-symbol presence: >= 95% of 5-minute UTC buckets per calendar day contain >= 1 valid sample (the rollover/server-maintenance window is gap-marked and excluded from the denominator, missing = missing)",
+        "F2 session coverage: every weekday (Mon..Fri) carries >= 4h of spread samples per symbol, including >= 1h inside the London/NY overlap",
+        "F3 rollover contrast: the 20:55-01:05 UTC window is sampled on the triple-swap weekday (as served by SYMBOL_SWAP_ROLLOVER3DAYS) AND on at least one non-multiplier weekday for contrast",
+        "F4 spec stability: >= 2 full spec snapshots per symbol (window start + end), sha256-manifested; any mid-window drift is an event row, never a silent overwrite",
+        "F5 dedupe: (symbol, venue_time_msc, bid, ask) unique after verification; duplicates counted and dropped at verification only, never in the raw layer"
+      ],
+      "stopping_rule": "outcome-independent: stop = earliest UTC date >= start + 7 days with F1-F5 met; if unmet, continue collection (never restart clocks) or declare NOT_RUN_COVERAGE fail-closed; no result, analysis, or PnL can move it (there is no PnL anywhere in this probe)"
+    },
+    "what_this_probe_cannot_prove_named_in_advance": [
+      "actual swap ACCRUAL behavior (requires holding a position - forbidden; the authority is the platform-SERVED swap properties measured from account-bound bytes)",
+      "commission (MT5 symbol properties do not serve per-symbol commission; see commission_authority_plan)",
+      "weekend swap handling beyond the served 3x-weekday flag (the Fri->Mon accrual split is NOT directly verifiable without positions - recorded as NOT_RUN)"
+    ]
+  },
+  "commission_authority_plan": {
+    "posture": "UNKNOWN until proven otherwise; commission is NEVER inferred as 0 (owner directive + Q-8)",
+    "steps": [
+      "1. measure account type + margin mode + company/server from platform bytes at collector startup (the served bytes are the account-bound evidence)",
+      "2. hunt a broker commission authority OUTSIDE the platform: OANDA's own account-comparison pages (spread-only vs commission/markup account types) pinned as STATED-class evidence with URL + retrieval date + sha256 of the fetched page — STATED never grades PASS (Q-8)",
+      "3. if account-type bytes + broker docs still do not yield a measurable per-trade commission for THIS account: verdict UNKNOWN_STATED_ONLY (or NOT_RUN if no stated authority is even locatable), recorded for A7"
+    ]
+  },
+  "artifact_map": {
+    "collector_source": "mt5_cost_collector.mq5 (this dir; copied to the MT5 data folder MQL5/Experts/ for compilation)",
+    "verifier": "verify_probe.py (schema validation, dedupe, gap census, coverage arithmetic vs these floors, spec-snapshot hashing; produces verdict_INPUTS only - never a verdict)",
+    "static_audit": "static_audit_result.json (forbidden-symbol grep evidence)",
+    "owner_instructions": "OWNER_RUN.md (Vietnamese, minimal steps, Algo Trading stays OFF)",
+    "raw_data_root": "NEVER in git: the EA writes inside the MT5 terminal's shared Files folder; the owner copies the folder out to /Users/hoangminhlong/.my-quantitative-data/forex_mt5_cost_probe_2026-09/raw/ (external governed root) or hands the files to the Lead"
+  },
+  "decision_law": "the Lead records NOT_RUN/UNKNOWN posture honestly and hands ALL artifacts to A7; ONLY A7 concludes whether the collected data suffices to unlock a FOREX successor cycle (owner directive); a PASS by A7 does NOT open any cycle by itself - a successor still needs its own preregistered plan + A7 prelaunch + exact owner GO at its own gate (P-8)",
+  "measured_utc": "2026-09-17T05:20:00Z"
+}
