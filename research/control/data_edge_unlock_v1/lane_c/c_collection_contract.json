@@ -113,6 +113,15 @@
       "decision_rule": "if the census yields a structurally consistent measured shape (data is a LIST of trade objects each carrying integer trade_seq on the raw channel), trades.{inst}.raw joins the deribit general subscription with a measured-shape validator and trade_seq gap detection; otherwise Deribit trades stay excluded exactly as CNG4 (degradation recorded, no inference)"
     }
   },
+  "measured_corrections_to_base_contract": [
+    {
+      "field": "freeze_fields.4_sequence_semantics_per_venue.kraken (book)",
+      "date_measured_utc": "2026-09-17T02:49:33Z .. (first live connection)",
+      "finding": "The cng4-a3 reading 'book feed: per (product_id, side) seq, consecutive increments expected' did NOT survive live-wire scale: with per-(product, side) keying the arrival-order delta histogram per key was 1,2,3,4,5,... (~30% of book messages flagged as false gaps; 30,825 gap records in the first ~135k-line shard). Merging both sides per product in arrival order gives delta==1 for 31007/31008 (PF_XBTUSD) and 15239/15240 (PF_ETHUSD) transitions: Kraken futures book seq is ONE counter per product_id SHARED across buy/sell sides.",
+      "correction": "collector gap/dedupe key for kraken book = (venue, product_id, seq); gap iff per-product arrival-order delta > 1; book_snapshot resets continuity. Evidence: live shard kraken/2026/09/17/1789613372030.jsonl (first connection), analyzed pre-correction; the false-gap shard rows remain in the raw record (verbatim capture; the gap records are data and are NOT rewritten).",
+      "effect_on_floors": "Removes a false-gap bias that would have invalidated a large fraction of derived H1 bars; makes the valid-triad floor honestly computable."
+    }
+  ],
   "deribit_trades_census_result": {
     "status": "MEASURED_REJECTED_KEYLESS",
     "schema": "deu_deribit_trades_census@1",

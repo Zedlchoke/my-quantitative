@@ -192,22 +192,46 @@ def test_coinbase_duplicate_and_regression_not_gaps(tmp_path):
 
 
 def test_kraken_book_snapshot_resets_continuity_and_gap_detected(tmp_path):
+    """MEASURED CORRECTION (live wire 2026-09-17, 46k msgs): Kraken book seq
+    is ONE counter per product_id SHARED across buy/sell sides — interleaved
+    sides are consecutive integers, so per-(product, side) keying is wrong.
+    Gap iff per-product delta > 1; snapshot resets continuity."""
     col, root, run, clock = make_collector(tmp_path, "kraken")
 
-    def book(seq):
-        # MEASURED census shape: side 'buy'/'sell', numeric price/qty
-        return {"feed": "book", "product_id": "PF_XBTUSD", "side": "buy", "seq": seq, "price": 100.0, "qty": 1.0, "timestamp": 1}
+    def book(seq, side="buy"):
+        return {"feed": "book", "product_id": "PF_XBTUSD", "side": side, "seq": seq, "price": 100.0, "qty": 1.0, "timestamp": 1}
 
-    col.process_text(json.dumps(book(10)))
+    # interleaved sides, consecutive per-product ints: NO gap may fire
+    col.process_text(json.dumps(book(10, "sell")))
+    col.process_text(json.dumps(book(11, "buy")))
+    col.process_text(json.dumps(book(12, "sell")))
     col.process_text(json.dumps({"feed": "book_snapshot", "product_id": "PF_XBTUSD", "ticks": [], "timestamp": 2}))
-    col.process_text(json.dumps(book(10)))  # fresh snapshot clears continuity
+    col.process_text(json.dumps(book(12, "buy")))  # fresh snapshot clears continuity
     lines = read_shard_lines(root / (shard_rel_path("kraken", DAY, col.conn_epoch) + ".open"))
     assert not [ln for ln in lines if ln.get("type") == "gap"]
-    col.process_text(json.dumps(book(14)))  # delta 10 -> 14 = gap of 3
+    col.process_text(json.dumps(book(16, "sell")))  # 12 -> 16 = gap of 3
     lines = read_shard_lines(root / (shard_rel_path("kraken", DAY, col.conn_epoch) + ".open"))
     gaps = [ln for ln in lines if ln.get("type") == "gap"]
     assert len(gaps) == 1 and gaps[0]["missing_count"] == 3
     assert gaps[0]["channel"] == "book" and "PF_XBTUSD" in gaps[0]["instrument"]
+    # the OTHER product has its own sequence space (no cross-product gap)
+    col.process_text(json.dumps({"feed": "book", "product_id": "PF_ETHUSD", "side": "buy", "seq": 5, "price": 1.0, "qty": 1.0, "timestamp": 3}))
+    lines = read_shard_lines(root / (shard_rel_path("kraken", DAY, col.conn_epoch) + ".open"))
+    assert len([ln for ln in lines if ln.get("type") == "gap"]) == 1
+
+
+def test_deribit_test_request_is_answered_with_public_test(tmp_path):
+    """MEASURED start defect (2026-09-17): Deribit drops the connection
+    (~61s cycle) when the client never answers the server's test_request.
+    process_text must queue the public/test reply for the send loop."""
+    col, root, run, clock = make_collector(tmp_path, "deribit")
+    col.process_text(json.dumps({"jsonrpc": "2.0", "method": "heartbeat"}))
+    assert col._pending_sends == []  # plain heartbeat needs no reply
+    col.process_text(json.dumps({"jsonrpc": "2.0", "method": "test_request"}))
+    assert col._pending_sends == [{"jsonrpc": "2.0", "id": 902, "method": "public/test", "params": {}}]
+    # the request itself is still captured verbatim
+    lines = read_shard_lines(root / (shard_rel_path("deribit", DAY, col.conn_epoch) + ".open"))
+    assert [ln["channel"] for ln in lines] == ["rpc_heartbeat", "rpc_test_request"]
 
 
 def test_deribit_prev_change_id_gap_and_snapshot_reset(tmp_path):

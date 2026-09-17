@@ -38,9 +38,12 @@ class SequenceTracker:
     - coinbase : payload.sequence_num, per-connection monotone across ALL
       channels; gap iff delta > 1 across consecutive messages within the
       connection epoch (regressions/dups are NOT gaps -- field 8 territory).
-    - kraken   : book feed per (product_id, side) seq; trade feed per
-      product seq; gap iff delta > 1.  book_snapshot / trade_snapshot reset
-      continuity (fresh snapshot recovery, field 5).
+    - kraken   : book feed per product_id (MEASURED CORRECTION 2026-09-17:
+      seq is one counter per product SHARED across buy/sell sides; the
+      cng4-a3 "per (product_id, side)" reading produced ~30% false gaps at
+      live-wire scale); trade feed per product seq; gap iff delta > 1.
+      book_snapshot / trade_snapshot reset continuity (fresh snapshot
+      recovery, field 5).
     - deribit  : book change_id per instrument; the 100ms aggregated channel
       carries losslessness via prev_change_id (MEASURED CNG4: inter-delivery
       deltas are 10^2..10^3 by design); gap iff a change message's
@@ -301,15 +304,21 @@ def kraken_track_and_seq(
         return None, None
     feed = payload.get("feed")
     if feed == "book":
-        key = ("book", str(payload.get("product_id")), str(payload.get("side")))
+        # MEASURED CORRECTION (DEU lane C, 2026-09-17 live wire, 46k msgs in
+        # the first connection): Kraken futures book seq is ONE counter per
+        # product_id SHARED across sides — buy/sell messages interleave
+        # consecutive integers (PF_XBTUSD merged arrival-order deltas were
+        # 31007/31008 delta==1; per-(product, side) keying showed delta
+        # histograms 1,2,3,4,5... and produced ~30% FALSE gap records).
+        # The CNG4 census reading "per (product_id, side)" did not survive
+        # live-wire scale.  Gap iff per-product delta > 1; snapshot resets.
+        key = ("book", str(payload.get("product_id")))
         gap = tracker.observe(key, int(payload["seq"]), "delta")
         if gap:
             gap["channel"] = "book"
         return None, gap
     if feed == "book_snapshot":
-        # MEASURED census side values are 'buy'/'sell'
-        tracker.reset(("book", str(payload.get("product_id")), "buy"))
-        tracker.reset(("book", str(payload.get("product_id")), "sell"))
+        tracker.reset(("book", str(payload.get("product_id"))))
         return None, None
     if feed == "trade":
         key = ("trade", str(payload.get("product_id")))

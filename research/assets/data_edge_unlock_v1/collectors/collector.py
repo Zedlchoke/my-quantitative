@@ -142,6 +142,7 @@ class Collector:
         self._last_message_mono: Optional[float] = None
         self._probe_sent_mono: Optional[float] = None
         self._conn_open: Dict[str, Any] = {}
+        self._pending_sends: List[Dict[str, Any]] = []  # e.g. Deribit test_request replies
 
     # -- bookkeeping ------------------------------------------------------
     def _record_connection(self, rec: Dict[str, Any]) -> None:
@@ -240,6 +241,14 @@ class Collector:
             if rej:
                 self._note_degradation(str(payload.get("feed", "unknown")), rej)
         elif self.venue == "deribit":
+            # Deribit heartbeat protocol, server side (freeze field 6): the
+            # server sends {"method":"test_request"} and DROPS the connection
+            # if the client does not answer public/test (MEASURED at start
+            # 2026-09-17: connections closed every ~61.4s without the reply).
+            if payload.get("method") == "test_request":
+                self._pending_sends.append(
+                    {"jsonrpc": "2.0", "id": 902, "method": "public/test", "params": {}}
+                )
             err = deribit_rpc_error(payload)
             if err:
                 self._note_degradation("rpc", err)
@@ -283,7 +292,9 @@ class Collector:
         if venue == "kraken":
             feed = payload.get("feed")
             if feed == "book":
-                return (venue, "book", payload.get("product_id"), payload.get("side"), payload.get("seq"))
+                # MEASURED CORRECTION 2026-09-17: per-product seq (shared
+                # across sides) — dedupe key matches the gap-tracker key.
+                return (venue, "book", payload.get("product_id"), payload.get("seq"))
             if feed == "trade":
                 return (venue, "trade", payload.get("product_id"), payload.get("seq"))
             if feed in ("book_snapshot", "trade_snapshot", "ticker", "heartbeat"):
@@ -367,6 +378,7 @@ class Collector:
         self._hb_last_venue_mono = self.monotonic()
         self._last_message_mono = self.monotonic()
         self._probe_sent_mono = None
+        self._pending_sends = []
         self.backoff = BACKOFF_START_S
 
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -392,7 +404,13 @@ class Collector:
                             self.process_text(msg.data)
                         elif msg.type == aiohttp.WSMsgType.BINARY:
                             self.process_text(msg.data.decode("utf-8", errors="replace"))
-                        elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.ERROR):
+                        if self._pending_sends:
+                            # protocol replies queued by process_text (Deribit
+                            # test_request -> public/test) go out immediately
+                            for m in self._pending_sends:
+                                await ws.send_str(json.dumps(m))
+                            self._pending_sends.clear()
+                        if msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.ERROR):
                             self.stats["disconnects"] += 1
                             print(f"[{self.venue}] ws closed/error — reconnecting", file=sys.stderr, flush=True)
                             break
