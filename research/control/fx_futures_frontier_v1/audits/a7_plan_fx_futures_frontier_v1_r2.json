@@ -1,0 +1,158 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "FX-FUTURES-FRONTIER-V1",
+  "audited_plan": "plans/PLAN_fx_futures_frontier_v1.md",
+  "audited_sha": "5fd2cf4cd5c42d857e9b44a2d05c59972734a169",
+  "audited_utc": "2026-09-17 (session date; exact wall clock unavailable in the audit sandbox — this audit postdates the newest evidence timestamp observed, .git reflog 2026-09-17 remediation commit)",
+  "auditor": "A7 fresh-context r2",
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "blocking_count": 0,
+  "verdict_note": "0 unresolved HIGH/CRITICAL. Under the plan's own G1 gate (line 3-6, 335-336: registration requires AUTHORIZED with 0 unresolved HIGH/CRITICAL; remediation loop on anything else, fresh re-audit only on HIGH/CRITICAL) this verdict satisfies the pre-registration precondition; F-2.1..F-2.4 are MEDIUM/LOW advisory remediations, F-2.5 is an execution-required NOT_RUN marker, none blocking registration.",
+  "findings": [
+    {
+      "id": "F-2.1",
+      "severity": "MEDIUM",
+      "plan_section": "4.3 (cost stack + capital feasibility gate)",
+      "evidence": "plans/PLAN_fx_futures_frontier_v1.md lines 150-157: the cost stack enumerates spread, exchange fee, clearing/reg fee, broker commission, min qty, roll cost ('measured from settlement-vs-settlement spreads across the frozen roll rule'), then only 'slippage (stress coverage)' — no frozen slippage estimator (half-spread at the spread authority? fixed tick count from the identity pack? additive or already inside the spread?). The frozen capital tier definition (lines 157-162) consumes 'estimated all-in round-trip cost at the observed tier <= 0.5% of C', so the all-in cost formula — including the slippage component — is an input to a preregistered numeric gate yet is not fully pinned. Everything else in the gate IS frozen (margin from official docs, threshold C/2, tiers $1k/$10k/$300k, ladder 1.5x/2.0x). Residual exposure: an A4 lane that sees cost bytes first can choose a favorable slippage convention and move the per-tier feasibility rows (a standing D2 output and the substrate for the A6 '$1,000 insufficient capital' attack). Bounded because the terminal gate fails only if NO tier is feasible (thresholds scale with C, tiers 2-3 are insensitive), and the ladder partially brackets it — hence MEDIUM, not HIGH.",
+      "required_fix": "Freeze the slippage estimator in the A4 cost contract at/before the same pre-fetch freeze moment as the roll rule and floors (e.g., slippage := half the measured/documented spread per side from the §4.6 spread authority, or a fixed tick count from the §4.1 identity pack), and state explicitly whether it is additive to the spread component or the spread itself is the slippage base. Plan amendment by the Lead; A7 does not edit."
+    },
+    {
+      "id": "F-2.2",
+      "severity": "LOW",
+      "plan_section": "7 (rules 9/10/11/12 — mixed A5 candidate populations)",
+      "evidence": "plans/PLAN_fx_futures_frontier_v1.md lines 292-307. Scenario: >=1 A5 candidate NOT_RUN while others are measured dead and no candidate is CANDIDATE_LISTED passing D2-11/12/13. Rule 9 ('EVERY A5 candidate measured dead') cannot fire; rule 11 cannot fire (no passing listed candidate); rule 12's mechanism-layer enumeration ('fold population, timing-too-slow, or a binding A6 attack') does not name the NOT_RUN case. Only a broad reading of rule 10 ('Any of R1-R17 NOT_RUN/unresolved', reading the candidate's unmeasured D2-11 as R11 NOT_RUN) routes to INCOMPLETE_NOT_PROMOTABLE. Symmetric looseness: under a reading of rule 11 that evaluates 'R1-R15 PASS' only over measured candidates, a PASS could coexist with one unmeasured candidate. No false successor authority is reachable (rule 11 still requires a passing CANDIDATE_LISTED), and both candidate terminals block successors, so LOW.",
+      "required_fix": "Add to rule 11: 'AND every non-listed A5 candidate is measured ANCESTRY_DEAD (NOT_RUN counts as unresolved)' and/or add to rule 12's enumeration: 'or an A5 candidate NOT_RUN'. Plan amendment by the Lead."
+    },
+    {
+      "id": "F-2.3",
+      "severity": "LOW",
+      "plan_section": "5 (A6 lane) vs 7 (rules 9/11/12)",
+      "evidence": "plans/PLAN_fx_futures_frontier_v1.md line 233-236 (A6: 'an unresolved BINDING attack maps to BLOCKED_* (data/cost layers) or PASS_DATA_CONTROL_ONLY / ANCESTRY_DEAD (mechanism layer) per §7') vs the operative §7 mapping: rule 9 ANCESTRY_DEAD fires only on MEASURED kills ('rename test fires or pooled |rho| > 0.20'), and the rule 11 note (lines 300-303, the r1 F-2 fix) routes a conceded mechanism-layer attack to rule 12 only. ANCESTRY_DEAD is not a §7-reachable disposition for a conceded (unmeasured) attack. Operative mapping is unambiguous and fail-closed; the §5 list is loose wording, so LOW.",
+      "required_fix": "Align §5 A6 wording to §7: conceded mechanism-layer attack -> rule 12 (PASS_DATA_CONTROL_ONLY); ANCESTRY_DEAD only via measured rule-9 evidence. Plan amendment by the Lead."
+    },
+    {
+      "id": "F-2.4",
+      "severity": "LOW",
+      "plan_section": "0 (standing ancestry panel)",
+      "evidence": "plans/PLAN_fx_futures_frontier_v1.md lines 33-43 enumerate the forex dead panel as FXFV1-FXFV7, FXFV8-A5-P1 (#14), FXNG1-A4-P2 (#15), FXNG3 revision forms, FXNG4 day-of-week geometry, NG5 veto battery — but omit the four measured-dead FXFV9 rows (realized-inflation / PPP-deviation re-clock class, ANCESTRY_RHO_BLOCK vs the FXFV8/V8 shadows), verified real at research/wayfinder/FAMILY_FAILURES.jsonl lines 62-65. Binding protection is unaffected: D2-12 requires the FULL declared shadow inventory and §4.4 mandates per-candidate full ancestry mapping declared in the A5 lane, so LOW.",
+      "required_fix": "Add FXFV9 (realized-inflation/PPP re-clock class) to the §0 panel enumeration, or state the §0 panel is representative and the complete shadow inventory is declared and frozen in the A5 lane before D2-12 runs. Plan amendment by the Lead."
+    },
+    {
+      "id": "F-2.5",
+      "severity": "LOW",
+      "plan_section": "audit scope (execution-required verifications) — NOT_RUN_EXECUTION_REQUIRED",
+      "evidence": "No Bash/execution in this audit sandbox. Verified at content level without execution: (1) loose ref .git/refs/heads/main == 5fd2cf4cd5c42d857e9b44a2d05c59972734a169 == audited tip, and .git/logs/refs/heads/main lines 443-446 show the full chain d9e11a42 (FIBV1 close) -> 994ff1f8 (plan authored) -> a5c3e0f4 (r1 REFUSED artifact commit) -> 5fd2cf4 (r1 remediation 'F-1..F-8 fixed'); .git/packed-refs line 4 carries a stale main value (dff9c80a) which the loose ref lawfully supersedes. (2) Commit-object<->blob binding of the audited working-tree plan bytes to 5fd2cf4 was NOT recomputed (git hash-object requires execution) — NOT_RUN_EXECUTION_REQUIRED. (3) Byte-level immutability diff of FOREX-INTRA-BIDASK-V1 terminal artifacts against the 558b366c tree — NOT_RUN_EXECUTION_REQUIRED (registry head + TERMINAL phase text verified at content level). (4) Terminal re-fetch/re-hash reproduction is future G6 work by design.",
+      "required_fix": "G6 terminal A7 audit must independently recompute the commit/blob binding of the plan tip and the byte-level FIBV1 immutability check with execution available."
+    }
+  ],
+  "checks_passed": [
+    {
+      "id": "CP-1",
+      "dimension": "git provenance of the audited tip",
+      "evidence": ".git/refs/heads/main == 5fd2cf4cd5c42d857e9b44a2d05c59972734a169, exactly the audited_sha. Reflog chain (.git/logs/refs/heads/main lines 443-446): d9e11a429f8d521d6efc906c07aa23be097f9669 'close: FOREX-INTRA-BIDASK-V1 two-half close landing — TERMINAL ... FOREX-NG8 remains burned' (corroborates the plan's G0 intake claim 'main@d9e11a42 measured', line 331) -> 994ff1f8 'plan: FX-FUTURES-FRONTIER-V1 authored' -> a5c3e0f4 'audit: ... A7 plan-audit r1 REFUSED 2 HIGH' -> 5fd2cf4 'plan: FX-FUTURES-FRONTIER-V1 remediation r1 — A7 plan-audit F-1..F-8 fixed'. packed-refs main (dff9c80a) is stale; loose ref takes precedence."
+    },
+    {
+      "id": "CP-2",
+      "dimension": "identity legality (unique ID, NG8 burn, no confiscation)",
+      "evidence": "plans/CYCLE_REGISTRY.json read in full (36 cycle rows): no row uses cycle_id FX-FUTURES-FRONTIER-V1 (unique, live or terminal); no FOREX-NG8 row exists anywhere; the DATA-EDGE-UNLOCK-V1 row phase text carries 'NO FOREX-NG8' verbatim (line 1119); the plan claims no predecessor identity and uses a fresh evidence namespace research/control/fx_futures_frontier_v1/ and a fresh governed raw root outside git."
+    },
+    {
+      "id": "CP-3",
+      "dimension": "predecessor immutability and registry-row claims",
+      "evidence": "Plan claims verified against plans/CYCLE_REGISTRY.json: FOREX-INTRA-BIDASK-V1 TERMINAL FOREX_INTRA_BIDASK_V1_BLOCKED_TRANSPORT head 558b366c84554b3cddd2d981dfaeacdee066742f (row at lines 1144-1173, head line 1152) — matches plan line 333 'FOREX-INTRA-BIDASK-V1 558b366c'; FOREX-NG1..NG7 all TERMINAL (rows at lines 455, 514, 544, 604, 844, 934, 1054); RATES-NG1 TERMINAL (line 664, phase text carries clock-shadow falsification #16, AGGRESSIVE +78.08 PF 6.845 KILL(R2)); COMMODITIES-NG1 TERMINAL (line 694, 'release-clock control out-earned every anchor'); VOL-NG1 TERMINAL; DATA-EDGE-UNLOCK-V1 ('DEU-V1') TERMINAL head 0f6cee901981be9aa979e9996dcdf2bdd11004de (line 1122) — matches plan 'DEU-V1 0f6cee90'; PROSPECTIVE-SHADOW-V1 ACTIVE_LIGHT (line 754-783); FOREX-NG6R1 is real and paused-unregistered (plans/PLAN_forex_ng6r1.md exists; the FIBV1 plan line 80 and DEU plan line 71 reference the NG6R1 pause) — the plan's §1 'never read or disturbed' clause is factual. Plan §1 forbids reopening/editing/deleting/re-verdicting the predecessor and writing its governed root."
+    },
+    {
+      "id": "CP-4",
+      "dimension": "dead panel real (FAMILY_FAILURES.jsonl cross-check)",
+      "evidence": "research/wayfinder/FAMILY_FAILURES.jsonl (110 lines read): FXFV1-A3-P1/P2 (32-33), FXFV2-A4-P1/P2 (34-35), FXFV3 (36-37), FXFV4 (38-39), FXFV5-A6-P1 (40), FXFV6-A4-P1/A6-P2 (49-50), FXFV7-A4-P1/A6-P2 (51-52) — all session/clock/lead-lag/carry classes SCIENTIFIC_REJECTION; FXFV8-A5-P1 (56) = falsification-by-control #14, DGS10-level control out-earns anchor 4.01x; FXFV9 x4 (62-65) ANCESTRY_RHO_BLOCK vs V8 shadows; FXNG1-A5-P1 (82) and FXNG1-A4-P2 (83) = falsification #15 CTL-DGS10LEVEL out-earns; FXNG3 x4 (84-87) revision forms; FXNG4 x4 (92-95) day-of-week geometry kills; RATESNG1-A5-P1-ARM-AGGRESSIVE (100) = falsification #16 clock-only shadow out-earns; COMMNG1 x3 (107-109) release-clock control out-earned every positioning anchor. The plan's §0 panel descriptions and the r1 F-5 provenance fix (#14 = FXFV8-A5-P1, #15 = FXNG1-A4-P2) match the bytes exactly (plan lines 36-40)."
+    },
+    {
+      "id": "CP-5",
+      "dimension": "hypothesis ledger denominator",
+      "evidence": "research/wayfinder/HYPOTHESIS_LEDGER.md line 21: 'Program total: 257 published / 260 observed logical, 0 survivors.' — the plan's 'program 257/260' (line 42) and G7 'denominators unchanged 257/260' (line 349) are exact; consistent with registry phase texts 'program 257/260 unchanged' (STOCKS-NG4 line 819, FOREX-NG5 line 849, CRYPTO-NG3 line 879, FREE-DATA-FRONTIER-V1 line 969, V1R1 line 999, DATA-EDGE-UNLOCK-V1 line 1119, FOREX-INTRA-BIDASK-V1 line 1149). Plan's 'nothing here can move those denominators' is consistent with 0/0 scored cells."
+    },
+    {
+      "id": "CP-6",
+      "dimension": "authority chain — every owner-directive element present, no self-granted authority",
+      "evidence": "plans/PLAN_fx_futures_frontier_v1.md: header carries the compacted verbatim directive incl. 'This prompt is NOT a scored GO' (line 14); §1 budget 0/0, NO GO phrase, S1 SEALED_UNTOUCHED, orders NONE (line 47-48); §8 successor GO phrase 'GO FX FUTURES FRONTIER V2 SCORED EXECUTION' typed ONLY by the owner at the successor's own prelaunch gate, Lead STOPS before any scored execution (lines 311-322), NOT-a-scored-GO restated (line 322); registration only after this audit via researchctl (G1->G2, lines 334-341); A7 never edits the plan, HIGH/CRITICAL -> remediation + fresh re-audit (lines 242-244). Sources: CME official (specs/calendar/expiry/settlement/daily settlement/volume-OI/fee docs/margin docs — the r1 F-3 fix), CFTC CoT with release-clock lesson bound (lines 99-101), NY Fed/OFR/FRED with availability clocks, Twelve Data diagnostic-only (lines 105-107), IBKR gated on NEW measured diagnosis + A7 acceptance (lines 71-73), MT5 NOT_RUN_CONNECTIVITY untouched (line 70), forbidden list verbatim (lines 108-112), no bypass law with L-FIBV1-1 (lines 54-56, 113-121)."
+    },
+    {
+      "id": "CP-7",
+      "dimension": "preregistration completeness (numeric floors pinned with freeze moments)",
+      "evidence": "§4.6 (lines 177-199), frozen NOW before any fetch (r1 F-1 fix): coverage floors >=90% of official trading days for settlement records AND volume/OI per sampled year {2019,2021,2023,2025,2026} (r1 F-6 fix, also §3 line 117-118), >=8 consecutive quarterly expiries; liquidity census median daily volume AND median OI over most recent 20 trading days, classes exhaustive (>=5000 both LIQUID_ELIGIBLE; >=1000 both THIN; either <1000 LIQUIDITY_DEAD — arithmetically exhaustive over the two observables); spread authority classes exhaustive MEASURED|DOCUMENTED_CLASS, else cost gate FAILS; data-quality censuses frozen (dup <=0.5%/instrument-year; gaps reconcile to official holiday calendar; outlier |change|>10% reconciles to official correction else FAIL; monotonic violations = 0). Transport etiquette frozen (§3 lines 113-121): sequential, >=1s spacing, <=2 retries exponential backoff, census cap 5 x (5 instruments x 5 sampled-years x 8) = 1000 probes, hard byte cap 300MB, SNI/destination-IP discrimination on block. Capital definition frozen (lines 157-162): tier C feasible iff official initial margin <= C/2 AND all-in round-trip cost at observed tier <= 0.5% of C; gate fails only if NO tier feasible; tiers $1,000/$10,000/$300,000; stress ladder observed/base, 1.5x, 2.0x. K freeze moment pinned (lines 139-142): committed in the A3 roll-contract freeze artifact BEFORE any contract data is fetched, never loosened (r1 F-7 fix). PIT law: front selection decision-time-only, volume/OI restricted to PIT-declared windows, no future back-adjustment, no synthetic fills, missing=NOT_RUN (lines 135-149). Residual gap: slippage estimator unfrozen — F-2.1."
+    },
+    {
+      "id": "CP-8",
+      "dimension": "verdict mapping — deterministic, negative-first, fail-closed",
+      "evidence": "§7 (lines 266-307): exactly the directive's 12 verdicts across 12 first-match rules, all negatives (1-8 BLOCKED_*, 9 ANCESTRY_DEAD, 10 INCOMPLETE_NOT_PROMOTABLE) before the two PASS classes (11, 12). Missing evidence cannot reach a PASS: rule 10 catches any R1-R17 NOT_RUN/unresolved before rule 11, and rule 11 requires R1-R15 PASS + a passing CANDIDATE_LISTED + every binding attack EVIDENCED_REFUTED + A7 independent re-verification. Conceded-binding routing closed (r1 F-2 fix, lines 300-303): a CONCEDED binding attack is never a rule-11 disposition; data/cost-layer -> rules 1-8, mechanism-layer -> rule 12. BLOCKED_COST_AUTHORITY law consistent: §4.3 (lines 162-164) 'Without a measured or document-classified spread authority and commission authority, no scored successor may be opened (§8) and the terminal mapping fires BLOCKED_COST_AUTHORITY' == rule 7 (lines 288-289) == §8 successor precondition 'complete cost stack (spread + commission authority present)' (line 318-319). ANCESTRY_DEAD (rule 9, measured kills) vs PASS_DATA_CONTROL_ONLY (rule 12, non-fatal mechanism failure) split is deterministic for the common cases; edge cases recorded as F-2.2/F-2.3."
+    },
+    {
+      "id": "CP-9",
+      "dimension": "D2 battery exactly 15, no PnL",
+      "evidence": "§6 (lines 246-264) lists exactly the directive's 15 items in order, matching R1-R15 in §7 (line 268); §7 adds R16 per-instrument eligibility rows and R17 A6 disposition table as recorded proofs (strict additions, allowed). §1 (lines 49-52) forbids PnL/profit/PF/Sharpe/drawdown/break-even at every depth including diagnostics; §4.4 line 175 'No returns or PnL anywhere in any dossier'; G7 line 350-351 'no hypothesis-ledger family rows (nothing scored)'. No D2 item computes a return."
+    },
+    {
+      "id": "CP-10",
+      "dimension": "A6 hostile-attack coverage and vehicle-change adjudication",
+      "evidence": "§5 A6 (lines 227-236) contains all 13 directive attacks (thinness; missing BBO; non-executable settlements; continuous lookahead; roll-rule shopping; basis=renamed carry; CFTC too slow; macro timing leaks; costs kill edge; $1k insufficient; broker/futures access; physical delivery; identity instability) plus 'any invented attack'; dispositions EVIDENCE or CONCEDED with §7 routing. §0/§5 frame the futures-vs-spot vehicle change as ADJUDICATED (A5 authors dossier, A6 attacks, A7 judges — lines 32, 223-226), not pre-judged; §4.4 <=3 outcome-blind mechanism classes each with mechanism, availability clock, falsifier, negative controls including the clock-only shadow (RATES-NG1/COMMODITIES-NG1 law), state variables, direction freeze, full ancestry mapping, anti-rename tests (lines 165-175)."
+    },
+    {
+      "id": "CP-11",
+      "dimension": "boundaries and process legality",
+      "evidence": "Raw licensed bytes outside git at the governed root (lines 23-25, 57-58); no purchases/new accounts/new keys/no ToS acceptance (lines 53-54); no bypass of DNS/filters/paywalls/access controls (lines 54-56, 119-121); PROSPECTIVE-SHADOW-V1 and FOREX-NG6R1 never read/disturbed (lines 67-68); predecessor terminal artifacts immutable and governed root not written (lines 68-69); lanes LIGHT, G3 sequential chain a2->a3->a4->a5->a6 with <=3 concurrent light-lane cap (lines 66, 220-221, 341-343); structured handoffs zcode_orch_v3_handoff@1 mandatory (lines 64-65); registry writes only via research/researchctl.py (lines 63-64); worktrees from the plan tip at G2 (lines 337-339); §10 incident transparency inherits the disclosed FIBV1 residuals without claiming or retiring them (lines 362-370)."
+    },
+    {
+      "id": "CP-12",
+      "dimension": "owner report law",
+      "evidence": "G7 (lines 352-359): ELI5 Vietnamese report with the directive's ten questions enumerated verbatim in order ((1) CME data; (2) instruments with sufficient data; (3) actual vs synthetic contracts; (4) PIT roll cleanliness; (5) cost completeness; (6) $1,000 feasibility; (7) surviving mechanisms; (8) A7 verdict; (9) successor permission; (10) owner next actions) — the r1 F-8 fix; conclusion words ONLY PASS/FAIL/BLOCKED/NOT_RUN."
+    },
+    {
+      "id": "CP-13",
+      "dimension": "r1 artifact identity and remediation arc",
+      "evidence": "research/control/fx_futures_frontier_v1/audits/a7_plan_fx_futures_frontier_v1.json: schema a7_plan_audit@1, audited_sha 994ff1f8a1c34efa3fecfd0901f49678c33857d5 (the authored-plan commit per reflog), verdict REFUSED blocking_count 2 (F-1 HIGH floors unpinned; F-2 HIGH conceded-attack PASS path; F-3/F-4 MEDIUM; F-5..F-8 LOW) — consistent with the remediation commit message in .git/logs/refs/heads/main line 446. All eight r1 findings are textually remediated in the 5fd2cf4 plan (see remediation_coverage)."
+    }
+  ],
+  "remediation_coverage": [
+    {
+      "r1_id": "F-1",
+      "status": "CLOSED",
+      "evidence": "r1 HIGH 'coverage/liquidity/census floors unpinned = threshold-shopping vector'. Now pinned in plan §4.6 (lines 177-199): >=90% settlement + >=90% volume/OI per sampled year, >=8 consecutive quarterly expiries, liquidity 5000/1000 classes, exhaustive MEASURED|DOCUMENTED_CLASS spread authority, dup <=0.5%, holiday-reconciled gaps, >10% outlier reconciliation, monotonic=0 — all 'frozen NOW, before any fetch — A7 r1 F-1; no post-hoc tuning is lawful'. Verified independently at CP-7."
+    },
+    {
+      "r1_id": "F-2",
+      "status": "CLOSED",
+      "evidence": "r1 HIGH 'rule 11 lets CONCEDED binding attacks reach full PASS'. Rule 11 (lines 296-303) now requires 'every A6 binding attack EVIDENCED_REFUTED' and carries the explicit routing note: 'A CONCEDED binding attack is NEVER a disposition toward this rule (A7 r1 F-2): a conceded data/cost-layer attack routes to the corresponding BLOCKED rule (1-8); a conceded mechanism-layer attack routes to rule 12.' Residual §5 wording looseness recorded as new F-2.3 (LOW); the operative §7 mapping is closed."
+    },
+    {
+      "r1_id": "F-3",
+      "status": "CLOSED",
+      "evidence": "r1 MEDIUM 'CME margin documentation unenumerated'. §3 (lines 95-98) now enumerates 'margin requirement documentation (official margin pages / SPAN parameter files as publicly served) — required input for the frozen capital feasibility gate (A7 r1 F-3)'; margin stays report-only, never a profit input (§4.3 line 155-156)."
+    },
+    {
+      "r1_id": "F-4",
+      "status": "CLOSED",
+      "evidence": "r1 MEDIUM 'unmeasured license maps to INCOMPLETE instead of BLOCKED_LICENSE'. Rule 1 (lines 272-275) now fires on 'License/entitlement of an allowed source measured insufficient, OR left UNMEASURED at terminal with the co-blocker named verbatim (the FOREX-INTRA-BIDASK-V1 B2 class — A7 r1 F-4)' — exactly the r1 required fix, preserving fail-closed with the correct terminal label."
+    },
+    {
+      "r1_id": "F-5",
+      "status": "CLOSED",
+      "evidence": "r1 LOW '#14/#15 provenance'. Plan §0 (lines 36-38) now reads 'FXFV8-A5-P1 DGS10-level control-out-earns falsification #14 and FXNG1-A4-P2 #15 (A7 r1 F-5 provenance fix)'; verified against the bytes: FAMILY_FAILURES.jsonl line 56 (#14, FXFV8-A5-P1, DGS10-LEVEL control 4.01x) and line 83 (#15, FXNG1-A4-P2, CTL-DGS10LEVEL out-earns)."
+    },
+    {
+      "r1_id": "F-6",
+      "status": "CLOSED",
+      "evidence": "r1 LOW 'sampled-years unfrozen in the census cap'. §3 (lines 116-118) now freezes sampled-years {2019, 2021, 2023, 2025, 2026} with the tag '(A7 r1 F-6)' inside the transport etiquette, and §4.6 reuses the same frozen set for the coverage floors — one frozen definition, two consumers."
+    },
+    {
+      "r1_id": "F-7",
+      "status": "CLOSED",
+      "evidence": "r1 LOW 'K freeze moment ambiguous'. §4.2 (lines 140-142): 'K is frozen in the A3 roll-contract freeze artifact, committed BEFORE any contract data is fetched, and never loosened after bytes are seen — A7 r1 F-7' — the exact required pre-fetch commit semantics. (The numeric K value is deliberately set in the pre-fetch freeze artifact rather than the plan; the freeze MOMENT, not the value, is the preregistration requirement, and it is pinned.)"
+    },
+    {
+      "r1_id": "F-8",
+      "status": "CLOSED",
+      "evidence": "r1 LOW 'ten owner-report questions not enumerated'. G7 (lines 352-359) now enumerates all ten questions verbatim with the tag '(A7 r1 F-8, the directive's ten questions)' and the PASS/FAIL/BLOCKED/NOT_RUN-only conclusion vocabulary."
+    }
+  ],
+  "notes": "Fresh-context r2 verdict formed independently BEFORE reading the r1 artifact; r1 was read only afterwards for remediation_coverage. Result: 0 HIGH/CRITICAL — 1 MEDIUM (F-2.1 unfrozen slippage estimator feeding the frozen capital-feasibility gate; bounded impact, per-tier rows only, terminal gate fails only if NO tier feasible) + 3 LOW substantive (F-2.2 mixed-candidate rule edge; F-2.3 §5-vs-§7 conceded-attack wording; F-2.4 FXFV9 rows omitted from the §0 panel illustration) + 1 LOW NOT_RUN_EXECUTION_REQUIRED marker (F-2.5). Per the task's verdict rules this is AUTHORIZED_WITH_FINDINGS; per the plan's own G1 gate this equals 'AUTHORIZED with 0 unresolved HIGH/CRITICAL', so registration may proceed with F-2.1..F-2.4 carried as advisory remediations (plan amendments by the Lead only; A7 never edits the plan). NOT_RUN_EXECUTION_REQUIRED inventory: commit-object<->working-tree blob binding of the plan at 5fd2cf4; byte-level immutability diff of FOREX-INTRA-BIDASK-V1 terminal artifacts vs the 558b366c tree; any terminal re-fetch/re-hash (future G6 work by design). Corroborations that substitute at content level: loose ref == audited tip; reflog chain d9e11a42 -> 994ff1f8 -> a5c3e0f4 -> 5fd2cf4 with the r1 REFUSED and the F-1..F-8 remediation commit messages; packed-refs main stale (dff9c80a) lawfully superseded by the loose ref. Claims verified against bytes, not inherited from the implementer: registry row claims (FIBV1 558b366c TERMINAL; NG1..NG7 TERMINAL; RATES-NG1/COMMODITIES-NG1 TERMINAL clock laws; DEU-V1 0f6cee90; NG8 absent; ID unique), FAMILY_FAILURES panel FXFV1..FXFV9/FXNG1/FXNG3/FXNG4 with #14/#15/#16 provenance, HYPOTHESIS_LEDGER 257/260 at line 21, and FOREX-NG6R1 paused-unregistered (real file)."
+}
