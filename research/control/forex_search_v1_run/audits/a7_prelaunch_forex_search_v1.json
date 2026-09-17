@@ -1,0 +1,143 @@
+{
+ "schema": "a7_prelaunch_audit@1",
+ "cycle_id": "FOREX-SEARCH-V1",
+ "store_cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "base_sha": "256efe1223b437159cdab9ec94d672c59d994abe",
+ "branch": "orca/forex-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-search-v1/integration",
+ "audited_utc": "2026-09-17",
+ "role": "quant-auditor (fresh context, adversarial, audit-only; no execution performed)",
+ "verdict": "BLOCKED_PRELAUNCH",
+ "verdict_basis": "3 unresolved HIGH findings (F-1, F-2, F-3). The chain is unusually disciplined in its engine code, GO gating and disclosures, but the plan's own fail-closed laws are breached at three named gates: the D1 freeze is missing a plan-required field (with the checker written blind to it), the scored-path harness cannot compute a named member of the Stage-A battery whose terminal outcome name asserts it, and the M0 phase was satisfied with a predecessor cycle's 10-gate artifact instead of the plan's 11/11 + dual-books fixture. All three are remediable before GO; none requires touching scored cells.",
+ "findings": [
+  {
+   "id": "F-1",
+   "severity": "HIGH",
+   "section": "D1 freeze vs plan \u00a75 required fields (\u00a74 F4 financing derivation)",
+   "evidence": [
+    "plans/PLAN_forex_search_v1.md \u00a55: 'The hashed manifest is REQUIRED to contain, fail-closed (a missing field is a D1 freeze failure): ... and the \u00a74 F4 financing derivation printed verbatim with its caveats'",
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json: contains NO financing/cost field anywhere (no '1.7', no '9.4', no derivation text); line 'plan_sections_frozen': [\"\u00a73b\", \"\u00a74 F3\", \"\u00a74 F4\", \"\u00a75\", \"\u00a76\", \"\u00a78\"] falsely claims \u00a74 F4 is frozen in it; the only financing trace is a digest REFERENCE inside source_artifacts.digests_verified_against_p0_gate",
+    "research/control/forex_search_v1_run/d1/build_d1_manifest.py lines 609-622: cost_financing_block() builds exactly the required verbatim block but is DEAD CODE \u2014 build_manifest() (lines 627-757) loads cf = art['cost_financing_manifest.json'] and never calls it",
+    "research/control/forex_search_v1_run/d1/build_d1_manifest.py lines 855-868: the selfcheck's own 'required plan fields present' list omits the financing block, so the checker was written blind to the omission and passes"
+   ],
+   "why": "The plan declares a missing required field a D1 FREEZE FAILURE, fail-closed. The manifest is 'this cycle's A2-equivalent dossier'; the financing derivation and its caveats (3-night average does not bound the worst night; NZD-USD-worst generalized to five legs) are load-bearing owner disclosures for the exact scored cells about to be authorized. The freeze fails its own law and misreports its coverage.",
+   "required_remediation": "Rebuild D1 with cost_financing_block(cf) actually embedded (the function already exists), correct or justify plan_sections_frozen, extend the selfcheck required-fields list to include the block, re-freeze, then cascade: S re-walk (outcome-blind, unchanged arms expected) with updated manifest shas, i_engine FREEZE_SHA256 re-pin, Z re-run (its scanner pins source segments/digests). Re-hash and re-verify the whole citation chain before any GO."
+  },
+  {
+   "id": "F-2",
+   "severity": "HIGH",
+   "section": "Stage-A battery integrity: DSR (N=33, alpha 0.10) and P-11 persistence absent from the scored-path harness",
+   "evidence": [
+    "plans/PLAN_forex_search_v1.md \u00a76: 'Plus the frozen forex Stage-A gates on any survivor (UNCHANGED, \u00a73): fold-positive-share, concentration, MDD, stress margin, drop-one, per-period series persisted (P-11) for DSR with N = frozen grid size at alpha 0.10 (owner-relaxed) AND program-cumulative ~260 at alpha 0.05 (reported, not gating)'; \u00a73 ledger relaxes 'DSR deflation set N -> frozen grid size' and 'DSR alpha -> 0.10' as axes of the acceptance battery",
+    "research/control/forex_search_v1_run/i/adjudicate.py: Stage-A implements fold_positive_share, concentration, mdd, stress_margin, drop_one, pit_mutation \u2014 NO DSR computation, NO P-11 per-period series persistence; a recursive search of research/control/forex_search_v1_run finds 'dsr/deflated' only in disclosure strings and D1's N=33 declaration",
+    "research/control/forex_search_v1_run/i/adjudicate.py adjudicate_cycle(): emits outcome 'FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN' on Stage-A PASS \u2014 an outcome name asserting the relaxed battery, which the harness cannot in principle have run",
+    "research/control/forex_search_v1_run/z/dry_run_report.json: Stage-A rows contain no DSR subgate"
+   ],
+   "why": "An arm that passes R1-R6 + current Stage-A would be declared a survivor 'UNDER_RELAXED_BATTERY' with the battery's DSR leg (N=33, alpha 0.10 \u2014 the exact statistic the owner grant relaxed) never computed and no per-period series persisted for reproduction. The terminal outcome name would assert a battery membership it did not run; the \u00a710 result language would inherit the same defect.",
+   "required_remediation": "Add DSR computation to Stage-A (N=33 at alpha 0.10 gating/reporting per the plan's own reading, plus program-cumulative ~260 at alpha 0.05 reported) and persist the per-period (P-11) series artifact, before GO. Alternatively obtain an explicit, registered owner/plan amendment that re-scopes DSR out of Stage-A \u2014 silently omitting it is not available."
+  },
+  {
+   "id": "F-3",
+   "severity": "HIGH",
+   "section": "M0 gate contract drift: plan \u00a79 M0 (G1-G10 + G4N = 11/11 + dual-books degenerate fixture, under m0/, before D1) not executed as specified",
+   "evidence": [
+    "plans/PLAN_forex_search_v1.md \u00a79 M0 row: 'methodology golden suite (G1-G10 + G4N = 11/11, NG5/NG6/NG7 lineage) re-inherited BYTE-EXACT + the dual-books degenerate fixture (the uniform-charge financed book must not invert sign vs price-only on any fixture arm) \u2014 re-run under research/control/forex_search_v1_run/m0/; PASS required before D1'",
+    "research/control/forex_search_v1_run/m0/m0_verdict.json: cycle_id 'FOREX-NG6', gate 'M0 (plans/PLAN_forex_ng6.md \u00a73)', output lists only G1-G10 and prints 'M0 PASS (10 gates)' \u2014 no G4N, no dual-books fixture, and the artifact self-identifies as a predecessor cycle's gate",
+    "research/control/forex_search_v1_run/m0/test_m0_golden.py: gate functions g1..g10 only",
+    "G4N (negative control on payoff-contaminated verdict paths) exists NOWHERE in this cycle; the dual-books fixture exists only later and in different lanes (tests/test_forex_search_v1_i.py 'test_dual_books_rule_wrapper' et al., Z checks C1-C4)"
+   ],
+   "why": "The plan names M0 as a gate with specific content and timing ('PASS required before D1'). The chain's M0 evidence is a different (weaker, predecessor) gate, and no artifact discloses the delta. The cycle-specific half of the fixture (financed-book sign invariance \u2014 the plan's own audit item #1 class) was eventually exercised in I/Z, which mitigates but does not cure the undisclosed gate substitution; G4N-class negative coverage for verdict-path contamination was never established in this cycle.",
+   "required_remediation": "Before GO: either (a) run the plan-specified M0 under m0/ (11/11 incl. G4N + the dual-books degenerate fixture) and commit the verdict, or (b) record an explicit disclosed plan-deviation note citing owner authority, enumerating exactly what ran instead and where (I/Z dual-books fixtures; G4N inapplicability to this cycle's adjudicate.py verdict path). Silence is not an option; the current artifacts present an NG6 gate as if it discharged this cycle's \u00a79 M0 row."
+  },
+  {
+   "id": "F-4",
+   "severity": "MEDIUM",
+   "section": "P0 F1(iii) repull artifact: summary flag contradicts its own per-leg verdicts",
+   "evidence": [
+    "research/control/forex_search_v1_run/p0/f1_repull_result.json: 'any_divergence_or_unreachable': false while all five legs carry verdict 'DIVERGENCE' (diff_count 2-3 each)",
+    "research/control/forex_search_v1_run/p0/f1_repull.py line ~163: result['any_divergence_or_unreachable'] = not ok_all, where ok_all is only flipped on VENDOR_UNREACHABLE / NO_OVERLAP \u2014 never on DIVERGENCE"
+   ],
+   "why": "The flag's name promises divergence detection but the code only tracks unreachability. A downstream or owner reader consuming the flag would conclude the vendor serves byte-identical history, which is false. The per-leg verdicts and p0_gate F1(iii) PASS_WITH_DISCLOSURE are honest and the archive-remains-authority law is stated, so the gate conclusion itself is unaffected.",
+   "required_remediation": "Fix the flag semantics (or rename it any_unreachable_or_no_overlap), regenerate the result artifact, and disclose the correction; verify nothing consumes the mislabeled field."
+  },
+  {
+   "id": "F-5",
+   "severity": "MEDIUM",
+   "section": "D1 manifest frozen-text defect on a SELECTED scored arm (MONTHPOS-SECOND state_formula self-contradiction)",
+   "evidence": [
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json (FSS-CLOCK-COND-MONTHPOS-SECOND-LONG and -SHORT): 'state_formula': 'state = (day-of-month of the decision date D <= 15) = (day-of-month >= 16) \u2014 MONTHPOS day<=15 boundary PIN (P0 pin #3)' \u2014 the first clause states the FIRST-half boundary inside the SECOND-half arm's formula",
+    "research/control/forex_search_v1_run/s/selection_freeze.json: the contradictory excerpt is carried VERBATIM into the rank-1 arm's config_manifest_excerpt_verbatim and thence into the arm identity hash",
+    "research/control/forex_search_v1_run/p0/p0_census.py state_clock_cond: hit = first_half if monthpos == 'FIRST' else (not first_half) \u2014 engine implements day>=16 correctly; census totals FIRST 11975 + SECOND 12330 = 24305 = complementary coverage, confirming the engine reading"
+   ],
+   "why": "The manifest is the construction dossier of record ('the manifest IS this cycle's A2-equivalent dossier'); a selected scored arm whose frozen formula text contradicts itself is a freeze-integrity defect even though the engine, census arithmetic and mechanism statement all agree on day>=16. A detached reproducer reading the text alone cannot resolve the construction.",
+   "required_remediation": "Correct the state_formula string (and the family template if implicated) in D1 and re-freeze with the same cascade as F-1; alternatively annotate the erratum explicitly in the manifest and the S freeze. Do not leave a self-contradictory construction string on a scored arm."
+  },
+  {
+   "id": "F-6",
+   "severity": "LOW",
+   "section": "\u00a74 F5 fired-rate form: selected arms sit 4-9x above the placeholder band; the 'measured value replaces the form' substitution was never explicitly pinned",
+   "evidence": [
+    "research/control/forex_search_v1_run/p0/p0_gate.json fired_rate_form_evaluation: all three selected arms (MONTHPOS-SECOND, OPEN-GAP-CONFIRM-Q50, VOL-DRIFT-MOM-L63) are false in every fold vs the [0.02, 0.10] bars/leg/day form; measured pooled fold-3 fired rates are ~0.50, ~0.90, ~0.51 bars/leg/day",
+    "research/control/forex_search_v1_run/p0/fired_census.json form_note: 'membership reported here is the FORM evaluation only'; fail-closed floors (pooled >= 30/fold) pass everywhere",
+    "plans/PLAN_forex_search_v1.md \u00a74 F5: 'the recent-window measured value replaces the form before selection' \u2014 no artifact pins that substitution decision or value before the S walk; the phase 'P2' named by F5 does not exist in this cycle's \u00a79 chain"
+   ],
+   "why": "Reading F5's band as a hard gate would render all three selected arms infeasible and change the cycle's outcome; reading it as a replaced form (as the census discloses) makes the selection valid. The plan's letter supports the replacement reading and the fail-closed population floors are satisfied, so this is not a violation \u2014 but the substitution's discretion (always-on arms up to 90% of leg-days entering a 3-cell scored budget) deserves an owner-visible flag rather than an implicit one.",
+   "required_remediation": "Disclose explicitly at the GO gate that the F5 form band was superseded by measured fired rates per the census form_note, with the three arms' measured rates printed; no code change required."
+  },
+  {
+   "id": "F-7",
+   "severity": "LOW",
+   "section": "Data authority input audit: 97 weekend-dated bars in the master calendar, disclosed but unexplained",
+   "evidence": [
+    "research/control/forex_search_v1_run/p0/p0_gate.json F1(v): weekend_dates_in_master 97 (weekday-6: 62, weekday-7: 35) of master_len 4924; weekday counts sum to 4924 (verified)",
+    "research/control/forex_search_v1_run/p0/manifest_pin.json + structural_census: vendor serves date-only stamps; the frozen stamp convention accepts vendor dates as the completed session"
+   ],
+   "why": "Weekend-dated daily bars on a 16:00-NY clock are anomalous for these five pairs and they participate in fold thirds, warmup alignment, OPEN-GAP 252-gap windows and DOW/MONTHPOS state formation. The census counts them honestly and the convention law covers them, so no gate fails \u2014 but an input-audit trail should note the anomaly rather than let it travel silently.",
+   "required_remediation": "Add one disclosed sentence to the P0/GO materials identifying which legs/dates the weekend bars come from and confirming they are vendor-served session bars under the frozen stamp convention; exclude nothing silently."
+  },
+  {
+   "id": "F-8",
+   "severity": "LOW",
+   "section": "\u22643-cell budget and DSR N enforcement are structural, not explicit harness counters",
+   "evidence": [
+    "research/control/forex_search_v1_run/i/i_engine.py: FROZEN_ARMS (3), verify_positions_vs_freeze() raises INPUT_MISMATCH for any config outside the frozen selections; s/selection_freeze.json walk.budget max_cells 3 / max_cells_per_family 2",
+    "No E-phase runner exists in the repository yet (correct pre-GO state); no numeric budget counter guards it because it is unwritten"
+   ],
+   "why": "The freeze membership check functionally enforces 'only the 3 frozen arms', but the \u22643-cell law will bind only through E-runner discipline at GO time. Not a defect of the frozen chain; recorded so the constraint is carried into the GO conditions rather than assumed.",
+   "required_remediation": "Carried as GO conditions C-2/C-3 below; the E runner must construct exactly the three frozen arms, call verify_positions_vs_freeze() before any book, and consume at most 3 observed slots under the machine-wide heavy lock."
+  }
+ ],
+ "chain_verification": {
+  "plan_s3b_amendment_consistency": "VERIFIED \u2014 D2-SKIP/R0_NOT_RUN consistently disclosed in p0_gate.d2_status, D1 d2_r0_note, S disclosures, adjudicate.verdict_labels() (emits exactly the \u00a710/\u00a711 strings; outcome name FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN matches \u00a711), Z labels on every arm and cycle verdict; \u00a710 relaxation and financing disclosure strings byte-match the plan text as read",
+  "sha256_recomputation": "NOT_RUN_EXECUTION_REQUIRED \u2014 no execution in this audit; all digest checks below are cross-artifact citation consistency, not recomputation",
+  "head_tree": "NOT_RUN_EXECUTION_REQUIRED \u2014 Lead asserts HEAD == 256efe1223b437159cdab9ec94d672c59d994abe, tree clean; corroborated only indirectly via the lane base_sha progression p0 4ab8bb08 -> D1 51476433 -> S 69af2435 -> I df62d6f9 -> Z cd1fe573 -> dispatch 256efe12 and handoff actual_start_sha chain",
+  "m0": "VERIFIED_AS_NG6_ARTIFACT (drift -> F-3) \u2014 m0_verdict.json fields match the packet's quoted digests (golden_suite_sha256 ba3991bd..., m0_contract_sha256 dad5de33...); 10 gates G1-G10 confirmed in test_m0_golden.py",
+  "p0_f1_i_manifest_pin": "VERIFIED at citation level \u2014 manifest_pin.json pair sha256s match the plan \u00a74 frozen prefixes (EURUSD 01cb862b, GBPUSD e3e4c519, USDCAD 4b988c44, AUDUSD 097cfe59, NZDUSD 7dff3299), 5000 rows each, tarball digest table present; archive byte recomputation NOT_RUN_EXECUTION_REQUIRED (outside-repo archives)",
+  "p0_f1_iii_repull": "VERIFIED honest \u2014 contract frozen-before-pull (sha ae044f46... pinned in result), all diffs confined to each leg's final archive bar per diffs_first20, authority/no-merge law stated; mislabeled summary flag -> F-4",
+  "p0_f1_v_calendar_folds": "VERIFIED \u2014 master_len 4924; fold thirds 1641/1641/1642 consistent across folds_freeze.json, p0_gate F5, D1 source_artifacts (boundaries 0/1641/3282/4924) and S inputs; weekend bars -> F-7",
+  "fired_census_cross_artifact": "VERIFIED \u2014 p0_gate F5 per-config per-fold counts == D1 per-config p0_fired_census == S walk fold-3 counts == fired_census.json values; family fold-3 sums independently recomputed by this audit: CLOCK-COND 31850, OPEN-GAP 22672, VOL-DRIFT 12294, EXTREME-FADE 6193, CLV-DIVERGENCE 4154; OPEN-GAP CONFIRM/FADE equal counts per threshold (by-construction, disclosed); FIRST+SECOND monthpos counts complementary (11975+12330)",
+  "d1_internal_consistency": "PARTIALLY VERIFIED \u2014 33 configs = 14+6+3+6+4; IDs unique and array in lexicographic order (spot-checked incl. CLOCK-COND < CLV-DIVERGENCE); floor 10 pinned; DSR N 33 declared; 3 P0 pins verbatim matching p0_gate texts; per-config census counts byte-equal per selfcheck law; MISSING \u00a74 F4 block -> F-1; MONTHPOS-SECOND formula text -> F-5; self_sha256 5db03cdb (self-convention) and file sha 1b39aa6f both cited by S freeze \u2014 the dispatch packet's 'self-sha' label refers to the file sha; neither recomputed",
+  "selection_freeze": "VERIFIED \u2014 tier-i descending by fold-3 family totals with lexicographic ties and tier-ii orders recomputed by this audit from the census and confirmed correct; round-robin round 1 yields exactly the 3 selected arms, max 2/family satisfied trivially; P-20 matrix max 0.0133 == 0.013307469016; walk record complete with positions digests and arm identity hashes; rho values not recomputed",
+  "i_engines": "VERIFIED by full read \u2014 i_engine.py: 9.4 bps worst case exact (2x1.5x2.0 + 1.7x2.0), uniform per-side charge, OPEN-GAP fill at open(t+1) = declared exception, force-flat re-asserted per trade, verify_positions_vs_freeze wired, GO phrase hard-gates the ONLY staging loader (SCORED_EXECUTION_NOT_AUTHORIZED otherwise), FREEZE_SHA256 pin 0a936857... matches the packet's S sha; adjudicate.py: ordered first-binding kills R1-R6+K6 with fail-closed NOT_RUN/NOT_ADJUDICABLE riding as disclosures, R3 tie/self-fail kills, R4 CLOCK-COND NOT_ADJUDICABLE per frozen manifest, R6 per-leg AND pooled with absent shadows NOT_RUN kill-only, Stage-A fail-closed incl. C-PIT-MUTATION (missing mutated book = KILL); lane digests 4fe43df9 (i_engine) / 6862a417 (adjudicate) match the packet via fsearch-i-handoff; DSR absence -> F-2",
+  "state_engines_readonly_reuse": "VERIFIED in code \u2014 i_engine imports p0_census.compute_state read-only; OPEN-GAP window causal (252 signed gaps ending at g[i], test on g[i+1], Q50 equality-no-fire pin implemented verbatim); VOL-DRIFT estimator + trailing-252 terciles causal, first firing own-index >= L+251; MONTHPOS day<=15/16 boundary correct in code (text defect F-5); S lane rebuilt fold counts required equality with the frozen census",
+  "z_phase": "VERIFIED at artifact level \u2014 dry_run_report 22/22 PASS, all numbers labelled SYNTHETIC_NOT_EVIDENCE, GO-gate verified absent-phrase refused / 7 paraphrases refused / exact phrase opened only on a stubbed empty /tmp path with real bytes never read; leak_scan NO_LEAK_FOUND with static AST allowlist (0 suspects, 79 classified) + dynamic feed-taint invariance with positive controls (open(t+1) consumption proven by taint flip for OPEN-GAP); z_run.py digest d6739a66... per fsearch-z handoff; dry run consumed no scored cell",
+  "governance": "VERIFIED \u2014 R0_NOT_RUN and PBO_NOT_RUN labels present on P0/D1/S/I/Z scored-path artifacts; S1 untouched (no S1 access anywhere in the lane code); no orders; no scored computation possible pre-GO within the frozen code (single staging loader gated by the exact phrase); heavy lock used at the F1 repull; D2-SKIP disclosed everywhere required",
+  "tests_27_and_22": "NOT_RUN_EXECUTION_REQUIRED \u2014 tests/test_forex_search_v1_i.py (27 tests claimed, dual-books and kill-rule fixtures present in file + pytest cache nodeids) and z_run.py 22-check battery were not executed by this audit; verdicts taken from the committed handoff/CI evidence"
+ },
+ "conditions_carried_into_GO": [
+  "C-1: Resolve F-1, F-2, F-3 before the GO gate (D1 financing block re-freeze with S/i_engine/Z digest cascade; DSR N=33 alpha 0.10 + P-11 persistence added to Stage-A or an explicit registered owner amendment; M0 run per \u00a79 under m0/ or a disclosed deviation note). Re-audit or Lead-verified mechanical re-check of the refreshed chain.",
+  "C-2: At E, verify_positions_vs_freeze() must pass for ALL THREE frozen arms (rebuilt positions digests == frozen 85c8f875.../57eed8b9.../7eee7cf0...) before any book, trade or statistic is computed.",
+  "C-3: E constructs exactly the three frozen arms (FSS-CLOCK-COND-MONTHPOS-SECOND-LONG, FSS-OPEN-GAP-CONFIRM-Q50, FSS-VOL-DRIFT-MOM-L63), consumes at most 3 observed scored slots, never reassigns or force-fills unused slots, and runs under the machine-wide heavy lock.",
+  "C-4: Scored execution opens only on the owner typing the exact phrase 'GO FOREX SEARCH V1 SCORED EXECUTION' at this cycle's own gate; early/paraphrased GO dies unconsumed; the staging loader remains the only real-data path.",
+  "C-5: K6 remains NOT_ADJUDICABLE and R6 macro shadows remain NOT_RUN kill-only unless their inputs are injected from authorized sources under their frozen PIT classes; no control may rescue.",
+  "C-6: Any survivor outcome carries the exact name FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN (only with a now-complete Stage-A incl. DSR) and both \u00a710 disclosures verbatim; PBO stays NOT_RUN fail-closed.",
+  "C-7: F-4/F-5 corrections are folded into the same re-freeze cascade; F-6/F-7 disclosures are printed in the GO materials."
+ ],
+ "unresolved_high_critical_count": 3,
+ "auditor_context_fresh": true,
+ "no_execution_performed": true,
+ "allowed_write_paths_respected": [
+  "research/control/forex_search_v1_run/audits/a7_prelaunch_forex_search_v1.json",
+  "/Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/fsearch-a7-prelaunch-handoff.json"
+ ]
+}
