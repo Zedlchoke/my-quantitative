@@ -820,3 +820,30 @@ discriminator and commits the transcripts, (b) states its failure counts from
 the committed row counts (A7 recounts them), and (c) splits blockers into
 transport vs license/content so a reopen decision names exactly which one the
 owner's action removes.
+
+## L-FXFF-1 (2026-09-17, FX-FUTURES-FRONTIER-V1): the environment filter is program-level — measure it once, name it once, and stop spending cycles rediscovering it
+
+Source: two consecutive foundation cycles hit the same wall with different
+domains. FOREX-INTRA-BIDASK-V1 proved *.dukascopy.com blocked (LAN-resolver
+sinkhole + SNI-keyed in-path reset). FX-FUTURES-FRONTIER-V1 then proved the
+ENTIRE official CME estate blocked with the identical signature (192.168.0.1
+sinkhole for www.cmegroup.com; same-IP different-SNI certificate delivery
+proving an in-path SNI filter; apex TLS drops; ftp TCP drops), while neutral
+controls (example.com, google.com) serve HTTP 200 from the same shell. Both
+lanes ran the full discrimination experiment, both refused to bypass (no
+VPN/ECH/fronting/hosts edits), and both closed honestly as BLOCKED_TRANSPORT
+with a license co-blocker named UNMEASURED — each cycle cost a full A7 arc to
+re-derive what is now a measured, program-level environment fact: broker and
+exchange domains are filtered on this network path.
+
+**Lesson:** when the same blocker signature appears twice on independent
+estates, stop treating it as a per-cycle finding — record it as a standing
+environment constraint with its discriminator evidence, so future cycles check
+reachability FIRST (a one-probe precondition per domain family) instead of
+spending a lane + audit arc rediscovering the wall.
+
+**Consequence:** every future cycle whose sources live on a broker/exchange
+domain runs a documented reachability precondition at G0 (single HEAD probe +
+the standing discriminator if it fails, committed as evidence) BEFORE any lane
+is dispatched; a measured block routes straight to the BLOCKED_TRANSPORT
+terminal with the named single owner action — no lane burn, no audit arc.

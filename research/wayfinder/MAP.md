@@ -769,3 +769,42 @@ promise.
 - Reopening: owner provides a network path where *.dukascopy.com is reachable,
   then lane A2 re-runs from the frozen manifest; both blockers re-arm and are
   decided by evidence, not assumption. Successor door CLOSED — no successor plan.
+
+## FX-FUTURES-FRONTIER-V1 (CLOSED 2026-09-17) — CME Micro FX futures frontier, blocked at transport (second estate)
+
+- Verdict `FX_FUTURES_FRONTIER_V1_BLOCKED_TRANSPORT`: zero scored cells, budget 0/0,
+  no GO phrase ever registered, S1 SEALED, no orders, no PnL anywhere, denominators
+  unchanged 257/260 (P-9). Owner directive 2026-09-17: evaluate CME Micro FX futures
+  (M6E/M6B/M6A/MCD/MJY candidates) as an independent FX trading vehicle replacing
+  spot-FX/CFD — carry expressed in futures basis/roll, never a CFD swap line.
+  FOREX-INTRA-BIDASK-V1 untouched; FOREX-NG8 remains burned.
+- Chain: plan 994ff1f8 → A7 plan r1 REFUSED 2 HIGH (floors unpinned F-1; rule-11
+  CONCEDED-binding-attack leak F-2) → remediated 5fd2cf4c → A7 r2 fresh-context
+  AUTHORIZED_WITH_FINDINGS 0 HIGH/CRITICAL (all 8 r1 CLOSED) 1ff55598 → remediation
+  r2 06af8ba5 → registry bootstrap 8230fa34 → lane A2 cee59971 → integration pick
+  aea11aed → A7 terminal CONFIRM_WITH_FINDINGS 0 HIGH/CRITICAL 6296bff9 → terminal
+  7decfce3 (worktree `.worktrees/fx-futures-frontier-v1/integration`, branch
+  `orca/fxf-f-integration`).
+- Blockers: B1 transport — the entire official CME estate unreachable (LAN resolver
+  192.168.0.1 sinkholes www.cmegroup.com to 127.0.0.1/::1; SNI-keyed in-path reset
+  proven at the DoH-authentic Akamai IP by same-IP different-SNI certificate
+  delivery; apex TLS drops; ftp TCP dropped; neutral controls 200 OK; 0 content
+  bytes; zero circumvention). B2 license gate UNAVAILABLE_FAIL_CLOSED — co-blocker
+  downstream of B1: CME licensing and data quality are UNMEASURED; nothing about
+  the exchange or Micro FX futures as an instrument was adjudicated. Waves
+  fxf-a3..a6 + D2 MOOT undispatched (STOCKS-NG4 F2-F8 precedent).
+- SYSTEMIC: this is the SECOND independent estate blocked with SNI-keyed in-path
+  filter evidence in the same environment (FOREX-INTRA-BIDASK-V1: Dukascopy; this
+  cycle: CME). ONE owner action — a network path without these domain filters —
+  re-opens both cycles' lanes from their FROZEN manifests, plans unchanged.
+- Durable assets: frozen canary manifest + census grid + fetch driver + identity-
+  pack templates (`research/control/fx_futures_frontier_v1/lane-a2/` on the
+  integration branch) reusable as-is; the plan's preregistered contract (actual
+  dated contracts only, PIT roll law with pre-fetch K freeze, complete cost stack
+  with UNKNOWN-commission posture, stress ladder observed/1.5x/2.0x, capital
+  feasibility 1k/10k/300k frozen definition, 12 exact verdicts) is frozen text any
+  reopening inherits unchanged.
+- Reopening: owner provides an unfiltered network path to *.cmegroup.com (and
+  *.dukascopy.com for the predecessor), then lane A2 re-runs from the frozen
+  manifest; both blockers re-arm and are decided by evidence, not assumption.
+  Successor door CLOSED — no successor plan.
