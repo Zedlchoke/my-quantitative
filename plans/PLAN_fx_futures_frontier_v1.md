@@ -33,14 +33,15 @@
 - Standing ancestry carried into every mechanism design: the full forex
   battery (FXFV1–FXFV7 session/clock/lead-lag/carry classes, FXFV8-A5-P1
   DGS10-level control-out-earns falsification #14 and FXNG1-A4-P2 #15
-  (A7 r1 F-5 provenance fix), FXNG3 revision forms, FXNG4
-  day-of-week geometry, NG5 veto battery), RATES-NG1 (clock-shadow
-  falsification #16 — the AGGRESSIVE arm died because the release-calendar
-  geometry out-earned the mechanism), COMMODITIES-NG1 (release-clock
-  control out-earned every positioning anchor), plus the crypto/ng
-  momentum/reversal/vol-shock shadow classes for cross-asset renames.
-  HYPOTHESIS_LEDGER (P-9): program 257/260, 0 survivors; nothing here can
-  move those denominators.
+  (A7 r1 F-5 provenance fix), the four measured FXFV9
+  realized-inflation/PPP D2-killed rows (A7 r2 F-2.4), FXNG3 revision
+  forms, FXNG4 day-of-week geometry, NG5 veto battery), RATES-NG1
+  (clock-shadow falsification #16 — the AGGRESSIVE arm died because the
+  release-calendar geometry out-earned the mechanism), COMMODITIES-NG1
+  (release-clock control out-earned every positioning anchor), plus the
+  crypto/ng momentum/reversal/vol-shock shadow classes for cross-asset
+  renames. HYPOTHESIS_LEDGER (P-9): program 257/260, 0 survivors;
+  nothing here can move those denominators.
 
 ## 1. Hard boundaries (whole cycle)
 
@@ -152,8 +153,11 @@
    fee; clearing/regulatory fee; broker commission (UNKNOWN posture,
    never 0); minimum contract quantity; roll cost (measured from
    settlement-vs-settlement spreads across the frozen roll rule);
-   slippage (stress coverage); margin (report-only, never a profit
-   input); contract notional. Stress ladder frozen NOW: observed/base,
+   slippage (stress coverage; **estimator frozen NOW — A7 r2 F-2.1:
+   slippage = one-half minimum tick per side at the observed tier unless
+   a measured official channel provides an empirical estimator; the
+   1.5x/2.0x ladder always applies on top**); margin (report-only, never
+   a profit input); contract notional. Stress ladder frozen NOW: observed/base,
    1.5x, 2.0x. Capital feasibility per instrument for $1,000 / $10,000 /
    $300,000 with a frozen definition: tier C feasible iff official
    initial margin ≤ C/2 AND estimated all-in round-trip cost at the
@@ -232,8 +236,10 @@
   cannot trade futures; physical-delivery risk; unstable instrument
   identity; plus any invented attack. Every attack dispositioned with
   evidence or CONCEDED; an unresolved BINDING attack maps to
-  `BLOCKED_*` (data/cost layers) or `PASS_DATA_CONTROL_ONLY` /
-  `ANCESTRY_DEAD` (mechanism layer) per §7.
+  `BLOCKED_*` (data/cost layers) or `PASS_DATA_CONTROL_ONLY`
+  (mechanism layer) per §7 — `ANCESTRY_DEAD` is reserved for the
+  measured rule-9 outcome, never a conceded-attack target (A7 r2
+  F-2.3).
 - **A7 — independent auditor** (`quant-auditor`, fresh-context): r1
   audits this plan BEFORE registration (authority chain; new identity;
   old cycles immutable; no ancestry dodge; actual-contract/PIT roll
@@ -289,8 +295,11 @@ BLOCKED with evidence, plus (R16) per-instrument eligibility rows and
    evidence space → **`BLOCKED_COST_AUTHORITY`**
 8. No capital tier ($1k/$10k/$300k) feasible per the frozen definition →
    **`BLOCKED_CAPITAL_FEASIBILITY`**
-9. Every A5 candidate measured dead (rename test fires or pooled |rho| >
-   0.20 vs dead shadows) → **`ANCESTRY_DEAD`**
+9. Every A5 candidate measured dead — the candidate population is
+   non-empty and EVERY candidate carries a measured kill (rename test
+   fires or pooled |rho| > 0.20 vs dead shadows); any candidate still
+   `NOT_RUN` routes to rule 10 instead (A7 r2 F-2.2) →
+   **`ANCESTRY_DEAD`**
 10. Any of R1–R17 `NOT_RUN`/unresolved with no rule above fired →
     **`INCOMPLETE_NOT_PROMOTABLE`**
 11. R1–R15 PASS + ≥ 1 candidate `CANDIDATE_LISTED` passing D2-11/12/13 +
