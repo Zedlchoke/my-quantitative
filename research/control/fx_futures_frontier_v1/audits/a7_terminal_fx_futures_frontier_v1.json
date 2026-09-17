@@ -1,0 +1,162 @@
+{
+  "schema": "a7_terminal_audit@1",
+  "cycle_id": "FX-FUTURES-FRONTIER-V1",
+  "audited_head": "aea11aed6cb89b864b609d7fd75875f7d112ffde",
+  "audited_utc": "2026-09-17 (session-date UTC; exact wall clock unavailable in the audit sandbox — this audit postdates the newest evidence timestamp observed, integration cherry-pick reflog epoch 1789638157 = 2026-09-17T09:42:37Z)",
+  "auditor": "A7 fresh-context",
+  "terminal_claim": "BLOCKED_TRANSPORT",
+  "verdict": "CONFIRM_WITH_FINDINGS",
+  "blocking_count": 0,
+  "findings": [
+    {
+      "id": "T-1",
+      "severity": "LOW",
+      "evidence": "plans/PLAN_fx_futures_frontier_v1.md sec7 (worktree bytes): 'Mapping, first matching rule wins'; rule 1 reads 'License/entitlement of an allowed source measured insufficient, OR left UNMEASURED at terminal with the co-blocker named verbatim (the FOREX-INTRA-BIDASK-V1 B2 class — A7 r1 F-4)'; rule 2 reads 'Transport fails under the frozen etiquette (with the L-FIBV1-1 discrimination evidence attached) -> BLOCKED_TRANSPORT'. In the measured fact pattern BOTH rule 1's UNMEASURED arm (license UNAVAILABLE_FAIL_CLOSED, license_evidence.json) and rule 2 (measured transport fail with discrimination evidence) literally match, and strict first-match would fire rule 1's label first. The BLOCKED_TRANSPORT label is nonetheless lawful: the predecessor terminal_verdict.json (research/control/forex_intra_bidask_v1/terminal_verdict.json, registry row head 558b366c, confirmed 0 HIGH/CRITICAL by its own A7) resolves the identical fact pattern as 'A2 transport gate RAN and FAILED with evidence -> BLOCKED_TRANSPORT; INCOMPLETE does not fire because the required proof that failed was measured FAIL, not NOT_RUN', with the unmeasured license recorded as causally-downstream CO-BLOCKER B2 'adjudicating NOTHING about the source'. Consequence delta is zero: both are BLOCKED classes; plan sec8 gives NO successor for any BLOCKED verdict; budget 0/0 and no GO phrase are label-independent; the lane artifacts already name the co-blocker verbatim (license_evidence.json owner_action_input; verdict.json blockers).",
+      "required_fix": "The G7 two-half close record must name the license co-blocker verbatim exactly as FIBV1's terminal record did (LICENSE_UNMEASURED_CO_BLOCKER, causally downstream of the transport block; nothing about CME licensing or data quality adjudicated), so the owner-facing mapping signal carries both blockers under the rule-2 label."
+    },
+    {
+      "id": "T-2",
+      "severity": "LOW",
+      "evidence": "census_manifest.json froze two census_url_family_candidates ('https://www.cmegroup.com/CmeWS/mvc/Settlements/<productId>/<tradeDate>' path form and the product-page anchor family); the executed 10-probe grid (census_results.json; transcripts CENSUS_BLOCKCONF_* rows 17-26) used a third, query-string form ('.../CmeWS/mvc/Settlements?instrument=M6E&tradeDate=2019-03-15') matching neither frozen template exactly. Immaterial to the classification: every probe failed at TCP connect (curl error 7, 1-3 ms, STATUS:000) before any HTTP path semantics could differ, and every row is labeled BLOCKED_PROBE_NOT_EXISTENCE_PROOF / measurement_only_not_existence_proof, so the grid is block-classification evidence only and was never used as coverage evidence.",
+      "required_fix": "None for this terminal. On re-open after lawful unblocking, the concrete settlement URL template must be discovered from fetched official pages and frozen in the census manifest BEFORE the first real probe; the 10-probe grid must not be reused as census evidence."
+    },
+    {
+      "id": "T-3",
+      "severity": "LOW",
+      "evidence": "INC-FXFA2-2 (incident_record.json, disclosed): the frozen etiquette's <=2 retries never fired in phase 1 — lane_fetch.py curl_once returns no 'net_error' key on curl failures, so do_fetch's retriable expression evaluates falsy for pure network errors (transcripts phase-1 rows show attempt:0 with curl error 7). Exposure is nil for the block classification: 21 connection-refused occurrences span 09:26:45Z-09:34:29Z (5 phase-1 + P1 + 10 census + 5 rehash, recounted from fetch_transcripts.jsonl and matching the incident's '21 later probes' claim), and the block additionally reproduces through three independent mechanisms that cannot be transient blips — persistent DNS sinkhole at the LAN resolver, SNI-keyed RST at the DoH-authentic remote Akamai IP, and 15-second silent drops on apex and ftp.",
+      "required_fix": "Corrected harness on any re-run (already stated in the incident's prevention field); no repair to this terminal — a transient local refusal cannot explain a persistent remote SNI-keyed RST measured over 9 minutes."
+    },
+    {
+      "id": "T-4",
+      "severity": "LOW",
+      "evidence": "Stamp precision: summary-artifact generated_at_utc values (verdict.json 09:42:00Z; transport_discrimination_experiment.json / license_evidence.json / incident_record.json / raw_byte_index.json / identity packs 09:40:00Z) postdate the fxf-a2 commit instant (branch reflog epoch 1789637988 = 09:39:48Z) by 12s-2m12s. All load-bearing MEASURED event timestamps (fetched_at_utc 09:24:50Z-09:35:28Z across fetch_transcripts.jsonl, census_results.json, determinism_refetch.json) precede the commit and are internally consistent and sequential; only the self-declared summary stamps are imprecise. No conclusion depends on a summary stamp.",
+      "required_fix": "Stamp-discipline note for the close: generated_at values must not postdate the commit that carries them; prefer deriving them from the harness clock at write time."
+    }
+  ],
+  "checks_passed": [
+    {
+      "id": "C-1",
+      "dimension": "1 blocker reality — transcripts support every element of the claimed block",
+      "evidence": "fetch_transcripts.jsonl 37 rows read in full: 5/5 product-page canaries curl(7) refused at 127.0.0.1 in 2-20 ms (loopback signature); P2 --resolve to DoH-authentic Akamai 23.66.152.172 with SNI=www.cmegroup.com -> curl(35) TLS reset (body empty, measurement_only_not_a_data_channel true); P3 SAME IP with SNI=neutral-control.example -> curl(60) certificate-mismatch, i.e. the edge DELIVERED a certificate (TLS progressed to verification, no RST) — proof the reset is SNI-keyed in-path, not IP-blocking nor edge behavior; P4 apex cmegroup.com -> curl(28) 15 s / 0 bytes; P5 ftp.cmegroup.com -> curl(28) silent SYN drop with authentic Akadns/AWS DNS (13.57.171.25/174.25); NEUTRAL_example.com HTTP 200 (559 B) and NEUTRAL_google.com HTTP 200 (85481 B) from the same shell — egress healthy, block is CME-scoped. DoH from two independent resolvers (dns.google 23.66.152.172 / cloudflare 23.51.32.131 via e5296.a.akamaiedge.net) proves the local 127.0.0.1/::1 answer (dns://192.168.0.1) is a sinkhole; ETC_HOSTS_INSPECTION contains_cmegroup_entry false — sinkhole is resolver-side, not /etc/hosts."
+    },
+    {
+      "id": "C-2",
+      "dimension": "1 blocker reality — no premature abandonment; uniform-block grid consistent with the frozen no-escalation law",
+      "evidence": "Plan sec3 transport law prescribes, ON a connection-level block: 'run the SNI/destination-IP discrimination experiment and record it — a measured filter is a BLOCKED_TRANSPORT owner-action input, never bypassed' — it does not prescribe burning the census cap against a dead surface. Existence proofs are impossible without HTTP semantics (outcome space is {refused} for any URL), so the remaining probes of the frozen cap are information-free; the 10-probe grid (5 instruments x {2019,2026}) measured that the block reproduces uniformly across the census surface family, with 1 s sequential spacing observed (09:33:53Z-09:34:02Z), inside etiquette. Full census honestly NOT_RUN per census_manifest/census_results (missing evidence = NOT_RUN, never inferred)."
+    },
+    {
+      "id": "C-3",
+      "dimension": "1 blocker reality — no allowed official CME surface left untried that the plan froze; all three claimed surfaces are in the transcripts",
+      "evidence": "www (5 product-page canaries + P1 + P2/P3 discrimination + 10 census probes), apex cmegroup.com (P4), ftp.cmegroup.com (P5) — all three in fetch_transcripts.jsonl, all measured blocked. The frozen canary set (canary_manifest.json, frozen 09:24:50Z, before first content fetch 09:26:45Z) covers product pages, recent settlement, historical sample, fee docs, margin docs (A7 r1 F-3 input), license pages — all CME surfaces and all unreachable behind the same measured block (verdict.json per_checks: settlement/fee/margin/license canaries NOT_RUN because no official transport exists to carry them). Remaining allowed sources (CFTC, NY Fed/OFR/FRED, Twelve Data) are context/diagnostic-only inputs; plan sec1 Q-8 requires contract specs/fees/hours/settlement from fetched OFFICIAL CME bytes, so no non-CME surface could change the verdict. No fabrication signs: empty-body SHA256 e3b0c442...b855 is the correct empty-string hash; curl error codes, latencies (1-3 ms loopback vs 91-136 ms remote vs 15 s drops) and the 21-refusal count are mutually consistent across 9 minutes; harness row schemas match the code."
+    },
+    {
+      "id": "C-4",
+      "dimension": "1 blocker reality — determinism claims honest",
+      "evidence": "determinism_refetch.json: 5/5 corrected_match=true, results_all_match_corrected=true, classification BLOCKED_STATE_REPRODUCTION_ALL_MATCH; content_determinism explicitly NOT_RUN_TRANSPORT_BLOCKED (there are no content bytes to re-hash). The initial all_match=false is disclosed as a null-vs-empty-hash harness artifact (INC-FXFA2-3, determinism_refetch.json notes; raw_byte_index.json marks the 0-byte files FAILED_FETCH_EMPTY_BODY with the empty-string SHA) — a disclosed bug, not concealed; the corrected computation (0-byte original vs 0-byte refetch, byte-identical) proves exactly what it claims and nothing more."
+    },
+    {
+      "id": "C-5",
+      "dimension": "2 verdict-mapping legality — rule 2 fires before rule 10; rule 1 license gate is the named co-blocker; no CME licensing/data-quality adjudication",
+      "evidence": "Plan sec7 first-match order verified in the audited bytes: rules 1-2 (both BLOCKED) precede rule 10 ('Any of R1-R17 NOT_RUN/unresolved with no rule above fired -> INCOMPLETE_NOT_PROMOTABLE'). Rule 2's precondition is met with evidence (frozen-etiquette canaries + L-FIBV1-1-pattern discrimination experiment attached). License gate is UNMEASURED (UNAVAILABLE_FAIL_CLOSED, zero pages hashable, causally downstream of the transport block) and is recorded as co-blocker with the transport blocker named verbatim (license_evidence.json, verdict.json blocker 1, incident INC-FXFA2-1) — see finding T-1 for the label-ordering nuance. Nothing about CME licensing or data quality was adjudicated anywhere in the lane artifacts (identity packs: all fields NOT_RUN_TRANSPORT_BLOCKED except field k = UNAVAILABLE_FAIL_CLOSED)."
+    },
+    {
+      "id": "C-6",
+      "dimension": "2 verdict-mapping legality — no false PASS reachable; successor door CLOSED",
+      "evidence": "PASS_FX_FUTURES_RESEARCH_AUTHORITY (rule 11) requires R1-R15 PASS + a passing CANDIDATE_LISTED + every binding attack EVIDENCED_REFUTED + A7 re-verification; with zero official bytes, R1-R10 are NOT_RUN/BLOCKED and rule 2 fires first — rule 11 is unreachable. Rule 9 cannot fire (no A5 candidates exist; lanes a3-a6 undispatched). Rule 12 unreachable (data gates not clean). No scored authority exists anywhere: registry row PLANNED_NOT_STARTED, budget 0/0, go_phrase '' with go_phrase_state NOT_REGISTERED (P-8: a GO is typed only at the cycle's own gate), plan sec1/sec8 'NOT a scored GO'."
+    },
+    {
+      "id": "C-7",
+      "dimension": "3 invariants — no PnL/scoring strings; S1; orders; terms; byte cap; raw bytes outside git",
+      "evidence": "Grep of research/control/fx_futures_frontier_v1/lane-a2/ for pnl|profit|sharpe|drawdown|break.even|scored|backtest|PF (case-insensitive): zero matches. No order/account/terms acceptance anywhere (canary law forbids; license_evidence UNAVAILABLE_FAIL_CLOSED = 'no use is assumed, nothing is accepted on the owner's behalf'); registry s1 SEALED_UNTOUCHED and no lane artifact claims any S1 action. Byte cap: content bytes 0 vs 300,000,000 (raw_byte_index bytes_downloaded_total_content 0; _counters.json bytes_downloaded_total 0; probe-class overhead — neutral controls 559+85481 B, DoH answers — disclosed as probe-class and excluded from the licensed-content cap). Raw bytes live outside git at /Users/hoangminhlong/.my-quantitative-data/fx-futures-frontier-v1/raw/lane-a2/ — the M6E refusal artifact was read directly: exists, zero content bytes, consistent with the index."
+    },
+    {
+      "id": "C-8",
+      "dimension": "4 process legality — git provenance",
+      "evidence": "Loose refs read directly: refs/heads/main = 8230fa34b5df6b589785b7a52fd2c7726097a3ab (registry bootstrap), refs/heads/orca/fxf-f-integration = aea11aed6cb89b864b609d7fd75875f7d112ffde (audited head; worktree .git file -> .git/worktrees/integration4, HEAD -> orca/fxf-f-integration), refs/heads/orca/fxf-a2 = cee599715240df9f26cf2828d5da2cf88bae1e7e. packed-refs carries only a stale main (dff9c80a) lawfully superseded by the loose ref; no fxf entries packed. Main reflog corroborates the full chain: d9e11a42 (FIBV1 close) -> 994ff1f8 (plan authored) -> a5c3e0f4 ('audit: ... A7 plan-audit r1 REFUSED 2 HIGH') -> 5fd2cf4 (remediation r1 F-1..F-8) -> 1ff55598 ('audit: ... r2 AUTHORIZED_WITH_FINDINGS 0 HIGH/CRITICAL') -> 06af8ba5 (remediation r2 = F-2.1..F-2.4 fixes = lane base) -> 8230fa34 (registry bootstrap 'worktrees integration+lane-a2..a6 at base 06af8ba5'). Base == dispatch_sha in canary_manifest.json and instrument_dossier.md."
+    },
+    {
+      "id": "C-9",
+      "dimension": "4 process legality — handoff chain and lane-commit scope",
+      "evidence": "fxf-a2 branch reflog: created from 06af8ba5, ONE commit ('fxf-a2: CME Micro FX official-source canary — BLOCKED_TRANSPORT, full discrimination evidence') = cee5997; integration reflog: created from 06af8ba5, ONE cherry-pick of the same subject = aea11aed; worktree HEAD reflog shows reset + cherry-pick only. Content-level scope corroboration: the worktree's plans/CYCLE_REGISTRY.json has NO FX-FUTURES-FRONTIER-V1 row (base state — the row exists only in main's 8230fa34), so the pick did not touch the registry; the worktree plan carries exactly the r1 (F-1..F-8) and r2 (F-2.1..F-2.4) remediation tags matching the 06af8ba5 commit message; glob of research/control/fx_futures_frontier_v1/ shows ONLY lane-a2/ (18 files, exactly the packet's evidence list) + audits/ (the two prior audit artifacts committed on main before the base). The handoff JSON hash c87b099b is orchestrator-side (handoff_path outside the repo tree) and is NOT verifiable from committed bytes — NOT_RUN_EXECUTION_REQUIRED; its substance (task fxf-a2, verdict BLOCKED_TRANSPORT, the blocker list) is independently present in the committed verdict.json."
+    },
+    {
+      "id": "C-10",
+      "dimension": "5 moot waves — fxf-a3/a4/a5/a6 undispatched is honest",
+      "evidence": "No orca/fxf-a3..a6 branch refs exist (packed-refs and loose refs). Outcome-independent stopping rule: A3's input (fetched contract bytes) never existed — zero official bytes — so A3/A4/A5/A6 and the D2 battery could only produce all-NOT_RUN theater; dispatching them would add no information and cannot change the terminal. Identical precedent applied and A7-confirmed in the immediate predecessor (FIBV1 terminal_verdict.json: 'waves A3/A4/A5 + D2 MOOT undispatched per the outcome-independent stopping rule and the STOCKS-NG4 F2-F8 never dispatched precedent'), which this plan inherits at sec10."
+    },
+    {
+      "id": "C-11",
+      "dimension": "6 systemic cross-cycle finding — predecessor consistency",
+      "evidence": "FIBV1 terminal_verdict.json (read at the FIBV1 integration worktree) and registry row (TERMINAL, head 558b366c84554b3cddd2d981dfaeacdee066742f, untouched per registry + plan sec1 immutability law): Dukascopy estate blocked by local-resolver 127.0.0.1 + SNI/Host-keyed resets REGARDLESS of destination IP with same-IP non-dukascopy SNI succeeding and healthy neutral controls — the same SNI-keyed in-path filter class now measured against the CME estate (DNS sinkhole + SNI-keyed RST at the authentic Akamai IP). Both verdicts: zero circumvention, license/data-quality UNMEASURED as causally-downstream co-blocker adjudicating nothing about the source, successor door CLOSED, and the SAME minimal reopening shape (owner provides an unfiltered network path; the lane re-runs from its FROZEN canary manifest with plan/contract unchanged). The two owner actions are one action applied to two estates."
+    },
+    {
+      "id": "C-12",
+      "dimension": "registry state",
+      "evidence": "plans/CYCLE_REGISTRY.json at main tip: FX-FUTURES-FRONTIER-V1 row lifecycle PLANNED_NOT_STARTED, phase 'G2 BOOTSTRAPPED ... worktrees integration+lane-a2..a6 at base 06af8ba5; lanes not yet dispatched', head 06af8ba5, budget 0/0, go_phrase '', go_phrase_state NOT_REGISTERED, s1 SEALED_UNTOUCHED, updated 2026-09-17T09:18:58Z (== reflog bootstrap epoch 1789636738 to the second). The row predates lane dispatch (09:24:50Z+) by design: registry writes go through researchctl at authorized moments only (G7 close is pending this audit) and lanes never write it. FOREX-INTRA-BIDASK-V1 row TERMINAL head 558b366c — untouched."
+    },
+    {
+      "id": "C-13",
+      "dimension": "NOT_RUN_EXECUTION_REQUIRED inventory (no Bash in audit sandbox)",
+      "evidence": "(1) Commit-object<->working-tree blob binding of the plan and lane files to 06af8ba5/aea11aed (git hash-object/cat-file). (2) Byte-level tree listing of the aea11aed cherry-pick proving ONLY lane-a2 paths (corroborated at content level: registry copy lacks the FXF row; plan carries exactly the base remediation tags; namespace glob shows only lane-a2 + pre-existing audits). (3) Byte-level immutability diff of FOREX-INTRA-BIDASK-V1 terminal artifacts vs the 558b366c tree (registry head + terminal_verdict.json content verified). (4) Live re-measurement of the network block from this audit sandbox (the audited block rests on the lane's committed same-day transcripts, which are internally consistent and physically coherent). (5) Content-level presence of the orchestrator handoff JSON c87b099b (stored outside the repo tree)."
+    }
+  ],
+  "recomputations": [
+    {
+      "what": "fetch_transcripts.jsonl row count",
+      "expected": "37",
+      "observed": "37 (full read line count 1-37; independent grep of '\"key\":' returns exactly 37 matches)",
+      "match": true
+    },
+    {
+      "what": "verdict.json per_instrument count and lane_verdict",
+      "expected": "5 instruments (M6E, M6B, M6A, MCD, MJY) all SOURCE_DEAD_TRANSPORT_BLOCKED; lane_verdict BLOCKED_TRANSPORT",
+      "observed": "5 entries, each with 13 identity_checks NOT_RUN_TRANSPORT_BLOCKED (field k UNAVAILABLE_FAIL_CLOSED in the packs) and verdict SOURCE_DEAD_TRANSPORT_BLOCKED; lane_verdict BLOCKED_TRANSPORT",
+      "match": true
+    },
+    {
+      "what": "raw_byte_index content-byte sum and byte-cap discipline",
+      "expected": "0 content bytes (claimed), cap 300,000,000",
+      "observed": "5 entries x 0 bytes = 0; bytes_downloaded_total_content 0; _counters.json bytes_downloaded_total 0, fetches 10 (= 5 phase-1 + 5 rehash harness-mediated rows); 0 << 300,000,000",
+      "match": true
+    },
+    {
+      "what": "determinism_refetch 5/5 ALL_MATCH structure",
+      "expected": "5/5 blocked-state re-hash ALL_MATCH with content determinism NOT_RUN",
+      "observed": "5 results, corrected_match true on all, results_all_match_corrected true, classification BLOCKED_STATE_REPRODUCTION_ALL_MATCH, content_determinism NOT_RUN_TRANSPORT_BLOCKED; disclosed null-vs-empty-hash harness artifact; original/refetch SHA e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 verified as the correct SHA-256 of the empty string",
+      "match": true
+    },
+    {
+      "what": "census probe count vs frozen etiquette cap",
+      "expected": "10-probe blocked-surface confirmation grid; frozen cap 5 x (5 instruments x 5 sampled-years x 8) = 1000; full census NOT_RUN",
+      "observed": "10 probes (5 instruments x years {2019,2026}) in census_results.json + transcripts rows 17-26, 1 s sequential spacing; census_manifest total_probe_cap 1000; full_grid status NOT_RUN; every row classified BLOCKED_PROBE_NOT_EXISTENCE_PROOF",
+      "match": true
+    },
+    {
+      "what": "plan-text first-match ordering quote (rules 1-2 vs rule 10)",
+      "expected": "Rule 2 (BLOCKED_TRANSPORT on frozen-etiquette transport failure with discrimination evidence) and rule 1 (license measured-insufficient OR UNMEASURED with co-blocker named) fire before rule 10 (INCOMPLETE_NOT_PROMOTABLE)",
+      "observed": "Plan bytes: 'Mapping, first matching rule wins'; rule 1 = 'License/entitlement ... measured insufficient, OR left UNMEASURED at terminal with the co-blocker named verbatim (the FOREX-INTRA-BIDASK-V1 B2 class — A7 r1 F-4)'; rule 2 = 'Transport fails under the frozen etiquette (with the L-FIBV1-1 discrimination evidence attached) -> BLOCKED_TRANSPORT'; rule 10 = 'Any of R1-R17 NOT_RUN/unresolved with no rule above fired -> INCOMPLETE_NOT_PROMOTABLE'; rule 11 PASS is ordered after rule 10 and requires R1-R15 PASS + EVIDENCED_REFUTED attacks + A7 re-verification — unreachable here",
+      "match": true
+    },
+    {
+      "what": "connection-refused occurrence count vs incident claim",
+      "expected": "INC-FXFA2-2 claims the block reproduced uniformly on 'all 21 later probes'",
+      "observed": "21 curl(7) connection-refused occurrences recounted in fetch_transcripts.jsonl: 5 phase-1 + P1 + 10 CENSUS_BLOCKCONF + 5 REHASH = 21; identical 1-3 ms loopback signature on each",
+      "match": true
+    },
+    {
+      "what": "reflog epoch <-> UTC reconciliation and git tips",
+      "expected": "main 8230fa34..., orca/fxf-a2 cee599715240df9f26cf2828d5da2cf88bae1e7e, orca/fxf-f-integration aea11aed6cb89b864b609d7fd75875f7d112ffde; FIBV1 head 558b366c... untouched; base 06af8ba5 == remediation r2",
+      "observed": "All loose refs exact; reflog epochs decode consistently: bootstrap 1789636738 = 2026-09-17T09:18:58Z == registry updated_at_utc to the second; fxf-a2 commit 1789637988 = 09:39:48Z; cherry-pick 1789638157 = 09:42:37Z (postdates all lane measured events 09:24:50-09:35:28Z); main reflog chain d9e11a42 -> 994ff1f8 -> a5c3e0f4 -> 5fd2cf4 -> 1ff55598 -> 06af8ba5 -> 8230fa34 verified with commit messages matching the r1 REFUSED 2 HIGH and r2 AUTHORIZED_WITH_FINDINGS artifacts",
+      "match": true
+    }
+  ],
+  "systemic_finding": "SECOND independent estate blocked with SNI-keyed in-path filter evidence: FOREX-INTRA-BIDASK-V1 (Dukascopy: local resolver 127.0.0.1 for *.dukascopy.com, SNI/Host-keyed resets regardless of destination IP, same-IP different-SNI succeeds, 36 failures; terminal 558b366c, A7-confirmed) and now FX-FUTURES-FRONTIER-V1 (CME: LAN resolver 192.168.0.1 sinkholes www.cmegroup.com to 127.0.0.1/::1 — not /etc/hosts; in-path SNI-keyed TLS RST at the DoH-authentic Akamai IP 23.66.152.172 while the SAME IP completes TLS for a different SNI; apex cmegroup.com TLS drop; ftp.cmegroup.com silent TCP drop; neutral controls example.com/google.com HTTP 200). Same filter class, two unrelated vendor estates, general egress healthy in both, zero circumvention in both. One owner action covers both: provide a single unfiltered network path from this machine; then EACH affected lane re-runs from its own FROZEN canary manifest with plan/contract unchanged — no re-authoring, no parameter rescue, both blockers re-arm and are decided by evidence.",
+  "reopening": {
+    "owner_action": "Provide an unfiltered network path from this machine on which www.cmegroup.com / cmegroup.com / ftp.cmegroup.com (and, for the predecessor estate, *.dukascopy.com) resolve to their authentic addresses and complete TLS without SNI-keyed interference; block removal is an owner decision (L-FIBV1-1) and was never circumvented. Then re-open the affected lane (fxf-a2; fibv1-a2 for the predecessor) — it re-runs from its FROZEN canary manifest with the plan/contract unchanged; the license gate (currently UNMEASURED co-blocker, UNAVAILABLE_FAIL_CLOSED) re-arms and is decided by evidence, not assumption.",
+    "unchanged": [
+      "frozen canary manifest (research/control/fx_futures_frontier_v1/lane-a2/canary_manifest.json, frozen_at_utc 2026-09-17T09:24:50Z, frozen before any content fetch)",
+      "plan sections 1/3/4/7/9/10 (hard boundaries, allowed sources + transport law, measurement contract, terminal verdicts, process, incident transparency — audited at base 06af8ba5 with r1 F-1..F-8 and r2 F-2.1..F-2.4 remediations)"
+    ]
+  },
+  "notes": "Fresh-context terminal audit; the terminal claim was attacked, not inherited. Verdict CONFIRM_WITH_FINDINGS: 0 HIGH/CRITICAL, 4 LOW findings (T-1 rule-1/rule-2 label-ordering nuance — resolved per the A7-confirmed FIBV1 precedent, zero consequence delta since both are BLOCKED classes closing the successor door, with the G7 close required to name the license co-blocker verbatim; T-2 census grid URL family deviation from the frozen candidates — immaterial at connection-level refusal; T-3 disclosed retry bug — exposure nil against a 9-minute uniform 3-mechanism block; T-4 summary-stamp precision — no measured event depends on it). The block claim is real per committed bytes: every element of the claimed blocker (DNS sinkhole by 192.168.0.1 not /etc/hosts; SNI-keyed RST at DoH-authentic 23.66.152.172 with same-IP different-SNI TLS completing to certificate verification; apex TLS drop; ftp TCP silent drop; healthy neutral controls) is transcripted, physically coherent, internally consistent across 37 rows and ~9 minutes, and was not bypassed. Terminal mapping BLOCKED_TRANSPORT (plan sec7 rule 2) is lawful: the transport gate RAN under the frozen etiquette and FAILED with the L-FIBV1-1 discrimination evidence attached; rule 10 does not fire because the failed proof is a measured FAIL, not a bare NOT_RUN; no false PASS is reachable; nothing about CME licensing or data quality was adjudicated. MOOT waves a3-a6 are honest under the outcome-independent stopping rule with two precedents. NOT_RUN_EXECUTION_REQUIRED inventory in check C-13 (blob binding, tree listing, byte-diff of predecessor, live re-measurement, orchestrator handoff hash). Audit artifact is the single file written; no other file created or modified."
+}
