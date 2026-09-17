@@ -1,0 +1,97 @@
+{
+  "schema": "fibv1_a2_canary_manifest@1",
+  "task_id": "fibv1-a2",
+  "cycle_id": "FOREX-INTRA-BIDASK-V1",
+  "lane": "a2-source",
+  "dispatch_sha": "74d0632cfe14a186fdedf7d9ff1666d9b596dc6c",
+  "frozen_at_utc_start_of_work": "2026-09-17T07:46:25Z",
+  "written_before_any_content_fetch": true,
+  "note": "Frozen BEFORE any source fetch. Pre-flight DNS/TCP/TLS reachability diagnostics (no content fetched, no bytes persisted) were run to verify the environment could reach the candidate surface at all; all later fetches, probes and evidence follow THIS manifest.",
+
+  "pairs_exact": ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD", "NZDUSD"],
+  "pairs_note": "Exactly these 5; no other symbol; no XAUUSD. URL symbol form candidate: lowercase, no separator.",
+
+  "candidate_url_patterns_to_verify_from_bytes_or_official_pages": [
+    "https://datafeed.dukascopy.com/datafeed/<PAIR lowercase>/<YYYY>/<MM-1 zero-based>/<DD>/<HH 2-digit>h_ticks.bi5",
+    "License/terms pages: official dukascopy.com domains only (www.dukascopy.com and subdomains); pages must be hashed; verbatim operative clauses recorded"
+  ],
+  "forbidden_sources": ["third-party mirrors/aggregators as source of data or licensing claims", "unauthenticated undocumented endpoints", "scrapes of aggregators"],
+
+  "canary_set": {
+    "recent_full_utc_day": {
+      "date_utc": "2026-09-09",
+      "weekday": "Wed (verified programmatically)",
+      "files_per_pair": "24 hourly tick files, hours 00..23 UTC"
+    },
+    "historical_day": {
+      "date_utc": "2019-10-30",
+      "weekday": "Wed (verified programmatically)",
+      "age_check": ">= 3 years before 2026-09-17 (6.9 years)",
+      "files_per_pair": "24 hourly tick files, hours 00..23 UTC"
+    },
+    "dst_transition_window": {
+      "transition_utc": "2026-03-08T07:00:00Z (US DST start; 2nd Sunday of March 2026; 02:00 America/New_York EST->EDT)",
+      "fetch_rule": "hourly files 2026-03-07 20:00 UTC through 2026-03-09 00:00 UTC inclusive (29 hourly files per pair) where surface is hourly-partitioned; if day-granular, fetch 2026-03-07 and 2026-03-08 day files",
+      "weekdays": {"2026-03-07": "Sat", "2026-03-08": "Sun (transition day)", "2026-03-09": "Mon"}
+    }
+  },
+
+  "availability_head_census": {
+    "sampled_years": [2019, 2021, 2023, 2025, 2026],
+    "hours_per_pair_year": 8,
+    "grid_definition": "h1 Wed-of-DST-week 13:00 UTC (active); h2 same Wed 03:00 UTC (quiet Asia); h3 DST-transition Sunday 06:00 UTC (pre-transition weekend); h4 DST-transition Sunday 07:00 UTC (DST boundary instant); h5 DST-transition Sunday 21:00 UTC (first candidate open hour, EDT 17:00); h6 DST-transition Sunday 22:00 UTC (populated open hour); h7 September Friday 20:00 UTC (active pre-close); h8 September Friday 21:00 UTC (Friday-close hour, 17:00 EDT)",
+    "grid_dates_by_year": {
+      "2019": {"wed": "2019-03-13", "dst_sunday": "2019-03-10", "sep_friday": "2019-09-27", "jan_sunday_reference": "2019-01-06"},
+      "2021": {"wed": "2021-03-10", "dst_sunday": "2021-03-14", "sep_friday": "2021-09-24", "jan_sunday_reference": "2021-01-03"},
+      "2023": {"wed": "2023-03-08", "dst_sunday": "2023-03-12", "sep_friday": "2023-09-29", "jan_sunday_reference": "2023-01-08"},
+      "2025": {"wed": "2025-03-12", "dst_sunday": "2025-03-09", "sep_friday": "2025-09-26", "jan_sunday_reference": "2025-01-05"},
+      "2026": {"wed": "2026-03-11", "dst_sunday": "2026-03-08", "sep_friday": "2026-09-11", "jan_sunday_reference": "2026-01-04"}
+    },
+    "all_weekdays_verified_programmatically_before_freeze": true,
+    "total_probes_planned": 200,
+    "probe_cap_absolute": 1000,
+    "cap_formula": "5 x (5 pairs x 5 years x 8 hours)"
+  },
+
+  "census_etiquette_frozen": {
+    "method": "HEAD probes only",
+    "sequencing": "sequential, >= 1 s spacing between any two requests",
+    "retries": "<= 2 retries with exponential backoff per probe",
+    "concurrency": "none",
+    "session": "single HTTP(S) session",
+    "escalation_rule": "any 4XX/5XX/reset pattern is EVIDENCE, never a reason to escalate request volume"
+  },
+
+  "byte_cap": {
+    "hard_cap_total_bytes": 300000000,
+    "accounting": "cumulative response-body bytes of every successful GET, tracked after every fetch; a fetch is refused (never started/persisted) if its declared Content-Length would breach the remaining headroom",
+    "raw_bytes_never_in_git": true
+  },
+
+  "raw_layout": {
+    "root": "/Users/hoangminhlong/.my-quantitative-data/forex-intra-bidask-v1/raw",
+    "tick_files": "<root>/<PAIR>/<YYYY>/<MM calendar 2-digit>/<DD 2-digit>/<original filename>",
+    "meta_artifacts": "<root>/_meta/<category>/... (license page snapshots, DNS evidence, control probes) — documented extension for non-pair artifacts",
+    "original_bytes_untouched": true
+  },
+
+  "fetch_order_frozen": [
+    "1. transport-verification probes (pattern HEAD/GET pair + control probes)",
+    "2. availability HEAD-census (all 200 probes)",
+    "3. license/terms pages (official dukascopy domains)",
+    "4. DST-transition window GETs (smallest expected bytes first)",
+    "5. historical day 2019-10-30 GETs",
+    "6. recent day 2026-09-09 GETs",
+    "7. determinism re-fetch of >= 5 already-fetched files (sha256 ALL_MATCH required)"
+  ],
+
+  "determinism_check": {
+    "min_refetched_files": 5,
+    "rule": "sha256 ALL_MATCH required; byte variation is recorded as MISMATCH = FAIL evidence, never normalized"
+  },
+
+  "two_sided_quote_proof_required": {
+    "decoder": "decode_bi5.py committed in lane dir, run via workspace .venv",
+    "must_prove": ["stride consistency from raw sizes (test 20; reject others only with evidence)", "LZMA decode measured (never assumed)", "BOTH ask and bid present per record; counts of bid>ask, bid==ask", "timestamps monotonic within file", "ms-offset + file-hour = as-served time; UTC convention verified against quiet vs active hours"]
+  }
+}
