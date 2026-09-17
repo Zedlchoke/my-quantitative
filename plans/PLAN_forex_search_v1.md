@@ -474,7 +474,8 @@ published as the search's multiple-testing universe. Forex denominators
 currently 48/48; program 257/260 (P-9) — this cycle starts at budget 0/3.
 Any result language must carry the §3 relaxation disclosure verbatim:
 "accepted under owner-relaxed acceptance battery (R0 0.30 / DSR alpha 0.10
-at N = grid)" AND the §4 F4 financing disclosure: "financing =
+at N = grid) | PBO NOT_RUN fail-closed (<=3 cells, d0992d17 class)" AND
+the §4 F4 financing disclosure: "financing =
 stated-conservative nightly-average extrapolation (1.7 bps; worst single
 night may exceed it; no per-leg differential census exists — OHLC-only
 source)".
@@ -487,8 +488,9 @@ FOREX_SEARCH_V1_BLOCKED_SOURCE_OR_SCHEMA
 FOREX_SEARCH_V1_BLOCKED_DATA_OR_SELECTION
 FOREX_SEARCH_V1_BLOCKED_PRELAUNCH
 FOREX_SEARCH_V1_REJECT_ALL
-FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY (only if Stage-A passes;
-    carries the §3 disclosure; never a profitability claim)
+FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_PBO_NOT_RUN (only if
+    Stage-A passes; carries the §3 + §4 F4 disclosures AND the PBO
+    NOT_RUN fail-closed label; never a profitability claim)
 FOREX_SEARCH_V1_INCOMPLETE_NOT_PROMOTABLE
 FOREX_SEARCH_V1_TECHABORT_PRESERVED
 ```
