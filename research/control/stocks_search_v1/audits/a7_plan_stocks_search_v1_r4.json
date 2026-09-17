@@ -1,0 +1,134 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "STOCKS-SEARCH-V1",
+  "store_label": "ZCODE-ORCHESTRATION-V3",
+  "audit_task": "ssearch-a7-plan-audit-r4",
+  "audited_file": "plans/PLAN_stocks_search_v1.md",
+  "audited_sha256": "285cf933e0fe056f63ec539b9441d34c3c70629b17f24083df959f5090c1339c (stated basis: Lead-measured 2026-09-17; digest NOT recomputed in-lane — no Bash in this lane)",
+  "base_sha": "8a3eb27a7ea6c25479626d7c828101d3369c8b09 (branch main, root checkout)",
+  "frozen_sha_verification": {
+    "result": "NO_MISMATCH",
+    "instruments": [
+      "line count: exactly 526 numbered lines as read in-lane (matches packet)",
+      "line 1: exact title '# PLAN STOCKS-SEARCH-V1 — bounded construction-blind strategy search (owner-relaxed acceptance)' (matches packet)",
+      "structure: §§0–13 intact and in order; §13 'Immediate actions' present",
+      "EOF: line 526 is the closing fence of §13 (matches packet)"
+    ],
+    "digest_recomputed": false,
+    "digest_recomputed_reason": "NOT_RUN_EXECUTION_REQUIRED (no Bash in audit lane; packet designates line count/title/structure/EOF as the in-lane instruments)"
+  },
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "verdict_basis": "0 HIGH and 0 CRITICAL findings across all six audit items plus the beyond-the-items hunt; 2 MEDIUM + 7 LOW recorded. REFUSED was not triggered (REFUSED iff any HIGH/CRITICAL).",
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "MEDIUM",
+      "section": "§5 (grid families 1 and 4) / manifest required fields",
+      "quote_bytes": "(3) RANGE (close_t - low_t)/(high_t - low_t) >= 0.5  ...  CLV_t = ((C-L)-(H-C))/(H-L) per FOREX-NG7 §5 FNG7-A2-P1-ABSORB",
+      "why_wrong": "Both formulas have a zero denominator when high_t == low_t (zero-range session). On the death-inclusive cohort with stale low-volume names such sessions exist, and the CLV-RANGE family carries no participation filter, so bookable names with zero-range prints enter P_t/slope. The degenerate-case convention (exclude the session, treat CLV as 0/1, carry last value, ...) is unpinned at plan level and is not explicitly named in the D1 manifest required-fields list ('per-configuration full construction definitions' arguably covers it but nothing forces the convention to be visible). Different conventions produce different fired sets and state series, which can move W_c and selection order in knife-edge cases.",
+      "required_remediation": "One-sentence pin before D1: the manifest must declare, per affected configuration, the zero-range session convention (recommended: exclude the session from RANGE/CLV computation and census the excluded count), and the count of degenerate sessions must be reported at D2."
+    },
+    {
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "section": "§6 R0 shadow inventory / disposition rule",
+      "quote_bytes": "rolling-beta state; DGS10-LEVEL state; event-calendar geometry (P-24 class); ...  Disposition rule: a control that is unpopulated or has an invalid null is NOT_ADJUDICABLE, never silently skipped.",
+      "why_wrong": "DGS10-LEVEL is enumerated in the R0 shadow inventory, but STOCKS-NG6 (same /eod-only data plane, same estate) recorded 'DGS10 UNMEASURABLE' at its D2 — a known lineage fact the plan imports without the tag or a disposition. The §6 disposition rule covers CONTROLS ('unpopulated or invalid null'), not shadows; 'under-enumerated inventory = invalid PASS' covers enumeration, not measurement failure. The disposition of an enumerated-but-unmeasurable shadow is therefore unpinned, with a split precedent (NG6: record UNMEASURABLE, disclose, proceed with measured shadows; STOCKS-NG2: unmeasurable decisive veto shadow => configuration fail-closed INELIGIBLE). The fork ranges from invalid-PASS risk (silent skip) to a whole-cycle 0/3 close — a conclusion-level fork left to implementer choice.",
+      "required_remediation": "Pin the rule before D2, e.g.: a shadow recorded UNMEASURABLE is printed as UNMEASURABLE with cause on every D2 artifact; W_c is computed over the measurable set and every affected configuration is labelled PARTIALLY_ADJUDICATED_R0 in the D2 output and the S freeze (or, if the stricter NG2 reading is intended, say so). Either pin is valid; silence is not."
+    },
+    {
+      "id": "F-3",
+      "severity": "LOW",
+      "section": "§5 selection",
+      "quote_bytes": "Family tier value T_F = min over the family's D2-surviving configurations of W_c (the family's best-case distance from lethal ancestry)",
+      "why_wrong": "The parenthetical gloss is imprecise: W_c = max |pooled_rho| is ancestry EXPOSURE (larger = closer to lethal ancestry), so T_F = min of that is the family's best-case ancestry exposure, not a 'distance' (a true distance would rank descending). The operative rule ('families ASCENDING by T_F — most novel first' + stated rationale) is unambiguous and mechanical, so no behavior fork; only the gloss could mislead.",
+      "required_remediation": "Replace the gloss with 'best-case (minimum over surviving configurations) ancestry exposure; lower = more novel' or delete it."
+    },
+    {
+      "id": "F-4",
+      "severity": "LOW",
+      "section": "§5 selection (iii)",
+      "quote_bytes": "selection is FAMILY-STRATIFIED round-robin over the tier-ordered families — one configuration per family per round, at most 2 scored cells per family, until 3 cells are filled",
+      "why_wrong": "T_F is defined over 'D2-surviving configurations'; a family with zero D2 survivors has undefined T_F and undefined round-robin behavior. Mechanically it contributes no cells, but the skip semantics (family removed from the tier order before ranking; disclosed) are unstated.",
+      "required_remediation": "Pin: families with zero D2-surviving configurations are removed from the tier order before ranking, with the removal and cause disclosed in the D2/S artifacts."
+    },
+    {
+      "id": "F-5",
+      "severity": "LOW",
+      "section": "§6 C-CAL-HIST",
+      "quote_bytes": "minimum twin population 10 fired decisions per bucket per fold — a sub-floor bucket is NOT_ADJUDICABLE and disclosed, never silently skipped; must NOT out-earn the candidate (the R6 clock rule extends to it)",
+      "why_wrong": "When one or more buckets are sub-floor NOT_ADJUDICABLE, the plan does not state how the control-level 'must NOT out-earn' comparison aggregates the remaining populated buckets (per-bucket majority, pooled expectancy, equal-weight). The C-CAL-HIST matching rule is a required fail-closed D1-manifest field, which mitigates determinism risk, but the control-level verdict semantics under partial sub-floor should be pinned at plan level so the manifest rule cannot quietly choose a survivor-favorable aggregation.",
+      "required_remediation": "Pin: the control-level comparison aggregates populated buckets by the manifest-declared rule, and if any fired bucket of the candidate is sub-floor the affected bucket's candidate leg is disclosed and excluded symmetrically (or the whole control is NOT_ADJUDICABLE fail-closed) — one of the two, frozen."
+    },
+    {
+      "id": "F-6",
+      "severity": "LOW",
+      "section": "§0 header (owner instruction freeze)",
+      "quote_bytes": "verbatim: \"mở cycle tìm kiếm strategy overfit tí xíu cũng được Cho stocks và forex\". Frozen English reading (authoritative for gates): open a strategy-search cycle for stocks; a MILD, BOUNDED amount of overfit is acceptable in the acceptance statistics.",
+      "why_wrong": "The verbatim quote covers stocks AND forex ('và forex'); the authoritative English reading renders only the stocks half. Harmless for this cycle's gates because §0 explicitly assigns forex to the sibling FOREX-SEARCH-V1 under the same instruction and §3 scopes the grant 'for THIS program only', but the authoritative reading is incomplete as a translation of its own quoted source.",
+      "required_remediation": "Extend the frozen English reading with '; and the same for forex (sibling cycle FOREX-SEARCH-V1)' or annotate that the forex half is intentionally out of this plan's gate scope and handled in §0."
+    },
+    {
+      "id": "F-7",
+      "severity": "LOW",
+      "section": "§4 F8",
+      "quote_bytes": "RECENT-window fired-population floor >= 30 decisions/fold measured at the P0 census F8 output (fail-closed kill)",
+      "why_wrong": "Lineage carryover from NG6 (where one family-level construction made a P0-time population census meaningful). Here the fired population is configuration-dependent and exists only after D1/D2; §7 correctly binds per-configuration 'feasibility floors (F6/F8 forms)' and 'fired-population census' at D2 pre-score, so the joint reading is coherent, but F8's 'measured at the P0 census F8 output' names a measurement site that cannot host the per-configuration floor.",
+      "required_remediation": "Restate F8 as: P0 measures a cohort-level feasibility census (early kill), and the BINDING per-configuration >= 30 decisions/fold floor is measured at D2 (§7), fail-closed pre-score."
+    },
+    {
+      "id": "F-8",
+      "severity": "LOW",
+      "section": "§5 family 6 VOL-REGIME",
+      "quote_bytes": "boundaries = 1/3 and 2/3 quantiles (linear interpolation) of the trailing 252-session window ending at and including t",
+      "why_wrong": "The quantile input series is not explicitly named. The family is defined as 'realized-vol tercile-conditional drift' with the trailing-L vol estimator pinned, so the intended reading is quantiles of the trailing-252 series of that vol estimate; a literal reading of 'the trailing 252-session window' could be misread as quantiles of raw daily returns, which would be a materially different book. Family definition plus estimator pin make the intended reading dominant, but the boundary input series should be named.",
+      "required_remediation": "The D1 manifest must state the boundary input series explicitly: 'quantiles of the trailing-252-session series of the pinned trailing-L realized-vol estimate'."
+    },
+    {
+      "id": "F-9",
+      "severity": "LOW",
+      "section": "§9 M0",
+      "quote_bytes": "M0 methodology golden suite (G1–G10 + G4N = 11/11, NG5/NG6 lineage) re-inherited BYTE-EXACT, re-run in this cycle's worktree",
+      "why_wrong": "M0 is a byte-exact re-inheritance; the genuinely NEW machinery of this cycle (W_c/sparse-book max convention, T_F tier ranking, family round-robin, P-20-at-S skip semantics, DSR-at-N=grid) has no golden-test requirement. The machinery is pinned in the hashed D1 manifest and auditable at S/A7-prelaunch, and FOREX-NG7's G11 precedent shows the program extends M0 when a cycle adds new contract machinery — so the gap is a testability weakness, not an unfrozen parameter.",
+      "required_remediation": "Optional but recommended before D1: add cycle-specific golden fixtures (e.g. G12: selection-order determinism + sparse-book max convention + P-20 skip semantics) under stocks_search_v1_run/m0/."
+    }
+  ],
+  "audit_items_adjudicated": {
+    "1_reopening_legality": {
+      "verdict": "PASS",
+      "adjudication": "STOCKS-NG6's terminal reopening clause ('materially new evidenced source or owner plan naming a changed killer') is verified verbatim in the registry row. The plan exercises ONLY the second branch, and does so honestly: it claims no new source, states explicitly that the owner words name a POSTURE and not the axes ('it does not name the R0 floor, the DSR parameters or \"the acceptance battery\" in so many words'), freezes the instantiation (§3) before any measurement, discloses it as the Lead's instantiation, and forbids in-cycle widening (§3, §12). The changed killer — the 0.20 acceptance bar — is exactly what NG6's terminal row names, and the owner instruction genuinely grants acceptance-statistic relaxation. The program's own precedent (NG6/NG3/NG4: Lead-written plans under explicit owner directives, audited by fresh-context A7 before registration) supports reading 'owner plan' as a plan under recorded owner authority. Faithful; not reopened evidence dressed as owner words."
+    },
+    "2_boundedness_and_not_relaxed_list": {
+      "verdict": "PASS",
+      "adjudication": "Each relaxed axis is pre-committed and bounded: R0 0.30 is a 50% relative relaxation whose re-admission boundary is measured against committed history (re-admits NG6's 0.201/0.219/0.260; does NOT re-admit the binding dvol_shock 0.320 — verified exact against the registry row — nor FOREX-NG5's 0.353 — verified against the registry row); DSR N = frozen grid size (47, capped <= 120) with program-cumulative ~260 at alpha 0.05 still reported; alpha 0.10 one notch; breadth bounded at 120 enumerated configs / 3 scored cells with <= 2 per family. The not-relaxed list was checked member-by-member against the actual §5/§6 battery: K6, fold-positive-share > 50% KILLS, PIT-mutation invariance, the PBO NOT_RUN-fail-closed disposition, R1-R6, cost bands/stress-2.0-primary, per-fold population floors, death contract, drop-one, concentration/MDD/SPY-excess, reproduction, trial accounting, S1 seal, GO-at-gate — all present, and the 'relaxes EXACTLY these axes' clause makes everything unlisted unrelaxed by construction. 'Every result artifact prints BOTH the standing and relaxed values' is enforced via the §10 mandatory language."
+    },
+    "3_grid_and_selection_reproducibility": {
+      "verdict": "PASS_WITH_FINDINGS (F-1, F-3, F-4, F-8)",
+      "adjudication": "Cap arithmetic verified EXACTLY: EVENT-UNWIND 3K x 3H = 9; GAP 3 thresholds x 2H x 2 directions = 12 ('fade and confirm' both enumerated per the sign rule); 52W-HIGH 3 bands x 2H = 6 (sign explicitly frozen, single direction); CLV-RANGE 2k x 2H = 4 (sign from construction); DVOL-SHOCK 2 ratios x 2 directions x 2H = 8; VOL-REGIME 2 lookbacks x 2H x 2 directions = 8. Sum 9+12+6+4+8+8 = 47 — matches the plan's stated 'grid total 47 <= 120' under the only consistent enumeration (any other direction-attribution breaks the stated total). W_c = max over ALL frozen shadows of |pooled_rho| with the sparse-book dual-rho MAX convention is pinned, fail-closed (max of the two |rho|), and is a required D1-manifest field; the §6 BINDING event-conditional shadows apply regardless of fired-day share and the 30% trigger ADDS the conditioned rho — cumulative, stated both in §5 and §6, consistent. T_F ASCENDING + lexicographic tie-breaks (family name, config ID) are mechanical. Round-robin <= 2 cells/family across 6 families structurally forces the 3 cells to span >= 2 families. P-20 at S: > 0.98 => SELF-SUBSUMED skip; unmeasurable pairwise rho => NOT_ADJUDICABLE fail-closed — verified as a faithful application of the P-20 law (LESSONS.md: measure books_distinct, never inferred PASS). The §5 outcome-blind ban with the explicit §7 non-scored carve-out (ancestry rho, feasibility floors, fired-population censuses) is internally consistent and tripwired (performance-based narrowing => BLOCKED_METHOD_CONTRACT; PBO computation outside the <= 3 cells => §5 tripwire). Manifest required-fields list is complete per the packet checklist: full construction definitions, C-COMPLEMENT + R5 component-only books, C-CAL-HIST matching rule, warmup rule, per-configuration frozen signs, expected-DOA disclosure, ancestry-search basis grep record, R0 inventory hash, S0 window extent, interpolation method (linear), plus the verbatim selection order."
+    },
+    "4_battery_integrity": {
+      "verdict": "PASS_WITH_FINDINGS (F-2, F-5)",
+      "adjudication": "R0 conventions: strictly > 0.30 (equality passes) to 6 decimal places, 0.20 printed alongside, tested against the FULL inventory INCLUDING own-family shadow class with the own-class rho reported separately and never carved out — fail-closed, no exemptions; expected-DOA disclosures required in the manifest; the family/shadow mapping is complete for all six families (EVENT-UNWIND->reversal shadows, GAP->overnight-gap, 52W-HIGH->52w-high both roles hashed, DVOL-SHOCK->dvol-shock tagged, VOL-REGIME->vol LEVEL+semivariance BINDING, CLV-RANGE->CLV state), and the GAP/CLV-RANGE ancestry claims verified against the wayfinder (no dead stocks overnight-gap or CLV class found; FOREX-NG7's FNG7-A2-P1-ABSORB was UNTESTED, so cross-plane adaptation is not a dead-family re-test and is disclosed). R1-R6/K6 forms are faithful NG6-lineage restorations with R5 generalized per-family (NOT_ADJUDICABLE when no analog, never inferred PASS); C-REVERSAL-PLAIN correctly made mandatory (not optional) under the relaxed floor with the 'MORE load-bearing' rationale; C-DELAY-H is Q-11-converted (lookahead audit first, feeds K6, never automatic kill). C-CAL-HIST bucket rule pinned: bucket = (weekday, {first-half, second-half of month}), deterministic rule ex ante, minimum 10/bucket/fold, sub-floor => NOT_ADJUDICABLE disclosed, R6 extends to it. Stage-A unchanged and identical to NG6's BC-5 kill form. PBO disposition correctly derived: CSCV needs >= 8 performance-evaluated configurations; <= 3-cell budget makes it unreachable BY CONSTRUCTION => NOT_RUN, declared fail-closed, printed on every result, d0992d17 class corroborated (see verification notes). Survivor-label chain §6 -> §10 -> §11 verified CONSISTENT end-to-end: §6 makes PBO-NOT_RUN bookability conditional on carrying the label into the terminal outcome name and §10 language; §10 mandates the verbatim string 'accepted under owner-relaxed acceptance battery (R0 0.30 / DSR alpha 0.10 at N = grid) | PBO NOT_RUN fail-closed (<=3 cells, d0992d17 class)'; §11's outcome name STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_PBO_NOT_RUN carries both the §3 disclosure and the PBO label with 'never a profitability claim'. A bookable survivor is labelled consistently end-to-end."
+    },
+    "5_frozenness_sweep": {
+      "verdict": "PASS",
+      "adjudication": "Warmup law re-inherited verbatim from NG6 A4 (252 served sessions; first eligible decision no earlier than the 253rd served session per name; attrition CENSUSED) and required in the manifest. Cost bands {A:10,B:15,C:25} bps on ADV bands {50M,10M,2M}, fail-closed, once per fill, stress 2.0 PRIMARY, ceiling arithmetic correct (25bps x 2 fills x 2.0 = 100 bps/round trip), majority-band-C => operative ceiling — all re-inherited intact. Floors present: $1.00/$2M bookability (ex ante), >= 30 decisions/fold RECENT-window fail-closed, 10/bucket/fold C-CAL-HIST, P-20 0.98. Estimator pins: VOL-REGIME close-to-close log-return sample std (ddof=1) over trailing L with causal quantile boundaries refreshed daily, same-bar assignment, never full-sample; 52W-HIGH rolling 252-session max of the SAME adjusted series; CLV formula verbatim from FNG7-A2-P1-ABSORB (verified against plans/PLAN_forex_ng7.md lines 191-192) with cross-plane adaptation disclosed. Fold law (Q-6): three chronological folds pre-D2, deleveraging regime span, 2008Q4-2009 and 2020-03 never share a fold — re-inherited."
+    },
+    "6_contradiction_and_dead_reference_hunt": {
+      "verdict": "PASS",
+      "adjudication": "47-config arithmetic exact (see item 3). All cross-references resolve: §0->§3, §2->§3, §3->§5/§6, §5->§4/§6/§7, §6->§3/§5/§10, §7->§5, §10->§3/§6, §11->§3/§6/§10, §13 audit items match the dispatched items 1-4. Registry citations verified byte-exact: NG6 event-conditional rhos 0.260/0.219/0.201 and dvol_shock -0.320 with folds 1,136/1,495/694 and 2,169 symbols/3.21M rows; CRYPTO-NG4 '11/11 killed' (count correctly updated from NG6's 10/10, which the plan explicitly flags as predating); FOREX-NG5 V5 momentum 0.353; STOCKS-NG3 EODHD fundamentals 403; STOCKS-NG4 FINRA ToU; DATA-EDGE-UNLOCK-V1 'NO STOCKS-NG7' + RETROSPECTIVE_ONLY law re-inherited; PROSPECTIVE-SHADOW-V1 ACTIVE_LIGHT with the never-reads-PnL clause; FOREX-SEARCH-V1 PLANNED_NOT_STARTED with separate budget (0/3 own), separate GO phrase and separate branch — the §0/§12 independence claims hold against the now-registered sibling. Denominators current: stocks 42/42, program 257/260 (P-9) per HYPOTHESIS_LEDGER.md and the NG3/NG4/NG6/NG7/DEU 'unchanged' rows. d0992d17 is a live commit prefix (FOREX-NG1 selection-freeze head d0992d17df8e2dfde57c9a0806a5798f14021a4f per CYCLE_REGISTRY.events.jsonl) — corroborated, not git-recomputed in-lane. Law tags verified live: P-8/P-9/P-11/P-12/P-20/P-21/P-24/P-25/Q-6/Q-11/Q-12/BC-7/V7 usage consistent with LESSONS.md and NG6 lineage. No renumbering casualties found; no token/string-edit residue found in the operative sections; M0 arithmetic (G1-G10 + G4N = 11/11) consistent with NG6's registered M0 11/11. The remediation did not visibly break anything: the one wording imprecision introduced by the selection rewrite is F-3 (gloss only)."
+    }
+  },
+  "verification_notes": [
+    "FROZEN_SHA_MISMATCH check: NO mismatch by packet instruments (526 lines, exact title, §§0-13 structure, EOF = closing fence of §13 at line 526). sha256 not recomputable in-lane (no Bash); stated digest recorded as basis.",
+    "Anchoring isolation maintained: research/control/stocks_search_v1/audits/a7_plan_stocks_search_v1_r{1,2,3}.json and prior round handoffs were NOT read. Incidental grep output containing lines from other lanes' files was not used as evidence for any finding.",
+    "d0992d17 corroboration sources (non-audit-namespace): .worktrees/data-edge-unlock-v1/integration/plans/CYCLE_REGISTRY.events.jsonl (FOREX-NG1 head transitions through d0992d17df8e2dfde57c9a0806a5798f14021a4f at the selection-freeze event). Existence of the exact bytes behind the 'V17/FOREX-NG1 alternative' remains a Lead-side git-verify item at registration.",
+    "PBO CSCV >= 8 requirement independently corroborated by CRYPTO-V14 FAMILY_FAILURES row ('CSCV minimum 8 configurations unmet at the 6-cell cap') and FOREX-FREE-V8 row ('PBO fail-closed 3<8').",
+    "NG6 §2 'FALSE as stated' correction verified in plans/PLAN_stocks_ng6.md lines 66-70 and re-inherited with only the disclosed count update (crypto 10/10 -> 11/11 per CRYPTO-NG4 terminal).",
+    "Checks requiring execution (digest recomputation, git object verification, any rho recomputation) are NOT_RUN_EXECUTION_REQUIRED; none of them is adjudicable from frozen plan bytes alone and none blocks this plan-level verdict.",
+    "No writes were made outside the two allowed paths. No plans, registries, ledgers, wayfinder, prior audits, FOREX-SEARCH-V1 namespace, .env, .zcode/ or .git/ contents were modified."
+  ],
+  "unresolved_high_critical_count": 0,
+  "auditor_context_fresh": true,
+  "recorded_utc": "2026-09-17"
+}
