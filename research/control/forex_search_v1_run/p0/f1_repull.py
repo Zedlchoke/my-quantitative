@@ -153,8 +153,12 @@ def pull() -> int:
                     ok_all = False
                 elif diffs:
                     rec["verdict"] = "DIVERGENCE"
-                else:
-                    rec["verdict"] = "IDENTITY"
+                    # F-4 remediation (A7): the summary flag must flip on
+                    # DIVERGENCE too — previously only VENDOR_UNREACHABLE /
+                    # NO_OVERLAP cleared ok_all, so a five-leg DIVERGENCE
+                    # outcome shipped with any_divergence_or_unreachable
+                    # false, contradicting its own per-leg evidence.
+                    ok_all = False
             result["legs"][leg] = rec
             print(f"[repull] {leg}: {rec['verdict']} "
                   f"(intersection={rec.get('intersection_dates')}, "
@@ -169,5 +173,50 @@ def pull() -> int:
     return 0
 
 
+def rederive() -> int:
+    """F-4 remediation: OFFLINE re-derivation of the summary fields of the
+    ALREADY-RECORDED per-leg evidence — NO network, NO re-pull. Per-leg
+    records are kept byte-identical; only the summary flag is recomputed
+    from the per-leg verdicts and a correction disclosure is added."""
+    path = P0 / "f1_repull_result.json"
+    result = json.loads(path.read_text())
+    legs = result["legs"]
+    verdicts = [v.get("verdict") for v in legs.values()]
+    any_divergence = any(v == "DIVERGENCE" for v in verdicts)
+    any_unreachable = any(v == "VENDOR_UNREACHABLE" for v in verdicts)
+    any_no_overlap = any(v == "NO_OVERLAP" for v in verdicts)
+    prior_flag = result.get("any_divergence_or_unreachable")
+    corrected_flag = bool(any_divergence or any_unreachable or any_no_overlap)
+    result["any_divergence_or_unreachable"] = corrected_flag
+    result["f4_correction"] = {
+        "schema": "f1_repull_f4_correction@1",
+        "corrected_utc_source": "research/control/forex_search_v1_run/"
+                                "d1/remediation_note.md (fsearch-"
+                                "remediation-r2, A7 finding F-4)",
+        "mode": "OFFLINE re-derivation from the already-recorded per-leg "
+                "evidence; no network, no re-pull; per-leg records "
+                "byte-identical to the originally recorded pull",
+        "law": "summary flags are now DERIVED fields, recomputed from the "
+               "per-leg verdicts (the single source of truth); the archive "
+               "vintage remains THE authority and divergence stays recorded, "
+               "never merged",
+        "prior_any_divergence_or_unreachable": prior_flag,
+        "corrected_any_divergence_or_unreachable": corrected_flag,
+        "recomputed_from": {
+            "per_leg_verdicts": dict(sorted(
+                (k, v.get("verdict")) for k, v in legs.items())),
+            "any_divergence": any_divergence,
+            "any_vendor_unreachable": any_unreachable,
+            "any_no_overlap": any_no_overlap,
+        },
+    }
+    path.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
+    print(f"[repull] F-4 rederivation: per-leg verdicts {verdicts} -> "
+          f"any_divergence_or_unreachable {prior_flag} -> {corrected_flag}")
+    return 0
+
+
 if __name__ == "__main__":
-    sys.exit(freeze() if len(sys.argv) > 1 and sys.argv[1] == "freeze" else pull())
+    mode = sys.argv[1] if len(sys.argv) > 1 else "pull"
+    sys.exit({"freeze": freeze, "pull": pull,
+              "rederive": rederive}[mode]())
