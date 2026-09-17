@@ -1,0 +1,60 @@
+{
+  "conclusion": "BLOCKED_TRANSPORT for the entire official CME Group surface from this environment. Every prescribed probe (DoH-verified authentic IP vs blocked hostname; same-IP different-SNI control; neutral control site) executed and transcripted. No bypass attempted; no VPN/ECH/fronting/SNI games; no data channel established through --resolve or any other override.",
+  "experiment_id": "INC-FXFA2-1-DISCRIM",
+  "frozen_first_canary_fetch_transcript_keys": [
+    "M6E_product_page",
+    "M6B_product_page",
+    "M6A_product_page",
+    "MCD_product_page",
+    "MJY_product_page"
+  ],
+  "generated_at_utc": "2026-09-17T09:40:00Z",
+  "law_basis": "plan sec3 transport law + dispatch canary law (L-FIBV1-1 pattern)",
+  "measurements": {
+    "apex_tls_drop": {
+      "probe": "P4_apex_as_served",
+      "result": "https://cmegroup.com/ TCP opens, TLS/HTTP completes 0 bytes, 15s timeout (silent drop)"
+    },
+    "census_uniformity": {
+      "probes": "CENSUS_BLOCKCONF_* x10 (5 instruments x years {2019,2026})",
+      "result": "identical connection-refused signature on every probe"
+    },
+    "classification": "measured environment-level transport block across the CME Group official estate (DNS sinkhole of www hostname + in-path SNI-based reset + apex/ftp transport drop). NEVER bypassed, per plan sec1/sec3 (L-FIBV1-1).",
+    "dns_sinkhole": {
+      "doh_authentic": {
+        "cloudflare": "23.51.32.131",
+        "dns.google": "23.66.152.172 via www.cmegroup.com.edgekey.net/e5296.a.akamaiedge.net"
+      },
+      "etc_hosts_entry": false,
+      "host": "www.cmegroup.com",
+      "local_answer": "127.0.0.1 (+ ::1)",
+      "resolver": "192.168.0.1 (LAN)",
+      "transcripts": [
+        "LOCALDNS_www.cmegroup.com",
+        "DoH_google_www.cmegroup.com",
+        "DoH_cloudflare_www.cmegroup.com",
+        "ETC_HOSTS_INSPECTION"
+      ]
+    },
+    "ftp_host_tcp_drop": {
+      "probe": "P5_ftp_as_served",
+      "result": "https://ftp.cmegroup.com/ TCP connection timed out (silent SYN drop); DNS authentic (Akadns/AWS) so this is transport-layer, not DNS"
+    },
+    "neutral_controls": {
+      "probes": [
+        "NEUTRAL_example.com (HTTP 200, 559 bytes)",
+        "NEUTRAL_google.com (HTTP 200, 85481 bytes)"
+      ],
+      "result": "environment egress healthy from the same shell/sandbox"
+    },
+    "same_ip_different_sni_control": {
+      "probe": "P3_sameIP_differentSNI",
+      "result": "TLS handshake proceeded to certificate verification on the SAME IP with a different SNI (cert-mismatch error, no RST) -> the edge accepts TLS generally; SNI=www.cmegroup.com is specifically reset in-path"
+    },
+    "sni_inline_reset": {
+      "probe": "P2_www_authenticIP_correctSNI",
+      "result": "TLS connection reset by peer when SNI=www.cmegroup.com presented to DoH-authentic Akamai IP 23.66.152.172"
+    }
+  },
+  "schema": "fxf_a2_discrimination_experiment@1"
+}
