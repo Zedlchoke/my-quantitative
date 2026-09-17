@@ -115,6 +115,13 @@
   },
   "measured_corrections_to_base_contract": [
     {
+      "field": "freeze_fields.6_heartbeat_policy.deribit (client keepalive)",
+      "date_measured_utc": "2026-09-17T02:49:32Z .. 2026-09-17T03:00:36Z (start phase)",
+      "finding": "Deribit dropped every collector connection at ~61.4s across 7 measured cycles (set_heartbeat 30s acked 'ok'; one rpc_heartbeat at ~+30s per connection; NO test_request message was ever delivered before the drop). Deribit's documented expectation is that the CLIENT answers the server's heartbeat with a public/test request; the cng4-a3 collector only probed on silence and never answered, so the connection was server-terminated at the 60s mark.",
+      "correction": "the collector now queues a public/test reply when a heartbeat or test_request message arrives (answers go out in the receive loop; the triggering messages are still captured verbatim; heartbeat_count semantics unchanged).",
+      "effect_on_floors": "Removes a ~61s reconnect cycle that cost ~2.5s of stream per cycle to backoff+resubscribe; without it ~4% of wall-clock Deribit coverage was lost. Reconnect handling itself was contract-compliant (fresh snapshot per epoch, no cross-epoch stitching) — this correction removes the unnecessary reconnects."
+    },
+    {
       "field": "freeze_fields.4_sequence_semantics_per_venue.kraken (book)",
       "date_measured_utc": "2026-09-17T02:49:33Z .. (first live connection)",
       "finding": "The cng4-a3 reading 'book feed: per (product_id, side) seq, consecutive increments expected' did NOT survive live-wire scale: with per-(product, side) keying the arrival-order delta histogram per key was 1,2,3,4,5,... (~30% of book messages flagged as false gaps; 30,825 gap records in the first ~135k-line shard). Merging both sides per product in arrival order gives delta==1 for 31007/31008 (PF_XBTUSD) and 15239/15240 (PF_ETHUSD) transitions: Kraken futures book seq is ONE counter per product_id SHARED across buy/sell sides.",

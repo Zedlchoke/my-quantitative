@@ -220,18 +220,27 @@ def test_kraken_book_snapshot_resets_continuity_and_gap_detected(tmp_path):
     assert len([ln for ln in lines if ln.get("type") == "gap"]) == 1
 
 
-def test_deribit_test_request_is_answered_with_public_test(tmp_path):
-    """MEASURED start defect (2026-09-17): Deribit drops the connection
-    (~61s cycle) when the client never answers the server's test_request.
-    process_text must queue the public/test reply for the send loop."""
+def test_deribit_heartbeat_and_test_request_are_answered_with_public_test(tmp_path):
+    """MEASURED start defect (2026-09-17): Deribit drops the connection at
+    ~60s when the client never answers the server's heartbeat with a
+    public/test request; no test_request is delivered before the drop.
+    Both heartbeat and test_request must queue the public/test reply."""
     col, root, run, clock = make_collector(tmp_path, "deribit")
     col.process_text(json.dumps({"jsonrpc": "2.0", "method": "heartbeat"}))
-    assert col._pending_sends == []  # plain heartbeat needs no reply
-    col.process_text(json.dumps({"jsonrpc": "2.0", "method": "test_request"}))
     assert col._pending_sends == [{"jsonrpc": "2.0", "id": 902, "method": "public/test", "params": {}}]
-    # the request itself is still captured verbatim
+    col.process_text(json.dumps({"jsonrpc": "2.0", "method": "test_request"}))
+    assert len(col._pending_sends) == 2
+    assert all(m["method"] == "public/test" for m in col._pending_sends)
+    # a subscription message queues NO reply
+    col.process_text(json.dumps({
+        "jsonrpc": "2.0", "method": "subscription",
+        "params": {"channel": "ticker.ETH-PERPETUAL.100ms",
+                   "data": {"timestamp": 1789552274651, "type": "snapshot", "instrument_name": "ETH-PERPETUAL",
+                            "mark_price": 2402.22, "index_price": 2401.92, "current_funding": 0.0}}}))
+    assert len(col._pending_sends) == 2
+    # the messages themselves are still captured verbatim
     lines = read_shard_lines(root / (shard_rel_path("deribit", DAY, col.conn_epoch) + ".open"))
-    assert [ln["channel"] for ln in lines] == ["rpc_heartbeat", "rpc_test_request"]
+    assert [ln["channel"] for ln in lines] == ["rpc_heartbeat", "rpc_test_request", "ticker.ETH-PERPETUAL.100ms"]
 
 
 def test_deribit_prev_change_id_gap_and_snapshot_reset(tmp_path):
