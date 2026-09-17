@@ -1,0 +1,84 @@
+{
+ "actual_start_sha": "df62d6f9973b9360af7afaf52028e8dd19b6a0bc",
+ "authority_claims": [],
+ "branch": "orca/forex-search-v1-integration",
+ "changed_paths": [
+  "research/control/forex_search_v1_run/i/i_engine.py",
+  "research/control/forex_search_v1_run/i/adjudicate.py",
+  "tests/test_forex_search_v1_i.py",
+  "research/control/forex_search_v1_run/handoffs/fsearch-i-handoff.json"
+ ],
+ "commit_sha": null,
+ "commit_sha_note": "single focused pathspec commit on orca/forex-search-v1-integration; a committed file cannot contain its own commit SHA \u2014 the authoritative inbox handoff at /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/fsearch-i-handoff.json carries the final commit_sha recorded immediately after the commit",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "dispatch_sha": "df62d6f9973b9360af7afaf52028e8dd19b6a0bc",
+ "dispatch_sha_note": "verified before any work: pwd, branch orca/forex-search-v1-integration, HEAD == df62d6f9973b9360af7afaf52028e8dd19b6a0bc, clean tree; s/selection_freeze.json re-hashed == 0a93685758e0bb317633a9eb08f14ce66061314cc15a48bb262b6ae9b0130d74 (no FROZEN_SHA_MISMATCH); the three frozen arm excerpts in that file are the binding constructions implemented here",
+ "incidents": [],
+ "known_limitations": [
+  "NO real-data execution in this lane (absolute packet boundary): the engines were never run against the pinned TD archive; positions-digest equality vs s/selection_freeze.json is wired (verify_positions_vs_freeze, INPUT_MISMATCH fail-closed) but only verifiable at the scored E run behind the owner GO phrase.",
+  "K6 slow-drift combination: the exact test 'frozen at S' (stocks-search lineage wording) was NOT frozen in this cycle's selection_freeze.json, so K6 is wired but its disposition is NOT_ADJUDICABLE fail-closed (never an inferred PASS, never a silent kill) until the owner freezes an exact test; the harness accepts it injectably for that future freeze.",
+  "CLOCK-ONLY book (R5) was not pinned in the D1 manifest; this harness declares it deterministically as the no-signal-input always-long book on the same decision grid/warmup/gating/ladder as the arm and prints that declaration on every R5 output. A7 may re-pin it at audit without code change (single declaration constant).",
+  "C-PIT-MUTATION is implemented under the strict reading (the one-bar-earlier recomputation must CHANGE or REFUSE the book at EVERY originally fired decision). Honest consequence, demonstrated by a dedicated test: consecutive-firing calendar states (e.g. CLOCK-COND MONTHPOS across adjacent second-half sessions) reproduce under the shift and are correctly flagged by the control \u2014 consistent with the family being declared EXPECTED-TO-DIE.",
+  "R6 macro shadow books (DGS10/real-yield/curve/carry/SPY) and the VOL-REGIME shadow are injected inputs, not built here: no control-source data is acquired in the I lane (NY Fed/OFR classes remain RETRIEVAL_TIME_ONLY / RETROSPECTIVE_ONLY per p0/control_source_authority.json). Absent shadows are NOT_RUN, kill-only, never a rescue.",
+  "Stage-A phrasing 'fold-positive-share > 50% kills' is implemented as: the share of the three frozen folds with positive stress-2.0 financed net MUST EXCEED 50%, at or below 50% the arm is killed (the only economically coherent reading; disclosed in the output via FOLD_POSITIVE_SHARE_LAW).",
+  "Simple-return bps representation (side x (close/open - 1) x 1e4) is pinned for the books; the P-12 rho representation (position series x log returns) is untouched and lives only in R0 machinery that is NOT_RUN this cycle.",
+  "D2 SKIPPED per owner amendment 3b: R0 NOT_RUN everywhere (never an inferred PASS). PBO NOT_RUN fail-closed by construction (<= 3 scored cells). Terminal names must carry the disclosures verbatim (provided by adjudicate.verdict_labels())."
+ ],
+ "lane": "fsearch-i",
+ "objective_summary": "I-lane per PLAN_forex_search_v1.md sections 8-9: exact-arm engines for the 3 frozen S-selected arms (FSS-CLOCK-COND-MONTHPOS-SECOND-LONG, FSS-OPEN-GAP-CONFIRM-Q50, FSS-VOL-DRIFT-MOM-L63) implementing the frozen construction (16:00-NY clock, warmups 61/253 first decision bar, single-session hold entry t+1 open -> exit t+1 close, OPEN-GAP section-4 F3 timing exception, fold force-flat, per-leg books), dual price-only / conservatively-financed books (1.5 bps/fill x2 fills; uniform 1.7 bps/night x 1 rollover; STRESS 2.0 multiplier; worst case 9.4 bps/round trip; sign-invariance checked), and the full adjudication harness (R1-R6, K6, dual-books, P-20 re-check, Stage-A, PBO NOT_RUN disposition, R0_NOT_RUN labeling) \u2014 with NO real-data execution and NO scored output.",
+ "outputs": [
+  {
+   "path": "research/control/forex_search_v1_run/i/i_engine.py",
+   "role": "exact-arm engines: read-only reuse of the frozen P0 state engines, position series + S-lane digest convention + freeze verification, single-session trades with fold force-flat, dual-books ladder (1.5 bps/fill x2, 1.7 bps/night x1, stress 2.0, 9.4 bps worst case) + sign-invariance check, CTL-COMPLEMENT / R4 trend-only / R5 CLOCK-ONLY / K6-delayed / PIT-mutated book builders, USD-basket series, MDD, weekday fired census, serial-clustering census, P-20 pooled rho, GO-gated staging loader",
+   "sha256": "4fe43df92fae1e945b22a89f8a72915da6941819f452c8f9176ff4da7c743068"
+  },
+  {
+   "path": "research/control/forex_search_v1_run/i/adjudicate.py",
+   "role": "adjudication harness: ordered first-binding kills R1-R6 + K6, dual-books rule, P-20 re-check, Stage-A, cycle outcome mapping to the prewritten section-11 terminal names, verdict labels (R0 NOT_RUN / PBO NOT_RUN / section-3 + section-4 F4 disclosures verbatim), pre-GO skeleton entrypoint",
+   "sha256": "6862a417a86f366f2eaf16c5c36c9970b42dd0651977ba30517d7b0b308c17ad"
+  },
+  {
+   "path": "tests/test_forex_search_v1_i.py",
+   "role": "27 sanitized synthetic-fixture tests (no archive data): engine determinism, warmups, force-flat, financing arithmetic (9.4 bps worst case), sign invariance, all kill-rule behaviors on hand-computed books, PIT-mutation consequence, cycle outcomes, fail-closed labels, GO gate on the staging loader",
+   "sha256": "e05dc67d2449a8e497632806a7a0726d41f7ef830183d1e57abac01c248e7f79"
+  },
+  {
+   "path": "research/control/forex_search_v1_run/handoffs/fsearch-i-handoff.json",
+   "role": "structured handoff, committed copy (commit_sha null here by construction)"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/fsearch-i-handoff.json",
+   "role": "authoritative structured handoff (inbox copy with final commit_sha)"
+  }
+ ],
+ "real_cycle": "FOREX-SEARCH-V1",
+ "recommended_next_action": "Lead dispatches the Z phase (sanitized exact-arm dry-run + recursive leak scan) against these engines, then A7 prelaunch audit; the scored E run (<=3 cells, machine-wide heavy lock) executes ONLY after the owner types the exact phrase GO FOREX SEARCH V1 SCORED EXECUTION at this cycle's own gate, and must first satisfy verify_positions_vs_freeze() (rebuilt positions digests == frozen) before any book is computed.",
+ "result_summary": {
+  "books": "price book = gross - 2 x 1.5 x stress; financed book = price - 1.7 x stress (exactly one rollover per single-session hold); fold attribution = fold of the decision bar; force-flat re-asserted per trade (CONTRACT_VIOLATION otherwise)",
+  "engines": "state engines imported READ-ONLY from p0/p0_census.py (the exact code that produced the frozen census and the S-lane position series), so rebuilt position series are by-construction identical to the frozen ones; positions digests use the S-lane sha256 convention and verify_positions_vs_freeze() enforces INPUT_MISMATCH against s/selection_freeze.json at the scored E run",
+  "harness": "ordered first-binding kills R1 (net expectancy > 0 at stress 2.0), R2 (PF >= 1.10, fold positivity, per-state per-fold floor >= 10), R3 (CTL-COMPLEMENT out-earn/match/self-fail kills; degenerate complement NOT_RUN both ways), R4 (trend-only >= 0.5x same-sign >= 2/3 folds; CLOCK-COND NOT_ADJUDICABLE per the frozen D1 manifest), R5 (CLOCK-ONLY out-earn OR weekday share > 0.35), R6 (USD-drift per-leg AND pooled <= 0.20; injected DGS10/real-yield/curve/carry/SPY shadows >= 0.5x same-sign; absent shadows NOT_RUN kill-only), K6 slow-drift combination (NOT_ADJUDICABLE fail-closed absent the exact test that was NOT frozen at S; injectable), dual-books sign invariance, P-20 books-distinct re-check incl. frozen-matrix equality, Stage-A (fold-positive-share > 50% required, concentration <= 50%, MDD <= 15%, stress margin + break-even 9.4 bps, drop-one stability, C-PIT-MUTATION one-bar-earlier strict gate)",
+  "labels": "every output carries R0 NOT_RUN (D2 skipped per owner amendment section 3b; standing 0.20 / relaxed 0.30), PBO NOT_RUN fail-closed, the section-3 relaxation disclosure and the section-4 F4 financing disclosure verbatim",
+  "scored_outputs": "NONE \u2014 no real-data engine execution; the staging loader is hard-gated behind the exact owner GO phrase (SCORED_EXECUTION_NOT_AUTHORIZED otherwise); all test fixtures are sanitized synthetic data",
+  "verdict": "COMPLETE \u2014 engines + harness implemented and tested; 27/27 tests green"
+ },
+ "role": "quant-implementer",
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "fsearch-i",
+ "tests": [
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-search-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_forex_search_v1_i.py -q",
+   "detail": "the packet's test command (the worktree has no .venv of its own; /Users/hoangminhlong/my-quantitative/.venv is the single project interpreter used by the P0/S lanes: python 3.12.14, numpy 2.5.2, pytest 9.1.1). 27 passed: engine determinism + digest convention, frozen warmups, force-flat gating (engine-level and full-pipeline), one-rollover financing arithmetic incl. 9.4 bps stress worst case, sign invariance + inversion + checker sensitivity, R1-R6/K6 kill-rule fixtures, dual-books rule, P-20 re-check (pass/kill/frozen-matrix), Stage-A subgates, PIT-mutation engine consequence on a consecutive calendar state, cycle outcome mapping, labels, GO-gated staging loader",
+   "exit_code": 0,
+   "verdict": "PASS"
+  },
+  {
+   "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/forex-search-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python research/control/forex_search_v1_run/i/adjudicate.py",
+   "detail": "harness entrypoint: verifies the frozen selection_freeze.json sha, prints the pre-GO verdict skeleton with the fail-closed labels only \u2014 no books, no numbers, no scored output",
+   "exit_code": 0,
+   "verdict": "PASS"
+  }
+ ],
+ "tree_status": "clean after the single pathspec commit; only the four owned paths staged (git add by explicit pathspec; git add -A not used); no push/merge/rebase; s/, d1/, p0/, m0/ untouched (read-only inputs); plans/, ledgers, registries untouched",
+ "workers": 0,
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-search-v1/integration"
+}
