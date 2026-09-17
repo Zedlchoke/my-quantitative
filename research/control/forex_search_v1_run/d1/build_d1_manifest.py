@@ -305,6 +305,29 @@ def family_blocks() -> dict:
     }
 
 
+def monthpos_state_formula(half: str) -> str:
+    """F-5 remediation: a SINGLE correct predicate per MONTHPOS arm
+    (previously the SECOND-half string self-contradicted: '(day <= 15) =
+    (day >= 16)'). The engine (p0_census.py state_clock_cond: hit =
+    first_half if monthpos == 'FIRST' else (not first_half)) and the census
+    arithmetic (FIRST 11975 + SECOND 12330 = 24305, complementary) both
+    implement SECOND-half as day >= 16 — the frozen text now matches them."""
+    if half not in ("FIRST", "SECOND"):
+        raise SystemExit(f"FATAL: bad monthpos half {half!r}")
+    return (
+        "state = (day-of-month of the decision date D "
+        f"{'<= 15' if half == 'FIRST' else '>= 16'}) — MONTHPOS "
+        f"{half}-half (day "
+        f"{'1..15' if half == 'FIRST' else '16..end-of-month'}); "
+        f"the complementary half is day "
+        f"{'>= 16' if half == 'FIRST' else '<= 15'}; MONTHPOS day<=15 "
+        "boundary PIN (P0 pin #3); engine + census implement day>=16 for "
+        "SECOND (p0_census.py state_clock_cond: hit = first_half if "
+        "monthpos == 'FIRST' else (not first_half); census FIRST 11975 + "
+        "SECOND 12330 = 24305 complementary); fires on every such session "
+        "after warmup; fixed direction; no price input")
+
+
 def build_configurations(fam: dict) -> list:
     """The 33 configurations, IDs stable + lexicographic (sorted)."""
     cfgs = []
@@ -435,9 +458,15 @@ def build_configurations(fam: dict) -> list:
                     f"drift {'up' if direction == 'LONG' else 'down'} at "
                     f"the next session (fixed direction; the clock is the "
                     f"only input)"),
-                "state_formula": fam["CLOCK-COND"]["state_formula_template_monthpos"].replace(
-                    "for FIRST / (day-of-month >= 16) for SECOND",
-                    f"= ({'day-of-month <= 15' if half == 'FIRST' else 'day-of-month >= 16'})"),
+                # F-5 remediation (A7 a7_prelaunch_forex_search_v1.json): the
+                # frozen text is a SINGLE predicate per arm. The engine and
+                # the census implement day>=16 for SECOND
+                # (p0_census.state_clock_cond: hit = first_half if monthpos
+                # == 'FIRST' else (not first_half); FIRST 11975 + SECOND
+                # 12330 = 24305 = complementary coverage), so the SECOND-half
+                # formula states day >= 16 explicitly and never the FIRST-
+                # half boundary.
+                "state_formula": monthpos_state_formula(half),
                 "sign_frozen": (
                     f"fixed direction {direction} on every fired session; "
                     f"both directions enumerated as distinct "
@@ -622,6 +651,79 @@ def cost_financing_block(cf: dict) -> dict:
     }
 
 
+def f5_fired_rate_supersession_block(census: dict) -> dict:
+    """F-6 remediation: pin the §4 F5 substitution explicitly — the
+    measured per-config fired rates REPLACE the [0.02, 0.10] bars/leg/day
+    form before selection. Census COUNTS only (outcome-blind, §5 ban
+    unaffected)."""
+    per = census["per_config"]
+    rates = {cid: row["fired_rate_by_fold"][RECENT_FOLD]
+             for cid, row in sorted(per.items())}
+    # The three arms the frozen census walk selects (census-determined
+    # identities — see selection_tier_s3b; named here so the owner sees the
+    # fired-rate exposure that enters the <= 3-cell scored budget).
+    walk_selected = [
+        "FSS-CLOCK-COND-MONTHPOS-SECOND-LONG",
+        "FSS-OPEN-GAP-CONFIRM-Q50",
+        "FSS-VOL-DRIFT-MOM-L63",
+    ]
+    return {
+        "form_law_verbatim_s4_F5": (
+            "RECENT-window fired-rate floor (form: fired rate [0.02, 0.10] "
+            "bars/leg/day -> 25-125 round trips/yr across 5 legs; the "
+            "recent-window measured value replaces the form before "
+            "selection); fail-closed if unpopulated; >= 30 fired decisions/"
+            "fold pooled"),
+        "supersession_pinned": (
+            "the measured per-config fired rates below REPLACE the "
+            "[0.02, 0.10] bars/leg/day form before selection, exactly per "
+            "the §4 F5 substitution clause. The FORM evaluation was false "
+            "in every fold for all 33 configurations (p0/p0_gate.json "
+            "fired_rate_form_evaluation) and is recorded as the FORM "
+            "evaluation only (p0/fired_census.json form_note); the "
+            "fail-closed population floors (pooled >= 30 fired decisions/"
+            "fold) PASS everywhere and are unaffected. Owner-visibility "
+            "flag: the census walk selects arms firing on ~0.50-0.90 of "
+            "leg-days (always-on scale), which is the exposure entering "
+            "the <= 3-cell scored budget"),
+        "convention": (
+            "fired rate = pooled fired decisions / decision_leg_days_by_"
+            "fold (the p0/fired_census.json convention; counts only — no "
+            "performance statistic)"),
+        "recent_fold": RECENT_FOLD,
+        "measured_fired_rate_recent_fold_by_config": rates,
+        "census_walk_selected_arms_measured_recent_fold": {
+            cid: rates[cid] for cid in walk_selected},
+        "source_artifact": "research/control/forex_search_v1_run/p0/fired_census.json",
+        "source_sha256": sha256_file(P0 / "fired_census.json"),
+    }
+
+
+def weekend_bars_note(cal: dict) -> str:
+    """F-7 remediation: one disclosed sentence on the weekend-dated master
+    bars (verified from p0/calendar_census.json before writing)."""
+    from collections import Counter
+    from datetime import date
+    wd = cal["weekend_dates_in_master"]
+    dows = Counter(date(*map(int, d.split("-"))).isoweekday() for d in wd)
+    years = sorted({d[:4] for d in wd})
+    n6, n7 = dows.get(6, 0), dows.get(7, 0)
+    if n6 + n7 != len(wd):
+        raise SystemExit("FATAL: unexpected non-weekend date in weekend list")
+    return (
+        f"the master calendar carries {len(wd)} weekend-dated bars "
+        f"({n6} Saturday-dated + {n7} Sunday-dated, all in "
+        f"{years[0]}..{years[-1]}): in that window the TD vendor serves "
+        "weekend-dated daily sessions under its 16:00-NY date-only stamp "
+        "convention (the completed session is read as of its vendor stamp "
+        "— structural_census.json stamp_convention); they are vendor-"
+        "served session bars accepted as-is under the frozen convention — "
+        "counted, never repaired or ffilled; the enumerated CLOCK-COND "
+        "weekday states fire on ISO weekdays 1..5 only and never fire on "
+        "them, while MONTHPOS / fold / warmup construction treats them as "
+        "ordinary sessions")
+
+
 # ------------------------------------------------------------------- manifest
 
 def build_manifest() -> dict:
@@ -672,6 +774,10 @@ def build_manifest() -> dict:
                      "completed bar t; entry at bar t+1 open, exit at bar "
                      "t+1 close — SINGLE-BAR HOLD LAW (§1)",
             "stamp_convention": art["structural_census.json"]["stamp_convention"],
+            # F-7 remediation (A7): disclosed provenance of the 97
+            # weekend-dated master bars (verified from calendar_census.json).
+            "weekend_dated_master_bars_note": weekend_bars_note(
+                art["calendar_census.json"]),
             "open_gap_exception_s4_F3": gate["gates"]["F3_CLOCK_EXECUTION"][
                 "open_gap_exception"],
             "same_bar_signal_fill": gate["gates"]["F3_CLOCK_EXECUTION"][
@@ -706,6 +812,15 @@ def build_manifest() -> dict:
                 "d0992d17df8e2dfde57c9a0806a5798f14021a4f class)"),
         },
         "p0_pins_verbatim": p0_pins(),
+        # F-1 remediation (A7): the §4 F4 financing derivation + caveats
+        # VERBATIM is a plan §5 REQUIRED manifest field ("a missing field is
+        # a D1 freeze failure"); previously built by cost_financing_block()
+        # but never wired into the manifest (dead code) while
+        # plan_sections_frozen claimed "§4 F4".
+        "cost_financing_s4_F4": cost_financing_block(cf),
+        # F-6 remediation (A7): the §4 F5 fired-rate form supersession,
+        # pinned with the measured census values.
+        "f5_fired_rate_supersession": f5_fired_rate_supersession_block(census),
         "source_artifacts": {
             "p0_dir": "research/control/forex_search_v1_run/p0/",
             "digests_verified_against_p0_gate": gate["artifact_sha256"],
@@ -852,8 +967,10 @@ def selfcheck() -> int:
             if tok in low:
                 errs.append(f"forbidden performance key: {key}")
 
-    # 9. required plan fields present
+    # 9. required plan fields present (§5 REQUIRED list — a missing field is
+    # a D1 freeze failure; F-1 remediation adds the §4 F4 financing block)
     for k in ("warmup_rule", "clock_contract", "p0_pins_verbatim",
+              "cost_financing_s4_F4", "f5_fired_rate_supersession",
               "selection_tier_s3b", "d2_r0_note", "grid", "families",
               "source_artifacts"):
         if k not in m:
@@ -862,6 +979,46 @@ def selfcheck() -> int:
         errs.append("P0 pins != 3")
     if m["grid"]["dsr_frozen_grid_size_N"] != 33:
         errs.append("frozen DSR N != 33")
+    # F-1: the §4 F4 block must carry the derivation VERBATIM (NG7 ~5.1 bps
+    # over 3 nights; 5.1/3 = 1.7), both caveats, and the constants ladder
+    # (1.5 bps/fill + 1.7 bps/night, stress 2.0, 9.4 bps worst case).
+    if "cost_financing_s4_F4" in m:
+        cfb = m["cost_financing_s4_F4"]
+        deriv = cfb.get("financing_derivation_verbatim_from_plan_s4_F4", "")
+        for needle in ('"~5.1 bps over 3 nights"', "5.1/3 = 1.7",
+                       "does NOT bound the single worst night",
+                       "without a per-leg differential census"):
+            if needle not in deriv:
+                errs.append(f"financing derivation missing verbatim: {needle}")
+        consts = cfb.get("constants", {})
+        if consts.get("cost_bps_per_fill_floor") != 1.5 or \
+                consts.get("financing_bps_per_night") != 1.7 or \
+                consts.get("stress_tier_multiplier_primary") != 2.0 or \
+                consts.get("operative_stress_worst_bps_per_round_trip") != 9.4:
+            errs.append("financing constants ladder wrong")
+        if "1.7 bps" not in cfb.get("disclosure_language", ""):
+            errs.append("financing disclosure language missing")
+        if cfb.get("source_sha256") != sha256_file(
+                P0 / "cost_financing_manifest.json"):
+            errs.append("financing source digest mismatch")
+    # F-6: the F5 supersession must pin measured census rates for all 33
+    if "f5_fired_rate_supersession" in m:
+        f5b = m["f5_fired_rate_supersession"]
+        got_rates = f5b.get("measured_fired_rate_recent_fold_by_config", {})
+        if set(got_rates) != set(cc):
+            errs.append("F5 supersession rate config set mismatch")
+        else:
+            for cid, r in got_rates.items():
+                if abs(r - cc[cid]["fired_rate_by_fold"]["3"]) > 1e-12:
+                    errs.append(f"F5 supersession rate mismatch {cid}")
+        sel_rates = f5b.get("census_walk_selected_arms_measured_recent_fold", {})
+        if len(sel_rates) != 3 or any(cid not in got_rates for cid in sel_rates):
+            errs.append("F5 supersession selected-arm rates wrong")
+    # F-7: weekend-bars disclosure must match the calendar census
+    note = m["clock_contract"].get("weekend_dated_master_bars_note", "")
+    n_wk = len(art["calendar_census.json"]["weekend_dates_in_master"])
+    if str(n_wk) not in note:
+        errs.append("weekend-bars note missing census count")
     fin = m["source_artifacts"]
     if fin["fold_freeze_reference"]["sha256"] != sha256_file(
             P0 / "folds_freeze.json"):
@@ -883,7 +1040,10 @@ def selfcheck() -> int:
           "GAP 6 / VOL 4 / CLOCK 14); IDs unique + lexicographic; fired "
           "counts byte-equal to p0/fired_census.json; §3b family totals "
           "match; family ranking correct; floor=10 pinned; 3 P0 pins "
-          "verbatim; no performance-field keys; self sha256 verifies.")
+          "verbatim; §4 F4 financing block verbatim (derivation + caveats + "
+          "constants ladder + source digest); F5 supersession rates pinned "
+          "for all 33 configs; weekend-bars note matches the census; no "
+          "performance-field keys; self sha256 verifies.")
     return 0
 
 

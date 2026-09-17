@@ -104,3 +104,43 @@ Only paths under `research/control/forex_search_v1_run/d1/`,
 `research/control/forex_search_v1_run/handoffs/`, and the inbox handoff
 path were written. No plans/, registry/ledger, S1, p0/, m0/, or other
 lane's files touched; no performance computation; no network acquisition.
+
+## Remediation addendum (lane fsearch-remediation-r2, 2026-09-17)
+
+The manifest was REBUILT by the remediation lane to fix A7 prelaunch
+findings F-1/F-5/F-6/F-7 (see `d1/remediation_note.md` for the full
+finding -> fix -> digest table):
+
+- F-1: the plan §5 REQUIRED §4 F4 financing block (`cost_financing_s4_F4`)
+  is now EMBEDDED (derivation verbatim + caveats + constants ladder +
+  source digest) and the selfcheck fail-closed-verifies it; the
+  `plan_sections_frozen` claim "§4 F4" is now true.
+- F-5: the MONTHPOS SECOND-half `state_formula` no longer self-contradicts
+  — single predicate `day >= 16`, matching the engine (`p0_census.py
+  state_clock_cond`) and the complementary census arithmetic; FIRST
+  symmetric.
+- F-6: `f5_fired_rate_supersession` pins the §4 F5 substitution with the
+  measured fold-3 fired rates for all 33 configs (selected arms
+  0.504263 / 0.903167 / 0.508404 bars/leg/day).
+- F-7: `clock_contract.weekend_dated_master_bars_note` explains the 97
+  weekend-dated master bars (62 Sat + 35 Sun, 2025..2026, vendor-served
+  sessions under the frozen stamp convention).
+
+Digest re-pin cascade (deterministic, ran TWICE — pass 2 was forced by the
+F-4 correction of `p0/f1_repull_result.json` propagating through the
+re-assembled `p0_gate.json` digest table, which the D1 builder verifies
+fail-closed): manifest file sha256
+`1b39aa6f726215df973833d1db5a8e3639aa226e62b7ce0f077c7e829c4d07b9` ->
+`30e38a9935c3e2bc0080ef65709b998432e13db137280fc7134f397fd082bd65`; self
+sha256 (empty-field convention)
+`5db03cdba179d3713181fbb34638164a23e153b4706043836c611a4e7b8cfe33` ->
+`4ca19c115505ed8e0f16c7d9307acbc67ab4a1b0b0bdc108997c9ca0e57b0649`
+(pass-1 intermediates acc33f19…/f6dfbc8e…, superseded).
+Downstream re-pins: `s/s_select.py` MANIFEST_EXPECTED_SHA256;
+`s/selection_freeze.json` re-frozen (walk reproduced the SAME three arms in
+the SAME order with UNCHANGED positions digests
+85c8f875…/57eed8b9…/7eee7cf0…, final file sha256
+`be83bbdf4f5dfee660cdacc42e41a882da535e9211954c6fd7bc3717acaafb8a`);
+`i/i_engine.py` FREEZE_SHA256 -> the final freeze digest; `z_run.py`
+re-run fresh + `--selfcheck` byte-identical (22/22 checks, NO_LEAK_FOUND).
+No WALK_DIVERGED, no INPUT_MISMATCH; builder `--selfcheck` PASS.

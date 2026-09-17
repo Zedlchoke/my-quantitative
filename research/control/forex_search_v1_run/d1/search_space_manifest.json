@@ -6,7 +6,8 @@
   "clock": "one frozen 16:00-NY daily decision clock; state on completed bar t; entry at bar t+1 open, exit at bar t+1 close \u2014 SINGLE-BAR HOLD LAW (\u00a71)",
   "open_gap_exception_s4_F3": "OPEN-GAP state formed from close(t) and open(t+1), knowable at t+1 open; forced fill AT that open is the ONE declared same-bar exception; exit mapping: any condition knowable at a bar close executes at the next bar's open (V7 F-A7-PL-1 class pre-empted)",
   "same_bar_signal_fill": "none except the declared OPEN-GAP exception",
-  "stamp_convention": "16:00-NY stamp convention (frozen): TD serves date-only stamps (YYYY-MM-DD, no intraday component), one bar per date, strictly monotone. The cycle's frozen decision clock (\u00a74 F3) reads the bar dated D as the completed daily session whose decision close is 16:00 America/New_York on date D; state forms on completed bar t; entry at bar t+1 open, exit at bar t+1 close. The 16:00-NY assignment is the cycle's clock law, not a vendor claim; the vendor stamp is a calendar date."
+  "stamp_convention": "16:00-NY stamp convention (frozen): TD serves date-only stamps (YYYY-MM-DD, no intraday component), one bar per date, strictly monotone. The cycle's frozen decision clock (\u00a74 F3) reads the bar dated D as the completed daily session whose decision close is 16:00 America/New_York on date D; state forms on completed bar t; entry at bar t+1 open, exit at bar t+1 close. The 16:00-NY assignment is the cycle's clock law, not a vendor claim; the vendor stamp is a calendar date.",
+  "weekend_dated_master_bars_note": "the master calendar carries 97 weekend-dated bars (62 Saturday-dated + 35 Sunday-dated, all in 2025..2026): in that window the TD vendor serves weekend-dated daily sessions under its 16:00-NY date-only stamp convention (the completed session is read as of its vendor stamp \u2014 structural_census.json stamp_convention); they are vendor-served session bars accepted as-is under the frozen convention \u2014 counted, never repaired or ffilled; the enumerated CLOCK-COND weekday states fire on ISO weekdays 1..5 only and never fire on them, while MONTHPOS / fold / warmup construction treats them as ordinary sessions"
  },
  "configurations": [
   {
@@ -402,7 +403,7 @@
    },
    "r4_trend_only_book": "NO trend/vol conditioning-variable analog exists (the state variable is the calendar position itself, not a price series; removing the direction component leaves no tradeable book) -> R4 NOT_ADJUDICABLE for this family, disclosed, never an inferred PASS (\u00a76 R4)",
    "sign_frozen": "fixed direction LONG on every fired session; both directions enumerated as distinct configurations; declared EXPECTED-TO-DIE at R5",
-   "state_formula": "state = (day-of-month of the decision date D <= 15) = (day-of-month <= 15) \u2014 MONTHPOS day<=15 boundary PIN (P0 pin #3); fires on every such session after warmup; fixed direction; no price input",
+   "state_formula": "state = (day-of-month of the decision date D <= 15) \u2014 MONTHPOS FIRST-half (day 1..15); the complementary half is day >= 16; MONTHPOS day<=15 boundary PIN (P0 pin #3); engine + census implement day>=16 for SECOND (p0_census.py state_clock_cond: hit = first_half if monthpos == 'FIRST' else (not first_half); census FIRST 11975 + SECOND 12330 = 24305 complementary); fires on every such session after warmup; fixed direction; no price input",
    "warmup_bars": 60
   },
   {
@@ -438,7 +439,7 @@
    },
    "r4_trend_only_book": "NO trend/vol conditioning-variable analog exists (the state variable is the calendar position itself, not a price series; removing the direction component leaves no tradeable book) -> R4 NOT_ADJUDICABLE for this family, disclosed, never an inferred PASS (\u00a76 R4)",
    "sign_frozen": "fixed direction SHORT on every fired session; both directions enumerated as distinct configurations; declared EXPECTED-TO-DIE at R5",
-   "state_formula": "state = (day-of-month of the decision date D <= 15) = (day-of-month <= 15) \u2014 MONTHPOS day<=15 boundary PIN (P0 pin #3); fires on every such session after warmup; fixed direction; no price input",
+   "state_formula": "state = (day-of-month of the decision date D <= 15) \u2014 MONTHPOS FIRST-half (day 1..15); the complementary half is day >= 16; MONTHPOS day<=15 boundary PIN (P0 pin #3); engine + census implement day>=16 for SECOND (p0_census.py state_clock_cond: hit = first_half if monthpos == 'FIRST' else (not first_half); census FIRST 11975 + SECOND 12330 = 24305 complementary); fires on every such session after warmup; fixed direction; no price input",
    "warmup_bars": 60
   },
   {
@@ -474,7 +475,7 @@
    },
    "r4_trend_only_book": "NO trend/vol conditioning-variable analog exists (the state variable is the calendar position itself, not a price series; removing the direction component leaves no tradeable book) -> R4 NOT_ADJUDICABLE for this family, disclosed, never an inferred PASS (\u00a76 R4)",
    "sign_frozen": "fixed direction LONG on every fired session; both directions enumerated as distinct configurations; declared EXPECTED-TO-DIE at R5",
-   "state_formula": "state = (day-of-month of the decision date D <= 15) = (day-of-month >= 16) \u2014 MONTHPOS day<=15 boundary PIN (P0 pin #3); fires on every such session after warmup; fixed direction; no price input",
+   "state_formula": "state = (day-of-month of the decision date D >= 16) \u2014 MONTHPOS SECOND-half (day 16..end-of-month); the complementary half is day <= 15; MONTHPOS day<=15 boundary PIN (P0 pin #3); engine + census implement day>=16 for SECOND (p0_census.py state_clock_cond: hit = first_half if monthpos == 'FIRST' else (not first_half); census FIRST 11975 + SECOND 12330 = 24305 complementary); fires on every such session after warmup; fixed direction; no price input",
    "warmup_bars": 60
   },
   {
@@ -510,7 +511,7 @@
    },
    "r4_trend_only_book": "NO trend/vol conditioning-variable analog exists (the state variable is the calendar position itself, not a price series; removing the direction component leaves no tradeable book) -> R4 NOT_ADJUDICABLE for this family, disclosed, never an inferred PASS (\u00a76 R4)",
    "sign_frozen": "fixed direction SHORT on every fired session; both directions enumerated as distinct configurations; declared EXPECTED-TO-DIE at R5",
-   "state_formula": "state = (day-of-month of the decision date D <= 15) = (day-of-month >= 16) \u2014 MONTHPOS day<=15 boundary PIN (P0 pin #3); fires on every such session after warmup; fixed direction; no price input",
+   "state_formula": "state = (day-of-month of the decision date D >= 16) \u2014 MONTHPOS SECOND-half (day 16..end-of-month); the complementary half is day <= 15; MONTHPOS day<=15 boundary PIN (P0 pin #3); engine + census implement day>=16 for SECOND (p0_census.py state_clock_cond: hit = first_half if monthpos == 'FIRST' else (not first_half); census FIRST 11975 + SECOND 12330 = 24305 complementary); fires on every such session after warmup; fixed direction; no price input",
    "warmup_bars": 60
   },
   {
@@ -1180,8 +1181,72 @@
    "warmup_bars": 252
   }
  ],
+ "cost_financing_s4_F4": {
+  "charged_uniformly": "charged uniformly across legs regardless of sign, so no leg can benefit from an assumed favourable differential",
+  "constants": {
+   "cost_bps_per_fill_floor": 1.5,
+   "financing_bps_per_night": 1.7,
+   "label": "STATED-CONSERVATIVE",
+   "operative_stress_worst_bps_per_round_trip": 9.4,
+   "stress_tier_multiplier_primary": 2.0,
+   "v6_razor_class_hurdle_bps_named": 3.0
+  },
+  "disclosure_language": "financing = stated-conservative nightly-average extrapolation (1.7 bps; worst single night may exceed it; no per-leg differential census exists \u2014 OHLC-only source)",
+  "dual_books_wiring": "dual-books gate runs with the financed book = price book + this uniform charge; sign inversion between them fails the arm, fail-closed (\u00a76)",
+  "financing_derivation_verbatim_from_plan_s4_F4": "every trade holds exactly one session and is charged exactly one conservative worst-night band of 1.7 bps (derivation: NG7-A4's committed illustration \"~5.1 bps over 3 nights\" for NZD-USD; 5.1/3 = 1.7 \u2014 caveats DISCLOSED: a 3-night cumulative average does NOT bound the single worst night, and NZD-USD-worst is generalized to all five legs without a per-leg differential census, none being derivable from OHLC-only TD; the D1 manifest prints source bytes, arithmetic and these caveats verbatim)",
+  "source_artifact": "research/control/forex_search_v1_run/p0/cost_financing_manifest.json",
+  "source_sha256": "54d79bab3d5a7b393b6401c702ecbd9f052c169bccbe1b131fad117c55053607"
+ },
  "cycle_id": "FOREX-SEARCH-V1",
  "d2_r0_note": "D2 SKIPPED per owner amendment \u00a73b (verbatim intent: 'chay tu dau toi GO cua toi, nhung khong chay buoc D2' \u2014 run from the start to the owner GO, but do not run the D2 step): the R0 ancestry battery is NOT MEASURED in this cycle (R0_NOT_RUN \u2014 never an inferred PASS); this manifest carries NO R0/ancestry fields beyond this note; terminal survivor outcome names and result language carry R0_NOT_RUN alongside the standing 0.20/0.30 disclosure",
+ "f5_fired_rate_supersession": {
+  "census_walk_selected_arms_measured_recent_fold": {
+   "FSS-CLOCK-COND-MONTHPOS-SECOND-LONG": 0.504263,
+   "FSS-OPEN-GAP-CONFIRM-Q50": 0.903167,
+   "FSS-VOL-DRIFT-MOM-L63": 0.508404
+  },
+  "convention": "fired rate = pooled fired decisions / decision_leg_days_by_fold (the p0/fired_census.json convention; counts only \u2014 no performance statistic)",
+  "form_law_verbatim_s4_F5": "RECENT-window fired-rate floor (form: fired rate [0.02, 0.10] bars/leg/day -> 25-125 round trips/yr across 5 legs; the recent-window measured value replaces the form before selection); fail-closed if unpopulated; >= 30 fired decisions/fold pooled",
+  "measured_fired_rate_recent_fold_by_config": {
+   "FSS-CLOCK-COND-DOW1-LONG": 0.187576,
+   "FSS-CLOCK-COND-DOW1-SHORT": 0.187576,
+   "FSS-CLOCK-COND-DOW2-LONG": 0.188794,
+   "FSS-CLOCK-COND-DOW2-SHORT": 0.188794,
+   "FSS-CLOCK-COND-DOW3-LONG": 0.188185,
+   "FSS-CLOCK-COND-DOW3-SHORT": 0.188185,
+   "FSS-CLOCK-COND-DOW4-LONG": 0.188185,
+   "FSS-CLOCK-COND-DOW4-SHORT": 0.188185,
+   "FSS-CLOCK-COND-DOW5-LONG": 0.187576,
+   "FSS-CLOCK-COND-DOW5-SHORT": 0.187576,
+   "FSS-CLOCK-COND-MONTHPOS-FIRST-LONG": 0.495128,
+   "FSS-CLOCK-COND-MONTHPOS-FIRST-SHORT": 0.495128,
+   "FSS-CLOCK-COND-MONTHPOS-SECOND-LONG": 0.504263,
+   "FSS-CLOCK-COND-MONTHPOS-SECOND-SHORT": 0.504263,
+   "FSS-CLV-DIVERGENCE-K10-S10": 0.122777,
+   "FSS-CLV-DIVERGENCE-K10-S5": 0.117783,
+   "FSS-CLV-DIVERGENCE-K20-S10": 0.081851,
+   "FSS-CLV-DIVERGENCE-K20-S5": 0.083069,
+   "FSS-CLV-DIVERGENCE-K60-S10": 0.049574,
+   "FSS-CLV-DIVERGENCE-K60-S5": 0.050914,
+   "FSS-EXTREME-FADE-K10": 0.364068,
+   "FSS-EXTREME-FADE-K20": 0.252984,
+   "FSS-EXTREME-FADE-K60": 0.137272,
+   "FSS-OPEN-GAP-CONFIRM-Q25": 0.25676,
+   "FSS-OPEN-GAP-CONFIRM-Q50": 0.903167,
+   "FSS-OPEN-GAP-CONFIRM-Q75": 0.220828,
+   "FSS-OPEN-GAP-FADE-Q25": 0.25676,
+   "FSS-OPEN-GAP-FADE-Q50": 0.903167,
+   "FSS-OPEN-GAP-FADE-Q75": 0.220828,
+   "FSS-VOL-DRIFT-MOM-L21": 0.429476,
+   "FSS-VOL-DRIFT-MOM-L63": 0.508404,
+   "FSS-VOL-DRIFT-REV-L21": 0.280024,
+   "FSS-VOL-DRIFT-REV-L63": 0.279537
+  },
+  "recent_fold": "3",
+  "source_artifact": "research/control/forex_search_v1_run/p0/fired_census.json",
+  "source_sha256": "2feef494f5a58fd26ef908f5dc7455523034abffe0eaf0bffad8cdcaa492e702",
+  "supersession_pinned": "the measured per-config fired rates below REPLACE the [0.02, 0.10] bars/leg/day form before selection, exactly per the \u00a74 F5 substitution clause. The FORM evaluation was false in every fold for all 33 configurations (p0/p0_gate.json fired_rate_form_evaluation) and is recorded as the FORM evaluation only (p0/fired_census.json form_note); the fail-closed population floors (pooled >= 30 fired decisions/fold) PASS everywhere and are unaffected. Owner-visibility flag: the census walk selects arms firing on ~0.50-0.90 of leg-days (always-on scale), which is the exposure entering the <= 3-cell scored budget"
+ },
  "families": [
   {
    "ctl_complement": "COMPLEMENT book (declared ex ante): the same fixed direction traded on all sessions NOT in the state (complement calendar day-set), same warmup",
@@ -1309,7 +1374,7 @@
  },
  "holds_law": "ALL configurations single-session (\u00a71 law); force-flat at fold boundary by construction",
  "lane": "fsearch-d1",
- "measured_frozen_utc": "2026-09-17T13:58:20Z",
+ "measured_frozen_utc": "2026-09-17T17:06:34Z",
  "orchestration_cycle": "ZCODE-ORCHESTRATION-V3",
  "outcome_blindness_declaration": "OUTCOME-BLIND artifact: this manifest contains NO returns, PnL, PF, Sharpe, drawdown, expectancy or any other performance statistic \u2014 construction definitions + P0 fired census COUNTS only (\u00a75 ban: no performance-based narrowing before the S freeze; violation = BLOCKED_METHOD_CONTRACT)",
  "p0_pins_verbatim": [
@@ -1426,7 +1491,7 @@
   "selection_procedure_tier_iii": "FAMILY-STRATIFIED round-robin over the tier-ordered families \u2014 one configuration per family per round, at most 2 scored cells per family, until 3 cells are filled; P-20 books-distinct at S: a candidate whose pooled |rho| vs any higher-ranked already-selected candidate exceeds 0.98 is SELF-SUBSUMED, skipped, next-in-order taken; unmeasurable pairwise rho = NOT_ADJUDICABLE, fail-closed",
   "tie_rules": "tier (i): DESCENDING by P0 fired-population census (family-level sum of fired decisions over the most recent fold), ties break by lexicographic family name; tier (ii): within a family, configurations DESCENDING by P0 fired-population census (config-level), tie-break lexicographic config ID"
  },
- "self_sha256": "5db03cdba179d3713181fbb34638164a23e153b4706043836c611a4e7b8cfe33",
+ "self_sha256": "4ca19c115505ed8e0f16c7d9307acbc67ab4a1b0b0bdc108997c9ca0e57b0649",
  "self_sha256_convention": "self_sha256 = sha256 of the exact manifest bytes with the self_sha256 field set to the empty string, serialized as json.dumps(obj, indent=1, sort_keys=True) + '\\n'",
  "source_artifacts": {
   "digests_verified_against_p0_gate": {
@@ -1434,7 +1499,7 @@
    "control_source_authority.json": "d10b1597c601de1eeb3bc1371209a5c014866e77a513e4ec1a6193f4e3a55929",
    "cost_financing_manifest.json": "54d79bab3d5a7b393b6401c702ecbd9f052c169bccbe1b131fad117c55053607",
    "f1_repull_contract.json": "ae044f46b8d61bbe15847ee0bc903ea7eb75282cc5e3a3d9f19a6e38276ac0f3",
-   "f1_repull_result.json": "477a0e92e56903571aa9502254986d754b6463cebf744ea836ce13cb7d95dc5a",
+   "f1_repull_result.json": "68f63504bb856b473dce5ebc0a3defae2099b19fba44f19a6a94135a5bd00a83",
    "fired_census.json": "2feef494f5a58fd26ef908f5dc7455523034abffe0eaf0bffad8cdcaa492e702",
    "folds_freeze.json": "c2a4e6765ff2ca2891b6ade8a81930a3b633024da7ba9a9eca6e46ca4965519b",
    "manifest_pin.json": "d80d2908a8df311b588cc026bcc6c89f596ef47e69bfb710fe3fb045ce72ed48",
