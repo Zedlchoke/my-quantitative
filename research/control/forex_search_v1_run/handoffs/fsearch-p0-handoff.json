@@ -1,0 +1,129 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "fsearch-p0",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "store_label": "ZCODE-ORCHESTRATION-V3 (REAL cycle FOREX-SEARCH-V1)",
+ "role": "quant-implementer",
+ "lane": "fsearch-p0",
+ "dispatch_sha": "4ab8bb08147e75079fa6fae31fadccad68b9471e",
+ "actual_start_sha": "4ab8bb08147e75079fa6fae31fadccad68b9471e",
+ "start_verification": "pwd=/Users/hoangminhlong/my-quantitative/.worktrees/forex-search-v1/integration; branch=orca/forex-search-v1-integration; HEAD=4ab8bb08147e75079fa6fae31fadccad68b9471e; m0 dir present (unmodified)",
+ "commit_sha": null,
+ "commit_note": "this repo copy is committed inside the single commit it designates, so commit_sha is null HERE BY CONSTRUCTION; the authoritative post-commit copy at /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/fsearch-p0-handoff.json carries the realized commit_sha",
+ "changed_paths": [
+  "research/control/forex_search_v1_run/p0/p0_census.py",
+  "research/control/forex_search_v1_run/p0/f1_repull.py",
+  "research/control/forex_search_v1_run/p0/assemble_gate.py",
+  "research/control/forex_search_v1_run/p0/manifest_pin.json",
+  "research/control/forex_search_v1_run/p0/structural_census.json",
+  "research/control/forex_search_v1_run/p0/calendar_census.json",
+  "research/control/forex_search_v1_run/p0/folds_freeze.json",
+  "research/control/forex_search_v1_run/p0/fired_census.json",
+  "research/control/forex_search_v1_run/p0/cost_financing_manifest.json",
+  "research/control/forex_search_v1_run/p0/control_source_authority.json",
+  "research/control/forex_search_v1_run/p0/f1_repull_contract.json",
+  "research/control/forex_search_v1_run/p0/f1_repull_result.json",
+  "research/control/forex_search_v1_run/p0/p0_gate.json",
+  "research/control/forex_search_v1_run/handoffs/fsearch-p0-handoff.json",
+  "tests/test_forex_search_v1_p0.py"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python -m pytest tests/test_forex_search_v1_p0.py -v",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "16/16 passed, offline, 0.5s"
+  },
+  {
+   "command": ".venv/bin/python research/control/forex_search_v1_run/p0/p0_census.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "census engine; artifacts byte-identical across reruns (verified)"
+  },
+  {
+   "command": ".venv/bin/python research/control/forex_search_v1_run/p0/f1_repull.py freeze",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "contract frozen BEFORE the pull (sha ae044f46b8d61bbe...)"
+  },
+  {
+   "command": ".venv/bin/python research/control/forex_search_v1_run/p0/f1_repull.py pull",
+   "exit_code": 0,
+   "verdict": "PASS_WITH_DISCLOSURE",
+   "note": "bounded 5-request TD re-pull under the global heavy lock; per-leg DIVERGENCE confined to each leg's final archive bar; archive remains THE authority"
+  },
+  {
+   "command": ".venv/bin/python research/control/forex_search_v1_run/p0/assemble_gate.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "gate verdict PASS; F1 PASS_WITH_DISCLOSURE; F2-F7 PASS"
+  }
+ ],
+ "authority_claims": [],
+ "gate_summary": {
+  "p0_gate_verdict": "PASS",
+  "F1_STAGING_CHAIN": "PASS_WITH_DISCLOSURE",
+  "F2_ENTITLEMENT_TERMS": "PASS",
+  "F3_CLOCK_EXECUTION": "PASS",
+  "F4_COSTS_FINANCING": "PASS",
+  "F5_FOLDS_CENSUS": "PASS",
+  "F6_REPRODUCIBILITY": "PASS",
+  "F7_CONTROL_SOURCE_AUTHORITY": "PASS",
+  "measured": {
+   "master_calendar": "4924 intersecting 5-leg dates 2008-01-31..2026-09-10",
+   "folds": "thirds: 1641/1641/1642 bars (2008-01-31..2014-06-17 | 2014-06-18..2020-10-05 | 2020-10-06..2026-09-10), frozen BEFORE census",
+   "configurations": "33 (CLV-DIVERGENCE 6, EXTREME-FADE 3, OPEN-GAP 6, VOL-DRIFT 4, CLOCK-COND 14)",
+   "pooled_floor_kills": "none (all 33 configs >= 30 pooled fired decisions in every fold)",
+   "family_fired_totals_recent_fold": {
+    "CLOCK-COND": 31850, "OPEN-GAP": 22672, "VOL-DRIFT": 12294,
+    "EXTREME-FADE": 6193, "CLV-DIVERGENCE": 4154
+   }
+  }
+ },
+ "known_limitations": [
+  "OPEN-GAP threshold pin: §5's one-line definition admits several signed readings; the P0 census pins 'the percentile selects the side' (p<50 down-tail, p>50 up-tail, p=50 median split; no absolute value). D1 owns the definitive freeze; the census re-runs deterministically if D1 pins differently.",
+  "FADE/CONFIRM pairs share firing events by construction (frozen direction differs only), so fired COUNTS are equal within a threshold config; direction lives in the manifest.",
+  "VOL-DRIFT complete-window law delays the first possible firing beyond the §8 bar-253 warmup (own-index >= L+251: bar 273 for L=21, bar 315 for L=63) — the fail-closed no-partial-window law, declared in the census manifest law.",
+  "Folds partition the FULL master calendar; warmup is consumed inside fold 1, so fold-1 fired counts for the 253-warmup families (VOL-DRIFT, OPEN-GAP) are correspondingly reduced. Declared in folds_freeze.json before the census ran.",
+  "12/25000 vendor OHLC micro-rounding rows (USDCAD 6, NZDUSD 6: H < max(O,C) or L > min(O,C) by ~1 point) counted and disclosed, never repaired; no P0 state construction consumes the H/L boundary identity.",
+  "F1(iii) re-pull: vendor diverges on each leg's FINAL archive bar only (interim prints at archive capture, later finalized by the vendor); 52-55 earlier overlapping dates byte-identical per leg; archive vintage remains THE authority, nothing merged.",
+  "D2 SKIPPED per owner amendment §3b: R0 ancestry battery NOT_RUN (never an inferred PASS); the fired census is COUNTS of state firings only — no candidate returns/PnL/PF/Sharpe/drawdown/survivors/S1 evidence computed anywhere in P0.",
+  "The fired-rate form [0.02,0.10] is reported as a FORM evaluation only; several high-rate configs (OPEN-GAP Q50, CLOCK-COND MONTHPOS, VOL-DRIFT MOM) sit far above it — not a kill: the recent-window measured value replaces the form at P2 per §4 F5, and the binding P0 floors (unpopulated, pooled >= 30/fold) are met by all 33.",
+  "The m0 verdict file under research/control/forex_search_v1_run/m0/ retains the lineage label FOREX-NG6 by design (byte-exact golden-suite re-inheritance, per the M0 commit message); untouched by this lane.",
+  "CLOCK-COND DOW configs show max weekday share 1.0 BY CONSTRUCTION (they ARE calendar conditions, declared EXPECTED-TO-DIE at R5); recorded in the census for the later R5 evaluation (0.35 floor)."
+ ],
+ "incidents": [
+  {
+   "id": "fsearch-p0-1",
+   "severity": "MEDIUM",
+   "status": "RESOLVED_PRE_COMMIT",
+   "description": "Initial OPEN-GAP threshold pin (mirrored exceedance percentiles) produced degenerate duplicate states: Q50 and Q75 fired on ~100% of leg-days with IDENTICAL trigger sets. Found during census sanity review, before any commit.",
+   "resolution": "Replaced with the side-specific percentile pin (percentile selects the side; p=50 median split); census re-run; Q25/Q50/Q75 now distinct (~25% / ~74-91% / ~22-29%); causal + timing tests added to the suite."
+  },
+  {
+   "id": "fsearch-p0-2",
+   "severity": "LOW",
+   "status": "DISCLOSED",
+   "description": "F1(iii) bounded TD re-pull returned DIVERGENCE on all five legs (2-3 fields each), confined to each leg's final archive bar.",
+   "resolution": "Recorded honestly under the frozen fail-closed contract; archive vintage retained as THE authority; nothing merged; disclosure embedded in p0_gate.json."
+  }
+ ],
+ "stop_conditions_hit": [],
+ "scope_escapes": [],
+ "tree_status": "clean after single pathspec commit; only owned paths staged; __pycache__ gitignored",
+ "workers": 0,
+ "outputs": [
+  {"path": "research/control/forex_search_v1_run/p0/p0_gate.json", "sha256": "see gate.artifact_sha256 entries; p0_gate.json digest in repo-copy commit"},
+  {"path": "research/control/forex_search_v1_run/p0/manifest_pin.json", "sha256": "d80d2908a8df311b588cc026bcc6c89f596ef47e69bfb710fe3fb045ce72ed48"},
+  {"path": "research/control/forex_search_v1_run/p0/structural_census.json", "sha256": "5079257eb09454b3580826948ee9cf9af4ada7b8a525abdeeeb9726a6a0d9ec6"},
+  {"path": "research/control/forex_search_v1_run/p0/calendar_census.json", "sha256": "a2aa55c9cec4faa5810bb31c93c359ea45d104cdfc20725aa172cb930a53ddf6"},
+  {"path": "research/control/forex_search_v1_run/p0/folds_freeze.json", "sha256": "c2a4e6765ff2ca2891b6ade8a81930a3b633024da7ba9a9eca6e46ca4965519b"},
+  {"path": "research/control/forex_search_v1_run/p0/fired_census.json", "sha256": "2feef494f5a58fd26ef908f5dc7455523034abffe0eaf0bffad8cdcaa492e702"},
+  {"path": "research/control/forex_search_v1_run/p0/cost_financing_manifest.json", "sha256": "54d79bab3d5a7b393b6401c702ecbd9f052c169bccbe1b131fad117c55053607"},
+  {"path": "research/control/forex_search_v1_run/p0/control_source_authority.json", "sha256": "d10b1597c601de1eeb3bc1371209a5c014866e77a513e4ec1a6193f4e3a55929"},
+  {"path": "research/control/forex_search_v1_run/p0/f1_repull_contract.json", "sha256": "in-repo (recorded inside p0_gate.json artifact_sha256)"},
+  {"path": "research/control/forex_search_v1_run/p0/f1_repull_result.json", "sha256": "in-repo (recorded inside p0_gate.json artifact_sha256)"},
+  {"path": "tests/test_forex_search_v1_p0.py", "sha256": "in-repo"}
+ ],
+ "recommended_next_action": "Controller: dispatch D1 (search-space manifest freeze, outcome-blind, hashed) consuming THIS committed fired census for the §3b selection tier; the D1 manifest must carry verbatim the three P0 pins (OPEN-GAP side-specific threshold reading, warmup/fold interaction, MONTHPOS half boundary day<=15) plus the §4 F4 financing derivation, and the R2/R5 floors stay as recorded. D2 remains SKIPPED per owner amendment §3b."
+}
