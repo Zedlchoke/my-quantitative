@@ -116,6 +116,12 @@ never an equivalence claim to OANDA or IBKR execution.
   DST boundary, a Friday-close hour, a Sunday-open hour). If the measured
   transport cannot express this census, that is a `BLOCKED_TRANSPORT`
   input, not a reason to bulk-fetch.
+- **Census request etiquette (frozen, A7 r1 F-6)**: HEAD probes only;
+  sequential with ≥ 1 s spacing; ≤ 2 retries with exponential backoff per
+  probe; no concurrent hammering; single HTTP session; census volume cap
+  = 5 × (pairs × sampled-years × 8) probes. Any 4XX/5XX pattern is
+  EVIDENCE (a `BLOCKED_TRANSPORT` input), never a reason to escalate
+  request volume.
 - **Transport evidence per fetch**: url, method, HTTP status, content-type,
   byte size, fetched_at_utc, sha256 — committed as transcript; deterministic
   re-fetch (or documented archive-immutability behavior) required; re-hash
@@ -138,9 +144,18 @@ never an equivalence claim to OANDA or IBKR execution.
    new plan).
 6. Maximum holding duration: 8 h; any entry whose forced exit would land
    inside the buffer window is forbidden by construction.
-7. Sessions: entries forbidden in the 30 minutes preceding the buffer
-   window and across weekend gaps; finer session bounds are frozen at
-   successor selection, within these outer bounds.
+7. Sessions (A7 r1 F-4 closing the literal hole): entries are forbidden
+   inside the window `[rollover_instant − 2100 s, rollover_instant]` —
+   this INCLUDES the buffer window itself — and across weekend gaps. No
+   position may be opened at ANY time whose forced exit would land inside
+   `[rollover_instant − 300 s, rollover_instant + 3600 s]`; forced exit =
+   the contract-mandated action that makes the book flat at the buffer
+   (rollover_instant − 300 s). Finer session bounds are frozen at
+   successor selection under a rubric frozen NOW (A7 r1 F-3): successor
+   bounds may only NARROW these outer bounds, must be derived from
+   measured session-structure evidence produced by this cycle, and must
+   be frozen in the successor's selection-freeze BEFORE any scored
+   computation exists.
 8. Fills: long entry = ASK, long exit = BID; short entry = BID, short exit
    = ASK; midpoint fills FORBIDDEN.
 9. Spread is read at the exact decision timestamp from the same quote
@@ -231,41 +246,71 @@ never an equivalence claim to OANDA or IBKR execution.
   position across the buffer — including the 8 h max-hold interaction and
   the Friday/weekend boundary.
 - **D2-3 novelty**: the declared representation of each A4 candidate
-  measured against the dead-family shadow panel (FXFV1/FXFV2/FXFV5/FXFV7/
-  FXNG1/FXFV8/FXNG1-A4-P2 DGS10-level class + day-of-week geometry class
-  from FXNG4) and against TD-daily-OHLC-derivable proxies; pooled |rho| ≤
-  0.20 bar. Measurement of observables/correlations only — no PnL, no
+  measured against the dead-family shadow panel — FXFV1 session
+  continuation, FXFV2 range compression/breakout, FXFV3 policy-rate-diff
+  carry (PIT-invalidated), FXFV4 commodity-bloc exposure, FXFV5
+  sham-calendar/CPI avoidance, FXFV6 CPI reaction-direction near-miss
+  class, FXFV7 lead-lag/spillover, FXNG1 release-order + DGS10-level
+  class (falsifications #14/#15), FXNG3 revision-form class, FXNG4
+  day-of-week geometry class, and the NG5 D2 veto battery classes (A7 r1
+  F-5) — and against TD-daily-OHLC-derivable proxies; pooled |rho| ≤ 0.20
+  bar. Measurement of observables/correlations only — no PnL, no
   scoring, no cells consumed.
 - **D2-4 feasibility census**: recent-window decision counts (Q-6), fold
   population, coverage floors on the canary+census evidence.
 - **D2-5 structural adjudication**: is rollover-flat intraday a valid
-  structural change vs an ancestry dodge? Fail-closed; the dodge finding
-  maps to `PASS_DATA_CONTROL_ONLY` (no successor) per §7.
+  structural change vs an ancestry dodge? Criteria frozen NOW (A7 r1
+  F-2). **VALID iff ALL of**: (a) D2-2 proves the holding contract makes
+  financing exposure structurally impossible — no position can exist at
+  the financing instant (property test + hand-computed fixtures);
+  (b) design-level proof that every `CANDIDATE_LISTED` mechanism requires
+  no financing/swap number of any value (a structural argument, not a
+  substituted number); (c) ≥ 1 candidate passes D2-3 novelty.
+  **DODGE** otherwise. Adjudication ownership: A4 authors the
+  adjudication dossier with evidence; A5 attacks it; A7 audits it; the
+  Lead RECORDS the joint outcome and may never adjudicate unilaterally;
+  any unresolved disagreement resolves fail-closed to
+  `INCOMPLETE_NOT_PROMOTABLE`.
 
 ## 7. Preregistered terminal verdicts (exact, negative-first)
 
 Deterministic mapping (first matching rule wins; every gate verdict is
 PASS/FAIL/NOT_RUN/BLOCKED with evidence):
 
+0. Required proofs enumerated (A7 r1 F-1): (R1) A2 lane verdict
+   `PASS_SOURCE_AUTHORIZED`; (R2) A3 per-check PASS set on §4.15 floors;
+   (R3) canary re-hash ALL_MATCH per §3; (R4) D2-1 identity PASS;
+   (R5) D2-2 rollover-flat property PASS; (R6) D2-3 novelty PASS on ≥ 1
+   candidate; (R7) D2-4 feasibility PASS; (R8) D2-5 adjudication VALID;
+   (R9) every A5 binding-floor attack dispositioned (evidence-backed or
+   conceded); (R10) A7 terminal AUTHORIZED. A terminal rule-6 PASS
+   requires R1–R10 all in their PASS/VALID state; any other state of any
+   required proof resolves through rules 1–8 below, never to a PASS.
 1. A2 license/terms fails → **`BLOCKED_LICENSE_OR_TERMS`**
 2. A2 transport/canary cap fails or re-hash not ALL_MATCH →
    **`BLOCKED_TRANSPORT`**
 3. Two-sided bid/ask unproven, or pair identity/orientation fails →
    **`BLOCKED_SCHEMA_OR_IDENTITY`**
 4. Any §4 byte-level floor fails → **`BLOCKED_COVERAGE_OR_QUALITY`**
-5. Data gates 1–4 all PASS, D2-5 adjudicates DODGE (or D2-3 novelty fails
-   for every candidate) → **`PASS_DATA_CONTROL_ONLY`** (data is sound as a
-   control plane; NO scored successor may be opened from it)
-6. Data gates 1–4 PASS + D2-2/D2-3/D2-4 PASS + D2-5 VALID + A5 binding
-   attacks dispositioned + A7 terminal AUTHORIZED →
-   **`PASS_INTRADAY_BIDASK_RESEARCH_AUTHORITY`** — a RESEARCH authority
-   only. It NEVER asserts executable or profitable authority; commission
-   stays UNKNOWN-posture and the §4.11/4.13 limitations stand verbatim.
-7. Any required proof ends `NOT_RUN` at terminal →
-   **`INCOMPLETE_NOT_PROMOTABLE`**
-8. A5/A7 evidence that the data gates PASS but the cost/execution identity
-   class itself is unsound in a way 5–6 do not cover →
+5. Data gates 1–4 all PASS, and (D2-5 adjudicates DODGE, OR D2-3 novelty
+   fails for every candidate, OR D2-2 rollover-flat property or D2-4
+   feasibility fails while data gates stand) →
+   **`PASS_DATA_CONTROL_ONLY`** (data is sound as a control plane; NO
+   scored successor may be opened from it)
+6. Data gates 1–4 PASS + R5/R6/R7/R8/R9 all PASS/VALID + A7 terminal
+   AUTHORIZED → **`PASS_INTRADAY_BIDASK_RESEARCH_AUTHORITY`** — a
+   RESEARCH authority only. It NEVER asserts executable or profitable
+   authority; commission stays UNKNOWN-posture and the §4.11/4.13
+   limitations stand verbatim.
+7. Any required proof R1–R10 ends `NOT_RUN` (or unresolved) at terminal,
+   and no rule 1–5 condition fired → **`INCOMPLETE_NOT_PROMOTABLE`**
+8. A5/A7 evidence that the data gates PASS but the cost/execution
+   identity class itself is unsound in a way 5–6 do not cover →
    **`BLOCKED_COST_OR_EXECUTION_IDENTITY`**
+
+A conceded A5 binding attack maps to the rule of the gate it attacks
+(data floor → 4; quote identity → 3; transport/license → 1–2; cost/execution
+class → 8; structural validity → 5).
 
 `PASS_INTRADAY_BIDASK_RESEARCH_AUTHORITY` requires A7 independent
 re-verification (fresh-context) of the D2 battery and the evidence chain.
@@ -316,7 +361,9 @@ G7  terminal: verdict per §7 mapping; two-half close (registry TERMINAL +
     MAP + lessons if any; denominators unchanged 257/260; FAMILY_FAILURES
     rows appended only for measured D2 kills of A4 candidates, NG3/NG4
     precedent; no hypothesis-ledger family rows — nothing scored);
-    successor eligibility report to owner per §8
+    successor eligibility report to owner per §8; the owner handoff is
+    written in ELI5 Vietnamese whose conclusion words are ONLY
+    PASS / FAIL / BLOCKED / NOT_RUN (A7 r1 F-7)
 ```
 
 ## 10. Incident transparency
