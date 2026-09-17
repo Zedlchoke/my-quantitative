@@ -1,0 +1,217 @@
+{
+ "auditor_context_fresh": true,
+ "base_sha": "30d5427a66edd50c59e5c814b234448de5ebc901",
+ "branch": "orca/forex-search-v1-integration",
+ "chain_verification": {
+  "d1/build_d1_manifest.py": {
+   "checks": "Full read. load_p0() fail-closed-verifies every p0_gate.json artifact digest before any build. selection_block() recomputes family totals + tier (i)/(ii) orders from p0/fired_census.json and aborts on mismatch with the frozen packet values. monthpos_state_formula() (F-5) emits a single predicate per MONTHPOS arm. cost_financing_block() (F-1), f5_fired_rate_supersession_block() (F-6), weekend_bars_note() (F-7, derived from calendar_census.json, fail-closed on non-weekend dates). Selfcheck covers: 33 configs / 6-3-6-4-14 split, unique lexicographic IDs, per-config required fields, counts byte-equal to the census, family totals + ranking, floor=10, DSR N=33, forbidden performance-key tokens walk, the 3 P0 pins, the F4 block verbatim needles + constants ladder + disclosure + source digest, the 33 F5 supersession rates vs census, the weekend note vs census, fold digest reference, and the self_sha256 convention.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "d1/remediation_note.md": {
+   "checks": "Full read. Finding->fix map F-1..F-8 coherent. Old->new digest table cross-checked against INDEPENDENT artifacts: old i_engine 4fe43df9/adjudicate 6862a417/tests e05dc67d match handoffs/fsearch-i-handoff.json outputs verbatim; new i_engine b935dcb4 + adjudicate 73350e6a + selection_freeze be83bbdf match the REGENERATED z/dry_run_report.json measured inputs_read_only (2026-09-17T17:10:24Z, post-dating every remediated artifact); new manifest file 30e38a99 + self 4ca19c11 match s/s_select.py MANIFEST_EXPECTED_SHA256 and the S freeze inputs record; new test_m0_extension f04c3ba3 matches m0_verdict.json extension block; old freeze 0a936857 matches the pre-remediation pins quoted in fsearch-i/fsearch-z handoffs. Two-pass cascade (F-4 propagating through the p0_gate digest table) is internally consistent with the recorded measured_* timestamps (p0 17:06:26Z < d1 17:06:34Z < s 17:06:58Z < z 17:10:24Z).",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "d1/search_space_manifest.json": {
+   "checks": "Full read (both halves). 33 configurations counted: CLOCK-COND 14 + CLV-DIVERGENCE 6 + EXTREME-FADE 3 + OPEN-GAP 6 + VOL-DRIFT 4; cap 80; DSR N=33 pinned; floor value 10 pinned. cost_financing_s4_F4 present: derivation text byte-compared to plan §4 F4 (verbatim match incl. both caveats), constants ladder 1.5/1.7/2.0 -> 9.4 bps, disclosure_language matches plan §10 verbatim, source digest equals p0_gate table. Three P0 pins verbatim. f5_fired_rate_supersession: all 33 measured rates hand-recomputed as fold-3 fired count / 8210 (= 1642 master bars x 5 legs, the census decision_leg_days convention) - every value checks (e.g. MONTHPOS-SECOND-LONG 4140/8210=0.504263, OPEN-GAP-CONFIRM-Q50 7415/8210=0.903167, CLV-K20-S10 672/8210=0.081851). Weekend-bars note (62 Sat + 35 Sun = 97, all 2025..2026) matches p0_gate master_weekday_counts (6:62, 7:35). Tier (i) CLOCK-COND>OPEN-GAP>VOL-DRIFT>EXTREME-FADE>CLV-DIVERGENCE recomputed from family fold-3 sums 31850/22672/12294/6193/4154. Tier (ii) orders recomputed: descending fold-3 config counts with lexicographic ties (DOW2 1550 > DOW3=DOW4 1545 > DOW1=DOW5 1540; CLV K10-S10 1008 > K10-S5 967 > K20-S5 682 > K20-S10 672 > K60-S5 418 > K60-S10 407; OPEN-GAP Q50 7415 tie CONFIRM<FADE, Q25 2108, Q75 1813; VOL MOM-L63 4174 > MOM-L21 3526 > REV-L21 2299 > REV-L63 2295). MONTHPOS state_formula single-predicate day>=16 for SECOND, engine-consistent. All 9 source digests identical to p0_gate.artifact_sha256. Outcome-blind: no performance-statistic keys.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "governance": {
+   "checks": "GO hard gate: i_engine.load_staging_legs() is the ONLY scored-path staging loader and refuses unless env FOREX_SEARCH_V1_GO_PHRASE == exact 'GO FOREX SEARCH V1 SCORED EXECUTION' (z F1/F2/F3 verify absent + 7 paraphrases refused + exact phrase opens only a stubbed empty /tmp, real bytes never read). Disclosure strings byte-compared by me to plan §10: RELAXATION_DISCLOSURE and FINANCING_DISCLOSURE match verbatim; §11 survivor token FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN byte-matches plan §11; emitted ONLY when survivors exist AND Stage-A (incl. DSR) PASSed on every survivor, else INCOMPLETE_NOT_PROMOTABLE. Budget: SCORED_CELL_BUDGET_MAX=3 counter on cycle output + skeleton; walk capped 3 cells / 2 per family. R0_NOT_RUN/PBO_NOT_RUN/§3b D2-SKIPPED labels on every arm and cycle verdict. P-13 staging: PAIR_SOURCES digests match plan §4 verbatim; pin re-verified by p0_census.main, s_select, and the gated E loader. S1: no S1 evidence anywhere; p0_scope census-only. No XAU. D2 SKIPPED with R0 never measured and never inferred PASS.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "i/adjudicate.py": {
+   "checks": "Full read. DSR: deflated_sharpe_ratio implements the standard Bailey & Lopez de Prado form DSR = Phi((SR-SR0)*sqrt(T-1)/sqrt(1 - g3*SR + ((g4-1)/4)*SR^2)); expected_max_sharpe implements SR0 = (1-gamma)*Z(1-1/N) + gamma*Z(1-1/(N*e)) for unit-variance normal trials (the documented conservative convention - true cross-trial SR variance < 1 makes the unit-variance SR0 a HIGHER hurdle). HAND-RECOMPUTED the E[max SR] anchors: N=33 -> ~2.1119, N=260 -> ~2.8501 (hand normal-quantile interpolation), consistent with the asserted 2.112401/2.850201 at 2e-6 in tests/test_forex_search_v1_i.py which also carry an independent erf-based in-test reimplementation (1e-12), deflation monotonicity d(5)>d(33)>d(260), and fail-closed zero-variance/empty paths. Gating wiring: stage_a kill-all includes dsr_pass; dsr_gate fail-closes when P-11 uncomputed; adjudicate_cycle emits the survivor outcome name ONLY if survivors exist AND dsr computed AND passed AND Stage-A PASS on every survivor. P-11 per-period series persisted in-verdict + persist_p11_series for the E runner. N=260/alpha 0.05 REPORTED-only. F-8 budget counter. R1-R6/K6 ordered first-binding kills with NOT_RUN/NOT_ADJUDICABLE riding as disclosures; R6 pooled-only impossible to PASS (per-leg AND pooled enforced); P-20 re-check fail-closed on unmeasurable rho; fold-positive-share > 50% law disclosed.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "i/i_engine.py": {
+   "checks": "Full read. FREEZE_SHA256 be83bbdf... pins s/selection_freeze.json (load_freeze fail-closed). verify_positions_vs_freeze() enforces rebuilt-digest == frozen positions digest (INPUT_MISMATCH). ladder_bps: price = gross - 2*1.5*stress, financed = price - 1.7*stress; WORST_CASE 2*1.5*2.0+1.7*2.0 = 9.4 exactly. dual_books_check: financed<=price per-trade and aggregate, aggregate sign inversion flagged. build_trades: single-session entry t+1 open / exit t+1 close, force-flat CONTRACT_VIOLATION re-assertion, OPEN-GAP entry at the exception bar. build_positions/gate_firing identical counting law to the P0 census (own t+1 localization via bisect, same-fold, beyond-sample refusal). raw_state shift=1 + pit_mutated_positions implement C-PIT-MUTATION. CTL-COMPLEMENT maps match the frozen D1 definitions (MONTHPOS FIRST complement, OPEN-GAP FADE-Q50 twin, VOL-DRIFT MOM-HIGH condition-flip custom engine with identical estimator/tercile law); R4 trend-only for CLOCK-COND raises NOT_ADJUDICABLE per the frozen manifest. Clock-only book declared (always-long no-signal, same grid/warmup/gating) with printed declaration.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "m0/m0_verdict.json + m0/run_m0.py + m0/test_m0_extension.py + inherited core": {
+   "checks": "Verdict: 11/11 = inherited core G1-G10 (exit 0, output recorded) + extension 6/6 (G4N-a/b/c + DB-1/2/3, exit 0) + dual-books fixture; inherited_core_byte_exact fields equal the hardcoded expectations in run_m0.py. INDEPENDENT CORROBORATION of the inherited digests: the predecessor FOREX-NG6 worktree's own frozen m0_verdict.json (.worktrees/forex-ng6/integration/research/control/forex_ng6_run/m0/m0_verdict.json) records m0_contract_sha256 dad5de33316c... and golden_suite_sha256 ba3991bd170b... and contract_sha256 8b5ee44bf6... - exactly the values pinned here; current contract_frozen.json content matches CONTRACT_FIELDS. test_m0_extension.py hand arithmetic re-derived by me against i_engine.ladder_bps/dual_books_check: ARM-1 price [17,-13,27] sum 31.0 / financed [15.3,-14.7,25.3] sum 25.9; ARM-2 stress 2.0: 22.0 / 11.8; ARM-3: -56.0 / -59.4; per-trade financed = price - 1.7*stress exactly; DB-2 inversion fixture price +1.0 / financed -0.7 flagged, negative-band pnl-adding charge flagged; DB-3 constants 1.5/1.7/2.0 -> 9.4. G4N purity: family_verdict/primary_comparisons signatures carry no banned payoff/normalizer argument (verified in m0_contract.py source); wrong_verdict_signal_times_shared_return exists and merges shared-payoff books (SAME_FAMILY) while the contract verdict stays DIFFERENT_FAMILY; Pearson scale-invariance identity is mathematically exact.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "p0/f1_repull.py + f1_repull_result.json + p0_gate.json (F1(iii))": {
+   "checks": "Code: the DIVERGENCE branch now clears ok_all (f1_repull.py:155-161) and any_divergence_or_unreachable = not ok_all (:167); rederive mode recomputes the flag from the recorded per-leg verdicts with the f4_correction block (prior false -> true), offline, no re-pull. Result artifact: any_divergence_or_unreachable TRUE with all five legs DIVERGENCE, per-leg diffs (2-3 FIELDS each) confined to each leg's FINAL archive bar (2026-09-10/2026-09-12) consistent with manifest_pin last dates; archive-vintage-remains-authority law printed. p0_gate F1(iii) PASS_WITH_DISCLOSURE adjudicated from the per-leg rows; artifact_sha256 table refreshed (f1_repull_result 68f63504...).",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "p0/p0_gate.json + censuses + pin + manifests": {
+   "checks": "Full read of p0_gate.json, manifest_pin.json, cost_financing_manifest.json, control_source_authority.json, folds_freeze.json; structural checks against the rest. Hand recomputations: fold bars 1641+1641+1642 = 4924 = master_len; master weekday counts sum 4924 (weekend 62+35=97); family fold-3 sums (31850/4154/6193/22672/12294) recomputed from the 33 per-config fold-3 counts; MONTHPOS FIRST+SECOND per fold 7900/8200/8205 = leg-days minus warmup (60x5 in fold 1) minus fold-boundary bar x5 - the complementary-partition arithmetic is EXACT, corroborating the census counting law end-to-end; fired-rate form booleans consistent with counts/8210 (only CLV K20/K60 inside [0.02,0.10]); OHLC micro-rounding violations 12 rows counted-not-repaired with disclosure. manifest_pin pair digests match plan §4 verbatim (EURUSD 01cb862b..., GBPUSD e3e4c519..., USDCAD 4b988c44..., AUDUSD 097cfe59..., NZDUSD 7dff3299...), XAUUSD excluded, ng1 byte-identity true, tarball digest table vs SHA256SUMS all match=true. F7 classes RETRIEVAL_TIME_ONLY/RETROSPECTIVE_ONLY verbatim per plan §4 F7. p0_census.py full read: state engines implement exactly the frozen formulas (OPEN-GAP side-selection pin p<50/p>50/p==50, SIGNED gap, §4 F3 exception; VOL-DRIFT ddof=1 sample std, trailing-252 terciles, own-index >= L+251 fail-closed; MONTHPOS SECOND = not(day<=15); CLV/EXTREME complete-window fail-closed), counting law identical to i_engine.gate_firing, load_leg fail-closed on dupes/non-date/non-positive, no ffill/repair anywhere.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "s/selection_freeze.json + s_select.py": {
+   "checks": "Full read of both. s_select re-verifies manifest file sha (30e38a99...) AND the self_sha256 convention, re-derives tier (i)/(ii) from p0/fired_census.json fold-3 counts (not from any pre-named arms), re-verifies staging member digests vs pin + plan, rebuilds the master calendar byte-for-byte vs the frozen census digest, requires rebuilt fold counts == frozen census for every visited configuration, and fail-closes unmeasurable pooled P-20 as NOT_ADJUDICABLE. Freeze: SAME 3 arms in the SAME order (MONTHPOS-SECOND-LONG rank1, OPEN-GAP-CONFIRM-Q50 rank2, VOL-DRIFT-MOM-L63 rank3), positions digests 85c8f875.../57eed8b9.../7eee7cf0... (unchanged per remediation note, matching the i_engine comment), P-20 matrix max |rho| 0.013307469016 all << 0.98, arm excerpts byte-identical to the D1 manifest entries including the F-5-corrected MONTHPOS formula. Walk: 3 cells in 1 round under max 3 / max 2-per-family.",
+   "result": "VERIFIED_IN_BYTES"
+  },
+  "z/dry_run_report.json + z/leak_scan.json + z_run.py": {
+   "checks": "dry_run_report: 22/22 checks PASS (A1-A2, B1-B4, C1-C4, D1-D4, E1-E4, F1-F3, G1), measured_utc 2026-09-17T17:10:24Z. inputs_read_only MEASURED digests: i_engine b935dcb4..., adjudicate 73350e6a..., p0_census fc90adda..., selection_freeze be83bbdf... == freeze_sha_verified_by_engine - i.e. the regenerated dry run executed the FINAL refreshed engines + final freeze (cross-corroborated against the remediation note's final digest column). E2/E3 assert the §3/§4 F4 disclosure strings verbatim (I byte-compared them to plan §10 myself). F1/F2/F3 GO-gate rows PASS incl. 7 paraphrase refusals and stub-only exact-phrase opening. leak_scan: same 17:10:24Z generation, static suspects 0 (allowlist-classified trailing-window/outcome-space stats; forward reads confined to the §4 F3 exception, execution-bar law and control space), dynamic taint invariance through the decision instant on 6 probes x 3 families + pipeline-level position invariance, positive controls prove open(t+1)/close(t) genuinely consumed, verdict NO_LEAK_FOUND fail-closed. z_run.py full read: scanner is fail-closed allowlist-based; A2 selfcheck honestly recorded as executed-outside-the-file.",
+   "result": "VERIFIED_IN_BYTES"
+  }
+ },
+ "conditions_carried_into_GO": [
+  "C-1: The exact owner phrase 'GO FOREX SEARCH V1 SCORED EXECUTION' must be typed at this cycle's own gate; the env-gated loader (FOREX_SEARCH_V1_GO_PHRASE exact match) is the only scored-path staging reader; early or paraphrased GO dies unconsumed (P-8).",
+  "C-2: At E, before any book is built: load_freeze() must pass (selection_freeze.json sha be83bbdf4f5dfee660cdacc42e41a882da535e9211954c6fd7bc3717acaafb8a) and verify_positions_vs_freeze() must pass for all three arms (positions digests 85c8f875..., 57eed8b9..., 7eee7cf0...); any drift = INPUT_MISMATCH stop, never an override.",
+  "C-3: DSR gating at N=33 (frozen grid, §5) alpha 0.10 (owner-relaxed, §3) must COMPUTE and PASS on every survivor before FOREX_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN may be emitted; the N=260/alpha 0.05 program-cumulative DSR is REPORTED only, never gating; P-11 per-period series persisted via persist_p11_series.",
+  "C-4: Budget counter <= 3 scored cells (walk cap 3, max 2 per family); every computed cell consumes an observed slot; unused slots never reassigned; PBO stays NOT_RUN fail-closed and R0 stays NOT_RUN (D2 skipped §3b) on every result, with the §3 and §4 F4 disclosure strings verbatim.",
+  "C-5: The scored run executes under the machine-wide heavy lock; never kill a foreign worker.",
+  "C-6: Ordered battery + Stage-A exactly as coded: R1 net expectancy > 0 at stress 2.0; R2 PF >= 1.10, fold positivity, per-state per-fold floor 10; R3 complement out-earn/match/self-fail kills, degenerate complement NOT_RUN both ways; R4 CLOCK-COND NOT_ADJUDICABLE (disclosed); R5 weekday-share floor 0.35 with the declared clock-only book printed; R6 USD-drift per-leg AND pooled <= 0.20 standing (NOT relaxed), absent macro shadows NOT_RUN kill-only (never rescue); dual-books sign invariance; P-20 re-check including frozen-matrix rho equality on rebuilt real-data positions.",
+  "C-7: K6 slow-drift stays NOT_ADJUDICABLE fail-closed unless the owner freezes an exact test before E; it may kill, never rescue, and never silently pass.",
+  "C-8: The CLOCK-ONLY R5 comparator is the harness-declared always-long no-signal book (single declaration constant, printed on every R5 output); if the owner prefers a different clock-only book it must be pinned BEFORE the GO phrase is typed, not after."
+ ],
+ "cycle_id": "FOREX-SEARCH-V1",
+ "findings": [
+  {
+   "description": "The committed z-lane handoff (handoffs/fsearch-z-handoff.json) and the two run_log_*.txt files still describe the PRE-remediation Z generation (z_run d6739a66..., report cb6ae53a..., leak 178f7914..., freeze pin 0a936857..., engines 4fe43df9/6862a417), while z/ now holds the regenerated post-cascade artifacts (report 842afe25-class content with measured_utc 2026-09-17T17:10:24Z pinning be83bbdf/b935dcb4/73350e6a/fc90adda). The authoritative record of the final Z run is the remediation note's tests table + the regenerated artifacts themselves; the stale handoff could mislead a future reader about which z_run produced the current report.",
+   "evidence": [
+    "research/control/forex_search_v1_run/handoffs/fsearch-z-handoff.json",
+    "research/control/forex_search_v1_run/z/run_log_base.txt",
+    "research/control/forex_search_v1_run/z/run_log_selfcheck.txt",
+    "research/control/forex_search_v1_run/z/dry_run_report.json",
+    "research/control/forex_search_v1_run/d1/remediation_note.md"
+   ],
+   "id": "F-9",
+   "required_remediation": "Non-blocking. Optionally append a one-line addendum to the z handoff (or a pointer note in z/) stating the current dry_run_report.json/leak_scan.json are the pass-2 regeneration pinned to the final engine/freeze digests per remediation_note.md. No code or verdict change required; the binding artifacts self-identify their measured inputs.",
+   "section": "z/ (lane provenance documentation)",
+   "severity": "LOW",
+   "why": "No conclusion changes: the current dry_run_report.json and leak_scan.json carry their own measured input digests which match the final remediated bytes exactly, and the remediation note records the re-run; this is documentation provenance only."
+  },
+  {
+   "description": "The D1 manifest field f5_fired_rate_supersession.census_walk_selected_arms_measured_recent_fold hardcodes the three config IDs that the S walk later selected, inside the D1 freeze artifact itself. The field is census-derived owner-visibility only (the arms are mechanically implied by the frozen tier orders), and s_select.py provably re-derives the walk from the census counts and would abort WALK/INPUT_MISMATCH on any divergence - but a pre-S artifact naming the S outcome is a smell a stricter reading could flag as pre-ordainment.",
+   "evidence": [
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json",
+    "research/control/forex_search_v1_run/d1/build_d1_manifest.py",
+    "research/control/forex_search_v1_run/s/s_select.py"
+   ],
+   "id": "F-10",
+   "required_remediation": "Non-blocking. No action required for GO; if the manifest is ever rebuilt, consider labeling the field 'predicted walk outcome (census-derived, non-binding; s_select re-derives independently)'.",
+   "section": "d1/search_space_manifest.json (f5_fired_rate_supersession)",
+   "severity": "LOW",
+   "why": "No performance statistic is involved (§5 ban intact), the S lane does not consume the field (verified: s_select reads configurations/tiers/census only), and the walk outcome is identical when re-derived mechanically."
+  },
+  {
+   "description": "The frozen tier-(ii) tie-rule text says 'configurations DESCENDING by P0 fired-population census (config-level)' without repeating the 'most recent fold' qualifier that tier (i) carries; the implemented and verified reading is fold-3 config-level counts (builder, manifest selfcheck, s_select verification all use fired_by_fold['3']). A full-sample reading would reorder the CLOCK-COND DOW block (DOW3 4770 > DOW1/DOW4/DOW5 4765 > DOW2 4755). Immaterial here: the walk filled all 3 cells from index-0 of each family in round 1, identical under both readings.",
+   "evidence": [
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json",
+    "research/control/forex_search_v1_run/s/s_select.py",
+    "plans/PLAN_forex_search_v1.md"
+   ],
+   "id": "F-11",
+   "required_remediation": "Non-blocking. No action required; the fold-3 reading is uniform across builder, manifest, freeze and walk, and anchored by tier (i)'s explicit most-recent-fold language in plan §5.",
+   "section": "d1 + s (tier (ii) census period wording)",
+   "severity": "LOW",
+   "why": "Both readings select the same three arms in the same order for this grid; no scored cell or survivor depends on the ambiguity."
+  },
+  {
+   "description": "dual_books_check flags aggregate sign inversion only when both sums are non-zero (sp != 0.0 and sf != 0.0); an exactly-zero financed aggregate is treated as non-inverting. No path to a wrong survivor exists: a zero financed net fails R1 (expectancy strictly > 0 required) and Stage-A stress margin, so the arm is rejected regardless.",
+   "evidence": [
+    "research/control/forex_search_v1_run/i/i_engine.py",
+    "research/control/forex_search_v1_run/i/adjudicate.py"
+   ],
+   "id": "F-12",
+   "required_remediation": "Non-blocking. Optionally tighten the inversion predicate to sign(sp) != sign(sf) with sf==0 counted as a refusal for positive sp. Cosmetic hardening only.",
+   "section": "i/i_engine.py (dual_books_check edge)",
+   "severity": "LOW",
+   "why": "Redundantly covered by R1/Stage-A fail-closed gates; cannot affect any terminal verdict."
+  },
+  {
+   "description": "Auditor-side execution limits (NOT_RUN_EXECUTION_REQUIRED, disclosure not a defect of the chain): without Bash I could not (a) recompute sha256 of the pinned artifacts myself, (b) re-execute the M0 suite, pytest sweep (48 passed recorded), build/s/z selfchecks, (c) verify HEAD == 30d5427a and the 7-commit count. Byte-consistency was instead established by cross-artifact agreement: the regenerated Z report MEASURED the current i_engine/adjudicate/p0_census/selection_freeze digests at 2026-09-17T17:10:24Z (post-dating every remediated artifact's recorded timestamp), those measured digests equal the remediation note's final column, the engine pins, and the S freeze records; every loader in the chain (p0 gate builder, D1 builder, s_select, i_engine.load_freeze, the GO-gated E loader) re-verifies these digests fail-closed at every run, and the predecessor FOREX-NG6 worktree independently corroborates the inherited M0 digests.",
+   "evidence": [
+    "research/control/forex_search_v1_run/z/dry_run_report.json",
+    "research/control/forex_search_v1_run/d1/remediation_note.md",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng6/integration/research/control/forex_ng6_run/m0/m0_verdict.json"
+   ],
+   "id": "F-13",
+   "required_remediation": "None for the chain. The Lead's standard detached-reproduction phase (R) re-executes the selfchecks on the committed bytes.",
+   "section": "audit method disclosure",
+   "severity": "LOW",
+   "why": "Honest disclosure of what was verified by reading vs by execution; the residual risk is bounded by the chain's own fail-closed digest re-verification at every subsequent run."
+  }
+ ],
+ "independent_corroboration": {
+  "cascade_two_pass": "p0_gate re-assembly (F-4 propagation) is consistent: D1 builder load_p0() fail-closes on any p0_gate digest mismatch, so the manifest could only rebuild after assemble_gate refreshed the table; recorded timestamps order correctly (p0 17:06:26Z < d1 17:06:34Z < s 17:06:58Z < z 17:10:24Z).",
+  "predecessor_m0_lineage": "FOREX-NG6 worktree's own m0_verdict.json independently records dad5de33316c... (m0_contract) and ba3991bd170b... (golden suite) - the exact inherited digests pinned by run_m0.py; the inheritance claim does NOT rest on the chain asserting itself.",
+  "z_run_on_final_bytes": "The regenerated dry_run_report.json inputs_read_only measured i_engine b935dcb4..., adjudicate 73350e6a..., p0_census fc90adda..., selection_freeze be83bbdf... at 2026-09-17T17:10:24Z - all equal the remediation note's FINAL committed values, proving the 22/22 + NO_LEAK_FOUND evidence attaches to the refreshed engines, not to pre-remediation bytes.",
+  "i_lane_old_digests": "handoffs/fsearch-i-handoff.json outputs (4fe43df9/6862a417/e05dc67d) match the remediation note's OLD column verbatim - the cascade's before/after table is faithful."
+ },
+ "prior_finding_closures": {
+  "F-1": {
+   "evidence": [
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json",
+    "research/control/forex_search_v1_run/d1/build_d1_manifest.py",
+    "research/control/forex_search_v1_run/p0/cost_financing_manifest.json"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "cost_financing_s4_F4 embedded top-level in the manifest: derivation text byte-compared verbatim to plan §4 F4 including both caveats (3-night average does not bound the worst night; NZD-USD-worst generalized without per-leg census), constants ladder 1.5/1.7/2.0 -> 9.4 bps, charged-uniformly + dual-books wiring, §10 disclosure language verbatim, source digest 54d79bab... matching p0_gate. build_d1_manifest selfcheck now fail-closed-verifies the needles, ladder, disclosure and source digest. plan_sections_frozen ['§3b','§4 F3','§4 F4','§5','§6','§8'] is now TRUE."
+  },
+  "F-2": {
+   "evidence": [
+    "research/control/forex_search_v1_run/i/adjudicate.py",
+    "research/control/forex_search_v1_run/i/i_engine.py",
+    "tests/test_forex_search_v1_i.py"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "Standard B&LdP 2014 DSR implemented (formula hand-checked; E[max SR] anchors hand-recomputed ~2.1119 @ N=33 / ~2.8501 @ N=260, matching asserted 2.112401/2.850201 within hand precision; stdlib bisection ppf). GATING at N=33/alpha 0.10 inside stage_a kill-all; program-cumulative N=260/alpha 0.05 computed and REPORTED-only; dsr_gate fail-closed on uncomputable P-11; adjudicate_cycle emits the §11 survivor name ONLY after DSR computed AND passed on every survivor (dedicated tests: DSR-failing arm -> INCOMPLETE_NOT_PROMOTABLE). P-11 per-period series persisted in-verdict with digest + persist_p11_series for E. Independent in-test erf-based reimplementation at 1e-12; deflation monotonicity d(5)>d(33)>d(260) tested."
+  },
+  "F-3": {
+   "evidence": [
+    "research/control/forex_search_v1_run/m0/m0_verdict.json",
+    "research/control/forex_search_v1_run/m0/run_m0.py",
+    "research/control/forex_search_v1_run/m0/test_m0_extension.py",
+    "research/control/forex_search_v1_run/m0/m0_contract.py",
+    "research/control/forex_search_v1_run/m0/contract_frozen.json",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng6/integration/research/control/forex_ng6_run/m0/m0_verdict.json"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "11/11 + dual-books fixture now real: verdict records inherited core G1-G10 exit 0 (output lines match test_m0_golden.py gate table read in full) + extension 6/6 exit 0. Byte-exact inheritance independently corroborated by the predecessor FOREX-NG6 worktree's frozen m0_verdict.json (dad5de33316c.../ba3991bd170b.../8b5ee44bf6...). Extension fixture arithmetic hand-re-derived exactly against i_engine (31.0/25.9, 22.0/11.8, -56.0/-59.4, +1.0/-0.7 inversion flag, negative-band pnl-adding flag, 3x1.7xstress difference identity); G4N purity verified in m0_contract.py source (no payoff/normalizer argument in the verdict path; wrong kernel merges, contract does not; rescaling identity exact)."
+  },
+  "F-4": {
+   "evidence": [
+    "research/control/forex_search_v1_run/p0/f1_repull.py",
+    "research/control/forex_search_v1_run/p0/f1_repull_result.json",
+    "research/control/forex_search_v1_run/p0/p0_gate.json"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "DIVERGENCE branch now clears ok_all (f1_repull.py:155-161); flag derived as not ok_all; offline rederive recomputed the summary from the unchanged per-leg evidence with an f4_correction block (prior false -> corrected true, recomputed_from per-leg verdicts all DIVERGENCE, archive-remains-authority law). Result artifact shows any_divergence_or_unreachable TRUE + five per-leg DIVERGENCE rows with diffs confined to each leg's final archive bar. p0_gate re-assembled with the refreshed digest table; F1(iii) stays PASS_WITH_DISCLOSURE."
+  },
+  "F-5": {
+   "evidence": [
+    "research/control/forex_search_v1_run/d1/build_d1_manifest.py",
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json",
+    "research/control/forex_search_v1_run/p0/p0_census.py",
+    "research/control/forex_search_v1_run/s/selection_freeze.json"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "monthpos_state_formula() emits a single predicate: SECOND reads 'day-of-month of the decision date D >= 16' (FIRST symmetric). Engine verified: p0_census.state_clock_cond implements hit = first_half if FIRST else (not first_half) i.e. day >= 16. Census arithmetic verified EXACTLY: FIRST 11975 + SECOND 12330 = 24305 complementary; per-fold FIRST+SECOND = 7900/8200/8205 = leg-days minus warmup 300 (fold 1) minus fold-boundary 5 - exact. Corrected formula travels verbatim into the S freeze excerpts."
+  },
+  "F-6": {
+   "evidence": [
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json",
+    "research/control/forex_search_v1_run/d1/build_d1_manifest.py",
+    "research/control/forex_search_v1_run/p0/p0_gate.json"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "f5_fired_rate_supersession block present: form law verbatim (§4 F5), supersession_pinned statement, all 33 measured fold-3 rates hand-recomputed as counts/8210 (every value checks), the three walk arms' rates flagged for owner visibility (0.504263 / 0.903167 / 0.508404), form evaluation recorded as FORM-only, >= 30/fold floors unaffected. Selfcheck verifies all 33 rates against the census."
+  },
+  "F-7": {
+   "evidence": [
+    "research/control/forex_search_v1_run/d1/search_space_manifest.json",
+    "research/control/forex_search_v1_run/d1/build_d1_manifest.py",
+    "research/control/forex_search_v1_run/p0/p0_gate.json"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "clock_contract.weekend_dated_master_bars_note present: 97 weekend-dated bars (62 Sat + 35 Sun, all 2025..2026) - matches p0_gate master_weekday_counts (6:62, 7:35) and calendar_census weekend list; builder derives the note from the census and fail-closes on non-weekend dates; CLOCK-COND weekday states fire ISO 1..5 only; counted, never repaired/ffilled."
+  },
+  "F-8": {
+   "evidence": [
+    "research/control/forex_search_v1_run/i/adjudicate.py",
+    "tests/test_forex_search_v1_i.py"
+   ],
+   "result": "CLOSED_IN_BYTES",
+   "verification": "SCORED_CELL_BUDGET_MAX = 3; adjudicate_cycle prints scored_cell_budget {used, max, within_budget, source} and fail-closes a breach; pre-GO skeleton carries {used: 0, max: 3}; tests assert both. verify_positions_vs_freeze() existed already in i_engine (INPUT_MISMATCH law) and is carried as GO condition C-2."
+  }
+ },
+ "schema": "a7_prelaunch_audit@1",
+ "store_cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "unresolved_high_critical_count": 0,
+ "verdict": "AUTHORIZED_PRELAUNCH"
+}
