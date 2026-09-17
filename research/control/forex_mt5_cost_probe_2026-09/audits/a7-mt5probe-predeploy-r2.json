@@ -1,0 +1,140 @@
+{
+  "schema": "a7_predeploy_audit_r2@1",
+  "probe_id": "forex_mt5_cost_probe_2026-09",
+  "audited_head": "0278a4d294fb068f10704dee0959c8f609b4739c",
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "remediation_verification": [
+    {
+      "id": "F-01",
+      "status": "FIXED",
+      "evidence": "mt5_cost_collector.mq5 lines 57-78: SwapModeText is a pure numeric switch ((int)mode, cases 0-9, string labels). grep over full source: zero occurrences of any named SYMBOL_SWAP_MODE_* enum constant (SYMBOL_SWAP_MODE_DISABLED/POINTS/CURRENCY*/INTEREST*/REOPEN*); only the property ID SYMBOL_SWAP_MODE (line 154, standard ENUM_SYMBOL_INFO_INTEGER) remains. Numeric switch eliminates the undeclared-identifier compile class on build 6180 entirely."
+    },
+    {
+      "id": "F-02",
+      "status": "FIXED",
+      "evidence": "Raw integer emitted as its own column: line 166 IntegerToString(swapMode) immediately after the text label (line 165), so the verifier/A7 re-map independently of any label. Contract collected_fields.per_symbol_static_spec_snapshot lists swap_mode_raw ('raw integer as served - A7 F-01/F-02 remediation'). Verifier MIN_COLUMNS spec=26 includes both columns (fixture-verified width 26)."
+    },
+    {
+      "id": "F-03",
+      "status": "FIXED",
+      "evidence": "verify_probe.py lines 29-34: MIN_COLUMNS = tick_samples 17 / heartbeat 14 / spec_snapshot 26 / events 10, matching the EA's actual emission measured field-by-field (tick 10 data + 7 context; heartbeat 7+7; spec 19+7; events 3+7). Fixture run: observed_field_widths [17]/[14]/[26]/[10], zero false malformed, exit 0."
+    },
+    {
+      "id": "F-04",
+      "status": "FIXED",
+      "evidence": "trade_mode column IS collected: line 167 TradeModeText(SymbolInfoInteger(sym, SYMBOL_TRADE_MODE)) between swap_mode_raw and swap_long; contract amendment_1 change 1 and collected_fields list it. CAVEAT: new finding N-2 - the label function uses ACCOUNT_TRADE_MODE_* enum text on the SYMBOL_TRADE_MODE enum, so normal FULL(4) symbols record 'UNKNOWN' and a DISABLED(0) symbol would record 'DEMO'; contract pins the same wrong label set. Column is present (F-04 fixed) but semantically mislabeled; informational only, no floor depends on it."
+    },
+    {
+      "id": "F-05",
+      "status": "FIXED",
+      "evidence": "OWNER_RUN.md step 4/An toan: raw handoff path is /Users/hoangminhlong/.my-quantitative-data/forex_mt5_cost_probe_2026-09/raw/ - outside the repo (/Users/hoangminhlong/my-quantitative). probe_contract.json artifact_map.raw_data_root states the same external path and 'NEVER in git'. Step 0 OANDA login added (terminal measured on MetaQuotes-Demo); step 2 requires F7 recompile with '0 errors, 0 warnings' and forbids using a stale .ex5."
+    },
+    {
+      "id": "F-06",
+      "status": "FIXED",
+      "evidence": "EA lines 35 + 312-325: g_gapOpen flag; exactly ONE WriteEvent(\"gap\",...) per disconnect episode, followed by exactly one WriteEvent(\"reconnect\",...) on first connected timer tick; heartbeat is written BEFORE the disconnect early-return so gaps stay heartbeat-covered."
+    },
+    {
+      "id": "F-07",
+      "status": "FIXED",
+      "evidence": "EA lines 200-209/216: if(point <= 0 || pip <= 0) { g_tickErrors++; return; } precedes both divisions (spread_computed /point, spread_pips /pip). PipSize itself performs no division."
+    },
+    {
+      "id": "F-08",
+      "status": "FIXED",
+      "evidence": "probe_contract.json amendment_1 change 4 (F-08): smoke-pass adjudicator named - the Lead runs verify_probe.py and records the criteria outputs as verdict inputs; A7 reviews them at the post-collection audit. verify_probe.py docstring lines 3-7 match ('VERDICT INPUTS ONLY... NEVER issues a verdict')."
+    },
+    {
+      "id": "F-09",
+      "status": "FIXED",
+      "evidence": "amendment_1 change 6 (F-09): F1 exclusion window pinned to 21:55-22:05 UTC daily; 'any other absence counts against the 95% presence floor'. F1 floor text unchanged (95% of 5-min buckets, missing = missing)."
+    },
+    {
+      "id": "F-10",
+      "status": "FIXED",
+      "evidence": "amendment_1 change 7 (F-10): F2 London/NY overlap pinned to 13:00-16:00 UTC year-round (DST-independent); F2 floor unchanged (>=4h/weekday incl >=1h in overlap)."
+    },
+    {
+      "id": "F-11",
+      "status": "FIXED",
+      "evidence": "EA line 127: exact token REDACTED_LOGIN_BY_CONTRACT (sole occurrence in code, inside AccountContext); contract line 23 carries the identical token; ACCOUNT_LOGIN appears in the source ONLY in two comment lines (11, 122) that ban it - never read (AccountInfoString limited to ACCOUNT_COMPANY/SERVER/CURRENCY)."
+    },
+    {
+      "id": "F-12",
+      "status": "FIXED",
+      "evidence": "Explicit cast per Lead commit 0278a4d2 mapping: line 143 SymbolInfoSessionTrade(sym, (ENUM_DAY_OF_WEEK)day, (uint)idx, from, to) - session_index passed as (uint). All narrowing conversions in new lines cast explicitly ((int) on StringFormat args line 148-149, (int)digits on DoubleToString)."
+    },
+    {
+      "id": "F-13",
+      "status": "FIXED",
+      "evidence": "Line 147: if(tsec == 0 && (long)to > 0) tsec = 86400; - a session ending at midnight as served by to=86400 renders 24:00 (StringFormat %02d). Residual LOW edge (N-4): an end served as literal to==0 would render 00:00; unobservable offline."
+    },
+    {
+      "id": "F-14",
+      "status": "PARTIAL",
+      "evidence": "argval() (verify_probe.py lines 49-51) guards the missing-flag path (returns None; --window-days absent -> defaults 7) and no-args path (prints doc, exit 2). BUT its own docstring claim 'never raises' is falsified: (a) dangling flag as last arg -> IndexError exit 1; (b) non-numeric value -> ValueError exit 1 (both measured by me). Failures are loud, write no partial output, and are operator-error paths only - hence PARTIAL, non-blocking; recorded as new finding N-3."
+    },
+    {
+      "id": "F-15",
+      "status": "FIXED",
+      "evidence": "verify_probe.py lines 77/103-104/152-161: raw text per valid row kept for spec + events; snapshot hashes = sha256('\\n'.join(raw lines)) keyed (kind, symbol) = (r[1], r[2]) matching the EA's emission order - never re-serialized. Fixture: all 10 hashes match sha256s I computed independently from the raw fixture bytes (e.g. shutdown_snapshot/AUDUSD e1a51cb7a01d8ce5...)."
+    },
+    {
+      "id": "F-16",
+      "status": "FIXED",
+      "evidence": "Split counters per Lead commit mapping: g_fileErrors (line 33; incremented only in AppendLine on FileOpen failure) vs g_tickErrors (line 34; incremented on SymbolInfoTick failure line 190 and degenerate point line 205); heartbeat emits both separately (lines 237-238); shutdown event reports both; verifier reads file_errors_max idx5 / tick_errors_max idx6 independently (fixture: 1/1). Contract amendment_1: 'file_errors and tick_errors are separate counters', heartbeat 7+7=14."
+    },
+    {
+      "id": "F-17",
+      "status": "FIXED",
+      "evidence": "Lead commit 0278a4d2 declares F-17 moot (superseded by the round-1 refusal itself - no data existed, defect no longer exists at these bytes). Fresh-context byte-level pass over the whole bundle found no unremediated defect trace corresponding to a residual F-17; worktree bytes are sha256-identical to HEAD."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "N-1",
+      "severity": "LOW-MED",
+      "blocking": false,
+      "title": "SwapModeText numeric labels drift from the MQL5 ENUM_SYMBOL_SWAP_MODE ABI from value 4 upward",
+      "detail": "Official ABI: 0 DISABLED, 1 POINTS, 2 CURRENCY_SYMBOL, 3 CURRENCY_MARGIN, 4 CURRENCY_DEPOSIT, 5 INTEREST_CURRENT, 6 INTEREST_OPEN, 7 REOPEN_CURRENT, 8 REOPEN_FIXED (9 does not exist). EA labels: 4 MARGIN_CURRENT, 5 CURRENCY_DEPOSIT, 6 INTEREST_CURRENT, 7 INTEREST_OPEN, 8 REOPEN_CURRENT, 9 REOPEN_FIXED. Mitigated by design: swap_mode_raw is the authoritative column and A7 re-maps independently; OANDA majors typically serve 0/1. Non-blocking; recommend correcting labels + dropping the unreachable case 9 before F7 compile (cheap)."
+    },
+    {
+      "id": "N-2",
+      "severity": "MEDIUM",
+      "blocking": false,
+      "title": "TradeModeText (ACCOUNT enum labels) reused for SYMBOL_TRADE_MODE; no raw column to re-derive",
+      "detail": "ENUM_SYMBOL_TRADE_MODE is 0 DISABLED / 1 LONGONLY / 2 SHORTONLY / 3 CLOSEONLY / 4 FULL. Applying ACCOUNT_TRADE_MODE_* text (0 DEMO / 1 CONTEST / 2 REAL) yields: every normally tradable (FULL=4) symbol records trade_mode=UNKNOWN, and a DISABLED(0) symbol would record the actively misleading 'DEMO'. Unlike swap_mode there is NO raw trade_mode column, so the text cannot be re-derived from the file. probe_contract.json pins the same wrong label set ('trade_mode (DEMO/CONTEST/REAL text from SYMBOL_TRADE_MODE)'), so contract and EA are internally consistent - but both are semantically wrong. No floor (F1-F5), smoke criterion, or read-only guarantee depends on this informational column, hence non-blocking; recommend a dedicated 0-4 mapping + raw column (and verifier spec width 26->27) before F7 compile. Note the account-level trade mode (the DEMO-caveat question reserved to A7) IS collected correctly via ACCOUNT_TRADE_MODE."
+    },
+    {
+      "id": "N-3",
+      "severity": "LOW",
+      "blocking": false,
+      "title": "Verifier argv guard incomplete (F-14 PARTIAL)",
+      "detail": "argval 'never raises' claim falsified by two measured invocations: dangling --window-days (no value) -> IndexError exit 1; --window-days abc -> ValueError exit 1. Both fail loudly with no partial output and cannot corrupt data; the owner-facing invocation in OWNER_RUN.md passes no such flags. Non-blocking."
+    },
+    {
+      "id": "N-4",
+      "severity": "LOW",
+      "blocking": false,
+      "title": "Midnight-end session served as to==0 would render 00:00, not 24:00",
+      "detail": "F-13 remediation converts only tsec==0 with (long)to>0 (covers the to=86400 representation and multi-day to). A build serving a midnight end as literal 0 is indistinguishable from unset and would render 00:00. Sessions are informational; no floor depends on them. Unobservable offline."
+    },
+    {
+      "id": "N-5",
+      "severity": "LOW",
+      "blocking": false,
+      "title": "Verifier embeds every parsed row in verdict_inputs.json",
+      "detail": "inputs['parse'] holds all rows of all files; at 7-day scale (~600k tick rows at 5s x 5 symbols) verdict_inputs.json will be very large (hundreds of MB) and memory-heavy. Functional, deterministic, and correctness-neutral; practicality consideration for the post-collection audit run."
+    }
+  ],
+  "no_trade_reverified": true,
+  "no_credentials_reverified": true,
+  "compile_plausibility": "PLAUSIBLE for build 6180, gated by the owner's own F7 '0 errors, 0 warnings' check. The numeric swap-mode switch removes the entire undeclared-identifier class that produced the owner-measured round-1 errors; ACCOUNT_TRADE_MODE_* constants used at lines 51-53 are ancient standard identifiers. All new lines use explicit casts on narrowing conversions ((int)mode switch operand, (uint)idx, (ENUM_DAY_OF_WEEK)day, (int) on StringFormat args, (int)digits); switch-on-int with per-case returns, bool global, dynamic string array + ArrayResize, and the (long)datetime arithmetic are all standard MQL5. One residual watch item (not a finding): EventSetTimer(MathMax(1, InpSampleSeconds)) relies on MathMax's int overload; if this build promotes to double it would emit a type-conversion WARNING (not error), which OWNER_RUN step 2's zero-warnings gate would surface at compile time. No include of Trade\\*.mqh anywhere.",
+  "no_trade_scan_method": "Independent re-scan: /* */ and // comments stripped, word-boundary regex over the stripped source for OrderSend, OrderSendAsync, OrderClose, OrderCloseBy, OrderDelete, OrderModify, PositionOpen, PositionClose, PositionModify, PositionCloseBy, CTrade, CPositionInfo, COrderInfo, OrderCalcMargin, OrderCalcProfit, OrderCalcSwap, OrderCheck, method-form .Buy(/.Sell(, MqlTradeRequest - 0 hits. ACCOUNT_LOGIN: comment lines only (11, 122). Header attestation block (lines 330-335) consistent with bytes.",
+  "contract_reconciliation": "Field-by-field EA vs probe_contract.json collected_fields: per_tick_sample 10 = EA tick fields 1:1 (recv_utc, symbol, bid, ask, spread_points, spread_computed, spread_pips, digits, venue_time_msc, trade_server_time); spec snapshot 16 named fields match incl. swap_mode_text, swap_mode_raw, trade_mode, midnight-24:00 sessions; per-row account context 7 fields in identical order (company, server, trade_mode, currency, REDACTED_LOGIN_BY_CONTRACT, trade_allowed, connected); heartbeat 7 data + 7 context = 14 with split file/tick error counters; events = startup/gap(one per episode)/reconnect/shutdown-with-stats. amendment_1 present and additive: 30-min smoke criteria, 7-day window, F1 95% / F2 4h+1h / F3 / F4 / F5 all verbatim unchanged; F1 exclusion pinned 21:55-22:05 UTC; F2 overlap pinned 13:00-16:00 UTC; adjudicator named (Lead runs verifier, A7 adjudicates). Verifier dedupe key (symbol, venue_time_msc, bid, ask) = contract F5 = EA in-run guard key.",
+  "static_audit_r2_independent": "static_audit_result.json regenerated for round 2 (audit_round 2, forbidden_matches_outside_comments=[], verdict PASS_ZERO_FORBIDDEN_CALLS, audited_utc 2026-09-17T04:53:16Z = 11s before the 0278a4d2 commit instant 04:53:27Z, i.e. on the final bytes; worktree sha256 == HEAD sha256 for all five files). My own comment-stripped scan reproduces zero forbidden matches.",
+  "fixture_test": "Synthetic fixture built in /tmp at the remediated EA's exact widths (tick 17 incl 7-field context, heartbeat 14, spec 26, events 10) with all 5 expected symbols, one exact duplicate tick row, one 9-field malformed tick row, two heartbeats with trade_allowed=0 at index 12. Verifier run (.venv/bin/python verify_probe.py /tmp/a7r2_fixture --window-days 7 --out /tmp/a7r2_out.json): exit 0; duplicates_dropped=1 unique_rows=4; malformed_rows=1 with observed_field_widths [9,17]/[14]/[26]/[10]; trade_allowed_flag_values_seen ['0']; file_errors_max=1 tick_errors_max=1 split; 10 spec snapshot sha256s match hashes I computed independently from raw lines; all_expected_symbols_present=true; commission_inputs posture UNKNOWN; --out honored outside the repo.",
+  "verdict_rationale": "All 4 round-1 blocking findings (F-01/F-02/F-03/F-04-blocker + F-05 path escape) are FIXED in the bytes; 15/17 fully FIXED, F-14 PARTIAL (operator-error argv edges only). No new blocking finding: N-1/N-2 are label-semantics defects on informational columns mitigated by the raw swap column and untouched by every preregistered floor; N-3/N-4/N-5 are LOW. Read-only, credential-free, contract/verifier/instructions consistency all re-verified independently. The owner MAY proceed to compile (F7) and, on 0 errors 0 warnings, run the 30-minute smoke. Recommended (not required): 20-minute cosmetic fix of N-1/N-2 labels + N-3 guard before compile since the EA is not yet compiled and the fix is cheap; if taken, re-run the r2 fixture widths (spec 26->27 if a raw trade_mode column is added) before the smoke.",
+  "measured_utc": "2026-09-17T05:02:41Z",
+  "auditor": "A7 fresh-context r2"
+}

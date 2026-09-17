@@ -1,0 +1,58 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "mt5probe-a7-predeploy-r2",
+  "cycle_id": "FOREX-MT5-COST-PROBE-2026-09",
+  "role": "quant-auditor",
+  "lane": "a7-predeploy-r2",
+  "dispatch_sha": "0278a4d294fb068f10704dee0959c8f609b4739c",
+  "actual_start_sha": "0278a4d294fb068f10704dee0959c8f609b4739c",
+  "commit_sha": "0278a4d294fb068f10704dee0959c8f609b4739c",
+  "changed_paths": [],
+  "tests": [
+    {
+      "command": "python3 comment-stripped scan of mt5_cost_collector.mq5 (block+line comments stripped, word-boundary regex) for OrderSend/OrderSendAsync/OrderClose/OrderCloseBy/OrderDelete/OrderModify/PositionOpen/PositionClose/PositionModify/PositionCloseBy/CTrade/CPositionInfo/COrderInfo/OrderCalcMargin/OrderCalcProfit/OrderCalcSwap/OrderCheck/.Buy(/.Sell(/MqlTradeRequest/#include Trade\\Trade.mqh",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "0 forbidden matches outside comments; ACCOUNT_LOGIN present only in comments at lines 11 and 122 (both ban it); REDACTED_LOGIN_BY_CONTRACT sole code occurrence at line 127"
+    },
+    {
+      "command": "git log -1 --format='%H %cI %s' 0278a4d2 && git diff HEAD --stat -- research/control/forex_mt5_cost_probe_2026-09/ && sha256 worktree-vs-`git show HEAD:` for all 5 bundle files",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "commit instant 2026-09-17T11:53:27+07:00 (=04:53:27Z, 11s after static_audit audited_utc); worktree bytes sha256-identical to HEAD for mt5_cost_collector.mq5 (4e8f908c...), verify_probe.py (2d5a5ea8...), probe_contract.json (99b4a89b...), OWNER_RUN.md (3cf60dbb...), static_audit_result.json (30bcd864...); empty diff; only pre-existing untracked .zcode/"
+    },
+    {
+      "command": ".venv/bin/python research/control/forex_mt5_cost_probe_2026-09/verify_probe.py /tmp/a7r2_fixture --window-days 7 --out /tmp/a7r2_out.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "result": "synthetic fixture at exact EA widths (tick 17 incl 7-field context, heartbeat 14, spec 26, events 10; all 5 symbols; 1 duplicate row; 1 malformed 9-field row): duplicates_dropped=1 unique_rows=4; malformed_rows=1; observed_field_widths [9,17]/[14]/[26]/[10]; trade_allowed_flag_values_seen ['0'] at r[12]; file_errors_max=1 tick_errors_max=1 split; 10 spec-snapshot sha256s over RAW lines match independently computed hashes; all_expected_symbols_present=true; commission_inputs posture UNKNOWN; output honored --out to /tmp (nothing written in-repo)"
+    },
+    {
+      "command": ".venv/bin/python research/control/forex_mt5_cost_probe_2026-09/verify_probe.py /tmp/a7r2_fixture --window-days   (dangling flag)  &&  ... --window-days abc",
+      "exit_code": 1,
+      "verdict": "FAIL",
+      "result": "dangling --window-days -> IndexError exit 1; non-numeric value -> ValueError exit 1; falsifies argval's own 'never raises' claim (F-14 PARTIAL, new finding N-3). Loud failures, no partial output, owner-facing invocation unaffected - non-blocking"
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Fresh-context round-2 auditor: F-12/F-16/F-17 scopes taken from the Lead's own 0278a4d2 commit-message mapping; each verified against the bytes it names, and F-17 is declared moot by the Lead (no residual defect found under independent pass)",
+    "MQL5 compile plausibility is static reasoning only - the remediated EA has NOT been compiled on build 6180; the F7 '0 errors 0 warnings' gate in OWNER_RUN.md step 2 is the authority (watch item: EventSetTimer(MathMax(1, InpSampleSeconds)) could surface a type-conversion warning if this build lacks MathMax's int overload)",
+    "SwapModeText label band 4-9 and TradeModeText SYMBOL-vs-ACCOUNT enum semantics cannot be validated offline against the terminal's served values; verdict inputs are protected by swap_mode_raw but trade_mode has no raw column (new finding N-2, non-blocking)",
+    "Midnight-end session representation to==0 vs 86400 unobservable offline (N-4)"
+  ],
+  "incidents": [],
+  "tree_status": "clean at main 0278a4d2 for all owned paths; only pre-existing untracked .zcode/ (not mine, untouched); audit-only lane - zero commits, zero non-inbox writes; /tmp scratch (a7r2_fixture, a7r2_out.json, a7r2_x.json) deleted",
+  "workers": 0,
+  "outputs": [
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/a7-mt5probe-predeploy-r2.json",
+      "sha256": "b1ac4bb8ff220db0a95241c0bbffada71ad84cd3efaa4d0bbf97abd5776a3cd4"
+    },
+    {
+      "path": "/Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/mt5probe-a7-predeploy-r2-handoff.json",
+      "sha256": "SELF_NOT_EMBEDDED (self-referential; compute at rest)"
+    }
+  ],
+  "recommended_next_action": "AUTHORIZED_WITH_FINDINGS: owner may proceed to F7 compile and, on 0 errors 0 warnings, the 30-minute smoke on OANDA_Global-Demo-1 (step 0 login first - terminal measured on MetaQuotes-Demo; Algo Trading OFF). All 4 round-1 blockers FIXED; F-14 PARTIAL (argv edges, non-blocking); 5 new non-blocking findings (N-1 swap-mode label drift 4-9 vs ABI, mitigated by swap_mode_raw; N-2 MEDIUM: SYMBOL_TRADE_MODE labeled with ACCOUNT enum text - FULL->UNKNOWN, DISABLED->DEMO, no raw column, contract pins same labels; N-3 argv guard; N-4 midnight to==0 edge; N-5 verifier memory at 7-day scale). Optional but cheap before compile: fix N-1/N-2 labels (+ raw trade_mode column -> verifier spec width 27) and N-3 guard, since the EA is not yet compiled; if taken, re-run the r2 fixture check. No scored cells, S1 stays SEALED, A7 alone adjudicates post-collection."
+}
