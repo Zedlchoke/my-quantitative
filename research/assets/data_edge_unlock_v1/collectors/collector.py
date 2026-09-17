@@ -241,11 +241,12 @@ class Collector:
             if rej:
                 self._note_degradation(str(payload.get("feed", "unknown")), rej)
         elif self.venue == "deribit":
-            # Deribit heartbeat protocol, server side (freeze field 6): the
-            # server sends {"method":"test_request"} and DROPS the connection
-            # if the client does not answer public/test (MEASURED at start
-            # 2026-09-17: connections closed every ~61.4s without the reply).
-            if payload.get("method") == "test_request":
+            # Deribit heartbeat keepalive (freeze field 6), MEASURED at start
+            # 2026-09-17: the server sends {"method":"heartbeat"} every 30s
+            # and DROPS the connection at ~60s when the client never answers
+            # with a public/test request (answering only test_request is NOT
+            # enough — no test_request is ever delivered before the drop).
+            if payload.get("method") in ("heartbeat", "test_request"):
                 self._pending_sends.append(
                     {"jsonrpc": "2.0", "id": 902, "method": "public/test", "params": {}}
                 )
