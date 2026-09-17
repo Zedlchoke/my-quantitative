@@ -69,8 +69,10 @@ The forex frontier's standing closures, quoted and adjudicated:
   (AGENTS.md authority order 1) to reopen with a named changed killer
   (§3). This override is DISCLOSED, not silently absorbed; A7 must
   adjudicate its faithfulness (audit item #1).
-- STOCKS-NG6/CRYPTO-NG4 class clauses ("materially new evidenced source or
-  owner plan naming a changed killer"): satisfied on the second branch.
+- Cross-plane analogy (STOCKS-NG6/CRYPTO-NG4 "owner plan naming a changed
+  killer" branches): analogy-only context, NOT an operative reopening
+  authority for the forex plane; the sole operative authority is the
+  disclosed owner-instruction override above.
 - FOREX-INTRA-BIDASK-V1 / FX-FUTURES-FRONTIER-V1 (transport-blocked):
   untouched; this cycle performs ZERO network acquisition of Dukascopy/CME
   data and adjudicates nothing about those estates.
@@ -144,7 +146,14 @@ F2 ENTITLEMENT + TERMS     owner TD entitlement (V8/V9/NG5/NG7 precedent);
                            key environment-only, never echoed.
 F3 CLOCK + EXECUTION       one frozen 16:00-NY daily decision clock; state
                            on completed bar t; entry at bar t+1 open, exit
-                           at bar t+1 close — SINGLE-BAR HOLD LAW (§1);
+                           at bar t+1 close — SINGLE-BAR HOLD LAW (§1).
+                           OPEN-GAP EXCEPTION (frozen HERE, before
+                           scoring): the OPEN-GAP state is formed from
+                           close(t) and open(t+1) — knowable exactly at
+                           bar t+1's open — and its forced fill AT that
+                           same open(t+1) is the ONE declared exception to
+                           the no-same-bar-signal-fill rule (no look-ahead:
+                           the fill price IS the first bookable price);
                            exit mapping frozen before scoring: any exit
                            condition knowable at a bar close executes at
                            the next bar's open under the same convention
@@ -160,8 +169,15 @@ F4 COSTS + FINANCING       costs: conservative 1.5 bps/fill floor band
                            resolution of the NG6/NG7 F4 class, audit item
                            #1): every trade holds exactly one session and
                            is charged exactly one conservative worst-night
-                           band of 1.7 bps (NG7-A4's own worst-differential
-                           arithmetic for NZD-USD, ~5.1 bps over 3 nights),
+                           band of 1.7 bps (derivation: NG7-A4's committed
+                           illustration "~5.1 bps over 3 nights" for
+                           NZD-USD; 5.1/3 = 1.7 — caveats DISCLOSED: a
+                           3-night cumulative average does NOT bound the
+                           single worst night, and NZD-USD-worst is
+                           generalized to all five legs without a per-leg
+                           differential census, none being derivable from
+                           OHLC-only TD; the D1 manifest prints source
+                           bytes, arithmetic and these caveats verbatim),
                            marked STATED-CONSERVATIVE — charged uniformly
                            across legs regardless of sign, so no leg can
                            benefit from an assumed favourable differential;
@@ -216,23 +232,65 @@ families (5)      with FROZEN parameter sub-grids, all parameters declared
                   threshold at {25th, 50th, 75th} percentile of trailing
                   252-bar gap distribution
  4 VOL-DRIFT      realized-vol tercile-conditional 1-session momentum and
-                  reversal, lookback {21, 63}
- 5 CLOCK-COND     day-of-week / month-position conditional drift
-                  (declared EXPECTED-TO-DIE at R5; included so the search
-                  is honest about what the clock explains)
-direction         both directions economically arguable ex ante; sign
-                  carried by R1 per configuration
+                  reversal, lookback {21, 63}; tercile formation CAUSAL,
+                  pinned: estimator = close-to-close log-return std over
+                  the trailing lookback L; boundaries from the TRAILING
+                  252-bar window ending at and including bar t, refreshed
+                  daily, same-bar assignment — NEVER full-sample (look-
+                  ahead class)
+ 5 CLOCK-COND     day-of-week / month-position conditional drift,
+                  ENUMERATED: 5 weekday states + 2 month-position states
+                  (first-half / second-half of month), each in both
+                  directions = 14 configurations (grid total 19 + 14 =
+                  33 <= 80; exact count declared so the frozen DSR N is
+                  unambiguous at freeze time); declared EXPECTED-TO-DIE
+                  at R5; included so the search is honest about what the
+                  clock explains
+direction         the D1 manifest FREEZES each configuration's sign from
+                  the mechanism statement (NG7 F3b pattern); R1
+                  adjudicates the frozen sign and never selects it;
+                  where the mechanism admits both directions they are
+                  enumerated as distinct configurations inside the cap
 holds             ALL configurations single-session (§1 law)
 ```
 
-Selection inside the grid (frozen BEFORE D2, outcome-blind): survivors of
-D2 are ranked by (i) ancestry-distance tier (min measured |rho|
-descending, applied mechanically), then (ii) P0 fired-population size
-descending, then (iii) lexicographic config ID; the top <= 3 become scored
-candidates. NO return, expectancy, PF, Sharpe or any performance statistic
-may be computed for ANY configuration before the S freeze; a
-performance-based narrowing at any point consumes scored cells for
-everything narrowed-on and is a BLOCKED_METHOD_CONTRACT incident.
+Selection inside the grid (frozen BEFORE D2, outcome-blind; every
+statistic consumed below is a D2 ancestry/census measurement, never a
+performance statistic). Definitions, pinned: for each configuration c,
+W_c = max over ALL frozen R0 shadows s of max( max over the five legs L
+of |rho_L(c, s)|, |rho_pooled(c, s)| ) on the P-12 daily
+position-series x log-return representation (the R0 law's per-leg AND
+pooled requirement; per-fold rhos computed and REPORTED as disclosure
+only, never gating). Family tier value T_F = min over the family's
+D2-surviving configurations of W_c (the family's best-case distance from
+lethal ancestry). Ranking, applied mechanically: (i) families ASCENDING
+by T_F — most novel first (rationale: the scored budget goes to the
+greatest ancestry distance, the direction the novelty doctrine
+requires); (ii) within a family, configurations ascending by W_c,
+tie-break lexicographic config ID; (iii) selection is FAMILY-STRATIFIED
+round-robin over the tier-ordered families — one configuration per
+family per round, at most 2 scored cells per family, until 3 cells are
+filled. P-20 books-distinct at S: a candidate whose pooled |rho| vs any
+higher-ranked already-selected candidate exceeds 0.98 is SELF-SUBSUMED,
+skipped, and the next candidate by the frozen order is taken; an
+unmeasurable pairwise rho makes the slot NOT_ADJUDICABLE, fail-closed —
+never an inferred PASS. The corrected order carries VERBATIM into the D1
+manifest freeze. NO return, expectancy, PF, Sharpe or any performance
+statistic may be computed for ANY configuration before the S freeze (the
+§7 D2 ancestry rho, feasibility floors and fired censuses are NON-SCORED
+diagnostics explicitly carved out of this ban); a performance-based
+narrowing at any point consumes scored cells for everything narrowed-on
+and is a BLOCKED_METHOD_CONTRACT incident.
+
+The hashed manifest is REQUIRED to contain, fail-closed (a missing field
+is a D1 freeze failure): per-configuration full construction definitions
+incl. sign as frozen from the mechanism statement (§5 direction rule);
+the VOL-DRIFT tercile formation rule (§5); the OPEN-GAP state timing
+exception (§4 F3); each family's CTL-COMPLEMENT and trend-only (R4) book
+definitions; the per-state per-fold population floor value (§6 R2); the
+warmup rule (§8); the CLOCK-COND enumeration with exact count (the
+frozen DSR N must be unambiguous at freeze time); and the §4 F4
+financing derivation printed verbatim with its caveats.
 
 ## 6. Mandatory controls and killers
 
@@ -280,15 +338,25 @@ R0  pre-score ancestry veto   per-leg AND pooled |rho| > 0.30
 R1  expectancy                fin-adj net expectancy <= 0 at stress 2.0
                               -> REJECT_ALL
 R2  robustness                PF < 1.10 OR fold positivity fails OR the
-                              frozen per-state per-fold population floor
-                              fails (S2 class)
+                              per-state per-fold population floor fails —
+                              floor VALUE frozen HERE: >= 10 fired
+                              decisions per state per fold, pinned in the
+                              D1 hashed manifest BEFORE any D2 measurement
+                              (S2 class)
 R3  mechanism specificity     CTL-COMPLEMENT out-earns or matches the
                               candidate (tie kills; self-failing complement
                               still kills — V15 precedent; degenerate
                               sub-floor complement is R3 NOT_RUN both ways,
                               never an inferred PASS)
-R4  trend/vol reduction       VOL-REGIME or trend-only book reproduces
-                              >= 0.5x same-sign >= 2/3 folds -> REJECT
+R4  trend/vol reduction       VOL-REGIME or the family's trend-only book
+                              (declared per family in the D1 manifest:
+                              the conditioning-variable-only book — state
+                              variable traded WITHOUT the trigger/
+                              direction component) reproduces >= 0.5x
+                              same-sign >= 2/3 folds -> REJECT; where a
+                              family admits no such analog, R4 is
+                              NOT_ADJUDICABLE for that family, disclosed,
+                              never an inferred PASS
 R5  clock geometry            CLOCK-ONLY out-earns, OR the FIRED CENSUS
                               breaches the pre-pinned max weekday share
                               floor of 0.35 (frozen HERE before any census
@@ -313,7 +381,18 @@ Plus the frozen forex Stage-A gates on any survivor (UNCHANGED, §3):
 fold-positive-share, concentration, MDD, stress margin, drop-one,
 per-period series persisted (P-11) for DSR with N = frozen grid size at
 alpha 0.10 (owner-relaxed) AND program-cumulative ~260 at alpha 0.05
-(reported, not gating); PBO fail-closed < 8 configurations.
+(reported, not gating). P-20 books-distinct at S: a scored candidate
+whose position-series |rho| vs any higher-ranked already-selected
+candidate exceeds 0.98 is SELF-SUBSUMED, skipped, next-in-order taken;
+unmeasurable = NOT_ADJUDICABLE, fail-closed. PBO disposition, prewritten
+for the <=3-cell regime (the frozen V17/FOREX-NG1 alternative, commit
+d0992d17; CRYPTO-V14/FOREX-FREE-V8 lineage): CSCV PBO requires >= 8
+performance-evaluated configurations — §5's freeze plus this cycle's
+3-cell budget make that unreachable BY CONSTRUCTION, so PBO is NOT_RUN,
+declared fail-closed and printed on every result; a survivor with PBO
+NOT_RUN is bookable ONLY with the NOT_RUN label carried into the
+terminal outcome name and the §10 result language; no performance may be
+computed for PBO outside the <=3 scored cells (a §5 tripwire).
 
 ## 7. D2 ancestry and feasibility gate (non-scored)
 
@@ -328,8 +407,10 @@ configuration survives: selection empty -> close at 0/3.
 ## 8. Trading, costs and risk contract
 
 ```text
-decision        frozen 16:00-NY daily clock; warmup 60 bars; first
-                decision bar 61
+decision        frozen 16:00-NY daily clock; warmup = max(60, family max
+                lookback) completed bars (64 for the 63-lookback
+                VOL-DRIFT configs), first decision bar = warmup + 1,
+                pinned per family in the D1 manifest
 entry/exit      bar t+1 open -> bar t+1 close (single session, §1 law);
                 force-flat at fold boundary by construction
 universe        five TD majors (EURUSD, GBPUSD, USDCAD, AUDUSD, NZDUSD);
