@@ -19,10 +19,22 @@
   },
   "collected_fields": {
     "per_tick_sample": ["recv_utc (TimeGMT, 1s granularity)", "symbol", "bid", "ask", "spread_points (platform-served SYMBOL_SPREAD)", "spread_computed (ask-bid in points)", "spread_pips", "digits", "venue_time_msc (tick.time_msc)", "trade_server_time"],
-    "per_symbol_static_spec_snapshot": ["digits", "point", "trade_tick_size", "trade_tick_value", "trade_contract_size", "volume_min", "volume_max", "volume_step", "spread (current points)", "swap_mode (enum text)", "swap_long", "swap_short", "swap_rollover3days (weekday name)", "trade_mode", "trade_sessions per weekday (start-end server-time HH:MM, all sessions enumerated)"],
-    "per_row_account_context": ["account_company", "account_server", "account_trade_mode (DEMO/CONTEST/REAL text)", "account_currency", "terminal_trade_allowed_flag (report-only)", "login REDACTED_BY_CONTRACT"],
-    "heartbeat": ["recv_utc", "terminal_connected", "symbols_ok", "symbols_stale", "rows_written_total", "parse_errors_total"],
-    "events": ["startup", "gap (missing = missing, on disconnect/reconnect)", "shutdown with final stats"]
+    "per_symbol_static_spec_snapshot": ["digits", "point", "trade_tick_size", "trade_tick_value", "trade_contract_size", "volume_min", "volume_max", "volume_step", "spread (current points)", "swap_mode_text (numeric-mapped label)", "swap_mode_raw (raw integer as served - A7 F-01/F-02 remediation)", "trade_mode (DEMO/CONTEST/REAL text from SYMBOL_TRADE_MODE - A7 F-04 remediation)", "swap_long", "swap_short", "swap_rollover3days (weekday name)", "trade_sessions per weekday (start-end server-time HH:MM, all sessions enumerated, midnight end rendered 24:00)"],
+    "per_row_account_context": ["account_company", "account_server", "account_trade_mode (DEMO/CONTEST/REAL text)", "account_currency", "login REDACTED_LOGIN_BY_CONTRACT (exact token, A7 F-11)", "terminal_trade_allowed_flag (report-only)", "terminal_connected_flag"],
+    "heartbeat": ["recv_utc", "terminal_connected", "symbols_ok", "symbols_stale", "rows_written_total", "file_errors_total", "tick_errors_total", "+ account context (7) = 14 fields"],
+    "events": ["startup", "gap (ONE event per disconnect episode, A7 F-06)", "reconnect", "shutdown with final stats"]
+  },
+  "amendment_1": {
+    "amended_utc": "2026-09-17T05:05:00Z",
+    "trigger": "A7 pre-deployment audit round 1 REFUSED (17 findings; 4 blocking) at main 2d3a37c6 - no data has been collected, so field-list and wording corrections are pre-observation and lawful; ALL floors (smoke criteria, 7-day window, F1-F5 thresholds) are UNCHANGED",
+    "changes": [
+      "spec snapshot: added swap_mode_raw (integer) and trade_mode columns; numeric-mapped swap-mode labels (the build's SDK lacks some named constants)",
+      "redaction token fixed to the exact string REDACTED_LOGIN_BY_CONTRACT everywhere",
+      "heartbeat column list corrected to 7 data + 7 context = 14 fields (file_errors and tick_errors are separate counters)",
+      "F-08: smoke-pass adjudicator named - the Lead runs verify_probe.py and records the criteria outputs as verdict inputs; A7 reviews them at the post-collection audit",
+      "F-09: F1 exclusion window pinned to 21:55-22:05 UTC daily (server rollover/maintenance) - any other absence counts against the 95% presence floor",
+      "F-10: F2 London/NY overlap pinned to 13:00-16:00 UTC year-round (conservative core overlap, DST-independent)"
+    ]
   },
   "preregistration_frozen_before_any_observation": {
     "smoke_test": {

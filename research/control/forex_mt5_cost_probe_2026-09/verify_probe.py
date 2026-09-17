@@ -24,10 +24,12 @@ BUCKET_SECONDS = 300          # 5-minute buckets (contract F1)
 PRESENCE_FLOOR = 0.95         # contract F1
 # minimum expected fields per row (tick/heartbeat/spec rows carry a 7-field
 # account-context tail; csv module handles the quoted fields)
+# tick: 10 data + 7 context = 17 | heartbeat: 7 + 7 = 14
+# spec: 19 data + 7 context = 26 | events: 3 + 7 = 10
 MIN_COLUMNS = {
     "tick_samples.csv": 17,
-    "heartbeat.csv": 13,
-    "spec_snapshot.csv": 28,
+    "heartbeat.csv": 14,
+    "spec_snapshot.csv": 26,
     "events.csv": 10,
 }
 
@@ -44,13 +46,18 @@ def parse_utc(s: str) -> datetime:
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
+def argval(flag: str):
+    """--flag value extractor that never raises (A7 F-14)."""
+    return sys.argv[sys.argv.index(flag) + 1] if flag in sys.argv else None
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print(__doc__)
         return 2
     root = Path(sys.argv[1]).expanduser().resolve()
-    window_days = int(sys.argv[sys.argv.index("--window-days") + 1]) if "--window-days" in sys.argv else 7
-    out_path = Path(sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else root / "verdict_inputs.json"
+    window_days = int(argval("--window-days") or 7)
+    out_path = Path(argval("--out") or (root / "verdict_inputs.json"))
 
     inputs = {
         "schema": "forex_mt5_cost_probe_verdict_inputs@1",
@@ -67,12 +74,13 @@ def main() -> int:
     }
 
     # ---- files + parse validation (csv-aware, quoted fields OK) ----
+    raw_lines = {}  # raw text per valid row for spec/events hashing (A7 F-15)
     for name, mincols in MIN_COLUMNS.items():
         p = root / name
         if not p.exists():
             inputs["files"][name] = {"present": False}
             continue
-        rows, bad, widths = [], 0, set()
+        rows, raws, bad, widths = [], [], 0, set()
         for ln in p.read_text(encoding="utf-8", errors="replace").splitlines():
             if not ln.strip():
                 continue
@@ -80,6 +88,7 @@ def main() -> int:
             widths.add(len(parts))
             if len(parts) >= mincols:
                 rows.append(parts)
+                raws.append(ln)
             else:
                 bad += 1
         inputs["files"][name] = {
@@ -91,6 +100,8 @@ def main() -> int:
             "minimum_expected_fields": mincols,
         }
         inputs["parse"][name] = rows
+        if name in ("spec_snapshot.csv", "events.csv"):
+            raw_lines[name] = raws
 
     if not (root / "tick_samples.csv").exists():
         out_path.write_text(json.dumps(inputs, indent=1))
@@ -138,11 +149,12 @@ def main() -> int:
             "F3_rollover_note": "20:55-01:05 UTC window sampling checked by A7 from tick rows",
         }
 
-    # ---- spec snapshots: hash each (kind, symbol) snapshot block ----
+    # ---- spec snapshots: sha256 over the RAW csv lines (never re-serialized) ----
     specs = inputs["parse"].get("spec_snapshot.csv", [])
+    raws = raw_lines.get("spec_snapshot.csv", [])
     blocks = defaultdict(list)
-    for r in specs:
-        blocks[(r[1], r[2])].append(",".join(r))
+    for raw, r in zip(raws, specs):
+        blocks[(r[1], r[2])].append(raw)
     inputs["spec_snapshots"] = {
         f"{kind}/{sym}": hashlib.sha256("\n".join(rows).encode()).hexdigest()
         for (kind, sym), rows in sorted(blocks.items())
@@ -151,15 +163,22 @@ def main() -> int:
     inputs["spec_snapshots"]["all_expected_symbols_present"] = sorted(syms) == sorted(EXPECTED_SYMBOLS)
 
     # ---- heartbeat summary (columns: 0 recv, 1 connected, 2 ok, 3 stale,
-    # 4 rows_total, 5 parse_errors, then context: 6 company, 7 server,
-    # 8 trade_mode, 9 currency, 10 login-redacted, 11 trade_allowed, 12 connected2) ----
+    # 4 rows_total, 5 file_errors, 6 tick_errors, then context: 7 company,
+    # 8 server, 9 trade_mode, 10 currency, 11 login-redacted, 12 trade_allowed,
+    # 13 connected2) ----
     beats = inputs["parse"].get("heartbeat.csv", [])
     if beats:
+        def _int(r, i):
+            try:
+                return int(r[i])
+            except (ValueError, IndexError):
+                return -1
         inputs["heartbeat_summary"] = {
             "rows": len(beats),
-            "trade_allowed_flag_values_seen": sorted({r[11] for r in beats if len(r) > 11}),
+            "trade_allowed_flag_values_seen": sorted({r[12] for r in beats if len(r) > 12}),
             "connected_values_seen": sorted({r[1] for r in beats}),
-            "parse_errors_max": max(int(r[5]) for r in beats),
+            "file_errors_max": max(_int(r, 5) for r in beats),
+            "tick_errors_max": max(_int(r, 6) for r in beats),
         }
 
     # ---- commission inputs (from the events/startup rows only; never a verdict) ----
