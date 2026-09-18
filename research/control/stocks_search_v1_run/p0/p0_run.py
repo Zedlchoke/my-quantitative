@@ -290,17 +290,52 @@ def run_full() -> int:
     sys.path.insert(0, str(WT))  # research.governance lives at the worktree root
     from research.governance import heavy_lock
     lock_cmd = [sys.executable, str(Path(__file__).resolve())]
-    with heavy_lock.acquire(
-        cycle_id=L.CYCLE_ID,
-        role="P0_SOURCE_CENSUS_HEAVY",
-        worktree=str(WT),
-        command=lock_cmd,
-        expected_artifacts=[
-            str(HERE / "p0_gate.json"),
-            str(HERE / "fold_freeze.json"),
-            str(HERE / "retrieval_manifest.json"),
-        ],
-    ) as hb:
+    try:
+        hb_ctx = heavy_lock.acquire(
+            cycle_id=L.CYCLE_ID,
+            role="P0_SOURCE_CENSUS_HEAVY",
+            worktree=str(WT),
+            command=lock_cmd,
+            expected_artifacts=[
+                str(HERE / "p0_gate.json"),
+                str(HERE / "fold_freeze.json"),
+                str(HERE / "retrieval_manifest.json"),
+            ],
+        )
+    except heavy_lock.LockBusyError as exc:
+        # r2: record NOT_RUN_RESOURCE_CONFLICT honestly instead of crashing
+        # with a traceback; a foreign worker is NEVER disturbed.
+        log(f"NOT_RUN_RESOURCE_CONFLICT: {redact(str(exc))[:300]}")
+        law_map = {
+            "F1": "P-25 three-layer gate (reachable/permitted/served) FIRST",
+            "F2": "canaries + double-pull byte-identity + sha256 pins + "
+                  "never-existed 404 + full-cohort retrieval completeness",
+            "F3": "adjusted (total-return) series is THE single representation",
+            "F4": "death-inclusive cohort + served-session census + floors",
+            "F5": "one frozen daily decision clock; DST fixtures",
+            "F6": "band schedule A:10/B:15/C:25 bps on ADV {50M,10M,2M}",
+            "F7": "SPY adjusted series acquired + pinned",
+            "F8": "folds frozen before census; per-config per-fold fired "
+                  "census; floor >= 30 bookable fired decisions/fold",
+            "F9": "census code, manifests, contracts and freezes committed; "
+                  "detached rerun reproduces",
+        }
+        gates = {gid: L.verdict_row(
+            "NOT_RUN", law,
+            {"blocked_by": "machine-wide heavy lock held "
+                           "(NOT_RUN_RESOURCE_CONFLICT)", "fail_closed": True})
+            for gid, law in law_map.items()}
+        body = L.assemble_gate(gates)
+        body["overall_verdict"] = "NOT_RUN_RESOURCE_CONFLICT"
+        body["outcome"] = None
+        body["lock_detail"] = redact(str(exc))[:300]
+        body["measured_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                                                time.gmtime())
+        body["worktree_head_at_measurement"] = git_head()
+        (HERE / "p0_gate.json").write_text(
+            json.dumps(body, indent=1, sort_keys=True) + "\n")
+        return 1
+    with hb_ctx as hb:
         try:
             return _run_locked(hb, key, extra)
         except Exception as exc:  # noqa: BLE001 - honest blocker verdict

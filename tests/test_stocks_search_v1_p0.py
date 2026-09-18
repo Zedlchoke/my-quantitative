@@ -200,6 +200,25 @@ def test_52w_high_bands():
     assert d5["outside_band"] == 0
 
 
+def test_52w_high_zero_high_never_crashes_and_never_fires():
+    """Real-data regression (r2, disclosed): zero-priced OTC shells carry a
+    252-session adjusted high of exactly 0.0 — proximity is UNDEFINED there,
+    the state NEVER fires, the bar is censused (history_undefined); r1
+    crashed with ZeroDivisionError on this input."""
+    n = 300
+    cl = np.zeros(n)
+    o = np.zeros(n)
+    h = np.zeros(n)
+    lo = np.zeros(n)
+    v = np.full(n, 1e6)
+    c = cfg("SSS-52W-HIGH-B2-H5")
+    fired, book, drops = L.run_config_census(c, o, h, lo, cl, v)
+    assert int(fired.sum()) == 0
+    assert not book.any()
+    assert drops["history_undefined"] == n - 252
+    assert drops["outside_band"] == 0
+
+
 def test_dvol_shock_direction_needs_price_side():
     n = 80
     o, h, lo, cl, v = flat_series(n)

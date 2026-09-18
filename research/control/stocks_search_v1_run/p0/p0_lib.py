@@ -364,10 +364,19 @@ def census_52w_high(adj_close, volume, band_pct: int,
         return fired, np.zeros(n, dtype=bool), drops
     high = _rolling_max(adj_close, 252)
     for i in range(first_i, n):
-        if not np.isfinite(high[i]):
+        hi = float(high[i])
+        if not np.isfinite(hi):
             drops["history_undefined"] += 1
             continue
-        prox = (float(high[i]) - float(adj_close[i])) / float(high[i])
+        if not hi > 0.0:
+            # r2 fix (real-data defect, disclosed): zero-priced OTC shells
+            # carry a 252-session high of exactly 0.0 — proximity is
+            # UNDEFINED there; the state NEVER fires and the bar is
+            # censused (same fail-closed family as the zero-range law).
+            # r1 crashed with ZeroDivisionError on this input.
+            drops["history_undefined"] += 1
+            continue
+        prox = (hi - float(adj_close[i])) / hi
         if prox <= band_pct / 100.0:
             fired[i] = True
         else:
