@@ -13,6 +13,11 @@ fxf-a3, fxf-a4, fxf-a5, fxf-a6                       (FX-FUTURES-FRONTIER-V1,
   MOOT undispatched")
 deu-a7-cycle-audit                                    (DATA-EDGE-UNLOCK-V1,
   TERMINAL — already disclosed as INC-DEU-1 stale store row at its close)
+fsearch-r-2                                           (FOREX-SEARCH-V1,
+  TERMINAL REJECT_ALL 2a6f59c6 — R reproduction WAIVED by explicit owner
+  instruction 2026-09-18; lane was DISPATCHED and polling for the heavy
+  lock when stopped, held nothing, disturbed no worker; DISPATCHED ->
+  TECHABORT refused by the store API same as the REGISTERED rows above)
 ```
 
 Facts measured this session:
