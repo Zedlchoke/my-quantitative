@@ -1,0 +1,57 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "fsearch-r",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "real_cycle": "FOREX-SEARCH-V1",
+ "role": "quant-reproducer",
+ "lane": "fsearch-r",
+ "dispatch_sha": "c2f23b32281d45e7c2d042ac25f21491a2223e56",
+ "actual_start_sha": "c2f23b32281d45e7c2d042ac25f21491a2223e56",
+ "commit_sha": null,
+ "detached_tree": "/tmp/fsearch_r_repro",
+ "changed_paths": ["repro/"],
+ "outputs": {
+   "reproduction_verdict": "NOT_RUN",
+   "verdict_basis": "The decisive comparison (regenerated scored pipeline vs committed E artifacts) did NOT run: the machine-wide heavy lock was held continuously by a foreign worker for the entire dispatch window. All lock-free integrity items that WERE measured matched. No verdict was emitted for anything unrun.",
+   "compared_fields": [
+     "frozen_sha_detached_tree_head_and_cleanliness: ALL_MATCH",
+     "committed_E_artifacts_byte_intact_in_detached_tree: ALL_MATCH",
+     "staging_input_integrity_vs_pin_and_SHA256SUMS: ALL_MATCH",
+     "frozen_engine_and_input_bytes_identical_across_c2f23b32_and_d4350dcd: ALL_MATCH",
+     "environment_identity_python_numpy_platform: ALL_MATCH",
+     "frozen_runner_invocable_fail_closed_under_lock_conflict: ALL_MATCH",
+     "pipeline_rerun_end_to_end: NOT_RUN",
+     "per_arm_verdicts_R1_kill_traces: NOT_RUN",
+     "financed_expectancy_stress2 (-9.40/-9.86/-9.56): NOT_RUN",
+     "price_only_expectancy_stress2 (-6.00/-6.46/-6.15): NOT_RUN",
+     "profit_factors_price_and_financed: NOT_RUN",
+     "positions_digests 85c8f875/57eed8b9/7eee7cf0: NOT_RUN",
+     "trade_counts 12330/20992/11488: NOT_RUN",
+     "p20_matrix_recheck: NOT_RUN",
+     "budget_counter_3_of_3: NOT_RUN",
+     "terminal_outcome_FOREX_SEARCH_V1_REJECT_ALL: NOT_RUN",
+     "p11_series_byte_compare: NOT_RUN"
+   ],
+   "mismatch_details": [],
+   "report_path": "/tmp/fsearch_r_repro/repro/reproduction_report.json"
+ },
+ "tests": {
+   "staging_preverify": "PASS - 7/7 tarballs match manifest_pin.json AND SHA256SUMS.txt; 9/9 members (4x v9, 4x ng1_spot_ctl copies, 1x ng4_ez) match pin AND plan-frozen prefixes; ng1 copy byte-identity true for all 4 legs; fresh extraction at /tmp/fsearch_r_repro_staging (repro/staging_preverify.json)",
+   "engine_byte_identity": "i_engine.py, adjudicate.py, p0_census.py, governance/heavy_lock.py, manifest_pin.json, folds_freeze.json, selection_freeze.json sha256-identical between c2f23b32 (detached) and d4350dcd (clone); git diff d4350dcd..c2f23b32 touches ONLY e/ artifacts + runner + one handoff",
+   "committed_artifact_integrity": "detached e/e_run_verdict.json sha256 ca4658d2962686026f4faa9de11a47615b4a0a59fc8d0139193b0837c55b3576 == the sha the committed e_run_log.json recorded at verdict_written",
+   "environment": "python 3.12.14 / numpy 2.5.2 / macOS-15.4.1-arm64-arm-64bit - identical to the E run's recorded environment",
+   "runner_fail_closed": "attempt 1 of the UNMODIFIED frozen runner preflighted PASS (on the d4350dcd clone), polled the heavy lock its frozen 300s/60s, stopped NOT_RUN_RESOURCE_CONFLICT exit 3, wrote nothing (repro/run_stdout.json)"
+ },
+ "authority_claims": [],
+ "known_limitations": [
+   "The frozen runner hardcodes WT to the live integration worktree for its preflight (demands HEAD == d4350dcd; the worktree is now at c2f23b32) AND for outputs, and its finally-block persists e_run_log.json there even on preflight failure - a raw run today would overwrite committed frozen evidence; no env var or invocation flag exists. Reproduction therefore used runtime module-attribute path redirections ONLY (the runner's own sanctioned no-edit pattern for p0_census.STAGING), fully ledgered in repro/invocation_redirects.json: run_e_scored.{WT,RUN,E_DIR,I_DIR,GOV_DIR} -> /tmp/fsearch_r_d4350 (clone at d4350dcd, genuinely satisfying the frozen preflight), i_engine.{P0_DIR,S_DIR} -> detached tree. Zero frozen-file edits; the detached tree stayed read-only (untracked repro/ only).",
+   "The scored re-run itself never started (stops at the heavy lock before staging extraction), so no regenerated artifact exists and no numeric comparison was performed."
+ ],
+ "incidents": [
+   {"code": "NOT_RUN_RESOURCE_CONFLICT",
+    "detail": "machine-wide heavy lock held by STOCKS-SEARCH-V1/P0_SOURCE_CENSUS_HEAVY pid 63489 (started 2026-09-18T01:24:00Z, healthy heartbeats, census_names_done 6345->84020 during the window) from before attempt 1 (01:14Z) to finalization (04:35Z); frozen runner polled 300s per its own law, outer poll campaign re-inspected every 85s across 14 windows; foreign worker never disturbed, never killed"}
+ ],
+ "tree_status": "detached tree /tmp/fsearch_r_repro at c2f23b32281d45e7c2d042ac25f21491a2223e56, clean except untracked repro/ (driver, comparator, preverify, redirect ledger, report, poll wrapper); no frozen file touched anywhere; integration worktree untouched; outputs/clone at /tmp/fsearch_r_d4350 (d4350dcd) and staging extract /tmp/fsearch_r_repro_staging left in place",
+ "workers": {"heavy_lock": "HELD_PROVEN by STOCKS-SEARCH-V1/P0_SOURCE_CENSUS_HEAVY pid 63489 at finalization; untouched by this lane"},
+ "recommended_next_action": "Re-dispatch fsearch-r (or resume this lane) once the STOCKS-SEARCH-V1 P0 census releases the heavy lock: the d4350dcd clone, driver (repro/run_repro.py), comparator (repro/compare_repro.py) and poll wrapper (repro/wait_and_run.sh) are ready and proven, so the end-to-end rerun plus full field/byte comparison needs roughly 2 minutes of lock time; then integrate reproduction_report.json into the cycle evidence."
+}
