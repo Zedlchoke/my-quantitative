@@ -1,0 +1,136 @@
+{
+ "schema": "a7_prelaunch_audit@1",
+ "cycle_id": "STOCKS-SEARCH-V1",
+ "store_cycle_label": "ZCODE-ORCHESTRATION-V3",
+ "task_id": "ssearch-a7-prelaunch",
+ "role": "quant-auditor (fresh context, adversarial, audit-only)",
+ "base_sha": "8d8e6cf2c18d85a88536ea0c61809f0933905769",
+ "branch": "orca/stocks-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "audited_at_utc": "2026-09-19",
+ "worktree_state_at_audit": "HEAD 8d8e6cf2c18d85a88536ea0c61809f0933905769 verified; git status --porcelain empty; all chain artifacts on-disk match the committed state",
+ "verdict": "BLOCKED_PRELAUNCH",
+ "verdict_basis": "Exactly one unresolved HIGH finding (F-1): the dispatch governance frame requires verify_positions-style freeze preconditions to gate the scored E run, but the stocks chain contains no such preflight, and the dispatch itself cites the sibling FOREX-SEARCH-V1 cycle's positions digests (85c8f875/57eed8b9/7eee7cf0), which do not exist anywhere in this chain. Per the audit rule (BLOCKED iff any unresolved HIGH/CRITICAL) the cycle is NOT ready for the owner GO gate. All other checks of the frozen chain verified clean; remediation is narrow and a delta re-audit would be cheap.",
+ "go_phrase_referred_to": "GO STOCKS SEARCH V1 SCORED EXECUTION",
+ "budget_state": "0/3 scored cells consumed; no scored execution exists anywhere in the audited chain (verified: Z dry_run_report.scored=false; all verdicts in artifacts are census counts or synthetic-verdicts)",
+ "findings": [
+  {
+   "id": "F-1",
+   "severity": "HIGH",
+   "section": "Governance / scored-path data-plane identity (dispatch governance item: verify_positions-style freeze preconditions must gate the E run)",
+   "evidence": "(a) The dispatch names positions digests 85c8f875/57eed8b9/7eee7cf0 'from the S freeze'; grep over the entire stocks_search_v1_run tree and the worktree tests finds zero occurrences; those digests are the FOREX-SEARCH-V1 S-freeze digests (they appear in /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/fsearch-a7-prelaunch-r2-handoff.json and in a7_prelaunch_forex_search_v1_r2.json condition C-2). (b) The stocks S freeze does carry its own per-cell digests: arm_identity_sha256 d60cf26d.../6ccb3fa5.../f41e94a3... (gated) and pooled_series_stats.series_sha256 6fd58cc9.../495d9bca.../f55a14ba... (NOT gated anywhere). (c) i/i_engine.py verify_freeze() (lines 148-174) checks only the S-freeze file sha, status, arm identities, params and family; i/adjudicate.py load_real_data() (lines 563-607) takes cache_dir and retrieval_manifest_path as CALLER ARGUMENTS and verifies neither the committed retrieval_manifest.json sha (2c4283c2..., pinned in s/selection_freeze.json data_manifests_sha256 — verified 10/10 on disk by this audit) nor recomputed fired/bookable counts against the frozen p0_census.json rows, nor any positions/series digest. (d) The sibling FOREX cycle had verify_positions_vs_freeze() in code at its A7 (research/control/forex_search_v1_run/i/i_engine.py line 211, INPUT_MISMATCH fail-closed) and its AUTHORIZED_PRELAUNCH merely conditioned that it RUN AND PASS at E; the stocks chain has no analogous function to run.",
+   "why": "The scored E run is the irreversible budget-consuming step on the real 111,322-symbol plane. The data plane is live gitignored bytes under p0/raw/eod_cache; the vendor's living symbol list demonstrably drifted within hours during P0 (51,129 -> 51,131 between retrieval passes, run_log_r2.txt) and EODHD backfill/revision is documented in f9_artifact_digests.json's own raw_data_note. Without a load-time preflight binding the loaded plane to the frozen census (retrieval-manifest sha pin, per-cell census cross-check, and/or positions-series digest verification against the S freeze), a drifted cache would flow straight into scored numbers that reconcile with nothing, discoverable only post-hoc in phase R — after the budget is spent. The owner would be asked to type GO under the belief that a verify_positions-style control gates the run; no such control can fire. Under the mission invariant (identity must reconcile; missing evidence is NOT_RUN, never an inferred PASS) this is an unresolved HIGH on the scored path.",
+   "required_remediation": "Before the owner GO gate re-opens: implement, inside the sanctioned scored path (load_real_data or a dedicated preflight function it invokes), a fail-closed INPUT_MISMATCH preflight that (i) pins the retrieval manifest by sha256 against s/selection_freeze.json data_manifests_sha256, (ii) re-verifies the per-cell frozen preconditions using THIS chain's digests (arm_identity_sha256 x3 and the pooled position-count series digests 6fd58cc9.../495d9bca.../f55a14ba... from selection_freeze.json pooled_series_stats, rebuilt at load and compared), and (iii) cross-checks computed per-fold fired/bookable counts against the frozen p0_census.json rows for the 3 cells. Correct all dispatch/GO documentation to cite the stocks digests, not the forex ones. Then re-audit (delta scope sufficient)."
+  },
+  {
+   "id": "F-2",
+   "severity": "MEDIUM",
+   "section": "M0 gate count: plan text vs delivered lineage (plan §9 vs m0/)",
+   "evidence": "plans/PLAN_stocks_search_v1.md §9 requires 'methodology golden suite (G1–G10 + G4N = 11/11, NG5/NG6 lineage) re-inherited BYTE-EXACT ... PASS required before D1'. The delivered m0_verdict.json records 10 PASS lines and 'M0 PASS (10 gates)'; test_m0_golden.py contains G1-G10 only (grep G4N = 0 hits). Byte-exactness VERIFIED: all five m0/ files (m0_verdict b642da13..., test_m0_golden ba3991bd..., m0_contract dad5de33..., contract_frozen 8b5ee44b..., run_m0 c9f5f9aa...) are sha-identical to forex_ng6_run/m0 at /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng6/integration — and NG6's own suite likewise contains no G4N. Commit ce057f39 discloses '10/10 gates PASS' and the FOREX-NG6 lineage label but does not reconcile the plan's 11/11 text.",
+   "why": "An authority-ordered plan gate (11/11) and the delivered, disclosed 10/10 verdict disagree; the plan text is internally strained (a byte-exact re-inheritance of the NG6 machinery cannot simultaneously be 11/11 since NG6's suite has no G4N). The protective value of G4N (negative control: payoff-contaminated verdict variant must FAIL the fixture) is partially duplicated by G8 ('frozen contract refuses tampering'), and the scored path is separately guarded by the I-lane 44-test battery and the Z leak scan, so no new integrity hole is created — but an unadjudicated plan-vs-artifact gate drift cannot stand at a GO boundary.",
+   "required_remediation": "Record an explicit adjudication: either a one-line plan erratum (the NG6 lineage suite is G1-G10 = 10 gates; '11/11' was inherited text erroring on the lineage's own content) or an owner-approved waiver; M0 machinery itself must NOT be modified (byte-exact lineage is the property that verifies)."
+  },
+  {
+   "id": "F-3",
+   "severity": "MEDIUM",
+   "section": "C-PIT-MUTATION structural expectation on persistent-state cells (adjudication of the disclosed handling)",
+   "evidence": "i_engine.pit_mutation_gate/pit_gate_core (lines 852-891): mutated(t) = state(t-1); PASS requires changed_or_refused == fired on EVERY fired decision. The three selected cells are high-persistence books: P0 census fired_day_share for 52W-HIGH-B10 is 0.576-0.715, GAP-P25-CONFIRM F1 fires ~74.8% of eligible name-sessions (23,665,926/30,633,726... config-level census), and VOL-REGIME terciles are persistent. For such states state(t-1) is usually also fired, so the gate is structurally expected to FAIL all three cells at E — the I handoff (ssearch-i-handoff.json known_limitations and i_engine.py docstring) discloses exactly this ('structurally fails persistent/consecutive-firing states such as 52W-HIGH on real data; the E adjudication will surface that honestly').",
+   "why": "Adjudication: the handling is integrity-preserving — the gate is applied verbatim, the failure direction is conservative (kills, never books), and genuine lookahead protection does not rest on this control (the Z dynamic battery D1 taint invariance 160/160, D2 doctored-future-bar with positive controls, D3 t+1-open proof, D5 no-same-bar-fill all PASS structurally). But the practical consequence must be visible before GO: the realistic terminal outcome of consuming the 3-cell budget is REJECT_ALL / STAGE_A_FAIL driven by a control whose failure mode is persistence, not evidence — the owner must authorize WITH that expectation, not discover it after the budget is spent. A FAIL-vs-NOT_ADJUDICABLE labeling choice (plan's disposition rule could read an invalid null for persistent states) does not change the non-bookable outcome; code is fail-closed under both readings.",
+   "required_remediation": "No code change. Carry an explicit owner-informed condition into GO: C-PIT-MUTATION is expected to structurally fail persistent-state cells; E budget may be consumed confirming structural kills; no post-hoc weakening or re-labeling of the gate is permitted in-cycle."
+  },
+  {
+   "id": "F-4",
+   "severity": "MEDIUM",
+   "section": "Retrieval completeness evidence quality (p0/retrieval_manifest.json)",
+   "evidence": "Final-pass retrieval_meta records n_empty_or_no_series: 0, but p0_run.py pull_one() returns {cached: true, rows: None} for any pre-existing cache file and n_empty counts only rows==0 among FRESH pulls — so pass-3's zero is a counting artifact. The true zero-served count is 7,476 names (p0_census_cohort.json.gz served==0; 26,684 names <253 served sessions), matching heavy_pass counters (names_served0=7,476). The dangerous failure mode is excluded by code: cache writes happen only after a successful JSON-list parse (p0_run.py lines 557-567), so the pass-1 quota-402 error bodies were never cached; the completeness gate fired honestly three times (BLOCKED_SOURCE_OR_SCHEMA recorded 2026-09-17T22:22/23:07/23:52Z in run_log_r2.txt) and no name was silently dropped (final pulls 111,322/111,322 status 200).",
+   "why": "The quota-402 resolution itself is sound and fail-closed; but a committed F2 evidence artifact states '0 empty/no-series' when 7,476 cohort names have no series. The census handles them correctly (they contribute nothing and are covered by the warmup-attrition census), yet a reproduction or reviewer reading retrieval_meta alone would infer a fully-served cohort. Evidence quality on the identity plane must be exact at this standard.",
+   "required_remediation": "Annotate or correct retrieval_meta semantics (empty-count applies to fresh pulls only; authoritative zero-series count lives in p0_census_cohort.json.gz), or recompute the field from the per-name census in a correction note committed alongside — before any E-phase artifact cites the manifest."
+  },
+  {
+   "id": "F-5",
+   "severity": "MEDIUM",
+   "section": "Kill-rule/control parameters pinned at I instead of frozen at S (K6 deviation and same-class pins)",
+   "evidence": "Plan §6 freezes the K6 exact test 'at S'; selection_freeze.json contains no K6 definition. The test is pinned in i_engine.py (SE_f = std(candidate leg nets, ddof=1)/sqrt(n_f); indistinguishable iff |dE| <= SE_f; >= 2/3 folds; folds with <2 candidate legs not counted), flagged PINNED_AT_I_DEVIATION_DISCLOSED in every K6 row and disclosed in the I handoff. Same class, all disclosed ex ante in the I-lane docstring: fold-positive-share statistic (V11-precedent formula), R5 fail-closed union form, C-RANDOM-TIMING cadence, C-CAL-HIST twin rule, C-REVERSAL-PLAIN form.",
+   "why": "All of these are falsification-side controls (anti-survivor direction) pinned BEFORE any E measurement on synthetic fixtures only, so no outcome-contamination path exists; but they are deviations from the plan's freezing discipline and must be constitutionally pinned now — a later 'retuning' after seeing E results would be a method-contract incident.",
+   "required_remediation": "No code change. Carry the pinned forms into the GO conditions as the authoritative frozen definitions; any post-E modification is BLOCKED_METHOD_CONTRACT."
+  },
+  {
+   "id": "F-6",
+   "severity": "LOW",
+   "section": "Dispatch packet hygiene",
+   "evidence": "Two packet defects surfaced and were recorded by the lanes: (a) this A7 packet cites foreign-cycle positions digests (see F-1); (b) the I-lane packet BASE stated '2cf6a12bd8e0407860a186e88948c0eaf1c3735a', which is not a git object; the lane resolved it via the registry write_token and the binding freeze sha (recorded in ssearch-i-handoff.json incidents).",
+   "why": "Packet corruption near an owner gate is an incident pattern; both instances were resolved honestly and without stops, but the digest citation must be corrected before GO or the GO documentation itself carries a false control reference.",
+   "required_remediation": "Correct the digest references in the GO-facing packet (stocks digests per F-1 remediation); keep the resolution records attached."
+  },
+  {
+   "id": "F-7",
+   "severity": "LOW",
+   "section": "p0/f9_artifact_digests.json path resolution",
+   "evidence": "The manifest records '../../../tests/test_stocks_search_v1_p0.py' relative to p0/, which resolves to research/tests/ (nonexistent); the intended file is the worktree-root tests/test_stocks_search_v1_p0.py, whose sha256 (47307765...) matches the recorded digest exactly (verified by recomputation at the root path). All other 14 entries resolve and match by recomputation.",
+   "why": "Content identity is intact; only the relative path is off by one directory level. A detached reproducer following the recorded path literally would hit a missing file.",
+   "required_remediation": "Fix the recorded relative path in a follow-up commit (or document root-relative resolution); no re-measurement needed since the digest matches."
+  },
+  {
+   "id": "F-8",
+   "severity": "LOW",
+   "section": "R2 NOT_ADJUDICABLE propagation (i/adjudicate.py ordered_kills)",
+   "evidence": "If both R2 comparators (C-MARKET, C-RANDOM-TIMING) were unpopulated, the disposition is recorded in the rows and the walk falls through to R3; an R2 NOT_ADJUDICABLE does not by itself force a non-bookable final verdict. On the real plane both comparators are structurally populated (SPY is a served cohort name and the calendar is non-empty), and Stage-A spy_excess independently fails closed on a missing SPY (not_adjudicable when spy is None).",
+   "why": "Theoretical exposure only; the plan's disposition rule (disclosed, never silently skipped) is met by the row disclosure, and no realistic E path reaches the hole.",
+   "required_remediation": "Optional hardening: propagate control-level NOT_ADJUDICABLE into the final verdict summary at E. Not required for GO."
+  },
+  {
+   "id": "F-9",
+   "severity": "LOW",
+   "section": "p0_gate.json not covered by f9_artifact_digests.json",
+   "evidence": "f9_artifact_digests.json (written 2026-09-18T05:30:21Z) pins 15 artifacts but not p0_gate.json itself (final gate written moments after, measured at HEAD 127e7f26... which this audit verified IS an ancestor of base 8d8e6cf2). Downstream consumers (S freeze data_manifests_sha256) pin the artifacts that bind, 10/10 verified on disk.",
+   "why": "The gate verdict artifact is self-evidencing rather than digest-pinned by its own manifest; a cosmetic gap in the F9 reproduction story, mitigated by the S-freeze pins.",
+   "required_remediation": "Optional: add p0_gate.json to the digest manifest in a follow-up commit."
+  },
+  {
+   "id": "F-10",
+   "severity": "LOW",
+   "section": "Disclosure precision: band-C range wording",
+   "evidence": "Dispatch/commit wording says band-C fraction '1.8-18.2%'; the census per-cell range measured by this audit is 1.50%-18.31% across all 141 (config, fold) cells (min 0.0150). The commit's figure is a family-level aggregation; both are truthful at their stated level and no gate consumes the range.",
+   "why": "Disclosure precision only.",
+   "required_remediation": "None; note the per-cell range in E-phase language."
+  }
+ ],
+ "chain_verification": {
+  "method_disclosure": "Fresh-context read-only audit. All digest/hash claims recomputed locally with sha256 where stated; JSON artifacts parsed and cross-compared programmatically; engine code read line-by-line on the GO gate, freeze verification, ordered kills, Stage-A, BC-7 invariance, DSR gate, PIT gate and loader. NO engine execution, NO census rerun, NO E-run, NO S1 access, NO writes to chain artifacts. Where execution is claimed by an artifact (tests, dry-run, selfchecks) this audit verified the committed evidence and the code paths, not the act of running.",
+  "worktree": {"check": "HEAD == 8d8e6cf2c18d85a88536ea0c61809f0933905769, branch orca/stocks-search-v1-integration, porcelain clean", "result": "VERIFIED"},
+  "m0": {
+   "check": "Byte-exact NG6 machinery lineage: sha256 of m0_verdict.json, test_m0_golden.py, m0_contract.py, contract_frozen.json, run_m0.py compared against /Users/hoangminhlong/my-quantitative/.worktrees/forex-ng6/integration/research/control/forex_ng6_run/m0/",
+   "result": "VERIFIED 5/5 byte-identical (b642da13/ba3991bd/dad5de33/8b5ee44b/c9f5f9aa); verdict PASS with 10 gates; G4N absent from both suites -> finding F-2"
+  },
+  "p0_digests": {"check": "Recomputed sha256 of all 15 artifacts listed in f9_artifact_digests.json", "result": "VERIFIED 15/15 digest matches (test file resolved at worktree root; recorded relative path defective -> F-7)"},
+  "p0_cohort": {"check": "Cohort identity: 111,322 = 51,131 living + 60,191 delisted; delisted_before_window_skipped=0; raw shas match f9 pins; ancestor check: P0 measured at 127e7f26 (ancestor of base)", "result": "VERIFIED"},
+  "p0_quota_402": {"check": "Completeness-gate behavior during the quota incident: run_log_r2.txt shows 3 honest BLOCKED_SOURCE_OR_SCHEMA attempts, then post-reset passes; error bodies cannot be cached (cache write only after JSON-list parse, p0_run.py lines 551-572); final pulls 111,322/111,322 status 200, 0 unresolved; n_empty=0 is a counting artifact -> F-4", "result": "VERIFIED with F-4 evidence-quality defect"},
+  "p0_census": {"check": "Programmatic recount: 141 (config,fold) cells over 47 configs x 3 folds; min bookable_fired 5,729 (EVENT-UNWIND-K252 F1); floor_violation_cells []; UNRESOLVED 0; per-cell band-C 0.0150-0.1831", "result": "VERIFIED (all >= 30 bookable floor)"},
+  "fold_freeze": {"check": "Boundaries recomputed: 2015-01-02 + round(4275/3) = 2018-11-27 (B1), + 2/3 = 2022-10-22 (B2) — exact calendar thirds; window consistent across fold_freeze.json, p0_lib.py, D1 manifest, S freeze", "result": "VERIFIED"},
+  "d1": {"check": "File sha 1ccbf668... matches dispatch; self_sha256 e0b69b41... recomputed under the declared empty-field convention — MATCH; 47 configs = plan §5 grid exactly (9+12+6+4+8+8) <= 120 cap; all 141 census rows byte-equal to p0_census.json; required §5 fields present on every config and family (construction, sign, C-COMPLEMENT, R5, C-CAL-HIST rule, warmup, expected-DOA, ancestry basis); R0 inventory 17 shadows, inventory hash recorded, R0 NOT_RUN (no rho computed)", "result": "VERIFIED"},
+  "selection_law": {"check": "Family F3 fired sums independently recomputed from p0_census.json: GAP 304.4M > 52W-HIGH 140.4M > VOL-REGIME 135.4M > CLV-RANGE 19.5M > DVOL-SHOCK 11.7M > EVENT-UNWIND 0.75M; D1 tier order matches; within-family rank-1 cells (GAP-P25-CONFIRM-H1 via F3 fired + lexicographic H tie-break; 52W-HIGH-B10-H20; VOL-REGIME-L21-LOW-H20) match the round-robin walk; <=2 cells/family satisfied (1 each)", "result": "VERIFIED end-to-end mechanically"},
+  "s_freeze": {"check": "File sha 2d56c0db... matches dispatch; 27/27 internal verifications recorded; walk = 3 visits, P-20 max |rho| 0.7708 (position-COUNT series, outcome-blind, c1-c8 conventions; calendar never trims engine input — r3 census-space law); 10/10 data_manifests pins recomputed against disk; 22-state heavy-pass bookable cells cross-checked equal to p0 census (spot: GAP-P25-CONFIRM F1 2,253,590; 52W-B10 F1 1,403,473); diag_s_r3 A/B/C three-path root cause with half-count signature; 282-cell strengthened gate = 47x3x{fired, bookable_fired}", "result": "VERIFIED"},
+  "i_engine": {"check": "Code read: GO_PHRASE exact-match gate; verify_freeze() gates freeze sha + 3 arm identities + params + family; load_p0_lib() enforces the p0_lib sha pin; p0 census kernels reused read-only; clock legs (t, t+1, t+1+H); fold force-flat + fold_not_opened; BC-7 death_open/death_zero_length/died_before_entry with censored legs excluded from numerator; bands A/B/C on 50M/10M/2M charged per fill, stress 2.0, 100bps ceiling, SUBFLOOR not opened, UNRESOLVED raise; ordered kills R1>R2>R3>R4>R5>R6>K6 with NOT_ADJUDICABLE dispositions; Stage-A gates incl. drop-one, concentration, SPY-excess, MDD 15%; death-censoring invariance rerun binds verdict AND every gate (mismatch -> DEATH_CENSORING_COUPLED_UNBOOKABLE)", "result": "VERIFIED as coded (F-8 note; K6/F-5 deviation disclosed)"},
+  "dsr_gate": {"check": "dsr_gate() refuses (NOT_RUN_E_ONLY) unless allow_scored=True; research/dsr.py DSR_BAILEY_LOPEZDEPRADO_V1 exists; N=47/alpha 0.10 constants + N=260/alpha 0.05 reported-only; no production caller with allow_scored=True exists yet — the E runner is post-GO work, so DSR-computes-and-gates is proven by mechanism + tests (test lines 778-822), to be bound as a GO condition", "result": "VERIFIED (mechanism); binding carried into GO conditions"},
+  "budget": {"check": "BUDGET_MAX_SCORED_CELLS=3; every adjudication report carries budget used=0 label 'consumed only at scored E'; no scored execution anywhere in the chain; Z scored=false", "result": "VERIFIED (0/3 intact)"},
+  "z_dry_run": {"check": "dry_run_report.json: overall PASS, checks C0-C9 all PASS with evidence (freeze verification at import; in-process + cross-process determinism under PYTHONHASHSEED 1 vs random, pipeline sha 4e757321... identical; fold force-flat structural scan 195,824 legs 0 problems; all three BC-7 censored kinds engineered and bound; closed-form 100bps worst-case hand-check 1e-12; R0_NOT_RUN/PBO_NOT_RUN/§10 verbatim labels; GO gate: absent phrase + 7 paraphrases refused, exact phrase passes then FileNotFoundError on STUB cache — no real data loaded; zero-range twin control; synthetic verdicts only)", "result": "VERIFIED against committed evidence; sanitized=true; no real-data read"},
+  "leak_scan": {"check": "leak_scan.json: status CLEAN, fail-closed law; static 0 forbidden-pattern hits (ffill/bfill/fillna/interpolate/pandas/shift...) across p0_lib + i_engine + adjudicate, 31 window-stat call sites curated (all trailing-window, ending at or before t), 12 curated evidence rows; 7 dynamic probes PASS: D1 taint invariance 160/160 (post-decision bars x3.7/x5.0), D2 doctored future bar end-to-end with positive controls (2 legs move, 105 prior legs byte-identical, untouched names' masks identical), D3 open[t0+1]-only doctoring proving genuine t+1-open fills, D4 window-boundary pin, D5 no same-bar fills structural scan", "result": "VERIFIED against committed evidence"},
+  "governance_3b": {"check": "§3b amendment disclosed consistently: p0_gate.amendment_3b + r0_status NOT_RUN + d2_status SKIPPED_BY_OWNER_AMENDMENT_3B; D1 amendment_3b + relaxation_axes_verbatim + r0 NOT_RUN inventory law; S disclosure_section10_carried verbatim; I labels R0_NOT_RUN/PBO_NOT_RUN/§10 constants on every report; §10 disclosure string byte-equal across artifacts and plan §10", "result": "VERIFIED"},
+  "ancestry": {"check": "All recorded measurement HEADs are ancestors of base 8d8e6cf2: 127e7f26 (P0), 5be14a6d (D1), 9419b97a (S), 66e6b1c4/ef78cf72 (I), plus Z at 5c701987 (ancestor, verified via git log); d0992d17 is the external FOREX-NG1 PBO-class precedent commit (exists in repo, correctly cited as class only)", "result": "VERIFIED"},
+  "s1_and_boundaries": {"check": "No S1 access anywhere in the chain (all reads are /eod cache + committed artifacts); no orders; no pushes; stores/registries untouched by this audit; S freeze pins SPY from the same /eod cache (F7)", "result": "VERIFIED by scope inspection"}
+ },
+ "conditions_carried_into_GO": [
+  "C-1 (unconditional): scored E executes ONLY after the owner types the exact phrase 'GO STOCKS SEARCH V1 SCORED EXECUTION' at this cycle's own gate; early/paraphrased GO dies unconsumed (P-8). load_real_data is the only sanctioned real-data reader.",
+  "C-2 (resolves F-1, MUST be satisfied and re-audited before GO re-opens): implement and prove the scored-path data-plane preflight on THIS chain's digests — retrieval-manifest sha pin vs s/selection_freeze.json data_manifests_sha256, per-cell frozen preconditions (arm_identity_sha256 x3; pooled series 6fd58cc9.../495d9bca.../f55a14ba... rebuilt and compared at load), and per-fold fired/bookable cross-check against frozen p0_census.json rows; any drift = INPUT_MISMATCH stop, never an override. Correct all GO-facing digest references (remove the forex 85c8f875/57eed8b9/7eee7cf0 citations).",
+  "C-3: DSR (DSR_BAILEY_LOPEZDEPRADO_V1, N=47 frozen grid, alpha 0.10 owner-relaxed) must COMPUTE and PASS on every survivor BEFORE any survivor name is named; program-cumulative N=260/alpha 0.05 is reported-only; PBO stays NOT_RUN fail-closed and R0 stays NOT_RUN on every result with the §10 disclosure verbatim.",
+  "C-4: budget <= 3 scored cells under the machine-wide heavy lock; every computed cell consumes an observed slot; unused slots never reassigned or force-filled.",
+  "C-5 (resolves F-5): the I-lane-pinned control definitions (K6 SE_f test, fold-positive-share V11 statistic, R5 union form, C-RANDOM-TIMING/C-CAL-HIST/C-REVERSAL-PLAIN mechanics) are the authoritative frozen forms; any post-E modification is BLOCKED_METHOD_CONTRACT.",
+  "C-6 (resolves F-3 expectation-setting): the owner must be informed before typing GO that C-PIT-MUTATION is expected to structurally fail persistent-state cells (52W-HIGH certainly; GAP/VOL-REGIME likely), making REJECT_ALL the statistically likely terminal outcome; the gate will not be weakened in-cycle.",
+  "C-7: S1 SEALED; no paper/testnet/live orders; no budget/GO/rescue sharing with FOREX-SEARCH-V1 or PROSPECTIVE-SHADOW-V1; the §3 relaxation may not be widened; raw EODHD bytes remain gitignored with digests pinned per pull."
+ ],
+ "residual_risks_accepted_if_C_2_remediated": [
+  "Cohort membership is a TODAY vendor snapshot (living list), partially mitigated by the 60,191-name delisted arm (V8 G3 precedent re-pinned by this cycle's own P0); backfill bias for recently listed names is inherent to the source and precedent-bound.",
+  "The E runner glue is written post-GO by construction; with C-2 in place the sanctioned building blocks (load_real_data -> run_candidate_adjudication -> dsr_gate -> persist_series) are all A7-audited code and the runner must not deviate from them."
+ ],
+ "auditor_context_fresh": true
+}

@@ -1,0 +1,43 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "ssearch-a7-prelaunch",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "real_cycle_id": "STOCKS-SEARCH-V1",
+ "role": "quant-auditor",
+ "lane": "ssearch-a7-prelaunch",
+ "dispatch_sha": "8d8e6cf2c18d85a88536ea0c61809f0933905769",
+ "actual_start_sha": "8d8e6cf2c18d85a88536ea0c61809f0933905769",
+ "branch": "orca/stocks-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "commit_sha": null,
+ "commit_sha_note": "audit-only lane: no commit made; exactly two files written (the audit JSON under the worktree chain and this handoff), per the dispatch write-path allowlist; chain artifacts untouched (read-only recomputation of digests and programmatic cross-comparisons only)",
+ "changed_paths": [
+  "research/control/stocks_search_v1_run/audits/a7_prelaunch_stocks_search_v1.json",
+  ".runtime/orchestrator_v3/inbox/ssearch-a7-prelaunch-handoff.json"
+ ],
+ "outputs": [
+  {
+   "path": "research/control/stocks_search_v1_run/audits/a7_prelaunch_stocks_search_v1.json",
+   "role": "a7_prelaunch_audit@1 verdict artifact",
+   "verdict": "BLOCKED_PRELAUNCH",
+   "basis": "One unresolved HIGH finding (F-1): the dispatch's verify_positions-style E-run precondition cites sibling FOREX-SEARCH-V1 digests (85c8f875/57eed8b9/7eee7cf0) that do not exist anywhere in this chain, and the stocks chain implements no positions/data-plane preflight at all — verify_freeze() gates the freeze sha + arm identities + p0_lib pin, but load_real_data() accepts caller-supplied cache/manifest paths without pinning the committed retrieval manifest (2c4283c2...), without rebuilding the frozen pooled position-series digests (6fd58cc9/495d9bca/f55a14ba) and without cross-checking fired/bookable counts against the frozen p0_census rows. The sibling precedent had verify_positions_vs_freeze() IN CODE at its A7; stocks would require new scored-path code written after GO. Remediation is narrow (implement + prove the preflight, correct digest references, delta re-audit).",
+   "findings_summary": "1 HIGH (F-1 data-plane preflight absent / foreign digests cited), 4 MEDIUM (F-2 M0 11/11 plan text vs byte-exact 10-gate NG6 lineage; F-3 C-PIT-MUTATION structurally expected to fail all 3 persistent-state cells at E — honest handling adjudicated sufficient for integrity, carried as owner-informed condition; F-4 retrieval manifest n_empty=0 counting artifact vs true 7,476 zero-served names, correctly censused elsewhere; F-5 K6 + control mechanics pinned at I, disclosed), 5 LOW (F-6 dispatch packet hygiene incl. the I-lane BASE-sha incident; F-7 f9 digest-manifest relative path off by one, digest itself matches; F-8 R2 NOT_ADJUDICABLE propagation hole, no practical E exposure; F-9 p0_gate.json not in its own digest manifest; F-10 band-C range wording precision).",
+   "conditions_carried_into_GO": 7
+  }
+ ],
+ "tests": [],
+ "authority_claims": [],
+ "known_limitations": [
+  "Audit method: verification by reading, local sha256 recomputation and programmatic JSON cross-comparison only; NO engine execution, NO census rerun, NO E-run, NO S1. Where artifacts claim executions (44 I tests, 25 P0 tests, Z C0-C9, D1 selfcheck 34/34), the committed evidence and code paths were verified, not the act of running.",
+  "The M0 suite was confirmed byte-exact against forex_ng6_run/m0 (5/5 files sha-identical), which also confirms the plan's 'G1–G10 + G4N = 11/11' text does not match the actual NG6 lineage suite (10 gates, no G4N) — recorded as F-2, not re-measured.",
+  "The TRUE zero-served name count (7,476) was derived by this audit from p0_census_cohort.json.gz; it is not stated in any committed artifact (F-4).",
+  "DSR-computes-and-gates at E is proven by mechanism and tests only; no E runner exists yet (post-GO by construction), so the DSR and preflight bindings are carried as GO conditions (C-2/C-3), mirroring the forex A7 condition structure."
+ ],
+ "incidents": [
+  "Wrong-path write by this auditor (immediately self-caught): the audit JSON was first written under /Users/hoangminhlong/.worktrees/... (missing the my-quantitative segment); moved to the exact allowed path and the stray directory removed in the same session. No other stray writes.",
+  "Pre-existing (recorded, not caused by this lane): the I-lane dispatch packet BASE contained a non-git-object sha (2cf6a12bd8e0...), resolved by the lane via registry + freeze sha; and this A7 packet itself cites foreign-cycle positions digests (85c8f875/57eed8b9/7eee7cf0) — both are inputs to finding F-1/F-6."
+ ],
+ "tree_status": "Worktree was CLEAN at start (HEAD 8d8e6cf2 verified); after this lane it carries exactly one new untracked file (audits/a7_prelaunch_stocks_search_v1.json) plus this inbox handoff; no chain artifact, plan, registry, ledger or engine file modified; no commits made",
+ "workers": 0,
+ "recommended_next_action": "Do NOT ask the owner to type 'GO STOCKS SEARCH V1 SCORED EXECUTION' yet. Dispatch a narrow remediation lane: (1) implement the fail-closed scored-path data-plane preflight on THIS chain's digests (retrieval-manifest sha pin vs S-freeze data_manifests_sha256; per-cell arm_identity_sha256 + pooled series 6fd58cc9/495d9bca/f55a14ba rebuilt-and-compared at load; per-fold fired/bookable cross-check vs frozen p0_census.json rows; INPUT_MISMATCH stop on any drift), (2) correct all GO-facing digest references to the stocks values, (3) optionally apply the F-4/F-7 evidence-precision fixes and the F-2 plan-erratum/waiver record, then re-audit delta-scope before re-opening the owner GO gate. Once C-1..C-7 (audit conditions) hold, present the GO gate to the owner with the F-3 expectation disclosure (PIT-mutation likely structural REJECT_ALL) attached verbatim."
+}
