@@ -1,0 +1,63 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "ssearch-remediation-f1",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "real_cycle_id": "STOCKS-SEARCH-V1",
+ "role": "quant-implementer",
+ "lane": "ssearch-remediation-f1",
+ "dispatch_sha": "c9d2fc706c7da612f4ce5c1f3d3c7028f60e0457",
+ "actual_start_sha": "c9d2fc706c7da612f4ce5c1f3d3c7028f60e0457",
+ "branch": "orca/stocks-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "commit_sha": "a713e49f1a9b415a9f76f3e8bb64c97849f2169f",
+ "commit_sha_note": "one pathspec commit on the lane branch, parent c9d2fc70 verified == dispatch base; no push/merge/rebase; porcelain clean after commit",
+ "changed_paths": [
+  "research/control/stocks_search_v1_run/i/i_engine.py",
+  "research/control/stocks_search_v1_run/i/adjudicate.py",
+  "tests/test_stocks_search_v1_i.py",
+  "research/control/stocks_search_v1_run/handoffs/remediation_note_f1.md",
+  ".runtime/orchestrator_v3/inbox/ssearch-remediation-f1-handoff.json"
+ ],
+ "outputs": [
+  {
+   "path": "research/control/stocks_search_v1_run/i/i_engine.py",
+   "role": "verify_data_plane() + DataPlaneMismatch (INPUT_MISMATCH) + _rebuild_data_plane/_arm_state_machinery/_build_calendar_from_cache/_load_pinned_p0_run + RETRIEVAL_EMPTY_COUNT_DISCLOSURE_VERBATIM",
+   "summary": "Fail-closed scored-path data-plane preflight (A7 F-1 / GO condition C-2): (1) committed S freeze byte-pin via verify_freeze incl. arm_identity_sha256 x3; (2) sha pins for the six consumed artifacts vs the freeze's data_manifests_sha256 (p0_lib via load_p0_lib(expected_sha), p0_run newly pinned); (3) retrieval manifest commitment - caller-substitute paths REFUSED, committed p0/retrieval_manifest.json must hash to pin 2c4283c2..., schema/cycle_id checked; (4) completeness - all pulls status 200, pull set == cohort-census set, SPY present; (5) SPY-pinned S0-window calendar + freeze calendar pin + p0_lib fold-boundaries law; (6) per-pull identity - cache file present per required name, manifest digest pins (sha256_gz/sha256_raw) verified where carried, parsed served count == cohort census served for EVERY name (served0/short counter laws per s_select.heavy_pass); (7) 3 arms' pooled daily position series rebuilt via frozen census kernels in P0 census space and compared EXACTLY (positions_used, position_days, death_censored_legs, pooled_max, pooled_nonzero_days, series_sha256 6fd58cc9/495d9bca/f55a14ba) to selection_freeze.json pooled_series_stats; (8) rebuilt per-config per-fold fired/bookable_fired == frozen p0_census.json rows EXACTLY for all configs of the 3 rebuilt states (s_select r3 282-cell gate comparison approach, read-only; >= 9 arm cells, H-variant cells included) + freeze embedded census verbatim == census rows. Returns stocks_search_v1_data_plane_preflight@1 PASS verdict artifact; ANY mismatch raises DataPlaneMismatch carrying the verdict."
+  },
+  {
+   "path": "research/control/stocks_search_v1_run/i/adjudicate.py",
+   "role": "load_real_data wiring + E-run verdict-skeleton disclosure",
+   "summary": "load_real_data() now calls verify_data_plane(cache_dir, retrieval_manifest_path) as the MANDATORY first data-plane step immediately after the exact-phrase GO gate, verify_freeze() and load_p0_lib(), BEFORE any cohort byte is parsed; a DataPlaneMismatch refuses the E run with nothing loaded; the loader then parses the COMMITTED manifest path itself and attaches the PASS preflight verdict to its return (data_plane_preflight). adjudicate_candidate() verdict skeleton now carries retrieval_empty_count_disclosure = RETRIEVAL_EMPTY_COUNT_DISCLOSURE_VERBATIM (A7 F-4: n_empty=0 counts fresh pulls only; authoritative zero-served count 7,476)."
+  },
+  {
+   "path": "tests/test_stocks_search_v1_i.py",
+   "role": "7 new preflight tests on synthetic fixtures (fabricated consistent mini data plane + perturbed copies)",
+   "summary": "pass case (all checks pass, 3 arm digests, 18 census cells checked, multi-fold fires, F-4 disclosure present); manifest-substitution refusals (byte-identical copy at another path; doctored manifest at redirected committed path via sha pin; real committed manifest under fixture freeze); positions-digest mismatch + stats-tamper refusals; census-count-mismatch refusal naming the drifted cell (got == want-1); cache-drift refusals (per_pull_digest_gz, cache_file_present, served_count_vs_cohort_census); load_real_data wiring test under the exact GO phrase against real committed control artifacts (unbound cache dir refused spy_cache_present, p0/raw never touched); verdict-skeleton disclosure test."
+  },
+  {
+   "path": "research/control/stocks_search_v1_run/handoffs/remediation_note_f1.md",
+   "role": "remediation_note@1: finding -> fix -> test evidence -> scope discipline",
+   "summary": "Restates the correct stocks digests for the GO-facing packet (retrieval manifest 2c4283c2..., freeze 2d56c0db..., arm identities d60cf26d/6ccb3fa5/f41e94a3, pooled series 6fd58cc9/495d9bca/f55a14ba) - the dispatch packet's forex digests 85c8f875/57eed8b9/7eee7cf0 must be replaced there by the orchestrator (plans/ and dispatch packets are outside this lane's write allowlist)."
+  }
+ ],
+ "tests": [
+  {"suite": "tests/test_stocks_search_v1_i.py", "result": "51 passed (44 pre-existing green incl. unchanged GO-gate FileNotFoundError branch + 7 new preflight tests)", "runner": ".venv/bin/python -m pytest", "real_data": false},
+  {"suite": "tests/test_stocks_search_v1_p0.py", "result": "25 passed", "runner": ".venv/bin/python -m pytest", "real_data": false},
+  {"suite": "research/control/stocks_search_v1_run/m0/test_m0_golden.py", "result": "M0 PASS (10 gates), exit 0 (byte-exact NG6 lineage untouched; test_stocks_search_v1_m0.py not present in tests/ - this is the m0 suite of record)", "runner": ".venv/bin/python (module runner, pytest collects 0 from it by design)", "real_data": false}
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "The preflight's real-data PASS is proven by mechanism + static identity only (committed manifest hashes to the freeze pin 2c4283c2; all 10 data_manifests pins match disk; SPY is a served pull with served==2943 == freeze calendar n_sessions; fold law reproduces B1 2018-11-27 / B2 2022-10-22) - NO real-data execution was performed per dispatch; the preflight must RUN AND PASS at E (this is exactly GO condition C-2's binding form, mirroring the forex sibling).",
+  "Only ONE pull in the committed manifest carries per-pull digests (CKHGF, the fresh-pull record); the other 111,321 entries are {cached, rows, status} with no digest to verify - per-pull content identity is instead bound by served-count equality vs the digest-pinned p0_census_cohort.json.gz plus the rebuilt census/series comparisons; manifest digest pins are verified wherever carried (fail-closed).",
+  "The census cross-check covers every (config, fold) cell of the 3 REBUILT states (all H variants, 18/282 cells on the synthetic fixture; proportionally more on the real 47-config grid), not all 141x2 - the full-grid rebuild is the S freeze's own 22-state heavy pass; the 3 scored arms and their hold-invariant H variants are fully bound. Disclosed in the verdict (n_cells_checked vs n_configs_total).",
+  "cache_dir remains caller-supplied by necessity (gitignored, not committed); its CONTENT is bound by checks 4-8 (existence, per-pull digests, served counts, calendar pin, series digests, census cells) - any drift fails closed.",
+  "F-1's remediation item 'correct all GO-facing digest references' cannot be done by this lane (dispatch packets / GO documentation outside the write allowlist); the correct stocks digests are restated in remediation_note_f1.md and this handoff for the orchestrator.",
+  "A7 F-2 (M0 11/11 plan text vs 10-gate lineage), F-5 (I-pinned control forms), F-6 (packet hygiene) remain owner/orchestrator items; F-4 evidence-quality is resolved by the disclosure line per the audit's 'annotate' option, not by rewriting the committed manifest (read-only)."
+ ],
+ "incidents": [
+  "git printed a commit-identity notice (committer identity auto-configured from username/hostname, no user.email set globally); the commit itself succeeded with the repository-default identity - no action taken, no rewrite attempted (history rewrite forbidden)."
+ ],
+ "tree_status": "HEAD a713e49f1a9b415a9f76f3e8bb64c97849f2169f (parent c9d2fc70... == dispatch base), branch orca/stocks-search-v1-integration, porcelain CLEAN after the single pathspec commit; budget 0/3 untouched; no scored execution, no scored outputs, D2 SKIPPED per 3b, no real-data reads (committed control artifacts only), no push/merge/rebase, no writes outside the allowlist",
+ "workers": 0,
+ "recommended_next_action": "Run a delta-scope A7 re-audit of the four changed paths (F-1/C-2 verification: preflight code + wiring + tests + static identity claims), correct the GO-facing packet digest citations to the stocks values (2c4283c2 / 6fd58cc9 / 495d9bca / f55a14ba / d60cf26d / 6ccb3fa5 / f41e94a3), then re-open the owner GO gate carrying audit conditions C-1..C-7 with the C-6 expectation disclosure (C-PIT-MUTATION likely structural REJECT_ALL on persistent-state cells) attached verbatim; at E, verify_data_plane must RUN AND PASS inside load_real_data before any cohort byte is parsed."
+}
