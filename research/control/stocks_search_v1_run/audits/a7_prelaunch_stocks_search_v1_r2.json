@@ -1,0 +1,123 @@
+{
+ "schema": "a7_prelaunch_audit@1",
+ "scope": "r2 DELTA re-audit (fresh context): F-1 closure verification in bytes + new-defect hunt over the remediation diff + updated GO conditions. Chain-wide re-verification is inherited from r1 (a7_prelaunch_stocks_search_v1.json) and re-confirmed only where the remediation touches it.",
+ "cycle_id": "STOCKS-SEARCH-V1",
+ "store_cycle_label": "ZCODE-ORCHESTRATION-V3",
+ "task_id": "ssearch-a7-prelaunch-r2",
+ "role": "quant-auditor (fresh context, delta-scope, audit-only)",
+ "base_sha": "a42c8547578c7f4c23b8935b6c0604d84da0bd1a",
+ "branch": "orca/stocks-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "audited_at_utc": "2026-09-19",
+ "worktree_state_at_audit": "HEAD a42c8547578c7f4c23b8935b6c0604d84da0bd1a verified == dispatch base; branch orca/stocks-search-v1-integration; git status --porcelain empty at audit start. Remediation commits: a713e49f1a9b415a9f76f3e8bb64c97849f2169f (code+tests+note, parent c9d2fc70 == r1 audit commit) then a42c8547 (adds only the lane handoff copy, 63 lines).",
+ "remediation_diff_scoped": {
+  "changed_paths_c9d2fc70_to_base": [
+   "research/control/stocks_search_v1_run/i/i_engine.py (+664/-7: docstring, DataPlaneMismatch + committed-path constants + law/disclosure constants, appended preflight block after spy_legs_for at EOF)",
+   "research/control/stocks_search_v1_run/i/adjudicate.py (+37/-7: docstring, imports, one additive verdict-skeleton key, load_real_data wiring)",
+   "tests/test_stocks_search_v1_i.py (+383, single appended section: 7 new tests)",
+   "research/control/stocks_search_v1_run/handoffs/remediation_note_f1.md (new)",
+   "research/control/stocks_search_v1_run/handoffs/ssearch-remediation-f1.handoff.json (new, in a42c8547)"
+  ],
+  "additivity_check": "Every i_engine.py hunk is additive (no existing function body modified; the preflight block is appended after the previously-last function spy_legs_for). Every adjudicate.py hunk touches only the module docstring, the import block, an additive disclosure key in the adjudicate_candidate verdict skeleton, and load_real_data (docstring + preflight call + committed-manifest parse + return field). No kill rule, no Stage-A gate, no DSR gate, no budget counter, no R0/PBO label line, no BC-7/cost-band code was modified.",
+  "scored_path_invariants_reconfirmed": [
+   "GO gate: go_phrase != GO_PHRASE remains the FIRST check in load_real_data; the pre-existing GO-gate test branch (FileNotFoundError on a stub cache after exact phrase) is preserved because the cache_dir.exists() check precedes the preflight",
+   "budget: BUDGET_MAX_SCORED_CELLS = 3 (adjudicate.py:100); skeleton budget {used:0,max:3,label 'consumed only at scored E'} intact; no consumption path added",
+   "R0_NOT_RUN / PBO_NOT_RUN labels + DISCLOSURE_SECTION10_VERBATIM: unchanged, still carried on every cell verdict; the new retrieval_empty_count_disclosure key is additive",
+   "DSR: dsr_gate() unchanged, still refuses (NOT_RUN_E_ONLY) unless allow_scored=True; no production caller with allow_scored=True was added",
+   "no new scored-path entry point or bypass: the only new production symbols are verify_data_plane and its private helpers; load_real_data got STRICTER (committed-manifest-only parse)",
+   "no scored execution, no real-data engine run, budget 0/3: code-read and test-read confirm; all 7 new tests run on synthetic fixtures; the wiring test reads committed control artifacts only"
+  ]
+ },
+ "verdict": "AUTHORIZED_PRELAUNCH",
+ "verdict_basis": "The single r1 HIGH (F-1) is CLOSED_IN_BYTES: verify_data_plane implements exactly the r1 required remediation (i)+(ii)+(iii) on this chain's own digests, is wired mandatorily inside load_real_data after the GO gate and before any cohort byte parse, and fails closed. The remediation introduced no HIGH/CRITICAL and no scored-path regression; new findings are 1 MEDIUM (evidence-precision, pre-existing, surfaced by this delta audit) and 2 LOW (one doc imprecision, one theoretical hardening). Per the audit rule (BLOCKED iff any unresolved HIGH/CRITICAL) the prelaunch gate is AUTHORIZED, carrying conditions C-1..C-8 below.",
+ "go_phrase_referred_to": "GO STOCKS SEARCH V1 SCORED EXECUTION",
+ "budget_state": "0/3 scored cells consumed; unchanged by the remediation (verified: no scored execution path added; adjudicate budget skeleton intact; handoff and note claim no real-data reads, consistent with code and tests)",
+ "f1_closure": {
+  "status": "CLOSED_IN_BYTES",
+  "commit": "a713e49f1a9b415a9f76f3e8bb64c97849f2169f (+ a42c8547 handoff copy)",
+  "required_remediation_vs_delivered": {
+   "(i) retrieval-manifest sha pin vs s/selection_freeze.json data_manifests_sha256": "DELIVERED. i_engine.py verify_data_plane (lines 1450-1474): any caller path whose resolve() != COMMITTED p0/retrieval_manifest.json is REFUSED (retrieval_manifest_substitution_refused, line 1453); the committed file must hash to the freeze pin (retrieval_manifest_sha_pin, lines 1460-1464); schema stocks_search_v1_retrieval@1 + cycle_id checked. THIS AUDIT RECOMPUTED: disk sha256(retrieval_manifest.json) = 2c4283c24e4a4058... == freeze data_manifests_sha256 pin == disk. load_real_data additionally parses the COMMITTED manifest itself after the preflight (the caller argument can no longer influence what is loaded).",
+   "(ii) per-cell frozen preconditions: arm_identity_sha256 x3 + pooled series 6fd58cc9.../495d9bca.../f55a14ba... rebuilt and compared at load": "DELIVERED. Production path (freeze_path=None) byte-pins the committed S freeze via verify_freeze (FREEZE_SHA256 2d56c0db... + 3 arm_identity_sha256 d60cf26d/6ccb3fa5/f41e94a3 + params + family; freeze_path override is fixture-only and still requires status SELECTION_FROZEN + the 3 arms + pooled_series_stats). _rebuild_data_plane (lines 1185-1331) rebuilds the 3 arms' pooled daily position-COUNT series in P0 census space (parse_name + run_config_census read-only, full served history, warm gate in served-index space, fold-by-decision-DATE, full-history med60, per-name bincount pooling so overlapping names each count) and verify_data_plane compares EXACTLY positions_used, position_days, death_censored_legs, pooled_max, pooled_nonzero_days and series_sha256 against selection_freeze.json pooled_series_stats (pooled_series_digests gate, lines 1559-1576). THIS AUDIT RECOMPUTED: freeze carries exactly 6fd58cc9... (GAP) / 495d9bca... (52W-HIGH) / f55a14ba... (VOL-REGIME) with the five companion stats; freeze file sha = 2d56c0db... == i_engine byte pin; consumed-artifact pins p0_lib.py/p0_run.py/p0_census.json/p0_census_cohort.json.gz/census_configs.json/retrieval_manifest.json all 6/6 match disk.",
+   "(iii) per-fold fired/bookable cross-check vs frozen p0_census.json rows": "DELIVERED AND EXCEEDED. Rebuilt per-config per-fold fired and bookable_fired are compared EXACTLY to the frozen p0_census.json rows for every census config sharing the 3 arms' (family, non-H-params) states - on the real 47-config grid that is 6 configs (the 3 arms + their H-5 hold-invariant variants) x 3 folds = 18 cells, minimum enforced as >= 9 arm cells (census_cells_equal_p0_census gate, lines 1597-1633), plus the freeze's embedded p0_census_per_fold_verbatim == census rows for the 3 arm cells (canonical-JSON equality, lines 1581-1595). The r1 requirement was the 3 cells (9 rows); delivered coverage is a superset. NOTE ON DISPATCH WORDING: the r2 dispatch text said 'cross-checks 141 census cells'; the implemented and binding coverage is 18 of the 141 cells (the scored arms' states), the remaining 41 configs remaining bound by the p0_census.json sha pin - not on the scored path (only 3 cells are consumable at E). THIS AUDIT RECOMPUTED: sharing-config set == {GAP-P25-CONFIRM-H1/H5, 52W-HIGH-B10-H20/H5, VOL-REGIME-L21-LOW-H20/H5}, all 18 rows present, freeze excerpts byte-equal to census rows, arm-cell counts spot-verified (GAP F1 fired 23,665,926 / bookable 2,253,590; 52W F1 21,912,415/1,403,473; VOL F1 12,700,921/1,117,647).",
+   "fail-closed on any mismatch": "DELIVERED. Every refusal path raises DataPlaneMismatch (STOP INPUT_MISMATCH) carrying the full verdict artifact: the fail() helper, per-name on_refuse inside the rebuild (cache_file_present / per_pull_digest_gz / per_pull_digest_raw / served_count_vs_cohort_census), and the frozen-sha gates. load_real_data calls the preflight AFTER the exact-phrase GO gate + verify_freeze + load_p0_lib + cache-dir existence and BEFORE the p0_run module is even imported and any cohort byte parsed; nothing loads on refusal; the PASS verdict artifact (stocks_search_v1_data_plane_preflight@1) is attached to the loader return as data_plane_preflight.",
+   "correct all GO-facing digest references (remove forex 85c8f875/57eed8b9/7eee7cf0)": "CARRIED AS A DOCUMENTATION CONDITION, HONESTLY UNRESOLVED BY THE LANE. The remediation lane had no write allowlist for dispatch packets and states so in remediation_note_f1.md + handoff, restating the correct stocks digests. THIS AUDIT VERIFIED: (a) the canonical stocks digests are 2c4283c2... (retrieval manifest) / 2d56c0db... (S freeze) / d60cf26d/6ccb3fa5/f41e94a3 (arm identities) / 6fd58cc9/495d9bca/f55a14ba (pooled series) - all recomputed from disk; (b) within the stocks worktree, the forex digests appear ONLY inside the r1 audit findings and the remediation documents that demand their replacement - no chain artifact cites them as its own control; (c) in .runtime/orchestrator_v3, 85c8f875/57eed8b9/7eee7cf0 appear only in FOREX-SEARCH-V1's own rows (tasks[194]/[196], where they are the correct forex digests) and in the r1/remediation handoffs quoting them for correction; no STOCKS task row cites them; (d) the STOCKS-SEARCH-V1 E-run GO packet does not exist yet, so the correction is prospective and is written into condition C-2 below."
+  },
+  "beyond_requirement": [
+   "per-pull identity plane-wide: cache file present for every status-200 pull; manifest digest pins verified where carried; parsed served count == digest-pinned cohort census served for EVERY name (served0/short counter laws)",
+   "completeness gates: all pulls status 200, pull set == cohort-census set both directions, SPY present (F7 benchmark pin)",
+   "SPY-pinned calendar + fold law: calendar re-derived from the cache and matched to the freeze pin (n/first/last/sha256); freeze B1/B2 == p0_lib.fold_boundaries calendar-thirds law",
+   "sha pins for all six consumed artifacts (p0_run.py newly pinned; r1 had only p0_lib)",
+   "F-4 fold-in: RETRIEVAL_EMPTY_COUNT_DISCLOSURE_VERBATIM (7,476 figure independently re-verified by this audit from the committed cohort census) carried on every E-run verdict skeleton and on the preflight verdict"
+  ],
+  "static_real_plane_proofs_recomputed_by_this_audit": [
+   "freeze file sha == 2d56c0dbcd21117272ae0d618d697020271b088896255b4ecf132452524e3fac (i_engine byte pin); status SELECTION_FROZEN",
+   "6/6 consumed pins match disk, incl. retrieval_manifest.json = 2c4283c24e4a4058...",
+   "manifest: 111,322 pulls, ALL status 200, pull set == cohort-census set (111,322), SPY present served=2943 == freeze calendar n_sessions=2943",
+   "calendar from the REAL SPY cache (read-only): n=2943, 2015-01-02..2026-09-16, canon sha == freeze calendar sha256 pin -> the preflight calendar check will not false-refuse at E",
+   "fold law: p0_lib.fold_boundaries(2015-01-02, 2026-09-16) == freeze B1/B2 == 2018-11-27/2022-10-22",
+   "cohort served==0 count == 7,476 (F-4 disclosure figure exact)",
+   "18 census cells covered on the real grid; freeze excerpt == census rows for the 9 arm rows"
+  ],
+  "at_e_binding": "The preflight must RUN AND PASS inside load_real_data before any cohort byte is parsed at E (condition C-2). Its real-plane PASS is proven here by mechanism + static identity, not by execution - same binding form the sibling FOREX cycle's AUTHORIZED_PRELAUNCH used for verify_positions_vs_freeze. No false-refusal risk identified: every check was statically shown to pass on the current real plane."
+ },
+ "new_findings": [
+  {
+   "id": "F-11",
+   "severity": "MEDIUM",
+   "section": "Evidence precision: per-pull digest coverage vs the committed manifest's own law string (pre-existing since P0; surfaced by this delta audit; NOT introduced by the remediation, which discloses it)",
+   "evidence": "p0/retrieval_manifest.json `law`: 'THIS manifest (sha256 per pull) is committed' and p0/f9_artifact_digests.json `raw_data_note`: 'their content identity is pinned per pull in retrieval_manifest.json (sha256_raw / sha256_gz)'. Bytes: exactly 1 of 111,322 pull records carries sha256_gz/sha256_raw (CKHGF, the single fresh pull of the final pass; n_cached_before_run=111,321); the other 111,321 records are {cached:true, rows:null, status:200} with no digest. The double_pull block pins 5 names only (A/AAON/AAPL/SPY/ZVRA). The preflight verifies pins 'where carried' (honest; disclosed in the remediation handoff known_limitations) and additionally binds plane-wide served counts, the 18-cell census cross-check and the 3 pooled count-series digests - so decision identity IS plane-wide; what is NOT byte-bound for 111,321 names is price/volume content that leaves every GAP/52W-HIGH/VOL-REGIME decision, served count and pooled count unchanged while still shifting scored PnL levels.",
+   "why": "Same evidence-quality class as r1 F-4: a committed identity claim overstates what the artifact carries. A detached R-phase reproducer believing 'sha256 per pull' would expect to re-verify raw bytes per name and cannot. The scored path itself is not opened beyond the residual r1 already accepted (decision-level binding); but at this standard the identity-plane claim must be exact, and the E PASS verdict must make the coverage visible (it does: checks.retrieval_complete.n_digest_pinned_pulls).",
+   "required_remediation": "No scored-path code change required. Before any R-phase reproduction relies on per-pull digests: commit a correction/annotation note (manifest and f9 file are P0 outputs; prefer a correction note over rewriting history) stating that per-pull digests cover fresh-pull records only (1/111,322 on the final plane) and that content identity for cached re-pulls is bound by served-count equality + the census/series comparisons; and archive the E-run data_plane_preflight PASS verdict (which carries n_digest_pinned_pulls) alongside the scored outputs. Owner-informed condition C-8 carries this."
+  },
+  {
+   "id": "F-12",
+   "severity": "LOW",
+   "section": "Remediation handoff doc precision: census-coverage phrasing",
+   "evidence": "ssearch-remediation-f1.handoff.json known_limitations says the census cross-check covers '18/282 cells on the synthetic fixture; proportionally more on the real 47-config grid'. Measured by this audit: on the real grid exactly 6 configs share the 3 arms' states, so the coverage is also 18 cells (the fixture's 18/282 was 6 configs x 3 folds of a 6-config grid, not a proportion). The code and the E verdict artifact are exact (n_cells_checked vs n_configs_total are recorded); only the handoff sentence is wrong.",
+   "why": "Doc imprecision only; no gate consumes the sentence. Recorded so the E verdict's n_cells_checked=18 is not misread as a shortfall against 'proportionally more'.",
+   "required_remediation": "None required for GO; correct the sentence if the handoff is ever superseded/reissued."
+  },
+  {
+   "id": "F-13",
+   "severity": "LOW",
+   "section": "Theoretical: degenerate-calendar exception contract in verify_data_plane",
+   "evidence": "If SPY's cache existed but contained zero in-window rows, _build_calendar_from_cache returns [] and the calendar_pin failure detail (i_engine.py lines 1532-1534) evaluates calendar[0]/calendar[-1] while constructing the detail dict, raising IndexError instead of DataPlaneMismatch. The run is still refused (nothing loads), so this is fail-closed in effect with the wrong exception label. Impossible on the current real plane (SPY served=2943, all in-window - recomputed by this audit).",
+   "why": "Theoretical hardening only, same class as r1 F-8; no scored-path exposure.",
+   "required_remediation": "Optional: guard the detail construction for an empty calendar. Not required for GO."
+  }
+ ],
+ "prior_findings_status": {
+  "F-1 HIGH": "CLOSED_IN_BYTES (see f1_closure)",
+  "F-2 MEDIUM (M0 11/11 plan text vs 10-gate NG6 lineage)": "UNCHANGED - M0 tree untouched by the remediation diff; owner adjudication/erratum still owed; carried in C-2/C-8 framing as owner item alongside r1 text",
+  "F-3 MEDIUM (C-PIT-MUTATION structural expectation)": "UNCHANGED - carried verbatim as condition C-6",
+  "F-4 MEDIUM (retrieval n_empty=0 counting artifact)": "RESOLVED via the r1 'annotate' option: RETRIEVAL_EMPTY_COUNT_DISCLOSURE_VERBATIM rides every adjudicate_candidate verdict skeleton and the preflight verdict; the 7,476 authoritative figure re-verified independently by this audit against the committed cohort census",
+  "F-5 MEDIUM (kill-rule/control pins at I)": "UNCHANGED - pinned constants untouched (REVERSAL_PLAIN_H=5, RANDOM_TIMING_PERIOD=63, CAL_HIST_BUCKET_FLOOR=10, K6 form); carried as condition C-5",
+  "F-6 LOW (packet hygiene)": "PARTIALLY RESOLVED - this cycle's own dispatch cites the correct stocks digests; committed chain quotes the forex digests only for correction; prospective correction written into condition C-2 (see f1_closure item iv)",
+  "F-7 LOW (f9 relative path for tests/test_stocks_search_v1_p0.py)": "UNCHANGED (follow-up fix still open, optional)",
+  "F-8 LOW (R2 NOT_ADJUDICABLE propagation)": "UNCHANGED (optional hardening, not required for GO)",
+  "F-9 LOW (p0_gate.json not in f9 digest manifest)": "UNCHANGED (optional)",
+  "F-10 LOW (band-C range wording)": "UNCHANGED (none required)"
+ },
+ "conditions_carried_into_GO": [
+  "C-1 (unconditional): scored E executes ONLY after the owner types the exact phrase 'GO STOCKS SEARCH V1 SCORED EXECUTION' at this cycle's own gate; early/paraphrased GO dies unconsumed (P-8). load_real_data is the only sanctioned real-data reader, and it now runs verify_data_plane mandatorily inside the gate.",
+  "C-2 (resolves F-1; SATISFIED IN CODE AND STATICALLY PROVEN by a7_prelaunch_stocks_search_v1_r2.json, BINDING AT E): at E, verify_data_plane must RUN AND PASS inside load_real_data BEFORE any cohort byte is parsed, on THIS chain's digests - S freeze byte pin 2d56c0db... with arm identities d60cf26d.../6ccb3fa5.../f41e94a3...; retrieval manifest pin 2c4283c2... vs s/selection_freeze.json data_manifests_sha256 (caller-substitute manifest paths REFUSED); pooled position-series digests 6fd58cc9.../495d9bca.../f55a14ba... rebuilt and compared EXACTLY; rebuilt fired/bookable_fired EXACTLY equal to the frozen p0_census.json rows for all 18 cells of the 3 arms' states (6 configs x 3 folds, H variants included); served counts per name vs the digest-pinned cohort census; SPY-pinned calendar + fold law. Any drift = DataPlaneMismatch/INPUT_MISMATCH stop, never an override. The E dispatch packet must cite THESE stocks digests (the forex 85c8f875/57eed8b9/7eee7cf0 citations are superseded; they belong to FOREX-SEARCH-V1 only) and must archive the PASS preflight verdict with the scored outputs.",
+  "C-3: DSR (DSR_BAILEY_LOPEZDEPRADO_V1, N=47 frozen grid, alpha 0.10 owner-relaxed) must COMPUTE and PASS on every survivor BEFORE any survivor name is named; program-cumulative N=260/alpha 0.05 is reported-only; PBO stays NOT_RUN fail-closed and R0 stays NOT_RUN on every result with the §10 disclosure verbatim.",
+  "C-4: budget <= 3 scored cells under the machine-wide heavy lock; every computed cell consumes an observed slot; unused slots never reassigned or force-filled.",
+  "C-5 (resolves F-5): the I-lane-pinned control definitions (K6 SE_f test, fold-positive-share V11 statistic, R5 union form, C-RANDOM-TIMING/C-CAL-HIST/C-REVERSAL-PLAIN mechanics) are the authoritative frozen forms; any post-E modification is BLOCKED_METHOD_CONTRACT.",
+  "C-6 (resolves F-3 expectation-setting): the owner must be informed before typing GO that C-PIT-MUTATION is expected to structurally fail persistent-state cells (52W-HIGH certainly; GAP/VOL-REGIME likely), making REJECT_ALL the statistically likely terminal outcome; the gate will not be weakened in-cycle.",
+  "C-7: S1 SEALED; no paper/testnet/live orders; no budget/GO/rescue sharing with FOREX-SEARCH-V1 or PROSPECTIVE-SHADOW-V1; the §3 relaxation may not be widened; raw EODHD bytes remain gitignored with digests pinned per pull.",
+  "C-8 (resolves F-11, owner-informed): the GO decision is made knowing that per-pull raw-byte digests cover 1/111,322 pulls (CKHGF) and that raw-byte identity for the cached 111,321 names is bound at decision level (served counts + 18-cell census + 3 pooled series), not byte level; a correction/annotation note for the manifest law string and f9 raw_data_note is owed before any R-phase reproduction relies on per-pull digests; the E PASS preflight verdict must be archived."
+ ],
+ "residual_risks_accepted": [
+  "Inherited from r1: cohort membership is a TODAY vendor snapshot (living list), partially mitigated by the 60,191-name delisted arm; backfill bias inherent to the source and precedent-bound.",
+  "Inherited from r1: the E runner glue is written post-GO; with C-2 in place the sanctioned building blocks (load_real_data -> run_candidate_adjudication -> dsr_gate -> persist_series) are all audit-verified code and the runner must not deviate from them.",
+  "New from F-11: raw-byte revisions of cached names that preserve every decision, served count and pooled count pass the preflight and shift scored PnL levels; detection would be post-hoc in R. Bounded by the decision-level plane-wide binding and by C-8's disclosure."
+ ],
+ "delta_verification": {
+  "method_disclosure": "Fresh-context read-only delta audit. sha256 recomputed locally for the freeze, the six consumed artifacts and the committed retrieval manifest; committed JSON artifacts parsed and cross-compared programmatically; the full remediation diff (c9d2fc70..a42c8547) read hunk-by-hunk; verify_data_plane/_rebuild_data_plane/_arm_state_machinery/_build_calendar_from_cache/load_real_data and all 7 new tests read line-by-line; fold law and SPY-cache calendar recomputed read-only. NO engine execution, NO census rerun, NO E-run, NO test execution (lane-claimed 51/25/M0-PASS results verified as committed evidence and code paths only, per r1 methodology), NO S1 access, NO writes to chain artifacts.",
+  "f1_closure_evidence": "CLOSED_IN_BYTES - see f1_closure",
+  "new_defect_hunt": "3 findings (1 MEDIUM, 2 LOW), none scored-path; GO gate first, budget 0/3, R0/PBO labels, DSR gating, kill rules, BC-7, cost bands, force-flat and leak-scan-relevant code all byte-identical outside the disclosed additive hunks",
+  "tests_claimed_by_lane": "test_stocks_search_v1_i.py 51 passed (44 pre-existing + 7 new); test_stocks_search_v1_p0.py 25 passed; m0/test_m0_golden.py PASS (10 gates) - verified as claims consistent with the committed code; not re-executed by this audit"
+ },
+ "auditor_context_fresh": true
+}
