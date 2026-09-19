@@ -1,0 +1,129 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "ssearch-s-r3",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "real_cycle_id": "STOCKS-SEARCH-V1",
+ "role": "quant-implementer",
+ "lane": "ssearch-s",
+ "dispatch_sha": "9419b97a515c10b28bcc224300906c9c138e9194",
+ "actual_start_sha": "9419b97a515c10b28bcc224300906c9c138e9194",
+ "commit_sha": "76683f034693dfbc4ef443a85c059e34b2d48109",
+ "branch": "orca/stocks-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "changed_paths": [
+  "research/control/stocks_search_v1_run/s/s_select.py",
+  "research/control/stocks_search_v1_run/s/selection_freeze.json",
+  "research/control/stocks_search_v1_run/s/diag_s_r3.py",
+  "research/control/stocks_search_v1_run/s/diag_s_r3_result.json",
+  "research/control/stocks_search_v1_run/s/verify_s_r3.py",
+  "research/control/stocks_search_v1_run/s/run_log_s_r3.txt",
+  "research/control/stocks_search_v1_run/s/run_log_s_r3_selfcheck.txt",
+  "research/control/stocks_search_v1_run/s/run_log_s_r3_failed_attempt2.txt",
+  "research/control/stocks_search_v1_run/s/run_log_s.txt",
+  "research/control/stocks_search_v1_run/s/s_freeze_note.md"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python research/control/stocks_search_v1_run/s/diag_s_r3.py (bounded 305-name sample; 3 counting paths A/B/C)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "DIAGNOSIS: path B (census space: full served history, warm gate in served-index space, fold-by-date, full-history med60) equals the frozen p0_run.run_census path exactly (all 66 state-fold ratios exactly 2.0/3.0 = H-variant count, hold-invariance); path C (prior trim-space build) drifted fired counts on 19/22 states (sample total +892 of 2,022,886) — never exact, matching the 0/47 gate FAIL; recon: 174 off-calendar bars on 17/277 names, 4 post-WINDOW_END bars"
+  },
+  {
+   "command": ".venv/bin/python research/control/stocks_search_v1_run/s/verify_s_r3.py",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "SAMPLE-VERIFY of the FIXED production heavy_pass: 141/141 per-config per-fold census cells EXACT vs p0_run.run_census on the same 305 names; 2 pooled series byte-equal to independent naive per-name recomputation"
+  },
+  {
+   "command": ".venv/bin/python research/control/stocks_search_v1_run/s/s_select.py --run (detached nohup, full 111,322-name pass)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "check state_totals_equal_p0_census_all_47: PASS (log line; gate is EXACT equality of all 47x3x2 rebuilt census cells vs frozen p0_census.json rows); all 27/27 checks PASS; selection_freeze.json written sha256=2d56c0dbcd21117272ae0d618d697020271b088896255b4ecf132452524e3fac; detached process exited cleanly, heavy lock released FREE_PROVEN"
+  },
+  {
+   "command": ".venv/bin/python research/control/stocks_search_v1_run/s/s_select.py --selfcheck (detached nohup, full independent recomputation)",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "selfcheck byte-compare vs committed freeze: IDENTICAL (log line); census gate PASS again; 27/27 checks PASS"
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "Diagnosis executed on a 305-name bounded sample (packet cap 500); the EXACT-match proof for the full cohort is the run-time gate state_totals_equal_p0_census_all_47 (all 282 cells) plus the byte-identical --selfcheck, not the sample.",
+  "Root cause of the failed attempt 2 was in the S-lane rebuild only; the frozen P0 census artifacts were never wrong and were never edited.",
+  "Selfcheck ran ~6.5h wall under heavy external machine load (load avg peaked 11.6); pass is niced and detached, results unaffected.",
+  "Handoff exit codes for the two detached full passes are derived from log verdict lines + clean process exit + FREE_PROVEN lock release (the nohup wrapper did not capture return codes); both logs end with 'checks: 27/27 PASS' and contain no STOP line."
+ ],
+ "incidents": [
+  "Attempt 2 (pre-existing): full 111,322-name scan completed but failed its own final integrity gate state_totals_equal_p0_census_all_47 n_ok=0/47 -> fail-closed STOP INPUT_MISMATCH, no freeze written (preserved: s/run_log_s_r3_failed_attempt2.txt).",
+  "SECOND LATENT BUG found and fixed in the same revision: the pooled position-count accumulation used fancy-index '+=' which silently collapses duplicate calendar indices across names (undercounted daily position counts); replaced with np.bincount and verified against an independent naive per-name recomputation (2 configs, EXACT). The bug never reached a freeze (no prior freeze existed).",
+  "Attempt 1 (pre-existing, per packet): session-teardown kill at 58% - mitigated by nohup+disown for both r3 passes, both survived."
+ ],
+ "tree_status": "CLEAN after commits (git status --porcelain=v1 empty; s/ __pycache__ ignored-by-pathspec, not committed)",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/s/selection_freeze.json",
+   "sha256": "2d56c0dbcd21117272ae0d618d697020271b088896255b4ecf132452524e3fac"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/s/s_select.py",
+   "sha256": "1c3ed7f5a99f55de045e568dcf0b1b0136a03f97d7058370af1931a554a12bfd"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/s/diag_s_r3.py",
+   "sha256": "bda563d4d437094ca4f48d643178015ad20934f29f20e30fdc2054f65c897d21"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/s/diag_s_r3_result.json",
+   "sha256": "3c4aecc67a24911253afedc877179c486b85f54454b50b405129c1886f26e3e7"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/s/verify_s_r3.py",
+   "sha256": "1c485d81a0cee8d7135059c3e6d1ee442da31ea24622b06db31c21d1a42ded58"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/s/run_log_s_r3.txt",
+   "sha256": "d011466b53df386d00ddfef3d92ec713b5fd181db977e50732e6954f4503164e"
+  },
+  {
+   "path": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/s/run_log_s_r3_selfcheck.txt",
+   "sha256": "b84b2f1302ac37ee6c1e8b153bb834ebb2ae6412e7f0aab9fcd072e97ad2d711"
+  }
+ ],
+ "selection_summary": {
+  "status": "SELECTION_FROZEN",
+  "freeze_sha256": "2d56c0dbcd21117272ae0d618d697020271b088896255b4ecf132452524e3fac",
+  "freeze_self_sha256": "0a881b0cebf35c0bd5bc5c72babe7f61c4e458485aeb28043074e0b62f4b346d",
+  "n_selected": 3,
+  "selected": [
+   {
+    "rank": 1,
+    "config_id": "SSS-GAP-P25-CONFIRM-H1",
+    "family": "GAP",
+    "p20_max_abs_rho": null
+   },
+   {
+    "rank": 2,
+    "config_id": "SSS-52W-HIGH-B10-H20",
+    "family": "52W-HIGH",
+    "p20_max_abs_rho": 0.593331312319534
+   },
+   {
+    "rank": 3,
+    "config_id": "SSS-VOL-REGIME-L21-LOW-H20",
+    "family": "VOL-REGIME",
+    "p20_max_abs_rho": 0.7707894467819895
+   }
+  ],
+  "walk": "3 visits, 3 accepted, cells_per_family all 1 (<=2), frozen tier order GAP > 52W-HIGH > VOL-REGIME > ... by F3 fired census DESC",
+  "outcome_blindness": "NO performance statistic anywhere; positions {0,1} counts and pooled-series Pearson rho only (banned-key scan in-freeze 27/27 PASS)"
+ },
+ "diagnosis": {
+  "root_cause": "s_select heavy_pass ran the frozen P0 census engines on SPY-calendar-TRIMMED arrays while the frozen P0 census ran on each name's FULL served history: (a) off-calendar bars dropped -> served-session index shift (warmup gate and rolling-window boundaries move; 174 bars on 17/277 sample names); (b) post-WINDOW_END bars dropped while L.assign_fold maps those dates into F3 and the census COUNTED them; (c) med60 recomputed on trimmed arrays -> bookability/participation drift. Systematic small drift on 19/22 sample states, EXACT gate -> 0/47 FAIL.",
+  "fix": "heavy_pass rewritten to census space (engines reused read-only and unchanged: p0_run.parse_name + p0_lib.run_config_census on full served history, fold_code vectorized equivalent of L.assign_fold, full-history med60); held-session DATES pooled onto the SPY calendar (calendar never trims engine input); pooled accumulation via np.bincount; gate strengthened to per-config per-fold cell equality (282 cells).",
+  "precedent": "matches the forex S-lane pattern: rebuild consumes the frozen P0 engines read-only; frozen census numbers reproduced EXACTLY"
+ },
+ "recommended_next_action": "S phase COMPLETE and frozen; proceed to the next packet phase (E execution per plan §8) against the frozen selection_freeze.json (sha256 2d56c0dbcd21117272ae0d618d697020271b088896255b4ecf132452524e3fac); no re-run of S needed unless the owner amends the frozen inputs."
+}
