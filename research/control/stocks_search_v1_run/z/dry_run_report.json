@@ -1,0 +1,446 @@
+{
+ "all_checks_pass": true,
+ "base_sha": "5c701987f997e29d35c9096f59827243e52f6d91",
+ "battery": [
+  {
+   "command": ".venv/bin/python -m pytest tests/test_stocks_search_v1_i.py -q",
+   "exit_code": 0,
+   "tail": [
+    "44 passed in 0.67s"
+   ]
+  },
+  {
+   "command": ".venv/bin/python -m pytest tests/test_stocks_search_v1_p0.py -q",
+   "exit_code": 0,
+   "tail": [
+    "25 passed in 0.22s"
+   ]
+  }
+ ],
+ "branch": "orca/stocks-search-v1-integration",
+ "checks": [
+  {
+   "evidence": {
+    "freeze_sha256": "2d56c0dbcd21117272ae0d618d697020271b088896255b4ecf132452524e3fac",
+    "n_cells": 3,
+    "p0_lib_pinned_import": "OK",
+    "status": "SELECTION_FROZEN"
+   },
+   "id": "C0",
+   "method": "verify_freeze() + load_p0_lib() pin at import; mismatch is the FROZEN_SHA_MISMATCH stop condition",
+   "result": "PASS",
+   "title": "Binding freeze verification"
+  },
+  {
+   "evidence": {
+    "digest_run1": "4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8",
+    "digest_run2": "4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8"
+   },
+   "id": "C1",
+   "method": "full pipeline run twice in one process; canonical JSON sha256 over all 3 cell adjudication reports + 21 book series digests must be identical",
+   "result": "PASS",
+   "title": "In-process determinism (byte-identical rerun)"
+  },
+  {
+   "evidence": {
+    "in_process": "4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8",
+    "subprocesses": [
+     {
+      "dataset_sha256": "25e7e8583eeff1c1f5d84d9f6bfeeb8fcd9b5c11e8c7d0fcc2b21d8c6a916080",
+      "pipeline_sha256": "4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8",
+      "seed": "1"
+     },
+     {
+      "dataset_sha256": "25e7e8583eeff1c1f5d84d9f6bfeeb8fcd9b5c11e8c7d0fcc2b21d8c6a916080",
+      "pipeline_sha256": "4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8",
+      "seed": "random"
+     }
+    ]
+   },
+   "id": "C2",
+   "method": "the full pipeline re-run in two fresh subprocesses under different hash seeds must reproduce the in-process digest byte-identically",
+   "result": "PASS",
+   "title": "Cross-process determinism (PYTHONHASHSEED 1 vs random)"
+  },
+  {
+   "evidence": {
+    "book_leg_same_exit_and_anchor": true,
+    "engineered_leg": {
+     "decision": "2016-03-28",
+     "exit": "2016-04-06",
+     "force_flat": true,
+     "gross_matches_recompute": true,
+     "symbol": "SYN00"
+    },
+    "fold_not_opened_syn00_at_b1": 1,
+    "structural_scan": {
+     "force_flat_legs": 4942,
+     "legs_scanned": 195824,
+     "n_problems": 0,
+     "problems": []
+    }
+   },
+   "id": "C3",
+   "method": "every leg in every book re-derived structurally (fold by decision date; entry = decision+offset; force-flat exit = the name's last served session <= fold end with the natural exit proven to cross; natural exit otherwise); engineered SYN00 52W decision at calendar[320] must force-flat at calendar[327]=B1 (hand leg AND end-to-end book leg); a decision AT B1 must be fold_not_opened",
+   "result": "PASS",
+   "title": "Fold force-flat + fold boundary clock"
+  },
+  {
+   "evidence": {
+    "censored_kinds_all_arms": [
+     "death_open",
+     "death_zero_length",
+     "died_before_entry"
+    ],
+    "censored_kinds_gap": [
+     "death_zero_length",
+     "died_before_entry"
+    ],
+    "censored_legs_net_is_nan": true,
+    "death_invariance_bound_in_reports": true,
+    "death_open_gross_recompute_ok": true,
+    "death_open_split_per_arm": {
+     "52W": {
+      "at_window_edge": 441,
+      "delisted_name": 78
+     },
+     "GAP": {
+      "at_window_edge": 0,
+      "delisted_name": 0
+     },
+     "VOL": {
+      "at_window_edge": 213,
+      "delisted_name": 39
+     }
+    },
+    "expectancy_excludes_censored": true,
+    "n_death_open": 771,
+    "syn30_death_session_serves_natural_exit": true
+   },
+   "id": "C4",
+   "method": "engineered last-session wedges force death_zero_length (SYN31) and died_before_entry (SYN32); the delisted cohort yields death_open legs in the H=20 arms; SYN30 demonstrates the death session serving a natural exit; censored legs carry no net and are excluded from the expectancy numerator (verified by recompute); death_open gross recomputed = death-open/entry-open to 1e-12; adjudicate's death-censoring invariance bound in all 3 reports; the engine-frozen BC-7 horizon is the name's LAST SERVED session, so the split also reports window-edge censoring (identical semantics apply at the S0 end in the scored E run)",
+   "result": "PASS",
+   "title": "BC-7 death contract"
+  },
+  {
+   "evidence": {
+    "band_class_mismatches": [],
+    "bands_per_book": {
+     "52W": [
+      "A",
+      "B",
+      "C"
+     ],
+     "GAP": [
+      "A",
+      "B",
+      "C"
+     ],
+     "VOL": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    "end_to_end_book_leg_matches": true,
+    "engineered_leg": {
+     "band": "C",
+     "decision": "2016-12-05",
+     "entry": "2016-12-06",
+     "exit": "2016-12-07",
+     "gross": -0.0642122879565804,
+     "matches_hand_constants": true,
+     "net": -0.0742122879565804
+    },
+    "expected_constants": {
+     "band": "C",
+     "cost_round_trip": 0.01,
+     "decision_served": 486,
+     "entry_served": 487,
+     "exit_served": 488,
+     "gross": -0.0642122879565804,
+     "net": -0.0742122879565804,
+     "open_entry": 1.0075440789473686,
+     "open_exit": 0.9428473684210527,
+     "symbol": "SYN02",
+     "wedge_calendar_index": 500
+    },
+    "max_round_trip_cost_observed": 0.01,
+    "worst_case_ceiling_bps": 100
+   },
+   "id": "C5",
+   "method": "hand-checkable trade derived from closed-form constants (NEVER read from the arrays): SYN02 (volume class C) GAP wedge decision calendar[500] (served 486), entry 501 open, exit 502 open, band C, net = gross - 0.0100 = the 25bps x 2 fills x stress 2.0 WORST-CASE ceiling; the same leg must appear in the end-to-end candidate book; every leg in every book carries its engineered volume-class band (A/B/C) and satisfies net = gross - 2*band*2.0/1e4 to 1e-12; observed round-trip cost <= the 100 bps ceiling",
+   "result": "PASS",
+   "title": "Cost bands + 100 bps worst case (hand-checked)"
+  },
+  {
+   "evidence": {
+    "SSS-52W-HIGH-B10-H20": {
+     "budget_used": 0,
+     "dsr_gate": "E_SCORED_ONLY",
+     "labels_verbatim_ok": true,
+     "pbo_status": "PBO_NOT_RUN",
+     "r0_status": "R0_NOT_RUN",
+     "synthetic_verdict": "REJECT_R1"
+    },
+    "SSS-GAP-P25-CONFIRM-H1": {
+     "budget_used": 0,
+     "dsr_gate": "E_SCORED_ONLY",
+     "labels_verbatim_ok": true,
+     "pbo_status": "PBO_NOT_RUN",
+     "r0_status": "R0_NOT_RUN",
+     "synthetic_verdict": "REJECT_R1"
+    },
+    "SSS-VOL-REGIME-L21-LOW-H20": {
+     "budget_used": 0,
+     "dsr_gate": "E_SCORED_ONLY",
+     "labels_verbatim_ok": true,
+     "pbo_status": "PBO_NOT_RUN",
+     "r0_status": "R0_NOT_RUN",
+     "synthetic_verdict": "REJECT_R2"
+    }
+   },
+   "id": "C6",
+   "method": "every cell's adjudication report carries R0_NOT_RUN + PBO_NOT_RUN + the \u00a73/\u00a710 relaxation disclosure string VERBATIM (checked against both the engine constants AND the plan \u00a710 text), budget 0/3 and the E-scored-only DSR gate",
+   "result": "PASS",
+   "title": "Verdict labels + \u00a710 relaxation disclosure"
+  },
+  {
+   "evidence": {
+    "exact_phrase_stub_path": {
+     "data_path": "FileNotFoundError on the STUB cache dir",
+     "detail": "raw cache dir not found: /var/folders/5x/qwclk7413dz3f32234k4619w0000gn/T/tmpu5m14fbl/stub_cache_empty (no cohort loaded)",
+     "gate": "PASSED (exact phrase consumed)"
+    },
+    "refused": [
+     {
+      "phrase": "''",
+      "refused": true
+     },
+     {
+      "phrase": "'go stocks search v1 scored execution'",
+      "refused": true
+     },
+     {
+      "phrase": "'GO STOCKS SEARCH V1 SCORED EXECUTIO'",
+      "refused": true
+     },
+     {
+      "phrase": "'GO STOCKS SEARCH V1 EXECUTION'",
+      "refused": true
+     },
+     {
+      "phrase": "'PLEASE GO STOCKS SEARCH V1 SCORED EXECUTION'",
+      "refused": true
+     },
+     {
+      "phrase": "'GO STOCKS SEARCH V1 SCORED EXECUTION NOW'",
+      "refused": true
+     },
+     {
+      "phrase": "'GO STOCKS SEARCH V1 SCORED EXECUTION '",
+      "refused": true
+     },
+     {
+      "phrase": "'GO  STOCKS SEARCH V1 SCORED EXECUTION'",
+      "refused": true
+     }
+    ]
+   },
+   "id": "C7",
+   "method": "the absent phrase + 7 paraphrased/truncated/padded variants must raise GoGateRefused (P-8: early or paraphrased GO dies unconsumed); the EXACT phrase passes the gate and then fails on a STUB cache dir (FileNotFoundError) - the real P0 cache path is never provided and no real data is ever loaded in this lane",
+   "result": "PASS",
+   "title": "GO-gated real-data loader (stub paths only)"
+  },
+  {
+   "evidence": {
+    "arms_ran_clean": true,
+    "degenerate_bar_fired": false,
+    "degenerate_counted_in_drops": 0,
+    "twin_bar_fired": true,
+    "zero_range_bars_in_cohort": 48
+   },
+   "id": "C8",
+   "method": "p0 census kernel on a crafted mini-series: an otherwise-qualifying EVENT-UNWIND bar (break+reclaim+range+participation all true) made degenerate (high==low) is NOT fired and counted, while its non-degenerate twin FIRES (control proving the test can detect); the cohort carries zero-range bars and all 3 arms ran clean with them present",
+   "result": "PASS",
+   "title": "Zero-range law (high==low never fired, never imputed)"
+  },
+  {
+   "evidence": {
+    "gap_wedge_bar_fired": true,
+    "synthetic_verdicts": {
+     "SSS-52W-HIGH-B10-H20": "REJECT_R1",
+     "SSS-GAP-P25-CONFIRM-H1": "REJECT_R1",
+     "SSS-VOL-REGIME-L21-LOW-H20": "REJECT_R2"
+    },
+    "vol_quiet_zone_early_share": 0.9617,
+    "vol_quiet_zone_fired_share": 0.9636,
+    "w52_sawtooth_peak_fired_share": 1.0
+   },
+   "id": "C9",
+   "method": "the engineered wedges fire on cue: the GAP wedge bar fires CONFIRM; the VOL-REGIME quiet zone fires long-LOW (early zone >= 90%, whole zone >= 30%); every sawtooth peak fires 52W-HIGH (>= 99%); the full pipeline produced a verdict for all 3 cells (SYNTHETIC verdicts - NO scored meaning, explicitly not evidence of anything)",
+   "result": "PASS",
+   "title": "Wedge liveness + full-pipeline verdicts (SYNTHETIC)"
+  }
+ ],
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "dataset": {
+  "calendar_end": "2018-10-11",
+  "calendar_start": "2015-01-05",
+  "delisted_symbols": [
+   "SYN30",
+   "SYN31",
+   "SYN32",
+   "SYN33",
+   "SYN34",
+   "SYN35"
+  ],
+  "folds": {
+   "F1": [
+    "2015-01-05",
+    "2016-04-06"
+   ],
+   "F2": [
+    "2016-04-06",
+    "2017-07-10"
+   ],
+   "F3": [
+    "2017-07-10",
+    "2018-10-11"
+   ],
+   "b1": "2016-04-06",
+   "b2": "2017-07-10"
+  },
+  "gap_wedges": {
+   "SYN00": 500,
+   "SYN01": 493,
+   "SYN02": 486,
+   "SYN03": 479,
+   "SYN04": 472,
+   "SYN05": 465,
+   "SYN06": 458,
+   "SYN07": 451,
+   "SYN08": 444,
+   "SYN09": 437,
+   "SYN10": 430,
+   "SYN11": 423,
+   "SYN12": 416,
+   "SYN13": 409,
+   "SYN14": 402,
+   "SYN15": 395,
+   "SYN16": 388,
+   "SYN17": 381,
+   "SYN18": 374,
+   "SYN19": 367,
+   "SYN20": 360,
+   "SYN21": 353,
+   "SYN22": 346,
+   "SYN23": 339,
+   "SYN24": 500,
+   "SYN25": 493,
+   "SYN26": 486,
+   "SYN27": 479,
+   "SYN28": 472,
+   "SYN29": 465,
+   "SYN30": 456,
+   "SYN31": 520,
+   "SYN32": 584,
+   "SYN33": 437,
+   "SYN34": 430,
+   "SYN35": 423,
+   "SYN36": 416,
+   "SYN37": 409,
+   "SYN38": 402,
+   "SYN39": 395
+  },
+  "late_listings": {
+   "SYN40": 780,
+   "SYN41": 700
+  },
+  "n_calendar_sessions": 984,
+  "n_delisted": 6,
+  "n_names": 42,
+  "n_served_bars_total": 35228,
+  "seed_label": "closed-form-deterministic (no RNG; z_run.py v1)",
+  "spy": "deterministic 2bp/day drift, volume 1e9, full calendar",
+  "staggered_listing_offsets": [
+   0,
+   7,
+   14,
+   21,
+   28,
+   35,
+   42,
+   49,
+   56,
+   63,
+   70,
+   77,
+   84,
+   91,
+   98,
+   105,
+   112,
+   119,
+   126,
+   133,
+   140,
+   147,
+   154,
+   161,
+   700,
+   780
+  ],
+  "vol_regime_quiet_zone_names": [
+   "SYN20",
+   "SYN21",
+   "SYN22",
+   "SYN23",
+   "SYN24",
+   "SYN25",
+   "SYN26",
+   "SYN27",
+   "SYN28",
+   "SYN29"
+  ],
+  "volume_classes": {
+   "0": "A",
+   "1": "B",
+   "2": "C"
+  },
+  "zero_range_bars_total": 48,
+  "zero_range_symbols": [
+   "SYN10",
+   "SYN11",
+   "SYN12",
+   "SYN13",
+   "SYN14",
+   "SYN15"
+  ]
+ },
+ "determinism": {
+  "in_process_pipeline_sha256": "4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8",
+  "note": "full evidence in checks C1/C2"
+ },
+ "engines_consumed_read_only": {
+  "adjudicate": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/i/adjudicate.py",
+  "i_engine": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration/research/control/stocks_search_v1_run/i/i_engine.py",
+  "p0_lib_pin": "verified inside load_p0_lib (freeze data_manifests_sha256['p0_lib.py'])",
+  "selection_freeze_sha256": "2d56c0dbcd21117272ae0d618d697020271b088896255b4ecf132452524e3fac"
+ },
+ "head_verified": "5c701987f997e29d35c9096f59827243e52f6d91",
+ "heavy_lock": {
+  "machine_state_at_run": "FREE_PROVEN",
+  "note": "light sanitized job; the machine-wide heavy lock is not required and was not taken; shadow workers (15315/15316) untouched",
+  "taken": false
+ },
+ "leak_scan_status": "CLEAN",
+ "overall": "PASS",
+ "phase": "Z (sanitized exact-arm dry-run + recursive leak scan)",
+ "real_cycle_id": "STOCKS-SEARCH-V1",
+ "sanitized": true,
+ "schema": "stocks_search_v1_dry_run_report@1",
+ "scope_statement": "SYNTHETIC data only; NO real archive was read or executed; the GO-gated loader was exercised with STUB paths only; all cell verdicts below are synthetic-verdicts with NO scored meaning and are not evidence of profitability",
+ "scored": false,
+ "task_id": "ssearch-z"
+}

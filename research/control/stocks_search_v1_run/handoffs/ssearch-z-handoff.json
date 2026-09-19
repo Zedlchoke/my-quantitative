@@ -1,0 +1,76 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "ssearch-z",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "real_cycle_id": "STOCKS-SEARCH-V1",
+ "role": "quant-implementer",
+ "lane": "ssearch-z",
+ "dispatch_sha": "5c701987f997e29d35c9096f59827243e52f6d91",
+ "actual_start_sha": "5c701987f997e29d35c9096f59827243e52f6d91",
+ "commit_sha": null,
+ "commit_sha_note": "SELF-REFERENCE LIMIT: this copy is committed INSIDE the single Z pathspec commit itself, so it cannot carry that commit's sha. The authoritative commit_sha is recorded in the inbox handoff /Users/hoangminhlong/my-quantitative/.runtime/orchestrator_v3/inbox/ssearch-z-handoff.json, written immediately after the commit (one pathspec commit containing z/ + this handoffs copy, per the dispatch).",
+ "branch": "orca/stocks-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "objective_summary": "Phase Z per plans/PLAN_stocks_search_v1.md \u00a79: sanitized EXACT-ARM dry-run + RECURSIVE LEAK SCAN, delivered as one deterministic runner (z/z_run.py, --selfcheck / --emit-digest) writing z/dry_run_report.json + z/leak_scan.json. Consumed READ-ONLY: i/i_engine.py + i/adjudicate.py (verified at HEAD 5c701987, branch orca/stocks-search-v1-integration), s/selection_freeze.json (sha256 2d56c0db... verified at import via i_engine.verify_freeze), and the sha256-pinned p0/p0_lib.py census kernels the engines reuse for the firing states. TASK 1 dry-run on a closed-form deterministic synthetic dataset (NO RNG; 42 names, 35,228 served bars, staggered listings, 6 delisted names incl. engineered last-session wedges guaranteeing all three BC-7 censored kinds, 2 late listings for warmup attrition, 48 zero-range high==low bars, known GAP/52W-HIGH/VOL-REGIME wedges; folds at calendar thirds): (a) determinism - full 3-cell pipeline (build_all_books + adjudicate_candidate) byte-identical across in-process reruns AND two fresh subprocesses under PYTHONHASHSEED=1 vs random (pipeline sha256 4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8, identical in every run); (b) fold force-flat - every one of the 195,824 legs across all 21 books re-derived structurally (fold by decision date, entry = decision+offset, force-flat exit = last served session <= fold end with the natural exit proven to cross), engineered SYN00 52W decision at calendar[320] force-flats at calendar[327]=B1 and a decision AT B1 is fold_not_opened; (c) BC-7 - death_open / death_zero_length / died_before_entry all present, censored legs carry no net and are excluded from the expectancy numerator (recompute-verified), death-session-served natural exit demonstrated (SYN30), death-censoring invariance bound in all 3 adjudication reports, and every death_open leg's branch condition matches an independent recomputation of the frozen engine branch (0 mismatches; split: window-edge vs delisted censoring disclosed); (d) cost bands - hand-checkable trade from closed-form constants NEVER read from arrays (SYN02, volume class C, wedge at calendar[500], band C, net = gross - 0.0100 = the 25bps x 2 fills x stress 2.0 worst-case 100 bps round trip, verified to 1e-12 and found identical in the end-to-end book), every leg carries its engineered volume-class band and net = gross - 2*band*2.0/1e4 to 1e-12; (e) every cell verdict carries R0_NOT_RUN + PBO_NOT_RUN + the \u00a73/\u00a710 relaxation disclosure VERBATIM (checked against both engine constants and the plan \u00a710 text), budget 0/3, DSR gate E_SCORED_ONLY; (f) GO gate - absent + 7 paraphrased/truncated/padded phrase variants all raise GoGateRefused (P-8), the EXACT phrase passes the gate then fails on a STUB cache dir (FileNotFoundError) - the real P0 cache path was never provided and NO real data was loaded anywhere in this lane. TASK 2 leak scan FAIL-CLOSED (status CLEAN): static - zero forbidden-pattern hits (ffill/bfill/fillna/interpolate/pandas/.shift(/expanding/merge_asof/nanmax...) across p0_lib.py + i_engine.py + adjudicate.py plus curated file:line evidence classifying every window-statistic call site as trailing-window/outcome-only/control; DOC_INCONSISTENCY disclosed benign (p0_lib._rolling_median docstring says ending at i-1, code is trailing-INCLUSIVE - both backward-safe, kernel is the frozen authority); dynamic - D1 taint: 160 sampled decisions across all 3 cells x folds, every bar AFTER the decision instant doctored (prices x3.7, volume x5.0), fired[t] AND bookable[t] invariant in 160/160; D2 end-to-end single doctored future bar (all prices x3, volume x5 at SYN00 calendar[450]): full pipeline rerun, state/band/entry of every decision whose window ends before the bar invariant, untouched names' masks identical, POSITIVE CONTROLS prove sensitivity (2 legs whose entry/exit open IS the doctored bar changed gross; 105 legs entirely before it byte-identical); D3 entry-open positive control (doctor ONLY open[t0+1]: state+band invariant, leg gross MUST change - proves genuine t+1-open fills); D4 window-boundary pin (doctor ONLY close[t0+1] x0.5 crash: state at t0 invariant for all 3 families, 52W flips OFF at t0+1, GAP at t0+1 unchanged - pins state(s) reads info <= s, never beyond); D5 no same-bar fills structural scan (entry == decision+1, or +1+H for C-DELAY-H; net formula exact). TASK 3 battery: tests/test_stocks_search_v1_i.py 44 passed exit 0; tests/test_stocks_search_v1_p0.py 25 passed exit 0; z_run.py --selfcheck exit 0 with checks C0-C9 all PASS. NO scored execution, NO real-data engine run, no network, heavy lock not taken (light sanitized job; machine lock state FREE_PROVEN at run time; shadow workers 15315/15316 untouched).",
+ "changed_paths": [
+  "research/control/stocks_search_v1_run/z/z_run.py",
+  "research/control/stocks_search_v1_run/z/dry_run_report.json",
+  "research/control/stocks_search_v1_run/z/leak_scan.json",
+  "research/control/stocks_search_v1_run/handoffs/ssearch-z-handoff.json"
+ ],
+ "tests": [
+  {
+   "command": ".venv/bin/python research/control/stocks_search_v1_run/z/z_run.py --selfcheck",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "10/10 checks PASS (C0 freeze verification, C1 in-process determinism, C2 cross-process determinism PYTHONHASHSEED 1 vs random, C3 fold force-flat + boundary clock, C4 BC-7 death contract, C5 cost bands + 100bps worst case hand-checked, C6 verdict labels + \u00a710 disclosure verbatim, C7 GO-gate refusal matrix on stub paths, C8 zero-range law with firing twin control, C9 wedge liveness + full-pipeline synthetic verdicts) AND leak scan CLEAN AND both pytest suites exit 0; overall exit 0."
+  },
+  {
+   "command": ".venv/bin/python -m pytest tests/test_stocks_search_v1_i.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "44 passed - I-lane suite stayed green (baseline re-verified at HEAD before any Z write, also 44 passed)."
+  },
+  {
+   "command": ".venv/bin/python -m pytest tests/test_stocks_search_v1_p0.py -q",
+   "exit_code": 0,
+   "verdict": "PASS",
+   "note": "25 passed - P0 suite unaffected (read-only p0_lib import, sha256-pinned)."
+  }
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "Synthetic verdicts recorded (SSS-GAP-P25-CONFIRM-H1 REJECT_R1, SSS-52W-HIGH-B10-H20 REJECT_R1, SSS-VOL-REGIME-L21-LOW-H20 REJECT_R2) have NO scored meaning: the dry-run bound at R1/R2 so the Stage-A gate path was not exercised on a synthetic survivor (Stage-A behavior remains covered by the green I suite, tests/test_stage_a_*).",
+  "Leak-scan dynamic coverage is bounded sampling, not exhaustive: D1 taints 60/60/40 sampled decisions per cell (of tens of thousands) across all folds and both state outputs; D2 is one doctored bar end-to-end. Compensating design: the fail-closed disposition (any single failure = LEAK_FOUND, runner exits nonzero) and positive controls proving the instrumentation detects state/price sensitivity in every direction probed.",
+  "BC-7 horizon is the name's LAST SERVED session (engine-frozen): the synthetic right edge therefore censors window-edge legs exactly like true deaths (52W candidate book: 441 window-edge vs 78 delisted censored legs; engine-branch recomputation matched 100%). The identical semantics apply at the S0 window end in the scored E run - disclosed, not a defect found.",
+  "p0_lib._rolling_median docstring/code inconsistency (docstring: window ending at i-1; code: trailing-INCLUSIVE of i): benign for PIT (both backward-safe), disclosed in leak_scan doc_notes; the kernel code is the frozen authority shared byte-identically by the census and the engines so arm identity is unaffected.",
+  "K6 exact test pinned-at-I deviation and other I-lane disclosed conventions (fold-positive-share statistic, R5 union form, C-RANDOM-TIMING/C-CAL-HIST/C-REVERSAL-PLAIN mechanics) carry through unchanged - not re-decided in this lane.",
+  "dry_run_report.json embeds the OS temp-dir path from the GO-gate stub FileNotFoundError evidence, so the report file itself is not byte-identical across reruns; the determinism claim is scoped to the PIPELINE digest (checks C1/C2, sha256 4e757321...), which was identical in every run including both cross-process subprocesses.",
+  "The dry run exercises the engines ONLY on in-memory synthetic arrays; the real-data path (adjudicate.load_real_data) was touched exclusively through the GO-gate refusal matrix with a stub cache dir that does not exist."
+ ],
+ "incidents": [
+  "D2 positive-control mis-specification (caught and fixed IN-LANE, fail-closed worked as designed): the first implementation doctored only adj_close+volume of the future bar, but leg gross/PnL accounting is open-to-open, so no observable could change and the scan correctly reported LEAK_FOUND on an insensitive control. Fixed by doctoring ALL price fields + volume of that single bar; the re-run is CLEAN with 2 changed / 105 unchanged legs as designed. The initial LEAK_FOUND report was never committed; only the corrected CLEAN scan is in the artifacts.",
+  "Self-reference limit (same class as the ssearch-i precedent): the dispatch requires ONE pathspec commit containing z/ AND the handoffs copy, so the committed copy cannot carry its own commit's sha. Recorded: this copy carries commit_sha null + commit_sha_note; the authoritative inbox handoff (.runtime/orchestrator_v3/inbox/ssearch-z-handoff.json) carries the true sha of the single Z commit.",
+  "No stop conditions hit: HEAD == 5c701987f997e29d35c9096f59827243e52f6d91 verified at start and re-verified by the runner (FROZEN_SHA_MISMATCH guard returns exit 2 on drift); no scope escape; no packet insufficiency."
+ ],
+ "tree_status": "CLEAN after the single pathspec commit (git status --porcelain empty except untracked __pycache__ dirs, never staged by pathspec)",
+ "workers": 0,
+ "outputs": [
+  {
+   "path": "research/control/stocks_search_v1_run/z/z_run.py",
+   "role": "deterministic Z-lane runner: closed-form synthetic dataset (42 names / 35,228 bars / delisted + staggered + zero-range + engineered GAP/52W/VOL wedges), full 3-cell pipeline dry-run (C0-C9), recursive leak scan (static greps + curated file:line evidence + D1-D5 dynamic taint/doctored-bar/positive-control tests), --selfcheck and --emit-digest modes, fail-closed exits",
+   "sha256": "7bef8da6d7f4c64973eccac8245e805ef8a976986ae67c0c96f50764d281a185"
+  },
+  {
+   "path": "research/control/stocks_search_v1_run/z/dry_run_report.json",
+   "role": "TASK 1 evidence: freeze verification, determinism (in-process + cross-process, pipeline sha256 4e757321ba71b508532ad22c11024f83ce79559845bc1b14baac9cc06272b2c8), fold force-flat scan (195,824 legs, 0 problems), BC-7 kinds + numerator exclusion + invariance binding, band A/B/C + 100bps worst-case hand-checked trade, verbatim R0_NOT_RUN/PBO_NOT_RUN/\u00a710 labels, GO-gate refusal matrix, zero-range law, wedge liveness; overall PASS",
+   "sha256": "5d9f057dfe02d711d7da6758e5b40f62a0d69ad8399c26010f7b33e0bf254b6c"
+  },
+  {
+   "path": "research/control/stocks_search_v1_run/z/leak_scan.json",
+   "role": "TASK 2 fail-closed report: status CLEAN; 0 forbidden-pattern hits; 12 curated file:line evidence rows (live line numbers) classifying every window-statistic call site; D1 160/160 taint invariance; D2 doctored-future-bar end-to-end with positive controls (2 changed / 105 unchanged); D3 entry-open control; D4 window-boundary pin; D5 195,824-leg no-same-bar-fill scan",
+   "sha256": "e40486ebe78f4d5d58e4e42c87ac1bb28d9ab2c5c03d2e75b99fc4dcd7a09505"
+  }
+ ],
+ "recommended_next_action": "A1 integrates this handoff one-at-a-time; dispatch the fresh-context A7 prelaunch audit (zero unresolved HIGH/CRITICAL required before GO). Scored E remains locked behind the fresh exact owner GO phrase 'GO STOCKS SEARCH V1 SCORED EXECUTION' at this cycle's own gate (early/paraphrased GO dies unconsumed, P-8) - the Z lane never possessed the phrase's authorization and loaded no real data. Budget stays 0/3 until E. No push/merge/rebase performed; lanes never merge."
+}

@@ -1,0 +1,437 @@
+{
+ "base_sha": "5c701987f997e29d35c9096f59827243e52f6d91",
+ "branch": "orca/stocks-search-v1-integration",
+ "conclusion": "CLEAN - no lookahead, no ffill/imputation, no full-sample statistic in state formation, no same-bar fill, no target/return leakage into state; the entry genuinely reads the t+1 open and every state window ends at t (positive controls prove the instrumentation is sensitive)",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "doc_notes": [
+  {
+   "detail": "p0_lib._rolling_median docstring says the window ends at i-1; the CODE (and every caller) is trailing-INCLUSIVE of i.  Both readings are backward-safe (no forward information); the kernel is the frozen authority shared by the census and the engines, so arm identity is unaffected.  Disclosed, not a leak.",
+   "kind": "DOC_INCONSISTENCY_BENIGN"
+  },
+  {
+   "detail": "The fold force-flat anchor walks served dates against the ex-ante frozen fold calendar (dates only, never future prices).  The fold freeze is calendar-thirds computed before any measurement (p0_lib.fold_boundaries), so this is not lookahead.",
+   "kind": "DESIGN_NOTE_DISCLOSED"
+  }
+ ],
+ "dynamic": [
+  {
+   "design": "TAINT every bar strictly AFTER the decision instant (prices x3.7, volume x5.0) and re-run the EXACT frozen state kernel: fired[t] and bookable[t] must be invariant for every sampled (name, decision) across all folds",
+   "evidence": {
+    "failures": [],
+    "n_invariant": 60,
+    "n_samples": 60
+   },
+   "id": "D1:SSS-GAP-P25-CONFIRM-H1",
+   "result": "PASS"
+  },
+  {
+   "design": "TAINT every bar strictly AFTER the decision instant (prices x3.7, volume x5.0) and re-run the EXACT frozen state kernel: fired[t] and bookable[t] must be invariant for every sampled (name, decision) across all folds",
+   "evidence": {
+    "failures": [],
+    "n_invariant": 60,
+    "n_samples": 60
+   },
+   "id": "D1:SSS-52W-HIGH-B10-H20",
+   "result": "PASS"
+  },
+  {
+   "design": "TAINT every bar strictly AFTER the decision instant (prices x3.7, volume x5.0) and re-run the EXACT frozen state kernel: fired[t] and bookable[t] must be invariant for every sampled (name, decision) across all folds",
+   "evidence": {
+    "failures": [],
+    "n_invariant": 40,
+    "n_samples": 40
+   },
+   "id": "D1:SSS-VOL-REGIME-L21-LOW-H20",
+   "result": "PASS"
+  },
+  {
+   "design": "doctor ONE future bar (SYN00 @ calendar index 450: all prices x3, volume x5) and re-run the FULL 3-cell pipeline: (i) state of every decision whose window ends before the bar is invariant; (ii) band + entry invariant; (iii) POSITIVE CONTROL: legs whose entry/exit open IS the doctored bar change gross while legs entirely before it are unchanged (proves the bar is read exactly where the contract says it must be and nowhere else); (iv) untouched names' masks identical",
+   "evidence": {
+    "band_entry_failures": [],
+    "band_entry_invariance_ok": true,
+    "doctored_bar": [
+     "SYN00",
+     450
+    ],
+    "other_names_masks_identical": true,
+    "positive_control_legs_before_bar_unchanged": 105,
+    "positive_control_legs_changed": 2,
+    "probe_names": [
+     "SYN00",
+     "SYN06",
+     "SYN12",
+     "SYN18",
+     "SYN24",
+     "SYN30",
+     "SYN36"
+    ],
+    "state_failures": [],
+    "state_invariance_ok": true
+   },
+   "id": "D2:end-to-end-doctored-future-bar",
+   "result": "PASS"
+  },
+  {
+   "design": "doctor ONLY open[t0+1] (x3.0): the STATE at t0 and the band at t0 must NOT move (their windows end at t0) while the leg gross MUST move - proves the engine genuinely fills at the t+1 open AND that the instrumentation detects state/price sensitivity",
+   "evidence": {
+    "cases": [
+     {
+      "band_invariant": true,
+      "cell": "SSS-GAP-P25-CONFIRM-H1",
+      "fired_invariant": true,
+      "gross_changed_by_entry_open_doctor": true,
+      "t0": 500
+     },
+     {
+      "band_invariant": true,
+      "cell": "SSS-52W-HIGH-B10-H20",
+      "fired_invariant": true,
+      "gross_changed_by_entry_open_doctor": true,
+      "t0": 320
+     }
+    ]
+   },
+   "id": "D3:positive-control-entry-open",
+   "result": "PASS"
+  },
+  {
+   "design": "doctor ONLY close[t0+1] (x0.5 crash): state at t0 invariant for ALL three families; 52W-HIGH flips OFF at t0+1 (positive control: the crashed bar legitimately enters ITS OWN window); GAP at t0+1 unchanged (its window genuinely never reads close[t0+1]) - pins the exact info boundary: state(s) reads info <= s, never beyond",
+   "evidence": {
+    "cases": [
+     {
+      "cell": "SSS-GAP-P25-CONFIRM-H1",
+      "fired_t0": false,
+      "fired_t0_invariant": true
+     },
+     {
+      "cell": "SSS-52W-HIGH-B10-H20",
+      "fired_t0": true,
+      "fired_t0_invariant": true
+     },
+     {
+      "cell": "SSS-VOL-REGIME-L21-LOW-H20",
+      "fired_t0": true,
+      "fired_t0_invariant": true
+     }
+    ],
+    "gap_invariant_at_t0_plus_1": true,
+    "t0": 320,
+    "w52_flip_off_at_t0_plus_1": true
+   },
+   "id": "D4:state-window-ends-at-t",
+   "result": "PASS"
+  },
+  {
+   "design": "structural scan of EVERY leg in EVERY book of EVERY cell: entry index == decision index + 1 (candidate and all controls) or +1+H (C-DELAY-H); exit index == entry + book H unless force-flat (then the fold anchor); net = gross - 2*band*stress/1e4 to 1e-12",
+   "evidence": {
+    "legs_scanned": 195824,
+    "n_problems": 0,
+    "problems": []
+   },
+   "id": "D5:no-same-bar-fills",
+   "result": "PASS"
+  }
+ ],
+ "fail_closed": "any failed test, forbidden-pattern hit or engine-reported leak sets status=LEAK_FOUND and the lane exits nonzero - never an inferred CLEAN",
+ "findings": [],
+ "real_cycle_id": "STOCKS-SEARCH-V1",
+ "schema": "stocks_search_v1_leak_scan@1",
+ "scope": "PIT audit of the 3 exact-arm engines: every state input must derive ONLY from info available at or before the decision instant (t close); fail-closed: any leak = LEAK_FOUND",
+ "static": {
+  "curated_evidence": [
+   {
+    "analysis": "trailing sliding window via sliding_window_view; out[i] covers [i-window+1, i] (ends AT i); NaN before the window exists; NO forward read.  NOTE: the module docstring says 'ending at i-1' - the DOCSTRING IS WRONG vs the code (the code is trailing-INCLUSIVE); both readings are backward-safe (PIT-clean).  Recorded as DOC_INCONSISTENCY, not a leak: the kernel (code) is the frozen authority shared byte-identically by the census and the engines, so arm identity is unaffected.",
+    "file": "p0/p0_lib.py",
+    "line": 235,
+    "snippet": "_rolling_median",
+    "verdict": "OK_BACKWARD_WINDOW + DOC_INCONSISTENCY_BENIGN"
+   },
+   {
+    "analysis": "sw.max(axis=1) over sliding_window_view: out[i] = max(a[i-251:i+1]) trailing-inclusive; drives the 52W-HIGH state high_t; NO forward read.",
+    "file": "p0/p0_lib.py",
+    "line": 249,
+    "snippet": "_rolling_max",
+    "verdict": "OK_BACKWARD_WINDOW"
+   },
+   {
+    "analysis": "GAP percentile history = trailing 252 gaps ENDING AT AND INCLUDING t; gap_t itself = open_t/close_{t-1}-1 (backward diff); the decision bar's own gap is included by construction (state at t reads info <= t only).",
+    "file": "p0/p0_lib.py",
+    "line": 334,
+    "snippet": "gaps[i - 251:i + 1]",
+    "verdict": "OK_TRAILING_INCLUSIVE"
+   },
+   {
+    "analysis": "VOL-REGIME tercile boundaries from the trailing 252-sigma window ending at and including t; sigma_j = std over the trailing L returns; NEVER full-sample (verified: no percentile call outside a trailing slice).",
+    "file": "p0/p0_lib.py",
+    "line": 488,
+    "snippet": "sigma[i - 251:i + 1]",
+    "verdict": "OK_TRAILING_INCLUSIVE"
+   },
+   {
+    "analysis": "EVENT-UNWIND prior-K low EXCLUDES bar t per the \u00a75 spec min(adj_low_{t-K..t-1}).",
+    "file": "p0/p0_lib.py",
+    "line": 284,
+    "snippet": "np.min(adj_low[i - K:i])",
+    "verdict": "OK_EXCLUDES_T"
+   },
+   {
+    "analysis": "band median dvol over the trailing 252 sessions ending at and including i; band assignment at decision t uses info <= t only.",
+    "file": "i/i_engine.py",
+    "line": 475,
+    "snippet": "def med252_series",
+    "verdict": "OK_TRAILING_INCLUSIVE"
+   },
+   {
+    "analysis": "entry = t+1 open, exit = t+1+H open: fills strictly AFTER the decision instant; no same-bar fill anywhere (positive controls D3/D5 prove the t+1 open is genuinely read).",
+    "file": "i/i_engine.py",
+    "line": 539,
+    "snippet": "entry_i = t + entry_offset",
+    "verdict": "OK_CLOCK_NO_SAME_BAR"
+   },
+   {
+    "analysis": "log slices open[d+1]/open[d] for d in [entry, exit): forward prices are consumed ONLY as the leg's own OUTCOME accounting inside its holding window - never into state formation.",
+    "file": "i/i_engine.py",
+    "line": 591,
+    "snippet": "for d in held:",
+    "verdict": "OK_OUTCOME_ONLY"
+   },
+   {
+    "analysis": "force-flat anchor walks forward over SERVED-DATE comparisons against the ex-ante frozen fold calendar only - it never reads a price/volume of a future bar; fold ends are calendar thirds frozen before any measurement (p0_lib.fold_boundaries).",
+    "file": "i/i_engine.py",
+    "line": 556,
+    "snippet": "while ff_exit + 1 < n and dates[ff_exit + 1] <= fends[fold]:",
+    "verdict": "OK_CALENDAR_ONLY"
+   },
+   {
+    "analysis": "C-PIT-MUTATION control shifts the state mask one session EARLIER (recompute at i-1) - a mutation control, not a state input.",
+    "file": "i/i_engine.py",
+    "line": 881,
+    "snippet": "mutated[1:] = mut_state[:-1]",
+    "verdict": "OK_CONTROL"
+   },
+   {
+    "analysis": "cumsum over the REALIZED P-11 book series - an OUTCOME statistic for the MDD gate; the adjudication harness never feeds state formation.",
+    "file": "i/adjudicate.py",
+    "line": 141,
+    "snippet": "def max_drawdown",
+    "verdict": "OK_OUTCOME_ONLY"
+   },
+   {
+    "analysis": "the real-data path: refuses without the EXACT GO phrase (P-8), then verifies freeze pins before any parse; not reachable from the dry-run path exercised here (stub paths only).",
+    "file": "i/adjudicate.py",
+    "line": 563,
+    "snippet": "def load_real_data",
+    "verdict": "OK_GO_GATED"
+   }
+  ],
+  "forbidden_hits": [],
+  "forbidden_patterns": [
+   "ffill",
+   "bfill",
+   "fillna",
+   "interpolate(",
+   "pandas",
+   ".shift(",
+   "expanding(",
+   "merge_asof",
+   "reindex(",
+   "np.nanmax",
+   "np.nanmin",
+   "np.nansum",
+   "method='ffill'",
+   "method='bfill'"
+  ],
+  "method": "static audit of the imported P0 census kernels (p0/p0_lib.py) + the arm engines (i/i_engine.py) + the harness (i/adjudicate.py) at HEAD 5c701987f997e29d35c9096f59827243e52f6d91",
+  "n_forbidden_hits": 0,
+  "window_stat_calls": [
+   {
+    "file": "p0/p0_lib.py",
+    "line": 338,
+    "pattern": "np.percentile",
+    "snippet": "thr = float(np.percentile(hist, pctl, method=PERCENTILE_METHOD))"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 492,
+    "pattern": "np.percentile",
+    "snippet": "q1, q2 = np.percentile(hist, [100.0 / 3.0, 200.0 / 3.0],"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 583,
+    "pattern": "np.percentile",
+    "snippet": "thr_all = np.percentile(sw, pctl, axis=1, method=PERCENTILE_METHOD)"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 659,
+    "pattern": "np.percentile",
+    "snippet": "q = np.percentile(sw2, [100.0 / 3.0, 200.0 / 3.0], axis=1,"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 239,
+    "pattern": "np.median",
+    "snippet": "r2: batched over a sliding view \u2014 np.median(axis=1) applies the identical"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 245,
+    "pattern": "np.median",
+    "snippet": "out[window - 1:] = np.median(sw, axis=1)     # out[i-1] = median(a[i-window:i])"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 483,
+    "pattern": "np.std",
+    "snippet": "sigma[j] = float(np.std(w, ddof=1))"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 656,
+    "pattern": "np.std",
+    "snippet": "sigma[L:] = np.std(sw, axis=1, ddof=1)    # nan window -> nan (fail-closed)"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 256,
+    "pattern": ".max(",
+    "snippet": "out[window - 1:] = sw.max(axis=1)"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 284,
+    "pattern": ".min(",
+    "snippet": "prior_lo = float(np.min(adj_low[i - K:i]))"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 536,
+    "pattern": ".min(",
+    "snippet": "prior_lo[K:] = sw.min(axis=1)[:n - K]         # prior_lo[i] = min(low[i-K:i])"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 243,
+    "pattern": "sliding_window_view",
+    "snippet": "from numpy.lib.stride_tricks import sliding_window_view"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 244,
+    "pattern": "sliding_window_view",
+    "snippet": "sw = sliding_window_view(a, window)          # sw[m] = a[m:m+window]"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 254,
+    "pattern": "sliding_window_view",
+    "snippet": "from numpy.lib.stride_tricks import sliding_window_view"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 255,
+    "pattern": "sliding_window_view",
+    "snippet": "sw = sliding_window_view(a, window)"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 521,
+    "pattern": "sliding_window_view",
+    "snippet": "from numpy.lib.stride_tricks import sliding_window_view"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 535,
+    "pattern": "sliding_window_view",
+    "snippet": "sw = sliding_window_view(adj_low, K)          # sw[m] = adj_low[m:m+K]"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 570,
+    "pattern": "sliding_window_view",
+    "snippet": "from numpy.lib.stride_tricks import sliding_window_view"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 581,
+    "pattern": "sliding_window_view",
+    "snippet": "sw = sliding_window_view(gaps, 252)               # sw[m] = gaps[m:m+252]"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 639,
+    "pattern": "sliding_window_view",
+    "snippet": "from numpy.lib.stride_tricks import sliding_window_view"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 654,
+    "pattern": "sliding_window_view",
+    "snippet": "sw = sliding_window_view(rets, L)             # sw[m] = rets[m:m+L] -> session j=m+L"
+   },
+   {
+    "file": "p0/p0_lib.py",
+    "line": 657,
+    "pattern": "sliding_window_view",
+    "snippet": "sw2 = sliding_window_view(sigma, 252)             # sw2[m] = sigma[m:m+252] -> session i=m+251"
+   },
+   {
+    "file": "i/i_engine.py",
+    "line": 433,
+    "pattern": "np.percentile",
+    "snippet": "thr = float(np.percentile(hist, p[\"pctl\"], method=\"linear\"))"
+   },
+   {
+    "file": "i/i_engine.py",
+    "line": 484,
+    "pattern": "np.median",
+    "snippet": "out[251:] = np.median(sw, axis=1)"
+   },
+   {
+    "file": "i/i_engine.py",
+    "line": 395,
+    "pattern": "np.std",
+    "snippet": "sigma[j] = float(np.std(w, ddof=1))"
+   },
+   {
+    "file": "i/i_engine.py",
+    "line": 464,
+    "pattern": "np.std",
+    "snippet": "sigma[j] = float(np.std(w, ddof=1))"
+   },
+   {
+    "file": "i/i_engine.py",
+    "line": 482,
+    "pattern": "sliding_window_view",
+    "snippet": "from numpy.lib.stride_tricks import sliding_window_view"
+   },
+   {
+    "file": "i/i_engine.py",
+    "line": 483,
+    "pattern": "sliding_window_view",
+    "snippet": "sw = sliding_window_view(dvol, 252)"
+   },
+   {
+    "file": "i/adjudicate.py",
+    "line": 529,
+    "pattern": "np.std",
+    "snippet": "sr = float(np.mean(r) / np.std(r, ddof=1))"
+   },
+   {
+    "file": "i/adjudicate.py",
+    "line": 145,
+    "pattern": ".max(",
+    "snippet": "return float(dd.max()) if dd.size else 0.0"
+   },
+   {
+    "file": "i/adjudicate.py",
+    "line": 142,
+    "pattern": "cumsum",
+    "snippet": "wealth = np.exp(np.cumsum(book_log))"
+   }
+  ]
+ },
+ "status": "CLEAN",
+ "task_id": "ssearch-z"
+}
