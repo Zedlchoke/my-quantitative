@@ -52,8 +52,12 @@ NOT_RUN labels verbatim; budget counter carried (max 3 scored cells).
 
 The real-data path is load_real_data: it refuses ANY load unless the
 exact owner GO phrase `GO STOCKS SEARCH V1 SCORED EXECUTION` is
-presented (early or paraphrased GO dies unconsumed, P-8).  No scored
-execution exists anywhere in this lane.
+presented (early or paraphrased GO dies unconsumed, P-8), and it then
+runs the MANDATORY data-plane preflight (i_engine.verify_data_plane,
+A7 F-1 / GO condition C-2) which refuses any drifted or substituted
+data plane with DataPlaneMismatch/INPUT_MISMATCH before a single
+cohort name is parsed.  No scored execution exists anywhere in this
+lane.
 """
 
 from __future__ import annotations
@@ -76,17 +80,20 @@ for _p in (str(_REPO_ROOT), str(_HERE)):
 from i_engine import (  # noqa: E402
     CELL_BY_ID,
     CELL_IDS,
+    COMMITTED_RETRIEVAL_MANIFEST_PATH,
     DISCLOSURE_SECTION10_VERBATIM,
     GO_PHRASE,
     PBO_NOT_RUN_LABEL,
     PBO_NOT_RUN_VERBATIM,
     R0_NOT_RUN_LABEL,
     R0_NOT_RUN_VERBATIM,
+    RETRIEVAL_EMPTY_COUNT_DISCLOSURE_VERBATIM,
     STRESS_TIER,
     NameData,
     include_censored_nets,
     load_p0_lib,
     spy_legs_for,
+    verify_data_plane,
     verify_freeze,
 )
 
@@ -432,6 +439,11 @@ def adjudicate_candidate(bundle: dict, spy: NameData, calendar,
         "pbo_status": PBO_NOT_RUN_LABEL,
         "pbo_verbatim": PBO_NOT_RUN_VERBATIM,
         "disclosure_section10": DISCLOSURE_SECTION10_VERBATIM,
+        # A7 F-4 evidence-quality disclosure: the retrieval manifest's
+        # n_empty_or_no_series=0 is a fresh-pull counting artifact; the
+        # authoritative zero-served count is 7,476 (cohort census).
+        "retrieval_empty_count_disclosure":
+            RETRIEVAL_EMPTY_COUNT_DISCLOSURE_VERBATIM,
         "budget": {"used": 0, "max": BUDGET_MAX_SCORED_CELLS,
                    "label": f"0/{BUDGET_MAX_SCORED_CELLS} (consumed only at scored E)"},
         "dsr": {"gate": "E_SCORED_ONLY", "n_grid": DSR_N_GRID,
@@ -565,9 +577,16 @@ def load_real_data(go_phrase: str, cache_dir, retrieval_manifest_path,
     """THE scored-E data path.  Refuses any load without the EXACT owner
     GO phrase at this cycle's gate (P-8: early/paraphrased GO dies
     unconsumed).  With the exact phrase: verifies the frozen artifacts
-    (S freeze sha + arm identities; p0_lib pin) and loads the death-
-    inclusive priced cohort from the P0 raw cache, READ-ONLY, via the
-    frozen p0_run parser."""
+    (S freeze sha + arm identities; p0_lib pin), then runs the MANDATORY
+    data-plane preflight (verify_data_plane, A7 F-1 / GO condition C-2:
+    committed retrieval-manifest sha pin - caller-substitute manifest
+    paths are REFUSED - per-pull identity vs the digest-pinned cohort
+    census, SPY-pinned calendar + fold law, the 3 arms' pooled position
+    series rebuilt and digest-compared to the S freeze, and the rebuilt
+    fired/bookable census cross-checked EXACTLY against p0_census.json;
+    ANY drift = DataPlaneMismatch/INPUT_MISMATCH and nothing loads), and
+    only then loads the death-inclusive priced cohort from the P0 raw
+    cache, READ-ONLY, via the frozen p0_run parser."""
     if go_phrase != GO_PHRASE:
         raise GoGateRefused(
             "GO gate: the exact phrase 'GO STOCKS SEARCH V1 SCORED "
@@ -579,13 +598,18 @@ def load_real_data(go_phrase: str, cache_dir, retrieval_manifest_path,
     if not cache_dir.exists():
         raise FileNotFoundError(
             f"raw cache dir not found: {cache_dir} (no cohort loaded)")
+    # MANDATORY first data-plane step, before any cohort byte is parsed
+    # into a scored computation (A7 F-1 / GO condition C-2).
+    preflight = verify_data_plane(cache_dir, retrieval_manifest_path)
     import importlib.util
     spec = importlib.util.spec_from_file_location(
         "stocks_search_v1_p0_run", _RUN_DIR / "p0" / "p0_run.py")
     p0_run = importlib.util.module_from_spec(spec)
     sys.modules.setdefault(spec.name, p0_run)
     spec.loader.exec_module(p0_run)
-    retrieval = json.loads(Path(retrieval_manifest_path).read_text())
+    # the preflight has refused any substitute; parse the committed
+    # manifest itself (the only path the preflight will ever verify)
+    retrieval = json.loads(COMMITTED_RETRIEVAL_MANIFEST_PATH.read_text())
     pulls = retrieval["pulls"]
     names = {}
     for sym in sorted(s for s, m in pulls.items() if m.get("status") == 200):
@@ -604,6 +628,7 @@ def load_real_data(go_phrase: str, cache_dir, retrieval_manifest_path,
     if not names:
         raise FileNotFoundError("no served names parsed from the cache")
     return {"names": names, "retrieval_manifest": retrieval,
+            "data_plane_preflight": preflight,
             "go_phrase_state": "CONSUMED_AT_GATE (exact phrase presented)"}
 
 
