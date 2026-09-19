@@ -18,6 +18,11 @@ fsearch-r-2                                           (FOREX-SEARCH-V1,
   instruction 2026-09-18; lane was DISPATCHED and polling for the heavy
   lock when stopped, held nothing, disturbed no worker; DISPATCHED ->
   TECHABORT refused by the store API same as the REGISTERED rows above)
+ssearch-s                                             (STOCKS-SEARCH-V1,
+  work product COMPLETE via ssearch-s-r3 at 2cf6a12b — S frozen, freeze
+  sha 2d56c0db; umbrella row RUNNING after its agent returned early and
+  its background pass died in session teardowns; RUNNING -> TECHABORT
+  also refused by the store API; superseded-completed, disclosed)
 ```
 
 Facts measured this session:
