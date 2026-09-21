@@ -1,0 +1,80 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "shv1-macos-app",
+  "cycle_id": "PROSPECTIVE-SHADOW-V1",
+  "role": "quant-implementer",
+  "lane": "dashboard",
+  "dispatch_sha": "e63b3c402e8db6873cf076b9b8c10e0be0c7b11e",
+  "actual_start_sha": "e63b3c402e8db6873cf076b9b8c10e0be0c7b11e",
+  "commit_sha": "6d7c462424f259ea85ec61bb8841a3ee117e0e09",
+  "branch": "orca/shv1-dashboard",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/dashboard",
+  "changed_paths": [
+    ".gitignore",
+    "Quant Shadow Dashboard.spec",
+    "app_entry.py",
+    "dashboard_app/__init__.py",
+    "dashboard_app/app_main.py",
+    "dashboard_app/page.py",
+    "dashboard_app/README.md",
+    "dashboard_app/resolve.py",
+    "dashboard_app/server.py",
+    "dashboard_app/status.py",
+    "dashboard_app/store.py",
+    "tests/conftest.py",
+    "tests/test_quant_shadow_app.py"
+  ],
+  "tests": [
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/dashboard && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_quant_shadow_app.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "18 passed: partial-line mid-append -> per-family fail-closed + recovery after byte-exact restore; corrupt JSON line -> no crash/no invention; canonical virtual_trade_id dedup + multi-fill rebalance split (36 intents -> 42 fills, 4 counters not conflated); per-family equity/PnL == last valid raw mark line; combined == strict sum of the three latest valid marks at ONE common stamp, baseline 300,000, no interpolation across gaps; today PnL reconciles to the 00:00 Asia/Ho_Chi_Minh (17:00Z) boundary marks and flat sleeve stays an established 0.0; realized/unrealized == raw mark values; gross == sum|position.notional| (broken pre-remediation canonical gross field rejected); SL/TP N/A + frozen exit_policy everywhere; stale heartbeat -> STALE; valuation network error -> STALE with last valid mark kept (never a loss); incremental refresh: unchanged bytes -> stat-only cache hits (rebuilds stay 1), appended mark with engine-deterministic mark_id -> exactly one rebuild; restart -> byte-identical snapshot + ledger digests unchanged; server: GET/HEAD 200, POST/PUT/DELETE/PATCH 405, trade detail by id, unknown routes 404; runtime resolution from plans/CYCLE_REGISTRY.json verified on this machine."
+    },
+    {
+      "command": "cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration && /Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest tests/test_shv1_dashboard.py -q",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "25 passed — the pre-existing engine battery of the lane whose snapshot engine this app reuses (read-only run inside the integration worktree)."
+    },
+    {
+      "command": "open '/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/dashboard/dist/Quant Shadow Dashboard.app' + curl 127.0.0.1:8791",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "Bundle smoke: double-click-equivalent launch; GET / 200 HTML, POST / 405; /api/snapshot.json state LIVE; combined equity 298,793.788112 @ 2026-09-21T01:40:00Z == per-sleeve strict sum == raw valuation heartbeat last marks == raw last OK mark lines (three independent sources agree to the cent); gross 267,199.291835 (89.4260%) == independent sum|notional|; today PnL -1,185.708079 == independent recompute from raw family series; 42 fills with trade-detail endpoint resolving the correct event; cache_hits increase on unchanged polls (5->7) proving no history re-read; screenshots captured (header/cards/chart and trades table) with no overflow/truncation; app quit -> process gone, port released, decision/valuation workers 15315/15316 still alive, heavy lock FREE_PROVEN before AND after."
+    },
+    {
+      "command": "codesign -dv 'dist/Quant Shadow Dashboard.app'; file Contents/MacOS/*; grep -r -i -E 'api[_-]?key|secret|password|token=' dist/",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "detail": "Mach-O arm64 matches host; Signature=adhoc (local unsigned/ad-hoc build, NOT notarized, not claimed Gatekeeper-ready); credential scan clean (single false positive: cryptography package METADATA prose)."
+    }
+  ],
+  "authority_claims": [],
+  "known_limitations": [
+    "Bundle is ad-hoc signed only: locally built, NOT notarized, not Gatekeeper-ready for other machines; first open elsewhere needs right-click -> Open or System Settings -> Privacy & Security.",
+    "The data engine is imported at runtime from the live integration worktree, so the .app requires the repo checkout to exist at the resolved location (same location as the data itself); a future engine API change in the worktree would surface as DATA ERROR with the reason in the status block and app.log, not as fabricated numbers.",
+    "Per-fill unrealized PnL is not computed by the frozen engine (position-level only), so open fills render neutral with N/A totals until closed/marked at position level; rows are never coloured from BUY/SELL side.",
+    "Gross exposure is computed as sum|position.notional| because the canonical gross field in pre-remediation mark records is wrong (measured 0.0071 vs ~84k notional); the method is labelled in the UI and store.family_gross.",
+    "AppleEvent quit (Cmd-Q/Dock quit) terminates the process without the two cosmetic shutdown log lines (WKWebView close button produces them); either path releases the port and never touches the shadow workers.",
+    "The .app artifact itself is not committed (dist/ is gitignored by design); rebuild instructions with the exact pinned PyInstaller flags live in dashboard_app/README.md and Quant Shadow Dashboard.spec."
+  ],
+  "incidents": [
+    "First build failed inside the frozen app with ModuleNotFoundError zoneinfo (engine is imported dynamically at runtime, so PyInstaller's static analysis missed its stdlib deps); fail-closed behaviour worked as designed (DATA ERROR + honest reason, no fake data). Rebuilt with --hidden-import zoneinfo + --collect-all tzdata (+ csv/hashlib/io/re/html/argparse/urllib.request) from the engine's measured import set; second launch LIVE.",
+    "First launch logged a false 'another instance running' note: the pidfile was written before the self-check read it. Fixed by checking first, writing second; rebuilt so the shipped bundle contains the fix.",
+    "Build-time deps pyinstaller 6.22.3 (+hooks-contrib) and tzdata 2026.3 were installed into the repo .venv; runtime deps were already present (pywebview 6.2.1, pyobjc/WebKit).",
+    "Repo .gitignore rule 'dashboard/' (old lab dashboard) does not match this package name (dashboard_app/); no forced adds were needed.",
+    "Git committer identity auto-derived (hoangminhlong@192.168.0.9); commit content unaffected."
+  ],
+  "tree_status": "clean",
+  "workers": 0,
+  "build_artifact": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/dashboard/dist/Quant Shadow Dashboard.app",
+  "engine_source_worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/integration @ 78373a82525248b0731eeeb2e0a88ee64b7739ff",
+  "read_only_guarantees": [
+    "no write route (GET/HEAD only, 405 elsewhere)",
+    "no order/broker/execution surface",
+    "never acquires the heavy lock (FREE_PROVEN before/during/after verified)",
+    "ledger/mark bytes provably untouched (test-asserted digests)",
+    "closing the app leaves decision/valuation workers running (verified: pids 15315/15316 alive after quit)"
+  ]
+}
