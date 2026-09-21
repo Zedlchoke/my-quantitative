@@ -629,6 +629,8 @@ def _mode_probe_stream_rss() -> None:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         a = sys.argv[1]
+        if a == "--run":
+            sys.exit(main())
         if a == "--probe-stream-rss":
             _mode_probe_stream_rss()
             sys.exit(0)
