@@ -309,6 +309,22 @@ function render(env) {
       (chip.note ? '<div class="note">' + esc(chip.note) + "</div>" : "") +
       "</div>";
   });
+  var x = app.xauusd_shadow || {};
+  var xs = x.status || {};
+  function xrow(k, v, cls) { return "<tr><td>" + k + '</td><td class="' + (cls || "") + '">' + v + "</td></tr>"; }
+  html += '<div class="fam"><h3>XAUUSD-SHADOW-V1</h3><div class="chiprow">' +
+    '<span class="chip ' + (x.available && !xs.last_error ? "ok" : "warn") + '">' +
+    (x.available ? (xs.last_error ? "DEGRADED" : "OK") : "N/A") + "</span>" +
+    '<span class="note">cycle riêng · internal shadow · read-only</span></div><table>' +
+    xrow("Equity (USD)", fmtUSD(xs.equity_usd)) +
+    xrow("Vị thế", esc(xs.position || "N/A")) +
+    xrow("XAUUSD close", xs.last_close == null ? "N/A" : fmtNum(xs.last_close, 2)) +
+    xrow("Bar mới nhất", esc(xs.last_bar || "N/A")) +
+    xrow("Data gaps", xs.data_gaps && xs.data_gaps.length ? esc(JSON.stringify(xs.data_gaps)) : "none") +
+    xrow("Ledger rows", xs.ledger_rows == null ? "N/A" : String(xs.ledger_rows)) +
+    xrow("Lỗi gần nhất", esc(xs.last_error || "none")) +
+    "</table>" +
+    '<div class="note">SHADOW_OBSERVATION_ONLY · NOT A PROFITABILITY CLAIM · chi phí 4bps UNMEASURED-CONSERVATIVE</div></div>';
   el("cards").innerHTML = html;
 
   var banners = app.banners || [];

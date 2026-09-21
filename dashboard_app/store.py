@@ -71,6 +71,20 @@ def load_engine(worktree: str) -> Any:
     return module
 
 
+XAUUSD_STATUS_PATH = os.environ.get(
+    "XAUUSD_SHADOW_STATUS",
+    "/Users/hoangminhlong/my-quantitative/.worktrees/xauusd-shadow-v1/"
+    "integration/results/xauusd_shadow_v1/status.json")
+
+
+def load_xauusd_status() -> Dict[str, Any]:
+    """Read the XAUUSD-SHADOW-V1 sleeve status (SEPARATE cycle, read-only
+    display integration owner-authorized 2026-09-21).  Tolerant: a
+    missing/broken file renders N/A, never breaks this app."""
+    obj, err = load_heartbeat(XAUUSD_STATUS_PATH)
+    return {"available": obj is not None, "error": err, "status": obj}
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -384,6 +398,7 @@ class SnapshotStore:
             app["tp_na"] = snapshot.get("tp_na")
             app["timezone_default"] = snapshot.get("timezone_default")
 
+        app["xauusd_shadow"] = load_xauusd_status()
         return {"snapshot": snapshot, "app": app}
 
     # -- accessors ----------------------------------------------------
