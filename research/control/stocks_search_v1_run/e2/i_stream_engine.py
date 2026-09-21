@@ -62,6 +62,7 @@ if str(_I_DIR) not in sys.path:
     sys.path.insert(0, str(_I_DIR))
 
 import i_engine  # noqa: E402  (frozen, READ-ONLY reuse)
+import i_amended_legs  # §14 amendment (build_legs_amended)
 from i_engine import (  # noqa: E402
     NameData,
     REVERSAL_PLAIN_H,
@@ -1221,11 +1222,11 @@ def pass_a_feed_name(books: dict, st: PassAState, rev_rows: dict,
     masks = per_name_masks(nm, cell)
     for key in ("candidate", "c_complement", "r5_component"):
         if masks[key]:
-            legs, cens, counts = i_engine.build_legs(
+            legs, cens, counts = i_amended_legs.build_legs_amended(
                 nm, masks[key], H, calendar_index, fends, stress)
             books[key].add_legs(legs, cens, counts)
     if masks["c_delay_h"]:
-        legs, cens, counts = i_engine.build_legs(
+        legs, cens, counts = i_amended_legs.build_legs_amended(
             nm, masks["c_delay_h"], H, calendar_index, fends, stress,
             entry_offset=1 + H)
         books["c_delay_h"].add_legs(legs, cens, counts)
@@ -1246,19 +1247,19 @@ def pass_b_feed_name(books: dict, cohort_counts: dict, rt_dates,
     """Feed ONE name through pass B (cohort books)."""
     rt_idx = cohort_mask_for_name(nm, rt_dates, counts=cohort_counts)
     if rt_idx:
-        legs, cens, counts = i_engine.build_legs(
+        legs, cens, counts = i_amended_legs.build_legs_amended(
             nm, rt_idx, H, calendar_index, fends, stress)
         books["c_random_timing"].add_legs(legs, cens, counts)
     ch_idx = cohort_mask_for_name(nm, ch_dates)
     if ch_idx:
-        legs, cens, counts = i_engine.build_legs(
+        legs, cens, counts = i_amended_legs.build_legs_amended(
             nm, ch_idx, H, calendar_index, fends, stress)
         books["c_cal_hist"].add_legs(legs, cens, counts)
     rev_idx = [i for i in (nm_dates_index(nm, d)
                            for d in picks.get(sym, []))
                if i is not None]
     if rev_idx:
-        legs, cens, counts = i_engine.build_legs(
+        legs, cens, counts = i_amended_legs.build_legs_amended(
             nm, rev_idx, REVERSAL_PLAIN_H, calendar_index, fends,
             stress)
         books["c_reversal_plain"].add_legs(legs, cens, counts)

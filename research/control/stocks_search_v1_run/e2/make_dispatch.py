@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-FILES = ["i_stream_engine.py", "equivalence.py", "selfcheck.py",
-         "e_stream_run.py", "README.md", "make_dispatch.py"]
+FILES = ["i_stream_engine.py", "i_amended_legs.py", "equivalence.py",
+         "selfcheck.py", "e_stream_run.py", "README.md", "make_dispatch.py"]
 
 manifest = {}
 for f in FILES:
