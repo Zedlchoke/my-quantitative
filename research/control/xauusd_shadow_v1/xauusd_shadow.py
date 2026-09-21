@@ -127,11 +127,10 @@ class SleeveEngine:
         pos = self.position
         if pos is not None:
             # exits first (completed-bar evaluation, fill next open)
-            if pos["side"] == 1 and b["c"] is not None and \
-                    b["c"] <= pos["stop"]:
-                exit_reason = "stop"
-            elif pos["side"] == -1 and b["c"] >= pos["stop"]:
-                exit_reason = "stop"
+            if pos["side"] == 1 and b["l"] <= pos["stop"]:
+                exit_reason = "stop"          # completed-bar LOW touch
+            elif pos["side"] == -1 and b["h"] >= pos["stop"]:
+                exit_reason = "stop"          # completed-bar HIGH touch
             else:
                 exit_reason = None
             if exit_reason is None and i >= pos["time_stop_bar"]:
@@ -164,16 +163,18 @@ class SleeveEngine:
             return None
         if not (atr >= VOL_PCT_MIN * close and atr >= VOL_MED_MULT * med):
             return None
-        # most recent CONFIRMED swing level as of bar i
-        level = None
-        for conf_i, kind, lv in swing_levels(
-                [x["h"] for x in bars[:i + 1]],
-                [x["l"] for x in bars[:i + 1]]):
-            if conf_i <= i:
-                level = (kind, lv)
-        if level is None:
+        # most recent CONFIRMED swing level as of bar i; when a high
+        # and a low confirm on the same bar, the larger |extreme -
+        # close_t| wins (plan §2 tie-break, reference bar pinned)
+        all_lv = [x for x in swing_levels(
+            [y["h"] for y in bars[:i + 1]],
+            [y["l"] for y in bars[:i + 1]]) if x[0] <= i]
+        if not all_lv:
             return None
-        kind, lv = level
+        last_conf = max(x[0] for x in all_lv)
+        cands = [x for x in all_lv if x[0] == last_conf]
+        kind, lv = max(
+            cands, key=lambda x: abs(x[2] - close))
         if abs(close - lv) > 0.3 * atr:
             return None
         if kind == "low" and close >= lv and e9 > e21:
@@ -315,9 +316,21 @@ def run(runtime_root: Path, shadow_start: str, once: bool = False):
               "PROFITABILITY CLAIM / COST MODEL UNMEASURED-CONSERVATIVE",
               "initial_equity_usd": INITIAL_EQUITY}
     while True:
+        raw_chain_prev = "GENESIS"
+        rawp = Path(runtime_root) / "raw_bars.jsonl"
+        if rawp.exists():
+            for line in rawp.read_text().splitlines():
+                if line.strip():
+                    raw_chain_prev = json.loads(line)["chain"]
         try:
             bars = fetch_daily_bars(key)
             gaps = market_gap_check(bars)
+            last_raw = bars[-1]
+            _row = {"type": "RAW_BARS_SNAPSHOT", "n_bars": len(bars),
+                    "last_date": last_raw["date"], "utc": iso_z()}
+            _row["chain"] = chain_hash(raw_chain_prev, _row)
+            with open(rawp, "a") as f:
+                f.write(json.dumps(_row, sort_keys=True) + "\n")
             last = bars[-1]
             # Fill law (plan §2): decision on a COMPLETED bar close
             # fills at the NEXT bar's open.  Deterministic replay of the
@@ -342,6 +355,15 @@ def run(runtime_root: Path, shadow_start: str, once: bool = False):
             price = last["o"]         # fill at the newest bar's OPEN
             fill_bar = bars[-2]["date"] if len(bars) >= 2 else None
             for ev in engine.events:
+                if ev["bar"] < (fill_bar or ev["bar"]):
+                    if not any(r.get("bar") == ev["bar"] and r["type"]
+                               in ("FILL", "UNFILLED_GAP")
+                               for r in ledger.rows):
+                        ledger.append({          # F-MED-2: never silent
+                            "type": "UNFILLED_GAP", "bar": ev["bar"],
+                            "intent": ev["type"], "reason":
+                            "poll gap: fill window passed unfilled"})
+                    continue
                 if ev["bar"] != fill_bar:
                     continue
                 if ev["type"] == "ENTRY_INTENT" and \
@@ -365,6 +387,14 @@ def run(runtime_root: Path, shadow_start: str, once: bool = False):
                         "type": "FILL", "action": "EXIT",
                         "bar": ev["bar"], "side": ev["side"],
                         "price": price, "reason": ev["reason"]})
+            ledger.append({"type": "MARK_TO_MARKET",
+                           "bar": last["date"], "close": last["c"],
+                           "equity": ledger.equity(last["c"])})
+            for ev in engine.events:
+                if ev["bar"] == fill_bar:
+                    ledger.append({"type": "TARGET_INTENT",
+                                   "intent": ev["type"],
+                                   "bar": ev["bar"], "side": ev["side"]})
             status.update({
                 "last_bar": last["date"], "last_close": last["c"],
                 "n_bars": len(bars), "data_gaps": gaps,
@@ -380,7 +410,9 @@ def run(runtime_root: Path, shadow_start: str, once: bool = False):
                 "last_loop_utc": iso_z(), "last_error": None})
         except Exception as e:                      # noqa: BLE001
             status.update({"last_error": f"{type(e).__name__}: {e}",
-                           "last_loop_utc": iso_z()})
+                           "last_loop_utc": iso_z(),
+                           "equity_usd": None,       # F-MED-6: no stale
+                           "last_close": None})      # marks on outage
         (rt / "status.json").write_text(
             json.dumps(status, indent=1, sort_keys=True) + "\n")
         if once:
