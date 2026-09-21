@@ -43,6 +43,7 @@ HEARTBEAT_INTERVAL_S = 15.0
 SYMBOL_REFRESH_S = 3600.0
 GAP_SCAN_S = 5.0
 RETENTION_SCAN_S = 3600.0
+WS_FRESHNESS_PROBE_S = 30.0
 
 
 class GatewayService:
@@ -329,6 +330,65 @@ class GatewayService:
                 continue
 
     # ------------------------------------------------------------------
+    async def ws_freshness_probe_loop(self) -> None:
+        """Plan §4: while the WS stream is degraded (silent/gapped),
+        ONE bounded REST freshness probe per 30 s through the full §5
+        law — zero probes while the stream is HEALTHY."""
+        from .timeutils import default_now_ms as _now
+
+        while not self._stopping.is_set():
+            try:
+                stream_ok = (
+                    self.stream is not None
+                    and self.stream.state == "CONNECTED"
+                    and self.stream.last_message_ms is not None
+                    and (_now() - self.stream.last_message_ms) <= 10_000
+                )
+                if not stream_ok and self.symbols:
+                    envelope = await self.gate.fetch(
+                        "/fapi/v1/premiumIndex", {}
+                    )
+                    payload = envelope["payload"]
+                    received = _now()
+                    if isinstance(payload, list):
+                        wanted = set(self.symbols)
+                        for entry in payload:
+                            if not isinstance(entry, dict):
+                                continue
+                            sym = entry.get("symbol")
+                            if sym not in wanted:
+                                continue
+                            try:
+                                ts_ms = int(entry.get("time"))
+                                mark = (
+                                    float(entry["markPrice"])
+                                    if entry.get("markPrice") is not None
+                                    else None
+                                )
+                            except (TypeError, ValueError, KeyError):
+                                continue
+                            datum = self.snapshot.datum(sym)
+                            datum.apply_rest_mark(
+                                ts_ms,
+                                mark,
+                                None,
+                                None,
+                                received,
+                            )
+                        self.counters.bump("ws_freshness_probes_ok")
+            except Exception as exc:  # noqa: BLE001 - probe failure is data
+                self.counters.bump("ws_freshness_probes_failed")
+                self.events.append(
+                    "ws_freshness_probe_error",
+                    {"error": repr(exc)[:300]},
+                )
+            try:
+                await asyncio.wait_for(
+                    self._stopping.wait(), timeout=WS_FRESHNESS_PROBE_S
+                )
+            except asyncio.TimeoutError:
+                continue
+
     async def start_background(self) -> None:
         await self.refresh_symbols()
         if self.session is None:
@@ -341,6 +401,7 @@ class GatewayService:
                 self.symbol_refresh_loop,
                 self.gap_scan_loop,
                 self.retention_loop,
+                self.ws_freshness_probe_loop,
             )
         ]
         self.events.append(

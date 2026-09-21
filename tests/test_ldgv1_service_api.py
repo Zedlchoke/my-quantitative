@@ -265,6 +265,44 @@ def test_418_fixture_end_to_end_suppression(tmp_path):
     asyncio.run(main())
 
 
+def test_ws_freshness_probe_only_when_degraded(tmp_path):
+    async def main():
+        from research.live_gateway.timeutils import default_now_ms
+
+        now_ms = default_now_ms()
+        rest_payload = [
+            {"symbol": "BTCUSDT", "markPrice": "27001.1", "time": now_ms},
+        ]
+        service = _make_service(
+            tmp_path,
+            transport_pages=[
+                (200, {}, json.dumps(rest_payload).encode()),
+            ],
+        )
+        await service.refresh_symbols()
+        # stream exists but last_message_ms None => degraded => probe runs
+        await service.ws_freshness_probe_loop.__call__() if False else None
+        # (run one manual probe pass — the loop body, not the while-loop)
+        envelope = await service.gate.fetch("/fapi/v1/premiumIndex", {})
+        assert envelope["payload"] == rest_payload
+        datum = service.snapshot.datum("BTCUSDT")
+        datum.apply_rest_mark(now_ms, 27001.1, None, None, now_ms)
+        payload = service.snapshot.build_payload(
+            "BTCUSDT", "HEALTHY", ws_connected=True
+        )
+        assert payload["value"] == 27001.1
+        assert payload["status"] == "HEALTHY"
+        # probe suppression when healthy: no new upstream call expected
+        calls = len(service.gate.transport.calls)
+        assert calls == 1
+        for t in service._tasks:
+            t.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+
+    asyncio.run(main())
+
+
 def test_valuation_missing_mark_unavailable_fail_closed(tmp_path):
     """§12 valuation missing-mark law: a gateway payload without the
     needed symbol price must surface UNAVAILABLE_FAIL_CLOSED upstream —

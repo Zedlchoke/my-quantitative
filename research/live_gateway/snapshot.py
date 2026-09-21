@@ -52,6 +52,27 @@ class SymbolDatum:
     out_of_order_seen: int = 0
     message_count: int = 0
 
+    def apply_rest_mark(
+        self,
+        provider_ts_ms: int,
+        mark: Optional[float],
+        index: Optional[float],
+        funding_rate: Optional[float],
+        received_at_ms: int,
+    ) -> None:
+        """Apply one REST premiumIndex observation (plan §4 fallback
+        probe path; labeled rest in payloads). Only applies when NEWER
+        than the last WS event (no stale overwrite)."""
+        if self.last_event_e_ms is not None and provider_ts_ms <= self.last_event_e_ms:
+            return
+        self.last_event_e_ms = provider_ts_ms
+        self.mark_price = mark
+        self.index_price = index
+        self.funding_rate = funding_rate
+        self.provider_ts_ms = provider_ts_ms
+        self.received_at_ms = received_at_ms
+        self.gap_flagged = False
+
     def apply_ws_event(
         self,
         event_e_ms: int,
