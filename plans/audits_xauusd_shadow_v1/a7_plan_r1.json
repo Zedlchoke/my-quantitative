@@ -1,0 +1,201 @@
+{
+  "schema": "a7_plan_xauusd_shadow_v1@1",
+  "audit_id": "A7-PLAN-R1",
+  "cycle_id": "XAUUSD-SHADOW-V1",
+  "audit_class": "PLAN_PRE_REGISTRATION_AUDIT (fresh-context, adversarial, audit-only)",
+  "auditor": "A7 (independent; writes audit artifacts only, never repairs)",
+  "audited_at_utc": "2026-09-21T05:52:27Z",
+  "plan_path": "plans/PLAN_xauusd_shadow_v1.md",
+  "plan_status_as_audited": "DRAFT_NOT_REGISTERED / PENDING A7 PLAN AUDIT",
+  "context_documents_read": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "plans/PLAN_prospective_shadow_v1.md",
+    "plans/PLAN_stocks_search_v1.md (§4 F1, P-25 three-layer gate)"
+  ],
+  "measured_context": {
+    "cycle_registry": "grep XAUUSD in plans/CYCLE_REGISTRY.json -> 0 matches; DRAFT_NOT_REGISTERED status in plan header is accurate; plan is not current truth for any live cycle",
+    "heavy_lock": "researchctl locks inspect -> verdict HELD_PROVEN, flock held by STOCKS-SEARCH-V1/quant-implementer/ssearch-e2, pid 57985 alive, heartbeat 2026-09-21T05:47:24Z, status RUNNING — matches plan §7 claim 'heavy lock reserved — the co-tenant scored run owns it'; this cycle MUST stay a light worker",
+    "co_tenant_shadow_cycle": "registry: PROSPECTIVE-SHADOW-V1 lifecycle ACTIVE_LIGHT, phase E_FORWARD_OBSERVATION, workers 2 (RESUMED 2026-09-18), budget 0/0, go_phrase REGISTERED_NOT_CONSUMED; its runtime tree exists under .worktrees/prospective-shadow-v1/integration/results/ with live ledger artifacts — dashboard non-invasiveness (§5/§7) is therefore a live co-tenancy constraint, not a hypothetical",
+    "eodhd_entitlement": "EODHD_API_KEY present in repo .env (pre-existing; value never echoed, per plan §1 line 36 and CLAUDE.md credential law). Supports 'only the pre-existing EODHD_API_KEY' claim; whether the entitlement extends to FX intraday is exactly what gate F1 must re-measure (plan §3 correctly does NOT assume it)."
+  },
+  "items": [
+    {
+      "id": 1,
+      "title": "FIDELITY to owner's four verbatim conditions and [LEAD-FROZEN] instantiations",
+      "status": "PASS",
+      "evidence": [
+        {"plan_line": "4-7", "quote": "Owner instruction 2026-09-21 (verbatim intent): \"xây cho tôi strategy XAUUSD và đưa vào paper trading theo sau: Price within 0.3x ATR of a swing level / Price holding the right side of that level / EMA 9 and EMA 21 aligned with the direction / Enough volatility to be worth trading\""},
+        {"plan_line": "8-14", "quote": "clarification: \"paper ý tôi là chạy trong app quant shadow này cho tôi coi...\" — i.e. the INTERNAL shadow dashboard (PROSPECTIVE-SHADOW-V1 class), NOT external paper/testnet/live orders. Frozen reading: an internal virtual-ledger shadow sleeve exactly in the sense of PLAN_prospective_shadow_v1.md §2"},
+        {"plan_line": "44-47", "quote": "Owner's four conditions verbatim + frozen instantiations of every underdetermined parameter (each marked [LEAD-FROZEN], chosen outcome-blind, never tuned after any result is seen; a change = new owner instruction + new cycle)"},
+        {"plan_line": "66-76", "quote": "condition 1 |close_t − L| <= 0.3 × ATR14_t (owner verbatim) ... condition 2 right side of the level (owner verbatim): if L is a swing LOW → long side: close_t >= L; if L is a swing HIGH → short side: close_t <= L ... condition 3 EMA alignment (owner verbatim): long requires EMA9_t > EMA21_t ... condition 4 enough volatility [LEAD-FROZEN instantiation]: ATR14_t >= 0.15% of close_t AND ATR14_t >= 1.25 × median(ATR14 over trailing 100 completed bars)"},
+        {"plan_line": "82-99", "quote": "exit [LEAD-FROZEN, owner gave none]: first of (a) EMA9/EMA21 cross ... (b) hard stop: entry ± 1.0 × ATR14_entry ... (c) time stop: 48 completed bars ... (d) shadow-session end ... sizing fixed notional = 10% of sleeve equity per position, one position at a time [LEAD-FROZEN] ... costs virtual round-trip cost 4.0 bps of notional [LEAD-FROZEN conservative constant; NO broker cost authority exists for XAUUSD in this program — FOREX-NG6-F4 class: components UNMEASURED, labeled]"}
+      ],
+      "notes": "All four conditions are quoted verbatim and instantiated, not altered: (1) proximity is |close−L| <= 0.3×ATR (owner's own formula); (2) 'right side' is completed with the geometrically natural long-above-swing-LOW / short-below-swing-HIGH mapping, and direction (line 77-78) is explicitly derived from condition 2 ('condition 2 fixes the side'), not invented; (3) EMA9/EMA21 alignment is owner-given, only the alpha formula (standard 2/(N+1)) is supplied; (4) volatility is [LEAD-FROZEN]-tagged. The internal-shadow reading of the owner's 'paper' clarification is faithful to the owner's own words ('chạy trong app quant shadow này') and to the PROSPECTIVE-SHADOW-V1 §2 law. Every underdetermined parameter (1h bars, fractal ±5 + 5-bar confirmation, exits, sizing, costs, 100k sleeve) is individually tagged [LEAD-FROZEN] and declared frozen BEFORE any observation with a no-retune law. Outcome-blindness is structurally supported (plan drafted pre-observation, cycle unregistered, Z dry-run on REPLAY namespace only) though not provable from the plan text alone; nothing in the plan evidences tuning. No instantiation found that CHANGES the owner's meaning. Findings L1 (volatility prong 2 expansive; ATR14 tag hygiene) and L6 (cosmetic) recorded below."
+    },
+    {
+      "id": 2,
+      "title": "SHADOW-LAW compliance (no external orders/credentials; TARGET_INTENT; REPLAY_NOT_PROSPECTIVE; no profitability language)",
+      "status": "PASS",
+      "evidence": [
+        {"plan_line": "32-36", "quote": "NOT external trading: no paper/testnet/live order, no broker, no account creation, no new credential (the ONLY key allowed is the pre-existing EODHD_API_KEY entitlement, never echoed)"},
+        {"plan_line": "25", "quote": "orders NONE — internal virtual ledger only (shadow class)"},
+        {"plan_line": "80-81", "quote": "entry: all four conditions true at bar close t → order TARGET_INTENT at t+1 open [shadow fill model below]"},
+        {"plan_line": "122", "quote": "Append-only virtual ledger per PROSPECTIVE-SHADOW-V1 §2 class: TARGET_INTENT → VIRTUAL_FILL → MARK_TO_MARKET rows; equity/drawdown series; every row sha-chained"},
+        {"plan_line": "37-40", "quote": "NOT a backtest: forward-only from SHADOW_START; historical bars are replayed ONLY for deterministic identity/warmup tests under the namespace REPLAY_NOT_PROSPECTIVE and are never reported as prospective performance"},
+        {"plan_line": "22-23", "quote": "budget 0/0 scored cells (shadow observation — NO bookable claim, NO profitability language, ever)"},
+        {"plan_line": "124-126", "quote": "Every rendered number carries SHADOW_OBSERVATION_ONLY / NOT A PROFITABILITY CLAIM / COST MODEL UNMEASURED-CONSERVATIVE. No Sharpe/PF publication gating is claimed"}
+      ],
+      "notes": "Compliant with PROSPECTIVE-SHADOW-V1 §2 law on all four axes: (i) no order path — the only emitted action class is TARGET_INTENT into an append-only virtual ledger; the sole credential is the pre-existing read-only market-data key (measured present in .env; never-echo rule stated); (ii) TARGET_INTENT/VIRTUAL_FILL/MARK_TO_MARKET row class matches the precedent's emitted-action restriction; (iii) forward-only is explicit with historical replay confined to a visibly marked REPLAY_NOT_PROSPECTIVE namespace for identity/warmup/determinism only, and gate Z tests no-lookahead on that namespace; (iv) profitability language is barred at the budget line, on every rendered number, and by the no-Sharpe/PF-claim rule — outputs cannot legally express an edge claim. Findings L2 (outage valuation law not restated) and L5 (outcome-exposed ancestry not declared) are completeness gaps, not violations."
+    },
+    {
+      "id": 3,
+      "title": "SOURCE governance: F1 fail-closed entitlement gate, no-improvised-fallback, weekend vs data-gap distinction",
+      "status": "PASS",
+      "evidence": [
+        {"plan_line": "104-110", "quote": "Primary candidate: EODHD intraday XAUUSD under the EXISTING EODHD_API_KEY entitlement (no new credential). F1 three-layer P-25-style gate for THIS cycle (reachable / permitted / served), re-measured — the stocks-cycle entitlement does NOT automatically extend to FX intraday; if any layer fails, the cycle is BLOCKED_SOURCE and NO fallback source is improvised (owner decides). Keyless fallbacks are listed for the owner only, not auto-used"},
+        {"plan_line": "113-118", "quote": "exchange timestamp + local receive timestamp recorded, gap detection (missing bar hours recorded, never filled), append-only raw layer + normalized layer, hash-chained manifests, crash-safe resume, health heartbeat. The XAUUSD weekend closure is a MARKET property: Sat/Sun gaps are recorded as market-closed, not data gaps"}
+      ],
+      "notes": "The F1 design is correct and is the right precedent application: PLAN_stocks_search_v1.md §4 F1 ('P-25 three-layer gate (reachable/permitted/served) FIRST') is re-measured for THIS cycle rather than inherited, and the plan explicitly refuses entitlement inheritance across channels ('stocks-cycle entitlement does NOT automatically extend to FX intraday') — exactly right, since /eod daily equity access proves nothing about FX intraday permission. Fail-closed on any layer (BLOCKED_SOURCE, no improvised fallback, keyless options owner-decision-only) matches CLAUDE.md's 'purchases, paid provider activation' prohibition and the missing-evidence-is-NOT_RUN law. Gap handling (record, never fill; raw+normalized layers; hash-chained manifests; crash-safe resume; dual timestamps for PIT audit) is sound. HOWEVER the weekend rule as written is partially unsound: see finding M3 — XAUUSD spot reopens Sunday evening (~22:00 UTC, DST-dependent) and EODHD serves Sunday bars, so a blanket 'Sat/Sun = market-closed' rule can mislabel genuine Sunday-evening provider gaps as benign market property. The distinction CONCEPT (market calendar vs data gap) is correct; the OPERATIONALIZATION needs a published-trading-calendar derivation. Item passes with M3."
+    },
+    {
+      "id": 4,
+      "title": "NO-LOOKAHEAD: information-set audit of the frozen spec",
+      "status": "PASS",
+      "evidence": [
+        {"plan_line": "51-52", "quote": "bars: 1h bars; decision at completed-bar close; fills at the NEXT bar's open (F5-class clock) [LEAD-FROZEN]"},
+        {"plan_line": "53-55", "quote": "warmup: 200 completed 1h bars before the first eligible decision (covers EMA21, ATR14, swing window, and the volatility filter's 100-bar ATR median) [LEAD-FROZEN]"},
+        {"plan_line": "57-64", "quote": "swing level L: fractal definition [LEAD-FROZEN]: a swing HIGH is a bar whose high is the strict maximum of the window [t-5, t+5]; swing LOW symmetric. A level is CONFIRMED 5 bars after its extreme bar (no lookahead). L = the most recently confirmed swing level at decision time; if both a high and a low confirm on the same bar, the one with the larger |extreme − close| wins [LEAD-FROZEN tie-break]"},
+        {"plan_line": "146-147", "quote": "Z: sanitized dry-run on REPLAY_NOT_PROSPECTIVE historical bars (determinism, no-lookahead: every fill's information set <= t)"}
+      ],
+      "notes": "Core clock is clean: every signal input (ATR14_t, EMA9/21_t, swing L confirmed at bar ≤ t via the 5-bar post-extreme confirmation, trailing-100 ATR median) is a function of bars completed at or before decision close t, and both entry and exit (a) fill at t+1 open — the same bar-close→next-open discipline as the stocks F5 clock. Swing confirmation lag is correctly absorbed: a swing extreme at bar j needs bars j+1..j+5 completed, so it is eligible exactly at close j+5; 'most recently confirmed at decision time' never reaches past t. 'Strict maximum' makes the fractal deterministic under ties (no swing confirmed). Warmup 200 ≥ 114 (100 ATR values + 14-bar Wilder seed) covers every stated consumer. Gate Z independently tests information-set ≤ t by mutation on the replay namespace. TWO spec gaps found, neither a lookahead violation but both pre-registration completeness failures because §6 S declares 'THIS plan §2 IS the frozen spec (nothing to freeze separately)': M1 — exit (b) hard stop does not state evaluation timing (intrabar touch vs completed-bar close) or fill price (stop level vs next-bar open), while exit (a) does; the two readings produce different, both-deterministic ledgers; M2 — tie-break '|extreme − close|' does not name the reference bar for close (decision-bar close_t vs the extreme bar's own close). Both must be frozen before GO."
+    },
+    {
+      "id": 5,
+      "title": "CROSS-CYCLE SAFETY: PROSPECTIVE-SHADOW-V1 runtime/engine/ledger non-invasiveness (§5/§7)",
+      "status": "PASS",
+      "evidence": [
+        {"plan_line": "130-137", "quote": "The Quant Shadow Dashboard belongs to PROSPECTIVE-SHADOW-V1's runtime. This cycle MUST NOT modify that cycle's engine or ledger. Integration law: XAUUSD-SHADOW-V1 writes its OWN runtime tree (results/xauusd_shadow_v1/); the dashboard gains an XAUUSD panel via a minimal renderer-level addition audited in isolation (reads the new tree only), OR a standalone overlay window — implementation choice frozen at dispatch after A7 reviews which is least invasive. Either way: zero writes into PROSPECTIVE-SHADOW-V1's runtime"},
+        {"plan_line": "161-163", "quote": "PROSPECTIVE-SHADOW-V1 untouched (its current dashboard DATA BLOCKED marks on 2 sleeves are THAT cycle's scope — reported to the owner separately, not fixed here)"}
+      ],
+      "notes": "The essential boundaries are present and enforceable: own-namespaced runtime tree (results/xauusd_shadow_v1/), an explicit MUST-NOT-MODIFY on the co-tenant's engine and ledger, zero-writes into its runtime, read-path-only dashboard integration, isolation audit of any renderer addition, and — importantly — the plan refuses to fix the co-tenant's own DATA BLOCKED marks (staying inside its lane per AGENTS.md 'lanes never touch other lanes'). Measured reality raises the stakes: PROSPECTIVE-SHADOW-V1 is ACTIVE_LIGHT with 2 live workers right now, so any shared-file edit is a live-coordination hazard. The law as written is NOT fully airtight — finding M4: the dashboard is declared part of the co-tenant's runtime (line 130) and §7 says 'PROSPECTIVE-SHADOW-V1 untouched', yet option 1 is a code addition to that dashboard; the plan resolves the tension only implicitly (engine+ledger+runtime-data untouched; renderer code is the sanctioned exception) and does not name which worktree/branch/review protocol carries that shared-file change or how the live co-tenant is protected during it. The standalone-overlay option avoids the hazard entirely; the plan correctly defers the choice to dispatch with A7 input, which this audit exercises by recommending the overlay or, if a renderer addition is chosen, an explicit co-tenant code-touch protocol frozen at dispatch. Item passes with M4."
+    },
+    {
+      "id": 6,
+      "title": "GOVERNANCE FIT: budget 0/0, GO phrase law, light worker, S1 seal, registration state",
+      "status": "PASS",
+      "evidence": [
+        {"plan_line": "22-23", "quote": "budget: 0/0 scored cells (shadow observation — NO bookable claim, NO profitability language, ever)"},
+        {"plan_line": "24", "quote": "S1: SEALED_UNTOUCHED"},
+        {"plan_line": "26", "quote": "go_phrase: GO XAUUSD SHADOW V1 START"},
+        {"plan_line": "148-150", "quote": "A7 fresh-context audit: plan (pre-registration), source terms, no-lookahead, ledger integrity, dashboard non-invasiveness. GO: owner types `GO XAUUSD SHADOW V1 START`"},
+        {"plan_line": "157-160", "quote": "No scored cells; no acceptance battery; no S1; no orders/credentials/accounts; no purchases; light worker only (heavy lock reserved — the co-tenant scored run owns it)"},
+        {"plan_line": "112-113", "quote": "Collector requirements: light worker (NEVER the machine-wide heavy lock), polling cadence ≤ 15 min for 1h bars"}
+      ],
+      "notes": "Budget 0/0 matches the PROSPECTIVE-SHADOW-V1 §14 shadow-class pattern (shadow exposure not a scored cell) and the registry's 0/0 convention. GO phrase is owner-typed and sequenced strictly AFTER the A7 gate in §6, consistent with the two-key law (phrase before the audit artifact exists would die unconsumed). Light-worker requirement is stated twice and matches measured lock state: heavy lock HELD_PROVEN by STOCKS-SEARCH-V1 pid 57985 RUNNING — this cycle's ≤15-min polling collector never contends, satisfying AGENTS.md's one-heavy-job law; the plan correctly routes any hypothetical bulk operation away rather than claiming the lock. S1 SEALED_UNTOUCHED declared in both §0 and §7. Registration state verified: 0 XAUUSD entries in CYCLE_REGISTRY.json, matching DRAFT_NOT_REGISTERED — no registry bypass has occurred. Residual gap L3: the plan omits its own registration mechanics (researchctl register invocation, worktree/branch, lifecycle and terminal-outcome enumeration) that the precedent plan carries in §12 P0/§12 T; these must come through researchctl and the dispatch packet, never by hand-editing the registry."
+    }
+  ],
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "MEDIUM",
+      "item": 4,
+      "title": "Hard-stop exit (b) leaves evaluation timing and fill price unspecified",
+      "detail": "Exit (a) fully specifies its clock ('at a completed bar close → exit next bar open') but exit (b) 'hard stop: entry ± 1.0 × ATR14_entry (adverse)' does not state whether the stop is evaluated on intrabar price touch (fill at stop level — an intrabar-path assumption the plan's fill model 'next-bar open ± half-spread' does not cover) or at completed-bar close (fill next bar open — consistent with the frozen clock). Both implementations are deterministic, but they produce materially different ledgers. Because §6 S asserts 'THIS plan §2 IS the frozen spec (nothing to freeze separately)', deferring this choice to the I implementation phase contradicts the freeze law and risks an implementation-time parameter choice made without pre-registration.",
+      "plan_lines": "82-88, 91-94, 143-144",
+      "required_disposition": "Freeze the stop evaluation/fill convention in §2 before dispatch (recommended: evaluated at completed-bar closes only, exit at next bar open, same clock as (a) and (c)); or explicitly tag it [LEAD-FROZEN] with the chosen convention."
+    },
+    {
+      "id": "M2",
+      "severity": "MEDIUM",
+      "item": 4,
+      "title": "Swing tie-break '|extreme − close|' does not name the reference bar for close",
+      "detail": "When a swing HIGH and swing LOW confirm on the same bar, the winner is 'the one with the larger |extreme − close|' — but close of which bar: the decision bar's close_t (known at decision time) or the extreme bar's own close (known at confirmation time)? Both are lookahead-clean; they select different levels in general. An implementation-time resolution would again violate the 'nothing to freeze separately' claim.",
+      "plan_lines": "61-64",
+      "required_disposition": "Name the reference bar in §2 (recommended: decision-time close_t, which also keeps the tie-break inside the decision bar's information set) before dispatch."
+    },
+    {
+      "id": "M3",
+      "severity": "MEDIUM",
+      "item": 3,
+      "title": "Weekend rule over-broad: blanket Sat/Sun 'market-closed' can mask genuine Sunday-evening data gaps",
+      "detail": "XAUUSD spot closes Friday late UTC (~21:00-22:00, DST-dependent) and REOPENS Sunday ~22:00 UTC; intraday providers including EODHD serve Sunday-evening bars. The plan's rule 'Sat/Sun gaps are recorded as market-closed, not data gaps' therefore over-toggles gap detection for part of Sunday: a genuine provider gap in Sunday 22:00-24:00 UTC (and any Friday-evening boundary error) would be misclassified as a benign market property — a fail-open direction for data integrity, exactly what the never-imputed law elsewhere in the plan tries to prevent.",
+      "plan_lines": "116-118",
+      "required_disposition": "Derive expected-bar hours from a published trading-calendar/hours table (or provider session metadata) frozen at F2, instead of a weekday rule; hours outside the calendar are market-closed, hours inside are gaps and stay UNFILLED_GAP/market-data-blocked."
+    },
+    {
+      "id": "M4",
+      "severity": "MEDIUM",
+      "item": 5,
+      "title": "Dashboard integration law internally tense; renderer option touches an ACTIVE co-tenant's code without a stated protocol",
+      "detail": "§5 declares the dashboard part of PROSPECTIVE-SHADOW-V1's runtime and §7 says 'PROSPECTIVE-SHADOW-V1 untouched', yet integration option 1 is a 'minimal renderer-level addition' to that dashboard — a shared-file code change inside a cycle that is LIVE right now (registry: ACTIVE_LIGHT, 2 workers RUNNING; runtime artifacts present in its worktree). The plan's operative protection ('zero writes into PROSPECTIVE-SHADOW-V1's runtime') reads naturally as runtime DATA/ledger, leaving the code-touch path governed by nothing: no named worktree/branch for the renderer edit, no co-tenant health protocol during the edit, no isolation-audit artifact requirement beyond the word 'audited in isolation'. Airtight? Not quite as written.",
+      "plan_lines": "129-137, 160-163",
+      "required_disposition": "At dispatch, either (recommended) freeze the standalone overlay window, which touches nothing of the co-tenant, or freeze the renderer option together with an explicit co-tenant code-touch protocol (exact worktree/branch, single landed commit, co-tenant dashboard render check before/after, A7 isolation audit artifact) — and restate that engine, ledger and runtime DATA of PROSPECTIVE-SHADOW-V1 are untouchable in either option."
+    },
+    {
+      "id": "L1",
+      "severity": "LOW",
+      "item": 1,
+      "title": "Volatility instantiation prong 2 is an expansive (but disclosed) reading; ATR14 definition lacks the [LEAD-FROZEN] tag",
+      "detail": "'Enough volatility to be worth trading' minimally means absolute volatility sufficient to clear costs; prong 2 (ATR14 >= 1.25 × trailing-100 median) additionally imposes a relative regime filter that excludes normal-volatility periods that would already clear the 4 bps cost line given prong 1 (0.15%/h ATR vs 4 bps ≈ 0.04% round trip). This narrows observation scope beyond the owner's literal words. It is disclosed as [LEAD-FROZEN], frozen pre-observation, and bounded, so it completes rather than corrupts — but the owner should see it called out. Separately, ATR14 (Wilder, period 14, on 1h) is itself a Lead instantiation presented without the [LEAD-FROZEN] tag, an internal inconsistency in the plan's own tagging convention.",
+      "plan_lines": "66-76",
+      "required_disposition": "Surface prong 2 to the owner at GO review; add the [LEAD-FROZEN] tag to the ATR14 definition line for tagging-convention consistency."
+    },
+    {
+      "id": "L2",
+      "severity": "LOW",
+      "item": 2,
+      "title": "Open-position valuation during feed outage lacks the explicit UNAVAILABLE_FAIL_CLOSED law",
+      "detail": "Gate E says 'WAITING_DATA if feed down — never FAIL for missing coverage' and the fill law covers missing bars (UNFILLED_GAP, never imputed), but neither states what happens to MARK_TO_MARKET of an OPEN virtual position while the feed is down. The class precedent (PROSPECTIVE-SHADOW-V1 §8) requires performance reporting for such intervals to be UNAVAILABLE_FAIL_CLOSED, never computed from a convenient later point. The law is arguably inherited by the §4 'per PROSPECTIVE-SHADOW-V1 §2 class' reference, but §2 of that plan is the shadow definition, not the evidence contract.",
+      "plan_lines": "91-94, 151-152",
+      "required_disposition": "Add one line to §4: open-position marks during data outages are UNAVAILABLE_FAIL_CLOSED for the affected interval; no backfilled marks."
+    },
+    {
+      "id": "L3",
+      "severity": "LOW",
+      "item": 6,
+      "title": "Registration mechanics, worktree/branch and terminal-outcome enumeration omitted from the plan",
+      "detail": "The precedent plan carries an explicit researchctl register command, worktree/branch, lifecycle and a closed set of terminal outcomes (PROSPECTIVE-SHADOW-V1 §12 P0, §12 T — deliberately no SURVIVOR/LIVE_READY outcomes). XAUUSD-SHADOW-V1 names none of these, deferring to dispatch/registry. AGENTS.md requires lane work only in the registry-named worktree/branch and registration only via researchctl; the plan being the pre-registration authority should pin at least the terminal-outcome vocabulary (observation-only class).",
+      "plan_lines": "16-28, 139-153",
+      "required_disposition": "Add a P0-style registration block (researchctl register invocation with budget-max 0 and the go phrase) and a terminal-outcome enumeration limited to observation/blocked/techabort classes before registration."
+    },
+    {
+      "id": "L4",
+      "severity": "LOW",
+      "item": 5,
+      "title": "New XAUUSD panel not explicitly bound to the class dashboard honesty rules",
+      "detail": "The integration law constrains only the write boundary and read scope. The class precedent's dashboard rules — no ranking by profit, no celebratory 'winner' labels (§9.2), NOT_RUN/UNAVAILABLE empty states rather than 0 (§9.7), read-only with no order-capable endpoint (§9.8) — are not restated for the new panel. The §4 per-number label partially covers this, but a future renderer edit could add a ranking widget without violating any XAUUSD-plan clause as written.",
+      "plan_lines": "128-137, 124-126",
+      "required_disposition": "One sentence in §5: the XAUUSD panel inherits PROSPECTIVE-SHADOW-V1 §9.2/§9.7/§9.8 dashboard honesty rules; no ranking, no celebratory labels, no write endpoints."
+    },
+    {
+      "id": "L5",
+      "severity": "LOW",
+      "item": 2,
+      "title": "Outcome-exposed ancestry of this observation is not declared",
+      "detail": "PROSPECTIVE-SHADOW-V1 §14 establishes that forward-observed strategies become forbidden outcome-exposed ancestry for future blind discovery ('all future proposals must disclose that their outcomes were observed'). XAUUSD-SHADOW-V1 observes a NEW owner strategy forward but carries no equivalent clause, so a future scored cycle proposing this exact strategy might not disclose the shadow observation as ancestry.",
+      "plan_lines": "30-40, 155-163",
+      "required_disposition": "Add one clause: any future scored proposal of this strategy must disclose XAUUSD-SHADOW-V1 as outcome-exposed ancestry."
+    },
+    {
+      "id": "L6",
+      "severity": "LOW",
+      "item": 1,
+      "title": "Cosmetic: stray CJK token in §2",
+      "detail": "Line 78 reads 'no双向 at one level' — a mixed-language artifact; meaning is unambiguous in context ('no both-directions at one level') and is restated in English by 'condition 2 fixes the side'.",
+      "plan_lines": "77-78",
+      "required_disposition": "Cosmetic fix at Lead's discretion; no semantic risk."
+    }
+  ],
+  "verdict_rule": "AUTHORIZED_WITH_FINDINGS requires 0 HIGH/CRITICAL findings; otherwise REFUSED.",
+  "finding_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 4, "LOW": 6},
+  "overall_verdict": "AUTHORIZED_WITH_FINDINGS",
+  "verdict_statement": "XAUUSD-SHADOW-V1 plan pre-registration is AUTHORIZED_WITH_FINDINGS. The plan is faithful to the owner's four verbatim conditions and the internal-shadow reading; shadow law (no orders/credentials, TARGET_INTENT class, REPLAY_NOT_PROSPECTIVE, forward-only, no profitability language) is compliant; the F1 fail-closed source gate is correctly re-measured per channel; the core no-lookahead clock is clean; PROSPECTIVE-SHADOW-V1 non-invasiveness is bounded; and governance fit (budget 0/0, GO after A7, light worker with the heavy lock measurably held by STOCKS-SEARCH-V1, S1 sealed, DRAFT unregistered) checks out. Conditions on proceeding: findings M1 (hard-stop clock), M2 (tie-break reference bar), M3 (trading-calendar-derived weekend rule) must be frozen into §2 before dispatch; M4 resolved at dispatch by freezing the standalone overlay or a co-tenant code-touch protocol. LOW findings are recorded for disposition at Lead's discretion and remain visible in this artifact.",
+  "audit_integrity": {
+    "plan_modified_by_auditor": false,
+    "code_modified_by_auditor": false,
+    "files_written": ["plans/audits_xauusd_shadow_v1/a7_plan_r1.json"],
+    "credentials_echoed": false,
+    "heavy_lock_contended": false
+  }
+}
