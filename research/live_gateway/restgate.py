@@ -33,6 +33,18 @@ TransportFn = Callable[
     [str, Dict[str, Any]], Awaitable[Tuple[int, Dict[str, str], bytes]]
 ]
 
+def make_aiohttp_transport(session: Any) -> TransportFn:
+    """Real upstream transport over one shared aiohttp ClientSession."""
+
+    async def transport(url: str, params: Dict[str, Any]):
+        async with session.get(url) as resp:
+            body = await resp.read()
+            headers = {str(k): str(v) for k, v in resp.headers.items()}
+            return resp.status, headers, body
+
+    return transport
+
+
 ALLOWED_PATHS = (
     "/fapi/v1/klines",
     "/futures/data/basis",

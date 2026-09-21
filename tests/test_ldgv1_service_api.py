@@ -265,6 +265,49 @@ def test_418_fixture_end_to_end_suppression(tmp_path):
     asyncio.run(main())
 
 
+def test_real_transport_wired_against_fake_upstream(tmp_path):
+    """The REAL aiohttp transport (make_aiohttp_transport) works end to
+    end against a local fake upstream server (offline loopback)."""
+    from research.live_gateway.restgate import make_aiohttp_transport
+
+    async def main():
+        from aiohttp import web as web_mod
+
+        async def handler(request):
+            return web_mod.json_response(
+                [{"symbol": "BTCUSDT", "markPrice": "27000.1",
+                  "time": 1700000000000}]
+            )
+
+        app = web_mod.Application()
+        app.router.add_get("/fapi/v1/premiumIndex", handler)
+        server = TestServer(app)
+        async with TestClient(server) as upstream:
+            service = _make_service(tmp_path)
+            base = str(upstream.make_url("")).rstrip("/")
+            service.gate.rest_base = base
+            import aiohttp
+
+            async with aiohttp.ClientSession() as session:
+                service.gate.transport = make_aiohttp_transport(session)
+                envelope = await service.gate.fetch(
+                    "/fapi/v1/premiumIndex", {}
+                )
+                assert envelope["cache_hit"] is False
+                assert envelope["payload"][0]["symbol"] == "BTCUSDT"
+                # second identical call: cache hit, no upstream re-issue
+                envelope2 = await service.gate.fetch(
+                    "/fapi/v1/premiumIndex", {}
+                )
+                assert envelope2["cache_hit"] is True
+        for t in service._tasks:
+            t.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+
+    asyncio.run(main())
+
+
 def test_ws_freshness_probe_only_when_degraded(tmp_path):
     async def main():
         from research.live_gateway.timeutils import default_now_ms

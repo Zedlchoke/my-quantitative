@@ -393,6 +393,10 @@ class GatewayService:
         await self.refresh_symbols()
         if self.session is None:
             self.session = aiohttp.ClientSession()
+        if self.gate.transport is None:
+            from .restgate import make_aiohttp_transport
+
+            self.gate.transport = make_aiohttp_transport(self.session)
         self._restart_stream()
         self._tasks = [
             asyncio.get_event_loop().create_task(coro())
