@@ -282,6 +282,28 @@ def test_ws_reconnect_after_failure():
     assert seen and seen[0]["s"] == "BTCUSDT"
 
 
+# ----------------------------------------------------------------------
+# A7 impl-r2 R2-FND-1: truncated gzip member must not crash startup
+# ----------------------------------------------------------------------
+def test_truncated_gzip_tail_does_not_crash_restart(tmp_path):
+    clock = FakeClock()
+    raw = RawStore(str(tmp_path), now_ms_=clock)
+    raw.append_observation("ws:BTCUSDT", {"mark": 1.0})
+    day_file = [
+        os.path.join(str(tmp_path), f)
+        for f in os.listdir(str(tmp_path))
+        if f.endswith(".jsonl.gz")
+    ][0]
+    # simulate a crash mid-append: chop the file's last 20 bytes
+    size = os.path.getsize(day_file)
+    with open(day_file, "r+b") as handle:
+        handle.truncate(size - 20)
+    raw2 = RawStore(str(tmp_path), now_ms_=clock)  # must NOT raise
+    assert raw2._tail_degraded is True
+    # and the store keeps working (new appends continue)
+    assert raw2.append_observation("ws:ETHUSDT", {"mark": 2.0}) is True
+
+
 def test_one_upstream_connection_under_190_symbols():
     calls = []
     flaky = _OkWS([])

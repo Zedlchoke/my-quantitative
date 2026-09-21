@@ -126,19 +126,37 @@ class RawStore:
         return os.path.join(self.root, f"{day}.jsonl.gz")
 
     def _load_tail_digests(self) -> None:
-        """Reload the LAST day's dedup digests (crash-safe resume)."""
+        """Reload the LAST day's dedup digests (crash-safe resume).
+
+        A crash mid-append can leave a TRUNCATED gzip member: read
+        row-by-row and stop at the first unreadable tail (zlib.error /
+        EOFError / OSError / ValueError). Rows after a poisoned member
+        stay on disk but are unreadable to gzip stream readers —
+        disclose via _tail_degraded so metrics never claim them (A7
+        impl-r2 R2-FND-1: startup must never crash-loop on this).
+        """
+        import zlib
+
         suffix_len = len(".jsonl.gz")
         days = sorted(
             f[:-suffix_len]
             for f in os.listdir(self.root)
             if f.endswith(".jsonl.gz")
         )
+        self._tail_degraded = False
         if not days:
             return
         path = self._day_path(days[-1])
         try:
             with gzip.open(path, "rt", encoding="utf-8") as handle:
-                for line in handle:
+                while True:
+                    try:
+                        line = handle.readline()
+                    except (zlib.error, EOFError, OSError, ValueError):
+                        self._tail_degraded = True
+                        break
+                    if not line:
+                        break
                     try:
                         row = json.loads(line)
                     except ValueError:
@@ -147,11 +165,10 @@ class RawStore:
                     dig = row.get("digest")
                     if key and dig:
                         self._seen[f"{key}|{dig}"] = "1"
-        except (OSError, EOFError):
-            pass  # corrupt tail file: dedup restarts empty, rows may
-            # duplicate once; counters are loaded separately (no
-            # double-count of METRICS; raw duplicate rows are bounded
-            # by the daily file boundary and disclosed here)
+        except (OSError, EOFError, zlib.error):
+            self._tail_degraded = True  # whole-file unreadable: restart
+            # dedup empty (bounded duplicate rows once); counters live
+            # elsewhere so METRICS never double-count
 
     def append_observation(
         self, key: str, payload: Dict[str, Any]

@@ -275,12 +275,14 @@ class CircuitBreaker:
                     self.window_ms = max(
                         1000, verdict.retry_after_ms_expiry - now
                     )
+                    reason_tail = "fresh venue window honored"
                 else:
                     self.window_ms = min(self.window_ms * 2, OPEN_MAX_MS)
+                    reason_tail = "window doubled"
                 self.opened_at_ms = now
                 self._record(
                     "RATE_LIMITED",
-                    f"half-open probe re-banned HTTP {status}; window doubled",
+                    f"half-open probe re-banned HTTP {status}; {reason_tail}",
                     http_status=status,
                     retry_after_ms=verdict.retry_after_ms_expiry,
                     allowed_retry_at_utc=(
