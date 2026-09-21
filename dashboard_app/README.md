@@ -51,6 +51,7 @@ In ra runtime đã resolve, trạng thái, equity tổng, số lệnh.
 cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/dashboard
 /Users/hoangminhlong/my-quantitative/.venv/bin/pyinstaller \
   --name "Quant Shadow Dashboard" --windowed --noconfirm --clean \
+  --icon dashboard_app/assets/AppIcon.icns \
   --hidden-import webview.platforms.cocoa \
   --hidden-import zoneinfo --collect-all tzdata \
   --hidden-import csv --hidden-import hashlib --hidden-import io \
@@ -59,6 +60,11 @@ cd /Users/hoangminhlong/my-quantitative/.worktrees/prospective-shadow-v1/dashboa
   --distpath dist --workpath build app_entry.py
 rm -rf "dist/Quant Shadow Dashboard"   # bỏ thư mục onedir thừa
 ```
+
+Icon app + logo header là ảnh của owner (`assets/logo_src.heic`); nếu
+đổi ảnh: thay file nguồn rồi chạy lại `assets/make_logo_module.py`
+(header) và các bước icon (`sips`/`iconutil`, xem lịch sử commit
+9eef3079) trước khi build.
 
 Build-deps cài vào `.venv` của repo: `pyinstaller`, `tzdata`.
 
