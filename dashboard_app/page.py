@@ -133,7 +133,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
   <img class="logo" src="{LOGO_SRC}" alt="logo">
   <div>
     <h1>Quant Shadow Dashboard</h1>
-    <div class="sub">PROSPECTIVE-SHADOW-V1 · paper/shadow (không phải live trading) · vốn ban đầu 300,000 USDT</div>
+    <div class="sub">PROSPECTIVE-SHADOW-V1 + XAUUSD-SHADOW-V1 · paper/shadow (không phải live trading) · vốn ban đầu 300,000 USDT (3 sleeve crypto) + 100,000 USD (XAUUSD) = 400,000 · 4 sleeve</div>
   </div>
   <span id="badge" class="badge stale">…</span>
   <div id="lastupdate"></div>
@@ -147,7 +147,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
   <div class="section">
     <h2>Equity theo thời gian</h2>
     <div class="btns" id="chartbtns">
-      <button data-k="combined" class="on">Tổng 300K</button>
+      <button data-k="combined" class="on">Crypto 300K</button>
       <button data-k="XSECT-FUND-CARRY-7D">XSECT</button>
       <button data-k="ILLIQ-AMIHUD-28D-W">ILLIQ</button>
       <button data-k="BASISLV-PREMFADE-28D">BASISLV</button>
@@ -156,11 +156,11 @@ PAGE_HTML = r"""<!DOCTYPE html>
       <svg id="chart" viewBox="0 0 1000 330" preserveAspectRatio="none"></svg>
       <div id="tip"></div>
     </div>
-    <div class="note">Đường đứt là vốn ban đầu (300,000 Tổng / 100,000 mỗi family). Khoảng mất dữ liệu không được nội suy — bị bỏ hở (fail-closed).</div>
+    <div class="note">Đường đứt là vốn ban đầu (300,000 / 100,000 mỗi family). Chuỗi mark chỉ gồm 3 sleeve crypto; XAUUSD (USD, 100,000 riêng) theo dõi ở card và box tổng kết hợp. Khoảng mất dữ liệu không được nội suy — bị bỏ hở (fail-closed).</div>
   </div>
 
   <div class="section">
-    <h2>Tất cả lệnh (cả 3 family)</h2>
+    <h2>Tất cả lệnh (3 family crypto · XAUUSD xem card riêng)</h2>
     <div class="filters">
       <select id="ffamily"><option value="">Mọi family</option></select>
       <select id="fstate">
@@ -258,10 +258,21 @@ function render(env) {
       '<div class="val ' + (valCls || "") + '">' + val + '</div>' +
       '<div class="sml">' + (sml || "") + '</div></div>';
   }
-  strip.push(box("Tổng equity", fmtUSD(eq), "",
+  var xs2 = ((app.xauusd_shadow || {}).status) || {};
+  var xe = xs2.equity_usd;
+  var comb = (eq != null && xe != null) ? eq + xe : null;
+  var combPnl = comb != null ? comb - 400000 : null;
+  strip.push(box("Tổng equity (3 sleeve crypto)", fmtUSD(eq), "",
     vc && vc.as_of_utc ? ("mark " + fmtTime(vc.as_of_utc)) : ""));
-  strip.push(box("Tổng PnL", fmtUSD(tpnl), pnlClass(tpnl), "từ vốn ban đầu $300,000"));
-  strip.push(box("Tổng PnL %", fmtPct(tpct), pnlClass(tpct), "300,000 USDT gốc"));
+  strip.push(box("XAUUSD (USD)", fmtUSD(xe), "",
+    xs2.last_error ? esc(xs2.last_error) : "shadow riêng · N/A fail-closed khi thiếu mark"));
+  strip.push(box("Tổng kết hợp (4 sleeve)", comb == null ? "N/A" : fmtUSD(comb),
+    comb == null ? "neu" : pnlClass(combPnl),
+    "crypto USDT + XAUUSD USD, giả sử 1:1 · vốn gốc 400,000"));
+  strip.push(box("PnL kết hợp", combPnl == null ? "N/A" : fmtUSD(combPnl), pnlClass(combPnl),
+    "so với 400,000 (300k USDT + 100k USD)"));
+  strip.push(box("Tổng PnL crypto", fmtUSD(tpnl), pnlClass(tpnl), "từ vốn ban đầu $300,000"));
+  strip.push(box("Tổng PnL crypto %", fmtPct(tpct), pnlClass(tpct), "300,000 USDT gốc"));
   strip.push(box("PnL hôm nay", today && today.status === "OK" ? fmtUSD(today.pnl_usdt) : "N/A",
     today && today.status === "OK" ? pnlClass(today.pnl_usdt) : "neu",
     today && today.status === "OK" ? fmtPct(today.pnl_pct) + " · từ " + fmtTime(today.window_start_local) :
@@ -273,7 +284,7 @@ function render(env) {
     ? (ru.reason ? esc(ru.reason) : "N/A")
     : ("realized " + fmtUSD(ru.realized_pnl) + " · unrealized " + fmtUSD(ru.unrealized_pnl));
   el("strip").insertAdjacentHTML("beforeend",
-    '<div class="box" style="grid-column: span 5;"><div class="lbl">Realized / Unrealized (tổng 3 family, mark ' +
+    '<div class="box" style="grid-column: span 5;"><div class="lbl">Realized / Unrealized (3 family crypto, mark ' +
     esc(ru.mark_timestamp_utc || "") + ')</div><div class="sml">' + ruNote + '</div></div>');
 
   var fams = snap && snap.valuation ? snap.valuation.families : null;
