@@ -547,3 +547,37 @@ engineering. No predeclared survivor outcome is promised by this plan.
 5. Bootstrap the integration worktree; run M0; PASS required before D1.
 6. Stop at the scored prelaunch gate and wait for the exact owner GO.
 ```
+
+
+## 14. Owner amendment 2026-09-21 #3 — DEGENERATE_ADJ_PRICE law (owner
+decision (A) after the second TECHABORT; verbatim intent: "Tôi chọn A")
+
+Measured fact (read-only diagnostic, 2026-09-21): the real cohort
+carries names whose TOTAL-RETURN-ADJUSTED OPEN equals 0.0 on some
+served sessions (54 of the first 3,000 names past the crashed cell's
+checkpoint; e.g. ABWN 2019-10-16, ACAN 2025-11-20).  The frozen §8
+log-slice/gross arithmetic (math.log(op[d+1]/op[d]),
+op[exit]/op[entry]-1) is UNDEFINED for such prices: the first scored
+streaming cell reached one at 2026-09-21T06:50Z and stopped fail-closed
+(no mid-run fix; engine bytes and data untouched; budget remains 0/3
+per the first-launch precedent — no scored computation completed; the
+cell-1 attempt is disclosed for terminal A7 adjudication).
+
+Frozen law (pre-registered BEFORE any restart; fail-closed, never
+imputed): a leg whose ACTUAL price window [entry_i, eff_exit] (the
+sessions the frozen execution engine would actually touch for gross
+and log slices, under its own fold force-flat / death branches)
+contains any non-positive adjusted open is UNPRICEABLE: it is recorded
+as a CENSORED leg of a new kind `unpriceable_adj_price` in the BC-7
+censored accounting (excluded from the numerator, excluded from the
+included-at-marks variant — no marks exist for it — and counted
+separately in the cell verdict's censored-leg disclosure).  Every other
+leg, book and gate is unchanged; the E2 streaming engine implements
+this as `build_legs_amended` — a byte-copy of the frozen
+i_engine.build_legs with ONLY this branch added — committed under e2/
+with A7 verifying the copy line-equality except the amendment.  Exact
+affected-leg counts are emitted by the run itself.  This amendment
+changes the frozen experiment ONLY by pre-registering the handling of
+a data pathology the original plan did not adjudicate; it widens no
+threshold, rescues no parameter and selects nothing.  Restart requires
+a fresh exact owner GO (P-8).
