@@ -124,35 +124,20 @@ def verify_and_pin(go_phrase: str, cache_dir, retrieval_manifest_path) -> dict:
             "go_phrase_state": "CONSUMED_AT_GATE (exact phrase presented)"}
 
 
-def stream_iter_names(ctx: dict, cache_dir, max_names: int | None = None,
-                       skip: int = 0):
+def stream_iter_names(ctx: dict, cache_dir, max_names: int | None = None):
     """Yield (symbol, NameData) one at a time, sorted, GO-gated ctx.
 
-    skip > 0 drops the first skip yielded names (crash-resume: those
-    names are already folded into the checkpointed accumulators)."""
+    RESUME LAW (E2F-1 remediation): this iterator has NO skip parameter.
+    Crash-resume skipping is owned EXCLUSIVELY by CheckpointablePassA/B
+    (their names_done counters drop already-fed names) - a second skip
+    layer here would silently double-skip names.  Callers pass the FULL
+    iterator; the checkpointable pass consumes its own offset."""
     p0_run = ctx["p0_run"]
     retrieval = ctx["retrieval"]
     pulls = retrieval["pulls"]
     cache_dir = Path(cache_dir)
     n = 0
-    dropped = 0
-    served = ctx.get("cohort_served")
     for sym in sorted(s for s, m in pulls.items() if m.get("status") == 200):
-        if dropped < skip:
-            # resume drops exactly the names the crashed pass had FED;
-            # parse-None (served==0) names never entered the pass, so
-            # they must not consume a skip slot.  The digest-pinned
-            # cohort census answers served>0 without re-parsing.
-            if served is not None:
-                if served.get(sym, 0) <= 0:
-                    continue
-                dropped += 1
-                continue
-            parsed = p0_run.parse_name(cache_dir / f"{sym}.json.gz")
-            if parsed is None:
-                continue
-            dropped += 1
-            continue
         parsed = p0_run.parse_name(cache_dir / f"{sym}.json.gz")
         if parsed is None:
             continue
@@ -368,7 +353,7 @@ class BookAcc:
             self._writers["gross"].append_many(grosss)
             self._writers["band"].append_many(bands)
             self._writers["spy"].append_many(spys)
-        quad = []
+        sext = []
         for lg in censored:
             self.n_censored += 1
             if lg.censored_kind:
@@ -377,10 +362,12 @@ class BookAcc:
                 continue
             L = load_p0_lib()
             net = lg.gross - 2.0 * (L.BAND_BPS[lg.band] * self.stress) / 1e4
-            quad.extend((FOLD_CODE[lg.fold], net,
+            sext.extend((FOLD_CODE[lg.fold], net,
                          int(lg.entry_date.replace("-", "")),
-                         int(lg.exit_date.replace("-", ""))))
-        self._writers["cens"].append_many(quad)
+                         int(lg.exit_date.replace("-", "")),
+                         lg.gross,
+                         {"A": 0, "B": 1, "C": 2}[lg.band]))
+        self._writers["cens"].append_many(sext)
 
     # ---------------------------------------------------------- finalize
 
@@ -429,9 +416,9 @@ class BookAcc:
         # AFTER all primary legs exactly like include_censored_nets)
         cens = read_spill(
             self.spill_dir / f"{self.book_id}__cens_death_open.f64",
-            np.float64).reshape(-1, 4) if (self.spill_dir /
+            np.float64).reshape(-1, 6) if (self.spill_dir /
             f"{self.book_id}__cens_death_open.f64").stat().st_size else \
-            np.zeros((0, 4), dtype=np.float64)
+            np.zeros((0, 6), dtype=np.float64)
         if cens.shape[0]:
             inc_nets = np.concatenate([nets, cens[:, 1]])
             inc_folds = np.concatenate([
@@ -443,12 +430,21 @@ class BookAcc:
             stats.inc_spy = np.concatenate([
                 stats.spy if stats.spy is not None else nets[:0],
                 _spy_for_censored(cens[:, 2], cens[:, 3], self.calendar)])
+            # E2F-4: the included variant's break-even inputs must span
+            # the appended death_open legs too (gross + band codes)
+            if stats.gross is not None:
+                stats.inc_gross = np.concatenate(
+                    [stats.gross, cens[:, 4]])
+                stats.inc_band_codes = np.concatenate(
+                    [stats.band_codes, cens[:, 5].astype(np.int8)])
         else:
             stats.inc_expectancy = stats.expectancy
             stats.inc_fold_expectancy = dict(stats.fold_expectancy)
             stats.inc_nets = nets
             stats.inc_folds = folds
             stats.inc_spy = stats.spy
+            stats.inc_gross = stats.gross
+            stats.inc_band_codes = stats.band_codes
         stats.nets, stats.folds = nets, folds
         return stats
 
@@ -529,6 +525,8 @@ class BookStats:
     inc_nets: np.ndarray = None
     inc_folds: np.ndarray = None
     inc_spy: np.ndarray = None
+    inc_gross: np.ndarray = None
+    inc_band_codes: np.ndarray = None
 
     def series_sha256(self) -> str:
         return canon_sha256({
@@ -1101,8 +1099,8 @@ def as_included(stats: BookStats) -> BookStats:
         fold_expectancy=dict(stats.inc_fold_expectancy),
         fold_leg_counts={}, n_legs=stats.n_legs, n_censored=stats.n_censored,
         censored_kinds=list(stats.censored_kinds), counts=dict(stats.counts),
-        book_log=stats.book_log, gross=stats.gross,
-        band_codes=stats.band_codes, spy=stats.inc_spy,
+        book_log=stats.book_log, gross=stats.inc_gross,
+        band_codes=stats.inc_band_codes, spy=stats.inc_spy,
         nets=stats.inc_nets, folds=stats.inc_folds)
 
 
@@ -1272,8 +1270,11 @@ def _atomic_json(path: Path, obj) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(obj, indent=1, sort_keys=True,
-                              default=str) + "\n")
+    with open(tmp, "w") as f:
+        f.write(json.dumps(obj, indent=1, sort_keys=True,
+                           default=str) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
     os.replace(tmp, path)
 
 

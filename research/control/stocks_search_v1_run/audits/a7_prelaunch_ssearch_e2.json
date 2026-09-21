@@ -1,0 +1,143 @@
+{
+ "schema": "a7_prelaunch_ssearch_e2@1",
+ "cycle_id": "STOCKS-SEARCH-V1",
+ "lane_audited": "ssearch-e2 (streaming scored-engine remediation, research/control/stocks_search_v1_run/e2/)",
+ "auditor": "A7 fresh-context independent adversarial auditor (wrote none of this lane)",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "branch": "orca/stocks-search-v1-integration",
+ "head_verified": "d4107d7fb9ce07598ed6e7df4015e2176c22f434",
+ "tracked_tree_clean_at_audit": true,
+ "utc": "2026-09-21",
+ "verdict": "BLOCKED_PRELAUNCH",
+ "verdict_basis": "2 HIGH findings (E2F-1 crash-resume double-skip silently dropping cohort names from a resumed scored cell; E2F-2 unconditional KeyError crashing the committed scored launcher at startup). Both are in e_stream_run.py orchestration, NOT in the streaming engine, NOT in the adjudication mirror, and NOT in the frozen chain. Zero findings against scientific equivalence itself: the mirror and streaming semantics passed line-by-line reading, artifact digest verification, AND this auditor's own independent bitwise probe (3/3 cells). Per dispatch rules, any HIGH blocks the prelaunch; remediation is narrow (2 one-line-class fixes + 1 DSR-wiring decision), then delta re-audit.",
+ "items": {
+  "A_scientific_equivalence": {
+   "status": "PASS",
+   "mirror_fidelity": {
+    "method": "line-by-line reading of e2/i_stream_engine.py mirror (lines 791-1189) against i/adjudicate.py (lines 114-520) and i_engine.py",
+    "verified": [
+     "ordered_kills: R1 NaN-or-<=0 bind (adjudicate.py:222-223 == i_stream_engine.py:887-888); R2 populated-comparator max incl. NaN exclusion and NOT_ADJUDICABLE disposition (adjudicate.py:227-243 == i_stream_engine.py:890-908); R3/R4 empty-control NOT_ADJUDICABLE and >e_c-or-2-folds bind (adjudicate.py:246-275 == i_stream_engine.py:910-941); R5 fail-closed union folds>=2 OR full-sample with fold_rule_not_adjudicable=len(fold_expectancy)<3 (adjudicate.py:278-297 == i_stream_engine.py:943-963); R6 rnd-then-cal_hist order with sub_floor any() short-circuit (adjudicate.py:299-316 == i_stream_engine.py:965-981); verdict strings REJECT_<rule>/NO_KILL_THROUGH_K6 identical",
+     "k6_slow_drift: counted-folds rule (<2 legs not counted), statistics.stdev exact-Fraction semantics make it order-insensitive given identical per-fold multisets; sorted(set(by_fold)|set(fold_expectancy)); d<=se both pairs; reject counted>=1 and indist*3>=2*counted (adjudicate.py:173-204 == i_stream_engine.py:846-870)",
+     "stage_a_gates: fold_positive_share max(pos)/tot_pos with tot_pos<=0 NOT_ADJUDICABLE; concentration max|f|/sum|f|; spy_excess zip(cand.legs,spy_legs) order-preserving NaN-filtered pairs, per-fold _mean, n_pos>=2; MDD exp-cumsum-peak; stress_margin pass on expectancy sign only; drop-one rest-in-leg-order with empty NOT_ADJUDICABLE; PIT dict reuse; death_censoring_accounting kinds sorted (adjudicate.py:330-414 == i_stream_engine.py:992-1079). Threshold constants 0.50/0.50/0.15 identical",
+     "adjudicate_candidate: reject path _invariant_rerun with DEATH_CENSORING_COUPLED_UNBOOKABLE; non-reject path full included-bundle rerun of kills AND gates with matches=(verdict== and summary==); budget/dsr/r0/pbo/section10/retrieval-disclosure fields identical incl. DSR n_grid=47 alpha=0.10 program 260/0.05 reported-only (adjudicate.py:429-508 == i_stream_engine.py:1119-1189)",
+     "include_censored_nets analog: death_open-only extras, net=gross-2*(BAND_BPS*stress)/1e4, appended AFTER all primary legs in censored order, book_id + '+censored'; streaming inc_* arrays verified against reference include_censored_nets bitwise by both the committed artifacts (inc_expectancy_bits/inc_fold_expectancy_bits true, all books, all cells) and this auditor's independent probe"
+    ],
+    "finding_refs": ["E2F-4"]
+   },
+   "streaming_semantics": {
+    "verified": [
+     "leg order: names sorted (stream_iter_names sorted pulls; pass A/B feed iter(sorted)) x per-name sorted decisions inside UNMODIFIED i_engine.build_legs (i_engine.py:578) == reference run_book sorted(names) (i_engine.py:668); two-pass structure preserves per-book leg order because each pass re-iterates the full sorted cohort",
+     "np.mean reproduction: expectancy/fold_expectancy/spy-excess/drop-one means are np.mean over spilled float64 sequences in exact reference order; numpy pairwise summation is deterministic given identical length+values+order -> bitwise (confirmed empirically: book_log_bits/expectancy_bits true in all committed artifacts and in the independent probe)",
+     "book_log accumulation order: BookAcc.add_legs (i_stream_engine.py:360-364) adds series[ci]+=val in the same leg order as i_engine._finalize (i_engine.py:701-706); division sum/active elementwise equals series[nz]/=active[nz]; fold grouping for fold_expectancy via masked selection (folds_arr==code) preserves leg order",
+     "cohort_bookable_decisions refactor: cohort_mask_for_name (i_stream_engine.py:650-682) reproduces the reference per-date semantics incl. the counts-only-for-rt nuance (reference build_all_books passes counts for C-RANDOM-TIMING only, i_engine.py:1003 vs 1008; streaming passes cohort_counts for rt only, i_stream_engine.py:1249 vs 1254); short-name (<252 dates) counting per served decision date identical; mask output sorted ascending in both",
+     "reversal refactor: reversal_eligibility+reversal_picks (i_stream_engine.py:586-647) reproduce per-formation (r, sym) ascending sort with lexicographic tie-break, k=max(1,ceil(n/5)), first-k, formations/eligible_avg identical; tie-break adversarially probed with a bitwise-tie pair in the independent probe",
+     "cal_hist twin reuse: streaming reuses the FROZEN cal_hist_twin_dates unchanged on the sorted fired-date census (pass A st.fired_dates == reference sorted set over candidate masks)",
+     "PIT per-name aggregation: per_name_pit is the exact per-name body of i_engine.pit_mutation_gate (same mutated shift, same pit_gate_core); totals and per_name dict equal (selfcheck pit_mutation_mirror PASS; artifacts pit_mutation_json_equal true; independent probe extras.pit_equal true)",
+     "spy pairing incl. included variant: _spy_leg_value mirrors spy_legs_for per leg; SPY reference pinned BEFORE any name streams (set_spy_reference); inc_spy = primary spy concat censored spy aligned with inc_nets append order; spy_legs_bits true in all artifacts and probe"
+    ]
+   },
+   "equivalence_evidence_integrity": {
+    "verdicts_say_pass": {
+     "synthetic": "e2/equivalence_verdict_synthetic.json pass=true, 3/3 cells (SSS-GAP-P25-CONFIRM-H1, SSS-52W-HIGH-B10-H20, SSS-VOL-REGIME-L21-LOW-H20), all 10 checks and all 7 books' rows true (incl. mirror-only, full-streaming, determinism, spy_legs_bits); sha256 recomputed 4aaf7bd9b202f00c268d9b2eca613c4ceec1b54f119eb7ca4c1c2c5f41bc4a9d",
+     "real_subset": "e2/equivalence_verdict_real_subset.json pass=true, label real_subset_k40, same all-true boolean structure; sha256 4af34f9da8cadff69a81d68ea7ff65e69156a130970eec4060ab8278e220e1a5; NO performance numbers persisted (booleans only - grep for decimal floats returns nothing)",
+     "detached": "e2/equivalence_verdict_detached.json BYTE-IDENTICAL to the synthetic artifact (sha256 4aaf7bd9... recomputed by this audit, matching the commit-message claim)"
+    },
+    "independent_probe": {
+     "what_ran": "this auditor's OWN adversarial fixture (16 names incl. a bitwise-tie reversal pair AAA_TIE/ZZZ_TIE, exactly-252 and exactly-251-session warmup boundaries, died_before_entry/death_zero_length/death_open names, subfloor name, 6 strong-drift names, F3-only name, scrambled dict insertion order) over the REAL SPY calendar/folds, reference vs streaming vs determinism rerun, all spill files in /tmp (nothing written into the repo)",
+     "result": "3/3 cells PASS bitwise: canonical verdict JSON equal to the reference adjudication (binding rules exercised: R3 on GAP, R5 on 52W-HIGH - the fail-closed union form, R2 on VOL-REGIME - the spy comparator), all 7 books bit-equal (n_legs, n_censored, counts, expectancy, fold_expectancy, raw book_log bytes, series sha, inc_expectancy, inc_fold_expectancy), spy legs bits, PIT, cal_hist report, reversal stats, counts_cohort all equal; determinism rerun bit-identical",
+     "not_probed_independently": "K6/R4/R6-as-binding-rule paths and drop-one deep details were not the binding rule in this probe; they are covered by the committed 140-name synthetic artifacts (all checks true, all 3 cells) plus line-by-line mirror reading"
+    },
+    "code_freeze_manifest": "all six e2/dispatch.json code_freeze sha256 pins recomputed and matched (README.md 19f5fc55..., e_stream_run.py 1a51d656..., equivalence.py 81ccddbb..., i_stream_engine.py 1f5add97..., make_dispatch.py 755f5d62..., selfcheck.py 4052cb6c...)"
+   }
+  },
+  "B_resource_evidence": {
+   "status": "FAIL",
+   "verified_ok": [
+    "probe_stream_rss.json: peak_rss_bytes 156,401,664 = 149.1 MiB <= 1.5 GiB bound (e_stream_run.py:81 RSS_PROBE_BOUND_BYTES=int(1.5*1024**3)); measured in a FRESH subprocess (e_stream_run.py:244-256) on a SYNTHETIC 261-name cohort (n_names=261 = 260 synthetic + SPY, e_stream_run.py:594) - correctly disclosed as synthetic with names_per_second=0.602 and elapsed_s=433.4",
+    "live guards: RSS watchdog 5.5 GiB abort (e_stream_run.py:80, RssWatchdog SIGTERM at :312) + per-name guard (e_stream_run.py:386-395); spill quota 6 GiB/cell fail-closed raise in SpillWriter.flush (i_stream_engine.py:214-218, quota tested by selfcheck atomic_and_quota); disk floor 6 GiB to start (e_stream_run.py:83,271-273, infeasible -> TECHABORT verdict budget 0/3) and 2 GiB live floor (e_stream_run.py:393)",
+    "checkpoint transaction law mechanism: accum snapshot gen g is tmp-written + fsync + os.replace BEFORE ckpt_pass_x.json names gen g (i_stream_engine.py:315-344 save_checkpoint; CheckpointablePassA.save :1401-1414 order); spill truncation to committed record counts on resume (SpillWriter.__init__ :195-198); DONE-skip reload never re-consumes a slot (e_stream_run.py:362-373)"
+   ],
+   "finding_refs": ["E2F-1", "E2F-2", "E2F-3", "E2F-5"],
+   "fail_reason": "the composed crash-resume path silently double-skips cohort names (E2F-1), and the committed scored launcher cannot start at all (E2F-2)"
+  },
+  "C_frozen_experiment_integrity": {
+   "status": "PASS",
+   "verified": [
+    "git diff 89748b4..HEAD touches ONLY research/control/stocks_search_v1_run/e2/ : exactly 14 files, all status A (additions), 4128 insertions 0 deletions; git diff restricted to i/, e/, s/, d1/, p0/, m0/, z/, audits/ (51 tracked files) is EMPTY; zero untracked drift in those dirs (status --porcelain empty); plans/PLAN_stocks_search_v1.md unchanged; worktree tracked tree clean at HEAD d4107d7f",
+    "3 frozen cells/folds/cost bands/labels carried verbatim: e2 imports FROZEN_CELLS/CELL_IDS/STRESS_TIER/labels from the sha-pinned frozen i_engine (verify_and_pin -> i_engine.verify_freeze FREEZE_SHA256 2d56c0db... + arm identities d60cf26d/6ccb3fa5/f41e94a3); no cell/threshold/cost constant is redefined anywhere in e2/",
+    "no S1 access path: grep of e2/*.py shows no network/import of retrieval code (subprocess used only for git/ps/probe-child/selfcheck-equivalence); only doc mentions of S1 are 'No S1' laws",
+    "GO gate unbypassable by construction read: (1) orchestrator env law SSEARCH_E2_GO_PHRASE must equal exactly 'GO STOCKS SEARCH V1 SCORED EXECUTION' (e_stream_run.py:575-584, never argv, never logged); (2) verify_and_pin re-checks the exact phrase against i_engine.GO_PHRASE and refuses GoGateRefused BEFORE verify_freeze/preflight/streaming (i_stream_engine.py:101-105); (3) selfcheck t_go_gate proves paraphrased refusal; (4) P2 data-plane preflight (verify_data_plane, A7 F-1/C-2) runs inside the pinned context before any cohort byte; (5) P3 resource calibration fail-closed before P4; non-scored modes (--selfcheck/--equivalence/--probe-stream-rss) exit before main() and never touch the GO gate"
+   ]
+  },
+  "D_honest_labeling": {
+   "status": "PASS",
+   "verified": [
+    "verdict schemas declared (stocks_search_v1_e2_run_verdict@1, stocks_search_v1_e2_equivalence@1, stocks_search_v1_e2_selfcheck@1)",
+    "budget semantics: observed slot consumed at cell START (e_stream_run.py:374 used+=1 before streaming begins); DONE-skip reload uses used=max(used, rep.budget.used) and never re-consumes (e_stream_run.py:362-373); P3 infeasible abort writes budget 0/3 with 'no slot consumed'",
+    "STOP/terminal vocabulary matches plan \u00a711 verbatim: STOCKS_SEARCH_V1_REJECT_ALL / STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN / STOCKS_SEARCH_V1_INCOMPLETE_NOT_PROMOTABLE / STOCKS_SEARCH_V1_TECHABORT_PRESERVED (e_stream_run.py:461-468,501-544); R0_NOT_RUN + PBO_NOT_RUN carried on every result path",
+    "wall-clock/throughput disclosure present and not hidden: probe_stream_rss.json carries names_per_second=0.602 and elapsed_s=433.4; README.md and the HEAD commit message disclose the synthetic 0.602 names/s",
+    "real-subset artifact persisted NO performance numbers (booleans/digests only - verified by reading and grep)"
+   ],
+   "finding_refs": ["E2F-3", "E2F-6"]
+  }
+ },
+ "findings": [
+  {
+   "id": "E2F-1",
+   "severity": "HIGH",
+   "title": "Crash-resume silently double-skips cohort names -> a resumed scored cell would compute books missing ~2x names_done names (silent wrong verdict)",
+   "evidence": "e_stream_run.py:381-384 builds it_a = stream_iter_names(ctx, CACHE_DIR, skip=ckpt_pass_a.names_done) AND CheckpointablePassA.__init__ (i_stream_engine.py:1310-1313) sets self.names_done from the SAME checkpoint; CheckpointablePassA.run then drops the first names_done names of that ALREADY-skipped iterator (i_stream_engine.py:1366-1369 'if self.names_done > 0: self.names_done -= 1; continue'). Net effect: names fed+1 .. 2*fed never enter the accumulators or the fired-date/PIT/reversal census, with NO error. Identical composition for pass B (e_stream_run.py:398-405 with CheckpointablePassB.run :1509-1511). The selfcheck only tests the single-skip composition (selfcheck.py:246-249 feeds the FULL iterator to ck2.run), so the committed tests cannot catch this.",
+   "impact": "any cell resumed after a mid-pass crash (checkpoint_every=256, so fed>=256) produces silently wrong books/verdict while still consuming the slot and writing an atomic DONE verdict - the exact silent-corruption class the remediation was meant to eliminate",
+   "fix_direction": "drop one of the two skip layers (pass-level names_done skip is sufficient and is the selfchecked path; or pass skip=0 and rely on stream-level skip); add a resume-composition test feeding an already-skipped iterator"
+  },
+  {
+   "id": "E2F-2",
+   "severity": "HIGH",
+   "title": "Scored launcher crashes unconditionally at startup: KeyError 'dispatch_base'",
+   "evidence": "e_stream_run.py:489-490 logs env['dispatch_base'], but p0_env()'s returned record (e_stream_run.py:185-191) contains only head/branch/code_freeze_files/code_freeze_ok/branch_ok/porcelain/tracked_dirty/shadow_workers - there is no 'dispatch_base' key anywhere. The KeyError fires on EVERY scored launch, after p0_env() but before p1_lock() and outside the try/finally (which starts at :497), so it propagates uncaught.",
+   "impact": "the committed scored path cannot execute; it fails closed (no lock held, no verdict written, GO phrase never consumed, no scored computation), but a prelaunch GO would be wasted and die unconsumed; the lane is not launchable as committed",
+   "fix_direction": "log head only (or add the intended base field to the p0_env record); one-line-class fix"
+  },
+  {
+   "id": "E2F-3",
+   "severity": "MEDIUM",
+   "title": "DSR gate is wired with trial_sharpes=[] making the survivor terminal outcome structurally unreachable and undisclosed",
+   "evidence": "e_stream_run.py:430-432 calls adjudicate.dsr_gate(book_log, [], 47, 0.10, allow_scored=True); research/dsr.py:96-103 returns dsr=None reason='insufficient_trials' for <2 trial Sharpes, and dsr_gate then computes pass=False (adjudicate.py:547)",
+   "impact": "no cell can ever be appended to survivors, so STOCKS_SEARCH_V1_SURVIVORS_UNDER_RELAXED_BATTERY_R0_NOT_RUN_PBO_NOT_RUN is unreachable under the committed wiring; direction is fail-closed (never a false survivor) and the REJECT_ALL/INCOMPLETE outcomes remain valid, but the limitation is nowhere disclosed in README/dispatch",
+   "fix_direction": "wire a declared trial-sharpe source for the 3-cell regime (or prewrite the insufficient_trials disposition as the frozen DSR outcome for this cycle and disclose it)"
+  },
+  {
+   "id": "E2F-4",
+   "severity": "LOW",
+   "title": "as_included carries primary-only gross/band_codes/n_legs, so the included-rerun break_even_margin internal numbers differ from the reference computation (no observable effect)",
+   "evidence": "i_stream_engine.py:1094-1106 (gross=stats.gross, band_codes=stats.band_codes, n_legs=stats.n_legs - primary only) vs reference include_censored_nets whose extra legs carry gross and are included in adjudicate.break_even_margin means (adjudicate.py:155-168). The stress_margin gate's pass uses expectancy only (adjudicate.py:379 == i_stream_engine.py:1045-1046) and the persisted verdict carries only gate summaries + fold_pnl, never break-even numbers; committed equivalence artifacts show inc_expectancy_bits/inc_fold_expectancy_bits true for every book/cell, and the independent probe confirms bitwise verdict equality",
+   "impact": "none on verdicts, persisted artifacts, or gates; recorded because it is a latent mirror/reference divergence with zero observable effect"
+  },
+  {
+   "id": "E2F-5",
+   "severity": "LOW",
+   "title": "Checkpoint JSON lacks fsync (process-crash-safe, not power-loss-durable); worst case is a consistent resume from generation g-1",
+   "evidence": "_atomic_json (i_stream_engine.py:1271-1277) uses tmp+write+os.replace without fsync, while accum snapshots (:328-337) and spill writers (:208-218) DO fsync. A machine crash that loses the ckpt rename leaves the previous ckpt naming gen g-1 whose accum file is retained (two newest kept, :338-344), so resume is consistent and reprocesses names - safe, only wasted work. Relevant only if a scored cell is resumed after a full-machine crash"
+  },
+  {
+   "id": "E2F-6",
+   "severity": "LOW",
+   "title": "The preregistered 1e-12 tolerance fallback advertised in README is not actually wired in equivalence.py (comparisons are strictly bitwise - stricter than documented)",
+   "evidence": "e2/equivalence.py:65 defines TOL_REL and :281-286 defines _close, but compare() (:289-382) uses only ==/bit digests; no TOLERANCE_PASS can ever be emitted. README.md:34-37 describes the fallback as existing. Direction is safer (bitwise-only); documentation/code mismatch recorded for the record"
+  }
+ ],
+ "what_this_audit_ran": [
+  "READ-ONLY git commands (diff 89748b4..HEAD, status, ls-files, rev-parse)",
+  "sha256 recomputation of all e2 committed artifacts + the six dispatch.json code_freeze pins (all matched)",
+  "line-by-line reading of i/i_engine.py, i/adjudicate.py, e2/i_stream_engine.py, e2/equivalence.py, e2/selfcheck.py, e2/e_stream_run.py, plans/PLAN_stocks_search_v1.md, e/e_run_verdict.json, registry",
+  "ONE bounded independent equivalence probe in /tmp (16 engineered names over the real SPY calendar/folds; reference vs streaming bitwise + determinism; no repo writes; no GO phrase; no heavy lock; no scored path)",
+  "NOT run: the full ~40-min committed synthetic equivalence rerun (digest verification + reading + independent bounded probe deemed sufficient); the real-cohort streaming path; any scored execution"
+ ],
+ "overall": "BLOCKED_PRELAUNCH",
+ "conditions_to_reauthorize": [
+  "Fix E2F-1 (remove one skip layer; add a resume-composition test that feeds an already-skipped iterator and asserts bit-identity)",
+  "Fix E2F-2 (startup KeyError)",
+  "Resolve E2F-3 (wire or prewrite+disclose the DSR trial-sharpe disposition)",
+  "Re-verify e2/dispatch.json code_freeze pins after any code change and re-run selfcheck; delta re-audit of the changed lines only (frozen chain untouched)"
+ ]
+}

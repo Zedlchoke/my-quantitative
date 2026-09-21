@@ -378,10 +378,10 @@ def p4_scored_stream(go_phrase: str) -> dict:
         pa = se.CheckpointablePassA(
             cell, calendar, b1, b2, cdir, SPILL_QUOTA_BYTES, spy,
             resume=resume)
-        it_a = se.stream_iter_names(
-            ctx, CACHE_DIR, skip=(json.loads(
-                (cdir / "ckpt_pass_a.json").read_text())["names_done"]
-            if (cdir / "ckpt_pass_a.json").exists() else 0))
+        # E2F-1 law: the FULL iterator is passed; resume skipping is
+        # owned solely by the checkpointable pass (names_done) - never
+        # pre-skipped here
+        it_a = se.stream_iter_names(ctx, CACHE_DIR)
 
         def guard(where: str):
             live = rss_now()
@@ -399,10 +399,7 @@ def p4_scored_stream(go_phrase: str) -> dict:
             cell, calendar, b1, b2, cdir, SPILL_QUOTA_BYTES, spy,
             pa.result()["fired_dates"], pa.result()["_rev_rows"],
             resume=(cdir / "ckpt_pass_b.json").exists())
-        it_b = se.stream_iter_names(
-            ctx, CACHE_DIR, skip=(json.loads(
-                (cdir / "ckpt_pass_b.json").read_text())["names_done"]
-            if (cdir / "ckpt_pass_b.json").exists() else 0))
+        it_b = se.stream_iter_names(ctx, CACHE_DIR)
         pb.run(it_b, checkpoint_every=256, guard=guard, log=log)
 
         stats = {k: acc.finalize() for k, acc in pa.books.items()}
@@ -427,10 +424,22 @@ def p4_scored_stream(go_phrase: str) -> dict:
         rep = se.adjudicate_candidate_stream(bundle, spy, calendar, b1, b2)
         rep["budget"] = {"used": used, "max": 3, "label": f"{used}/3"}
         if rep["verdict"] == "PASS_I_STAGE_PENDING_DSR_E":
+            # DSR wiring is FROZEN-IDENTICAL to e/e_run.py p4
+            # (trial_sharpes = []): the 47-config trial set is
+            # structurally uncomputable under plan §5 (no performance
+            # for any configuration outside scored cells), so dsr_gate
+            # returns insufficient_trials and a K6/Stage-A survivor
+            # stays PASS_I_STAGE_PENDING_DSR_E - never a bookable
+            # SURVIVORS outcome.  Inherited frozen property, disclosed
+            # (A7 finding E2F-3); NOT changed by the remediation.
             dsr = adjudicate.dsr_gate(
                 stats["candidate"].book_log, [], 47, 0.10,
                 allow_scored=True)
             rep["dsr"]["computed"] = dsr
+            rep["dsr"]["trial_set_law"] = (
+                "frozen-identical wiring (e_run p4): trial_sharpes=[] "
+                "structural insufficient_trials; the §5 ban makes the "
+                "N=47 trial set uncomputable outside scored cells")
             if dsr.get("pass"):
                 survivors.append(cid)
         digest = se.persist_p11(E2_DIR / "p11_series" / f"{cid}_candidate.jsonl",
@@ -486,8 +495,9 @@ def main() -> int:
     E2_DIR.mkdir(parents=True, exist_ok=True)
     log(f"{LANE} orchestrator start; pid {os.getpid()}")
     env = p0_env()
-    log(f"env verified: HEAD {env['head'][:12]} base "
-        f"{env['dispatch_base'][:12]}; shadows alive in ps output below")
+    log(f"env verified: HEAD {env['head'][:12]} branch "
+        f"{env['branch']}; code_freeze files "
+        f"{env['code_freeze_files']} ok")
     handle, beat_stop = p1_lock()
     log("heavy lock acquired + heartbeat thread running")
     result = {"status": "RUNNING"}

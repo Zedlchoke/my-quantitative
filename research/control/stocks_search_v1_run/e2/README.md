@@ -32,9 +32,11 @@ verdict canonical-JSON equal — between the reference engine
 streaming engine (`i_stream_engine` + mirror), on (a) a synthetic
 edge-case cohort over the real SPY calendar/folds and (b) a bounded
 deterministic real-subset cohort (digest-only persistence, never scored
-evidence). Fallback tolerance |Δ| ≤ 1e-12 relative exists ONLY as a
-disclosed TOLERANCE_PASS; hitting it is an A7 finding, never a silent
-pass. Determinism: two independent streaming runs must be bit-identical.
+evidence). A mismatch anywhere is FAIL - never auto-passed. The comparison is STRICTLY bitwise/byte-equal - there is no wired
+tolerance fallback at all (A7 finding E2F-6: the README previously
+described an unwired 1e-12 fallback; the code is stricter than that
+description). Determinism: two independent streaming runs must be
+bit-identical.
 
 Why bitwise equality holds by construction: `i_engine.build_legs` is
 reused UNMODIFIED per name; masks reuse the frozen functions; np.mean

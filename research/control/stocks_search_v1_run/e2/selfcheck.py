@@ -329,7 +329,24 @@ def t_reversal_picks_mirror():
         require(got == want, f"{s}: {len(got)} vs {len(want)}")
 
 
+def t_no_double_skip_composition():
+    """E2F-1 regression guard: the orchestrator must pass the FULL
+    iterator to the checkpointable passes (resume skipping is owned by
+    the class alone) and stream_iter_names must expose NO skip param."""
+    src = (_HERE / "e_stream_run.py").read_text()
+    require("skip=(" not in src, "orchestrator still pre-skips iterators")
+    eng = (_HERE / "i_stream_engine.py").read_text()
+    import re as _re
+    sig = _re.search(r"def stream_iter_names\(([^)]*)\)", eng)
+    require(sig is not None and "skip" not in sig.group(1),
+            f"stream_iter_names regained a skip parameter: {sig and sig.group(1)}")
+    # and the class-level single skip must still work (already proven by
+    # t_resume_equality; here assert the skip law text exists)
+    require("names_done > 0" in eng, "class-level skip law missing")
+
+
 def main() -> int:
+    check("e2f1_no_double_skip", t_no_double_skip_composition)
     check("go_gate", t_go_gate)
     check("warmup_gate", t_warmup_gate)
     check("fold_force_flat", t_fold_force_flat)

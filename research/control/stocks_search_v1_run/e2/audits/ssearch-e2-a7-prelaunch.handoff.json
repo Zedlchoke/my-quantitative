@@ -1,0 +1,49 @@
+{
+ "schema": "zcode_orch_v3_handoff@1",
+ "task_id": "ssearch-e2-a7-prelaunch",
+ "cycle_id": "ZCODE-ORCHESTRATION-V3",
+ "real_cycle_id": "STOCKS-SEARCH-V1",
+ "role": "quant-auditor",
+ "lane": "ssearch-e2-a7-prelaunch",
+ "dispatch_sha": "dded3d876afad973f418a8ba937265d2d6652b37",
+ "actual_start_sha": "d4107d7fb9ce07598ed6e7df4015e2176c22f434",
+ "branch": "orca/stocks-search-v1-integration",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "commit_sha": null,
+ "commit_sha_note": "audit-only lane: no commit made; exactly two files written (the a7_prelaunch_ssearch_e2@1 verdict JSON under audits/ and this handoff), per the dispatch write-path allowlist; frozen chain (i/, e/, s/, d1/, p0/, m0/, z/, audits/ pre-existing) and e2/ code untouched",
+ "changed_paths": [
+  "research/control/stocks_search_v1_run/audits/a7_prelaunch_ssearch_e2.json",
+  "research/control/stocks_search_v1_run/e2/audits/ssearch-e2-a7-prelaunch.handoff.json"
+ ],
+ "outputs": [
+  {
+   "path": "research/control/stocks_search_v1_run/audits/a7_prelaunch_ssearch_e2.json",
+   "role": "a7_prelaunch_ssearch_e2@1 verdict artifact",
+   "verdict": "BLOCKED_PRELAUNCH",
+   "basis": "2 HIGH findings, both in e2/e_stream_run.py orchestration (NOT in the streaming engine, the adjudication mirror, or the frozen chain): E2F-1 crash-resume double-skip (e_stream_run.py:381-384/398-405 skip=ckpt names_done at the iterator AND CheckpointablePassA/B.run drop names_done again at i_stream_engine.py:1366-1369/1509-1511 -> a resumed cell silently omits ~2x names_done names from its books and census, silent wrong verdict while consuming the slot); E2F-2 unconditional KeyError 'dispatch_base' at e_stream_run.py:489-490 (p0_env record :185-191 has no such key) crashing every scored launch at startup, fail-closed before lock/GO consumption. Scientific equivalence itself is NOT in question: mirror + streaming passed line-by-line reading, all committed equivalence/selfcheck/probe artifacts verified (digests recomputed, detached artifact byte-identical to synthetic at 4aaf7bd9), and this auditor's OWN independent bitwise probe (16 engineered names incl. reversal ties, warmup boundaries, all 3 censoring kinds; R3/R5/R2 binding paths) passed 3/3 cells. Item B FAIL on E2F-1/E2F-2; items A/C/D PASS; 1 MEDIUM (E2F-3 DSR wired with trial_sharpes=[] makes the survivor terminal outcome structurally unreachable, fail-closed direction, undisclosed) + 3 LOW.",
+   "findings_summary": "2 HIGH (E2F-1 resume double-skip silent data loss; E2F-2 launcher startup KeyError) -> BLOCKED_PRELAUNCH; 1 MEDIUM (E2F-3 survivor-path DSR structurally insufficient_trials, undisclosed); 3 LOW (E2F-4 as_included break-even inputs primary-only, zero observable effect; E2F-5 ckpt json no fsync, worst case consistent gen g-1 resume; E2F-6 README's 1e-12 tolerance fallback not wired - comparisons strictly bitwise, stricter than documented)",
+   "conditions_carried_into_GO": 4,
+   "conditions": [
+    "Fix E2F-1: keep exactly one resume-skip layer (the pass-level names_done skip is the selfchecked one) and add a resume-composition test that feeds an ALREADY-skipped iterator and asserts bit-identity vs an uninterrupted pass",
+    "Fix E2F-2: remove/repair the env['dispatch_base'] reference",
+    "Resolve E2F-3: wire a declared DSR trial-sharpe source for the 3-cell regime OR prewrite + disclose 'insufficient_trials' as the frozen DSR disposition for this cycle",
+    "After any code change: regenerate/verify e2/dispatch.json code_freeze pins, re-run selfcheck (10/10), delta re-audit of changed lines only"
+   ]
+  }
+ ],
+ "tests": [
+  "digest recomputation: all 6 dispatch.json code_freeze pins matched; equivalence_verdict_synthetic.json sha256 4aaf7bd9b202f00c268d9b2eca613c4ceec1b54f119eb7ca4c1c2c5f41bc4a9d == equivalence_verdict_detached.json (byte-identical detached reproduction confirmed); real_subset artifact 4af34f9d... contains zero decimal floats (booleans only)",
+  "git: diff 89748b4..HEAD = 14 files all 'A' under e2/ only; frozen chain (51 tracked files under i/e/s/d1/p0/m0/z/audits) diff EMPTY; zero untracked drift there; plans unchanged; tracked tree clean at HEAD d4107d7f",
+  "independent equivalence probe (this auditor's own fixture, /tmp only): 16 names (bitwise-tie reversal pair AAA_TIE/ZZZ_TIE, exactly-252/251-session warmup boundaries, died_before_entry/death_zero_length/death_open, subfloor, 6 strong-drift, F3-only, scrambled insertion order) over the REAL SPY calendar/folds; reference vs streaming bitwise + canonical-verdict-JSON equality + determinism: 3/3 cells PASS (binding rules exercised R3/R5/R2); all 7 books bit-equal incl. inc_* and raw book_log bytes; spy/PIT/cal_hist/reversal/counts_cohort equal"
+ ],
+ "authority_claims": [],
+ "known_limitations": [
+  "Audit method: reading + sha256 recomputation + git + ONE bounded independent probe in /tmp. The full ~40-min committed --synthetic equivalence rerun was NOT re-executed (digest verification of committed artifacts + line-by-line reading + the independent bounded probe used instead); the real-cohort streaming path and any scored execution were NOT run; no GO phrase set; no heavy lock taken; nothing written outside the two allowed files and /tmp",
+  "K6/R4/R6-as-binding-rule paths and drop-one deep details were not the binding rule in the independent probe; they are covered by the committed 140-name synthetic artifacts (all checks true, 3/3 cells) plus line-by-line mirror reading - labeled as such in the verdict artifact",
+  "probe_stream_rss.json peak (156,401,664 B = 149.1 MiB vs 1.5 GiB bound, synthetic 261 names, 0.602 names/s disclosed) was verified for consistency and bound, not re-measured"
+ ],
+ "incidents": [],
+ "tree_status": "Worktree CLEAN at start (HEAD d4107d7f verified); after this lane it carries exactly the two allowed new files (audits/a7_prelaunch_ssearch_e2.json + e2/audits/ssearch-e2-a7-prelaunch.handoff.json); no code, chain, plan, registry or ledger file modified; no commits",
+ "workers": 0,
+ "recommended_next_action": "Do NOT present the GO gate. Dispatch a narrow remediation lane on e2/e_stream_run.py (+ i_stream_engine.py resume test) for E2F-1/E2F-2 and the E2F-3 wiring decision, regenerate dispatch.json pins, re-run selfcheck, then delta re-audit before re-opening the owner GO gate. The streaming engine, the adjudication mirror and the frozen chain passed this audit and need no rework."
+}
