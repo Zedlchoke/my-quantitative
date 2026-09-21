@@ -60,11 +60,13 @@ swing level L     fractal definition [LEAD-FROZEN]: a swing HIGH is a
                   5 bars after its extreme bar (no lookahead). L = the
                   most recently confirmed swing level at decision time;
                   if both a high and a low confirm on the same bar, the
-                  one with the larger |extreme − close| wins
-                  [LEAD-FROZEN tie-break].
+                  one with the larger |extreme − close_t| wins, where
+                  close_t is the CURRENT decision bar's close
+                  [LEAD-FROZEN tie-break, reference bar pinned].
 
 condition 1       |close_t − L| <= 0.3 × ATR14_t   (owner verbatim)
                   ATR14 = Wilder ATR, period 14, on 1h bars
+                  [LEAD-FROZEN]
 condition 2       right side of the level (owner verbatim):
                   if L is a swing LOW  → long side: close_t >= L
                   if L is a swing HIGH → short side: close_t <= L
@@ -75,14 +77,21 @@ condition 4       enough volatility [LEAD-FROZEN instantiation]:
                   ATR14_t >= 0.15% of close_t AND ATR14_t >= 1.25 ×
                   median(ATR14 over trailing 100 completed bars)
 direction         LONG only at swing LOWs, SHORT only at swing HIGHs
-                  (condition 2 fixes the side; no双向 at one level)
+                  (condition 2 fixes the side; no double-sided entry at one level)
 
 entry             all four conditions true at bar close t → order
                   TARGET_INTENT at t+1 open [shadow fill model below]
 exit [LEAD-FROZEN, owner gave none]: first of
                   (a) EMA9/EMA21 cross against the position at a
                       completed bar close → exit next bar open;
-                  (b) hard stop: entry ± 1.0 × ATR14_entry (adverse);
+                  (b) hard stop: entry −/+ 1.0 × ATR14_entry (adverse),
+                      evaluated on COMPLETED bars only (bar-close
+                      decision clock): a long's stop binds when a
+                      completed bar's LOW <= stop level, a short's when
+                      its HIGH >= stop level; the exit fills at the NEXT
+                      bar's open (no intrabar fills in the virtual
+                      model — disclosed divergence from any real
+                      execution);
                   (c) time stop: 48 completed bars after entry;
                   (d) shadow-session end (cycle stop) → flat at last
                       observed price.
@@ -113,15 +122,22 @@ Collector requirements: light worker (NEVER the machine-wide heavy
 lock), polling cadence ≤ 15 min for 1h bars, exchange timestamp +
 local receive timestamp recorded, gap detection (missing bar hours
 recorded, never filled), append-only raw layer + normalized layer,
-hash-chained manifests, crash-safe resume, health heartbeat. The
-XAUUSD weekend closure is a MARKET property: Sat/Sun gaps are recorded
-as market-closed, not data gaps.
+hash-chained manifests, crash-safe resume, health heartbeat. Expected
+session hours are derived at dispatch from a PUBLISHED gold-market
+calendar (CME Globex metals schedule; Sunday reopen ~22:00 UTC,
+DST-dependent, recorded verbatim with the calendar's own reference)
+and frozen into the collector contract BEFORE the first poll: a missing
+bar OUTSIDE the frozen expected hours is market-closed; a missing bar
+INSIDE them is a DATA GAP, recorded fail-closed and never imputed
+(A7 plan finding M3 — no blanket weekday rule).
 
 ## 4. Ledger and labels
 
 Append-only virtual ledger per PROSPECTIVE-SHADOW-V1 §2 class:
 TARGET_INTENT → VIRTUAL_FILL → MARK_TO_MARKET rows; equity/drawdown
-series; every row sha-chained. Every rendered number carries
+series; every row sha-chained.  During a feed outage the open position
+is valued UNAVAILABLE_FAIL_CLOSED (equity renders N/A, no stale marks,
+no imputation) until a fresh bar arrives (A7 plan finding L2). Every rendered number carries
 `SHADOW_OBSERVATION_ONLY / NOT A PROFITABILITY CLAIM / COST MODEL
 UNMEASURED-CONSERVATIVE`. No Sharpe/PF publication gating is claimed.
 
@@ -130,11 +146,12 @@ UNMEASURED-CONSERVATIVE`. No Sharpe/PF publication gating is claimed.
 The Quant Shadow Dashboard belongs to PROSPECTIVE-SHADOW-V1's runtime.
 This cycle MUST NOT modify that cycle's engine or ledger. Integration
 law: XAUUSD-SHADOW-V1 writes its OWN runtime tree
-(`results/xauusd_shadow_v1/`); the dashboard gains an XAUUSD panel via
-a minimal renderer-level addition audited in isolation (reads the new
-tree only), OR a standalone overlay window — implementation choice
-frozen at dispatch after A7 reviews which is least invasive. Either
-way: zero writes into PROSPECTIVE-SHADOW-V1's runtime.
+(`results/xauusd_shadow_v1/`) and renders through a
+STANDALONE OVERLAY WINDOW reading that tree only.  NO file inside the
+PROSPECTIVE-SHADOW-V1 worktree/runtime is ever touched while that cycle
+is non-terminal (no co-tenant code edits); a future merge into the main
+dashboard is a separate owner instruction after that cycle closes
+(A7 plan finding M4 — frozen).
 
 ## 6. Gates / phases
 
@@ -151,6 +168,18 @@ GO  owner types `GO XAUUSD SHADOW V1 START`
 E   forward shadow (indefinite; weekly health checkpoints; WAITING_DATA
     if feed down — never FAIL for missing coverage)
 ```
+
+## 6b. Registration mechanics
+
+Registered through `researchctl` as PLANNED_NOT_STARTED after this
+plan's A7 audit AUTHORIZED_WITH_FINDINGS (r1 artifact:
+plans/audits_xauusd_shadow_v1/a7_plan_r1.json; the 4 MEDIUM + relevant
+LOW findings remediated IN THIS plan text before registration —
+DISCLOSURE: commit ef040385's message described the remediation but
+shipped the pre-remediation text due to a patch-path failure; the
+actual remediation is THIS commit, verified by the markers below).
+No terminal outcome is promised; honest states include WAITING_DATA,
+BLOCKED_SOURCE and SHADOW_RUNNING (ACTIVE_LIGHT).
 
 ## 7. Boundaries
 
