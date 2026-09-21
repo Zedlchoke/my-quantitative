@@ -26,6 +26,8 @@ from .ratelimit import (
     Coalescer,
     backoff_delay_ms,
 )
+
+MAX_SERVER_ERROR_RETRIES = 2  # plan §5(c): 5xx bounded retry <= 2
 from .reststore import RestCache
 from .timeutils import NowMs, default_now_ms, ms_to_iso_z
 
@@ -107,9 +109,19 @@ class RestGate:
         default=lambda s: asyncio.sleep(s / 1000.0)
     )
     rng: Optional[Any] = None
+    event_sink: Optional[Callable[[str, dict], None]] = None
     counts: Dict[str, int] = field(default_factory=lambda: {
         "upstream_calls": 0, "per_endpoint": {}
     })
+
+    def emit_event(self, kind: str, detail: dict) -> None:
+        """Durable append-only event (A7 impl-r1 FND-5): the service
+        wires this to its EventLog; never throws."""
+        try:
+            if self.event_sink is not None:
+                self.event_sink(kind, detail)
+        except Exception:  # noqa: BLE001 - telemetry must not break data
+            pass
 
     # ------------------------------------------------------------------
     def _url(self, path: str, params: Dict[str, Any]) -> str:
@@ -133,7 +145,14 @@ class RestGate:
             entry, hit = self.cache.lookup(path, params)
             if hit:
                 return self._envelope(path, params, entry.payload, [entry], True)
+        else:
+            self.emit_event("refresh_requested", {"path": path, "params": params})
         key, identity = self._canonical(path, params)
+        if not refresh and self.cache.was_evicted(key):
+            self.emit_event(
+                "eviction_refetch",
+                {"path": path, "identity": identity},
+            )
         try:
             return await self.coalescer.run(
                 key, lambda: self._fetch_upstream(path, params, identity)
@@ -158,6 +177,8 @@ class RestGate:
     ) -> dict:
         url = self._url(path, params)
         last_error: Optional[BaseException] = None
+        server_error_retries = 0  # §5(c): 5xx budget SEPARATE from
+        # transport retries, capped at 2 (A7 impl-r1 FND-6)
         for attempt in range(1 + MAX_TRANSPORT_RETRIES):
             gate = self.breaker.gate(url)
             if gate is not None:
@@ -223,9 +244,24 @@ class RestGate:
                 last_error = GatewayFetchError(
                     "server_error", {"status": status, "url": url}
                 )
+                if server_error_retries >= MAX_SERVER_ERROR_RETRIES:
+                    # 5xx budget exhausted: fail closed NOW (no more
+                    # attempts even if the transport budget remains)
+                    raise TransportExhaustedError(
+                        "server_error_budget_exhausted",
+                        {"url": url, "server_error_retries": server_error_retries,
+                         "status": status},
+                    )
+                server_error_retries += 1
                 await self.sleeper(backoff_delay_ms(attempt, self.rng))
                 continue
             # non-retryable 4xx or 5xx-with-RA: fail fast/closed
+            if verdict.kind == "non_retryable_status":
+                self.emit_event(
+                    "non_retryable_status",
+                    {"status": status, "url": url,
+                     "surface": self.breaker.surface},
+                )
             raise NonRetryableStatusError(
                 verdict.kind,
                 {

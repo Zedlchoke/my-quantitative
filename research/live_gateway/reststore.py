@@ -86,6 +86,7 @@ class RestCache:
     misses: int = 0
     evictions: int = 0
     quarantines: int = 0
+    _evicted_recent: list = field(default_factory=list)  # key shas (bounded)
 
     def _verify(self, entry_file: dict) -> Optional[CacheEntry]:
         """Detect corruption: payload must re-hash to the stored digest."""
@@ -189,9 +190,20 @@ class RestCache:
                 total -= size
                 removed += size
                 self.evictions += 1
+                self._evicted_recent.append(os.path.basename(full)[:-5])
+                if len(self._evicted_recent) > 2000:
+                    del self._evicted_recent[:1000]
             except OSError:
                 continue
         return removed
+
+    def was_evicted(self, key_sha: str) -> bool:
+        """True once for a key whose entry was LRU-evicted (lets the
+        caller log an honest eviction_refetch event on re-download)."""
+        if key_sha in self._evicted_recent:
+            self._evicted_recent.remove(key_sha)
+            return True
+        return False
 
     def disk_bytes(self) -> int:
         cdir = os.path.join(self.root, CACHE_DIR_NAME)

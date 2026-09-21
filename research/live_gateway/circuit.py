@@ -47,6 +47,7 @@ SURFACE_STATES = (
 OPEN_DEFAULT_MS = 120_000
 OPEN_MAX_MS = 900_000  # 15 min cap after doubling
 CONSECUTIVE_5XX_FOR_DEGRADED = 3
+PROBE_GRACE_MS = 30_000  # half-open probe must conclude within this
 
 BANNED_UNTIL_RE = re.compile(r"banned until (\d{9,14})")
 
@@ -183,6 +184,7 @@ class CircuitBreaker:
     last_record_utc: Optional[str] = None
     history: List[BreakerRecord] = field(default_factory=list)
     retry_suppressed_until_ms: Optional[int] = None  # law (a), any class
+    _probe_inflight: bool = field(default=False, repr=False)
 
     # -- introspection -------------------------------------------------
     def allowed_retry_at_ms(self) -> Optional[int]:
@@ -238,6 +240,7 @@ class CircuitBreaker:
                 prior, verdict.retry_after_ms_expiry
             )
         if verdict.opens_breaker:
+            self._probe_inflight = False  # probe concluded (failed)
             if self.state != "RATE_LIMITED":
                 # window law (plan §5): Retry-After header AND
                 # banned-until body parsed, longer wins; 120 s default
@@ -264,8 +267,16 @@ class CircuitBreaker:
                 )
             else:
                 # already open (e.g. half-open probe got re-banned):
-                # double the window, cap 15 min, re-arm
-                self.window_ms = min(self.window_ms * 2, OPEN_MAX_MS)
+                # a FRESH Retry-After/banned-until wins over doubling
+                # (A7 impl-r1 FND-3: the venue's own window is the law);
+                # doubling (cap 15 min) applies only when the venue
+                # gave no window
+                if verdict.retry_after_ms_expiry is not None:
+                    self.window_ms = max(
+                        1000, verdict.retry_after_ms_expiry - now
+                    )
+                else:
+                    self.window_ms = min(self.window_ms * 2, OPEN_MAX_MS)
                 self.opened_at_ms = now
                 self._record(
                     "RATE_LIMITED",
@@ -308,6 +319,7 @@ class CircuitBreaker:
 
     def observe_success(self) -> None:
         self.consecutive_5xx = 0
+        self._probe_inflight = False
         if self.state == "RATE_LIMITED":
             # the half-open probe succeeded
             self._record("RECOVERING", "half-open probe success")
@@ -329,6 +341,10 @@ class CircuitBreaker:
         now = self.now_ms()
         if self.state == "RATE_LIMITED":
             until = self.allowed_retry_at_ms()
+            # law (a) across surfaces: a venue Retry-After window seen on
+            # ANY response wins if longer than the breaker window
+            if self.retry_suppressed_until_ms is not None:
+                until = max(until or 0, self.retry_suppressed_until_ms)
             if until is not None and now < until:
                 self.suppressed += 1
                 return {
@@ -338,12 +354,28 @@ class CircuitBreaker:
                     "suppressed_count": self.suppressed,
                     "url": url,
                 }
-            # window expired: allow exactly ONE probe
-            self.state = "HALF_OPEN"
+            # window expired: allow exactly ONE probe (single-flight;
+            # A7 impl-r1 FND-2: concurrent callers must not all pass).
+            # A probe that dies without concluding (timeout path) is
+            # unstuck after PROBE_GRACE_MS.
+            if self._probe_inflight:
+                if now < self._probe_deadline_ms:
+                    self.suppressed += 1
+                    return {
+                        "suppressed": True,
+                        "reason": "half_open_probe_inflight",
+                        "suppressed_count": self.suppressed,
+                        "url": url,
+                    }
+                self._probe_inflight = False  # grace expired: re-probe
+            self._probe_inflight = True
+            self._probe_deadline_ms = now + PROBE_GRACE_MS
             self._record(
                 "RECOVERING", "window expired; single half-open probe allowed"
             )
-            self.state = "RATE_LIMITED"  # re-arms on failure; success heals
+            # state stays RATE_LIMITED while the probe is in flight:
+            # re-arms on failure, observe_success() heals to HEALTHY
+            self.state = "RATE_LIMITED"
             return None  # the probe goes out; everything else suppressed
         if self.retry_suppressed_until_ms is not None:
             if now < self.retry_suppressed_until_ms:

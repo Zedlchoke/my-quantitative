@@ -156,7 +156,14 @@ class RawStore:
     def append_observation(
         self, key: str, payload: Dict[str, Any]
     ) -> bool:
-        """Append one observation unless deduplicated. True = written."""
+        """Append one observation unless deduplicated. True = written.
+
+        A7 impl-r1 FND-1 fix: rows APPEND directly to the daily file
+        (gzip append adds a member; fsync'd) — the previous tmp+rename
+        wiped all prior rows of the day. Crash mid-append leaves a
+        partial tail member which _load_tail_digests skips (ValueError
+        -> continue) and counters live elsewhere, so no double-count.
+        """
         dig = digest_obj(payload)
         dedup_key = f"{key}|{dig}"
         if dedup_key in self._seen:
@@ -165,10 +172,12 @@ class RawStore:
         day = ms_to_iso_z(self.now_ms())[:10]
         row = {"key": key, "digest": dig, **payload}
         line = json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
-        tmp = os.path.join(self.root, f".{day}.tmp.{os.getpid()}")
-        with gzip.open(tmp, "at", encoding="utf-8") as handle:
-            handle.write(line)
-        os.replace(tmp, self._day_path(day))
+        path = self._day_path(day)
+        with open(path, "ab") as raw_handle:
+            with gzip.GzipFile(fileobj=raw_handle, mode="ab") as gz:
+                gz.write(line.encode("utf-8"))
+            raw_handle.flush()
+            os.fsync(raw_handle.fileno())
         self._seen[dedup_key] = "1"
         self.rows_written += 1
         return True

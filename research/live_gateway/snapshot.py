@@ -51,6 +51,7 @@ class SymbolDatum:
     duplicates_seen: int = 0
     out_of_order_seen: int = 0
     message_count: int = 0
+    source_kind: str = "ws"  # 'ws' | 'rest' (truth law: label the source)
 
     def apply_rest_mark(
         self,
@@ -72,6 +73,7 @@ class SymbolDatum:
         self.provider_ts_ms = provider_ts_ms
         self.received_at_ms = received_at_ms
         self.gap_flagged = False
+        self.source_kind = "rest"
 
     def apply_ws_event(
         self,
@@ -100,6 +102,7 @@ class SymbolDatum:
         self.provider_ts_ms = event_e_ms
         self.received_at_ms = received_at_ms
         self.gap_flagged = False
+        self.source_kind = "ws"
         return "applied"
 
 
@@ -191,9 +194,16 @@ class SnapshotStore:
             "age_seconds": round(age_s, 3),
             "status": status,
             "stale_reason": reason,
-            "source": f"{symbol.lower()}@markPrice@1s",
+            "source": (
+                f"{symbol.lower()}@markPrice@1s"
+                if getattr(d, "source_kind", "ws") == "ws"
+                else "GET /fapi/v1/premiumIndex"
+            ),
             "surface_state": surface_state,
-            "provenance": "ws_event",
+            "provenance": (
+                "ws_event" if getattr(d, "source_kind", "ws") == "ws"
+                else "rest_premium_index"
+            ),
             "canonical_current": status == "HEALTHY",
         }
 

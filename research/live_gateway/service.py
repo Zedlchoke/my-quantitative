@@ -80,6 +80,10 @@ class GatewayService:
             limiter=self.limiter,
             rng=self.rng,
         )
+        # durable §5/§7 events straight into the append-only log
+        self.gate.event_sink = lambda kind, detail: self.events.append(
+            kind, detail
+        )
         self.snapshot = SnapshotStore()
         self.fanout = Fanout(os.path.join(root, "snapshot", "seq.json"))
         self.fanout.load_seq()
