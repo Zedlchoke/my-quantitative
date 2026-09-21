@@ -1,0 +1,56 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "ldgv1-a7-impl-r1",
+  "cycle_id": "LIVE-DATA-GATEWAY-V1",
+  "role": "A7 independent auditor",
+  "lane": "a7-impl-r1",
+  "branch": "orca/live-data-gateway-v1-integration (read-only audit; artifacts in root plans/)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/live-data-gateway-v1/integration (read-only)",
+  "dispatch_sha": "cb8bdf18c9dc0693d976b28d65b31410809b968d",
+  "actual_start_sha": "cb8bdf18c9dc0693d976b28d65b31410809b968d",
+  "commit_sha": null,
+  "changed_paths": [
+    "plans/audits_live_data_gateway_v1/a7_impl_r1.json",
+    "plans/audits_live_data_gateway_v1/handoff_a7_impl_r1.json"
+  ],
+  "tests": [
+    {"name": "pytest tests/ -q -k ldgv1 (measured by auditor)", "result": "PASS", "detail": "64 passed, 0 failed, 1915 deselected in 6.03s at cb8bdf18; g1_evidence.json records 63 at pre-fix 6c2803e8 (FND-8: refresh evidence to audited sha)"},
+    {"claim": "live sidecar loopback-only bind", "result": "PASS", "detail": "GET /health ok pid 76121; lsof -iTCP:8792 -sTCP:LISTEN shows ONLY 127.0.0.1:8792"},
+    {"name": "418 probe -> RATE_LIMITED -> allowed_retry_at -> suppression", "result": "PASS", "detail": "live events + /v1/status: issued_total=1 (418, banned-until 800s window), suppressed_count rose to 29, exactly ONE half-open probe at 08:24:28Z, window doubled 800s->900s (15-min cap)"},
+    {"name": "half-open single-probe under concurrency", "result": "FAIL_BY_CODE_READ", "detail": "no single-flight latch in CircuitBreaker.gate; concurrent distinct-key callers at window expiry all pass (FND-2, not triggered live)"},
+    {"name": "re-open window vs fresh banned-until", "result": "FAIL_BY_LIVE_EVIDENCE", "detail": "08:24:28Z re-ban body said banned until 10:18:44Z but allowed_retry_at=08:39:28Z (doubling cap) -> scheduled re-probes inside venue ban window (FND-3)"},
+    {"name": "raw store append-only law (§7)", "result": "FAIL", "detail": "experimentally reproduced: 3 appends -> 1 row on disk; each append replaces the daily file (FND-1, HIGH); masked live only because WS is payload-silent"},
+    {"name": "truth law §6 live", "result": "PASS_WITH_NUANCE", "detail": "symbols honestly STALE/no_data_yet, canonical_current false, 404 unsubscribed; BUT provenance hardcoded ws_event even for REST-probe values and REST RATE_LIMITED not propagated to datum surface_state (FND-4)"},
+    {"name": "worker non-interference (§9.1/G2)", "result": "PASS", "detail": "pids 15315 (up 2d23h) and 65461 (up 1h36m, started BEFORE first gateway launch) alive; heartbeats updating; SHV1 worktree git status EMPTY; root checkout untouched"},
+    {"name": "no-order/no-credential surface", "result": "PASS", "detail": "grep clean (only out_of_order + docstring law mentions); console log secret-scan 0; canary reads no scored PnL"},
+    {"name": "LaunchAgent not installed (§13)", "result": "PASS", "detail": "no live/myquant/gateway plist in ~/Library/LaunchAgents; template has CHANGE_ME + RunAtLoad=false"},
+    {"name": "canary frozen thresholds + direct-leg pacing (§9.2)", "result": "PASS", "detail": "code matches: 2s align, 0.99, 0.999, 50bps hard, abs 1e-12/rel 0; direct leg 1s/6rpm/2 attempts/max(RA,banned,120s) abort; leg A live evidence shows the 418 abort recorded and the canary stopped issuing"},
+    {"name": "NOT_RUN honesty", "result": "PASS", "detail": "stream-limit re-measurement correctly NOT_MEASURABLE_UNDER_BAN; G3 canary verdict labeled WAITING, not guessed"},
+    {"name": "disclosed first-launch defect handling", "result": "PASS", "detail": "transport_exhausted TypeError recorded honestly; both prior instances STOPPED CLEAN; cb8bdf18 wires make_aiohttp_transport + loopback-upstream test; current transport proven by real 418 round-trip"}
+  ],
+  "authority_claims": [
+    "A7 audit-only mandate: wrote only the two artifacts under plans/audits_live_data_gateway_v1/; no code, plan, ledger, registry or worktree modifications",
+    "Read-only live verification (curl, lsof, ps, heartbeat reads) plus one sandboxed /tmp experiment reproducing the RawStore defect; nothing inside any repo was written except the two artifacts",
+    "No push, no merge, no S1, no heavy lock acquisition, no worker interference, no gateway restart/stop during audit"
+  ],
+  "known_limitations": [
+    "Canary G3 verdict explicitly NOT audited: leg A has minutes (not 24h) of rows; leg B has no leg_b_history.jsonl yet (attempt 1 rc=1 was a 10s timeout against the pre-fix gateway; driver retries every 30 min) — adjudication WAITING",
+    "Half-open multi-probe hole (FND-2) is code-read-verified, not reproduced live (single REST caller in sidecar mode)",
+    "RawStore wipe (FND-1) demonstrated in /tmp against the audited module; live raw/ store still empty because WS payloads are suppressed under the ban"
+  ],
+  "incidents": [],
+  "tree_status": "audited worktree clean at cb8bdf18 except untracked research/control/live_data_gateway_v1/ (evidence dir, expected); root checkout untouched by A7",
+  "workers": 2,
+  "outputs": [
+    "plans/audits_live_data_gateway_v1/a7_impl_r1.json",
+    "plans/audits_live_data_gateway_v1/handoff_a7_impl_r1.json"
+  ],
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "finding_counts": {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 6, "LOW": 6},
+  "key_findings_for_a1": [
+    "FND-1 (HIGH, persistence.py:166-174): RawStore.append_observation os.replace()s a single-row tmp over the daily .jsonl.gz every write — raw evidence store silently loses all but the last row per day once WS flows; fix + regression test REQUIRED before G3 evidence relies on raw/ (canary verdict path unaffected)",
+    "FND-2/FND-3 (MEDIUM, circuit.py): half-open probe has no single-flight latch (concurrent callers all pass at window expiry), and the re-open path caps at 15 min while ignoring a fresh LONGER banned-until — live evidence 08:24:28Z: venue banned until 10:18:44Z, gateway re-probes 08:39:28Z (tension with §5 longer-wins / §15 no-retry-in-RA-window)",
+    "FND-4..FND-7 (MEDIUM): REST-provenance mislabeled ws_event + REST RATE_LIMITED never reaches datum surface_state; non_retryable_status/eviction_refetch/slow_consumer events missing from append-only EventLog and slow consumer's ws never closed; 5xx retry budget 4 vs frozen ≤2; §12 test gaps (WS reconnect, one-upstream-connection, bounded timeout, 5xx behavior) + one stub test and one tautology assertion"
+  ],
+  "next_safe_action": "A1 remediates FND-1 (must, before G3 adjudication) plus the MEDIUMs at discretion, refreshes g1_evidence.json to the audited sha with 64/64, and lets the ≥24h dual-run accumulate; G3 remains WAITING — leg B needs a clean (unbanned) window; re-audit delta or proceed to canary audit when the 24h window completes"
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "ldgv1-a7-impl-r2",
+  "cycle_id": "LIVE-DATA-GATEWAY-V1",
+  "role": "A7 independent fresh-context auditor (delta re-audit, round impl-r2)",
+  "lane": "a7-impl-r2",
+  "branch": "orca/live-data-gateway-v1-integration (read-only audit; artifacts in root plans/)",
+  "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/live-data-gateway-v1/integration (read-only)",
+  "dispatch_sha": "ae515dd429b0c8043ae0770cedeeaf6c9a490068",
+  "actual_start_sha": "ae515dd429b0c8043ae0770cedeeaf6c9a490068",
+  "commit_sha": null,
+  "changed_paths": [
+    "plans/audits_live_data_gateway_v1/a7_impl_r2.json",
+    "plans/audits_live_data_gateway_v1/handoff_a7_impl_r2.json"
+  ],
+  "tests": [
+    {"name": "pytest tests/ -q -k ldgv1 (measured by auditor, root venv from worktree)", "result": "PASS", "detail": "73 passed, 0 failed, 1915 deselected in 12.04s at ae515dd4; reconciles exactly: impl-r1 measured 64 + 9 new tests in tests/test_ldgv1_a7r1_remediation.py (all 9 pass standalone)"},
+    {"name": "FND-1 raw append fix + crash-mid-append attack", "result": "FIXED_WITH_NEW_FINDING", "detail": "direct gzip-member append + fsync verified, 5-row regression passes; NEW R2-FND-1 (MEDIUM): truncated tail member from a crash mid-append raises zlib.error past the (OSError, EOFError) catch -> RawStore.__init__ raises -> startup crash-loop (reproduced in /tmp), and post-crash appends after the poisoned member are unreadable by gzip readers (reproduced)"},
+    {"name": "FND-2 half-open single-flight latch", "result": "PASS", "detail": "_probe_inflight + 30s grace, state stays RATE_LIMITED while probing; no bypass path found (latch set atomically in gate(), cleared on failure/success; worst case bounded over-suppression); concurrency + dead-probe grace tests pass"},
+    {"name": "FND-3 fresh banned-until over doubling", "result": "PASS", "detail": "re-open window = max(1000, expiry-now) when venue gave a window, doubling only otherwise; gate() takes max(breaker window, retry_suppressed_until_ms); test asserts probe suppressed inside venue window; nit: history reason string still says 'window doubled' (R2-FND-5 LOW)"},
+    {"name": "FND-4 REST-sourced truth labels", "result": "PASS_PARTIAL", "detail": "source_kind ws|rest + source 'GET /fapi/v1/premiumIndex' + provenance 'rest_premium_index' verified in code AND live (BTCUSDT 08:45:12Z); residual FND-4(b): REST-only RATE_LIMITED still not propagated into datum status (service.py 'WS wins' comment, R2-FND-2 LOW)"},
+    {"name": "FND-5 durable events", "result": "PASS_PARTIAL", "detail": "non_retryable_status / refresh_requested / eviction_refetch (one-shot was_evicted) emitted via event_sink wired to EventLog; slow_consumer durable event + ws close on drop + breaker-history durability remain open (R2-FND-3 LOW)"},
+    {"name": "FND-6 separate 5xx budget", "result": "PASS", "detail": "MAX_SERVER_ERROR_RETRIES=2 independent counter; 3rd consecutive 5xx fails closed with server_error_budget_exhausted (3 upstream calls measured in test); transport timeout budget unchanged (5 calls); genuinely separate"},
+    {"name": "FND-7 §12 test gaps", "result": "PASS_PARTIAL", "detail": "WS reconnect, one-upstream-connection@190 combined URL, bounded timeout, bounded 5xx all added and passing; stub test_ldgv1_service_api.py:327 and tautology test_ldgv1_cache_persistence.py:100 untouched; g1_evidence.json two revisions stale (63@6c2803e8 vs measured 73@ae515dd4) (R2-FND-6 LOW)"},
+    {"name": "live sidecar on remediated code, loopback-only", "result": "PASS", "detail": "pid 80749 started 08:37:07Z; lsof shows ONLY 127.0.0.1:8792; seq 40000 (+10000 margin, no reuse); REST probe successes served honestly (value 83481.8, REST labels, canonical_current true) while WS payload-silent (420 gap_detected events); rest_breaker HEALTHY (shared-IP ban lifted)"},
+    {"name": "worker non-interference", "result": "PASS_WITH_DISCLOSURE", "detail": "15315 (decision) up 2d23h59m; valuation 65461 GONE, replaced by 81213 (~08:41Z, 4 min after gateway restart) — heartbeat healthy (last_loop 08:45:00Z, last_error null), SHV1 worktree git status EMPTY so no gateway-side write evidence; restart not attributable to this cycle, disclosed"},
+    {"name": "canary legs accumulating", "result": "PASS", "detail": "leg_a_marks.jsonl exists and grows (74->75 lines in 12s observed; 0 'compared' rows yet); leg_b_history.jsonl still absent (attempt 2 rc=1 at 08:39:55Z was the canary's own fail-closed rpm-cap abort; driver retries ~30 min); adjudication WAITING, not guessed"},
+    {"name": "prior LOWs FND-8..13", "result": "ALL_STILL_OPEN_ACCEPTABLE", "detail": "none were in remediation scope; verified individually (g1_evidence stale, note_ws_state uncalled, no gaps_truncated, no start/end aliases + shutdown_flush seq-only, no bind hard-assert, None heartbeat -> WORKER LIVE)"}
+  ],
+  "authority_claims": [
+    "A7 audit-only mandate: wrote only the two artifacts under plans/audits_live_data_gateway_v1/; no code, plan, ledger, registry or worktree modifications",
+    "Read-only live verification (curl, lsof, ps, heartbeat/event reads, canary file reads) plus /tmp experiments against the audited module reproducing the crash-mid-append branches; nothing inside any repo written except the two artifacts",
+    "No push, no merge, no S1, no heavy lock acquisition, no worker interference, no gateway restart/stop during the audit"
+  ],
+  "known_limitations": [
+    "Canary G3 verdict explicitly NOT audited: leg A has minutes of rows with 0 compared rows, leg B has no leg_b_history.jsonl (two fail-closed attempts: 08:09:48Z timeout vs pre-fix gateway, 08:39:55Z own rpm-cap abort); adjudication WAITING",
+    "The specific claimed 08:37:37Z heartbeat row (82884.49) was superseded during the audit by later successful REST probes (ban lifted); the labeling MECHANISM was verified live instead",
+    "R2-FND-1 crash-mid-append branches reproduced in /tmp sandbox, not on live data (live raw store still empty under WS payload-silence)",
+    "Valuation worker restart 65461->81213 attribution is inconclusive by evidence (no gateway-side writes; ban-recovery behavior is the likely cause); reported, not adjudicated"
+  ],
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 5},
+  "next_actions": [
+    "Fix R2-FND-1 (MEDIUM): catch zlib.error in _load_tail_digests; truncate to last-good-member boundary at startup before any append; add crash-mid-append regression test",
+    "Optional discretionary cleanups (all LOW): propagate REST RATE_LIMITED into datum status; durable slow_consumer event + ws close; declare _probe_deadline_ms; fix 'window doubled' telemetry string; replace stub/tautology tests; refresh g1_evidence.json to ae515dd4 with 73/73",
+    "Continue canary accumulation; adjudicate only after the >=24h dual-run window with leg B clean attempts (adjudication stays WAITING)"
+  ],
+  "handoff_artifacts": {
+    "audit": "/Users/hoangminhlong/my-quantitative/plans/audits_live_data_gateway_v1/a7_impl_r2.json",
+    "handoff": "/Users/hoangminhlong/my-quantitative/plans/audits_live_data_gateway_v1/handoff_a7_impl_r2.json"
+  },
+  "completed_utc": "2026-09-21T08:55:00Z"
+}

@@ -1,0 +1,123 @@
+{
+  "schema": "a7_impl_audit@1",
+  "cycle_id": "LIVE-DATA-GATEWAY-V1",
+  "audit_round": "impl-r1",
+  "auditor": "A7-fresh-context",
+  "audited_commit": "cb8bdf18c9dc0693d976b28d65b31410809b968d",
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "counts": {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 6, "LOW": 6},
+  "findings": [
+    {
+      "id": "FND-1",
+      "severity": "HIGH",
+      "file": "research/live_gateway/persistence.py:166-174 (RawStore.append_observation)",
+      "finding": "Raw day-file wipe: every append_observation writes ONE new line to a fresh tmp file and then os.replace()s it over the whole daily .jsonl.gz, destroying all previously written rows of that day. Verified experimentally: 3 successful appends left exactly 1 row on disk. Plan §7 requires raw observations to be append-only. The live raw/ store is empty only because the WS is payload-silent under the ban; once streams flow, nearly every mark observation will be lost. The test suite never writes two distinct rows per day (test_raw_store_dedup_and_restart appends the same payload twice), so the defect passes. Remediate before G3 evidence is relied on.",
+      "remediation_hint": "Append to the existing day file (open day_path in gzip append, or read-modify-rewrite via tmp+fsync+rename), and add a multi-row-per-day regression test."
+    },
+    {
+      "id": "FND-2",
+      "severity": "MEDIUM",
+      "file": "research/live_gateway/circuit.py:341-347 (CircuitBreaker.gate)",
+      "finding": "Half-open has no single-flight latch: at window expiry gate() records RECOVERING, re-arms state to RATE_LIMITED with the still-expired window, and returns None — so EVERY concurrent caller whose gate() lands between window expiry and the probe's observe_response() is also allowed through; the coalescer only merges identical canonical keys. Plan §5 'exactly ONE half-open probe ... everything else still suppressed' is not guaranteed under concurrency. Not triggered live (single probe caller in sidecar mode).",
+      "remediation_hint": "Add an explicit probe_in_flight flag set when the probe is released and cleared in observe_response/observe_success; suppress all other callers while set."
+    },
+    {
+      "id": "FND-3",
+      "severity": "MEDIUM",
+      "file": "research/live_gateway/circuit.py:265-281 (re-open path) — live evidence events.jsonl 08:24:28Z",
+      "finding": "Re-open window ignores a fresh LONGER banned-until: live at 08:24:28Z the half-open probe's 418 body said 'banned until 10:18:44Z' (~114 min) but the re-open applied the doubling cap and set allowed_retry_at = 08:39:28Z, scheduling repeated half-open probes INSIDE the venue's stated ban window (≈1 probe/15 min until ~10:18Z). The letter of §5's doubling cap is implemented, but the interaction contradicts §5 longer-wins and the §15 hard stop 'no Binance retry inside an active Retry-After window'. Bounded (single counted probe per 15 min), but the window law should floor with the fresh banned-until expiry.",
+      "remediation_hint": "On re-open, allowed_retry_at = max(opened_at + min(doubled_window, 15min), fresh Retry-After/banned-until expiry)."
+    },
+    {
+      "id": "FND-4",
+      "severity": "MEDIUM",
+      "file": "research/live_gateway/snapshot.py:194-196 + service.py:99-108",
+      "finding": "Datum truth-labeling gaps: (a) provenance is hardcoded 'ws_event' and source is the WS channel even when the last value came from the REST freshness probe (apply_rest_mark), so REST-sourced payloads are mislabeled — plan §4 requires the payload to stay labeled with its REST source and §6 requires response_sha256 provenance for REST-sourced data; (b) surface_state derives only from the WS breaker, so the REST surface's RATE_LIMITED never forces the datum status — verified live: BTCUSDT reads status STALE / surface_state HEALTHY while /v1/status.rest_breaker = RATE_LIMITED; the cause of staleness is invisible in the datum contract §6 says must force RATE_LIMITED.",
+      "remediation_hint": "Track the value's source on SymbolDatum (ws_event vs rest endpoint + response_sha256) and propagate REST RATE_LIMITED into surface_state/status when the WS is simultaneously silent."
+    },
+    {
+      "id": "FND-5",
+      "severity": "MEDIUM",
+      "file": "research/live_gateway/fanout.py:84-96, persistence.py (EventLog), service.py",
+      "finding": "Plan-mandated durable events are missing from the append-only EventLog: 'non_retryable_status' (§5/FND-2 remediation promise) exists only as an exception kind + in-memory breaker record; 'eviction_refetch' (§7) exists only as an in-memory counter, and eviction logging writes 'cache_evicted_bytes' instead; 'slow_consumer' (§8) exists only as in-memory dropped_reason — and the dropped consumer is removed from the fanout map WITHOUT its websocket being closed, so the client silently stops receiving. Breaker history itself is memory-only (lost on restart), so §5 'error history append-only, never truncated by restart' is only partially durable.",
+      "remediation_hint": "Append these event kinds to EventLog; close the slow consumer's websocket on drop; persist breaker transitions (or reconstruct from EventLog) across restart."
+    },
+    {
+      "id": "FND-6",
+      "severity": "MEDIUM",
+      "file": "research/live_gateway/ratelimit.py:27 + restgate.py:161",
+      "finding": "5xx bounded-retry budget exceeds the frozen law: plan §5(c) says 5xx without Retry-After gets bounded retry ≤2, but the implementation shares ONE transport budget of 4 retries across all retryable causes (timeouts, network errors, 5xx), so a pure 5xx sequence is retried 4 times before TransportExhausted. Each retry is min-gap paced and 3 consecutive 5xx do raise DEGRADED, but the per-call bound deviates from the plan.",
+      "remediation_hint": "Add a dedicated 5xx-retry counter capped at 2 within _fetch_upstream, separate from the transport-timeout budget."
+    },
+    {
+      "id": "FND-7",
+      "severity": "MEDIUM",
+      "file": "tests/test_ldgv1_*.py",
+      "finding": "§12 frozen test-list gaps and two weak tests: MISSING — WS reconnect test (grep: no reconnect test anywhere), one-upstream-connection test (≤190 symbols ⇒ exactly 1 WS connection), bounded network-timeout test, and a 5xx bounded-retry behavior test (only classification-level). WEAK — test_ws_freshness_probe_only_when_degraded contains a no-op stub ('await ... if False else None', line 327) and never exercises the actual probe-loop degraded gating; test_cache_eviction_budget asserts the tautology 'removed > 0 or cache.evictions >= 0'. The canary abort-wait computation max(RA, banned-until, 120s) is also not unit-tested (validated only by live leg A evidence).",
+      "remediation_hint": "Add the four missing §12 tests; replace the stub with a real ws_freshness_probe_loop iteration; make the eviction test assert evictions >= 1 with a shrunk cap."
+    },
+    {
+      "id": "FND-8",
+      "severity": "LOW",
+      "file": "research/control/live_data_gateway_v1/g1_evidence.json",
+      "finding": "Stale evidence count: g1_evidence.json records 63 passed at commit 6c2803e8; at the audited cb8bdf18 the measured count is 64 (the fix commit added test_real_transport_wired_against_fake_upstream). NOT_RUN honesty verified: stream-limit re-measurement is correctly labeled NOT_MEASURABLE_UNDER_BAN, not guessed.",
+      "remediation_hint": "Refresh g1_evidence.json to the audited SHA with the 64/64 measured result."
+    },
+    {
+      "id": "FND-9",
+      "severity": "LOW",
+      "file": "research/live_gateway/circuit.py:319 + service.py:287",
+      "finding": "WS breaker telemetry dead path: note_ws_state is never called (grep-verified), so ws_breaker stays HEALTHY while the stream is down; gap_scan_loop assigns ws_breaker.state = 'GAP_DETECTED' directly, bypassing _record, so that transition is absent from breaker history. surface_state() patches payloads but /v1/status.ws_breaker can mislead.",
+      "remediation_hint": "Call note_ws_state on stream connect/disconnect and route the gap transition through _record."
+    },
+    {
+      "id": "FND-10",
+      "severity": "LOW",
+      "file": "research/live_gateway/restgate.py:315-340 (fetch_window)",
+      "finding": "Completeness truth nits: the gap list is silently truncated to 50 entries with no truncation flag (complete:false still truthful), and funding windows report complete=True with no cadence check (documented judgment call in code; plan freezes no funding grid). No interpolation occurs anywhere — gaps are listed, never filled.",
+      "remediation_hint": "Add gaps_truncated flag; consider marking funding completeness null/unknown instead of true."
+    },
+    {
+      "id": "FND-11",
+      "severity": "LOW",
+      "file": "research/live_gateway/service.py:506-516, 613-616 + fanout.py:126-128",
+      "finding": "API/lifecycle drift: /v1/bars|basis|funding take startMs/endMs and ignore the §6-documented start&end[&limit] params (shape drift, harmless); graceful shutdown does not flush consumer queues within 5 s — shutdown_flush only persists seq and the ws sender tasks die with runner.cleanup, so buffered events (≤2000/consumer) are lost on shutdown (consumers must replay on reconnect).",
+      "remediation_hint": "Accept start/end aliases and a limit param; drain consumer queues up to 5 s before closing in shutdown()."
+    },
+    {
+      "id": "FND-12",
+      "severity": "LOW",
+      "file": "research/live_gateway/persistence.py:79-85 + config.py:37-45",
+      "finding": "Two defense-in-depth gaps: EventLog rotation deletes the previous .1 sidecar (history bounded at ~2×40MB — 'never truncated by restart' holds literally, but old incidents are eventually discarded); GatewayConfig.load accepts any bind value from a config file and run_service performs no loopback validation — the default is 127.0.0.1 and no non-loopback config exists (lsof verified loopback-only), but the §3 'no 0.0.0.0/LAN' hard boundary is operator-trust, not code-enforced.",
+      "remediation_hint": "Keep 3 rotation generations; hard-assert bind in ('127.0.0.1','localhost') in run_service."
+    },
+    {
+      "id": "FND-13",
+      "severity": "LOW",
+      "file": "research/live_gateway/dashboard_states.py:75-78",
+      "finding": "Unknown worker heartbeat (None) maps to worker LIVE / badge not-OFFLINE — fail-open labeling for the OFFLINE badge ('heartbeat dead'). Consumed only after post-GO cutover step 1; pure function is tested for the explicit states but None-heartbeat optimism is untested.",
+      "remediation_hint": "Treat heartbeat age None as OFFLINE (or UNKNOWN) rather than LIVE."
+    }
+  ],
+  "verification": [
+    {"claim": "Targeted tests PASS", "verified": true, "detail": "Measured myself: 64 passed, 0 failed, 1915 deselected in 6.03s (pytest -q -k ldgv1, worktree venv). g1_evidence.json says 63 at the pre-fix commit 6c2803e8; cb8bdf18 added one test (FND-8)."},
+    {"claim": "Gateway live, loopback-only bind, port 8792", "verified": true, "detail": "GET /health ok, pid 76121, uptime 760s at 08:23Z; lsof -iTCP:8792 -sTCP:LISTEN shows ONLY 127.0.0.1:8792 (no 0.0.0.0/*)."},
+    {"claim": "418 probe -> RATE_LIMITED -> allowed_retry_at -> suppression sequence is real and truthful", "verified": true, "detail": "events.jsonl + /v1/status: exactly 1 upstream call (418, banned-until body parsed to 800s window, allowed_retry_at 08:24:18Z), then probes suppressed with rising suppressed_count (29 at 08:26Z), issued_total stayed 1. At window expiry 08:24:28Z exactly ONE half-open probe fired (issued_total 1->2), got 418, window doubled 800s->900s (15-min cap engaged)."}
+    ,
+    {"claim": "Symbols honestly STALE, zero fabricated data, NOT_SUBSCRIBED 404", "verified": true, "detail": "Live /v1/prices/latest/BTCUSDT: status STALE, stale_reason no_data_yet, value null, canonical_current false; NOTAREALSYMBOL returns HTTP 404; all 20 symbols in stale_symbols."},
+    {"claim": "Existing workers untouched and alive", "verified": true, "detail": "ps: 15315 (decision, up 2d23h37m) and 65461 (valuation, up 1h36m — started ~06:48Z, BEFORE the first gateway launch 08:05Z, so its restart is not attributable to this cycle); both heartbeats updating (valuation last_loop 08:14:59Z, its last_error 418 is the disclosed shared-IP environment ban)."},
+    {"claim": "Zero LDGV1 changes outside its own surfaces", "verified": true, "detail": "git -C .worktrees/prospective-shadow-v1/integration status --short is EMPTY; root checkout shows only pre-existing untracked .zcode/ and SANDBOX control dir; symbols.py reads mark ledgers open('r') tail-only, no writes; gateway writes confined to results/live_data_gateway_v1/ + research/control/live_data_gateway_v1/."},
+    {"claim": "No-order / no-credential surface", "verified": true, "detail": "Grep of the whole live_gateway package: zero order/broker/api-key/HMAC/signature/POST tokens (only 'out_of_order' and docstring mentions of the law); gateway.console.log secret-scan 0 hits; canary never reads scored PnL (no pnl references outside the docstring)."},
+    {"claim": "LaunchAgent template NOT installed", "verified": true, "detail": "ls ~/Library/LaunchAgents | grep -iE 'live|myquant|gateway' → no match; committed template has CHANGE_ME placeholders, RunAtLoad=false, no credentials."},
+    {"claim": "Canary code matches frozen §9.2 thresholds", "verified": true, "detail": "canary.py: ALIGN_WINDOW_MS=2000, PASS_PRESENCE=0.99, PASS_WITHIN_5BPS=0.999, HARD_BPS=50.0, abs tol 1e-12 / rel 0; direct leg 1.0s gap, 6 rpm, 2 attempts, 418/429/5xx/RA/banned-until abort max(RA, banned-until, 120s) — all match."},
+    {"claim": "Live canary behavior under ban is honest", "verified": true, "detail": "leg_a_marks.jsonl: 11 batches, first compared-side missing with gw STALE, then direct-leg 418 abort 488s recorded once, then 'inside prior abort window' rows — the canary stopped issuing (418-class abort telemetry present). leg B attempt 1 rc=1 at 08:09:48Z was a 10s TimeoutError against the PRE-FIX gateway (transport_exhausted retry loop); driver retries every 30 min; leg_b_history.jsonl not yet written."},
+    {"claim": "Disclosed first-launch defect handling was correct", "verified": true, "detail": "events.jsonl records transport_exhausted TypeError honestly at 08:09:57Z; both prior instances stopped CLEAN (75701 at 08:09:04Z, 75985 at 08:10:57Z); cb8bdf18 wires make_aiohttp_transport and adds the loopback-upstream integration test; current instance's transport works (the 418 response proves a real HTTP round-trip)."},
+    {"claim": "Seq restart margin + persistence", "verified": true, "detail": "seq.json persisted 20000; heartbeat fanout.seq = 30000 (+10000 margin) with events_published 0 — no seq reuse across the three restarts."},
+    {"claim": "Raw store append-only (§7)", "verified": false, "detail": "FND-1: experimentally reproduced day-file wipe — 3 appends, 1 row on disk."},
+    {"claim": "TTL / quarantine / LRU law (§7)", "verified": true, "detail": "reststore.py: premiumIndex 5s, time 1h, exchangeInfo 24h, historicals forever; corrupted + digest-tampered entries quarantined and never served (tested); LRU 500MiB with counter. eviction_refetch distinct event missing (FND-5)."},
+    {"claim": "No strategy/schedule/universe/cost/PIT drift (checklist L)", "verified": true, "detail": "Package contains no strategy/scheduling/cost logic; symbol constants mirror the plan's frozen universes (20 ILLIQ superset); no PIT computation (gateway serves raw venue rows, PIT stays consumer-side per restgate docstring); SHV1 worktree clean."},
+    {"claim": "Dashboard chip split (§10)", "verified": true, "detail": "dashboard_states.py never conflates DECISION DATA BLOCKED with MARK PRICE RATE LIMITED/STALE; badges LIVE/PARTIAL/STALE/DATA ERROR/OFFLINE mapped; pure function tested for LIVE/PARTIAL/STALE/OFFLINE/DATA ERROR + split. None-heartbeat optimism noted (FND-13)."}
+  ],
+  "canary_adjudication": "WAITING (24h dual-run evidence accumulating; leg B needs clean window)",
+  "summary": "Round-2 implementation audit of LIVE-DATA-GATEWAY-V1 at cb8bdf18c9dc0693d976b28d65b31410809b968d (branch orca/live-data-gateway-v1-integration). Verdict: AUTHORIZED_WITH_FINDINGS — 0 CRITICAL / 1 HIGH / 6 MEDIUM / 6 LOW. The sidecar implementation is live and behaving truthfully under the active shared-IP ban: loopback-only bind verified via lsof; exactly ONE upstream REST call ever issued (418 -> 800s banned-until window), all subsequent probes suppressed and counted; a single half-open probe fired at window expiry and the window doubled into the 15-min cap; all symbols honestly STALE with canonical_current false; 404 for unsubscribed; existing workers (pids 15315/65461) alive with updating heartbeats and a byte-clean SHV1 worktree; no order/broker/credential surface; canary code carries the frozen §9.2 thresholds verbatim and its direct leg demonstrably stopped issuing after the 418 abort. The HIGH finding (FND-1) is an experimentally-confirmed raw-store defect: each observation replaces the daily .jsonl.gz, so the §7 append-only raw store silently loses all but the last row per day — currently masked because the WS is payload-silent; it must be fixed (with a regression test) before G3 evidence relies on raw-store completeness; the canary verdict path (research/control/.../canary/) is unaffected. MEDIUMs: half-open multi-probe concurrency hole, banned-until-vs-15-min-cap re-probe scheduling observed live, REST-provenance mislabeling + RATE_LIMITED not propagated into datums, missing durable events (non_retryable_status/eviction_refetch/slow_consumer) + slow-consumer ws never closed, 5xx retry budget 4 vs frozen ≤2, and §12 test-list gaps (WS reconnect, one-upstream-connection, bounded timeout, 5xx behavior) plus one stub and one tautology test. Measured tests: 64 passed / 0 failed (g1_evidence.json says 63 at the earlier commit — FND-8, refresh it). Canary/G3 adjudication is explicitly WAITING: leg A has accumulated only minutes of rows so far, leg B has not yet produced leg_b_history.jsonl (first attempt crashed against the pre-fix gateway; driver retries every 30 min); the ≥24 h dual-run verdict is NOT_RUN/WAITING and is not audited here."
+}
