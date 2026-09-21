@@ -1,0 +1,151 @@
+{
+  "schema": "a7_plan_audit@1",
+  "cycle_id": "LIVE-DATA-GATEWAY-V1",
+  "audit_round": "r1",
+  "auditor": "A7-fresh-context",
+  "audited_plan_sha": "27e854f350cfb4136f03eebf29b372a8bf1af27e",
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "measured_at_utc": "2026-09-21T07:5xZ (measured 2026-09-21, root checkout main @ 27e854f350cfb4136f03eebf29b372a8bf1af27e)",
+  "counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 5, "LOW": 6},
+  "findings": [
+    {
+      "id": "FND-1",
+      "severity": "MEDIUM",
+      "section": "9.2 (Dual-run) + 5 (budget scope)",
+      "finding": "The canary's leg (ii) fetches historical windows DIRECTLY from Binance outside any limiter: the machine-wide budget in S5 governs gateway-originated requests only, and the canary is a separate process. On the already-banned shared Cloudflare-WARP egress IP this unpaced direct leg can itself re-trigger 418/429 and starve the live PROSPECTIVE-SHADOW-V1 / XAUUSD-SHADOW-V1 workers, contradicting the S9.2 requirement of 'zero worker interference'. Weight seen in X-MBX-USED-WEIGHT-1M is IP-scoped and includes foreign tenants, so the gateway budget cannot bound the canary's direct leg.",
+      "remediation_hint": "Require the canary direct-Binance leg to run under the same pacing/breaker law (min-gap + bounded attempts + 418/429 hard stop) or route it through the gateway budget; freeze the canary's max request rate in S9.2 before the run."
+    },
+    {
+      "id": "FND-2",
+      "severity": "MEDIUM",
+      "section": "5 (Rate limiter + circuit breaker) with motivation from 2",
+      "finding": "Breaker law classifies only 418/429 (open breaker) and 5xx (bounded retry, 3 consecutive => DEGRADED). Live evidence already shows the failure class drifting: the current valuation heartbeat last_error is 'HTTP Error 403: Forbidden' (07:25Z), not 418. Handling of non-retryable 4xx (403/451) is unspecified: as written such a status could either consume the generic <=4 transport-retry budget per logical call or pass untyped, neither of which is a defined breaker/status outcome.",
+      "remediation_hint": "Add an explicit response-classification law in S5: non-retryable 4xx (403/451/404...) fail fast with a distinct event and no retry consumption; breaker law stays 418/429-scoped."
+    },
+    {
+      "id": "FND-3",
+      "severity": "MEDIUM",
+      "section": "5 (5xx bounded retry branch)",
+      "finding": "The 5xx branch retries <=2 'without opening the ban breaker' but does not state whether a Retry-After header on a 5xx response is honored. The owner hard stop 'no Binance retry inside an active Retry-After window' (S15) is not qualified by status class, so a 503 with Retry-After would currently be retried inside its window in the plan as written.",
+      "remediation_hint": "State that ANY response carrying Retry-After (any status class) suppresses retries until expiry; only then apply the 5xx bounded-retry budget."
+    },
+    {
+      "id": "FND-4",
+      "severity": "MEDIUM",
+      "section": "5 (circuit states) vs 6 (per-datum status enum)",
+      "finding": "Vocabulary mismatch with no defined mapping: S5 mandates the 7 owner-verbatim per-surface states (HEALTHY/DEGRADED/RATE_LIMITED/DISCONNECTED/STALE/GAP_DETECTED/RECOVERING); the S6 per-datum status enum is HEALTHY|STALE|GAP_DETECTED|RATE_LIMITED|DISCONNECTED|NOT_SUBSCRIBED - it omits DEGRADED and RECOVERING and adds NOT_SUBSCRIBED. A consumer reading a single datum cannot see DEGRADED/RECOVERING, and no rule says which datum status a RECOVERING surface reports.",
+      "remediation_hint": "Define the surface-state -> datum-status mapping in S6 (or extend the datum enum), so per-datum status is total over all 7 surface states."
+    },
+    {
+      "id": "FND-5",
+      "severity": "MEDIUM",
+      "section": "2 (evidence: mark ledger 'first ~03:55Z 2026-09-21')",
+      "finding": "Over-generalized incident start: 2026-09-21T03:55Z is the ledger-first DATA_BLOCKED mark for ILLIQ-AMIHUD-28D-W and matches the ops-commit outage start (99e00263: 'outage began 03:55Z'), but XSECT-FUND-CARRY-7D carries 23 DATA_BLOCKED marks predating it (first 2026-09-15T16:30Z). The plan sentence applies 'first ~03:55Z' to both ledgers; strictly false for XSECT. The 45/22 counts themselves were exact at plan-commit instant (ledgers now 47/24 after +2 blocked loops, consistent drift).",
+      "remediation_hint": "Scope 'first ~03:55Z' to the 2026-09-21 outage episode per ops commit 99e00263 and state per-family ledger-firsts (ILLIQ 03:55Z; XSECT has earlier blocked marks from 2026-09-15T16:30Z)."
+    },
+    {
+      "id": "FND-6",
+      "severity": "LOW",
+      "section": "13 (LaunchAgent template path)",
+      "finding": "Internal path inconsistency: S13 places the LaunchAgent template under 'research/live_data_gateway/launchagent/' while the frozen code root is 'research/live_gateway/' (S3, S11 module research.live_gateway, S16). Two different committed-code locations for one cycle.",
+      "remediation_hint": "Unify to one module path (e.g. research/live_gateway/launchagent/) across S3/S11/S13/S16."
+    },
+    {
+      "id": "FND-7",
+      "severity": "LOW",
+      "section": "5 (machine-wide budget)",
+      "finding": "Two-tier weight thresholds 'tracked X-MBX-USED-WEIGHT-1M <= 1200 (hard stop-issuing above 1800)' read as a contradiction without a soft-budget vs hard-stop label; also the header measures IP-level weight including foreign tenants the gateway cannot control (relevant on the shared WARP egress), which the text does not acknowledge.",
+      "remediation_hint": "Label 1200 as soft budget (stop issuing new non-essential requests) and 1800 as hard stop; note shared-IP weight includes foreign traffic and the 418/429 breaker is the compensating control."
+    },
+    {
+      "id": "FND-8",
+      "severity": "LOW",
+      "section": "7 (TTL forever vs LRU cap)",
+      "finding": "Closed-range klines/basis/funding TTL is 'forever' yet the cache store is LRU-capped at 500 MiB; eviction of an immutable range legitimately causes re-download, but the plan only counts explicit ?refresh=1 in the S5 budget - eviction-triggered re-fetch accounting is unstated.",
+      "remediation_hint": "State explicitly that a cache-miss-after-eviction re-download is a normal S5-budgeted request (not a TTL violation), and log it distinctly from refresh=1."
+    },
+    {
+      "id": "FND-9",
+      "severity": "LOW",
+      "section": "9.2 (fault-injection checklist)",
+      "finding": "The owner's minimum checklist lists 'Retry-After' as a separate fixture; S9.2 merges it into the 418 fixture ('HTTP 418 with Retry-After + banned until body'). Parsing variants (header-only, body-only, neither) are covered in S12 unit tests, but no standalone Retry-After-only injection (e.g. 429 or 5xx with header, no banned-until body) exists in the checklist.",
+      "remediation_hint": "Add a Retry-After-only fixture (header without banned-until body) to the S9.2 checklist."
+    },
+    {
+      "id": "FND-10",
+      "severity": "LOW",
+      "section": "4 (symbol universe / WS connection cap)",
+      "finding": "The 190-symbol MVP cap (one connection) rests on the stated venue combined-stream limit of 200/connection - a vendor-stated constant, not a measured one (Q-8: measured beats stated).",
+      "remediation_hint": "Verify the combined-stream limit with a live probe during implementation or keep the 10-symbol margin documented as the mitigation; record the measurement in G1 evidence."
+    },
+    {
+      "id": "FND-11",
+      "severity": "LOW",
+      "section": "2 (heartbeat 418 citation)",
+      "finding": "The cited last_error 'HTTP Error 418: I'm a teapot at loop 07:15Z' is a superseded single-slot snapshot: the current heartbeat shows 'HTTP Error 403: Forbidden' at 07:25Z (plan committed 07:25:27Z +0700). The claim is snapshot-plausible and durably corroborated (registry phase note and ops commit 99e00263 quote the 418 text verbatim), but the heartbeat slot itself can no longer evidence it.",
+      "remediation_hint": "Cite durable records (registry phase note, ops commit 99e00263, mark ledger) rather than the overwritten heartbeat slot; note the incident error class evolves (418 -> 403)."
+    }
+  ],
+  "evidence_checks": [
+    {
+      "claim": "S2: valuation_heartbeat.json last_error = HTTP Error 418: I'm a teapot at loop 07:15Z",
+      "verified": true,
+      "detail": "Snapshot-accurate but superseded: current heartbeat shows last_error 'price fetch: HTTPError: HTTP Error 403: Forbidden' at last_loop_utc 2026-09-21T07:25:00Z (plan committed 07:25:27Z +0700 = 07:25:27Z UTC window). Durable corroboration: CYCLE_REGISTRY phase note ('418 banned-until windows, other tenants of the shared IP; outage from 03:55Z intermittent') and ops commit 99e00263 which quotes the 418 text verbatim. Heartbeat is a single-slot moving file; claim accepted as snapshot-true (see FND-11)."
+    },
+    {
+      "claim": "S2: XSECT-FUND-CARRY-7D.jsonl carries 45 and ILLIQ-AMIHUD-28D-W.jsonl 22 DATA_BLOCKED/UNAVAILABLE_FAIL_CLOSED marks",
+      "verified": true,
+      "detail": "At plan-commit instant the counts were exactly 45/22; at audit time 47/24 (worker added 2 blocked loops at 07:20Z/07:25Z after commit - consistent drift of a live ledger). Each DATA_BLOCKED row also carries accounting_status UNAVAILABLE_FAIL_CLOSED; counts match 1:1."
+    },
+    {
+      "claim": "S2: blocked marks 'first ~03:55Z 2026-09-21'",
+      "verified": false,
+      "detail": "True for ILLIQ-AMIHUD-28D-W (first DATA_BLOCKED exactly 2026-09-21T03:55:00Z, zero earlier) and matches ops commit 99e00263 ('outage began 03:55Z'). False for XSECT-FUND-CARRY-7D: 23 DATA_BLOCKED marks predate 03:55Z, first 2026-09-15T16:30:00Z. See FND-5."
+    },
+    {
+      "claim": "S3: aiohttp present in .venv; websockets/fastapi/uvicorn missing",
+      "verified": true,
+      "detail": "importlib check with /Users/hoangminhlong/my-quantitative/.venv/bin/python (3.12.14): aiohttp PRESENT; websockets MISSING; fastapi MISSING; uvicorn MISSING. Exact match to plan."
+    },
+    {
+      "claim": "Registry: PROSPECTIVE-SHADOW-V1 and XAUUSD-SHADOW-V1 ACTIVE_LIGHT; workers ALIVE",
+      "verified": true,
+      "detail": "plans/CYCLE_REGISTRY.json: both cycles lifecycle=ACTIVE_LIGHT, go_phrase_state=REGISTERED_NOT_CONSUMED. Live processes: valuation_worker.py pid 65461 (running, uptime 41m), shadow_worker.py decision worker pid 15315 (heartbeat last_loop 07:32:24Z), xauusd_shadow.py pid 72705. LIVE-DATA-GATEWAY-V1 not yet registered - consistent with plan status PLANNED_NOT_STARTED/PENDING A7."
+    },
+    {
+      "claim": "S2: PacedFetch 0.25 s min gap, 6 attempts, Retry-After honored; 1 bulk premiumIndex per 5-min loop; bounded retry added at 99e00263",
+      "verified": true,
+      "detail": "shadow_worker.py: class PacedFetch min_gap_seconds=0.25, default cap 6 attempts, Retry-After header parsed (lines ~295-385). valuation_worker.py: PREMIUM_INDEX_URL bulk, RETRY_BAN_WAIT_MAX_S=150.0, 'banned until <ms>' parser. Commit 99e00263 exists on the prospective-shadow worktree with a message matching the cited remediation exactly (bounded retry, 4 attempts, banned-until honored capped 150s, outage began 03:55Z, shared Cloudflare-WARP IP)."
+    },
+    {
+      "claim": "Plan committed on main at 27e854f350cfb4136f03eebf29b372a8bf1af27e",
+      "verified": true,
+      "detail": "git show: 27e854f3 = 'plan: LIVE-DATA-GATEWAY-V1 draft ... pending A7 plan audit r1 before registration', committed 2026-09-21 14:25:27 +0700; root HEAD = 27e854f350cfb4136f03eebf29b372a8bf1af27e on branch main."
+    },
+    {
+      "claim": "S14 registration mechanics are executable",
+      "verified": true,
+      "detail": "research/researchctl.py supports --budget-max (line ~356) and --go-phrase (line ~357) on cycle register; asset 'shared' has registry precedent (MARKET-DATA-PLANE-V1/V2/V2R1 registered with asset=shared)."
+    },
+    {
+      "claim": "S12 test list covers every owner-mandatory test item",
+      "verified": true,
+      "detail": "Checked item-by-item against the owner contract: coalescing, cache hit, pagination, reconnect, dup/out-of-order, ts normalization, stale detection, Retry-After parse, 418 breaker, 429 breaker, half-open single probe, 5xx bounded, timeout, consumer isolation, replay/dedup, atomic persistence, restart recovery, valuation missing-mark, dashboard PARTIAL, decision historical equivalence, no-order surface, no-credentials - all present in S12 plus one plan-added test (one-upstream-connection). No owner test item missing."
+    },
+    {
+      "claim": "GO phrase exactness and cutover law",
+      "verified": true,
+      "detail": "'GO LIVE DATA GATEWAY V1 CUTOVER' appears byte-identical in S0, S9.3 and S14; registered-not-consumed semantics match P-8; cutover order (dashboard -> valuation -> decision -> collectors), per-step rollback without evidence deletion, valuation UNAVAILABLE_FAIL_CLOSED preservation with canonical_current:false for stale display, decision gated on S9.2B PASS, no compensating BASISLV for 21/09, no retroactive re-execution - all present and consistent."
+    }
+  ],
+  "law_checks": {
+    "worktree_registry_authority": "PASS - code only in .worktrees/live-data-gateway-v1/integration on orca/live-data-gateway-v1-integration; root and other worktrees get ZERO changes pre-GO (S3); registration via researchctl; lifecycle flip via researchctl cycle update; researchctl extension deliberately avoided to keep shared control plane untouched (S11).",
+    "a1_a7_separation": "PASS - A7 gates G0/G4/G6 with audit namespace plans/audits_live_data_gateway_v1/; plan never authorizes A7 to repair; GO is owner-typed at its own gate.",
+    "fail_closed_language": "PASS - UNAVAILABLE_FAIL_CLOSED preserved for missing/stale marks (S9.3); stale never canonical (S6/S9.3); rate-limit reported as STATUS never data (S5); NOT_RUN reported as NOT_RUN (S12).",
+    "rate_limiter_soundness": "PASS with findings - 418/429: zero retries while open; window = max(Retry-After, banned-until); single half-open probe exactly at expiry with everything else suppressed; failure re-opens with doubled window (cap 15 min); no branch converts a ban into data. Gaps: 5xx Retry-After honor unstated (FND-3); non-retryable 4xx unclassified (FND-2); canary direct leg outside budget (FND-1).",
+    "pit_equivalence": "PASS - scored PnL never read (S9.2B explicit); same endpoints/params/cutoffs/PIT rules; digest-or-exact-numeric equality with ANY-mismatch FAIL; thresholds frozen as concrete numbers before any run and audited by this audit.",
+    "scope_creep": "NONE found - pre-GO is sidecar read-only observation; no strategy/schedule/universe/cost/ledger/mark/S1/order surface touched; no new dependency without plan amendment; dashboard touched only post-GO step 1.",
+    "hard_stops": "PASS - all 15 owner hard stops present in S15 (no push, no merge main, no reset of owner changes, no git add -A, no killing foreign workers, no ledger/mark edits, no S1, no scored research, no orders/broker/purchase, no strategy change, no stale-as-canonical, no retry inside Retry-After window, no cutover before GO)."
+  },
+  "summary": "AUTHORIZED_WITH_FINDINGS: 0 CRITICAL / 0 HIGH / 5 MEDIUM / 6 LOW. The plan is a faithful, law-compliant pre-registration for a platform cycle: worktree/branch/registry/A1-A7 discipline correct, owner test list fully covered, GO phrase exact, cutover + rollback + fail-closed law sound, and every hard stop present. Evidence claims verified against live bytes: 45/22 blocked-mark counts were exact at plan-commit instant (now 47/24, +2 loops), aiohttp/websockets/fastapi/uvicorn claim exact, both ACTIVE_LIGHT registries and all three worker pids alive, PacedFetch/bounded-retry code citations real (ops commit 99e00263 corroborates the 418 ban episode). The five MEDIUM findings are text-level remediations for A1: (1) the dual-run canary's direct-Binance leg sits outside every limiter on an already-banned shared egress IP; (2) non-retryable 4xx such as the now-live 403 are unclassified in the breaker law; (3) the 5xx branch does not honor Retry-After, which the owner hard stop requires unconditionally; (4) per-surface (7-state) vs per-datum (6-state) status vocabularies lack a mapping; (5) the 'first ~03:55Z' ledger claim is true only for ILLIQ (XSECT has blocked marks from 2026-09-15T16:30Z). Remediate the MEDIUMs in a plan amendment, then proceed to registration; no structural blocker found."
+}

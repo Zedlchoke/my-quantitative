@@ -1,6 +1,14 @@
 # PLAN LIVE-DATA-GATEWAY-V1 — local single-owner market-data gateway (platform cycle)
 
-> Status: `DRAFT_NOT_REGISTERED / PENDING A7 PLAN AUDIT`. Owner instruction
+> Status: `A7 PLAN AUDIT r1 AUTHORIZED_WITH_FINDINGS (0 CRITICAL / 0
+> HIGH / 5 MEDIUM / 6 LOW) — ALL 11 FINDINGS REMEDIATED IN-PLAN
+> PRE-REGISTRATION` (FND-1 canary direct-leg pacing law frozen;
+> FND-2/3 total response-classification law incl. Retry-After on any
+> class + 403 fail-fast; FND-4 surface_state added to the datum
+> contract with a total 7-state mapping; FND-5/11 evidence claims
+> scoped to durable records; LOWs FND-6..10 folded in, §12 test list
+> extended). Audit artifact: `plans/audits_live_data_gateway_v1/a7_plan_r1.json`.
+> Owner instruction
 > 2026-09-21 (verbatim intent, condensed): build one local market-data
 > gateway that (1) reduces duplicate requests, (2) prevents HTTP 418/429
 > and retry storms, (3) feeds near-real-time prices to the valuation
@@ -51,12 +59,19 @@ branch            orca/live-data-gateway-v1-integration
 - `results/prospective_shadow_v1/runtime/valuation_heartbeat.json`
   (prospective-shadow-v1 integration worktree): `last_error = price
   fetch: HTTPError: HTTP Error 418: I'm a teapot` at loop 07:15Z.
-- Valuation mark ledgers: `XSECT-FUND-CARRY-7D.jsonl` carries 45
-  `DATA_BLOCKED`/`UNAVAILABLE_FAIL_CLOSED` marks and
-  `ILLIQ-AMIHUD-28D-W.jsonl` 22, first ~03:55Z 2026-09-21, from the
-  shared Cloudflare-WARP egress IP being auto-banned by fapi
-  (`418 … banned until <ms>`), per the registry phase note written by
-  the 2026-09-21 ops remediation.
+- `results/prospective_shadow_v1/valuation_marks/XSECT-FUND-CARRY-7D.jsonl`
+  carried 45 and `ILLIQ-AMIHUD-28D-W.jsonl` 22
+  `DATA_BLOCKED`/`UNAVAILABLE_FAIL_CLOSED` marks at plan-commit instant.
+  Ledger-first per family: ILLIQ's first blocked mark is exactly
+  2026-09-21T03:55Z (the outage episode start per ops commit 99e00263);
+  XSECT additionally carries 23 blocked marks from an earlier episode
+  (first 2026-09-15T16:30Z) — the 03:55Z claim is scoped to the
+  2026-09-21 episode only. Root cause (registry phase note + 99e00263):
+  the shared Cloudflare-WARP egress IP repeatedly auto-banned by fapi
+  (`418 … banned until <ms>`; the live error class has since drifted —
+  the heartbeat slot read `HTTP Error 403: Forbidden` at 07:25Z;
+  durable citations are the registry phase note and commit 99e00263,
+  since the heartbeat is a single-slot moving file).
 - Current duplicate-request surface (measured from code):
   - `valuation_worker.py` — 1 bulk `GET /fapi/v1/premiumIndex` per 5-min
     loop (bounded retry added 2026-09-21 at 99e00263);
@@ -131,9 +146,12 @@ prospective-shadow mark ledgers), (b) the frozen decision candidate
 sets published in the SHV1 worker config (20 ILLIQ + 13 PREMFADE
 declared + 7 CARRY symbols), (c) a static config override list.
 Refreshed hourly; subscription changes are logged as events. MVP cap
-190 symbols = ONE WS connection (Binance fapi combined-stream limit
-200/connection). `--all-symbols` expansion is a future amendment, not
-MVP.
+190 symbols = ONE WS connection (vendor-stated combined-stream limit
+200/connection, mitigated by the 10-symbol margin; the limit is
+re-MEASURED with a live probe at G1 and the measurement recorded in
+G1 evidence — if the measured limit is lower, the cap shrinks to
+measured-limit − 10). `--all-symbols` expansion is a future amendment,
+not MVP.
 
 ## 5. Rate limiter + circuit breaker (machine-wide law inside gateway)
 
@@ -143,8 +161,23 @@ Shared limiter for ALL gateway upstream calls:
   call (suppressed-duplicate counter incremented per suppressed hit);
 - min-gap pacing between ANY two upstream REST calls (default 0.25 s);
 - machine-wide budget: gateway-originated REST ≤ 60 requests/min AND
-  tracked `X-MBX-USED-WEIGHT-1M` ≤ 1200 (hard stop-issuing above
-  1800 weight; measured per response header when present);
+  tracked `X-MBX-USED-WEIGHT-1M` with a SOFT budget at 1200 (stop
+  issuing new non-essential requests) and a HARD stop-issuing at 1800;
+  the header measures IP-level weight INCLUDING foreign tenants of the
+  shared egress IP (uncontrollable) — the 418/429 breaker below is the
+  compensating control, and the budget is reported, never assumed to be
+  solely ours;
+- response-classification law (total, any status):
+  (a) ANY response carrying `Retry-After` (any status class, incl.
+  5xx/403) suppresses ALL retries to that surface until expiry — no
+  retry inside an active Retry-After window, ever;
+  (b) 418/429 ⇒ circuit breaker OPEN (below);
+  (c) 5xx without Retry-After ⇒ bounded retry (≤2) without opening the
+  ban breaker; 3 consecutive 5xx ⇒ DEGRADED;
+  (d) non-retryable 4xx (403/451/404/400…) ⇒ FAIL FAST: distinct
+  `non_retryable_status` event, zero retry-budget consumption, surface
+  marked DEGRADED until a later success; never retried, never
+  converted into data;
 - exponential backoff with bounded jitter (base 2 s, factor 2, cap
   30 s, jitter ±20%), bounded attempts per logical call (≤4 transport
   retries), per-call timeout 20 s;
@@ -157,8 +190,6 @@ Shared limiter for ALL gateway upstream calls:
 - single HALF_OPEN probe exactly when the window expires (one request,
   everything else still suppressed); success ⇒ RECOVERING → HEALTHY,
   failure ⇒ OPEN again with doubled window (cap 15 min);
-- 5xx: bounded retry (≤2) without opening the ban breaker, but 3
-  consecutive 5xx ⇒ DEGRADED;
 - WS disconnect ⇒ DISCONNECTED state + reconnect with the same
   bounded-jitter backoff (cap 60 s); no REST fallback storm (§4).
 - error history is append-only and NEVER truncated by restart.
@@ -191,7 +222,14 @@ Every datum carries: `provider` (binance_fapi), `symbol`,
 `received_at_utc`, `age_seconds`, `status`
 (HEALTHY|STALE|GAP_DETECTED|RATE_LIMITED|DISCONNECTED|NOT_SUBSCRIBED),
 `stale_reason` (null or one-line cause), `source`
-(ws_channel e.g. `btcusdt@markPrice@1s`, or rest_endpoint+params), and
+(ws_channel e.g. `btcusdt@markPrice@1s`, or rest_endpoint+params),
+`surface_state` (the FULL 7-state §5 surface value:
+HEALTHY|DEGRADED|RATE_LIMITED|DISCONNECTED|STALE|GAP_DETECTED|
+RECOVERING — per-datum status is the datum's usability, surface_state
+is the upstream's health; the mapping is total: DEGRADED/RECOVERING
+surfaces still serve fresh data as `status: HEALTHY` with
+`surface_state` disclosing the transition, while RATE_LIMITED/
+DISCONNECTED surfaces force the datum to their own status), and
 `provenance` (`response_sha256` for REST-sourced, `ws_event` marker for
 stream-sourced). Staleness thresholds [LEAD-FROZEN]: mark/index/funding
 STALE after 10 s without a stream message (1 s stream), GAP_DETECTED
@@ -232,6 +270,9 @@ results/live_data_gateway_v1/
   klines/basis/funding historical (closed ranges) = forever (immutable
   venue history; revalidation only on explicit `?refresh=1` which is
   itself counted in §5), premiumIndex 5 s, time 1 h, exchangeInfo 24 h;
+  a re-download forced by §7 LRU eviction is a NORMAL §5-budgeted
+  request (not a TTL violation), logged distinctly from `refresh=1`
+  (`eviction_refetch` event);
 - bounded disk: cache LRU-capped at 500 MiB (evictions logged);
 - providers are NEVER mixed (single provider MVP; the store is
   provider-namespaced by design for future MICROSTRUCTURE-DATA-MOAT-V1);
@@ -284,12 +325,24 @@ B. Historical decision inputs — klines/basis/funding windows fetched
    equality OR exact numeric equality (rel tol 0, abs tol 1e-12) on
    every row; ANY mismatch ⇒ FAIL (no averaging, no exceptions).
    Scored PnL is NEVER read for equivalence.
+Canary direct-Binance pacing law [FROZEN, A7 FND-1]: the canary's own
+direct leg (ii) runs under the SAME §5-class discipline as the
+gateway — min-gap 1.0 s between requests, ≤6 requests/min hard cap,
+≤2 attempts per logical call, and ANY 418/429/Retry-After/banned-
+until response ABORTS the whole direct leg for max(Retry-After,
+banned-until, 120 s) with the abort recorded; zero worker
+interference is verified by the live workers' own heartbeats staying
+error-free-throughout on their own reads (their independent failures
+are reported as environment, not blamed on the canary, but 418-class
+abort telemetry MUST show the canary stopped issuing).
 Canary fault-injection checklist (offline fixtures, MUST all pass):
 reconnect; network loss; HTTP 418 with `Retry-After` + `banned until`
-body; HTTP 429; stale stream; duplicate WS messages; out-of-order WS
-messages; gateway restart mid-stream; slow consumer; gateway kill -9;
-WS stream death; corrupted REST cache file (detected ⇒ cache poisoned
-row quarantined + event, never served).
+body; HTTP 429; Retry-After-ONLY fixture (header present, no
+banned-until body, on a 429 and on a 5xx); non-retryable 403
+fail-fast fixture; stale stream; duplicate WS messages; out-of-order
+WS messages; gateway restart mid-stream; slow consumer; gateway
+kill -9; WS stream death; corrupted REST cache file (detected ⇒
+poisoned row quarantined + event, never served).
 Dual-run runs ≥24 h with zero worker interference; report age/missingness.
 
 ### 9.3 STEP 3 — CUTOVER (FORBIDDEN before the owner types exactly
@@ -348,20 +401,24 @@ cd /Users/hoangminhlong/my-quantitative/.worktrees/live-data-gateway-v1/integrat
 
 ## 12. Tests (frozen list; targeted; no full suite unless heavy lock FREE)
 
-one-upstream-connection (WS subscription ≤190 symbols ⇒ exactly 1);
-request coalescing; cache hit (no re-download of a valid canonical
-request); REST pagination correctness; WS reconnect; duplicate
-message dedup; out-of-order message handling; timestamp normalization
-(ms → ISO-Z); stale detection thresholds; Retry-After parsing (header,
-`banned until` body, neither); 418 breaker open + zero-retry window +
-suppress counter; 429 breaker; half-open SINGLE probe; 5xx bounded
-retry; network timeout bounded; consumer isolation (slow consumer
-disconnect does not delay others); replay/dedup on reconnect; atomic
-persistence (kill -9 mid-write ⇒ no partial file served); restart
-recovery (sequence continues, no metric double-count); valuation
-missing-mark behavior (UNAVAILABLE_FAIL_CLOSED path exercised against
-gateway payloads); dashboard PARTIAL state mapping (pure function);
-decision historical equivalence (fixture windows, digest law);
+one-upstream-connection (WS subscription ≤190 symbols ⇒ exactly 1;
+plus the G1 live re-measurement of the venue stream-per-connection
+limit); request coalescing; cache hit (no re-download of a valid
+canonical request); REST pagination correctness; WS reconnect;
+duplicate message dedup; out-of-order message handling; timestamp
+normalization (ms → ISO-Z); stale detection thresholds; Retry-After
+parsing (header-only, `banned until` body-only, both, neither);
+Retry-After honored on a 5xx; 403/451 non-retryable fail-fast (zero
+retry-budget consumption, DEGRADED surface, distinct event); 418
+breaker open + zero-retry window + suppress counter; 429 breaker;
+half-open SINGLE probe; 5xx bounded retry; network timeout bounded;
+consumer isolation (slow consumer disconnect does not delay others);
+replay/dedup on reconnect; atomic persistence (kill -9 mid-write ⇒ no
+partial file served); restart recovery (sequence continues, no metric
+double-count); valuation missing-mark behavior (UNAVAILABLE_FAIL_CLOSED
+path exercised against gateway payloads); dashboard PARTIAL state
+mapping (pure function); decision historical equivalence (fixture
+windows, digest law); eviction-triggered cache re-fetch accounting;
 no-order surface (grep law: no order/broker/credential tokens);
 no-credentials-in-artifacts (scan runtime tree after fixture runs).
 Tests are offline-first (fixture transports); live network only where
@@ -378,7 +435,7 @@ Restart: stop → start; crash recovery = §7 resume law.
 Logs: `results/live_data_gateway_v1/events/` + stdout log
 `results/live_data_gateway_v1/gateway.log` (rotated at 10 MiB, keep 3).
 A `LaunchAgent` TEMPLATE (plist) may be committed under
-`research/live_data_gateway/launchagent/` but is NOT installed, NOT
+`research/live_gateway/launchagent/` but is NOT installed, NOT
 enabled at login, NO sudo, NO credentials in the plist — installation
 happens only on a future owner instruction. Gateway runs only while
 the Mac is awake + networked; sleep/off simply means no live data

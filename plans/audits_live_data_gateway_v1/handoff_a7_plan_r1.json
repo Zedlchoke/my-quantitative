@@ -1,0 +1,55 @@
+{
+  "schema": "zcode_orch_v3_handoff@1",
+  "task_id": "ldgv1-a7-plan-r1",
+  "cycle_id": "LIVE-DATA-GATEWAY-V1",
+  "role": "A7 independent auditor",
+  "lane": "a7-plan-r1",
+  "branch": "main (read-only audit; artifacts only)",
+  "worktree": "/Users/hoangminhlong/my-quantitative (root, read-only)",
+  "dispatch_sha": "27e854f350cfb4136f03eebf29b372a8bf1af27e",
+  "actual_start_sha": "27e854f350cfb4136f03eebf29b372a8bf1af27e",
+  "commit_sha": null,
+  "changed_paths": [
+    "plans/audits_live_data_gateway_v1/a7_plan_r1.json",
+    "plans/audits_live_data_gateway_v1/handoff_a7_plan_r1.json"
+  ],
+  "tests": [
+    {"name": "evidence: valuation_heartbeat 418 claim vs live bytes", "result": "PASS_WITH_NUANCE", "detail": "snapshot-accurate (loop 07:15Z), superseded by 403 at 07:25Z; durably corroborated by registry phase note + ops commit 99e00263"},
+    {"name": "evidence: DATA_BLOCKED counts 45/22", "result": "PASS", "detail": "exactly 45/22 at plan-commit instant; 47/24 at audit time (+2 loops, consistent live-ledger drift)"},
+    {"name": "evidence: 'first ~03:55Z 2026-09-21' claim", "result": "FAIL_AS_WRITTEN", "detail": "true for ILLIQ (exactly 03:55Z); XSECT has 23 earlier blocked marks (first 2026-09-15T16:30Z) -> FND-5"},
+    {"name": "evidence: venv deps aiohttp present / websockets-fastapi-uvicorn missing", "result": "PASS", "detail": "importlib check on .venv python 3.12.14, exact match"},
+    {"name": "evidence: registry ACTIVE_LIGHT cycles + live worker pids", "result": "PASS", "detail": "PROSPECTIVE-SHADOW-V1 and XAUUSD-SHADOW-V1 ACTIVE_LIGHT REGISTERED_NOT_CONSUMED; pids 65461/15315/72705 alive via ps + heartbeats"},
+    {"name": "law: owner mandatory test list vs plan S12", "result": "PASS", "detail": "all 22 owner items present, plan adds one-upstream-connection; nothing missing"},
+    {"name": "law: rate-limiter/breaker soundness (retry-in-window, half-open, 418-to-data)", "result": "PASS_WITH_FINDINGS", "detail": "core 418/429 law sound; gaps -> FND-1, FND-2, FND-3"},
+    {"name": "law: GO phrase exactness across S0/S9.3/S14", "result": "PASS", "detail": "byte-identical 'GO LIVE DATA GATEWAY V1 CUTOVER'"},
+    {"name": "law: scope creep scan (strategy/schedules/universe/costs/ledgers/marks/S1/orders pre-GO)", "result": "PASS", "detail": "pre-GO sidecar read-only only; zero worker changes; dashboard touched only post-GO step 1"},
+    {"name": "mechanics: researchctl cycle register flags (--budget-max, --go-phrase) and asset=shared precedent", "result": "PASS", "detail": "flags at researchctl.py ~356/357; MARKET-DATA-PLANE-V1/V2/V2R1 registered asset=shared"}
+  ],
+  "authority_claims": [
+    "A7 audit-only mandate: wrote only the two artifacts under plans/audits_live_data_gateway_v1/; no code, plan, ledger, registry or worktree modifications",
+    "Read-only verification commands only (cat, grep, git log/show/rev-parse/status, ps, venv python importlib check)",
+    "No push, no merge, no S1, no heavy lock acquisition, no worker interference"
+  ],
+  "known_limitations": [
+    "Heartbeat last_error is a single-slot moving field: the plan's 418-at-07:15Z snapshot is not re-verifiable from current bytes; verdict rests on durable corroboration (registry phase note, ops commit 99e00263, mark ledger)",
+    "Mark ledgers are live: counts at audit time (47/24) exceed plan-time counts (45/22) by exactly the post-commit blocked loops; no contradiction",
+    "Binance fapi combined-stream limit (200/connection) is vendor-stated, not measured (FND-10)"
+  ],
+  "incidents": [],
+  "tree_status": "dirty-before-audit (pre-existing, untouched by A7): modified plans/ACTIVE_CYCLES.json, plans/CYCLE_REGISTRY.events.jsonl, plans/CYCLE_REGISTRY.json (live control-plane writers); untracked .zcode/, research/control/SANDBOX-OVERFIT-3ASSETS/ (owner spaces). A7 adds only the two audit artifacts; staged nothing, committed nothing.",
+  "workers": 0,
+  "outputs": [
+    "plans/audits_live_data_gateway_v1/a7_plan_r1.json",
+    "plans/audits_live_data_gateway_v1/handoff_a7_plan_r1.json"
+  ],
+  "verdict": "AUTHORIZED_WITH_FINDINGS",
+  "finding_counts": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 5, "LOW": 6},
+  "key_findings_for_a1": [
+    "FND-1 (MEDIUM, S9.2/S5): dual-run canary direct-Binance leg is outside every limiter on the already-banned shared WARP egress IP -> pace it under the breaker law or route via gateway budget, and freeze its max rate before the run",
+    "FND-2/FND-3 (MEDIUM, S5): breaker law is 418/429-only while the live failure class already drifted to 403, and the 5xx branch ignores Retry-After which the owner hard stop forbids unconditionally -> add response-classification law (non-retryable 4xx fail fast; Retry-After honored on any status)",
+    "FND-4 (MEDIUM, S5 vs S6): 7-state per-surface circuit vocabulary vs 6-state per-datum enum with no mapping -> define the mapping so DEGRADED/RECOVERING are representable per datum",
+    "FND-5 (MEDIUM, S2): 'first ~03:55Z' is ILLIQ-only; XSECT ledger has blocked marks from 2026-09-15T16:30Z -> scope the claim to the 99e00263 outage episode",
+    "FND-6..FND-11 (LOW): LaunchAgent path inconsistency, soft/hard weight threshold labeling, eviction re-download accounting, standalone Retry-After fixture, vendor-stated stream cap, heartbeat-slot citation hygiene"
+  ],
+  "next_safe_action": "A1 remediates the 5 MEDIUM findings (+ LOWs at discretion) in a plan amendment, then re-runs A7 plan audit or delta audit per G0 before registering the cycle"
+}
