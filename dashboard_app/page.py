@@ -133,7 +133,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
   <img class="logo" src="{LOGO_SRC}" alt="logo">
   <div>
     <h1>Quant Shadow Dashboard</h1>
-    <div class="sub">PROSPECTIVE-SHADOW-V1 + XAUUSD-SHADOW-V1 · paper/shadow (không phải live trading) · vốn ban đầu 300,000 USDT (3 sleeve crypto) + 100,000 USD (XAUUSD) = 400,000 · 4 sleeve</div>
+    <div class="sub">PROSPECTIVE-SHADOW-V1 · paper/shadow (không phải live trading) · vốn ban đầu 300,000 USDT (3 sleeve crypto)</div>
   </div>
   <span id="badge" class="badge stale">…</span>
   <div id="lastupdate"></div>
@@ -156,11 +156,11 @@ PAGE_HTML = r"""<!DOCTYPE html>
       <svg id="chart" viewBox="0 0 1000 330" preserveAspectRatio="none"></svg>
       <div id="tip"></div>
     </div>
-    <div class="note">Đường đứt là vốn ban đầu (300,000 / 100,000 mỗi family). Chuỗi mark chỉ gồm 3 sleeve crypto; XAUUSD (USD, 100,000 riêng) theo dõi ở card và box tổng kết hợp. Khoảng mất dữ liệu không được nội suy — bị bỏ hở (fail-closed).</div>
+    <div class="note">Đường đứt là vốn ban đầu (100,000 mỗi family). Khoảng mất dữ liệu không được nội suy — bị bỏ hở (fail-closed).</div>
   </div>
 
   <div class="section">
-    <h2>Tất cả lệnh (3 family crypto · XAUUSD xem card riêng)</h2>
+    <h2>Tất cả lệnh (3 family crypto)</h2>
     <div class="filters">
       <select id="ffamily"><option value="">Mọi family</option></select>
       <select id="fstate">
@@ -258,19 +258,8 @@ function render(env) {
       '<div class="val ' + (valCls || "") + '">' + val + '</div>' +
       '<div class="sml">' + (sml || "") + '</div></div>';
   }
-  var xs2 = ((app.xauusd_shadow || {}).status) || {};
-  var xe = xs2.equity_usd;
-  var comb = (eq != null && xe != null) ? eq + xe : null;
-  var combPnl = comb != null ? comb - 400000 : null;
   strip.push(box("Tổng equity (3 sleeve crypto)", fmtUSD(eq), "",
     vc && vc.as_of_utc ? ("mark " + fmtTime(vc.as_of_utc)) : ""));
-  strip.push(box("XAUUSD (USD)", fmtUSD(xe), "",
-    xs2.last_error ? esc(xs2.last_error) : "shadow riêng · N/A fail-closed khi thiếu mark"));
-  strip.push(box("Tổng kết hợp (4 sleeve)", comb == null ? "N/A" : fmtUSD(comb),
-    comb == null ? "neu" : pnlClass(combPnl),
-    "crypto USDT + XAUUSD USD, giả sử 1:1 · vốn gốc 400,000"));
-  strip.push(box("PnL kết hợp", combPnl == null ? "N/A" : fmtUSD(combPnl), pnlClass(combPnl),
-    "so với 400,000 (300k USDT + 100k USD)"));
   strip.push(box("Tổng PnL crypto", fmtUSD(tpnl), pnlClass(tpnl), "từ vốn ban đầu $300,000"));
   strip.push(box("Tổng PnL crypto %", fmtPct(tpct), pnlClass(tpct), "300,000 USDT gốc"));
   strip.push(box("PnL hôm nay", today && today.status === "OK" ? fmtUSD(today.pnl_usdt) : "N/A",
@@ -320,22 +309,6 @@ function render(env) {
       (chip.note ? '<div class="note">' + esc(chip.note) + "</div>" : "") +
       "</div>";
   });
-  var x = app.xauusd_shadow || {};
-  var xs = x.status || {};
-  function xrow(k, v, cls) { return "<tr><td>" + k + '</td><td class="' + (cls || "") + '">' + v + "</td></tr>"; }
-  html += '<div class="fam"><h3>XAUUSD-SHADOW-V1</h3><div class="chiprow">' +
-    '<span class="chip ' + (x.available && !xs.last_error ? "ok" : "warn") + '">' +
-    (x.available ? (xs.last_error ? "DEGRADED" : "OK") : "N/A") + "</span>" +
-    '<span class="note">cycle riêng · internal shadow · read-only</span></div><table>' +
-    xrow("Equity (USD)", fmtUSD(xs.equity_usd)) +
-    xrow("Vị thế", esc(xs.position || "N/A")) +
-    xrow("XAUUSD close", xs.last_close == null ? "N/A" : fmtNum(xs.last_close, 2)) +
-    xrow("Bar mới nhất", esc(xs.last_bar || "N/A")) +
-    xrow("Data gaps", xs.data_gaps && xs.data_gaps.length ? esc(JSON.stringify(xs.data_gaps)) : "none") +
-    xrow("Ledger rows", xs.ledger_rows == null ? "N/A" : String(xs.ledger_rows)) +
-    xrow("Lỗi gần nhất", esc(xs.last_error || "none")) +
-    "</table>" +
-    '<div class="note">SHADOW_OBSERVATION_ONLY · NOT A PROFITABILITY CLAIM · chi phí 4bps UNMEASURED-CONSERVATIVE</div></div>';
   el("cards").innerHTML = html;
 
   var banners = app.banners || [];
