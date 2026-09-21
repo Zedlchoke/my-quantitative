@@ -9,6 +9,8 @@ missing fields render N/A)."""
 
 from __future__ import annotations
 
+from .logo import LOGO_DATA_URI
+
 PAGE_HTML = r"""<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -29,6 +31,10 @@ PAGE_HTML = r"""<!DOCTYPE html>
   header {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     padding: 10px 18px; background: #101828; color: #fff;
+  }
+  header .logo {
+    height: 52px; width: auto; border-radius: 8px; display: block;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
   }
   header h1 { font-size: 15px; margin: 0; font-weight: 600; }
   header .sub { color: #9fb0c9; font-size: 11.5px; }
@@ -124,6 +130,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
 </head>
 <body>
 <header>
+  <img class="logo" src="{LOGO_SRC}" alt="logo">
   <div>
     <h1>Quant Shadow Dashboard</h1>
     <div class="sub">PROSPECTIVE-SHADOW-V1 · paper/shadow (không phải live trading) · vốn ban đầu 300,000 USDT</div>
@@ -611,4 +618,4 @@ setInterval(function() {
 </html>
 """
 
-PAGE_HTML_BYTES = PAGE_HTML.encode("utf-8")
+PAGE_HTML_BYTES = PAGE_HTML.replace("{LOGO_SRC}", LOGO_DATA_URI).encode("utf-8")

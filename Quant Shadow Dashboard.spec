@@ -39,6 +39,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['dashboard_app/assets/AppIcon.icns'],
 )
 coll = COLLECT(
     exe,
@@ -52,6 +53,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='Quant Shadow Dashboard.app',
-    icon=None,
+    icon='dashboard_app/assets/AppIcon.icns',
     bundle_identifier=None,
 )
