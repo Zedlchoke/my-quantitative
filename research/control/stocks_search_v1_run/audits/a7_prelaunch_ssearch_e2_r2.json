@@ -1,0 +1,168 @@
+{
+ "schema": "a7_prelaunch_ssearch_e2_r2@1",
+ "cycle_id": "STOCKS-SEARCH-V1",
+ "lane_audited": "ssearch-e2 (streaming scored-engine remediation, research/control/stocks_search_v1_run/e2/) — DELTA RE-AUDIT of remediation commit 880b2b8c",
+ "auditor": "A7 fresh-context independent adversarial delta re-auditor (wrote none of this lane; did not write the remediation)",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+ "branch": "orca/stocks-search-v1-integration",
+ "head_verified": "880b2b8c3571b82b70f144d381b9eac81d876de5",
+ "parent_commits": {
+  "remediation_commit": "880b2b8c3571b82b70f144d381b9eac81d876de5",
+  "original_lane_commit": "d4107d7fb9ce07598ed6e7df4015e2176c22f434",
+  "pre_lane_technabort_close": "89748b4b"
+ },
+ "prior_verdict": {
+  "artifact": "research/control/stocks_search_v1_run/audits/a7_prelaunch_ssearch_e2.json",
+  "schema": "a7_prelaunch_ssearch_e2@1",
+  "head_at_r1": "d4107d7fb9ce07598ed6e7df4015e2176c22f434",
+  "verdict": "BLOCKED_PRELAUNCH",
+  "findings": ["E2F-1 HIGH", "E2F-2 HIGH", "E2F-3 MEDIUM", "E2F-4 LOW", "E2F-5 LOW", "E2F-6 LOW"]
+ },
+ "tracked_tree_clean_at_audit": true,
+ "utc": "2026-09-21",
+ "verdict": "AUTHORIZED_PRELAUNCH",
+ "verdict_basis": "All six round-1 findings are genuinely closed on HEAD 880b2b8c (6/6 CLOSED, with file:line evidence below, each verified by reading the delta diff d4107d7f..880b2b8c AND the HEAD code, plus this auditor's own bounded recomputations). Delta scope is exactly as claimed: git diff 89748b4..HEAD touches ONLY research/control/stocks_search_v1_run/e2/ plus the two audit/handoff evidence files; the frozen chain (i/, e/, s/, d1/, p0/, m0/, z/, pre-existing audits/) is byte-identical. Zero outstanding HIGH/CRITICAL. One NEW LOW finding recorded (E2F-7, documentation/field-text residue of the E2F-6 class inside equivalence.py itself - non-blocking). Two non-finding notes recorded (pre-existing keep_spy gross=None residual on non-candidate included views, unchanged by the remediation and verdict-neutral; free_arrays does not null inc_gross/inc_band_codes - trivial). Nothing in the delta weakened any round-1 PASS: dispatch pins recompute 6/6, equivalence artifacts all-true 3/3 cells x3 files, GO gate still doubly fail-closed, no S1, no scored execution, budget law intact.",
+ "items": {
+  "A_scientific_equivalence": {
+   "status": "PASS",
+   "delta_review": "The only engine change (E2F-4) touches the death_open cens spill record layout (4->6 floats), BookStats.inc_gross/inc_band_codes construction, and as_included's gross/band_codes inputs. None of these are in the equivalence compared set (compare() uses verdict canonical-JSON equality, book_log bytes, series_sha256 - which hashes book_log only -, n_legs/n_censored/counts, expectancy/fold_expectancy/inc_expectancy/inc_fold_expectancy bits, spy legs bits, pit/cal_hist/reversal/counts) nor in the persisted verdict output (booleans + labels only). ordered_kills consumes expectancy/fold_expectancy/spy/counts only - no kill or gate reads gross/band_codes/break_even; break_even_margin numbers are live-only (gates dict) and _gate_summary keeps only pass/not_adjudicable strings. Verified independently: this auditor's 24-name death-heavy synthetic probe over the REAL SPY calendar/folds reproduced canonical verdict JSON BITWISE equal reference-vs-streaming on all 3 frozen cells (binding rules exercised: R1 on GAP-P25, R2 on 52W-HIGH-B10 and VOL-REGIME-L21 - the spy-comparator rule), and the candidate included-view arrays now match the reference bitwise (see E2F-4 closure).",
+   "equivalence_evidence_integrity": {
+    "artifact_freshness_resolved": "Round-2-specific check demanded by the E2F-4 change: the three equivalence_verdict_*.json files are byte-identical in CONTENT to their d4107d7f versions (synthetic=detached sha256 4aaf7bd9b202f00c268d9b2eca613c4ceec1b54f119eb7ca4c1c2c5f41bc4a9d; real_subset 4af34f9da8cadff69a81d68ea7ff65e69156a130970eec4060ab8278e220e1a5; both re-verified all-true, 3 runs each, zero false booleans) - this is NOT staleness: working-tree mtimes prove regeneration AFTER the last code change (i_stream_engine.py 10:56 -> selfcheck_verdict 10:58 -> equivalence real_subset 11:03 -> probe 11:08 -> equivalence synthetic 11:22 -> equivalence detached 11:57 -> dispatch.json pins 12:06), and byte-identity is the EXPECTED output because the E2F-4-changed quantities are outside the compared/persisted surface (verified by reading equivalence.py compare()/main() end-to-end). Both pre- and post-change runs therefore emit identical bytes and the committed artifacts are accurate statements about HEAD behavior; independently re-derived by this auditor's own probe regardless.",
+    "all_true_verified": "synthetic/real_subset/detached: pass=true, 3/3 runs each, zero false booleans anywhere (walked)."
+   }
+  },
+  "B_resource_evidence": {
+   "status": "PASS",
+   "verified": [
+    "probe_stream_rss.json regenerated post-remediation: peak_rss_bytes 108,806,144 = 103.8 MiB <= 1.5 GiB probe bound (e_stream_run.py:81), fresh subprocess, synthetic 261-name cohort disclosed with 0.652 names/s and elapsed 400.0s; live guards unchanged (RSS watchdog 5.5 GiB, per-name guard + 2 GiB disk floor e_stream_run.py:386-395, spill quota fail-closed, 6 GiB start floor)",
+    "checkpoint transaction law unchanged and sound: accum snapshot gen g written+fsynced+renamed BEFORE ckpt names g (i_stream_engine.py:300-329); spill truncation to committed record counts on resume; single skip layer only (E2F-1 closure)",
+    "budget law intact: slot consumed at cell start (e_stream_run.py:374), DONE-skip reload never re-consumes (:362-373, used=max), P3 infeasible writes 0/3; no scored artifacts exist anywhere (no cells/, run_log.txt, e2_run_verdict.json, spill dirs)"
+   ]
+  },
+  "C_frozen_experiment_integrity": {
+   "status": "PASS",
+   "verified": [
+    "git diff 89748b4..HEAD --name-only: exactly 14 files under research/control/stocks_search_v1_run/e2/ + audits/a7_prelaunch_ssearch_e2.json + e2/audits/ssearch-e2-a7-prelaunch.handoff.json; diff restricted to i/, e/, s/, d1/, p0/, m0/, z/, pre-existing audits/ is EMPTY; nothing outside e2/ + the two evidence files",
+    "e2/dispatch.json code_freeze pins regenerated (12:06, after all code/artifact mtimes) and ALL SIX recomputed MATCH at HEAD (README.md 90639859..., e_stream_run.py 0f98a446..., equivalence.py 81ccddbb... unchanged, i_stream_engine.py 204f4eff..., make_dispatch.py 755f5d62... unchanged, selfcheck.py d2b76cf2...)",
+    "GO gate unbypassable, doubly enforced: (1) orchestrator SSEARCH_E2_GO_PHRASE env law exact-match refusal (e_stream_run.py:585-594, never argv, never logged; no phrase literal in any commit - git log -S clean); (2) verify_and_pin re-checks the exact phrase against i_engine.GO_PHRASE and raises GoGateRefused BEFORE verify_freeze/preflight/streaming (i_stream_engine.py:101-105); selfcheck t_go_gate re-verified PASS in this audit's tempdir rerun; non-scored modes exit before main()",
+    "no S1 access path: grep of e2/*.py clean (no network, no retrieval-code import; subprocess only for git/ps/probe-child/selfcheck-equivalence)",
+    "no scored execution in either lane commit: commit file lists contain no run/verdict/cell artifacts; worktree e2/ contains no cells/, no run_log.txt, no e2_run_verdict.json, no spill dirs; R0_NOT_RUN + PBO_NOT_RUN verbatim carried on every result path (e_stream_run.py:536-537, i_stream_engine.py adjudicate mirror)"
+   ]
+  },
+  "D_honest_labeling": {
+   "status": "PASS",
+   "verified": [
+    "E2F-3 disclosure wired into every survivor-path cell verdict: rep['dsr']['trial_set_law'] states the frozen-identical trial_sharpes=[] wiring and the structural insufficient_trials consequence (e_stream_run.py:439-442), plus the in-code law comment (:427-434); HEAD commit message discloses it",
+    "E2F-6 README corrected: comparison law now states STRICTLY bitwise/byte-equal, explicitly documents that no tolerance fallback is wired and that the previous text described an unwired 1e-12 fallback (README.md:28-39)",
+    "probe disclosure present (synthetic, names_per_second, elapsed); real-subset artifact remains booleans-only; verdict schemas unchanged and declared"
+   ]
+  }
+ },
+ "findings_closure": [
+  {
+   "id": "E2F-1",
+   "severity": "HIGH",
+   "title": "Crash-resume double-skip",
+   "closure": "CLOSED",
+   "evidence": [
+    "STRUCTURAL: stream_iter_names no longer accepts a skip parameter (i_stream_engine.py:127-155; signature has only ctx, cache_dir, max_names) - an orchestrator-level pre-skip is impossible by construction; RESUME LAW docstring :130-134 states skipping is owned exclusively by CheckpointablePassA/B",
+    "e_stream_run.py:384 and :402 pass FULL iterators (se.stream_iter_names(ctx, CACHE_DIR)) with the E2F-1 law comment at :381-383; the old skip=(ckpt names_done) expressions are deleted in the d4107d7f..880b2b8c diff",
+    "single skip layer verified consistent by construction: CheckpointablePassA.run drops the first names_done YIELDED names (:1367-1370) and increments fed per fed name (:1374); save writes names_done=fed (:1408) - counter and skip positions are defined by the same loop over the same deterministic sorted sequence, so resume is exact (parse-None names are never yielded hence never fed hence never skipped - consistent; served==0 names are yielded and fed hence skipped on resume - consistent; the old served-census skip-slot nuance is gone with the deleted code)",
+    "zero-skip edge: resume=True with names_done=0 skips nothing, consistent with fed=0 state; DONE-skip path (e_stream_run.py:362-373) never touches the skip machinery and never re-consumes a slot; pass B resume after pass A completion re-runs pass A in skip-all mode (names_done=total) with state rewritten identical - correct",
+    "regression guard present and sound: selfcheck.py:332-345 t_no_double_skip_composition (registered first at :349) asserts 'skip=(' absent from the orchestrator source, the stream_iter_names signature has no skip param, and the class-level names_done law text exists; behavioral composition remains covered by t_resume_equality which feeds the FULL iterator on resume (selfcheck.py:249)",
+    "INDEPENDENT PROBE (beyond committed tests): pass A resume composition (17 fed, names_done=17, FULL iterator) ALL BITWISE EQUAL vs uninterrupted (book_log bytes, counts, inc_expectancy, inc_nets, inc_gross, fired_dates, pit); pass B resume composition (names_done=13, FULL iterator) ALL BITWISE EQUAL (book_log, counts, inc_*, counts_cohort, reversal_stats) - pass B resume was NOT covered by the committed selfcheck; pass A DOUBLE resume (5 fed -> resume 9 -> resume FULL) ALL BITWISE EQUAL - no double-skip or zero-skip path exists"
+   ]
+  },
+  {
+   "id": "E2F-2",
+   "severity": "HIGH",
+   "title": "KeyError 'dispatch_base' at scored-launch startup",
+   "closure": "CLOSED",
+   "evidence": [
+    "grep for dispatch_base across ALL e2/ files (*.py, *.json, README.md): zero matches",
+    "the log line now reads only env['head'], env['branch'], env['code_freeze_files'] (e_stream_run.py:498-500); all three keys exist in the p0_env record (:185-191: head, branch, code_freeze_files, code_freeze_ok, branch_ok, porcelain, tracked_dirty, shadow_workers)",
+    "every env[...] access in the file traced: exactly those three; no other keyed reads",
+    "the healthy-path unconditional crash is gone; p0_env() can still raise before the try block on gate failure, but that is the fail-closed gate semantics already accepted in round 1 (no lock held, no slot consumed)"
+   ]
+  },
+  {
+   "id": "E2F-3",
+   "severity": "MEDIUM",
+   "title": "DSR wired with trial_sharpes=[] (survivor outcome structurally unreachable, undisclosed)",
+   "closure": "CLOSED",
+   "adjudication": "Keeping the frozen-identical behavior and adding ONLY the disclosure is the correct remediation under the remediation law. The frozen e/e_run.py p4 wires trial_sharpes=[] identically (e/e_run.py:493-502: trial_sharpes=[] then adjudicate.dsr_gate(cand.book_log, trial_sharpes, DSR_N_GRID, DSR_ALPHA_RELAXED, allow_scored=True)); the e2 call is argument-identical (e_stream_run.py:435-437; 47 and 0.10 verified against i/adjudicate.py:101-102). The e2 lane exists to reproduce the frozen experiment byte-for-byte; changing the DSR wiring would break frozen-identity and require new cycle authority. Round-1's own fix_direction explicitly sanctioned this alternative ('or prewrite the insufficient_trials disposition as the frozen DSR outcome for this cycle and disclose it'). A real trial-sharpe source is structurally uncomputable: plan \u00a75 bans performance for any configuration outside scored cells, and mid-run at most 2 prior cells' sharpes could exist while dsr.py's own contract demands the global N (>= len(trials); 'never just survivors') - so insufficient_trials is the only lawful disposition. Research/dsr.py:96-102 returns dsr=None insufficient_trials for <2 trials and adjudicate.py:547 derives pass=(dsr is not None and dsr >= 1-alpha) hence False - fail-closed, never a false survivor.",
+   "evidence": [
+    "diff d4107d7f..880b2b8c touches ONLY the law comment (e_stream_run.py:427-434) and adds rep['dsr']['trial_set_law'] (:439-442); the dsr_gate call and its arguments are byte-identical to the pre-remediation lane code",
+    "disclosure travels on the verdict artifact of every cell that reaches PASS_I_STAGE_PENDING_DSR_E, and in the commit message; README/dispatch-level visibility provided by the commit message and this audit's record",
+    "frozen chain untouched (item C): e/e_run.py is historical evidence, unchanged"
+   ]
+  },
+  {
+   "id": "E2F-4",
+   "severity": "LOW",
+   "title": "as_included break-even inputs primary-only",
+   "closure": "CLOSED",
+   "evidence": [
+    "cens spill is now a 6-tuple (FOLD_CODE, net, entry_yyyymmdd, exit_yyyymmdd, gross, band_code) - i_stream_engine.py:356-370; finalize reshapes (-1,6) (:417-421) and builds stats.inc_gross/inc_band_codes = primary concat censored (:433-439), else-branch carries primary arrays (:446-447); BookStats fields :528-529",
+    "as_included now passes gross=stats.inc_gross, band_codes=stats.inc_band_codes (i_stream_engine.py:1102-1103)",
+    "reference semantic confirmed by reading i/i_engine.py:712-731 include_censored_nets: extra death_open legs carry lg.gross and lg.band appended after all primary legs - exactly what the sextuple+concat now reproduces",
+    "INDEPENDENT BITWISE PROBE: on all 3 frozen cells (24-name death-heavy synthetic cohort over the real SPY calendar/folds), the candidate BookStats.inc_gross/inc_band_codes are BITWISE equal (tobytes) to the reference included-legs gross/band arrays (36/185/181 censored legs incl. death_open), and se.break_even_margin(se.as_included(sb)) == adjudicate.break_even_margin(inc_ref) as full dicts (break_even_bps_per_fill, operative_stress_bps_per_fill, margin_bps)",
+    "artifact regeneration AFTER the change verified: mtimes i_stream_engine.py 10:56 < equivalence real_subset 11:03 / synthetic 11:22 / detached 11:57 < dispatch pins 12:06; content byte-identity to the d4107d7f artifacts is verified-consistent because the changed quantities are outside equivalence.py's compared/persisted surface (compare() :289-382, main() :391-434 persist booleans+labels only; series_sha256 hashes book_log only :531-535)"
+   ],
+   "residual_note_non_finding": "Non-candidate books hold gross=None by the pre-existing keep_spy RAM-bounding design (i_stream_engine.py:406-414 'candidate-only aligned arrays'), so their INCLUDED views still yield nan break-even. This is IDENTICAL pre- and post-remediation (as_included read stats.gross which was already None for those books before the fix), changes no verdict/persisted byte (break-even numbers are live-only; _gate_summary keeps pass/not_adjudicable; ordered_kills never reads gross/band_codes), and round-1 itself recorded E2F-4 as 'no observable effect'. Not a regression, not worsened, recorded here for the record."
+  },
+  {
+   "id": "E2F-5",
+   "severity": "LOW",
+   "title": "Checkpoint JSON lacks fsync",
+   "closure": "CLOSED",
+   "evidence": [
+    "_atomic_json now writes via open()/write()/flush()/os.fsync(fileno()) then os.replace (i_stream_engine.py:1268-1277); visible in the d4107d7f..880b2b8c diff; os already imported"
+   ]
+  },
+  {
+   "id": "E2F-6",
+   "severity": "LOW",
+   "title": "README described an unwired 1e-12 tolerance fallback",
+   "closure": "CLOSED",
+   "evidence": [
+    "README.md comparison-law section (:28-39) now states the comparison is STRICTLY bitwise/byte-equal, that a mismatch anywhere is FAIL never auto-passed, and explicitly documents that the previously described 1e-12 fallback was never wired (citing A7 E2F-6); determinism law restated bit-identical",
+    "as scoped in round-1 (evidence cited README.md:34-37), this closes the finding; the same mismatch class survives INSIDE equivalence.py itself - recorded as NEW finding E2F-7 LOW below"
+   ]
+  }
+ ],
+ "new_findings": [
+  {
+   "id": "E2F-7",
+   "severity": "LOW",
+   "title": "equivalence.py module docstring and its emitted verdict field still advertise the unwired tolerance fallback (same class as E2F-6, different location; documentation/field-text vs code mismatch in the stricter direction)",
+   "evidence": "e2/equivalence.py:16-21 docstring: 'A preregistered fallback tolerance |delta| <= 1e-12 relative on aggregate scalars exists ONLY as a disclosed TOLERANCE_PASS' - but no fallback is wired (TOL_REL :65 and _close :281-286 are defined and never called by compare() :289-382; no TOLERANCE_PASS can ever be emitted); the emitted artifact carries 'tolerance_preregistered': {'relative': 1e-12, 'role': 'disclosed fallback only; primary gate is bitwise'} (equivalence.py:393-395, present in all three committed verdict files). The field does name the bitwise primary gate, and the README now states the truth; residual is text-only with zero behavior effect.",
+   "impact": "none on behavior, verdicts, or evidence validity; recorded so the next artifact regeneration aligns the docstring/field text with the strictly-bitwise law (delete the fallback sentences; the field may stay if reworded 'no fallback wired; primary and only gate is bitwise')",
+   "blocking": false
+  }
+ ],
+ "non_finding_notes": [
+  "BookStats.free_arrays does not null inc_gross/inc_band_codes (i_stream_engine.py:536-539) - trivial: bounded per-book arrays (n_legs+censored floats), 7 books per cell, freed with the stats dict at cell end; no resource-law relevance",
+  "non-candidate included-view gross=None residual - documented under E2F-4 residual_note_non_finding (pre-existing, unchanged, verdict-neutral)"
+ ],
+ "delta_scope_rechecks": {
+  "diff_scope": "git diff 89748b4..HEAD --name-only: 14 files all under research/control/stocks_search_v1_run/e2/ PLUS audits/a7_prelaunch_ssearch_e2.json and e2/audits/ssearch-e2-a7-prelaunch.handoff.json; restricted-to-frozen-dirs diff EMPTY (i/, e/, s/, d1/, p0/, m0/, z/, pre-existing audits/); plans/ untouched; tracked tree clean at HEAD",
+  "dispatch_pins": "all six code_freeze sha256 pins in e2/dispatch.json recomputed MATCH against HEAD files (pins regenerated 12:06, after the last code/artifact mtime 11:57)",
+  "equivalence_artifacts": "3 files all pass=true, 3/3 runs, zero false booleans; synthetic == detached byte-identical (4aaf7bd9b202f00c268d9b2eca613c4ceec1b54f119eb7ca4c1c2c5f41bc4a9d); real_subset 4af34f9da8cadff69a81d68ea7ff65e69156a130970eec4060ab8278e220e1a5 booleans-only; content byte-identical to d4107d7f versions AND mtime-proven regenerated after the E2F-4 change (see item A)",
+  "selfcheck": "committed verdict 11/11 PASS incl. e2f1_no_double_skip; INDEPENDENTLY re-run by this audit in a tempdir mirror (copied e2 py files, symlinked frozen i/p0/s/d1; verdict written to tempdir only): rc=0, 11/11 PASS on HEAD code",
+  "go_gate": "unbypassable, doubly enforced (env exact-match :585-594 + verify_and_pin re-check before freeze/preflight/streaming :101-105); no phrase literal in any commit; paraphrase refusal re-verified via selfcheck t_go_gate PASS in this audit's rerun",
+  "s1_and_scored": "no S1 access paths in e2/*.py; no GO phrase value anywhere; no scored-run artifacts committed or present in the worktree (no cells/, run_log.txt, e2_run_verdict.json, spill dirs); budget law 0/3 intact in code; NO scored execution performed by this audit either (GO phrase never set, heavy lock never taken)"
+ },
+ "what_this_audit_ran": [
+  "READ-ONLY git: rev-parse, status, log, diff 89748b4..HEAD (full + frozen-dirs restricted), diff d4107d7f..880b2b8c (full delta), show, log -S phrase scan",
+  "line-by-line reading of the delta diff and of HEAD: e2/e_stream_run.py (full), e2/i_stream_engine.py (stream_iter_names, SpillWriter, BookAcc add_legs/finalize/save_checkpoint, BookStats, break_even_margin, ordered_kills, stage_a_gates, _gate_summary, as_included, _invariant_rerun, adjudicate_candidate_stream, CheckpointablePassA/B, _atomic_json, verify_and_pin), e2/equivalence.py (full), e2/selfcheck.py (full), e2/README.md, e2/dispatch.json, i/i_engine.py include_censored_nets + path constants, i/adjudicate.py break_even_margin/DSR constants/dsr_gate, i/e_run.py p4, research/dsr.py, round-1 verdict artifact, round-1 handoff artifact",
+  "sha256 recomputation: 6 dispatch pins, 3 equivalence verdicts, selfcheck verdict, probe json, dispatch.json; byte-identity checks vs d4107d7f blobs via git show; working-tree mtime inspection of all e2 artifacts for the regeneration timeline",
+  "RUN #1 (tempdir mirror, no repo writes): the committed selfcheck suite end-to-end on HEAD code - 11/11 PASS rc=0",
+  "RUN #2 (tempdir fixtures only, no repo writes, no GO, no lock): this auditor's own bounded equivalence + E2F-4 probe - 24-name death-heavy synthetic cohort over the REAL SPY calendar/folds, all 3 frozen cells: reference vs streaming canonical verdict JSON BITWISE equal x3 (R1/R2 binding rules exercised); candidate inc_gross/inc_band_codes bitwise == reference included-legs arrays x3; candidate included-view break-even dicts equal x3",
+  "RUN #3 (tempdir fixtures only): this auditor's own E2F-1 resume-composition probe - pass A single resume, pass B single resume (not covered by committed tests), pass A DOUBLE resume; ALL BITWISE EQUAL vs uninterrupted runs",
+  "NOT run: the full ~40-min committed --synthetic equivalence rerun and --real-subset rerun (committed artifacts verified by digest/mtime/surface-analysis plus the independent probes above deemed sufficient); the real-cohort streaming path; any scored execution; SSEARCH_E2_GO_PHRASE never set; heavy lock never taken; nothing written outside the two allowed audit/handoff files and system temp"
+ ],
+ "conditions_carried_into_go": [],
+ "outstanding_high_critical": 0,
+ "overall": "AUTHORIZED_PRELAUNCH"
+}
