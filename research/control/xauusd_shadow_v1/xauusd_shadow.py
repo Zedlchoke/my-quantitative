@@ -173,8 +173,13 @@ class SleeveEngine:
             return None
         last_conf = max(x[0] for x in all_lv)
         cands = [x for x in all_lv if x[0] == last_conf]
-        kind, lv = max(
-            cands, key=lambda x: abs(x[2] - close))
+        # 2026-09-21 owner-ordered remediation: swing_levels yields
+        # (confirm_index, kind, level) 3-tuples; the previous
+        # ``kind, lv = max(...)`` unpack raised ValueError the moment a
+        # bar passed the volatility floor, so the ENTRY path could NEVER
+        # execute (proven on real bars: first eligible bar 1980-11-10
+        # crashed the replay). Semantics UNCHANGED — only the unpack.
+        _, kind, lv = max(cands, key=lambda x: abs(x[2] - close))
         if abs(close - lv) > 0.3 * atr:
             return None
         if kind == "low" and close >= lv and e9 > e21:
