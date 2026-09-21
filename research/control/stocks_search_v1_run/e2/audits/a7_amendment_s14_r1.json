@@ -1,0 +1,112 @@
+{
+  "schema": "a7_amendment_s14@1",
+  "cycle_id": "STOCKS-SEARCH-V1",
+  "audit": "A7 independent fresh-context DELTA re-audit r1 — amendment §14 DEGENERATE_ADJ_PRICE",
+  "audited_state": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+    "head": "5de568db8dc3f8fcb460d9cc35b972f184ae2c07",
+    "parent_chain": "694c15b1 (pre-amendment lane) -> 5de568db (amendment impl)",
+    "plan_section": "/Users/hoangminhlong/my-quantitative/plans/PLAN_stocks_search_v1.md §14 (committed root repo 50c5778b)",
+    "utc_note": "audit executed 2026-09-21; read-only recomputation only; no heavy lock, no scored execution, no S1"
+  },
+  "items": {
+    "1_plan_law_matches_implementation": {
+      "status": "FAIL",
+      "evidence": [
+        "§14 frozen law: a leg whose ACTUAL price window [entry_i, eff_exit] ('the sessions the frozen execution engine would actually touch for gross and log slices, under its own fold force-flat / death branches') containing any non-positive adjusted open is UNPRICEABLE, kind unpriceable_adj_price, no marks, counted separately in the cell verdict's censored-leg disclosure",
+        "i_amended_legs.py L96-103: the §14 branch sits only after eff_exit resolution on the priced path and covers exactly op[entry_i..eff_exit] (probe-verified touch-set equality with the frozen log-slice/gross reads)",
+        "i_amended_legs.py L78 vs frozen i_engine.py L621: the death_open branch computes gross = float(op[n-1]) / float(op[entry_i]) - 1.0 BEFORE any §14 check and is byte-identical to frozen — death-branch legs are NOT covered by the unpriceable law",
+        "probe case E (synthetic death_open leg, zero open at entry): BOTH frozen and amended raise ZeroDivisionError — a demonstrated residual crash path on the scored run (the exact arithmetic op[exit]/op[entry]-1 that §14 names as the pathology it pre-registers handling)",
+        "probe case F (zero open at the death session): both engines emit kind=death_open with gross=-1.0 — NOT reclassified unpriceable; that mark spills to the cens writer and enters the BC-7 included-at-marks variant, contrary to 'no marks exist for it'"
+      ],
+      "note": "The law's window parenthetical names 'death branches'; under its plain reading death_open legs with non-positive opens in their touch set must be recorded unpriceable_adj_price. The implementation under-covers the frozen law on this branch. The observed production crash (log-slice site) IS covered; the death-site exposure is unobserved but reachable (54/3000 measured zero-open names; death legs common)."
+    },
+    "2_copy_discipline": {
+      "status": "PASS",
+      "evidence": [
+        "Mechanical line-diff: i_engine.py L558-648 (frozen build_legs) vs i_amended_legs.py L15-117 (build_legs_amended) — unified diff shows EXACTLY two deltas: (a) def name build_legs -> build_legs_amended; (b) the 12-line §14 branch (comment + np.any(op[entry_i:eff_exit+1] <= 0.0) censor + counts.get increment). Zero other drift: signature, counts-init dict, subfloor/died_before_entry/fold_not_opened/death_zero_length/death_open/force-flat/gross/net/log-slice lines all line-identical",
+        "Module imports (math, numpy, from i_engine import Leg/NameData/load_p0_lib/med252_series) are the new module's own and within the permitted difference class"
+      ]
+    },
+    "3_wiring_censoring_accounting": {
+      "status": "PASS",
+      "findings_ref": ["A7S14-2"],
+      "evidence": [
+        "git diff 694c15b1..HEAD i_stream_engine.py: exactly +1 import (i_amended_legs) and 5 call-site switches to build_legs_amended — pass A candidate/c_complement/r5_component (L1225) and c_delay_h entry_offset=1+H (L1229), pass B c_random_timing (L1250) / c_cal_hist (L1255) / c_reversal_plain (L1262). GO gate (verify_and_pin), spill, checkpoint and RSS machinery untouched",
+        "BookAcc.add_legs (i_stream_engine.py L334-371): merges every counts key (incl. censored_unpriceable_adj_price), increments n_censored and adds every censored_kind to censored_kinds; the cens writer spills ONLY kind==death_open (L362) — unpriceable legs (gross=NaN, no log_slices) can never enter nets, inc_expectancy, inc_spy, inc_gross or inc_band_codes; as_included/as adjudicate_candidate_stream consume only inc_* fields",
+        "stage_a_gates death_censoring_accounting (L1071-1078): censored_legs = cand.n_censored, kinds = list(cand.censored_kinds) — dynamic, carries the new kind",
+        "KIND_CODE/KIND_NAME (L85-86) defined but never used anywhere in e2/*.py — no KeyError surface for the new kind",
+        "BUT: _gate_summary (i_stream_engine.py L1086-1090, frozen-identical to i/adjudicate.py L417-420) strips death_censoring_accounting from the persisted stage_a.gates, and rep (cell_verdict.json) carries no counts/kinds anywhere — see finding A7S14-2"
+      ]
+    },
+    "4_injection_evidence": {
+      "status": "PASS",
+      "findings_ref": ["A7S14-3"],
+      "evidence": [
+        "Committed injection test is claim-only (commit message 5de568db); no committed test/artifact exercises the zero-open path (selfcheck.py has no such case; selfcheck 11/11 PASS regenerated 14:28 local but does not cover the amendment)",
+        "A7 OWN fresh synthetic probe (/tmp/a7_probe_s14.py, run 2026-09-21 against the committed bytes): case A zero mid-window -> frozen ValueError('math domain error') at the log-slice (matches the production crash byte-for-byte), amended censors EXACTLY 1 leg kind=unpriceable_adj_price with counts key censored_unpriceable_adj_price=1, gross/net NaN, no log_slices; case B zero exactly at eff_exit -> same censoring; case C zero at entry -> frozen ZeroDivisionError, amended censors; case D clean name -> amended legs bitwise == frozen on decisions exercising natural exit, F3 and clean windows (fields, gross/net bit-equality, force_flat, log_slices, counts)"
+      ]
+    },
+    "5_resume_validity": {
+      "status": "PASS",
+      "evidence": [
+        "Crash traceback (e2_run_verdict.json failure_record + run_log.txt 06:50:23Z): ValueError('math domain error') at i_engine.py L644 slices.append((ci, math.log(float(op[d+1]) / float(op[d])))) via pass_a_feed_name -> i_engine.build_legs (candidate book, pass A) — i.e. the frozen engine raised AT THE FIRST zero-open touch on the INCLUDED path, the exact site the §14 branch now guards",
+        "Checkpoint cells/SSS-GAP-P25-CONFIRM-H1/ckpt_pass_a.json: names_done=768, gen=3; all four pass-A books have cens record count 0 and candidate counts censored_death_open=0 (71 censored legs of kinds died_before_entry/death_zero_length only, all byte-identical between old and amended engines)",
+        "Touch-set equality: any non-positive open inside a priced window [entry_i, eff_exit] forces a frozen raise (gross /0 at entry, log(0)/log(<0) anywhere else — probe cases A/B/C) — therefore the crash-free 768-name prefix contains ZERO unpriceable-classifiable windows, and on the death branch old and amended are byte-identical. Frozen-produced checkpoint state == amended-engine state for the prefix; resume skips exactly 768 names and re-feeds name #769 under amended law",
+        "VERDICT: cell-1 resume under the amended engine is EXACT (bitwise) on the checkpoint prefix"
+      ]
+    },
+    "6_equivalence_artifacts": {
+      "status": "PASS",
+      "evidence": [
+        "equivalence_verdict_synthetic.json: pass=true, 3/3 cells (SSS-GAP-P25-CONFIRM-H1, SSS-52W-HIGH-B10-H20, SSS-VOL-REGIME-L21-LOW-H20), every per-book check true (bitwise: expectancy/fold_expectancy/inc_*/book_log_bits/series_sha/counts/n_censored/n_legs; determinism + mirror verdict JSON equal); mtime 14:25:52 local — regenerated AFTER the amended code (14:02) via stream_cell_pass_a/b which feed build_legs_amended",
+        "equivalence_verdict_real_subset.json: the rerun that was 'running' at commit time is NOW COMPLETE — pass=true 3/3 cells real_subset_k40, all checks true; /tmp/eq_rs3.log final line 'verdict -> ... pass=True'; file mtime 14:30:42 local (07:30:42Z, ~2 min post-commit); no equivalence/e_stream process running at check time",
+        "Scope note: equivalence runs on zero-open-free data (a zero-open name in the reference set would have crashed the frozen reference side), so it proves no-drift on clean data only; amendment semantics rest on item 4 probe evidence"
+      ]
+    },
+    "7_frozen_chain_integrity": {
+      "status": "PASS",
+      "evidence": [
+        "git diff 694c15b1..HEAD (worktree): exactly 4 files, all under e2/ — dispatch.json (pins only: 3 updated + 1 added = 7 files), i_amended_legs.py (new, A), i_stream_engine.py (11-line wiring), make_dispatch.py (FILES list + i_amended_legs.py)",
+        "e_stream_run.py, selfcheck.py, equivalence.py, README.md byte-unchanged (hashes identical in dispatch diff context); GO gate (SSEARCH_E2_GO_PHRASE exact-phrase, verify_and_pin re-check), P0 env gate, P2 data-plane preflight, P1 heavy lock, RSS interlocks: untouched — no gate weakening",
+        "Plan §14 committed in the ROOT repo (50c5778b 'amendment: STOCKS-SEARCH-V1 §14 owner decision (A) — DEGENERATE_ADJ_PRICE censored-leg law pre-registered ... fresh GO required'); worktree and plan are separate checkouts as scoped"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "A7S14-1",
+      "severity": "HIGH",
+      "title": "§14 unpriceable law does not cover the death_open branch — demonstrated residual ZeroDivisionError crash path and spurious -1.0 mark into the BC-7 invariance rerun",
+      "detail": "The §14 branch guards only the priced (natural/force-flat) path. The death_open branch (i_amended_legs.py L78, byte-identical to frozen i_engine.py L621) computes op[n-1]/op[entry_i]-1 before any §14 check. (a) A zero adjusted open at a death_open leg's entry raises ZeroDivisionError in the AMENDED engine too (probe case E) — the scored run would TECHABORT again mid-cell with that cell's budget slot already consumed (used incremented at cell START, e_stream_run.py L374); this is fail-closed (no invalid result) but defeats the amendment's declared purpose on one of the two gross-arithmetic sites §14 itself names. (b) A zero at the death-session open yields a death_open leg with gross=-1.0 (probe case F) which spills to cens and enters the included-at-marks variant, contrary to §14's 'no marks exist for it'. §14's window definition ('under its own fold force-flat / death branches') plainly includes death-branch touches; a narrower reading (eff_exit only exists on the priced path; death legs already BC-7 censored) is defensible but renders the law's 'death branches' words surplusage — the choice between readings is the OWNER's, not the implementer's.",
+      "required_action": "Owner adjudication BEFORE any fresh GO: either (i) extend the amendment so the unpriceable check also covers the death_open gross site (classify death-branch legs whose touch set contains a non-positive open as unpriceable_adj_price — still fail-closed, still 'the one law'), then fresh-context A7 re-audit; or (ii) explicitly narrow the frozen §14 text (death legs remain death_open; residual crash risk accepted and disclosed as a possible third TECHABORT with one budget slot consumed). Fresh exact owner GO (P-8) required after either path. Registered GO precondition 'fresh-context A7 zero-unresolved-HIGH/CRITICAL' (e_stream_run.py docstring) is currently NOT met."
+    },
+    {
+      "id": "A7S14-2",
+      "severity": "MEDIUM",
+      "title": "§14 unpriceable count will NOT appear in the persisted cell verdict's censored-leg disclosure",
+      "detail": "§14 requires the new kind 'counted separately in the cell verdict's censored-leg disclosure' and 'Exact affected-leg counts are emitted by the run itself'. The mirror computes the disclosure (death_censoring_accounting: censored_legs + kinds, dynamic) and the counts dict carries censored_unpriceable_adj_price, but _gate_summary — frozen-inherited, byte-identical in i/adjudicate.py — strips that gate from the persisted stage_a.gates, and adjudicate_candidate_stream/e_stream_run p4 persist neither counts nor censored_kinds in cell_verdict.json. The count remains recoverable only from the per-book checkpoint npz (counts_json / censored_kinds_json of <book>__accum_genN.npz), not from the verdict artifact the law names. Frozen-inherited behavior (both paths identical), no numeric effect; one-line fix (persist sa['gates']['death_censoring_accounting'] or BookStats.counts/censored_kinds into rep).",
+      "required_action": "Remediate pre-GO (preferred, trivial) or obtain owner waiver of the disclosure-location mismatch."
+    },
+    {
+      "id": "A7S14-3",
+      "severity": "LOW",
+      "title": "Committed injection-test evidence is claim-only",
+      "detail": "The 'injection test PASS (zero-open name: exactly 1 leg censored unpriceable_adj_price, clean legs bitwise == frozen)' claim exists only in the 5de568db commit message; no committed test or artifact exercises the zero-open path (selfcheck.py's 11 checks predate the amendment). A7's own fresh probe independently reproduced and CONFIRMED the claimed semantics on the committed bytes (cases A-D), so the evidence gap is provenance-only, not substantive.",
+      "required_action": "Post-GO hardening: fold the zero-open injection case into selfcheck.py so the regression is permanent."
+    },
+    {
+      "id": "A7S14-4",
+      "severity": "INFO",
+      "title": "Observations, no action required pre-GO",
+      "detail": "(a) NaN adjusted opens are outside the §14 law ('non-positive') and outside its implementation (op <= 0.0 is False for NaN): a NaN open in a priced window would silently produce NaN gross/net in an INCLUDED leg — judged unreachable under the committed parser/JSON data plane, disclosed for completeness. (b) KIND_CODE in i_stream_engine.py is a dead pre-existing constant. (c) Budget accounting for the crashed cell-1 attempt (e2_run_verdict.json stop_condition TECHABORT; §14 records 'budget remains 0/3 per the first-launch precedent') is owner-adjudicated territory and not re-litigated here."
+    }
+  ],
+  "overall": "BLOCKED",
+  "overall_basis": "One unresolved HIGH (A7S14-1): the implementation does not fully implement the frozen §14 law on the death branch and carries a demonstrated residual crash path on the scored run; the registered GO precondition (fresh-context A7 zero-unresolved-HIGH/CRITICAL) is not met. Items 2 (copy discipline), 3 (wiring), 4 (injection semantics, via A7's own probe), 5 (resume exactness), 6 (equivalence synthetic + real-subset, both complete PASS x3 bitwise as of this check), and 7 (frozen-chain integrity) are PASS.",
+  "auditor": "A7 fresh-context delta auditor (independent)",
+  "artifacts": {
+    "audit_file": "research/control/stocks_search_v1_run/e2/audits/a7_amendment_s14_r1.json",
+    "probe_script": "/tmp/a7_probe_s14.py (scratch, outside the repo; repo untouched except this audit file)"
+  }
+}

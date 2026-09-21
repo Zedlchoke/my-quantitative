@@ -75,6 +75,18 @@ def build_legs_amended(name: NameData, decision_idx, H: int, calendar_index: dic
                 censored.append(lg)
                 counts["censored_death_zero_length"] += 1
                 continue
+            # §14 A7S14-1: the DEATH-OPEN price window is inside the
+            # amendment's law — non-positive entry/death open makes the
+            # leg UNPRICEABLE (censored, no marks), never a division or
+            # a garbage -100% gross into the included-at-marks variant.
+            if float(op[entry_i]) <= 0.0 or float(op[n - 1]) <= 0.0:
+                lg = Leg(name.symbol, t, d_t, entry_date, dates[n - 1],
+                         fold, band, math.nan, math.nan, censored=True,
+                         censored_kind="unpriceable_adj_price")
+                censored.append(lg)
+                counts["censored_unpriceable_adj_price"] = \
+                    counts.get("censored_unpriceable_adj_price", 0) + 1
+                continue
             gross = float(op[n - 1]) / float(op[entry_i]) - 1.0
             lg = Leg(name.symbol, t, d_t, entry_date, dates[n - 1], fold,
                      band, gross, math.nan, censored=True,
