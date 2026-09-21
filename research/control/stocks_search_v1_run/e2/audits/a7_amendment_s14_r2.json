@@ -1,0 +1,91 @@
+{
+  "schema": "a7_amendment_s14@1",
+  "cycle_id": "STOCKS-SEARCH-V1",
+  "audit": "A7 independent fresh-context DELTA re-audit r2 — §14 DEGENERATE_ADJ_PRICE remediation (A7S14-1/2/3)",
+  "audited_state": {
+    "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/stocks-search-v1/integration",
+    "head": "d6df99dec1ab1b6571315aa46a26b7ccb922dd10",
+    "parent_chain": "5de568db (r1-audited amendment) -> d1a6a53e (remediation) -> d6df99de (verified probe + disclosure correction)",
+    "prior_verdict": "BLOCKED (a7_amendment_s14_r1.json, HEAD 5de568db)",
+    "utc_note": "audit executed 2026-09-21; read-only recomputation only; no heavy lock, no scored execution, no S1; scratch probes under /tmp only"
+  },
+  "items": {
+    "a_copy_discipline_rediff": {
+      "status": "PASS",
+      "evidence": [
+        "Mechanical line-diff i_engine.py L558-648 (frozen build_legs) vs i_amended_legs.py L15-129 (build_legs_amended): unified diff shows EXACTLY three deltas — (1) def rename, (2) death-branch §14 guard (12 lines: non-positive float(op[entry_i]) or float(op[n-1]) -> unpriceable_adj_price BEFORE the gross division), (3) priced-path §14 branch (unchanged from r1). Zero other drift; all shared lines line-identical",
+        "Death-guard semantics match the §14 touch-set law exactly: the death branch touches only op[entry_i] and op[n-1] (gross-only, no log slices on censored legs), and the guard tests exactly those two — probe case E-middle confirms a middle-session zero on a death leg is NOT over-censored (stays death_open with the valid gross mark, byte-equal to frozen)"
+      ]
+    },
+    "b_probes": {
+      "status": "PASS",
+      "evidence": [
+        "Committed probe e2/audits/PROBE_a7s14_1.py re-run by A7 (band-law-valid geometry t=440/n=460): 'A7S14-1 PROBE PASS', rc=0 — E-mode entry-open zero -> unpriceable, F-mode death-open zero -> unpriceable, healthy death_open intact",
+        "A7 OWN adversarial probe (/tmp/a7_probe_s14_r2.py): 23/23 PASS — (A) zero at force-flat eff_exit: frozen ValueError / amended unpriceable; (B) zero at entry with force-flat: frozen ZeroDivisionError / amended unpriceable; (C) bands A/B/C variety: clean-leg net exact vs BAND_BPS {10,15,25} x stress 2.0 and zero-window censoring band-independent; (D) negative opens: mid priced window (frozen crashes / amended unpriceable) and death-session (frozen silently keeps garbage gross -1.01 / amended unpriceable); (E) death guard: healthy death_open intact, entry/death zeros unpriceable, middle-session zero NOT over-censored; (F) r1 priced-path regression cases all hold + clean-name bitwise equality multi-decision; (G) BookAcc end-to-end: counts key merged (==2), censored_kinds carries the new kind, n_censored==2, cens spill EMPTY (no unpriceable marks), included variant == primary"
+      ]
+    },
+    "c_verdict_surface_count": {
+      "status": "FAIL",
+      "findings_ref": ["A7S14-5"],
+      "evidence": [
+        "The count IS surfaced: i_stream_engine.py adjudicate_candidate_stream result now carries unpriceable_adj_price_legs {candidate: counts.get('censored_unpriceable_adj_price', 0), law verbatim}; rep flows to cell_verdict.json in p4 (unchanged); BookAcc flow proven by probe case G",
+        "BUT the field is added INSIDE the adjudication mirror, whose registered law is byte-equality with the FROZEN adjudicate.adjudicate_candidate verdict (equivalence.py checks mirror_verdict_json_equal and stream_verdict_json_equal on canonical JSON). The frozen adjudicate.py (unchanged, confirmed by grep) has no such field — see item equivalence_certification"
+      ]
+    },
+    "d_go_gate_and_pins": {
+      "status": "PASS",
+      "evidence": [
+        "dispatch.json code_freeze RECOMPUTED against current file bytes: 7/7 MATCH (README, e_stream_run, equivalence, i_amended_legs, i_stream_engine, make_dispatch, selfcheck) — the r2-request staleness worry is resolved: dispatch.json and i_stream_engine.py were both finalized in d1a6a53e; pins match HEAD bytes as of this audit",
+        "e_stream_run.py byte-unchanged since 5de568db (not in 5de568db..HEAD; pin MATCH) — GO gate (SSEARCH_E2_GO_PHRASE exact-phrase, verify_and_pin re-check), P0 env gate, P2 preflight, P1 lock, RSS interlocks untouched; selfcheck.py/equivalence.py untouched",
+        "git diff 5de568db..HEAD: exactly 5 paths — i_amended_legs.py, i_stream_engine.py, dispatch.json, e2/audits/PROBE_a7s14_1.py (new), e2/audits/a7_amendment_s14_r1.json (the r1 audit, committed as evidence); frozen chain i/ untouched"
+      ]
+    },
+    "equivalence_certification": {
+      "status": "FAIL",
+      "findings_ref": ["A7S14-5"],
+      "evidence": [
+        "Decisive minimal-fixture test run by A7 (real SPY calendar, 8-name synthetic cohort, cell SSS-GAP-P25-CONFIRM-H1, mirror-only path): ref_report (frozen adjudicate.adjudicate_candidate) has NO unpriceable_adj_price_legs key; mirror_report (adjudicate_candidate_stream, current HEAD) HAS it; canonical-JSON equality — the exact expression equivalence.compare() gates on — computes FALSE; keys only in mirror: ['unpriceable_adj_price_legs']",
+        "mtimes: equivalence_verdict_synthetic.json 14:25:52 and equivalence_verdict_real_subset.json 14:30:42 local, i_stream_engine.py rewritten 14:48:53 — the committed PASS x3 artifacts were produced by PRE-surface bytes and therefore do not certify HEAD",
+        "Numerics are unaffected: the fix's only behavioral delta vs the r1-audited engine is the death-branch guard (probe-verified exact), and both equivalence fixtures are zero-open-free (synthetic opens are 100*exp(...) > 0 by generator construction; A7 scanned all 41 real-subset fixture names' full adj_open arrays: ZERO non-positive/non-finite values) — so a fresh run fails ONLY on the verdict-schema asymmetry, never on numbers",
+        "Consequence: the registered pre-scoring verification gate ('THE pre-scoring verification gate', equivalence.py docstring; part of the GO precondition) currently fails by construction on HEAD; there is NO committed artifact certifying the current bytes against the frozen reference"
+      ]
+    },
+    "disclosure_honesty": {
+      "status": "PASS",
+      "findings_ref": ["A7S14-4"],
+      "evidence": [
+        "d1a6a53e's commit message claimed the probes PASS before they ran (first attempts band-law-invalid / wrong death geometry); d6df99de discloses the correction explicitly and carries the verified runnable probe — A7 independently re-ran it: PASS. Self-corrected, disclosed, and independently reproduced; recorded as LOW process finding"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "A7S14-5",
+      "severity": "HIGH",
+      "title": "A7S14-2 fix broke the adjudication-mirror byte-equality law: committed equivalence PASS x3 does not certify HEAD; a fresh equivalence run fails by construction",
+      "detail": "Surfacing unpriceable_adj_price_legs INSIDE adjudicate_candidate_stream's result dict (i_stream_engine.py, d1a6a53e) adds a key the frozen adjudicate.adjudicate_candidate verdict does not have, violating the mirror law (mirror verdict must equal the frozen adjudication verdict byte-for-byte). equivalence.compare() gates on exactly that equality (mirror_verdict_json_equal, stream_verdict_json_equal): A7's minimal-fixture run computes False. The committed equivalence verdicts (PASS x3, synthetic + real_subset_k40) pre-date the surface change (mtimes 14:25/14:30 vs code 14:48:53) and certify only the pre-surface engine; no committed artifact certifies the current bytes. Numerics proven unaffected (death-branch guard exact per 23-check probe; both fixtures zero-open-free by scan/generator), so the failure is schema-only — but the GO precondition 'equivalence PASS' is not met by any artifact for HEAD.",
+      "required_action": "Move the surface OUT of the mirrored verdict: revert the 5-line addition in adjudicate_candidate_stream (restores byte-equality with the frozen verdict) and instead surface the count in e_stream_run.p4 after rep = adjudicate_candidate_stream(...), e.g. rep['unpriceable_adj_price_legs'] = int(stats['candidate'].counts.get('censored_unpriceable_adj_price', 0)) + the same law verbatim — the count still lands in cell_verdict.json (A7S14-2 stays closed). Then re-run equivalence (both modes; with the numerics unchanged the verdict files must regenerate byte-identical PASS), regenerate dispatch pins for the changed file(s), and commit fresh artifacts. Fresh A7 delta spot-check (this file's items a/c/equivalence only) before owner GO."
+    },
+    {
+      "id": "A7S14-4",
+      "severity": "LOW",
+      "title": "Claim-before-run in commit d1a6a53e message (self-corrected in d6df99de)",
+      "detail": "The d1a6a53e message asserted probe PASS before the probes actually ran; d6df99de discloses the correction with the verified runnable probe. A7 independently re-ran the committed probe: PASS. No artifact-level false evidence persists uncorrected; process finding only.",
+      "required_action": "None beyond the standing rule: evidence claims in commit messages must reference artifacts that already exist at claim time."
+    },
+    {
+      "id": "A7S14-6",
+      "severity": "INFO",
+      "title": "Correction to the 'unaffected by construction' equivalence reasoning (conclusion holds, stated reasoning imprecise)",
+      "detail": "The claim 'the death-branch fix only affects legs the frozen engine would have crashed on' is not generally true: the frozen engine SURVIVES a zero death-session open (produces death_open gross=-1.0, no crash) — the fix changes exactly such legs to unpriceable. The conclusion still holds for the committed fixtures because BOTH are zero-open-free as a measured fact: synthetic opens are 100*exp(random walk)*(1+gap) > 0 by generator construction (equivalence.py L142-150), and A7 scanned all 41 real-subset fixture names' complete adj_open arrays finding ZERO non-positive/non-finite values. Post-fix amended == pre-fix amended == frozen on both fixtures, so the committed PASS numerics carry over — contingent on A7S14-5's schema fix restoring verdict equality.",
+      "required_action": "None (adjudication note)."
+    }
+  ],
+  "overall": "BLOCKED",
+  "overall_basis": "One unresolved HIGH (A7S14-5): the equivalence gate — a registered GO precondition — fails by construction on HEAD (mirror-law violation introduced by the A7S14-2 surface placement) and the committed PASS x3 artifacts certify only the pre-surface bytes. Everything else the remediation touched is verified exact: copy discipline (rename + two §14 guards, nothing else), death-branch and priced-path semantics (committed probe re-run PASS + 23/23 adversarial checks incl. band variety, force-flat zeros, negative opens, touch-set precision, clean bitwise equality, BookAcc end-to-end), dispatch pins 7/7 MATCH current bytes, GO gate and frozen chain untouched. Remediation is a one-line surface move + equivalence re-run + pin regen + fresh A7 spot-check, then exact owner GO (P-8).",
+  "auditor": "A7 fresh-context delta auditor (independent, r2)",
+  "artifacts": {
+    "audit_file": "research/control/stocks_search_v1_run/e2/audits/a7_amendment_s14_r2.json",
+    "probe_scripts": "/tmp/a7_probe_s14_r2.py (A7 scratch; repo untouched except this audit file)"
+  }
+}

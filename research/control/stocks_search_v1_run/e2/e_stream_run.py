@@ -423,6 +423,14 @@ def p4_scored_stream(go_phrase: str) -> dict:
         }
         rep = se.adjudicate_candidate_stream(bundle, spy, calendar, b1, b2)
         rep["budget"] = {"used": used, "max": 3, "label": f"{used}/3"}
+        # A7S14-2/A7S14-5: surfaced OUTSIDE the mirrored verdict dict
+        # (the mirror must stay byte-equal to the frozen adjudication);
+        # plan §14 count disclosure on every cell verdict
+        rep["unpriceable_adj_price_legs"] = {
+            "candidate": int(stats["candidate"].counts.get(
+                "censored_unpriceable_adj_price", 0)),
+            "law": "plan §14 DEGENERATE_ADJ_PRICE (censored BC-7 class; "
+                   "excluded from numerator and included-at-marks)"}
         if rep["verdict"] == "PASS_I_STAGE_PENDING_DSR_E":
             # DSR wiring is FROZEN-IDENTICAL to e/e_run.py p4
             # (trial_sharpes = []): the 47-config trial set is

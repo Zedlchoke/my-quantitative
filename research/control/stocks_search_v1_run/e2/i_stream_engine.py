@@ -1130,11 +1130,6 @@ def adjudicate_candidate_stream(bundle: dict, spy, calendar,
         "disclosure_section10": i_engine.DISCLOSURE_SECTION10_VERBATIM,
         "retrieval_empty_count_disclosure":
             i_engine.RETRIEVAL_EMPTY_COUNT_DISCLOSURE_VERBATIM,
-        "unpriceable_adj_price_legs": {
-            "candidate": int(bundle["candidate"].counts.get(
-                "censored_unpriceable_adj_price", 0)),
-            "law": "plan §14 DEGENERATE_ADJ_PRICE (censored BC-7 class; "
-                   "excluded from numerator and included-at-marks)"},
         "budget": {"used": 0, "max": 3,
                    "label": "0/3 (consumed only at scored E)"},
         "dsr": {"gate": "E_SCORED_ONLY", "n_grid": 47, "alpha": 0.10,
