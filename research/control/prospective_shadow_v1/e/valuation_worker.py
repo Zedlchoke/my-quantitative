@@ -38,7 +38,9 @@ import hashlib
 import json
 import os
 import sys
+import re
 import time
+import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
@@ -78,18 +80,10 @@ HEARTBEAT_FILENAME = os.path.join("runtime", "valuation_heartbeat.json")
 # ----------------------------------------------------------------------
 # frozen price source (keyless, batched, monkeypatch-friendly)
 # ----------------------------------------------------------------------
-def fetch_batch_prices(
-    url: str = PREMIUM_INDEX_URL, timeout: float = FETCH_TIMEOUT_S
+def _fetch_batch_prices_once(
+    url: str, timeout: float
 ) -> Tuple[Dict[str, float], str, str]:
-    """ONE bulk keyless read of the frozen premiumIndex source.
-
-    Returns ``(prices_by_symbol, source_timestamp_utc, source_digest)``
-    where ``source_timestamp_utc`` is the ISO-Z of the newest per-symbol
-    server ``time`` in the response and ``source_digest`` is the sha256
-    over the raw response bytes. On any failure the caller records
-    UNAVAILABLE_FAIL_CLOSED — no stale reuse, no retry storm (one
-    attempt per 5-minute loop).
-    """
+    """Single keyless read of the frozen premiumIndex source."""
     request = urllib.request.Request(
         url, headers={"User-Agent": "shv1-valuation-keyless-read/1.0"}
     )
@@ -122,6 +116,79 @@ def fetch_batch_prices(
         else None
     )
     return prices, source_ts, digest
+
+
+#: 2026-09-21 operational remediation (owner instruction: fix the
+#: dashboard data outage).  Root cause: the machine's shared egress IP
+#: (Cloudflare WARP range) is REPEATEDLY auto-banned by the exchange
+#: (HTTP 418, msg "Way too many requests; IP ... banned until <ms>")
+#: because of OTHER tenants of the shared IP — this worker's own rate
+#: is ONE keyless bulk read per 5-minute loop.  The frozen single-
+#: attempt design turned every transient shared-IP ban window into a
+#: full UNAVAILABLE_FAIL_CLOSED loop.  Remediation law: the SOURCE,
+#: request shape, mark semantics, digests and fail-closed discipline
+#: are UNCHANGED; a mark is still written ONLY from a fresh successful
+#: response (zero stale reuse); we only RETRY transient transport
+#: failures (418/429/5xx/network) within a bounded <= ~240 s budget per
+#: loop, honoring the exchange's own "banned until" epoch when present
+#: (capped at RETRY_BAN_WAIT_MAX_S so a long ban still fails closed on
+#: schedule).  Exhausting the budget records the failure exactly as
+#: before.
+RETRYABLE_HTTP = (418, 429, 500, 502, 503, 504)
+RETRY_BACKOFF_S = (30.0, 60.0, 90.0)
+RETRY_BAN_WAIT_MAX_S = 150.0
+
+
+def _ban_wait_seconds(exc: "urllib.error.HTTPError") -> Optional[float]:
+    """Parse the exchange's own ban window ("banned until <ms epoch>")."""
+    try:
+        body = exc.read().decode("utf-8", "replace")
+        match = re.search(r"banned until (\d{9,14})", body)
+        if not match:
+            return None
+        banned_ms = int(match.group(1))
+        if banned_ms > 10**12:            # ms epoch
+            banned_s = banned_ms / 1000.0
+        else:                              # s epoch
+            banned_s = float(banned_ms)
+        return max(0.0, banned_s - time.time())
+    except Exception:                      # noqa: BLE001 - best effort only
+        return None
+
+
+def fetch_batch_prices(
+    url: str = PREMIUM_INDEX_URL, timeout: float = FETCH_TIMEOUT_S
+) -> Tuple[Dict[str, float], str, str]:
+    """Bulk keyless read of the frozen premiumIndex source with BOUNDED
+    transient-failure retry (see the remediation note above).
+
+    Returns ``(prices_by_symbol, source_timestamp_utc, source_digest)``.
+    On final failure the caller records UNAVAILABLE_FAIL_CLOSED — still
+    no stale reuse, ever.
+    """
+    last_exc: Optional[BaseException] = None
+    backoffs = [0.0] + list(RETRY_BACKOFF_S)
+    for attempt in range(len(backoffs)):
+        if backoffs[attempt]:
+            time.sleep(backoffs[attempt])
+        try:
+            return _fetch_batch_prices_once(url, timeout)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in RETRYABLE_HTTP:
+                raise
+            last_exc = exc
+            wait = _ban_wait_seconds(exc)
+            if wait is not None and attempt + 1 < len(backoffs):
+                # replace the next fixed backoff with the exchange's own
+                # ban window (+2 s), capped so a long ban still fails
+                # closed within the loop budget
+                backoffs[attempt + 1] = max(
+                    backoffs[attempt + 1],
+                    min(wait + 2.0, RETRY_BAN_WAIT_MAX_S))
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_exc = exc
+    assert last_exc is not None
+    raise last_exc
 
 
 # ----------------------------------------------------------------------
