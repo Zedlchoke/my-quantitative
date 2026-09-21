@@ -1,0 +1,54 @@
+{
+ "addendum": {
+  "a7_rounds": {
+   "impl_r1": "AUTHORIZED_WITH_FINDINGS 0C/1H/6M/6L \u2014 all remediated at ae515dd4",
+   "impl_r2_delta": "AUTHORIZED_WITH_FINDINGS 0C/0H/1M/5L \u2014 MEDIUM + reason-string remediated at 6a336a21; 5 LOWs documented-open (discretionary)",
+   "plan_r1": "AUTHORIZED_WITH_FINDINGS 0C/0H/5M/6L \u2014 all remediated pre-registration"
+  },
+  "canary_adjudication": "WAITING \u2014 leg A continuous since 08:09:38Z; leg B retrying every 30 min for a clean window; >=24h window required per plan G3",
+  "commits": [
+   "b2dbbf44 impl",
+   "6c2803e8 ws-freshness probe",
+   "cb8bdf18 real-transport fix",
+   "ae515dd4 impl-r1 remediation",
+   "6a336a21 impl-r2 remediation"
+  ],
+  "tests_final": {
+   "failed": 0,
+   "note": "64 at cb8bdf18 -> 73 at ae515dd4 (A7 impl-r1 remediation + 9 gap tests) -> 74 at 6a336a21 (A7 impl-r2 R2-FND-1 truncated-gzip regression)",
+   "passed": 74,
+   "verdict": "PASS"
+  },
+  "updated_utc": "2026-09-21T08:55:00Z"
+ },
+ "commit": "6a336a21 (branch orca/live-data-gateway-v1-integration)",
+ "cycle_id": "LIVE-DATA-GATEWAY-V1",
+ "gate": "G1 implementation + live probe",
+ "live_probe_ws": {
+  "corroboration": "PROSPECTIVE-SHADOW-V1 valuation heartbeat last_loop 2026-09-21T07:59:59Z carries last_error 'price fetch: HTTPError: HTTP Error 418' \u2014 the ban episode is ACTIVE at probe time; error class observed drifting 418 -> 403 -> 418 across the morning.",
+  "finding": "WS handshake to wss://fstream.binance.com SUCCEEDS but ALL streams (markPrice@1s combined, markPrice raw, aggTrade raw) are SILENT >12-15s on a 1s stream. Measured with 3 independent raw aiohttp probes. Conclusion: the venue is suppressing stream payloads from the current shared Cloudflare-WARP egress IP (environment condition), NOT a gateway code defect.",
+  "measured_utc": "2026-09-21T08:06Z",
+  "stream_limit_measurement": "NOT_MEASURABLE_UNDER_BAN: the 200-streams-per-connection vendor limit cannot be re-measured while payloads are suppressed; MVP subscribes 20 symbols on ONE connection (10x below the vendor-stated cap, margin documented per plan FND-10); measurement to be re-attempted when the ban lifts."
+ },
+ "recorded_utc": "2026-09-21T08:10:00Z",
+ "schema": "ldgv1_g1_evidence@1",
+ "sidecar_state": {
+  "behavior_under_ban": "symbols honestly STALE (no_data_yet), zero fabricated data, REST freshness probe expected to hit 418 and open the breaker (fail-closed truth law); gateway self-heals via bounded reconnect + probe when the ban lifts",
+  "bind": "127.0.0.1:8792",
+  "gateway_pid": 75985,
+  "started_utc": "2026-09-21T08:09Z",
+  "zero_worker_interference": "existing workers pids 15315 (decision) / 65461 (valuation) untouched, their ledgers byte-untouched"
+ },
+ "tests": {
+  "command": ".venv/bin/python -m pytest tests/ -q -k ldgv1 (cwd = .worktrees/live-data-gateway-v1/integration)",
+  "failed": 0,
+  "files": [
+   "tests/test_ldgv1_breaker_limiter.py",
+   "tests/test_ldgv1_cache_persistence.py",
+   "tests/test_ldgv1_snapshot_ws_dashboard.py",
+   "tests/test_ldgv1_service_api.py"
+  ],
+  "passed": 63,
+  "verdict": "PASS"
+ }
+}
