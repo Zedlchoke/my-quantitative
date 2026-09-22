@@ -83,9 +83,27 @@ export function computeInputDigest(state: unknown, requestedModel: string): stri
   return sha256Hex(canonicalJson(state) + requestedModel);
 }
 
-/** Cache entry key per freeze: sha256(model || state_id || input_digest). */
-export function computeCacheKey(model: string, stateId: string, inputDigest: string): string {
-  return sha256Hex(model + stateId + inputDigest);
+/**
+ * Cache entry key per freeze (amendment_2): sha256(model || state_id ||
+ * input_digest || prompt_digest). The effective prompt version is part of
+ * decision identity — different prompts over the same state must never share
+ * a cache entry. promptDigest defaults to the active (V1) prompt digest set
+ * by setPromptDigest()/initPromptDigest() at adapter startup.
+ */
+let ACTIVE_PROMPT_DIGEST = "";
+export function setPromptDigest(d: string): void {
+  ACTIVE_PROMPT_DIGEST = d;
+}
+export function getPromptDigest(): string {
+  return ACTIVE_PROMPT_DIGEST;
+}
+export function computeCacheKey(
+  model: string,
+  stateId: string,
+  inputDigest: string,
+  promptDigest = ACTIVE_PROMPT_DIGEST,
+): string {
+  return sha256Hex(model + stateId + inputDigest + promptDigest);
 }
 
 // ---------------------------------------------------------------------------

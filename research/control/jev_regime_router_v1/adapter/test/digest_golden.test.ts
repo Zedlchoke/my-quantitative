@@ -26,6 +26,8 @@ import {
   validateRequestLine,
 } from "../src/contract.ts";
 import { listDir, runAdapter, tmpDir, writeRequests } from "./helpers.ts";
+import { initPromptDigest } from "../src/prompt.ts";
+initPromptDigest();
 
 interface GoldenVector {
   id: string;

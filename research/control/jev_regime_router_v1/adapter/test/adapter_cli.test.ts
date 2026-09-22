@@ -18,7 +18,11 @@ import {
   writeRequests,
 } from "./helpers.ts";
 import { mockClassify } from "../src/mock.ts";
-import { sha256Hex } from "../src/contract.ts";
+import { sha256Hex, computeCacheKey } from "../src/contract.ts";
+import { initPromptDigest } from "../src/prompt.ts";
+
+// amendment_2: cache keys carry the active prompt digest — initialize before computing expectations.
+initPromptDigest();
 
 const MODEL = "jev-canary-x";
 
@@ -200,7 +204,7 @@ test("cache key is sha256(model || state_id || input_digest) with the PRODUCER d
   // amendment_1: the digest carried by the request line is used verbatim
   const inputDigest = parsed.input_digest;
   assert.match(inputDigest, /^[0-9a-f]{64}$/);
-  const expected = sha256Hex(MODEL + parsed.state_id + inputDigest);
+  const expected = computeCacheKey(MODEL, parsed.state_id, inputDigest);
   assert.deepEqual(listDir(cache), [`${expected}.json`]);
 });
 
@@ -244,7 +248,7 @@ test("amendment_1: response and cache entry echo the producer digest verbatim", 
   assert.equal(entry.input_digest, producerDigest, "cache entry must carry the producer digest");
   // the arbitrary 64-hex digest drives the cache key (echo, not recompute:
   // a recompute from the state would have produced a different key)
-  const expectedKey = sha256Hex(MODEL + hex16(44) + producerDigest);
+  const expectedKey = computeCacheKey(MODEL, hex16(44), producerDigest);
   assert.equal(entryFile, `${expectedKey}.json`);
 });
 
@@ -280,7 +284,10 @@ test("mock mode tolerates a missing pin (tests/smoke law) using a mock fallback 
   const r = runAdapter(["--requests", req, "--out", join(dir, "o.jsonl"), "--cache", join(dir, "c"), "--mock"]);
   assert.equal(r.status, 0, r.stderr);
   const summary = JSON.parse(r.stdout.trim());
-  assert.equal(summary.model, "mock-model");
+  // since the G0 pin freeze (VERIFIED_LIVE), mock mode uses the pinned model;
+  // the mock-model fallback only applies while the pin is null (CANDIDATE_UNVERIFIED).
+  const pinFile = JSON.parse(readFileSync(join(FREEZES_DIR, "model_pin.json"), "utf8"));
+  assert.equal(summary.model, pinFile.pinned_model ?? "mock-model");
 });
 
 test("request schema violations produce LOCAL_INVALID rows without provider calls", () => {

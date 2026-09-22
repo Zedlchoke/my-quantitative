@@ -40,7 +40,7 @@ import {
 } from "./contract.ts";
 import type { Jrv1Request, Jrv1Response, ResponseStatus } from "./contract.ts";
 import { verifyFreezeDigests } from "./freeze_digests.ts";
-import { buildRegimeQuestions } from "./prompt.ts";
+import { buildRegimeQuestions, initPromptDigest } from "./prompt.ts";
 import { buildMockResponse } from "./mock.ts";
 
 export const CALL_TIMEOUT_MS = 10000;
@@ -227,6 +227,9 @@ export async function main(argv: readonly string[]): Promise<number> {
     console.error(`FREEZE_DIGEST_MISMATCH ${JSON.stringify(freeze.mismatches)}`);
     return EXIT_FREEZE_MISMATCH;
   }
+
+  // --- amendment_2: activate the prompt-identity digest (cache keys) ------
+  initPromptDigest();
 
   // --- model pin -----------------------------------------------------------
   const pin = args.model ?? readPinnedModel(freezesDir());

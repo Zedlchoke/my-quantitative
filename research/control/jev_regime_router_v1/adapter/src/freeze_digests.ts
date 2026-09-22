@@ -11,6 +11,9 @@ import { readFileSync } from "node:fs";
 export const EMBEDDED_FREEZE_SHA256: Readonly<Record<string, string>> = {
   "regime_label_contract.json":
     "04a12cd38cf1089e7ef8ace6bb4c2529dcc69c3d21559ea6cd509e41a626b814",
+  // amendment_2: feature schema is prompt-relevant and gated the same way.
+  "feature_contract.json":
+    "db4822915250961e1622815e393f12ba32612bd951e2e434cd5a40c524974d14",
 };
 
 /** Verbatim embedded copy of freezes/regime_label_contract.json (jrv1_regime_label_contract@1). */
