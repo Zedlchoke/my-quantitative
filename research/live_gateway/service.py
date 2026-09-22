@@ -263,7 +263,12 @@ class GatewayService:
 
     def _connect_ws(self, url: str):
         assert self.session is not None, "session required for live ws"
-        return self.session.ws_connect(url, heartbeat=20)
+        # NO client-side heartbeat (Amendment 1 ops fix 2026-09-22):
+        # measured — connections WITH aiohttp heartbeat=20 get killed by
+        # the venue/path (0 msgs + instant reconnect loops) while the
+        # same streams without it flow thousands of frames/8s. Server
+        # pings are still answered automatically (autoping).
+        return self.session.ws_connect(url)
 
     # ------------------------------------------------------------------
     async def heartbeat_loop(self) -> None:
