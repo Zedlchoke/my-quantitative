@@ -1,0 +1,85 @@
+{
+ "schema": "a7_prelaunch_d2c@1",
+ "cycle_id": "D2-CURIOSITY-V1",
+ "cycle_class": "NON_GOVERNING_DIAGNOSTIC",
+ "audit": "A7 delta re-audit (r3) — mechanical closure check of the r2 gate note",
+ "audited_utc": "2026-09-22T05:55:00Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration",
+ "branch": "orca/d2-curiosity-v1-integration",
+ "head_audited": "4cb769b05b8cfbfc1ba3955d1583fa0d2182d22e",
+ "baseline_chain": ["0b704245 (r1)", "51547179 (r2)", "9d505355", "99a5c837", "4cb769b0 (r3 head)"],
+ "r2_verdict_path": "research/control/d2_curiosity_v1_run/audits/a7_prelaunch_d2c_r2.json",
+ "plan": "plans/PLAN_d2_curiosity_v1.md",
+ "method": "mechanical per the r2 gate note: (a) diff-scope confirmation for the full chain; (b) F8 demonstration re-run on REAL bound bytes (pinned loads, flat 64-hex pins, grid census); (c) compile + synthetic shape-exercise of the new CNG2 control-arm wiring and CAGR block through the exact committed code (NO decisions/positions built on real data, NO scoring); (d) outcome-artifact absence",
+ "audit_only": true,
+ "files_written_by_this_audit": ["research/control/d2_curiosity_v1_run/audits/a7_prelaunch_d2c_r3.json"],
+
+ "delta_scope": {
+  "range_diff": "git diff 51547179..4cb769b0 --name-only => research/control/d2_curiosity_v1_run/score/score_runner.py ONLY (64 insertions, 8 deletions)",
+  "empty_commits": "9d505355 carries the runner change (72 lines); 99a5c837 and 4cb769b0 are message-only evidence corrections (0 files changed each, confirmed via git show --stat)",
+  "worktree_clean": "only the untracked audits/ directory (this audit's artifacts)"
+ },
+
+ "r2_findings_disposition": {
+  "F8_HIGH_fxng3_pin_plumb": {
+   "status": "CLOSED",
+   "evidence": [
+    "_pin_for(binding, needle, sub_hint) now extracts FLAT 64-hex digests with fullmatch validation and raises RuntimeError on non-hex (score/score_runner.py diff @@ -150: _flat + fail-closed branch).",
+    "Re-run of this audit's r2 demonstration on the REAL binding report + REAL bound bytes: events pin resolves to e7f3b9ad12037c497ef48e6ae9da478224df6401131e31e47b65c5d57c3f9e12 (64-hex True, sub_hint 'derived restricted-event'), bars pin resolves to 8401427da0c2cb46391d9481d2190df7ae9aee319fd37e7c298cf573ed2755ff (64-hex True, sub_hint 'assembled repull'); BOTH pinned loads PASS; events = 72; raw bars = 1884; build_grid = 1846 weekday days; weekend excluded = 38 — matching the corrected invariant and this audit's own r1 independent counts (1846 own-calendar + 38 weekend surface rows).",
+    "Loud-failure cross-check: the no-sub_hint fallback returns the pinned STAGED-ARCHIVE digest which can never match the derived artifact -> DIGEST_MISMATCH at load (loud, never a silent misbind)."
+   ]
+  },
+  "F4a_MEDIUM_cng2_control_arms": {
+   "status": "CLOSED",
+   "evidence": "score_cng2 now wires CTL-SHIFTBOUNDMINUS2H and CTL-FUNDLEVEL through the engines' real builders (builder(panels, funding)['rows'] — the r1-F1 extraction bug class is avoided), filtered net+entry non-null, emitted as control_arms_DESCRIPTIVE_ONLY {n, net} per evaluation_contract.json:15. Shape-exercised by this audit on a SYNTHETIC 3-symbol panel through the exact committed block: both arms produce n>0 (33 / 21 — the FUNDLEVEL 21 reflects the frozen zero-rate UNFUNDED_SKIP law), net sums finite. ALLOW_SCORE toggle around builders is harmless (the flag gates only score_cells)."
+  },
+  "F4b_LOW_cng2_cagr": {
+   "status": "CLOSED",
+   "evidence": "CAGR on the settlement span (ks[0]..ks[-1], 365.25-day years, guarded by `if ks`) shape-exercised on synthetic span: 0.0501289 for net 0.05 over 0.9975y — correct arithmetic."
+  },
+  "F4c_MEDIUM_maxdd_basis": {
+   "status": "CARRIED_NON_BLOCKING",
+   "note": "max_drawdown remains on the disclosed cumulative-position-marks basis (key name discloses it); not computable from row artifacts without engine-side daily marks. CONDITION carried to the terminal report: the MaxDD column must be presented with this disclosed basis, and the r2 disposition text stands."
+  },
+  "F6_LOW_docstring_p0": {
+   "status": "CLOSED",
+   "evidence": "Module docstring P0 reworded to describe what p0_env actually checks (branch + clean tracked tree; S1 denial enforced inside every engine loader)."
+  }
+ },
+
+ "new_observations": [
+  {
+   "id": "N1",
+   "severity": "LOW",
+   "status": "UNRESOLVED_NON_BLOCKING",
+   "area": "score orchestrator / _pin_for hardening",
+   "finding": "Two latent fail-open-adjacent edges, neither reachable on the current committed call sites: (a) a needle that matches NO binding input returns None, which the callers pass as expected_sha256=None -> a silently UNPINNED load (triggered only if a future re-bind renames the binding input names); (b) a nested-dict input queried WITHOUT sub_hint falls back to the flat pinned_sha256 (the staged-archive digest), which can never match the consumed derived artifact -> loud DIGEST_MISMATCH at load (fail-closed in effect).",
+   "remediation": "One-line hardening: raise RuntimeError when the needle loop completes without a match (and consider refusing the pinned-fallback for dict-form inputs). Optional before E; mandatory before any future re-bind that touches binding input names."
+  },
+  {
+   "id": "N2",
+   "severity": "LOW",
+   "status": "RECORDED_PROCESS_OBSERVATION",
+   "area": "lane discipline / commit-message honesty",
+   "finding": "Disclosed by the lane and confirmed by this audit's chain inspection: commit 9d505355's message claimed 'verified on real bytes' before the verification had executed (script died on ModuleNotFoundError); 99a5c837's message repeated a PASS claim that predated its own failed assertion (1846-on-raw-bars); 4cb769b0 records the actually-executed verification and the corrected invariant (1884 raw = 1846 grid + 38 weekend). No artifact corruption: this audit independently re-executed the verification at 4cb769b0 and it holds. The slip is in commit-message discipline, not in any artifact, engine, contract or datum.",
+   "remediation": "For the lane's future practice: verification claims belong in the commit whose tree contains the executed evidence, or explicitly marked as pending. Owner may weigh this in gate conduct; it does not affect the audited state."
+  }
+ ],
+
+ "mechanical_checks": {
+  "b_f8_demo_rerun": "PASS — flat 64-hex pins resolve on the real v2 binding form; load_events pinned e7f3b9ad -> 72 events; load_bars pinned 8401427d -> 1884 raw rows; build_grid -> exactly 1846 weekday days (38 weekend rows excluded by the frozen grid law); fail-closed RuntimeError verified for non-hex extraction results",
+  "c_cng2_wiring_compile": "PASS — score_runner.py py_compiles clean; the exact committed arm-wiring and CAGR blocks executed on synthetic panels/funding produce correct shapes (both arms n>0; CAGR arithmetic verified); engines untouched and imported unchanged",
+  "d_zero_outcome_artifacts": "PASS — no score_summary.json / score_run_log.txt anywhere in the lane (find clean); score/ contains only score_runner.py; the runner has never been executed with the GO env; this audit built NO decisions/positions on real data and computed NO outcome",
+  "suites": "'python -m pytest research/control/d2_curiosity_v1_run/engines/ -q' -> 22 passed in 0.43s at 4cb769b0"
+ },
+
+ "carried_conditions_for_terminal_report": [
+  "MaxDD column presented on the disclosed cumulative-position-marks basis (F4c, MEDIUM-disclosed, non-blocking).",
+  "N1 hardening recommended before any future re-bind; optional before E.",
+  "All prior non-code adjudications carry over unchanged: freeze integrity/ordering, data-gate honesty (incl. FXNG3 correction disclosure and SFNG2 blockade), engine verbatim fidelity incl. the proven 1846-vs-1842 grid no-effect, trial-accounting lawfulness (SFNG2 -> NOT_RUN_DATA_BLOCKED consumes no slot; slot consumed at scored-cell START), S1 sealed, SANDBOX-OVERFIT-3ASSETS untouched."
+ ],
+
+ "verdict": "AUTHORIZED_PRELAUNCH",
+ "verdict_basis": "Zero unresolved CRITICAL/HIGH. F8 is verifiably CLOSED on real bytes by this audit's independent re-execution (flat 64-hex pins, pinned loads PASS, 72 events, 1846-day grid with the 38-row weekend exclusion matching r1's independent counts); F4a/F4b/F6-doc closed with synthetic evidence through the exact committed code; the only remaining code observation is N1 (LOW, unreachable on current committed call sites). Delta diff confined to score_runner.py across the whole chain; engines, contracts, extracts, gate artifacts and bound data are byte-identical to the r1/r2-audited state; zero outcome artifacts at 4cb769b0; 22/22 suites green.",
+ "gate_note": "A7 prelaunch verdict now ALLOWS the scoring gate. Remaining gate preconditions per plan section 6 are outside this audit: fresh owner GO typed AFTER the gate exists (exact phrase, env D2C_GO_PHRASE), heavy lock FREE_PROVEN at E-time, clean tree. The E-phase run must keep the plan's atomicity laws (never peek cell 1 to alter cells 2-3; never rerun for bad results); SFNG2 records NOT_RUN_DATA_BLOCKED without slot consumption. N2 (commit-message discipline slip, disclosed) is recorded for the owner's gate conduct without affecting the audited state. A7 terminal fresh-context audit remains per plan phase R."
+}

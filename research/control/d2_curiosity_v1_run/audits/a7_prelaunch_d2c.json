@@ -1,0 +1,183 @@
+{
+ "schema": "a7_prelaunch_d2c@1",
+ "cycle_id": "D2-CURIOSITY-V1",
+ "cycle_class": "NON_GOVERNING_DIAGNOSTIC",
+ "audit": "A7 independent fresh-context PRELAUNCH audit",
+ "audited_utc": "2026-09-22T04:20:00Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration",
+ "branch": "orca/d2-curiosity-v1-integration",
+ "head_audited": "0b704245cd962e3afbd194299ecc6867e00ab18b",
+ "plan": "plans/PLAN_d2_curiosity_v1.md",
+ "method": "fresh-context: re-read all frozen contracts + identity extracts + engines + tests + orchestrator; re-hashed 9 pinned data artifacts independently; re-ran both golden suites with the dispatch command; re-ran fxng3 construction_check on the bound files; independently proved the 1846-vs-1842 grid no-effect claim from the bound bytes + committed census; empirically exercised the orchestrator's scoring-path code on SYNTHETIC engine outputs only (no real-data scoring, no heavy lock, no outcome computed by this audit)",
+ "audit_only": true,
+ "files_written_by_this_audit": ["research/control/d2_curiosity_v1_run/audits/a7_prelaunch_d2c.json"],
+
+ "items": {
+  "1_freeze_integrity": {
+   "status": "PASS",
+   "evidence": [
+    "Commit ordering (git log, this worktree): e7413f83 plan 08:34+07 -> d9e5ba98 three identity extracts (sources/, schema d2c_source_identity@1) 08:56 -> 9f14a73a four contracts 08:58 -> a459111b data gate r1 09:29 -> 9d82a566 CNG2 engine+golden tests 10:00 -> 2b342c0c data gate r2 10:05 -> 0b704245 FXNG3 engine + score_runner 10:31. Freeze artifacts precede every data pull, engine and orchestrator commit.",
+    "No outcome artifact exists anywhere in the lane: git status clean; find shows no score_summary.json / score_run_log.txt / *outcome* / *pnl* file (score/ contains only score_runner.py); grep for net_pnl/gross_pnl/profit_factor/aggregat hits only contract definitions (evaluation_contract.json:6-10), the GO-gated orchestrator (score/score_runner.py:136-149), refusal text (cng2_engine.py:222-258, fxng3_engine.py:290-326) and test assertions.",
+    "Three identity extracts committed at d9e5ba98: sources/{sfng2_a4_p1,fxcng3_a4_p1,cng2_a5_p1}_identity.json (470 lines)."
+   ]
+  },
+  "2_data_gate_honesty": {
+   "status": "PASS",
+   "evidence": [
+    "Independently re-hashed 9 pins, ALL EXACT: 6 CADS objects in root .runtime/v3_cads_store (CNG2 panels 111c1a2d/ebd487a6/c4ca0b6e + manifest 761190a5 + funding 38ad6faf + SFNG2 form4 stream 6ac2cd5b + V13 manifest 5d351623) and 3 in-repo files (fxng3 p0_announcement_census.json e8a35d23, spot_grid_census.json 42612576, cng2 funding_history.json 38ad6faf).",
+    "FXNG3 re-bind correction disclosure recorded: data_gate_report.json:129 (v1_verdict_superseded: prior ABSENT-key BLOCKED was a .env sourcing error, both keys PRESENT, presence-only 32-char check) and :332-336 (corrections block, v1 note kept verbatim); api_key_hygiene field amended in place (:320) incl. the transient urllib console-only key-echo disclosure with post-scan zero-files finding.",
+    "SFNG2 NEEDS_DEDICATED_LANE reasons hold: V13 manifest (digest re-verified 5d351623) has sections.submissions_alive.count == 410 with exactly 410 CIK file keys (first keys CIK0000001800.json ...); grep for 2179/1769 over /tmp/d2c_sources/stocks_ng2 finds only audit-ledger prose mentions, no 2,179-name list anywhere; /tmp/d2c_sources has no stocks-free-v9 worktree (the 1,769 DEAD half + CIK->symbol bridge unrecoverable); p0_form4a_ingest_manifest.json aggregate_sha256 53daea61... matches the pin; 4/A re-ingest cost estimate (351k requests, 1-2 lane-days) is plausible and the re-derivation of cohort_v9 is correctly ruled forbidden by the frozen universe law (data_gate_report.json:283-293)."
+   ]
+  },
+  "3_engine_verbatim_fidelity": {
+   "status": "PASS",
+   "cng2": {
+    "faithful": [
+     "press over B-4..B-2 = [S-4h,S-1h) with B = bar whose open == S (ARMS feature_bar_offsets (-4,-3,-2), cng2_engine.py:142-149 vs three_cell_contract.json:39 and identity extract exact_signal.observable)",
+     "decision close(B-2)=S-1h entry / close(B)=S+1h exit, holds THROUGH settlement (entry_bar_offset -2, exit_bar_offset 0, cng2_engine.py:145-146, 537-554)",
+     "transfer -d*rate(S) accounting-only (cng2_engine.py:552; direction is sign(press) for the anchor)",
+     "8h grid {00,08,16} UTC via epoch-hour %8 (cng2_engine.py:470); 1,094/symbol bounds-eligibility B-7..B+3 (cng2_engine.py:125-126, 462-475) matches identity decision_grid_exact bounds framing; zero-empty-hour panels make bounds==presence (disclosed, faithful)",
+     "all 5 fail-closed laws with source check-order (settlement gate -> features -> fills -> exact tie; cng2_engine.py:504-549) matching identity missing_data_law (build_a5_arm settlement gate precedes _mk_row); all skip counts were 0 on the real bound data so ordering is outcome-neutral",
+     "sham CTL-SHIFTBOUNDMINUS2H: features B-6..B-4, entry B-4, exit B-2, NO transfer (cng2_engine.py:150-156) == identity arms_frozen_at_D1",
+     "costs 2x(10+4)=28bps PRIMARY tier 2.0 / 14bps tier 1.0 metadata == cost_contract pre_registered_constants (cng2_engine.py:170-174, 486-488)",
+     "folds: None + DESCRIPTIVE_ONLY note; score_cells REFUSES_PRELAUNCH; ALLOW_SCORE False"
+    ],
+    "findings": ["LOW-3: _build_arm silently skips a UNIVERSE symbol absent from panels (cng2_engine.py:602-604) instead of failing closed; the frozen 3,282-pool count in the orchestrator would catch shrinkage, but a missing-symbol raise would be stricter"]
+   },
+   "fxng3": {
+    "faithful": [
+     "72-event RESTRICTED stream load with duplicate obs_month raise, first-print assertion, v2_availability_day==v2-day law, exact recompute of R vs stored ratio (fxng3_engine.py:357-429)",
+     "strictly-after clock D(e)=first grid day STRICTLY after v2 day via bisect_right (fxng3_engine.py:644-648)",
+     "direction sign(R): R<0 -> +1 LONG USDCAD, R>0 -> -1, exact zero -> SIGN_ZERO_SKIP counted (fxng3_engine.py:652-655)",
+     "STRICT_NEXT_BAR entry i=D+1; exit fill at i+H open; held cells i..i+H-1, exit bar not a held cell (fxng3_engine.py:663-695, 704-707) == three_cell_contract.json:28 + identity events.py convention",
+     "force-flat at the DECISION fold's LAST grid bar + DROPPED_TAIL_ENTRY counted with no fills/no costs (fxng3_engine.py:537-546, 667-672, 681-695) — disclosed reading of a law never exercised in source (identity fold_boundaries.caveat), fail-closed, faithful",
+     "netting sign-of-sum NEVER 0 (sum>0 -> +1 else -1), collisions counted (fxng3_engine.py:566-571, 709-716) == identity tie_breaking_law",
+     "unmeasured-no-debit: MISSING_ENTRY_BAR/MISSING_EXIT_BAR rows carry costs=None (finish before debit, fxng3_engine.py:674-692); filled rows debit 2x3.0bps = 6bps RT tier 2.0, ceiling 432.0 == cost_contract",
+     "construction_check on the REAL bound files re-run by this audit: 72 events, by-year 8/47/17, 4 distinct v2 days (2018-10-09/2022-08-10/2022-09-14/2024-05-15), grid 1846 by-year exact, delta {2019:+1, 2025:+3}, structural no-outcome key scan"
+    ],
+    "grid_no_effect_independently_verified": "The engine's 'provably identical under either grid' claim is mathematically sound: this audit verified from the bound bytes that the own grid equals the COMPLETE weekday set in every event v2-year (2018: 194/194, 2022: 260/260, 2024: 262/262 identical sets) and the committed COMMON census has identical by-year counts in those years (194/260/262), so both grids are the same sets/sequences there; all four v2 days are >10 calendar days from any delta year, so D/entry/exit dates are identical under either grid. Disclosure (fxng3_engine.py:62-75) adjudicated FAITHFUL.",
+    "hold_indexing_disclosure": "Ambiguity #2 (D2 book anchored cells at D vs this lane at entry bar i=D+1) is disclosed (fxng3_engine.py:75-81) and the frozen three_cell_contract text itself ('fills at next grid bar open after decision (STRICT_NEXT_BAR)'; 'cells i..i+H-1; exit fill at i+H') supports the implemented reading. FAITHFUL."
+   }
+  },
+  "4_tests": {
+   "status": "PASS",
+   "command": "/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/d2_curiosity_v1_run/engines/ -q",
+   "result": "22 passed in 0.43s (10 CNG2 + 12 FXNG3); test_results_{cng2,fxng3}.json all_pass true",
+   "adjudication": [
+    "CNG2 a1 no-lookahead (test_cng2_golden.py:218-247) genuinely perturbs ALL bars >= B-1 (decision close and later) and requires earlier decisions byte-identical and the S_k decision's press/d/entry unchanged — a real information-set test, not a formality; a2 plants absurd flows on B-1/B that would flip press if any future bar were read.",
+    "CNG2 c cost-debit (test_cng2_golden.py:352-384) asserts the exact frozen contract constants, 28bps funded debit > 0, net identity, and funded-count accounting incl. FUNDLEVEL zero-rate ties.",
+    "FXNG3 a1/a2 (test_fxng3_golden.py:260-334) test the strictly-after-EOD clock (later v2 must move D later, never earlier) and price-perturbation no-lookahead (only exit-side fields of the one affected position may move); d (417-442) asserts the frozen ladder, 6bps RT, 432 ceiling arithmetic and non-zero debit.",
+    "FXNG3 j is the only real-data touch: construction invariants only (72/8-47-17/grid census), digest-pinned, with a structural scan that no outcome-like field escapes (test_fxng3_golden.py:663-694) — sanctioned by the dispatch, not outcome leakage."
+   ]
+  },
+  "5_score_orchestrator": {
+   "status": "FAIL",
+   "passing_aspects": [
+    "GO gate un-bypassable in the sanctioned path: main() exits unless env D2C_GO_PHRASE equals the exact owner phrase, BEFORE any other action (score/score_runner.py:244-248)",
+    "heavy-lock flow real: research/governance/heavy_lock.py provides acquire/HeavyLockHandle.heartbeat/release matching the calls (score/score_runner.py:74-93, 311-316)",
+    "family gating by data-gate overall==BINDABLE_NOW (score/score_runner.py:105-107, 259-267); SFNG2 -> NOT_RUN_DATA_BLOCKED with reason+label, honest",
+    "reproduction: in-process re-run with byte-identical decision-rows digest required (score/score_runner.py:226-239)",
+    "verdict vocabulary: NET_POSITIVE/NET_NEGATIVE/FLAT/NOT_RUN_DATA_BLOCKED only; no survivor language anywhere; old D2 verdicts reprinted from the freeze; forbidden_language list embedded (score/score_runner.py:277-279, 297-301)"
+   ],
+   "adjudication_family_gating": "LAWFUL. The owner's 'exactly 3 cells' instruction sets the planned diagnostic budget (one anchor per family); the frozen data_binding_law (source_identity_freeze.json:7-16, committed before outcome) pre-registered per-family fail-closed BLOCKED honesty, and plan section 4 itself mandates 'A family whose data cannot be bound is NOT improvised'. NOT_RUN_DATA_BLOCKED for SFNG2 is the pre-registered honest outcome, not a bypass. The terminal-vocabulary consequence (BLOCKED_DATA_OR_COST vs DIAGNOSTIC_COMPLETE) is adjudicated at T, not here.",
+   "critical_defects": "See findings F1-F4: the committed scoring paths are not API-compatible with the committed engines and under-implement the frozen evaluation contract; an E-phase run with this runner would burn a slot on a preventable crash (CNG2) and write a silently bogus FLAT verdict (FXNG3)."
+  },
+  "6_trial_accounting": {
+   "status": "PASS_WITH_ADJUDICATION",
+   "adjudication": "LAWFUL as written. The frozen evaluation_contract.json:24 pre-registered, BEFORE any outcome: 'exactly 3 observed diagnostic slots; a slot is consumed when the cell's scored computation STARTS; never reassigned, never force-filled'. The runner increments observed_slots only after the BINDABLE_NOW check and before the score call (score/score_runner.py:268-269) and logs 'no slot consumed' for NOT_RUN_DATA_BLOCKED (:266). 'Chinh xac 3 observed diagnostic cells' in plan section 1 fixes the budget DENOMINATOR and the never-reassigned law; the same sentence's 'never force-filled' clause and plan section 4's fail-closed BLOCKED_DATA_OR_COST pre-registration make consuming no slot for a data-blocked family the lawful honest reading, not an evasion. TECHNICAL_FAILURE correctly still consumes its slot (:268, contract 'every computed cell consumes a slot even if reporting later fails').",
+   "caveat": "Finding F3 means a real run would consume one of the three slots on a preventable CNG2 loader-signature crash. Lawful but wasteful; must be fixed before GO."
+  },
+  "7_outcome_leakage": {
+   "status": "PASS",
+   "evidence": [
+    "Both engines: score_cells raises REFUSES_PRELAUNCH with ALLOW_SCORE False (verified by execution this audit: 'cng2 score_cells REFUSES_PRELAUNCH: OK', 'fxng3 ... OK'); even with the flag, no aggregate implementation exists (NotImplementedError).",
+    "construction_check emits construction invariants only and hard-fails on any outcome-like key (fxng3_engine.py:787-896); test j re-asserts the scan.",
+    "Test code is synthetic-only: CNG2 tests never open the real bound data (temp CSV/JSON fixtures only); FXNG3 tests use in-file synthetic events/bars except invariant-only test j.",
+    "score/score_runner.py has never been executed: no score_run_log.txt, no score_summary.json anywhere in the lane; worktree clean at HEAD 0b704245.",
+    "data/tools/*.py are binding/pull tooling ('binding, no outcomes' docstrings); no decision-row or aggregate computation on real data anywhere in the lane."
+   ]
+  },
+  "8_s1_and_sandbox": {
+   "status": "PASS",
+   "evidence": [
+    "No S1 data path is read anywhere in the lane; the only S1 references are the fail-closed denial patterns ('/s1/', 's1_') in both engines and their denial tests (cng2_engine.py:265-273, fxng3_engine.py:333-341, test f/g).",
+    "SANDBOX-OVERFIT-3ASSETS: present at research/control/SANDBOX-OVERFIT-3ASSETS in the ROOT repo and UNTRACKED there (git ls-files --error-unmatch -> untracked; status shows '??'), never opened by this audit and never read by the lane; the sole lane reference is the exclusion declaration in source_identity_freeze.json:55 ('never read, never used')."
+   ]
+  }
+ },
+
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "CRITICAL",
+   "status": "UNRESOLVED",
+   "area": "score orchestrator / FXNG3 scoring path",
+   "finding": "score_fxng3 post-processing iterates the engine's position-set DICT, not its rows list: score/score_runner.py:208-211 `rows = [... for r in pos]` yields the 17 top-level dict KEYS (strings); dict(zip(POSITION_ROW_COLUMNS, key)) fabricates garbage rows; the measured filter then selects 0 rows, so _metrics_from_rows would return n_trades=0, net_pnl=0.0 and the runner would record verdict FLAT — a silently bogus outcome artifact (reproduction would still 'pass' because the garbage digest is deterministic).",
+   "evidence": "Empirically demonstrated by this audit on a SYNTHETIC fxng3_engine.build_positions output: 'runner rows length: 17 (== number of DICT KEYS)', 'sample garbage row: {\"event_id\": \"s\", ...}', 'measured count: 0'. Correct usage: pos['rows'].",
+   "remediation": "Fix score/score_runner.py:208-211 to consume pos['rows'] and re-run the golden suites + a synthetic dry-run of the orchestrator scoring path before any GO. No outcome exists, so the fix leaks nothing."
+  },
+  {
+   "id": "F2",
+   "severity": "HIGH",
+   "status": "UNRESOLVED",
+   "area": "score orchestrator / FXNG3 aggregation filter",
+   "finding": "The measured-row filter accepts only status in ('OK','MEASURED',None) (score/score_runner.py:210), but the engine's filled statuses are exactly MEASURED and FORCE_FLAT_FOLD_BOUNDARY — force-flat rows carry real entry/exit fills, net and costs and would be silently EXCLUDED from every aggregate (under-counted outcome, wrong PF/win-rate/folds).",
+   "evidence": "Empirically demonstrated on synthetic data: engine statuses ['FORCE_FLAT_FOLD_BOUNDARY'], 'runner filter keeps: 0 of 1 rows with real fills'. Engine status vocabulary: fxng3_engine.py:615-622.",
+   "remediation": "Filter on the engine's actual filled statuses (MEASURED, FORCE_FLAT_FOLD_BOUNDARY) or on net is-not-None."
+  },
+  {
+   "id": "F3",
+   "severity": "HIGH",
+   "status": "UNRESOLVED",
+   "area": "score orchestrator / CNG2 scoring path",
+   "finding": "score_cng2 calls eng.load_panel(_RUN/'data'/'cng2', s) and eng.load_funding_series(..., s) (score/score_runner.py:159-164): both loaders take (path_to_file, expected_sha256=None), so the second positional argument passes the SYMBOL as a digest and the DIRECTORY as the path — guaranteed IsADirectoryError at E-phase. CNG2 would burn one of the three observed slots on a TECHNICAL_FAILURE caused by a wiring bug (slot consumption is lawful but wasteful and avoidable).",
+   "evidence": "Empirically demonstrated: 'CNG2 load_panel(dir, sym) raises: IsADirectoryError [Errno 21] Is a directory: data/cng2' (same for load_funding_series).",
+   "remediation": "Load the committed panel CSVs and funding_history.json by their real paths (and pass their pinned sha256 values, see F5)."
+  },
+  {
+   "id": "F4",
+   "severity": "HIGH",
+   "status": "UNRESOLVED",
+   "area": "score orchestrator / evaluation-contract metric coverage",
+   "finding": "_metrics_from_rows (score/score_runner.py:110-149) implements a SUBSET of the frozen evaluation_contract metrics_per_cell. Missing entirely: max_drawdown, exposure (days/bars in market), turnover, concentration, CAGR (FXNG3 window 7y and CNG2 window 1y both allow it), net_pnl_tier_1.0; profit_factor is computed on the NET sums only while the contract names the GROSS-winning/gross-losing ratio as primary (net 'also reported'); cost_attribution lacks the cost_contract reporting fields (total cost bps, cost as % of gross, net/gross ratio); the CNG2 benchmark_control_comparison (vs CTL-SHIFTBOUNDMINUS2H + CTL-FUNDLEVEL arms, contract-mandated) is hard-coded None with 'arms runnable post-GO' (score/score_runner.py:191). Running E with this runner would write a score_summary.json that silently omits frozen contract metrics.",
+   "evidence": "evaluation_contract.json:5-16 vs score/score_runner.py:110-149, 183-191.",
+   "remediation": "Extend the aggregation to the full frozen metric set (and wire the two CNG2 control arms through the same sanctioned builder path) BEFORE the owner GO; no outcome is affected because none exists."
+  },
+  {
+   "id": "F5",
+   "severity": "MEDIUM",
+   "status": "UNRESOLVED",
+   "area": "score orchestrator / E-time data binding",
+   "finding": "The orchestrator loads bound data without passing expected_sha256 to any loader, so the scored job relies on committed-bytes + clean-tree rather than re-verifying the frozen pins at E-time (plan section 4: 'Scoring requires each family's frozen data inputs to be available at the pinned digests').",
+   "evidence": "score/score_runner.py:159-164, 199-203 (no digest arguments); loaders support optional pins (cng2_engine.py:294-307, fxng3_engine.py:357-373, 432-445).",
+   "remediation": "Pass the pinned digests from source_identity_freeze/data gate into the loader calls at E-time."
+  },
+  {
+   "id": "F6",
+   "severity": "LOW",
+   "status": "UNRESOLVED",
+   "area": "score orchestrator / vocabulary + P0 self-checks",
+   "finding": "(a) The per-cell TECHNICAL_FAILURE verdict (score/score_runner.py:283) is not in the frozen per-cell vocabulary (evaluation_contract.json:19 lists NOT_ADJUDICABLE(reason) / NOT_RUN_DATA_BLOCKED(reason)); the cycle-level DIAGNOSTIC_COMPLETE_TECHNICAL_FAILURE exists but the per-cell string is off-vocabulary. (b) p0_env's docstring claims 'HEAD contains the freeze commits' and 'no S1 path reachable' but the code checks only branch + clean tree (score/score_runner.py:3-5 vs 60-71).",
+   "remediation": "Map per-cell technical failure to NOT_ADJUDICABLE('TECHNICAL_FAILURE: ...') and add the freeze-commit ancestry check to p0_env (or fix the docstring)."
+  },
+  {
+   "id": "F7",
+   "severity": "LOW",
+   "status": "UNRESOLVED",
+   "area": "cng2 engine",
+   "finding": "_build_arm silently skips a UNIVERSE symbol missing from the panels dict (cng2_engine.py:602-604) instead of failing closed; on the bound data all three symbols are present and the frozen 3,282 pool count is checkable, so no outcome risk, but a raise would be stricter and matches the fail-closed spirit.",
+   "remediation": "Raise on a missing UNIVERSE symbol in _build_arm."
+  }
+ ],
+
+ "adjudications_requested_by_dispatch": {
+  "exactly_3_cells_vs_blocked_honesty": "The runner's family gating (SFNG2 -> NOT_RUN_DATA_BLOCKED, no slot consumed) is LAWFUL: the frozen data_binding_law and evaluation_contract trial_accounting pre-registered, BEFORE any outcome, per-family fail-closed BLOCKED honesty and the never-force-fill clause; the owner's 'exactly 3' instruction fixes the planned budget, and plan section 4 mandates non-improvisation. Terminal-verdict consequences are a T-phase matter.",
+  "slot_consumption_at_start": "LAWFUL per evaluation_contract.json:24 verbatim; but F3 makes one slot burnable on a preventable crash — fix before GO.",
+  "five_fxng3_disclosures": "All adjudicated FAITHFUL: (1) 1846-vs-1842 grid delta — disclosed AND independently proven no-effect by this audit; (2) hold-indexing i=entry-bar — the frozen contract text itself specifies STRICT_NEXT_BAR fills with cells i..i+H-1; (3) force-flat at the decision fold's LAST grid bar + DROPPED_TAIL_ENTRY fail-closed — disclosed reading of a law never exercised in source; (4) netting sign-of-sum never 0 — exact transcription of the identity tie law; (5) unmeasured-no-debit — rows without fills carry costs None; filled rows always debit 6bps > 0.",
+  "six_cng2_disclosures": "All adjudicated FAITHFUL: bounds-based B-7..B+3 eligibility (identity records both framings; zero-empty-hour panels make them coincide), check-order (settlement -> features -> fills -> tie, matching source build_a5_arm/_mk_row layering), sham no-transfer gating, per-funded-decision cost debit with no debit on skips (no fills exist to debit), folds NULL + DESCRIPTIVE_ONLY thirds never computed by the engine, funding +ms jitter absorbed by floor-to-hour with off-grid rows as incidents."
+ },
+
+ "verdict": "BLOCKED_PRELAUNCH",
+ "verdict_basis": "1 unresolved CRITICAL (F1) + 3 unresolved HIGH (F2, F3, F4) — all localized in score/score_runner.py's scoring/aggregation path (committed at 0b704245, never executed). Everything else audited PASS: freeze integrity and ordering, data-gate honesty (9/9 pins re-hashed exact; corrections disclosed; SFNG2 blockade verified), verbatim engine fidelity incl. all disclosed ambiguities, 22/22 golden tests with genuinely-load-bearing no-lookahead and cost tests, trial-accounting lawfulness, outcome-leakage absence, S1 sealed, SANDBOX-OVERFIT-3ASSETS untouched.",
+ "gate_note": "The block is narrow and fully remediable pre-GO with zero outcome leakage: amend score/score_runner.py (F1-F6), re-run the suites, then re-submit for a fresh A7 prelaunch verdict. No engine, contract, identity extract, data gate artifact or bound datum needs to change. Owner GO must NOT be typed until a re-audit authorizes."
+}

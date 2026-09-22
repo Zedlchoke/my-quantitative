@@ -180,7 +180,9 @@ def _pin_for(binding, needle, sub_hint=None):
                     "digest (sub_hint="
                     f"{sub_hint!r}) — fail-closed (A7 F8)")
             return got
-    return None
+    raise RuntimeError(
+        f"binding report has no input matching {needle!r} — fail-closed "
+        "unpinned-load refusal (A7 r3 N1)")
 
 
 def _maxdd(nets):

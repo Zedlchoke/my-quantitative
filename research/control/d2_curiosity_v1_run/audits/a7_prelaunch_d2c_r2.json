@@ -1,0 +1,88 @@
+{
+ "schema": "a7_prelaunch_d2c@1",
+ "cycle_id": "D2-CURIOSITY-V1",
+ "cycle_class": "NON_GOVERNING_DIAGNOSTIC",
+ "audit": "A7 delta re-audit (r2) of the r1 BLOCKED_PRELAUNCH remediation",
+ "audited_utc": "2026-09-22T05:05:00Z",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration",
+ "branch": "orca/d2-curiosity-v1-integration",
+ "head_audited": "5154717994177a3b2c492d4d3f752654e83848de",
+ "baseline_head": "0b704245cd962e3afbd194299ecc6867e00ab18b (r1 audit)",
+ "r1_verdict_path": "research/control/d2_curiosity_v1_run/audits/a7_prelaunch_d2c.json",
+ "plan": "plans/PLAN_d2_curiosity_v1.md",
+ "method": "delta scope per dispatch: (a) score/score_runner.py re-read end-to-end + empirical synthetic exercise of the REAL _full_metrics and BOTH extraction paths (force-flat included), loaders-only plumb-through of the CNG2 CADS paths and both binding reports (NO decision building and NO scoring on real data); (b) outcome-artifact absence; (c) re-verification that items 1-4/7/8 are unchanged at the new HEAD",
+ "audit_only": true,
+ "files_written_by_this_audit": ["research/control/d2_curiosity_v1_run/audits/a7_prelaunch_d2c_r2.json"],
+
+ "delta_scope_verification": {
+  "commit_51547179": "remediation commit touches EXACTLY one file: research/control/d2_curiosity_v1_run/score/score_runner.py (git diff --stat 0b704245..51547179: 1 file changed, 174 insertions, 48 deletions; name-only filter proves no other path)",
+  "engines_contracts_data_untouched": true,
+  "worktree_clean": "git status --porcelain shows only the untracked audits/ directory (this audit's own artifacts)"
+ },
+
+ "r1_findings_disposition": {
+  "F1_CRITICAL_fxng3_dict_iteration": {
+   "status": "CLOSED",
+   "evidence": "score/score_runner.py:322-323 now extracts pos['rows']; engine rows are dicts and pass through. Empirically shape-tested on a synthetic fxng3_engine.build_positions output through the REAL sr._full_metrics: 3/3 rows kept incl. FORCE_FLAT_FOLD_BOUNDARY, n_trades=3, manual net recompute == net_pnl (-0.002557)."
+  },
+  "F2_HIGH_forceflat_exclusion": {
+   "status": "CLOSED",
+   "evidence": "score/score_runner.py:324-325 filter is net is-not-None AND entry_open is-not-None; FORCE_FLAT_FOLD_BOUNDARY rows carry both and are kept (shape test statuses ['MEASURED','MEASURED','FORCE_FLAT_FOLD_BOUNDARY'] all funded)."
+  },
+  "F3_HIGH_cng2_loader_misuse": {
+   "status": "CLOSED",
+   "evidence": "score/score_runner.py:241-264 loads each panel per-symbol from the binding report's ABSOLUTE CADS evidence paths with expected_sha256 pins, and asserts universe coverage before ALLOW_SCORE is set. Loaders-only verification this audit: all 3 panels load from .runtime/v3_cads_store absolute paths, 8760 rows each, window 2025-08-22T00..2026-08-21T23 exact, pins str-hex verified; funding loads pinned (1095 rates/symbol, 0 incidents).",
+   "note": "Commit message wording 'universe-coverage assert before any slot burns' is imprecise: the slot counter increments at score_runner.py:393 before score_cng2 is called; the assert fires before any OUTCOME computation. Slot consumption on technical failure remains contract-lawful (evaluation_contract.json:24) — observation, not a defect."
+  },
+  "F4_HIGH_metric_subset": {
+   "status": "PARTIALLY_CLOSED",
+   "closed": "All report_table_columns metrics now present with contract-conformant math, verified through the real _full_metrics: gross_pnl_pre_cost, costs, net_pnl, net_pnl_tier_1.0 (linear tier scaling net+0.5*costs, verified numerically), return_pct, profit_factor_net AND profit_factor_gross_basis (evaluation_contract.json:9 definition now met), expectancy, win_rate, folds F1-F3, positive_folds, n_trades, cost_attribution (tier bps RT + cost_share_of_gross + net_to_gross), concentration (position + fold), exposure, turnover; FXNG3 benchmark_descriptive_DESCRIPTIVE_ONLY wired to eng.build_benchmark (:345); FXNG3 cagr_on_unit_notional computed (:334-342).",
+   "remaining": [
+    "(a) MEDIUM: CNG2 benchmark_control_comparison (vs CTL-SHIFTBOUNDMINUS2H + CTL-FUNDLEVEL, evaluation_contract.json:15 mandate) is STILL not wired — score_cng2 emits only descriptive calendar thirds; the commit message's 'benchmarks wired' is true for FXNG3 only (overclaim). Both arm builders are exposed by cng2_engine (build_ctl_shiftboundminus2h_decisions / build_ctl_fundlevel_decisions) and can be scored through the same sanctioned path.",
+    "(b) LOW: CNG2 CAGR not computed (horizon is exactly 1y, so CAGR == the reported return_pct; contract condition 'if horizon allows (>= 1y)' is met at equality).",
+    "(c) MEDIUM, disclosed: max_drawdown is computed on cumulative per-position marks in row order (score_runner.py:159-168, key name discloses the basis), not the contract's 'daily mark-to-market series' — not computable from row artifacts without engine-side marks; the terminal report must carry the disclosed basis."
+   ]
+  },
+  "F5_MEDIUM_no_e-time_pins": {
+   "status": "PARTIALLY_CLOSED",
+   "closed": "CNG2: every load passes expected_sha256 from the binding report (panels + funding, verified plumb-through with real hex pins).",
+   "remaining": "FXNG3: pins plumb through BROKEN — see new finding F8; the pins are passed but their VALUES are nested dicts, so the verification path is worse than absent: it deterministically crashes."
+  },
+  "F6_LOW_vocabulary_p0": {
+   "status": "PARTIALLY_CLOSED",
+   "closed": "Per-cell technical failure now NOT_ADJUDICABLE with reason (score_runner.py:408-412) per evaluation_contract.json:19.",
+   "remaining": "Module docstring line 20 still says 'records TECHNICAL_FAILURE' (stale); p0_env (:60-71) still checks only branch + clean tree while the docstring (:4-5) claims 'HEAD contains the freeze commits' and 'no S1 path reachable'. Doc-only, LOW."
+  },
+  "F7_LOW_missing_symbol_skip": {
+   "status": "CLOSED",
+   "evidence": "score/score_runner.py:262-264 raises on any missing UNIVERSE symbol after per-symbol loads, before ALLOW_SCORE/build."
+  }
+ },
+
+ "new_findings": [
+  {
+   "id": "F8",
+   "severity": "HIGH",
+   "status": "UNRESOLVED",
+   "area": "score orchestrator / FXNG3 pin plumb-through (F5 class; same defect family as r1 F3)",
+   "finding": "_pin_for (score/score_runner.py:152-156) returns the binding report's observed_sha256 VERBATIM, but the fxng3 binding report (schema d2c_family_binding_report@2) stores NESTED dicts for the two consumed inputs: CANCPIALLMINMEI observed_sha256 = {'raw pull realtime_start=2015-01-01&realtime_end=2026-09-01': 'b6ad1e6d...', 'raw pull realtime_start=2018-01-01&realtime_end=2026-09-01': '152b795e...', 'derived restricted-event stream (this lane)': 'e7f3b9ad...'} and USDCAD observed_sha256 = {'assembled repull artifact': '8401427d...'}. score_fxng3 (:312-315) therefore passes a dict as expected_sha256 to load_events/load_bars; _verify_digest compares the hex digest against str(dict).lower() and raises ValueError('DIGEST_MISMATCH ...') UNCONDITIONALLY. At E-phase FXNG3 would deterministically burn its observed slot with NOT_ADJUDICABLE(technical) — a preventable guaranteed loss of one of the three one-shot diagnostic cells.",
+   "evidence": "Empirically demonstrated by this audit on the real binding report + real bound file (read-only): '_pin_for' returns dict for both inputs; 'load_events(dict pin) raises: DIGEST_MISMATCH for ...CANCPIALLMINMEI_derived_events.json: expected {raw pull ...'. CNG2 pins plumb correctly (flat hex str) — the defect is FXNG3-only.",
+   "remediation": "Resolve the flat sub-digest of the CONSUMED artifact: events -> observed_sha256['derived restricted-event stream (this lane)'] == e7f3b9ad12037c497ef48e6ae9da478224df6401131e31e47b65c5d57c3f9e12 (re-hashed exact by this audit against the committed file) and bars -> observed_sha256['assembled repull artifact'] == 8401427da0c2cb46391d9481d2190df7ae9aee319fd37e7c298cf573ed2755ff (re-hashed exact); alternatively add flat observed_sha256 entries for the two consumed artifacts to the binding report. Fail closed if the resolved pin is not a 64-hex string."
+  }
+ ],
+
+ "delta_reverification_of_unchanged_items": {
+  "1_freeze_integrity": "UNCHANGED/PASS — commit ancestry re-verified: freeze commits d9e5ba98/9f14a73a precede all data/engine commits; 51547179 is a linear descendant of 0b704245 touching only score_runner.py; no outcome artifact at either HEAD (re-checked).",
+  "2_data_gate_honesty": "UNCHANGED/PASS — no gate artifact in the delta diff; spot re-hashes at r2 confirm bound bytes unchanged: CADS panel 111c1a2d..., derived events e7f3b9ad..., USDCAD repull 8401427d... all exact.",
+  "3_engine_fidelity": "UNCHANGED/PASS — engines byte-identical to the r1-audited state (diff scope); all r1 fidelity adjudications (incl. the independently proven 1846-vs-1842 grid no-effect) carry over.",
+  "4_tests": "PASS at new HEAD — '/Users/hoangminhlong/my-quantitative/.venv/bin/python -m pytest research/control/d2_curiosity_v1_run/engines/ -q' -> 22 passed in 0.43s.",
+  "7_outcome_leakage": "PASS — no score_summary.json, no score_run_log.txt anywhere (find over the lane); score/ contains only score_runner.py (+__pycache__); the runner has never been executed with the GO env; this audit exercised only loaders and the pure _full_metrics on synthetic rows, and built NO decisions/positions on real data.",
+  "8_s1_and_sandbox": "PASS — unchanged: S1 appears only as denial patterns; SANDBOX-OVERFIT-3ASSETS untouched/untracked at root; delta diff adds no read paths."
+ },
+
+ "trial_accounting_note": "The r1 adjudications (family gating lawful; NOT_RUN_DATA_BLOCKED consumes no slot; slot consumed at scored-cell START) carry over unchanged — the relevant code (:384-393) is byte-identical in intent. F8 would lawfully-but-wastefully burn the FXNG3 slot on a guaranteed technical failure; F4(a) leaves the CNG2 descriptive benchmark uncomputed. Both are pre-GO fixable with zero outcome leakage.",
+
+ "verdict": "BLOCKED_PRELAUNCH",
+ "verdict_basis": "1 unresolved HIGH (F8: FXNG3 E-time loads deterministically raise DIGEST_MISMATCH from nested-dict pins — demonstrated, guaranteed slot loss for the FXNG3 cell) plus F4(a)/(c) MEDIUM residuals (CNG2 control-arm benchmark still unwired despite the 'benchmarks wired' claim; MaxDD on a disclosed non-contract basis). Everything else prescribed by r1 is verifiably closed: F1/F2/F3/F7 fully closed with empirical evidence, F6 vocabulary fixed, 22/22 suites green, delta diff confined to score_runner.py, zero outcome artifacts, items 1-4/7/8 unchanged.",
+ "gate_note": "Fix is confined to score/score_runner.py again (the _pin_for sub-digest extraction plus optionally the CNG2 control-arm wiring), leak-free because no outcome exists. After the fix, a fresh delta audit (r3) can authorize; the r3 check is mechanical: re-run the F8 demonstration (must return 64-hex strings and load cleanly), the synthetic _full_metrics shape test, and confirm the diff remains score_runner-only. Owner GO must NOT be typed until then."
+}
