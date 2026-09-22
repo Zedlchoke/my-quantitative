@@ -1,139 +1,160 @@
 {
- "schema": "d2c_family_binding_report@1",
+ "schema": "d2c_family_binding_report@2",
  "family": "FXNG3-A4-P1",
- "generated_utc": "2026-09-22T02:25:45.242529+00:00",
+ "version": 2,
+ "supersedes": "v1 (generated_utc 2026-09-22T02:25:45Z, family_status BLOCKED_DATA) — v1 is preserved verbatim inside data_gate_report.json's original generation and its per-input claims are corrected below",
+ "generated_utc": "2026-09-22T12:10:00Z",
+ "lane": "FXNG3-RE-BIND (cycle D2-CURIOSITY-V1)",
+ "worktree": "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration",
+ "branch": "orca/d2-curiosity-v1-integration",
+ "correction_basis": {
+  "prior_claim": "v1 graded CANCPIALLMINMEI/DGS10/USDCAD BLOCKED_DATA on 'FRED_API_KEY ABSENT' and 'TWELVE_DATA_API_KEY ABSENT'",
+  "finding": "FALSE — a sourcing error: both keys are present in /Users/hoangminhlong/my-quantitative/.env (verified PRESENCE-only: both 32 chars); the v1 lane never sourced that file. A1 had already verified both keys PRESENT and a USDCAD Twelve Data probe returning 200 before this re-bind.",
+  "this_lane": "sourced the same .env (set -a; source .env; set +a), re-pulled every pinned input live, and re-graded from evidence"
+ },
+ "law_followed": "source_identity_freeze.json data_binding_law order [1_repull, 2_digest_match, 3_content_equality, 4_blocked]; construction invariants only; NO returns/PnL/outcome computed anywhere in this lane",
+ "entitlement_compliance": "no new credentials, no purchases: FRED keyed vintage classes are the pre-existing S2 entitlement (GA4-granted 'S2:fred-keyed-vintage-classes'); Twelve Data is the pre-existing P-18 AUTHORIZED entitlement; 4 total API calls to FRED (3 pulls) and 9 to Twelve Data (3 data calls + probe + paced retries)",
+ "api_key_hygiene": "keys used in-memory only, never written to any file; a post-run scan over research/control/d2_curiosity_v1_run/ found ZERO files containing key material. DISCLOSED INCIDENT: one transient urllib error message early in the Twelve Data pull (unencoded space in URL) surfaced the request URL, and with it the key value, into the interactive console output; it is not in any lane artifact or committed byte, and owner may rotate the Twelve Data key if that console is considered exposed",
  "inputs": [
   {
    "input": "CANCPIALLMINMEI vintaged CPI archive (THE signal input)",
    "pinned_sha256": "7b225d9f724bd15ca309c1085d5c3812da19b5f7c20f28bbe2e1eb583d9cb2d6",
-   "observed_sha256": null,
-   "status": "BLOCKED_DATA",
-   "evidence_paths": [
-    "/Users/hoangminhlong/my-quantitative/.runtime/v3_cads_store/objects/07/07d1e0d5adc8fb124f8d9246b8ab0fdeea79e5be20fa99ea0a8fe81cd96aad12",
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/alfred_availability_probe.json",
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/p0_revision_census.json"
+   "observed_sha256": {
+    "raw pull realtime_start=2015-01-01&realtime_end=2026-09-01": "b6ad1e6dc36516c7572e5dc4d06506d1d788ead26e723a44e3a9af789f25ab85",
+    "raw pull realtime_start=2018-01-01&realtime_end=2026-09-01": "152b795e63c09d17293f75bbe3681631765f60d389024dbc5f0fa700de0875bc",
+    "derived restricted-event stream (this lane)": "e7f3b9ad12037c497ef48e6ae9da478224df6401131e31e47b65c5d57c3f9e12"
+   },
+   "status": "BOUND_CONTENT",
+   "digest_note": "digest equality is impossible by construction: the pin is the sha256 of a DERIVED STAGED ARTIFACT (forex-free-v9 fred_vintaged/CANCPIALLMINMEI.json, CADS S2 manifest 07d1e0d5 witness: pinned sha + rows 5091), assembled under a request window that cannot be reconstructed from the deleted staging; per the freeze law step 3, ALL recorded invariants were computed and are equal",
+   "method": "verbatim import (read-only) of the source cycle's own builder from the reconstruction tree /tmp/d2c_sources/forex_ng3: research.assets.forex_ng3.revision_series.build_restricted_stream + restricted_recent_events + bulk_group_signatures, with research.assets.forex_ng2.revision_series ng2 semantics VIA IMPORT (S0_WINDOW 2018-04-04..2025-04-30, RevisionEvent, dedupe_exact_rows, strict-monotonicity fail-closed) and research.assets.forex_ng1.plane_adapter.parse_fred_vintaged on the raw FRED API observations — never re-implemented, never edited",
+   "pulls": [
+    {
+     "window": "realtime_start=2015-01-01, realtime_end=2026-09-01 (dispatch URL form)",
+     "rows": 5814, "distinct_vintages": 120,
+     "vintage_first_clamped": "2015-01-01 (request-bound clamp of the feed's initial full-history ingest; real start precedes the window)",
+     "vintage_last": "2025-05-15",
+     "obs_span": "1914-01-01..2025-03-01",
+     "role": "wide window: reproduces the RESTRICTED stream (era clamp 2015-01-01 sits below every restricted obs month, so first_print flags are computed without disturbance)"
+    },
+    {
+     "window": "realtime_start=2018-01-01, realtime_end=2026-09-01 (pinned realtime evidence begins 2018-01-01 per ng1 ctl_dgs10 warmup-boundary law)",
+     "rows": 5091, "distinct_vintages": 87,
+     "role": "pinned-era window: reproduces the staged funnel machinery row-for-row"
+    }
    ],
    "invariants_checked": {
-    "pinned_bytes_present": false,
-    "recorded_staging_path_absent": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v9/integration/data_raw/forex_free_v9_cpi/fred_vintaged/CANCPIALLMINMEI.json (worktree deleted)",
-    "bytes_in_cads_store": false,
-    "s2_manifest_07d1e0d5_verified": {
-     "sha256_of_manifest": "07d1e0d5adc8fb124f8d9246b8ab0fdeea79e5be20fa99ea0a8fe81cd96aad12",
-     "witness": {
-      "pinned_sha": "7b225d9f724bd15ca309c1085d5c3812da19b5f7c20f28bbe2e1eb583d9cb2d6",
-      "rows": 5091
-     }
+    "72_event_invariant": {
+     "restricted_events": {"measured_wide": 72, "recorded": 72, "match": true},
+     "restricted_month_key_set": "72/72 EXACT equality against the census restricted_differential.months CA-anchor key list (2017-11..2023-11)",
+     "restricted_by_year": {"measured_wide": {"2018": 8, "2022": 47, "2024": 17}, "recorded": {"2018": 8, "2022": 47, "2024": 17}, "match": true},
+     "restricted_recent_24m_Q6": {"measured_wide": 17, "measured_rt2018": 17, "recorded": 17, "window": ["2023-05-01", "2025-04-30"], "match": true},
+     "magnitude_fingerprint": {"measured_wide": {"n": 72, "median_pct": -0.0, "q1_pct": -0.0, "q3_pct": 0.0, "min_pct": -7.979984, "max_pct": 3.7e-05, "abs_median_pct": 0.0}, "recorded": "identical to the sixth decimal", "match": true},
+     "census_sample_events": "5/5 CA sample restricted events EXACT field equality (obs_month, v1 day+value, v2 day+value, ratio_pct to 6dp, first_print_era flag) on the wide funnel",
+     "verdict": "72-event invariant PASS"
     },
-    "fred_api_key": "ABSENT",
-    "keyless_forms_tried": [
-     "alfredgraph.csv (id)",
-     "alfredgraph.csv + realtime_start/realtime_end",
-     "alfredgraph.csv + vintage_dates",
-     "fredgraph.csv + vintage_dates",
-     "fredgraph.csv + realtime_start/realtime_end"
-    ],
-    "keyless_outcome": "all serve the CURRENT vintage only (single column, 1335 obs rows for CANCPIALLMINMEI); realtime windows structurally absent; plane_adapter parse_fred_vintaged fails closed on such tables",
-    "72_event_invariant_computable_from_keyless": false,
-    "committed_census_artifact_digest": "0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f (matches identity extract pin; records the 72 restricted events - evidence of the RECORDED invariants, not of data bytes)"
-   }
+    "bulk_re_referencing_13_excluded": {
+     "signature": "2018-04-20->2024-05-15 ratio -7.9800%, 13 events, one structural transition",
+     "measured_rt2018": {"bulk_groups_ge_min": {"2018-04-20->2024-05-15 ratio -7.9800%": 13}, "bulk_group_events_total": 13},
+     "recorded": "identical (census legs.CA bulk_groups_ge_min)",
+     "excluded_from_restricted_in_both_funnels": true,
+     "verdict": "13-event bulk transition excluded PASS"
+    },
+    "strict_monotonicity_fail_closed": {"measured": "both funnels built without VintageMonotonicityError; 0 exact-duplicate rows removed", "verdict": "PASS"},
+    "staged_funnel_machinery_rt2018": {
+     "rows": {"measured": 5091, "recorded": 5091, "match": true},
+     "months_carried": {"measured": 1335, "recorded": 1335, "match": true},
+     "months_with_second_vintage": {"measured": 780, "recorded": 780, "match": true},
+     "events_all": {"measured": 779, "recorded": 779, "match": true},
+     "usable_events": {"measured": 85, "recorded": 85, "match": true},
+     "note": "distinct_vintages measured 87 vs recorded 97, and era split 70/15 vs recorded 72/13: both are artifacts of the v1 staged file having been assembled under an earlier request bound (its era start predates 2017-11 so obs months 2017-11/2017-12 carry first_print=True); under the rt2018 request bound the clamp demotes exactly those two obs months to backfill (restricted 70, year-2018 6). The wide window restores both events with exact field equality — the two pulls jointly pin the recorded stream"
+    },
+    "canaries": {
+     "CA_1956-08-01_all_events_found": true,
+     "CA_1956-08-01_excluded_from_restricted": true,
+     "CA_2030-02-01_absent": true,
+     "verdict": "PASS (matches committed census canary block)"
+    },
+    "era_clamp_disclosure": "realtime_era_start of the wide pull is 2015-01-01 — the REQUEST-BOUND CLAMP of the feed's initial full-history ingest (718 rows, obs 1955-01..2014-10, realtime_end 2015-05-31), not a feed vintage date. This sits strictly below all 72 restricted obs months (min 2017-11), so it cannot disturb first_print membership of the restricted stream; it does change counts ABOVE the restricted line (events_all 826, usable 132, backfill 60, bulk groups keyed on the clamp vintage) — recorded as request-window surface, never as content drift"
+    },
+   "evidence_paths": [
+    "research/control/d2_curiosity_v1_run/data/fxng3/fred_vintaged_repull/CANCPIALLMINMEI_raw.json",
+    "research/control/d2_curiosity_v1_run/data/fxng3/fred_vintaged_repull/CANCPIALLMINMEI_raw_rt2018.json",
+    "research/control/d2_curiosity_v1_run/data/fxng3/fred_vintaged_repull/CANCPIALLMINMEI_derived_events.json",
+    "research/control/d2_curiosity_v1_run/data/fxng3/p0_revision_census.json (committed census, digest 0fc108631e6b4bb2111c3528b873e68505ab2b46247d5e39cba24a12ff35017f == identity extract pin)"
+   ]
   },
   {
    "input": "USDCAD daily spot (16:00 NY grid; universe pair)",
    "pinned_sha256": "4b988c4487b2ff0284ca0ecd04b6118c23516a89a147dd87cbab3b1bbf52ec2f",
-   "observed_sha256": null,
-   "status": "BLOCKED_DATA",
-   "evidence_paths": [
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/spot_grid_census.json",
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/spot_pin_manifest.json"
-   ],
+   "observed_sha256": {"assembled repull artifact": "8401427da0c2cb46391d9481d2190df7ae9aee319fd37e7c298cf573ed2755ff"},
+   "status": "BOUND_CONTENT",
+   "digest_note": "byte equality impossible by construction: the pin covers the ORIGINAL 5000-bar staging (first bar 2008-01-30, last 2026-09-10, UNTRACKED_NEVER_COMMITTED); this lane re-pulls the S0 window 2018-04-04..2025-04-30 only, per dispatch",
+   "pull": {
+    "endpoint": "Twelve Data /time_series, symbol USD/CAD (provider forex symbol uses the slash; bare USDCAD returns HTTP 404 'symbol invalid'), interval 1day, timezone UTC",
+    "request_semantics_notes": "start_date is EXCLUSIVE and end_date INCLUSIVE on this endpoint: a start of 2018-04-04 returns bars from 2018-04-05; the binding pull used start_date=2018-04-03 to capture the 2018-04-04 bar. outputsize 5000 covered the whole window in ONE call (1884 bars)",
+    "rate_limit_behavior": "free-tier pacing: one probe + one 400-diagnostic + paced retries (25s backoff) before the successful calls; no parallel bursts"
+   },
    "invariants_checked": {
-    "twelve_data_api_key": "ABSENT",
-    "pinned_bytes_present": false,
-    "recorded_staging_paths_absent": [
-     "/Users/hoangminhlong/my-quantitative/.worktrees/forex-ng1/p1-spot/data_raw/forex_ng1_spot/USDCAD.json (worktree deleted)",
-     "V9 spot_reacquired staging (worktree deleted)"
-    ],
-    "searched_for_copies": "find over all worktrees + .runtime: only USDC.json.gz (crypto stablecoin, unrelated)",
-    "freeze_law": "if the Twelve Data key is absent -> BLOCKED_DATA for this family (no substitute source permitted)",
-    "committed_grid_census_digest": "42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6 (MATCHES identity extract pin; 1842 grid days 2018-04-04..2025-04-30 - committed evidence layer, not data bytes)"
-   }
+    "first_grid_day": {"measured": "2018-04-04", "recorded": "2018-04-04", "match": true},
+    "last_grid_day": {"measured": "2025-04-30", "recorded": "2025-04-30", "match": true},
+    "own_calendar_days_by_year": {"measured": {"2018": 194, "2019": 261, "2020": 262, "2021": 261, "2022": 260, "2023": 260, "2024": 262, "2025": 86}, "recorded": "IDENTICAL to committed spot_grid_census.json pairs.USDCAD.grid_days_by_year", "total": {"measured": 1846, "recorded": 1846}, "match": true},
+    "common_grid_1842": "the 1842-day number is the COMMON grid (four-pair intersection; GBPUSD the binding leg at 2019:260 / 2025:83) — recomputable from the committed census, not from a USDCAD-only pull; the USDCAD-only invariant is its own 1846-day calendar, which matches exactly",
+    "weekday_coverage": {"FX_weekdays_in_window": 1846, "missing_weekdays": 0, "duplicate_dates": 0, "match": true},
+    "grid_mapping_notes_1600NY": "inherited frozen mapping (P-12/V9): the provider daily bar dated D is served as the decision-instrument close at the 16:00 America/New_York instant of day D (20:00Z EDT / 21:00Z EST, zoneinfo DST-correct); first grid instant 2018-04-04T20:00:00Z, last 2025-04-30T20:00:00Z; grid law = FX 24/5 weekdays, weekend provider bars deterministically excluded",
+    "surface_delta_disclosed": "the CURRENT provider feed returns 38 weekend rows (Sat/Sun) inside the window, all in 2024-2025 — rows the original staging did not carry. The frozen grid law excludes weekend bars by construction, so the derived USDCAD calendar (1846 weekday days, by-year exact) is unchanged; recorded as an upstream surface delta, not an invariant failure",
+    "ohlc_quality": "0 bars with missing OHLC, 0 non-plausible closes (0 < close < 10), fields {open, high, low, close, datetime}"
+   },
+   "evidence_paths": [
+    "research/control/d2_curiosity_v1_run/data/fxng3/twelvedata_repull/USDCAD_1day_repull.json",
+    "research/control/d2_curiosity_v1_run/data/fxng3/spot_grid_census.json (committed, digest 42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6 == identity extract pin)",
+    "research/control/d2_curiosity_v1_run/data/fxng3/spot_pin_manifest.json (committed)"
+   ]
   },
   {
-   "input": "DGS10 vintaged (control arm only)",
+   "input": "DGS10 vintaged (control arm only — CTL-DGS10LEVEL)",
    "pinned_sha256": "03dde429ba022e6d011ae3a61323124e38c5a3fac888b492823406a51c4c4aa0",
-   "observed_sha256": null,
-   "status": "BLOCKED_DATA",
-   "evidence_paths": [
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/ctl_dgs10_pin.json",
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/alfred_availability_probe.json"
-   ],
+   "observed_sha256": {"raw pull realtime_start=2018-01-01&realtime_end=2025-08-01": "65dd27727a9dd6a1f417cac005a66f43b3cf5b9909abd931758d94effb7b3e90"},
+   "status": "BOUND_CONTENT",
+   "digest_note": "the pin covers the deleted staged_vintaged/DGS10.json (V8 staging, P-13 manifest chain); freeze bind law for this input is 'digest or presence/shape invariants' — shape invariants all match exactly",
+   "pull": {"endpoint": "FRED /series/observations DGS10 keyed, realtime_start=2018-01-01 (the pinned realtime-evidence start per the ctl warmup-boundary law), realtime_end=2025-08-01 (one day past pinned obs_last 2025-07-31)"},
    "invariants_checked": {
-    "pinned_bytes_present": false,
-    "recorded_staging_path_absent": "/Users/hoangminhlong/my-quantitative/.worktrees/forex-free-v8/integration/research/control/forex_free_v8_run/staged_vintaged/DGS10.json (worktree deleted)",
-    "fred_api_key": "ABSENT",
-    "keyless_outcome": "current vintage available (16884 obs rows, first 1962-01-02 == pin's obs_first) but realtime windows absent",
-    "committed_pin_artifact": {
-     "path_in_reconstruction": "/tmp/d2c_sources/forex_ng3/research/control/forex_ng1_run/i/ctl_dgs10_pin.json",
-     "sha256_computed_by_this_lane": "ca3fd87f1b8218b426e3d2a27ddac91cda83a581c2bce74614e0123628952f55",
-     "records": {
-      "binding_rows": 16592,
-      "distinct_obs_dates": 16588,
-      "obs_first": "1962-01-02",
-      "obs_last": "2025-07-31",
-      "reparse_numeric_rows": 15883
-     }
-    }
-   }
+    "binding_rows": {"measured": 16592, "recorded": 16592, "match": true},
+    "distinct_obs_dates": {"measured": 16588, "recorded": 16588, "match": true},
+    "obs_first": {"measured": "1962-01-02", "recorded": "1962-01-02", "match": true},
+    "obs_last": {"measured": "2025-07-31", "recorded": "2025-07-31", "match": true},
+    "numeric_rows": {"measured": 15883, "recorded_reparse_numeric_rows": 15883, "match": true},
+    "vintaged_shape": "16592/16592 rows carry non-empty realtime windows (parse_fred_vintaged shape law); as-of read law 'value in effect at day d = row with max realtime_start <= d' is serviceable over the whole S0 grid"
+   },
+   "evidence_paths": [
+    "research/control/d2_curiosity_v1_run/data/fxng3/fred_vintaged_repull/DGS10_raw_rt2018.json",
+    "research/control/d2_curiosity_v1_run/data/fxng3/ctl_dgs10_pin.json (committed pin: binding_rows 16592, distinct_obs_dates 16588, obs_first 1962-01-02, obs_last 2025-07-31, reparse_numeric_rows 15883)"
+   ]
   },
   {
-   "input": "ng1 P0 announcement census (kill-shadow input; in-tree committed artifact)",
+   "input": "ng1 P0 announcement census (in-tree committed artifact; kill-shadow input)",
    "pinned_sha256": "e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe",
    "observed_sha256": "e8a35d23ce64ce71a8d30792750b877c387de3692af1e4d17391ea4cc35b4abe",
    "status": "BOUND_DIGEST",
-   "evidence_paths": [
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/p0_announcement_census.json",
-    "/tmp/d2c_sources/forex_ng3/research/control/forex_ng1_run/p0_announcement_census.json"
-   ],
-   "invariants_checked": {
-    "digest": "match",
-    "bytes_present_in_reconstruction": true,
-    "copied_to_lane": true
-   }
+   "note": "unchanged from v1: bytes ARE in the reconstruction; sha256 == pin; copied to the lane data dir",
+   "evidence_paths": ["research/control/d2_curiosity_v1_run/data/fxng3/p0_announcement_census.json"]
   },
   {
-   "input": "spot grid census + spot pin manifest (committed evidence, supplementary)",
-   "pinned_sha256": "42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6 (grid census; extract-recorded)",
+   "input": "spot grid census + spot pin manifest (committed evidence)",
+   "pinned_sha256": "42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6 (grid census)",
    "observed_sha256": {
     "spot_grid_census.json": "42612576fb5aeb16416f36f0eb042605854f68bb268cd1bbedabfeafe5886ed6",
     "spot_pin_manifest.json": "e80b468b4d2070586ff110bca104f6fd7838697e0bee57f5a0f94a1149180d53"
    },
    "status": "BOUND_DIGEST",
+   "note": "unchanged from v1; this lane additionally re-derived the USDCAD leg of the census live (see the USDCAD input above) and found it exact",
    "evidence_paths": [
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/spot_grid_census.json",
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/spot_pin_manifest.json"
-   ],
-   "invariants_checked": {
-    "common_grid_days": 1842,
-    "window": [
-     "2018-04-04",
-     "2025-04-30"
-    ],
-    "digest": "grid census matches extract pin"
-   }
-  },
-  {
-   "input": "ALFRED availability probe (this lane's pull, descriptive)",
-   "pinned_sha256": null,
-   "observed_sha256": "f2085bc1bcca92bf8eb8bfece5fb96558927cbb1eadd374360abe41e20ed8fbf",
-   "status": "NOT_PINNED_SUPPLEMENTARY",
-   "evidence_paths": [
-    "/Users/hoangminhlong/my-quantitative/.worktrees/d2-curiosity-v1/integration/research/control/d2_curiosity_v1_run/data/fxng3/alfred_availability_probe.json"
-   ],
-   "invariants_checked": {
-    "purpose": "documents keyless availability boundary for a future keyed re-pull"
-   }
+    "research/control/d2_curiosity_v1_run/data/fxng3/spot_grid_census.json",
+    "research/control/d2_curiosity_v1_run/data/fxng3/spot_pin_manifest.json"
+   ]
   }
  ],
- "family_status": "BLOCKED_DATA",
- "family_status_basis": "freeze law names this family BLOCKED_DATA when the Twelve Data key is absent (key ABSENT); additionally the signal input CANCPIALLMINMEI and the control DGS10 vintaged archives are unreproducible keylessly (bytes absent + FRED API key absent; keyless endpoints serve current vintage only)"
+ "family_status": "BINDABLE_NOW",
+ "family_status_basis": "every pinned FXNG3 data input is bound: CANCPIALLMINMEI BOUND_CONTENT (72-event invariant + 13-event bulk exclusion + monotonicity + canaries ALL PASS, per-event and fingerprint equality on the restricted stream), USDCAD BOUND_CONTENT (own calendar 1846 days by-year exact; 38 weekend surface rows excluded by the frozen grid law), DGS10 BOUND_CONTENT (all five recorded shape invariants exact), ng1 census and grid census BOUND_DIGEST (in-tree, unchanged). No input remains BLOCKED_DATA; the v1 key-absence claims were a sourcing error (keys present in /Users/hoangminhlong/my-quantitative/.env)",
+ "no_outcome_law": "NO expectancy/PnL/PF/scoring computed anywhere in this lane; event-funnel counts are construction invariants only",
+ "write_scope_compliance": "writes confined to research/control/d2_curiosity_v1_run/data/fxng3/ (raw pulls, derived events, this report) and data_gate_report.json; reconstruction tree /tmp/d2c_sources/forex_ng3 used READ-ONLY via import; nothing committed"
 }
