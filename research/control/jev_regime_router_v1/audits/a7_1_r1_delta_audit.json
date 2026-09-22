@@ -1,0 +1,77 @@
+{
+ "audited_at_utc": "2026-09-22T05:06:28Z",
+ "audited_head": "ea09f1de09a1d81a7a811a96887d7e4f2d0385b9",
+ "branch": "orca/jev-regime-router-v1-integration",
+ "delta_scope": "Re-audit of remediation range 873634dc..HEAD (remediation commit 1a779f19, content-identical cherry-pick of orca/jrv1-remediation-r1 b8fcd6e1; handoff landing ea09f1de adds only handoffs/remediation_r1_handoff.json). Base SHAs verified with git: HEAD, branch name, remediation range, and `git diff b8fcd6e1 1a779f19` EMPTY (cherry-pick content-identical). All remediation claims verified independently by recomputation; no lane artifact trusted by name.",
+ "findings": [
+  {
+   "id": "F1",
+   "original_severity": "CRITICAL",
+   "remediation_verdict": "REMEDIATED",
+   "independent_evidence": "1) freezes/adapter_contract.json carries amendment_1 (dated 2026-09-22T04:30:09Z, by remediation-r1) rewriting input_digest as PRODUCER-computed and VERBATIM-ECHOED; freeze_manifest.json 'amended' list preserves old sha256 334515b7... which I recomputed from the 873634dc blob (exact match) and new sha256 a1893fde... which I recomputed from HEAD bytes (exact match). 2) Code read line-by-line: adapter.ts imports computeInputDigest NO LONGER (import removed); every response path echoes req.input_digest (mock, OK, SCHEMA_ERROR, provider-error, localInvalidRow); cache key sha256(model||state_id||echoed_digest); mock.ts takes the digest as a parameter and echoes; contract.ts validateRequestLine REQUIRES 64-lowercase-hex input_digest (missing/uppercase/short/typo all rejected -> LOCAL_INVALID with no call, no cache entry). computeInputDigest survives only as a legacy export used by golden tests. 3) Golden test file re-run standalone: node --test test/digest_golden.test.ts = 3/3 pass; its 3 Python-side constants (canonical strings + sha256) independently reproduced by the Python producer (json.dumps sort_keys/separators/ensure_ascii + sha256): 3/3 exact. 4) OWN fresh cross-language check (independent vectors, not lane vectors): generated 30 random feature vectors seeded 20260922 with magnitudes forced into the exponent-notation divergence window (1e-9..8.78e-5, signed, mixed scales), built request lines with producer-computed input_digest, ran `node src/adapter.ts --requests ... --mock`: result 30/30 echo-match against Python recompute from the stored states, 0 ingest violations via jrv1.decisions.validate_response_line, 30/30 cache entries echo-correct and key-correct. Teeth proven: the SAME 30 states under the legacy TS recompute (computeInputDigest) mismatch the producer digest 30/30 — i.e. every vector sits in the old divergence window and the echo law carries all of them. 5) tests_py/test_digest_echo.py pins the same 3 golden literals in the Python suite (compared: identical id/state/model/canonical/digest values)."
+  },
+  {
+   "id": "F2",
+   "original_severity": "HIGH",
+   "remediation_verdict": "REMEDIATED",
+   "independent_evidence": "1) jrv1/replay.py read end-to-end: strict in-order iteration over decision states range(warmup, T); prior_regime taken from the persisted PersistenceState which is stepped (step(st, raw, eligible)) after EVERY merged response and fed into the next state payload; exactly ONE request line (carrying the producer input_digest per amendment_1) and ONE TS-adapter subprocess invocation per state; cache-first resume (store.by_state_id hit -> re-validated against the CURRENT recomputed digest, never re-called; stale line -> incident, fail-closed); hard fail: ReplayError raised on adapter non-zero exit AND on response-line count != 1; DecisionStore.append is append-only and refuses duplicates. 2) prepare-requests bulk REFUSED (reproduced live: `prepare-requests --asset spy --limit 5` -> REFUSED SystemExit naming A7-1 F2 and pointing to replay); --fixtures-only emits exactly 5 producer-digested lines for the frozen canaries (FIX6 null vector never serialized). 3) OWN run: `replay --asset spy --limit 25 --mock` on a clean runtime (no prior replay state): run 1 = 25/25 sent, n_incidents=0, digest_mismatches=0, bar_index strictly increasing from 192, prior chain exact (each row prior_regime == previous row persisted_after); run 2 (resume) = n_sent=0 (ZERO new adapter calls), 25/25 cached, 0 incidents, 0 digest mismatches, identical persisted/status sequence run-over-run; 25 adapter cache entries and 25 decision lines on disk."
+  },
+  {
+   "id": "F3",
+   "original_severity": "HIGH",
+   "remediation_verdict": "REMEDIATED",
+   "independent_evidence": "1) Engine code: folds_from_regime_ts now returns a CONTIGUOUS partition (fold k: first exec bar with ts_open > span_start through the bar before fold k+1's first bar; last fold to the final exec bar); entry fills AND entry signals refused when fold_id < 0; hard in-loop assertion that no position is open on an unassigned bar after the fold-flat step; post-run _assert_engine_invariants: every invested bar has fold_id >= 0, every trade lives inside its fold's exec range, sum(fold_net_pnl) == totals.net_pnl within 1e-9. run.py build_context wires fold_partition_invariants (raises on gap/overlap/uncovered post-warmup bar). 2) INDEPENDENT partition recomputation on BOTH real datasets in a throwaway process (partition/labeling only; NO backtest arm, NO PnL): BTCUSDT (35039 exec bars): new partition [0,774,9341],[1,9342,17909],[2,17910,26477],[3,26478,35038] — exact-once coverage (no double-assignment, no missing bar) from bar 774 (= first post-warmup exec bar) through 35038; SPY (2943): [0,193,880],[1,881,1568],[2,1569,2256],[3,2257,2942] — exact-once from 193, first post-warmup exec bar 194 covered. Old (round-1) partition recomputed for comparison left 13 BTC bars (4 per boundary x3 + final bar) and 3 SPY sessions unassigned — all now owned by the preceding fold; fold STARTS (decision boundaries) are IDENTICAL old-vs-new on both assets. fold_partition_invariants passed on both. 3) Reconciliation identity test exists and is honest: tests_py/test_engine.py::test_f3_gap_pattern_reconciliation_and_no_span uses SYNTHETIC rising bars (make_bars) with TREND_LONG targets on BTC-like and SPY-like grids reproducing the exact audit gap pattern; asserts reconciliation <=1e-9, no-span, full assignment, gap ownership, AND proves the old gapped partition now hard-fails the partition invariant (pytest.raises gap/overlap). No real-data PnL involved. 4) freezes/fold_contract.json BYTES UNCHANGED: sha256 at 873634dc == at HEAD == ac658c50a79e9f14e1d1cc92d39a1c9befc364434b8c87fe922dc9a7baaa39f7 (recomputed both ends); frozen decision counts intact (BTC 2142+2142+2142+2141=8567, SPY 688+688+688+687=2751). Whole freezes/ dir diff 873634dc..HEAD = adapter_contract.json + freeze_manifest.json ONLY."
+  },
+  {
+   "id": "F4",
+   "original_severity": "MEDIUM",
+   "remediation_verdict": "REMEDIATED",
+   "independent_evidence": "plans/PLAN_jev_regime_router_v1.md §9 now reads 'Projected bulk size (frozen exact numbers, freezes/fold_contract.json): BTCUSDT 8,567 + SPY 2,751 = 11,318 decision states ≈ 11,318 billable calls' plus the sentence 'Amended 2026-09-22 remediation-r1 per A7-1 F4 (arithmetic correction only; no contract change)'. Arithmetic verified: 8,567 + 2,751 = 11,318 and both addends match the frozen fold_contract evaluable_decisions (8567 / 2751) re-read from the freeze file at HEAD. `git diff 873634dc..HEAD -- plans/` contains EXACTLY this one hunk and nothing else."
+  },
+  {
+   "id": "F5",
+   "original_severity": "LOW",
+   "remediation_verdict": "NOT_REMEDIATED",
+   "independent_evidence": "engine.py module docstring line 31 still states BUY_HOLD 'enters TREND_LONG at the first exec bar open of each fold' — the entry signal is set at the fold-start bar's close and fills at the NEXT open (conservative, causal). Explicitly out of remediation-r1 scope per the handoff; open LOW, non-blocking."
+  },
+  {
+   "id": "F6",
+   "original_severity": "LOW",
+   "remediation_verdict": "NOT_REMEDIATED",
+   "independent_evidence": "freezes/cost_contract.json unchanged in the remediation range; BTC funding reference-price approximation (latest bar close vs boundary price) still undisclosed in the freeze text. Open LOW, non-blocking (disclose at STOP-1)."
+  },
+  {
+   "id": "F7",
+   "original_severity": "LOW",
+   "remediation_verdict": "NOT_REMEDIATED",
+   "independent_evidence": "adapter.ts cache-hit branch (replay) still pushes cached rows without re-checking response.model == pin; the Python side re-enforces the pin at scoring (fail-closed), and the replay loop re-validates cached lines against the current digest/pin. Open LOW, non-blocking (note in bulk runbook)."
+  },
+  {
+   "id": "F8",
+   "original_severity": "LOW",
+   "remediation_verdict": "NOT_REMEDIATED",
+   "independent_evidence": "freezes/feature_contract.json unchanged; ddof=0 population-std convention for rv24/vol_z still not pinned in the freeze text. Open LOW, non-blocking (record at next lawful touch or disclose in STOP-1)."
+  }
+ ],
+ "new_issues_from_remediation": [],
+ "remediation_observations": [
+  "Scope creep review of the FULL diff 873634dc..HEAD (17 files, +1470/-69) found NO out-of-scope change: nothing touches strategies, regime-strategy mapping, persistence params, feature definitions, cost contract, or fold contract bytes; the only freezes changes are adapter_contract.json (amendment_1) and freeze_manifest.json (digest update + append-only 'amended' list); the only plan change is the §9 arithmetic hunk; remaining files are the F1/F2/F3 code+tests, the new jrv1/replay.py, and the handoff artifact (ea09f1de).",
+  "DISCLOSED (not counted as a new issue): the remediation handoff records that the lane ran real-data smoke (arm D, BTC+SPY) post-freeze to confirm 0 incidents after the engine fold-law change — kill-only namespace per P-15, counts-only disclosure consistent with the INCIDENT-JRV1-1 protocol (OBSERVED counter); no PnL recorded in any committed artifact, none quoted here.",
+  "Freeze gate integrity holds after the amendment: freeze_digests.ts (embedded regime-label digest) unchanged and the adapter freeze gate passed on every mock run in this audit (exit 0); verify-freezes 12/12 with security self-scan findings []."
+ ],
+ "open_low_findings": ["F5", "F6", "F7", "F8"],
+ "tests_recount": {
+  "pytest_tests_py": "110 passed / 0 failed / 6 warnings (re-run by auditor at HEAD; warnings are numpy RuntimeWarnings in degenerate synthetic fixtures only, same profile as round 1)",
+  "adapter_node_test": "63 pass / 0 fail; tsc --noEmit clean (re-run by auditor at HEAD)",
+  "golden_digest_file_standalone": "node --test test/digest_golden.test.ts: 3/3 pass",
+  "verify_freezes": "12/12 sha256 MATCH vs amended manifest; mapping digest 840cbe15... asserted; security scan 16 files, 0 findings",
+  "census_btcusdt": "35039 rows, 0 interior 15m gaps, 8759 complete H1 hours, 2 partial edge hours — identical to freeze and to round 1",
+  "census_spy": "2943 sessions 2015-01-02..2026-09-16 — identical to freeze and to round 1",
+  "auditor_own_cross_language_check": "30 fresh exponent-window vectors: 30/30 echo-match, 0 ingest violations, 30/30 cache correct; legacy recompute diverges 30/30 (teeth)",
+  "auditor_own_replay": "replay --asset spy --limit 25 --mock run twice: run1 25 sent / 0 incidents; run2 0 sent (0 new adapter calls) / 25 cached / 0 incidents / identical decision sequence",
+  "auditor_own_partition_check": "both real datasets: exact-once contiguous coverage from first post-warmup exec bar, decision-boundary starts identical to frozen semantics, fold_contract bytes sha-equal to round 1"
+ },
+ "verdict": "AUTHORIZED_FOR_STOP1_REPORT",
+ "zero_unresolved_critical_high": true,
+ "constraints_respected": "No real-data arm backtest executed by the auditor; backtest subcommand untouched and quarantined. Mock-only executions (adapter --mock, replay --mock) and partition/labeling computations on real exec bars. No PnL numbers quoted anywhere in this artifact — counts and invariants only. Auditor wrote only under research/control/jev_regime_router_v1/audits/."
+}
