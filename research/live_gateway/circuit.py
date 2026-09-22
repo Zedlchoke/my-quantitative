@@ -327,7 +327,9 @@ class CircuitBreaker:
             self._record("RECOVERING", "half-open probe success")
             self.state = "HEALTHY"
             self.history[-1].to_state = "HEALTHY"
-        elif self.state in ("DEGRADED", "RECOVERING", "DISCONNECTED"):
+        elif self.state in (
+            "DEGRADED", "RECOVERING", "DISCONNECTED", "GAP_DETECTED",
+        ):
             self._record("HEALTHY", "success after degraded state")
 
     def note_ws_state(self, connected: bool, reason: str) -> None:

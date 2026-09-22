@@ -121,6 +121,7 @@ class BinanceStream:
             "last_message_utc": self.last_message_utc,
             "messages_received": self.messages_received,
             "parse_errors": self.parse_errors,
+            "last_error": self.last_error,
             "subscribed_symbols": len(self.symbols),
             "stream_url": self.url(),
         }

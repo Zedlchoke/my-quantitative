@@ -444,11 +444,22 @@ class GatewayService:
                                     if entry.get("indexPrice") is not None
                                     else None
                                 )
+                                funding = (
+                                    float(entry["lastFundingRate"])
+                                    if entry.get("lastFundingRate")
+                                    is not None else None
+                                )
+                                next_fund = (
+                                    int(entry["nextFundingTime"])
+                                    if entry.get("nextFundingTime")
+                                    is not None else None
+                                )
                             except (TypeError, ValueError, KeyError):
                                 continue
                             datum = self.snapshot.datum(sym)
-                            datum.apply_rest_mark(
-                                ts_ms, mark, idx, None, received,
+                            datum.apply_rest_mark_full(
+                                ts_ms, mark, idx, funding,
+                                next_fund, received,
                             )
                             applied += 1
                         self.counters.bump("mark_polls_ok")
